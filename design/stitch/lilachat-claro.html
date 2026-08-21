@@ -1,0 +1,280 @@
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "surface-container-highest": "#e3e1ed",
+                "lila-accent": "#5865F2",
+                "on-primary-fixed": "#000569",
+                "inverse-primary": "#bec2ff",
+                "surface": "#fbf8ff",
+                "on-primary-fixed-variant": "#222fc2",
+                "primary-container": "#5865f2",
+                "on-primary": "#ffffff",
+                "tertiary-container": "#bb5a00",
+                "outline-variant": "#c6c5d7",
+                "on-error-container": "#93000a",
+                "on-secondary-fixed": "#131b2e",
+                "on-surface-variant": "#454655",
+                "error": "#ba1a1a",
+                "on-background": "#1a1b23",
+                "secondary-fixed": "#dae2fd",
+                "surface-ice": "#F8FAFC",
+                "primary": "#3d4ad8",
+                "on-error": "#ffffff",
+                "on-tertiary": "#ffffff",
+                "background": "#fbf8ff",
+                "on-primary-container": "#fffdff",
+                "status-busy": "#EF4444",
+                "primary-fixed-dim": "#bec2ff",
+                "tertiary-fixed": "#ffdbc8",
+                "surface-tint": "#3f4cda",
+                "on-tertiary-container": "#fffdff",
+                "error-container": "#ffdad6",
+                "secondary-fixed-dim": "#bec6e0",
+                "secondary-container": "#dae2fd",
+                "surface-container-lowest": "#ffffff",
+                "primary-fixed": "#e0e0ff",
+                "on-secondary": "#ffffff",
+                "surface-bright": "#fbf8ff",
+                "on-secondary-fixed-variant": "#3f465c",
+                "tertiary": "#954700",
+                "on-surface": "#1a1b23",
+                "secondary": "#565e74",
+                "surface-container-low": "#f4f2fe",
+                "outline": "#767686",
+                "tertiary-fixed-dim": "#ffb689",
+                "on-tertiary-fixed": "#311300",
+                "surface-container": "#efecf9",
+                "inverse-surface": "#2f3039",
+                "surface-dim": "#dbd9e5",
+                "on-secondary-container": "#5c647a",
+                "surface-variant": "#e3e1ed",
+                "inverse-on-surface": "#f2effb",
+                "on-tertiary-fixed-variant": "#743500",
+                "surface-container-high": "#e9e7f3",
+                "status-online": "#22C55E"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "stack-standard": "16px",
+                "stack-loose": "24px",
+                "margin-desktop": "48px",
+                "stack-tight": "8px",
+                "gutter": "16px",
+                "margin-mobile": "16px",
+                "unit": "4px"
+        },
+        "fontFamily": {
+                "headline-lg-mobile": [
+                        "Plus Jakarta Sans"
+                ],
+                "headline-lg": [
+                        "Plus Jakarta Sans"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "title-md": [
+                        "Plus Jakarta Sans"
+                ],
+                "display-lg": [
+                        "Plus Jakarta Sans"
+                ],
+                "label-md": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "headline-lg-mobile": [
+                        "24px",
+                        {
+                                "lineHeight": "32px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "40px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-md": [
+                        "14px",
+                        {
+                                "lineHeight": "22px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "26px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "title-md": [
+                        "18px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "display-lg": [
+                        "48px",
+                        {
+                                "lineHeight": "56px",
+                                "letterSpacing": "-0.03em",
+                                "fontWeight": "800"
+                        }
+                ],
+                "label-md": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.02em",
+                                "fontWeight": "600"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script><style>@layer base{body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;}.pt-safe{padding-top:env(safe-area-inset-top,0px);}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head><body class="bg-background font-body-md text-on-background"><header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-gutter flex items-center justify-between"><div class="flex items-center gap-stack-tight"><img alt="Lilachat Icon" class="h-8 w-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida/AP1WRLso07MNkw6NEb76uDoudJwr_dAf5QbSLH-RvQdK1TarF6NKv0qdbvCqFLhZMOoY9RychN6Mh2PfpT7YcfwdoHOzkPdK5XEHb1fWOqSq3RFCvoXuIS8GUUgRbc2te2V01wdrw-wClR3pBqlFEQ5RNakQ1lDVCcu_j6juW58lKMBa2-uJol5KSD2yDuz3Tua9ZvDFxO1FXgojR-kV5LxsgszjO1f7mUqbnv4KOPB4w96H3TBS4WEpns213hM"/><span class="font-title-md text-title-md text-primary">Lilachat</span></div><div class="flex items-center gap-1"><button class="w-11 h-11 flex items-center justify-center rounded-full hover:bg-on-surface/5"><span class="material-symbols-outlined text-on-surface-variant">photo_camera</span></button><button class="w-11 h-11 flex items-center justify-center rounded-full hover:bg-on-surface/5"><span class="material-symbols-outlined text-on-surface-variant">search</span></button><button class="ml-1"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCpYU0OFTj3ei6vKQEjVWxauniPcAcrgvlpMvW2ykXNsGVTkw89_uhXbQIKp6F88VwqwF-aiiqgLhAvGDoZ9o9ECYUuqAb0TUo0jyk0KP6Jv1NutJYWL_nHY3PX3YgfXW2CGoDm7YsYCvu0tSrcQ6FUb2g5J19CqJYEaW93mMq4W8o-YDS2MiDiB1tL-mOze2dzYBeVnYZeuFOXnlVgSbJLkN2jxin1I3eFMVCGREwgJ9F-0nF6w_1eJw"/></button></div></div></header><main class="pt-16 pb-20 min-h-screen bg-background"><div class="flex flex-col w-full bg-surface">
+<!-- Main Chat List Area -->
+<div class="px-gutter pt-stack-standard pb-stack-loose flex flex-col gap-unit">
+<!-- Chat Item: Unread -->
+<a class="flex items-center p-stack-tight rounded-lg hover:bg-on-surface/5 transition-colors relative group" href="#">
+<div class="relative flex-shrink-0">
+<img class="w-14 h-14 rounded-full object-cover" data-alt="Close up portrait of a young professional woman with dark curly hair smiling warmly, soft studio lighting, soft blurred background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCrMCw23FESw2n66Rk-RqYVd5AqZ2fdGmNKdAqpbQSIL6j7qOQsCV4PiYlIGJzRXSoZnU78wEATJxIqPg36g6Io_3bm1azmC9Ytgr-OqHN7nM5Vb31GlfomSDmZHXvs0UYRaSrL1ZHu_Hh4VKS_1wYfNxhfHqaPXlt1HCt2nivXWEFupgFKGqQGcgempjWzZ3QEWWtE278oKvvRzL4UXHStKChW5ex5Au1i6u-U3VYcA6MMSikpD4p-tQ"/>
+<div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-status-online border-2 border-surface rounded-full"></div>
+</div>
+<div class="ml-stack-standard flex-1 min-w-0">
+<div class="flex justify-between items-baseline mb-0.5">
+<h3 class="font-label-md text-label-md text-on-surface truncate pr-2 font-semibold">Sofia Martinez</h3>
+<span class="text-[12px] font-label-md text-primary flex-shrink-0">10:42 AM</span>
+</div>
+<div class="flex justify-between items-center gap-2">
+<p class="font-body-md text-body-md text-on-surface truncate font-medium">¿Nos vemos a las 5 para revisar los diseños?</p>
+<div class="w-5 h-5 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+<span class="text-[10px] font-bold text-on-primary">3</span>
+</div>
+</div>
+</div>
+</a>
+<!-- Chat Item: Read, Typing -->
+<a class="flex items-center p-stack-tight rounded-lg hover:bg-on-surface/5 transition-colors relative group" href="#">
+<div class="relative flex-shrink-0">
+<img class="w-14 h-14 rounded-full object-cover" data-alt="Portrait of a man in his 30s with short beard and glasses, casual attire, natural daylight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7p2nzgspdZlBI66y3TbfUMr3vc2gH8pS8kkDJ0oHtKdOu3Yjqgu0N_rT22tGiYyiafPY57y6t49ep5a9J1rxw4k4s8QZiP6Z2-MsIMxxBxela65CTWOadSw-g9TkPyKapn4bETja5K45FiM06QkvN2m0gMITeLMuHFLM3x59BFhQv_KMqJxTtAAVGj1Uu1jbw6tCwKQqGT0DmNP5sCVeddiwOCs9Z_vDmHkgbbOF0KzchRuwf3Cn06g"/>
+</div>
+<div class="ml-stack-standard flex-1 min-w-0">
+<div class="flex justify-between items-baseline mb-0.5">
+<h3 class="font-label-md text-label-md text-on-surface truncate pr-2">Carlos Ruiz (Equipo Dev)</h3>
+<span class="text-[12px] font-label-md text-on-surface-variant flex-shrink-0">Ayer</span>
+</div>
+<div class="flex justify-between items-center gap-2">
+<p class="font-body-md text-body-md text-primary truncate italic flex items-center gap-1">
+                        Escribiendo...
+                    </p>
+</div>
+</div>
+</a>
+<!-- Chat Item: Read, Media -->
+<a class="flex items-center p-stack-tight rounded-lg hover:bg-on-surface/5 transition-colors relative group" href="#">
+<div class="relative flex-shrink-0 flex items-center justify-center w-14 h-14 rounded-full bg-secondary-container text-on-secondary-container font-title-md">
+                LA
+            </div>
+<div class="ml-stack-standard flex-1 min-w-0">
+<div class="flex justify-between items-baseline mb-0.5">
+<h3 class="font-label-md text-label-md text-on-surface truncate pr-2">Lucia &amp; Andres</h3>
+<span class="text-[12px] font-label-md text-on-surface-variant flex-shrink-0">Ayer</span>
+</div>
+<div class="flex justify-between items-center gap-2">
+<p class="font-body-md text-body-md text-on-surface-variant truncate flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">image</span> Foto enviada
+                    </p>
+</div>
+</div>
+</a>
+<!-- Chat Item: Read, Voice Note -->
+<a class="flex items-center p-stack-tight rounded-lg hover:bg-on-surface/5 transition-colors relative group" href="#">
+<div class="relative flex-shrink-0">
+<img class="w-14 h-14 rounded-full object-cover" data-alt="Headshot of an older gentleman with grey hair and a warm smile, wearing a blue shirt" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6B0tXCX6WJJayjmedX-yhJ1FZixCVJ4rv_WIiV8o-olhTSrUwjPIF_H33p2IEELtZLbI9dFRAzjfCL7edThcfooJazazoxVYOgnRMLuhPY9PVpsM00qhD6ju3Nju3ZPZM243ngKigmaeMUpPSYuwx1wamVJ8qUTPSWL6D0QzpHEbfclYkTV4D9h6O9a7z7fzE1K7GsUrLDCtK3ESnXPb0wlmZFXZD15h5Xz3SdvuxwtGd0SU9ZkLsDA"/>
+<div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-status-online border-2 border-surface rounded-full"></div>
+</div>
+<div class="ml-stack-standard flex-1 min-w-0">
+<div class="flex justify-between items-baseline mb-0.5">
+<h3 class="font-label-md text-label-md text-on-surface truncate pr-2">Papá</h3>
+<span class="text-[12px] font-label-md text-on-surface-variant flex-shrink-0">Lun</span>
+</div>
+<div class="flex justify-between items-center gap-2">
+<p class="font-body-md text-body-md text-on-surface-variant truncate flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-secondary">mic</span> Nota de voz (1:04)
+                    </p>
+</div>
+</div>
+</a>
+<!-- Chat Item: Read, Long Text -->
+<a class="flex items-center p-stack-tight rounded-lg hover:bg-on-surface/5 transition-colors relative group" href="#">
+<div class="relative flex-shrink-0">
+<img class="w-14 h-14 rounded-full object-cover" data-alt="Avatar illustration of a cute cat wearing sunglasses in neon colors" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEj4VzvUPGSKPCk3xvgJu6f2cvnfwVdVQV9ssKRgYRgSbOazwdqVcC0uD1H-00e6T0dhUSL4YL-1fPA4v7r6P0OWVqT0s9eMJQgqYs4U26JWSnd1sbEhJwVSz42NL5sS9wWf15QJkt5aO_JD5A8TFa6JDy_XL5q3W8gEgYIzztr3yT4v4SFd8QHep6DncVdtOfrb1RvtQToJ0QayZqpyjAKYkG0FKAlVAwhMxC8owyj7gp2P3M1Zwy4w"/>
+</div>
+<div class="ml-stack-standard flex-1 min-w-0">
+<div class="flex justify-between items-baseline mb-0.5">
+<h3 class="font-label-md text-label-md text-on-surface truncate pr-2">Diseño UI/UX Central</h3>
+<span class="text-[12px] font-label-md text-on-surface-variant flex-shrink-0">Dom</span>
+</div>
+<div class="flex justify-between items-center gap-2">
+<p class="font-body-md text-body-md text-on-surface-variant truncate">
+                       Vale, perfecto. Mañana discutimos los detalles del nuevo flujo de usuario. Descansa!
+                    </p>
+</div>
+</div>
+</a>
+<!-- Chat Item: Read, Pinned -->
+<a class="flex items-center p-stack-tight rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors relative group mt-4" href="#">
+<div class="absolute -top-2 left-6 bg-surface px-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">push_pin</span>
+</div>
+<div class="relative flex-shrink-0">
+<div class="flex items-center justify-center w-14 h-14 rounded-full bg-primary-container text-on-primary-container font-title-md">
+                    PRO
+                </div>
+</div>
+<div class="ml-stack-standard flex-1 min-w-0">
+<div class="flex justify-between items-baseline mb-0.5">
+<h3 class="font-label-md text-label-md text-on-surface truncate pr-2">Proyecto Alpha Launch</h3>
+<span class="text-[12px] font-label-md text-on-surface-variant flex-shrink-0">12 Feb</span>
+</div>
+<div class="flex justify-between items-center gap-2">
+<p class="font-body-md text-body-md text-on-surface-variant truncate">
+<span class="font-medium text-on-surface">Elena:</span> Recuerden subir los assets finales a la carpeta compartida.
+                    </p>
+</div>
+</div>
+</a>
+</div>
+<!-- Floating Action Button -->
+<button class="fixed bottom-24 right-4 w-14 h-14 bg-primary text-on-primary rounded-2xl shadow-xl flex items-center justify-center hover:bg-primary-container hover:text-on-primary-container transition-all hover:scale-105 active:scale-95 group z-40">
+<span class="material-symbols-outlined text-[28px] group-hover:rotate-90 transition-transform duration-300">chat_add_on</span>
+</button>
+</div></main><nav class="fixed bottom-0 w-full z-50 bg-surface/90 backdrop-blur-xl pb-safe shadow-[0_-1px_8px_rgba(0,0,0,0.04)]" data-active-classes="text-primary font-bold"><div class="flex justify-around items-center h-16"><a aria-current="page" class="flex flex-col items-center justify-center gap-1 w-full h-full transition-colors text-primary font-bold" data-path="chats" href="#"><span class="material-symbols-outlined">chat</span><span class="text-[12px] font-label-md">Chats</span></a><a class="flex flex-col items-center justify-center gap-1 w-full h-full text-on-surface-variant transition-colors" data-path="status" href="#"><span class="material-symbols-outlined">donut_large</span><span class="text-[12px] font-label-md">Status</span></a><a class="flex flex-col items-center justify-center gap-1 w-full h-full text-on-surface-variant transition-colors" data-path="communities" href="#"><span class="material-symbols-outlined">groups</span><span class="text-[12px] font-label-md">Communities</span></a><a class="flex flex-col items-center justify-center gap-1 w-full h-full text-on-surface-variant transition-colors" data-path="calls" href="#"><span class="material-symbols-outlined">call</span><span class="text-[12px] font-label-md">Calls</span></a></div></nav></body></html>

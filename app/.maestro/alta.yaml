@@ -1,0 +1,42 @@
+# Alta de Lilachat en el emulador (F1).
+#
+# Cubre el flujo hasta la pantalla del código con un correo NO invitado: la
+# respuesta debe ser el genérico anti-enumeración y avanzar igual. El canje
+# COMPLETO (código real) no se automatiza todavía: constroad-auth no tiene
+# costura de QA y el código llega a un inbox real — se verificó en vivo por
+# curl el 20/08/2026 (spec §13 F1) y queda como paso manual hasta que el
+# servicio ofrezca un endpoint de QA (backlog).
+#
+# Antes: el server local corriendo (npm run dev en la raíz) y el emulador
+# `timon` arriba. La app usa EXPO_PUBLIC_API_URL=http://10.0.2.2:4003.
+appId: com.lilachat.app
+---
+- launchApp:
+    clearState: true
+
+# Arranque FRÍO tras el clear: el debug build re-pide el bundle a Metro y eso
+# tarda más que el timeout normal del assert. Espera extendida, y el matcher es
+# el subtítulo — el emoji del título se codifica distinto según la capa que lo
+# lea y hace flaky el match exacto.
+- extendedWaitUntil:
+    visible: "Ingresa tu número para comenzar a chatear con tus amigos."
+    timeout: 60000
+- tapOn:
+    id: "input-telefono"
+- inputText: "987654321"
+# Enter SUBMITE (onSubmitEditing) y navega: tocar «Continuar» después buscaría
+# un botón que ya no existe — así falló la primera corrida.
+- pressKey: Enter
+
+# Avanza SIEMPRE al código, invitado o no — el gate no se delata. Espera
+# extendida: hay un round-trip real al server local.
+- extendedWaitUntil:
+    visible: "Verificar Número"
+    timeout: 20000
+- assertVisible:
+    id: "input-otp"
+
+# Volver atrás no pierde el flujo.
+- tapOn:
+    id: "btn-atras"
+- assertVisible: "Ingresa tu número para comenzar a chatear con tus amigos."

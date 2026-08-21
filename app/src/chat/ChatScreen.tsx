@@ -1,0 +1,250 @@
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import { ArrowLeft, MoreVertical, Mic, Plus, Send, Smile } from 'lucide-react-native';
+import { formatDayLabel, startsNewDay } from '@lilachat/shared';
+import type { Credential } from '../auth/credentialStore';
+import { AttachSheet } from './AttachSheet';
+import { DaySeparator, MessageRow, isPending, type Row } from './MessageRow';
+import { useChat } from './useChat';
+
+/**
+ * La conversación (diseño Stitch «Chat de Grupo»). Burbuja propia a la derecha
+ * en acento; la ajena a la izquierda en superficie — y la esquina-cola de 4px
+ * apunta al emisor, que es el token `rounded-tail` de Vivid Pulse.
+ */
+export function ChatScreen({
+  chatId,
+  chatName,
+  credential,
+  othersReadSeq,
+  othersDeliveredSeq,
+  onBack,
+}: {
+  chatId: string;
+  chatName: string;
+  credential: Credential;
+  othersReadSeq: number;
+  othersDeliveredSeq: number;
+  onBack: () => void;
+}) {
+  const { messages, pending, connected, othersRead, send, sendMedia, markRead } = useChat({
+    chatId,
+    token: credential.jwt,
+  });
+  const [draft, setDraft] = useState('');
+  const [attachOpen, setAttachOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [mediaError, setMediaError] = useState('');
+
+  const upload = async (file: {
+    uri: string;
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number;
+  }) => {
+    setUploading(true);
+    setProgress(0);
+    setMediaError('');
+    const result = await sendMedia({ ...file, onProgress: setProgress });
+    setUploading(false);
+    // El fallo se DICE: una foto que desaparece sin explicación es lo que hace
+    // que la gente deje de mandar fotos por la app.
+    if (!result.ok) setMediaError(result.reason);
+  };
+
+  const pickFromCamera = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      setMediaError('Permite la cámara para poder tomar fotos.');
+      return;
+    }
+    const shot = await ImagePicker.launchCameraAsync({ quality: 1 });
+    const asset = shot.assets?.[0];
+    if (shot.canceled || !asset) return;
+    await upload({
+      uri: asset.uri,
+      fileName: asset.fileName ?? 'foto.jpg',
+      mimeType: asset.mimeType ?? 'image/jpeg',
+      sizeBytes: asset.fileSize ?? 0,
+    });
+  };
+
+  const pickFromGallery = async () => {
+    const picked = await ImagePicker.launchImageLibraryAsync({
+      // `quality: 1` y sin edición: la foto se manda como está. Recomprimir es
+      // justo la queja que esta app viene a no repetir.
+      quality: 1,
+      mediaTypes: ['images', 'videos'],
+    });
+    const asset = picked.assets?.[0];
+    if (picked.canceled || !asset) return;
+    await upload({
+      uri: asset.uri,
+      fileName: asset.fileName ?? 'archivo',
+      mimeType: asset.mimeType ?? 'image/jpeg',
+      sizeBytes: asset.fileSize ?? 0,
+    });
+  };
+
+  const pickFile = async () => {
+    const picked = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
+    const asset = picked.assets?.[0];
+    if (picked.canceled || !asset) return;
+    await upload({
+      uri: asset.uri,
+      fileName: asset.name,
+      mimeType: asset.mimeType ?? 'application/octet-stream',
+      sizeBytes: asset.size ?? 0,
+    });
+  };
+
+  const rows: Row[] = [...messages, ...pending];
+
+  useEffect(() => {
+    const last = messages[messages.length - 1];
+    if (last) markRead(last.seq);
+  }, [messages, markRead]);
+
+  return (
+    <KeyboardAvoidingView
+      className="flex-1 bg-background"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      testID="pantalla-chat"
+    >
+      {/* Header como el diseño: FLECHA (no la palabra «Atrás»), avatar del chat
+          junto al nombre, y el menú al final. Video y llamada llegan con F10. */}
+      <View className="flex-row items-center gap-2 border-b border-outline/10 bg-surface px-3 pb-3 pt-14">
+        <Pressable onPress={onBack} testID="btn-volver" className="h-11 w-9 items-center justify-center">
+          <ArrowLeft size={22} color="#0b1c30" />
+        </Pressable>
+        <View className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+          <Text className="text-sm font-bold text-primary">
+            {chatName.slice(0, 1).toUpperCase()}
+          </Text>
+        </View>
+        <View className="min-w-0 flex-1">
+          <Text className="text-base font-bold text-on-surface" numberOfLines={1}>
+            {chatName}
+          </Text>
+          {/* El estado de conexión se DICE: un mensaje que no sale sin
+              explicación es lo que hace desconfiar de una app de mensajería. */}
+          {!connected ? (
+            <Text className="text-xs text-on-surface-variant" testID="estado-conexion">
+              Sin conexión · se enviará cuando vuelva
+            </Text>
+          ) : null}
+        </View>
+        <Pressable testID="btn-menu-chat" className="h-11 w-9 items-center justify-center">
+          <MoreVertical size={20} color="#494454" />
+        </Pressable>
+      </View>
+
+      <FlashList
+        data={rows}
+        testID="lista-mensajes"
+        keyExtractor={(row) => (isPending(row) ? `p-${row.clientKey}` : `m-${row.seq}`)}
+        contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 8 }}
+        renderItem={({ item, index }) => {
+          const previous = rows[index - 1];
+          const next = rows[index + 1];
+          const at = isPending(item) ? item.queuedAt : item.at;
+          const previousAt = previous ? (isPending(previous) ? previous.queuedAt : previous.at) : undefined;
+          return (
+            <>
+              {startsNewDay(at, previousAt) ? <DaySeparator label={formatDayLabel(at)} /> : null}
+              <MessageRow
+                item={item}
+                previous={previous}
+                next={next}
+                myUserId={credential.userId}
+                othersReadSeq={Math.max(othersReadSeq, othersRead)}
+                othersDeliveredSeq={othersDeliveredSeq}
+                senderInitial={chatName.slice(0, 1).toUpperCase()}
+              />
+            </>
+          );
+        }}
+      />
+
+      {uploading ? (
+        <Text className="px-4 pb-1 text-sm text-on-surface-variant" testID="subida-progreso">
+          Enviando archivo… {Math.round(progress * 100)}%
+        </Text>
+      ) : null}
+
+      {mediaError ? (
+        <Text className="px-4 pb-1 text-sm text-error" testID="error-media">
+          {mediaError}
+        </Text>
+      ) : null}
+
+      {/* La barra, tal como está COMPUESTA en el diseño — y no era «los mismos
+          iconos en una fila»:
+            · el «+» va PLANO, sin círculo de fondo;
+            · hay UNA píldora larga y el emoji vive DENTRO, contra su borde;
+            · a la derecha hay UN SOLO botón circular, y es excluyente:
+              micrófono con el campo vacío, enviar apenas se escribe algo.
+          La primera versión puso los cinco controles como hermanos: entraban
+          todos, pero el campo quedaba tan angosto que el placeholder se partía
+          en dos líneas. */}
+      <View className="flex-row items-end gap-1.5 border-t border-outline/10 bg-surface px-3 pb-8 pt-3">
+        <Pressable
+          testID="btn-adjuntar"
+          onPress={() => setAttachOpen(true)}
+          disabled={uploading}
+          className="h-11 w-11 items-center justify-center"
+        >
+          {uploading ? <ActivityIndicator color="#6b38d4" /> : <Plus size={24} color="#494454" />}
+        </Pressable>
+
+        <View className="min-w-0 flex-1 flex-row items-end rounded-xl border border-outline/15 bg-background pr-1">
+          <TextInput
+            testID="input-mensaje"
+            className="max-h-28 min-h-[44px] min-w-0 flex-1 px-4 py-2.5 text-base text-on-surface"
+            placeholder="Escribe un mensaje"
+            placeholderTextColor="#7b7486"
+            multiline
+            value={draft}
+            onChangeText={setDraft}
+          />
+          <Pressable testID="btn-emoji" className="h-11 w-9 items-center justify-center">
+            <Smile size={20} color="#7b7486" />
+          </Pressable>
+        </View>
+
+        {draft.trim() ? (
+          <Pressable
+            testID="btn-enviar"
+            onPress={() => {
+              const text = draft;
+              setDraft('');
+              void send(text);
+            }}
+            className="h-11 w-11 items-center justify-center rounded-full bg-primary"
+          >
+            <Send size={18} color="#ffffff" />
+          </Pressable>
+        ) : (
+          // Inerte hasta que existan las notas de voz, pero ocupa su lugar: si
+          // apareciera recién con la función, la barra cambiaría de forma.
+          <View testID="btn-voz" className="h-11 w-11 items-center justify-center rounded-full bg-primary/30">
+            <Mic size={18} color="#ffffff" />
+          </View>
+        )}
+      </View>
+
+      <AttachSheet
+        visible={attachOpen}
+        onClose={() => setAttachOpen(false)}
+        onPickCamera={() => void pickFromCamera()}
+        onPickGallery={() => void pickFromGallery()}
+        onPickFile={() => void pickFile()}
+      />
+    </KeyboardAvoidingView>
+  );
+}

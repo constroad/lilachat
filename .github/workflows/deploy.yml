@@ -1,0 +1,48 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-chat
+  cancel-in-progress: false
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test --if-present
+      - run: npm run build
+
+  desplegar:
+    needs: verificar
+    runs-on: ubuntu-latest
+    steps:
+      - name: Firmar y disparar el deploy
+        env:
+          SECRETO: ${{ secrets.TORRE_HMAC }}
+        run: |
+          set -euo pipefail
+          [ -n "${SECRETO:-}" ] || { echo "::error::Falta TORRE_HMAC"; exit 1; }
+          BODY="{\"app\":\"chat\",\"sha\":\"${GITHUB_SHA}\"}"
+          TS=$(date +%s000)
+          FIRMA=$(printf '%s' "${TS}.${BODY}" | openssl dgst -sha256 -hmac "$SECRETO" -r | cut -d' ' -f1)
+          CODIGO=$(curl -sS -o /tmp/r.txt -w '%{http_code}' --max-time 30 \
+            -X POST "https://torre.constroad.com/api/hooks/deploy" \
+            -H 'Content-Type: application/json' \
+            -H "x-torre-timestamp: ${TS}" -H "x-torre-signature: ${FIRMA}" \
+            --data-raw "$BODY")
+          echo "Torre respondió ${CODIGO}: $(cat /tmp/r.txt)"
+          case "$CODIGO" in
+            202) echo "::notice::Deploy encolado" ;;
+            409) echo "::warning::Ya había un deploy en curso" ;;
+            *)   echo "::error::Torre rechazó el disparo"; exit 1 ;;
+          esac

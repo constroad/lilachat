@@ -25,7 +25,17 @@ await build({
   platform: 'node',
   target: 'node22',
   format: 'esm',
-  outfile: 'dist/index.js',
+  // A LA RAÍZ DE LA RELEASE, no a `server/dist`.
+  //
+  // Torre verifica que el build produjo su artefacto, y su script asume
+  // `dist/index.js` en la raíz para las apps `node`. Emitir dentro de `server/`
+  // hacía fallar el deploy con «BUILD MINTIÓ: salió con 0 pero NO generó
+  // dist/index.js» — con el build perfecto arriba en el mismo log.
+  //
+  // Se emite acá y no se espera a que Torre aprenda a leer `entrada`: así el
+  // deploy funciona con el script viejo Y con el nuevo, sin depender de qué
+  // versión tenga la mini ese día.
+  outfile: '../dist/index.js',
   packages: 'external',
   // El alias convierte el import de paquete en uno relativo, y por eso SÍ entra
   // al bundle pese a `packages: 'external'`.

@@ -32,6 +32,9 @@ const { version } = require('../package.json') as { version: string };
 function resolveWebDir(): string | null {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const candidates = [
+    // El bundle vive en `<release>/dist/index.js`, así que la web está al lado.
+    path.resolve(here, '../web/dist'),
+    // Y estas dos por si se corre desde `server/dist` (build viejo o local).
     path.resolve(here, '../../web/dist'),
     path.resolve(here, '../../../web/dist'),
   ];

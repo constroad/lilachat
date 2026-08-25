@@ -125,7 +125,14 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
         // Push SOLO a quien no tiene socket vivo. Un duplicado no se re-notifica:
         // ya se avisó cuando el mensaje se creó de verdad.
         if (!result.duplicate) {
-          void notifyOffline({ message: result.message, members, senderId: me });
+          // `.catch` y no `void` a secas: `void` NO engancha un manejador, así
+          // que si esto falla —o si la base se cierra con la consulta en
+          // vuelo— queda como rechazo sin dueño. En los tests eso hace salir a
+          // vitest con 1 aunque los 161 pasen, y en producción despierta la red
+          // de seguridad del proceso por algo que no es un error real.
+          void notifyOffline({ message: result.message, members, senderId: me }).catch(
+            (error) => console.error('[push] no se pudo avisar:', error?.message ?? error)
+          );
         }
         ack?.({ ok: true, seq: result.message.seq, duplicate: result.duplicate });
 
@@ -146,9 +153,11 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
                 message: reply,
                 members: destinatarios,
                 senderId: String(reply.senderId),
-              });
+              }).catch((error) =>
+                console.error('[push] no se pudo avisar la respuesta:', error?.message ?? error)
+              );
             },
-          });
+          }).catch((error) => console.error('[lila] mención falló:', error?.message ?? error));
         }
       } catch (error) {
         const forbidden = error instanceof ForbiddenChatError;

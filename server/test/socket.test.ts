@@ -46,6 +46,17 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+
+  // SE LE DA UN RESPIRO AL TRABAJO DE FONDO antes de cerrar la base.
+  //
+  // El handler de `msg.send` dispara push y la respuesta de Lila SIN esperarlas
+  // —a propósito: la conversación no puede quedar esperando al modelo—, así que
+  // al terminar el último test quedan consultas en vuelo. Desconectar ahí las
+  // aborta con «Operation interrupted because client was closed», y ese rechazo
+  // hace que vitest salga con 1 aunque los 161 tests pasen. En CI eso frena el
+  // job de deploy, y el síntoma es «no se desplegó nada», no «falló un test».
+  await new Promise((resolve) => setTimeout(resolve, 300));
+
   await mongoose.disconnect();
   await mongo.stop();
 });

@@ -1,3 +1,6 @@
+// PRIMERO DE TODO: carga el `.env` antes de que cualquier módulo lea una
+// variable al importarse. El orden de estos imports es significativo.
+import './env.js';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { buildApp } from './app.js';

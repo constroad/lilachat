@@ -784,4 +784,59 @@ Corregido en `~/.android/avd/timon.avd/config.ini`.
 - El E2E de push con la pantalla bloqueada queda pendiente de esa credencial.
 - Confirmar con José: identidad por teléfono + código por email (§5, asunción).
 - `lilachat.app`: compra opcional, decide José.
-- Nada de este spec tiene código aún; ningún endpoint existe.
+- ~~Nada de este spec tiene código aún~~ **Desactualizado el 25/08/2026:** el
+  server está en producción (`https://lilachat.constroad.com`, §15).
+
+## 15. Lecciones del primer deploy (24–25/08/2026)
+
+El primer deploy costó **cuatro builds fallidos, una pantalla congelada y ~2
+horas**, repartidos entre este repo y la infraestructura de la mini. Lo que
+cada fallo enseñó, en orden:
+
+### 1. Un monorepo con workspaces pisa una mina en el almacén de la mini
+
+`npm ci` crea `node_modules/@lilachat/{shared,server}` como **symlinks
+relativos** a las carpetas hermanas. El deploy de la mini movía el árbol a un
+almacén compartido y esos symlinks quedaban apuntando a la nada: `tsc` moría
+con `Cannot find module '@lilachat/shared'` — un error que manda a buscar el
+problema a este repo cuando el repo estaba bien. Ya está arreglado en
+`deploy.sh` (si hay `workspaces`, los node_modules van dentro de la release),
+pero la lección queda: **un error de módulo no encontrado en CI/deploy puede
+ser del transporte, no del código.**
+
+### 2. El contrato con Torre es `exec` + `entrada`, y el default miente
+
+El alta registró la app con `exec: "next"` — el default del formulario — pero
+este server es Express/esbuild. El deploy verificaba `.next/BUILD_ID`, que no
+iba a existir jamás: «BUILD MINTIÓ: salió con 0 pero NO generó el artefacto».
+La corrección fue en dos lados: el registro (`exec: node`, `entrada:
+dist/index.js`) y el build de este repo, que ahora **bundlea a la raíz**
+(`server/build.js` emite `../dist/index.js`) porque ahí es donde Torre busca
+el artefacto de una app node.
+
+### 3. launchd no le pasa el `.env` a nadie
+
+El server asumía variables en el entorno; launchd solo pasa lo que el plist
+declara (NODE_ENV, PORT, PATH, HOME). El fix (`010ddda`) carga `./env.js`
+**como primer import** — antes de que cualquier módulo lea una variable al
+importarse — leyendo el `.env` que el deploy enlaza en `current/`.
+
+### 4. El último tramo del alta necesita root EN la mini
+
+Con el build sano, quedaba instalar el servicio (plist + bootstrap + regla de
+túnel). Una sesión sin acceso a la mini no puede hacerlo ni verificarlo — y la
+hipótesis a distancia («logs con dueño root») era incorrecta: no había logs
+porque **no había plist**; el servicio nunca había existido. El método que
+cerró la discusión: arrancar el server a mano con el entorno EXACTO del plist
+(`env -i HOME=… PATH=… NODE_ENV=production PORT=3004 node dist/index.js`) —
+health 200 y mongo conectado en 4 segundos — y recién entonces instalar.
+**Validar el arranque con el entorno de launchd ANTES de instalar** separa «la
+app está rota» de «falta infraestructura» en un solo comando.
+
+### Estado final
+
+`com.constroad.chat` corriendo con QoS `Standard`, health local y público en
+200, túnel `lilachat.constroad.com → 127.0.0.1:3004` delante del comodín. El
+id interno en Torre es `chat` (registro, servicio, carpetas); el hostname
+público es `lilachat.constroad.com` — no tienen por qué coincidir y no
+coinciden.

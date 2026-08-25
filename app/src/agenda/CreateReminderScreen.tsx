@@ -5,6 +5,7 @@ import type { Recurrence } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { agendaPost } from './agendaApi';
 import { FilledField, PickerRow, PrimaryAction, SectionLabel } from './createUi';
+import { useMargenes } from '../ui/useMargenes';
 
 /**
  * Crear recordatorio.
@@ -42,6 +43,7 @@ export function CreateReminderScreen({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const margenes = useMargenes();
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [hours, setHours] = useState(3);
@@ -95,7 +97,7 @@ export function CreateReminderScreen({
       }}
     >
       <View className="flex-1 bg-background" testID="crear-reminder">
-        <View className="flex-row items-center gap-2 px-4 pb-2 pt-14">
+        <View className="flex-row items-center gap-2 px-4 pb-2" style={{ paddingTop: margenes.cabecera }}>
           <Pressable
             onPress={onClose}
             testID="btn-cerrar-crear"
@@ -198,7 +200,7 @@ export function CreateReminderScreen({
           ) : null}
         </ScrollView>
 
-        <View className="px-4 pb-8 pt-2">
+        <View className="px-4 pt-2" style={{ paddingBottom: margenes.pie }}>
           <PrimaryAction
             testID="btn-guardar"
             disabled={saving}

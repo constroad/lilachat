@@ -27,6 +27,7 @@ import { SecretChatBanner } from '../crypto/SecretChatBanner';
 import { useSecretChat } from '../crypto/useSecretChat';
 import { DaySeparator, MessageRow, isPending, type Row } from './MessageRow';
 import { useChat } from './useChat';
+import { useMargenes } from '../ui/useMargenes';
 
 /**
  * La conversación (diseño Stitch «Chat de Grupo»). Burbuja propia a la derecha
@@ -56,6 +57,7 @@ export function ChatScreen({
   otherUserId?: string | null;
   onBack: () => void;
 }) {
+  const margenes = useMargenes();
   const secreto = useSecretChat({
     credential,
     otherUserId: otherUserId ?? null,
@@ -156,7 +158,7 @@ export function ChatScreen({
     >
       {/* Header como el diseño: FLECHA (no la palabra «Atrás»), avatar del chat
           junto al nombre, y el menú al final. Video y llamada llegan con F10. */}
-      <View className="flex-row items-center gap-2 border-b border-outline/10 bg-surface px-3 pb-3 pt-14">
+      <View className="flex-row items-center gap-2 border-b border-outline/10 bg-surface px-3 pb-3" style={{ paddingTop: margenes.cabecera }}>
         <Pressable onPress={onBack} testID="btn-volver" className="h-11 w-9 items-center justify-center">
           <ArrowLeft size={22} color="#0b1c30" />
         </Pressable>
@@ -313,7 +315,7 @@ export function ChatScreen({
           La primera versión puso los cinco controles como hermanos: entraban
           todos, pero el campo quedaba tan angosto que el placeholder se partía
           en dos líneas. */}
-      <View className="flex-row items-end gap-1.5 border-t border-outline/10 bg-surface px-3 pb-8 pt-3">
+      <View className="flex-row items-end gap-1.5 border-t border-outline/10 bg-surface px-3 pt-3" style={{ paddingBottom: margenes.pie }}>
         <Pressable
           testID="btn-adjuntar"
           onPress={() => setAttachOpen(true)}

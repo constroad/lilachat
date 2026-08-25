@@ -4,6 +4,7 @@ import { Bell, CalendarDays, Plus, X } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { EventsScreen } from './EventsScreen';
 import { RemindersScreen } from './RemindersScreen';
+import { useMargenes } from '../ui/useMargenes';
 
 /**
  * Agenda: eventos y avisos en UNA pestaña (pedido de José).
@@ -22,6 +23,7 @@ export function AgendaScreen({
   credential: Credential;
   onCreate: (kind: 'event' | 'reminder') => void;
 }) {
+  const margenes = useMargenes();
   const [vista, setVista] = useState<'eventos' | 'avisos'>('eventos');
   const [eligiendo, setEligiendo] = useState(false);
 
@@ -83,7 +85,7 @@ export function AgendaScreen({
           onPress={() => setEligiendo(false)}
           testID="hoja-crear-agenda"
         >
-          <View className="rounded-t-2xl bg-surface px-4 pb-10 pt-3">
+          <View className="rounded-t-2xl bg-surface px-4 pt-3" style={{ paddingBottom: margenes.pie }}>
             <View className="mb-2 flex-row items-center">
               <Text className="flex-1 text-base font-bold text-on-surface">¿Qué quieres crear?</Text>
               <Pressable

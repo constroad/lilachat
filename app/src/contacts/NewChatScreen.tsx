@@ -5,6 +5,7 @@ import type { Contact } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { ContactPicker } from './ContactPicker';
 import { createChat } from './contactsApi';
+import { useMargenes } from '../ui/useMargenes';
 
 /**
  * Nuevo chat (el lápiz de la lista, que no hacía nada — reclamo de José).
@@ -42,6 +43,7 @@ export function NewChatScreen({
     encrypted?: boolean;
   }) => void;
 }) {
+  const margenes = useMargenes();
   const [modo, setModo] = useState<'directo' | 'grupo'>('directo');
   const [paso, setPaso] = useState<'contactos' | 'info'>('contactos');
   const [elegidos, setElegidos] = useState<Contact[]>([]);
@@ -133,7 +135,7 @@ export function NewChatScreen({
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={atras}>
       <View className="flex-1 bg-background" testID="pantalla-nuevo-chat">
-        <View className="flex-row items-center gap-2 px-4 pb-3 pt-14">
+        <View className="flex-row items-center gap-2 px-4 pb-3" style={{ paddingTop: margenes.cabecera }}>
           <Pressable
             testID="btn-cerrar-nuevo-chat"
             onPress={() => (paso === 'info' ? setPaso('contactos') : cerrar())}
@@ -269,7 +271,7 @@ export function NewChatScreen({
         ) : null}
 
         {modo === 'grupo' ? (
-          <View className="px-4 pb-8 pt-2">
+          <View className="px-4 pt-2" style={{ paddingBottom: margenes.pie }}>
             <Pressable
               testID="btn-continuar-grupo"
               disabled={guardando || elegidos.length === 0}

@@ -3,6 +3,7 @@ import './src/crypto/polyfill';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import './global.css';
 import { refreshSession } from './src/api/client';
 import {
@@ -76,7 +77,11 @@ export default function App() {
   }, [start]);
 
   return (
-    <View className="flex-1 bg-background">
+    // El proveedor es lo que hace que `useSafeAreaInsets` devuelva algo distinto
+    // de cero. Sin él, todas las pantallas creen que no hay barras y el botón
+    // del pie termina debajo de la de Android.
+    <SafeAreaProvider>
+      <View className="flex-1 bg-background">
       <StatusBar style="dark" />
       {boot.phase === 'loading' ? (
         <View className="flex-1 items-center justify-center" testID="pantalla-cargando">
@@ -117,6 +122,7 @@ export default function App() {
           onBack={() => setBoot({ phase: 'home', credential: boot.credential })}
         />
       )}
-    </View>
+      </View>
+    </SafeAreaProvider>
   );
 }

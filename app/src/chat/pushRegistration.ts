@@ -14,7 +14,7 @@ import * as Notifications from 'expo-notifications';
  *    pantalla abierta; simplemente no avisa con el teléfono guardado. No se
  *    reintenta ni se molesta.
  */
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://chat.constroad.com';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
 
 export async function registerPushToken(jwt: string): Promise<'ok' | 'denied' | 'unsupported'> {
   // El emulador sin Google Play no entrega token: es un caso normal, no un

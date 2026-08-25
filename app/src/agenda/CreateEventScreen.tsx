@@ -8,6 +8,7 @@ import { agendaPost } from './agendaApi';
 import { ContactPicker } from '../contacts/ContactPicker';
 import { createChat } from '../contacts/contactsApi';
 import { FilledField, PickerRow, PrimaryAction, SectionLabel, ToggleRow } from './createUi';
+import { useMargenes } from '../ui/useMargenes';
 
 /**
  * Crear evento (diseño «New Event»).
@@ -51,6 +52,7 @@ export function CreateEventScreen({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const margenes = useMargenes();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
@@ -135,7 +137,7 @@ export function CreateEventScreen({
       }}
     >
       <View className="flex-1 bg-background" testID="crear-event">
-        <View className="flex-row items-center gap-2 px-4 pb-2 pt-14">
+        <View className="flex-row items-center gap-2 px-4 pb-2" style={{ paddingTop: margenes.cabecera }}>
           <Pressable
             onPress={onClose}
             testID="btn-cerrar-crear"
@@ -300,7 +302,7 @@ export function CreateEventScreen({
           ) : null}
         </ScrollView>
 
-        <View className="px-4 pb-8 pt-2">
+        <View className="px-4 pt-2" style={{ paddingBottom: margenes.pie }}>
           <PrimaryAction
             testID="btn-guardar"
             disabled={saving}

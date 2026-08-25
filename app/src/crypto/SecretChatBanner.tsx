@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import { KeyRound, ShieldCheck, TriangleAlert, X } from 'lucide-react-native';
 import type { SecretSession } from './useSecretChat';
+import { useMargenes } from '../ui/useMargenes';
 
 /**
  * Lo que la conversación secreta le dice al usuario (F9).
@@ -17,6 +18,7 @@ import type { SecretSession } from './useSecretChat';
  * es el único ataque que le queda a quien controla el directorio.
  */
 export function SecretChatBanner({ session }: { session: SecretSession }) {
+  const margenes = useMargenes();
   const [viendoHuella, setViendoHuella] = useState(false);
 
   if (session.estado === 'cargando') {
@@ -64,7 +66,7 @@ export function SecretChatBanner({ session }: { session: SecretSession }) {
           className="flex-1 justify-end bg-black/40"
           onPress={() => setViendoHuella(false)}
         >
-          <View className="rounded-t-2xl bg-surface px-5 pb-10 pt-4" testID="hoja-huella">
+          <View className="rounded-t-2xl bg-surface px-5 pt-4" style={{ paddingBottom: margenes.pie }} testID="hoja-huella">
             <View className="mb-3 flex-row items-center gap-2">
               <KeyRound size={18} color="#6b38d4" />
               <Text className="flex-1 text-base font-bold text-on-surface">

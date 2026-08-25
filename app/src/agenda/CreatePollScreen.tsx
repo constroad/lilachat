@@ -7,6 +7,7 @@ import { ContactPicker } from '../contacts/ContactPicker';
 import { createChat } from '../contacts/contactsApi';
 import { agendaPost } from './agendaApi';
 import { FilledField, PrimaryAction, SectionLabel, ToggleRow } from './createUi';
+import { useMargenes } from '../ui/useMargenes';
 
 /**
  * Crear encuesta (diseño «New Poll»).
@@ -34,6 +35,7 @@ export function CreatePollScreen({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const margenes = useMargenes();
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [allowMultiple, setAllowMultiple] = useState(false);
@@ -109,7 +111,7 @@ export function CreatePollScreen({
       }}
     >
       <View className="flex-1 bg-background" testID="crear-poll">
-        <View className="flex-row items-center gap-2 px-4 pb-2 pt-14">
+        <View className="flex-row items-center gap-2 px-4 pb-2" style={{ paddingTop: margenes.cabecera }}>
           <Pressable
             onPress={onClose}
             testID="btn-cerrar-crear"
@@ -214,7 +216,7 @@ export function CreatePollScreen({
           ) : null}
         </ScrollView>
 
-        <View className="px-4 pb-8 pt-2">
+        <View className="px-4 pt-2" style={{ paddingBottom: margenes.pie }}>
           <PrimaryAction
             testID="btn-guardar"
             disabled={saving}

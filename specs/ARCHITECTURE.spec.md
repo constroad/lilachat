@@ -961,3 +961,72 @@ versionCode 1) que ya estaba en el emulador: la instalación desde la tienda hab
 chocado por firma distinta. **Que el paquete exista no prueba que se haya
 instalado lo que uno acaba de instalar** — hay que mirar `versionName` y
 `versionCode`, o desinstalar antes.
+
+## 18. El APK apuntaba al emulador, y nadie respetaba las barras del sistema (25/08/2026)
+
+Dos defectos que solo se ven en un teléfono de verdad, reportados juntos.
+
+### 18.1 «Sin conexión» en un teléfono con 5G
+
+`app/.env` tiene `EXPO_PUBLIC_API_URL=http://10.0.2.2:4003` —la dirección con la
+que el EMULADOR llega a la Mac— y Expo hornea el `.env` al compilar. Las
+versiones 0.1.0, 0.1.1 y 0.1.2 salieron con esa URL adentro: en el teléfono de
+José esa dirección no existe, y el error correcto («sin conexión») señalaba al
+lugar equivocado. Confirmado leyendo el bundle del APK:
+
+```
+$ unzip -p dist/lilachat-0.1.2-3.apk assets/index.android.bundle | grep -ao '10\.0\.2\.2[:0-9]*'
+10.0.2.2:4003
+```
+
+**El arreglo es `lila.json`**, que existe justo para esto: lo declarado ahí PISA
+al entorno al compilar, así que el `.env` de desarrollo no puede colarse en un
+release. LilaStore ya lo tenía; Lilachat no.
+
+```json
+{ "build": { "env": { "EXPO_PUBLIC_API_URL": "https://lilachat.constroad.com" } } }
+```
+
+Ahora el build lo dice en voz alta (`✓ EXPO_PUBLIC_API_URL → https://…`) y se
+verifica en el binario, no en el código fuente. **Un default correcto en el
+código no salva a nadie**: los diez archivos tenían
+`?? 'https://lilachat.constroad.com'` y ninguno se usó, porque la variable
+estaba definida. (De paso, `pushRegistration.ts` tenía como default el host
+viejo `chat.constroad.com`.)
+
+### 18.2 El botón del pie, debajo de la barra de Android
+
+Ninguna pantalla usaba safe area: había un `pb-8` (32 px) y un `pt-14` (56 px)
+escritos a mano en las once pantallas. Con barra de gestos alcanza; con la barra
+de TRES BOTONES (48 px) el botón queda **debajo** de ella — se ve y no se puede
+tocar.
+
+`src/ui/margenes.ts` + `useMargenes()`, y `SafeAreaProvider` en la raíz (sin el
+proveedor, `useSafeAreaInsets` devuelve cero y todo sigue igual). La regla es un
+**máximo, no una suma**: el inset ya incluye el alto de la barra, y sumarle el
+margen de diseño deja un hueco enorme donde el inset es grande. Se acota por
+arriba (64 px pie / 80 px cabecera) para que una medición rara no empuje el
+botón a media pantalla.
+
+Verificado en el emulador con la barra de tres botones activada a propósito:
+
+```bash
+adb shell cmd overlay enable com.android.internal.systemui.navbar.threebutton
+```
+
+| Pantalla | Antes | Ahora |
+| --- | --- | --- |
+| Acceso (Continuar) | tapado por la barra | despejado |
+| Pedir el código | — | llega al server real, sin «sin conexión» |
+
+**El mismo defecto estaba en LilaStore** (`Screen` con `padding: lg` por los
+cuatro lados): se arregló en ese único lugar, que cubre todas sus pantallas.
+
+### 18.3 `apk publish` falla y hay que reintentar
+
+Subir ~36 MB con el CLI falla intermitentemente con «fetch failed» —una, dos y
+hasta tres veces seguidas— y funciona al reintentar sin cambiar nada. **No es un
+falso negativo**: se verificó que el catálogo NO quedaba con la versión después
+de un fallo, así que reintentar es seguro. La misma subida por `curl` no falló
+nunca, lo que apunta al `fetch` de Node con `FormData` grande y no al server.
+Pendiente: reintento automático en el CLI.

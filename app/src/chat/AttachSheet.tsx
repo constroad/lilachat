@@ -1,5 +1,6 @@
 import { Modal, Pressable, Text, View } from 'react-native';
 import { BarChart3, CalendarDays, Camera, Image as ImageIcon, Paperclip } from 'lucide-react-native';
+import { useMargenes } from '../ui/useMargenes';
 
 /**
  * El «+» de la conversación (diseño Stitch «Multimedia y Emojis»).
@@ -30,6 +31,7 @@ export function AttachSheet({
   onCreateEvent: () => void;
   onCreatePoll: () => void;
 }) {
+  const margenes = useMargenes();
   const options = [
     { key: 'camara', label: 'Cámara', icon: Camera, action: onPickCamera, testID: 'attach-camara' },
     { key: 'galeria', label: 'Galería', icon: ImageIcon, action: onPickGallery, testID: 'attach-galeria' },
@@ -41,7 +43,7 @@ export function AttachSheet({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable className="flex-1 bg-black/40" onPress={onClose} accessibilityLabel="Cerrar" />
-      <View className="rounded-t-xl bg-surface px-5 pb-10 pt-3" testID="attach-sheet">
+      <View className="rounded-t-xl bg-surface px-5 pt-3" style={{ paddingBottom: margenes.pie }} testID="attach-sheet">
         <View className="mb-4 h-1.5 w-11 self-center rounded-full bg-outline/30" />
         {options.map(({ key, label, icon: Icon, action, testID }) => (
           <Pressable

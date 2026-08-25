@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-nativ
 import { ArrowRight, MessagesSquare } from 'lucide-react-native';
 import { COUNTRY_PREFIX, normalizePeruPhone } from '@lilachat/shared';
 import { requestOtp } from '../api/client';
+import { useMargenes } from '../ui/useMargenes';
 
 /**
  * Alta paso 1 (diseño «Registro: Teléfono»).
@@ -21,6 +22,7 @@ import { requestOtp } from '../api/client';
  * sabe (ni puede saber) quién está invitado.
  */
 export function PhoneScreen({ onCodeRequested }: { onCodeRequested: (phone: string) => void }) {
+  const margenes = useMargenes();
   const [rawPhone, setRawPhone] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -41,7 +43,7 @@ export function PhoneScreen({ onCodeRequested }: { onCodeRequested: (phone: stri
   };
 
   return (
-    <View className="flex-1 justify-between bg-background px-6 pb-10 pt-24" testID="pantalla-telefono">
+    <View className="flex-1 justify-between bg-background px-6 " style={{ paddingTop: margenes.cabecera + 44, paddingBottom: margenes.pie }} testID="pantalla-telefono">
       <View className="flex-1 justify-center">
         <View className="items-center">
           <View className="h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">

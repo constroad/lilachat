@@ -13,6 +13,7 @@ import { NewChatScreen } from '../contacts/NewChatScreen';
 import { publishPublicKey } from '../crypto/deviceKeys';
 import { BackupScreen } from '../settings/BackupScreen';
 import { AppHeader, BottomNav, type Tab } from './BottomNav';
+import { useMargenes } from './useMargenes';
 
 /**
  * El contenedor de las pestañas: header y barra inferior viven ACÁ y las
@@ -31,6 +32,7 @@ export function TabsShell({
   onOpenChat: (chat: ChatSummary) => void;
   onLogout: () => void;
 }) {
+  const margenes = useMargenes();
   const [tab, setTab] = useState<Tab>('chats');
   const [creating, setCreating] = useState<'event' | 'reminder' | 'poll' | null>(null);
   const [chats, setChats] = useState<ChatSummary[]>([]);
@@ -185,7 +187,7 @@ export function TabsShell({
           cuando, y una sexta pestaña permanente le daría un peso que no tiene. */}
       <Modal visible={showBackup} animationType="slide" onRequestClose={() => setShowBackup(false)}>
         <View className="flex-1 bg-background">
-          <View className="flex-row items-center gap-2 border-b border-outline/10 bg-surface px-4 pb-3 pt-14">
+          <View className="flex-row items-center gap-2 border-b border-outline/10 bg-surface px-4 pb-3" style={{ paddingTop: margenes.cabecera }}>
             <Pressable
               testID="btn-cerrar-respaldo"
               onPress={() => setShowBackup(false)}

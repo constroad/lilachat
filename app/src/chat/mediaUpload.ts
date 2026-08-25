@@ -17,7 +17,7 @@ import { resolveMediaKind, validateMedia } from '@lilachat/shared';
  * teléfono. Una foto que falla se reintenta desde su archivo original, que ya
  * vive en el disco del sistema.
  */
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://chat.constroad.com';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
 const UPLOAD_TIMEOUT_MS = 120_000;
 
 export type UploadResult =

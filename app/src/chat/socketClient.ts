@@ -7,7 +7,7 @@ import { io, type Socket } from 'socket.io-client';
  * La reconexión la maneja socket.io (backoff propio); lo nuestro es lo que pasa
  * DESPUÉS de reconectar, que es sincronizar por cursor (`sync.pull`).
  */
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://chat.constroad.com';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
 
 export type ServerMessage = {
   _id: string;
@@ -17,6 +17,8 @@ export type ServerMessage = {
   clientKey: string;
   kind: string;
   body?: string;
+  /** El sobre cifrado, en chats secretos (F9). Llega en vez de `body`. */
+  envelope?: { v: 1; nonce: string; ciphertext: string };
   media?: { mediaId: string; thumbUrl?: string; mime?: string };
   at: string;
 };
@@ -58,6 +60,7 @@ export async function sendOverSocket(frame: {
   chatId: string;
   clientKey: string;
   body?: string;
+  envelope?: { v: 1; nonce: string; ciphertext: string };
   kind?: string;
 }): Promise<
   | { status: 'sent'; seq: number }

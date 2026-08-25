@@ -36,6 +36,7 @@ export interface Reminder {
   /** Un recordatorio COMPARTIDO cuelga de un chat; el personal, de nadie más. */
   chatId?: Types.ObjectId;
   title: string;
+  note?: string;
   startsAt: Date;
   recurrence: Recurrence;
   active: boolean;
@@ -84,6 +85,9 @@ const reminderSchema = new Schema<Reminder>(
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     chatId: { type: Schema.Types.ObjectId, ref: 'Chat' },
     title: { type: String, required: true, trim: true },
+    // La segunda línea de la tarjeta del diseño («Cada 2 horas», «Llamada
+    // semanal»). Es lo que distingue dos recordatorios de título parecido.
+    note: { type: String, trim: true },
     startsAt: { type: Date, required: true },
     recurrence: { type: String, enum: ['once', 'daily', 'weekly'], default: 'once' },
     active: { type: Boolean, default: true },

@@ -36,9 +36,40 @@ export function buildChatRouter(): Router {
       return res.status(400).json({ message: 'Elige con quién quieres hablar.' });
     }
 
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+
+    // UN GRUPO SIN NOMBRE NO ES USABLE: la lista lo mostraría sin título y no
+    // habría forma de distinguirlo de los demás.
+    if (kind === 'group' && !name) {
+      return res.status(400).json({ message: 'Ponle un nombre al grupo.' });
+    }
+
+    // EL 1:1 NO SE DUPLICA.
+    //
+    // Tocar dos veces a la misma persona desde «nuevo chat» tiene que llevar a
+    // la MISMA conversación. Sin esto los mensajes quedan repartidos entre dos
+    // chats con la misma persona y no hay forma de juntarlos después.
+    //
+    // Los GRUPOS sí se repiten a propósito: «Cumpleaños» y «Viaje» con la misma
+    // gente son dos conversaciones legítimas.
+    if (kind === 'direct') {
+      const ids = [...unique.values()];
+      const existente = await ChatModel.findOne({
+        kind: 'direct',
+        'members.userId': { $all: ids },
+        members: { $size: ids.length },
+      })
+        .select('_id')
+        .lean();
+      if (existente) return res.status(201).json({ chatId: String(existente._id) });
+    }
+
     const chat = await ChatModel.create({
       kind,
-      name: typeof req.body?.name === 'string' ? req.body.name.trim() : undefined,
+      // Se decide AL CREAR y no se puede cambiar después: un chat que a veces
+      // cifra y a veces no da una promesa que nadie puede sostener (F9).
+      encrypted: req.body?.encrypted === true,
+      name: name || undefined,
       members: [...unique.values()].map((userId) => ({
         userId,
         role: String(userId) === String(me) ? 'admin' : 'member',

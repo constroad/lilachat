@@ -27,3 +27,14 @@ export function requireSession(req: Request, res: Response, next: NextFunction):
   };
   next();
 }
+
+/**
+ * Envuelve un handler `async` para que su rechazo llegue al manejador de
+ * errores de Express en vez de quedar como promesa sin dueño — que es lo que
+ * dejaba la petición sin respuesta y al cliente esperando para siempre.
+ */
+export const asyncRoute =
+  <T extends (req: Request, res: Response, next: NextFunction) => Promise<unknown>>(handler: T) =>
+  (req: Request, res: Response, next: NextFunction): void => {
+    void handler(req, res, next).catch(next);
+  };

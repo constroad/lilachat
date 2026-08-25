@@ -185,6 +185,44 @@ describe('encuestas', () => {
   });
 });
 
+describe('nota del recordatorio', () => {
+  /**
+   * El diseño («My Reminders») muestra TRES líneas por tarjeta: título,
+   * descripción y el chip de recurrencia con el próximo aviso. La descripción
+   * no existía en el esquema, así que la pantalla la dibujaba con dos líneas y
+   * no se parecía al diseño. Es dato, no adorno: «Cada 2 horas» o «Llamada
+   * semanal» es lo que distingue dos recordatorios con títulos parecidos.
+   */
+  it('guarda y devuelve la nota', async () => {
+    const creado = await request(app())
+      .post('/api/agenda/reminders')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        title: 'Tomar agua',
+        note: 'Cada 2 horas',
+        startsAt: new Date(Date.now() + 3_600_000).toISOString(),
+        recurrence: 'daily',
+      });
+
+    expect(creado.status).toBe(201);
+
+    const lista = await request(app())
+      .get('/api/agenda/reminders')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(lista.body.mine[0].note).toBe('Cada 2 horas');
+  });
+
+  it('sin nota se guarda igual: es opcional', async () => {
+    const creado = await request(app())
+      .post('/api/agenda/reminders')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Sin nota', startsAt: new Date(Date.now() + 3_600_000).toISOString() });
+
+    expect(creado.status).toBe(201);
+  });
+});
+
 describe('cron de recordatorios', () => {
   it('avisa del evento al llegar su antelación, y UNA sola vez', async () => {
     await EventModel.create({

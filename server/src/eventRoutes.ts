@@ -138,6 +138,7 @@ export function buildEventRouter(): Router {
     if (!title) return res.status(400).json({ message: 'Escribe de qué es el recordatorio.' });
     if (Number.isNaN(startsAt.getTime())) return res.status(400).json({ message: 'Elige cuándo.' });
 
+    const note = typeof req.body?.note === 'string' ? req.body.note.trim() : undefined;
     const recurrence = String(req.body?.recurrence ?? 'once') as Recurrence;
     let chatId: Types.ObjectId | undefined;
     if (req.body?.chatId) {
@@ -152,6 +153,7 @@ export function buildEventRouter(): Router {
       userId: req.session!.userId,
       chatId,
       title,
+      note,
       startsAt,
       recurrence: ['once', 'daily', 'weekly'].includes(recurrence) ? recurrence : 'once',
     });

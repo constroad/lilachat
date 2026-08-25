@@ -12,6 +12,22 @@ import { agendaGet, agendaPost, type AgendaReminder } from './agendaApi';
  * decorativas: separan lo que solo me suena a mí de lo que suena en un chat, y
  * mezclarlas haría imposible saber quién más lo está viendo.
  */
+/**
+ * El color del icono de cada recordatorio.
+ *
+ * El diseño los pinta distintos (gota azul, teléfono naranja) y eso no es
+ * decoración: en una lista de diez, el color es lo que deja encontrar el tuyo
+ * sin leer. Sale del id para que sea ESTABLE — si dependiera del orden, el mismo
+ * recordatorio cambiaría de color al agregar otro.
+ */
+const COLORES = ['#6b38d4', '#0058be', '#a12e70', '#c2410c', '#0f766e'];
+
+function colorDe(id: string): string {
+  let suma = 0;
+  for (let i = 0; i < id.length; i += 1) suma += id.charCodeAt(i);
+  return COLORES[suma % COLORES.length]!;
+}
+
 const RECURRENCE_LABEL: Record<string, string> = {
   once: 'Una vez',
   daily: 'Diario',
@@ -21,9 +37,12 @@ const RECURRENCE_LABEL: Record<string, string> = {
 export function RemindersScreen({
   credential,
   onCreate,
+  hideFab,
 }: {
   credential: Credential;
   onCreate: () => void;
+  /** La Agenda pone su propio botón: dos flotantes encimados es un bug visible. */
+  hideFab?: boolean;
 }) {
   const [tab, setTab] = useState<'mine' | 'shared'>('mine');
   const [data, setData] = useState<{ mine: AgendaReminder[]; shared: AgendaReminder[] } | null>(null);
@@ -60,7 +79,7 @@ export function RemindersScreen({
     <View className="flex-1 bg-background" testID="pantalla-recordatorios">
       {/* Control segmentado del diseño: dos opciones excluyentes, ancho
           completo, la activa en superficie blanca sobre el riel gris. */}
-      <View className="mx-4 mt-3 flex-row rounded-lg bg-surface-variant p-1">
+      <View className="mx-4 mt-3 flex-row rounded-lg bg-primary/[0.07] p-1">
         {(
           [
             { key: 'mine' as const, label: 'Mis recordatorios' },
@@ -116,28 +135,42 @@ export function RemindersScreen({
               <View
                 key={reminder._id}
                 testID={`recordatorio-${reminder._id}`}
-                className="mb-3 flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4"
+                className="mb-3 flex-row items-center gap-3 rounded-xl bg-primary/[0.07] p-4"
               >
-                <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Bell size={18} color="#6b38d4" />
+                {/* Icono con COLOR PROPIO por recordatorio, como en el diseño
+                    (gota azul, teléfono naranja). Todos del mismo morado los
+                    volvía indistinguibles de un vistazo, que es justo lo que la
+                    lista tiene que resolver. */}
+                <View
+                  className="h-11 w-11 items-center justify-center rounded-full"
+                  style={{ backgroundColor: colorDe(reminder._id) }}
+                >
+                  <Bell size={19} color="#ffffff" />
                 </View>
+
                 <View className="min-w-0 flex-1">
                   <Text className="text-base font-semibold text-on-surface" numberOfLines={1}>
                     {reminder.title}
                   </Text>
+                  {/* SEGUNDA línea: la nota. El diseño tiene tres líneas y yo
+                      había hecho dos, apretando el chip contra el título. */}
+                  {reminder.note ? (
+                    <Text className="text-[13px] text-on-surface-variant" numberOfLines={1}>
+                      {reminder.note}
+                    </Text>
+                  ) : null}
                   <View className="mt-1 flex-row items-center gap-2">
-                    <View className="rounded bg-primary/10 px-1.5 py-0.5">
+                    <View className="rounded bg-primary/15 px-1.5 py-0.5">
                       <Text className="text-[10px] font-semibold text-primary">
                         {RECURRENCE_LABEL[reminder.recurrence] ?? reminder.recurrence}
                       </Text>
                     </View>
-                    {/* «Próximo: …» es lo que el diseño pone bajo el chip, y es
-                        lo único que dice si el recordatorio sigue vivo. */}
                     <Text className="text-[11px] text-on-surface-variant">
-                      {next ? `Próximo: ${formatEventWhen(next)}` : 'Ya pasó'}
+                      {next ? formatEventWhen(next) : 'Ya pasó'}
                     </Text>
                   </View>
                 </View>
+
                 {tab === 'mine' ? (
                   <Switch
                     testID={`switch-${reminder._id}`}
@@ -152,13 +185,15 @@ export function RemindersScreen({
         </ScrollView>
       )}
 
-      <Pressable
-        testID="btn-nuevo-recordatorio"
-        onPress={onCreate}
-        className="absolute bottom-5 right-5 h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg"
-      >
-        <Plus size={24} color="#ffffff" />
-      </Pressable>
+      {hideFab ? null : (
+        <Pressable
+          testID="btn-nuevo-recordatorio"
+          onPress={onCreate}
+          className="absolute bottom-5 right-5 h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg"
+        >
+          <Plus size={24} color="#ffffff" />
+        </Pressable>
+      )}
     </View>
   );
 }

@@ -1,0 +1,12 @@
+import mongoose from 'mongoose'; import fs from 'node:fs';
+const l = fs.readFileSync('.env','utf8').split('\n').find(x=>x.startsWith('MONGO_URL='));
+await mongoose.connect(l.slice(10).trim());
+const { UserModel, InvitationModel } = await import('./server/dist/models.js');
+const { signSession } = await import('./server/dist/sessions.js');
+const yo = await UserModel.findOne({ phone:'902049935' }).lean();
+console.log('invitaciones:', (await InvitationModel.find({}).select('phone status').lean()).map(i=>`${i.phone}:${i.status}`).join(' '));
+console.log('usuarios:', (await UserModel.find({}).select('phone name').lean()).map(u=>`${u.phone}=${u.name??'-'}`).join(' '));
+const jwt = signSession({ userId:String(yo._id), deviceId:'qa-c', email:'x' });
+const r = await fetch('http://127.0.0.1:4003/api/contacts', { headers:{ Authorization:`Bearer ${jwt}` } });
+console.log('API:', r.status, JSON.stringify(await r.json()).slice(0,300));
+await mongoose.disconnect();

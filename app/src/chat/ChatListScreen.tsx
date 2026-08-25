@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { Camera, MessageCircle, PenSquare, Search } from 'lucide-react-native';
+import { Lock, Camera, MessageCircle, PenSquare, Search } from 'lucide-react-native';
 import { formatChatTimestamp, resolveChatPreview } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { connectSocket } from './socketClient';
@@ -173,6 +173,9 @@ export function ChatListScreen({
               </View>
               <View className="min-w-0 flex-1">
                 <View className="flex-row items-center gap-2">
+                  {/* Candado pegado al nombre: quién es y cómo se le habla se
+                      leen de una sola mirada. */}
+                  {chat.encrypted ? <Lock size={13} color="#6b38d4" /> : null}
                   <Text className="min-w-0 flex-1 text-base font-semibold text-on-surface" numberOfLines={1}>
                     {title(chat)}
                   </Text>
@@ -194,11 +197,20 @@ export function ChatListScreen({
                     la fila, que es donde lo había puesto la primera versión. */}
                 <View className="mt-0.5 flex-row items-center gap-2">
                   {(() => {
-                    const preview = resolveChatPreview({
-                      typing: typingIn.has(chat.id),
-                      lastBody: chat.lastMessage?.body,
-                      lastKind: chat.lastMessage?.kind,
-                    });
+                    // EN UN CHAT SECRETO LA LISTA NO MUESTRA EL ÚLTIMO MENSAJE.
+                    //
+                    // No es una decisión de estilo: el server manda el sobre, no
+                    // el texto, así que acá no HAY nada que mostrar. Y aunque lo
+                    // hubiera, la vista previa se ve en la pantalla bloqueada y
+                    // en la notificación — el lugar donde menos sentido tiene
+                    // filtrar lo que se acaba de cifrar.
+                    const preview = chat.encrypted
+                      ? { text: 'Mensaje cifrado', style: 'normal' as const }
+                      : resolveChatPreview({
+                          typing: typingIn.has(chat.id),
+                          lastBody: chat.lastMessage?.body,
+                          lastKind: chat.lastMessage?.kind,
+                        });
                     return (
                       <Text
                         className={`min-w-0 flex-1 text-sm ${

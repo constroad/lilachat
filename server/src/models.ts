@@ -36,6 +36,8 @@ export interface Device {
   userId: Types.ObjectId;
   platform: 'android' | 'web';
   pushToken?: string;
+  /** Clave pública X25519 en base64, para los chats cifrados (F9). */
+  publicKey?: string;
   lastSeenAt?: Date;
 }
 
@@ -77,6 +79,8 @@ const deviceSchema = new Schema<Device>(
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     platform: { type: String, enum: ['android', 'web'], default: 'android' },
     pushToken: { type: String },
+    // La clave PÚBLICA X25519 del dispositivo (F9). La privada nunca sale de él.
+    publicKey: { type: String },
     lastSeenAt: { type: Date },
   },
   { timestamps: true }

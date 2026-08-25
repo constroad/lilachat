@@ -1,5 +1,6 @@
 import { Types } from 'mongoose';
 import { unreadCount } from '@lilachat/shared';
+import { UserModel } from './models.js';
 import { ChatModel, MessageModel, ReceiptModel, type Message } from './chatModels.js';
 
 /**
@@ -49,6 +50,8 @@ export async function sendMessage(params: {
   clientKey: string;
   kind?: Message['kind'];
   body?: string;
+  /** El sobre cifrado, en los chats secretos (F9). Excluyente con `body`. */
+  envelope?: Message['envelope'];
   media?: Message['media'];
   replyToSeq?: number;
 }): Promise<SendResult> {
@@ -77,7 +80,13 @@ export async function sendMessage(params: {
       senderId: params.senderId,
       clientKey: params.clientKey,
       kind: params.kind ?? 'text',
-      body: params.body,
+      // EN UN CHAT CIFRADO NO SE GUARDA `body`, aunque el cliente lo mande.
+      // Es el corte que hace real la promesa: si el server aceptara los dos
+      // campos, un cliente con un bug —o modificado— dejaría el texto en claro
+      // dentro de una conversación con candado, y nadie lo notaría.
+      ...(params.envelope
+        ? { envelope: params.envelope }
+        : { body: params.body }),
       media: params.media,
       replyToSeq: params.replyToSeq,
       at: new Date(),
@@ -163,6 +172,8 @@ export type ChatSummary = {
   /** Hasta qué `seq` leyeron los DEMÁS: de acá salen los checks del diseño. */
   othersReadSeq: number;
   othersDeliveredSeq: number;
+  /** Chat secreto (F9): la lista lo marca con candado y no muestra el último. */
+  encrypted?: boolean;
 };
 
 export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> {
@@ -172,6 +183,17 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
   const chatIds = chats.map((chat) => chat._id);
   // Paralelo: son dos consultas independientes y la lista de chats es la
   // primera pantalla de la app (constroad-performance).
+  // Los nombres de todos los miembros: un chat 1:1 no tiene `name` propio y se
+  // muestra con el nombre del OTRO. Sin esto la lista decía «Conversación» para
+  // cada persona, que es indistinguible de otra.
+  const otrosIds = [
+    ...new Set(
+      chats.flatMap((chat) =>
+        chat.members.map((member) => String(member.userId)).filter((id) => id !== String(userId))
+      )
+    ),
+  ];
+
   const [allReceipts, lastMessages] = await Promise.all([
     ReceiptModel.find({ chatId: { $in: chatIds } }).lean(),
     Promise.all(
@@ -180,6 +202,13 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
       )
     ),
   ]);
+  const personas = new Map(
+    (await UserModel.find({ _id: { $in: otrosIds } }).select('name phone').lean()).map((user) => [
+      String(user._id),
+      user.name ?? user.phone,
+    ])
+  );
+
   const receipts = allReceipts.filter((receipt) => String(receipt.userId) === String(userId));
   const readByChat = new Map(receipts.map((receipt) => [String(receipt.chatId), receipt.readSeq]));
   // Los acuses AJENOS, que son los que deciden el check de mis mensajes. En un
@@ -201,7 +230,17 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
     return {
       id: String(chat._id),
       kind: chat.kind,
-      name: chat.name,
+      // En un 1:1, el nombre ES el del otro.
+      name:
+        chat.name ??
+        (chat.kind === 'direct'
+          ? personas.get(
+              chat.members
+                .map((member) => String(member.userId))
+                .find((id) => id !== String(userId)) ?? ''
+            )
+          : undefined),
+      encrypted: chat.encrypted === true,
       memberIds: chat.members.map((member) => String(member.userId)),
       lastSeq: chat.lastSeq,
       unread: unreadCount({

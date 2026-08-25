@@ -4,10 +4,27 @@ import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import { ArrowLeft, MoreVertical, Mic, Plus, Send, Smile } from 'lucide-react-native';
+import {
+  ArrowLeft,
+  Lock,
+  MoreVertical,
+  Mic,
+  Phone,
+  Plus,
+  Send,
+  Smile,
+  Video,
+} from 'lucide-react-native';
 import { formatDayLabel, startsNewDay } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { AttachSheet } from './AttachSheet';
+import { CallScreen } from '../calls/CallScreen';
+import { useCall } from '../calls/useCall';
+import { CreateEventScreen } from '../agenda/CreateEventScreen';
+import { CreatePollScreen } from '../agenda/CreatePollScreen';
+import { CatchUpBanner } from './CatchUpBanner';
+import { SecretChatBanner } from '../crypto/SecretChatBanner';
+import { useSecretChat } from '../crypto/useSecretChat';
 import { DaySeparator, MessageRow, isPending, type Row } from './MessageRow';
 import { useChat } from './useChat';
 
@@ -22,6 +39,9 @@ export function ChatScreen({
   credential,
   othersReadSeq,
   othersDeliveredSeq,
+  unread,
+  encrypted,
+  otherUserId,
   onBack,
 }: {
   chatId: string;
@@ -29,14 +49,32 @@ export function ChatScreen({
   credential: Credential;
   othersReadSeq: number;
   othersDeliveredSeq: number;
+  /** Cuántos sin leer traía la lista: decide si la banda de Lila aparece. */
+  unread: number;
+  /** Chat secreto (F9): cifra, y apaga a Lila. */
+  encrypted?: boolean;
+  otherUserId?: string | null;
   onBack: () => void;
 }) {
+  const secreto = useSecretChat({
+    credential,
+    otherUserId: otherUserId ?? null,
+    enabled: Boolean(encrypted),
+  });
+  const sesionLista = encrypted && secreto.estado === 'listo' ? secreto : null;
   const { messages, pending, connected, othersRead, send, sendMedia, markRead } = useChat({
     chatId,
     token: credential.jwt,
+    seal: sesionLista?.seal,
+    open: sesionLista?.open,
   });
   const [draft, setDraft] = useState('');
   const [attachOpen, setAttachOpen] = useState(false);
+  // Crear desde la conversación: el chat YA está elegido, así que las pantallas
+  // de crear no vuelven a preguntar dónde.
+  const [creando, setCreando] = useState<'event' | 'poll' | null>(null);
+  const [falloCifrado, setFalloCifrado] = useState(false);
+  const llamada = useCall({ chatId, peerName: chatName });
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [mediaError, setMediaError] = useState('');
@@ -128,9 +166,15 @@ export function ChatScreen({
           </Text>
         </View>
         <View className="min-w-0 flex-1">
-          <Text className="text-base font-bold text-on-surface" numberOfLines={1}>
-            {chatName}
-          </Text>
+          <View className="flex-row items-center gap-1.5">
+            {/* El candado va PEGADO al nombre y no en una banda aparte: es una
+                propiedad de con quién se está hablando, y tiene que verse en la
+                misma mirada que el nombre. */}
+            {encrypted ? <Lock size={13} color="#6b38d4" /> : null}
+            <Text className="min-w-0 flex-1 text-base font-bold text-on-surface" numberOfLines={1}>
+              {chatName}
+            </Text>
+          </View>
           {/* El estado de conexión se DICE: un mensaje que no sale sin
               explicación es lo que hace desconfiar de una app de mensajería. */}
           {!connected ? (
@@ -139,10 +183,88 @@ export function ChatScreen({
             </Text>
           ) : null}
         </View>
+        {/* Llamadas: dejan de ser inertes (F10). Solo en 1:1 — una llamada
+            grupal es otra cosa (varias conexiones a la vez) y prometerla con el
+            mismo botón sería mentir. */}
+        {otherUserId ? (
+          <>
+            <Pressable
+              testID="btn-videollamada"
+              onPress={() => llamada.llamar(true)}
+              className="h-11 w-9 items-center justify-center"
+            >
+              <Video size={20} color="#494454" />
+            </Pressable>
+            <Pressable
+              testID="btn-llamada"
+              onPress={() => llamada.llamar(false)}
+              className="h-11 w-9 items-center justify-center"
+            >
+              <Phone size={20} color="#494454" />
+            </Pressable>
+          </>
+        ) : null}
         <Pressable testID="btn-menu-chat" className="h-11 w-9 items-center justify-center">
           <MoreVertical size={20} color="#494454" />
         </Pressable>
       </View>
+
+      {creando === 'event' ? (
+        <CreateEventScreen
+          visible
+          credential={credential}
+          chats={[]}
+          fixedChat={{ id: chatId, name: chatName }}
+          onClose={() => setCreando(null)}
+          onCreated={() => setCreando(null)}
+        />
+      ) : creando === 'poll' ? (
+        <CreatePollScreen
+          visible
+          credential={credential}
+          chats={[]}
+          fixedChat={{ id: chatId, name: chatName }}
+          onClose={() => setCreando(null)}
+          onCreated={() => setCreando(null)}
+        />
+      ) : null}
+
+      {/* En un chat cifrado NO se ofrece «ponme al día»: Lila no puede leerlo,
+          y un botón que siempre falla es peor que no tenerlo. */}
+      {/* La pantalla de llamada se monta SOBRE el chat: al colgar se vuelve a
+          la conversación, que es donde uno estaba. */}
+      {llamada.state ? (
+        <CallScreen
+          visible
+          state={llamada.state}
+          peerName={chatName}
+          video={llamada.video}
+          muted={llamada.muted}
+          speaker={llamada.speaker}
+          onToggleMute={llamada.alternarMute}
+          onToggleSpeaker={llamada.alternarAltavoz}
+          onToggleVideo={llamada.alternarVideo}
+          onAccept={llamada.contestar}
+          onHangUp={() => {
+            llamada.colgar();
+            // Se cierra un instante después para que se vea «terminada» en vez
+            // de desaparecer de golpe, que se siente como que se cortó sola.
+            setTimeout(llamada.cerrar, 900);
+          }}
+        />
+      ) : null}
+
+      {falloCifrado ? (
+        <Text className="px-4 pb-1 text-sm text-error" testID="error-cifrado">
+          No se pudo cifrar el mensaje. No se envió.
+        </Text>
+      ) : null}
+
+      {encrypted ? (
+        <SecretChatBanner session={secreto} />
+      ) : (
+        <CatchUpBanner chatId={chatId} credential={credential} unread={unread} />
+      )}
 
       <FlashList
         data={rows}
@@ -223,7 +345,16 @@ export function ChatScreen({
             onPress={() => {
               const text = draft;
               setDraft('');
-              void send(text);
+              void (async () => {
+                const resultado = await send(text);
+                // Si NO se pudo cifrar, el mensaje no salió y hay que decirlo:
+                // en un chat con candado, un envío que falla en silencio deja a
+                // la persona creyendo que el otro lo recibió.
+                if (!resultado?.ok) {
+                  setDraft(text);
+                  setFalloCifrado(true);
+                }
+              })();
             }}
             className="h-11 w-11 items-center justify-center rounded-full bg-primary"
           >
@@ -243,6 +374,8 @@ export function ChatScreen({
         onClose={() => setAttachOpen(false)}
         onPickCamera={() => void pickFromCamera()}
         onPickGallery={() => void pickFromGallery()}
+        onCreateEvent={() => setCreando('event')}
+        onCreatePoll={() => setCreando('poll')}
         onPickFile={() => void pickFile()}
       />
     </KeyboardAvoidingView>

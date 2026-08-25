@@ -21,9 +21,12 @@ const RSVP_OPTIONS: { value: Rsvp; label: string }[] = [
 export function EventsScreen({
   credential,
   onCreate,
+  hideFab,
 }: {
   credential: Credential;
   onCreate: () => void;
+  /** La Agenda pone su propio botón: dos flotantes encimados es un bug visible. */
+  hideFab?: boolean;
 }) {
   const [events, setEvents] = useState<AgendaEvent[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -131,13 +134,15 @@ export function EventsScreen({
         </ScrollView>
       )}
 
-      <Pressable
-        testID="btn-nuevo-evento"
-        onPress={onCreate}
-        className="absolute bottom-5 right-5 h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg"
-      >
-        <Plus size={24} color="#ffffff" />
-      </Pressable>
+      {hideFab ? null : (
+        <Pressable
+          testID="btn-nuevo-evento"
+          onPress={onCreate}
+          className="absolute bottom-5 right-5 h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg"
+        >
+          <Plus size={24} color="#ffffff" />
+        </Pressable>
+      )}
     </View>
   );
 }

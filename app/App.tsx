@@ -1,3 +1,5 @@
+// PRIMERO: enchufa `crypto.getRandomValues` en Hermes, antes de que algo cifre.
+import './src/crypto/polyfill';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -106,6 +108,12 @@ export default function App() {
           credential={boot.credential}
           othersReadSeq={boot.chat.othersReadSeq}
           othersDeliveredSeq={boot.chat.othersDeliveredSeq}
+          unread={boot.chat.unread}
+          encrypted={boot.chat.encrypted}
+          // El OTRO miembro: con quién se deriva la clave compartida.
+          otherUserId={
+            boot.chat.memberIds.find((id) => id !== boot.credential.userId) ?? null
+          }
           onBack={() => setBoot({ phase: 'home', credential: boot.credential })}
         />
       )}

@@ -6,3 +6,8 @@ export * from './chatDisplay.js';
 export * from './phone.js';
 export * from './events.js';
 export * from './polls.js';
+export * from './backup.js';
+export * from './assistant.js';
+export * from './contacts.js';
+export * from './e2ee.js';
+export * from './call.js';

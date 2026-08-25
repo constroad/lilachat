@@ -5,7 +5,7 @@ import type { AttendeeSummary, Recurrence, Rsvp } from '@lilachat/shared';
  * `api/client.ts` pero vive aparte porque son tres recursos con sus tipos, y
  * meterlos en el cliente del chat lo volvería un cajón de sastre.
  */
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://chat.constroad.com';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
 const TIMEOUT_MS = 15_000;
 
 export type AgendaResult<T> = { ok: true; data: T } | { ok: false; message?: string };
@@ -24,6 +24,8 @@ export type AgendaEvent = {
 export type AgendaReminder = {
   _id: string;
   title: string;
+  /** La segunda línea de la tarjeta del diseño («Cada 2 horas»). */
+  note?: string;
   startsAt: string;
   recurrence: Recurrence;
   active: boolean;

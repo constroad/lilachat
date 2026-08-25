@@ -9,7 +9,10 @@ import {
 import { sendOverSocket } from './socketClient';
 
 /**
- * La cola de salida, PERSISTIDA. Cerrar la app no puede perder lo escrito: el
+ * La cola de salida, PERSISTIDA.
+ *
+ * En los chats secretos lo encolado ya viene CIFRADO (`buildOutboxItem`): el
+ * texto plano no llega nunca a este archivo ni al disco. Cerrar la app no puede perder lo escrito: el
  * chofer del caso Timón perdía la marca, acá se perdería un mensaje.
  *
  * Va en AsyncStorage y no en SecureStore a propósito: lo encolado es contenido
@@ -80,6 +83,10 @@ export async function drainOutbox(): Promise<DrainReport> {
         chatId: item.chatId,
         clientKey: item.clientKey,
         body: item.body,
+        // El sobre viaja tal cual salió de la cola. Sin esta línea el mensaje
+        // llegaba al server SIN texto y SIN sobre —el body ya no existe en un
+        // chat cifrado— y se guardaba una burbuja vacía.
+        envelope: item.envelope,
         kind: item.kind,
       });
       const effect = resolveOutcome(item, outcome);

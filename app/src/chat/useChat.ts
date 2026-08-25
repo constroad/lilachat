@@ -1,6 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Crypto from 'expo-crypto';
-import { advanceCursors, mergeBySeq, type Cursors, type OutboxItem } from '@lilachat/shared';
+import {
+  advanceCursors,
+  buildOutboxItem,
+  mergeBySeq,
+  type Cursors,
+  type Envelope,
+  type OutboxItem,
+} from '@lilachat/shared';
 import { connectSocket, getSocket, type ServerMessage } from './socketClient';
 import { uploadMedia, type UploadResult } from './mediaUpload';
 import { drainOutbox, hydrateOutbox, queueMessage, subscribeOutbox } from './outboxStore';
@@ -16,8 +23,37 @@ import { drainOutbox, hydrateOutbox, queueMessage, subscribeOutbox } from './out
 export type ChatMessage = ServerMessage & { pending?: false };
 export type PendingMessage = { clientKey: string; body?: string; queuedAt: string; pending: true };
 
-export function useChat(params: { chatId: string; token: string }) {
+export function useChat(params: {
+  chatId: string;
+  token: string;
+  /** Chat secreto (F9): cifra al ENCOLAR y descifra al mostrar. */
+  seal?: (text: string) => Envelope | null;
+  open?: (envelope: Envelope) => string | null;
+}) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+
+  /**
+   * Los mensajes ya descifrados, DERIVADOS del estado.
+   *
+   * El descifrado NO se hornea al guardar, y eso costó un E2E: la sesión de
+   * cifrado tarda un instante en tener la clave del otro, así que los mensajes
+   * que entraban antes quedaban con «no se pudo descifrar» para siempre —
+   * aunque la clave llegara un segundo después—. Derivándolo, en cuanto la
+   * sesión está lista todo se vuelve a leer bien solo.
+   *
+   * Si un sobre no abre igual se DICE, en vez de mostrar una burbuja vacía:
+   * puede ser de antes de tener la clave, o uno manipulado, y las dos cosas son
+   * información real.
+   */
+  const visibles = useMemo(
+    () =>
+      messages.map((message) =>
+        message.envelope
+          ? { ...message, body: params.open?.(message.envelope) ?? '🔒 No se pudo descifrar' }
+          : message
+      ),
+    [messages, params.open]
+  );
   const [pending, setPending] = useState<PendingMessage[]>([]);
   const [connected, setConnected] = useState(false);
   /**
@@ -26,6 +62,18 @@ export function useChat(params: { chatId: string; token: string }) {
    * cambiaba de color.
    */
   const [othersRead, setOthersRead] = useState(0);
+
+  /**
+   * El texto de lo que YO acabo de mandar en un chat cifrado, solo para
+   * mostrarlo mientras está en la cola.
+   *
+   * Vive en MEMORIA y nunca se persiste: la cola guarda el sobre, y el plano en
+   * disco sería exactamente lo que el candado promete que no pasa. El precio es
+   * que, si la app se cierra con algo pendiente, esa burbuja se ve como
+   * «🔒 Cifrado» hasta que el server la devuelva — que es la verdad, y es mejor
+   * que una burbuja vacía.
+   */
+  const vistaLocal = useRef(new Map<string, string>());
   const cursors = useRef<Cursors>({});
 
   useEffect(() => {
@@ -39,7 +87,10 @@ export function useChat(params: { chatId: string; token: string }) {
           .filter((item) => item.chatId === params.chatId)
           .map((item) => ({
             clientKey: item.clientKey,
-            body: item.body,
+            // En un chat cifrado el item NO trae texto: se usa la vista local.
+            // Si la app se reinició y ya no está, se dice «🔒 Cifrado» en vez
+            // de dejar la burbuja vacía, que parece un mensaje roto.
+            body: item.body ?? vistaLocal.current.get(item.clientKey) ?? '🔒 Cifrado',
             queuedAt: item.queuedAt,
             pending: true as const,
           }))
@@ -103,18 +154,22 @@ export function useChat(params: { chatId: string; token: string }) {
    */
   const send = useCallback(
     async (body: string) => {
-      const text = body.trim();
-      if (!text) return;
-      await queueMessage({
-        clientKey: Crypto.randomUUID(),
+      // `buildOutboxItem` decide si va texto o sobre. En un chat cifrado
+      // devuelve `null` si NO se pudo cifrar, y entonces no se encola nada:
+      // caer a texto plano con el candado en pantalla sería mentir.
+      const item = buildOutboxItem({
         chatId: params.chatId,
-        kind: 'text',
-        body: text,
+        clientKey: Crypto.randomUUID(),
+        text: body,
         queuedAt: new Date().toISOString(),
-        attempts: 0,
+        seal: params.seal,
       });
+      if (!item) return { ok: false as const };
+      if (item.envelope) vistaLocal.current.set(item.clientKey, body.trim());
+      await queueMessage(item);
+      return { ok: true as const };
     },
-    [params.chatId]
+    [params.chatId, params.seal]
   );
 
   /**
@@ -147,5 +202,6 @@ export function useChat(params: { chatId: string; token: string }) {
     [params.chatId]
   );
 
-  return { messages, pending, connected, othersRead, send, sendMedia, markRead };
+  // `visibles`, no `messages`: la pantalla recibe lo ya descifrado.
+  return { messages: visibles, pending, connected, othersRead, send, sendMedia, markRead };
 }

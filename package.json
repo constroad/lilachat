@@ -5,12 +5,14 @@
   "description": "Mensajer\u00eda privada de la familia \u2014 Android (RN) + web + server propio en la Mac mini",
   "workspaces": [
     "shared",
-    "server"
+    "server",
+    "web"
   ],
   "scripts": {
-    "build": "npm run build --workspace=shared && npm run build --workspace=server",
-    "test": "npm run test --workspace=shared && npm run test --workspace=server",
+    "build": "npm run build --workspace=shared && npm run build --workspace=server && npm run build --workspace=web",
+    "test": "npm run test --workspace=shared && npm run test --workspace=server && npm run test --workspace=web",
     "dev": "npm run dev --workspace=server",
-    "emit-tokens": "tsx shared/scripts/emit-tokens.ts"
+    "emit-tokens": "tsx shared/scripts/emit-tokens.ts",
+    "dev:web": "npm run dev --workspace=web"
   }
 }

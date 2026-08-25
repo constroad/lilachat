@@ -3,6 +3,8 @@ import { ChatModel } from './chatModels.js';
 import { DeviceModel, UserModel } from './models.js';
 import { isOnline } from './presence.js';
 import { buildPushSender, buildPushText, type PushSender } from './pushSender.js';
+import { splitPushTargets } from './pushTargets.js';
+import { sendWebPush } from './webPushSender.js';
 
 /**
  * A quién notificar y con qué texto (F4).
@@ -32,7 +34,7 @@ export async function notifyOffline(params: {
 
   const [tokens, sender_, chat] = await Promise.all([
     DeviceModel.find({ userId: { $in: targets }, pushToken: { $exists: true, $ne: '' } })
-      .select('pushToken')
+      .select('pushToken platform')
       .lean(),
     UserModel.findById(params.senderId).select('name phone').lean(),
     ChatModel.findById(params.message.chatId).select('kind name').lean(),
@@ -48,12 +50,17 @@ export async function notifyOffline(params: {
     kind: params.message.kind,
   });
 
+  const data = { chatId: String(params.message.chatId), seq: params.message.seq };
+  // DOS transportes para el mismo aviso: el teléfono por FCM y la pestaña del
+  // navegador por Web Push. Son dispositivos distintos del mismo dueño, así que
+  // los dos tienen que sonar (F6).
+  const destinos = splitPushTargets(tokens);
+
   try {
-    await sender.send({
-      tokens: tokens.map((device) => device.pushToken!).filter(Boolean),
-      ...text,
-      data: { chatId: String(params.message.chatId), seq: params.message.seq },
-    });
+    await Promise.all([
+      destinos.fcm.length > 0 ? sender.send({ tokens: destinos.fcm, ...text, data }) : undefined,
+      sendWebPush(destinos.web, { ...text, data }),
+    ]);
   } catch (error) {
     // Un push que no sale no puede tumbar el envío: el mensaje YA está
     // guardado y el destinatario lo va a ver al sincronizar.

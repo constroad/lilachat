@@ -23,6 +23,12 @@ export type OutboxItem = {
   chatId: string;
   kind: 'text' | 'image' | 'video' | 'file';
   body?: string;
+  /**
+   * El sobre cifrado, en los chats secretos (F9). **Excluyente con `body`**: la
+   * cola vive en disco, así que guardar los dos dejaría el texto legible en el
+   * teléfono aunque el server nunca lo vea.
+   */
+  envelope?: { v: 1; nonce: string; ciphertext: string };
   mediaId?: string;
   replyToSeq?: number;
   /** Reloj del cliente: sirve para ordenar lo pendiente en pantalla. */
@@ -110,4 +116,43 @@ export function enqueue(queue: OutboxItem[], item: OutboxItem): OutboxItem[] {
 /** El siguiente a mandar: FIFO estricto — el orden del chat es el del autor. */
 export function nextPending(queue: OutboxItem[]): OutboxItem | null {
   return queue[0] ?? null;
+}
+
+/**
+ * Arma lo que se encola, cifrando ANTES si el chat es secreto.
+ *
+ * La cola se persiste en AsyncStorage —o sea, en DISCO—. En un chat con candado
+ * el texto plano no puede quedar ahí: no serviría de nada contra quien tenga el
+ * teléfono. Por eso el cifrado ocurre acá, al encolar, y no al enviar.
+ *
+ * Devuelve `null` cuando no hay nada que mandar o cuando el cifrado FALLA. Ese
+ * segundo caso importa: caer a texto plano sería el peor error posible —el
+ * usuario ve el candado y el mensaje sale desnudo—, así que se prefiere no
+ * mandar y que la pantalla lo diga.
+ */
+export function buildOutboxItem(params: {
+  chatId: string;
+  clientKey: string;
+  text: string;
+  queuedAt: string;
+  replyToSeq?: number;
+  /** Solo en chats cifrados. `null` = no se pudo cifrar. */
+  seal?: (text: string) => { v: 1; nonce: string; ciphertext: string } | null;
+}): OutboxItem | null {
+  const text = params.text.trim();
+  if (!text) return null;
+
+  const base = {
+    clientKey: params.clientKey,
+    chatId: params.chatId,
+    kind: 'text' as const,
+    queuedAt: params.queuedAt,
+    attempts: 0,
+    ...(params.replyToSeq !== undefined ? { replyToSeq: params.replyToSeq } : {}),
+  };
+
+  if (!params.seal) return { ...base, body: text };
+
+  const envelope = params.seal(text);
+  return envelope ? { ...base, envelope } : null;
 }

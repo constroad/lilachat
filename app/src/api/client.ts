@@ -6,7 +6,7 @@
  * .env de dev sale apuntando al emulador y falla con wifi andando — el script
  * de release lo fija y lo verifica dentro del binario).
  */
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://chat.constroad.com';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
 const TIMEOUT_MS = 15_000;
 
 export type ApiResult<T> =
@@ -64,6 +64,8 @@ export type ChatSummary = {
   lastMessage: { seq: number; body?: string; kind?: string; senderId: string; at: string } | null;
   othersReadSeq: number;
   othersDeliveredSeq: number;
+  /** Chat secreto (F9). */
+  encrypted?: boolean;
 };
 
 async function get<T>(route: string, token: string, fetchImpl: FetchLike = fetch): Promise<ApiResult<T>> {

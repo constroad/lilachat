@@ -57,3 +57,24 @@ export function mergeBySeq<T extends { seq: number }>(existing: T[], incoming: T
 export function unreadCount(params: { lastSeq: number; readSeq: number }): number {
   return Math.max(0, params.lastSeq - params.readSeq);
 }
+
+/**
+ * Un mensaje que llega en vivo, incorporado a lo que ya está en pantalla.
+ *
+ * **Deduplica por `clientKey`, nunca por `seq`.** El mensaje optimista —el que
+ * se pinta al tocar enviar— todavía no tiene `seq`: se lo asigna el server. Si
+ * la comparación fuera por `seq`, el eco de `msg.new` nunca encontraría a su
+ * optimista y el autor vería su propio mensaje DOS veces. Para eso existe la
+ * clave que nace en el cliente.
+ */
+export function mergeIncoming<T extends { seq: number; clientKey?: string }>(
+  current: T[],
+  incoming: T
+): T[] {
+  const withoutTwin = current.filter((item) =>
+    incoming.clientKey && item.clientKey
+      ? item.clientKey !== incoming.clientKey
+      : item.seq !== incoming.seq
+  );
+  return [...withoutTwin, incoming].sort((a, b) => a.seq - b.seq);
+}

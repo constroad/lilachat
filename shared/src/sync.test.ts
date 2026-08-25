@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { advanceCursors, mergeBySeq, unreadCount } from './sync.js';
+import { advanceCursors, mergeBySeq, unreadCount, mergeIncoming } from './sync.js';
 
 describe('advanceCursors', () => {
   it('avanza al seq más alto recibido por chat', () => {
@@ -54,5 +54,44 @@ describe('unreadCount', () => {
 
   it('un cursor por delante del último no da negativo', () => {
     expect(unreadCount({ lastSeq: 4, readSeq: 9 })).toBe(0);
+  });
+});
+
+describe('mergeIncoming', () => {
+  /**
+   * El eco del propio mensaje.
+   *
+   * Al enviar se pinta un optimista y el server emite `msg.new` a TODOS los
+   * miembros —incluido el autor, porque sus otros dispositivos también tienen
+   * que verlo—. Sin deduplicar, el que envía ve su mensaje dos veces.
+   *
+   * La clave es `clientKey` y no `seq`: el optimista todavía no TIENE `seq`
+   * (se lo asigna el server), así que comparar por `seq` nunca los une. Es
+   * exactamente para esto que la clave nace en el cliente.
+   */
+  it('el eco del server reemplaza al optimista, no lo duplica', () => {
+    const optimista = { seq: Number.MAX_SAFE_INTEGER, clientKey: 'k1', body: 'hola' };
+    const delServer = { seq: 3, clientKey: 'k1', body: 'hola' };
+
+    const merged = mergeIncoming([optimista], delServer);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.seq).toBe(3);
+  });
+
+  it('un mensaje ajeno se agrega y queda ordenado por seq', () => {
+    const merged = mergeIncoming(
+      [{ seq: 3, clientKey: 'k1' }],
+      { seq: 2, clientKey: 'k-otro' }
+    );
+
+    expect(merged.map((item) => item.seq)).toEqual([2, 3]);
+  });
+
+  /** Re-entregar el mismo mensaje no lo agrega dos veces. */
+  it('el mismo mensaje dos veces sigue siendo uno', () => {
+    const uno = { seq: 4, clientKey: 'k9' };
+
+    expect(mergeIncoming(mergeIncoming([], uno), uno)).toHaveLength(1);
   });
 });

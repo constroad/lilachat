@@ -1,9 +1,13 @@
 import { Pressable, Text, View } from 'react-native';
-import { BarChart3, Bell, CalendarDays, MessageCircle, Settings } from 'lucide-react-native';
+import { BarChart3, CalendarDays, MessageCircle, Settings } from 'lucide-react-native';
 
 /**
- * La barra inferior, con las CINCO pestañas del diseño en español
- * (Chats · Encuestas · Eventos · Avisos · Ajustes).
+ * La barra inferior.
+ *
+ * **Eventos y Avisos son UNA sola pestaña, «Agenda»** (pedido de José): las dos
+ * responden a «¿qué tengo por delante?» y separarlas obligaba a mirar en dos
+ * lugares lo que se piensa junto. Adentro se filtra con un segmentado y el
+ * botón de crear ofrece los dos tipos.
  *
  * La primera versión tenía cuatro —Chats/Estado/Llamadas/Ajustes— copiadas del
  * mock en inglés, que es una generación anterior del diseño: los mocks en
@@ -11,13 +15,12 @@ import { BarChart3, Bell, CalendarDays, MessageCircle, Settings } from 'lucide-r
  * Dos generaciones del mismo diseño conviven en el proyecto y hay que mirar
  * CUÁL corresponde a lo que se está construyendo.
  */
-export type Tab = 'chats' | 'encuestas' | 'eventos' | 'avisos' | 'ajustes';
+export type Tab = 'chats' | 'agenda' | 'encuestas' | 'ajustes';
 
 const TABS: { key: Tab; label: string; Icon: typeof MessageCircle }[] = [
   { key: 'chats', label: 'Chats', Icon: MessageCircle },
+  { key: 'agenda', label: 'Agenda', Icon: CalendarDays },
   { key: 'encuestas', label: 'Encuestas', Icon: BarChart3 },
-  { key: 'eventos', label: 'Eventos', Icon: CalendarDays },
-  { key: 'avisos', label: 'Avisos', Icon: Bell },
   { key: 'ajustes', label: 'Ajustes', Icon: Settings },
 ];
 

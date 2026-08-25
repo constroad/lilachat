@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyEffect,
+  buildOutboxItem,
   enqueue,
   nextPending,
   resolveOutcome,
@@ -121,5 +122,64 @@ describe('retryDelayMs', () => {
     expect(retryDelayMs(1)).toBe(1_000);
     expect(retryDelayMs(3)).toBe(4_000);
     expect(retryDelayMs(50)).toBe(60_000);
+  });
+});
+
+describe('buildOutboxItem', () => {
+  const sobre = { v: 1 as const, nonce: 'bm9uY2U=', ciphertext: 'c2VjcmV0bw==' };
+
+  it('en un chat normal encola el texto', () => {
+    const item = buildOutboxItem({
+      chatId: 'c1',
+      clientKey: 'k1',
+      text: 'hola',
+      queuedAt: '2026-08-24T12:00:00Z',
+    });
+
+    expect(item.body).toBe('hola');
+    expect(item.envelope).toBeUndefined();
+  });
+
+  /**
+   * LA regla del chat secreto: la cola vive en AsyncStorage, o sea en DISCO.
+   * Encolar el texto plano dejaría el mensaje legible en el teléfono aunque el
+   * server nunca lo vea — el candado no serviría de nada contra quien tenga el
+   * aparato. Se cifra ANTES de encolar.
+   */
+  it('en un chat cifrado encola el SOBRE y nunca el texto', () => {
+    const item = buildOutboxItem({
+      chatId: 'c1',
+      clientKey: 'k1',
+      text: 'la clave es 4821',
+      queuedAt: '2026-08-24T12:00:00Z',
+      seal: () => sobre,
+    });
+
+    expect(item.body).toBeUndefined();
+    expect(item.envelope).toEqual(sobre);
+    expect(JSON.stringify(item)).not.toContain('4821');
+  });
+
+  /**
+   * Si el cifrado falla —falta la clave del otro— NO se encola en claro. Un
+   * fallback a texto plano sería el peor error posible: el usuario ve el
+   * candado y el mensaje sale desnudo.
+   */
+  it('si no se puede cifrar, no encola nada', () => {
+    expect(
+      buildOutboxItem({
+        chatId: 'c1',
+        clientKey: 'k1',
+        text: 'secreto',
+        queuedAt: '2026-08-24T12:00:00Z',
+        seal: () => null,
+      })
+    ).toBeNull();
+  });
+
+  it('un texto vacío no se encola', () => {
+    expect(
+      buildOutboxItem({ chatId: 'c1', clientKey: 'k1', text: '   ', queuedAt: 'x' })
+    ).toBeNull();
   });
 });

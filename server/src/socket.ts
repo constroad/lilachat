@@ -12,6 +12,7 @@ import {
 import { toClientMessage, toClientMessages } from './messageView.js';
 import { markOffline, markOnline, onlineAmong } from './presence.js';
 import { notifyOffline } from './pushService.js';
+import { maybeAnswerMention } from './assistantReply.js';
 import { verifySession } from './sessions.js';
 
 /**
@@ -108,6 +109,10 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
           clientKey: String(payload.clientKey ?? ''),
           kind: payload.kind as never,
           body: typeof payload.body === 'string' ? payload.body : undefined,
+          envelope:
+            payload.envelope && typeof payload.envelope === 'object'
+              ? (payload.envelope as { v: number; nonce: string; ciphertext: string })
+              : undefined,
           replyToSeq: typeof payload.replyToSeq === 'number' ? payload.replyToSeq : undefined,
         });
 
@@ -123,6 +128,28 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
           void notifyOffline({ message: result.message, members, senderId: me });
         }
         ack?.({ ok: true, seq: result.message.seq, duplicate: result.duplicate });
+
+        // `@lila`, DESPUÉS del ack: el mensaje de quien escribió ya está
+        // guardado y repartido, así que si el modelo tarda o falla la
+        // conversación siguió igual. Un duplicado no la vuelve a invocar.
+        if (!result.duplicate) {
+          void maybeAnswerMention({
+            chatId: result.message.chatId,
+            askedBy: userId,
+            body: result.message.body,
+            onReply: async (reply) => {
+              const destinatarios = await chatMemberIds(reply.chatId);
+              for (const member of destinatarios) {
+                io.to(userRoom(member)).emit('msg.new', toClientMessage(reply));
+              }
+              void notifyOffline({
+                message: reply,
+                members: destinatarios,
+                senderId: String(reply.senderId),
+              });
+            },
+          });
+        }
       } catch (error) {
         const forbidden = error instanceof ForbiddenChatError;
         // 403 es PERMANENTE para la cola del cliente: descarta con motivo en
@@ -130,6 +157,42 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
         ack?.({ ok: false, status: forbidden ? 403 : 500, message: forbidden ? error.message : undefined });
       }
     });
+
+    /**
+     * SEÑALIZACIÓN DE LLAMADAS (F10).
+     *
+     * El server es un CARTERO: reenvía ofertas, respuestas y candidatos ICE
+     * entre los miembros del chat. El audio y el video **no pasan por acá** —
+     * van directo entre los dos, o por el TURN si el NAT no deja.
+     *
+     * La membresía del chat es el permiso, igual que todo lo demás: sin eso,
+     * cualquiera con sesión podría hacer sonar el teléfono de un desconocido.
+     */
+    const reenviarSeñal = (evento: string) =>
+      socket.on(evento, async (frame: unknown) => {
+        const payload = (frame ?? {}) as { chatId?: string; [k: string]: unknown };
+        if (!payload.chatId || !Types.ObjectId.isValid(payload.chatId)) return;
+
+        try {
+          const members = await chatMemberIds(new Types.ObjectId(payload.chatId));
+          if (!members.includes(String(userId))) return;
+
+          for (const member of members) {
+            // A MÍ NO: recibir mi propia oferta haría que el teléfono se llame
+            // a sí mismo. A mis otros dispositivos tampoco — el que contesta es
+            // el que tiene la llamada, y duplicarla haría sonar dos.
+            if (member === String(userId)) continue;
+            io.to(userRoom(member)).emit(evento, { ...payload, from: String(userId) });
+          }
+        } catch {
+          // Un chat inválido no tira la conexión: la señalización es best-effort
+          // y el que llama ya tiene su propio tiempo de espera.
+        }
+      });
+
+    for (const evento of ['call.offer', 'call.answer', 'call.ice', 'call.end', 'call.reject']) {
+      reenviarSeñal(evento);
+    }
 
     socket.on('sync.pull', async (frame: unknown, ack?: (response: unknown) => void) => {
       const cursors = ((frame ?? {}) as { cursors?: Record<string, number> }).cursors ?? {};

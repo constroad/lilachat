@@ -11,6 +11,21 @@ const config = getDefaultConfig(projectRoot);
 // motor puro no recarga. La app queda igual fuera de los npm workspaces (su
 // node_modules es propio) — esto es solo visibilidad de archivos.
 config.watchFolders = [path.resolve(workspaceRoot, 'shared')];
+
+/**
+ * Dónde busca Metro los `node_modules` de un import que sale de `shared/`.
+ *
+ * Un módulo importado DESDE `shared/src` se resuelve relativo a `shared/`, y sus
+ * dependencias están hoisteadas en el `node_modules` de la RAÍZ del monorepo —
+ * que Metro no observa. El síntoma fue «Unable to resolve @noble/ciphers/aes.js»
+ * con el paquete instalado y visible desde Node: instalarlo también en `app/`
+ * NO lo arregla, porque el import no nace en `app/`.
+ */
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, 'node_modules'),
+  path.resolve(workspaceRoot, 'node_modules'),
+];
+config.watchFolders.push(path.resolve(workspaceRoot, 'node_modules'));
 // Apunta al FUENTE (src), no a `shared/dist`: el dist lo produce el build del
 // server y la app bundlearía código viejo sin ninguna señal de que quedó atrás.
 config.resolver.extraNodeModules = {

@@ -27,6 +27,14 @@ export interface Chat {
   members: ChatMember[];
   /** Último `seq` asignado. Es el contador que `$inc` mueve. */
   lastSeq: number;
+  /**
+   * Chat secreto (F9): el server solo ve sobres.
+   *
+   * Es una propiedad del CHAT y no del mensaje porque tiene que decidirse una
+   * vez, al crearlo: un chat que a veces cifra y a veces no le daría al usuario
+   * una promesa que no puede sostener.
+   */
+  encrypted?: boolean;
 }
 
 export interface Message {
@@ -37,6 +45,11 @@ export interface Message {
   clientKey: string;
   kind: 'text' | 'image' | 'video' | 'file' | 'event' | 'system';
   body?: string;
+  /**
+   * El sobre cifrado, en los chats secretos. Cuando está, `body` NO está: son
+   * excluyentes, y guardar los dos anularía el cifrado en la práctica.
+   */
+  envelope?: { v: number; nonce: string; ciphertext: string };
   media?: { mediaId: string; thumbUrl?: string; url?: string; width?: number; height?: number; mime?: string };
   replyToSeq?: number;
   editedAt?: Date;
@@ -64,6 +77,7 @@ const chatSchema = new Schema<Chat>(
       },
     ],
     lastSeq: { type: Number, default: 0 },
+    encrypted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
@@ -83,6 +97,11 @@ const messageSchema = new Schema<Message>(
       default: 'text',
     },
     body: { type: String },
+    envelope: {
+      v: { type: Number },
+      nonce: { type: String },
+      ciphertext: { type: String },
+    },
     media: {
       mediaId: String,
       thumbUrl: String,

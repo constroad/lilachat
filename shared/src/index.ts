@@ -11,3 +11,4 @@ export * from './assistant.js';
 export * from './contacts.js';
 export * from './e2ee.js';
 export * from './call.js';
+export * from './agenda.js';

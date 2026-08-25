@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { CirclePlus, Send, X } from 'lucide-react-native';
-import { validatePoll } from '@lilachat/shared';
+import { planTargetChat, validatePoll, type Contact } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
-import type { ChatSummary } from '../api/client';
+import { ContactPicker } from '../contacts/ContactPicker';
+import { createChat } from '../contacts/contactsApi';
 import { agendaPost } from './agendaApi';
 import { FilledField, PrimaryAction, SectionLabel, ToggleRow } from './createUi';
 
@@ -18,14 +19,12 @@ import { FilledField, PrimaryAction, SectionLabel, ToggleRow } from './createUi'
 export function CreatePollScreen({
   visible,
   credential,
-  chats,
   fixedChat,
   onClose,
   onCreated,
 }: {
   visible: boolean;
   credential: Credential;
-  chats: ChatSummary[];
   /**
    * Abierta desde una conversación: ese es el destino y no se pregunta.
    * Una encuesta se pregunta A ALGUIEN, y quien la abre desde el chat ya
@@ -39,7 +38,10 @@ export function CreatePollScreen({
   const [options, setOptions] = useState(['', '']);
   const [allowMultiple, setAllowMultiple] = useState(false);
   const [anonymous, setAnonymous] = useState(false);
-  const [chatId, setChatId] = useState(fixedChat?.id ?? chats[0]?.id ?? '');
+  // A quién se le pregunta. Son CONTACTOS y no conversaciones: pedir «elegí una
+  // conversación» para preguntar algo obliga a pensar en la estructura de datos
+  // en vez de en la gente. La conversación la arma `planTargetChat`.
+  const [invitados, setInvitados] = useState<Contact[]>([]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -47,9 +49,26 @@ export function CreatePollScreen({
     if (saving) return;
     const invalid = validatePoll({ question, options });
     if (invalid) return setError(invalid);
-    if (!chatId) return setError('Elige en qué conversación.');
+
+    const plan = planTargetChat({
+      fixedChatId: fixedChat?.id,
+      inviteeIds: invitados.map((contact) => contact.id),
+      groupName: question,
+    });
+    if (plan.kind === 'invalid') return setError(plan.message);
 
     setSaving(true);
+
+    let chatId = plan.kind === 'existing' ? plan.chatId : '';
+    if (plan.kind === 'create') {
+      const chat = await createChat(credential.jwt, plan.chat);
+      if (!chat.ok) {
+        setSaving(false);
+        return setError(chat.message ?? 'No se pudo crear la conversación.');
+      }
+      chatId = chat.data.chatId;
+    }
+
     const result = await agendaPost('/polls', credential.jwt, {
       chatId,
       question: question.trim(),
@@ -62,6 +81,7 @@ export function CreatePollScreen({
     if (!result.ok) return setError(result.message ?? 'No se pudo guardar.');
     setQuestion('');
     setOptions(['', '']);
+    setInvitados([]);
     setError('');
     onCreated();
     onClose();
@@ -159,36 +179,31 @@ export function CreatePollScreen({
 
           {fixedChat ? null : (
             <>
-          <SectionLabel>En qué conversación</SectionLabel>
-            {chats.length === 0 ? (
-              <Text className="text-sm text-on-surface-variant">
-                Necesitas una conversación primero.
-              </Text>
-            ) : (
-              chats.map((chat) => (
-                <Pressable
-                  key={chat.id}
-                  testID={`elegir-chat-${chat.id}`}
-                  onPress={() => {
-                    setChatId(chat.id);
-                    setError('');
-                  }}
-                  className={`mb-2 min-h-[52px] justify-center rounded-xl px-4 ${
-                    chatId === chat.id ? 'bg-primary/[0.14]' : 'bg-primary/[0.07]'
-                  }`}
-                >
-                  <Text
-                    className={`text-[15px] ${
-                      chatId === chat.id ? 'font-semibold text-primary' : 'text-on-surface'
-                    }`}
-                  >
-                    {chat.name ?? 'Conversación'}
+              <View className="mt-6 flex-row items-center justify-between">
+                <Text className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+                  A quién le preguntas
+                </Text>
+                <View className="rounded-full bg-primary/10 px-2 py-0.5">
+                  <Text className="text-[11px] font-semibold text-primary">
+                    {invitados.length > 0 ? `${invitados.length} elegidos` : 'Sin elegir'}
                   </Text>
-                </Pressable>
-              ))
-            )}
-  
-  
+                </View>
+              </View>
+              <View className="h-72">
+                <ContactPicker
+                  credential={credential}
+                  selected={invitados.map((contact) => contact.id)}
+                  multiple
+                  onToggle={(contact) => {
+                    setError('');
+                    setInvitados((actuales) =>
+                      actuales.some((item) => item.id === contact.id)
+                        ? actuales.filter((item) => item.id !== contact.id)
+                        : [...actuales, contact]
+                    );
+                  }}
+                />
+              </View>
             </>
           )}
 

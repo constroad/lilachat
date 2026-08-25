@@ -32,6 +32,9 @@ const base = {
   me: { name: 'José', phone: '902049935' },
   onSettings: () => undefined,
   loading: false,
+  onNewChat: () => undefined,
+  onNewGroup: () => undefined,
+  onAgenda: () => undefined,
 };
 
 describe('ChatList', () => {

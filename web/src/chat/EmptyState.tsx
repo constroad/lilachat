@@ -1,18 +1,29 @@
-import { MessagesSquare, MonitorSmartphone, ShieldCheck } from 'lucide-react';
+import { CalendarDays, MessagesSquare, MessageSquarePlus } from 'lucide-react';
 
 /**
  * El panel derecho sin conversación abierta.
  *
- * El diseño lo trae completo —ilustración, bienvenida y dos tarjetas de
- * garantía— y no como un hueco. Es la primera pantalla que ve alguien que abre
- * la web, así que dejarla en blanco desperdicia el único momento en que hay
- * atención para explicar qué es esto.
+ * Es la primera pantalla de la web, así que lo que ocupe ese espacio importa.
+ * Tuvo dos tarjetas de «garantía» y las dos estaban mal:
  *
- * Las dos tarjetas dicen lo que HOY es cierto. La del diseño prometía «cifrado
- * de extremo a extremo», que es F9 y todavía no existe: shipearla sería mentir
- * sobre seguridad, que es la mentira más cara de todas.
+ * - «Tus mensajes viven en nuestra máquina» le anunciaba a la persona que
+ *   guardamos lo que escribe. Es cierto y es exactamente por eso que no va acá:
+ *   nadie abre un chat familiar para que le recuerden dónde queda almacenado.
+ * - La del diseño prometía cifrado de extremo a extremo para TODO, y eso solo
+ *   vale para los chats secretos.
+ *
+ * En su lugar van las dos cosas que se pueden HACER desde acá. Es lo que
+ * faltaba: la web no ofrecía ninguna forma de crear nada.
  */
-export function EmptyState({ name }: { name?: string | null }) {
+export function EmptyState({
+  name,
+  onNewChat,
+  onAgenda,
+}: {
+  name?: string | null;
+  onNewChat: () => void;
+  onAgenda?: () => void;
+}) {
   return (
     <section
       data-testid="panel-vacio"
@@ -26,30 +37,41 @@ export function EmptyState({ name }: { name?: string | null }) {
         {name ? `Hola, ${name}` : 'Te damos la bienvenida a Lilachat'}
       </h2>
       <p className="mt-2 max-w-md text-sm leading-6 text-on-surface-variant">
-        Elige una conversación de la izquierda para empezar. Tus mensajes se
-        sincronizan entre el teléfono y esta pestaña.
+        Elige una conversación de la izquierda, o empieza una nueva. Lo que escribas se sincroniza
+        entre el teléfono y esta pestaña.
       </p>
 
       <div className="mt-8 grid w-full max-w-lg gap-3 sm:grid-cols-2">
-        <article className="rounded-xl border border-outline/15 bg-surface p-4 text-left">
+        <button
+          type="button"
+          data-testid="btn-vacio-nuevo-chat"
+          onClick={onNewChat}
+          className="rounded-xl border border-outline/15 bg-surface p-4 text-left transition-shadow hover:shadow-md"
+        >
           <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10">
-            <ShieldCheck size={18} className="text-primary" />
+            <MessageSquarePlus size={18} className="text-primary" />
           </div>
-          <h3 className="mt-3 text-sm font-semibold">Servidor propio</h3>
+          <h3 className="mt-3 text-sm font-semibold">Empezar un chat</h3>
           <p className="mt-1 text-[13px] leading-5 text-on-surface-variant">
-            Tus mensajes viven en nuestra máquina, no en la de un tercero.
+            Escríbele a una persona o arma un grupo con la familia.
           </p>
-        </article>
+        </button>
 
-        <article className="rounded-xl border border-outline/15 bg-surface p-4 text-left">
+        <button
+          type="button"
+          data-testid="btn-vacio-agenda"
+          onClick={onAgenda}
+          disabled={!onAgenda}
+          className="rounded-xl border border-outline/15 bg-surface p-4 text-left transition-shadow hover:shadow-md disabled:opacity-60"
+        >
           <div className="grid h-9 w-9 place-items-center rounded-lg bg-secondary/10">
-            <MonitorSmartphone size={18} className="text-secondary" />
+            <CalendarDays size={18} className="text-secondary" />
           </div>
-          <h3 className="mt-3 text-sm font-semibold">Multidispositivo</h3>
+          <h3 className="mt-3 text-sm font-semibold">Organizar algo</h3>
           <p className="mt-1 text-[13px] leading-5 text-on-surface-variant">
-            Sigue donde lo dejaste: el teléfono y la web comparten el historial.
+            Un evento para el próximo encuentro, o una encuesta para decidir entre todos.
           </p>
-        </article>
+        </button>
       </div>
     </section>
   );

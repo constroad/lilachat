@@ -31,6 +31,8 @@ export function Conversation({
   onSend,
   showBack,
   loading,
+  onCreateEvent,
+  onCreatePoll,
 }: {
   chat: ChatSummary;
   messages: ChatMessage[];
@@ -40,6 +42,8 @@ export function Conversation({
   onSend: (text: string) => void;
   showBack: boolean;
   loading: boolean;
+  onCreateEvent: () => void;
+  onCreatePoll: () => void;
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -224,7 +228,7 @@ export function Conversation({
         <div ref={bottomRef} />
       </div>
 
-      <Composer onSend={onSend} />
+      <Composer onSend={onSend} onCreateEvent={onCreateEvent} onCreatePoll={onCreatePoll} />
     </section>
   );
 }

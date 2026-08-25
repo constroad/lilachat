@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { Bell, Calendar, Check, MapPin, Send, Sparkles, UserPlus, X } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
-import type { Contact } from '@lilachat/shared';
+import { planTargetChat, type Contact } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 import { agendaPost } from './agendaApi';
 import { ContactPicker } from '../contacts/ContactPicker';
@@ -68,20 +68,23 @@ export function CreateEventScreen({
   const submit = async () => {
     if (saving) return;
     if (!title.trim()) return setError('Ponle un nombre al evento.');
-    if (!fixedChat && invitados.length === 0) return setError('Elige a quién invitar.');
-
-    setSaving(true);
 
     // Los contactos se vuelven la conversación donde vive el evento: con UNO,
     // el chat 1:1 —que el server no duplica—; con varios, un grupo con el
-    // nombre del evento, que es lo que la familia va a reconocer después.
-    let chatId = fixedChat?.id ?? '';
-    if (!chatId) {
-      const chat = await createChat(credential.jwt, {
-        kind: invitados.length === 1 ? 'direct' : 'group',
-        memberIds: invitados.map((contact) => contact.id),
-        ...(invitados.length === 1 ? {} : { name: title.trim() }),
-      });
+    // nombre del evento, que es lo que la familia va a reconocer después. La
+    // regla vive en `shared` porque la web decide EXACTAMENTE igual.
+    const plan = planTargetChat({
+      fixedChatId: fixedChat?.id,
+      inviteeIds: invitados.map((contact) => contact.id),
+      groupName: title,
+    });
+    if (plan.kind === 'invalid') return setError(plan.message);
+
+    setSaving(true);
+
+    let chatId = plan.kind === 'existing' ? plan.chatId : '';
+    if (plan.kind === 'create') {
+      const chat = await createChat(credential.jwt, plan.chat);
       if (!chat.ok) {
         setSaving(false);
         return setError(chat.message ?? 'No se pudo crear la conversación.');

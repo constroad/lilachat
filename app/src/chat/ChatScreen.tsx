@@ -222,7 +222,6 @@ export function ChatScreen({
         <CreatePollScreen
           visible
           credential={credential}
-          chats={[]}
           fixedChat={{ id: chatId, name: chatName }}
           onClose={() => setCreando(null)}
           onCreated={() => setCreando(null)}

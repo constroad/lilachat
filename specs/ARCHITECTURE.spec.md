@@ -840,3 +840,124 @@ app está rota» de «falta infraestructura» en un solo comando.
 id interno en Torre es `chat` (registro, servicio, carpetas); el hostname
 público es `lilachat.constroad.com` — no tienen por qué coincidir y no
 coinciden.
+
+## 16. La web sabía leer, no escribir (25/08/2026)
+
+Con `lilachat.constroad.com` ya en pie, José la abrió y encontró el defecto que
+ningún test cubría: **desde la web no se podía crear nada**. Ni chat, ni grupo,
+ni evento, ni encuesta. La web tenía lista + conversación + estado vacío, y todo
+lo demás vivía SOLO en la app RN.
+
+No fue un olvido puntual sino la consecuencia de haber construido F6 (la web)
+antes que F8 (agenda) y no haber vuelto: cada fase agregó pantallas al teléfono
+y ninguna las agregó al navegador.
+
+### 16.1 Un motor para los dos clientes: `planTargetChat`
+
+Un evento y una encuesta **cuelgan de una conversación** —el server saca de ahí
+los invitados, así nadie invita a alguien ajeno al chat—, pero a la persona se le
+preguntan **contactos**: pedir «elegí una conversación» para armar un cumpleaños
+la obliga a pensar en la estructura de datos.
+
+Esa traducción estaba escrita DENTRO de `CreateEventScreen` de la app. Al
+llevarla a la web habría nacido una segunda versión con otro criterio, y dos
+clientes creando grupos distintos con los mismos contactos. Se sacó a
+`shared/src/agenda.ts` con sus siete tests:
+
+| Entrada | Salida |
+| --- | --- |
+| abierto desde un chat | ese chat, sin preguntar |
+| 1 contacto | chat directo (el server no lo duplica) |
+| 2+ contactos | grupo con el nombre del evento/pregunta |
+| contacto repetido | cuenta una vez (si no, un directo se vuelve grupo de dos) |
+| sin contactos | inválido, antes de mandar nada |
+| grupo sin nombre | inválido — el server lo rechazaría con 400 al final |
+
+### 16.2 Lo que se agregó a la web
+
+- **Menú «⋮» de la lista** (existía en el diseño y no hacía nada): nuevo chat,
+  nuevo grupo, eventos y encuestas.
+- **`ContactPicker`** propio de la web, agrupado por letra, uno o varios.
+- **`AgendaOverlay`**: lo que se viene + para decidir, con RSVP y voto. Eventos
+  y encuestas comparten pantalla: son dos listas cortas que se miran juntas.
+- **El «+» del composer**, como WhatsApp: dentro de un chat se crea un evento o
+  una encuesta para ESA conversación, sin volver a elegir a nadie.
+- **Estado vacío con salida**: la lista vacía ahora ofrece «Empezar un chat».
+
+### 16.3 La copia que anunciaba dónde se guardan los mensajes
+
+El panel vacío tenía una tarjeta «Servidor propio · Tus mensajes viven en nuestra
+máquina, no en la de un tercero». José: «no me parece muy acertado decirle al
+usuario que estamos almacenando sus mensajes».
+
+Tiene razón, y el motivo importa: la frase es CIERTA y por eso mismo no va ahí.
+Nadie abre un chat familiar para que le recuerden dónde queda almacenado lo que
+escribe; el dato tranquiliza a quien montó el server y alarma a quien lo usa.
+
+Las dos tarjetas ahora son **lo que se puede hacer**: «Empezar un chat» y
+«Organizar algo». La del diseño original prometía cifrado de extremo a extremo
+para todo, que sigue sin ser cierto: eso vale solo para los chats secretos (F9).
+
+### 16.4 Y de paso, la encuesta de la app seguía pidiendo conversaciones
+
+La queja de José sobre eventos («¿por qué me pide conversaciones?») se había
+corregido solo en `CreateEventScreen`. `CreatePollScreen` seguía con el selector
+de chats. Ahora las dos usan `ContactPicker` + `planTargetChat`: la queja de una
+pantalla vale para sus hermanas.
+
+### 16.5 Sin contactos no hay nada que crear
+
+En `lilachat_db` hay DOS usuarios: José y Lila (el asistente). `GET /api/contacts`
+devuelve `{"groups":[]}`. La web ya tiene todos los botones, pero hasta que se
+registre alguien más el selector dice, honestamente, «Todavía no hay nadie más en
+Lilachat. Invita a tu familia y aparecerán acá.»
+
+## 17. El ícono: la app se publicó dos veces con el de la plantilla (25/08/2026)
+
+Lilachat 0.1.0 y 0.1.1 salieron a la tienda con **el ícono genérico de Expo** —la
+flecha azul de `assets/icon.png` que trae el `create-expo-app`—. Se vio recién al
+instalarla en el emulador: en el cajón de apps aparecía la flecha.
+
+Es un defecto barato de cometer y caro de notar: el ícono no rompe ningún test,
+no falla ningún build y solo se ve en un teléfono, que es el único lugar donde
+nadie mira durante el desarrollo.
+
+### Un SVG, seis archivos
+
+`app/scripts/iconos.mjs` genera todo desde un solo dibujo. A mano son cinco PNG
+que se desincronizan al primer retoque.
+
+| Archivo | Para qué |
+| --- | --- |
+| `icon.png` (1024) | el ícono «plano», y el de la tienda |
+| `android-icon-foreground.png` | la capa que Android RECORTA con la máscara del fabricante |
+| `android-icon-background.png` | la capa de abajo, degradado de marca |
+| `android-icon-monochrome.png` | temas dinámicos de Android 13+ |
+| `splash-icon.png` | arranque |
+| `favicon.png` | la web |
+
+**La capa de frente vive dentro del 66 % central.** El sistema la recorta con la
+máscara del fabricante —círculo, cuadrado redondeado, «squircle»—: llenar el
+lienzo entero es lo que produce íconos con las puntas comidas. En el script eso
+se consigue ampliando el `viewBox` (`-25 -25 150 150`), no redibujando.
+
+El dibujo es una burbuja de chat con un latido adentro: la burbuja dice
+«conversación» sin texto y en cualquier idioma, y el latido es el «pulse» de
+Vivid Pulse. Colores SOLO de `shared/src/tokens.ts`; ningún hex nuevo.
+
+### El APK pesaba el triple
+
+El primer intento de 0.1.2 salió en **96 MB** contra los 35.8 MB de la 0.1.1:
+`expo prebuild --clean` + `gradlew assembleRelease` a mano compila **las tres
+ABIs**. La receta correcta es `lila apk build`, que por defecto compila solo
+`arm64-v8a` — el mismo camino que ya usaba LilaStore. Cuando existe un script de
+build compartido, invocar Gradle a mano es cómo se cuelan estas diferencias.
+
+### Y una verificación mía que estaba mal
+
+El 25/08 di por instalada la 0.1.1 porque `pm list packages` mostraba
+`com.lilachat.app`. Ese paquete era un build de DESARROLLO previo (0.1.0,
+versionCode 1) que ya estaba en el emulador: la instalación desde la tienda había
+chocado por firma distinta. **Que el paquete exista no prueba que se haya
+instalado lo que uno acaba de instalar** — hay que mirar `versionName` y
+`versionCode`, o desinstalar antes.

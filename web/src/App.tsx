@@ -2,6 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bell, BellOff, LogOut } from 'lucide-react';
 import { mergeIncoming } from '@lilachat/shared';
 import { api, clearCredential, loadCredential, saveCredential, type Credential } from './api';
+import { AgendaOverlay } from './agenda/AgendaOverlay';
+import {
+  CreateEventOverlay,
+  CreatePollOverlay,
+  NewChatOverlay,
+  type ChatDestino,
+} from './agenda/CreatePanels';
 import { AccessScreens } from './auth/AccessScreens';
 import { ChatList } from './chat/ChatList';
 import { Conversation } from './chat/Conversation';
@@ -27,6 +34,19 @@ export function App() {
   const [width, setWidth] = useState(() => window.innerWidth);
   const [push, setPush] = useState(pushState);
   const [aviso, setAviso] = useState('');
+  /**
+   * Qué se está creando encima de los dos paneles.
+   *
+   * Uno solo a la vez y en un único estado: con un booleano por overlay, abrir
+   * «nuevo grupo» desde la agenda dejaba los dos apilados.
+   */
+  const [creando, setCreando] = useState<
+    | null
+    | { tipo: 'chat'; kind: 'direct' | 'group' }
+    | { tipo: 'agenda' }
+    | { tipo: 'evento'; chat: ChatDestino | null }
+    | { tipo: 'encuesta'; chat: ChatDestino | null }
+  >(null);
 
   useEffect(() => {
     const onResize = () => setWidth(window.innerWidth);
@@ -196,6 +216,9 @@ export function App() {
           me={{ name: credential.name, phone: credential.phone }}
           onSettings={() => setAviso(aviso ? '' : 'ajustes')}
           loading={chats === null}
+          onNewChat={() => setCreando({ tipo: 'chat', kind: 'direct' })}
+          onNewGroup={() => setCreando({ tipo: 'chat', kind: 'group' })}
+          onAgenda={() => setCreando({ tipo: 'agenda' })}
         />
       )}
 
@@ -209,10 +232,71 @@ export function App() {
           onSend={send}
           showBack={panel === 'conversation'}
           loading={messages === null}
+          onCreateEvent={() =>
+            setCreando({ tipo: 'evento', chat: { id: selected.id, name: selected.name } })
+          }
+          onCreatePoll={() =>
+            setCreando({ tipo: 'encuesta', chat: { id: selected.id, name: selected.name } })
+          }
         />
       ) : (
-        <EmptyState name={credential.name} />
+        <EmptyState
+          name={credential.name}
+          onNewChat={() => setCreando({ tipo: 'chat', kind: 'direct' })}
+          onAgenda={() => setCreando({ tipo: 'agenda' })}
+        />
       )}
+
+      {creando?.tipo === 'chat' ? (
+        <NewChatOverlay
+          jwt={credential.jwt}
+          kind={creando.kind}
+          onClose={() => setCreando(null)}
+          onCreated={(chatId) => {
+            setCreando(null);
+            // Se entra al chat recién creado: crear una conversación y quedarse
+            // mirando la lista obliga a buscarla entre las demás.
+            setSelectedId(chatId);
+            void loadChats();
+          }}
+        />
+      ) : null}
+
+      {creando?.tipo === 'agenda' ? (
+        <AgendaOverlay
+          jwt={credential.jwt}
+          myUserId={credential.userId}
+          onClose={() => setCreando(null)}
+          onCreateEvent={() => setCreando({ tipo: 'evento', chat: null })}
+          onCreatePoll={() => setCreando({ tipo: 'encuesta', chat: null })}
+        />
+      ) : null}
+
+      {creando?.tipo === 'evento' ? (
+        <CreateEventOverlay
+          jwt={credential.jwt}
+          chat={creando.chat}
+          onClose={() => setCreando(null)}
+          onCreated={(chatId) => {
+            setCreando(null);
+            setSelectedId(chatId);
+            void loadChats();
+          }}
+        />
+      ) : null}
+
+      {creando?.tipo === 'encuesta' ? (
+        <CreatePollOverlay
+          jwt={credential.jwt}
+          chat={creando.chat}
+          onClose={() => setCreando(null)}
+          onCreated={(chatId) => {
+            setCreando(null);
+            setSelectedId(chatId);
+            void loadChats();
+          }}
+        />
+      ) : null}
 
       {aviso === 'ajustes' ? (
         <div

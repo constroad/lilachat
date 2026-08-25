@@ -1,4 +1,5 @@
-import { MoreVertical, Search, Settings } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { CalendarDays, MessageSquarePlus, MoreVertical, Search, Settings, Users } from 'lucide-react';
 import { formatChatTimestamp, resolveChatPreview } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import type { ChatSummary } from './types';
@@ -20,6 +21,9 @@ export function ChatList({
   me,
   onSettings,
   loading,
+  onNewChat,
+  onNewGroup,
+  onAgenda,
 }: {
   chats: ChatSummary[];
   selectedChatId: string | null;
@@ -29,7 +33,37 @@ export function ChatList({
   me: { name?: string | null; phone: string };
   onSettings: () => void;
   loading: boolean;
+  onNewChat: () => void;
+  onNewGroup: () => void;
+  onAgenda: () => void;
 }) {
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Un menú que solo se cierra con su propio botón queda abierto encima de la
+  // lista mientras la persona intenta tocar un chat.
+  useEffect(() => {
+    if (!menuAbierto) return;
+    const alTocarAfuera = (evento: MouseEvent) => {
+      if (!menuRef.current?.contains(evento.target as Node)) setMenuAbierto(false);
+    };
+    const alTeclear = (evento: KeyboardEvent) => {
+      if (evento.key === 'Escape') setMenuAbierto(false);
+    };
+    window.addEventListener('mousedown', alTocarAfuera);
+    window.addEventListener('keydown', alTeclear);
+    return () => {
+      window.removeEventListener('mousedown', alTocarAfuera);
+      window.removeEventListener('keydown', alTeclear);
+    };
+  }, [menuAbierto]);
+
+  const acciones = [
+    { id: 'nuevo-chat', label: 'Nuevo chat', icon: MessageSquarePlus, run: onNewChat },
+    { id: 'nuevo-grupo', label: 'Nuevo grupo', icon: Users, run: onNewGroup },
+    { id: 'agenda', label: 'Eventos y encuestas', icon: CalendarDays, run: onAgenda },
+  ];
+
   return (
     <aside
       data-testid="panel-lista"
@@ -40,13 +74,41 @@ export function ChatList({
           <span className="text-base font-bold">L</span>
         </div>
         <h1 className="flex-1 text-lg font-bold tracking-tight">Lilachat</h1>
-        <button
-          type="button"
-          aria-label="Menú"
-          className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant hover:bg-background"
-        >
-          <MoreVertical size={18} />
-        </button>
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            data-testid="btn-menu"
+            aria-label="Menú"
+            aria-expanded={menuAbierto}
+            onClick={() => setMenuAbierto((abierto) => !abierto)}
+            className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant hover:bg-background"
+          >
+            <MoreVertical size={18} />
+          </button>
+
+          {menuAbierto ? (
+            <div
+              data-testid="menu-crear"
+              className="absolute right-0 top-10 z-20 w-56 rounded-xl border border-outline/15 bg-surface p-1.5 shadow-lg"
+            >
+              {acciones.map((accion) => (
+                <button
+                  key={accion.id}
+                  type="button"
+                  data-testid={`btn-${accion.id}`}
+                  onClick={() => {
+                    setMenuAbierto(false);
+                    accion.run();
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-background"
+                >
+                  <accion.icon size={16} className="shrink-0 text-on-surface-variant" />
+                  {accion.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
       </header>
 
       <div className="px-3 pb-2">
@@ -78,11 +140,25 @@ export function ChatList({
             ))}
           </div>
         ) : chats.length === 0 ? (
-          <p className="px-6 pt-8 text-center text-sm leading-5 text-on-surface-variant">
-            {query
-              ? 'Ninguna conversación coincide con lo que buscas.'
-              : 'Todavía no tienes conversaciones.'}
-          </p>
+          <div className="px-6 pt-8 text-center">
+            <p className="text-sm leading-5 text-on-surface-variant">
+              {query
+                ? 'Ninguna conversación coincide con lo que buscas.'
+                : 'Todavía no tienes conversaciones.'}
+            </p>
+            {/* El vacío sin salida es el que vio José: la lista decía que no hay
+                nada y no ofrecía cómo empezar. */}
+            {query ? null : (
+              <button
+                type="button"
+                data-testid="btn-empezar-chat"
+                onClick={onNewChat}
+                className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-on-primary"
+              >
+                <MessageSquarePlus size={16} /> Empezar un chat
+              </button>
+            )}
+          </div>
         ) : (
           chats.map((chat) => {
             const selected = chat.id === selectedChatId;

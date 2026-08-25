@@ -216,7 +216,6 @@ export function TabsShell({
         <CreatePollScreen
           visible
           credential={credential}
-          chats={chats}
           onClose={() => setCreating(null)}
           onCreated={() => setReloadKey((key) => key + 1)}
         />

@@ -10,6 +10,9 @@ import { textoDeInvitacion } from '../settings/actualizacion';
 /** La puerta de entrada que se ofrece primero: deja la app actualizándose sola. */
 const TIENDA_URL = 'https://lilastore.constroad.com/get';
 
+/** Cuántos contactos de la agenda se dibujan sin buscar. Ver `SeccionInvitar`. */
+const MAXIMO_INVITABLES = 30;
+
 /**
  * La lista de contactos del diseño «New Group».
  *
@@ -242,11 +245,22 @@ function SeccionInvitar({
   }
 
   const aguja = consulta.trim().toLowerCase();
-  const visibles = agenda.paraInvitar.filter((contacto) =>
+  const coinciden = agenda.paraInvitar.filter((contacto) =>
     `${contacto.nombre} ${contacto.telefono}`.toLowerCase().includes(aguja)
   );
 
-  if (visibles.length === 0) return null;
+  if (coinciden.length === 0) return null;
+
+  /**
+   * Se dibujan las primeras y no las 600.
+   *
+   * Esta sección vive dentro de un `ScrollView`, que monta TODAS las filas de
+   * una: con una agenda de 633 contactos, abrir «nuevo chat» tardaba segundos.
+   * El buscador está justo arriba y es el camino real para encontrar a alguien
+   * — nadie scrollea 600 filas.
+   */
+  const visibles = coinciden.slice(0, MAXIMO_INVITABLES);
+  const ocultos = coinciden.length - visibles.length;
 
   return (
     <View className="mt-6" testID="seccion-invitar">
@@ -281,6 +295,11 @@ function SeccionInvitar({
           </Pressable>
         </View>
       ))}
+      {ocultos > 0 ? (
+        <Text className="px-4 py-3 text-[12px] text-on-surface-variant">
+          Y {ocultos} más en tu agenda. Buscá por nombre para encontrarlos.
+        </Text>
+      ) : null}
     </View>
   );
 }

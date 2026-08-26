@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 // **`expo-contacts/legacy` y NO la raíz.** En la 57 la raíz expone la API nueva
 // (`Contact`, `getPermissionsAsync`) pero NO `getContactsAsync` ni `Fields`:
 // llamarlos ahí devuelve `undefined` y revienta al leer `Fields.PhoneNumbers`.
@@ -68,11 +68,21 @@ export function useAgendaParaInvitar(registrados: ContactoRegistrado[] | null): 
 
   const estado = resolverEstadoAgenda({ permiso, agenda, fallo });
 
-  if (estado.estado === 'listo') {
+  /**
+   * El cruce va MEMOIZADO. Son 600+ contactos por normalizar y comparar, y sin
+   * esto corría entero en cada render — incluida cada tecla del buscador, que
+   * es exactamente cuando la app tiene que responder rápido.
+   */
+  return useMemo<ResultadoAgenda>(() => {
+    if (estado.estado !== 'listo') return estado;
     // Sin los registrados todavía no se puede decidir a quién falta invitar.
     if (registrados === null) return { estado: 'cargando' };
-    return { estado: 'listo', paraInvitar: separarAgenda({ registrados, agenda: estado.agenda }).paraInvitar };
-  }
-
-  return estado;
+    return {
+      estado: 'listo',
+      paraInvitar: separarAgenda({ registrados, agenda: estado.agenda }).paraInvitar,
+    };
+    // `estado` es un objeto nuevo en cada render; lo que de verdad cambia son
+    // sus partes, y esas son las que se observan.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estado.estado, agenda, registrados, fallo, permiso]);
 }

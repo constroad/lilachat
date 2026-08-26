@@ -1198,3 +1198,55 @@ La lección del otro camino: `InviteScreen` no tenía `try/catch`, así que su
 fallo no se reportó. **Un reporte que depende de acordarse de envolver cada
 llamada no cubre nada**; lo que cubre de verdad es que el estado de error exista
 en la pantalla.
+
+## 22. Por qué se sentía lenta (26/08/2026)
+
+José: «está lento y se siente algo lenta la app entera». Medido antes de tocar
+nada, y la causa era una sola y estaba en todas partes.
+
+### 22.1 Cero listas virtualizadas
+
+```
+$ grep -c "<FlatList" src/**/*.tsx   →  0
+$ grep -c "<ScrollView" src/**/*.tsx →  11
+```
+
+**Once pantallas, ninguna virtualizada.** Un `ScrollView` monta TODAS sus filas
+al abrirse: con una agenda de 633 contactos son 633 filas de React con sus
+avatares y sus `Pressable` construidas antes de que aparezca nada en pantalla.
+La única lista que estaba bien era la de mensajes, con `FlashList`.
+
+| Pantalla | Antes | Ahora |
+| --- | --- | --- |
+| Invitar (633 contactos) | `ScrollView` + `map` | `FlashList` |
+| Lista de chats | `ScrollView` + `map` | `FlashList` |
+| Sección «invitar» en nuevo chat | `map` de 600 dentro de un `ScrollView` | primeras 30 + buscador |
+
+La sección de invitar vive DENTRO del `ScrollView` del selector, así que
+virtualizarla sola no se puede: se acotan las primeras 30 y se dice cuántas
+quedan. El buscador está justo arriba y es el camino real — nadie scrollea 600
+filas para encontrar a su tía.
+
+### 22.2 El cruce corría en cada tecla
+
+`separarAgenda` —normalizar y comparar 600+ números— se ejecutaba en el cuerpo
+del hook, o sea **en cada render**, incluida cada letra que se escribe en el
+buscador. Justo cuando la app tiene que responder rápido. Ahora va en `useMemo`.
+
+### 22.3 Los chats no cargaban más al scrollear
+
+El server paginaba desde siempre (`beforeSeq`, 50 por página, tope 100) y el
+cliente **nunca se lo pidió**: se traía la primera página por el socket y
+scrolleando hacia arriba la conversación simplemente se terminaba.
+
+Ahora `onStartReached` pide la anterior, con `chat/paginacion.ts` decidiendo:
+
+- **Freno de `cargando`**: el evento se dispara en cada cuadro mientras el dedo
+  se mueve; sin freno se piden tres páginas iguales y la lista salta.
+- **Se ignora a los optimistas**: van con `MAX_SAFE_INTEGER` como `seq` y
+  tomarlos como límite haría que el server devuelva la conversación entera.
+- **El final se DICE**: «Este es el principio de la conversación». Sin eso, quien
+  llega arriba no sabe si ya vio todo o si falta cargar.
+
+Y no se trae el histórico al abrir: arrastrar años de mensajes en cada apertura
+es justo lo que hace que una app se sienta pesada.

@@ -63,7 +63,18 @@ export function ChatScreen({
     enabled: Boolean(encrypted),
   });
   const sesionLista = encrypted && secreto.estado === 'listo' ? secreto : null;
-  const { messages, pending, connected, othersRead, send, sendMedia, markRead } = useChat({
+  const {
+    messages,
+    pending,
+    connected,
+    othersRead,
+    send,
+    sendMedia,
+    markRead,
+    cargandoAnteriores,
+    hayAnteriores,
+    cargarAnteriores,
+  } = useChat({
     chatId,
     token: credential.jwt,
     seal: sesionLista?.seal,
@@ -268,6 +279,25 @@ export function ChatScreen({
       <FlashList
         data={rows}
         testID="lista-mensajes"
+        // El scroll hacia arriba trae los mensajes viejos, como WhatsApp. El
+        // umbral es 0.5 pantallas: pedirlos recién al tocar el borde deja un
+        // hueco visible mientras viajan.
+        onStartReached={() => void cargarAnteriores()}
+        onStartReachedThreshold={0.5}
+        maintainVisibleContentPosition={{ startRenderingFromBottom: true }}
+        ListHeaderComponent={
+          cargandoAnteriores ? (
+            <View className="items-center py-3" testID="cargando-anteriores">
+              <ActivityIndicator color="#6b38d4" />
+            </View>
+          ) : !hayAnteriores && rows.length > 0 ? (
+            // El final de la conversación se DICE: sin esto, quien scrollea
+            // hasta arriba no sabe si ya vio todo o si falta cargar.
+            <Text className="py-3 text-center text-[11px] text-on-surface-variant">
+              Este es el principio de la conversación
+            </Text>
+          ) : null
+        }
         keyExtractor={(row) => (isPending(row) ? `p-${row.clientKey}` : `m-${row.seq}`)}
         contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 8 }}
         renderItem={({ item, index }) => {

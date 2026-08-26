@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { decidirCargaAnterior } from './paginacion';
+import { listOlderMessages } from '../api/client';
 import * as Crypto from 'expo-crypto';
 import {
   advanceCursors,
@@ -56,6 +58,63 @@ export function useChat(params: {
   );
   const [pending, setPending] = useState<PendingMessage[]>([]);
   const [connected, setConnected] = useState(false);
+  /**
+   * El scroll hacia arriba, como WhatsApp.
+   *
+   * `hayAnteriores` arranca en `true` porque todavía no se sabe: se apaga solo
+   * cuando una página vuelve más corta de lo pedido, que es la única señal
+   * confiable de haber llegado al principio de la conversación.
+   */
+  const [cargandoAnteriores, setCargandoAnteriores] = useState(false);
+  const [hayAnteriores, setHayAnteriores] = useState(true);
+
+  /**
+   * Refs y no estado dentro de `cargarAnteriores`.
+   *
+   * El callback lo llama la lista al llegar arriba, y si dependiera del estado
+   * se recrearía en cada mensaje nuevo — la lista lo vería como una prop
+   * distinta y volvería a disparar. Con refs, la función es estable y lee
+   * siempre lo último.
+   */
+  const mensajesRef = useRef<ChatMessage[]>([]);
+  const cargandoRef = useRef(false);
+  const hayMasRef = useRef(true);
+
+  useEffect(() => {
+    mensajesRef.current = messages;
+  }, [messages]);
+
+  const cargarAnteriores = useCallback(async () => {
+    const decision = decidirCargaAnterior({
+      mensajes: mensajesRef.current,
+      cargando: cargandoRef.current,
+      hayMas: hayMasRef.current,
+    });
+    if (!decision.cargar) return;
+
+    cargandoRef.current = true;
+    setCargandoAnteriores(true);
+
+    const resultado = await listOlderMessages(
+      { chatId: params.chatId, beforeSeq: decision.beforeSeq, limit: decision.limit },
+      params.token
+    );
+
+    if (resultado.ok) {
+      const pagina = resultado.data.messages as ChatMessage[];
+      // Una página más corta que el tope significa que no hay nada antes. Es la
+      // única señal confiable: una página VACÍA también lo dice, pero esperar a
+      // que llegue vacía cuesta un pedido de más.
+      if (pagina.length < decision.limit) {
+        hayMasRef.current = false;
+        setHayAnteriores(false);
+      }
+      if (pagina.length > 0) setMessages((current) => mergeBySeq(current, pagina));
+    }
+
+    cargandoRef.current = false;
+    setCargandoAnteriores(false);
+  }, [params.chatId, params.token]);
   /**
    * Acuses del OTRO, en vivo. Antes llegaban como prop desde la lista y no se
    * actualizaban nunca: si el otro leía con el chat abierto, el check jamás
@@ -203,5 +262,16 @@ export function useChat(params: {
   );
 
   // `visibles`, no `messages`: la pantalla recibe lo ya descifrado.
-  return { messages: visibles, pending, connected, othersRead, send, sendMedia, markRead };
+  return {
+    messages: visibles,
+    pending,
+    connected,
+    othersRead,
+    send,
+    sendMedia,
+    markRead,
+    cargandoAnteriores,
+    hayAnteriores,
+    cargarAnteriores,
+  };
 }

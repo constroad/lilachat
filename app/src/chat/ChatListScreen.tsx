@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, Text, View } from 'react-native';
 import { Lock, MessageCircle, PenSquare } from 'lucide-react-native';
 import { formatChatTimestamp, resolveChatPreview } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { connectSocket } from './socketClient';
 import { configureNotificationHandler, registerPushToken } from './pushRegistration';
 import { listChats, type ChatSummary } from '../api/client';
+import { FlashList } from '@shopify/flash-list';
 
 /**
  * La lista de chats (diseño Stitch «Lilachat: Chats»).
@@ -133,18 +134,12 @@ export function ChatListScreen({
           </Text>
         </View>
       ) : (
-        <ScrollView
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true);
-                void load().finally(() => setRefreshing(false));
-              }}
-            />
-          }
-        >
-          {chats.map((chat) => (
+        <FlashList
+          data={chats}
+          keyExtractor={(chat) => chat.id}
+          // Virtualizada: un ScrollView monta TODAS las filas de una y la
+          // lista tarda en aparecer en cuanto hay unas cuantas conversaciones.
+          renderItem={({ item: chat }) => (
             <Pressable
               key={chat.id}
               testID={`chat-${chat.id}`}
@@ -234,8 +229,17 @@ export function ChatListScreen({
                 </View>
               </View>
             </Pressable>
-          ))}
-        </ScrollView>
+          )}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                void load().finally(() => setRefreshing(false));
+              }}
+            />
+          }
+        />
       )}
 
       {/* FAB de conversación nueva: está en el diseño y faltaba por completo. */}

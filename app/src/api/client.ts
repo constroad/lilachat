@@ -91,6 +91,24 @@ async function get<T>(route: string, token: string, fetchImpl: FetchLike = fetch
 export const listChats = (token: string, fetchImpl?: FetchLike) =>
   get<{ chats: ChatSummary[] }>('/api/chats', token, fetchImpl);
 
+/**
+ * Los mensajes ANTERIORES a uno dado — el scroll hacia arriba del chat.
+ *
+ * El resto de la conversación llega por el socket con cursores; esto es solo
+ * para el histórico viejo, que el sync no arrastra a propósito: traer años de
+ * mensajes al abrir un chat es justo lo que hace que una app se sienta pesada.
+ */
+export const listOlderMessages = (
+  params: { chatId: string; beforeSeq: number; limit: number },
+  token: string,
+  fetchImpl?: FetchLike
+) =>
+  get<{ messages: unknown[] }>(
+    `/api/chats/${params.chatId}/messages?beforeSeq=${params.beforeSeq}&limit=${params.limit}`,
+    token,
+    fetchImpl
+  );
+
 export const refreshSession = (
   params: { deviceId: string; deviceSecret: string },
   fetchImpl?: FetchLike

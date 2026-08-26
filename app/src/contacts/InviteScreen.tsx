@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Search, Send, X } from 'lucide-react-native';
 import type { Contact } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
@@ -102,6 +103,20 @@ export function InviteScreen({
           </View>
         ) : null}
 
+        {/* FlashList y no ScrollView: con 633 contactos, un ScrollView monta
+            las 633 filas de una y la pantalla tarda segundos en aparecer.
+            Virtualizada solo existen las visibles. */}
+        {agenda.estado === 'listo' && visibles.length > 0 ? (
+          <FlashList
+            data={visibles}
+            testID="lista-invitables"
+            keyExtractor={(contacto) => contacto.id}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: margenes.pie }}
+            renderItem={({ item }) => (
+              <FilaInvitable contacto={item} onInvitar={() => compartir(item.nombre)} />
+            )}
+          />
+        ) : (
         <ScrollView
           className="flex-1"
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: margenes.pie }}
@@ -137,40 +152,49 @@ export function InviteScreen({
               accion="Compartir el enlace"
               onAccion={() => compartir('un amigo')}
             />
-          ) : (
-            visibles.map((contacto) => (
-              <View
-                key={contacto.id}
-                testID={`contacto-tel-${contacto.id}`}
-                className="mb-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface px-4 py-2"
-              >
-                <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Text className="text-sm font-bold text-primary">
-                    {contacto.nombre.slice(0, 1).toUpperCase()}
-                  </Text>
-                </View>
-                <View className="min-w-0 flex-1">
-                  <Text className="text-sm font-semibold text-on-surface" numberOfLines={1}>
-                    {contacto.nombre}
-                  </Text>
-                  <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>
-                    {contacto.telefono}
-                  </Text>
-                </View>
-                <Pressable
-                  testID={`invitar-${contacto.id}`}
-                  onPress={() => compartir(contacto.nombre)}
-                  className="min-h-[44px] flex-row items-center gap-1.5 rounded-full bg-primary px-4"
-                >
-                  <Send size={14} color="#ffffff" />
-                  <Text className="text-[13px] font-semibold text-on-primary">Invitar</Text>
-                </Pressable>
-              </View>
-            ))
-          )}
+          ) : null}
         </ScrollView>
+        )}
       </View>
     </Modal>
+  );
+}
+
+/** Una fila de la agenda. Aparte para que la lista virtualizada la recicle. */
+function FilaInvitable({
+  contacto,
+  onInvitar,
+}: {
+  contacto: { id: string; nombre: string; telefono: string };
+  onInvitar: () => void;
+}) {
+  return (
+    <View
+      testID={`contacto-tel-${contacto.id}`}
+      className="mb-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface px-4 py-2"
+    >
+      <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+        <Text className="text-sm font-bold text-primary">
+          {contacto.nombre.slice(0, 1).toUpperCase()}
+        </Text>
+      </View>
+      <View className="min-w-0 flex-1">
+        <Text className="text-sm font-semibold text-on-surface" numberOfLines={1}>
+          {contacto.nombre}
+        </Text>
+        <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>
+          {contacto.telefono}
+        </Text>
+      </View>
+      <Pressable
+        testID={`invitar-${contacto.id}`}
+        onPress={onInvitar}
+        className="min-h-[44px] flex-row items-center gap-1.5 rounded-full bg-primary px-4"
+      >
+        <Send size={14} color="#ffffff" />
+        <Text className="text-[13px] font-semibold text-on-primary">Invitar</Text>
+      </Pressable>
+    </View>
   );
 }
 

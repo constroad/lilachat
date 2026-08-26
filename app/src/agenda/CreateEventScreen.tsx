@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
-import { Bell, Calendar, Check, MapPin, Send, Sparkles, UserPlus, X } from 'lucide-react-native';
+import { Bell, Calendar, MapPin, Send, Sparkles, UserPlus, X } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { planTargetChat, type Contact } from '@lilachat/shared';
-import type { ChatSummary } from '../api/client';
 import { agendaPost } from './agendaApi';
 import { ContactPicker } from '../contacts/ContactPicker';
 import { createChat } from '../contacts/contactsApi';
@@ -39,14 +38,12 @@ const OPCIONES_CUANDO = [
 export function CreateEventScreen({
   visible,
   credential,
-  chats,
   fixedChat,
   onClose,
   onCreated,
 }: {
   visible: boolean;
   credential: Credential;
-  chats: ChatSummary[];
   /** Abierto desde una conversación: ese es el destino y no se pregunta. */
   fixedChat?: { id: string; name: string };
   onClose: () => void;

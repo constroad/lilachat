@@ -120,7 +120,6 @@ export function TabsShell({
             credential={credential}
             onOpenChat={onOpenChat}
             onNewChat={() => setNewChat(true)}
-            onLogout={onLogout}
           />
         ) : tab === 'encuestas' ? (
           <PollsScreen credential={credential} onCreate={() => setCreating('poll')} />
@@ -259,6 +258,13 @@ export function TabsShell({
         }}
       />
 
+      <InviteScreen
+        visible={invitando}
+        miNombre={credential.name ?? null}
+        enlaceApp={enlaceApp}
+        onClose={() => setInvitando(false)}
+      />
+
       {/* Pantalla completa y no una pestaña: el respaldo se visita de vez en
           cuando, y una sexta pestaña permanente le daría un peso que no tiene. */}
       <Modal visible={showBackup} animationType="slide" onRequestClose={() => setShowBackup(false)}>
@@ -286,7 +292,6 @@ export function TabsShell({
         <CreateEventScreen
           visible
           credential={credential}
-          chats={chats}
           onClose={() => setCreating(null)}
           onCreated={() => setReloadKey((key) => key + 1)}
         />

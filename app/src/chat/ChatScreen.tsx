@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import {
@@ -215,7 +214,6 @@ export function ChatScreen({
         <CreateEventScreen
           visible
           credential={credential}
-          chats={[]}
           fixedChat={{ id: chatId, name: chatName }}
           onClose={() => setCreando(null)}
           onCreated={() => setCreando(null)}

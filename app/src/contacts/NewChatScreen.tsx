@@ -163,6 +163,9 @@ export function NewChatScreen({
             selected={elegidos.map((contact) => contact.id)}
             onToggle={alternar}
             multiple={modo === 'grupo'}
+            // Solo en «nuevo chat»: armando un grupo, invitar a alguien que
+            // todavía no está no ayuda — no se lo puede agregar igual.
+            invitacion={modo === 'directo' ? { miNombre: credential.name ?? null, enlaceApp: '' } : undefined}
             header={
               modo === 'directo' ? (
                 <>

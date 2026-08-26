@@ -6,6 +6,8 @@
       "@lilachat/shared": [
         "../shared/src/index.ts"
       ]
-    }
+    },
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   }
 }

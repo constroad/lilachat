@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { Lock, Camera, MessageCircle, PenSquare, Search } from 'lucide-react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Lock, MessageCircle, PenSquare } from 'lucide-react-native';
 import { formatChatTimestamp, resolveChatPreview } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { connectSocket } from './socketClient';
@@ -19,12 +19,10 @@ export function ChatListScreen({
   credential,
   onOpenChat,
   onNewChat,
-  onLogout,
 }: {
   credential: Credential;
   onOpenChat: (chat: ChatSummary) => void;
   onNewChat: () => void;
-  onLogout: () => void;
 }) {
   const [chats, setChats] = useState<ChatSummary[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);

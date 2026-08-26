@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { CloudUpload, HardDrive, RefreshCw, Server, TriangleAlert } from 'lucide-react-native';
-import { formatBytes, formatEventWhen } from '@lilachat/shared';
+import { formatEventWhen } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { getBackupStatus, runBackupNow, type BackupStatus } from './backupApi';
 

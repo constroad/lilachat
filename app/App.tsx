@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ErrorBoundary } from './src/ui/ErrorBoundary';
 import './global.css';
 import { refreshSession } from './src/api/client';
 import {
@@ -81,6 +82,9 @@ export default function App() {
     // de cero. Sin él, todas las pantallas creen que no hay barras y el botón
     // del pie termina debajo de la de Android.
     <SafeAreaProvider>
+      {/* Envuelve TODO: un error de render dejaba la pantalla en blanco sin
+          explicación para nadie, ni siquiera para nosotros. */}
+      <ErrorBoundary pantalla="app">
       <View className="flex-1 bg-background">
       <StatusBar style="dark" />
       {boot.phase === 'loading' ? (
@@ -123,6 +127,7 @@ export default function App() {
         />
       )}
       </View>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }

@@ -12,3 +12,5 @@ export * from './contacts.js';
 export * from './e2ee.js';
 export * from './call.js';
 export * from './agenda.js';
+export * from './crashReport.js';
+export * from './agendaLocal.js';

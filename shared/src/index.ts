@@ -14,3 +14,4 @@ export * from './call.js';
 export * from './agenda.js';
 export * from './crashReport.js';
 export * from './agendaLocal.js';
+export * from './invitacion.js';

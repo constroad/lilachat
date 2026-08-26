@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { groupContactsByLetter, type Contact } from '@lilachat/shared';
+import { groupContactsByLetter, validarInvitacion, type Contact } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import { InvitationModel, UserModel } from './models.js';
 import { asyncRoute, requireSession } from './requireSession.js';
@@ -16,6 +16,46 @@ import { asyncRoute, requireSession } from './requireSession.js';
 export function buildContactRouter(): Router {
   const router = Router();
   router.use(requireSession);
+
+  /**
+   * Invitar a alguien: crear su ADMISIÓN.
+   *
+   * Sin esto, `POST /auth/otp/request` no le manda nada —y contesta 200 igual,
+   * para no revelar quién existe—, así que la persona instala la app y no puede
+   * entrar nunca. Le pasó a Wilson el 26/08/2026: el botón «Invitar» compartía
+   * el enlace de descarga y no daba de alta a nadie.
+   *
+   * **Solo desde una sesión.** Un endpoint abierto que crea admisiones convierte
+   * el chat familiar en un registro público: cualquiera se auto-invitaría.
+   *
+   * Es idempotente: invitar dos veces al mismo número no crea dos filas ni
+   * revive una revocada por error — `status` se fija explícitamente.
+   */
+  router.post('/invite', asyncRoute(async (req, res) => {
+    const yo = await UserModel.findById(req.session!.userId).select('phone').lean();
+
+    const validada = validarInvitacion({
+      telefono: String(req.body?.phone ?? ''),
+      yoSoy: yo?.phone ?? '',
+    });
+    if (!validada.ok) return res.status(400).json({ message: validada.motivo });
+
+    // Ya es usuario: no hace falta admitirlo y decirlo no filtra nada que quien
+    // invita no pueda ver igual en sus contactos.
+    const yaEs = await UserModel.findOne({ phone: validada.phone }).select('_id').lean();
+    if (yaEs) return res.status(200).json({ estado: 'ya-esta' });
+
+    await InvitationModel.updateOne(
+      { phone: validada.phone },
+      {
+        $set: { status: 'invited', invitedBy: String(req.session!.userId) },
+        $setOnInsert: { phone: validada.phone },
+      },
+      { upsert: true }
+    );
+
+    res.status(201).json({ estado: 'invitado' });
+  }));
 
   router.get('/', asyncRoute(async (req, res) => {
     const me = req.session!.userId;

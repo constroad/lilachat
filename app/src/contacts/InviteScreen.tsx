@@ -6,7 +6,7 @@ import type { Contact } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { useMargenes } from '../ui/useMargenes';
 import { textoDeInvitacion } from '../settings/actualizacion';
-import { listContacts } from './contactsApi';
+import { invitarContacto, listContacts } from './contactsApi';
 import { useAgendaParaInvitar } from './useAgendaParaInvitar';
 
 /**
@@ -38,6 +38,7 @@ export function InviteScreen({
   const margenes = useMargenes();
   const [registrados, setRegistrados] = useState<Contact[] | null>(null);
   const [consulta, setConsulta] = useState('');
+  const [aviso, setAviso] = useState<string | null>(null);
 
   const cargarRegistrados = useCallback(async () => {
     const resultado = await listContacts(credential.jwt);
@@ -54,15 +55,33 @@ export function InviteScreen({
 
   const agenda = useAgendaParaInvitar(registrados);
 
-  const compartir = (nombre: string) =>
-    void Share.share({
+  /**
+   * Invitar de verdad: primero se CREA la admisión y recién después se comparte
+   * el enlace. Al revés —o sin el primer paso, que es como nació— la persona
+   * instala la app y no puede entrar: el server no le manda el código a alguien
+   * sin admisión, y contesta 200 igual para no revelar quién existe.
+   */
+  const invitar = async (contacto: { nombre: string; telefono: string } | null) => {
+    if (contacto) {
+      const alta = await invitarContacto(credential.jwt, contacto.telefono);
+      if (!alta.ok) {
+        // Se avisa y NO se comparte: mandar el enlace sabiendo que no va a poder
+        // entrar es hacerle perder el tiempo a dos personas.
+        setAviso(alta.message ?? 'No se pudo habilitar a esa persona. Probá de nuevo.');
+        return;
+      }
+      setAviso(null);
+    }
+
+    await Share.share({
       message: textoDeInvitacion({
         tienda: TIENDA,
         app: enlaceApp,
         deParte: credential.name ?? null,
       }),
-      title: `Invitar a ${nombre}`,
+      title: contacto ? `Invitar a ${contacto.nombre}` : 'Invitar a Lilachat',
     });
+  };
 
   const aguja = consulta.trim().toLowerCase();
   const visibles =
@@ -89,6 +108,12 @@ export function InviteScreen({
           <Text className="flex-1 text-xl font-bold text-on-surface">Invitar</Text>
         </View>
 
+        {aviso ? (
+          <Text testID="aviso-invitar" className="px-4 pb-2 text-[13px] text-error">
+            {aviso}
+          </Text>
+        ) : null}
+
         {agenda.estado === 'listo' ? (
           <View className="mx-4 mb-2 flex-row items-center gap-2 rounded-full bg-surface px-3 py-2">
             <Search size={16} color="#7b7486" />
@@ -113,7 +138,7 @@ export function InviteScreen({
             keyExtractor={(contacto) => contacto.id}
             contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: margenes.pie }}
             renderItem={({ item }) => (
-              <FilaInvitable contacto={item} onInvitar={() => compartir(item.nombre)} />
+              <FilaInvitable contacto={item} onInvitar={() => void invitar(item)} />
             )}
           />
         ) : (
@@ -130,7 +155,7 @@ export function InviteScreen({
               titulo="Sin acceso a tus contactos"
               cuerpo="Lilachat necesita leer tu agenda para mostrarte a quién invitar. Se lee en el teléfono y no se envía a ningún lado."
               accion="Compartir el enlace igual"
-              onAccion={() => compartir('un amigo')}
+              onAccion={() => void invitar(null)}
             />
           ) : agenda.estado === 'error' ? (
             // El detalle va a la vista, no solo al log: sin él, «no se pudo» es
@@ -139,7 +164,7 @@ export function InviteScreen({
               titulo="No pudimos leer tu agenda"
               cuerpo={`Ya nos avisó solo. Podés compartir el enlace igual.\n\n(${agenda.mensaje})`}
               accion="Compartir el enlace"
-              onAccion={() => compartir('un amigo')}
+              onAccion={() => void invitar(null)}
             />
           ) : visibles.length === 0 ? (
             <Aviso
@@ -150,7 +175,7 @@ export function InviteScreen({
                   : 'No encontramos a nadie de tu agenda que falte invitar.'
               }
               accion="Compartir el enlace"
-              onAccion={() => compartir('un amigo')}
+              onAccion={() => void invitar(null)}
             />
           ) : null}
         </ScrollView>

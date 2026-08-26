@@ -30,6 +30,22 @@ async function call<T>(route: string, jwt: string, init: RequestInit = {}): Prom
 
 export const listContacts = (jwt: string) => call<{ groups: ContactGroup[] }>('/api/contacts', jwt);
 
+/**
+ * Invitar: CREAR la admisión, no solo compartir un enlace.
+ *
+ * Sin esto el server no le manda el código a esa persona —y contesta 200 igual,
+ * para no revelar quién existe—, así que instala la app y no puede entrar nunca.
+ *
+ * **Viaja UN número, el que la persona eligió.** La agenda sigue sin salir del
+ * teléfono; lo que sale es el contacto que se decidió invitar, que es el mínimo
+ * que el server necesita para dejarlo pasar.
+ */
+export const invitarContacto = (jwt: string, phone: string) =>
+  call<{ estado: 'invitado' | 'ya-esta' }>('/api/contacts/invite', jwt, {
+    method: 'POST',
+    body: JSON.stringify({ phone }),
+  });
+
 export const createChat = (
   jwt: string,
   body: { kind: 'direct' | 'group'; memberIds: string[]; name?: string; encrypted?: boolean }

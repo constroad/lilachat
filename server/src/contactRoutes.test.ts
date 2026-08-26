@@ -150,3 +150,84 @@ describe('POST /api/chats — el 1:1 no se duplica', () => {
     expect(respuesta.status).toBe(400);
   });
 });
+
+/**
+ * Invitar CREA la admisión — el paso que faltaba.
+ *
+ * Wilson instaló Lilachat el 26/08/2026 y no le llegaba el código ni por
+ * WhatsApp ni por correo. No era el envío: `POST /auth/otp/request` **no manda
+ * nada** a un número sin admisión y contesta 200 igual, para no revelar quién
+ * existe. El botón «Invitar» compartía el APK y no daba de alta a nadie, así que
+ * la persona quedaba instalando una app en la que no podía entrar.
+ */
+describe('POST /api/contacts/invite', () => {
+  it('crea la admisión, que es lo que habilita el código', async () => {
+    const respuesta = await request(app)
+      .post('/api/contacts/invite')
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ phone: '+51 988 777 666' });
+
+    expect(respuesta.status).toBe(201);
+    const creada = await InvitationModel.findOne({ phone: '988777666' }).lean();
+    expect(creada?.status).toBe('invited');
+    expect(creada?.invitedBy).toBe(String(yo));
+  });
+
+  /** La agenda guarda el número con espacios y prefijo; se admite normalizado. */
+  it('normaliza el número antes de guardarlo', async () => {
+    await request(app)
+      .post('/api/contacts/invite')
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ phone: '988-777-666' });
+
+    expect(await InvitationModel.countDocuments({ phone: '988777666' })).toBe(1);
+  });
+
+  /** Tocar «Invitar» dos veces no puede dejar dos filas. */
+  it('invitar dos veces no duplica', async () => {
+    for (const intento of [1, 2]) {
+      void intento;
+      await request(app)
+        .post('/api/contacts/invite')
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ phone: '988777666' });
+    }
+
+    expect(await InvitationModel.countDocuments({ phone: '988777666' })).toBe(1);
+  });
+
+  it('a quien ya es usuario no lo vuelve a invitar', async () => {
+    const respuesta = await request(app)
+      .post('/api/contacts/invite')
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ phone: '999000111' });
+
+    expect(respuesta.status).toBe(200);
+    expect(respuesta.body.estado).toBe('ya-esta');
+  });
+
+  it('un número inválido se rechaza con motivo', async () => {
+    const respuesta = await request(app)
+      .post('/api/contacts/invite')
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ phone: 'no soy un número' });
+
+    expect(respuesta.status).toBe(400);
+    expect(respuesta.body.message).toBeTruthy();
+    expect(await InvitationModel.countDocuments({ phone: '' })).toBe(0);
+  });
+
+  /**
+   * **La regla que sostiene todo lo demás.** Un endpoint abierto que crea
+   * admisiones convierte el chat familiar en un registro público: cualquiera se
+   * auto-invitaría y el gate anti-enumeración del OTP dejaría de significar nada.
+   */
+  it('sin sesión no se puede invitar a nadie', async () => {
+    const respuesta = await request(app)
+      .post('/api/contacts/invite')
+      .send({ phone: '988777666' });
+
+    expect(respuesta.status).toBe(401);
+    expect(await InvitationModel.countDocuments({ phone: '988777666' })).toBe(0);
+  });
+});

@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Share, Text, TextInput, View } from 'react-nativ
 import { Check, Search } from 'lucide-react-native';
 import type { Contact, ContactGroup } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
-import { listContacts } from './contactsApi';
+import { invitarContacto, listContacts } from './contactsApi';
 import { useAgendaParaInvitar } from './useAgendaParaInvitar';
 import { textoDeInvitacion } from '../settings/actualizacion';
 
@@ -163,6 +163,7 @@ export function ContactPicker({
         )}
         {invitacion ? (
           <SeccionInvitar
+            jwt={credential.jwt}
             registrados={groups?.flatMap((grupo) => grupo.contacts) ?? null}
             miNombre={invitacion.miNombre}
             enlaceApp={invitacion.enlaceApp}
@@ -181,23 +182,39 @@ export function ContactPicker({
  * toca el lápiz: primero con quién puede hablar, después a quién falta traer.
  */
 function SeccionInvitar({
+  jwt,
   registrados,
   miNombre,
   enlaceApp,
   consulta,
 }: {
+  jwt: string;
   registrados: Contact[] | null;
   miNombre: string | null;
   enlaceApp: string;
   consulta: string;
 }) {
   const agenda = useAgendaParaInvitar(registrados);
+  const [aviso, setAviso] = useState<string | null>(null);
 
-  const compartir = (nombre: string) =>
-    void Share.share({
+  /**
+   * Primero se CREA la admisión, después se comparte. Sin el primer paso la
+   * persona instala la app y el server nunca le manda el código.
+   */
+  const invitar = async (contacto: { nombre: string; telefono: string } | null) => {
+    if (contacto) {
+      const alta = await invitarContacto(jwt, contacto.telefono);
+      if (!alta.ok) {
+        setAviso(alta.message ?? 'No se pudo habilitar a esa persona.');
+        return;
+      }
+      setAviso(null);
+    }
+    await Share.share({
       message: textoDeInvitacion({ tienda: TIENDA_URL, app: enlaceApp, deParte: miNombre }),
-      title: `Invitar a ${nombre}`,
+      title: contacto ? `Invitar a ${contacto.nombre}` : 'Invitar a Lilachat',
     });
+  };
 
   if (agenda.estado === 'cargando') return null;
 
@@ -214,7 +231,7 @@ function SeccionInvitar({
         </Text>
         <Pressable
           testID="btn-compartir-enlace"
-          onPress={() => compartir('un amigo')}
+          onPress={() => void invitar(null)}
           className="mt-3 min-h-[48px] items-center justify-center rounded-xl bg-primary px-6"
         >
           <Text className="text-sm font-semibold text-on-primary">Compartir el enlace</Text>
@@ -235,7 +252,7 @@ function SeccionInvitar({
         </Text>
         <Pressable
           testID="btn-compartir-enlace"
-          onPress={() => compartir('un amigo')}
+          onPress={() => void invitar(null)}
           className="mt-3 min-h-[48px] items-center justify-center rounded-xl bg-primary px-6"
         >
           <Text className="text-sm font-semibold text-on-primary">Compartir el enlace</Text>
@@ -288,13 +305,18 @@ function SeccionInvitar({
           </View>
           <Pressable
             testID={`btn-invitar-${contacto.id}`}
-            onPress={() => compartir(contacto.nombre)}
+            onPress={() => void invitar(contacto)}
             className="min-h-[44px] items-center justify-center rounded-full bg-primary/[0.10] px-4"
           >
             <Text className="text-[13px] font-semibold text-primary">Invitar</Text>
           </Pressable>
         </View>
       ))}
+      {aviso ? (
+        <Text testID="aviso-invitar" className="px-4 pb-1 text-[12px] text-error">
+          {aviso}
+        </Text>
+      ) : null}
       {ocultos > 0 ? (
         <Text className="px-4 py-3 text-[12px] text-on-surface-variant">
           Y {ocultos} más en tu agenda. Buscá por nombre para encontrarlos.

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
-import { ArrowLeft, Camera, ChevronRight, CloudUpload, Search } from 'lucide-react-native';
+import { Linking, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { ArrowLeft, Camera, ChevronRight, CloudUpload, RefreshCw, Search, UserPlus } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { listChats, type ChatSummary } from '../api/client';
 import { ChatListScreen } from '../chat/ChatListScreen';
@@ -9,9 +9,12 @@ import { CreatePollScreen } from '../agenda/CreatePollScreen';
 import { CreateReminderScreen } from '../agenda/CreateReminderScreen';
 import { AgendaScreen } from '../agenda/AgendaScreen';
 import { PollsScreen } from '../agenda/PollsScreen';
+import { InviteScreen } from '../contacts/InviteScreen';
 import { NewChatScreen } from '../contacts/NewChatScreen';
 import { publishPublicKey } from '../crypto/deviceKeys';
 import { BackupScreen } from '../settings/BackupScreen';
+import type { ResultadoDelChequeo } from '../settings/actualizacion';
+import { buscarActualizacion, versionActual } from '../settings/versionApi';
 import { AppHeader, BottomNav, type Tab } from './BottomNav';
 import { useMargenes } from './useMargenes';
 
@@ -38,6 +41,28 @@ export function TabsShell({
   const [chats, setChats] = useState<ChatSummary[]>([]);
   const [reloadKey, setReloadKey] = useState(0);
   const [showBackup, setShowBackup] = useState(false);
+  const [invitando, setInvitando] = useState(false);
+  const [chequeo, setChequeo] = useState<ResultadoDelChequeo | null>(null);
+  const [verificando, setVerificando] = useState(false);
+  const [enlaceApp, setEnlaceApp] = useState('');
+
+  /**
+   * Busca la versión publicada y, si hay una más nueva, abre su descarga.
+   *
+   * La app NO se instala a sí misma: eso lo hace Android con el APK bajado, y
+   * el camino cómodo es el navegador. Quien tenga LilaStore la va a actualizar
+   * desde ahí con verificación de `sha256`; este botón es para quien la instaló
+   * directo y no tiene la tienda.
+   */
+  const verificar = async () => {
+    if (verificando) return;
+    setVerificando(true);
+    const { resultado, downloadUrl } = await buscarActualizacion();
+    setChequeo(resultado);
+    setEnlaceApp(downloadUrl);
+    setVerificando(false);
+    if (resultado.estado === 'hay-nueva' && downloadUrl) void Linking.openURL(downloadUrl);
+  };
   const [newChat, setNewChat] = useState(false);
 
   // Los chats se cargan acá porque los necesitan TRES pantallas: la lista, y
@@ -138,6 +163,57 @@ export function TabsShell({
                 <Text className="text-sm font-semibold text-on-surface">Copia de seguridad</Text>
                 <Text className="text-[11px] text-on-surface-variant">
                   Tus chats, respaldados cada noche
+                </Text>
+              </View>
+              <ChevronRight size={18} color="#7b7486" />
+            </Pressable>
+
+            <Text className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
+              Lilachat
+            </Text>
+
+            <Pressable
+              testID="btn-invitar"
+              onPress={() => setInvitando(true)}
+              className="min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4"
+            >
+              <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                <UserPlus size={18} color="#6b38d4" />
+              </View>
+              <View className="min-w-0 flex-1">
+                <Text className="text-sm font-semibold text-on-surface">Invitar a alguien</Text>
+                <Text className="text-[11px] text-on-surface-variant">
+                  Desde tus contactos, con el enlace de descarga
+                </Text>
+              </View>
+              <ChevronRight size={18} color="#7b7486" />
+            </Pressable>
+
+            {/* «Buscar actualizaciones». Se dispara con un toque y NO al abrir
+                ajustes: un pedido de red cada vez que alguien entra acá es
+                tráfico que nadie pidió. */}
+            <Pressable
+              testID="btn-actualizaciones"
+              onPress={() => void verificar()}
+              className="mt-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4"
+            >
+              <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                <RefreshCw size={18} color="#6b38d4" />
+              </View>
+              <View className="min-w-0 flex-1">
+                <Text className="text-sm font-semibold text-on-surface">
+                  {chequeo?.estado === 'hay-nueva'
+                    ? `Actualizar a ${chequeo.version}`
+                    : 'Buscar actualizaciones'}
+                </Text>
+                <Text className="text-[11px] text-on-surface-variant">
+                  {verificando
+                    ? 'Verificando…'
+                    : chequeo?.estado === 'al-dia'
+                      ? `Versión ${versionActual()} · estás al día`
+                      : chequeo?.estado === 'no-se-pudo'
+                        ? 'No se pudo verificar. Revisá la señal.'
+                        : `Versión ${versionActual()}`}
                 </Text>
               </View>
               <ChevronRight size={18} color="#7b7486" />

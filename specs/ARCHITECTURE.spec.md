@@ -1030,3 +1030,49 @@ falso negativo**: se verificó que el catálogo NO quedaba con la versión despu
 de un fallo, así que reintentar es seguro. La misma subida por `curl` no falló
 nunca, lo que apunta al `fetch` de Node con `FormData` grande y no al server.
 Pendiente: reintento automático en el CLI.
+
+## 19. Invitar gente y buscar actualizaciones (26/08/2026)
+
+### 19.1 Invitar: la agenda NO sale del teléfono
+
+`InviteScreen` lee los contactos con `expo-contacts`, los muestra y comparte un
+mensaje. **Nada de eso viaja al server.** Subir la agenda para cruzarla contra
+los registrados es el camino cómodo —y es el que WhatsApp hizo famoso— y es
+exactamente lo que acá no se hace: en un chat familiar, con quién habla alguien
+es el dato más sensible que existe.
+
+La consecuencia se acepta a conciencia: **no se marca «este ya tiene Lilachat»**,
+porque no se puede saber sin mandar los números. Quien ya está aparece en «Nuevo
+chat», que es donde corresponde.
+
+El mensaje lleva **las dos** puertas y en este orden (`textoDeInvitacion`, con
+test):
+
+1. LilaStore — la que después deja la app actualizándose sola.
+2. El APK directo — el atajo para quien no quiere instalar dos cosas.
+
+Con una sola se pierde gente: solo tienda, quien se cansa en el segundo paso;
+solo APK, quien queda sin actualizaciones para siempre.
+
+Se comparte con la hoja del sistema (`Share`), no con un `whatsapp://`: no todo
+el mundo lo tiene, y un esquema que no resuelve no hace nada y parece roto.
+
+### 19.2 Buscar actualizaciones, en toda app RN
+
+`settings/versionApi.ts` pregunta a `/api/v1/apps/:slug/min-version`, que **no
+está autenticado** a propósito: la app no es un dispositivo enrolado en la tienda
+y exigirle credencial haría imposible el único mecanismo por el que alguien se
+entera de que tiene que actualizar. Sirve tal cual para cualquier otra app RN
+nuestra; solo cambia el `slug`.
+
+**Tres estados, no dos** (`resultadoDelChequeo`): hay-nueva / al-día /
+**no-se-pudo**. Sin red o con el server caído NO se dice «estás al día»: es la
+respuesta que más daño hace, porque deja a alguien en una versión rota
+convencido de que no hay nada que hacer.
+
+El chequeo se dispara **con un toque**, no al abrir Ajustes: un pedido de red
+cada vez que alguien entra a una pantalla es tráfico que nadie pidió.
+
+La app no se instala a sí misma: abre la descarga y de ahí manda Android. Quien
+tenga LilaStore la actualiza desde ahí, **con verificación de `sha256`**; este
+botón es para quien la instaló directo y no tiene la tienda.

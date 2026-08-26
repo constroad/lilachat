@@ -2,7 +2,7 @@
   "expo": {
     "name": "Lilachat",
     "slug": "lilachat",
-    "version": "0.1.3",
+    "version": "0.1.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -18,7 +18,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.lilachat.app",
-      "versionCode": 4
+      "versionCode": 5
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -26,7 +26,13 @@
     "plugins": [
       "expo-secure-store",
       "expo-image",
-      "./plugins/withReleaseSigning"
+      "./plugins/withReleaseSigning",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Lilachat usa tus contactos para mostrarte a quién invitar. Se leen en el teléfono y no se envían a ningún lado."
+        }
+      ]
     ]
   }
 }

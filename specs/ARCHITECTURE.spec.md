@@ -1076,3 +1076,66 @@ cada vez que alguien entra a una pantalla es tráfico que nadie pidió.
 La app no se instala a sí misma: abre la descarga y de ahí manda Android. Quien
 tenga LilaStore la actualiza desde ahí, **con verificación de `sha256`**; este
 botón es para quien la instaló directo y no tiene la tienda.
+
+## 20. Un botón que no hacía nada, y por qué no nos enteramos (26/08/2026)
+
+José tocó «Invitar a alguien» y no pasó nada. Ni un error en pantalla, ni una
+línea en el server, ni nada en Torre.
+
+### 20.1 El defecto
+
+`InviteScreen` quedó **importado y nunca renderizado**: la edición que lo montaba
+no encontró su ancla y no avisó. `setInvitando(true)` cambiaba un estado que
+nadie leía.
+
+Lo que deja al descubierto no es el descuido, es el **hueco de verificación**:
+`tsc --noEmit` pasó, la app compiló y se publicó. TypeScript **no marca un import
+sin usar** salvo que se lo pida. Ahora `noUnusedLocals` y `noUnusedParameters`
+están activos — y al activarlos salieron otros ocho residuos (imports y props
+muertas de refactors anteriores).
+
+### 20.2 Lo que faltaba de verdad: enterarse
+
+Un fallo en el teléfono de alguien era invisible. La única forma de saberlo era
+que la persona lo contara, y mientras tanto le pasaba a todos los demás en
+silencio.
+
+| Pieza | Qué hace |
+| --- | --- |
+| `ui/ErrorBoundary.tsx` | envuelve la app; un error de render muestra una pantalla con «Reintentar» en vez de dejar todo en blanco |
+| `ui/reportarError.ts` | manda el reporte y escribe en el log local; **nunca lanza y nunca bloquea** |
+| `shared/crashReport.ts` | arma y valida el reporte, con topes duros |
+| `POST /api/crash` | lo recibe y escribe **una línea en stdout**, que es lo que Torre recoge |
+
+**Sin autenticar, a propósito.** Una app que revienta al arrancar no llegó a
+tener sesión, y ese es justo el caso que más importa ver. A cambio: lista cerrada
+de apps que pueden reportar, tope de tamaño, y límite por minuto — un endpoint
+abierto que escribe en el log es una forma cómoda de llenarnos el disco.
+
+**Qué NO viaja:** el mensaje se corta en 500 caracteres y el stack en 20 líneas.
+Un reporte de error es la vía más fácil para que datos privados terminen en un
+log —un mensaje del chat dentro de un stack, un teléfono, un token— y el tope no
+depende de que quien lanzó el error se haya portado bien.
+
+Verificado con el server local: un reporte válido deja `[crash] lilachat@0.1.5
+android InviteScreen — …` y uno con una app desconocida se descarta sin escribir.
+
+**Lo que falta:** sin red el reporte se pierde. Encolarlo es la siguiente vuelta;
+hoy se pierde y está escrito que se pierde.
+
+### 20.3 Invitar, como lo hace WhatsApp
+
+La sección va **al pie de «nuevo chat»** (el lápiz), después de los registrados:
+arriba con quién se puede hablar ya, abajo a quién falta traer. Invertirlo pone
+primero lo que todavía no sirve.
+
+**El cruce se hace EN EL TELÉFONO** (`shared/agendaLocal.ts`). WhatsApp sube la
+libreta entera a sus servidores para saber quién está; acá el server ya nos dijo
+quiénes son nuestros contactos registrados —gente con la que podemos hablar de
+todos modos— y la agenda se compara contra esa lista sin salir del aparato.
+Ningún número que el server no conociera ya sale del dispositivo.
+
+Los números se comparan **normalizados**: la agenda guarda «+51 999 111 222» y el
+server «999111222». Sin eso todos los contactos caerían en «para invitar» y la
+pantalla no serviría para nada. Y un mismo número repetido (casa/celular) se
+invita **una vez**: dos mensajes iguales a la misma persona parecen spam.

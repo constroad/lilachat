@@ -260,7 +260,7 @@ export function TabsShell({
 
       <InviteScreen
         visible={invitando}
-        miNombre={credential.name ?? null}
+        credential={credential}
         enlaceApp={enlaceApp}
         onClose={() => setInvitando(false)}
       />

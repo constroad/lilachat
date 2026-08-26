@@ -1139,3 +1139,62 @@ Los números se comparan **normalizados**: la agenda guarda «+51 999 111 222» 
 server «999111222». Sin eso todos los contactos caerían en «para invitar» y la
 pantalla no serviría para nada. Y un mismo número repetido (casa/celular) se
 invita **una vez**: dos mensajes iguales a la misma persona parecen spam.
+
+
+## 21. La API que ya no existía, y el estado que faltaba (26/08/2026)
+
+La pantalla «Invitar» se quedó con los **esqueletos para siempre** y la sección
+de invitar en «nuevo chat» no apareció nunca.
+
+### 21.1 La causa
+
+En `expo-contacts` **57** la raíz del paquete expone la API nueva
+(`Contact`, `getPermissionsAsync`, `requestPermissionsAsync`) pero **NO**
+`getContactsAsync` ni `Fields` — esos viven en `expo-contacts/legacy`. El código
+hacía:
+
+```ts
+import * as Contacts from 'expo-contacts';
+await Contacts.getContactsAsync({ fields: [Contacts.Fields.PhoneNumbers] });
+```
+
+`Contacts.Fields` es `undefined`, así que leer `.PhoneNumbers` revienta. La
+llamada se rechazaba y nadie lo veía.
+
+**Por qué compiló:** los tipos del paquete resuelven por la condición `default`
+al fuente, y el `import * as` no falló en `tsc`. Un import que compila no prueba
+que el símbolo exista en tiempo de ejecución.
+
+### 21.2 El defecto de diseño, que es peor que el bug
+
+Los dos síntomas —esqueleto eterno y sección invisible— salen de lo mismo:
+**«cargando» era la ausencia de datos**. Con `contactos === null` significando
+«todavía no llegó», un fallo se ve EXACTAMENTE igual que una carga lenta, y una
+sección que se esconde ante el error se ve igual que «no hay nadie».
+
+`contacts/estadoAgenda.ts` lo arregla haciendo del error un estado propio:
+
+| Estado | Qué se ve |
+| --- | --- |
+| cargando | esqueletos con la geometría de la fila |
+| denegado | por qué hace falta el permiso + «compartir el enlace igual» |
+| **error** | «No pudimos leer tu agenda» **con el mensaje real** + compartir |
+| listo | la lista, o «toda tu agenda ya está» |
+
+El mensaje del fallo se muestra EN PANTALLA y no solo en el log: sin él, «no se
+pudo» es indistinguible de «no hay nadie» para quien reporta el problema — que
+es justo lo que costó dos versiones.
+
+### 21.3 Lo que sí funcionó
+
+El reporte de errores de §20 hizo su trabajo: el fallo de `useAgendaParaInvitar`
+—el único de los dos caminos que tenía `try/catch`— viajó a `POST /api/crash` y
+quedó en el log del server como
+`[crash] lilachat@0.1.5 android useAgendaParaInvitar — …`.
+
+Se ve en **`torre.constroad.com/logs?f=chat:app`**, filtrando por `crash`.
+
+La lección del otro camino: `InviteScreen` no tenía `try/catch`, así que su
+fallo no se reportó. **Un reporte que depende de acordarse de envolver cada
+llamada no cubre nada**; lo que cubre de verdad es que el estado de error exista
+en la pantalla.

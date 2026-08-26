@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import * as Contacts from 'expo-contacts';
+// **`expo-contacts/legacy` y NO la raíz.** En la 57 la raíz expone la API nueva
+// (`Contact`, `getPermissionsAsync`) pero NO `getContactsAsync` ni `Fields`:
+// llamarlos ahí devuelve `undefined` y revienta al leer `Fields.PhoneNumbers`.
+// Ese fue el bug de los esqueletos eternos del 26/08/2026.
+import * as Contacts from 'expo-contacts/legacy';
 import { separarAgenda, type ContactoDeAgenda, type ContactoRegistrado } from '@lilachat/shared';
 import { reportarError } from '../ui/reportarError';
+import { resolverEstadoAgenda } from './estadoAgenda';
 
 /**
  * La gente de tu agenda que TODAVÍA no está en Lilachat.
@@ -10,28 +15,26 @@ import { reportarError } from '../ui/reportarError';
  * contra la lista de contactos registrados que el server ya nos dio —gente con
  * la que podemos hablar de todos modos—. Es lo mismo que ve WhatsApp, sin subir
  * la libreta de nadie.
- *
- * Tres estados y no dos: `pidiendo` mientras se resuelve el permiso, `denegado`
- * si dijo que no (y ahí la pantalla ofrece compartir el enlace igual), y la
- * lista cuando hay. Sin permiso NO se muestra una lista vacía como si la agenda
- * estuviera vacía: son cosas distintas.
  */
-export type EstadoAgenda =
-  | { estado: 'pidiendo' }
+export type ResultadoAgenda =
+  | { estado: 'cargando' }
   | { estado: 'denegado' }
+  | { estado: 'error'; mensaje: string }
   | { estado: 'listo'; paraInvitar: ContactoDeAgenda[] };
 
-export function useAgendaParaInvitar(registrados: ContactoRegistrado[] | null): EstadoAgenda {
+export function useAgendaParaInvitar(registrados: ContactoRegistrado[] | null): ResultadoAgenda {
+  const [permiso, setPermiso] = useState<'concedido' | 'denegado' | null>(null);
   const [agenda, setAgenda] = useState<ContactoDeAgenda[] | null>(null);
-  const [denegado, setDenegado] = useState(false);
+  const [fallo, setFallo] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     try {
       const { status } = await Contacts.requestPermissionsAsync();
       if (status !== 'granted') {
-        setDenegado(true);
+        setPermiso('denegado');
         return;
       }
+      setPermiso('concedido');
 
       const { data } = await Contacts.getContactsAsync({
         fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Name],
@@ -50,11 +53,12 @@ export function useAgendaParaInvitar(registrados: ContactoRegistrado[] | null): 
             }))
         )
       );
-    } catch (fallo) {
-      // Leer la agenda puede fallar por mil motivos del fabricante. Se reporta
-      // —antes esto era invisible— y se trata como «no hay», no como un crash.
-      reportarError('useAgendaParaInvitar', fallo);
-      setAgenda([]);
+    } catch (error) {
+      // **Se guarda el mensaje, no se traga.** Antes esto dejaba el estado en
+      // `null` y la pantalla mostraba esqueletos para siempre: un fallo con la
+      // misma cara que una carga lenta es un fallo que nadie encuentra.
+      reportarError('useAgendaParaInvitar', error);
+      setFallo(error instanceof Error ? error.message : String(error));
     }
   }, []);
 
@@ -62,8 +66,13 @@ export function useAgendaParaInvitar(registrados: ContactoRegistrado[] | null): 
     void cargar();
   }, [cargar]);
 
-  if (denegado) return { estado: 'denegado' };
-  if (agenda === null || registrados === null) return { estado: 'pidiendo' };
+  const estado = resolverEstadoAgenda({ permiso, agenda, fallo });
 
-  return { estado: 'listo', paraInvitar: separarAgenda({ registrados, agenda }).paraInvitar };
+  if (estado.estado === 'listo') {
+    // Sin los registrados todavía no se puede decidir a quién falta invitar.
+    if (registrados === null) return { estado: 'cargando' };
+    return { estado: 'listo', paraInvitar: separarAgenda({ registrados, agenda: estado.agenda }).paraInvitar };
+  }
+
+  return estado;
 }

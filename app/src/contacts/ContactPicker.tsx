@@ -105,7 +105,9 @@ export function ContactPicker({
           <Text className="px-8 pt-8 text-center text-sm leading-5 text-on-surface-variant">
             {query
               ? 'Nadie coincide con lo que buscas.'
-              : 'Todavía no hay nadie más en Lilachat. Invita a tu familia desde Ajustes.'}
+              // La invitación está JUSTO abajo desde el 26/08/2026: mandar a
+              // otra pantalla era un paso de más y una copia que envejeció.
+              : 'Todavía no hay nadie más en Lilachat. Invitá a tu familia desde acá abajo.'}
           </Text>
         ) : (
           filtrados.map((group) => (
@@ -194,7 +196,29 @@ function SeccionInvitar({
       title: `Invitar a ${nombre}`,
     });
 
-  if (agenda.estado === 'pidiendo') return null;
+  if (agenda.estado === 'cargando') return null;
+
+  // Un fallo al leer la agenda NO se esconde: antes esto dejaba la sección
+  // invisible y parecía que no había nadie a quien invitar.
+  if (agenda.estado === 'error') {
+    return (
+      <View className="mt-6 px-4" testID="invitar-con-error">
+        <Text className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+          Invitar a Lilachat
+        </Text>
+        <Text className="text-[13px] leading-5 text-on-surface-variant">
+          No pudimos leer tu agenda. Ya nos avisó solo.
+        </Text>
+        <Pressable
+          testID="btn-compartir-enlace"
+          onPress={() => compartir('un amigo')}
+          className="mt-3 min-h-[48px] items-center justify-center rounded-xl bg-primary px-6"
+        >
+          <Text className="text-sm font-semibold text-on-primary">Compartir el enlace</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   if (agenda.estado === 'denegado') {
     return (

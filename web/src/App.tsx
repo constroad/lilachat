@@ -11,6 +11,7 @@ import {
 } from './api';
 import { AgendaOverlay } from './agenda/AgendaOverlay';
 import { subirArchivo } from './chat/mediaUpload';
+import { puedeAbrirSocket } from './sesionLista';
 import {
   guardarChats,
   guardarMensajes,
@@ -58,6 +59,14 @@ export function App() {
   const [aviso, setAviso] = useState('');
   /** El `jwt` para el que ya se intentó renovar. Ver el freno en `loadChats`. */
   const refrescoIntentado = useRef<string | null>(null);
+  /**
+   * Si el refresco de arranque ya terminó (bien o mal).
+   *
+   * El socket ESPERA a esto cuando hay secreto: abrirlo antes es abrirlo con el
+   * token guardado, que puede estar vencido — el server lo rechaza y socket.io
+   * reintenta, que era todo el ruido de «WebSocket connection failed».
+   */
+  const [refrescoResuelto, setRefrescoResuelto] = useState(false);
   /**
    * Qué se está creando encima de los dos paneles.
    *
@@ -137,16 +146,21 @@ export function App() {
    */
   useEffect(() => {
     if (!credential?.deviceSecret) return;
-    void refreshSession(credential).then((renovado) => {
-      if (!renovado.ok) {
-        if (renovado.revocado) logout();
-        return;
-      }
-      if (renovado.jwt === credential.jwt) return;
-      const siguiente = { ...credential, jwt: renovado.jwt };
-      saveCredential(siguiente);
-      setCredential(siguiente);
-    });
+    void refreshSession(credential)
+      .then((renovado) => {
+        if (!renovado.ok) {
+          if (renovado.revocado) logout();
+          return;
+        }
+        if (renovado.jwt === credential.jwt) return;
+        const siguiente = { ...credential, jwt: renovado.jwt };
+        saveCredential(siguiente);
+        setCredential(siguiente);
+      })
+      // Pase lo que pase, el socket deja de esperar: si el refresco falla por
+      // red, quedarse sin tiempo real para siempre sería peor que intentar con
+      // el token que hay.
+      .finally(() => setRefrescoResuelto(true));
     // Solo al montar y al cambiar de dispositivo: renovar en cada render sería
     // un pedido por tecla.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -173,7 +187,15 @@ export function App() {
 
   const socket = useSocket({
     jwt: credential?.jwt ?? null,
-    userId: credential?.userId ?? null,
+    // `null` hasta que la sesión esté resuelta: así el PRIMER handshake sale con
+    // un token vivo y no hay reintentos que ensucien la consola.
+    userId: puedeAbrirSocket({
+      userId: credential?.userId ?? null,
+      tieneSecreto: Boolean(credential?.deviceSecret),
+      refrescoResuelto,
+    })
+      ? (credential?.userId ?? null)
+      : null,
     onMessage,
     onReceipt,
   });
@@ -318,6 +340,10 @@ export function App() {
         onReady={(next) => {
           saveCredential(next);
           setCredential(next);
+          // El token acaba de nacer en el canje: no hay nada que refrescar, y
+          // hacerlo esperar dejaría la web sin tiempo real hasta el próximo
+          // arranque.
+          setRefrescoResuelto(true);
         }}
       />
     );

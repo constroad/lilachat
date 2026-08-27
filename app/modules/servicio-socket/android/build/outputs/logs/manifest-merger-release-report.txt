@@ -1,0 +1,26 @@
+-- Merging decision tree log ---
+manifest
+ADDED from /Users/josezamora/projects/lilachat/app/modules/servicio-socket/android/src/main/AndroidManifest.xml:1:1-12:12
+INJECTED from /Users/josezamora/projects/lilachat/app/modules/servicio-socket/android/src/main/AndroidManifest.xml:1:1-12:12
+	package
+		INJECTED from /Users/josezamora/projects/lilachat/app/modules/servicio-socket/android/src/main/AndroidManifest.xml
+	xmlns:android
+		ADDED from /Users/josezamora/projects/lilachat/app/modules/servicio-socket/android/src/main/AndroidManifest.xml:1:11-69
+application
+ADDED from /Users/josezamora/projects/lilachat/app/modules/servicio-socket/android/src/main/AndroidManifest.xml:6:3-11:17
+service#expo.modules.serviciosocket.ServicioEnPrimerPlano
+ADDED from /Users/josezamora/projects/lilachat/app/modules/servicio-socket/android/src/main/AndroidManifest.xml:7:5-10:50
+	android:exported
+		ADDED from /Users/josezamora/projects/lilachat/app/modules/servicio-socket/android/src/main/AndroidManifest.xml:9:7-31
+	android:foregroundServiceType
+		ADDED from /Users/josezamora/projects/lilachat/app/modules/servicio-socket/android/src/main/AndroidManifest.xml:10:7-47
+	android:name
+		ADDED from /Users/josezamora/projects/lilachat/app/modules/servicio-socket/android/src/main/AndroidManifest.xml:8:7-44
+uses-sdk
+INJECTED from /Users/josezamora/projects/lilachat/app/modules/servicio-socket/android/src/main/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /Users/josezamora/projects/lilachat/app/modules/servicio-socket/android/src/main/AndroidManifest.xml
+INJECTED from /Users/josezamora/projects/lilachat/app/modules/servicio-socket/android/src/main/AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from /Users/josezamora/projects/lilachat/app/modules/servicio-socket/android/src/main/AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from /Users/josezamora/projects/lilachat/app/modules/servicio-socket/android/src/main/AndroidManifest.xml

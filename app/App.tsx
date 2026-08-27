@@ -1,7 +1,7 @@
 // PRIMERO: enchufa `crypto.getRandomValues` en Hermes, antes de que algo cifre.
 import './src/crypto/polyfill';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, AppState, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from './src/ui/ErrorBoundary';
@@ -20,6 +20,8 @@ import { ChatScreen } from './src/chat/ChatScreen';
 import { disconnectSocket } from './src/chat/socketClient';
 import { olvidarChats } from './src/chat/chatsGuardados';
 import { olvidarMensajes } from './src/chat/mensajesGuardados';
+import { decidirServicio } from './src/chat/servicioDeConexion';
+import { detenerServicio, iniciarServicio } from './modules/servicio-socket/src';
 import type { ChatSummary } from './src/api/client';
 
 /**
@@ -39,6 +41,29 @@ type Boot =
 
 export default function App() {
   const [boot, setBoot] = useState<Boot>({ phase: 'loading' });
+
+  /**
+   * El servicio en primer plano que sostiene el socket.
+   *
+   * Con la app atrás, Android suspende el proceso y el socket se cae: los
+   * mensajes entran recién al volver a abrir. WhatsApp lo evita con FCM, que es
+   * un canal del sistema; sin Firebase, la única forma de que un socket propio
+   * sobreviva es este servicio — y su precio es la notificación permanente que
+   * Android exige a cambio.
+   *
+   * Se enciende con la sesión, no al pasar a segundo plano: esperar deja una
+   * ventana en la transición —el momento más frágil— donde el proceso puede
+   * morir antes de que el servicio arranque.
+   */
+  const haySesion = boot.phase === 'home' || boot.phase === 'chat';
+
+  useEffect(() => {
+    if (decidirServicio({ haySesion, estado: AppState.currentState }) === 'encender') {
+      iniciarServicio();
+    } else {
+      detenerServicio();
+    }
+  }, [haySesion]);
 
   const start = useCallback(async () => {
     const stored = await loadCredential();

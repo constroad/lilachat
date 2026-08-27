@@ -1497,3 +1497,73 @@ tipo `notifee` / `rn-foreground-service`— más su config plugin.
 una notificación **permanente** en la bandeja («Lilachat activo»). WhatsApp no la
 tiene porque usa FCM. Sin Firebase, esa notificación permanente es el costo de
 que el socket no se caiga. Es una decisión de producto, no técnica.
+
+## 27. El servicio en primer plano, y qué es FCM (26/08/2026)
+
+### 27.1 Qué es FCM, y por qué WhatsApp no necesita esto
+
+**FCM (Firebase Cloud Messaging)** es el servicio de Google que entrega
+notificaciones a los teléfonos Android. La pieza clave es que **el canal no es de
+la app: es del sistema operativo**. Android mantiene UNA conexión con los
+servidores de Google, compartida por todas las apps del teléfono, y esa conexión
+sí sobrevive a que las apps estén cerradas.
+
+Cuando llega un mensaje, WhatsApp no le habla a tu teléfono: le habla a Google, y
+Google lo empuja por ese canal. Por eso WhatsApp no muestra ninguna notificación
+permanente — no necesita mantener nada vivo, se apoya en algo que ya está vivo.
+
+El costo, y por lo que José lo descartó: cada mensaje pasa por servidores de
+Google, hay que registrar el proyecto en Firebase y meter sus credenciales en el
+build. Para un chat familiar en una máquina propia, es meter a un tercero en el
+medio de todo.
+
+### 27.2 Sin FCM, el único camino
+
+Sin ese canal del sistema, la app tiene que sostener **su propia** conexión. Con
+la app atrás, Android suspende el proceso o lo mata: el socket se cae y los
+mensajes entran recién al volver a abrir.
+
+Un **servicio en primer plano** evita eso. Y Android cobra un precio explícito:
+para dejar correr un servicio así **exige una notificación permanente**. Es el
+trato — el sistema te deja vivir si la persona puede ver que estás vivo.
+
+`modules/servicio-socket` es un módulo Expo local (Kotlin, sin dependencias
+nuevas). No abre sockets ni escucha nada: su único trabajo es que el proceso no
+muera. El socket sigue siendo el de JavaScript.
+
+Detalles que Android 14+ vuelve obligatorios y que, mal puestos, matan el
+servicio al arrancar:
+
+- `android:foregroundServiceType="dataSync"` en el manifiesto **y** el mismo tipo
+  en `startForeground(...)`. Si no coinciden, el sistema lo mata en el acto.
+- Permisos `FOREGROUND_SERVICE` y `FOREGROUND_SERVICE_DATA_SYNC`.
+- Verificado en el APK publicado, no en el código: `aapt2 dump xmltree` muestra
+  `foregroundServiceType=0x1` sobre `expo.modules.serviciosocket.ServicioEnPrimerPlano`.
+
+La notificación va con importancia **MÍNIMA** (no suena ni asoma) y dice para qué
+está: «Conectado para recibir mensajes». Una notificación permanente sin
+explicación se lee como una app que se cuelga sola, y termina desinstalada.
+
+**Se enciende con la sesión, no al pasar a segundo plano** (`decidirServicio`,
+con test): esperar deja una ventana en la transición —el momento más frágil—
+donde el proceso puede morir antes de que el servicio arranque. Sin sesión se
+apaga: la notificación fija sin nada que sostener es molestar por nada.
+
+### 27.3 La web, comparada con la app
+
+Auditoría pedida por José. Lo que la app RN tiene y la web no:
+
+| Falta en la web | Comentario |
+| --- | --- |
+| Adjuntar fotos/archivos | el «+» solo crea evento o encuesta |
+| Chats secretos (E2EE) | la web no tiene `crypto/*` |
+| Recordatorios | tiene eventos y encuestas, no recordatorios |
+| «Ponme al día» (Lila) | sin `CatchUpBanner` |
+| Copia de seguridad | sin pantalla |
+| Cargar mensajes viejos al scrollear | la web pide una sola tanda |
+| Caché local (abrir sin esperar) | la web siempre espera a la red |
+| Cola offline de envíos | sin `outbox` |
+| Llamadas | sin `calls/*` |
+
+Lo que **no** corresponde llevar a la web: invitar desde la agenda (el navegador
+no lee contactos), el servicio en primer plano, y buscar actualizaciones.

@@ -1,0 +1,12 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- `dataSync` es el tipo que corresponde: el servicio existe para mantener
+       viva una conexión que sincroniza mensajes. Desde Android 14 el tipo es
+       obligatorio y tiene que coincidir con el que se pasa en startForeground:
+       si no coinciden, el sistema mata el servicio al arrancar. -->
+  <application>
+    <service
+      android:name=".ServicioEnPrimerPlano"
+      android:exported="false"
+      android:foregroundServiceType="dataSync" />
+  </application>
+</manifest>

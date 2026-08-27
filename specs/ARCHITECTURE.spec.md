@@ -1757,9 +1757,36 @@ de esos primeros es conocida y benigna — cerrar un WebSocket que todavía est�
 `CONNECTING` hace que Chrome lo registre como «failed», y eso pasa cuando el
 efecto se rehace antes de que el handshake termine.
 
-**Lo que queda pendiente:** que ni siquiera esos aparezcan. Exige que el efecto
-del socket no corra dos veces en el arranque; con la sesión ya montada no vuelve
-a ocurrir, así que es ruido de consola y no una falla de servicio.
+### 30.1c El ruido del arranque, eliminado
+
+El mensaje exacto lo dijo todo: **«WebSocket is closed before the connection is
+established»**. No era el server ni el túnel: era la web cerrando sockets a medio
+conectar. Dos causas, las dos propias:
+
+1. **Se abría con el token GUARDADO**, que puede estar vencido, antes de que el
+   refresco lo renovara → el server rechazaba el handshake y socket.io
+   reintentaba. Ahora el socket **espera a que la sesión esté resuelta**
+   (`sesionLista.ts`, con test); sin secreto de dispositivo no espera nada,
+   porque no hay refresco que aguardar.
+2. **React monta, desmonta y remonta en el arranque**, y cada montaje abría y
+   cerraba su propio socket. Ahora vive **fuera del efecto**, se reutiliza
+   mientras sea la misma sesión, y al desmontar se SUELTA en vez de cerrarse:
+   solo se apaga cuando nadie lo usa, y en el tick siguiente — porque un remonte
+   inmediato vuelve a pedirlo.
+
+**Verificado en una pestaña NUEVA** (buffer de consola desde cero), cargando con
+la sesión ya guardada, que es justo el caso que fallaba:
+
+| Medición | Resultado |
+| --- | --- |
+| Mensajes en consola tras cargar | **ninguno** |
+| Peticiones HTTP a `/socket.io/` | 0 — WebSocket puro |
+| Mensaje enviado desde otro cliente | llega en vivo |
+| Consola después de recibirlo | **sigue vacía** |
+
+La lección de método: el buffer de consola **acumula entre navegaciones**, así
+que contar errores después de recargar en la misma pestaña mide toda la sesión y
+no la carga. Una pestaña nueva es el único cero confiable.
 
 ### 30.2 ¿Con sockets? Sí, y así lo hace WhatsApp Web
 

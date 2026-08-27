@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
 import { Check, Search } from 'lucide-react-native';
-import type { Contact, ContactGroup } from '@lilachat/shared';
+import { groupContactsByLetter, type Contact, type ContactGroup } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
-import { invitarContacto, listContacts } from './contactsApi';
-import { useAgendaParaInvitar } from './useAgendaParaInvitar';
+import { emparejarAgenda, invitarContacto, listContacts } from './contactsApi';
+import { useAgendaDelTelefono, useAgendaParaInvitar } from './useAgendaParaInvitar';
 import { textoDeInvitacion } from '../settings/actualizacion';
 
 /** La puerta de entrada que se ofrece primero: deja la app actualizándose sola. */
@@ -12,6 +12,15 @@ const TIENDA_URL = 'https://lilastore.constroad.com/get';
 
 /** Cuántos contactos de la agenda se dibujan sin buscar. Ver `SeccionInvitar`. */
 const MAXIMO_INVITABLES = 30;
+
+/** Junta dos listas agrupadas sin repetir a nadie, y reagrupa por letra. */
+function unirGrupos(a: ContactGroup[], b: ContactGroup[]): ContactGroup[] {
+  const porId = new Map<string, Contact>();
+  for (const grupo of [...a, ...b]) {
+    for (const contacto of grupo.contacts) porId.set(contacto.id, contacto);
+  }
+  return groupContactsByLetter([...porId.values()]);
+}
 
 /**
  * La lista de contactos del diseño «New Group».
@@ -45,12 +54,35 @@ export function ContactPicker({
   invitacion?: { miNombre: string | null; enlaceApp: string };
 }) {
   const [groups, setGroups] = useState<ContactGroup[] | null>(null);
+  const agendaCruda = useAgendaDelTelefono();
   const [query, setQuery] = useState('');
 
+  /**
+   * Quiénes de MI agenda están en Lilachat — el modelo de WhatsApp.
+   *
+   * Se pregunta por los números guardados en vez de recibir el padrón: así
+   * nadie descubre un número que no tuviera. `GET /api/contacts` sigue dando
+   * con quien ya tengo conversación, que es lo que se ve mientras la agenda
+   * carga o si no hay permiso.
+   */
   const load = useCallback(async () => {
-    const result = await listContacts(credential.jwt);
-    setGroups(result.ok ? result.data.groups : []);
-  }, [credential.jwt]);
+    const yaHablo = await listContacts(credential.jwt);
+    const base = yaHablo.ok ? yaHablo.data.groups : [];
+
+    if (agendaCruda.estado !== 'listo') {
+      setGroups(base);
+      return;
+    }
+
+    const emparejados = await emparejarAgenda(
+      credential.jwt,
+      agendaCruda.agenda.map((contacto) => contacto.telefono)
+    );
+    // Con quien ya hablo SIEMPRE está, aunque no lo tenga agendado: perder una
+    // conversación abierta porque el contacto no está en la libreta sería peor
+    // que mostrar un número de más.
+    setGroups(emparejados.ok ? unirGrupos(base, emparejados.data.groups) : base);
+  }, [credential.jwt, agendaCruda]);
 
   useEffect(() => {
     void load();

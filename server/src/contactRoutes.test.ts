@@ -51,8 +51,13 @@ beforeEach(async () => {
 });
 
 describe('GET /api/contacts', () => {
-  it('lista a la familia, agrupada y sin incluirme', async () => {
-    const respuesta = await request(app).get('/api/contacts').set('Authorization', `Bearer ${jwt}`);
+  it('lista a la familia de MI agenda, agrupada y sin incluirme', async () => {
+    // Se pregunta por los números que tengo guardados: el server ya no
+    // devuelve el padrón, así que la lista sale de acá.
+    const respuesta = await request(app)
+      .post('/api/contacts/match')
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ phones: ['999000111', '999000222', '902049935'] });
 
     expect(respuesta.status).toBe(200);
     const nombres = respuesta.body.groups.flatMap((grupo: { contacts: { name: string }[] }) =>
@@ -78,11 +83,14 @@ describe('GET /api/contacts', () => {
    * CAMBIÓ, y por qué. Si algún día se vuelve a cerrar el registro, acá está lo
    * que hay que volver a poner.
    */
-  it('quien entró sin invitación TAMBIÉN es contacto', async () => {
+  it('quien entró sin invitación TAMBIÉN es contacto, si lo tengo en mi agenda', async () => {
     const nuevo = new Types.ObjectId();
     await UserModel.create({ _id: nuevo, phone: '911111111', name: 'Recién llegado' });
 
-    const respuesta = await request(app).get('/api/contacts').set('Authorization', `Bearer ${jwt}`);
+    const respuesta = await request(app)
+      .post('/api/contacts/match')
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ phones: ['911111111'] });
 
     expect(JSON.stringify(respuesta.body)).toContain('Recién llegado');
   });
@@ -95,7 +103,11 @@ describe('GET /api/contacts', () => {
       members: [{ userId: yo }, { userId: mama }],
     });
 
-    const respuesta = await request(app).get('/api/contacts').set('Authorization', `Bearer ${jwt}`);
+    const respuesta = await request(app)
+      .post('/api/contacts/match')
+      .set('Authorization', `Bearer ${jwt}`)
+      // Los DOS: el test compara a quien tiene chat contra quien no.
+      .send({ phones: ['999000111', '999000222'] });
     const todos = respuesta.body.groups.flatMap(
       (grupo: { contacts: { name: string; directChatId: string | null }[] }) => grupo.contacts
     );
@@ -252,26 +264,117 @@ describe('POST /api/contacts/invite', () => {
  * padrón completo. Cualquiera que entre ve el teléfono de todos los demás. Es la
  * consecuencia directa de que Lilachat sea pública, y se acepta a conciencia.
  */
-describe('GET /api/contacts con registro abierto', () => {
+describe('Emparejar con registro abierto', () => {
   it('quien se registró SIN invitación igual aparece', async () => {
     const solo = new Types.ObjectId();
     await UserModel.create({ _id: solo, phone: '955444333', name: 'Wilson' });
 
-    const respuesta = await request(app).get('/api/contacts').set('Authorization', `Bearer ${jwt}`);
+    const respuesta = await request(app)
+      .post('/api/contacts/match')
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ phones: ['955444333'] });
 
-    const nombres = respuesta.body.groups.flatMap((grupo: { contacts: { name: string }[] }) =>
-      grupo.contacts.map((contacto) => contacto.name)
-    );
+    const nombres = respuesta.body.contacts.map((contacto: { name: string }) => contacto.name);
     expect(nombres).toContain('Wilson');
   });
 
   /** Uno mismo nunca aparece en su propia lista de contactos. */
   it('yo no aparezco en mi propia lista', async () => {
-    const respuesta = await request(app).get('/api/contacts').set('Authorization', `Bearer ${jwt}`);
+    const respuesta = await request(app)
+      .post('/api/contacts/match')
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ phones: ['902049935', '999000111'] });
 
     const telefonos = respuesta.body.groups.flatMap((grupo: { contacts: { phone: string }[] }) =>
       grupo.contacts.map((contacto) => contacto.phone)
     );
     expect(telefonos).not.toContain('902049935');
+  });
+});
+
+/**
+ * Emparejar la agenda — el modelo de WhatsApp, y el candado que reemplaza al
+ * padrón abierto.
+ *
+ * Durante unas horas del 26/08/2026 `GET /api/contacts` devolvió TODOS los
+ * usuarios, para que quien entrara con el registro abierto fuera visible. José
+ * lo cortó: «cada teléfono debería ver sus contactos guardados, como WhatsApp».
+ *
+ * La dirección de la pregunta ES el diseño: el teléfono dice qué números tiene y
+ * el server contesta cuáles coinciden. Nadie descubre un número que no tuviera.
+ */
+describe('POST /api/contacts/match', () => {
+  it('devuelve solo los números que YO mandé', async () => {
+    const respuesta = await request(app)
+      .post('/api/contacts/match')
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ phones: ['999000111'] });
+
+    const telefonos = respuesta.body.contacts.map((contacto: { phone: string }) => contacto.phone);
+    expect(telefonos).toEqual(['999000111']);
+    // Álvaro existe y está registrado, pero NO estaba en lo que mandé.
+    expect(JSON.stringify(respuesta.body)).not.toContain('999000222');
+  });
+
+  it('acepta el formato de la agenda', async () => {
+    const respuesta = await request(app)
+      .post('/api/contacts/match')
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ phones: ['+51 999 000 111'] });
+
+    expect(respuesta.body.contacts).toHaveLength(1);
+  });
+
+  it('yo no soy contacto mío aunque me mande a mí mismo', async () => {
+    const respuesta = await request(app)
+      .post('/api/contacts/match')
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ phones: ['902049935', '999000111'] });
+
+    const telefonos = respuesta.body.contacts.map((contacto: { phone: string }) => contacto.phone);
+    expect(telefonos).toEqual(['999000111']);
+  });
+
+  it('un número que no está registrado simplemente no vuelve', async () => {
+    const respuesta = await request(app)
+      .post('/api/contacts/match')
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ phones: ['955444333'] });
+
+    expect(respuesta.body.contacts).toEqual([]);
+  });
+
+  it('sin sesión no se empareja nada', async () => {
+    const respuesta = await request(app)
+      .post('/api/contacts/match')
+      .send({ phones: ['999000111'] });
+
+    expect(respuesta.status).toBe(401);
+  });
+});
+
+/**
+ * **El padrón NO se devuelve.** Es la regla que este archivo existe para
+ * proteger: `GET /api/contacts` da solo con quien ya tengo conversación, así que
+ * entrar a Lilachat no le muestra a nadie el teléfono de la familia.
+ */
+describe('GET /api/contacts ya no es un directorio', () => {
+  it('no lista a usuarios con los que no hablo', async () => {
+    const respuesta = await request(app).get('/api/contacts').set('Authorization', `Bearer ${jwt}`);
+
+    // Mamá y Álvaro están registrados y no tengo chat con ellos en este caso.
+    expect(JSON.stringify(respuesta.body)).not.toContain('999000222');
+  });
+
+  it('sí lista a quien ya le escribí', async () => {
+    await ChatModel.create({
+      kind: 'direct',
+      lastSeq: 0,
+      members: [{ userId: yo }, { userId: mama }],
+    });
+
+    const respuesta = await request(app).get('/api/contacts').set('Authorization', `Bearer ${jwt}`);
+
+    expect(JSON.stringify(respuesta.body)).toContain('999000111');
   });
 });

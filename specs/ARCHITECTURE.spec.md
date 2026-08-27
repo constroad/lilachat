@@ -1296,6 +1296,27 @@ Por eso contactos pasó a ser el padrón de usuarios.
    registro no puede ser una puerta trasera para quien fue dado de baja a
    propósito.
 
-Si algún día molesta el punto 1, la salida que preserva «cualquiera entra» es
-acotar los contactos a **quien comparte un chat conmigo o está en mi agenda** —el
-cruce local ya existe (`shared/agendaLocal.ts`) y no exige subir la libreta.
+### 23.4 El padrón abierto duró unas horas
+
+José lo cortó en el acto: «cada teléfono debería ver sus contactos guardados,
+como WhatsApp». Tenía razón, y el arreglo es un cambio de **dirección de la
+pregunta**:
+
+| | Antes | Ahora |
+| --- | --- | --- |
+| `GET /api/contacts` | todos los usuarios | solo con quien YA tengo conversación |
+| Descubrir gente | venía sola en la lista | `POST /match` con los números que YA tengo |
+
+Preguntando así, **nadie descubre un número que no tuviera antes**. El padrón
+completo no sale del server ni una vez.
+
+**Lo honesto sobre la privacidad:** los números de la agenda SÍ salen del
+teléfono para poder emparejarlos —no hay forma de hacerlo sin eso, y es lo mismo
+que hace WhatsApp— pero el server no los guarda: los usa para la consulta y los
+descarta. El tope de 2000 por consulta no es cosmético: sin él, alguien manda el
+espacio entero de números y descubre a todos los registrados, que es justo lo que
+este diseño impide.
+
+**Con quien ya hablo siempre está**, aunque no lo tenga agendado: perder una
+conversación abierta porque el contacto no está en la libreta sería peor que
+mostrar un número de más.

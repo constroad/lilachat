@@ -1,5 +1,10 @@
 import { Router } from 'express';
-import { groupContactsByLetter, validarInvitacion, type Contact } from '@lilachat/shared';
+import {
+  groupContactsByLetter,
+  limpiarNumerosParaEmparejar,
+  validarInvitacion,
+  type Contact,
+} from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import { InvitationModel, UserModel } from './models.js';
 import { asyncRoute, requireSession } from './requireSession.js';
@@ -57,28 +62,76 @@ export function buildContactRouter(): Router {
     res.status(201).json({ estado: 'invitado' });
   }));
 
+  /**
+   * ¿Cuáles de MIS contactos están en Lilachat? — el modelo de WhatsApp.
+   *
+   * El teléfono manda los números que YA tiene guardados y el server contesta
+   * cuáles coinciden. La dirección de la pregunta es el diseño: nadie puede
+   * descubrir un número que no tuviera antes, y por eso el padrón nunca se
+   * devuelve entero.
+   *
+   * **No se guarda nada de lo que llega.** Los números se usan para la consulta
+   * y se descartan; el server ya conoce los de sus propios usuarios y no le
+   * interesa saber a quién más tiene alguien en la agenda.
+   *
+   * El nombre que se devuelve es el que la persona puso en Lilachat; la app
+   * muestra el de SU agenda, que es el que quien mira reconoce.
+   */
+  router.post('/match', asyncRoute(async (req, res) => {
+    const me = req.session!.userId;
+    const numeros = limpiarNumerosParaEmparejar(req.body?.phones);
+    if (numeros.length === 0) return res.json({ contacts: [] });
+
+    const [usuarios, directos] = await Promise.all([
+      UserModel.find({ phone: { $in: numeros }, _id: { $ne: me } })
+        .select('name phone')
+        .lean(),
+      ChatModel.find({ kind: 'direct', 'members.userId': me }).select('members').lean(),
+    ]);
+
+    const chatCon = new Map<string, string>();
+    for (const chat of directos) {
+      const otro = chat.members.find((member) => String(member.userId) !== String(me));
+      if (otro) chatCon.set(String(otro.userId), String(chat._id));
+    }
+
+    const contacts: Contact[] = usuarios.map((usuario) => ({
+      id: String(usuario._id),
+      name: usuario.name ?? null,
+      phone: usuario.phone,
+      directChatId: chatCon.get(String(usuario._id)) ?? null,
+    }));
+
+    res.json({ contacts, groups: groupContactsByLetter(contacts) });
+  }));
+
   router.get('/', asyncRoute(async (req, res) => {
     const me = req.session!.userId;
 
     /**
-     * **Con el registro ABIERTO, los contactos son los USUARIOS.**
+     * **El padrón NO se devuelve.** Esta lista es solo con quién YA tengo una
+     * conversación.
      *
-     * Salían de `invitations`, que era correcto mientras entrar exigía que
-     * alguien te invitara. Con el registro abierto, quien se da de alta solo no
-     * tiene invitación: quedaba entrando a un lugar donde nadie lo ve, pudiendo
-     * escribirle a otros sin que nadie pudiera escribirle a él.
-     *
-     * El precio, a conciencia: la lista es el padrón completo, así que cualquiera
-     * que entre ve el teléfono de todos. Es la consecuencia directa de ser una
-     * app pública; el filtro por invitación era lo único que lo evitaba.
+     * Devolver todos los usuarios duró unas horas y fue un error: con el
+     * registro abierto, cualquiera que entrara veía el teléfono de toda la
+     * familia. Descubrir a quién más está registrado se hace por
+     * `POST /match`, preguntando por los números que uno YA tiene en su agenda
+     * — así nadie se entera de un número que no tuviera antes.
      */
-    const [usuarios, directos] = await Promise.all([
-      UserModel.find({ _id: { $ne: me } })
-        .select('name phone')
-        .lean(),
+    const directos = await ChatModel.find({ kind: 'direct', 'members.userId': me })
+      .select('members')
+      .lean();
+
+    const idsConChat = directos
+      .map((chat) => chat.members.find((member) => String(member.userId) !== String(me))?.userId)
+      .filter((id): id is NonNullable<typeof id> => Boolean(id));
+
+    const usuarios = await UserModel.find({ _id: { $in: idsConChat } })
+      .select('name phone')
+      .lean();
+    {
       // Con quién ya tengo un 1:1: la lista abre en vez de crear otro.
-      ChatModel.find({ kind: 'direct', 'members.userId': me }).select('members').lean(),
-    ]);
+    }
 
     const chatCon = new Map<string, string>();
     for (const chat of directos) {

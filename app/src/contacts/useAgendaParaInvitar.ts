@@ -22,7 +22,22 @@ export type ResultadoAgenda =
   | { estado: 'error'; mensaje: string }
   | { estado: 'listo'; paraInvitar: ContactoDeAgenda[] };
 
-export function useAgendaParaInvitar(registrados: ContactoRegistrado[] | null): ResultadoAgenda {
+/**
+ * La agenda cruda del teléfono, para quien necesite los números (emparejar) y
+ * no solo a quién falta invitar.
+ */
+export function useAgendaDelTelefono(): EstadoAgendaCruda {
+  return useLecturaDeAgenda();
+}
+
+export type EstadoAgendaCruda =
+  | { estado: 'cargando' }
+  | { estado: 'denegado' }
+  | { estado: 'error'; mensaje: string }
+  | { estado: 'listo'; agenda: ContactoDeAgenda[] };
+
+/** La lectura de la agenda, una sola vez y compartida. */
+function useLecturaDeAgenda(): EstadoAgendaCruda {
   const [permiso, setPermiso] = useState<'concedido' | 'denegado' | null>(null);
   const [agenda, setAgenda] = useState<ContactoDeAgenda[] | null>(null);
   const [fallo, setFallo] = useState<string | null>(null);
@@ -40,8 +55,6 @@ export function useAgendaParaInvitar(registrados: ContactoRegistrado[] | null): 
         fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Name],
       });
 
-      // Un contacto con varios números entra una vez por número; `separarAgenda`
-      // deduplica después por número normalizado.
       setAgenda(
         data.flatMap((contacto) =>
           (contacto.phoneNumbers ?? [])
@@ -55,9 +68,8 @@ export function useAgendaParaInvitar(registrados: ContactoRegistrado[] | null): 
       );
     } catch (error) {
       // **Se guarda el mensaje, no se traga.** Antes esto dejaba el estado en
-      // `null` y la pantalla mostraba esqueletos para siempre: un fallo con la
-      // misma cara que una carga lenta es un fallo que nadie encuentra.
-      reportarError('useAgendaParaInvitar', error);
+      // `null` y la pantalla mostraba esqueletos para siempre.
+      reportarError('useLecturaDeAgenda', error);
       setFallo(error instanceof Error ? error.message : String(error));
     }
   }, []);
@@ -66,23 +78,22 @@ export function useAgendaParaInvitar(registrados: ContactoRegistrado[] | null): 
     void cargar();
   }, [cargar]);
 
-  const estado = resolverEstadoAgenda({ permiso, agenda, fallo });
+  return resolverEstadoAgenda({ permiso, agenda, fallo }) as EstadoAgendaCruda;
+}
+
+export function useAgendaParaInvitar(registrados: ContactoRegistrado[] | null): ResultadoAgenda {
+  const estado = useLecturaDeAgenda();
 
   /**
    * El cruce va MEMOIZADO. Son 600+ contactos por normalizar y comparar, y sin
-   * esto corría entero en cada render — incluida cada tecla del buscador, que
-   * es exactamente cuando la app tiene que responder rápido.
+   * esto corría entero en cada render — incluida cada tecla del buscador.
    */
   return useMemo<ResultadoAgenda>(() => {
     if (estado.estado !== 'listo') return estado;
-    // Sin los registrados todavía no se puede decidir a quién falta invitar.
     if (registrados === null) return { estado: 'cargando' };
     return {
       estado: 'listo',
       paraInvitar: separarAgenda({ registrados, agenda: estado.agenda }).paraInvitar,
     };
-    // `estado` es un objeto nuevo en cada render; lo que de verdad cambia son
-    // sus partes, y esas son las que se observan.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [estado.estado, agenda, registrados, fallo, permiso]);
+  }, [estado, registrados]);
 }

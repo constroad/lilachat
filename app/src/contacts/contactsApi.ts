@@ -1,4 +1,4 @@
-import type { ContactGroup } from '@lilachat/shared';
+import type { Contact, ContactGroup } from '@lilachat/shared';
 
 /**
  * Contactos y creación de chats.
@@ -29,6 +29,23 @@ async function call<T>(route: string, jwt: string, init: RequestInit = {}): Prom
 }
 
 export const listContacts = (jwt: string) => call<{ groups: ContactGroup[] }>('/api/contacts', jwt);
+
+/**
+ * ¿Cuáles de MIS contactos están en Lilachat? — el modelo de WhatsApp.
+ *
+ * Se mandan los números que el teléfono ya tiene guardados y el server contesta
+ * cuáles coinciden. **El padrón nunca se descarga**: preguntando así, nadie se
+ * entera de un número que no tuviera antes, que es exactamente lo que pasaba
+ * cuando la lista venía entera.
+ *
+ * La contrapartida honesta: los números salen del teléfono para poder
+ * emparejarlos —no hay forma de hacerlo sin eso—, y el server no los guarda.
+ */
+export const emparejarAgenda = (jwt: string, phones: string[]) =>
+  call<{ contacts: Contact[]; groups: ContactGroup[] }>('/api/contacts/match', jwt, {
+    method: 'POST',
+    body: JSON.stringify({ phones }),
+  });
 
 /**
  * Invitar: CREAR la admisión, no solo compartir un enlace.

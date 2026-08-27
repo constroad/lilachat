@@ -234,6 +234,25 @@ function SeccionInvitar({
   const [aviso, setAviso] = useState<string | null>(null);
 
   /**
+   * **Todos los hooks ANTES de cualquier return.**
+   *
+   * Estaban después de los `return null` de «cargando», «error» y «denegado»:
+   * el primer render salía con 2 hooks y el siguiente con 5, y React tiraba
+   * «Rendered more hooks than during the previous render» — la pantalla de
+   * «Algo se rompió» al tocar el lápiz (27/08/2026).
+   *
+   * Este repo YA tenía la lección escrita en `web/src/App.tsx`, del mismo
+   * defecto en la pantalla de acceso. Se repitió igual.
+   */
+  const indexados = useMemo(
+    () => indexarParaBuscar(agenda.estado === 'listo' ? agenda.paraInvitar : []),
+    [agenda]
+  );
+  const diferida = useConsultaDiferida(consulta);
+  const coinciden = useMemo(() => buscarEn(indexados, diferida), [indexados, diferida]);
+
+
+  /**
    * Primero se CREA la admisión, después se comparte. Sin el primer paso la
    * persona instala la app y el server nunca le manda el código.
    */
@@ -301,14 +320,6 @@ function SeccionInvitar({
    * La clave de búsqueda se calcula UNA vez, no en cada tecla. Antes esto
    * recorría ~600 contactos armando un string y bajándolo a minúsculas por
    * cada render — era lo que hacía sentir trabado el buscador.
-   */
-  const indexados = useMemo(
-    () => indexarParaBuscar(agenda.estado === 'listo' ? agenda.paraInvitar : []),
-    [agenda]
-  );
-  const diferida = useConsultaDiferida(consulta);
-  const coinciden = useMemo(() => buscarEn(indexados, diferida), [indexados, diferida]);
-
   if (coinciden.length === 0) return null;
 
   /**

@@ -1808,3 +1808,50 @@ Las buenas prácticas que aplican, y dónde estamos:
 Lo que **no** hacemos y WhatsApp sí: cifrar de punta a punta TODO (acá es opt-in
 por chat, F9), y usar un protocolo binario propio en vez de Socket.IO — que para
 esta escala sería optimizar lo que no duele.
+
+## 31. «Algo se rompió» al tocar el lápiz (27/08/2026)
+
+José reportó la pantalla de error al abrir «Nuevo chat». **El reporte de §20
+hizo exactamente lo que se le pidió**: el `ErrorBoundary` atrapó el fallo, mostró
+la pantalla con «Reintentar» en vez de dejar la app en blanco, y mandó la línea
+al server.
+
+Reproducido en el emulador con el flujo de yopmail (§28.1). El log lo dijo
+entero:
+
+```
+E ReactNativeJS: [Error: Rendered more hooks than during the previous render.]
+  componentStack: at SeccionInvitar …
+E ReactNativeJS: [crash] app — Rendered more hooks than during the previous render.
+```
+
+### 31.1 La causa
+
+En `SeccionInvitar` había tres hooks —`useMemo`, `useConsultaDiferida`,
+`useMemo`— **después** de los `return null` de «cargando», «error» y «denegado».
+El primer render salía con 2 hooks y el siguiente con 5.
+
+**Este repo ya tenía la lección escrita**, en `web/src/App.tsx`, del mismo
+defecto en la pantalla de acceso: «un hook después de un return condicional
+cambia la CANTIDAD de hooks entre renders». Se repitió igual, y en el mismo día
+en que se movieron esos hooks para acelerar el buscador (§25.2).
+
+### 31.2 Por qué no lo vio nada de lo que ya había
+
+- `tsc --noEmit`: pasa. El orden de los hooks no es un problema de tipos.
+- Los tests: cubren los motores puros, que no tienen hooks.
+- El build: compila perfecto.
+
+Solo se ve **renderizando el componente**, y solo cuando el estado cambia de
+«cargando» a «listo» — o sea, con la agenda del teléfono ya leída.
+
+### 31.3 El arreglo sistémico
+
+Los hooks subieron arriba de todo, y se agregó **ESLint con una sola regla**:
+`react-hooks/rules-of-hooks`. Es lo único que detecta esto leyendo el código.
+
+Verificado que sirve: se reintrodujo el defecto a propósito y el lint lo marcó
+—`React Hook "useMemo" is called conditionally`— antes de compilar nada.
+
+Queda encadenado a `npm run typecheck`, que es lo que corre `lila apk build`:
+un APK con este defecto ya no se puede construir.

@@ -1674,3 +1674,39 @@ Y las reglas que ya se habían pagado en la app se repiten acá:
   otra persona abra la pestaña. Pero se borra **solo la caché**: mezclarlo con la
   credencial haría que limpiar el historial cerrara la sesión sin que nadie lo
   pidiera.
+
+### 29.3 El E2E de la web encontró que la foto no se veía
+
+Probado con `jose.test@yopmail.com` (§28.1) contra producción. El archivo se
+inyecta en el `<input type="file">` **generándolo en la propia página** con un
+canvas — no hace falta transferir bytes al navegador:
+
+```js
+c.toBlob((blob) => {
+  const dt = new DataTransfer();
+  dt.items.add(new File([blob], 'x.png', { type: 'image/png' }));
+  input.files = dt.files;
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+});
+```
+
+**Y apareció el defecto:** el POST devolvía 201, el mensaje se guardaba, la lista
+decía «📷 Foto»… y la conversación mostraba una **burbuja vacía**.
+
+La causa: el tipo de la web declaraba `mediaUrl` y `thumbnailUrl`, campos que el
+server **no manda**. Manda `media.url` y `media.thumbUrl` —lo que la app lee
+desde siempre—. TypeScript no puede ver eso: el tipo describía un contrato
+inventado y compila igual de bien que uno correcto.
+
+Es la misma lección que ya está escrita para los clientes del server: **los
+contratos se leen, no se recuerdan**. Un tipo escrito a mano es una suposición
+con sintaxis.
+
+| Paso | Resultado |
+| --- | --- |
+| Entrar a la web con código por correo | entra y persiste la sesión |
+| «+» → Foto o archivo | POST `/api/media` → 201 |
+| La lista | «📷 Foto» con contador |
+| La conversación | **burbuja vacía** → corregido → se ve |
+| Caché en `localStorage` | 1 chat, 1 mensaje, con `media.url` |
+| Recargar con `fetch` roto | la conversación sigue en pantalla |

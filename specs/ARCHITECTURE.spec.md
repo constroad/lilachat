@@ -1320,3 +1320,45 @@ este diseño impide.
 **Con quien ya hablo siempre está**, aunque no lo tenga agendado: perder una
 conversación abierta porque el contacto no está en la libreta sería peor que
 mostrar un número de más.
+
+## 24. La estrategia de WhatsApp para la fluidez (26/08/2026)
+
+José preguntó si la había mirado. La respuesta corta: el problema del render ya
+estaba resuelto (§22, virtualizar y memoizar); lo que faltaba es lo otro.
+
+**WhatsApp es local-first.** Guarda todo en el teléfono, pinta desde ahí al
+instante y usa la red solo para conciliar por detrás. Lilachat hacía lo
+contrario: **no guardaba nada**, así que cada apertura empezaba en blanco y
+esperaba a la red. Ninguna optimización de render arregla eso — el tiempo no se
+va dibujando, se va esperando.
+
+### 24.1 Lo que ya se hizo: la lista de chats
+
+Se persiste (`chat/chatsGuardados.ts`, AsyncStorage) y se pinta antes de
+preguntar. Tres reglas:
+
+- **Cuando el server contesta, MANDA el server** — no se fusiona. Fusionando, un
+  chat borrado desde otro teléfono no desaparecería nunca de este. La caché es lo
+  que se ve MIENTRAS, no una segunda fuente de verdad.
+- **Sin red se deja lo que había.** El `[]` de «no hay conversaciones» solo se
+  pinta si tampoco hay caché; si no, abrir sin señal seguiría vaciando la
+  pantalla.
+- **Se borra al cerrar sesión.** La lista de con quién habla alguien no se
+  hereda al siguiente que entre en ese teléfono.
+
+Guarda la LISTA, no los mensajes: cuerpos de mensajes en un almacén sin cifrar es
+otra decisión y merece su propia discusión — los chats secretos (F9) existen
+justamente para que ni el server los vea.
+
+### 24.2 Lo que falta para ser local-first de verdad
+
+| Pieza | Estado |
+| --- | --- |
+| Lista de chats persistida | hecho |
+| Últimos mensajes por chat, persistidos | **falta** — al abrir un chat todavía se espera al socket |
+| Reconciliación por `seq` contra lo guardado | existe el motor (`mergeBySeq`), falta el almacén |
+| Búsqueda local | falta |
+
+Abrir un chat sigue costando una ida y vuelta. Es el mismo patrón de acá y el
+motor de merge ya existe; lo que falta es dónde guardarlos y decidir si van
+cifrados en reposo.

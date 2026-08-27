@@ -18,6 +18,7 @@ import { OtpScreen } from './src/onboarding/OtpScreen';
 import { TabsShell } from './src/ui/TabsShell';
 import { ChatScreen } from './src/chat/ChatScreen';
 import { disconnectSocket } from './src/chat/socketClient';
+import { olvidarChats } from './src/chat/chatsGuardados';
 import type { ChatSummary } from './src/api/client';
 
 /**
@@ -65,7 +66,9 @@ export default function App() {
     }
     if (session.status === 401) {
       // Revocado de verdad: se vuelve al alta, sin llaves que no abren.
-      await clearCredential();
+      // La caché de chats se borra con la credencial: la lista de con quién
+      // habla alguien no se hereda al siguiente que entre en este teléfono.
+      await Promise.all([clearCredential(), olvidarChats()]);
       setBoot({ phase: 'email' });
       return;
     }
@@ -107,6 +110,7 @@ export default function App() {
             // El socket se cierra ANTES de borrar la credencial: si no, queda
             // vivo con un JWT que ya no vale y reconecta en bucle.
             disconnectSocket();
+            void olvidarChats();
             void clearCredential().then(() => setBoot({ phase: 'email' }));
           }}
         />

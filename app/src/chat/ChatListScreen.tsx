@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, RefreshControl, Text, View } from 'react-native';
 import { Lock, MessageCircle, PenSquare } from 'lucide-react-native';
 import { formatChatTimestamp, resolveChatPreview } from '@lilachat/shared';
@@ -6,6 +6,8 @@ import type { Credential } from '../auth/credentialStore';
 import { connectSocket } from './socketClient';
 import { configureNotificationHandler, registerPushToken } from './pushRegistration';
 import { listChats, type ChatSummary } from '../api/client';
+import { conciliarCache } from './cacheDeChats';
+import { guardarChats, leerChatsGuardados } from './chatsGuardados';
 import { FlashList } from '@shopify/flash-list';
 
 /**
@@ -26,11 +28,35 @@ export function ChatListScreen({
   onNewChat: () => void;
 }) {
   const [chats, setChats] = useState<ChatSummary[] | null>(null);
+  /**
+   * Lo guardado se pinta ANTES de preguntarle a la red: abrir la app y ver
+   * esqueletos cada vez es la diferencia de fondo con WhatsApp, que es
+   * local-first. La red confirma o corrige por detrás.
+   */
+  const chatsRef = useRef<ChatSummary[] | null>(null);
+
+  useEffect(() => {
+    chatsRef.current = chats;
+  }, [chats]);
+
+  useEffect(() => {
+    void leerChatsGuardados().then((guardados) => {
+      if (guardados && chatsRef.current === null) setChats(guardados);
+    });
+  }, []);
   const [refreshing, setRefreshing] = useState(false);
   const load = useCallback(async () => {
     const result = await listChats(credential.jwt);
-    if (result.ok) setChats(result.data.chats);
-    else setChats([]);
+    // El server MANDA: no se fusiona con la caché, porque un chat borrado desde
+    // otro teléfono tiene que desaparecer de este.
+    if (result.ok) {
+      setChats(conciliarCache({ guardado: null, delServer: result.data.chats }));
+      void guardarChats(result.data.chats);
+    } else if (chatsRef.current === null) {
+      // Sin red y sin caché: recién ahí se dice «no hay». Con caché se deja lo
+      // que ya había, que es lo que hace que abrir sin señal siga sirviendo.
+      setChats([]);
+    }
   }, [credential.jwt]);
 
   useEffect(() => {

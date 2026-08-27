@@ -10,6 +10,7 @@ import { invitarContacto, listContacts } from './contactsApi';
 import { useAgendaParaInvitar } from './useAgendaParaInvitar';
 import { buscarEn, indexarParaBuscar } from './busqueda';
 import { useConsultaDiferida } from '../ui/useConsultaDiferida';
+import { useColores } from '../ui/tema';
 
 /**
  * Invitar a alguien de la agenda del teléfono.
@@ -37,6 +38,7 @@ export function InviteScreen({
   enlaceApp: string;
   onClose: () => void;
 }) {
+  const colores = useColores();
   const margenes = useMargenes();
   const [registrados, setRegistrados] = useState<Contact[] | null>(null);
   const [consulta, setConsulta] = useState('');
@@ -107,7 +109,7 @@ export function InviteScreen({
             testID="btn-cerrar-invitar"
             className="h-11 w-11 items-center justify-center rounded-full"
           >
-            <X size={22} color="#0b1c30" />
+            <X size={22} color={colores["on-surface"]} />
           </Pressable>
           <Text className="flex-1 text-xl font-bold text-on-surface">Invitar</Text>
         </View>
@@ -120,13 +122,13 @@ export function InviteScreen({
 
         {agenda.estado === 'listo' ? (
           <View className="mx-4 mb-2 flex-row items-center gap-2 rounded-full bg-surface px-3 py-2">
-            <Search size={16} color="#7b7486" />
+            <Search size={16} color={colores.outline} />
             <TextInput
               testID="buscar-contacto-telefono"
               value={consulta}
               onChangeText={setConsulta}
               placeholder="Buscar en tu agenda"
-              placeholderTextColor="#7b7486"
+              placeholderTextColor={colores.outline}
               className="min-w-0 flex-1 text-sm text-on-surface"
             />
           </View>
@@ -197,6 +199,7 @@ function FilaInvitable({
   contacto: { id: string; nombre: string; telefono: string };
   onInvitar: () => void;
 }) {
+  const colores = useColores();
   return (
     <View
       testID={`contacto-tel-${contacto.id}`}
@@ -220,7 +223,7 @@ function FilaInvitable({
         onPress={onInvitar}
         className="min-h-[44px] flex-row items-center gap-1.5 rounded-full bg-primary px-4"
       >
-        <Send size={14} color="#ffffff" />
+        <Send size={14} color={colores["on-primary"]} />
         <Text className="text-[13px] font-semibold text-on-primary">Invitar</Text>
       </Pressable>
     </View>

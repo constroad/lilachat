@@ -3,6 +3,7 @@ import { Modal, Pressable, Text, View } from 'react-native';
 import { KeyRound, ShieldCheck, TriangleAlert, X } from 'lucide-react-native';
 import type { SecretSession } from './useSecretChat';
 import { useMargenes } from '../ui/useMargenes';
+import { useColores } from '../ui/tema';
 
 /**
  * Lo que la conversación secreta le dice al usuario (F9).
@@ -18,6 +19,7 @@ import { useMargenes } from '../ui/useMargenes';
  * es el único ataque que le queda a quien controla el directorio.
  */
 export function SecretChatBanner({ session }: { session: SecretSession }) {
+  const colores = useColores();
   const margenes = useMargenes();
   const [viendoHuella, setViendoHuella] = useState(false);
 
@@ -33,7 +35,7 @@ export function SecretChatBanner({ session }: { session: SecretSession }) {
         className="mx-3 mt-3 flex-row items-center gap-3 rounded-xl bg-amber-500/10 p-3"
         testID="cifrado-sin-clave"
       >
-        <TriangleAlert size={18} color="#d97706" />
+        <TriangleAlert size={18} color={colores.advertencia} />
         <Text className="min-w-0 flex-1 text-[12px] leading-4 text-on-surface">
           Todavía no puedes escribir aquí: la otra persona no ha abierto Lilachat
           en su teléfono, así que no tiene con qué descifrar.
@@ -49,7 +51,7 @@ export function SecretChatBanner({ session }: { session: SecretSession }) {
         onPress={() => setViendoHuella(true)}
         className="mx-3 mt-3 flex-row items-center gap-3 rounded-xl bg-primary/[0.07] p-3"
       >
-        <ShieldCheck size={18} color="#6b38d4" />
+        <ShieldCheck size={18} color={colores.primary} />
         <Text className="min-w-0 flex-1 text-[12px] leading-4 text-on-surface-variant">
           Cifrado de punta a punta. Ni el servidor ni Lila pueden leer esto.
           <Text className="font-semibold text-primary"> Ver huella</Text>
@@ -68,7 +70,7 @@ export function SecretChatBanner({ session }: { session: SecretSession }) {
         >
           <View className="rounded-t-2xl bg-surface px-5 pt-4" style={{ paddingBottom: margenes.pie }} testID="hoja-huella">
             <View className="mb-3 flex-row items-center gap-2">
-              <KeyRound size={18} color="#6b38d4" />
+              <KeyRound size={18} color={colores.primary} />
               <Text className="flex-1 text-base font-bold text-on-surface">
                 Huella de seguridad
               </Text>
@@ -76,7 +78,7 @@ export function SecretChatBanner({ session }: { session: SecretSession }) {
                 onPress={() => setViendoHuella(false)}
                 className="h-9 w-9 items-center justify-center"
               >
-                <X size={18} color="#7b7486" />
+                <X size={18} color={colores.outline} />
               </Pressable>
             </View>
 

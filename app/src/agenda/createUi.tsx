@@ -1,5 +1,6 @@
 import { Pressable, Switch, Text, TextInput, View } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
+import { useColores } from '../ui/tema';
 
 /**
  * Las piezas compartidas de las pantallas de crear (diseños «New Event» y
@@ -22,13 +23,16 @@ export const SectionLabel = ({ children }: { children: string }) => (
 );
 
 /** El campo del diseño: relleno tintado, sin borde, sin sombra. */
-export const FilledField = (props: React.ComponentProps<typeof TextInput>) => (
-  <TextInput
-    {...props}
-    placeholderTextColor="#8b86a0"
-    className="min-h-[52px] rounded-xl bg-primary/[0.07] px-4 py-3 text-base text-on-surface"
-  />
-);
+export const FilledField = (props: React.ComponentProps<typeof TextInput>) => {
+  const colores = useColores();
+  return (
+    <TextInput
+      {...props}
+      placeholderTextColor={colores['on-surface-variant']}
+      className="min-h-[52px] rounded-xl bg-primary/[0.07] px-4 py-3 text-base text-on-surface"
+    />
+  );
+};
 
 /**
  * Una fila con icono, dos líneas y chevron («Mañana, 7:00 PM / Termina a las
@@ -51,6 +55,7 @@ export function PickerRow({
   onPress: () => void;
   testID: string;
 }) {
+  const colores = useColores();
   return (
     <Pressable
       testID={testID}
@@ -66,7 +71,7 @@ export function PickerRow({
           {hint}
         </Text>
       </View>
-      <ChevronRight size={18} color="#7b7486" />
+      <ChevronRight size={18} color={colores.outline} />
     </Pressable>
   );
 }
@@ -87,6 +92,7 @@ export function ToggleRow({
   onChange: (next: boolean) => void;
   testID: string;
 }) {
+  const colores = useColores();
   return (
     <View className="mb-2 flex-row items-center gap-3 rounded-xl bg-primary/[0.07] px-4 py-3">
       {icon ? (
@@ -96,7 +102,7 @@ export function ToggleRow({
         <Text className="text-[15px] font-semibold text-on-surface">{label}</Text>
         <Text className="text-[12px] leading-4 text-on-surface-variant">{hint}</Text>
       </View>
-      <Switch testID={testID} value={value} onValueChange={onChange} trackColor={{ true: '#6b38d4' }} />
+      <Switch testID={testID} value={value} onValueChange={onChange} trackColor={{ true: colores.primary }} />
     </View>
   );
 }

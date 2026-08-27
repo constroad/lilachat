@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import { Mic, MicOff, Phone, PhoneOff, Video, VideoOff, Volume2 } from 'lucide-react-native';
 import { formatCallDuration, type CallState } from '@lilachat/shared';
+import { useColores } from '../ui/tema';
 
 /**
  * La pantalla de llamada (diseños «Llamada de Voz» y «Video Llamada»).
@@ -41,6 +42,7 @@ export function CallScreen({
   onAccept: () => void;
   onHangUp: () => void;
 }) {
+  const colores = useColores();
   // El reloj se recalcula cada segundo; el ESTADO no cambia por eso.
   const [ahora, setAhora] = useState(() => Date.now());
   useEffect(() => {
@@ -95,14 +97,14 @@ export function CallScreen({
                 label="Rechazar"
                 onPress={onHangUp}
                 destructivo
-                icon={<PhoneOff size={26} color="#ffffff" />}
+                icon={<PhoneOff size={26} color={colores["on-primary"]} />}
               />
               <Boton
                 testID="btn-contestar"
                 label="Contestar"
                 onPress={onAccept}
                 verde
-                icon={<Phone size={26} color="#ffffff" />}
+                icon={<Phone size={26} color={colores["on-primary"]} />}
               />
             </View>
           ) : (
@@ -113,7 +115,7 @@ export function CallScreen({
                 onPress={onToggleMute}
                 activo={muted}
                 icon={
-                  muted ? <MicOff size={22} color="#ffffff" /> : <Mic size={22} color="#ffffff" />
+                  muted ? <MicOff size={22} color={colores["on-primary"]} /> : <Mic size={22} color={colores["on-primary"]} />
                 }
               />
               <Boton
@@ -121,7 +123,7 @@ export function CallScreen({
                 label="Altavoz"
                 onPress={onToggleSpeaker}
                 activo={speaker}
-                icon={<Volume2 size={22} color="#ffffff" />}
+                icon={<Volume2 size={22} color={colores["on-primary"]} />}
               />
               <Boton
                 testID="btn-video"
@@ -129,7 +131,7 @@ export function CallScreen({
                 onPress={onToggleVideo}
                 activo={video}
                 icon={
-                  video ? <Video size={22} color="#ffffff" /> : <VideoOff size={22} color="#ffffff" />
+                  video ? <Video size={22} color={colores["on-primary"]} /> : <VideoOff size={22} color={colores["on-primary"]} />
                 }
               />
               <Boton
@@ -137,7 +139,7 @@ export function CallScreen({
                 label="Colgar"
                 onPress={onHangUp}
                 destructivo
-                icon={<PhoneOff size={22} color="#ffffff" />}
+                icon={<PhoneOff size={22} color={colores["on-primary"]} />}
               />
             </View>
           )}

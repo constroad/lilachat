@@ -1,3 +1,48 @@
+/* GENERADO por `npm run emit-tokens` — no editar a mano.
+   La paleta vive en `shared/src/tokens.ts` y el mapa en `shared/src/tema.ts`. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Los colores son VARIABLES, no valores fijos: así `bg-surface` y compañía
+   funcionan igual en los dos modos y ninguna pantalla necesita `dark:`.
+   NativeWind pone la clase `dark` en la raíz según `colorScheme`. */
+@layer base {
+  :root {
+    --color-primary: 107 56 212;
+    --color-primary-container: 132 85 239;
+    --color-primary-brand: 139 92 246;
+    --color-secondary: 0 88 190;
+    --color-secondary-brand: 59 130 246;
+    --color-tertiary: 161 46 112;
+    --color-tertiary-brand: 244 114 182;
+    --color-neutral: 100 116 139;
+    --color-background: 248 249 255;
+    --color-surface: 255 255 255;
+    --color-surface-variant: 211 228 254;
+    --color-on-surface: 11 28 48;
+    --color-on-surface-variant: 73 68 84;
+    --color-outline: 123 116 134;
+    --color-error: 186 26 26;
+    --color-on-primary: 255 255 255;
+  }
+
+  .dark:root {
+    --color-primary: 208 188 255;
+    --color-primary-container: 79 55 139;
+    --color-primary-brand: 167 139 250;
+    --color-secondary: 158 202 255;
+    --color-secondary-brand: 96 165 250;
+    --color-tertiary: 255 177 200;
+    --color-tertiary-brand: 249 168 212;
+    --color-neutral: 148 163 184;
+    --color-background: 15 23 42;
+    --color-surface: 26 35 55;
+    --color-surface-variant: 37 48 72;
+    --color-on-surface: 231 233 243;
+    --color-on-surface-variant: 168 176 198;
+    --color-outline: 139 149 173;
+    --color-error: 255 180 171;
+    --color-on-primary: 56 30 114;
+  }
+}

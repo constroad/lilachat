@@ -9,6 +9,7 @@ import { listChats, type ChatSummary } from '../api/client';
 import { conciliarCache } from './cacheDeChats';
 import { guardarChats, leerChatsGuardados } from './chatsGuardados';
 import { FlashList } from '@shopify/flash-list';
+import { useColores } from '../ui/tema';
 
 /**
  * La lista de chats (diseño Stitch «Lilachat: Chats»).
@@ -27,6 +28,7 @@ export function ChatListScreen({
   onOpenChat: (chat: ChatSummary) => void;
   onNewChat: () => void;
 }) {
+  const colores = useColores();
   const [chats, setChats] = useState<ChatSummary[] | null>(null);
   /**
    * Lo guardado se pinta ANTES de preguntarle a la red: abrir la app y ver
@@ -152,7 +154,7 @@ export function ChatListScreen({
       ) : chats.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8" testID="chats-vacio">
           <View className="h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <MessageCircle size={28} color="#6b38d4" />
+            <MessageCircle size={28} color={colores.primary} />
           </View>
           <Text className="mt-4 text-lg font-semibold text-on-surface">Sin conversaciones</Text>
           <Text className="mt-1 text-center text-sm leading-5 text-on-surface-variant">
@@ -194,7 +196,7 @@ export function ChatListScreen({
                 <View className="flex-row items-center gap-2">
                   {/* Candado pegado al nombre: quién es y cómo se le habla se
                       leen de una sola mirada. */}
-                  {chat.encrypted ? <Lock size={13} color="#6b38d4" /> : null}
+                  {chat.encrypted ? <Lock size={13} color={colores.primary} /> : null}
                   <Text className="min-w-0 flex-1 text-base font-semibold text-on-surface" numberOfLines={1}>
                     {title(chat)}
                   </Text>
@@ -274,7 +276,7 @@ export function ChatListScreen({
         onPress={onNewChat}
         className="absolute bottom-5 right-5 h-14 w-14 items-center justify-center rounded-xl bg-primary shadow-lg"
       >
-        <PenSquare size={22} color="#ffffff" />
+        <PenSquare size={22} color={colores["on-primary"]} />
       </Pressable>
 
     </View>

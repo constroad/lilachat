@@ -4,6 +4,7 @@ import { CloudUpload, HardDrive, RefreshCw, Server, TriangleAlert } from 'lucide
 import { formatEventWhen } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { getBackupStatus, runBackupNow, type BackupStatus } from './backupApi';
+import { useColores } from '../ui/tema';
 
 /**
  * Copia de seguridad (diseño «Backup»).
@@ -28,6 +29,7 @@ const Section = ({ children }: { children: string }) => (
 );
 
 export function BackupScreen({ credential }: { credential: Credential }) {
+  const colores = useColores();
   const [status, setStatus] = useState<BackupStatus | null>(null);
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState('');
@@ -73,9 +75,9 @@ export function BackupScreen({ credential }: { credential: Credential }) {
           }`}
         >
           {alDia ? (
-            <CloudUpload size={34} color="#6b38d4" />
+            <CloudUpload size={34} color={colores.primary} />
           ) : (
-            <TriangleAlert size={34} color="#d97706" />
+            <TriangleAlert size={34} color={colores.advertencia} />
           )}
         </View>
 
@@ -123,7 +125,7 @@ export function BackupScreen({ credential }: { credential: Credential }) {
           running ? 'bg-primary/40' : 'bg-primary'
         }`}
       >
-        <RefreshCw size={18} color="#ffffff" />
+        <RefreshCw size={18} color={colores["on-primary"]} />
         <Text className="text-base font-bold text-on-primary">
           {running ? 'Respaldando…' : 'Respaldar ahora'}
         </Text>
@@ -138,7 +140,7 @@ export function BackupScreen({ credential }: { credential: Credential }) {
       <Section>Dónde se guarda</Section>
       <View className="flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4">
         <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-          <Server size={18} color="#6b38d4" />
+          <Server size={18} color={colores.primary} />
         </View>
         <View className="min-w-0 flex-1">
           <Text className="text-sm font-semibold text-on-surface">Nuestro servidor</Text>
@@ -151,7 +153,7 @@ export function BackupScreen({ credential }: { credential: Credential }) {
       <Section>Cada cuánto</Section>
       <View className="flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4">
         <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-          <HardDrive size={18} color="#6b38d4" />
+          <HardDrive size={18} color={colores.primary} />
         </View>
         <View className="min-w-0 flex-1">
           <Text className="text-sm font-semibold text-on-surface">Todas las noches</Text>

@@ -4,6 +4,7 @@ import { CalendarDays, MapPin, Plus } from 'lucide-react-native';
 import { formatEventWhen, type Rsvp } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { agendaGet, agendaPost, type AgendaEvent } from './agendaApi';
+import { useColores } from '../ui/tema';
 
 /**
  * Los eventos que vienen (diseño «New Event», pestaña Eventos).
@@ -28,6 +29,7 @@ export function EventsScreen({
   /** La Agenda pone su propio botón: dos flotantes encimados es un bug visible. */
   hideFab?: boolean;
 }) {
+  const colores = useColores();
   const [events, setEvents] = useState<AgendaEvent[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -61,7 +63,7 @@ export function EventsScreen({
       ) : events.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8" testID="eventos-vacio">
           <View className="h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <CalendarDays size={28} color="#6b38d4" />
+            <CalendarDays size={28} color={colores.primary} />
           </View>
           <Text className="mt-4 text-lg font-semibold text-on-surface">Sin eventos</Text>
           <Text className="mt-1 text-center text-sm leading-5 text-on-surface-variant">
@@ -89,14 +91,14 @@ export function EventsScreen({
             >
               <Text className="text-base font-bold text-on-surface">{event.title}</Text>
               <View className="mt-1.5 flex-row items-center gap-1.5">
-                <CalendarDays size={14} color="#7b7486" />
+                <CalendarDays size={14} color={colores.outline} />
                 <Text className="text-sm text-on-surface-variant">
                   {formatEventWhen(new Date(event.startsAt))}
                 </Text>
               </View>
               {event.location ? (
                 <View className="mt-1 flex-row items-center gap-1.5">
-                  <MapPin size={14} color="#7b7486" />
+                  <MapPin size={14} color={colores.outline} />
                   <Text className="text-sm text-on-surface-variant">{event.location}</Text>
                 </View>
               ) : null}
@@ -140,7 +142,7 @@ export function EventsScreen({
           onPress={onCreate}
           className="absolute bottom-5 right-5 h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg"
         >
-          <Plus size={24} color="#ffffff" />
+          <Plus size={24} color={colores["on-primary"]} />
         </Pressable>
       )}
     </View>

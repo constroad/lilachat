@@ -6,6 +6,7 @@ import { formatPhoneDisplay } from '@lilachat/shared';
 import { requestOtp, verifyOtp } from '../api/client';
 import { saveCredential, type Credential } from '../auth/credentialStore';
 import { isCompleteOtp, mapVerifyFailure, shouldAutoSubmitOtp } from './machine';
+import { useColores } from '../ui/tema';
 
 /**
  * Alta paso 2 (diseño Stitch «Verificación OTP»). El sexto dígito envía solo;
@@ -27,6 +28,7 @@ export function OtpScreen({
   onDone: (credential: Credential) => void;
   onBack: () => void;
 }) {
+  const colores = useColores();
   const [code, setCode] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState('');
@@ -76,11 +78,13 @@ export function OtpScreen({
     if (shouldAutoSubmitOtp(previous, digits)) void verify(digits);
   };
 
+  const habilitado = isCompleteOtp(code) && !verifying;
+
   return (
     <View className="flex-1 bg-background px-6 pt-24" testID="pantalla-otp">
       {/* Badge del diseño: dice de qué se trata la pantalla antes de leer nada. */}
       <View className="h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-        <ShieldCheck size={24} color="#6b38d4" />
+        <ShieldCheck size={24} color={colores.primary} />
       </View>
       <Text className="mt-5 text-3xl font-bold text-on-surface">Verificar Número</Text>
       <Text className="mt-2 text-base leading-6 text-on-surface-variant">
@@ -133,16 +137,32 @@ export function OtpScreen({
 
       <Pressable
         testID="btn-verificar"
-        disabled={!isCompleteOtp(code) || verifying}
+        disabled={!habilitado}
         onPress={() => void verify(code)}
         className={`mt-6 min-h-[52px] items-center justify-center rounded-lg ${
-          isCompleteOtp(code) && !verifying ? 'bg-primary' : 'bg-primary/30'
+          habilitado ? 'bg-primary' : 'bg-primary/30'
         }`}
       >
         {verifying ? (
-          <ActivityIndicator color="#ffffff" />
+          <ActivityIndicator color={colores['on-primary']} />
         ) : (
-          <Text className="text-base font-bold text-on-primary">Entrar</Text>
+          /**
+           * Deshabilitado el texto NO usa `on-primary`.
+           *
+           * El fondo inactivo es `bg-primary/30`, o sea el primario translúcido
+           * sobre el fondo de la pantalla: el resultado se parece al fondo, no al
+           * primario. En oscuro eso deja el violeta oscuro de `on-primary` casi
+           * encima del navy y el botón queda ilegible (visto en el emulador,
+           * 27/08/2026). Con el gris de texto secundario se lee inactivo en los
+           * dos modos, que es lo que un deshabilitado tiene que comunicar.
+           */
+          <Text
+            className={`text-base font-bold ${
+              habilitado ? 'text-on-primary' : 'text-on-surface-variant'
+            }`}
+          >
+            Entrar
+          </Text>
         )}
       </Pressable>
 

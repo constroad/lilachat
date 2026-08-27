@@ -4,6 +4,7 @@ import { BarChart3, Plus } from 'lucide-react-native';
 import { tallyPoll } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { agendaGet, agendaPost, type AgendaPoll } from './agendaApi';
+import { useColores } from '../ui/tema';
 
 /**
  * Encuestas (diseño «New Poll», pestaña Encuestas).
@@ -19,6 +20,7 @@ export function PollsScreen({
   credential: Credential;
   onCreate: () => void;
 }) {
+  const colores = useColores();
   const [polls, setPolls] = useState<AgendaPoll[] | null>(null);
 
   const load = useCallback(async () => {
@@ -46,7 +48,7 @@ export function PollsScreen({
       ) : polls.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8" testID="encuestas-vacio">
           <View className="h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <BarChart3 size={28} color="#6b38d4" />
+            <BarChart3 size={28} color={colores.primary} />
           </View>
           <Text className="mt-4 text-lg font-semibold text-on-surface">Sin encuestas</Text>
           <Text className="mt-1 text-center text-sm leading-5 text-on-surface-variant">
@@ -127,7 +129,7 @@ export function PollsScreen({
         onPress={onCreate}
         className="absolute bottom-5 right-5 h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg"
       >
-        <Plus size={24} color="#ffffff" />
+        <Plus size={24} color={colores["on-primary"]} />
       </Pressable>
     </View>
   );

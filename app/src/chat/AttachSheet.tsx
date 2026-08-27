@@ -1,6 +1,7 @@
 import { Modal, Pressable, Text, View } from 'react-native';
 import { BarChart3, CalendarDays, Camera, Image as ImageIcon, Paperclip } from 'lucide-react-native';
 import { useMargenes } from '../ui/useMargenes';
+import { useColores } from '../ui/tema';
 
 /**
  * El «+» de la conversación (diseño Stitch «Multimedia y Emojis»).
@@ -31,6 +32,7 @@ export function AttachSheet({
   onCreateEvent: () => void;
   onCreatePoll: () => void;
 }) {
+  const colores = useColores();
   const margenes = useMargenes();
   const options = [
     { key: 'camara', label: 'Cámara', icon: Camera, action: onPickCamera, testID: 'attach-camara' },
@@ -56,7 +58,7 @@ export function AttachSheet({
             className="min-h-[56px] flex-row items-center gap-4"
           >
             <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/10">
-              <Icon size={20} color="#6b38d4" />
+              <Icon size={20} color={colores.primary} />
             </View>
             <Text className="text-base font-semibold text-on-surface">{label}</Text>
           </Pressable>

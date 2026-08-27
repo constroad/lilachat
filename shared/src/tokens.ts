@@ -30,10 +30,54 @@ export const vividPulse = {
       error: '#ba1a1a',
       onPrimary: '#ffffff',
     },
+    /**
+     * El modo oscuro (27/08/2026). Hasta acá tenía DOS colores —`background` e
+     * `inversePrimary`— y eso no es una paleta: es una intención. La app se
+     * dibujaba siempre en claro.
+     *
+     * Las claves son las MISMAS que en `light` a propósito: `paletaDe()` hace
+     * `{...light, ...dark}`, así que un color que falte hereda el claro en
+     * silencio. El test `todos los nombres resuelven en los DOS modos` más el de
+     * «superficie y texto cambian» son los que impiden que eso vuelva a pasar.
+     */
     dark: {
+      /**
+       * Violeta CLARO, no el de marca. En oscuro `primary` se usa sobre todo
+       * como texto (título, pestaña activa) sobre el navy: el violeta del modo
+       * claro ahí no se lee. Es el `inversePrimary` de Material, que existe
+       * exactamente para esto — y por eso deja de estar como clave suelta.
+       */
+      primary: '#d0bcff',
+      /** Y su contrapartida: lo que va ENCIMA de `bg-primary` pasa a ser oscuro. */
+      onPrimary: '#381e72',
+      primaryContainer: '#4f378b',
+      brandPrimary: '#a78bfa',
+      secondary: '#9ecaff',
+      brandSecondary: '#60a5fa',
+      tertiary: '#ffb1c8',
+      brandTertiary: '#f9a8d4',
+      neutral: '#94a3b8',
       /** Navy, nunca negro puro: el glass necesita profundidad (spec §2.1). */
       background: '#0f172a',
-      inversePrimary: '#d0bcff',
+      /**
+       * Las tarjetas van MÁS CLARAS que el fondo, no más oscuras.
+       *
+       * Es el reflejo de la regla del modo claro (blanco sobre gris): la
+       * elevación se lee como «más cerca de la luz». Una tarjeta más oscura que
+       * su fondo parece un agujero.
+       */
+      surfaceContainerLowest: '#1a2337',
+      surfaceVariant: '#253048',
+      /** Casi blanco, no blanco puro: el blanco puro sobre navy vibra. */
+      onSurface: '#e7e9f3',
+      onSurfaceVariant: '#a8b0c6',
+      /**
+       * Más claro que el del modo claro, y no es un descuido: los bordes de la
+       * app se dibujan con `border-outline/10`. El gris del modo claro a un 10 %
+       * sobre navy es literalmente invisible.
+       */
+      outline: '#8b95ad',
+      error: '#ffb4ab',
     },
   },
   typography: {

@@ -5,6 +5,7 @@ import type { Credential } from '../auth/credentialStore';
 import { EventsScreen } from './EventsScreen';
 import { RemindersScreen } from './RemindersScreen';
 import { useMargenes } from '../ui/useMargenes';
+import { useColores } from '../ui/tema';
 
 /**
  * Agenda: eventos y avisos en UNA pestaña (pedido de José).
@@ -23,6 +24,7 @@ export function AgendaScreen({
   credential: Credential;
   onCreate: (kind: 'event' | 'reminder') => void;
 }) {
+  const colores = useColores();
   const margenes = useMargenes();
   const [vista, setVista] = useState<'eventos' | 'avisos'>('eventos');
   const [eligiendo, setEligiendo] = useState(false);
@@ -71,7 +73,7 @@ export function AgendaScreen({
         onPress={() => setEligiendo(true)}
         className="absolute bottom-5 right-5 h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg"
       >
-        <Plus size={24} color="#ffffff" />
+        <Plus size={24} color={colores["on-primary"]} />
       </Pressable>
 
       <Modal
@@ -92,7 +94,7 @@ export function AgendaScreen({
                 onPress={() => setEligiendo(false)}
                 className="h-9 w-9 items-center justify-center"
               >
-                <X size={18} color="#7b7486" />
+                <X size={18} color={colores.outline} />
               </Pressable>
             </View>
 
@@ -122,7 +124,7 @@ export function AgendaScreen({
                 className="min-h-[64px] flex-row items-center gap-3 rounded-xl px-2 py-3"
               >
                 <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/[0.12]">
-                  <Icon size={20} color="#6b38d4" />
+                  <Icon size={20} color={colores.primary} />
                 </View>
                 <View className="min-w-0 flex-1">
                   <Text className="text-[15px] font-semibold text-on-surface">{label}</Text>

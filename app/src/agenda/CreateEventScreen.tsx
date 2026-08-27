@@ -8,6 +8,7 @@ import { ContactPicker } from '../contacts/ContactPicker';
 import { createChat } from '../contacts/contactsApi';
 import { FilledField, PickerRow, PrimaryAction, SectionLabel, ToggleRow } from './createUi';
 import { useMargenes } from '../ui/useMargenes';
+import { useColores } from '../ui/tema';
 
 /**
  * Crear evento (diseño «New Event»).
@@ -49,6 +50,7 @@ export function CreateEventScreen({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const colores = useColores();
   const margenes = useMargenes();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -140,7 +142,7 @@ export function CreateEventScreen({
             testID="btn-cerrar-crear"
             className="h-11 w-9 items-center justify-center"
           >
-            <X size={22} color="#0b1c30" />
+            <X size={22} color={colores["on-surface"]} />
           </Pressable>
         </View>
 
@@ -149,7 +151,7 @@ export function CreateEventScreen({
               círculo, el título en acento y una línea que explica para qué es. */}
           <View className="items-center pb-2">
             <View className="h-14 w-14 items-center justify-center rounded-full bg-primary">
-              <Sparkles size={24} color="#ffffff" />
+              <Sparkles size={24} color={colores["on-primary"]} />
             </View>
             <Text className="mt-3 text-2xl font-bold text-primary">Nuevo evento</Text>
             <Text className="mt-1 text-center text-[13px] leading-5 text-on-surface-variant">
@@ -180,7 +182,7 @@ export function CreateEventScreen({
           <SectionLabel>Cuándo y dónde</SectionLabel>
           <PickerRow
             testID="fila-cuando"
-            icon={<Calendar size={18} color="#6b38d4" />}
+            icon={<Calendar size={18} color={colores.primary} />}
             title={cuando?.etiqueta ?? `En ${hours} horas`}
             hint="Toca para cambiar"
             onPress={() => setEditandoCuando((abierto) => !abierto)}
@@ -213,7 +215,7 @@ export function CreateEventScreen({
 
           <PickerRow
             testID="fila-donde"
-            icon={<MapPin size={18} color="#6b38d4" />}
+            icon={<MapPin size={18} color={colores.primary} />}
             title={location.trim() || 'Agregar ubicación'}
             hint="O un enlace de videollamada"
             onPress={() => setEditandoDonde((abierto) => !abierto)}
@@ -277,7 +279,7 @@ export function CreateEventScreen({
           <SectionLabel>Opciones</SectionLabel>
           <ToggleRow
             testID="switch-recordar"
-            icon={<Bell size={16} color="#6b38d4" />}
+            icon={<Bell size={16} color={colores.primary} />}
             label="Avisar 1 hora antes"
             hint="Les llega un recordatorio a todos"
             value={remind}
@@ -285,7 +287,7 @@ export function CreateEventScreen({
           />
           <ToggleRow
             testID="switch-invitar"
-            icon={<UserPlus size={16} color="#6b38d4" />}
+            icon={<UserPlus size={16} color={colores.primary} />}
             label="Pueden invitar a otros"
             hint="Cualquiera del chat puede sumar gente"
             value={openInvite}
@@ -304,7 +306,7 @@ export function CreateEventScreen({
             testID="btn-guardar"
             disabled={saving}
             onPress={() => void submit()}
-            icon={<Send size={17} color="#ffffff" />}
+            icon={<Send size={17} color={colores["on-primary"]} />}
             label={saving ? 'Creando…' : 'Crear e invitar'}
           />
         </View>

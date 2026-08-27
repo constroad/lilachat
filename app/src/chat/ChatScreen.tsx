@@ -27,6 +27,7 @@ import { useSecretChat } from '../crypto/useSecretChat';
 import { DaySeparator, MessageRow, isPending, type Row } from './MessageRow';
 import { useChat } from './useChat';
 import { useMargenes } from '../ui/useMargenes';
+import { useColores } from '../ui/tema';
 
 /**
  * La conversación (diseño Stitch «Chat de Grupo»). Burbuja propia a la derecha
@@ -56,6 +57,7 @@ export function ChatScreen({
   otherUserId?: string | null;
   onBack: () => void;
 }) {
+  const colores = useColores();
   const margenes = useMargenes();
   const secreto = useSecretChat({
     credential,
@@ -170,7 +172,7 @@ export function ChatScreen({
           junto al nombre, y el menú al final. Video y llamada llegan con F10. */}
       <View className="flex-row items-center gap-2 border-b border-outline/10 bg-surface px-3 pb-3" style={{ paddingTop: margenes.cabecera }}>
         <Pressable onPress={onBack} testID="btn-volver" className="h-11 w-9 items-center justify-center">
-          <ArrowLeft size={22} color="#0b1c30" />
+          <ArrowLeft size={22} color={colores["on-surface"]} />
         </Pressable>
         <View className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
           <Text className="text-sm font-bold text-primary">
@@ -182,7 +184,7 @@ export function ChatScreen({
             {/* El candado va PEGADO al nombre y no en una banda aparte: es una
                 propiedad de con quién se está hablando, y tiene que verse en la
                 misma mirada que el nombre. */}
-            {encrypted ? <Lock size={13} color="#6b38d4" /> : null}
+            {encrypted ? <Lock size={13} color={colores.primary} /> : null}
             <Text className="min-w-0 flex-1 text-base font-bold text-on-surface" numberOfLines={1}>
               {chatName}
             </Text>
@@ -205,19 +207,19 @@ export function ChatScreen({
               onPress={() => llamada.llamar(true)}
               className="h-11 w-9 items-center justify-center"
             >
-              <Video size={20} color="#494454" />
+              <Video size={20} color={colores["on-surface-variant"]} />
             </Pressable>
             <Pressable
               testID="btn-llamada"
               onPress={() => llamada.llamar(false)}
               className="h-11 w-9 items-center justify-center"
             >
-              <Phone size={20} color="#494454" />
+              <Phone size={20} color={colores["on-surface-variant"]} />
             </Pressable>
           </>
         ) : null}
         <Pressable testID="btn-menu-chat" className="h-11 w-9 items-center justify-center">
-          <MoreVertical size={20} color="#494454" />
+          <MoreVertical size={20} color={colores["on-surface-variant"]} />
         </Pressable>
       </View>
 
@@ -288,7 +290,7 @@ export function ChatScreen({
         ListHeaderComponent={
           cargandoAnteriores ? (
             <View className="items-center py-3" testID="cargando-anteriores">
-              <ActivityIndicator color="#6b38d4" />
+              <ActivityIndicator color={colores.primary} />
             </View>
           ) : !hayAnteriores && rows.length > 0 ? (
             // El final de la conversación se DICE: sin esto, quien scrollea
@@ -350,7 +352,7 @@ export function ChatScreen({
           disabled={uploading}
           className="h-11 w-11 items-center justify-center"
         >
-          {uploading ? <ActivityIndicator color="#6b38d4" /> : <Plus size={24} color="#494454" />}
+          {uploading ? <ActivityIndicator color={colores.primary} /> : <Plus size={24} color={colores["on-surface-variant"]} />}
         </Pressable>
 
         <View className="min-w-0 flex-1 flex-row items-end rounded-xl border border-outline/15 bg-background pr-1">
@@ -358,13 +360,13 @@ export function ChatScreen({
             testID="input-mensaje"
             className="max-h-28 min-h-[44px] min-w-0 flex-1 px-4 py-2.5 text-base text-on-surface"
             placeholder="Escribe un mensaje"
-            placeholderTextColor="#7b7486"
+            placeholderTextColor={colores.outline}
             multiline
             value={draft}
             onChangeText={setDraft}
           />
           <Pressable testID="btn-emoji" className="h-11 w-9 items-center justify-center">
-            <Smile size={20} color="#7b7486" />
+            <Smile size={20} color={colores.outline} />
           </Pressable>
         </View>
 
@@ -387,13 +389,13 @@ export function ChatScreen({
             }}
             className="h-11 w-11 items-center justify-center rounded-full bg-primary"
           >
-            <Send size={18} color="#ffffff" />
+            <Send size={18} color={colores["on-primary"]} />
           </Pressable>
         ) : (
           // Inerte hasta que existan las notas de voz, pero ocupa su lugar: si
           // apareciera recién con la función, la barra cambiaría de forma.
           <View testID="btn-voz" className="h-11 w-11 items-center justify-center rounded-full bg-primary/30">
-            <Mic size={18} color="#ffffff" />
+            <Mic size={18} color={colores["on-primary"]} />
           </View>
         )}
       </View>

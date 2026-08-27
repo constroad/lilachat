@@ -8,6 +8,7 @@ import { useAgendaDelTelefono, useAgendaParaInvitar } from './useAgendaParaInvit
 import { buscarEn, indexarParaBuscar } from './busqueda';
 import { useConsultaDiferida } from '../ui/useConsultaDiferida';
 import { textoDeInvitacion } from '../settings/actualizacion';
+import { useColores } from '../ui/tema';
 
 /** La puerta de entrada que se ofrece primero: deja la app actualizándose sola. */
 const TIENDA_URL = 'https://lilastore.constroad.com/get';
@@ -55,6 +56,7 @@ export function ContactPicker({
    */
   invitacion?: { miNombre: string | null; enlaceApp: string };
 }) {
+  const colores = useColores();
   const [groups, setGroups] = useState<ContactGroup[] | null>(null);
   const agendaCruda = useAgendaDelTelefono();
   const [query, setQuery] = useState('');
@@ -110,13 +112,13 @@ export function ContactPicker({
     <View className="flex-1">
       <View className="px-4 pb-2">
         <View className="flex-row items-center gap-2 rounded-xl bg-primary/[0.07] px-3 py-2.5">
-          <Search size={16} color="#7b7486" />
+          <Search size={16} color={colores.outline} />
           <TextInput
             testID="buscar-contactos"
             value={query}
             onChangeText={setQuery}
             placeholder="Buscar contactos…"
-            placeholderTextColor="#8b86a0"
+            placeholderTextColor={colores["on-surface-variant"]}
             className="min-w-0 flex-1 text-[15px] text-on-surface"
           />
         </View>
@@ -188,7 +190,7 @@ export function ContactPicker({
                           elegido ? 'border-primary bg-primary' : 'border-outline/40'
                         }`}
                       >
-                        {elegido ? <Check size={13} color="#ffffff" /> : null}
+                        {elegido ? <Check size={13} color={colores["on-primary"]} /> : null}
                       </View>
                     ) : null}
                   </Pressable>

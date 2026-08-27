@@ -8,6 +8,7 @@ import { createChat } from '../contacts/contactsApi';
 import { agendaPost } from './agendaApi';
 import { FilledField, PrimaryAction, SectionLabel, ToggleRow } from './createUi';
 import { useMargenes } from '../ui/useMargenes';
+import { useColores } from '../ui/tema';
 
 /**
  * Crear encuesta (diseño «New Poll»).
@@ -35,6 +36,7 @@ export function CreatePollScreen({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const colores = useColores();
   const margenes = useMargenes();
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
@@ -117,7 +119,7 @@ export function CreatePollScreen({
             testID="btn-cerrar-crear"
             className="h-11 w-9 items-center justify-center"
           >
-            <X size={22} color="#0b1c30" />
+            <X size={22} color={colores["on-surface"]} />
           </Pressable>
         </View>
 
@@ -159,7 +161,7 @@ export function CreatePollScreen({
             onPress={() => setOptions((current) => [...current, ''])}
             className="min-h-[44px] flex-row items-center gap-2"
           >
-            <CirclePlus size={18} color="#6b38d4" />
+            <CirclePlus size={18} color={colores.primary} />
             <Text className="text-[15px] font-semibold text-primary">Agregar otra opción</Text>
           </Pressable>
 
@@ -221,7 +223,7 @@ export function CreatePollScreen({
             testID="btn-guardar"
             disabled={saving}
             onPress={() => void submit()}
-            icon={<Send size={17} color="#ffffff" />}
+            icon={<Send size={17} color={colores["on-primary"]} />}
             label={saving ? 'Creando…' : 'Crear encuesta'}
           />
         </View>

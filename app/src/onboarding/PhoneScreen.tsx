@@ -4,6 +4,7 @@ import { ArrowRight, MessagesSquare } from 'lucide-react-native';
 import { COUNTRY_PREFIX, normalizePeruPhone } from '@lilachat/shared';
 import { requestOtp } from '../api/client';
 import { useMargenes } from '../ui/useMargenes';
+import { useColores } from '../ui/tema';
 
 /**
  * Alta paso 1 (diseño «Registro: Teléfono»).
@@ -22,6 +23,7 @@ import { useMargenes } from '../ui/useMargenes';
  * sabe (ni puede saber) quién está invitado.
  */
 export function PhoneScreen({ onCodeRequested }: { onCodeRequested: (phone: string) => void }) {
+  const colores = useColores();
   const margenes = useMargenes();
   const [rawPhone, setRawPhone] = useState('');
   const [sending, setSending] = useState(false);
@@ -47,7 +49,7 @@ export function PhoneScreen({ onCodeRequested }: { onCodeRequested: (phone: stri
       <View className="flex-1 justify-center">
         <View className="items-center">
           <View className="h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-            <MessagesSquare size={30} color="#6b38d4" />
+            <MessagesSquare size={30} color={colores.primary} />
           </View>
           <Text className="mt-6 text-3xl font-bold text-on-surface">Bienvenido a Lilachat</Text>
           <Text className="mt-2 text-center text-base leading-6 text-on-surface-variant">
@@ -65,7 +67,7 @@ export function PhoneScreen({ onCodeRequested }: { onCodeRequested: (phone: stri
             testID="input-telefono"
             className="h-[52px] min-w-0 flex-1 rounded-lg border border-outline/20 bg-surface-variant/40 px-4 text-base text-on-surface"
             placeholder="Número de teléfono"
-            placeholderTextColor="#7b7486"
+            placeholderTextColor={colores.outline}
             keyboardType="phone-pad"
             autoComplete="tel"
             value={rawPhone}
@@ -97,11 +99,23 @@ export function PhoneScreen({ onCodeRequested }: { onCodeRequested: (phone: stri
         }`}
       >
         {sending ? (
-          <ActivityIndicator color="#ffffff" />
+          <ActivityIndicator color={colores['on-primary']} />
         ) : (
+          // Deshabilitado el contenido NO usa `on-primary`: el fondo inactivo es
+          // el primario translúcido, que se parece al fondo de la pantalla y no
+          // al primario. Ver el comentario largo en `OtpScreen`.
           <>
-            <Text className="text-base font-bold text-on-primary">Continuar</Text>
-            <ArrowRight size={18} color="#ffffff" />
+            <Text
+              className={`text-base font-bold ${
+                phone && !sending ? 'text-on-primary' : 'text-on-surface-variant'
+              }`}
+            >
+              Continuar
+            </Text>
+            <ArrowRight
+              size={18}
+              color={phone && !sending ? colores['on-primary'] : colores['on-surface-variant']}
+            />
           </>
         )}
       </Pressable>

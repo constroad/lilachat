@@ -4,6 +4,7 @@ import { Bell, Plus } from 'lucide-react-native';
 import { formatEventWhen, nextOccurrence } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { agendaGet, agendaPost, type AgendaReminder } from './agendaApi';
+import { useColores } from '../ui/tema';
 
 /**
  * Recordatorios (diseño «My Reminders»).
@@ -20,12 +21,15 @@ import { agendaGet, agendaPost, type AgendaReminder } from './agendaApi';
  * sin leer. Sale del id para que sea ESTABLE — si dependiera del orden, el mismo
  * recordatorio cambiaría de color al agregar otro.
  */
-const COLORES = ['#6b38d4', '#0058be', '#a12e70', '#c2410c', '#0f766e'];
-
-function colorDe(id: string): string {
+/**
+ * La paleta ya no vive acá: los cinco tonos los da el tema, porque en modo
+ * oscuro son otros —los del modo claro sobre navy se ven sucios—. Lo que sí es
+ * de este módulo es CÓMO se elige, y por eso la función recibe la paleta.
+ */
+function colorDe(id: string, paleta: readonly string[]): string {
   let suma = 0;
   for (let i = 0; i < id.length; i += 1) suma += id.charCodeAt(i);
-  return COLORES[suma % COLORES.length]!;
+  return paleta[suma % paleta.length]!;
 }
 
 const RECURRENCE_LABEL: Record<string, string> = {
@@ -44,6 +48,7 @@ export function RemindersScreen({
   /** La Agenda pone su propio botón: dos flotantes encimados es un bug visible. */
   hideFab?: boolean;
 }) {
+  const colores = useColores();
   const [tab, setTab] = useState<'mine' | 'shared'>('mine');
   const [data, setData] = useState<{ mine: AgendaReminder[]; shared: AgendaReminder[] } | null>(null);
 
@@ -114,7 +119,7 @@ export function RemindersScreen({
       ) : list.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8" testID="recordatorios-vacio">
           <View className="h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <Bell size={28} color="#6b38d4" />
+            <Bell size={28} color={colores.primary} />
           </View>
           <Text className="mt-4 text-lg font-semibold text-on-surface">Sin recordatorios</Text>
           <Text className="mt-1 text-center text-sm leading-5 text-on-surface-variant">
@@ -143,9 +148,9 @@ export function RemindersScreen({
                     lista tiene que resolver. */}
                 <View
                   className="h-11 w-11 items-center justify-center rounded-full"
-                  style={{ backgroundColor: colorDe(reminder._id) }}
+                  style={{ backgroundColor: colorDe(reminder._id, colores.avisos) }}
                 >
-                  <Bell size={19} color="#ffffff" />
+                  <Bell size={19} color={colores["on-primary"]} />
                 </View>
 
                 <View className="min-w-0 flex-1">
@@ -176,7 +181,7 @@ export function RemindersScreen({
                     testID={`switch-${reminder._id}`}
                     value={reminder.active}
                     onValueChange={(value) => void toggle(reminder, value)}
-                    trackColor={{ true: '#6b38d4' }}
+                    trackColor={{ true: colores.primary }}
                   />
                 ) : null}
               </View>
@@ -191,7 +196,7 @@ export function RemindersScreen({
           onPress={onCreate}
           className="absolute bottom-5 right-5 h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg"
         >
-          <Plus size={24} color="#ffffff" />
+          <Plus size={24} color={colores["on-primary"]} />
         </Pressable>
       )}
     </View>

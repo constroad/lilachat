@@ -6,6 +6,7 @@ import type { Credential } from '../auth/credentialStore';
 import { ContactPicker } from './ContactPicker';
 import { createChat } from './contactsApi';
 import { useMargenes } from '../ui/useMargenes';
+import { useColores } from '../ui/tema';
 
 /**
  * Nuevo chat (el lápiz de la lista, que no hacía nada — reclamo de José).
@@ -43,6 +44,7 @@ export function NewChatScreen({
     encrypted?: boolean;
   }) => void;
 }) {
+  const colores = useColores();
   const margenes = useMargenes();
   const [modo, setModo] = useState<'directo' | 'grupo'>('directo');
   const [paso, setPaso] = useState<'contactos' | 'info'>('contactos');
@@ -141,7 +143,7 @@ export function NewChatScreen({
             onPress={() => (paso === 'info' ? setPaso('contactos') : cerrar())}
             className="h-11 w-9 items-center justify-center"
           >
-            <ArrowLeft size={22} color="#0b1c30" />
+            <ArrowLeft size={22} color={colores["on-surface"]} />
           </Pressable>
           <View className="min-w-0 flex-1">
             <Text className="text-lg font-bold text-on-surface">
@@ -175,7 +177,7 @@ export function NewChatScreen({
                   className="mb-1 min-h-[60px] flex-row items-center gap-3 px-4"
                 >
                   <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/[0.14]">
-                    <Users size={19} color="#6b38d4" />
+                    <Users size={19} color={colores.primary} />
                   </View>
                   <Text className="text-[15px] font-semibold text-primary">Nuevo grupo</Text>
                 </Pressable>
@@ -190,7 +192,7 @@ export function NewChatScreen({
                     secreto ? 'bg-primary/[0.14]' : 'bg-primary/[0.05]'
                   }`}
                 >
-                  <Lock size={17} color={secreto ? '#6b38d4' : '#7b7486'} />
+                  <Lock size={17} color={secreto ? colores.primary : colores.outline} />
                   <View className="min-w-0 flex-1">
                     <Text
                       className={`text-[14px] font-semibold ${
@@ -207,7 +209,7 @@ export function NewChatScreen({
                   <Switch
                     value={secreto}
                     onValueChange={setSecreto}
-                    trackColor={{ true: '#6b38d4' }}
+                    trackColor={{ true: colores.primary }}
                   />
                 </Pressable>
                 </>
@@ -225,7 +227,7 @@ export function NewChatScreen({
                   setError('');
                 }}
                 placeholder="Nombre del grupo"
-                placeholderTextColor="#8b86a0"
+                placeholderTextColor={colores["on-surface-variant"]}
                 autoFocus
                 className="min-h-[52px] min-w-0 flex-1 text-base text-on-surface"
               />
@@ -255,7 +257,7 @@ export function NewChatScreen({
                       }
                       className="absolute -right-1 -top-1 h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-on-surface-variant"
                     >
-                      <X size={11} color="#ffffff" />
+                      <X size={11} color={colores["on-primary"]} />
                     </Pressable>
                   </View>
                   <Text className="mt-1 text-[11px] text-on-surface-variant" numberOfLines={1}>
@@ -283,7 +285,7 @@ export function NewChatScreen({
                 guardando || elegidos.length === 0 ? 'bg-primary/40' : 'bg-primary'
               }`}
             >
-              <Check size={18} color="#ffffff" />
+              <Check size={18} color={colores["on-primary"]} />
               <Text className="text-base font-bold text-on-primary">
                 {paso === 'contactos'
                   ? `Continuar${elegidos.length ? ` (${elegidos.length})` : ''}`

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Sparkles, X } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
+import { useColores } from '../ui/tema';
 
 /**
  * «Ponme al día» (F8).
@@ -28,6 +29,7 @@ export function CatchUpBanner({
   credential: Credential;
   unread: number;
 }) {
+  const colores = useColores();
   const [estado, setEstado] = useState<'oculto' | 'listo' | 'cargando' | 'hecho'>('listo');
   const [texto, setTexto] = useState('');
 
@@ -58,7 +60,7 @@ export function CatchUpBanner({
     <View className="mx-3 mt-3 rounded-xl bg-primary/[0.07] p-3" testID="banda-ponme-al-dia">
       <View className="flex-row items-center gap-2">
         <View className="h-8 w-8 items-center justify-center rounded-full bg-primary">
-          <Sparkles size={16} color="#ffffff" />
+          <Sparkles size={16} color={colores["on-primary"]} />
         </View>
         <View className="min-w-0 flex-1">
           <Text className="text-[13px] font-semibold text-on-surface">
@@ -75,7 +77,7 @@ export function CatchUpBanner({
           onPress={() => setEstado('oculto')}
           className="h-9 w-9 items-center justify-center"
         >
-          <X size={16} color="#7b7486" />
+          <X size={16} color={colores.outline} />
         </Pressable>
       </View>
 

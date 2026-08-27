@@ -21,6 +21,13 @@ import { disconnectSocket } from './src/chat/socketClient';
 import { olvidarChats } from './src/chat/chatsGuardados';
 import { olvidarMensajes } from './src/chat/mensajesGuardados';
 import { decidirServicio } from './src/chat/servicioDeConexion';
+import { olvidarAgenda, precargarAgenda } from './src/contacts/agendaEnMemoria';
+import { ProveedorTema, useColores, useTema } from './src/ui/tema';
+import {
+  guardarSegundoPlano,
+  leerSegundoPlano,
+  SEGUNDO_PLANO_POR_DEFECTO,
+} from './src/settings/preferencias';
 import { detenerServicio, iniciarServicio } from './modules/servicio-socket/src';
 import type { ChatSummary } from './src/api/client';
 
@@ -39,7 +46,34 @@ type Boot =
   | { phase: 'home'; credential: Credential }
   | { phase: 'chat'; credential: Credential; chat: ChatSummary };
 
+/**
+ * La raíz: solo monta los proveedores.
+ *
+ * `Contenido` se separó al agregar el modo oscuro (27/08/2026) por una razón
+ * mecánica — `useColores()` necesita el proveedor POR ENCIMA, y un componente no
+ * puede consumir un contexto que él mismo monta. Sin el corte, el `StatusBar` y
+ * el indicador de carga de esta pantalla se quedaban en claro para siempre.
+ */
 export default function App() {
+  return (
+    // El proveedor es lo que hace que `useSafeAreaInsets` devuelva algo distinto
+    // de cero. Sin él, todas las pantallas creen que no hay barras y el botón
+    // del pie termina debajo de la de Android.
+    <SafeAreaProvider>
+      <ProveedorTema>
+        {/* Envuelve TODO: un error de render dejaba la pantalla en blanco sin
+            explicación para nadie, ni siquiera para nosotros. */}
+        <ErrorBoundary pantalla="app">
+          <Contenido />
+        </ErrorBoundary>
+      </ProveedorTema>
+    </SafeAreaProvider>
+  );
+}
+
+function Contenido() {
+  const { oscuro } = useTema();
+  const colores = useColores();
   const [boot, setBoot] = useState<Boot>({ phase: 'loading' });
 
   /**
@@ -57,13 +91,40 @@ export default function App() {
    */
   const haySesion = boot.phase === 'home' || boot.phase === 'chat';
 
+  /**
+   * `null` mientras se lee la preferencia del disco.
+   *
+   * Se espera a saberla antes de decidir: arrancar el servicio y apagarlo medio
+   * segundo después publica la notificación permanente y la borra, y ese
+   * parpadeo en la bandeja es justo lo que se está tratando de sacar.
+   */
+  const [segundoPlano, setSegundoPlano] = useState<boolean | null>(null);
+
   useEffect(() => {
-    if (decidirServicio({ haySesion, estado: AppState.currentState }) === 'encender') {
-      iniciarServicio();
-    } else {
-      detenerServicio();
-    }
+    void leerSegundoPlano().then(setSegundoPlano);
+  }, []);
+
+  /**
+   * La agenda se lee APENAS hay sesión, no al tocar el lápiz.
+   *
+   * Reclamo de José (27/08/2026): «al lápiz ya me debería aparecer precargado
+   * los contactos y no recién allí ponerme a cargar». Leerlos acá es leerlos
+   * mientras mira la lista de chats — un rato en el que no está esperando nada.
+   */
+  useEffect(() => {
+    if (haySesion) void precargarAgenda();
   }, [haySesion]);
+
+  useEffect(() => {
+    if (segundoPlano === null) return;
+    const decision = decidirServicio({
+      haySesion,
+      estado: AppState.currentState,
+      enSegundoPlano: segundoPlano,
+    });
+    if (decision === 'encender') iniciarServicio();
+    else detenerServicio();
+  }, [haySesion, segundoPlano]);
 
   const start = useCallback(async () => {
     const stored = await loadCredential();
@@ -107,18 +168,14 @@ export default function App() {
   }, [start]);
 
   return (
-    // El proveedor es lo que hace que `useSafeAreaInsets` devuelva algo distinto
-    // de cero. Sin él, todas las pantallas creen que no hay barras y el botón
-    // del pie termina debajo de la de Android.
-    <SafeAreaProvider>
-      {/* Envuelve TODO: un error de render dejaba la pantalla en blanco sin
-          explicación para nadie, ni siquiera para nosotros. */}
-      <ErrorBoundary pantalla="app">
       <View className="flex-1 bg-background">
-      <StatusBar style="dark" />
+      {/* La hora y la batería: con fondo navy tienen que ser CLARAS o
+          desaparecen contra la barra. Es lo único del chrome del sistema que no
+          se resuelve con una clase de Tailwind. */}
+      <StatusBar style={oscuro ? 'light' : 'dark'} />
       {boot.phase === 'loading' ? (
         <View className="flex-1 items-center justify-center" testID="pantalla-cargando">
-          <ActivityIndicator color="#6b38d4" size="large" />
+          <ActivityIndicator color={colores.primary} size="large" />
         </View>
       ) : boot.phase === 'email' ? (
         <PhoneScreen onCodeRequested={(phone) => setBoot({ phase: 'otp', phone })} />
@@ -131,6 +188,13 @@ export default function App() {
       ) : boot.phase === 'home' ? (
         <TabsShell
           credential={boot.credential}
+          // Mientras se lee la preferencia se asume el defecto: el interruptor
+          // no puede mostrarse apagado un instante y saltar a encendido.
+          segundoPlano={segundoPlano ?? SEGUNDO_PLANO_POR_DEFECTO}
+          onSegundoPlano={(activo) => {
+            setSegundoPlano(activo);
+            void guardarSegundoPlano(activo);
+          }}
           onOpenChat={(chat) => setBoot({ phase: 'chat', credential: boot.credential, chat })}
           onLogout={() => {
             // El socket se cierra ANTES de borrar la credencial: si no, queda
@@ -138,6 +202,9 @@ export default function App() {
             disconnectSocket();
             void olvidarChats();
             void olvidarMensajes();
+            // La agenda también: otro teléfono, otra persona. Dejarla cargada
+            // le mostraría a quien entre después los contactos del anterior.
+            olvidarAgenda();
             void clearCredential().then(() => setBoot({ phase: 'email' }));
           }}
         />
@@ -158,7 +225,5 @@ export default function App() {
         />
       )}
       </View>
-      </ErrorBoundary>
-    </SafeAreaProvider>
   );
 }

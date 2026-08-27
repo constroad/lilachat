@@ -6,6 +6,7 @@ import type { Credential } from '../auth/credentialStore';
 import { agendaPost } from './agendaApi';
 import { FilledField, PickerRow, PrimaryAction, SectionLabel } from './createUi';
 import { useMargenes } from '../ui/useMargenes';
+import { useColores } from '../ui/tema';
 
 /**
  * Crear recordatorio.
@@ -43,6 +44,7 @@ export function CreateReminderScreen({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const colores = useColores();
   const margenes = useMargenes();
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
@@ -103,14 +105,14 @@ export function CreateReminderScreen({
             testID="btn-cerrar-crear"
             className="h-11 w-9 items-center justify-center"
           >
-            <X size={22} color="#0b1c30" />
+            <X size={22} color={colores["on-surface"]} />
           </Pressable>
         </View>
 
         <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}>
           <View className="items-center pb-2">
             <View className="h-14 w-14 items-center justify-center rounded-full bg-primary">
-              <Bell size={24} color="#ffffff" />
+              <Bell size={24} color={colores["on-primary"]} />
             </View>
             <Text className="mt-3 text-2xl font-bold text-primary">Nuevo recordatorio</Text>
             <Text className="mt-1 text-center text-[13px] leading-5 text-on-surface-variant">
@@ -140,7 +142,7 @@ export function CreateReminderScreen({
           <SectionLabel>Cuándo</SectionLabel>
           <PickerRow
             testID="fila-cuando"
-            icon={<Clock size={18} color="#6b38d4" />}
+            icon={<Clock size={18} color={colores.primary} />}
             title={cuando?.etiqueta ?? `En ${hours} horas`}
             hint="Toca para cambiar"
             onPress={() => setEditandoCuando((abierto) => !abierto)}
@@ -205,7 +207,7 @@ export function CreateReminderScreen({
             testID="btn-guardar"
             disabled={saving}
             onPress={() => void submit()}
-            icon={<Send size={17} color="#ffffff" />}
+            icon={<Send size={17} color={colores["on-primary"]} />}
             label={saving ? 'Creando…' : 'Crear recordatorio'}
           />
         </View>

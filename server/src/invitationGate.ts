@@ -52,7 +52,28 @@ export function resolveVerifyTargets(params: { phone: string; email?: string }):
 
 export type OtpDecision = 'forward' | 'pretend';
 
-export function decideOtpRequest(params: { invited: boolean }): OtpDecision {
+/**
+ * **Registro ABIERTO desde el 26/08/2026, por decisión de José.**
+ *
+ * Antes: solo se le pedía el código a quien tuviera una admisión previa, y al
+ * resto se le FINGÍA —misma respuesta, cero llamadas— para no confirmarle a un
+ * extraño quién está en la lista. Lilachat y LilaStore pasaron a ser públicas,
+ * así que cualquiera puede entrar y el gate perdió su razón de ser: quedaba
+ * dejando afuera a la familia que uno quería adentro.
+ *
+ * `registroAbierto` sigue existiendo como interruptor y no se borró la rama de
+ * `pretend`: si algún día se vuelve a cerrar, se cambia acá y los tests de
+ * enumeración siguen valiendo.
+ *
+ * **Lo que se pierde:** ahora sí se llama al servicio por cualquier número, así
+ * que el tope de envíos de constroad-auth es lo único que separa esto de ser un
+ * grifo de SMS. Y quien entra aparece en `/api/contacts` como cualquier otro.
+ */
+export function decideOtpRequest(params: {
+  invited: boolean;
+  registroAbierto?: boolean;
+}): OtpDecision {
+  if (params.registroAbierto) return 'forward';
   return params.invited ? 'forward' : 'pretend';
 }
 

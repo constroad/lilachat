@@ -17,6 +17,17 @@ import { signSession } from './sessions.js';
  * constroad-auth. El gate corre ANTES de pedir el código y de nuevo al
  * canjearlo (defensa en profundidad).
  */
+/**
+ * **Registro abierto.** Lilachat es pública desde el 26/08/2026: cualquiera con
+ * un celular puede entrar, sin que nadie lo invite antes.
+ *
+ * Es una constante y no una variable de entorno a propósito: cerrarlo otra vez
+ * es una decisión de producto que merece un commit y un despliegue, no un
+ * interruptor que alguien mueve de noche y nadie sabe por qué la familia dejó
+ * de poder entrar.
+ */
+const REGISTRO_ABIERTO = true;
+
 export function buildAuthRouter(authClient: AuthClient): Router {
   const router = Router();
 
@@ -44,13 +55,16 @@ export function buildAuthRouter(authClient: AuthClient): Router {
     if (!phone) return res.status(400).json({ message: 'Escribe un celular válido.' });
 
     const admission = await findAdmission(phone);
-    if (decideOtpRequest({ invited: Boolean(admission) }) === 'forward') {
+    if (decideOtpRequest({ invited: Boolean(admission), registroAbierto: REGISTRO_ABIERTO }) === 'forward') {
       // UN solo destino. El respaldo NO es automático: si WhatsApp falla, el
       // usuario lo pide desde la pantalla del código. Mandarlo solo volvía
       // inútil ese botón —el correo llegaba sin pedirlo— y gastaba dos envíos.
       const target = resolveOtpTarget({
         phone,
-        email: admission!.email,
+        // Con el registro abierto puede no haber admisión: entonces no hay
+        // correo de respaldo y el código sale por WhatsApp, que es el canal
+        // que la persona acaba de escribir.
+        email: admission?.email,
         preferEmail: req.body?.preferEmail === true,
       });
       const sent = await authClient.requestCode(target);
@@ -77,15 +91,18 @@ export function buildAuthRouter(authClient: AuthClient): Router {
       return res.status(400).json({ message: 'Faltan datos.' });
     }
     const admission = await findAdmission(phone);
-    if (!admission) {
-      // Mismo error que un código malo: no confirma quién está en la lista.
+    // Con el registro abierto, no tener admisión NO es motivo de rechazo: lo
+    // único que decide es si el código que llegó a ESE número es correcto, y eso
+    // lo prueba constroad-auth. Cerrado, sigue siendo el mismo error que un
+    // código malo, para no confirmar quién está en la lista.
+    if (!admission && !REGISTRO_ABIERTO) {
       return res.status(401).json(GENERIC_VERIFY_ERROR);
     }
 
     // Al canjear sí se prueban los dos: el server no registra por dónde salió
     // cada código y ambos son legítimamente de esa persona. Es invisible y no
     // cambia lo que el usuario recibe — a diferencia del envío.
-    const targets = resolveVerifyTargets({ phone, email: admission.email });
+    const targets = resolveVerifyTargets({ phone, email: admission?.email });
     let verified = await authClient.verifyCode(targets[0]!, code, deviceId);
     for (const target of targets.slice(1)) {
       if (verified.ok) break;
@@ -102,7 +119,7 @@ export function buildAuthRouter(authClient: AuthClient): Router {
     const user = await UserModel.findOneAndUpdate(
       { phone },
       {
-        $setOnInsert: { phone, ...(admission.email ? { email: admission.email } : {}) },
+        $setOnInsert: { phone, ...(admission?.email ? { email: admission.email } : {}) },
         ...(name ? { $set: { name } } : {}),
       },
       { returnDocument: 'after', upsert: true }

@@ -40,3 +40,33 @@ describe('decideOtpRequest', () => {
     expect(GENERIC_OTP_RESPONSE.message).not.toMatch(/lista|invitad|registrad[oa]\b/i);
   });
 });
+
+/**
+ * Registro ABIERTO (26/08/2026, decisión de José).
+ *
+ * Lilachat y LilaStore pasaron a ser públicas: cualquiera puede entrar. El gate
+ * de admisión dejaba afuera justo a la familia que se quería adentro — Wilson
+ * instaló la app y nunca recibió un código.
+ *
+ * La rama cerrada NO se borra: es un interruptor, y estos tests siguen fijando
+ * qué pasa de cada lado.
+ */
+describe('decideOtpRequest — registro abierto', () => {
+  it('con el registro abierto, a cualquiera se le manda', () => {
+    expect(decideOtpRequest({ invited: false, registroAbierto: true })).toBe('forward');
+  });
+
+  it('un invitado sigue recibiendo, obviamente', () => {
+    expect(decideOtpRequest({ invited: true, registroAbierto: true })).toBe('forward');
+  });
+
+  /** Cerrado, todo sigue como antes: el extraño no dispara ni un envío. */
+  it('cerrado, al extraño se le finge', () => {
+    expect(decideOtpRequest({ invited: false, registroAbierto: false })).toBe('pretend');
+  });
+
+  /** Sin el interruptor se comporta como siempre: cerrado por omisión. */
+  it('sin decir nada, queda cerrado', () => {
+    expect(decideOtpRequest({ invited: false })).toBe('pretend');
+  });
+});

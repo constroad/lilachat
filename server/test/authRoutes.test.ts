@@ -76,17 +76,30 @@ describe('POST /api/auth/otp/request', () => {
     expect(calls[0]?.args[0]).toBe('51902049935');
   });
 
-  it('NO invitado: mismo cuerpo de respuesta y CERO llamadas al servicio', async () => {
+  /**
+   * **Registro ABIERTO desde el 26/08/2026.**
+   *
+   * Este test decía «CERO llamadas al servicio» para quien no estaba invitado: el
+   * server fingía el envío para no confirmarle a un extraño quién está en la
+   * lista. Lilachat pasó a ser pública por decisión de José, así que ahora a
+   * cualquier número se le manda de verdad.
+   *
+   * Lo que NO cambió y se sigue fijando: los dos reciben **el mismo cuerpo**. Es
+   * lo que queda del gate anti-enumeración, y sigue importando — la respuesta no
+   * puede empezar a distinguir a quien ya tiene cuenta de quien no.
+   */
+  it('a cualquier número se le manda, y la respuesta es la misma para todos', async () => {
     const { client, calls } = fakeAuthClient();
     const app = buildApp({ authClient: client });
 
     const invited = await request(app).post('/api/auth/otp/request').send({ phone: '902049935' });
     const stranger = await request(app).post('/api/auth/otp/request').send({ phone: '987654321' });
 
-    // Anti-enumeración: byte a byte iguales.
     expect(stranger.status).toBe(invited.status);
     expect(stranger.body).toEqual(invited.body);
-    expect(calls.filter((c) => c.method === 'requestCode')).toHaveLength(1);
+    // Dos números, dos envíos: el desconocido ya no se queda esperando algo que
+    // nunca salió, que es exactamente lo que le pasó a Wilson.
+    expect(calls.filter((c) => c.method === 'requestCode')).toHaveLength(2);
   });
 
   it('email sin forma de email: 400 sin tocar el servicio', async () => {
@@ -119,15 +132,21 @@ describe('POST /api/auth/otp/verify', () => {
     expect(String(device?.userId)).toBe(String(user?._id));
   });
 
-  it('no invitado: mismo error genérico que un código malo, sin llamar al servicio', async () => {
+  /**
+   * **Registro ABIERTO.** Antes, no estar invitado se rechazaba con el mismo
+   * error que un código malo. Ahora lo único que decide es si el código que
+   * llegó a ESE número es correcto —eso lo prueba constroad-auth—, así que
+   * alguien sin admisión completa el alta y queda como usuario.
+   */
+  it('sin invitación previa, el alta se completa igual', async () => {
     const { client, calls } = fakeAuthClient();
     const response = await request(buildApp({ authClient: client }))
       .post('/api/auth/otp/verify')
       .send({ ...verifyBody, phone: '987654321' });
 
-    expect(response.status).toBe(401);
-    expect(calls.filter((c) => c.method === 'verifyCode')).toHaveLength(0);
-    expect(await UserModel.countDocuments({})).toBe(0);
+    expect(response.status).toBe(200);
+    expect(calls.filter((c) => c.method === 'verifyCode').length).toBeGreaterThan(0);
+    expect(await UserModel.countDocuments({ phone: '987654321' })).toBe(1);
   });
 
   it('código rechazado por el servicio: 401 con el MISMO mensaje que no-invitado', async () => {

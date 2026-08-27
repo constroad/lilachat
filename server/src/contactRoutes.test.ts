@@ -66,16 +66,25 @@ describe('GET /api/contacts', () => {
     expect(respuesta.body.groups[0]?.letter).toBe('A');
   });
 
-  /** Alguien que no está invitado NO es contacto de nadie. */
-  it('un usuario sin invitación no aparece', async () => {
-    const colado = new Types.ObjectId();
-    await UserModel.create({ _id: colado, phone: '911111111', name: 'Colado' });
-    // Sin invitación: existe como usuario pero no es de la familia.
+  /**
+   * **Este test decía lo contrario hasta el 26/08/2026.**
+   *
+   * Mientras entrar exigía una invitación, un usuario sin ella era un colado y
+   * no tenía por qué figurar. Con el REGISTRO ABIERTO —decisión de José: «todo
+   * a público»— ya no hay colados: quien entró, entró, y no listarlo lo dejaría
+   * en un lugar donde nadie lo ve ni le puede escribir.
+   *
+   * Se conserva el test invertido y no se borra: deja escrito que la regla
+   * CAMBIÓ, y por qué. Si algún día se vuelve a cerrar el registro, acá está lo
+   * que hay que volver a poner.
+   */
+  it('quien entró sin invitación TAMBIÉN es contacto', async () => {
+    const nuevo = new Types.ObjectId();
+    await UserModel.create({ _id: nuevo, phone: '911111111', name: 'Recién llegado' });
 
     const respuesta = await request(app).get('/api/contacts').set('Authorization', `Bearer ${jwt}`);
 
-    const nombres = JSON.stringify(respuesta.body);
-    expect(nombres).not.toContain('Colado');
+    expect(JSON.stringify(respuesta.body)).toContain('Recién llegado');
   });
 
   /** Si ya hay chat 1:1, la lista lo dice: abrir en vez de crear. */
@@ -229,5 +238,40 @@ describe('POST /api/contacts/invite', () => {
 
     expect(respuesta.status).toBe(401);
     expect(await InvitationModel.countDocuments({ phone: '988777666' })).toBe(0);
+  });
+});
+
+/**
+ * Con el REGISTRO ABIERTO, los contactos son los USUARIOS, no los invitados.
+ *
+ * Abrir el registro sin tocar esto dejaba a la gente entrando a un lugar donde
+ * nadie la ve: la lista salía de `invitations`, y quien se registra solo no
+ * tiene ninguna. Podría escribir a otros y nadie podría escribirle a él.
+ *
+ * **El precio, dicho con todas las letras:** la lista de contactos es ahora el
+ * padrón completo. Cualquiera que entre ve el teléfono de todos los demás. Es la
+ * consecuencia directa de que Lilachat sea pública, y se acepta a conciencia.
+ */
+describe('GET /api/contacts con registro abierto', () => {
+  it('quien se registró SIN invitación igual aparece', async () => {
+    const solo = new Types.ObjectId();
+    await UserModel.create({ _id: solo, phone: '955444333', name: 'Wilson' });
+
+    const respuesta = await request(app).get('/api/contacts').set('Authorization', `Bearer ${jwt}`);
+
+    const nombres = respuesta.body.groups.flatMap((grupo: { contacts: { name: string }[] }) =>
+      grupo.contacts.map((contacto) => contacto.name)
+    );
+    expect(nombres).toContain('Wilson');
+  });
+
+  /** Uno mismo nunca aparece en su propia lista de contactos. */
+  it('yo no aparezco en mi propia lista', async () => {
+    const respuesta = await request(app).get('/api/contacts').set('Authorization', `Bearer ${jwt}`);
+
+    const telefonos = respuesta.body.groups.flatMap((grupo: { contacts: { phone: string }[] }) =>
+      grupo.contacts.map((contacto) => contacto.phone)
+    );
+    expect(telefonos).not.toContain('902049935');
   });
 });

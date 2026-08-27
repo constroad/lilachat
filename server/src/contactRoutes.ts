@@ -60,11 +60,20 @@ export function buildContactRouter(): Router {
   router.get('/', asyncRoute(async (req, res) => {
     const me = req.session!.userId;
 
-    const invitados = await InvitationModel.find({ status: 'invited' }).select('phone').lean();
-    const telefonos = invitados.map((invitacion) => invitacion.phone);
-
+    /**
+     * **Con el registro ABIERTO, los contactos son los USUARIOS.**
+     *
+     * Salían de `invitations`, que era correcto mientras entrar exigía que
+     * alguien te invitara. Con el registro abierto, quien se da de alta solo no
+     * tiene invitación: quedaba entrando a un lugar donde nadie lo ve, pudiendo
+     * escribirle a otros sin que nadie pudiera escribirle a él.
+     *
+     * El precio, a conciencia: la lista es el padrón completo, así que cualquiera
+     * que entre ve el teléfono de todos. Es la consecuencia directa de ser una
+     * app pública; el filtro por invitación era lo único que lo evitaba.
+     */
     const [usuarios, directos] = await Promise.all([
-      UserModel.find({ phone: { $in: telefonos }, _id: { $ne: me } })
+      UserModel.find({ _id: { $ne: me } })
         .select('name phone')
         .lean(),
       // Con quién ya tengo un 1:1: la lista abre en vez de crear otro.

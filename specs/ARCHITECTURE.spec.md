@@ -1250,3 +1250,52 @@ Ahora `onStartReached` pide la anterior, con `chat/paginacion.ts` decidiendo:
 
 Y no se trae el histórico al abrir: arrastrar años de mensajes en cada apertura
 es justo lo que hace que una app se sienta pesada.
+
+## 23. Registro abierto (26/08/2026)
+
+Wilson instaló Lilachat y no le llegaba el código. La causa no era el envío: el
+server **no mandaba nada** a un número sin admisión previa, y contestaba 200
+igual para no revelar quién existe. En la base había **una** sola admisión —la de
+José—, así que nadie más podía entrar jamás.
+
+Primero se arregló el eslabón que faltaba (invitar CREA la admisión, §anterior).
+Después José decidió lo de fondo: **«todo a público, cualquier persona puede
+ingresar»**.
+
+### 23.1 Qué se abrió
+
+| Antes | Ahora |
+| --- | --- |
+| solo se pedía el código a quien tuviera admisión | a cualquier celular |
+| canjear sin admisión: 401 genérico | completa el alta y queda como usuario |
+| contactos = los INVITADOS | contactos = todos los USUARIOS |
+| LilaStore: correo sin cuenta → 403 | se enrola, sin apps concedidas |
+
+**La rama cerrada no se borró.** `registroAbierto` es un interruptor y los tests
+de enumeración siguen valiendo de los dos lados: si algún día se vuelve a cerrar,
+se cambia en un lugar. Y los tests que fijaban lo contrario **se invirtieron con
+su explicación en vez de borrarse** — dejan escrito que la regla cambió y por qué.
+
+### 23.2 El tercer cambio, que no era obvio
+
+Abrir el registro sin tocar los contactos dejaba a la gente entrando **a un lugar
+donde nadie la ve**: la lista salía de `invitations`, y quien se da de alta solo
+no tiene ninguna. Podría escribirle a otros y nadie podría escribirle a él.
+
+Por eso contactos pasó a ser el padrón de usuarios.
+
+### 23.3 Lo que se pierde, dicho con todas las letras
+
+1. **La lista de contactos es un directorio de teléfonos.** Cualquiera que entre
+   ve el número de todos los demás y puede escribirles. Era exactamente lo que
+   el filtro por invitación evitaba.
+2. **El envío de códigos quedó abierto.** Ahora se llama al servicio por
+   cualquier número, así que el tope de constroad-auth es lo único que separa
+   esto de ser un grifo de SMS con nuestro dominio.
+3. Lo que **no** se abrió: `bloqueado` sigue bloqueado en LilaStore. Abrir el
+   registro no puede ser una puerta trasera para quien fue dado de baja a
+   propósito.
+
+Si algún día molesta el punto 1, la salida que preserva «cualquiera entra» es
+acotar los contactos a **quien comparte un chat conmigo o está en mi agenda** —el
+cruce local ya existe (`shared/agendaLocal.ts`) y no exige subir la libreta.

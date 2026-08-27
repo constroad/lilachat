@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CalendarPlus, ListPlus, Plus, Send, Smile } from 'lucide-react';
+import { CalendarPlus, ListPlus, Paperclip, Plus, Send, Smile } from 'lucide-react';
 
 /**
  * La barra de escritura del diseño: «+» suelto a la izquierda, el campo con
@@ -13,13 +13,23 @@ export function Composer({
   onSend,
   onCreateEvent,
   onCreatePoll,
+  onEnviarArchivo,
 }: {
   onSend: (text: string) => void;
   onCreateEvent: () => void;
   onCreatePoll: () => void;
+  /** La foto o el archivo elegido. La subida la hace quien recibe esto. */
+  onEnviarArchivo: (file: File) => void;
 }) {
   const [text, setText] = useState('');
   const [menuAbierto, setMenuAbierto] = useState(false);
+  /**
+   * El `<input type="file">` va oculto y lo dispara el menú.
+   *
+   * Es la única forma de que el botón se vea como el resto: un input de archivo
+   * sin estilar es un control del navegador que no se puede alinear con nada.
+   */
+  const archivoRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -47,6 +57,20 @@ export function Composer({
 
   return (
     <div className="border-t border-outline/15 bg-surface px-4 py-3">
+      <input
+        ref={archivoRef}
+        type="file"
+        data-testid="input-archivo"
+        className="hidden"
+        onChange={(evento) => {
+          const elegido = evento.target.files?.[0];
+          // Se limpia el valor: sin esto, elegir el MISMO archivo dos veces
+          // seguidas no dispara `change` y parece que el botón dejó de andar.
+          evento.target.value = '';
+          if (elegido) onEnviarArchivo(elegido);
+        }}
+      />
+
       <div className="flex items-center gap-2">
         {/* El «+» de WhatsApp: desde adentro del chat se arma un evento o una
             encuesta para ESA conversación, sin volver a elegir a nadie. */}
@@ -67,6 +91,18 @@ export function Composer({
               data-testid="menu-adjuntar"
               className="absolute bottom-12 left-0 z-20 w-52 rounded-xl border border-outline/15 bg-surface p-1.5 shadow-lg"
             >
+              <button
+                type="button"
+                data-testid="btn-archivo-chat"
+                onClick={() => {
+                  setMenuAbierto(false);
+                  archivoRef.current?.click();
+                }}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-background"
+              >
+                <Paperclip size={16} className="shrink-0 text-on-surface-variant" />
+                Foto o archivo
+              </button>
               <button
                 type="button"
                 data-testid="btn-evento-chat"

@@ -30,6 +30,14 @@ export type ChatMessage = {
   clientKey: string;
   createdAt: string;
   mediaUrl?: string;
+  /**
+   * El sobre cifrado de un chat secreto.
+   *
+   * El server lo manda desde F9 y el tipo de la web no lo modelaba: la web no
+   * sabe descifrar todavía, pero SÍ tiene que reconocerlo — es lo que impide
+   * que la caché guarde en claro un mensaje que se cifró a propósito.
+   */
+  envelope?: { v: number; nonce: string; ciphertext: string };
   thumbnailUrl?: string;
   /** Solo en el cliente: el que todavía no confirmó el server. */
   pending?: boolean;

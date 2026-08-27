@@ -1622,3 +1622,55 @@ busca al arrancar.
 | Mensaje con la app CERRADA | llega la burbuja con la vista previa, tildes y emoji |
 | Segundo mensaje | el título ya es el chat, no el genérico |
 | Limpieza | usuario, chat, mensajes, device e invitaciones en cero |
+
+## 29. La web: adjuntar archivos y caché local (27/08/2026)
+
+Los dos huecos más grandes de la auditoría de §27.3.
+
+### 29.1 Adjuntar
+
+La web ya sabía PINTAR media (`mediaUrl`, imágenes): lo que no podía era
+enviarla. Ahora el «+» ofrece «Foto o archivo».
+
+- **La MISMA validación que el server** (`validateMedia`, compartida). Si el
+  navegador aceptara algo que el server rechaza, la persona espera a que suban
+  20 MB para que muera al llegar.
+- `FormData` del navegador y `fetch` a secas: el rodeo con `XMLHttpRequest` de
+  la app existe por el `fetch` de Expo, que no acepta archivos. Acá no hace falta.
+- **El mensaje no se inserta a mano**: lo crea el server en el mismo request y
+  llega por `msg.new`. Insertarlo dejaría dos copias en cuanto el socket lo
+  repitiera.
+- El `<input type="file">` va oculto y **se limpia su valor** al elegir: sin eso,
+  elegir el mismo archivo dos veces seguidas no dispara `change` y parece que el
+  botón dejó de andar.
+
+### 29.2 Caché local
+
+Misma idea que la app (§25): pintar lo último conocido y dejar que la red
+confirme. La lista arranca desde `localStorage` en vez de `null`, y los mensajes
+de un chat se pintan antes de pedirlos.
+
+**Sin cifrar, y es una diferencia con la app que hay que decir.** En el teléfono
+la clave vive en el llavero del sistema; en un navegador **no existe ese lugar**
+—cualquier clave en `localStorage` estaría al lado de lo que protege—. La
+consecuencia se toma de frente:
+
+> **Un chat cifrado NO se cachea nunca.** Y basta UN mensaje con sobre en la
+> tanda para no guardar ninguno: partir una conversación a la mitad sería peor
+> que no guardarla.
+
+Al escribirlo apareció otra cosa: **el tipo `ChatMessage` de la web no modelaba
+`envelope`**, aunque el server lo manda desde F9. La web no sabe descifrar
+todavía, pero sí tiene que RECONOCERLO — es justo lo que impide que la caché
+guarde en claro algo que se cifró a propósito.
+
+Y las reglas que ya se habían pagado en la app se repiten acá:
+
+- El server **manda**: no se fusiona con la caché, o un chat borrado desde el
+  teléfono no desaparecería de la web.
+- **Sin red se deja lo guardado**: vaciar la conversación por un fallo de red es
+  peor que mostrarla un poco vieja.
+- Al cerrar sesión se borra todo — en un navegador, lo siguiente que pasa es que
+  otra persona abra la pestaña. Pero se borra **solo la caché**: mezclarlo con la
+  credencial haría que limpiar el historial cerrara la sesión sin que nadie lo
+  pidiera.

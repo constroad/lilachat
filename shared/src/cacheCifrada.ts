@@ -24,6 +24,15 @@ import { decryptMessage, encryptMessage, type Envelope } from './e2ee.js';
  */
 export const MAX_MENSAJES_EN_CACHE = 60;
 
+/**
+ * Cuántas conversaciones se guardan.
+ *
+ * Vive en `shared` porque la app y la web tienen que guardar lo MISMO: dos topes
+ * distintos hacen que la lista salte al cambiar de dispositivo, y nadie
+ * entendería por qué.
+ */
+export const MAX_CHATS_EN_CACHE = 50;
+
 export function recortarParaCache<T>(mensajes: T[]): T[] {
   // Los ÚLTIMOS: son los que se leen al abrir. Guardar los primeros dejaría la
   // pantalla llena de mensajes viejos mientras llegan los nuevos.

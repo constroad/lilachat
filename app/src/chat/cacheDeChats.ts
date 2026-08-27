@@ -1,3 +1,4 @@
+import { MAX_CHATS_EN_CACHE } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 
 /**
@@ -13,8 +14,8 @@ import type { ChatSummary } from '../api/client';
  * La caché es lo que se ve MIENTRAS, no una segunda fuente de verdad.
  */
 
-/** Tope de la caché: leer un archivo enorme en cada arranque es el problema opuesto. */
-export const MAX_CHATS_EN_CACHE = 50;
+// El tope vive en `shared`: la app y la web tienen que guardar lo mismo.
+export { MAX_CHATS_EN_CACHE } from '@lilachat/shared';
 
 export function conciliarCache(params: {
   guardado: ChatSummary[] | null;

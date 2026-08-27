@@ -10,6 +10,14 @@ import {
   type Credential,
 } from './api';
 import { AgendaOverlay } from './agenda/AgendaOverlay';
+import { subirArchivo } from './chat/mediaUpload';
+import {
+  guardarChats,
+  guardarMensajes,
+  leerChatsGuardados,
+  leerMensajesGuardados,
+  olvidarCache,
+} from './chat/cacheLocal';
 import {
   CreateEventOverlay,
   CreatePollOverlay,
@@ -34,7 +42,14 @@ import { useSocket } from './useSocket';
  */
 export function App() {
   const [credential, setCredential] = useState<Credential | null>(loadCredential);
-  const [chats, setChats] = useState<ChatSummary[] | null>(null);
+  /**
+   * La lista arranca con lo GUARDADO, no en `null`.
+   *
+   * Abrir la pestaña mostraba esqueletos y esperaba a la red; ahora pinta lo
+   * último conocido al instante y la red confirma por detrás. Es lo mismo que
+   * ya hace la app.
+   */
+  const [chats, setChats] = useState<ChatSummary[] | null>(leerChatsGuardados);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[] | null>(null);
   const [query, setQuery] = useState('');
@@ -66,7 +81,13 @@ export function App() {
   const loadChats = useCallback(async () => {
     if (!credential) return;
     const result = await api<{ chats: ChatSummary[] }>('/chats', { jwt: credential.jwt });
-    if (result.ok) return setChats(result.data.chats);
+    if (result.ok) {
+      // El server MANDA: no se fusiona con la caché, porque un chat borrado
+      // desde el teléfono tiene que desaparecer de la web.
+      setChats(result.data.chats);
+      guardarChats(result.data.chats);
+      return;
+    }
 
     /**
      * Un 401 ya NO echa a nadie de entrada: primero se intenta renovar con el
@@ -156,12 +177,21 @@ export function App() {
   // Los mensajes del chat abierto.
   useEffect(() => {
     if (!credential || !selectedId) return setMessages(null);
-    setMessages(null);
+    // Lo guardado se pinta ANTES de pedir: abrir un chat y ver esqueletos cada
+    // vez es la diferencia que se siente contra WhatsApp Web.
+    setMessages(leerMensajesGuardados(selectedId));
     void (async () => {
       const result = await api<{ messages: ChatMessage[] }>(`/chats/${selectedId}/messages`, {
         jwt: credential.jwt,
       });
-      setMessages(result.ok ? result.data.messages : []);
+      if (result.ok) {
+        setMessages(result.data.messages);
+        guardarMensajes(selectedId, result.data.messages);
+      } else {
+        // Sin red se deja lo guardado: vaciar la conversación por un fallo de
+        // red es peor que mostrarla un poco vieja.
+        setMessages((actuales) => actuales ?? []);
+      }
       // El acuse va por socket (`read.set`): así los demás miembros ven el
       // check azul en el momento, sin esperar a que recarguen.
       const ultimo = result.ok ? result.data.messages.at(-1) : undefined;
@@ -175,6 +205,9 @@ export function App() {
 
   function logout() {
     clearCredential();
+    // El historial no se hereda: en un navegador compartido, lo siguiente que
+    // pase es que otra persona abra la pestaña.
+    olvidarCache();
     setCredential(null);
     setChats(null);
     setSelectedId(null);
@@ -218,6 +251,23 @@ export function App() {
         void loadChats();
       }
     );
+  };
+
+  /**
+   * Subir una foto o un archivo al chat abierto.
+   *
+   * El mensaje NO se inserta a mano: lo crea el server en el mismo request y
+   * llega por `msg.new`, igual que cualquier otro. Insertarlo acá dejaría dos
+   * copias en cuanto el socket lo repitiera.
+   */
+  const enviarArchivo = async (file: File) => {
+    if (!credential || !selectedId) return;
+    setAviso('Subiendo…');
+
+    const resultado = await subirArchivo({ jwt: credential.jwt, chatId: selectedId, file });
+    // El aviso dice qué pasó: sin esto, un archivo demasiado grande no llega y
+    // no hay forma de saber por qué.
+    setAviso(resultado.ok ? '' : resultado.message);
   };
 
   const togglePush = async () => {
@@ -305,6 +355,7 @@ export function App() {
           onCreatePoll={() =>
             setCreando({ tipo: 'encuesta', chat: { id: selected.id, name: selected.name } })
           }
+          onEnviarArchivo={(file) => void enviarArchivo(file)}
         />
       ) : (
         <EmptyState

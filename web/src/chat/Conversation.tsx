@@ -33,6 +33,7 @@ export function Conversation({
   loading,
   onCreateEvent,
   onCreatePoll,
+  onEnviarArchivo,
 }: {
   chat: ChatSummary;
   messages: ChatMessage[];
@@ -44,6 +45,7 @@ export function Conversation({
   loading: boolean;
   onCreateEvent: () => void;
   onCreatePoll: () => void;
+  onEnviarArchivo: (file: File) => void;
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -228,7 +230,12 @@ export function Conversation({
         <div ref={bottomRef} />
       </div>
 
-      <Composer onSend={onSend} onCreateEvent={onCreateEvent} onCreatePoll={onCreatePoll} />
+      <Composer
+        onSend={onSend}
+        onCreateEvent={onCreateEvent}
+        onCreatePoll={onCreatePoll}
+        onEnviarArchivo={onEnviarArchivo}
+      />
     </section>
   );
 }

@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { ArrowLeft, Camera, ChevronRight, CloudUpload, RefreshCw, Search, UserPlus } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { listChats, type ChatSummary } from '../api/client';
+import { connectSocket } from '../chat/socketClient';
+import { avisarMensaje, prepararAvisos } from '../chat/avisoLocal';
 import { ChatListScreen } from '../chat/ChatListScreen';
 import { CreateEventScreen } from '../agenda/CreateEventScreen';
 import { CreatePollScreen } from '../agenda/CreatePollScreen';
@@ -39,6 +41,12 @@ export function TabsShell({
   const [tab, setTab] = useState<Tab>('chats');
   const [creating, setCreating] = useState<'event' | 'reminder' | 'poll' | null>(null);
   const [chats, setChats] = useState<ChatSummary[]>([]);
+  /** La lista al día para el aviso, sin re-suscribir el socket en cada cambio. */
+  const chatsRef = useRef<ChatSummary[]>([]);
+
+  useEffect(() => {
+    chatsRef.current = chats;
+  }, [chats]);
   const [reloadKey, setReloadKey] = useState(0);
   const [showBackup, setShowBackup] = useState(false);
   const [invitando, setInvitando] = useState(false);
@@ -71,6 +79,50 @@ export function TabsShell({
     const result = await listChats(credential.jwt);
     if (result.ok) setChats(result.data.chats);
   }, [credential.jwt]);
+
+  /**
+   * La burbuja de arriba cuando llega un mensaje, para CUALQUIER chat.
+   *
+   * Vive acá y no en `useChat` porque ese hook solo existe con un chat abierto:
+   * el aviso tiene que salir sobre todo cuando NO se está mirando ese chat.
+   *
+   * El socket ya está conectado; esto solo escucha. Cuando la app está atrás,
+   * Android lo suspende y el mensaje entra al reconectar — sostenerlo es lo que
+   * hace el servicio en primer plano.
+   */
+  useEffect(() => {
+    void prepararAvisos();
+
+    const socket = connectSocket(credential.jwt);
+    const alLlegar = (mensaje: {
+      chatId: string;
+      senderId: string;
+      kind: 'text' | 'image' | 'video' | 'audio' | 'file';
+      body?: string;
+      envelope?: unknown;
+    }) => {
+      // Lo mío no se avisa: acabo de escribirlo.
+      if (mensaje.senderId === credential.userId) return;
+
+      const chat = chatsRef.current.find((uno) => uno.id === mensaje.chatId);
+      void avisarMensaje({
+        chatId: mensaje.chatId,
+        chatName: chat?.name ?? 'Lilachat',
+        senderName: null,
+        esGrupo: chat?.kind === 'group',
+        kind: mensaje.kind,
+        body: mensaje.body ?? '',
+        // Un chat secreto no muestra el texto: la burbuja se lee en la pantalla
+        // de bloqueo, y el cifrado existe justamente para que nadie lo lea.
+        cifrado: Boolean(mensaje.envelope),
+      });
+    };
+
+    socket.on('msg.new', alLlegar);
+    return () => {
+      socket.off('msg.new', alLlegar);
+    };
+  }, [credential.jwt, credential.userId]);
 
   useEffect(() => {
     void loadChats();

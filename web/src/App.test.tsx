@@ -135,3 +135,59 @@ describe('App', () => {
     expect(localStorage.getItem('lilachat.credential')).not.toBeNull();
   });
 });
+
+/**
+ * La sesión de la web dura, como WhatsApp Web.
+ *
+ * José, 26/08/2026: «no sé por qué tengo que ingresar a cada rato con código, no
+ * se guarda la sesión». El `jwt` dura 24 h y la web **tiraba el secreto del
+ * dispositivo**: guardaba solo el token, así que al día siguiente pedía otro
+ * código — mientras el teléfono, que sí lo guardaba, seguía entrando solo.
+ */
+describe('la sesión se renueva sola', () => {
+  const conSecreto = { ...credencial, deviceSecret: 'secreto-del-navegador' };
+
+  it('ante un 401 renueva con el secreto y NO pide código', async () => {
+    localStorage.setItem('lilachat.credential', JSON.stringify(conSecreto));
+    // El caso REAL: el token viejo se rechaza una vez, y con el nuevo entra.
+    // Mockear un 401 eterno probaba otra cosa —un server que rechaza tokens
+    // recién emitidos— donde cerrar sesión sí es lo correcto.
+    let yaRenovo = false;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (String(url).includes('/auth/session')) {
+          yaRenovo = true;
+          return new Response(JSON.stringify({ jwt: 'jwt-nuevo' }), { status: 200 });
+        }
+        return yaRenovo
+          ? new Response(JSON.stringify({ chats: [] }), { status: 200 })
+          : new Response(JSON.stringify({ message: 'no' }), { status: 401 });
+      })
+    );
+
+    render(<App />);
+
+    // No vuelve al alta: la pantalla del teléfono no aparece.
+    await waitFor(() => expect(screen.queryByTestId('input-telefono')).toBeNull());
+    await waitFor(() =>
+      expect(JSON.parse(localStorage.getItem('lilachat.credential') ?? '{}').jwt).toBe('jwt-nuevo')
+    );
+  });
+
+  /**
+   * Si el refresco devuelve 401, ahí sí se acabó: el dispositivo fue revocado y
+   * seguir intentando sería dejar a alguien mirando una lista vacía.
+   */
+  it('si el propio refresco es rechazado, vuelve al alta', async () => {
+    localStorage.setItem('lilachat.credential', JSON.stringify(conSecreto));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ message: 'no' }), { status: 401 }))
+    );
+
+    render(<App />);
+
+    expect(await screen.findByTestId('input-telefono')).toBeInTheDocument();
+  });
+});

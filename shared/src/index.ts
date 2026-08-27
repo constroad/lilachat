@@ -17,3 +17,4 @@ export * from './agendaLocal.js';
 export * from './invitacion.js';
 export * from './emparejarAgenda.js';
 export * from './cacheCifrada.js';
+export * from './aviso.js';

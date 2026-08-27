@@ -1431,3 +1431,69 @@ faltaba era el punto 2, y es lo que se acaba de cerrar con §25.1.
 y los mensajes entran por Web Push. WhatsApp mantiene la conexión con un servicio
 en primer plano; es la misma decisión que ya se tomó para el GPS de Timón y está
 pendiente acá.
+
+## 26. Sesión de la web, avisos con vista previa, y el servicio en primer plano (26/08/2026)
+
+### 26.1 La web pedía código «a cada rato»
+
+El `jwt` dura **24 h**. La app lo renueva con el secreto del dispositivo desde
+siempre; la **web tiraba ese secreto** —guardaba solo el token—, así que al día
+siguiente pedía otro código mientras el teléfono seguía entrando solo.
+
+Ahora la web guarda el `deviceSecret` y renueva: al abrir la pestaña y ante
+cualquier 401. Como WhatsApp Web, la sesión dura hasta que uno la cierra.
+
+**Dos frenos que el test destapó, y los dos habrían pasado en producción:**
+
+1. **Sin secreto, el 401 sigue echando.** Las sesiones anteriores a este cambio
+   no lo tienen: sin este caso quedaban con la lista vacía para siempre y sin
+   forma de volver a entrar.
+2. **Un intento de refresco por token.** Sin freno: 401 → renovar → cambia el
+   estado → se vuelve a pedir la lista → 401 → renovar… un bucle que martilla la
+   API. Lo destapó un test que se colgó; habría llegado a producción el día que
+   el server devolviera 401 con un refresco que igual contesta.
+
+Y una lección de método: el primer test **mockeaba un 401 eterno**, incluso
+después de renovar. Con eso, cerrar sesión ES lo correcto — el test estaba mal
+planteado, no el código. Se corrigió el test para que refleje el caso real.
+
+### 26.2 La burbuja de arriba, con parte del mensaje
+
+`shared/aviso.ts` decide qué se muestra, y sobre todo qué NO:
+
+| Caso | Qué se ve |
+| --- | --- |
+| grupo | `Familia` / `Mamá: llego tarde` |
+| 1:1 | `Mamá` / `llego tarde` — el título ya es la persona |
+| **chat secreto** | `Mensaje nuevo`, **sin el texto** |
+| foto / audio | «📷 Foto», no un cuerpo vacío |
+| muy largo | recortado a 140 con «…», no cortado por Android |
+
+El chat secreto es la regla que importa: la burbuja se lee **en la pantalla de
+bloqueo**, y el cifrado existe para que ni el server lo lea — filtrarlo ahí
+tiraría por la borda justo eso.
+
+Es un aviso **local**: lo dispara la propia app al recibir el mensaje por el
+socket, no un servicio de push. Por eso no hace falta Firebase. Vive en
+`TabsShell` y no en `useChat`, porque ese hook solo existe con un chat abierto y
+el aviso importa sobre todo cuando NO se está mirando ese chat. Y con la app
+adelante no se avisa: una burbuja encima de la conversación que uno está leyendo
+es estorbo.
+
+El canal de Android va con importancia **ALTA**: sin un canal propio el aviso
+llega a la bandeja pero no asoma arriba, que era lo pedido.
+
+### 26.3 El servicio en primer plano: lo que falta y su precio
+
+Hoy, con la app atrás, Android suspende el runtime y **el socket se cae**: los
+mensajes entran al reconectar. Sostenerlo exige un servicio en primer plano.
+
+El de Timón NO sirve de molde: viene dentro de `expo-location`
+(`isAndroidForegroundServiceEnabled`) y está atado al rastreo de ubicación. Para
+sostener un socket hace falta un servicio propio —módulo nativo o una librería
+tipo `notifee` / `rn-foreground-service`— más su config plugin.
+
+**El precio que hay que decidir:** un servicio en primer plano obliga a mostrar
+una notificación **permanente** en la bandeja («Lilachat activo»). WhatsApp no la
+tiene porque usa FCM. Sin Firebase, esa notificación permanente es el costo de
+que el socket no se caiga. Es una decisión de producto, no técnica.

@@ -1,7 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Bell, BellOff, LogOut } from 'lucide-react';
 import { mergeIncoming } from '@lilachat/shared';
-import { api, clearCredential, loadCredential, saveCredential, type Credential } from './api';
+import {
+  api,
+  clearCredential,
+  loadCredential,
+  refreshSession,
+  saveCredential,
+  type Credential,
+} from './api';
 import { AgendaOverlay } from './agenda/AgendaOverlay';
 import {
   CreateEventOverlay,
@@ -34,6 +41,8 @@ export function App() {
   const [width, setWidth] = useState(() => window.innerWidth);
   const [push, setPush] = useState(pushState);
   const [aviso, setAviso] = useState('');
+  /** El `jwt` para el que ya se intentó renovar. Ver el freno en `loadChats`. */
+  const refrescoIntentado = useRef<string | null>(null);
   /**
    * Qué se está creando encima de los dos paneles.
    *
@@ -57,12 +66,70 @@ export function App() {
   const loadChats = useCallback(async () => {
     if (!credential) return;
     const result = await api<{ chats: ChatSummary[] }>('/chats', { jwt: credential.jwt });
-    if (result.ok) setChats(result.data.chats);
-    // El 401 es lo ÚNICO que borra la sesión. Sin red la respuesta no llega, y
-    // tratar eso como revocación echaría al usuario cada vez que se cae el wifi.
-    else if (result.status === 401) logout();
-    else setChats([]);
+    if (result.ok) return setChats(result.data.chats);
+
+    /**
+     * Un 401 ya NO echa a nadie de entrada: primero se intenta renovar con el
+     * secreto del dispositivo, que es lo que hace la app desde siempre.
+     *
+     * El `jwt` dura 24 h. Sin esto, al día siguiente la web pedía otro código
+     * —mientras el teléfono seguía entrando solo—, que es lo que a José le
+     * pasaba «a cada rato».
+     */
+    if (result.status === 401) {
+      // Sin secreto no hay nada que renovar —sesión vieja, de antes de que la
+      // web lo guardara—: ahí el 401 sí echa, como siempre. Si no, quedaría con
+      // la lista vacía para siempre y sin forma de volver a entrar.
+      if (!credential.deviceSecret) return logout();
+
+      /**
+       * **Un intento por token, no más.**
+       *
+       * Sin este freno: 401 → renovar → el estado cambia → se vuelve a pedir la
+       * lista → 401 → renovar… un bucle que martilla la API para siempre. Lo
+       * destapó un test que se colgó, y habría pasado en producción el día que
+       * el server devolviera 401 con un refresco que igual contesta.
+       */
+      if (refrescoIntentado.current === credential.jwt) return logout();
+      refrescoIntentado.current = credential.jwt;
+
+      const renovado = await refreshSession(credential);
+      if (renovado.ok) {
+        // Un token idéntico no es una renovación: guardarlo cambiaría la
+        // referencia del estado y dispararía la vuelta siguiente del bucle.
+        if (renovado.jwt === credential.jwt) return logout();
+        const siguiente = { ...credential, jwt: renovado.jwt };
+        saveCredential(siguiente);
+        setCredential(siguiente);
+        return;
+      }
+      // Solo un 401 del propio refresco significa revocado de verdad.
+      if (renovado.revocado) return logout();
+    }
+
+    setChats([]);
   }, [credential]);
+
+  /**
+   * Al abrir la pestaña se renueva de entrada, sin esperar a que algo falle:
+   * así el socket se conecta con un token vivo en vez de rebotar primero.
+   */
+  useEffect(() => {
+    if (!credential?.deviceSecret) return;
+    void refreshSession(credential).then((renovado) => {
+      if (!renovado.ok) {
+        if (renovado.revocado) logout();
+        return;
+      }
+      if (renovado.jwt === credential.jwt) return;
+      const siguiente = { ...credential, jwt: renovado.jwt };
+      saveCredential(siguiente);
+      setCredential(siguiente);
+    });
+    // Solo al montar y al cambiar de dispositivo: renovar en cada render sería
+    // un pedido por tecla.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [credential?.deviceId]);
 
   useEffect(() => {
     void loadChats();

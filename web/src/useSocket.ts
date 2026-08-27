@@ -1,5 +1,40 @@
 import { useEffect, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
+
+/**
+ * El socket vive FUERA del componente.
+ *
+ * React monta, desmonta y vuelve a montar durante el arranque; si cada montaje
+ * abriera y cerrara su propio socket, cada carga dejaría un handshake a medio
+ * hacer —y el «closed before the connection is established» en la consola—.
+ * Acá se reutiliza mientras sea la misma sesión.
+ */
+let socketVivo: Socket | null = null;
+let duenos = 0;
+
+type OpcionesDeSocket = Parameters<typeof io>[1];
+
+function obtenerSocket(opciones: OpcionesDeSocket): Socket {
+  duenos += 1;
+  if (!socketVivo) socketVivo = io(opciones);
+  return socketVivo;
+}
+
+/**
+ * Se suelta, no se cierra: solo cuando NADIE lo usa se apaga de verdad. Y se
+ * hace en el siguiente tick, porque un remonte inmediato de React volvería a
+ * pedirlo — cerrarlo en el medio es justo el problema que esto resuelve.
+ */
+function soltarSocket(): void {
+  duenos -= 1;
+  setTimeout(() => {
+    if (duenos <= 0 && socketVivo) {
+      socketVivo.close();
+      socketVivo = null;
+      duenos = 0;
+    }
+  }, 0);
+}
 import type { ChatMessage } from './chat/types';
 
 /**
@@ -52,7 +87,7 @@ export function useSocket(params: {
   useEffect(() => {
     if (!jwtRef.current) return;
 
-    const socket = io({
+    const socket = obtenerSocket({
       // Función y no valor: socket.io la vuelve a llamar en cada reintento, así
       // que un token renovado entra solo en la reconexión.
       auth: (cb: (datos: Record<string, unknown>) => void) => cb({ token: jwtRef.current }),
@@ -110,7 +145,12 @@ export function useSocket(params: {
     });
 
     return () => {
-      socket.close();
+      // **No se cierra acá.** Cerrar un socket que todavía está conectando hace
+      // que Chrome registre «WebSocket is closed before the connection is
+      // established», y con React montando y desmontando en el arranque eso
+      // pasaba en cada carga. El socket vive fuera del efecto: se reutiliza si
+      // el mismo usuario vuelve a montar, y solo se cierra al cambiar de sesión.
+      soltarSocket();
       socketRef.current = null;
     };
     // Depende de QUIÉN, no del token: renovar la sesión no puede tirar el

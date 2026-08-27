@@ -53,7 +53,7 @@ export function EmptyState({
           </div>
           <h3 className="mt-3 text-sm font-semibold">Empezar un chat</h3>
           <p className="mt-1 text-[13px] leading-5 text-on-surface-variant">
-            Escríbele a una persona o arma un grupo con la familia.
+            Escríbele a una persona o arma un grupo con tu equipo.
           </p>
         </button>
 

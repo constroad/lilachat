@@ -29,7 +29,15 @@ export type ChatMessage = {
   body?: string;
   clientKey: string;
   createdAt: string;
-  mediaUrl?: string;
+  /**
+   * El adjunto, con los nombres que MANDA el server.
+   *
+   * La web declaraba `mediaUrl` y `thumbnailUrl` —campos que no existen— así
+   * que una foto llegaba, se guardaba bien y se pintaba como una burbuja
+   * VACÍA. Nadie lo vio hasta subir una de verdad (27/08/2026): el tipo
+   * describía un contrato inventado y TypeScript no puede saber eso.
+   */
+  media?: { url: string; thumbUrl?: string; mime?: string; mediaId?: string };
   /**
    * El sobre cifrado de un chat secreto.
    *
@@ -38,7 +46,6 @@ export type ChatMessage = {
    * que la caché guarde en claro un mensaje que se cifró a propósito.
    */
   envelope?: { v: number; nonce: string; ciphertext: string };
-  thumbnailUrl?: string;
   /** Solo en el cliente: el que todavía no confirmó el server. */
   pending?: boolean;
 };

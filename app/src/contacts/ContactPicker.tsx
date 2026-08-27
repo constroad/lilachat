@@ -146,7 +146,7 @@ export function ContactPicker({
               ? 'Nadie coincide con lo que buscas.'
               // La invitación está JUSTO abajo desde el 26/08/2026: mandar a
               // otra pantalla era un paso de más y una copia que envejeció.
-              : 'Todavía no hay nadie más en Lilachat. Invitá a tu familia desde acá abajo.'}
+              : 'Todavía no hay nadie más en Lilachat. Invitá a alguien desde acá abajo.'}
           </Text>
         ) : (
           filtrados.map((group) => (

@@ -84,3 +84,28 @@ describe('textoDeInvitacion', () => {
     expect(texto).not.toContain('/d/');
   });
 });
+
+/**
+ * El texto ya no habla de «la familia» (27/08/2026).
+ *
+ * Decía «Lilachat, el chat de la familia», y quedó viejo al abrir el registro:
+ * el mensaje lo lee gente que no es de la familia de nadie. Se dice qué ES, no
+ * para quién.
+ */
+describe('textoDeInvitacion — sin «familia»', () => {
+  const enlaces = { tienda: 'https://t.test/get', app: 'https://t.test/d/abc' };
+
+  it('no habla de la familia de nadie', () => {
+    const texto = textoDeInvitacion({ ...enlaces, deParte: 'José' });
+
+    expect(texto.toLowerCase()).not.toContain('familia');
+  });
+
+  /** Dice qué es la app: sin eso, un enlace suelto parece spam. */
+  it('explica qué es Lilachat', () => {
+    const texto = textoDeInvitacion({ ...enlaces, deParte: null });
+
+    expect(texto).toMatch(/mensajer/i);
+    expect(texto).toMatch(/chats|grupos|eventos/i);
+  });
+});

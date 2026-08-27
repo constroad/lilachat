@@ -40,11 +40,19 @@ export function textoDeInvitacion(params: {
   deParte: string | null;
 }): string {
   const quien = params.deParte?.trim();
+  // «El chat de la familia» quedó viejo el 27/08/2026: Lilachat se abrió al
+  // público y el mensaje lo sigue leyendo gente que no es de la familia de
+  // nadie. Se dice qué ES, no para quién.
   const saludo = quien
-    ? `${quien} te invita a Lilachat, el chat de la familia.`
-    : 'Te invito a Lilachat, el chat de la familia.';
+    ? `${quien} te invita a Lilachat, la mensajería de ConstRoad.`
+    : 'Te invito a Lilachat, la mensajería de ConstRoad.';
 
-  const lineas = [saludo, '', `1) Instalá LilaStore y desde ahí Lilachat: ${params.tienda}`];
+  const lineas = [
+    saludo,
+    'Chats, grupos, eventos y encuestas, en un servidor propio.',
+    '',
+    `1) Instalá LilaStore y desde ahí Lilachat: ${params.tienda}`,
+  ];
 
   if (params.app) {
     lineas.push('', `2) O bajá Lilachat directo: ${params.app}`);

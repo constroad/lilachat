@@ -171,12 +171,16 @@ export function Conversation({
                           : 'border border-outline/15 bg-surface text-on-surface'
                       }`}
                     >
-                      {message.mediaUrl ? (
-                        <img
-                          src={message.thumbnailUrl || message.mediaUrl}
-                          alt={message.body ?? 'Imagen'}
-                          className="mb-1 max-h-64 w-full rounded-lg object-cover"
-                        />
+                      {message.media?.url ? (
+                        // La miniatura si está —pesa mucho menos— y la original
+                        // si no. Tocarla abre el archivo completo.
+                        <a href={message.media.url} target="_blank" rel="noreferrer">
+                          <img
+                            src={message.media.thumbUrl || message.media.url}
+                            alt={message.body ?? 'Adjunto'}
+                            className="mb-1 max-h-64 w-full rounded-lg object-cover"
+                          />
+                        </a>
                       ) : null}
                       {message.body ? <p className="whitespace-pre-wrap break-words">{message.body}</p> : null}
                     </div>

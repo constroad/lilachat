@@ -82,7 +82,7 @@ export function ContactPicker({
         <p className="py-6 text-center text-sm leading-5 text-on-surface-variant">
           {query
             ? 'Nadie coincide con lo que buscas.'
-            : 'Todavía no hay nadie más en Lilachat. Invita a tu familia y aparecerán acá.'}
+            : 'Todavía no hay nadie más en Lilachat. Invita a alguien y aparecerá acá.'}
         </p>
       ) : (
         visibles.map((grupo) => (

@@ -39,3 +39,15 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Salida de compilación de los módulos nativos locales.
+#
+# Ojo con la diferencia: `/android` de arriba lleva barra inicial y por eso solo
+# tapa la carpeta que genera `expo prebuild` en la raíz de `app/`. El `android/`
+# de un módulo local NO es generado — ahí viven su `build.gradle`, su manifiesto
+# y su Kotlin, que son fuente y se versionan. Lo único descartable es `build/`.
+#
+# Sin esta línea, cada `lila apk build` dejaba ~1350 .jar/.dex/.bin modificados
+# en `git status` y tapaba los cambios reales (27/08/2026). El patrón usa `*`
+# para que el próximo módulo nativo no repita el problema.
+modules/*/android/build/

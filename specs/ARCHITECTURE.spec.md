@@ -1741,6 +1741,26 @@ Lo demás de esos errores era el reintento de socket.io contra una sesión muert
 al borrar el usuario de QA, la web siguió reintentando hasta que el refresco
 devolvió 401 y cerró sesión sola — que es el comportamiento correcto.
 
+### 30.1b Verificado en vivo, con el arreglo desplegado
+
+E2E completo contra producción (27/08/2026, 12:11–12:21):
+
+| Medición | Resultado |
+| --- | --- |
+| Peticiones HTTP a `/socket.io/` | **0** — no hay polling: va por WebSocket puro |
+| Mensaje enviado desde otro cliente | aparece en la web **sin recargar** |
+| Segundo mensaje, ya conectado | llega igual, y con **0 errores nuevos** en consola |
+
+Los «WebSocket connection failed» que quedan son **del arranque**, no de la
+conexión establecida: una vez conectado, el socket no vuelve a fallar. La causa
+de esos primeros es conocida y benigna — cerrar un WebSocket que todavía está en
+`CONNECTING` hace que Chrome lo registre como «failed», y eso pasa cuando el
+efecto se rehace antes de que el handshake termine.
+
+**Lo que queda pendiente:** que ni siquiera esos aparezcan. Exige que el efecto
+del socket no corra dos veces en el arranque; con la sesión ya montada no vuelve
+a ocurrir, así que es ruido de consola y no una falla de servicio.
+
 ### 30.2 ¿Con sockets? Sí, y así lo hace WhatsApp Web
 
 WhatsApp Web mantiene **una conexión WebSocket persistente** al servidor y todo

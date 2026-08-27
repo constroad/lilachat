@@ -5,6 +5,8 @@ import { groupContactsByLetter, type Contact, type ContactGroup } from '@lilacha
 import type { Credential } from '../auth/credentialStore';
 import { emparejarAgenda, invitarContacto, listContacts } from './contactsApi';
 import { useAgendaDelTelefono, useAgendaParaInvitar } from './useAgendaParaInvitar';
+import { buscarEn, indexarParaBuscar } from './busqueda';
+import { useConsultaDiferida } from '../ui/useConsultaDiferida';
 import { textoDeInvitacion } from '../settings/actualizacion';
 
 /** La puerta de entrada que se ofrece primero: deja la app actualizándose sola. */
@@ -88,9 +90,11 @@ export function ContactPicker({
     void load();
   }, [load]);
 
+  const consultaDiferida = useConsultaDiferida(query);
+
   const filtrados = useMemo(() => {
     if (!groups) return null;
-    const needle = query.trim().toLowerCase();
+    const needle = consultaDiferida.trim().toLowerCase();
     if (!needle) return groups;
     return groups
       .map((group) => ({
@@ -100,7 +104,7 @@ export function ContactPicker({
         ),
       }))
       .filter((group) => group.contacts.length > 0);
-  }, [groups, query]);
+  }, [groups, consultaDiferida]);
 
   return (
     <View className="flex-1">
@@ -293,10 +297,17 @@ function SeccionInvitar({
     );
   }
 
-  const aguja = consulta.trim().toLowerCase();
-  const coinciden = agenda.paraInvitar.filter((contacto) =>
-    `${contacto.nombre} ${contacto.telefono}`.toLowerCase().includes(aguja)
+  /**
+   * La clave de búsqueda se calcula UNA vez, no en cada tecla. Antes esto
+   * recorría ~600 contactos armando un string y bajándolo a minúsculas por
+   * cada render — era lo que hacía sentir trabado el buscador.
+   */
+  const indexados = useMemo(
+    () => indexarParaBuscar(agenda.estado === 'listo' ? agenda.paraInvitar : []),
+    [agenda]
   );
+  const diferida = useConsultaDiferida(consulta);
+  const coinciden = useMemo(() => buscarEn(indexados, diferida), [indexados, diferida]);
 
   if (coinciden.length === 0) return null;
 

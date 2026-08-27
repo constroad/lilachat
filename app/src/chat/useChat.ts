@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decidirCargaAnterior } from './paginacion';
 import { listOlderMessages } from '../api/client';
+import { guardarMensajes, leerMensajesGuardados } from './mensajesGuardados';
 import * as Crypto from 'expo-crypto';
 import {
   advanceCursors,
@@ -77,12 +78,30 @@ export function useChat(params: {
    * siempre lo último.
    */
   const mensajesRef = useRef<ChatMessage[]>([]);
+  /**
+   * Lo guardado se pinta ANTES de que conteste el socket — la app es
+   * local-first desde acá. Solo se usa si todavía no llegó nada de la red: si
+   * el socket fue más rápido, pisar lo suyo con la caché sería ir para atrás.
+   */
+  useEffect(() => {
+    let vigente = true;
+    void leerMensajesGuardados(params.chatId).then((guardados) => {
+      if (!vigente || !guardados || guardados.length === 0) return;
+      setMessages((actuales) => (actuales.length === 0 ? guardados : actuales));
+    });
+    return () => {
+      vigente = false;
+    };
+  }, [params.chatId]);
   const cargandoRef = useRef(false);
   const hayMasRef = useRef(true);
 
   useEffect(() => {
     mensajesRef.current = messages;
-  }, [messages]);
+    // Se guarda lo que hay, cifrado. No se espera a nada: si la app se cierra
+    // en el próximo segundo, lo que ya llegó tiene que estar la próxima vez.
+    if (messages.length > 0) void guardarMensajes(params.chatId, messages);
+  }, [messages, params.chatId]);
 
   const cargarAnteriores = useCallback(async () => {
     const decision = decidirCargaAnterior({

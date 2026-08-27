@@ -1362,3 +1362,72 @@ justamente para que ni el server los vea.
 Abrir un chat sigue costando una ida y vuelta. Es el mismo patrón de acá y el
 motor de merge ya existe; lo que falta es dónde guardarlos y decidir si van
 cifrados en reposo.
+
+## 25. Local-first de verdad, y cómo hace WhatsApp el tiempo real (26/08/2026)
+
+### 25.1 Los mensajes, cifrados en reposo
+
+`shared/cacheCifrada.ts` + `app/src/chat/mensajesGuardados.ts`. Abrir un chat
+pinta lo guardado al instante; el socket confirma o corrige por detrás.
+
+**Cifrado, y no por adorno.** Guardar los cuerpos en claro sería regalarle el
+historial de la familia a cualquier app con permiso de archivos, y contradiría de
+frente a los chats secretos (F9), que existen para que ni el server los lea.
+
+- Reusa `encryptMessage` de F9 (AES-GCM, `@noble`). **Un segundo mecanismo de
+  cifrado es un segundo lugar donde equivocarse.**
+- La clave vive en `expo-secure-store` con `WHEN_UNLOCKED_THIS_DEVICE_ONLY`,
+  igual que la credencial. En AsyncStorage —que es un archivo legible— iría la
+  caja fuerte junto a su llave.
+- **60 mensajes por chat.** Es lo que entra en la primera pantalla y algo más;
+  guardar la conversación entera obliga a descifrar un archivo enorme en cada
+  apertura, el problema opuesto al que esto resuelve. El resto se pide por
+  `beforeSeq` (§22.3).
+- **La caché nunca pisa a la red.** Solo se usa si todavía no llegó nada: si el
+  socket fue más rápido, pisar lo suyo sería ir para atrás.
+- Al cerrar sesión se borran los archivos **y la clave**. Sin borrar la clave
+  quedarían descifrables por quien entre después; sin borrar los archivos
+  quedaría el historial de alguien que ya se fue.
+
+### 25.2 El buscador de contactos, que «demoraba»
+
+El filtro corría en CADA render sobre ~600 contactos, armando un string y
+bajándolo a minúsculas por cada uno: 600 concatenaciones y 600 `toLowerCase` por
+tecla.
+
+- La clave de búsqueda se calcula **una vez** (`contacts/busqueda.ts`), sin
+  tildes: buscar «mama» tiene que encontrar a «Mamá».
+- Escribir y buscar se separan (`ui/useConsultaDiferida.ts`, 150 ms): la letra
+  aparece en el cuadro siguiente y la búsqueda espera a que se deje de tipear.
+- Sin consulta se devuelve **la misma referencia**, no una copia: una copia
+  obliga a la lista a redibujarse entera sin que haya cambiado nada.
+
+### 25.3 Cómo hace WhatsApp el tiempo real
+
+La pregunta de José: si usa sockets o alguna otra estrategia, porque «ves cuando
+alguien está escribiendo, cuando está en línea, todo en tiempo real».
+
+**Una sola conexión persistente**, siempre abierta mientras la app está al
+frente. WhatsApp arrancó sobre XMPP y hoy usa su propio protocolo binario, pero
+la forma es la misma que Socket.IO: un canal bidireccional por el que viajan
+TODOS los eventos, en vez de preguntar cada N segundos.
+
+Las dos piezas que hacen que se sienta instantáneo:
+
+1. **Los eventos efímeros no se guardan.** «Escribiendo…» y «en línea» son
+   señales que valen segundos: viajan por el socket, se pintan y se descartan. No
+   pasan por la base ni por el historial. Por eso llegan sin latencia — no hay
+   nada que escribir antes de mandarlas.
+2. **La UI lee del almacén local, no de la red.** El socket no pinta: escribe en
+   el almacén, y la pantalla observa el almacén. Es lo que permite que abrir sea
+   instantáneo Y que lo que llega aparezca al toque, sin que sean dos caminos
+   distintos.
+
+**Dónde estamos:** el canal ya es el mismo — `typing`, `presence`,
+`presence.snapshot`, `msg.new`, `read.set`, `sync.pull` sobre Socket.IO. Lo que
+faltaba era el punto 2, y es lo que se acaba de cerrar con §25.1.
+
+**Lo que sigue faltando:** cuando la app está en segundo plano el socket se cae
+y los mensajes entran por Web Push. WhatsApp mantiene la conexión con un servicio
+en primer plano; es la misma decisión que ya se tomó para el GPS de Timón y está
+pendiente acá.

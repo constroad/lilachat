@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Search, Send, X } from 'lucide-react-native';
@@ -8,6 +8,8 @@ import { useMargenes } from '../ui/useMargenes';
 import { textoDeInvitacion } from '../settings/actualizacion';
 import { invitarContacto, listContacts } from './contactsApi';
 import { useAgendaParaInvitar } from './useAgendaParaInvitar';
+import { buscarEn, indexarParaBuscar } from './busqueda';
+import { useConsultaDiferida } from '../ui/useConsultaDiferida';
 
 /**
  * Invitar a alguien de la agenda del teléfono.
@@ -83,13 +85,15 @@ export function InviteScreen({
     });
   };
 
-  const aguja = consulta.trim().toLowerCase();
-  const visibles =
-    agenda.estado === 'listo'
-      ? agenda.paraInvitar.filter((contacto) =>
-          `${contacto.nombre} ${contacto.telefono}`.toLowerCase().includes(aguja)
-        )
-      : [];
+  // La clave se calcula una vez y la búsqueda espera a que se deje de tipear:
+  // con 600 contactos, filtrar en cada tecla trababa el teclado.
+  const indexados = useMemo(
+    () => indexarParaBuscar(agenda.estado === 'listo' ? agenda.paraInvitar : []),
+    [agenda]
+  );
+  const diferida = useConsultaDiferida(consulta);
+  const visibles = useMemo(() => buscarEn(indexados, diferida), [indexados, diferida]);
+  const aguja = diferida.trim();
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>

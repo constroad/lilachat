@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 import { BarChart3, CalendarDays, MessageCircle, Settings } from 'lucide-react-native';
 import { useMargenes } from './useMargenes';
+import { useColores } from './tema';
 
 /**
  * La barra inferior.
@@ -26,6 +27,7 @@ const TABS: { key: Tab; label: string; Icon: typeof MessageCircle }[] = [
 ];
 
 export function BottomNav({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
+  const colores = useColores();
   const margenes = useMargenes();
   return (
     <View className="flex-row border-t border-outline/10 bg-surface pt-2" style={{ paddingBottom: margenes.pie }}>
@@ -38,7 +40,7 @@ export function BottomNav({ active, onChange }: { active: Tab; onChange: (tab: T
             onPress={() => onChange(key)}
             className="min-h-[44px] flex-1 items-center justify-center gap-0.5"
           >
-            <Icon size={20} color={selected ? '#6b38d4' : '#7b7486'} />
+            <Icon size={20} color={selected ? colores.primary : colores.outline} />
             <Text
               className={`text-[10px] ${
                 selected ? 'font-semibold text-primary' : 'text-on-surface-variant'
@@ -55,11 +57,12 @@ export function BottomNav({ active, onChange }: { active: Tab; onChange: (tab: T
 
 /** La cabecera que comparten las pantallas de pestaña (marca + acciones). */
 export function AppHeader({ children }: { children?: React.ReactNode }) {
+  const colores = useColores();
   const margenes = useMargenes();
   return (
     <View className="flex-row items-center gap-2 border-b border-outline/10 bg-surface px-4 pb-3" style={{ paddingTop: margenes.cabecera }}>
       <View className="h-8 w-8 items-center justify-center rounded-lg bg-primary">
-        <MessageCircle size={17} color="#ffffff" />
+        <MessageCircle size={17} color={colores["on-primary"]} />
       </View>
       <Text className="flex-1 text-xl font-bold text-primary">Lilachat</Text>
       {children}

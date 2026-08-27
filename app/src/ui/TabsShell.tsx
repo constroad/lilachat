@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Linking, Modal, Pressable, ScrollView, Text, View } from 'react-native';
-import { ArrowLeft, Camera, ChevronRight, CloudUpload, RefreshCw, Search, UserPlus } from 'lucide-react-native';
+import { Linking, Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { ArrowLeft, BellRing, Camera, ChevronRight, CloudUpload, Moon, RefreshCw, Search, Sun, SunMoon, User, UserPlus } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { listChats, type ChatSummary } from '../api/client';
 import { connectSocket } from '../chat/socketClient';
@@ -20,6 +20,7 @@ import type { ResultadoDelChequeo } from '../settings/actualizacion';
 import { buscarActualizacion, versionActual } from '../settings/versionApi';
 import { AppHeader, BottomNav, type Tab } from './BottomNav';
 import { useMargenes } from './useMargenes';
+import { useColores, useTema } from './tema';
 
 /**
  * El contenedor de las pestañas: header y barra inferior viven ACÁ y las
@@ -33,11 +34,23 @@ export function TabsShell({
   credential,
   onOpenChat,
   onLogout,
+  segundoPlano,
+  onSegundoPlano,
 }: {
   credential: Credential;
   onOpenChat: (chat: ChatSummary) => void;
   onLogout: () => void;
+  /**
+   * Si el servicio en primer plano puede correr. Baja desde `App.tsx` en vez de
+   * leerse acá otra vez: dos copias del mismo ajuste se desincronizan, y el
+   * síntoma sería el peor posible —el interruptor en una posición y la
+   * notificación en la otra—.
+   */
+  segundoPlano: boolean;
+  onSegundoPlano: (activo: boolean) => void;
 }) {
+  const colores = useColores();
+  const { modo, setModo } = useTema();
   const margenes = useMargenes();
   const [tab, setTab] = useState<Tab>('chats');
   const [creating, setCreating] = useState<'event' | 'reminder' | 'poll' | null>(null);
@@ -103,21 +116,31 @@ export function TabsShell({
    * Android lo suspende y el mensaje entra al reconectar — sostenerlo es lo que
    * hace el servicio en primer plano.
    */
+  /**
+   * El permiso se pide ANTES y el servicio se reinicia DESPUÉS.
+   *
+   * `startForeground` publica su notificación en el momento de arrancar: si en
+   * ese instante `POST_NOTIFICATIONS` estaba denegado, Android la suprime y
+   * **conceder el permiso después no la hace aparecer**. El servicio queda
+   * corriendo e invisible — que es justo lo que se vio en el emulador
+   * (27/08/2026): `isForeground=true` y la bandeja vacía. Volver a llamar a
+   * `iniciarServicio()` dispara otro `onStartCommand`, que la publica de nuevo.
+   *
+   * **Vive en su propio efecto y no con el del socket** (27/08/2026): al
+   * agregarle el interruptor, tenerlos juntos hacía que tocar el switch
+   * desconectara y reconectara el socket. Cambiar una preferencia de avisos no
+   * puede cortar la conexión.
+   *
+   * El permiso se pide igual con el interruptor apagado: las burbujas de mensaje
+   * con la app abierta también lo necesitan.
+   */
   useEffect(() => {
-    /**
-     * El permiso se pide ANTES y el servicio se reinicia DESPUÉS.
-     *
-     * `startForeground` publica su notificación en el momento de arrancar: si
-     * en ese instante `POST_NOTIFICATIONS` estaba denegado, Android la suprime
-     * y **conceder el permiso después no la hace aparecer**. El servicio queda
-     * corriendo e invisible — que es justo lo que se vio en el emulador
-     * (27/08/2026): `isForeground=true` y la bandeja vacía.
-     *
-     * Volver a llamar a `iniciarServicio()` dispara otro `onStartCommand`, que
-     * la publica de nuevo, ahora con permiso.
-     */
-    void prepararAvisos().then(() => iniciarServicio());
+    void prepararAvisos().then(() => {
+      if (segundoPlano) iniciarServicio();
+    });
+  }, [segundoPlano]);
 
+  useEffect(() => {
     const socket = connectSocket(credential.jwt);
     const alLlegar = async (mensaje: {
       chatId: string;
@@ -185,21 +208,41 @@ export function TabsShell({
             {/* Cámara y búsqueda están en el diseño; quedan inertes hasta que
                 existan (la búsqueda es F6). */}
             <View className="h-11 w-9 items-center justify-center opacity-40">
-              <Camera size={20} color="#494454" />
+              <Camera size={20} color={colores["on-surface-variant"]} />
             </View>
             <View className="h-11 w-9 items-center justify-center opacity-40">
-              <Search size={20} color="#494454" />
+              <Search size={20} color={colores["on-surface-variant"]} />
             </View>
           </>
         ) : null}
+        {/**
+         * El avatar LLEVA A AJUSTES; no cierra la sesión.
+         *
+         * Hasta el 27/08/2026 este círculo hacía `onLogout` directo. José: «hay
+         * un círculo con un número, no me dice qué es ni para qué sirve». Tenía
+         * más razón de la que sabía — era un botón sin etiqueta que **cerraba la
+         * sesión de un toque y sin preguntar**, y el número era el primer dígito
+         * de su teléfono porque no tiene nombre puesto.
+         *
+         * Cerrar sesión ya vive en Ajustes, escrito y en su sección. Dos formas
+         * de hacer lo mismo, una de ellas muda, no es una comodidad: es una
+         * trampa.
+         */}
         <Pressable
           testID="btn-perfil"
-          onPress={onLogout}
-          className="ml-1 h-9 w-9 items-center justify-center rounded-full bg-primary/10"
+          accessibilityLabel="Tu perfil y ajustes"
+          onPress={() => setTab('ajustes')}
+          className="ml-1 h-11 w-11 items-center justify-center rounded-full bg-primary/10"
         >
-          <Text className="text-sm font-bold text-primary" testID="saludo-usuario">
-            {(credential.name ?? credential.phone).slice(0, 1).toUpperCase()}
-          </Text>
+          {credential.name?.trim() ? (
+            <Text className="text-sm font-bold text-primary" testID="saludo-usuario">
+              {credential.name.trim().slice(0, 1).toUpperCase()}
+            </Text>
+          ) : (
+            // Sin nombre NO se muestra la inicial del teléfono: un «9» suelto no
+            // significa nada para nadie. El ícono al menos dice «esto sos vos».
+            <User size={18} color={colores.primary} testID="saludo-usuario" />
+          )}
         </Pressable>
       </AppHeader>
 
@@ -237,6 +280,90 @@ export function TabsShell({
             </View>
 
             <Text className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
+              Apariencia
+            </Text>
+            {/**
+             * Claro, oscuro o el del sistema (José, 27/08/2026: «lilachat no
+             * tiene darkmode o light mode como lilastore»).
+             *
+             * **Tres opciones y no dos**, igual que LilaStore. Sin «sistema», la
+             * primera vez que alguien abre la app de noche le explota una
+             * pantalla blanca en la cara y la única salida es acordarse de venir
+             * hasta acá. Con automático por defecto, la mayoría no toca nada.
+             *
+             * Control segmentado y no una lista: son opciones EXCLUYENTES y se
+             * comparan entre sí — verlas juntas es la mitad de la decisión.
+             */}
+            <View className="flex-row rounded-xl border border-outline/10 bg-surface p-1">
+              {(
+                [
+                  { key: 'sistema' as const, label: 'Sistema', Icono: SunMoon },
+                  { key: 'claro' as const, label: 'Claro', Icono: Sun },
+                  { key: 'oscuro' as const, label: 'Oscuro', Icono: Moon },
+                ]
+              ).map(({ key, label, Icono }) => {
+                const activo = modo === key;
+                return (
+                  <Pressable
+                    key={key}
+                    testID={`tema-${key}`}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: activo }}
+                    onPress={() => setModo(key)}
+                    className={`min-h-[44px] flex-1 flex-row items-center justify-center gap-1.5 rounded-lg ${
+                      activo ? 'bg-primary' : ''
+                    }`}
+                  >
+                    <Icono
+                      size={15}
+                      color={activo ? colores['on-primary'] : colores['on-surface-variant']}
+                    />
+                    <Text
+                      className={`text-[13px] font-semibold ${
+                        activo ? 'text-on-primary' : 'text-on-surface-variant'
+                      }`}
+                    >
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Text className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
+              Avisos
+            </Text>
+            {/**
+             * El interruptor de la notificación permanente (José, 27/08/2026).
+             *
+             * No se puede quitar la notificación y quedarse con los mensajes:
+             * Android la exige a cambio de dejar vivo el socket, y WhatsApp se
+             * la ahorra porque usa FCM —un canal del sistema— que acá se
+             * descartó. Lo que sí se puede es que la decisión sea de quien la
+             * ve todos los días, con el costo escrito y no escondido.
+             */}
+            <View className="min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4">
+              <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                <BellRing size={18} color={colores.primary} />
+              </View>
+              <View className="min-w-0 flex-1">
+                <Text className="text-sm font-semibold text-on-surface">
+                  Recibir con la app cerrada
+                </Text>
+                <Text className="text-[11px] text-on-surface-variant">
+                  {segundoPlano
+                    ? 'Android exige mostrar el aviso fijo mientras esté activo'
+                    : 'Los mensajes llegan solo con Lilachat abierto'}
+                </Text>
+              </View>
+              <Switch
+                testID="sw-segundo-plano"
+                value={segundoPlano}
+                onValueChange={onSegundoPlano}
+              />
+            </View>
+
+            <Text className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
               Datos
             </Text>
             <Pressable
@@ -245,7 +372,7 @@ export function TabsShell({
               className="min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4"
             >
               <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                <CloudUpload size={18} color="#6b38d4" />
+                <CloudUpload size={18} color={colores.primary} />
               </View>
               <View className="min-w-0 flex-1">
                 <Text className="text-sm font-semibold text-on-surface">Copia de seguridad</Text>
@@ -253,7 +380,7 @@ export function TabsShell({
                   Tus chats, respaldados cada noche
                 </Text>
               </View>
-              <ChevronRight size={18} color="#7b7486" />
+              <ChevronRight size={18} color={colores.outline} />
             </Pressable>
 
             <Text className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
@@ -266,7 +393,7 @@ export function TabsShell({
               className="min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4"
             >
               <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                <UserPlus size={18} color="#6b38d4" />
+                <UserPlus size={18} color={colores.primary} />
               </View>
               <View className="min-w-0 flex-1">
                 <Text className="text-sm font-semibold text-on-surface">Invitar a alguien</Text>
@@ -274,7 +401,7 @@ export function TabsShell({
                   Desde tus contactos, con el enlace de descarga
                 </Text>
               </View>
-              <ChevronRight size={18} color="#7b7486" />
+              <ChevronRight size={18} color={colores.outline} />
             </Pressable>
 
             {/* «Buscar actualizaciones». Se dispara con un toque y NO al abrir
@@ -286,7 +413,7 @@ export function TabsShell({
               className="mt-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4"
             >
               <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                <RefreshCw size={18} color="#6b38d4" />
+                <RefreshCw size={18} color={colores.primary} />
               </View>
               <View className="min-w-0 flex-1">
                 <Text className="text-sm font-semibold text-on-surface">
@@ -304,7 +431,7 @@ export function TabsShell({
                         : `Versión ${versionActual()}`}
                 </Text>
               </View>
-              <ChevronRight size={18} color="#7b7486" />
+              <ChevronRight size={18} color={colores.outline} />
             </Pressable>
 
             <Pressable
@@ -364,7 +491,7 @@ export function TabsShell({
               onPress={() => setShowBackup(false)}
               className="h-11 w-9 items-center justify-center"
             >
-              <ArrowLeft size={22} color="#0b1c30" />
+              <ArrowLeft size={22} color={colores["on-surface"]} />
             </Pressable>
             <Text className="flex-1 text-lg font-bold text-on-surface">Copia de seguridad</Text>
           </View>

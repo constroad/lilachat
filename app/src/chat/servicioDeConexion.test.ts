@@ -2,42 +2,58 @@ import { describe, expect, it } from 'vitest';
 import { decidirServicio } from './servicioDeConexion';
 
 /**
- * Cuándo encender el servicio en primer plano.
- *
- * José, 26/08/2026: «notificación permanente, sin Firebase». El servicio
- * mantiene vivo el proceso —y con él el socket— cuando la app queda atrás; sin
- * él Android la suspende y los mensajes entran recién al volver a abrir.
- *
- * El precio es esa notificación fija en la bandeja, y por eso importa cuándo
- * está encendido: dejarla puesta sin sesión sería una app que molesta sin dar
- * nada a cambio.
+ * Cuándo corre el servicio en primer plano — y por lo tanto, cuándo hay
+ * notificación permanente en la bandeja.
  */
 describe('decidirServicio', () => {
+  it('con sesión y la app adelante: encendido', () => {
+    expect(decidirServicio({ haySesion: true, estado: 'active', enSegundoPlano: true })).toBe(
+      'encender'
+    );
+  });
+
+  /**
+   * Encendido TAMBIÉN con la app adelante: esperar a que salga deja una ventana
+   * —la transición, el momento más frágil— en la que Android puede matar el
+   * proceso antes de que el servicio arranque.
+   */
   it('con sesión y la app atrás: encendido', () => {
-    expect(decidirServicio({ haySesion: true, estado: 'background' })).toBe('encender');
+    expect(decidirServicio({ haySesion: true, estado: 'background', enSegundoPlano: true })).toBe(
+      'encender'
+    );
+  });
+
+  it('sin sesión: apagado, no se molesta a quien no está usando la app', () => {
+    expect(decidirServicio({ haySesion: false, estado: 'active', enSegundoPlano: true })).toBe(
+      'apagar'
+    );
   });
 
   /**
-   * **Con la app adelante también.** Encenderlo recién al salir deja una
-   * ventana en la que Android puede matar el proceso antes de que el servicio
-   * arranque — y esa ventana es justo el momento de transición, el más frágil.
+   * **El interruptor de José (27/08/2026).**
+   *
+   * «A cada rato me aparece la burbuja de "conectado para recibir mensajes",
+   * eso es incorrecto, WhatsApp no hace eso». Es verdad que WhatsApp no la
+   * muestra, y es verdad que nosotros no podemos evitarla: WhatsApp recibe por
+   * FCM, un canal del sistema operativo, y acá se decidió no usar Firebase. Sin
+   * FCM, Android exige esta notificación para dejar vivo un socket propio.
+   *
+   * Como el precio no se puede bajar, se le da a la persona la decisión: apagar
+   * el servicio quita la notificación y, con ella, los mensajes con la app
+   * cerrada. Es un intercambio, y lo elige quien lo paga.
    */
-  it('con sesión y la app adelante: encendido igual', () => {
+  it('con el interruptor apagado: apagado, aunque haya sesión', () => {
+    expect(decidirServicio({ haySesion: true, estado: 'active', enSegundoPlano: false })).toBe(
+      'apagar'
+    );
+  });
+
+  /**
+   * Sin preferencia guardada todavía, el servicio va ENCENDIDO. Una app de
+   * mensajería que por defecto no te entrega los mensajes está rota; quien no
+   * quiera la notificación la apaga y sabe lo que pierde.
+   */
+  it('sin preferencia guardada: encendido', () => {
     expect(decidirServicio({ haySesion: true, estado: 'active' })).toBe('encender');
-  });
-
-  /** Sin sesión no hay socket que sostener: la notificación sería puro estorbo. */
-  it('sin sesión: apagado', () => {
-    expect(decidirServicio({ haySesion: false, estado: 'background' })).toBe('apagar');
-    expect(decidirServicio({ haySesion: false, estado: 'active' })).toBe('apagar');
-  });
-
-  /**
-   * `inactive` es el estado de transición de Android —la pantalla de apps
-   * recientes, una llamada entrando—. NO es cerrar la app: apagar el servicio
-   * ahí lo prendería y apagaría en cada gesto.
-   */
-  it('en transición no se apaga nada', () => {
-    expect(decidirServicio({ haySesion: true, estado: 'inactive' })).toBe('encender');
   });
 });

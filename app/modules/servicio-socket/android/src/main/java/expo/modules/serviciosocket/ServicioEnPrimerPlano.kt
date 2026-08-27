@@ -83,11 +83,28 @@ class ServicioEnPrimerPlano : Service() {
 
     return constructor
       .setContentTitle("Lilachat")
-      // Se dice para QUÉ está: una notificación permanente sin explicación se
-      // lee como una app que se cuelga sola, y termina desinstalada.
-      .setContentText("Conectado para recibir mensajes")
+      // Se dice para QUÉ está Y cómo sacarla: una notificación permanente sin
+      // explicación se lee como una app que se cuelga sola, y termina
+      // desinstalada. La segunda mitad es del 27/08/2026 — José la vio como algo
+      // «de test» justamente porque no ofrecía ninguna salida.
+      .setContentText("Recibiendo mensajes · se apaga en Ajustes")
       .setSmallIcon(applicationInfo.icon)
       .setOngoing(true)
+      /**
+       * **Sin hora, y alertando una sola vez.**
+       *
+       * Acá estaba el «a cada rato me aparece» de José. Una notificación lleva
+       * por defecto la hora en que se publicó, y cada `onStartCommand`
+       * —reconexión, reinicio por START_STICKY, volver del segundo plano— la
+       * republica con hora nueva. Android la reordena como si fuera un aviso
+       * recién llegado y **salta al tope de la bandeja**.
+       *
+       * O sea: la notificación era siempre la misma, pero se comportaba como
+       * una nueva varias veces por día. Sin `when` y con `onlyAlertOnce` se
+       * queda quieta abajo, que es lo que uno espera de una constancia.
+       */
+      .setShowWhen(false)
+      .setOnlyAlertOnce(true)
       .apply { if (pendiente != null) setContentIntent(pendiente) }
       .build()
   }

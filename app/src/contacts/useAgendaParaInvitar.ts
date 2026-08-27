@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-// **`expo-contacts/legacy` y NO la raíz.** En la 57 la raíz expone la API nueva
-// (`Contact`, `getPermissionsAsync`) pero NO `getContactsAsync` ni `Fields`:
-// llamarlos ahí devuelve `undefined` y revienta al leer `Fields.PhoneNumbers`.
-// Ese fue el bug de los esqueletos eternos del 26/08/2026.
-import * as Contacts from 'expo-contacts/legacy';
+import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { separarAgenda, type ContactoDeAgenda, type ContactoRegistrado } from '@lilachat/shared';
-import { reportarError } from '../ui/reportarError';
-import { resolverEstadoAgenda } from './estadoAgenda';
+import {
+  estadoDeAgenda,
+  precargarAgenda,
+  suscribirAgenda,
+  type EstadoAgendaCruda,
+} from './agendaEnMemoria';
 
 /**
  * La gente de tu agenda que TODAVÍA no está en Lilachat.
@@ -30,55 +29,36 @@ export function useAgendaDelTelefono(): EstadoAgendaCruda {
   return useLecturaDeAgenda();
 }
 
-export type EstadoAgendaCruda =
-  | { estado: 'cargando' }
-  | { estado: 'denegado' }
-  | { estado: 'error'; mensaje: string }
-  | { estado: 'listo'; agenda: ContactoDeAgenda[] };
+export type { EstadoAgendaCruda };
 
-/** La lectura de la agenda, una sola vez y compartida. */
+/**
+ * La agenda del almacén compartido.
+ *
+ * Hasta el 27/08/2026 este hook LEÍA la agenda al montarse, y ahí estaba la
+ * lentitud del lápiz: los 600 contactos se empezaban a leer en el instante en
+ * que la persona abría la pantalla y se quedaba mirando esqueletos. Peor, cada
+ * pantalla que usaba contactos repetía la lectura entera.
+ *
+ * Ahora la lectura la dispara `precargarAgenda()` al entrar a la app, y esto
+ * solo se asoma al resultado. `precargarAgenda()` sigue acá por si alguna
+ * pantalla se monta antes: es idempotente, así que no cuesta nada.
+ */
 function useLecturaDeAgenda(): EstadoAgendaCruda {
-  const [permiso, setPermiso] = useState<'concedido' | 'denegado' | null>(null);
-  const [agenda, setAgenda] = useState<ContactoDeAgenda[] | null>(null);
-  const [fallo, setFallo] = useState<string | null>(null);
+  /**
+   * `estadoDeAgenda` devuelve SIEMPRE la misma referencia mientras nada cambie.
+   * Es un requisito de `useSyncExternalStore`, no un detalle: si armara un
+   * objeto nuevo en cada llamada, React lo leería como «cambió» sin fin y la
+   * app entraría en bucle de render.
+   */
+  const estado = useSyncExternalStore(suscribirAgenda, estadoDeAgenda, estadoDeAgenda);
 
-  const cargar = useCallback(async () => {
-    try {
-      const { status } = await Contacts.requestPermissionsAsync();
-      if (status !== 'granted') {
-        setPermiso('denegado');
-        return;
-      }
-      setPermiso('concedido');
-
-      const { data } = await Contacts.getContactsAsync({
-        fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Name],
-      });
-
-      setAgenda(
-        data.flatMap((contacto) =>
-          (contacto.phoneNumbers ?? [])
-            .filter((numero) => Boolean(numero.number))
-            .map((numero, indice) => ({
-              id: `${contacto.id ?? contacto.name ?? 'x'}-${indice}`,
-              nombre: contacto.name?.trim() || (numero.number as string),
-              telefono: numero.number as string,
-            }))
-        )
-      );
-    } catch (error) {
-      // **Se guarda el mensaje, no se traga.** Antes esto dejaba el estado en
-      // `null` y la pantalla mostraba esqueletos para siempre.
-      reportarError('useLecturaDeAgenda', error);
-      setFallo(error instanceof Error ? error.message : String(error));
-    }
+  // Red de seguridad por si una pantalla se monta antes de la precarga del
+  // arranque. Es idempotente: si ya está en curso, se suma a la misma lectura.
+  useEffect(() => {
+    void precargarAgenda();
   }, []);
 
-  useEffect(() => {
-    void cargar();
-  }, [cargar]);
-
-  return resolverEstadoAgenda({ permiso, agenda, fallo }) as EstadoAgendaCruda;
+  return estado;
 }
 
 export function useAgendaParaInvitar(registrados: ContactoRegistrado[] | null): ResultadoAgenda {

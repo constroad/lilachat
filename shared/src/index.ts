@@ -13,6 +13,8 @@ export * from './e2ee.js';
 export * from './call.js';
 export * from './agenda.js';
 export * from './crashReport.js';
+export * from './alerta.js';
+export * from './tema.js';
 export * from './agendaLocal.js';
 export * from './invitacion.js';
 export * from './emparejarAgenda.js';

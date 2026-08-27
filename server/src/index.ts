@@ -9,6 +9,8 @@ import { connectDb } from './db.js';
 import { attachSocket } from './socket.js';
 import { startReminderCron } from './reminderCron.js';
 import { startBackupCron } from './backupCron.js';
+import { alertarServidor } from './alertaTelegram.js';
+import { sellarConsola } from './registro.js';
 
 /**
  * Arranque. El guard de «¿me ejecutaron directamente?» compara rutas REALES:
@@ -41,13 +43,19 @@ const executedDirectly = (() => {
 function protegerProceso(): void {
   process.on('unhandledRejection', (motivo) => {
     console.error('[lilachat] promesa sin manejar:', motivo);
+    alertarServidor('unhandledRejection', motivo);
   });
   process.on('uncaughtException', (error) => {
     console.error('[lilachat] excepción sin atrapar:', error);
+    alertarServidor('uncaughtException', error);
   });
 }
 
 export function startServer(): void {
+  // Antes que nada: a partir de acá TODA línea del log lleva su hora, incluidas
+  // las de dependencias. Sin esto el log de Torre era una pared de mensajes
+  // iguales sin forma de saber si eran de hoy (reclamo de José, 27/08/2026).
+  sellarConsola();
   protegerProceso();
 
   /**

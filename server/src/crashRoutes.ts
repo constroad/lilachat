@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { esReporteValido, type CrashReport } from '@lilachat/shared';
+import { alertarCrash } from './alertaTelegram.js';
+import { registro } from './registro.js';
 
 /**
  * Donde las apps RN cuentan que algo se rompió.
@@ -17,8 +19,16 @@ import { esReporteValido, type CrashReport } from '@lilachat/shared';
  * - hay un límite de cuántos se aceptan por minuto, porque un endpoint abierto
  *   que escribe en el log es una forma cómoda de llenarnos el disco.
  *
- * Se escribe en **stdout**, que es lo que Torre recoge: un reporte que va a una
- * base que nadie mira no resuelve nada.
+ * El reporte sale por DOS caminos, y hacen falta los dos:
+ *
+ * - **Al log de errores** (`chat-err.log`, pestaña «chat · errores» en Torre),
+ *   con hora y con el stack completo. Es el registro, para investigar.
+ * - **A Telegram**, deduplicado. Es el aviso, para enterarse.
+ *
+ * Tener solo el primero fue el error del 26/08/2026: la línea se escribía y
+ * nadie la veía, porque un log hay que ir a mirarlo y encima había que acertar
+ * la pestaña —José buscaba en «chat · aplicación», que es stdout—. Un error que
+ * exige que ya sospeches de él no te avisa de nada.
  */
 const MAX_POR_MINUTO = 60;
 
@@ -42,11 +52,15 @@ export function buildCrashRouter(): Router {
 
     const reporte = req.body as CrashReport;
     // Una sola línea y con prefijo: así se filtra en Torre con un grep.
-    console.error(
+    registro.error(
       `[crash] ${reporte.app}@${reporte.version} ${reporte.plataforma ?? '?'} ` +
         `${reporte.pantalla ?? '?'} — ${reporte.mensaje}` +
         (reporte.stack ? `\n${reporte.stack}` : '')
     );
+    // El aviso NO bloquea la respuesta: la app no puede hacer nada con el
+    // resultado y esperar a Telegram le sumaría segundos a un teléfono que
+    // acaba de romperse.
+    alertarCrash(reporte);
 
     res.status(204).end();
   });

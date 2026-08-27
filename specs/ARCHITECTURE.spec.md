@@ -1567,3 +1567,58 @@ Auditoría pedida por José. Lo que la app RN tiene y la web no:
 
 Lo que **no** corresponde llevar a la web: invitar desde la agenda (el navegador
 no lee contactos), el servicio en primer plano, y buscar actualizaciones.
+
+## 28. El E2E que faltaba, y los tres defectos que solo se veían así (27/08/2026)
+
+José: «no veo que estés probando end to end con el emulador». Tenía razón —
+entrar exige un OTP y yo lo daba por imposible. La salida la dio él:
+`jose.test@yopmail.com`, un buzón **público** que se puede leer desde el
+navegador sin credenciales de nadie.
+
+### 28.1 La receta, para repetirla
+
+1. Sembrar una admisión de QA con ese correo:
+   `invitations: { phone: '900000001', email: 'jose.test@yopmail.com' }`.
+2. En el emulador, entrar con ese número y tocar **«¿No te llegó? Envíalo a mi
+   correo»** — el único camino cuyo código se puede leer.
+3. Abrir `https://yopmail.com/en/?jose.test` y sacar el código.
+4. Al terminar, **borrar todo y verificar en cero**.
+
+Sin el respaldo por correo no hay E2E posible: el código por WhatsApp exige un
+número real.
+
+### 28.2 Tres defectos, ninguno visible sin correr el flujo
+
+**1. La app nunca pedía permiso de notificaciones.** `POST_NOTIFICATIONS`
+quedaba en `granted=false` y la app entera con `importance=NONE`. Con eso no se
+veía **nada**: ni la burbuja de un mensaje ni la notificación del servicio en
+primer plano — que el sistema oculta aunque el servicio SÍ esté corriendo. El
+`dumpsys` decía `isForeground=true` y la bandeja estaba vacía.
+
+**2. Conceder el permiso después NO hace aparecer la notificación.**
+`startForeground` la publica al arrancar; si en ese instante el permiso estaba
+denegado, Android la suprime para siempre. Hay que **volver a arrancar el
+servicio** después de conceder, y por eso ahora es
+`prepararAvisos().then(() => iniciarServicio())`.
+
+**3. La burbuja del primer mensaje decía «Lilachat».** El chat se había creado
+después de que la app cargara su lista, así que no se conocía el nombre. Es
+justo cuando más importa —no sabés quién te escribió—: ahora, si el chat no está
+en la lista, se recarga ANTES de avisar.
+
+Y uno más, visto compartiendo de verdad: **la invitación salía sin la opción 2**
+(el APK directo). El enlace estaba atado al botón «buscar actualizaciones», así
+que si nadie lo tocaba nunca, la invitación llevaba una sola puerta. Ahora se
+busca al arrancar.
+
+### 28.3 Lo verificado, de punta a punta
+
+| Paso | Resultado |
+| --- | --- |
+| Alta con código por correo | entra a la lista de chats |
+| Servicio en primer plano | `isForeground=true`, `types=0x1` (dataSync) |
+| Notificación permanente | «Lilachat · Conectado para recibir mensajes», silenciosa |
+| Invitar a un contacto | crea la admisión en la base y abre la hoja de compartir |
+| Mensaje con la app CERRADA | llega la burbuja con la vista previa, tildes y emoji |
+| Segundo mensaje | el título ya es el chat, no el genérico |
+| Limpieza | usuario, chat, mensajes, device e invitaciones en cero |

@@ -5,6 +5,7 @@ import type { Credential } from '../auth/credentialStore';
 import { listChats, type ChatSummary } from '../api/client';
 import { connectSocket } from '../chat/socketClient';
 import { avisarMensaje, prepararAvisos } from '../chat/avisoLocal';
+import { iniciarServicio } from '../../modules/servicio-socket/src';
 import { ChatListScreen } from '../chat/ChatListScreen';
 import { CreateEventScreen } from '../agenda/CreateEventScreen';
 import { CreatePollScreen } from '../agenda/CreatePollScreen';
@@ -55,6 +56,18 @@ export function TabsShell({
   const [enlaceApp, setEnlaceApp] = useState('');
 
   /**
+   * El enlace directo al APK se busca AL ARRANCAR, no al tocar «buscar
+   * actualizaciones».
+   *
+   * Estaba atado a ese botón, así que la invitación salía con una sola puerta
+   * —la tienda— y la opción 2 no aparecía nunca. Visto compartiendo de verdad
+   * en el emulador (27/08/2026): el texto llegaba con «1)» y sin «2)».
+   */
+  useEffect(() => {
+    void buscarActualizacion().then(({ downloadUrl }) => setEnlaceApp(downloadUrl));
+  }, []);
+
+  /**
    * Busca la versión publicada y, si hay una más nueva, abre su descarga.
    *
    * La app NO se instala a sí misma: eso lo hace Android con el APK bajado, y
@@ -91,10 +104,22 @@ export function TabsShell({
    * hace el servicio en primer plano.
    */
   useEffect(() => {
-    void prepararAvisos();
+    /**
+     * El permiso se pide ANTES y el servicio se reinicia DESPUÉS.
+     *
+     * `startForeground` publica su notificación en el momento de arrancar: si
+     * en ese instante `POST_NOTIFICATIONS` estaba denegado, Android la suprime
+     * y **conceder el permiso después no la hace aparecer**. El servicio queda
+     * corriendo e invisible — que es justo lo que se vio en el emulador
+     * (27/08/2026): `isForeground=true` y la bandeja vacía.
+     *
+     * Volver a llamar a `iniciarServicio()` dispara otro `onStartCommand`, que
+     * la publica de nuevo, ahora con permiso.
+     */
+    void prepararAvisos().then(() => iniciarServicio());
 
     const socket = connectSocket(credential.jwt);
-    const alLlegar = (mensaje: {
+    const alLlegar = async (mensaje: {
       chatId: string;
       senderId: string;
       kind: 'text' | 'image' | 'video' | 'audio' | 'file';
@@ -104,7 +129,19 @@ export function TabsShell({
       // Lo mío no se avisa: acabo de escribirlo.
       if (mensaje.senderId === credential.userId) return;
 
-      const chat = chatsRef.current.find((uno) => uno.id === mensaje.chatId);
+      /**
+       * Si el chat no está en la lista, se recarga ANTES de avisar.
+       *
+       * Es el caso del primer mensaje de alguien nuevo: la conversación se creó
+       * después de que la app cargó su lista, así que no se conocía el nombre y
+       * la burbuja decía «Lilachat». Visto en el emulador (27/08/2026), y es
+       * justo cuando el nombre más importa — no sabés quién te escribió.
+       */
+      let chat = chatsRef.current.find((uno) => uno.id === mensaje.chatId);
+      if (!chat) {
+        await loadChats();
+        chat = chatsRef.current.find((uno) => uno.id === mensaje.chatId);
+      }
       void avisarMensaje({
         chatId: mensaje.chatId,
         chatName: chat?.name ?? 'Lilachat',
@@ -118,11 +155,11 @@ export function TabsShell({
       });
     };
 
-    socket.on('msg.new', alLlegar);
+    socket.on('msg.new', (mensaje: Parameters<typeof alLlegar>[0]) => void alLlegar(mensaje));
     return () => {
-      socket.off('msg.new', alLlegar);
+      socket.off('msg.new');
     };
-  }, [credential.jwt, credential.userId]);
+  }, [credential.jwt, credential.userId, loadChats]);
 
   useEffect(() => {
     void loadChats();

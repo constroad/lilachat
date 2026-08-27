@@ -22,6 +22,23 @@ const CANAL = 'mensajes';
  */
 export async function prepararAvisos(): Promise<void> {
   try {
+    /**
+     * **Pedir el permiso, que es lo que faltaba.**
+     *
+     * Desde Android 13 las notificaciones se conceden en tiempo de ejecución y
+     * la app **nunca lo pedía**: `POST_NOTIFICATIONS` quedaba en `granted=false`
+     * y la app entera con `importance=NONE`. Con eso no se veía nada — ni la
+     * burbuja de un mensaje ni la notificación del servicio en primer plano,
+     * que el sistema oculta aunque el servicio SÍ esté corriendo.
+     *
+     * Solo se vio corriendo el flujo completo en el emulador (27/08/2026): el
+     * servicio decía `isForeground=true` y la bandeja estaba vacía.
+     */
+    const actual = await Notifications.getPermissionsAsync();
+    if (!actual.granted && actual.canAskAgain) {
+      await Notifications.requestPermissionsAsync();
+    }
+
     await Notifications.setNotificationChannelAsync(CANAL, {
       name: 'Mensajes',
       importance: Notifications.AndroidImportance.HIGH,

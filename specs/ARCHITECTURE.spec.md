@@ -1710,3 +1710,54 @@ con sintaxis.
 | La conversación | **burbuja vacía** → corregido → se ve |
 | Caché en `localStorage` | 1 chat, 1 mensaje, con `media.url` |
 | Recargar con `fetch` roto | la conversación sigue en pantalla |
+
+## 30. El WebSocket de la web, y cómo lo hace WhatsApp Web (27/08/2026)
+
+### 30.1 Qué pasaba
+
+La consola del navegador llenaba de `WebSocket connection to
+'wss://lilachat.constroad.com/socket.io/…' failed`. Medido antes de tocar nada:
+
+| Prueba | Resultado |
+| --- | --- |
+| `new WebSocket(…)` crudo desde la página | **abre en 890 ms** |
+| socket.io desde Node, token válido | conecta al primer intento |
+| socket.io desde Node **con `Origin`** de navegador | conecta |
+
+O sea: el túnel de Cloudflare pasa WebSocket sin problema y el CORS no estorba.
+El transporte nunca fue el problema.
+
+**La causa era propia:** el efecto del socket dependía del `jwt`, y el refresco
+de sesión que se agregó el mismo día (§26.1) **cambia el `jwt` al arrancar**. Así
+que cada carga abría un socket con el token viejo, lo tiraba y abría otro — dos
+handshakes por visita, y el «failed» en la consola cada vez.
+
+**El arreglo:** el socket se abre por SESIÓN (`userId`), no por token. El token
+se lee de una ref al conectar, y `auth` se pasa como **función** —socket.io la
+vuelve a llamar en cada reintento—, así que un token renovado entra solo en la
+próxima reconexión. Renovar la sesión ya no tira la conexión.
+
+Lo demás de esos errores era el reintento de socket.io contra una sesión muerta:
+al borrar el usuario de QA, la web siguió reintentando hasta que el refresco
+devolvió 401 y cerró sesión sola — que es el comportamiento correcto.
+
+### 30.2 ¿Con sockets? Sí, y así lo hace WhatsApp Web
+
+WhatsApp Web mantiene **una conexión WebSocket persistente** al servidor y todo
+viaja por ahí: mensajes, «escribiendo», presencia, acuses. Es la misma forma que
+Socket.IO — un canal bidireccional en vez de preguntar cada N segundos.
+
+Las buenas prácticas que aplican, y dónde estamos:
+
+| Práctica | Por qué | Estado |
+| --- | --- | --- |
+| Una sola conexión por sesión | cada socket es memoria y un handshake; abrir uno por render es el error clásico | **arreglado hoy** |
+| Reconexión con backoff | reintentar cada 100 ms contra un server caído es un ataque a uno mismo | lo trae socket.io |
+| La UI lee del ALMACÉN, no del socket | el socket escribe, la pantalla observa: así abrir es instantáneo y lo nuevo aparece al toque | §29.2 |
+| Eventos efímeros que no se persisten | «escribiendo» vale segundos; guardarlo es latencia y basura | ya es así |
+| Reanudar por cursor, no por «desde cuándo» | tras una desconexión hay que pedir lo que falta, no todo | `sync.pull` con `seq` |
+| El token no obliga a reconectar | si el socket muriera con cada refresco, la sesión larga sería inútil | **arreglado hoy** |
+
+Lo que **no** hacemos y WhatsApp sí: cifrar de punta a punta TODO (acá es opt-in
+por chat, F9), y usar un protocolo binario propio en vez de Socket.IO — que para
+esta escala sería optimizar lo que no duele.

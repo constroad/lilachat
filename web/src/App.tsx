@@ -171,7 +171,12 @@ export function App() {
 
   const onReceipt = useCallback(() => void loadChats(), [loadChats]);
 
-  const socket = useSocket({ jwt: credential?.jwt ?? null, onMessage, onReceipt });
+  const socket = useSocket({
+    jwt: credential?.jwt ?? null,
+    userId: credential?.userId ?? null,
+    onMessage,
+    onReceipt,
+  });
   const socketRef = socket.socket;
 
   // Los mensajes del chat abierto.

@@ -18,12 +18,30 @@ export type SocketState = {
 
 export function useSocket(params: {
   jwt: string | null;
+  /** Quién soy. El socket se abre por SESIÓN, no por token. */
+  userId: string | null;
   onMessage: (message: ChatMessage) => void;
   onReceipt: (data: { chatId: string; userId: string; readSeq: number }) => void;
 }) {
   const socketRef = useRef<Socket | null>(null);
   const handlers = useRef(params);
   handlers.current = params;
+
+  /**
+   * El token, en una ref.
+   *
+   * El socket se abre UNA vez por sesión y lee el token al conectar. Antes el
+   * efecto dependía del `jwt`, y como al arrancar se renueva la sesión, cada
+   * carga abría un socket, lo tiraba y abría otro — dos handshakes por visita y
+   * un «WebSocket connection failed» en la consola cada vez.
+   *
+   * Cambiar el token NO obliga a reconectar: la conexión ya autenticada sigue
+   * siéndolo. El token nuevo se usará en el próximo handshake, si lo hay.
+   */
+  const jwtRef = useRef(params.jwt);
+  jwtRef.current = params.jwt;
+
+  const hayToken = Boolean(params.jwt);
 
   const [state, setState] = useState<SocketState>({
     connected: false,
@@ -32,9 +50,14 @@ export function useSocket(params: {
   });
 
   useEffect(() => {
-    if (!params.jwt) return;
+    if (!jwtRef.current) return;
 
-    const socket = io({ auth: { token: params.jwt }, transports: ['websocket', 'polling'] });
+    const socket = io({
+      // Función y no valor: socket.io la vuelve a llamar en cada reintento, así
+      // que un token renovado entra solo en la reconexión.
+      auth: (cb: (datos: Record<string, unknown>) => void) => cb({ token: jwtRef.current }),
+      transports: ['websocket', 'polling'],
+    });
     socketRef.current = socket;
 
     socket.on('connect', () => setState((prev) => ({ ...prev, connected: true })));
@@ -90,7 +113,9 @@ export function useSocket(params: {
       socket.close();
       socketRef.current = null;
     };
-  }, [params.jwt]);
+    // Depende de QUIÉN, no del token: renovar la sesión no puede tirar el
+    // socket. `hayToken` cubre el paso de deslogueado a logueado.
+  }, [params.userId, hayToken]);
 
   return { ...state, socket: socketRef };
 }

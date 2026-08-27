@@ -1855,3 +1855,253 @@ Verificado que sirve: se reintrodujo el defecto a propósito y el lint lo marcó
 
 Queda encadenado a `npm run typecheck`, que es lo que corre `lila apk build`:
 un APK con este defecto ya no se puede construir.
+
+## 32. Observabilidad: por qué «estoy a ciegas» seguía siendo cierto (27/08/2026)
+
+Había reporte de crash desde el 26 y aun así José escribió: «estoy prácticamente
+a ciegas». Tenía razón, y por tres motivos distintos que se sumaban.
+
+### 32.1 Los reportes estaban en la pestaña de al lado
+
+`crashRoutes` escribía con `console.error`, que en Node va a **stderr**. En la
+mini eso es `chat-err.log`, y en Torre la pestaña «chat · errores». José miraba
+`?f=chat:app` —que es stdout— y ahí solo hay arranques.
+
+La separación stdout/stderr está bien y se conserva: es lo que permite grepear
+los errores. Lo que estaba mal era que **fuera el único camino**.
+
+### 32.2 El log no tenía hora
+
+Lo que veía era una pared de `[lilachat] escuchando en :3004` repetido, sin una
+sola marca de tiempo. Sin hora, un log no contesta ninguna de las preguntas que
+uno le hace: ¿esto fue hoy?, ¿son dos deploys o un bucle de reinicios?, ¿pasó
+antes o después del error que busco?
+
+`server/src/registro.ts` la agrega. Dos decisiones que valen:
+
+- **La zona se fija en `America/Lima`, no se toma del sistema.** Es la lección de
+  `server-timezone-changed-with-hosting`: la app ya se mudó de host una vez y la
+  zona cambió con la mudanza. Un log fechado en «la hora del server» obliga a
+  saber dónde corre el server para leerlo.
+- **Se sella el `console`, no se reescriben las 22 llamadas.** Cambiar 22 líneas
+  para no cambiar ningún comportamiento es un diff donde solo pueden aparecer
+  regresiones; y sellar además fecha lo que **no** escribimos nosotros —los
+  warnings de Node y de las dependencias—. Un log donde algunas líneas tienen
+  hora y otras no es peor que uno sin hora: invita a ordenarlas como si fueran
+  comparables. Verificado en vivo: el `MODULE_TYPELESS_PACKAGE_JSON` de Node
+  salió fechado.
+
+### 32.3 Nadie abre un log por las dudas
+
+Este es el que importa. Un error solo existe si te interrumpe; si hay que ir a
+buscarlo, solo se encuentra cuando ya sospechabas de él, y entonces el log no te
+avisó de nada.
+
+Ahora un crash sale por DOS caminos y hacen falta los dos: **al log** con hora y
+stack completo (el registro, para investigar) y **a Telegram** deduplicado (el
+aviso, para enterarse). Mismo bot y mismo canal que lila-app —no hace falta un
+canal nuevo para mirar en dos lugares—. `alertarServidor()` cubre además los
+`uncaughtException` del propio server, que son peores que el crash de un
+teléfono: el del teléfono lo sufre una persona, este los deja a todos sin chat.
+
+El dedupe (`shared/src/alerta.ts`) no es un adorno. El endpoint acepta 60
+reportes por minuto: una pantalla en bucle mandaría 60 mensajes de Telegram por
+minuto, y la reacción humana a eso es silenciar el canal — con lo cual el
+siguiente error, el que sí importaba, tampoco se ve. La huella incluye la
+**versión** a propósito: el mismo error en una versión nueva es noticia otra vez,
+porque significa que el arreglo no funcionó.
+
+Probado contra el endpoint real: cuatro POST idénticos → 4 líneas en el log, 1
+solo aviso.
+
+**Lo que falta y se sabe que falta:** las variables `TELEGRAM_BOT_TOKEN` y
+`TELEGRAM_ALERTS_CHAT_ID` **no estaban en el `.env` de lilachat** —por eso no
+llegaba nada aunque el bot existiera hace meses—. Están en el `.env` local; hay
+que ponerlas en el de la mini por Torre, y **reiniciar**: el `.env` se lee al
+arrancar (memoria `env-loaded-at-boot-needs-restart`).
+
+## 33. La notificación permanente, el círculo del header y la agenda (27/08/2026)
+
+### 33.1 «A cada rato me aparece la burbuja»
+
+Hay que separar las dos mitades del reclamo, porque una es cierta y la otra no
+es nuestra:
+
+- **WhatsApp no muestra esta notificación** porque recibe por FCM, un canal que
+  mantiene el sistema operativo. Cierto.
+- **Nosotros no podemos ocultarla.** Sin FCM —descartado a conciencia— la única
+  forma de que un socket propio sobreviva a la app cerrada es un servicio en
+  primer plano, y Android exige la notificación como condición para dejarlo
+  correr. No es una decisión reversible con una línea.
+
+Pero «a cada rato **me aparece**» sí era un defecto, y estaba en un detalle: una
+notificación lleva por defecto la hora en que se publicó, y **cada
+`onStartCommand`** —reconexión, `START_STICKY`, volver del segundo plano— la
+republica con hora nueva. Android la reordena como si fuera un aviso recién
+llegado y salta al tope de la bandeja. Era siempre la misma notificación
+comportándose como una nueva varias veces por día. `setShowWhen(false)` +
+`setOnlyAlertOnce(true)` la dejan quieta, que es lo que se espera de una
+constancia. Verificado en el emulador: queda en la sección «Silent».
+
+Y como el precio es fijo, lo que se puede dar es la **elección**: interruptor en
+Ajustes → Avisos. Apagarlo saca la notificación **y** los mensajes con la app
+cerrada, y el texto lo dice. Por defecto encendido: una app de mensajería que de
+fábrica no entrega los mensajes está rota, y nadie atribuiría ese silencio a un
+ajuste que nunca tocó.
+
+El interruptor vive en `App.tsx` y baja como prop. Dos copias del mismo ajuste se
+desincronizan, y el síntoma sería el peor posible: el switch en una posición y la
+notificación en la otra.
+
+### 33.2 El círculo con un número era un botón trampa
+
+«Hay un círculo con un número, no me dice qué es ni para qué sirve». Era el
+avatar, mostrando la primera letra de `name` — y como no hay nombre puesto,
+mostraba el primer dígito del teléfono.
+
+Era peor que ilegible: **cerraba la sesión de un toque y sin preguntar**. Cerrar
+sesión ya vive en Ajustes, escrito y en su sección. Dos formas de hacer lo mismo,
+una de ellas muda, no es una comodidad — es una trampa. Ahora lleva a Ajustes, y
+sin nombre muestra un ícono de persona en vez de un dígito suelto.
+
+### 33.3 La agenda se leía cuando ya la estabas esperando
+
+«Al lápiz ya me debería aparecer precargado los contactos y no recién allí
+ponerme a cargar». El problema era estructural: la lectura vivía **dentro del
+hook**, así que los 600 y pico de contactos se empezaban a leer en el instante en
+que la pantalla se montaba — es decir, con la persona ya mirando. Y como cada
+pantalla que usa contactos monta su propio hook, la lectura se repetía entera en
+«nuevo chat», en «evento» y en «encuesta».
+
+`agendaEnMemoria.ts` la lee una vez, apenas hay sesión, mientras se mira la lista
+de chats. Detalles que no son opcionales:
+
+- **La promesa en curso se guarda.** Es lo que vuelve idempotente a
+  `precargarAgenda()`: tres pantallas montando a la vez se suman a la MISMA
+  lectura. Sin eso, el almacén compartido solo movería las tres lecturas de lugar.
+- **`estadoDeAgenda()` devuelve siempre la misma referencia** mientras nada
+  cambie. Es requisito de `useSyncExternalStore`, no un detalle: un objeto nuevo
+  por llamada se lee como «cambió» sin fin y la app entra en bucle de render.
+- **`olvidarAgenda()` al cerrar sesión.** Otro teléfono, otra persona.
+- Cambia **cuándo se pide el permiso de contactos**: ahora al entrar, no al tocar
+  el lápiz. Se acepta — el permiso hay que pedirlo en algún momento, y pedirlo
+  mientras se miran los chats interrumpe menos que pedirlo justo cuando querés
+  escribirle a alguien.
+
+Verificado en el emulador: a **un segundo** del toque el lápiz ya muestra la
+lista, sin esqueletos.
+
+**Lo que todavía NO hace:** sobrevivir al cierre de la app. En un arranque en
+frío la primera lectura sigue costando. Guardarla en disco es el siguiente paso y
+va **cifrada** — una agenda en claro en el almacenamiento es exactamente lo que
+`cacheCifrada.ts` existe para evitar.
+
+### 33.4 Lo que queda pendiente
+
+**Modo claro/oscuro.** `shared/tokens.json` ya trae la paleta `dark` completa,
+pero `tailwind.config.js` solo cablea la `light`, y hay **88 colores hardcodeados**
+repartidos en 20 pantallas (casi todos `color="#…"` de iconos, que no aceptan
+clases de Tailwind). No es un ajuste de configuración: es un proveedor de tema
+más un barrido pantalla por pantalla. Hacerlo a medias deja pantallas mitad
+oscuras, que se ven peor que no tenerlo.
+
+## 34. Modo claro / oscuro (27/08/2026)
+
+José: «lilachat no tiene darkmode o light mode como lilastore».
+
+**Primero hubo que corregir un supuesto mío.** Dije que la paleta oscura ya
+estaba en `shared/tokens.json` y solo faltaba cablearla. Falso: tenía DOS
+colores, `background` e `inversePrimary`. Eso no es una paleta, es una intención.
+Hubo que diseñarla.
+
+### 34.1 Variables CSS, no `dark:` en cada clase
+
+El camino obvio —poner `dark:` en cada `className` de cada pantalla— es el
+equivocado, y no por trabajo: son 20 pantallas, se olvida una y queda un bloque
+blanco en medio de una pantalla negra; y desde ese día cada clase nueva hay que
+acordarse de duplicarla. El olvido es cuestión de tiempo.
+
+Los colores se declaran como **variables CSS** (`--color-surface`) y las clases
+quedan iguales en los dos modos: lo que cambia es el valor. Una pantalla escrita
+sin pensar en el tema funciona en oscuro sola. `darkMode: 'class'` y NativeWind
+pone la clase según `colorScheme`.
+
+Piezas y por qué están donde están:
+
+- `shared/src/tema.ts` — `NOMBRES_DE_COLOR` es la fuente ÚNICA del mapa
+  token→clase. De ahí salen **el `tailwind.config.js` y el bloque de variables de
+  `global.css`, los dos generados** (`npm run emit-tokens`). Escribir cualquiera
+  de los dos a mano habilita el fallo silencioso: una variable que Tailwind
+  nombra y el CSS no define **no rompe nada, se resuelve a transparente**, y uno
+  termina buscando el problema en el layout.
+- Los valores son **canales sueltos** (`107 56 212`), no `rgb(...)`. Tailwind lo
+  envuelve con `<alpha-value>`, y eso es lo que mantiene vivo el `/10` de
+  `bg-primary/10`. Con un `rgb()` completo adentro, todos los fondos tenues de la
+  app se vuelven sólidos.
+- El test `todos los nombres resuelven en los DOS modos` recorre el mapa entero:
+  un color nuevo sin su par oscuro sale en rojo antes de compilar. Y el de
+  «superficie y texto cambian entre modos» existe porque sin él la prueba pasaba
+  con la paleta oscura vacía heredando todo lo claro — el estado real del
+  proyecto hasta hoy.
+
+### 34.2 Las decisiones de la paleta oscura
+
+- **Las tarjetas van MÁS CLARAS que el fondo** (`#1a2337` sobre `#0f172a`). Es el
+  reflejo de la regla del modo claro (blanco sobre gris): la elevación se lee
+  como «más cerca de la luz». Una tarjeta más oscura que su fondo parece un
+  agujero.
+- **`primary` se invierte**: en oscuro es violeta CLARO (`#d0bcff`) y `onPrimary`
+  pasa a ser oscuro. En oscuro `primary` se usa sobre todo como texto sobre el
+  navy, y el violeta del modo claro ahí no se lee. Es el `inversePrimary` de
+  Material, que existía suelto y ahora ocupa su lugar.
+- **`outline` es MÁS CLARO que en modo claro**, y no es un descuido: los bordes
+  se dibujan con `border-outline/10`, y el gris del modo claro a un 10 % sobre
+  navy es literalmente invisible.
+- El fondo es navy y nunca negro puro (spec §2.1).
+
+### 34.3 Los 106 hex escritos a mano
+
+Lo que las clases no cubren: el `color` de los iconos de `lucide-react-native`,
+el `placeholderTextColor` y el `StatusBar`. Eran **106 hex en 21 archivos**, y
+cada uno un punto que se quedaba en modo claro. Ahora salen de `useColores()`;
+quedan cero hex fuera de `src/ui/tema.tsx`.
+
+El barrido se hizo con un script, y el script inserta `const colores =
+useColores()` como **PRIMERA sentencia** del componente a propósito: es la
+lección de §31 —un hook después de un return condicional cambia la cantidad de
+hooks entre renders—, y meterlo en cualquier otro lado era la forma más rápida de
+reintroducir ese bug en 21 archivos de una vez. La regla `rules-of-hooks` en
+verde después del barrido es la que confirma que no pasó.
+
+`App.tsx` se partió en `App` (monta proveedores) y `Contenido`: un componente no
+puede consumir un contexto que él mismo monta, y sin el corte el `StatusBar` y el
+indicador de carga se quedaban en claro para siempre.
+
+### 34.4 Detalles encontrados probándolo en el emulador
+
+- **`CallScreen` casi queda ilegible.** La había excluido del barrido pensando
+  que sus iconos blancos van sobre botones rojos y verdes. Su raíz es
+  `bg-primary`, que en oscuro es violeta CLARO: los iconos blancos habrían
+  desaparecido. Es el argumento contra excluir archivos «por criterio» en un
+  barrido de color — se revisa o se incluye, no se supone.
+- **El botón deshabilitado no se leía.** El fondo inactivo es `bg-primary/30`, o
+  sea el primario translúcido sobre el fondo: el resultado se parece al FONDO, no
+  al primario, así que el `on-primary` oscuro quedaba casi encima del navy. Ahora
+  el contenido inactivo usa `on-surface-variant`, que además mejora el modo claro
+  (era blanco sobre violeta pálido).
+- **Un falso positivo mío**: leí el enlace «Envíalo a mi correo» como azul
+  oscuro sobre navy en la captura. Muestreado el píxel, era `#9ecaff` exacto
+  sobre `#0f172a` exacto. En capturas de 320 px el ojo no alcanza: se mide.
+
+### 34.5 Verificado en el emulador (0.1.20 · 21)
+
+| Paso | Resultado |
+| --- | --- |
+| Sistema en oscuro, «Sistema» | toda la app en navy, StatusBar claro |
+| Ajustes → «Claro» con el sistema en oscuro | vira a claro al instante |
+| Ajustes → «Oscuro» | vira a oscuro |
+| Nuevo chat, agenda, hoja de crear, formulario de evento | correctos en oscuro |
+| Modo claro tras el cambio | idéntico al anterior, sin regresión |
+
+**Pendiente:** no se pudo ver la pantalla de conversación con burbujas — hace
+falta una segunda persona y la QA corre con un solo usuario de prueba.

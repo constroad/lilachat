@@ -2,7 +2,7 @@
   "expo": {
     "name": "Lilachat",
     "slug": "lilachat",
-    "version": "0.1.23",
+    "version": "0.1.25",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -18,13 +18,14 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.lilachat.app",
-      "versionCode": 24,
+      "versionCode": 26,
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
         "android.permission.WAKE_LOCK"
-      ]
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"

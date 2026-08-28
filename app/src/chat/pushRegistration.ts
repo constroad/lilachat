@@ -1,4 +1,3 @@
-import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 
 /**
@@ -17,10 +16,18 @@ import * as Notifications from 'expo-notifications';
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
 
 export async function registerPushToken(jwt: string): Promise<'ok' | 'denied' | 'unsupported'> {
-  // El emulador sin Google Play no entrega token: es un caso normal, no un
-  // fallo, y merece una respuesta distinta de «lo negaste».
-  if (!Device.isDevice) return 'unsupported';
-
+  /**
+   * **No se descarta el emulador de antemano** (27/08/2026).
+   *
+   * Antes había acá un `if (!Device.isDevice) return 'unsupported'`. La
+   * intención era buena —un emulador pelado no entrega token— pero la
+   * consecuencia era que **FCM no se podía probar en ningún lado**: en el
+   * emulador se rendía sin intentar, y en un teléfono real no hay forma de
+   * depurar. Un emulador CON Google Play sí entrega token, y este lo tiene.
+   *
+   * El `try/catch` de abajo ya cubre el caso de que no se pueda: se intenta y se
+   * degrada, en vez de adivinar por el tipo de aparato.
+   */
   const existing = await Notifications.getPermissionsAsync();
   const granted =
     existing.granted || (await Notifications.requestPermissionsAsync()).granted;

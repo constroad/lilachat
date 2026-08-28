@@ -388,12 +388,12 @@ export function TabsShell({
               </View>
               <View className="min-w-0 flex-1">
                 <Text className="text-sm font-semibold text-on-surface">
-                  Recibir con la app cerrada
+                  Conexión permanente
                 </Text>
                 <Text className="text-[11px] text-on-surface-variant">
                   {segundoPlano
-                    ? 'Android exige mostrar el aviso fijo mientras esté activo'
-                    : 'Los mensajes llegan solo con Lilachat abierto'}
+                    ? 'Android exige mostrar un aviso fijo, y gasta más batería'
+                    : 'No hace falta: los mensajes llegan por notificación push'}
                 </Text>
               </View>
               <Switch

@@ -22,13 +22,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const CLAVE_SEGUNDO_PLANO = 'lilachat.pref.segundoPlano';
 
 /**
- * Por defecto ENCENDIDO, y no es una preferencia estética.
+ * Por defecto APAGADO desde que existe FCM (27/08/2026).
  *
- * Una app de mensajería que de fábrica no te entrega los mensajes está rota, y
- * quien la instale no va a atribuir el silencio a un ajuste que nunca tocó — va
- * a pensar que la app no anda. Se arranca funcionando y se ofrece apagarlo.
+ * Hasta acá tenía que estar encendido: sin push, el socket sostenido por el
+ * servicio en primer plano era la ÚNICA forma de recibir con la app cerrada, y
+ * una app de mensajería que de fábrica no entrega mensajes está rota. El precio
+ * era la notificación permanente, que José pidió sacar tres veces.
+ *
+ * Con FCM el push lo entrega el sistema operativo, así que el servicio dejó de
+ * ser necesario — y con él se va la burbuja fija Y el wake lock que se comía la
+ * batería. Se conserva como opción para quien quiera la conexión sostenida
+ * igual: en un teléfono con Google Play capado, el push no llega.
  */
-export const SEGUNDO_PLANO_POR_DEFECTO = true;
+export const SEGUNDO_PLANO_POR_DEFECTO = false;
 
 export async function leerSegundoPlano(): Promise<boolean> {
   try {

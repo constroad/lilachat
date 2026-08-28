@@ -8,6 +8,7 @@ import {
   markRead,
   pullSince,
   sendMessage,
+  deleteMessage,
 } from './chatService.js';
 import { toClientMessage, toClientMessages } from './messageView.js';
 import { markOffline, markOnline, onlineAmong } from './presence.js';
@@ -247,6 +248,44 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
         });
       } catch {
         ack?.({ ok: false });
+      }
+    });
+
+    /**
+     * Borrar un mensaje para todos.
+     *
+     * Va por socket y no por HTTP para que el aviso a los demás salga por el
+     * mismo camino que el mensaje: quien tenga el chat abierto ve la lápida
+     * aparecer sin recargar.
+     */
+    socket.on('msg.delete', async (frame: unknown, ack?: (r: unknown) => void) => {
+      const payload = (frame ?? {}) as Record<string, unknown>;
+      try {
+        const resultado = await deleteMessage({
+          chatId: String(payload.chatId ?? ''),
+          seq: Number(payload.seq ?? 0),
+          userId: new Types.ObjectId(userId),
+        });
+
+        if (!resultado.ok) {
+          // El motivo viaja: un «no» mudo se lee como que la app se colgó.
+          ack?.({ ok: false, motivo: resultado.motivo });
+          return;
+        }
+
+        // A TODOS, incluido quien borró: sus otros dispositivos también tienen
+        // que reemplazar la burbuja por la lápida.
+        const members = await chatMemberIds(resultado.message.chatId);
+        for (const member of members) {
+          io.to(userRoom(member)).emit('msg.deleted', {
+            chatId: String(resultado.message.chatId),
+            seq: resultado.message.seq,
+          });
+        }
+        ack?.({ ok: true });
+      } catch (error) {
+        console.error('[chat] no se pudo eliminar:', (error as Error).message);
+        ack?.({ ok: false, motivo: 'No se pudo eliminar.' });
       }
     });
 

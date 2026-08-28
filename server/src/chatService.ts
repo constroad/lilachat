@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { unreadCount } from '@lilachat/shared';
+import { unreadCount , puedeEliminar } from '@lilachat/shared';
 import { UserModel } from './models.js';
 import { ChatModel, MessageModel, ReceiptModel, type Message } from './chatModels.js';
 
@@ -294,4 +294,59 @@ export async function markRead(params: {
 export async function chatMemberIds(chatId: Types.ObjectId): Promise<string[]> {
   const chat = await ChatModel.findById(chatId).select('members.userId').lean();
   return (chat?.members ?? []).map((member) => String(member.userId));
+}
+
+/**
+ * Borrar un mensaje PARA TODOS.
+ *
+ * José lo pidió tres veces (27/08/2026). Dos decisiones que valen:
+ *
+ * - **El contenido se va de verdad**, no queda tras una bandera. El server
+ *   guarda las conversaciones en claro (§32 del as-is), así que un «eliminado»
+ *   que conserva el texto no protege de nada — cualquiera con acceso a la base
+ *   lo sigue leyendo.
+ * - **Queda una lápida.** Si el mensaje desapareciera sin rastro, la
+ *   conversación del otro lado cambiaría de sentido —respuestas colgando de algo
+ *   que ya no está— sin que se entere.
+ *
+ * El permiso se decide en `shared/eliminarMensaje.ts` y se comprueba ACÁ además
+ * de en la app: un cliente modificado se saltea cualquier validación del
+ * teléfono, así que la app solo evita el viaje, no protege.
+ */
+export async function deleteMessage(params: {
+  chatId: string;
+  seq: number;
+  userId: Types.ObjectId;
+}): Promise<{ ok: true; message: Message } | { ok: false; motivo: string }> {
+  // La membresía primero: sin esto se podría sondear si un `seq` existe en un
+  // chat ajeno por la diferencia entre «no permitido» y «no existe».
+  const chat = await ChatModel.findOne({
+    _id: params.chatId,
+    'members.userId': params.userId,
+  }).lean();
+  if (!chat) return { ok: false, motivo: 'No encontramos esa conversación.' };
+
+  const mensaje = await MessageModel.findOne({
+    chatId: params.chatId,
+    seq: params.seq,
+  }).lean<Message | null>();
+  if (!mensaje) return { ok: false, motivo: 'No encontramos ese mensaje.' };
+
+  const decision = puedeEliminar({
+    yo: String(params.userId),
+    autor: String(mensaje.senderId),
+    yaEliminado: Boolean(mensaje.deletedAt),
+  });
+  if (!decision.permitido) return { ok: false, motivo: decision.motivo };
+
+  const actualizado = await MessageModel.findOneAndUpdate(
+    { chatId: params.chatId, seq: params.seq },
+    // `$unset` y no «poner en vacío»: el campo se va del documento.
+    { $set: { deletedAt: new Date() }, $unset: { body: '', envelope: '', media: '' } },
+    { returnDocument: 'after' }
+  ).lean<Message | null>();
+
+  return actualizado
+    ? { ok: true, message: actualizado }
+    : { ok: false, motivo: 'No se pudo eliminar.' };
 }

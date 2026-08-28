@@ -53,6 +53,19 @@ export interface Message {
   media?: { mediaId: string; thumbUrl?: string; url?: string; width?: number; height?: number; mime?: string };
   replyToSeq?: number;
   editedAt?: Date;
+  /**
+   * Cuándo se borró, si se borró (27/08/2026).
+   *
+   * El campo ya estaba declarado pero sin schema ni uso: era una intención, no
+   * una función. Al implementarlo se decidió que el contenido **se va de
+   * verdad** —`body`, `envelope` y `media` quedan vacíos—: una bandera que
+   * conserva el texto es una mentira, porque el server guarda las
+   * conversaciones en claro (§32 del as-is).
+   *
+   * El `seq`, el autor y la fecha SÍ se conservan: sostienen el orden y la
+   * sincronización por cursor. Borrarlos dejaría huecos en la numeración que los
+   * clientes leen como mensajes por descargar.
+   */
   deletedAt?: Date;
   at: Date;
 }

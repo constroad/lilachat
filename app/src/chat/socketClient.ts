@@ -20,6 +20,11 @@ export type ServerMessage = {
   /** El sobre cifrado, en chats secretos (F9). Llega en vez de `body`. */
   envelope?: { v: 1; nonce: string; ciphertext: string };
   media?: { mediaId: string; thumbUrl?: string; mime?: string };
+  /**
+   * Cuándo se borró, si se borró. Con esto puesto, `body`, `envelope` y `media`
+   * NO vienen: el server los vacía de verdad. La app muestra la lápida.
+   */
+  deletedAt?: string;
   at: string;
 };
 

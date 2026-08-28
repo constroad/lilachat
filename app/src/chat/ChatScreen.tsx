@@ -13,6 +13,8 @@ import {
   Send,
   Smile,
   Video,
+  Trash2,
+  X,
 } from 'lucide-react-native';
 import { formatDayLabel, startsNewDay } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
@@ -69,6 +71,7 @@ export function ChatScreen({
   });
   const sesionLista = encrypted && secreto.estado === 'listo' ? secreto : null;
   const {
+    eliminar,
     messages,
     pending,
     connected,
@@ -126,6 +129,8 @@ export function ChatScreen({
   const [subiendo, setSubiendo] = useState<{ clientKey: string; uri: string } | null>(null);
   /** La foto abierta a pantalla completa, o `null`. */
   const [viendo, setViendo] = useState<string | null>(null);
+  /** El mensaje seleccionado con pulsación larga, o `null`. */
+  const [elegido, setElegido] = useState<number | null>(null);
 
   const upload = async (file: {
     uri: string;
@@ -236,6 +241,45 @@ export function ChatScreen({
       behavior="padding"
       testID="pantalla-chat"
     >
+      {/**
+       * Con un mensaje seleccionado, la cabecera se REEMPLAZA por la barra de
+       * acciones — no se apila encima. Es lo que hace WhatsApp: mientras estás
+       * eligiendo qué borrar, el nombre y las llamadas no sirven de nada, y dos
+       * barras a la vez empujan la conversación fuera de la pantalla.
+       */}
+      {elegido !== null ? (
+        <View
+          testID="barra-seleccion"
+          className="flex-row items-center gap-2 border-b border-outline/10 bg-surface px-3 pb-3"
+          style={{ paddingTop: margenes.cabecera }}
+        >
+          <Pressable
+            testID="btn-cancelar-seleccion"
+            accessibilityLabel="Cancelar la selección"
+            onPress={() => setElegido(null)}
+            className="h-11 w-11 items-center justify-center"
+          >
+            <X size={22} color={colores['on-surface']} />
+          </Pressable>
+          <Text className="flex-1 text-base font-semibold text-on-surface">1 seleccionado</Text>
+          <Pressable
+            testID="btn-eliminar-mensaje"
+            accessibilityLabel="Eliminar el mensaje"
+            onPress={async () => {
+              const seq = elegido;
+              setElegido(null);
+              const r = await eliminar(seq);
+              // El motivo del server se DICE: un «no» mudo se lee como que la
+              // app se colgó. El caso típico es intentar borrar lo de otro.
+              if (!r.ok) setMediaError(r.motivo ?? 'No se pudo eliminar.');
+            }}
+            className="h-11 w-11 items-center justify-center"
+          >
+            <Trash2 size={20} color={colores.error} />
+          </Pressable>
+        </View>
+      ) : (
+      <>
       {/* Header como el diseño: FLECHA (no la palabra «Atrás»), avatar del chat
           junto al nombre, y el menú al final. Video y llamada llegan con F10. */}
       <View className="flex-row items-center gap-2 border-b border-outline/10 bg-surface px-3 pb-3" style={{ paddingTop: margenes.cabecera }}>
@@ -290,6 +334,8 @@ export function ChatScreen({
           <MoreVertical size={20} color={colores["on-surface-variant"]} />
         </Pressable>
       </View>
+      </>
+      )}
 
       {creando === 'event' ? (
         <CreateEventScreen
@@ -387,6 +433,8 @@ export function ChatScreen({
                 othersDeliveredSeq={othersDeliveredSeq}
                 senderInitial={chatName.slice(0, 1).toUpperCase()}
                 onVerImagen={setViendo}
+                onSeleccionar={setElegido}
+                seleccionado={!isPending(item) && item.seq === elegido}
               />
             </>
           );

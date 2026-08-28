@@ -1,6 +1,7 @@
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { porcentajeDeSubida } from './progresoDeSubida';
+import { TEXTO_ELIMINADO } from '@lilachat/shared';
 import {
   DELIVERY_GLYPH,
   formatClock,
@@ -33,6 +34,8 @@ export function MessageRow({
   othersDeliveredSeq,
   senderInitial,
   onVerImagen,
+  onSeleccionar,
+  seleccionado,
 }: {
   item: Row;
   previous?: Row;
@@ -43,6 +46,9 @@ export function MessageRow({
   senderInitial: string;
   /** Abre el visor a pantalla completa. */
   onVerImagen?: (url: string) => void;
+  /** Pulsación larga: entra en modo selección. */
+  onSeleccionar?: (seq: number) => void;
+  seleccionado?: boolean;
 }) {
   const colores = useColores();
   const mine = isPending(item) || item.senderId === myUserId;
@@ -86,7 +92,14 @@ export function MessageRow({
       ) : null}
 
       <View className={`max-w-[78%] ${mine ? 'items-end' : 'items-start'}`}>
-        <View className={`overflow-hidden rounded-lg ${tail} ${mine ? 'bg-primary' : 'bg-surface-variant'}`}>
+        {/* La pulsación LARGA selecciona, como en WhatsApp. Un toque corto no
+            hace nada acá: se reserva para abrir la foto. */}
+        <Pressable
+          onLongPress={() => !isPending(item) && onSeleccionar?.(item.seq)}
+          delayLongPress={350}
+          testID={!isPending(item) ? `burbuja-${item.seq}` : undefined}
+          className={`overflow-hidden rounded-lg ${tail} ${mine ? 'bg-primary' : 'bg-surface-variant'} ${seleccionado ? 'opacity-60' : ''}`}
+        >
           {!isPending(item) && item.media?.thumbUrl ? (
             <Pressable
               testID={`media-${item.seq}`}
@@ -119,12 +132,25 @@ export function MessageRow({
               </View>
             </View>
           ) : null}
-          {item.body ? (
+          {!isPending(item) && item.deletedAt ? (
+            /**
+             * La lápida. NO es un hueco: si el mensaje desapareciera sin rastro,
+             * la conversación del otro cambiaría de sentido —respuestas colgando
+             * de algo que ya no está— sin que se entere. En cursiva y apagado
+             * para que se lea distinto de un mensaje de verdad.
+             */
+            <Text
+              testID={`eliminado-${item.seq}`}
+              className={`px-3.5 py-2 text-base italic ${mine ? 'text-on-primary/70' : 'text-on-surface-variant'}`}
+            >
+              {TEXTO_ELIMINADO}
+            </Text>
+          ) : item.body ? (
             <Text className={`px-3.5 py-2 text-base ${mine ? 'text-on-primary' : 'text-on-surface'}`}>
               {item.body}
             </Text>
           ) : null}
-        </View>
+        </Pressable>
 
         {/* Hora + check, como en el diseño. El check azul de «leído» se
             distingue del gris de «entregado» por COLOR, no por forma. */}

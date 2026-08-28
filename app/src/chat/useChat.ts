@@ -228,6 +228,25 @@ export function useChat(params: {
       setOthersRead((current) => Math.max(current, frame.readSeq));
     };
 
+    /**
+     * Alguien borró un mensaje: se reemplaza por su lápida en el acto.
+     *
+     * No se saca de la lista: el `seq` sostiene el orden y la sincronización por
+     * cursor, y además un hueco cambiaría el sentido de la conversación sin
+     * avisar.
+     */
+    const onDeleted = (frame: { chatId: string; seq: number }) => {
+      if (!alive || frame.chatId !== params.chatId) return;
+      setMessages((current) =>
+        current.map((m) =>
+          m.seq === frame.seq
+            ? { ...m, deletedAt: new Date().toISOString(), body: undefined, media: undefined, envelope: undefined }
+            : m
+        )
+      );
+    };
+    socket.on('msg.deleted', onDeleted);
+
     socket.on('receipt', onReceipt);
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
@@ -241,6 +260,7 @@ export function useChat(params: {
       socket.off('disconnect', onDisconnect);
       socket.off('msg.new', onNew);
       socket.off('receipt', onReceipt);
+      socket.off('msg.deleted', onDeleted);
     };
   }, [params.chatId, params.token]);
 
@@ -300,7 +320,26 @@ export function useChat(params: {
   );
 
   // `visibles`, no `messages`: la pantalla recibe lo ya descifrado.
+  /**
+   * Pide borrar para todos. El server decide y avisa a todos por `msg.deleted`,
+   * así que acá NO se toca la lista: se espera el eco. Adelantarse haría que un
+   * rechazo del server dejara la pantalla mintiendo.
+   */
+  const eliminar = useCallback(
+    (seq: number) =>
+      new Promise<{ ok: boolean; motivo?: string }>((resolve) => {
+        const socket = getSocket();
+        if (!socket) return resolve({ ok: false, motivo: 'Sin conexión.' });
+        socket.emit('msg.delete', { chatId: params.chatId, seq }, (r: unknown) => {
+          const respuesta = (r ?? {}) as { ok?: boolean; motivo?: string };
+          resolve({ ok: Boolean(respuesta.ok), motivo: respuesta.motivo });
+        });
+      }),
+    [params.chatId]
+  );
+
   return {
+    eliminar,
     messages: visibles,
     pending,
     connected,

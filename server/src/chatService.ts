@@ -165,6 +165,19 @@ export type ChatSummary = {
   id: string;
   kind: 'direct' | 'group';
   name?: string;
+  /**
+   * El teléfono de la OTRA persona, solo en chats 1:1.
+   *
+   * Existe para que la app pueda mostrar el nombre que vos le pusiste en tu
+   * agenda (27/08/2026: José leía «960397018» en vez de «Wilson»). El server no
+   * puede resolverlo —solo conoce el nombre que esa persona se puso, y la agenda
+   * del teléfono nunca sube acá—, así que le manda la clave para cruzar.
+   *
+   * **No filtra nada nuevo:** con quien ya compartís un chat directo, su teléfono
+   * ya se veía — de hecho es exactamente lo que aparecía como nombre cuando no
+   * tenía uno.
+   */
+  phone?: string;
   memberIds: string[];
   lastSeq: number;
   unread: number;
@@ -202,12 +215,9 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
       )
     ),
   ]);
-  const personas = new Map(
-    (await UserModel.find({ _id: { $in: otrosIds } }).select('name phone').lean()).map((user) => [
-      String(user._id),
-      user.name ?? user.phone,
-    ])
-  );
+  const otros = await UserModel.find({ _id: { $in: otrosIds } }).select('name phone').lean();
+  const personas = new Map(otros.map((user) => [String(user._id), user.name ?? user.phone]));
+  const telefonos = new Map(otros.map((user) => [String(user._id), user.phone]));
 
   const receipts = allReceipts.filter((receipt) => String(receipt.userId) === String(userId));
   const readByChat = new Map(receipts.map((receipt) => [String(receipt.chatId), receipt.readSeq]));
@@ -227,19 +237,19 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
 
   return chats.map((chat, index) => {
     const last = lastMessages[index];
+    const otroId =
+      chat.kind === 'direct'
+        ? (chat.members.map((member) => String(member.userId)).find((id) => id !== String(userId)) ??
+          '')
+        : '';
     return {
       id: String(chat._id),
       kind: chat.kind,
       // En un 1:1, el nombre ES el del otro.
-      name:
-        chat.name ??
-        (chat.kind === 'direct'
-          ? personas.get(
-              chat.members
-                .map((member) => String(member.userId))
-                .find((id) => id !== String(userId)) ?? ''
-            )
-          : undefined),
+      name: chat.name ?? (chat.kind === 'direct' ? personas.get(otroId) : undefined),
+      // Solo en 1:1: en un grupo no hay «el otro», y mandar la lista de
+      // teléfonos de todos los miembros sí sería filtrar algo nuevo.
+      phone: chat.kind === 'direct' ? telefonos.get(otroId) : undefined,
       encrypted: chat.encrypted === true,
       memberIds: chat.members.map((member) => String(member.userId)),
       lastSeq: chat.lastSeq,

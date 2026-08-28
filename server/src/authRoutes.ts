@@ -11,6 +11,7 @@ import {
 } from './invitationGate.js';
 import { DeviceModel, InvitationModel, UserModel } from './models.js';
 import { signSession } from './sessions.js';
+import { resolverUsuarioDeSesion } from './identidadDeSesion.js';
 
 /**
  * El alta (spec §5). El teléfono habla con ESTE server; este server habla con
@@ -155,16 +156,42 @@ export function buildAuthRouter(authClient: AuthClient): Router {
       return res.status(401).json({ message: 'Tu acceso ya no está activo.' });
     }
 
-    // La identidad que devuelve el servicio puede ser el teléfono (canal
-    // WhatsApp) o el correo (respaldo): se busca por las dos.
+    /**
+     * **Quién es el dueño lo dice NUESTRO registro, no el texto de identidad.**
+     *
+     * Acá estaba el bug de «se me cerró la sesión sola» (28/08/2026): se
+     * re-deducía al usuario del `identidad` que devuelve constroad-auth, que es
+     * el CANAL por el que se canjeó el código y no la llave del usuario. Quien
+     * entraba por el respaldo de correo quedaba con identidad = ese correo, y si
+     * su usuario no tenía EXACTAMENTE ese correo guardado, la búsqueda no
+     * encontraba a nadie → 401 → la app borra la credencial y vuelve al alta.
+     *
+     * Le pegaba justo a quien había usado el canal de emergencia.
+     *
+     * El servicio de auth sigue haciendo lo suyo —probar que el dispositivo y su
+     * secreto son válidos—; el dueño sale de `DeviceModel`, que se escribe al
+     * canjear el código. La deducción queda solo para dispositivos enrolados por
+     * una versión vieja, que no tienen registro local.
+     */
     const identity = String(validated.valor.identidad ?? '');
-    const identityPhone = normalizePeruPhone(identity);
-    const user = await UserModel.findOne(
-      identityPhone ? { phone: identityPhone } : { email: identity.toLowerCase() }
-    ).lean();
+    const device = await DeviceModel.findOne({ deviceId }).select('userId').lean();
+    const resolucion = resolverUsuarioDeSesion({
+      userIdDelDevice: device?.userId ? String(device.userId) : null,
+      identidad: identity,
+    });
+
+    const user =
+      resolucion.via === 'device'
+        ? await UserModel.findById(resolucion.userId).lean()
+        : resolucion.porTelefono
+          ? await UserModel.findOne({ phone: resolucion.porTelefono }).lean()
+          : resolucion.porEmail
+            ? await UserModel.findOne({ email: resolucion.porEmail }).lean()
+            : null;
+
     if (!user) {
       console.error(
-        `[auth] sesión válida pero SIN usuario local: identidad=${identity} device=${deviceId}`
+        `[auth] sesión válida pero SIN usuario local: via=${resolucion.via} identidad=${identity} device=${deviceId}`
       );
       return res.status(401).json({ message: 'Tu acceso ya no está activo.' });
     }

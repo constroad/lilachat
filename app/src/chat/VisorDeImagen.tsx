@@ -28,6 +28,9 @@ export type FotoDelVisor = {
   seq: number;
   /** Si es mía: solo entonces se ofrece eliminar. */
   mia: boolean;
+  /** La fecha sin formatear, para nombrar el archivo al guardarlo. */
+  cuandoReal: Date;
+  mime?: string;
 };
 
 export function VisorDeImagen({
@@ -38,6 +41,7 @@ export function VisorDeImagen({
   onDescargar,
   onCompartir,
   onEliminar,
+  aviso,
 }: {
   foto: FotoDelVisor | null;
   /** El resto de fotos del chat, para la tira de abajo. */
@@ -47,6 +51,15 @@ export function VisorDeImagen({
   onDescargar?: (foto: FotoDelVisor) => void;
   onCompartir?: (foto: FotoDelVisor) => void;
   onEliminar?: (foto: FotoDelVisor) => void;
+  /**
+   * El resultado de descargar o compartir, mostrado ACÁ.
+   *
+   * Estaba en la pantalla del chat, o sea **detrás del visor**: la acción se
+   * hacía, fallaba, y la persona no veía nada. El resultado de una acción tiene
+   * que verse en la superficie donde se hizo — un modal a pantalla completa tapa
+   * cualquier aviso de abajo.
+   */
+  aviso?: string;
 }) {
   const margenes = useMargenes();
 
@@ -136,6 +149,18 @@ export function VisorDeImagen({
             <Text style={{ color: '#ffffff' }}>No se pudo cargar la imagen</Text>
           </View>
         )}
+
+        {aviso ? (
+          <View className="items-center px-4 pb-2">
+            <Text
+              testID="aviso-visor"
+              style={{ color: '#ffffff' }}
+              className="rounded-full bg-black/70 px-4 py-2 text-sm"
+            >
+              {aviso}
+            </Text>
+          </View>
+        ) : null}
 
         {/**
          * «Compartido en el chat» — la tira del diseño. Deja saltar entre fotos

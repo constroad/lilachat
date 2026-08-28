@@ -2,7 +2,7 @@
   "expo": {
     "name": "Lilachat",
     "slug": "lilachat",
-    "version": "0.1.27",
+    "version": "0.1.30",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -18,7 +18,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.lilachat.app",
-      "versionCode": 28,
+      "versionCode": 31,
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.POST_NOTIFICATIONS",
@@ -39,7 +39,8 @@
         {
           "contactsPermission": "Lilachat usa tus contactos para mostrarte a quién invitar. Se leen en el teléfono y no se envían a ningún lado."
         }
-      ]
+      ],
+      "expo-sharing"
     ]
   }
 }

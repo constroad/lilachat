@@ -28,6 +28,7 @@ import { SecretChatBanner } from '../crypto/SecretChatBanner';
 import { useSecretChat } from '../crypto/useSecretChat';
 import { DaySeparator, MessageRow, isPending, type Row } from './MessageRow';
 import { formatClock } from '@lilachat/shared';
+import { compartirFoto, guardarEnGaleria } from './guardarYCompartir';
 import { VisorDeImagen } from './VisorDeImagen';
 import { ChatDetailScreen } from './ChatDetailScreen';
 import { useChat } from './useChat';
@@ -120,6 +121,8 @@ export function ChatScreen({
     return () => suscripcion.remove();
   }, [onBack]);
   const [mediaError, setMediaError] = useState('');
+  /** El resultado de descargar/compartir, que se pinta DENTRO del visor. */
+  const [avisoVisor, setAvisoVisor] = useState('');
 
   /**
    * La foto que se esta subiendo, para pintarla YA en el chat.
@@ -148,6 +151,8 @@ export function ChatScreen({
     .filter((m) => m.media?.thumbUrl && !m.deletedAt)
     .map((m) => ({
       url: m.media!.thumbUrl!,
+      mime: m.media!.mime,
+      cuandoReal: new Date(m.at),
       seq: m.seq,
       mia: m.senderId === credential.userId,
       autor: m.senderId === credential.userId ? 'Vos' : chatName,
@@ -565,6 +570,22 @@ export function ChatScreen({
         otras={fotos}
         onCerrar={() => setViendoSeq(null)}
         onCambiar={(otra) => setViendoSeq(otra.seq)}
+        aviso={avisoVisor}
+        onDescargar={async (f) => {
+          // El resultado se DICE en los dos sentidos, y DENTRO del visor: una
+          // descarga que no avisa nada deja sin saber si hay que reintentar.
+          setAvisoVisor('Guardando…');
+          const r = await guardarEnGaleria({ url: f.url, cuando: f.cuandoReal, mime: f.mime, seq: f.seq });
+          setAvisoVisor(r.ok ? 'Guardada en tu galería' : r.motivo);
+          setTimeout(() => setAvisoVisor(''), 3000);
+        }}
+        onCompartir={async (f) => {
+          const r = await compartirFoto({ url: f.url, cuando: f.cuandoReal, mime: f.mime, seq: f.seq });
+          if (!r.ok) {
+            setAvisoVisor(r.motivo);
+            setTimeout(() => setAvisoVisor(''), 3000);
+          }
+        }}
         onEliminar={async (f) => {
           setViendoSeq(null);
           const r = await eliminar(f.seq);

@@ -24,7 +24,26 @@ import { drainOutbox, hydrateOutbox, queueMessage, subscribeOutbox } from './out
  * `mergeBySeq`, que deduplica.
  */
 export type ChatMessage = ServerMessage & { pending?: false };
-export type PendingMessage = { clientKey: string; body?: string; queuedAt: string; pending: true };
+export type PendingMessage = {
+  clientKey: string;
+  body?: string;
+  queuedAt: string;
+  pending: true;
+  /**
+   * La foto que se esta subiendo, leida del DISCO del telefono.
+   *
+   * Existe para que la imagen aparezca en el chat en el instante en que la
+   * elegis, como WhatsApp, en vez de despues de que termine de subir (José,
+   * 27/08/2026: «espera a subir y recien alli lo muestra, eso esta mal»).
+   *
+   * No se persiste en la cola: un `file://` deja de valer cuando el sistema
+   * limpia la cache, asi que una foto pendiente guardada en disco reaparecia
+   * como una burbuja rota.
+   */
+  mediaUri?: string;
+  /** 0→1 de esa subida, para pintar el velo de progreso encima. */
+  progreso?: number;
+};
 
 export function useChat(params: {
   chatId: string;

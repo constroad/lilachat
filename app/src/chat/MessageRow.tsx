@@ -1,5 +1,6 @@
-import { Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
+import { porcentajeDeSubida } from './progresoDeSubida';
 import {
   DELIVERY_GLYPH,
   formatClock,
@@ -7,6 +8,7 @@ import {
   resolveDeliveryState,
 } from '@lilachat/shared';
 import type { ChatMessage, PendingMessage } from './useChat';
+import { useColores } from '../ui/tema';
 
 /**
  * Una fila de la conversación, según el diseño «Chat Detail» de Stitch.
@@ -30,6 +32,7 @@ export function MessageRow({
   othersReadSeq,
   othersDeliveredSeq,
   senderInitial,
+  onVerImagen,
 }: {
   item: Row;
   previous?: Row;
@@ -38,7 +41,10 @@ export function MessageRow({
   othersReadSeq: number;
   othersDeliveredSeq: number;
   senderInitial: string;
+  /** Abre el visor a pantalla completa. */
+  onVerImagen?: (url: string) => void;
 }) {
+  const colores = useColores();
   const mine = isPending(item) || item.senderId === myUserId;
   const at = isPending(item) ? item.queuedAt : item.at;
   const senderId = isPending(item) ? myUserId : item.senderId;
@@ -82,13 +88,36 @@ export function MessageRow({
       <View className={`max-w-[78%] ${mine ? 'items-end' : 'items-start'}`}>
         <View className={`overflow-hidden rounded-lg ${tail} ${mine ? 'bg-primary' : 'bg-surface-variant'}`}>
           {!isPending(item) && item.media?.thumbUrl ? (
-            <Image
+            <Pressable
               testID={`media-${item.seq}`}
-              source={{ uri: item.media.thumbUrl }}
-              style={{ width: 220, height: 220 }}
-              contentFit="cover"
-              transition={120}
-            />
+              onPress={() => onVerImagen?.(item.media!.thumbUrl!)}
+            >
+              <Image
+                source={{ uri: item.media.thumbUrl }}
+                style={{ width: 220, height: 220 }}
+                contentFit="cover"
+                transition={120}
+              />
+            </Pressable>
+          ) : null}
+
+          {/* La foto que todavia sube: se ve YA, con un velo y su vueltita
+              encima. El check aparece recien cuando el server la confirma, que
+              es exactamente lo que hace WhatsApp. */}
+          {isPending(item) && item.mediaUri ? (
+            <View testID={`media-pendiente-${item.clientKey}`}>
+              <Image
+                source={{ uri: item.mediaUri }}
+                style={{ width: 220, height: 220, opacity: 0.55 }}
+                contentFit="cover"
+              />
+              <View className="absolute inset-0 items-center justify-center">
+                <ActivityIndicator color={colores['on-primary']} />
+                <Text className="mt-1 text-[11px] font-semibold text-on-primary">
+                  {porcentajeDeSubida(item.progreso ?? 0)}%
+                </Text>
+              </View>
+            </View>
           ) : null}
           {item.body ? (
             <Text className={`px-3.5 py-2 text-base ${mine ? 'text-on-primary' : 'text-on-surface'}`}>

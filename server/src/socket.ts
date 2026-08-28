@@ -54,6 +54,37 @@ async function contactIdsOf(userId: Types.ObjectId): Promise<string[]> {
   return [...ids];
 }
 
+/**
+ * El `io` vivo, para que quien cree un mensaje FUERA del socket pueda avisar.
+ *
+ * Existe por el 27/08/2026: una foto se sube por HTTP (`/api/media`), ese camino
+ * creaba el mensaje correctamente —quedaba en la base— pero **no emitía
+ * `msg.new`**, porque el emit vivía solo dentro del handler del socket. El
+ * síntoma: la foto no aparecía en el chat hasta reabrirlo. Verificado mirando la
+ * base (el mensaje estaba, con su `seq`) y la pantalla (no estaba).
+ *
+ * `null` mientras no se llamó a `attachSocket` — o sea en los tests que montan
+ * la app sin socket. `avisarMensajeNuevo` no hace nada en ese caso.
+ */
+let ioVivo: SocketServer | null = null;
+
+/**
+ * Emite `msg.new` a todos los miembros de un chat. Es la MISMA operación que
+ * hace el handler del socket, extraída para que los dos caminos —texto por
+ * socket, media por HTTP— avisen igual. Tenerla en un solo lugar es lo que
+ * impide que la próxima forma de crear un mensaje vuelva a olvidarse del aviso.
+ */
+export async function avisarMensajeNuevo(
+  message: Parameters<typeof toClientMessage>[0]
+): Promise<string[]> {
+  const members = await chatMemberIds(message.chatId);
+  if (!ioVivo) return members;
+  for (const member of members) {
+    ioVivo.to(userRoom(member)).emit('msg.new', toClientMessage(message));
+  }
+  return members;
+}
+
 export function attachSocket(httpServer: HttpServer): SocketServer {
   const io = new SocketServer(httpServer, {
     // El cliente es nuestra app y nuestra web; no hay terceros embebiéndonos.
@@ -62,6 +93,9 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
     // megabytes por el socket.
     maxHttpBufferSize: 1e6,
   });
+
+  // Se publica para que el camino HTTP (`/api/media`) pueda emitir `msg.new`.
+  ioVivo = io;
 
   io.use((socket: AuthedSocket, next) => {
     const token = String(socket.handshake.auth?.token ?? '');
@@ -118,10 +152,7 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
 
         // A TODOS los miembros (incluido el autor: sus otros dispositivos
         // también tienen que ver el mensaje).
-        const members = await chatMemberIds(result.message.chatId);
-        for (const member of members) {
-          io.to(userRoom(member)).emit('msg.new', toClientMessage(result.message));
-        }
+        const members = await avisarMensajeNuevo(result.message);
         // Push SOLO a quien no tiene socket vivo. Un duplicado no se re-notifica:
         // ya se avisó cuando el mensaje se creó de verdad.
         if (!result.duplicate) {

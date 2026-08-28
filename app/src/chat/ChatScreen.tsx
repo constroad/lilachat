@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, BackHandler, KeyboardAvoidingView, Pressable, Text, TextInput, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -25,9 +25,12 @@ import { CatchUpBanner } from './CatchUpBanner';
 import { SecretChatBanner } from '../crypto/SecretChatBanner';
 import { useSecretChat } from '../crypto/useSecretChat';
 import { DaySeparator, MessageRow, isPending, type Row } from './MessageRow';
+import { VisorDeImagen } from './VisorDeImagen';
 import { useChat } from './useChat';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
+import { decidirAtras } from '../ui/botonAtras';
+import { textoDeSubida } from './progresoDeSubida';
 
 /**
  * La conversación (diseño Stitch «Chat de Grupo»). Burbuja propia a la derecha
@@ -91,7 +94,38 @@ export function ChatScreen({
   const llamada = useCall({ chatId, peerName: chatName });
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+
+  /**
+   * El botón ATRÁS de Android vuelve a la lista, no cierra la app.
+   *
+   * Sin este manejador, Android aplica su comportamiento por defecto —cerrar la
+   * actividad— y como esta app tiene una sola, eso es salir. José lo reportó el
+   * 27/08/2026 estando en el chat con Wilson.
+   *
+   * Devolver `true` significa «ya me encargué»; `false` deja pasar a Android.
+   */
+  useEffect(() => {
+    const suscripcion = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (decidirAtras({ pantalla: 'chat' }) === 'ir-a-lista') {
+        onBack();
+        return true;
+      }
+      return false;
+    });
+    return () => suscripcion.remove();
+  }, [onBack]);
   const [mediaError, setMediaError] = useState('');
+
+  /**
+   * La foto que se esta subiendo, para pintarla YA en el chat.
+   *
+   * Vive en memoria y no en la cola persistida: un `file://` deja de valer
+   * cuando el sistema limpia su cache, asi que una foto pendiente guardada en
+   * disco reaparecia como una burbuja rota al reabrir la app.
+   */
+  const [subiendo, setSubiendo] = useState<{ clientKey: string; uri: string } | null>(null);
+  /** La foto abierta a pantalla completa, o `null`. */
+  const [viendo, setViendo] = useState<string | null>(null);
 
   const upload = async (file: {
     uri: string;
@@ -102,8 +136,13 @@ export function ChatScreen({
     setUploading(true);
     setProgress(0);
     setMediaError('');
+    // La burbuja aparece ANTES de subir nada: es lo que hace WhatsApp y lo que
+    // Jose pidio el 27/08/2026. El check llega despues, cuando el server
+    // confirma.
+    setSubiendo({ clientKey: `local-${file.uri}`, uri: file.uri });
     const result = await sendMedia({ ...file, onProgress: setProgress });
     setUploading(false);
+    setSubiendo(null);
     // El fallo se DICE: una foto que desaparece sin explicación es lo que hace
     // que la gente deje de mandar fotos por la app.
     if (!result.ok) setMediaError(result.reason);
@@ -155,7 +194,25 @@ export function ChatScreen({
     });
   };
 
-  const rows: Row[] = [...messages, ...pending];
+  /**
+   * La foto en vuelo se suma como una fila pendiente mas. Va al FINAL: es lo
+   * ultimo que mando la persona y tiene que verse abajo de todo, no intercalada.
+   */
+  const rows: Row[] = [
+    ...messages,
+    ...pending,
+    ...(subiendo
+      ? [
+          {
+            clientKey: subiendo.clientKey,
+            queuedAt: new Date().toISOString(),
+            pending: true as const,
+            mediaUri: subiendo.uri,
+            progreso: progress,
+          },
+        ]
+      : []),
+  ];
 
   useEffect(() => {
     const last = messages[messages.length - 1];
@@ -329,6 +386,7 @@ export function ChatScreen({
                 othersReadSeq={Math.max(othersReadSeq, othersRead)}
                 othersDeliveredSeq={othersDeliveredSeq}
                 senderInitial={chatName.slice(0, 1).toUpperCase()}
+                onVerImagen={setViendo}
               />
             </>
           );
@@ -337,7 +395,7 @@ export function ChatScreen({
 
       {uploading ? (
         <Text className="px-4 pb-1 text-sm text-on-surface-variant" testID="subida-progreso">
-          Enviando archivo… {Math.round(progress * 100)}%
+          {textoDeSubida(progress)}
         </Text>
       ) : null}
 
@@ -420,6 +478,7 @@ export function ChatScreen({
         onCreatePoll={() => setCreando('poll')}
         onPickFile={() => void pickFile()}
       />
+      <VisorDeImagen url={viendo} onCerrar={() => setViendo(null)} />
     </KeyboardAvoidingView>
   );
 }

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { MAX_BYTES_BY_KIND, validateMedia } from '@lilachat/shared';
 import { ForbiddenChatError, sendMessage } from './chatService.js';
+import { avisarMensajeNuevo } from './socket.js';
 import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
 import { requireSession } from './requireSession.js';
 
@@ -71,6 +72,21 @@ export function buildMediaRouter(uploader: MediaUploader = buildLilaUploader()):
           mime: file.mimetype,
         },
       });
+
+      /**
+       * **El aviso por socket, que faltaba.**
+       *
+       * Este camino creaba el mensaje —quedaba en la base con su `seq`— pero no
+       * emitía `msg.new`, porque el emit vivía solo dentro del handler del
+       * socket. Resultado: una foto no aparecía en el chat de nadie, ni del que
+       * la mandó, hasta reabrir la conversación. Visto el 27/08/2026 mirando la
+       * base y la pantalla al mismo tiempo.
+       *
+       * Va ANTES de responder y con `await`: si se emitiera después del `res`,
+       * un fallo acá quedaría sin dueño. Un duplicado no re-emite: el mensaje ya
+       * se repartió cuando se creó de verdad.
+       */
+      if (!result.duplicate) await avisarMensajeNuevo(result.message);
 
       res.status(201).json({
         message: result.message,

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Linking, Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { BackHandler, Linking, Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { ArrowLeft, BellRing, Camera, ChevronRight, CloudUpload, Moon, RefreshCw, Search, Sun, SunMoon, User, UserPlus } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { listChats, type ChatSummary } from '../api/client';
@@ -20,6 +20,7 @@ import type { ResultadoDelChequeo } from '../settings/actualizacion';
 import { buscarActualizacion, versionActual } from '../settings/versionApi';
 import { AppHeader, BottomNav, type Tab } from './BottomNav';
 import { useMargenes } from './useMargenes';
+import { decidirAtras } from './botonAtras';
 import { nombreDeContacto } from '@lilachat/shared';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useColores, useTema } from './tema';
@@ -100,6 +101,36 @@ export function TabsShell({
     if (resultado.estado === 'hay-nueva' && downloadUrl) void Linking.openURL(downloadUrl);
   };
   const [newChat, setNewChat] = useState(false);
+
+  /**
+   * El botón ATRÁS de Android: cierra lo que esté abierto encima, si no vuelve a
+   * Chats, y solo desde Chats sale. Sin esto Android cerraba la app desde
+   * cualquier pestaña (José, 27/08/2026).
+   *
+   * Las sobrecapas se cierran de a UNA y en orden de encima hacia abajo: cerrar
+   * las cuatro de un saque perdería el formulario que la persona tenga a medio
+   * llenar detrás.
+   */
+  useEffect(() => {
+    const suscripcion = BackHandler.addEventListener('hardwareBackPress', () => {
+      const haySobreCapa = Boolean(creating) || newChat || showBackup || invitando;
+      const accion = decidirAtras({ pantalla: 'tabs', tab, haySobreCapa });
+
+      if (accion === 'cerrar-sobrecapa') {
+        if (creating) setCreating(null);
+        else if (newChat) setNewChat(false);
+        else if (showBackup) setShowBackup(false);
+        else setInvitando(false);
+        return true;
+      }
+      if (accion === 'ir-a-chats') {
+        setTab('chats');
+        return true;
+      }
+      return false; // desde Chats: que Android cierre, como cualquier app
+    });
+    return () => suscripcion.remove();
+  }, [tab, creating, newChat, showBackup, invitando]);
 
   // Los chats se cargan acá porque los necesitan TRES pantallas: la lista, y
   // los formularios de evento y encuesta —que preguntan en qué conversación—.

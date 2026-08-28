@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 
 /**
  * El servicio que mantiene vivo el proceso —y con él, el socket— cuando la app
@@ -34,6 +35,25 @@ class ServicioEnPrimerPlano : Service() {
     const val ID_AVISO = 4231
   }
 
+  /**
+   * El wake lock, que es lo que faltaba (27/08/2026).
+   *
+   * Un servicio en primer plano evita que Android MATE el proceso, pero **no
+   * evita que le corte las conexiones**: con la pantalla apagada el sistema
+   * suspende la CPU y el socket muere igual. Medido en el emulador — el log
+   * decía `Destroyed live tcp sockets for uids={...}` y los mensajes recién
+   * aparecían al reabrir la app, o sea que la notificación permanente se estaba
+   * pagando sin recibir nada a cambio.
+   *
+   * Es exactamente lo que hace Telegram en sus builds sin Google Play Services.
+   * WhatsApp no lo necesita porque usa FCM, donde el que mantiene la conexión es
+   * el sistema operativo y no la app.
+   *
+   * `PARTIAL_WAKE_LOCK` mantiene la CPU, NO la pantalla: no enciende nada ni se
+   * ve. Cuesta batería, y ese es el precio real de no usar FCM.
+   */
+  private var wakeLock: PowerManager.WakeLock? = null
+
   override fun onBind(intent: Intent?): IBinder? = null
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -49,9 +69,34 @@ class ServicioEnPrimerPlano : Service() {
     } else {
       startForeground(ID_AVISO, construirAviso())
     }
+    tomarWakeLock()
+
     // START_STICKY: si el sistema lo mata por memoria, que lo vuelva a levantar.
     // Es justamente el caso que este servicio existe para cubrir.
     return START_STICKY
+  }
+
+  /**
+   * Idempotente: `onStartCommand` corre muchas veces y tomar el lock dos veces
+   * dejaría un contador que nunca baja a cero, con la CPU despierta para siempre.
+   */
+  private fun tomarWakeLock() {
+    if (wakeLock?.isHeld == true) return
+    val power = getSystemService(Context.POWER_SERVICE) as PowerManager
+    wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "lilachat:socket").apply {
+      setReferenceCounted(false)
+      acquire()
+    }
+  }
+
+  /**
+   * Se suelta al parar el servicio. Un wake lock que sobrevive al servicio es un
+   * teléfono que se descarga sin que nadie sepa por qué.
+   */
+  override fun onDestroy() {
+    if (wakeLock?.isHeld == true) wakeLock?.release()
+    wakeLock = null
+    super.onDestroy()
   }
 
   private fun construirAviso(): Notification {

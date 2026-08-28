@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Pressable, RefreshControl, Text, View } from 'react-native';
 import { Lock, MessageCircle, PenSquare } from 'lucide-react-native';
-import { formatChatTimestamp, resolveChatPreview } from '@lilachat/shared';
+import { formatChatTimestamp, nombreDeContacto, resolveChatPreview } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { connectSocket } from './socketClient';
 import { configureNotificationHandler, registerPushToken } from './pushRegistration';
@@ -10,6 +10,7 @@ import { conciliarCache } from './cacheDeChats';
 import { guardarChats, leerChatsGuardados } from './chatsGuardados';
 import { FlashList } from '@shopify/flash-list';
 import { useColores } from '../ui/tema';
+import { agendaPorTelefono, suscribirAgenda } from '../contacts/agendaEnMemoria';
 
 /**
  * La lista de chats (diseño Stitch «Lilachat: Chats»).
@@ -29,6 +30,12 @@ export function ChatListScreen({
   onNewChat: () => void;
 }) {
   const colores = useColores();
+  /**
+   * La agenda se SUSCRIBE, no se lee una vez: la precarga termina despues de que
+   * esta pantalla monto, y sin re-render la lista se quedaria con los numeros
+   * pelados hasta que algo mas la refresque.
+   */
+  const agenda = useSyncExternalStore(suscribirAgenda, agendaPorTelefono, agendaPorTelefono);
   const [chats, setChats] = useState<ChatSummary[] | null>(null);
   /**
    * Lo guardado se pinta ANTES de preguntarle a la red: abrir la app y ver
@@ -130,7 +137,12 @@ export function ChatListScreen({
     };
   }, [credential.jwt, load]);
 
-  const title = (chat: ChatSummary) => chat.name ?? 'Conversación';
+  /**
+   * El nombre se resuelve contra TU agenda: quien no se puso nombre en Lilachat
+   * llegaba acá como un número suelto (27/08/2026, chateando con Wilson).
+   */
+  const title = (chat: ChatSummary) =>
+    nombreDeContacto({ delServidor: chat.name, telefono: chat.phone, agenda }) || 'Conversación';
 
 
 

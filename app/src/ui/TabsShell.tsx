@@ -20,6 +20,8 @@ import type { ResultadoDelChequeo } from '../settings/actualizacion';
 import { buscarActualizacion, versionActual } from '../settings/versionApi';
 import { AppHeader, BottomNav, type Tab } from './BottomNav';
 import { useMargenes } from './useMargenes';
+import { nombreDeContacto } from '@lilachat/shared';
+import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useColores, useTema } from './tema';
 
 /**
@@ -167,7 +169,14 @@ export function TabsShell({
       }
       void avisarMensaje({
         chatId: mensaje.chatId,
-        chatName: chat?.name ?? 'Lilachat',
+        // El nombre de TU agenda, igual que en la lista: la burbuja decia
+        // «960397018» y ese numero no le dice nada a nadie de un vistazo.
+        chatName:
+          nombreDeContacto({
+            delServidor: chat?.name,
+            telefono: chat?.phone,
+            agenda: agendaPorTelefono(),
+          }) || 'Lilachat',
         senderName: null,
         esGrupo: chat?.kind === 'group',
         kind: mensaje.kind,

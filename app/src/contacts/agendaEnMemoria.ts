@@ -3,7 +3,7 @@
 // llamarlos ahí devuelve `undefined` y revienta al leer `Fields.PhoneNumbers`.
 // Ese fue el bug de los esqueletos eternos del 26/08/2026.
 import * as Contacts from 'expo-contacts/legacy';
-import type { ContactoDeAgenda } from '@lilachat/shared';
+import { indexarAgendaPorTelefono, type ContactoDeAgenda } from '@lilachat/shared';
 import { reportarError } from '../ui/reportarError';
 import { resolverEstadoAgenda } from './estadoAgenda';
 import { aplanarAgenda } from './aplanarAgenda';
@@ -123,5 +123,34 @@ export function olvidarAgenda(): void {
   fallo = null;
   enCurso = null;
   instantanea = { estado: 'cargando' };
+  indiceCacheado = null;
   avisar();
+}
+
+/**
+ * La agenda indexada por teléfono, para resolver nombres de contacto.
+ *
+ * Se memoiza sobre la MISMA lista: `nombreDeContacto` se llama una vez por fila
+ * de la lista de chats y por cada mensaje que llega, y reconstruir un `Map` de
+ * 600 entradas en cada llamada sería peor que el problema que resuelve.
+ */
+let indiceCacheado: { fuente: ContactoDeAgenda[]; indice: Map<string, string> } | null = null;
+
+/**
+ * El vacío es UNA instancia compartida, no un `new Map()` por llamada.
+ *
+ * `useSyncExternalStore` compara por referencia: devolver un mapa nuevo cada vez
+ * se lee como «cambió» en cada render y la app entra en bucle. Es el mismo pozo
+ * que ya tiene su comentario en `estadoDeAgenda()`, y lo pisé igual escribiendo
+ * esta función.
+ */
+const VACIO: ReadonlyMap<string, string> = new Map();
+
+export function agendaPorTelefono(): ReadonlyMap<string, string> {
+  if (instantanea.estado !== 'listo') return VACIO;
+  if (indiceCacheado?.fuente === instantanea.agenda) return indiceCacheado.indice;
+
+  const indice = indexarAgendaPorTelefono(instantanea.agenda);
+  indiceCacheado = { fuente: instantanea.agenda, indice };
+  return indice;
 }

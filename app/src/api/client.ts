@@ -58,6 +58,8 @@ export type ChatSummary = {
   id: string;
   kind: 'direct' | 'group';
   name?: string;
+  /** El teléfono del OTRO, solo en 1:1: con él se busca su nombre en tu agenda. */
+  phone?: string;
   memberIds: string[];
   lastSeq: number;
   unread: number;

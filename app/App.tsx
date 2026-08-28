@@ -21,7 +21,8 @@ import { disconnectSocket } from './src/chat/socketClient';
 import { olvidarChats } from './src/chat/chatsGuardados';
 import { olvidarMensajes } from './src/chat/mensajesGuardados';
 import { decidirServicio } from './src/chat/servicioDeConexion';
-import { olvidarAgenda, precargarAgenda } from './src/contacts/agendaEnMemoria';
+import { agendaPorTelefono, olvidarAgenda, precargarAgenda } from './src/contacts/agendaEnMemoria';
+import { nombreDeContacto } from '@lilachat/shared';
 import { ProveedorTema, useColores, useTema } from './src/ui/tema';
 import {
   guardarSegundoPlano,
@@ -211,7 +212,15 @@ function Contenido() {
       ) : (
         <ChatScreen
           chatId={boot.chat.id}
-          chatName={boot.chat.name ?? 'Conversación'}
+          // Mismo criterio que la lista: gana el nombre de TU agenda. Sin esto
+          // la cabecera decia «960397018» aunque la lista ya dijera «Wilson».
+          chatName={
+            nombreDeContacto({
+              delServidor: boot.chat.name,
+              telefono: boot.chat.phone,
+              agenda: agendaPorTelefono(),
+            }) || 'Conversación'
+          }
           credential={boot.credential}
           othersReadSeq={boot.chat.othersReadSeq}
           othersDeliveredSeq={boot.chat.othersDeliveredSeq}

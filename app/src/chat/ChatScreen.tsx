@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Pressable, Text, TextInput, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -165,7 +165,18 @@ export function ChatScreen({
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-background"
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      /**
+       * `padding` TAMBIEN en Android, y no es un descuido.
+       *
+       * Android trae `adjustResize` en el manifiesto, que historicamente
+       * alcanzaba: el sistema encogia la ventana y el compositor subia solo. Pero
+       * este proyecto tiene `edgeToEdgeEnabled=true` (Expo SDK 57), y con
+       * edge-to-edge la ventana YA NO se encoge — la app dibuja por debajo del
+       * teclado. Resultado: el campo de escribir desaparecia y quedaba una
+       * pantalla vacia con el teclado encima (visto por Jose el 27/08/2026,
+       * chateando con Wilson).
+       */
+      behavior="padding"
       testID="pantalla-chat"
     >
       {/* Header como el diseño: FLECHA (no la palabra «Atrás»), avatar del chat

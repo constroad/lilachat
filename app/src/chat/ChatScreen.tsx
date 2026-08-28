@@ -27,7 +27,9 @@ import { CatchUpBanner } from './CatchUpBanner';
 import { SecretChatBanner } from '../crypto/SecretChatBanner';
 import { useSecretChat } from '../crypto/useSecretChat';
 import { DaySeparator, MessageRow, isPending, type Row } from './MessageRow';
+import { formatClock } from '@lilachat/shared';
 import { VisorDeImagen } from './VisorDeImagen';
+import { ChatDetailScreen } from './ChatDetailScreen';
 import { useChat } from './useChat';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
@@ -128,9 +130,30 @@ export function ChatScreen({
    */
   const [subiendo, setSubiendo] = useState<{ clientKey: string; uri: string } | null>(null);
   /** La foto abierta a pantalla completa, o `null`. */
-  const [viendo, setViendo] = useState<string | null>(null);
+  /** El `seq` de la foto abierta a pantalla completa, o `null`. */
+  const [viendoSeq, setViendoSeq] = useState<number | null>(null);
   /** El mensaje seleccionado con pulsación larga, o `null`. */
   const [elegido, setElegido] = useState<number | null>(null);
+  const [verDetalle, setVerDetalle] = useState(false);
+
+  /**
+   * Las fotos del chat, en el formato que consume el visor.
+   *
+   * Se arman ACÁ y no en el visor: el nombre del autor sale de la agenda del
+   * teléfono y la hora de un formateador nuestro. Un visor que resolviera eso
+   * solo tendría que conocer la agenda, la sesión y el formato de fechas — tres
+   * cosas que no son suyas.
+   */
+  const fotos = messages
+    .filter((m) => m.media?.thumbUrl && !m.deletedAt)
+    .map((m) => ({
+      url: m.media!.thumbUrl!,
+      seq: m.seq,
+      mia: m.senderId === credential.userId,
+      autor: m.senderId === credential.userId ? 'Vos' : chatName,
+      cuando: formatClock(new Date(m.at)),
+    }));
+  const fotoAbierta = fotos.find((f) => f.seq === viendoSeq) ?? null;
 
   const upload = async (file: {
     uri: string;
@@ -286,6 +309,16 @@ export function ChatScreen({
         <Pressable onPress={onBack} testID="btn-volver" className="h-11 w-9 items-center justify-center">
           <ArrowLeft size={22} color={colores["on-surface"]} />
         </Pressable>
+        {/* Tocar el avatar Y el nombre abre el detalle, como en WhatsApp: es
+            donde la gente lo busca, mucho antes que en el menú de tres puntos.
+            Los dos van dentro del MISMO Pressable — que solo responda el avatar
+            deja un área táctil chiquita al lado de un nombre que parece tocable. */}
+        <Pressable
+          testID="btn-abrir-detalle"
+          accessibilityLabel="Ver el detalle del chat"
+          onPress={() => setVerDetalle(true)}
+          className="min-w-0 flex-1 flex-row items-center gap-2"
+        >
         <View className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
           <Text className="text-sm font-bold text-primary">
             {chatName.slice(0, 1).toUpperCase()}
@@ -309,6 +342,7 @@ export function ChatScreen({
             </Text>
           ) : null}
         </View>
+        </Pressable>
         {/* Llamadas: dejan de ser inertes (F10). Solo en 1:1 — una llamada
             grupal es otra cosa (varias conexiones a la vez) y prometerla con el
             mismo botón sería mentir. */}
@@ -432,7 +466,7 @@ export function ChatScreen({
                 othersReadSeq={Math.max(othersReadSeq, othersRead)}
                 othersDeliveredSeq={othersDeliveredSeq}
                 senderInitial={chatName.slice(0, 1).toUpperCase()}
-                onVerImagen={setViendo}
+                onVerImagen={(_url) => setViendoSeq(!isPending(item) ? item.seq : null)}
                 onSeleccionar={setElegido}
                 seleccionado={!isPending(item) && item.seq === elegido}
               />
@@ -526,7 +560,31 @@ export function ChatScreen({
         onCreatePoll={() => setCreando('poll')}
         onPickFile={() => void pickFile()}
       />
-      <VisorDeImagen url={viendo} onCerrar={() => setViendo(null)} />
+      <VisorDeImagen
+        foto={fotoAbierta}
+        otras={fotos}
+        onCerrar={() => setViendoSeq(null)}
+        onCambiar={(otra) => setViendoSeq(otra.seq)}
+        onEliminar={async (f) => {
+          setViendoSeq(null);
+          const r = await eliminar(f.seq);
+          if (!r.ok) setMediaError(r.motivo ?? 'No se pudo eliminar.');
+        }}
+      />
+
+      <ChatDetailScreen
+        visible={verDetalle}
+        chatId={chatId}
+        chatName={chatName}
+        credential={credential}
+        mensajes={messages}
+        onCerrar={() => setVerDetalle(false)}
+        onLlamar={otherUserId ? (video) => llamada.llamar(video) : undefined}
+        onVerImagen={(url) => {
+          setVerDetalle(false);
+          setViendoSeq(fotos.find((f) => f.url === url)?.seq ?? null);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }

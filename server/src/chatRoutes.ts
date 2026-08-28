@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { Types } from 'mongoose';
 import { ChatModel } from './chatModels.js';
-import { DeviceModel } from './models.js';
+import { DeviceModel, UserModel } from './models.js';
 import { ForbiddenChatError, listChats, listMessages, markRead } from './chatService.js';
 import { toClientMessages } from './messageView.js';
 import { requireSession } from './requireSession.js';
@@ -77,6 +77,54 @@ export function buildChatRouter(): Router {
       lastSeq: 0,
     });
     res.status(201).json({ chatId: String(chat._id) });
+  });
+
+  /**
+   * El detalle de una conversación: quiénes están y con qué rol.
+   *
+   * Existe para la pantalla «Chat Detail» del diseño
+   * (`design/stitch/info-grupo-alpha.png`), que estaba diseñada y sin
+   * implementar. `GET /api/chats` da los `memberIds` pero no los nombres, así
+   * que la pantalla no tenía con qué dibujar la lista.
+   *
+   * **Devuelve el teléfono de cada miembro** por el mismo motivo que el resumen
+   * del chat (§ del nombre de contacto): el server solo conoce el nombre que
+   * cada uno se puso, y el que importa —el de TU agenda— solo lo puede resolver
+   * el teléfono. No filtra nada nuevo: son las personas con las que ya compartís
+   * una conversación.
+   */
+  router.get('/:chatId/detail', async (req, res) => {
+    const userId = new Types.ObjectId(req.session!.userId);
+    // La membresía primero: sin esto se podría sondear la existencia de chats
+    // ajenos por la diferencia entre «no existe» y «no permitido».
+    const chat = await ChatModel.findOne({
+      _id: req.params.chatId,
+      'members.userId': userId,
+    }).lean();
+    if (!chat) return res.status(404).json({ message: 'No encontramos esa conversación.' });
+
+    const ids = chat.members.map((m) => m.userId);
+    const personas = await UserModel.find({ _id: { $in: ids } })
+      .select('name phone')
+      .lean<{ _id: unknown; name?: string; phone: string }[]>();
+    const porId = new Map(personas.map((persona) => [String(persona._id), persona]));
+
+    return res.json({
+      id: String(chat._id),
+      kind: chat.kind,
+      name: chat.name,
+      encrypted: chat.encrypted === true,
+      members: chat.members.map((m) => {
+        const persona = porId.get(String(m.userId));
+        return {
+          id: String(m.userId),
+          name: persona?.name ?? null,
+          phone: persona?.phone ?? null,
+          role: m.role ?? 'member',
+          esYo: String(m.userId) === String(userId),
+        };
+      }),
+    });
   });
 
   router.get('/:chatId/messages', async (req, res) => {

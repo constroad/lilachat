@@ -2105,3 +2105,81 @@ indicador de carga se quedaban en claro para siempre.
 
 **Pendiente:** no se pudo ver la pantalla de conversación con burbujas — hace
 falta una segunda persona y la QA corre con un solo usuario de prueba.
+
+## 35. Notificaciones por FCM (27/08/2026)
+
+Tres veces José pidió sacar la notificación permanente y tres veces la respuesta
+fue que no se podía. Era cierta pero incompleta: no se podía **manteniendo el
+socket propio**. Con FCM el que sostiene la conexión es el sistema operativo, y
+el servicio en primer plano —con su burbuja fija y su wake lock— deja de hacer
+falta.
+
+### 35.1 El camino de push estaba roto y decía estar listo
+
+`pushSender.ts` afirmaba en su comentario que estaba «completo salvo la
+credencial». No lo estaba: hablaba con `https://fcm.googleapis.com/fcm/send`, la
+API **legacy** que Google apagó en junio de 2024. Poniendo la clave no habría
+salido ni una notificación — un camino configurado, en verde, y mudo.
+
+Es el peor tipo de deuda: la que se documenta como terminada. Si alguien hubiera
+puesto `FCM_SERVER_KEY` un mes antes, el síntoma habría sido «las notificaciones
+no llegan» sin ninguna pista de que el endpoint ya no existía.
+
+### 35.2 Lo que hay que saber de HTTP v1
+
+- Se autentica con una **cuenta de servicio**, no con una clave: se firma un JWT
+  RS256 y se cambia por un token de acceso. `jsonwebtoken` ya era dependencia
+  (lo usan las sesiones), así que no se sumó nada al árbol.
+- El token de acceso dura una hora y **se cachea**: pedir uno por notificación
+  agrega un viaje a cada mensaje y, con un grupo activo, nos gana un límite de
+  tasa de Google por cuenta propia. Se renueva un minuto antes de vencer — uno
+  que expira entre que se lee y se usa da un 401 irreproducible.
+- **Todo `data` tiene que ser string.** Mandar el `seq` como número da un 400 que
+  solo dice «invalid argument».
+- Los `\n` de la clave privada llegan **escapados** al pasar por un `.env` o por
+  un panel web, y la firma falla después con un error de OpenSSL que no menciona
+  el formato en ningún lado. Por eso la credencial viaja en base64 y el motor los
+  desescapa.
+- «No está configurada» y «está rota» se distinguen: tratarlas igual deja a
+  alguien creyendo que solo le falta pegar la credencial cuando ya la pegó mal.
+
+### 35.3 Por qué la credencial NO va en el APK
+
+La pregunta de José, y la respuesta define el diseño: son **dos mitades
+distintas**.
+
+- `google-services.json` va **dentro de la app**. Identifica el proyecto y deja
+  que Android pida un token. No es secreto: viaja en cada APK y cualquiera puede
+  descomprimirlo y leerlo.
+- La **cuenta de servicio** va **solo en el server**. Con esa clave se le puede
+  mandar una notificación a CUALQUIER usuario de Lilachat, firmada como
+  Lilachat. Meterla en el APK sería publicarla: un `unzip` y listo.
+
+O sea: la mitad pública se hornea en el build, la mitad secreta vive en el `.env`
+de la mini y nunca sale de ahí.
+
+### 35.4 El guard que hacía imposible probarlo
+
+`registerPushToken` empezaba con `if (!Device.isDevice) return 'unsupported'`. La
+intención era razonable —un emulador pelado no entrega token— pero la
+consecuencia era que **FCM no se podía verificar en ningún lado**: en el emulador
+se rendía sin intentar, y en un teléfono real no hay forma de depurar. Un
+emulador CON Google Play sí entrega token.
+
+Se quitó: el `try/catch` ya cubre el caso. Se intenta y se degrada, en vez de
+adivinar por el tipo de aparato. Es la diferencia entre una función que se puede
+probar y una que hay que creerle.
+
+### 35.5 Verificado
+
+| Paso | Resultado |
+| --- | --- |
+| Credencial → token de acceso de Google | OBTENIDO |
+| Endpoint v1 con destino inválido | `INVALID_ARGUMENT` (lo correcto) |
+| La app registra su token FCM | sí, tras quitar el guard de `isDevice` |
+| Envío real a ese token | 200, con id de mensaje |
+| Llegada al aparato con la app cerrada | **la burbuja aparece**, sin aviso permanente |
+
+**El servicio en primer plano queda APAGADO por defecto**, y con él se va el wake
+lock. Se conserva como opción para un teléfono sin Google Play, donde el push no
+llega nunca.

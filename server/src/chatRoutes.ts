@@ -2,8 +2,16 @@ import { Router } from 'express';
 import { Types } from 'mongoose';
 import { ChatModel } from './chatModels.js';
 import { DeviceModel, UserModel } from './models.js';
-import { ForbiddenChatError, listChats, listMessages, markRead } from './chatService.js';
+import {
+  ForbiddenChatError,
+  addMember,
+  leaveChat,
+  listChats,
+  listMessages,
+  markRead,
+} from './chatService.js';
 import { toClientMessages } from './messageView.js';
+import { avisarCambioDeChat } from './socket.js';
 import { requireSession } from './requireSession.js';
 
 /**
@@ -125,6 +133,53 @@ export function buildChatRouter(): Router {
         };
       }),
     });
+  });
+
+  /**
+   * Sumar a alguien a un grupo.
+   *
+   * Existe desde el 29/08/2026: la pantalla de detalle tenía el botón «Añadir»
+   * apagado, y no era pereza de UI — **el server no sabía hacerlo**. Un botón
+   * inerte y una capacidad inexistente se ven igual desde afuera, que es la
+   * trampa de dejar botones apagados «por ahora».
+   */
+  router.post('/:chatId/members', async (req, res) => {
+    const userId = new Types.ObjectId(req.session!.userId);
+    const aQuien = String(req.body?.userId ?? '').trim();
+    if (!aQuien) return res.status(400).json({ message: 'Falta a quién sumar.' });
+    if (!Types.ObjectId.isValid(aQuien)) {
+      return res.status(400).json({ message: 'No encontramos a esa persona.' });
+    }
+
+    const r = await addMember({ chatId: req.params.chatId!, quien: userId, aQuien });
+    // El motivo VIAJA: un «no» mudo en una pantalla de permisos se lee como que
+    // la app se colgó, y acá los motivos son accionables («ya está en el grupo»).
+    if (!r.ok) return res.status(400).json({ message: r.motivo });
+
+    // A todos los miembros, incluido el nuevo: su lista de chats tiene que
+    // mostrarle el grupo sin que tenga que reabrir la app.
+    for (const miembro of r.chat.members) {
+      avisarCambioDeChat(String(miembro.userId), String(r.chat._id));
+    }
+    return res.status(200).json({ ok: true });
+  });
+
+  /**
+   * Salir de un grupo.
+   *
+   * Si se va el último admin, `leaveChat` promueve al miembro más antiguo: sin
+   * eso queda un grupo que nadie puede administrar nunca más.
+   */
+  router.post('/:chatId/leave', async (req, res) => {
+    const userId = new Types.ObjectId(req.session!.userId);
+    const r = await leaveChat({ chatId: req.params.chatId!, quien: userId });
+    if (!r.ok) return res.status(400).json({ message: r.motivo });
+
+    // A los que quedan Y a quien se fue: su lista tiene que dejar de mostrarlo.
+    for (const id of [...r.miembrosRestantes, String(userId)]) {
+      avisarCambioDeChat(id, req.params.chatId!);
+    }
+    return res.status(200).json({ ok: true });
   });
 
   router.get('/:chatId/messages', async (req, res) => {

@@ -1,7 +1,7 @@
 import { Types } from 'mongoose';
-import { unreadCount , puedeEliminar } from '@lilachat/shared';
+import { unreadCount, puedeEliminar, puedeAgregar, decidirSalida } from '@lilachat/shared';
 import { UserModel } from './models.js';
-import { ChatModel, MessageModel, ReceiptModel, type Message } from './chatModels.js';
+import { ChatModel, MessageModel, ReceiptModel, type Chat, type Message } from './chatModels.js';
 
 /**
  * La lógica de mensajería (spec §6). Todo pasa por acá: las rutas REST y el
@@ -349,4 +349,92 @@ export async function deleteMessage(params: {
   return actualizado
     ? { ok: true, message: actualizado }
     : { ok: false, motivo: 'No se pudo eliminar.' };
+}
+
+/**
+ * Sumar a alguien a un grupo.
+ *
+ * El permiso se decide en `shared/miembrosDeGrupo.ts` y se comprueba ACÁ: la app
+ * solo evita el viaje, no protege — un cliente modificado se saltea cualquier
+ * validación del teléfono.
+ */
+export async function addMember(params: {
+  chatId: string;
+  quien: Types.ObjectId;
+  aQuien: string;
+}): Promise<{ ok: true; chat: Chat } | { ok: false; motivo: string }> {
+  const chat = await ChatModel.findOne({ _id: params.chatId }).lean<Chat | null>();
+  if (!chat) return { ok: false, motivo: 'No encontramos esa conversación.' };
+
+  const decision = puedeAgregar({
+    quien: String(params.quien),
+    aQuien: params.aQuien,
+    esGrupo: chat.kind === 'group',
+    miembros: chat.members.map((m) => ({
+      userId: String(m.userId),
+      role: (m.role ?? 'member') as 'admin' | 'member',
+    })),
+  });
+  if (!decision.ok) return { ok: false, motivo: decision.motivo };
+
+  // Que la persona EXISTA se comprueba acá y no en el motor: es un dato de la
+  // base, no una regla. Sumar un id inventado dejaría un miembro fantasma que
+  // aparece en la lista y no es nadie.
+  const persona = await UserModel.findById(params.aQuien).select('_id').lean();
+  if (!persona) return { ok: false, motivo: 'No encontramos a esa persona.' };
+
+  const actualizado = await ChatModel.findOneAndUpdate(
+    // `$ne` en la condición y no solo `$addToSet`: así dos toques simultáneos no
+    // pueden dejar a la misma persona dos veces en la lista.
+    { _id: params.chatId, 'members.userId': { $ne: persona._id } },
+    { $push: { members: { userId: persona._id, role: 'member', joinedAt: new Date() } } },
+    { returnDocument: 'after' }
+  ).lean<Chat | null>();
+
+  return actualizado
+    ? { ok: true, chat: actualizado }
+    : { ok: false, motivo: 'Esa persona ya está en el grupo.' };
+}
+
+/**
+ * Salir de un grupo.
+ *
+ * **Si se va el último admin se promueve al miembro más antiguo**, en la misma
+ * operación. Sin eso queda un grupo que nadie puede administrar nunca más, y eso
+ * solo se arregla desde la base.
+ */
+export async function leaveChat(params: {
+  chatId: string;
+  quien: Types.ObjectId;
+}): Promise<{ ok: true; miembrosRestantes: string[] } | { ok: false; motivo: string }> {
+  const chat = await ChatModel.findOne({ _id: params.chatId }).lean<Chat | null>();
+  if (!chat) return { ok: false, motivo: 'No encontramos esa conversación.' };
+
+  // El orden de `members` ES la antigüedad: se agregan al final.
+  const decision = decidirSalida({
+    quien: String(params.quien),
+    esGrupo: chat.kind === 'group',
+    miembros: chat.members.map((m) => ({
+      userId: String(m.userId),
+      role: (m.role ?? 'member') as 'admin' | 'member',
+    })),
+  });
+  if (decision.accion === 'imposible') return { ok: false, motivo: decision.motivo };
+
+  await ChatModel.updateOne(
+    { _id: params.chatId },
+    { $pull: { members: { userId: params.quien } } }
+  );
+
+  if (decision.accion === 'salir' && decision.nuevoAdmin) {
+    await ChatModel.updateOne(
+      { _id: params.chatId, 'members.userId': new Types.ObjectId(decision.nuevoAdmin) },
+      { $set: { 'members.$.role': 'admin' } }
+    );
+  }
+
+  const quedan = chat.members
+    .map((m) => String(m.userId))
+    .filter((id) => id !== String(params.quien));
+  return { ok: true, miembrosRestantes: quedan };
 }

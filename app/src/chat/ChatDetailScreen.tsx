@@ -11,7 +11,8 @@ import {
   UserPlus,
   Video,
 } from 'lucide-react-native';
-import { nombreDeContacto } from '@lilachat/shared';
+import { nombreDeContacto, type ContactGroup } from '@lilachat/shared';
+import { listContacts } from '../contacts/contactsApi';
 import type { Credential } from '../auth/credentialStore';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useColores } from '../ui/tema';
@@ -78,6 +79,50 @@ export function ChatDetailScreen({
   const margenes = useMargenes();
   const [estado, setEstado] = useState<Estado>({ fase: 'cargando' });
   const [silenciado, setSilenciado] = useState(false);
+
+  const [accionando, setAccionando] = useState(false);
+  /** La hoja para elegir a quién sumar. */
+  const [agregando, setAgregando] = useState(false);
+  const [aviso, setAviso] = useState('');
+
+  /**
+   * Sumar o salir. Las dos recargan el detalle al terminar: es la lista que la
+   * persona está mirando, y dejarla vieja después de una acción propia es lo que
+   * hace dudar de si funcionó.
+   */
+  const llamar = useCallback(
+    async (ruta: string, cuerpo?: Record<string, unknown>) => {
+      setAccionando(true);
+      setAviso('');
+      try {
+        const respuesta = await fetch(`${BASE_URL}/api/chats/${chatId}/${ruta}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${credential.jwt}`,
+          },
+          body: JSON.stringify(cuerpo ?? {}),
+          signal: AbortSignal.timeout(10_000),
+        });
+        if (!respuesta.ok) {
+          const cuerpoError = (await respuesta.json().catch(() => null)) as {
+            message?: string;
+          } | null;
+          // El motivo del server se muestra: son accionables («ya está en el
+          // grupo»), no errores técnicos.
+          setAviso(cuerpoError?.message ?? 'No se pudo.');
+          return false;
+        }
+        return true;
+      } catch {
+        setAviso('Sin conexión. Probá de nuevo.');
+        return false;
+      } finally {
+        setAccionando(false);
+      }
+    },
+    [chatId, credential.jwt]
+  );
 
   const cargar = useCallback(async () => {
     setEstado({ fase: 'cargando' });
@@ -204,8 +249,12 @@ export function ChatDetailScreen({
                 </>
               ) : null}
               {esGrupo ? (
-                <AccionRedonda testID="btn-detalle-agregar" etiqueta="Añadir" deshabilitado>
-                  <UserPlus size={20} color={colores['on-surface-variant']} />
+                <AccionRedonda
+                  testID="btn-detalle-agregar"
+                  etiqueta="Añadir"
+                  onPress={() => setAgregando(true)}
+                >
+                  <UserPlus size={20} color={colores.primary} />
                 </AccionRedonda>
               ) : null}
               <AccionRedonda testID="btn-detalle-buscar" etiqueta="Buscar" deshabilitado>
@@ -266,6 +315,15 @@ export function ChatDetailScreen({
               </>
             ) : null}
 
+            {aviso ? (
+              <Text
+                testID="aviso-detalle"
+                className="mt-4 px-4 text-sm text-error"
+              >
+                {aviso}
+              </Text>
+            ) : null}
+
             <Rotulo>Ajustes del chat</Rotulo>
             <View className="px-4">
               <View className="mb-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4">
@@ -300,8 +358,11 @@ export function ChatDetailScreen({
               {esGrupo ? (
                 <Pressable
                   testID="btn-salir-grupo"
-                  className="mb-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4 opacity-50"
-                  disabled
+                  disabled={accionando}
+                  onPress={async () => {
+                    if (await llamar('leave')) onCerrar();
+                  }}
+                  className={`mb-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4 ${accionando ? 'opacity-50' : ''}`}
                 >
                   <LogOut size={18} color={colores.error} />
                   <Text className="text-sm font-semibold" style={{ color: colores.error }}>
@@ -323,6 +384,18 @@ export function ChatDetailScreen({
             </View>
           </ScrollView>
         )}
+        <ElegirParaSumar
+          visible={agregando}
+          credential={credential}
+          yaEstan={detalle?.members.map((m) => m.id) ?? []}
+          onCerrar={() => setAgregando(false)}
+          onElegir={async (userId) => {
+            setAgregando(false);
+            // Se recarga el detalle: la lista de participantes es justo lo que
+            // la persona está mirando, y dejarla vieja hace dudar de si funcionó.
+            if (await llamar('members', { userId })) await cargar();
+          }}
+        />
       </View>
     </Modal>
   );
@@ -369,5 +442,103 @@ function AccionRedonda({
       </View>
       <Text className="mt-1 text-[11px] text-on-surface-variant">{etiqueta}</Text>
     </Pressable>
+  );
+}
+
+/**
+ * Elegir a quién sumar al grupo.
+ *
+ * Se listan los contactos de Lilachat —gente con la que ya compartís una
+ * conversación— **menos los que ya están**. Mostrarlos igual y fallar al tocarlos
+ * («esa persona ya está») sería hacerle descubrir la regla a los golpes.
+ */
+function ElegirParaSumar({
+  visible,
+  credential,
+  yaEstan,
+  onCerrar,
+  onElegir,
+}: {
+  visible: boolean;
+  credential: Credential;
+  yaEstan: string[];
+  onCerrar: () => void;
+  onElegir: (userId: string) => void;
+}) {
+  const colores = useColores();
+  const margenes = useMargenes();
+  const [grupos, setGrupos] = useState<ContactGroup[] | null>(null);
+
+  useEffect(() => {
+    if (!visible) return;
+    setGrupos(null);
+    void listContacts(credential.jwt).then((r) => setGrupos(r.ok ? r.data.groups : []));
+  }, [visible, credential.jwt]);
+
+  const dentro = new Set(yaEstan);
+  const candidatos = (grupos ?? [])
+    .flatMap((g) => g.contacts)
+    .filter((c) => !dentro.has(c.id));
+
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onCerrar}>
+      <View className="flex-1 bg-background" testID="elegir-para-sumar">
+        <View
+          className="flex-row items-center gap-2 border-b border-outline/10 bg-surface px-3 pb-3"
+          style={{ paddingTop: margenes.cabecera }}
+        >
+          <Pressable
+            testID="btn-cerrar-sumar"
+            accessibilityLabel="Cancelar"
+            onPress={onCerrar}
+            className="h-11 w-11 items-center justify-center"
+          >
+            <ArrowLeft size={22} color={colores['on-surface']} />
+          </Pressable>
+          <Text className="flex-1 text-lg font-bold text-on-surface">Sumar al grupo</Text>
+        </View>
+
+        {grupos === null ? (
+          <View className="px-4 pt-4" testID="sumar-cargando">
+            {[0, 1, 2].map((i) => (
+              <View key={i} className="mb-2 h-14 rounded-xl bg-surface-variant" />
+            ))}
+          </View>
+        ) : candidatos.length === 0 ? (
+          <View className="flex-1 items-center justify-center px-8">
+            {/* El vacío EXPLICA: «no hay contactos» a secas haría pensar que la
+                agenda falló, cuando lo normal es que ya estén todos adentro. */}
+            <Text className="text-center text-base leading-6 text-on-surface-variant">
+              {yaEstan.length > 1
+                ? 'Todos tus contactos de Lilachat ya están en este grupo.'
+                : 'Todavía no tenés contactos en Lilachat para sumar.'}
+            </Text>
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={{ padding: 16 }}>
+            {candidatos.map((contacto) => (
+              <Pressable
+                key={contacto.id}
+                testID={`sumar-${contacto.id}`}
+                onPress={() => onElegir(contacto.id)}
+                className="mb-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-3"
+              >
+                <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                  <Text className="text-sm font-bold text-primary">
+                    {(contacto.name ?? contacto.phone).slice(0, 1).toUpperCase()}
+                  </Text>
+                </View>
+                <View className="min-w-0 flex-1">
+                  <Text className="text-sm font-semibold text-on-surface" numberOfLines={1}>
+                    {contacto.name ?? contacto.phone}
+                  </Text>
+                  <Text className="text-[11px] text-on-surface-variant">{contacto.phone}</Text>
+                </View>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
+      </View>
+    </Modal>
   );
 }

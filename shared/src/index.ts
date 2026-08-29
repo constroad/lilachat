@@ -17,6 +17,7 @@ export * from './alerta.js';
 export * from './tema.js';
 export * from './nombreDeContacto.js';
 export * from './eliminarMensaje.js';
+export * from './miembrosDeGrupo.js';
 export * from './agendaLocal.js';
 export * from './invitacion.js';
 export * from './emparejarAgenda.js';

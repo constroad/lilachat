@@ -86,6 +86,17 @@ export async function avisarMensajeNuevo(
   return members;
 }
 
+/**
+ * Avisa a una persona que un chat suyo cambió de forma (entró o salió alguien).
+ *
+ * No manda QUÉ cambió: manda que hay que releer. Mandar el diff obligaría a que
+ * el cliente sepa aplicar cada tipo de cambio en orden, y una lista de chats que
+ * se recarga sola es infinitamente más barata de mantener correcta.
+ */
+export function avisarCambioDeChat(userId: string, chatId: string): void {
+  ioVivo?.to(userRoom(userId)).emit('chat.changed', { chatId });
+}
+
 export function attachSocket(httpServer: HttpServer): SocketServer {
   const io = new SocketServer(httpServer, {
     // El cliente es nuestra app y nuestra web; no hay terceros embebiéndonos.

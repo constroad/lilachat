@@ -1,5 +1,11 @@
 import { Types } from 'mongoose';
-import { unreadCount, puedeEliminar, puedeAgregar, decidirSalida } from '@lilachat/shared';
+import {
+  unreadCount,
+  puedeEliminar,
+  puedeAgregar,
+  puedeSacar,
+  decidirSalida,
+} from '@lilachat/shared';
 import { UserModel } from './models.js';
 import { ChatModel, MessageModel, ReceiptModel, type Chat, type Message } from './chatModels.js';
 
@@ -394,6 +400,51 @@ export async function addMember(params: {
   return actualizado
     ? { ok: true, chat: actualizado }
     : { ok: false, motivo: 'Esa persona ya está en el grupo.' };
+}
+
+/**
+ * Sacar a alguien del grupo.
+ *
+ * Las reglas están en `puedeSacar` (motor puro): solo un admin, nunca a otro
+ * admin, y a uno mismo tampoco —para eso está salir—.
+ *
+ * Devuelve los miembros de ANTES del cambio porque el aviso hay que mandárselo
+ * también al que se sacó: si se notifica solo a los que quedan, el grupo le
+ * sigue apareciendo en la lista hasta que reabra la app, y sigue viéndolo en un
+ * chat donde ya no puede escribir.
+ */
+export async function removeMember(params: {
+  chatId: string;
+  quien: Types.ObjectId;
+  aQuien: string;
+}): Promise<{ ok: true; miembrosPrevios: string[] } | { ok: false; motivo: string }> {
+  const chat = await ChatModel.findOne({ _id: params.chatId }).lean<Chat | null>();
+  if (!chat) return { ok: false, motivo: 'No encontramos esa conversación.' };
+
+  const decision = puedeSacar({
+    quien: String(params.quien),
+    aQuien: params.aQuien,
+    esGrupo: chat.kind === 'group',
+    miembros: chat.members.map((m) => ({
+      userId: String(m.userId),
+      role: (m.role ?? 'member') as 'admin' | 'member',
+    })),
+  });
+  if (!decision.ok) return { ok: false, motivo: decision.motivo };
+
+  const victima = new Types.ObjectId(params.aQuien);
+  // La membresía va en la CONDICIÓN: si entre la lectura y el update la persona
+  // ya salió sola, esto no modifica nada y se dice, en vez de contestar que se
+  // hizo algo que no pasó.
+  const resultado = await ChatModel.updateOne(
+    { _id: params.chatId, 'members.userId': victima },
+    { $pull: { members: { userId: victima } } }
+  );
+  if (resultado.matchedCount === 0) {
+    return { ok: false, motivo: 'Esa persona ya no está en el grupo.' };
+  }
+
+  return { ok: true, miembrosPrevios: chat.members.map((m) => String(m.userId)) };
 }
 
 /**

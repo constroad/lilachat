@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import {
   ArrowLeft,
@@ -8,6 +8,7 @@ import {
   Phone,
   Search,
   Flag,
+  UserMinus,
   UserPlus,
   Video,
 } from 'lucide-react-native';
@@ -101,17 +102,18 @@ export function ChatDetailScreen({
    * hace dudar de si funcionó.
    */
   const llamar = useCallback(
-    async (ruta: string, cuerpo?: Record<string, unknown>) => {
+    async (ruta: string, cuerpo?: Record<string, unknown>, metodo: 'POST' | 'DELETE' = 'POST') => {
       setAccionando(true);
       setAviso('');
       try {
         const respuesta = await fetch(`${BASE_URL}/api/chats/${chatId}/${ruta}`, {
-          method: 'POST',
+          method: metodo,
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${credential.jwt}`,
           },
-          body: JSON.stringify(cuerpo ?? {}),
+          // Sacar a alguien va sin cuerpo: el id viaja en la ruta.
+          ...(metodo === 'DELETE' ? {} : { body: JSON.stringify(cuerpo ?? {}) }),
           signal: AbortSignal.timeout(10_000),
         });
         if (!respuesta.ok) {
@@ -184,6 +186,37 @@ export function ChatDetailScreen({
    * entera —agenda incluida— por cada tecla del buscador.
    */
   const yaEstan = useMemo(() => detalle?.members.map((uno) => uno.id) ?? [], [detalle]);
+
+  const soyAdmin = detalle?.members.some((uno) => uno.esYo && uno.role === 'admin') === true;
+
+  /**
+   * Sacar a alguien SE PREGUNTA antes.
+   *
+   * Es la única acción de esta pantalla que le pasa algo a otra persona, y un
+   * toque de más en la fila equivocada la echa del grupo sin vuelta atrás
+   * visible. El diálogo dice a quién y qué le va a pasar — «¿estás seguro?» a
+   * secas no informa nada.
+   */
+  const confirmarSacar = (miembro: Miembro) => {
+    Alert.alert(
+      `¿Sacar a ${nombreDe(miembro)}?`,
+      'Va a dejar de ver el grupo y los mensajes nuevos. Los que ya mandó quedan. Podés volver a sumarlo cuando quieras.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sacar',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              // Se recarga la lista que la persona está mirando: dejarla vieja
+              // después de una acción propia es lo que hace dudar de si pasó.
+              if (await llamar(`members/${miembro.id}`, undefined, 'DELETE')) await cargar();
+            })();
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onCerrar}>
@@ -318,13 +351,30 @@ export function ChatDetailScreen({
                           {nombreDe(miembro).slice(0, 1).toUpperCase()}
                         </Text>
                       </View>
-                      <Text className="flex-1 text-sm font-semibold text-on-surface">
+                      <Text className="min-w-0 flex-1 text-sm font-semibold text-on-surface">
                         {nombreDe(miembro)}
                       </Text>
                       {miembro.role === 'admin' ? (
-                        <View className="rounded bg-primary/15 px-2 py-0.5">
+                        <View className="shrink-0 rounded bg-primary/15 px-2 py-0.5">
                           <Text className="text-[10px] font-semibold text-primary">Admin</Text>
                         </View>
+                      ) : null}
+                      {/* Sacar solo aparece si de verdad se puede: soy admin, no
+                          soy yo —para eso está salir— y el otro no es admin.
+                          Mostrar el botón y contestar «no podés» sería hacerle
+                          descubrir la regla a los golpes, y encima sobre otra
+                          persona. Las mismas condiciones las revalida el server:
+                          esconder un botón no es un permiso. */}
+                      {soyAdmin && !miembro.esYo && miembro.role !== 'admin' ? (
+                        <Pressable
+                          testID={`btn-sacar-${miembro.id}`}
+                          accessibilityLabel={`Sacar a ${nombreDe(miembro)} del grupo`}
+                          disabled={accionando}
+                          onPress={() => confirmarSacar(miembro)}
+                          className={`h-11 w-11 shrink-0 items-center justify-center ${accionando ? 'opacity-40' : ''}`}
+                        >
+                          <UserMinus size={18} color={colores.error} />
+                        </Pressable>
                       ) : null}
                     </View>
                   ))}

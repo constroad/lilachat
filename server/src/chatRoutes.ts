@@ -9,6 +9,7 @@ import {
   listChats,
   listMessages,
   markRead,
+  removeMember,
 } from './chatService.js';
 import { toClientMessages } from './messageView.js';
 import { avisarCambioDeChat } from './socket.js';
@@ -161,6 +162,28 @@ export function buildChatRouter(): Router {
     for (const miembro of r.chat.members) {
       avisarCambioDeChat(String(miembro.userId), String(r.chat._id));
     }
+    return res.status(200).json({ ok: true });
+  });
+
+  /**
+   * Sacar a alguien del grupo.
+   *
+   * Va por `DELETE` y con el id en la ruta: sacar a alguien es borrar una
+   * membresía, y el verbo lo dice mejor que un `POST /kick`.
+   */
+  router.delete('/:chatId/members/:userId', async (req, res) => {
+    const userId = new Types.ObjectId(req.session!.userId);
+    const aQuien = String(req.params.userId ?? '').trim();
+    if (!Types.ObjectId.isValid(aQuien)) {
+      return res.status(400).json({ message: 'No encontramos a esa persona.' });
+    }
+
+    const r = await removeMember({ chatId: req.params.chatId!, quien: userId, aQuien });
+    if (!r.ok) return res.status(400).json({ message: r.motivo });
+
+    // A TODOS los de antes, incluido el que se sacó: sin su aviso el grupo le
+    // sigue apareciendo en la lista, y adentro de un chat donde ya no escribe.
+    for (const id of r.miembrosPrevios) avisarCambioDeChat(id, req.params.chatId!);
     return res.status(200).json({ ok: true });
   });
 

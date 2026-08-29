@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { decidirSalida, puedeAgregar, type MiembroDeChat } from './miembrosDeGrupo.js';
+import {
+  decidirSalida,
+  puedeAgregar,
+  puedeSacar,
+  type MiembroDeChat,
+} from './miembrosDeGrupo.js';
 
 const m = (userId: string, role: 'admin' | 'member' = 'member'): MiembroDeChat => ({
   userId,
@@ -40,6 +45,73 @@ describe('puedeAgregar', () => {
    */
   it('a un 1:1 no se suma gente', () => {
     const r = puedeAgregar({ quien: 'yo', miembros: grupo, aQuien: 'nuevo', esGrupo: false });
+
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.motivo).toMatch(/de a dos/i);
+  });
+});
+
+describe('puedeSacar', () => {
+  const grupo = [m('admin1', 'admin'), m('comun'), m('admin2', 'admin')];
+
+  it('un admin saca a un miembro común', () => {
+    expect(
+      puedeSacar({ quien: 'admin1', miembros: grupo, aQuien: 'comun', esGrupo: true })
+    ).toEqual({ ok: true });
+  });
+
+  /**
+   * **Sacar NO es simétrico con sumar.** Sumar lo puede hacer cualquiera; sacar,
+   * solo un admin. Si un miembro común pudiera echar gente, cualquiera podría
+   * vaciar el grupo —o echar al admin— y no habría a quién reclamarle.
+   */
+  it('un miembro común no saca a nadie', () => {
+    const r = puedeSacar({ quien: 'comun', miembros: grupo, aQuien: 'admin1', esGrupo: true });
+
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.motivo).toMatch(/admin/i);
+  });
+
+  /**
+   * Entre admins no se echan. Si no, el grupo se decide por quién toca primero:
+   * dos admins enojados terminan sacándose mutuamente en una carrera.
+   */
+  it('un admin no saca a otro admin', () => {
+    const r = puedeSacar({ quien: 'admin1', miembros: grupo, aQuien: 'admin2', esGrupo: true });
+
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.motivo).toMatch(/admin/i);
+  });
+
+  /** Sacarse a sí mismo es SALIR, y tiene su propia acción con sus reglas. */
+  it('a uno mismo no se saca: se sale', () => {
+    const r = puedeSacar({ quien: 'admin1', miembros: grupo, aQuien: 'admin1', esGrupo: true });
+
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.motivo).toMatch(/salir/i);
+  });
+
+  it('no se saca a quien ya no está', () => {
+    const r = puedeSacar({ quien: 'admin1', miembros: grupo, aQuien: 'ajeno', esGrupo: true });
+
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.motivo).toMatch(/ya no está/i);
+  });
+
+  it('quien no está en el grupo no saca a nadie', () => {
+    const r = puedeSacar({ quien: 'ajeno', miembros: grupo, aQuien: 'comun', esGrupo: true });
+
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.motivo).toMatch(/no estás/i);
+  });
+
+  it('de un 1:1 no se saca a nadie', () => {
+    const r = puedeSacar({
+      quien: 'admin1',
+      miembros: [m('admin1', 'admin'), m('comun')],
+      aQuien: 'comun',
+      esGrupo: false,
+    });
 
     expect(r.ok).toBe(false);
     expect(!r.ok && r.motivo).toMatch(/de a dos/i);

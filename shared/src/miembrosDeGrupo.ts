@@ -41,6 +41,52 @@ export function puedeAgregar(params: {
   return { ok: true };
 }
 
+/**
+ * Sacar a alguien del grupo.
+ *
+ * **No es simétrico con sumar, y eso es a propósito.** Sumar lo puede hacer
+ * cualquier miembro; sacar, solo un admin. Si un miembro común pudiera echar
+ * gente, cualquiera podría vaciar el grupo —o echar al admin— y no quedaría a
+ * quién reclamarle.
+ *
+ * Dos límites más, por el mismo motivo:
+ *
+ * - **Entre admins no se echan.** Si no, el grupo lo decide quien toca primero:
+ *   dos admins enojados se sacan mutuamente en una carrera. Para que se vaya un
+ *   admin, se le pide que salga.
+ * - **A uno mismo no se saca**: eso es salir, y salir tiene sus propias reglas
+ *   (promover al más antiguo si era el último admin).
+ */
+export function puedeSacar(params: {
+  quien: string;
+  miembros: readonly MiembroDeChat[];
+  aQuien: string;
+  esGrupo: boolean;
+}): PuedeAgregar {
+  if (!params.esGrupo) {
+    return { ok: false, motivo: 'De una conversación de a dos no se saca a nadie.' };
+  }
+
+  const yo = params.miembros.find((uno) => uno.userId === params.quien);
+  if (!yo) return { ok: false, motivo: 'No estás en este grupo.' };
+
+  if (params.aQuien === params.quien) {
+    return { ok: false, motivo: 'Para irte del grupo usá «Salir del grupo».' };
+  }
+
+  const victima = params.miembros.find((uno) => uno.userId === params.aQuien);
+  if (!victima) return { ok: false, motivo: 'Esa persona ya no está en el grupo.' };
+
+  if (yo.role !== 'admin') {
+    return { ok: false, motivo: 'Solo un admin puede sacar a alguien del grupo.' };
+  }
+  if (victima.role === 'admin') {
+    return { ok: false, motivo: 'No podés sacar a otro admin. Pedile que salga.' };
+  }
+
+  return { ok: true };
+}
+
 export type ResultadoDeSalida =
   /** Se va y el grupo sigue. `nuevoAdmin` es a quién hay que promover, si hace falta. */
   | { accion: 'salir'; nuevoAdmin: string | null }

@@ -600,6 +600,11 @@ export function ChatScreen({
         credential={credential}
         mensajes={messages}
         onCerrar={() => setVerDetalle(false)}
+        onSalio={() => {
+          setVerDetalle(false);
+          // Y afuera del chat: ya no es suyo.
+          onBack();
+        }}
         onLlamar={otherUserId ? (video) => llamada.llamar(video) : undefined}
         onVerImagen={(url) => {
           setVerDetalle(false);

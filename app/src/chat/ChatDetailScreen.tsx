@@ -62,6 +62,7 @@ export function ChatDetailScreen({
   credential,
   mensajes,
   onCerrar,
+  onSalio,
   onLlamar,
   onVerImagen,
 }: {
@@ -72,6 +73,15 @@ export function ChatDetailScreen({
   /** Los mensajes ya cargados: de ahí sale la tira de multimedia, sin pedir nada. */
   mensajes: ServerMessage[];
   onCerrar: () => void;
+  /**
+   * Se salió del grupo: hay que cerrar TAMBIÉN la conversación.
+   *
+   * Cerrar solo el detalle deja a la persona dentro del chat que acaba de
+   * abandonar, con el campo de escribir habilitado sobre algo donde ya no puede
+   * escribir. Hay que tocar atrás para enterarse de que funcionó (visto en el
+   * emulador, 29/08/2026).
+   */
+  onSalio?: () => void;
   onLlamar?: (video: boolean) => void;
   onVerImagen?: (url: string) => void;
 }) {
@@ -360,7 +370,9 @@ export function ChatDetailScreen({
                   testID="btn-salir-grupo"
                   disabled={accionando}
                   onPress={async () => {
-                    if (await llamar('leave')) onCerrar();
+                    // `onSalio` cierra el detalle Y la conversación: quedarse
+                    // adentro del grupo que se acaba de dejar no tiene sentido.
+                    if (await llamar('leave')) (onSalio ?? onCerrar)();
                   }}
                   className={`mb-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4 ${accionando ? 'opacity-50' : ''}`}
                 >

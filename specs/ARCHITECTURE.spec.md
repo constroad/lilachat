@@ -2183,3 +2183,103 @@ probar y una que hay que creerle.
 **El servicio en primer plano queda APAGADO por defecto**, y con él se va el wake
 lock. Se conserva como opción para un teléfono sin Google Play, donde el push no
 llega nunca.
+
+## 36. Grupos: sumar gente y salir (29/08/2026)
+
+«Implementá el detalle de chat de grupo, no existe» (José). La pantalla SÍ
+existía —`ChatDetailScreen`, del diseño `info-grupo-alpha.png`—, pero «Añadir» y
+«Salir del grupo» estaban apagados, y no por pereza de UI: **el server no sabía
+hacer ninguna de las dos cosas**. Un botón inerte y una capacidad inexistente se
+ven idénticos desde afuera; esa es la trampa de dejar botones apagados «por
+ahora», parecen trabajo hecho.
+
+### 36.1 Las reglas, en un motor puro
+
+`shared/src/miembrosDeGrupo.ts` (`puedeAgregar`, `decidirSalida`):
+
+- **Cualquier miembro puede sumar**, no solo el admin. Es lo que hace WhatsApp
+  por defecto, y en un grupo chico pedir permiso convierte al admin en un cuello
+  de botella que nadie pidió. Restringirlo sería un ajuste del grupo, no el
+  arranque.
+- **A un 1:1 no se suma gente**: lo convertiría en grupo sin que los dos
+  originales lo decidan.
+- **Si se va el último admin se promueve al miembro más antiguo**, en la misma
+  operación. Sin eso queda un grupo que nadie puede administrar nunca más y solo
+  se arregla desde la base. Y no se le impide salir: retener a alguien porque es
+  el único admin es el tipo de puerta cerrada que hace desinstalar una app.
+
+Endpoints: `POST /api/chats/:id/members`, `POST /api/chats/:id/leave`,
+`GET /api/chats/:id/detail`. Los tres avisan por `chat.changed` a cada miembro
+(las salas del socket son por usuario, así que el recién sumado se entera aunque
+nunca haya abierto ese chat).
+
+`addMember` usa `'members.userId': { $ne: … }` en la CONDICIÓN del update, no
+solo `$addToSet`: así dos toques simultáneos no dejan a la misma persona dos
+veces. Que la persona exista se comprueba contra la base y no en el motor — es un
+dato, no una regla; sumar un id inventado dejaría un miembro fantasma.
+
+### 36.2 Salir te dejaba adentro del grupo que abandonaste
+
+Encontrado probando el flujo real. Salir funcionaba —el server sacaba, promovía
+al más antiguo y el grupo desaparecía de la lista—, pero la UI solo cerraba el
+detalle: quedabas **dentro de la conversación que acababas de dejar**, con el
+campo de escribir habilitado, y había que tocar atrás para enterarte de que había
+funcionado. Se agregó `onSalio`, que cierra el detalle Y la conversación.
+
+Ningún test lo veía: el server hacía todo bien y la lista se actualizaba bien.
+Era la experiencia lo que estaba roto.
+
+### 36.3 «Agregar miembros desde un contacto nuevo»
+
+La hoja para elegir a quién sumar listaba **solo a la gente con la que ya tenías
+conversación abierta** (`GET /api/contacts`). Consecuencia: a alguien de tu
+agenda que está en Lilachat y con quien nunca hablaste **no había forma de
+sumarlo** — primero había que abrirle un chat 1:1 que nadie quería.
+
+La lista buena ya existía: la del lápiz (`ContactPicker`), que cruza la agenda
+del teléfono contra el padrón por `POST /contacts/match` y además ofrece
+«Invitar a Lilachat» para quien todavía no entró. **Se reusa esa**, en vez de
+mantener dos selectores que se comportan distinto.
+
+Lo único que le faltaba es `candidatosParaSumar` (`shared/`, puro): descuenta a
+los que ya están —se esconden, no se muestran para fallar al tocarlos— y
+devuelve **en la misma llamada** el padrón SIN recortar. Esa segunda lista es la
+trampa del cambio: «a quién falta invitar» se calcula cruzando la agenda contra
+los registrados, así que con la lista recortada quien ya está en el grupo
+reaparecería abajo, ofreciéndole instalar la app que está usando. Las dos salen
+juntas para que no se pueda pasar la equivocada.
+
+De paso apareció un defecto viejo en `ContactPicker`: el
+`if (coinciden.length === 0) return null;` de la sección de invitar estaba
+**comentado sin querer** —un bloque de documentación quedó sin cerrar y se tragó
+la línea—, así que la cabecera «Invitar a Lilachat» se pintaba sobre una lista
+vacía. Invisible al leer: la línea muerta parecía parte del comentario.
+
+### 36.4 Verificado en el emulador (0.1.33 · 34)
+
+Sembrando un usuario registrado que NO tiene chat conmigo y SÍ está en la agenda
+del aparato (`scripts/seed-contacto-nuevo.ts`), que es el caso que la hoja vieja
+no mostraba:
+
+| Paso | Resultado |
+| --- | --- |
+| Abrir «Añadir» en el grupo | aparece el contacto nuevo, que antes no existía para esta pantalla |
+| Wilson, ya miembro | NO aparece ni para sumar ni en «Invitar a Lilachat» |
+| Tocarlo | «3 participantes», y el miembro nuevo con el nombre de MI agenda |
+| En la base | `999888777 · member · joinedAt` — la escritura está |
+| Reabrir «Añadir» | «Todos tus contactos de Lilachat ya están en este grupo» |
+| Buscar «wilson» | «Nadie coincide»: el buscador no saltea la exclusión |
+| Salir del grupo (turno anterior) | `902049935 admin + 960397018 member` → `960397018 admin` |
+
+Data de QA borrada y verificada en cero; el grupo quedó con los miembros y roles
+que tenía.
+
+### 36.5 Pendiente
+
+- **Sumar de a varios**: hoy es uno por vez (la hoja se cierra y la lista se
+  recarga). Alcanza para un grupo familiar; para armar uno de diez es tedioso.
+- **Sacar a alguien** y **cambiar de admin** no existen: no hay endpoint. Salir
+  es lo único que mueve la lista de miembros.
+- Invitar desde acá crea la admisión y comparte el enlace, pero **no suma**: la
+  persona tiene que instalar y entrar, y recién ahí se la puede agregar. La hoja
+  lo dice en su subtítulo en vez de dejar que se descubra.

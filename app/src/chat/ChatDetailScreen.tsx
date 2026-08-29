@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import {
@@ -11,8 +11,8 @@ import {
   UserPlus,
   Video,
 } from 'lucide-react-native';
-import { nombreDeContacto, type ContactGroup } from '@lilachat/shared';
-import { listContacts } from '../contacts/contactsApi';
+import { nombreDeContacto } from '@lilachat/shared';
+import { ContactPicker } from '../contacts/ContactPicker';
 import type { Credential } from '../auth/credentialStore';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useColores } from '../ui/tema';
@@ -177,6 +177,13 @@ export function ChatDetailScreen({
 
   const detalle = estado.fase === 'listo' ? estado.detalle : null;
   const esGrupo = detalle?.kind === 'group';
+
+  /**
+   * Los ids de los que ya están. Va memoizado porque el selector lo recibe como
+   * dependencia: un array nuevo en cada render lo haría recalcular la lista
+   * entera —agenda incluida— por cada tecla del buscador.
+   */
+  const yaEstan = useMemo(() => detalle?.members.map((uno) => uno.id) ?? [], [detalle]);
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onCerrar}>
@@ -399,7 +406,7 @@ export function ChatDetailScreen({
         <ElegirParaSumar
           visible={agregando}
           credential={credential}
-          yaEstan={detalle?.members.map((m) => m.id) ?? []}
+          yaEstan={yaEstan}
           onCerrar={() => setAgregando(false)}
           onElegir={async (userId) => {
             setAgregando(false);
@@ -460,9 +467,17 @@ function AccionRedonda({
 /**
  * Elegir a quién sumar al grupo.
  *
- * Se listan los contactos de Lilachat —gente con la que ya compartís una
- * conversación— **menos los que ya están**. Mostrarlos igual y fallar al tocarlos
- * («esa persona ya está») sería hacerle descubrir la regla a los golpes.
+ * **Se usa el MISMO selector que el lápiz** (`ContactPicker`), no una lista
+ * propia. La que había acá listaba solo a la gente con la que ya tenías
+ * conversación abierta, así que a alguien de tu agenda que está en Lilachat y
+ * con quien nunca hablaste no había forma de sumarlo: primero había que abrirle
+ * un chat 1:1 que nadie quería. El selector del lápiz ya cruza la agenda del
+ * teléfono contra el padrón (`POST /contacts/match`) y trae también «Invitar a
+ * Lilachat» para quien todavía no entró.
+ *
+ * Los que ya están adentro se descuentan con `candidatosParaSumar`; se esconden
+ * en vez de fallar al tocarlos, que sería hacerle descubrir la regla a los
+ * golpes.
  */
 function ElegirParaSumar({
   visible,
@@ -473,24 +488,12 @@ function ElegirParaSumar({
 }: {
   visible: boolean;
   credential: Credential;
-  yaEstan: string[];
+  yaEstan: readonly string[];
   onCerrar: () => void;
   onElegir: (userId: string) => void;
 }) {
   const colores = useColores();
   const margenes = useMargenes();
-  const [grupos, setGrupos] = useState<ContactGroup[] | null>(null);
-
-  useEffect(() => {
-    if (!visible) return;
-    setGrupos(null);
-    void listContacts(credential.jwt).then((r) => setGrupos(r.ok ? r.data.groups : []));
-  }, [visible, credential.jwt]);
-
-  const dentro = new Set(yaEstan);
-  const candidatos = (grupos ?? [])
-    .flatMap((g) => g.contacts)
-    .filter((c) => !dentro.has(c.id));
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onCerrar}>
@@ -507,49 +510,30 @@ function ElegirParaSumar({
           >
             <ArrowLeft size={22} color={colores['on-surface']} />
           </Pressable>
-          <Text className="flex-1 text-lg font-bold text-on-surface">Sumar al grupo</Text>
-        </View>
-
-        {grupos === null ? (
-          <View className="px-4 pt-4" testID="sumar-cargando">
-            {[0, 1, 2].map((i) => (
-              <View key={i} className="mb-2 h-14 rounded-xl bg-surface-variant" />
-            ))}
-          </View>
-        ) : candidatos.length === 0 ? (
-          <View className="flex-1 items-center justify-center px-8">
-            {/* El vacío EXPLICA: «no hay contactos» a secas haría pensar que la
-                agenda falló, cuando lo normal es que ya estén todos adentro. */}
-            <Text className="text-center text-base leading-6 text-on-surface-variant">
-              {yaEstan.length > 1
-                ? 'Todos tus contactos de Lilachat ya están en este grupo.'
-                : 'Todavía no tenés contactos en Lilachat para sumar.'}
+          <View className="min-w-0 flex-1">
+            <Text className="text-lg font-bold text-on-surface">Sumar al grupo</Text>
+            {/* Se DICE que al que no está se lo puede invitar: sin esta línea,
+                buscar a alguien de la agenda y no encontrarlo se lee como que la
+                app no lo tiene, no como que le falta instalarla. */}
+            <Text className="text-[12px] text-on-surface-variant">
+              De tus contactos. Al que no esté, invitalo y sumalo cuando entre.
             </Text>
           </View>
-        ) : (
-          <ScrollView contentContainerStyle={{ padding: 16 }}>
-            {candidatos.map((contacto) => (
-              <Pressable
-                key={contacto.id}
-                testID={`sumar-${contacto.id}`}
-                onPress={() => onElegir(contacto.id)}
-                className="mb-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-3"
-              >
-                <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Text className="text-sm font-bold text-primary">
-                    {(contacto.name ?? contacto.phone).slice(0, 1).toUpperCase()}
-                  </Text>
-                </View>
-                <View className="min-w-0 flex-1">
-                  <Text className="text-sm font-semibold text-on-surface" numberOfLines={1}>
-                    {contacto.name ?? contacto.phone}
-                  </Text>
-                  <Text className="text-[11px] text-on-surface-variant">{contacto.phone}</Text>
-                </View>
-              </Pressable>
-            ))}
-          </ScrollView>
-        )}
+        </View>
+
+        {/* Montado solo mientras está abierta: así cada vez que se abre lee los
+            contactos de nuevo, y no muestra la lista de antes de sumar. */}
+        {visible ? (
+          <ContactPicker
+            credential={credential}
+            selected={[]}
+            multiple={false}
+            excluidos={yaEstan}
+            vacio="Todos tus contactos de Lilachat ya están en este grupo."
+            invitacion={{ miNombre: credential.name ?? null, enlaceApp: '' }}
+            onToggle={(contacto) => onElegir(contacto.id)}
+          />
+        ) : null}
       </View>
     </Modal>
   );

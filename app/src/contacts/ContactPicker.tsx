@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
 import { Check, Search } from 'lucide-react-native';
-import { groupContactsByLetter, type Contact, type ContactGroup } from '@lilachat/shared';
+import {
+  candidatosParaSumar,
+  groupContactsByLetter,
+  type Contact,
+  type ContactGroup,
+} from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { emparejarAgenda, invitarContacto, listContacts } from './contactsApi';
 import { useAgendaDelTelefono, useAgendaParaInvitar } from './useAgendaParaInvitar';
@@ -43,6 +48,8 @@ export function ContactPicker({
   multiple,
   header,
   invitacion,
+  excluidos,
+  vacio,
 }: {
   credential: Credential;
   selected: string[];
@@ -55,6 +62,15 @@ export function ContactPicker({
    * tocar el lápiz. El cruce se hace EN EL TELÉFONO (`separarAgenda`).
    */
   invitacion?: { miNombre: string | null; enlaceApp: string };
+  /**
+   * Quiénes NO se pueden elegir: los que ya están en el grupo al que se suma.
+   *
+   * Se esconden en vez de mostrarse y fallar al tocarlos: hacerle descubrir la
+   * regla a los golpes es peor que no ofrecer la opción.
+   */
+  excluidos?: readonly string[];
+  /** Qué decir cuando no queda nadie para elegir (y no hay búsqueda). */
+  vacio?: string;
 }) {
   const colores = useColores();
   const [groups, setGroups] = useState<ContactGroup[] | null>(null);
@@ -94,11 +110,22 @@ export function ContactPicker({
 
   const consultaDiferida = useConsultaDiferida(query);
 
+  /**
+   * Los elegibles y el padrón completo salen de la MISMA llamada: la sección
+   * «Invitar a Lilachat» se calcula con TODOS los registrados, incluidos los que
+   * ya están en el grupo — si no, quien ya está adentro reaparecería abajo
+   * ofreciéndole instalar la app que está usando.
+   */
+  const { paraSumar: elegibles, registrados: todos } = useMemo(
+    () => candidatosParaSumar({ registrados: groups ?? [], yaEstan: excluidos ?? [] }),
+    [groups, excluidos]
+  );
+
   const filtrados = useMemo(() => {
     if (!groups) return null;
     const needle = consultaDiferida.trim().toLowerCase();
-    if (!needle) return groups;
-    return groups
+    if (!needle) return elegibles;
+    return elegibles
       .map((group) => ({
         ...group,
         contacts: group.contacts.filter((contact) =>
@@ -106,7 +133,7 @@ export function ContactPicker({
         ),
       }))
       .filter((group) => group.contacts.length > 0);
-  }, [groups, consultaDiferida]);
+  }, [groups, elegibles, consultaDiferida]);
 
   return (
     <View className="flex-1">
@@ -148,7 +175,7 @@ export function ContactPicker({
               ? 'Nadie coincide con lo que buscas.'
               // La invitación está JUSTO abajo desde el 26/08/2026: mandar a
               // otra pantalla era un paso de más y una copia que envejeció.
-              : 'Todavía no hay nadie más en Lilachat. Invitá a alguien desde acá abajo.'}
+              : (vacio ?? 'Todavía no hay nadie más en Lilachat. Invitá a alguien desde acá abajo.')}
           </Text>
         ) : (
           filtrados.map((group) => (
@@ -202,7 +229,7 @@ export function ContactPicker({
         {invitacion ? (
           <SeccionInvitar
             jwt={credential.jwt}
-            registrados={groups?.flatMap((grupo) => grupo.contacts) ?? null}
+            registrados={groups === null ? null : todos}
             miNombre={invitacion.miNombre}
             enlaceApp={invitacion.enlaceApp}
             consulta={query}
@@ -319,9 +346,13 @@ function SeccionInvitar({
   }
 
   /**
-   * La clave de búsqueda se calcula UNA vez, no en cada tecla. Antes esto
-   * recorría ~600 contactos armando un string y bajándolo a minúsculas por
-   * cada render — era lo que hacía sentir trabado el buscador.
+   * Sin nadie a quien invitar, la sección entera NO se dibuja.
+   *
+   * Este `return` estuvo COMENTADO sin querer: el bloque de documentación de
+   * arriba quedó sin cerrar y se tragó la línea, así que la cabecera «Invitar a
+   * Lilachat» se pintaba sobre una lista vacía. Un defecto invisible al leer el
+   * archivo: la línea muerta parecía parte del comentario.
+   */
   if (coinciden.length === 0) return null;
 
   /**

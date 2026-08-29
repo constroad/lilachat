@@ -2274,12 +2274,61 @@ no mostraba:
 Data de QA borrada y verificada en cero; el grupo quedó con los miembros y roles
 que tenía.
 
-### 36.5 Pendiente
+### 36.5 Sacar a alguien del grupo
+
+`DELETE /api/chats/:chatId/members/:userId` — sacar a alguien es borrar una
+membresía, y el verbo lo dice mejor que un `POST /kick`.
+
+**Sacar NO es simétrico con sumar, y esa es la decisión.** Sumar lo puede hacer
+cualquier miembro; sacar, solo un admin. Si un miembro común pudiera echar gente,
+cualquiera podría vaciar el grupo —o echar al admin— y no quedaría a quién
+reclamarle. Dos límites más, por el mismo motivo:
+
+- **Entre admins no se echan.** Si no, el grupo lo decide quien toca primero: dos
+  admins enojados se sacan mutuamente en una carrera. Para que se vaya un admin,
+  se le pide que salga.
+- **A uno mismo no se saca**: eso es salir, y salir tiene reglas propias
+  (promover al más antiguo si era el último admin). Mandarlo por acá las
+  saltearía.
+
+Las reglas están en `puedeSacar` (motor puro) y **las revalida el server**:
+esconder un botón no es un permiso. La membresía va en la CONDICIÓN del update,
+así que si la persona ya salió sola entre la lectura y el update no se contesta
+que se hizo algo que no pasó.
+
+`chat.changed` va a los miembros de ANTES, **incluido el que se sacó**: si se
+notifica solo a los que quedan, al sacado el grupo le sigue apareciendo en la
+lista y sigue parado dentro de un chat donde ya no puede escribir. Es el mismo
+detalle que ya había fallado al salir.
+
+En la UI el botón aparece solo cuando de verdad se puede, y **pregunta antes**
+diciendo a quién y qué le va a pasar: es la única acción de esta pantalla que le
+pasa algo a otra persona. El diálogo es el nativo (`Alert.alert`); en Android el
+estilo `destructive` no pinta el botón de rojo, así que el peso lo carga el
+texto.
+
+#### Verificado (0.1.34 · 35)
+
+| Paso | Resultado |
+| --- | --- |
+| Fila de un miembro, siendo admin | aparece el botón de sacar |
+| Mi propia fila | NO aparece: para irme está «Salir del grupo» |
+| Tocarlo | diálogo con el nombre y qué le va a pasar |
+| Confirmar | «2 participantes» y la membresía borrada en la base |
+| Wilson (miembro común) intenta sacar, por el endpoint real | 400 «Solo un admin puede sacar a alguien del grupo» |
+| Sacarme a mí mismo, por el endpoint real | 400 «Para irte del grupo usá "Salir del grupo"» |
+| Sacar dos veces al mismo | 400 «Esa persona ya no está en el grupo» |
+
+Lo que NO se verificó: **qué ve el sacado**. Hace falta un segundo aparato con
+sesión propia; el aviso se manda (`chat.changed` a los miembros previos) pero
+nadie lo recibió en la prueba.
+
+### 36.6 Pendiente
 
 - **Sumar de a varios**: hoy es uno por vez (la hoja se cierra y la lista se
   recarga). Alcanza para un grupo familiar; para armar uno de diez es tedioso.
-- **Sacar a alguien** y **cambiar de admin** no existen: no hay endpoint. Salir
-  es lo único que mueve la lista de miembros.
+- **Cambiar de admin** no existe: el rol solo se mueve solo, promoviendo al más
+  antiguo cuando se va el último admin.
 - Invitar desde acá crea la admisión y comparte el enlace, pero **no suma**: la
   persona tiene que instalar y entrar, y recién ahí se la puede agregar. La hoja
   lo dice en su subtítulo en vez de dejar que se descubra.

@@ -9,6 +9,20 @@ import { subirPorXhr } from './subidaXhr';
  * foto y mandarla. Dentro del componente engordaban el archivo y no se podían
  * mirar por separado.
  */
+/**
+ * **La foto del grupo se RECORTA antes de mandarse.**
+ *
+ * José, 30/08/2026: «no hay opción de hacer crop de la imagen y centrarla». Se
+ * subía la foto entera y el avatar es un círculo, así que una foto apaisada
+ * quedaba recortada por el medio a criterio de nadie — la cara afuera y el
+ * fondo adentro. `allowsEditing` abre el recortador del sistema, y `aspect`
+ * cuadrado es el que corresponde: el destino ES un círculo.
+ *
+ * La calidad baja a 0.9 solo acá: un avatar de 96 px no necesita el original de
+ * 12 MP, y el recorte ya reencoda igual.
+ */
+const OPCIONES_DE_RECORTE = { quality: 0.9, allowsEditing: true, aspect: [1, 1] as [number, number] };
+
 export type FotoElegida = { uri: string; nombre: string; mime: string };
 
 export type ResultadoDeEleccion =
@@ -36,7 +50,7 @@ export function elegirFotoDeGrupo(): Promise<ResultadoDeEleccion> {
           void (async () => {
             const permiso = await ImagePicker.requestCameraPermissionsAsync();
             if (!permiso.granted) return resolver({ tipo: 'sin-permiso' });
-            const tomada = await ImagePicker.launchCameraAsync({ quality: 1 });
+            const tomada = await ImagePicker.launchCameraAsync(OPCIONES_DE_RECORTE);
             const foto = tomada.assets?.[0];
             resolver(
               tomada.canceled || !foto ? { tipo: 'cancelado' } : { tipo: 'foto', foto: desdeAsset(foto) }
@@ -49,7 +63,7 @@ export function elegirFotoDeGrupo(): Promise<ResultadoDeEleccion> {
         onPress: () => {
           void (async () => {
             const elegida = await ImagePicker.launchImageLibraryAsync({
-              quality: 1,
+              ...OPCIONES_DE_RECORTE,
               mediaTypes: ['images'],
             });
             const foto = elegida.assets?.[0];

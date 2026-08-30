@@ -17,7 +17,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react-native';
-import { formatDayLabel, startsNewDay } from '@lilachat/shared';
+import { duracionDeVoz, formatDayLabel, startsNewDay } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { AttachSheet } from './AttachSheet';
 import { CallScreen } from '../calls/CallScreen';
@@ -30,6 +30,7 @@ import { useSecretChat } from '../crypto/useSecretChat';
 import { DaySeparator, MessageRow, isPending, type Row } from './MessageRow';
 import { formatClock } from '@lilachat/shared';
 import { abrirConOtraApp, compartirFoto, guardarEnGaleria } from './guardarYCompartir';
+import { useGrabadorDeVoz } from './useGrabadorDeVoz';
 import { VisorDeImagen } from './VisorDeImagen';
 import { ChatDetailScreen } from './ChatDetailScreen';
 import { useChat } from './useChat';
@@ -155,6 +156,26 @@ export function ChatScreen({
    * del detalle y viejo al cerrarlo, que se lee como que no se guardó.
    */
   const [infoPropia, setInfoPropia] = useState<{ name?: string; avatarUrl?: string }>({});
+
+  const voz = useGrabadorDeVoz();
+
+  /**
+   * Terminar la grabación y mandarla.
+   *
+   * Pasa por el MISMO `upload` que una foto: la nota de voz es media como
+   * cualquier otra, y duplicar el camino sería duplicar la cola, el progreso y
+   * el manejo de errores.
+   */
+  const mandarVoz = async (cancelar = false) => {
+    const nota = await voz.terminar({ cancelar });
+    if (!nota) return;
+    await upload({
+      uri: nota.uri,
+      fileName: `nota-de-voz.m4a`,
+      mimeType: nota.mime,
+      sizeBytes: nota.bytes,
+    });
+  };
 
   const nombreVisible = infoPropia.name ?? chatName;
   const fotoVisible = infoPropia.avatarUrl ?? chatAvatarUrl;
@@ -577,6 +598,39 @@ export function ChatScreen({
           todos, pero el campo quedaba tan angosto que el placeholder se partía
           en dos líneas. */}
       <View className="flex-row items-end gap-1.5 border-t border-outline/10 bg-surface px-3 pt-3" style={{ paddingBottom: margenes.pie }}>
+        {voz.estado.fase === 'grabando' ? (
+          /**
+           * Mientras se graba, la barra ES la grabación: cancelar, el tiempo
+           * corriendo y mandar. Dejar el campo de texto al lado invita a
+           * escribir mientras se habla, que no es una cosa que se pueda hacer.
+           */
+          <>
+            <Pressable
+              testID="btn-cancelar-voz"
+              accessibilityLabel="Cancelar la nota de voz"
+              onPress={() => void mandarVoz(true)}
+              className="h-11 w-11 items-center justify-center"
+            >
+              <X size={22} color={colores.error} />
+            </Pressable>
+            <View className="min-w-0 flex-1 flex-row items-center gap-2 rounded-xl border border-outline/15 bg-background px-4 py-2.5">
+              <View className="h-2.5 w-2.5 rounded-full bg-error" />
+              <Text testID="tiempo-voz" className="text-base font-semibold text-on-surface">
+                {duracionDeVoz(voz.estado.ms)}
+              </Text>
+              <Text className="text-[12px] text-on-surface-variant">Grabando…</Text>
+            </View>
+            <Pressable
+              testID="btn-enviar-voz"
+              accessibilityLabel="Enviar la nota de voz"
+              onPress={() => void mandarVoz()}
+              className="h-11 w-11 items-center justify-center rounded-full bg-primary"
+            >
+              <Send size={18} color={colores['on-primary']} />
+            </Pressable>
+          </>
+        ) : (
+        <>
         {/* El «+» SIGUE SIENDO un «+» mientras sube.
             Antes se convertía en un spinner, y eso es contar la misma cosa dos
             veces y en el lugar equivocado: el progreso ya se ve en la burbuja
@@ -630,13 +684,29 @@ export function ChatScreen({
             <Send size={18} color={colores["on-primary"]} />
           </Pressable>
         ) : (
-          // Inerte hasta que existan las notas de voz, pero ocupa su lugar: si
-          // apareciera recién con la función, la barra cambiaría de forma.
-          <View testID="btn-voz" className="h-11 w-11 items-center justify-center rounded-full bg-primary/30">
+          <Pressable
+            testID="btn-voz"
+            accessibilityLabel="Grabar una nota de voz"
+            disabled={uploading}
+            onPress={() => void voz.empezar()}
+            className={`h-11 w-11 items-center justify-center rounded-full bg-primary ${uploading ? 'opacity-40' : ''}`}
+          >
             <Mic size={18} color={colores["on-primary"]} />
-          </View>
+          </Pressable>
+        )}
+        </>
         )}
       </View>
+
+      {voz.estado.fase === 'sin-permiso' || voz.estado.fase === 'error' ? (
+        <Pressable onPress={voz.limpiarAviso} className="px-4 pb-2">
+          <Text testID="aviso-voz" className="text-sm text-error">
+            {voz.estado.fase === 'sin-permiso'
+              ? 'Permití el micrófono para mandar notas de voz.'
+              : voz.estado.motivo}
+          </Text>
+        </Pressable>
+      ) : null}
 
       <AttachSheet
         visible={attachOpen}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler, Linking, Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { BackHandler, Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { ArrowLeft, BellRing, Camera, ChevronRight, CloudUpload, Moon, RefreshCw, Sun, SunMoon, User, UserPlus } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { listChats, type ChatSummary } from '../api/client';
@@ -19,6 +19,7 @@ import { BackupScreen } from '../settings/BackupScreen';
 import type { ResultadoDelChequeo } from '../settings/actualizacion';
 import { buscarActualizacion, versionActual, versionCodeActual } from '../settings/versionApi';
 import { decidirAvisoDeActualizacion, type AvisoDeActualizacion } from '../settings/avisoDeActualizacion';
+import { abrirActualizacion } from '../settings/abrirTienda';
 import { BandaDeActualizacion } from '../settings/BandaDeActualizacion';
 import {
   guardarActualizacionDescartada,
@@ -109,12 +110,13 @@ export function TabsShell({
   }, []);
 
   /**
-   * Busca la versión publicada y, si hay una más nueva, abre su descarga.
+   * Busca la versión publicada y, si hay una más nueva, MANDA A LA TIENDA.
    *
-   * La app NO se instala a sí misma: eso lo hace Android con el APK bajado, y
-   * el camino cómodo es el navegador. Quien tenga LilaStore la va a actualizar
-   * desde ahí con verificación de `sha256`; este botón es para quien la instaló
-   * directo y no tiene la tienda.
+   * Abría el navegador con el APK suelto —el «File might be harmful» de Chrome—
+   * mientras la banda de la lista ya mandaba a LilaStore. El mismo pedido
+   * resuelto de dos formas es, para quien lo usa, una app que a veces funciona.
+   * La app no se instala a sí misma: eso exige el permiso que hace que Play
+   * Protect marque a una app de chat como sospechosa.
    */
   const verificar = async () => {
     if (verificando) return;
@@ -123,7 +125,7 @@ export function TabsShell({
     setChequeo(resultado);
     setEnlaceApp(downloadUrl);
     setVerificando(false);
-    if (resultado.estado === 'hay-nueva' && downloadUrl) void Linking.openURL(downloadUrl);
+    if (resultado.estado === 'hay-nueva') void abrirActualizacion(downloadUrl);
   };
   const [newChat, setNewChat] = useState(false);
 

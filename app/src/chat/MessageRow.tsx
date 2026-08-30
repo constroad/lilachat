@@ -1,8 +1,15 @@
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { FileText, Play } from 'lucide-react-native';
+import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import { FileText, Pause, Play } from 'lucide-react-native';
 import { porcentajeDeSubida } from './progresoDeSubida';
-import { TEXTO_ELIMINADO, formatBytes, nombreDeContacto, textoDeAviso } from '@lilachat/shared';
+import {
+  TEXTO_ELIMINADO,
+  duracionDeVoz,
+  formatBytes,
+  nombreDeContacto,
+  textoDeAviso,
+} from '@lilachat/shared';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import {
   DELIVERY_GLYPH,
@@ -32,6 +39,9 @@ export const esArchivo = (mime?: string): boolean => {
   const tipo = mime ?? '';
   return tipo !== '' && !tipo.startsWith('image/') && !tipo.startsWith('video/');
 };
+
+/** Una nota de voz: se escucha acá mismo, no se abre con nada. */
+export const esVoz = (mime?: string): boolean => (mime ?? '').startsWith('audio/');
 
 export const isPending = (row: Row): row is PendingMessage =>
   'pending' in row && row.pending === true;
@@ -119,11 +129,15 @@ export function MessageRow({
           testID={!isPending(item) ? `burbuja-${item.seq}` : undefined}
           className={`overflow-hidden rounded-lg ${tail} ${mine ? 'bg-primary' : 'bg-surface-variant'} ${seleccionado ? 'opacity-60' : ''}`}
         >
+          {!isPending(item) && item.media && esVoz(item.media.mime) ? (
+            <NotaDeVoz url={item.media.url ?? ''} mia={mine} />
+          ) : null}
+
           {/* Un ARCHIVO no es una foto: es una tarjeta con su nombre.
               Un PDF llegaba como un rectángulo blanco de 220×220 —lila le
               genera miniatura de la primera página— sin nombre, sin tamaño y
               sin nada que dijera qué era. Un documento ES su nombre. */}
-          {!isPending(item) && item.media && esArchivo(item.media.mime) ? (
+          {!isPending(item) && item.media && esArchivo(item.media.mime) && !esVoz(item.media.mime) ? (
             <Pressable
               testID={`archivo-${item.seq}`}
               onPress={() => onVerImagen?.(item.media!.url ?? item.media!.thumbUrl ?? '')}
@@ -303,6 +317,64 @@ function AvisoDelGrupo({ item, myUserId }: { item: ChatMessage; myUserId: string
       <Text className="rounded-full bg-surface-variant/60 px-3 py-1 text-center text-[11px] text-on-surface-variant">
         {texto}
       </Text>
+    </View>
+  );
+}
+
+/**
+ * La nota de voz, con su play y su tiempo.
+ *
+ * El reproductor vive en un componente aparte porque `useAudioPlayer` es un
+ * hook: en la fila habría que montarlo para CADA mensaje, incluidos los de
+ * texto, y quedarían decenas de reproductores vivos en una conversación larga.
+ *
+ * **No arranca solo.** Un audio que empieza a sonar al aparecer en pantalla es
+ * lo peor que puede hacer una app de mensajería: suena en la mesa, en la
+ * reunión, o encima de otro audio.
+ */
+function NotaDeVoz({ url, mia }: { url: string; mia: boolean }) {
+  const colores = useColores();
+  const player = useAudioPlayer(url);
+  const estado = useAudioPlayerStatus(player);
+
+  const sonando = estado.playing;
+  // Mientras no se cargó, la duración es 0: se muestra lo que va corriendo o el
+  // total, lo que haya, en vez de un «0:00» fijo que parece un audio vacío.
+  const ms = (sonando || estado.currentTime > 0 ? estado.currentTime : estado.duration) * 1000;
+
+  return (
+    <View testID="nota-de-voz" className="min-w-[190px] flex-row items-center gap-3 px-3 py-2.5">
+      <Pressable
+        testID={sonando ? 'btn-pausar-voz' : 'btn-reproducir-voz'}
+        accessibilityLabel={sonando ? 'Pausar' : 'Reproducir'}
+        onPress={() => {
+          if (sonando) return player.pause();
+          // Terminada: vuelve al principio. Sin esto, el segundo toque no hace
+          // nada y parece que el audio se rompió.
+          if (estado.didJustFinish || estado.currentTime >= estado.duration) player.seekTo(0);
+          player.play();
+        }}
+        className={`h-10 w-10 items-center justify-center rounded-full ${mia ? 'bg-on-primary/20' : 'bg-primary/10'}`}
+      >
+        {sonando ? (
+          <Pause size={18} color={mia ? colores['on-primary'] : colores.primary} />
+        ) : (
+          <Play size={18} color={mia ? colores['on-primary'] : colores.primary} fill={mia ? colores['on-primary'] : colores.primary} />
+        )}
+      </Pressable>
+      <View className="min-w-0 flex-1">
+        <View className={`h-1 rounded-full ${mia ? 'bg-on-primary/25' : 'bg-primary/15'}`}>
+          <View
+            className={`h-1 rounded-full ${mia ? 'bg-on-primary' : 'bg-primary'}`}
+            style={{
+              width: `${estado.duration > 0 ? Math.min(100, (estado.currentTime / estado.duration) * 100) : 0}%`,
+            }}
+          />
+        </View>
+        <Text className={`mt-1 text-[11px] ${mia ? 'text-on-primary/70' : 'text-on-surface-variant'}`}>
+          {duracionDeVoz(ms)}
+        </Text>
+      </View>
     </View>
   );
 }

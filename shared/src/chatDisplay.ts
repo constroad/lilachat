@@ -138,7 +138,13 @@ export function resolveChatPreview(params: {
   if (params.lastBody) return { text: params.lastBody, style: 'normal' };
   if (params.lastKind && params.lastKind !== 'text') {
     const label =
-      params.lastKind === 'image' ? '📷 Foto' : params.lastKind === 'video' ? '🎬 Video' : '📎 Archivo';
+      params.lastKind === 'image'
+        ? '📷 Foto'
+        : params.lastKind === 'video'
+          ? '🎬 Video'
+          : params.lastKind === 'audio'
+            ? '🎤 Nota de voz'
+            : '📎 Archivo';
     return { text: label, style: 'normal' };
   }
   return { text: 'Sin mensajes todavía', style: 'normal' };

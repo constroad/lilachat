@@ -1,6 +1,7 @@
-import { Linking, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { ArrowDownToLine, X } from 'lucide-react-native';
 import type { AvisoDeActualizacion } from './avisoDeActualizacion';
+import { abrirActualizacion } from './abrirTienda';
 import { useColores } from '../ui/tema';
 
 /**
@@ -20,8 +21,6 @@ import { useColores } from '../ui/tema';
  * acá se avisa y se DERIVA a LilaStore, que además verifica el `sha256` antes de
  * entregarle nada al instalador de Android.
  */
-const LILASTORE = 'lilastore://';
-
 export function BandaDeActualizacion({
   aviso,
   downloadUrl,
@@ -36,20 +35,6 @@ export function BandaDeActualizacion({
   if (aviso.tipo === 'ninguno') return null;
 
   const obligatoria = aviso.tipo === 'obligatoria';
-
-  /**
-   * Primero la tienda, que verifica el archivo; si no está instalada, el
-   * navegador. **No se pregunta con `canOpenURL`**: en Android 11+ eso exige
-   * declarar la app en `<queries>` del manifiesto, y contesta `false` sin
-   * decirlo — se leería como «no tenés la tienda» a quien sí la tiene.
-   */
-  const abrir = async () => {
-    try {
-      await Linking.openURL(LILASTORE);
-    } catch {
-      if (downloadUrl) void Linking.openURL(downloadUrl);
-    }
-  };
 
   return (
     <View
@@ -71,7 +56,7 @@ export function BandaDeActualizacion({
       </View>
       <Pressable
         testID="btn-actualizar-ahora"
-        onPress={() => void abrir()}
+        onPress={() => void abrirActualizacion(downloadUrl)}
         className="min-h-[44px] items-center justify-center rounded-full bg-primary px-4"
       >
         <Text className="text-[13px] font-bold text-on-primary">Actualizar</Text>

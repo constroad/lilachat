@@ -46,7 +46,7 @@ export interface Message {
   seq: number;
   senderId: Types.ObjectId;
   clientKey: string;
-  kind: 'text' | 'image' | 'video' | 'file' | 'event' | 'system';
+  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'event' | 'system';
   body?: string;
   /**
    * El sobre cifrado, en los chats secretos. Cuando está, `body` NO está: son
@@ -148,7 +148,7 @@ const messageSchema = new Schema<Message>(
     clientKey: { type: String, required: true },
     kind: {
       type: String,
-      enum: ['text', 'image', 'video', 'file', 'event', 'system'],
+      enum: ['text', 'image', 'video', 'audio', 'file', 'event', 'system'],
       default: 'text',
     },
     body: { type: String },

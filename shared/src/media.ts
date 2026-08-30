@@ -6,7 +6,7 @@
  * que avanza y muere al final — el peor momento para enterarse.
  */
 
-export type MediaKind = 'image' | 'video' | 'file';
+export type MediaKind = 'image' | 'video' | 'audio' | 'file';
 
 /**
  * Techos por tipo. El de imagen es alto A PROPÓSITO: la queja más repetida
@@ -17,6 +17,10 @@ export type MediaKind = 'image' | 'video' | 'file';
 export const MAX_BYTES_BY_KIND: Record<MediaKind, number> = {
   image: 25 * 1024 * 1024,
   video: 90 * 1024 * 1024,
+  // Una nota de voz es chica —minutos de m4a entran en pocos MB— y el techo
+  // bajo es una defensa: una grabación que se quedó corriendo en un bolsillo
+  // no puede convertirse en una subida de 90 MB.
+  audio: 25 * 1024 * 1024,
   file: 90 * 1024 * 1024,
 };
 
@@ -24,6 +28,7 @@ export function resolveMediaKind(mimeType: string): MediaKind {
   const mime = String(mimeType ?? '').toLowerCase();
   if (mime.startsWith('image/')) return 'image';
   if (mime.startsWith('video/')) return 'video';
+  if (mime.startsWith('audio/')) return 'audio';
   return 'file';
 }
 

@@ -24,6 +24,7 @@ export * from './infoDeGrupo.js';
 export * from './avisoDeGrupo.js';
 export * from './filtrosDeChats.js';
 export * from './conciliarMensajes.js';
+export * from './notaDeVoz.js';
 export * from './agendaLocal.js';
 export * from './invitacion.js';
 export * from './emparejarAgenda.js';

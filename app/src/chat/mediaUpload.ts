@@ -29,6 +29,8 @@ export async function uploadMedia(params: {
   mimeType: string;
   sizeBytes: number;
   caption?: string;
+  /** La duración real de una nota de voz, en ms: lo que se muestra en reposo. */
+  durationMs?: number;
   /** 0→1 mientras suben los bytes. Un video sin progreso parece colgado. */
   onProgress?: (ratio: number) => void;
 }): Promise<UploadResult> {
@@ -41,6 +43,7 @@ export async function uploadMedia(params: {
   form.append('chatId', params.chatId);
   form.append('clientKey', params.clientKey);
   if (params.caption) form.append('caption', params.caption);
+  if (params.durationMs) form.append('durationMs', String(params.durationMs));
   // El archivo se adjunta por URI: el módulo nativo lo lee del disco al armar
   // el multipart, sin pasar por memoria JS.
   form.append('file', {

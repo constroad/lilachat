@@ -215,6 +215,11 @@ export function useChat(params: {
    */
   const [othersRead, setOthersRead] = useState(0);
   const [othersDelivered, setOthersDelivered] = useState(0);
+  /** Quiénes del OTRO lado están en línea (ids). */
+  const [enLinea, setEnLinea] = useState<Set<string>>(new Set());
+  /** Quiénes están escribiendo AHORA en este chat (ids), con auto-apagado. */
+  const [escribiendo, setEscribiendo] = useState<Set<string>>(new Set());
+  const timersTyping = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   /**
    * El texto de lo que YO acabo de mandar en un chat cifrado, solo para
@@ -335,6 +340,55 @@ export function useChat(params: {
     };
     socket.on('msg.deleted', onDeleted);
 
+    const onSnapshot = (frame: { online: string[] }) =>
+      alive && setEnLinea(new Set(frame.online));
+    const onPresence = (frame: { userId: string; online: boolean }) => {
+      if (!alive) return;
+      setEnLinea((prev) => {
+        const next = new Set(prev);
+        if (frame.online) next.add(frame.userId);
+        else next.delete(frame.userId);
+        return next;
+      });
+    };
+    /**
+     * «Escribiendo» se APAGA solo. El otro manda `on:true` mientras teclea y
+     * `on:false` al parar, pero si su app se cierra el `false` no llega nunca —
+     * y quedaría «escribiendo…» para siempre. El timer de 6 s es la red de
+     * seguridad; cada tecla lo reinicia.
+     */
+    const onTyping = (frame: { chatId: string; userId: string; on: boolean }) => {
+      if (!alive || frame.chatId !== params.chatId) return;
+      if (frame.userId === params.miUserId) return;
+      const timers = timersTyping.current;
+      const anterior = timers.get(frame.userId);
+      if (anterior) clearTimeout(anterior);
+      if (frame.on) {
+        setEscribiendo((prev) => new Set(prev).add(frame.userId));
+        timers.set(
+          frame.userId,
+          setTimeout(() => {
+            setEscribiendo((prev) => {
+              const next = new Set(prev);
+              next.delete(frame.userId);
+              return next;
+            });
+            timers.delete(frame.userId);
+          }, 6000)
+        );
+      } else {
+        setEscribiendo((prev) => {
+          const next = new Set(prev);
+          next.delete(frame.userId);
+          return next;
+        });
+        timers.delete(frame.userId);
+      }
+    };
+    socket.on('presence.snapshot', onSnapshot);
+    socket.on('presence', onPresence);
+    socket.on('typing', onTyping);
+
     socket.on('receipt', onReceipt);
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
@@ -349,6 +403,11 @@ export function useChat(params: {
       socket.off('msg.new', onNew);
       socket.off('receipt', onReceipt);
       socket.off('msg.deleted', onDeleted);
+      socket.off('presence.snapshot', onSnapshot);
+      socket.off('presence', onPresence);
+      socket.off('typing', onTyping);
+      for (const t of timersTyping.current.values()) clearTimeout(t);
+      timersTyping.current.clear();
     };
   }, [params.chatId, params.token]);
 
@@ -389,6 +448,7 @@ export function useChat(params: {
       mimeType: string;
       sizeBytes: number;
       caption?: string;
+      durationMs?: number;
       onProgress?: (ratio: number) => void;
     }): Promise<UploadResult> =>
       uploadMedia({
@@ -406,6 +466,27 @@ export function useChat(params: {
     },
     [params.chatId]
   );
+
+  /**
+   * Avisar que estoy escribiendo. Se llama en cada tecla; manda `on:true` una
+   * sola vez y programa el `on:false` para 3 s después de la ÚLTIMA tecla — sin
+   * eso, o no se apaga nunca, o se manda un evento por letra.
+   */
+  const typingOn = useRef(false);
+  const typingOffTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const avisarEscribiendo = useCallback(() => {
+    const socket = getSocket();
+    if (!socket) return;
+    if (!typingOn.current) {
+      typingOn.current = true;
+      socket.emit('typing', { chatId: params.chatId, on: true });
+    }
+    if (typingOffTimer.current) clearTimeout(typingOffTimer.current);
+    typingOffTimer.current = setTimeout(() => {
+      typingOn.current = false;
+      getSocket()?.emit('typing', { chatId: params.chatId, on: false });
+    }, 3000);
+  }, [params.chatId]);
 
   // `visibles`, no `messages`: la pantalla recibe lo ya descifrado.
   /**
@@ -433,6 +514,9 @@ export function useChat(params: {
     connected,
     othersRead,
     othersDelivered,
+    enLinea,
+    escribiendo,
+    avisarEscribiendo,
     send,
     sendMedia,
     markRead,

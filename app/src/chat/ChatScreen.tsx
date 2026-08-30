@@ -85,6 +85,9 @@ export function ChatScreen({
     connected,
     othersRead,
     othersDelivered,
+    enLinea,
+    escribiendo,
+    avisarEscribiendo,
     send,
     sendMedia,
     markRead,
@@ -176,10 +179,31 @@ export function ChatScreen({
       fileName: `nota-de-voz.m4a`,
       mimeType: nota.mime,
       sizeBytes: nota.bytes,
+      durationMs: nota.ms,
     });
   };
 
   const nombreVisible = infoPropia.name ?? chatName;
+
+  /**
+   * El subtítulo del header: «escribiendo…» / «en línea» como WhatsApp.
+   *
+   * En un 1:1 se sabe quién es el otro (`otherUserId`). En un grupo puede
+   * escribir cualquiera y acá no está la lista de miembros con sus nombres, así
+   * que se dice que ALGUIEN escribe —nombrarlo pediría un fetch de miembros que
+   * no vale la pena para un cartel—. «En línea» no se muestra en grupo: con
+   * varios conectados sería ruido permanente.
+   */
+  const esGrupoChat = otherUserId === null || otherUserId === undefined;
+  const otroEscribe = otherUserId ? escribiendo.has(otherUserId) : escribiendo.size > 0;
+  const otroEnLinea = otherUserId ? enLinea.has(otherUserId) : false;
+  const subtitulo = otroEscribe
+    ? esGrupoChat
+      ? 'alguien está escribiendo…'
+      : 'escribiendo…'
+    : otroEnLinea
+      ? 'en línea'
+      : '';
   const fotoVisible = infoPropia.avatarUrl ?? chatAvatarUrl;
 
   /**
@@ -213,6 +237,7 @@ export function ChatScreen({
     fileName: string;
     mimeType: string;
     sizeBytes: number;
+    durationMs?: number;
   }) => {
     setUploading(true);
     setProgress(0);
@@ -428,6 +453,14 @@ export function ChatScreen({
           {!connected ? (
             <Text className="text-xs text-on-surface-variant" testID="estado-conexion">
               Sin conexión · se enviará cuando vuelva
+            </Text>
+          ) : subtitulo ? (
+            <Text
+              testID="estado-presencia"
+              className={`text-xs ${otroEscribe ? 'text-primary' : 'text-on-surface-variant'}`}
+              numberOfLines={1}
+            >
+              {subtitulo}
             </Text>
           ) : null}
         </View>
@@ -657,7 +690,12 @@ export function ChatScreen({
             placeholderTextColor={colores.outline}
             multiline
             value={draft}
-            onChangeText={setDraft}
+            onChangeText={(texto) => {
+              setDraft(texto);
+              // Avisar «escribiendo» solo cuando de verdad se agrega texto, no al
+              // borrar hasta vaciar: un campo que se vacía no es «escribiendo».
+              if (texto.length > 0) avisarEscribiendo();
+            }}
           />
           <Pressable testID="btn-emoji" className="h-11 w-9 items-center justify-center">
             <Smile size={20} color={colores.outline} />

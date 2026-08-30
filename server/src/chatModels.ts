@@ -70,6 +70,8 @@ export interface Message {
      */
     fileName?: string;
     sizeBytes?: number;
+    /** Duración de una nota de voz en ms. */
+    durationMs?: number;
   };
   /**
    * El aviso de un cambio del grupo, en `kind: 'system'`.
@@ -178,6 +180,7 @@ const messageSchema = new Schema<Message>(
       mime: String,
           fileName: String,
       sizeBytes: Number,
+      durationMs: Number,
     },
     replyToSeq: { type: Number },
     editedAt: { type: Date },

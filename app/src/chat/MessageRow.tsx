@@ -131,7 +131,7 @@ export function MessageRow({
           className={`overflow-hidden rounded-lg ${tail} ${mine ? 'bg-primary' : 'bg-surface-variant'} ${seleccionado ? 'opacity-60' : ''}`}
         >
           {!isPending(item) && item.media && esVoz(item.media.mime) ? (
-            <NotaDeVoz url={item.media.url ?? ''} mia={mine} />
+            <NotaDeVoz url={item.media.url ?? ''} mia={mine} durationMs={item.media.durationMs} />
           ) : null}
 
           {/* Un ARCHIVO no es una foto: es una tarjeta con su nombre.
@@ -347,15 +347,17 @@ function AvisoDelGrupo({ item, myUserId }: { item: ChatMessage; myUserId: string
  * lo peor que puede hacer una app de mensajería: suena en la mesa, en la
  * reunión, o encima de otro audio.
  */
-function NotaDeVoz({ url, mia }: { url: string; mia: boolean }) {
+function NotaDeVoz({ url, mia, durationMs }: { url: string; mia: boolean; durationMs?: number }) {
   const colores = useColores();
   const player = useAudioPlayer(url);
   const estado = useAudioPlayerStatus(player);
 
   const sonando = estado.playing;
-  // Mientras no se cargó, la duración es 0: se muestra lo que va corriendo o el
-  // total, lo que haya, en vez de un «0:00» fijo que parece un audio vacío.
-  const ms = (sonando || estado.currentTime > 0 ? estado.currentTime : estado.duration) * 1000;
+  // En reposo se muestra la duración REAL que se grabó (guardada al subir): el
+  // `m4a` remoto reporta mal su duración hasta cargar entero, y ahí salía «0:25»
+  // para una nota de 4 segundos. Al reproducir se muestra lo que va corriendo.
+  const enReposo = durationMs ?? estado.duration * 1000;
+  const ms = sonando || estado.currentTime > 0 ? estado.currentTime * 1000 : enReposo;
 
   return (
     <View testID="nota-de-voz" className="min-w-[190px] flex-row items-center gap-3 px-3 py-2.5">

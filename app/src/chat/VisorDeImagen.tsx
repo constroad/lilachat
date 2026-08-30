@@ -1,7 +1,7 @@
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { Download, FileText, Share2, Trash2, X } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Download, FileText, Share2, Trash2, X } from 'lucide-react-native';
 import { useMargenes } from '../ui/useMargenes';
 import { nombreLimpio } from './archivoDescargado';
 
@@ -116,6 +116,16 @@ export function VisorDeImagen({
 }) {
   const margenes = useMargenes();
 
+  /**
+   * Vecinos para las flechas. `otras` viene de más nuevo a más viejo (así se
+   * arma la tira), así que «anterior» en el tiempo es el índice de ADELANTE y
+   * «siguiente» el de atrás. Se navega por `seq`, no por posición.
+   */
+  const lista = otras ?? (foto ? [foto] : []);
+  const idx = foto ? lista.findIndex((f) => f.seq === foto.seq) : -1;
+  const masNuevo = idx > 0 ? lista[idx - 1] : null;
+  const masViejo = idx >= 0 && idx < lista.length - 1 ? lista[idx + 1] : null;
+
   return (
     <Modal
       visible={Boolean(foto)}
@@ -187,6 +197,32 @@ export function VisorDeImagen({
             </Pressable>
           ) : null}
         </View>
+
+        {/* Flechas de navegación: aparecen sobre la imagen cuando hay más de
+            una media. Un archivo/documento no navega —cada uno se abre solo—;
+            en foto y video sí. */}
+        {foto && !esArchivoSuelto(foto.mime) && masViejo ? (
+          <Pressable
+            testID="visor-anterior"
+            accessibilityLabel="Anterior"
+            onPress={() => onCambiar?.(masViejo)}
+            className="absolute left-2 top-1/2 z-10 h-11 w-11 items-center justify-center rounded-full bg-black/45"
+            style={{ marginTop: -22 }}
+          >
+            <ChevronLeft size={26} color="#ffffff" />
+          </Pressable>
+        ) : null}
+        {foto && !esArchivoSuelto(foto.mime) && masNuevo ? (
+          <Pressable
+            testID="visor-siguiente"
+            accessibilityLabel="Siguiente"
+            onPress={() => onCambiar?.(masNuevo)}
+            className="absolute right-2 top-1/2 z-10 h-11 w-11 items-center justify-center rounded-full bg-black/45"
+            style={{ marginTop: -22 }}
+          >
+            <ChevronRight size={26} color="#ffffff" />
+          </Pressable>
+        ) : null}
 
         {foto && esArchivoSuelto(foto.mime) ? (
           /**

@@ -29,6 +29,8 @@ export type ServerMessage = {
     /** El nombre original y el tamaño: un documento ES su nombre. */
     fileName?: string;
     sizeBytes?: number;
+    /** Duración de una nota de voz en ms. */
+    durationMs?: number;
   };
   /**
    * El aviso de un cambio del grupo (`kind: 'system'`). Trae el EVENTO y con

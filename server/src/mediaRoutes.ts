@@ -69,6 +69,9 @@ export function buildMediaRouter(uploader: MediaUploader = buildLilaUploader()):
           // El nombre que la persona ve en su teléfono, no el del storage.
           fileName: file.originalname,
           sizeBytes: file.size,
+          // La duración real de una nota de voz. El `m4a` remoto reporta mal su
+          // duración hasta que carga entero, así que en reposo se muestra ESTA.
+          durationMs: Number(req.body?.durationMs) || undefined,
           // RELATIVAS a propósito: se resuelven al servir (`messageView`).
           thumbUrl: uploaded.media.thumbnailUrl,
           url: uploaded.media.url,

@@ -1,16 +1,12 @@
 import { resolveMediaKind, validateMedia } from '@lilachat/shared';
+import { subirPorXhr } from './subidaXhr';
 
 /**
  * Subida de un archivo desde el teléfono. Va por HTTP y no por el socket: son
  * megabytes, y el socket es para frames chicos y de baja latencia.
  *
- * **Se usa XMLHttpRequest, no `fetch`.** Expo SDK 57 reemplazó el `fetch`
- * global por su implementación «winter», cuyo FormData solo acepta strings o
- * Blobs: el `{uri, name, type}` clásico de React Native muere con
- * «Unsupported FormDataPart implementation» (lo encontró el E2E de F3). La
- * alternativa —leer el archivo a un Blob— cargaría 90 MB de video en memoria
- * JS, que además es lo que corrompe archivos grandes en Expo. XHR sigue
- * subiendo desde DISCO de forma nativa, y de paso da progreso.
+ * **Sube por XHR y no por `fetch`**: el porqué está en `subidaXhr.ts`, que es
+ * la plomería compartida con la foto del grupo.
  *
  * No pasa por el outbox de texto a propósito: el outbox persiste el CONTENIDO
  * de lo encolado, y guardar copias de videos en AsyncStorage llenaría el
@@ -53,55 +49,33 @@ export async function uploadMedia(params: {
     type: params.mimeType,
   } as unknown as Blob);
 
-  return new Promise<UploadResult>((resolve) => {
-    const request = new XMLHttpRequest();
-    request.open('POST', `${BASE_URL}/api/media`);
-    request.timeout = UPLOAD_TIMEOUT_MS;
-    request.setRequestHeader('Authorization', `Bearer ${params.token}`);
-    // El Content-Type NO se pone a mano: lleva el boundary que genera el nativo.
-
-    request.upload.onprogress = (event) => {
-      if (params.onProgress && event.total > 0) {
-        params.onProgress(event.loaded / event.total);
-      }
-    };
-
-    request.onload = () => {
-      const payload = parseJson(request.responseText);
-      if (request.status < 200 || request.status >= 300) {
-        // 503 = storage caído (se reintenta); 413/403/502 = este archivo no va.
-        resolve({
-          ok: false,
-          reason: typeof payload.message === 'string' ? payload.message : 'No se pudo enviar.',
-          retryable: request.status === 503,
-        });
-        return;
-      }
-      const message = payload.message as { seq: number } | undefined;
-      resolve({
-        ok: true,
-        seq: message?.seq ?? 0,
-        url: String(payload.url ?? ''),
-        thumbnailUrl: typeof payload.thumbnailUrl === 'string' ? payload.thumbnailUrl : undefined,
-      });
-    };
-
-    const fail = (motivo: string) => () =>
-      resolve({ ok: false, reason: motivo, retryable: true });
-    request.onerror = fail('Sin conexión. Inténtalo de nuevo.');
-    request.ontimeout = fail('La subida tardó demasiado. Inténtalo de nuevo.');
-    request.onabort = fail('Subida cancelada.');
-
-    request.send(form);
+  const respuesta = await subirPorXhr({
+    url: `${BASE_URL}/api/media`,
+    token: params.token,
+    form,
+    timeoutMs: UPLOAD_TIMEOUT_MS,
+    onProgress: params.onProgress,
   });
-}
-
-function parseJson(text: string): Record<string, unknown> {
-  try {
-    return JSON.parse(text) as Record<string, unknown>;
-  } catch {
-    return {};
+  if (respuesta.tipo === 'fallo') {
+    return { ok: false, reason: respuesta.motivo, retryable: respuesta.reintentable };
   }
+
+  const payload = respuesta.payload;
+  if (respuesta.status < 200 || respuesta.status >= 300) {
+    // 503 = storage caído (se reintenta); 413/403/502 = este archivo no va.
+    return {
+      ok: false,
+      reason: typeof payload.message === 'string' ? payload.message : 'No se pudo enviar.',
+      retryable: respuesta.status === 503,
+    };
+  }
+  const message = payload.message as { seq: number } | undefined;
+  return {
+    ok: true,
+    seq: message?.seq ?? 0,
+    url: String(payload.url ?? ''),
+    thumbnailUrl: typeof payload.thumbnailUrl === 'string' ? payload.thumbnailUrl : undefined,
+  };
 }
 
 export { resolveMediaKind };

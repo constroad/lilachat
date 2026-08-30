@@ -1,5 +1,6 @@
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { subirPorXhr } from './subidaXhr';
 
 /**
  * Elegir y subir la foto del grupo.
@@ -70,9 +71,10 @@ export function elegirFotoDeGrupo(): Promise<ResultadoDeEleccion> {
 /**
  * Mandarla.
  *
- * Va por `FormData` y NO por el helper de mensajes: ese sube y publica un
- * mensaje en el mismo request, que es justo lo que acá no queremos — la foto
- * del grupo no es algo que se manda al chat.
+ * Va por `XMLHttpRequest` (`subirPorXhr`) y NO por `fetch`: el `fetch` de Expo
+ * 57 no acepta el archivo por URI. Y no reusa el helper de mensajes porque ese
+ * sube y PUBLICA un mensaje en el mismo request, que es justo lo que acá no
+ * queremos — la foto del grupo no es algo que se manda al chat.
  */
 export async function subirFotoDeGrupo(params: {
   baseUrl: string;
@@ -81,32 +83,26 @@ export async function subirFotoDeGrupo(params: {
   foto: FotoElegida;
 }): Promise<{ ok: true; avatarUrl?: string } | { ok: false; motivo: string }> {
   const cuerpo = new FormData();
-  // El `as unknown as Blob` es el contrato de FormData en RN: se le pasa el
-  // descriptor del archivo, no un Blob. Sin esto no sube nada.
+  // El archivo se adjunta por URI: el módulo nativo lo lee del disco al armar
+  // el multipart, sin pasar por memoria JS.
   cuerpo.append('file', {
     uri: params.foto.uri,
     name: params.foto.nombre,
     type: params.foto.mime,
   } as unknown as Blob);
 
-  try {
-    const respuesta = await fetch(`${params.baseUrl}/api/chats/${params.chatId}/avatar`, {
-      method: 'POST',
-      // Sin `Content-Type`: lo pone el runtime CON el boundary. Ponerlo a mano
-      // rompe el multipart y el server no encuentra el archivo.
-      headers: { Authorization: `Bearer ${params.jwt}` },
-      body: cuerpo,
-      signal: AbortSignal.timeout(120_000),
-    });
-    const datos = (await respuesta.json().catch(() => null)) as {
-      avatarUrl?: string;
-      message?: string;
-    } | null;
-    if (!respuesta.ok) {
-      return { ok: false, motivo: datos?.message ?? 'No se pudo cambiar la foto.' };
-    }
-    return { ok: true, avatarUrl: datos?.avatarUrl };
-  } catch {
-    return { ok: false, motivo: 'Sin conexión. Probá de nuevo.' };
+  const respuesta = await subirPorXhr({
+    url: `${params.baseUrl}/api/chats/${params.chatId}/avatar`,
+    token: params.jwt,
+    form: cuerpo,
+    timeoutMs: 120_000,
+  });
+  if (respuesta.tipo === 'fallo') return { ok: false, motivo: respuesta.motivo };
+
+  if (respuesta.status < 200 || respuesta.status >= 300) {
+    const motivo = respuesta.payload.message;
+    return { ok: false, motivo: typeof motivo === 'string' ? motivo : 'No se pudo cambiar la foto.' };
   }
+  const url = respuesta.payload.avatarUrl;
+  return { ok: true, avatarUrl: typeof url === 'string' ? url : undefined };
 }

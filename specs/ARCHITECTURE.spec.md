@@ -2372,7 +2372,61 @@ admin **ya no se lo podés quitar**, y al renunciar te tiene que nombrar otro.
 El grupo quedó como estaba: José admin, Wilson member. Toda la ida y vuelta de
 roles se hizo por la API real, sin tocar la base a mano.
 
-### 36.7 Pendiente
+### 36.7 El nombre y la foto del grupo
+
+`PATCH /api/chats/:chatId` con `{name}`, y `POST /api/chats/:chatId/avatar`
+(multipart) para la foto.
+
+**Lo puede cualquier miembro**, igual que sumar gente. Lo que pide admin es lo
+que le SACA algo a otro; corregir un nombre no le saca nada a nadie. Un 1:1 no se
+toca: ahí no hay nombre ni foto propios —son los de la otra persona— y dejarlos
+editar sería dejarte renombrar a alguien en su propio chat.
+
+La foto **se sube y se guarda en UN request**, igual que la media de los
+mensajes: subir primero y guardar después dejaría archivos huérfanos si algo se
+cae en el medio. `avatarUrl` se guarda RELATIVA y se sirve absoluta —persistir el
+host dejaría rotas todas las fotos viejas en el próximo cambio de hosting, ya
+pasó en Portal—. El campo `avatarMediaId` estaba declarado en el schema desde el
+principio **y sin usar**; ahora guarda el nombre en el storage.
+
+El nombre se limpia antes de guardarse: los saltos de línea y los espacios
+repetidos se COLAPSAN en vez de rechazarse. Un `\n` pegado desde otro lado rompe
+la fila de la lista, y arreglarlo en silencio es mejor que devolver un error por
+algo que la persona ni ve. El tope de 25 dejó de estar escrito dos veces: sale de
+`shared`.
+
+#### La lección que estaba escrita y pisé igual
+
+La primera versión de la subida usaba `fetch`, y en el emulador falló con **«Sin
+conexión»** teniendo conexión: el `fetch` de Expo SDK 57 («winter») solo acepta
+strings o Blobs en un `FormData`, y el `{uri, name, type}` clásico de React
+Native muere ahí. La lección estaba escrita en `mediaUpload.ts` desde el E2E de
+F3 — y aun así el código nuevo la repitió.
+
+El arreglo no fue copiar el XHR: se extrajo `subidaXhr.ts`, que ahora usan las
+dos subidas. Una lección escrita en un comentario se vuelve a pisar; una que vive
+en la única función que sabe subir, no.
+
+Que el fallo dijera «sin conexión» es lo que lo hizo caro de leer. **El server se
+probó primero** (§4c del loop): un `curl` al mismo endpoint devolvió 200, y eso
+señaló al cliente en un paso.
+
+#### Verificado (0.1.36 · 37)
+
+| Paso | Resultado |
+| --- | --- |
+| Cabecera del detalle | cámara sobre el avatar y lápiz junto al nombre |
+| Escribir «Los originales  2026» con DOS espacios | se guardó `"Los originales 2026"`, con uno |
+| Elegir foto de la galería | queda de avatar, y en la base `avatarUrl` + `avatarMediaId` |
+| Volver a la conversación | la cabecera muestra la foto y el nombre nuevos sin recargar |
+| Lista de chats | la fila del grupo con su foto |
+| Nombre vacío / 26 caracteres | 400 con el motivo de cada uno |
+| Renombrar un 1:1 | 400 «Una conversación de a dos no tiene nombre propio» |
+| Un PDF como foto | 400 «La foto del grupo tiene que ser una imagen» |
+
+El grupo quedó como estaba: «Los originales», sin foto.
+
+### 36.8 Pendiente
 
 - **Sumar de a varios**: hoy es uno por vez (la hoja se cierra y la lista se
   recarga). Alcanza para un grupo familiar; para armar uno de diez es tedioso.
@@ -2382,3 +2436,9 @@ roles se hizo por la API real, sin tocar la base a mano.
 - Invitar desde acá crea la admisión y comparte el enlace, pero **no suma**: la
   persona tiene que instalar y entrar, y recién ahí se la puede agregar. La hoja
   lo dice en su subtítulo en vez de dejar que se descubra.
+- **La foto se puede cambiar pero no QUITAR**: no hay endpoint para volver a la
+  inicial. Un grupo con una foto desafortunada solo puede taparla con otra.
+- **Nada avisa de los cambios dentro del chat.** WhatsApp escribe «Fulano cambió
+  el nombre del grupo»; acá el grupo se llama distinto de un día para el otro y
+  nadie sabe quién lo cambió. El schema ya tiene `kind: 'system'` declarado y sin
+  usar — el mismo tipo de campo que era `avatarMediaId` hasta ahora.

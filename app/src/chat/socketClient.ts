@@ -26,6 +26,9 @@ export type ServerMessage = {
     /** El archivo COMPLETO: es lo que abre el visor y lo que se guarda. */
     url?: string;
     mime?: string;
+    /** El nombre original y el tamaño: un documento ES su nombre. */
+    fileName?: string;
+    sizeBytes?: number;
   };
   /**
    * El aviso de un cambio del grupo (`kind: 'system'`). Trae el EVENTO y con

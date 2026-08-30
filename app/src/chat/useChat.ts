@@ -6,6 +6,7 @@ import * as Crypto from 'expo-crypto';
 import {
   advanceCursors,
   buildOutboxItem,
+  conciliarPagina,
   mergeBySeq,
   type Cursors,
   type Envelope,
@@ -41,6 +42,10 @@ export type PendingMessage = {
    * como una burbuja rota.
    */
   mediaUri?: string;
+  /** Qué es: con esto se decide si se previsualiza o va como tarjeta. */
+  mediaMime?: string;
+  /** El nombre, para la tarjeta de archivo mientras sube. */
+  mediaNombre?: string;
   /** 0→1 de esa subida, para pintar el velo de progreso encima. */
   progreso?: number;
 };
@@ -147,7 +152,11 @@ export function useChat(params: {
         hayMasRef.current = false;
         setHayAnteriores(false);
       }
-      if (pagina.length > 0) setMessages((current) => mergeBySeq(current, pagina));
+      // `conciliarPagina` y no `mergeBySeq`: dentro del rango que el server
+      // acaba de describir, MANDA el server. Con el merge, un mensaje borrado
+      // en la base seguía dibujándose para siempre en cada teléfono que ya lo
+      // tenía guardado (pasó con unas líneas de prueba en el grupo de José).
+      if (pagina.length > 0) setMessages((current) => conciliarPagina(current, pagina));
     }
 
     cargandoRef.current = false;

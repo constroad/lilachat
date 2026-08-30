@@ -1,8 +1,8 @@
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Play } from 'lucide-react-native';
+import { FileText, Play } from 'lucide-react-native';
 import { porcentajeDeSubida } from './progresoDeSubida';
-import { TEXTO_ELIMINADO, nombreDeContacto, textoDeAviso } from '@lilachat/shared';
+import { TEXTO_ELIMINADO, formatBytes, nombreDeContacto, textoDeAviso } from '@lilachat/shared';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import {
   DELIVERY_GLYPH,
@@ -23,6 +23,15 @@ import { useColores } from '../ui/tema';
  * emisor (solo el último del bloque lleva la cola).
  */
 export type Row = ChatMessage | PendingMessage;
+
+/**
+ * ¿Es un archivo y no algo que se vea? Foto y video se muestran; un PDF, un
+ * Excel o un zip se abren con otra app y en el chat van como tarjeta.
+ */
+export const esArchivo = (mime?: string): boolean => {
+  const tipo = mime ?? '';
+  return tipo !== '' && !tipo.startsWith('image/') && !tipo.startsWith('video/');
+};
 
 export const isPending = (row: Row): row is PendingMessage =>
   'pending' in row && row.pending === true;
@@ -110,7 +119,38 @@ export function MessageRow({
           testID={!isPending(item) ? `burbuja-${item.seq}` : undefined}
           className={`overflow-hidden rounded-lg ${tail} ${mine ? 'bg-primary' : 'bg-surface-variant'} ${seleccionado ? 'opacity-60' : ''}`}
         >
-          {!isPending(item) && item.media?.thumbUrl ? (
+          {/* Un ARCHIVO no es una foto: es una tarjeta con su nombre.
+              Un PDF llegaba como un rectángulo blanco de 220×220 —lila le
+              genera miniatura de la primera página— sin nombre, sin tamaño y
+              sin nada que dijera qué era. Un documento ES su nombre. */}
+          {!isPending(item) && item.media && esArchivo(item.media.mime) ? (
+            <Pressable
+              testID={`archivo-${item.seq}`}
+              onPress={() => onVerImagen?.(item.media!.url ?? item.media!.thumbUrl ?? '')}
+              className="min-w-[200px] flex-row items-center gap-3 px-3 py-2.5"
+            >
+              <View
+                className={`h-10 w-10 items-center justify-center rounded-lg ${mine ? 'bg-on-primary/20' : 'bg-primary/10'}`}
+              >
+                <FileText size={20} color={mine ? colores['on-primary'] : colores.primary} />
+              </View>
+              <View className="min-w-0 flex-1">
+                <Text
+                  className={`text-[14px] font-semibold ${mine ? 'text-on-primary' : 'text-on-surface'}`}
+                  numberOfLines={2}
+                >
+                  {item.media.fileName ?? 'Archivo'}
+                </Text>
+                <Text
+                  className={`text-[11px] ${mine ? 'text-on-primary/70' : 'text-on-surface-variant'}`}
+                >
+                  {item.media.sizeBytes ? formatBytes(item.media.sizeBytes) : 'Tocá para abrirlo'}
+                </Text>
+              </View>
+            </Pressable>
+          ) : null}
+
+          {!isPending(item) && item.media?.thumbUrl && !esArchivo(item.media.mime) ? (
             <Pressable
               testID={`media-${item.seq}`}
               onPress={() => onVerImagen?.(item.media!.thumbUrl!)}
@@ -140,7 +180,28 @@ export function MessageRow({
           {/* La foto que todavia sube: se ve YA, con un velo y su vueltita
               encima. El check aparece recien cuando el server la confirma, que
               es exactamente lo que hace WhatsApp. */}
-          {isPending(item) && item.mediaUri ? (
+          {isPending(item) && item.mediaUri && esArchivo(item.mediaMime) ? (
+            // Un archivo en vuelo tampoco se previsualiza: se veía un cuadro
+            // vacío del color de la burbuja con un porcentaje encima.
+            <View
+              testID={`archivo-pendiente-${item.clientKey}`}
+              className="min-w-[200px] flex-row items-center gap-3 px-3 py-2.5"
+            >
+              <View className="h-10 w-10 items-center justify-center rounded-lg bg-on-primary/20">
+                <ActivityIndicator color={colores['on-primary']} />
+              </View>
+              <View className="min-w-0 flex-1">
+                <Text className="text-[14px] font-semibold text-on-primary" numberOfLines={2}>
+                  {item.mediaNombre ?? 'Archivo'}
+                </Text>
+                <Text className="text-[11px] text-on-primary/70">
+                  Enviando… {porcentajeDeSubida(item.progreso ?? 0)}%
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
+          {isPending(item) && item.mediaUri && !esArchivo(item.mediaMime) ? (
             <View testID={`media-pendiente-${item.clientKey}`}>
               <Image
                 source={{ uri: item.mediaUri }}

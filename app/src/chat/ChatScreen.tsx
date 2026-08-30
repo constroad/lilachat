@@ -29,7 +29,7 @@ import { SecretChatBanner } from '../crypto/SecretChatBanner';
 import { useSecretChat } from '../crypto/useSecretChat';
 import { DaySeparator, MessageRow, isPending, type Row } from './MessageRow';
 import { formatClock } from '@lilachat/shared';
-import { compartirFoto, guardarEnGaleria } from './guardarYCompartir';
+import { abrirConOtraApp, compartirFoto, guardarEnGaleria } from './guardarYCompartir';
 import { VisorDeImagen } from './VisorDeImagen';
 import { ChatDetailScreen } from './ChatDetailScreen';
 import { useChat } from './useChat';
@@ -135,7 +135,12 @@ export function ChatScreen({
    * cuando el sistema limpia su cache, asi que una foto pendiente guardada en
    * disco reaparecia como una burbuja rota al reabrir la app.
    */
-  const [subiendo, setSubiendo] = useState<{ clientKey: string; uri: string } | null>(null);
+  const [subiendo, setSubiendo] = useState<{
+    clientKey: string;
+    uri: string;
+    mime: string;
+    nombre: string;
+  } | null>(null);
   /** La foto abierta a pantalla completa, o `null`. */
   /** El `seq` de la foto abierta a pantalla completa, o `null`. */
   const [viendoSeq, setViendoSeq] = useState<number | null>(null);
@@ -171,6 +176,7 @@ export function ChatScreen({
       // sigue siendo la de la burbuja.
       url: m.media!.url ?? m.media!.thumbUrl!,
       mime: m.media!.mime,
+      nombre: m.media!.fileName,
       cuandoReal: new Date(m.at),
       seq: m.seq,
       mia: m.senderId === credential.userId,
@@ -191,7 +197,12 @@ export function ChatScreen({
     // La burbuja aparece ANTES de subir nada: es lo que hace WhatsApp y lo que
     // Jose pidio el 27/08/2026. El check llega despues, cuando el server
     // confirma.
-    setSubiendo({ clientKey: `local-${file.uri}`, uri: file.uri });
+    setSubiendo({
+      clientKey: `local-${file.uri}`,
+      uri: file.uri,
+      mime: file.mimeType,
+      nombre: file.fileName,
+    });
     const result = await sendMedia({ ...file, onProgress: setProgress });
     setUploading(false);
     setSubiendo(null);
@@ -271,6 +282,8 @@ export function ChatScreen({
             queuedAt: new Date().toISOString(),
             pending: true as const,
             mediaUri: subiendo.uri,
+            mediaMime: subiendo.mime,
+            mediaNombre: subiendo.nombre,
             progreso: progress,
           },
         ]
@@ -659,6 +672,17 @@ export function ChatScreen({
           setViendoSeq(null);
           const r = await eliminar(f.seq);
           if (!r.ok) setMediaError(r.motivo ?? 'No se pudo eliminar.');
+        }}
+        onAbrirArchivo={async (f) => {
+          setAvisoVisor('Abriendo…');
+          const r = await abrirConOtraApp({
+            url: f.url,
+            cuando: f.cuandoReal,
+            mime: f.mime,
+            seq: f.seq,
+          });
+          setAvisoVisor(r.ok ? '' : r.motivo);
+          if (!r.ok) setTimeout(() => setAvisoVisor(''), 4000);
         }}
       />
 

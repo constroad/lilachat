@@ -53,7 +53,24 @@ export interface Message {
    * excluyentes, y guardar los dos anularía el cifrado en la práctica.
    */
   envelope?: { v: number; nonce: string; ciphertext: string };
-  media?: { mediaId: string; thumbUrl?: string; url?: string; width?: number; height?: number; mime?: string };
+  media?: {
+    mediaId: string;
+    thumbUrl?: string;
+    url?: string;
+    width?: number;
+    height?: number;
+    mime?: string;
+    /**
+     * El nombre ORIGINAL del archivo y su tamaño.
+     *
+     * Sin esto un PDF llegaba al chat como un rectángulo sin nombre: el
+     * `mediaId` es el nombre en el storage (`file-2026-08-30T…pdf`), que no le
+     * dice nada a nadie. Para fotos y videos no hace falta —se ven— pero un
+     * documento ES su nombre.
+     */
+    fileName?: string;
+    sizeBytes?: number;
+  };
   /**
    * El aviso de un cambio del grupo, en `kind: 'system'`.
    *
@@ -159,6 +176,8 @@ const messageSchema = new Schema<Message>(
       width: Number,
       height: Number,
       mime: String,
+          fileName: String,
+      sizeBytes: Number,
     },
     replyToSeq: { type: Number },
     editedAt: { type: Date },

@@ -66,6 +66,9 @@ export function buildMediaRouter(uploader: MediaUploader = buildLilaUploader()):
         body: typeof req.body?.caption === 'string' ? req.body.caption.trim() : undefined,
         media: {
           mediaId: uploaded.media.storageName,
+          // El nombre que la persona ve en su teléfono, no el del storage.
+          fileName: file.originalname,
+          sizeBytes: file.size,
           // RELATIVAS a propósito: se resuelven al servir (`messageView`).
           thumbUrl: uploaded.media.thumbnailUrl,
           url: uploaded.media.url,

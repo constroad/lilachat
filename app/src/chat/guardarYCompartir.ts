@@ -10,6 +10,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 // primero si se mudó a `/legacy`.
 import * as MediaLibrary from 'expo-media-library/legacy';
 import * as Sharing from 'expo-sharing';
+import * as IntentLauncher from 'expo-intent-launcher';
 import { nombreDeArchivo } from './archivoDescargado';
 
 /**
@@ -106,5 +107,43 @@ export async function compartirFoto(params: {
     return { ok: true };
   } catch {
     return { ok: false, motivo: 'No pudimos compartir la foto.' };
+  }
+}
+
+/**
+ * Abrir el archivo con la app que corresponda del teléfono.
+ *
+ * Para un PDF —o un Excel, o un zip— esto es lo correcto y no meter un visor
+ * propio: el teléfono ya tiene una app que sabe abrirlo, probablemente mejor que
+ * cualquier cosa que embebamos, y traer un motor de PDF pesa más que toda esta
+ * app junta.
+ *
+ * El archivo se baja a la cache y se comparte por `content://`: pasarle a otra
+ * app un `file://` de nuestro almacenamiento privado le da una ruta que no puede
+ * leer, y Android lo corta con `FileUriExposedException`.
+ */
+export async function abrirConOtraApp(params: {
+  url: string;
+  cuando: Date;
+  mime?: string;
+  seq: number;
+}): Promise<Resultado> {
+  const bajado = await bajarACache(params);
+  if (!bajado.ok) return bajado;
+
+  try {
+    const contentUri = await FileSystem.getContentUriAsync(bajado.uri);
+    await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+      data: contentUri,
+      // FLAG_GRANT_READ_URI_PERMISSION: sin esto la otra app recibe la URI y no
+      // tiene permiso para leerla.
+      flags: 1,
+      type: params.mime,
+    });
+    return { ok: true };
+  } catch {
+    // Ninguna app instalada sabe abrir esto. No es un fallo nuestro y se dice
+    // como lo que es, con la salida al lado.
+    return { ok: false, motivo: 'No hay ninguna app para abrir este archivo. Probá compartirlo.' };
   }
 }

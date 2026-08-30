@@ -1,7 +1,7 @@
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { Download, Share2, Trash2, X } from 'lucide-react-native';
+import { Download, FileText, Share2, Trash2, X } from 'lucide-react-native';
 import { useMargenes } from '../ui/useMargenes';
 
 /**
@@ -32,6 +32,8 @@ export type FotoDelVisor = {
   /** La fecha sin formatear, para nombrar el archivo al guardarlo. */
   cuandoReal: Date;
   mime?: string;
+  /** El nombre original, cuando es un archivo. */
+  nombre?: string;
 };
 
 /**
@@ -42,6 +44,12 @@ export type FotoDelVisor = {
  * tiene por qué terminar en `.mp4`.
  */
 const esVideo = (mime?: string): boolean => (mime ?? '').startsWith('video/');
+
+/** Ni foto ni video: un documento, que no se dibuja sino que se abre. */
+const esArchivoSuelto = (mime?: string): boolean => {
+  const tipo = mime ?? '';
+  return tipo !== '' && !tipo.startsWith('image/') && !tipo.startsWith('video/');
+};
 
 /**
  * El video, a pantalla completa y con los controles nativos.
@@ -82,6 +90,7 @@ export function VisorDeImagen({
   onDescargar,
   onCompartir,
   onEliminar,
+  onAbrirArchivo,
   aviso,
 }: {
   foto: FotoDelVisor | null;
@@ -92,6 +101,8 @@ export function VisorDeImagen({
   onDescargar?: (foto: FotoDelVisor) => void;
   onCompartir?: (foto: FotoDelVisor) => void;
   onEliminar?: (foto: FotoDelVisor) => void;
+  /** Abrir un PDF —o lo que sea— con la app del teléfono que sepa hacerlo. */
+  onAbrirArchivo?: (foto: FotoDelVisor) => void;
   /**
    * El resultado de descargar o compartir, mostrado ACÁ.
    *
@@ -176,7 +187,41 @@ export function VisorDeImagen({
           ) : null}
         </View>
 
-        {foto && esVideo(foto.mime) ? (
+        {foto && esArchivoSuelto(foto.mime) ? (
+          /**
+           * Un PDF no se dibuja acá: se abre con la app que lo sabe abrir.
+           *
+           * Antes el visor le pasaba la URL del PDF a un `<Image>` y quedaba una
+           * pantalla NEGRA sin explicación (José, 30/08/2026: «toco el archivo y
+           * no pasa nada»). Meter un motor de PDF pesaría más que toda la app, y
+           * el teléfono ya tiene uno.
+           */
+          <View className="flex-1 items-center justify-center px-8">
+            <View className="h-20 w-20 items-center justify-center rounded-2xl bg-white/10">
+              <FileText size={36} color="#ffffff" />
+            </View>
+            <Text
+              testID="visor-nombre-archivo"
+              style={{ color: '#ffffff' }}
+              className="mt-4 text-center text-base font-semibold"
+              numberOfLines={3}
+            >
+              {foto.nombre ?? 'Archivo'}
+            </Text>
+            <Text style={{ color: '#c9c9c9' }} className="mt-1 text-center text-[12px]">
+              Se abre con otra app del teléfono
+            </Text>
+            {onAbrirArchivo ? (
+              <Pressable
+                testID="btn-abrir-archivo"
+                onPress={() => onAbrirArchivo(foto)}
+                className="mt-6 min-h-[48px] items-center justify-center rounded-xl bg-white px-8"
+              >
+                <Text className="text-[15px] font-bold text-black">Abrir</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : foto && esVideo(foto.mime) ? (
           // El visor abría el video como si fuera una foto: se veía el primer
           // cuadro congelado y no pasaba nada al tocarlo (José, 30/08/2026).
           <Reproductor key={foto.url} url={foto.url} />

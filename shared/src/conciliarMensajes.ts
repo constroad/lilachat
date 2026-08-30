@@ -17,16 +17,41 @@
  * función pasa de arreglar una inconsistencia a BORRAR el historial de la gente,
  * y hay que sacarla junto con ese cambio.
  */
-export function conciliarPagina<T extends { seq: number }>(guardados: T[], pagina: T[]): T[] {
+export function conciliarPagina<T extends { seq: number }>(
+  guardados: T[],
+  pagina: T[],
+  /**
+   * El `seq` más alto que existe en el chat, según el server, en el MISMO
+   * instante que la página.
+   *
+   * Sin esto quedaba un agujero: un mensaje guardado con un `seq` MÁS ALTO que
+   * todo lo que contestó el server es indistinguible de uno que acaba de llegar
+   * por socket, así que se conservaba… para siempre. Le pasó al grupo de José:
+   * las líneas viejas tenían seq 1–7 y el chat, ya vaciado, volvía a empezar en
+   * 1, así que la 3–7 nunca entraban en el rango de ninguna página.
+   *
+   * Viene del server junto con la página justamente para que no haya carrera:
+   * calculado en el cliente, un mensaje que llegara entre el pedido y la
+   * respuesta se borraría de la pantalla.
+   */
+  ultimoDelServer?: number
+): T[] {
   // Una página vacía no dice nada: puede ser el final del historial o una
   // respuesta rara. Tomarla como «no queda nada» borraría el chat entero.
   if (pagina.length === 0) return guardados;
+
+  // Lo que quedó por ENCIMA del tope del server no existe: el server no puede
+  // tener un mensaje con un `seq` mayor al último que asignó.
+  const dentroDelTope =
+    typeof ultimoDelServer === 'number'
+      ? guardados.filter((uno) => uno.seq <= ultimoDelServer)
+      : guardados;
 
   const seqs = pagina.map((uno) => uno.seq);
   const desde = Math.min(...seqs);
   const hasta = Math.max(...seqs);
 
-  const fueraDelRango = guardados.filter((uno) => uno.seq < desde || uno.seq > hasta);
+  const fueraDelRango = dentroDelTope.filter((uno) => uno.seq < desde || uno.seq > hasta);
 
   // La versión del server pisa a la guardada: un mensaje editado o con su
   // lápida puesta tiene que verse como está ahora, no como se guardó.

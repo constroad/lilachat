@@ -59,6 +59,32 @@ describe('conciliarPagina', () => {
     expect(conciliarPagina([], [m(4), m(5)]).map((uno) => uno.seq)).toEqual([4, 5]);
   });
 
+  /**
+   * **El agujero que dejó la primera versión.** Un guardado con `seq` MÁS ALTO
+   * que todo lo que contestó el server se ve igual que uno recién llegado por
+   * socket. Con el tope del server se distinguen: por encima de ese número no
+   * puede existir nada.
+   */
+  it('borra lo que quedó por encima del tope del server', () => {
+    const r = conciliarPagina([m(1), m(2), m(5), m(6)], [m(1), m(2)], 2);
+
+    expect(r.map((uno) => uno.seq)).toEqual([1, 2]);
+  });
+
+  it('sin tope, lo de arriba se conserva (puede venir del socket)', () => {
+    const r = conciliarPagina([m(1), m(5)], [m(1)]);
+
+    expect(r.map((uno) => uno.seq)).toEqual([1, 5]);
+  });
+
+  it('con tope, lo que está DENTRO del tope y fuera del rango se conserva', () => {
+    const r = conciliarPagina([m(1), m(2), m(9)], [m(8), m(9)], 9);
+
+    // El 8 entra por la página; el 1 y el 2 sobreviven por estar fuera del
+    // rango y por debajo del tope.
+    expect(r.map((uno) => uno.seq)).toEqual([1, 2, 8, 9]);
+  });
+
   it('devuelve todo ordenado por seq', () => {
     expect(conciliarPagina([m(9), m(1)], [m(5)]).map((uno) => uno.seq)).toEqual([1, 5, 9]);
   });

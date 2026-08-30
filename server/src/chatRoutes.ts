@@ -412,7 +412,12 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
         limit: Number(req.query.limit) || undefined,
         beforeSeq: Number.isFinite(beforeSeq) && beforeSeq > 0 ? beforeSeq : undefined,
       });
-      res.json({ messages: toClientMessages(messages) });
+      // `lastSeq` viaja CON la página: es el tope real del chat en este mismo
+      // instante, y con él el teléfono puede tirar lo que guardó de más. Que lo
+      // calcule el cliente sería una carrera —un mensaje llegado entre el
+      // pedido y la respuesta se borraría de la pantalla—.
+      const chat = await ChatModel.findById(req.params.chatId).select('lastSeq').lean();
+      res.json({ messages: toClientMessages(messages), lastSeq: chat?.lastSeq ?? 0 });
     } catch (error) {
       if (error instanceof ForbiddenChatError) {
         return res.status(403).json({ message: error.message });

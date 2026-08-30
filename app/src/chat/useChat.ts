@@ -156,7 +156,10 @@ export function useChat(params: {
       // acaba de describir, MANDA el server. Con el merge, un mensaje borrado
       // en la base seguía dibujándose para siempre en cada teléfono que ya lo
       // tenía guardado (pasó con unas líneas de prueba en el grupo de José).
-      if (pagina.length > 0) setMessages((current) => conciliarPagina(current, pagina));
+      if (pagina.length > 0) {
+        const tope = (resultado.data as { lastSeq?: number }).lastSeq;
+        setMessages((current) => conciliarPagina(current, pagina, tope));
+      }
     }
 
     cargandoRef.current = false;

@@ -1,5 +1,6 @@
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { Image } from 'expo-image';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { Download, Share2, Trash2, X } from 'lucide-react-native';
 import { useMargenes } from '../ui/useMargenes';
 
@@ -32,6 +33,46 @@ export type FotoDelVisor = {
   cuandoReal: Date;
   mime?: string;
 };
+
+/**
+ * ¿Esto es un video?
+ *
+ * Por el `mime`, que es lo que el server ya guarda de cada archivo. Mirar la
+ * extensión de la URL no serviría: el nombre en el storage lo pone lila y no
+ * tiene por qué terminar en `.mp4`.
+ */
+const esVideo = (mime?: string): boolean => (mime ?? '').startsWith('video/');
+
+/**
+ * El video, a pantalla completa y con los controles nativos.
+ *
+ * Es un componente aparte porque `useVideoPlayer` es un hook: adentro del visor
+ * habría que llamarlo siempre, también cuando lo que se abre es una foto, y
+ * dejaría un reproductor vivo por cada imagen que se mira.
+ *
+ * **Arranca solo.** Uno toca un video para verlo, no para encontrarse otro
+ * botón de play; los controles quedan a mano para pausar.
+ */
+function Reproductor({ url }: { url: string }) {
+  const player = useVideoPlayer(url, (reproductor) => {
+    reproductor.loop = false;
+    reproductor.play();
+  });
+
+  return (
+    <VideoView
+      testID="visor-video"
+      style={{ flex: 1 }}
+      player={player}
+      nativeControls
+      fullscreenOptions={{ enable: true }}
+      // Sin esto, salir del visor con el video andando deja el audio sonando
+      // por detrás de la conversación.
+      allowsPictureInPicture={false}
+      contentFit="contain"
+    />
+  );
+}
 
 export function VisorDeImagen({
   foto,
@@ -135,7 +176,11 @@ export function VisorDeImagen({
           ) : null}
         </View>
 
-        {foto ? (
+        {foto && esVideo(foto.mime) ? (
+          // El visor abría el video como si fuera una foto: se veía el primer
+          // cuadro congelado y no pasaba nada al tocarlo (José, 30/08/2026).
+          <Reproductor key={foto.url} url={foto.url} />
+        ) : foto ? (
           <Image
             source={{ uri: foto.url }}
             style={{ flex: 1 }}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
-import { ArrowLeft, BellRing, Camera, ChevronRight, CloudUpload, Moon, RefreshCw, Search, Sun, SunMoon, User, UserPlus } from 'lucide-react-native';
+import { ArrowLeft, BellRing, Camera, ChevronRight, CloudUpload, Moon, RefreshCw, Sun, SunMoon, User, UserPlus } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { listChats, type ChatSummary } from '../api/client';
 import { connectSocket } from '../chat/socketClient';
@@ -275,9 +275,10 @@ export function TabsShell({
             <View className="h-11 w-9 items-center justify-center opacity-40">
               <Camera size={20} color={colores["on-surface-variant"]} />
             </View>
-            <View className="h-11 w-9 items-center justify-center opacity-40">
-              <Search size={20} color={colores["on-surface-variant"]} />
-            </View>
+            {/* La lupa de la cabecera se fue: el buscador vive AHORA en la
+                lista, siempre visible. Dejar además un ícono apagado al lado de
+                un buscador que funciona es enseñar que hay botones que no
+                responden. */}
           </>
         ) : null}
         {/**

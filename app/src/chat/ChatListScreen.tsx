@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { Pressable, RefreshControl, Text, View } from 'react-native';
-import { Lock, MessageCircle, PenSquare } from 'lucide-react-native';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
+import { Lock, MessageCircle, PenSquare, Search, X } from 'lucide-react-native';
 import {
+  contarChats,
+  filtrarChats,
   formatChatTimestamp,
   nombreDeContacto,
   resolveChatPreview,
   textoDeAviso,
+  type FiltroDeChats,
 } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { connectSocket } from './socketClient';
@@ -150,6 +153,47 @@ export function ChatListScreen({
   const title = (chat: ChatSummary) =>
     nombreDeContacto({ delServidor: chat.name, telefono: chat.phone, agenda }) || 'Conversación';
 
+  const [busqueda, setBusqueda] = useState('');
+  const [filtro, setFiltro] = useState<FiltroDeChats>('todos');
+
+  /**
+   * Lo que se muestra: la lista pasada por el chip y por el buscador.
+   *
+   * El título se resuelve ACÁ y se le pasa al motor: buscar «Wilson» tiene que
+   * encontrarlo aunque el server solo conozca su número, que es el nombre que la
+   * fila muestra. El motor no sabe de agendas.
+   */
+  const visibles = useMemo(() => {
+    const lista = chats ?? [];
+    return filtrarChats({
+      chats: lista.map((chat) => ({
+        chat,
+        titulo: title(chat),
+        ultimo: chat.lastMessage?.body,
+        esGrupo: chat.kind === 'group',
+        sinLeer: chat.unread,
+      })),
+      filtro,
+      texto: busqueda,
+    }).map((uno) => uno.chat);
+    // `agenda` está en las dependencias porque `title` la usa: sin ella, la
+    // lista se quedaría con los nombres viejos al llegar la agenda.
+  }, [chats, agenda, filtro, busqueda]);
+
+  const cuentas = useMemo(
+    () =>
+      contarChats(
+        (chats ?? []).map((chat) => ({
+          titulo: '',
+          esGrupo: chat.kind === 'group',
+          sinLeer: chat.unread,
+        }))
+      ),
+    [chats]
+  );
+
+  const hayChats = (chats?.length ?? 0) > 0;
+
 
 
   return (
@@ -157,6 +201,93 @@ export function ChatListScreen({
       {/* Header del diseño: marca a la izquierda, avatar tocable a la derecha.
           El «Cerrar sesión» ya NO es un botón gigante al pie —eso no estaba en
           ningún diseño—: vive detrás del avatar, que es donde se lo busca. */}
+      {/* Buscador y chips, como en WhatsApp. Solo cuando HAY chats: filtrar una
+          lista vacía no lleva a ningún lado y ocupa la pantalla donde tiene que
+          estar el vacío que explica qué hacer. */}
+      {hayChats ? (
+        <>
+          <View className="px-4 pb-2 pt-1">
+            <View className="flex-row items-center gap-2 rounded-full bg-primary/[0.07] px-4">
+              <Search size={16} color={colores.outline} />
+              <TextInput
+                testID="buscar-chats"
+                value={busqueda}
+                onChangeText={setBusqueda}
+                placeholder="Buscar"
+                placeholderTextColor={colores['on-surface-variant']}
+                className="min-h-[44px] min-w-0 flex-1 text-[15px] text-on-surface"
+              />
+              {busqueda ? (
+                <Pressable
+                  testID="btn-limpiar-busqueda"
+                  accessibilityLabel="Limpiar la búsqueda"
+                  onPress={() => setBusqueda('')}
+                  className="h-11 w-8 items-center justify-center"
+                >
+                  <X size={16} color={colores['on-surface-variant']} />
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+
+          {/* Los chips scrollean en horizontal: son tres y entran, pero el
+              contador puede empujarlos en pantallas angostas y una fila de
+              filtros partida en dos se ve rota. */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            // Un ScrollView dentro de una columna CRECE hasta llenar lo que
+            // sobra: sin esto la fila de chips se comía media pantalla y dejaba
+            // dos huecos enormes alrededor.
+            style={{ flexGrow: 0 }}
+            // `alignItems: 'center'` NO es cosmético: sin él el ScrollView
+            // estira a los hijos a TODA su altura y los chips salen como
+            // píldoras gigantes. Visto en el emulador.
+            contentContainerStyle={{
+              paddingHorizontal: 16,
+              gap: 8,
+              paddingBottom: 8,
+              alignItems: 'center',
+            }}
+          >
+            {(
+              [
+                { id: 'todos', etiqueta: 'Todos', cuenta: 0 },
+                { id: 'no-leidos', etiqueta: 'No leídos', cuenta: cuentas['no-leidos'] },
+                { id: 'grupos', etiqueta: 'Grupos', cuenta: cuentas.grupos },
+              ] as const
+            ).map((chip) => {
+              const activo = filtro === chip.id;
+              return (
+                <Pressable
+                  key={chip.id}
+                  testID={`filtro-${chip.id}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: activo }}
+                  onPress={() => setFiltro(chip.id)}
+                  className={`min-h-[36px] flex-row items-center gap-1.5 rounded-full border px-4 ${
+                    activo ? 'border-primary bg-primary/[0.14]' : 'border-outline/20'
+                  }`}
+                >
+                  <Text
+                    className={`text-[13px] ${activo ? 'font-semibold text-primary' : 'text-on-surface-variant'}`}
+                  >
+                    {chip.etiqueta}
+                  </Text>
+                  {chip.cuenta > 0 ? (
+                    <Text
+                      className={`shrink-0 text-[11px] ${activo ? 'text-primary' : 'text-on-surface-variant'}`}
+                    >
+                      {chip.cuenta}
+                    </Text>
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </>
+      ) : null}
+
       {chats === null ? (
         <View className="px-5 pt-4" testID="chats-cargando">
           {[0, 1, 2].map((index) => (
@@ -181,8 +312,22 @@ export function ChatListScreen({
         </View>
       ) : (
         <FlashList
-          data={chats}
+          data={visibles}
           keyExtractor={(chat) => chat.id}
+          // El vacío del FILTRO no es el vacío de la app: decir «sin
+          // conversaciones» cuando hay diez y el filtro no devuelve ninguna
+          // haría pensar que se perdieron.
+          ListEmptyComponent={
+            <View className="items-center px-8 pt-16" testID="chats-sin-coincidencias">
+              <Text className="text-center text-sm leading-5 text-on-surface-variant">
+                {busqueda
+                  ? `Ningún chat coincide con «${busqueda}».`
+                  : filtro === 'no-leidos'
+                    ? 'No te queda nada sin leer.'
+                    : 'Todavía no tenés grupos.'}
+              </Text>
+            </View>
+          }
           // Virtualizada: un ScrollView monta TODAS las filas de una y la
           // lista tarda en aparecer en cuanto hay unas cuantas conversaciones.
           renderItem={({ item: chat }) => (

@@ -19,7 +19,14 @@ export type ServerMessage = {
   body?: string;
   /** El sobre cifrado, en chats secretos (F9). Llega en vez de `body`. */
   envelope?: { v: 1; nonce: string; ciphertext: string };
-  media?: { mediaId: string; thumbUrl?: string; mime?: string };
+  media?: {
+    mediaId: string;
+    /** La miniatura, para la burbuja. */
+    thumbUrl?: string;
+    /** El archivo COMPLETO: es lo que abre el visor y lo que se guarda. */
+    url?: string;
+    mime?: string;
+  };
   /**
    * El aviso de un cambio del grupo (`kind: 'system'`). Trae el EVENTO y con
    * qué resolver los nombres; la frase la arma la app con la agenda del

@@ -1,5 +1,6 @@
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
+import { Play } from 'lucide-react-native';
 import { porcentajeDeSubida } from './progresoDeSubida';
 import { TEXTO_ELIMINADO, nombreDeContacto, textoDeAviso } from '@lilachat/shared';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
@@ -120,6 +121,19 @@ export function MessageRow({
                 contentFit="cover"
                 transition={120}
               />
+              {/* El PLAY sobre la miniatura. Un video y una foto se veían
+                  exactamente igual —la miniatura es un cuadro del video— así
+                  que no había forma de saber que eso se podía reproducir. */}
+              {(item.media.mime ?? '').startsWith('video/') ? (
+                <View
+                  testID={`play-${item.seq}`}
+                  className="absolute inset-0 items-center justify-center"
+                >
+                  <View className="h-14 w-14 items-center justify-center rounded-full bg-black/55">
+                    <Play size={26} color="#ffffff" fill="#ffffff" />
+                  </View>
+                </View>
+              ) : null}
             </Pressable>
           ) : null}
 

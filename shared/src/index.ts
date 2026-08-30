@@ -22,6 +22,7 @@ export * from './candidatosParaSumar.js';
 export * from './accionesDeMiembro.js';
 export * from './infoDeGrupo.js';
 export * from './avisoDeGrupo.js';
+export * from './filtrosDeChats.js';
 export * from './agendaLocal.js';
 export * from './invitacion.js';
 export * from './emparejarAgenda.js';

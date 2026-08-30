@@ -165,7 +165,11 @@ export function ChatScreen({
   const fotos = messages
     .filter((m) => m.media?.thumbUrl && !m.deletedAt)
     .map((m) => ({
-      url: m.media!.thumbUrl!,
+      // El archivo COMPLETO, no la miniatura. Con `thumbUrl` el visor mostraba
+      // una foto borrosa a pantalla completa —y un video no se reproducía nunca,
+      // porque lo que le llegaba era su cuadro de portada en JPG—. La miniatura
+      // sigue siendo la de la burbuja.
+      url: m.media!.url ?? m.media!.thumbUrl!,
       mime: m.media!.mime,
       cuandoReal: new Date(m.at),
       seq: m.seq,
@@ -560,13 +564,20 @@ export function ChatScreen({
           todos, pero el campo quedaba tan angosto que el placeholder se partía
           en dos líneas. */}
       <View className="flex-row items-end gap-1.5 border-t border-outline/10 bg-surface px-3 pt-3" style={{ paddingBottom: margenes.pie }}>
+        {/* El «+» SIGUE SIENDO un «+» mientras sube.
+            Antes se convertía en un spinner, y eso es contar la misma cosa dos
+            veces y en el lugar equivocado: el progreso ya se ve en la burbuja
+            que se está subiendo, que es donde uno mira. Un botón que cambia de
+            forma además hace perder el punto donde estaba el dedo. Queda
+            atenuado y sin responder —no se puede subir dos cosas a la vez—,
+            pero se sigue viendo lo que es. */}
         <Pressable
           testID="btn-adjuntar"
           onPress={() => setAttachOpen(true)}
           disabled={uploading}
-          className="h-11 w-11 items-center justify-center"
+          className={`h-11 w-11 items-center justify-center ${uploading ? 'opacity-40' : ''}`}
         >
-          {uploading ? <ActivityIndicator color={colores.primary} /> : <Plus size={24} color={colores["on-surface-variant"]} />}
+          <Plus size={24} color={colores["on-surface-variant"]} />
         </Pressable>
 
         <View className="min-w-0 flex-1 flex-row items-end rounded-xl border border-outline/15 bg-background pr-1">

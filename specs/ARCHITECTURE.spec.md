@@ -2560,3 +2560,72 @@ teléfono real.**
 - **El aviso de `admin-auto` no se vio en pantalla**: solo en los tests. Hace
   falta un grupo del que se vaya su último admin.
 - **La tienda ofreciendo «Actualizar» no se probó en un teléfono real** (§37.2).
+
+
+## 38. Buscador y filtros en la lista, y el video que no se reproducía (30/08/2026)
+
+Tres cosas que José marcó mirando la app al lado de WhatsApp.
+
+### 38.1 La lupa llevaba días apagada
+
+«La lista de chats no tiene el buscador ni los filtros de no leído, favoritos,
+etc.». El ícono de lupa estaba en la cabecera desde el primer día **inerte**,
+esperando a «F6» — y un ícono apagado se ve igual que uno roto.
+
+Ahora la lista tiene el buscador SIEMPRE visible y una fila de chips: **Todos ·
+No leídos · Grupos**, con su contador al lado. El motor es puro
+(`filtrarChats`): busca sin tildes ni mayúsculas —«jose» encuentra a «José»— y
+también dentro del último mensaje, que es como se encuentra «el chat donde
+hablamos de eso». El título que se busca es el YA resuelto contra la agenda:
+buscar «Wilson» lo encuentra aunque el server solo conozca su número.
+
+**No hay chip de «Favoritos» a propósito**: en esta app no existe marcar ni fijar
+un chat, y poner el chip para que no filtre nada sería repetir el error de la
+lupa apagada. La lupa inerte de la cabecera se quitó: dejarla al lado de un
+buscador que funciona enseña que hay botones que no responden.
+
+Dos detalles de layout que solo se ven corriéndolo:
+
+- Un `ScrollView` horizontal dentro de una columna **estira a sus hijos a toda
+  su altura**: los chips salieron como píldoras gigantes hasta ponerles
+  `alignItems: 'center'`.
+- Y **crece hasta llenar lo que sobra**: sin `flexGrow: 0` la fila de chips se
+  comía media pantalla con dos huecos enormes alrededor.
+
+### 38.2 El video no se reproducía
+
+«Toco el video y no reproduce en el visor». Eran dos cosas encadenadas:
+
+1. **El visor solo sabía dibujar imágenes.** Se le pasaba la URL a un
+   `<Image>`, así que un video mostraba su cuadro de portada y nada más. Ahora,
+   si el `mime` empieza con `video/`, monta un reproductor (`expo-video`) con los
+   controles nativos y arranca solo — uno toca un video para verlo, no para
+   encontrarse otro botón de play.
+2. **Y le llegaba el archivo equivocado.** El visor recibía `thumbUrl` —la
+   miniatura— y no `url`. Con un video eso es un JPG: no había nada que
+   reproducir. De paso, las FOTOS se venían mostrando a pantalla completa en su
+   versión miniatura, o sea borrosas, desde siempre.
+
+Además, en la burbuja **un video se veía idéntico a una foto** (la miniatura es
+un cuadro del video): ahora lleva el botón de play encima.
+
+### 38.3 El «+» se convertía en un spinner
+
+«Al subir, el ícono de más cambia a un loader, eso es incorrecto». Tenía razón:
+es contar la misma cosa dos veces y en el lugar equivocado — el progreso ya se ve
+en la burbuja que se está subiendo, que es donde uno mira. Y un botón que cambia
+de forma hace perder el punto donde estaba el dedo. Queda atenuado y sin
+responder —no se puede subir dos cosas a la vez— pero se sigue viendo lo que es.
+
+### 38.4 Verificado (0.1.40 · 41)
+
+| Paso | Resultado |
+| --- | --- |
+| Lista de chats | buscador arriba y chips «Todos · No leídos · Grupos 1» |
+| Chip «Grupos» | queda solo «Los originales» |
+| Buscar «wil» | encuentra a Wilson, con el nombre de la agenda |
+| Burbuja de un video | miniatura con el botón de play encima |
+| Tocarla | el visor **reproduce**, con controles nativos, y llega al final |
+| Subir una foto (grupo de QA) | el «+» sigue siendo «+», atenuado; el progreso en la burbuja |
+
+Data de QA borrada y verificada en cero.

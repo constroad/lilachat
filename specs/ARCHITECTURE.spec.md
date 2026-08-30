@@ -2815,3 +2815,53 @@ correo de SU número (`902049935`) a `jose.test@yopmail.com` un momento
 `yopmail.com/en/?login=jose.test` (desktop, clic real en la fila), y **restaurar
 su Gmail** al terminar. Su usuario real no se toca; solo un canal de respaldo que
 se pone y se saca.
+
+## 42. Audio, visor, Media/Docs/Links y presencia (30/08/2026)
+
+Lote grande de José, verificado en el emulador con su sesión real y un segundo
+socket como Wilson.
+
+### 42.1 Audio: la duración en reposo
+
+El envío y la reproducción YA funcionaban (grabar → enviar → reproducir,
+verificado). Lo que se veía mal: en reposo mostraba «0:25» para una nota de 4 s,
+porque el `m4a` remoto reporta mal su duración hasta cargar entero. Se guarda la
+duración REAL al subir (`durationMs`) y es la que se muestra en reposo; al
+reproducir se muestra lo que va corriendo.
+
+### 42.2 Visor con flechas
+
+El visor no navegaba. Se agregaron flechas ‹ › sobre la imagen/video que saltan a
+la media anterior/siguiente por `seq`. Un documento no navega. Verificado: de una
+foto a la siguiente, con ambas flechas cuando hay vecinos de los dos lados.
+
+### 42.3 Detalle: Media / Docs / Links
+
+La sección «Multimedia» mezclaba todo. Ahora son tres pestañas (motor puro
+`clasificarMedias`): Media en cuadrícula de 3 con el play sobre los videos, Docs
+y Links en lista. Abrir una media desde acá casa por url con la lista del chat,
+así que las flechas del visor funcionan también desde el detalle. Los nombres de
+Docs se decodifican (`nombreLimpio`).
+
+### 42.4 «En línea» / «escribiendo…»
+
+**Estaba muerto:** el server reenviaba `typing` pero NINGÚN cliente lo emitía.
+Ahora la app emite al teclear (un `on:true`, `off` 3 s después de la última
+tecla) y el header muestra «escribiendo…» / «en línea» en 1:1. En grupo dice
+«alguien está escribiendo…» (nombrarlo pediría un fetch de miembros que no vale
+para un cartel); «en línea» no se muestra en grupo (ruido con varios).
+
+**El bug que costó encontrar:** el header no mostraba «en línea» aunque el otro
+estuviera conectado. El `presence.snapshot` se emite UNA vez al conectar y lo
+consume la lista de chats; cuando se ABRE un chat, `useChat` monta después y el
+snapshot ya pasó, así que `enLinea` arrancaba vacío. El typing sí se veía porque
+es un evento en vivo. Se agregó `presence.request` (el cliente lo pide al
+conectar, el server responde con el snapshot actual). Diagnosticado node-a-node:
+el server reenviaba presence y typing bien — faltaba pedir el estado inicial.
+
+### 42.5 Pendiente
+
+**Multi-selección de chats en la lista** (silenciar, fijar, marcar leído/no
+leído, eliminar/salir), como al mantener presionado en WhatsApp. Es el ítem más
+grande porque silenciar y fijar necesitan persistir por usuario y por chat —
+backend nuevo—. Va en el próximo paso.

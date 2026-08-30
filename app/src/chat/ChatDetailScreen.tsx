@@ -22,6 +22,7 @@ import {
 import { EditarNombreDeGrupo } from './EditarNombreDeGrupo';
 import { elegirFotoDeGrupo, subirFotoDeGrupo } from './fotoDeGrupo';
 import { IdentidadDelChat } from './IdentidadDelChat';
+import { nombreLimpio } from './archivoDescargado';
 import { confirmacionDe } from './confirmacionesDeMiembro';
 import { AjustesDelChat } from './AjustesDelChat';
 import { AccionesDeMiembro } from './AccionesDeMiembro';
@@ -667,7 +668,7 @@ function SeccionCompartido({
                   <FileText size={20} color={colores.primary} />
                 </View>
                 <Text className="min-w-0 flex-1 text-[14px] font-semibold text-on-surface" numberOfLines={2}>
-                  {m.media!.fileName ?? 'Documento'}
+                  {m.media!.fileName ? nombreLimpio(m.media!.fileName) : 'Documento'}
                 </Text>
               </Pressable>
             ))}

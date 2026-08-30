@@ -2759,3 +2759,59 @@ a un estado sin sesión. Recuperarla exige un OTP, y la regla es no generarlo ni
 tipearlo (`qa-phone-only-902049935`: inventar números creó usuarios falsos en
 producción). Lo verificable sin sesión se cubrió; lo visual queda para el aparato
 de José, con este guion.
+
+## 41. Checks estilo WhatsApp, PDF con miniatura, y el OTP por yopmail (30/08/2026)
+
+### 41.1 Los checks: faltaba «entregado» de verdad
+
+José, con capturas: «los dos checks azules es si tu contacto ya leyó; antes es
+gris». El bug de fondo: `markRead` ponía `readSeq` **y** `deliveredSeq` a la vez,
+así que no existía el estado intermedio. Un mensaje saltaba de un check
+(enviado) a doble check azul (leído) **sin pasar nunca por el doble check gris**
+(entregado) de WhatsApp.
+
+Se agregó un acuse de ENTREGA separado (`markDelivered`, `$max` solo sobre
+`deliveredSeq`), por dos caminos que se complementan:
+
+- **Server**: al emitir `msg.new` a un miembro CONECTADO que no es el autor, se
+  marca su entrega y se avisa al remitente. Así el doble check gris aparece
+  aunque esa persona no tenga el chat abierto — como WhatsApp.
+- **Cliente**: al RECIBIR un mensaje ajeno (`msg.new` / `sync.pull`) emite
+  `deliver.set`. Cubre al que estaba offline y reconecta.
+
+`resolveDeliveryState` ya distinguía los cuatro estados; lo que faltaba era el
+dato. Reloj = en cola, un check = enviado, doble gris = entregado, doble azul =
+leído.
+
+**Verificado de punta a punta** (0.1.46, con un segundo socket como Wilson):
+mensaje enviado → un check; Wilson conectado sin abrir → doble check GRIS;
+Wilson marca leído → doble check AZUL. Confirmado el color mirando el píxel.
+
+### 41.2 PDF: preview card y el nombre con %20
+
+- La burbuja de un documento ahora muestra la **miniatura de la primera página**
+  (lila la genera) como la preview card de WhatsApp, en vez de una tarjeta gris.
+- El nombre salía URL-encodeado —«...REYNALDO%20(1).pdf»—; se **decodifica** para
+  mostrar (`nombreLimpio`).
+- `nombreDeArchivo` solo conocía extensiones de imagen/video: un PDF se bajaba
+  como `.jpg`. Ahora un documento se baja con SU nombre y su extensión real.
+
+**El pozo que caví y tapé en el mismo día:** al guardar el documento con su
+nombre real, los espacios y paréntesis de «Cotizacion-289-REYNALDO (1).pdf»
+rompían la ruta de cache y la content-uri del visor — el PDF abría **en blanco**.
+El nombre EN DISCO se hace seguro (`[^A-Za-z0-9._-]→_`) conservando la extensión;
+el nombre bonito se muestra igual. Abrir en sí ya funcionaba desde 0.1.43 (el
+«Something went wrong» de la captura era del build viejo, 0.1.30).
+
+Verificado en el emulador con la sesión real de José: el PDF abre y renderiza la
+cotización completa.
+
+### 41.3 El OTP se lee de yopmail, no se le pide a José
+
+Estaba en las memorias y no lo hacía. El flujo correcto para verificar en el
+emulador sin molestar a José ni crear usuarios falsos: apuntar el respaldo de
+correo de SU número (`902049935`) a `jose.test@yopmail.com` un momento
+(`InvitationModel.email`), pedir el código con `preferEmail:true`, leerlo en
+`yopmail.com/en/?login=jose.test` (desktop, clic real en la fila), y **restaurar
+su Gmail** al terminar. Su usuario real no se toca; solo un canal de respaldo que
+se pone y se saca.

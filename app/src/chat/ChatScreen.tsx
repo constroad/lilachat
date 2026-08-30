@@ -93,6 +93,7 @@ export function ChatScreen({
   } = useChat({
     chatId,
     token: credential.jwt,
+    miUserId: credential.userId,
     seal: sesionLista?.seal,
     open: sesionLista?.open,
   });

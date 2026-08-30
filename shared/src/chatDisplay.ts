@@ -149,3 +149,17 @@ export function resolveChatPreview(params: {
   }
   return { text: 'Sin mensajes todavía', style: 'normal' };
 }
+
+/**
+ * ¿Este acuse de lectura es de OTRA persona?
+ *
+ * El server emite `receipt` a todos los miembros del chat, incluido quien
+ * acaba de leer. Sin este filtro, al abrir un chat —donde la app se marca leída
+ * sola— mi propio acuse subía «hasta dónde leyeron los demás» y todos mis
+ * mensajes se pintaban con el doble check azul al instante, con el otro lado sin
+ * haber visto nada. Los checks dejaban de significar algo.
+ */
+export function esAcuseDeOtro(params: { de: string; yo: string }): boolean {
+  if (!params.yo) return false;
+  return params.de !== params.yo;
+}

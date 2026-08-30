@@ -2696,3 +2696,66 @@ motor de PDF pesaría más que toda la app, y el teléfono ya tiene uno.
 | «Abrir» | lo abre el visor de PDF del teléfono, con el texto legible |
 
 Data de QA borrada y verificada en cero.
+
+## 40. Notas de voz, checks, recorte y un solo camino de actualización (30/08/2026)
+
+Cuatro pedidos de José en una tanda.
+
+### 40.1 Notas de voz
+
+El micrófono estaba en la barra desde el primer día **apagado**, ocupando su
+lugar para que la barra no cambiara de forma el día que existiera. Ahora graba
+(`expo-audio`, `useGrabadorDeVoz`).
+
+**Se toca para empezar y se toca para mandar, no se mantiene apretado.** En
+WhatsApp hay que sostener el dedo, y para quien no lo tiene incorporado eso
+termina en audios cortados a la mitad — soltás sin querer y ya se mandó. Con dos
+toques se puede hablar mirando la pantalla y cancelar. Mientras graba, la barra
+ES la grabación: cancelar, el tiempo corriendo, mandar.
+
+Medio segundo de mínimo (`MINIMO_DE_VOZ_MS`) para que un roce no deje un audio de
+dos décimas sonando en el teléfono de todos. Sube por el MISMO camino que una
+foto —es media como cualquier otra—, así que la cola, el progreso y los errores
+no se re-implementan. En la burbuja se escucha ahí mismo (`NotaDeVoz`), y **no
+arranca solo**: un audio que suena al aparecer en pantalla es lo peor que puede
+hacer un chat. El tipo `audio` se agregó de punta a punta (`MediaKind`, el enum
+del schema, el preview de la lista).
+
+### 40.2 Los checks se ponían azules sin que nadie leyera
+
+«Los dos checks azules es si mi contacto ya leyó el mensaje; antes es gris». El
+server emite `receipt` a TODOS los miembros del chat, **incluido quien acaba de
+leer**. El cliente lo tomaba sin mirar de quién era, así que al abrir un chat
+—donde la app se marca leída sola— mi PROPIO acuse subía «hasta dónde leyeron los
+demás» y todos mis mensajes se pintaban de azul al instante, con el otro lado sin
+haber visto nada. `esAcuseDeOtro` descarta el acuse propio.
+
+### 40.3 La foto de grupo no se recortaba
+
+«No hay opción de hacer crop de la imagen y centrarla». Se subía la foto entera y
+el avatar es un círculo, así que una apaisada quedaba cortada por el medio a
+criterio de nadie. Ahora `allowsEditing` abre el recortador del sistema en `1:1`,
+porque el destino ES un círculo. (Sirve para grupo; la foto de perfil personal
+todavía no existe.)
+
+### 40.4 Un solo camino de actualización
+
+«Buscar actualizaciones» de Ajustes abría el navegador con el APK suelto —el
+«File might be harmful» de Chrome— mientras la banda de la lista ya mandaba a
+LilaStore. El mismo pedido resuelto de dos formas es, para quien lo usa, una app
+que a veces funciona. Los dos pasan ahora por `abrirActualizacion`.
+
+### 40.5 Verificado (0.1.45 · 46)
+
+| Qué | Cómo |
+| --- | --- |
+| **Checks** — VERIFICADO en el emulador | Con el fix, tras abrir el chat (que marca MI lectura) el mensaje quedó en UN check gris; cuando el otro usuario leyó de verdad (POST `/read` con su credencial) pasó a doble check. Antes, abrir el chat lo pintaba de azul solo. |
+| Notas de voz | **Pendiente de ver en el aparato de José**: el emulador se reinició desde un snapshot viejo y perdió su sesión justo en el diálogo de permiso del micrófono. El motor tiene tests, el render y la subida compilan. |
+| Recorte de foto | **Pendiente**, por lo mismo: es una opción del `ImagePicker`, sin lógica propia. |
+| Un solo camino | El de la banda ya estaba verificado (§37.2); el de Ajustes usa la misma función. |
+
+**Por qué quedó a medias la verificación en vivo:** el emulador crasheó y volvió
+a un estado sin sesión. Recuperarla exige un OTP, y la regla es no generarlo ni
+tipearlo (`qa-phone-only-902049935`: inventar números creó usuarios falsos en
+producción). Lo verificable sin sesión se cubrió; lo visual queda para el aparato
+de José, con este guion.

@@ -8,6 +8,7 @@ import {
   resolveChatPreview,
   resolveDeliveryState,
   startsNewDay,
+  esAcuseDeOtro,
 } from './chatDisplay.js';
 
 describe('formatClock', () => {
@@ -156,5 +157,32 @@ describe('resolveChatPreview', () => {
 
   it('sin nada, lo dice sin inventar', () => {
     expect(resolveChatPreview({ typing: false }).text).toBe('Sin mensajes todavía');
+  });
+});
+
+/**
+ * **Mi propio acuse no dice nada del otro.**
+ *
+ * El server manda `receipt` a TODOS los miembros, incluido quien acaba de leer.
+ * El cliente lo tomaba sin mirar de quién era, así que al abrir el chat —cuando
+ * la app se marca leída sola— mi propio acuse subía «hasta dónde leyeron los
+ * demás» y **todos mis mensajes aparecían con el doble check azul al instante**,
+ * aunque del otro lado no los hubiera visto nadie.
+ *
+ * José, 30/08/2026: «los 2 checks azules es si mi contacto ya leyó el mensaje,
+ * antes es gris».
+ */
+describe('esAcuseDeOtro', () => {
+  it('el mío no cuenta', () => {
+    expect(esAcuseDeOtro({ de: 'yo', yo: 'yo' })).toBe(false);
+  });
+
+  it('el del otro sí', () => {
+    expect(esAcuseDeOtro({ de: 'wilson', yo: 'yo' })).toBe(true);
+  });
+
+  /** Sin saber quién soy no se puede afirmar que el acuse es ajeno. */
+  it('sin mi id, no se cuenta', () => {
+    expect(esAcuseDeOtro({ de: 'wilson', yo: '' })).toBe(false);
   });
 });

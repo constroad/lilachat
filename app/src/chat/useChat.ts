@@ -7,6 +7,7 @@ import {
   advanceCursors,
   buildOutboxItem,
   conciliarPagina,
+  esAcuseDeOtro,
   mergeBySeq,
   type Cursors,
   type Envelope,
@@ -60,6 +61,8 @@ const PAGINA_DE_SANEO = 50;
 export function useChat(params: {
   chatId: string;
   token: string;
+  /** Quién soy: sin esto, mi propio acuse se contaría como el del otro. */
+  miUserId: string;
   /** Chat secreto (F9): cifra al ENCOLAR y descifra al mostrar. */
   seal?: (text: string) => Envelope | null;
   open?: (envelope: Envelope) => string | null;
@@ -276,6 +279,10 @@ export function useChat(params: {
 
     const onReceipt = (frame: { chatId: string; userId: string; readSeq: number }) => {
       if (!alive || frame.chatId !== params.chatId) return;
+      // MI acuse no dice nada del otro. El server los manda a todos los
+      // miembros, incluido quien leyó, y sin este filtro abrir el chat pintaba
+      // de azul todos mis mensajes al instante.
+      if (!esAcuseDeOtro({ de: frame.userId, yo: params.miUserId })) return;
       // Nunca retrocede: dos dispositivos del otro mandan acuses desordenados.
       setOthersRead((current) => Math.max(current, frame.readSeq));
     };

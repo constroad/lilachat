@@ -2323,12 +2323,62 @@ Lo que NO se verificó: **qué ve el sacado**. Hace falta un segundo aparato con
 sesión propia; el aviso se manda (`chat.changed` a los miembros previos) pero
 nadie lo recibió en la prueba.
 
-### 36.6 Pendiente
+### 36.6 Nombrar admin y renunciar al admin
+
+`PATCH /api/chats/:chatId/members/:userId` con `{role}`: cambia UN campo de una
+membresía que ya existe, mientras el `DELETE` de al lado la borra.
+
+**Nombrar lo puede hacer cualquier admin; el admin se lo saca uno mismo.** Dar
+permisos no le quita nada a nadie, pero si un admin pudiera degradar a otro
+podría después echarlo: dos toques y el grupo cambió de dueño. Es la misma
+carrera que ya evita `puedeSacar`.
+
+**Y el grupo nunca se queda sin admin**: el único no puede renunciar. Es el
+agujero que `decidirSalida` tapa promoviendo al más antiguo cuando alguien se va;
+acá NO se promueve solo —quien está mirando la lista puede elegir— así que se le
+pide nombrar reemplazo antes. La puerta no queda cerrada: hay salida y se dice
+cuál.
+
+El rol ANTERIOR va en la condición del update, así que dos cambios simultáneos no
+se pisan con una vista vieja. Los miembros viejos sin `role` guardado cuentan
+como «member», que es lo que ya asume el resto del código.
+
+**Las tres acciones sobre un participante pasaron a una HOJA con etiquetas**
+(`AccionesDeMiembro`), en vez de iconos sueltos en la fila: dos iconos ya
+competían con el nombre y el sello de admin, y sobre todo un escudo no dice
+«nombrar admin». Qué acciones aparecen lo decide `accionesDeMiembro`, que le
+pregunta a las MISMAS funciones que después aplica el server — armar esa lista
+aparte sería una segunda copia de las reglas, y las dos copias se separan en el
+primer cambio. **Una fila sin acciones no abre hoja.**
+
+Las tres preguntan antes, y el texto dice lo que de verdad va a pasar: al nombrar
+admin **ya no se lo podés quitar**, y al renunciar te tiene que nombrar otro.
+
+#### Verificado (0.1.35 · 36)
+
+| Paso | Resultado |
+| --- | --- |
+| Siendo el único admin, mi propia fila | sin «⋮»: no hay nada que pueda hacer conmigo |
+| «⋮» de un miembro | hoja con «Nombrar admin» y «Sacar del grupo» |
+| Nombrar admin | aviso de que después no se lo puedo quitar; queda `admin` en la base |
+| Fila del otro admin, ya nombrado | sin «⋮»: ni bajarlo ni sacarlo |
+| Mi fila, con otro admin en el grupo | «⋮» con «Dejar de ser admin» |
+| Renunciar | quedo `member` en la base, y **ninguna fila abre hoja** |
+| Miembro común se nombra admin a sí mismo, por el endpoint | 400 «Solo un admin puede cambiar los roles» |
+| Admin le quita el admin a otro admin, por el endpoint | 400 «No podés quitarle el admin a otra persona» |
+| El único admin renuncia, por el endpoint | 400 «Sos el único admin. Nombrá a otro antes» |
+| `role: 'dueño'` | 400 «Ese rol no existe» |
+
+El grupo quedó como estaba: José admin, Wilson member. Toda la ida y vuelta de
+roles se hizo por la API real, sin tocar la base a mano.
+
+### 36.7 Pendiente
 
 - **Sumar de a varios**: hoy es uno por vez (la hoja se cierra y la lista se
   recarga). Alcanza para un grupo familiar; para armar uno de diez es tedioso.
-- **Cambiar de admin** no existe: el rol solo se mueve solo, promoviendo al más
-  antiguo cuando se va el último admin.
+- **Nadie puede recuperar un grupo sin admin.** No puede pasar por las reglas de
+  hoy, pero si pasara —datos viejos, un borrado a mano— no hay forma de arreglarlo
+  desde la app.
 - Invitar desde acá crea la admisión y comparte el enlace, pero **no suma**: la
   persona tiene que instalar y entrar, y recién ahí se la puede agregar. La hoja
   lo dice en su subtítulo en vez de dejar que se descubra.

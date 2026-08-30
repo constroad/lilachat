@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Download, FileText, Share2, Trash2, X } from 'lucide-react-native';
 import { useMargenes } from '../ui/useMargenes';
+import { nombreLimpio } from './archivoDescargado';
 
 /**
  * El visor a pantalla completa.
@@ -206,7 +207,7 @@ export function VisorDeImagen({
               className="mt-4 text-center text-base font-semibold"
               numberOfLines={3}
             >
-              {foto.nombre ?? 'Archivo'}
+              {foto.nombre ? nombreLimpio(foto.nombre) : 'Archivo'}
             </Text>
             <Text style={{ color: '#c9c9c9' }} className="mt-1 text-center text-[12px]">
               Se abre con otra app del teléfono

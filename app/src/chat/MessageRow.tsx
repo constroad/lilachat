@@ -11,6 +11,7 @@ import {
   textoDeAviso,
 } from '@lilachat/shared';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
+import { nombreLimpio } from './archivoDescargado';
 import {
   DELIVERY_GLYPH,
   formatClock,
@@ -141,25 +142,39 @@ export function MessageRow({
             <Pressable
               testID={`archivo-${item.seq}`}
               onPress={() => onVerImagen?.(item.media!.url ?? item.media!.thumbUrl ?? '')}
-              className="min-w-[200px] flex-row items-center gap-3 px-3 py-2.5"
             >
-              <View
-                className={`h-10 w-10 items-center justify-center rounded-lg ${mine ? 'bg-on-primary/20' : 'bg-primary/10'}`}
-              >
-                <FileText size={20} color={mine ? colores['on-primary'] : colores.primary} />
-              </View>
-              <View className="min-w-0 flex-1">
-                <Text
-                  className={`text-[14px] font-semibold ${mine ? 'text-on-primary' : 'text-on-surface'}`}
-                  numberOfLines={2}
+              {/* La MINIATURA de la primera página, como la preview card de
+                  WhatsApp. lila la genera para los PDF; sin ella, un documento
+                  es una tarjeta gris que no dice qué contiene. */}
+              {item.media.thumbUrl ? (
+                <View className="overflow-hidden">
+                  <Image
+                    source={{ uri: item.media.thumbUrl }}
+                    style={{ width: 240, height: 180 }}
+                    contentFit="cover"
+                    transition={120}
+                  />
+                </View>
+              ) : null}
+              <View className="min-w-[200px] flex-row items-center gap-3 px-3 py-2.5">
+                <View
+                  className={`h-10 w-10 items-center justify-center rounded-lg ${mine ? 'bg-on-primary/20' : 'bg-primary/10'}`}
                 >
-                  {item.media.fileName ?? 'Archivo'}
-                </Text>
-                <Text
-                  className={`text-[11px] ${mine ? 'text-on-primary/70' : 'text-on-surface-variant'}`}
-                >
-                  {item.media.sizeBytes ? formatBytes(item.media.sizeBytes) : 'Tocá para abrirlo'}
-                </Text>
+                  <FileText size={20} color={mine ? colores['on-primary'] : colores.primary} />
+                </View>
+                <View className="min-w-0 flex-1">
+                  <Text
+                    className={`text-[14px] font-semibold ${mine ? 'text-on-primary' : 'text-on-surface'}`}
+                    numberOfLines={2}
+                  >
+                    {item.media.fileName ? nombreLimpio(item.media.fileName) : 'Archivo'}
+                  </Text>
+                  <Text
+                    className={`text-[11px] ${mine ? 'text-on-primary/70' : 'text-on-surface-variant'}`}
+                  >
+                    {item.media.sizeBytes ? formatBytes(item.media.sizeBytes) : 'Tocá para abrirlo'}
+                  </Text>
+                </View>
               </View>
             </Pressable>
           ) : null}

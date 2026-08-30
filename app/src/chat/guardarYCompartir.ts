@@ -35,8 +35,10 @@ async function bajarACache(params: {
   cuando: Date;
   mime?: string;
   seq: number;
+  /** El nombre original del archivo, para que un documento baje con SU nombre. */
+  nombre?: string;
 }): Promise<{ ok: true; uri: string } | { ok: false; motivo: string }> {
-  const destino = `${FileSystem.cacheDirectory}${nombreDeArchivo(params)}`;
+  const destino = `${FileSystem.cacheDirectory}${nombreDeArchivo({ ...params, original: params.nombre })}`;
   try {
     const { status, uri } = await FileSystem.downloadAsync(params.url, destino);
     if (status < 200 || status >= 300) {
@@ -127,6 +129,7 @@ export async function abrirConOtraApp(params: {
   cuando: Date;
   mime?: string;
   seq: number;
+  nombre?: string;
 }): Promise<Resultado> {
   const bajado = await bajarACache(params);
   if (!bajado.ok) return bajado;

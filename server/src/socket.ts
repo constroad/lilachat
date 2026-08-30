@@ -9,9 +9,10 @@ import {
   pullSince,
   sendMessage,
   deleteMessage,
+  markDelivered,
 } from './chatService.js';
 import { toClientMessage, toClientMessages } from './messageView.js';
-import { markOffline, markOnline, onlineAmong } from './presence.js';
+import { isOnline, markOffline, markOnline, onlineAmong } from './presence.js';
 import { notifyOffline } from './pushService.js';
 import { maybeAnswerMention } from './assistantReply.js';
 import { verifySession } from './sessions.js';
@@ -80,8 +81,35 @@ export async function avisarMensajeNuevo(
 ): Promise<string[]> {
   const members = await chatMemberIds(message.chatId);
   if (!ioVivo) return members;
+
+  const remitente = String((message as { senderId?: unknown }).senderId ?? '');
+  const chatId = String(message.chatId);
+  const seq = Number((message as { seq?: unknown }).seq);
+
   for (const member of members) {
     ioVivo.to(userRoom(member)).emit('msg.new', toClientMessage(message));
+
+    // A un miembro CONECTADO que no sea el autor se le acaba de ENTREGAR: se
+    // marca su acuse de entrega y se avisa al remitente. Asi el doble check
+    // gris aparece aunque esa persona no tenga el chat abierto — como WhatsApp.
+    // El offline lo acusa su propio cliente al reconectar y hacer sync.pull.
+    if (
+      member !== remitente &&
+      Number.isFinite(seq) &&
+      seq > 0 &&
+      Types.ObjectId.isValid(member) &&
+      isOnline(member)
+    ) {
+      void markDelivered({ chatId, userId: new Types.ObjectId(member), seq })
+        .then(() => {
+          ioVivo?.to(userRoom(remitente)).emit('receipt', {
+            chatId,
+            userId: member,
+            deliveredSeq: seq,
+          });
+        })
+        .catch(() => {});
+    }
   }
   return members;
 }
@@ -311,11 +339,38 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
             chatId: payload.chatId,
             userId: String(userId),
             readSeq: payload.seq,
+            // Leer implica entregado: sin esto el doble check gris nunca se
+            // pondria azul si el otro ya lo tenia como entregado.
+            deliveredSeq: payload.seq,
           });
         }
       } catch {
         // Un acuse que no se pudo guardar no rompe la sesión: el próximo lo
         // arregla, porque es un cursor y no un incremento.
+      }
+    });
+
+    /**
+     * «Me llego» —entregado, no leido—. Lo emite el cliente cuando RECIBE un
+     * mensaje ajeno, y es lo que hace aparecer el doble check gris de WhatsApp
+     * antes de que el otro abra el chat.
+     */
+    socket.on('deliver.set', async (frame: unknown) => {
+      const payload = (frame ?? {}) as { chatId?: string; seq?: number };
+      if (!payload.chatId || typeof payload.seq !== 'number') return;
+      try {
+        await markDelivered({ chatId: payload.chatId, userId, seq: payload.seq });
+        const members = await chatMemberIds(new Types.ObjectId(payload.chatId));
+        for (const member of members) {
+          io.to(userRoom(member)).emit('receipt', {
+            chatId: payload.chatId,
+            userId: String(userId),
+            deliveredSeq: payload.seq,
+          });
+        }
+      } catch {
+        // Igual que el acuse de lectura: si no se pudo guardar, el proximo lo
+        // arregla porque es un cursor, no un incremento.
       }
     });
 

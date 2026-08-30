@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extensionDe, nombreDeArchivo } from './archivoDescargado';
+import { extensionDe, nombreDeArchivo, nombreLimpio } from './archivoDescargado';
 
 describe('extensionDe', () => {
   it('mapea los tipos que manejamos', () => {
@@ -58,5 +58,45 @@ describe('nombreDeArchivo', () => {
 
   it('sin tipo conocido igual da un nombre usable', () => {
     expect(nombreDeArchivo({ cuando, seq: 3 })).toMatch(/^Lilachat-.*\.jpg$/);
+  });
+});
+
+describe('nombreLimpio', () => {
+  it('decodifica los %20 y demás', () => {
+    expect(nombreLimpio('Cotizacion-289-REYNALDO%20(1).pdf')).toBe('Cotizacion-289-REYNALDO (1).pdf');
+  });
+
+  it('un % suelto no lo tira', () => {
+    expect(nombreLimpio('descuento%.pdf')).toBe('descuento%.pdf');
+  });
+
+  it('saca barras y saltos que romperían la ruta', () => {
+    expect(nombreLimpio('carpeta/archivo.pdf')).toBe('carpeta archivo.pdf');
+  });
+
+  it('vacío cae en un nombre por defecto', () => {
+    expect(nombreLimpio('   ')).toBe('archivo');
+  });
+});
+
+describe('nombreDeArchivo con original', () => {
+  const cuando = new Date(2026, 7, 30, 19, 43);
+
+  it('un documento conserva su nombre, decodificado', () => {
+    expect(
+      nombreDeArchivo({ cuando, seq: 6, mime: 'application/pdf', original: 'Cotizacion%20(1).pdf' })
+    ).toBe('Cotizacion (1).pdf');
+  });
+
+  it('una foto NO usa el original: el nombre con fecha es mejor', () => {
+    expect(nombreDeArchivo({ cuando, seq: 6, mime: 'image/jpeg', original: 'IMG_1234.JPG' })).toBe(
+      'Lilachat-2026-08-30-1943-6.jpg'
+    );
+  });
+
+  it('un PDF sin original cae al nombre con fecha y extensión correcta', () => {
+    expect(nombreDeArchivo({ cuando, seq: 6, mime: 'application/pdf' })).toBe(
+      'Lilachat-2026-08-30-1943-6.pdf'
+    );
   });
 });

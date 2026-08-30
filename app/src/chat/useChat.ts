@@ -214,6 +214,7 @@ export function useChat(params: {
    * cambiaba de color.
    */
   const [othersRead, setOthersRead] = useState(0);
+  const [othersDelivered, setOthersDelivered] = useState(0);
 
   /**
    * El texto de lo que YO acabo de mandar en un chat cifrado, solo para
@@ -257,7 +258,17 @@ export function useChat(params: {
         if (!alive || !payload?.ok || !payload.batches) return;
         cursors.current = advanceCursors(cursors.current, payload.batches);
         const mine = payload.batches.find((batch) => batch.chatId === params.chatId);
-        if (mine) setMessages((current) => mergeBySeq(current, mine.messages as ChatMessage[]));
+        if (mine && mine.messages.length > 0) {
+          setMessages((current) => mergeBySeq(current, mine.messages as ChatMessage[]));
+          // Acusar entrega hasta el último que llegó, si alguno es del otro.
+          const ajenos = mine.messages.filter((msj) =>
+            esAcuseDeOtro({ de: String(msj.senderId), yo: params.miUserId })
+          );
+          if (ajenos.length > 0) {
+            const ultimo = Math.max(...ajenos.map((msj) => msj.seq));
+            getSocket()?.emit('deliver.set', { chatId: params.chatId, seq: ultimo });
+          }
+        }
         // Reconectado: lo que quedó en la cola sale ahora.
         void drainOutbox();
       });
@@ -275,16 +286,34 @@ export function useChat(params: {
         { chatId: message.chatId, messages: [message] },
       ]);
       setMessages((current) => mergeBySeq(current, [message as ChatMessage]));
+      // Le llegó un mensaje del otro: se acusa ENTREGA (no lectura). Es lo que
+      // pone el doble check gris del lado de quien lo mandó, antes de que yo
+      // abra nada.
+      if (message && esAcuseDeOtro({ de: String(message.senderId), yo: params.miUserId })) {
+        getSocket()?.emit('deliver.set', { chatId: params.chatId, seq: message.seq });
+      }
     };
 
-    const onReceipt = (frame: { chatId: string; userId: string; readSeq: number }) => {
+    const onReceipt = (frame: {
+      chatId: string;
+      userId: string;
+      readSeq?: number;
+      deliveredSeq?: number;
+    }) => {
       if (!alive || frame.chatId !== params.chatId) return;
       // MI acuse no dice nada del otro. El server los manda a todos los
       // miembros, incluido quien leyó, y sin este filtro abrir el chat pintaba
       // de azul todos mis mensajes al instante.
       if (!esAcuseDeOtro({ de: frame.userId, yo: params.miUserId })) return;
-      // Nunca retrocede: dos dispositivos del otro mandan acuses desordenados.
-      setOthersRead((current) => Math.max(current, frame.readSeq));
+      // Nunca retroceden: dos dispositivos del otro mandan acuses desordenados.
+      // Entregado y leído son cursores SEPARADOS — de ahí salen los dos checks
+      // grises y los dos azules.
+      if (typeof frame.readSeq === 'number') {
+        setOthersRead((current) => Math.max(current, frame.readSeq!));
+      }
+      if (typeof frame.deliveredSeq === 'number') {
+        setOthersDelivered((current) => Math.max(current, frame.deliveredSeq!));
+      }
     };
 
     /**
@@ -403,6 +432,7 @@ export function useChat(params: {
     pending,
     connected,
     othersRead,
+    othersDelivered,
     send,
     sendMedia,
     markRead,

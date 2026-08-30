@@ -311,9 +311,31 @@ export async function markRead(params: {
   seq: number;
 }): Promise<void> {
   const chatId = await assertMember(params.chatId, params.userId);
+  // Leer implica entregado: no se puede leer lo que no llego.
   await ReceiptModel.updateOne(
     { chatId, userId: params.userId },
     { $max: { readSeq: params.seq, deliveredSeq: params.seq } },
+    { upsert: true }
+  );
+}
+
+/**
+ * Marcar ENTREGADO —el mensaje llego al telefono— SIN marcarlo leido.
+ *
+ * Es lo que le faltaba a los checks: sin un acuse de entrega separado, un
+ * mensaje saltaba de un check (enviado) a doble check azul (leido) sin pasar por
+ * el doble check gris de WhatsApp. `$max` sobre `deliveredSeq` solamente; jamas
+ * toca `readSeq`, porque que algo llegue no significa que se haya abierto.
+ */
+export async function markDelivered(params: {
+  chatId: string;
+  userId: Types.ObjectId;
+  seq: number;
+}): Promise<void> {
+  const chatId = await assertMember(params.chatId, params.userId);
+  await ReceiptModel.updateOne(
+    { chatId, userId: params.userId },
+    { $max: { deliveredSeq: params.seq } },
     { upsert: true }
   );
 }

@@ -84,6 +84,7 @@ export function ChatScreen({
     pending,
     connected,
     othersRead,
+    othersDelivered,
     send,
     sendMedia,
     markRead,
@@ -566,7 +567,7 @@ export function ChatScreen({
                 next={next}
                 myUserId={credential.userId}
                 othersReadSeq={Math.max(othersReadSeq, othersRead)}
-                othersDeliveredSeq={othersDeliveredSeq}
+                othersDeliveredSeq={Math.max(othersDeliveredSeq, othersDelivered)}
                 senderInitial={nombreVisible.slice(0, 1).toUpperCase()}
                 onVerImagen={(_url) => setViendoSeq(!isPending(item) ? item.seq : null)}
                 onSeleccionar={setElegido}
@@ -751,6 +752,7 @@ export function ChatScreen({
             cuando: f.cuandoReal,
             mime: f.mime,
             seq: f.seq,
+            nombre: f.nombre,
           });
           setAvisoVisor(r.ok ? '' : r.motivo);
           if (!r.ok) setTimeout(() => setAvisoVisor(''), 4000);

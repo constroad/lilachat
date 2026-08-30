@@ -2629,3 +2629,70 @@ responder —no se puede subir dos cosas a la vez— pero se sigue viendo lo que
 | Subir una foto (grupo de QA) | el «+» sigue siendo «+», atenuado; el progreso en la burbuja |
 
 Data de QA borrada y verificada en cero.
+
+
+## 39. Los archivos, y la caché que no olvidaba (30/08/2026)
+
+### 39.1 «Limpiá esas líneas sin desloguearme»
+
+Habían quedado en el grupo de José unos avisos de una prueba mía que **borré de
+la base**, y no se iban del teléfono. La causa es de diseño y valía la pena
+verla: `mergeBySeq` solo SUMA, así que un mensaje que desaparece del server sigue
+dibujándose para siempre en cada aparato que ya lo tenía guardado.
+
+Arreglarlo llevó **tres intentos**, y los dos primeros fallaron por el mismo tipo
+de razón: creer que el problema estaba resuelto sin mirar por dónde entra de
+verdad la data.
+
+1. **Conciliar por rango.** La página que llega describe un tramo de `seq`; ahí
+   manda el server. No alcanzó: los fantasmas tenían seq 3–7 y el chat, que yo
+   había vaciado reseteando `lastSeq`, volvía a empezar en 1. Nunca entraban en
+   el rango de ninguna página.
+2. **Sumar el tope del server** (`lastSeq`, que ahora viaja CON la página —
+   calculado en el cliente sería una carrera). Correcto, pero seguía sin pasar
+   nada: **la carga inicial no usa ese camino**. Va por `sync.pull` del socket,
+   que manda un DELTA desde un cursor y por definición nunca describe el chat
+   entero.
+3. **Sanear al abrir**: si había caché, se pide la última página por HTTP y se
+   concilia. Recién ahí los fantasmas desaparecieron.
+
+La regla quedó acotada a propósito: dentro del rango de la página manda el
+server, por encima del tope no puede existir nada, y **fuera de eso no se toca**
+—lo de más atrás el server no lo mencionó, y borrar por silencio vaciaría el
+historial en cada apertura—. Una página vacía no dice nada.
+
+**Ojo el día que el server empiece a olvidar a propósito.** Si se adopta el
+modelo de WhatsApp —borrar al entregar— esta función pasa de arreglar una
+inconsistencia a BORRAR el historial de la gente, y sale junto con ese cambio.
+Está escrito en el módulo.
+
+### 39.2 Un PDF era un rectángulo en blanco
+
+«Probá con un PDF el visor». Estaba roto de punta a punta:
+
+- En el chat llegaba como un **rectángulo blanco de 220×220** —lila le genera
+  miniatura de la primera página— sin nombre, sin tamaño y sin nada que dijera
+  que era un archivo. Mientras subía, un cuadro vacío del color de la burbuja con
+  un porcentaje encima.
+- En el visor, la URL del PDF iba a parar a un `<Image>`: pantalla negra.
+- Y **el nombre del archivo no existía**: el server guardaba el nombre del
+  storage (`file-2026-08-30T…pdf`), que no le dice nada a nadie. Un documento ES
+  su nombre, así que el mensaje ahora guarda `fileName` y `sizeBytes`.
+
+Ahora en el chat va como tarjeta (ícono, nombre, tamaño) y en el visor una
+tarjeta con **Abrir**, que lo entrega a la app del teléfono que sepa abrirlo, por
+`content://` — pasarle un `file://` de nuestro almacenamiento privado le da una
+ruta que no puede leer y Android lo corta con `FileUriExposedException`. Meter un
+motor de PDF pesaría más que toda la app, y el teléfono ya tiene uno.
+
+### 39.3 Verificado (0.1.43 · 44)
+
+| Paso | Resultado |
+| --- | --- |
+| Abrir el grupo con las líneas fantasma | desaparecen solas; queda lo que el server tiene |
+| Mandar un PDF | tarjeta con «prueba-lilachat.pdf · 654 B» |
+| Un archivo subido ANTES del cambio | tarjeta con «Archivo · Tocá para abrirlo» (sin nombre guardado) |
+| Tocarlo | el visor muestra el nombre y «Abrir» |
+| «Abrir» | lo abre el visor de PDF del teléfono, con el texto legible |
+
+Data de QA borrada y verificada en cero.

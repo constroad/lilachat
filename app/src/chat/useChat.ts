@@ -50,6 +50,13 @@ export type PendingMessage = {
   progreso?: number;
 };
 
+/**
+ * Cuántos mensajes se piden para sanear. Es la última página: alcanza para
+ * cubrir el tramo donde de verdad pasan las cosas, y pedir el historial entero
+ * en cada apertura sería caro para arreglar algo que casi nunca pasa.
+ */
+const PAGINA_DE_SANEO = 50;
+
 export function useChat(params: {
   chatId: string;
   token: string;
@@ -117,6 +124,39 @@ export function useChat(params: {
       vigente = false;
     };
   }, [params.chatId]);
+  /**
+   * Sanear la caché contra el server al abrir el chat.
+   *
+   * La carga inicial va por el socket (`sync.pull`), que manda un DELTA desde un
+   * cursor: nunca describe el chat entero, así que nunca puede darse cuenta de
+   * que algo dejó de existir. Un mensaje borrado en la base seguía dibujándose
+   * para siempre en cada teléfono que ya lo tenía (le pasó al grupo de José con
+   * unas líneas de una prueba mía).
+   *
+   * **Solo si había caché**: en una instalación nueva no hay nada que sanear y
+   * este pedido sería gasto puro.
+   */
+  useEffect(() => {
+    let vigente = true;
+    void (async () => {
+      const guardados = await leerMensajesGuardados(params.chatId);
+      if (!vigente || !guardados || guardados.length === 0) return;
+
+      const respuesta = await listOlderMessages(
+        { chatId: params.chatId, limit: PAGINA_DE_SANEO },
+        params.token
+      );
+      if (!vigente || !respuesta.ok) return;
+
+      const pagina = respuesta.data.messages as ChatMessage[];
+      if (pagina.length === 0) return;
+      setMessages((actuales) => conciliarPagina(actuales, pagina, respuesta.data.lastSeq));
+    })();
+    return () => {
+      vigente = false;
+    };
+  }, [params.chatId, params.token]);
+
   const cargandoRef = useRef(false);
   const hayMasRef = useRef(true);
 

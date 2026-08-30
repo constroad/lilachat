@@ -117,12 +117,16 @@ export const listChats = (token: string, fetchImpl?: FetchLike) =>
  * mensajes al abrir un chat es justo lo que hace que una app se sienta pesada.
  */
 export const listOlderMessages = (
-  params: { chatId: string; beforeSeq: number; limit: number },
+  params: { chatId: string; beforeSeq?: number; limit: number },
   token: string,
   fetchImpl?: FetchLike
 ) =>
-  get<{ messages: unknown[] }>(
-    `/api/chats/${params.chatId}/messages?beforeSeq=${params.beforeSeq}&limit=${params.limit}`,
+  // Sin `beforeSeq` trae la ÚLTIMA página, que es lo que hace falta para sanear
+  // la caché al abrir el chat. `lastSeq` viene con ella: es el tope real del
+  // chat en ese instante.
+  get<{ messages: unknown[]; lastSeq?: number }>(
+    `/api/chats/${params.chatId}/messages?limit=${params.limit}` +
+      (params.beforeSeq ? `&beforeSeq=${params.beforeSeq}` : ''),
     token,
     fetchImpl
   );

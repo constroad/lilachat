@@ -87,6 +87,62 @@ export function puedeSacar(params: {
   return { ok: true };
 }
 
+/**
+ * Nombrar admin, o dejar de serlo.
+ *
+ * **El admin se lo saca uno mismo; nadie se lo saca a otro.** Es la misma
+ * simetría que en `puedeSacar`, y acá importa más: si un admin pudiera degradar
+ * a otro, después podría echarlo — dos toques y el grupo cambió de dueño.
+ * Nombrar SÍ lo puede hacer cualquier admin: dar permisos no le quita nada a
+ * nadie.
+ *
+ * Y **el grupo nunca se queda sin admin**: el único no puede renunciar. Es el
+ * mismo agujero que tapa `decidirSalida` al irse el último, pero acá no se
+ * promueve a nadie por su cuenta —quien está mirando la lista puede elegir— así
+ * que se le pide nombrar reemplazo antes.
+ */
+export function puedeCambiarRol(params: {
+  quien: string;
+  miembros: readonly MiembroDeChat[];
+  aQuien: string;
+  rol: RolEnChat;
+  esGrupo: boolean;
+}): PuedeAgregar {
+  if (!params.esGrupo) {
+    return { ok: false, motivo: 'En una conversación de a dos no hay admins.' };
+  }
+
+  const yo = params.miembros.find((uno) => uno.userId === params.quien);
+  if (!yo) return { ok: false, motivo: 'No estás en este grupo.' };
+  if (yo.role !== 'admin') {
+    return { ok: false, motivo: 'Solo un admin puede cambiar los roles.' };
+  }
+
+  const otro = params.miembros.find((uno) => uno.userId === params.aQuien);
+  if (!otro) return { ok: false, motivo: 'Esa persona ya no está en el grupo.' };
+
+  if (otro.role === params.rol) {
+    return {
+      ok: false,
+      motivo: params.rol === 'admin' ? 'Ya es admin.' : 'Esa persona no es admin.',
+    };
+  }
+
+  if (params.rol === 'member') {
+    if (params.aQuien !== params.quien) {
+      return { ok: false, motivo: 'No podés quitarle el admin a otra persona. Solo ella puede dejarlo.' };
+    }
+    const otrosAdmins = params.miembros.filter(
+      (uno) => uno.role === 'admin' && uno.userId !== params.quien
+    );
+    if (otrosAdmins.length === 0) {
+      return { ok: false, motivo: 'Sos el único admin. Nombrá a otro antes de dejar de serlo.' };
+    }
+  }
+
+  return { ok: true };
+}
+
 export type ResultadoDeSalida =
   /** Se va y el grupo sigue. `nuevoAdmin` es a quién hay que promover, si hace falta. */
   | { accion: 'salir'; nuevoAdmin: string | null }

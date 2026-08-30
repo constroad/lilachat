@@ -8,12 +8,13 @@ import {
   Phone,
   Search,
   Flag,
-  UserMinus,
+  MoreVertical,
   UserPlus,
   Video,
 } from 'lucide-react-native';
-import { nombreDeContacto } from '@lilachat/shared';
-import { ContactPicker } from '../contacts/ContactPicker';
+import { accionesDeMiembro, nombreDeContacto, type AccionDeMiembro } from '@lilachat/shared';
+import { AccionesDeMiembro } from './AccionesDeMiembro';
+import { ElegirParaSumar } from './ElegirParaSumar';
 import type { Credential } from '../auth/credentialStore';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useColores } from '../ui/tema';
@@ -94,6 +95,8 @@ export function ChatDetailScreen({
   const [accionando, setAccionando] = useState(false);
   /** La hoja para elegir a quién sumar. */
   const [agregando, setAgregando] = useState(false);
+  /** De qué participante está abierta la hoja de acciones. */
+  const [menuDe, setMenuDe] = useState<Miembro | null>(null);
   const [aviso, setAviso] = useState('');
 
   /**
@@ -102,7 +105,11 @@ export function ChatDetailScreen({
    * hace dudar de si funcionó.
    */
   const llamar = useCallback(
-    async (ruta: string, cuerpo?: Record<string, unknown>, metodo: 'POST' | 'DELETE' = 'POST') => {
+    async (
+      ruta: string,
+      cuerpo?: Record<string, unknown>,
+      metodo: 'POST' | 'DELETE' | 'PATCH' = 'POST'
+    ) => {
       setAccionando(true);
       setAviso('');
       try {
@@ -187,35 +194,81 @@ export function ChatDetailScreen({
    */
   const yaEstan = useMemo(() => detalle?.members.map((uno) => uno.id) ?? [], [detalle]);
 
-  const soyAdmin = detalle?.members.some((uno) => uno.esYo && uno.role === 'admin') === true;
+  /**
+   * Qué se puede hacer con cada participante.
+   *
+   * Lo decide `accionesDeMiembro`, que le pregunta a las MISMAS reglas que
+   * después aplica el server. Armar la lista de botones acá —«mostrar sacar si
+   * soy admin»— sería una segunda copia de esas reglas, y las dos copias se
+   * separan en el primer cambio.
+   */
+  const accionesPara = useCallback(
+    (miembro: Miembro): AccionDeMiembro[] => {
+      const yo = detalle?.members.find((uno) => uno.esYo);
+      if (!yo || !detalle) return [];
+      return accionesDeMiembro({
+        quien: yo.id,
+        aQuien: miembro.id,
+        esGrupo: detalle.kind === 'group',
+        miembros: detalle.members.map((uno) => ({ userId: uno.id, role: uno.role })),
+      });
+    },
+    [detalle]
+  );
 
   /**
-   * Sacar a alguien SE PREGUNTA antes.
+   * Todas SE PREGUNTAN antes, y el texto dice qué va a pasar de verdad.
    *
-   * Es la única acción de esta pantalla que le pasa algo a otra persona, y un
-   * toque de más en la fila equivocada la echa del grupo sin vuelta atrás
-   * visible. El diálogo dice a quién y qué le va a pasar — «¿estás seguro?» a
-   * secas no informa nada.
+   * Son las únicas acciones de esta pantalla que le cambian algo a otra
+   * persona, y dos de las tres no las puede deshacer quien las hace: al nombrar
+   * admin **ya no se lo podés quitar** —solo esa persona puede dejarlo— y al
+   * renunciar hace falta que otro admin te nombre de vuelta. Un «¿estás
+   * seguro?» a secas no informa nada de eso.
    */
-  const confirmarSacar = (miembro: Miembro) => {
-    Alert.alert(
-      `¿Sacar a ${nombreDe(miembro)}?`,
-      'Va a dejar de ver el grupo y los mensajes nuevos. Los que ya mandó quedan. Podés volver a sumarlo cuando quieras.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Sacar',
-          style: 'destructive',
-          onPress: () => {
-            void (async () => {
-              // Se recarga la lista que la persona está mirando: dejarla vieja
-              // después de una acción propia es lo que hace dudar de si pasó.
-              if (await llamar(`members/${miembro.id}`, undefined, 'DELETE')) await cargar();
-            })();
-          },
+  const confirmarAccion = (miembro: Miembro, accion: AccionDeMiembro) => {
+    const quien = nombreDe(miembro);
+    const guiones: Record<
+      AccionDeMiembro,
+      { titulo: string; cuerpo: string; boton: string; correr: () => Promise<boolean> }
+    > = {
+      'hacer-admin': {
+        titulo: `¿Nombrar admin a ${quien}?`,
+        cuerpo:
+          'Va a poder sumar y sacar gente. Ojo: después NO se lo podés quitar — solo esa persona puede dejar de ser admin.',
+        boton: 'Nombrar',
+        correr: () => llamar(`members/${miembro.id}`, { role: 'admin' }, 'PATCH'),
+      },
+      'dejar-admin': {
+        titulo: '¿Dejar de ser admin?',
+        cuerpo:
+          'Seguís en el grupo, pero sin poder sumar ni sacar gente. Para volver a serlo te tiene que nombrar otro admin.',
+        boton: 'Dejar',
+        correr: () => llamar(`members/${miembro.id}`, { role: 'member' }, 'PATCH'),
+      },
+      sacar: {
+        titulo: `¿Sacar a ${quien}?`,
+        cuerpo:
+          'Va a dejar de ver el grupo y los mensajes nuevos. Los que ya mandó quedan. Podés volver a sumarlo cuando quieras.',
+        boton: 'Sacar',
+        correr: () => llamar(`members/${miembro.id}`, undefined, 'DELETE'),
+      },
+    };
+
+    const guion = guiones[accion];
+    Alert.alert(guion.titulo, guion.cuerpo, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: guion.boton,
+        style: accion === 'sacar' ? 'destructive' : 'default',
+        onPress: () => {
+          void (async () => {
+            // Se recarga la lista que la persona está mirando: dejarla vieja
+            // después de una acción propia es lo que hace dudar de si pasó.
+            if (await guion.correr()) await cargar();
+          })();
         },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
@@ -359,21 +412,21 @@ export function ChatDetailScreen({
                           <Text className="text-[10px] font-semibold text-primary">Admin</Text>
                         </View>
                       ) : null}
-                      {/* Sacar solo aparece si de verdad se puede: soy admin, no
-                          soy yo —para eso está salir— y el otro no es admin.
-                          Mostrar el botón y contestar «no podés» sería hacerle
-                          descubrir la regla a los golpes, y encima sobre otra
-                          persona. Las mismas condiciones las revalida el server:
-                          esconder un botón no es un permiso. */}
-                      {soyAdmin && !miembro.esYo && miembro.role !== 'admin' ? (
+                      {/* El menú aparece solo si hay algo que hacer con esa
+                          persona. Una fila con «⋮» que abre una hoja vacía —o
+                          peor, con opciones que fallan— enseña que los botones
+                          de esta app no responden. Las mismas reglas las
+                          revalida el server: esconder un botón no es un
+                          permiso. */}
+                      {accionesPara(miembro).length > 0 ? (
                         <Pressable
-                          testID={`btn-sacar-${miembro.id}`}
-                          accessibilityLabel={`Sacar a ${nombreDe(miembro)} del grupo`}
+                          testID={`btn-menu-${miembro.id}`}
+                          accessibilityLabel={`Opciones de ${nombreDe(miembro)}`}
                           disabled={accionando}
-                          onPress={() => confirmarSacar(miembro)}
+                          onPress={() => setMenuDe(miembro)}
                           className={`h-11 w-11 shrink-0 items-center justify-center ${accionando ? 'opacity-40' : ''}`}
                         >
-                          <UserMinus size={18} color={colores.error} />
+                          <MoreVertical size={18} color={colores['on-surface-variant']} />
                         </Pressable>
                       ) : null}
                     </View>
@@ -453,6 +506,17 @@ export function ChatDetailScreen({
             </View>
           </ScrollView>
         )}
+        <AccionesDeMiembro
+          visible={menuDe !== null}
+          nombre={menuDe ? nombreDe(menuDe) : ''}
+          acciones={menuDe ? accionesPara(menuDe) : []}
+          onCerrar={() => setMenuDe(null)}
+          onElegir={(accion) => {
+            const miembro = menuDe;
+            setMenuDe(null);
+            if (miembro) confirmarAccion(miembro, accion);
+          }}
+        />
         <ElegirParaSumar
           visible={agregando}
           credential={credential}
@@ -511,80 +575,5 @@ function AccionRedonda({
       </View>
       <Text className="mt-1 text-[11px] text-on-surface-variant">{etiqueta}</Text>
     </Pressable>
-  );
-}
-
-/**
- * Elegir a quién sumar al grupo.
- *
- * **Se usa el MISMO selector que el lápiz** (`ContactPicker`), no una lista
- * propia. La que había acá listaba solo a la gente con la que ya tenías
- * conversación abierta, así que a alguien de tu agenda que está en Lilachat y
- * con quien nunca hablaste no había forma de sumarlo: primero había que abrirle
- * un chat 1:1 que nadie quería. El selector del lápiz ya cruza la agenda del
- * teléfono contra el padrón (`POST /contacts/match`) y trae también «Invitar a
- * Lilachat» para quien todavía no entró.
- *
- * Los que ya están adentro se descuentan con `candidatosParaSumar`; se esconden
- * en vez de fallar al tocarlos, que sería hacerle descubrir la regla a los
- * golpes.
- */
-function ElegirParaSumar({
-  visible,
-  credential,
-  yaEstan,
-  onCerrar,
-  onElegir,
-}: {
-  visible: boolean;
-  credential: Credential;
-  yaEstan: readonly string[];
-  onCerrar: () => void;
-  onElegir: (userId: string) => void;
-}) {
-  const colores = useColores();
-  const margenes = useMargenes();
-
-  return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onCerrar}>
-      <View className="flex-1 bg-background" testID="elegir-para-sumar">
-        <View
-          className="flex-row items-center gap-2 border-b border-outline/10 bg-surface px-3 pb-3"
-          style={{ paddingTop: margenes.cabecera }}
-        >
-          <Pressable
-            testID="btn-cerrar-sumar"
-            accessibilityLabel="Cancelar"
-            onPress={onCerrar}
-            className="h-11 w-11 items-center justify-center"
-          >
-            <ArrowLeft size={22} color={colores['on-surface']} />
-          </Pressable>
-          <View className="min-w-0 flex-1">
-            <Text className="text-lg font-bold text-on-surface">Sumar al grupo</Text>
-            {/* Se DICE que al que no está se lo puede invitar: sin esta línea,
-                buscar a alguien de la agenda y no encontrarlo se lee como que la
-                app no lo tiene, no como que le falta instalarla. */}
-            <Text className="text-[12px] text-on-surface-variant">
-              De tus contactos. Al que no esté, invitalo y sumalo cuando entre.
-            </Text>
-          </View>
-        </View>
-
-        {/* Montado solo mientras está abierta: así cada vez que se abre lee los
-            contactos de nuevo, y no muestra la lista de antes de sumar. */}
-        {visible ? (
-          <ContactPicker
-            credential={credential}
-            selected={[]}
-            multiple={false}
-            excluidos={yaEstan}
-            vacio="Todos tus contactos de Lilachat ya están en este grupo."
-            invitacion={{ miNombre: credential.name ?? null, enlaceApp: '' }}
-            onToggle={(contacto) => onElegir(contacto.id)}
-          />
-        ) : null}
-      </View>
-    </Modal>
   );
 }

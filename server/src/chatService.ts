@@ -4,6 +4,7 @@ import {
   puedeEliminar,
   puedeAgregar,
   puedeSacar,
+  puedeCambiarRol,
   decidirSalida,
 } from '@lilachat/shared';
 import { UserModel } from './models.js';
@@ -445,6 +446,59 @@ export async function removeMember(params: {
   }
 
   return { ok: true, miembrosPrevios: chat.members.map((m) => String(m.userId)) };
+}
+
+/**
+ * Nombrar admin, o dejar de serlo.
+ *
+ * Las reglas están en `puedeCambiarRol`: nombrar lo puede hacer cualquier admin,
+ * pero el admin se lo saca uno mismo —nadie se lo saca a otro— y el único admin
+ * no puede renunciar sin nombrar reemplazo.
+ */
+export async function changeRole(params: {
+  chatId: string;
+  quien: Types.ObjectId;
+  aQuien: string;
+  rol: 'admin' | 'member';
+}): Promise<{ ok: true; miembros: string[] } | { ok: false; motivo: string }> {
+  const chat = await ChatModel.findOne({ _id: params.chatId }).lean<Chat | null>();
+  if (!chat) return { ok: false, motivo: 'No encontramos esa conversación.' };
+
+  const decision = puedeCambiarRol({
+    quien: String(params.quien),
+    aQuien: params.aQuien,
+    rol: params.rol,
+    esGrupo: chat.kind === 'group',
+    miembros: chat.members.map((m) => ({
+      userId: String(m.userId),
+      role: (m.role ?? 'member') as 'admin' | 'member',
+    })),
+  });
+  if (!decision.ok) return { ok: false, motivo: decision.motivo };
+
+  // El rol ANTERIOR va en la condición: si entre la lectura y el update alguien
+  // más lo cambió, esto no pisa esa decisión con una vista vieja.
+  const anterior = params.rol === 'admin' ? 'member' : 'admin';
+  const resultado = await ChatModel.updateOne(
+    {
+      _id: params.chatId,
+      members: {
+        $elemMatch: {
+          userId: new Types.ObjectId(params.aQuien),
+          // Los miembros viejos no tienen `role` guardado: ausente = «member».
+          ...(anterior === 'member'
+            ? { $or: [{ role: 'member' }, { role: { $exists: false } }] }
+            : { role: 'admin' }),
+        },
+      },
+    },
+    { $set: { 'members.$.role': params.rol } }
+  );
+  if (resultado.matchedCount === 0) {
+    return { ok: false, motivo: 'Alguien cambió eso mientras mirabas. Probá de nuevo.' };
+  }
+
+  return { ok: true, miembros: chat.members.map((m) => String(m.userId)) };
 }
 
 /**

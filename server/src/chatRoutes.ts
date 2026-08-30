@@ -8,6 +8,7 @@ import {
   leaveChat,
   listChats,
   listMessages,
+  changeRole,
   markRead,
   removeMember,
 } from './chatService.js';
@@ -184,6 +185,32 @@ export function buildChatRouter(): Router {
     // A TODOS los de antes, incluido el que se sacó: sin su aviso el grupo le
     // sigue apareciendo en la lista, y adentro de un chat donde ya no escribe.
     for (const id of r.miembrosPrevios) avisarCambioDeChat(id, req.params.chatId!);
+    return res.status(200).json({ ok: true });
+  });
+
+  /**
+   * Nombrar admin, o dejar de serlo.
+   *
+   * `PATCH` porque cambia UN campo de una membresía que ya existe; el `DELETE`
+   * de al lado la borra, y son cosas distintas.
+   */
+  router.patch('/:chatId/members/:userId', async (req, res) => {
+    const userId = new Types.ObjectId(req.session!.userId);
+    const aQuien = String(req.params.userId ?? '').trim();
+    if (!Types.ObjectId.isValid(aQuien)) {
+      return res.status(400).json({ message: 'No encontramos a esa persona.' });
+    }
+    const rol = req.body?.role;
+    // La lista de roles es CERRADA: cualquier otra cosa se rechaza en vez de
+    // guardarse. Un `role: 'dueño'` en la base no lo entiende nadie después.
+    if (rol !== 'admin' && rol !== 'member') {
+      return res.status(400).json({ message: 'Ese rol no existe.' });
+    }
+
+    const r = await changeRole({ chatId: req.params.chatId!, quien: userId, aQuien, rol });
+    if (!r.ok) return res.status(400).json({ message: r.motivo });
+
+    for (const id of r.miembros) avisarCambioDeChat(id, req.params.chatId!);
     return res.status(200).json({ ok: true });
   });
 

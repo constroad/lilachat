@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   decidirSalida,
   puedeAgregar,
+  puedeCambiarRol,
   puedeSacar,
   type MiembroDeChat,
 } from './miembrosDeGrupo.js';
@@ -110,6 +111,118 @@ describe('puedeSacar', () => {
       quien: 'admin1',
       miembros: [m('admin1', 'admin'), m('comun')],
       aQuien: 'comun',
+      esGrupo: false,
+    });
+
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.motivo).toMatch(/de a dos/i);
+  });
+});
+
+describe('puedeCambiarRol', () => {
+  const grupo = [m('admin1', 'admin'), m('comun'), m('admin2', 'admin')];
+
+  it('un admin nombra admin a un miembro', () => {
+    expect(
+      puedeCambiarRol({ quien: 'admin1', miembros: grupo, aQuien: 'comun', rol: 'admin', esGrupo: true })
+    ).toEqual({ ok: true });
+  });
+
+  it('un miembro común no reparte roles', () => {
+    const r = puedeCambiarRol({
+      quien: 'comun',
+      miembros: grupo,
+      aQuien: 'comun',
+      rol: 'admin',
+      esGrupo: true,
+    });
+
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.motivo).toMatch(/solo un admin/i);
+  });
+
+  /**
+   * **El admin se lo saca uno mismo, nadie se lo saca a otro.** Si un admin
+   * pudiera degradar a otro, el grupo lo decide quien toca primero: es la misma
+   * carrera que evita `puedeSacar`, y acá sería peor porque después de degradar
+   * ya se lo puede echar.
+   */
+  it('un admin no le quita el admin a otro', () => {
+    const r = puedeCambiarRol({
+      quien: 'admin1',
+      miembros: grupo,
+      aQuien: 'admin2',
+      rol: 'member',
+      esGrupo: true,
+    });
+
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.motivo).toMatch(/solo ella/i);
+  });
+
+  it('uno mismo sí puede dejar de ser admin si queda otro', () => {
+    expect(
+      puedeCambiarRol({
+        quien: 'admin1',
+        miembros: grupo,
+        aQuien: 'admin1',
+        rol: 'member',
+        esGrupo: true,
+      })
+    ).toEqual({ ok: true });
+  });
+
+  /**
+   * **El grupo no puede quedarse sin admin.** Es el mismo agujero que tapa
+   * `decidirSalida` al irse el último: un grupo que nadie puede administrar solo
+   * se arregla desde la base. Acá NO se promueve a nadie por su cuenta —quien
+   * está mirando puede elegir— así que se pide nombrar reemplazo primero.
+   */
+  it('el único admin no puede dejar de serlo', () => {
+    const r = puedeCambiarRol({
+      quien: 'solo',
+      miembros: [m('solo', 'admin'), m('otro')],
+      aQuien: 'solo',
+      rol: 'member',
+      esGrupo: true,
+    });
+
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.motivo).toMatch(/único admin/i);
+  });
+
+  it('no se cambia el rol de quien ya lo tiene', () => {
+    const r = puedeCambiarRol({
+      quien: 'admin1',
+      miembros: grupo,
+      aQuien: 'admin2',
+      rol: 'admin',
+      esGrupo: true,
+    });
+
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.motivo).toMatch(/ya es admin/i);
+  });
+
+  it('no se le da el admin a quien no está en el grupo', () => {
+    const r = puedeCambiarRol({
+      quien: 'admin1',
+      miembros: grupo,
+      aQuien: 'ajeno',
+      rol: 'admin',
+      esGrupo: true,
+    });
+
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.motivo).toMatch(/ya no está/i);
+  });
+
+  it('en un 1:1 no hay roles que repartir', () => {
+    const r = puedeCambiarRol({
+      quien: 'admin1',
+      miembros: [m('admin1', 'admin'), m('comun')],
+      aQuien: 'comun',
+      rol: 'admin',
       esGrupo: false,
     });
 

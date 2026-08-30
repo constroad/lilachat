@@ -68,6 +68,8 @@ export type ChatSummary = {
   othersDeliveredSeq: number;
   /** Chat secreto (F9). */
   encrypted?: boolean;
+  /** La foto del grupo, absoluta. Sin foto se dibuja la inicial. */
+  avatarUrl?: string;
 };
 
 async function get<T>(route: string, token: string, fetchImpl: FetchLike = fetch): Promise<ApiResult<T>> {

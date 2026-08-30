@@ -23,7 +23,10 @@ export interface Chat {
   _id: Types.ObjectId;
   kind: 'direct' | 'group';
   name?: string;
+  /** El nombre del archivo en el storage, para poder borrarlo algún día. */
   avatarMediaId?: string;
+  /** La foto del grupo, RELATIVA (`/files/…`); el host lo pone el server. */
+  avatarUrl?: string;
   members: ChatMember[];
   /** Último `seq` asignado. Es el contador que `$inc` mueve. */
   lastSeq: number;
@@ -82,6 +85,7 @@ const chatSchema = new Schema<Chat>(
     kind: { type: String, enum: ['direct', 'group'], required: true },
     name: { type: String },
     avatarMediaId: { type: String },
+    avatarUrl: { type: String },
     members: [
       {
         userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },

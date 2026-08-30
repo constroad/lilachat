@@ -1,18 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import {
   ArrowLeft,
-  Lock,
-  LogOut,
   Phone,
   Search,
-  Flag,
   MoreVertical,
   UserPlus,
   Video,
 } from 'lucide-react-native';
-import { accionesDeMiembro, nombreDeContacto, type AccionDeMiembro } from '@lilachat/shared';
+import {
+  accionesDeMiembro,
+  nombreDeContacto,
+  puedeEditarInfo,
+  type AccionDeMiembro,
+} from '@lilachat/shared';
+import { EditarNombreDeGrupo } from './EditarNombreDeGrupo';
+import { elegirFotoDeGrupo, subirFotoDeGrupo } from './fotoDeGrupo';
+import { IdentidadDelChat } from './IdentidadDelChat';
+import { confirmacionDe } from './confirmacionesDeMiembro';
+import { AjustesDelChat } from './AjustesDelChat';
 import { AccionesDeMiembro } from './AccionesDeMiembro';
 import { ElegirParaSumar } from './ElegirParaSumar';
 import type { Credential } from '../auth/credentialStore';
@@ -46,6 +53,7 @@ type Detalle = {
   id: string;
   kind: 'direct' | 'group';
   name?: string;
+  avatarUrl?: string;
   encrypted: boolean;
   members: Miembro[];
 };
@@ -67,6 +75,7 @@ export function ChatDetailScreen({
   onSalio,
   onLlamar,
   onVerImagen,
+  onInfoCambiada,
 }: {
   visible: boolean;
   chatId: string;
@@ -86,6 +95,12 @@ export function ChatDetailScreen({
   onSalio?: () => void;
   onLlamar?: (video: boolean) => void;
   onVerImagen?: (url: string) => void;
+  /**
+   * Cambió el nombre o la foto: la cabecera de la conversación de atrás sigue
+   * mostrando los viejos hasta que la lista se recargue, y ver el nombre nuevo
+   * acá y el viejo al cerrar se lee como que no se guardó.
+   */
+  onInfoCambiada?: (info: { name?: string; avatarUrl?: string }) => void;
 }) {
   const colores = useColores();
   const margenes = useMargenes();
@@ -97,6 +112,8 @@ export function ChatDetailScreen({
   const [agregando, setAgregando] = useState(false);
   /** De qué participante está abierta la hoja de acciones. */
   const [menuDe, setMenuDe] = useState<Miembro | null>(null);
+  const [editandoNombre, setEditandoNombre] = useState(false);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [aviso, setAviso] = useState('');
 
   /**
@@ -216,6 +233,46 @@ export function ChatDetailScreen({
     [detalle]
   );
 
+  const puedoEditarInfo =
+    detalle !== null &&
+    puedeEditarInfo({
+      quien: detalle.members.find((uno) => uno.esYo)?.id ?? '',
+      esGrupo: detalle.kind === 'group',
+      miembros: detalle.members.map((uno) => ({ userId: uno.id, role: uno.role })),
+    }).ok;
+
+  /** El nombre que se muestra: el del server manda sobre el que llegó por prop. */
+  const nombreVisible = (esGrupo ? detalle?.name : undefined) ?? chatName;
+
+  const guardarNombre = async (nombre: string) => {
+    if (await llamar('', { name: nombre }, 'PATCH')) {
+      setEditandoNombre(false);
+      onInfoCambiada?.({ name: nombre });
+      await cargar();
+    }
+  };
+
+  const cambiarFoto = async () => {
+    const eleccion = await elegirFotoDeGrupo();
+    if (eleccion.tipo === 'sin-permiso') {
+      return setAviso('Permití la cámara para sacar la foto.');
+    }
+    if (eleccion.tipo !== 'foto') return;
+
+    setSubiendoFoto(true);
+    setAviso('');
+    const r = await subirFotoDeGrupo({
+      baseUrl: BASE_URL,
+      chatId,
+      jwt: credential.jwt,
+      foto: eleccion.foto,
+    });
+    setSubiendoFoto(false);
+    if (!r.ok) return setAviso(r.motivo);
+    onInfoCambiada?.({ avatarUrl: r.avatarUrl });
+    await cargar();
+  };
+
   /**
    * Todas SE PREGUNTAN antes, y el texto dice qué va a pasar de verdad.
    *
@@ -227,34 +284,7 @@ export function ChatDetailScreen({
    */
   const confirmarAccion = (miembro: Miembro, accion: AccionDeMiembro) => {
     const quien = nombreDe(miembro);
-    const guiones: Record<
-      AccionDeMiembro,
-      { titulo: string; cuerpo: string; boton: string; correr: () => Promise<boolean> }
-    > = {
-      'hacer-admin': {
-        titulo: `¿Nombrar admin a ${quien}?`,
-        cuerpo:
-          'Va a poder sumar y sacar gente. Ojo: después NO se lo podés quitar — solo esa persona puede dejar de ser admin.',
-        boton: 'Nombrar',
-        correr: () => llamar(`members/${miembro.id}`, { role: 'admin' }, 'PATCH'),
-      },
-      'dejar-admin': {
-        titulo: '¿Dejar de ser admin?',
-        cuerpo:
-          'Seguís en el grupo, pero sin poder sumar ni sacar gente. Para volver a serlo te tiene que nombrar otro admin.',
-        boton: 'Dejar',
-        correr: () => llamar(`members/${miembro.id}`, { role: 'member' }, 'PATCH'),
-      },
-      sacar: {
-        titulo: `¿Sacar a ${quien}?`,
-        cuerpo:
-          'Va a dejar de ver el grupo y los mensajes nuevos. Los que ya mandó quedan. Podés volver a sumarlo cuando quieras.',
-        boton: 'Sacar',
-        correr: () => llamar(`members/${miembro.id}`, undefined, 'DELETE'),
-      },
-    };
-
-    const guion = guiones[accion];
+    const guion = confirmacionDe(accion, quien);
     Alert.alert(guion.titulo, guion.cuerpo, [
       { text: 'Cancelar', style: 'cancel' },
       {
@@ -264,7 +294,12 @@ export function ChatDetailScreen({
           void (async () => {
             // Se recarga la lista que la persona está mirando: dejarla vieja
             // después de una acción propia es lo que hace dudar de si pasó.
-            if (await guion.correr()) await cargar();
+            const hecho = await llamar(
+              `members/${miembro.id}`,
+              guion.cuerpoHttp,
+              guion.metodo
+            );
+            if (hecho) await cargar();
           })();
         },
       },
@@ -314,21 +349,19 @@ export function ChatDetailScreen({
           </View>
         ) : (
           <ScrollView contentContainerStyle={{ paddingBottom: margenes.pie + 24 }}>
-            {/* Identidad, como en el diseño: avatar grande, nombre, y debajo el
-                dato que ubica —cuántos son, o el teléfono en un 1:1—. */}
-            <View className="items-center px-6 pt-6">
-              <View className="h-24 w-24 items-center justify-center rounded-full bg-primary/10">
-                <Text className="text-3xl font-bold text-primary">
-                  {chatName.slice(0, 1).toUpperCase()}
-                </Text>
-              </View>
-              <Text className="mt-3 text-center text-xl font-bold text-on-surface">{chatName}</Text>
-              <Text className="mt-0.5 text-sm text-on-surface-variant">
-                {esGrupo
+            <IdentidadDelChat
+              nombre={nombreVisible}
+              avatarUrl={detalle!.avatarUrl}
+              debajo={
+                esGrupo
                   ? `${detalle!.members.length} participantes`
-                  : (detalle!.members.find((m) => !m.esYo)?.phone ?? '')}
-              </Text>
-            </View>
+                  : (detalle!.members.find((m) => !m.esYo)?.phone ?? '')
+              }
+              editable={puedoEditarInfo}
+              subiendoFoto={subiendoFoto}
+              onCambiarFoto={() => void cambiarFoto()}
+              onEditarNombre={() => setEditandoNombre(true)}
+            />
 
             {/* Fila de acciones del diseño. Solo van las que HACEN algo: una
                 acción inerte enseña que los botones de esta app no responden. */}
@@ -444,68 +477,27 @@ export function ChatDetailScreen({
               </Text>
             ) : null}
 
-            <Rotulo>Ajustes del chat</Rotulo>
-            <View className="px-4">
-              <View className="mb-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4">
-                <View className="min-w-0 flex-1">
-                  <Text className="text-sm font-semibold text-on-surface">
-                    Silenciar notificaciones
-                  </Text>
-                  <Text className="text-[11px] text-on-surface-variant">
-                    {silenciado ? 'No te avisamos de este chat' : 'Te avisamos de cada mensaje'}
-                  </Text>
-                </View>
-                <Switch testID="sw-silenciar" value={silenciado} onValueChange={setSilenciado} />
-              </View>
-
-              {/* El cifrado se DICE como es, no como nos gustaría. Solo los chats
-                  secretos son de punta a punta; en los demás el servidor guarda
-                  el texto, y decir otra cosa acá sería mentir sobre privacidad. */}
-              <View className="mb-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4">
-                <Lock size={18} color={colores['on-surface-variant']} />
-                <View className="min-w-0 flex-1">
-                  <Text className="text-sm font-semibold text-on-surface">
-                    {detalle!.encrypted ? 'Chat secreto' : 'Chat normal'}
-                  </Text>
-                  <Text className="text-[11px] text-on-surface-variant">
-                    {detalle!.encrypted
-                      ? 'Cifrado de punta a punta. El servidor no puede leerlo.'
-                      : 'El servidor guarda los mensajes para sincronizarlos entre tus aparatos.'}
-                  </Text>
-                </View>
-              </View>
-
-              {esGrupo ? (
-                <Pressable
-                  testID="btn-salir-grupo"
-                  disabled={accionando}
-                  onPress={async () => {
-                    // `onSalio` cierra el detalle Y la conversación: quedarse
-                    // adentro del grupo que se acaba de dejar no tiene sentido.
-                    if (await llamar('leave')) (onSalio ?? onCerrar)();
-                  }}
-                  className={`mb-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4 ${accionando ? 'opacity-50' : ''}`}
-                >
-                  <LogOut size={18} color={colores.error} />
-                  <Text className="text-sm font-semibold" style={{ color: colores.error }}>
-                    Salir del grupo
-                  </Text>
-                </Pressable>
-              ) : null}
-
-              <Pressable
-                testID="btn-reportar"
-                className="min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4 opacity-50"
-                disabled
-              >
-                <Flag size={18} color={colores.error} />
-                <Text className="text-sm font-semibold" style={{ color: colores.error }}>
-                  {esGrupo ? 'Reportar grupo' : 'Reportar contacto'}
-                </Text>
-              </Pressable>
-            </View>
+            <AjustesDelChat
+              esGrupo={esGrupo}
+              cifrado={detalle!.encrypted}
+              silenciado={silenciado}
+              onSilenciar={setSilenciado}
+              accionando={accionando}
+              onSalir={async () => {
+                // `onSalio` cierra el detalle Y la conversación: quedarse
+                // adentro del grupo que se acaba de dejar no tiene sentido.
+                if (await llamar('leave')) (onSalio ?? onCerrar)();
+              }}
+            />
           </ScrollView>
         )}
+        <EditarNombreDeGrupo
+          visible={editandoNombre}
+          nombreActual={nombreVisible}
+          guardando={accionando}
+          onCerrar={() => setEditandoNombre(false)}
+          onGuardar={(nombre) => void guardarNombre(nombre)}
+        />
         <AccionesDeMiembro
           visible={menuDe !== null}
           nombre={menuDe ? nombreDe(menuDe) : ''}

@@ -221,6 +221,7 @@ function Contenido() {
               agenda: agendaPorTelefono(),
             }) || 'Conversación'
           }
+          chatAvatarUrl={boot.chat.avatarUrl}
           credential={boot.credential}
           othersReadSeq={boot.chat.othersReadSeq}
           othersDeliveredSeq={boot.chat.othersDeliveredSeq}

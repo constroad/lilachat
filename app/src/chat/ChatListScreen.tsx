@@ -9,6 +9,7 @@ import { listChats, type ChatSummary } from '../api/client';
 import { conciliarCache } from './cacheDeChats';
 import { guardarChats, leerChatsGuardados } from './chatsGuardados';
 import { FlashList } from '@shopify/flash-list';
+import { Image } from 'expo-image';
 import { useColores } from '../ui/tema';
 import { agendaPorTelefono, suscribirAgenda } from '../contacts/agendaEnMemoria';
 
@@ -187,10 +188,18 @@ export function ChatListScreen({
               className="min-h-[72px] flex-row items-center gap-3 border-b border-outline/5 px-5 py-3"
             >
               <View className="h-12 w-12 shrink-0">
-                <View className="h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                  <Text className="text-base font-bold text-primary">
-                    {title(chat).slice(0, 1).toUpperCase()}
-                  </Text>
+                <View className="h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-primary/10">
+                  {chat.avatarUrl ? (
+                    <Image
+                      source={{ uri: chat.avatarUrl }}
+                      style={{ width: 48, height: 48 }}
+                      contentFit="cover"
+                    />
+                  ) : (
+                    <Text className="text-base font-bold text-primary">
+                      {title(chat).slice(0, 1).toUpperCase()}
+                    </Text>
+                  )}
                 </View>
                 {/* Punto de «en línea» como el diseño: abajo a la derecha del
                     avatar y con anillo del color del fondo, que es lo que lo

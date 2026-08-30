@@ -5,10 +5,13 @@ import {
   puedeAgregar,
   puedeSacar,
   puedeCambiarRol,
+  puedeEditarInfo,
+  normalizarNombreDeGrupo,
   decidirSalida,
 } from '@lilachat/shared';
 import { UserModel } from './models.js';
 import { ChatModel, MessageModel, ReceiptModel, type Chat, type Message } from './chatModels.js';
+import { toAbsoluteMediaUrl } from './mediaClient.js';
 
 /**
  * La lógica de mensajería (spec §6). Todo pasa por acá: las rutas REST y el
@@ -194,6 +197,8 @@ export type ChatSummary = {
   othersDeliveredSeq: number;
   /** Chat secreto (F9): la lista lo marca con candado y no muestra el último. */
   encrypted?: boolean;
+  /** La foto del grupo, ABSOLUTA. Sin foto va vacío y se dibuja la inicial. */
+  avatarUrl?: string;
 };
 
 export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> {
@@ -258,6 +263,10 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
       // teléfonos de todos los miembros sí sería filtrar algo nuevo.
       phone: chat.kind === 'direct' ? telefonos.get(otroId) : undefined,
       encrypted: chat.encrypted === true,
+      // Se guarda RELATIVA y se sirve absoluta, igual que la media de los
+      // mensajes: persistir el host dejaría rotas todas las fotos viejas en el
+      // proximo cambio de hosting.
+      avatarUrl: chat.avatarUrl ? toAbsoluteMediaUrl(chat.avatarUrl) : undefined,
       memberIds: chat.members.map((member) => String(member.userId)),
       lastSeq: chat.lastSeq,
       unread: unreadCount({
@@ -499,6 +508,56 @@ export async function changeRole(params: {
   }
 
   return { ok: true, miembros: chat.members.map((m) => String(m.userId)) };
+}
+
+/**
+ * Cambiar el nombre del grupo, o su foto.
+ *
+ * **Lo puede cualquier miembro** (`puedeEditarInfo`): es la misma regla que
+ * sumar gente. Lo que pide admin es lo que le SACA algo a otro.
+ *
+ * Las dos cosas pasan por acá porque comparten el permiso y el aviso; lo que
+ * cambia es el campo. Devuelve a quién avisarle: el nombre y la foto se ven en
+ * la lista de TODOS, no solo de quien los cambió.
+ */
+export async function editarInfoDeGrupo(params: {
+  chatId: string;
+  quien: Types.ObjectId;
+  nombre?: unknown;
+  avatar?: { url: string; mediaId: string };
+}): Promise<{ ok: true; miembros: string[]; nombre?: string } | { ok: false; motivo: string }> {
+  const chat = await ChatModel.findOne({ _id: params.chatId }).lean<Chat | null>();
+  if (!chat) return { ok: false, motivo: 'No encontramos esa conversación.' };
+
+  const decision = puedeEditarInfo({
+    quien: String(params.quien),
+    esGrupo: chat.kind === 'group',
+    miembros: chat.members.map((m) => ({
+      userId: String(m.userId),
+      role: (m.role ?? 'member') as 'admin' | 'member',
+    })),
+  });
+  if (!decision.ok) return { ok: false, motivo: decision.motivo };
+
+  const cambios: Record<string, unknown> = {};
+  let nombreNuevo: string | undefined;
+
+  if (params.nombre !== undefined) {
+    const validado = normalizarNombreDeGrupo(params.nombre);
+    if (!validado.ok) return { ok: false, motivo: validado.motivo };
+    nombreNuevo = validado.nombre;
+    cambios.name = validado.nombre;
+  }
+  if (params.avatar) {
+    cambios.avatarUrl = params.avatar.url;
+    cambios.avatarMediaId = params.avatar.mediaId;
+  }
+  if (Object.keys(cambios).length === 0) {
+    return { ok: false, motivo: 'No hay nada que cambiar.' };
+  }
+
+  await ChatModel.updateOne({ _id: params.chatId }, { $set: cambios });
+  return { ok: true, miembros: chat.members.map((m) => String(m.userId)), nombre: nombreNuevo };
 }
 
 /**

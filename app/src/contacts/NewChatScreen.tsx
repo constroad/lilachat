@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Modal, Pressable, Switch, Text, TextInput, View } from 'react-native';
 import { ArrowLeft, Check, Lock, Users, X } from 'lucide-react-native';
-import type { Contact } from '@lilachat/shared';
+import { MAX_NOMBRE_DE_GRUPO, type Contact } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { ContactPicker } from './ContactPicker';
 import { createChat } from './contactsApi';
@@ -20,8 +20,6 @@ import { useColores } from '../ui/tema';
  *  2. **Información del grupo** (solo en modo grupo): nombre con contador, y
  *     los elegidos en fila con su × para sacarlos, como en la captura.
  */
-const MAX_NOMBRE = 25;
-
 export function NewChatScreen({
   visible,
   credential,
@@ -223,7 +221,7 @@ export function NewChatScreen({
                 testID="input-nombre-grupo"
                 value={nombre}
                 onChangeText={(text) => {
-                  setNombre(text.slice(0, MAX_NOMBRE));
+                  setNombre(text.slice(0, MAX_NOMBRE_DE_GRUPO));
                   setError('');
                 }}
                 placeholder="Nombre del grupo"
@@ -233,7 +231,7 @@ export function NewChatScreen({
               />
               {/* El contador del diseño: 25 caracteres es el tope. */}
               <Text className="text-[11px] text-on-surface-variant">
-                {nombre.length}/{MAX_NOMBRE}
+                {nombre.length}/{MAX_NOMBRE_DE_GRUPO}
               </Text>
             </View>
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, BackHandler, KeyboardAvoidingView, Pressable, Text, TextInput, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import {
@@ -45,6 +46,7 @@ import { textoDeSubida } from './progresoDeSubida';
 export function ChatScreen({
   chatId,
   chatName,
+  chatAvatarUrl,
   credential,
   othersReadSeq,
   othersDeliveredSeq,
@@ -55,6 +57,8 @@ export function ChatScreen({
 }: {
   chatId: string;
   chatName: string;
+  /** La foto del grupo, si tiene. Sin ella se dibuja la inicial. */
+  chatAvatarUrl?: string;
   credential: Credential;
   othersReadSeq: number;
   othersDeliveredSeq: number;
@@ -138,6 +142,17 @@ export function ChatScreen({
   /** El mensaje seleccionado con pulsación larga, o `null`. */
   const [elegido, setElegido] = useState<number | null>(null);
   const [verDetalle, setVerDetalle] = useState(false);
+  /**
+   * Lo que se cambió en el detalle, para pintarlo YA en esta cabecera.
+   *
+   * Los props vienen de la lista, que es una foto del momento en que se abrió
+   * el chat: sin esto, cambiar el nombre del grupo lo mostraba nuevo adentro
+   * del detalle y viejo al cerrarlo, que se lee como que no se guardó.
+   */
+  const [infoPropia, setInfoPropia] = useState<{ name?: string; avatarUrl?: string }>({});
+
+  const nombreVisible = infoPropia.name ?? chatName;
+  const fotoVisible = infoPropia.avatarUrl ?? chatAvatarUrl;
 
   /**
    * Las fotos del chat, en el formato que consume el visor.
@@ -324,10 +339,14 @@ export function ChatScreen({
           onPress={() => setVerDetalle(true)}
           className="min-w-0 flex-1 flex-row items-center gap-2"
         >
-        <View className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
-          <Text className="text-sm font-bold text-primary">
-            {chatName.slice(0, 1).toUpperCase()}
-          </Text>
+        <View className="h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-primary/10">
+          {fotoVisible ? (
+            <Image source={{ uri: fotoVisible }} style={{ width: 36, height: 36 }} contentFit="cover" />
+          ) : (
+            <Text className="text-sm font-bold text-primary">
+              {nombreVisible.slice(0, 1).toUpperCase()}
+            </Text>
+          )}
         </View>
         <View className="min-w-0 flex-1">
           <View className="flex-row items-center gap-1.5">
@@ -336,7 +355,7 @@ export function ChatScreen({
                 misma mirada que el nombre. */}
             {encrypted ? <Lock size={13} color={colores.primary} /> : null}
             <Text className="min-w-0 flex-1 text-base font-bold text-on-surface" numberOfLines={1}>
-              {chatName}
+              {nombreVisible}
             </Text>
           </View>
           {/* El estado de conexión se DICE: un mensaje que no sale sin
@@ -470,7 +489,7 @@ export function ChatScreen({
                 myUserId={credential.userId}
                 othersReadSeq={Math.max(othersReadSeq, othersRead)}
                 othersDeliveredSeq={othersDeliveredSeq}
-                senderInitial={chatName.slice(0, 1).toUpperCase()}
+                senderInitial={nombreVisible.slice(0, 1).toUpperCase()}
                 onVerImagen={(_url) => setViendoSeq(!isPending(item) ? item.seq : null)}
                 onSeleccionar={setElegido}
                 seleccionado={!isPending(item) && item.seq === elegido}
@@ -596,9 +615,10 @@ export function ChatScreen({
       <ChatDetailScreen
         visible={verDetalle}
         chatId={chatId}
-        chatName={chatName}
+        chatName={nombreVisible}
         credential={credential}
         mensajes={messages}
+        onInfoCambiada={(info) => setInfoPropia((antes) => ({ ...antes, ...info }))}
         onCerrar={() => setVerDetalle(false)}
         onSalio={() => {
           setVerDetalle(false);

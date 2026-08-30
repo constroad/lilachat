@@ -1,5 +1,7 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { Types } from 'mongoose';
+import { MAX_BYTES_BY_KIND, validateMedia } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import { DeviceModel, UserModel } from './models.js';
 import {
@@ -9,10 +11,12 @@ import {
   listChats,
   listMessages,
   changeRole,
+  editarInfoDeGrupo,
   markRead,
   removeMember,
 } from './chatService.js';
 import { toClientMessages } from './messageView.js';
+import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
 import { avisarCambioDeChat } from './socket.js';
 import { requireSession } from './requireSession.js';
 
@@ -21,7 +25,16 @@ import { requireSession } from './requireSession.js';
  * por el socket, pero el historial paginado no: pedirle 50 mensajes viejos a un
  * socket es peor que un GET que se cachea y se reintenta solo.
  */
-export function buildChatRouter(): Router {
+/**
+ * La foto del grupo va en MEMORIA y con techo propio: es una imagen, no un
+ * archivo cualquiera, y este server puede correr en un release de solo lectura.
+ */
+const subirAvatar = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_BYTES_BY_KIND.image },
+});
+
+export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): Router {
   const router = Router();
   router.use(requireSession);
 
@@ -124,6 +137,7 @@ export function buildChatRouter(): Router {
       kind: chat.kind,
       name: chat.name,
       encrypted: chat.encrypted === true,
+      avatarUrl: chat.avatarUrl ? toAbsoluteMediaUrl(chat.avatarUrl) : undefined,
       members: chat.members.map((m) => {
         const persona = porId.get(String(m.userId));
         return {
@@ -135,6 +149,77 @@ export function buildChatRouter(): Router {
         };
       }),
     });
+  });
+
+  /**
+   * Cambiar el nombre del grupo.
+   *
+   * `PATCH` sobre el chat, no sobre una membresía: lo que cambia es el chat.
+   */
+  router.patch('/:chatId', async (req, res) => {
+    const r = await editarInfoDeGrupo({
+      chatId: req.params.chatId!,
+      quien: new Types.ObjectId(req.session!.userId),
+      nombre: req.body?.name,
+    });
+    if (!r.ok) return res.status(400).json({ message: r.motivo });
+
+    // El nombre se ve en la lista de TODOS, no solo de quien lo cambió.
+    for (const id of r.miembros) avisarCambioDeChat(id, req.params.chatId!);
+    return res.status(200).json({ ok: true, name: r.nombre });
+  });
+
+  /**
+   * Cambiar la foto del grupo.
+   *
+   * **Se sube y se guarda en UN request**, igual que la media de los mensajes:
+   * si la app subiera primero y guardara después, una caída en el medio dejaría
+   * archivos huérfanos que nadie puede ver ni borrar.
+   *
+   * El permiso se comprueba DESPUÉS de subir, y es a propósito discutible: se
+   * gasta una subida que puede terminar rechazada. Al revés habría que leer el
+   * chat dos veces, y el caso —alguien que ya no está en el grupo mandando una
+   * foto— no es el común.
+   */
+  router.post('/:chatId/avatar', subirAvatar.single('file'), async (req, res) => {
+    const file = req.file;
+    if (!file) return res.status(400).json({ message: 'Falta la foto.' });
+
+    const validado = validateMedia({ mimeType: file.mimetype, sizeBytes: file.size });
+    if (!validado.ok) return res.status(413).json({ message: validado.reason });
+    // Un video no es una foto de grupo: la lista dibuja una imagen redonda.
+    if (validado.kind !== 'image') {
+      return res.status(400).json({ message: 'La foto del grupo tiene que ser una imagen.' });
+    }
+
+    const subida = await uploader.upload({
+      chatId: req.params.chatId!,
+      fileName: file.originalname || 'grupo.jpg',
+      mimeType: file.mimetype,
+      kind: 'image',
+      bytes: file.buffer,
+    });
+    if (!subida.ok) {
+      // Distinguir «no pude preguntar» de «me dijeron que no»: el 503 es
+      // reintentable y la app no descarta la foto que eligió la persona.
+      const reintentable = subida.codigo !== 'rechazado';
+      return res.status(reintentable ? 503 : 502).json({
+        message: reintentable
+          ? 'No se pudo subir ahora. Probá de nuevo.'
+          : 'La foto no se pudo guardar.',
+      });
+    }
+
+    const r = await editarInfoDeGrupo({
+      chatId: req.params.chatId!,
+      quien: new Types.ObjectId(req.session!.userId),
+      avatar: { url: subida.media.url, mediaId: subida.media.storageName },
+    });
+    if (!r.ok) return res.status(400).json({ message: r.motivo });
+
+    for (const id of r.miembros) avisarCambioDeChat(id, req.params.chatId!);
+    // La URL vuelve ABSOLUTA: la pantalla la pinta sin esperar a recargar.
+    return res.status(200).json({ ok: true, avatarUrl: toAbsoluteMediaUrl(subida.media.url) });
   });
 
   /**

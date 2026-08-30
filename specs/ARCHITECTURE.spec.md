@@ -2426,7 +2426,126 @@ señaló al cliente en un paso.
 
 El grupo quedó como estaba: «Los originales», sin foto.
 
-### 36.8 Pendiente
+### 36.8 El chat cuenta lo que cambió
+
+Cada cambio del grupo deja su línea en la conversación: nombre, foto, sumar,
+sacar, salir, nombrar admin y renunciar. Antes el grupo se llamaba distinto de un
+día para el otro y nadie sabía quién lo había cambiado; alguien desaparecía de la
+lista de participantes sin rastro de si se fue o lo sacaron.
+
+**El texto se arma en el TELÉFONO, no en el server.** El server solo conoce el
+nombre que cada uno se puso; el que quien mira reconoce es el de SU agenda. El
+mensaje guarda el EVENTO y con qué resolver los nombres (`system: { evento,
+targetId, valor, quien, aQuien }`), y la frase la compone `textoDeAviso` (motor
+puro). `body` va como respaldo con los nombres del server.
+
+Tres decisiones que no son obvias:
+
+- **En un chat cifrado no se escribe ningún aviso.** Guardar «Fulano cambió el
+  nombre» en claro dentro de una conversación con candado rompe la promesa del
+  candado por una cortesía. `escribirAviso` filtra por `encrypted: { $ne: true }`.
+- **La promoción automática va sin autor** («Ana quedó como admin del grupo»). La
+  decidió el server al irse el último admin; firmarla con el nombre de quien se
+  fue sería mentir sobre quién decidió qué.
+- **Un evento sin sus datos no se dibuja.** Si llega incompleto —un cliente
+  viejo, un dato perdido— es mejor un hueco que «agregó a undefined».
+
+`escribirAviso` no pasa por `sendMessage` porque ese exige que quien manda sea
+miembro, y el aviso de que ALGUIEN SE FUE se escribe justo cuando dejó de serlo.
+Comparte lo único que no puede divergir: el `$inc` atómico de `lastSeq`.
+
+**No generan notificación push.** `notifyOffline` cuelga del handler del socket,
+así que los avisos quedan fuera solo. Es lo correcto: despertar un teléfono para
+contarle que alguien cambió una foto es la vía rápida a que silencien la app.
+
+#### Dos defectos que destapó
+
+1. **La última fila quedaba tapada por la barra de escribir.** Un grupo recién
+   creado tiene UNA línea, y aparecía cortada a la mitad. Con la conversación
+   llena no se notaba, así que el defecto vivía escondido en el único caso que
+   antes casi no existía: un chat sin historial. Faltaba `flex-1` en la lista
+   —sin él su borde inferior quedaba debajo de la barra— y un `scrollToEnd` al
+   montar: con `startRenderingFromBottom`, el contenido corto se ancla al fondo
+   con un offset que sobra.
+2. **La vista previa de la lista decía el número, no el nombre.** «902049935
+   cambió la foto del grupo»: es la MISMA queja que ya había arreglado
+   `nombreDeContacto`, en el mismo lugar. Adentro de la conversación estaba bien;
+   el resumen de la lista solo llevaba el `body` del server. Ahora viaja también
+   el payload y la lista lo rearma igual.
+
+#### Verificado (0.1.37 · 38)
+
+Los siete eventos, en una sola conversación y con datos reales: «Cambiaste el
+nombre del grupo a …», «Agregaste a WilsonPrueba», «Nombraste admin a
+WilsonPrueba», «WilsonPrueba dejó de ser admin», «Sacaste a WilsonPrueba»,
+«WilsonPrueba salió del grupo», «Cambiaste la foto del grupo». El nombre que se
+lee es el de la AGENDA del teléfono, no el que la persona tiene en Lilachat.
+
+Lo que NO se verificó: `admin-auto` (hace falta que se vaya el último admin de un
+grupo real) y cómo se ve un aviso para quien NO lo hizo — las dos frases en
+tercera persona salieron de los tests, no de la pantalla, porque hay un solo
+teléfono con sesión.
+
+## 37. El aviso de que hay versión nueva (30/08/2026)
+
+Pregunta de José: «¿es buena idea que salte una burbuja de actualización, o que
+al abrir la app les salga el aviso de alguna manera?».
+
+**Burbuja no.** Una notificación push por una actualización es la vía más rápida
+a que alguien silencie las notificaciones de la app — y con ellas los mensajes,
+que es lo único que importa de verdad. Un modal al abrir es peor: interrumpe
+justo cuando la persona venía a leer algo.
+
+Va una **banda discreta arriba de la lista de chats**, que se descarta y **no
+vuelve por la misma versión** pero sí aparece con la siguiente: descartar no
+puede ser apagarlo para siempre. La excepción es la versión MÍNIMA
+(`minVersionCode`): ahí no se puede descartar, porque por debajo del mínimo la
+app no funciona y esconder el aviso deja a alguien mirando algo roto sin saber
+por qué.
+
+### 37.1 Por qué Lilachat NO se instala a sí misma
+
+La otra pregunta de José: «así como LilaStore se actualiza e instala sola,
+¿Lilachat debería poder?».
+
+Técnicamente sí; conviene que no. Instalar un APK exige
+`REQUEST_INSTALL_PACKAGES`, y **a LilaStore ya la bloqueó Play Protect** por su
+combinación de permisos (§ de la dieta de permisos). Esa app tiene un motivo
+legítimo para pedirlo: es una tienda. Una app de CHAT que sabe instalar
+aplicaciones es una señal de alarma justificada — es la forma exacta que tiene el
+malware — y Lilachat acaba de salir de una dieta de permisos por ese motivo.
+
+Así que la banda **deriva a LilaStore** (`lilastore://`), que además verifica el
+`sha256` antes de entregarle nada al instalador de Android. Sin la tienda
+instalada, cae al navegador con la descarga directa. No se pregunta con
+`canOpenURL`: en Android 11+ eso exige declarar la app en `<queries>` y contesta
+`false` sin decirlo, que se leería como «no tenés la tienda» a quien sí la tiene.
+
+La consulta al arrancar es UNA sola y ya existía (el enlace de la invitación):
+ahora sirve para las dos cosas.
+
+### 37.2 Verificado (con un build viejo a propósito)
+
+Instalando un APK 0.1.36 (37) con 0.1.37 (38) ya publicado:
+
+| Paso | Resultado |
+| --- | --- |
+| Abrir la app | banda «Lilachat 0.1.37 — Hay una versión nueva» |
+| «Actualizar» | abre LilaStore (`topResumedActivity` = `com.constroad.lilastore`) |
+| «✕» | la banda se va |
+| Cerrar y volver a abrir | NO vuelve |
+
+**Lo que no se pudo verificar en el emulador:** que LilaStore ofrezca
+«Actualizar». Mostró «Abrir», y el motivo es del entorno, no del código: la
+tienda **no puede leer la versión instalada** de otra app —no hay API de Expo
+para eso— así que usa su propio registro de lo que instaló ella. Acá Lilachat se
+instaló por `adb`, o sea fuera de la tienda, y para ella es una app «instalada
+con versión desconocida» → `accionDeApp` devuelve «Abrir», que es su
+comportamiento correcto (`instaladas.ts`). En un teléfono donde la tienda instaló
+la app, el registro existe y ofrece actualizar. **Queda sin comprobar en un
+teléfono real.**
+
+### 36.9 Pendiente
 
 - **Sumar de a varios**: hoy es uno por vez (la hoja se cierra y la lista se
   recarga). Alcanza para un grupo familiar; para armar uno de diez es tedioso.
@@ -2438,7 +2557,6 @@ El grupo quedó como estaba: «Los originales», sin foto.
   lo dice en su subtítulo en vez de dejar que se descubra.
 - **La foto se puede cambiar pero no QUITAR**: no hay endpoint para volver a la
   inicial. Un grupo con una foto desafortunada solo puede taparla con otra.
-- **Nada avisa de los cambios dentro del chat.** WhatsApp escribe «Fulano cambió
-  el nombre del grupo»; acá el grupo se llama distinto de un día para el otro y
-  nadie sabe quién lo cambió. El schema ya tiene `kind: 'system'` declarado y sin
-  usar — el mismo tipo de campo que era `avatarMediaId` hasta ahora.
+- **El aviso de `admin-auto` no se vio en pantalla**: solo en los tests. Hace
+  falta un grupo del que se vaya su último admin.
+- **La tienda ofreciendo «Actualizar» no se probó en un teléfono real** (§37.2).

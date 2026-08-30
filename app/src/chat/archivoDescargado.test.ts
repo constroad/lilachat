@@ -82,10 +82,10 @@ describe('nombreLimpio', () => {
 describe('nombreDeArchivo con original', () => {
   const cuando = new Date(2026, 7, 30, 19, 43);
 
-  it('un documento conserva su nombre, decodificado', () => {
+  it('un documento conserva su nombre pero SEGURO para la ruta', () => {
     expect(
       nombreDeArchivo({ cuando, seq: 6, mime: 'application/pdf', original: 'Cotizacion%20(1).pdf' })
-    ).toBe('Cotizacion (1).pdf');
+    ).toBe('Cotizacion_1_.pdf');
   });
 
   it('una foto NO usa el original: el nombre con fecha es mejor', () => {
@@ -96,6 +96,32 @@ describe('nombreDeArchivo con original', () => {
 
   it('un PDF sin original cae al nombre con fecha y extensión correcta', () => {
     expect(nombreDeArchivo({ cuando, seq: 6, mime: 'application/pdf' })).toBe(
+      'Lilachat-2026-08-30-1943-6.pdf'
+    );
+  });
+});
+
+describe('nombreDeArchivo — seguro para la ruta', () => {
+  const cuando = new Date(2026, 7, 30, 19, 43);
+
+  /**
+   * El nombre con espacios y paréntesis rompía la descarga a la cache y la URI
+   * del visor: el PDF abría en blanco. Se conserva legible pero SEGURO.
+   */
+  it('cambia espacios y paréntesis por guion bajo, mantiene la extensión', () => {
+    expect(
+      nombreDeArchivo({ cuando, seq: 6, mime: 'application/pdf', original: 'Cotizacion-289-REYNALDO (1).pdf' })
+    ).toBe('Cotizacion-289-REYNALDO_1_.pdf');
+  });
+
+  it('el %20 se decodifica y también se hace seguro', () => {
+    expect(
+      nombreDeArchivo({ cuando, seq: 6, mime: 'application/pdf', original: 'a%20b.pdf' })
+    ).toBe('a_b.pdf');
+  });
+
+  it('un nombre que queda vacío al limpiar cae al de fecha', () => {
+    expect(nombreDeArchivo({ cuando, seq: 6, mime: 'application/pdf', original: '   ' })).toBe(
       'Lilachat-2026-08-30-1943-6.pdf'
     );
   });

@@ -67,12 +67,28 @@ export function nombreDeArchivo(params: {
   /** El nombre original, si lo hay: un documento se guarda con SU nombre. */
   original?: string;
 }): string {
-  // Un DOCUMENTO se guarda con su nombre real: «Cotizacion-289.pdf» es lo que la
-  // persona reconoce, no «Lilachat-2026-08-30-1943-6.pdf». Para fotos y videos
-  // el nombre con fecha es mejor —no traen nombre útil— así que solo se respeta
-  // el original cuando NO es imagen ni video.
+  // Un DOCUMENTO conserva su nombre real, pero **SEGURO PARA UNA RUTA**: un
+  // «Cotizacion-289-REYNALDO (1).pdf» con espacios y paréntesis rompía la
+  // descarga a la cache y la URI que se le pasa al visor —el PDF abría en
+  // blanco (30/08/2026)—. Se decodifica, se limpia y se cambia todo lo que no
+  // sea seguro por `_`, conservando la extensión. La persona igual VE el nombre
+  // bonito: eso lo da `nombreLimpio`, que se usa para mostrar, no para el disco.
   const esMedia = (params.mime ?? '').startsWith('image/') || (params.mime ?? '').startsWith('video/');
-  if (params.original && !esMedia) return nombreLimpio(params.original);
+  if (params.original && !esMedia) {
+    let decodificado = params.original;
+    try {
+      decodificado = decodeURIComponent(params.original);
+    } catch {
+      /* un % suelto: se usa el crudo */
+    }
+    const seguro = decodificado
+      .replace(/[^A-Za-z0-9._-]+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    // Tiene que quedar ALGO alfanumerico: un nombre de puros simbolos limpiado
+    // a `_` no sirve, y ahi es mejor el nombre con fecha.
+    if (/[A-Za-z0-9]/.test(seguro)) return seguro;
+  }
 
   const p = (n: number) => String(n).padStart(2, '0');
   const f = params.cuando;

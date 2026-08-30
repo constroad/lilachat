@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Pressable, RefreshControl, Text, View } from 'react-native';
 import { Lock, MessageCircle, PenSquare } from 'lucide-react-native';
-import { formatChatTimestamp, nombreDeContacto, resolveChatPreview } from '@lilachat/shared';
+import {
+  formatChatTimestamp,
+  nombreDeContacto,
+  resolveChatPreview,
+  textoDeAviso,
+} from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { connectSocket } from './socketClient';
 import { configureNotificationHandler, registerPushToken } from './pushRegistration';
@@ -250,7 +255,10 @@ export function ChatListScreen({
                       ? { text: 'Mensaje cifrado', style: 'normal' as const }
                       : resolveChatPreview({
                           typing: typingIn.has(chat.id),
-                          lastBody: chat.lastMessage?.body,
+                          // El aviso de grupo se rearma con los nombres de TU
+                          // agenda, igual que adentro de la conversación; si no
+                          // se puede, queda el texto del server.
+                          lastBody: avisoDelUltimo(chat, credential.userId) ?? chat.lastMessage?.body,
                           lastKind: chat.lastMessage?.kind,
                         });
                     return (
@@ -301,5 +309,35 @@ export function ChatListScreen({
       </Pressable>
 
     </View>
+  );
+}
+
+/**
+ * El texto del aviso de grupo para la vista previa, con los nombres de la
+ * agenda. `null` si el último mensaje no es un aviso o si no alcanza para
+ * armarlo — ahí manda el texto que compuso el server.
+ */
+function avisoDelUltimo(chat: ChatSummary, miUserId: string): string | null {
+  const aviso = chat.lastMessage?.system;
+  if (!aviso) return null;
+
+  const agenda = agendaPorTelefono();
+  const nombreDe = (persona?: { phone?: string; name?: string }) =>
+    persona
+      ? nombreDeContacto({
+          delServidor: persona.name ?? null,
+          telefono: persona.phone ?? null,
+          agenda,
+        })
+      : '';
+
+  return (
+    textoDeAviso({
+      quien: nombreDe(aviso.quien) || 'Alguien',
+      esMio: chat.lastMessage?.senderId === miUserId,
+      evento: aviso.evento,
+      aQuien: nombreDe(aviso.aQuien) || undefined,
+      valor: aviso.valor,
+    }) || null
   );
 }

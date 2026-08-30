@@ -61,12 +61,12 @@ export function BandaDeActualizacion({
       <ArrowDownToLine size={18} color={obligatoria ? colores.error : colores.primary} />
       <View className="min-w-0 flex-1">
         <Text className="text-[13px] font-semibold text-on-surface">
-          {obligatoria ? 'Tenés que actualizar' : `Lilachat ${aviso.version} ya está`}
+          {obligatoria ? 'Tenés que actualizar' : `Lilachat ${aviso.version}`}
         </Text>
         <Text className="text-[11px] leading-4 text-on-surface-variant">
           {obligatoria
             ? 'Esta versión ya no se puede usar. Actualizá desde LilaStore.'
-            : 'Se actualiza desde LilaStore, en un toque.'}
+            : 'Hay una versión nueva. Se actualiza desde LilaStore.'}
         </Text>
       </View>
       <Pressable

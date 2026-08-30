@@ -191,7 +191,14 @@ export type ChatSummary = {
   memberIds: string[];
   lastSeq: number;
   unread: number;
-  lastMessage: { seq: number; body?: string; kind?: string; senderId: string; at: Date } | null;
+  lastMessage: {
+    seq: number;
+    body?: string;
+    kind?: string;
+    senderId: string;
+    at: Date;
+    system?: Message['system'];
+  } | null;
   /** Hasta qué `seq` leyeron los DEMÁS: de acá salen los checks del diseño. */
   othersReadSeq: number;
   othersDeliveredSeq: number;
@@ -280,6 +287,11 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
             kind: last.kind,
             senderId: String(last.senderId),
             at: last.at,
+            // El aviso viaja entero: la lista tiene que poder resolver el
+            // nombre contra la agenda igual que la conversación. Sin esto la
+            // vista previa decía «902049935 cambió la foto del grupo», que es
+            // exactamente la queja que arregló `nombreDeContacto`.
+            system: last.system,
           }
         : null,
       othersReadSeq: othersByChat.get(String(chat._id))?.read ?? 0,

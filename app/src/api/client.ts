@@ -63,7 +63,21 @@ export type ChatSummary = {
   memberIds: string[];
   lastSeq: number;
   unread: number;
-  lastMessage: { seq: number; body?: string; kind?: string; senderId: string; at: string } | null;
+  lastMessage: {
+    seq: number;
+    body?: string;
+    kind?: string;
+    senderId: string;
+    at: string;
+    /** El aviso de grupo, para resolver el nombre con la agenda del teléfono. */
+    system?: {
+      evento: string;
+      targetId?: string;
+      valor?: string;
+      quien?: { phone?: string; name?: string };
+      aQuien?: { phone?: string; name?: string };
+    };
+  } | null;
   othersReadSeq: number;
   othersDeliveredSeq: number;
   /** Chat secreto (F9). */

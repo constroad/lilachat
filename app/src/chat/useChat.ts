@@ -283,6 +283,9 @@ export function useChat(params: {
       if (!alive) return;
       setConnected(true);
       pull();
+      // Pedir el estado de presencia: el snapshot del connect ya lo consumió la
+      // lista de chats, así que sin esto el header abría sin «en línea».
+      socket.emit('presence.request');
     };
     const onDisconnect = () => alive && setConnected(false);
     const onNew = (message: ServerMessage) => {

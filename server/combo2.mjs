@@ -1,0 +1,11 @@
+import { io } from 'socket.io-client';
+const [JTOK, WTOK, CHAT] = process.argv.slice(2);
+const jose = io('https://lilachat.constroad.com', { auth:{token:JTOK}, transports:['websocket'] });
+jose.on('connect', ()=>console.log('JOSE ok'));
+jose.on('connect_error', e=>console.log('JOSE err', e.message));
+jose.on('typing', f=>console.log('>>> JOSE recibe TYPING', JSON.stringify(f)));
+jose.on('presence', f=>console.log('>>> JOSE recibe PRESENCE', JSON.stringify(f)));
+const wilson = io('https://lilachat.constroad.com', { auth:{token:WTOK}, transports:['websocket'] });
+wilson.on('connect', ()=>{ console.log('WILSON ok'); setTimeout(()=>{ console.log('wilson typing->'); wilson.emit('typing',{chatId:CHAT,on:true}); }, 2500); });
+wilson.on('connect_error', e=>console.log('WILSON err', e.message));
+setTimeout(()=>process.exit(0), 9000);

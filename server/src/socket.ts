@@ -374,6 +374,19 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
       }
     });
 
+    /**
+     * «¿Quién está en línea?» — a pedido.
+     *
+     * El snapshot se manda una sola vez al conectar, y lo consume la lista de
+     * chats. Cuando se ABRE un chat, esa pantalla (`useChat`) llega tarde: el
+     * snapshot ya pasó. Este pedido le deja tener el estado actual sin
+     * reconectar, y por eso el header podía no mostrar «en línea».
+     */
+    socket.on('presence.request', async () => {
+      const contacts = await contactIdsOf(userId);
+      socket.emit('presence.snapshot', { online: onlineAmong(contacts) });
+    });
+
     socket.on('typing', async (frame: unknown) => {
       const payload = (frame ?? {}) as { chatId?: string; on?: boolean };
       if (!payload.chatId) return;

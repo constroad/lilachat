@@ -21,6 +21,18 @@ export type ServerMessage = {
   envelope?: { v: 1; nonce: string; ciphertext: string };
   media?: { mediaId: string; thumbUrl?: string; mime?: string };
   /**
+   * El aviso de un cambio del grupo (`kind: 'system'`). Trae el EVENTO y con
+   * qué resolver los nombres; la frase la arma la app con la agenda del
+   * teléfono. `body` es el respaldo, con los nombres que conoce el server.
+   */
+  system?: {
+    evento: string;
+    targetId?: string;
+    valor?: string;
+    quien?: { phone?: string; name?: string };
+    aQuien?: { phone?: string; name?: string };
+  };
+  /**
    * Cuándo se borró, si se borró. Con esto puesto, `body`, `envelope` y `media`
    * NO vienen: el server los vacía de verdad. La app muestra la lápida.
    */

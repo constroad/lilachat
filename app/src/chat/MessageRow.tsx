@@ -1,7 +1,8 @@
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { porcentajeDeSubida } from './progresoDeSubida';
-import { TEXTO_ELIMINADO } from '@lilachat/shared';
+import { TEXTO_ELIMINADO, nombreDeContacto, textoDeAviso } from '@lilachat/shared';
+import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import {
   DELIVERY_GLYPH,
   formatClock,
@@ -51,6 +52,14 @@ export function MessageRow({
   seleccionado?: boolean;
 }) {
   const colores = useColores();
+
+  // Los avisos del grupo no son burbujas de nadie: van centrados, chiquitos y
+  // sin cola. Se resuelve ANTES que todo lo demás porque nada de lo de abajo
+  // —agrupado, checks, avatar— aplica.
+  if (!isPending(item) && item.kind === 'system') {
+    return <AvisoDelGrupo item={item} myUserId={myUserId} />;
+  }
+
   const mine = isPending(item) || item.senderId === myUserId;
   const at = isPending(item) ? item.queuedAt : item.at;
   const senderId = isPending(item) ? myUserId : item.senderId;
@@ -179,6 +188,46 @@ export function DaySeparator({ label }: { label: string }) {
       <View className="rounded-full bg-surface-variant px-3 py-1">
         <Text className="text-[11px] font-semibold text-on-surface-variant">{label}</Text>
       </View>
+    </View>
+  );
+}
+
+/**
+ * «Wilson agregó a Ana», «Cambiaste la foto del grupo».
+ *
+ * El nombre sale de TU agenda, igual que en la lista de chats: el server solo
+ * conoce el que cada uno se puso, y leer «960397018 agregó a…» fue exactamente
+ * la queja que arregló `nombreDeContacto`. Si el aviso llegara sin los datos
+ * para resolverlo, se cae al texto que armó el server (`body`) — y si tampoco
+ * hay, no se dibuja nada: un renglón vacío en medio de la conversación es peor
+ * que la ausencia del aviso.
+ */
+function AvisoDelGrupo({ item, myUserId }: { item: ChatMessage; myUserId: string }) {
+  const agenda = agendaPorTelefono();
+  const aviso = item.system;
+
+  const nombreDe = (persona?: { phone?: string; name?: string }) =>
+    persona
+      ? nombreDeContacto({ delServidor: persona.name ?? null, telefono: persona.phone ?? null, agenda })
+      : '';
+
+  const texto = aviso
+    ? textoDeAviso({
+        quien: nombreDe(aviso.quien) || 'Alguien',
+        esMio: item.senderId === myUserId,
+        evento: aviso.evento,
+        aQuien: nombreDe(aviso.aQuien) || undefined,
+        valor: aviso.valor,
+      }) || item.body || ''
+    : (item.body ?? '');
+
+  if (!texto) return null;
+
+  return (
+    <View className="items-center py-1.5" testID={`aviso-${item.seq}`}>
+      <Text className="rounded-full bg-surface-variant/60 px-3 py-1 text-center text-[11px] text-on-surface-variant">
+        {texto}
+      </Text>
     </View>
   );
 }

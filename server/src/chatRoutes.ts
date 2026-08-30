@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { Types } from 'mongoose';
-import { MAX_BYTES_BY_KIND, validateMedia } from '@lilachat/shared';
+import { MAX_BYTES_BY_KIND, textoDeAviso, validateMedia } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import { DeviceModel, UserModel } from './models.js';
 import {
@@ -12,12 +12,14 @@ import {
   listMessages,
   changeRole,
   editarInfoDeGrupo,
+  datosDeUsuario,
+  escribirAviso,
   markRead,
   removeMember,
 } from './chatService.js';
 import { toClientMessages } from './messageView.js';
 import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
-import { avisarCambioDeChat } from './socket.js';
+import { avisarCambioDeChat, avisarMensajeNuevo } from './socket.js';
 import { requireSession } from './requireSession.js';
 
 /**
@@ -33,6 +35,48 @@ const subirAvatar = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_BYTES_BY_KIND.image },
 });
+
+/**
+ * Escribir el aviso del cambio DENTRO del chat, y empujarlo por el socket.
+ *
+ * El texto de respaldo se arma con `textoDeAviso` —la misma función que usa el
+ * teléfono— para que no existan dos copias de la misma frase que se separen en
+ * el primer cambio de copy. Lo que cambia es el nombre: acá va el que conoce el
+ * server; en el teléfono, el de la agenda de quien mira.
+ */
+async function avisarEnElChat(params: {
+  chatId: string;
+  quien: Types.ObjectId;
+  evento: string;
+  targetId?: string;
+  valor?: string;
+}): Promise<void> {
+  const [quien, aQuien] = await Promise.all([
+    datosDeUsuario(params.quien),
+    params.targetId ? datosDeUsuario(params.targetId) : Promise.resolve(undefined),
+  ]);
+
+  const body = textoDeAviso({
+    quien: quien.visible,
+    esMio: false,
+    evento: params.evento,
+    aQuien: aQuien?.visible,
+    valor: params.valor,
+  });
+  // Un evento sin sus datos no genera aviso: `textoDeAviso` devuelve vacío y
+  // acá se corta, en vez de escribir una frase a medias en la conversación.
+  if (!body) return;
+
+  const mensaje = await escribirAviso({
+    ...params,
+    body,
+    quien2: { phone: quien.phone, name: quien.name },
+    aQuien2: aQuien ? { phone: aQuien.phone, name: aQuien.name } : undefined,
+  });
+  // En un chat cifrado no se escribe: `escribirAviso` devuelve null y no hay
+  // nada que empujar.
+  if (mensaje) await avisarMensajeNuevo(mensaje);
+}
 
 export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): Router {
   const router = Router();
@@ -166,6 +210,12 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
 
     // El nombre se ve en la lista de TODOS, no solo de quien lo cambió.
     for (const id of r.miembros) avisarCambioDeChat(id, req.params.chatId!);
+    await avisarEnElChat({
+      chatId: req.params.chatId!,
+      quien: new Types.ObjectId(req.session!.userId),
+      evento: 'nombre',
+      valor: r.nombre,
+    });
     return res.status(200).json({ ok: true, name: r.nombre });
   });
 
@@ -218,6 +268,11 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
     if (!r.ok) return res.status(400).json({ message: r.motivo });
 
     for (const id of r.miembros) avisarCambioDeChat(id, req.params.chatId!);
+    await avisarEnElChat({
+      chatId: req.params.chatId!,
+      quien: new Types.ObjectId(req.session!.userId),
+      evento: 'foto',
+    });
     // La URL vuelve ABSOLUTA: la pantalla la pinta sin esperar a recargar.
     return res.status(200).json({ ok: true, avatarUrl: toAbsoluteMediaUrl(subida.media.url) });
   });
@@ -248,6 +303,12 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
     for (const miembro of r.chat.members) {
       avisarCambioDeChat(String(miembro.userId), String(r.chat._id));
     }
+    await avisarEnElChat({
+      chatId: req.params.chatId!,
+      quien: userId,
+      evento: 'sumo',
+      targetId: aQuien,
+    });
     return res.status(200).json({ ok: true });
   });
 
@@ -270,6 +331,12 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
     // A TODOS los de antes, incluido el que se sacó: sin su aviso el grupo le
     // sigue apareciendo en la lista, y adentro de un chat donde ya no escribe.
     for (const id of r.miembrosPrevios) avisarCambioDeChat(id, req.params.chatId!);
+    await avisarEnElChat({
+      chatId: req.params.chatId!,
+      quien: userId,
+      evento: 'saco',
+      targetId: aQuien,
+    });
     return res.status(200).json({ ok: true });
   });
 
@@ -296,6 +363,14 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
     if (!r.ok) return res.status(400).json({ message: r.motivo });
 
     for (const id of r.miembros) avisarCambioDeChat(id, req.params.chatId!);
+    await avisarEnElChat({
+      chatId: req.params.chatId!,
+      quien: userId,
+      // Renunciar y nombrar son eventos distintos: «dejó de ser admin» no tiene
+      // destinatario, y ponerse a uno mismo como destino se leería raro.
+      evento: rol === 'admin' ? 'admin' : 'dejo-admin',
+      targetId: rol === 'admin' ? aQuien : undefined,
+    });
     return res.status(200).json({ ok: true });
   });
 
@@ -313,6 +388,17 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
     // A los que quedan Y a quien se fue: su lista tiene que dejar de mostrarlo.
     for (const id of [...r.miembrosRestantes, String(userId)]) {
       avisarCambioDeChat(id, req.params.chatId!);
+    }
+    await avisarEnElChat({ chatId: req.params.chatId!, quien: userId, evento: 'salio' });
+    // La promoción la decidió el SERVER, no quien se fue: va como su propio
+    // aviso, sin autor. Sin esto el grupo cambia de admin en silencio.
+    if (r.nuevoAdmin) {
+      await avisarEnElChat({
+        chatId: req.params.chatId!,
+        quien: userId,
+        evento: 'admin-auto',
+        targetId: r.nuevoAdmin,
+      });
     }
     return res.status(200).json({ ok: true });
   });

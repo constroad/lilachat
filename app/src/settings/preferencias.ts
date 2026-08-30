@@ -92,3 +92,30 @@ export async function guardarTema(modo: ModoDeTema): Promise<void> {
     /* se pierde al reiniciar y vuelve al automático: aceptable para un tema */
   }
 }
+
+/**
+ * La versión de actualización que la persona descartó.
+ *
+ * Se guarda la VERSIÓN, no un «no molestar»: así descartar apaga el aviso de esa
+ * y solo de esa. Con un booleano, el primer «después» apagaría el aviso para
+ * siempre y nadie volvería a enterarse de nada.
+ */
+const CLAVE_ACTUALIZACION_DESCARTADA = 'lilachat.actualizacion.descartada';
+
+export async function leerActualizacionDescartada(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(CLAVE_ACTUALIZACION_DESCARTADA);
+  } catch {
+    // Sin storage se muestra el aviso: molestar de más es mejor que dejar a
+    // alguien en una versión vieja creyendo que está al día.
+    return null;
+  }
+}
+
+export async function guardarActualizacionDescartada(version: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(CLAVE_ACTUALIZACION_DESCARTADA, version);
+  } catch {
+    /* si no se puede guardar, el aviso vuelve al reiniciar; es el lado seguro */
+  }
+}

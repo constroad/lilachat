@@ -368,6 +368,78 @@ export async function deleteMessage(params: {
 }
 
 /**
+ * Escribir un aviso EN el chat: «Wilson agregó a Ana», «Cambiaste la foto».
+ *
+ * No pasa por `sendMessage` por una razón concreta: ese exige que quien manda
+ * sea miembro, y el aviso de que ALGUIEN SE FUE se escribe justo cuando dejó de
+ * serlo. Lo que sí comparte es lo único que no puede divergir: el `$inc`
+ * atómico de `lastSeq`, que es lo que impide que dos mensajes tomen el mismo
+ * número.
+ *
+ * **En un chat cifrado no se escribe nada.** Guardar «Fulano cambió el nombre»
+ * en claro dentro de una conversación con candado rompe la promesa del candado
+ * por un aviso de cortesía.
+ */
+export async function escribirAviso(params: {
+  chatId: string;
+  /** Quién lo hizo. */
+  quien: Types.ObjectId;
+  evento: string;
+  targetId?: string;
+  valor?: string;
+  /** El texto de respaldo, con los nombres que conoce el server. */
+  body: string;
+  quien2?: { phone?: string; name?: string };
+  aQuien2?: { phone?: string; name?: string };
+}): Promise<Message | null> {
+  const chat = await ChatModel.findOneAndUpdate(
+    { _id: params.chatId, encrypted: { $ne: true } },
+    { $inc: { lastSeq: 1 } },
+    { returnDocument: 'after' }
+  ).lean<{ lastSeq: number } | null>();
+  if (!chat) return null;
+
+  const creado = await MessageModel.create({
+    chatId: new Types.ObjectId(params.chatId),
+    seq: chat.lastSeq,
+    senderId: params.quien,
+    // Único por evento: estos avisos los genera el server, no se reintentan
+    // desde un teléfono, así que no hay nada que deduplicar contra un envío
+    // anterior.
+    clientKey: `sis-${params.evento}-${chat.lastSeq}`,
+    kind: 'system',
+    body: params.body,
+    system: {
+      evento: params.evento,
+      targetId: params.targetId,
+      valor: params.valor,
+      quien: params.quien2,
+      aQuien: params.aQuien2,
+    },
+    at: new Date(),
+  });
+  return creado.toObject() as Message;
+}
+
+/**
+ * Lo que el server sabe de alguien, para el aviso.
+ *
+ * Va el TELÉFONO además del nombre porque el nombre que sirve es el de la
+ * agenda de quien mira, y eso solo lo puede resolver el teléfono — la misma
+ * razón por la que la lista de chats manda el teléfono en los 1:1.
+ */
+export async function datosDeUsuario(
+  id: Types.ObjectId | string
+): Promise<{ name?: string; phone?: string; visible: string }> {
+  const persona = await UserModel.findById(id).select('name phone').lean();
+  return {
+    name: persona?.name ?? undefined,
+    phone: persona?.phone,
+    visible: persona?.name ?? persona?.phone ?? 'Alguien',
+  };
+}
+
+/**
  * Sumar a alguien a un grupo.
  *
  * El permiso se decide en `shared/miembrosDeGrupo.ts` y se comprueba ACÁ: la app
@@ -570,7 +642,10 @@ export async function editarInfoDeGrupo(params: {
 export async function leaveChat(params: {
   chatId: string;
   quien: Types.ObjectId;
-}): Promise<{ ok: true; miembrosRestantes: string[] } | { ok: false; motivo: string }> {
+}): Promise<
+  | { ok: true; miembrosRestantes: string[]; nuevoAdmin: string | null }
+  | { ok: false; motivo: string }
+> {
   const chat = await ChatModel.findOne({ _id: params.chatId }).lean<Chat | null>();
   if (!chat) return { ok: false, motivo: 'No encontramos esa conversación.' };
 
@@ -600,5 +675,11 @@ export async function leaveChat(params: {
   const quedan = chat.members
     .map((m) => String(m.userId))
     .filter((id) => id !== String(params.quien));
-  return { ok: true, miembrosRestantes: quedan };
+  return {
+    ok: true,
+    miembrosRestantes: quedan,
+    // A quién promovió, para poder avisarlo en el chat: la promoción es una
+    // decisión del server y sin contarla el grupo cambia de admin en silencio.
+    nuevoAdmin: decision.accion === 'salir' ? decision.nuevoAdmin : null,
+  };
 }

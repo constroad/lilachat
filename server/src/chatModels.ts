@@ -54,6 +54,27 @@ export interface Message {
    */
   envelope?: { v: number; nonce: string; ciphertext: string };
   media?: { mediaId: string; thumbUrl?: string; url?: string; width?: number; height?: number; mime?: string };
+  /**
+   * El aviso de un cambio del grupo, en `kind: 'system'`.
+   *
+   * Se guarda el EVENTO y los ids, no la frase: el server solo conoce el nombre
+   * que cada uno se puso, y el que quien mira reconoce es el de su agenda. La
+   * frase la arma el teléfono (`textoDeAviso`). `body` lleva una versión con los
+   * nombres del server, que es lo que se ve en la notificación y en la web.
+   */
+  system?: {
+    evento: string;
+    targetId?: string;
+    valor?: string;
+    /**
+     * Quién y a quién, con lo que hace falta para que el TELÉFONO resuelva el
+     * nombre contra su agenda. Se guardan al escribir el aviso, no se resuelven
+     * al leerlo: es un hecho pasado —«el 30/08 Wilson agregó a Ana»— y una
+     * consulta por mensaje al servir sería cara para algo que no cambia.
+     */
+    quien?: { phone?: string; name?: string };
+    aQuien?: { phone?: string; name?: string };
+  };
   replyToSeq?: number;
   editedAt?: Date;
   /**
@@ -118,6 +139,18 @@ const messageSchema = new Schema<Message>(
       v: { type: Number },
       nonce: { type: String },
       ciphertext: { type: String },
+    },
+    system: {
+      type: new Schema(
+        {
+          evento: { type: String, required: true },
+          targetId: String,
+          valor: String,
+          quien: { type: new Schema({ phone: String, name: String }, { _id: false }) },
+          aQuien: { type: new Schema({ phone: String, name: String }, { _id: false }) },
+        },
+        { _id: false }
+      ),
     },
     media: {
       mediaId: String,

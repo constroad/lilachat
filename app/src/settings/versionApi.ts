@@ -28,6 +28,12 @@ export async function buscarActualizacion(): Promise<{
   resultado: ResultadoDelChequeo;
   /** De dónde bajarla. Vacío si el server no la ofrece. */
   downloadUrl: string;
+  /** El `versionCode` publicado; `null` si no hubo respuesta. */
+  ultima: number | null;
+  /** El mínimo exigido; `0` si no hay. Por debajo, la app no sirve. */
+  minima: number;
+  /** La versión legible de la publicada. */
+  version: string;
 }> {
   try {
     const respuesta = await fetch(`${TIENDA}/api/v1/apps/${SLUG}/min-version`, {
@@ -40,16 +46,16 @@ export async function buscarActualizacion(): Promise<{
         ? datos.latestVersionCode
         : null;
 
+    const version = typeof datos.latestVersion === 'string' ? datos.latestVersion : '';
     return {
-      resultado: resultadoDelChequeo({
-        actual: versionCodeActual(),
-        ultima,
-        version: typeof datos.latestVersion === 'string' ? datos.latestVersion : '',
-      }),
+      resultado: resultadoDelChequeo({ actual: versionCodeActual(), ultima, version }),
       downloadUrl: typeof datos.downloadUrl === 'string' ? datos.downloadUrl : '',
+      ultima,
+      minima: typeof datos.minVersionCode === 'number' ? datos.minVersionCode : 0,
+      version,
     };
   } catch {
     // Sin red no se afirma nada: «no se pudo» ≠ «estás al día».
-    return { resultado: { estado: 'no-se-pudo' }, downloadUrl: '' };
+    return { resultado: { estado: 'no-se-pudo' }, downloadUrl: '', ultima: null, minima: 0, version: '' };
   }
 }

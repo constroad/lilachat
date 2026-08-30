@@ -17,7 +17,13 @@ import { NewChatScreen } from '../contacts/NewChatScreen';
 import { publishPublicKey } from '../crypto/deviceKeys';
 import { BackupScreen } from '../settings/BackupScreen';
 import type { ResultadoDelChequeo } from '../settings/actualizacion';
-import { buscarActualizacion, versionActual } from '../settings/versionApi';
+import { buscarActualizacion, versionActual, versionCodeActual } from '../settings/versionApi';
+import { decidirAvisoDeActualizacion, type AvisoDeActualizacion } from '../settings/avisoDeActualizacion';
+import { BandaDeActualizacion } from '../settings/BandaDeActualizacion';
+import {
+  guardarActualizacionDescartada,
+  leerActualizacionDescartada,
+} from '../settings/preferencias';
 import { AppHeader, BottomNav, type Tab } from './BottomNav';
 import { useMargenes } from './useMargenes';
 import { decidirAtras } from './botonAtras';
@@ -70,6 +76,7 @@ export function TabsShell({
   const [chequeo, setChequeo] = useState<ResultadoDelChequeo | null>(null);
   const [verificando, setVerificando] = useState(false);
   const [enlaceApp, setEnlaceApp] = useState('');
+  const [aviso, setAviso] = useState<AvisoDeActualizacion>({ tipo: 'ninguno' });
 
   /**
    * El enlace directo al APK se busca AL ARRANCAR, no al tocar «buscar
@@ -80,7 +87,25 @@ export function TabsShell({
    * en el emulador (27/08/2026): el texto llegaba con «1)» y sin «2)».
    */
   useEffect(() => {
-    void buscarActualizacion().then(({ downloadUrl }) => setEnlaceApp(downloadUrl));
+    void (async () => {
+      // UNA sola consulta al arrancar, que sirve para las dos cosas: el enlace
+      // de la invitación y el aviso de versión nueva. Preguntar dos veces por
+      // lo mismo es gasto puro.
+      const [{ downloadUrl, ultima, minima, version }, descartada] = await Promise.all([
+        buscarActualizacion(),
+        leerActualizacionDescartada(),
+      ]);
+      setEnlaceApp(downloadUrl);
+      setAviso(
+        decidirAvisoDeActualizacion({
+          actual: versionCodeActual(),
+          ultima,
+          minima,
+          version,
+          descartada,
+        })
+      );
+    })();
   }, []);
 
   /**
@@ -287,6 +312,18 @@ export function TabsShell({
       </AppHeader>
 
       <View className="flex-1" key={`${tab}-${reloadKey}`}>
+        {/* La banda va arriba de la lista y SOLO en Chats: es la pantalla de
+            entrada, y repetirla en las cuatro pestañas la convierte en ruido. */}
+        {tab === 'chats' ? (
+          <BandaDeActualizacion
+            aviso={aviso}
+            downloadUrl={enlaceApp}
+            onDescartar={() => {
+              if (aviso.tipo !== 'ninguno') void guardarActualizacionDescartada(aviso.version);
+              setAviso({ tipo: 'ninguno' });
+            }}
+          />
+        ) : null}
         {tab === 'chats' ? (
           <ChatListScreen
             credential={credential}

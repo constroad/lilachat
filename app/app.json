@@ -2,7 +2,7 @@
   "expo": {
     "name": "Lilachat",
     "slug": "lilachat",
-    "version": "0.1.38",
+    "version": "0.1.39",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -18,7 +18,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.lilachat.app",
-      "versionCode": 39,
+      "versionCode": 40,
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.POST_NOTIFICATIONS",
@@ -34,6 +34,7 @@
       "expo-secure-store",
       "expo-image",
       "./plugins/withReleaseSigning",
+      "./plugins/withConsultaDeLilaStore",
       [
         "expo-contacts",
         {

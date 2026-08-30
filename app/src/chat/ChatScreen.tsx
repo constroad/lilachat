@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, KeyboardAvoidingView, Pressable, Text, TextInput, View } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -246,6 +246,17 @@ export function ChatScreen({
    * La foto en vuelo se suma como una fila pendiente mas. Va al FINAL: es lo
    * ultimo que mando la persona y tiene que verse abajo de todo, no intercalada.
    */
+  /**
+   * La lista, para poder mandarla al final.
+   *
+   * Hace falta porque con MENOS contenido que pantalla el ancla al fondo deja
+   * la última fila debajo de la barra de escribir: se veía cortada hasta que la
+   * persona scrolleaba. Con la conversación llena no pasa, así que el defecto
+   * solo aparecía en chats nuevos — que ahora, con los avisos del grupo, es
+   * todo grupo recién creado.
+   */
+  const listaRef = useRef<FlashListRef<Row> | null>(null);
+
   const rows: Row[] = [
     ...messages,
     ...pending,
@@ -260,7 +271,21 @@ export function ChatScreen({
           },
         ]
       : []),
-  ];
+  ]
+
+  const hayContenido = rows.length > 0;
+  useEffect(() => {
+    if (!hayContenido) return;
+    // Un tick después del primer pintado: antes de eso la lista todavía no
+    // midió y el scroll no llega a ningún lado.
+    // 150 ms y no 0: con 0 la lista todavía no midió y el scroll no llega a
+    // ningún lado — probado en el emulador.
+    const t = setTimeout(() => listaRef.current?.scrollToEnd({ animated: false }), 150);
+    return () => clearTimeout(t);
+    // Solo al pasar de vacío a con contenido: reaccionar a cada mensaje pelearía
+    // con quien está leyendo mensajes viejos más arriba.
+  }, [hayContenido]);
+;
 
   useEffect(() => {
     const last = messages[messages.length - 1];
@@ -451,8 +476,22 @@ export function ChatScreen({
       )}
 
       <FlashList
+        ref={listaRef}
         data={rows}
+        // Cuando la lista terminó de montar, al final. Es el momento exacto en
+        // que ya midió, sin adivinar con un temporizador.
+        onLoad={() => listaRef.current?.scrollToEnd({ animated: false })}
         testID="lista-mensajes"
+        /**
+         * `flex-1` NO es cosmético: sin él la lista no está acotada por la
+         * columna y su borde inferior queda DEBAJO de la barra de escribir. Con
+         * la conversación llena no se nota —lo que sobra queda fuera de la
+         * pantalla y el último mensaje cae justo arriba de la barra— pero con
+         * pocos mensajes el contenido se ancla al fondo de la lista, o sea
+         * tapado. Se vio con un grupo cuyo único contenido era un aviso: la
+         * línea aparecía cortada a la mitad detrás del campo de texto.
+         */
+        className="flex-1"
         // El scroll hacia arriba trae los mensajes viejos, como WhatsApp. El
         // umbral es 0.5 pantallas: pedirlos recién al tocar el borde deja un
         // hueco visible mientras viajan.

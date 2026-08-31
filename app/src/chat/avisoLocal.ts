@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { AppState } from 'react-native';
-import { armarAviso } from '@lilachat/shared';
+import { armarAviso, CANAL_MENSAJES } from '@lilachat/shared';
 import { reportarError } from '../ui/reportarError';
 
 /**
@@ -14,7 +14,9 @@ import { reportarError } from '../ui/reportarError';
  * **Nunca lanza.** Un aviso que revienta al mostrarse rompería la llegada del
  * mensaje, que es lo que de verdad importa.
  */
-const CANAL = 'mensajes';
+const CANAL = CANAL_MENSAJES;
+/** El canal viejo, sin sonido. Se borra al migrar (ver [[CANAL_MENSAJES]]). */
+const CANAL_VIEJO = 'mensajes';
 
 /**
  * El canal de Android. Sin uno propio con importancia ALTA, el aviso llega a la
@@ -42,10 +44,19 @@ export async function prepararAvisos(): Promise<void> {
     await Notifications.setNotificationChannelAsync(CANAL, {
       name: 'Mensajes',
       importance: Notifications.AndroidImportance.HIGH,
+      // **El sonido, que era lo que faltaba.** Sin él el canal es silencioso:
+      // la notificación llega pero no suena, y José la quería como WhatsApp —
+      // que además de verse, se oiga. `'default'` = el tono de notificación del
+      // teléfono, así que respeta el silencio/volumen del usuario.
+      sound: 'default',
       // Vibración y luz: es un chat, no un aviso de sistema.
       vibrationPattern: [0, 250, 250, 250],
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
     });
+
+    // El canal viejo quedó sin sonido y es inmutable: se borra para que no
+    // aparezca duplicado en los ajustes del sistema ni reciba avisos mudos.
+    await Notifications.deleteNotificationChannelAsync(CANAL_VIEJO);
   } catch (error) {
     reportarError('prepararAvisos', error);
   }
@@ -70,10 +81,15 @@ export async function avisarMensaje(params: {
       content: {
         title: aviso.titulo,
         body: aviso.cuerpo,
+        // En Android manda el canal; se pone igual por si el sistema lo mira, y
+        // porque es lo correcto para un mensaje entrante.
+        sound: 'default',
         // El `chatId` viaja para que tocar la burbuja pueda abrir ESE chat.
         data: { chatId: params.chatId },
       },
-      trigger: null,
+      // Entrega inmediata PERO en nuestro canal (el que tiene sonido). Con
+      // `trigger: null` no se fija canal y Android usa uno de respaldo mudo.
+      trigger: { channelId: CANAL },
     });
   } catch (error) {
     reportarError('avisarMensaje', error);

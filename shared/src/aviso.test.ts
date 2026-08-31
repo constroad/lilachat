@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { armarAviso } from './aviso.js';
+import { armarAviso, CANAL_MENSAJES } from './aviso.js';
+
+describe('CANAL_MENSAJES', () => {
+  // Guarda de la migración: el canal DEBE ser un id versionado, no el 'mensajes'
+  // original que nació sin sonido. Volver a 'mensajes' dejaría a los teléfonos
+  // que ya tienen la app sin sonido para siempre (el canal es inmutable).
+  it('es un id versionado, no el original silencioso', () => {
+    expect(CANAL_MENSAJES).not.toBe('mensajes');
+    expect(CANAL_MENSAJES).toMatch(/-v\d+$/);
+  });
+});
 
 /**
  * La burbuja que asoma arriba cuando llega un mensaje, como WhatsApp.

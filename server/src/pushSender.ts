@@ -16,6 +16,7 @@
  */
 
 import jwt from 'jsonwebtoken';
+import { CANAL_MENSAJES } from '@lilachat/shared';
 import { leerCredencialFcm, urlDeEnvio, type CredencialFcm } from './credencialFcm.js';
 import { registro } from './registro.js';
 
@@ -133,7 +134,9 @@ function buildFcmSender(credencial: CredencialFcm): PushSender {
                 android: {
                   // Alta: un mensaje de chat tiene que despertar el teléfono.
                   priority: 'HIGH',
-                  notification: { channelId: 'mensajes' },
+                  // El canal con sonido (mismo id que crea la app) y el tono por
+                  // defecto: con la app muerta, el sonido sale de acá.
+                  notification: { channelId: CANAL_MENSAJES, sound: 'default' },
                 },
               },
             }),

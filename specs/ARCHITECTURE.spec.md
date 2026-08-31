@@ -2906,26 +2906,72 @@ por-usuario (solo pega en el miembro que lo pide). Marcar leído y salir reusan
 endpoints ya vivos. Server + shared + app en verde (tsc/lint/vitest: 23 archivos
 server, 359 shared, 96 app).
 
-### 42.6 El release apuntaba a localhost (`EXPO_PUBLIC_API_URL`) (31/08/2026)
+### 42.6 Dos incidentes por saltarse el flujo canónico de publicación (31/08/2026)
 
-La 0.1.55 se publicó **apuntando a `http://10.0.2.2:4003`** (el localhost del
-emulador). `app/.env` trae esa URL de desarrollo y **`EXPO_PUBLIC_*` se hornea en
-el bundle al buildear** (build-time, no runtime): `assembleRelease` la dejó fija
-en el binario. Síntoma tramposo: la **lista** se veía —sale de la caché
-`leerChatsGuardados`— pero el **detalle de chat** (1:1 y grupo), que siempre pega
-a la red, decía «Sin conexión»; y silenciar tampoco llegaba. En un teléfono real
-`10.0.2.2` no resuelve, así que estaba roto para todos.
+El release **debe** compilarse y publicarse con `@constroad/lila-cli`
+(`lila apk build` → `lila apk publish`), NUNCA a mano con `gradlew` + otro CLI
+(skill `publicar-apk` §1, §1-bis). Saltarse ese carril produjo dos bugs seguidos,
+ambos porque el CLI hace guardas que a mano se pierden.
 
-**Fix**: `app/.env.production` (NO gitignored, sí tracked) con
-`EXPO_PUBLIC_API_URL=https://lilachat.constroad.com` — Expo lo carga en builds de
-producción con prioridad sobre `.env`. El código ya tenía el default correcto
-(`?? 'https://lilachat.constroad.com'`), pero el `.env` de dev lo pisaba. **Regla
-que quedó**: antes de publicar, verificar el binario, no el `.env` —
-`unzip -p app-release.apk assets/index.android.bundle | grep -ao "lilachat.constroad.com"`
-debe dar 1+ y `grep -ao "10.0.2.2"` debe dar 0. Corregido y republicado como
-**0.1.56 (code 57)**; la 0.1.55 rota queda superada por la actualización.
+**1) La 0.1.55 apuntaba a `http://10.0.2.2:4003` (localhost).** `app/.env` trae
+esa URL de dev y **`EXPO_PUBLIC_*` se hornea en el bundle al compilar**;
+`gradlew assembleRelease` lee `.env`, no `app/lila.json`. Síntoma tramposo: la
+**lista** se veía (caché `leerChatsGuardados`), pero el **detalle de chat** (1:1 y
+grupo) —que siempre pega a la red— decía «Sin conexión», y silenciar no llegaba.
+En un teléfono real `10.0.2.2` no resuelve. La URL correcta ya estaba declarada en
+`app/lila.json`; `lila apk build` la hornea Y **la verifica dentro del binario**
+(rechaza localhost/IP privadas/`.ts.net`). Un `.env.production` fue un parche a un
+problema autoinfligido; se quitó — la fuente es `lila.json`.
 
-Nota de tamaño: el APK de publicación va **solo arm64-v8a** (~39 MB) con
-`-PreactNativeArchitectures=arm64-v8a`. El universal (4 ABIs, ~96 MB) excede el
-límite de ~100 s de Cloudflare del origen de LilaStore y la subida corta con
-`524`.
+**2) Bucle de «Actualizar» que no se apaga tras actualizar.** `versionApi.ts`
+lee el versionCode propio de `Constants.expoConfig.android.versionCode`, o sea del
+**`app.json` empaquetado**. Los builds manuales bumpeaban `build.gradle` (→ el
+`versionCode` del manifiesto, que la tienda LEE del APK) pero **no `app.json`**
+(quedó en 55). Resultado: la app se creía la 55 mientras la tienda anunciaba 56/57
+→ `decidirAvisoDeActualizacion` con `ultima > actual` **para siempre**; actualizar
+instalaba otro APK con el mismo `app.json` empaquetado en 55 y el banner volvía.
+`expo prebuild` (que corre `lila apk build`) deriva el manifiesto de `app.json`,
+así que por el carril canónico las **dos** fuentes salen del mismo número y no
+pueden divergir. Se bumpeó `app.json` (`version` + `android.versionCode`), única
+fuente.
+
+**Resuelto** republicando por el CLI como **0.1.57 (code 58)**: el `app.config`
+embebido en el APK y el manifiesto dicen 58, la tienda anuncia 58 → `al-día`, el
+banner desaparece. Verificado (skill §10): la descarga sirve
+`lilachat-0.1.57-58.apk` (`content-disposition`), `cf-cache-status: DYNAMIC`.
+
+Nota de tamaño: el APK va **solo arm64-v8a** (~39 MB, `--abi=arm64-v8a`). El
+universal (4 ABIs, ~96 MB) excede el límite de ~100 s de Cloudflare del origen de
+LilaStore y la subida corta con `524`.
+
+### 42.7 Sonido al llegar un mensaje (31/08/2026)
+
+José: «cuando me llegue un mensaje, que suene, como WhatsApp». Llegaba la
+notificación pero **muda**: el canal Android `mensajes` se creaba sin `sound`, y
+en expo-notifications un canal sin sonido es silencioso. Afecta los DOS caminos,
+que comparten canal: el aviso **local** (`avisoLocal.ts`, con el socket vivo por
+el servicio en primer plano) y el **push FCM** (`pushSender.ts`, con la app
+muerta).
+
+**Fix**: `sound: 'default'` en el canal (`'default'` = el tono del teléfono, así
+respeta silencio/volumen del usuario) y en el push FCM (`android.notification`).
+El aviso local pasó de `trigger: null` a `trigger: { channelId }`
+(`ChannelAwareTriggerInput`): sin fijar canal, Android usaba uno de respaldo mudo.
+
+**El canal es INMUTABLE una vez creado**, así que subir el sonido sobre el id
+`mensajes` que ya existe en los teléfonos NO cambia nada. Se creó un id nuevo
+`mensajes-v2` (constante `CANAL_MENSAJES` en `shared`, única fuente para app y
+server; si divergen, el push cae en un canal inexistente y Android lo descarta) y
+se borra el `mensajes` viejo (`deleteNotificationChannelAsync`). Test guarda que
+el id sea versionado, no el original mudo. Los propios envíos ya no suenan
+(`TabsShell` excluye `senderId === yo`).
+
+**Transición**: mientras un teléfono no actualice, su app vieja solo tiene el
+canal `mensajes`; el server ya manda a `mensajes-v2`, así que su push FCM
+(app muerta) se descarta hasta que actualice — el aviso local sigue por su canal
+viejo. Base chica que actualiza rápido, se autorresuelve. Publicado **0.1.58
+(59)** por el flujo canónico. Pendiente: el **server** necesita deploy (push a
+`main`) para que el push FCM lleve el `channelId`/`sound` nuevos; el aviso local
+ya va en el APK. Falta también, si se quiere, un tono **dentro** de la app cuando
+llega un mensaje con la app abierta en otra pantalla (como WhatsApp) — hoy con la
+app adelante no suena nada.

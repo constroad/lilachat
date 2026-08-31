@@ -1,0 +1,23 @@
+# Multi-selección de chats: long-press entra al modo, aparece la barra con las
+# acciones del lote, y "cancelar" sale. La app ya está logueada (sesión de José).
+appId: com.lilachat.app
+---
+- assertVisible:
+    id: 'pantalla-chats'
+# Long-press sobre el primer chat: entra al modo selección
+- longPressOn:
+    id: 'chat-.*'
+# La barra de selección aparece con su conteo y las acciones del conjunto
+- assertVisible:
+    id: 'barra-seleccion'
+- assertVisible:
+    id: 'conteo-seleccion'
+- assertVisible:
+    id: 'accion-fijar'
+- assertVisible:
+    id: 'accion-silenciar'
+# Cancelar sale del modo y vuelve el buscador
+- tapOn:
+    id: 'cancelar-seleccion'
+- assertVisible:
+    id: 'buscar-chats'

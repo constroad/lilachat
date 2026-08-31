@@ -2859,9 +2859,46 @@ es un evento en vivo. Se agregó `presence.request` (el cliente lo pide al
 conectar, el server responde con el snapshot actual). Diagnosticado node-a-node:
 el server reenviaba presence y typing bien — faltaba pedir el estado inicial.
 
-### 42.5 Pendiente
+### 42.5 Multi-selección de chats (31/08/2026)
 
-**Multi-selección de chats en la lista** (silenciar, fijar, marcar leído/no
-leído, eliminar/salir), como al mantener presionado en WhatsApp. Es el ítem más
-grande porque silenciar y fijar necesitan persistir por usuario y por chat —
-backend nuevo—. Va en el próximo paso.
+Como al mantener presionado en WhatsApp: long-press sobre una fila entra al modo
+y desde ahí un toque marca/desmarca. El modo ES «hay algo seleccionado» (sin un
+flag aparte). La barra reemplaza al buscador: X + conteo a la izquierda; a la
+derecha las acciones del CONJUNTO, no de una fila.
+
+**Las acciones se derivan del conjunto** (motor puro `shared/seleccionDeChats.ts`,
+`accionesDeSeleccion`, 8 tests): silenciar dice «reactivar» solo si TODOS están
+silenciados; fijar dice «desfijar» solo si todos están fijados; «marcar leído»
+solo si algún seleccionado tiene no-leídos; «salir» solo si TODA la selección son
+grupos (mezclar un 1:1 lo esconde). Una sola acción por lote.
+
+**Silenciar y fijar persisten por usuario y por chat** — no globales: que José
+silencie «Los originales» no lo silencia para Wilson. Viven en el subdoc
+`chat.members[i]` (`muted`, `pinned`, `chatModels.ts`), se leen en `listChats`
+(`ChatSummary.muted/pinned`) y se escriben por `PATCH /api/chats/:chatId/ajustes`
+(`cambiarAjustesDeChat`, update posicional `members.$`). El push respeta el
+silencio: `pushService` filtra los `muted` del chat antes de notificar.
+
+**Orden con fijados arriba** (`ordenarChats`): los fijados primero, cada grupo por
+recencia. El server NO ordenaba (`find` sin `.sort` → orden de inserción), así que
+esto además arregla que la lista ahora va por recencia como WhatsApp. La hora de
+`lastMessage.at` (ISO) se parsea a ms para comparar.
+
+**En la fila**: icono de pin y de campana-tachada antes de la hora; el silencio
+además apaga el badge de no-leídos (gris en vez de acento) y le quita el acento a
+la hora. El FAB se esconde en modo selección.
+
+**Marcar leído** reusa el socket `read.set` (el mismo cursor que ya usa el chat
+abierto), por cada seleccionado con no-leídos. **Salir** reusa `POST
+/:chatId/leave`.
+
+**Verificado en el emulador (release 0.1.55, sesión viva de José, Maestro
+`multiseleccion.yaml`)**: long-press entra a selección; la barra muestra las
+acciones correctas por conjunto — grupo leído → fijar/silenciar/salir; 1:1 leído →
+fijar/silenciar (sin salir, sin marcar-leído); check sobre el avatar de la fila
+marcada; cancelar vuelve al buscador; orden por recencia. **Pendiente de deploy**:
+la persistencia de silenciar/fijar (la ruta `/ajustes` es server nuevo, aún no en
+prod — al tocar, la app la llama pero el 404 no persiste hasta el push). Marcar
+leído no se ejerció vivo porque no quedaba ningún chat con no-leídos; salir no se
+ejerció por ser destructivo sobre un grupo real. Server + shared + app en verde
+(tsc/lint/vitest: 23 archivos server, 359 shared, 96 app).

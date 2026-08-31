@@ -10,6 +10,7 @@ import {
   leaveChat,
   listChats,
   listMessages,
+  cambiarAjustesDeChat,
   changeRole,
   editarInfoDeGrupo,
   datosDeUsuario,
@@ -193,6 +194,23 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
         };
       }),
     });
+  });
+
+  /**
+   * Silenciar / fijar un chat, para MÍ.
+   *
+   * `PATCH` con `{muted?, pinned?}`. Lo usa la selección múltiple de la lista.
+   * Son ajustes por-usuario: viven en el subdoc del miembro, no en el chat.
+   */
+  router.patch('/:chatId/ajustes', async (req, res) => {
+    const r = await cambiarAjustesDeChat({
+      chatId: req.params.chatId!,
+      quien: new Types.ObjectId(req.session!.userId),
+      muted: typeof req.body?.muted === 'boolean' ? req.body.muted : undefined,
+      pinned: typeof req.body?.pinned === 'boolean' ? req.body.pinned : undefined,
+    });
+    if (!r.ok) return res.status(400).json({ message: r.motivo });
+    return res.status(200).json({ ok: true });
   });
 
   /**

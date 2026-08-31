@@ -206,6 +206,10 @@ export type ChatSummary = {
   encrypted?: boolean;
   /** La foto del grupo, ABSOLUTA. Sin foto va vacío y se dibuja la inicial. */
   avatarUrl?: string;
+  /** Silenciado por MÍ: la lista lo marca y no me llega push de acá. */
+  muted?: boolean;
+  /** Fijado por MÍ: va arriba en mi lista. */
+  pinned?: boolean;
 };
 
 export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> {
@@ -256,6 +260,8 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
 
   return chats.map((chat, index) => {
     const last = lastMessages[index];
+    // El subdoc de ESTE usuario: de ahí salen sus flags de silenciado/fijado.
+    const yo = chat.members.find((member) => String(member.userId) === String(userId));
     const otroId =
       chat.kind === 'direct'
         ? (chat.members.map((member) => String(member.userId)).find((id) => id !== String(userId)) ??
@@ -274,6 +280,8 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
       // mensajes: persistir el host dejaría rotas todas las fotos viejas en el
       // proximo cambio de hosting.
       avatarUrl: chat.avatarUrl ? toAbsoluteMediaUrl(chat.avatarUrl) : undefined,
+      muted: yo?.muted === true,
+      pinned: yo?.pinned === true,
       memberIds: chat.members.map((member) => String(member.userId)),
       lastSeq: chat.lastSeq,
       unread: unreadCount({
@@ -516,6 +524,32 @@ export async function addMember(params: {
   return actualizado
     ? { ok: true, chat: actualizado }
     : { ok: false, motivo: 'Esa persona ya está en el grupo.' };
+}
+
+/**
+ * Cambiar los ajustes de ESTE usuario en un chat: silenciar y fijar.
+ *
+ * Son por-usuario y por-chat, así que viven en el subdoc del miembro, no en el
+ * chat: que José silencie «Los originales» no lo silencia para Wilson. Se
+ * actualiza SOLO la fila del usuario con el operador posicional `$`.
+ */
+export async function cambiarAjustesDeChat(params: {
+  chatId: string;
+  quien: Types.ObjectId;
+  muted?: boolean;
+  pinned?: boolean;
+}): Promise<{ ok: true } | { ok: false; motivo: string }> {
+  const cambios: Record<string, boolean> = {};
+  if (typeof params.muted === 'boolean') cambios['members.$.muted'] = params.muted;
+  if (typeof params.pinned === 'boolean') cambios['members.$.pinned'] = params.pinned;
+  if (Object.keys(cambios).length === 0) return { ok: false, motivo: 'No hay nada que cambiar.' };
+
+  const r = await ChatModel.updateOne(
+    { _id: params.chatId, 'members.userId': params.quien },
+    { $set: cambios }
+  );
+  if (r.matchedCount === 0) return { ok: false, motivo: 'No estás en esa conversación.' };
+  return { ok: true };
 }
 
 /**

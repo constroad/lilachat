@@ -1,19 +1,33 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
-import { Lock, MessageCircle, PenSquare, Search, X } from 'lucide-react-native';
 import {
+  Bell,
+  BellOff,
+  CheckCheck,
+  Lock,
+  LogOut,
+  MessageCircle,
+  PenSquare,
+  Pin,
+  PinOff,
+  Search,
+  X,
+} from 'lucide-react-native';
+import {
+  accionesDeSeleccion,
   contarChats,
   filtrarChats,
   formatChatTimestamp,
   nombreDeContacto,
+  ordenarChats,
   resolveChatPreview,
   textoDeAviso,
   type FiltroDeChats,
 } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
-import { connectSocket } from './socketClient';
+import { connectSocket, getSocket } from './socketClient';
 import { configureNotificationHandler, registerPushToken } from './pushRegistration';
-import { listChats, type ChatSummary } from '../api/client';
+import { cambiarAjustesDeChat, leaveChat, listChats, type ChatSummary } from '../api/client';
 import { conciliarCache } from './cacheDeChats';
 import { guardarChats, leerChatsGuardados } from './chatsGuardados';
 import { FlashList } from '@shopify/flash-list';
@@ -200,7 +214,99 @@ export function ChatListScreen({
 
   const hayChats = (chats?.length ?? 0) > 0;
 
+  /**
+   * Selección múltiple, como WhatsApp: mantener presionada una fila entra al
+   * modo y a partir de ahí un toque marca/desmarca. El modo ES «hay algo
+   * seleccionado»; vaciar la selección sale del modo, sin un flag aparte.
+   */
+  const [seleccion, setSeleccion] = useState<Set<string>>(new Set());
+  const enSeleccion = seleccion.size > 0;
 
+  const alternarSeleccion = useCallback((id: string) => {
+    setSeleccion((actual) => {
+      const siguiente = new Set(actual);
+      if (siguiente.has(id)) siguiente.delete(id);
+      else siguiente.add(id);
+      return siguiente;
+    });
+  }, []);
+
+  const limpiarSeleccion = useCallback(() => setSeleccion(new Set()), []);
+
+  // Un chat que desaparece de la lista (lo borré en otro teléfono) no puede
+  // quedar seleccionado y fantasma en la barra de acciones.
+  useEffect(() => {
+    if (seleccion.size === 0) return;
+    const vivos = new Set((chats ?? []).map((chat) => chat.id));
+    setSeleccion((actual) => {
+      const filtrada = new Set([...actual].filter((id) => vivos.has(id)));
+      return filtrada.size === actual.size ? actual : filtrada;
+    });
+  }, [chats, seleccion.size]);
+
+  /** Los chats seleccionados, resueltos a objeto (para la barra de acciones). */
+  const chatsSeleccionados = useMemo(
+    () => (chats ?? []).filter((chat) => seleccion.has(chat.id)),
+    [chats, seleccion]
+  );
+
+  const acciones = useMemo(
+    () =>
+      accionesDeSeleccion(
+        chatsSeleccionados.map((chat) => ({
+          id: chat.id,
+          esGrupo: chat.kind === 'group',
+          muted: chat.muted === true,
+          pinned: chat.pinned === true,
+          unread: chat.unread,
+          fechaOrden: msDe(chat.lastMessage?.at),
+        }))
+      ),
+    [chatsSeleccionados]
+  );
+
+  /**
+   * Aplica un cambio de ajuste a cada seleccionado y recarga. Optimista sería
+   * mejor, pero un lote de 2-3 chats vuelve del server en un parpadeo y evita
+   * pintar un estado que el server podría no haber aceptado.
+   */
+  const aplicarAjuste = useCallback(
+    async (cambios: { muted?: boolean; pinned?: boolean }) => {
+      const ids = [...seleccion];
+      limpiarSeleccion();
+      await Promise.all(ids.map((id) => cambiarAjustesDeChat(id, credential.jwt, cambios)));
+      await load();
+    },
+    [seleccion, credential.jwt, limpiarSeleccion, load]
+  );
+
+  const marcarLeidos = useCallback(() => {
+    const socket = getSocket();
+    for (const chat of chatsSeleccionados) {
+      if (chat.unread > 0) socket?.emit('read.set', { chatId: chat.id, seq: chat.lastSeq });
+    }
+    limpiarSeleccion();
+    // El server no responde a este emit; recargar tras un respiro deja que el
+    // receipt vuelva y el badge baje a cero.
+    setTimeout(() => void load(), 400);
+  }, [chatsSeleccionados, limpiarSeleccion, load]);
+
+  const salirDeGrupos = useCallback(async () => {
+    const ids = [...seleccion];
+    limpiarSeleccion();
+    await Promise.all(ids.map((id) => leaveChat(id, credential.jwt)));
+    await load();
+  }, [seleccion, credential.jwt, limpiarSeleccion, load]);
+
+  /**
+   * El orden final: fijados arriba, cada grupo por recencia. Se aplica DESPUÉS
+   * del filtro/buscador —lo que se ve— sobre `fechaOrden` = hora del último
+   * mensaje; sin último mensaje va al fondo.
+   */
+  const ordenados = useMemo(
+    () => ordenarChats(visibles.map((chat) => ({ chat, pinned: chat.pinned === true, fechaOrden: msDe(chat.lastMessage?.at) }))).map((uno) => uno.chat),
+    [visibles]
+  );
 
   return (
     <View className="flex-1 bg-background" testID="pantalla-chats">
@@ -210,7 +316,75 @@ export function ChatListScreen({
       {/* Buscador y chips, como en WhatsApp. Solo cuando HAY chats: filtrar una
           lista vacía no lleva a ningún lado y ocupa la pantalla donde tiene que
           estar el vacío que explica qué hacer. */}
-      {hayChats ? (
+      {/* Barra de selección múltiple: reemplaza al buscador mientras hay algo
+          marcado, como el app bar de WhatsApp. Las acciones se derivan del
+          conjunto (motor `accionesDeSeleccion`): una sola acción por lote. */}
+      {enSeleccion ? (
+        <View
+          testID="barra-seleccion"
+          className="flex-row items-center gap-1 px-2 pb-2 pt-1"
+        >
+          <Pressable
+            testID="cancelar-seleccion"
+            accessibilityLabel="Cancelar la selección"
+            onPress={limpiarSeleccion}
+            className="h-11 w-11 items-center justify-center"
+          >
+            <X size={22} color={colores['on-surface']} />
+          </Pressable>
+          <Text className="min-w-0 flex-1 text-lg font-semibold text-on-surface" testID="conteo-seleccion">
+            {seleccion.size}
+          </Text>
+          {acciones.puedeMarcarLeido ? (
+            <Pressable
+              testID="accion-marcar-leido"
+              accessibilityLabel="Marcar como leído"
+              onPress={marcarLeidos}
+              className="h-11 w-11 items-center justify-center"
+            >
+              <CheckCheck size={22} color={colores['on-surface']} />
+            </Pressable>
+          ) : null}
+          {acciones.fijar ? (
+            <Pressable
+              testID="accion-fijar"
+              accessibilityLabel={acciones.fijar === 'fijar' ? 'Fijar' : 'Desfijar'}
+              onPress={() => void aplicarAjuste({ pinned: acciones.fijar === 'fijar' })}
+              className="h-11 w-11 items-center justify-center"
+            >
+              {acciones.fijar === 'fijar' ? (
+                <Pin size={22} color={colores['on-surface']} />
+              ) : (
+                <PinOff size={22} color={colores['on-surface']} />
+              )}
+            </Pressable>
+          ) : null}
+          {acciones.silenciar ? (
+            <Pressable
+              testID="accion-silenciar"
+              accessibilityLabel={acciones.silenciar === 'silenciar' ? 'Silenciar' : 'Reactivar'}
+              onPress={() => void aplicarAjuste({ muted: acciones.silenciar === 'silenciar' })}
+              className="h-11 w-11 items-center justify-center"
+            >
+              {acciones.silenciar === 'silenciar' ? (
+                <BellOff size={22} color={colores['on-surface']} />
+              ) : (
+                <Bell size={22} color={colores['on-surface']} />
+              )}
+            </Pressable>
+          ) : null}
+          {acciones.salir ? (
+            <Pressable
+              testID="accion-salir"
+              accessibilityLabel="Salir del grupo"
+              onPress={() => void salirDeGrupos()}
+              className="h-11 w-11 items-center justify-center"
+            >
+              <LogOut size={22} color={colores.error} />
+            </Pressable>
+          ) : null}
+        </View>
+      ) : hayChats ? (
         <>
           <View className="px-4 pb-2 pt-1">
             <View className="flex-row items-center gap-2 rounded-full bg-primary/[0.07] px-4">
@@ -318,7 +492,7 @@ export function ChatListScreen({
         </View>
       ) : (
         <FlashList
-          data={visibles}
+          data={ordenados}
           keyExtractor={(chat) => chat.id}
           // El vacío del FILTRO no es el vacío de la app: decir «sin
           // conversaciones» cuando hay diez y el filtro no devuelve ninguna
@@ -336,12 +510,20 @@ export function ChatListScreen({
           }
           // Virtualizada: un ScrollView monta TODAS las filas de una y la
           // lista tarda en aparecer en cuanto hay unas cuantas conversaciones.
-          renderItem={({ item: chat }) => (
+          renderItem={({ item: chat }) => {
+            const marcado = seleccion.has(chat.id);
+            return (
             <Pressable
               key={chat.id}
               testID={`chat-${chat.id}`}
-              onPress={() => onOpenChat(chat)}
-              className="min-h-[72px] flex-row items-center gap-3 border-b border-outline/5 px-5 py-3"
+              // En modo selección el toque marca/desmarca; fuera de él, abre.
+              // Mantener presionado SIEMPRE entra al modo y marca esta fila.
+              onPress={() => (enSeleccion ? alternarSeleccion(chat.id) : onOpenChat(chat))}
+              onLongPress={() => alternarSeleccion(chat.id)}
+              delayLongPress={250}
+              className={`min-h-[72px] flex-row items-center gap-3 border-b border-outline/5 px-5 py-3 ${
+                marcado ? 'bg-primary/10' : ''
+              }`}
             >
               <View className="h-12 w-12 shrink-0">
                 <View className="h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-primary/10">
@@ -357,6 +539,16 @@ export function ChatListScreen({
                     </Text>
                   )}
                 </View>
+                {/* El tilde de selección tapa el avatar cuando la fila está
+                    marcada: es el feedback de «este entra en la acción». */}
+                {marcado ? (
+                  <View
+                    testID={`marcado-${chat.id}`}
+                    className="absolute inset-0 items-center justify-center rounded-full bg-primary"
+                  >
+                    <CheckCheck size={22} color={colores['on-primary']} />
+                  </View>
+                ) : null}
                 {/* Punto de «en línea» como el diseño: abajo a la derecha del
                     avatar y con anillo del color del fondo, que es lo que lo
                     recorta en vez de dejarlo pegado. */}
@@ -380,10 +572,20 @@ export function ChatListScreen({
                   {/* Hora RELATIVA como el diseño (reloj hoy, «Ayer», el día,
                       la fecha), y en ACENTO cuando hay sin leer: en el diseño la
                       de Sofía —3 sin leer— es violeta y la de Carlos, gris. */}
+                  {/* Fijado y silenciado: iconos chicos antes de la hora, como
+                      WhatsApp. El silenciado además atenúa el badge (abajo). */}
+                  {chat.pinned ? (
+                    <Pin size={13} color={colores['on-surface-variant']} testID={`fijado-${chat.id}`} />
+                  ) : null}
+                  {chat.muted ? (
+                    <BellOff size={13} color={colores['on-surface-variant']} testID={`silenciado-${chat.id}`} />
+                  ) : null}
                   {chat.lastMessage ? (
                     <Text
                       className={`shrink-0 text-[11px] ${
-                        chat.unread > 0 ? 'font-semibold text-primary' : 'text-on-surface-variant'
+                        chat.unread > 0 && !chat.muted
+                          ? 'font-semibold text-primary'
+                          : 'text-on-surface-variant'
                       }`}
                       testID={`hora-${chat.id}`}
                     >
@@ -428,16 +630,25 @@ export function ChatListScreen({
                   })()}
                   {chat.unread > 0 ? (
                     <View
-                      className="h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-primary px-1.5"
+                      className={`h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full px-1.5 ${
+                        chat.muted ? 'bg-on-surface-variant/40' : 'bg-primary'
+                      }`}
                       testID={`no-leidos-${chat.id}`}
                     >
-                      <Text className="text-[11px] font-bold text-on-primary">{chat.unread}</Text>
+                      <Text
+                        className={`text-[11px] font-bold ${
+                          chat.muted ? 'text-on-surface' : 'text-on-primary'
+                        }`}
+                      >
+                        {chat.unread}
+                      </Text>
                     </View>
                   ) : null}
                 </View>
               </View>
             </Pressable>
-          )}
+            );
+          }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -450,7 +661,9 @@ export function ChatListScreen({
         />
       )}
 
-      {/* FAB de conversación nueva: está en el diseño y faltaba por completo. */}
+      {/* FAB de conversación nueva: se esconde en modo selección — ahí el pulgar
+          está en la barra de acciones, no creando un chat. */}
+      {enSeleccion ? null : (
       <Pressable
         testID="btn-nuevo-chat"
         onPress={onNewChat}
@@ -458,9 +671,17 @@ export function ChatListScreen({
       >
         <PenSquare size={22} color={colores["on-primary"]} />
       </Pressable>
+      )}
 
     </View>
   );
+}
+
+/** La hora del último mensaje en ms, para ordenar. Sin mensaje va al fondo. */
+function msDe(at?: string): number {
+  if (!at) return 0;
+  const ms = Date.parse(at);
+  return Number.isNaN(ms) ? 0 : ms;
 }
 
 /**

@@ -26,6 +26,7 @@ export * from './filtrosDeChats.js';
 export * from './conciliarMensajes.js';
 export * from './notaDeVoz.js';
 export * from './mediasDelChat.js';
+export * from './seleccionDeChats.js';
 export * from './agendaLocal.js';
 export * from './invitacion.js';
 export * from './emparejarAgenda.js';

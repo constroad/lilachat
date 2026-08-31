@@ -17,6 +17,10 @@ export interface ChatMember {
   userId: Types.ObjectId;
   role: 'admin' | 'member';
   joinedAt?: Date;
+  /** Silenciado por ESTE miembro: no recibe push de este chat. */
+  muted?: boolean;
+  /** Fijado por ESTE miembro: va arriba de su lista. */
+  pinned?: boolean;
 }
 
 export interface Chat {
@@ -131,6 +135,8 @@ const chatSchema = new Schema<Chat>(
         userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
         role: { type: String, enum: ['admin', 'member'], default: 'member' },
         joinedAt: { type: Date, default: Date.now },
+        muted: { type: Boolean },
+        pinned: { type: Boolean },
       },
     ],
     lastSeq: { type: Number, default: 0 },

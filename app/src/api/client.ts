@@ -84,6 +84,10 @@ export type ChatSummary = {
   encrypted?: boolean;
   /** La foto del grupo, absoluta. Sin foto se dibuja la inicial. */
   avatarUrl?: string;
+  /** Silenciado por mí: la fila lo marca y no me llega push. */
+  muted?: boolean;
+  /** Fijado por mí: va arriba en la lista. */
+  pinned?: boolean;
 };
 
 async function get<T>(route: string, token: string, fetchImpl: FetchLike = fetch): Promise<ApiResult<T>> {
@@ -108,6 +112,47 @@ async function get<T>(route: string, token: string, fetchImpl: FetchLike = fetch
 
 export const listChats = (token: string, fetchImpl?: FetchLike) =>
   get<{ chats: ChatSummary[] }>('/api/chats', token, fetchImpl);
+
+/**
+ * Silenciar / fijar un chat, para mí. Lo usa la selección múltiple de la lista.
+ * Devuelve solo si salió bien; el error se ignora arriba porque es un ajuste,
+ * no una acción destructiva —a lo sumo hay que reintentar—.
+ */
+export async function cambiarAjustesDeChat(
+  chatId: string,
+  token: string,
+  cambios: { muted?: boolean; pinned?: boolean }
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE_URL}/api/chats/${chatId}/ajustes`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(cambios),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Salir de un grupo. Lo usa la selección múltiple («Salir» solo aparece si toda
+ * la selección son grupos). El server promueve a otro admin si me voy siendo el
+ * último. Devuelve solo si salió bien; el caller recarga la lista.
+ */
+export async function leaveChat(chatId: string, token: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE_URL}/api/chats/${chatId}/leave`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Los mensajes ANTERIORES a uno dado — el scroll hacia arriba del chat.

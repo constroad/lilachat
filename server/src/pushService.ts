@@ -27,9 +27,14 @@ export async function notifyOffline(params: {
 }): Promise<void> {
   // Al autor NUNCA (ni a sus otros dispositivos: ya recibieron `msg.new`), y a
   // quien tiene un socket vivo tampoco — está mirando la conversación.
-  const targets = params.members.filter(
+  const candidatos = params.members.filter(
     (member) => member !== params.senderId && !isOnline(member)
   );
+  if (candidatos.length === 0) return;
+
+  // Quien SILENCIÓ este chat no recibe push: es el punto de silenciarlo.
+  const silenciados = await chatsSilenciadosDeChat(String(params.message.chatId), candidatos);
+  const targets = candidatos.filter((member) => !silenciados.has(member));
   if (targets.length === 0) return;
 
   const [tokens, sender_, chat] = await Promise.all([
@@ -66,4 +71,20 @@ export async function notifyOffline(params: {
     // guardado y el destinatario lo va a ver al sincronizar.
     console.error('[push] envío falló:', error instanceof Error ? error.message : error);
   }
+}
+
+/**
+ * De un chat, cuáles de estos usuarios lo tienen SILENCIADO. Para no mandarles
+ * push. Una sola lectura del chat: los flags viven en su subdoc de miembros.
+ */
+async function chatsSilenciadosDeChat(chatId: string, userIds: string[]): Promise<Set<string>> {
+  const chat = await ChatModel.findById(chatId).select('members.userId members.muted').lean();
+  if (!chat) return new Set();
+  const set = new Set<string>();
+  for (const member of chat.members) {
+    if (member.muted === true && userIds.includes(String(member.userId))) {
+      set.add(String(member.userId));
+    }
+  }
+  return set;
 }

@@ -11,6 +11,7 @@ import {
 } from './invitationGate.js';
 import { DeviceModel, InvitationModel, UserModel } from './models.js';
 import { signSession } from './sessions.js';
+import { alertarServidor } from './alertaTelegram.js';
 import { resolverUsuarioDeSesion } from './identidadDeSesion.js';
 
 /**
@@ -70,8 +71,16 @@ export function buildAuthRouter(authClient: AuthClient): Router {
       });
       const sent = await authClient.requestCode(target);
       if (!sent.ok) {
-        console.error(
-          `[auth] pedido de código falló por ${target.includes('@') ? 'email' : 'whatsapp'} (${sent.codigo})`
+        const canal = target.includes('@') ? 'email' : 'whatsapp';
+        console.error(`[auth] pedido de código falló por ${canal} (${sent.codigo})`);
+        // **El fallo SALE a buscarte** (pedido de José, 30/08/2026: «ni siquiera
+        // llega el mensaje de error a Telegram»). Sin esto, que nadie pueda
+        // entrar —auth sin base, WhatsApp caído, límite agotado— es invisible
+        // hasta que alguien se queja. `sin_base`/`sin_respuesta` son infra
+        // caída; `limitado` es el tope de envíos; cualquiera deja gente afuera.
+        alertarServidor(
+          `otp/request (${canal})`,
+          new Error(`No se pudo enviar el código de acceso: ${sent.codigo}`)
         );
       }
     }

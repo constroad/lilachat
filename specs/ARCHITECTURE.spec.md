@@ -2896,9 +2896,36 @@ abierto), por cada seleccionado con no-leídos. **Salir** reusa `POST
 `multiseleccion.yaml`)**: long-press entra a selección; la barra muestra las
 acciones correctas por conjunto — grupo leído → fijar/silenciar/salir; 1:1 leído →
 fijar/silenciar (sin salir, sin marcar-leído); check sobre el avatar de la fila
-marcada; cancelar vuelve al buscador; orden por recencia. **Pendiente de deploy**:
-la persistencia de silenciar/fijar (la ruta `/ajustes` es server nuevo, aún no en
-prod — al tocar, la app la llama pero el 404 no persiste hasta el push). Marcar
-leído no se ejerció vivo porque no quedaba ningún chat con no-leídos; salir no se
-ejerció por ser destructivo sobre un grupo real. Server + shared + app en verde
-(tsc/lint/vitest: 23 archivos server, 359 shared, 96 app).
+marcada; cancelar vuelve al buscador; orden por recencia.
+
+**Persistencia verificada contra prod (31/08/2026, commit `8d6d09a`)**: por el
+stack deployado completo — `PATCH /ajustes muted=true` → 200, y acto seguido la
+DB tiene `members[jose].muted=true` **y** `listChats` lo devuelve `muted:true`
+(que es lo que enciende el icono); `muted=false` revierte ambos. El silencio es
+por-usuario (solo pega en el miembro que lo pide). Marcar leído y salir reusan
+endpoints ya vivos. Server + shared + app en verde (tsc/lint/vitest: 23 archivos
+server, 359 shared, 96 app).
+
+### 42.6 El release apuntaba a localhost (`EXPO_PUBLIC_API_URL`) (31/08/2026)
+
+La 0.1.55 se publicó **apuntando a `http://10.0.2.2:4003`** (el localhost del
+emulador). `app/.env` trae esa URL de desarrollo y **`EXPO_PUBLIC_*` se hornea en
+el bundle al buildear** (build-time, no runtime): `assembleRelease` la dejó fija
+en el binario. Síntoma tramposo: la **lista** se veía —sale de la caché
+`leerChatsGuardados`— pero el **detalle de chat** (1:1 y grupo), que siempre pega
+a la red, decía «Sin conexión»; y silenciar tampoco llegaba. En un teléfono real
+`10.0.2.2` no resuelve, así que estaba roto para todos.
+
+**Fix**: `app/.env.production` (NO gitignored, sí tracked) con
+`EXPO_PUBLIC_API_URL=https://lilachat.constroad.com` — Expo lo carga en builds de
+producción con prioridad sobre `.env`. El código ya tenía el default correcto
+(`?? 'https://lilachat.constroad.com'`), pero el `.env` de dev lo pisaba. **Regla
+que quedó**: antes de publicar, verificar el binario, no el `.env` —
+`unzip -p app-release.apk assets/index.android.bundle | grep -ao "lilachat.constroad.com"`
+debe dar 1+ y `grep -ao "10.0.2.2"` debe dar 0. Corregido y republicado como
+**0.1.56 (code 57)**; la 0.1.55 rota queda superada por la actualización.
+
+Nota de tamaño: el APK de publicación va **solo arm64-v8a** (~39 MB) con
+`-PreactNativeArchitectures=arm64-v8a`. El universal (4 ABIs, ~96 MB) excede el
+límite de ~100 s de Cloudflare del origen de LilaStore y la subida corta con
+`524`.

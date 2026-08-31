@@ -2982,6 +2982,17 @@ conversación con una burbuja. **No hace falta expo-audio ni leer el modo del
 teléfono**: al presentar la notificación, Android aplica el `sound` y el
 `vibrationPattern` del canal según el ringer — tono en normal, vibración en modo
 vibrador, nada en silencio, que es exactamente lo pedido. Los propios envíos
-siguen sin sonar (`TabsShell` los excluye). Follow-up conocido: hoy suena también
-para el chat que estás mirando (WhatsApp lo silencia); afinarlo pide pasar el id
-del chat abierto al listener del socket, que vive en el padre de `TabsShell`.
+siguen sin sonar (`TabsShell` los excluye).
+
+**Paridad WhatsApp: sonar en cualquier pantalla menos el chat abierto (0.1.60,
+61).** El tono de `TabsShell` solo salía en la LISTA: esa pantalla se desmonta al
+abrir un chat (`App.tsx` es un ternario `home`/`chat`, mutuamente excluyentes) y
+su listener `msg.new` se apaga, así que estando DENTRO de un chat no sonaba nada.
+Se agregó en `App.tsx` un listener **siempre montado** que actúa solo con un chat
+abierto (`boot.phase === 'chat'`), toca `avisarMensaje` para otros chats y **omite
+el que estás mirando** (motor puro `sonarPorMensaje`: descarta lo propio y el
+`chatAbierto`). No se pisa con el de la lista porque las fases son excluyentes, y
+usa `socket.off('msg.new', onNew)` con handler NOMBRADO —el `off` a secas
+borraría el listener de `useChat` que muestra los mensajes del chat abierto—. El
+nombre sale del cache guardado (`leerChatsGuardados`). De paso tapa un hueco: con
+la app en segundo plano DENTRO de un chat, ahora los otros chats sí avisan.

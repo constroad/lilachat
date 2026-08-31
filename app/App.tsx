@@ -17,8 +17,10 @@ import { PhoneScreen } from './src/onboarding/PhoneScreen';
 import { OtpScreen } from './src/onboarding/OtpScreen';
 import { TabsShell } from './src/ui/TabsShell';
 import { ChatScreen } from './src/chat/ChatScreen';
-import { disconnectSocket, pauseSocket, resumeSocket } from './src/chat/socketClient';
-import { olvidarChats } from './src/chat/chatsGuardados';
+import { connectSocket, disconnectSocket, pauseSocket, resumeSocket } from './src/chat/socketClient';
+import { leerChatsGuardados, olvidarChats } from './src/chat/chatsGuardados';
+import { avisarMensaje } from './src/chat/avisoLocal';
+import { sonarPorMensaje } from './src/chat/sonarPorMensaje';
 import { olvidarMensajes } from './src/chat/mensajesGuardados';
 import { decidirServicio } from './src/chat/servicioDeConexion';
 import { agendaPorTelefono, olvidarAgenda, precargarAgenda } from './src/contacts/agendaEnMemoria';
@@ -148,6 +150,55 @@ function Contenido() {
     if (decision === 'encender') iniciarServicio();
     else detenerServicio();
   }, [haySesion, segundoPlano]);
+
+  /**
+   * El TONO de un mensaje mientras estás DENTRO de un chat (paridad WhatsApp).
+   *
+   * El aviso de la lista lo dispara `TabsShell`, pero esa pantalla se desmonta al
+   * abrir un chat, así que sin esto no sonaba nada estando adentro de uno. Este
+   * listener vive acá —siempre montado— y actúa SOLO con un chat abierto, así no
+   * se pisa con el de la lista (fases excluyentes, cero doble aviso). Omite el
+   * chat que estás mirando: `sonarPorMensaje`. El nombre sale del cache guardado;
+   * la burbuja va sin banner (la suprime el handler), así solo suena/vibra.
+   */
+  useEffect(() => {
+    if (boot.phase !== 'chat') return;
+    const yo = boot.credential.userId;
+    const abierto = boot.chat.id;
+    const socket = connectSocket(boot.credential.jwt);
+    const onNew = async (mensaje: {
+      chatId: string;
+      senderId: string;
+      kind: 'text' | 'image' | 'video' | 'audio' | 'file';
+      body?: string;
+      envelope?: unknown;
+    }) => {
+      if (!sonarPorMensaje({ senderId: mensaje.senderId, chatId: mensaje.chatId, yo, chatAbierto: abierto }))
+        return;
+      const cache = (await leerChatsGuardados()) ?? [];
+      const chat = cache.find((uno) => uno.id === mensaje.chatId);
+      await avisarMensaje({
+        chatId: mensaje.chatId,
+        chatName:
+          nombreDeContacto({
+            delServidor: chat?.name,
+            telefono: chat?.phone,
+            agenda: agendaPorTelefono(),
+          }) || 'Lilachat',
+        senderName: null,
+        esGrupo: chat?.kind === 'group',
+        kind: mensaje.kind,
+        body: mensaje.body ?? '',
+        cifrado: Boolean(mensaje.envelope),
+      });
+    };
+    socket.on('msg.new', onNew);
+    // Named off: NO `socket.off('msg.new')` a secas — borraría también el de
+    // `useChat` que muestra los mensajes del chat abierto.
+    return () => {
+      socket.off('msg.new', onNew);
+    };
+  }, [boot]);
 
   const start = useCallback(async () => {
     const stored = await loadCredential();

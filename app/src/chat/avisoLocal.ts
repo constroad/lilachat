@@ -1,5 +1,4 @@
 import * as Notifications from 'expo-notifications';
-import { AppState } from 'react-native';
 import { armarAviso, CANAL_MENSAJES } from '@lilachat/shared';
 import { reportarError } from '../ui/reportarError';
 
@@ -71,10 +70,11 @@ export async function avisarMensaje(params: {
   body: string;
   cifrado?: boolean;
 }): Promise<void> {
-  // Con la app ADELANTE no se avisa: el mensaje ya se está viendo, y una burbuja
-  // encima de la conversación que uno está leyendo es puro estorbo.
-  if (AppState.currentState === 'active') return;
-
+  // Con la app ADELANTE también se dispara la notificación, pero SIN banner
+  // (lo suprime `configureNotificationHandler`): así suena el tono y zumba —lo
+  // que pidió José, como WhatsApp— sin tapar la conversación con una burbuja.
+  // Que suene o zumbe según el modo del teléfono lo decide Android por el canal:
+  // tono en normal, vibración en modo vibrador, nada en silencio.
   try {
     const aviso = armarAviso(params);
     await Notifications.scheduleNotificationAsync({

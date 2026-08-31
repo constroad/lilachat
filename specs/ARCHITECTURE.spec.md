@@ -2970,8 +2970,18 @@ el id sea versionado, no el original mudo. Los propios envíos ya no suenan
 canal `mensajes`; el server ya manda a `mensajes-v2`, así que su push FCM
 (app muerta) se descarta hasta que actualice — el aviso local sigue por su canal
 viejo. Base chica que actualiza rápido, se autorresuelve. Publicado **0.1.58
-(59)** por el flujo canónico. Pendiente: el **server** necesita deploy (push a
-`main`) para que el push FCM lleve el `channelId`/`sound` nuevos; el aviso local
-ya va en el APK. Falta también, si se quiere, un tono **dentro** de la app cuando
-llega un mensaje con la app abierta en otra pantalla (como WhatsApp) — hoy con la
-app adelante no suena nada.
+(59)** por el flujo canónico. El **server** necesita deploy (push a `main`) para
+que el push FCM lleve el `channelId`/`sound` nuevos; el aviso local ya va en el
+APK.
+
+**Tono/vibración con la app ABIERTA (0.1.59, 60).** José: sumar el tono dentro de
+la app y el zumbido en modo vibrador. `avisarMensaje` ya no corta en foreground:
+dispara la notificación igual, y `configureNotificationHandler` la presenta con
+`shouldPlaySound: true` pero `shouldShowBanner: false` — suena/zumba sin tapar la
+conversación con una burbuja. **No hace falta expo-audio ni leer el modo del
+teléfono**: al presentar la notificación, Android aplica el `sound` y el
+`vibrationPattern` del canal según el ringer — tono en normal, vibración en modo
+vibrador, nada en silencio, que es exactamente lo pedido. Los propios envíos
+siguen sin sonar (`TabsShell` los excluye). Follow-up conocido: hoy suena también
+para el chat que estás mirando (WhatsApp lo silencia); afinarlo pide pasar el id
+del chat abierto al listener del socket, que vive en el padre de `TabsShell`.

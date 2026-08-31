@@ -54,16 +54,19 @@ export async function registerPushToken(jwt: string): Promise<'ok' | 'denied' | 
 }
 
 /**
- * Cómo se muestra una notificación con la app ABIERTA: no se muestra. El chat
- * ya está en pantalla y el mensaje llegó por el socket; un banner encima sería
- * el mismo aviso dos veces.
+ * Cómo se muestra una notificación con la app ABIERTA: **suena pero no asoma**.
+ * El chat ya está en pantalla y el mensaje llegó por el socket, así que un banner
+ * encima sería el mismo aviso dos veces —por eso `shouldShowBanner: false`—, pero
+ * el TONO sí se quiere (José, como WhatsApp: que se oiga aunque estés en la app).
+ * `shouldPlaySound: true` hace sonar el canal, y Android respeta el modo del
+ * teléfono: tono en normal, vibración en modo vibrador, nada en silencio.
  */
 export function configureNotificationHandler(): void {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowBanner: false,
       shouldShowList: true,
-      shouldPlaySound: false,
+      shouldPlaySound: true,
       shouldSetBadge: true,
     }),
   });

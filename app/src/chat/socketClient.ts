@@ -77,6 +77,27 @@ export function disconnectSocket(): void {
   socket = null;
 }
 
+/**
+ * Pausar el socket al ir a segundo plano, SIN destruirlo.
+ *
+ * José, 30/08/2026: «nunca recibí la notificación de que Wilson me envió
+ * mensajes». La causa: con la app en background pero el socket vivo, el server
+ * lo veía «en línea» y NO mandaba push —los push van solo a quien no tiene
+ * socket—. Al desconectar, el server lo marca offline y el mensaje siguiente
+ * entra por FCM.
+ *
+ * `disconnect()` y NO `disconnectSocket()`: se conserva la MISMA instancia con
+ * todos sus listeners, así que `resume` reabre sin que las pantallas montadas
+ * pierdan su referencia.
+ */
+export function pauseSocket(): void {
+  socket?.disconnect();
+}
+
+export function resumeSocket(): void {
+  if (socket && !socket.connected) socket.connect();
+}
+
 export function getSocket(): Socket | null {
   return socket;
 }

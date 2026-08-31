@@ -138,10 +138,16 @@ export function ChatListScreen({
     // Un mensaje nuevo refresca la lista: sin esto la vista previa y el no
     // leído se quedan viejos hasta que alguien tire para refrescar.
     socket.on('msg.new', () => void load());
+    // Al RECONECTAR (volver de segundo plano) se recarga: mientras el socket
+    // estuvo pausado llegaron mensajes por push que la lista no vio, y sin esto
+    // el contador de no leídos queda viejo hasta un pull manual.
+    socket.on('connect', () => void load());
     return () => {
       socket.off('presence.snapshot', onSnapshot);
       socket.off('presence', onPresence);
       socket.off('typing', onTyping);
+      socket.off('msg.new');
+      socket.off('connect');
       timers.forEach((timer) => clearTimeout(timer));
     };
   }, [credential.jwt, load]);

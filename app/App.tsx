@@ -17,7 +17,7 @@ import { PhoneScreen } from './src/onboarding/PhoneScreen';
 import { OtpScreen } from './src/onboarding/OtpScreen';
 import { TabsShell } from './src/ui/TabsShell';
 import { ChatScreen } from './src/chat/ChatScreen';
-import { disconnectSocket } from './src/chat/socketClient';
+import { disconnectSocket, pauseSocket, resumeSocket } from './src/chat/socketClient';
 import { olvidarChats } from './src/chat/chatsGuardados';
 import { olvidarMensajes } from './src/chat/mensajesGuardados';
 import { decidirServicio } from './src/chat/servicioDeConexion';
@@ -115,6 +115,28 @@ function Contenido() {
   useEffect(() => {
     if (haySesion) void precargarAgenda();
   }, [haySesion]);
+
+  /**
+   * El socket sigue el foreground de la app, salvo con «Conexión permanente».
+   *
+   * En background y sin servicio en primer plano, se PAUSA el socket: así el
+   * server marca al usuario offline y el próximo mensaje llega por push (FCM).
+   * Sin esto, la app en background quedaba «en línea» y no se notificaba nada
+   * (José, 30/08/2026). Con «Conexión permanente» encendida se queda conectado
+   * a propósito, para recibir por socket sin depender del push.
+   */
+  useEffect(() => {
+    if (!haySesion) return;
+    const permanente = segundoPlano === true;
+    const sub = AppState.addEventListener('change', (estado) => {
+      if (estado === 'active') resumeSocket();
+      else if (!permanente) pauseSocket();
+    });
+    // Y aplicar el estado ACTUAL al montar/cambiar la preferencia.
+    if (AppState.currentState === 'active') resumeSocket();
+    else if (!permanente) pauseSocket();
+    return () => sub.remove();
+  }, [haySesion, segundoPlano]);
 
   useEffect(() => {
     if (segundoPlano === null) return;

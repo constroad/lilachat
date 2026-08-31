@@ -196,7 +196,9 @@ export function buildPushText(params: {
         ? '🎬 Video'
         : params.kind === 'file'
           ? '📎 Archivo'
-          : '');
+          : params.kind === 'audio'
+            ? '🎤 Nota de voz'
+            : '');
   return {
     // En un grupo importan los dos: de qué grupo y quién habló.
     title: params.chatName ? `${params.chatName} · ${params.senderName}` : params.senderName,

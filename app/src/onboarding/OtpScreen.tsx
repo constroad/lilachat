@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import { ShieldCheck } from 'lucide-react-native';
-import * as Crypto from 'expo-crypto';
 import { formatPhoneDisplay } from '@lilachat/shared';
 import { requestOtp, verifyOtp } from '../api/client';
 import { saveCredential, type Credential } from '../auth/credentialStore';
+import { obtenerDeviceIdEstable } from '../auth/deviceId';
 import { isCompleteOtp, mapVerifyFailure, shouldAutoSubmitOtp } from './machine';
 import { useColores } from '../ui/tema';
 
@@ -51,7 +51,7 @@ export function OtpScreen({
     if (!isCompleteOtp(candidate) || verifying) return;
     setVerifying(true);
     setError('');
-    const deviceId = Crypto.randomUUID();
+    const deviceId = await obtenerDeviceIdEstable();
     const result = await verifyOtp({ phone, code: candidate.trim(), deviceId });
     setVerifying(false);
     if (!result.ok) {

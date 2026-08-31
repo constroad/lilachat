@@ -613,7 +613,15 @@ export function ChatScreen({
               : undefined;
           const citado = respondido
             ? {
-                autor: respondido.senderId === credential.userId ? 'Vos' : nombreVisible,
+                // En un 1:1 el autor es el otro (o «Vos»); en un grupo no está
+                // acá el nombre de cada miembro, así que se omite el autor en
+                // vez de mostrar el del grupo, que es engañoso.
+                autor:
+                  respondido.senderId === credential.userId
+                    ? 'Vos'
+                    : esGrupoChat
+                      ? ''
+                      : nombreVisible,
                 texto: previewDeMensaje(respondido),
               }
             : null;

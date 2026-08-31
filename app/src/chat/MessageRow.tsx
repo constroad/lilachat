@@ -177,9 +177,11 @@ export function MessageRow({
               testID={`cita-${isPending(item) ? item.clientKey : item.seq}`}
               className={`mx-1.5 mt-1.5 rounded-md border-l-2 border-primary px-2 py-1 ${mine ? 'bg-on-primary/10' : 'bg-primary/[0.06]'}`}
             >
-              <Text className={`text-[11px] font-semibold ${mine ? 'text-on-primary' : 'text-primary'}`} numberOfLines={1}>
-                {citado.autor}
-              </Text>
+              {citado.autor ? (
+                <Text className={`text-[11px] font-semibold ${mine ? 'text-on-primary' : 'text-primary'}`} numberOfLines={1}>
+                  {citado.autor}
+                </Text>
+              ) : null}
               <Text className={`text-[12px] ${mine ? 'text-on-primary/80' : 'text-on-surface-variant'}`} numberOfLines={1}>
                 {citado.texto}
               </Text>

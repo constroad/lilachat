@@ -49,6 +49,8 @@ export type ServerMessage = {
    * NO vienen: el server los vacía de verdad. La app muestra la lápida.
    */
   deletedAt?: string;
+  /** A qué mensaje responde, si es una respuesta. */
+  replyToSeq?: number;
   at: string;
 };
 
@@ -112,6 +114,7 @@ export async function sendOverSocket(frame: {
   body?: string;
   envelope?: { v: 1; nonce: string; ciphertext: string };
   kind?: string;
+  replyToSeq?: number;
 }): Promise<
   | { status: 'sent'; seq: number }
   | { status: 'duplicate'; seq: number }

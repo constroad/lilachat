@@ -1,7 +1,8 @@
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, PanResponder, Pressable, Text, View } from 'react-native';
+import { useRef } from 'react';
 import { Image } from 'expo-image';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { FileText, Pause, Play } from 'lucide-react-native';
+import { CornerUpLeft, FileText, Pause, Play } from 'lucide-react-native';
 import { porcentajeDeSubida } from './progresoDeSubida';
 import {
   TEXTO_ELIMINADO,
@@ -57,6 +58,8 @@ export function MessageRow({
   senderInitial,
   onVerImagen,
   onSeleccionar,
+  onResponder,
+  citado,
   seleccionado,
 }: {
   item: Row;
@@ -70,9 +73,16 @@ export function MessageRow({
   onVerImagen?: (url: string) => void;
   /** Pulsación larga: entra en modo selección. */
   onSeleccionar?: (seq: number) => void;
+  /** Deslizar sobre el mensaje: responderlo (como WhatsApp). */
+  onResponder?: (seq: number, textoPreview: string, mio: boolean) => void;
+  /** El mensaje al que ESTE responde, ya resuelto, para pintar la cita. */
+  citado?: { texto: string; autor: string } | null;
   seleccionado?: boolean;
 }) {
   const colores = useColores();
+  // La `Animated.Value` del deslizar-para-responder va ANTES del early-return de
+  // los avisos: un hook no puede quedar despues de un `return` condicional.
+  const panX = useRef(new Animated.Value(0)).current;
 
   // Los avisos del grupo no son burbujas de nadie: van centrados, chiquitos y
   // sin cola. Se resuelve ANTES que todo lo demás porque nada de lo de abajo
@@ -109,8 +119,37 @@ export function MessageRow({
 
   const tail = nextGrouped ? '' : mine ? 'rounded-br-tail' : 'rounded-bl-tail';
 
+  // Deslizar el mensaje a la derecha para responderlo, como WhatsApp. Con
+  // `PanResponder` del core, sin dependencia nativa. Solo reclama el gesto si el
+  // movimiento es HORIZONTAL y hacia la derecha; si no, deja pasar el scroll.
+  const preview = previewDeMensaje(item);
+  const pan = PanResponder.create({
+    onMoveShouldSetPanResponder: (_e, g) =>
+      !isPending(item) && g.dx > 12 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+    onPanResponderMove: (_e, g) => {
+      panX.setValue(Math.max(0, Math.min(g.dx, 72)));
+    },
+    onPanResponderRelease: (_e, g) => {
+      if (!isPending(item) && g.dx > 48) onResponder?.(item.seq, preview, mine);
+      Animated.spring(panX, { toValue: 0, useNativeDriver: true, bounciness: 6 }).start();
+    },
+    onPanResponderTerminate: () => {
+      Animated.spring(panX, { toValue: 0, useNativeDriver: true }).start();
+    },
+  });
+
   return (
-    <View className={`flex-row items-end gap-2 ${grouped ? 'mt-1' : 'mt-4'} ${mine ? 'justify-end' : ''}`}>
+    <Animated.View
+      {...pan.panHandlers}
+      style={{ transform: [{ translateX: panX }] }}
+      className={`flex-row items-end gap-2 ${grouped ? 'mt-1' : 'mt-4'} ${mine ? 'justify-end' : ''}`}
+    >
+      <Animated.View
+        style={{ opacity: panX.interpolate({ inputRange: [0, 48], outputRange: [0, 1] }) }}
+        className="absolute left-0 top-1/2 h-7 w-7 items-center justify-center rounded-full bg-primary/15"
+      >
+        <CornerUpLeft size={15} color={colores.primary} />
+      </Animated.View>
       {/* El avatar acompaña SOLO al último del bloque ajeno: repetirlo en cada
           burbuja del mismo emisor ensucia la columna. */}
       {!mine ? (
@@ -130,6 +169,23 @@ export function MessageRow({
           testID={!isPending(item) ? `burbuja-${item.seq}` : undefined}
           className={`overflow-hidden rounded-lg ${tail} ${mine ? 'bg-primary' : 'bg-surface-variant'} ${seleccionado ? 'opacity-60' : ''}`}
         >
+          {/* La cita del mensaje al que ESTE responde. Va DENTRO de la burbuja,
+              arriba del contenido, como WhatsApp. Se resuelve afuera (en la
+              pantalla, que tiene todos los mensajes) y llega ya listo. */}
+          {citado ? (
+            <View
+              testID={`cita-${isPending(item) ? item.clientKey : item.seq}`}
+              className={`mx-1.5 mt-1.5 rounded-md border-l-2 border-primary px-2 py-1 ${mine ? 'bg-on-primary/10' : 'bg-primary/[0.06]'}`}
+            >
+              <Text className={`text-[11px] font-semibold ${mine ? 'text-on-primary' : 'text-primary'}`} numberOfLines={1}>
+                {citado.autor}
+              </Text>
+              <Text className={`text-[12px] ${mine ? 'text-on-primary/80' : 'text-on-surface-variant'}`} numberOfLines={1}>
+                {citado.texto}
+              </Text>
+            </View>
+          ) : null}
+
           {!isPending(item) && item.media && esVoz(item.media.mime) ? (
             <NotaDeVoz url={item.media.url ?? ''} mia={mine} durationMs={item.media.durationMs} />
           ) : null}
@@ -281,7 +337,7 @@ export function MessageRow({
           ) : null}
         </View>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -394,4 +450,20 @@ function NotaDeVoz({ url, mia, durationMs }: { url: string; mia: boolean; durati
       </View>
     </View>
   );
+}
+
+/**
+ * Un resumen corto de un mensaje, para la cita de una respuesta y para la barra
+ * de «respondiendo a». Un texto se muestra tal cual; la media, con su etiqueta.
+ */
+export function previewDeMensaje(item: Row): string {
+  if (isPending(item)) return item.body ?? 'Mensaje';
+  if (item.deletedAt) return TEXTO_ELIMINADO;
+  if (item.body) return item.body;
+  const mime = item.media?.mime ?? '';
+  if (mime.startsWith('image/')) return '📷 Foto';
+  if (mime.startsWith('video/')) return '🎬 Video';
+  if (mime.startsWith('audio/')) return '🎤 Nota de voz';
+  if (item.media) return '📎 ' + (item.media.fileName ? nombreLimpio(item.media.fileName) : 'Archivo');
+  return 'Mensaje';
 }

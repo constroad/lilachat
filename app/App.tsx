@@ -248,6 +248,7 @@ function Contenido() {
           othersReadSeq={boot.chat.othersReadSeq}
           othersDeliveredSeq={boot.chat.othersDeliveredSeq}
           unread={boot.chat.unread}
+          lastSeqInicial={boot.chat.lastSeq}
           encrypted={boot.chat.encrypted}
           // El OTRO miembro: con quién se deriva la clave compartida.
           otherUserId={

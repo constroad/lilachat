@@ -88,6 +88,9 @@ export async function drainOutbox(): Promise<DrainReport> {
         // chat cifrado— y se guardaba una burbuja vacía.
         envelope: item.envelope,
         kind: item.kind,
+        // A qué mensaje responde, si es una respuesta. Sin esto el reply se
+        // guardaba sin su cita: `buildOutboxItem` lo tenia y aca se perdia.
+        replyToSeq: item.replyToSeq,
       });
       const effect = resolveOutcome(item, outcome);
       queue = applyEffect(queue, effect);

@@ -420,7 +420,7 @@ export function useChat(params: {
    * pruebe último (y por eso se rompa).
    */
   const send = useCallback(
-    async (body: string) => {
+    async (body: string, replyToSeq?: number) => {
       // `buildOutboxItem` decide si va texto o sobre. En un chat cifrado
       // devuelve `null` si NO se pudo cifrar, y entonces no se encola nada:
       // caer a texto plano con el candado en pantalla sería mentir.
@@ -429,6 +429,7 @@ export function useChat(params: {
         clientKey: Crypto.randomUUID(),
         text: body,
         queuedAt: new Date().toISOString(),
+        replyToSeq,
         seal: params.seal,
       });
       if (!item) return { ok: false as const };

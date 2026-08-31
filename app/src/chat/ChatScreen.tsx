@@ -31,6 +31,7 @@ import { DaySeparator, MessageRow, isPending, type Row } from './MessageRow';
 import { formatClock } from '@lilachat/shared';
 import { abrirConOtraApp, compartirFoto, guardarEnGaleria } from './guardarYCompartir';
 import { useGrabadorDeVoz } from './useGrabadorDeVoz';
+import { previewDeMensaje } from './MessageRow';
 import { VisorDeImagen } from './VisorDeImagen';
 import { ChatDetailScreen } from './ChatDetailScreen';
 import { useChat } from './useChat';
@@ -52,6 +53,7 @@ export function ChatScreen({
   othersReadSeq,
   othersDeliveredSeq,
   unread,
+  lastSeqInicial,
   encrypted,
   otherUserId,
   onBack,
@@ -65,6 +67,14 @@ export function ChatScreen({
   othersDeliveredSeq: number;
   /** Cuántos sin leer traía la lista: decide si la banda de Lila aparece. */
   unread: number;
+  /**
+   * El `lastSeq` que el server reportó al abrir. Se marca leído HASTA acá, no
+   * solo hasta el último mensaje cargado: si un mensaje del final se borró en
+   * duro, `lastSeq` queda por delante y el cliente nunca llegaria a marcarlo
+   * —dejando un «sin leer» fantasma que no baja (José, 31/08/2026)—. Abrir el
+   * chat es haberlo visto todo lo que el server dice que hay.
+   */
+  lastSeqInicial?: number;
   /** Chat secreto (F9): cifra, y apaga a Lila. */
   encrypted?: boolean;
   otherUserId?: string | null;
@@ -102,6 +112,8 @@ export function ChatScreen({
     open: sesionLista?.open,
   });
   const [draft, setDraft] = useState('');
+  /** El mensaje al que se está respondiendo (deslizando sobre él), o null. */
+  const [respondiendoA, setRespondiendoA] = useState<{ seq: number; texto: string; mio: boolean } | null>(null);
   const [attachOpen, setAttachOpen] = useState(false);
   // Crear desde la conversación: el chat YA está elegido, así que las pantallas
   // de crear no vuelven a preguntar dónde.
@@ -354,8 +366,11 @@ export function ChatScreen({
 
   useEffect(() => {
     const last = messages[messages.length - 1];
-    if (last) markRead(last.seq);
-  }, [messages, markRead]);
+    // Hasta el MÁXIMO entre lo cargado y lo que el server dijo que existe: así
+    // un mensaje final borrado en duro no deja un «sin leer» que no baja.
+    const hasta = Math.max(last?.seq ?? 0, lastSeqInicial ?? 0);
+    if (hasta > 0) markRead(hasta);
+  }, [messages, markRead, lastSeqInicial]);
 
   return (
     <KeyboardAvoidingView
@@ -591,6 +606,17 @@ export function ChatScreen({
           const next = rows[index + 1];
           const at = isPending(item) ? item.queuedAt : item.at;
           const previousAt = previous ? (isPending(previous) ? previous.queuedAt : previous.at) : undefined;
+          // El mensaje al que ESTE responde, resuelto acá que están todos.
+          const respondido =
+            !isPending(item) && item.replyToSeq
+              ? messages.find((m) => m.seq === item.replyToSeq)
+              : undefined;
+          const citado = respondido
+            ? {
+                autor: respondido.senderId === credential.userId ? 'Vos' : nombreVisible,
+                texto: previewDeMensaje(respondido),
+              }
+            : null;
           return (
             <>
               {startsNewDay(at, previousAt) ? <DaySeparator label={formatDayLabel(at)} /> : null}
@@ -604,6 +630,8 @@ export function ChatScreen({
                 senderInitial={nombreVisible.slice(0, 1).toUpperCase()}
                 onVerImagen={(_url) => setViendoSeq(!isPending(item) ? item.seq : null)}
                 onSeleccionar={setElegido}
+                onResponder={(seq, texto, mio) => setRespondiendoA({ seq, texto, mio })}
+                citado={citado}
                 seleccionado={!isPending(item) && item.seq === elegido}
               />
             </>
@@ -632,6 +660,31 @@ export function ChatScreen({
           La primera versión puso los cinco controles como hermanos: entraban
           todos, pero el campo quedaba tan angosto que el placeholder se partía
           en dos líneas. */}
+      {respondiendoA ? (
+        <View
+          testID="barra-respuesta"
+          className="flex-row items-center gap-2 border-t border-outline/10 bg-surface px-3 pt-2"
+        >
+          <View className="w-1 self-stretch rounded-full bg-primary" />
+          <View className="min-w-0 flex-1 py-1">
+            <Text className="text-[11px] font-semibold text-primary">
+              {respondiendoA.mio ? 'Respondiendo a vos' : 'Respondiendo'}
+            </Text>
+            <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>
+              {respondiendoA.texto || 'Mensaje'}
+            </Text>
+          </View>
+          <Pressable
+            testID="btn-cancelar-respuesta"
+            accessibilityLabel="Cancelar la respuesta"
+            onPress={() => setRespondiendoA(null)}
+            className="h-9 w-9 items-center justify-center"
+          >
+            <X size={18} color={colores['on-surface-variant']} />
+          </Pressable>
+        </View>
+      ) : null}
+
       <View className="flex-row items-end gap-1.5 border-t border-outline/10 bg-surface px-3 pt-3" style={{ paddingBottom: margenes.pie }}>
         {voz.estado.fase === 'grabando' ? (
           /**
@@ -708,8 +761,10 @@ export function ChatScreen({
             onPress={() => {
               const text = draft;
               setDraft('');
+              const reply = respondiendoA?.seq;
+              setRespondiendoA(null);
               void (async () => {
-                const resultado = await send(text);
+                const resultado = await send(text, reply);
                 // Si NO se pudo cifrar, el mensaje no salió y hay que decirlo:
                 // en un chat con candado, un envío que falla en silencio deja a
                 // la persona creyendo que el otro lo recibió.

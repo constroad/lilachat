@@ -8,6 +8,8 @@ import {
   puedeEditarInfo,
   normalizarNombreDeGrupo,
   decidirSalida,
+  busquedaValida,
+  escaparRegex,
 } from '@lilachat/shared';
 import { UserModel } from './models.js';
 import { ChatModel, MessageModel, ReceiptModel, type Chat, type Message } from './chatModels.js';
@@ -750,4 +752,54 @@ export async function leaveChat(params: {
     // decisión del server y sin contarla el grupo cambia de admin en silencio.
     nuevoAdmin: decision.accion === 'salir' ? decision.nuevoAdmin : null,
   };
+}
+
+export type ResultadoBusqueda = {
+  chatId: string;
+  messageId: string;
+  seq: number;
+  body: string;
+  senderId: string;
+  createdAt: string;
+};
+
+/**
+ * Buscar texto dentro de las conversaciones DEL USUARIO.
+ *
+ * **Scope por membresía, siempre**: solo se miran los mensajes de los chats a los
+ * que pertenece — nunca los de un chat ajeno. Lo cifrado (`envelope`) se salta:
+ * el server no tiene el texto. Solo `kind: 'text'` tiene `body` que buscar.
+ *
+ * Subcadena case-insensitive (ver `busquedaDeMensajes` en shared). Para una
+ * familia el volumen es chico; si algún día crece, va un índice de texto.
+ */
+export async function buscarMensajes(
+  userId: Types.ObjectId,
+  consulta: string
+): Promise<ResultadoBusqueda[]> {
+  if (!busquedaValida(consulta)) return [];
+
+  const chats = await ChatModel.find({ 'members.userId': userId }).select('_id').lean();
+  const ids = chats.map((chat) => chat._id);
+  if (ids.length === 0) return [];
+
+  const regex = new RegExp(escaparRegex(consulta.trim()), 'i');
+  const mensajes = await MessageModel.find({
+    chatId: { $in: ids },
+    kind: 'text',
+    envelope: { $exists: false },
+    body: regex,
+  })
+    .sort({ createdAt: -1 })
+    .limit(50)
+    .lean<(Message & { _id: Types.ObjectId; createdAt?: Date })[]>();
+
+  return mensajes.map((mensaje) => ({
+    chatId: String(mensaje.chatId),
+    messageId: String(mensaje._id),
+    seq: mensaje.seq,
+    body: mensaje.body ?? '',
+    senderId: String(mensaje.senderId),
+    createdAt: mensaje.createdAt?.toISOString() ?? '',
+  }));
 }

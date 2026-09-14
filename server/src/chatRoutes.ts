@@ -7,6 +7,7 @@ import { DeviceModel, UserModel } from './models.js';
 import {
   ForbiddenChatError,
   addMember,
+  buscarMensajes,
   leaveChat,
   listChats,
   listMessages,
@@ -85,6 +86,13 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
 
   router.get('/', async (req, res) => {
     res.json({ chats: await listChats(req.session!.userId) });
+  });
+
+  // Buscar texto en las conversaciones del usuario. Va ANTES de `/:chatId/...`
+  // para que «search» no lo tome como un id de chat.
+  router.get('/search', async (req, res) => {
+    const consulta = typeof req.query.q === 'string' ? req.query.q : '';
+    res.json({ resultados: await buscarMensajes(req.session!.userId, consulta) });
   });
 
   router.post('/', async (req, res) => {

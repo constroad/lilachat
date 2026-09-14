@@ -32,3 +32,4 @@ export * from './invitacion.js';
 export * from './emparejarAgenda.js';
 export * from './cacheCifrada.js';
 export * from './aviso.js';
+export * from './busquedaDeMensajes.js';

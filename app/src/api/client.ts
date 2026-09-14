@@ -113,6 +113,23 @@ async function get<T>(route: string, token: string, fetchImpl: FetchLike = fetch
 export const listChats = (token: string, fetchImpl?: FetchLike) =>
   get<{ chats: ChatSummary[] }>('/api/chats', token, fetchImpl);
 
+export type ResultadoBusqueda = {
+  chatId: string;
+  messageId: string;
+  seq: number;
+  body: string;
+  senderId: string;
+  createdAt: string;
+};
+
+/** Buscar texto dentro de las conversaciones. El server scopea por membresía. */
+export const buscarMensajes = (token: string, q: string, fetchImpl?: FetchLike) =>
+  get<{ resultados: ResultadoBusqueda[] }>(
+    `/api/chats/search?q=${encodeURIComponent(q)}`,
+    token,
+    fetchImpl
+  );
+
 /**
  * Silenciar / fijar un chat, para mí. Lo usa la selección múltiple de la lista.
  * Devuelve solo si salió bien; el error se ignora arriba porque es un ajuste,

@@ -27,7 +27,15 @@ import {
 import type { Credential } from '../auth/credentialStore';
 import { connectSocket, getSocket } from './socketClient';
 import { configureNotificationHandler, registerPushToken } from './pushRegistration';
-import { cambiarAjustesDeChat, leaveChat, listChats, type ChatSummary } from '../api/client';
+import {
+  buscarMensajes,
+  cambiarAjustesDeChat,
+  leaveChat,
+  listChats,
+  type ChatSummary,
+  type ResultadoBusqueda,
+} from '../api/client';
+import { busquedaValida, extractoDeCoincidencia } from '@lilachat/shared';
 import { conciliarCache } from './cacheDeChats';
 import { guardarChats, leerChatsGuardados } from './chatsGuardados';
 import { FlashList } from '@shopify/flash-list';
@@ -175,6 +183,27 @@ export function ChatListScreen({
 
   const [busqueda, setBusqueda] = useState('');
   const [filtro, setFiltro] = useState<FiltroDeChats>('todos');
+
+  /**
+   * Búsqueda DENTRO de las conversaciones (aparte del filtro de la lista). Se
+   * consulta al server con un debounce: pegarle en cada tecla sería un pedido
+   * por letra. Lo cifrado no aparece (el server no tiene el texto).
+   */
+  const [resultadosMensajes, setResultadosMensajes] = useState<ResultadoBusqueda[]>([]);
+  useEffect(() => {
+    const consulta = busqueda.trim();
+    if (!busquedaValida(consulta)) {
+      setResultadosMensajes([]);
+      return;
+    }
+    const id = setTimeout(async () => {
+      const respuesta = await buscarMensajes(credential.jwt, consulta);
+      // Solo se pisan los resultados si la consulta sigue siendo la misma: una
+      // respuesta lenta de una búsqueda vieja no debe tapar la nueva.
+      if (respuesta.ok) setResultadosMensajes(respuesta.data.resultados);
+    }, 300);
+    return () => clearTimeout(id);
+  }, [busqueda, credential.jwt]);
 
   /**
    * Lo que se muestra: la lista pasada por el chip y por el buscador.
@@ -507,6 +536,47 @@ export function ChatListScreen({
                     : 'Todavía no tenés grupos.'}
               </Text>
             </View>
+          }
+          // Resultados de buscar DENTRO de las conversaciones, debajo de los
+          // chats que coinciden por nombre. Como WhatsApp: dos secciones.
+          ListFooterComponent={
+            busquedaValida(busqueda) && resultadosMensajes.length > 0 ? (
+              <View className="mt-3 border-t border-outline/10 pt-3" testID="resultados-mensajes">
+                <Text className="mb-1 px-4 text-[11px] font-semibold uppercase text-on-surface-variant">
+                  Mensajes
+                </Text>
+                {resultadosMensajes.map((resultado) => {
+                  const chat = (chats ?? []).find((uno) => uno.id === resultado.chatId);
+                  if (!chat) return null;
+                  const extracto = extractoDeCoincidencia(resultado.body, busqueda.trim());
+                  return (
+                    <Pressable
+                      key={resultado.messageId}
+                      testID={`resultado-${resultado.messageId}`}
+                      onPress={() => onOpenChat(chat)}
+                      className="min-h-[56px] justify-center px-4 py-2"
+                    >
+                      <Text className="text-[13px] font-semibold text-on-surface" numberOfLines={1}>
+                        {title(chat)}
+                      </Text>
+                      <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>
+                        {extracto.desde < 0 ? (
+                          extracto.texto
+                        ) : (
+                          <>
+                            {extracto.texto.slice(0, extracto.desde)}
+                            <Text className="font-bold text-on-surface">
+                              {extracto.texto.slice(extracto.desde, extracto.desde + extracto.largo)}
+                            </Text>
+                            {extracto.texto.slice(extracto.desde + extracto.largo)}
+                          </>
+                        )}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null
           }
           // Virtualizada: un ScrollView monta TODAS las filas de una y la
           // lista tarda en aparecer en cuanto hay unas cuantas conversaciones.

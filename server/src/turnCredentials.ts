@@ -1,56 +1,51 @@
-import crypto from 'node:crypto';
+/**
+ * Los servidores ICE para una llamada, de **Cloudflare Realtime TURN** (F10).
+ *
+ * El TURN rebota audio/video cuando los dos teléfonos NO se ven directo (redes
+ * distintas). Lo hostea Cloudflare y no la mini: la mini solo expone el 443 por
+ * el túnel, y un TURN necesita UDP + puertos de relay públicos, así que un coturn
+ * propio no sería alcanzable desde datos móviles.
+ *
+ * El secreto (`CF_TURN_API_TOKEN`) vive SOLO en el server: se le pide a Cloudflare
+ * una credencial CORTA (`ttl`) por request y esa —efímera— es la única que viaja
+ * al teléfono. Una fija horneada en el APK sería un relay gratis para cualquiera
+ * que abra el archivo.
+ */
+export type IceServer = { urls: string | string[]; username?: string; credential?: string };
 
 /**
- * Credenciales EFÍMERAS para el TURN (F10).
- *
- * Un TURN reenvía audio y video de verdad, o sea que es ancho de banda que
- * alguien paga. Con una contraseña fija horneada en el APK, cualquiera que abra
- * el archivo tiene un relay gratis para lo que se le ocurra — es el abuso
- * clásico de los TURN mal configurados, y no se nota hasta que llega la factura
- * o el proveedor corta el servicio.
- *
- * Se usa el mecanismo REST estándar de coturn: usuario `<vence>:<userId>` y
- * contraseña `HMAC-SHA1(secreto, usuario)` en base64. El TURN valida sin
- * consultar a nadie, y el SECRETO no sale nunca del server.
+ * STUN de Cloudflare: solo dice «cuál es mi IP», no reenvía tráfico. Es el
+ * fallback cuando el TURN no está configurado o Cloudflare no responde — la
+ * llamada de misma red igual conecta; la cross-red no, pero es mejor que dejar
+ * sin llamar también a quien sí podía.
  */
-const VIGENCIA_SEGUNDOS = 12 * 3600;
+const STUN_FALLBACK: IceServer = { urls: 'stun:stun.cloudflare.com:3478' };
 
-/** STUN público de Google: solo dice «cuál es mi IP», no reenvía tráfico. */
-const STUN_URL = 'stun:stun.l.google.com:19302';
+const TTL_SEGUNDOS = 12 * 3600;
 
-export type IceServer = { urls: string; username?: string; credential?: string };
+export async function obtenerIceServers(): Promise<IceServer[]> {
+  const keyId = process.env.CF_TURN_KEY_ID || '';
+  const token = process.env.CF_TURN_API_TOKEN || '';
+  if (!keyId || !token) return [STUN_FALLBACK];
 
-export function turnCredential(
-  userId: string,
-  now = new Date()
-): { username: string; credential: string } | null {
-  const secreto = process.env.TURN_SECRET || '';
-  if (!secreto) return null;
-
-  const vence = Math.floor(now.getTime() / 1000) + VIGENCIA_SEGUNDOS;
-  const username = `${vence}:${userId}`;
-
-  return {
-    username,
-    // SHA1 no es una elección nuestra: es lo que coturn valida en este esquema.
-    // No protege un secreto, solo autentica una credencial de doce horas.
-    credential: crypto.createHmac('sha1', secreto).update(username).digest('base64'),
-  };
-}
-
-/**
- * Los servidores que el navegador y el teléfono usan para conectarse.
- *
- * STUN siempre; TURN solo si está configurado. Con STUN solo, dos personas en
- * la misma casa se conectan DIRECTO y no se gasta un byte del servidor — el
- * TURN es el plan B para cuando el NAT no deja pasar.
- */
-export function buildIceServers(userId: string): IceServer[] {
-  const servers: IceServer[] = [{ urls: STUN_URL }];
-
-  const url = process.env.TURN_URL || '';
-  const cred = turnCredential(userId);
-  if (url && cred) servers.push({ urls: url, ...cred });
-
-  return servers;
+  try {
+    const respuesta = await fetch(
+      `https://rtc.live.cloudflare.com/v1/turn/keys/${keyId}/credentials/generate-ice-servers`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ttl: TTL_SEGUNDOS }),
+        signal: AbortSignal.timeout(6000),
+      }
+    );
+    if (!respuesta.ok) return [STUN_FALLBACK];
+    const datos = (await respuesta.json()) as { iceServers?: IceServer[] };
+    return Array.isArray(datos.iceServers) && datos.iceServers.length > 0
+      ? datos.iceServers
+      : [STUN_FALLBACK];
+  } catch {
+    // Falla cerrado a STUN: mejor una llamada que solo anda en misma red que
+    // ninguna. Devolver un error dejaría sin llamar también a quien sí podía.
+    return [STUN_FALLBACK];
+  }
 }

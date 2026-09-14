@@ -34,6 +34,11 @@ export async function buscarActualizacion(): Promise<{
   minima: number;
   /** La versión legible de la publicada. */
   version: string;
+  /** Integridad de la vigente, para bajarla y VERIFICARLA dentro de la app.
+   *  Vacíos si el server no los ofrece → no se instala (falla cerrado). */
+  sha256: string;
+  size: number;
+  releaseId: string;
 }> {
   try {
     const respuesta = await fetch(`${TIENDA}/api/v1/apps/${SLUG}/min-version`, {
@@ -53,9 +58,21 @@ export async function buscarActualizacion(): Promise<{
       ultima,
       minima: typeof datos.minVersionCode === 'number' ? datos.minVersionCode : 0,
       version,
+      sha256: typeof datos.sha256 === 'string' ? datos.sha256 : '',
+      size: typeof datos.size === 'number' ? datos.size : 0,
+      releaseId: typeof datos.releaseId === 'string' ? datos.releaseId : '',
     };
   } catch {
     // Sin red no se afirma nada: «no se pudo» ≠ «estás al día».
-    return { resultado: { estado: 'no-se-pudo' }, downloadUrl: '', ultima: null, minima: 0, version: '' };
+    return {
+      resultado: { estado: 'no-se-pudo' },
+      downloadUrl: '',
+      ultima: null,
+      minima: 0,
+      version: '',
+      sha256: '',
+      size: 0,
+      releaseId: '',
+    };
   }
 }

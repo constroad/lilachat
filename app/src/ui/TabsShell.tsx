@@ -21,6 +21,7 @@ import { buscarActualizacion, versionActual, versionCodeActual } from '../settin
 import { decidirAvisoDeActualizacion, type AvisoDeActualizacion } from '../settings/avisoDeActualizacion';
 import { abrirActualizacion } from '../settings/abrirTienda';
 import { BandaDeActualizacion } from '../settings/BandaDeActualizacion';
+import { useActualizador, type InfoActualizacion } from '../settings/useActualizador';
 import {
   guardarActualizacionDescartada,
   leerActualizacionDescartada,
@@ -77,6 +78,9 @@ export function TabsShell({
   const [chequeo, setChequeo] = useState<ResultadoDelChequeo | null>(null);
   const [verificando, setVerificando] = useState(false);
   const [enlaceApp, setEnlaceApp] = useState('');
+  const VACIA: InfoActualizacion = { downloadUrl: '', releaseId: '', sha256: '', size: 0 };
+  const [infoApp, setInfoApp] = useState<InfoActualizacion>(VACIA);
+  const { estado: estadoActualizacion, actualizar } = useActualizador();
   const [aviso, setAviso] = useState<AvisoDeActualizacion>({ tipo: 'ninguno' });
 
   /**
@@ -92,11 +96,10 @@ export function TabsShell({
       // UNA sola consulta al arrancar, que sirve para las dos cosas: el enlace
       // de la invitación y el aviso de versión nueva. Preguntar dos veces por
       // lo mismo es gasto puro.
-      const [{ downloadUrl, ultima, minima, version }, descartada] = await Promise.all([
-        buscarActualizacion(),
-        leerActualizacionDescartada(),
-      ]);
+      const [{ downloadUrl, ultima, minima, version, sha256, size, releaseId }, descartada] =
+        await Promise.all([buscarActualizacion(), leerActualizacionDescartada()]);
       setEnlaceApp(downloadUrl);
+      setInfoApp({ downloadUrl, releaseId, sha256, size });
       setAviso(
         decidirAvisoDeActualizacion({
           actual: versionCodeActual(),
@@ -121,11 +124,15 @@ export function TabsShell({
   const verificar = async () => {
     if (verificando) return;
     setVerificando(true);
-    const { resultado, downloadUrl } = await buscarActualizacion();
+    const { resultado, downloadUrl, sha256, size, releaseId } = await buscarActualizacion();
     setChequeo(resultado);
     setEnlaceApp(downloadUrl);
+    const info = { downloadUrl, releaseId, sha256, size };
+    setInfoApp(info);
     setVerificando(false);
-    if (resultado.estado === 'hay-nueva') void abrirActualizacion(downloadUrl);
+    // Se baja y se instala DENTRO de la app; si no se puede verificar, el propio
+    // actualizador cae a un estado de error que ofrece LilaStore.
+    if (resultado.estado === 'hay-nueva') void actualizar(info);
   };
   const [newChat, setNewChat] = useState(false);
 
@@ -320,7 +327,9 @@ export function TabsShell({
         {tab === 'chats' ? (
           <BandaDeActualizacion
             aviso={aviso}
-            downloadUrl={enlaceApp}
+            estado={estadoActualizacion}
+            onActualizar={() => void actualizar(infoApp)}
+            onAbrirTienda={() => void abrirActualizacion(infoApp.downloadUrl)}
             onDescartar={() => {
               if (aviso.tipo !== 'ninguno') void guardarActualizacionDescartada(aviso.version);
               setAviso({ tipo: 'ninguno' });
@@ -502,13 +511,19 @@ export function TabsShell({
                     : 'Buscar actualizaciones'}
                 </Text>
                 <Text className="text-[11px] text-on-surface-variant">
-                  {verificando
-                    ? 'Verificando…'
-                    : chequeo?.estado === 'al-dia'
-                      ? `Versión ${versionActual()} · estás al día`
-                      : chequeo?.estado === 'no-se-pudo'
-                        ? 'No se pudo verificar. Revisá la señal.'
-                        : `Versión ${versionActual()}`}
+                  {estadoActualizacion.fase === 'descargando'
+                    ? `Descargando… ${Math.round(estadoActualizacion.progreso * 100)}%`
+                    : estadoActualizacion.fase === 'instalando'
+                      ? 'Abriendo el instalador…'
+                      : estadoActualizacion.fase === 'error'
+                        ? estadoActualizacion.mensaje
+                        : verificando
+                          ? 'Verificando…'
+                          : chequeo?.estado === 'al-dia'
+                            ? `Versión ${versionActual()} · estás al día`
+                            : chequeo?.estado === 'no-se-pudo'
+                              ? 'No se pudo verificar. Revisá la señal.'
+                              : `Versión ${versionActual()}`}
                 </Text>
               </View>
               <ChevronRight size={18} color={colores.outline} />

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { RTCView, type MediaStream } from 'react-native-webrtc';
 import { Mic, MicOff, Phone, PhoneOff, Video, VideoOff, Volume2 } from 'lucide-react-native';
 import { formatCallDuration, type CallState } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
@@ -24,6 +25,8 @@ export function CallScreen({
   video,
   muted,
   speaker,
+  localStream,
+  remoteStream,
   onToggleMute,
   onToggleSpeaker,
   onToggleVideo,
@@ -36,6 +39,8 @@ export function CallScreen({
   video: boolean;
   muted: boolean;
   speaker: boolean;
+  localStream: MediaStream | null;
+  remoteStream: MediaStream | null;
   onToggleMute: () => void;
   onToggleSpeaker: () => void;
   onToggleVideo: () => void;
@@ -65,6 +70,20 @@ export function CallScreen({
   return (
     <Modal visible={visible} animationType="slide" statusBarTranslucent>
       <View className="flex-1 bg-primary" testID="pantalla-llamada">
+        {/* Video: el remoto llena la pantalla y el propio va en un recuadro
+            arriba a la derecha, como en el diseño «Video Llamada». El audio no
+            los tiene y cae al avatar de abajo. */}
+        {video && remoteStream ? (
+          <RTCView
+            streamURL={remoteStream.toURL()}
+            objectFit="cover"
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
+        {video && localStream ? (
+          <RTCView streamURL={localStream.toURL()} objectFit="cover" mirror style={estilos.propio} />
+        ) : null}
+
         <View className="flex-1 items-center justify-center px-8">
           <Text className="text-2xl font-bold text-on-primary" testID="nombre-llamada">
             {peerName}
@@ -74,16 +93,19 @@ export function CallScreen({
           </Text>
 
           {/* Los anillos del diseño: dos círculos concéntricos alrededor del
-              avatar. Marcan que algo está pasando sin necesidad de leer. */}
-          <View className="mt-12 h-52 w-52 items-center justify-center rounded-full bg-on-primary/10">
-            <View className="h-40 w-40 items-center justify-center rounded-full bg-on-primary/10">
-              <View className="h-32 w-32 items-center justify-center rounded-full bg-on-primary/20">
-                <Text className="text-5xl font-bold text-on-primary">
-                  {peerName.slice(0, 1).toUpperCase()}
-                </Text>
+              avatar. Marcan que algo está pasando sin necesidad de leer. Con
+              video del otro lado sobra: taparía la cara con una inicial. */}
+          {video && remoteStream ? null : (
+            <View className="mt-12 h-52 w-52 items-center justify-center rounded-full bg-on-primary/10">
+              <View className="h-40 w-40 items-center justify-center rounded-full bg-on-primary/10">
+                <View className="h-32 w-32 items-center justify-center rounded-full bg-on-primary/20">
+                  <Text className="text-5xl font-bold text-on-primary">
+                    {peerName.slice(0, 1).toUpperCase()}
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>
+          )}
         </View>
 
         <View className="px-6 pb-14">
@@ -148,6 +170,20 @@ export function CallScreen({
     </Modal>
   );
 }
+
+const estilos = StyleSheet.create({
+  // Recuadro del video propio: arriba a la derecha, sobre el remoto.
+  propio: {
+    position: 'absolute',
+    top: 48,
+    right: 16,
+    width: 108,
+    height: 160,
+    borderRadius: 12,
+    backgroundColor: '#000',
+    zIndex: 1,
+  },
+});
 
 /** Círculo con etiqueta debajo, como en las dos capturas. */
 function Boton({

@@ -119,7 +119,7 @@ export function ChatScreen({
   // de crear no vuelven a preguntar dónde.
   const [creando, setCreando] = useState<'event' | 'poll' | null>(null);
   const [falloCifrado, setFalloCifrado] = useState(false);
-  const llamada = useCall({ chatId, peerName: chatName });
+  const llamada = useCall({ chatId, peerName: chatName, jwt: credential.jwt });
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -538,6 +538,8 @@ export function ChatScreen({
           video={llamada.video}
           muted={llamada.muted}
           speaker={llamada.speaker}
+          localStream={llamada.localStream}
+          remoteStream={llamada.remoteStream}
           onToggleMute={llamada.alternarMute}
           onToggleSpeaker={llamada.alternarAltavoz}
           onToggleVideo={llamada.alternarVideo}

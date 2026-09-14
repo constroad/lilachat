@@ -19,6 +19,12 @@ import {
   markRead,
   removeMember,
 } from './chatService.js';
+import {
+  cancelarProgramado,
+  pendientesDe,
+  programarMensaje,
+  puedeProgramar,
+} from './scheduledMessages.js';
 import { toClientMessages } from './messageView.js';
 import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
 import { avisarCambioDeChat, avisarMensajeNuevo } from './socket.js';
@@ -93,6 +99,60 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
   router.get('/search', async (req, res) => {
     const consulta = typeof req.query.q === 'string' ? req.query.q : '';
     res.json({ resultados: await buscarMensajes(req.session!.userId, consulta) });
+  });
+
+  // ---- Mensajes programados (F11) ------------------------------------------
+  // `/scheduled` va ANTES de `/:chatId/...` para que no lo tome como un chatId.
+  router.get('/scheduled', async (req, res) => {
+    res.json({ programados: await pendientesDe(req.session!.userId) });
+  });
+
+  router.delete('/scheduled/:id', async (req, res) => {
+    if (!Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Id inválido.' });
+    }
+    const cancelado = await cancelarProgramado(
+      new Types.ObjectId(req.params.id),
+      req.session!.userId
+    );
+    res.json({ cancelado });
+  });
+
+  router.post('/:chatId/schedule', async (req, res) => {
+    const { body, sendAt, clientKey } = (req.body ?? {}) as {
+      body?: unknown;
+      sendAt?: unknown;
+      clientKey?: unknown;
+    };
+    if (typeof body !== 'string' || !body.trim()) {
+      return res.status(400).json({ message: 'Escribí el mensaje a programar.' });
+    }
+    if (typeof clientKey !== 'string' || !clientKey) {
+      return res.status(400).json({ message: 'Falta la clave del cliente.' });
+    }
+    const cuando = typeof sendAt === 'string' ? new Date(sendAt) : new Date(NaN);
+    if (Number.isNaN(cuando.getTime()) || !puedeProgramar(cuando, new Date())) {
+      return res.status(400).json({ message: 'Elegí un momento futuro (hasta un año).' });
+    }
+    if (!Types.ObjectId.isValid(req.params.chatId)) {
+      return res.status(400).json({ message: 'Chat inválido.' });
+    }
+    try {
+      const programado = await programarMensaje({
+        chatId: new Types.ObjectId(req.params.chatId),
+        senderId: req.session!.userId,
+        body: body.trim(),
+        sendAt: cuando,
+        clientKey,
+      });
+      res.status(201).json(programado);
+    } catch (error) {
+      if (error instanceof ForbiddenChatError) {
+        return res.status(403).json({ message: error.message });
+      }
+      console.error('[lilachat] programar falló:', error);
+      res.status(500).json({ message: 'No se pudo programar el mensaje.' });
+    }
   });
 
   router.post('/', async (req, res) => {

@@ -3,6 +3,7 @@ import { EventModel, ReminderModel } from './eventModels.js';
 import { DeviceModel } from './models.js';
 import { isOnline } from './presence.js';
 import { buildPushSender, type PushSender } from './pushSender.js';
+import { runScheduledTick } from './scheduledMessages.js';
 
 /**
  * El cron que dispara eventos y recordatorios (F5).
@@ -140,6 +141,11 @@ export function startReminderCron(): void {
       // Un tick que falla no puede matar el proceso: el siguiente reintenta, y
       // lo que no se avisó sigue sin sello.
       console.error('[cron] tick de recordatorios falló:', error instanceof Error ? error.message : error);
+    });
+    // Mismo reloj para los mensajes programados (F11): cada minuto manda los que
+    // vencieron. Independiente del de recordatorios: si uno falla, el otro sigue.
+    void runScheduledTick().catch((error) => {
+      console.error('[cron] tick de programados falló:', error instanceof Error ? error.message : error);
     });
   }, TICK_MS);
   // `unref`: el cron no sostiene el proceso vivo por su cuenta.

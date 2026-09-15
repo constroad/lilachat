@@ -41,6 +41,54 @@ async function post<T>(
   }
 }
 
+/** POST/DELETE autenticado, con o sin cuerpo. Comparte forma con `get`/`post`. */
+async function authed<T>(
+  method: 'POST' | 'DELETE',
+  route: string,
+  token: string,
+  body?: Record<string, unknown>
+): Promise<ApiResult<T>> {
+  try {
+    const response = await fetch(`${BASE_URL}${route}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: response.status,
+        message: typeof payload.message === 'string' ? payload.message : undefined,
+      };
+    }
+    return { ok: true, data: payload as T };
+  } catch {
+    return { ok: false, status: 'network' };
+  }
+}
+
+export type Programado = { id: string; chatId: string; body: string; sendAt: string };
+
+/** Programar un mensaje para que se envíe solo a `sendAt` (ISO). */
+export const programarMensaje = (
+  token: string,
+  chatId: string,
+  body: string,
+  sendAt: string,
+  clientKey: string
+) => authed<Programado>('POST', `/api/chats/${chatId}/schedule`, token, { body, sendAt, clientKey });
+
+export const listarProgramados = (token: string) =>
+  get<{ programados: Programado[] }>('/api/chats/scheduled', token);
+
+export const cancelarProgramado = (token: string, id: string) =>
+  authed<{ cancelado: boolean }>('DELETE', `/api/chats/scheduled/${id}`, token);
+
 export const requestOtp = (phone: string, preferEmail = false, fetchImpl?: FetchLike) =>
   post<{ message: string }>('/api/auth/otp/request', { phone, preferEmail }, fetchImpl);
 

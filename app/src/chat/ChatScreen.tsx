@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, BackHandler, KeyboardAvoidingView, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Pressable, Text, TextInput, View } from 'react-native';
+import { ProgramarMensajeModal } from './ProgramarMensajeModal';
+import { programarMensaje } from '../api/client';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -114,6 +116,37 @@ export function ChatScreen({
   const [draft, setDraft] = useState('');
   /** El mensaje al que se está respondiendo (deslizando sobre él), o null. */
   const [respondiendoA, setRespondiendoA] = useState<{ seq: number; texto: string; mio: boolean } | null>(null);
+
+  // Mensajes programados (F11): long-press en enviar abre el modal.
+  const [programarVisible, setProgramarVisible] = useState(false);
+  const [avisoProgramado, setAvisoProgramado] = useState<string | null>(null);
+
+  const alProgramar = async (cuando: Date) => {
+    const texto = draft.trim();
+    if (!texto) {
+      setProgramarVisible(false);
+      return;
+    }
+    // La clave hace idempotente el envío si el tick del server reintenta.
+    const clientKey = `prog-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const resultado = await programarMensaje(
+      credential.jwt,
+      chatId,
+      texto,
+      cuando.toISOString(),
+      clientKey
+    );
+    setProgramarVisible(false);
+    if (resultado.ok) {
+      setDraft('');
+      setAvisoProgramado(
+        `Se enviará ${cuando.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}`
+      );
+      setTimeout(() => setAvisoProgramado(null), 4000);
+    } else {
+      Alert.alert('No se pudo programar', resultado.message ?? 'Probá de nuevo.');
+    }
+  };
   const [attachOpen, setAttachOpen] = useState(false);
   // Crear desde la conversación: el chat YA está elegido, así que las pantallas
   // de crear no vuelven a preguntar dónde.
@@ -553,6 +586,19 @@ export function ChatScreen({
         />
       ) : null}
 
+      <ProgramarMensajeModal
+        visible={programarVisible}
+        texto={draft}
+        onProgramar={alProgramar}
+        onCerrar={() => setProgramarVisible(false)}
+      />
+
+      {avisoProgramado ? (
+        <View className="mx-4 mb-1 rounded-lg bg-primary/[0.10] px-3 py-2" testID="aviso-programado">
+          <Text className="text-[12px] text-primary">🗓️ Programado. {avisoProgramado}.</Text>
+        </View>
+      ) : null}
+
       {falloCifrado ? (
         <Text className="px-4 pb-1 text-sm text-error" testID="error-cifrado">
           No se pudo cifrar el mensaje. No se envió.
@@ -768,6 +814,10 @@ export function ChatScreen({
         {draft.trim() ? (
           <Pressable
             testID="btn-enviar"
+            // Long-press: en vez de enviar ahora, programar para más tarde (F11).
+            onLongPress={() => {
+              if (draft.trim()) setProgramarVisible(true);
+            }}
             onPress={() => {
               const text = draft;
               setDraft('');

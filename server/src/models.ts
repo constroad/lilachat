@@ -29,6 +29,9 @@ export interface User {
   email?: string;
   name?: string;
   avatarMediaId?: string;
+  /** Auto-respuesta de ausente (F11): cuando estás sin socket, el server
+   *  contesta solo con este texto a los chats 1:1. */
+  autoReply?: { enabled: boolean; text: string };
 }
 
 export interface Device {
@@ -57,6 +60,10 @@ const userSchema = new Schema<User>(
     email: { type: String, lowercase: true, trim: true },
     name: { type: String },
     avatarMediaId: { type: String },
+    autoReply: {
+      enabled: { type: Boolean, default: false },
+      text: { type: String, default: '' },
+    },
   },
   { timestamps: true }
 );

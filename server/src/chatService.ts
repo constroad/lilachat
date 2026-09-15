@@ -66,6 +66,8 @@ export async function sendMessage(params: {
   envelope?: Message['envelope'];
   media?: Message['media'];
   replyToSeq?: number;
+  /** Auto-respuesta de ausente (F11): se marca para no disparar otra. */
+  autoReply?: boolean;
 }): Promise<SendResult> {
   const chatId = await assertMember(params.chatId, params.senderId);
 
@@ -101,6 +103,7 @@ export async function sendMessage(params: {
         : { body: params.body }),
       media: params.media,
       replyToSeq: params.replyToSeq,
+      autoReply: params.autoReply ?? false,
       at: new Date(),
     });
     return { message: created.toObject() as Message, duplicate: false };

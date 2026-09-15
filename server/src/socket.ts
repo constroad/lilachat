@@ -13,6 +13,7 @@ import {
 } from './chatService.js';
 import { toClientMessage, toClientMessages } from './messageView.js';
 import { isOnline, markOffline, markOnline, onlineAmong } from './presence.js';
+import { autoResponderA } from './autoReply.js';
 import { notifyOffline } from './pushService.js';
 import { maybeAnswerMention } from './assistantReply.js';
 import { verifySession } from './sessions.js';
@@ -204,6 +205,12 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
           void notifyOffline({ message: result.message, members, senderId: me }).catch(
             (error) => console.error('[push] no se pudo avisar:', error?.message ?? error)
           );
+          // Auto-respuesta de ausente (F11): a los que NO tienen socket. Las
+          // reglas anti-loop / anti-spam viven en `autoResponderA`.
+          void autoResponderA({
+            message: result.message,
+            ausentes: members.filter((member) => member !== me && !isOnline(member)),
+          }).catch((error) => console.error('[auto-reply] falló:', error?.message ?? error));
         }
         ack?.({ ok: true, seq: result.message.seq, duplicate: result.duplicate });
 

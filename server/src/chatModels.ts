@@ -114,6 +114,8 @@ export interface Message {
    * clientes leen como mensajes por descargar.
    */
   deletedAt?: Date;
+  /** Es una auto-respuesta de ausente (F11): NO dispara otra (corta los loops). */
+  autoReply?: boolean;
   at: Date;
 }
 
@@ -191,6 +193,7 @@ const messageSchema = new Schema<Message>(
     replyToSeq: { type: Number },
     editedAt: { type: Date },
     deletedAt: { type: Date },
+    autoReply: { type: Boolean, default: false },
     at: { type: Date, default: Date.now },
   },
   { timestamps: true }

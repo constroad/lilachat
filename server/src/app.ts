@@ -15,6 +15,7 @@ import { buildCrashRouter } from './crashRoutes.js';
 import { buildContactRouter } from './contactRoutes.js';
 import { buildKeyRouter } from './keyRoutes.js';
 import { buildCallRouter } from './callRoutes.js';
+import { buildMeRouter } from './meRoutes.js';
 import type { MediaUploader } from './mediaClient.js';
 
 const require = createRequire(import.meta.url);
@@ -72,6 +73,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/contacts', buildContactRouter());
   app.use('/api/keys', buildKeyRouter());
   app.use('/api/calls', buildCallRouter());
+  app.use('/api/me', buildMeRouter());
 
   // ─── La web (F6) ─────────────────────────────────────────────────────────
   //

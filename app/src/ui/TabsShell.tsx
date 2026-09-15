@@ -21,6 +21,7 @@ import { buscarActualizacion, versionActual, versionCodeActual } from '../settin
 import { decidirAvisoDeActualizacion, type AvisoDeActualizacion } from '../settings/avisoDeActualizacion';
 import { abrirActualizacion } from '../settings/abrirTienda';
 import { BandaDeActualizacion } from '../settings/BandaDeActualizacion';
+import { AutoRespuestaAjuste } from '../settings/AutoRespuestaAjuste';
 import { useActualizador, type InfoActualizacion } from '../settings/useActualizador';
 import {
   guardarActualizacionDescartada,
@@ -492,6 +493,8 @@ export function TabsShell({
               </View>
               <ChevronRight size={18} color={colores.outline} />
             </Pressable>
+
+            <AutoRespuestaAjuste jwt={credential.jwt} />
 
             {/* «Buscar actualizaciones». Se dispara con un toque y NO al abrir
                 ajustes: un pedido de red cada vez que alguien entra acá es

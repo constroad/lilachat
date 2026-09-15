@@ -43,7 +43,7 @@ async function post<T>(
 
 /** POST/DELETE autenticado, con o sin cuerpo. Comparte forma con `get`/`post`. */
 async function authed<T>(
-  method: 'POST' | 'DELETE',
+  method: 'POST' | 'PUT' | 'DELETE',
   route: string,
   token: string,
   body?: Record<string, unknown>
@@ -88,6 +88,15 @@ export const listarProgramados = (token: string) =>
 
 export const cancelarProgramado = (token: string, id: string) =>
   authed<{ cancelado: boolean }>('DELETE', `/api/chats/scheduled/${id}`, token);
+
+export type AutoReply = { enabled: boolean; text: string };
+
+/** Auto-respuesta de ausente (F11): leer y guardar el ajuste del usuario. */
+export const leerAutoReply = (token: string) =>
+  get<{ autoReply: AutoReply }>('/api/me/auto-reply', token);
+
+export const guardarAutoReply = (token: string, enabled: boolean, text: string) =>
+  authed<{ autoReply: AutoReply }>('PUT', '/api/me/auto-reply', token, { enabled, text });
 
 export const requestOtp = (phone: string, preferEmail = false, fetchImpl?: FetchLike) =>
   post<{ message: string }>('/api/auth/otp/request', { phone, preferEmail }, fetchImpl);

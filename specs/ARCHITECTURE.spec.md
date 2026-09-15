@@ -2996,3 +2996,49 @@ usa `socket.off('msg.new', onNew)` con handler NOMBRADO —el `off` a secas
 borraría el listener de `useChat` que muestra los mensajes del chat abierto—. El
 nombre sale del cache guardado (`leerChatsGuardados`). De paso tapa un hueco: con
 la app en segundo plano DENTRO de un chat, ahora los otros chats sí avisan.
+
+## 43. Sesión 14/09/2026 — llamadas reales, autoactualización, tus, búsqueda, F11
+
+Un empujón grande; el detalle está en los commits, acá lo que hay que recordar.
+
+**Llamadas reales (F10 media).** Se cableó `react-native-webrtc` al
+`RTCPeerConnection` (SDP + ICE por la señalización de socket que ya existía).
+El TURN **no es coturn en la mini**: la mini expone solo el 443 por el túnel, y
+un TURN necesita UDP + relay públicos. Se usa **Cloudflare Realtime TURN**
+(managed, 1 TB/mes gratis) — el server pide credenciales cortas con
+`CF_TURN_KEY_ID`/`CF_TURN_API_TOKEN` (solo en el server) y las sirve por
+`GET /api/calls/ice` (¡plural!), que la app trae antes de cada llamada. Falla
+cerrado a STUN (llamada misma-red igual anda). Video ya estaba (mismo motor).
+
+**Autoactualización (P3).** Lilachat se actualiza DESDE la app: baja el APK con
+progreso, **verifica el sha256** y lo pasa al instalador (`REQUEST_INSTALL_PACKAGES`).
+Reusa `apkInstall`/`installDecision` de lilastore-app. `min-version` ahora expone
+`sha256`/`size`/`releaseId` (solo apps públicas). **Riesgo aceptado por José**: el
+permiso de instalar en un chat es lo que Play Protect mira con lupa; se acepta
+porque ya se reparte fuera de Play.
+
+**Subida por tus (LilaStore + lila-cli 0.9.0).** El APK con WebRTC pesaba 50 MB y
+no entraba en los ~100 s de Cloudflare (524). Se subió por **tus** (trozos,
+`@tus/server` + `tus-js-client`): endpoint `pages/api/v1/releases/upload-tus`,
+validación compartida en `publicarRelease`. Pines del CLI a `@0.9.0` en
+lilastore-app y timon.
+
+**Adelgazamiento: 50 → 24 MB.** `useLegacyPackaging` (comprime los `.so`) + R8
+(`enableProguardInReleaseBuilds` + `shrinkResources`) vía `expo-build-properties`.
+Verificado que R8 no borró los módulos nativos (webrtc/filesystem/intentlauncher
+presentes en el dex).
+
+**Búsqueda de mensajes.** `GET /api/chats/search` — subcadena (regex escapado)
+scopeada por membresía, saltea lo cifrado. Motor puro en shared; sección
+«Mensajes» en la lista con resaltado.
+
+**F11 Automatizaciones.** #1 **Mensajes programados** (modelo + tick en el cron de
+un minuto con candado atómico + endpoints; UI con long-press en enviar +
+datetimepicker). #2 **Recordatorios recurrentes** ya existía (F5). #3
+**Auto-respuesta de ausente** (a offline de un 1:1; anti-loop: un auto-reply no
+dispara otro; rate-limit 2 h; `User.autoReply` + `/api/me/auto-reply`). #4 reglas
+«si X → Y» **diferida** — José la definirá cuando tenga una concreta.
+
+**Pendiente de verificación (solo con teléfonos reales):** llamada voz/video
+cross-red (que el TURN de Cloudflare rebote — requiere `CF_TURN_*` en el `.env`
+de la mini, ya puesto por José), auto-update in-app, y el auto-reply.

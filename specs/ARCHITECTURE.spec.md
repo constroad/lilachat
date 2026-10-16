@@ -501,6 +501,9 @@ Búsqueda semántica: fase posterior (léxica con text index primero).
 
 ## 13. Fases (ciclo: test primero → implementar → E2E emulador/Chrome → as-is)
 
+> **Tabla HISTÓRICA (estado al 24/08/2026).** El tablero vigente, con el
+> estado real de cada fase y el plan de fluidez, está en **§45**.
+
 | Fase | Entrega | E2E |
 | --- | --- | --- |
 | F0 ✅ 20/08/2026 | monorepo (shared+server; web F6, app F1 fuera de workspaces por Metro) + tokens en `shared/src/tokens.ts` + server hello con test primero (3 en verde) + artefacto verificado con humo real + 30 pantallas bajadas + logo aprobado. **Pendiente de F0**: launchd+tunnel (van con el PR a Torre al cerrar F1, §12.1) | `curl /api/health` contra `dist/` ✅ |
@@ -3302,6 +3305,13 @@ una carpeta temporal). Sesión con el 902049935 por yopmail.
   siempre); el `.env` cae a `deploys/chat/shared/.env` (el de Torre) si no hay
   uno en el repo; el runbook tenía `deploys/lilachat` en vez de `deploys/chat`.
 
+**R8 borraba el cargador de la tarea de fondo** (smoke del release 0.1.69,
+16/10): `ClassNotFoundException: expo.modules.adapters.react.apploader.RNHeadlessAppLoader`
+al arrancar, sin síntoma en pantalla — el mismo de LilaStore 0.5.15. Sin esa
+clase el respaldo de fondo nunca corre. Arreglo: `extraProguardRules` con
+`-keep class expo.modules.adapters.react.apploader.** { *; }` en
+`expo-build-properties`. La 0.1.68 publicada lo tiene roto.
+
 **Pendiente de la revisión** (no bloquea; en orden):
 - Cifrado y scrypt sincrónicos en el hilo JS al respaldar y restaurar: con
   ~20 000 mensajes puede congelar la pantalla. Lotes con `await` y
@@ -3319,3 +3329,64 @@ una carpeta temporal). Sesión con el 902049935 por yopmail.
   contactos se vuelve a pedir en cada arranque tras negarlo una vez.
 - **Alta en la mini sigue pendiente de José** (`docs/RESPALDOS-RUNBOOK.md`):
   hasta entonces producción contesta 507 `disco_ausente` y la app lo dice.
+
+
+## 45. Tablero de fases — la fuente para medir el avance (16/10/2026)
+
+La tabla de §13 quedó congelada el 24/08: fases hechas seguían en ⏳, P1/P2
+figuraban bloqueadas estando en producción, y «F12» nombraba dos cosas. Este
+tablero la reemplaza. **Regla: cada fase que cierra actualiza su fila acá en el
+mismo commit** (fecha, commit, versión del APK). ✅ hecho y verificado ·
+🟡 hecho con verificación pendiente · ⏳ en curso · ⬜ sin empezar.
+
+### 45.1 Producto (F0–F14, P1–P5)
+
+| Fase | Qué | Estado | Falta |
+| --- | --- | --- | --- |
+| F0 | Monorepo, tokens, server base | ✅ 20/08 | — |
+| F1 | Alta por OTP (constroad-auth), gate de invitación | ✅ | endpoint de QA en constroad-auth (backlog) |
+| F2 | Chats, `seq`, sync por cursor, outbox offline | ✅ | — |
+| F3 | Media (fotos, video, archivos) vía lila | ✅ | — |
+| F4 | Presencia, acuses en vivo, push | ✅ | — |
+| F5 | Eventos, recordatorios, encuestas | ✅ | — |
+| F6 | Web | ✅ 24/08 | permiso de push del navegador |
+| F7 | Respaldo del server (mongodump) | ✅ 24/08 | — |
+| F8 | Asistente Lila | 🟡 | probar con `ANTHROPIC_API_KEY` real; notas de voz |
+| F9 | Chats secretos (E2EE opt-in) | 🟡 | ratchet persistido; sobre por dispositivo (→ F12.4) |
+| F10 | Llamadas voz/video (WebRTC + TURN Cloudflare) | 🟡 14/09 | llamada entre dos teléfonos en redes distintas |
+| F11 | Automatizaciones: programados, auto-respuesta | 🟡 14/09 | auto-respuesta en teléfono real; reglas «si X → Y» diferidas |
+| F12.0–2 | Historial en el teléfono, respaldo cifrado, restaurar | 🟡 16/10 `943d293` | alta del disco en la mini (runbook); pendientes §44.4 |
+| F12.3 | Cifrado por defecto + media cifrada | ⬜ | **bloqueada por D1** |
+| F12.4 | Multi-dispositivo/web con sobre por dispositivo | ⬜ | después de F12.3 |
+| F13 | Mongo de emergencia en la mini | ⬜ | **revisar**: Portal/lila ya migraron a bóveda (08/10); Lilachat sigue en Atlas |
+| F14 | Legado Digital (antes «F12» en §13) | ⬜ | — |
+| P1 | Deploy en Torre (`lilachat.constroad.com`) | ✅ 25/08 | — (push a main despliega el server solo, ~90 s) |
+| P2 | APK en LilaStore | ✅ | — |
+| P3 | Autoactualización desde la app | 🟡 14/09 | probar en teléfono real |
+| P4 | Aviso de versión en LilaStore web | 🟡 | sin confirmar en la revisión del 16/10 |
+| P5 | Avisos con la app cerrada | ✅ | FCM + servicio en primer plano opcional (no sin Firebase como decía §13) |
+
+### 45.2 Decisiones abiertas
+
+| # | Decisión | Opciones | Bloquea |
+| --- | --- | --- | --- |
+| D1 | Modelo de mensajes | (a) server + cifrado por defecto (plan F12) · (b) store-and-forward como WhatsApp · (c) server borra al confirmar entrega + 30 días | F12.3, F12.4 |
+| D2 | Base de Lilachat | quedarse en Atlas · migrar `lilachat_db` a bóveda | FL4 (latencia), F13 |
+| D3 | Marca | logo vectorial nuevo (burbuja simple, geometría como datos, patrón Lilafotos) | FL6 |
+
+### 45.3 Plan Fluidez — «que se sienta como WhatsApp» (pedido de José, 16/10/2026)
+
+Origen: auditoría del 16/10 (app, server y diseño). La lentitud no es de React
+Native: es trabajo de más en cada paso, red en el camino crítico y cero física
+al tocar. Se **rehace el cascarón** (navegación, lista, chat, composer) sobre
+los motores de `shared`, que tienen tests; no se reescribe la app.
+
+| Fase | Qué | Criterio de aceptación (medido) | Estado |
+| --- | --- | --- | --- |
+| FL0 | **Medir + bugs que se sienten lentos**: diagnóstico a LilaStore (errores + `medir`); `sync.pull` solo de los chats pedidos (hoy baja 200 viejos de CADA chat); la lista se parchea con `msg.new` en vez de recargar por HTTP; `socket.off` siempre con handler; push de media; auto-respuestas y programados emitidos en vivo (`publicarMensaje`); arranque que pinta lo guardado sin esperar `refreshSession` | línea base anotada acá con el diagnóstico: arranque a lista, abrir chat, ack de envío | ⬜ |
+| FL1 | **Navegación nativa**: `@react-navigation/native-stack`, la lista queda viva debajo del chat (scroll, búsqueda y filtro intactos), atrás predictivo, hojas como pantallas | volver de un chat no remonta la lista | ⬜ |
+| FL2 | **Pantalla de chat nueva**: composer aislado (una tecla no re-renderiza la lista), `MessageRow` memo, `getItemType`, mapa de respuestas (sin `find` por fila), `react-native-keyboard-controller`, swipe-to-reply con gesture-handler + Reanimated, haptics | 0 frames perdidos al tipear y al abrir; teclado sincronizado | ⬜ |
+| FL3 | **Burbujas y lista estilo WhatsApp**: cola real, hora + ticks dentro, ticks vectoriales, nombre del autor en grupos (hoy sale la inicial del grupo), wallpaper, paleta de burbujas, ripple, FAB «bajar al final», fecha pegada, sin controles inertes | auditoría lado a lado contra WhatsApp/Telegram con capturas | ⬜ |
+| FL4 | **Latencia del server**: envío de 5 a 3 viajes a la base, `lastMessage` denormalizado (adiós N+1 de la lista), ping 10/8 s + `connectionStateRecovery`, caché de membresía para acuses/typing, fotos redimensionadas con dimensiones + blurhash; con D2, bóveda | ack < 300 ms medido | ⬜ |
+| FL5 | **Pendientes de F12 que pesan en el hilo JS**: cifrado/scrypt por lotes, tarea de fondo que mira wifi/carga primero (§44.4) | respaldar 20 000 mensajes sin ANR en `gama-baja` | ⬜ |
+| FL6 | **Marca y Stitch**: logo vectorial único (ícono, adaptativo, mono, splash y `<Logo>` desde la misma geometría); diseñar en Stitch la conversación llena, con la paleta real y las pestañas reales | ícono verificado dentro del APK | ⬜ |

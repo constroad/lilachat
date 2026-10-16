@@ -2,6 +2,7 @@ import mongoose, { Schema, type Model, type Types } from 'mongoose';
 import { UserModel } from './models.js';
 import { ChatModel } from './chatModels.js';
 import { sendMessage } from './chatService.js';
+import { publicarMensaje } from './socket.js';
 
 /**
  * Auto-respuesta / ausente (F11): cuando NO estás (sin socket) y alguien te
@@ -104,13 +105,14 @@ export async function autoResponderA(params: {
     if (!ganado) continue;
 
     try {
-      await sendMessage({
+      const resultado = await sendMessage({
         chatId: String(params.message.chatId),
         senderId: userId,
         clientKey: `auto-${params.message.chatId}-${now.getTime()}`,
         body: texto,
         autoReply: true,
       });
+      if (!resultado.duplicate) await publicarMensaje(resultado.message);
       enviados += 1;
     } catch {
       // Si no se pudo (lo sacaron del chat), el sello ya está: no reintenta.

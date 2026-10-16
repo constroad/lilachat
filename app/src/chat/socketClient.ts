@@ -1,5 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 import { reusarSocket } from './servicioDeConexion';
+import { registrarPerf } from '../diagnostico/diagnostico';
 
 /**
  * El socket de la app. Un ÚNICO socket para toda la sesión: abrir uno por
@@ -62,7 +63,12 @@ export type SendAck =
 let socket: Socket | null = null;
 
 export function connectSocket(token: string): Socket {
-  if (socket && reusarSocket(socket)) return socket;
+  if (socket && reusarSocket(socket)) {
+    // El arranque entra con el JWT guardado y el refresh trae uno nuevo: el
+    // socket vivo se queda, pero su próxima reconexión usa el token vigente.
+    socket.auth = { token };
+    return socket;
+  }
   socket?.disconnect();
   socket = io(BASE_URL, {
     auth: { token },
@@ -126,7 +132,10 @@ export async function sendOverSocket(frame: {
   const live = socket;
   if (!live?.connected) return { status: 'unreachable' };
   try {
+    const inicio = Date.now();
     const ack = (await live.timeout(12_000).emitWithAck('msg.send', frame)) as SendAck;
+    // Línea base de FL0 (spec §45): cuánto tarda el server en confirmar.
+    if (ack.ok && !ack.duplicate) void registrarPerf('ack-envio', Date.now() - inicio);
     if (ack.ok) return ack.duplicate ? { status: 'duplicate', seq: ack.seq } : { status: 'sent', seq: ack.seq };
     if (ack.status === 401) return { status: 'unauthorized' };
     return { status: 'rejected', httpStatus: ack.status ?? 500, message: ack.message };

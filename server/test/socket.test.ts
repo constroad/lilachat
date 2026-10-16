@@ -8,6 +8,7 @@ import { ChatModel, MessageModel } from '../src/chatModels.js';
 import { UserModel } from '../src/models.js';
 import { signSession } from '../src/sessions.js';
 import { attachSocket } from '../src/socket.js';
+import { programarMensaje, runScheduledTick } from '../src/scheduledMessages.js';
 
 /**
  * El socket de verdad, sobre un puerto real. Lo que NINGÚN test unitario ve:
@@ -163,5 +164,32 @@ describe('sync.pull', () => {
 
     expect(respuesta.ok).toBe(true);
     expect(respuesta.batches[0]?.messages.map((message) => message.seq)).toEqual([3]);
+  });
+});
+
+/**
+ * Mensajes que crea el server solo (programados, auto-respuestas) se publican
+ * igual que los escritos: antes se guardaban y nadie los veía hasta reabrir el
+ * chat (auditoría del 16/10).
+ */
+describe('mensajes creados por el server', () => {
+  it('un programado vencido le llega en vivo al otro miembro', async () => {
+    // Arrange
+    const receptor = await connect(tokenFor(maria));
+    const ahora = new Date();
+    await programarMensaje({
+      chatId: new Types.ObjectId(chatId),
+      senderId: jose,
+      body: 'feliz cumpleaños',
+      sendAt: new Date(ahora.getTime() + 60_000),
+      clientKey: 'prog-1',
+    });
+    const llegada = new Promise<{ body?: string }>((resolve) => receptor.once('msg.new', resolve));
+
+    // Act
+    await runScheduledTick(new Date(ahora.getTime() + 120_000));
+
+    // Assert
+    await expect(llegada).resolves.toMatchObject({ body: 'feliz cumpleaños' });
   });
 });

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { MAX_BYTES_BY_KIND, validateMedia } from '@lilachat/shared';
 import { ForbiddenChatError, sendMessage } from './chatService.js';
-import { avisarMensajeNuevo } from './socket.js';
+import { publicarMensaje } from './socket.js';
 import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
 import { requireSession } from './requireSession.js';
 
@@ -92,7 +92,7 @@ export function buildMediaRouter(uploader: MediaUploader = buildLilaUploader()):
        * un fallo acá quedaría sin dueño. Un duplicado no re-emite: el mensaje ya
        * se repartió cuando se creó de verdad.
        */
-      if (!result.duplicate) await avisarMensajeNuevo(result.message);
+      if (!result.duplicate) await publicarMensaje(result.message);
 
       res.status(201).json({
         message: result.message,

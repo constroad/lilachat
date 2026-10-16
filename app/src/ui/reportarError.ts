@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { armarReporte } from '@lilachat/shared';
+import { registrarError } from '../diagnostico/diagnostico';
 
 /**
  * Contarle al server que algo se rompió.
@@ -18,6 +19,8 @@ const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.
 const TIMEOUT_MS = 5_000;
 
 export function reportarError(pantalla: string, error: unknown): void {
+  // También al diagnóstico de LilaStore: ahí se miran errores y tiempos juntos.
+  void registrarError(error, pantalla);
   const reporte = armarReporte({
     app: 'lilachat',
     version: Constants.expoConfig?.version ?? '',

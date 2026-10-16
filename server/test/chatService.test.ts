@@ -182,6 +182,34 @@ describe('pullSince — el delta del cursor', () => {
     expect(batches[0]?.messages.map((message) => message.seq)).toEqual([1]);
   });
 
+  /**
+   * El bug de la auditoría del 16/10: la app pide el cursor de UN chat (el
+   * abierto) y el server recorría TODOS con cursor 0 — los 200 mensajes más
+   * viejos de cada chat, en cada apertura, para que el teléfono los tirara.
+   */
+  it('con cursores, trae SOLO los chats pedidos', async () => {
+    const otro = await ChatModel.create({
+      kind: 'group',
+      name: 'Familia',
+      members: [{ userId: jose, role: 'admin' }],
+      lastSeq: 0,
+    });
+    await sendMessage({ chatId, senderId: jose, clientKey: 'a', body: 'x' });
+    await sendMessage({ chatId: String(otro._id), senderId: jose, clientKey: 'b', body: 'y' });
+
+    const batches = await pullSince({ userId: jose, cursors: { [chatId]: 0 } });
+
+    expect(batches.map((batch) => batch.chatId)).toEqual([chatId]);
+  });
+
+  it('un chat ya al día no devuelve lote', async () => {
+    await sendMessage({ chatId, senderId: jose, clientKey: 'a', body: 'x' });
+
+    const batches = await pullSince({ userId: jose, cursors: { [chatId]: 1 } });
+
+    expect(batches).toEqual([]);
+  });
+
   /** Aislamiento: el cursor de un chat ajeno no puede filtrar nada. */
   it('nunca devuelve chats de los que no se es miembro', async () => {
     const ajenoChat = await ChatModel.create({

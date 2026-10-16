@@ -38,6 +38,8 @@ import {
 import { busquedaValida, extractoDeCoincidencia } from '@lilachat/shared';
 import { conciliarCache } from './cacheDeChats';
 import { guardarChats, leerChatsGuardados } from './chatsGuardados';
+import { aplicarMensajeALista, type MensajeEnVivo } from './listaEnVivo';
+import { inicioDelProceso, medirUnaVez } from '../diagnostico/diagnostico';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { useColores } from '../ui/tema';
@@ -77,6 +79,8 @@ export function ChatListScreen({
 
   useEffect(() => {
     chatsRef.current = chats;
+    // Línea base de FL0 (spec §45): del arranque del proceso a la lista con chats.
+    if (chats && chats.length > 0) medirUnaVez('arranque-a-lista', inicioDelProceso, { chats: chats.length });
   }, [chats]);
 
   useEffect(() => {
@@ -157,22 +161,38 @@ export function ChatListScreen({
     socket.on('presence.snapshot', onSnapshot);
     socket.on('presence', onPresence);
     socket.on('typing', onTyping);
-    // Un mensaje nuevo refresca la lista: sin esto la vista previa y el no
-    // leído se quedan viejos hasta que alguien tire para refrescar.
-    socket.on('msg.new', () => void load());
+    // Un mensaje nuevo cambia SU fila, sin ir al server (`listaEnVivo.ts`).
+    // Recargar la lista entera por cada mensaje eran cuatro viajes a la base.
+    // Solo un chat que la lista no conoce (una conversación nueva) la recarga.
+    const onNew = (mensaje: MensajeEnVivo) => {
+      const actual = chatsRef.current;
+      const parchada = actual ? aplicarMensajeALista(actual, mensaje, credential.userId) : null;
+      if (!parchada) {
+        void load();
+        return;
+      }
+      if (parchada === actual) return;
+      setChats(parchada);
+      void guardarChats(parchada);
+    };
     // Al RECONECTAR (volver de segundo plano) se recarga: mientras el socket
     // estuvo pausado llegaron mensajes por push que la lista no vio, y sin esto
     // el contador de no leídos queda viejo hasta un pull manual.
-    socket.on('connect', () => void load());
+    const onConnect = () => void load();
+    socket.on('msg.new', onNew);
+    socket.on('connect', onConnect);
     return () => {
       socket.off('presence.snapshot', onSnapshot);
       socket.off('presence', onPresence);
       socket.off('typing', onTyping);
-      socket.off('msg.new');
-      socket.off('connect');
+      // Con el handler SIEMPRE: `off('msg.new')` a secas borraba también los
+      // listeners de App y TabsShell (guardar mensajes, sonar) al cambiar de
+      // pestaña.
+      socket.off('msg.new', onNew);
+      socket.off('connect', onConnect);
       timers.forEach((timer) => clearTimeout(timer));
     };
-  }, [credential.jwt, load]);
+  }, [credential.jwt, credential.userId, load]);
 
   /**
    * El nombre se resuelve contra TU agenda: quien no se puso nombre en Lilachat

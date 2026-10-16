@@ -1,6 +1,7 @@
 import mongoose, { Schema, type Model, type Types } from 'mongoose';
 import { ChatModel } from './chatModels.js';
 import { ForbiddenChatError, sendMessage } from './chatService.js';
+import { publicarMensaje } from './socket.js';
 
 /**
  * Mensajes PROGRAMADOS (F11): se escriben ahora y se envían solos a una hora
@@ -138,12 +139,13 @@ export async function runScheduledTick(now: Date = new Date()): Promise<{ enviad
     if (ganado.modifiedCount === 0) continue;
 
     try {
-      await sendMessage({
+      const resultado = await sendMessage({
         chatId: String(fila.chatId),
         senderId: fila.senderId,
         clientKey: fila.clientKey,
         body: fila.body,
       });
+      if (!resultado.duplicate) await publicarMensaje(resultado.message);
       enviados += 1;
     } catch {
       // Si el envío falla (p. ej. lo sacaron del chat), el candado ya quedó

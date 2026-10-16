@@ -3,3 +3,6 @@ dist/
 .env
 *.log
 .DS_Store
+
+# Sello local de constroad-gates (de cada máquina)
+.claude/gates-ok

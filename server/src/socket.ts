@@ -1,7 +1,7 @@
 import type { Server as HttpServer } from 'node:http';
 import { Types } from 'mongoose';
 import { Server as SocketServer, type Socket } from 'socket.io';
-import { ChatModel } from './chatModels.js';
+import { ChatModel, type Message } from './chatModels.js';
 import {
   ForbiddenChatError,
   chatMemberIds,
@@ -77,6 +77,24 @@ let ioVivo: SocketServer | null = null;
  * socket, media por HTTP— avisen igual. Tenerla en un solo lugar es lo que
  * impide que la próxima forma de crear un mensaje vuelva a olvidarse del aviso.
  */
+/**
+ * Publicar un mensaje que ya está guardado: repartirlo por socket a todos los
+ * miembros y avisar por push a los que no tienen socket. Un solo camino para
+ * todo lo que crea mensajes — el socket, la media, las auto-respuestas y los
+ * programados. Antes la media no mandaba push y los programados y las
+ * auto-respuestas no se emitían: se veían recién al reabrir el chat.
+ */
+export async function publicarMensaje(message: Message): Promise<string[]> {
+  const members = await avisarMensajeNuevo(message);
+  const senderId = String(message.senderId);
+  // `.catch` y no `void` a secas: un rechazo sin dueño tumba los tests y
+  // despierta la red de seguridad del proceso por algo que no es un error real.
+  void notifyOffline({ message, members, senderId }).catch((error) =>
+    console.error('[push] no se pudo avisar:', error?.message ?? error)
+  );
+  return members;
+}
+
 export async function avisarMensajeNuevo(
   message: Parameters<typeof toClientMessage>[0]
 ): Promise<string[]> {

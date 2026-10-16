@@ -154,15 +154,25 @@ export async function pullSince(params: {
   cursors: Record<string, number>;
 }): Promise<{ chatId: string; messages: Message[] }[]> {
   // Los chats salen de la MEMBRESÍA, nunca de las claves que mandó el cliente:
-  // si se iterara sobre los cursores, un chatId ajeno filtraría mensajes.
-  const chats = await ChatModel.find({ 'members.userId': params.userId })
-    .select('_id')
-    .lean<{ _id: Types.ObjectId }[]>();
+  // si se iterara sobre los cursores, un chatId ajeno filtraría mensajes. Con
+  // cursores, solo se miran los pedidos (cruzados con la membresía): la app
+  // pide el chat abierto, y recorrer todos con cursor 0 le mandaba los 200
+  // más viejos de CADA chat en cada apertura. Sin cursores, todos.
+  const pedidos = Object.keys(params.cursors).filter((id) => Types.ObjectId.isValid(id));
+  const filtro =
+    pedidos.length > 0
+      ? { _id: { $in: pedidos.map((id) => new Types.ObjectId(id)) }, 'members.userId': params.userId }
+      : { 'members.userId': params.userId };
+  const chats = await ChatModel.find(filtro)
+    .select('_id lastSeq')
+    .lean<{ _id: Types.ObjectId; lastSeq?: number }[]>();
 
   const batches = await Promise.all(
     chats.map(async (chat) => {
       const chatId = String(chat._id);
       const since = Number(params.cursors[chatId] ?? 0);
+      // Al día: sin consulta. Es el caso normal al abrir un chat ya guardado.
+      if (Number.isFinite(since) && (chat.lastSeq ?? 0) <= since) return { chatId, messages: [] };
       const messages = await MessageModel.find({
         chatId: chat._id,
         seq: { $gt: Number.isFinite(since) ? since : 0 },

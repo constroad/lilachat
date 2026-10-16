@@ -3383,10 +3383,53 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 
 | Fase | Qué | Criterio de aceptación (medido) | Estado |
 | --- | --- | --- | --- |
-| FL0 | **Medir + bugs que se sienten lentos**: diagnóstico a LilaStore (errores + `medir`); `sync.pull` solo de los chats pedidos (hoy baja 200 viejos de CADA chat); la lista se parchea con `msg.new` en vez de recargar por HTTP; `socket.off` siempre con handler; push de media; auto-respuestas y programados emitidos en vivo (`publicarMensaje`); arranque que pinta lo guardado sin esperar `refreshSession` | línea base anotada acá con el diagnóstico: arranque a lista, abrir chat, ack de envío | ⬜ |
+| FL0 | **Medir + bugs que se sienten lentos** — ver §45.4 | línea base anotada en §45.4 | ✅ 16/10 (0.1.70) |
 | FL1 | **Navegación nativa**: `@react-navigation/native-stack`, la lista queda viva debajo del chat (scroll, búsqueda y filtro intactos), atrás predictivo, hojas como pantallas | volver de un chat no remonta la lista | ⬜ |
 | FL2 | **Pantalla de chat nueva**: composer aislado (una tecla no re-renderiza la lista), `MessageRow` memo, `getItemType`, mapa de respuestas (sin `find` por fila), `react-native-keyboard-controller`, swipe-to-reply con gesture-handler + Reanimated, haptics | 0 frames perdidos al tipear y al abrir; teclado sincronizado | ⬜ |
 | FL3 | **Burbujas y lista estilo WhatsApp**: cola real, hora + ticks dentro, ticks vectoriales, nombre del autor en grupos (hoy sale la inicial del grupo), wallpaper, paleta de burbujas, ripple, FAB «bajar al final», fecha pegada, sin controles inertes | auditoría lado a lado contra WhatsApp/Telegram con capturas | ⬜ |
 | FL4 | **Latencia del server**: envío de 5 a 3 viajes a la base, `lastMessage` denormalizado (adiós N+1 de la lista), ping 10/8 s + `connectionStateRecovery`, caché de membresía para acuses/typing, fotos redimensionadas con dimensiones + blurhash; con D2, bóveda | ack < 300 ms medido | ⬜ |
 | FL5 | **Pendientes de F12 que pesan en el hilo JS**: cifrado/scrypt por lotes, tarea de fondo que mira wifi/carga primero (§44.4) | respaldar 20 000 mensajes sin ANR en `gama-baja` | ⬜ |
 | FL6 | **Marca y Stitch**: logo vectorial único (ícono, adaptativo, mono, splash y `<Logo>` desde la misma geometría); diseñar en Stitch la conversación llena, con la paleta real y las pestañas reales | ícono verificado dentro del APK | ⬜ |
+
+### 45.4 As-is FL0 (16/10/2026)
+
+**Qué se hizo** (test primero en todo):
+- **`sync.pull` solo de los chats pedidos** (`pullSince`, 2 tests): con cursores
+  se miran solo esos chats (cruzados con la membresía) y uno al día no hace
+  consulta. Sin cursores sigue trayendo todos (contrato viejo).
+- **La lista se parchea con `msg.new`** (`chat/listaEnVivo.ts`, 6 tests): la
+  fila cambia sin ir al server; solo un chat desconocido recarga. E2E: un
+  mensaje en vivo movió la fila arriba con **0 GET** a `/api/chats`.
+- **`socket.off` siempre con handler** (lista y TabsShell). E2E: después de
+  cambiar de pestaña, un mensaje de un chat cerrado se siguió guardando en
+  SQLite y la lista se siguió actualizando.
+- **`publicarMensaje`** (socket.ts): un solo camino para repartir + push. La
+  media ahora manda push; auto-respuestas y programados se emiten en vivo
+  (test con socket real).
+- **Arranque local-first** (`auth/arranque.ts`, 5 tests): con credencial
+  completa se entra con lo guardado y el refresh concilia por detrás; un 401
+  real sigue mandando al alta (E2E con el device borrado en el server). El
+  socket reusado toma el JWT nuevo para su próxima reconexión. E2E con el
+  server congelado (`SIGSTOP`): la lista aparece y un chat abre con sus
+  mensajes desde el disco.
+- **Diagnóstico a LilaStore** (`diagnostico/`, motor con 13 tests): errores
+  (captura global + `reportarError`), trabas del hilo JS por minuto, y tres
+  medidas — `arranque-a-lista`, `abrir-chat`, `ack-envio`. Envío automático al
+  ir a segundo plano y al arrancar; Ajustes → Diagnóstico con «Enviar
+  problema» (E2E: «Enviado», LilaStore aceptó). El mensaje se tacha de JWT y
+  teléfonos antes de guardarse.
+
+**Línea base** (debug en el emulador `lilafotos-qa`, server local contra
+**Atlas**, 16/10/2026 — el release y un teléfono real darán otras cifras; la
+comparación que vale es la de `/console/reportes` con la 0.1.70):
+
+| Medida | Valor |
+| --- | --- |
+| `ack-envio` | 624 ms y 941 ms — los 5 viajes seguidos a Atlas (FL4, meta < 300 ms) |
+| `abrir-chat` (desde el disco) | 308–824 ms |
+| `arranque-a-lista` (credencial guardada) | ~2,5 s (incluye cargar el bundle de Metro) |
+| `hilo-js` (peor traba por minuto) | 285–904 ms |
+
+Ojo al leerlas: `arranque-a-lista` también se anota tras un alta (incluye el
+tiempo de pedir el código) y `abrir-chat` de un chat vacío espera al primer
+mensaje: esas entradas no son de rendimiento.

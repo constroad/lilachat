@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Pressable,
 import { ProgramarMensajeModal } from './ProgramarMensajeModal';
 import { programarMensaje } from '../api/client';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
+import { terminarCronometro } from '../diagnostico/diagnostico';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -386,6 +387,8 @@ export function ChatScreen({
   const hayContenido = rows.length > 0;
   useEffect(() => {
     if (!hayContenido) return;
+    // Línea base de FL0 (spec §45): del toque en la lista a ver mensajes.
+    terminarCronometro('abrir-chat');
     // Un tick después del primer pintado: antes de eso la lista todavía no
     // midió y el scroll no llega a ningún lado.
     // 150 ms y no 0: con 0 la lista todavía no midió y el scroll no llega a

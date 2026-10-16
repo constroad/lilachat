@@ -30,6 +30,7 @@ import {
 } from '../settings/preferencias';
 import { AppHeader, BottomNav, type Tab } from './BottomNav';
 import { useMargenes } from './useMargenes';
+import { DiagnosticoAjuste } from '../diagnostico/DiagnosticoAjuste';
 import { decidirAtras } from './botonAtras';
 import { nombreDeContacto } from '@lilachat/shared';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
@@ -254,9 +255,11 @@ export function TabsShell({
       });
     };
 
-    socket.on('msg.new', (mensaje: Parameters<typeof alLlegar>[0]) => void alLlegar(mensaje));
+    const onNew = (mensaje: Parameters<typeof alLlegar>[0]) => void alLlegar(mensaje);
+    socket.on('msg.new', onNew);
     return () => {
-      socket.off('msg.new');
+      // Con el handler: a secas borraba los listeners de App y de la lista.
+      socket.off('msg.new', onNew);
     };
   }, [credential.jwt, credential.userId, loadChats]);
 
@@ -503,6 +506,8 @@ export function TabsShell({
             <AutoRespuestaAjuste jwt={credential.jwt} />
 
             <RespaldoAjuste credential={credential} />
+
+            <DiagnosticoAjuste />
 
             {/* «Buscar actualizaciones». Se dispara con un toque y NO al abrir
                 ajustes: un pedido de red cada vez que alguien entra acá es

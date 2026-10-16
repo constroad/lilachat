@@ -16,6 +16,8 @@ import {
 import { PhoneScreen } from './src/onboarding/PhoneScreen';
 import { OtpScreen } from './src/onboarding/OtpScreen';
 import { TabsShell } from './src/ui/TabsShell';
+import { conCredencialNueva, entraSinEsperar } from './src/auth/arranque';
+import { iniciarCronometro } from './src/diagnostico/diagnostico';
 import { ChatScreen } from './src/chat/ChatScreen';
 import { connectSocket, disconnectSocket, pauseSocket, resumeSocket } from './src/chat/socketClient';
 import { leerChatsGuardados, olvidarChats } from './src/chat/chatsGuardados';
@@ -308,6 +310,12 @@ function Contenido() {
       setBoot({ phase: 'email' });
       return;
     }
+    // Se entra YA con lo guardado: la lista pinta desde el disco y el refresh
+    // concilia por detrás. Antes se esperaba al server —hasta 15 s con mala
+    // señal— con un spinner en pantalla.
+    const sinEsperar = entraSinEsperar(stored);
+    if (sinEsperar) setBoot({ phase: 'home', credential: stored });
+
     const session = await refreshSession({
       deviceId: stored.deviceId,
       deviceSecret: stored.deviceSecret,
@@ -324,13 +332,15 @@ function Contenido() {
           : {}),
       };
       await saveCredential(refreshed);
-      setBoot({ phase: 'home', credential: refreshed });
+      if (sinEsperar) setBoot((actual) => conCredencialNueva(actual, refreshed));
+      else setBoot({ phase: 'home', credential: refreshed });
       return;
     }
     if (session.status === 401) {
       // Revocado de verdad: se vuelve al alta, sin llaves que no abren.
       // La caché de chats se borra con la credencial: la lista de con quién
       // habla alguien no se hereda al siguiente que entre en este teléfono.
+      disconnectSocket();
       await Promise.all([
         clearCredential(),
         olvidarChats(),
@@ -343,8 +353,8 @@ function Contenido() {
       setBoot({ phase: 'email' });
       return;
     }
-    // 503 / sin red: se entra con lo que hay.
-    setBoot({ phase: 'home', credential: stored });
+    // 503 / sin red: se sigue con lo que hay.
+    if (!sinEsperar) setBoot({ phase: 'home', credential: stored });
   }, []);
 
   useEffect(() => {
@@ -380,7 +390,10 @@ function Contenido() {
             setSegundoPlano(activo);
             void guardarSegundoPlano(activo);
           }}
-          onOpenChat={(chat) => setBoot({ phase: 'chat', credential: boot.credential, chat })}
+          onOpenChat={(chat) => {
+            iniciarCronometro('abrir-chat');
+            setBoot({ phase: 'chat', credential: boot.credential, chat });
+          }}
           onLogout={() => {
             // El socket se cierra ANTES de borrar la credencial: si no, queda
             // vivo con un JWT que ya no vale y reconecta en bucle.

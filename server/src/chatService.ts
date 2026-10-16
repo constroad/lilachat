@@ -350,6 +350,20 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
  * mismo usuario mandan acuses desordenados, y el que llega tarde no puede
  * resucitar mensajes ya leídos.
  */
+/**
+ * Lo que mando yo queda leído por mí, en todos mis dispositivos (como
+ * WhatsApp). Sin esto un mensaje propio enviado desde el teléfono contaba como
+ * «sin leer» en la web y en el otro teléfono. Sin chequeo de membresía: quien
+ * llama acaba de crear el mensaje en ese chat.
+ */
+export async function marcarPropioLeido(message: Pick<Message, 'chatId' | 'senderId' | 'seq'>): Promise<void> {
+  await ReceiptModel.updateOne(
+    { chatId: message.chatId, userId: message.senderId },
+    { $max: { readSeq: message.seq, deliveredSeq: message.seq } },
+    { upsert: true }
+  );
+}
+
 export async function markRead(params: {
   chatId: string;
   userId: Types.ObjectId;

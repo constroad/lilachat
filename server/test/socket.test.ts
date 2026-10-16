@@ -9,6 +9,7 @@ import { UserModel } from '../src/models.js';
 import { signSession } from '../src/sessions.js';
 import { attachSocket } from '../src/socket.js';
 import { programarMensaje, runScheduledTick } from '../src/scheduledMessages.js';
+import { listChats } from '../src/chatService.js';
 
 /**
  * El socket de verdad, sobre un puerto real. Lo que NINGÚN test unitario ve:
@@ -191,5 +192,25 @@ describe('mensajes creados por el server', () => {
 
     // Assert
     await expect(llegada).resolves.toMatchObject({ body: 'feliz cumpleaños' });
+  });
+});
+
+/**
+ * Lo que mando yo queda leído por mí, en TODOS mis dispositivos: antes un
+ * mensaje propio mandado desde el teléfono contaba como «sin leer» en la web
+ * (y Lila ofrecía ponerme al día con mi propio mensaje).
+ */
+describe('lo propio no queda sin leer', () => {
+  it('después de enviar por socket, mi no leído del chat es 0', async () => {
+    // Arrange
+    const emisor = await connect(tokenFor(jose));
+
+    // Act
+    await emisor.timeout(10_000).emitWithAck('msg.send', { chatId, clientKey: 'propio-1', body: 'hola' });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    // Assert
+    const chats = await listChats(jose);
+    expect(chats.find((chat) => chat.id === chatId)?.unread).toBe(0);
   });
 });

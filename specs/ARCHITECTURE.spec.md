@@ -3530,5 +3530,7 @@ mensaje: esas entradas no son de rendimiento.
   teclado abierto pegado al campo; long-press → «1 seleccionado». Ojo: el
   `swipe` de Maestro desde el centro de una burbuja propia recorre muy poco
   antes del borde y no dispara; con `adb shell input swipe` (lento, 280 dp) sí.
-- Visto de paso (para FL3): el aviso «1 mensajes sin leer» de Lila sale por
-  mensajes PROPIOS mandados desde otro dispositivo, y con la gramática mal.
+- **Lo propio queda leído** (`marcarPropioLeido`, después del ack y en
+  `publicarMensaje`; test con socket real): un mensaje mandado desde otro
+  dispositivo ya no cuenta como «sin leer» ni dispara el «ponme al día» de
+  Lila. Y el aviso dice «1 mensaje», no «1 mensajes».

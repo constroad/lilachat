@@ -10,6 +10,7 @@ import {
   sendMessage,
   deleteMessage,
   markDelivered,
+  marcarPropioLeido,
 } from './chatService.js';
 import { toClientMessage, toClientMessages } from './messageView.js';
 import { isOnline, markOffline, markOnline, onlineAmong } from './presence.js';
@@ -86,6 +87,9 @@ let ioVivo: SocketServer | null = null;
  */
 export async function publicarMensaje(message: Message, conocidos?: string[]): Promise<string[]> {
   const members = await avisarMensajeNuevo(message, conocidos);
+  void marcarPropioLeido(message).catch((error) =>
+    console.error('[leído] no se pudo marcar lo propio:', error?.message ?? error)
+  );
   const senderId = String(message.senderId);
   // `.catch` y no `void` a secas: un rechazo sin dueño tumba los tests y
   // despierta la red de seguridad del proceso por algo que no es un error real.
@@ -243,6 +247,12 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
           }).catch((error) => console.error('[auto-reply] falló:', error?.message ?? error));
         }
         ack?.({ ok: true, seq: result.message.seq, duplicate: result.duplicate });
+        // Después del ack: mis otros dispositivos no lo cuentan como sin leer.
+        if (!result.duplicate) {
+          void marcarPropioLeido(result.message).catch((error) =>
+            console.error('[leído] no se pudo marcar lo propio:', error?.message ?? error)
+          );
+        }
 
         // `@lila`, DESPUÉS del ack: el mensaje de quien escribió ya está
         // guardado y repartido, así que si el modelo tarda o falla la

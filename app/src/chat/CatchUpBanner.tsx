@@ -64,7 +64,7 @@ export function CatchUpBanner({
         </View>
         <View className="min-w-0 flex-1">
           <Text className="text-[13px] font-semibold text-on-surface">
-            {estado === 'hecho' ? 'Lila te resume' : `${unread} mensajes sin leer`}
+            {estado === 'hecho' ? 'Lila te resume' : `${unread} ${unread === 1 ? 'mensaje' : 'mensajes'} sin leer`}
           </Text>
           {estado !== 'hecho' ? (
             <Text className="text-[11px] text-on-surface-variant">

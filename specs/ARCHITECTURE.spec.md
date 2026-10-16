@@ -3384,7 +3384,7 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | Fase | Qué | Criterio de aceptación (medido) | Estado |
 | --- | --- | --- | --- |
 | FL0 | **Medir + bugs que se sienten lentos** — ver §45.4 | línea base anotada en §45.4 | ✅ 16/10 (0.1.70) |
-| FL1 | **Navegación nativa**: `@react-navigation/native-stack`, la lista queda viva debajo del chat (scroll, búsqueda y filtro intactos), atrás predictivo, hojas como pantallas | volver de un chat no remonta la lista | ⬜ |
+| FL1 | **Navegación nativa** — ver §45.5 | volver de un chat no remonta la lista | ✅ 16/10 (0.1.71) |
 | FL2 | **Pantalla de chat nueva**: composer aislado (una tecla no re-renderiza la lista), `MessageRow` memo, `getItemType`, mapa de respuestas (sin `find` por fila), `react-native-keyboard-controller`, swipe-to-reply con gesture-handler + Reanimated, haptics | 0 frames perdidos al tipear y al abrir; teclado sincronizado | ⬜ |
 | FL3 | **Burbujas y lista estilo WhatsApp**: cola real, hora + ticks dentro, ticks vectoriales, nombre del autor en grupos (hoy sale la inicial del grupo), wallpaper, paleta de burbujas, ripple, FAB «bajar al final», fecha pegada, sin controles inertes | auditoría lado a lado contra WhatsApp/Telegram con capturas | ⬜ |
 | FL4 | **Latencia del server**: envío de 5 a 3 viajes a la base, `lastMessage` denormalizado (adiós N+1 de la lista), ping 10/8 s + `connectionStateRecovery`, caché de membresía para acuses/typing, fotos redimensionadas con dimensiones + blurhash; con D2, bóveda | ack < 300 ms medido | ⬜ |
@@ -3433,3 +3433,28 @@ comparación que vale es la de `/console/reportes` con la 0.1.70):
 Ojo al leerlas: `arranque-a-lista` también se anota tras un alta (incluye el
 tiempo de pedir el código) y `abrir-chat` de un chat vacío espera al primer
 mensaje: esas entradas no son de rendimiento.
+
+### 45.5 As-is FL1 (16/10/2026)
+
+- **Stack nativo** (`@react-navigation/native-stack` + `react-native-screens`):
+  `ui/NavegacionDeSesion.tsx` con «Inicio» (las pestañas) y «Chat». `App.tsx`
+  dejó de tener la fase `chat`: el chat abierto sale del estado del navegador
+  (`ui/rutas.ts` → `chatAbiertoDe`, 4 tests) y alimenta el sonido y el guardado
+  que antes miraban la fase. Transición `slide_from_right` con el fondo del
+  tema (sin flash blanco en oscuro).
+- **La lista queda viva debajo.** E2E: buscar «QA», abrir el chat, volver → la
+  búsqueda sigue escrita, el filtro aplicado y **0 GET** a `/api/chats`. Atrás
+  del sistema vuelve igual.
+- **Con la lista montada cambian dos cosas** (`listaEnVivo.ts`, 4 tests más):
+  el chat abierto no suma no leídos y abrirlo lo deja en 0 (`marcarLeido`); y
+  TabsShell no avisa con un chat abierto —avisa `App`— para no sonar dos
+  veces.
+- **Un toque abre el chat con el teclado abierto** (`keyboardShouldPersistTaps`
+  en la lista). Visto en el E2E: el primer toque solo cerraba el teclado.
+- Pendiente para FL2/FL3: las pestañas todavía se remontan al cambiar (el
+  `key` de TabsShell), las hojas siguen siendo `Modal`, y el atrás predictivo
+  de Android 14 (`predictiveBackGestureEnabled`) sigue apagado. TabsShell pasó
+  de 632 a ~650 líneas: se parte al mover las hojas a pantallas.
+- Límite del E2E: los mensajes de QA salen de otro dispositivo de José (no
+  suman no leídos por ser propios); el caso «mensaje de otra persona con el
+  chat abierto» está cubierto por los tests de `listaEnVivo`.

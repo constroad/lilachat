@@ -38,7 +38,7 @@ import {
 import { busquedaValida, extractoDeCoincidencia } from '@lilachat/shared';
 import { conciliarCache } from './cacheDeChats';
 import { guardarChats, leerChatsGuardados } from './chatsGuardados';
-import { aplicarMensajeALista, type MensajeEnVivo } from './listaEnVivo';
+import { aplicarMensajeALista, marcarLeido, type MensajeEnVivo } from './listaEnVivo';
 import { inicioDelProceso, medirUnaVez } from '../diagnostico/diagnostico';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
@@ -57,10 +57,13 @@ export function ChatListScreen({
   credential,
   onOpenChat,
   onNewChat,
+  chatAbierto = null,
 }: {
   credential: Credential;
   onOpenChat: (chat: ChatSummary) => void;
   onNewChat: () => void;
+  /** El chat abierto encima (FL1): sus mensajes se leen al llegar. */
+  chatAbierto?: string | null;
 }) {
   const colores = useColores();
   /**
@@ -76,6 +79,19 @@ export function ChatListScreen({
    * local-first. La red confirma o corrige por detrás.
    */
   const chatsRef = useRef<ChatSummary[] | null>(null);
+
+  // En un ref: el listener del socket lo lee sin re-suscribirse.
+  const chatAbiertoRef = useRef(chatAbierto);
+  chatAbiertoRef.current = chatAbierto;
+
+  /**
+   * Abrir un chat lo deja leído en la lista. Antes la lista se remontaba al
+   * volver y traía el contador del server; ahora queda viva debajo (FL1).
+   */
+  useEffect(() => {
+    if (!chatAbierto) return;
+    setChats((actuales) => (actuales ? marcarLeido(actuales, chatAbierto) : actuales));
+  }, [chatAbierto]);
 
   useEffect(() => {
     chatsRef.current = chats;
@@ -166,7 +182,9 @@ export function ChatListScreen({
     // Solo un chat que la lista no conoce (una conversación nueva) la recarga.
     const onNew = (mensaje: MensajeEnVivo) => {
       const actual = chatsRef.current;
-      const parchada = actual ? aplicarMensajeALista(actual, mensaje, credential.userId) : null;
+      const parchada = actual
+        ? aplicarMensajeALista(actual, mensaje, credential.userId, chatAbiertoRef.current)
+        : null;
       if (!parchada) {
         void load();
         return;
@@ -543,6 +561,10 @@ export function ChatListScreen({
         <FlashList
           data={ordenados}
           keyExtractor={(chat) => chat.id}
+          // Con el teclado abierto (buscando), el toque en un resultado ABRE el
+          // chat. Sin esto el primer toque solo cerraba el teclado y había que
+          // tocar dos veces (visto en el E2E de FL1).
+          keyboardShouldPersistTaps="handled"
           // El vacío del FILTRO no es el vacío de la app: decir «sin
           // conversaciones» cuando hay diez y el filtro no devuelve ninguna
           // haría pensar que se perdieron.

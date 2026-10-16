@@ -25,18 +25,20 @@ export type MensajeEnVivo = {
 export function aplicarMensajeALista(
   chats: ChatSummary[],
   mensaje: MensajeEnVivo,
-  yo: string
+  yo: string,
+  /** El chat que se está mirando: sus mensajes se leen al llegar. */
+  chatAbierto: string | null = null
 ): ChatSummary[] | null {
   const indice = chats.findIndex((chat) => chat.id === mensaje.chatId);
   if (indice === -1) return null;
   const actual = chats[indice];
   if (!actual || mensaje.seq <= actual.lastSeq) return chats;
 
-  const esMio = String(mensaje.senderId) === yo;
+  const yaLeido = String(mensaje.senderId) === yo || mensaje.chatId === chatAbierto;
   const actualizado: ChatSummary = {
     ...actual,
     lastSeq: mensaje.seq,
-    unread: esMio ? actual.unread : actual.unread + 1,
+    unread: yaLeido ? actual.unread : actual.unread + 1,
     lastMessage: {
       seq: mensaje.seq,
       // Un sobre cifrado no trae `body`: la vista previa queda sin texto.
@@ -48,4 +50,15 @@ export function aplicarMensajeALista(
     },
   };
   return chats.map((chat, i) => (i === indice ? actualizado : chat));
+}
+
+/**
+ * Al volver de un chat, su contador queda en 0. Antes la lista se remontaba y
+ * lo traía del server; con la lista viva debajo (FL1) se corrige acá.
+ */
+export function marcarLeido(chats: ChatSummary[], chatId: string): ChatSummary[] {
+  const indice = chats.findIndex((chat) => chat.id === chatId);
+  const actual = chats[indice];
+  if (!actual || actual.unread === 0) return chats;
+  return chats.map((chat, i) => (i === indice ? { ...actual, unread: 0 } : chat));
 }

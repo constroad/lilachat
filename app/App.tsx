@@ -15,10 +15,8 @@ import {
 } from './src/auth/credentialStore';
 import { PhoneScreen } from './src/onboarding/PhoneScreen';
 import { OtpScreen } from './src/onboarding/OtpScreen';
-import { TabsShell } from './src/ui/TabsShell';
+import { NavegacionDeSesion } from './src/ui/NavegacionDeSesion';
 import { conCredencialNueva, entraSinEsperar } from './src/auth/arranque';
-import { iniciarCronometro } from './src/diagnostico/diagnostico';
-import { ChatScreen } from './src/chat/ChatScreen';
 import { connectSocket, disconnectSocket, pauseSocket, resumeSocket } from './src/chat/socketClient';
 import { leerChatsGuardados, olvidarChats } from './src/chat/chatsGuardados';
 import { avisarMensaje } from './src/chat/avisoLocal';
@@ -74,8 +72,7 @@ type Boot =
   | { phase: 'loading' }
   | { phase: 'email' }
   | { phase: 'otp'; phone: string }
-  | { phase: 'home'; credential: Credential }
-  | { phase: 'chat'; credential: Credential; chat: ChatSummary };
+  | { phase: 'home'; credential: Credential };
 
 /**
  * La raíz: solo monta los proveedores.
@@ -120,7 +117,13 @@ function Contenido() {
    * ventana en la transición —el momento más frágil— donde el proceso puede
    * morir antes de que el servicio arranque.
    */
-  const haySesion = boot.phase === 'home' || boot.phase === 'chat';
+  const haySesion = boot.phase === 'home';
+  /**
+   * El chat que está arriba del stack (FL1). Antes era una fase del arranque;
+   * con navegación nativa la lista sigue montada debajo y esto lo dice el
+   * navegador.
+   */
+  const [chatAbierto, setChatAbierto] = useState<string | null>(null);
 
   /**
    * `null` mientras se lee la preferencia del disco.
@@ -190,9 +193,9 @@ function Contenido() {
    * la burbuja va sin banner (la suprime el handler), así solo suena/vibra.
    */
   useEffect(() => {
-    if (boot.phase !== 'chat') return;
+    if (boot.phase !== 'home' || !chatAbierto) return;
     const yo = boot.credential.userId;
-    const abierto = boot.chat.id;
+    const abierto = chatAbierto;
     const socket = connectSocket(boot.credential.jwt);
     const onNew = async (mensaje: {
       chatId: string;
@@ -226,7 +229,7 @@ function Contenido() {
     return () => {
       socket.off('msg.new', onNew);
     };
-  }, [boot]);
+  }, [boot, chatAbierto]);
 
   /**
    * El almacén del teléfono se llena SIEMPRE, no solo con el chat abierto (F12.0).
@@ -237,8 +240,8 @@ function Contenido() {
    * guarda `useChat` por el mismo camino: se saltea para no escribir dos veces.
    */
   useEffect(() => {
-    if (boot.phase !== 'home' && boot.phase !== 'chat') return;
-    const abierto = boot.phase === 'chat' ? boot.chat.id : null;
+    if (boot.phase !== 'home') return;
+    const abierto = chatAbierto;
     const socket = connectSocket(boot.credential.jwt);
     const guardar = (mensaje: ChatMessage) => {
       if (mensaje.chatId === abierto) return;
@@ -248,7 +251,7 @@ function Contenido() {
     return () => {
       socket.off('msg.new', guardar);
     };
-  }, [boot]);
+  }, [boot, chatAbierto]);
 
   /**
    * Y lo que falta se pide (F12.0b): al arrancar con sesión, el hidratador
@@ -257,7 +260,7 @@ function Contenido() {
    * si el historial ya está entero, no gasta ni un pedido.
    */
   useEffect(() => {
-    if (boot.phase !== 'home' && boot.phase !== 'chat') return;
+    if (boot.phase !== 'home') return;
     let vigente = true;
     const jwt = boot.credential.jwt;
     // Un respiro para que la lista de chats cargue primero: la pantalla manda.
@@ -381,7 +384,7 @@ function Contenido() {
         />
       ) : boot.phase === 'home' ? (
         <>
-        <TabsShell
+        <NavegacionDeSesion
           credential={boot.credential}
           // Mientras se lee la preferencia se asume el defecto: el interruptor
           // no puede mostrarse apagado un instante y saltar a encendido.
@@ -390,14 +393,13 @@ function Contenido() {
             setSegundoPlano(activo);
             void guardarSegundoPlano(activo);
           }}
-          onOpenChat={(chat) => {
-            iniciarCronometro('abrir-chat');
-            setBoot({ phase: 'chat', credential: boot.credential, chat });
-          }}
+          chatAbierto={chatAbierto}
+          onChatAbierto={setChatAbierto}
           onLogout={() => {
             // El socket se cierra ANTES de borrar la credencial: si no, queda
             // vivo con un JWT que ya no vale y reconecta en bucle.
             disconnectSocket();
+            setChatAbierto(null);
             void olvidarChats();
             void olvidarMensajes();
             void olvidarPassphrase();
@@ -422,32 +424,7 @@ function Contenido() {
           />
         ) : null}
         </>
-      ) : (
-        <ChatScreen
-          chatId={boot.chat.id}
-          // Mismo criterio que la lista: gana el nombre de TU agenda. Sin esto
-          // la cabecera decia «960397018» aunque la lista ya dijera «Wilson».
-          chatName={
-            nombreDeContacto({
-              delServidor: boot.chat.name,
-              telefono: boot.chat.phone,
-              agenda: agendaPorTelefono(),
-            }) || 'Conversación'
-          }
-          chatAvatarUrl={boot.chat.avatarUrl}
-          credential={boot.credential}
-          othersReadSeq={boot.chat.othersReadSeq}
-          othersDeliveredSeq={boot.chat.othersDeliveredSeq}
-          unread={boot.chat.unread}
-          lastSeqInicial={boot.chat.lastSeq}
-          encrypted={boot.chat.encrypted}
-          // El OTRO miembro: con quién se deriva la clave compartida.
-          otherUserId={
-            boot.chat.memberIds.find((id) => id !== boot.credential.userId) ?? null
-          }
-          onBack={() => setBoot({ phase: 'home', credential: boot.credential })}
-        />
-      )}
+      ) : null}
       </View>
   );
 }

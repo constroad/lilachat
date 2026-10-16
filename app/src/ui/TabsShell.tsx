@@ -50,6 +50,7 @@ export function TabsShell({
   onLogout,
   segundoPlano,
   onSegundoPlano,
+  chatAbierto,
 }: {
   credential: Credential;
   onOpenChat: (chat: ChatSummary) => void;
@@ -62,7 +63,12 @@ export function TabsShell({
    */
   segundoPlano: boolean;
   onSegundoPlano: (activo: boolean) => void;
+  /** El chat abierto encima (FL1): la lista sigue montada debajo. */
+  chatAbierto: string | null;
 }) {
+  // En un ref: el listener del socket no se re-suscribe al abrir y cerrar chats.
+  const chatAbiertoRef = useRef(chatAbierto);
+  chatAbiertoRef.current = chatAbierto;
   const colores = useColores();
   const { modo, setModo } = useTema();
   const margenes = useMargenes();
@@ -221,6 +227,9 @@ export function TabsShell({
     }) => {
       // Lo mío no se avisa: acabo de escribirlo.
       if (mensaje.senderId === credential.userId) return;
+      // Con un chat abierto avisa `App` (`sonarPorMensaje`): la lista ya no se
+      // desmonta al abrir uno, y sin esto sonaba dos veces.
+      if (chatAbiertoRef.current) return;
 
       /**
        * Si el chat no está en la lista, se recarga ANTES de avisar.
@@ -344,6 +353,7 @@ export function TabsShell({
         {tab === 'chats' ? (
           <ChatListScreen
             credential={credential}
+            chatAbierto={chatAbierto}
             onOpenChat={onOpenChat}
             onNewChat={() => setNewChat(true)}
           />

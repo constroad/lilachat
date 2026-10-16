@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ChatSummary } from '../api/client';
-import { aplicarMensajeALista } from './listaEnVivo';
+import { aplicarMensajeALista, marcarLeido } from './listaEnVivo';
 
 const YO = '665f1a2b3c4d5e6f70818293';
 const OTRO = '665f1a2b3c4d5e6f70818294';
@@ -81,5 +81,38 @@ describe('aplicarMensajeALista', () => {
     const resultado = aplicarMensajeALista([chat(), otro], mensaje(), YO);
 
     expect(resultado?.[1]).toBe(otro);
+  });
+});
+
+/**
+ * Con navegación nativa (FL1) la lista queda VIVA debajo del chat abierto: ya
+ * no se remonta al volver, así que tiene que saber qué chat se está mirando.
+ */
+describe('la lista con un chat abierto encima', () => {
+  it('un mensaje del chat abierto NO suma no leídos (se está leyendo)', () => {
+    const resultado = aplicarMensajeALista([chat()], mensaje(), YO, CHAT);
+
+    expect(resultado?.[0]).toMatchObject({ unread: 0, lastSeq: 5 });
+  });
+
+  it('un mensaje de OTRO chat sí suma, aunque haya uno abierto', () => {
+    const resultado = aplicarMensajeALista([chat()], mensaje(), YO, '6a917994aaaaaaaaaaaaaaaa');
+
+    expect(resultado?.[0]?.unread).toBe(1);
+  });
+
+  it('marcarLeido deja el chat en 0 y no toca a los demás', () => {
+    const otro = chat({ id: '6a917994aaaaaaaaaaaaaaaa', unread: 2 });
+
+    const resultado = marcarLeido([chat({ unread: 3 }), otro], CHAT);
+
+    expect(resultado[0]?.unread).toBe(0);
+    expect(resultado[1]).toBe(otro);
+  });
+
+  it('marcarLeido sin nada que cambiar devuelve la misma lista', () => {
+    const lista = [chat({ unread: 0 })];
+
+    expect(marcarLeido(lista, CHAT)).toBe(lista);
   });
 });

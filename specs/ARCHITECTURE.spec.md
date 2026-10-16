@@ -3386,7 +3386,7 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | FL0 | **Medir + bugs que se sienten lentos** — ver §45.4 | línea base anotada en §45.4 | ✅ 16/10 (0.1.70) |
 | FL1 | **Navegación nativa** — ver §45.5 | volver de un chat no remonta la lista | ✅ 16/10 (0.1.71) |
 | FL2 | **Pantalla de chat nueva** — FL2a (§45.6) y FL2b (§45.8) | 0 frames perdidos al tipear y al abrir; teclado sincronizado | ✅ 16/10 (0.1.73) |
-| FL3 | **Burbujas y lista estilo WhatsApp** — conversación hecha (§45.9); falta la LISTA (ripple, ticks en la vista previa, avatar 52 dp), el sistema de avisos y la versión oscura del diseño | auditoría lado a lado contra el diseño de Stitch | 🟡 conversación 16/10 (0.1.74) |
+| FL3 | **Burbujas y lista estilo WhatsApp** — conversación (§45.9) y lista (§45.10), claro y oscuro | auditoría lado a lado contra el diseño de Stitch | ✅ 16/10 (0.1.75) |
 | FL4 | **Latencia del server** — hecho: envío de 5 a 3 viajes, lista sin N+1, ping 15/10 s (§45.7). Falta: bóveda (D2), caché de membresía para acuses/typing, fotos con dimensiones + blurhash | ack < 300 ms medido | 🟡 16/10 |
 | FL5 | **Pendientes de F12 que pesan en el hilo JS**: cifrado/scrypt por lotes, tarea de fondo que mira wifi/carga primero (§44.4) | respaldar 20 000 mensajes sin ANR en `gama-baja` | ⬜ |
 | FL6 | **Marca y Stitch**: logo vectorial único (ícono, adaptativo, mono, splash y `<Logo>` desde la misma geometría); diseñar en Stitch la conversación llena, con la paleta real y las pestañas reales | ícono verificado dentro del APK | ⬜ |
@@ -3583,3 +3583,24 @@ pendiente. Las capturas NO van al repo.
   «Vos» al final. Sin nombres cargados no inventa ninguno.
 - `ChatScreen` quedó en 913 líneas (deuda previa, >600): la lógica de scroll
   salió a `useFinalDeLaConversacion`; falta partir la cabecera y los modales.
+
+### 45.10 As-is FL3, la lista y el oscuro (16/10/2026)
+
+- **Fila de la lista**: ripple de Material al tocar, sin líneas separadoras,
+  avatar de 52 dp, hora a 12 sp, punto de «en línea» con token propio
+  (`en-linea`, antes `bg-emerald-500` suelto).
+- **Vista previa**: si lo último es MÍO, los checks van antes del texto (gris
+  enviado/entregado, azul leído, con `resolveDeliveryState`); la media lleva un
+  ícono vectorial (`resolveChatPreview` devuelve `media` y el texto sin emoji —
+  test en `shared/chatDisplay.test.ts`; la web muestra el texto igual).
+- **Fuera la cámara inerte** de la cabecera de la lista.
+- **Modo oscuro verificado** contra «Conversación de grupo · Oscuro»: propias
+  violeta profundo, ajenas slate, nombre del autor en color, subtítulo del
+  grupo con los miembros.
+- **De paso — «no pude bajar la versión anterior»** (José, 16/10): la banda
+  «Actualizar» usaba la versión capturada al ABRIR la app; con seis
+  publicaciones seguidas ofrecía una vieja. Ahora al tocar vuelve a preguntar
+  (`infoParaActualizar`, 2 tests: fresca si llegó completa, si no la
+  guardada). Y el fallo de descarga dice su motivo y queda en el diagnóstico
+  (antes «Revisá la señal» a secas). El server de LilaStore sirve bien
+  cualquier versión publicada (verificado con HEAD).

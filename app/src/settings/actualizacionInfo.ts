@@ -14,3 +14,12 @@ export type InfoActualizacion = {
 export function hayConQueActualizar(info: InfoActualizacion): boolean {
   return info.downloadUrl !== '' && info.sha256 !== '' && info.size > 0 && info.releaseId !== '';
 }
+
+/**
+ * Con qué versión actualizar al tocar «Actualizar»: la recién consultada si
+ * llegó completa; si no (sin red), la que se tenía. Antes se usaba siempre la
+ * del arranque y, con publicaciones seguidas, se bajaba una vieja.
+ */
+export function infoParaActualizar(fresca: InfoActualizacion, guardada: InfoActualizacion): InfoActualizacion {
+  return hayConQueActualizar(fresca) ? fresca : guardada;
+}

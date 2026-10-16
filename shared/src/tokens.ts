@@ -48,6 +48,8 @@ export const vividPulse = {
       author4: '#b45309',
       author5: '#7c3aed',
       author6: '#0e7490',
+      /** El punto de «en línea» de la lista: verde, como toda mensajería. */
+      online: '#16a34a',
     },
     /**
      * El modo oscuro (27/08/2026). Hasta acá tenía DOS colores —`background` e
@@ -111,6 +113,7 @@ export const vividPulse = {
       author4: '#fcd34d',
       author5: '#c4b5fd',
       author6: '#67e8f9',
+      online: '#4ade80',
     },
   },
   typography: {

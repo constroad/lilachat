@@ -155,6 +155,17 @@ describe('resolveChatPreview', () => {
     expect(resolveChatPreview({ typing: false, lastKind: 'video' }).text).toContain('Video');
   });
 
+  /**
+   * FL3: el tipo de media viaja aparte para que la app dibuje un ícono
+   * vectorial (como WhatsApp) en vez del emoji pegado al texto.
+   */
+  it('dice el tipo de media y el texto va sin emoji', () => {
+    expect(resolveChatPreview({ typing: false, lastKind: 'image' })).toEqual({ text: 'Foto', style: 'normal', media: 'foto' });
+    expect(resolveChatPreview({ typing: false, lastKind: 'audio' })).toMatchObject({ text: 'Nota de voz', media: 'voz' });
+    expect(resolveChatPreview({ typing: false, lastKind: 'file' })).toMatchObject({ text: 'Archivo', media: 'archivo' });
+    expect(resolveChatPreview({ typing: false, lastBody: 'hola' }).media).toBeUndefined();
+  });
+
   it('sin nada, lo dice sin inventar', () => {
     expect(resolveChatPreview({ typing: false }).text).toBe('Sin mensajes todavía');
   });

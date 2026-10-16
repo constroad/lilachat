@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hayConQueActualizar } from './actualizacionInfo';
+import { hayConQueActualizar, infoParaActualizar } from './actualizacionInfo';
 
 const completo = {
   downloadUrl: 'https://lilastore.constroad.com/d/r1',
@@ -27,5 +27,22 @@ describe('hayConQueActualizar', () => {
 
   it('sin releaseId no hay dónde guardarlo con nombre propio', () => {
     expect(hayConQueActualizar({ ...completo, releaseId: '' })).toBe(false);
+  });
+});
+
+/**
+ * La banda «Actualizar» usaba la versión capturada al ABRIR la app. Con varias
+ * publicaciones seguidas ofrecía una vieja (16/10: seis versiones en tres horas).
+ * Al tocar se vuelve a preguntar; sin respuesta, se usa la guardada.
+ */
+describe('infoParaActualizar', () => {
+  it('con respuesta fresca completa, gana la fresca', () => {
+    const fresca = { ...completo, releaseId: 'r2', downloadUrl: 'https://lilastore.constroad.com/d/r2' };
+    expect(infoParaActualizar(fresca, completo)).toBe(fresca);
+  });
+
+  it('sin red (respuesta vacía), queda la guardada', () => {
+    const vacia = { downloadUrl: '', releaseId: '', sha256: '', size: 0 };
+    expect(infoParaActualizar(vacia, completo)).toBe(completo);
   });
 });

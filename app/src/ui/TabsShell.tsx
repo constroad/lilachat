@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { ArrowLeft, BellRing, Camera, ChevronRight, CloudUpload, Moon, RefreshCw, Sun, SunMoon, User, UserPlus } from 'lucide-react-native';
+import { ArrowLeft, BellRing, ChevronRight, CloudUpload, Moon, RefreshCw, Sun, SunMoon, User, UserPlus } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { listChats, type ChatSummary } from '../api/client';
 import { connectSocket } from '../chat/socketClient';
@@ -25,6 +25,7 @@ import { BandaDeActualizacion } from '../settings/BandaDeActualizacion';
 import { AutoRespuestaAjuste } from '../settings/AutoRespuestaAjuste';
 import { RespaldoAjuste } from '../settings/RespaldoAjuste';
 import { useActualizador, type InfoActualizacion } from '../settings/useActualizador';
+import { infoParaActualizar } from '../settings/actualizacionInfo';
 import {
   guardarActualizacionDescartada,
   leerActualizacionDescartada,
@@ -294,11 +295,9 @@ export function TabsShell({
       <AppHeader>
         {tab === 'chats' ? (
           <>
-            {/* Cámara y búsqueda están en el diseño; quedan inertes hasta que
-                existan (la búsqueda es F6). */}
-            <View className="h-11 w-9 items-center justify-center opacity-40">
-              <Camera size={20} color={colores["on-surface-variant"]} />
-            </View>
+            {/* La cámara apagada que había acá se fue (FL3): un botón que no
+                hace nada enseña que la app no responde. La cámara vive en la
+                píldora de cada chat. */}
             {/* La lupa de la cabecera se fue: el buscador vive AHORA en la
                 lista, siempre visible. Dejar además un ícono apagado al lado de
                 un buscador que funciona es enseñar que hay botones que no
@@ -343,7 +342,16 @@ export function TabsShell({
           <BandaDeActualizacion
             aviso={aviso}
             estado={estadoActualizacion}
-            onActualizar={() => void actualizar(infoApp)}
+            // Se vuelve a preguntar al TOCAR: la info del arranque puede ser de
+            // una versión que ya no es la última (16/10: seis publicaciones
+            // seguidas y se bajaba una vieja).
+            onActualizar={() =>
+              void buscarActualizacion().then(({ downloadUrl, releaseId, sha256, size }) => {
+                const info = infoParaActualizar({ downloadUrl, releaseId, sha256, size }, infoApp);
+                setInfoApp(info);
+                return actualizar(info);
+              })
+            }
             onAbrirTienda={() => void abrirActualizacion(infoApp.downloadUrl)}
             onDescartar={() => {
               if (aviso.tipo !== 'ninguno') void guardarActualizacionDescartada(aviso.version);

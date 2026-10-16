@@ -3,15 +3,21 @@ import { Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 're
 import {
   Bell,
   BellOff,
+  Camera,
+  Check,
   CheckCheck,
+  FileText,
   Lock,
+  Mic,
   LogOut,
   MessageCircle,
   PenSquare,
   Pin,
   PinOff,
   Search,
+  Video,
   X,
+  type LucideIcon,
 } from 'lucide-react-native';
 import {
   accionesDeSeleccion,
@@ -21,8 +27,10 @@ import {
   nombreDeContacto,
   ordenarChats,
   resolveChatPreview,
+  resolveDeliveryState,
   textoDeAviso,
   type FiltroDeChats,
+  type MediaDePreview,
 } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { connectSocket, getSocket } from './socketClient';
@@ -53,6 +61,17 @@ import { agendaPorTelefono, suscribirAgenda } from '../contacts/agendaEnMemoria'
  * explicación. Un hueco en blanco se lee como «no tengo nada» y es el bug que
  * ya se pagó en el drive público.
  */
+/** El avatar de la lista (dp): 52, como WhatsApp (antes 48). */
+const AVATAR_DE_LISTA = 52;
+
+/** El ícono de la vista previa de una media (FL3): vectorial, no emoji. */
+const ICONO_DE_MEDIA: Record<MediaDePreview, LucideIcon> = {
+  foto: Camera,
+  video: Video,
+  voz: Mic,
+  archivo: FileText,
+};
+
 export function ChatListScreen({
   credential,
   onOpenChat,
@@ -523,7 +542,7 @@ export function ChatListScreen({
                   </Text>
                   {chip.cuenta > 0 ? (
                     <Text
-                      className={`shrink-0 text-[11px] ${activo ? 'text-primary' : 'text-on-surface-variant'}`}
+                      className={`shrink-0 text-[12px] ${activo ? 'text-primary' : 'text-on-surface-variant'}`}
                     >
                       {chip.cuenta}
                     </Text>
@@ -633,20 +652,25 @@ export function ChatListScreen({
               onPress={() => (enSeleccion ? alternarSeleccion(chat.id) : onOpenChat(chat))}
               onLongPress={() => alternarSeleccion(chat.id)}
               delayLongPress={250}
-              className={`min-h-[72px] flex-row items-center gap-3 border-b border-outline/5 px-5 py-3 ${
-                marcado ? 'bg-primary/10' : ''
-              }`}
+              // El ripple de Material al tocar (FL3): sin respuesta visual, la
+              // fila parecía no haber recibido el toque.
+              android_ripple={{ color: colores.outline }}
+              // Sin línea entre filas, como WhatsApp: el aire las separa.
+              className={`min-h-[76px] flex-row items-center gap-3 px-4 py-2.5 ${marcado ? 'bg-primary/10' : ''}`}
             >
-              <View className="h-12 w-12 shrink-0">
-                <View className="h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-primary/10">
+              <View style={{ width: AVATAR_DE_LISTA, height: AVATAR_DE_LISTA }} className="shrink-0">
+                <View
+                  style={{ width: AVATAR_DE_LISTA, height: AVATAR_DE_LISTA }}
+                  className="items-center justify-center overflow-hidden rounded-full bg-primary/10"
+                >
                   {chat.avatarUrl ? (
                     <Image
                       source={{ uri: chat.avatarUrl }}
-                      style={{ width: 48, height: 48 }}
+                      style={{ width: AVATAR_DE_LISTA, height: AVATAR_DE_LISTA }}
                       contentFit="cover"
                     />
                   ) : (
-                    <Text className="text-base font-bold text-primary">
+                    <Text className="text-lg font-bold text-primary">
                       {title(chat).slice(0, 1).toUpperCase()}
                     </Text>
                   )}
@@ -669,7 +693,7 @@ export function ChatListScreen({
                 ) ? (
                   <View
                     testID={`en-linea-${chat.id}`}
-                    className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-background bg-emerald-500"
+                    className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-background bg-en-linea"
                   />
                 ) : null}
               </View>
@@ -726,18 +750,45 @@ export function ChatListScreen({
                           lastBody: avisoDelUltimo(chat, credential.userId) ?? chat.lastMessage?.body,
                           lastKind: chat.lastMessage?.kind,
                         });
+                    // Lo último es MÍO: los checks van antes del texto, como
+                    // WhatsApp (gris enviado/entregado, azul leído).
+                    const ultimoMio =
+                      preview.style !== 'typing' &&
+                      !!chat.lastMessage &&
+                      String(chat.lastMessage.senderId) === credential.userId &&
+                      chat.lastMessage.kind !== 'system';
+                    const entrega = ultimoMio
+                      ? resolveDeliveryState({
+                          seq: chat.lastMessage?.seq ?? null,
+                          otherReadSeq: chat.othersReadSeq,
+                          otherDeliveredSeq: chat.othersDeliveredSeq,
+                        })
+                      : null;
+                    const IconoDeMedia = preview.media ? ICONO_DE_MEDIA[preview.media] : null;
                     return (
-                      <Text
-                        className={`min-w-0 flex-1 text-sm ${
-                          preview.style === 'typing'
-                            ? 'italic text-primary'
-                            : 'text-on-surface-variant'
-                        }`}
-                        numberOfLines={1}
-                        testID={`preview-${chat.id}`}
-                      >
-                        {preview.text}
-                      </Text>
+                      <View className="min-w-0 flex-1 flex-row items-center gap-1">
+                        {entrega ? (
+                          entrega === 'sent' ? (
+                            <Check size={16} color={colores['on-surface-variant']} testID={`check-lista-${chat.id}`} />
+                          ) : (
+                            <CheckCheck
+                              size={16}
+                              color={entrega === 'read' ? colores['check-leido'] : colores['on-surface-variant']}
+                              testID={`check-lista-${chat.id}`}
+                            />
+                          )
+                        ) : null}
+                        {IconoDeMedia ? <IconoDeMedia size={15} color={colores['on-surface-variant']} /> : null}
+                        <Text
+                          className={`min-w-0 flex-1 text-sm ${
+                            preview.style === 'typing' ? 'italic text-primary' : 'text-on-surface-variant'
+                          }`}
+                          numberOfLines={1}
+                          testID={`preview-${chat.id}`}
+                        >
+                          {preview.text}
+                        </Text>
+                      </View>
                     );
                   })()}
                   {chat.unread > 0 ? (

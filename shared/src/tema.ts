@@ -48,6 +48,7 @@ export const NOMBRES_DE_COLOR = {
   'autor-4': 'author4',
   'autor-5': 'author5',
   'autor-6': 'author6',
+  'en-linea': 'online',
 } as const;
 
 export type NombreDeColor = keyof typeof NOMBRES_DE_COLOR;

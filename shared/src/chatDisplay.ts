@@ -127,7 +127,16 @@ export function formatChatTimestamp(at: string | Date, now: Date = new Date()): 
  * el otro está escribiendo —cursiva y en acento—, y eso ya lo sabemos: el
  * socket emite `typing` desde F2 y la lista no lo usaba.
  */
-export type ChatPreview = { text: string; style: 'normal' | 'typing' };
+export type MediaDePreview = 'foto' | 'video' | 'voz' | 'archivo';
+
+const ETIQUETA_DE_MEDIA: Record<MediaDePreview, string> = {
+  foto: 'Foto',
+  video: 'Video',
+  voz: 'Nota de voz',
+  archivo: 'Archivo',
+};
+
+export type ChatPreview = { text: string; style: 'normal' | 'typing'; media?: MediaDePreview };
 
 export function resolveChatPreview(params: {
   typing: boolean;
@@ -137,15 +146,17 @@ export function resolveChatPreview(params: {
   if (params.typing) return { text: 'Escribiendo…', style: 'typing' };
   if (params.lastBody) return { text: params.lastBody, style: 'normal' };
   if (params.lastKind && params.lastKind !== 'text') {
-    const label =
+    // El tipo va aparte (FL3): la app dibuja un ícono vectorial como WhatsApp;
+    // con el emoji pegado al texto se veía distinto en cada teléfono.
+    const media: MediaDePreview =
       params.lastKind === 'image'
-        ? '📷 Foto'
+        ? 'foto'
         : params.lastKind === 'video'
-          ? '🎬 Video'
+          ? 'video'
           : params.lastKind === 'audio'
-            ? '🎤 Nota de voz'
-            : '📎 Archivo';
-    return { text: label, style: 'normal' };
+            ? 'voz'
+            : 'archivo';
+    return { text: ETIQUETA_DE_MEDIA[media], style: 'normal', media };
   }
   return { text: 'Sin mensajes todavía', style: 'normal' };
 }

@@ -37,6 +37,7 @@
     --color-autor-4: 180 83 9;
     --color-autor-5: 124 58 237;
     --color-autor-6: 14 116 144;
+    --color-en-linea: 22 163 74;
   }
 
   .dark:root {
@@ -68,5 +69,6 @@
     --color-autor-4: 252 211 77;
     --color-autor-5: 196 181 253;
     --color-autor-6: 103 232 249;
+    --color-en-linea: 74 222 128;
   }
 }

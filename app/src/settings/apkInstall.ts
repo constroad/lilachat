@@ -3,6 +3,10 @@ import { sha256 } from 'js-sha256';
 import { getContentUriAsync } from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { decideInstall, installMessage, type InstallVerdict } from './installDecision';
+import { registrarError } from '../diagnostico/diagnostico';
+
+/** Cuánto del mensaje de error se muestra (el resto va al diagnóstico). */
+const MOTIVO_MAX = 80;
 
 /**
  * Bajar el APK de la actualización, **verificarlo** y entregárselo al instalador
@@ -58,10 +62,12 @@ export async function downloadAndVerify(opciones: {
   } catch (fallo) {
     borrar(destino);
     const abortada = fallo instanceof Error && fallo.name === 'AbortError';
-    return {
-      ok: false,
-      message: abortada ? 'Descarga cancelada.' : 'No se pudo descargar. Revisá la señal.',
-    };
+    if (abortada) return { ok: false, message: 'Descarga cancelada.' };
+    // El motivo real al diagnóstico y a la pantalla: «revisá la señal» a secas
+    // escondía un 404 o un 410 y no dejaba rastro (16/10/2026).
+    void registrarError(fallo, 'actualizar-descarga');
+    const motivo = fallo instanceof Error && fallo.message ? ` (${fallo.message.slice(0, MOTIVO_MAX)})` : '';
+    return { ok: false, message: `No se pudo descargar la actualización${motivo}.` };
   }
 
   const veredicto = decideInstall({

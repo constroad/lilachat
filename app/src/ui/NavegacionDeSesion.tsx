@@ -106,8 +106,11 @@ function PantallaDeChat({ chat, credential, onBack }: { chat: ChatSummary; crede
       unread={chat.unread}
       lastSeqInicial={chat.lastSeq}
       encrypted={chat.encrypted}
-      // El OTRO miembro: con quién se deriva la clave compartida.
-      otherUserId={chat.memberIds.find((id) => id !== credential.userId) ?? null}
+      // El OTRO miembro, SOLO en un 1:1: con él se deriva la clave y se llama.
+      // En un grupo es null — antes iba «el primero», así la pantalla no se
+      // enteraba de que era un grupo (sin nombres de autor) y el botón de
+      // llamar llamaba a un miembro cualquiera.
+      otherUserId={chat.kind === 'direct' ? (chat.memberIds.find((id) => id !== credential.userId) ?? null) : null}
       onBack={onBack}
     />
   );

@@ -1,6 +1,6 @@
 import { memo, useImperativeHandle, useState, type Ref } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
-import { Mic, Plus, Send, Smile, X } from 'lucide-react-native';
+import { Camera, Mic, Paperclip, Plus, Send, X } from 'lucide-react-native';
 import { duracionDeVoz } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { useGrabadorDeVoz, type NotaGrabada } from './useGrabadorDeVoz';
@@ -29,6 +29,8 @@ export const Composer = memo(function Composer(props: {
   subiendo: boolean;
   margenPie: number;
   onAdjuntar: () => void;
+  /** La cámara, directo desde la píldora (diseño «Conversación 1:1»). */
+  onCamara: () => void;
   onEscribiendo: () => void;
   /** Manda el texto; `false` si no salió (p. ej. no se pudo cifrar). */
   onEnviar: (texto: string, respondeA?: number) => Promise<boolean>;
@@ -136,9 +138,33 @@ export const Composer = memo(function Composer(props: {
                   if (texto.length > 0) props.onEscribiendo();
                 }}
               />
-              <Pressable testID="btn-emoji" className="h-11 w-9 items-center justify-center">
-                <Smile size={20} color={colores.outline} />
-              </Pressable>
+              {/* Clip y cámara DENTRO de la píldora, como el diseño y WhatsApp.
+                  El emoji que había acá no hacía nada: el teclado ya trae los
+                  suyos. Con texto escrito se esconden y el campo gana ancho. */}
+              {borrador.length === 0 ? (
+                <>
+                  <Pressable
+                    testID="btn-clip"
+                    accessibilityLabel="Adjuntar"
+                    onPress={props.onAdjuntar}
+                    disabled={props.subiendo}
+                    android_ripple={{ color: colores.outline, borderless: true, radius: 20 }}
+                    className="h-11 w-9 items-center justify-center"
+                  >
+                    <Paperclip size={20} color={colores.outline} />
+                  </Pressable>
+                  <Pressable
+                    testID="btn-camara"
+                    accessibilityLabel="Tomar una foto"
+                    onPress={props.onCamara}
+                    disabled={props.subiendo}
+                    android_ripple={{ color: colores.outline, borderless: true, radius: 20 }}
+                    className="h-11 w-9 items-center justify-center"
+                  >
+                    <Camera size={20} color={colores.outline} />
+                  </Pressable>
+                </>
+              ) : null}
             </View>
 
             {borrador.trim() ? (

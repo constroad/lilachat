@@ -25,6 +25,18 @@
     --color-outline: 123 116 134;
     --color-error: 186 26 26;
     --color-on-primary: 255 255 255;
+    --color-fondo-chat: 243 241 251;
+    --color-burbuja-propia: 236 229 255;
+    --color-on-burbuja-propia: 11 28 48;
+    --color-burbuja-ajena: 255 255 255;
+    --color-on-burbuja-ajena: 11 28 48;
+    --color-check-leido: 59 130 246;
+    --color-autor-1: 192 38 109;
+    --color-autor-2: 29 111 216;
+    --color-autor-3: 31 138 76;
+    --color-autor-4: 180 83 9;
+    --color-autor-5: 124 58 237;
+    --color-autor-6: 14 116 144;
   }
 
   .dark:root {
@@ -44,5 +56,17 @@
     --color-outline: 139 149 173;
     --color-error: 255 180 171;
     --color-on-primary: 56 30 114;
+    --color-fondo-chat: 11 18 34;
+    --color-burbuja-propia: 59 42 107;
+    --color-on-burbuja-propia: 241 236 255;
+    --color-burbuja-ajena: 30 41 59;
+    --color-on-burbuja-ajena: 231 233 243;
+    --color-check-leido: 96 165 250;
+    --color-autor-1: 249 168 212;
+    --color-autor-2: 147 197 253;
+    --color-autor-3: 134 239 172;
+    --color-autor-4: 252 211 77;
+    --color-autor-5: 196 181 253;
+    --color-autor-6: 103 232 249;
   }
 }

@@ -29,6 +29,25 @@ export const vividPulse = {
       outline: '#7b7486',
       error: '#ba1a1a',
       onPrimary: '#ffffff',
+      /**
+       * La conversación (FL3, diseño «Conversación 1:1 · Claro» de Stitch):
+       * ajenas blancas, propias lavanda clara con texto oscuro, sobre un fondo
+       * apenas violeta que separa el chat de la lista.
+       */
+      chatBackground: '#f3f1fb',
+      bubbleOwn: '#ece5ff',
+      onBubbleOwn: '#0b1c30',
+      bubbleOther: '#ffffff',
+      onBubbleOther: '#0b1c30',
+      /** El doble check de leído: el azul de marca, como en WhatsApp. */
+      readTick: '#3b82f6',
+      /** El nombre de cada persona en un grupo (`colorDeAutor`): legibles sobre blanco. */
+      author1: '#c0266d',
+      author2: '#1d6fd8',
+      author3: '#1f8a4c',
+      author4: '#b45309',
+      author5: '#7c3aed',
+      author6: '#0e7490',
     },
     /**
      * El modo oscuro (27/08/2026). Hasta acá tenía DOS colores —`background` e
@@ -78,6 +97,20 @@ export const vividPulse = {
        */
       outline: '#8b95ad',
       error: '#ffb4ab',
+      /** En oscuro la propia es violeta PROFUNDO: una lavanda clara deslumbra. */
+      chatBackground: '#0b1222',
+      bubbleOwn: '#3b2a6b',
+      onBubbleOwn: '#f1ecff',
+      bubbleOther: '#1e293b',
+      onBubbleOther: '#e7e9f3',
+      readTick: '#60a5fa',
+      /** Los mismos tonos, claros: legibles sobre la burbuja ajena oscura. */
+      author1: '#f9a8d4',
+      author2: '#93c5fd',
+      author3: '#86efac',
+      author4: '#fcd34d',
+      author5: '#c4b5fd',
+      author6: '#67e8f9',
     },
   },
   typography: {

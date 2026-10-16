@@ -36,6 +36,18 @@ export const NOMBRES_DE_COLOR = {
   outline: 'outline',
   error: 'error',
   'on-primary': 'onPrimary',
+  'fondo-chat': 'chatBackground',
+  'burbuja-propia': 'bubbleOwn',
+  'on-burbuja-propia': 'onBubbleOwn',
+  'burbuja-ajena': 'bubbleOther',
+  'on-burbuja-ajena': 'onBubbleOther',
+  'check-leido': 'readTick',
+  'autor-1': 'author1',
+  'autor-2': 'author2',
+  'autor-3': 'author3',
+  'autor-4': 'author4',
+  'autor-5': 'author5',
+  'autor-6': 'author6',
 } as const;
 
 export type NombreDeColor = keyof typeof NOMBRES_DE_COLOR;

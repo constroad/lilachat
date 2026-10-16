@@ -3,12 +3,9 @@ import {
   ActivityIndicator,
   Alert,
   BackHandler,
-  Keyboard,
   Pressable,
   Text,
   View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
 } from 'react-native';
 import { ProgramarMensajeModal } from './ProgramarMensajeModal';
 import { programarMensaje } from '../api/client';
@@ -20,6 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import {
   ArrowLeft,
+  ChevronDown,
   Lock,
   MoreVertical,
   Phone,
@@ -51,14 +49,15 @@ import { useColores } from '../ui/tema';
 import { decidirAtras } from '../ui/botonAtras';
 import { textoDeSubida } from './progresoDeSubida';
 import { citadosPorSeq, tipoDeFila } from './filasDelChat';
+import { useNombresDelGrupo } from './useNombresDelGrupo';
+import { FondoDelChat } from './FondoDelChat';
+import { useFinalDeLaConversacion } from './useFinalDeLaConversacion';
 
 /**
  * La conversación (diseño Stitch «Chat de Grupo»). Burbuja propia a la derecha
  * en acento; la ajena a la izquierda en superficie — y la esquina-cola de 4px
  * apunta al emisor, que es el token `rounded-tail` de Vivid Pulse.
  */
-/** Cuánto (en dp) cuenta como «estar abajo» en la conversación. */
-const MARGEN_DEL_FINAL = 160;
 /** El pie del composer con el teclado abierto (dp). */
 const MARGEN_CON_TECLADO = 8;
 
@@ -253,6 +252,9 @@ export function ChatScreen({
     setProgramarVisible(true);
   }, []);
   const alAdjuntar = useCallback(() => setAttachOpen(true), []);
+  // Por un ref: `pickFromCamera` se rearma en cada render y el Composer es memo.
+  const camaraRef = useRef<() => Promise<void>>(async () => undefined);
+  const alCamara = useCallback(() => void camaraRef.current(), []);
   const alCancelarRespuesta = useCallback(() => setRespondiendoA(null), []);
 
   const nombreVisible = infoPropia.name ?? chatName;
@@ -349,7 +351,8 @@ export function ChatScreen({
       }),
     []
   );
-  const pickFromCamera = async () => {
+  camaraRef.current = () => pickFromCamera();
+  async function pickFromCamera() {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
       setMediaError('Permite la cámara para poder tomar fotos.');
@@ -364,7 +367,7 @@ export function ChatScreen({
       mimeType: asset.mimeType ?? 'image/jpeg',
       sizeBytes: asset.fileSize ?? 0,
     });
-  };
+  }
 
   const pickFromGallery = async () => {
     const picked = await ImagePicker.launchImageLibraryAsync({
@@ -445,7 +448,7 @@ export function ChatScreen({
   );
   const leidoHasta = Math.max(othersReadSeq, othersRead);
   const entregadoHasta = Math.max(othersDeliveredSeq, othersDelivered);
-  const inicial = nombreVisible.slice(0, 1).toUpperCase();
+  const nombresDelGrupo = useNombresDelGrupo(chatId, credential.jwt, esGrupoChat);
   const alVerImagen = useCallback((seq: number) => setViendoSeq(seq), []);
   const alResponder = useCallback(
     (seq: number, texto: string, mio: boolean) => setRespondiendoA({ seq, texto, mio }),
@@ -473,7 +476,8 @@ export function ChatScreen({
             myUserId={credential.userId}
             othersReadSeq={leidoHasta}
             othersDeliveredSeq={entregadoHasta}
-            senderInitial={inicial}
+            esGrupo={esGrupoChat}
+            nombreAutor={isPending(item) ? undefined : nombresDelGrupo.get(String(item.senderId))}
             onVerImagen={alVerImagen}
             onSeleccionar={setElegido}
             onResponder={alResponder}
@@ -483,25 +487,10 @@ export function ChatScreen({
         </>
       );
     },
-    [rows, credential.userId, leidoHasta, entregadoHasta, inicial, alVerImagen, alResponder, citados, elegido]
+    [rows, credential.userId, leidoHasta, entregadoHasta, esGrupoChat, nombresDelGrupo, alVerImagen, alResponder, citados, elegido]
   );
 
-  /**
-   * Cerca del final o no. Con el teclado que se abre la lista se achica y el
-   * último mensaje quedaba debajo del campo (visto en el E2E de FL2): si se
-   * estaba abajo, se vuelve abajo; si se estaba leyendo arriba, no se toca.
-   */
-  const cercaDelFinal = useRef(true);
-  const alScrollear = useCallback((evento: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const { contentOffset, contentSize, layoutMeasurement } = evento.nativeEvent;
-    cercaDelFinal.current = contentSize.height - (contentOffset.y + layoutMeasurement.height) < MARGEN_DEL_FINAL;
-  }, []);
-  useEffect(() => {
-    const sub = Keyboard.addListener('keyboardDidShow', () => {
-      if (cercaDelFinal.current) listaRef.current?.scrollToEnd({ animated: true });
-    });
-    return () => sub.remove();
-  }, []);
+  const { alScrollear, abajoLejos, nuevosAbajo } = useFinalDeLaConversacion(listaRef, messages, credential.userId);
 
   // Con el teclado abierto no hay barra de navegación debajo: el margen del pie
   // dejaba un hueco entre el campo y el teclado (auditoría del 16/10).
@@ -535,7 +524,7 @@ export function ChatScreen({
     <KeyboardAvoidingView
       // `style` y no `className`: NativeWind no estiliza componentes de terceros
       // y sin `flex: 1` la pantalla se aplastaba.
-      style={{ flex: 1, backgroundColor: colores.background }}
+      style={{ flex: 1, backgroundColor: colores['fondo-chat'] }}
       /**
        * `padding` TAMBIEN en Android, y no es un descuido.
        *
@@ -662,7 +651,15 @@ export function ChatScreen({
             </Pressable>
           </>
         ) : null}
-        <Pressable testID="btn-menu-chat" className="h-11 w-9 items-center justify-center">
+        {/* El ⋮ no hacía nada (auditoría del 16/10): un botón que no responde
+            enseña que la app no responde. Abre la info del chat. */}
+        <Pressable
+          testID="btn-menu-chat"
+          accessibilityLabel="Info del chat"
+          onPress={() => setVerDetalle(true)}
+          android_ripple={{ color: colores.outline, borderless: true, radius: 22 }}
+          className="h-11 w-9 items-center justify-center"
+        >
           <MoreVertical size={20} color={colores["on-surface-variant"]} />
         </Pressable>
       </View>
@@ -739,52 +736,74 @@ export function ChatScreen({
         <CatchUpBanner chatId={chatId} credential={credential} unread={unread} />
       )}
 
+      <View className="flex-1">
+        <FondoDelChat />
       <FlashList
-        ref={listaRef}
-        data={rows}
-        // Cuando la lista terminó de montar, al final. Es el momento exacto en
-        // que ya midió, sin adivinar con un temporizador.
-        onLoad={() => listaRef.current?.scrollToEnd({ animated: false })}
-        testID="lista-mensajes"
-        /**
-         * `flex-1` NO es cosmético: sin él la lista no está acotada por la
-         * columna y su borde inferior queda DEBAJO de la barra de escribir. Con
-         * la conversación llena no se nota —lo que sobra queda fuera de la
-         * pantalla y el último mensaje cae justo arriba de la barra— pero con
-         * pocos mensajes el contenido se ancla al fondo de la lista, o sea
-         * tapado. Se vio con un grupo cuyo único contenido era un aviso: la
-         * línea aparecía cortada a la mitad detrás del campo de texto.
-         */
-        className="flex-1"
-        // El scroll hacia arriba trae los mensajes viejos, como WhatsApp. El
-        // umbral es 0.5 pantallas: pedirlos recién al tocar el borde deja un
-        // hueco visible mientras viajan.
-        onStartReached={() => void cargarAnteriores()}
-        onStartReachedThreshold={0.5}
-        // `autoscrollToBottomThreshold`: si se está cerca del final (20 % de la
-        // pantalla), lo que llega o se manda baja la lista solo, como
-        // WhatsApp. Leyendo arriba, no mueve nada.
-        maintainVisibleContentPosition={{ startRenderingFromBottom: true, autoscrollToBottomThreshold: 0.2 }}
-        onScroll={alScrollear}
-        scrollEventThrottle={100}
-        ListHeaderComponent={
-          cargandoAnteriores ? (
-            <View className="items-center py-3" testID="cargando-anteriores">
-              <ActivityIndicator color={colores.primary} />
-            </View>
-          ) : !hayAnteriores && rows.length > 0 ? (
-            // El final de la conversación se DICE: sin esto, quien scrollea
-            // hasta arriba no sabe si ya vio todo o si falta cargar.
-            <Text className="py-3 text-center text-[11px] text-on-surface-variant">
-              Este es el principio de la conversación
-            </Text>
-          ) : null
-        }
-        keyExtractor={(row) => (isPending(row) ? `p-${row.clientKey}` : `m-${row.seq}`)}
-        contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 8 }}
-        renderItem={dibujarFila}
-        getItemType={tipoDeFila}
-      />
+          ref={listaRef}
+          data={rows}
+          // Cuando la lista terminó de montar, al final. Es el momento exacto en
+          // que ya midió, sin adivinar con un temporizador.
+          onLoad={() => listaRef.current?.scrollToEnd({ animated: false })}
+          testID="lista-mensajes"
+          /**
+           * `flex-1` NO es cosmético: sin él la lista no está acotada por la
+           * columna y su borde inferior queda DEBAJO de la barra de escribir. Con
+           * la conversación llena no se nota —lo que sobra queda fuera de la
+           * pantalla y el último mensaje cae justo arriba de la barra— pero con
+           * pocos mensajes el contenido se ancla al fondo de la lista, o sea
+           * tapado. Se vio con un grupo cuyo único contenido era un aviso: la
+           * línea aparecía cortada a la mitad detrás del campo de texto.
+           */
+          className="flex-1"
+          // El scroll hacia arriba trae los mensajes viejos, como WhatsApp. El
+          // umbral es 0.5 pantallas: pedirlos recién al tocar el borde deja un
+          // hueco visible mientras viajan.
+          onStartReached={() => void cargarAnteriores()}
+          onStartReachedThreshold={0.5}
+          // `autoscrollToBottomThreshold`: si se está cerca del final (20 % de la
+          // pantalla), lo que llega o se manda baja la lista solo, como
+          // WhatsApp. Leyendo arriba, no mueve nada.
+          maintainVisibleContentPosition={{ startRenderingFromBottom: true, autoscrollToBottomThreshold: 0.2 }}
+          onScroll={alScrollear}
+          scrollEventThrottle={100}
+          ListHeaderComponent={
+            cargandoAnteriores ? (
+              <View className="items-center py-3" testID="cargando-anteriores">
+                <ActivityIndicator color={colores.primary} />
+              </View>
+            ) : !hayAnteriores && rows.length > 0 ? (
+              // El final de la conversación se DICE: sin esto, quien scrollea
+              // hasta arriba no sabe si ya vio todo o si falta cargar.
+              <Text className="py-3 text-center text-[11px] text-on-surface-variant">
+                Este es el principio de la conversación
+              </Text>
+            ) : null
+          }
+          keyExtractor={(row) => (isPending(row) ? `p-${row.clientKey}` : `m-${row.seq}`)}
+          contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 8 }}
+          renderItem={dibujarFila}
+          getItemType={tipoDeFila}
+        />
+        {abajoLejos ? (
+          // «Bajar al final» con los que llegaron mientras se leía arriba, como
+          // WhatsApp. Aparece solo lejos del final: abajo no hace falta.
+          <Pressable
+            testID="btn-bajar"
+            accessibilityLabel="Ir al último mensaje"
+            onPress={() => listaRef.current?.scrollToEnd({ animated: true })}
+            className="absolute bottom-3 right-3 h-10 w-10 items-center justify-center rounded-full bg-surface shadow-md"
+          >
+            <ChevronDown size={22} color={colores['on-surface-variant']} />
+            {nuevosAbajo > 0 ? (
+              <View className="absolute -right-1 -top-1 h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1">
+                <Text className="text-[11px] font-bold text-on-primary" testID="nuevos-abajo">
+                  {nuevosAbajo}
+                </Text>
+              </View>
+            ) : null}
+          </Pressable>
+        ) : null}
+      </View>
 
       {uploading ? (
         <Text className="px-4 pb-1 text-sm text-on-surface-variant" testID="subida-progreso">
@@ -814,6 +833,7 @@ export function ChatScreen({
         subiendo={uploading}
         margenPie={tecladoAbierto ? MARGEN_CON_TECLADO : margenes.pie}
         onAdjuntar={alAdjuntar}
+        onCamara={alCamara}
         onEscribiendo={avisarEscribiendo}
         onEnviar={alEnviar}
         onProgramar={alProgramarDesdeComposer}

@@ -3386,7 +3386,7 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | FL0 | **Medir + bugs que se sienten lentos** — ver §45.4 | línea base anotada en §45.4 | ✅ 16/10 (0.1.70) |
 | FL1 | **Navegación nativa** — ver §45.5 | volver de un chat no remonta la lista | ✅ 16/10 (0.1.71) |
 | FL2 | **Pantalla de chat nueva** — FL2a (§45.6) y FL2b (§45.8) | 0 frames perdidos al tipear y al abrir; teclado sincronizado | ✅ 16/10 (0.1.73) |
-| FL3 | **Burbujas y lista estilo WhatsApp**: cola real, hora + ticks dentro, ticks vectoriales, nombre del autor en grupos (hoy sale la inicial del grupo), wallpaper, paleta de burbujas, ripple, FAB «bajar al final», fecha pegada, sin controles inertes | auditoría lado a lado contra WhatsApp/Telegram con capturas | ⬜ |
+| FL3 | **Burbujas y lista estilo WhatsApp** — conversación hecha (§45.9); falta la LISTA (ripple, ticks en la vista previa, avatar 52 dp), el sistema de avisos y la versión oscura del diseño | auditoría lado a lado contra el diseño de Stitch | 🟡 conversación 16/10 (0.1.74) |
 | FL4 | **Latencia del server** — hecho: envío de 5 a 3 viajes, lista sin N+1, ping 15/10 s (§45.7). Falta: bóveda (D2), caché de membresía para acuses/typing, fotos con dimensiones + blurhash | ack < 300 ms medido | 🟡 16/10 |
 | FL5 | **Pendientes de F12 que pesan en el hilo JS**: cifrado/scrypt por lotes, tarea de fondo que mira wifi/carga primero (§44.4) | respaldar 20 000 mensajes sin ANR en `gama-baja` | ⬜ |
 | FL6 | **Marca y Stitch**: logo vectorial único (ícono, adaptativo, mono, splash y `<Logo>` desde la misma geometría); diseñar en Stitch la conversación llena, con la paleta real y las pestañas reales | ícono verificado dentro del APK | ⬜ |
@@ -3534,3 +3534,47 @@ mensaje: esas entradas no son de rendimiento.
   `publicarMensaje`; test con socket real): un mensaje mandado desde otro
   dispositivo ya no cuenta como «sin leer» ni dispara el «ponme al día» de
   Lila. Y el aviso dice «1 mensaje», no «1 mensajes».
+
+### 45.9 As-is FL3, la conversación (16/10/2026)
+
+**Diseño de referencia**: «Conversación 1:1 · Claro» generado en Stitch el 16/10
+(proyecto 15540754270713720465, pantalla `db8e9add1f63431a939a8d6fbcac5b41`) —
+la pantalla que faltaba: una conversación llena con agrupado, citas, foto, voz
+y pendiente. La versión oscura falló por «service unavailable»; queda
+pendiente. Las capturas NO van al repo.
+
+- **Colores propios del chat** (tokens `fondo-chat`, `burbuja-propia`,
+  `on-burbuja-propia`, `burbuja-ajena`, `on-burbuja-ajena`, `check-leido`,
+  `autor-1…6`, en `shared/src/tokens.ts` + `tema.ts`, emitidos a
+  `global.css`): propia lavanda clara con texto oscuro en claro y violeta
+  profundo con texto claro en oscuro (test: contraste y «en oscuro la propia
+  es oscura»); ajenas blancas / slate.
+- **Forma** (`chat/burbuja.ts`, 9 tests): radio 18, esquinas internas de 6
+  dentro del bloque, cola (4) solo en la última; 2 dp entre burbujas del
+  mismo bloque.
+- **Hora y checks DENTRO** de la burbuja, en la última línea: el texto lleva un
+  relleno con la MISMA hora a 11 sp pintada del color de la burbuja (en
+  Android un span `transparent` se ve gris) y la hora real va encima. Sobre
+  una foto o video, en una píldora oscura. Checks vectoriales (lucide
+  `Check`/`CheckCheck`/`Clock3`), azul de leído.
+- **Grupos**: nombre del autor en la primera burbuja del bloque, con color
+  estable por persona (`colorDeAutor`), y avatar con SU inicial junto a la
+  última (antes era la inicial del nombre del grupo). Los nombres salen de
+  `/api/chats/:id/detail` UNA vez por grupo (`useNombresDelGrupo`, con cache
+  en memoria; resolución en `nombresDelGrupo.ts`, 3 tests: gana la agenda).
+  **Bug que destapó**: la navegación pasaba `otherUserId` también en grupos
+  («el primero»): la pantalla no se enteraba de que era un grupo y el botón de
+  llamar llamaba a un miembro cualquiera. Ahora solo en 1:1.
+- **Fondo** con patrón de puntos (`FondoDelChat`, un `Svg` con `Pattern`),
+  chips de fecha blancos, selección que tiñe la fila (no la burbuja).
+- **Botón «bajar al final»** con contador de lo que llegó de otros mientras se
+  leía arriba (`useFinalDeLaConversacion`, contado por `seq`).
+- **Controles inertes fuera**: el ⋮ abre la info del chat; el emoji (no hacía
+  nada) se reemplazó por clip y cámara DENTRO de la píldora, que se esconden
+  al escribir.
+- E2E en el emulador: burbujas propias en un chat de QA y ajenas con nombre de
+  autor en un grupo real (solo lectura); hora en la misma línea cuando cabe;
+  video con la hora sobre la imagen; el botón bajar aparece al subir y lleva al
+  final.
+- `ChatScreen` quedó en 913 líneas (deuda previa, >600): la lógica de scroll
+  salió a `useFinalDeLaConversacion`; falta partir la cabecera y los modales.

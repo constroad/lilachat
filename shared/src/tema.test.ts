@@ -108,3 +108,35 @@ describe('variablesDeTema', () => {
     );
   });
 });
+
+/**
+ * FL3 (spec §45): los colores de la conversación. Propia lavanda CLARA con
+ * texto oscuro en claro; en oscuro, violeta PROFUNDO con texto claro — un
+ * bloque claro en un chat oscuro deslumbra (auditoría del 16/10).
+ */
+describe('colores del chat', () => {
+  const luminancia = (hex: string) => {
+    const [r, g, b] = hexARgb(hex).split(' ').map(Number);
+    return 0.299 * r + 0.587 * g + 0.114 * b;
+  };
+
+  it('la burbuja propia contrasta con su texto en los dos modos', () => {
+    for (const esquema of ['light', 'dark'] as const) {
+      const paleta = paletaDe(esquema);
+      const diferencia = Math.abs(luminancia(paleta['burbuja-propia']) - luminancia(paleta['on-burbuja-propia']));
+      expect(diferencia, esquema).toBeGreaterThan(120);
+    }
+  });
+
+  it('en oscuro la burbuja propia es oscura (no lavanda)', () => {
+    expect(luminancia(paletaDe('dark')['burbuja-propia'])).toBeLessThan(90);
+  });
+
+  it('el fondo del chat se distingue de las burbujas ajenas', () => {
+    for (const esquema of ['light', 'dark'] as const) {
+      const paleta = paletaDe(esquema);
+      expect(paleta['fondo-chat']).not.toBe(paleta['burbuja-ajena']);
+    }
+  });
+});
+

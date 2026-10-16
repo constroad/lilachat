@@ -3,7 +3,8 @@ import { memo } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { FileText, Pause, Play } from 'lucide-react-native';
+import { Check, CheckCheck, Clock3, FileText, Pause, Play } from 'lucide-react-native';
+import { colorDeAutor, mostrarAutor, radiosDeBurbuja } from './burbuja';
 import { DeslizarParaResponder } from './DeslizarParaResponder';
 import { porcentajeDeSubida } from './progresoDeSubida';
 import {
@@ -16,7 +17,6 @@ import {
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { nombreLimpio } from './archivoDescargado';
 import {
-  DELIVERY_GLYPH,
   formatClock,
   groupsWithPrevious,
   resolveDeliveryState,
@@ -57,7 +57,8 @@ function FilaDeMensaje({
   myUserId,
   othersReadSeq,
   othersDeliveredSeq,
-  senderInitial,
+  esGrupo = false,
+  nombreAutor,
   onVerImagen,
   onSeleccionar,
   onResponder,
@@ -70,7 +71,10 @@ function FilaDeMensaje({
   myUserId: string;
   othersReadSeq: number;
   othersDeliveredSeq: number;
-  senderInitial: string;
+  /** En un grupo se muestran nombre y avatar de cada autor; en un 1:1, no. */
+  esGrupo?: boolean;
+  /** El nombre de quien escribió (resuelto con la agenda), en un grupo. */
+  nombreAutor?: string;
   /** Abre el visor a pantalla completa. */
   /** Abre el visor en esta foto (por su `seq`: la URL no la identifica). */
   onVerImagen?: (seq: number) => void;
@@ -117,7 +121,12 @@ function FilaDeMensaje({
     otherDeliveredSeq: othersDeliveredSeq,
   });
 
-  const tail = nextGrouped ? '' : mine ? 'rounded-br-tail' : 'rounded-bl-tail';
+  const radios = radiosDeBurbuja({ mia: mine, conAnterior: grouped, conSiguiente: nextGrouped });
+  const conAutor = mostrarAutor({ esGrupo, mia: mine, conAnterior: grouped });
+  const colorAutor = colores[`autor-${colorDeAutor(senderId)}` as keyof typeof colores] as string;
+  const hora = formatClock(at);
+  const idDeFila = isPending(item) ? item.clientKey : String(item.seq);
+  const meta = { hora, mia: mine, entrega: delivery, id: idDeFila };
 
   const preview = previewDeMensaje(item);
 
@@ -126,18 +135,23 @@ function FilaDeMensaje({
       habilitado={!isPending(item)}
       onResponder={() => !isPending(item) && onResponder?.(item.seq, preview, mine)}
     >
-    <View className={`flex-row items-end gap-2 ${grouped ? 'mt-1' : 'mt-4'} ${mine ? 'justify-end' : ''}`}>
-      {/* El avatar acompaña SOLO al último del bloque ajeno: repetirlo en cada
-          burbuja del mismo emisor ensucia la columna. */}
-      {!mine ? (
+    <View
+      className={`-mx-3 flex-row items-end gap-2 px-3 ${grouped ? 'pt-0.5' : 'pt-3'} ${mine ? 'justify-end' : ''} ${seleccionado ? 'bg-primary/15' : ''}`}
+    >
+      {/* El avatar va SOLO en grupos (en un 1:1 se sabe quién es, como
+          WhatsApp) y solo junto al ÚLTIMO del bloque ajeno, con la inicial de
+          quien escribió — antes salía la del NOMBRE DEL GRUPO en todos. */}
+      {!mine && esGrupo ? (
         <View className="h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
           {!nextGrouped ? (
-            <Text className="text-[11px] font-bold text-primary">{senderInitial}</Text>
+            <Text className="text-[11px] font-bold" style={{ color: colorAutor }}>
+              {(nombreAutor ?? '?').slice(0, 1).toUpperCase()}
+            </Text>
           ) : null}
         </View>
       ) : null}
 
-      <View className={`max-w-[78%] ${mine ? 'items-end' : 'items-start'}`}>
+      <View className={`max-w-[80%] ${mine ? 'items-end' : 'items-start'}`}>
         {/* La pulsación LARGA selecciona, como en WhatsApp. Un toque corto no
             hace nada acá: se reserva para abrir la foto. */}
         <Pressable
@@ -149,29 +163,45 @@ function FilaDeMensaje({
           }}
           delayLongPress={350}
           testID={!isPending(item) ? `burbuja-${item.seq}` : undefined}
-          className={`overflow-hidden rounded-lg ${tail} ${mine ? 'bg-primary' : 'bg-surface-variant'} ${seleccionado ? 'opacity-60' : ''}`}
+          className={`overflow-hidden ${mine ? 'bg-burbuja-propia' : 'bg-burbuja-ajena'}`}
+          style={{
+            borderTopLeftRadius: radios.arribaIzq,
+            borderTopRightRadius: radios.arribaDer,
+            borderBottomLeftRadius: radios.abajoIzq,
+            borderBottomRightRadius: radios.abajoDer,
+          }}
         >
+          {conAutor && nombreAutor ? (
+            <Text
+              testID={`autor-${idDeFila}`}
+              className="px-3 pt-1.5 text-[13px] font-semibold"
+              style={{ color: colorAutor }}
+              numberOfLines={1}
+            >
+              {nombreAutor}
+            </Text>
+          ) : null}
           {/* La cita del mensaje al que ESTE responde. Va DENTRO de la burbuja,
               arriba del contenido, como WhatsApp. Se resuelve afuera (en la
               pantalla, que tiene todos los mensajes) y llega ya listo. */}
           {citado ? (
             <View
               testID={`cita-${isPending(item) ? item.clientKey : item.seq}`}
-              className={`mx-1.5 mt-1.5 rounded-md border-l-2 border-primary px-2 py-1 ${mine ? 'bg-on-primary/10' : 'bg-primary/[0.06]'}`}
+              className="mx-1.5 mt-1.5 rounded-md border-l-2 border-primary bg-primary/[0.08] px-2 py-1"
             >
               {citado.autor ? (
-                <Text className={`text-[11px] font-semibold ${mine ? 'text-on-primary' : 'text-primary'}`} numberOfLines={1}>
+                <Text className="text-[11px] font-semibold text-primary" numberOfLines={1}>
                   {citado.autor}
                 </Text>
               ) : null}
-              <Text className={`text-[12px] ${mine ? 'text-on-primary/80' : 'text-on-surface-variant'}`} numberOfLines={1}>
+              <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>
                 {citado.texto}
               </Text>
             </View>
           ) : null}
 
           {!isPending(item) && item.media && esVoz(item.media.mime) ? (
-            <NotaDeVoz url={item.media.url ?? ''} mia={mine} durationMs={item.media.durationMs} />
+            <NotaDeVoz url={item.media.url ?? ''} durationMs={item.media.durationMs} />
           ) : null}
 
           {/* Un ARCHIVO no es una foto: es una tarjeta con su nombre.
@@ -198,19 +228,19 @@ function FilaDeMensaje({
               ) : null}
               <View className="min-w-[200px] flex-row items-center gap-3 px-3 py-2.5">
                 <View
-                  className={`h-10 w-10 items-center justify-center rounded-lg ${mine ? 'bg-on-primary/20' : 'bg-primary/10'}`}
+                  className="h-10 w-10 items-center justify-center rounded-lg bg-primary/10"
                 >
-                  <FileText size={20} color={mine ? colores['on-primary'] : colores.primary} />
+                  <FileText size={20} color={colores.primary} />
                 </View>
                 <View className="min-w-0 flex-1">
                   <Text
-                    className={`text-[14px] font-semibold ${mine ? 'text-on-primary' : 'text-on-surface'}`}
+                    className={`text-[14px] font-semibold ${mine ? 'text-on-burbuja-propia' : 'text-on-burbuja-ajena'}`}
                     numberOfLines={2}
                   >
                     {item.media.fileName ? nombreLimpio(item.media.fileName) : 'Archivo'}
                   </Text>
                   <Text
-                    className={`text-[11px] ${mine ? 'text-on-primary/70' : 'text-on-surface-variant'}`}
+                    className="text-[11px] text-on-surface-variant"
                   >
                     {item.media.sizeBytes ? formatBytes(item.media.sizeBytes) : 'Tocá para abrirlo'}
                   </Text>
@@ -256,14 +286,14 @@ function FilaDeMensaje({
               testID={`archivo-pendiente-${item.clientKey}`}
               className="min-w-[200px] flex-row items-center gap-3 px-3 py-2.5"
             >
-              <View className="h-10 w-10 items-center justify-center rounded-lg bg-on-primary/20">
-                <ActivityIndicator color={colores['on-primary']} />
+              <View className="h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <ActivityIndicator color={colores.primary} />
               </View>
               <View className="min-w-0 flex-1">
-                <Text className="text-[14px] font-semibold text-on-primary" numberOfLines={2}>
+                <Text className="text-[14px] font-semibold text-on-burbuja-propia" numberOfLines={2}>
                   {item.mediaNombre ?? 'Archivo'}
                 </Text>
-                <Text className="text-[11px] text-on-primary/70">
+                <Text className="text-[11px] text-on-surface-variant">
                   Enviando… {porcentajeDeSubida(item.progreso ?? 0)}%
                 </Text>
               </View>
@@ -278,8 +308,9 @@ function FilaDeMensaje({
                 contentFit="cover"
               />
               <View className="absolute inset-0 items-center justify-center">
-                <ActivityIndicator color={colores['on-primary']} />
-                <Text className="mt-1 text-[11px] font-semibold text-on-primary">
+                {/* Encima de una foto atenuada: blanco en los dos modos. */}
+                <ActivityIndicator color="white" />
+                <Text className="mt-1 text-[11px] font-semibold" style={{ color: 'white' }}>
                   {porcentajeDeSubida(item.progreso ?? 0)}%
                 </Text>
               </View>
@@ -294,35 +325,105 @@ function FilaDeMensaje({
              */
             <Text
               testID={`eliminado-${item.seq}`}
-              className={`px-3.5 py-2 text-base italic ${mine ? 'text-on-primary/70' : 'text-on-surface-variant'}`}
+              className="px-3 py-1.5 text-[15px] italic text-on-surface-variant"
             >
               {TEXTO_ELIMINADO}
             </Text>
           ) : item.body ? (
-            <Text className={`px-3.5 py-2 text-base ${mine ? 'text-on-primary' : 'text-on-surface'}`}>
-              {item.body}
-            </Text>
+            // Hora y checks DENTRO, alineados a la última línea (como WhatsApp):
+            // el texto lleva al final un relleno invisible del ancho de la hora
+            // y la hora va encima, abajo a la derecha. Cero renglón extra.
+            <View className="px-3 pb-1.5 pt-1.5">
+              <Text className={`text-[15px] leading-[21px] ${mine ? 'text-on-burbuja-propia' : 'text-on-burbuja-ajena'}`}>
+                {item.body}
+                {/* El relleno es la MISMA hora, al mismo tamaño e invisible:
+                    reserva exactamente su ancho (con espacios de nbsp, la hora
+                    se montaba sobre los mensajes cortos). */}
+                <Text
+                  className="text-[11px]"
+                  // Del color de la burbuja y no `transparent`: en Android un
+                  // span anidado transparente se pinta gris.
+                  style={{ color: mine ? colores['burbuja-propia'] : colores['burbuja-ajena'] }}
+                >
+                  {`${NBSP}${NBSP}${hora}${mine ? RELLENO_CHECKS : NBSP}`}
+                </Text>
+              </Text>
+              <View className="absolute bottom-1 right-2.5">
+                <MetaDeMensaje {...meta} />
+              </View>
+            </View>
+          ) : null}
+
+          {/* Lo que no es texto (foto, voz, archivo, borrado) lleva la hora en
+              su propio renglón dentro de la burbuja; sobre una foto, encima. */}
+          {isPending(item) || !item.body || item.deletedAt ? (
+            esFotoVisible(item) ? (
+              <View className="absolute bottom-1.5 right-2 rounded-full bg-black/35 px-1.5 py-0.5">
+                <MetaDeMensaje {...meta} sobreFoto />
+              </View>
+            ) : (
+              <View className="flex-row justify-end px-2.5 pb-1.5">
+                <MetaDeMensaje {...meta} />
+              </View>
+            )
           ) : null}
         </Pressable>
 
-        {/* Hora + check, como en el diseño. El check azul de «leído» se
-            distingue del gris de «entregado» por COLOR, no por forma. */}
-        <View className="mt-0.5 flex-row items-center gap-1 px-1">
-          <Text className="text-[11px] text-on-surface-variant" testID={`hora-${isPending(item) ? item.clientKey : item.seq}`}>
-            {formatClock(at)}
-          </Text>
-          {mine ? (
-            <Text
-              testID={`estado-${isPending(item) ? item.clientKey : item.seq}`}
-              className={`text-[11px] ${delivery === 'read' ? 'text-secondary' : 'text-on-surface-variant'}`}
-            >
-              {DELIVERY_GLYPH[delivery]}
-            </Text>
-          ) : null}
-        </View>
       </View>
     </View>
     </DeslizarParaResponder>
+  );
+}
+
+/** El relleno invisible al final del texto: reserva el lugar de la hora. */
+const NBSP = '\u00A0';
+/** El lugar de los checks (14 dp) a 11 sp. */
+const RELLENO_CHECKS = NBSP.repeat(6);
+const TAMANO_CHECK = 14;
+
+/** Una foto o un video que se ve en la burbuja: la hora va ENCIMA de la imagen. */
+function esFotoVisible(item: Row): boolean {
+  if (isPending(item)) return Boolean(item.mediaUri) && !esArchivo(item.mediaMime);
+  return Boolean(item.media?.thumbUrl) && !esArchivo(item.media?.mime) && !item.deletedAt;
+}
+
+/**
+ * Hora y estado DENTRO de la burbuja. Checks vectoriales, como WhatsApp: uno
+ * gris (enviado), dos grises (entregado), dos azules (leído) y un relojito
+ * mientras está en la cola. Antes eran glifos de texto y un emoji 🕐.
+ */
+function MetaDeMensaje({
+  hora,
+  mia,
+  entrega,
+  id,
+  sobreFoto = false,
+}: {
+  hora: string;
+  mia: boolean;
+  entrega: ReturnType<typeof resolveDeliveryState>;
+  id: string;
+  sobreFoto?: boolean;
+}) {
+  const colores = useColores();
+  const tono = sobreFoto ? 'white' : colores['on-surface-variant'];
+  return (
+    <View className="flex-row items-center gap-1">
+      <Text className="text-[11px]" style={{ color: tono }} testID={`hora-${id}`}>
+        {hora}
+      </Text>
+      {mia ? (
+        <View testID={`estado-${id}`} accessibilityLabel={`estado ${entrega}`}>
+          {entrega === 'pending' ? (
+            <Clock3 size={TAMANO_CHECK - 2} color={tono} />
+          ) : entrega === 'sent' ? (
+            <Check size={TAMANO_CHECK} color={tono} />
+          ) : (
+            <CheckCheck size={TAMANO_CHECK} color={entrega === 'read' ? colores['check-leido'] : tono} />
+          )}
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -338,8 +439,9 @@ export const MessageRow = memo(FilaDeMensaje);
 export function DaySeparator({ label }: { label: string }) {
   return (
     <View className="my-3 items-center">
-      <View className="rounded-full bg-surface-variant px-3 py-1">
-        <Text className="text-[11px] font-semibold text-on-surface-variant">{label}</Text>
+      {/* Chip blanco sobre el fondo del chat, como el diseño (antes celeste). */}
+      <View className="rounded-full bg-surface px-3 py-1 shadow-sm">
+        <Text className="text-[12px] font-medium text-on-surface-variant">{label}</Text>
       </View>
     </View>
   );
@@ -396,7 +498,7 @@ function AvisoDelGrupo({ item, myUserId }: { item: ChatMessage; myUserId: string
  * lo peor que puede hacer una app de mensajería: suena en la mesa, en la
  * reunión, o encima de otro audio.
  */
-function NotaDeVoz({ url, mia, durationMs }: { url: string; mia: boolean; durationMs?: number }) {
+function NotaDeVoz({ url, durationMs }: { url: string; durationMs?: number }) {
   const colores = useColores();
   const player = useAudioPlayer(url);
   const estado = useAudioPlayerStatus(player);
@@ -420,24 +522,24 @@ function NotaDeVoz({ url, mia, durationMs }: { url: string; mia: boolean; durati
           if (estado.didJustFinish || estado.currentTime >= estado.duration) player.seekTo(0);
           player.play();
         }}
-        className={`h-10 w-10 items-center justify-center rounded-full ${mia ? 'bg-on-primary/20' : 'bg-primary/10'}`}
+        className={`h-10 w-10 items-center justify-center rounded-full bg-primary/10`}
       >
         {sonando ? (
-          <Pause size={18} color={mia ? colores['on-primary'] : colores.primary} />
+          <Pause size={18} color={colores.primary} />
         ) : (
-          <Play size={18} color={mia ? colores['on-primary'] : colores.primary} fill={mia ? colores['on-primary'] : colores.primary} />
+          <Play size={18} color={colores.primary} fill={colores.primary} />
         )}
       </Pressable>
       <View className="min-w-0 flex-1">
-        <View className={`h-1 rounded-full ${mia ? 'bg-on-primary/25' : 'bg-primary/15'}`}>
+        <View className="h-1 rounded-full bg-primary/15">
           <View
-            className={`h-1 rounded-full ${mia ? 'bg-on-primary' : 'bg-primary'}`}
+            className="h-1 rounded-full bg-primary"
             style={{
               width: `${estado.duration > 0 ? Math.min(100, (estado.currentTime / estado.duration) * 100) : 0}%`,
             }}
           />
         </View>
-        <Text className={`mt-1 text-[11px] ${mia ? 'text-on-primary/70' : 'text-on-surface-variant'}`}>
+        <Text className="mt-1 text-[11px] text-on-surface-variant">
           {duracionDeVoz(ms)}
         </Text>
       </View>

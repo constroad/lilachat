@@ -129,6 +129,22 @@ describe('sendMessage — membresía', () => {
     expect(await MessageModel.countDocuments({ chatId })).toBe(0);
   });
 
+  /**
+   * FL4: el envío devuelve los miembros que leyó al reservar el `seq`, para que
+   * el reparto no vuelva a buscarlos (de 5 viajes a la base a 3 antes del ack).
+   */
+  it('devuelve los miembros del chat junto con el mensaje', async () => {
+    const result = await sendMessage({ chatId, senderId: jose, clientKey: 'm1', body: 'hola' });
+
+    expect([...(result.members ?? [])].sort()).toEqual([String(jose), String(maria)].sort());
+  });
+
+  it('un no-miembro no consume seq: el chat sigue en el mismo número', async () => {
+    await expect(sendMessage({ chatId, senderId: ajeno, clientKey: 'x', body: 'intruso' })).rejects.toThrow();
+
+    expect((await ChatModel.findById(chatId).lean())?.lastSeq).toBe(0);
+  });
+
   it('un chat inexistente se rechaza igual que uno ajeno', async () => {
     await expect(
       sendMessage({

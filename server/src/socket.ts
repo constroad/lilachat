@@ -84,8 +84,8 @@ let ioVivo: SocketServer | null = null;
  * programados. Antes la media no mandaba push y los programados y las
  * auto-respuestas no se emitían: se veían recién al reabrir el chat.
  */
-export async function publicarMensaje(message: Message): Promise<string[]> {
-  const members = await avisarMensajeNuevo(message);
+export async function publicarMensaje(message: Message, conocidos?: string[]): Promise<string[]> {
+  const members = await avisarMensajeNuevo(message, conocidos);
   const senderId = String(message.senderId);
   // `.catch` y no `void` a secas: un rechazo sin dueño tumba los tests y
   // despierta la red de seguridad del proceso por algo que no es un error real.
@@ -96,9 +96,11 @@ export async function publicarMensaje(message: Message): Promise<string[]> {
 }
 
 export async function avisarMensajeNuevo(
-  message: Parameters<typeof toClientMessage>[0]
+  message: Parameters<typeof toClientMessage>[0],
+  /** Los miembros, si ya se leyeron al enviar (FL4): ahorra un viaje a la base. */
+  conocidos?: string[]
 ): Promise<string[]> {
-  const members = await chatMemberIds(message.chatId);
+  const members = conocidos ?? (await chatMemberIds(message.chatId));
   if (!ioVivo) return members;
 
   const remitente = String((message as { senderId?: unknown }).senderId ?? '');
@@ -144,6 +146,9 @@ export function avisarCambioDeChat(userId: string, chatId: string): void {
   ioVivo?.to(userRoom(userId)).emit('chat.changed', { chatId });
 }
 
+const PING_INTERVALO_MS = 15_000;
+const PING_ESPERA_MS = 10_000;
+
 export function attachSocket(httpServer: HttpServer): SocketServer {
   const io = new SocketServer(httpServer, {
     // El cliente es nuestra app y nuestra web; no hay terceros embebiéndonos.
@@ -151,6 +156,13 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
     // Un mensaje de texto no pesa; el techo evita que un cliente roto empuje
     // megabytes por el socket.
     maxHttpBufferSize: 1e6,
+    // Un teléfono que pierde la señal se da por caído en ~25 s y no en 45 (los
+    // valores por defecto, 25 + 20): en esa ventana no se le mandaba push, sus
+    // `msg.new` se perdían y el server lo marcaba entregado sin estarlo (FL4).
+    // No se baja más: con «Conexión permanente» el ping corre con la app atrás
+    // y cada latido es batería.
+    pingInterval: PING_INTERVALO_MS,
+    pingTimeout: PING_ESPERA_MS,
   });
 
   // Se publica para que el camino HTTP (`/api/media`) pueda emitir `msg.new`.
@@ -211,7 +223,7 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
 
         // A TODOS los miembros (incluido el autor: sus otros dispositivos
         // también tienen que ver el mensaje).
-        const members = await avisarMensajeNuevo(result.message);
+        const members = await avisarMensajeNuevo(result.message, result.members);
         // Push SOLO a quien no tiene socket vivo. Un duplicado no se re-notifica:
         // ya se avisó cuando el mensaje se creó de verdad.
         if (!result.duplicate) {

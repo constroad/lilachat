@@ -3387,7 +3387,7 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | FL1 | **Navegación nativa** — ver §45.5 | volver de un chat no remonta la lista | ✅ 16/10 (0.1.71) |
 | FL2 | **Pantalla de chat nueva** — FL2a hecho (§45.6); FL2b: teclado sincronizado (`react-native-keyboard-controller`), swipe-to-reply con gesture-handler + Reanimated, haptics | 0 frames perdidos al tipear y al abrir; teclado sincronizado | 🟡 FL2a 16/10 (0.1.72) |
 | FL3 | **Burbujas y lista estilo WhatsApp**: cola real, hora + ticks dentro, ticks vectoriales, nombre del autor en grupos (hoy sale la inicial del grupo), wallpaper, paleta de burbujas, ripple, FAB «bajar al final», fecha pegada, sin controles inertes | auditoría lado a lado contra WhatsApp/Telegram con capturas | ⬜ |
-| FL4 | **Latencia del server**: envío de 5 a 3 viajes a la base, `lastMessage` denormalizado (adiós N+1 de la lista), ping 10/8 s + `connectionStateRecovery`, caché de membresía para acuses/typing, fotos redimensionadas con dimensiones + blurhash; con D2, bóveda | ack < 300 ms medido | ⬜ |
+| FL4 | **Latencia del server** — hecho: envío de 5 a 3 viajes, lista sin N+1, ping 15/10 s (§45.7). Falta: bóveda (D2), caché de membresía para acuses/typing, fotos con dimensiones + blurhash | ack < 300 ms medido | 🟡 16/10 |
 | FL5 | **Pendientes de F12 que pesan en el hilo JS**: cifrado/scrypt por lotes, tarea de fondo que mira wifi/carga primero (§44.4) | respaldar 20 000 mensajes sin ANR en `gama-baja` | ⬜ |
 | FL6 | **Marca y Stitch**: logo vectorial único (ícono, adaptativo, mono, splash y `<Logo>` desde la misma geometría); diseñar en Stitch la conversación llena, con la paleta real y las pestañas reales | ícono verificado dentro del APK | ⬜ |
 
@@ -3483,3 +3483,28 @@ mensaje: esas entradas no son de rendimiento.
 - Pendiente FL2b: el deslizar sigue con `PanResponder` en el hilo JS (Maestro
   no lo dispara con `swipe` sobre el elemento; con coordenadas sí), y el
   teclado sube con `KeyboardAvoidingView` (no sincronizado con su animación).
+
+### 45.7 As-is FL4, primera parte (16/10/2026)
+
+- **Envío: de 5 a 3 viajes a la base antes del ack.** La membresía va en el
+  filtro del `$inc` que reserva el `seq` (un no-miembro no consume número) y
+  ese mismo viaje trae los miembros (`SendResult.members`), que
+  `avisarMensajeNuevo` / `publicarMensaje` usan en vez de releer el chat. El
+  duplicado se busca primero y sin mirar membresía: devuelve el mensaje propio
+  ya guardado, no filtra nada ajeno. Tests: miembros devueltos y «un
+  no-miembro no consume seq».
+- **`listChats`: tres consultas en paralelo** en vez de 2 + N + 1 en serie: el
+  último mensaje de todos los chats sale de UNA agregación
+  (`$sort {chatId:-1, seq:-1}` + `$group $first`, sobre el índice
+  `{chatId, seq}`) y los nombres van en el mismo `Promise.all`.
+- **Socket.IO: ping 15 s / espera 10 s** (antes los defaults 25 + 20): un
+  teléfono sin señal se da por caído en ~25 s. No se usa
+  `connectionStateRecovery`: salta el middleware de auth al reconectar y la app
+  ya hace `sync.pull` en cada `connect`.
+- **Medido** contra el server local apuntando a **Atlas** (16/10): ack
+  **375–426 ms** (línea base 624–941 ms); `GET /api/chats` 310 ms con el
+  último mensaje correcto. Con la base en la misma mini (D2) cada viaje baja a
+  milisegundos: ahí se mide la meta de < 300 ms.
+- `scripts/conciliar-migracion.ts`: cuenta y concilia Atlas → bóveda para la
+  migración de D2 (probado con `--contar`; la conciliación se corre en el
+  cambio).

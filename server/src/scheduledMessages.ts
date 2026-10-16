@@ -145,7 +145,7 @@ export async function runScheduledTick(now: Date = new Date()): Promise<{ enviad
         clientKey: fila.clientKey,
         body: fila.body,
       });
-      if (!resultado.duplicate) await publicarMensaje(resultado.message);
+      if (!resultado.duplicate) await publicarMensaje(resultado.message, resultado.members);
       enviados += 1;
     } catch {
       // Si el envío falla (p. ej. lo sacaron del chat), el candado ya quedó

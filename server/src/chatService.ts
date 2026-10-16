@@ -47,7 +47,16 @@ async function assertMember(chatId: string, userId: Types.ObjectId): Promise<Typ
   return id;
 }
 
-export type SendResult = { message: Message; duplicate: boolean };
+export type SendResult = {
+  message: Message;
+  duplicate: boolean;
+  /**
+   * Los miembros del chat, leídos en el MISMO viaje que reserva el `seq`
+   * (FL4). Quien reparte el mensaje los usa en vez de volver a buscarlos. No
+   * viene en un duplicado: ese ya se repartió cuando se creó.
+   */
+  members?: string[];
+};
 
 /**
  * Envía un mensaje. Idempotente por `clientKey`.
@@ -69,8 +78,11 @@ export async function sendMessage(params: {
   /** Auto-respuesta de ausente (F11): se marca para no disparar otra. */
   autoReply?: boolean;
 }): Promise<SendResult> {
-  const chatId = await assertMember(params.chatId, params.senderId);
+  const chatId = toObjectId(params.chatId);
+  if (!chatId) throw new ForbiddenChatError();
 
+  // Un duplicado devuelve el mensaje propio ya guardado: no filtra nada ajeno,
+  // así que no hace falta mirar la membresía antes (un viaje menos).
   const existing = await MessageModel.findOne({
     chatId,
     senderId: params.senderId,
@@ -80,12 +92,16 @@ export async function sendMessage(params: {
 
   // `$inc` atómico: es lo que garantiza que dos envíos simultáneos no tomen el
   // mismo número. El índice único {chatId, seq} es el cinturón por si acaso.
+  // La MEMBRESÍA va en el filtro: quien no es miembro no consume un `seq`, y
+  // el mismo viaje trae los miembros para repartir (antes eran dos lecturas
+  // más del chat antes del ack).
   const chat = await ChatModel.findOneAndUpdate(
-    { _id: chatId },
+    { _id: chatId, 'members.userId': params.senderId },
     { $inc: { lastSeq: 1 } },
-    { returnDocument: 'after' }
-  ).lean<{ lastSeq: number } | null>();
+    { returnDocument: 'after', projection: { lastSeq: 1, 'members.userId': 1 } }
+  ).lean<{ lastSeq: number; members: { userId: Types.ObjectId }[] } | null>();
   if (!chat) throw new ForbiddenChatError();
+  const members = chat.members.map((member) => String(member.userId));
 
   try {
     const created = await MessageModel.create({
@@ -106,7 +122,7 @@ export async function sendMessage(params: {
       autoReply: params.autoReply ?? false,
       at: new Date(),
     });
-    return { message: created.toObject() as Message, duplicate: false };
+    return { message: created.toObject() as Message, duplicate: false, members };
   } catch (error) {
     // Carrera: dos reintentos del MISMO mensaje entraron a la vez y el índice
     // único de `clientKey` frenó al segundo. Eso no es un fallo — el hecho está
@@ -245,15 +261,21 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
     ),
   ];
 
-  const [allReceipts, lastMessages] = await Promise.all([
+  // TRES consultas en paralelo, y no 2 + N + 1 en serie (FL4): el último
+  // mensaje de todos los chats sale de UNA agregación sobre el índice
+  // {chatId, seq} —antes era un `findOne` por chat—, y los nombres van en el
+  // mismo viaje en vez de esperar a los otros dos.
+  const [allReceipts, ultimos, otros] = await Promise.all([
     ReceiptModel.find({ chatId: { $in: chatIds } }).lean(),
-    Promise.all(
-      chats.map((chat) =>
-        MessageModel.findOne({ chatId: chat._id }).sort({ seq: -1 }).lean<Message | null>()
-      )
-    ),
+    MessageModel.aggregate<{ _id: Types.ObjectId; ultimo: Message }>([
+      { $match: { chatId: { $in: chatIds } } },
+      { $sort: { chatId: -1, seq: -1 } },
+      { $group: { _id: '$chatId', ultimo: { $first: '$$ROOT' } } },
+    ]),
+    UserModel.find({ _id: { $in: otrosIds } }).select('name phone').lean(),
   ]);
-  const otros = await UserModel.find({ _id: { $in: otrosIds } }).select('name phone').lean();
+  const ultimoPorChat = new Map(ultimos.map((fila) => [String(fila._id), fila.ultimo]));
+  const lastMessages = chats.map((chat) => ultimoPorChat.get(String(chat._id)) ?? null);
   const personas = new Map(otros.map((user) => [String(user._id), user.name ?? user.phone]));
   const telefonos = new Map(otros.map((user) => [String(user._id), user.phone]));
 

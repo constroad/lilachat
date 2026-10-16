@@ -112,7 +112,7 @@ export async function autoResponderA(params: {
         body: texto,
         autoReply: true,
       });
-      if (!resultado.duplicate) await publicarMensaje(resultado.message);
+      if (!resultado.duplicate) await publicarMensaje(resultado.message, resultado.members);
       enviados += 1;
     } catch {
       // Si no se pudo (lo sacaron del chat), el sello ya está: no reintenta.

@@ -3385,7 +3385,7 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | --- | --- | --- | --- |
 | FL0 | **Medir + bugs que se sienten lentos** — ver §45.4 | línea base anotada en §45.4 | ✅ 16/10 (0.1.70) |
 | FL1 | **Navegación nativa** — ver §45.5 | volver de un chat no remonta la lista | ✅ 16/10 (0.1.71) |
-| FL2 | **Pantalla de chat nueva**: composer aislado (una tecla no re-renderiza la lista), `MessageRow` memo, `getItemType`, mapa de respuestas (sin `find` por fila), `react-native-keyboard-controller`, swipe-to-reply con gesture-handler + Reanimated, haptics | 0 frames perdidos al tipear y al abrir; teclado sincronizado | ⬜ |
+| FL2 | **Pantalla de chat nueva** — FL2a hecho (§45.6); FL2b: teclado sincronizado (`react-native-keyboard-controller`), swipe-to-reply con gesture-handler + Reanimated, haptics | 0 frames perdidos al tipear y al abrir; teclado sincronizado | 🟡 FL2a 16/10 (0.1.72) |
 | FL3 | **Burbujas y lista estilo WhatsApp**: cola real, hora + ticks dentro, ticks vectoriales, nombre del autor en grupos (hoy sale la inicial del grupo), wallpaper, paleta de burbujas, ripple, FAB «bajar al final», fecha pegada, sin controles inertes | auditoría lado a lado contra WhatsApp/Telegram con capturas | ⬜ |
 | FL4 | **Latencia del server**: envío de 5 a 3 viajes a la base, `lastMessage` denormalizado (adiós N+1 de la lista), ping 10/8 s + `connectionStateRecovery`, caché de membresía para acuses/typing, fotos redimensionadas con dimensiones + blurhash; con D2, bóveda | ack < 300 ms medido | ⬜ |
 | FL5 | **Pendientes de F12 que pesan en el hilo JS**: cifrado/scrypt por lotes, tarea de fondo que mira wifi/carga primero (§44.4) | respaldar 20 000 mensajes sin ANR en `gama-baja` | ⬜ |
@@ -3458,3 +3458,28 @@ mensaje: esas entradas no son de rendimiento.
 - Límite del E2E: los mensajes de QA salen de otro dispositivo de José (no
   suman no leídos por ser propios); el caso «mensaje de otra persona con el
   chat abierto» está cubierto por los tests de `listaEnVivo`.
+
+### 45.6 As-is FL2a (16/10/2026)
+
+- **El Composer es un componente aparte** (`chat/Composer.tsx`, memo): el
+  borrador y el contador de la nota de voz son su estado. Antes vivían en
+  `ChatScreen` y cada tecla re-renderizaba la pantalla con todas sus burbujas.
+  Programar (long-press) le pide el texto al Composer y lo limpia por
+  `ref` al confirmar. `ChatScreen` bajó de 939 a ~870 líneas.
+- **Filas estables**: `rows` memoizadas (la burbuja de subida guarda su
+  `queuedAt` al empezar; antes era `new Date()` en cada render), `renderItem`
+  con `useCallback`, `MessageRow` con `memo`, callbacks estables
+  (`onVerImagen` recibe el `seq`), y las citas en un mapa por `seq`
+  (`chat/filasDelChat.ts`, 6 tests) en vez de un `messages.find` por fila.
+  `getItemType` recicla por tipo (texto, media, aviso, pendiente).
+- **La conversación queda abajo**: `autoscrollToBottomThreshold: 0.2` (lo que
+  llega o se manda cerca del final baja la lista), lo mío siempre baja al
+  final, y al abrir el teclado vuelve abajo si se estaba abajo. Visto en el
+  E2E: con el teclado abierto el último mensaje quedaba debajo del campo.
+- E2E (emulador, server local): enviar; long-press → el modal de programar
+  muestra el texto y al cerrar vuelve al campo; deslizar → «Respondiendo a
+  vos» → la respuesta sale con su cita; con el teclado abierto el último
+  mensaje se ve; un mensaje entrante estando abajo baja la lista.
+- Pendiente FL2b: el deslizar sigue con `PanResponder` en el hilo JS (Maestro
+  no lo dispara con `swipe` sobre el elemento; con coordenadas sí), y el
+  teclado sube con `KeyboardAvoidingView` (no sincronizado con su animación).

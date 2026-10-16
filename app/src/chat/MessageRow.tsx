@@ -1,5 +1,5 @@
 import { ActivityIndicator, Animated, PanResponder, Pressable, Text, View } from 'react-native';
-import { useRef } from 'react';
+import { memo, useRef } from 'react';
 import { Image } from 'expo-image';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { CornerUpLeft, FileText, Pause, Play } from 'lucide-react-native';
@@ -48,7 +48,7 @@ export const esVoz = (mime?: string): boolean => (mime ?? '').startsWith('audio/
 export const isPending = (row: Row): row is PendingMessage =>
   'pending' in row && row.pending === true;
 
-export function MessageRow({
+function FilaDeMensaje({
   item,
   previous,
   next,
@@ -70,7 +70,8 @@ export function MessageRow({
   othersDeliveredSeq: number;
   senderInitial: string;
   /** Abre el visor a pantalla completa. */
-  onVerImagen?: (url: string) => void;
+  /** Abre el visor en esta foto (por su `seq`: la URL no la identifica). */
+  onVerImagen?: (seq: number) => void;
   /** Pulsación larga: entra en modo selección. */
   onSeleccionar?: (seq: number) => void;
   /** Deslizar sobre el mensaje: responderlo (como WhatsApp). */
@@ -199,7 +200,7 @@ export function MessageRow({
           {!isPending(item) && item.media && esArchivo(item.media.mime) && !esVoz(item.media.mime) ? (
             <Pressable
               testID={`archivo-${item.seq}`}
-              onPress={() => onVerImagen?.(item.media!.url ?? item.media!.thumbUrl ?? '')}
+              onPress={() => !isPending(item) && onVerImagen?.(item.seq)}
             >
               {/* La MINIATURA de la primera página, como la preview card de
                   WhatsApp. lila la genera para los PDF; sin ella, un documento
@@ -240,7 +241,7 @@ export function MessageRow({
           {!isPending(item) && item.media?.thumbUrl && !esArchivo(item.media.mime) ? (
             <Pressable
               testID={`media-${item.seq}`}
-              onPress={() => onVerImagen?.(item.media!.thumbUrl!)}
+              onPress={() => !isPending(item) && onVerImagen?.(item.seq)}
             >
               <Image
                 source={{ uri: item.media.thumbUrl }}
@@ -344,6 +345,14 @@ export function MessageRow({
 }
 
 /** El chip centrado que separa los días («Hoy», «Ayer», «2 ago»). */
+/**
+ * Memoizada (FL2): la lista solo vuelve a dibujar una burbuja si cambió algo
+ * suyo. Las props que llegan son primitivos o referencias estables (citas por
+ * `seq`, callbacks con `useCallback`); un objeto armado en cada render la
+ * desactivaría en silencio.
+ */
+export const MessageRow = memo(FilaDeMensaje);
+
 export function DaySeparator({ label }: { label: string }) {
   return (
     <View className="my-3 items-center">

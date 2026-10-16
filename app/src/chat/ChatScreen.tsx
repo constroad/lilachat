@@ -1,5 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Pressable, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  BackHandler,
+  Keyboard,
+  KeyboardAvoidingView,
+  Pressable,
+  Text,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 import { ProgramarMensajeModal } from './ProgramarMensajeModal';
 import { programarMensaje } from '../api/client';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
@@ -11,16 +22,12 @@ import {
   ArrowLeft,
   Lock,
   MoreVertical,
-  Mic,
   Phone,
-  Plus,
-  Send,
-  Smile,
   Video,
   Trash2,
   X,
 } from 'lucide-react-native';
-import { duracionDeVoz, formatDayLabel, startsNewDay } from '@lilachat/shared';
+import { formatDayLabel, startsNewDay } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { AttachSheet } from './AttachSheet';
 import { CallScreen } from '../calls/CallScreen';
@@ -33,7 +40,8 @@ import { useSecretChat } from '../crypto/useSecretChat';
 import { DaySeparator, MessageRow, isPending, type Row } from './MessageRow';
 import { formatClock } from '@lilachat/shared';
 import { abrirConOtraApp, compartirFoto, guardarEnGaleria } from './guardarYCompartir';
-import { useGrabadorDeVoz } from './useGrabadorDeVoz';
+import type { NotaGrabada } from './useGrabadorDeVoz';
+import { Composer, type ComposerHandle } from './Composer';
 import { previewDeMensaje } from './MessageRow';
 import { VisorDeImagen } from './VisorDeImagen';
 import { ChatDetailScreen } from './ChatDetailScreen';
@@ -42,12 +50,16 @@ import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { decidirAtras } from '../ui/botonAtras';
 import { textoDeSubida } from './progresoDeSubida';
+import { citadosPorSeq, tipoDeFila } from './filasDelChat';
 
 /**
  * La conversación (diseño Stitch «Chat de Grupo»). Burbuja propia a la derecha
  * en acento; la ajena a la izquierda en superficie — y la esquina-cola de 4px
  * apunta al emisor, que es el token `rounded-tail` de Vivid Pulse.
  */
+/** Cuánto (en dp) cuenta como «estar abajo» en la conversación. */
+const MARGEN_DEL_FINAL = 160;
+
 export function ChatScreen({
   chatId,
   chatName,
@@ -114,7 +126,9 @@ export function ChatScreen({
     seal: sesionLista?.seal,
     open: sesionLista?.open,
   });
-  const [draft, setDraft] = useState('');
+  // El borrador vive en el Composer (FL2): una tecla ya no re-renderiza esto.
+  const composerRef = useRef<ComposerHandle>(null);
+  const [textoAProgramar, setTextoAProgramar] = useState('');
   /** El mensaje al que se está respondiendo (deslizando sobre él), o null. */
   const [respondiendoA, setRespondiendoA] = useState<{ seq: number; texto: string; mio: boolean } | null>(null);
 
@@ -123,7 +137,7 @@ export function ChatScreen({
   const [avisoProgramado, setAvisoProgramado] = useState<string | null>(null);
 
   const alProgramar = async (cuando: Date) => {
-    const texto = draft.trim();
+    const texto = textoAProgramar.trim();
     if (!texto) {
       setProgramarVisible(false);
       return;
@@ -139,7 +153,7 @@ export function ChatScreen({
     );
     setProgramarVisible(false);
     if (resultado.ok) {
-      setDraft('');
+      composerRef.current?.limpiar();
       setAvisoProgramado(
         `Se enviará ${cuando.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}`
       );
@@ -192,6 +206,8 @@ export function ChatScreen({
     uri: string;
     mime: string;
     nombre: string;
+    /** Fija al empezar: con `new Date()` en cada render la fila nunca era la misma. */
+    queuedAt: string;
   } | null>(null);
   /** La foto abierta a pantalla completa, o `null`. */
   /** El `seq` de la foto abierta a pantalla completa, o `null`. */
@@ -208,7 +224,6 @@ export function ChatScreen({
    */
   const [infoPropia, setInfoPropia] = useState<{ name?: string; avatarUrl?: string }>({});
 
-  const voz = useGrabadorDeVoz();
 
   /**
    * Terminar la grabación y mandarla.
@@ -217,17 +232,26 @@ export function ChatScreen({
    * cualquier otra, y duplicar el camino sería duplicar la cola, el progreso y
    * el manejo de errores.
    */
-  const mandarVoz = async (cancelar = false) => {
-    const nota = await voz.terminar({ cancelar });
-    if (!nota) return;
-    await upload({
-      uri: nota.uri,
-      fileName: `nota-de-voz.m4a`,
-      mimeType: nota.mime,
-      sizeBytes: nota.bytes,
-      durationMs: nota.ms,
-    });
-  };
+  const alEnviar = useCallback(
+    async (texto: string, respondeA?: number) => {
+      setRespondiendoA(null);
+      // Lo que mando yo SIEMPRE se ve: aunque estuviera leyendo arriba.
+      requestAnimationFrame(() => listaRef.current?.scrollToEnd({ animated: true }));
+      const resultado = await send(texto, respondeA);
+      // Si NO se pudo cifrar, el mensaje no salió y hay que decirlo: en un chat
+      // con candado, un envío que falla en silencio engaña.
+      if (resultado?.ok) return true;
+      setFalloCifrado(true);
+      return false;
+    },
+    [send]
+  );
+  const alProgramarDesdeComposer = useCallback((texto: string) => {
+    setTextoAProgramar(texto);
+    setProgramarVisible(true);
+  }, []);
+  const alAdjuntar = useCallback(() => setAttachOpen(true), []);
+  const alCancelarRespuesta = useCallback(() => setRespondiendoA(null), []);
 
   const nombreVisible = infoPropia.name ?? chatName;
 
@@ -296,6 +320,7 @@ export function ChatScreen({
       uri: file.uri,
       mime: file.mimeType,
       nombre: file.fileName,
+      queuedAt: new Date().toISOString(),
     });
     const result = await sendMedia({ ...file, onProgress: setProgress });
     setUploading(false);
@@ -305,6 +330,23 @@ export function ChatScreen({
     if (!result.ok) setMediaError(result.reason);
   };
 
+  /**
+   * La nota de voz pasa por el MISMO `upload` que una foto. Por un ref: el
+   * callback queda estable y el Composer memoizado no se vuelve a dibujar.
+   */
+  const uploadRef = useRef(upload);
+  uploadRef.current = upload;
+  const alNotaDeVoz = useCallback(
+    (nota: NotaGrabada) =>
+      uploadRef.current({
+        uri: nota.uri,
+        fileName: 'nota-de-voz.m4a',
+        mimeType: nota.mime,
+        sizeBytes: nota.bytes,
+        durationMs: nota.ms,
+      }),
+    []
+  );
   const pickFromCamera = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
@@ -366,23 +408,98 @@ export function ChatScreen({
    */
   const listaRef = useRef<FlashListRef<Row> | null>(null);
 
-  const rows: Row[] = [
-    ...messages,
-    ...pending,
-    ...(subiendo
-      ? [
-          {
-            clientKey: subiendo.clientKey,
-            queuedAt: new Date().toISOString(),
-            pending: true as const,
-            mediaUri: subiendo.uri,
-            mediaMime: subiendo.mime,
-            mediaNombre: subiendo.nombre,
-            progreso: progress,
-          },
-        ]
-      : []),
-  ]
+  // Memoizadas: sin esto cada render (una tecla, un «escribiendo») rearmaba
+  // las filas y la lista volvía a dibujar todas las burbujas (FL2).
+  const rows: Row[] = useMemo(
+    () => [
+      ...messages,
+      ...pending,
+      ...(subiendo
+        ? [
+            {
+              clientKey: subiendo.clientKey,
+              queuedAt: subiendo.queuedAt,
+              pending: true as const,
+              mediaUri: subiendo.uri,
+              mediaMime: subiendo.mime,
+              mediaNombre: subiendo.nombre,
+              progreso: progress,
+            },
+          ]
+        : []),
+    ],
+    [messages, pending, subiendo, progress]
+  );
+
+  /** Las citas, una vez por cambio de mensajes (antes un `find` por fila y por render). */
+  const citados = useMemo(
+    () =>
+      citadosPorSeq(
+        messages,
+        { yo: credential.userId, esGrupo: esGrupoChat, nombreDelOtro: nombreVisible },
+        previewDeMensaje
+      ),
+    [messages, credential.userId, esGrupoChat, nombreVisible]
+  );
+  const leidoHasta = Math.max(othersReadSeq, othersRead);
+  const entregadoHasta = Math.max(othersDeliveredSeq, othersDelivered);
+  const inicial = nombreVisible.slice(0, 1).toUpperCase();
+  const alVerImagen = useCallback((seq: number) => setViendoSeq(seq), []);
+  const alResponder = useCallback(
+    (seq: number, texto: string, mio: boolean) => setRespondiendoA({ seq, texto, mio }),
+    []
+  );
+
+  /**
+   * Una fila. Estable mientras no cambien los mensajes ni los acuses: con
+   * `MessageRow` memoizado, un mensaje nuevo dibuja SU burbuja y la de al lado
+   * (por el agrupado), no la pantalla entera (FL2).
+   */
+  const dibujarFila = useCallback(
+    ({ item, index }: { item: Row; index: number }) => {
+      const previous = rows[index - 1];
+      const next = rows[index + 1];
+      const at = isPending(item) ? item.queuedAt : item.at;
+      const previousAt = previous ? (isPending(previous) ? previous.queuedAt : previous.at) : undefined;
+      return (
+        <>
+          {startsNewDay(at, previousAt) ? <DaySeparator label={formatDayLabel(at)} /> : null}
+          <MessageRow
+            item={item}
+            previous={previous}
+            next={next}
+            myUserId={credential.userId}
+            othersReadSeq={leidoHasta}
+            othersDeliveredSeq={entregadoHasta}
+            senderInitial={inicial}
+            onVerImagen={alVerImagen}
+            onSeleccionar={setElegido}
+            onResponder={alResponder}
+            citado={isPending(item) ? null : (citados.get(item.seq) ?? null)}
+            seleccionado={!isPending(item) && item.seq === elegido}
+          />
+        </>
+      );
+    },
+    [rows, credential.userId, leidoHasta, entregadoHasta, inicial, alVerImagen, alResponder, citados, elegido]
+  );
+
+  /**
+   * Cerca del final o no. Con el teclado que se abre la lista se achica y el
+   * último mensaje quedaba debajo del campo (visto en el E2E de FL2): si se
+   * estaba abajo, se vuelve abajo; si se estaba leyendo arriba, no se toca.
+   */
+  const cercaDelFinal = useRef(true);
+  const alScrollear = useCallback((evento: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = evento.nativeEvent;
+    cercaDelFinal.current = contentSize.height - (contentOffset.y + layoutMeasurement.height) < MARGEN_DEL_FINAL;
+  }, []);
+  useEffect(() => {
+    const sub = Keyboard.addListener('keyboardDidShow', () => {
+      if (cercaDelFinal.current) listaRef.current?.scrollToEnd({ animated: true });
+    });
+    return () => sub.remove();
+  }, []);
 
   const hayContenido = rows.length > 0;
   useEffect(() => {
@@ -591,7 +708,7 @@ export function ChatScreen({
 
       <ProgramarMensajeModal
         visible={programarVisible}
-        texto={draft}
+        texto={textoAProgramar}
         onProgramar={alProgramar}
         onCerrar={() => setProgramarVisible(false)}
       />
@@ -636,7 +753,12 @@ export function ChatScreen({
         // hueco visible mientras viajan.
         onStartReached={() => void cargarAnteriores()}
         onStartReachedThreshold={0.5}
-        maintainVisibleContentPosition={{ startRenderingFromBottom: true }}
+        // `autoscrollToBottomThreshold`: si se está cerca del final (20 % de la
+        // pantalla), lo que llega o se manda baja la lista solo, como
+        // WhatsApp. Leyendo arriba, no mueve nada.
+        maintainVisibleContentPosition={{ startRenderingFromBottom: true, autoscrollToBottomThreshold: 0.2 }}
+        onScroll={alScrollear}
+        scrollEventThrottle={100}
         ListHeaderComponent={
           cargandoAnteriores ? (
             <View className="items-center py-3" testID="cargando-anteriores">
@@ -652,50 +774,8 @@ export function ChatScreen({
         }
         keyExtractor={(row) => (isPending(row) ? `p-${row.clientKey}` : `m-${row.seq}`)}
         contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 8 }}
-        renderItem={({ item, index }) => {
-          const previous = rows[index - 1];
-          const next = rows[index + 1];
-          const at = isPending(item) ? item.queuedAt : item.at;
-          const previousAt = previous ? (isPending(previous) ? previous.queuedAt : previous.at) : undefined;
-          // El mensaje al que ESTE responde, resuelto acá que están todos.
-          const respondido =
-            !isPending(item) && item.replyToSeq
-              ? messages.find((m) => m.seq === item.replyToSeq)
-              : undefined;
-          const citado = respondido
-            ? {
-                // En un 1:1 el autor es el otro (o «Vos»); en un grupo no está
-                // acá el nombre de cada miembro, así que se omite el autor en
-                // vez de mostrar el del grupo, que es engañoso.
-                autor:
-                  respondido.senderId === credential.userId
-                    ? 'Vos'
-                    : esGrupoChat
-                      ? ''
-                      : nombreVisible,
-                texto: previewDeMensaje(respondido),
-              }
-            : null;
-          return (
-            <>
-              {startsNewDay(at, previousAt) ? <DaySeparator label={formatDayLabel(at)} /> : null}
-              <MessageRow
-                item={item}
-                previous={previous}
-                next={next}
-                myUserId={credential.userId}
-                othersReadSeq={Math.max(othersReadSeq, othersRead)}
-                othersDeliveredSeq={Math.max(othersDeliveredSeq, othersDelivered)}
-                senderInitial={nombreVisible.slice(0, 1).toUpperCase()}
-                onVerImagen={(_url) => setViendoSeq(!isPending(item) ? item.seq : null)}
-                onSeleccionar={setElegido}
-                onResponder={(seq, texto, mio) => setRespondiendoA({ seq, texto, mio })}
-                citado={citado}
-                seleccionado={!isPending(item) && item.seq === elegido}
-              />
-            </>
-          );
-        }}
+        renderItem={dibujarFila}
+        getItemType={tipoDeFila}
       />
 
       {uploading ? (
@@ -719,152 +799,18 @@ export function ChatScreen({
           La primera versión puso los cinco controles como hermanos: entraban
           todos, pero el campo quedaba tan angosto que el placeholder se partía
           en dos líneas. */}
-      {respondiendoA ? (
-        <View
-          testID="barra-respuesta"
-          className="flex-row items-center gap-2 border-t border-outline/10 bg-surface px-3 pt-2"
-        >
-          <View className="w-1 self-stretch rounded-full bg-primary" />
-          <View className="min-w-0 flex-1 py-1">
-            <Text className="text-[11px] font-semibold text-primary">
-              {respondiendoA.mio ? 'Respondiendo a vos' : 'Respondiendo'}
-            </Text>
-            <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>
-              {respondiendoA.texto || 'Mensaje'}
-            </Text>
-          </View>
-          <Pressable
-            testID="btn-cancelar-respuesta"
-            accessibilityLabel="Cancelar la respuesta"
-            onPress={() => setRespondiendoA(null)}
-            className="h-9 w-9 items-center justify-center"
-          >
-            <X size={18} color={colores['on-surface-variant']} />
-          </Pressable>
-        </View>
-      ) : null}
-
-      <View className="flex-row items-end gap-1.5 border-t border-outline/10 bg-surface px-3 pt-3" style={{ paddingBottom: margenes.pie }}>
-        {voz.estado.fase === 'grabando' ? (
-          /**
-           * Mientras se graba, la barra ES la grabación: cancelar, el tiempo
-           * corriendo y mandar. Dejar el campo de texto al lado invita a
-           * escribir mientras se habla, que no es una cosa que se pueda hacer.
-           */
-          <>
-            <Pressable
-              testID="btn-cancelar-voz"
-              accessibilityLabel="Cancelar la nota de voz"
-              onPress={() => void mandarVoz(true)}
-              className="h-11 w-11 items-center justify-center"
-            >
-              <X size={22} color={colores.error} />
-            </Pressable>
-            <View className="min-w-0 flex-1 flex-row items-center gap-2 rounded-xl border border-outline/15 bg-background px-4 py-2.5">
-              <View className="h-2.5 w-2.5 rounded-full bg-error" />
-              <Text testID="tiempo-voz" className="text-base font-semibold text-on-surface">
-                {duracionDeVoz(voz.estado.ms)}
-              </Text>
-              <Text className="text-[12px] text-on-surface-variant">Grabando…</Text>
-            </View>
-            <Pressable
-              testID="btn-enviar-voz"
-              accessibilityLabel="Enviar la nota de voz"
-              onPress={() => void mandarVoz()}
-              className="h-11 w-11 items-center justify-center rounded-full bg-primary"
-            >
-              <Send size={18} color={colores['on-primary']} />
-            </Pressable>
-          </>
-        ) : (
-        <>
-        {/* El «+» SIGUE SIENDO un «+» mientras sube.
-            Antes se convertía en un spinner, y eso es contar la misma cosa dos
-            veces y en el lugar equivocado: el progreso ya se ve en la burbuja
-            que se está subiendo, que es donde uno mira. Un botón que cambia de
-            forma además hace perder el punto donde estaba el dedo. Queda
-            atenuado y sin responder —no se puede subir dos cosas a la vez—,
-            pero se sigue viendo lo que es. */}
-        <Pressable
-          testID="btn-adjuntar"
-          onPress={() => setAttachOpen(true)}
-          disabled={uploading}
-          className={`h-11 w-11 items-center justify-center ${uploading ? 'opacity-40' : ''}`}
-        >
-          <Plus size={24} color={colores["on-surface-variant"]} />
-        </Pressable>
-
-        <View className="min-w-0 flex-1 flex-row items-end rounded-xl border border-outline/15 bg-background pr-1">
-          <TextInput
-            testID="input-mensaje"
-            className="max-h-28 min-h-[44px] min-w-0 flex-1 px-4 py-2.5 text-base text-on-surface"
-            placeholder="Escribe un mensaje"
-            placeholderTextColor={colores.outline}
-            multiline
-            value={draft}
-            onChangeText={(texto) => {
-              setDraft(texto);
-              // Avisar «escribiendo» solo cuando de verdad se agrega texto, no al
-              // borrar hasta vaciar: un campo que se vacía no es «escribiendo».
-              if (texto.length > 0) avisarEscribiendo();
-            }}
-          />
-          <Pressable testID="btn-emoji" className="h-11 w-9 items-center justify-center">
-            <Smile size={20} color={colores.outline} />
-          </Pressable>
-        </View>
-
-        {draft.trim() ? (
-          <Pressable
-            testID="btn-enviar"
-            // Long-press: en vez de enviar ahora, programar para más tarde (F11).
-            onLongPress={() => {
-              if (draft.trim()) setProgramarVisible(true);
-            }}
-            onPress={() => {
-              const text = draft;
-              setDraft('');
-              const reply = respondiendoA?.seq;
-              setRespondiendoA(null);
-              void (async () => {
-                const resultado = await send(text, reply);
-                // Si NO se pudo cifrar, el mensaje no salió y hay que decirlo:
-                // en un chat con candado, un envío que falla en silencio deja a
-                // la persona creyendo que el otro lo recibió.
-                if (!resultado?.ok) {
-                  setDraft(text);
-                  setFalloCifrado(true);
-                }
-              })();
-            }}
-            className="h-11 w-11 items-center justify-center rounded-full bg-primary"
-          >
-            <Send size={18} color={colores["on-primary"]} />
-          </Pressable>
-        ) : (
-          <Pressable
-            testID="btn-voz"
-            accessibilityLabel="Grabar una nota de voz"
-            disabled={uploading}
-            onPress={() => void voz.empezar()}
-            className={`h-11 w-11 items-center justify-center rounded-full bg-primary ${uploading ? 'opacity-40' : ''}`}
-          >
-            <Mic size={18} color={colores["on-primary"]} />
-          </Pressable>
-        )}
-        </>
-        )}
-      </View>
-
-      {voz.estado.fase === 'sin-permiso' || voz.estado.fase === 'error' ? (
-        <Pressable onPress={voz.limpiarAviso} className="px-4 pb-2">
-          <Text testID="aviso-voz" className="text-sm text-error">
-            {voz.estado.fase === 'sin-permiso'
-              ? 'Permití el micrófono para mandar notas de voz.'
-              : voz.estado.motivo}
-          </Text>
-        </Pressable>
-      ) : null}
+      <Composer
+        ref={composerRef}
+        respondiendoA={respondiendoA}
+        onCancelarRespuesta={alCancelarRespuesta}
+        subiendo={uploading}
+        margenPie={margenes.pie}
+        onAdjuntar={alAdjuntar}
+        onEscribiendo={avisarEscribiendo}
+        onEnviar={alEnviar}
+        onProgramar={alProgramarDesdeComposer}
+        onNotaDeVoz={alNotaDeVoz}
+      />
 
       <AttachSheet
         visible={attachOpen}

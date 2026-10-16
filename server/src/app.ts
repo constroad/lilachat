@@ -16,6 +16,7 @@ import { buildContactRouter } from './contactRoutes.js';
 import { buildKeyRouter } from './keyRoutes.js';
 import { buildCallRouter } from './callRoutes.js';
 import { buildMeRouter } from './meRoutes.js';
+import { buildRespaldoRouter } from './respaldoRoutes.js';
 import type { MediaUploader } from './mediaClient.js';
 
 const require = createRequire(import.meta.url);
@@ -74,6 +75,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/keys', buildKeyRouter());
   app.use('/api/calls', buildCallRouter());
   app.use('/api/me', buildMeRouter());
+  app.use('/api/respaldos', buildRespaldoRouter());
 
   // ─── La web (F6) ─────────────────────────────────────────────────────────
   //

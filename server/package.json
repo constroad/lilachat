@@ -10,7 +10,8 @@
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "pretest": "npm run build --workspace=@lilachat/shared",
-    "prebuild": "npm run build --workspace=@lilachat/shared"
+    "prebuild": "npm run build --workspace=@lilachat/shared",
+    "disco:init": "tsx src/discoInit.ts"
   },
   "dependencies": {
     "@lilachat/shared": "*",

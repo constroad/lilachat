@@ -32,3 +32,15 @@ export function decidirServicio(params: {
   // la que Android puede matar el proceso antes de que el servicio arranque.
   return 'encender';
 }
+
+/**
+ * Si `connectSocket` puede quedarse con el socket que ya existe.
+ *
+ * `active` es de socket.io: verdadero mientras conecta o reconecta solo, falso
+ * tras un `disconnect()` a propósito. Reemplazar uno que está conectando dejaba
+ * los listeners de quien lo creó colgados de un socket descartado.
+ */
+export function reusarSocket(socket: { connected: boolean; active: boolean } | null): boolean {
+  if (!socket) return false;
+  return socket.connected || socket.active;
+}

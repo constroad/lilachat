@@ -98,6 +98,23 @@ export const leerAutoReply = (token: string) =>
 export const guardarAutoReply = (token: string, enabled: boolean, text: string) =>
   authed<{ autoReply: AutoReply }>('PUT', '/api/me/auto-reply', token, { enabled, text });
 
+export type EstadoDeRespaldos = {
+  disco: { estado: 'montado' | 'ausente' | 'colgado'; libres: number | null; total: number | null };
+  copia: { ultimaEn?: string; verificadaEn?: string; ok?: boolean; fallo?: string } | null;
+  cantidad: number;
+  ultimo: { nombre: string; huella: string; bytes: number; creadoEn: string } | null;
+};
+
+/** Respaldos de conversaciones (F12.1): el server es un depósito de archivos cifrados. */
+export const estadoDeRespaldos = (token: string) => get<EstadoDeRespaldos>('/api/respaldos/estado', token);
+
+export const ultimoRespaldo = (token: string) =>
+  get<{ respaldo: EstadoDeRespaldos['ultimo'] }>('/api/respaldos/ultimo', token);
+
+/** Antes de subir: qué huellas le faltan al server, para no gastar datos en lo que ya está. */
+export const huellasDeRespaldoQueFaltan = (token: string, huellas: string[]) =>
+  authed<{ faltan: string[]; invalidas: string[] }>('POST', '/api/respaldos/huellas', token, { huellas });
+
 export const requestOtp = (phone: string, preferEmail = false, fetchImpl?: FetchLike) =>
   post<{ message: string }>('/api/auth/otp/request', { phone, preferEmail }, fetchImpl);
 

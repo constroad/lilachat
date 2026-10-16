@@ -3042,3 +3042,280 @@ dispara otro; rate-limit 2 h; `User.autoReply` + `/api/me/auto-reply`). #4 regla
 **Pendiente de verificación (solo con teléfonos reales):** llamada voz/video
 cross-red (que el TURN de Cloudflare rebote — requiere `CF_TURN_*` en el `.env`
 de la mini, ya puesto por José), auto-update in-app, y el auto-reply.
+
+## 44. F12 — el historial vive en el teléfono (15/09/2026)
+
+**La decisión.** José pidió «que los mensajes se guarden en los teléfonos como
+WhatsApp». Al preguntarle qué buscaba, la respuesta fue **privacidad** (que el
+server no pueda leernos), no el modelo store-and-forward. El camino es entonces
+**cifrar por defecto** (extender F9 a todos los chats), **no** tirar el modelo
+Telegram del §0: el server sigue siendo la verdad sobre QUÉ mensajes existen
+(`seq`, lápidas, cursores) y deja de poder leer su contenido. Con eso, el
+`mongodump` de F7 deja de ser un respaldo legible → la copia entera tiene que
+vivir en el teléfono y respaldarse **desde** el teléfono. Fases:
+
+| Fase | Qué | Gate |
+| --- | --- | --- |
+| **F12.0** | Store durable en el teléfono (SQLite) + hidratador | — (**hecha**, abajo) |
+| F12.1 | Respaldo cifrado desde el teléfono al disco de la mini (patrón Lilafotos, paquete `constroad-respaldo`) | — |
+| F12.2 | Restaurar en teléfono nuevo (asistente post-OTP + passphrase) | — |
+| F12.3 | Cifrado por defecto: chats nuevos `encrypted:true`, **media cifrada en el cliente**, búsqueda local, preview de push en el teléfono | **Lila con carve-out** (decidido: el chat con Lila queda en claro) |
+| F12.4 | Multi-dispositivo/web: sobre por dispositivo + ratchet persistido + cripto en el navegador | **web sí importa** (decidido) |
+
+**El orden importa**: respaldo ANTES de cifrar por defecto. Si primero se cifra,
+el `mongodump` deja de servir y la única copia queda en un teléfono sin
+respaldo — «sincronizar no es respaldar» (Lilafotos §3.1).
+
+**Lo que se hereda de Lilafotos** (coordinado con esa sesión el 15/09): la
+subida (`subida.ts`, corredor puro con puerto inyectado), las reglas de cuándo
+(`planDeSubida.ts`: wifi obligatorio, cargando/medido solo forzado, batería
+<15 % bloquea), la huella por stream (`huella.ts`), el dedup (`recepcion.ts`),
+y **del server `disco.ts` + `plazo.ts`, que NO son opcionales**: el 15/09 el USB
+de la mini se colgó a nivel kernel —`access`/`statfs` contestaban desde la caché,
+`read`/`write` nunca— y cada fs op colgada ocupaba un hilo del pool de Node (4):
+al cuarto pedido murió el health y Torre reiniciaba en bucle. Cualquier server
+que escriba en ese disco lleva sondas con plazo y «montado» = escritura real.
+Se copia el PATRÓN y se comparte el DISCO, no el servicio: identidad distinta
+(fotos = correo, lilachat = teléfono) y ciclos de vida desacoplados (Lilafotos
+§4). `lilachat-server` escribe en `CONSTROAD-BACKUP/lilachat-datos/<teléfono>/`
+con marca `.lilachat` propia y un segundo repo restic con clave propia. Lo que
+Lilafotos NO tiene y acá es obligatorio: el asistente de **restaurar** (para
+fotos el server es la verdad y un teléfono nuevo baja el catálogo); solo se
+hereda la descarga verificada por huella.
+
+### 44.1 As-is F12.0 — el almacén (`app/src/chat/mensajesGuardados.ts`)
+
+- **SQLite (`expo-sqlite ~57.0.3`), una fila por mensaje, cifrada en reposo.**
+  Tabla `mensajes(chatId, seq, sobre)` con clave primaria `(chatId, seq)`. **Solo
+  `chatId` y `seq` en claro** —lo mínimo para ordenar, paginar y encontrar
+  huecos—; el mensaje entero va dentro del sobre (`cerrarCache`/`abrirCache` de
+  F9, AES-GCM). La clave sigue en `expo-secure-store`
+  (`WHEN_UNLOCKED_THIS_DEVICE_ONLY`) y se borra al cerrar sesión junto con las
+  filas. Nada lanza: sin llavero no se guarda, una fila que no abre se saltea (el
+  hidratador la vuelve a pedir).
+- **Reemplaza la caché** de un blob por chat en AsyncStorage con los últimos 60
+  (`recortarParaCache` y `MAX_MENSAJES_EN_CACHE` se fueron: sin consumidores). La
+  **migración** es idempotente por construcción: cada `lilachat.msgs.<chatId>` se
+  vuelca y se borra; una cortada a la mitad sigue donde quedó. Corre una vez por
+  proceso, antes de la primera lectura.
+- **Se escribe lo que LLEGA, no la lista entera**: delta del `sync.pull`, cada
+  `msg.new` (el chat abierto lo guarda `useChat`; los cerrados, un listener
+  siempre montado en `App.tsx`), cada página del server, y la lápida de
+  `msg.deleted` (`marcarBorradoGuardado`, también si el chat no estaba abierto).
+  Reescribir miles de filas por mensaje era lo que un almacén completo no podía
+  permitirse. Un lote va en una transacción.
+- **Una sola regla de conciliación** (`conciliarPaginaGuardada`): la MISMA
+  `conciliarPagina` de la pantalla aplicada a los `seq` del disco, y
+  `seqsQueSobran` (shared, con test) dice qué borrar. Si pantalla y disco
+  conciliaran distinto, la línea que José pidió limpiar volvería al reabrir.
+- **El cursor del `sync.pull` nace del almacén** (`ultimoSeqGuardado`), no de
+  `{}`. Hallazgo de esta fase: con `{}` el server contestaba los **200 más viejos**
+  del chat en cada apertura (`pullSince` ordena ascendente desde 0) — inútiles
+  en una conversación larga; el delta real lo cubría la página de saneo.
+- **El scroll hacia arriba lee del disco primero**, y del server si hace falta.
+  Lo local solo sirve si es **contiguo hasta lo visible y entero**
+  (`tramoContiguoAntesDe`, shared, con test): un teléfono que volvió tras días
+  recibe 200 del delta y queda con un hueco en el medio; servir lo local
+  saltando el hueco haría desaparecer conversación sin que nadie lo note.
+- **Hidratador (F12.0b, `hidratador.ts`)**: al ganar la sesión (4 s después,
+  para que la lista cargue) completa cada chat hasta su primer mensaje con los
+  `lastSeq` de la lista guardada, **del hueco más nuevo al más viejo**, de a un
+  chat, páginas de 100 (tope del server), 40 páginas por corrida; lo que falte
+  sigue en la próxima. Se miran los NÚMEROS (`huecosDelHistorial`, con test) y no
+  una bandera «completo»: un hueco puede formarse después. **El server también
+  tiene huecos** (las líneas de prueba se borraron de la base): una página que
+  no trae nada del hueco pedido lo da por cerrado (`cubreHueco`, con test) —
+  sin eso, bucle. Para de escribir si la sesión se cierra (`sigue()`): una
+  corrida que siguiera dejaría filas de quien ya se fue. **Tiene que correr
+  mientras el server guarda en claro**: con F12.3, lo que no esté en el
+  teléfono no se recupera.
+- Tests: `shared/almacenDeMensajes.test.ts` (19: sobrantes, tramo contiguo,
+  huecos, cubre hueco) y `app/migracionDeCache.test.ts` (4). shared 383 ✅,
+  app 125 ✅, `tsc` limpio en los dos, lint limpio en lo tocado (shared no tiene
+  config de ESLint 9: preexistente).
+- **Sin cambios en server ni web.** La web sigue con su caché de lista
+  (`MAX_CHATS_EN_CACHE`, intacto).
+
+**Lo que F12.0 NO resuelve (a propósito):** en un chat secreto se guarda el
+SOBRE tal como llega; el ratchet no se persiste (hueco de F9), así que tras
+reiniciar esos mensajes siguen sin abrir. Persistir el texto abierto es de
+F12.3, junto con el sobre por dispositivo de F12.4. Y la media no está en el
+almacén: vive en el storage de lila (`/files/companies/…`, con `restic-media`);
+el respaldo de F12.1 lleva referencias, no bytes.
+
+### 44.2 As-is F12.1 — el respaldo cifrado desde el teléfono (15/09/2026)
+
+**Lo copiado de Lilafotos vive DENTRO de lilachat** (decisión final de José,
+15/09/2026, después de haber pedido un paquete `constroad-respaldo` que se
+armó y se descartó el mismo día: sin repo en GitHub, sin tag, sin dependencia
+git en tres `package.json` — más simple). `shared/src/subida/`: los motores
+puros (`subida`, `planDeSubida`, `huella`, `recepcion`, `conciliarRollo`, tipos
+y constantes) genéricos en `E extends ElementoDelRollo` —sin `tipo: foto|video`—,
+con sus 67 tests. `server/src/disco.ts` + `plazo.ts` con **la marca como
+parámetro** (`.lilachat`) y 19 tests que nacieron acá contra un disco temporal
+real (en Lilafotos los cubría el supertest de las rutas). Lilafotos conserva
+sus copias; si un día se comparte, es un paquete con tag de git, nunca
+`npm link` (Torre compila con `npm ci` en la mini).
+
+**Motor (`shared/respaldoCifrado.ts`, 14 tests).** `armarRespaldo(passphrase,
+contenido)` → `{ v, kdf: { n, r, p, sal }, sobre }`; `abrirRespaldo` devuelve
+`null` ante otra passphrase, archivo tocado, versión desconocida, `kdf` fuera de
+rango (un `n` gigante colgaría el teléfono) o un JSON que no es un respaldo.
+**scrypt** N=2^14/r=8/p=1 (16 MB, ~1 s en un teléfono; `KDF_DE_PRUEBA` en los
+tests) y **el mismo AES-GCM de F9**. La passphrase se recorta en los bordes.
+Medido en Node: 20 chats × 1 000 mensajes → 4,6 MB, armar 227 ms, abrir 167 ms
+(Hermes será más lento; **sin medir en el teléfono todavía**). El respaldo
+lleva texto y metadatos; **la media no va**: vive en el storage de lila con
+`restic-media`, el archivo lleva las referencias.
+
+**Server (`respaldoRoutes.ts`, 16 tests contra disco temporal + Mongo en
+memoria).** `PUT /api/respaldos` cuerpo crudo por streaming + `x-huella` +
+`x-nombre` → 201 `guardado` · 200 `ya_existe` · 422 `huella_no_coincide` · 400
+`nombre_invalido|huella_invalida|vacio` · **507 `disco_ausente|disco_colgado`
+antes de leer un byte**; `POST /huellas`; `GET /ultimo`; `GET /estado` (disco
+con plazo, `.copia-a-la-mini.json`, cantidad, último); `GET /:nombre` (404
+idéntico para «no existe» y «no es tuyo»). La carpeta es **el teléfono de la
+sesión**, nunca lo que diga el cliente: `<RESPALDOS_RAIZ>/<teléfono>/respaldos/`
+(`RESPALDOS_RAIZ` en el `.env`; por defecto
+`/Volumes/CONSTROAD-BACKUP/lilachat-datos`; marca `.lilachat` que crea solo
+`npm run disco:init -w server`). Índice `Respaldo {userId, nombre, huella,
+bytes, creadoEn}` con `{userId, huella}` único: la carrera de dos subidas
+iguales termina en `ya_existe` y se borra la copia sobrante. **Se conservan los
+dos últimos** por persona (el anterior por si el último salió corrupto); el
+historial lo guarda restic. `/api/health` sigue en 200 sin disco: el chat no
+depende del respaldo.
+
+**Copia del disco a la mini**: `scripts/copia-a-la-mini.sh`, `copia-common.sh`,
+`verificar-copia.sh`, `instalar-agentes.sh` — los de Lilafotos con nombres,
+repo (`~/backups/restic-lilachat`), clave (`restic-lilachat.pass`) y horario
+propios (**02:00**; lila-app 00:30, fotos 01:30, mismo disco; verificación
+domingos 04:00). Runbook: `docs/RESPALDOS-RUNBOOK.md`. **Alta pendiente de José
+en la mini** (env, clave, `disco:init`, agentes).
+
+**Teléfono (`app/src/respaldo/`).** `planDeRespaldo.ts` (puro, 19 tests):
+nombre `respaldo-<fecha UTC sin dos puntos>.lcb`, `huellaDelAlmacen` (por chat:
+último seq **y cantidad** — el hidratador rellena huecos sin mover el último),
+`decidirCorrida` (sin_passphrase | armar | solo_subir | al_dia) y
+`fraseDeEstado` (alerta = sin passphrase, fallo, o >48 h con algo pendiente).
+`correrRespaldo.ts`: **hidratar primero** → ¿cambió el almacén? → armar el
+archivo (uno solo en el teléfono, `conservarSolo`) → `correrSubida` del paquete
+con `puertoDeRespaldo` (`uploadAsync` legacy, streaming nativo; huella por
+`readableStream`, nunca `arrayBuffer()`) → estado persistido
+(`estadoDeRespaldo.ts`, con `huellaPendiente` para no rearmar lo que ya está
+armado). Condiciones de `@constroad/respaldo`: wifi obligatorio, cargando y
+medido solo con «Respaldar ahora», batería <15 % bloquea. Tarea de fondo
+(`tareaDeFondo.ts`): `expo-background-task` + `expo-task-manager`, ≥60 min, 8 min
+de presupuesto, se registra con la sesión **solo si hay passphrase**. La
+passphrase en `expo-secure-store` (`WHEN_UNLOCKED_THIS_DEVICE_ONLY`); al cerrar
+sesión se borran passphrase, libro, estado y tarea. UI: tarjeta «Respaldo en la
+mini» en Ajustes (`RespaldoAjuste.tsx`): crear passphrase con la advertencia
+**«si la olvidás, el respaldo no se recupera»** sin letra chica, «Respaldar
+ahora», «Cambiar passphrase», y «Copia del disco a la mini: hace X ✓» leída del
+server. Módulos nativos nuevos: `expo-sqlite` (F12.0), `expo-background-task`,
+`expo-task-manager`, `expo-battery`, `expo-network` → APK nuevo.
+
+**Sin verificar todavía (emulador sin sesión; el OTP del 902049935 es de José):**
+la migración de la caché vieja, el scroll offline desde SQLite, el hidratador
+contra producción, crear la passphrase y «Respaldar ahora» de punta a punta
+(teléfono → `PUT` → disco de la mini; **la mini todavía no tiene
+`RESPALDOS_RAIZ` ni la marca**: hasta el alta contesta 507 `disco_ausente`, que
+la app muestra como «El disco de la mini no está»), el tiempo real de scrypt +
+AES-GCM en Hermes, y la tarea de fondo despertando. F12.2 (restaurar) no está.
+
+### 44.3 As-is F12.2 — restaurar en un teléfono nuevo (15/09/2026)
+
+Lo que Lilafotos no tiene, porque para fotos el server es la verdad. Acá la
+verdad es el teléfono, y un teléfono nuevo la pierde si nadie la trae.
+
+- **Motor puro** (`app/src/respaldo/planDeRestauracion.ts`, 8 tests):
+  `decidirOferta` (se ofrece sola **una vez** y **solo con el almacén vacío**:
+  un teléfono con historial no pisa lo que tiene por un respaldo viejo),
+  `descripcionDeRespaldo` («del 15/09/2026 · 1,2 MB», fecha en la zona de la
+  persona) y `verificarDescarga` (la huella bajada tiene que ser la anunciada:
+  un archivo truncado no se intenta abrir).
+- **`restaurar.ts`**: `respaldoAOfrecer(jwt)` pregunta a la mini **solo si vale
+  la pena** (almacén vacío y no ofrecido: dos lecturas locales antes de un
+  pedido de red). `restaurarDesdeLaMini`: `downloadAsync` (legacy, con el JWT) a
+  la caché → huella por stream → `abrirRespaldo` con la passphrase → un
+  `guardarMensajes` por chat → guarda la passphrase (el próximo respaldo sale
+  con la misma) y deja `huellaRespaldada` = lo restaurado, así no se vuelve a
+  subir lo mismo. Fallos con motivo: `descarga` · `huella` · `passphrase` ·
+  `importacion`. El temporal se borra siempre.
+- **Hoja `RestaurarRespaldo.tsx`**: «Hay un respaldo de este número del … ·
+  1,2 MB», passphrase, el paso en que va (bajando / comprobando / abriendo /
+  guardando), el fallo en palabras, y «Listo: N chats y M mensajes». «Ahora no»
+  marca la oferta como hecha. Sale sola al ganar la sesión desde `App.tsx`
+  (fase `home`) y a mano desde Ajustes → Respaldo → «Restaurar desde la mini»
+  (solo si la mini tiene uno).
+- Después de restaurar, el hidratador (F12.0b) rellena lo que falte desde el
+  server mientras los chats sigan en claro; con F12.3 lo que no esté en el
+  respaldo no vuelve.
+- **Lo que F12.2 NO resuelve**: las claves E2E del teléfono nuevo (los sobres
+  sellados a la clave vieja no se abren) — es F12.4, junto con el sobre por
+  dispositivo.
+
+**Sin verificar todavía** (sin sesión en el emulador): la oferta al arrancar,
+la descarga real y la restauración de punta a punta.
+
+### 44.4 Revisión y E2E de F12.0–F12.2 (16/10/2026)
+
+El trabajo de §44.1–44.3 quedó un mes sin commitear. El 16/10 se revisó, se
+corrigió y se probó de punta a punta antes de entrar a `main`.
+
+**E2E en el emulador** (`lilafotos-qa`, debug contra un server local con este
+código en :3104, SIN crons —la base es la de producción— y `RESPALDOS_RAIZ` en
+una carpeta temporal). Sesión con el 902049935 por yopmail.
+- Hidratación en instalación nueva: 2 chats, 23 filas (seq 1–28, los 5 que
+  faltan tampoco están en el server) y 13 filas. Mismo conteo que la base.
+- Crear passphrase → respaldo automático: el `.lcb` cae en
+  `<raíz>/902049935/respaldos/`, cifrado (sin texto en claro), indexado en
+  `Respaldo`. La tarjeta dice «Respaldado hace un momento · 21,8 KB».
+- Cerrar sesión deja el almacén en 0 filas. Al volver a entrar se ofrece
+  restaurar sola; una passphrase equivocada da el fallo en palabras y la buena
+  trae «2 chats y 36 mensajes». Filas idénticas a las del server.
+- Sin red (`svc wifi/data disable`), el chat abre desde SQLite.
+- QA en cero: el device del emulador y el `Respaldo` borrados (devices de José
+  20 → 20), su correo de respaldo restaurado, la app desinstalada del AVD.
+
+**Arreglos de esta revisión** (tests primero):
+- **Escrituras SQLite en una cola** (`shared/colaSerial.ts`, 4 tests): dos
+  transacciones a la vez (hidratador + `msg.new`) hacían que el `ROLLBACK` del
+  segundo `BEGIN` deshiciera al primero. Con **generación de sesión**: lo
+  encolado antes de cerrar sesión no se escribe después con la clave nueva.
+- **`connectSocket` reusa el socket que está conectando** (`reusarSocket`, 4
+  tests). Antes, el efecto de `App` reemplazaba el socket recién creado por
+  TabsShell y sus listeners quedaban en uno muerto.
+- **Hidratador: un hueco irrellenable ya no frena el chat** (`siguienteHueco`,
+  4 tests). Antes se daba por completo y los huecos más viejos nunca se pedían.
+- **Hidratador con la lista vacía**: si a los 4 s no hay lista guardada
+  (instalación nueva, teléfono lento) se pide al server. Visto en el E2E: con
+  la Mac saturada la lista cargó tarde y el hidratador no hizo nada en toda la
+  sesión.
+- **Cambiar passphrase rearma el respaldo** (huellas en null): antes la corrida
+  veía «al día» y en la mini quedaba el que abre solo la passphrase vieja.
+- **PUT de respaldo con tope** (200 MB, `RESPALDO_MAX_BYTES`): 413
+  `demasiado_grande` por `content-length` o al pasarlo en el stream, sin dejar
+  temporal (`DemasiadoGrande` en `disco.ts`, 3 tests).
+- **Ajustes evita el teclado** (`KeyboardAvoidingView`): con edge-to-edge la
+  passphrase quedaba tapada sin forma de subirla. Visto en el E2E.
+- Scripts: la verificación de los domingos buscaba fotos y no `.lcb` (fallaba
+  siempre); el `.env` cae a `deploys/chat/shared/.env` (el de Torre) si no hay
+  uno en el repo; el runbook tenía `deploys/lilachat` en vez de `deploys/chat`.
+
+**Pendiente de la revisión** (no bloquea; en orden):
+- Cifrado y scrypt sincrónicos en el hilo JS al respaldar y restaurar: con
+  ~20 000 mensajes puede congelar la pantalla. Lotes con `await` y
+  `scryptAsync`.
+- La tarea de fondo hidrata y arma ANTES de mirar wifi y carga.
+- Restaurar usa `INSERT OR REPLACE` (puede revivir un borrado) y no cuenta
+  filas escritas de verdad.
+- El cursor del `sync.pull` sale de `MAX(seq)`: un hueco intermedio no se ve
+  hasta el próximo arranque (correr `hidratarChat` al abrir el chat).
+- `GET /api/respaldos/:nombre` sin `pipeline` ni plazo; sin índice único
+  `{userId, nombre}`; filas que no descifran no se vuelven a pedir.
+- Ajenos a F12, vistos en el E2E: `expo-notifications` avisa «Custom sound
+  'default' not found» en cada arranque; Ajustes muestra DOS entradas de
+  respaldo («Copia de seguridad» y «Respaldo en la mini»); el permiso de
+  contactos se vuelve a pedir en cada arranque tras negarlo una vez.
+- **Alta en la mini sigue pendiente de José** (`docs/RESPALDOS-RUNBOOK.md`):
+  hasta entonces producción contesta 507 `disco_ausente` y la app lo dice.

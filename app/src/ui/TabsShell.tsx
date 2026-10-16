@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler, Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { BackHandler, KeyboardAvoidingView, Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { ArrowLeft, BellRing, Camera, ChevronRight, CloudUpload, Moon, RefreshCw, Sun, SunMoon, User, UserPlus } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { listChats, type ChatSummary } from '../api/client';
@@ -22,6 +22,7 @@ import { decidirAvisoDeActualizacion, type AvisoDeActualizacion } from '../setti
 import { abrirActualizacion } from '../settings/abrirTienda';
 import { BandaDeActualizacion } from '../settings/BandaDeActualizacion';
 import { AutoRespuestaAjuste } from '../settings/AutoRespuestaAjuste';
+import { RespaldoAjuste } from '../settings/RespaldoAjuste';
 import { useActualizador, type InfoActualizacion } from '../settings/useActualizador';
 import {
   guardarActualizacionDescartada,
@@ -350,9 +351,14 @@ export function TabsShell({
           // dos tipos en vez de adivinar por el filtro activo.
           <AgendaScreen credential={credential} onCreate={(kind) => setCreating(kind)} />
         ) : (
+          // `padding` también en Android: con edge-to-edge la ventana ya no se
+          // encoge con el teclado, y la passphrase del respaldo quedaba tapada
+          // sin forma de subirla (mismo motivo que en ChatScreen).
+          <KeyboardAvoidingView className="flex-1" behavior="padding">
           <ScrollView
             className="flex-1"
             contentContainerStyle={{ padding: 16 }}
+            keyboardShouldPersistTaps="handled"
             testID="pantalla-ajustes"
           >
             <View className="flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4">
@@ -496,6 +502,8 @@ export function TabsShell({
 
             <AutoRespuestaAjuste jwt={credential.jwt} />
 
+            <RespaldoAjuste credential={credential} />
+
             {/* «Buscar actualizaciones». Se dispara con un toque y NO al abrir
                 ajustes: un pedido de red cada vez que alguien entra acá es
                 tráfico que nadie pidió. */}
@@ -540,6 +548,7 @@ export function TabsShell({
               <Text className="text-sm font-semibold text-on-surface">Cerrar sesión</Text>
             </Pressable>
           </ScrollView>
+          </KeyboardAvoidingView>
         )}
       </View>
 

@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decidirCargaAnterior } from './paginacion';
 import { listOlderMessages } from '../api/client';
-import { guardarMensajes, leerMensajesGuardados } from './mensajesGuardados';
+import {
+  conciliarPaginaGuardada,
+  guardarMensajes,
+  leerMensajesGuardados,
+  marcarBorradoGuardado,
+  ultimoSeqGuardado,
+} from './mensajesGuardados';
 import * as Crypto from 'expo-crypto';
 import {
   advanceCursors,
@@ -9,6 +15,7 @@ import {
   conciliarPagina,
   esAcuseDeOtro,
   mergeBySeq,
+  tramoContiguoAntesDe,
   type Cursors,
   type Envelope,
   type OutboxItem,
@@ -115,11 +122,16 @@ export function useChat(params: {
   /**
    * Lo guardado se pinta ANTES de que conteste el socket — la app es
    * local-first desde acá. Solo se usa si todavía no llegó nada de la red: si
-   * el socket fue más rápido, pisar lo suyo con la caché sería ir para atrás.
+   * el socket fue más rápido, pisar lo suyo con el almacén sería ir para atrás.
+   *
+   * Se lee la última PÁGINA, no el chat entero (F12.0): el almacén ya guarda
+   * todo el historial, y descifrar miles de filas para pintar la primera
+   * pantalla es justo lo que hace que una app se sienta pesada. El resto lo trae
+   * el scroll hacia arriba, del disco primero.
    */
   useEffect(() => {
     let vigente = true;
-    void leerMensajesGuardados(params.chatId).then((guardados) => {
+    void leerMensajesGuardados(params.chatId, { limite: PAGINA_DE_SANEO }).then((guardados) => {
       if (!vigente || !guardados || guardados.length === 0) return;
       setMessages((actuales) => (actuales.length === 0 ? guardados : actuales));
     });
@@ -127,49 +139,69 @@ export function useChat(params: {
       vigente = false;
     };
   }, [params.chatId]);
+
   /**
-   * Sanear la caché contra el server al abrir el chat.
+   * Una página del server, aplicada a la pantalla Y al disco con la misma
+   * regla (`conciliarPagina`): dentro de su rango manda el server. Con
+   * `mergeBySeq`, un mensaje borrado en la base seguía dibujándose para siempre
+   * en cada teléfono que ya lo tenía (pasó con unas líneas de prueba en el grupo
+   * de José). Si el disco no se pusiera de acuerdo, la línea volvería al reabrir.
+   */
+  const aplicarPaginaDelServer = useCallback(
+    (pagina: ChatMessage[], ultimoDelServer?: number) => {
+      if (pagina.length === 0) return;
+      setMessages((actuales) => conciliarPagina(actuales, pagina, ultimoDelServer));
+      void conciliarPaginaGuardada(params.chatId, pagina, ultimoDelServer);
+    },
+    [params.chatId]
+  );
+
+  /**
+   * Sanear el almacén contra el server al abrir el chat.
    *
    * La carga inicial va por el socket (`sync.pull`), que manda un DELTA desde un
    * cursor: nunca describe el chat entero, así que nunca puede darse cuenta de
-   * que algo dejó de existir. Un mensaje borrado en la base seguía dibujándose
-   * para siempre en cada teléfono que ya lo tenía (le pasó al grupo de José con
-   * unas líneas de una prueba mía).
+   * que algo dejó de existir.
    *
-   * **Solo si había caché**: en una instalación nueva no hay nada que sanear y
-   * este pedido sería gasto puro.
+   * **Solo si había algo guardado**: en una instalación nueva no hay nada que
+   * sanear y este pedido sería gasto puro.
    */
   useEffect(() => {
     let vigente = true;
     void (async () => {
-      const guardados = await leerMensajesGuardados(params.chatId);
-      if (!vigente || !guardados || guardados.length === 0) return;
+      const ultimo = await ultimoSeqGuardado(params.chatId);
+      if (!vigente || ultimo === null) return;
 
       const respuesta = await listOlderMessages(
         { chatId: params.chatId, limit: PAGINA_DE_SANEO },
         params.token
       );
       if (!vigente || !respuesta.ok) return;
-
-      const pagina = respuesta.data.messages as ChatMessage[];
-      if (pagina.length === 0) return;
-      setMessages((actuales) => conciliarPagina(actuales, pagina, respuesta.data.lastSeq));
+      aplicarPaginaDelServer(respuesta.data.messages as ChatMessage[], respuesta.data.lastSeq);
     })();
     return () => {
       vigente = false;
     };
-  }, [params.chatId, params.token]);
+  }, [params.chatId, params.token, aplicarPaginaDelServer]);
 
   const cargandoRef = useRef(false);
   const hayMasRef = useRef(true);
 
   useEffect(() => {
     mensajesRef.current = messages;
-    // Se guarda lo que hay, cifrado. No se espera a nada: si la app se cierra
-    // en el próximo segundo, lo que ya llegó tiene que estar la próxima vez.
-    if (messages.length > 0) void guardarMensajes(params.chatId, messages);
-  }, [messages, params.chatId]);
+    // Ya NO se guarda la lista entera acá: cada mensaje se escribe al LLEGAR
+    // (socket, delta, página). Reescribir miles de filas por cada mensaje nuevo
+    // es lo que un almacén completo no puede permitirse.
+  }, [messages]);
 
+  /**
+   * El scroll hacia arriba: del DISCO primero, del server si hace falta.
+   *
+   * Lo local solo sirve si es contiguo hasta lo que se ve y está entero
+   * (`tramoContiguoAntesDe`): un teléfono que volvió tras días tiene un hueco en
+   * el medio, y servir lo local saltando el hueco haría desaparecer
+   * conversación sin que nadie lo note.
+   */
   const cargarAnteriores = useCallback(async () => {
     const decision = decidirCargaAnterior({
       mensajes: mensajesRef.current,
@@ -181,33 +213,44 @@ export function useChat(params: {
     cargandoRef.current = true;
     setCargandoAnteriores(true);
 
-    const resultado = await listOlderMessages(
-      { chatId: params.chatId, beforeSeq: decision.beforeSeq, limit: decision.limit },
-      params.token
-    );
+    const locales = await leerMensajesGuardados(params.chatId, {
+      antesDe: decision.beforeSeq,
+      limite: decision.limit,
+    });
+    const tramo = tramoContiguoAntesDe({
+      locales: locales ?? [],
+      beforeSeq: decision.beforeSeq,
+      limit: decision.limit,
+    });
 
-    if (resultado.ok) {
-      const pagina = resultado.data.messages as ChatMessage[];
-      // Una página más corta que el tope significa que no hay nada antes. Es la
-      // única señal confiable: una página VACÍA también lo dice, pero esperar a
-      // que llegue vacía cuesta un pedido de más.
-      if (pagina.length < decision.limit) {
+    if (tramo) {
+      // Menos que una página entera solo pasa llegando al primer mensaje.
+      if (tramo.length < decision.limit) {
         hayMasRef.current = false;
         setHayAnteriores(false);
       }
-      // `conciliarPagina` y no `mergeBySeq`: dentro del rango que el server
-      // acaba de describir, MANDA el server. Con el merge, un mensaje borrado
-      // en la base seguía dibujándose para siempre en cada teléfono que ya lo
-      // tenía guardado (pasó con unas líneas de prueba en el grupo de José).
-      if (pagina.length > 0) {
-        const tope = (resultado.data as { lastSeq?: number }).lastSeq;
-        setMessages((current) => conciliarPagina(current, pagina, tope));
+      setMessages((current) => mergeBySeq(current, tramo));
+    } else {
+      const resultado = await listOlderMessages(
+        { chatId: params.chatId, beforeSeq: decision.beforeSeq, limit: decision.limit },
+        params.token
+      );
+      if (resultado.ok) {
+        const pagina = resultado.data.messages as ChatMessage[];
+        // Una página más corta que el tope significa que no hay nada antes. Es
+        // la única señal confiable: una página VACÍA también lo dice, pero
+        // esperar a que llegue vacía cuesta un pedido de más.
+        if (pagina.length < decision.limit) {
+          hayMasRef.current = false;
+          setHayAnteriores(false);
+        }
+        aplicarPaginaDelServer(pagina, resultado.data.lastSeq);
       }
     }
 
     cargandoRef.current = false;
     setCargandoAnteriores(false);
-  }, [params.chatId, params.token]);
+  }, [params.chatId, params.token, aplicarPaginaDelServer]);
   /**
    * Acuses del OTRO, en vivo. Antes llegaban como prop desde la lista y no se
    * actualizaban nunca: si el otro leía con el chat abierto, el check jamás
@@ -257,7 +300,18 @@ export function useChat(params: {
 
     const socket = connectSocket(params.token);
 
-    const pull = () => {
+    /**
+     * El cursor nace del ALMACÉN, no de cero (F12.0). Con `{}` el server
+     * contestaba los 200 mensajes MÁS VIEJOS del chat en cada apertura —
+     * inútiles para una conversación larga— y el delta real quedaba a cargo de
+     * la página de saneo. Con «hasta qué seq ya tengo» pide justo lo que falta.
+     */
+    const pull = async () => {
+      if (cursors.current[params.chatId] === undefined) {
+        const ultimo = await ultimoSeqGuardado(params.chatId);
+        if (!alive) return;
+        cursors.current = { ...cursors.current, [params.chatId]: ultimo ?? 0 };
+      }
       socket.emit('sync.pull', { cursors: cursors.current }, (response: unknown) => {
         const payload = response as { ok?: boolean; batches?: { chatId: string; messages: ServerMessage[] }[] };
         if (!alive || !payload?.ok || !payload.batches) return;
@@ -265,6 +319,9 @@ export function useChat(params: {
         const mine = payload.batches.find((batch) => batch.chatId === params.chatId);
         if (mine && mine.messages.length > 0) {
           setMessages((current) => mergeBySeq(current, mine.messages as ChatMessage[]));
+          // Al disco al LLEGAR, cifrado: si la app se cierra en el próximo
+          // segundo, lo que ya llegó tiene que estar la próxima vez.
+          void guardarMensajes(params.chatId, mine.messages as ChatMessage[]);
           // Acusar entrega hasta el último que llegó, si alguno es del otro.
           const ajenos = mine.messages.filter((msj) =>
             esAcuseDeOtro({ de: String(msj.senderId), yo: params.miUserId })
@@ -282,7 +339,7 @@ export function useChat(params: {
     const onConnect = () => {
       if (!alive) return;
       setConnected(true);
-      pull();
+      void pull();
       // Pedir el estado de presencia: el snapshot del connect ya lo consumió la
       // lista de chats, así que sin esto el header abría sin «en línea».
       socket.emit('presence.request');
@@ -294,6 +351,7 @@ export function useChat(params: {
         { chatId: message.chatId, messages: [message] },
       ]);
       setMessages((current) => mergeBySeq(current, [message as ChatMessage]));
+      void guardarMensajes(params.chatId, [message as ChatMessage]);
       // Le llegó un mensaje del otro: se acusa ENTREGA (no lectura). Es lo que
       // pone el doble check gris del lado de quien lo mandó, antes de que yo
       // abra nada.
@@ -340,6 +398,9 @@ export function useChat(params: {
             : m
         )
       );
+      // La lápida también al disco: si no, el texto seguiría guardado hasta
+      // que una página del server pisara esa fila.
+      void marcarBorradoGuardado(params.chatId, frame.seq);
     };
     socket.on('msg.deleted', onDeleted);
 

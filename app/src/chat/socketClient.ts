@@ -1,4 +1,5 @@
 import { io, type Socket } from 'socket.io-client';
+import { reusarSocket } from './servicioDeConexion';
 
 /**
  * El socket de la app. Un ÚNICO socket para toda la sesión: abrir uno por
@@ -61,7 +62,7 @@ export type SendAck =
 let socket: Socket | null = null;
 
 export function connectSocket(token: string): Socket {
-  if (socket?.connected) return socket;
+  if (socket && reusarSocket(socket)) return socket;
   socket?.disconnect();
   socket = io(BASE_URL, {
     auth: { token },

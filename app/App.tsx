@@ -6,7 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from './src/ui/ErrorBoundary';
 import './global.css';
-import { refreshSession } from './src/api/client';
+import { listChats, refreshSession } from './src/api/client';
 import {
   clearCredential,
   loadCredential,
@@ -21,7 +21,15 @@ import { connectSocket, disconnectSocket, pauseSocket, resumeSocket } from './sr
 import { leerChatsGuardados, olvidarChats } from './src/chat/chatsGuardados';
 import { avisarMensaje } from './src/chat/avisoLocal';
 import { sonarPorMensaje } from './src/chat/sonarPorMensaje';
-import { olvidarMensajes } from './src/chat/mensajesGuardados';
+import { guardarMensajes, olvidarMensajes } from './src/chat/mensajesGuardados';
+import { hidratarTodo } from './src/chat/hidratador';
+import { desregistrarTareaDeFondo, registrarTareaDeFondo } from './src/respaldo/tareaDeFondo';
+import { leerPassphrase, olvidarPassphrase } from './src/respaldo/passphraseDeRespaldo';
+import { olvidarLibro } from './src/respaldo/libroDeRespaldos';
+import { olvidarEstadoDeRespaldo } from './src/respaldo/estadoDeRespaldo';
+import { marcarOfrecido, respaldoAOfrecer, type RespaldoEnLaMini } from './src/respaldo/restaurar';
+import { RestaurarRespaldo } from './src/settings/RestaurarRespaldo';
+import type { ChatMessage } from './src/chat/useChat';
 import { decidirServicio } from './src/chat/servicioDeConexion';
 import { agendaPorTelefono, olvidarAgenda, precargarAgenda } from './src/contacts/agendaEnMemoria';
 import { nombreDeContacto } from '@lilachat/shared';
@@ -42,6 +50,24 @@ import type { ChatSummary } from './src/api/client';
  * pasar con la sesión anterior — quedarse sin chat porque la red está mal es
  * exactamente lo que esta app existe para evitar.
  */
+/**
+ * Cuánto espera el hidratador (F12.0b) después de ganar la sesión: la lista de
+ * chats y la agenda cargan primero; completar el historial es trabajo de fondo.
+ */
+const ESPERA_ANTES_DE_HIDRATAR_MS = 4_000;
+
+/**
+ * Los chats que el hidratador recorre: la lista guardada, y si todavía no hay
+ * (instalación nueva, o un teléfono lento que no la cargó en 4 s), la del
+ * server. Con la guardada vacía el hidratador no hacía nada en toda la sesión.
+ */
+async function chatsParaHidratar(jwt: string): Promise<ChatSummary[]> {
+  const guardados = await leerChatsGuardados();
+  if (guardados && guardados.length > 0) return guardados;
+  const delServer = await listChats(jwt);
+  return delServer.ok ? delServer.data.chats : [];
+}
+
 type Boot =
   | { phase: 'loading' }
   | { phase: 'email' }
@@ -200,6 +226,82 @@ function Contenido() {
     };
   }, [boot]);
 
+  /**
+   * El almacén del teléfono se llena SIEMPRE, no solo con el chat abierto (F12.0).
+   *
+   * Un mensaje de un chat cerrado antes solo existía en el server hasta que se
+   * abría ese chat. Con el historial viviendo en el teléfono —de ahí sale el
+   * respaldo—, se guarda al llegar, esté abierto o no. El chat ABIERTO ya lo
+   * guarda `useChat` por el mismo camino: se saltea para no escribir dos veces.
+   */
+  useEffect(() => {
+    if (boot.phase !== 'home' && boot.phase !== 'chat') return;
+    const abierto = boot.phase === 'chat' ? boot.chat.id : null;
+    const socket = connectSocket(boot.credential.jwt);
+    const guardar = (mensaje: ChatMessage) => {
+      if (mensaje.chatId === abierto) return;
+      void guardarMensajes(mensaje.chatId, [mensaje]);
+    };
+    socket.on('msg.new', guardar);
+    return () => {
+      socket.off('msg.new', guardar);
+    };
+  }, [boot]);
+
+  /**
+   * Y lo que falta se pide (F12.0b): al arrancar con sesión, el hidratador
+   * completa cada chat hasta su primer mensaje, del más nuevo al más viejo, con
+   * los `lastSeq` de la lista guardada. Corre una vez por sesión y de a un chat;
+   * si el historial ya está entero, no gasta ni un pedido.
+   */
+  useEffect(() => {
+    if (boot.phase !== 'home' && boot.phase !== 'chat') return;
+    let vigente = true;
+    const jwt = boot.credential.jwt;
+    // Un respiro para que la lista de chats cargue primero: la pantalla manda.
+    const timer = setTimeout(() => {
+      void (async () => {
+        const chats = await chatsParaHidratar(jwt);
+        if (vigente) await hidratarTodo(chats, jwt, () => vigente);
+      })();
+    }, ESPERA_ANTES_DE_HIDRATAR_MS);
+    return () => {
+      vigente = false;
+      clearTimeout(timer);
+    };
+    // Solo al ganar la sesión: cambiar de pantalla no relanza la hidratación.
+  }, [haySesion]);
+
+  /**
+   * Restaurar en un teléfono nuevo (F12.2): con sesión y el almacén vacío, se
+   * pregunta a la mini si hay un respaldo de este número y se ofrece UNA vez.
+   * Con historial en el teléfono no se ofrece sola (Ajustes → Respaldo).
+   */
+  const [oferta, setOferta] = useState<RespaldoEnLaMini | null>(null);
+  useEffect(() => {
+    if (boot.phase !== 'home') return;
+    let vigente = true;
+    void respaldoAOfrecer(boot.credential.jwt).then((respaldo) => {
+      if (vigente && respaldo) setOferta(respaldo);
+    });
+    return () => {
+      vigente = false;
+    };
+    // Solo al ganar la sesión, no en cada cambio de pantalla.
+  }, [haySesion]);
+
+  /**
+   * El respaldo de fondo (F12.1) se registra con la sesión, solo si ya hay
+   * passphrase: sin ella la tarea no tendría qué hacer y despertaría el
+   * teléfono cada hora para nada. Al crearla, la pantalla lo registra ella.
+   */
+  useEffect(() => {
+    if (!haySesion) return;
+    void leerPassphrase().then((passphrase) => {
+      if (passphrase) void registrarTareaDeFondo();
+    });
+  }, [haySesion]);
+
   const start = useCallback(async () => {
     const stored = await loadCredential();
     if (!stored) {
@@ -229,7 +331,15 @@ function Contenido() {
       // Revocado de verdad: se vuelve al alta, sin llaves que no abren.
       // La caché de chats se borra con la credencial: la lista de con quién
       // habla alguien no se hereda al siguiente que entre en este teléfono.
-      await Promise.all([clearCredential(), olvidarChats(), olvidarMensajes()]);
+      await Promise.all([
+        clearCredential(),
+        olvidarChats(),
+        olvidarMensajes(),
+        olvidarPassphrase(),
+        olvidarLibro(),
+        olvidarEstadoDeRespaldo(),
+        desregistrarTareaDeFondo(),
+      ]);
       setBoot({ phase: 'email' });
       return;
     }
@@ -260,6 +370,7 @@ function Contenido() {
           onDone={(credential) => setBoot({ phase: 'home', credential })}
         />
       ) : boot.phase === 'home' ? (
+        <>
         <TabsShell
           credential={boot.credential}
           // Mientras se lee la preferencia se asume el defecto: el interruptor
@@ -276,12 +387,28 @@ function Contenido() {
             disconnectSocket();
             void olvidarChats();
             void olvidarMensajes();
+            void olvidarPassphrase();
+            void olvidarLibro();
+            void olvidarEstadoDeRespaldo();
+            void desregistrarTareaDeFondo();
             // La agenda también: otro teléfono, otra persona. Dejarla cargada
             // le mostraría a quien entre después los contactos del anterior.
             olvidarAgenda();
             void clearCredential().then(() => setBoot({ phase: 'email' }));
           }}
         />
+        {oferta ? (
+          <RestaurarRespaldo
+            jwt={boot.credential.jwt}
+            respaldo={oferta}
+            onCerrar={() => {
+              setOferta(null);
+              void marcarOfrecido();
+            }}
+            onRestaurado={() => void marcarOfrecido()}
+          />
+        ) : null}
+        </>
       ) : (
         <ChatScreen
           chatId={boot.chat.id}

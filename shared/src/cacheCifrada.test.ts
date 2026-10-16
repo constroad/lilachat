@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { abrirCache, cerrarCache, recortarParaCache, MAX_MENSAJES_EN_CACHE } from './cacheCifrada.js';
+import { abrirCache, cerrarCache } from './cacheCifrada.js';
 
 /**
  * Los mensajes guardados en el teléfono, CIFRADOS en reposo.
@@ -52,24 +52,5 @@ describe('cerrarCache / abrirCache', () => {
   it('basura devuelve null en vez de romper', () => {
     expect(abrirCache(clave, { v: 1, nonce: 'no-es-base64', ciphertext: '??' })).toBeNull();
     expect(abrirCache(clave, null)).toBeNull();
-  });
-});
-
-describe('recortarParaCache', () => {
-  it('guarda los ÚLTIMOS, que son los que se ven al abrir', () => {
-    const muchos = Array.from({ length: MAX_MENSAJES_EN_CACHE + 20 }, (_, i) => ({
-      seq: i,
-      body: String(i),
-    }));
-
-    const recortado = recortarParaCache(muchos);
-
-    expect(recortado).toHaveLength(MAX_MENSAJES_EN_CACHE);
-    // El último mensaje del chat tiene que estar: es el que se lee primero.
-    expect(recortado.at(-1)?.seq).toBe(muchos.at(-1)?.seq);
-  });
-
-  it('si son pocos, van todos', () => {
-    expect(recortarParaCache([{ seq: 1, body: 'a' }])).toHaveLength(1);
   });
 });

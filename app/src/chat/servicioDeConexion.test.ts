@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decidirServicio } from './servicioDeConexion';
+import { decidirServicio, reusarSocket } from './servicioDeConexion';
 
 /**
  * Cuándo corre el servicio en primer plano — y por lo tanto, cuándo hay
@@ -55,5 +55,29 @@ describe('decidirServicio', () => {
    */
   it('sin preferencia guardada: encendido', () => {
     expect(decidirServicio({ haySesion: true, estado: 'active' })).toBe('encender');
+  });
+});
+
+/**
+ * Cuándo `connectSocket` reusa el socket que ya existe. Antes solo reusaba uno
+ * CONECTADO: en el arranque, TabsShell creaba el socket, el efecto de `App`
+ * corría un instante después —todavía conectando— y lo reemplazaba por otro.
+ * Los listeners de TabsShell quedaban colgados de un socket muerto.
+ */
+describe('reusarSocket', () => {
+  it('sin socket: no hay nada que reusar', () => {
+    expect(reusarSocket(null)).toBe(false);
+  });
+
+  it('conectado: se reusa', () => {
+    expect(reusarSocket({ connected: true, active: true })).toBe(true);
+  });
+
+  it('todavía conectando (o reconectando solo): se reusa, no se reemplaza', () => {
+    expect(reusarSocket({ connected: false, active: true })).toBe(true);
+  });
+
+  it('cortado a propósito (pausa o logout): se crea uno nuevo', () => {
+    expect(reusarSocket({ connected: false, active: false })).toBe(false);
   });
 });

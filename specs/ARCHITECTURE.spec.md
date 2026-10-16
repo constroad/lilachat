@@ -3385,7 +3385,7 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | --- | --- | --- | --- |
 | FL0 | **Medir + bugs que se sienten lentos** — ver §45.4 | línea base anotada en §45.4 | ✅ 16/10 (0.1.70) |
 | FL1 | **Navegación nativa** — ver §45.5 | volver de un chat no remonta la lista | ✅ 16/10 (0.1.71) |
-| FL2 | **Pantalla de chat nueva** — FL2a hecho (§45.6); FL2b: teclado sincronizado (`react-native-keyboard-controller`), swipe-to-reply con gesture-handler + Reanimated, haptics | 0 frames perdidos al tipear y al abrir; teclado sincronizado | 🟡 FL2a 16/10 (0.1.72) |
+| FL2 | **Pantalla de chat nueva** — FL2a (§45.6) y FL2b (§45.8) | 0 frames perdidos al tipear y al abrir; teclado sincronizado | ✅ 16/10 (0.1.73) |
 | FL3 | **Burbujas y lista estilo WhatsApp**: cola real, hora + ticks dentro, ticks vectoriales, nombre del autor en grupos (hoy sale la inicial del grupo), wallpaper, paleta de burbujas, ripple, FAB «bajar al final», fecha pegada, sin controles inertes | auditoría lado a lado contra WhatsApp/Telegram con capturas | ⬜ |
 | FL4 | **Latencia del server** — hecho: envío de 5 a 3 viajes, lista sin N+1, ping 15/10 s (§45.7). Falta: bóveda (D2), caché de membresía para acuses/typing, fotos con dimensiones + blurhash | ack < 300 ms medido | 🟡 16/10 |
 | FL5 | **Pendientes de F12 que pesan en el hilo JS**: cifrado/scrypt por lotes, tarea de fondo que mira wifi/carga primero (§44.4) | respaldar 20 000 mensajes sin ANR en `gama-baja` | ⬜ |
@@ -3508,3 +3508,27 @@ mensaje: esas entradas no son de rendimiento.
 - `scripts/conciliar-migracion.ts`: cuenta y concilia Atlas → bóveda para la
   migración de D2 (probado con `--contar`; la conciliación se corre en el
   cambio).
+
+### 45.8 As-is FL2b (16/10/2026)
+
+- **Deslizar para responder en el hilo de UI** (`chat/DeslizarParaResponder.tsx`
+  con `react-native-gesture-handler` + Reanimated; reglas puras en
+  `chat/gestoDeRespuesta.ts`, 3 tests): arranca a los 12 dp en horizontal, se
+  suelta si el movimiento vertical pasa 14 dp (deja el scroll a la lista), y
+  solo el «responder» cruza a JS. Reemplaza al `PanResponder` del hilo de JS.
+- **Haptics** (`expo-haptics`): un tick al CRUZAR el umbral del deslizar (no
+  al soltar) y otro al seleccionar con long-press. E2E: los dos aparecen en
+  `dumpsys vibrator_manager` con el paquete de la app.
+- **Teclado sincronizado** (`react-native-keyboard-controller`):
+  `KeyboardAvoidingView` de la librería en el chat y en Ajustes, con
+  `KeyboardProvider` y `GestureHandlerRootView` en la raíz de `App.tsx`. Con
+  el teclado abierto el pie del composer baja a 8 dp (`useKeyboardState`): ya
+  no queda hueco entre el campo y el teclado. Trampa: NativeWind no estiliza
+  componentes de terceros — el `KeyboardAvoidingView` lleva `style`, con
+  `className` perdía el `flex: 1` y aplastaba la pantalla.
+- E2E: deslizar → «Respondiendo a vos» → la respuesta sale con su cita;
+  teclado abierto pegado al campo; long-press → «1 seleccionado». Ojo: el
+  `swipe` de Maestro desde el centro de una burbuja propia recorre muy poco
+  antes del borde y no dispara; con `adb shell input swipe` (lento, 280 dp) sí.
+- Visto de paso (para FL3): el aviso «1 mensajes sin leer» de Lila sale por
+  mensajes PROPIOS mandados desde otro dispositivo, y con la gramática mal.

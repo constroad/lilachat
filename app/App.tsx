@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { ErrorBoundary } from './src/ui/ErrorBoundary';
 import './global.css';
 import { listChats, refreshSession } from './src/api/client';
@@ -87,6 +89,10 @@ export default function App() {
     // El proveedor es lo que hace que `useSafeAreaInsets` devuelva algo distinto
     // de cero. Sin él, todas las pantallas creen que no hay barras y el botón
     // del pie termina debajo de la de Android.
+    // Gestos y teclado en el hilo nativo (FL2b): sin estos proveedores el
+    // deslizar-para-responder y el teclado sincronizado no funcionan.
+    <GestureHandlerRootView style={{ flex: 1 }}>
+    <KeyboardProvider>
     <SafeAreaProvider>
       <ProveedorTema>
         {/* Envuelve TODO: un error de render dejaba la pantalla en blanco sin
@@ -96,6 +102,8 @@ export default function App() {
         </ErrorBoundary>
       </ProveedorTema>
     </SafeAreaProvider>
+    </KeyboardProvider>
+    </GestureHandlerRootView>
   );
 }
 

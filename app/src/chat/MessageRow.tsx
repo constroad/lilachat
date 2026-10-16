@@ -1,8 +1,10 @@
-import { ActivityIndicator, Animated, PanResponder, Pressable, Text, View } from 'react-native';
-import { memo, useRef } from 'react';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { memo } from 'react';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { CornerUpLeft, FileText, Pause, Play } from 'lucide-react-native';
+import { FileText, Pause, Play } from 'lucide-react-native';
+import { DeslizarParaResponder } from './DeslizarParaResponder';
 import { porcentajeDeSubida } from './progresoDeSubida';
 import {
   TEXTO_ELIMINADO,
@@ -81,9 +83,6 @@ function FilaDeMensaje({
   seleccionado?: boolean;
 }) {
   const colores = useColores();
-  // La `Animated.Value` del deslizar-para-responder va ANTES del early-return de
-  // los avisos: un hook no puede quedar despues de un `return` condicional.
-  const panX = useRef(new Animated.Value(0)).current;
 
   // Los avisos del grupo no son burbujas de nadie: van centrados, chiquitos y
   // sin cola. Se resuelve ANTES que todo lo demás porque nada de lo de abajo
@@ -120,37 +119,14 @@ function FilaDeMensaje({
 
   const tail = nextGrouped ? '' : mine ? 'rounded-br-tail' : 'rounded-bl-tail';
 
-  // Deslizar el mensaje a la derecha para responderlo, como WhatsApp. Con
-  // `PanResponder` del core, sin dependencia nativa. Solo reclama el gesto si el
-  // movimiento es HORIZONTAL y hacia la derecha; si no, deja pasar el scroll.
   const preview = previewDeMensaje(item);
-  const pan = PanResponder.create({
-    onMoveShouldSetPanResponder: (_e, g) =>
-      !isPending(item) && g.dx > 12 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
-    onPanResponderMove: (_e, g) => {
-      panX.setValue(Math.max(0, Math.min(g.dx, 72)));
-    },
-    onPanResponderRelease: (_e, g) => {
-      if (!isPending(item) && g.dx > 48) onResponder?.(item.seq, preview, mine);
-      Animated.spring(panX, { toValue: 0, useNativeDriver: true, bounciness: 6 }).start();
-    },
-    onPanResponderTerminate: () => {
-      Animated.spring(panX, { toValue: 0, useNativeDriver: true }).start();
-    },
-  });
 
   return (
-    <Animated.View
-      {...pan.panHandlers}
-      style={{ transform: [{ translateX: panX }] }}
-      className={`flex-row items-end gap-2 ${grouped ? 'mt-1' : 'mt-4'} ${mine ? 'justify-end' : ''}`}
+    <DeslizarParaResponder
+      habilitado={!isPending(item)}
+      onResponder={() => !isPending(item) && onResponder?.(item.seq, preview, mine)}
     >
-      <Animated.View
-        style={{ opacity: panX.interpolate({ inputRange: [0, 48], outputRange: [0, 1] }) }}
-        className="absolute left-0 top-1/2 h-7 w-7 items-center justify-center rounded-full bg-primary/15"
-      >
-        <CornerUpLeft size={15} color={colores.primary} />
-      </Animated.View>
+    <View className={`flex-row items-end gap-2 ${grouped ? 'mt-1' : 'mt-4'} ${mine ? 'justify-end' : ''}`}>
       {/* El avatar acompaña SOLO al último del bloque ajeno: repetirlo en cada
           burbuja del mismo emisor ensucia la columna. */}
       {!mine ? (
@@ -165,7 +141,12 @@ function FilaDeMensaje({
         {/* La pulsación LARGA selecciona, como en WhatsApp. Un toque corto no
             hace nada acá: se reserva para abrir la foto. */}
         <Pressable
-          onLongPress={() => !isPending(item) && onSeleccionar?.(item.seq)}
+          onLongPress={() => {
+            if (isPending(item)) return;
+            // El tick de «quedó seleccionado», como WhatsApp.
+            void Haptics.selectionAsync();
+            onSeleccionar?.(item.seq);
+          }}
           delayLongPress={350}
           testID={!isPending(item) ? `burbuja-${item.seq}` : undefined}
           className={`overflow-hidden rounded-lg ${tail} ${mine ? 'bg-primary' : 'bg-surface-variant'} ${seleccionado ? 'opacity-60' : ''}`}
@@ -340,7 +321,8 @@ function FilaDeMensaje({
           ) : null}
         </View>
       </View>
-    </Animated.View>
+    </View>
+    </DeslizarParaResponder>
   );
 }
 

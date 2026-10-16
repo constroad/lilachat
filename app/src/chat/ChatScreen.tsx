@@ -4,7 +4,6 @@ import {
   Alert,
   BackHandler,
   Keyboard,
-  KeyboardAvoidingView,
   Pressable,
   Text,
   View,
@@ -14,6 +13,7 @@ import {
 import { ProgramarMensajeModal } from './ProgramarMensajeModal';
 import { programarMensaje } from '../api/client';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
+import { KeyboardAvoidingView, useKeyboardState } from 'react-native-keyboard-controller';
 import { terminarCronometro } from '../diagnostico/diagnostico';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -59,6 +59,8 @@ import { citadosPorSeq, tipoDeFila } from './filasDelChat';
  */
 /** Cuánto (en dp) cuenta como «estar abajo» en la conversación. */
 const MARGEN_DEL_FINAL = 160;
+/** El pie del composer con el teclado abierto (dp). */
+const MARGEN_CON_TECLADO = 8;
 
 export function ChatScreen({
   chatId,
@@ -501,6 +503,10 @@ export function ChatScreen({
     return () => sub.remove();
   }, []);
 
+  // Con el teclado abierto no hay barra de navegación debajo: el margen del pie
+  // dejaba un hueco entre el campo y el teclado (auditoría del 16/10).
+  const tecladoAbierto = useKeyboardState((estado) => estado.isVisible);
+
   const hayContenido = rows.length > 0;
   useEffect(() => {
     if (!hayContenido) return;
@@ -527,7 +533,9 @@ export function ChatScreen({
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-background"
+      // `style` y no `className`: NativeWind no estiliza componentes de terceros
+      // y sin `flex: 1` la pantalla se aplastaba.
+      style={{ flex: 1, backgroundColor: colores.background }}
       /**
        * `padding` TAMBIEN en Android, y no es un descuido.
        *
@@ -804,7 +812,7 @@ export function ChatScreen({
         respondiendoA={respondiendoA}
         onCancelarRespuesta={alCancelarRespuesta}
         subiendo={uploading}
-        margenPie={margenes.pie}
+        margenPie={tecladoAbierto ? MARGEN_CON_TECLADO : margenes.pie}
         onAdjuntar={alAdjuntar}
         onEscribiendo={avisarEscribiendo}
         onEnviar={alEnviar}

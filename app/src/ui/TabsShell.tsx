@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler, KeyboardAvoidingView, Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { BackHandler, Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { ArrowLeft, BellRing, Camera, ChevronRight, CloudUpload, Moon, RefreshCw, Sun, SunMoon, User, UserPlus } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { listChats, type ChatSummary } from '../api/client';
@@ -367,7 +368,7 @@ export function TabsShell({
           // `padding` también en Android: con edge-to-edge la ventana ya no se
           // encoge con el teclado, y la passphrase del respaldo quedaba tapada
           // sin forma de subirla (mismo motivo que en ChatScreen).
-          <KeyboardAvoidingView className="flex-1" behavior="padding">
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <ScrollView
             className="flex-1"
             contentContainerStyle={{ padding: 16 }}

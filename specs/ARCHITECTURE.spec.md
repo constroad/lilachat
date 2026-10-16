@@ -3576,5 +3576,10 @@ pendiente. Las capturas NO van al repo.
   autor en un grupo real (solo lectura); hora en la misma línea cuando cabe;
   video con la hora sobre la imagen; el botón bajar aparece al subir y lleva al
   final.
+- **Subtítulo de la cabecera en grupos** (`chat/cabeceraDelChat.ts`, 5
+  tests; diseño «Conversación de grupo · Oscuro», pantalla
+  `b45fbc69cf2b43bd82a5d86fdaf18685`): nombra a quien escribe («Mamá está
+  escribiendo…», «Mamá y Papá están…») y si nadie escribe, los miembros con
+  «Vos» al final. Sin nombres cargados no inventa ninguno.
 - `ChatScreen` quedó en 913 líneas (deuda previa, >600): la lógica de scroll
   salió a `useFinalDeLaConversacion`; falta partir la cabecera y los modales.

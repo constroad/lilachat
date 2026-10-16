@@ -50,6 +50,7 @@ import { decidirAtras } from '../ui/botonAtras';
 import { textoDeSubida } from './progresoDeSubida';
 import { citadosPorSeq, tipoDeFila } from './filasDelChat';
 import { useNombresDelGrupo } from './useNombresDelGrupo';
+import { subtituloDelChat } from './cabeceraDelChat';
 import { FondoDelChat } from './FondoDelChat';
 import { useFinalDeLaConversacion } from './useFinalDeLaConversacion';
 
@@ -271,13 +272,14 @@ export function ChatScreen({
   const esGrupoChat = otherUserId === null || otherUserId === undefined;
   const otroEscribe = otherUserId ? escribiendo.has(otherUserId) : escribiendo.size > 0;
   const otroEnLinea = otherUserId ? enLinea.has(otherUserId) : false;
-  const subtitulo = otroEscribe
-    ? esGrupoChat
-      ? 'alguien está escribiendo…'
-      : 'escribiendo…'
-    : otroEnLinea
-      ? 'en línea'
-      : '';
+  const nombresDelGrupo = useNombresDelGrupo(chatId, credential.jwt, esGrupoChat);
+  const subtitulo = subtituloDelChat({
+    esGrupo: esGrupoChat,
+    escriben: [...escribiendo],
+    otroEnLinea,
+    nombres: nombresDelGrupo,
+    yo: credential.userId,
+  });
   const fotoVisible = infoPropia.avatarUrl ?? chatAvatarUrl;
 
   /**
@@ -448,7 +450,6 @@ export function ChatScreen({
   );
   const leidoHasta = Math.max(othersReadSeq, othersRead);
   const entregadoHasta = Math.max(othersDeliveredSeq, othersDelivered);
-  const nombresDelGrupo = useNombresDelGrupo(chatId, credential.jwt, esGrupoChat);
   const alVerImagen = useCallback((seq: number) => setViendoSeq(seq), []);
   const alResponder = useCallback(
     (seq: number, texto: string, mio: boolean) => setRespondiendoA({ seq, texto, mio }),

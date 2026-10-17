@@ -8,21 +8,10 @@ import {
   View,
 } from 'react-native';
 import { ProgramarMensajeModal } from './ProgramarMensajeModal';
-import { programarMensaje } from '../api/client';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { KeyboardAvoidingView, useKeyboardState } from 'react-native-keyboard-controller';
 import { terminarCronometro } from '../diagnostico/diagnostico';
-import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
-import {
-  ArrowLeft,
-  ChevronDown,
-  Lock,
-  MoreVertical,
-  Phone,
-  Video,
-} from 'lucide-react-native';
+import { ChevronDown } from 'lucide-react-native';
 import { formatDayLabel, startsNewDay } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { AttachSheet } from './AttachSheet';
@@ -33,28 +22,30 @@ import { SecretChatBanner } from '../crypto/SecretChatBanner';
 import { useSecretChat } from '../crypto/useSecretChat';
 import { DaySeparator, MessageRow, isPending, type Row } from './MessageRow';
 import { formatClock } from '@lilachat/shared';
-import { abrirConOtraApp, compartirFoto, guardarEnGaleria } from './guardarYCompartir';
-import type { NotaGrabada } from './useGrabadorDeVoz';
+import { abrirConOtraApp } from './guardarYCompartir';
 import { Composer, type ComposerHandle } from './Composer';
 import { previewDeMensaje } from './MessageRow';
-import { VisorDeImagen } from './VisorDeImagen';
 import { ChatDetailScreen } from './ChatDetailScreen';
 import { useChat } from './useChat';
 import { useLlamadas } from '../calls/ProveedorDeLlamadas';
 import { descartarMensaje, reintentarMensaje } from './outboxStore';
-import { descartarArchivo, encolarArchivo, reintentarArchivo } from './colaDeArchivos';
+import { descartarArchivo, reintentarArchivo } from './colaDeArchivos';
 import { useArchivosDelChat } from './useArchivosDelChat';
 import { useLimpiarAvisoDelChat } from './useLimpiarAvisoDelChat';
 import { SeleccionDeMensaje } from './SeleccionDeMensaje';
+import { useProgramados } from './useProgramados';
+import { VisorDelChat } from './VisorDelChat';
+import { EncabezadoDelChat } from './EncabezadoDelChat';
 import { EnviarFotos } from './EnviarFotos';
-import { MAXIMO_DE_FOTOS, type FotoAEnviar, type FotoElegida } from './envioDeFotos';
+import { useAdjuntosDelChat } from './useAdjuntosDelChat';
 import { sinOcultos, useOcultos } from './ocultos';
 import { DivisorNoLeidos, useDivisorNoLeidos } from './useDivisorNoLeidos';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { decidirAtras } from '../ui/botonAtras';
+import { BuscadorDelChat } from './BuscadorDelChat';
+import { useBuscarEnChat } from './useBuscarEnChat';
 import { textoDeSubida } from './progresoDeSubida';
-import { reportarError } from '../ui/reportarError';
 import { citadosPorSeq, tipoDeFila } from './filasDelChat';
 import { useNombresDelGrupo } from './useNombresDelGrupo';
 import { subtituloDelChat } from './cabeceraDelChat';
@@ -68,6 +59,10 @@ import { useFinalDeLaConversacion } from './useFinalDeLaConversacion';
  */
 /** El pie del composer con el teclado abierto (dp). */
 const MARGEN_CON_TECLADO = 8;
+/** El segundo `scrollToIndex`, cuando la zona ya se midió. */
+const SEGUNDO_PASE_MS = 400;
+/** Cuánto queda resaltado el original de una cita. */
+const RESALTADO_DE_CITA_MS = 1500;
 
 export function ChatScreen({
   chatId,
@@ -144,7 +139,6 @@ export function ChatScreen({
   });
   // El borrador vive en el Composer (FL2): una tecla ya no re-renderiza esto.
   const composerRef = useRef<ComposerHandle>(null);
-  const [textoAProgramar, setTextoAProgramar] = useState('');
   /** El mensaje al que se está respondiendo (deslizando sobre él), o null. */
   const [respondiendoA, setRespondiendoA] = useState<{ seq: number; texto: string; mio: boolean } | null>(null);
   const respondiendoRef = useRef(false);
@@ -168,35 +162,7 @@ export function ChatScreen({
   );
 
   // Mensajes programados (F11): long-press en enviar abre el modal.
-  const [programarVisible, setProgramarVisible] = useState(false);
-  const [avisoProgramado, setAvisoProgramado] = useState<string | null>(null);
-
-  const alProgramar = async (cuando: Date) => {
-    const texto = textoAProgramar.trim();
-    if (!texto) {
-      setProgramarVisible(false);
-      return;
-    }
-    // La clave hace idempotente el envío si el tick del server reintenta.
-    const clientKey = `prog-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const resultado = await programarMensaje(
-      credential.jwt,
-      chatId,
-      texto,
-      cuando.toISOString(),
-      clientKey
-    );
-    setProgramarVisible(false);
-    if (resultado.ok) {
-      composerRef.current?.limpiar();
-      setAvisoProgramado(
-        `Se enviará ${cuando.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}`
-      );
-      setTimeout(() => setAvisoProgramado(null), 4000);
-    } else {
-      Alert.alert('No se pudo programar', resultado.message ?? 'Probá de nuevo.');
-    }
-  };
+  const programados = useProgramados({ jwt: credential.jwt, chatId, alProgramado: () => composerRef.current?.limpiar() });
   const [attachOpen, setAttachOpen] = useState(false);
   // Crear desde la conversación: el chat YA está elegido, así que las pantallas
   // de crear no vuelven a preguntar dónde.
@@ -222,8 +188,10 @@ export function ChatScreen({
         haySeleccion: elegidoRef.current !== null,
         editando: editandoRef.current,
         respondiendo: respondiendoRef.current,
+        buscando: buscandoRef.current,
       });
       if (accion === 'soltar-seleccion') setElegido(null);
+      else if (accion === 'limpiar-busqueda') cerrarBusquedaRef.current();
       else if (accion === 'cancelar-edicion') setEditando(null);
       else if (accion === 'cancelar-respuesta') setRespondiendoA(null);
       else if (accion === 'ir-a-lista') onBack();
@@ -234,9 +202,6 @@ export function ChatScreen({
   }, [onBack]);
   const [mediaError, setMediaError] = useState('');
   /** Las fotos elegidas que se están por mandar (FL9b); vacío = cerrado. */
-  const [fotosElegidas, setFotosElegidas] = useState<FotoElegida[]>([]);
-  /** El resultado de descargar/compartir, que se pinta DENTRO del visor. */
-  const [avisoVisor, setAvisoVisor] = useState('');
 
   const archivosEnCola = useArchivosDelChat(chatId);
   const subidaEnCurso = archivosEnCola.find((uno) => uno.progreso !== undefined)?.progreso;
@@ -282,14 +247,10 @@ export function ChatScreen({
     },
     [send]
   );
-  const alProgramarDesdeComposer = useCallback((texto: string) => {
-    setTextoAProgramar(texto);
-    setProgramarVisible(true);
-  }, []);
   const alAdjuntar = useCallback(() => setAttachOpen(true), []);
+  const { fotosElegidas, cerrarFotos, alEnviarFotos, alCamara, alNotaDeVoz, pickFromCamera, pickFromGallery, pickFile } =
+    useAdjuntosDelChat({ chatId, onError: setMediaError });
   // Por un ref: `pickFromCamera` se rearma en cada render y el Composer es memo.
-  const camaraRef = useRef<() => Promise<void>>(async () => undefined);
-  const alCamara = useCallback(() => void camaraRef.current(), []);
   const alCancelarRespuesta = useCallback(() => setRespondiendoA(null), []);
 
   const nombreVisible = infoPropia.name ?? chatName;
@@ -347,86 +308,7 @@ export function ChatScreen({
       cuando: formatClock(new Date(m.at)),
       miniatura: m.media!.thumbUrl,
     }));
-  const fotoAbierta = fotos.find((f) => f.seq === viendoSeq) ?? null;
 
-  /**
-   * Foto, archivo o nota de voz: a la cola PERSISTIDA (FL8). La burbuja aparece
-   * al instante —como WhatsApp— y sube cuando hay red, aunque se salga del chat
-   * o se cierre la app; si el server la rechaza queda «No se envió» a la vista.
-   */
-  const upload = async (file: { uri: string; fileName: string; mimeType: string; sizeBytes: number; durationMs?: number }) => {
-    setMediaError('');
-    try {
-      await encolarArchivo({ chatId, ...file });
-    } catch (error) {
-      reportarError('encolarArchivo', error);
-      setMediaError('No se pudo preparar el archivo para enviarlo.');
-    }
-  };
-
-  /**
-   * La nota de voz pasa por el MISMO `upload` que una foto. Por un ref: el
-   * callback queda estable y el Composer memoizado no se vuelve a dibujar.
-   */
-  const uploadRef = useRef(upload);
-  uploadRef.current = upload;
-  const alNotaDeVoz = useCallback(
-    (nota: NotaGrabada) =>
-      uploadRef.current({
-        uri: nota.uri,
-        fileName: 'nota-de-voz.m4a',
-        mimeType: nota.mime,
-        sizeBytes: nota.bytes,
-        durationMs: nota.ms,
-      }),
-    []
-  );
-  camaraRef.current = () => pickFromCamera();
-  async function pickFromCamera() {
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) {
-      setMediaError('Permite la cámara para poder tomar fotos.');
-      return;
-    }
-    const shot = await ImagePicker.launchCameraAsync({ quality: 1 });
-    const asset = shot.assets?.[0];
-    if (shot.canceled || !asset) return;
-    // FL9b: antes de mandarla, se ve y se le pone pie.
-    setFotosElegidas([asset]);
-  }
-
-  const pickFromGallery = async () => {
-    const picked = await ImagePicker.launchImageLibraryAsync({
-      // `quality: 1` y sin edición: la foto se manda como está. Recomprimir es
-      // justo la queja que esta app viene a no repetir.
-      quality: 1,
-      mediaTypes: ['images', 'videos'],
-      // FL9b: varias a la vez, y antes de mandarlas se ven y llevan su pie.
-      allowsMultipleSelection: true,
-      selectionLimit: MAXIMO_DE_FOTOS,
-      orderedSelection: true,
-    });
-    if (picked.canceled || !picked.assets?.length) return;
-    setFotosElegidas(picked.assets);
-  };
-
-  /** Las elegidas, a la cola en el orden en que se eligieron (cada una con su pie). */
-  const alEnviarFotos = async (fotosAEnviar: FotoAEnviar[]) => {
-    setFotosElegidas([]);
-    for (const foto of fotosAEnviar) await upload(foto);
-  };
-
-  const pickFile = async () => {
-    const picked = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
-    const asset = picked.assets?.[0];
-    if (picked.canceled || !asset) return;
-    await upload({
-      uri: asset.uri,
-      fileName: asset.name,
-      mimeType: asset.mimeType ?? 'application/octet-stream',
-      sizeBytes: asset.size ?? 0,
-    });
-  };
 
   /**
    * La foto en vuelo se suma como una fila pendiente mas. Va al FINAL: es lo
@@ -472,20 +354,37 @@ export function ChatScreen({
     listaRef,
   });
 
-  /** Tocar una cita: al original, resaltado un momento (FL9). */
-  const alTocarCita = useCallback(
-    (seq: number) => {
+  /** Llevar la lista a un mensaje (la cita y la búsqueda, FL9). */
+  const irAMensaje = useCallback(
+    (seq: number): boolean => {
       const indice = rows.findIndex((fila) => !isPending(fila) && fila.seq === seq);
-      if (indice < 0) return setMediaError('El mensaje original está más arriba: sube para cargarlo.');
+      if (indice < 0) return false;
       listaRef.current?.scrollToIndex({ index: indice, animated: true, viewPosition: 0.4 });
       // Segundo pase: con alturas variables, si esa zona todavía no se midió el
       // primero cae corto o no se mueve (visto en el E2E con el chat recién abierto).
-      setTimeout(() => listaRef.current?.scrollToIndex({ index: indice, animated: false, viewPosition: 0.4 }), 400);
-      setResaltado(seq);
-      setTimeout(() => setResaltado((actual) => (actual === seq ? null : actual)), 1500);
+      setTimeout(() => listaRef.current?.scrollToIndex({ index: indice, animated: false, viewPosition: 0.4 }), SEGUNDO_PASE_MS);
+      return true;
     },
     [rows]
   );
+
+  /** Tocar una cita: al original, resaltado un momento (FL9). */
+  const alTocarCita = useCallback(
+    (seq: number) => {
+      if (!irAMensaje(seq)) return setMediaError('El mensaje original está más arriba: sube para cargarlo.');
+      setResaltado(seq);
+      setTimeout(() => setResaltado((actual) => (actual === seq ? null : actual)), RESALTADO_DE_CITA_MS);
+    },
+    [irAMensaje]
+  );
+
+  // Buscar dentro del chat (FL9): sobre lo que se ve —sin lo «eliminado para mí»—.
+  const visiblesParaBuscar = useMemo(() => sinOcultos(messages, ocultos), [messages, ocultos]);
+  const busqueda = useBuscarEnChat({ mensajes: visiblesParaBuscar, irA: irAMensaje });
+  const buscandoRef = useRef(false);
+  buscandoRef.current = busqueda.activo;
+  const cerrarBusquedaRef = useRef(busqueda.cerrar);
+  cerrarBusquedaRef.current = busqueda.cerrar;
 
   const mensajeElegido = elegido === null ? null : (messages.find((mensaje) => mensaje.seq === elegido) ?? null);
 
@@ -575,14 +474,14 @@ export function ChatScreen({
             onSeleccionar={setElegido}
             onResponder={alResponder}
             citado={isPending(item) ? null : (citados.get(item.seq) ?? null)}
-            seleccionado={!isPending(item) && (item.seq === elegido || item.seq === resaltado)}
+            seleccionado={!isPending(item) && (item.seq === elegido || item.seq === resaltado || item.seq === busqueda.seqActual)}
             onFallido={alFallido}
             onTocarCita={alTocarCita}
           />
         </>
       );
     },
-    [rows, credential.userId, leidoHasta, entregadoHasta, esGrupoChat, nombresDelGrupo, alVerImagen, alResponder, citados, elegido, resaltado, divisorSeq, noLeidosAlAbrir, alFallido, alTocarCita]
+    [rows, credential.userId, leidoHasta, entregadoHasta, esGrupoChat, nombresDelGrupo, alVerImagen, alResponder, citados, elegido, resaltado, busqueda.seqActual, divisorSeq, noLeidosAlAbrir, alFallido, alTocarCita]
   );
 
   const { alScrollear, abajoLejos, nuevosAbajo } = useFinalDeLaConversacion(listaRef, messages, credential.userId);
@@ -606,7 +505,6 @@ export function ChatScreen({
     // Solo al pasar de vacío a con contenido: reaccionar a cada mensaje pelearía
     // con quien está leyendo mensajes viejos más arriba.
   }, [hayContenido]);
-;
 
   useEffect(() => {
     const last = messages[messages.length - 1];
@@ -656,95 +554,30 @@ export function ChatScreen({
           }}
           onError={setMediaError}
         />
+      ) : busqueda.activo ? (
+        <BuscadorDelChat
+          consulta={busqueda.consulta}
+          onConsulta={busqueda.setConsulta}
+          posicion={busqueda.posicion}
+          total={busqueda.total}
+          onAnterior={busqueda.anterior}
+          onSiguiente={busqueda.siguiente}
+          onCerrar={busqueda.cerrar}
+        />
       ) : (
       <>
-      {/* Header como el diseño: FLECHA (no la palabra «Atrás»), avatar del chat
-          junto al nombre, y el menú al final. Video y llamada llegan con F10. */}
-      <View className="flex-row items-center gap-2 border-b border-outline/10 bg-surface px-3 pb-3" style={{ paddingTop: margenes.cabecera }}>
-        <Pressable onPress={onBack} testID="btn-volver" className="h-11 w-9 items-center justify-center">
-          <ArrowLeft size={22} color={colores["on-surface"]} />
-        </Pressable>
-        {/* Tocar el avatar Y el nombre abre el detalle, como en WhatsApp: es
-            donde la gente lo busca, mucho antes que en el menú de tres puntos.
-            Los dos van dentro del MISMO Pressable — que solo responda el avatar
-            deja un área táctil chiquita al lado de un nombre que parece tocable. */}
-        <Pressable
-          testID="btn-abrir-detalle"
-          accessibilityLabel="Ver el detalle del chat"
-          onPress={() => setVerDetalle(true)}
-          className="min-w-0 flex-1 flex-row items-center gap-2"
-        >
-        <View className="h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-primary/10">
-          {fotoVisible ? (
-            <Image source={{ uri: fotoVisible }} style={{ width: 36, height: 36 }} contentFit="cover" />
-          ) : (
-            <Text className="text-sm font-bold text-primary">
-              {nombreVisible.slice(0, 1).toUpperCase()}
-            </Text>
-          )}
-        </View>
-        <View className="min-w-0 flex-1">
-          <View className="flex-row items-center gap-1.5">
-            {/* El candado va PEGADO al nombre y no en una banda aparte: es una
-                propiedad de con quién se está hablando, y tiene que verse en la
-                misma mirada que el nombre. */}
-            {encrypted ? <Lock size={13} color={colores.primary} /> : null}
-            <Text className="min-w-0 flex-1 text-base font-bold text-on-surface" numberOfLines={1}>
-              {nombreVisible}
-            </Text>
-          </View>
-          {/* El estado de conexión se DICE: un mensaje que no sale sin
-              explicación es lo que hace desconfiar de una app de mensajería. */}
-          {!connected ? (
-            <Text className="text-xs text-on-surface-variant" testID="estado-conexion">
-              Sin conexión · se enviará cuando vuelva
-            </Text>
-          ) : subtitulo ? (
-            <Text
-              testID="estado-presencia"
-              className={`text-xs ${otroEscribe ? 'text-primary' : 'text-on-surface-variant'}`}
-              numberOfLines={1}
-            >
-              {subtitulo}
-            </Text>
-          ) : null}
-        </View>
-        </Pressable>
-        {/* Llamadas: dejan de ser inertes (F10). Solo en 1:1 — una llamada
-            grupal es otra cosa (varias conexiones a la vez) y prometerla con el
-            mismo botón sería mentir. */}
-        {otherUserId ? (
-          <>
-            <Pressable
-              testID="btn-videollamada"
-              accessibilityLabel="Videollamada"
-              onPress={() => llamar(chatId, chatName, true)}
-              className="h-11 w-11 items-center justify-center"
-            >
-              <Video size={20} color={colores["on-surface-variant"]} />
-            </Pressable>
-            <Pressable
-              testID="btn-llamada"
-              accessibilityLabel="Llamar"
-              onPress={() => llamar(chatId, chatName, false)}
-              className="h-11 w-11 items-center justify-center"
-            >
-              <Phone size={20} color={colores["on-surface-variant"]} />
-            </Pressable>
-          </>
-        ) : null}
-        {/* El ⋮ no hacía nada (auditoría del 16/10): un botón que no responde
-            enseña que la app no responde. Abre la info del chat. */}
-        <Pressable
-          testID="btn-menu-chat"
-          accessibilityLabel="Info del chat"
-          onPress={() => setVerDetalle(true)}
-          android_ripple={{ color: colores.outline, borderless: true, radius: 22 }}
-          className="h-11 w-9 items-center justify-center"
-        >
-          <MoreVertical size={20} color={colores["on-surface-variant"]} />
-        </Pressable>
-      </View>
+      <EncabezadoDelChat
+        nombre={nombreVisible}
+        foto={fotoVisible}
+        secreto={Boolean(encrypted)}
+        conectado={connected}
+        subtitulo={subtitulo}
+        otroEscribe={otroEscribe}
+        puedeLlamar={Boolean(otherUserId)}
+        onVolver={onBack}
+        onAbrirDetalle={() => setVerDetalle(true)}
+        onLlamar={(conVideo) => llamar(chatId, chatName, conVideo)}
+      />
       </>
       )}
 
@@ -772,15 +605,15 @@ export function ChatScreen({
           la conversación, que es donde uno estaba. */}
 
       <ProgramarMensajeModal
-        visible={programarVisible}
-        texto={textoAProgramar}
-        onProgramar={alProgramar}
-        onCerrar={() => setProgramarVisible(false)}
+        visible={programados.visible}
+        texto={programados.texto}
+        onProgramar={programados.programar}
+        onCerrar={programados.cerrar}
       />
 
-      {avisoProgramado ? (
+      {programados.aviso ? (
         <View className="mx-4 mb-1 rounded-lg bg-primary/[0.10] px-3 py-2" testID="aviso-programado">
-          <Text className="text-[12px] text-primary">🗓️ Programado. {avisoProgramado}.</Text>
+          <Text className="text-[12px] text-primary">🗓️ Programado. {programados.aviso}.</Text>
         </View>
       ) : null}
 
@@ -889,6 +722,7 @@ export function ChatScreen({
           en dos líneas. */}
       <Composer
         ref={composerRef}
+        chatId={chatId}
         respondiendoA={respondiendoA}
         onCancelarRespuesta={alCancelarRespuesta}
         editando={editando}
@@ -900,13 +734,13 @@ export function ChatScreen({
         onCamara={alCamara}
         onEscribiendo={avisarEscribiendo}
         onEnviar={alEnviar}
-        onProgramar={alProgramarDesdeComposer}
+        onProgramar={programados.abrir}
         onNotaDeVoz={alNotaDeVoz}
         // Chat secreto: sin clave no se manda nada; con clave, solo texto.
         modoSecreto={encrypted ? (sesionLista ? 'solo-texto' : 'bloqueado') : undefined}
       />
 
-      <EnviarFotos fotos={fotosElegidas} onCancelar={() => setFotosElegidas([])} onEnviar={(lista) => void alEnviarFotos(lista)} />
+      <EnviarFotos fotos={fotosElegidas} onCancelar={cerrarFotos} onEnviar={(lista) => void alEnviarFotos(lista)} />
 
       <AttachSheet
         visible={attachOpen}
@@ -917,44 +751,12 @@ export function ChatScreen({
         onCreatePoll={() => setCreando('poll')}
         onPickFile={() => void pickFile()}
       />
-      <VisorDeImagen
-        foto={fotoAbierta}
-        otras={fotos}
-        onCerrar={() => setViendoSeq(null)}
-        onCambiar={(otra) => setViendoSeq(otra.seq)}
-        aviso={avisoVisor}
-        onDescargar={async (f) => {
-          // El resultado se DICE en los dos sentidos, y DENTRO del visor: una
-          // descarga que no avisa nada deja sin saber si hay que reintentar.
-          setAvisoVisor('Guardando…');
-          const r = await guardarEnGaleria({ url: f.url, cuando: f.cuandoReal, mime: f.mime, seq: f.seq });
-          setAvisoVisor(r.ok ? 'Guardada en tu galería' : r.motivo);
-          setTimeout(() => setAvisoVisor(''), 3000);
-        }}
-        onCompartir={async (f) => {
-          const r = await compartirFoto({ url: f.url, cuando: f.cuandoReal, mime: f.mime, seq: f.seq });
-          if (!r.ok) {
-            setAvisoVisor(r.motivo);
-            setTimeout(() => setAvisoVisor(''), 3000);
-          }
-        }}
-        onEliminar={async (f) => {
-          setViendoSeq(null);
-          const r = await eliminar(f.seq);
-          if (!r.ok) setMediaError(r.motivo ?? 'No se pudo eliminar.');
-        }}
-        onAbrirArchivo={async (f) => {
-          setAvisoVisor('Abriendo…');
-          const r = await abrirConOtraApp({
-            url: f.url,
-            cuando: f.cuandoReal,
-            mime: f.mime,
-            seq: f.seq,
-            nombre: f.nombre,
-          });
-          setAvisoVisor(r.ok ? '' : r.motivo);
-          if (!r.ok) setTimeout(() => setAvisoVisor(''), 4000);
-        }}
+      <VisorDelChat
+        fotos={fotos}
+        viendoSeq={viendoSeq}
+        onCambiar={setViendoSeq}
+        onEliminar={eliminar}
+        onError={setMediaError}
       />
 
       <ChatDetailScreen
@@ -974,6 +776,10 @@ export function ChatScreen({
         onVerImagen={(seq) => {
           setVerDetalle(false);
           alVerImagen(seq);
+        }}
+        onBuscar={() => {
+          setVerDetalle(false);
+          busqueda.abrir();
         }}
       />
     </KeyboardAvoidingView>

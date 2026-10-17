@@ -11,6 +11,7 @@ import './global.css';
 import { listChats, olvidarPushDeEsteTelefono, refreshSession } from './src/api/client';
 import { olvidarCola } from './src/chat/outboxStore';
 import { olvidarArchivos } from './src/chat/colaDeArchivos';
+import { olvidarBorradores } from './src/chat/borradores';
 import {
   clearCredential,
   loadCredential,
@@ -341,7 +342,7 @@ function Contenido() {
         ...stored,
         jwt: session.data.jwt,
         ...(session.data.user
-          ? { userId: session.data.user.id, name: session.data.user.name }
+          ? { userId: session.data.user.id, name: session.data.user.name, avatarUrl: session.data.user.avatarUrl ?? null }
           : {}),
       };
       await saveCredential(refreshed);
@@ -358,6 +359,7 @@ function Contenido() {
         clearCredential(),
         olvidarChats(),
         olvidarMensajes(),
+        olvidarBorradores(),
         olvidarPassphrase(),
         olvidarLibro(),
         olvidarEstadoDeRespaldo(),
@@ -416,6 +418,7 @@ function Contenido() {
             void olvidarArchivos();
             void olvidarChats();
             void olvidarMensajes();
+            void olvidarBorradores();
             void olvidarPassphrase();
             void olvidarLibro();
             void olvidarEstadoDeRespaldo();

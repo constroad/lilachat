@@ -72,3 +72,17 @@ describe('decidirAtras — editando (José, 17/10/2026)', () => {
     expect(decidirAtras({ pantalla: 'chat', editando: true })).toBe('cancelar-edicion');
   });
 });
+
+describe('decidirAtras — archivados y selección en la lista (FL9)', () => {
+  it('en «Archivados», atrás vuelve a la lista principal en vez de salir', () => {
+    expect(decidirAtras({ pantalla: 'tabs', tab: 'chats', enArchivados: true })).toBe('cerrar-archivados');
+  });
+
+  it('con chats seleccionados en la lista, suelta la selección primero', () => {
+    expect(decidirAtras({ pantalla: 'tabs', tab: 'chats', haySeleccion: true, enArchivados: true })).toBe('soltar-seleccion');
+  });
+
+  it('la búsqueda se limpia antes de salir de «Archivados»', () => {
+    expect(decidirAtras({ pantalla: 'tabs', tab: 'chats', buscando: true, enArchivados: true })).toBe('limpiar-busqueda');
+  });
+});

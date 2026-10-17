@@ -83,6 +83,7 @@ export function ChatDetailScreen({
   onSalio,
   onLlamar,
   onVerImagen,
+  onBuscar,
   onInfoCambiada,
 }: {
   visible: boolean;
@@ -104,6 +105,8 @@ export function ChatDetailScreen({
   onLlamar?: (video: boolean) => void;
   /** Por `seq`: así un documento sin miniatura también se abre (FL8). */
   onVerImagen?: (seq: number) => void;
+  /** Buscar dentro del chat (FL9): cierra el detalle y abre la barra. */
+  onBuscar?: () => void;
   /**
    * Cambió el nombre o la foto: la cabecera de la conversación de atrás sigue
    * mostrando los viejos hasta que la lista se recargue, y ver el nombre nuevo
@@ -408,9 +411,11 @@ export function ChatDetailScreen({
                   <UserPlus size={20} color={colores.primary} />
                 </AccionRedonda>
               ) : null}
-              <AccionRedonda testID="btn-detalle-buscar" etiqueta="Buscar" deshabilitado>
-                <Search size={20} color={colores['on-surface-variant']} />
-              </AccionRedonda>
+              {onBuscar ? (
+                <AccionRedonda testID="btn-detalle-buscar" etiqueta="Buscar" onPress={onBuscar}>
+                  <Search size={20} color={colores.primary} />
+                </AccionRedonda>
+              ) : null}
             </View>
 
             <SeccionCompartido
@@ -553,21 +558,18 @@ function AccionRedonda({
   etiqueta,
   onPress,
   testID,
-  deshabilitado,
 }: {
   children: React.ReactNode;
   etiqueta: string;
   onPress?: () => void;
   testID: string;
-  deshabilitado?: boolean;
 }) {
   return (
     <Pressable
       testID={testID}
       onPress={onPress}
-      disabled={deshabilitado}
       accessibilityLabel={etiqueta}
-      className={`items-center ${deshabilitado ? 'opacity-40' : ''}`}
+      className="items-center"
     >
       <View className="h-12 w-12 items-center justify-center rounded-full bg-primary/10">
         {children}

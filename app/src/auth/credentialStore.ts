@@ -18,6 +18,8 @@ export type Credential = {
   jwt: string;
   phone: string;
   name: string | null;
+  /** La foto del perfil (FL9), absoluta; sin foto, `null` o ausente. */
+  avatarUrl?: string | null;
 };
 
 export async function saveCredential(credential: Credential): Promise<void> {

@@ -29,7 +29,9 @@ export type AccionAtras =
   /** Hay una edición a medias: se cancela y el mensaje queda como estaba. */
   | 'cancelar-edicion'
   /** FL9: hay una búsqueda escrita en la lista: se limpia. */
-  | 'limpiar-busqueda';
+  | 'limpiar-busqueda'
+  /** FL9: estoy en «Archivados»: vuelvo a la lista principal. */
+  | 'cerrar-archivados';
 
 export function decidirAtras(params: {
   pantalla: 'chat' | 'tabs';
@@ -45,6 +47,8 @@ export function decidirAtras(params: {
   editando?: boolean;
   /** En la lista: una búsqueda escrita. */
   buscando?: boolean;
+  /** En la lista: mirando «Archivados». */
+  enArchivados?: boolean;
 }): AccionAtras {
   // Lo de más arriba gana SIEMPRE: cerrar la app teniendo un formulario abierto
   // pierde lo que la persona estaba escribiendo.
@@ -54,6 +58,7 @@ export function decidirAtras(params: {
   if (params.editando) return 'cancelar-edicion';
   if (params.respondiendo) return 'cancelar-respuesta';
   if (params.buscando) return 'limpiar-busqueda';
+  if (params.enArchivados) return 'cerrar-archivados';
 
   if (params.pantalla === 'chat') return 'ir-a-lista';
 

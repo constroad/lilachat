@@ -72,6 +72,15 @@ async function authed<T>(
   }
 }
 
+/** El perfil propio (FL9): la foto viene ABSOLUTA, o `null` sin foto. */
+export type PerfilPropio = { name: string | null; phone: string; avatarUrl: string | null };
+
+export const guardarNombreDePerfil = (name: string, token: string) =>
+  authed<{ perfil: PerfilPropio }>('PUT', '/api/me/perfil', token, { name });
+
+export const quitarFotoDePerfil = (token: string) =>
+  authed<{ perfil: PerfilPropio }>('DELETE', '/api/me/perfil/foto', token);
+
 export type Programado = { id: string; chatId: string; body: string; sendAt: string };
 
 /** Programar un mensaje para que se envíe solo a `sendAt` (ISO). */
@@ -122,7 +131,11 @@ export const verifyOtp = (
   params: { phone: string; code: string; deviceId: string; name?: string },
   fetchImpl?: FetchLike
 ) =>
-  post<{ deviceSecret: string; jwt: string; user: { id: string; name: string | null; phone: string } }>(
+  post<{
+    deviceSecret: string;
+    jwt: string;
+    user: { id: string; name: string | null; phone: string; avatarUrl?: string | null };
+  }>(
     '/api/auth/otp/verify',
     params,
     fetchImpl
@@ -164,7 +177,14 @@ export type ChatSummary = {
   muted?: boolean;
   /** Fijado por mí: va arriba en la lista. */
   pinned?: boolean;
+  /** Archivado por mí (FL9): vive en «Archivados». */
+  archived?: boolean;
+  /** Marcado por mí como no leído (FL9): el punto sin número. */
+  markedUnread?: boolean;
 };
+
+/** Lo que cada uno ajusta para sí en un chat (FL9 suma archivar y no leído). */
+export type AjustesDeChat = { muted?: boolean; pinned?: boolean; archived?: boolean; markedUnread?: boolean };
 
 async function get<T>(route: string, token: string, fetchImpl: FetchLike = fetch): Promise<ApiResult<T>> {
   try {
@@ -207,14 +227,15 @@ export const buscarMensajes = (token: string, q: string, fetchImpl?: FetchLike) 
   );
 
 /**
- * Silenciar / fijar un chat, para mí. Lo usa la selección múltiple de la lista.
+ * Silenciar / fijar / archivar / marcar no leído un chat, para mí. Lo usa la
+ * selección múltiple de la lista.
  * Devuelve solo si salió bien; el error se ignora arriba porque es un ajuste,
  * no una acción destructiva —a lo sumo hay que reintentar—.
  */
 export async function cambiarAjustesDeChat(
   chatId: string,
   token: string,
-  cambios: { muted?: boolean; pinned?: boolean }
+  cambios: AjustesDeChat
 ): Promise<boolean> {
   try {
     const res = await fetch(`${BASE_URL}/api/chats/${chatId}/ajustes`, {
@@ -293,7 +314,7 @@ export const refreshSession = (
   params: { deviceId: string; deviceSecret: string },
   fetchImpl?: FetchLike
 ) =>
-  post<{ jwt: string; user?: { id: string; name: string | null; phone: string } }>(
+  post<{ jwt: string; user?: { id: string; name: string | null; phone: string; avatarUrl?: string | null } }>(
     '/api/auth/session',
     params,
     fetchImpl

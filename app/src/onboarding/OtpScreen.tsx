@@ -65,6 +65,7 @@ export function OtpScreen({
       jwt: result.data.jwt,
       phone,
       name: result.data.user.name,
+      avatarUrl: result.data.user.avatarUrl ?? null,
     };
     await saveCredential(credential);
     onDone(credential);

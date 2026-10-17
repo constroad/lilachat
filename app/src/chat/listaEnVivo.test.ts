@@ -110,6 +110,12 @@ describe('la lista con un chat abierto encima', () => {
     expect(resultado[1]).toBe(otro);
   });
 
+  it('marcarLeido también quita la marca de «no leído» (FL9)', () => {
+    const resultado = marcarLeido([chat({ unread: 0, markedUnread: true })], CHAT);
+
+    expect(resultado[0]?.markedUnread).toBe(false);
+  });
+
   it('marcarLeido sin nada que cambiar devuelve la misma lista', () => {
     const lista = [chat({ unread: 0 })];
 

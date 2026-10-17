@@ -22,6 +22,9 @@ import { decidirAvisoDeActualizacion, type AvisoDeActualizacion } from '../setti
 import { abrirActualizacion } from '../settings/abrirTienda';
 import { BandaDeActualizacion } from '../settings/BandaDeActualizacion';
 import { AutoRespuestaAjuste } from '../settings/AutoRespuestaAjuste';
+import { PerfilAjuste } from '../settings/PerfilAjuste';
+import { Image } from 'expo-image';
+import { usePerfilPropio } from '../settings/perfilPropio';
 import { RespaldoAjuste } from '../settings/RespaldoAjuste';
 import { useActualizador, type InfoActualizacion } from '../settings/useActualizador';
 import { infoParaActualizar } from '../settings/actualizacionInfo';
@@ -76,6 +79,7 @@ export function TabsShell({
   const chatAbiertoRef = useRef(chatAbierto);
   chatAbiertoRef.current = chatAbierto;
   const colores = useColores();
+  const perfilPropio = usePerfilPropio(credential);
   const { modo, setModo } = useTema();
   const margenes = useMargenes();
   const [tab, setTab] = useState<Tab>('chats');
@@ -336,9 +340,16 @@ export function TabsShell({
           onPress={() => setTab('ajustes')}
           className="ml-1 h-11 w-11 items-center justify-center rounded-full bg-primary/10"
         >
-          {credential.name?.trim() ? (
+          {perfilPropio.avatarUrl ? (
+            <Image
+              testID="saludo-usuario"
+              source={{ uri: perfilPropio.avatarUrl }}
+              style={{ width: 44, height: 44, borderRadius: 22 }}
+              contentFit="cover"
+            />
+          ) : perfilPropio.name?.trim() ? (
             <Text className="text-sm font-bold text-primary" testID="saludo-usuario">
-              {credential.name.trim().slice(0, 1).toUpperCase()}
+              {perfilPropio.name.trim().slice(0, 1).toUpperCase()}
             </Text>
           ) : (
             // Sin nombre NO se muestra la inicial del teléfono: un «9» suelto no
@@ -408,19 +419,7 @@ export function TabsShell({
             keyboardShouldPersistTaps="handled"
             testID="pantalla-ajustes"
           >
-            <View className="flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4">
-              <View className="h-12 w-12 items-center justify-center rounded-full bg-primary">
-                <Text className="text-lg font-bold text-on-primary">
-                  {(credential.name ?? credential.phone).slice(0, 1).toUpperCase()}
-                </Text>
-              </View>
-              <View className="min-w-0 flex-1">
-                <Text className="text-base font-semibold text-on-surface">
-                  {credential.name ?? credential.phone}
-                </Text>
-                <Text className="text-sm text-on-surface-variant">{credential.phone}</Text>
-              </View>
-            </View>
+            <PerfilAjuste credential={credential} />
 
             <Text className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
               Apariencia

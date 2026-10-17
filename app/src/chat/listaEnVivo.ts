@@ -59,6 +59,7 @@ export function aplicarMensajeALista(
 export function marcarLeido(chats: ChatSummary[], chatId: string): ChatSummary[] {
   const indice = chats.findIndex((chat) => chat.id === chatId);
   const actual = chats[indice];
-  if (!actual || actual.unread === 0) return chats;
-  return chats.map((chat, i) => (i === indice ? { ...actual, unread: 0 } : chat));
+  // Abrir el chat también quita la marca de «no leído» (FL9; el server igual).
+  if (!actual || (actual.unread === 0 && !actual.markedUnread)) return chats;
+  return chats.map((chat, i) => (i === indice ? { ...actual, unread: 0, markedUnread: false } : chat));
 }

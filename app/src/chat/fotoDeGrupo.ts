@@ -3,7 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { subirPorXhr } from './subidaXhr';
 
 /**
- * Elegir y subir la foto del grupo.
+ * Elegir y subir una foto redonda: la del grupo o la del perfil (FL9).
  *
  * Vive fuera de la pantalla porque son dos cosas que no dibujan nada: pedir la
  * foto y mandarla. Dentro del componente engordaban el archivo y no se podían
@@ -21,6 +21,9 @@ import { subirPorXhr } from './subidaXhr';
  * La calidad baja a 0.9 solo acá: un avatar de 96 px no necesita el original de
  * 12 MP, y el recorte ya reencoda igual.
  */
+/** Una foto de pocos MB con señal mala: dos minutos antes de rendirse. */
+const TIEMPO_DE_SUBIDA_MS = 120_000;
+
 const OPCIONES_DE_RECORTE = { quality: 0.9, allowsEditing: true, aspect: [1, 1] as [number, number] };
 
 export type FotoElegida = { uri: string; nombre: string; mime: string };
@@ -30,20 +33,32 @@ export type ResultadoDeEleccion =
   | { tipo: 'cancelado' }
   | { tipo: 'sin-permiso' };
 
-const desdeAsset = (asset: ImagePicker.ImagePickerAsset): FotoElegida => ({
+const desdeAsset = (asset: ImagePicker.ImagePickerAsset, nombrePorDefecto: string): FotoElegida => ({
   uri: asset.uri,
-  nombre: asset.fileName ?? 'grupo.jpg',
+  nombre: asset.fileName ?? nombrePorDefecto,
   mime: asset.mimeType ?? 'image/jpeg',
 });
+
+export function elegirFotoDeGrupo(): Promise<ResultadoDeEleccion> {
+  return elegirFotoRedonda({
+    titulo: 'Foto del grupo',
+    mensaje: 'La ven todos los que están en el grupo.',
+    nombrePorDefecto: 'grupo.jpg',
+  });
+}
 
 /**
  * **Cámara y galería se ofrecen POR SEPARADO.** Es la lección de Portal: un
  * selector que abre la galería cuando la persona quería la cámara se lee como
  * que la cámara no funciona.
  */
-export function elegirFotoDeGrupo(): Promise<ResultadoDeEleccion> {
+export function elegirFotoRedonda(params: {
+  titulo: string;
+  mensaje: string;
+  nombrePorDefecto: string;
+}): Promise<ResultadoDeEleccion> {
   return new Promise((resolver) => {
-    Alert.alert('Foto del grupo', 'La ven todos los que están en el grupo.', [
+    Alert.alert(params.titulo, params.mensaje, [
       {
         text: 'Cámara',
         onPress: () => {
@@ -53,7 +68,7 @@ export function elegirFotoDeGrupo(): Promise<ResultadoDeEleccion> {
             const tomada = await ImagePicker.launchCameraAsync(OPCIONES_DE_RECORTE);
             const foto = tomada.assets?.[0];
             resolver(
-              tomada.canceled || !foto ? { tipo: 'cancelado' } : { tipo: 'foto', foto: desdeAsset(foto) }
+              tomada.canceled || !foto ? { tipo: 'cancelado' } : { tipo: 'foto', foto: desdeAsset(foto, params.nombrePorDefecto) }
             );
           })();
         },
@@ -70,7 +85,7 @@ export function elegirFotoDeGrupo(): Promise<ResultadoDeEleccion> {
             resolver(
               elegida.canceled || !foto
                 ? { tipo: 'cancelado' }
-                : { tipo: 'foto', foto: desdeAsset(foto) }
+                : { tipo: 'foto', foto: desdeAsset(foto, params.nombrePorDefecto) }
             );
           })();
         },
@@ -96,6 +111,18 @@ export async function subirFotoDeGrupo(params: {
   jwt: string;
   foto: FotoElegida;
 }): Promise<{ ok: true; avatarUrl?: string } | { ok: false; motivo: string }> {
+  const r = await subirFotoRedonda({ url: `${params.baseUrl}/api/chats/${params.chatId}/avatar`, jwt: params.jwt, foto: params.foto });
+  if (!r.ok) return r;
+  const url = r.payload.avatarUrl;
+  return { ok: true, avatarUrl: typeof url === 'string' ? url : undefined };
+}
+
+/** Manda una foto redonda (grupo o perfil, FL9) y devuelve lo que contestó el server. */
+export async function subirFotoRedonda(params: {
+  url: string;
+  jwt: string;
+  foto: FotoElegida;
+}): Promise<{ ok: true; payload: Record<string, unknown> } | { ok: false; motivo: string }> {
   const cuerpo = new FormData();
   // El archivo se adjunta por URI: el módulo nativo lo lee del disco al armar
   // el multipart, sin pasar por memoria JS.
@@ -106,10 +133,10 @@ export async function subirFotoDeGrupo(params: {
   } as unknown as Blob);
 
   const respuesta = await subirPorXhr({
-    url: `${params.baseUrl}/api/chats/${params.chatId}/avatar`,
+    url: params.url,
     token: params.jwt,
     form: cuerpo,
-    timeoutMs: 120_000,
+    timeoutMs: TIEMPO_DE_SUBIDA_MS,
   });
   if (respuesta.tipo === 'fallo') return { ok: false, motivo: respuesta.motivo };
 
@@ -117,6 +144,5 @@ export async function subirFotoDeGrupo(params: {
     const motivo = respuesta.payload.message;
     return { ok: false, motivo: typeof motivo === 'string' ? motivo : 'No se pudo cambiar la foto.' };
   }
-  const url = respuesta.payload.avatarUrl;
-  return { ok: true, avatarUrl: typeof url === 'string' ? url : undefined };
+  return { ok: true, payload: respuesta.payload };
 }

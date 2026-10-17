@@ -1,9 +1,13 @@
-import { memo, useEffect, useImperativeHandle, useState, type Ref } from 'react';
+import { memo, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Camera, Mic, Paperclip, Plus, Send, X } from 'lucide-react-native';
 import { duracionDeVoz } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { useGrabadorDeVoz, type NotaGrabada } from './useGrabadorDeVoz';
+import { guardarBorrador, leerBorrador } from './borradores';
+
+/** Cuánto se espera tras la última tecla para guardar el borrador. */
+const ESPERA_PARA_GUARDAR_MS = 500;
 
 export type Respondiendo = { seq: number; texto: string; mio: boolean };
 
@@ -24,6 +28,8 @@ export type ComposerHandle = { limpiar: () => void };
  */
 export const Composer = memo(function Composer(props: {
   ref?: Ref<ComposerHandle>;
+  /** De qué chat es el borrador que se guarda y se restaura (FL9). */
+  chatId: string;
   respondiendoA: Respondiendo | null;
   onCancelarRespuesta: () => void;
   /** Editando un mensaje propio (José, 17/10/2026): el campo trae su texto. */
@@ -55,12 +61,45 @@ export const Composer = memo(function Composer(props: {
 
   useImperativeHandle(props.ref, () => ({ limpiar: () => setBorrador('') }), []);
 
-  // Al empezar a editar, el texto del mensaje va al campo; al cancelar, se va.
+  // Al empezar a editar, el texto del mensaje va al campo; al terminar o
+  // cancelar vuelve el borrador del chat, como WhatsApp. Lo mismo al abrir.
   const editandoSeq = props.editando?.seq ?? null;
   const textoAEditar = props.editando?.texto ?? '';
+  const { chatId } = props;
+  const restaurado = useRef(false);
   useEffect(() => {
-    setBorrador(editandoSeq === null ? '' : textoAEditar);
-  }, [editandoSeq, textoAEditar]);
+    if (editandoSeq !== null) {
+      restaurado.current = false;
+      return setBorrador(textoAEditar);
+    }
+    let vigente = true;
+    void leerBorrador(chatId).then((guardado) => {
+      if (!vigente) return;
+      setBorrador(guardado);
+      restaurado.current = true;
+    });
+    return () => {
+      vigente = false;
+    };
+  }, [editandoSeq, textoAEditar, chatId]);
+
+  // El borrador se guarda al dejar de tipear, y al salir del chat sin esperar.
+  // Nunca antes de restaurarlo (pisaría el guardado con el campo vacío) ni lo
+  // que se está editando, que es otro mensaje.
+  const editandoAhora = editandoSeq !== null;
+  const pendiente = useRef({ texto: '', guardable: false });
+  pendiente.current = { texto: borrador, guardable: restaurado.current && !editandoAhora };
+  useEffect(() => {
+    if (!pendiente.current.guardable) return;
+    const espera = setTimeout(() => guardarBorrador(chatId, borrador), ESPERA_PARA_GUARDAR_MS);
+    return () => clearTimeout(espera);
+  }, [borrador, editandoAhora, chatId]);
+  useEffect(
+    () => () => {
+      if (pendiente.current.guardable) guardarBorrador(chatId, pendiente.current.texto);
+    },
+    [chatId],
+  );
 
   const mandarVoz = async (cancelar = false) => {
     const nota = await voz.terminar({ cancelar });

@@ -15,8 +15,9 @@ import {
 import { toClientMessage, toClientMessages } from './messageView.js';
 import { isOnline, markOffline, markOnline, onlineAmong } from './presence.js';
 import { autoResponderA } from './autoReply.js';
-import { avisarLlamada, notifyOffline } from './pushService.js';
-import { frameConAutor, guardarOferta, hayOfertasPendientes, limpiarOferta, ofertasVigentes } from './llamadas.js';
+import { avisarFinDeLlamada, avisarLlamada, notifyOffline } from './pushService.js';
+import { frameConAutor, hayOfertasPendientes, ofertasVigentes } from './llamadas.js';
+import { alContestar, alOfrecer, alTerminar, configurarCiclo } from './cicloDeLlamada.js';
 import { maybeAnswerMention } from './assistantReply.js';
 import { verifySession } from './sessions.js';
 
@@ -172,6 +173,13 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
 
   // Se publica para que el camino HTTP (`/api/media`) pueda emitir `msg.new`.
   ioVivo = io;
+  configurarCiclo({
+    emitirA: (userId, evento, frame) => void io.to(userRoom(userId)).emit(evento, frame),
+    publicar: (mensaje, members) => publicarMensaje(mensaje, members),
+    avisarSinPush: (mensaje, members) => avisarMensajeNuevo(mensaje, members),
+    avisarFin: avisarFinDeLlamada,
+    avisarLlamada,
+  });
 
   io.use((socket: AuthedSocket, next) => {
     const token = String(socket.handshake.auth?.token ?? '');
@@ -187,11 +195,18 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
     const me = String(userId);
     void socket.join(userRoom(me));
 
-    // Presencia: se avisa SOLO a quien comparte un chat conmigo. Emitirlo a
-    // todos convertiría cada conexión en un broadcast global.
+    // Presencia: el alta es SINCRÓNICA, antes de cualquier `await`. Si se
+    // contaba después de leer los contactos, un corte inmediato (salir rápido
+    // de la app) corría `markOffline` primero y el contador quedaba en 1 para
+    // siempre: «en línea» sin socket, y nunca más un push (FL8.1, 17/10/2026).
+    const { becameOnline } = markOnline(me);
+    // Se avisa SOLO a quien comparte un chat conmigo. Emitirlo a todos
+    // convertiría cada conexión en un broadcast global.
     void (async () => {
       const contacts = await contactIdsOf(userId);
-      if (markOnline(me).becameOnline) {
+      // Si ya se cortó, el «se fue» lo avisa la desconexión: no se pisa con un
+      // «se conectó» que llega tarde.
+      if (becameOnline && socket.connected) {
         for (const contact of contacts) {
           io.to(userRoom(contact)).emit('presence', { userId: me, online: true });
         }
@@ -211,8 +226,9 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
     })();
 
     socket.on('disconnect', () => {
+      // La baja también SINCRÓNICA, en el mismo orden que el alta.
+      if (!markOffline(me).becameOffline) return;
       void (async () => {
-        if (!markOffline(me).becameOffline) return;
         for (const contact of await contactIdsOf(userId)) {
           io.to(userRoom(contact)).emit('presence', { userId: me, online: false });
         }
@@ -322,13 +338,17 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
             if (member === String(userId)) continue;
             io.to(userRoom(member)).emit(evento, frame);
           }
-          // FL8: la oferta queda «sonando» para quien conecte en ese tiempo, y
-          // a los desconectados les llega un push. Lo demás la apaga.
+          // FL8/FL8.1: la oferta queda «sonando» para quien conecte en ese
+          // tiempo, a los desconectados les llega un push, y al terminar queda
+          // la línea en el chat (`cicloDeLlamada`).
           if (evento === 'call.offer') {
-            guardarOferta(payload.chatId, frame, String(userId));
-            void avisarLlamada({ chatId: payload.chatId, from: String(userId), members, video: payload.video === true });
+            alOfrecer({ chatId: payload.chatId, from: String(userId), members, video: payload.video === true, frame });
+          } else if (evento === 'call.answer') {
+            // Mis OTROS teléfonos dejan de sonar: contesté en este.
+            socket.to(userRoom(String(userId))).emit('call.end', { chatId: payload.chatId, motivo: 'contestada-en-otro' });
+            await alContestar(payload.chatId);
           } else if (evento !== 'call.ice') {
-            limpiarOferta(payload.chatId);
+            await alTerminar(payload.chatId);
           }
         } catch {
           // Un chat inválido no tira la conexión: la señalización es best-effort

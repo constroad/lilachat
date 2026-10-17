@@ -11,6 +11,15 @@
 /** Cuánto suena antes de rendirse. Treinta segundos es lo que hace todo el mundo. */
 export const CALL_TIMEOUT_MS = 30_000;
 
+/**
+ * Lo que un teléfono declara al registrar su push (FL8.1): sabe dibujar la
+ * llamada entrante a pantalla completa desde su servicio nativo. A ese le llega
+ * la llamada como push SOLO-DATOS; a una versión vieja, la notificación común
+ * de siempre (la nueva le llegaría muda).
+ */
+export const CAPACIDAD_LLAMADA_NATIVA = 'llamada-nativa';
+export const CAPACIDADES_DE_PUSH: readonly string[] = [CAPACIDAD_LLAMADA_NATIVA];
+
 export type CallState =
   | { fase: 'llamando'; desde: number; entrante: false }
   | { fase: 'sonando'; desde: number; entrante: true }

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { Types } from 'mongoose';
-import { MAX_BYTES_BY_KIND, textoDeAviso, validateMedia } from '@lilachat/shared';
+import { CAPACIDADES_DE_PUSH, MAX_BYTES_BY_KIND, textoDeAviso, validateMedia } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import { DeviceModel, UserModel } from './models.js';
 import {
@@ -539,9 +539,15 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
   router.post('/push-token', async (req, res) => {
     const pushToken = String(req.body?.pushToken ?? '').trim();
     if (!pushToken) return res.status(400).json({ message: 'Falta el token.' });
+    // Lo que sabe hacer con un push (FL8.1). Sin la lista es una versión vieja
+    // y se borra: si quedara, le llegarían llamadas que no sabe dibujar.
+    const pedidas: unknown[] = Array.isArray(req.body?.capacidades) ? req.body.capacidades : [];
+    const capacidades = CAPACIDADES_DE_PUSH.filter((capacidad) => pedidas.includes(capacidad));
     await DeviceModel.updateOne(
       { deviceId: req.session!.deviceId },
-      { $set: { pushToken, platform: 'android' } }
+      capacidades.length > 0
+        ? { $set: { pushToken, platform: 'android', capacidades } }
+        : { $set: { pushToken, platform: 'android' }, $unset: { capacidades: 1 } }
     );
     res.json({ ok: true });
   });

@@ -28,8 +28,22 @@ export type PushMessage = {
   data: { chatId: string; seq: number; tipo?: 'agenda' | 'llamada' };
 };
 
+/**
+ * Un push SOLO-DATOS (FL8.1): sin `notification`, así Android no lo dibuja por
+ * su cuenta y lo recibe el servicio nativo de la app aunque esté cerrada. Con
+ * vida corta: una llamada que llega a los dos minutos ya no sirve.
+ */
+export type PushDeDatos = {
+  tokens: string[];
+  /** FCM v1 exige que todo valor de `data` sea string. */
+  data: Record<string, string>;
+  ttlSegundos: number;
+};
+
 export interface PushSender {
   send(message: PushMessage): Promise<void>;
+  /** Opcional: un emisor de prueba puede no tenerlo; sin él no se manda. */
+  sendDatos?(message: PushDeDatos): Promise<void>;
 }
 
 const PUSH_TIMEOUT_MS = 10_000;
@@ -107,54 +121,56 @@ async function obtenerAcceso(credencial: CredencialFcm): Promise<string | null> 
 function buildFcmSender(credencial: CredencialFcm): PushSender {
   const url = urlDeEnvio(credencial.projectId);
 
+  /** Un POST a FCM por token. Un fallo NUNCA propaga. */
+  const enviarA = async (destinos: string[], armar: (destino: string) => object) => {
+    const token = await obtenerAcceso(credencial);
+    if (!token) return;
+    await Promise.allSettled(
+      destinos.map(async (destino) => {
+        const respuesta = await fetch(url, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: armar(destino) }),
+          signal: AbortSignal.timeout(PUSH_TIMEOUT_MS),
+        });
+        if (!respuesta.ok && respuesta.status !== 404) {
+          const detalle = await respuesta.text().catch(() => '');
+          registro.error(`[push] FCM ${respuesta.status}: ${detalle.slice(0, 200)}`);
+        }
+      })
+    );
+  };
+
   return {
+    async sendDatos(message) {
+      await enviarA(message.tokens, (destino) => ({
+        token: destino,
+        data: message.data,
+        android: { priority: 'HIGH', ttl: `${message.ttlSegundos}s` },
+      }));
+    },
+
     async send(message) {
-      const token = await obtenerAcceso(credencial);
-      if (!token) return;
-
-      await Promise.allSettled(
-        message.tokens.map(async (destino) => {
-          const respuesta = await fetch(url, {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              message: {
-                token: destino,
-                // `notification` la muestra Android aunque la app esté muerta;
-                // `data` es lo que la app lee para abrir el chat correcto.
-                notification: { title: message.title, body: message.body },
-                data: {
-                  chatId: message.data.chatId,
-                  // v1 exige que TODO `data` sea string. Mandar el número tal
-                  // cual da un 400 que solo dice «invalid argument».
-                  seq: String(message.data.seq),
-                  ...(message.data.tipo ? { tipo: message.data.tipo } : {}),
-                },
-                android: {
-                  // Alta: un mensaje de chat tiene que despertar el teléfono.
-                  priority: 'HIGH',
-                  // El canal con sonido (mismo id que crea la app) y el tono por
-                  // defecto: con la app muerta, el sonido sale de acá.
-                  notification: { channelId: CANAL_MENSAJES, sound: 'default' },
-                },
-              },
-            }),
-            signal: AbortSignal.timeout(PUSH_TIMEOUT_MS),
-          });
-
-          if (!respuesta.ok) {
-            const detalle = await respuesta.text().catch(() => '');
-            // Un token muerto (la app se desinstaló) da 404: es normal y no
-            // amerita alarma, pero el resto sí hay que verlo.
-            if (respuesta.status !== 404) {
-              registro.error(`[push] FCM ${respuesta.status}: ${detalle.slice(0, 200)}`);
-            }
-          }
-        })
-      );
+      await enviarA(message.tokens, (destino) => ({
+        token: destino,
+        // `notification` la muestra Android aunque la app esté muerta;
+        // `data` es lo que la app lee para abrir el chat correcto.
+        notification: { title: message.title, body: message.body },
+        data: {
+          chatId: message.data.chatId,
+          // v1 exige que TODO `data` sea string. Mandar el número tal
+          // cual da un 400 que solo dice «invalid argument».
+          seq: String(message.data.seq),
+          ...(message.data.tipo ? { tipo: message.data.tipo } : {}),
+        },
+        android: {
+          // Alta: un mensaje de chat tiene que despertar el teléfono.
+          priority: 'HIGH',
+          // El canal con sonido (mismo id que crea la app) y el tono por
+          // defecto: con la app muerta, el sonido sale de acá.
+          notification: { channelId: CANAL_MENSAJES, sound: 'default' },
+        },
+      }));
     },
   };
 }
@@ -173,6 +189,9 @@ function buildLoggingSender(motivo?: string): PushSender {
         );
       }
       registro.info(`[push] (sin enviar) ${message.title}: ${message.body}`);
+    },
+    async sendDatos(message) {
+      registro.info(`[push] (sin enviar) datos ${message.data.tipo ?? ''} a ${message.tokens.length}`);
     },
   };
 }

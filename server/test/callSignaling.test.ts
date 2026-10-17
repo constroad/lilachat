@@ -8,6 +8,7 @@ import { buildApp } from '../src/app.js';
 import { ChatModel } from '../src/chatModels.js';
 import { signSession } from '../src/sessions.js';
 import { attachSocket } from '../src/socket.js';
+import { firmarRechazo } from '../src/llamadas.js';
 
 /**
  * La señalización de llamadas (F10), con DOS clientes de socket reales.
@@ -141,6 +142,30 @@ describe('señalización de llamadas', () => {
 
     expect(await recibido).toBeNull();
     expect(socketAna.connected).toBe(true);
+  });
+});
+
+/**
+ * FL8.1: «Rechazar» en la notificación, con la app cerrada. El push trae un
+ * token corto; con él, el server le corta a quien llama.
+ */
+describe('POST /api/calls/rechazar', () => {
+  it('con el token del push, a quien llama le llega el fin', async () => {
+    const socketAna = await abrir(ana);
+    socketAna.emit('call.offer', { chatId, sdp: 'v=0 oferta', video: false });
+    await new Promise((listo) => setTimeout(listo, 300));
+    const fin = esperar(socketAna, 'call.end');
+
+    await request(buildApp())
+      .post('/api/calls/rechazar')
+      .send({ token: firmarRechazo({ chatId, userId: String(beto) }) })
+      .expect(204);
+
+    expect(await fin).toMatchObject({ chatId, motivo: 'rechazada', from: String(beto) });
+  });
+
+  it('sin token válido, 400 y nada', async () => {
+    await request(buildApp()).post('/api/calls/rechazar').send({ token: 'x' }).expect(400);
   });
 });
 

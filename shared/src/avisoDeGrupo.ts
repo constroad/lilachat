@@ -1,3 +1,5 @@
+import { textoDeLlamada } from './registroDeLlamada.js';
+
 /**
  * Los avisos que aparecen DENTRO del chat cuando cambia algo del grupo. PURO.
  *
@@ -70,6 +72,10 @@ export function textoDeAviso(params: {
     // ponerle el nombre de quien se fue sería mentir sobre quién decidió qué.
     case 'admin-auto':
       return aQuien ? `${aQuien} quedó como admin del grupo` : '';
+
+    // La línea que deja una llamada (FL8.1): la frase depende de quién mira.
+    case 'llamada':
+      return textoDeLlamada({ valor, esMio });
 
     // Un evento que esta versión no conoce —porque el server ya es más nuevo—
     // no se dibuja. Mejor un hueco que una frase inventada.

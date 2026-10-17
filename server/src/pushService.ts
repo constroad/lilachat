@@ -5,6 +5,8 @@ import { isOnline } from './presence.js';
 import { buildPushSender, buildPushText, type PushSender } from './pushSender.js';
 import { splitPushTargets } from './pushTargets.js';
 import { sendWebPush } from './webPushSender.js';
+import { CALL_TIMEOUT_MS, CAPACIDAD_LLAMADA_NATIVA } from '@lilachat/shared';
+import { firmarRechazo } from './llamadas.js';
 
 /**
  * A quién notificar y con qué texto (F4).
@@ -102,24 +104,96 @@ export async function avisarLlamada(params: { chatId: string; from: string; memb
   if (desconectados.length === 0) return;
   const [dispositivos, quien] = await Promise.all([
     DeviceModel.find({ userId: { $in: desconectados }, pushToken: { $exists: true, $ne: '' } })
-      .select('pushToken platform')
+      .select('pushToken platform userId capacidades')
       .lean(),
     UserModel.findById(params.from).select('name phone').lean(),
   ]);
   if (dispositivos.length === 0) return;
   const nombre = quien?.name ?? quien?.phone ?? 'Alguien';
+  // FL8.1: el que sabe dibujarla a pantalla completa la recibe solo-datos.
+  const nativos = dispositivos.filter((d) => d.platform !== 'web' && d.capacidades?.includes(CAPACIDAD_LLAMADA_NATIVA));
+  const resto = dispositivos.filter((d) => !nativos.includes(d));
   const aviso = {
     title: `${params.video ? 'Videollamada' : 'Llamada'} de ${nombre}`,
     body: 'Toca para contestar',
     data: { chatId: params.chatId, seq: 0, tipo: 'llamada' as const },
   };
-  const destinos = splitPushTargets(dispositivos);
+  const destinos = splitPushTargets(resto);
   try {
     await Promise.all([
       destinos.fcm.length > 0 ? sender.send({ tokens: destinos.fcm, ...aviso }) : undefined,
       sendWebPush(destinos.web, aviso),
+      ...llamadaSoloDatos({ ...params, nombre, telefono: quien?.phone ?? '', nativos }),
     ]);
   } catch (error) {
     console.error('[push] no se pudo avisar la llamada:', error instanceof Error ? error.message : error);
+  }
+}
+
+/**
+ * Un push por persona: el token de rechazo es de ESA persona en ESE chat, así
+ * que no se puede compartir entre los teléfonos de dos miembros.
+ */
+function llamadaSoloDatos(params: {
+  chatId: string;
+  from: string;
+  video: boolean;
+  nombre: string;
+  telefono: string;
+  nativos: { pushToken?: string; userId: unknown }[];
+}): Promise<void>[] {
+  if (!sender.sendDatos || params.nativos.length === 0) return [];
+  const porPersona = new Map<string, string[]>();
+  for (const dispositivo of params.nativos) {
+    if (!dispositivo.pushToken) continue;
+    const userId = String(dispositivo.userId);
+    porPersona.set(userId, [...(porPersona.get(userId) ?? []), dispositivo.pushToken]);
+  }
+  return [...porPersona].map(([userId, tokens]) =>
+    sender.sendDatos!({
+      tokens,
+      ttlSegundos: CALL_TIMEOUT_MS / 1000,
+      data: {
+        tipo: 'llamada',
+        chatId: params.chatId,
+        de: params.from,
+        nombre: params.nombre,
+        telefono: params.telefono,
+        video: params.video ? '1' : '0',
+        // Cuánto suena, relativo: el reloj del teléfono puede no ser el del server.
+        queda: String(CALL_TIMEOUT_MS),
+        rechazo: firmarRechazo({ chatId: params.chatId, userId }),
+      },
+    })
+  );
+}
+
+/** Cuánto vive el «dejá de sonar»: si llega tarde, ya no hay nada que apagar. */
+const VIDA_DEL_FIN_S = 60;
+
+/**
+ * La llamada terminó (o la contestaron en otro lado): que dejen de sonar los
+ * teléfonos que la dibujaron a pantalla completa. A todos los miembros menos a
+ * quien llamó, CONECTADOS O NO: el que contestó en un teléfono puede tener
+ * otro sonando.
+ */
+export async function avisarFinDeLlamada(params: { chatId: string; from: string; members: string[] }): Promise<void> {
+  if (!sender.sendDatos) return;
+  const otros = params.members.filter((member) => member !== params.from);
+  if (otros.length === 0) return;
+  const nativos = await DeviceModel.find({
+    userId: { $in: otros },
+    platform: { $ne: 'web' },
+    capacidades: CAPACIDAD_LLAMADA_NATIVA,
+    pushToken: { $exists: true, $ne: '' },
+  })
+    .select('pushToken')
+    .lean();
+  const tokens = nativos.map((d) => d.pushToken).filter((t): t is string => Boolean(t));
+  if (tokens.length === 0) return;
+  try {
+    await sender.sendDatos({ tokens, ttlSegundos: VIDA_DEL_FIN_S, data: { tipo: 'llamada-fin', chatId: params.chatId } });
+  } catch (error) {
+    console.error('[push] no se pudo apagar la llamada:', error instanceof Error ? error.message : error);
   }
 }

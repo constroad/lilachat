@@ -41,6 +41,8 @@ export interface Device {
   pushToken?: string;
   /** Clave pública X25519 en base64, para los chats cifrados (F9). */
   publicKey?: string;
+  /** Lo que sabe hacer con un push (`CAPACIDADES_DE_PUSH`, FL8.1). */
+  capacidades?: string[];
   lastSeenAt?: Date;
 }
 
@@ -88,6 +90,7 @@ const deviceSchema = new Schema<Device>(
     pushToken: { type: String },
     // La clave PÚBLICA X25519 del dispositivo (F9). La privada nunca sale de él.
     publicKey: { type: String },
+    capacidades: { type: [String], default: undefined },
     lastSeenAt: { type: Date },
   },
   { timestamps: true }

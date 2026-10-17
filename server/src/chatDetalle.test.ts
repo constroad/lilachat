@@ -3,9 +3,9 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose, { Types } from 'mongoose';
 import request from 'supertest';
 import { buildApp } from './app.js';
-import { UserModel } from './models.js';
+import { DeviceModel, UserModel } from './models.js';
 import { ChatModel, ReceiptModel } from './chatModels.js';
-import { TELEFONO_DE_LILA } from '@lilachat/shared';
+import { CAPACIDAD_LLAMADA_NATIVA, TELEFONO_DE_LILA } from '@lilachat/shared';
 import { signSession } from './sessions.js';
 
 /**
@@ -78,5 +78,37 @@ describe('GET /api/chats — check azul en grupos (FL8)', () => {
     const fila2 = ambos.body.chats.find((c: { id: string }) => c.id === String(chatId));
     expect(fila2.othersReadSeq).toBe(8);
     expect(fila2.othersDeliveredSeq).toBe(9);
+  });
+});
+
+/**
+ * El teléfono declara lo que sabe hacer con un push al registrar su token
+ * (FL8.1). Solo valen las capacidades conocidas; mandar el token sin ellas (una
+ * versión vieja) las borra, porque ese teléfono ya no las tiene.
+ */
+describe('POST /api/chats/push-token — capacidades', () => {
+  beforeEach(async () => {
+    await DeviceModel.deleteMany({});
+    await DeviceModel.create({ deviceId: 'd1', userId: yo, platform: 'android' });
+  });
+
+  it('guarda solo las conocidas', async () => {
+    await request(app)
+      .post('/api/chats/push-token')
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ pushToken: 'tok', capacidades: [CAPACIDAD_LLAMADA_NATIVA, 'inventada', 3] })
+      .expect(200);
+
+    const device = await DeviceModel.findOne({ deviceId: 'd1' }).lean();
+    expect(device).toMatchObject({ pushToken: 'tok', capacidades: [CAPACIDAD_LLAMADA_NATIVA] });
+  });
+
+  it('sin capacidades (versión vieja) las borra', async () => {
+    await DeviceModel.updateOne({ deviceId: 'd1' }, { $set: { capacidades: [CAPACIDAD_LLAMADA_NATIVA] } });
+
+    await request(app).post('/api/chats/push-token').set('Authorization', `Bearer ${jwt}`).send({ pushToken: 'tok' }).expect(200);
+
+    const device = await DeviceModel.findOne({ deviceId: 'd1' }).lean();
+    expect(device?.capacidades).toBeUndefined();
   });
 });

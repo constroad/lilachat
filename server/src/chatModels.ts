@@ -21,6 +21,10 @@ export interface ChatMember {
   muted?: boolean;
   /** Fijado por ESTE miembro: va arriba de su lista. */
   pinned?: boolean;
+  /** Archivado por ESTE miembro (FL9): vive en su «Archivados». */
+  archived?: boolean;
+  /** Marcado a mano como no leído (FL9); se va solo al leer. */
+  markedUnread?: boolean;
 }
 
 export interface Chat {
@@ -139,6 +143,8 @@ const chatSchema = new Schema<Chat>(
         joinedAt: { type: Date, default: Date.now },
         muted: { type: Boolean },
         pinned: { type: Boolean },
+        archived: { type: Boolean },
+        markedUnread: { type: Boolean },
       },
     ],
     lastSeq: { type: Number, default: 0 },

@@ -3,6 +3,7 @@ import mongoose, { Types } from 'mongoose';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ChatModel, MessageModel, ReceiptModel } from '../src/chatModels.js';
 import {
+  cambiarAjustesDeChat,
   ForbiddenChatError,
   listChats,
   listMessages,
@@ -275,5 +276,48 @@ describe('listChats y no leídos', () => {
     const chats = await listChats(jose);
 
     expect(chats[0]?.lastMessage?.body).toBe('nos vemos');
+  });
+});
+
+/**
+ * Archivar y «marcar como no leído» (FL9). Son de CADA miembro, como silenciar:
+ * que José archive el chat no lo archiva para María. La marca de no leído se
+ * va sola al leer, como en WhatsApp; el archivado no (un mensaje nuevo no lo
+ * saca de «Archivados»).
+ */
+describe('archivar y marcar como no leído', () => {
+  const miResumen = async (quien: Types.ObjectId) => (await listChats(quien)).find((chat) => chat.id === chatId);
+
+  it('archivar es solo para quien lo pide', async () => {
+    const r = await cambiarAjustesDeChat({ chatId, quien: jose, archived: true });
+
+    expect(r.ok).toBe(true);
+    expect((await miResumen(jose))?.archived).toBe(true);
+    expect((await miResumen(maria))?.archived).toBe(false);
+  });
+
+  it('un mensaje nuevo no desarchiva', async () => {
+    await cambiarAjustesDeChat({ chatId, quien: jose, archived: true });
+
+    await sendMessage({ chatId, senderId: maria, clientKey: 'k-arch', body: 'hola' });
+
+    expect((await miResumen(jose))?.archived).toBe(true);
+  });
+
+  it('marcar como no leído se ve en la lista y se va al leer', async () => {
+    await sendMessage({ chatId, senderId: maria, clientKey: 'k-nl', body: 'hola' });
+    await markRead({ chatId, userId: jose, seq: 1 });
+    await cambiarAjustesDeChat({ chatId, quien: jose, markedUnread: true });
+    expect((await miResumen(jose))?.markedUnread).toBe(true);
+
+    await markRead({ chatId, userId: jose, seq: 1 });
+
+    expect((await miResumen(jose))?.markedUnread).toBe(false);
+  });
+
+  it('quien no es miembro no puede marcar nada', async () => {
+    const r = await cambiarAjustesDeChat({ chatId, quien: ajeno, markedUnread: true });
+
+    expect(r.ok).toBe(false);
   });
 });

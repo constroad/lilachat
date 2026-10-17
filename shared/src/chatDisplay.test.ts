@@ -197,3 +197,26 @@ describe('esAcuseDeOtro', () => {
     expect(esAcuseDeOtro({ de: 'wilson', yo: '' })).toBe(false);
   });
 });
+
+/**
+ * Borrador por chat (FL9): lo escrito y no mandado vuelve al abrir el chat, y
+ * la lista lo dice como WhatsApp («Borrador: …»). Lo que escribe el otro gana:
+ * es lo que está pasando ahora.
+ */
+describe('resolveChatPreview — borrador', () => {
+  it('con borrador: «Borrador: …» en vez del último mensaje', () => {
+    expect(resolveChatPreview({ typing: false, lastBody: 'hola', borrador: '  nos vemos\n  mañana ' })).toEqual({
+      etiqueta: 'Borrador:',
+      text: 'nos vemos mañana',
+      style: 'borrador',
+    });
+  });
+
+  it('un borrador vacío o de espacios no cuenta', () => {
+    expect(resolveChatPreview({ typing: false, lastBody: 'hola', borrador: '   ' })).toEqual({ text: 'hola', style: 'normal' });
+  });
+
+  it('si el otro está escribiendo, eso gana al borrador', () => {
+    expect(resolveChatPreview({ typing: true, lastBody: 'hola', borrador: 'x' }).style).toBe('typing');
+  });
+});

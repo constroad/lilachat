@@ -269,6 +269,10 @@ export type ChatSummary = {
   muted?: boolean;
   /** Fijado por MÍ: va arriba en mi lista. */
   pinned?: boolean;
+  /** Archivado por MÍ (FL9). */
+  archived?: boolean;
+  /** Marcado por MÍ como no leído (FL9). */
+  markedUnread?: boolean;
 };
 
 export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> {
@@ -300,12 +304,13 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
       { $sort: { chatId: -1, seq: -1 } },
       { $group: { _id: '$chatId', ultimo: { $first: '$$ROOT' } } },
     ]),
-    UserModel.find({ _id: { $in: otrosIds } }).select('name phone').lean(),
+    UserModel.find({ _id: { $in: otrosIds } }).select('name phone avatarUrl').lean(),
   ]);
   const ultimoPorChat = new Map(ultimos.map((fila) => [String(fila._id), fila.ultimo]));
   const lastMessages = chats.map((chat) => ultimoPorChat.get(String(chat._id)) ?? null);
   const personas = new Map(otros.map((user) => [String(user._id), user.name ?? user.phone]));
   const telefonos = new Map(otros.map((user) => [String(user._id), user.phone]));
+  const fotos = new Map(otros.map((user) => [String(user._id), user.avatarUrl]));
 
   const receipts = allReceipts.filter((receipt) => String(receipt.userId) === String(userId));
   const readByChat = new Map(receipts.map((receipt) => [String(receipt.chatId), receipt.readSeq]));
@@ -347,9 +352,15 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
       // Se guarda RELATIVA y se sirve absoluta, igual que la media de los
       // mensajes: persistir el host dejaría rotas todas las fotos viejas en el
       // proximo cambio de hosting.
-      avatarUrl: chat.avatarUrl ? toAbsoluteMediaUrl(chat.avatarUrl) : undefined,
+      // En un 1:1 la foto ES la del perfil del otro (FL9), como el nombre.
+      avatarUrl: (() => {
+        const foto = chat.avatarUrl ?? (chat.kind === 'direct' ? fotos.get(otroId) : undefined);
+        return foto ? toAbsoluteMediaUrl(foto) : undefined;
+      })(),
       muted: yo?.muted === true,
       pinned: yo?.pinned === true,
+      archived: yo?.archived === true,
+      markedUnread: yo?.markedUnread === true,
       memberIds: chat.members.map((member) => String(member.userId)),
       acuseDe: acusan,
       lastSeq: chat.lastSeq,
@@ -402,12 +413,20 @@ export async function markRead(params: {
   seq: number;
 }): Promise<void> {
   const chatId = await assertMember(params.chatId, params.userId);
-  // Leer implica entregado: no se puede leer lo que no llego.
-  await ReceiptModel.updateOne(
-    { chatId, userId: params.userId },
-    { $max: { readSeq: params.seq, deliveredSeq: params.seq } },
-    { upsert: true }
-  );
+  await Promise.all([
+    // Leer implica entregado: no se puede leer lo que no llego.
+    ReceiptModel.updateOne(
+      { chatId, userId: params.userId },
+      { $max: { readSeq: params.seq, deliveredSeq: params.seq } },
+      { upsert: true }
+    ),
+    // Abrir el chat quita la marca de «no leído» (FL9), como WhatsApp. El
+    // filtro solo encuentra la fila si estaba marcada: no escribe de más.
+    ChatModel.updateOne(
+      { _id: chatId, members: { $elemMatch: { userId: params.userId, markedUnread: true } } },
+      { $set: { 'members.$.markedUnread': false } }
+    ),
+  ]);
 }
 
 /**
@@ -653,21 +672,29 @@ export async function addMember(params: {
 }
 
 /**
- * Cambiar los ajustes de ESTE usuario en un chat: silenciar y fijar.
+ * Cambiar los ajustes de ESTE usuario en un chat: silenciar, fijar, archivar y
+ * marcar como no leído (FL9).
  *
  * Son por-usuario y por-chat, así que viven en el subdoc del miembro, no en el
  * chat: que José silencie «Los originales» no lo silencia para Wilson. Se
  * actualiza SOLO la fila del usuario con el operador posicional `$`.
  */
+/** Los ajustes que cada miembro cambia para sí (el subdoc de `members`). */
+export const AJUSTES_DE_MIEMBRO = ['muted', 'pinned', 'archived', 'markedUnread'] as const;
+
 export async function cambiarAjustesDeChat(params: {
   chatId: string;
   quien: Types.ObjectId;
   muted?: boolean;
   pinned?: boolean;
+  archived?: boolean;
+  markedUnread?: boolean;
 }): Promise<{ ok: true } | { ok: false; motivo: string }> {
   const cambios: Record<string, boolean> = {};
-  if (typeof params.muted === 'boolean') cambios['members.$.muted'] = params.muted;
-  if (typeof params.pinned === 'boolean') cambios['members.$.pinned'] = params.pinned;
+  for (const campo of AJUSTES_DE_MIEMBRO) {
+    const valor = params[campo];
+    if (typeof valor === 'boolean') cambios[`members.$.${campo}`] = valor;
+  }
   if (Object.keys(cambios).length === 0) return { ok: false, motivo: 'No hay nada que cambiar.' };
 
   const r = await ChatModel.updateOne(

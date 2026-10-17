@@ -63,7 +63,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   });
 
   app.use('/api/auth', buildAuthRouter(deps.authClient ?? buildHttpAuthClient()));
-  app.use('/api/chats', buildChatRouter());
+  app.use('/api/chats', buildChatRouter(deps.mediaUploader));
   app.use('/api/media', buildMediaRouter(deps.mediaUploader));
   app.use('/api/agenda', buildEventRouter());
   app.use('/api/push', buildPushRouter());
@@ -74,7 +74,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/contacts', buildContactRouter());
   app.use('/api/keys', buildKeyRouter());
   app.use('/api/calls', buildCallRouter());
-  app.use('/api/me', buildMeRouter());
+  app.use('/api/me', buildMeRouter(deps.mediaUploader));
   app.use('/api/respaldos', buildRespaldoRouter());
 
   // ─── La web (F6) ─────────────────────────────────────────────────────────

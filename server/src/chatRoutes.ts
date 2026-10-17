@@ -1,7 +1,6 @@
 import { Router } from 'express';
-import multer from 'multer';
 import { Types } from 'mongoose';
-import { CAPACIDADES_DE_PUSH, MAX_BYTES_BY_KIND, textoDeAviso, validateMedia } from '@lilachat/shared';
+import { CAPACIDADES_DE_PUSH, textoDeAviso } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import { DeviceModel, UserModel } from './models.js';
 import {
@@ -29,21 +28,13 @@ import { toClientMessages } from './messageView.js';
 import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
 import { avisarCambioDeChat, avisarMensajeNuevo } from './socket.js';
 import { requireSession } from './requireSession.js';
+import { multerDeAvatar, subirFotoRedonda } from './subirAvatar.js';
 
 /**
  * REST de chats: el arranque de la app (lista e historial). El tiempo real va
  * por el socket, pero el historial paginado no: pedirle 50 mensajes viejos a un
  * socket es peor que un GET que se cachea y se reintenta solo.
  */
-/**
- * La foto del grupo va en MEMORIA y con techo propio: es una imagen, no un
- * archivo cualquiera, y este server puede correr en un release de solo lectura.
- */
-const subirAvatar = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_BYTES_BY_KIND.image },
-});
-
 /**
  * Escribir el aviso del cambio DENTRO del chat, y empujarlo por el socket.
  *
@@ -241,9 +232,12 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
 
     const ids = chat.members.map((m) => m.userId);
     const personas = await UserModel.find({ _id: { $in: ids } })
-      .select('name phone')
-      .lean<{ _id: unknown; name?: string; phone: string }[]>();
+      .select('name phone avatarUrl')
+      .lean<{ _id: unknown; name?: string; phone: string; avatarUrl?: string }[]>();
     const porId = new Map(personas.map((persona) => [String(persona._id), persona]));
+    // En un 1:1 la foto ES la del perfil del otro (FL9), igual que en la lista.
+    const otro = chat.kind === 'direct' ? personas.find((persona) => String(persona._id) !== String(userId)) : undefined;
+    const foto = chat.avatarUrl ?? otro?.avatarUrl;
 
     return res.json({
       id: String(chat._id),
@@ -253,7 +247,7 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
       // MI silenciado (es por persona): el interruptor del detalle lo muestra
       // como está, en vez de arrancar siempre apagado.
       muted: chat.members.some((m) => String(m.userId) === String(userId) && m.muted === true),
-      avatarUrl: chat.avatarUrl ? toAbsoluteMediaUrl(chat.avatarUrl) : undefined,
+      avatarUrl: foto ? toAbsoluteMediaUrl(foto) : undefined,
       members: chat.members.map((m) => {
         const persona = porId.get(String(m.userId));
         return {
@@ -268,17 +262,22 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
   });
 
   /**
-   * Silenciar / fijar un chat, para MÍ.
+   * Silenciar / fijar / archivar / marcar no leído un chat, para MÍ.
    *
-   * `PATCH` con `{muted?, pinned?}`. Lo usa la selección múltiple de la lista.
-   * Son ajustes por-usuario: viven en el subdoc del miembro, no en el chat.
+   * `PATCH` con `{muted?, pinned?, archived?, markedUnread?}`. Lo usa la
+   * selección múltiple de la lista. Son ajustes por-usuario: viven en el
+   * subdoc del miembro, no en el chat. Lo que no es booleano se ignora.
    */
   router.patch('/:chatId/ajustes', async (req, res) => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const soloBooleano = (valor: unknown) => (typeof valor === 'boolean' ? valor : undefined);
     const r = await cambiarAjustesDeChat({
       chatId: req.params.chatId!,
       quien: new Types.ObjectId(req.session!.userId),
-      muted: typeof req.body?.muted === 'boolean' ? req.body.muted : undefined,
-      pinned: typeof req.body?.pinned === 'boolean' ? req.body.pinned : undefined,
+      muted: soloBooleano(body.muted),
+      pinned: soloBooleano(body.pinned),
+      archived: soloBooleano(body.archived),
+      markedUnread: soloBooleano(body.markedUnread),
     });
     if (!r.ok) return res.status(400).json({ message: r.motivo });
     return res.status(200).json({ ok: true });
@@ -320,39 +319,20 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
    * chat dos veces, y el caso —alguien que ya no está en el grupo mandando una
    * foto— no es el común.
    */
-  router.post('/:chatId/avatar', subirAvatar.single('file'), async (req, res) => {
-    const file = req.file;
-    if (!file) return res.status(400).json({ message: 'Falta la foto.' });
-
-    const validado = validateMedia({ mimeType: file.mimetype, sizeBytes: file.size });
-    if (!validado.ok) return res.status(413).json({ message: validado.reason });
-    // Un video no es una foto de grupo: la lista dibuja una imagen redonda.
-    if (validado.kind !== 'image') {
-      return res.status(400).json({ message: 'La foto del grupo tiene que ser una imagen.' });
-    }
-
-    const subida = await uploader.upload({
-      chatId: req.params.chatId!,
-      fileName: file.originalname || 'grupo.jpg',
-      mimeType: file.mimetype,
-      kind: 'image',
-      bytes: file.buffer,
+  router.post('/:chatId/avatar', multerDeAvatar.single('file'), async (req, res) => {
+    const subida = await subirFotoRedonda({
+      uploader,
+      file: req.file,
+      carpeta: req.params.chatId!,
+      nombrePorDefecto: 'grupo.jpg',
+      siNoEsImagen: 'La foto del grupo tiene que ser una imagen.',
     });
-    if (!subida.ok) {
-      // Distinguir «no pude preguntar» de «me dijeron que no»: el 503 es
-      // reintentable y la app no descarta la foto que eligió la persona.
-      const reintentable = subida.codigo !== 'rechazado';
-      return res.status(reintentable ? 503 : 502).json({
-        message: reintentable
-          ? 'No se pudo subir ahora. Probá de nuevo.'
-          : 'La foto no se pudo guardar.',
-      });
-    }
+    if (!subida.ok) return res.status(subida.status).json({ message: subida.message });
 
     const r = await editarInfoDeGrupo({
       chatId: req.params.chatId!,
       quien: new Types.ObjectId(req.session!.userId),
-      avatar: { url: subida.media.url, mediaId: subida.media.storageName },
+      avatar: { url: subida.url, mediaId: subida.mediaId },
     });
     if (!r.ok) return res.status(400).json({ message: r.motivo });
 
@@ -363,7 +343,7 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
       evento: 'foto',
     });
     // La URL vuelve ABSOLUTA: la pantalla la pinta sin esperar a recargar.
-    return res.status(200).json({ ok: true, avatarUrl: toAbsoluteMediaUrl(subida.media.url) });
+    return res.status(200).json({ ok: true, avatarUrl: toAbsoluteMediaUrl(subida.url) });
   });
 
   /**

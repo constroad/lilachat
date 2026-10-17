@@ -15,7 +15,8 @@ describe('accionesDeSeleccion', () => {
     expect(accionesDeSeleccion([])).toEqual({
       silenciar: null,
       fijar: null,
-      puedeMarcarLeido: false,
+      lectura: null,
+      archivar: null,
       salir: false,
     });
   });
@@ -39,10 +40,25 @@ describe('accionesDeSeleccion', () => {
     ).toBe('fijar');
   });
 
-  /** Marcar leído solo tiene sentido si HAY algo sin leer en la selección. */
-  it('marcar leído solo si hay no leídos', () => {
-    expect(accionesDeSeleccion([chat({ id: 'a', unread: 0 })]).puedeMarcarLeido).toBe(false);
-    expect(accionesDeSeleccion([chat({ id: 'a', unread: 3 })]).puedeMarcarLeido).toBe(true);
+  /**
+   * Como WhatsApp (FL9): si algo de la selección está sin leer —con mensajes o
+   * marcado a mano—, la acción es «leído»; si todo está leído, «no leído».
+   */
+  it('marcar leído si hay algo sin leer; si no, marcar como no leído', () => {
+    expect(accionesDeSeleccion([chat({ id: 'a', unread: 3 }), chat({ id: 'b' })]).lectura).toBe('leido');
+    expect(accionesDeSeleccion([chat({ id: 'a', marcadoNoLeido: true })]).lectura).toBe('leido');
+    expect(accionesDeSeleccion([chat({ id: 'a' }), chat({ id: 'b' })]).lectura).toBe('no-leido');
+  });
+
+  /** Archivar (FL9): todos archivados → desarchivar; alguno no → archivar. */
+  it('todos archivados → desarchivar; alguno no → archivar', () => {
+    expect(accionesDeSeleccion([chat({ id: 'a', archived: true })]).archivar).toBe('desarchivar');
+    expect(accionesDeSeleccion([chat({ id: 'a', archived: true }), chat({ id: 'b' })]).archivar).toBe('archivar');
+  });
+
+  /** Un archivado no se fija, como en WhatsApp: fijar es de la lista principal. */
+  it('con un archivado en la selección no se ofrece fijar', () => {
+    expect(accionesDeSeleccion([chat({ id: 'a', archived: true }), chat({ id: 'b' })]).fijar).toBeNull();
   });
 
   /**

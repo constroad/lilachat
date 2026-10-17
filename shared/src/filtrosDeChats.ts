@@ -19,7 +19,13 @@ export type ChatFiltrable = {
   ultimo?: string;
   esGrupo: boolean;
   sinLeer: number;
+  /** Marcado a mano como no leído (FL9): cuenta como no leído. */
+  marcadoNoLeido?: boolean;
+  /** Archivado por mí (FL9): fuera de la lista principal. */
+  archivado?: boolean;
 };
+
+const estaSinLeer = (chat: ChatFiltrable): boolean => chat.sinLeer > 0 || chat.marcadoNoLeido === true;
 
 /**
  * Sin tildes y en minúsculas.
@@ -46,7 +52,7 @@ export function filtrarChats<T extends ChatFiltrable>(params: {
   if (!aguja && params.filtro === 'todos') return params.chats;
 
   return params.chats.filter((chat) => {
-    if (params.filtro === 'no-leidos' && chat.sinLeer <= 0) return false;
+    if (params.filtro === 'no-leidos' && !estaSinLeer(chat)) return false;
     if (params.filtro === 'grupos' && !chat.esGrupo) return false;
     if (!aguja) return true;
     return clave(`${chat.titulo} ${chat.ultimo ?? ''}`).includes(aguja);
@@ -56,7 +62,18 @@ export function filtrarChats<T extends ChatFiltrable>(params: {
 /** Lo que cada chip muestra al lado, como en WhatsApp. */
 export function contarChats(chats: readonly ChatFiltrable[]): Record<'no-leidos' | 'grupos', number> {
   return {
-    'no-leidos': chats.filter((chat) => chat.sinLeer > 0).length,
+    'no-leidos': chats.filter(estaSinLeer).length,
     grupos: chats.filter((chat) => chat.esGrupo).length,
   };
+}
+
+/**
+ * La lista principal y «Archivados» (FL9), cada una en el orden de entrada.
+ * Como WhatsApp: un mensaje nuevo NO desarchiva el chat; se saca a mano.
+ */
+export function separarArchivados<T extends { archivado?: boolean }>(chats: readonly T[]): { principales: T[]; archivados: T[] } {
+  const principales: T[] = [];
+  const archivados: T[] = [];
+  for (const chat of chats) (chat.archivado === true ? archivados : principales).push(chat);
+  return { principales, archivados };
 }

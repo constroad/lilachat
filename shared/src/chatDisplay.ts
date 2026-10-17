@@ -136,14 +136,25 @@ const ETIQUETA_DE_MEDIA: Record<MediaDePreview, string> = {
   archivo: 'Archivo',
 };
 
-export type ChatPreview = { text: string; style: 'normal' | 'typing'; media?: MediaDePreview };
+export type ChatPreview = {
+  text: string;
+  style: 'normal' | 'typing' | 'borrador';
+  media?: MediaDePreview;
+  /** Va antes del texto y en el color de la marca: «Borrador:» (FL9). */
+  etiqueta?: string;
+};
 
 export function resolveChatPreview(params: {
   typing: boolean;
   lastBody?: string;
   lastKind?: string;
+  /** Lo escrito y no mandado en ese chat (FL9), como «Borrador:» de WhatsApp. */
+  borrador?: string;
 }): ChatPreview {
   if (params.typing) return { text: 'Escribiendo…', style: 'typing' };
+  // En una sola línea: un salto cortaría la vista previa en la primera.
+  const borrador = params.borrador?.replace(/\s+/g, ' ').trim();
+  if (borrador) return { etiqueta: 'Borrador:', text: borrador, style: 'borrador' };
   if (params.lastBody) return { text: params.lastBody, style: 'normal' };
   if (params.lastKind && params.lastKind !== 'text') {
     // El tipo va aparte (FL3): la app dibuja un ícono vectorial como WhatsApp;

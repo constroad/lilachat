@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { contarChats, filtrarChats, type ChatFiltrable } from './filtrosDeChats.js';
+import { contarChats, filtrarChats, separarArchivados, type ChatFiltrable } from './filtrosDeChats.js';
 
 const chat = (parcial: Partial<ChatFiltrable> & { titulo: string }): ChatFiltrable => ({
   ultimo: '',
@@ -80,5 +80,34 @@ describe('contarChats', () => {
 
   it('sin chats, todo en cero', () => {
     expect(contarChats([])).toEqual({ 'no-leidos': 0, grupos: 0 });
+  });
+});
+
+/**
+ * Archivados y «marcar como no leído» (FL9). El archivado sale de la lista
+ * principal (vive en «Archivados»), y el marcado a mano cuenta como no leído
+ * para el chip aunque no tenga mensajes nuevos.
+ */
+describe('archivados y marcados como no leídos', () => {
+  const base = { titulo: 'x', esGrupo: false, sinLeer: 0 };
+
+  it('separarArchivados: cada chat a su lado, en el mismo orden', () => {
+    const chats = [
+      { ...base, titulo: 'a' },
+      { ...base, titulo: 'b', archivado: true },
+      { ...base, titulo: 'c' },
+    ];
+
+    const { principales, archivados } = separarArchivados(chats);
+
+    expect(principales.map((chat) => chat.titulo)).toEqual(['a', 'c']);
+    expect(archivados.map((chat) => chat.titulo)).toEqual(['b']);
+  });
+
+  it('el marcado a mano entra en el chip «No leídos» y en su cuenta', () => {
+    const chats = [{ ...base, titulo: 'marcado', marcadoNoLeido: true }, { ...base, titulo: 'leido' }];
+
+    expect(filtrarChats({ chats, filtro: 'no-leidos', texto: '' }).map((chat) => chat.titulo)).toEqual(['marcado']);
+    expect(contarChats(chats)['no-leidos']).toBe(1);
   });
 });

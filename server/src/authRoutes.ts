@@ -11,6 +11,7 @@ import {
 } from './invitationGate.js';
 import { DeviceModel, InvitationModel, UserModel } from './models.js';
 import { signSession } from './sessions.js';
+import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { alertarServidor } from './alertaTelegram.js';
 import { resolverUsuarioDeSesion } from './identidadDeSesion.js';
 
@@ -143,7 +144,7 @@ export function buildAuthRouter(authClient: AuthClient): Router {
     return res.status(200).json({
       deviceSecret: verified.valor.secreto,
       jwt: signSession({ userId: String(user._id), deviceId, email: user.email ?? phone }),
-      user: { id: String(user._id), name: user.name ?? null, phone },
+      user: { id: String(user._id), name: user.name ?? null, phone, avatarUrl: user.avatarUrl ? toAbsoluteMediaUrl(user.avatarUrl) : null },
     });
   });
 
@@ -212,7 +213,13 @@ export function buildAuthRouter(authClient: AuthClient): Router {
     // repara sola en el próximo arranque, sin obligar a re-loguear.
     return res.status(200).json({
       jwt: signSession({ userId: String(user._id), deviceId, email: user.email ?? user.phone }),
-      user: { id: String(user._id), name: user.name ?? null, phone: user.phone },
+      // La foto del perfil (FL9) viaja acá: la cabecera la pinta sin otro pedido.
+      user: {
+        id: String(user._id),
+        name: user.name ?? null,
+        phone: user.phone,
+        avatarUrl: user.avatarUrl ? toAbsoluteMediaUrl(user.avatarUrl) : null,
+      },
     });
   });
 

@@ -48,3 +48,36 @@ export function extractoDeCoincidencia(body: string, termino: string, contexto =
     largo: aguja.length,
   };
 }
+
+/** Sin tildes y en minúsculas: nadie escribe la tilde en un buscador. */
+const sinTildes = (texto: string): string =>
+  texto
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase();
+
+/**
+ * Buscar DENTRO de un chat (FL9). Sobre lo que el teléfono ya tiene —un chat
+ * secreto incluido, porque acá el texto está descifrado— y por subcadena, sin
+ * mayúsculas ni tildes. Devuelve los `seq` del más viejo al más nuevo. Los
+ * eliminados y los avisos del sistema no cuentan: no son lo que se escribió.
+ */
+export function coincidenciasEnChat(
+  mensajes: readonly { seq: number; body?: string; kind?: string; deletedAt?: string | null }[],
+  consulta: string
+): number[] {
+  if (!busquedaValida(consulta)) return [];
+  const aguja = sinTildes(consulta.trim());
+  return mensajes
+    .filter((mensaje) => !mensaje.deletedAt && mensaje.kind !== 'system' && mensaje.body)
+    .filter((mensaje) => sinTildes(mensaje.body ?? '').includes(aguja))
+    .map((mensaje) => mensaje.seq)
+    .sort((a, b) => a - b);
+}
+
+/** ↑ al anterior (más viejo), ↓ al siguiente; en los bordes se queda. */
+export function moverCoincidencia(params: { total: number; actual: number; hacia: 'anterior' | 'siguiente' }): number {
+  if (params.total <= 0) return -1;
+  const destino = params.actual + (params.hacia === 'anterior' ? -1 : 1);
+  return Math.min(params.total - 1, Math.max(0, destino));
+}

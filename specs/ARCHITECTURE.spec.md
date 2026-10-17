@@ -3396,7 +3396,7 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | FL8 | **Lo que se pierde o se rompe** (auditoría §46.1) — ver §45.15 | ningún mensaje desaparece sin aviso; la notificación abre su chat; la llamada suena fuera del chat | ✅ 17/10 (0.1.78) |
 | FL8.1 | **Llamada entrante como WhatsApp** (pedido de José tras probar con Wilson, 17/10): pantalla completa sobre el bloqueo con tono que se repite, deslizar para contestar, rechazar sin abrir la app, tono con la app abierta, «Llamada perdida» en el chat — ver §45.16 | con la app cerrada y el teléfono bloqueado la llamada ocupa la pantalla y suena hasta contestar, rechazar o 30 s; E2E en el emulador | 🟡 17/10 (0.1.79 publicada): verificada en el emulador, más el bug de presencia que frenaba todos los push; falta probar sobre un bloqueo real |
 | FL8.2 | **Doble check sin abrir la app** (José, 17/10, chat con Wilson: un solo check aunque Wilson tenía internet). Hoy «entregado» lo marca la app al conectarse; el push llega al teléfono pero es una notificación común, Android la muestra sin ejecutar código de la app y el server nunca se entera. Camino: push de mensaje solo-datos que recibe el servicio nativo de FL8.1, que dibuja la notificación y le confirma la entrega al server con un token corto del propio push (sin JWT) | con la app cerrada, el mensaje pasa a dos checks grises al llegar el push al otro teléfono — ver §45.17 | ✅ 17/10: hecho y verificado en el emulador; sale en 0.1.80 |
-| FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | 🟡 17/10: FL9a hecha (§45.18): pulsación larga completa, links, cita que salta, divisor de no leídos, atrás; editar mensajes (§45.19); FL9b: varias fotos con pie y notas de voz con velocidad (§45.20). Falta: buscar en el chat, borradores, archivar, perfil |
+| FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | 🟡 17/10: FL9a hecha (§45.18): pulsación larga completa, links, cita que salta, divisor de no leídos, atrás; editar mensajes (§45.19); FL9b: varias fotos con pie y notas de voz con velocidad (§45.20); FL9c: borradores, archivar, marcar no leído, perfil con nombre y foto, buscar en el chat (§45.21). Falta: dimensiones de foto, borrar chats |
 | FL10 | **Pulido y coherencia** (§46.3): un solo registro (tuteo), 44 dp, encuestas completas, detalle de evento | auditoría de pantalla entera sin hallazgos ALTA | ⬜ |
 
 ### 45.4 As-is FL0 (16/10/2026)
@@ -4227,6 +4227,118 @@ tests)
 
 **Falta en FL9:** buscar dentro del chat, borradores por chat, archivar y
 borrar chats, marcar no leído, nombre y foto de perfil, dimensiones de foto.
+
+### 45.21 As-is FL9c, borradores, archivados, perfil y buscar en el chat (17/10/2026)
+
+**Refactor previo** (sin cambio de comportamiento)
+- `ChatScreen` pasó de 981 a 787 líneas. Salieron `EncabezadoDelChat`,
+  `useAdjuntosDelChat`, `VisorDelChat` y `useProgramados`.
+- `ChatListScreen` pasó de 891 a 602 líneas. Salieron `FilaDeChat` (con
+  `memo` y callbacks estables), `BarraDeSeleccionDeChats`, `BuscadorDeChats` y
+  `ResultadosDeMensajes`.
+- Los dos siguen arriba de 600 líneas: queda como deuda.
+
+**Borradores por chat** (`borradores.ts`, 2 tests; `resolveChatPreview`, 3
+tests)
+- Lo escrito y no mandado se guarda en el disco del teléfono, una clave por
+  chat, medio segundo después de la última tecla y al salir del chat.
+- Al abrir el chat vuelve al campo. Mandar o borrar el texto lo limpia.
+- Editar un mensaje no pisa el borrador: al terminar o cancelar, el borrador
+  vuelve al campo.
+- La lista muestra «Borrador:» en el color de la marca y el texto en una
+  línea. «Escribiendo…» del otro gana. En un chat secreto dice solo
+  «Borrador», sin el texto.
+- Se borran al cerrar sesión y cuando la credencial se revoca.
+
+**Archivar y marcar como no leído** (server: `archived` y `markedUnread` en el
+subdoc del miembro, 4 tests; shared: `accionesDeSeleccion` y
+`separarArchivados`, 5 tests)
+- Son de cada persona, como silenciar.
+- La barra de selección suma «Archivar / Desarchivar» y alterna «Marcar como
+  leído / no leído».
+- Un archivado no se fija, y un mensaje nuevo no lo desarchiva (como
+  WhatsApp).
+- La lista principal muestra arriba la fila «Archivados», con cuántos tienen
+  algo sin leer. Adentro hay cabecera con flecha. Atrás vuelve, y sin
+  archivados se vuelve sola. Buscar mira también en los archivados.
+- «No leído» es un punto sin número y la hora en el color de la marca. Cuenta
+  para el chip «No leídos».
+- Se va sola al abrir el chat: `markRead` la limpia en el server (el filtro
+  solo escribe si estaba marcada) y la lista la limpia en vivo.
+- Atrás en la lista suelta primero la selección, después la búsqueda,
+  después «Archivados».
+
+**Perfil: nombre y foto** (`/api/me/perfil`, 8 tests; `validarNombreDePerfil`,
+5 tests; `perfilVisible`, 6 tests)
+- `PUT /api/me/perfil` guarda el nombre: sin espacios de más y hasta 25
+  letras (un emoji cuenta como una). Si no cumple, da 400 con el motivo.
+- `POST /api/me/perfil/foto` sube la foto a una carpeta por persona
+  (`perfil-<userId>`), aparte de los chats. `DELETE` la quita.
+- La validación y la subida de la foto redonda se comparten con la del grupo
+  (`subirAvatar.ts`). En la app las comparte `fotoDeGrupo.ts`, con el
+  recortador en cuadrado.
+- En un 1:1 la foto del chat es la del perfil del otro, en la lista y en el
+  detalle.
+- La sesión (`/api/auth/session` y el OTP) devuelve `avatarUrl`: la cabecera
+  la pinta sin otro pedido.
+- Ajustes abre con la tarjeta del perfil:
+  - tocar la foto la cambia (cámara o galería);
+  - «Quitar» la saca;
+  - el lápiz edita el nombre;
+  - el error sale debajo del campo.
+  Lo cambiado se ve al instante en la cabecera y se guarda en la credencial.
+
+**Buscar dentro del chat** (`coincidenciasEnChat` y `moverCoincidencia`, 6
+tests)
+- El botón «Buscar» del detalle, que estaba apagado, abre una barra en lugar
+  de la cabecera.
+- Busca en lo que el teléfono ya tiene, por subcadena, sin mayúsculas ni
+  tildes. Incluye los chats secretos, porque acá el texto está descifrado. No
+  cuenta los eliminados, los avisos ni lo «eliminado para mí».
+- Salta a la coincidencia más nueva, y ↑/↓ recorren las demás con «2 de 5».
+  La que se ve queda resaltada.
+- Atrás cierra la búsqueda.
+
+**E2E** (emulador, build de desarrollo contra :3104, chat «QA Ana» sembrado):
+- **Borrador:**
+  - «QA borrador uno» salió en la lista como «Borrador: …» con la etiqueta
+    en violeta;
+  - al reabrir volvió al campo;
+  - borrado el texto, la lista volvió al último mensaje.
+- **Buscar:** «cumple» dio «3 de 3» con la más nueva resaltada. Dos ↑
+  llevaron a «1 de 3», al primer mensaje, con ↑ apagado. Atrás cerró la
+  barra.
+- **No leído:**
+  - salió el punto, la hora en acento y «No leídos 1»;
+  - en la base quedó `markedUnread: true`;
+  - al abrir el chat pasó a `false` y el punto se fue.
+- **Archivar:**
+  - apareció la fila «Archivados» y el chat salió de la principal
+    (`archived: true`);
+  - adentro estaba la cabecera con flecha, y atrás volvió a la principal;
+  - al desarchivar no se ofreció fijar, y la vista volvió sola a la
+    principal (`archived: false`).
+- **Perfil:**
+  - el nombre vacío mostró «Escribe tu nombre.» debajo del campo;
+  - «QA Jose» se guardó y la cabecera pasó a «Q»;
+  - la foto (galería → recorte cuadrado) subió y se vio en la tarjeta y en
+    la cabecera;
+  - «Quitar» pidió confirmación y la sacó.
+- **Humo del refactor:**
+  - la cabecera, el menú de adjuntos y la previsualización de fotos andan;
+  - el modal de programar se abre con el texto.
+  No se recorrieron la nota de voz, la cámara, el archivo ni el visor.
+
+**Notas del QA**
+- Con el build de desarrollo, escribir con `adb input text` sin un campo
+  enfocado recarga la app: dos «r» seguidas son el atajo de recarga.
+- La galería del emulador estaba vacía. Se le cargó una imagen sintética y
+  se borró al terminar.
+- Se abrió por error un chat real de José. Se volvió atrás sin tocar nada:
+  solo pudo mover su acuse de lectura, que ya estaba al día.
+- El perfil de José se guardó antes y se restauró después, sin nombre ni
+  foto. QA Ana, su chat y el equipo del emulador se borraron: quedaron 20
+  equipos y 0 de QA.
 
 ## 47. Lilachat Empresa — plan (17/10/2026)
 

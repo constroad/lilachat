@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   applyEffect,
   buildOutboxItem,
+  descartarDeLaCola,
   enqueue,
   nextPending,
+  reintentarEnLaCola,
   resolveOutcome,
   retryDelayMs,
   type OutboxItem,
@@ -68,24 +70,31 @@ describe('resolveOutcome', () => {
     expect(resolveOutcome(item(), { status: 'rejected', httpStatus: 500 }).action).toBe('retry');
   });
 
-  /** Anti-wedge: si se quedara al frente, mataría toda la cola detrás. */
-  it.each([400, 403, 404, 410, 413, 422])('rechazo permanente %i: se descarta con motivo', (httpStatus) => {
+  /**
+   * FL8 (auditoría 17/10/2026): un rechazo permanente ya NO borra el mensaje.
+   * Antes se descartaba y la burbuja desaparecía sin aviso. Ahora queda
+   * marcado como fallido —con el motivo— y la persona decide.
+   */
+  it.each([400, 403, 404, 410, 413, 422])('rechazo permanente %i: queda FALLIDO con su motivo', (httpStatus) => {
     const effect = resolveOutcome(item(), {
       status: 'rejected',
       httpStatus,
       message: 'Ese chat ya no existe.',
     });
 
-    expect(effect).toEqual({
-      action: 'discard',
-      clientKey: 'ck-1',
-      reason: 'Ese chat ya no existe.',
+    expect(effect).toEqual({ action: 'fail', clientKey: 'ck-1', reason: 'Ese chat ya no existe.' });
+  });
+
+  it('rechazo sin mensaje: un motivo genérico, nunca vacío', () => {
+    expect(resolveOutcome(item(), { status: 'rejected', httpStatus: 400 })).toMatchObject({
+      reason: 'El servidor rechazó este mensaje.',
     });
   });
 
-  it('401: la credencial no vale — se vacía la cola entera', () => {
-    expect(resolveOutcome(item(), { status: 'unauthorized' })).toMatchObject({
-      action: 'clear-all',
+  it('401: la sesión no vale — todo queda fallido (no se borra lo escrito)', () => {
+    expect(resolveOutcome(item(), { status: 'unauthorized' })).toEqual({
+      action: 'fail-all',
+      reason: 'Tu sesión venció. Vuelve a entrar para mandarlo.',
     });
   });
 });
@@ -99,10 +108,20 @@ describe('applyEffect', () => {
     expect(result.map((entry) => entry.clientKey)).toEqual(['b']);
   });
 
-  it('descartar saca ese ítem — la cola sigue avanzando', () => {
-    const result = applyEffect(queue, { action: 'discard', clientKey: 'a', reason: 'x' });
+  it('fallar marca ESE ítem con el motivo y no lo saca', () => {
+    const result = applyEffect(queue, { action: 'fail', clientKey: 'a', reason: 'Ese chat ya no existe.' });
 
-    expect(result.map((entry) => entry.clientKey)).toEqual(['b']);
+    expect(result.map((entry) => [entry.clientKey, entry.fallo ?? null])).toEqual([
+      ['a', 'Ese chat ya no existe.'],
+      ['b', null],
+    ]);
+  });
+
+  it('fail-all marca todos los que no estaban fallidos', () => {
+    const conUno = [item({ clientKey: 'a', fallo: 'otro motivo' }), item({ clientKey: 'b' })];
+    const result = applyEffect(conUno, { action: 'fail-all', reason: 'sesión' });
+
+    expect(result.map((entry) => entry.fallo)).toEqual(['otro motivo', 'sesión']);
   });
 
   it('reintentar cuenta el intento sin perder el mensaje', () => {
@@ -112,8 +131,33 @@ describe('applyEffect', () => {
     expect(result).toHaveLength(2);
   });
 
-  it('clear-all deja la cola vacía', () => {
-    expect(applyEffect(queue, { action: 'clear-all', reason: 'x' })).toEqual([]);
+});
+
+describe('fallidos en la cola', () => {
+  /** Anti-wedge: el fallido no bloquea a los de atrás. */
+  it('nextPending saltea los fallidos', () => {
+    const cola = [item({ clientKey: 'a', fallo: 'x' }), item({ clientKey: 'b' })];
+
+    expect(nextPending(cola)?.clientKey).toBe('b');
+  });
+
+  it('con todos fallidos no hay nada que mandar', () => {
+    expect(nextPending([item({ fallo: 'x' })])).toBeNull();
+  });
+
+  it('reintentar le saca la marca y empieza de cero, en su mismo lugar', () => {
+    const cola = [item({ clientKey: 'a', fallo: 'x', attempts: 3 }), item({ clientKey: 'b' })];
+    const result = reintentarEnLaCola(cola, 'a');
+
+    expect(result[0]).toMatchObject({ clientKey: 'a', attempts: 0 });
+    expect(result[0]?.fallo).toBeUndefined();
+    expect(result[1]?.clientKey).toBe('b');
+  });
+
+  it('descartar lo saca para siempre', () => {
+    const cola = [item({ clientKey: 'a', fallo: 'x' }), item({ clientKey: 'b' })];
+
+    expect(descartarDeLaCola(cola, 'a').map((entry) => entry.clientKey)).toEqual(['b']);
   });
 });
 

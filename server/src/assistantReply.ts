@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { detectLilaMention } from '@lilachat/shared';
+import { detectLilaMention, TELEFONO_DE_LILA } from '@lilachat/shared';
 import { answerMention } from './assistantService.js';
 import { ChatModel } from './chatModels.js';
 import { sendMessage } from './chatService.js';
@@ -19,7 +19,7 @@ import { UserModel } from './models.js';
  */
 
 /** El usuario con el que firma Lila. Se crea una vez y se reusa. */
-const LILA_PHONE = '000000000';
+const LILA_PHONE = TELEFONO_DE_LILA;
 let lilaId: Types.ObjectId | null = null;
 
 export async function assistantUserId(): Promise<Types.ObjectId> {

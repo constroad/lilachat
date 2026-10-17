@@ -88,3 +88,38 @@ async function chatsSilenciadosDeChat(chatId: string, userIds: string[]): Promis
   }
   return set;
 }
+
+/**
+ * «Llamada de Ana» a los miembros DESCONECTADOS (FL8). Antes una llamada solo
+ * le llegaba a quien tenía el socket abierto; con la app en segundo plano o
+ * cerrada no sonaba nada. El toque abre la app, que al conectar recibe la
+ * oferta que sigue sonando (`llamadas.ts`) y muestra la llamada.
+ *
+ * Silenciar un chat NO calla sus llamadas (como WhatsApp).
+ */
+export async function avisarLlamada(params: { chatId: string; from: string; members: string[]; video: boolean }): Promise<void> {
+  const desconectados = params.members.filter((member) => member !== params.from && !isOnline(member));
+  if (desconectados.length === 0) return;
+  const [dispositivos, quien] = await Promise.all([
+    DeviceModel.find({ userId: { $in: desconectados }, pushToken: { $exists: true, $ne: '' } })
+      .select('pushToken platform')
+      .lean(),
+    UserModel.findById(params.from).select('name phone').lean(),
+  ]);
+  if (dispositivos.length === 0) return;
+  const nombre = quien?.name ?? quien?.phone ?? 'Alguien';
+  const aviso = {
+    title: `${params.video ? 'Videollamada' : 'Llamada'} de ${nombre}`,
+    body: 'Toca para contestar',
+    data: { chatId: params.chatId, seq: 0, tipo: 'llamada' as const },
+  };
+  const destinos = splitPushTargets(dispositivos);
+  try {
+    await Promise.all([
+      destinos.fcm.length > 0 ? sender.send({ tokens: destinos.fcm, ...aviso }) : undefined,
+      sendWebPush(destinos.web, aviso),
+    ]);
+  } catch (error) {
+    console.error('[push] no se pudo avisar la llamada:', error instanceof Error ? error.message : error);
+  }
+}

@@ -10,6 +10,8 @@ import {
   decidirSalida,
   busquedaValida,
   escaparRegex,
+  acuseDelGrupo,
+  TELEFONO_DE_LILA,
 } from '@lilachat/shared';
 import { UserModel } from './models.js';
 import { ChatModel, MessageModel, ReceiptModel, type Chat, type Message } from './chatModels.js';
@@ -243,6 +245,8 @@ export type ChatSummary = {
    */
   phone?: string;
   memberIds: string[];
+  /** Los otros miembros cuyo acuse cuenta para mis checks (sin mí ni Lila). */
+  acuseDe: string[];
   lastSeq: number;
   unread: number;
   lastMessage: {
@@ -304,23 +308,26 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
 
   const receipts = allReceipts.filter((receipt) => String(receipt.userId) === String(userId));
   const readByChat = new Map(receipts.map((receipt) => [String(receipt.chatId), receipt.readSeq]));
-  // Los acuses AJENOS, que son los que deciden el check de mis mensajes. En un
-  // grupo manda el MENOR: «leído» solo cuando lo leyeron todos, igual que el
-  // doble check azul de cualquier mensajería.
-  const othersByChat = new Map<string, { read: number; delivered: number }>();
+  // Los acuses AJENOS, por chat y por miembro: deciden el check de mis
+  // mensajes con `acuseDelGrupo` (el menor; quien nunca abrió el chat vale 0;
+  // Lila no cuenta). La app aplica la MISMA regla en vivo (FL8).
+  const acusesPorChat = new Map<string, { read: Map<string, number>; delivered: Map<string, number> }>();
   for (const receipt of allReceipts) {
     if (String(receipt.userId) === String(userId)) continue;
     const key = String(receipt.chatId);
-    const current = othersByChat.get(key);
-    othersByChat.set(key, {
-      read: current ? Math.min(current.read, receipt.readSeq) : receipt.readSeq,
-      delivered: current ? Math.min(current.delivered, receipt.deliveredSeq) : receipt.deliveredSeq,
-    });
+    const entrada = acusesPorChat.get(key) ?? { read: new Map(), delivered: new Map() };
+    entrada.read.set(String(receipt.userId), receipt.readSeq);
+    entrada.delivered.set(String(receipt.userId), receipt.deliveredSeq);
+    acusesPorChat.set(key, entrada);
   }
 
   return chats.map((chat, index) => {
     const last = lastMessages[index];
     // El subdoc de ESTE usuario: de ahí salen sus flags de silenciado/fijado.
+    const acusan = chat.members
+      .map((member) => String(member.userId))
+      .filter((id) => id !== String(userId) && telefonos.get(id) !== TELEFONO_DE_LILA);
+    const acuses = acusesPorChat.get(String(chat._id));
     const yo = chat.members.find((member) => String(member.userId) === String(userId));
     const otroId =
       chat.kind === 'direct'
@@ -343,6 +350,7 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
       muted: yo?.muted === true,
       pinned: yo?.pinned === true,
       memberIds: chat.members.map((member) => String(member.userId)),
+      acuseDe: acusan,
       lastSeq: chat.lastSeq,
       unread: unreadCount({
         lastSeq: chat.lastSeq,
@@ -362,8 +370,8 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
             system: last.system,
           }
         : null,
-      othersReadSeq: othersByChat.get(String(chat._id))?.read ?? 0,
-      othersDeliveredSeq: othersByChat.get(String(chat._id))?.delivered ?? 0,
+      othersReadSeq: acuseDelGrupo({ otros: acusan, porMiembro: acuses?.read ?? new Map() }),
+      othersDeliveredSeq: acuseDelGrupo({ otros: acusan, porMiembro: acuses?.delivered ?? new Map() }),
     };
   });
 }

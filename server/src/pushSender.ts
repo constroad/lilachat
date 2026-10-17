@@ -24,8 +24,8 @@ export type PushMessage = {
   tokens: string[];
   title: string;
   body: string;
-  /** `tipo: 'agenda'`: un recordatorio o un evento, que la app muestra con banner. */
-  data: { chatId: string; seq: number; tipo?: 'agenda' };
+  /** `tipo`: un recordatorio o evento (`agenda`, con banner) o una llamada que suena. */
+  data: { chatId: string; seq: number; tipo?: 'agenda' | 'llamada' };
 };
 
 export interface PushSender {

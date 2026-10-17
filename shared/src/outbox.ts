@@ -10,10 +10,15 @@
  * 2. **Un duplicado del server es ÉXITO.** Que conteste «ya lo tenía» significa
  *    que el hecho está guardado — que es exactamente lo que se quería.
  * 3. **Anti-wedge**: un ítem que el server rechaza PARA SIEMPRE (400/403/404/
- *    410) se descarta con motivo visible. Si se quedara al frente reintentando,
- *    bloquearía todo lo que viene atrás — la cola entera muere por un mensaje.
- * 4. **401 vacía la cola**: la credencial ya no vale, y reintentar con ella no
- *    va a funcionar nunca.
+ *    410) queda FALLIDO, con su motivo, y la cola lo saltea. Si se quedara al
+ *    frente reintentando, bloquearía todo lo que viene atrás.
+ * 4. **401 marca todo como fallido**: la credencial ya no vale, y reintentar
+ *    con ella no va a funcionar.
+ *
+ * Desde FL8 (auditoría 17/10/2026) lo rechazado NO se borra: antes se
+ * descartaba y la burbuja desaparecía sin aviso —con un 401, la cola entera—.
+ * Ahora queda en pantalla como «No se envió» y la persona elige reintentar o
+ * borrar (`reintentarEnLaCola`, `descartarDeLaCola`).
  * 5. **Sin respuesta NO es rechazo**: se reintenta con espera creciente.
  */
 
@@ -34,6 +39,8 @@ export type OutboxItem = {
   /** Reloj del cliente: sirve para ordenar lo pendiente en pantalla. */
   queuedAt: string;
   attempts: number;
+  /** El server lo rechazó para siempre: por qué. La cola lo saltea. */
+  fallo?: string;
 };
 
 export type SendOutcome =
@@ -46,9 +53,9 @@ export type SendOutcome =
 
 export type OutboxEffect =
   | { action: 'confirm'; clientKey: string; seq: number }
-  | { action: 'discard'; clientKey: string; reason: string }
+  | { action: 'fail'; clientKey: string; reason: string }
   | { action: 'retry'; clientKey: string; delayMs: number }
-  | { action: 'clear-all'; reason: string };
+  | { action: 'fail-all'; reason: string };
 
 /** Estados finales del server: reintentar no cambiaría nada. */
 const PERMANENT_REJECTIONS = new Set([400, 403, 404, 410, 413, 422]);
@@ -73,14 +80,10 @@ export function resolveOutcome(item: OutboxItem, outcome: SendOutcome): OutboxEf
       // Regla 2: el duplicado se confirma igual que un envío nuevo.
       return { action: 'confirm', clientKey: item.clientKey, seq: outcome.seq };
     case 'unauthorized':
-      return { action: 'clear-all', reason: 'Tu acceso ya no está activo.' };
+      return { action: 'fail-all', reason: 'Tu sesión venció. Vuelve a entrar para mandarlo.' };
     case 'rejected':
       if (PERMANENT_REJECTIONS.has(outcome.httpStatus)) {
-        return {
-          action: 'discard',
-          clientKey: item.clientKey,
-          reason: outcome.message || 'El servidor rechazó este mensaje.',
-        };
+        return { action: 'fail', clientKey: item.clientKey, reason: outcome.message || 'El servidor rechazó este mensaje.' };
       }
       // 5xx y demás: el server está mal, no el mensaje.
       return { action: 'retry', clientKey: item.clientKey, delayMs: retryDelayMs(item.attempts) };
@@ -92,10 +95,11 @@ export function resolveOutcome(item: OutboxItem, outcome: SendOutcome): OutboxEf
 /** Aplica un efecto a la cola. Devuelve una cola NUEVA (no muta). */
 export function applyEffect(queue: OutboxItem[], effect: OutboxEffect): OutboxItem[] {
   switch (effect.action) {
-    case 'clear-all':
-      return [];
+    case 'fail-all':
+      return queue.map((item) => (item.fallo ? item : { ...item, fallo: effect.reason }));
+    case 'fail':
+      return queue.map((item) => (item.clientKey === effect.clientKey ? { ...item, fallo: effect.reason } : item));
     case 'confirm':
-    case 'discard':
       return queue.filter((item) => item.clientKey !== effect.clientKey);
     case 'retry':
       return queue.map((item) =>
@@ -113,9 +117,26 @@ export function enqueue(queue: OutboxItem[], item: OutboxItem): OutboxItem[] {
   return [...queue, item];
 }
 
-/** El siguiente a mandar: FIFO estricto — el orden del chat es el del autor. */
+/**
+ * El siguiente a mandar: FIFO estricto entre los que no fallaron — el orden del
+ * chat es el del autor. Un fallido no bloquea a los de atrás (anti-wedge).
+ */
 export function nextPending(queue: OutboxItem[]): OutboxItem | null {
-  return queue[0] ?? null;
+  return queue.find((item) => !item.fallo) ?? null;
+}
+
+/** «Reintentar» sobre un fallido: sin marca y con los intentos en cero, en su lugar. */
+export function reintentarEnLaCola(queue: OutboxItem[], clientKey: string): OutboxItem[] {
+  return queue.map((item) => {
+    if (item.clientKey !== clientKey) return item;
+    const { fallo: _fallo, ...limpio } = item;
+    return { ...limpio, attempts: 0 };
+  });
+}
+
+/** «Borrar» un fallido: sale de la cola para siempre. */
+export function descartarDeLaCola(queue: OutboxItem[], clientKey: string): OutboxItem[] {
+  return queue.filter((item) => item.clientKey !== clientKey);
 }
 
 /**

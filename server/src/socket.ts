@@ -15,7 +15,8 @@ import {
 import { toClientMessage, toClientMessages } from './messageView.js';
 import { isOnline, markOffline, markOnline, onlineAmong } from './presence.js';
 import { autoResponderA } from './autoReply.js';
-import { notifyOffline } from './pushService.js';
+import { avisarLlamada, notifyOffline } from './pushService.js';
+import { frameConAutor, guardarOferta, hayOfertasPendientes, limpiarOferta, ofertasVigentes } from './llamadas.js';
 import { maybeAnswerMention } from './assistantReply.js';
 import { verifySession } from './sessions.js';
 
@@ -198,6 +199,15 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
       // Y a mí me interesa quién YA estaba en línea: sin esto, los puntos
       // verdes solo aparecerían cuando alguien se conecta después que yo.
       socket.emit('presence.snapshot', { online: onlineAmong(contacts) });
+
+      // Una llamada que sigue sonando en uno de mis chats (FL8): conecté
+      // tarde —abrí la app desde el push «Llamada de…»— y todavía se contesta.
+      if (hayOfertasPendientes()) {
+        const misChats = await ChatModel.find({ 'members.userId': userId }).select('_id').lean();
+        for (const oferta of ofertasVigentes(misChats.map((chat) => String(chat._id)), me)) {
+          socket.emit('call.offer', oferta);
+        }
+      }
     })();
 
     socket.on('disconnect', () => {
@@ -304,12 +314,21 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
           const members = await chatMemberIds(new Types.ObjectId(payload.chatId));
           if (!members.includes(String(userId))) return;
 
+          const frame = await frameConAutor(evento, payload, String(userId));
           for (const member of members) {
             // A MÍ NO: recibir mi propia oferta haría que el teléfono se llame
             // a sí mismo. A mis otros dispositivos tampoco — el que contesta es
             // el que tiene la llamada, y duplicarla haría sonar dos.
             if (member === String(userId)) continue;
-            io.to(userRoom(member)).emit(evento, { ...payload, from: String(userId) });
+            io.to(userRoom(member)).emit(evento, frame);
+          }
+          // FL8: la oferta queda «sonando» para quien conecte en ese tiempo, y
+          // a los desconectados les llega un push. Lo demás la apaga.
+          if (evento === 'call.offer') {
+            guardarOferta(payload.chatId, frame, String(userId));
+            void avisarLlamada({ chatId: payload.chatId, from: String(userId), members, video: payload.video === true });
+          } else if (evento !== 'call.ice') {
+            limpiarOferta(payload.chatId);
           }
         } catch {
           // Un chat inválido no tira la conexión: la señalización es best-effort

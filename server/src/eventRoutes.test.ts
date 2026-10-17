@@ -194,3 +194,47 @@ describe('GET /api/agenda/events', () => {
     expect(ajeno.body.events[0].mio).toBe(false);
   });
 });
+
+describe('RSVP de quien entró al chat después (FL8)', () => {
+  /** Los invitados son una foto de los miembros al crear: el que entró después veía el evento y su «Voy» daba 403. */
+  it('un miembro nuevo puede responder y queda en la lista de invitados', async () => {
+    const id = await crearEvento();
+    const nuevo = (await UserModel.create({ phone: '51988888888', name: 'Nuevo' }))._id;
+    await ChatModel.updateOne({ _id: chatId }, { $push: { members: { userId: nuevo, role: 'member' } } });
+    const jwtNuevo = signSession({ userId: String(nuevo), deviceId: 'd3', email: '51988888888' });
+
+    await request(app).post(`/api/agenda/events/${id}/rsvp`).set(conJwt(jwtNuevo)).send({ rsvp: 'yes' }).expect(200);
+
+    const guardado = await EventModel.findById(id).lean();
+    expect(guardado?.attendees.find((a) => String(a.userId) === String(nuevo))?.rsvp).toBe('yes');
+  });
+
+  it('alguien fuera del chat sigue sin poder responder', async () => {
+    const id = await crearEvento();
+    const ajeno = (await UserModel.create({ phone: '51977777777', name: 'Ajeno' }))._id;
+    const jwtAjeno = signSession({ userId: String(ajeno), deviceId: 'd4', email: '51977777777' });
+
+    await request(app).post(`/api/agenda/events/${id}/rsvp`).set(conJwt(jwtAjeno)).send({ rsvp: 'yes' }).expect(403);
+  });
+});
+
+describe('chat secreto: sin eventos ni encuestas (FL8)', () => {
+  /** El server no puede guardarlos cifrados: aceptarlos dejaba en claro lo que el candado promete esconder. */
+  it('crear un evento o una encuesta en un chat secreto es 403 con el motivo', async () => {
+    await ChatModel.updateOne({ _id: chatId }, { $set: { encrypted: true } });
+
+    const evento = await request(app)
+      .post('/api/agenda/events')
+      .set(conJwt(jwtYo))
+      .send({ chatId: String(chatId), title: 'Secreto', startsAt: '2026-10-20T15:00:00.000Z' })
+      .expect(403);
+    await request(app)
+      .post('/api/agenda/polls')
+      .set(conJwt(jwtYo))
+      .send({ chatId: String(chatId), question: '¿Sí?', options: ['Sí', 'No'] })
+      .expect(403);
+
+    expect(evento.body.message).toMatch(/secreto/i);
+    expect(await EventModel.countDocuments()).toBe(0);
+  });
+});

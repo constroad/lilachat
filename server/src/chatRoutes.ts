@@ -250,6 +250,9 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
       kind: chat.kind,
       name: chat.name,
       encrypted: chat.encrypted === true,
+      // MI silenciado (es por persona): el interruptor del detalle lo muestra
+      // como está, en vez de arrancar siempre apagado.
+      muted: chat.members.some((m) => String(m.userId) === String(userId) && m.muted === true),
       avatarUrl: chat.avatarUrl ? toAbsoluteMediaUrl(chat.avatarUrl) : undefined,
       members: chat.members.map((m) => {
         const persona = porId.get(String(m.userId));

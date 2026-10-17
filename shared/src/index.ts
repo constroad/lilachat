@@ -37,6 +37,7 @@ export * from './respaldoPorTrozos.js';
 export * from './lotes.js';
 export * from './marca.js';
 export * from './agendaEdicion.js';
+export * from './acuses.js';
 export * from './colaSerial.js';
 export * from './aviso.js';
 export * from './busquedaDeMensajes.js';

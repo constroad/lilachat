@@ -32,6 +32,23 @@ async function assertMember(chatId: unknown, userId: Types.ObjectId): Promise<Ty
   return id;
 }
 
+/**
+ * En un chat secreto el server no puede guardar eventos, encuestas ni avisos
+ * cifrados: aceptarlos dejaba en claro lo que el candado promete esconder
+ * (auditoría 17/10/2026). 403 permanente, con el motivo en palabras.
+ */
+class ChatSecretoError extends Error {
+  constructor() {
+    super('En un chat secreto todavía no se pueden crear eventos, encuestas ni avisos: no viajarían cifrados.');
+  }
+}
+
+async function assertMemberNoSecreto(chatId: unknown, userId: Types.ObjectId): Promise<Types.ObjectId> {
+  const id = await assertMember(chatId, userId);
+  if (await ChatModel.exists({ _id: id, encrypted: true })) throw new ChatSecretoError();
+  return id;
+}
+
 /** Los chats de los que soy miembro: el alcance de todo lo que se lista acá. */
 async function myChatIds(userId: Types.ObjectId): Promise<Types.ObjectId[]> {
   const chats = await ChatModel.find({ 'members.userId': userId }).select('_id').lean();
@@ -90,7 +107,7 @@ export function buildEventRouter(): Router {
 
   router.post('/events', asyncRoute(async (req, res) => {
     try {
-      const chatId = await assertMember(req.body?.chatId, req.session!.userId);
+      const chatId = await assertMemberNoSecreto(req.body?.chatId, req.session!.userId);
       const title = String(req.body?.title ?? '').trim();
       const startsAt = new Date(String(req.body?.startsAt ?? ''));
       if (!title) return res.status(400).json({ message: 'Ponle un nombre al evento.' });
@@ -121,7 +138,9 @@ export function buildEventRouter(): Router {
       });
       res.status(201).json({ id: String(event._id) });
     } catch (error) {
-      if (error instanceof ForbiddenChatError) return res.status(403).json({ message: error.message });
+      if (error instanceof ForbiddenChatError || error instanceof ChatSecretoError) {
+        return res.status(403).json({ message: error.message });
+      }
       throw error;
     }
   }));
@@ -141,7 +160,14 @@ export function buildEventRouter(): Router {
       { $set: { 'attendees.$.rsvp': rsvp } }
     );
     if (updated.matchedCount === 0) {
-      return res.status(403).json({ message: 'No estás invitado a ese evento.' });
+      // Quien entró al chat DESPUÉS de creado el evento no estaba en la foto
+      // de invitados: si es miembro del chat, se suma con su respuesta (FL8).
+      const evento = await eventoVisible(eventId, req.session!.userId);
+      if (!evento) return res.status(403).json({ message: 'No estás invitado a ese evento.' });
+      await EventModel.updateOne(
+        { _id: eventId, 'attendees.userId': { $ne: req.session!.userId } },
+        { $push: { attendees: { userId: req.session!.userId, rsvp } } }
+      );
     }
     res.json({ ok: true });
   }));
@@ -199,9 +225,10 @@ export function buildEventRouter(): Router {
     let chatId: Types.ObjectId | undefined;
     if (req.body?.chatId) {
       try {
-        chatId = await assertMember(req.body.chatId, req.session!.userId);
-      } catch {
-        return res.status(403).json({ message: 'No tienes acceso a esa conversación.' });
+        chatId = await assertMemberNoSecreto(req.body.chatId, req.session!.userId);
+      } catch (error) {
+        const mensaje = error instanceof ChatSecretoError ? error.message : 'No tienes acceso a esa conversación.';
+        return res.status(403).json({ message: mensaje });
       }
     }
 
@@ -259,7 +286,7 @@ export function buildEventRouter(): Router {
 
   router.post('/polls', asyncRoute(async (req, res) => {
     try {
-      const chatId = await assertMember(req.body?.chatId, req.session!.userId);
+      const chatId = await assertMemberNoSecreto(req.body?.chatId, req.session!.userId);
       const question = String(req.body?.question ?? '');
       const options = Array.isArray(req.body?.options) ? req.body.options.map(String) : [];
 
@@ -279,7 +306,9 @@ export function buildEventRouter(): Router {
       });
       res.status(201).json({ id: String(poll._id) });
     } catch (error) {
-      if (error instanceof ForbiddenChatError) return res.status(403).json({ message: error.message });
+      if (error instanceof ForbiddenChatError || error instanceof ChatSecretoError) {
+        return res.status(403).json({ message: error.message });
+      }
       throw error;
     }
   }));

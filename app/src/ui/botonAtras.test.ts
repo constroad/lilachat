@@ -66,3 +66,9 @@ describe('decidirAtras — lo que se está haciendo primero', () => {
     expect(decidirAtras({ pantalla: 'chat', haySobreCapa: true, haySeleccion: true })).toBe('cerrar-sobrecapa');
   });
 });
+
+describe('decidirAtras — editando (José, 17/10/2026)', () => {
+  it('con una edición a medias, la cancela (y el mensaje queda como estaba)', () => {
+    expect(decidirAtras({ pantalla: 'chat', editando: true })).toBe('cancelar-edicion');
+  });
+});

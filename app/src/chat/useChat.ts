@@ -8,6 +8,7 @@ import {
   guardarMensajes,
   leerMensajesGuardados,
   marcarBorradoGuardado,
+  marcarEditadoGuardado,
   ultimoSeqGuardado,
 } from './mensajesGuardados';
 import * as Crypto from 'expo-crypto';
@@ -23,6 +24,7 @@ import {
   type OutboxItem,
 } from '@lilachat/shared';
 import { connectSocket, getSocket, type ServerMessage } from './socketClient';
+import { pedirEditar, pedirEliminar } from './pedidosDeMensaje';
 import { drainOutbox, hydrateOutbox, queueMessage, subscribeOutbox } from './outboxStore';
 
 /**
@@ -411,6 +413,16 @@ export function useChat(params: {
     };
     socket.on('msg.deleted', onDeleted);
 
+    // Editado (José, 17/10/2026): el texto nuevo con su marca, también al disco.
+    const onEdited = (frame: { chatId: string; seq: number; body: string; editedAt: string }) => {
+      if (!alive || frame.chatId !== params.chatId) return;
+      setMessages((current) =>
+        current.map((m) => (m.seq === frame.seq ? { ...m, body: frame.body, editedAt: frame.editedAt } : m))
+      );
+      void marcarEditadoGuardado(params.chatId, frame.seq, frame.body, frame.editedAt);
+    };
+    socket.on('msg.edited', onEdited);
+
     const onSnapshot = (frame: { online: string[] }) =>
       alive && setEnLinea(new Set(frame.online));
     const onPresence = (frame: { userId: string; online: boolean }) => {
@@ -474,6 +486,7 @@ export function useChat(params: {
       socket.off('msg.new', onNew);
       socket.off('receipt', onReceipt);
       socket.off('msg.deleted', onDeleted);
+      socket.off('msg.edited', onEdited);
       socket.off('presence.snapshot', onSnapshot);
       socket.off('presence', onPresence);
       socket.off('typing', onTyping);
@@ -542,26 +555,12 @@ export function useChat(params: {
   }, [params.chatId]);
 
   // `visibles`, no `messages`: la pantalla recibe lo ya descifrado.
-  /**
-   * Pide borrar para todos. El server decide y avisa a todos por `msg.deleted`,
-   * así que acá NO se toca la lista: se espera el eco. Adelantarse haría que un
-   * rechazo del server dejara la pantalla mintiendo.
-   */
-  const eliminar = useCallback(
-    (seq: number) =>
-      new Promise<{ ok: boolean; motivo?: string }>((resolve) => {
-        const socket = getSocket();
-        if (!socket) return resolve({ ok: false, motivo: 'Sin conexión.' });
-        socket.emit('msg.delete', { chatId: params.chatId, seq }, (r: unknown) => {
-          const respuesta = (r ?? {}) as { ok?: boolean; motivo?: string };
-          resolve({ ok: Boolean(respuesta.ok), motivo: respuesta.motivo });
-        });
-      }),
-    [params.chatId]
-  );
+  const eliminar = useCallback((seq: number) => pedirEliminar(params.chatId, seq), [params.chatId]);
+  const editar = useCallback((seq: number, body: string) => pedirEditar(params.chatId, seq, body), [params.chatId]);
 
   return {
     eliminar,
+    editar,
     messages: visibles,
     pending,
     connected,

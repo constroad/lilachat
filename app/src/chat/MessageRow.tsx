@@ -2,17 +2,16 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { memo } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
-import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { CircleAlert, Check, CheckCheck, Clock3, FileText, Pause, Play } from 'lucide-react-native';
+import { CircleAlert, Check, CheckCheck, Clock3, FileText, Play } from 'lucide-react-native';
 import { colorDeAutor, dondeVaLaHora, mostrarAutor, radiosDeBurbuja } from './burbuja';
 import { DeslizarParaResponder } from './DeslizarParaResponder';
 import { LineaDeLlamada } from './LineaDeLlamada';
 import { CitaDeRespuesta } from './CitaDeRespuesta';
 import { TextoConEnlaces } from './TextoConEnlaces';
+import { NotaDeVoz } from './NotaDeVoz';
 import { etiquetaDeSubida, porcentajeDeSubida } from './progresoDeSubida';
 import {
   TEXTO_ELIMINADO,
-  duracionDeVoz,
   formatBytes,
   nombreDeContacto,
   textoDeAviso,
@@ -136,7 +135,8 @@ function FilaDeMensaje({
   const hora = formatClock(at);
   const idDeFila = isPending(item) ? item.clientKey : String(item.seq);
   const fallo = isPending(item) ? item.fallo : undefined;
-  const meta = { hora, mia: mine, entrega: delivery, id: idDeFila, fallido: Boolean(fallo) };
+  const editado = !isPending(item) && Boolean(item.editedAt) && !item.deletedAt;
+  const meta = { hora, mia: mine, entrega: delivery, id: idDeFila, fallido: Boolean(fallo), editado };
   const subida = etiquetaDeSubida({ razon: isPending(item) ? (item.progreso ?? 0) : 0, fallido: Boolean(fallo) });
   const lugarDeLaHora = dondeVaLaHora({
     conTexto: Boolean(item.body),
@@ -209,7 +209,7 @@ function FilaDeMensaje({
           ) : null}
 
           {!isPending(item) && item.media && esVoz(item.media.mime) ? (
-            <NotaDeVoz url={item.media.url ?? ''} durationMs={item.media.durationMs} />
+            <NotaDeVoz id={`${item.chatId}:${item.seq}`} url={item.media.url ?? ''} durationMs={item.media.durationMs} />
           ) : null}
 
           {/* Un ARCHIVO no es una foto: es una tarjeta con su nombre.
@@ -353,7 +353,7 @@ function FilaDeMensaje({
                   // span anidado transparente se pinta gris.
                   style={{ color: mine ? colores['burbuja-propia'] : colores['burbuja-ajena'] }}
                 >
-                  {`${NBSP}${NBSP}${hora}${mine ? RELLENO_CHECKS : NBSP}`}
+                  {`${NBSP}${NBSP}${editado ? `${ETIQUETA_EDITADO}${NBSP}` : ''}${hora}${mine ? RELLENO_CHECKS : NBSP}`}
                 </Text>
               </Text>
               <View className="absolute bottom-1 right-2.5">
@@ -396,6 +396,7 @@ const NBSP = '\u00A0';
 /** El lugar de los checks (14 dp) a 11 sp. */
 const RELLENO_CHECKS = NBSP.repeat(6);
 const TAMANO_CHECK = 14;
+const ETIQUETA_EDITADO = 'Editado';
 
 /** Una foto o un video que se ve en la burbuja: la hora va ENCIMA de la imagen. */
 function esFotoVisible(item: Row): boolean {
@@ -415,6 +416,7 @@ function MetaDeMensaje({
   id,
   sobreFoto = false,
   fallido = false,
+  editado = false,
 }: {
   hora: string;
   mia: boolean;
@@ -423,12 +425,15 @@ function MetaDeMensaje({
   sobreFoto?: boolean;
   /** No se envió (rechazado para siempre): alerta en vez del reloj. */
   fallido?: boolean;
+  /** Se editó: «Editado» antes de la hora, como WhatsApp. */
+  editado?: boolean;
 }) {
   const colores = useColores();
   const tono = sobreFoto ? 'white' : colores['on-surface-variant'];
   return (
     <View className="flex-row items-center gap-1">
       <Text className="text-[11px]" style={{ color: tono }} testID={`hora-${id}`}>
+        {editado ? `${ETIQUETA_EDITADO} ` : ''}
         {hora}
       </Text>
       {mia ? (
@@ -505,66 +510,6 @@ function AvisoDelGrupo({ item, myUserId }: { item: ChatMessage; myUserId: string
       <Text className="rounded-full bg-surface-variant/60 px-3 py-1 text-center text-[11px] text-on-surface-variant">
         {texto}
       </Text>
-    </View>
-  );
-}
-
-/**
- * La nota de voz, con su play y su tiempo.
- *
- * El reproductor vive en un componente aparte porque `useAudioPlayer` es un
- * hook: en la fila habría que montarlo para CADA mensaje, incluidos los de
- * texto, y quedarían decenas de reproductores vivos en una conversación larga.
- *
- * **No arranca solo.** Un audio que empieza a sonar al aparecer en pantalla es
- * lo peor que puede hacer una app de mensajería: suena en la mesa, en la
- * reunión, o encima de otro audio.
- */
-function NotaDeVoz({ url, durationMs }: { url: string; durationMs?: number }) {
-  const colores = useColores();
-  const player = useAudioPlayer(url);
-  const estado = useAudioPlayerStatus(player);
-
-  const sonando = estado.playing;
-  // En reposo se muestra la duración REAL que se grabó (guardada al subir): el
-  // `m4a` remoto reporta mal su duración hasta cargar entero, y ahí salía «0:25»
-  // para una nota de 4 segundos. Al reproducir se muestra lo que va corriendo.
-  const enReposo = durationMs ?? estado.duration * 1000;
-  const ms = sonando || estado.currentTime > 0 ? estado.currentTime * 1000 : enReposo;
-
-  return (
-    <View testID="nota-de-voz" className="min-w-[190px] flex-row items-center gap-3 px-3 py-2.5">
-      <Pressable
-        testID={sonando ? 'btn-pausar-voz' : 'btn-reproducir-voz'}
-        accessibilityLabel={sonando ? 'Pausar' : 'Reproducir'}
-        onPress={() => {
-          if (sonando) return player.pause();
-          // Terminada: vuelve al principio. Sin esto, el segundo toque no hace
-          // nada y parece que el audio se rompió.
-          if (estado.didJustFinish || estado.currentTime >= estado.duration) player.seekTo(0);
-          player.play();
-        }}
-        className={`h-10 w-10 items-center justify-center rounded-full bg-primary/10`}
-      >
-        {sonando ? (
-          <Pause size={18} color={colores.primary} />
-        ) : (
-          <Play size={18} color={colores.primary} fill={colores.primary} />
-        )}
-      </Pressable>
-      <View className="min-w-0 flex-1">
-        <View className="h-1 rounded-full bg-primary/15">
-          <View
-            className="h-1 rounded-full bg-primary"
-            style={{
-              width: `${estado.duration > 0 ? Math.min(100, (estado.currentTime / estado.duration) * 100) : 0}%`,
-            }}
-          />
-        </View>
-        <Text className="mt-1 text-[11px] text-on-surface-variant">
-          {duracionDeVoz(ms)}
-        </Text>
-      </View>
     </View>
   );
 }

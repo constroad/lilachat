@@ -16,6 +16,8 @@ export type ArchivoEnCola = {
   mimeType: string;
   sizeBytes: number;
   durationMs?: number;
+  /** El pie de una foto (FL9b): viaja con ella. */
+  caption?: string;
   queuedAt: string;
   intentos: number;
   fallo?: string;

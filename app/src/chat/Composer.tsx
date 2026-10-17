@@ -1,4 +1,4 @@
-import { memo, useImperativeHandle, useState, type Ref } from 'react';
+import { memo, useEffect, useImperativeHandle, useState, type Ref } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Camera, Mic, Paperclip, Plus, Send, X } from 'lucide-react-native';
 import { duracionDeVoz } from '@lilachat/shared';
@@ -26,6 +26,11 @@ export const Composer = memo(function Composer(props: {
   ref?: Ref<ComposerHandle>;
   respondiendoA: Respondiendo | null;
   onCancelarRespuesta: () => void;
+  /** Editando un mensaje propio (José, 17/10/2026): el campo trae su texto. */
+  editando: { seq: number; texto: string } | null;
+  onCancelarEdicion: () => void;
+  /** Guarda la edición; `false` si el server no la aceptó (el texto vuelve). */
+  onEditar: (seq: number, texto: string) => Promise<boolean>;
   subiendo: boolean;
   margenPie: number;
   onAdjuntar: () => void;
@@ -50,6 +55,13 @@ export const Composer = memo(function Composer(props: {
 
   useImperativeHandle(props.ref, () => ({ limpiar: () => setBorrador('') }), []);
 
+  // Al empezar a editar, el texto del mensaje va al campo; al cancelar, se va.
+  const editandoSeq = props.editando?.seq ?? null;
+  const textoAEditar = props.editando?.texto ?? '';
+  useEffect(() => {
+    setBorrador(editandoSeq === null ? '' : textoAEditar);
+  }, [editandoSeq, textoAEditar]);
+
   const mandarVoz = async (cancelar = false) => {
     const nota = await voz.terminar({ cancelar });
     if (nota) await props.onNotaDeVoz(nota);
@@ -60,6 +72,13 @@ export const Composer = memo(function Composer(props: {
   const enviar = () => {
     const texto = borrador;
     setBorrador('');
+    if (props.editando) {
+      const { seq } = props.editando;
+      void props.onEditar(seq, texto).then((ok) => {
+        if (!ok) setBorrador(texto);
+      });
+      return;
+    }
     void props.onEnviar(texto, props.respondiendoA?.seq).then((ok) => {
       // Si no salió, el texto vuelve al campo: perderlo sería peor que el aviso.
       if (!ok) setBorrador(texto);
@@ -68,6 +87,25 @@ export const Composer = memo(function Composer(props: {
 
   return (
     <>
+      {props.editando ? (
+        <View testID="barra-edicion" className="flex-row items-center gap-2 border-t border-outline/10 bg-surface px-3 pt-2">
+          <View className="w-1 self-stretch rounded-full bg-primary" />
+          <View className="min-w-0 flex-1 py-1">
+            <Text className="text-[11px] font-semibold text-primary">Editando mensaje</Text>
+            <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>
+              {props.editando.texto}
+            </Text>
+          </View>
+          <Pressable
+            testID="btn-cancelar-edicion"
+            accessibilityLabel="Cancelar la edición"
+            onPress={props.onCancelarEdicion}
+            className="h-11 w-11 items-center justify-center"
+          >
+            <X size={18} color={colores['on-surface-variant']} />
+          </Pressable>
+        </View>
+      ) : null}
       {props.respondiendoA ? (
         <View testID="barra-respuesta" className="flex-row items-center gap-2 border-t border-outline/10 bg-surface px-3 pt-2">
           <View className="w-1 self-stretch rounded-full bg-primary" />

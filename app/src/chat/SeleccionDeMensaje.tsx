@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import { Alert, FlatList, Modal, Pressable, Text, ToastAndroid, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Crypto from 'expo-crypto';
-import { Copy, CornerUpLeft, Forward, Trash2, X } from 'lucide-react-native';
-import { buildOutboxItem, nombreDeContacto } from '@lilachat/shared';
+import { Copy, CornerUpLeft, Forward, Pencil, Trash2, X } from 'lucide-react-native';
+import { buildOutboxItem, nombreDeContacto, puedeEditar } from '@lilachat/shared';
 import { accionesDeMensaje } from './accionesDeMensaje';
 import { chatsEnMemoria } from './chatsGuardados';
 import { queueMessage } from './outboxStore';
@@ -30,6 +30,8 @@ export function SeleccionDeMensaje(params: {
   onResponder: (seq: number) => void;
   onEliminarParaTodos: (seq: number) => Promise<{ ok: boolean; motivo?: string }>;
   onEliminarParaMi: (seq: number) => void;
+  /** Editar (José, 17/10/2026): el texto vuelve al campo de escribir. */
+  onEditar: (seq: number, texto: string) => void;
   onError: (texto: string) => void;
 }) {
   const colores = useColores();
@@ -43,6 +45,15 @@ export function SeleccionDeMensaje(params: {
     conTexto: texto.length > 0,
     esMedia: Boolean(mensaje.media),
     chatSecreto: params.chatSecreto,
+    editable: puedeEditar({
+      yo: params.yo,
+      autor: mensaje.senderId,
+      kind: mensaje.kind,
+      eliminado: Boolean(mensaje.deletedAt),
+      secreto: params.chatSecreto,
+      enviadoEn: mensaje.at,
+      ahora: Date.now(),
+    }).permitido,
   });
 
   const eliminar = () => {
@@ -104,6 +115,18 @@ export function SeleccionDeMensaje(params: {
             }}
           >
             <Copy size={20} color={colores['on-surface']} />
+          </Accion>
+        ) : null}
+        {acciones.editar ? (
+          <Accion
+            testID="btn-editar-mensaje"
+            etiqueta="Editar"
+            onPress={() => {
+              params.onEditar(mensaje.seq, texto);
+              params.onCancelar();
+            }}
+          >
+            <Pencil size={19} color={colores['on-surface']} />
           </Accion>
         ) : null}
         {acciones.reenviar ? (

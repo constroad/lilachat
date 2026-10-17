@@ -53,6 +53,8 @@ export type ServerMessage = {
   deletedAt?: string;
   /** A qué mensaje responde, si es una respuesta. */
   replyToSeq?: number;
+  /** Se editó (José, 17/10/2026): la burbuja dice «Editado». */
+  editedAt?: string;
   at: string;
 };
 

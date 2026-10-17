@@ -6,10 +6,10 @@ import { accionesDeMensaje } from './accionesDeMensaje';
  * sin confirmar, y aparecía en mensajes ajenos).
  */
 describe('accionesDeMensaje', () => {
-  const base = { mio: true, eliminado: false, conTexto: true, esMedia: false, chatSecreto: false };
+  const base = { mio: true, eliminado: false, conTexto: true, esMedia: false, chatSecreto: false, editable: true };
 
   it('un texto propio: todo', () => {
-    expect(accionesDeMensaje(base)).toEqual({ responder: true, copiar: true, reenviar: true, eliminarParaTodos: true, eliminarParaMi: true });
+    expect(accionesDeMensaje(base)).toEqual({ responder: true, copiar: true, reenviar: true, editar: true, eliminarParaTodos: true, eliminarParaMi: true });
   });
 
   it('uno ajeno: no se borra para todos, pero sí para mí', () => {
@@ -21,10 +21,19 @@ describe('accionesDeMensaje', () => {
   });
 
   it('una lápida: solo borrarla de mi vista', () => {
-    expect(accionesDeMensaje({ ...base, eliminado: true })).toEqual({ responder: false, copiar: false, reenviar: false, eliminarParaTodos: false, eliminarParaMi: true });
+    expect(accionesDeMensaje({ ...base, eliminado: true })).toEqual({ responder: false, copiar: false, reenviar: false, editar: false, eliminarParaTodos: false, eliminarParaMi: true });
   });
 
   it('chat secreto: no se reenvía (saldría en claro a otro chat)', () => {
     expect(accionesDeMensaje({ ...base, chatSecreto: true })).toMatchObject({ reenviar: false, copiar: true });
+  });
+});
+
+describe('accionesDeMensaje — editar (José, 17/10/2026)', () => {
+  const base = { mio: true, eliminado: false, conTexto: true, esMedia: false, chatSecreto: false, editable: true };
+
+  it('se ofrece solo si el motor compartido lo permite (propio, texto, < 15 min)', () => {
+    expect(accionesDeMensaje(base).editar).toBe(true);
+    expect(accionesDeMensaje({ ...base, editable: false }).editar).toBe(false);
   });
 });

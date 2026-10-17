@@ -46,6 +46,8 @@ import { descartarArchivo, encolarArchivo, reintentarArchivo } from './colaDeArc
 import { useArchivosDelChat } from './useArchivosDelChat';
 import { useLimpiarAvisoDelChat } from './useLimpiarAvisoDelChat';
 import { SeleccionDeMensaje } from './SeleccionDeMensaje';
+import { EnviarFotos } from './EnviarFotos';
+import { MAXIMO_DE_FOTOS, type FotoAEnviar, type FotoElegida } from './envioDeFotos';
 import { sinOcultos, useOcultos } from './ocultos';
 import { DivisorNoLeidos, useDivisorNoLeidos } from './useDivisorNoLeidos';
 import { useMargenes } from '../ui/useMargenes';
@@ -116,6 +118,7 @@ export function ChatScreen({
   useLimpiarAvisoDelChat(chatId);
   const {
     eliminar,
+    editar,
     messages,
     pending,
     connected,
@@ -146,6 +149,23 @@ export function ChatScreen({
   const [respondiendoA, setRespondiendoA] = useState<{ seq: number; texto: string; mio: boolean } | null>(null);
   const respondiendoRef = useRef(false);
   respondiendoRef.current = respondiendoA !== null;
+  /** El mensaje propio que se está editando (José, 17/10/2026), o null. */
+  const [editando, setEditando] = useState<{ seq: number; texto: string } | null>(null);
+  const editandoRef = useRef(false);
+  editandoRef.current = editando !== null;
+  const alCancelarEdicion = useCallback(() => setEditando(null), []);
+  const alEditar = useCallback(
+    async (seq: number, texto: string) => {
+      const resultado = await editar(seq, texto);
+      if (!resultado.ok) {
+        setMediaError(resultado.motivo ?? 'No se pudo editar.');
+        return false;
+      }
+      setEditando(null);
+      return true;
+    },
+    [editar]
+  );
 
   // Mensajes programados (F11): long-press en enviar abre el modal.
   const [programarVisible, setProgramarVisible] = useState(false);
@@ -197,8 +217,14 @@ export function ChatScreen({
   useEffect(() => {
     const suscripcion = BackHandler.addEventListener('hardwareBackPress', () => {
       // FL9: primero se deshace lo que se está haciendo (selección, respuesta).
-      const accion = decidirAtras({ pantalla: 'chat', haySeleccion: elegidoRef.current !== null, respondiendo: respondiendoRef.current });
+      const accion = decidirAtras({
+        pantalla: 'chat',
+        haySeleccion: elegidoRef.current !== null,
+        editando: editandoRef.current,
+        respondiendo: respondiendoRef.current,
+      });
       if (accion === 'soltar-seleccion') setElegido(null);
+      else if (accion === 'cancelar-edicion') setEditando(null);
       else if (accion === 'cancelar-respuesta') setRespondiendoA(null);
       else if (accion === 'ir-a-lista') onBack();
       else return false;
@@ -207,6 +233,8 @@ export function ChatScreen({
     return () => suscripcion.remove();
   }, [onBack]);
   const [mediaError, setMediaError] = useState('');
+  /** Las fotos elegidas que se están por mandar (FL9b); vacío = cerrado. */
+  const [fotosElegidas, setFotosElegidas] = useState<FotoElegida[]>([]);
   /** El resultado de descargar/compartir, que se pinta DENTRO del visor. */
   const [avisoVisor, setAvisoVisor] = useState('');
 
@@ -363,12 +391,8 @@ export function ChatScreen({
     const shot = await ImagePicker.launchCameraAsync({ quality: 1 });
     const asset = shot.assets?.[0];
     if (shot.canceled || !asset) return;
-    await upload({
-      uri: asset.uri,
-      fileName: asset.fileName ?? 'foto.jpg',
-      mimeType: asset.mimeType ?? 'image/jpeg',
-      sizeBytes: asset.fileSize ?? 0,
-    });
+    // FL9b: antes de mandarla, se ve y se le pone pie.
+    setFotosElegidas([asset]);
   }
 
   const pickFromGallery = async () => {
@@ -377,15 +401,19 @@ export function ChatScreen({
       // justo la queja que esta app viene a no repetir.
       quality: 1,
       mediaTypes: ['images', 'videos'],
+      // FL9b: varias a la vez, y antes de mandarlas se ven y llevan su pie.
+      allowsMultipleSelection: true,
+      selectionLimit: MAXIMO_DE_FOTOS,
+      orderedSelection: true,
     });
-    const asset = picked.assets?.[0];
-    if (picked.canceled || !asset) return;
-    await upload({
-      uri: asset.uri,
-      fileName: asset.fileName ?? 'archivo',
-      mimeType: asset.mimeType ?? 'image/jpeg',
-      sizeBytes: asset.fileSize ?? 0,
-    });
+    if (picked.canceled || !picked.assets?.length) return;
+    setFotosElegidas(picked.assets);
+  };
+
+  /** Las elegidas, a la cola en el orden en que se eligieron (cada una con su pie). */
+  const alEnviarFotos = async (fotosAEnviar: FotoAEnviar[]) => {
+    setFotosElegidas([]);
+    for (const foto of fotosAEnviar) await upload(foto);
   };
 
   const pickFile = async () => {
@@ -429,6 +457,7 @@ export function ChatScreen({
         mediaUri: archivo.uri,
         mediaMime: archivo.mimeType,
         mediaNombre: archivo.fileName,
+        body: archivo.caption,
         progreso,
         fallo: archivo.fallo,
       })),
@@ -621,6 +650,10 @@ export function ChatScreen({
           onResponder={(seq) => alResponder(seq, previewDeMensaje(mensajeElegido), mensajeElegido.senderId === credential.userId)}
           onEliminarParaTodos={eliminar}
           onEliminarParaMi={ocultar}
+          onEditar={(seq, texto) => {
+            setRespondiendoA(null);
+            setEditando({ seq, texto });
+          }}
           onError={setMediaError}
         />
       ) : (
@@ -858,6 +891,9 @@ export function ChatScreen({
         ref={composerRef}
         respondiendoA={respondiendoA}
         onCancelarRespuesta={alCancelarRespuesta}
+        editando={editando}
+        onCancelarEdicion={alCancelarEdicion}
+        onEditar={alEditar}
         subiendo={false}
         margenPie={tecladoAbierto ? MARGEN_CON_TECLADO : margenes.pie}
         onAdjuntar={alAdjuntar}
@@ -869,6 +905,8 @@ export function ChatScreen({
         // Chat secreto: sin clave no se manda nada; con clave, solo texto.
         modoSecreto={encrypted ? (sesionLista ? 'solo-texto' : 'bloqueado') : undefined}
       />
+
+      <EnviarFotos fotos={fotosElegidas} onCancelar={() => setFotosElegidas([])} onEnviar={(lista) => void alEnviarFotos(lista)} />
 
       <AttachSheet
         visible={attachOpen}

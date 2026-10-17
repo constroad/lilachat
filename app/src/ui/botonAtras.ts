@@ -26,6 +26,8 @@ export type AccionAtras =
   | 'soltar-seleccion'
   /** FL9: hay una respuesta a medias: se cancela. */
   | 'cancelar-respuesta'
+  /** Hay una edición a medias: se cancela y el mensaje queda como estaba. */
+  | 'cancelar-edicion'
   /** FL9: hay una búsqueda escrita en la lista: se limpia. */
   | 'limpiar-busqueda';
 
@@ -39,6 +41,8 @@ export function decidirAtras(params: {
   haySeleccion?: boolean;
   /** En el chat: respondiendo a un mensaje. */
   respondiendo?: boolean;
+  /** En el chat: editando un mensaje. */
+  editando?: boolean;
   /** En la lista: una búsqueda escrita. */
   buscando?: boolean;
 }): AccionAtras {
@@ -47,6 +51,7 @@ export function decidirAtras(params: {
   if (params.haySobreCapa) return 'cerrar-sobrecapa';
   // Después, lo último que se hizo (FL9): atrás lo deshace, como WhatsApp.
   if (params.haySeleccion) return 'soltar-seleccion';
+  if (params.editando) return 'cancelar-edicion';
   if (params.respondiendo) return 'cancelar-respuesta';
   if (params.buscando) return 'limpiar-busqueda';
 

@@ -354,11 +354,11 @@ export async function eliminarMensajesGuardados(chatId: string, seqs: readonly n
 }
 
 /**
- * Poner la lápida a un mensaje guardado. Se hace ACÁ y no solo en la pantalla:
- * si el chat no estaba abierto cuando alguien borró, la fila seguiría con el
- * texto hasta que una página del server la pisara.
+ * Cambiar UN mensaje guardado (borrado o editado) sin esperar a que una página
+ * del server pise la fila: si el chat no estaba abierto cuando pasó, el disco
+ * seguiría mostrando lo viejo.
  */
-export async function marcarBorradoGuardado(chatId: string, seq: number): Promise<void> {
+async function reescribirGuardado(chatId: string, seq: number, cambio: (mensaje: ChatMessage) => ChatMessage): Promise<void> {
   try {
     const [abierta, clave] = await Promise.all([listo(), claveDeCache()]);
     if (!abierta || !clave) return;
@@ -371,18 +371,26 @@ export async function marcarBorradoGuardado(chatId: string, seq: number): Promis
     if (!fila) return;
     const [mensaje] = abrirFilas(clave, [fila]);
     if (!mensaje) return;
-
-    const lapida: ChatMessage = {
-      ...mensaje,
-      deletedAt: new Date().toISOString(),
-      body: undefined,
-      media: undefined,
-      envelope: undefined,
-    };
-    await escribirFilas(abierta, clave, chatId, [lapida]);
+    await escribirFilas(abierta, clave, chatId, [cambio(mensaje)]);
   } catch {
     // Igual que arriba.
   }
+}
+
+/** La lápida de un mensaje guardado. */
+export function marcarBorradoGuardado(chatId: string, seq: number): Promise<void> {
+  return reescribirGuardado(chatId, seq, (mensaje) => ({
+    ...mensaje,
+    deletedAt: new Date().toISOString(),
+    body: undefined,
+    media: undefined,
+    envelope: undefined,
+  }));
+}
+
+/** El texto nuevo de un mensaje editado, con su marca. */
+export function marcarEditadoGuardado(chatId: string, seq: number, body: string, editedAt: string): Promise<void> {
+  return reescribirGuardado(chatId, seq, (mensaje) => ({ ...mensaje, body, editedAt }));
 }
 
 /** El cursor de sincronización de un chat: hasta qué `seq` ya se tiene. `null` = nada guardado. */

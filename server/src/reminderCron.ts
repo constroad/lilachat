@@ -1,7 +1,6 @@
-import { nextOccurrence, shouldRemind } from '@lilachat/shared';
+import { decidirRecordatorio, nextOccurrence, shouldRemind } from '@lilachat/shared';
 import { EventModel, ReminderModel } from './eventModels.js';
 import { DeviceModel } from './models.js';
-import { isOnline } from './presence.js';
 import { buildPushSender, type PushSender } from './pushSender.js';
 import { runScheduledTick } from './scheduledMessages.js';
 
@@ -31,18 +30,24 @@ export function setReminderPushSender(next: PushSender): void {
   sender = next;
 }
 
+/**
+ * Un aviso de la agenda va a TODOS los teléfonos de la persona, esté o no en
+ * línea (auditoría 17/10/2026). Antes se filtraba a los desconectados, como un
+ * mensaje de chat; pero un recordatorio no se «ve en pantalla» por estar en
+ * línea —nada lo mandaba por el socket—, así que con la app abierta, la web
+ * abierta o «Conexión permanente» encendida no llegaba nunca. La app lo
+ * muestra con banner por el `tipo`.
+ */
 async function pushTo(userIds: string[], title: string, body: string, data: { chatId: string; seq: number }) {
-  // A quien está mirando la app no se le empuja nada: ya lo ve en pantalla.
-  const offline = userIds.filter((userId) => !isOnline(userId));
-  if (offline.length === 0) return;
+  if (userIds.length === 0) return;
   const devices = await DeviceModel.find({
-    userId: { $in: offline },
+    userId: { $in: userIds },
     pushToken: { $exists: true, $ne: '' },
   })
     .select('pushToken')
     .lean();
   if (devices.length === 0) return;
-  await sender.send({ tokens: devices.map((device) => device.pushToken!), title, body, data });
+  await sender.send({ tokens: devices.map((device) => device.pushToken!), title, body, data: { ...data, tipo: 'agenda' } });
 }
 
 export async function runReminderTick(now: Date = new Date()): Promise<{ events: number; reminders: number }> {
@@ -52,6 +57,8 @@ export async function runReminderTick(now: Date = new Date()): Promise<{ events:
   // ─── Eventos que empiezan pronto ────────────────────────────────────────
   const soon = await EventModel.find({
     remindedAt: null,
+    // Los eventos viejos no tienen el campo: cuentan como encendido.
+    remindGuests: { $ne: false },
     startsAt: { $gte: new Date(now.getTime() - 3_600_000), $lte: new Date(now.getTime() + 24 * 3_600_000) },
   })
     .limit(MAX_PER_TICK)
@@ -86,22 +93,31 @@ export async function runReminderTick(now: Date = new Date()): Promise<{ events:
   }
 
   // ─── Recordatorios ──────────────────────────────────────────────────────
+  // Ordenados: los más viejos primero. Sin orden, 50 vencidos sin resolver
+  // tapaban para siempre a los que tocaba avisar.
   const due = await ReminderModel.find({
     active: true,
     startsAt: { $lte: new Date(now.getTime() + 60_000) },
   })
+    .sort({ startsAt: 1 })
     .limit(MAX_PER_TICK)
     .lean();
 
   for (const reminder of due) {
-    if (
-      !shouldRemind({
-        startsAt: reminder.startsAt,
-        remindMinutesBefore: 0,
-        now,
-        alreadyRemindedAt: reminder.remindedAt,
-      })
-    ) {
+    const decision = decidirRecordatorio({
+      startsAt: reminder.startsAt,
+      recurrence: reminder.recurrence,
+      remindedAt: reminder.remindedAt,
+      now,
+    });
+    if (decision.accion === 'esperar') continue;
+    if (decision.accion === 'reprogramar') {
+      // Se pasó la hora sin avisar (cron caído, reactivado tarde): a la
+      // próxima vez sin avisar tarde, o se apaga si era «una vez».
+      await ReminderModel.updateOne(
+        { _id: reminder._id },
+        decision.proxima ? { $set: { startsAt: decision.proxima, remindedAt: null } } : { $set: { active: false } }
+      );
       continue;
     }
     const claimed = await ReminderModel.updateOne(
@@ -110,7 +126,7 @@ export async function runReminderTick(now: Date = new Date()): Promise<{ events:
     );
     if (claimed.modifiedCount === 0) continue;
 
-    await pushTo([String(reminder.userId)], reminder.title, 'Recordatorio', {
+    await pushTo([String(reminder.userId)], reminder.title, reminder.note || 'Recordatorio', {
       chatId: String(reminder.chatId ?? ''),
       seq: 0,
     });
@@ -118,11 +134,7 @@ export async function runReminderTick(now: Date = new Date()): Promise<{ events:
 
     // Recurrente: se REPROGRAMA y se limpia el sello. Sin esto, un «cada día»
     // sonaría una sola vez en su vida.
-    const next = nextOccurrence({
-      startsAt: reminder.startsAt,
-      recurrence: reminder.recurrence,
-      from: now,
-    });
+    const next = nextOccurrence({ startsAt: reminder.startsAt, recurrence: reminder.recurrence, from: now });
     await ReminderModel.updateOne(
       { _id: reminder._id },
       next

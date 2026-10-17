@@ -91,3 +91,32 @@ export function formatEventWhen(startsAt: Date, now: Date = new Date()): string 
   const date = new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short' }).format(startsAt);
   return `${date.replace('.', '')}, ${time}`;
 }
+
+/** Lo que el cron hace con un recordatorio activo en esta pasada. */
+export type DecisionDeRecordatorio =
+  | { accion: 'esperar' }
+  | { accion: 'avisar' }
+  /** Se pasó la hora sin avisar: a la próxima vez, o `null` = se apaga. Sin push tarde. */
+  | { accion: 'reprogramar'; proxima: Date | null };
+
+/**
+ * Qué hacer con un recordatorio (auditoría 17/10/2026). La ventana de
+ * `shouldRemind` (una hora) sigue valiendo para no avisar tarde; lo nuevo es
+ * que lo que quedó FUERA de la ventana se resuelve —se mueve a la próxima vez
+ * o se apaga— en vez de quedar activo para siempre.
+ */
+export function decidirRecordatorio(params: {
+  startsAt: Date;
+  recurrence: Recurrence;
+  remindedAt: Date | null | undefined;
+  now: Date;
+  lookbackMinutes?: number;
+}): DecisionDeRecordatorio {
+  const ventana = (params.lookbackMinutes ?? 60) * 60_000;
+  const atraso = params.now.getTime() - params.startsAt.getTime();
+  if (atraso > ventana) {
+    return { accion: 'reprogramar', proxima: nextOccurrence({ startsAt: params.startsAt, recurrence: params.recurrence, from: params.now }) };
+  }
+  if (params.remindedAt || atraso < 0) return { accion: 'esperar' };
+  return { accion: 'avisar' };
+}

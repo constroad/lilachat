@@ -24,7 +24,8 @@ export type PushMessage = {
   tokens: string[];
   title: string;
   body: string;
-  data: { chatId: string; seq: number };
+  /** `tipo: 'agenda'`: un recordatorio o un evento, que la app muestra con banner. */
+  data: { chatId: string; seq: number; tipo?: 'agenda' };
 };
 
 export interface PushSender {
@@ -130,6 +131,7 @@ function buildFcmSender(credencial: CredencialFcm): PushSender {
                   // v1 exige que TODO `data` sea string. Mandar el número tal
                   // cual da un 400 que solo dice «invalid argument».
                   seq: String(message.data.seq),
+                  ...(message.data.tipo ? { tipo: message.data.tipo } : {}),
                 },
                 android: {
                   // Alta: un mensaje de chat tiene que despertar el teléfono.

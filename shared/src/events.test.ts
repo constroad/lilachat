@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatEventWhen, nextOccurrence, shouldRemind, summarizeRsvp } from './events.js';
+import { formatEventWhen, nextOccurrence, shouldRemind, summarizeRsvp, decidirRecordatorio } from './events.js';
 
 describe('nextOccurrence', () => {
   const from = new Date('2026-08-20T12:00:00');
@@ -125,5 +125,49 @@ describe('formatEventWhen', () => {
 
     expect(texto).toMatch(/^5 \w+, /);
     expect(texto).not.toMatch(/Hoy|Mañana/);
+  });
+});
+
+/**
+ * Qué hace el cron con cada recordatorio (auditoría 17/10/2026). Antes, uno que
+ * se pasó de la hora más de una hora —cron caído, o reactivado tarde— no se
+ * avisaba NI se reprogramaba: quedaba activo para siempre, la tarjeta mostraba
+ * una «próxima vez» que nunca sonaba, y con 50 así el cron no avisaba a nadie.
+ */
+describe('decidirRecordatorio', () => {
+  const ahora = new Date('2026-10-17T15:00:00.000Z');
+  const hace = (min: number) => new Date(ahora.getTime() - min * 60_000);
+
+  it('todavía no es la hora: esperar', () => {
+    expect(decidirRecordatorio({ startsAt: hace(-5), recurrence: 'once', remindedAt: null, now: ahora })).toEqual({ accion: 'esperar' });
+  });
+
+  it('en la hora (dentro de la ventana): avisar', () => {
+    expect(decidirRecordatorio({ startsAt: hace(2), recurrence: 'daily', remindedAt: null, now: ahora })).toEqual({ accion: 'avisar' });
+  });
+
+  it('diario que se pasó horas: se mueve a la próxima vez SIN avisar tarde', () => {
+    expect(decidirRecordatorio({ startsAt: hace(180), recurrence: 'daily', remindedAt: null, now: ahora })).toEqual({
+      accion: 'reprogramar',
+      proxima: new Date(hace(180).getTime() + 86_400_000),
+    });
+  });
+
+  it('una vez que se pasó: se apaga (proxima null)', () => {
+    expect(decidirRecordatorio({ startsAt: hace(180), recurrence: 'once', remindedAt: null, now: ahora })).toEqual({
+      accion: 'reprogramar',
+      proxima: null,
+    });
+  });
+
+  it('ya avisado y pasado (reactivado sin cambiar la hora): también se resuelve, no queda en el limbo', () => {
+    expect(decidirRecordatorio({ startsAt: hace(180), recurrence: 'once', remindedAt: hace(179), now: ahora })).toEqual({
+      accion: 'reprogramar',
+      proxima: null,
+    });
+  });
+
+  it('ya avisado y dentro de la ventana: esperar (lo reprograma quien avisó)', () => {
+    expect(decidirRecordatorio({ startsAt: hace(1), recurrence: 'daily', remindedAt: hace(0.5), now: ahora })).toEqual({ accion: 'esperar' });
   });
 });

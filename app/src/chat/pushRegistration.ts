@@ -63,11 +63,12 @@ export async function registerPushToken(jwt: string): Promise<'ok' | 'denied' | 
  */
 export function configureNotificationHandler(): void {
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: false,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-    }),
+    // Un recordatorio o un evento de la agenda SÍ muestra banner con la app
+    // abierta (17/10/2026): es una alarma que la persona puso, no un mensaje
+    // que ya está viendo en la pantalla del chat.
+    handleNotification: async (notificacion) => {
+      const esAgenda = notificacion.request.content.data?.tipo === 'agenda';
+      return { shouldShowBanner: esAgenda, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: true };
+    },
   });
 }

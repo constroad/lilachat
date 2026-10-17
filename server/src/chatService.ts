@@ -29,6 +29,19 @@ export class ForbiddenChatError extends Error {
   }
 }
 
+/**
+ * Texto o archivo EN CLARO a un chat secreto. Hereda de `ForbiddenChatError`
+ * para que la cola del cliente lo trate como permanente (403) y lo descarte,
+ * en vez de reintentar algo que nunca va a entrar.
+ */
+export class CifradoRequeridoError extends ForbiddenChatError {
+  constructor() {
+    super();
+    this.message = 'Este chat es secreto: solo acepta mensajes cifrados.';
+    this.name = 'CifradoRequeridoError';
+  }
+}
+
 const toObjectId = (value: string | Types.ObjectId): Types.ObjectId | null => {
   if (value instanceof Types.ObjectId) return value;
   return Types.ObjectId.isValid(value) ? new Types.ObjectId(value) : null;
@@ -95,12 +108,22 @@ export async function sendMessage(params: {
   // La MEMBRESÍA va en el filtro: quien no es miembro no consume un `seq`, y
   // el mismo viaje trae los miembros para repartir (antes eran dos lecturas
   // más del chat antes del ack).
+  //
+  // Sin sobre, el filtro exige además un chat NO cifrado: lo que llega en
+  // claro a un chat secreto no consume `seq` ni se guarda (auditoría
+  // 17/10/2026 — antes este comentario prometía el corte y el código no lo
+  // hacía). Vale para todas las puertas: socket, archivos, auto-respuesta,
+  // @lila y programados.
   const chat = await ChatModel.findOneAndUpdate(
-    { _id: chatId, 'members.userId': params.senderId },
+    { _id: chatId, 'members.userId': params.senderId, ...(params.envelope ? {} : { encrypted: { $ne: true } }) },
     { $inc: { lastSeq: 1 } },
     { returnDocument: 'after', projection: { lastSeq: 1, 'members.userId': 1 } }
   ).lean<{ lastSeq: number; members: { userId: Types.ObjectId }[] } | null>();
-  if (!chat) throw new ForbiddenChatError();
+  if (!chat) {
+    const esMiembroDeUnSecreto =
+      !params.envelope && (await ChatModel.exists({ _id: chatId, 'members.userId': params.senderId, encrypted: true }));
+    throw esMiembroDeUnSecreto ? new CifradoRequeridoError() : new ForbiddenChatError();
+  }
   const members = chat.members.map((member) => String(member.userId));
 
   try {

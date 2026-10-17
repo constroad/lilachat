@@ -37,6 +37,12 @@ export const Composer = memo(function Composer(props: {
   /** Long-press en enviar: programarlo para más tarde (F11). */
   onProgramar: (texto: string) => void;
   onNotaDeVoz: (nota: NotaGrabada) => Promise<void>;
+  /**
+   * Chat secreto (auditoría 17/10/2026). `bloqueado`: la clave todavía no está
+   * y NADA se puede mandar — antes salía en claro. `solo-texto`: hay clave,
+   * pero fotos, voz y programados no viajan cifrados, así que no se ofrecen.
+   */
+  modoSecreto?: 'bloqueado' | 'solo-texto';
 }) {
   const colores = useColores();
   const [borrador, setBorrador] = useState('');
@@ -48,6 +54,8 @@ export const Composer = memo(function Composer(props: {
     const nota = await voz.terminar({ cancelar });
     if (nota) await props.onNotaDeVoz(nota);
   };
+
+  const soloTexto = props.modoSecreto === 'solo-texto';
 
   const enviar = () => {
     const texto = borrador;
@@ -83,7 +91,11 @@ export const Composer = memo(function Composer(props: {
       ) : null}
 
       <View className="flex-row items-end gap-1.5 border-t border-outline/10 bg-surface px-3 pt-3" style={{ paddingBottom: props.margenPie }}>
-        {voz.estado.fase === 'grabando' ? (
+        {props.modoSecreto === 'bloqueado' ? (
+          <View testID="composer-bloqueado" className="min-h-[44px] flex-1 items-center justify-center rounded-xl bg-background px-4">
+            <Text className="text-center text-[13px] text-on-surface-variant">Esperando la clave del chat secreto…</Text>
+          </View>
+        ) : voz.estado.fase === 'grabando' ? (
           // Mientras se graba, la barra ES la grabación: cancelar, el tiempo y
           // mandar. Un campo al lado invita a escribir mientras se habla.
           <>
@@ -115,14 +127,17 @@ export const Composer = memo(function Composer(props: {
           <>
             {/* El «+» sigue siendo un «+» mientras sube: el progreso ya se ve
                 en la burbuja. Queda atenuado porque no se suben dos a la vez. */}
-            <Pressable
-              testID="btn-adjuntar"
-              onPress={props.onAdjuntar}
-              disabled={props.subiendo}
-              className={`h-11 w-11 items-center justify-center ${props.subiendo ? 'opacity-40' : ''}`}
-            >
-              <Plus size={24} color={colores['on-surface-variant']} />
-            </Pressable>
+            {soloTexto ? null : (
+              <Pressable
+                testID="btn-adjuntar"
+                accessibilityLabel="Adjuntar"
+                onPress={props.onAdjuntar}
+                disabled={props.subiendo}
+                className={`h-11 w-11 items-center justify-center ${props.subiendo ? 'opacity-40' : ''}`}
+              >
+                <Plus size={24} color={colores['on-surface-variant']} />
+              </Pressable>
+            )}
 
             <View className="min-w-0 flex-1 flex-row items-end rounded-xl border border-outline/15 bg-background pr-1">
               <TextInput
@@ -141,7 +156,7 @@ export const Composer = memo(function Composer(props: {
               {/* Clip y cámara DENTRO de la píldora, como el diseño y WhatsApp.
                   El emoji que había acá no hacía nada: el teclado ya trae los
                   suyos. Con texto escrito se esconden y el campo gana ancho. */}
-              {borrador.length === 0 ? (
+              {borrador.length === 0 && !soloTexto ? (
                 <>
                   <Pressable
                     testID="btn-clip"
@@ -167,12 +182,14 @@ export const Composer = memo(function Composer(props: {
               ) : null}
             </View>
 
-            {borrador.trim() ? (
+            {borrador.trim() || soloTexto ? (
               <Pressable
                 testID="btn-enviar"
-                onLongPress={() => props.onProgramar(borrador.trim())}
+                accessibilityLabel="Enviar"
+                disabled={!borrador.trim()}
+                onLongPress={soloTexto ? undefined : () => props.onProgramar(borrador.trim())}
                 onPress={enviar}
-                className="h-11 w-11 items-center justify-center rounded-full bg-primary"
+                className={`h-11 w-11 items-center justify-center rounded-full bg-primary ${borrador.trim() ? '' : 'opacity-40'}`}
               >
                 <Send size={18} color={colores['on-primary']} />
               </Pressable>

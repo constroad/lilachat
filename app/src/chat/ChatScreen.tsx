@@ -303,8 +303,15 @@ export function ChatScreen({
       cuandoReal: new Date(m.at),
       seq: m.seq,
       mia: m.senderId === credential.userId,
-      autor: m.senderId === credential.userId ? 'Vos' : chatName,
+      // En un grupo, quién la mandó; antes decía el nombre del GRUPO.
+      autor:
+        m.senderId === credential.userId
+          ? 'Tú'
+          : esGrupoChat
+            ? (nombresDelGrupo.get(String(m.senderId)) ?? chatName)
+            : chatName,
       cuando: formatClock(new Date(m.at)),
+      miniatura: m.media!.thumbUrl,
     }));
   const fotoAbierta = fotos.find((f) => f.seq === viendoSeq) ?? null;
 
@@ -839,6 +846,8 @@ export function ChatScreen({
         onEnviar={alEnviar}
         onProgramar={alProgramarDesdeComposer}
         onNotaDeVoz={alNotaDeVoz}
+        // Chat secreto: sin clave no se manda nada; con clave, solo texto.
+        modoSecreto={encrypted ? (sesionLista ? 'solo-texto' : 'bloqueado') : undefined}
       />
 
       <AttachSheet

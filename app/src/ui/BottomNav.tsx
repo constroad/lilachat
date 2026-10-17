@@ -2,6 +2,7 @@ import { Pressable, Text, View } from 'react-native';
 import { BarChart3, CalendarDays, MessageCircle, Settings } from 'lucide-react-native';
 import { useMargenes } from './useMargenes';
 import { useColores } from './tema';
+import { Logo } from './Logo';
 
 /**
  * La barra inferior.
@@ -57,13 +58,10 @@ export function BottomNav({ active, onChange }: { active: Tab; onChange: (tab: T
 
 /** La cabecera que comparten las pantallas de pestaña (marca + acciones). */
 export function AppHeader({ children }: { children?: React.ReactNode }) {
-  const colores = useColores();
   const margenes = useMargenes();
   return (
     <View className="flex-row items-center gap-2 border-b border-outline/10 bg-surface px-4 pb-3" style={{ paddingTop: margenes.cabecera }}>
-      <View className="h-8 w-8 items-center justify-center rounded-lg bg-primary">
-        <MessageCircle size={17} color={colores["on-primary"]} />
-      </View>
+      <Logo tamano={30} />
       <Text className="flex-1 text-xl font-bold text-primary">Lilachat</Text>
       {children}
     </View>

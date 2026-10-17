@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
-import { ArrowRight, MessagesSquare } from 'lucide-react-native';
+import { ArrowRight } from 'lucide-react-native';
 import { COUNTRY_PREFIX, normalizePeruPhone } from '@lilachat/shared';
 import { requestOtp } from '../api/client';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
+import { Logo } from '../ui/Logo';
 
 /**
  * Alta paso 1 (diseño «Registro: Teléfono»).
@@ -48,9 +49,7 @@ export function PhoneScreen({ onCodeRequested }: { onCodeRequested: (phone: stri
     <View className="flex-1 justify-between bg-background px-6 " style={{ paddingTop: margenes.cabecera + 44, paddingBottom: margenes.pie }} testID="pantalla-telefono">
       <View className="flex-1 justify-center">
         <View className="items-center">
-          <View className="h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-            <MessagesSquare size={30} color={colores.primary} />
-          </View>
+          <Logo tamano={72} />
           <Text className="mt-6 text-3xl font-bold text-on-surface">Bienvenido a Lilachat</Text>
           <Text className="mt-2 text-center text-base leading-6 text-on-surface-variant">
             Ingresa tu número para comenzar a chatear con tus amigos.

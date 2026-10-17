@@ -927,14 +927,15 @@ nadie mira durante el desarrollo.
 
 ### Un SVG, seis archivos
 
-`app/scripts/iconos.mjs` genera todo desde un solo dibujo. A mano son cinco PNG
-que se desincronizan al primer retoque.
+`scripts/iconos-de-la-app.mts` genera todo desde un solo dibujo (desde FL6, la
+geometría de `shared/src/marca.ts`, la misma del `<Logo>` de la app — §45.13).
+A mano son cinco PNG que se desincronizan al primer retoque.
 
 | Archivo | Para qué |
 | --- | --- |
 | `icon.png` (1024) | el ícono «plano», y el de la tienda |
 | `android-icon-foreground.png` | la capa que Android RECORTA con la máscara del fabricante |
-| `android-icon-background.png` | la capa de abajo, degradado de marca |
+| `android-icon-background.png` | la capa de abajo: blanco plano (desde FL6) |
 | `android-icon-monochrome.png` | temas dinámicos de Android 13+ |
 | `splash-icon.png` | arranque |
 | `favicon.png` | la web |
@@ -942,7 +943,7 @@ que se desincronizan al primer retoque.
 **La capa de frente vive dentro del 66 % central.** El sistema la recorta con la
 máscara del fabricante —círculo, cuadrado redondeado, «squircle»—: llenar el
 lienzo entero es lo que produce íconos con las puntas comidas. En el script eso
-se consigue ampliando el `viewBox` (`-25 -25 150 150`), no redibujando.
+se consigue escalando el dibujo al centro (`escala: 0.66`), no redibujando.
 
 El dibujo es una burbuja de chat con un latido adentro: la burbuja dice
 «conversación» sin texto y en cualquier idioma, y el latido es el «pulse» de
@@ -3373,7 +3374,7 @@ mismo commit** (fecha, commit, versión del APK). ✅ hecho y verificado ·
 | --- | --- | --- | --- |
 | D1 | Modelo de mensajes | (a) server + cifrado por defecto (plan F12) · (b) store-and-forward como WhatsApp · (c) server borra al confirmar entrega + 30 días | F12.3, F12.4 |
 | D2 | Base de Lilachat | ✅ **bóveda** desde el 17/10/2026 (§45.11) | — |
-| D3 | Marca | logo vectorial nuevo (burbuja simple, geometría como datos, patrón Lilafotos) | FL6 |
+| D3 | Marca | logo vectorial nuevo (burbuja simple, geometría como datos, patrón Lilafotos) | FL6 | **Marca y Stitch**: logo vectorial único (ícono, adaptativo, mono, splash y `<Logo>` desde la misma geometría); diseñar en Stitch la conversación llena, con la paleta real y las pestañas reales — ver §45.13 | ícono verificado dentro del APK | 🟡 17/10: logo hecho (0.1.76); falta la pantalla de Stitch |
 
 ### 45.3 Plan Fluidez — «que se sienta como WhatsApp» (pedido de José, 16/10/2026)
 
@@ -3687,3 +3688,28 @@ Chats, Agenda o Encuestas pedía todo de nuevo y mostraba el esqueleto. Ahora:
   pedir. Ajenos: el aviso de `expo-notifications` por `sound: 'default'` en
   el canal (lo pone LogBox en cada arranque de la debug, tapa la barra de
   pestañas) y el permiso de contactos pedido de nuevo tras negarlo.
+
+### 45.13 As-is FL6, el logo (17/10/2026)
+
+- **Por qué**: el ícono era un óvalo ancho (1,05 de proporción con la cola) con
+  un latido de electrocardiograma adentro. José: «se ve forzado, estirado»; y
+  se leía como app de salud. El encabezado usaba otro dibujo (lucide
+  `MessageCircle` en un cuadrado violeta) y el login, otro más.
+- **El dibujo**: dos burbujas REDONDAS que se superponen —una conversación—,
+  la grande con la cola abajo a la izquierda y la chica abajo a la derecha,
+  separadas por un corte del color del fondo (máscara, no un trazo). Misma
+  familia que el molinete de Lilafotos: símbolo plano, tonos lila, fondo
+  blanco. Colores tomados de `tokens.ts`, ningún hex nuevo (test).
+- **Una geometría** (`shared/src/marca.ts`, 6 tests): `LOGO` con los dos paths
+  y los tres tonos (claro, oscuro, mono), y `svgDelLogo()` para quien no tiene
+  React. De ahí salen:
+  - `scripts/iconos-de-la-app.mts` → `icon.png`, frente del adaptativo (al
+    66 %), fondo blanco plano, monocromo (Android 13+), splash, favicon y el
+    de la tienda (512). Reemplaza a `app/scripts/iconos.mjs`, que dibujaba
+    el óvalo.
+  - `app/src/ui/Logo.tsx`: el símbolo solo, sin contenedor, en la cabecera de
+    las pestañas (30 dp) y en el login (72 dp); en oscuro, los tonos oscuros.
+- `adaptiveIcon.backgroundColor` pasa de `#E6F4FE` (el de la plantilla) a
+  blanco.
+- **Falta de FL6**: la pantalla de Stitch con la conversación llena, la paleta
+  y las pestañas reales.

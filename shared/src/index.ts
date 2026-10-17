@@ -35,6 +35,7 @@ export * from './almacenDeMensajes.js';
 export * from './respaldoCifrado.js';
 export * from './respaldoPorTrozos.js';
 export * from './lotes.js';
+export * from './marca.js';
 export * from './colaSerial.js';
 export * from './aviso.js';
 export * from './busquedaDeMensajes.js';

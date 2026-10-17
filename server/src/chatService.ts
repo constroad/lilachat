@@ -1,6 +1,7 @@
 import { Types } from 'mongoose';
 import {
   unreadCount,
+  puedeEditar,
   puedeEliminar,
   puedeAgregar,
   puedeSacar,
@@ -489,6 +490,49 @@ export async function deleteMessage(params: {
   return actualizado
     ? { ok: true, message: actualizado }
     : { ok: false, motivo: 'No se pudo eliminar.' };
+}
+
+/**
+ * Editar un mensaje propio (José, 17/10/2026): solo texto y durante 15 minutos,
+ * como WhatsApp. El permiso lo decide `shared/editarMensaje.ts` y se comprueba
+ * ACÁ: un cliente modificado se saltea la app. Queda `editedAt`, que es lo que
+ * hace aparecer «Editado» en la burbuja de todos.
+ */
+export async function editMessage(params: {
+  chatId: string;
+  seq: number;
+  userId: Types.ObjectId;
+  body: string;
+}): Promise<{ ok: true; message: Message } | { ok: false; motivo: string }> {
+  const chat = await ChatModel.findOne({ _id: params.chatId, 'members.userId': params.userId })
+    .select('encrypted')
+    .lean<{ encrypted?: boolean } | null>();
+  if (!chat) return { ok: false, motivo: 'No encontramos esa conversación.' };
+
+  const mensaje = await MessageModel.findOne({ chatId: params.chatId, seq: params.seq }).lean<Message | null>();
+  if (!mensaje) return { ok: false, motivo: 'No encontramos ese mensaje.' };
+
+  const decision = puedeEditar({
+    yo: String(params.userId),
+    autor: String(mensaje.senderId),
+    kind: mensaje.kind,
+    eliminado: Boolean(mensaje.deletedAt),
+    secreto: Boolean(chat.encrypted),
+    enviadoEn: mensaje.at,
+    ahora: Date.now(),
+  });
+  if (!decision.permitido) return { ok: false, motivo: decision.motivo };
+
+  const body = params.body.trim();
+  // Vacío no: para eso está eliminar, que deja la lápida.
+  if (!body) return { ok: false, motivo: 'El mensaje no puede quedar vacío.' };
+
+  const actualizado = await MessageModel.findOneAndUpdate(
+    { chatId: params.chatId, seq: params.seq },
+    { $set: { body, editedAt: new Date() } },
+    { returnDocument: 'after' }
+  ).lean<Message | null>();
+  return actualizado ? { ok: true, message: actualizado } : { ok: false, motivo: 'No se pudo editar.' };
 }
 
 /**

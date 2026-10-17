@@ -9,6 +9,7 @@ import {
   pullSince,
   sendMessage,
   deleteMessage,
+  editMessage,
   markDelivered,
   marcarPropioLeido,
 } from './chatService.js';
@@ -413,6 +414,40 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
       } catch (error) {
         console.error('[chat] no se pudo eliminar:', (error as Error).message);
         ack?.({ ok: false, motivo: 'No se pudo eliminar.' });
+      }
+    });
+
+    /**
+     * EDITAR (José, 17/10/2026). El server decide (`editMessage`) y avisa a
+     * TODOS, incluido quien editó: sus otros teléfonos también cambian el texto.
+     * Sin push: corregir una letra no amerita sonar en el bolsillo de nadie.
+     */
+    socket.on('msg.edit', async (frame: unknown, ack?: (r: unknown) => void) => {
+      const payload = (frame ?? {}) as Record<string, unknown>;
+      try {
+        const resultado = await editMessage({
+          chatId: String(payload.chatId ?? ''),
+          seq: Number(payload.seq ?? 0),
+          userId: new Types.ObjectId(userId),
+          body: typeof payload.body === 'string' ? payload.body : '',
+        });
+        if (!resultado.ok) {
+          ack?.({ ok: false, motivo: resultado.motivo });
+          return;
+        }
+        const editado = {
+          chatId: String(resultado.message.chatId),
+          seq: resultado.message.seq,
+          body: resultado.message.body,
+          editedAt: resultado.message.editedAt,
+        };
+        for (const member of await chatMemberIds(resultado.message.chatId)) {
+          io.to(userRoom(member)).emit('msg.edited', editado);
+        }
+        ack?.({ ok: true, editedAt: editado.editedAt });
+      } catch (error) {
+        console.error('[chat] no se pudo editar:', (error as Error).message);
+        ack?.({ ok: false, motivo: 'No se pudo editar.' });
       }
     });
 

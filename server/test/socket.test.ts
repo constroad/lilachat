@@ -214,3 +214,32 @@ describe('lo propio no queda sin leer', () => {
     expect(chats.find((chat) => chat.id === chatId)?.unread).toBe(0);
   });
 });
+
+/**
+ * Editar (José, 17/10/2026): el autor edita y el OTRO lo ve cambiar en vivo,
+ * con su marca de editado. Lo ajeno no se edita.
+ */
+describe('msg.edit', () => {
+  it('el autor edita y al otro le llega msg.edited con el texto nuevo', async () => {
+    const emisor = await connect(tokenFor(jose));
+    const receptor = await connect(tokenFor(maria));
+    await emisor.emitWithAck('msg.send', { chatId, clientKey: 'ck-e1', kind: 'text', body: 'hola Mria' });
+    const editado = new Promise<Record<string, unknown>>((resolve) => receptor.on('msg.edited', resolve));
+
+    const ack = await emisor.emitWithAck('msg.edit', { chatId, seq: 1, body: 'hola María' });
+
+    expect(ack).toMatchObject({ ok: true });
+    expect(await editado).toMatchObject({ chatId, seq: 1, body: 'hola María' });
+    expect((await editado).editedAt).toBeTruthy();
+  });
+
+  it('lo de otro no se edita y el motivo vuelve en el ack', async () => {
+    const emisor = await connect(tokenFor(jose));
+    const otra = await connect(tokenFor(maria));
+    await emisor.emitWithAck('msg.send', { chatId, clientKey: 'ck-e2', kind: 'text', body: 'mío' });
+
+    const ack = await otra.emitWithAck('msg.edit', { chatId, seq: 1, body: 'te lo cambio' });
+
+    expect(ack).toEqual({ ok: false, motivo: 'Solo puedes editar tus propios mensajes.' });
+  });
+});

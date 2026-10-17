@@ -3374,7 +3374,7 @@ mismo commit** (fecha, commit, versión del APK). ✅ hecho y verificado ·
 | --- | --- | --- | --- |
 | D1 | Modelo de mensajes | (a) server + cifrado por defecto (plan F12) · (b) store-and-forward como WhatsApp · (c) server borra al confirmar entrega + 30 días | F12.3, F12.4 |
 | D2 | Base de Lilachat | ✅ **bóveda** desde el 17/10/2026 (§45.11) | — |
-| D3 | Marca | logo vectorial nuevo (burbuja simple, geometría como datos, patrón Lilafotos) | FL6 | **Marca y Stitch**: logo vectorial único (ícono, adaptativo, mono, splash y `<Logo>` desde la misma geometría); diseñar en Stitch la conversación llena, con la paleta real y las pestañas reales — ver §45.13 | ícono verificado dentro del APK | 🟡 17/10: logo hecho (0.1.76); falta la pantalla de Stitch |
+| D3 | Marca | logo vectorial nuevo (burbuja simple, geometría como datos, patrón Lilafotos) | FL6 | **Marca y Stitch**: logo vectorial único (ícono, adaptativo, mono, splash y `<Logo>` desde la misma geometría); diseñar en Stitch la conversación llena, con la paleta real y las pestañas reales — ver §45.13 | ícono verificado dentro del APK | 🟡 17/10: logo publicado y verificado en el APK (0.1.76); falta la pantalla de Stitch |
 
 ### 45.3 Plan Fluidez — «que se sienta como WhatsApp» (pedido de José, 16/10/2026)
 
@@ -3711,5 +3711,12 @@ Chats, Agenda o Encuestas pedía todo de nuevo y mostraba el esqueleto. Ahora:
     las pestañas (30 dp) y en el login (72 dp); en oscuro, los tonos oscuros.
 - `adaptiveIcon.backgroundColor` pasa de `#E6F4FE` (el de la plantilla) a
   blanco.
+- **Verificado en el APK 0.1.76 (77)** con `aapt2`: `ic_launcher` adaptativo
+  con `iconBackground` `#ffffff`, frente y monocromo con las dos burbujas
+  dentro del círculo de 72 dp (simulado con la máscara). Smoke del release:
+  arranca sin `FATAL`/`ClassNotFound`, el login muestra el `<Logo>`, y en el
+  cajón del emulador queda al lado de Lilafotos. Publicada en LilaStore con
+  el ícono de la tienda nuevo (`lila app icon`); la descarga es idéntica al
+  build (sha256).
 - **Falta de FL6**: la pantalla de Stitch con la conversación llena, la paleta
   y las pestañas reales.

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PermissionsAndroid, Platform, Vibration } from 'react-native';
+import { AppState, PermissionsAndroid, Platform, Vibration } from 'react-native';
 import { setAudioModeAsync } from 'expo-audio';
 import {
   RTCPeerConnection,
@@ -14,6 +14,8 @@ import { CALL_TIMEOUT_MS, nextCallState, type CallState } from '@lilachat/shared
 import { connectSocket, getSocket } from '../chat/socketClient';
 import { obtenerIceServers, type ServidorIce } from './iceServers';
 import { esperaAntesDeRendirse, estadoDeMedios, type EstadoDeMedios } from './estadoDeMedios';
+import { comoSuena, inicioDelTimbre, queHacerConElAviso } from './llamadaNativa';
+import { llamadaNativa, type AccionDeAviso } from '../../modules/llamada-entrante/src';
 import { reportarError } from '../ui/reportarError';
 
 /** El SDP y los candidatos viajan como objetos planos por el socket. */
@@ -45,6 +47,12 @@ async function pedirPermisos(conVideo: boolean): Promise<boolean> {
 
 /** El patrón del timbre: vibra 0,8 s, pausa 1,2 s, repite mientras suena. */
 const TIMBRE = [0, 800, 1200];
+/**
+ * Cuánto se espera la oferta después de abrir la app desde la notificación
+ * (FL8.1). Llega por el socket al conectar; si no llegó, la llamada ya no
+ * existe y la app deja de mostrarse sobre el bloqueo.
+ */
+const ESPERA_DE_LA_OFERTA_MS = 8_000;
 
 /**
  * Desde FL8 la llamada es de la SESIÓN, no de una pantalla de chat: el chat se
@@ -64,6 +72,13 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
   const [video, setVideo] = useState(false);
   const [muted, setMuted] = useState(false);
   const [speaker, setSpeaker] = useState(false);
+  /** Lo que se tocó en la notificación antes de que llegara la oferta (FL8.1). */
+  const avisoPendiente = useRef<AccionDeAviso | null>(null);
+  const aplicarAvisoRef = useRef<(aviso: AccionDeAviso) => void>(() => undefined);
+  const nombreRef = useRef('');
+  /** Contestar desde la notificación corre en el mismo tick que `setVideo`. */
+  const conVideoRef = useRef(false);
+  const [appActiva, setAppActiva] = useState(AppState.currentState === 'active');
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   /** Si el audio pasa de verdad; «contestada» solo dice que el otro aceptó. */
@@ -216,12 +231,45 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
   }, [sonandoEntrante]);
 
   useEffect(() => {
+    const suscripcion = AppState.addEventListener('change', (estado) => setAppActiva(estado === 'active'));
+    return () => suscripcion.remove();
+  }, []);
+
+  // FL8.1: adelante suena el tono del teléfono; de fondo (socket vivo, por
+  // ejemplo con «Conexión permanente») la llamada se dibuja a pantalla completa.
+  useEffect(() => {
+    const modo = comoSuena({ sonandoEntrante, appActiva });
+    const chat = chatIdRef.current;
+    if (modo === 'tono') {
+      llamadaNativa.iniciarTono();
+      return () => llamadaNativa.detenerTono();
+    }
+    if (modo === 'aviso-nativo' && chat) {
+      llamadaNativa.mostrar(chat, nombreRef.current, conVideoRef.current);
+      return () => llamadaNativa.quitar(chat);
+    }
+  }, [sonandoEntrante, appActiva]);
+
+  // Sin llamada, la app vuelve detrás del bloqueo.
+  useEffect(() => {
+    if (!state) llamadaNativa.soltarBloqueo();
+  }, [state]);
+
+  useEffect(() => {
     // `connectSocket` reusa el socket vivo (o lo crea): este hook se monta con
     // la sesión, a veces antes que la lista, y tiene que escuchar desde ya.
     const socket = connectSocket(params.jwt);
     const esDeEstaLlamada = (otroChat: string) => otroChat === chatIdRef.current;
 
-    const entrante = async (data: { chatId: string; video?: boolean; sdp?: Sdp; fromName?: string | null; fromPhone?: string }) => {
+    const entrante = async (data: {
+      chatId: string;
+      video?: boolean;
+      sdp?: Sdp;
+      fromName?: string | null;
+      fromPhone?: string;
+      /** Lo que le queda de timbre, si llegó tarde (FL8.1). */
+      quedaMs?: number;
+    }) => {
       const actual = stateRef.current;
       // Si YA hay una llamada, la nueva recibe «ocupado» sin pisar la que está.
       if (actual && actual.fase !== 'terminada') {
@@ -230,10 +278,16 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
       }
       chatIdRef.current = data.chatId;
       setChatId(data.chatId);
-      setPeerName(nombreDeRef.current(data.chatId, { nombre: data.fromName, telefono: data.fromPhone }));
+      nombreRef.current = nombreDeRef.current(data.chatId, { nombre: data.fromName, telefono: data.fromPhone });
+      setPeerName(nombreRef.current);
+      conVideoRef.current = Boolean(data.video);
       setVideo(Boolean(data.video));
       setConVideoDesdeElInicio(Boolean(data.video));
-      setState({ fase: 'sonando', desde: Date.now(), entrante: true });
+      // El ref YA: si se tocó «Contestar» en la notificación, se decide en
+      // este mismo tick, antes del render que actualizaría el ref.
+      const sonando: CallState = { fase: 'sonando', desde: inicioDelTimbre(data.quedaMs, Date.now()), entrante: true };
+      stateRef.current = sonando;
+      setState(sonando);
       try {
         const pc = crearPc(await obtenerIceServers(params.jwt));
         if (data.sdp) {
@@ -243,6 +297,8 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
       } catch (error) {
         reportarError('call.entrante', error);
       }
+      const pendiente = avisoPendiente.current;
+      if (pendiente?.chatId === data.chatId) aplicarAvisoRef.current(pendiente);
     };
 
     const contestada = async (data: { chatId: string; sdp?: Sdp }) => {
@@ -303,6 +359,8 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
       if (!(await pedirPermisos(conVideo))) return;
       chatIdRef.current = chatDestino;
       setChatId(chatDestino);
+      nombreRef.current = nombre;
+      conVideoRef.current = conVideo;
       setPeerName(nombre);
       setVideo(conVideo);
       setConVideoDesdeElInicio(conVideo);
@@ -330,12 +388,13 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
   const contestar = useCallback(async () => {
     const pc = pcRef.current;
     if (!pc) return;
-    if (!(await pedirPermisos(video))) return;
+    const conVideo = conVideoRef.current;
+    if (!(await pedirPermisos(conVideo))) return;
     try {
-      await agregarMedios(pc, video);
+      await agregarMedios(pc, conVideo);
       const respuesta = await pc.createAnswer();
       await pc.setLocalDescription(respuesta);
-      setSpeaker(video);
+      setSpeaker(conVideo);
       getSocket()?.emit('call.answer', {
         chatId: chatIdRef.current,
         sdp: { type: 'answer', sdp: respuesta.sdp },
@@ -344,7 +403,7 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
     } catch (error) {
       reportarError('call.contestar', error);
     }
-  }, [video, agregarMedios, aplicar]);
+  }, [agregarMedios, aplicar]);
 
   const colgar = useCallback(() => {
     // Se avisa SIEMPRE, incluso rechazando: el otro tiene que dejar de sonar.
@@ -360,6 +419,29 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
         : actual
     );
   }, []);
+
+  /** Lo que se tocó en la notificación de llamada (FL8.1). */
+  const aplicarAviso = useCallback(
+    (aviso: AccionDeAviso) => {
+      const decision = queHacerConElAviso({ aviso, estado: stateRef.current, chatId: chatIdRef.current });
+      if (decision === 'esperar') {
+        avisoPendiente.current = aviso;
+        // Si la oferta no llega, la llamada ya no existe: la app vuelve detrás
+        // del bloqueo en vez de quedar abierta para cualquiera.
+        setTimeout(() => {
+          if (avisoPendiente.current !== aviso) return;
+          avisoPendiente.current = null;
+          if (!stateRef.current) llamadaNativa.soltarBloqueo();
+        }, ESPERA_DE_LA_OFERTA_MS);
+        return;
+      }
+      avisoPendiente.current = null;
+      if (decision === 'contestar') void contestar();
+      else if (decision === 'colgar') colgar();
+    },
+    [contestar, colgar]
+  );
+  aplicarAvisoRef.current = aplicarAviso;
 
   /** Quitar la pantalla de llamada. Estable: el proveedor la programa con un temporizador. */
   const cerrar = useCallback(() => {
@@ -383,6 +465,7 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
     llamar,
     contestar,
     colgar,
+    aplicarAviso,
     alternarMute: () =>
       setMuted((valor) => {
         const nuevo = !valor;

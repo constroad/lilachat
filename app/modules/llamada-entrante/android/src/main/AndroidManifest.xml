@@ -1,0 +1,21 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- La llamada entrante ocupa la pantalla aunque el teléfono esté bloqueado
+       (FL8.1). Desde Android 14 el sistema puede negarlo: la app lo revisa con
+       `puedePantallaCompleta()` y lleva a Ajustes. -->
+  <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+  <application>
+    <!-- Prioridad MAYOR que la del servicio de expo-notifications (-1): FCM
+         entrega al de mayor prioridad. Este extiende al de expo, así que lo que
+         no es una llamada sigue su camino de siempre. -->
+    <service
+      android:name=".ServicioDeAvisos"
+      android:exported="false">
+      <intent-filter android:priority="10">
+        <action android:name="com.google.firebase.MESSAGING_EVENT" />
+      </intent-filter>
+    </service>
+    <receiver
+      android:name=".ReceptorDeLlamada"
+      android:exported="false" />
+  </application>
+</manifest>

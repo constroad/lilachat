@@ -1,0 +1,58 @@
+import { CALL_TIMEOUT_MS, type CallState } from '@lilachat/shared';
+import type { AccionDeAviso } from '../../modules/llamada-entrante/src';
+
+/**
+ * Lo puro de la llamada entrante nativa (FL8.1). Motor sin `react-native`.
+ */
+export type QueHacer = 'contestar' | 'colgar' | 'esperar' | 'nada';
+
+/**
+ * Qué hacer con lo que se tocó en la notificación de llamada.
+ *
+ * La app puede abrir EN FRÍO desde la notificación: el toque llega antes que
+ * la oferta (que viene por el socket al conectar). Ese caso «espera»: cuando
+ * llegue la oferta de ese chat se vuelve a decidir.
+ */
+export function queHacerConElAviso(params: {
+  aviso: AccionDeAviso;
+  estado: CallState | null;
+  chatId: string | null;
+}): QueHacer {
+  const { aviso, estado } = params;
+  if (!estado || estado.fase === 'terminada') return aviso.accion === 'rechazar' ? 'nada' : 'esperar';
+  if (params.chatId !== aviso.chatId || estado.fase !== 'sonando') return 'nada';
+  if (aviso.accion === 'contestar') return 'contestar';
+  if (aviso.accion === 'rechazar') return 'colgar';
+  return 'nada';
+}
+
+/** Con la app adelante suena el tono; de fondo, la notificación nativa. */
+export function comoSuena(params: { sonandoEntrante: boolean; appActiva: boolean }): 'tono' | 'aviso-nativo' | 'nada' {
+  if (!params.sonandoEntrante) return 'nada';
+  return params.appActiva ? 'tono' : 'aviso-nativo';
+}
+
+/** Cuánto hay que subir el botón verde para contestar (dp). */
+export const UMBRAL_DE_DESLIZAR = 110;
+/** Un tirón: rápido hacia arriba (dp/s) y con un mínimo de recorrido. */
+const VELOCIDAD_DE_TIRON = -900;
+const RECORRIDO_MINIMO_DEL_TIRON = -40;
+
+export function decidirDeslizamiento(params: { dy: number; vy: number }): 'contestar' | 'volver' {
+  // Corre en el hilo de UI, dentro del gesto (FL8.1): sin esto el gesto falla.
+  'worklet';
+  if (params.dy <= -UMBRAL_DE_DESLIZAR) return 'contestar';
+  if (params.vy <= VELOCIDAD_DE_TIRON && params.dy <= RECORRIDO_MINIMO_DEL_TIRON) return 'contestar';
+  return 'volver';
+}
+
+/**
+ * Cuándo empezó a sonar una oferta, desde lo que le QUEDA según el server. Una
+ * oferta entregada tarde (al conectar desde la notificación) no arranca otros
+ * 30 s: el server ya la daría por perdida mientras se contesta.
+ */
+export function inicioDelTimbre(quedaMs: number | undefined, ahora: number): number {
+  if (typeof quedaMs !== 'number' || !Number.isFinite(quedaMs)) return ahora;
+  const queda = Math.min(CALL_TIMEOUT_MS, Math.max(0, quedaMs));
+  return ahora - (CALL_TIMEOUT_MS - queda);
+}

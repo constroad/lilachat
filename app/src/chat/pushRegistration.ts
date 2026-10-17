@@ -1,5 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { marcarPreguntado, queHacerConElPermiso, yaSePregunto } from '../ui/permisos';
+import { CAPACIDAD_LLAMADA_NATIVA } from '@lilachat/shared';
+import { llamadaNativa } from '../../modules/llamada-entrante/src';
 
 /**
  * Registro del token de push (F4).
@@ -50,7 +52,10 @@ export async function registerPushToken(jwt: string): Promise<'ok' | 'denied' | 
     await fetch(`${BASE_URL}/api/chats/push-token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
-      body: JSON.stringify({ pushToken }),
+      // FL8.1: con el módulo nativo, las llamadas llegan solo-datos y se
+      // dibujan a pantalla completa. Sin él, el server manda la notificación
+      // común de siempre.
+      body: JSON.stringify({ pushToken, capacidades: llamadaNativa.disponible() ? [CAPACIDAD_LLAMADA_NATIVA] : [] }),
       signal: AbortSignal.timeout(10_000),
     });
     return 'ok';

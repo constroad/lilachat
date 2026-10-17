@@ -4,6 +4,8 @@ import { chatsEnMemoria } from '../chat/chatsGuardados';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { CallScreen } from './CallScreen';
 import { useCall, type AutorDeLlamada } from './useCall';
+import { llamadaNativa } from '../../modules/llamada-entrante/src';
+import { BASE_URL } from '../api/client';
 
 type Llamadas = {
   /** Llamar desde un chat: ese chat, con ese nombre, con o sin video. */
@@ -34,7 +36,18 @@ export function ProveedorDeLlamadas({ jwt, children }: { jwt: string; children: 
     return nombreDeContacto({ delServidor, telefono, agenda: agendaPorTelefono() }) || 'Llamada';
   }, []);
   const llamada = useCall({ jwt, nombreDe });
-  const { llamar: llamarConHook, cerrar } = llamada;
+  const { llamar: llamarConHook, cerrar, aplicarAviso } = llamada;
+
+  // FL8.1: la notificación nativa de llamada. La URL del server queda guardada
+  // para rechazar con la app cerrada; lo tocado antes de abrir (arranque en
+  // frío) se lee una vez, y lo que se toque después llega por el evento.
+  useEffect(() => {
+    llamadaNativa.configurar(BASE_URL);
+    const inicial = llamadaNativa.accionPendiente();
+    if (inicial) aplicarAviso(inicial);
+    const suscripcion = llamadaNativa.alTocar(aplicarAviso);
+    return () => suscripcion.remove();
+  }, [aplicarAviso]);
 
   // Una llamada que terminó SIN que se tocara colgar —perdida, o el otro
   // cortó— quedaba en «Llamada terminada» para siempre. Se cierra sola.

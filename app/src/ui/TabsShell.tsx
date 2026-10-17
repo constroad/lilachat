@@ -7,6 +7,7 @@ import { listChats, type ChatSummary } from '../api/client';
 import { connectSocket } from '../chat/socketClient';
 import { avisarMensaje, prepararAvisos } from '../chat/avisoLocal';
 import { iniciarServicio } from '../../modules/servicio-socket/src';
+import { AvisoDePantallaCompleta } from './AvisoDePantallaCompleta';
 import { ChatListScreen } from '../chat/ChatListScreen';
 import { CreatePollScreen } from '../agenda/CreatePollScreen';
 import { AgendaScreen } from '../agenda/AgendaScreen';
@@ -504,6 +505,7 @@ export function TabsShell({
                 onValueChange={onSegundoPlano}
               />
             </View>
+            <AvisoDePantallaCompleta visible={tab === 'ajustes'} />
 
             <Text className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
               Datos

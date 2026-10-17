@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RTCView, type MediaStream } from 'react-native-webrtc';
-import { Mic, MicOff, Phone, PhoneOff, Video, VideoOff, Volume2 } from 'lucide-react-native';
+import { Mic, MicOff, PhoneOff, Video, VideoOff, Volume2 } from 'lucide-react-native';
 import type { CallState } from '@lilachat/shared';
 import { leyendaDeLlamada, type EstadoDeMedios } from './estadoDeMedios';
 import { useColores } from '../ui/tema';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { DeslizarParaContestar } from './DeslizarParaContestar';
 
 /**
  * La pantalla de llamada (diseños «Llamada de Voz» y «Video Llamada»).
@@ -70,6 +72,8 @@ export function CallScreen({
 
   return (
     <Modal visible={visible} animationType="slide" statusBarTranslucent>
+      {/* Un Modal de Android necesita su propia raíz de gestos para deslizar. */}
+      <GestureHandlerRootView style={{ flex: 1 }}>
       <View className="flex-1 bg-primary" testID="pantalla-llamada">
         {/* Video: el remoto llena la pantalla y el propio va en un recuadro
             arriba a la derecha, como en el diseño «Video Llamada». El audio no
@@ -114,7 +118,7 @@ export function CallScreen({
               obligaría a mirar antes de actuar, y un teléfono sonando se
               contesta sin mirar. */}
           {state.fase === 'sonando' ? (
-            <View className="flex-row items-center justify-evenly">
+            <View className="flex-row items-end justify-evenly">
               <Boton
                 testID="btn-rechazar"
                 label="Rechazar"
@@ -122,13 +126,8 @@ export function CallScreen({
                 destructivo
                 icon={<PhoneOff size={26} color={colores["on-primary"]} />}
               />
-              <Boton
-                testID="btn-contestar"
-                label="Contestar"
-                onPress={onAccept}
-                verde
-                icon={<Phone size={26} color={colores["on-primary"]} />}
-              />
+              {/* Contestar se DESLIZA (FL8.1): un toque sin querer no contesta. */}
+              <DeslizarParaContestar onContestar={onAccept} />
             </View>
           ) : (
             <View className="flex-row items-center justify-evenly rounded-3xl bg-on-primary/10 py-4">
@@ -170,6 +169,7 @@ export function CallScreen({
           )}
         </View>
       </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }

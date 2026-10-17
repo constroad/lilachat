@@ -6,6 +6,7 @@ import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { CircleAlert, Check, CheckCheck, Clock3, FileText, Pause, Play } from 'lucide-react-native';
 import { colorDeAutor, dondeVaLaHora, mostrarAutor, radiosDeBurbuja } from './burbuja';
 import { DeslizarParaResponder } from './DeslizarParaResponder';
+import { LineaDeLlamada } from './LineaDeLlamada';
 import { etiquetaDeSubida, porcentajeDeSubida } from './progresoDeSubida';
 import {
   TEXTO_ELIMINADO,
@@ -485,6 +486,7 @@ export function DaySeparator({ label }: { label: string }) {
 function AvisoDelGrupo({ item, myUserId }: { item: ChatMessage; myUserId: string }) {
   const agenda = agendaPorTelefono();
   const aviso = item.system;
+  if (aviso?.evento === 'llamada') return <LineaDeLlamada item={item} myUserId={myUserId} />;
 
   const nombreDe = (persona?: { phone?: string; name?: string }) =>
     persona

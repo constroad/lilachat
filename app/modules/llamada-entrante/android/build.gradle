@@ -1,0 +1,36 @@
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+apply plugin: 'maven-publish'
+
+group = 'expo.modules.llamadaentrante'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.llamadaentrante"
+  compileSdk 36
+  defaultConfig { minSdk 24 }
+  kotlinOptions { jvmTarget = "17" }
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+}
+
+repositories {
+  mavenCentral()
+  google()
+  maven { url "${rootDir}/../node_modules/expo-notifications/local-maven-repo" }
+}
+
+dependencies {
+  implementation project(':expo-modules-core')
+  // El servicio de FCM de expo-notifications se EXTIENDE (no se reemplaza):
+  // los pushes que no son de llamada siguen yendo a su delegado.
+  // expo-notifications llega precompilado (repo maven local), no como proyecto.
+  // Solo para compilar: en ejecución lo pone la app, una sola copia.
+  compileOnly 'host.exp.exponent:expo.modules.notifications:57.0.13'
+  compileOnly 'com.google.firebase:firebase-messaging:25.0.1'
+  // `NotificationCompat.CallStyle` (llamada entrante con Contestar/Rechazar).
+  implementation 'androidx.core:core:1.16.0'
+  implementation "org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}"
+}

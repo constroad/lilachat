@@ -3394,8 +3394,8 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | FL6 | **Marca y Stitch**: logo vectorial único (ícono, adaptativo, mono, splash y `<Logo>` desde la misma geometría) — ver §45.13; diseñar en Stitch la conversación llena, con la paleta real y las pestañas reales | ícono verificado dentro del APK | ✅ 17/10: logo (0.1.76) y pantallas de Stitch |
 | FL7 | **Agenda editable y visor a lo WhatsApp** + lo roto de la auditoría que no podía esperar — ver §45.14 | editar/borrar avisos y eventos, día y hora exactos, deslizar entre fotos; E2E en el emulador | ✅ 17/10 (0.1.77) |
 | FL8 | **Lo que se pierde o se rompe** (auditoría §46.1) — ver §45.15 | ningún mensaje desaparece sin aviso; la notificación abre su chat; la llamada suena fuera del chat | ✅ 17/10 (0.1.78) |
-| FL8.1 | **Llamada entrante como WhatsApp** (pedido de José tras probar con Wilson, 17/10): pantalla completa sobre el bloqueo con tono que se repite, deslizar para contestar, rechazar sin abrir la app, tono con la app abierta, «Llamada perdida» en el chat — ver §45.16 | con la app cerrada y el teléfono bloqueado la llamada ocupa la pantalla y suena hasta contestar, rechazar o 30 s; E2E en el emulador | 🟡 17/10: hecha y verificada en el emulador (más el bug de presencia que frenaba todos los push); falta publicar y probar sobre un bloqueo real |
-| FL8.2 | **Doble check sin abrir la app** (José, 17/10, chat con Wilson: un solo check aunque Wilson tenía internet). Hoy «entregado» lo marca la app al conectarse; el push llega al teléfono pero es una notificación común, Android la muestra sin ejecutar código de la app y el server nunca se entera. Camino: push de mensaje solo-datos que recibe el servicio nativo de FL8.1, que dibuja la notificación y le confirma la entrega al server con un token corto del propio push (sin JWT) | con la app cerrada, el mensaje pasa a dos checks grises al llegar el push al otro teléfono | ⬜ pendiente |
+| FL8.1 | **Llamada entrante como WhatsApp** (pedido de José tras probar con Wilson, 17/10): pantalla completa sobre el bloqueo con tono que se repite, deslizar para contestar, rechazar sin abrir la app, tono con la app abierta, «Llamada perdida» en el chat — ver §45.16 | con la app cerrada y el teléfono bloqueado la llamada ocupa la pantalla y suena hasta contestar, rechazar o 30 s; E2E en el emulador | 🟡 17/10 (0.1.79 publicada): verificada en el emulador, más el bug de presencia que frenaba todos los push; falta probar sobre un bloqueo real |
+| FL8.2 | **Doble check sin abrir la app** (José, 17/10, chat con Wilson: un solo check aunque Wilson tenía internet). Hoy «entregado» lo marca la app al conectarse; el push llega al teléfono pero es una notificación común, Android la muestra sin ejecutar código de la app y el server nunca se entera. Camino: push de mensaje solo-datos que recibe el servicio nativo de FL8.1, que dibuja la notificación y le confirma la entrega al server con un token corto del propio push (sin JWT) | con la app cerrada, el mensaje pasa a dos checks grises al llegar el push al otro teléfono — ver §45.17 | ✅ 17/10: hecho y verificado en el emulador; sale en 0.1.80 |
 | FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | ⬜ |
 | FL10 | **Pulido y coherencia** (§46.3): un solo registro (tuteo), 44 dp, encuestas completas, detalle de evento | auditoría de pantalla entera sin hallazgos ALTA | ⬜ |
 
@@ -4044,6 +4044,53 @@ completa y sin Contestar/Rechazar.
 - Con la app de fondo y sin «Conexión permanente» el socket se pausa: el
   server marca fuera de línea y la llamada va por push. Tras matar el proceso,
   el socket viejo puede tardar en caer, y en ese rato no hay push.
+
+### 45.17 As-is FL8.2, el doble check sin abrir la app (17/10/2026)
+
+José, en el chat con Wilson: un solo check aunque Wilson tenía internet, solo
+que no había abierto la app. «Entregado» lo marcaba la app al conectarse. El
+push llegaba al teléfono, pero era una notificación común: Android la dibujaba
+sin ejecutar nada de la app y el server nunca se enteraba.
+
+**Server**
+- El teléfono que declara `mensaje-nativo` (`CAPACIDADES_DE_PUSH`) recibe el
+  mensaje como push solo-datos (`notifyOffline` → `mensajeSoloDatos`). Lleva:
+  - lo necesario para dibujarlo: quién, de qué grupo y qué dijo;
+  - un token de entrega por persona y mensaje (`entregaPorAviso.ts`), con
+    secreto derivado: no sirve como sesión, y vive 7 días por si el teléfono
+    estuvo apagado.
+- **Silenciado no es «no le llegó»**: al teléfono nativo le va el push con
+  `silencioso: 1`, que acusa sin dibujar. Al teléfono viejo silenciado, como
+  antes, nada.
+- `POST /api/push/entregado`, sin sesión y con el token, llama a
+  `markDelivered`, que usa `$max` y exige membresía. El `receipt` sale por el
+  socket a los del chat.
+- Las versiones viejas siguen con la notificación común. 0.1.79 solo declara
+  `llamada-nativa`, así que sus mensajes no acusan hasta actualizar.
+
+**Nativo** (`modules/llamada-entrante`, `AvisoDeMensaje.kt`)
+- El servicio de FCM atiende `tipo: mensaje`:
+  - primero confirma la entrega por HTTP (`Http.postearToken`);
+  - después dibuja, salvo que sea silencioso o que la app esté adelante.
+- Un aviso por chat, como WhatsApp: `MessagingStyle` con los últimos 7
+  mensajes y el nombre del grupo. No duplica si el push se repite (por `seq`).
+  Usa el mismo canal `mensajes-v2` que la app.
+- Tocarlo abre ESE chat (`Puente.emitirChat`, con su propio lugar de
+  pendiente: la llamada se lleva el suyo al arrancar). Abrir el chat, o volver
+  a la app con él abierto, borra su aviso (`useLimpiarAvisoDelChat`).
+
+**E2E** (emulador, debug contra :3104; push filtrados a equipos nuevos):
+- **App de fondo:** el mensaje de QA Ana tuvo el acuse de entrega a los 2,6 s
+  y apareció «QA Ana · Hola José, ¿te llegó?».
+- **Proceso muerto:** el segundo mensaje tuvo el acuse a los 2,8 s y se sumó
+  al mismo aviso, que quedó con los dos mensajes.
+- Tocar el aviso abrió el chat de QA Ana en frío y el aviso se fue.
+- **Chat silenciado:** hubo acuse (seq 3) y ninguna notificación.
+- **Aviso esperando con el chat abierto:** al volver a la app se fue.
+
+**No verificado:** responder o marcar leído desde la notificación (no
+existe todavía); el nombre que se ve es el del server, no el de la agenda del
+teléfono (igual que antes).
 
 ## 47. Lilachat Empresa — plan (17/10/2026)
 

@@ -3396,7 +3396,7 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | FL8 | **Lo que se pierde o se rompe** (auditoría §46.1) — ver §45.15 | ningún mensaje desaparece sin aviso; la notificación abre su chat; la llamada suena fuera del chat | ✅ 17/10 (0.1.78) |
 | FL8.1 | **Llamada entrante como WhatsApp** (pedido de José tras probar con Wilson, 17/10): pantalla completa sobre el bloqueo con tono que se repite, deslizar para contestar, rechazar sin abrir la app, tono con la app abierta, «Llamada perdida» en el chat — ver §45.16 | con la app cerrada y el teléfono bloqueado la llamada ocupa la pantalla y suena hasta contestar, rechazar o 30 s; E2E en el emulador | 🟡 17/10 (0.1.79 publicada): verificada en el emulador, más el bug de presencia que frenaba todos los push; falta probar sobre un bloqueo real |
 | FL8.2 | **Doble check sin abrir la app** (José, 17/10, chat con Wilson: un solo check aunque Wilson tenía internet). Hoy «entregado» lo marca la app al conectarse; el push llega al teléfono pero es una notificación común, Android la muestra sin ejecutar código de la app y el server nunca se entera. Camino: push de mensaje solo-datos que recibe el servicio nativo de FL8.1, que dibuja la notificación y le confirma la entrega al server con un token corto del propio push (sin JWT) | con la app cerrada, el mensaje pasa a dos checks grises al llegar el push al otro teléfono — ver §45.17 | ✅ 17/10: hecho y verificado en el emulador; sale en 0.1.80 |
-| FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | ⬜ |
+| FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | 🟡 17/10: FL9a hecha (§45.18): pulsación larga completa, links, cita que salta, divisor de no leídos, atrás. Falta: varias fotos con pie, notas de voz, buscar en el chat, borradores, archivar, perfil |
 | FL10 | **Pulido y coherencia** (§46.3): un solo registro (tuteo), 44 dp, encuestas completas, detalle de evento | auditoría de pantalla entera sin hallazgos ALTA | ⬜ |
 
 ### 45.4 As-is FL0 (16/10/2026)
@@ -4091,6 +4091,63 @@ sin ejecutar nada de la app y el server nunca se enteraba.
 **No verificado:** responder o marcar leído desde la notificación (no
 existe todavía); el nombre que se ve es el del server, no el de la agenda del
 teléfono (igual que antes).
+
+### 45.18 As-is FL9a, las acciones de la conversación (17/10/2026)
+
+Primera tanda de §46.2: lo que se hace con un mensaje y al moverse por el chat.
+
+**Pulsación larga** (`SeleccionDeMensaje`, `accionesDeMensaje.ts`, 5 tests)
+- Responder, Copiar (`expo-clipboard`, con aviso «Copiado»), Reenviar y
+  Eliminar. Antes solo había Eliminar, sin confirmar, y aparecía en mensajes
+  ajenos que el server rechazaba.
+- **Eliminar** pregunta:
+  - «Eliminar para todos», solo en lo propio: deja la lápida de siempre;
+  - «Eliminar para mí»: se oculta en ESTE teléfono (`ocultos.ts`, por chat en
+    AsyncStorage) y los demás lo siguen viendo.
+- **Reenviar** manda el TEXTO a otro chat por la cola de siempre.
+  - Los chats secretos no aparecen como destino: el texto saldría en claro.
+  - Desde un chat secreto no se reenvía.
+  - Las fotos no se reenvían todavía: pide que el server comparta el archivo.
+
+**Links, correos y celulares tocables** (`enlaces.ts`, 6 tests;
+`TextoConEnlaces`)
+- Los links van con o sin `https`. El punto final no es parte del link.
+- Los celulares peruanos se reconocen con o sin +51 y espacios. Un monto o un
+  código de pedido NO se vuelven tocables.
+
+**Tocar una cita lleva al original** (`CitaDeRespuesta`)
+- Lo resalta 1,5 s. Hace un segundo pase de scroll a los 400 ms: con alturas
+  variables, el primero cae corto si esa zona no se midió (visto en el E2E).
+- En los grupos la cita dice de quién es (`citadosPorSeq` con los nombres del
+  grupo; antes quedaba vacía).
+
+**«N mensajes no leídos»** (`divisorNoLeidos.ts`, 3 tests;
+`useDivisorNoLeidos`)
+- El divisor va arriba del primer no leído y el chat abre AHÍ, no abajo. Se
+  toma al abrir y se queda hasta salir, como WhatsApp.
+
+**Atrás deshace lo último** (`decidirAtras`, 5 tests nuevos): suelta la
+selección, cancela la respuesta, y en la lista limpia la búsqueda antes de
+cerrar la app.
+
+**E2E** (emulador, debug contra :3104, chat «QA Ana» con 15 leídos y 4 no
+leídos):
+- El chat abrió con «4 mensajes no leídos» sobre el primero nuevo.
+- El link abrió Chrome y el celular abrió el marcador.
+- La pulsación larga mostró las cuatro acciones y atrás soltó la selección.
+- Copiar: el portapapeles del sistema mostró el texto.
+- **Eliminar** en uno ajeno solo ofreció «para mí». Se ocultó y en el server
+  sigue intacto.
+- **Reenviar** a QA Ana: llegó como seq 20.
+- **Eliminar en uno propio** ofreció «para todos» y dejó la lápida, también en
+  el server.
+- **Responder** mostró «Respondiendo» y atrás la canceló.
+- **Tocar la cita** saltó al mensaje 2 y lo resaltó.
+
+**Observación:** una vez, recién abierto el chat, la lista volvió sola al
+final unos segundos después del salto. No se repitió, pero queda anotado.
+
+**Deuda:** `ChatScreen.tsx` llegó a 940 líneas: hay que partirla.
 
 ## 47. Lilachat Empresa — plan (17/10/2026)
 

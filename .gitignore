@@ -6,3 +6,8 @@ dist/
 
 # Sello local de constroad-gates (de cada máquina)
 .claude/gates-ok
+
+# Diseños de Stitch: referencia LOCAL, nunca al repo (regla de José, 30/09/2026).
+# Solo se versiona el inventario de texto que citan los specs.
+design/stitch/*
+!design/stitch/INVENTARIO.md

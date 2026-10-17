@@ -3391,7 +3391,7 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | FL3 | **Burbujas y lista estilo WhatsApp** — conversación (§45.9) y lista (§45.10), claro y oscuro | auditoría lado a lado contra el diseño de Stitch | ✅ 16/10 (0.1.75) |
 | FL4 | **Latencia del server** — hecho: envío de 5 a 3 viajes, lista sin N+1, ping 15/10 s (§45.7). Hecho también: bóveda (D2, §45.11). Falta: caché de membresía para acuses/typing, fotos con dimensiones + blurhash | ack < 300 ms medido | 🟡 16/10 |
 | FL5 | **Pendientes de F12 que pesan en el hilo JS**: cifrado/scrypt por lotes, tarea de fondo que mira wifi/carga primero (§44.4) — ver §45.12 | respaldar 20 000 mensajes sin ANR en `gama-baja` | 🟡 17/10: hecho y medido en V8 (tramo típico 0,7 ms); falta medir en un gama baja real |
-| FL6 | **Marca y Stitch**: logo vectorial único (ícono, adaptativo, mono, splash y `<Logo>` desde la misma geometría) — ver §45.13; diseñar en Stitch la conversación llena, con la paleta real y las pestañas reales | ícono verificado dentro del APK | 🟡 17/10: logo publicado y verificado en el APK (0.1.76); falta la pantalla de Stitch |
+| FL6 | **Marca y Stitch**: logo vectorial único (ícono, adaptativo, mono, splash y `<Logo>` desde la misma geometría) — ver §45.13; diseñar en Stitch la conversación llena, con la paleta real y las pestañas reales | ícono verificado dentro del APK | ✅ 17/10: logo (0.1.76) y pantallas de Stitch |
 | FL7 | **Agenda editable y visor a lo WhatsApp** + lo roto de la auditoría que no podía esperar — ver §45.14 | editar/borrar avisos y eventos, día y hora exactos, deslizar entre fotos; E2E en el emulador | ✅ 17/10 (0.1.77) |
 | FL8 | **Lo que se pierde o se rompe** (auditoría §46.1) | ningún mensaje desaparece sin aviso; la notificación abre su chat; la llamada suena fuera del chat | ⬜ |
 | FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | ⬜ |
@@ -3722,8 +3722,18 @@ Chats, Agenda o Encuestas pedía todo de nuevo y mostraba el esqueleto. Ahora:
   cajón del emulador queda al lado de Lilafotos. Publicada en LilaStore con
   el ícono de la tienda nuevo (`lila app icon`); la descarga es idéntica al
   build (sha256).
-- **Falta de FL6**: la pantalla de Stitch con la conversación llena, la paleta
-  y las pestañas reales.
+- **Stitch** (17/10/2026, paleta «Vivid Pulse», la de `tokens.ts`): tres
+  pantallas en el proyecto, listadas en `design/stitch/INVENTARIO.md` —la
+  conversación 1:1 llena, la lista con las cuatro pestañas reales y «Editar
+  recordatorio»—. Lo que dibujan y la app todavía no tiene ya está en §46:
+  divisor «N no leídos», nota de voz con onda y velocidad, enlace tocable,
+  cita con autor y miniatura (FL9), «Mamá: …» en la vista previa de grupos.
+  «Editar recordatorio» coincide con lo construido en FL7 salvo «Repetir», que
+  Stitch dibuja como segmentado.
+- **Las capturas de Stitch salieron del repo**: estaban versionadas desde el
+  primer commit, contra la regla de José. Ahora `design/stitch/*` está en
+  `.gitignore` (salvo el inventario) y los archivos siguen en la máquina; la
+  historia vieja los conserva hasta que José decida reescribirla.
 
 ### 45.14 As-is FL7, agenda editable, visor y lo urgente de la auditoría (17/10/2026)
 

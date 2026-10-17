@@ -20,7 +20,7 @@ const publicados: Message[] = [];
 const sinPush: Message[] = [];
 const fines: { chatId: string; from: string }[] = [];
 const timbres: string[] = [];
-let pendiente: (() => void) | null = null;
+let pendiente: (() => Promise<void>) | null = null;
 let reloj = 1_000_000;
 
 beforeAll(async () => {
@@ -68,8 +68,7 @@ describe('cicloDeLlamada', () => {
     expect(timbres).toEqual([chatId]);
 
     reloj += 31_000;
-    pendiente!();
-    await new Promise((listo) => setTimeout(listo, 50));
+    await pendiente!();
 
     const [linea] = await lineas();
     expect(linea?.system).toMatchObject({ evento: 'llamada', valor: 'voz:perdida' });
@@ -106,8 +105,7 @@ describe('cicloDeLlamada', () => {
     ofrecer();
     await alContestar(chatId);
     reloj += 31_000;
-    pendiente!();
-    await new Promise((listo) => setTimeout(listo, 50));
+    await pendiente!();
 
     expect(await lineas()).toHaveLength(0);
   });

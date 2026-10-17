@@ -38,7 +38,8 @@ export type DependenciasDelCiclo = {
   avisarFin: (params: Miembros) => Promise<void>;
   avisarLlamada: (params: Miembros & { video: boolean }) => Promise<void>;
   ahora?: () => number;
-  programar?: (tarea: () => void, ms: number) => void;
+  /** La tarea devuelve su promesa: un test la espera en vez de adivinar cuánto tarda. */
+  programar?: (tarea: () => Promise<void>, ms: number) => void;
 };
 
 /** Margen sobre el timbre: que el teléfono que llama corte primero. */
@@ -52,9 +53,9 @@ export function configurarCiclo(dependencias: DependenciasDelCiclo): void {
 
 const ahora = () => deps?.ahora?.() ?? Date.now();
 
-function programar(tarea: () => void, ms: number): void {
+function programar(tarea: () => Promise<void>, ms: number): void {
   if (deps?.programar) return deps.programar(tarea, ms);
-  setTimeout(tarea, ms).unref();
+  setTimeout(() => void tarea(), ms).unref();
 }
 
 export function alOfrecer(params: Miembros & { video: boolean; frame: object }): void {
@@ -64,9 +65,9 @@ export function alOfrecer(params: Miembros & { video: boolean; frame: object }):
   void deps.avisarLlamada(params).catch((error) => reportar('avisar la llamada', error));
   // Venció sin que nadie contestara ni colgara (el que llama cerró la app, se
   // quedó sin red): la llamada igual se cierra y queda como perdida.
-  programar(() => {
+  programar(async () => {
     if (inicioDeOferta(params.chatId) !== desde) return;
-    if (sigueSonando(params.chatId, desde, desde)) void alTerminar(params.chatId);
+    if (sigueSonando(params.chatId, desde, desde)) await alTerminar(params.chatId);
   }, CALL_TIMEOUT_MS + MARGEN_DE_VENCIMIENTO_MS);
 }
 

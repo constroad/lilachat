@@ -45,7 +45,7 @@ import {
 } from '../api/client';
 import { busquedaValida, extractoDeCoincidencia } from '@lilachat/shared';
 import { conciliarCache } from './cacheDeChats';
-import { guardarChats, leerChatsGuardados } from './chatsGuardados';
+import { chatsEnMemoria, guardarChats, leerChatsGuardados } from './chatsGuardados';
 import { aplicarMensajeALista, marcarLeido, type MensajeEnVivo } from './listaEnVivo';
 import { inicioDelProceso, medirUnaVez } from '../diagnostico/diagnostico';
 import { FlashList } from '@shopify/flash-list';
@@ -91,13 +91,14 @@ export function ChatListScreen({
    * pelados hasta que algo mas la refresque.
    */
   const agenda = useSyncExternalStore(suscribirAgenda, agendaPorTelefono, agendaPorTelefono);
-  const [chats, setChats] = useState<ChatSummary[] | null>(null);
+  // Desde la memoria del proceso si ya se leyó: sin esqueleto al remontar.
+  const [chats, setChats] = useState<ChatSummary[] | null>(() => chatsEnMemoria());
   /**
    * Lo guardado se pinta ANTES de preguntarle a la red: abrir la app y ver
    * esqueletos cada vez es la diferencia de fondo con WhatsApp, que es
    * local-first. La red confirma o corrige por detrás.
    */
-  const chatsRef = useRef<ChatSummary[] | null>(null);
+  const chatsRef = useRef<ChatSummary[] | null>(chats);
 
   // En un ref: el listener del socket lo lee sin re-suscribirse.
   const chatAbiertoRef = useRef(chatAbierto);

@@ -33,6 +33,7 @@ import {
 import { AppHeader, BottomNav, type Tab } from './BottomNav';
 import { useMargenes } from './useMargenes';
 import { DiagnosticoAjuste } from '../diagnostico/DiagnosticoAjuste';
+import { visitadasCon } from './pestanas';
 import { decidirAtras } from './botonAtras';
 import { nombreDeContacto } from '@lilachat/shared';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
@@ -84,6 +85,10 @@ export function TabsShell({
     chatsRef.current = chats;
   }, [chats]);
   const [reloadKey, setReloadKey] = useState(0);
+  const [visitadas, setVisitadas] = useState<ReadonlySet<Tab>>(() => new Set<Tab>(['chats']));
+  useEffect(() => setVisitadas((antes) => visitadasCon(antes, tab)), [tab]);
+  /** Una pestaña montada pero no activa se oculta sin desmontarse. */
+  const panel = (cual: Tab) => ({ flex: 1, display: cual === tab ? ('flex' as const) : ('none' as const) });
   const [showBackup, setShowBackup] = useState(false);
   const [invitando, setInvitando] = useState(false);
   const [chequeo, setChequeo] = useState<ResultadoDelChequeo | null>(null);
@@ -335,10 +340,15 @@ export function TabsShell({
         </Pressable>
       </AppHeader>
 
-      <View className="flex-1" key={`${tab}-${reloadKey}`}>
-        {/* La banda va arriba de la lista y SOLO en Chats: es la pantalla de
-            entrada, y repetirla en las cuatro pestañas la convierte en ruido. */}
-        {tab === 'chats' ? (
+      {/* Las pestañas quedan MONTADAS después de la primera visita y solo se
+          ocultan (`pestanas.ts`): remontarlas mostraba el esqueleto en cada
+          cambio. Agenda y Encuestas se recargan solas al crear algo
+          (`reloadKey` en SU `key`, ya no en todo el contenedor). */}
+      <View className="flex-1">
+        {visitadas.has('chats') ? (
+          <View style={panel('chats')}>
+          {/* La banda va arriba de la lista y SOLO en Chats: es la pantalla de
+              entrada, y repetirla en las cuatro pestañas la convierte en ruido. */}
           <BandaDeActualizacion
             aviso={aviso}
             estado={estadoActualizacion}
@@ -358,21 +368,28 @@ export function TabsShell({
               setAviso({ tipo: 'ninguno' });
             }}
           />
-        ) : null}
-        {tab === 'chats' ? (
           <ChatListScreen
             credential={credential}
             chatAbierto={chatAbierto}
             onOpenChat={onOpenChat}
             onNewChat={() => setNewChat(true)}
           />
-        ) : tab === 'encuestas' ? (
-          <PollsScreen credential={credential} onCreate={() => setCreating('poll')} />
-        ) : tab === 'agenda' ? (
-          // Eventos y avisos en una sola pestaña: el botón de crear ofrece los
-          // dos tipos en vez de adivinar por el filtro activo.
-          <AgendaScreen credential={credential} onCreate={(kind) => setCreating(kind)} />
-        ) : (
+          </View>
+        ) : null}
+        {visitadas.has('encuestas') ? (
+          <View style={panel('encuestas')}>
+            <PollsScreen key={`encuestas-${reloadKey}`} credential={credential} onCreate={() => setCreating('poll')} />
+          </View>
+        ) : null}
+        {visitadas.has('agenda') ? (
+          <View style={panel('agenda')}>
+            {/* Eventos y avisos en una sola pestaña: el botón de crear ofrece
+                los dos tipos en vez de adivinar por el filtro activo. */}
+            <AgendaScreen key={`agenda-${reloadKey}`} credential={credential} onCreate={(kind) => setCreating(kind)} />
+          </View>
+        ) : null}
+        {visitadas.has('ajustes') ? (
+          <View style={panel('ajustes')}>
           // `padding` también en Android: con edge-to-edge la ventana ya no se
           // encoge con el teclado, y la passphrase del respaldo quedaba tapada
           // sin forma de subirla (mismo motivo que en ChatScreen).
@@ -573,7 +590,8 @@ export function TabsShell({
             </Pressable>
           </ScrollView>
           </KeyboardAvoidingView>
-        )}
+          </View>
+        ) : null}
       </View>
 
       <BottomNav active={tab} onChange={setTab} />

@@ -3372,7 +3372,7 @@ mismo commit** (fecha, commit, versión del APK). ✅ hecho y verificado ·
 
 | # | Decisión | Opciones | Bloquea |
 | --- | --- | --- | --- |
-| D1 | Modelo de mensajes | (a) server + cifrado por defecto (plan F12) · (b) store-and-forward como WhatsApp · (c) server borra al confirmar entrega + 30 días | F12.3, F12.4 |
+| D1 | Modelo de mensajes | ✅ **(a) el server guarda los mensajes** y el cifrado de punta a punta es opcional por chat (chat secreto). José, 17/10/2026, al aprobar el plan empresarial (§47): buscar, retener y exportar piden mensajes legibles en el server. Descartadas: (b) store-and-forward como WhatsApp y (c) borrar al confirmar entrega | F12.3, F12.4, §47 |
 | D2 | Base de Lilachat | ✅ **bóveda** desde el 17/10/2026 (§45.11) | — |
 | D3 | Marca | ✅ dos burbujas redondas desde una sola geometría (`shared/src/marca.ts`, §45.13) | — |
 
@@ -3394,6 +3394,8 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | FL6 | **Marca y Stitch**: logo vectorial único (ícono, adaptativo, mono, splash y `<Logo>` desde la misma geometría) — ver §45.13; diseñar en Stitch la conversación llena, con la paleta real y las pestañas reales | ícono verificado dentro del APK | ✅ 17/10: logo (0.1.76) y pantallas de Stitch |
 | FL7 | **Agenda editable y visor a lo WhatsApp** + lo roto de la auditoría que no podía esperar — ver §45.14 | editar/borrar avisos y eventos, día y hora exactos, deslizar entre fotos; E2E en el emulador | ✅ 17/10 (0.1.77) |
 | FL8 | **Lo que se pierde o se rompe** (auditoría §46.1) — ver §45.15 | ningún mensaje desaparece sin aviso; la notificación abre su chat; la llamada suena fuera del chat | ✅ 17/10 (0.1.78) |
+| FL8.1 | **Llamada entrante como WhatsApp** (pedido de José tras probar con Wilson, 17/10): pantalla completa sobre el bloqueo con tono que se repite, deslizar para contestar, rechazar sin abrir la app, tono con la app abierta, «Llamada perdida» en el chat — ver §45.16 | con la app cerrada y el teléfono bloqueado la llamada ocupa la pantalla y suena hasta contestar, rechazar o 30 s; E2E en el emulador | 🟡 17/10: hecha y verificada en el emulador (más el bug de presencia que frenaba todos los push); falta publicar y probar sobre un bloqueo real |
+| FL8.2 | **Doble check sin abrir la app** (José, 17/10, chat con Wilson: un solo check aunque Wilson tenía internet). Hoy «entregado» lo marca la app al conectarse; el push llega al teléfono pero es una notificación común, Android la muestra sin ejecutar código de la app y el server nunca se entera. Camino: push de mensaje solo-datos que recibe el servicio nativo de FL8.1, que dibuja la notificación y le confirma la entrega al server con un token corto del propio push (sin JWT) | con la app cerrada, el mensaje pasa a dos checks grises al llegar el push al otro teléfono | ⬜ pendiente |
 | FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | ⬜ |
 | FL10 | **Pulido y coherencia** (§46.3): un solo registro (tuteo), 44 dp, encuestas completas, detalle de evento | auditoría de pantalla entera sin hallazgos ALTA | ⬜ |
 
@@ -3941,6 +3943,126 @@ local no es la de producción y lila contesta 401.
 - `ChatScreen.tsx` tiene 923 líneas y `TabsShell.tsx` 681.
 - El ícono chico de la notificación queda para FL10.
 
+### 45.16 As-is FL8.1, la llamada entrante como WhatsApp (17/10/2026)
+
+José probó llamar a Wilson con 0.1.77: a Wilson no le llegó nada; tuvieron que
+estar los dos en el chat. 0.1.78 ya la hacía sonar fuera del chat, pero con
+la app cerrada solo era una notificación común: sonaba una vez, sin pantalla
+completa y sin Contestar/Rechazar.
+
+**Módulo nativo `modules/llamada-entrante`** (Android)
+- `ServicioDeAvisos` extiende al servicio de FCM de expo-notifications, con
+  prioridad 10 contra −1. La llamada (`tipo: llamada`) y su fin se atienden
+  ahí aun con la app cerrada; el resto sigue al delegado de expo.
+- `AvisoDeLlamada` es la notificación `CallStyle`:
+  - canal propio «Llamadas» con el tono de llamada del teléfono;
+  - `FLAG_INSISTENT`: el tono se repite hasta tocar algo o que venza;
+  - pantalla completa, categoría llamada, Contestar/Rechazar;
+  - vence con lo que le queda de timbre. Es relativo: el reloj del teléfono
+    puede no ser el del server.
+- **Rechazar sin abrir la app** (`ReceptorDeLlamada`): `POST
+  /api/calls/rechazar` con un token corto que trae el push. Ese token se firma
+  con un secreto derivado, así nunca sirve como sesión.
+- **Contestar o tocarla** abre la app con el chat y la acción
+  (`LlamadaEntrantePackage`). La app se muestra sobre el bloqueo y JS se
+  entera (`Puente`).
+- `Bloqueo.soltar` devuelve la app detrás del bloqueo al terminar, o si la
+  oferta no llega en 8 s: si no, cualquiera recorre los chats tras colgar.
+- `Tono`: el tono del teléfono con la app adelante.
+- `puedePantallaCompleta`: en Android 14+, si el sistema lo negó, Ajustes
+  muestra «Llamadas a pantalla completa» con el atajo
+  (`AvisoDePantallaCompleta`).
+- El autolinking de expo encuentra los packages por el NOMBRE del archivo
+  (`*Package.kt`); dentro de otro archivo no se enlazaba.
+- expo-notifications llega precompilado (repo maven local), no como proyecto
+  de Gradle: va como `compileOnly` por coordenadas.
+
+**Server**
+- El teléfono declara `capacidades: ['llamada-nativa']` al registrar su push
+  (`CAPACIDADES_DE_PUSH`). A ese le llega la llamada como push solo-datos
+  (prioridad alta, vida 30 s, con el token de rechazo, uno por persona). Una
+  versión vieja sigue recibiendo la notificación común.
+- `cicloDeLlamada.ts` maneja suena → vence o la contestan → termina:
+  - al contestar, se apagan los otros teléfonos: push `llamada-fin` y
+    `call.end` con `contestada-en-otro` a mis otros dispositivos;
+  - al terminar queda la línea en el chat UNA vez (`kind: 'system'`, evento
+    `llamada`): «perdida» va con push y la contestada, sin push;
+  - el timbre que vence sin respuesta también deja «perdida».
+- La oferta que se entrega tarde (al conectar) lleva `quedaMs`: el teléfono no
+  arranca otros 30 s. En el E2E contestó a los 54 s y el server ya la había
+  dado por perdida.
+- **Bug de presencia, de antes de FL8.1:**
+  - `markOnline` corría después de un `await` y `markOffline` podía correr
+    antes. Conectar y cortar enseguida, como al salir rápido de la app, dejaba
+    el contador en 1 para siempre.
+  - Esa persona figuraba «en línea» sin socket y no recibía NINGÚN push
+    (mensajes ni llamadas) hasta reiniciar el server.
+  - Ahora el alta y la baja son sincrónicas
+    (`test/presenciaCarrera.test.ts`: fallaba 3 de 3 antes del arreglo).
+
+**App**
+- Deslizar hacia arriba para contestar (`DeslizarParaContestar`): un toque no
+  contesta y TalkBack tiene la acción «Contestar».
+  - La decisión corre en el hilo de UI, así que lleva `'worklet'`. Sin eso el
+    gesto fallaba.
+  - Se cruza a JS sin argumentos: pasar una función como argumento de
+    `runOnJS` no llegaba.
+- Con la app adelante suena el tono del teléfono. De fondo con el socket vivo
+  («Conexión permanente») la llamada se dibuja en nativo (`comoSuena`).
+- Lo tocado en la notificación antes de que llegue la oferta espera a esa
+  oferta (`queHacerConElAviso`).
+- «Llamada perdida», «Llamada sin respuesta» y «Llamada de voz · 00:21» llevan
+  ícono y hora (`LineaDeLlamada`, `shared/registroDeLlamada`, 8 tests). La
+  perdida va en rojo.
+
+**E2E** (emulador, debug contra :3104; los push filtrados a equipos nuevos):
+- **App con el proceso muerto:** aparece la `CallStyle` «QA Ana · Llamada
+  entrante» con canal de llamadas, `INSISTENT`, pantalla completa y el tono
+  del teléfono. Rechazar en la notificación hizo que QA Ana recibiera
+  `motivo: rechazada` sin abrir la app; quedó la línea «perdida» y su push.
+- **App de fondo:** la notificación aparece. Contestar abre la app y contesta
+  sola: la primera vez pide el micrófono y después «Conectando…».
+- **App adelante:** pantalla con «Desliza para contestar». El toque no
+  contestó y deslizar sí.
+- **Pantalla apagada:** la llamada la encendió y abrió la app directo en la
+  llamada entrante.
+- **Quien llama corta antes:** la notificación se va sola y llega «Llamada
+  perdida».
+- En el chat quedaron las líneas rojas de perdidas y la gris «Llamada de voz ·
+  00:21».
+
+**No verificado**
+- La llamada SOBRE un bloqueo real: el emulador no tiene bloqueo de pantalla
+  (`isKeyguardShowing=false`).
+- Tono y vibración audibles: el emulador no suena.
+- Una versión vieja recibiendo la notificación común: lo cubre el test del
+  server.
+
+**Notas**
+- Las líneas de llamada cuentan como no leídas (como WhatsApp), pero disparan
+  «Ponme al día» de Lila sobre puras llamadas. Va a FL10.
+- Con la app de fondo y sin «Conexión permanente» el socket se pausa: el
+  server marca fuera de línea y la llamada va por push. Tras matar el proceso,
+  el socket viejo puede tardar en caer, y en ese rato no hay push.
+
+## 47. Lilachat Empresa — plan (17/10/2026)
+
+José aprobó llevar Lilachat a un uso empresarial tipo Slack, con D1 en (a).
+Fases propuestas, por impacto:
+
+| Fase | Qué | Estado |
+| --- | --- | --- |
+| E1 | **Espacio por empresa y directorio**: miembros sin depender de la agenda, roles dueño/admin/miembro/invitado, desactivar a alguien corta sus equipos | ⬜ |
+| E2 | **Canales** públicos y privados por tema, con descripción y fijados; unirse sin invitación | ⬜ |
+| E3 | **Hilos y menciones** (@persona, @canal, @aquí); avisos configurables: todo o solo menciones | ⬜ |
+| E4 | **Integraciones**: webhooks entrantes (el Portal publica en un canal), comandos con `/`, Lila como bot y **mensajes con botones** como WhatsApp Business (respuestas rápidas, listas, «Ver detalle»); solo los bots los mandan, tocar uno responde y le avisa al bot | ⬜ |
+| E5 | **Búsqueda** en todo el historial con filtros, retención, exportación y auditoría | ⬜ |
+
+**Dependencia: central de push.** Un proyecto de Firebase con todas las apps
+y un módulo «Avisos» en LilaStore: interruptor por app, clave por backend,
+`registrar` / `enviar`, limpieza de tokens y métricas. Se trabaja en el repo
+de LilaStore; Lilachat sigue con su FCM directo y migra cuando esté.
+
 ## 46. Auditoría UX contra WhatsApp (17/10/2026)
 
 Dos pasadas de solo lectura (conversaciones; todo lo demás), con evidencia
@@ -4012,6 +4134,8 @@ Dos pasadas de solo lectura (conversaciones; todo lo demás), con evidencia
 - Dos respaldos distintos en Ajustes; «Respaldar ahora» de la copia vieja
   deja a cualquiera lanzar un dump del server entero (`backupRoutes.ts:44`).
 - Un solo ErrorBoundary para toda la app; orientación fija en vertical.
+- Las líneas de llamada cuentan como no leídas y disparan «Ponme al día» de
+  Lila sobre puras llamadas (E2E de FL8.1).
 - La lista de chats se pide 5 veces al arrancar: `TabsShell` y
   `ChatListScreen` piden cada uno, y otra vez al reconectar (log del server de
   QA, FL8). Va con FL4.

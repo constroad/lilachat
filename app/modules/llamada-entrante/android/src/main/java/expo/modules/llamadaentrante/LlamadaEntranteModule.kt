@@ -38,6 +38,9 @@ class LlamadaEntranteModule : Module() {
       Puente.tomarPendiente()?.let { mapOf("chatId" to it.first, "accion" to it.second) }
     }
     Function("soltarBloqueo") { Bloqueo.soltar(appContext.currentActivity) }
+    // FL8.2: el aviso de mensaje tocado, y limpiar el de un chat al abrirlo.
+    Function("chatPendiente") { Puente.tomarChatPendiente() }
+    Function("limpiarChat") { chatId: String -> AvisoDeMensaje.limpiar(contexto, chatId) }
     Function("puedePantallaCompleta") {
       if (Build.VERSION.SDK_INT < 34) true
       else contexto.getSystemService(NotificationManager::class.java)?.canUseFullScreenIntent() ?: false

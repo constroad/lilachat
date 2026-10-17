@@ -46,6 +46,7 @@ import { useLlamadas } from '../calls/ProveedorDeLlamadas';
 import { descartarMensaje, reintentarMensaje } from './outboxStore';
 import { descartarArchivo, encolarArchivo, reintentarArchivo } from './colaDeArchivos';
 import { useArchivosDelChat } from './useArchivosDelChat';
+import { useLimpiarAvisoDelChat } from './useLimpiarAvisoDelChat';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { decidirAtras } from '../ui/botonAtras';
@@ -111,6 +112,7 @@ export function ChatScreen({
     enabled: Boolean(encrypted),
   });
   const sesionLista = encrypted && secreto.estado === 'listo' ? secreto : null;
+  useLimpiarAvisoDelChat(chatId);
   const {
     eliminar,
     messages,

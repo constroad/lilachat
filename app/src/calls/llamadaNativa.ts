@@ -19,6 +19,8 @@ export function queHacerConElAviso(params: {
   chatId: string | null;
 }): QueHacer {
   const { aviso, estado } = params;
+  // Tocar el aviso de un MENSAJE (FL8.2) lo atiende la navegación, no la llamada.
+  if (aviso.accion === 'chat') return 'nada';
   if (!estado || estado.fase === 'terminada') return aviso.accion === 'rechazar' ? 'nada' : 'esperar';
   if (params.chatId !== aviso.chatId || estado.fase !== 'sonando') return 'nada';
   if (aviso.accion === 'contestar') return 'contestar';

@@ -39,6 +39,13 @@ class OyenteDeActividad : ReactActivityLifecycleListener {
    * suena la app— y JS se entera del chat y de lo que se tocó.
    */
   private fun atender(activity: Activity, intent: Intent?) {
+    // Un aviso de MENSAJE: abre ese chat, sin nada de bloqueo (FL8.2).
+    intent?.getStringExtra(AvisoDeMensaje.EXTRA_CHAT_MENSAJE)?.let { chatId ->
+      intent.removeExtra(AvisoDeMensaje.EXTRA_CHAT_MENSAJE)
+      AvisoDeMensaje.limpiar(activity, chatId)
+      Puente.emitirChat(chatId)
+      return
+    }
     val chatId = intent?.getStringExtra(AvisoDeLlamada.EXTRA_CHAT) ?: return
     val accion = intent.getStringExtra(AvisoDeLlamada.EXTRA_ACCION) ?: "abrir"
     // Que una recreación (girar la pantalla) no lo vuelva a atender.

@@ -146,7 +146,7 @@ object AvisoDeLlamada {
   }
 
   /** El ícono de notificación si la app tiene uno; si no, el de la app. */
-  private fun iconoChico(contexto: Context): Int {
+  fun iconoChico(contexto: Context): Int {
     val propio = contexto.resources.getIdentifier("notification_icon", "drawable", contexto.packageName)
     return if (propio != 0) propio else contexto.applicationInfo.icon
   }

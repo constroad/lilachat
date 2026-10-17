@@ -7,7 +7,8 @@ import { requireOptionalNativeModule } from 'expo';
  * `requireOptionalNativeModule`: en una build sin el módulo (o en la web) todo
  * esto no hace nada, y la llamada sigue funcionando como antes de FL8.1.
  */
-export type AccionDeAviso = { chatId: string; accion: 'abrir' | 'contestar' | 'rechazar' };
+/** `chat`: se tocó el aviso de un MENSAJE (FL8.2); lo demás es de la llamada. */
+export type AccionDeAviso = { chatId: string; accion: 'abrir' | 'contestar' | 'rechazar' | 'chat' };
 
 type Suscripcion = { remove(): void };
 
@@ -19,6 +20,8 @@ type LlamadaNativa = {
   detenerTono(): void;
   accionPendiente(): AccionDeAviso | null;
   soltarBloqueo(): void;
+  chatPendiente(): string | null;
+  limpiarChat(chatId: string): void;
   puedePantallaCompleta(): boolean;
   abrirAjustesPantallaCompleta(): void;
   addListener(evento: 'onAccion', oyente: (accion: AccionDeAviso) => void): Suscripcion;
@@ -45,6 +48,10 @@ export const llamadaNativa = {
   detenerTono: (): void => seguro(() => nativo?.detenerTono(), undefined),
   accionPendiente: (): AccionDeAviso | null => seguro(() => nativo?.accionPendiente() ?? null, null),
   soltarBloqueo: (): void => seguro(() => nativo?.soltarBloqueo(), undefined),
+  /** El chat del aviso de mensaje con el que se abrió la app (FL8.2). */
+  chatPendiente: (): string | null => seguro(() => nativo?.chatPendiente() ?? null, null),
+  /** Al abrir un chat: se va su aviso nativo. */
+  limpiarChat: (chatId: string): void => seguro(() => nativo?.limpiarChat(chatId), undefined),
   puedePantallaCompleta: (): boolean => seguro(() => nativo?.puedePantallaCompleta() ?? true, true),
   abrirAjustesPantallaCompleta: (): void => seguro(() => nativo?.abrirAjustesPantallaCompleta(), undefined),
   alTocar: (oyente: (accion: AccionDeAviso) => void): Suscripcion =>

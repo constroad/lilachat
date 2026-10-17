@@ -3,6 +3,7 @@ import * as Notifications from 'expo-notifications';
 import { listChats, type ChatSummary } from '../api/client';
 import { chatsEnMemoria, leerChatsGuardados } from '../chat/chatsGuardados';
 import { destinoDeAviso } from './destinoDeAviso';
+import { llamadaNativa } from '../../modules/llamada-entrante/src';
 
 /**
  * Tocar una notificación abre lo que avisa (FL8; auditoría 17/10/2026: el
@@ -47,9 +48,22 @@ export function useAbrirDesdeAviso(params: {
       .then(atender)
       .catch(() => undefined);
     const suscripcion = Notifications.addNotificationResponseReceivedListener((respuesta) => void atender(respuesta));
+
+    // FL8.2: los avisos de mensaje que dibuja el servicio nativo. Expo no los
+    // conoce: el toque llega por el puente (en frío, como pendiente).
+    const abrirPorId = async (chatId: string) => {
+      const chat = await buscarChat(chatId, params.jwt);
+      if (chat && vivo) abrirChatRef.current(chat);
+    };
+    const enFrio = llamadaNativa.chatPendiente();
+    if (enFrio) void abrirPorId(enFrio);
+    const toques = llamadaNativa.alTocar((aviso) => {
+      if (aviso.accion === 'chat') void abrirPorId(aviso.chatId);
+    });
     return () => {
       vivo = false;
       suscripcion.remove();
+      toques.remove();
     };
   }, [params.jwt]);
 }

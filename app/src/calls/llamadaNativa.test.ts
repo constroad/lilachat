@@ -29,6 +29,12 @@ describe('queHacerConElAviso', () => {
     expect(queHacerConElAviso({ aviso: { chatId: 'c1', accion: 'rechazar' }, estado: activa, chatId: 'c1' })).toBe('nada');
   });
 
+  // FL8.2: tocar el aviso de un MENSAJE abre el chat; no es cosa de la llamada.
+  it('un toque de mensaje no espera ni contesta nada', () => {
+    expect(queHacerConElAviso({ aviso: { chatId: 'c1', accion: 'chat' }, estado: null, chatId: null })).toBe('nada');
+    expect(queHacerConElAviso({ aviso: { chatId: 'c1', accion: 'chat' }, estado: sonando, chatId: 'c1' })).toBe('nada');
+  });
+
   it('rechazar sin llamada: nada (el server ya la cortó por HTTP)', () => {
     expect(queHacerConElAviso({ aviso: { chatId: 'c1', accion: 'rechazar' }, estado: null, chatId: null })).toBe('nada');
   });

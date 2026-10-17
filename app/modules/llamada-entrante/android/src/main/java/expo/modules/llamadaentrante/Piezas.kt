@@ -26,6 +26,8 @@ class ServicioDeAvisos : ExpoFirebaseMessagingService() {
       // Con la app adelante la llamada la dibuja la app (llega por el socket).
       "llamada" -> if (!appAdelante()) DatosDeLlamada.desdePush(data)?.let { AvisoDeLlamada.mostrar(this, it) }
       "llamada-fin" -> data["chatId"]?.let { AvisoDeLlamada.quitar(this, it) }
+      // FL8.2: el mensaje se acusa (doble check) y se dibuja desde acá.
+      "mensaje" -> MensajeRecibido.desdePush(data)?.let { AvisoDeMensaje.recibir(this, it, appAdelante()) }
       else -> super.onMessageReceived(remoteMessage)
     }
   }
@@ -55,7 +57,7 @@ class ReceptorDeLlamada : BroadcastReceiver() {
     val pendiente = goAsync()
     thread {
       try {
-        rechazarPorHttp(servidor, token)
+        Http.postearToken("${servidor.trimEnd('/')}/api/calls/rechazar", token)
       } catch (_: Exception) {
         // Sin red el rechazo no llega: a quien llama le vence el timbre igual.
       } finally {
@@ -63,9 +65,12 @@ class ReceptorDeLlamada : BroadcastReceiver() {
       }
     }
   }
+}
 
-  private fun rechazarPorHttp(servidor: String, token: String) {
-    val conexion = URL("${servidor.trimEnd('/')}/api/calls/rechazar").openConnection() as HttpURLConnection
+/** Un POST con `{token}`: rechazar una llamada, acusar un mensaje. */
+object Http {
+  fun postearToken(url: String, token: String) {
+    val conexion = URL(url).openConnection() as HttpURLConnection
     try {
       conexion.requestMethod = "POST"
       conexion.connectTimeout = 8_000
@@ -92,6 +97,23 @@ object Puente {
   fun emitir(chatId: String, accion: String) {
     pendiente = Triple(chatId, accion, System.currentTimeMillis())
     oyente?.invoke(chatId, accion)
+  }
+
+  /**
+   * Un aviso de MENSAJE tocado: va en su propio lugar. La llamada se lleva su
+   * pendiente al arrancar; si compartieran, el chat a abrir se perdería ahí.
+   */
+  @Volatile private var chatPendiente: Pair<String, Long>? = null
+
+  fun emitirChat(chatId: String) {
+    chatPendiente = Pair(chatId, System.currentTimeMillis())
+    oyente?.invoke(chatId, "chat")
+  }
+
+  fun tomarChatPendiente(): String? {
+    val actual = chatPendiente ?: return null
+    chatPendiente = null
+    return if (System.currentTimeMillis() - actual.second <= VIGENCIA_MS) actual.first else null
   }
 
   fun tomarPendiente(): Pair<String, String>? {

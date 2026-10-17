@@ -3358,7 +3358,7 @@ mismo commit** (fecha, commit, versión del APK). ✅ hecho y verificado ·
 | F12.0–2 | Historial en el teléfono, respaldo cifrado, restaurar | 🟡 16/10 `943d293` | alta del disco en la mini (runbook); pendientes §44.4 |
 | F12.3 | Cifrado por defecto + media cifrada | ⬜ | **bloqueada por D1** |
 | F12.4 | Multi-dispositivo/web con sobre por dispositivo | ⬜ | después de F12.3 |
-| F13 | Mongo de emergencia en la mini | ⬜ | **revisar**: Portal/lila ya migraron a bóveda (08/10); Lilachat sigue en Atlas |
+| F13 | Mongo de emergencia en la mini | ⬜ | **revisar**: con la base ya EN la mini (bóveda, 17/10) el plan original pierde sentido; redefinir como respaldo verificado de bóveda |
 | F14 | Legado Digital (antes «F12» en §13) | ⬜ | — |
 | P1 | Deploy en Torre (`lilachat.constroad.com`) | ✅ 25/08 | — (push a main despliega el server solo, ~90 s) |
 | P2 | APK en LilaStore | ✅ | — |
@@ -3371,7 +3371,7 @@ mismo commit** (fecha, commit, versión del APK). ✅ hecho y verificado ·
 | # | Decisión | Opciones | Bloquea |
 | --- | --- | --- | --- |
 | D1 | Modelo de mensajes | (a) server + cifrado por defecto (plan F12) · (b) store-and-forward como WhatsApp · (c) server borra al confirmar entrega + 30 días | F12.3, F12.4 |
-| D2 | Base de Lilachat | quedarse en Atlas · migrar `lilachat_db` a bóveda | FL4 (latencia), F13 |
+| D2 | Base de Lilachat | ✅ **bóveda** desde el 17/10/2026 (§45.11) | — |
 | D3 | Marca | logo vectorial nuevo (burbuja simple, geometría como datos, patrón Lilafotos) | FL6 |
 
 ### 45.3 Plan Fluidez — «que se sienta como WhatsApp» (pedido de José, 16/10/2026)
@@ -3604,3 +3604,31 @@ pendiente. Las capturas NO van al repo.
   guardada). Y el fallo de descarga dice su motivo y queda en el diagnóstico
   (antes «Revisá la señal» a secas). El server de LilaStore sirve bien
   cualquier versión publicada (verificado con HEAD).
+
+### 45.11 Migración de la base a bóveda (16–17/10/2026)
+
+- **Lo que había**: `lilachat_db` ya existía en bóveda con una copia CONGELADA
+  del ~19/09 (alguien empezó la migración y no la terminó); producción seguía
+  escribiendo en Atlas. Se detectó comparando el último `updatedAt` de cada
+  colección en las dos bases (acuses y usuarios de Atlas eran de ese día).
+- **Copia fresca**: `mongodump` de Atlas → `mongorestore --db lilachat_db --drop`
+  por el túnel con el usuario `lilachat_dev` (`--desde tunel`): 79 documentos
+  con sus índices (`{chatId, seq}` único incluido). Trampa: con la base en la
+  URI, `mongorestore` apuntado a la carpeta del volcado restaura 0 documentos;
+  hay que pasarle la carpeta de la base (`dump/lilachat_db`) y `--db`.
+- **El cambio**: José creó `lilachat_app` (`--desde mini`) con `--torre chat
+  --clave MONGO_URL` (el modo automático no deja que Claude escriba secretos de
+  producción en Torre) y el push de `5d8cdfc` relanzó el server.
+- **Verificado**: un `read.set` propio contra producción (mismo `seq`, sin
+  efecto visible) movió el `updatedAt` del acuse en bóveda y no en Atlas.
+  `scripts/conciliar-migracion.ts --aplicar`: nada faltaba en bóveda (ya tenía
+  4 mensajes y 1 recordatorio nuevos, uso real); lo único modificado en Atlas
+  después del volcado fueron artefactos de QA (correo de la invitación vuelto
+  a su valor, login de prueba, un acuse — conciliado por máximo).
+- **La laptop**: `MONGO_URL` del `.env` apunta a bóveda con `lilachat_dev` por
+  el túnel (`boveda tunel`); el QA ya no escribe en el Atlas congelado.
+- **Atlas** queda congelado: leerlo no falla, da datos viejos. Revocar el
+  usuario `lilachat_app` de Atlas es decisión de José.
+- **Latencia**: con la base en la misma mini cada viaje baja de ~100 ms a
+  milisegundos; la cifra real del ack va a llegar por el diagnóstico de la
+  0.1.70+ (`ack-envio` en `/console/reportes`).

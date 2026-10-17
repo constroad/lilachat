@@ -32,6 +32,9 @@ const respaldoSchema = new Schema<Respaldo>(
 // La deduplicación, en la BASE: dos subidas del mismo respaldo que corren a la
 // vez terminan en «ya existe», no en dos archivos.
 respaldoSchema.index({ userId: 1, huella: 1 }, { unique: true });
+// Un nombre, un archivo: dos filas con el mismo nombre harían ambiguo el GET
+// y la retención borraría el archivo que la otra todavía indexa (FL5).
+respaldoSchema.index({ userId: 1, nombre: 1 }, { unique: true });
 // «El último» y la retención se preguntan por persona y por fecha.
 respaldoSchema.index({ userId: 1, creadoEn: -1 });
 

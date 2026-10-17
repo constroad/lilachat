@@ -204,6 +204,34 @@ describe('GET /api/respaldos/ultimo y /:nombre', () => {
   });
 });
 
+/**
+ * FL5 (§44.4): el GET era `createReadStream(...).pipe(res)`. Con el archivo
+ * indexado pero ausente del disco, el 'error' del stream no lo escuchaba nadie:
+ * en Node eso tumba el proceso, y el cliente quedaba colgado hasta su timeout.
+ */
+describe('GET /api/respaldos/:nombre cuando el disco no acompaña', () => {
+  it('indexado pero sin archivo en el disco: 404 en palabras, el server sigue vivo', async () => {
+    await subir('r1.lcb', bytesDe('uno')).expect(201);
+    await rm(path.join(raiz, rutaDeRespaldo(TELEFONO, 'r1.lcb')));
+
+    const respuesta = await request(app).get('/api/respaldos/r1.lcb').set('Authorization', `Bearer ${jwt}`).timeout(4_000);
+
+    expect(respuesta.status).toBe(404);
+    await request(app).get('/api/respaldos/ultimo').set('Authorization', `Bearer ${jwt}`).expect(200);
+  });
+});
+
+/** Dos filas con el mismo nombre para la misma persona harían ambiguo el GET y la retención. */
+describe('índice de Respaldo', () => {
+  it('el nombre es único por persona', async () => {
+    await RespaldoModel.init();
+    const fila = { userId, nombre: 'r1.lcb', bytes: 1, creadoEn: new Date() };
+    await RespaldoModel.create({ ...fila, huella: 'a'.repeat(64) });
+
+    await expect(RespaldoModel.create({ ...fila, huella: 'b'.repeat(64) })).rejects.toThrow(/duplicate key/);
+  });
+});
+
 describe('GET /api/respaldos/estado', () => {
   it('cuenta el disco, la copia y cuántos respaldos tengo', async () => {
     await subir('r1.lcb', bytesDe('uno')).expect(201);

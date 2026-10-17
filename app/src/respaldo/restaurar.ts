@@ -1,9 +1,9 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { Directory, File, Paths } from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { abrirRespaldo } from '@lilachat/shared';
+import { abrirRespaldoAsync } from '@lilachat/shared';
 import { BASE_URL, ultimoRespaldo, type EstadoDeRespaldos } from '../api/client';
-import { guardarMensajes, resumenDelAlmacen } from '../chat/mensajesGuardados';
+import { importarMensajes, resumenDelAlmacen } from '../chat/mensajesGuardados';
 import type { ChatMessage } from '../chat/useChat';
 import { huellaDeArchivo } from './archivosDeRespaldo';
 import { guardarEstadoDeRespaldo } from './estadoDeRespaldo';
@@ -23,6 +23,7 @@ export type RespaldoEnLaMini = NonNullable<EstadoDeRespaldos['ultimo']>;
 export type PasoDeRestauracion = 'bajando' | 'verificando' | 'abriendo' | 'importando';
 
 export type ResultadoDeRestauracion =
+  /** `mensajes` = filas escritas de verdad (lo que el teléfono ya tenía no se pisa). */
   | { ok: true; chats: number; mensajes: number }
   | { ok: false; motivo: 'descarga' | 'huella' | 'passphrase' | 'importacion' };
 
@@ -68,14 +69,16 @@ export async function restaurarDesdeLaMini(params: {
     if (!verificarDescarga({ esperada: params.respaldo.huella, calculada: huella })) return { ok: false, motivo: 'huella' };
 
     params.onPaso?.('abriendo');
-    const contenido = abrirRespaldo(params.passphrase, JSON.parse(await destino.text()));
+    // v2 por trozos o v1 de un sobre; los dos sin congelar la pantalla (FL5).
+    const contenido = await abrirRespaldoAsync(params.passphrase, JSON.parse(await destino.text()));
     if (!contenido) return { ok: false, motivo: 'passphrase' };
 
     params.onPaso?.('importando');
     let mensajes = 0;
     for (const chat of contenido.chats) {
-      await guardarMensajes(chat.chatId, chat.mensajes as ChatMessage[]);
-      mensajes += chat.mensajes.length;
+      const escritas = await importarMensajes(chat.chatId, chat.mensajes as ChatMessage[]);
+      if (escritas === null) return { ok: false, motivo: 'importacion' };
+      mensajes += escritas;
     }
 
     // Lo restaurado ya está en la mini: el próximo respaldo solo sale si algo cambia.

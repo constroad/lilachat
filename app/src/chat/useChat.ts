@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decidirCargaAnterior } from './paginacion';
+import { hidratarChat } from './hidratador';
 import { listOlderMessages } from '../api/client';
 import {
   conciliarPaginaGuardada,
@@ -64,6 +65,7 @@ export type PendingMessage = {
  * en cada apertura sería caro para arreglar algo que casi nunca pasa.
  */
 const PAGINA_DE_SANEO = 50;
+const PAGINAS_AL_ABRIR = 5; // páginas de 100 del hidratador al abrir; el resto, el respaldo
 
 export function useChat(params: {
   chatId: string;
@@ -178,6 +180,12 @@ export function useChat(params: {
       );
       if (!vigente || !respuesta.ok) return;
       aplicarPaginaDelServer(respuesta.data.messages as ChatMessage[], respuesta.data.lastSeq);
+
+      // FL5: el cursor del `sync.pull` es el MAYOR seq guardado y no ve huecos
+      // del medio. Se rellenan de fondo al abrir; el scroll los lee del disco.
+      const { lastSeq } = respuesta.data;
+      if (!lastSeq) return;
+      void hidratarChat({ chatId: params.chatId, ultimoDelServer: lastSeq, token: params.token, sigue: () => vigente, maxPaginas: PAGINAS_AL_ABRIR });
     })();
     return () => {
       vigente = false;

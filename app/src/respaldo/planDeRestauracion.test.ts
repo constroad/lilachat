@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decidirOferta, descripcionDeRespaldo, verificarDescarga } from './planDeRestauracion';
+import { decidirOferta, descripcionDeRestauracion, descripcionDeRespaldo, verificarDescarga } from './planDeRestauracion';
 
 /**
  * Restaurar en un teléfono nuevo (F12.2), lo PURO: cuándo se ofrece, cómo se
@@ -45,5 +45,24 @@ describe('verificarDescarga', () => {
   /** Un archivo truncado por un corte de red no se intenta abrir: se dice y se vuelve a bajar. */
   it('si no coincide, no sirve', () => {
     expect(verificarDescarga({ esperada: 'a'.repeat(64), calculada: 'b'.repeat(64) })).toBe(false);
+  });
+});
+
+/**
+ * FL5: restaurar ya no pisa lo que el teléfono tiene y cuenta lo escrito de
+ * verdad. Con todo ya guardado eso da 0, y «0 mensajes de vuelta» se leía como
+ * una falla.
+ */
+describe('descripcionDeRestauracion', () => {
+  it('cuenta los mensajes que volvieron', () => {
+    expect(descripcionDeRestauracion({ chats: 2, mensajes: 40 })).toBe('Listo: 2 chats y 40 mensajes de vuelta en el teléfono.');
+  });
+
+  it('singular cuando es uno', () => {
+    expect(descripcionDeRestauracion({ chats: 1, mensajes: 1 })).toBe('Listo: 1 chat y 1 mensaje de vuelta en el teléfono.');
+  });
+
+  it('con todo ya en el teléfono lo dice, en vez de «0 mensajes»', () => {
+    expect(descripcionDeRestauracion({ chats: 2, mensajes: 0 })).toBe('Listo: el teléfono ya tenía todo lo del respaldo.');
   });
 });

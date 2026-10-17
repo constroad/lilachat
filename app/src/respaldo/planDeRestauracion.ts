@@ -29,3 +29,11 @@ export function descripcionDeRespaldo(respaldo: { creadoEn: string; bytes: numbe
 export function verificarDescarga(entrada: { esperada: string; calculada: string }): boolean {
   return entrada.esperada.length > 0 && entrada.esperada === entrada.calculada;
 }
+
+/** Lo que se dice al terminar. `mensajes` = filas escritas de verdad (FL5). */
+export function descripcionDeRestauracion(resultado: { chats: number; mensajes: number }): string {
+  if (resultado.mensajes === 0) return 'Listo: el teléfono ya tenía todo lo del respaldo.';
+  const chats = `${resultado.chats} ${resultado.chats === 1 ? 'chat' : 'chats'}`;
+  const mensajes = `${resultado.mensajes} ${resultado.mensajes === 1 ? 'mensaje' : 'mensajes'}`;
+  return `Listo: ${chats} y ${mensajes} de vuelta en el teléfono.`;
+}

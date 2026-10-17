@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { DatabaseBackup } from 'lucide-react-native';
 import { passphraseValida } from '@lilachat/shared';
-import { descripcionDeRespaldo } from '../respaldo/planDeRestauracion';
+import { descripcionDeRespaldo, descripcionDeRestauracion } from '../respaldo/planDeRestauracion';
 import {
   restaurarDesdeLaMini,
   type PasoDeRestauracion,
@@ -80,7 +80,7 @@ export function RestaurarRespaldo({
           {resultado?.ok ? (
             <>
               <Text className="mt-3 text-sm text-on-surface" testID="restaurar-listo">
-                Listo: {resultado.chats} chats y {resultado.mensajes} mensajes de vuelta en el teléfono.
+                {descripcionDeRestauracion(resultado)}
               </Text>
               <Pressable testID="btn-restaurar-cerrar" onPress={onCerrar} className="mt-4 min-h-[44px] items-center justify-center rounded-lg bg-primary px-4">
                 <Text className="text-sm font-semibold text-on-primary">Entrar</Text>

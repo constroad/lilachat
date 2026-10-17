@@ -42,13 +42,16 @@ export async function hidratarChat(params: {
    * fue — con el JWT viejo, además.
    */
   sigue?: () => boolean;
+  /** Al abrir un chat se piden pocas: compite con la pantalla por la red. */
+  maxPaginas?: number;
 }): Promise<ResultadoDeHidratacion> {
   let paginas = 0;
+  const maxPaginas = params.maxPaginas ?? MAX_PAGINAS_POR_CORRIDA;
   const sigue = params.sigue ?? (() => true);
   // Huecos que el server tampoco tiene: se saltean y se sigue con los anteriores.
   const sinRemedio = new Set<number>();
 
-  while (paginas < MAX_PAGINAS_POR_CORRIDA && sigue()) {
+  while (paginas < maxPaginas && sigue()) {
     const seqs = await seqsGuardados(params.chatId);
     if (!seqs) return { chatId: params.chatId, paginas, completo: false };
 

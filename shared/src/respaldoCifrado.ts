@@ -100,7 +100,15 @@ export function abrirRespaldo(
 ): ContenidoDeRespaldo | null {
   if (!esRespaldoCifrado(respaldo) || !kdfAceptable(respaldo.kdf, kdfMaximo)) return null;
   try {
-    const clave = claveDeRespaldo(passphrase, base64ToBytes(respaldo.kdf.sal), respaldo.kdf);
+    return abrirConClave(claveDeRespaldo(passphrase, base64ToBytes(respaldo.kdf.sal), respaldo.kdf), respaldo);
+  } catch {
+    return null;
+  }
+}
+
+/** El descifrado del v1 con la clave ya derivada (el v2 la deriva sin bloquear). */
+export function abrirConClave(clave: Uint8Array, respaldo: RespaldoCifrado): ContenidoDeRespaldo | null {
+  try {
     const contenido: unknown = JSON.parse(decryptMessage(clave, respaldo.sobre));
     return esContenidoDeRespaldo(contenido) ? contenido : null;
   } catch {
@@ -108,7 +116,7 @@ export function abrirRespaldo(
   }
 }
 
-function esRespaldoCifrado(valor: unknown): valor is RespaldoCifrado {
+export function esRespaldoCifrado(valor: unknown): valor is RespaldoCifrado {
   if (!valor || typeof valor !== 'object') return false;
   const candidato = valor as Partial<RespaldoCifrado>;
   return (
@@ -122,7 +130,7 @@ function esRespaldoCifrado(valor: unknown): valor is RespaldoCifrado {
   );
 }
 
-function kdfAceptable(kdf: ParametrosKdf, maximo: ParametrosKdf): boolean {
+export function kdfAceptable(kdf: ParametrosKdf, maximo: ParametrosKdf): boolean {
   return kdf.n > 1 && kdf.n <= maximo.n && kdf.r >= 1 && kdf.r <= maximo.r && kdf.p >= 1 && kdf.p <= maximo.p;
 }
 

@@ -2,6 +2,8 @@ import {
   bytesLegibles,
   ESPERA_MAXIMA_HORAS,
   haceCuanto,
+  puedeSubirAhora,
+  type Condiciones,
   type ElementoDelRollo,
   type MotivoDeDetencion,
 } from '@lilachat/shared';
@@ -71,6 +73,18 @@ export function decidirCorrida(entrada: {
   if (entrada.hayCambios) return 'armar';
   if (entrada.archivosSinSubir > 0) return 'solo_subir';
   return 'al_dia';
+}
+
+/**
+ * Por qué una corrida NO empieza (FL5). De fondo se mira wifi y carga ANTES de
+ * hidratar (red) y armar (scrypt + cifrado): si al final no se va a poder
+ * subir, ese trabajo era batería y datos tirados. «Respaldar ahora» arma igual
+ * —lo pidió la persona— y la subida decide después.
+ */
+export function motivoParaNoEmpezar(entrada: { forzado: boolean; condiciones: Condiciones }): MotivoDeDetencion | null {
+  if (entrada.forzado) return null;
+  const veredicto = puedeSubirAhora(entrada.condiciones);
+  return veredicto.puede ? null : veredicto.motivo;
 }
 
 const HORA_MS = 3_600_000;

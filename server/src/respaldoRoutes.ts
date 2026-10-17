@@ -1,4 +1,5 @@
-import { createReadStream } from 'node:fs';
+import { open, type FileHandle } from 'node:fs/promises';
+import { pipeline } from 'node:stream/promises';
 import { Router, type Request, type Response } from 'express';
 import { Types } from 'mongoose';
 import { decidirRecepcion, esHuella, huellasQueFaltan } from '@lilachat/shared';
@@ -208,8 +209,35 @@ async function bajarRespaldo(req: Request, res: Response): Promise<void> {
     res.status(507).json({ motivo: 'disco_ausente' });
     return;
   }
+  // Abrir CON PLAZO antes de mandar cabeceras: un archivo que falta es 404 y
+  // un disco colgado es 507, en palabras, en vez de un 200 que nunca termina.
+  const apertura = open(disco.absoluta(rutaDeRespaldo(sesion.telefono, nombre)), 'r');
+  const archivo = await conPlazo<FileHandle | null | 'colgado'>(
+    apertura.catch(() => null),
+    PLAZO_DEL_DISCO_MS,
+    'colgado'
+  );
+  if (archivo === 'colgado') {
+    // Si la apertura llega tarde, se cierra: no queda un descriptor perdido.
+    void apertura.then((tarde) => tarde.close()).catch(() => undefined);
+    res.status(507).json({ motivo: 'disco_colgado' });
+    return;
+  }
+  if (!archivo) {
+    res.status(404).json({ message: 'No encontramos ese respaldo.' });
+    return;
+  }
+
   res.setHeader('Content-Type', 'application/octet-stream');
   res.setHeader('Content-Length', String(doc.bytes));
   res.setHeader('x-huella', doc.huella);
-  createReadStream(disco.absoluta(rutaDeRespaldo(sesion.telefono, nombre))).pipe(res);
+  try {
+    // `pipeline` y no `.pipe`: un error a mitad de camino (disco que se va)
+    // cierra los dos lados en vez de tumbar el proceso o dejar al cliente
+    // esperando. Ya hay cabeceras: lo único honesto es cortar la conexión.
+    await pipeline(archivo.createReadStream(), res);
+  } catch (error) {
+    console.error('[respaldos] la descarga se cortó:', error instanceof Error ? error.message : error);
+    res.destroy();
+  }
 }

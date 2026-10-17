@@ -6,9 +6,11 @@ import {
   abrirCache,
   bytesToBase64,
   base64ToBytes,
+  cederAlHilo,
   cerrarCache,
   conciliarPagina,
   crearColaSerial,
+  porLotes,
   seqsQueSobran,
   type Envelope,
 } from '@lilachat/shared';
@@ -148,25 +150,29 @@ async function escribirFilas(
   clave: Uint8Array,
   chatId: string,
   mensajes: readonly ChatMessage[],
-  deEstaSesion: number = generacion
-): Promise<void> {
+  deEstaSesion: number = generacion,
+  conflicto: 'REPLACE' | 'IGNORE' = 'REPLACE'
+): Promise<number> {
   const filas = mensajes.map((mensaje) => ({
     seq: mensaje.seq,
     sobre: JSON.stringify(cerrarCache(clave, mensaje)),
   }));
+  let escritas = 0;
   await enCola(async () => {
     if (deEstaSesion !== generacion) return;
     await abrirTransaccion(abierta, async () => {
       for (const fila of filas) {
-        await abierta.runAsync(
-          'INSERT OR REPLACE INTO mensajes (chatId, seq, sobre) VALUES (?, ?, ?)',
+        const { changes } = await abierta.runAsync(
+          `INSERT OR ${conflicto} INTO mensajes (chatId, seq, sobre) VALUES (?, ?, ?)`,
           chatId,
           fila.seq,
           fila.sobre
         );
+        escritas += changes;
       }
     });
   });
+  return escritas;
 }
 
 /** Una transacción por lote: 200 filas del delta en un solo fsync, no en 200. */
@@ -225,6 +231,44 @@ export async function leerMensajesGuardados(
   }
 }
 
+/** Filas por lectura al respaldar: cada una se descifra en el hilo de JS. */
+const PAGINA_DE_LECTURA = 250;
+
+/**
+ * El chat ENTERO, ascendente, para el respaldo (FL5). Sin límite,
+ * `leerMensajesGuardados` descifra todas las filas de un tirón: con 20 000
+ * eran segundos de pantalla congelada. Acá va por páginas, con el cursor en el
+ * `seq` de la FILA (no del mensaje abierto: una fila que no abre no corta la
+ * lectura) y cediendo el hilo entre página y página.
+ *
+ * `null` = no se pudo leer (sin llavero, base rota).
+ */
+export async function leerTodosLosMensajes(
+  chatId: string,
+  ceder: () => Promise<void> = cederAlHilo
+): Promise<ChatMessage[] | null> {
+  try {
+    const [abierta, clave] = await Promise.all([listo(), claveDeCache()]);
+    if (!abierta || !clave) return null;
+    const mensajes: ChatMessage[] = [];
+    let despuesDe = 0;
+    for (;;) {
+      const filas = await abierta.getAllAsync<Fila>(
+        'SELECT seq, sobre FROM mensajes WHERE chatId = ? AND seq > ? ORDER BY seq ASC LIMIT ?',
+        chatId,
+        despuesDe,
+        PAGINA_DE_LECTURA
+      );
+      mensajes.push(...abrirFilas(clave, filas));
+      if (filas.length < PAGINA_DE_LECTURA) return mensajes;
+      despuesDe = filas[filas.length - 1]!.seq;
+      await ceder();
+    }
+  } catch {
+    return null;
+  }
+}
+
 /** Guardar (o pisar) mensajes. Se llama con lo que LLEGA, no con la lista entera. */
 export async function guardarMensajes(chatId: string, mensajes: readonly ChatMessage[]): Promise<void> {
   if (mensajes.length === 0) return;
@@ -238,6 +282,36 @@ export async function guardarMensajes(chatId: string, mensajes: readonly ChatMes
   } catch {
     // Deliberado: no poder guardar no puede romper el chat.
   }
+}
+
+/** Filas por transacción al importar: cifrar 200 sobres son decenas de ms. */
+const LOTE_DE_IMPORTACION = 200;
+
+/**
+ * Volcar un respaldo al almacén (F12.2, revisado en FL5). Dos diferencias con
+ * `guardarMensajes`:
+ * - **No pisa** (`INSERT OR IGNORE`): lo que el teléfono ya tiene es más nuevo
+ *   que el respaldo —el hidratador pudo traerlo, o se borró acá—, y pisarlo
+ *   revivía el mensaje borrado.
+ * - **En lotes que ceden el hilo**: cifrar 20 000 filas de un tirón congelaba
+ *   la pantalla de restaurar.
+ *
+ * Devuelve las filas escritas DE VERDAD; `null` si no hay almacén.
+ */
+export async function importarMensajes(
+  chatId: string,
+  mensajes: readonly ChatMessage[],
+  ceder: () => Promise<void> = cederAlHilo
+): Promise<number | null> {
+  const deEstaSesion = generacion;
+  const [abierta, clave] = await Promise.all([listo(), claveDeCache()]);
+  if (!abierta || !clave) return null;
+  return porLotes(
+    mensajes,
+    LOTE_DE_IMPORTACION,
+    (lote) => escribirFilas(abierta, clave, chatId, lote, deEstaSesion, 'IGNORE'),
+    ceder
+  );
 }
 
 /**

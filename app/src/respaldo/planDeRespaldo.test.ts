@@ -7,6 +7,7 @@ import {
   huellaDelAlmacen,
   nombreDeRespaldo,
   fechaDeNombre,
+  motivoParaNoEmpezar,
 } from './planDeRespaldo';
 
 /**
@@ -133,5 +134,29 @@ describe('fraseDeEstado', () => {
 
   it('con passphrase pero sin haber subido nunca, lo dice', () => {
     expect(fraseDeEstado({ ...base, decision: 'armar' }, AHORA)).toMatchObject({ titulo: 'Todavía sin respaldo' });
+  });
+});
+
+/**
+ * FL5: la tarea de fondo hidrataba (red) y armaba (CPU, scrypt) ANTES de mirar
+ * wifi y carga, y recién al subir descubría que no podía. Ahora mira primero.
+ */
+describe('motivoParaNoEmpezar', () => {
+  const ideal = { wifi: true, wifiMedido: false, cargando: true, bateriaPct: 80 };
+
+  it('de fondo, con wifi y cargando: empieza', () => {
+    expect(motivoParaNoEmpezar({ forzado: false, condiciones: ideal })).toBeNull();
+  });
+
+  it('de fondo, sin wifi: ni hidrata ni arma', () => {
+    expect(motivoParaNoEmpezar({ forzado: false, condiciones: { ...ideal, wifi: false } })).toBe('sin_wifi');
+  });
+
+  it('de fondo, sin cargar: espera', () => {
+    expect(motivoParaNoEmpezar({ forzado: false, condiciones: { ...ideal, cargando: false } })).toBe('sin_carga');
+  });
+
+  it('«Respaldar ahora» arma igual: es quien lo pidió, y la subida decide después', () => {
+    expect(motivoParaNoEmpezar({ forzado: true, condiciones: { ...ideal, wifi: false, cargando: false } })).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import {
-  armarRespaldo,
+  armarRespaldoPorTrozos,
   conciliarRollo,
   correrSubida,
   type ContenidoDeRespaldo,
@@ -7,13 +7,13 @@ import {
 } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 import { hidratarTodo } from '../chat/hidratador';
-import { leerMensajesGuardados, resumenDelAlmacen } from '../chat/mensajesGuardados';
+import { leerTodosLosMensajes, resumenDelAlmacen } from '../chat/mensajesGuardados';
 import { conservarSolo, escribirRespaldo, listarRespaldos } from './archivosDeRespaldo';
 import { leerCondiciones } from './condicionesDelTelefono';
 import { guardarEstadoDeRespaldo, leerEstadoDeRespaldo, type EstadoDeRespaldo } from './estadoDeRespaldo';
 import { leerLibro } from './libroDeRespaldos';
 import { leerPassphrase } from './passphraseDeRespaldo';
-import { decidirCorrida, huellaDelAlmacen, nombreDeRespaldo } from './planDeRespaldo';
+import { decidirCorrida, huellaDelAlmacen, motivoParaNoEmpezar, nombreDeRespaldo } from './planDeRespaldo';
 import { puertoDeRespaldo } from './puertoDeRespaldo';
 
 /**
@@ -47,6 +47,12 @@ export async function correrRespaldo(params: {
       return { estado: await guardarEstadoDeRespaldo({ ultimaCorridaEn: inicio, decision: 'sin_passphrase', fallo: null }), subida: null };
     }
 
+    const condiciones = await leerCondiciones();
+    const detenidoPor = motivoParaNoEmpezar({ forzado: params.forzado, condiciones });
+    if (detenidoPor) {
+      return { estado: await guardarEstadoDeRespaldo({ ultimaCorridaEn: inicio, detenidoPor, fallo: null }), subida: null };
+    }
+
     await hidratarTodo(params.chats, params.jwt, sigue);
 
     const [resumen, estadoPrevio, libro] = await Promise.all([resumenDelAlmacen(), leerEstadoDeRespaldo(), leerLibro()]);
@@ -65,7 +71,9 @@ export async function correrRespaldo(params: {
     if (decision === 'armar') {
       const contenido = await armarContenido(params.telefono, resumen.map((chat) => chat.chatId));
       const nombre = nombreDeRespaldo(new Date());
-      escribirRespaldo(nombre, JSON.stringify(armarRespaldo(passphrase, contenido)));
+      // Por trozos y cediendo el hilo (FL5): con 20 000 mensajes, el sobre
+      // único congelaba la pantalla si la corrida era «Respaldar ahora».
+      escribirRespaldo(nombre, JSON.stringify(await armarRespaldoPorTrozos(passphrase, contenido)));
       // El teléfono guarda UN respaldo: el nuevo reemplaza al que hubiera.
       conservarSolo(nombre);
       await guardarEstadoDeRespaldo({ huellaPendiente: huella });
@@ -74,6 +82,7 @@ export async function correrRespaldo(params: {
     if (!sigue()) return { estado: await leerEstadoDeRespaldo(), subida: null };
 
     const subida = await correrSubida(puertoDeRespaldo(params.jwt), {
+      // Se vuelve a leer: hidratar y armar pudieron tardar minutos.
       condiciones: await leerCondiciones(),
       forzado: params.forzado,
       presupuestoMs: Math.max(0, params.presupuestoMs - (Date.now() - inicio)),
@@ -102,11 +111,11 @@ export async function correrRespaldo(params: {
   }
 }
 
-/** La copia del almacén, chat por chat, en la forma que cifra `armarRespaldo`. */
+/** La copia del almacén, chat por chat, en la forma que cifra `armarRespaldoPorTrozos`. */
 async function armarContenido(telefono: string, chatIds: readonly string[]): Promise<ContenidoDeRespaldo> {
   const chats: ContenidoDeRespaldo['chats'] = [];
   for (const chatId of chatIds) {
-    chats.push({ chatId, mensajes: (await leerMensajesGuardados(chatId)) ?? [] });
+    chats.push({ chatId, mensajes: (await leerTodosLosMensajes(chatId)) ?? [] });
   }
   return { v: 1, creadoEn: new Date().toISOString(), telefono, chats };
 }

@@ -3312,7 +3312,8 @@ clase el respaldo de fondo nunca corre. Arreglo: `extraProguardRules` con
 `-keep class expo.modules.adapters.react.apploader.** { *; }` en
 `expo-build-properties`. La 0.1.68 publicada lo tiene roto.
 
-**Pendiente de la revisión** (no bloquea; en orden):
+**Pendiente de la revisión** (no bloquea; en orden). Los cinco primeros se
+hicieron en FL5 (§45.12); queda «filas que no descifran»:
 - Cifrado y scrypt sincrónicos en el hilo JS al respaldar y restaurar: con
   ~20 000 mensajes puede congelar la pantalla. Lotes con `await` y
   `scryptAsync`.
@@ -3388,7 +3389,7 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | FL2 | **Pantalla de chat nueva** — FL2a (§45.6) y FL2b (§45.8) | 0 frames perdidos al tipear y al abrir; teclado sincronizado | ✅ 16/10 (0.1.73) |
 | FL3 | **Burbujas y lista estilo WhatsApp** — conversación (§45.9) y lista (§45.10), claro y oscuro | auditoría lado a lado contra el diseño de Stitch | ✅ 16/10 (0.1.75) |
 | FL4 | **Latencia del server** — hecho: envío de 5 a 3 viajes, lista sin N+1, ping 15/10 s (§45.7). Falta: bóveda (D2), caché de membresía para acuses/typing, fotos con dimensiones + blurhash | ack < 300 ms medido | 🟡 16/10 |
-| FL5 | **Pendientes de F12 que pesan en el hilo JS**: cifrado/scrypt por lotes, tarea de fondo que mira wifi/carga primero (§44.4) | respaldar 20 000 mensajes sin ANR en `gama-baja` | ⬜ |
+| FL5 | **Pendientes de F12 que pesan en el hilo JS**: cifrado/scrypt por lotes, tarea de fondo que mira wifi/carga primero (§44.4) — ver §45.12 | respaldar 20 000 mensajes sin ANR en `gama-baja` | 🟡 17/10: hecho y medido en V8 (tramo típico 0,7 ms); falta medir en un gama baja real |
 | FL6 | **Marca y Stitch**: logo vectorial único (ícono, adaptativo, mono, splash y `<Logo>` desde la misma geometría); diseñar en Stitch la conversación llena, con la paleta real y las pestañas reales | ícono verificado dentro del APK | ⬜ |
 
 ### 45.4 As-is FL0 (16/10/2026)
@@ -3632,3 +3633,57 @@ pendiente. Las capturas NO van al repo.
 - **Latencia**: con la base en la misma mini cada viaje baja de ~100 ms a
   milisegundos; la cifra real del ack va a llegar por el diagnóstico de la
   0.1.70+ (`ack-envio` en `/console/reportes`).
+
+### 45.12 As-is FL5 y las pestañas sin esqueleto (17/10/2026)
+
+**Pestañas** (José, 17/10: «cuando cambio de tabs se muestra un skeleton»).
+`TabsShell` remontaba la pestaña en cada cambio (`key={tab}`): cada vuelta a
+Chats, Agenda o Encuestas pedía todo de nuevo y mostraba el esqueleto. Ahora:
+- Cada pestaña se monta la PRIMERA vez que se visita y después se esconde con
+  `display: 'none'`, viva (`ui/pestanas.ts` → `visitadasCon`, 2 tests). El
+  `reloadKey` solo remonta Agenda y Encuestas al crear algo.
+- La lista de chats guarda además una copia en memoria del proceso
+  (`chatsEnMemoria()` en `chatsGuardados.ts`): si se remonta, pinta en el
+  primer render sin esperar a AsyncStorage. Cerrar sesión la vacía.
+- **E2E** (emulador, debug contra :3104): Chats ↔ Agenda ↔ Encuestas ↔
+  Ajustes con captura inmediata tras cada toque: ningún esqueleto y 0
+  `GET /api/chats` nuevos en el log del server.
+
+**FL5 — el respaldo sin congelar la pantalla:**
+- **Formato v2 por trozos** (`shared/respaldoPorTrozos.ts`, 11 tests): mismo
+  scrypt + AES-GCM, pero 100 mensajes por sobre y cediendo el hilo entre
+  trozos; scrypt con `scryptAsync`. El id del respaldo y el índice van ADENTRO
+  de cada trozo y la cabecera cifrada dice cuántos son: reordenar, quitar,
+  duplicar o mezclar trozos no abre. `abrirRespaldoAsync` abre v2 y también
+  el v1 de un sobre (los que ya están en la mini).
+- **Medido en Node con 20 000 mensajes** (6 MB): armar 0,49 s y abrir 0,48 s
+  en total, tramo típico sin ceder 0,7 ms, el más largo 39 ms (el primero:
+  cola de scrypt). El v1 bloqueaba 0,32 s de un tirón en V8, más scrypt
+  sincrónico; Hermes es varias veces más lento. Falta medirlo en un gama baja.
+- **Leer para respaldar, por páginas** (`leerTodosLosMensajes`, 250 filas,
+  cursor en el `seq` de la fila): antes se descifraba el chat entero de una.
+- **Restaurar no pisa** (`importarMensajes`): `INSERT OR IGNORE`, lotes de 200
+  que ceden (`shared/lotes.ts` → `porLotes`, 6 tests) y cuenta las filas
+  escritas de verdad. Con todo ya en el teléfono dice «el teléfono ya tenía
+  todo lo del respaldo» (`descripcionDeRestauracion`, 3 tests).
+- **La tarea de fondo mira wifi y carga ANTES** de hidratar y armar
+  (`motivoParaNoEmpezar`, 4 tests). «Respaldar ahora» arma igual.
+- **Hueco del cursor**: al abrir un chat, `hidratarChat` rellena de fondo
+  hasta 5 páginas de lo que falte en el medio.
+- **Server**: `GET /api/respaldos/:nombre` abre con plazo (507
+  `disco_colgado`, 404 si el archivo falta) y usa `pipeline`. Antes un archivo
+  indexado pero ausente tumbaba el proceso: el 'error' del stream no tenía
+  quien lo escuchara (test nuevo). Índice único `{userId, nombre}` (la base
+  no tenía filas ni duplicados; mongoose lo crea al arrancar).
+- **E2E** (emulador, debug contra :3104, 902049935 por yopmail):
+  - el respaldo sale en v2 (2 trozos, scrypt real), sin texto en claro, y
+    abre en Node con la passphrase: 27 + 13 mensajes, igual que el SQLite;
+  - con el almacén lleno, restaurar escribe 0 filas;
+  - con 9 filas borradas a mano del SQLite (`run-as` + `sqlite3`), restaurar
+    escribe exactamente esas 9 (31 → 40).
+  - QA en cero: devices 20 → 20, `Respaldo` 0, correo restaurado, app
+    desinstalada del AVD.
+- **Sigue pendiente de §44.4**: las filas que no descifran no se vuelven a
+  pedir. Ajenos: el aviso de `expo-notifications` por `sound: 'default'` en
+  el canal (lo pone LogBox en cada arranque de la debug, tapa la barra de
+  pestañas) y el permiso de contactos pedido de nuevo tras negarlo.

@@ -35,7 +35,13 @@ export type Citado = { autor: string; texto: string };
  */
 export function citadosPorSeq<M extends FilaMinima>(
   mensajes: readonly M[],
-  contexto: { yo: string; esGrupo: boolean; nombreDelOtro: string },
+  contexto: {
+    yo: string;
+    esGrupo: boolean;
+    nombreDelOtro: string;
+    /** En un grupo: el nombre de cada miembro por id, si ya se conoce. */
+    nombres?: ReadonlyMap<string, string>;
+  },
   preview: (mensaje: M) => string
 ): Map<number, Citado> {
   const porSeq = new Map<number, M>();
@@ -46,9 +52,14 @@ export function citadosPorSeq<M extends FilaMinima>(
     if (typeof mensaje.seq !== 'number' || !mensaje.replyToSeq) continue;
     const respondido = porSeq.get(mensaje.replyToSeq);
     if (!respondido) continue;
-    // En un 1:1 el autor es el otro (o «Vos»); en un grupo no está acá el
-    // nombre de cada miembro, así que se omite en vez de mostrar uno falso.
-    const autor = respondido.senderId === contexto.yo ? 'Vos' : contexto.esGrupo ? '' : contexto.nombreDelOtro;
+    // En un 1:1 el autor es el otro (o «Vos»); en un grupo, el nombre de ese
+    // miembro si ya se conoce (FL9) y si no, nada en vez de uno falso.
+    const autor =
+      respondido.senderId === contexto.yo
+        ? 'Vos'
+        : contexto.esGrupo
+          ? (contexto.nombres?.get(String(respondido.senderId)) ?? '')
+          : contexto.nombreDelOtro;
     citados.set(mensaje.seq, { autor, texto: preview(respondido) });
   }
   return citados;

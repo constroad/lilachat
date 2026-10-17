@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
+import { BackHandler, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import {
   Bell,
   BellOff,
@@ -51,6 +51,7 @@ import { inicioDelProceso, medirUnaVez } from '../diagnostico/diagnostico';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { useColores } from '../ui/tema';
+import { decidirAtras } from '../ui/botonAtras';
 import { agendaPorTelefono, suscribirAgenda } from '../contacts/agendaEnMemoria';
 
 /**
@@ -240,6 +241,17 @@ export function ChatListScreen({
     nombreDeContacto({ delServidor: chat.name, telefono: chat.phone, agenda }) || 'Conversación';
 
   const [busqueda, setBusqueda] = useState('');
+  // FL9: con una búsqueda escrita, atrás la limpia en vez de cerrar la app. Se
+  // registra en cada cambio para quedar ÚLTIMO, que es el que Android llama primero.
+  useEffect(() => {
+    if (!busqueda) return;
+    const suscripcion = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (decidirAtras({ pantalla: 'tabs', tab: 'chats', buscando: true }) !== 'limpiar-busqueda') return false;
+      setBusqueda('');
+      return true;
+    });
+    return () => suscripcion.remove();
+  }, [busqueda]);
   const [filtro, setFiltro] = useState<FiltroDeChats>('todos');
 
   /**

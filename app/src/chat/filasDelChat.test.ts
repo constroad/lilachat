@@ -53,6 +53,14 @@ describe('citadosPorSeq', () => {
     expect(citadosPorSeq(mensajes, { ...contexto, esGrupo: true }, preview).get(2)?.autor).toBe('');
   });
 
+  // FL9 (auditoría §46.2): con los nombres del grupo a mano, la cita dice de quién es.
+  it('en un grupo con los nombres conocidos, el autor es el de ese miembro', () => {
+    const mensajes = [msj(1, { senderId: 'ana' }), msj(2, { replyToSeq: 1 })];
+    const nombres = new Map([['ana', 'Ana']]);
+
+    expect(citadosPorSeq(mensajes, { ...contexto, esGrupo: true, nombres }, preview).get(2)?.autor).toBe('Ana');
+  });
+
   it('si el citado no está cargado, no hay cita', () => {
     expect(citadosPorSeq([msj(5, { replyToSeq: 1 })], contexto, preview).size).toBe(0);
   });

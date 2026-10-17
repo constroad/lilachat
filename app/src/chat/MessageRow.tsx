@@ -7,6 +7,8 @@ import { CircleAlert, Check, CheckCheck, Clock3, FileText, Pause, Play } from 'l
 import { colorDeAutor, dondeVaLaHora, mostrarAutor, radiosDeBurbuja } from './burbuja';
 import { DeslizarParaResponder } from './DeslizarParaResponder';
 import { LineaDeLlamada } from './LineaDeLlamada';
+import { CitaDeRespuesta } from './CitaDeRespuesta';
+import { TextoConEnlaces } from './TextoConEnlaces';
 import { etiquetaDeSubida, porcentajeDeSubida } from './progresoDeSubida';
 import {
   TEXTO_ELIMINADO,
@@ -66,6 +68,7 @@ function FilaDeMensaje({
   citado,
   seleccionado,
   onFallido,
+  onTocarCita,
 }: {
   item: Row;
   previous?: Row;
@@ -89,6 +92,8 @@ function FilaDeMensaje({
   seleccionado?: boolean;
   /** Tocar un mensaje que NO se envió: reintentar o borrar (FL8). */
   onFallido?: (clientKey: string, motivo: string) => void;
+  /** Tocar la cita lleva al mensaje original (FL9). */
+  onTocarCita?: (seq: number) => void;
 }) {
   const colores = useColores();
 
@@ -194,23 +199,13 @@ function FilaDeMensaje({
               {nombreAutor}
             </Text>
           ) : null}
-          {/* La cita del mensaje al que ESTE responde. Va DENTRO de la burbuja,
-              arriba del contenido, como WhatsApp. Se resuelve afuera (en la
-              pantalla, que tiene todos los mensajes) y llega ya listo. */}
+          {/* La cita llega resuelta desde la pantalla, que tiene todos los mensajes. */}
           {citado ? (
-            <View
+            <CitaDeRespuesta
+              citado={citado}
               testID={`cita-${isPending(item) ? item.clientKey : item.seq}`}
-              className="mx-1.5 mt-1.5 rounded-md border-l-2 border-primary bg-primary/[0.08] px-2 py-1"
-            >
-              {citado.autor ? (
-                <Text className="text-[11px] font-semibold text-primary" numberOfLines={1}>
-                  {citado.autor}
-                </Text>
-              ) : null}
-              <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>
-                {citado.texto}
-              </Text>
-            </View>
+              onPress={!isPending(item) && item.replyToSeq && onTocarCita ? () => onTocarCita(item.replyToSeq!) : undefined}
+            />
           ) : null}
 
           {!isPending(item) && item.media && esVoz(item.media.mime) ? (
@@ -348,7 +343,7 @@ function FilaDeMensaje({
             // y la hora va encima, abajo a la derecha. Cero renglón extra.
             <View className="px-3 pb-1.5 pt-1.5">
               <Text className={`text-[15px] leading-[21px] ${mine ? 'text-on-burbuja-propia' : 'text-on-burbuja-ajena'}`}>
-                {item.body}
+                <TextoConEnlaces texto={item.body} />
                 {/* El relleno es la MISMA hora, al mismo tamaño e invisible:
                     reserva exactamente su ancho (con espacios de nbsp, la hora
                     se montaba sobre los mensajes cortos). */}

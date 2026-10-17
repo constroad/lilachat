@@ -39,3 +39,30 @@ describe('decidirAtras', () => {
     expect(decidirAtras({ pantalla: 'tabs' })).toBe('salir');
   });
 });
+
+/**
+ * FL9 (auditoría §46.2): atrás salía del chat con un mensaje seleccionado o una
+ * respuesta a medias, y en la lista cerraba la app con una búsqueda activa.
+ * Atrás deshace lo último que se hizo, como WhatsApp.
+ */
+describe('decidirAtras — lo que se está haciendo primero', () => {
+  it('con un mensaje seleccionado, suelta la selección', () => {
+    expect(decidirAtras({ pantalla: 'chat', haySeleccion: true })).toBe('soltar-seleccion');
+  });
+
+  it('con una respuesta a medias, la cancela', () => {
+    expect(decidirAtras({ pantalla: 'chat', respondiendo: true })).toBe('cancelar-respuesta');
+  });
+
+  it('la selección gana sobre la respuesta (es lo último que se tocó)', () => {
+    expect(decidirAtras({ pantalla: 'chat', haySeleccion: true, respondiendo: true })).toBe('soltar-seleccion');
+  });
+
+  it('en Chats con una búsqueda escrita, la limpia en vez de salir', () => {
+    expect(decidirAtras({ pantalla: 'tabs', tab: 'chats', buscando: true })).toBe('limpiar-busqueda');
+  });
+
+  it('una hoja abierta encima sigue ganando a todo', () => {
+    expect(decidirAtras({ pantalla: 'chat', haySobreCapa: true, haySeleccion: true })).toBe('cerrar-sobrecapa');
+  });
+});

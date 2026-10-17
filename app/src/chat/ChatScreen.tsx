@@ -22,8 +22,6 @@ import {
   MoreVertical,
   Phone,
   Video,
-  Trash2,
-  X,
 } from 'lucide-react-native';
 import { formatDayLabel, startsNewDay } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
@@ -47,6 +45,9 @@ import { descartarMensaje, reintentarMensaje } from './outboxStore';
 import { descartarArchivo, encolarArchivo, reintentarArchivo } from './colaDeArchivos';
 import { useArchivosDelChat } from './useArchivosDelChat';
 import { useLimpiarAvisoDelChat } from './useLimpiarAvisoDelChat';
+import { SeleccionDeMensaje } from './SeleccionDeMensaje';
+import { sinOcultos, useOcultos } from './ocultos';
+import { DivisorNoLeidos, useDivisorNoLeidos } from './useDivisorNoLeidos';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { decidirAtras } from '../ui/botonAtras';
@@ -143,6 +144,8 @@ export function ChatScreen({
   const [textoAProgramar, setTextoAProgramar] = useState('');
   /** El mensaje al que se está respondiendo (deslizando sobre él), o null. */
   const [respondiendoA, setRespondiendoA] = useState<{ seq: number; texto: string; mio: boolean } | null>(null);
+  const respondiendoRef = useRef(false);
+  respondiendoRef.current = respondiendoA !== null;
 
   // Mensajes programados (F11): long-press en enviar abre el modal.
   const [programarVisible, setProgramarVisible] = useState(false);
@@ -193,11 +196,13 @@ export function ChatScreen({
    */
   useEffect(() => {
     const suscripcion = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (decidirAtras({ pantalla: 'chat' }) === 'ir-a-lista') {
-        onBack();
-        return true;
-      }
-      return false;
+      // FL9: primero se deshace lo que se está haciendo (selección, respuesta).
+      const accion = decidirAtras({ pantalla: 'chat', haySeleccion: elegidoRef.current !== null, respondiendo: respondiendoRef.current });
+      if (accion === 'soltar-seleccion') setElegido(null);
+      else if (accion === 'cancelar-respuesta') setRespondiendoA(null);
+      else if (accion === 'ir-a-lista') onBack();
+      else return false;
+      return true;
     });
     return () => suscripcion.remove();
   }, [onBack]);
@@ -212,6 +217,11 @@ export function ChatScreen({
   const [viendoSeq, setViendoSeq] = useState<number | null>(null);
   /** El mensaje seleccionado con pulsación larga, o `null`. */
   const [elegido, setElegido] = useState<number | null>(null);
+  const elegidoRef = useRef(elegido);
+  elegidoRef.current = elegido;
+  /** El mensaje resaltado un momento al saltar desde una cita (FL9). */
+  const [resaltado, setResaltado] = useState<number | null>(null);
+  const { ocultos, ocultar } = useOcultos(chatId);
   const [verDetalle, setVerDetalle] = useState(false);
   /**
    * Lo que se cambió en el detalle, para pintarlo YA en esta cabecera.
@@ -409,7 +419,8 @@ export function ChatScreen({
   // las filas y la lista volvía a dibujar todas las burbujas (FL2).
   const rows: Row[] = useMemo(
     () => [
-      ...messages,
+      // «Eliminar para mí» (FL9): ocultos en este teléfono.
+      ...sinOcultos(messages, ocultos),
       ...pending,
       ...archivosEnCola.map(({ archivo, progreso }) => ({
         clientKey: archivo.clientKey,
@@ -422,18 +433,42 @@ export function ChatScreen({
         fallo: archivo.fallo,
       })),
     ],
-    [messages, pending, archivosEnCola]
+    [messages, ocultos, pending, archivosEnCola]
   );
+
+  const { divisorSeq, noLeidos: noLeidosAlAbrir, irAlInicio } = useDivisorNoLeidos({
+    rows,
+    yo: credential.userId,
+    noLeidos: unread,
+    listaRef,
+  });
+
+  /** Tocar una cita: al original, resaltado un momento (FL9). */
+  const alTocarCita = useCallback(
+    (seq: number) => {
+      const indice = rows.findIndex((fila) => !isPending(fila) && fila.seq === seq);
+      if (indice < 0) return setMediaError('El mensaje original está más arriba: sube para cargarlo.');
+      listaRef.current?.scrollToIndex({ index: indice, animated: true, viewPosition: 0.4 });
+      // Segundo pase: con alturas variables, si esa zona todavía no se midió el
+      // primero cae corto o no se mueve (visto en el E2E con el chat recién abierto).
+      setTimeout(() => listaRef.current?.scrollToIndex({ index: indice, animated: false, viewPosition: 0.4 }), 400);
+      setResaltado(seq);
+      setTimeout(() => setResaltado((actual) => (actual === seq ? null : actual)), 1500);
+    },
+    [rows]
+  );
+
+  const mensajeElegido = elegido === null ? null : (messages.find((mensaje) => mensaje.seq === elegido) ?? null);
 
   /** Las citas, una vez por cambio de mensajes (antes un `find` por fila y por render). */
   const citados = useMemo(
     () =>
       citadosPorSeq(
         messages,
-        { yo: credential.userId, esGrupo: esGrupoChat, nombreDelOtro: nombreVisible },
+        { yo: credential.userId, esGrupo: esGrupoChat, nombreDelOtro: nombreVisible, nombres: nombresDelGrupo },
         previewDeMensaje
       ),
-    [messages, credential.userId, esGrupoChat, nombreVisible]
+    [messages, credential.userId, esGrupoChat, nombreVisible, nombresDelGrupo]
   );
   const leidoHasta = Math.max(othersReadSeq, othersRead);
   const entregadoHasta = Math.max(othersDeliveredSeq, othersDelivered);
@@ -497,6 +532,7 @@ export function ChatScreen({
       return (
         <>
           {startsNewDay(at, previousAt) ? <DaySeparator label={formatDayLabel(at)} /> : null}
+          {!isPending(item) && item.seq === divisorSeq ? <DivisorNoLeidos cantidad={noLeidosAlAbrir} /> : null}
           <MessageRow
             item={item}
             previous={previous}
@@ -510,13 +546,14 @@ export function ChatScreen({
             onSeleccionar={setElegido}
             onResponder={alResponder}
             citado={isPending(item) ? null : (citados.get(item.seq) ?? null)}
-            seleccionado={!isPending(item) && item.seq === elegido}
+            seleccionado={!isPending(item) && (item.seq === elegido || item.seq === resaltado)}
             onFallido={alFallido}
+            onTocarCita={alTocarCita}
           />
         </>
       );
     },
-    [rows, credential.userId, leidoHasta, entregadoHasta, esGrupoChat, nombresDelGrupo, alVerImagen, alResponder, citados, elegido]
+    [rows, credential.userId, leidoHasta, entregadoHasta, esGrupoChat, nombresDelGrupo, alVerImagen, alResponder, citados, elegido, resaltado, divisorSeq, noLeidosAlAbrir, alFallido, alTocarCita]
   );
 
   const { alScrollear, abajoLejos, nuevosAbajo } = useFinalDeLaConversacion(listaRef, messages, credential.userId);
@@ -534,7 +571,8 @@ export function ChatScreen({
     // midió y el scroll no llega a ningún lado.
     // 150 ms y no 0: con 0 la lista todavía no midió y el scroll no llega a
     // ningún lado — probado en el emulador.
-    const t = setTimeout(() => listaRef.current?.scrollToEnd({ animated: false }), 150);
+    // FL9: al divisor de no leídos si los hay; si no, al final.
+    const t = setTimeout(irAlInicio, 150);
     return () => clearTimeout(t);
     // Solo al pasar de vacío a con contenido: reaccionar a cada mensaje pelearía
     // con quien está leyendo mensajes viejos más arriba.
@@ -574,37 +612,17 @@ export function ChatScreen({
        * eligiendo qué borrar, el nombre y las llamadas no sirven de nada, y dos
        * barras a la vez empujan la conversación fuera de la pantalla.
        */}
-      {elegido !== null ? (
-        <View
-          testID="barra-seleccion"
-          className="flex-row items-center gap-2 border-b border-outline/10 bg-surface px-3 pb-3"
-          style={{ paddingTop: margenes.cabecera }}
-        >
-          <Pressable
-            testID="btn-cancelar-seleccion"
-            accessibilityLabel="Cancelar la selección"
-            onPress={() => setElegido(null)}
-            className="h-11 w-11 items-center justify-center"
-          >
-            <X size={22} color={colores['on-surface']} />
-          </Pressable>
-          <Text className="flex-1 text-base font-semibold text-on-surface">1 seleccionado</Text>
-          <Pressable
-            testID="btn-eliminar-mensaje"
-            accessibilityLabel="Eliminar el mensaje"
-            onPress={async () => {
-              const seq = elegido;
-              setElegido(null);
-              const r = await eliminar(seq);
-              // El motivo del server se DICE: un «no» mudo se lee como que la
-              // app se colgó. El caso típico es intentar borrar lo de otro.
-              if (!r.ok) setMediaError(r.motivo ?? 'No se pudo eliminar.');
-            }}
-            className="h-11 w-11 items-center justify-center"
-          >
-            <Trash2 size={20} color={colores.error} />
-          </Pressable>
-        </View>
+      {elegido !== null && mensajeElegido ? (
+        <SeleccionDeMensaje
+          mensaje={mensajeElegido}
+          yo={credential.userId}
+          chatSecreto={Boolean(encrypted)}
+          onCancelar={() => setElegido(null)}
+          onResponder={(seq) => alResponder(seq, previewDeMensaje(mensajeElegido), mensajeElegido.senderId === credential.userId)}
+          onEliminarParaTodos={eliminar}
+          onEliminarParaMi={ocultar}
+          onError={setMediaError}
+        />
       ) : (
       <>
       {/* Header como el diseño: FLECHA (no la palabra «Atrás»), avatar del chat
@@ -752,7 +770,7 @@ export function ChatScreen({
           data={rows}
           // Cuando la lista terminó de montar, al final. Es el momento exacto en
           // que ya midió, sin adivinar con un temporizador.
-          onLoad={() => listaRef.current?.scrollToEnd({ animated: false })}
+          onLoad={irAlInicio}
           testID="lista-mensajes"
           /**
            * `flex-1` NO es cosmético: sin él la lista no está acotada por la

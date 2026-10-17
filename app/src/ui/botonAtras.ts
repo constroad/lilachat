@@ -21,7 +21,13 @@ export type AccionAtras =
   /** Estoy en otra pestaña: vuelvo a Chats, que es la de inicio. */
   | 'ir-a-chats'
   /** No queda nada que deshacer: que Android cierre la app. */
-  | 'salir';
+  | 'salir'
+  /** FL9: hay un mensaje seleccionado: se suelta. */
+  | 'soltar-seleccion'
+  /** FL9: hay una respuesta a medias: se cancela. */
+  | 'cancelar-respuesta'
+  /** FL9: hay una búsqueda escrita en la lista: se limpia. */
+  | 'limpiar-busqueda';
 
 export function decidirAtras(params: {
   pantalla: 'chat' | 'tabs';
@@ -29,10 +35,20 @@ export function decidirAtras(params: {
   tab?: string;
   /** Si hay un modal, hoja o formulario abierto encima. */
   haySobreCapa?: boolean;
+  /** En el chat: un mensaje seleccionado con pulsación larga. */
+  haySeleccion?: boolean;
+  /** En el chat: respondiendo a un mensaje. */
+  respondiendo?: boolean;
+  /** En la lista: una búsqueda escrita. */
+  buscando?: boolean;
 }): AccionAtras {
   // Lo de más arriba gana SIEMPRE: cerrar la app teniendo un formulario abierto
   // pierde lo que la persona estaba escribiendo.
   if (params.haySobreCapa) return 'cerrar-sobrecapa';
+  // Después, lo último que se hizo (FL9): atrás lo deshace, como WhatsApp.
+  if (params.haySeleccion) return 'soltar-seleccion';
+  if (params.respondiendo) return 'cancelar-respuesta';
+  if (params.buscando) return 'limpiar-busqueda';
 
   if (params.pantalla === 'chat') return 'ir-a-lista';
 

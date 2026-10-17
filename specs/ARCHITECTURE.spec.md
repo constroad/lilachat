@@ -3374,7 +3374,7 @@ mismo commit** (fecha, commit, versión del APK). ✅ hecho y verificado ·
 | --- | --- | --- | --- |
 | D1 | Modelo de mensajes | (a) server + cifrado por defecto (plan F12) · (b) store-and-forward como WhatsApp · (c) server borra al confirmar entrega + 30 días | F12.3, F12.4 |
 | D2 | Base de Lilachat | ✅ **bóveda** desde el 17/10/2026 (§45.11) | — |
-| D3 | Marca | logo vectorial nuevo (burbuja simple, geometría como datos, patrón Lilafotos) | FL6 | **Marca y Stitch**: logo vectorial único (ícono, adaptativo, mono, splash y `<Logo>` desde la misma geometría); diseñar en Stitch la conversación llena, con la paleta real y las pestañas reales — ver §45.13 | ícono verificado dentro del APK | 🟡 17/10: logo publicado y verificado en el APK (0.1.76); falta la pantalla de Stitch |
+| D3 | Marca | ✅ dos burbujas redondas desde una sola geometría (`shared/src/marca.ts`, §45.13) | — |
 
 ### 45.3 Plan Fluidez — «que se sienta como WhatsApp» (pedido de José, 16/10/2026)
 
@@ -3389,9 +3389,13 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | FL1 | **Navegación nativa** — ver §45.5 | volver de un chat no remonta la lista | ✅ 16/10 (0.1.71) |
 | FL2 | **Pantalla de chat nueva** — FL2a (§45.6) y FL2b (§45.8) | 0 frames perdidos al tipear y al abrir; teclado sincronizado | ✅ 16/10 (0.1.73) |
 | FL3 | **Burbujas y lista estilo WhatsApp** — conversación (§45.9) y lista (§45.10), claro y oscuro | auditoría lado a lado contra el diseño de Stitch | ✅ 16/10 (0.1.75) |
-| FL4 | **Latencia del server** — hecho: envío de 5 a 3 viajes, lista sin N+1, ping 15/10 s (§45.7). Falta: bóveda (D2), caché de membresía para acuses/typing, fotos con dimensiones + blurhash | ack < 300 ms medido | 🟡 16/10 |
+| FL4 | **Latencia del server** — hecho: envío de 5 a 3 viajes, lista sin N+1, ping 15/10 s (§45.7). Hecho también: bóveda (D2, §45.11). Falta: caché de membresía para acuses/typing, fotos con dimensiones + blurhash | ack < 300 ms medido | 🟡 16/10 |
 | FL5 | **Pendientes de F12 que pesan en el hilo JS**: cifrado/scrypt por lotes, tarea de fondo que mira wifi/carga primero (§44.4) — ver §45.12 | respaldar 20 000 mensajes sin ANR en `gama-baja` | 🟡 17/10: hecho y medido en V8 (tramo típico 0,7 ms); falta medir en un gama baja real |
-| FL6 | **Marca y Stitch**: logo vectorial único (ícono, adaptativo, mono, splash y `<Logo>` desde la misma geometría); diseñar en Stitch la conversación llena, con la paleta real y las pestañas reales | ícono verificado dentro del APK | ⬜ |
+| FL6 | **Marca y Stitch**: logo vectorial único (ícono, adaptativo, mono, splash y `<Logo>` desde la misma geometría) — ver §45.13; diseñar en Stitch la conversación llena, con la paleta real y las pestañas reales | ícono verificado dentro del APK | 🟡 17/10: logo publicado y verificado en el APK (0.1.76); falta la pantalla de Stitch |
+| FL7 | **Agenda editable y visor a lo WhatsApp** + lo roto de la auditoría que no podía esperar — ver §45.14 | editar/borrar avisos y eventos, día y hora exactos, deslizar entre fotos; E2E en el emulador | ✅ 17/10 (0.1.77) |
+| FL8 | **Lo que se pierde o se rompe** (auditoría §46.1) | ningún mensaje desaparece sin aviso; la notificación abre su chat; la llamada suena fuera del chat | ⬜ |
+| FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | ⬜ |
+| FL10 | **Pulido y coherencia** (§46.3): un solo registro (tuteo), 44 dp, encuestas completas, detalle de evento | auditoría de pantalla entera sin hallazgos ALTA | ⬜ |
 
 ### 45.4 As-is FL0 (16/10/2026)
 
@@ -3720,3 +3724,151 @@ Chats, Agenda o Encuestas pedía todo de nuevo y mostraba el esqueleto. Ahora:
   build (sha256).
 - **Falta de FL6**: la pantalla de Stitch con la conversación llena, la paleta
   y las pestañas reales.
+
+### 45.14 As-is FL7, agenda editable, visor y lo urgente de la auditoría (17/10/2026)
+
+José: «los sub tabs eventos y avisos tienen el mismo problema, ¿no estás
+auditando bien?», «no hay como editar avisos», «no hay como elegir una hora
+específica», «en el chat abro una imagen, deslizo y no pasa a la previa o
+siguiente». Tenía razón en lo de fondo: se arreglaba lo que él encontraba. Se
+hizo una auditoría de TODA la app contra WhatsApp (§46) y esta fase toma lo
+que pidió más lo que estaba roto.
+
+**Agenda**
+- Eventos y Avisos quedan montados (la vista inactiva se esconde): sin
+  esqueleto al cambiar. Crear y editar viven en `AgendaScreen`; al guardar sube
+  `recarga` y las listas vuelven a pedir sin remontarse. Al volver a la pestaña
+  o a la app se vuelve a pedir (`ui/useAlVolver.ts`), también Encuestas.
+- Avisos ya no tiene un segundo control segmentado adentro: una lista con
+  «Tuyos» y «Compartidos en tus chats».
+- **Editar y borrar**: `PATCH`/`DELETE /api/agenda/reminders/:id` (solo el
+  dueño; a otro, 404) y `/events/:id` (solo quien lo creó; a un invitado 403,
+  a alguien de afuera 404). Reglas puras en `shared/agendaEdicion.ts` (14
+  tests): mover la hora rearma el aviso (`remindedAt: null`) —si no, el cron no
+  lo volvía a mirar—, un opcional vacío se borra. Tocar un aviso propio o un
+  evento propio (lápiz) abre la misma pantalla en modo edición, con borrar
+  confirmado. `GET /events` dice `mio`. 11 tests de rutas (`eventRoutes.test.ts`).
+- **Día y hora exactos**: `ui/SelectorDeCuando.tsx` (atajos + casillas Día y
+  Hora con el picker del sistema), compartido por avisos y eventos. Atajos en
+  hora local (`ui/cuando.ts`, 10 tests): «Esta noche» = hoy 20:00 (antes era
+  ahora + 9 h: creado a las 20:00 sonaba a las 5:00), «Mañana» 9:00, «Este
+  sábado» / «El próximo sábado» 10:00.
+- **«Avisar 1 hora antes» no hacía nada**: la app mandaba `remindGuests` y el
+  server lo ignoraba. Ahora se guarda, el cron lo respeta y se edita.
+- Errores honestos: sin red las listas conservan lo que había y muestran
+  «No se pudo actualizar. Toca para reintentar» (antes, «Sin eventos»). Tirar
+  para refrescar en las tres listas, también vacías. El interruptor de un aviso
+  vuelve atrás si el server no lo guardó.
+
+**Los avisos llegaban mal (cron, verificado leyendo el código)**
+- Con la app abierta, la web abierta o «Conexión permanente» NO llegaban: el
+  push se filtraba a los desconectados y nada iba por el socket. Ahora un aviso
+  de la agenda va a todos los teléfonos con `tipo: 'agenda'` y la app lo
+  muestra con banner aunque esté adelante.
+- Un aviso diario que se pasaba de la hora más de una hora quedaba activo para
+  siempre sin sonar, y 50 así trababan al cron (`limit` sin orden). Ahora
+  `decidirRecordatorio` (shared, 6 tests) lo mueve a la próxima vez o lo apaga,
+  y la consulta va ordenada. Reactivar limpia el sello.
+
+**Visor de fotos** (`VisorDeImagen` + `PaginaDelVisor` + `visor.ts`, 9 tests):
+pager horizontal (deslizar entre fotos), pellizco y doble toque para acercar
+donde se tocó, arrastre con zoom sin cambiar de foto, arrastrar en vertical
+para cerrar, un toque esconde las barras, «N de M» en la cabecera, autor real
+en grupos (antes, el nombre del grupo), tira con miniaturas (antes decodificaba
+cada foto entera a 52 px) y un solo reproductor de video vivo. Las flechas se
+fueron: iban al revés porque la lista llega de vieja a nueva.
+
+**Chat secreto mandaba en claro** (auditoría, verificado): sin la clave lista,
+la app encolaba el texto sin cifrar, y las fotos y notas de voz nunca se
+cifraban. El comentario del server prometía «en un chat cifrado no se guarda
+`body`» y el código no lo hacía. Ahora `sendMessage` rechaza todo lo que llega
+sin sobre a un chat secreto (`CifradoRequeridoError`, 403 permanente para la
+cola, sin consumir `seq`; 6 tests), y la barra de escribir queda bloqueada
+hasta tener la clave y en modo solo texto después (sin adjuntos, voz ni
+programados, que no viajan cifrados).
+
+**Regresión mía de 55ccf58** (publicada en 0.1.76): un comentario `//` quedó
+como texto JSX dentro del `<View>` de Ajustes. Ahora es `{/* */}`.
+
+**E2E** (emulador, debug contra :3104 sin crons, 902049935 por yopmail):
+Eventos ↔ Avisos con captura tras cada toque sin esqueleto ni pedidos; crear un
+aviso eligiendo 7:30 p. m. en el reloj y el martes 20 en el calendario →
+`2026-10-21T00:30Z` en la base; editarlo con «Mañana» y una nota →
+`2026-10-18T14:00Z` y nota guardada; borrarlo con confirmación → 0. Evento
+sembrado en un grupo «QA FL7» con José solo: aparece al volver a la pestaña,
+se edita (título, «Esta noche», aviso apagado → `remindGuests: false`) y se
+cancela → 0. Visor en un 1:1 con 6 fotos: deslizar 6→5→6, doble toque,
+arrastre con zoom, toque para las barras, deslizar abajo para cerrar. QA en
+cero: devices 20, chat QA borrado, app desinstalada.
+No probado en la interfaz: el bloqueo del chat secreto (no hay uno en la cuenta
+de QA; lo cubren los tests del server).
+
+## 46. Auditoría UX contra WhatsApp (17/10/2026)
+
+Dos pasadas de solo lectura (conversaciones; todo lo demás), con evidencia
+`archivo:línea`. Lo hecho en FL7 está en §45.14; lo que sigue, por fase.
+
+### 46.1 FL8 — lo que se pierde o se rompe
+- Un mensaje que el server rechaza desaparece sin aviso; no hay «falló» ni
+  reintentar; con 401 se vacía la cola en silencio (`outboxStore.ts:104-113`,
+  `shared/outbox.ts:75-88`).
+- La cola solo se vacía con un chat abierto (`ChatListScreen.tsx:219`).
+- Fotos, archivos y notas de voz no entran a la cola: sin red fallan y se
+  pierden (`ChatScreen.tsx:311-337`).
+- Tocar una notificación no abre ese chat (nadie escucha la respuesta;
+  `avisoLocal.ts:87`).
+- Una llamada solo suena si el otro tiene ese chat abierto: la señalización
+  vive en la pantalla del chat y no hay push (`useCall.ts:157`,
+  `socket.ts:298`). Altavoz y «activar video» no hacen nada real.
+- En grupos el check azul se pone con la lectura del PRIMERO
+  (`useChat.ts:385-390` vs `chatService.ts:293`).
+- Documentos sin miniatura (Word, Excel, zip, mp3) no abren
+  (`ChatScreen.tsx:293`).
+- «Silenciar» en el detalle no se guarda (`ChatDetailScreen.tsx:113`).
+- Cerrar sesión: sin confirmar, borra historial y passphrase, y el server no
+  se entera (el `pushToken` sigue: el teléfono deslogueado recibe avisos).
+- Chat nuevo desde «Nuevo chat» abre con `memberIds: []` → se trata como
+  grupo, sin botón de llamar y el chat secreto no deriva la clave
+  (`TabsShell.tsx:611-622`).
+- Los permisos de contactos y notificaciones se vuelven a pedir en cada
+  arranque; `expo-notifications` avisa «Custom sound 'default'» en cada inicio.
+- RSVP de quien entró al chat después de creado el evento da 403
+  (invitados = foto de los miembros al crear).
+- Un evento o una encuesta de un chat secreto se guarda en claro.
+
+### 46.2 FL9 — lo que WhatsApp hace a diario
+- Pulsación larga: solo «Eliminar», de a uno, sin confirmar, sin «para mí /
+  para todos», y aparece en mensajes ajenos. Faltan Responder, Copiar,
+  Reenviar, Info, multiselección (`ChatScreen.tsx:549-579`).
+- Links, teléfonos y correos no se tocan (`MessageRow.tsx:336`).
+- Una foto por vez, sin previsualización con pie (el server ya acepta pie).
+- Tocar una cita no salta al original; en grupos la cita no dice de quién.
+- No se busca dentro de un chat (botón deshabilitado); un resultado de la
+  búsqueda general no lleva al mensaje (el `seq` llega y se ignora).
+- Sin divisor «N no leídos»; el chat siempre abre abajo.
+- Notas de voz: sin velocidad, sin arrastrar, sin onda; dos suenan a la vez;
+  grabar es tocar/tocar (sin mantener y deslizar para cancelar).
+- Borrador por chat; ver y cancelar programados (el server ya lo tiene).
+- Atrás de Android sale del chat con algo seleccionado o una respuesta a
+  medias; en la lista cierra la app con una búsqueda activa.
+- No se archiva ni se elimina un chat; no hay «marcar no leído».
+- Sin nombre ni foto de perfil (el OTP acepta `name` y nadie lo pide).
+- Fotos siempre recortadas a 220×220 (el server no guarda dimensiones).
+
+### 46.3 FL10 — pulido y coherencia
+- **Un solo registro: tuteo** (Perú). Hoy Agenda y onboarding tutean y
+  Ajustes, Contactos, respaldo e invitación vosean, a veces en el mismo
+  mensaje («Te invito… Instalá»).
+- Áreas táctiles < 44 dp y botones sin etiqueta (volver/llamar 36 dp, RSVP 36
+  dp, quitar participante 24 dp…).
+- Encuestas: no dicen de qué chat ni quién preguntó, nunca muestran quién
+  votó, «anónimo» no es real (el server manda los votantes a todos), no se
+  cierran ni se borran, votar no espera ni avisa errores.
+- Evento: sin detalle para quien no lo creó (quiénes van, en qué chat), sin
+  hora de fin, «Pueden invitar a otros» sin efecto, invitar a 2+ siempre crea
+  un grupo nuevo.
+- «Compartidos» en avisos nunca tiene nada (nadie crea un aviso de chat).
+- Presencia: sin «últ. vez»; los grupos muestran el punto de en línea.
+- Dos respaldos distintos en Ajustes; «Respaldar ahora» de la copia vieja
+  deja a cualquiera lanzar un dump del server entero (`backupRoutes.ts:44`).
+- Un solo ErrorBoundary para toda la app; orientación fija en vertical.

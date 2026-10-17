@@ -135,6 +135,8 @@ export type ChatSummary = {
   /** El teléfono del OTRO, solo en 1:1: con él se busca su nombre en tu agenda. */
   phone?: string;
   memberIds: string[];
+  /** Los otros miembros cuyo acuse cuenta para mis checks (sin mí ni Lila; FL8). */
+  acuseDe?: string[];
   lastSeq: number;
   unread: number;
   lastMessage: {
@@ -238,6 +240,26 @@ export async function leaveChat(chatId: string, token: string): Promise<boolean>
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Al cerrar sesión: el server deja de mandar push a ESTE teléfono (FL8). Sin
+ * esto el token quedaba en el device y un teléfono deslogueado seguía
+ * recibiendo los avisos de la cuenta. Es la misma ruta que usa la web; va por
+ * `deviceId` de la sesión, no por plataforma. Plazo corto: si no hay red, la
+ * sesión se cierra igual.
+ */
+export async function olvidarPushDeEsteTelefono(token: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE_URL}/api/push/subscribe`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(5_000),
     });
     return res.ok;
   } catch {

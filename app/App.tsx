@@ -8,7 +8,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { ErrorBoundary } from './src/ui/ErrorBoundary';
 import './global.css';
-import { listChats, refreshSession } from './src/api/client';
+import { listChats, olvidarPushDeEsteTelefono, refreshSession } from './src/api/client';
+import { olvidarCola } from './src/chat/outboxStore';
+import { olvidarArchivos } from './src/chat/colaDeArchivos';
 import {
   clearCredential,
   loadCredential,
@@ -406,8 +408,12 @@ function Contenido() {
           onLogout={() => {
             // El socket se cierra ANTES de borrar la credencial: si no, queda
             // vivo con un JWT que ya no vale y reconecta en bucle.
+            // El server deja de empujar a este teléfono ANTES de soltar el JWT.
+            void olvidarPushDeEsteTelefono(boot.credential.jwt);
             disconnectSocket();
             setChatAbierto(null);
+            void olvidarCola();
+            void olvidarArchivos();
             void olvidarChats();
             void olvidarMensajes();
             void olvidarPassphrase();

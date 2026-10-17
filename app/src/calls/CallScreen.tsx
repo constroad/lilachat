@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RTCView, type MediaStream } from 'react-native-webrtc';
 import { Mic, MicOff, Phone, PhoneOff, Video, VideoOff, Volume2 } from 'lucide-react-native';
-import { formatCallDuration, type CallState } from '@lilachat/shared';
+import type { CallState } from '@lilachat/shared';
+import { leyendaDeLlamada, type EstadoDeMedios } from './estadoDeMedios';
 import { useColores } from '../ui/tema';
 
 /**
@@ -21,6 +22,7 @@ import { useColores } from '../ui/tema';
 export function CallScreen({
   visible,
   state,
+  medios,
   peerName,
   video,
   muted,
@@ -30,11 +32,14 @@ export function CallScreen({
   onToggleMute,
   onToggleSpeaker,
   onToggleVideo,
+  puedeAlternarVideo,
   onAccept,
   onHangUp,
 }: {
   visible: boolean;
   state: CallState;
+  /** Contestada no es conectada: hasta que pasa el audio dice «Conectando…». */
+  medios: EstadoDeMedios;
   peerName: string;
   video: boolean;
   muted: boolean;
@@ -44,6 +49,11 @@ export function CallScreen({
   onToggleMute: () => void;
   onToggleSpeaker: () => void;
   onToggleVideo: () => void;
+  /**
+   * Solo en una videollamada: en una de voz el botón prendía el ícono sin
+   * prender ninguna cámara (sumar video a mitad de llamada pide renegociar).
+   */
+  puedeAlternarVideo: boolean;
   onAccept: () => void;
   onHangUp: () => void;
 }) {
@@ -56,16 +66,7 @@ export function CallScreen({
     return () => clearInterval(timer);
   }, [state.fase]);
 
-  const leyenda =
-    state.fase === 'llamando'
-      ? 'Llamando…'
-      : state.fase === 'sonando'
-        ? video
-          ? 'Videollamada entrante'
-          : 'Llamada entrante'
-        : state.fase === 'activa'
-          ? formatCallDuration(state, ahora)
-          : 'Llamada terminada';
+  const leyenda = leyendaDeLlamada({ state, medios, video, ahora });
 
   return (
     <Modal visible={visible} animationType="slide" statusBarTranslucent>
@@ -147,15 +148,17 @@ export function CallScreen({
                 activo={speaker}
                 icon={<Volume2 size={22} color={colores["on-primary"]} />}
               />
-              <Boton
-                testID="btn-video"
-                label="Video"
-                onPress={onToggleVideo}
-                activo={video}
-                icon={
-                  video ? <Video size={22} color={colores["on-primary"]} /> : <VideoOff size={22} color={colores["on-primary"]} />
-                }
-              />
+              {puedeAlternarVideo ? (
+                <Boton
+                  testID="btn-video"
+                  label="Video"
+                  onPress={onToggleVideo}
+                  activo={video}
+                  icon={
+                    video ? <Video size={22} color={colores["on-primary"]} /> : <VideoOff size={22} color={colores["on-primary"]} />
+                  }
+                />
+              ) : null}
               <Boton
                 testID="btn-colgar"
                 label="Colgar"

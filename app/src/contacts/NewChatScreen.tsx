@@ -40,6 +40,8 @@ export function NewChatScreen({
     kind: 'direct' | 'group';
     /** Sin esto la conversación abre SIN candado hasta la primera recarga. */
     encrypted?: boolean;
+    /** Yo incluido. Sin esto un 1:1 recién creado se trataba como grupo (FL8). */
+    memberIds: string[];
   }) => void;
 }) {
   const colores = useColores();
@@ -63,13 +65,15 @@ export function NewChatScreen({
   };
 
   const abrirDirecto = async (contact: Contact) => {
+    // Un doble toque creaba DOS chats (dos secretos, con el interruptor).
+    if (guardando) return;
     // Si ya hay conversación se ABRE, no se crea otra. El server también lo
     // impide, pero preguntar de más es un viaje que no hace falta.
     // Con el interruptor puesto NO se reusa el chat existente: uno normal no se
     // convierte en secreto —sus mensajes viejos ya están en claro en el
     // servidor— así que el chat cifrado es OTRA conversación.
     if (contact.directChatId && !secreto) {
-      onOpenChat({ id: contact.directChatId, name: contact.name ?? contact.phone, kind: 'direct' });
+      onOpenChat({ id: contact.directChatId, name: contact.name ?? contact.phone, kind: 'direct', memberIds: [credential.userId, contact.id] });
       return cerrar();
     }
     setGuardando(true);
@@ -85,11 +89,15 @@ export function NewChatScreen({
       name: contact.name ?? contact.phone,
       kind: 'direct',
       encrypted: secreto,
+      // Los miembros VAN: sin ellos la conversación no sabía quién es el otro
+      // (sin botón de llamar, tratada como grupo y, si era secreta, sin clave).
+      memberIds: [credential.userId, contact.id],
     });
     cerrar();
   };
 
   const crearGrupo = async () => {
+    if (guardando) return;
     if (!nombre.trim()) return setError('Ponle un nombre al grupo.');
     if (elegidos.length === 0) return setError('Elige al menos a una persona.');
 
@@ -101,7 +109,7 @@ export function NewChatScreen({
     });
     setGuardando(false);
     if (!result.ok) return setError(result.message ?? 'No se pudo crear el grupo.');
-    onOpenChat({ id: result.data.chatId, name: nombre.trim(), kind: 'group' });
+    onOpenChat({ id: result.data.chatId, name: nombre.trim(), kind: 'group', memberIds: [credential.userId, ...elegidos.map((contact) => contact.id)] });
     cerrar();
   };
 

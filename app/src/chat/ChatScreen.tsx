@@ -28,8 +28,6 @@ import {
 import { formatDayLabel, startsNewDay } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { AttachSheet } from './AttachSheet';
-import { CallScreen } from '../calls/CallScreen';
-import { useCall } from '../calls/useCall';
 import { CreateEventScreen } from '../agenda/CreateEventScreen';
 import { CreatePollScreen } from '../agenda/CreatePollScreen';
 import { CatchUpBanner } from './CatchUpBanner';
@@ -44,10 +42,15 @@ import { previewDeMensaje } from './MessageRow';
 import { VisorDeImagen } from './VisorDeImagen';
 import { ChatDetailScreen } from './ChatDetailScreen';
 import { useChat } from './useChat';
+import { useLlamadas } from '../calls/ProveedorDeLlamadas';
+import { descartarMensaje, reintentarMensaje } from './outboxStore';
+import { descartarArchivo, encolarArchivo, reintentarArchivo } from './colaDeArchivos';
+import { useArchivosDelChat } from './useArchivosDelChat';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { decidirAtras } from '../ui/botonAtras';
 import { textoDeSubida } from './progresoDeSubida';
+import { reportarError } from '../ui/reportarError';
 import { citadosPorSeq, tipoDeFila } from './filasDelChat';
 import { useNombresDelGrupo } from './useNombresDelGrupo';
 import { subtituloDelChat } from './cabeceraDelChat';
@@ -68,6 +71,7 @@ export function ChatScreen({
   chatAvatarUrl,
   credential,
   othersReadSeq,
+  acuseDe,
   othersDeliveredSeq,
   unread,
   lastSeqInicial,
@@ -81,6 +85,8 @@ export function ChatScreen({
   chatAvatarUrl?: string;
   credential: Credential;
   othersReadSeq: number;
+  /** Quiénes cuentan para el check azul (FL8): en un grupo, todos menos yo y Lila. */
+  acuseDe?: readonly string[];
   othersDeliveredSeq: number;
   /** Cuántos sin leer traía la lista: decide si la banda de Lila aparece. */
   unread: number;
@@ -116,7 +122,6 @@ export function ChatScreen({
     escribiendo,
     avisarEscribiendo,
     send,
-    sendMedia,
     markRead,
     cargandoAnteriores,
     hayAnteriores,
@@ -127,6 +132,9 @@ export function ChatScreen({
     miUserId: credential.userId,
     seal: sesionLista?.seal,
     open: sesionLista?.open,
+    acuseDe,
+    baseLeido: othersReadSeq,
+    baseEntregado: othersDeliveredSeq,
   });
   // El borrador vive en el Composer (FL2): una tecla ya no re-renderiza esto.
   const composerRef = useRef<ComposerHandle>(null);
@@ -169,9 +177,8 @@ export function ChatScreen({
   // de crear no vuelven a preguntar dónde.
   const [creando, setCreando] = useState<'event' | 'poll' | null>(null);
   const [falloCifrado, setFalloCifrado] = useState(false);
-  const llamada = useCall({ chatId, peerName: chatName, jwt: credential.jwt });
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
+  // Las llamadas son de la sesión (FL8): suenan en cualquier pantalla.
+  const { llamar } = useLlamadas();
 
   /**
    * El botón ATRÁS de Android vuelve a la lista, no cierra la app.
@@ -196,21 +203,8 @@ export function ChatScreen({
   /** El resultado de descargar/compartir, que se pinta DENTRO del visor. */
   const [avisoVisor, setAvisoVisor] = useState('');
 
-  /**
-   * La foto que se esta subiendo, para pintarla YA en el chat.
-   *
-   * Vive en memoria y no en la cola persistida: un `file://` deja de valer
-   * cuando el sistema limpia su cache, asi que una foto pendiente guardada en
-   * disco reaparecia como una burbuja rota al reabrir la app.
-   */
-  const [subiendo, setSubiendo] = useState<{
-    clientKey: string;
-    uri: string;
-    mime: string;
-    nombre: string;
-    /** Fija al empezar: con `new Date()` en cada render la fila nunca era la misma. */
-    queuedAt: string;
-  } | null>(null);
+  const archivosEnCola = useArchivosDelChat(chatId);
+  const subidaEnCurso = archivosEnCola.find((uno) => uno.progreso !== undefined)?.progreso;
   /** La foto abierta a pantalla completa, o `null`. */
   /** El `seq` de la foto abierta a pantalla completa, o `null`. */
   const [viendoSeq, setViendoSeq] = useState<number | null>(null);
@@ -315,32 +309,19 @@ export function ChatScreen({
     }));
   const fotoAbierta = fotos.find((f) => f.seq === viendoSeq) ?? null;
 
-  const upload = async (file: {
-    uri: string;
-    fileName: string;
-    mimeType: string;
-    sizeBytes: number;
-    durationMs?: number;
-  }) => {
-    setUploading(true);
-    setProgress(0);
+  /**
+   * Foto, archivo o nota de voz: a la cola PERSISTIDA (FL8). La burbuja aparece
+   * al instante —como WhatsApp— y sube cuando hay red, aunque se salga del chat
+   * o se cierre la app; si el server la rechaza queda «No se envió» a la vista.
+   */
+  const upload = async (file: { uri: string; fileName: string; mimeType: string; sizeBytes: number; durationMs?: number }) => {
     setMediaError('');
-    // La burbuja aparece ANTES de subir nada: es lo que hace WhatsApp y lo que
-    // Jose pidio el 27/08/2026. El check llega despues, cuando el server
-    // confirma.
-    setSubiendo({
-      clientKey: `local-${file.uri}`,
-      uri: file.uri,
-      mime: file.mimeType,
-      nombre: file.fileName,
-      queuedAt: new Date().toISOString(),
-    });
-    const result = await sendMedia({ ...file, onProgress: setProgress });
-    setUploading(false);
-    setSubiendo(null);
-    // El fallo se DICE: una foto que desaparece sin explicación es lo que hace
-    // que la gente deje de mandar fotos por la app.
-    if (!result.ok) setMediaError(result.reason);
+    try {
+      await encolarArchivo({ chatId, ...file });
+    } catch (error) {
+      reportarError('encolarArchivo', error);
+      setMediaError('No se pudo preparar el archivo para enviarlo.');
+    }
   };
 
   /**
@@ -428,21 +409,18 @@ export function ChatScreen({
     () => [
       ...messages,
       ...pending,
-      ...(subiendo
-        ? [
-            {
-              clientKey: subiendo.clientKey,
-              queuedAt: subiendo.queuedAt,
-              pending: true as const,
-              mediaUri: subiendo.uri,
-              mediaMime: subiendo.mime,
-              mediaNombre: subiendo.nombre,
-              progreso: progress,
-            },
-          ]
-        : []),
+      ...archivosEnCola.map(({ archivo, progreso }) => ({
+        clientKey: archivo.clientKey,
+        queuedAt: archivo.queuedAt,
+        pending: true as const,
+        mediaUri: archivo.uri,
+        mediaMime: archivo.mimeType,
+        mediaNombre: archivo.fileName,
+        progreso,
+        fallo: archivo.fallo,
+      })),
     ],
-    [messages, pending, subiendo, progress]
+    [messages, pending, archivosEnCola]
   );
 
   /** Las citas, una vez por cambio de mensajes (antes un `find` por fila y por render). */
@@ -457,7 +435,31 @@ export function ChatScreen({
   );
   const leidoHasta = Math.max(othersReadSeq, othersRead);
   const entregadoHasta = Math.max(othersDeliveredSeq, othersDelivered);
-  const alVerImagen = useCallback((seq: number) => setViendoSeq(seq), []);
+  // En refs: `alVerImagen` tiene que ser estable (las burbujas son `memo`).
+  const fotosRef = useRef(fotos);
+  fotosRef.current = fotos;
+  const mensajesRef = useRef(messages);
+  mensajesRef.current = messages;
+  /**
+   * Tocar una foto, un video o un archivo. Lo que tiene miniatura va al visor;
+   * un documento SIN miniatura (Word, Excel, zip, mp3: lila solo la genera
+   * para PDF) no estaba en el visor y el toque no hacía nada (FL8). Ahora se
+   * abre directo con la app del teléfono que sepa hacerlo.
+   */
+  const alVerImagen = useCallback((seq: number) => {
+    if (fotosRef.current.some((foto) => foto.seq === seq)) return setViendoSeq(seq);
+    const mensaje = mensajesRef.current.find((m) => m.seq === seq);
+    if (!mensaje?.media?.url) return;
+    void abrirConOtraApp({
+      url: mensaje.media.url,
+      cuando: new Date(mensaje.at),
+      mime: mensaje.media.mime,
+      seq,
+      nombre: mensaje.media.fileName,
+    }).then((r) => {
+      if (!r.ok) setMediaError(r.motivo);
+    });
+  }, []);
   const alResponder = useCallback(
     (seq: number, texto: string, mio: boolean) => setRespondiendoA({ seq, texto, mio }),
     []
@@ -468,6 +470,22 @@ export function ChatScreen({
    * `MessageRow` memoizado, un mensaje nuevo dibuja SU burbuja y la de al lado
    * (por el agrupado), no la pantalla entera (FL2).
    */
+  /**
+   * Un mensaje que el server rechazó para siempre (FL8). Antes desaparecía sin
+   * aviso; ahora se ve «No se envió» y se decide acá.
+   */
+  const archivosRef = useRef(archivosEnCola);
+  archivosRef.current = archivosEnCola;
+  const alFallido = useCallback((clientKey: string, motivo: string) => {
+    // Texto y archivos viven en colas distintas: cada uno se reintenta en la suya.
+    const esArchivo = archivosRef.current.some(({ archivo }) => archivo.clientKey === clientKey);
+    Alert.alert('No se envió', motivo, [
+      { text: 'Borrar', style: 'destructive', onPress: () => void (esArchivo ? descartarArchivo : descartarMensaje)(clientKey) },
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Reintentar', onPress: () => void (esArchivo ? reintentarArchivo : reintentarMensaje)(clientKey) },
+    ]);
+  }, []);
+
   const dibujarFila = useCallback(
     ({ item, index }: { item: Row; index: number }) => {
       const previous = rows[index - 1];
@@ -491,6 +509,7 @@ export function ChatScreen({
             onResponder={alResponder}
             citado={isPending(item) ? null : (citados.get(item.seq) ?? null)}
             seleccionado={!isPending(item) && item.seq === elegido}
+            onFallido={alFallido}
           />
         </>
       );
@@ -645,15 +664,17 @@ export function ChatScreen({
           <>
             <Pressable
               testID="btn-videollamada"
-              onPress={() => llamada.llamar(true)}
-              className="h-11 w-9 items-center justify-center"
+              accessibilityLabel="Videollamada"
+              onPress={() => llamar(chatId, chatName, true)}
+              className="h-11 w-11 items-center justify-center"
             >
               <Video size={20} color={colores["on-surface-variant"]} />
             </Pressable>
             <Pressable
               testID="btn-llamada"
-              onPress={() => llamada.llamar(false)}
-              className="h-11 w-9 items-center justify-center"
+              accessibilityLabel="Llamar"
+              onPress={() => llamar(chatId, chatName, false)}
+              className="h-11 w-11 items-center justify-center"
             >
               <Phone size={20} color={colores["on-surface-variant"]} />
             </Pressable>
@@ -696,28 +717,6 @@ export function ChatScreen({
           y un botón que siempre falla es peor que no tenerlo. */}
       {/* La pantalla de llamada se monta SOBRE el chat: al colgar se vuelve a
           la conversación, que es donde uno estaba. */}
-      {llamada.state ? (
-        <CallScreen
-          visible
-          state={llamada.state}
-          peerName={chatName}
-          video={llamada.video}
-          muted={llamada.muted}
-          speaker={llamada.speaker}
-          localStream={llamada.localStream}
-          remoteStream={llamada.remoteStream}
-          onToggleMute={llamada.alternarMute}
-          onToggleSpeaker={llamada.alternarAltavoz}
-          onToggleVideo={llamada.alternarVideo}
-          onAccept={llamada.contestar}
-          onHangUp={() => {
-            llamada.colgar();
-            // Se cierra un instante después para que se vea «terminada» en vez
-            // de desaparecer de golpe, que se siente como que se cortó sola.
-            setTimeout(llamada.cerrar, 900);
-          }}
-        />
-      ) : null}
 
       <ProgramarMensajeModal
         visible={programarVisible}
@@ -813,9 +812,10 @@ export function ChatScreen({
         ) : null}
       </View>
 
-      {uploading ? (
+
+      {subidaEnCurso !== undefined ? (
         <Text className="px-4 pb-1 text-sm text-on-surface-variant" testID="subida-progreso">
-          {textoDeSubida(progress)}
+          {textoDeSubida(subidaEnCurso)}
         </Text>
       ) : null}
 
@@ -838,7 +838,7 @@ export function ChatScreen({
         ref={composerRef}
         respondiendoA={respondiendoA}
         onCancelarRespuesta={alCancelarRespuesta}
-        subiendo={uploading}
+        subiendo={false}
         margenPie={tecladoAbierto ? MARGEN_CON_TECLADO : margenes.pie}
         onAdjuntar={alAdjuntar}
         onCamara={alCamara}
@@ -912,10 +912,10 @@ export function ChatScreen({
           // Y afuera del chat: ya no es suyo.
           onBack();
         }}
-        onLlamar={otherUserId ? (video) => llamada.llamar(video) : undefined}
-        onVerImagen={(url) => {
+        onLlamar={otherUserId ? (video) => llamar(chatId, chatName, video) : undefined}
+        onVerImagen={(seq) => {
           setVerDetalle(false);
-          setViendoSeq(fotos.find((f) => f.url === url)?.seq ?? null);
+          alVerImagen(seq);
         }}
       />
     </KeyboardAvoidingView>

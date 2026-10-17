@@ -28,6 +28,7 @@ import { AjustesDelChat } from './AjustesDelChat';
 import { AccionesDeMiembro } from './AccionesDeMiembro';
 import { ElegirParaSumar } from './ElegirParaSumar';
 import type { Credential } from '../auth/credentialStore';
+import { cambiarAjustesDeChat } from '../api/client';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useColores } from '../ui/tema';
 import { useMargenes } from '../ui/useMargenes';
@@ -60,6 +61,8 @@ type Detalle = {
   name?: string;
   avatarUrl?: string;
   encrypted: boolean;
+  /** MI silenciado de este chat (FL8: antes el interruptor arrancaba siempre apagado). */
+  muted?: boolean;
   members: Miembro[];
 };
 
@@ -99,7 +102,8 @@ export function ChatDetailScreen({
    */
   onSalio?: () => void;
   onLlamar?: (video: boolean) => void;
-  onVerImagen?: (url: string) => void;
+  /** Por `seq`: así un documento sin miniatura también se abre (FL8). */
+  onVerImagen?: (seq: number) => void;
   /**
    * Cambió el nombre o la foto: la cabecera de la conversación de atrás sigue
    * mostrando los viejos hasta que la lista se recargue, y ver el nombre nuevo
@@ -176,7 +180,9 @@ export function ChatDetailScreen({
         setEstado({ fase: 'error', mensaje: 'No pudimos cargar los datos del chat.' });
         return;
       }
-      setEstado({ fase: 'listo', detalle: (await respuesta.json()) as Detalle });
+      const detalle = (await respuesta.json()) as Detalle;
+      setEstado({ fase: 'listo', detalle });
+      setSilenciado(detalle.muted === true);
     } catch {
       // **El error se DICE.** Una pantalla que se queda en blanco al fallar la
       // red es indistinguible de una pantalla rota.
@@ -411,7 +417,7 @@ export function ChatDetailScreen({
               clasificado={clasificado}
               pestana={pestana}
               onPestana={setPestana}
-              onVerMedia={(m) => onVerImagen?.(m.media!.url ?? m.media!.thumbUrl!)}
+              onVerMedia={(m) => onVerImagen?.(m.seq)}
             />
 
             {esGrupo ? (
@@ -473,7 +479,16 @@ export function ChatDetailScreen({
               esGrupo={esGrupo}
               cifrado={detalle!.encrypted}
               silenciado={silenciado}
-              onSilenciar={setSilenciado}
+              onSilenciar={(valor) => {
+                // Se guarda de verdad (FL8): antes era solo un estado local.
+                // Si el server no lo toma, el interruptor vuelve y se dice.
+                setSilenciado(valor);
+                void cambiarAjustesDeChat(chatId, credential.jwt, { muted: valor }).then((ok) => {
+                  if (ok) return;
+                  setSilenciado(!valor);
+                  setAviso('No se pudo cambiar. Revisa la conexión.');
+                });
+              }}
               accionando={accionando}
               onSalir={async () => {
                 // `onSalio` cierra el detalle Y la conversación: quedarse

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decidirServicio, reusarSocket } from './servicioDeConexion';
+import { decidirServicio, queHacerConElSocket, reusarSocket } from './servicioDeConexion';
 
 /**
  * Cuándo corre el servicio en primer plano — y por lo tanto, cuándo hay
@@ -79,5 +79,26 @@ describe('reusarSocket', () => {
 
   it('cortado a propósito (pausa o logout): se crea uno nuevo', () => {
     expect(reusarSocket({ connected: false, active: false })).toBe(false);
+  });
+});
+
+/**
+ * FL8: un socket PAUSADO (app en segundo plano) se reconecta, no se reemplaza.
+ * Reemplazarlo dejaba a quien escuchaba en el viejo —las llamadas de la sesión—
+ * sordo: al tocar el push «Llamada de…» la app abría el chat y la oferta llegaba
+ * al socket nuevo, sin nadie escuchando.
+ */
+describe('queHacerConElSocket', () => {
+  it('sin socket (arranque o después de cerrar sesión): crear', () => {
+    expect(queHacerConElSocket(null)).toBe('crear');
+  });
+
+  it('conectado o conectando: reusar tal cual', () => {
+    expect(queHacerConElSocket({ connected: true, active: true })).toBe('reusar');
+    expect(queHacerConElSocket({ connected: false, active: true })).toBe('reusar');
+  });
+
+  it('pausado (desconectado a mano): reconectar el MISMO, con sus oyentes', () => {
+    expect(queHacerConElSocket({ connected: false, active: false })).toBe('reconectar');
   });
 });

@@ -3,10 +3,10 @@ import { memo } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { Check, CheckCheck, Clock3, FileText, Pause, Play } from 'lucide-react-native';
-import { colorDeAutor, mostrarAutor, radiosDeBurbuja } from './burbuja';
+import { CircleAlert, Check, CheckCheck, Clock3, FileText, Pause, Play } from 'lucide-react-native';
+import { colorDeAutor, dondeVaLaHora, mostrarAutor, radiosDeBurbuja } from './burbuja';
 import { DeslizarParaResponder } from './DeslizarParaResponder';
-import { porcentajeDeSubida } from './progresoDeSubida';
+import { etiquetaDeSubida, porcentajeDeSubida } from './progresoDeSubida';
 import {
   TEXTO_ELIMINADO,
   duracionDeVoz,
@@ -64,6 +64,7 @@ function FilaDeMensaje({
   onResponder,
   citado,
   seleccionado,
+  onFallido,
 }: {
   item: Row;
   previous?: Row;
@@ -85,6 +86,8 @@ function FilaDeMensaje({
   /** El mensaje al que ESTE responde, ya resuelto, para pintar la cita. */
   citado?: { texto: string; autor: string } | null;
   seleccionado?: boolean;
+  /** Tocar un mensaje que NO se envió: reintentar o borrar (FL8). */
+  onFallido?: (clientKey: string, motivo: string) => void;
 }) {
   const colores = useColores();
 
@@ -126,7 +129,14 @@ function FilaDeMensaje({
   const colorAutor = colores[`autor-${colorDeAutor(senderId)}` as keyof typeof colores] as string;
   const hora = formatClock(at);
   const idDeFila = isPending(item) ? item.clientKey : String(item.seq);
-  const meta = { hora, mia: mine, entrega: delivery, id: idDeFila };
+  const fallo = isPending(item) ? item.fallo : undefined;
+  const meta = { hora, mia: mine, entrega: delivery, id: idDeFila, fallido: Boolean(fallo) };
+  const subida = etiquetaDeSubida({ razon: isPending(item) ? (item.progreso ?? 0) : 0, fallido: Boolean(fallo) });
+  const lugarDeLaHora = dondeVaLaHora({
+    conTexto: Boolean(item.body),
+    eliminado: !isPending(item) && Boolean(item.deletedAt),
+    fotoVisible: esFotoVisible(item),
+  });
 
   const preview = previewDeMensaje(item);
 
@@ -155,6 +165,8 @@ function FilaDeMensaje({
         {/* La pulsación LARGA selecciona, como en WhatsApp. Un toque corto no
             hace nada acá: se reserva para abrir la foto. */}
         <Pressable
+          // Un mensaje que no se envió se toca para decidir qué hacer con él.
+          onPress={isPending(item) && item.fallo ? () => onFallido?.(item.clientKey, item.fallo!) : undefined}
           onLongPress={() => {
             if (isPending(item)) return;
             // El tick de «quedó seleccionado», como WhatsApp.
@@ -287,14 +299,14 @@ function FilaDeMensaje({
               className="min-w-[200px] flex-row items-center gap-3 px-3 py-2.5"
             >
               <View className="h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <ActivityIndicator color={colores.primary} />
+                {subida.girando ? <ActivityIndicator color={colores.primary} /> : <CircleAlert size={20} color={colores.error} />}
               </View>
               <View className="min-w-0 flex-1">
                 <Text className="text-[14px] font-semibold text-on-burbuja-propia" numberOfLines={2}>
                   {item.mediaNombre ?? 'Archivo'}
                 </Text>
-                <Text className="text-[11px] text-on-surface-variant">
-                  Enviando… {porcentajeDeSubida(item.progreso ?? 0)}%
+                <Text className={`text-[11px] ${subida.girando ? 'text-on-surface-variant' : 'text-error'}`}>
+                  {subida.texto}
                 </Text>
               </View>
             </View>
@@ -309,9 +321,9 @@ function FilaDeMensaje({
               />
               <View className="absolute inset-0 items-center justify-center">
                 {/* Encima de una foto atenuada: blanco en los dos modos. */}
-                <ActivityIndicator color="white" />
+                {subida.girando ? <ActivityIndicator color="white" /> : <CircleAlert size={26} color="white" />}
                 <Text className="mt-1 text-[11px] font-semibold" style={{ color: 'white' }}>
-                  {porcentajeDeSubida(item.progreso ?? 0)}%
+                  {subida.girando ? `${porcentajeDeSubida(item.progreso ?? 0)}%` : subida.texto}
                 </Text>
               </View>
             </View>
@@ -356,19 +368,27 @@ function FilaDeMensaje({
 
           {/* Lo que no es texto (foto, voz, archivo, borrado) lleva la hora en
               su propio renglón dentro de la burbuja; sobre una foto, encima. */}
-          {isPending(item) || !item.body || item.deletedAt ? (
-            esFotoVisible(item) ? (
-              <View className="absolute bottom-1.5 right-2 rounded-full bg-black/35 px-1.5 py-0.5">
-                <MetaDeMensaje {...meta} sobreFoto />
-              </View>
-            ) : (
-              <View className="flex-row justify-end px-2.5 pb-1.5">
-                <MetaDeMensaje {...meta} />
-              </View>
-            )
+          {lugarDeLaHora === 'sobre-la-foto' ? (
+            <View className="absolute bottom-1.5 right-2 rounded-full bg-black/35 px-1.5 py-0.5">
+              <MetaDeMensaje {...meta} sobreFoto />
+            </View>
+          ) : lugarDeLaHora === 'renglon-propio' ? (
+            <View className="flex-row justify-end px-2.5 pb-1.5">
+              <MetaDeMensaje {...meta} />
+            </View>
           ) : null}
         </Pressable>
 
+        {fallo ? (
+          <Pressable
+            testID={`fallo-${idDeFila}`}
+            onPress={() => isPending(item) && onFallido?.(item.clientKey, fallo)}
+            className="mt-1 min-h-[28px] flex-row items-center gap-1"
+          >
+            <CircleAlert size={13} color={colores.error} />
+            <Text className="text-[11px] text-error">No se envió · Toca para reintentar</Text>
+          </Pressable>
+        ) : null}
       </View>
     </View>
     </DeslizarParaResponder>
@@ -398,12 +418,15 @@ function MetaDeMensaje({
   entrega,
   id,
   sobreFoto = false,
+  fallido = false,
 }: {
   hora: string;
   mia: boolean;
   entrega: ReturnType<typeof resolveDeliveryState>;
   id: string;
   sobreFoto?: boolean;
+  /** No se envió (rechazado para siempre): alerta en vez del reloj. */
+  fallido?: boolean;
 }) {
   const colores = useColores();
   const tono = sobreFoto ? 'white' : colores['on-surface-variant'];
@@ -414,7 +437,9 @@ function MetaDeMensaje({
       </Text>
       {mia ? (
         <View testID={`estado-${id}`} accessibilityLabel={`estado ${entrega}`}>
-          {entrega === 'pending' ? (
+          {fallido ? (
+            <CircleAlert size={TAMANO_CHECK - 2} color={colores.error} />
+          ) : entrega === 'pending' ? (
             <Clock3 size={TAMANO_CHECK - 2} color={tono} />
           ) : entrega === 'sent' ? (
             <Check size={TAMANO_CHECK} color={tono} />

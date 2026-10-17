@@ -3,6 +3,7 @@
 // llamarlos ahí devuelve `undefined` y revienta al leer `Fields.PhoneNumbers`.
 // Ese fue el bug de los esqueletos eternos del 26/08/2026.
 import * as Contacts from 'expo-contacts/legacy';
+import { marcarPreguntado, queHacerConElPermiso, yaSePregunto } from '../ui/permisos';
 import { indexarAgendaPorTelefono, type ContactoDeAgenda } from '@lilachat/shared';
 import { reportarError } from '../ui/reportarError';
 import { resolverEstadoAgenda } from './estadoAgenda';
@@ -76,19 +77,28 @@ export function suscribirAgenda(oyente: () => void): () => void {
 /**
  * Empieza a leer la agenda si no se leyó ya. No espera a nadie.
  *
- * Se llama al entrar a la app. **Pide el permiso de contactos ahí**, que es un
- * cambio de comportamiento visible: antes el diálogo aparecía al tocar el lápiz.
- * Se acepta a conciencia — el permiso hay que pedirlo en algún momento, y
- * pedirlo mientras la persona mira sus chats interrumpe menos que pedirlo justo
- * cuando quiere escribirle a alguien.
+ * Se llama al entrar a la app, y ahí el permiso se pide SOLO si nunca se
+ * preguntó. Después de un «no», se vuelve a pedir únicamente cuando la persona
+ * va a invitar o a escribirle a alguien (`loPidioLaPersona`). Antes salía el
+ * diálogo en cada arranque aunque se hubiera negado (FL8).
  */
-export function precargarAgenda(): Promise<void> {
-  if (enCurso) return enCurso;
+export function precargarAgenda(opciones: { loPidioLaPersona?: boolean } = {}): Promise<void> {
+  const reintentoPedido = opciones.loPidioLaPersona === true && permiso === 'denegado';
+  if (enCurso && !reintentoPedido) return enCurso;
 
   enCurso = (async () => {
     try {
-      const { status } = await Contacts.requestPermissionsAsync();
-      if (status !== 'granted') {
+      const actual = await Contacts.getPermissionsAsync();
+      const decision = queHacerConElPermiso({
+        concedido: actual.status === 'granted',
+        puedePreguntar: actual.canAskAgain,
+        yaSePregunto: await yaSePregunto('contactos'),
+        loPidioLaPersona: opciones.loPidioLaPersona === true,
+      });
+      if (decision === 'pedir') await marcarPreguntado('contactos');
+      const concedido =
+        decision === 'usar' || (decision === 'pedir' && (await Contacts.requestPermissionsAsync()).status === 'granted');
+      if (!concedido) {
         permiso = 'denegado';
         return;
       }

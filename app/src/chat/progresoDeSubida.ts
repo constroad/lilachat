@@ -34,3 +34,9 @@ export function textoDeSubida(razon: number): string {
   const porcentaje = porcentajeDeSubida(razon);
   return porcentaje >= 100 ? 'Procesando…' : `Enviando… ${porcentaje}%`;
 }
+
+/** La etiqueta de un archivo en la cola: fallido no gira ni dice «Enviando…». */
+export function etiquetaDeSubida(params: { razon: number; fallido: boolean }): { texto: string; girando: boolean } {
+  if (params.fallido) return { texto: 'No se envió', girando: false };
+  return { texto: textoDeSubida(params.razon), girando: true };
+}

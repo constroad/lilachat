@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decidirCargaAnterior } from './paginacion';
 import { hidratarChat } from './hidratador';
+import { useAcuses } from './useAcuses';
 import { listOlderMessages } from '../api/client';
 import {
   conciliarPaginaGuardada,
@@ -22,7 +23,6 @@ import {
   type OutboxItem,
 } from '@lilachat/shared';
 import { connectSocket, getSocket, type ServerMessage } from './socketClient';
-import { uploadMedia, type UploadResult } from './mediaUpload';
 import { drainOutbox, hydrateOutbox, queueMessage, subscribeOutbox } from './outboxStore';
 
 /**
@@ -39,16 +39,12 @@ export type PendingMessage = {
   body?: string;
   queuedAt: string;
   pending: true;
+  /** El server lo rechazó para siempre: por qué (FL8). Se ofrece reintentar o borrar. */
+  fallo?: string;
   /**
-   * La foto que se esta subiendo, leida del DISCO del telefono.
-   *
-   * Existe para que la imagen aparezca en el chat en el instante en que la
-   * elegis, como WhatsApp, en vez de despues de que termine de subir (José,
-   * 27/08/2026: «espera a subir y recien alli lo muestra, eso esta mal»).
-   *
-   * No se persiste en la cola: un `file://` deja de valer cuando el sistema
-   * limpia la cache, asi que una foto pendiente guardada en disco reaparecia
-   * como una burbuja rota.
+   * La foto que se está subiendo, leída del disco: aparece al elegirla, como
+   * WhatsApp (José, 27/08/2026). No se persiste: un `file://` de la caché deja
+   * de valer y reaparecía como burbuja rota.
    */
   mediaUri?: string;
   /** Qué es: con esto se decide si se previsualiza o va como tarjeta. */
@@ -75,6 +71,10 @@ export function useChat(params: {
   /** Chat secreto (F9): cifra al ENCOLAR y descifra al mostrar. */
   seal?: (text: string) => Envelope | null;
   open?: (envelope: Envelope) => string | null;
+  /** Quiénes cuentan para mis checks y lo que ya dijo el server (FL8, `useAcuses`). */
+  acuseDe?: readonly string[];
+  baseLeido?: number;
+  baseEntregado?: number;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
@@ -264,8 +264,11 @@ export function useChat(params: {
    * actualizaban nunca: si el otro leía con el chat abierto, el check jamás
    * cambiaba de color.
    */
-  const [othersRead, setOthersRead] = useState(0);
-  const [othersDelivered, setOthersDelivered] = useState(0);
+  const { othersRead, othersDelivered, registrarAcuse } = useAcuses({
+    acuseDe: params.acuseDe,
+    baseLeido: params.baseLeido ?? 0,
+    baseEntregado: params.baseEntregado ?? 0,
+  });
   /** Quiénes del OTRO lado están en línea (ids). */
   const [enLinea, setEnLinea] = useState<Set<string>>(new Set());
   /** Quiénes están escribiendo AHORA en este chat (ids), con auto-apagado. */
@@ -302,6 +305,7 @@ export function useChat(params: {
             body: item.body ?? vistaLocal.current.get(item.clientKey) ?? '🔒 Cifrado',
             queuedAt: item.queuedAt,
             pending: true as const,
+            fallo: item.fallo,
           }))
       );
     });
@@ -382,12 +386,7 @@ export function useChat(params: {
       // Nunca retroceden: dos dispositivos del otro mandan acuses desordenados.
       // Entregado y leído son cursores SEPARADOS — de ahí salen los dos checks
       // grises y los dos azules.
-      if (typeof frame.readSeq === 'number') {
-        setOthersRead((current) => Math.max(current, frame.readSeq!));
-      }
-      if (typeof frame.deliveredSeq === 'number') {
-        setOthersDelivered((current) => Math.max(current, frame.deliveredSeq!));
-      }
+      registrarAcuse(frame.userId, frame.readSeq, frame.deliveredSeq);
     };
 
     /**
@@ -481,7 +480,7 @@ export function useChat(params: {
       for (const t of timersTyping.current.values()) clearTimeout(t);
       timersTyping.current.clear();
     };
-  }, [params.chatId, params.token]);
+  }, [params.chatId, params.token, registrarAcuse]);
 
   /**
    * Enviar = ENCOLAR. Nunca se manda directo: así el camino con red y el camino
@@ -514,25 +513,6 @@ export function useChat(params: {
    * El resultado no se inserta a mano en la lista — llega por `msg.new` como
    * cualquier otro mensaje, y `mergeBySeq` evita el duplicado.
    */
-  const sendMedia = useCallback(
-    async (file: {
-      uri: string;
-      fileName: string;
-      mimeType: string;
-      sizeBytes: number;
-      caption?: string;
-      durationMs?: number;
-      onProgress?: (ratio: number) => void;
-    }): Promise<UploadResult> =>
-      uploadMedia({
-        token: params.token,
-        chatId: params.chatId,
-        clientKey: Crypto.randomUUID(),
-        ...file,
-      }),
-    [params.chatId, params.token]
-  );
-
   const markRead = useCallback(
     (seq: number) => {
       getSocket()?.emit('read.set', { chatId: params.chatId, seq });
@@ -591,7 +571,6 @@ export function useChat(params: {
     escribiendo,
     avisarEscribiendo,
     send,
-    sendMedia,
     markRead,
     cargandoAnteriores,
     hayAnteriores,

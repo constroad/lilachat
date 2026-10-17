@@ -54,8 +54,10 @@ function useLecturaDeAgenda(): EstadoAgendaCruda {
 
   // Red de seguridad por si una pantalla se monta antes de la precarga del
   // arranque. Es idempotente: si ya está en curso, se suma a la misma lectura.
+  // La persona está en una pantalla que NECESITA la agenda: si antes la negó,
+  // acá sí se le vuelve a preguntar (FL8).
   useEffect(() => {
-    void precargarAgenda();
+    void precargarAgenda({ loPidioLaPersona: true });
   }, []);
 
   return estado;

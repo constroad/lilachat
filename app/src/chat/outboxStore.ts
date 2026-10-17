@@ -1,12 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   applyEffect,
+  descartarDeLaCola,
   enqueue,
   nextPending,
+  reintentarEnLaCola,
   resolveOutcome,
   type OutboxItem,
 } from '@lilachat/shared';
-import { sendOverSocket } from './socketClient';
+import { alConectar, sendOverSocket } from './socketClient';
 
 /**
  * La cola de salida, PERSISTIDA.
@@ -22,8 +24,9 @@ import { sendOverSocket } from './socketClient';
 const STORAGE_KEY = 'lilachat-outbox';
 
 let queue: OutboxItem[] = [];
-let hydrated = false;
 let draining = false;
+/** El reintento programado: uno solo, el próximo. */
+let reintento: ReturnType<typeof setTimeout> | null = null;
 const listeners = new Set<(items: OutboxItem[]) => void>();
 
 /** Store con SUSCRIPTORES: sin esto, la pantalla no se entera de los cambios
@@ -42,18 +45,29 @@ async function persist(): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(queue)).catch(() => undefined);
 }
 
-export async function hydrateOutbox(): Promise<void> {
-  if (hydrated) return;
-  hydrated = true;
-  const raw = await AsyncStorage.getItem(STORAGE_KEY).catch(() => null);
-  if (raw) {
-    try {
-      queue = JSON.parse(raw) as OutboxItem[];
-    } catch {
-      queue = [];
-    }
+/**
+ * Una sola lectura del disco, compartida: quien llega mientras se lee espera
+ * la MISMA promesa. Con un simple «ya empecé», un `drainOutbox` que entraba en
+ * ese momento veía la cola vacía y no mandaba nada.
+ */
+let hidratando: Promise<void> | null = null;
+
+export function hydrateOutbox(): Promise<void> {
+  if (!hidratando) {
+    hidratando = (async () => {
+      const raw = await AsyncStorage.getItem(STORAGE_KEY).catch(() => null);
+      if (raw) {
+        try {
+          // Lo encolado mientras se leía (raro) se conserva al final.
+          queue = [...(JSON.parse(raw) as OutboxItem[]), ...queue.filter((item) => !raw.includes(item.clientKey))];
+        } catch {
+          // Un JSON roto no puede trabar la app: se arranca con lo que haya.
+        }
+      }
+      notify();
+    })();
   }
-  notify();
+  return hidratando;
 }
 
 export async function queueMessage(item: OutboxItem): Promise<void> {
@@ -63,7 +77,37 @@ export async function queueMessage(item: OutboxItem): Promise<void> {
   void drainOutbox();
 }
 
-export type DrainReport = { confirmed: number; discarded: string[]; cleared: boolean };
+/**
+ * La cola sale SOLA cada vez que el socket conecta, esté abierto un chat o no
+ * (FL8). Antes solo la vaciaba la pantalla de un chat: escrito sin red, se
+ * volvía a la lista y nada salía hasta reabrir alguno.
+ */
+alConectar(() => void drainOutbox());
+
+/** «Reintentar» sobre un mensaje que no se envió. */
+export async function reintentarMensaje(clientKey: string): Promise<void> {
+  queue = reintentarEnLaCola(queue, clientKey);
+  notify();
+  await persist();
+  void drainOutbox();
+}
+
+/** «Borrar» un mensaje que no se envió. */
+export async function descartarMensaje(clientKey: string): Promise<void> {
+  queue = descartarDeLaCola(queue, clientKey);
+  notify();
+  await persist();
+}
+
+function programarReintento(delayMs: number): void {
+  if (reintento) clearTimeout(reintento);
+  reintento = setTimeout(() => {
+    reintento = null;
+    void drainOutbox();
+  }, delayMs);
+}
+
+export type DrainReport = { confirmed: number; failed: string[] };
 
 /**
  * Vacía la cola en orden estricto. **Se detiene ante el primer reintento**: los
@@ -71,10 +115,12 @@ export type DrainReport = { confirmed: number; discarded: string[]; cleared: boo
  * que no se saltea el que falló para mandar el siguiente.
  */
 export async function drainOutbox(): Promise<DrainReport> {
-  const report: DrainReport = { confirmed: 0, discarded: [], cleared: false };
+  const report: DrainReport = { confirmed: 0, failed: [] };
   if (draining) return report;
   draining = true;
   try {
+    // Puede llamarse al conectar, antes de que ninguna pantalla hidrate.
+    await hydrateOutbox();
     for (;;) {
       const item = nextPending(queue);
       if (!item) break;
@@ -101,15 +147,19 @@ export async function drainOutbox(): Promise<DrainReport> {
         report.confirmed += 1;
         continue;
       }
-      if (effect.action === 'discard') {
-        report.discarded.push(effect.reason);
+      if (effect.action === 'fail') {
+        // Queda en pantalla como «No se envió»; la cola sigue con el resto.
+        report.failed.push(effect.reason);
         continue;
       }
-      if (effect.action === 'clear-all') {
-        report.cleared = true;
+      if (effect.action === 'fail-all') {
+        report.failed.push(effect.reason);
         break;
       }
-      // retry: se corta acá y se reintenta cuando el socket vuelva.
+      // retry: se corta acá (el orden importa) y se reintenta con espera
+      // creciente. Antes solo se reintentaba al reconectar: con el socket
+      // conectado y un ack que no llegó, el reloj quedaba para siempre.
+      programarReintento(effect.delayMs);
       break;
     }
   } finally {
@@ -118,10 +168,24 @@ export async function drainOutbox(): Promise<DrainReport> {
   return report;
 }
 
+/**
+ * Cerrar sesión vacía la cola (FL8): lo que quedó sin mandar es de quien se
+ * fue. Si quedara, quien entre después la heredaría.
+ */
+export async function olvidarCola(): Promise<void> {
+  queue = [];
+  if (reintento) clearTimeout(reintento);
+  reintento = null;
+  notify();
+  await AsyncStorage.removeItem(STORAGE_KEY).catch(() => undefined);
+}
+
 /** Solo para tests: reinicia el módulo. */
 export function __resetOutbox(): void {
   queue = [];
-  hydrated = false;
+  hidratando = null;
   draining = false;
+  if (reintento) clearTimeout(reintento);
+  reintento = null;
   listeners.clear();
 }

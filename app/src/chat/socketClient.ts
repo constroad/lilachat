@@ -1,5 +1,5 @@
 import { io, type Socket } from 'socket.io-client';
-import { reusarSocket } from './servicioDeConexion';
+import { queHacerConElSocket } from './servicioDeConexion';
 import { registrarPerf } from '../diagnostico/diagnostico';
 
 /**
@@ -62,14 +62,26 @@ export type SendAck =
 
 let socket: Socket | null = null;
 
+/** Quien quiere enterarse de CADA conexión, sin importar qué pantalla está abierta. */
+const alConectarListeners = new Set<() => void>();
+
+/** Se llama en cada `connect` del socket (el primero y cada reconexión). */
+export function alConectar(listener: () => void): () => void {
+  alConectarListeners.add(listener);
+  return () => alConectarListeners.delete(listener);
+}
+
 export function connectSocket(token: string): Socket {
-  if (socket && reusarSocket(socket)) {
+  const decision = queHacerConElSocket(socket);
+  if (socket && decision !== 'crear') {
     // El arranque entra con el JWT guardado y el refresh trae uno nuevo: el
-    // socket vivo se queda, pero su próxima reconexión usa el token vigente.
+    // socket se queda, y su próxima conexión usa el token vigente.
     socket.auth = { token };
+    // Pausado: se reconecta el MISMO, con todos sus oyentes (FL8). Antes se
+    // reemplazaba y las llamadas de la sesión quedaban escuchando el viejo.
+    if (decision === 'reconectar') socket.connect();
     return socket;
   }
-  socket?.disconnect();
   socket = io(BASE_URL, {
     auth: { token },
     transports: ['websocket'],
@@ -77,6 +89,9 @@ export function connectSocket(token: string): Socket {
     // que reconectar solo cuando vuelva.
     reconnection: true,
     reconnectionDelayMax: 30_000,
+  });
+  socket.on('connect', () => {
+    for (const listener of alConectarListeners) listener();
   });
   return socket;
 }

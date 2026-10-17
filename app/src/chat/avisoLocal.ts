@@ -35,19 +35,16 @@ export async function prepararAvisos(): Promise<void> {
      * Solo se vio corriendo el flujo completo en el emulador (27/08/2026): el
      * servicio decía `isForeground=true` y la bandeja estaba vacía.
      */
-    const actual = await Notifications.getPermissionsAsync();
-    if (!actual.granted && actual.canAskAgain) {
-      await Notifications.requestPermissionsAsync();
-    }
+    // El permiso lo pide `registerPushToken` (una vez, al ver la lista): si se
+    // pidiera también acá, al arrancar salían DOS diálogos seguidos (FL8).
 
     await Notifications.setNotificationChannelAsync(CANAL, {
       name: 'Mensajes',
       importance: Notifications.AndroidImportance.HIGH,
-      // **El sonido, que era lo que faltaba.** Sin él el canal es silencioso:
-      // la notificación llega pero no suena, y José la quería como WhatsApp —
-      // que además de verse, se oiga. `'default'` = el tono de notificación del
-      // teléfono, así que respeta el silencio/volumen del usuario.
-      sound: 'default',
+      // SIN `sound`: así expo-notifications le pone el tono de notificación
+      // del teléfono (respeta silencio y volumen). Con `sound: 'default'`
+      // buscaba un archivo «default» en la app, caía igual al tono del sistema
+      // y avisaba «Custom sound 'default' not found» en cada arranque (FL8).
       // Vibración y luz: es un chat, no un aviso de sistema.
       vibrationPattern: [0, 250, 250, 250],
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,

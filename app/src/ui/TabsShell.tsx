@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler, Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Alert, BackHandler, Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { ArrowLeft, BellRing, ChevronRight, CloudUpload, Moon, RefreshCw, Sun, SunMoon, User, UserPlus } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
@@ -53,6 +53,7 @@ export function TabsShell({
   segundoPlano,
   onSegundoPlano,
   chatAbierto,
+  pestanaPedida,
 }: {
   credential: Credential;
   onOpenChat: (chat: ChatSummary) => void;
@@ -67,6 +68,8 @@ export function TabsShell({
   onSegundoPlano: (activo: boolean) => void;
   /** El chat abierto encima (FL1): la lista sigue montada debajo. */
   chatAbierto: string | null;
+  /** Una notificación de la agenda pide esta pestaña (FL8). */
+  pestanaPedida?: { tab: 'agenda'; n: number } | null;
 }) {
   // En un ref: el listener del socket no se re-suscribe al abrir y cerrar chats.
   const chatAbiertoRef = useRef(chatAbierto);
@@ -75,6 +78,9 @@ export function TabsShell({
   const { modo, setModo } = useTema();
   const margenes = useMargenes();
   const [tab, setTab] = useState<Tab>('chats');
+  useEffect(() => {
+    if (pestanaPedida) setTab(pestanaPedida.tab);
+  }, [pestanaPedida]);
   const [creating, setCreating] = useState<'poll' | null>(null);
   const [chats, setChats] = useState<ChatSummary[]>([]);
   /** La lista al día para el aviso, sin re-suscribir el socket en cada cambio. */
@@ -584,7 +590,17 @@ export function TabsShell({
 
             <Pressable
               testID="btn-salir"
-              onPress={onLogout}
+              onPress={() =>
+                // Con un toque borraba historial y passphrase sin preguntar (FL8).
+                Alert.alert(
+                  'Cerrar sesión',
+                  'Se borran de este teléfono el historial y la passphrase del respaldo, y deja de recibir avisos. Tus chats vuelven al entrar; el historial, si tienes respaldo.',
+                  [
+                    { text: 'Cancelar', style: 'cancel' },
+                    { text: 'Cerrar sesión', style: 'destructive', onPress: onLogout },
+                  ]
+                )
+              }
               className="mt-6 min-h-[48px] items-center justify-center rounded-lg bg-surface-variant px-6"
             >
               <Text className="text-sm font-semibold text-on-surface">Cerrar sesión</Text>
@@ -614,7 +630,7 @@ export function TabsShell({
             name: nuevo.name,
             kind: nuevo.kind,
             encrypted: nuevo.encrypted,
-            memberIds: [],
+            memberIds: nuevo.memberIds,
             lastSeq: 0,
             unread: 0,
             lastMessage: null,

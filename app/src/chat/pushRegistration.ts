@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { marcarPreguntado, queHacerConElPermiso, yaSePregunto } from '../ui/permisos';
 
 /**
  * Registro del token de push (F4).
@@ -28,9 +29,17 @@ export async function registerPushToken(jwt: string): Promise<'ok' | 'denied' | 
    * El `try/catch` de abajo ya cubre el caso de que no se pueda: se intenta y se
    * degrada, en vez de adivinar por el tipo de aparato.
    */
+  // Se pregunta UNA vez (nunca preguntado); después de un «no» no se insiste
+  // en cada arranque — se activa desde los ajustes del teléfono (FL8).
   const existing = await Notifications.getPermissionsAsync();
-  const granted =
-    existing.granted || (await Notifications.requestPermissionsAsync()).granted;
+  const decision = queHacerConElPermiso({
+    concedido: existing.granted,
+    puedePreguntar: existing.canAskAgain,
+    yaSePregunto: await yaSePregunto('notificaciones'),
+    loPidioLaPersona: false,
+  });
+  if (decision === 'pedir') await marcarPreguntado('notificaciones');
+  const granted = decision === 'usar' || (decision === 'pedir' && (await Notifications.requestPermissionsAsync()).granted);
   if (!granted) return 'denied';
 
   try {

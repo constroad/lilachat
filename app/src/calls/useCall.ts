@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PermissionsAndroid, Platform } from 'react-native';
+import { PermissionsAndroid, Platform, Vibration } from 'react-native';
+import { setAudioModeAsync } from 'expo-audio';
 import {
   RTCPeerConnection,
   RTCIceCandidate,
@@ -10,13 +11,16 @@ import {
 import type RTCIceCandidateEvent from 'react-native-webrtc/lib/typescript/RTCIceCandidateEvent';
 import type RTCTrackEvent from 'react-native-webrtc/lib/typescript/RTCTrackEvent';
 import { CALL_TIMEOUT_MS, nextCallState, type CallState } from '@lilachat/shared';
-import { getSocket } from '../chat/socketClient';
+import { connectSocket, getSocket } from '../chat/socketClient';
 import { obtenerIceServers, type ServidorIce } from './iceServers';
+import { esperaAntesDeRendirse, estadoDeMedios, type EstadoDeMedios } from './estadoDeMedios';
 import { reportarError } from '../ui/reportarError';
 
 /** El SDP y los candidatos viajan como objetos planos por el socket. */
 type Sdp = { type: 'offer' | 'answer'; sdp: string };
 type Candidato = { candidate: string; sdpMid: string | null; sdpMLineIndex: number | null };
+/** Quién llama, como lo manda el server en la oferta. */
+export type AutorDeLlamada = { nombre?: string | null; telefono?: string };
 
 /**
  * La llamada, con audio/video REAL sobre `react-native-webrtc` (F10).
@@ -28,7 +32,7 @@ type Candidato = { candidate: string; sdpMid: string | null; sdpMLineIndex: numb
  *
  * ICE en buffer: un candidato que llega ANTES de fijar la descripción remota se
  * guarda y se aplica al fijarla, o `addIceCandidate` lo rechaza y se pierde media
- * llamada. TURN todavía no: hito 1 es misma red con STUN público (`iceServers`).
+ * llamada. STUN + TURN de Cloudflare, con credencial corta del server (`iceServers`).
  */
 async function pedirPermisos(conVideo: boolean): Promise<boolean> {
   if (Platform.OS !== 'android') return true;
@@ -39,13 +43,32 @@ async function pedirPermisos(conVideo: boolean): Promise<boolean> {
   return permisos.every((permiso) => resultado[permiso] === PermissionsAndroid.RESULTS.GRANTED);
 }
 
-export function useCall(params: { chatId: string; peerName: string; jwt: string }) {
+/** El patrón del timbre: vibra 0,8 s, pausa 1,2 s, repite mientras suena. */
+const TIMBRE = [0, 800, 1200];
+
+/**
+ * Desde FL8 la llamada es de la SESIÓN, no de una pantalla de chat: el chat se
+ * fija al llamar (`llamar(chatId, …)`) o al llegar una oferta de cualquier
+ * conversación. Antes el hook vivía en `ChatScreen` y solo escuchaba ese chat:
+ * si el otro estaba en la lista o en otro chat, no sonaba nada.
+ */
+export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?: AutorDeLlamada) => string }) {
   const [state, setState] = useState<CallState | null>(null);
+  const [chatId, setChatId] = useState<string | null>(null);
+  const [peerName, setPeerName] = useState('');
+  /** Empezó como videollamada: solo ahí la cámara se prende y apaga de verdad. */
+  const [conVideoDesdeElInicio, setConVideoDesdeElInicio] = useState(false);
+  const chatIdRef = useRef<string | null>(null);
+  const nombreDeRef = useRef(params.nombreDe);
+  nombreDeRef.current = params.nombreDe;
   const [video, setVideo] = useState(false);
   const [muted, setMuted] = useState(false);
   const [speaker, setSpeaker] = useState(false);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  /** Si el audio pasa de verdad; «contestada» solo dice que el otro aceptó. */
+  const [medios, setMedios] = useState<EstadoDeMedios>('conectando');
+  const yaConecto = useRef(false);
 
   const timeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -81,7 +104,15 @@ export function useCall(params: { chatId: string; peerName: string; jwt: string 
     setRemoteStream(null);
     buffer.current = [];
     remotoListo.current = false;
+    yaConecto.current = false;
+    setMedios('conectando');
   }, []);
+
+  /** El audio no pasa: se corta y se avisa al otro, en vez de un reloj mudo. */
+  const rendirse = useCallback(() => {
+    getSocket()?.emit('call.end', { chatId: chatIdRef.current, motivo: 'desconectada' });
+    aplicar({ tipo: 'desconectada', at: Date.now() });
+  }, [aplicar]);
 
   const crearPc = useCallback((iceServers: ServidorIce[]): RTCPeerConnection => {
     const pc = new RTCPeerConnection({ iceServers });
@@ -90,7 +121,7 @@ export function useCall(params: { chatId: string; peerName: string; jwt: string 
       if (candidato) {
         // Objeto plano, no la instancia: socket.io serializa solo lo enumerable.
         getSocket()?.emit('call.ice', {
-          chatId: params.chatId,
+          chatId: chatIdRef.current,
           candidate: {
             candidate: candidato.candidate,
             sdpMid: candidato.sdpMid,
@@ -103,9 +134,17 @@ export function useCall(params: { chatId: string; peerName: string; jwt: string 
       const stream = evento.streams[0];
       if (stream) setRemoteStream(stream);
     };
+    pc.oniceconnectionstatechange = () => {
+      if (pcRef.current !== pc) return;
+      const nuevo = estadoDeMedios(pc.iceConnectionState, yaConecto.current);
+      if (nuevo === 'conectada') yaConecto.current = true;
+      setMedios(nuevo);
+      // ICE `failed` no se recupera solo.
+      if (nuevo === 'fallo') rendirse();
+    };
     pcRef.current = pc;
     return pc;
-  }, [params.chatId]);
+  }, [rendirse]);
 
   const agregarMedios = useCallback(
     async (pc: RTCPeerConnection, conVideo: boolean): Promise<void> => {
@@ -150,19 +189,50 @@ export function useCall(params: { chatId: string; peerName: string; jwt: string 
 
   useEffect(() => () => limpiar(), [limpiar]);
 
+  // Al conectar, el audio va por donde corresponde: videollamada por el
+  // parlante, llamada de voz por el auricular (como WhatsApp).
+  const speakerRef = useRef(speaker);
+  speakerRef.current = speaker;
+  const enCurso = state?.fase === 'activa';
   useEffect(() => {
-    const socket = getSocket();
-    if (!socket) return;
+    if (!enCurso) return;
+    void setAudioModeAsync({ shouldRouteThroughEarpiece: !speakerRef.current }).catch((error) => reportarError('call.audio', error));
+  }, [enCurso]);
 
-    const entrante = async (data: { chatId: string; video?: boolean; sdp?: Sdp }) => {
-      if (data.chatId !== params.chatId) return;
+  // Contestada pero sin audio (o se cortó y no vuelve): tope y se corta.
+  useEffect(() => {
+    const espera = esperaAntesDeRendirse(medios);
+    if (!enCurso || espera === null) return;
+    const temporizador = setTimeout(rendirse, espera);
+    return () => clearTimeout(temporizador);
+  }, [enCurso, medios, rendirse]);
+
+  // Vibra mientras suena una entrante (FL8): antes no sonaba ni vibraba nada.
+  const sonandoEntrante = state?.fase === 'sonando' && state.entrante;
+  useEffect(() => {
+    if (!sonandoEntrante) return;
+    Vibration.vibrate(TIMBRE, true);
+    return () => Vibration.cancel();
+  }, [sonandoEntrante]);
+
+  useEffect(() => {
+    // `connectSocket` reusa el socket vivo (o lo crea): este hook se monta con
+    // la sesión, a veces antes que la lista, y tiene que escuchar desde ya.
+    const socket = connectSocket(params.jwt);
+    const esDeEstaLlamada = (otroChat: string) => otroChat === chatIdRef.current;
+
+    const entrante = async (data: { chatId: string; video?: boolean; sdp?: Sdp; fromName?: string | null; fromPhone?: string }) => {
       const actual = stateRef.current;
       // Si YA hay una llamada, la nueva recibe «ocupado» sin pisar la que está.
       if (actual && actual.fase !== 'terminada') {
         socket.emit('call.reject', { chatId: data.chatId, motivo: 'ocupado' });
         return;
       }
+      chatIdRef.current = data.chatId;
+      setChatId(data.chatId);
+      setPeerName(nombreDeRef.current(data.chatId, { nombre: data.fromName, telefono: data.fromPhone }));
       setVideo(Boolean(data.video));
+      setConVideoDesdeElInicio(Boolean(data.video));
       setState({ fase: 'sonando', desde: Date.now(), entrante: true });
       try {
         const pc = crearPc(await obtenerIceServers(params.jwt));
@@ -176,7 +246,7 @@ export function useCall(params: { chatId: string; peerName: string; jwt: string 
     };
 
     const contestada = async (data: { chatId: string; sdp?: Sdp }) => {
-      if (data.chatId !== params.chatId) return;
+      if (!esDeEstaLlamada(data.chatId)) return;
       const pc = pcRef.current;
       if (pc && data.sdp) {
         try {
@@ -190,7 +260,7 @@ export function useCall(params: { chatId: string; peerName: string; jwt: string 
     };
 
     const hielo = async (data: { chatId: string; candidate?: Candidato }) => {
-      if (data.chatId !== params.chatId || !data.candidate) return;
+      if (!esDeEstaLlamada(data.chatId) || !data.candidate) return;
       const pc = pcRef.current;
       if (pc && remotoListo.current) {
         try {
@@ -204,7 +274,7 @@ export function useCall(params: { chatId: string; peerName: string; jwt: string 
     };
 
     const terminada = (data: { chatId: string; motivo?: string }) => {
-      if (data.chatId !== params.chatId) return;
+      if (!esDeEstaLlamada(data.chatId)) return;
       aplicar(
         data.motivo === 'ocupado'
           ? { tipo: 'ocupado', at: Date.now() }
@@ -225,12 +295,18 @@ export function useCall(params: { chatId: string; peerName: string; jwt: string 
       socket.off('call.end', terminada);
       socket.off('call.reject', terminada);
     };
-  }, [params.chatId, params.jwt, aplicar, crearPc, drenarCandidatos]);
+  }, [params.jwt, aplicar, crearPc, drenarCandidatos]);
 
   const llamar = useCallback(
-    async (conVideo: boolean) => {
+    async (chatDestino: string, nombre: string, conVideo: boolean) => {
+      if (stateRef.current && stateRef.current.fase !== 'terminada') return;
       if (!(await pedirPermisos(conVideo))) return;
+      chatIdRef.current = chatDestino;
+      setChatId(chatDestino);
+      setPeerName(nombre);
       setVideo(conVideo);
+      setConVideoDesdeElInicio(conVideo);
+      setSpeaker(conVideo);
       setState({ fase: 'llamando', desde: Date.now(), entrante: false });
       try {
         const pc = crearPc(await obtenerIceServers(params.jwt));
@@ -238,17 +314,17 @@ export function useCall(params: { chatId: string; peerName: string; jwt: string 
         const oferta = await pc.createOffer({});
         await pc.setLocalDescription(oferta);
         getSocket()?.emit('call.offer', {
-          chatId: params.chatId,
+          chatId: chatDestino,
           video: conVideo,
           sdp: { type: 'offer', sdp: oferta.sdp },
         });
       } catch (error) {
         reportarError('call.llamar', error);
         aplicar({ tipo: 'colgada', at: Date.now(), porMi: true });
-        getSocket()?.emit('call.end', { chatId: params.chatId, motivo: 'colgada' });
+        getSocket()?.emit('call.end', { chatId: chatDestino, motivo: 'colgada' });
       }
     },
-    [params.chatId, params.jwt, crearPc, agregarMedios, aplicar]
+    [params.jwt, crearPc, agregarMedios, aplicar]
   );
 
   const contestar = useCallback(async () => {
@@ -259,19 +335,20 @@ export function useCall(params: { chatId: string; peerName: string; jwt: string 
       await agregarMedios(pc, video);
       const respuesta = await pc.createAnswer();
       await pc.setLocalDescription(respuesta);
+      setSpeaker(video);
       getSocket()?.emit('call.answer', {
-        chatId: params.chatId,
+        chatId: chatIdRef.current,
         sdp: { type: 'answer', sdp: respuesta.sdp },
       });
       aplicar({ tipo: 'contestada', at: Date.now() });
     } catch (error) {
       reportarError('call.contestar', error);
     }
-  }, [params.chatId, video, agregarMedios, aplicar]);
+  }, [video, agregarMedios, aplicar]);
 
   const colgar = useCallback(() => {
     // Se avisa SIEMPRE, incluso rechazando: el otro tiene que dejar de sonar.
-    getSocket()?.emit('call.end', { chatId: params.chatId, motivo: 'colgada' });
+    getSocket()?.emit('call.end', { chatId: chatIdRef.current, motivo: 'colgada' });
     setState((actual) =>
       actual
         ? nextCallState(
@@ -282,10 +359,22 @@ export function useCall(params: { chatId: string; peerName: string; jwt: string 
           )
         : actual
     );
-  }, [params.chatId]);
+  }, []);
+
+  /** Quitar la pantalla de llamada. Estable: el proveedor la programa con un temporizador. */
+  const cerrar = useCallback(() => {
+    limpiar();
+    setState(null);
+    chatIdRef.current = null;
+    setChatId(null);
+  }, [limpiar]);
 
   return {
     state,
+    medios,
+    chatId,
+    peerName,
+    conVideoDesdeElInicio,
     video,
     muted,
     speaker,
@@ -300,16 +389,21 @@ export function useCall(params: { chatId: string; peerName: string; jwt: string 
         localRef.current?.getAudioTracks().forEach((track) => (track.enabled = !nuevo));
         return nuevo;
       }),
-    alternarAltavoz: () => setSpeaker((valor) => !valor),
+    // Altavoz de verdad (FL8): antes solo cambiaba el ícono. `expo-audio`
+    // enruta por el parlante o el auricular (`setSpeakerphoneOn`). Verificarlo
+    // pide un teléfono real: el emulador no tiene auricular.
+    alternarAltavoz: () =>
+      setSpeaker((valor) => {
+        const nuevo = !valor;
+        void setAudioModeAsync({ shouldRouteThroughEarpiece: !nuevo }).catch((error) => reportarError('call.altavoz', error));
+        return nuevo;
+      }),
     alternarVideo: () =>
       setVideo((valor) => {
         const nuevo = !valor;
         localRef.current?.getVideoTracks().forEach((track) => (track.enabled = nuevo));
         return nuevo;
       }),
-    cerrar: () => {
-      limpiar();
-      setState(null);
-    },
+    cerrar,
   };
 }

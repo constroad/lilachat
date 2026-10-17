@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { colorDeAutor, mostrarAutor, radiosDeBurbuja, CANTIDAD_DE_COLORES_DE_AUTOR } from './burbuja';
+import { colorDeAutor, dondeVaLaHora, mostrarAutor, radiosDeBurbuja, CANTIDAD_DE_COLORES_DE_AUTOR } from './burbuja';
 
 /**
  * FL3 (diseño «Conversación 1:1 · Claro»): radio 18, las consecutivas del mismo
@@ -66,5 +66,28 @@ describe('colorDeAutor', () => {
   it('reparte: varias personas no caen todas en el mismo color', () => {
     const ids = ['665f1a2b3c4d5e6f70818291', '665f1a2b3c4d5e6f70818292', '665f1a2b3c4d5e6f70818293', '665f1a2b3c4d5e6f70818294'];
     expect(new Set(ids.map(colorDeAutor)).size).toBeGreaterThan(1);
+  });
+});
+
+/**
+ * La hora va en UN lugar (FL8; E2E del 17/10/2026: un texto pendiente o fallido
+ * la mostraba dos veces — en el texto y otra vez en su propio renglón — desde FL3).
+ */
+describe('dondeVaLaHora', () => {
+  it('texto, pendiente o no: dentro del texto, una sola vez', () => {
+    expect(dondeVaLaHora({ conTexto: true, eliminado: false, fotoVisible: false })).toBe('en-el-texto');
+  });
+
+  it('foto con pie de foto: en el texto del pie, no también sobre la foto', () => {
+    expect(dondeVaLaHora({ conTexto: true, eliminado: false, fotoVisible: true })).toBe('en-el-texto');
+  });
+
+  it('foto sin texto: encima de la foto', () => {
+    expect(dondeVaLaHora({ conTexto: false, eliminado: false, fotoVisible: true })).toBe('sobre-la-foto');
+  });
+
+  it('voz, archivo o eliminado: en su propio renglón', () => {
+    expect(dondeVaLaHora({ conTexto: false, eliminado: false, fotoVisible: false })).toBe('renglon-propio');
+    expect(dondeVaLaHora({ conTexto: true, eliminado: true, fotoVisible: false })).toBe('renglon-propio');
   });
 });

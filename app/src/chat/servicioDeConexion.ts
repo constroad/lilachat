@@ -44,3 +44,14 @@ export function reusarSocket(socket: { connected: boolean; active: boolean } | n
   if (!socket) return false;
   return socket.connected || socket.active;
 }
+
+/**
+ * Qué hace `connectSocket` con el socket que hay (FL8). Uno pausado se
+ * RECONECTA en vez de reemplazarse: sus oyentes (llamadas, cola, chat) siguen
+ * enganchados. Solo se crea uno nuevo si no hay ninguno (arranque o después
+ * de cerrar sesión, que lo descarta).
+ */
+export function queHacerConElSocket(socket: { connected: boolean; active: boolean } | null): 'crear' | 'reusar' | 'reconectar' {
+  if (!socket) return 'crear';
+  return reusarSocket(socket) ? 'reusar' : 'reconectar';
+}

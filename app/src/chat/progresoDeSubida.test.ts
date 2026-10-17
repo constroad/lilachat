@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { porcentajeDeSubida, textoDeSubida } from './progresoDeSubida';
+import { etiquetaDeSubida, porcentajeDeSubida, textoDeSubida } from './progresoDeSubida';
 
 describe('porcentajeDeSubida', () => {
   it('convierte la razón a porcentaje', () => {
@@ -48,5 +48,21 @@ describe('textoDeSubida', () => {
   it('al terminar de subir dice que está procesando', () => {
     expect(textoDeSubida(1)).toBe('Procesando…');
     expect(textoDeSubida(1.99)).toBe('Procesando…');
+  });
+});
+
+/**
+ * Un archivo que no se va a subir no dice «Enviando… 0%» con la ruedita
+ * (FL8; E2E del 17/10/2026: fallido y girando a la vez, con el «No se envió»
+ * debajo).
+ */
+describe('etiquetaDeSubida', () => {
+  it('subiendo: el texto de siempre y la ruedita', () => {
+    expect(etiquetaDeSubida({ razon: 0.42, fallido: false })).toEqual({ texto: 'Enviando… 42%', girando: true });
+  });
+
+  it('fallido: lo dice y deja de girar, con cualquier progreso', () => {
+    expect(etiquetaDeSubida({ razon: 0, fallido: true })).toEqual({ texto: 'No se envió', girando: false });
+    expect(etiquetaDeSubida({ razon: 0.8, fallido: true })).toEqual({ texto: 'No se envió', girando: false });
   });
 });

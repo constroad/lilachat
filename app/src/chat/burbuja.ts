@@ -26,6 +26,21 @@ export function mostrarAutor(params: { esGrupo: boolean; mia: boolean; conAnteri
   return params.esGrupo && !params.mia && !params.conAnterior;
 }
 
+/**
+ * Dónde va la hora (y los checks) de una burbuja: en UN solo lugar. Con texto,
+ * al final de la última línea; una foto sin texto, encima; lo demás (voz,
+ * archivo, eliminado), en su propio renglón.
+ */
+export function dondeVaLaHora(params: {
+  conTexto: boolean;
+  eliminado: boolean;
+  fotoVisible: boolean;
+}): 'en-el-texto' | 'sobre-la-foto' | 'renglon-propio' {
+  if (params.conTexto && !params.eliminado) return 'en-el-texto';
+  if (params.fotoVisible && !params.eliminado) return 'sobre-la-foto';
+  return 'renglon-propio';
+}
+
 /** Cuántos colores de autor hay en la paleta (`autor-1` … `autor-6`). */
 export const CANTIDAD_DE_COLORES_DE_AUTOR = 6;
 

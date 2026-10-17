@@ -3,6 +3,7 @@ import { DeviceModel } from './models.js';
 import { parseWebSubscription } from './pushTargets.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import { vapidPublicKey } from './webPushSender.js';
+import { confirmarEntregaDesdeAviso } from './entregaPorAviso.js';
 
 /**
  * Suscripción a Web Push (F6).
@@ -31,6 +32,20 @@ export function buildPushRouter(): Router {
     }
     res.json({ key });
   });
+
+  /**
+   * «Me llegó», desde el servicio de push del teléfono con la app cerrada
+   * (FL8.2). SIN sesión a propósito: la credencial es el token corto que trajo
+   * el push, que solo sirve para acusar ese mensaje.
+   */
+  router.post('/entregado', asyncRoute(async (req, res) => {
+    const token = typeof req.body?.token === 'string' ? req.body.token : '';
+    if (!(await confirmarEntregaDesdeAviso(token))) {
+      res.status(400).json({ message: 'No se pudo confirmar la entrega.' });
+      return;
+    }
+    res.status(204).end();
+  }));
 
   router.post('/subscribe', requireSession, asyncRoute(async (req, res) => {
     const raw = JSON.stringify(req.body?.subscription ?? null);

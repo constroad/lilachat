@@ -18,7 +18,12 @@ export const CALL_TIMEOUT_MS = 30_000;
  * de siempre (la nueva le llegaría muda).
  */
 export const CAPACIDAD_LLAMADA_NATIVA = 'llamada-nativa';
-export const CAPACIDADES_DE_PUSH: readonly string[] = [CAPACIDAD_LLAMADA_NATIVA];
+/**
+ * Sabe dibujar el aviso de un MENSAJE desde su servicio nativo y confirmar la
+ * entrega sin abrir la app (FL8.2): es lo que pone el doble check gris.
+ */
+export const CAPACIDAD_MENSAJE_NATIVO = 'mensaje-nativo';
+export const CAPACIDADES_DE_PUSH: readonly string[] = [CAPACIDAD_LLAMADA_NATIVA, CAPACIDAD_MENSAJE_NATIVO];
 
 export type CallState =
   | { fase: 'llamando'; desde: number; entrante: false }

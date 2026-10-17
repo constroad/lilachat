@@ -18,6 +18,7 @@ import { autoResponderA } from './autoReply.js';
 import { avisarFinDeLlamada, avisarLlamada, notifyOffline } from './pushService.js';
 import { frameConAutor, hayOfertasPendientes, ofertasVigentes } from './llamadas.js';
 import { alContestar, alOfrecer, alTerminar, configurarCiclo } from './cicloDeLlamada.js';
+import { configurarEntrega } from './entregaPorAviso.js';
 import { maybeAnswerMention } from './assistantReply.js';
 import { verifySession } from './sessions.js';
 
@@ -173,6 +174,7 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
 
   // Se publica para que el camino HTTP (`/api/media`) pueda emitir `msg.new`.
   ioVivo = io;
+  configurarEntrega((userId, frame) => void io.to(userRoom(userId)).emit('receipt', frame));
   configurarCiclo({
     emitirA: (userId, evento, frame) => void io.to(userRoom(userId)).emit(evento, frame),
     publicar: (mensaje, members) => publicarMensaje(mensaje, members),

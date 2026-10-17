@@ -5,7 +5,8 @@ import { isOnline } from './presence.js';
 import { buildPushSender, buildPushText, type PushSender } from './pushSender.js';
 import { splitPushTargets } from './pushTargets.js';
 import { sendWebPush } from './webPushSender.js';
-import { CALL_TIMEOUT_MS, CAPACIDAD_LLAMADA_NATIVA } from '@lilachat/shared';
+import { CALL_TIMEOUT_MS, CAPACIDAD_LLAMADA_NATIVA, CAPACIDAD_MENSAJE_NATIVO } from '@lilachat/shared';
+import { firmarEntrega } from './entregaPorAviso.js';
 import { firmarRechazo } from './llamadas.js';
 
 /**
@@ -34,45 +35,98 @@ export async function notifyOffline(params: {
   );
   if (candidatos.length === 0) return;
 
-  // Quien SILENCIÓ este chat no recibe push: es el punto de silenciarlo.
-  const silenciados = await chatsSilenciadosDeChat(String(params.message.chatId), candidatos);
-  const targets = candidatos.filter((member) => !silenciados.has(member));
-  if (targets.length === 0) return;
-
-  const [tokens, sender_, chat] = await Promise.all([
-    DeviceModel.find({ userId: { $in: targets }, pushToken: { $exists: true, $ne: '' } })
-      .select('pushToken platform')
+  // Quien SILENCIÓ este chat no recibe una notificación que suene: es el punto
+  // de silenciarlo. Pero si su teléfono sabe acusar la entrega (FL8.2), igual
+  // le va un push SILENCIOSO: silenciado no es «no le llegó».
+  const [silenciados, dispositivos, sender_, chat] = await Promise.all([
+    chatsSilenciadosDeChat(String(params.message.chatId), candidatos),
+    DeviceModel.find({ userId: { $in: candidatos }, pushToken: { $exists: true, $ne: '' } })
+      .select('pushToken platform userId capacidades')
       .lean(),
     UserModel.findById(params.senderId).select('name phone').lean(),
     ChatModel.findById(params.message.chatId).select('kind name').lean(),
   ]);
-  if (tokens.length === 0) return;
+  if (dispositivos.length === 0) return;
 
+  const autor = sender_?.name ?? sender_?.phone ?? 'Alguien';
+  const nombreDelGrupo = chat?.kind === 'group' ? chat.name : undefined;
   const text = buildPushText({
-    senderName: sender_?.name ?? sender_?.phone ?? 'Alguien',
+    senderName: autor,
     // El nombre del chat solo aporta en un grupo: en un 1:1 sería el mismo
     // nombre dos veces.
-    chatName: chat?.kind === 'group' ? chat.name : undefined,
+    chatName: nombreDelGrupo,
     body: params.message.body,
     kind: params.message.kind,
   });
 
+  const nativos = dispositivos.filter(dibujaElMensaje);
+  const comunes = dispositivos.filter((d) => !dibujaElMensaje(d) && !silenciados.has(String(d.userId)));
   const data = { chatId: String(params.message.chatId), seq: params.message.seq };
   // DOS transportes para el mismo aviso: el teléfono por FCM y la pestaña del
   // navegador por Web Push. Son dispositivos distintos del mismo dueño, así que
   // los dos tienen que sonar (F6).
-  const destinos = splitPushTargets(tokens);
+  const destinos = splitPushTargets(comunes);
 
   try {
     await Promise.all([
       destinos.fcm.length > 0 ? sender.send({ tokens: destinos.fcm, ...text, data }) : undefined,
       sendWebPush(destinos.web, { ...text, data }),
+      ...mensajeSoloDatos({ message: params.message, nativos, silenciados, autor, chat: nombreDelGrupo ?? '', text }),
     ]);
   } catch (error) {
     // Un push que no sale no puede tumbar el envío: el mensaje YA está
     // guardado y el destinatario lo va a ver al sincronizar.
     console.error('[push] envío falló:', error instanceof Error ? error.message : error);
   }
+}
+
+type DispositivoDePush = { pushToken?: string; platform?: string; userId: unknown; capacidades?: string[] };
+
+/** El teléfono que dibuja el aviso del mensaje y acusa la entrega (FL8.2). */
+const dibujaElMensaje = (dispositivo: DispositivoDePush) =>
+  dispositivo.platform !== 'web' && Boolean(dispositivo.capacidades?.includes(CAPACIDAD_MENSAJE_NATIVO));
+
+/** Lo que vive un push de mensaje en cola: lo mismo que su token de entrega. */
+const VIDA_DEL_MENSAJE_S = 7 * 24 * 3600;
+
+/**
+ * El mensaje como push SOLO-DATOS (FL8.2), uno por persona: el token de
+ * entrega es de esa persona y ese mensaje. Con lo justo para dibujarlo como
+ * WhatsApp (quién, de qué grupo, qué dijo) sin abrir la app.
+ */
+function mensajeSoloDatos(params: {
+  message: Message;
+  nativos: DispositivoDePush[];
+  silenciados: Set<string>;
+  autor: string;
+  chat: string;
+  text: { title: string; body: string };
+}): Promise<void>[] {
+  if (!sender.sendDatos || params.nativos.length === 0) return [];
+  const chatId = String(params.message.chatId);
+  const porPersona = new Map<string, string[]>();
+  for (const dispositivo of params.nativos) {
+    if (!dispositivo.pushToken) continue;
+    const userId = String(dispositivo.userId);
+    porPersona.set(userId, [...(porPersona.get(userId) ?? []), dispositivo.pushToken]);
+  }
+  return [...porPersona].map(([userId, tokens]) =>
+    sender.sendDatos!({
+      tokens,
+      ttlSegundos: VIDA_DEL_MENSAJE_S,
+      data: {
+        tipo: 'mensaje',
+        chatId,
+        seq: String(params.message.seq),
+        autor: params.autor,
+        chat: params.chat,
+        titulo: params.text.title,
+        cuerpo: params.text.body,
+        silencioso: params.silenciados.has(userId) ? '1' : '0',
+        entrega: firmarEntrega({ chatId, userId, seq: params.message.seq }),
+      },
+    })
+  );
 }
 
 /**

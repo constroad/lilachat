@@ -25,6 +25,7 @@ export interface ChatEvent {
   createdBy: Types.ObjectId;
   attendees: EventAttendee[];
   remindMinutesBefore: number;
+  remindGuests: boolean;
   /** Sello del aviso ya emitido: sin él, el cron solapado repite el aviso. */
   remindedAt?: Date | null;
   guestsCanInvite: boolean;
@@ -70,6 +71,8 @@ const eventSchema = new Schema<ChatEvent>(
       },
     ],
     remindMinutesBefore: { type: Number, default: 60 },
+    /** «Avisar 1 hora antes» del formulario. Apagado, el cron no lo toca. */
+    remindGuests: { type: Boolean, default: true },
     remindedAt: { type: Date, default: null },
     guestsCanInvite: { type: Boolean, default: false },
   },

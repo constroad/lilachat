@@ -8,9 +8,7 @@ import { connectSocket } from '../chat/socketClient';
 import { avisarMensaje, prepararAvisos } from '../chat/avisoLocal';
 import { iniciarServicio } from '../../modules/servicio-socket/src';
 import { ChatListScreen } from '../chat/ChatListScreen';
-import { CreateEventScreen } from '../agenda/CreateEventScreen';
 import { CreatePollScreen } from '../agenda/CreatePollScreen';
-import { CreateReminderScreen } from '../agenda/CreateReminderScreen';
 import { AgendaScreen } from '../agenda/AgendaScreen';
 import { PollsScreen } from '../agenda/PollsScreen';
 import { InviteScreen } from '../contacts/InviteScreen';
@@ -34,6 +32,7 @@ import { AppHeader, BottomNav, type Tab } from './BottomNav';
 import { useMargenes } from './useMargenes';
 import { DiagnosticoAjuste } from '../diagnostico/DiagnosticoAjuste';
 import { visitadasCon } from './pestanas';
+import { useAlVolver } from './useAlVolver';
 import { decidirAtras } from './botonAtras';
 import { nombreDeContacto } from '@lilachat/shared';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
@@ -76,7 +75,7 @@ export function TabsShell({
   const { modo, setModo } = useTema();
   const margenes = useMargenes();
   const [tab, setTab] = useState<Tab>('chats');
-  const [creating, setCreating] = useState<'event' | 'reminder' | 'poll' | null>(null);
+  const [creating, setCreating] = useState<'poll' | null>(null);
   const [chats, setChats] = useState<ChatSummary[]>([]);
   /** La lista al día para el aviso, sin re-suscribir el socket en cada cambio. */
   const chatsRef = useRef<ChatSummary[]>([]);
@@ -85,6 +84,8 @@ export function TabsShell({
     chatsRef.current = chats;
   }, [chats]);
   const [reloadKey, setReloadKey] = useState(0);
+  // Encuestas vuelve a pedir al entrar otra vez (votos y encuestas de otros).
+  useAlVolver(tab === 'encuestas', () => setReloadKey((key) => key + 1));
   const [visitadas, setVisitadas] = useState<ReadonlySet<Tab>>(() => new Set<Tab>(['chats']));
   useEffect(() => setVisitadas((antes) => visitadasCon(antes, tab)), [tab]);
   /** Una pestaña montada pero no activa se oculta sin desmontarse. */
@@ -342,8 +343,8 @@ export function TabsShell({
 
       {/* Las pestañas quedan MONTADAS después de la primera visita y solo se
           ocultan (`pestanas.ts`): remontarlas mostraba el esqueleto en cada
-          cambio. Agenda y Encuestas se recargan solas al crear algo
-          (`reloadKey` en SU `key`, ya no en todo el contenedor). */}
+          cambio. Al crear algo, la lista vuelve a pedir por la prop `recarga`,
+          sin remontarse ni volver al esqueleto. */}
       <View className="flex-1">
         {visitadas.has('chats') ? (
           <View style={panel('chats')}>
@@ -378,21 +379,21 @@ export function TabsShell({
         ) : null}
         {visitadas.has('encuestas') ? (
           <View style={panel('encuestas')}>
-            <PollsScreen key={`encuestas-${reloadKey}`} credential={credential} onCreate={() => setCreating('poll')} />
+            <PollsScreen recarga={reloadKey} credential={credential} onCreate={() => setCreating('poll')} />
           </View>
         ) : null}
         {visitadas.has('agenda') ? (
           <View style={panel('agenda')}>
             {/* Eventos y avisos en una sola pestaña: el botón de crear ofrece
                 los dos tipos en vez de adivinar por el filtro activo. */}
-            <AgendaScreen key={`agenda-${reloadKey}`} credential={credential} onCreate={(kind) => setCreating(kind)} />
+            <AgendaScreen credential={credential} activa={tab === 'agenda'} />
           </View>
         ) : null}
         {visitadas.has('ajustes') ? (
           <View style={panel('ajustes')}>
-          // `padding` también en Android: con edge-to-edge la ventana ya no se
-          // encoge con el teclado, y la passphrase del respaldo quedaba tapada
-          // sin forma de subirla (mismo motivo que en ChatScreen).
+          {/* `padding` también en Android: con edge-to-edge la ventana ya no se
+              encoge con el teclado, y la passphrase del respaldo quedaba tapada
+              sin forma de subirla (mismo motivo que en ChatScreen). */}
           <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <ScrollView
             className="flex-1"
@@ -648,27 +649,11 @@ export function TabsShell({
         </View>
       </Modal>
 
-      {/* Tres pantallas y no una hoja genérica: el diseño hace «New Event» con
-          héroe centrado y «New Poll» con el título a la izquierda, y una sola
-          hoja compartida no daba ninguna de las dos.
-          Re-montar la pestaña es lo que la hace recargar: sin eso, lo recién
-          creado no aparece hasta tirar para refrescar. */}
-      {creating === 'event' ? (
-        <CreateEventScreen
-          visible
-          credential={credential}
-          onClose={() => setCreating(null)}
-          onCreated={() => setReloadKey((key) => key + 1)}
-        />
-      ) : creating === 'poll' ? (
+      {/* Crear encuesta. Eventos y avisos se crean y editan dentro de la
+          Agenda (17/10/2026). Al crear sube `reloadKey` y la lista vuelve a
+          pedir sin remontarse. */}
+      {creating === 'poll' ? (
         <CreatePollScreen
-          visible
-          credential={credential}
-          onClose={() => setCreating(null)}
-          onCreated={() => setReloadKey((key) => key + 1)}
-        />
-      ) : creating === 'reminder' ? (
-        <CreateReminderScreen
           visible
           credential={credential}
           onClose={() => setCreating(null)}

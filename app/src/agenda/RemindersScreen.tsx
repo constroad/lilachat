@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
-import { Bell, Plus } from 'lucide-react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, Switch, Text, View } from 'react-native';
+import { Bell, RotateCw } from 'lucide-react-native';
 import { formatEventWhen, nextOccurrence } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { agendaGet, agendaPost, type AgendaReminder } from './agendaApi';
@@ -9,22 +9,19 @@ import { useColores } from '../ui/tema';
 /**
  * Recordatorios (diseño «My Reminders»).
  *
- * Las DOS pestañas del diseño —«Mis recordatorios» y «Compartidos»— no son
- * decorativas: separan lo que solo me suena a mí de lo que suena en un chat, y
- * mezclarlas haría imposible saber quién más lo está viendo.
- */
-/**
- * El color del icono de cada recordatorio.
+ * Hasta el 17/10/2026 tenía su PROPIO control segmentado («Mis
+ * recordatorios / Compartidos») debajo del de la Agenda («Eventos / Avisos»):
+ * dos rieles de pestañas apilados. Ahora es una sola lista con dos secciones,
+ * y la de compartidos solo aparece si hay alguno.
  *
- * El diseño los pinta distintos (gota azul, teléfono naranja) y eso no es
- * decoración: en una lista de diez, el color es lo que deja encontrar el tuyo
- * sin leer. Sale del id para que sea ESTABLE — si dependiera del orden, el mismo
- * recordatorio cambiaría de color al agregar otro.
+ * Tocar uno propio lo abre para editar (José: «no hay como editar avisos»).
+ * Los compartidos son de otro: se ven, no se tocan.
  */
+
 /**
- * La paleta ya no vive acá: los cinco tonos los da el tema, porque en modo
- * oscuro son otros —los del modo claro sobre navy se ven sucios—. Lo que sí es
- * de este módulo es CÓMO se elige, y por eso la función recibe la paleta.
+ * El color del icono de cada recordatorio: en una lista de diez, el color es
+ * lo que deja encontrar el tuyo sin leer. Sale del id para que sea ESTABLE; la
+ * paleta la da el tema (en oscuro son otros tonos).
  */
 function colorDe(id: string, paleta: readonly string[]): string {
   let suma = 0;
@@ -38,167 +35,153 @@ const RECURRENCE_LABEL: Record<string, string> = {
   weekly: 'Semanal',
 };
 
+type Lista = { mine: AgendaReminder[]; shared: AgendaReminder[] };
+
 export function RemindersScreen({
   credential,
-  onCreate,
-  hideFab,
+  recarga,
+  onEditar,
 }: {
   credential: Credential;
-  onCreate: () => void;
-  /** La Agenda pone su propio botón: dos flotantes encimados es un bug visible. */
-  hideFab?: boolean;
+  /** Sube cuando algo se creó, editó o borró: se vuelve a pedir SIN esqueleto. */
+  recarga: number;
+  onEditar: (reminder: AgendaReminder) => void;
 }) {
   const colores = useColores();
-  const [tab, setTab] = useState<'mine' | 'shared'>('mine');
-  const [data, setData] = useState<{ mine: AgendaReminder[]; shared: AgendaReminder[] } | null>(null);
+  const [data, setData] = useState<Lista | null>(null);
+  const [fallo, setFallo] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const dataRef = useRef<Lista | null>(null);
+  dataRef.current = data;
 
   const load = useCallback(async () => {
-    const result = await agendaGet<{ mine: AgendaReminder[]; shared: AgendaReminder[] }>(
-      '/reminders',
-      credential.jwt
-    );
-    setData(result.ok ? result.data : { mine: [], shared: [] });
+    const result = await agendaGet<Lista>('/reminders', credential.jwt);
+    // Sin red NO es «sin recordatorios»: se conserva lo que había y se dice.
+    if (result.ok) {
+      setData(result.data);
+      setFallo(false);
+    } else setFallo(true);
   }, [credential.jwt]);
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, recarga]);
 
   const toggle = async (reminder: AgendaReminder, active: boolean) => {
-    setData((current) =>
-      current
-        ? {
-            mine: current.mine.map((item) =>
-              item._id === reminder._id ? { ...item, active } : item
-            ),
-            shared: current.shared,
-          }
-        : current
-    );
-    await agendaPost(`/reminders/${reminder._id}/toggle`, credential.jwt, { active });
+    const conValor = (valor: boolean) => (lista: Lista | null) =>
+      lista ? { ...lista, mine: lista.mine.map((item) => (item._id === reminder._id ? { ...item, active: valor } : item)) } : lista;
+    setData(conValor(active));
+    const result = await agendaPost(`/reminders/${reminder._id}/toggle`, credential.jwt, { active });
+    // Si el server no lo guardó, el interruptor vuelve: mentir el estado es peor.
+    if (!result.ok) setData(conValor(!active));
   };
 
-  const list = tab === 'mine' ? (data?.mine ?? []) : (data?.shared ?? []);
-
-  return (
-    <View className="flex-1 bg-background" testID="pantalla-recordatorios">
-      {/* Control segmentado del diseño: dos opciones excluyentes, ancho
-          completo, la activa en superficie blanca sobre el riel gris. */}
-      <View className="mx-4 mt-3 flex-row rounded-lg bg-primary/[0.07] p-1">
-        {(
-          [
-            { key: 'mine' as const, label: 'Mis recordatorios' },
-            { key: 'shared' as const, label: 'Compartidos' },
-          ]
-        ).map((option) => (
-          <Pressable
-            key={option.key}
-            testID={`tab-recordatorios-${option.key}`}
-            onPress={() => setTab(option.key)}
-            className={`min-h-[40px] flex-1 items-center justify-center rounded-md ${
-              tab === option.key ? 'bg-surface' : ''
-            }`}
-          >
-            <Text
-              className={`text-[13px] font-semibold ${
-                tab === option.key ? 'text-on-surface' : 'text-on-surface-variant'
-              }`}
-            >
-              {option.label}
-            </Text>
-          </Pressable>
+  if (data === null && !fallo) {
+    return (
+      <View className="px-4 pt-4" testID="recordatorios-cargando">
+        {[0, 1].map((index) => (
+          <View key={index} className="mb-3 h-20 rounded-xl bg-surface-variant" />
         ))}
       </View>
+    );
+  }
 
-      {data === null ? (
-        <View className="px-4 pt-4" testID="recordatorios-cargando">
-          {[0, 1].map((index) => (
-            <View key={index} className="mb-3 h-20 rounded-xl bg-surface-variant" />
-          ))}
-        </View>
-      ) : list.length === 0 ? (
+  const mine = data?.mine ?? [];
+  const shared = data?.shared ?? [];
+
+  return (
+    <ScrollView
+      testID="pantalla-recordatorios"
+      contentContainerStyle={{ padding: 16, paddingBottom: 96, flexGrow: 1 }}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => {
+            setRefreshing(true);
+            void load().finally(() => setRefreshing(false));
+          }}
+        />
+      }
+    >
+      {fallo ? (
+        <Pressable testID="recordatorios-error" onPress={() => void load()} className="mb-3 flex-row items-center gap-2 rounded-xl bg-error/10 px-4 py-3">
+          <RotateCw size={16} color={colores.error} />
+          <Text className="flex-1 text-[13px] text-error">No se pudo actualizar. Toca para reintentar.</Text>
+        </Pressable>
+      ) : null}
+
+      {mine.length === 0 && shared.length === 0 && !fallo ? (
         <View className="flex-1 items-center justify-center px-8" testID="recordatorios-vacio">
           <View className="h-16 w-16 items-center justify-center rounded-full bg-primary/10">
             <Bell size={28} color={colores.primary} />
           </View>
           <Text className="mt-4 text-lg font-semibold text-on-surface">Sin recordatorios</Text>
-          <Text className="mt-1 text-center text-sm leading-5 text-on-surface-variant">
-            {tab === 'mine'
-              ? 'Crea uno para que no se te pase nada.'
-              : 'Acá aparecen los que se comparten en tus chats.'}
-          </Text>
+          <Text className="mt-1 text-center text-sm leading-5 text-on-surface-variant">Crea uno para que no se te pase nada.</Text>
         </View>
-      ) : (
-        <ScrollView contentContainerStyle={{ padding: 16 }}>
-          {list.map((reminder) => {
-            const next = nextOccurrence({
-              startsAt: new Date(reminder.startsAt),
-              recurrence: reminder.recurrence,
-              from: new Date(),
-            });
-            return (
-              <View
-                key={reminder._id}
-                testID={`recordatorio-${reminder._id}`}
-                className="mb-3 flex-row items-center gap-3 rounded-xl bg-primary/[0.07] p-4"
-              >
-                {/* Icono con COLOR PROPIO por recordatorio, como en el diseño
-                    (gota azul, teléfono naranja). Todos del mismo morado los
-                    volvía indistinguibles de un vistazo, que es justo lo que la
-                    lista tiene que resolver. */}
-                <View
-                  className="h-11 w-11 items-center justify-center rounded-full"
-                  style={{ backgroundColor: colorDe(reminder._id, colores.avisos) }}
-                >
-                  <Bell size={19} color={colores["on-primary"]} />
-                </View>
+      ) : null}
 
-                <View className="min-w-0 flex-1">
-                  <Text className="text-base font-semibold text-on-surface" numberOfLines={1}>
-                    {reminder.title}
-                  </Text>
-                  {/* SEGUNDA línea: la nota. El diseño tiene tres líneas y yo
-                      había hecho dos, apretando el chip contra el título. */}
-                  {reminder.note ? (
-                    <Text className="text-[13px] text-on-surface-variant" numberOfLines={1}>
-                      {reminder.note}
-                    </Text>
-                  ) : null}
-                  <View className="mt-1 flex-row items-center gap-2">
-                    <View className="rounded bg-primary/15 px-1.5 py-0.5">
-                      <Text className="text-[10px] font-semibold text-primary">
-                        {RECURRENCE_LABEL[reminder.recurrence] ?? reminder.recurrence}
-                      </Text>
-                    </View>
-                    <Text className="text-[11px] text-on-surface-variant">
-                      {next ? formatEventWhen(next) : 'Ya pasó'}
-                    </Text>
-                  </View>
-                </View>
+      {mine.length > 0 && shared.length > 0 ? <Rotulo texto="Tuyos" /> : null}
+      {mine.map((reminder) => (
+        <Fila key={reminder._id} reminder={reminder} propio onPress={() => onEditar(reminder)} onToggle={(v) => void toggle(reminder, v)} />
+      ))}
 
-                {tab === 'mine' ? (
-                  <Switch
-                    testID={`switch-${reminder._id}`}
-                    value={reminder.active}
-                    onValueChange={(value) => void toggle(reminder, value)}
-                    trackColor={{ true: colores.primary }}
-                  />
-                ) : null}
-              </View>
-            );
-          })}
-        </ScrollView>
-      )}
+      {shared.length > 0 ? <Rotulo texto="Compartidos en tus chats" /> : null}
+      {shared.map((reminder) => (
+        <Fila key={reminder._id} reminder={reminder} propio={false} />
+      ))}
+    </ScrollView>
+  );
+}
 
-      {hideFab ? null : (
-        <Pressable
-          testID="btn-nuevo-recordatorio"
-          onPress={onCreate}
-          className="absolute bottom-5 right-5 h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg"
-        >
-          <Plus size={24} color={colores["on-primary"]} />
-        </Pressable>
-      )}
-    </View>
+const Rotulo = ({ texto }: { texto: string }) => (
+  <Text className="mb-2 mt-2 text-[11px] font-semibold uppercase tracking-wider text-primary">{texto}</Text>
+);
+
+function Fila({
+  reminder,
+  propio,
+  onPress,
+  onToggle,
+}: {
+  reminder: AgendaReminder;
+  propio: boolean;
+  onPress?: () => void;
+  onToggle?: (activo: boolean) => void;
+}) {
+  const colores = useColores();
+  const next = nextOccurrence({ startsAt: new Date(reminder.startsAt), recurrence: reminder.recurrence, from: new Date() });
+  return (
+    <Pressable
+      testID={`recordatorio-${reminder._id}`}
+      disabled={!propio}
+      onPress={onPress}
+      android_ripple={propio ? { color: colores.outline } : undefined}
+      className={`mb-3 flex-row items-center gap-3 rounded-xl bg-primary/[0.07] p-4 ${reminder.active && next ? '' : 'opacity-60'}`}
+    >
+      <View className="h-11 w-11 items-center justify-center rounded-full" style={{ backgroundColor: colorDe(reminder._id, colores.avisos) }}>
+        <Bell size={19} color={colores['on-primary']} />
+      </View>
+
+      <View className="min-w-0 flex-1">
+        <Text className="text-base font-semibold text-on-surface" numberOfLines={1}>
+          {reminder.title}
+        </Text>
+        {reminder.note ? (
+          <Text className="text-[13px] text-on-surface-variant" numberOfLines={1}>
+            {reminder.note}
+          </Text>
+        ) : null}
+        <View className="mt-1 flex-row items-center gap-2">
+          <View className="rounded bg-primary/15 px-1.5 py-0.5">
+            <Text className="text-[10px] font-semibold text-primary">{RECURRENCE_LABEL[reminder.recurrence] ?? reminder.recurrence}</Text>
+          </View>
+          <Text className="text-[11px] text-on-surface-variant">{next ? formatEventWhen(next) : 'Ya pasó'}</Text>
+        </View>
+      </View>
+
+      {propio && onToggle ? (
+        <Switch testID={`switch-${reminder._id}`} value={reminder.active} onValueChange={onToggle} trackColor={{ true: colores.primary }} />
+      ) : null}
+    </Pressable>
   );
 }

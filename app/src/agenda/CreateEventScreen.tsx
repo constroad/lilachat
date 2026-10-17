@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
-import { Bell, Calendar, MapPin, Send, Sparkles, UserPlus, X } from 'lucide-react-native';
+import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Bell, MapPin, Send, Sparkles, Trash2, UserPlus, X } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { planTargetChat, type Contact } from '@lilachat/shared';
-import { agendaPost } from './agendaApi';
+import { agendaDelete, agendaPatch, agendaPost, type AgendaEvent } from './agendaApi';
 import { ContactPicker } from '../contacts/ContactPicker';
 import { createChat } from '../contacts/contactsApi';
 import { FilledField, PickerRow, PrimaryAction, SectionLabel, ToggleRow } from './createUi';
+import { SelectorDeCuando } from '../ui/SelectorDeCuando';
+import { valorInicial } from '../ui/cuando';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 
@@ -27,19 +29,18 @@ import { useColores } from '../ui/tema';
  * de grupo— y ahí se crea el evento.
  *
  * Abierto DESDE un chat (`fixedChat`), no se pregunta nada: ese es el destino.
+ *
+ * Desde el 17/10/2026, con `editando` la misma pantalla edita (solo quien lo
+ * creó; el server lo exige igual) y ofrece cancelarlo. Los invitados no se
+ * editan acá: son los miembros de la conversación donde vive el evento. El
+ * cuándo es día y hora exactos (`SelectorDeCuando`), no cinco atajos.
  */
-const OPCIONES_CUANDO = [
-  { horas: 1, etiqueta: 'En 1 hora' },
-  { horas: 3, etiqueta: 'En 3 horas' },
-  { horas: 24, etiqueta: 'Mañana' },
-  { horas: 48, etiqueta: 'Pasado mañana' },
-  { horas: 24 * 7, etiqueta: 'En una semana' },
-];
 
 export function CreateEventScreen({
   visible,
   credential,
   fixedChat,
+  editando,
   onClose,
   onCreated,
 }: {
@@ -47,28 +48,62 @@ export function CreateEventScreen({
   credential: Credential;
   /** Abierto desde una conversación: ese es el destino y no se pregunta. */
   fixedChat?: { id: string; name: string };
+  /** Con un evento propio, la pantalla lo edita; sin él, crea uno nuevo. */
+  editando?: AgendaEvent;
   onClose: () => void;
   onCreated: () => void;
 }) {
   const colores = useColores();
   const margenes = useMargenes();
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [location, setLocation] = useState('');
-  const [hours, setHours] = useState(24);
-  const [editandoCuando, setEditandoCuando] = useState(false);
+  const [title, setTitle] = useState(editando?.title ?? '');
+  const [description, setDescription] = useState(editando?.description ?? '');
+  const [location, setLocation] = useState(editando?.location ?? '');
+  const [cuando, setCuando] = useState(() => valorInicial(editando?.startsAt, new Date()));
   const [editandoDonde, setEditandoDonde] = useState(false);
   const [invitados, setInvitados] = useState<Contact[]>([]);
-  const [remind, setRemind] = useState(true);
+  const [remind, setRemind] = useState(editando?.remindGuests ?? true);
   const [openInvite, setOpenInvite] = useState(false);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const cuando = OPCIONES_CUANDO.find((opcion) => opcion.horas === hours);
+  const guardarCambios = async () => {
+    if (!editando) return;
+    setSaving(true);
+    const result = await agendaPatch(`/events/${editando.id}`, credential.jwt, {
+      title: title.trim(),
+      description: description.trim(),
+      location: location.trim(),
+      startsAt: cuando.toISOString(),
+      remindGuests: remind,
+    });
+    setSaving(false);
+    if (!result.ok) return setError(result.message ?? 'No se pudo guardar.');
+    onCreated();
+    onClose();
+  };
+
+  const cancelarEvento = () => {
+    if (!editando) return;
+    Alert.alert('Cancelar evento', `«${editando.title}» desaparece de la agenda de todos los invitados.`, [
+      { text: 'Volver', style: 'cancel' },
+      {
+        text: 'Cancelar evento',
+        style: 'destructive',
+        onPress: () =>
+          void agendaDelete(`/events/${editando.id}`, credential.jwt).then((result) => {
+            if (!result.ok) return setError(result.message ?? 'No se pudo cancelar.');
+            onCreated();
+            onClose();
+          }),
+      },
+    ]);
+  };
 
   const submit = async () => {
     if (saving) return;
     if (!title.trim()) return setError('Ponle un nombre al evento.');
+    if (cuando.getTime() < Date.now()) return setError('Esa hora ya pasó. Elige una que venga.');
+    if (editando) return guardarCambios();
 
     // Los contactos se vuelven la conversación donde vive el evento: con UNO,
     // el chat 1:1 —que el server no duplica—; con varios, un grupo con el
@@ -98,7 +133,7 @@ export function CreateEventScreen({
       title: title.trim(),
       description: description.trim() || undefined,
       location: location.trim() || undefined,
-      startsAt: new Date(Date.now() + hours * 3_600_000).toISOString(),
+      startsAt: cuando.toISOString(),
       remindGuests: remind,
       guestsCanInvite: openInvite,
     });
@@ -125,7 +160,9 @@ export function CreateEventScreen({
    * Solo se cierra si no hay nada escrito. Con algo escrito, atrás no hace nada
    * y queda la X, que es explícita.
    */
-  const hayAlgoEscrito = Boolean(title.trim() || description.trim() || location.trim());
+  const hayAlgoEscrito = editando
+    ? title !== editando.title || description !== (editando.description ?? '') || location !== (editando.location ?? '')
+    : Boolean(title.trim() || description.trim() || location.trim());
 
   return (
     <Modal
@@ -140,10 +177,21 @@ export function CreateEventScreen({
           <Pressable
             onPress={onClose}
             testID="btn-cerrar-crear"
-            className="h-11 w-9 items-center justify-center"
+            className="h-11 w-11 items-center justify-center"
           >
             <X size={22} color={colores["on-surface"]} />
           </Pressable>
+          <View className="flex-1" />
+          {editando ? (
+            <Pressable
+              onPress={cancelarEvento}
+              testID="btn-cancelar-evento"
+              accessibilityLabel="Cancelar evento"
+              className="h-11 w-11 items-center justify-center"
+            >
+              <Trash2 size={20} color={colores.error} />
+            </Pressable>
+          ) : null}
         </View>
 
         <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}>
@@ -153,7 +201,7 @@ export function CreateEventScreen({
             <View className="h-14 w-14 items-center justify-center rounded-full bg-primary">
               <Sparkles size={24} color={colores["on-primary"]} />
             </View>
-            <Text className="mt-3 text-2xl font-bold text-primary">Nuevo evento</Text>
+            <Text className="mt-3 text-2xl font-bold text-primary">{editando ? 'Editar evento' : 'Nuevo evento'}</Text>
             <Text className="mt-1 text-center text-[13px] leading-5 text-on-surface-variant">
               Organiza la próxima reunión, pon los detalles e invita a los tuyos.
             </Text>
@@ -180,38 +228,14 @@ export function CreateEventScreen({
           </View>
 
           <SectionLabel>Cuándo y dónde</SectionLabel>
-          <PickerRow
-            testID="fila-cuando"
-            icon={<Calendar size={18} color={colores.primary} />}
-            title={cuando?.etiqueta ?? `En ${hours} horas`}
-            hint="Toca para cambiar"
-            onPress={() => setEditandoCuando((abierto) => !abierto)}
+          <SelectorDeCuando
+            valor={cuando}
+            onCambiar={(fecha) => {
+              setCuando(fecha);
+              setError('');
+            }}
           />
-          {editandoCuando ? (
-            <View className="mb-2 flex-row flex-wrap gap-2">
-              {OPCIONES_CUANDO.map((opcion) => (
-                <Pressable
-                  key={opcion.horas}
-                  testID={`cuando-${opcion.horas}`}
-                  onPress={() => {
-                    setHours(opcion.horas);
-                    setEditandoCuando(false);
-                  }}
-                  className={`min-h-[40px] items-center justify-center rounded-lg px-3 ${
-                    hours === opcion.horas ? 'bg-primary' : 'bg-primary/[0.07]'
-                  }`}
-                >
-                  <Text
-                    className={`text-[13px] font-semibold ${
-                      hours === opcion.horas ? 'text-on-primary' : 'text-on-surface'
-                    }`}
-                  >
-                    {opcion.etiqueta}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
+          <View className="h-2" />
 
           <PickerRow
             testID="fila-donde"
@@ -232,7 +256,7 @@ export function CreateEventScreen({
             </View>
           ) : null}
 
-          {fixedChat ? (
+          {editando ? null : fixedChat ? (
             <>
               <SectionLabel>Dónde</SectionLabel>
               <View className="min-h-[52px] flex-row items-center gap-3 rounded-xl bg-primary/[0.07] px-4">
@@ -285,6 +309,7 @@ export function CreateEventScreen({
             value={remind}
             onChange={setRemind}
           />
+          {editando ? null : (
           <ToggleRow
             testID="switch-invitar"
             icon={<UserPlus size={16} color={colores.primary} />}
@@ -293,6 +318,7 @@ export function CreateEventScreen({
             value={openInvite}
             onChange={setOpenInvite}
           />
+          )}
 
           {error ? (
             <Text className="mt-3 text-sm text-error" testID="error-crear">
@@ -307,7 +333,7 @@ export function CreateEventScreen({
             disabled={saving}
             onPress={() => void submit()}
             icon={<Send size={17} color={colores["on-primary"]} />}
-            label={saving ? 'Creando…' : 'Crear e invitar'}
+            label={saving ? 'Guardando…' : editando ? 'Guardar cambios' : 'Crear e invitar'}
           />
         </View>
       </View>

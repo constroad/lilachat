@@ -1,0 +1,106 @@
+import type { Recurrence } from './events.js';
+
+/**
+ * Qué se puede editar de un recordatorio o un evento, y cómo (17/10/2026).
+ * PURO: la ruta del server lo aplica tal cual con `$set`/`$unset`.
+ *
+ * Dos reglas que no son obvias:
+ * - **Mover la hora rearma el aviso** (`remindedAt: null`): el cron solo mira
+ *   lo que no fue avisado, así que un aviso movido después de sonar no
+ *   volvía a sonar nunca. En un recordatorio además se reactiva: quien le
+ *   cambia la hora lo quiere encendido.
+ * - **Un opcional vacío se borra** (`$unset`), no se guarda como `''`: la
+ *   lista muestra la segunda línea si el campo existe.
+ *
+ * Lo que NO se edita por acá —dueño, chat, invitados, el sello del cron— se
+ * ignora en silencio: no es un error del usuario, es un campo que no le toca.
+ */
+export type Cambios<T> = { ok: true; set: Partial<T>; unset: string[] } | { ok: false; message: string };
+
+type Recordatorio = { title: string; note: string; startsAt: Date; recurrence: Recurrence; remindedAt: null; active: boolean };
+type Evento = {
+  title: string;
+  description: string;
+  location: string;
+  startsAt: Date;
+  endsAt: Date;
+  remindedAt: null;
+  remindGuests: boolean;
+};
+
+const RECURRENCIAS: readonly string[] = ['once', 'daily', 'weekly'];
+
+const comoObjeto = (cuerpo: unknown): Record<string, unknown> =>
+  cuerpo && typeof cuerpo === 'object' && !Array.isArray(cuerpo) ? (cuerpo as Record<string, unknown>) : {};
+
+const fecha = (valor: unknown): Date | null => {
+  const d = new Date(String(valor ?? ''));
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+
+/** Un texto opcional: con contenido va a `set`; vacío, a `unset`. */
+function opcional<T>(cuerpo: Record<string, unknown>, campo: keyof T & string, set: Partial<T>, unset: string[]): void {
+  if (!(campo in cuerpo)) return;
+  const texto = typeof cuerpo[campo] === 'string' ? (cuerpo[campo] as string).trim() : '';
+  if (texto) (set as Record<string, unknown>)[campo] = texto;
+  else unset.push(campo);
+}
+
+export function cambiosDeRecordatorio(cuerpo: unknown, actual: { startsAt: Date }): Cambios<Recordatorio> {
+  const datos = comoObjeto(cuerpo);
+  const set: Partial<Recordatorio> = {};
+  const unset: string[] = [];
+
+  if ('title' in datos) {
+    const titulo = String(datos.title ?? '').trim();
+    if (!titulo) return { ok: false, message: 'Escribe de qué es el recordatorio.' };
+    set.title = titulo;
+  }
+  opcional<Recordatorio>(datos, 'note', set, unset);
+  if ('recurrence' in datos) {
+    if (!RECURRENCIAS.includes(String(datos.recurrence))) return { ok: false, message: 'Repetición inválida.' };
+    set.recurrence = datos.recurrence as Recurrence;
+  }
+  if ('startsAt' in datos) {
+    const inicio = fecha(datos.startsAt);
+    if (!inicio) return { ok: false, message: 'Elige cuándo.' };
+    if (inicio.getTime() !== actual.startsAt.getTime()) {
+      Object.assign(set, { startsAt: inicio, remindedAt: null, active: true });
+    }
+  }
+  return { ok: true, set, unset };
+}
+
+export function cambiosDeEvento(cuerpo: unknown, actual: { startsAt: Date }): Cambios<Evento> {
+  const datos = comoObjeto(cuerpo);
+  const set: Partial<Evento> = {};
+  const unset: string[] = [];
+
+  if ('title' in datos) {
+    const titulo = String(datos.title ?? '').trim();
+    if (!titulo) return { ok: false, message: 'Ponle un nombre al evento.' };
+    set.title = titulo;
+  }
+  opcional<Evento>(datos, 'description', set, unset);
+  opcional<Evento>(datos, 'location', set, unset);
+  if (typeof datos.remindGuests === 'boolean') set.remindGuests = datos.remindGuests;
+
+  let inicio = actual.startsAt;
+  if ('startsAt' in datos) {
+    const nuevo = fecha(datos.startsAt);
+    if (!nuevo) return { ok: false, message: 'Elige cuándo es.' };
+    if (nuevo.getTime() !== actual.startsAt.getTime()) Object.assign(set, { startsAt: nuevo, remindedAt: null });
+    inicio = nuevo;
+  }
+  if ('endsAt' in datos) {
+    if (datos.endsAt === null || datos.endsAt === '') unset.push('endsAt');
+    else {
+      const fin = fecha(datos.endsAt);
+      if (!fin || fin.getTime() <= inicio.getTime()) {
+        return { ok: false, message: 'La hora de fin tiene que ser después del inicio.' };
+      }
+      set.endsAt = fin;
+    }
+  }
+  return { ok: true, set, unset };
+}

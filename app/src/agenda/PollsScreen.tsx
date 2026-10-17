@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { BarChart3, Plus } from 'lucide-react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { BarChart3, Plus, RotateCw } from 'lucide-react-native';
 import { tallyPoll } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { agendaGet, agendaPost, type AgendaPoll } from './agendaApi';
@@ -15,49 +15,79 @@ import { useColores } from '../ui/tema';
  */
 export function PollsScreen({
   credential,
+  recarga,
   onCreate,
 }: {
   credential: Credential;
+  /** Sube al crear una encuesta: se vuelve a pedir SIN esqueleto (17/10/2026). */
+  recarga: number;
   onCreate: () => void;
 }) {
   const colores = useColores();
   const [polls, setPolls] = useState<AgendaPoll[] | null>(null);
+  const [fallo, setFallo] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     const result = await agendaGet<{ polls: AgendaPoll[] }>('/polls', credential.jwt);
-    setPolls(result.ok ? result.data.polls : []);
+    // Sin red NO es «sin encuestas»: se conserva lo que había y se dice.
+    if (result.ok) {
+      setPolls(result.data.polls);
+      setFallo(false);
+    } else setFallo(true);
   }, [credential.jwt]);
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, recarga]);
 
   const vote = async (pollId: string, optionIndex: number) => {
     await agendaPost(`/polls/${pollId}/vote`, credential.jwt, { optionIndex });
     void load();
   };
 
+  const refresco = (
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={() => {
+        setRefreshing(true);
+        void load().finally(() => setRefreshing(false));
+      }}
+    />
+  );
+
   return (
     <View className="flex-1 bg-background" testID="pantalla-encuestas">
-      {polls === null ? (
+      {fallo ? (
+        <Pressable testID="encuestas-error" onPress={() => void load()} className="mx-4 mt-3 flex-row items-center gap-2 rounded-xl bg-error/10 px-4 py-3">
+          <RotateCw size={16} color={colores.error} />
+          <Text className="flex-1 text-[13px] text-error">No se pudo actualizar. Toca para reintentar.</Text>
+        </Pressable>
+      ) : null}
+      {polls === null && fallo ? null : polls === null ? (
         <View className="px-4 pt-4" testID="encuestas-cargando">
           {[0, 1].map((index) => (
             <View key={index} className="mb-3 h-32 rounded-xl bg-surface-variant" />
           ))}
         </View>
-      ) : polls.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-8" testID="encuestas-vacio">
-          <View className="h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <BarChart3 size={28} color={colores.primary} />
+      ) : (polls ?? []).length === 0 ? (
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }} refreshControl={refresco}>
+          <View className="flex-1 items-center justify-center px-8" testID="encuestas-vacio">
+            <View className="h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <BarChart3 size={28} color={colores.primary} />
+            </View>
+            <Text className="mt-4 text-lg font-semibold text-on-surface">Sin encuestas</Text>
+            <Text className="mt-1 text-center text-sm leading-5 text-on-surface-variant">
+              Pregúntale algo al grupo y deja que decidan.
+            </Text>
           </View>
-          <Text className="mt-4 text-lg font-semibold text-on-surface">Sin encuestas</Text>
-          <Text className="mt-1 text-center text-sm leading-5 text-on-surface-variant">
-            Pregúntale algo al grupo y deja que decidan.
-          </Text>
-        </View>
+        </ScrollView>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16 }}>
-          {polls.map((poll) => {
+        <ScrollView
+          contentContainerStyle={{ padding: 16, paddingBottom: 96 }}
+          refreshControl={refresco}
+        >
+          {(polls ?? []).map((poll) => {
             const tally = tallyPoll(
               {
                 question: poll.question,

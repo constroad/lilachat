@@ -1,32 +1,27 @@
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
-import { Bell, Clock, Send, X } from 'lucide-react-native';
+import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Bell, Send, Trash2, X } from 'lucide-react-native';
 import type { Recurrence } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
-import { agendaPost } from './agendaApi';
-import { FilledField, PickerRow, PrimaryAction, SectionLabel } from './createUi';
+import { agendaDelete, agendaPatch, agendaPost, type AgendaReminder } from './agendaApi';
+import { FilledField, PrimaryAction, SectionLabel } from './createUi';
+import { SelectorDeCuando } from '../ui/SelectorDeCuando';
+import { valorInicial } from '../ui/cuando';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 
 /**
- * Crear recordatorio.
+ * Crear o EDITAR un recordatorio.
  *
  * **Stitch no diseñó esta pantalla** —solo la lista, «My Reminders»—. Se
  * construye con el lenguaje de las otras dos (rótulos en acento, campos
- * rellenos, botón de ancho completo) y con el héroe del evento, para que no
- * parezca de otra app. Se anota acá para que quede claro qué salió de una
- * captura y qué de una decisión.
+ * rellenos, botón de ancho completo) y con el héroe del evento.
  *
- * El campo «nota» existe porque la LISTA lo muestra: sin él, la segunda línea
- * de la tarjeta del diseño quedaría siempre vacía.
+ * Desde el 17/10/2026 (José: «no hay como editar avisos», «no hay como elegir
+ * una hora específica»): con `editando` la misma pantalla edita y ofrece
+ * eliminar, y el cuándo es día y hora exactos (`SelectorDeCuando`) en vez de
+ * cuatro atajos relativos.
  */
-const OPCIONES_CUANDO = [
-  { horas: 1, etiqueta: 'En 1 hora' },
-  { horas: 3, etiqueta: 'En 3 horas' },
-  { horas: 9, etiqueta: 'Esta noche' },
-  { horas: 24, etiqueta: 'Mañana' },
-];
-
 const RECURRENCIAS: { valor: Recurrence; etiqueta: string }[] = [
   { valor: 'once', etiqueta: 'Una vez' },
   { valor: 'daily', etiqueta: 'Diario' },
@@ -36,88 +31,99 @@ const RECURRENCIAS: { valor: Recurrence; etiqueta: string }[] = [
 export function CreateReminderScreen({
   visible,
   credential,
+  editando,
   onClose,
   onCreated,
 }: {
   visible: boolean;
   credential: Credential;
+  /** Con un recordatorio, la pantalla lo edita; sin él, crea uno nuevo. */
+  editando?: AgendaReminder;
   onClose: () => void;
+  /** Se creó, editó o borró algo: la lista vuelve a pedir. */
   onCreated: () => void;
 }) {
   const colores = useColores();
   const margenes = useMargenes();
-  const [title, setTitle] = useState('');
-  const [note, setNote] = useState('');
-  const [hours, setHours] = useState(3);
-  const [recurrence, setRecurrence] = useState<Recurrence>('once');
-  const [editandoCuando, setEditandoCuando] = useState(false);
+  // La pantalla se monta al abrirse (TabsShell/Agenda la montan condicional),
+  // así que los iniciales desde `editando` son los de ESTA apertura.
+  const [title, setTitle] = useState(editando?.title ?? '');
+  const [note, setNote] = useState(editando?.note ?? '');
+  const [cuando, setCuando] = useState(() => valorInicial(editando?.startsAt, new Date()));
+  const [recurrence, setRecurrence] = useState<Recurrence>(editando?.recurrence ?? 'once');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-
-  const cuando = OPCIONES_CUANDO.find((opcion) => opcion.horas === hours);
 
   const submit = async () => {
     if (saving) return;
     if (!title.trim()) return setError('Escribe de qué es.');
+    if (cuando.getTime() < Date.now() && recurrence === 'once') return setError('Esa hora ya pasó. Elige una que venga.');
 
     setSaving(true);
-    const result = await agendaPost('/reminders', credential.jwt, {
-      title: title.trim(),
-      note: note.trim() || undefined,
-      startsAt: new Date(Date.now() + hours * 3_600_000).toISOString(),
-      recurrence,
-    });
+    const cuerpo = { title: title.trim(), note: note.trim(), startsAt: cuando.toISOString(), recurrence };
+    const result = editando
+      ? await agendaPatch(`/reminders/${editando._id}`, credential.jwt, cuerpo)
+      : await agendaPost('/reminders', credential.jwt, { ...cuerpo, note: cuerpo.note || undefined });
     setSaving(false);
 
     if (!result.ok) return setError(result.message ?? 'No se pudo guardar.');
-    setTitle('');
-    setNote('');
-    setError('');
     onCreated();
     onClose();
   };
 
+  const eliminar = () => {
+    if (!editando) return;
+    Alert.alert('Eliminar recordatorio', `«${editando.title}» deja de sonar y desaparece de la lista.`, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: () =>
+          void agendaDelete(`/reminders/${editando._id}`, credential.jwt).then((result) => {
+            if (!result.ok) return setError(result.message ?? 'No se pudo eliminar.');
+            onCreated();
+            onClose();
+          }),
+      },
+    ]);
+  };
+
   /**
-   * ATRÁS de Android.
-   *
-   * `onRequestClose` NO es solo el botón de atrás: también se dispara cuando se
-   * cierra el TECLADO con atrás. Cerrando sin condición, escribir un campo,
-   * bajar el teclado y perder todo lo llenado es un solo gesto — pasó en el
-   * E2E, con la encuesta a medio llenar.
-   *
-   * Solo se cierra si no hay nada escrito. Con algo escrito, atrás no hace nada
-   * y queda la X, que es explícita.
+   * ATRÁS de Android. `onRequestClose` también se dispara al bajar el teclado
+   * con atrás: solo se cierra si no hay nada escrito (o, editando, si nada
+   * cambió). Con cambios queda la X, que es explícita.
    */
-  const hayAlgoEscrito = Boolean(title.trim() || note.trim());
+  const hayCambios = editando
+    ? title !== editando.title || note !== (editando.note ?? '')
+    : Boolean(title.trim() || note.trim());
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      onRequestClose={() => {
-        if (!hayAlgoEscrito) onClose();
-      }}
-    >
+    <Modal visible={visible} animationType="slide" onRequestClose={() => (hayCambios ? undefined : onClose())}>
       <View className="flex-1 bg-background" testID="crear-reminder">
         <View className="flex-row items-center gap-2 px-4 pb-2" style={{ paddingTop: margenes.cabecera }}>
-          <Pressable
-            onPress={onClose}
-            testID="btn-cerrar-crear"
-            className="h-11 w-9 items-center justify-center"
-          >
-            <X size={22} color={colores["on-surface"]} />
+          <Pressable onPress={onClose} testID="btn-cerrar-crear" className="h-11 w-11 items-center justify-center">
+            <X size={22} color={colores['on-surface']} />
           </Pressable>
+          <View className="flex-1" />
+          {editando ? (
+            <Pressable
+              onPress={eliminar}
+              testID="btn-eliminar-recordatorio"
+              accessibilityLabel="Eliminar recordatorio"
+              className="h-11 w-11 items-center justify-center"
+            >
+              <Trash2 size={20} color={colores.error} />
+            </Pressable>
+          ) : null}
         </View>
 
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
           <View className="items-center pb-2">
             <View className="h-14 w-14 items-center justify-center rounded-full bg-primary">
-              <Bell size={24} color={colores["on-primary"]} />
+              <Bell size={24} color={colores['on-primary']} />
             </View>
-            <Text className="mt-3 text-2xl font-bold text-primary">Nuevo recordatorio</Text>
-            <Text className="mt-1 text-center text-[13px] leading-5 text-on-surface-variant">
-              Para que no se te pase nada.
-            </Text>
+            <Text className="mt-3 text-2xl font-bold text-primary">{editando ? 'Editar recordatorio' : 'Nuevo recordatorio'}</Text>
+            <Text className="mt-1 text-center text-[13px] leading-5 text-on-surface-variant">Para que no se te pase nada.</Text>
           </View>
 
           <SectionLabel>Qué recordar</SectionLabel>
@@ -131,47 +137,17 @@ export function CreateReminderScreen({
             }}
           />
           <View className="mt-2">
-            <FilledField
-              testID="input-nota"
-              placeholder="Cada 2 horas"
-              value={note}
-              onChangeText={setNote}
-            />
+            <FilledField testID="input-nota" placeholder="Nota (opcional)" value={note} onChangeText={setNote} />
           </View>
 
           <SectionLabel>Cuándo</SectionLabel>
-          <PickerRow
-            testID="fila-cuando"
-            icon={<Clock size={18} color={colores.primary} />}
-            title={cuando?.etiqueta ?? `En ${hours} horas`}
-            hint="Toca para cambiar"
-            onPress={() => setEditandoCuando((abierto) => !abierto)}
+          <SelectorDeCuando
+            valor={cuando}
+            onCambiar={(fecha) => {
+              setCuando(fecha);
+              setError('');
+            }}
           />
-          {editandoCuando ? (
-            <View className="mb-2 flex-row flex-wrap gap-2">
-              {OPCIONES_CUANDO.map((opcion) => (
-                <Pressable
-                  key={opcion.horas}
-                  testID={`cuando-${opcion.horas}`}
-                  onPress={() => {
-                    setHours(opcion.horas);
-                    setEditandoCuando(false);
-                  }}
-                  className={`min-h-[40px] items-center justify-center rounded-lg px-3 ${
-                    hours === opcion.horas ? 'bg-primary' : 'bg-primary/[0.07]'
-                  }`}
-                >
-                  <Text
-                    className={`text-[13px] font-semibold ${
-                      hours === opcion.horas ? 'text-on-primary' : 'text-on-surface'
-                    }`}
-                  >
-                    {opcion.etiqueta}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
 
           <SectionLabel>Repetir</SectionLabel>
           <View className="flex-row gap-2">
@@ -184,11 +160,7 @@ export function CreateReminderScreen({
                   recurrence === opcion.valor ? 'bg-primary' : 'bg-primary/[0.07]'
                 }`}
               >
-                <Text
-                  className={`text-[13px] font-semibold ${
-                    recurrence === opcion.valor ? 'text-on-primary' : 'text-on-surface'
-                  }`}
-                >
+                <Text className={`text-[13px] font-semibold ${recurrence === opcion.valor ? 'text-on-primary' : 'text-on-surface'}`}>
                   {opcion.etiqueta}
                 </Text>
               </Pressable>
@@ -207,8 +179,8 @@ export function CreateReminderScreen({
             testID="btn-guardar"
             disabled={saving}
             onPress={() => void submit()}
-            icon={<Send size={17} color={colores["on-primary"]} />}
-            label={saving ? 'Creando…' : 'Crear recordatorio'}
+            icon={<Send size={17} color={colores['on-primary']} />}
+            label={saving ? 'Guardando…' : editando ? 'Guardar cambios' : 'Crear recordatorio'}
           />
         </View>
       </View>

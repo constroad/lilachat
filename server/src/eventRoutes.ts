@@ -1,10 +1,17 @@
 import { Router } from 'express';
 import { Types } from 'mongoose';
-import { applyVote, summarizeRsvp, validatePoll, type Recurrence } from '@lilachat/shared';
+import {
+  applyVote,
+  cambiosDeEvento,
+  cambiosDeRecordatorio,
+  summarizeRsvp,
+  validatePoll,
+  type Recurrence,
+} from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import { ForbiddenChatError } from './chatService.js';
 import { EventModel, PollModel, ReminderModel } from './eventModels.js';
-import { requireSession } from './requireSession.js';
+import { asyncRoute, requireSession } from './requireSession.js';
 
 /**
  * Eventos, recordatorios y encuestas (F5).
@@ -31,13 +38,31 @@ async function myChatIds(userId: Types.ObjectId): Promise<Types.ObjectId[]> {
   return chats.map((chat) => chat._id);
 }
 
+/** Un evento de un chat del que soy miembro; `null` si no existe o no lo veo. */
+async function eventoVisible(eventId: unknown, userId: Types.ObjectId) {
+  const id = asObjectId(eventId);
+  if (!id) return null;
+  const evento = await EventModel.findById(id).select('chatId createdBy startsAt').lean();
+  if (!evento) return null;
+  const esMiembro = await ChatModel.exists({ _id: evento.chatId, 'members.userId': userId });
+  return esMiembro ? evento : null;
+}
+
+/** `$set` y `$unset` juntos, sin mandar un operador vacío (Mongo lo rechaza). */
+function actualizacion(set: object, unset: string[]): Record<string, object> {
+  const operaciones: Record<string, object> = {};
+  if (Object.keys(set).length > 0) operaciones.$set = set;
+  if (unset.length > 0) operaciones.$unset = Object.fromEntries(unset.map((campo) => [campo, '']));
+  return operaciones;
+}
+
 export function buildEventRouter(): Router {
   const router = Router();
   router.use(requireSession);
 
   // ─── Eventos ──────────────────────────────────────────────────────────────
 
-  router.get('/events', async (req, res) => {
+  router.get('/events', asyncRoute(async (req, res) => {
     const chatIds = await myChatIds(req.session!.userId);
     // Solo los que vienen: la pantalla es «qué se viene», no un archivo.
     const events = await EventModel.find({
@@ -52,6 +77,8 @@ export function buildEventRouter(): Router {
       events: events.map((event) => ({
         ...event,
         id: String(event._id),
+        // La app ofrece editar y cancelar solo a quien lo creó.
+        mio: String(event.createdBy) === String(req.session!.userId),
         rsvpSummary: summarizeRsvp(event.attendees),
         myRsvp:
           event.attendees.find(
@@ -59,9 +86,9 @@ export function buildEventRouter(): Router {
           )?.rsvp ?? null,
       })),
     });
-  });
+  }));
 
-  router.post('/events', async (req, res) => {
+  router.post('/events', asyncRoute(async (req, res) => {
     try {
       const chatId = await assertMember(req.body?.chatId, req.session!.userId);
       const title = String(req.body?.title ?? '').trim();
@@ -88,6 +115,8 @@ export function buildEventRouter(): Router {
           rsvp: String(member.userId) === String(req.session!.userId) ? 'yes' : undefined,
         })),
         remindMinutesBefore: Number(req.body?.remindMinutesBefore) || 60,
+        // El interruptor «Avisar 1 hora antes»: antes se mandaba y se ignoraba.
+        remindGuests: req.body?.remindGuests !== false,
         guestsCanInvite: req.body?.guestsCanInvite === true,
       });
       res.status(201).json({ id: String(event._id) });
@@ -95,9 +124,9 @@ export function buildEventRouter(): Router {
       if (error instanceof ForbiddenChatError) return res.status(403).json({ message: error.message });
       throw error;
     }
-  });
+  }));
 
-  router.post('/events/:eventId/rsvp', async (req, res) => {
+  router.post('/events/:eventId/rsvp', asyncRoute(async (req, res) => {
     const rsvp = String(req.body?.rsvp ?? '');
     if (!['yes', 'no', 'maybe'].includes(rsvp)) {
       return res.status(400).json({ message: 'Respuesta inválida.' });
@@ -115,11 +144,38 @@ export function buildEventRouter(): Router {
       return res.status(403).json({ message: 'No estás invitado a ese evento.' });
     }
     res.json({ ok: true });
-  });
+  }));
+
+  /**
+   * Editar un evento: solo quien lo creó. Un invitado lo ve (403, no 404: ya
+   * sabe que existe); alguien fuera del chat recibe 404. Las respuestas de los
+   * invitados se conservan — cambiar la hora no borra quién dijo que iba.
+   */
+  router.patch('/events/:eventId', asyncRoute(async (req, res) => {
+    const evento = await eventoVisible(req.params.eventId, req.session!.userId);
+    if (!evento) return res.status(404).json({ message: 'Ese evento no existe.' });
+    if (String(evento.createdBy) !== String(req.session!.userId)) {
+      return res.status(403).json({ message: 'Solo quien creó el evento puede cambiarlo.' });
+    }
+    const cambios = cambiosDeEvento(req.body, { startsAt: evento.startsAt });
+    if (!cambios.ok) return res.status(400).json({ message: cambios.message });
+    await EventModel.updateOne({ _id: evento._id }, actualizacion(cambios.set, cambios.unset));
+    res.json({ ok: true });
+  }));
+
+  router.delete('/events/:eventId', asyncRoute(async (req, res) => {
+    const evento = await eventoVisible(req.params.eventId, req.session!.userId);
+    if (!evento) return res.status(404).json({ message: 'Ese evento no existe.' });
+    if (String(evento.createdBy) !== String(req.session!.userId)) {
+      return res.status(403).json({ message: 'Solo quien creó el evento puede cancelarlo.' });
+    }
+    await EventModel.deleteOne({ _id: evento._id });
+    res.json({ ok: true });
+  }));
 
   // ─── Recordatorios ────────────────────────────────────────────────────────
 
-  router.get('/reminders', async (req, res) => {
+  router.get('/reminders', asyncRoute(async (req, res) => {
     const chatIds = await myChatIds(req.session!.userId);
     const [mine, shared] = await Promise.all([
       ReminderModel.find({ userId: req.session!.userId, chatId: { $exists: false } })
@@ -130,9 +186,9 @@ export function buildEventRouter(): Router {
       ReminderModel.find({ chatId: { $in: chatIds } }).sort({ startsAt: 1 }).lean(),
     ]);
     res.json({ mine, shared });
-  });
+  }));
 
-  router.post('/reminders', async (req, res) => {
+  router.post('/reminders', asyncRoute(async (req, res) => {
     const title = String(req.body?.title ?? '').trim();
     const startsAt = new Date(String(req.body?.startsAt ?? ''));
     if (!title) return res.status(400).json({ message: 'Escribe de qué es el recordatorio.' });
@@ -158,23 +214,50 @@ export function buildEventRouter(): Router {
       recurrence: ['once', 'daily', 'weekly'].includes(recurrence) ? recurrence : 'once',
     });
     res.status(201).json({ id: String(reminder._id) });
-  });
+  }));
 
   /** El switch de cada tarjeta. Solo el dueño lo toca. */
-  router.post('/reminders/:reminderId/toggle', async (req, res) => {
+  router.post('/reminders/:reminderId/toggle', asyncRoute(async (req, res) => {
     const reminderId = asObjectId(req.params.reminderId);
     if (!reminderId) return res.status(404).json({ message: 'No existe.' });
     const updated = await ReminderModel.updateOne(
       { _id: reminderId, userId: req.session!.userId },
-      { $set: { active: req.body?.active !== false } }
+      // Reactivar limpia el sello: si no, uno que ya sonó quedaba con el
+      // interruptor prendido y sin volver a sonar nunca.
+      req.body?.active !== false ? { $set: { active: true, remindedAt: null } } : { $set: { active: false } }
     );
     if (updated.matchedCount === 0) return res.status(403).json({ message: 'No es tuyo.' });
     res.json({ ok: true });
-  });
+  }));
+
+  /**
+   * Editar o borrar un recordatorio: solo el dueño. A cualquier otro, 404 —
+   * el mismo que si no existiera, sin diferencia que sondear.
+   */
+  router.patch('/reminders/:reminderId', asyncRoute(async (req, res) => {
+    const reminderId = asObjectId(req.params.reminderId);
+    const actual = reminderId
+      ? await ReminderModel.findOne({ _id: reminderId, userId: req.session!.userId }).select('startsAt').lean()
+      : null;
+    if (!actual) return res.status(404).json({ message: 'Ese recordatorio no existe.' });
+    const cambios = cambiosDeRecordatorio(req.body, { startsAt: actual.startsAt });
+    if (!cambios.ok) return res.status(400).json({ message: cambios.message });
+    await ReminderModel.updateOne({ _id: actual._id }, actualizacion(cambios.set, cambios.unset));
+    res.json({ ok: true });
+  }));
+
+  router.delete('/reminders/:reminderId', asyncRoute(async (req, res) => {
+    const reminderId = asObjectId(req.params.reminderId);
+    const borrado = reminderId
+      ? await ReminderModel.deleteOne({ _id: reminderId, userId: req.session!.userId })
+      : { deletedCount: 0 };
+    if (borrado.deletedCount === 0) return res.status(404).json({ message: 'Ese recordatorio no existe.' });
+    res.json({ ok: true });
+  }));
 
   // ─── Encuestas ────────────────────────────────────────────────────────────
 
-  router.post('/polls', async (req, res) => {
+  router.post('/polls', asyncRoute(async (req, res) => {
     try {
       const chatId = await assertMember(req.body?.chatId, req.session!.userId);
       const question = String(req.body?.question ?? '');
@@ -199,18 +282,18 @@ export function buildEventRouter(): Router {
       if (error instanceof ForbiddenChatError) return res.status(403).json({ message: error.message });
       throw error;
     }
-  });
+  }));
 
-  router.get('/polls', async (req, res) => {
+  router.get('/polls', asyncRoute(async (req, res) => {
     const chatIds = await myChatIds(req.session!.userId);
     const polls = await PollModel.find({ chatId: { $in: chatIds } })
       .sort({ createdAt: -1 })
       .limit(50)
       .lean();
     res.json({ polls: polls.map((poll) => ({ ...poll, id: String(poll._id) })) });
-  });
+  }));
 
-  router.post('/polls/:pollId/vote', async (req, res) => {
+  router.post('/polls/:pollId/vote', asyncRoute(async (req, res) => {
     const pollId = asObjectId(req.params.pollId);
     if (!pollId) return res.status(404).json({ message: 'Esa encuesta no existe.' });
     const poll = await PollModel.findById(pollId).lean();
@@ -249,7 +332,7 @@ export function buildEventRouter(): Router {
       }
     );
     res.json({ ok: true });
-  });
+  }));
 
   return router;
 }

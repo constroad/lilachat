@@ -16,9 +16,14 @@ export type AgendaEvent = {
   title: string;
   description?: string;
   startsAt: string;
+  endsAt?: string;
   location?: string;
   rsvpSummary: AttendeeSummary;
   myRsvp: Rsvp | null;
+  /** Lo creé yo: solo entonces se ofrece editarlo y cancelarlo. */
+  mio: boolean;
+  /** «Avisar 1 hora antes»; los eventos viejos no lo traen y cuentan como sí. */
+  remindGuests?: boolean;
 };
 
 export type AgendaReminder = {
@@ -73,3 +78,9 @@ export const agendaGet = <T>(route: string, jwt: string) => call<T>(route, jwt);
 
 export const agendaPost = <T>(route: string, jwt: string, body: Record<string, unknown>) =>
   call<T>(route, jwt, { method: 'POST', body: JSON.stringify(body) });
+
+/** Editar: solo los campos que cambian; un opcional vacío se borra en el server. */
+export const agendaPatch = <T>(route: string, jwt: string, body: Record<string, unknown>) =>
+  call<T>(route, jwt, { method: 'PATCH', body: JSON.stringify(body) });
+
+export const agendaDelete = <T>(route: string, jwt: string) => call<T>(route, jwt, { method: 'DELETE' });

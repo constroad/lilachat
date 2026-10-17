@@ -3396,7 +3396,7 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | FL8 | **Lo que se pierde o se rompe** (auditoría §46.1) — ver §45.15 | ningún mensaje desaparece sin aviso; la notificación abre su chat; la llamada suena fuera del chat | ✅ 17/10 (0.1.78) |
 | FL8.1 | **Llamada entrante como WhatsApp** (pedido de José tras probar con Wilson, 17/10): pantalla completa sobre el bloqueo con tono que se repite, deslizar para contestar, rechazar sin abrir la app, tono con la app abierta, «Llamada perdida» en el chat — ver §45.16 | con la app cerrada y el teléfono bloqueado la llamada ocupa la pantalla y suena hasta contestar, rechazar o 30 s; E2E en el emulador | 🟡 17/10 (0.1.79 publicada): verificada en el emulador, más el bug de presencia que frenaba todos los push; falta probar sobre un bloqueo real |
 | FL8.2 | **Doble check sin abrir la app** (José, 17/10, chat con Wilson: un solo check aunque Wilson tenía internet). Hoy «entregado» lo marca la app al conectarse; el push llega al teléfono pero es una notificación común, Android la muestra sin ejecutar código de la app y el server nunca se entera. Camino: push de mensaje solo-datos que recibe el servicio nativo de FL8.1, que dibuja la notificación y le confirma la entrega al server con un token corto del propio push (sin JWT) | con la app cerrada, el mensaje pasa a dos checks grises al llegar el push al otro teléfono — ver §45.17 | ✅ 17/10: hecho y verificado en el emulador; sale en 0.1.80 |
-| FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | 🟡 17/10: FL9a hecha (§45.18): pulsación larga completa, links, cita que salta, divisor de no leídos, atrás. Falta: varias fotos con pie, notas de voz, buscar en el chat, borradores, archivar, perfil |
+| FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | 🟡 17/10: FL9a hecha (§45.18): pulsación larga completa, links, cita que salta, divisor de no leídos, atrás; editar mensajes (§45.19); FL9b: varias fotos con pie y notas de voz con velocidad (§45.20). Falta: buscar en el chat, borradores, archivar, perfil |
 | FL10 | **Pulido y coherencia** (§46.3): un solo registro (tuteo), 44 dp, encuestas completas, detalle de evento | auditoría de pantalla entera sin hallazgos ALTA | ⬜ |
 
 ### 45.4 As-is FL0 (16/10/2026)
@@ -4148,6 +4148,85 @@ leídos):
 final unos segundos después del salto. No se repitió, pero queda anotado.
 
 **Deuda:** `ChatScreen.tsx` llegó a 940 líneas: hay que partirla.
+
+### 45.19 As-is: editar mensajes (17/10/2026)
+
+Pedido de José. Como WhatsApp: **solo lo propio, solo texto y durante 15
+minutos**. Pasado ese rato, editar cambiaría lo que el otro ya leyó y contestó.
+
+- **Motor compartido** `shared/editarMensaje.puedeEditar` (7 tests): lo usan
+  el server, que decide, y la app, que solo ofrece «Editar» cuando corresponde.
+  En un chat secreto todavía no se edita: el texto viaja cifrado.
+- **Server:**
+  - `chatService.editMessage` exige membresía, autor, texto, que no esté
+    borrado, la ventana y que no quede vacío (para eso está eliminar). Guarda
+    `body` y `editedAt` (6 tests).
+  - `msg.edit` por socket responde con un ack y avisa `msg.edited` a todos,
+    incluidos mis otros teléfonos (2 tests de socket). Sin push: corregir una
+    letra no amerita sonar en el bolsillo de nadie.
+- **App:**
+  - «Editar» (lápiz) en la barra de selección. El texto vuelve al campo con la
+    barra «Editando mensaje» y su ×.
+  - Al guardar se espera el eco del server. Si lo rechaza, el texto vuelve al
+    campo y se dice el motivo.
+  - `msg.edited` actualiza la lista y el disco (`marcarEditadoGuardado`, que
+    comparte con el borrado `reescribirGuardado`).
+  - La burbuja dice «Editado» antes de la hora, también en el relleno
+    invisible que le reserva el lugar.
+  - Atrás cancela la edición (`cancelar-edicion`).
+  - Los pedidos por socket viven en `pedidosDeMensaje.ts`, así `useChat` no
+    pasa de 600 líneas.
+- **E2E** (emulador, debug contra :3104):
+  - el mensaje propio de hace 30 s ofreció Editar;
+  - «QA recien con un herror» quedó «QA recien, sin error» con `editedAt` en
+    la base;
+  - QA Ana recibió `msg.edited` en vivo y la burbuja mostró «Editado»;
+  - el propio de hace una hora y el de QA Ana NO ofrecieron Editar;
+  - atrás canceló una edición sin salir del chat.
+- **No hecho:** editar fotos o su pie, y editar en chats secretos. La web no
+  muestra «Editado».
+
+### 45.20 As-is FL9b, varias fotos con pie y notas de voz (17/10/2026)
+
+**Varias fotos con su pie** (`EnviarFotos`, `envioDeFotos.ts`, 4 tests)
+- La galería deja elegir hasta 10 en el orden que se tocan.
+- La cámara también pasa por la previsualización antes de mandar.
+- En la previsualización:
+  - la foto se ve grande, con una tira de miniaturas;
+  - se puede sacar una (la que se ve no se pierde);
+  - cada foto lleva SU pie («Añade un comentario…»).
+- Se encolan en orden, con su pie, en la cola persistida (`caption` en
+  `colaDeArchivos`; el server ya lo aceptaba). La burbuja pendiente muestra el
+  pie.
+- La tira horizontal lleva `flexGrow: 0`: sin eso se estiraba a todo el alto y
+  achicaba la foto (visto en el E2E). El campo del pie sube con el teclado
+  (`KeyboardAvoidingView` de keyboard-controller, como el chat).
+
+**Notas de voz** (`NotaDeVoz`, salió de `MessageRow`; `notaDeVozMotor.ts`, 6
+tests)
+- Velocidad 1× → 1,5× → 2×.
+- Una sola sonando a la vez: la que toma el audio pausa a la anterior.
+- Tocar la barra salta a ese punto.
+
+**E2E** (emulador, debug contra :3104):
+- **Fotos:** dos fotos de la galería con pie a cada una; volver a la primera
+  conservó su pie. Llegaron al server como seq 4 «QA la roja» y seq 5 «QA la
+  verde», en orden, y se ven con el pie debajo.
+- **Notas de voz:**
+  - la velocidad cambió 1× → 1,5× → 2× solo en esa nota;
+  - con una sonando, darle play a la otra la pausó;
+  - a 2× avanzó dos segundos por segundo;
+  - tocar la mitad de la barra saltó a la mitad.
+
+**Notas del QA**
+- El almacenamiento falso del server local no genera miniatura, y la app
+  dibuja la foto desde la miniatura. Para verlas se le puso una en la base. En
+  producción lila la genera.
+- `input keyevent 111` (Escape) cierra la previsualización como atrás: no
+  usarlo para bajar el teclado en las pruebas.
+
+**Falta en FL9:** buscar dentro del chat, borradores por chat, archivar y
+borrar chats, marcar no leído, nombre y foto de perfil, dimensiones de foto.
 
 ## 47. Lilachat Empresa — plan (17/10/2026)
 

@@ -3393,7 +3393,7 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | FL5 | **Pendientes de F12 que pesan en el hilo JS**: cifrado/scrypt por lotes, tarea de fondo que mira wifi/carga primero (§44.4) — ver §45.12 | respaldar 20 000 mensajes sin ANR en `gama-baja` | 🟡 17/10: hecho y medido en V8 (tramo típico 0,7 ms); falta medir en un gama baja real |
 | FL6 | **Marca y Stitch**: logo vectorial único (ícono, adaptativo, mono, splash y `<Logo>` desde la misma geometría) — ver §45.13; diseñar en Stitch la conversación llena, con la paleta real y las pestañas reales | ícono verificado dentro del APK | ✅ 17/10: logo (0.1.76) y pantallas de Stitch |
 | FL7 | **Agenda editable y visor a lo WhatsApp** + lo roto de la auditoría que no podía esperar — ver §45.14 | editar/borrar avisos y eventos, día y hora exactos, deslizar entre fotos; E2E en el emulador | ✅ 17/10 (0.1.77) |
-| FL8 | **Lo que se pierde o se rompe** (auditoría §46.1) | ningún mensaje desaparece sin aviso; la notificación abre su chat; la llamada suena fuera del chat | ⬜ |
+| FL8 | **Lo que se pierde o se rompe** (auditoría §46.1) — ver §45.15 | ningún mensaje desaparece sin aviso; la notificación abre su chat; la llamada suena fuera del chat | ✅ 17/10 (0.1.78) |
 | FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | ⬜ |
 | FL10 | **Pulido y coherencia** (§46.3): un solo registro (tuteo), 44 dp, encuestas completas, detalle de evento | auditoría de pantalla entera sin hallazgos ALTA | ⬜ |
 
@@ -3813,6 +3813,134 @@ cero: devices 20, chat QA borrado, app desinstalada.
 No probado en la interfaz: el bloqueo del chat secreto (no hay uno en la cuenta
 de QA; lo cubren los tests del server).
 
+### 45.15 As-is FL8, lo que se pierde o se rompe (17/10/2026)
+
+Toma la lista de §46.1 entera. El criterio era: ningún mensaje desaparece sin
+aviso, la notificación abre su chat y la llamada suena fuera del chat.
+
+**Mensajes que el server rechaza**
+- La cola de texto (`shared/outbox.ts`) ya no descarta: un rechazo permanente
+  (400/403/404/410) deja el mensaje **fallido** con su motivo (`fallo`), y
+  `nextPending` lo saltea para que no trabe a los de atrás. Un 401 marca todo
+  como fallido, no lo borra. `reintentarEnLaCola` / `descartarDeLaCola` (27
+  tests).
+- La burbuja fallida muestra el ícono de alerta en lugar del reloj y debajo
+  «No se envió · Toca para reintentar». Al tocarla se abre Borrar / Cancelar /
+  Reintentar con el motivo del server.
+- La cola sale al conectar el socket, desde cualquier pantalla
+  (`socketClient.alConectar`). Antes solo salía con un chat abierto.
+- **La hora salía dos veces** en todo texto pendiente o fallido, desde FL3:
+  en el texto y otra vez en su propio renglón. `burbuja.dondeVaLaHora` la pone
+  en un solo lugar (4 tests).
+
+**Fotos, archivos y notas de voz en cola** (`colaDeArchivos.ts` +
+`colaDeArchivosMotor.ts`, 5 tests)
+- Se encola el hecho igual que el texto, en AsyncStorage
+  (`lilachat-cola-archivos`). El archivo se COPIA a `documentDirectory/
+  cola-archivos/`: la caché de la cámara o del selector la limpia el sistema.
+- El JWT no se guarda en la cola: se lee del llavero al subir.
+- Sin red se reintenta con espera creciente. Un rechazo queda fallido, con
+  ícono y «No se envió», sin ruedita (`etiquetaDeSubida`, 2 tests). Sale sola
+  al conectar y sobrevive a cerrar la app a la fuerza.
+- `useArchivosDelChat` pinta lo encolado en la conversación con su progreso.
+
+**Tocar una notificación abre lo que avisa** (`ui/useAbrirDesdeAviso.ts`,
+`ui/destinoDeAviso.ts`, 4 tests)
+- Con la app viva, el listener. Con la app cerrada, la respuesta que la abrió
+  (`getLastNotificationResponseAsync`), que se borra al atenderla.
+- Un aviso de agenda va a la pestaña Agenda. Un `chatId` válido abre ese chat:
+  primero desde memoria, después desde disco y, si no está, se pide al server.
+
+**Llamadas de la sesión** (`calls/ProveedorDeLlamadas.tsx`, `server/
+llamadas.ts`, 9 tests)
+- La llamada ya no vive en `ChatScreen`: se escucha desde que hay sesión y la
+  pantalla se monta encima de lo que esté abierto.
+- El server guarda la oferta mientras suena (`CALL_TIMEOUT_MS`, en memoria).
+  Quien conecta en ese tiempo la recibe. A los desconectados les llega el push
+  «Llamada de …» / «Videollamada de …» (`tipo: 'llamada'`). Contestar, colgar
+  o rechazar la borran.
+- La oferta lleva nombre y teléfono de quien llama (`frameConAutor`): al abrir
+  desde el push el chat todavía no está cargado y la pantalla decía «Llamada».
+- **Tocar el push no sonaba**: `connectSocket` reemplazaba el socket pausado y
+  se perdían los oyentes. `queHacerConElSocket` lo reconecta (tests).
+- Vibra mientras suena una entrante. Si ya hay una llamada, la nueva recibe
+  «ocupado».
+- El altavoz es real (`setAudioModeAsync`). El botón de video solo aparece en
+  videollamadas.
+- La pantalla se cierra sola 1,5 s después de terminar.
+- **Contestada no es conectada** (`calls/estadoDeMedios.ts`, 14 tests):
+  - Hasta que ICE conecta la pantalla dice «Conectando…», no el reloj.
+  - Si se corta dice «Reconectando…».
+  - Si ICE falla, o pasan 30 s sin audio, se corta, se avisa al otro
+    (`motivo: 'desconectada'`) y la pantalla dice «No se pudo conectar».
+  - Sin candidatos del otro lado ICE no llega nunca a `failed`: en el E2E quedó
+    80 s en «Conectando…» hasta el tope.
+
+**Lo demás de §46.1**
+- **Checks azules en grupos**: van con la lectura del ÚLTIMO, no del primero.
+  Se calcula el mínimo de los demás miembros, sin contar a Lila
+  (`shared/acuses.acuseDelGrupo`, 6 tests). El server lo hace en la lista
+  (`acuseDe`) y la app en vivo (`useAcuses`).
+- **Documentos sin miniatura** (PDF, Word, zip…) se abren con otra app.
+- **Silenciar** se guarda en el server y el detalle lo lee (`muted`).
+- **Cerrar sesión** pide confirmar y dice qué se borra. Le dice al server que
+  olvide el push de este teléfono, y vacía las dos colas.
+- **Nuevo chat** pasa los miembros: el 1:1 recién creado tiene botón de llamar
+  y, si es secreto, su clave.
+- **Permisos sin insistir** (`ui/permisos.ts`, 5 tests): contactos y
+  notificaciones se piden una vez, o cuando la persona toca algo que los
+  necesita. Android 13 decía «denied» antes de preguntar nunca: ahora la app
+  lleva su propia marca de «ya pregunté». El canal local ya no declara sonido
+  (`Custom sound 'default'`).
+- **Agenda**: el RSVP de quien entró al chat después del evento lo suma como
+  invitado (antes daba 403). Eventos, encuestas y avisos de un chat secreto se
+  rechazan (403): se guardarían en claro.
+
+**Prueba real de llamada con José** (17/10, su teléfono con 0.1.77 contra
+producción y el emulador como «QA Ana»). Producción reparte STUN y TURN de
+Cloudflare.
+- En la primera, José contestó y no escuchó nada. Nada lo medía, así que no se
+  sabe si fue el audio o el micrófono del emulador.
+- La segunda y la tercera no sonaron: en 0.1.77 solo suena con el chat abierto.
+- En la cuarta, medida con `getStats`, ICE conectó directo en unos 3 s. El
+  micrófono del emulador captó la voz (nivel 0,66) y salieron 218 KB y
+  entraron 159 KB. José escuchó.
+- De ahí salió «Conectando…»: el reloj corría aunque el audio no pasara.
+
+**E2E** (emulador, debug contra :3104 sin crons, 902049935 por yopmail).
+El server de QA solo manda push a equipos dados de alta después de `QA_T0`:
+los teléfonos de José no recibieron nada. Lo verificado:
+- Permisos: se pregunta una vez y el segundo arranque no pregunta.
+- Tocar una notificación abre el chat.
+- La llamada entrante se ve encima de la lista y vibra. Rechazar le manda
+  `call.end` al otro.
+- Contestar, altavoz y colgar.
+- Push de llamada con la app cerrada: al tocarlo suena.
+- Llamada con SDP falso: «Conectando…», a los 30 s «No se pudo conectar», y el
+  otro recibió `motivo: 'desconectada'`.
+- Mensaje fallido: con José sacado del grupo, el mensaje queda fallido.
+  Reintentar tras volver a agregarlo llega como `seq` 2. Borrar lo saca.
+- Texto sin red: sale al volver, desde la lista.
+- PDF sin red: queda en cola. Tras cerrar la app a la fuerza, volver la red y
+  abrir, se sube solo sin entrar al chat.
+- El PDF se abre en el visor del sistema.
+- Silenciar: `muted: true` en la base y el interruptor sigue al reabrir.
+- Cerrar sesión pide confirmar y «Cancelar» mantiene la sesión.
+
+En local las subidas usan un almacenamiento falso: la clave de lila del `.env`
+local no es la de producción y lila contesta 401.
+
+**No verificado**
+- «Nuevo chat» desde un contacto: el emulador no tiene contactos.
+- Auricular contra altavoz en un teléfono: José escuchó, pero no se distinguió
+  por dónde.
+- Si el diálogo del permiso del micrófono tarda más que el timbre, `contestar`
+  corre contra una llamada ya cerrada (se captura y se reporta).
+
+**Deuda**
+- `ChatScreen.tsx` tiene 923 líneas y `TabsShell.tsx` 681.
+- El ícono chico de la notificación queda para FL10.
+
 ## 46. Auditoría UX contra WhatsApp (17/10/2026)
 
 Dos pasadas de solo lectura (conversaciones; todo lo demás), con evidencia
@@ -3864,6 +3992,8 @@ Dos pasadas de solo lectura (conversaciones; todo lo demás), con evidencia
 - No se archiva ni se elimina un chat; no hay «marcar no leído».
 - Sin nombre ni foto de perfil (el OTP acepta `name` y nadie lo pide).
 - Fotos siempre recortadas a 220×220 (el server no guarda dimensiones).
+- Sacado de un grupo, la conversación sigue con la barra de escribir y la
+  cabecera de miembros. WhatsApp dice «Ya no eres participante» (E2E de FL8).
 
 ### 46.3 FL10 — pulido y coherencia
 - **Un solo registro: tuteo** (Perú). Hoy Agenda y onboarding tutean y
@@ -3882,3 +4012,6 @@ Dos pasadas de solo lectura (conversaciones; todo lo demás), con evidencia
 - Dos respaldos distintos en Ajustes; «Respaldar ahora» de la copia vieja
   deja a cualquiera lanzar un dump del server entero (`backupRoutes.ts:44`).
 - Un solo ErrorBoundary para toda la app; orientación fija en vertical.
+- La lista de chats se pide 5 veces al arrancar: `TabsShell` y
+  `ChatListScreen` piden cada uno, y otra vez al reconectar (log del server de
+  QA, FL8). Va con FL4.

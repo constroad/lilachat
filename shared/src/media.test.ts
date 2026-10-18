@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  dimensionValida,
+  tamanoDeBurbuja,
   MAX_BYTES_BY_KIND,
   buildMediaPath,
   buildStorageName,
@@ -99,5 +101,40 @@ describe('formatBytes y etiquetas', () => {
     expect(mediaPreviewLabel('image')).toContain('Foto');
     expect(mediaPreviewLabel('video')).toContain('Video');
     expect(mediaPreviewLabel('file')).toContain('Archivo');
+  });
+});
+
+/**
+ * Las dimensiones de una foto o un video (FL9): la burbuja respeta su forma,
+ * como WhatsApp, en vez del cuadrado de 220 recortado.
+ */
+describe('dimensionValida', () => {
+  it('enteros positivos razonables; lo demás, nada', () => {
+    expect(dimensionValida('4000')).toBe(4000);
+    expect(dimensionValida(1080.6)).toBe(1081);
+    expect(dimensionValida('-5')).toBeUndefined();
+    expect(dimensionValida('abc')).toBeUndefined();
+    expect(dimensionValida(0)).toBeUndefined();
+    expect(dimensionValida(999_999)).toBeUndefined();
+  });
+});
+
+describe('tamanoDeBurbuja', () => {
+  it('apaisada: ancho máximo y el alto según su forma', () => {
+    expect(tamanoDeBurbuja({ width: 4000, height: 3000 })).toEqual({ ancho: 240, alto: 180 });
+  });
+
+  it('vertical: alto máximo y el ancho según su forma', () => {
+    expect(tamanoDeBurbuja({ width: 3000, height: 4000 })).toEqual({ ancho: 240, alto: 320 });
+    expect(tamanoDeBurbuja({ width: 1000, height: 4000 })).toEqual({ ancho: 120, alto: 320 });
+  });
+
+  it('una tira muy angosta o muy baja no baja del mínimo', () => {
+    expect(tamanoDeBurbuja({ width: 4000, height: 200 })).toEqual({ ancho: 240, alto: 120 });
+    expect(tamanoDeBurbuja({ width: 100, height: 4000 })).toEqual({ ancho: 120, alto: 320 });
+  });
+
+  it('sin dimensiones (mensajes viejos): el cuadrado de siempre', () => {
+    expect(tamanoDeBurbuja({})).toEqual({ ancho: 220, alto: 220 });
   });
 });

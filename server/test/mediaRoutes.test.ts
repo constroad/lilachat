@@ -93,6 +93,32 @@ describe('POST /api/media', () => {
     expect(await MessageModel.countDocuments({})).toBe(1);
   });
 
+  /**
+   * Las dimensiones de la foto (FL9): la burbuja la dibuja con su forma, no
+   * recortada en un cuadrado de 220. Solo enteros razonables; lo demás se
+   * ignora y la burbuja cae al cuadrado de siempre.
+   */
+  it('guarda ancho y alto de la foto; lo absurdo se ignora', async () => {
+    const { uploader } = fakeUploader();
+    const app = buildApp({ mediaUploader: uploader });
+    const subir = (clientKey: string, width: string, height: string) =>
+      request(app)
+        .post('/api/media')
+        .set('Authorization', `Bearer ${token}`)
+        .field('chatId', chatId)
+        .field('clientKey', clientKey)
+        .field('width', width)
+        .field('height', height)
+        .attach('file', jpeg, { filename: 'foto.jpg', contentType: 'image/jpeg' });
+
+    const buena = await subir('ck-dim-1', '4000', '3000');
+    const mala = await subir('ck-dim-2', '-5', 'abc');
+
+    expect(buena.body.message.media).toMatchObject({ width: 4000, height: 3000 });
+    expect(mala.body.message.media.width).toBeUndefined();
+    expect(mala.body.message.media.height).toBeUndefined();
+  });
+
   /** La misma foto reenviada por la cola no puede duplicar el mensaje. */
   it('el mismo clientKey no crea un segundo mensaje', async () => {
     const { uploader } = fakeUploader();

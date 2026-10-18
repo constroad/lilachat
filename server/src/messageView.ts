@@ -13,7 +13,17 @@ import type { Message } from './chatModels.js';
  * dónde vive lila, y mover el storage no obliga a publicar un APK nuevo.
  */
 export type ClientMessage = Omit<Message, 'media'> & {
-  media?: { mediaId: string; thumbUrl?: string; url?: string; mime?: string; fileName?: string; sizeBytes?: number; durationMs?: number };
+  media?: {
+    mediaId: string;
+    thumbUrl?: string;
+    url?: string;
+    mime?: string;
+    fileName?: string;
+    sizeBytes?: number;
+    durationMs?: number;
+    width?: number;
+    height?: number;
+  };
 };
 
 export function toClientMessage(message: Message): ClientMessage {

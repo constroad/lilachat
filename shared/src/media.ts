@@ -99,3 +99,29 @@ const defaultExtension = (kind: MediaKind): string =>
 export function mediaPreviewLabel(kind: MediaKind): string {
   return kind === 'image' ? '📷 Foto' : kind === 'video' ? '🎬 Video' : '📎 Archivo';
 }
+
+/** Más que esto no es una foto de teléfono: es un dato roto. */
+const DIMENSION_MAXIMA = 20_000;
+
+/** Un ancho o alto de foto, o `undefined` si no es un entero razonable (FL9). */
+export function dimensionValida(valor: unknown): number | undefined {
+  const numero = Math.round(Number(valor));
+  return Number.isFinite(numero) && numero > 0 && numero <= DIMENSION_MAXIMA ? numero : undefined;
+}
+
+const BURBUJA = { anchoMaximo: 240, altoMaximo: 320, minimo: 120, cuadrado: 220 } as const;
+
+/**
+ * El tamaño de la burbuja de una foto o un video (FL9): su forma real dentro
+ * de 240×320, como WhatsApp, y nunca menos de 120 de lado (una tira de 4000×200
+ * sería una línea). Sin dimensiones —los mensajes viejos— el cuadrado de 220.
+ */
+export function tamanoDeBurbuja(media: { width?: number; height?: number }): { ancho: number; alto: number } {
+  const { width, height } = media;
+  if (!width || !height) return { ancho: BURBUJA.cuadrado, alto: BURBUJA.cuadrado };
+  const escala = Math.min(BURBUJA.anchoMaximo / width, BURBUJA.altoMaximo / height);
+  return {
+    ancho: Math.max(BURBUJA.minimo, Math.round(width * escala)),
+    alto: Math.max(BURBUJA.minimo, Math.round(height * escala)),
+  };
+}

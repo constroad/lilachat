@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { MAX_BYTES_BY_KIND, validateMedia } from '@lilachat/shared';
+import { MAX_BYTES_BY_KIND, dimensionValida, validateMedia } from '@lilachat/shared';
 import { ForbiddenChatError, sendMessage } from './chatService.js';
 import { publicarMensaje } from './socket.js';
 import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
@@ -72,6 +72,10 @@ export function buildMediaRouter(uploader: MediaUploader = buildLilaUploader()):
           // La duración real de una nota de voz. El `m4a` remoto reporta mal su
           // duración hasta que carga entero, así que en reposo se muestra ESTA.
           durationMs: Number(req.body?.durationMs) || undefined,
+          // Ancho y alto de la foto o el video (FL9): la burbuja respeta su
+          // forma. Lo que no es un entero razonable se ignora.
+          width: dimensionValida(req.body?.width),
+          height: dimensionValida(req.body?.height),
           // RELATIVAS a propósito: se resuelven al servir (`messageView`).
           thumbUrl: uploaded.media.thumbnailUrl,
           url: uploaded.media.url,

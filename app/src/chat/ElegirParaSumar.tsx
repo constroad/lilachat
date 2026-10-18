@@ -71,7 +71,7 @@ export function ElegirParaSumar({
             multiple={false}
             excluidos={yaEstan}
             vacio="Todos tus contactos de Lilachat ya están en este grupo."
-            invitacion={{ miNombre: credential.name ?? null, enlaceApp: '' }}
+            conInvitar
             onToggle={(contacto) => onElegir(contacto.id)}
           />
         ) : null}

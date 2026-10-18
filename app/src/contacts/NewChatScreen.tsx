@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Modal, Pressable, Switch, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { Interruptor } from '../ui/Interruptor';
 import { ArrowLeft, Check, Lock, Users, X } from 'lucide-react-native';
 import { MAX_NOMBRE_DE_GRUPO, type Contact } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
@@ -7,6 +8,11 @@ import { ContactPicker } from './ContactPicker';
 import { createChat } from './contactsApi';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
+import { Avatar } from '../ui/Avatar';
+import { FilaDeAjuste, GrupoDeAjustes } from '../ui/FilaDeAjuste';
+
+/** El avatar de cada elegido arriba de la lista (dp): 56, como el diseño. */
+const AVATAR_ELEGIDO = 56;
 
 /**
  * Nuevo chat (el lápiz de la lista, que no hacía nada — reclamo de José).
@@ -173,52 +179,25 @@ export function NewChatScreen({
             multiple={modo === 'grupo'}
             // Solo en «nuevo chat»: armando un grupo, invitar a alguien que
             // todavía no está no ayuda — no se lo puede agregar igual.
-            invitacion={modo === 'directo' ? { miNombre: credential.name ?? null, enlaceApp: '' } : undefined}
+            conInvitar={modo === 'directo'}
             header={
               modo === 'directo' ? (
-                <>
-                <Pressable
-                  testID="btn-nuevo-grupo"
-                  onPress={() => setModo('grupo')}
-                  className="mb-1 min-h-[60px] flex-row items-center gap-3 px-4"
-                >
-                  <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/[0.14]">
-                    <Users size={19} color={colores.primary} />
-                  </View>
-                  <Text className="text-[15px] font-semibold text-primary">Nuevo grupo</Text>
-                </Pressable>
-
-                {/* El chat secreto se elige ANTES de tocar a la persona: al
-                    tocarla se abre la conversación, así que después ya es
-                    tarde. */}
-                <Pressable
-                  testID="switch-secreto"
-                  onPress={() => setSecreto((valor) => !valor)}
-                  className={`mx-4 mb-2 flex-row items-center gap-3 rounded-xl p-3 ${
-                    secreto ? 'bg-primary/[0.14]' : 'bg-primary/[0.05]'
-                  }`}
-                >
-                  <Lock size={17} color={secreto ? colores.primary : colores.outline} />
-                  <View className="min-w-0 flex-1">
-                    <Text
-                      className={`text-[14px] font-semibold ${
-                        secreto ? 'text-primary' : 'text-on-surface'
-                      }`}
-                    >
-                      Chat secreto
-                    </Text>
-                    <Text className="text-[11px] leading-4 text-on-surface-variant">
-                      Cifrado de punta a punta. Lila no puede leerlo y no se
-                      recupera si pierdes el teléfono.
-                    </Text>
-                  </View>
-                  <Switch
-                    value={secreto}
-                    onValueChange={setSecreto}
-                    trackColor={{ true: colores.primary }}
-                  />
-                </Pressable>
-                </>
+                <View className="mx-4 mb-3">
+                  <GrupoDeAjustes>
+                    <FilaDeAjuste testID="btn-nuevo-grupo" icono={Users} titulo="Nuevo grupo" onPress={() => setModo('grupo')} />
+                    {/* El chat secreto se elige ANTES de tocar a la persona: al
+                        tocarla se abre la conversación, así que después ya es
+                        tarde. */}
+                    <FilaDeAjuste
+                      testID="switch-secreto"
+                      icono={Lock}
+                      titulo="Chat secreto"
+                      detalle="Cifrado de punta a punta. Lila no puede leerlo y no se recupera si pierdes el teléfono."
+                      onPress={() => setSecreto((valor) => !valor)}
+                      derecha={<Interruptor value={secreto} onValueChange={setSecreto} />}
+                    />
+                  </GrupoDeAjustes>
+                </View>
               ) : null
             }
           />
@@ -250,11 +229,7 @@ export function NewChatScreen({
               {elegidos.map((contact) => (
                 <View key={contact.id} className="w-16 items-center">
                   <View className="relative">
-                    <View className="h-14 w-14 items-center justify-center rounded-full bg-primary">
-                      <Text className="text-lg font-bold text-on-primary">
-                        {(contact.name ?? contact.phone).slice(0, 1).toUpperCase()}
-                      </Text>
-                    </View>
+                    <Avatar nombre={contact.name ?? contact.phone} tamano={AVATAR_ELEGIDO} />
                     {/* La × de la captura, para sacar a alguien sin volver atrás. */}
                     <Pressable
                       // 24 dp de dibujo, 44 de toque.

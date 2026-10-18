@@ -54,9 +54,9 @@ export function BotonDeVoz(props: {
         testID="btn-voz"
         accessibilityRole="button"
         accessibilityLabel="Grabar una nota de voz: mantén presionado, o toca para grabar sin el dedo"
-        className={`h-11 w-11 items-center justify-center rounded-full bg-primary ${props.deshabilitado ? 'opacity-40' : ''}`}
+        className={`h-12 w-12 items-center justify-center rounded-full bg-primary ${props.deshabilitado ? 'opacity-40' : ''}`}
       >
-        <Mic size={18} color={colores['on-primary']} />
+        <Mic size={22} color={colores['on-primary']} />
       </View>
     </GestureDetector>
   );

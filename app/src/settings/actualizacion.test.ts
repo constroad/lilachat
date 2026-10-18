@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { resultadoDelChequeo, textoDeInvitacion } from './actualizacion';
+import { resultadoDelChequeo } from './actualizacion';
 
 /**
- * «Verificar si hay actualizaciones» y el texto de la invitación.
+ * «Verificar si hay actualizaciones». El texto de la invitación se mudó a
+ * `shared/src/invitacion.ts` (FL13).
  *
  * Los dos los pidió José el 26/08/2026, y los dos tienen la misma trampa: dar
  * por buena una respuesta que nunca llegó.
@@ -54,58 +55,3 @@ describe('resultadoDelChequeo', () => {
  * el segundo paso; ofrecer solo el APK deja a esa persona sin actualizaciones
  * para siempre.
  */
-describe('textoDeInvitacion', () => {
-  const enlaces = {
-    tienda: 'https://lilastore.constroad.com/get',
-    app: 'https://lilastore.constroad.com/d/abc',
-  };
-
-  it('nombra a quien invita, para que no parezca spam', () => {
-    expect(textoDeInvitacion({ ...enlaces, deParte: 'José' })).toContain('José');
-  });
-
-  it('lleva las dos puertas', () => {
-    const texto = textoDeInvitacion({ ...enlaces, deParte: 'José' });
-    expect(texto).toContain(enlaces.tienda);
-    expect(texto).toContain(enlaces.app);
-  });
-
-  /** Sin nombre no se escribe «te invitó undefined». */
-  it('sin nombre, el mensaje sigue teniendo sentido', () => {
-    const texto = textoDeInvitacion({ ...enlaces, deParte: null });
-    expect(texto).not.toMatch(/undefined|null/);
-    expect(texto).toContain(enlaces.tienda);
-  });
-
-  /** Si no hay APK publicado, no se manda un enlace roto. */
-  it('sin enlace directo, solo va la tienda', () => {
-    const texto = textoDeInvitacion({ tienda: enlaces.tienda, app: '', deParte: 'José' });
-    expect(texto).toContain(enlaces.tienda);
-    expect(texto).not.toContain('/d/');
-  });
-});
-
-/**
- * El texto ya no habla de «la familia» (27/08/2026).
- *
- * Decía «Lilachat, el chat de la familia», y quedó viejo al abrir el registro:
- * el mensaje lo lee gente que no es de la familia de nadie. Se dice qué ES, no
- * para quién.
- */
-describe('textoDeInvitacion — sin «familia»', () => {
-  const enlaces = { tienda: 'https://t.test/get', app: 'https://t.test/d/abc' };
-
-  it('no habla de la familia de nadie', () => {
-    const texto = textoDeInvitacion({ ...enlaces, deParte: 'José' });
-
-    expect(texto.toLowerCase()).not.toContain('familia');
-  });
-
-  /** Dice qué es la app: sin eso, un enlace suelto parece spam. */
-  it('explica qué es Lilachat', () => {
-    const texto = textoDeInvitacion({ ...enlaces, deParte: null });
-
-    expect(texto).toMatch(/mensajer/i);
-    expect(texto).toMatch(/chats|grupos|eventos/i);
-  });
-});

@@ -1,9 +1,8 @@
-import { Pressable, Text, View } from 'react-native';
-import { ChevronRight, RefreshCw } from 'lucide-react-native';
+import { RefreshCw } from 'lucide-react-native';
 import type { ResultadoDelChequeo } from './actualizacion';
 import type { EstadoActualizacion } from './useActualizador';
 import { versionActual } from './versionApi';
-import { useColores } from '../ui/tema';
+import { FilaDeAjuste } from '../ui/FilaDeAjuste';
 
 /** Lo que dice debajo: el estado de la descarga manda sobre el del chequeo. */
 function detalle(params: { estado: EstadoActualizacion; verificando: boolean; chequeo: ResultadoDelChequeo | null }): string {
@@ -28,23 +27,13 @@ export function BuscarActualizacionesAjuste(props: {
   verificando: boolean;
   onVerificar: () => void;
 }) {
-  const colores = useColores();
   return (
-    <Pressable
+    <FilaDeAjuste
       testID="btn-actualizaciones"
+      icono={RefreshCw}
+      titulo={props.chequeo?.estado === 'hay-nueva' ? `Actualizar a ${props.chequeo.version}` : 'Buscar actualizaciones'}
+      detalle={detalle(props)}
       onPress={props.onVerificar}
-      className="mt-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4"
-    >
-      <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-        <RefreshCw size={18} color={colores.primary} />
-      </View>
-      <View className="min-w-0 flex-1">
-        <Text className="text-sm font-semibold text-on-surface">
-          {props.chequeo?.estado === 'hay-nueva' ? `Actualizar a ${props.chequeo.version}` : 'Buscar actualizaciones'}
-        </Text>
-        <Text className="text-[11px] text-on-surface-variant">{detalle(props)}</Text>
-      </View>
-      <ChevronRight size={18} color={colores.outline} />
-    </Pressable>
+    />
   );
 }

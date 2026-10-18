@@ -12,6 +12,10 @@ import { SelectorDeCuando } from '../ui/SelectorDeCuando';
 import { valorInicial } from '../ui/cuando';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
+import { Avatar } from '../ui/Avatar';
+
+/** El avatar del chat donde se crea el evento (dp). */
+const AVATAR_DEL_CHAT = 36;
 
 /**
  * Crear evento (diseño «New Event»).
@@ -293,11 +297,7 @@ export function CreateEventScreen({
             <>
               <SectionLabel>Dónde</SectionLabel>
               <View className="min-h-[52px] flex-row items-center gap-3 rounded-xl bg-primary/[0.07] px-4">
-                <View className="h-9 w-9 items-center justify-center rounded-full bg-primary">
-                  <Text className="text-sm font-bold text-on-primary">
-                    {fixedChat.name.slice(0, 1).toUpperCase()}
-                  </Text>
-                </View>
+                <Avatar nombre={fixedChat.name} tamano={AVATAR_DEL_CHAT} />
                 <Text className="min-w-0 flex-1 text-[15px] text-on-surface" numberOfLines={1}>
                   {fixedChat.name}
                 </Text>

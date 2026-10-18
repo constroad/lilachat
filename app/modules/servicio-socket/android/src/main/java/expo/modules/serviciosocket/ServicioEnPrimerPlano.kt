@@ -133,7 +133,11 @@ class ServicioEnPrimerPlano : Service() {
       // desinstalada. La segunda mitad es del 27/08/2026 — José la vio como algo
       // «de test» justamente porque no ofrecía ninguna salida.
       .setContentText("Recibiendo mensajes · se apaga en Ajustes")
-      .setSmallIcon(applicationInfo.icon)
+      // La silueta de las burbujas, la misma que los avisos (FL13). Vive en el
+      // módulo `llamada-entrante`; se busca por nombre para no acoplarlos.
+      .setSmallIcon(
+        resources.getIdentifier("notification_icon", "drawable", packageName).takeIf { it != 0 } ?: applicationInfo.icon
+      )
       .setOngoing(true)
       /**
        * **Sin hora, y alertando una sola vez.**

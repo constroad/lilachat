@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Switch, Text, TextInput, View } from 'react-native';
+import { TextInput } from 'react-native';
+import { Interruptor } from '../ui/Interruptor';
 import { Reply } from 'lucide-react-native';
 import { guardarAutoReply, leerAutoReply } from '../api/client';
 import { useColores } from '../ui/tema';
+import { FilaDeAjuste, SANGRIA_DEL_TEXTO } from '../ui/FilaDeAjuste';
 
 /**
  * Ajuste de auto-respuesta de ausente (F11), en Ajustes.
@@ -30,18 +32,13 @@ export function AutoRespuestaAjuste({ jwt }: { jwt: string }) {
   };
 
   return (
-    <View className="mt-2 rounded-xl border border-outline/10 bg-surface p-4" testID="ajuste-auto-respuesta">
-      <View className="flex-row items-center gap-3">
-        <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-          <Reply size={18} color={colores.primary} />
-        </View>
-        <View className="min-w-0 flex-1">
-          <Text className="text-sm font-semibold text-on-surface">Auto-respuesta</Text>
-          <Text className="text-[11px] text-on-surface-variant">
-            Cuando no estés conectado, contesta sola en los chats 1:1.
-          </Text>
-        </View>
-        <Switch
+    <FilaDeAjuste
+      testID="ajuste-auto-respuesta"
+      icono={Reply}
+      titulo="Auto-respuesta"
+      detalle="Si no estás conectado, contesta sola en los chats 1:1"
+      derecha={
+        <Interruptor
           testID="switch-auto-respuesta"
           value={enabled}
           onValueChange={(valor) => {
@@ -51,7 +48,8 @@ export function AutoRespuestaAjuste({ jwt }: { jwt: string }) {
             if (!valor || text.trim()) guardar(valor, text.trim());
           }}
         />
-      </View>
+      }
+    >
 
       {enabled ? (
         <TextInput
@@ -65,9 +63,10 @@ export function AutoRespuestaAjuste({ jwt }: { jwt: string }) {
           placeholderTextColor={colores['on-surface-variant']}
           multiline
           maxLength={300}
-          className="mt-3 min-h-[44px] rounded-lg bg-surface-variant px-3 py-2 text-sm text-on-surface"
+          className="mt-3 min-h-[48px] rounded-xl bg-surface-variant px-3.5 py-3 text-[15px] text-on-surface"
+          style={{ marginLeft: SANGRIA_DEL_TEXTO }}
         />
       ) : null}
-    </View>
+    </FilaDeAjuste>
   );
 }

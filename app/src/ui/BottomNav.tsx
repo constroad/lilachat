@@ -69,13 +69,25 @@ export function BottomNav({
   );
 }
 
-/** La cabecera que comparten las pantallas de pestaña (marca + acciones). */
-export function AppHeader({ children }: { children?: React.ReactNode }) {
+/**
+ * La cabecera que comparten las pantallas de pestaña. En Chats, la marca como
+ * FL6; en las demás, el nombre de la pestaña (auditoría §48: las cuatro decían
+ * «Lilachat» y nada ubicaba dónde estabas). Sin línea abajo: el diseño no la tiene.
+ */
+export function AppHeader({ tab, children }: { tab: Tab; children?: React.ReactNode }) {
   const margenes = useMargenes();
   return (
-    <View className="flex-row items-center gap-2 border-b border-outline/10 bg-surface px-4 pb-3" style={{ paddingTop: margenes.cabecera }}>
-      <Logo tamano={30} />
-      <Text className="flex-1 text-xl font-bold text-primary">Lilachat</Text>
+    <View className="min-h-[56px] flex-row items-center gap-2 bg-background px-4 pb-2" style={{ paddingTop: margenes.cabecera }}>
+      {tab === 'chats' ? (
+        <>
+          <Logo tamano={32} />
+          <Text className="flex-1 text-[22px] font-bold text-primary">Lilachat</Text>
+        </>
+      ) : (
+        <Text testID="titulo-pestana" accessibilityRole="header" className="flex-1 text-[22px] font-bold text-on-surface">
+          {TABS.find((pestana) => pestana.key === tab)?.label}
+        </Text>
+      )}
       {children}
     </View>
   );

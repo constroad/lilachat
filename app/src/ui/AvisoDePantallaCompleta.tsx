@@ -21,7 +21,7 @@ export function AvisoDePantallaCompleta({ visible }: { visible: boolean }) {
     <Pressable
       testID="btn-pantalla-completa"
       onPress={llamadaNativa.abrirAjustesPantallaCompleta}
-      className="mt-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-error/30 bg-surface p-4"
+      className="mb-2 min-h-[56px] flex-row items-center gap-3 rounded-2xl border border-error/30 bg-surface p-4"
     >
       <View className="h-10 w-10 items-center justify-center rounded-full bg-error/10">
         <PhoneIncoming size={18} color={colores.error} />

@@ -18,8 +18,22 @@ import { useColores } from '../ui/tema';
  * lo peor que puede hacer una app de mensajería: suena en la mesa, en la
  * reunión, o encima de otro audio.
  */
-export function NotaDeVoz({ id, url, durationMs, onda }: { id: string; url: string; durationMs?: number; onda?: number[] }) {
+export function NotaDeVoz({
+  id,
+  url,
+  durationMs,
+  onda,
+  mia = false,
+}: {
+  id: string;
+  url: string;
+  durationMs?: number;
+  onda?: number[];
+  /** En la propia (violeta sólido, FL13) todo va en el color del texto. */
+  mia?: boolean;
+}) {
   const colores = useColores();
+  const tinta = mia ? colores['on-burbuja-propia'] : colores.primary;
   const player = useAudioPlayer(url);
   const estado = useAudioPlayerStatus(player);
   const [velocidad, setVelocidad] = useState(1);
@@ -60,9 +74,9 @@ export function NotaDeVoz({ id, url, durationMs, onda }: { id: string; url: stri
         accessibilityLabel={sonando ? 'Pausar' : 'Reproducir'}
         onPress={reproducir}
         hitSlop={2}
-        className="h-10 w-10 items-center justify-center rounded-full bg-primary/10"
+        className={`h-10 w-10 items-center justify-center rounded-full ${mia ? 'bg-white/20' : 'bg-primary/10'}`}
       >
-        {sonando ? <Pause size={18} color={colores.primary} /> : <Play size={18} color={colores.primary} fill={colores.primary} />}
+        {sonando ? <Pause size={18} color={tinta} /> : <Play size={18} color={tinta} fill={tinta} />}
       </Pressable>
       <View className="min-w-0 flex-1">
         {/* Tocar la barra salta a ese punto; el área es más alta que la línea. */}
@@ -81,18 +95,20 @@ export function NotaDeVoz({ id, url, durationMs, onda }: { id: string; url: stri
               {onda.map((valor, indice) => (
                 <View
                   key={indice}
-                  className={`w-[3px] rounded-full ${indice / onda.length < avance ? 'bg-primary' : 'bg-primary/30'}`}
+                  className={`w-[3px] rounded-full ${
+                    indice / onda.length < avance ? (mia ? 'bg-on-burbuja-propia' : 'bg-primary') : mia ? 'bg-on-burbuja-propia/40' : 'bg-primary/30'
+                  }`}
                   style={{ height: 3 + (valor / 100) * 19 }}
                 />
               ))}
             </View>
           ) : (
-            <View className="h-1 rounded-full bg-primary/15">
-              <View className="h-1 rounded-full bg-primary" style={{ width: `${Math.min(100, avance * 100)}%` }} />
+            <View className={`h-1 rounded-full ${mia ? 'bg-on-burbuja-propia/25' : 'bg-primary/15'}`}>
+              <View className={`h-1 rounded-full ${mia ? 'bg-on-burbuja-propia' : 'bg-primary'}`} style={{ width: `${Math.min(100, avance * 100)}%` }} />
             </View>
           )}
         </Pressable>
-        <Text className="text-[11px] text-on-surface-variant">{duracionDeVoz(ms)}</Text>
+        <Text className={`text-[11px] ${mia ? 'text-on-burbuja-propia-suave' : 'text-on-surface-variant'}`}>{duracionDeVoz(ms)}</Text>
       </View>
       <Pressable
         testID="btn-velocidad-voz"
@@ -100,7 +116,7 @@ export function NotaDeVoz({ id, url, durationMs, onda }: { id: string; url: stri
         onPress={cambiarVelocidad}
         className="h-11 min-w-[44px] items-center justify-center"
       >
-        <Text className="rounded-full bg-primary/10 px-2 py-1 text-[12px] font-bold text-primary">
+        <Text className={`rounded-full px-2 py-1 text-[12px] font-bold ${mia ? 'bg-white/20 text-on-burbuja-propia' : 'bg-primary/10 text-primary'}`}>
           {`${String(velocidad).replace('.', ',')}×`}
         </Text>
       </Pressable>

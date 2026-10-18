@@ -1,6 +1,5 @@
 import { memo } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { BellOff, Camera, Check, CheckCheck, FileText, Lock, Mic, Pin, Video, type LucideIcon } from 'lucide-react-native';
 import {
   formatChatTimestamp,
@@ -13,6 +12,7 @@ import {
 } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
+import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
 
 /** El avatar de la lista (dp): 52, como WhatsApp (antes 48). */
@@ -61,22 +61,7 @@ export const FilaDeChat = memo(function FilaDeChat(props: {
       className={`min-h-[76px] flex-row items-center gap-3 px-4 py-2.5 ${props.marcado ? 'bg-primary/10' : ''}`}
     >
       <View style={{ width: AVATAR_DE_LISTA, height: AVATAR_DE_LISTA }} className="shrink-0">
-        <View
-          style={{ width: AVATAR_DE_LISTA, height: AVATAR_DE_LISTA }}
-          className="items-center justify-center overflow-hidden rounded-full bg-primary/10"
-        >
-          {chat.avatarUrl ? (
-            <Image
-              source={{ uri: chat.avatarUrl }}
-              style={{ width: AVATAR_DE_LISTA, height: AVATAR_DE_LISTA }}
-              contentFit="cover"
-            />
-          ) : (
-            <Text className="text-lg font-bold text-primary">
-              {props.titulo.slice(0, 1).toUpperCase()}
-            </Text>
-          )}
-        </View>
+        <Avatar nombre={props.titulo} foto={chat.avatarUrl} tamano={AVATAR_DE_LISTA} />
         {/* El tilde de selección tapa el avatar cuando la fila está
             marcada: es el feedback de «este entra en la acción». */}
         {props.marcado ? (

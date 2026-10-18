@@ -1,16 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { Search, Send, X } from 'lucide-react-native';
+import { Send, X } from 'lucide-react-native';
 import type { Contact } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { useMargenes } from '../ui/useMargenes';
-import { textoDeInvitacion } from '../settings/actualizacion';
+import { compartirInvitacion } from './compartirInvitacion';
 import { invitarContacto, listContacts } from './contactsApi';
 import { useAgendaParaInvitar } from './useAgendaParaInvitar';
 import { buscarEn, indexarParaBuscar } from './busqueda';
 import { useConsultaDiferida } from '../ui/useConsultaDiferida';
 import { useColores } from '../ui/tema';
+import { Avatar } from '../ui/Avatar';
+import { CabeceraDeInvitar } from './CabeceraDeInvitar';
+
+/** El avatar de cada contacto (dp): 44, el mismo en toda lista de personas. */
+const AVATAR_DE_CONTACTO = 44;
+/** La línea entre filas arranca donde arranca el nombre: 16 de margen + avatar + 12. */
+const SANGRIA_DE_LA_LINEA = 16 + AVATAR_DE_CONTACTO + 12;
 
 /**
  * Invitar a alguien de la agenda del teléfono.
@@ -24,18 +31,13 @@ import { useColores } from '../ui/tema';
  * una carga lenta. Ahora los cuatro estados —cargando, sin permiso, error y
  * listo— muestran cosas distintas, y ninguno es el vacío.
  */
-const TIENDA = 'https://lilastore.constroad.com/get';
-
 export function InviteScreen({
   visible,
   credential,
-  enlaceApp,
   onClose,
 }: {
   visible: boolean;
   credential: Credential;
-  /** El APK directo. Vacío si todavía no hay release pública. */
-  enlaceApp: string;
   onClose: () => void;
 }) {
   const colores = useColores();
@@ -77,14 +79,7 @@ export function InviteScreen({
       setAviso(null);
     }
 
-    await Share.share({
-      message: textoDeInvitacion({
-        tienda: TIENDA,
-        app: enlaceApp,
-        deParte: credential.name ?? null,
-      }),
-      title: contacto ? `Invitar a ${contacto.nombre}` : 'Invitar a Lilachat',
-    });
+    await compartirInvitacion(contacto);
   };
 
   // La clave se calcula una vez y la búsqueda espera a que se deje de tipear:
@@ -96,6 +91,7 @@ export function InviteScreen({
   const diferida = useConsultaDiferida(consulta);
   const visibles = useMemo(() => buscarEn(indexados, diferida), [indexados, diferida]);
   const aguja = diferida.trim();
+  const filas = agenda.estado === 'listo' ? visibles : [];
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -114,145 +110,120 @@ export function InviteScreen({
           <Text className="flex-1 text-xl font-bold text-on-surface">Invitar</Text>
         </View>
 
-        {aviso ? (
-          <Text testID="aviso-invitar" className="px-4 pb-2 text-[13px] text-error">
-            {aviso}
-          </Text>
-        ) : null}
-
-        {agenda.estado === 'listo' ? (
-          <View className="mx-4 mb-2 flex-row items-center gap-2 rounded-full bg-surface px-3 py-2">
-            <Search size={16} color={colores.outline} />
-            <TextInput
-              testID="buscar-contacto-telefono"
-              value={consulta}
-              onChangeText={setConsulta}
-              placeholder="Buscar en tu agenda"
-              placeholderTextColor={colores.outline}
-              className="min-w-0 flex-1 text-sm text-on-surface"
-            />
-          </View>
-        ) : null}
-
         {/* FlashList y no ScrollView: con 633 contactos, un ScrollView monta
             las 633 filas de una y la pantalla tarda segundos en aparecer.
-            Virtualizada solo existen las visibles. */}
-        {agenda.estado === 'listo' && visibles.length > 0 ? (
-          <FlashList
-            data={visibles}
-            testID="lista-invitables"
-            keyExtractor={(contacto) => contacto.id}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: margenes.pie }}
-            renderItem={({ item }) => (
-              <FilaInvitable contacto={item} onInvitar={() => void invitar(item)} />
-            )}
-          />
-        ) : (
-        <ScrollView
-          className="flex-1"
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: margenes.pie }}
-        >
-          {agenda.estado === 'cargando' ? (
-            [0, 1, 2, 3, 4].map((indice) => (
-              <View key={indice} className="mb-2 h-14 rounded-xl bg-surface" />
-            ))
-          ) : agenda.estado === 'denegado' ? (
-            <Aviso
-              titulo="Sin acceso a tus contactos"
-              cuerpo="Lilachat necesita leer tu agenda para mostrarte a quién invitar. Se lee en el teléfono y no se envía a ningún lado."
-              accion="Compartir el enlace igual"
-              onAccion={() => void invitar(null)}
+            UNA sola lista para todos los estados: la cabecera (con el
+            buscador) no se desmonta cuando nadie coincide. */}
+        <FlashList
+          data={filas}
+          testID="lista-invitables"
+          keyExtractor={(contacto) => contacto.id}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: margenes.pie + 16 }}
+          ListHeaderComponent={
+            <CabeceraDeInvitar
+              aviso={aviso}
+              porInvitar={agenda.estado === 'listo' ? indexados.length : null}
+              consulta={consulta}
+              onConsulta={setConsulta}
+              onCompartir={() => void invitar(null)}
             />
-          ) : agenda.estado === 'error' ? (
-            // El detalle va a la vista, no solo al log: sin él, «no se pudo» es
-            // indistinguible de «no hay nadie» para quien reporta el problema.
-            <Aviso
-              titulo="No pudimos leer tu agenda"
-              cuerpo={`Ya nos avisó solo. Puedes compartir el enlace igual.\n\n(${agenda.mensaje})`}
-              accion="Compartir el enlace"
-              onAccion={() => void invitar(null)}
+          }
+          ListEmptyComponent={<SinFilas estado={agenda} buscando={Boolean(aguja)} />}
+          renderItem={({ item, index }) => (
+            <FilaInvitable
+              contacto={item}
+              primera={index === 0}
+              ultima={index === filas.length - 1}
+              onInvitar={() => void invitar(item)}
             />
-          ) : visibles.length === 0 ? (
-            <Aviso
-              titulo={aguja ? 'Nadie coincide' : 'Toda tu agenda ya está'}
-              cuerpo={
-                aguja
-                  ? 'Nadie de tu agenda coincide con lo que buscas.'
-                  : 'No encontramos a nadie de tu agenda que falte invitar.'
-              }
-              accion="Compartir el enlace"
-              onAccion={() => void invitar(null)}
-            />
-          ) : null}
-        </ScrollView>
-        )}
+          )}
+        />
       </View>
     </Modal>
   );
 }
 
-/** Una fila de la agenda. Aparte para que la lista virtualizada la recicle. */
+/**
+ * Una fila de la agenda. Aparte para que la lista virtualizada la recicle.
+ * Las filas forman UNA tarjeta (auditoría §48): la primera y la última
+ * redondean las puntas y entre medio va una línea fina.
+ */
 function FilaInvitable({
   contacto,
+  primera,
+  ultima,
   onInvitar,
 }: {
   contacto: { id: string; nombre: string; telefono: string };
+  primera: boolean;
+  ultima: boolean;
   onInvitar: () => void;
 }) {
   const colores = useColores();
   return (
-    <View
-      testID={`contacto-tel-${contacto.id}`}
-      className="mb-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface px-4 py-2"
-    >
-      <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-        <Text className="text-sm font-bold text-primary">
-          {contacto.nombre.slice(0, 1).toUpperCase()}
-        </Text>
+    <View className={`bg-surface ${primera ? 'rounded-t-2xl' : ''} ${ultima ? 'rounded-b-2xl' : ''}`}>
+      {primera ? null : <View className="h-px bg-outline/10" style={{ marginLeft: SANGRIA_DE_LA_LINEA }} />}
+      <View testID={`contacto-tel-${contacto.id}`} className="min-h-[64px] flex-row items-center gap-3 px-4 py-2.5">
+        <Avatar nombre={contacto.nombre} tamano={AVATAR_DE_CONTACTO} />
+        <View className="min-w-0 flex-1">
+          <Text className="text-[15px] font-semibold text-on-surface" numberOfLines={1}>
+            {contacto.nombre}
+          </Text>
+          <Text className="text-[13px] text-on-surface-variant" numberOfLines={1}>
+            {contacto.telefono}
+          </Text>
+        </View>
+        <Pressable
+          testID={`invitar-${contacto.id}`}
+          onPress={onInvitar}
+          hitSlop={{ top: 4, bottom: 4 }}
+          className="min-h-[36px] flex-row items-center gap-1.5 rounded-full bg-primary/10 px-3.5"
+        >
+          <Send size={14} color={colores.primary} />
+          <Text className="text-[13px] font-semibold text-primary">Invitar</Text>
+        </Pressable>
       </View>
-      <View className="min-w-0 flex-1">
-        <Text className="text-sm font-semibold text-on-surface" numberOfLines={1}>
-          {contacto.nombre}
-        </Text>
-        <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>
-          {contacto.telefono}
-        </Text>
-      </View>
-      <Pressable
-        testID={`invitar-${contacto.id}`}
-        onPress={onInvitar}
-        className="min-h-[44px] flex-row items-center gap-1.5 rounded-full bg-primary px-4"
-      >
-        <Send size={14} color={colores["on-primary"]} />
-        <Text className="text-[13px] font-semibold text-on-primary">Invitar</Text>
-      </Pressable>
     </View>
   );
 }
 
 /** Los estados que no son una lista. Ninguno deja la pantalla en blanco. */
-function Aviso({
-  titulo,
-  cuerpo,
-  accion,
-  onAccion,
-}: {
-  titulo: string;
-  cuerpo: string;
-  accion: string;
-  onAccion: () => void;
-}) {
+function SinFilas({ estado, buscando }: { estado: ReturnType<typeof useAgendaParaInvitar>; buscando: boolean }) {
+  if (estado.estado === 'cargando') {
+    return (
+      <View className="mt-6 gap-2">
+        {[0, 1, 2, 3].map((indice) => (
+          <View key={indice} className="h-16 rounded-2xl bg-surface" />
+        ))}
+      </View>
+    );
+  }
+  if (estado.estado === 'denegado') {
+    return (
+      <Aviso
+        titulo="Sin acceso a tus contactos"
+        cuerpo="Lilachat necesita leer tu agenda para mostrarte a quién invitar. Se lee en el teléfono y no se envía a ningún lado. Igual puedes compartir el enlace."
+      />
+    );
+  }
+  // El detalle va a la vista, no solo al log: sin él, «no se pudo» es
+  // indistinguible de «no hay nadie» para quien reporta el problema.
+  if (estado.estado === 'error') {
+    return <Aviso titulo="No pudimos leer tu agenda" cuerpo={`Ya nos avisó solo. Igual puedes compartir el enlace.\n\n(${estado.mensaje})`} />;
+  }
+  return buscando ? (
+    <Aviso titulo="Nadie coincide" cuerpo="Nadie de tu agenda coincide con lo que buscas." />
+  ) : (
+    <Aviso titulo="Toda tu agenda ya está" cuerpo="No encontramos a nadie de tu agenda que falte invitar." />
+  );
+}
+
+function Aviso({ titulo, cuerpo }: { titulo: string; cuerpo: string }) {
   return (
-    <View className="items-center px-4 pt-10">
+    <View className="items-center px-4 pt-8">
       <Text className="text-center text-base font-semibold text-on-surface">{titulo}</Text>
       <Text className="mt-2 text-center text-sm leading-5 text-on-surface-variant">{cuerpo}</Text>
-      <Pressable
-        testID="btn-compartir-igual"
-        onPress={onAccion}
-        className="mt-6 min-h-[48px] items-center justify-center rounded-xl bg-primary px-6"
-      >
-        <Text className="text-sm font-semibold text-on-primary">{accion}</Text>
-      </Pressable>
     </View>
   );
 }

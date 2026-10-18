@@ -10,9 +10,12 @@ import { queueMessage } from './outboxStore';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
+import { Avatar } from '../ui/Avatar';
 import type { ChatMessage } from './useChat';
 import { InfoDelMensaje } from './InfoDelMensaje';
 
+/** El avatar de cada chat al reenviar (dp): el de las listas de personas. */
+const AVATAR_DE_DESTINO = 44;
 const avisar = (texto: string) => ToastAndroid.show(texto, ToastAndroid.SHORT);
 
 /**
@@ -249,9 +252,7 @@ function ReenviarA(props: { visible: boolean; textos: string[]; onCerrar: () => 
               onPress={() => void reenviar(item)}
               className="min-h-[56px] flex-row items-center gap-3 px-4"
             >
-              <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/15">
-                <Text className="font-bold text-primary">{item.nombre.slice(0, 1).toUpperCase()}</Text>
-              </View>
+              <Avatar nombre={item.nombre} tamano={AVATAR_DE_DESTINO} />
               <Text className="flex-1 text-[15px] text-on-surface" numberOfLines={1}>
                 {item.nombre}
               </Text>

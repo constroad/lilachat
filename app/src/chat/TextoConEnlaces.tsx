@@ -8,7 +8,7 @@ import { useColores } from '../ui/tema';
  * Va DENTRO del `<Text>` de la burbuja: son tramos anidados, así el texto
  * sigue fluyendo y la hora sigue cayendo al final de la última línea.
  */
-export function TextoConEnlaces({ texto }: { texto: string }) {
+export function TextoConEnlaces({ texto, enBurbujaPropia = false }: { texto: string; enBurbujaPropia?: boolean }) {
   const colores = useColores();
   const partes = useMemo(() => partirEnEnlaces(texto), [texto]);
   if (partes.length === 1 && partes[0]?.tipo === 'texto') return <>{texto}</>;
@@ -22,7 +22,8 @@ export function TextoConEnlaces({ texto }: { texto: string }) {
             key={indice}
             suppressHighlighting
             onPress={() => void Linking.openURL(parte.destino).catch(() => undefined)}
-            style={{ color: colores.primary, textDecorationLine: 'underline' }}
+            // Sobre la propia (violeta sólido, FL13) el enlace va en el color del texto.
+            style={{ color: enBurbujaPropia ? colores['on-burbuja-propia'] : colores.primary, textDecorationLine: 'underline' }}
           >
             {parte.texto}
           </Text>

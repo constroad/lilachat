@@ -48,3 +48,22 @@ for (const salida of SALIDAS) {
   writeFileSync(join(ASSETS, salida.archivo), png);
   console.log(`✓ ${salida.archivo} · ${salida.lado}px · ${(png.length / 1024).toFixed(1)} KB`);
 }
+
+/**
+ * El ícono chico de las notificaciones (FL13, auditoría §48). Android lo pinta
+ * por su silueta: con el ícono de la app de color salía un círculo gris sin
+ * forma. Va blanco sobre transparente, 24 dp, en cada densidad;
+ * el módulo nativo lo busca por nombre (`AvisoDeLlamada.iconoChico`).
+ */
+const RES_DEL_AVISO = join(dirname(fileURLToPath(import.meta.url)), '..', 'app', 'modules', 'llamada-entrante', 'android', 'src', 'main', 'res');
+const DENSIDADES = { mdpi: 24, hdpi: 36, xhdpi: 48, xxhdpi: 72, xxxhdpi: 96 } as const;
+/** El logo ocupa ~70 % de su lienzo: ×1.15 lo lleva a ~19 dp de los 24. */
+const ESCALA_DEL_AVISO = 1.15;
+for (const [densidad, lado] of Object.entries(DENSIDADES)) {
+  const carpeta = join(RES_DEL_AVISO, `drawable-${densidad}`);
+  mkdirSync(carpeta, { recursive: true });
+  const svg = svgDelLogo({ tamano: LIENZO, tono: 'mono', escala: ESCALA_DEL_AVISO });
+  const png = await sharp(Buffer.from(svg)).resize(lado, lado).png({ compressionLevel: 9 }).toBuffer();
+  writeFileSync(join(carpeta, 'notification_icon.png'), png);
+  console.log(`✓ notification_icon · ${densidad} · ${lado}px`);
+}

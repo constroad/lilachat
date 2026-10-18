@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Alert, BackHandler, Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { ArrowLeft, BellRing, ChevronRight, CloudUpload, User, UserPlus } from 'lucide-react-native';
+import { BackHandler, Modal, Pressable, Text, View } from 'react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { listChats, type ChatSummary } from '../api/client';
 import { connectSocket } from '../chat/socketClient';
 import { avisarMensaje, prepararAvisos } from '../chat/avisoLocal';
 import { iniciarServicio } from '../../modules/servicio-socket/src';
-import { AvisoDePantallaCompleta } from './AvisoDePantallaCompleta';
 import { ChatListScreen } from '../chat/ChatListScreen';
 import { CreatePollScreen } from '../agenda/CreatePollScreen';
 import { AgendaScreen } from '../agenda/AgendaScreen';
@@ -17,16 +15,10 @@ import { NewChatScreen } from '../contacts/NewChatScreen';
 import { publishPublicKey } from '../crypto/deviceKeys';
 import { BackupScreen } from '../settings/BackupScreen';
 import { BandaDeActualizacion } from '../settings/BandaDeActualizacion';
-import { AutoRespuestaAjuste } from '../settings/AutoRespuestaAjuste';
-import { PerfilAjuste } from '../settings/PerfilAjuste';
-import { Image } from 'expo-image';
+import { PantallaDeAjustes } from '../settings/PantallaDeAjustes';
 import { usePerfilPropio } from '../settings/perfilPropio';
-import { RespaldoAjuste } from '../settings/RespaldoAjuste';
 import { useEsOperador } from '../settings/useEsOperador';
 import { useActualizacionesDeLaApp } from '../settings/useActualizacionesDeLaApp';
-import { AparienciaAjuste } from '../settings/AparienciaAjuste';
-import { BuscarActualizacionesAjuste } from '../settings/BuscarActualizacionesAjuste';
-import { Rotulo } from './Rotulo';
 import { AppHeader, BottomNav, type Tab } from './BottomNav';
 import { useMargenes } from './useMargenes';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,13 +26,16 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { ANCHO_DE_LISTA, ANCHO_MAXIMO_DE_CONTENIDO } from './disposicion';
 import { useDisposicion } from './useDisposicion';
 import { SinChatElegido } from './PanelDeChat';
-import { DiagnosticoAjuste } from '../diagnostico/DiagnosticoAjuste';
 import { visitadasCon } from './pestanas';
 import { useAlVolver } from './useAlVolver';
 import { decidirAtras } from './botonAtras';
 import { nombreDeContacto } from '@lilachat/shared';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useColores } from './tema';
+import { Avatar } from './Avatar';
+
+/** Tu avatar en la cabecera (dp): 36 de dibujo dentro de 44 de toque. */
+const AVATAR_PROPIO = 36;
 
 /**
  * El contenedor de las pestañas: header y barra inferior viven ACÁ y las
@@ -273,7 +268,7 @@ export function TabsShell({
 
   return (
     <View className="flex-1 bg-background" style={{ paddingLeft: insets.left, paddingRight: insets.right }}>
-      <AppHeader>
+      <AppHeader tab={tab}>
         {tab === 'chats' ? (
           <>
             {/* La cámara apagada que había acá se fue (FL3): un botón que no
@@ -298,29 +293,24 @@ export function TabsShell({
          * de hacer lo mismo, una de ellas muda, no es una comodidad: es una
          * trampa.
          */}
-        <Pressable
-          testID="btn-perfil"
-          accessibilityLabel="Tu perfil y ajustes"
-          onPress={() => setTab('ajustes')}
-          className="ml-1 h-11 w-11 items-center justify-center rounded-full bg-primary/10"
-        >
-          {perfilPropio.avatarUrl ? (
-            <Image
+        {/* En Ajustes no va: llevaría a la pantalla donde ya estás. */}
+        {tab === 'ajustes' ? null : (
+          <Pressable
+            testID="btn-perfil"
+            accessibilityLabel="Tu perfil y ajustes"
+            onPress={() => setTab('ajustes')}
+            className="ml-1 h-11 w-11 items-center justify-center"
+          >
+            {/* Sin nombre va el ícono y no la inicial del teléfono: un «9» suelto
+                no significa nada para nadie. */}
+            <Avatar
               testID="saludo-usuario"
-              source={{ uri: perfilPropio.avatarUrl }}
-              style={{ width: 44, height: 44, borderRadius: 22 }}
-              contentFit="cover"
+              nombre={perfilPropio.name?.trim() ?? ''}
+              foto={perfilPropio.avatarUrl}
+              tamano={AVATAR_PROPIO}
             />
-          ) : perfilPropio.name?.trim() ? (
-            <Text className="text-sm font-bold text-primary" testID="saludo-usuario">
-              {perfilPropio.name.trim().slice(0, 1).toUpperCase()}
-            </Text>
-          ) : (
-            // Sin nombre NO se muestra la inicial del teléfono: un «9» suelto no
-            // significa nada para nadie. El ícono al menos dice «esto sos vos».
-            <User size={18} color={colores.primary} testID="saludo-usuario" />
-          )}
-        </Pressable>
+          </Pressable>
+        )}
       </AppHeader>
 
       {/* Las pestañas quedan MONTADAS después de la primera visita y solo se
@@ -372,125 +362,18 @@ export function TabsShell({
         ) : null}
         {visitadas.has('ajustes') ? (
           <View style={[panel('ajustes'), centrado]}>
-          {/* `padding` también en Android: con edge-to-edge la ventana ya no se
-              encoge con el teclado, y la passphrase del respaldo quedaba tapada
-              sin forma de subirla (mismo motivo que en ChatScreen). */}
           <ErrorBoundary pantalla="ajustes">
-          <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-          <ScrollView
-            className="flex-1"
-            contentContainerStyle={{ padding: 16 }}
-            keyboardShouldPersistTaps="handled"
-            testID="pantalla-ajustes"
-          >
-            <PerfilAjuste credential={credential} />
-
-            <AparienciaAjuste />
-
-            <Rotulo>Avisos</Rotulo>
-            {/**
-             * El interruptor de la notificación permanente (José, 27/08/2026).
-             *
-             * No se puede quitar la notificación y quedarse con los mensajes:
-             * Android la exige a cambio de dejar vivo el socket, y WhatsApp se
-             * la ahorra porque usa FCM —un canal del sistema— que acá se
-             * descartó. Lo que sí se puede es que la decisión sea de quien la
-             * ve todos los días, con el costo escrito y no escondido.
-             */}
-            <View className="min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4">
-              <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                <BellRing size={18} color={colores.primary} />
-              </View>
-              <View className="min-w-0 flex-1">
-                <Text className="text-sm font-semibold text-on-surface">
-                  Conexión permanente
-                </Text>
-                <Text className="text-[11px] text-on-surface-variant">
-                  {segundoPlano
-                    ? 'Android exige mostrar un aviso fijo, y gasta más batería'
-                    : 'No hace falta: los mensajes llegan por notificación push'}
-                </Text>
-              </View>
-              <Switch
-                testID="sw-segundo-plano"
-                value={segundoPlano}
-                onValueChange={onSegundoPlano}
-              />
-            </View>
-            <AvisoDePantallaCompleta visible={tab === 'ajustes'} />
-
-            <Rotulo>Datos</Rotulo>
-            <RespaldoAjuste credential={credential} />
-            {/* El volcado de la base entera es de operadores (FL10): para el
-                resto había dos «respaldos» en Ajustes y uno no era suyo. */}
-            {esOperador ? (
-              <Pressable
-                testID="btn-respaldo"
-                onPress={() => setShowBackup(true)}
-                className="mt-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4"
-              >
-                <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <CloudUpload size={18} color={colores.primary} />
-                </View>
-                <View className="min-w-0 flex-1">
-                  <Text className="text-sm font-semibold text-on-surface">Respaldo del servidor</Text>
-                  <Text className="text-[11px] text-on-surface-variant">
-                    La base entera, cada noche · operadores
-                  </Text>
-                </View>
-                <ChevronRight size={18} color={colores.outline} />
-              </Pressable>
-            ) : null}
-
-            <Rotulo>Lilachat</Rotulo>
-
-            <Pressable
-              testID="btn-invitar"
-              onPress={() => setInvitando(true)}
-              className="min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4"
-            >
-              <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                <UserPlus size={18} color={colores.primary} />
-              </View>
-              <View className="min-w-0 flex-1">
-                <Text className="text-sm font-semibold text-on-surface">Invitar a alguien</Text>
-                <Text className="text-[11px] text-on-surface-variant">
-                  Desde tus contactos, con el enlace de descarga
-                </Text>
-              </View>
-              <ChevronRight size={18} color={colores.outline} />
-            </Pressable>
-
-            <AutoRespuestaAjuste jwt={credential.jwt} />
-
-            <DiagnosticoAjuste />
-
-            <BuscarActualizacionesAjuste
-              chequeo={actualizaciones.chequeo}
-              estado={actualizaciones.estado}
-              verificando={actualizaciones.verificando}
-              onVerificar={() => void actualizaciones.verificar()}
-            />
-
-            <Pressable
-              testID="btn-salir"
-              onPress={() =>
-                // Con un toque borraba historial y passphrase sin preguntar (FL8).
-                Alert.alert(
-                  'Cerrar sesión',
-                  'Se borran de este teléfono el historial y la passphrase del respaldo, y deja de recibir avisos. Tus chats vuelven al entrar; el historial, si tienes respaldo.',
-                  [
-                    { text: 'Cancelar', style: 'cancel' },
-                    { text: 'Cerrar sesión', style: 'destructive', onPress: onLogout },
-                  ]
-                )
-              }
-              className="mt-6 min-h-[48px] items-center justify-center rounded-lg bg-surface-variant px-6"
-            >
-              <Text className="text-sm font-semibold text-on-surface">Cerrar sesión</Text>
-            </Pressable>
-          </ScrollView>
-          </KeyboardAvoidingView>
+          <PantallaDeAjustes
+            credential={credential}
+            visible={tab === 'ajustes'}
+            esOperador={esOperador}
+            segundoPlano={segundoPlano}
+            onSegundoPlano={onSegundoPlano}
+            actualizaciones={actualizaciones}
+            onInvitar={() => setInvitando(true)}
+            onRespaldoDelServidor={() => setShowBackup(true)}
+            onLogout={onLogout}
+          />
           </ErrorBoundary>
           </View>
         ) : null}
@@ -529,7 +412,6 @@ export function TabsShell({
       <InviteScreen
         visible={invitando}
         credential={credential}
-        enlaceApp={actualizaciones.enlaceApp}
         onClose={() => setInvitando(false)}
       />
 

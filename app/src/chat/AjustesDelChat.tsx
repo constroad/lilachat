@@ -1,14 +1,15 @@
-import { Pressable, Switch, Text, View } from 'react-native';
-import { Flag, Lock, LogOut } from 'lucide-react-native';
-import { useColores } from '../ui/tema';
+import { View } from 'react-native';
+import { Interruptor } from '../ui/Interruptor';
+import { BellOff, Lock, LogOut } from 'lucide-react-native';
+import { FilaDeAjuste, GrupoDeAjustes } from '../ui/FilaDeAjuste';
 import { Rotulo } from '../ui/Rotulo';
 
 /**
- * El bloque de ajustes del detalle: silenciar, cómo está cifrado, salir del
- * grupo y reportar.
+ * El bloque de ajustes del detalle: silenciar, cómo está cifrado y salir del
+ * grupo, en listas agrupadas como Ajustes (FL13).
  *
  * Está aparte de la pantalla porque no comparte nada con ella salvo lo que
- * recibe: son cuatro filas y una decisión de copy. Lo que NO es cosmético es el
+ * recibe: son tres filas y una decisión de copy. Lo que NO es cosmético es el
  * texto del cifrado — dice cómo es de verdad, no como nos gustaría.
  */
 export function AjustesDelChat({
@@ -26,67 +27,48 @@ export function AjustesDelChat({
   accionando: boolean;
   onSalir: () => Promise<void> | void;
 }) {
-  const colores = useColores();
-
   return (
     <>
       <Rotulo sangrado>Ajustes del chat</Rotulo>
-      <View className="px-4">
-        <View className="mb-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4">
-          <View className="min-w-0 flex-1">
-            <Text className="text-sm font-semibold text-on-surface">
-              Silenciar notificaciones
-            </Text>
-            <Text className="text-[11px] text-on-surface-variant">
-              {silenciado ? 'No te avisamos de este chat' : 'Te avisamos de cada mensaje'}
-            </Text>
-          </View>
-          <Switch testID="sw-silenciar" value={silenciado} onValueChange={onSilenciar} />
-        </View>
-
-        {/* El cifrado se DICE como es, no como nos gustaría. Solo los chats
-            secretos son de punta a punta; en los demás el servidor guarda
-            el texto, y decir otra cosa acá sería mentir sobre privacidad. */}
-        <View className="mb-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4">
-          <Lock size={18} color={colores['on-surface-variant']} />
-          <View className="min-w-0 flex-1">
-            <Text className="text-sm font-semibold text-on-surface">
-              {cifrado ? 'Chat secreto' : 'Chat normal'}
-            </Text>
-            <Text className="text-[11px] text-on-surface-variant">
-              {cifrado
+      <View className="gap-3 px-4">
+        <GrupoDeAjustes>
+          <FilaDeAjuste
+            icono={BellOff}
+            titulo="Silenciar notificaciones"
+            detalle={silenciado ? 'No te avisamos de este chat' : 'Te avisamos de cada mensaje'}
+            derecha={<Interruptor testID="sw-silenciar" value={silenciado} onValueChange={onSilenciar} />}
+          />
+          {/* El cifrado se DICE como es, no como nos gustaría. Solo los chats
+              secretos son de punta a punta; en los demás el servidor guarda
+              el texto, y decir otra cosa acá sería mentir sobre privacidad. */}
+          <FilaDeAjuste
+            icono={Lock}
+            titulo={cifrado ? 'Chat secreto' : 'Chat normal'}
+            detalle={
+              cifrado
                 ? 'Cifrado de punta a punta. El servidor no puede leerlo.'
-                : 'El servidor guarda los mensajes para sincronizarlos entre tus aparatos.'}
-            </Text>
-          </View>
-        </View>
+                : 'El servidor guarda los mensajes para sincronizarlos entre tus aparatos.'
+            }
+          />
+        </GrupoDeAjustes>
 
+        {/* «Reportar» se fue (FL13): estaba deshabilitado y no hay a dónde
+            mandar el reporte. Un botón que no hace nada enseña que la app no
+            responde (la misma regla de la cámara apagada de FL3). */}
         {esGrupo ? (
-          <Pressable
-            testID="btn-salir-grupo"
-            disabled={accionando}
-            onPress={() => void onSalir()}
-            className={`mb-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4 ${accionando ? 'opacity-50' : ''}`}
-          >
-            <LogOut size={18} color={colores.error} />
-            <Text className="text-sm font-semibold" style={{ color: colores.error }}>
-              Salir del grupo
-            </Text>
-          </Pressable>
+          <GrupoDeAjustes>
+            <FilaDeAjuste
+              testID="btn-salir-grupo"
+              icono={LogOut}
+              tono="peligro"
+              titulo="Salir del grupo"
+              derecha={false}
+              deshabilitada={accionando}
+              onPress={() => void onSalir()}
+            />
+          </GrupoDeAjustes>
         ) : null}
-
-        <Pressable
-          testID="btn-reportar"
-          className="min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4 opacity-50"
-          disabled
-        >
-          <Flag size={18} color={colores.error} />
-          <Text className="text-sm font-semibold" style={{ color: colores.error }}>
-            {esGrupo ? 'Reportar grupo' : 'Reportar contacto'}
-          </Text>
-        </Pressable>
       </View>
     </>
   );
 }
-

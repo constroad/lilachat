@@ -94,8 +94,8 @@ const FRASE_DE_DETENCION: Record<MotivoDeDetencion, string> = {
   wifi_medido: 'El wifi tiene datos medidos',
   sin_carga: 'Esperando que el teléfono cargue',
   bateria_baja: 'Batería baja',
-  sin_respuesta: 'La mini no contestó; se reintenta sola',
-  disco_ausente: 'El disco de la mini no está',
+  sin_respuesta: 'El servidor no contestó; se reintenta solo',
+  disco_ausente: 'El disco del servidor no está disponible',
   sin_sesion: 'Tu sesión venció. Vuelve a entrar.',
   presupuesto: 'Se quedó sin tiempo; sigue en la próxima',
   pausado: 'Pausado',
@@ -121,6 +121,6 @@ export function fraseDeEstado(estado: EstadoDeRespaldo, ahora: number): FraseDeE
   if (pendiente && estado.detenidoPor) {
     return { titulo, detalle: FRASE_DE_DETENCION[estado.detenidoPor], alerta: demasiado };
   }
-  const detalle = estado.bytesDelUltimo === null ? 'Se respalda solo, con wifi y cargando.' : `${bytesLegibles(estado.bytesDelUltimo)} en la mini`;
+  const detalle = estado.bytesDelUltimo === null ? 'Se respalda solo, con wifi y cargando.' : `${bytesLegibles(estado.bytesDelUltimo)} en el servidor`;
   return { titulo, detalle, alerta: pendiente && demasiado };
 }

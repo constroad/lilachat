@@ -110,7 +110,7 @@ describe('fraseDeEstado', () => {
   it('con un respaldo subido dice hace cuánto y cuánto pesa', () => {
     const estado = { ...base, ultimoRespaldoEn: AHORA - 2 * HORA, bytesDelUltimo: 1_200_000, decision: 'al_dia' as const };
 
-    expect(fraseDeEstado(estado, AHORA)).toEqual({ titulo: 'Respaldado hace 2 h', detalle: '1,2 MB en la mini', alerta: false });
+    expect(fraseDeEstado(estado, AHORA)).toEqual({ titulo: 'Respaldado hace 2 h', detalle: '1,2 MB en el servidor', alerta: false });
   });
 
   it('si se detuvo por wifi lo dice, sin alarmar', () => {

@@ -4,6 +4,7 @@ import { ExternalLink, FileText, Video } from 'lucide-react-native';
 import { nombreLimpio } from './archivoDescargado';
 import { useColores } from '../ui/tema';
 import { Rotulo } from '../ui/Rotulo';
+import { Segmentado } from '../ui/Segmentado';
 import type { ServerMessage } from './socketClient';
 import { miniaturaDe } from './filasDelChat';
 
@@ -39,29 +40,12 @@ export function SeccionCompartido({
   return (
     <>
       <Rotulo sangrado>Compartido en el chat</Rotulo>
-      <View className="mx-4 mb-3 flex-row rounded-xl border border-outline/10 bg-surface p-1">
-        {tabs.map((tab) => {
-          const activo = pestana === tab.id;
-          return (
-            <Pressable
-              key={tab.id}
-              testID={`tab-${tab.id}`}
-              onPress={() => onPestana(tab.id)}
-              className={`min-h-[40px] flex-1 flex-row items-center justify-center gap-1.5 rounded-lg ${activo ? 'bg-primary/[0.14]' : ''}`}
-            >
-              <Text
-                className={`text-[13px] ${activo ? 'font-semibold text-primary' : 'text-on-surface-variant'}`}
-              >
-                {tab.etiqueta}
-              </Text>
-              {tab.n > 0 ? (
-                <Text className={`text-[11px] ${activo ? 'text-primary' : 'text-on-surface-variant'}`}>
-                  {tab.n}
-                </Text>
-              ) : null}
-            </Pressable>
-          );
-        })}
+      <View className="mx-4 mb-3">
+        <Segmentado
+          opciones={tabs.map((tab) => ({ key: tab.id, etiqueta: tab.etiqueta, cuenta: tab.n, testID: `tab-${tab.id}` }))}
+          valor={pestana}
+          onCambiar={onPestana}
+        />
       </View>
 
       {pestana === 'media' ? (

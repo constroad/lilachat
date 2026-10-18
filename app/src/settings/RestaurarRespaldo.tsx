@@ -21,7 +21,7 @@ import { useColores } from '../ui/tema';
  * passphrase se perdió, no hay recuperación.
  */
 const FRASE_DE_PASO: Record<PasoDeRestauracion, string> = {
-  bajando: 'Bajando el respaldo de la mini…',
+  bajando: 'Bajando el respaldo del servidor…',
   verificando: 'Comprobando el archivo…',
   abriendo: 'Abriendo con tu passphrase…',
   importando: 'Guardando los mensajes en el teléfono…',

@@ -33,6 +33,7 @@ const estiloDeFoto = (media: { width?: number; height?: number }) => {
 };
 import type { ChatMessage, PendingMessage } from './useChat';
 import { useColores } from '../ui/tema';
+import { Avatar } from '../ui/Avatar';
 
 /**
  * Una fila de la conversación, según el diseño «Chat Detail» de Stitch.
@@ -43,6 +44,9 @@ import { useColores } from '../ui/tema';
  * se veían), el **avatar del otro** junto a su burbuja, y el agrupado por
  * emisor (solo el último del bloque lleva la cola).
  */
+/** El avatar del autor en un grupo (dp): 28, como WhatsApp. */
+const AVATAR_DE_AUTOR = 28;
+
 export type Row = ChatMessage | PendingMessage;
 
 /**
@@ -169,13 +173,11 @@ function FilaDeMensaje({
           WhatsApp) y solo junto al ÚLTIMO del bloque ajeno, con la inicial de
           quien escribió — antes salía la del NOMBRE DEL GRUPO en todos. */}
       {!mine && esGrupo ? (
-        <View className="h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
-          {!nextGrouped ? (
-            <Text className="text-[11px] font-bold" style={{ color: colorAutor }}>
-              {(nombreAutor ?? '?').slice(0, 1).toUpperCase()}
-            </Text>
-          ) : null}
-        </View>
+        nextGrouped ? (
+          <View style={{ width: AVATAR_DE_AUTOR }} />
+        ) : (
+          <Avatar nombre={nombreAutor ?? ''} tamano={AVATAR_DE_AUTOR} />
+        )
       ) : null}
 
       <View className={`max-w-[80%] ${mine ? 'items-end' : 'items-start'}`}>
@@ -225,6 +227,7 @@ function FilaDeMensaje({
           {citado ? (
             <CitaDeRespuesta
               citado={citado}
+              enBurbujaPropia={mine}
               testID={`cita-${isPending(item) ? item.clientKey : item.seq}`}
               onPress={
                 isPending(item)
@@ -244,6 +247,7 @@ function FilaDeMensaje({
               url={item.media.url ?? ''}
               durationMs={item.media.durationMs}
               onda={item.media.onda}
+              mia={mine}
             />
           ) : null}
 
@@ -271,9 +275,9 @@ function FilaDeMensaje({
               ) : null}
               <View className="min-w-[200px] flex-row items-center gap-3 px-3 py-2.5">
                 <View
-                  className="h-10 w-10 items-center justify-center rounded-lg bg-primary/10"
+                  className={`h-10 w-10 items-center justify-center rounded-lg ${mine ? 'bg-white/20' : 'bg-primary/10'}`}
                 >
-                  <FileText size={20} color={colores.primary} />
+                  <FileText size={20} color={mine ? colores['on-burbuja-propia'] : colores.primary} />
                 </View>
                 <View className="min-w-0 flex-1">
                   <Text
@@ -283,7 +287,7 @@ function FilaDeMensaje({
                     {item.media.fileName ? nombreLimpio(item.media.fileName) : 'Archivo'}
                   </Text>
                   <Text
-                    className="text-[11px] text-on-surface-variant"
+                    className={`text-[11px] ${mine ? 'text-on-burbuja-propia-suave' : 'text-on-surface-variant'}`}
                   >
                     {item.media.sizeBytes ? formatBytes(item.media.sizeBytes) : 'Toca para abrirlo'}
                   </Text>
@@ -329,14 +333,14 @@ function FilaDeMensaje({
               testID={`archivo-pendiente-${item.clientKey}`}
               className="min-w-[200px] flex-row items-center gap-3 px-3 py-2.5"
             >
-              <View className="h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                {subida.girando ? <ActivityIndicator color={colores.primary} /> : <CircleAlert size={20} color={colores.error} />}
+              <View className="h-10 w-10 items-center justify-center rounded-lg bg-white/20">
+                {subida.girando ? <ActivityIndicator color={colores['on-burbuja-propia']} /> : <CircleAlert size={20} color={colores.error} />}
               </View>
               <View className="min-w-0 flex-1">
                 <Text className="text-[14px] font-semibold text-on-burbuja-propia" numberOfLines={2}>
                   {item.mediaNombre ?? 'Archivo'}
                 </Text>
-                <Text className={`text-[11px] ${subida.girando ? 'text-on-surface-variant' : 'text-error'}`}>
+                <Text className={`text-[11px] ${subida.girando ? 'text-on-burbuja-propia-suave' : 'text-error'}`}>
                   {subida.texto}
                 </Text>
               </View>
@@ -368,7 +372,7 @@ function FilaDeMensaje({
              */
             <Text
               testID={`eliminado-${item.seq}`}
-              className="px-3 py-1.5 text-[15px] italic text-on-surface-variant"
+              className={`px-3 py-1.5 text-[15px] italic ${mine ? 'text-on-burbuja-propia-suave' : 'text-on-surface-variant'}`}
             >
               {TEXTO_ELIMINADO}
             </Text>
@@ -378,7 +382,7 @@ function FilaDeMensaje({
             // y la hora va encima, abajo a la derecha. Cero renglón extra.
             <View className="px-3 pb-1.5 pt-1.5">
               <Text className={`text-[15px] leading-[21px] ${mine ? 'text-on-burbuja-propia' : 'text-on-burbuja-ajena'}`}>
-                <TextoConEnlaces texto={item.body} />
+                <TextoConEnlaces texto={item.body} enBurbujaPropia={mine} />
                 {/* El relleno es la MISMA hora, al mismo tamaño e invisible:
                     reserva exactamente su ancho (con espacios de nbsp, la hora
                     se montaba sobre los mensajes cortos). */}
@@ -464,7 +468,9 @@ function MetaDeMensaje({
   editado?: boolean;
 }) {
   const colores = useColores();
-  const tono = sobreFoto ? 'white' : colores['on-surface-variant'];
+  // Sobre la propia (violeta sólido, FL13) la hora y los íconos van claros.
+  const tono = sobreFoto ? 'white' : mia ? colores['on-burbuja-propia-suave'] : colores['on-surface-variant'];
+  const leido = mia ? colores['check-leido-propio'] : colores['check-leido'];
   return (
     <View className="flex-row items-center gap-1">
       <Text className="text-[11px]" style={{ color: tono }} testID={`hora-${id}`}>
@@ -480,7 +486,7 @@ function MetaDeMensaje({
           ) : entrega === 'sent' ? (
             <Check size={TAMANO_CHECK} color={tono} />
           ) : (
-            <CheckCheck size={TAMANO_CHECK} color={entrega === 'read' ? colores['check-leido'] : tono} />
+            <CheckCheck size={TAMANO_CHECK} color={entrega === 'read' ? leido : tono} />
           )}
         </View>
       ) : null}

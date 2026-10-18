@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, Switch, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Interruptor } from '../ui/Interruptor';
 import { Bell, RotateCw } from 'lucide-react-native';
 import { formatEventWhen, nextOccurrence } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
@@ -180,7 +181,7 @@ function Fila({
       </View>
 
       {propio && onToggle ? (
-        <Switch testID={`switch-${reminder._id}`} value={reminder.active} onValueChange={onToggle} trackColor={{ true: colores.primary }} />
+        <Interruptor testID={`switch-${reminder._id}`} value={reminder.active} onValueChange={onToggle} />
       ) : null}
     </Pressable>
   );

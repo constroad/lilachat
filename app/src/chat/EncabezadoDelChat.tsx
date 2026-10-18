@@ -1,8 +1,11 @@
 import { Pressable, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { ArrowLeft, Lock, MoreVertical, Phone, Video } from 'lucide-react-native';
 import { useMargenes } from '../ui/useMargenes';
+import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
+
+/** El avatar de la cabecera (dp): 40, como WhatsApp (antes 36). */
+const AVATAR_DE_CABECERA = 40;
 
 /**
  * La cabecera del chat (salió de `ChatScreen`, que pasaba de 900 líneas): la
@@ -42,15 +45,7 @@ export function EncabezadoDelChat(props: {
         onPress={props.onAbrirDetalle}
         className="min-w-0 flex-1 flex-row items-center gap-2"
       >
-      <View className="h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-primary/10">
-        {fotoVisible ? (
-          <Image source={{ uri: fotoVisible }} style={{ width: 36, height: 36 }} contentFit="cover" />
-        ) : (
-          <Text className="text-sm font-bold text-primary">
-            {nombreVisible.slice(0, 1).toUpperCase()}
-          </Text>
-        )}
-      </View>
+      <Avatar nombre={nombreVisible} foto={fotoVisible} tamano={AVATAR_DE_CABECERA} />
       <View className="min-w-0 flex-1">
         <View className="flex-row items-center gap-1.5">
           {/* El candado va PEGADO al nombre y no en una banda aparte: es una

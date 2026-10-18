@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RTCView, type MediaStream } from 'react-native-webrtc';
-import { Mic, MicOff, PhoneOff, Video, VideoOff, Volume2 } from 'lucide-react-native';
+import { Mic, MicOff, PhoneOff, User, Video, VideoOff, Volume2 } from 'lucide-react-native';
 import type { CallState } from '@lilachat/shared';
 import { leyendaDeLlamada, type EstadoDeMedios } from './estadoDeMedios';
 import { useColores } from '../ui/tema';
+import { inicialesDe } from '../ui/avatarMotor';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { DeslizarParaContestar } from './DeslizarParaContestar';
 
@@ -60,6 +61,7 @@ export function CallScreen({
   onHangUp: () => void;
 }) {
   const colores = useColores();
+  const inicialesDelOtro = inicialesDe(peerName);
   // El reloj se recalcula cada segundo; el ESTADO no cambia por eso.
   const [ahora, setAhora] = useState(() => Date.now());
   useEffect(() => {
@@ -104,9 +106,15 @@ export function CallScreen({
             <View className="mt-12 h-52 w-52 items-center justify-center rounded-full bg-on-primary/10">
               <View className="h-40 w-40 items-center justify-center rounded-full bg-on-primary/10">
                 <View className="h-32 w-32 items-center justify-center rounded-full bg-on-primary/20">
-                  <Text className="text-5xl font-bold text-on-primary">
-                    {peerName.slice(0, 1).toUpperCase()}
-                  </Text>
+                  {/* Sobre el violeta de la llamada no va el tono por persona del
+                      `Avatar`: solo sus dos iniciales, o el ícono si es un teléfono. */}
+                  {inicialesDelOtro ? (
+                    <Text className="text-5xl font-semibold text-on-primary" allowFontScaling={false}>
+                      {inicialesDelOtro}
+                    </Text>
+                  ) : (
+                    <User size={56} color={colores['on-primary']} />
+                  )}
                 </View>
               </View>
             </View>

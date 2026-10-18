@@ -151,10 +151,12 @@ export const Composer = memo(function Composer(props: {
   // El emoji que había acá no hacía nada: el teclado ya trae los suyos. Con
   // texto escrito se esconden y el campo gana ancho.
   const campoDeTexto = (
-    <View className="min-w-0 flex-1 flex-row items-end rounded-xl border border-outline/15 bg-background pr-1">
+    <View className="min-w-0 flex-1 flex-row items-end rounded-3xl border border-outline/15 bg-background pr-1">
       <TextInput
         testID="input-mensaje"
-        className="max-h-28 min-h-[44px] min-w-0 flex-1 px-4 py-2.5 text-base text-on-surface"
+        // 46 + el borde = 48: la misma altura que el micrófono (FL13). Con 44
+        // el multilínea de Android crecía y quedaban desalineados.
+        className="max-h-28 min-h-[46px] min-w-0 flex-1 px-4 py-3 text-base text-on-surface"
         placeholder="Escribe un mensaje"
         placeholderTextColor={colores.outline}
         multiline
@@ -235,9 +237,9 @@ export const Composer = memo(function Composer(props: {
         </View>
       ) : null}
 
-      <View className="flex-row items-end gap-1.5 border-t border-outline/10 bg-surface px-3 pt-3" style={{ paddingBottom: props.margenPie }}>
+      <View className="flex-row items-end gap-1.5 border-t border-outline/10 bg-surface px-2 pt-2" style={{ paddingBottom: props.margenPie }}>
         {props.modoSecreto === 'bloqueado' ? (
-          <View testID="composer-bloqueado" className="min-h-[44px] flex-1 items-center justify-center rounded-xl bg-background px-4">
+          <View testID="composer-bloqueado" className="min-h-[48px] flex-1 items-center justify-center rounded-3xl bg-background px-4">
             <Text className="text-center text-[13px] text-on-surface-variant">Esperando la clave del chat secreto…</Text>
           </View>
         ) : (
@@ -250,11 +252,11 @@ export const Composer = memo(function Composer(props: {
                   testID="btn-cancelar-voz"
                   accessibilityLabel="Cancelar la nota de voz"
                   onPress={() => void mandarVoz(true)}
-                  className="h-11 w-11 items-center justify-center"
+                  className="h-12 w-12 items-center justify-center"
                 >
                   <X size={22} color={colores.error} />
                 </Pressable>
-                <View className="min-w-0 flex-1 flex-row items-center gap-2 rounded-xl border border-outline/15 bg-background px-4 py-2.5">
+                <View className="min-h-[48px] min-w-0 flex-1 flex-row items-center gap-2 rounded-3xl border border-outline/15 bg-background px-4">
                   <View className="h-2.5 w-2.5 rounded-full bg-error" />
                   <Text testID="tiempo-voz" className="text-base font-semibold text-on-surface">
                     {duracionDeVoz(voz.estado.fase === 'grabando' ? voz.estado.ms : 0)}
@@ -265,7 +267,7 @@ export const Composer = memo(function Composer(props: {
             ) : modoVoz === 'sosteniendo' ? (
               <View
                 testID="barra-sosteniendo-voz"
-                className="min-w-0 flex-1 flex-row items-center gap-2 rounded-xl border border-outline/15 bg-background px-4 py-2.5"
+                className="min-h-[48px] min-w-0 flex-1 flex-row items-center gap-2 rounded-3xl border border-outline/15 bg-background px-4"
               >
                 <View className="h-2.5 w-2.5 rounded-full bg-error" />
                 <Text testID="tiempo-voz" className="text-base font-semibold text-on-surface">
@@ -293,7 +295,7 @@ export const Composer = memo(function Composer(props: {
                     accessibilityLabel="Adjuntar"
                     onPress={props.onAdjuntar}
                     disabled={props.subiendo}
-                    className={`h-11 w-11 items-center justify-center ${props.subiendo ? 'opacity-40' : ''}`}
+                    className={`h-12 w-10 items-center justify-center ${props.subiendo ? 'opacity-40' : ''}`}
                   >
                     <Plus size={24} color={colores['on-surface-variant']} />
                   </Pressable>
@@ -308,9 +310,9 @@ export const Composer = memo(function Composer(props: {
                 testID="btn-enviar-voz"
                 accessibilityLabel="Enviar la nota de voz"
                 onPress={() => void mandarVoz()}
-                className="h-11 w-11 items-center justify-center rounded-full bg-primary"
+                className="h-12 w-12 items-center justify-center rounded-full bg-primary"
               >
-                <Send size={18} color={colores['on-primary']} />
+                <Send size={20} color={colores['on-primary']} />
               </Pressable>
             ) : modoVoz === 'normal' && (borrador.trim() || soloTexto) ? (
               <Pressable
@@ -319,9 +321,9 @@ export const Composer = memo(function Composer(props: {
                 disabled={!borrador.trim()}
                 onLongPress={soloTexto ? undefined : () => props.onProgramar(borrador.trim())}
                 onPress={enviar}
-                className={`h-11 w-11 items-center justify-center rounded-full bg-primary ${borrador.trim() ? '' : 'opacity-40'}`}
+                className={`h-12 w-12 items-center justify-center rounded-full bg-primary ${borrador.trim() ? '' : 'opacity-40'}`}
               >
-                <Send size={18} color={colores['on-primary']} />
+                <Send size={20} color={colores['on-primary']} />
               </Pressable>
             ) : (
               <BotonDeVoz

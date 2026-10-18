@@ -16,6 +16,9 @@ import { guardarPassphrase, leerPassphrase } from '../respaldo/passphraseDeRespa
 import { fraseDeEstado } from '../respaldo/planDeRespaldo';
 import { registrarTareaDeFondo } from '../respaldo/tareaDeFondo';
 import { useColores } from '../ui/tema';
+import { FilaDeAjuste } from '../ui/FilaDeAjuste';
+import { PantallaEnModal } from '../ui/PantallaEnModal';
+import { useEsOperador } from './useEsOperador';
 import { RestaurarRespaldo } from './RestaurarRespaldo';
 
 /**
@@ -38,6 +41,8 @@ export function RespaldoAjuste({ credential }: { credential: Credential }) {
   const [creando, setCreando] = useState(false);
   const [respaldando, setRespaldando] = useState(false);
   const [restaurando, setRestaurando] = useState(false);
+  const [abierto, setAbierto] = useState(false);
+  const esOperador = useEsOperador(credential.jwt);
 
   const recargar = useCallback(async () => {
     const [passphrase, guardado] = await Promise.all([leerPassphrase(), leerEstadoDeRespaldo()]);
@@ -67,87 +72,105 @@ export function RespaldoAjuste({ credential }: { credential: Credential }) {
     if (enServer.ok) setEnMini(enServer.data);
   }, [credential.jwt, credential.phone]);
 
-  if (hayPassphrase === null) return null;
-
-  const frase = fraseDeEstado(hayPassphrase ? estado : { ...estado, decision: 'sin_passphrase' }, Date.now());
+  // La fila se dibuja SIEMPRE (va en un grupo con líneas): mientras lee, «Revisando…».
+  const frase =
+    hayPassphrase === null
+      ? null
+      : fraseDeEstado(hayPassphrase ? estado : { ...estado, decision: 'sin_passphrase' }, Date.now());
 
   return (
-    <View className="mt-2 rounded-xl border border-outline/10 bg-surface p-4" testID="ajuste-respaldo">
-      <View className="flex-row items-center gap-3">
-        <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-          <ShieldCheck size={18} color={frase.alerta ? colores.error : colores.primary} />
-        </View>
-        <View className="min-w-0 flex-1">
-          <Text className="text-sm font-semibold text-on-surface">Copia de seguridad</Text>
-          <Text className="text-[11px] text-on-surface-variant" testID="respaldo-titulo">
-            {frase.titulo} · {frase.detalle}
-          </Text>
-          {enMini ? (
-            <Text className="text-[11px] text-on-surface-variant" testID="respaldo-copia">
-              {fraseDeCopia(enMini)}
-            </Text>
-          ) : null}
-        </View>
-      </View>
+    <>
+      <FilaDeAjuste
+        testID="ajuste-respaldo"
+        icono={ShieldCheck}
+        tono={frase?.alerta ? 'alerta' : 'normal'}
+        titulo="Copia de seguridad"
+        detalle={frase ? `${frase.titulo} · ${frase.detalle}` : 'Revisando…'}
+        detalleTestID="respaldo-titulo"
+        onPress={() => setAbierto(true)}
+        deshabilitada={frase === null}
+      />
+      <PantallaEnModal
+        visible={abierto}
+        titulo="Copia de seguridad"
+        onCerrar={() => setAbierto(false)}
+        testIDCerrar="btn-cerrar-respaldo"
+      >
+        {frase ? (
+          <View className="items-center gap-2 rounded-2xl border border-outline/10 bg-surface px-5 py-6">
+            <View className={`h-14 w-14 items-center justify-center rounded-full ${frase.alerta ? 'bg-error/10' : 'bg-primary/10'}`}>
+              <ShieldCheck size={26} color={frase.alerta ? colores.error : colores.primary} />
+            </View>
+            <Text className="text-center text-[17px] font-semibold text-on-surface">{frase.titulo}</Text>
+            <Text className="text-center text-sm text-on-surface-variant">{frase.detalle}</Text>
+            {/* El disco del server es cosa de operadores: al resto no le dice nada. */}
+            {esOperador && enMini ? (
+              <Text className="text-center text-[13px] text-on-surface-variant" testID="respaldo-copia">
+                {fraseDeCopia(enMini)}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
 
-      {!hayPassphrase || creando ? (
-        <CrearPassphrase
-          onListo={async () => {
-            setCreando(false);
-            // Passphrase nueva = respaldo nuevo. Sin olvidar las huellas, la
-            // corrida veía el almacén «al día» y en la mini quedaba el archivo
-            // que solo abre la passphrase vieja, o se subía el pendiente
-            // cifrado con ella. Al rearmar, el pendiente viejo se reemplaza.
-            await guardarEstadoDeRespaldo({ huellaRespaldada: null, huellaPendiente: null });
-            await registrarTareaDeFondo();
-            await recargar();
-            void respaldarAhora();
-          }}
-          onCancelar={hayPassphrase ? () => setCreando(false) : undefined}
-        />
-      ) : (
-        <View className="mt-3 flex-row gap-2">
-          <Pressable
-            testID="btn-respaldar-ahora"
-            disabled={respaldando}
-            onPress={() => void respaldarAhora()}
-            className="min-h-[44px] flex-1 flex-row items-center justify-center gap-2 rounded-lg bg-primary px-4"
-          >
-            {respaldando ? <ActivityIndicator color={colores['on-primary']} /> : null}
-            <Text className="text-sm font-semibold text-on-primary">
-              {respaldando ? 'Respaldando…' : 'Respaldar ahora'}
-            </Text>
-          </Pressable>
-          <Pressable
-            testID="btn-cambiar-passphrase"
-            onPress={() => setCreando(true)}
-            className="min-h-[44px] items-center justify-center rounded-lg border border-outline/20 px-4"
-          >
-            <Text className="text-sm font-semibold text-on-surface">Cambiar passphrase</Text>
-          </Pressable>
-        </View>
-      )}
+        {!hayPassphrase || creando ? (
+          <CrearPassphrase
+            onListo={async () => {
+              setCreando(false);
+              // Passphrase nueva = respaldo nuevo. Sin olvidar las huellas, la
+              // corrida veía el almacén «al día» y en el server quedaba el archivo
+              // que solo abre la passphrase vieja, o se subía el pendiente
+              // cifrado con ella. Al rearmar, el pendiente viejo se reemplaza.
+              await guardarEstadoDeRespaldo({ huellaRespaldada: null, huellaPendiente: null });
+              await registrarTareaDeFondo();
+              await recargar();
+              void respaldarAhora();
+            }}
+            onCancelar={hayPassphrase ? () => setCreando(false) : undefined}
+          />
+        ) : (
+          <View className="mt-4 gap-2">
+            <Pressable
+              testID="btn-respaldar-ahora"
+              disabled={respaldando}
+              onPress={() => void respaldarAhora()}
+              className="min-h-[48px] flex-row items-center justify-center gap-2 rounded-xl bg-primary px-4"
+            >
+              {respaldando ? <ActivityIndicator color={colores['on-primary']} /> : null}
+              <Text className="text-[15px] font-semibold text-on-primary">
+                {respaldando ? 'Respaldando…' : 'Respaldar ahora'}
+              </Text>
+            </Pressable>
+            <Pressable
+              testID="btn-cambiar-passphrase"
+              onPress={() => setCreando(true)}
+              className="min-h-[48px] items-center justify-center rounded-xl border border-outline/20 px-4"
+            >
+              <Text className="text-[15px] font-semibold text-on-surface">Cambiar passphrase</Text>
+            </Pressable>
+          </View>
+        )}
 
-      {/* Restaurar a mano (F12.2): en un teléfono con historial no se ofrece
-          sola; acá se pide cuando se quiere, con el último de la mini. */}
-      {enMini?.ultimo ? (
-        <Pressable
-          testID="btn-restaurar-desde-mini"
-          onPress={() => setRestaurando(true)}
-          className="mt-2 min-h-[44px] items-center justify-center rounded-lg border border-outline/20 px-4"
-        >
-          <Text className="text-sm font-semibold text-on-surface">Restaurar desde la mini</Text>
-        </Pressable>
-      ) : null}
-      {restaurando && enMini?.ultimo ? (
-        <RestaurarRespaldo
-          jwt={credential.jwt}
-          respaldo={enMini.ultimo}
-          onCerrar={() => setRestaurando(false)}
-          onRestaurado={() => void recargar()}
-        />
-      ) : null}
-    </View>
+        {/* Restaurar a mano (F12.2): en un teléfono con historial no se ofrece
+            sola; acá se pide cuando se quiere, con la última copia. */}
+        {enMini?.ultimo && !creando ? (
+          <Pressable
+            testID="btn-restaurar-desde-mini"
+            onPress={() => setRestaurando(true)}
+            className="mt-2 min-h-[48px] items-center justify-center rounded-xl border border-outline/20 px-4"
+          >
+            <Text className="text-[15px] font-semibold text-on-surface">Restaurar la última copia</Text>
+          </Pressable>
+        ) : null}
+        {restaurando && enMini?.ultimo ? (
+          <RestaurarRespaldo
+            jwt={credential.jwt}
+            respaldo={enMini.ultimo}
+            onCerrar={() => setRestaurando(false)}
+            onRestaurado={() => void recargar()}
+          />
+        ) : null}
+      </PantallaEnModal>
+    </>
   );
 }
 
@@ -174,9 +197,9 @@ function CrearPassphrase({ onListo, onCancelar }: { onListo: () => Promise<void>
   const puede = valida && coinciden && !guardando;
 
   return (
-    <View className="mt-3 gap-2">
-      <Text className="text-[11px] text-on-surface-variant">
-        Elige una passphrase de 8 caracteres o más. Cifra el respaldo en tu teléfono: ni la mini ni
+    <View className="mt-4 gap-3">
+      <Text className="text-sm leading-5 text-on-surface-variant">
+        Elige una passphrase de 8 caracteres o más. Cifra el respaldo en tu teléfono: ni el servidor ni
         nadie más puede abrirlo. <Text className="font-semibold text-error">Si la olvidas, el respaldo no se recupera.</Text>
       </Text>
       <TextInput
@@ -187,7 +210,7 @@ function CrearPassphrase({ onListo, onCancelar }: { onListo: () => Promise<void>
         autoCapitalize="none"
         placeholder="Passphrase"
         placeholderTextColor={colores['on-surface-variant']}
-        className="min-h-[44px] rounded-lg bg-surface-variant px-3 text-sm text-on-surface"
+        className="min-h-[48px] rounded-xl border border-outline/15 bg-surface px-4 text-[15px] text-on-surface"
       />
       <TextInput
         testID="passphrase-2"
@@ -197,12 +220,12 @@ function CrearPassphrase({ onListo, onCancelar }: { onListo: () => Promise<void>
         autoCapitalize="none"
         placeholder="Repítela"
         placeholderTextColor={colores['on-surface-variant']}
-        className="min-h-[44px] rounded-lg bg-surface-variant px-3 text-sm text-on-surface"
+        className="min-h-[48px] rounded-xl border border-outline/15 bg-surface px-4 text-[15px] text-on-surface"
       />
       {una.length > 0 && !valida ? (
-        <Text className="text-[11px] text-error">Ocho caracteres o más.</Text>
+        <Text className="text-[13px] text-error">Ocho caracteres o más.</Text>
       ) : otra.length > 0 && !coinciden ? (
-        <Text className="text-[11px] text-error">No coinciden.</Text>
+        <Text className="text-[13px] text-error">No coinciden.</Text>
       ) : null}
       <View className="flex-row gap-2">
         <Pressable
@@ -215,13 +238,13 @@ function CrearPassphrase({ onListo, onCancelar }: { onListo: () => Promise<void>
               setGuardando(false);
             });
           }}
-          className={`min-h-[44px] flex-1 items-center justify-center rounded-lg px-4 ${puede ? 'bg-primary' : 'bg-primary/40'}`}
+          className={`min-h-[48px] flex-1 items-center justify-center rounded-xl px-4 ${puede ? 'bg-primary' : 'bg-primary/40'}`}
         >
-          <Text className="text-sm font-semibold text-on-primary">Guardar y respaldar</Text>
+          <Text className="text-[15px] font-semibold text-on-primary">Guardar y respaldar</Text>
         </Pressable>
         {onCancelar ? (
-          <Pressable onPress={onCancelar} className="min-h-[44px] items-center justify-center rounded-lg border border-outline/20 px-4">
-            <Text className="text-sm font-semibold text-on-surface">Cancelar</Text>
+          <Pressable onPress={onCancelar} className="min-h-[48px] items-center justify-center rounded-xl border border-outline/20 px-4">
+            <Text className="text-[15px] font-semibold text-on-surface">Cancelar</Text>
           </Pressable>
         ) : null}
       </View>

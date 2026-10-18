@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Check, Search } from 'lucide-react-native';
 import {
   candidatosParaSumar,
@@ -12,11 +12,12 @@ import { emparejarAgenda, invitarContacto, listContacts } from './contactsApi';
 import { useAgendaDelTelefono, useAgendaParaInvitar } from './useAgendaParaInvitar';
 import { buscarEn, indexarParaBuscar } from './busqueda';
 import { useConsultaDiferida } from '../ui/useConsultaDiferida';
-import { textoDeInvitacion } from '../settings/actualizacion';
+import { compartirInvitacion } from './compartirInvitacion';
 import { useColores } from '../ui/tema';
+import { Avatar } from '../ui/Avatar';
 
-/** La puerta de entrada que se ofrece primero: deja la app actualizándose sola. */
-const TIENDA_URL = 'https://lilastore.constroad.com/get';
+/** El avatar de cada contacto (dp): 44, el mismo en toda lista de personas. */
+const AVATAR_DE_CONTACTO = 44;
 
 /** Cuántos contactos de la agenda se dibujan sin buscar. Ver `SeccionInvitar`. */
 const MAXIMO_INVITABLES = 30;
@@ -47,7 +48,7 @@ export function ContactPicker({
   onToggle,
   multiple,
   header,
-  invitacion,
+  conInvitar,
   excluidos,
   vacio,
 }: {
@@ -57,11 +58,11 @@ export function ContactPicker({
   multiple: boolean;
   header?: React.ReactNode;
   /**
-   * Cuando viene, al pie va la sección «Invitar a Lilachat» con la gente de la
+   * Con `true`, al pie va la sección «Invitar a Lilachat» con la gente de la
    * agenda que todavía no está — la misma composición que WhatsApp muestra al
    * tocar el lápiz. El cruce se hace EN EL TELÉFONO (`separarAgenda`).
    */
-  invitacion?: { miNombre: string | null; enlaceApp: string };
+  conInvitar?: boolean;
   /**
    * Quiénes NO se pueden elegir: los que ya están en el grupo al que se suma.
    *
@@ -198,11 +199,7 @@ export function ContactPicker({
                       elegido ? 'bg-primary/[0.07]' : ''
                     }`}
                   >
-                    <View className="h-11 w-11 items-center justify-center rounded-full bg-primary">
-                      <Text className="text-base font-bold text-on-primary">
-                        {(contact.name ?? contact.phone).slice(0, 1).toUpperCase()}
-                      </Text>
-                    </View>
+                    <Avatar nombre={contact.name ?? contact.phone} tamano={AVATAR_DE_CONTACTO} />
                     <View className="min-w-0 flex-1">
                       <Text className="text-[15px] font-semibold text-on-surface" numberOfLines={1}>
                         {contact.name ?? contact.phone}
@@ -229,14 +226,8 @@ export function ContactPicker({
             </View>
           ))
         )}
-        {invitacion ? (
-          <SeccionInvitar
-            jwt={credential.jwt}
-            registrados={groups === null ? null : todos}
-            miNombre={invitacion.miNombre}
-            enlaceApp={invitacion.enlaceApp}
-            consulta={query}
-          />
+        {conInvitar ? (
+          <SeccionInvitar jwt={credential.jwt} registrados={groups === null ? null : todos} consulta={query} />
         ) : null}
       </ScrollView>
     </View>
@@ -252,14 +243,10 @@ export function ContactPicker({
 function SeccionInvitar({
   jwt,
   registrados,
-  miNombre,
-  enlaceApp,
   consulta,
 }: {
   jwt: string;
   registrados: Contact[] | null;
-  miNombre: string | null;
-  enlaceApp: string;
   consulta: string;
 }) {
   const agenda = useAgendaParaInvitar(registrados);
@@ -297,10 +284,7 @@ function SeccionInvitar({
       }
       setAviso(null);
     }
-    await Share.share({
-      message: textoDeInvitacion({ tienda: TIENDA_URL, app: enlaceApp, deParte: miNombre }),
-      title: contacto ? `Invitar a ${contacto.nombre}` : 'Invitar a Lilachat',
-    });
+    await compartirInvitacion(contacto);
   };
 
   if (agenda.estado === 'cargando') return null;
@@ -380,11 +364,7 @@ function SeccionInvitar({
           testID={`invitable-${contacto.id}`}
           className="min-h-[64px] flex-row items-center gap-3 px-4 py-2.5"
         >
-          <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/[0.10]">
-            <Text className="text-base font-bold text-primary">
-              {contacto.nombre.slice(0, 1).toUpperCase()}
-            </Text>
-          </View>
+          <Avatar nombre={contacto.nombre} tamano={AVATAR_DE_CONTACTO} />
           <View className="min-w-0 flex-1">
             <Text className="text-[15px] font-semibold text-on-surface" numberOfLines={1}>
               {contacto.nombre}

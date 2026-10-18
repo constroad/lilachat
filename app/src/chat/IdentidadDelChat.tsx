@@ -1,7 +1,10 @@
 import { Pressable, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { Camera, Pencil } from 'lucide-react-native';
+import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
+
+/** El avatar del detalle (dp): 112, el del diseño `info-grupo`. */
+const AVATAR_DEL_DETALLE = 112;
 
 /**
  * La cabecera del detalle: foto, nombre y el dato que ubica —cuántos son, o el
@@ -38,15 +41,7 @@ export function IdentidadDelChat({
         disabled={!editable || subiendoFoto}
         onPress={onCambiarFoto}
       >
-        <View className="h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-primary/10">
-          {avatarUrl ? (
-            <Image source={{ uri: avatarUrl }} style={{ width: 96, height: 96 }} contentFit="cover" />
-          ) : (
-            <Text className="text-3xl font-bold text-primary">
-              {nombre.slice(0, 1).toUpperCase()}
-            </Text>
-          )}
-        </View>
+        <Avatar nombre={nombre} foto={avatarUrl} tamano={AVATAR_DEL_DETALLE} />
         {/* La cámara ENCIMA de la foto: sin esa marca, un avatar redondo no se
             lee como algo que se puede tocar, y la foto del grupo se queda sin
             cambiar para siempre. */}

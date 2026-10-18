@@ -49,4 +49,10 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return (defaultResolveRequest ?? context.resolveRequest)(context, moduleName, platform);
 };
 
-module.exports = withNativeWind(config, { input: './global.css' });
+/**
+ * `inlineRem: 16`, como la web y como Stitch. NativeWind trae 14 por defecto y
+ * la app entera salía 12,5 % más chica que el diseño (auditoría §48, 18/10):
+ * `h-11` medía 38,5 dp y no los 44 de toque, `text-base` 14 y no 16. Los
+ * valores en px (`text-[15px]`, `min-h-[76px]`) no cambian.
+ */
+module.exports = withNativeWind(config, { input: './global.css', inlineRem: 16 });

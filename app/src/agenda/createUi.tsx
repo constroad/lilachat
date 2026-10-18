@@ -1,4 +1,5 @@
-import { Pressable, Switch, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
+import { Interruptor } from '../ui/Interruptor';
 import { ChevronRight } from 'lucide-react-native';
 import { useColores } from '../ui/tema';
 
@@ -92,7 +93,6 @@ export function ToggleRow({
   onChange: (next: boolean) => void;
   testID: string;
 }) {
-  const colores = useColores();
   return (
     <View className="mb-2 flex-row items-center gap-3 rounded-xl bg-primary/[0.07] px-4 py-3">
       {icon ? (
@@ -102,7 +102,7 @@ export function ToggleRow({
         <Text className="text-[15px] font-semibold text-on-surface">{label}</Text>
         <Text className="text-[12px] leading-4 text-on-surface-variant">{hint}</Text>
       </View>
-      <Switch testID={testID} value={value} onValueChange={onChange} trackColor={{ true: colores.primary }} />
+      <Interruptor testID={testID} value={value} onValueChange={onChange} />
     </View>
   );
 }

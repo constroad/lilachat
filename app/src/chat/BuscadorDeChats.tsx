@@ -20,7 +20,7 @@ export function BuscadorDeChats(props: {
     <>
     <View className="px-4 pb-2 pt-1">
       <View className="flex-row items-center gap-2 rounded-full bg-primary/[0.07] px-4">
-        <Search size={16} color={colores.outline} />
+        <Search size={18} color={colores.primary} />
         <TextInput
           testID="buscar-chats"
           value={busqueda}
@@ -79,17 +79,19 @@ export function BuscadorDeChats(props: {
             onPress={() => props.onFiltrar(chip.id)}
             hitSlop={{ top: 4, bottom: 4 }}
             className={`min-h-[36px] flex-row items-center gap-1.5 rounded-full border px-4 ${
-              activo ? 'border-primary bg-primary/[0.14]' : 'border-outline/20'
+              // Como FL6: el apagado es gris neutro y lleno, no otro lavanda
+              // con borde. El borde transparente evita el salto al activarlo.
+              activo ? 'border-primary/50 bg-primary/[0.08]' : 'border-transparent bg-surface-variant'
             }`}
           >
             <Text
-              className={`text-[13px] ${activo ? 'font-semibold text-primary' : 'text-on-surface-variant'}`}
+              className={`text-[13px] font-medium ${activo ? 'text-primary' : 'text-on-surface'}`}
             >
               {chip.etiqueta}
             </Text>
             {chip.cuenta > 0 ? (
               <Text
-                className={`shrink-0 text-[12px] ${activo ? 'text-primary' : 'text-on-surface-variant'}`}
+                className={`shrink-0 text-[13px] font-medium ${activo ? 'text-primary' : 'text-on-surface'}`}
               >
                 {chip.cuenta}
               </Text>

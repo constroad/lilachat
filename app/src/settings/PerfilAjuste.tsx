@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
-import { Image } from 'expo-image';
 import { Camera, Check, Pencil, X } from 'lucide-react-native';
 import { MAX_NOMBRE_DE_PERFIL, validarNombreDePerfil } from '@lilachat/shared';
 import { guardarNombreDePerfil, quitarFotoDePerfil } from '../api/client';
@@ -8,6 +7,7 @@ import type { Credential } from '../auth/credentialStore';
 import { elegirFotoRedonda } from '../chat/fotoDeGrupo';
 import { aplicarPerfil, subirFotoDePerfil, usePerfilPropio } from './perfilPropio';
 import { useColores } from '../ui/tema';
+import { Avatar } from '../ui/Avatar';
 
 const AVATAR = 64;
 
@@ -24,7 +24,6 @@ export function PerfilAjuste({ credential }: { credential: Credential }) {
   const [nombre, setNombre] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState<'nombre' | 'foto' | null>(null);
-  const visible = perfil.name?.trim() || credential.phone;
 
   const empezarEdicion = () => {
     setNombre(perfil.name ?? '');
@@ -77,7 +76,7 @@ export function PerfilAjuste({ credential }: { credential: Credential }) {
     ]);
 
   return (
-    <View className="flex-row items-center gap-4 rounded-xl border border-outline/10 bg-surface p-4" testID="ajuste-perfil">
+    <View className="flex-row items-center gap-4 rounded-2xl border border-outline/10 bg-surface p-4" testID="ajuste-perfil">
       <View className="items-center">
         <Pressable
           testID="btn-foto-perfil"
@@ -86,28 +85,19 @@ export function PerfilAjuste({ credential }: { credential: Credential }) {
           disabled={ocupado !== null}
           style={{ width: AVATAR, height: AVATAR }}
         >
-          <View
-            style={{ width: AVATAR, height: AVATAR }}
-            className="items-center justify-center overflow-hidden rounded-full bg-primary"
-          >
-            {perfil.avatarUrl ? (
-              <Image testID="foto-perfil" source={{ uri: perfil.avatarUrl }} style={{ width: AVATAR, height: AVATAR }} contentFit="cover" />
-            ) : (
-              <Text className="text-2xl font-bold text-on-primary">{visible.slice(0, 1).toUpperCase()}</Text>
-            )}
-            {ocupado === 'foto' ? (
-              <View className="absolute inset-0 items-center justify-center bg-black/40">
-                <ActivityIndicator color="white" />
-              </View>
-            ) : null}
-          </View>
+          <Avatar testID="foto-perfil" nombre={perfil.name?.trim() ?? ''} foto={perfil.avatarUrl} tamano={AVATAR} />
+          {ocupado === 'foto' ? (
+            <View className="absolute inset-0 items-center justify-center rounded-full bg-black/40">
+              <ActivityIndicator color="white" />
+            </View>
+          ) : null}
           <View className="absolute -bottom-0.5 -right-0.5 h-6 w-6 items-center justify-center rounded-full border-2 border-surface bg-primary">
             <Camera size={12} color={colores['on-primary']} />
           </View>
         </Pressable>
         {perfil.avatarUrl ? (
           <Pressable testID="btn-quitar-foto-perfil" onPress={quitarFoto} disabled={ocupado !== null} className="min-h-[44px] justify-center px-2">
-            <Text className="text-[11px] font-semibold text-on-surface-variant">Quitar</Text>
+            <Text className="text-[13px] font-semibold text-on-surface-variant">Quitar</Text>
           </Pressable>
         ) : null}
       </View>
@@ -143,12 +133,12 @@ export function PerfilAjuste({ credential }: { credential: Credential }) {
                 {error}
               </Text>
             ) : (
-              <Text className="mt-1 text-[11px] text-on-surface-variant">Lo ven quienes no te tienen agendado.</Text>
+              <Text className="mt-1 text-[13px] text-on-surface-variant">Lo ven quienes no te tienen agendado.</Text>
             )}
           </>
         ) : (
           <Pressable testID="btn-editar-nombre" onPress={empezarEdicion} className="min-h-[44px] flex-row items-center gap-2">
-            <Text testID="nombre-perfil" className="min-w-0 flex-shrink text-base font-semibold text-on-surface" numberOfLines={1}>
+            <Text testID="nombre-perfil" className="min-w-0 flex-shrink text-[17px] font-semibold text-on-surface" numberOfLines={1}>
               {perfil.name?.trim() || 'Ponte un nombre'}
             </Text>
             <Pencil size={14} color={colores['on-surface-variant']} />

@@ -9,6 +9,7 @@ import { EventsScreen } from './EventsScreen';
 import { RemindersScreen } from './RemindersScreen';
 import { useAlVolver } from '../ui/useAlVolver';
 import { useMargenes } from '../ui/useMargenes';
+import { Segmentado } from '../ui/Segmentado';
 import { useColores } from '../ui/tema';
 
 /**
@@ -57,24 +58,17 @@ export function AgendaScreen({
 
   return (
     <View className="flex-1 bg-background" testID="pantalla-agenda">
-      <View className="mx-4 mt-3 flex-row rounded-lg bg-primary/[0.07] p-1">
-        {(
-          [
-            { key: 'eventos' as const, label: 'Eventos' },
-            { key: 'avisos' as const, label: 'Avisos' },
-          ]
-        ).map((opcion) => (
-          <Pressable
-            key={opcion.key}
-            testID={`tab-agenda-${opcion.key}`}
-            onPress={() => setVista(opcion.key)}
-            className={`min-h-[44px] flex-1 items-center justify-center rounded-md ${vista === opcion.key ? 'bg-surface' : ''}`}
-          >
-            <Text className={`text-[13px] font-semibold ${vista === opcion.key ? 'text-on-surface' : 'text-on-surface-variant'}`}>
-              {opcion.label}
-            </Text>
-          </Pressable>
-        ))}
+      <View className="mx-4 mt-2">
+        <Segmentado
+          opciones={[
+            { key: 'eventos', etiqueta: 'Eventos', testID: 'tab-agenda-eventos' },
+            // «Recordatorios» y no «Avisos»: es como los llama el «+» y su
+            // pantalla («Nuevo recordatorio»). Dos nombres para lo mismo confunden.
+            { key: 'avisos', etiqueta: 'Recordatorios', testID: 'tab-agenda-avisos' },
+          ]}
+          valor={vista}
+          onCambiar={setVista}
+        />
       </View>
 
       {/* Las pantallas siguen siendo dos: cada una tiene su carga, su vacío y

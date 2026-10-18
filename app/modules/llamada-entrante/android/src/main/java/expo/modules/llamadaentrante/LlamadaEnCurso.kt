@@ -83,7 +83,7 @@ class ServicioDeLlamada : Service() {
       val tipo = if (video) "Videollamada" else "Llamada"
       val persona = Person.Builder().setName(nombre).setImportant(true).build()
       return NotificationCompat.Builder(contexto, CANAL)
-        .setSmallIcon(contexto.applicationInfo.icon)
+        .setSmallIcon(AvisoDeLlamada.iconoChico(contexto))
         .setContentTitle(nombre)
         .setContentText(if (desde > 0) "$tipo en curso" else "Llamando…")
         .setCategory(NotificationCompat.CATEGORY_CALL)

@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
-import { Activity, ArrowLeft, ChevronRight, Send, Trash2 } from 'lucide-react-native';
+import { Activity, ArrowLeft, Send, Trash2 } from 'lucide-react-native';
 import { useColores } from '../ui/tema';
+import { FilaDeAjuste } from '../ui/FilaDeAjuste';
 import { useMargenes } from '../ui/useMargenes';
 import { enviarDiagnostico, leerDiagnostico, limpiarDiagnostico } from './diagnostico';
 import type { EntradaDiagnostico } from './motor';
@@ -45,20 +46,13 @@ export function DiagnosticoAjuste() {
 
   return (
     <>
-      <Pressable
+      <FilaDeAjuste
         testID="btn-diagnostico"
+        icono={Activity}
+        titulo="Diagnóstico"
+        detalle="Errores y rendimiento de este teléfono"
         onPress={abrir}
-        className="mt-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4"
-      >
-        <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-          <Activity size={18} color={colores.primary} />
-        </View>
-        <View className="min-w-0 flex-1">
-          <Text className="text-sm font-semibold text-on-surface">Diagnóstico</Text>
-          <Text className="text-[11px] text-on-surface-variant">Errores y rendimiento de este teléfono</Text>
-        </View>
-        <ChevronRight size={18} color={colores.outline} />
-      </Pressable>
+      />
 
       <Modal visible={abierto} animationType="slide" onRequestClose={() => setAbierto(false)}>
         <View className="flex-1 bg-background">

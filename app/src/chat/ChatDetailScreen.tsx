@@ -27,6 +27,7 @@ import { cambiarAjustesDeChat } from '../api/client';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useColores } from '../ui/tema';
 import { Rotulo } from '../ui/Rotulo';
+import { Avatar } from '../ui/Avatar';
 import { SeccionCompartido } from './CompartidoEnElChat';
 import { useMargenes } from '../ui/useMargenes';
 import type { ServerMessage } from './socketClient';
@@ -69,6 +70,11 @@ type Estado =
   | { fase: 'listo'; detalle: Detalle };
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
+
+/** El avatar de cada participante (dp), el de las filas de contacto. */
+const AVATAR_DE_MIEMBRO = 44;
+/** 16 de margen + el avatar + 12 de aire: donde empieza el nombre. */
+const SANGRIA_DE_MIEMBRO = 16 + AVATAR_DE_MIEMBRO + 12;
 
 export function ChatDetailScreen({
   visible,
@@ -425,24 +431,27 @@ export function ChatDetailScreen({
             {esGrupo ? (
               <>
                 <Rotulo sangrado>Participantes</Rotulo>
-                <View className="px-4">
-                  {detalle!.members.map((miembro) => (
+                {/* UNA tarjeta con líneas finas, como Ajustes (FL13): antes cada
+                    persona era su propia caja. */}
+                <View className="mx-4 overflow-hidden rounded-2xl border border-outline/10 bg-surface">
+                  {detalle!.members.map((miembro, indice) => (
                     <View
                       key={miembro.id}
                       testID={`miembro-${miembro.id}`}
-                      className="mb-2 flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-3"
+                      className="min-h-[64px] flex-row items-center gap-3 px-4 py-2.5"
                     >
-                      <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                        <Text className="text-sm font-bold text-primary">
-                          {nombreDe(miembro).slice(0, 1).toUpperCase()}
-                        </Text>
-                      </View>
-                      <Text className="min-w-0 flex-1 text-sm font-semibold text-on-surface">
+                      {/* La línea arranca donde arranca el nombre, como en Ajustes. */}
+                      {indice > 0 ? (
+                        <View className="absolute right-0 top-0 h-px bg-outline/10" style={{ left: SANGRIA_DE_MIEMBRO }} />
+                      ) : null}
+                      {/* Tu avatar lleva TU nombre: «Tú» salía como iniciales «TÚ». */}
+                      <Avatar nombre={miembro.esYo ? (miembro.name ?? '') : nombreDe(miembro)} tamano={AVATAR_DE_MIEMBRO} />
+                      <Text className="min-w-0 flex-1 text-[15px] font-semibold text-on-surface">
                         {nombreDe(miembro)}
                       </Text>
                       {miembro.role === 'admin' ? (
-                        <View className="shrink-0 rounded bg-primary/15 px-2 py-0.5">
-                          <Text className="text-[10px] font-semibold text-primary">Admin</Text>
+                        <View className="shrink-0 rounded-full bg-primary/[0.14] px-2.5 py-1">
+                          <Text className="text-[11px] font-semibold text-primary">Admin</Text>
                         </View>
                       ) : null}
                       {/* El menú aparece solo si hay algo que hacer con esa

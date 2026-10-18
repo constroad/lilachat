@@ -19,15 +19,17 @@
     --color-neutral: 100 116 139;
     --color-background: 248 249 255;
     --color-surface: 255 255 255;
-    --color-surface-variant: 211 228 254;
+    --color-surface-variant: 238 236 243;
     --color-on-surface: 11 28 48;
     --color-on-surface-variant: 73 68 84;
     --color-outline: 123 116 134;
     --color-error: 186 26 26;
     --color-on-primary: 255 255 255;
     --color-fondo-chat: 243 241 251;
-    --color-burbuja-propia: 236 229 255;
-    --color-on-burbuja-propia: 11 28 48;
+    --color-burbuja-propia: 107 56 212;
+    --color-on-burbuja-propia: 255 255 255;
+    --color-on-burbuja-propia-suave: 221 210 251;
+    --color-check-leido-propio: 125 211 252;
     --color-burbuja-ajena: 255 255 255;
     --color-on-burbuja-ajena: 11 28 48;
     --color-check-leido: 59 130 246;
@@ -38,6 +40,11 @@
     --color-autor-5: 124 58 237;
     --color-autor-6: 14 116 144;
     --color-en-linea: 22 163 74;
+    --color-avatar-1: 236 228 253;
+    --color-avatar-2: 246 227 244;
+    --color-avatar-3: 227 231 251;
+    --color-avatar-4: 231 238 251;
+    --color-avatar-5: 243 232 255;
   }
 
   .dark:root {
@@ -60,6 +67,8 @@
     --color-fondo-chat: 11 18 34;
     --color-burbuja-propia: 59 42 107;
     --color-on-burbuja-propia: 241 236 255;
+    --color-on-burbuja-propia-suave: 185 173 223;
+    --color-check-leido-propio: 125 211 252;
     --color-burbuja-ajena: 30 41 59;
     --color-on-burbuja-ajena: 231 233 243;
     --color-check-leido: 96 165 250;
@@ -70,5 +79,10 @@
     --color-autor-5: 196 181 253;
     --color-autor-6: 103 232 249;
     --color-en-linea: 74 222 128;
+    --color-avatar-1: 46 39 82;
+    --color-avatar-2: 58 37 70;
+    --color-avatar-3: 35 44 79;
+    --color-avatar-4: 31 48 69;
+    --color-avatar-5: 51 36 79;
   }
 }

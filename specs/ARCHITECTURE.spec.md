@@ -3396,7 +3396,7 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | FL8 | **Lo que se pierde o se rompe** (auditoría §46.1) — ver §45.15 | ningún mensaje desaparece sin aviso; la notificación abre su chat; la llamada suena fuera del chat | ✅ 17/10 (0.1.78) |
 | FL8.1 | **Llamada entrante como WhatsApp** (pedido de José tras probar con Wilson, 17/10): pantalla completa sobre el bloqueo con tono que se repite, deslizar para contestar, rechazar sin abrir la app, tono con la app abierta, «Llamada perdida» en el chat — ver §45.16 | con la app cerrada y el teléfono bloqueado la llamada ocupa la pantalla y suena hasta contestar, rechazar o 30 s; E2E en el emulador | 🟡 17/10 (0.1.79 publicada): verificada en el emulador, más el bug de presencia que frenaba todos los push; falta probar sobre un bloqueo real |
 | FL8.2 | **Doble check sin abrir la app** (José, 17/10, chat con Wilson: un solo check aunque Wilson tenía internet). Hoy «entregado» lo marca la app al conectarse; el push llega al teléfono pero es una notificación común, Android la muestra sin ejecutar código de la app y el server nunca se entera. Camino: push de mensaje solo-datos que recibe el servicio nativo de FL8.1, que dibuja la notificación y le confirma la entrega al server con un token corto del propio push (sin JWT) | con la app cerrada, el mensaje pasa a dos checks grises al llegar el push al otro teléfono — ver §45.17 | ✅ 17/10: hecho y verificado en el emulador; sale en 0.1.80 |
-| FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | 🟡 17/10: FL9a hecha (§45.18): pulsación larga completa, links, cita que salta, divisor de no leídos, atrás; editar mensajes (§45.19); FL9b: varias fotos con pie y notas de voz con velocidad (§45.20); FL9c: borradores, archivar, marcar no leído, perfil con nombre y foto, buscar en el chat (§45.21); FL9d: programados visibles y cancelables, búsqueda que salta al mensaje, «ya no eres participante», eliminar chat (§45.22); FL9e: varios mensajes a la vez, nota de voz sostenida con cancelar y bloquear, fotos con su forma (§45.23). Falta: «Info» del mensaje (quién lo leyó), onda de la nota de voz, que la grabación arranque sin demora |
+| FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | ✅ — FL9a hecha (§45.18): pulsación larga completa, links, cita que salta, divisor de no leídos, atrás; editar mensajes (§45.19); FL9b: varias fotos con pie y notas de voz con velocidad (§45.20); FL9c: borradores, archivar, marcar no leído, perfil con nombre y foto, buscar en el chat (§45.21); FL9d: programados visibles y cancelables, búsqueda que salta al mensaje, «ya no eres participante», eliminar chat (§45.22); FL9e: varios mensajes a la vez, nota de voz sostenida con cancelar y bloquear, fotos con su forma (§45.23); FL9f: «Info» del mensaje, onda de la nota de voz, arranque de ~90 ms (§45.24). ✅ 18/10 (0.1.87). Abierto menor: arrastrar en la onda, hora en la «Info» |
 | FL10 | **Pulido y coherencia** (§46.3): un solo registro (tuteo), 44 dp, encuestas completas, detalle de evento | auditoría de pantalla entera sin hallazgos ALTA | ⬜ |
 
 ### 45.4 As-is FL0 (16/10/2026)
@@ -4495,6 +4495,53 @@ tests; server: `width` y `height` al subir, 1 test; app: `filaDeArchivoEnCola`,
   grabador). Se pierde el arranque de la primera palabra; queda como mejora.
 - El storage falso de QA no genera miniaturas: se puso una en la base para
   ver la foto. En producción lila la genera.
+
+### 45.24 As-is FL9f: «Info» del mensaje, onda de la nota de voz y arranque sin demora (18/10/2026)
+
+**«Info» del mensaje** (server: `infoDeMensaje.ts` y
+`GET /api/chats/:id/messages/:seq/info`, 4 tests; app: `info` en
+`accionesDeMensaje`, `InfoDelMensaje`)
+- Solo de lo propio y con un mensaje elegido. La hoja agrupa «Leído por»,
+  «Entregado a» y «Todavía no le llegó a», con los nombres de la agenda.
+- Los acuses son un cursor por persona: se sabe el estado y **no la hora**.
+  Para tener la hora haría falta guardar un acuse por mensaje; queda anotado.
+- No incluye a Lila. Sale en el orden de los miembros del chat.
+- Con seis acciones, la barra de selección muestra solo el número: «1
+  seleccionado» se partía en dos líneas.
+
+**Onda de la nota de voz** (app: `ondaDeVoz.ts`, 4 tests; server:
+`ondaDeVoz.ts` y `media.onda`, 1 test)
+- El grabador mide el nivel cada 100 ms (`isMeteringEnabled`). Al terminar
+  pasa los dB a barras de 0 a 100: -60 dB o menos es silencio, y se mandan
+  hasta 40 barras.
+- La onda viaja en la subida como «12,40,…». El server acota cada valor,
+  admite hasta 64 y descarta lo que no es un número.
+- La burbuja dibuja las barras, que se llenan con el avance. Sin onda, como en
+  las notas viejas, queda la línea de siempre.
+- El contador de la barra se redibuja solo cuando cambia el segundo.
+
+**Arranque sin demora**
+- Medido en el emulador: permiso 221 ms, modo 46, preparar 33, grabar 118.
+- El permiso del micrófono ahora se recuerda en el proceso una vez concedido.
+  Además se consulta sin diálogo al abrir la barra (`precalentarPermisoDeVoz`).
+- Medido después: permiso 0, modo 15, preparar 11, grabar 63. Bajó de ~420 a
+  ~90 ms.
+
+**E2E** (emulador contra :3104, grupo con QA Ana y QA Beto):
+- **Info:** la hoja mostró «Leído por QA Ana» con checks azules y «Entregado a
+  QA Beto».
+- **Onda:**
+  - una nota de 3,4 s llegó con 29 barras (antes 11);
+  - el micrófono del emulador graba silencio, así que la onda real fue plana
+    y se sembró una variable para verla;
+  - mientras suena, la onda se llena con el avance.
+- **Barra de selección:** el número entra en una línea.
+
+**Notas**
+- `respaldoRoutes.test.ts` fallaba a veces porque dos respaldos en el mismo
+  milisegundo empataban en `creadoEn`. Ahora `_id` desempata, en el último y
+  en la limpieza de los viejos.
+- Queda abierto: saltar en la onda arrastrando el dedo (hoy se toca).
 
 ## 47. Lilachat Empresa — plan (17/10/2026)
 

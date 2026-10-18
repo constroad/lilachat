@@ -30,11 +30,13 @@ export type AccionesDeSeleccion = {
   archivar: 'archivar' | 'desarchivar' | null;
   /** «Salir» es de grupos: solo si TODA la selección son grupos. */
   salir: boolean;
+  /** «Eliminar chat» (FL9d) es de los 1:1: solo si NINGUNO es grupo. */
+  eliminar: boolean;
 };
 
 export function accionesDeSeleccion(chats: readonly ChatSeleccionable[]): AccionesDeSeleccion {
   if (chats.length === 0) {
-    return { silenciar: null, fijar: null, lectura: null, archivar: null, salir: false };
+    return { silenciar: null, fijar: null, lectura: null, archivar: null, salir: false, eliminar: false };
   }
   const hayArchivado = chats.some((c) => c.archived === true);
   return {
@@ -45,6 +47,7 @@ export function accionesDeSeleccion(chats: readonly ChatSeleccionable[]): Accion
     lectura: chats.some((c) => c.unread > 0 || c.marcadoNoLeido === true) ? 'leido' : 'no-leido',
     archivar: chats.every((c) => c.archived === true) ? 'desarchivar' : 'archivar',
     salir: chats.every((c) => c.esGrupo),
+    eliminar: chats.every((c) => !c.esGrupo),
   };
 }
 

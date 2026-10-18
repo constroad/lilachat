@@ -6,6 +6,7 @@ import { DeviceModel, UserModel } from './models.js';
 import {
   ForbiddenChatError,
   buscarMensajes,
+  chatMemberIds,
   listMessages,
   datosDeUsuario,
   escribirAviso,
@@ -14,6 +15,7 @@ import {
 import { listChats } from './listaDeChats.js';
 import {
   addMember,
+  borrarChatParaMi,
   cambiarAjustesDeChat,
   changeRole,
   editarInfoDeGrupo,
@@ -51,6 +53,8 @@ async function avisarEnElChat(params: {
   evento: string;
   targetId?: string;
   valor?: string;
+  /** Además de los miembros: el que se sacó también ve «X te sacó» (FL9d). */
+  tambienA?: string[];
 }): Promise<void> {
   const [quien, aQuien] = await Promise.all([
     datosDeUsuario(params.quien),
@@ -68,15 +72,22 @@ async function avisarEnElChat(params: {
   // acá se corta, en vez de escribir una frase a medias en la conversación.
   if (!body) return;
 
+  const { tambienA, ...datos } = params;
   const mensaje = await escribirAviso({
-    ...params,
+    ...datos,
     body,
     quien2: { phone: quien.phone, name: quien.name },
     aQuien2: aQuien ? { phone: aQuien.phone, name: aQuien.name } : undefined,
   });
   // En un chat cifrado no se escribe: `escribirAviso` devuelve null y no hay
   // nada que empujar.
-  if (mensaje) await avisarMensajeNuevo(mensaje);
+  if (!mensaje) return;
+  if (!tambienA?.length) {
+    await avisarMensajeNuevo(mensaje);
+    return;
+  }
+  const miembros = await chatMemberIds(mensaje.chatId);
+  await avisarMensajeNuevo(mensaje, [...new Set([...miembros, ...tambienA])]);
 }
 
 export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): Router {
@@ -286,6 +297,16 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
   });
 
   /**
+   * «Eliminar chat» para MÍ (FL9d): sale de mi lista y su historial deja de
+   * llegarme hasta que alguien escriba de nuevo. Al resto no le cambia nada.
+   */
+  router.post('/:chatId/borrar-para-mi', async (req, res) => {
+    const r = await borrarChatParaMi({ chatId: req.params.chatId!, quien: new Types.ObjectId(req.session!.userId) });
+    if (!r.ok) return res.status(400).json({ message: r.motivo });
+    return res.status(200).json({ ok: true });
+  });
+
+  /**
    * Cambiar el nombre del grupo.
    *
    * `PATCH` sobre el chat, no sobre una membresía: lo que cambia es el chat.
@@ -407,6 +428,7 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
       quien: userId,
       evento: 'saco',
       targetId: aQuien,
+      tambienA: [aQuien],
     });
     return res.status(200).json({ ok: true });
   });

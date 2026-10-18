@@ -100,3 +100,22 @@ describe('textoDeAviso', () => {
     expect(textoDeAviso({ ...wilson, evento: 'vino-de-una-version-nueva' })).toBe('');
   });
 });
+
+/**
+ * Cuando el aviso es SOBRE mí (FL9d): «QA Ana te sacó del grupo», no «QA Ana
+ * sacó a 902049935» —mi propio número, que es lo que se veía—.
+ */
+describe('textoDeAviso — a mí', () => {
+  const base = { quien: 'Ana', esMio: false, aQuien: '902049935', aMi: true };
+
+  it('sacar, sumar y nombrar admin van en segunda persona', () => {
+    expect(textoDeAviso({ ...base, evento: 'saco' })).toBe('Ana te sacó del grupo');
+    expect(textoDeAviso({ ...base, evento: 'sumo' })).toBe('Ana te agregó');
+    expect(textoDeAviso({ ...base, evento: 'admin' })).toBe('Ana te nombró admin');
+    expect(textoDeAviso({ ...base, evento: 'admin-auto' })).toBe('Quedaste como admin del grupo');
+  });
+
+  it('sin `aMi` sigue como antes', () => {
+    expect(textoDeAviso({ ...base, aMi: false, evento: 'saco' })).toBe('Ana sacó a 902049935');
+  });
+});

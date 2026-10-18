@@ -33,10 +33,12 @@ export function textoDeAviso(params: {
   evento: EventoDeGrupo | string;
   /** A quién se lo hizo, si aplica. */
   aQuien?: string;
+  /** Si me lo hicieron a MÍ (FL9d): «te sacó», no «sacó a» y mi número. */
+  aMi?: boolean;
   /** El nombre nuevo, en el cambio de nombre. */
   valor?: string;
 }): string {
-  const { quien, esMio, aQuien, valor } = params;
+  const { quien, esMio, aQuien, valor, aMi } = params;
 
   switch (params.evento) {
     case 'nombre':
@@ -51,10 +53,12 @@ export function textoDeAviso(params: {
       return esMio ? 'Cambiaste la foto del grupo' : `${quien} cambió la foto del grupo`;
 
     case 'sumo':
+      if (aMi && !esMio) return `${quien} te agregó`;
       if (!aQuien) return '';
       return esMio ? `Agregaste a ${aQuien}` : `${quien} agregó a ${aQuien}`;
 
     case 'saco':
+      if (aMi && !esMio) return `${quien} te sacó del grupo`;
       if (!aQuien) return '';
       return esMio ? `Sacaste a ${aQuien}` : `${quien} sacó a ${aQuien}`;
 
@@ -62,6 +66,7 @@ export function textoDeAviso(params: {
       return esMio ? 'Saliste del grupo' : `${quien} salió del grupo`;
 
     case 'admin':
+      if (aMi && !esMio) return `${quien} te nombró admin`;
       if (!aQuien) return '';
       return esMio ? `Nombraste admin a ${aQuien}` : `${quien} nombró admin a ${aQuien}`;
 
@@ -71,6 +76,7 @@ export function textoDeAviso(params: {
     // **Sin autor a propósito.** Lo hizo el server al irse el último admin;
     // ponerle el nombre de quien se fue sería mentir sobre quién decidió qué.
     case 'admin-auto':
+      if (aMi) return 'Quedaste como admin del grupo';
       return aQuien ? `${aQuien} quedó como admin del grupo` : '';
 
     // La línea que deja una llamada (FL8.1): la frase depende de quién mira.

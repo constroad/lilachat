@@ -8,7 +8,7 @@ import {
   puedeSacar,
 } from '@lilachat/shared';
 import { UserModel } from './models.js';
-import { ChatModel, type Chat } from './chatModels.js';
+import { ChatModel, ReceiptModel, type Chat } from './chatModels.js';
 
 /**
  * Quién está en un chat y cómo: sumar, sacar, cambiar el rol, salir, el nombre
@@ -292,4 +292,34 @@ export async function leaveChat(params: {
     // decisión del server y sin contarla el grupo cambia de admin en silencio.
     nuevoAdmin: decision.accion === 'salir' ? decision.nuevoAdmin : null,
   };
+}
+
+/**
+ * «Eliminar chat» para MÍ (FL9d), como WhatsApp: sale de mi lista y no veo
+ * nada hasta el último mensaje de ahora; si alguien escribe, el chat vuelve
+ * solo con lo nuevo. Al resto no le cambia nada. Queda leído hasta ahí, para
+ * que al volver cuente solo lo nuevo como no leído.
+ */
+export async function borrarChatParaMi(params: {
+  chatId: string;
+  quien: Types.ObjectId;
+}): Promise<{ ok: true } | { ok: false; motivo: string }> {
+  if (!Types.ObjectId.isValid(params.chatId)) return { ok: false, motivo: 'No encontramos esa conversación.' };
+  const chat = await ChatModel.findOne({ _id: params.chatId, 'members.userId': params.quien })
+    .select('lastSeq')
+    .lean<{ _id: Types.ObjectId; lastSeq?: number } | null>();
+  if (!chat) return { ok: false, motivo: 'No estás en esa conversación.' };
+  const hasta = chat.lastSeq ?? 0;
+  await Promise.all([
+    ChatModel.updateOne(
+      { _id: chat._id, 'members.userId': params.quien },
+      { $set: { 'members.$.borradoHasta': hasta, 'members.$.markedUnread': false } }
+    ),
+    ReceiptModel.updateOne(
+      { chatId: chat._id, userId: params.quien },
+      { $max: { readSeq: hasta, deliveredSeq: hasta } },
+      { upsert: true }
+    ),
+  ]);
+  return { ok: true };
 }

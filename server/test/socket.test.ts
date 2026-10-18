@@ -243,3 +243,34 @@ describe('msg.edit', () => {
     expect(ack).toEqual({ ok: false, motivo: 'Solo puedes editar tus propios mensajes.' });
   });
 });
+
+/**
+ * Sacado de un grupo (FL9d): al que sacaron le llega `chat.changed` —para que
+ * su app lo sepa— y también la línea «X te sacó del grupo», como WhatsApp.
+ * Antes la línea solo iba a los que quedaban.
+ */
+describe('sacar a alguien del grupo', () => {
+  it('el sacado recibe el cambio y el aviso en el chat', async () => {
+    const grupo = await ChatModel.create({
+      kind: 'group',
+      name: 'QA',
+      members: [
+        { userId: maria, role: 'admin' },
+        { userId: jose, role: 'member' },
+      ],
+      lastSeq: 0,
+    });
+    const sacado = await connect(tokenFor(jose));
+    const cambio = new Promise((resolve) => sacado.on('chat.changed', resolve));
+    const aviso = new Promise<Record<string, unknown>>((resolve) => sacado.on('msg.new', resolve));
+
+    const respuesta = await fetch(`http://127.0.0.1:${port}/api/chats/${grupo._id}/members/${jose}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${tokenFor(maria)}` },
+    });
+
+    expect(respuesta.status).toBe(200);
+    expect(await cambio).toMatchObject({ chatId: String(grupo._id) });
+    expect(await aviso).toMatchObject({ kind: 'system', chatId: String(grupo._id) });
+  });
+});

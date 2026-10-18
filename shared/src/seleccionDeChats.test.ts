@@ -18,6 +18,7 @@ describe('accionesDeSeleccion', () => {
       lectura: null,
       archivar: null,
       salir: false,
+      eliminar: false,
     });
   });
 
@@ -70,6 +71,17 @@ describe('accionesDeSeleccion', () => {
     expect(
       accionesDeSeleccion([chat({ id: 'a', esGrupo: true }), chat({ id: 'b', esGrupo: false })]).salir
     ).toBe(false);
+  });
+});
+
+/**
+ * «Eliminar chat» (FL9d) es de los 1:1: un grupo se deja con «Salir», como en
+ * WhatsApp. Con un grupo en la selección no se ofrece.
+ */
+describe('accionesDeSeleccion — eliminar', () => {
+  it('solo si toda la selección son chats 1:1', () => {
+    expect(accionesDeSeleccion([chat({ id: 'a' }), chat({ id: 'b' })]).eliminar).toBe(true);
+    expect(accionesDeSeleccion([chat({ id: 'a' }), chat({ id: 'b', esGrupo: true })]).eliminar).toBe(false);
   });
 });
 

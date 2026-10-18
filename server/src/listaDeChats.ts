@@ -107,8 +107,13 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
     acusesPorChat.set(key, entrada);
   }
 
-  return chats.map((chat, index) => {
-    const last = lastMessages[index];
+  // Borrado para mí y sin nada nuevo desde entonces: no está en mi lista (FL9d).
+  const visibles = chats.flatMap((chat, index) => {
+    const yo = chat.members.find((member) => String(member.userId) === String(userId));
+    return yo?.borradoHasta !== undefined && yo.borradoHasta >= (chat.lastSeq ?? 0) ? [] : [{ chat, last: lastMessages[index] }];
+  });
+
+  return visibles.map(({ chat, last }) => {
     // El subdoc de ESTE usuario: de ahí salen sus flags de silenciado/fijado.
     const acusan = chat.members
       .map((member) => String(member.userId))

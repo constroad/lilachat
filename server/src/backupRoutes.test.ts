@@ -171,6 +171,54 @@ describe('GET /api/backup', () => {
   it('sin sesión, 401', async () => {
     expect((await request(app).get('/api/backup')).status).toBe(401);
   });
+
+  /** La ruta del disco del server no es asunto de quien usa la app. */
+  it('no muestra la carpeta del server, y dice si esta persona puede respaldar', async () => {
+    delete process.env.LILACHAT_OPERADORES;
+
+    const respuesta = await request(app).get('/api/backup').set('Authorization', `Bearer ${jwtDe(yo)}`);
+
+    expect(respuesta.body.dir).toBeUndefined();
+    expect(respuesta.body.puedeRespaldar).toBe(false);
+  });
+});
+
+/**
+ * «Respaldar ahora» lanza un `mongodump` de la base ENTERA (auditoría §46.3:
+ * cualquiera con sesión podía dispararlo). Es tarea de operador: solo los
+ * teléfonos de `LILACHAT_OPERADORES`, y sin la variable, nadie (el cron de cada
+ * noche sigue respaldando).
+ */
+describe('POST /api/backup/run', () => {
+  it('sin operadores configurados, nadie lo dispara', async () => {
+    delete process.env.LILACHAT_OPERADORES;
+
+    const respuesta = await request(app).post('/api/backup/run').set('Authorization', `Bearer ${jwtDe(yo)}`);
+
+    expect(respuesta.status).toBe(403);
+  });
+
+  it('alguien que no es operador recibe 403', async () => {
+    process.env.LILACHAT_OPERADORES = '902049935';
+
+    const respuesta = await request(app).post('/api/backup/run').set('Authorization', `Bearer ${jwtDe(otro)}`);
+
+    expect(respuesta.status).toBe(403);
+    delete process.env.LILACHAT_OPERADORES;
+  });
+
+  it('el operador sí ve que puede respaldar', async () => {
+    process.env.LILACHAT_OPERADORES = ' 902049935 , 999111222';
+
+    const respuesta = await request(app).get('/api/backup').set('Authorization', `Bearer ${jwtDe(yo)}`);
+
+    expect(respuesta.body.puedeRespaldar).toBe(true);
+    delete process.env.LILACHAT_OPERADORES;
+  });
+
+  it('sin sesión, 401', async () => {
+    expect((await request(app).post('/api/backup/run')).status).toBe(401);
+  });
 });
 
 describe('contentDisposition', () => {

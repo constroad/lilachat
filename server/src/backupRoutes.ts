@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Types } from 'mongoose';
-import { formatBytes } from '@lilachat/shared';
+import { formatBytes, normalizePeruPhone } from '@lilachat/shared';
 import { backupStatus, runBackup } from './backupRunner.js';
 import { ChatModel, MessageModel } from './chatModels.js';
 import { asyncRoute, requireSession } from './requireSession.js';
@@ -38,12 +38,35 @@ export function contentDisposition(name: string): string {
   )}`;
 }
 
+/**
+ * ¿Esta persona puede disparar un respaldo a mano? «Respaldar ahora» lanza un
+ * `mongodump` de la base ENTERA, así que es tarea de operador (auditoría
+ * §46.3: cualquiera con sesión podía hacerlo). Los operadores son los
+ * teléfonos de `LILACHAT_OPERADORES`; sin la variable, nadie — el cron de cada
+ * noche sigue respaldando igual.
+ */
+async function esOperador(userId: Types.ObjectId): Promise<boolean> {
+  const operadores = (process.env.LILACHAT_OPERADORES ?? '')
+    .split(',')
+    .map((telefono) => normalizePeruPhone(telefono))
+    .filter(Boolean);
+  if (operadores.length === 0) return false;
+  const user = await UserModel.findById(userId).select('phone').lean();
+  const telefono = normalizePeruPhone(user?.phone);
+  return telefono !== '' && operadores.includes(telefono);
+}
+
 export function buildBackupRouter(): Router {
   const router = Router();
 
-  router.get('/', requireSession, asyncRoute(async (_req, res) => {
-    const estado = await backupStatus();
-    res.json({ ...estado, totalLabel: formatBytes(estado.totalBytes) });
+  router.get('/', requireSession, asyncRoute(async (req, res) => {
+    // Sin `dir`: la ruta del disco del server no es asunto de quien usa la app.
+    const { dir: _dir, ...estado } = await backupStatus();
+    res.json({
+      ...estado,
+      totalLabel: formatBytes(estado.totalBytes),
+      puedeRespaldar: await esOperador(req.session!.userId),
+    });
   }));
 
   /**
@@ -53,7 +76,11 @@ export function buildBackupRouter(): Router {
    * vez sobre la misma base y el disco de la mini pagaría el doble por nada. El
    * segundo recibe 409, que la pantalla lee como «ya está corriendo».
    */
-  router.post('/run', requireSession, asyncRoute(async (_req, res) => {
+  router.post('/run', requireSession, asyncRoute(async (req, res) => {
+    if (!(await esOperador(req.session!.userId))) {
+      res.status(403).json({ message: 'Solo un operador puede respaldar a mano. El respaldo de cada noche sigue corriendo.' });
+      return;
+    }
     if (corriendo) {
       res.status(409).json({ message: 'Ya hay un respaldo en curso.' });
       return;

@@ -25,6 +25,11 @@ export interface ChatMember {
   archived?: boolean;
   /** Marcado a mano como no leído (FL9); se va solo al leer. */
   markedUnread?: boolean;
+  /**
+   * «Eliminar chat» para este miembro (FL9d): no ve nada hasta este `seq`, y el
+   * chat sale de su lista hasta que llegue uno nuevo.
+   */
+  borradoHasta?: number;
 }
 
 export interface Chat {
@@ -145,6 +150,7 @@ const chatSchema = new Schema<Chat>(
         pinned: { type: Boolean },
         archived: { type: Boolean },
         markedUnread: { type: Boolean },
+        borradoHasta: { type: Number },
       },
     ],
     lastSeq: { type: Number, default: 0 },

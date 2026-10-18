@@ -155,20 +155,36 @@ export async function sendMessage(params: {
   }
 }
 
+/**
+ * Hasta qué `seq` borró este miembro el chat (FL9d): lo anterior no le llega
+ * por ningún camino —historial, sincronización ni búsqueda—. 0 si nunca.
+ */
+function borradoHastaDe(chat: { members?: { userId: Types.ObjectId; borradoHasta?: number }[] }, userId: Types.ObjectId): number {
+  return chat.members?.find((member) => String(member.userId) === String(userId))?.borradoHasta ?? 0;
+}
+
 export async function listMessages(params: {
   chatId: string;
   userId: Types.ObjectId;
   limit?: number;
   beforeSeq?: number;
 }): Promise<Message[]> {
-  const chatId = await assertMember(params.chatId, params.userId);
+  const id = toObjectId(params.chatId);
+  const chat = id
+    ? await ChatModel.findOne({ _id: id, 'members.userId': params.userId })
+        .select('members.userId members.borradoHasta')
+        .lean<{ _id: Types.ObjectId; members: { userId: Types.ObjectId; borradoHasta?: number }[] } | null>()
+    : null;
+  if (!chat) throw new ForbiddenChatError();
+  const chatId = chat._id;
   const limit = Math.min(Math.max(params.limit ?? 50, 1), 100);
+  const desde = borradoHastaDe(chat, params.userId);
 
   // Se pide DESCENDENTE (la página más reciente) y se devuelve ascendente: es
   // el orden en que se lee una conversación.
   const page = await MessageModel.find({
     chatId,
-    ...(params.beforeSeq ? { seq: { $lt: params.beforeSeq } } : {}),
+    seq: { $gt: desde, ...(params.beforeSeq ? { $lt: params.beforeSeq } : {}) },
   })
     .sort({ seq: -1 })
     .limit(limit)
@@ -196,13 +212,15 @@ export async function pullSince(params: {
       ? { _id: { $in: pedidos.map((id) => new Types.ObjectId(id)) }, 'members.userId': params.userId }
       : { 'members.userId': params.userId };
   const chats = await ChatModel.find(filtro)
-    .select('_id lastSeq')
-    .lean<{ _id: Types.ObjectId; lastSeq?: number }[]>();
+    .select('_id lastSeq members.userId members.borradoHasta')
+    .lean<{ _id: Types.ObjectId; lastSeq?: number; members: { userId: Types.ObjectId; borradoHasta?: number }[] }[]>();
 
   const batches = await Promise.all(
     chats.map(async (chat) => {
       const chatId = String(chat._id);
-      const since = Number(params.cursors[chatId] ?? 0);
+      // Lo borrado para mí no vuelve por la sincronización (FL9d).
+      const pedido = Number(params.cursors[chatId] ?? 0);
+      const since = Math.max(Number.isFinite(pedido) ? pedido : 0, borradoHastaDe(chat, params.userId));
       // Al día: sin consulta. Es el caso normal al abrir un chat ya guardado.
       if (Number.isFinite(since) && (chat.lastSeq ?? 0) <= since) return { chatId, messages: [] };
       const messages = await MessageModel.find({
@@ -481,13 +499,15 @@ export async function buscarMensajes(
 ): Promise<ResultadoBusqueda[]> {
   if (!busquedaValida(consulta)) return [];
 
-  const chats = await ChatModel.find({ 'members.userId': userId }).select('_id').lean();
-  const ids = chats.map((chat) => chat._id);
-  if (ids.length === 0) return [];
+  const chats = await ChatModel.find({ 'members.userId': userId })
+    .select('_id members.userId members.borradoHasta')
+    .lean<{ _id: Types.ObjectId; members: { userId: Types.ObjectId; borradoHasta?: number }[] }[]>();
+  if (chats.length === 0) return [];
 
+  // Cada chat desde donde lo veo: lo borrado para mí no se encuentra (FL9d).
   const regex = new RegExp(escaparRegex(consulta.trim()), 'i');
   const mensajes = await MessageModel.find({
-    chatId: { $in: ids },
+    $or: chats.map((chat) => ({ chatId: chat._id, seq: { $gt: borradoHastaDe(chat, userId) } })),
     kind: 'text',
     envelope: { $exists: false },
     body: regex,

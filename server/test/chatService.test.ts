@@ -3,6 +3,7 @@ import mongoose, { Types } from 'mongoose';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ChatModel, MessageModel, ReceiptModel } from '../src/chatModels.js';
 import {
+  buscarMensajes,
   ForbiddenChatError,
   listMessages,
   markRead,
@@ -10,7 +11,7 @@ import {
   sendMessage,
 } from '../src/chatService.js';
 import { listChats } from '../src/listaDeChats.js';
-import { cambiarAjustesDeChat } from '../src/miembrosDelChat.js';
+import { borrarChatParaMi, cambiarAjustesDeChat } from '../src/miembrosDelChat.js';
 import { UserModel } from '../src/models.js';
 
 let mongo: MongoMemoryServer;
@@ -319,5 +320,51 @@ describe('archivar y marcar como no leído', () => {
     const r = await cambiarAjustesDeChat({ chatId, quien: ajeno, markedUnread: true });
 
     expect(r.ok).toBe(false);
+  });
+});
+
+/**
+ * Eliminar un chat PARA MÍ (FL9d), como WhatsApp: sale de mi lista y su
+ * historial deja de llegarme; si alguien escribe de nuevo, el chat vuelve solo
+ * con lo nuevo. Al otro no le cambia nada.
+ */
+describe('borrar el chat para mí', () => {
+  const mandar = (senderId: Types.ObjectId, clientKey: string, body: string) =>
+    sendMessage({ chatId, senderId, clientKey, body });
+
+  it('sale de mi lista, no de la del otro, y sin no leídos', async () => {
+    await mandar(maria, 'b1', 'hola');
+    await mandar(maria, 'b2', 'cumple de Ana');
+
+    const r = await borrarChatParaMi({ chatId, quien: jose });
+
+    expect(r.ok).toBe(true);
+    expect((await listChats(jose)).some((chat) => chat.id === chatId)).toBe(false);
+    expect((await listChats(maria)).some((chat) => chat.id === chatId)).toBe(true);
+  });
+
+  it('un mensaje nuevo lo trae de vuelta, solo con lo nuevo', async () => {
+    await mandar(maria, 'b1', 'viejo');
+    await borrarChatParaMi({ chatId, quien: jose });
+
+    await mandar(maria, 'b2', 'nuevo');
+
+    const resumen = (await listChats(jose)).find((chat) => chat.id === chatId);
+    expect(resumen?.unread).toBe(1);
+    expect((await listMessages({ chatId, userId: jose })).map((m) => m.body)).toEqual(['nuevo']);
+    const sync = await pullSince({ userId: jose, cursors: { [chatId]: 0 } });
+    expect(sync[0]?.messages.map((m) => m.body)).toEqual(['nuevo']);
+  });
+
+  it('la búsqueda no encuentra lo borrado; al otro sí', async () => {
+    await mandar(maria, 'b1', 'cumple de Ana');
+    await borrarChatParaMi({ chatId, quien: jose });
+
+    expect(await buscarMensajes(jose, 'cumple')).toEqual([]);
+    expect((await buscarMensajes(maria, 'cumple')).length).toBe(1);
+  });
+
+  it('quien no es miembro no puede', async () => {
+    expect((await borrarChatParaMi({ chatId, quien: ajeno })).ok).toBe(false);
   });
 });

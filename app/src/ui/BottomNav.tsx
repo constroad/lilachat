@@ -27,11 +27,24 @@ const TABS: { key: Tab; label: string; Icon: typeof MessageCircle }[] = [
   { key: 'ajustes', label: 'Ajustes', Icon: Settings },
 ];
 
-export function BottomNav({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
+export function BottomNav({
+  active,
+  onChange,
+  vertical = false,
+}: {
+  active: Tab;
+  onChange: (tab: Tab) => void;
+  /** Riel a la izquierda (FL10): girado o en tablet, la altura no alcanza para la barra abajo. */
+  vertical?: boolean;
+}) {
   const colores = useColores();
   const margenes = useMargenes();
   return (
-    <View className="flex-row border-t border-outline/10 bg-surface pt-2" style={{ paddingBottom: margenes.pie }}>
+    <View
+      testID={vertical ? 'riel-de-pestanas' : 'barra-de-pestanas'}
+      className={vertical ? 'w-20 gap-1 border-r border-outline/10 bg-surface pt-3' : 'flex-row border-t border-outline/10 bg-surface pt-2'}
+      style={{ paddingBottom: margenes.pie }}
+    >
       {TABS.map(({ key, label, Icon }) => {
         const selected = key === active;
         return (
@@ -39,7 +52,7 @@ export function BottomNav({ active, onChange }: { active: Tab; onChange: (tab: T
             key={key}
             testID={`tab-${key}`}
             onPress={() => onChange(key)}
-            className="min-h-[44px] flex-1 items-center justify-center gap-0.5"
+            className={vertical ? 'min-h-[64px] items-center justify-center gap-0.5' : 'min-h-[44px] flex-1 items-center justify-center gap-0.5'}
           >
             <Icon size={20} color={selected ? colores.primary : colores.outline} />
             <Text

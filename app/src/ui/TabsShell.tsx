@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Alert, BackHandler, Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { ArrowLeft, BellRing, ChevronRight, CloudUpload, User, UserPlus } from 'lucide-react-native';
@@ -29,7 +29,11 @@ import { BuscarActualizacionesAjuste } from '../settings/BuscarActualizacionesAj
 import { Rotulo } from './Rotulo';
 import { AppHeader, BottomNav, type Tab } from './BottomNav';
 import { useMargenes } from './useMargenes';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ErrorBoundary } from './ErrorBoundary';
+import { ANCHO_DE_LISTA, ANCHO_MAXIMO_DE_CONTENIDO } from './disposicion';
+import { useDisposicion } from './useDisposicion';
+import { SinChatElegido } from './PanelDeChat';
 import { DiagnosticoAjuste } from '../diagnostico/DiagnosticoAjuste';
 import { visitadasCon } from './pestanas';
 import { useAlVolver } from './useAlVolver';
@@ -54,6 +58,8 @@ export function TabsShell({
   onSegundoPlano,
   chatAbierto,
   pestanaPedida,
+  panelDeChat,
+  onPestana,
 }: {
   credential: Credential;
   onOpenChat: (chat: ChatSummary, irASeq?: number) => void;
@@ -70,6 +76,10 @@ export function TabsShell({
   chatAbierto: string | null;
   /** Una notificación de la agenda pide esta pestaña (FL8). */
   pestanaPedida?: { tab: 'agenda'; n: number } | null;
+  /** Tablet (FL10): el chat abierto, al lado de la lista. */
+  panelDeChat?: ReactNode;
+  /** La pestaña a la vista: con dos paneles decide si el chat del panel se está viendo. */
+  onPestana?: (tab: Tab) => void;
 }) {
   // En un ref: el listener del socket no se re-suscribe al abrir y cerrar chats.
   const chatAbiertoRef = useRef(chatAbierto);
@@ -101,6 +111,14 @@ export function TabsShell({
   useEffect(() => setVisitadas((antes) => visitadasCon(antes, tab)), [tab]);
   /** Una pestaña montada pero no activa se oculta sin desmontarse. */
   const panel = (cual: Tab) => ({ flex: 1, display: cual === tab ? ('flex' as const) : ('none' as const) });
+  // Girado o en tablet (FL10): riel a la izquierda y el contenido centrado; en
+  // tablet, la lista y el chat lado a lado.
+  const { amplia, dosPaneles } = useDisposicion();
+  const insets = useSafeAreaInsets();
+  const centrado = amplia ? { width: '100%' as const, maxWidth: ANCHO_MAXIMO_DE_CONTENIDO, alignSelf: 'center' as const } : null;
+  useEffect(() => {
+    onPestana?.(tab);
+  }, [tab, onPestana]);
   const [showBackup, setShowBackup] = useState(false);
   const esOperador = useEsOperador(credential.jwt);
   const [invitando, setInvitando] = useState(false);
@@ -254,7 +272,7 @@ export function TabsShell({
   }, [credential.jwt]);
 
   return (
-    <View className="flex-1 bg-background">
+    <View className="flex-1 bg-background" style={{ paddingLeft: insets.left, paddingRight: insets.right }}>
       <AppHeader>
         {tab === 'chats' ? (
           <>
@@ -309,9 +327,12 @@ export function TabsShell({
           ocultan (`pestanas.ts`): remontarlas mostraba el esqueleto en cada
           cambio. Al crear algo, la lista vuelve a pedir por la prop `recarga`,
           sin remontarse ni volver al esqueleto. */}
+      <View className={amplia ? 'flex-1 flex-row' : 'flex-1'}>
+      {amplia ? <BottomNav vertical active={tab} onChange={setTab} /> : null}
       <View className="flex-1">
         {visitadas.has('chats') ? (
-          <View style={panel('chats')}>
+          <View style={[panel('chats'), dosPaneles ? { flexDirection: 'row' } : centrado]}>
+          <View style={dosPaneles ? { width: ANCHO_DE_LISTA } : { flex: 1 }} className={dosPaneles ? 'border-r border-outline/10' : undefined}>
           {/* La banda va arriba de la lista y SOLO en Chats: es la pantalla de
               entrada, y repetirla en las cuatro pestañas la convierte en ruido. */}
           <BandaDeActualizacion
@@ -330,16 +351,18 @@ export function TabsShell({
           />
           </ErrorBoundary>
           </View>
+          {dosPaneles ? <View className="flex-1">{tab === 'chats' && panelDeChat ? panelDeChat : <SinChatElegido />}</View> : null}
+          </View>
         ) : null}
         {visitadas.has('encuestas') ? (
-          <View style={panel('encuestas')}>
+          <View style={[panel('encuestas'), centrado]}>
             <ErrorBoundary pantalla="encuestas">
               <PollsScreen recarga={reloadKey} credential={credential} onCreate={() => setCreating('poll')} />
             </ErrorBoundary>
           </View>
         ) : null}
         {visitadas.has('agenda') ? (
-          <View style={panel('agenda')}>
+          <View style={[panel('agenda'), centrado]}>
             {/* Eventos y avisos en una sola pestaña: el botón de crear ofrece
                 los dos tipos en vez de adivinar por el filtro activo. */}
             <ErrorBoundary pantalla="agenda">
@@ -348,7 +371,7 @@ export function TabsShell({
           </View>
         ) : null}
         {visitadas.has('ajustes') ? (
-          <View style={panel('ajustes')}>
+          <View style={[panel('ajustes'), centrado]}>
           {/* `padding` también en Android: con edge-to-edge la ventana ya no se
               encoge con el teclado, y la passphrase del respaldo quedaba tapada
               sin forma de subirla (mismo motivo que en ChatScreen). */}
@@ -472,8 +495,9 @@ export function TabsShell({
           </View>
         ) : null}
       </View>
+      </View>
 
-      <BottomNav active={tab} onChange={setTab} />
+      {amplia ? null : <BottomNav active={tab} onChange={setTab} />}
 
       {/* El lápiz de la lista, que no hacía nada. */}
       <NewChatScreen

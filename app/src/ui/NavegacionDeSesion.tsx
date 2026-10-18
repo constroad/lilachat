@@ -1,10 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   createNavigationContainerRef,
   DefaultTheme,
   NavigationContainer,
   StackActions,
-  type NavigationState,
   type Theme,
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -17,9 +16,12 @@ import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { iniciarCronometro } from '../diagnostico/diagnostico';
 import { TabsShell } from './TabsShell';
 import { useColores, useTema } from './tema';
-import { chatAbiertoDe } from './rutas';
+import { chatAbiertoDe, chatQueSeVe } from './rutas';
 import { useAbrirDesdeAviso } from './useAbrirDesdeAviso';
 import { ErrorBoundary } from './ErrorBoundary';
+import { useDisposicion } from './useDisposicion';
+import { ConMargenesLaterales, SinMargenArriba } from './PanelDeChat';
+import type { Tab } from './BottomNav';
 
 type RutasDeSesion = {
   Inicio: undefined;
@@ -50,10 +52,59 @@ export function NavegacionDeSesion(props: {
   const colores = useColores();
   const { oscuro } = useTema();
   const { onChatAbierto } = props;
-  const alCambiar = useCallback(
-    (estado: NavigationState | undefined) => onChatAbierto(chatAbiertoDe(estado)),
+  // En tablet (FL10) el chat se abre en un panel al lado de la lista, no en el stack.
+  const { dosPaneles } = useDisposicion();
+  const [enPanel, setEnPanel] = useState<{ chat: ChatSummary; irASeq?: number } | null>(null);
+  const pestana = useRef<Tab>('chats');
+  const enPanelRef = useRef(enPanel);
+  enPanelRef.current = enPanel;
+  const avisarAbierto = useCallback(
+    () =>
+      onChatAbierto(
+        chatQueSeVe({
+          deLaPila: navegacion.isReady() ? chatAbiertoDe(navegacion.getRootState()) : null,
+          enPanel: enPanelRef.current?.chat.id ?? null,
+          pestana: pestana.current,
+        })
+      ),
     [onChatAbierto]
   );
+  const alCambiar = useCallback(() => avisarAbierto(), [avisarAbierto]);
+  const abrirEnPanel = useCallback(
+    (chat: ChatSummary, irASeq?: number) => {
+      enPanelRef.current = { chat, irASeq };
+      setEnPanel({ chat, irASeq });
+      avisarAbierto();
+    },
+    [avisarAbierto]
+  );
+  const cerrarPanel = useCallback(() => {
+    enPanelRef.current = null;
+    setEnPanel(null);
+    avisarAbierto();
+  }, [avisarAbierto]);
+  const alCambiarPestana = useCallback(
+    (tab: Tab) => {
+      pestana.current = tab;
+      avisarAbierto();
+    },
+    [avisarAbierto]
+  );
+
+  // Al girar una tablet chica, el chat pasa del stack al panel y al revés.
+  useEffect(() => {
+    if (!navegacion.isReady()) return;
+    const ruta = navegacion.getCurrentRoute();
+    if (dosPaneles && ruta?.name === 'Chat' && ruta.params) {
+      const { chat, irASeq } = ruta.params as RutasDeSesion['Chat'];
+      navegacion.dispatch(StackActions.popToTop());
+      abrirEnPanel(chat, irASeq);
+    } else if (!dosPaneles && enPanelRef.current) {
+      const { chat, irASeq } = enPanelRef.current;
+      cerrarPanel();
+      navegacion.navigate('Chat', { chat, irASeq });
+    }
+  }, [dosPaneles, abrirEnPanel, cerrarPanel]);
   // La pestaña que pide una notificación de la agenda; `n` la vuelve a pedir
   // aunque ya se hubiera pedido antes.
   const [pestanaPedida, setPestanaPedida] = useState<{ tab: 'agenda'; n: number } | null>(null);
@@ -63,6 +114,10 @@ export function NavegacionDeSesion(props: {
     jwt: props.credential.jwt,
     abrirChat: (chat) => {
       if (!navegacion.isReady()) return;
+      if (dosPaneles) {
+        if (chatAbiertoDe(navegacion.getRootState())) navegacion.dispatch(StackActions.popToTop());
+        return abrirEnPanel(chat);
+      }
       if (chatAbiertoDe(navegacion.getRootState()) === chat.id) return;
       // Si había otro chat abierto, se reemplaza: atrás vuelve a la lista.
       if (chatAbiertoDe(navegacion.getRootState())) navegacion.dispatch(StackActions.replace('Chat', { chat }));
@@ -101,9 +156,18 @@ export function NavegacionDeSesion(props: {
               onSegundoPlano={props.onSegundoPlano}
               chatAbierto={props.chatAbierto}
               pestanaPedida={pestanaPedida}
+              onPestana={alCambiarPestana}
+              panelDeChat={
+                dosPaneles && enPanel ? (
+                  <SinMargenArriba>
+                    <PantallaDeChat key={enPanel.chat.id} chat={enPanel.chat} irASeq={enPanel.irASeq} credential={props.credential} onBack={cerrarPanel} />
+                  </SinMargenArriba>
+                ) : null
+              }
               onOpenChat={(chat, irASeq) => {
                 iniciarCronometro('abrir-chat');
-                navigation.navigate('Chat', { chat, irASeq });
+                if (dosPaneles) abrirEnPanel(chat, irASeq);
+                else navigation.navigate('Chat', { chat, irASeq });
               }}
               onLogout={props.onLogout}
             />
@@ -111,12 +175,14 @@ export function NavegacionDeSesion(props: {
         </Stack.Screen>
         <Stack.Screen name="Chat">
           {({ route, navigation }) => (
-            <PantallaDeChat
-              chat={route.params.chat}
-              irASeq={route.params.irASeq}
-              credential={props.credential}
-              onBack={() => navigation.goBack()}
-            />
+            <ConMargenesLaterales>
+              <PantallaDeChat
+                chat={route.params.chat}
+                irASeq={route.params.irASeq}
+                credential={props.credential}
+                onBack={() => navigation.goBack()}
+              />
+            </ConMargenesLaterales>
           )}
         </Stack.Screen>
       </Stack.Navigator>

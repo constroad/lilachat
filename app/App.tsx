@@ -46,6 +46,7 @@ import {
 } from './src/settings/preferencias';
 import { detenerServicio, iniciarServicio } from './modules/servicio-socket/src';
 import type { ChatSummary } from './src/api/client';
+import { ANCHO_MAXIMO_DE_FORMULARIO } from './src/ui/disposicion';
 
 /**
  * Boot (F1): credencial guardada → refrescar sesión → adentro.
@@ -60,6 +61,8 @@ import type { ChatSummary } from './src/api/client';
  * chats y la agenda cargan primero; completar el historial es trabajo de fondo.
  */
 const ESPERA_ANTES_DE_HIDRATAR_MS = 4_000;
+/** La entrada en tablet: centrada, con ancho de formulario (FL10). */
+const FORMULARIO_CENTRADO = { flex: 1, width: '100%' as const, maxWidth: ANCHO_MAXIMO_DE_FORMULARIO, alignSelf: 'center' as const };
 
 /**
  * Los chats que el hidratador recorre: la lista guardada, y si todavía no hay
@@ -387,13 +390,18 @@ function Contenido() {
           <ActivityIndicator color={colores.primary} size="large" />
         </View>
       ) : boot.phase === 'email' ? (
-        <PhoneScreen onCodeRequested={(phone) => setBoot({ phase: 'otp', phone })} />
+        // En tablet, la entrada centrada con ancho de formulario (FL10).
+        <View style={FORMULARIO_CENTRADO}>
+          <PhoneScreen onCodeRequested={(phone) => setBoot({ phase: 'otp', phone })} />
+        </View>
       ) : boot.phase === 'otp' ? (
-        <OtpScreen
-          phone={boot.phone}
-          onBack={() => setBoot({ phase: 'email' })}
-          onDone={(credential) => setBoot({ phase: 'home', credential })}
-        />
+        <View style={FORMULARIO_CENTRADO}>
+          <OtpScreen
+            phone={boot.phone}
+            onBack={() => setBoot({ phase: 'email' })}
+            onDone={(credential) => setBoot({ phase: 'home', credential })}
+          />
+        </View>
       ) : boot.phase === 'home' ? (
         <>
         <NavegacionDeSesion

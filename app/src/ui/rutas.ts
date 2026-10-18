@@ -12,3 +12,13 @@ export function chatAbiertoDe(estado: EstadoMinimo | undefined): string | null {
   const params = arriba.params as { chat?: { id?: string } } | undefined;
   return params?.chat?.id ?? null;
 }
+
+/**
+ * El chat que se VE (FL10). Con dos paneles el chat vive al lado de la lista,
+ * no en el stack; y si la pestaña activa no es Chats, el panel no se ve y sus
+ * mensajes no cuentan como leídos.
+ */
+export function chatQueSeVe(params: { deLaPila: string | null; enPanel: string | null; pestana: string }): string | null {
+  if (params.deLaPila) return params.deLaPila;
+  return params.pestana === 'chats' ? params.enPanel : null;
+}

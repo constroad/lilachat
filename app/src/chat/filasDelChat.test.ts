@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { citadosPorSeq, tipoDeFila, type FilaMinima } from './filasDelChat';
+import { citadosPorSeq, fotosDelChat, tipoDeFila, type FilaMinima } from './filasDelChat';
 
 const msj = (seq: number, cambios: Partial<FilaMinima> = {}): FilaMinima => ({
   seq,
@@ -63,5 +63,45 @@ describe('citadosPorSeq', () => {
 
   it('si el citado no está cargado, no hay cita', () => {
     expect(citadosPorSeq([msj(5, { replyToSeq: 1 })], contexto, preview).size).toBe(0);
+  });
+});
+
+/**
+ * Las fotos del visor (salió de `ChatScreen`): el archivo COMPLETO y no la
+ * miniatura, el autor resuelto (en un grupo, quién la mandó), y ni los
+ * eliminados ni lo que no tiene miniatura (eso se abre con otra app).
+ */
+describe('fotosDelChat', () => {
+  const YO = '665f1a2b3c4d5e6f70818293';
+  const ANA = '665f1a2b3c4d5e6f70818294';
+  const at = '2026-10-17T15:04:00.000Z';
+  const conFoto = (seq: number, senderId: string, extra: Record<string, unknown> = {}) => ({
+    seq,
+    senderId,
+    at,
+    media: { url: `https://x/${seq}.jpg`, thumbUrl: `https://x/t${seq}.jpg`, mime: 'image/jpeg', fileName: `${seq}.jpg` },
+    ...extra,
+  });
+
+  it('el archivo completo, la miniatura aparte, y «Tú» en lo propio', () => {
+    const [foto] = fotosDelChat([conFoto(1, YO)], { yo: YO, esGrupo: false, nombres: new Map(), nombreDelChat: 'Ana' });
+
+    expect(foto).toMatchObject({ url: 'https://x/1.jpg', miniatura: 'https://x/t1.jpg', autor: 'Tú', mia: true, seq: 1 });
+    expect(foto?.cuandoReal.toISOString()).toBe(at);
+  });
+
+  it('en un grupo, el nombre de quien la mandó; si no se sabe, el del chat', () => {
+    const contexto = { yo: YO, esGrupo: true, nombres: new Map([[ANA, 'Ana']]), nombreDelChat: 'Familia' };
+
+    const fotos = fotosDelChat([conFoto(1, ANA), conFoto(2, 'desconocido')], contexto);
+
+    expect(fotos.map((foto) => foto.autor)).toEqual(['Ana', 'Familia']);
+  });
+
+  it('sin miniatura o eliminada, no va al visor', () => {
+    const sinMiniatura = { seq: 3, senderId: ANA, at, media: { url: 'https://x/doc.zip', mime: 'application/zip' } };
+    const eliminada = conFoto(4, ANA, { deletedAt: at });
+
+    expect(fotosDelChat([sinMiniatura, eliminada], { yo: YO, esGrupo: false, nombres: new Map(), nombreDelChat: 'Ana' })).toEqual([]);
   });
 });

@@ -1,35 +1,21 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  BackHandler,
-  Pressable,
-  Text,
-  View,
-} from 'react-native';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { Text, View } from 'react-native';
 import { ProgramarMensajeModal } from './ProgramarMensajeModal';
-import { FlashList, type FlashListRef } from '@shopify/flash-list';
+import type { FlashListRef } from '@shopify/flash-list';
 import { KeyboardAvoidingView, useKeyboardState } from 'react-native-keyboard-controller';
-import { terminarCronometro } from '../diagnostico/diagnostico';
-import { ChevronDown } from 'lucide-react-native';
 import { formatDayLabel, startsNewDay } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { AttachSheet } from './AttachSheet';
-import { CreateEventScreen } from '../agenda/CreateEventScreen';
-import { CreatePollScreen } from '../agenda/CreatePollScreen';
+import { CrearDesdeElChat } from './CrearDesdeElChat';
 import { CatchUpBanner } from './CatchUpBanner';
 import { SecretChatBanner } from '../crypto/SecretChatBanner';
 import { useSecretChat } from '../crypto/useSecretChat';
-import { DaySeparator, MessageRow, isPending, type Row } from './MessageRow';
-import { formatClock } from '@lilachat/shared';
+import { DaySeparator, MessageRow, isPending, previewDeMensaje, type Row } from './MessageRow';
 import { abrirConOtraApp } from './guardarYCompartir';
 import { Composer, type ComposerHandle } from './Composer';
-import { previewDeMensaje } from './MessageRow';
 import { ChatDetailScreen } from './ChatDetailScreen';
 import { useChat } from './useChat';
 import { useLlamadas } from '../calls/ProveedorDeLlamadas';
-import { descartarMensaje, reintentarMensaje } from './outboxStore';
-import { descartarArchivo, reintentarArchivo } from './colaDeArchivos';
 import { useArchivosDelChat } from './useArchivosDelChat';
 import { useLimpiarAvisoDelChat } from './useLimpiarAvisoDelChat';
 import { SeleccionDeMensaje } from './SeleccionDeMensaje';
@@ -42,27 +28,30 @@ import { sinOcultos, useOcultos } from './ocultos';
 import { DivisorNoLeidos, useDivisorNoLeidos } from './useDivisorNoLeidos';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
-import { decidirAtras } from '../ui/botonAtras';
 import { BuscadorDelChat } from './BuscadorDelChat';
 import { useBuscarEnChat } from './useBuscarEnChat';
 import { textoDeSubida } from './progresoDeSubida';
-import { citadosPorSeq, tipoDeFila } from './filasDelChat';
+import { citadosPorSeq, fotosDelChat } from './filasDelChat';
 import { useNombresDelGrupo } from './useNombresDelGrupo';
 import { subtituloDelChat } from './cabeceraDelChat';
-import { FondoDelChat } from './FondoDelChat';
-import { useFinalDeLaConversacion } from './useFinalDeLaConversacion';
+import { ListaDeMensajes } from './ListaDeMensajes';
+import { useRespuestaYEdicion } from './useRespuestaYEdicion';
+import { useAtrasDelChat } from './useAtrasDelChat';
+import { useMensajeFallido } from './useMensajeFallido';
+import { useAlAbrirElChat } from './useAlAbrirElChat';
 
-/**
- * La conversación (diseño Stitch «Chat de Grupo»). Burbuja propia a la derecha
- * en acento; la ajena a la izquierda en superficie — y la esquina-cola de 4px
- * apunta al emisor, que es el token `rounded-tail` de Vivid Pulse.
- */
 /** El pie del composer con el teclado abierto (dp). */
 const MARGEN_CON_TECLADO = 8;
 /** El segundo `scrollToIndex`, cuando la zona ya se midió. */
 const SEGUNDO_PASE_MS = 400;
 /** Cuánto queda resaltado el original de una cita. */
 const RESALTADO_DE_CITA_MS = 1500;
+
+/**
+ * La conversación (diseño Stitch «Chat de Grupo»). Burbuja propia a la derecha
+ * en acento; la ajena a la izquierda en superficie — y la esquina-cola de 4px
+ * apunta al emisor, que es el token `rounded-tail` de Vivid Pulse.
+ */
 
 export function ChatScreen({
   chatId,
@@ -139,79 +128,24 @@ export function ChatScreen({
   });
   // El borrador vive en el Composer (FL2): una tecla ya no re-renderiza esto.
   const composerRef = useRef<ComposerHandle>(null);
-  /** El mensaje al que se está respondiendo (deslizando sobre él), o null. */
-  const [respondiendoA, setRespondiendoA] = useState<{ seq: number; texto: string; mio: boolean } | null>(null);
-  const respondiendoRef = useRef(false);
-  respondiendoRef.current = respondiendoA !== null;
-  /** El mensaje propio que se está editando (José, 17/10/2026), o null. */
-  const [editando, setEditando] = useState<{ seq: number; texto: string } | null>(null);
-  const editandoRef = useRef(false);
-  editandoRef.current = editando !== null;
-  const alCancelarEdicion = useCallback(() => setEditando(null), []);
-  const alEditar = useCallback(
-    async (seq: number, texto: string) => {
-      const resultado = await editar(seq, texto);
-      if (!resultado.ok) {
-        setMediaError(resultado.motivo ?? 'No se pudo editar.');
-        return false;
-      }
-      setEditando(null);
-      return true;
-    },
-    [editar]
-  );
+  const [mediaError, setMediaError] = useState('');
+  /** Respondiendo (deslizando sobre un mensaje) o editando uno propio. */
+  const respuesta = useRespuestaYEdicion({ editar, onError: setMediaError });
 
   // Mensajes programados (F11): long-press en enviar abre el modal.
   const programados = useProgramados({ jwt: credential.jwt, chatId, alProgramado: () => composerRef.current?.limpiar() });
   const [attachOpen, setAttachOpen] = useState(false);
-  // Crear desde la conversación: el chat YA está elegido, así que las pantallas
-  // de crear no vuelven a preguntar dónde.
   const [creando, setCreando] = useState<'event' | 'poll' | null>(null);
   const [falloCifrado, setFalloCifrado] = useState(false);
   // Las llamadas son de la sesión (FL8): suenan en cualquier pantalla.
   const { llamar } = useLlamadas();
 
-  /**
-   * El botón ATRÁS de Android vuelve a la lista, no cierra la app.
-   *
-   * Sin este manejador, Android aplica su comportamiento por defecto —cerrar la
-   * actividad— y como esta app tiene una sola, eso es salir. José lo reportó el
-   * 27/08/2026 estando en el chat con Wilson.
-   *
-   * Devolver `true` significa «ya me encargué»; `false` deja pasar a Android.
-   */
-  useEffect(() => {
-    const suscripcion = BackHandler.addEventListener('hardwareBackPress', () => {
-      // FL9: primero se deshace lo que se está haciendo (selección, respuesta).
-      const accion = decidirAtras({
-        pantalla: 'chat',
-        haySeleccion: elegidoRef.current !== null,
-        editando: editandoRef.current,
-        respondiendo: respondiendoRef.current,
-        buscando: buscandoRef.current,
-      });
-      if (accion === 'soltar-seleccion') setElegido(null);
-      else if (accion === 'limpiar-busqueda') cerrarBusquedaRef.current();
-      else if (accion === 'cancelar-edicion') setEditando(null);
-      else if (accion === 'cancelar-respuesta') setRespondiendoA(null);
-      else if (accion === 'ir-a-lista') onBack();
-      else return false;
-      return true;
-    });
-    return () => suscripcion.remove();
-  }, [onBack]);
-  const [mediaError, setMediaError] = useState('');
-  /** Las fotos elegidas que se están por mandar (FL9b); vacío = cerrado. */
-
   const archivosEnCola = useArchivosDelChat(chatId);
   const subidaEnCurso = archivosEnCola.find((uno) => uno.progreso !== undefined)?.progreso;
-  /** La foto abierta a pantalla completa, o `null`. */
   /** El `seq` de la foto abierta a pantalla completa, o `null`. */
   const [viendoSeq, setViendoSeq] = useState<number | null>(null);
   /** El mensaje seleccionado con pulsación larga, o `null`. */
   const [elegido, setElegido] = useState<number | null>(null);
-  const elegidoRef = useRef(elegido);
-  elegidoRef.current = elegido;
   /** El mensaje resaltado un momento al saltar desde una cita (FL9). */
   const [resaltado, setResaltado] = useState<number | null>(null);
   const { ocultos, ocultar } = useOcultos(chatId);
@@ -225,17 +159,10 @@ export function ChatScreen({
    */
   const [infoPropia, setInfoPropia] = useState<{ name?: string; avatarUrl?: string }>({});
 
-
-  /**
-   * Terminar la grabación y mandarla.
-   *
-   * Pasa por el MISMO `upload` que una foto: la nota de voz es media como
-   * cualquier otra, y duplicar el camino sería duplicar la cola, el progreso y
-   * el manejo de errores.
-   */
+  const { cancelarRespuesta } = respuesta;
   const alEnviar = useCallback(
     async (texto: string, respondeA?: number) => {
-      setRespondiendoA(null);
+      cancelarRespuesta();
       // Lo que mando yo SIEMPRE se ve: aunque estuviera leyendo arriba.
       requestAnimationFrame(() => listaRef.current?.scrollToEnd({ animated: true }));
       const resultado = await send(texto, respondeA);
@@ -245,13 +172,11 @@ export function ChatScreen({
       setFalloCifrado(true);
       return false;
     },
-    [send]
+    [send, cancelarRespuesta]
   );
   const alAdjuntar = useCallback(() => setAttachOpen(true), []);
   const { fotosElegidas, cerrarFotos, alEnviarFotos, alCamara, alNotaDeVoz, pickFromCamera, pickFromGallery, pickFile } =
     useAdjuntosDelChat({ chatId, onError: setMediaError });
-  // Por un ref: `pickFromCamera` se rearma en cada render y el Composer es memo.
-  const alCancelarRespuesta = useCallback(() => setRespondiendoA(null), []);
 
   const nombreVisible = infoPropia.name ?? chatName;
 
@@ -277,51 +202,15 @@ export function ChatScreen({
   });
   const fotoVisible = infoPropia.avatarUrl ?? chatAvatarUrl;
 
-  /**
-   * Las fotos del chat, en el formato que consume el visor.
-   *
-   * Se arman ACÁ y no en el visor: el nombre del autor sale de la agenda del
-   * teléfono y la hora de un formateador nuestro. Un visor que resolviera eso
-   * solo tendría que conocer la agenda, la sesión y el formato de fechas — tres
-   * cosas que no son suyas.
-   */
-  const fotos = messages
-    .filter((m) => m.media?.thumbUrl && !m.deletedAt)
-    .map((m) => ({
-      // El archivo COMPLETO, no la miniatura. Con `thumbUrl` el visor mostraba
-      // una foto borrosa a pantalla completa —y un video no se reproducía nunca,
-      // porque lo que le llegaba era su cuadro de portada en JPG—. La miniatura
-      // sigue siendo la de la burbuja.
-      url: m.media!.url ?? m.media!.thumbUrl!,
-      mime: m.media!.mime,
-      nombre: m.media!.fileName,
-      cuandoReal: new Date(m.at),
-      seq: m.seq,
-      mia: m.senderId === credential.userId,
-      // En un grupo, quién la mandó; antes decía el nombre del GRUPO.
-      autor:
-        m.senderId === credential.userId
-          ? 'Tú'
-          : esGrupoChat
-            ? (nombresDelGrupo.get(String(m.senderId)) ?? chatName)
-            : chatName,
-      cuando: formatClock(new Date(m.at)),
-      miniatura: m.media!.thumbUrl,
-    }));
-
+  /** Las fotos del chat para el visor: el archivo completo y el autor resuelto. */
+  const fotos = useMemo(
+    () => fotosDelChat(messages, { yo: credential.userId, esGrupo: esGrupoChat, nombres: nombresDelGrupo, nombreDelChat: chatName }),
+    [messages, credential.userId, esGrupoChat, nombresDelGrupo, chatName]
+  );
 
   /**
-   * La foto en vuelo se suma como una fila pendiente mas. Va al FINAL: es lo
-   * ultimo que mando la persona y tiene que verse abajo de todo, no intercalada.
-   */
-  /**
-   * La lista, para poder mandarla al final.
-   *
-   * Hace falta porque con MENOS contenido que pantalla el ancla al fondo deja
-   * la última fila debajo de la barra de escribir: se veía cortada hasta que la
-   * persona scrolleaba. Con la conversación llena no pasa, así que el defecto
-   * solo aparecía en chats nuevos — que ahora, con los avisos del grupo, es
-   * todo grupo recién creado.
+   * La lista, para poder mandarla al final: con MENOS contenido que pantalla
+   * el ancla al fondo dejaba la última fila debajo de la barra de escribir.
    */
   const listaRef = useRef<FlashListRef<Row> | null>(null);
 
@@ -381,10 +270,22 @@ export function ChatScreen({
   // Buscar dentro del chat (FL9): sobre lo que se ve —sin lo «eliminado para mí»—.
   const visiblesParaBuscar = useMemo(() => sinOcultos(messages, ocultos), [messages, ocultos]);
   const busqueda = useBuscarEnChat({ mensajes: visiblesParaBuscar, irA: irAMensaje });
-  const buscandoRef = useRef(false);
-  buscandoRef.current = busqueda.activo;
-  const cerrarBusquedaRef = useRef(busqueda.cerrar);
-  cerrarBusquedaRef.current = busqueda.cerrar;
+
+  useAtrasDelChat(
+    {
+      haySeleccion: elegido !== null,
+      buscando: busqueda.activo,
+      editando: respuesta.editando !== null,
+      respondiendo: respuesta.respondiendoA !== null,
+    },
+    {
+      soltarSeleccion: () => setElegido(null),
+      cerrarBusqueda: busqueda.cerrar,
+      cancelarEdicion: respuesta.cancelarEdicion,
+      cancelarRespuesta,
+      volver: onBack,
+    }
+  );
 
   const mensajeElegido = elegido === null ? null : (messages.find((mensaje) => mensaje.seq === elegido) ?? null);
 
@@ -425,32 +326,14 @@ export function ChatScreen({
       if (!r.ok) setMediaError(r.motivo);
     });
   }, []);
-  const alResponder = useCallback(
-    (seq: number, texto: string, mio: boolean) => setRespondiendoA({ seq, texto, mio }),
-    []
-  );
+  const { alResponder } = respuesta;
+  const alFallido = useMensajeFallido(archivosEnCola);
 
   /**
    * Una fila. Estable mientras no cambien los mensajes ni los acuses: con
    * `MessageRow` memoizado, un mensaje nuevo dibuja SU burbuja y la de al lado
    * (por el agrupado), no la pantalla entera (FL2).
    */
-  /**
-   * Un mensaje que el server rechazó para siempre (FL8). Antes desaparecía sin
-   * aviso; ahora se ve «No se envió» y se decide acá.
-   */
-  const archivosRef = useRef(archivosEnCola);
-  archivosRef.current = archivosEnCola;
-  const alFallido = useCallback((clientKey: string, motivo: string) => {
-    // Texto y archivos viven en colas distintas: cada uno se reintenta en la suya.
-    const esArchivo = archivosRef.current.some(({ archivo }) => archivo.clientKey === clientKey);
-    Alert.alert('No se envió', motivo, [
-      { text: 'Borrar', style: 'destructive', onPress: () => void (esArchivo ? descartarArchivo : descartarMensaje)(clientKey) },
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Reintentar', onPress: () => void (esArchivo ? reintentarArchivo : reintentarMensaje)(clientKey) },
-    ]);
-  }, []);
-
   const dibujarFila = useCallback(
     ({ item, index }: { item: Row; index: number }) => {
       const previous = rows[index - 1];
@@ -484,35 +367,11 @@ export function ChatScreen({
     [rows, credential.userId, leidoHasta, entregadoHasta, esGrupoChat, nombresDelGrupo, alVerImagen, alResponder, citados, elegido, resaltado, busqueda.seqActual, divisorSeq, noLeidosAlAbrir, alFallido, alTocarCita]
   );
 
-  const { alScrollear, abajoLejos, nuevosAbajo } = useFinalDeLaConversacion(listaRef, messages, credential.userId);
-
   // Con el teclado abierto no hay barra de navegación debajo: el margen del pie
   // dejaba un hueco entre el campo y el teclado (auditoría del 16/10).
   const tecladoAbierto = useKeyboardState((estado) => estado.isVisible);
 
-  const hayContenido = rows.length > 0;
-  useEffect(() => {
-    if (!hayContenido) return;
-    // Línea base de FL0 (spec §45): del toque en la lista a ver mensajes.
-    terminarCronometro('abrir-chat');
-    // Un tick después del primer pintado: antes de eso la lista todavía no
-    // midió y el scroll no llega a ningún lado.
-    // 150 ms y no 0: con 0 la lista todavía no midió y el scroll no llega a
-    // ningún lado — probado en el emulador.
-    // FL9: al divisor de no leídos si los hay; si no, al final.
-    const t = setTimeout(irAlInicio, 150);
-    return () => clearTimeout(t);
-    // Solo al pasar de vacío a con contenido: reaccionar a cada mensaje pelearía
-    // con quien está leyendo mensajes viejos más arriba.
-  }, [hayContenido]);
-
-  useEffect(() => {
-    const last = messages[messages.length - 1];
-    // Hasta el MÁXIMO entre lo cargado y lo que el server dijo que existe: así
-    // un mensaje final borrado en duro no deja un «sin leer» que no baja.
-    const hasta = Math.max(last?.seq ?? 0, lastSeqInicial ?? 0);
-    if (hasta > 0) markRead(hasta);
-  }, [messages, markRead, lastSeqInicial]);
+  useAlAbrirElChat({ hayContenido: rows.length > 0, irAlInicio, mensajes: messages, lastSeqInicial, markRead });
 
   return (
     <KeyboardAvoidingView
@@ -548,10 +407,7 @@ export function ChatScreen({
           onResponder={(seq) => alResponder(seq, previewDeMensaje(mensajeElegido), mensajeElegido.senderId === credential.userId)}
           onEliminarParaTodos={eliminar}
           onEliminarParaMi={ocultar}
-          onEditar={(seq, texto) => {
-            setRespondiendoA(null);
-            setEditando({ seq, texto });
-          }}
+          onEditar={respuesta.empezarEdicion}
           onError={setMediaError}
         />
       ) : busqueda.activo ? (
@@ -565,44 +421,26 @@ export function ChatScreen({
           onCerrar={busqueda.cerrar}
         />
       ) : (
-      <>
-      <EncabezadoDelChat
-        nombre={nombreVisible}
-        foto={fotoVisible}
-        secreto={Boolean(encrypted)}
-        conectado={connected}
-        subtitulo={subtitulo}
-        otroEscribe={otroEscribe}
-        puedeLlamar={Boolean(otherUserId)}
-        onVolver={onBack}
-        onAbrirDetalle={() => setVerDetalle(true)}
-        onLlamar={(conVideo) => llamar(chatId, chatName, conVideo)}
-      />
-      </>
+        <EncabezadoDelChat
+          nombre={nombreVisible}
+          foto={fotoVisible}
+          secreto={Boolean(encrypted)}
+          conectado={connected}
+          subtitulo={subtitulo}
+          otroEscribe={otroEscribe}
+          puedeLlamar={Boolean(otherUserId)}
+          onVolver={onBack}
+          onAbrirDetalle={() => setVerDetalle(true)}
+          onLlamar={(conVideo) => llamar(chatId, chatName, conVideo)}
+        />
       )}
 
-      {creando === 'event' ? (
-        <CreateEventScreen
-          visible
-          credential={credential}
-          fixedChat={{ id: chatId, name: chatName }}
-          onClose={() => setCreando(null)}
-          onCreated={() => setCreando(null)}
-        />
-      ) : creando === 'poll' ? (
-        <CreatePollScreen
-          visible
-          credential={credential}
-          fixedChat={{ id: chatId, name: chatName }}
-          onClose={() => setCreando(null)}
-          onCreated={() => setCreando(null)}
-        />
-      ) : null}
-
-      {/* En un chat cifrado NO se ofrece «ponme al día»: Lila no puede leerlo,
-          y un botón que siempre falla es peor que no tenerlo. */}
-      {/* La pantalla de llamada se monta SOBRE el chat: al colgar se vuelve a
-          la conversación, que es donde uno estaba. */}
+      <CrearDesdeElChat
+        creando={creando}
+        credential={credential}
+        chat={{ id: chatId, name: chatName }}
+        onCerrar={() => setCreando(null)}
+      />
 
       <ProgramarMensajeModal
         visible={programados.visible}
@@ -623,81 +461,25 @@ export function ChatScreen({
         </Text>
       ) : null}
 
+      {/* En un chat cifrado NO se ofrece «ponme al día»: Lila no puede leerlo,
+          y un botón que siempre falla es peor que no tenerlo. */}
       {encrypted ? (
         <SecretChatBanner session={secreto} />
       ) : (
         <CatchUpBanner chatId={chatId} credential={credential} unread={unread} />
       )}
 
-      <View className="flex-1">
-        <FondoDelChat />
-      <FlashList
-          ref={listaRef}
-          data={rows}
-          // Cuando la lista terminó de montar, al final. Es el momento exacto en
-          // que ya midió, sin adivinar con un temporizador.
-          onLoad={irAlInicio}
-          testID="lista-mensajes"
-          /**
-           * `flex-1` NO es cosmético: sin él la lista no está acotada por la
-           * columna y su borde inferior queda DEBAJO de la barra de escribir. Con
-           * la conversación llena no se nota —lo que sobra queda fuera de la
-           * pantalla y el último mensaje cae justo arriba de la barra— pero con
-           * pocos mensajes el contenido se ancla al fondo de la lista, o sea
-           * tapado. Se vio con un grupo cuyo único contenido era un aviso: la
-           * línea aparecía cortada a la mitad detrás del campo de texto.
-           */
-          className="flex-1"
-          // El scroll hacia arriba trae los mensajes viejos, como WhatsApp. El
-          // umbral es 0.5 pantallas: pedirlos recién al tocar el borde deja un
-          // hueco visible mientras viajan.
-          onStartReached={() => void cargarAnteriores()}
-          onStartReachedThreshold={0.5}
-          // `autoscrollToBottomThreshold`: si se está cerca del final (20 % de la
-          // pantalla), lo que llega o se manda baja la lista solo, como
-          // WhatsApp. Leyendo arriba, no mueve nada.
-          maintainVisibleContentPosition={{ startRenderingFromBottom: true, autoscrollToBottomThreshold: 0.2 }}
-          onScroll={alScrollear}
-          scrollEventThrottle={100}
-          ListHeaderComponent={
-            cargandoAnteriores ? (
-              <View className="items-center py-3" testID="cargando-anteriores">
-                <ActivityIndicator color={colores.primary} />
-              </View>
-            ) : !hayAnteriores && rows.length > 0 ? (
-              // El final de la conversación se DICE: sin esto, quien scrollea
-              // hasta arriba no sabe si ya vio todo o si falta cargar.
-              <Text className="py-3 text-center text-[11px] text-on-surface-variant">
-                Este es el principio de la conversación
-              </Text>
-            ) : null
-          }
-          keyExtractor={(row) => (isPending(row) ? `p-${row.clientKey}` : `m-${row.seq}`)}
-          contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 8 }}
-          renderItem={dibujarFila}
-          getItemType={tipoDeFila}
-        />
-        {abajoLejos ? (
-          // «Bajar al final» con los que llegaron mientras se leía arriba, como
-          // WhatsApp. Aparece solo lejos del final: abajo no hace falta.
-          <Pressable
-            testID="btn-bajar"
-            accessibilityLabel="Ir al último mensaje"
-            onPress={() => listaRef.current?.scrollToEnd({ animated: true })}
-            className="absolute bottom-3 right-3 h-10 w-10 items-center justify-center rounded-full bg-surface shadow-md"
-          >
-            <ChevronDown size={22} color={colores['on-surface-variant']} />
-            {nuevosAbajo > 0 ? (
-              <View className="absolute -right-1 -top-1 h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1">
-                <Text className="text-[11px] font-bold text-on-primary" testID="nuevos-abajo">
-                  {nuevosAbajo}
-                </Text>
-              </View>
-            ) : null}
-          </Pressable>
-        ) : null}
-      </View>
-
+      <ListaDeMensajes
+        listaRef={listaRef}
+        rows={rows}
+        mensajes={messages}
+        yo={credential.userId}
+        dibujarFila={dibujarFila}
+        onListo={irAlInicio}
+        onCargarAnteriores={() => void cargarAnteriores()}
+        cargandoAnteriores={cargandoAnteriores}
+        hayAnteriores={hayAnteriores}
+      />
 
       {subidaEnCurso !== undefined ? (
         <Text className="px-4 pb-1 text-sm text-on-surface-variant" testID="subida-progreso">
@@ -723,11 +505,11 @@ export function ChatScreen({
       <Composer
         ref={composerRef}
         chatId={chatId}
-        respondiendoA={respondiendoA}
-        onCancelarRespuesta={alCancelarRespuesta}
-        editando={editando}
-        onCancelarEdicion={alCancelarEdicion}
-        onEditar={alEditar}
+        respondiendoA={respuesta.respondiendoA}
+        onCancelarRespuesta={cancelarRespuesta}
+        editando={respuesta.editando}
+        onCancelarEdicion={respuesta.cancelarEdicion}
+        onEditar={respuesta.guardarEdicion}
         subiendo={false}
         margenPie={tecladoAbierto ? MARGEN_CON_TECLADO : margenes.pie}
         onAdjuntar={alAdjuntar}

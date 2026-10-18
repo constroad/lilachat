@@ -1,3 +1,5 @@
+import { formatClock } from '@lilachat/shared';
+
 /**
  * Lo puro de las filas de la conversación (FL2, spec §45): de qué tipo es cada
  * fila y a quién cita cada respuesta. Antes se calculaba por fila y por render
@@ -63,4 +65,47 @@ export function citadosPorSeq<M extends FilaMinima>(
     citados.set(mensaje.seq, { autor, texto: preview(respondido) });
   }
   return citados;
+}
+
+type MensajeConMedia = {
+  seq: number;
+  senderId: string;
+  at: string;
+  deletedAt?: string;
+  media?: { url?: string; thumbUrl?: string; mime?: string; fileName?: string };
+};
+
+/**
+ * Las fotos del chat como las consume el visor (salió de `ChatScreen`). Se
+ * arman acá y no en el visor: el autor sale de la agenda y la hora de un
+ * formateador nuestro, tres cosas que el visor no tiene por qué conocer.
+ *
+ * El archivo COMPLETO y no la miniatura: con `thumbUrl` el visor mostraba una
+ * foto borrosa y un video no se reproducía nunca (le llegaba la portada). Lo
+ * que no tiene miniatura no entra: se abre con otra app.
+ */
+export function fotosDelChat(
+  mensajes: readonly MensajeConMedia[],
+  contexto: { yo: string; esGrupo: boolean; nombres: ReadonlyMap<string, string>; nombreDelChat: string }
+) {
+  return mensajes.flatMap((mensaje) => {
+    const media = mensaje.media;
+    if (!media?.thumbUrl || mensaje.deletedAt) return [];
+    const mia = mensaje.senderId === contexto.yo;
+    const deUnGrupo = contexto.esGrupo ? contexto.nombres.get(String(mensaje.senderId)) : undefined;
+    return [
+      {
+        url: media.url ?? media.thumbUrl,
+        mime: media.mime,
+        nombre: media.fileName,
+        cuandoReal: new Date(mensaje.at),
+        seq: mensaje.seq,
+        mia,
+        // En un grupo, quién la mandó; antes decía el nombre del GRUPO.
+        autor: mia ? 'Tú' : (deUnGrupo ?? contexto.nombreDelChat),
+        cuando: formatClock(new Date(mensaje.at)),
+        miniatura: media.thumbUrl,
+      },
+    ];
+  });
 }

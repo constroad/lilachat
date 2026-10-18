@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, BackHandler, Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { ArrowLeft, BellRing, ChevronRight, CloudUpload, Moon, RefreshCw, Sun, SunMoon, User, UserPlus } from 'lucide-react-native';
+import { ArrowLeft, BellRing, ChevronRight, CloudUpload, User, UserPlus } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { listChats, type ChatSummary } from '../api/client';
 import { connectSocket } from '../chat/socketClient';
@@ -16,22 +16,16 @@ import { InviteScreen } from '../contacts/InviteScreen';
 import { NewChatScreen } from '../contacts/NewChatScreen';
 import { publishPublicKey } from '../crypto/deviceKeys';
 import { BackupScreen } from '../settings/BackupScreen';
-import type { ResultadoDelChequeo } from '../settings/actualizacion';
-import { buscarActualizacion, versionActual, versionCodeActual } from '../settings/versionApi';
-import { decidirAvisoDeActualizacion, type AvisoDeActualizacion } from '../settings/avisoDeActualizacion';
-import { abrirActualizacion } from '../settings/abrirTienda';
 import { BandaDeActualizacion } from '../settings/BandaDeActualizacion';
 import { AutoRespuestaAjuste } from '../settings/AutoRespuestaAjuste';
 import { PerfilAjuste } from '../settings/PerfilAjuste';
 import { Image } from 'expo-image';
 import { usePerfilPropio } from '../settings/perfilPropio';
 import { RespaldoAjuste } from '../settings/RespaldoAjuste';
-import { useActualizador, type InfoActualizacion } from '../settings/useActualizador';
-import { infoParaActualizar } from '../settings/actualizacionInfo';
-import {
-  guardarActualizacionDescartada,
-  leerActualizacionDescartada,
-} from '../settings/preferencias';
+import { useActualizacionesDeLaApp } from '../settings/useActualizacionesDeLaApp';
+import { AparienciaAjuste } from '../settings/AparienciaAjuste';
+import { BuscarActualizacionesAjuste } from '../settings/BuscarActualizacionesAjuste';
+import { Rotulo } from './Rotulo';
 import { AppHeader, BottomNav, type Tab } from './BottomNav';
 import { useMargenes } from './useMargenes';
 import { DiagnosticoAjuste } from '../diagnostico/DiagnosticoAjuste';
@@ -40,7 +34,7 @@ import { useAlVolver } from './useAlVolver';
 import { decidirAtras } from './botonAtras';
 import { nombreDeContacto } from '@lilachat/shared';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
-import { useColores, useTema } from './tema';
+import { useColores } from './tema';
 
 /**
  * El contenedor de las pestañas: header y barra inferior viven ACÁ y las
@@ -80,7 +74,6 @@ export function TabsShell({
   chatAbiertoRef.current = chatAbierto;
   const colores = useColores();
   const perfilPropio = usePerfilPropio(credential);
-  const { modo, setModo } = useTema();
   const margenes = useMargenes();
   const [tab, setTab] = useState<Tab>('chats');
   useEffect(() => {
@@ -103,65 +96,7 @@ export function TabsShell({
   const panel = (cual: Tab) => ({ flex: 1, display: cual === tab ? ('flex' as const) : ('none' as const) });
   const [showBackup, setShowBackup] = useState(false);
   const [invitando, setInvitando] = useState(false);
-  const [chequeo, setChequeo] = useState<ResultadoDelChequeo | null>(null);
-  const [verificando, setVerificando] = useState(false);
-  const [enlaceApp, setEnlaceApp] = useState('');
-  const VACIA: InfoActualizacion = { downloadUrl: '', releaseId: '', sha256: '', size: 0 };
-  const [infoApp, setInfoApp] = useState<InfoActualizacion>(VACIA);
-  const { estado: estadoActualizacion, actualizar } = useActualizador();
-  const [aviso, setAviso] = useState<AvisoDeActualizacion>({ tipo: 'ninguno' });
-
-  /**
-   * El enlace directo al APK se busca AL ARRANCAR, no al tocar «buscar
-   * actualizaciones».
-   *
-   * Estaba atado a ese botón, así que la invitación salía con una sola puerta
-   * —la tienda— y la opción 2 no aparecía nunca. Visto compartiendo de verdad
-   * en el emulador (27/08/2026): el texto llegaba con «1)» y sin «2)».
-   */
-  useEffect(() => {
-    void (async () => {
-      // UNA sola consulta al arrancar, que sirve para las dos cosas: el enlace
-      // de la invitación y el aviso de versión nueva. Preguntar dos veces por
-      // lo mismo es gasto puro.
-      const [{ downloadUrl, ultima, minima, version, sha256, size, releaseId }, descartada] =
-        await Promise.all([buscarActualizacion(), leerActualizacionDescartada()]);
-      setEnlaceApp(downloadUrl);
-      setInfoApp({ downloadUrl, releaseId, sha256, size });
-      setAviso(
-        decidirAvisoDeActualizacion({
-          actual: versionCodeActual(),
-          ultima,
-          minima,
-          version,
-          descartada,
-        })
-      );
-    })();
-  }, []);
-
-  /**
-   * Busca la versión publicada y, si hay una más nueva, MANDA A LA TIENDA.
-   *
-   * Abría el navegador con el APK suelto —el «File might be harmful» de Chrome—
-   * mientras la banda de la lista ya mandaba a LilaStore. El mismo pedido
-   * resuelto de dos formas es, para quien lo usa, una app que a veces funciona.
-   * La app no se instala a sí misma: eso exige el permiso que hace que Play
-   * Protect marque a una app de chat como sospechosa.
-   */
-  const verificar = async () => {
-    if (verificando) return;
-    setVerificando(true);
-    const { resultado, downloadUrl, sha256, size, releaseId } = await buscarActualizacion();
-    setChequeo(resultado);
-    setEnlaceApp(downloadUrl);
-    const info = { downloadUrl, releaseId, sha256, size };
-    setInfoApp(info);
-    setVerificando(false);
-    // Se baja y se instala DENTRO de la app; si no se puede verificar, el propio
-    // actualizador cae a un estado de error que ofrece LilaStore.
-    if (resultado.estado === 'hay-nueva') void actualizar(info);
-  };
+  const actualizaciones = useActualizacionesDeLaApp();
   const [newChat, setNewChat] = useState(false);
 
   /**
@@ -369,23 +304,11 @@ export function TabsShell({
           {/* La banda va arriba de la lista y SOLO en Chats: es la pantalla de
               entrada, y repetirla en las cuatro pestañas la convierte en ruido. */}
           <BandaDeActualizacion
-            aviso={aviso}
-            estado={estadoActualizacion}
-            // Se vuelve a preguntar al TOCAR: la info del arranque puede ser de
-            // una versión que ya no es la última (16/10: seis publicaciones
-            // seguidas y se bajaba una vieja).
-            onActualizar={() =>
-              void buscarActualizacion().then(({ downloadUrl, releaseId, sha256, size }) => {
-                const info = infoParaActualizar({ downloadUrl, releaseId, sha256, size }, infoApp);
-                setInfoApp(info);
-                return actualizar(info);
-              })
-            }
-            onAbrirTienda={() => void abrirActualizacion(infoApp.downloadUrl)}
-            onDescartar={() => {
-              if (aviso.tipo !== 'ninguno') void guardarActualizacionDescartada(aviso.version);
-              setAviso({ tipo: 'ninguno' });
-            }}
+            aviso={actualizaciones.aviso}
+            estado={actualizaciones.estado}
+            onActualizar={actualizaciones.actualizarDesdeBanda}
+            onAbrirTienda={actualizaciones.abrirTienda}
+            onDescartar={actualizaciones.descartarAviso}
           />
           <ChatListScreen
             credential={credential}
@@ -421,60 +344,9 @@ export function TabsShell({
           >
             <PerfilAjuste credential={credential} />
 
-            <Text className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
-              Apariencia
-            </Text>
-            {/**
-             * Claro, oscuro o el del sistema (José, 27/08/2026: «lilachat no
-             * tiene darkmode o light mode como lilastore»).
-             *
-             * **Tres opciones y no dos**, igual que LilaStore. Sin «sistema», la
-             * primera vez que alguien abre la app de noche le explota una
-             * pantalla blanca en la cara y la única salida es acordarse de venir
-             * hasta acá. Con automático por defecto, la mayoría no toca nada.
-             *
-             * Control segmentado y no una lista: son opciones EXCLUYENTES y se
-             * comparan entre sí — verlas juntas es la mitad de la decisión.
-             */}
-            <View className="flex-row rounded-xl border border-outline/10 bg-surface p-1">
-              {(
-                [
-                  { key: 'sistema' as const, label: 'Sistema', Icono: SunMoon },
-                  { key: 'claro' as const, label: 'Claro', Icono: Sun },
-                  { key: 'oscuro' as const, label: 'Oscuro', Icono: Moon },
-                ]
-              ).map(({ key, label, Icono }) => {
-                const activo = modo === key;
-                return (
-                  <Pressable
-                    key={key}
-                    testID={`tema-${key}`}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: activo }}
-                    onPress={() => setModo(key)}
-                    className={`min-h-[44px] flex-1 flex-row items-center justify-center gap-1.5 rounded-lg ${
-                      activo ? 'bg-primary' : ''
-                    }`}
-                  >
-                    <Icono
-                      size={15}
-                      color={activo ? colores['on-primary'] : colores['on-surface-variant']}
-                    />
-                    <Text
-                      className={`text-[13px] font-semibold ${
-                        activo ? 'text-on-primary' : 'text-on-surface-variant'
-                      }`}
-                    >
-                      {label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <AparienciaAjuste />
 
-            <Text className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
-              Avisos
-            </Text>
+            <Rotulo>Avisos</Rotulo>
             {/**
              * El interruptor de la notificación permanente (José, 27/08/2026).
              *
@@ -506,9 +378,7 @@ export function TabsShell({
             </View>
             <AvisoDePantallaCompleta visible={tab === 'ajustes'} />
 
-            <Text className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
-              Datos
-            </Text>
+            <Rotulo>Datos</Rotulo>
             <Pressable
               testID="btn-respaldo"
               onPress={() => setShowBackup(true)}
@@ -526,9 +396,7 @@ export function TabsShell({
               <ChevronRight size={18} color={colores.outline} />
             </Pressable>
 
-            <Text className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
-              Lilachat
-            </Text>
+            <Rotulo>Lilachat</Rotulo>
 
             <Pressable
               testID="btn-invitar"
@@ -553,41 +421,12 @@ export function TabsShell({
 
             <DiagnosticoAjuste />
 
-            {/* «Buscar actualizaciones». Se dispara con un toque y NO al abrir
-                ajustes: un pedido de red cada vez que alguien entra acá es
-                tráfico que nadie pidió. */}
-            <Pressable
-              testID="btn-actualizaciones"
-              onPress={() => void verificar()}
-              className="mt-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4"
-            >
-              <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                <RefreshCw size={18} color={colores.primary} />
-              </View>
-              <View className="min-w-0 flex-1">
-                <Text className="text-sm font-semibold text-on-surface">
-                  {chequeo?.estado === 'hay-nueva'
-                    ? `Actualizar a ${chequeo.version}`
-                    : 'Buscar actualizaciones'}
-                </Text>
-                <Text className="text-[11px] text-on-surface-variant">
-                  {estadoActualizacion.fase === 'descargando'
-                    ? `Descargando… ${Math.round(estadoActualizacion.progreso * 100)}%`
-                    : estadoActualizacion.fase === 'instalando'
-                      ? 'Abriendo el instalador…'
-                      : estadoActualizacion.fase === 'error'
-                        ? estadoActualizacion.mensaje
-                        : verificando
-                          ? 'Verificando…'
-                          : chequeo?.estado === 'al-dia'
-                            ? `Versión ${versionActual()} · estás al día`
-                            : chequeo?.estado === 'no-se-pudo'
-                              ? 'No se pudo verificar. Revisá la señal.'
-                              : `Versión ${versionActual()}`}
-                </Text>
-              </View>
-              <ChevronRight size={18} color={colores.outline} />
-            </Pressable>
+            <BuscarActualizacionesAjuste
+              chequeo={actualizaciones.chequeo}
+              estado={actualizaciones.estado}
+              verificando={actualizaciones.verificando}
+              onVerificar={() => void actualizaciones.verificar()}
+            />
 
             <Pressable
               testID="btn-salir"
@@ -644,7 +483,7 @@ export function TabsShell({
       <InviteScreen
         visible={invitando}
         credential={credential}
-        enlaceApp={enlaceApp}
+        enlaceApp={actualizaciones.enlaceApp}
         onClose={() => setInvitando(false)}
       />
 

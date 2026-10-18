@@ -1,6 +1,7 @@
 import { Pressable, Switch, Text, View } from 'react-native';
 import { Flag, Lock, LogOut } from 'lucide-react-native';
 import { useColores } from '../ui/tema';
+import { Rotulo } from '../ui/Rotulo';
 
 /**
  * El bloque de ajustes del detalle: silenciar, cómo está cifrado, salir del
@@ -29,7 +30,7 @@ export function AjustesDelChat({
 
   return (
     <>
-      <Rotulo>Ajustes del chat</Rotulo>
+      <Rotulo sangrado>Ajustes del chat</Rotulo>
       <View className="px-4">
         <View className="mb-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4">
           <View className="min-w-0 flex-1">
@@ -89,10 +90,3 @@ export function AjustesDelChat({
   );
 }
 
-function Rotulo({ children }: { children: string }) {
-  return (
-    <Text className="mb-2 mt-6 px-4 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">
-      {children}
-    </Text>
-  );
-}

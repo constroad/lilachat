@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { BackHandler, Pressable, RefreshControl, Text, View } from 'react-native';
-import { Archive, ArrowLeft, MessageCircle, PenSquare } from 'lucide-react-native';
+import { MessageCircle, PenSquare } from 'lucide-react-native';
 import {
   accionesDeSeleccion,
   contarChats,
@@ -8,6 +8,7 @@ import {
   nombreDeContacto,
   ordenarChats,
   separarArchivados,
+  busquedaValida,
   type FiltroDeChats,
 } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
@@ -22,7 +23,6 @@ import {
   type ChatSummary,
   type ResultadoBusqueda,
 } from '../api/client';
-import { busquedaValida } from '@lilachat/shared';
 import { conciliarCache } from './cacheDeChats';
 import { chatsEnMemoria, guardarChats, leerChatsGuardados } from './chatsGuardados';
 import { aplicarMensajeALista, marcarLeido, type MensajeEnVivo } from './listaEnVivo';
@@ -30,6 +30,7 @@ import { inicioDelProceso, medirUnaVez } from '../diagnostico/diagnostico';
 import { FlashList } from '@shopify/flash-list';
 import { useBorradores } from './borradores';
 import { FilaDeChat } from './FilaDeChat';
+import { CabeceraDeArchivados, FilaDeArchivados } from './Archivados';
 import { BuscadorDeChats } from './BuscadorDeChats';
 import { ResultadosDeMensajes } from './ResultadosDeMensajes';
 import { BarraDeSeleccionDeChats } from './BarraDeSeleccionDeChats';
@@ -452,17 +453,7 @@ export function ChatListScreen({
           onSalir={() => void salirDeGrupos()}
         />
       ) : verArchivados ? (
-        <View testID="cabecera-archivados" className="flex-row items-center gap-1 px-2 pb-2 pt-1">
-          <Pressable
-            testID="btn-cerrar-archivados"
-            accessibilityLabel="Volver a los chats"
-            onPress={() => setVerArchivados(false)}
-            className="h-11 w-11 items-center justify-center"
-          >
-            <ArrowLeft size={22} color={colores['on-surface']} />
-          </Pressable>
-          <Text className="text-lg font-semibold text-on-surface">Archivados</Text>
-        </View>
+        <CabeceraDeArchivados onVolver={() => setVerArchivados(false)} />
       ) : hayChats ? (
         <BuscadorDeChats busqueda={busqueda} onBuscar={setBusqueda} filtro={filtro} onFiltrar={setFiltro} cuentas={cuentas} />
       ) : null}
@@ -517,25 +508,13 @@ export function ChatListScreen({
           // ellos tienen algo sin leer. No se muestra buscando: ahí ya entran.
           ListHeaderComponent={
             !verArchivados && !busqueda.trim() && archivados.length > 0 ? (
-              <Pressable
-                testID="fila-archivados"
-                onPress={() => {
+              <FilaDeArchivados
+                sinLeer={archivadosSinLeer}
+                onAbrir={() => {
                   limpiarSeleccion();
                   setVerArchivados(true);
                 }}
-                android_ripple={{ color: colores.outline }}
-                className="min-h-[56px] flex-row items-center gap-3 px-4"
-              >
-                <View className="w-[52px] items-center">
-                  <Archive size={20} color={colores['on-surface-variant']} />
-                </View>
-                <Text className="flex-1 text-base font-semibold text-on-surface">Archivados</Text>
-                {archivadosSinLeer > 0 ? (
-                  <Text testID="archivados-sin-leer" className="text-[12px] font-semibold text-primary">
-                    {archivadosSinLeer}
-                  </Text>
-                ) : null}
-              </Pressable>
+              />
             ) : null
           }
           // Resultados de buscar DENTRO de las conversaciones, debajo de los

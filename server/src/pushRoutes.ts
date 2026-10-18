@@ -4,6 +4,7 @@ import { parseWebSubscription } from './pushTargets.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import { vapidPublicKey } from './webPushSender.js';
 import { confirmarEntregaDesdeAviso } from './entregaPorAviso.js';
+import { leidoDesdeAviso, responderDesdeAviso } from './respuestaDesdeAviso.js';
 
 /**
  * Suscripción a Web Push (F6).
@@ -44,6 +45,23 @@ export function buildPushRouter(): Router {
       res.status(400).json({ message: 'No se pudo confirmar la entrega.' });
       return;
     }
+    res.status(204).end();
+  }));
+
+  /**
+   * «Responder» desde el aviso con la app cerrada (FL11). SIN sesión: la
+   * credencial es el token del push, de esa persona y ese chat.
+   */
+  router.post('/responder', asyncRoute(async (req, res) => {
+    const resultado = await responderDesdeAviso({ token: req.body?.token, texto: req.body?.texto, clientKey: req.body?.clientKey });
+    if (resultado === 'enviada') return void res.status(201).json({ ok: true });
+    if (resultado === 'prohibida') return void res.status(403).json({ message: 'Ya no eres parte de este chat.' });
+    res.status(400).json({ message: 'No se pudo enviar la respuesta.' });
+  }));
+
+  /** «Marcar como leído» desde el aviso (FL11). */
+  router.post('/leido', asyncRoute(async (req, res) => {
+    if (!(await leidoDesdeAviso(req.body?.token))) return void res.status(400).json({ message: 'No se pudo marcar como leído.' });
     res.status(204).end();
   }));
 

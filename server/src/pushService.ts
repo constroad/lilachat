@@ -1,3 +1,5 @@
+import { repartirPorToken } from './repartoDePush.js';
+import { firmarRespuesta } from './tokenDeRespuesta.js';
 import type { Message } from './chatModels.js';
 import { ChatModel } from './chatModels.js';
 import { DeviceModel, UserModel } from './models.js';
@@ -44,7 +46,7 @@ export async function notifyOffline(params: {
       .select('pushToken platform userId capacidades')
       .lean(),
     UserModel.findById(params.senderId).select('name phone').lean(),
-    ChatModel.findById(params.message.chatId).select('kind name').lean(),
+    ChatModel.findById(params.message.chatId).select('kind name encrypted').lean(),
   ]);
   if (dispositivos.length === 0) return;
 
@@ -59,8 +61,10 @@ export async function notifyOffline(params: {
     kind: params.message.kind,
   });
 
-  const nativos = dispositivos.filter(dibujaElMensaje);
-  const comunes = dispositivos.filter((d) => !dibujaElMensaje(d) && !silenciados.has(String(d.userId)));
+  // Un token, un envío (FL11): el teléfono con el aviso nativo no recibe además el común.
+  const reparto = repartirPorToken(dispositivos, dibujaElMensaje);
+  const nativos = reparto.nativos;
+  const comunes = reparto.comunes.filter((d) => !silenciados.has(String(d.userId)));
   const data = { chatId: String(params.message.chatId), seq: params.message.seq };
   // DOS transportes para el mismo aviso: el teléfono por FCM y la pestaña del
   // navegador por Web Push. Son dispositivos distintos del mismo dueño, así que
@@ -71,7 +75,7 @@ export async function notifyOffline(params: {
     await Promise.all([
       destinos.fcm.length > 0 ? sender.send({ tokens: destinos.fcm, ...text, data }) : undefined,
       sendWebPush(destinos.web, { ...text, data }),
-      ...mensajeSoloDatos({ message: params.message, nativos, silenciados, autor, chat: nombreDelGrupo ?? '', text }),
+      ...mensajeSoloDatos({ message: params.message, nativos, silenciados, autor, telefono: sender_?.phone ?? '', chat: nombreDelGrupo ?? '', secreto: chat?.encrypted === true, text }),
     ]);
   } catch (error) {
     // Un push que no sale no puede tumbar el envío: el mensaje YA está
@@ -99,7 +103,11 @@ function mensajeSoloDatos(params: {
   nativos: DispositivoDePush[];
   silenciados: Set<string>;
   autor: string;
+  /** El teléfono de quien escribe: el aviso nativo busca con él el nombre en la agenda (FL11). */
+  telefono: string;
   chat: string;
+  /** Chat secreto: sin «Responder» (la respuesta saldría sin cifrar). */
+  secreto: boolean;
   text: { title: string; body: string };
 }): Promise<void>[] {
   if (!sender.sendDatos || params.nativos.length === 0) return [];
@@ -119,11 +127,14 @@ function mensajeSoloDatos(params: {
         chatId,
         seq: String(params.message.seq),
         autor: params.autor,
+        telefono: params.telefono,
         chat: params.chat,
         titulo: params.text.title,
         cuerpo: params.text.body,
         silencioso: params.silenciados.has(userId) ? '1' : '0',
         entrega: firmarEntrega({ chatId, userId, seq: params.message.seq }),
+        // «Responder» y «Marcar como leído» desde el aviso (FL11).
+        respuesta: params.secreto ? '' : firmarRespuesta({ chatId, userId }),
       },
     })
   );
@@ -165,8 +176,11 @@ export async function avisarLlamada(params: { chatId: string; from: string; memb
   if (dispositivos.length === 0) return;
   const nombre = quien?.name ?? quien?.phone ?? 'Alguien';
   // FL8.1: el que sabe dibujarla a pantalla completa la recibe solo-datos.
-  const nativos = dispositivos.filter((d) => d.platform !== 'web' && d.capacidades?.includes(CAPACIDAD_LLAMADA_NATIVA));
-  const resto = dispositivos.filter((d) => !nativos.includes(d));
+  // Un token, un envío (FL11): sin esto el mismo teléfono recibía la pantalla completa Y «Llamada de…».
+  const { nativos, comunes: resto } = repartirPorToken(
+    dispositivos,
+    (d) => d.platform !== 'web' && Boolean(d.capacidades?.includes(CAPACIDAD_LLAMADA_NATIVA))
+  );
   const aviso = {
     title: `${params.video ? 'Videollamada' : 'Llamada'} de ${nombre}`,
     body: 'Toca para contestar',
@@ -243,7 +257,8 @@ export async function avisarFinDeLlamada(params: { chatId: string; from: string;
   })
     .select('pushToken')
     .lean();
-  const tokens = nativos.map((d) => d.pushToken).filter((t): t is string => Boolean(t));
+  // Un token, un envío (FL11): el mismo teléfono puede figurar en dos devices.
+  const tokens = [...new Set(nativos.map((d) => d.pushToken).filter((t): t is string => Boolean(t)))];
   if (tokens.length === 0) return;
   try {
     await sender.sendDatos({ tokens, ttlSegundos: VIDA_DEL_FIN_S, data: { tipo: 'llamada-fin', chatId: params.chatId } });

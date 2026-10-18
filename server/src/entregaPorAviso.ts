@@ -62,3 +62,9 @@ export async function confirmarEntregaDesdeAviso(token: string): Promise<boolean
   }
   return true;
 }
+
+/** Reparte un acuse (entregado o leído) a los del chat, por el socket. */
+export async function repartirAcuse(chatId: string, frame: object): Promise<void> {
+  const members = await chatMemberIds(new Types.ObjectId(chatId));
+  for (const member of members) emitirAcuse?.(member, frame);
+}

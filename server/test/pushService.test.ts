@@ -188,3 +188,52 @@ describe('notifyOffline — doble check sin abrir la app (FL8.2)', () => {
     expect(datos[0]!.data).toMatchObject({ chat: 'Los originales', autor: 'José' });
   });
 });
+
+/**
+ * FL11 (José, 18/10, teléfono real): avisos duplicados en dos formatos. Su
+ * teléfono figuraba en dos devices con el MISMO token: uno nativo y uno viejo.
+ */
+describe('notifyOffline — un token, un envío (FL11)', () => {
+  it('el mismo teléfono en un device nativo y en uno viejo recibe SOLO el push de datos', async () => {
+    await DeviceModel.updateOne({ deviceId: 'd-maria' }, { $set: { platform: 'android', capacidades: [CAPACIDAD_MENSAJE_NATIVO] } });
+    await DeviceModel.create({ deviceId: 'd-maria-viejo', userId: maria, pushToken: 'tok-maria' });
+
+    await notifyOffline({ message: message(), members: members(), senderId: String(jose) });
+
+    expect(sent).toHaveLength(0);
+    expect(datos.map((d) => d.tokens)).toEqual([['tok-maria']]);
+  });
+
+  it('un token repetido en varios devices viejos recibe un solo push común', async () => {
+    await DeviceModel.create([
+      { deviceId: 'd-maria-b', userId: maria, pushToken: 'tok-maria' },
+      { deviceId: 'd-maria-c', userId: maria, pushToken: 'tok-maria' },
+    ]);
+
+    await notifyOffline({ message: message(), members: members(), senderId: String(jose) });
+
+    expect(sent.flatMap((m) => m.tokens)).toEqual(['tok-maria']);
+  });
+
+  it('el push de datos lleva el teléfono de quien escribe, para buscarlo en la agenda', async () => {
+    await DeviceModel.updateOne({ deviceId: 'd-maria' }, { $set: { platform: 'android', capacidades: [CAPACIDAD_MENSAJE_NATIVO] } });
+
+    await notifyOffline({ message: message(), members: members(), senderId: String(jose) });
+
+    expect(datos[0]!.data).toMatchObject({ telefono: '900000001' });
+  });
+});
+
+describe('notifyOffline — responder desde el aviso (FL11)', () => {
+  it('trae el token para responder; en un chat secreto, no', async () => {
+    await DeviceModel.updateOne({ deviceId: 'd-maria' }, { $set: { platform: 'android', capacidades: [CAPACIDAD_MENSAJE_NATIVO] } });
+
+    await notifyOffline({ message: message(), members: members(), senderId: String(jose) });
+    await ChatModel.updateOne({ _id: chatId }, { $set: { encrypted: true } });
+    await notifyOffline({ message: message({ seq: 2 }), members: members(), senderId: String(jose) });
+
+    expect(typeof datos[0]!.data.respuesta).toBe('string');
+    expect(datos[0]!.data.respuesta).not.toBe('');
+    expect(datos[1]!.data.respuesta).toBe('');
+  });
+});

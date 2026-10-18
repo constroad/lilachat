@@ -37,7 +37,7 @@ export class ErrorBoundary extends Component<Props, Estado> {
         {/* No se muestra el error crudo: a la persona no le dice nada y puede
             arrastrar datos suyos. El detalle ya viajó al log. */}
         <Text className="mt-2 text-center text-sm leading-5 text-on-surface-variant">
-          Ya nos avisó solo. Podés volver a intentarlo.
+          Ya nos avisó solo. Puedes volver a intentarlo.
         </Text>
         <Pressable
           testID="btn-reintentar-pantalla"

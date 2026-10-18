@@ -52,7 +52,7 @@ export function BuscadorDelChat(props: {
         accessibilityLabel="Coincidencia anterior"
         onPress={props.onAnterior}
         disabled={!puedeSubir}
-        className={`h-11 w-10 items-center justify-center ${puedeSubir ? '' : 'opacity-30'}`}
+        className={`h-11 w-11 items-center justify-center ${puedeSubir ? '' : 'opacity-30'}`}
       >
         <ChevronUp size={22} color={colores['on-surface']} />
       </Pressable>
@@ -61,7 +61,7 @@ export function BuscadorDelChat(props: {
         accessibilityLabel="Coincidencia siguiente"
         onPress={props.onSiguiente}
         disabled={!puedeBajar}
-        className={`h-11 w-10 items-center justify-center ${puedeBajar ? '' : 'opacity-30'}`}
+        className={`h-11 w-11 items-center justify-center ${puedeBajar ? '' : 'opacity-30'}`}
       >
         <ChevronDown size={22} color={colores['on-surface']} />
       </Pressable>

@@ -63,3 +63,23 @@ export function marcarLeido(chats: ChatSummary[], chatId: string): ChatSummary[]
   if (!actual || (actual.unread === 0 && !actual.markedUnread)) return chats;
   return chats.map((chat, i) => (i === indice ? { ...actual, unread: 0, markedUnread: false } : chat));
 }
+
+/**
+ * El punto verde de una fila (FL10, auditoría §46.3): solo en un 1:1, como
+ * WhatsApp. En un grupo, con varios conectados, sería ruido permanente.
+ */
+export function puntoEnLinea(chat: Pick<ChatSummary, 'kind' | 'memberIds'>, yo: string, enLinea: ReadonlySet<string>): boolean {
+  return chat.kind === 'direct' && chat.memberIds.some((id) => id !== yo && enLinea.has(id));
+}
+
+/** Una carga de hace menos que esto ya está al día (ms). */
+const CARGA_RECIENTE_MS = 3000;
+
+/**
+ * Al conectar el socket, ¿recargar la lista? (FL4). Solo si la última carga
+ * buena no es reciente: al arrancar, la carga del montaje y la primera
+ * conexión llegaban juntas y eran dos pedidos iguales.
+ */
+export function debeRecargarAlConectar(params: { ultimaCarga: number | null; ahora: number }): boolean {
+  return params.ultimaCarga === null || params.ahora - params.ultimaCarga > CARGA_RECIENTE_MS;
+}

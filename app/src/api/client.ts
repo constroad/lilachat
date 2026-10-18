@@ -6,6 +6,8 @@
  * .env de dev sale apuntando al emulador y falla con wifi andando — el script
  * de release lo fija y lo verifica dentro del binario).
  */
+import { unSoloPedido } from './pedidoUnico';
+
 export const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
 const TIMEOUT_MS = 15_000;
 
@@ -206,8 +208,14 @@ async function get<T>(route: string, token: string, fetchImpl: FetchLike = fetch
   }
 }
 
+/**
+ * La lista de chats. Dos pedidos iguales en vuelo van UNA vez al server (FL4:
+ * al arrancar se pedía 6 veces). Con `fetchImpl` (los tests) va siempre.
+ */
 export const listChats = (token: string, fetchImpl?: FetchLike) =>
-  get<{ chats: ChatSummary[] }>('/api/chats', token, fetchImpl);
+  fetchImpl
+    ? get<{ chats: ChatSummary[] }>('/api/chats', token, fetchImpl)
+    : unSoloPedido(`chats:${token}`, () => get<{ chats: ChatSummary[] }>('/api/chats', token));
 
 export type ResultadoBusqueda = {
   chatId: string;

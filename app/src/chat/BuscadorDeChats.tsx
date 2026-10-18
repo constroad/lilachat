@@ -34,7 +34,7 @@ export function BuscadorDeChats(props: {
             testID="btn-limpiar-busqueda"
             accessibilityLabel="Limpiar la búsqueda"
             onPress={() => props.onBuscar('')}
-            className="h-11 w-8 items-center justify-center"
+            className="h-11 w-11 items-center justify-center"
           >
             <X size={16} color={colores['on-surface-variant']} />
           </Pressable>
@@ -77,6 +77,7 @@ export function BuscadorDeChats(props: {
             accessibilityRole="button"
             accessibilityState={{ selected: activo }}
             onPress={() => props.onFiltrar(chip.id)}
+            hitSlop={{ top: 4, bottom: 4 }}
             className={`min-h-[36px] flex-row items-center gap-1.5 rounded-full border px-4 ${
               activo ? 'border-primary bg-primary/[0.14]' : 'border-outline/20'
             }`}

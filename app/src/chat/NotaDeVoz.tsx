@@ -59,6 +59,7 @@ export function NotaDeVoz({ id, url, durationMs, onda }: { id: string; url: stri
         testID={sonando ? 'btn-pausar-voz' : 'btn-reproducir-voz'}
         accessibilityLabel={sonando ? 'Pausar' : 'Reproducir'}
         onPress={reproducir}
+        hitSlop={2}
         className="h-10 w-10 items-center justify-center rounded-full bg-primary/10"
       >
         {sonando ? <Pause size={18} color={colores.primary} /> : <Play size={18} color={colores.primary} fill={colores.primary} />}
@@ -69,6 +70,7 @@ export function NotaDeVoz({ id, url, durationMs, onda }: { id: string; url: stri
           testID="barra-voz"
           accessibilityLabel="Ir a un punto de la nota"
           onLayout={(evento) => setAnchoBarra(evento.nativeEvent.layout.width)}
+          hitSlop={{ top: 10, bottom: 10 }}
           onPress={(evento) => player.seekTo(segundosDelToque({ x: evento.nativeEvent.locationX, ancho: anchoBarra, duracion }))}
           className="h-6 justify-center"
         >

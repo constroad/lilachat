@@ -23,7 +23,7 @@ export function confirmacionDe(accion: AccionDeMiembro, nombre: string): Confirm
     return {
       titulo: `¿Nombrar admin a ${nombre}?`,
       cuerpo:
-        'Va a poder sumar y sacar gente. Ojo: después NO se lo podés quitar — solo esa persona puede dejar de ser admin.',
+        'Va a poder sumar y sacar gente. Ojo: después NO se lo puedes quitar — solo esa persona puede dejar de ser admin.',
       boton: 'Nombrar',
       metodo: 'PATCH',
       cuerpoHttp: { role: 'admin' },
@@ -33,7 +33,7 @@ export function confirmacionDe(accion: AccionDeMiembro, nombre: string): Confirm
     return {
       titulo: '¿Dejar de ser admin?',
       cuerpo:
-        'Seguís en el grupo, pero sin poder sumar ni sacar gente. Para volver a serlo te tiene que nombrar otro admin.',
+        'Sigues en el grupo, pero sin poder sumar ni sacar gente. Para volver a serlo te tiene que nombrar otro admin.',
       boton: 'Dejar',
       metodo: 'PATCH',
       cuerpoHttp: { role: 'member' },
@@ -42,7 +42,7 @@ export function confirmacionDe(accion: AccionDeMiembro, nombre: string): Confirm
   return {
     titulo: `¿Sacar a ${nombre}?`,
     cuerpo:
-      'Va a dejar de ver el grupo y los mensajes nuevos. Los que ya mandó quedan. Podés volver a sumarlo cuando quieras.',
+      'Va a dejar de ver el grupo y los mensajes nuevos. Los que ya mandó quedan. Puedes volver a sumarlo cuando quieras.',
     boton: 'Sacar',
     metodo: 'DELETE',
   };

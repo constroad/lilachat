@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { Sparkles, X } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { useColores } from '../ui/tema';
+import { ofrecerPonerAlDia } from './ponerAlDia';
 
 /**
  * «Ponme al día» (F8).
@@ -24,16 +25,20 @@ export function CatchUpBanner({
   chatId,
   credential,
   unread,
+  leido,
 }: {
   chatId: string;
   credential: Credential;
   unread: number;
+  /** Bajó hasta el final: ya leyó todo. Un resumen pedido sí se queda. */
+  leido: boolean;
 }) {
   const colores = useColores();
   const [estado, setEstado] = useState<'oculto' | 'listo' | 'cargando' | 'hecho'>('listo');
   const [texto, setTexto] = useState('');
 
-  if (estado === 'oculto' || (unread === 0 && estado === 'listo')) return null;
+  // Con pocos se leen de un vistazo, y leído ya no hace falta (José, 18/10).
+  if (estado === 'oculto' || (estado === 'listo' && !ofrecerPonerAlDia(unread, leido))) return null;
 
   const pedir = async () => {
     setEstado('cargando');
@@ -75,7 +80,7 @@ export function CatchUpBanner({
         <Pressable
           testID="btn-cerrar-ponme-al-dia"
           onPress={() => setEstado('oculto')}
-          className="h-9 w-9 items-center justify-center"
+          className="h-11 w-11 items-center justify-center"
         >
           <X size={16} color={colores.outline} />
         </Pressable>

@@ -147,6 +147,6 @@ export async function abrirConOtraApp(params: {
   } catch {
     // Ninguna app instalada sabe abrir esto. No es un fallo nuestro y se dice
     // como lo que es, con la salida al lado.
-    return { ok: false, motivo: 'No hay ninguna app para abrir este archivo. Probá compartirlo.' };
+    return { ok: false, motivo: 'No hay ninguna app para abrir este archivo. Prueba compartirlo.' };
   }
 }

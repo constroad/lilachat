@@ -62,7 +62,7 @@ export function BandaDeActualizacion({
         <ArrowDownToLine size={18} color={obligatoria ? colores.error : colores.primary} />
         <View className="min-w-0 flex-1">
           <Text className="text-[13px] font-semibold text-on-surface">
-            {obligatoria ? 'Tenés que actualizar' : `Lilachat ${aviso.version}`}
+            {obligatoria ? 'Tienes que actualizar' : `Lilachat ${aviso.version}`}
           </Text>
           <Text
             className={`text-[11px] leading-4 ${estado.fase === 'error' ? 'text-error' : 'text-on-surface-variant'}`}
@@ -91,7 +91,7 @@ export function BandaDeActualizacion({
             testID="btn-descartar-actualizacion"
             accessibilityLabel="Ahora no"
             onPress={onDescartar}
-            className="h-11 w-8 items-center justify-center"
+            className="h-11 w-11 items-center justify-center"
           >
             <X size={16} color={colores['on-surface-variant']} />
           </Pressable>

@@ -59,7 +59,7 @@ export function citadosPorSeq<M extends FilaMinima>(
     // miembro si ya se conoce (FL9) y si no, nada en vez de uno falso.
     const autor =
       respondido.senderId === contexto.yo
-        ? 'Vos'
+        ? 'Tú'
         : contexto.esGrupo
           ? (contexto.nombres?.get(String(respondido.senderId)) ?? '')
           : contexto.nombreDelOtro;

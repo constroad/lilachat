@@ -102,7 +102,7 @@ describe('fraseDeEstado', () => {
   it('sin passphrase invita a crearla', () => {
     expect(fraseDeEstado({ ...base, decision: 'sin_passphrase' }, AHORA)).toEqual({
       titulo: 'Sin respaldo',
-      detalle: 'Creá una passphrase para respaldar tus chats.',
+      detalle: 'Crea una passphrase para respaldar tus chats.',
       alerta: true,
     });
   });

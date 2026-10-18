@@ -160,7 +160,7 @@ export function ChatDetailScreen({
         }
         return true;
       } catch {
-        setAviso('Sin conexión. Probá de nuevo.');
+        setAviso('Sin conexión. Prueba de nuevo.');
         return false;
       } finally {
         setAccionando(false);
@@ -186,7 +186,7 @@ export function ChatDetailScreen({
     } catch {
       // **El error se DICE.** Una pantalla que se queda en blanco al fallar la
       // red es indistinguible de una pantalla rota.
-      setEstado({ fase: 'error', mensaje: 'Sin conexión. Probá de nuevo.' });
+      setEstado({ fase: 'error', mensaje: 'Sin conexión. Prueba de nuevo.' });
     }
   }, [chatId, credential.jwt]);
 
@@ -212,7 +212,7 @@ export function ChatDetailScreen({
   const agenda = agendaPorTelefono();
   const nombreDe = (miembro: Miembro) =>
     miembro.esYo
-      ? 'Vos'
+      ? 'Tú'
       : nombreDeContacto({ delServidor: miembro.name, telefono: miembro.phone, agenda }) ||
         'Sin nombre';
 
@@ -270,7 +270,7 @@ export function ChatDetailScreen({
   const cambiarFoto = async () => {
     const eleccion = await elegirFotoDeGrupo();
     if (eleccion.tipo === 'sin-permiso') {
-      return setAviso('Permití la cámara para sacar la foto.');
+      return setAviso('Permite la cámara para sacar la foto.');
     }
     if (eleccion.tipo !== 'foto') return;
 

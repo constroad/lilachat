@@ -55,7 +55,7 @@ export function ProgramarMensajeModal({
           <View className="mb-3 flex-row items-center gap-2">
             <CalendarClock size={18} color={colores.primary} />
             <Text className="flex-1 text-base font-bold text-on-surface">Programar mensaje</Text>
-            <Pressable onPress={onCerrar} testID="prog-cerrar" className="h-8 w-8 items-center justify-center">
+            <Pressable onPress={onCerrar} testID="prog-cerrar" className="h-11 w-11 items-center justify-center">
               <X size={18} color={colores['on-surface-variant']} />
             </Pressable>
           </View>
@@ -90,7 +90,7 @@ export function ProgramarMensajeModal({
           </View>
 
           {enElPasado ? (
-            <Text className="mt-2 text-[11px] text-error">Elegí un momento futuro.</Text>
+            <Text className="mt-2 text-[11px] text-error">Elige un momento futuro.</Text>
           ) : null}
 
           <Pressable

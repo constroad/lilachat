@@ -40,10 +40,10 @@ describe('citadosPorSeq', () => {
     expect(citados.has(1)).toBe(false);
   });
 
-  it('si el citado es mío, el autor es «Vos»', () => {
+  it('si el citado es mío, el autor es «Tú»', () => {
     const mensajes = [msj(1, { senderId: 'yo', body: 'mío' }), msj(2, { replyToSeq: 1 })];
 
-    expect(citadosPorSeq(mensajes, contexto, preview).get(2)?.autor).toBe('Vos');
+    expect(citadosPorSeq(mensajes, contexto, preview).get(2)?.autor).toBe('Tú');
   });
 
   /** En un grupo no se conoce acá el nombre de cada miembro: mejor nada que uno falso. */

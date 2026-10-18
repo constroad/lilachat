@@ -85,6 +85,8 @@ export function EnviarFotos(props: {
                 )}
                 <Pressable
                   testID={`quitar-foto-${index}`}
+                  // 24 dp de dibujo, 44 de toque.
+                  hitSlop={10}
                   accessibilityLabel="Sacar esta foto"
                   onPress={() => quitar(index)}
                   className="absolute -right-2 -top-2 h-6 w-6 items-center justify-center rounded-full bg-black/80"

@@ -11,8 +11,8 @@ const MS_LENTO = 1_000;
 const FRASE_DE_ENVIO = {
   ok: 'Enviado. Ya se puede mirar en LilaStore.',
   vacio: 'Todavía no hay nada para enviar.',
-  sin_red: 'Sin conexión. Probá de nuevo con wifi.',
-  rechazado: 'No se pudo enviar. Probá más tarde.',
+  sin_red: 'Sin conexión. Prueba de nuevo con wifi.',
+  rechazado: 'No se pudo enviar. Prueba más tarde.',
 } as const;
 
 /**
@@ -66,7 +66,7 @@ export function DiagnosticoAjuste() {
             className="flex-row items-center gap-2 border-b border-outline/10 bg-surface px-4 pb-3"
             style={{ paddingTop: margenes.cabecera }}
           >
-            <Pressable testID="btn-cerrar-diagnostico" onPress={() => setAbierto(false)} className="h-11 w-9 items-center justify-center">
+            <Pressable testID="btn-cerrar-diagnostico" onPress={() => setAbierto(false)} className="h-11 w-11 items-center justify-center">
               <ArrowLeft size={22} color={colores['on-surface']} />
             </Pressable>
             <Text className="flex-1 text-lg font-bold text-on-surface">Diagnóstico</Text>

@@ -59,7 +59,7 @@ export function decideInstall(entrada: {
 export function installMessage(verdict: InstallVerdict): string | null {
   if (verdict.install) return null;
   if (verdict.reason === 'wrong-size') {
-    return 'La descarga quedó incompleta. Probá de nuevo con mejor señal.';
+    return 'La descarga quedó incompleta. Prueba de nuevo con mejor señal.';
   }
   return 'El archivo no coincide con el que publicó tu empresa. No se instaló.';
 }

@@ -173,7 +173,7 @@ export const Composer = memo(function Composer(props: {
             onPress={props.onAdjuntar}
             disabled={props.subiendo}
             android_ripple={{ color: colores.outline, borderless: true, radius: 20 }}
-            className="h-11 w-9 items-center justify-center"
+            className="h-11 w-11 items-center justify-center"
           >
             <Paperclip size={20} color={colores.outline} />
           </Pressable>
@@ -183,7 +183,7 @@ export const Composer = memo(function Composer(props: {
             onPress={props.onCamara}
             disabled={props.subiendo}
             android_ripple={{ color: colores.outline, borderless: true, radius: 20 }}
-            className="h-11 w-9 items-center justify-center"
+            className="h-11 w-11 items-center justify-center"
           >
             <Camera size={20} color={colores.outline} />
           </Pressable>
@@ -218,7 +218,7 @@ export const Composer = memo(function Composer(props: {
           <View className="w-1 self-stretch rounded-full bg-primary" />
           <View className="min-w-0 flex-1 py-1">
             <Text className="text-[11px] font-semibold text-primary">
-              {props.respondiendoA.mio ? 'Respondiendo a vos' : 'Respondiendo'}
+              {props.respondiendoA.mio ? 'Respondiendo a tu mensaje' : 'Respondiendo'}
             </Text>
             <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>
               {props.respondiendoA.texto || 'Mensaje'}
@@ -228,7 +228,7 @@ export const Composer = memo(function Composer(props: {
             testID="btn-cancelar-respuesta"
             accessibilityLabel="Cancelar la respuesta"
             onPress={props.onCancelarRespuesta}
-            className="h-9 w-9 items-center justify-center"
+            className="h-11 w-11 items-center justify-center"
           >
             <X size={18} color={colores['on-surface-variant']} />
           </Pressable>
@@ -338,7 +338,7 @@ export const Composer = memo(function Composer(props: {
       {voz.estado.fase === 'sin-permiso' || voz.estado.fase === 'error' ? (
         <Pressable onPress={voz.limpiarAviso} className="px-4 pb-2">
           <Text testID="aviso-voz" className="text-sm text-error">
-            {voz.estado.fase === 'sin-permiso' ? 'Permití el micrófono para mandar notas de voz.' : voz.estado.motivo}
+            {voz.estado.fase === 'sin-permiso' ? 'Permite el micrófono para mandar notas de voz.' : voz.estado.motivo}
           </Text>
         </Pressable>
       ) : null}

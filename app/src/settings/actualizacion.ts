@@ -51,11 +51,11 @@ export function textoDeInvitacion(params: {
     saludo,
     'Chats, grupos, eventos y encuestas, en un servidor propio.',
     '',
-    `1) Instalá LilaStore y desde ahí Lilachat: ${params.tienda}`,
+    `1) Instala LilaStore y desde ahí Lilachat: ${params.tienda}`,
   ];
 
   if (params.app) {
-    lineas.push('', `2) O bajá Lilachat directo: ${params.app}`);
+    lineas.push('', `2) O baja Lilachat directo: ${params.app}`);
   }
 
   return lineas.join('\n');

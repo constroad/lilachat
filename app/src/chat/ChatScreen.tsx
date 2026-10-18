@@ -9,6 +9,7 @@ import type { Credential } from '../auth/credentialStore';
 import { AttachSheet } from './AttachSheet';
 import { CrearDesdeElChat } from './CrearDesdeElChat';
 import { CatchUpBanner } from './CatchUpBanner';
+import { cuantosParaPonerAlDia } from './ponerAlDia';
 import { SecretChatBanner } from '../crypto/SecretChatBanner';
 import { useSecretChat } from '../crypto/useSecretChat';
 import { DaySeparator, MessageRow, isPending, previewDeMensaje, type Row } from './MessageRow';
@@ -37,6 +38,7 @@ import { citadosPorSeq, filaDeArchivoEnCola, fotosDelChat } from './filasDelChat
 import { useGrupo } from './useGrupo';
 import { FueraDelGrupo } from './FueraDelGrupo';
 import { subtituloDelChat } from './cabeceraDelChat';
+import { useUltimaVez } from './useUltimaVez';
 import { ListaDeMensajes } from './ListaDeMensajes';
 import { useRespuestaYEdicion } from './useRespuestaYEdicion';
 import { useAtrasDelChat } from './useAtrasDelChat';
@@ -198,6 +200,7 @@ export function ChatScreen({
   const esGrupoChat = otherUserId === null || otherUserId === undefined;
   const otroEscribe = otherUserId ? escribiendo.has(otherUserId) : escribiendo.size > 0;
   const otroEnLinea = otherUserId ? enLinea.has(otherUserId) : false;
+  const ultimaVez = useUltimaVez(otherUserId);
   const grupo = useGrupo(chatId, credential.jwt, esGrupoChat);
   const nombresDelGrupo = grupo.nombres;
   /** Me sacaron del grupo (FL9d): se lee, pero ya no se escribe. */
@@ -207,6 +210,7 @@ export function ChatScreen({
     esGrupo: esGrupoChat,
     escriben: [...escribiendo],
     otroEnLinea,
+    ultimaVez,
     nombres: nombresDelGrupo,
     yo: credential.userId,
   });
@@ -308,6 +312,9 @@ export function ChatScreen({
       ),
     [messages, credential.userId, esGrupoChat, nombreVisible, nombresDelGrupo]
   );
+  // «Ponme al día» con sentido: 10 o más mensajes ajenos de verdad (José, 18/10).
+  const paraPonerAlDia = useMemo(() => cuantosParaPonerAlDia(messages, unread, credential.userId), [messages, unread, credential.userId]);
+  const [leyoHastaElFinal, setLeyoHastaElFinal] = useState(false);
   const leidoHasta = Math.max(othersReadSeq, othersRead);
   const entregadoHasta = Math.max(othersDeliveredSeq, othersDelivered);
   // En refs: `alVerImagen` tiene que ser estable (las burbujas son `memo`).
@@ -481,7 +488,7 @@ export function ChatScreen({
       {encrypted ? (
         <SecretChatBanner session={secreto} />
       ) : (
-        <CatchUpBanner chatId={chatId} credential={credential} unread={unread} />
+        <CatchUpBanner chatId={chatId} credential={credential} unread={paraPonerAlDia} leido={leyoHastaElFinal} />
       )}
 
       <ListaDeMensajes
@@ -494,6 +501,7 @@ export function ChatScreen({
         onCargarAnteriores={() => void cargarAnteriores()}
         cargandoAnteriores={cargandoAnteriores}
         hayAnteriores={hayAnteriores}
+        onLlegoAlFinal={() => setLeyoHastaElFinal(true)}
       />
 
       {subidaEnCurso !== undefined ? (

@@ -28,8 +28,8 @@ const FRASE_DE_PASO: Record<PasoDeRestauracion, string> = {
 };
 
 const FRASE_DE_FALLO: Record<Extract<ResultadoDeRestauracion, { ok: false }>['motivo'], string> = {
-  descarga: 'No se pudo bajar el respaldo. Revisá la conexión y probá de nuevo.',
-  huella: 'El archivo llegó incompleto. Probá de nuevo.',
+  descarga: 'No se pudo bajar el respaldo. Revisa la conexión y prueba de nuevo.',
+  huella: 'El archivo llegó incompleto. Prueba de nuevo.',
   passphrase: 'La passphrase no es la de este respaldo.',
   importacion: 'No se pudo guardar el respaldo en el teléfono.',
 };

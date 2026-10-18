@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ChatSummary } from '../api/client';
-import { aplicarMensajeALista, marcarLeido } from './listaEnVivo';
+import { aplicarMensajeALista, debeRecargarAlConectar, marcarLeido, puntoEnLinea } from './listaEnVivo';
 
 const YO = '665f1a2b3c4d5e6f70818293';
 const OTRO = '665f1a2b3c4d5e6f70818294';
@@ -120,5 +120,33 @@ describe('la lista con un chat abierto encima', () => {
     const lista = [chat({ unread: 0 })];
 
     expect(marcarLeido(lista, CHAT)).toBe(lista);
+  });
+});
+
+/**
+ * FL4: al conectar el socket la lista se recargaba aunque se acabara de cargar
+ * (al montar). Se recarga si la última carga buena fue hace más de 3 s: una
+ * reconexión de verdad (volver de segundo plano) siempre lo cumple.
+ */
+describe('debeRecargarAlConectar', () => {
+  it('recién cargada: no', () => {
+    expect(debeRecargarAlConectar({ ultimaCarga: 1000, ahora: 2500 })).toBe(false);
+  });
+
+  it('de hace rato, o nunca: sí', () => {
+    expect(debeRecargarAlConectar({ ultimaCarga: 1000, ahora: 9000 })).toBe(true);
+    expect(debeRecargarAlConectar({ ultimaCarga: null, ahora: 9000 })).toBe(true);
+  });
+});
+
+/** El punto verde (FL10, auditoría §46.3): solo en un 1:1, como WhatsApp. */
+describe('puntoEnLinea', () => {
+  it('en un 1:1, si el otro está en línea', () => {
+    expect(puntoEnLinea(chat(), YO, new Set([OTRO]))).toBe(true);
+    expect(puntoEnLinea(chat(), YO, new Set([YO]))).toBe(false);
+  });
+
+  it('en un grupo nunca: con varios conectados sería ruido permanente', () => {
+    expect(puntoEnLinea(chat({ kind: 'group', memberIds: [YO, OTRO] }), YO, new Set([OTRO]))).toBe(false);
   });
 });

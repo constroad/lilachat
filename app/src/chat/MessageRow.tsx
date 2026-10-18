@@ -282,7 +282,7 @@ function FilaDeMensaje({
                   <Text
                     className="text-[11px] text-on-surface-variant"
                   >
-                    {item.media.sizeBytes ? formatBytes(item.media.sizeBytes) : 'Tocá para abrirlo'}
+                    {item.media.sizeBytes ? formatBytes(item.media.sizeBytes) : 'Toca para abrirlo'}
                   </Text>
                 </View>
               </View>

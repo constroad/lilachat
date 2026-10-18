@@ -22,6 +22,7 @@ import { PerfilAjuste } from '../settings/PerfilAjuste';
 import { Image } from 'expo-image';
 import { usePerfilPropio } from '../settings/perfilPropio';
 import { RespaldoAjuste } from '../settings/RespaldoAjuste';
+import { useEsOperador } from '../settings/useEsOperador';
 import { useActualizacionesDeLaApp } from '../settings/useActualizacionesDeLaApp';
 import { AparienciaAjuste } from '../settings/AparienciaAjuste';
 import { BuscarActualizacionesAjuste } from '../settings/BuscarActualizacionesAjuste';
@@ -95,6 +96,7 @@ export function TabsShell({
   /** Una pestaña montada pero no activa se oculta sin desmontarse. */
   const panel = (cual: Tab) => ({ flex: 1, display: cual === tab ? ('flex' as const) : ('none' as const) });
   const [showBackup, setShowBackup] = useState(false);
+  const esOperador = useEsOperador(credential.jwt);
   const [invitando, setInvitando] = useState(false);
   const actualizaciones = useActualizacionesDeLaApp();
   const [newChat, setNewChat] = useState(false);
@@ -131,10 +133,13 @@ export function TabsShell({
 
   // Los chats se cargan acá porque los necesitan TRES pantallas: la lista, y
   // los formularios de evento y encuesta —que preguntan en qué conversación—.
+  // Por ref (FL4): renovar el token no vuelve a pedir la lista.
+  const jwtRef = useRef(credential.jwt);
+  jwtRef.current = credential.jwt;
   const loadChats = useCallback(async () => {
-    const result = await listChats(credential.jwt);
+    const result = await listChats(jwtRef.current);
     if (result.ok) setChats(result.data.chats);
-  }, [credential.jwt]);
+  }, []);
 
   /**
    * La burbuja de arriba cuando llega un mensaje, para CUALQUIER chat.
@@ -379,22 +384,27 @@ export function TabsShell({
             <AvisoDePantallaCompleta visible={tab === 'ajustes'} />
 
             <Rotulo>Datos</Rotulo>
-            <Pressable
-              testID="btn-respaldo"
-              onPress={() => setShowBackup(true)}
-              className="min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4"
-            >
-              <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                <CloudUpload size={18} color={colores.primary} />
-              </View>
-              <View className="min-w-0 flex-1">
-                <Text className="text-sm font-semibold text-on-surface">Copia de seguridad</Text>
-                <Text className="text-[11px] text-on-surface-variant">
-                  Tus chats, respaldados cada noche
-                </Text>
-              </View>
-              <ChevronRight size={18} color={colores.outline} />
-            </Pressable>
+            <RespaldoAjuste credential={credential} />
+            {/* El volcado de la base entera es de operadores (FL10): para el
+                resto había dos «respaldos» en Ajustes y uno no era suyo. */}
+            {esOperador ? (
+              <Pressable
+                testID="btn-respaldo"
+                onPress={() => setShowBackup(true)}
+                className="mt-2 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface p-4"
+              >
+                <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                  <CloudUpload size={18} color={colores.primary} />
+                </View>
+                <View className="min-w-0 flex-1">
+                  <Text className="text-sm font-semibold text-on-surface">Respaldo del servidor</Text>
+                  <Text className="text-[11px] text-on-surface-variant">
+                    La base entera, cada noche · operadores
+                  </Text>
+                </View>
+                <ChevronRight size={18} color={colores.outline} />
+              </Pressable>
+            ) : null}
 
             <Rotulo>Lilachat</Rotulo>
 
@@ -416,8 +426,6 @@ export function TabsShell({
             </Pressable>
 
             <AutoRespuestaAjuste jwt={credential.jwt} />
-
-            <RespaldoAjuste credential={credential} />
 
             <DiagnosticoAjuste />
 
@@ -495,11 +503,11 @@ export function TabsShell({
             <Pressable
               testID="btn-cerrar-respaldo"
               onPress={() => setShowBackup(false)}
-              className="h-11 w-9 items-center justify-center"
+              className="h-11 w-11 items-center justify-center"
             >
               <ArrowLeft size={22} color={colores["on-surface"]} />
             </Pressable>
-            <Text className="flex-1 text-lg font-bold text-on-surface">Copia de seguridad</Text>
+            <Text className="flex-1 text-lg font-bold text-on-surface">Respaldo del servidor</Text>
           </View>
           <BackupScreen credential={credential} />
         </View>

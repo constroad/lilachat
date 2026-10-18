@@ -29,7 +29,7 @@ export function EncabezadoDelChat(props: {
   // nombre, y el menú al final.
   return (
     <View className="flex-row items-center gap-2 border-b border-outline/10 bg-surface px-3 pb-3" style={{ paddingTop: margenes.cabecera }}>
-      <Pressable onPress={props.onVolver} testID="btn-volver" className="h-11 w-9 items-center justify-center">
+      <Pressable onPress={props.onVolver} testID="btn-volver" className="h-11 w-11 items-center justify-center">
         <ArrowLeft size={22} color={colores["on-surface"]} />
       </Pressable>
       {/* Tocar el avatar Y el nombre abre el detalle, como en WhatsApp: es
@@ -108,7 +108,7 @@ export function EncabezadoDelChat(props: {
         accessibilityLabel="Info del chat"
         onPress={props.onAbrirDetalle}
         android_ripple={{ color: colores.outline, borderless: true, radius: 22 }}
-        className="h-11 w-9 items-center justify-center"
+        className="h-11 w-11 items-center justify-center"
       >
         <MoreVertical size={20} color={colores["on-surface-variant"]} />
       </Pressable>

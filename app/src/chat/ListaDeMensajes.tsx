@@ -1,4 +1,4 @@
-import type { ReactElement, RefObject } from 'react';
+import { useEffect, useRef, type ReactElement, type RefObject } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { ChevronDown } from 'lucide-react-native';
@@ -25,10 +25,21 @@ export function ListaDeMensajes(props: {
   onCargarAnteriores: () => void;
   cargandoAnteriores: boolean;
   hayAnteriores: boolean;
+  /** Volvió al final después de haber estado arriba: leyó lo que había. */
+  onLlegoAlFinal?: () => void;
 }) {
   const colores = useColores();
   const { listaRef, rows } = props;
   const { alScrollear, abajoLejos, nuevosAbajo } = useFinalDeLaConversacion(listaRef, props.mensajes, props.yo);
+  const estuvoArriba = useRef(false);
+  const { onLlegoAlFinal } = props;
+  useEffect(() => {
+    if (abajoLejos) estuvoArriba.current = true;
+    else if (estuvoArriba.current) {
+      estuvoArriba.current = false;
+      onLlegoAlFinal?.();
+    }
+  }, [abajoLejos, onLlegoAlFinal]);
   return (
     <View className="flex-1">
       <FondoDelChat />
@@ -80,6 +91,7 @@ export function ListaDeMensajes(props: {
           testID="btn-bajar"
           accessibilityLabel="Ir al último mensaje"
           onPress={() => listaRef.current?.scrollToEnd({ animated: true })}
+          hitSlop={2}
           className="absolute bottom-3 right-3 h-10 w-10 items-center justify-center rounded-full bg-surface shadow-md"
         >
           <ChevronDown size={22} color={colores['on-surface-variant']} />

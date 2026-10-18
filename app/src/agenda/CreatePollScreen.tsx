@@ -117,7 +117,7 @@ export function CreatePollScreen({
           <Pressable
             onPress={onClose}
             testID="btn-cerrar-crear"
-            className="h-11 w-9 items-center justify-center"
+            className="h-11 w-11 items-center justify-center"
           >
             <X size={22} color={colores["on-surface"]} />
           </Pressable>

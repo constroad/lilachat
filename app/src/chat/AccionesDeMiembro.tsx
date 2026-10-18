@@ -23,7 +23,7 @@ const TEXTOS: Record<AccionDeMiembro, { etiqueta: string; detalle: string }> = {
   },
   'dejar-admin': {
     etiqueta: 'Dejar de ser admin',
-    detalle: 'Seguís en el grupo, sin administrarlo',
+    detalle: 'Sigues en el grupo, sin administrarlo',
   },
   sacar: {
     etiqueta: 'Sacar del grupo',

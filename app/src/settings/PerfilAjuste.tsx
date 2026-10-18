@@ -106,7 +106,7 @@ export function PerfilAjuste({ credential }: { credential: Credential }) {
           </View>
         </Pressable>
         {perfil.avatarUrl ? (
-          <Pressable testID="btn-quitar-foto-perfil" onPress={quitarFoto} disabled={ocupado !== null} className="min-h-[32px] justify-center">
+          <Pressable testID="btn-quitar-foto-perfil" onPress={quitarFoto} disabled={ocupado !== null} className="min-h-[44px] justify-center px-2">
             <Text className="text-[11px] font-semibold text-on-surface-variant">Quitar</Text>
           </Pressable>
         ) : null}
@@ -134,7 +134,7 @@ export function PerfilAjuste({ credential }: { credential: Credential }) {
               <Pressable testID="btn-guardar-nombre" accessibilityLabel="Guardar el nombre" onPress={() => void guardarNombre()} disabled={ocupado !== null} className="h-11 w-11 items-center justify-center">
                 {ocupado === 'nombre' ? <ActivityIndicator color={colores.primary} /> : <Check size={20} color={colores.primary} />}
               </Pressable>
-              <Pressable testID="btn-cancelar-nombre" accessibilityLabel="Cancelar" onPress={() => setEditando(false)} className="h-11 w-9 items-center justify-center">
+              <Pressable testID="btn-cancelar-nombre" accessibilityLabel="Cancelar" onPress={() => setEditando(false)} className="h-11 w-11 items-center justify-center">
                 <X size={18} color={colores['on-surface-variant']} />
               </Pressable>
             </View>

@@ -1,6 +1,8 @@
+import { formatUltimaVez } from '@lilachat/shared';
+
 /**
- * El subtítulo de la cabecera de un chat (FL3). En un 1:1, «escribiendo…» o
- * «en línea». En un grupo dice QUIÉN escribe y, si nadie escribe, quiénes
+ * El subtítulo de la cabecera de un chat (FL3). En un 1:1, «escribiendo…»,
+ * «en línea» o, fuera de línea, la «últ. vez» (FL10). En un grupo dice QUIÉN escribe y, si nadie escribe, quiénes
  * están —como WhatsApp—; sin los nombres cargados no inventa ninguno.
  */
 export function subtituloDelChat(params: {
@@ -10,10 +12,14 @@ export function subtituloDelChat(params: {
   otroEnLinea: boolean;
   nombres: ReadonlyMap<string, string>;
   yo: string;
+  /** Cuándo se lo vio por última vez (ISO), si se sabe. Solo en un 1:1. */
+  ultimaVez?: string;
+  ahora?: Date;
 }): string {
   if (!params.esGrupo) {
     if (params.escriben.length > 0) return 'escribiendo…';
-    return params.otroEnLinea ? 'en línea' : '';
+    if (params.otroEnLinea) return 'en línea';
+    return params.ultimaVez ? formatUltimaVez(params.ultimaVez, params.ahora) : '';
   }
   if (params.escriben.length > 0) {
     const quienes = params.escriben.map((id) => params.nombres.get(id)).filter((n): n is string => Boolean(n));
@@ -23,5 +29,5 @@ export function subtituloDelChat(params: {
   }
   const otros = [...params.nombres.entries()].filter(([id]) => id !== params.yo).map(([, nombre]) => nombre);
   if (otros.length === 0) return '';
-  return [...otros, 'Vos'].join(', ');
+  return [...otros, 'Tú'].join(', ');
 }

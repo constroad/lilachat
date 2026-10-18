@@ -19,8 +19,10 @@ import { useColores } from '../ui/tema';
 import { RestaurarRespaldo } from './RestaurarRespaldo';
 
 /**
- * Ajuste «Respaldo en la mini» (F12.1): la copia de tus chats, cifrada en el
- * teléfono con una passphrase que el server nunca ve.
+ * Ajuste «Copia de seguridad» (F12.1; antes «Respaldo en la mini», que solo
+ * entendía quien conoce la mini): la copia de tus chats, cifrada en el
+ * teléfono con una passphrase que el server nunca ve. Es EL respaldo de
+ * Ajustes (FL10); el volcado del server queda para operadores.
  *
  * Tres estados: sin passphrase (crearla, con la advertencia sin letra chica),
  * con passphrase (lo último que pasó + «Respaldar ahora»), y respaldando.
@@ -76,7 +78,7 @@ export function RespaldoAjuste({ credential }: { credential: Credential }) {
           <ShieldCheck size={18} color={frase.alerta ? colores.error : colores.primary} />
         </View>
         <View className="min-w-0 flex-1">
-          <Text className="text-sm font-semibold text-on-surface">Respaldo en la mini</Text>
+          <Text className="text-sm font-semibold text-on-surface">Copia de seguridad</Text>
           <Text className="text-[11px] text-on-surface-variant" testID="respaldo-titulo">
             {frase.titulo} · {frase.detalle}
           </Text>
@@ -174,8 +176,8 @@ function CrearPassphrase({ onListo, onCancelar }: { onListo: () => Promise<void>
   return (
     <View className="mt-3 gap-2">
       <Text className="text-[11px] text-on-surface-variant">
-        Elegí una passphrase de 8 caracteres o más. Cifra el respaldo en tu teléfono: ni la mini ni
-        nadie más puede abrirlo. <Text className="font-semibold text-error">Si la olvidás, el respaldo no se recupera.</Text>
+        Elige una passphrase de 8 caracteres o más. Cifra el respaldo en tu teléfono: ni la mini ni
+        nadie más puede abrirlo. <Text className="font-semibold text-error">Si la olvidas, el respaldo no se recupera.</Text>
       </Text>
       <TextInput
         testID="passphrase-1"
@@ -193,7 +195,7 @@ function CrearPassphrase({ onListo, onCancelar }: { onListo: () => Promise<void>
         onChangeText={setOtra}
         secureTextEntry
         autoCapitalize="none"
-        placeholder="Repetila"
+        placeholder="Repítela"
         placeholderTextColor={colores['on-surface-variant']}
         className="min-h-[44px] rounded-lg bg-surface-variant px-3 text-sm text-on-surface"
       />

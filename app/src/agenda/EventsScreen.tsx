@@ -142,7 +142,7 @@ export function EventsScreen({
                       key={option.value}
                       testID={`rsvp-${event.id}-${option.value}`}
                       onPress={() => void answer(event.id, option.value)}
-                      className={`min-h-[36px] flex-1 items-center justify-center rounded-lg ${
+                      className={`min-h-[44px] flex-1 items-center justify-center rounded-lg ${
                         selected ? 'bg-primary' : 'bg-surface-variant'
                       }`}
                     >

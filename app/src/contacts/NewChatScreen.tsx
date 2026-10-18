@@ -147,7 +147,7 @@ export function NewChatScreen({
           <Pressable
             testID="btn-cerrar-nuevo-chat"
             onPress={() => (paso === 'info' ? setPaso('contactos') : cerrar())}
-            className="h-11 w-9 items-center justify-center"
+            className="h-11 w-11 items-center justify-center"
           >
             <ArrowLeft size={22} color={colores["on-surface"]} />
           </Pressable>
@@ -257,6 +257,8 @@ export function NewChatScreen({
                     </View>
                     {/* La × de la captura, para sacar a alguien sin volver atrás. */}
                     <Pressable
+                      // 24 dp de dibujo, 44 de toque.
+                      hitSlop={10}
                       testID={`quitar-${contact.id}`}
                       onPress={() =>
                         setElegidos((actuales) => actuales.filter((item) => item.id !== contact.id))

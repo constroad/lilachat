@@ -76,7 +76,7 @@ export function SecretChatBanner({ session }: { session: SecretSession }) {
               </Text>
               <Pressable
                 onPress={() => setViendoHuella(false)}
-                className="h-9 w-9 items-center justify-center"
+                className="h-11 w-11 items-center justify-center"
               >
                 <X size={18} color={colores.outline} />
               </Pressable>

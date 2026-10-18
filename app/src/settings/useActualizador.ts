@@ -24,7 +24,7 @@ export function useActualizador() {
     if (!hayConQueActualizar(info)) {
       setEstado({
         fase: 'error',
-        mensaje: 'No se pudo preparar la actualización. Probá desde LilaStore.',
+        mensaje: 'No se pudo preparar la actualización. Prueba desde LilaStore.',
       });
       return;
     }

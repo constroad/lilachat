@@ -71,7 +71,7 @@ export function InviteScreen({
       if (!alta.ok) {
         // Se avisa y NO se comparte: mandar el enlace sabiendo que no va a poder
         // entrar es hacerle perder el tiempo a dos personas.
-        setAviso(alta.message ?? 'No se pudo habilitar a esa persona. Probá de nuevo.');
+        setAviso(alta.message ?? 'No se pudo habilitar a esa persona. Prueba de nuevo.');
         return;
       }
       setAviso(null);
@@ -168,7 +168,7 @@ export function InviteScreen({
             // indistinguible de «no hay nadie» para quien reporta el problema.
             <Aviso
               titulo="No pudimos leer tu agenda"
-              cuerpo={`Ya nos avisó solo. Podés compartir el enlace igual.\n\n(${agenda.mensaje})`}
+              cuerpo={`Ya nos avisó solo. Puedes compartir el enlace igual.\n\n(${agenda.mensaje})`}
               accion="Compartir el enlace"
               onAccion={() => void invitar(null)}
             />

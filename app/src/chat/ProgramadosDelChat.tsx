@@ -29,6 +29,7 @@ export function ProgramadosDelChat(props: { pendientes: Programado[]; onCancelar
       <Pressable
         testID="chip-programados"
         onPress={() => setAbierto(true)}
+        hitSlop={{ top: 4, bottom: 4 }}
         className="mx-4 mb-1 min-h-[36px] flex-row items-center gap-2 self-start rounded-full bg-primary/[0.10] px-3"
       >
         <CalendarClock size={15} color={colores.primary} />

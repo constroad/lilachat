@@ -31,9 +31,9 @@ describe('subtituloDelChat', () => {
     );
   });
 
-  it('grupo sin nadie escribiendo: los miembros, con «Vos» al final', () => {
+  it('grupo sin nadie escribiendo: los miembros, con «Tú» al final', () => {
     expect(subtituloDelChat({ esGrupo: true, escriben: [], otroEnLinea: false, nombres, yo: 'yo' })).toBe(
-      'Mamá, Papá, Wilson, Vos'
+      'Mamá, Papá, Wilson, Tú'
     );
   });
 
@@ -42,5 +42,25 @@ describe('subtituloDelChat', () => {
       'alguien está escribiendo…'
     );
     expect(subtituloDelChat({ esGrupo: true, escriben: [], otroEnLinea: false, nombres: new Map(), yo: 'yo' })).toBe('');
+  });
+});
+
+/** «últ. vez» (FL10): en un 1:1 fuera de línea, cuándo se lo vio por última vez. */
+describe('subtituloDelChat — últ. vez', () => {
+  const base = { esGrupo: false, escriben: [], otroEnLinea: false, nombres, yo: 'yo' };
+  const ahora = new Date('2026-10-18T15:00:00');
+  const ultimaVez = new Date('2026-10-18T07:31:00').toISOString();
+
+  it('fuera de línea, con la última vez conocida', () => {
+    expect(subtituloDelChat({ ...base, ultimaVez, ahora })).toMatch(/^últ\. vez hoy a las /);
+  });
+
+  it('«en línea» y «escribiendo…» le ganan', () => {
+    expect(subtituloDelChat({ ...base, otroEnLinea: true, ultimaVez, ahora })).toBe('en línea');
+    expect(subtituloDelChat({ ...base, escriben: ['w'], ultimaVez, ahora })).toBe('escribiendo…');
+  });
+
+  it('en un grupo no hay última vez', () => {
+    expect(subtituloDelChat({ ...base, esGrupo: true, nombres: new Map(), ultimaVez, ahora })).toBe('');
   });
 });

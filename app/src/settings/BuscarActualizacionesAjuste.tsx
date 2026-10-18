@@ -13,7 +13,7 @@ function detalle(params: { estado: EstadoActualizacion; verificando: boolean; ch
   if (estado.fase === 'error') return estado.mensaje;
   if (verificando) return 'Verificando…';
   if (chequeo?.estado === 'al-dia') return `Versión ${versionActual()} · estás al día`;
-  if (chequeo?.estado === 'no-se-pudo') return 'No se pudo verificar. Revisá la señal.';
+  if (chequeo?.estado === 'no-se-pudo') return 'No se pudo verificar. Revisa la señal.';
   return `Versión ${versionActual()}`;
 }
 

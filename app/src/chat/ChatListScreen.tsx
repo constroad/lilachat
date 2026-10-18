@@ -22,7 +22,7 @@ import {
 } from '../api/client';
 import { conciliarCache } from './cacheDeChats';
 import { chatsEnMemoria, guardarChats, leerChatsGuardados } from './chatsGuardados';
-import { aplicarMensajeALista, marcarLeido, type MensajeEnVivo } from './listaEnVivo';
+import { aplicarMensajeALista, debeRecargarAlConectar, marcarLeido, puntoEnLinea, type MensajeEnVivo } from './listaEnVivo';
 import { inicioDelProceso, medirUnaVez } from '../diagnostico/diagnostico';
 import { FlashList } from '@shopify/flash-list';
 import { useBorradores } from './borradores';
@@ -100,11 +100,17 @@ export function ChatListScreen({
     });
   }, []);
   const [refreshing, setRefreshing] = useState(false);
+  // Por refs (FL4): renovar el token no es motivo para volver a pedir la lista,
+  // y saber cuándo se cargó evita repetirla al conectar el socket.
+  const jwtRef = useRef(credential.jwt);
+  jwtRef.current = credential.jwt;
+  const ultimaCarga = useRef<number | null>(null);
   const load = useCallback(async () => {
-    const result = await listChats(credential.jwt);
+    const result = await listChats(jwtRef.current);
     // El server MANDA: no se fusiona con la caché, porque un chat borrado desde
     // otro teléfono tiene que desaparecer de este.
     if (result.ok) {
+      ultimaCarga.current = Date.now();
       setChats(conciliarCache({ guardado: null, delServer: result.data.chats }));
       void guardarChats(result.data.chats);
     } else if (chatsRef.current === null) {
@@ -112,7 +118,7 @@ export function ChatListScreen({
       // que ya había, que es lo que hace que abrir sin señal siga sirviendo.
       setChats([]);
     }
-  }, [credential.jwt]);
+  }, []);
 
   useEffect(() => {
     void load();
@@ -191,7 +197,9 @@ export function ChatListScreen({
     // Al RECONECTAR (volver de segundo plano) se recarga: mientras el socket
     // estuvo pausado llegaron mensajes por push que la lista no vio, y sin esto
     // el contador de no leídos queda viejo hasta un pull manual.
-    const onConnect = () => void load();
+    const onConnect = () => {
+      if (debeRecargarAlConectar({ ultimaCarga: ultimaCarga.current, ahora: Date.now() })) void load();
+    };
     // Un chat cambió (nombre, foto, miembros; o me sacaron, FL9d): la fila
     // sale del server. Son eventos raros: un pedido cada uno.
     const onCambio = () => void load();
@@ -461,7 +469,7 @@ export function ChatListScreen({
                     ? 'Todos tus chats están en Archivados.'
                     : filtro === 'no-leidos'
                     ? 'No te queda nada sin leer.'
-                    : 'Todavía no tenés grupos.'}
+                    : 'Todavía no tienes grupos.'}
               </Text>
             </View>
           }
@@ -499,7 +507,7 @@ export function ChatListScreen({
               titulo={title(chat)}
               miUserId={credential.userId}
               marcado={seleccion.has(chat.id)}
-              enLinea={chat.memberIds.some((id) => id !== credential.userId && onlineIds.has(id))}
+              enLinea={puntoEnLinea(chat, credential.userId, onlineIds)}
               escribiendo={typingIn.has(chat.id)}
               borrador={borradores.get(chat.id)}
               onTocar={alTocarFila}

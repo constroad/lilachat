@@ -175,7 +175,7 @@ export function ContactPicker({
               ? 'Nadie coincide con lo que buscas.'
               // La invitación está JUSTO abajo desde el 26/08/2026: mandar a
               // otra pantalla era un paso de más y una copia que envejeció.
-              : (vacio ?? 'Todavía no hay nadie más en Lilachat. Invitá a alguien desde acá abajo.')}
+              : (vacio ?? 'Todavía no hay nadie más en Lilachat. Invita a alguien desde aquí abajo.')}
           </Text>
         ) : (
           filtrados.map((group) => (
@@ -406,7 +406,7 @@ function SeccionInvitar({
       ) : null}
       {ocultos > 0 ? (
         <Text className="px-4 py-3 text-[12px] text-on-surface-variant">
-          Y {ocultos} más en tu agenda. Buscá por nombre para encontrarlos.
+          Y {ocultos} más en tu agenda. Busca por nombre para encontrarlos.
         </Text>
       ) : null}
     </View>

@@ -22,6 +22,10 @@
     <receiver
       android:name=".ReceptorDeLlamada"
       android:exported="false" />
+    <!-- «Responder» y «Marcar como leído» del aviso de un mensaje (FL11). -->
+    <receiver
+      android:name=".ReceptorDeMensaje"
+      android:exported="false" />
     <service
       android:name=".ServicioDeLlamada"
       android:exported="false"

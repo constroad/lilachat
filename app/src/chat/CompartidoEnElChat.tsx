@@ -5,6 +5,7 @@ import { nombreLimpio } from './archivoDescargado';
 import { useColores } from '../ui/tema';
 import { Rotulo } from '../ui/Rotulo';
 import type { ServerMessage } from './socketClient';
+import { miniaturaDe } from './filasDelChat';
 
 /**
  * «Compartido en el chat»: Media, Docs y Links en pestañas, como WhatsApp.
@@ -79,7 +80,7 @@ export function SeccionCompartido({
                 style={{ width: '32.5%', aspectRatio: 1 }}
               >
                 <Image
-                  source={{ uri: m.media!.thumbUrl! }}
+                  source={{ uri: miniaturaDe(m.media!) }}
                   style={{ width: '100%', height: '100%' }}
                   contentFit="cover"
                 />

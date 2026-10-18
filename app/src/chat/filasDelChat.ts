@@ -1,4 +1,4 @@
-import { formatClock } from '@lilachat/shared';
+import { formatClock, tamanoDeBurbuja } from '@lilachat/shared';
 import type { ArchivoEnCola } from './colaDeArchivosMotor';
 
 /**
@@ -85,18 +85,30 @@ type MensajeConMedia = {
  * foto borrosa y un video no se reproducía nunca (le llegaba la portada). Lo
  * que no tiene miniatura no entra: se abre con otra app.
  */
+/**
+ * Qué dibujar como miniatura de una foto o un video. El storage no siempre la
+ * genera (E2E de FL11, 18/10: un PNG llegó sin ella y la burbuja mostraba solo
+ * el pie). Una IMAGEN usa su archivo completo; un video no, porque su URL es
+ * el video y no una imagen.
+ */
+export function miniaturaDe(media: { thumbUrl?: string; url?: string; mime?: string }): string | undefined {
+  if (media.thumbUrl) return media.thumbUrl;
+  return (media.mime ?? '').startsWith('image/') ? media.url : undefined;
+}
+
 export function fotosDelChat(
   mensajes: readonly MensajeConMedia[],
   contexto: { yo: string; esGrupo: boolean; nombres: ReadonlyMap<string, string>; nombreDelChat: string }
 ) {
   return mensajes.flatMap((mensaje) => {
     const media = mensaje.media;
-    if (!media?.thumbUrl || mensaje.deletedAt) return [];
+    const miniatura = media ? miniaturaDe(media) : undefined;
+    if (!media || !miniatura || mensaje.deletedAt) return [];
     const mia = mensaje.senderId === contexto.yo;
     const deUnGrupo = contexto.esGrupo ? contexto.nombres.get(String(mensaje.senderId)) : undefined;
     return [
       {
-        url: media.url ?? media.thumbUrl,
+        url: media.url ?? miniatura,
         mime: media.mime,
         nombre: media.fileName,
         cuandoReal: new Date(mensaje.at),
@@ -105,7 +117,7 @@ export function fotosDelChat(
         // En un grupo, quién la mandó; antes decía el nombre del GRUPO.
         autor: mia ? 'Tú' : (deUnGrupo ?? contexto.nombreDelChat),
         cuando: formatClock(new Date(mensaje.at)),
-        miniatura: media.thumbUrl,
+        miniatura,
       },
     ];
   });
@@ -130,4 +142,14 @@ export function filaDeArchivoEnCola(archivo: ArchivoEnCola, progreso?: number) {
     progreso,
     fallo: archivo.fallo,
   };
+}
+
+/**
+ * Hasta dónde llega una burbuja con foto o video (FL11, José 18/10: «se ve con
+ * un padding a la derecha»). El pie largo la estiraba al 80 % y la foto quedaba
+ * pegada a la izquierda; con este tope el pie se ajusta al ancho de la foto,
+ * como WhatsApp.
+ */
+export function anchoDeBurbujaConFoto(media: { width?: number; height?: number }): number {
+  return tamanoDeBurbuja(media).ancho;
 }

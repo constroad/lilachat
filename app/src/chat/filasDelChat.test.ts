@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { citadosPorSeq, filaDeArchivoEnCola, fotosDelChat, tipoDeFila, type FilaMinima } from './filasDelChat';
+import { citadosPorSeq, filaDeArchivoEnCola, fotosDelChat, tipoDeFila, type FilaMinima, anchoDeBurbujaConFoto, miniaturaDe } from './filasDelChat';
 
 const msj = (seq: number, cambios: Partial<FilaMinima> = {}): FilaMinima => ({
   seq,
@@ -136,5 +136,51 @@ describe('filaDeArchivoEnCola', () => {
       progreso: 0.5,
       fallo: undefined,
     });
+  });
+});
+
+/**
+ * Foto con pie (FL11, José 18/10: «se ve con un padding a la derecha»): el pie
+ * largo estiraba la burbuja al 80 % y la foto quedaba pegada a la izquierda.
+ * La burbuja no pasa del ancho de la foto; el pie se ajusta a ella.
+ */
+describe('anchoDeBurbujaConFoto', () => {
+  it('vertical: el ancho de la foto (240 en el alto máximo)', () => {
+    expect(anchoDeBurbujaConFoto({ width: 1080, height: 1920 })).toBeLessThanOrEqual(240);
+  });
+
+  it('apaisada: hasta 240', () => {
+    expect(anchoDeBurbujaConFoto({ width: 1920, height: 1080 })).toBe(240);
+  });
+
+  it('sin dimensiones (fotos viejas): el cuadrado de siempre', () => {
+    expect(anchoDeBurbujaConFoto({})).toBe(220);
+  });
+});
+
+/**
+ * Una foto sin miniatura (E2E de FL11, 18/10: el storage no siempre la genera)
+ * no se dibujaba: la burbuja mostraba solo el pie. Una IMAGEN usa su archivo
+ * completo; un video no, porque su URL es el video y no una imagen.
+ */
+describe('miniaturaDe', () => {
+  it('con miniatura, la miniatura', () => {
+    expect(miniaturaDe({ thumbUrl: 't.jpg', url: 'f.jpg', mime: 'image/jpeg' })).toBe('t.jpg');
+  });
+
+  it('imagen sin miniatura: el archivo completo', () => {
+    expect(miniaturaDe({ url: 'f.png', mime: 'image/png' })).toBe('f.png');
+  });
+
+  it('video o archivo sin miniatura: nada', () => {
+    expect(miniaturaDe({ url: 'v.mp4', mime: 'video/mp4' })).toBeUndefined();
+    expect(miniaturaDe({ url: 'd.pdf', mime: 'application/pdf' })).toBeUndefined();
+  });
+
+  it('el visor también la incluye', () => {
+    const fotos = fotosDelChat([{ seq: 1, senderId: 'a', at: '2026-10-18T10:00:00Z', media: { url: 'f.png', mime: 'image/png' } }], {
+      yo: 'b', esGrupo: false, nombres: new Map(), nombreDelChat: 'QA Ana',
+    });
+    expect(fotos.map((foto) => foto.miniatura)).toEqual(['f.png']);
   });
 });

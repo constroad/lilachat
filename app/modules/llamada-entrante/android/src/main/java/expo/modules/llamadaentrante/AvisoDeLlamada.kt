@@ -27,11 +27,12 @@ data class DatosDeLlamada(
     private const val TIMBRE_MS = 30_000L
 
     /** Del push solo-datos que manda el server (`pushService.avisarLlamada`). */
-    fun desdePush(data: Map<String, String>): DatosDeLlamada? {
+    fun desdePush(data: Map<String, String>, contexto: Context? = null): DatosDeLlamada? {
       val chatId = data["chatId"] ?: return null
       return DatosDeLlamada(
         chatId = chatId,
-        nombre = data["nombre"]?.takeIf { it.isNotBlank() } ?: "Llamada",
+        // El nombre de la agenda gana (FL11); sin él, el del server.
+        nombre = contexto?.let { Agenda.nombre(it, data["telefono"]) } ?: data["nombre"]?.takeIf { it.isNotBlank() } ?: "Llamada",
         video = data["video"] == "1",
         // Relativo a cuando llegó: el reloj del teléfono puede no ser el del
         // server. Si llega tarde, el «llamada-fin» del server la apaga igual.

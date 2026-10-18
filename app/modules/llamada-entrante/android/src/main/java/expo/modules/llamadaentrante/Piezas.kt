@@ -11,6 +11,7 @@ import android.os.Build
 import com.google.firebase.messaging.RemoteMessage
 import expo.modules.notifications.service.ExpoFirebaseMessagingService
 import java.net.HttpURLConnection
+import org.json.JSONObject
 import java.net.URL
 import kotlin.concurrent.thread
 
@@ -24,7 +25,7 @@ class ServicioDeAvisos : ExpoFirebaseMessagingService() {
     val data = remoteMessage.data
     when (data["tipo"]) {
       // Con la app adelante la llamada la dibuja la app (llega por el socket).
-      "llamada" -> if (!appAdelante()) DatosDeLlamada.desdePush(data)?.let { AvisoDeLlamada.mostrar(this, it) }
+      "llamada" -> if (!appAdelante()) DatosDeLlamada.desdePush(data, this)?.let { AvisoDeLlamada.mostrar(this, it) }
       "llamada-fin" -> data["chatId"]?.let { AvisoDeLlamada.quitar(this, it) }
       // FL8.2: el mensaje se acusa (doble check) y se dibuja desde acá.
       "mensaje" -> MensajeRecibido.desdePush(data)?.let { AvisoDeMensaje.recibir(this, it, appAdelante()) }
@@ -75,6 +76,22 @@ class ReceptorDeLlamada : BroadcastReceiver() {
 
 /** Un POST con `{token}`: rechazar una llamada, acusar un mensaje. */
 object Http {
+  /** Un POST con un cuerpo JSON: responder desde el aviso (FL11). Devuelve el código HTTP. */
+  fun postearJson(url: String, cuerpo: JSONObject): Int {
+    val conexion = URL(url).openConnection() as HttpURLConnection
+    try {
+      conexion.requestMethod = "POST"
+      conexion.connectTimeout = 8_000
+      conexion.readTimeout = 8_000
+      conexion.doOutput = true
+      conexion.setRequestProperty("Content-Type", "application/json")
+      conexion.outputStream.use { it.write(cuerpo.toString().toByteArray()) }
+      return conexion.responseCode
+    } finally {
+      conexion.disconnect()
+    }
+  }
+
   fun postearToken(url: String, token: String) {
     val conexion = URL(url).openConnection() as HttpURLConnection
     try {

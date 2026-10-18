@@ -18,6 +18,7 @@ import {
 } from '@lilachat/shared';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { nombreLimpio } from './archivoDescargado';
+import { anchoDeBurbujaConFoto, miniaturaDe } from './filasDelChat';
 import {
   formatClock,
   groupsWithPrevious,
@@ -206,6 +207,8 @@ function FilaDeMensaje({
             borderTopRightRadius: radios.arribaDer,
             borderBottomLeftRadius: radios.abajoIzq,
             borderBottomRightRadius: radios.abajoDer,
+            // Con foto, el pie se ajusta a su ancho (FL11): no queda hueco a la derecha.
+            ...(esFotoVisible(item) ? { maxWidth: anchoDeBurbujaConFoto(isPending(item) ? { width: item.mediaAncho, height: item.mediaAlto } : (item.media ?? {})) } : {}),
           }}
         >
           {conAutor && nombreAutor ? (
@@ -289,13 +292,13 @@ function FilaDeMensaje({
             </Pressable>
           ) : null}
 
-          {!isPending(item) && item.media?.thumbUrl && !esArchivo(item.media.mime) ? (
+          {!isPending(item) && item.media && miniaturaDe(item.media) && !esArchivo(item.media.mime) ? (
             <Pressable
               testID={`media-${item.seq}`}
               onPress={() => !isPending(item) && (enSeleccion ? onSeleccionar?.(item.seq) : onVerImagen?.(item.seq))}
             >
               <Image
-                source={{ uri: item.media.thumbUrl }}
+                source={{ uri: miniaturaDe(item.media) }}
                 style={estiloDeFoto(item.media)}
                 contentFit="cover"
                 transition={120}
@@ -433,7 +436,7 @@ const ETIQUETA_EDITADO = 'Editado';
 /** Una foto o un video que se ve en la burbuja: la hora va ENCIMA de la imagen. */
 function esFotoVisible(item: Row): boolean {
   if (isPending(item)) return Boolean(item.mediaUri) && !esArchivo(item.mediaMime);
-  return Boolean(item.media?.thumbUrl) && !esArchivo(item.media?.mime) && !item.deletedAt;
+  return Boolean(item.media && miniaturaDe(item.media)) && !esArchivo(item.media?.mime) && !item.deletedAt;
 }
 
 /**

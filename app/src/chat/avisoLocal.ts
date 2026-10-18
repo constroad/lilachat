@@ -1,6 +1,10 @@
 import * as Notifications from 'expo-notifications';
 import { armarAviso, CANAL_MENSAJES } from '@lilachat/shared';
 import { reportarError } from '../ui/reportarError';
+import { cuerpoDelAviso, idDeAvisoDeChat, sumarLineaAlAviso, tituloDelAviso } from './avisosPorChat';
+
+/** Lo que ya muestra el aviso de cada chat: el nuevo lo reemplaza y lo suma (FL11). */
+const porChat = new Map<string, { lineas: string[]; cuantos: number }>();
 
 /**
  * La burbuja de arriba cuando llega un mensaje, como WhatsApp.
@@ -74,10 +78,16 @@ export async function avisarMensaje(params: {
   // tono en normal, vibración en modo vibrador, nada en silencio.
   try {
     const aviso = armarAviso(params);
+    // UNO por chat, como WhatsApp (FL11): el mismo identificador reemplaza al
+    // aviso anterior del chat, que suma las últimas líneas.
+    const previo = porChat.get(params.chatId) ?? { lineas: [], cuantos: 0 };
+    const actual = { lineas: sumarLineaAlAviso(previo.lineas, aviso.cuerpo), cuantos: previo.cuantos + 1 };
+    porChat.set(params.chatId, actual);
     await Notifications.scheduleNotificationAsync({
+      identifier: idDeAvisoDeChat(params.chatId),
       content: {
-        title: aviso.titulo,
-        body: aviso.cuerpo,
+        title: tituloDelAviso(aviso.titulo, actual.cuantos),
+        body: cuerpoDelAviso(actual.lineas),
         // En Android manda el canal; se pone igual por si el sistema lo mira, y
         // porque es lo correcto para un mensaje entrante.
         sound: 'default',
@@ -91,4 +101,10 @@ export async function avisarMensaje(params: {
   } catch (error) {
     reportarError('avisarMensaje', error);
   }
+}
+
+/** Al abrir el chat: se va su aviso local y se olvidan sus líneas (FL11). */
+export function olvidarAvisoDelChat(chatId: string): void {
+  porChat.delete(chatId);
+  Notifications.dismissNotificationAsync(idDeAvisoDeChat(chatId)).catch((error: unknown) => reportarError('olvidarAvisoDelChat', error));
 }

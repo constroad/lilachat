@@ -4785,7 +4785,47 @@ con WebRTC):
   Metro) y la llamada venció a los 30 s antes de contestar. No es del
   arreglo: la prueba definitiva es en teléfonos reales con la APK.
 
-**Falta:** la prueba con José (0.1.90) contestando desde la notificación.
+**Prueba real (José, 0.1.90, 18/10):** lo llamé desde la página como QA Ana,
+con el TURN de producción, y contestó desde la notificación con la app
+cerrada. En la página se vio llamada contestada, ICE «checking» y después
+«connected», con candidatos en las dos direcciones. José escuchó el tono.
+**Conecta.** ✅
+
+**Hallazgo nuevo en esa prueba:** al cambiar de app en plena llamada el tono
+se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
+
+**Arreglo del ítem 7 (app, 0.1.91):**
+- **Servicio «Llamada en curso»** (`ServicioDeLlamada`, módulo
+  `llamada-entrante`):
+  - en primer plano, tipo `microphone` (`FOREGROUND_SERVICE_MICROPHONE`);
+  - va con la llamada activa y llamando hacia afuera
+    (`necesitaServicioDeLlamada`, 3 tests);
+  - la notificación usa el estilo de llamada del sistema
+    (`CallStyle.forOngoingCall`): arriba de la bandeja, con reloj desde que
+    conectó y «Colgar» a la vista;
+  - canal sin sonido ni vibración. Con importancia baja quedaba plegada en
+    «Silenciosas» y «Colgar» no se veía.
+- **«Colgar» de la notificación:** `ReceptorDeLlamada` lo emite a JS y
+  `queHacerConElAviso` cuelga la llamada de ese chat. Sin llamada no espera
+  ninguna oferta (2 tests).
+- **Si el servicio ya corre**, actualizar el aviso (llamando → en curso) va por
+  `notify`: Android 12+ no deja volver a arrancar un servicio desde el fondo.
+- **El socket no se pausa en plena llamada** (`pausaDelSocket`, 5 tests): la
+  pausa de ir al fondo queda pendiente y se aplica al terminar; volver
+  adelante la cancela. Por ahí llega que el otro colgó.
+
+**E2E del ítem 7** (emulador, quien llama: la página de QA Ana):
+- **Al fondo, 20 s después de contestar:**
+  - el servicio sigue en primer plano (tipo 0x80, canal de llamada,
+    categoría `call`);
+  - el proceso en `procState=4` e `isFrozen=false`;
+  - el socket vivo (José en línea) y el ICE en «connected».
+- **«Colgar» de la notificación** (ya con el estilo de llamada): la página
+  recibió «fin: colgada» y el servicio se apagó.
+- **El otro cuelga con la app al fondo:** el aviso llegó, el servicio se
+  apagó y recién ahí se pausó el socket (José sin conexión).
+- **Falta:** que José confirme en su teléfono que el audio no se corta al
+  cambiar de app.
 
 ## 47. Lilachat Empresa — plan (17/10/2026)
 
@@ -4923,3 +4963,10 @@ teléfono real). Lo que falló o quedó raro:
    de un vistazo, y no se fue al leerlo. Mostrarlo solo con muchos sin leer
    (p. ej. 10 o más), sin contar las líneas de llamada (§46.3), y esconderlo
    cuando ya se leyó.
+7. 🟡 18/10 (§45.28) **ALTA. En plena llamada, al cambiar de app se deja de oír** (José, 18/10,
+   0.1.90; al volver suena otra vez). Android congela una app de fondo sin
+   servicio en primer plano, y con ella el audio. Además, el socket se pausaba
+   al ir al fondo: tampoco llegaba que el otro colgó. Arreglo: servicio
+   «Llamada en curso» de tipo micrófono, con cronómetro y «Colgar» en la
+   notificación, mientras la llamada esté activa o sonando hacia afuera; y el
+   socket no se pausa en plena llamada.

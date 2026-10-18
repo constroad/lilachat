@@ -22,7 +22,14 @@ import {
   formatClock,
   groupsWithPrevious,
   resolveDeliveryState,
+  tamanoDeBurbuja,
 } from '@lilachat/shared';
+
+/** La foto o el video con su forma real (FL9); sin dimensiones, el cuadrado. */
+const estiloDeFoto = (media: { width?: number; height?: number }) => {
+  const { ancho, alto } = tamanoDeBurbuja(media);
+  return { width: ancho, height: alto };
+};
 import type { ChatMessage, PendingMessage } from './useChat';
 import { useColores } from '../ui/tema';
 
@@ -66,6 +73,7 @@ function FilaDeMensaje({
   onResponder,
   citado,
   seleccionado,
+  enSeleccion = false,
   onFallido,
   onTocarCita,
 }: {
@@ -82,8 +90,10 @@ function FilaDeMensaje({
   /** Abre el visor a pantalla completa. */
   /** Abre el visor en esta foto (por su `seq`: la URL no la identifica). */
   onVerImagen?: (seq: number) => void;
-  /** Pulsación larga: entra en modo selección. */
+  /** Pulsación larga: entra en modo selección; en él, cada toque suma o saca (FL9). */
   onSeleccionar?: (seq: number) => void;
+  /** Hay mensajes elegidos: un toque elige en vez de abrir. */
+  enSeleccion?: boolean;
   /** Deslizar sobre el mensaje: responderlo (como WhatsApp). */
   onResponder?: (seq: number, textoPreview: string, mio: boolean) => void;
   /** El mensaje al que ESTE responde, ya resuelto, para pintar la cita. */
@@ -148,7 +158,7 @@ function FilaDeMensaje({
 
   return (
     <DeslizarParaResponder
-      habilitado={!isPending(item)}
+      habilitado={!isPending(item) && !enSeleccion}
       onResponder={() => !isPending(item) && onResponder?.(item.seq, preview, mine)}
     >
     <View
@@ -171,8 +181,17 @@ function FilaDeMensaje({
         {/* La pulsación LARGA selecciona, como en WhatsApp. Un toque corto no
             hace nada acá: se reserva para abrir la foto. */}
         <Pressable
-          // Un mensaje que no se envió se toca para decidir qué hacer con él.
-          onPress={isPending(item) && item.fallo ? () => onFallido?.(item.clientKey, item.fallo!) : undefined}
+          // Un mensaje que no se envió se toca para decidir qué hacer con él;
+          // con mensajes elegidos, el toque suma o saca este (FL9).
+          onPress={
+            isPending(item)
+              ? item.fallo
+                ? () => onFallido?.(item.clientKey, item.fallo!)
+                : undefined
+              : enSeleccion
+                ? () => onSeleccionar?.(item.seq)
+                : undefined
+          }
           onLongPress={() => {
             if (isPending(item)) return;
             // El tick de «quedó seleccionado», como WhatsApp.
@@ -204,7 +223,15 @@ function FilaDeMensaje({
             <CitaDeRespuesta
               citado={citado}
               testID={`cita-${isPending(item) ? item.clientKey : item.seq}`}
-              onPress={!isPending(item) && item.replyToSeq && onTocarCita ? () => onTocarCita(item.replyToSeq!) : undefined}
+              onPress={
+                isPending(item)
+                  ? undefined
+                  : enSeleccion
+                    ? () => onSeleccionar?.(item.seq)
+                    : item.replyToSeq && onTocarCita
+                      ? () => onTocarCita(item.replyToSeq!)
+                      : undefined
+              }
             />
           ) : null}
 
@@ -219,7 +246,7 @@ function FilaDeMensaje({
           {!isPending(item) && item.media && esArchivo(item.media.mime) && !esVoz(item.media.mime) ? (
             <Pressable
               testID={`archivo-${item.seq}`}
-              onPress={() => !isPending(item) && onVerImagen?.(item.seq)}
+              onPress={() => !isPending(item) && (enSeleccion ? onSeleccionar?.(item.seq) : onVerImagen?.(item.seq))}
             >
               {/* La MINIATURA de la primera página, como la preview card de
                   WhatsApp. lila la genera para los PDF; sin ella, un documento
@@ -260,11 +287,11 @@ function FilaDeMensaje({
           {!isPending(item) && item.media?.thumbUrl && !esArchivo(item.media.mime) ? (
             <Pressable
               testID={`media-${item.seq}`}
-              onPress={() => !isPending(item) && onVerImagen?.(item.seq)}
+              onPress={() => !isPending(item) && (enSeleccion ? onSeleccionar?.(item.seq) : onVerImagen?.(item.seq))}
             >
               <Image
                 source={{ uri: item.media.thumbUrl }}
-                style={{ width: 220, height: 220 }}
+                style={estiloDeFoto(item.media)}
                 contentFit="cover"
                 transition={120}
               />
@@ -312,7 +339,7 @@ function FilaDeMensaje({
             <View testID={`media-pendiente-${item.clientKey}`}>
               <Image
                 source={{ uri: item.mediaUri }}
-                style={{ width: 220, height: 220, opacity: 0.55 }}
+                style={{ ...estiloDeFoto({ width: item.mediaAncho, height: item.mediaAlto }), opacity: 0.55 }}
                 contentFit="cover"
               />
               <View className="absolute inset-0 items-center justify-center">

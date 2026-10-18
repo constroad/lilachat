@@ -11,10 +11,10 @@ import { esVozUsable } from '@lilachat/shared';
 /**
  * Grabar una nota de voz.
  *
- * **Se toca para empezar y se toca para mandar**, no se mantiene apretado. En
- * WhatsApp hay que sostener el dedo, y para quien no lo tiene incorporado eso
- * termina en audios cortados a la mitad: soltás sin querer y ya se mandó. Con
- * dos toques se puede hablar tranquilo, mirar la pantalla, y cancelar.
+ * **Un toque graba sin el dedo, y sostener también vale** (FL9, `gestoDeVoz`):
+ * sostener y soltar manda, como WhatsApp. El toque se mantiene porque para
+ * quien no tiene incorporado sostener, soltar sin querer mandaba audios
+ * cortados a la mitad.
  *
  * El permiso se pide al primer intento, no al abrir la app: pedir el micrófono
  * antes de que alguien quiera grabar algo se lee como que la app escucha.
@@ -31,6 +31,10 @@ export function useGrabadorDeVoz() {
   const grabador = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [estado, setEstado] = useState<EstadoDeGrabacion>({ fase: 'quieto' });
   const desde = useRef(0);
+  // En un ref y no solo en el estado: quien suelta el micrófono llama a
+  // `terminar` justo después de `empezar`, antes de que el estado nuevo llegue
+  // a su render — con el estado viejo, la nota no se cortaba nunca.
+  const grabando = useRef(false);
 
   /**
    * El contador va por acá y no por el estado del módulo: se necesita que
@@ -60,6 +64,7 @@ export function useGrabadorDeVoz() {
       await grabador.prepareToRecordAsync();
       grabador.record();
       desde.current = Date.now();
+      grabando.current = true;
       setEstado({ fase: 'grabando', ms: 0 });
     } catch (error) {
       setEstado({ fase: 'error', motivo: error instanceof Error ? error.message : 'No se pudo grabar.' });
@@ -73,7 +78,8 @@ export function useGrabadorDeVoz() {
    * en los dos casos el archivo se descarta y la conversación queda como estaba.
    */
   const terminar = async (params: { cancelar?: boolean } = {}): Promise<NotaGrabada | null> => {
-    if (estado.fase !== 'grabando') return null;
+    if (!grabando.current) return null;
+    grabando.current = false;
     const ms = Date.now() - desde.current;
     setEstado({ fase: 'quieto' });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accionesDeMensaje } from './accionesDeMensaje';
+import { accionesDeMensaje, accionesDeVarios, textoParaCopiar } from './accionesDeMensaje';
 
 /**
  * La pulsación larga (FL9, auditoría §46.2: solo había «Eliminar», de a uno,
@@ -35,5 +35,38 @@ describe('accionesDeMensaje — editar (José, 17/10/2026)', () => {
   it('se ofrece solo si el motor compartido lo permite (propio, texto, < 15 min)', () => {
     expect(accionesDeMensaje(base).editar).toBe(true);
     expect(accionesDeMensaje({ ...base, editable: false }).editar).toBe(false);
+  });
+});
+
+/**
+ * Varios mensajes a la vez (FL9; auditoría §46.2: se elegía de a uno), como
+ * WhatsApp: responder y editar son de UNO; copiar, reenviar y eliminar valen
+ * para todos si valen para cada uno.
+ */
+describe('accionesDeVarios', () => {
+  const texto = (mio: boolean) =>
+    accionesDeMensaje({ mio, eliminado: false, conTexto: true, esMedia: false, chatSecreto: false, editable: mio });
+  const foto = accionesDeMensaje({ mio: true, eliminado: false, conTexto: false, esMedia: true, chatSecreto: false, editable: false });
+
+  it('con uno solo, las de ese mensaje', () => {
+    expect(accionesDeVarios([texto(true)])).toEqual(texto(true));
+  });
+
+  it('con varios: ni responder ni editar; copiar y reenviar si todos tienen texto', () => {
+    const acciones = accionesDeVarios([texto(true), texto(false)]);
+
+    expect(acciones).toMatchObject({ responder: false, editar: false, copiar: true, reenviar: true, eliminarParaMi: true });
+    expect(accionesDeVarios([texto(true), foto]).copiar).toBe(false);
+  });
+
+  it('«para todos» solo si todos son míos', () => {
+    expect(accionesDeVarios([texto(true), foto]).eliminarParaTodos).toBe(true);
+    expect(accionesDeVarios([texto(true), texto(false)]).eliminarParaTodos).toBe(false);
+  });
+});
+
+describe('textoParaCopiar', () => {
+  it('uno debajo del otro, en el orden de la conversación', () => {
+    expect(textoParaCopiar([{ seq: 7, body: 'después' }, { seq: 3, body: 'antes' }])).toBe('antes\ndespués');
   });
 });

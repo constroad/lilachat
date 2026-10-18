@@ -80,6 +80,8 @@ export async function encolarArchivo(params: {
   sizeBytes: number;
   durationMs?: number;
   caption?: string;
+  width?: number;
+  height?: number;
 }): Promise<void> {
   await hidratar();
   const clientKey = Crypto.randomUUID();
@@ -125,6 +127,8 @@ export async function drenarArchivos(): Promise<void> {
         sizeBytes: archivo.sizeBytes,
         durationMs: archivo.durationMs,
         caption: archivo.caption,
+        width: archivo.width,
+        height: archivo.height,
         onProgress: (ratio) => {
           progreso = { clientKey: archivo.clientKey, ratio };
           avisar();

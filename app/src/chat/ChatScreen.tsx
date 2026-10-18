@@ -20,6 +20,7 @@ import { useLlamadas } from '../calls/ProveedorDeLlamadas';
 import { useArchivosDelChat } from './useArchivosDelChat';
 import { useLimpiarAvisoDelChat } from './useLimpiarAvisoDelChat';
 import { SeleccionDeMensaje } from './SeleccionDeMensaje';
+import { useSeleccionDeMensajes } from './useSeleccionDeMensajes';
 import { useProgramados } from './useProgramados';
 import { VisorDelChat } from './VisorDelChat';
 import { EncabezadoDelChat } from './EncabezadoDelChat';
@@ -32,7 +33,7 @@ import { useColores } from '../ui/tema';
 import { BuscadorDelChat } from './BuscadorDelChat';
 import { useBuscarEnChat } from './useBuscarEnChat';
 import { textoDeSubida } from './progresoDeSubida';
-import { citadosPorSeq, fotosDelChat } from './filasDelChat';
+import { citadosPorSeq, filaDeArchivoEnCola, fotosDelChat } from './filasDelChat';
 import { useGrupo } from './useGrupo';
 import { FueraDelGrupo } from './FueraDelGrupo';
 import { subtituloDelChat } from './cabeceraDelChat';
@@ -149,8 +150,8 @@ export function ChatScreen({
   const subidaEnCurso = archivosEnCola.find((uno) => uno.progreso !== undefined)?.progreso;
   /** El `seq` de la foto abierta a pantalla completa, o `null`. */
   const [viendoSeq, setViendoSeq] = useState<number | null>(null);
-  /** El mensaje seleccionado con pulsación larga, o `null`. */
-  const [elegido, setElegido] = useState<number | null>(null);
+  /** Los mensajes elegidos con pulsación larga (FL9: uno o varios). */
+  const seleccion = useSeleccionDeMensajes(messages);
   /** El mensaje resaltado un momento al saltar desde una cita (FL9). */
   const [resaltado, setResaltado] = useState<number | null>(null);
   const { ocultos, ocultar } = useOcultos(chatId);
@@ -230,17 +231,7 @@ export function ChatScreen({
       // «Eliminar para mí» (FL9): ocultos en este teléfono.
       ...sinOcultos(messages, ocultos),
       ...pending,
-      ...archivosEnCola.map(({ archivo, progreso }) => ({
-        clientKey: archivo.clientKey,
-        queuedAt: archivo.queuedAt,
-        pending: true as const,
-        mediaUri: archivo.uri,
-        mediaMime: archivo.mimeType,
-        mediaNombre: archivo.fileName,
-        body: archivo.caption,
-        progreso,
-        fallo: archivo.fallo,
-      })),
+      ...archivosEnCola.map(({ archivo, progreso }) => filaDeArchivoEnCola(archivo, progreso)),
     ],
     [messages, ocultos, pending, archivosEnCola]
   );
@@ -292,13 +283,13 @@ export function ChatScreen({
 
   useAtrasDelChat(
     {
-      haySeleccion: elegido !== null,
+      haySeleccion: seleccion.enSeleccion,
       buscando: busqueda.activo,
       editando: respuesta.editando !== null,
       respondiendo: respuesta.respondiendoA !== null,
     },
     {
-      soltarSeleccion: () => setElegido(null),
+      soltarSeleccion: seleccion.soltar,
       cerrarBusqueda: busqueda.cerrar,
       cancelarEdicion: respuesta.cancelarEdicion,
       cancelarRespuesta,
@@ -306,7 +297,6 @@ export function ChatScreen({
     }
   );
 
-  const mensajeElegido = elegido === null ? null : (messages.find((mensaje) => mensaje.seq === elegido) ?? null);
 
   /** Las citas, una vez por cambio de mensajes (antes un `find` por fila y por render). */
   const citados = useMemo(
@@ -373,17 +363,18 @@ export function ChatScreen({
             esGrupo={esGrupoChat}
             nombreAutor={isPending(item) ? undefined : nombresDelGrupo.get(String(item.senderId))}
             onVerImagen={alVerImagen}
-            onSeleccionar={setElegido}
+            onSeleccionar={seleccion.alternar}
+            enSeleccion={seleccion.enSeleccion}
             onResponder={alResponder}
             citado={isPending(item) ? null : (citados.get(item.seq) ?? null)}
-            seleccionado={!isPending(item) && (item.seq === elegido || item.seq === resaltado || item.seq === busqueda.seqActual)}
+            seleccionado={!isPending(item) && (seleccion.elegidos.has(item.seq) || item.seq === resaltado || item.seq === busqueda.seqActual)}
             onFallido={alFallido}
             onTocarCita={alTocarCita}
           />
         </>
       );
     },
-    [rows, credential.userId, leidoHasta, entregadoHasta, esGrupoChat, nombresDelGrupo, alVerImagen, alResponder, citados, elegido, resaltado, busqueda.seqActual, divisorSeq, noLeidosAlAbrir, alFallido, alTocarCita]
+    [rows, credential.userId, leidoHasta, entregadoHasta, esGrupoChat, nombresDelGrupo, alVerImagen, alResponder, citados, seleccion.elegidos, seleccion.enSeleccion, seleccion.alternar, resaltado, busqueda.seqActual, divisorSeq, noLeidosAlAbrir, alFallido, alTocarCita]
   );
 
   // Con el teclado abierto no hay barra de navegación debajo: el margen del pie
@@ -417,13 +408,16 @@ export function ChatScreen({
        * eligiendo qué borrar, el nombre y las llamadas no sirven de nada, y dos
        * barras a la vez empujan la conversación fuera de la pantalla.
        */}
-      {elegido !== null && mensajeElegido ? (
+      {seleccion.enSeleccion ? (
         <SeleccionDeMensaje
-          mensaje={mensajeElegido}
+          mensajes={seleccion.mensajes}
           yo={credential.userId}
           chatSecreto={Boolean(encrypted)}
-          onCancelar={() => setElegido(null)}
-          onResponder={(seq) => alResponder(seq, previewDeMensaje(mensajeElegido), mensajeElegido.senderId === credential.userId)}
+          onCancelar={seleccion.soltar}
+          onResponder={(seq) => {
+            const elegido = seleccion.mensajes.find((uno) => uno.seq === seq);
+            if (elegido) alResponder(seq, previewDeMensaje(elegido), elegido.senderId === credential.userId);
+          }}
           onEliminarParaTodos={eliminar}
           onEliminarParaMi={ocultar}
           onEditar={respuesta.empezarEdicion}

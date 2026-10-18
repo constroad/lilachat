@@ -4,7 +4,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as Crypto from 'expo-crypto';
 import { Copy, CornerUpLeft, Forward, Pencil, Trash2, X } from 'lucide-react-native';
 import { buildOutboxItem, nombreDeContacto, puedeEditar } from '@lilachat/shared';
-import { accionesDeMensaje } from './accionesDeMensaje';
+import { accionesDeMensaje, accionesDeVarios, textoParaCopiar } from './accionesDeMensaje';
 import { chatsEnMemoria } from './chatsGuardados';
 import { queueMessage } from './outboxStore';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
@@ -15,15 +15,17 @@ import type { ChatMessage } from './useChat';
 const avisar = (texto: string) => ToastAndroid.show(texto, ToastAndroid.SHORT);
 
 /**
- * La barra de un mensaje elegido con pulsación larga (FL9; auditoría §46.2:
- * solo había «Eliminar», sin confirmar, y aparecía en mensajes ajenos).
+ * La barra de los mensajes elegidos con pulsación larga (FL9; auditoría §46.2:
+ * solo había «Eliminar», de a uno, sin confirmar, y aparecía en mensajes
+ * ajenos).
  *
- * Como WhatsApp: responder, copiar, reenviar y eliminar, que pregunta «para
- * todos» (solo lo propio) o «para mí» (se oculta en este teléfono). Reemplaza
- * a la cabecera mientras dura: las dos a la vez empujan la conversación.
+ * Como WhatsApp: responder y editar (con uno), copiar, reenviar y eliminar,
+ * que pregunta «para todos» (solo si todo es propio) o «para mí» (se oculta en
+ * este teléfono). Reemplaza a la cabecera mientras dura.
  */
 export function SeleccionDeMensaje(params: {
-  mensaje: ChatMessage;
+  /** Los elegidos, uno o más. */
+  mensajes: ChatMessage[];
   yo: string;
   chatSecreto: boolean;
   onCancelar: () => void;
@@ -37,24 +39,31 @@ export function SeleccionDeMensaje(params: {
   const colores = useColores();
   const margenes = useMargenes();
   const [reenviando, setReenviando] = useState(false);
-  const { mensaje } = params;
-  const texto = mensaje.body?.trim() ?? '';
-  const acciones = accionesDeMensaje({
-    mio: mensaje.senderId === params.yo,
-    eliminado: Boolean(mensaje.deletedAt),
-    conTexto: texto.length > 0,
-    esMedia: Boolean(mensaje.media),
-    chatSecreto: params.chatSecreto,
-    editable: puedeEditar({
-      yo: params.yo,
-      autor: mensaje.senderId,
-      kind: mensaje.kind,
-      eliminado: Boolean(mensaje.deletedAt),
-      secreto: params.chatSecreto,
-      enviadoEn: mensaje.at,
-      ahora: Date.now(),
-    }).permitido,
-  });
+  const { mensajes } = params;
+  const mensaje = mensajes[0];
+  const texto = mensaje?.body?.trim() ?? '';
+  const acciones = accionesDeVarios(
+    mensajes.map((uno) =>
+      accionesDeMensaje({
+        mio: uno.senderId === params.yo,
+        eliminado: Boolean(uno.deletedAt),
+        conTexto: Boolean(uno.body?.trim()),
+        esMedia: Boolean(uno.media),
+        chatSecreto: params.chatSecreto,
+        editable: puedeEditar({
+          yo: params.yo,
+          autor: uno.senderId,
+          kind: uno.kind,
+          eliminado: Boolean(uno.deletedAt),
+          secreto: params.chatSecreto,
+          enviadoEn: uno.at,
+          ahora: Date.now(),
+        }).permitido,
+      })
+    )
+  );
+  const seqs = mensajes.map((uno) => uno.seq);
+  if (!mensaje) return null;
 
   const eliminar = () => {
     const opciones: { text: string; style?: 'destructive' | 'cancel'; onPress?: () => void }[] = [
@@ -62,7 +71,7 @@ export function SeleccionDeMensaje(params: {
       {
         text: 'Eliminar para mí',
         onPress: () => {
-          params.onEliminarParaMi(mensaje.seq);
+          seqs.forEach(params.onEliminarParaMi);
           params.onCancelar();
         },
       },
@@ -73,13 +82,14 @@ export function SeleccionDeMensaje(params: {
         style: 'destructive',
         onPress: () => {
           params.onCancelar();
-          void params.onEliminarParaTodos(mensaje.seq).then((resultado) => {
-            if (!resultado.ok) params.onError(resultado.motivo ?? 'No se pudo eliminar.');
+          void Promise.all(seqs.map((seq) => params.onEliminarParaTodos(seq))).then((resultados) => {
+            const fallo = resultados.find((resultado) => !resultado.ok);
+            if (fallo) params.onError(fallo.motivo ?? 'No se pudo eliminar.');
           });
         },
       });
     }
-    Alert.alert('¿Eliminar el mensaje?', undefined, opciones);
+    Alert.alert(seqs.length === 1 ? '¿Eliminar el mensaje?' : `¿Eliminar ${seqs.length} mensajes?`, undefined, opciones);
   };
 
   return (
@@ -92,7 +102,9 @@ export function SeleccionDeMensaje(params: {
         <Accion testID="btn-cancelar-seleccion" etiqueta="Cancelar la selección" onPress={params.onCancelar}>
           <X size={22} color={colores['on-surface']} />
         </Accion>
-        <Text className="flex-1 text-base font-semibold text-on-surface">1 seleccionado</Text>
+        <Text testID="conteo-mensajes" className="flex-1 text-base font-semibold text-on-surface">
+          {seqs.length === 1 ? '1 seleccionado' : `${seqs.length} seleccionados`}
+        </Text>
         {acciones.responder ? (
           <Accion
             testID="btn-responder-mensaje"
@@ -110,7 +122,7 @@ export function SeleccionDeMensaje(params: {
             testID="btn-copiar-mensaje"
             etiqueta="Copiar"
             onPress={() => {
-              void Clipboard.setStringAsync(texto).then(() => avisar('Copiado'));
+              void Clipboard.setStringAsync(textoParaCopiar(mensajes)).then(() => avisar('Copiado'));
               params.onCancelar();
             }}
           >
@@ -140,7 +152,7 @@ export function SeleccionDeMensaje(params: {
       </View>
       <ReenviarA
         visible={reenviando}
-        texto={texto}
+        textos={textoParaCopiar(mensajes).split('\n')}
         onCerrar={() => setReenviando(false)}
         onReenviado={(nombre) => {
           setReenviando(false);
@@ -170,7 +182,7 @@ function Accion(props: { testID: string; etiqueta: string; onPress: () => void; 
  * texto tendría que salir cifrado con la clave de ese chat, y encolarlo en
  * claro sería justo lo que el server rechaza.
  */
-function ReenviarA(props: { visible: boolean; texto: string; onCerrar: () => void; onReenviado: (nombre: string) => void }) {
+function ReenviarA(props: { visible: boolean; textos: string[]; onCerrar: () => void; onReenviado: (nombre: string) => void }) {
   const colores = useColores();
   const margenes = useMargenes();
   const destinos = useMemo(() => {
@@ -181,15 +193,17 @@ function ReenviarA(props: { visible: boolean; texto: string; onCerrar: () => voi
       .map((chat) => ({ id: chat.id, nombre: nombreDeContacto({ delServidor: chat.name, telefono: chat.phone, agenda }) || 'Chat' }));
   }, [props.visible]);
 
+  // Cada mensaje por separado y en orden, como WhatsApp (FL9).
   const reenviar = async (destino: { id: string; nombre: string }) => {
-    const item = buildOutboxItem({
-      chatId: destino.id,
-      clientKey: Crypto.randomUUID(),
-      text: props.texto,
-      queuedAt: new Date().toISOString(),
-    });
-    if (!item) return;
-    await queueMessage(item);
+    for (const texto of props.textos) {
+      const item = buildOutboxItem({
+        chatId: destino.id,
+        clientKey: Crypto.randomUUID(),
+        text: texto,
+        queuedAt: new Date().toISOString(),
+      });
+      if (item) await queueMessage(item);
+    }
     props.onReenviado(destino.nombre);
   };
 

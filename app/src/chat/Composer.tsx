@@ -1,10 +1,13 @@
 import { memo, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
-import { Camera, Mic, Paperclip, Plus, Send, X } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
+import { Camera, Paperclip, Plus, Send, X } from 'lucide-react-native';
 import { duracionDeVoz } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { useGrabadorDeVoz, type NotaGrabada } from './useGrabadorDeVoz';
 import { guardarBorrador, leerBorrador } from './borradores';
+import { BotonDeVoz } from './BotonDeVoz';
+import type { DecisionDeVoz, mientrasSostiene } from './gestoDeVoz';
 
 /** Cuánto se espera tras la última tecla para guardar el borrador. */
 const ESPERA_PARA_GUARDAR_MS = 500;
@@ -106,6 +109,24 @@ export const Composer = memo(function Composer(props: {
     if (nota) await props.onNotaDeVoz(nota);
   };
 
+  // El micrófono sostenido (FL9, `gestoDeVoz`): mientras el dedo está apoyado,
+  // la barra avisa qué pasaría al soltar; al soltar se manda, se cancela o
+  // queda grabando sin el dedo («bloqueada»), que es lo que hacía el toque.
+  const [sosteniendo, setSosteniendo] = useState<ReturnType<typeof mientrasSostiene> | null>(null);
+  const inicioDeVoz = useRef<Promise<void> | null>(null);
+  const modoVoz = sosteniendo !== null ? 'sosteniendo' : voz.estado.fase === 'grabando' ? 'bloqueada' : 'normal';
+  const alEmpezarVoz = () => {
+    setSosteniendo('normal');
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    inicioDeVoz.current = voz.empezar();
+  };
+  const alSoltarVoz = async (decision: DecisionDeVoz) => {
+    setSosteniendo(null);
+    await inicioDeVoz.current;
+    if (decision === 'cancelar') await mandarVoz(true);
+    else if (decision === 'enviar') await mandarVoz();
+  };
+
   const soloTexto = props.modoSecreto === 'solo-texto';
 
   const enviar = () => {
@@ -123,6 +144,51 @@ export const Composer = memo(function Composer(props: {
       if (!ok) setBorrador(texto);
     });
   };
+
+  // La píldora de escribir: clip y cámara DENTRO, como el diseño y WhatsApp.
+  // El emoji que había acá no hacía nada: el teclado ya trae los suyos. Con
+  // texto escrito se esconden y el campo gana ancho.
+  const campoDeTexto = (
+    <View className="min-w-0 flex-1 flex-row items-end rounded-xl border border-outline/15 bg-background pr-1">
+      <TextInput
+        testID="input-mensaje"
+        className="max-h-28 min-h-[44px] min-w-0 flex-1 px-4 py-2.5 text-base text-on-surface"
+        placeholder="Escribe un mensaje"
+        placeholderTextColor={colores.outline}
+        multiline
+        value={borrador}
+        onChangeText={(texto) => {
+          setBorrador(texto);
+          // «Escribiendo» solo al agregar texto: vaciar el campo no lo es.
+          if (texto.length > 0) props.onEscribiendo();
+        }}
+      />
+      {borrador.length === 0 && !soloTexto ? (
+        <>
+          <Pressable
+            testID="btn-clip"
+            accessibilityLabel="Adjuntar"
+            onPress={props.onAdjuntar}
+            disabled={props.subiendo}
+            android_ripple={{ color: colores.outline, borderless: true, radius: 20 }}
+            className="h-11 w-9 items-center justify-center"
+          >
+            <Paperclip size={20} color={colores.outline} />
+          </Pressable>
+          <Pressable
+            testID="btn-camara"
+            accessibilityLabel="Tomar una foto"
+            onPress={props.onCamara}
+            disabled={props.subiendo}
+            android_ripple={{ color: colores.outline, borderless: true, radius: 20 }}
+            className="h-11 w-9 items-center justify-center"
+          >
+            <Camera size={20} color={colores.outline} />
+          </Pressable>
+        </>
+      ) : null}
+    </View>
+  );
 
   return (
     <>
@@ -172,94 +238,79 @@ export const Composer = memo(function Composer(props: {
           <View testID="composer-bloqueado" className="min-h-[44px] flex-1 items-center justify-center rounded-xl bg-background px-4">
             <Text className="text-center text-[13px] text-on-surface-variant">Esperando la clave del chat secreto…</Text>
           </View>
-        ) : voz.estado.fase === 'grabando' ? (
-          // Mientras se graba, la barra ES la grabación: cancelar, el tiempo y
-          // mandar. Un campo al lado invita a escribir mientras se habla.
-          <>
-            <Pressable
-              testID="btn-cancelar-voz"
-              accessibilityLabel="Cancelar la nota de voz"
-              onPress={() => void mandarVoz(true)}
-              className="h-11 w-11 items-center justify-center"
-            >
-              <X size={22} color={colores.error} />
-            </Pressable>
-            <View className="min-w-0 flex-1 flex-row items-center gap-2 rounded-xl border border-outline/15 bg-background px-4 py-2.5">
-              <View className="h-2.5 w-2.5 rounded-full bg-error" />
-              <Text testID="tiempo-voz" className="text-base font-semibold text-on-surface">
-                {duracionDeVoz(voz.estado.ms)}
-              </Text>
-              <Text className="text-[12px] text-on-surface-variant">Grabando…</Text>
-            </View>
-            <Pressable
-              testID="btn-enviar-voz"
-              accessibilityLabel="Enviar la nota de voz"
-              onPress={() => void mandarVoz()}
-              className="h-11 w-11 items-center justify-center rounded-full bg-primary"
-            >
-              <Send size={18} color={colores['on-primary']} />
-            </Pressable>
-          </>
         ) : (
           <>
-            {/* El «+» sigue siendo un «+» mientras sube: el progreso ya se ve
-                en la burbuja. Queda atenuado porque no se suben dos a la vez. */}
-            {soloTexto ? null : (
-              <Pressable
-                testID="btn-adjuntar"
-                accessibilityLabel="Adjuntar"
-                onPress={props.onAdjuntar}
-                disabled={props.subiendo}
-                className={`h-11 w-11 items-center justify-center ${props.subiendo ? 'opacity-40' : ''}`}
+            {modoVoz === 'bloqueada' ? (
+              // Grabando sin el dedo: la barra ES la grabación —cancelar, el
+              // tiempo y mandar—. Un campo al lado invita a escribir mientras se habla.
+              <>
+                <Pressable
+                  testID="btn-cancelar-voz"
+                  accessibilityLabel="Cancelar la nota de voz"
+                  onPress={() => void mandarVoz(true)}
+                  className="h-11 w-11 items-center justify-center"
+                >
+                  <X size={22} color={colores.error} />
+                </Pressable>
+                <View className="min-w-0 flex-1 flex-row items-center gap-2 rounded-xl border border-outline/15 bg-background px-4 py-2.5">
+                  <View className="h-2.5 w-2.5 rounded-full bg-error" />
+                  <Text testID="tiempo-voz" className="text-base font-semibold text-on-surface">
+                    {duracionDeVoz(voz.estado.fase === 'grabando' ? voz.estado.ms : 0)}
+                  </Text>
+                  <Text className="text-[12px] text-on-surface-variant">Grabando…</Text>
+                </View>
+              </>
+            ) : modoVoz === 'sosteniendo' ? (
+              <View
+                testID="barra-sosteniendo-voz"
+                className="min-w-0 flex-1 flex-row items-center gap-2 rounded-xl border border-outline/15 bg-background px-4 py-2.5"
               >
-                <Plus size={24} color={colores['on-surface-variant']} />
-              </Pressable>
-            )}
-
-            <View className="min-w-0 flex-1 flex-row items-end rounded-xl border border-outline/15 bg-background pr-1">
-              <TextInput
-                testID="input-mensaje"
-                className="max-h-28 min-h-[44px] min-w-0 flex-1 px-4 py-2.5 text-base text-on-surface"
-                placeholder="Escribe un mensaje"
-                placeholderTextColor={colores.outline}
-                multiline
-                value={borrador}
-                onChangeText={(texto) => {
-                  setBorrador(texto);
-                  // «Escribiendo» solo al agregar texto: vaciar el campo no lo es.
-                  if (texto.length > 0) props.onEscribiendo();
-                }}
-              />
-              {/* Clip y cámara DENTRO de la píldora, como el diseño y WhatsApp.
-                  El emoji que había acá no hacía nada: el teclado ya trae los
-                  suyos. Con texto escrito se esconden y el campo gana ancho. */}
-              {borrador.length === 0 && !soloTexto ? (
-                <>
+                <View className="h-2.5 w-2.5 rounded-full bg-error" />
+                <Text testID="tiempo-voz" className="text-base font-semibold text-on-surface">
+                  {duracionDeVoz(voz.estado.fase === 'grabando' ? voz.estado.ms : 0)}
+                </Text>
+                <Text
+                  testID="aviso-deslizar-voz"
+                  className={`min-w-0 flex-1 text-right text-[12px] ${sosteniendo === 'cancelaria' ? 'font-semibold text-error' : 'text-on-surface-variant'}`}
+                  numberOfLines={1}
+                >
+                  {sosteniendo === 'cancelaria'
+                    ? 'Suelta para cancelar'
+                    : sosteniendo === 'bloquearia'
+                      ? 'Suelta para seguir sin el dedo'
+                      : '‹ Desliza para cancelar · ↑ sin el dedo'}
+                </Text>
+              </View>
+            ) : (
+              <>
+                {/* El «+» sigue siendo un «+» mientras sube: el progreso ya se ve
+                    en la burbuja. Queda atenuado porque no se suben dos a la vez. */}
+                {soloTexto ? null : (
                   <Pressable
-                    testID="btn-clip"
+                    testID="btn-adjuntar"
                     accessibilityLabel="Adjuntar"
                     onPress={props.onAdjuntar}
                     disabled={props.subiendo}
-                    android_ripple={{ color: colores.outline, borderless: true, radius: 20 }}
-                    className="h-11 w-9 items-center justify-center"
+                    className={`h-11 w-11 items-center justify-center ${props.subiendo ? 'opacity-40' : ''}`}
                   >
-                    <Paperclip size={20} color={colores.outline} />
+                    <Plus size={24} color={colores['on-surface-variant']} />
                   </Pressable>
-                  <Pressable
-                    testID="btn-camara"
-                    accessibilityLabel="Tomar una foto"
-                    onPress={props.onCamara}
-                    disabled={props.subiendo}
-                    android_ripple={{ color: colores.outline, borderless: true, radius: 20 }}
-                    className="h-11 w-9 items-center justify-center"
-                  >
-                    <Camera size={20} color={colores.outline} />
-                  </Pressable>
-                </>
-              ) : null}
-            </View>
-
-            {borrador.trim() || soloTexto ? (
+                )}
+                {campoDeTexto}
+              </>
+            )}
+            {/* A la derecha, UN botón. El micrófono queda en el mismo lugar del
+                árbol mientras se sostiene: si se reemplazara, el gesto se cortaría. */}
+            {modoVoz === 'bloqueada' ? (
+              <Pressable
+                testID="btn-enviar-voz"
+                accessibilityLabel="Enviar la nota de voz"
+                onPress={() => void mandarVoz()}
+                className="h-11 w-11 items-center justify-center rounded-full bg-primary"
+              >
+                <Send size={18} color={colores['on-primary']} />
+              </Pressable>
+            ) : modoVoz === 'normal' && (borrador.trim() || soloTexto) ? (
               <Pressable
                 testID="btn-enviar"
                 accessibilityLabel="Enviar"
@@ -271,15 +322,12 @@ export const Composer = memo(function Composer(props: {
                 <Send size={18} color={colores['on-primary']} />
               </Pressable>
             ) : (
-              <Pressable
-                testID="btn-voz"
-                accessibilityLabel="Grabar una nota de voz"
-                disabled={props.subiendo}
-                onPress={() => void voz.empezar()}
-                className={`h-11 w-11 items-center justify-center rounded-full bg-primary ${props.subiendo ? 'opacity-40' : ''}`}
-              >
-                <Mic size={18} color={colores['on-primary']} />
-              </Pressable>
+              <BotonDeVoz
+                deshabilitado={props.subiendo}
+                onEmpezar={alEmpezarVoz}
+                onMover={setSosteniendo}
+                onSoltar={(decision) => void alSoltarVoz(decision)}
+              />
             )}
           </>
         )}

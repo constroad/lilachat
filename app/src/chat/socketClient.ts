@@ -31,6 +31,9 @@ export type ServerMessage = {
     /** El nombre original y el tamaño: un documento ES su nombre. */
     fileName?: string;
     sizeBytes?: number;
+    /** La forma de una foto o un video (FL9); sin ella, el cuadrado de 220. */
+    width?: number;
+    height?: number;
     /** Duración de una nota de voz en ms. */
     durationMs?: number;
   };

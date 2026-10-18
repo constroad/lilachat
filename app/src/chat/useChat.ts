@@ -53,6 +53,9 @@ export type PendingMessage = {
   mediaMime?: string;
   /** El nombre, para la tarjeta de archivo mientras sube. */
   mediaNombre?: string;
+  /** La forma de la foto que sube (FL9): la misma burbuja que tendrá al llegar. */
+  mediaAncho?: number;
+  mediaAlto?: number;
   /** 0→1 de esa subida, para pintar el velo de progreso encima. */
   progreso?: number;
 };

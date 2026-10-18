@@ -18,6 +18,9 @@ export type ArchivoEnCola = {
   durationMs?: number;
   /** El pie de una foto (FL9b): viaja con ella. */
   caption?: string;
+  /** La forma de la foto o el video (FL9): la burbuja la respeta. */
+  width?: number;
+  height?: number;
   queuedAt: string;
   intentos: number;
   fallo?: string;

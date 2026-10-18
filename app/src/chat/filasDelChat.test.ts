@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { citadosPorSeq, fotosDelChat, tipoDeFila, type FilaMinima } from './filasDelChat';
+import { citadosPorSeq, filaDeArchivoEnCola, fotosDelChat, tipoDeFila, type FilaMinima } from './filasDelChat';
 
 const msj = (seq: number, cambios: Partial<FilaMinima> = {}): FilaMinima => ({
   seq,
@@ -103,5 +103,38 @@ describe('fotosDelChat', () => {
     const eliminada = conFoto(4, ANA, { deletedAt: at });
 
     expect(fotosDelChat([sinMiniatura, eliminada], { yo: YO, esGrupo: false, nombres: new Map(), nombreDelChat: 'Ana' })).toEqual([]);
+  });
+});
+
+/** Un archivo en cola como fila pendiente (salió de `ChatScreen`; FL9: con su forma). */
+describe('filaDeArchivoEnCola', () => {
+  it('lleva la foto, su pie, su forma y el progreso', () => {
+    const archivo = {
+      clientKey: '3f2b8c1e-6a4d-4e2f-9b7a-1c2d3e4f5a6b',
+      chatId: '6a90cf9012ab34cd56ef7890',
+      uri: 'file:///cola/foto.jpg',
+      fileName: 'foto.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 1000,
+      caption: 'la roja',
+      width: 4000,
+      height: 3000,
+      queuedAt: '2026-10-18T10:00:00.000Z',
+      intentos: 0,
+    };
+
+    expect(filaDeArchivoEnCola(archivo, 0.5)).toEqual({
+      clientKey: archivo.clientKey,
+      queuedAt: archivo.queuedAt,
+      pending: true,
+      mediaUri: archivo.uri,
+      mediaMime: 'image/jpeg',
+      mediaNombre: 'foto.jpg',
+      mediaAncho: 4000,
+      mediaAlto: 3000,
+      body: 'la roja',
+      progreso: 0.5,
+      fallo: undefined,
+    });
   });
 });

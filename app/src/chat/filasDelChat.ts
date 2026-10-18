@@ -1,4 +1,5 @@
 import { formatClock } from '@lilachat/shared';
+import type { ArchivoEnCola } from './colaDeArchivosMotor';
 
 /**
  * Lo puro de las filas de la conversación (FL2, spec §45): de qué tipo es cada
@@ -108,4 +109,25 @@ export function fotosDelChat(
       },
     ];
   });
+}
+
+/**
+ * Un archivo de la cola como fila pendiente de la conversación (salió de
+ * `ChatScreen`): se ve YA, con su pie y —FL9— con la forma que tendrá al
+ * llegar, para que la burbuja no salte de tamaño.
+ */
+export function filaDeArchivoEnCola(archivo: ArchivoEnCola, progreso?: number) {
+  return {
+    clientKey: archivo.clientKey,
+    queuedAt: archivo.queuedAt,
+    pending: true as const,
+    mediaUri: archivo.uri,
+    mediaMime: archivo.mimeType,
+    mediaNombre: archivo.fileName,
+    mediaAncho: archivo.width,
+    mediaAlto: archivo.height,
+    body: archivo.caption,
+    progreso,
+    fallo: archivo.fallo,
+  };
 }

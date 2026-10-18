@@ -15,6 +15,13 @@ describe('armarEnvioDeFotos', () => {
     ]);
   });
 
+  /** La forma de la foto viaja con ella (FL9): la burbuja la respeta. */
+  it('lleva el ancho y el alto que dio la galería', () => {
+    const [foto] = armarEnvioDeFotos([{ uri: 'c', width: 4000, height: 3000 }], {});
+
+    expect(foto).toMatchObject({ width: 4000, height: 3000 });
+  });
+
   it('respeta el orden en que se eligieron', () => {
     expect(armarEnvioDeFotos([...fotos].reverse(), {}).map((f) => f.uri)).toEqual(['b', 'a']);
   });

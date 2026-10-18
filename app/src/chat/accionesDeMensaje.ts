@@ -38,3 +38,39 @@ export function accionesDeMensaje(params: {
     eliminarParaMi: true,
   };
 }
+
+const NINGUNA: AccionesDeMensaje = {
+  responder: false,
+  copiar: false,
+  reenviar: false,
+  editar: false,
+  eliminarParaTodos: false,
+  eliminarParaMi: false,
+};
+
+/**
+ * Las acciones con VARIOS mensajes elegidos (FL9), como WhatsApp: responder y
+ * editar son de uno solo; copiar, reenviar y eliminar «para todos» valen si
+ * valen para cada uno. «Para mí» siempre.
+ */
+export function accionesDeVarios(lista: readonly AccionesDeMensaje[]): AccionesDeMensaje {
+  if (lista.length === 0) return NINGUNA;
+  if (lista.length === 1) return lista[0] as AccionesDeMensaje;
+  return {
+    responder: false,
+    editar: false,
+    copiar: lista.every((uno) => uno.copiar),
+    reenviar: lista.every((uno) => uno.reenviar),
+    eliminarParaTodos: lista.every((uno) => uno.eliminarParaTodos),
+    eliminarParaMi: true,
+  };
+}
+
+/** El texto de varios mensajes para copiar: en el orden de la conversación. */
+export function textoParaCopiar(mensajes: readonly { seq: number; body?: string }[]): string {
+  return [...mensajes]
+    .sort((a, b) => a.seq - b.seq)
+    .map((mensaje) => mensaje.body?.trim() ?? '')
+    .filter(Boolean)
+    .join('\n');
+}

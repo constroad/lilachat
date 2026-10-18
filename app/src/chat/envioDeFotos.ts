@@ -10,9 +10,20 @@ export type FotoElegida = {
   fileName?: string | null;
   mimeType?: string | null;
   fileSize?: number | null;
+  /** Lo que dio la galería o la cámara (FL9): la burbuja respeta la forma. */
+  width?: number;
+  height?: number;
 };
 
-export type FotoAEnviar = { uri: string; fileName: string; mimeType: string; sizeBytes: number; caption?: string };
+export type FotoAEnviar = {
+  uri: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  caption?: string;
+  width?: number;
+  height?: number;
+};
 
 /** Cada foto con su pie (por `uri`), en el orden en que se eligieron. */
 export function armarEnvioDeFotos(fotos: readonly FotoElegida[], pies: Readonly<Record<string, string>>): FotoAEnviar[] {
@@ -24,6 +35,8 @@ export function armarEnvioDeFotos(fotos: readonly FotoElegida[], pies: Readonly<
       mimeType: foto.mimeType ?? 'image/jpeg',
       sizeBytes: foto.fileSize ?? 0,
       caption: pie ? pie : undefined,
+      width: foto.width,
+      height: foto.height,
     };
   });
 }

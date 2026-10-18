@@ -20,7 +20,16 @@ export function useAdjuntosDelChat(params: { chatId: string; onError: (texto: st
    * al instante —como WhatsApp— y sube cuando hay red, aunque se salga del chat
    * o se cierre la app; si el server la rechaza queda «No se envió» a la vista.
    */
-  const upload = async (file: { uri: string; fileName: string; mimeType: string; sizeBytes: number; durationMs?: number; caption?: string }) => {
+  const upload = async (file: {
+    uri: string;
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number;
+    durationMs?: number;
+    caption?: string;
+    width?: number;
+    height?: number;
+  }) => {
     params.onError('');
     try {
       await encolarArchivo({ chatId: params.chatId, ...file });

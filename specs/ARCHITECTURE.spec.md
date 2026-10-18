@@ -4236,7 +4236,28 @@ borrar chats, marcar no leído, nombre y foto de perfil, dimensiones de foto.
 - `ChatListScreen` pasó de 891 a 602 líneas. Salieron `FilaDeChat` (con
   `memo` y callbacks estables), `BarraDeSeleccionDeChats`, `BuscadorDeChats` y
   `ResultadosDeMensajes`.
-- Los dos siguen arriba de 600 líneas: queda como deuda.
+- Después de publicar 0.1.83 se terminó el corte: ningún archivo pasa de 600
+  líneas.
+  - `ChatScreen` (569): salieron `ListaDeMensajes`, `useRespuestaYEdicion`,
+    `useAtrasDelChat`, `useMensajeFallido`, `useAlAbrirElChat`,
+    `CrearDesdeElChat`, y `fotosDelChat` en `filasDelChat.ts` (puro, 3
+    tests).
+  - `ChatDetailScreen` (567): salió `CompartidoEnElChat`.
+  - `TabsShell` (521): salieron `useActualizacionesDeLaApp`,
+    `AparienciaAjuste` y `BuscarActualizacionesAjuste`.
+  - `ChatListScreen` (581): salió `Archivados`.
+  - `Rotulo` (`ui/Rotulo.tsx`) reemplaza tres copias.
+  - En el server, `chatService.ts` (956 → 507) se dividió: `listaDeChats.ts`
+    tiene la lista y `miembrosDelChat.ts` los miembros, el grupo y los
+    ajustes por miembro.
+  - Humo en el emulador:
+    - archivar → «Archivados» → atrás → desarchivar;
+    - editar y cancelar con atrás;
+    - responder con cita (llegó al server);
+    - detalle con «Compartido» y sus pestañas;
+    - buscar, y atrás en orden: búsqueda → chat → lista;
+    - oscuro y vuelta a sistema;
+    - la banda de versión nueva.
 
 **Borradores por chat** (`borradores.ts`, 2 tests; `resolveChatPreview`, 3
 tests)

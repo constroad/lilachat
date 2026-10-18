@@ -3397,7 +3397,7 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | FL8.1 | **Llamada entrante como WhatsApp** (pedido de José tras probar con Wilson, 17/10): pantalla completa sobre el bloqueo con tono que se repite, deslizar para contestar, rechazar sin abrir la app, tono con la app abierta, «Llamada perdida» en el chat — ver §45.16 | con la app cerrada y el teléfono bloqueado la llamada ocupa la pantalla y suena hasta contestar, rechazar o 30 s; E2E en el emulador | 🟡 17/10 (0.1.79 publicada): verificada en el emulador, más el bug de presencia que frenaba todos los push; falta probar sobre un bloqueo real |
 | FL8.2 | **Doble check sin abrir la app** (José, 17/10, chat con Wilson: un solo check aunque Wilson tenía internet). Hoy «entregado» lo marca la app al conectarse; el push llega al teléfono pero es una notificación común, Android la muestra sin ejecutar código de la app y el server nunca se entera. Camino: push de mensaje solo-datos que recibe el servicio nativo de FL8.1, que dibuja la notificación y le confirma la entrega al server con un token corto del propio push (sin JWT) | con la app cerrada, el mensaje pasa a dos checks grises al llegar el push al otro teléfono — ver §45.17 | ✅ 17/10: hecho y verificado en el emulador; sale en 0.1.80 |
 | FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | ✅ — FL9a hecha (§45.18): pulsación larga completa, links, cita que salta, divisor de no leídos, atrás; editar mensajes (§45.19); FL9b: varias fotos con pie y notas de voz con velocidad (§45.20); FL9c: borradores, archivar, marcar no leído, perfil con nombre y foto, buscar en el chat (§45.21); FL9d: programados visibles y cancelables, búsqueda que salta al mensaje, «ya no eres participante», eliminar chat (§45.22); FL9e: varios mensajes a la vez, nota de voz sostenida con cancelar y bloquear, fotos con su forma (§45.23); FL9f: «Info» del mensaje, onda de la nota de voz, arranque de ~90 ms (§45.24). ✅ 18/10 (0.1.87). Abierto menor: arrastrar en la onda, hora en la «Info» |
-| FL10 | **Pulido y coherencia** (§46.3): un solo registro (tuteo), 44 dp, encuestas completas, detalle de evento | auditoría de pantalla entera sin hallazgos ALTA | 🟡 18/10: tuteo, 44 dp, «últ. vez», punto verde solo en 1:1, un solo respaldo en Ajustes, «Ponme al día» sin llamadas (§45.25). Falta: encuestas, detalle de evento, ErrorBoundary por pantalla, orientación |
+| FL10 | **Pulido y coherencia** (§46.3): un solo registro (tuteo), 44 dp, encuestas completas, detalle de evento | auditoría de pantalla entera sin hallazgos ALTA | 🟡 18/10: tuteo, 44 dp, «últ. vez», punto verde solo en 1:1, un solo respaldo en Ajustes, «Ponme al día» sin llamadas (§45.25, 0.1.88); encuestas completas, detalle de evento con hora de fin e invitados de afuera, ErrorBoundary por pantalla (§45.26). Falta: orientación y tablet |
 | FL11 | **Lo que José vio con Wilson** (18/10, teléfonos reales con 0.1.86) — ver §46.4 | contestar desde la notificación conecta la llamada; avisos agrupados por chat, sin duplicados, con nombre de la agenda y «Responder»; foto con pie sin hueco; «Ponme al día» con sentido | 🟡 18/10: «Ponme al día» hecho (§45.25); lo demás ⬜ |
 
 ### 45.4 As-is FL0 (16/10/2026)
@@ -4621,6 +4621,83 @@ tests; `debeRecargarAlConectar` en `listaEnVivo.ts`, tests)
 - Tamaños: `ChatScreen.tsx` 598 líneas, `useChat.ts` 581, `chatRoutes.ts`
   ~572. Lo próximo que entre ahí obliga a partir.
 
+### 45.26 As-is FL10: encuestas completas, el evento para todos y un ErrorBoundary por pantalla (18/10/2026)
+
+**Encuestas** (server: `vistaDeEncuesta.ts`, `votoDeEncuesta.ts`,
+`contextoDeChats.ts`, 13 tests; app: `encuestas.ts`, 11 tests,
+`TarjetaDeEncuesta`)
+- `GET /polls` dice de qué chat es (`chat`: el grupo por su nombre, el 1:1
+  por el teléfono y nombre del otro), quién preguntó (`autor`), si es mía
+  (`esMia`) y `personas` para nombrar con la agenda.
+- **Anónima de verdad:** los votos ajenos salen como seudónimos estables
+  («anonimo-0»), lo propio con mi id. Los conteos y porcentajes no cambian,
+  ni siquiera en las apps viejas, que cuentan `votes`. `personas` trae solo
+  al autor.
+- **Votar ya no pisa:** antes se reescribían todas las opciones y dos votos a
+  la vez perdían uno (el test lo reprodujo). Ahora cada voto toca solo el id
+  de quien vota (`$pull`/`$addToSet`), con el filtro `closedAt: null`.
+- Votar devuelve la encuesta actualizada. Cerrar (`POST /polls/:id/close`) y
+  eliminar (`DELETE /polls/:id`) son solo de quien la creó.
+- La tarjeta: «Familia · preguntó Wilson», «Wilson te preguntó» (1:1) o
+  «preguntaste tú». Debajo de cada opción, «Tú, Wilson y 2 más» (nunca en
+  una anónima). Al pie, votantes únicos y «Cerrada». Cerrar y eliminar con
+  confirmación.
+- El voto se ve al instante. Mientras viaja, la tarjeta no acepta otro y
+  dice «Guardando…». Si falla, vuelve atrás y lo dice en la tarjeta.
+
+**El evento para todos** (server: `vistaDeEvento.ts`, `invitarAlEvento.ts`,
+6 tests; shared: grupo existente en `planTargetChat`, 3 tests; app:
+`eventos.ts`, 8 tests, `DetalleDeEvento`)
+- Tocar cualquier tarjeta abre el detalle: en qué chat y quién lo creó,
+  cuándo (con hora de fin), dónde, descripción, y quiénes van por respuesta
+  («Van», «Tal vez», «No van», «Sin responder»). Quien lo creó tiene ahí
+  «Editar».
+- **Hora de fin** opcional en el formulario («Agregar hora de fin», dos
+  horas después por defecto; sin atajos, que cuentan desde ahora). «Quitar»
+  la borra también al editar.
+- **«Pueden invitar a otros» tiene efecto:** `POST /events/:id/invitar`.
+  Quien lo creó, siempre; los demás, solo con el interruptor. Se invita solo
+  a contactos (un chat en común), hasta 20 por vez, sin duplicar. El invitado
+  de afuera ve el evento («QA Beto te invitó», sin el chat), responde y le
+  llegan los recordatorios. `attendees.invitedBy` guarda quién lo sumó.
+- **Ya no se crea siempre un grupo nuevo:** con 2+ invitados, si hay un
+  grupo con EXACTAMENTE esa gente, el evento va ahí. No se agregó elegir
+  conversaciones: José pidió contactos, no chats.
+- `GET /events` ahora busca también por `attendees.userId`. En la bóveda no
+  hay índice para eso (autoIndex apagado); con pocos eventos no pesa, queda
+  anotado.
+
+**ErrorBoundary por pantalla**
+- Lista, Encuestas, Agenda, Ajustes y la conversación tienen el suyo. En la
+  conversación, además de «Reintentar», «Volver» a la lista.
+
+**Bug previo encontrado en el E2E:** el selector de contactos (nuevo chat,
+grupo, invitar) quedaba en esqueleto para siempre si ningún número de la
+agenda era válido o la agenda estaba vacía. `POST /contacts/match`
+contestaba sin `groups` y la app reventaba al juntar listas. Ahora el server
+manda `groups: []` (test) y la app se cuida igual.
+
+**E2E** (emulador contra :3104; autores QA Ana, QA Beto y QA Caro):
+- Por HTTP: 6 votos simultáneos entraron todos; la anónima no filtró ids;
+  cerrar y eliminar ajenos dieron 403; votar cerrada, 400.
+- En la app:
+  - **Encuestas:** origen en cada tarjeta, nombres bajo cada opción y la
+    anónima sin ellos. Votar mostró «Tú» y «3 votantes». Cerrar dejó la
+    encuesta en «Cerrada», sin votos. Sin red, el voto volvió atrás con «Sin
+    conexión». Eliminar la sacó de la lista.
+  - **Eventos:** las tarjetas mostraron origen y hora de fin. El detalle de
+    un evento ajeno mostró los tres grupos de respuesta. Invité a QA Ana
+    desde el detalle y apareció en «Sin responder». En el propio, «Editar»
+    abrió el formulario con «Termina» precargado; «Quitar» y guardar
+    dejaron solo el comienzo.
+  - **ErrorBoundary:** con un error forzado en la Agenda (revertido), solo esa
+    pestaña mostró «Algo se rompió». Chats siguió andando.
+
+**Notas**
+- Otra sesión (Pulso) tenía el emulador con su lock y su Metro en el 8081.
+  Lilachat usó el 8082, con `debug_http_host` escrito en las preferencias
+  de la app, y lo borró al terminar.
+
 ## 47. Lilachat Empresa — plan (17/10/2026)
 
 José aprobó llevar Lilachat a un uso empresarial tipo Slack, con D1 en (a).
@@ -4699,10 +4776,10 @@ Dos pasadas de solo lectura (conversaciones; todo lo demás), con evidencia
   mensaje («Te invito… Instalá»).
 - ✅ 18/10 Áreas táctiles < 44 dp y botones sin etiqueta (volver/llamar 36 dp, RSVP 36
   dp, quitar participante 24 dp…).
-- Encuestas: no dicen de qué chat ni quién preguntó, nunca muestran quién
+- ✅ 18/10 (§45.26) Encuestas: no dicen de qué chat ni quién preguntó, nunca muestran quién
   votó, «anónimo» no es real (el server manda los votantes a todos), no se
   cierran ni se borran, votar no espera ni avisa errores.
-- Evento: sin detalle para quien no lo creó (quiénes van, en qué chat), sin
+- ✅ 18/10 (§45.26) Evento: sin detalle para quien no lo creó (quiénes van, en qué chat), sin
   hora de fin, «Pueden invitar a otros» sin efecto, invitar a 2+ siempre crea
   un grupo nuevo.
 - ✅ 17/10 «Compartidos» en avisos nunca tiene nada (nadie crea un aviso de chat).
@@ -4710,7 +4787,8 @@ Dos pasadas de solo lectura (conversaciones; todo lo demás), con evidencia
 - ✅ 18/10 Presencia: sin «últ. vez»; los grupos muestran el punto de en línea.
 - ✅ 18/10 Dos respaldos distintos en Ajustes; «Respaldar ahora» de la copia vieja
   deja a cualquiera lanzar un dump del server entero (`backupRoutes.ts:44`).
-- Un solo ErrorBoundary para toda la app; orientación fija en vertical.
+- 🟡 18/10 Un solo ErrorBoundary para toda la app (✅ §45.26); orientación fija en
+  vertical (⬜: cambio nativo + revisar cada pantalla girada y en tablet).
 - ✅ 18/10 Las líneas de llamada cuentan como no leídas y disparan «Ponme al día» de
   Lila sobre puras llamadas (E2E de FL8.1).
 - ✅ 18/10 La lista de chats se pide 5 veces al arrancar: `TabsShell` y

@@ -3389,7 +3389,7 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | FL1 | **Navegación nativa** — ver §45.5 | volver de un chat no remonta la lista | ✅ 16/10 (0.1.71) |
 | FL2 | **Pantalla de chat nueva** — FL2a (§45.6) y FL2b (§45.8) | 0 frames perdidos al tipear y al abrir; teclado sincronizado | ✅ 16/10 (0.1.73) |
 | FL3 | **Burbujas y lista estilo WhatsApp** — conversación (§45.9) y lista (§45.10), claro y oscuro | auditoría lado a lado contra el diseño de Stitch | ✅ 16/10 (0.1.75) |
-| FL4 | **Latencia del server** — hecho: envío de 5 a 3 viajes, lista sin N+1, ping 15/10 s (§45.7). Hecho también: bóveda (D2, §45.11). Falta: caché de membresía para acuses/typing, fotos con dimensiones + blurhash | ack < 300 ms medido | 🟡 16/10 |
+| FL4 | **Latencia del server** — hecho: envío de 5 a 3 viajes, lista sin N+1, ping 15/10 s (§45.7). Hecho también: bóveda (D2, §45.11), fotos con dimensiones (FL9e) y la lista pedida 1 vez al arrancar en vez de 6 (§45.25). Falta: caché de membresía para acuses/typing, blurhash | ack < 300 ms medido | 🟡 18/10 |
 | FL5 | **Pendientes de F12 que pesan en el hilo JS**: cifrado/scrypt por lotes, tarea de fondo que mira wifi/carga primero (§44.4) — ver §45.12 | respaldar 20 000 mensajes sin ANR en `gama-baja` | 🟡 17/10: hecho y medido en V8 (tramo típico 0,7 ms); falta medir en un gama baja real |
 | FL6 | **Marca y Stitch**: logo vectorial único (ícono, adaptativo, mono, splash y `<Logo>` desde la misma geometría) — ver §45.13; diseñar en Stitch la conversación llena, con la paleta real y las pestañas reales | ícono verificado dentro del APK | ✅ 17/10: logo (0.1.76) y pantallas de Stitch |
 | FL7 | **Agenda editable y visor a lo WhatsApp** + lo roto de la auditoría que no podía esperar — ver §45.14 | editar/borrar avisos y eventos, día y hora exactos, deslizar entre fotos; E2E en el emulador | ✅ 17/10 (0.1.77) |
@@ -3397,7 +3397,8 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | FL8.1 | **Llamada entrante como WhatsApp** (pedido de José tras probar con Wilson, 17/10): pantalla completa sobre el bloqueo con tono que se repite, deslizar para contestar, rechazar sin abrir la app, tono con la app abierta, «Llamada perdida» en el chat — ver §45.16 | con la app cerrada y el teléfono bloqueado la llamada ocupa la pantalla y suena hasta contestar, rechazar o 30 s; E2E en el emulador | 🟡 17/10 (0.1.79 publicada): verificada en el emulador, más el bug de presencia que frenaba todos los push; falta probar sobre un bloqueo real |
 | FL8.2 | **Doble check sin abrir la app** (José, 17/10, chat con Wilson: un solo check aunque Wilson tenía internet). Hoy «entregado» lo marca la app al conectarse; el push llega al teléfono pero es una notificación común, Android la muestra sin ejecutar código de la app y el server nunca se entera. Camino: push de mensaje solo-datos que recibe el servicio nativo de FL8.1, que dibuja la notificación y le confirma la entrega al server con un token corto del propio push (sin JWT) | con la app cerrada, el mensaje pasa a dos checks grises al llegar el push al otro teléfono — ver §45.17 | ✅ 17/10: hecho y verificado en el emulador; sale en 0.1.80 |
 | FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | ✅ — FL9a hecha (§45.18): pulsación larga completa, links, cita que salta, divisor de no leídos, atrás; editar mensajes (§45.19); FL9b: varias fotos con pie y notas de voz con velocidad (§45.20); FL9c: borradores, archivar, marcar no leído, perfil con nombre y foto, buscar en el chat (§45.21); FL9d: programados visibles y cancelables, búsqueda que salta al mensaje, «ya no eres participante», eliminar chat (§45.22); FL9e: varios mensajes a la vez, nota de voz sostenida con cancelar y bloquear, fotos con su forma (§45.23); FL9f: «Info» del mensaje, onda de la nota de voz, arranque de ~90 ms (§45.24). ✅ 18/10 (0.1.87). Abierto menor: arrastrar en la onda, hora en la «Info» |
-| FL10 | **Pulido y coherencia** (§46.3): un solo registro (tuteo), 44 dp, encuestas completas, detalle de evento | auditoría de pantalla entera sin hallazgos ALTA | ⬜ |
+| FL10 | **Pulido y coherencia** (§46.3): un solo registro (tuteo), 44 dp, encuestas completas, detalle de evento | auditoría de pantalla entera sin hallazgos ALTA | 🟡 18/10: tuteo, 44 dp, «últ. vez», punto verde solo en 1:1, un solo respaldo en Ajustes, «Ponme al día» sin llamadas (§45.25). Falta: encuestas, detalle de evento, ErrorBoundary por pantalla, orientación |
+| FL11 | **Lo que José vio con Wilson** (18/10, teléfonos reales con 0.1.86) — ver §46.4 | contestar desde la notificación conecta la llamada; avisos agrupados por chat, sin duplicados, con nombre de la agenda y «Responder»; foto con pie sin hueco; «Ponme al día» con sentido | 🟡 18/10: «Ponme al día» hecho (§45.25); lo demás ⬜ |
 
 ### 45.4 As-is FL0 (16/10/2026)
 
@@ -4543,6 +4544,83 @@ tests; server: `width` y `height` al subir, 1 test; app: `filaDeArchivoEnCola`,
   en la limpieza de los viejos.
 - Queda abierto: saltar en la onda arrastrando el dedo (hoy se toca).
 
+### 45.25 As-is FL4 y FL10: la lista una vez, tuteo, 44 dp, «últ. vez» y «Ponme al día» (18/10/2026)
+
+**La lista de chats, una vez al arrancar** (app: `api/pedidoUnico.ts`, 4
+tests; `debeRecargarAlConectar` en `listaEnVivo.ts`, tests)
+- Medido en el log del server de QA: el arranque pedía `GET /api/chats` 6
+  veces. `TabsShell` y `ChatListScreen` pedían cada uno, otra vez al primer
+  `connect`, y sus `useCallback` dependían del JWT, que el refresh cambia.
+- `unSoloPedido(clave, hacer)`: dos pedidos iguales en vuelo comparten la
+  misma promesa. `listChats` lo usa con la clave `chats:<jwt>`.
+- Al conectar se recarga solo si la última carga buena tiene más de 3 s.
+- El JWT se lee de una ref: `load` ya no cambia de identidad con el refresh.
+- Medido después: arranque en frío 1, volver del fondo 1, tirar para
+  actualizar 1.
+
+**Tuteo** (app, shared y server)
+- 45 textos pasaron del voseo al tuteo: «Probá»→«Prueba», «Podés»→«Puedes»,
+  «Elegí»→«Elige», «Sos el único admin»→«Eres el único admin», «Seguís en el
+  grupo»→«Sigues en el grupo», «Repetila»→«Repítela», etc.
+- «Vos» pasó a «Tú» (autor de un mensaje, miembros del grupo, detalle).
+  «Respondiendo a vos» pasó a «Respondiendo a tu mensaje».
+- Una segunda pasada con patrón (`-ás/-és/-ís`, imperativos con tilde) halló
+  6 que la primera no vio. Los comentarios del código quedan como están.
+
+**44 dp**
+- Botones de 32–40 dp de ancho pasaron a `h-11 w-11` (cabeceras, cerrar,
+  quitar participante, RSVP, «Quitar» foto, cancelar respuesta).
+- Donde el dibujo es chico a propósito (quitar foto o chip, reproducir nota,
+  barra de la nota, «bajar»), `hitSlop` completa los 44.
+
+**«últ. vez»** (server: `ultimaVez.ts`, 2 tests; shared: `formatUltimaVez`,
+3 tests; app: `useUltimaVez`, `subtituloDelChat`, 3 tests)
+- `User.lastSeenAt` se escribe al cerrarse el ÚLTIMO socket de la persona,
+  no en cada conexión. La presencia sigue en memoria; esto sobrevive a un
+  reinicio.
+- El aviso `presence` de «se fue» trae `lastSeenAt`.
+- Al abrir un 1:1 la app pide `presence.ultimaVez` (con ack) y repite el
+  pedido en cada reconexión. El server contesta solo si comparten un chat y
+  el otro no está en línea; con un id inválido, `null`.
+- La cabecera: «escribiendo…» > «en línea» > «últ. vez hoy a las 7:41 a. m.».
+  Ayer dice «ayer», más atrás la fecha («2 oct.»). A la una: «a la 1:05».
+- No hay ajuste para ocultarla, como el de WhatsApp. Queda anotado.
+
+**Punto verde solo en 1:1** (`puntoEnLinea` en `listaEnVivo.ts`, 2 tests)
+- En un grupo con varios conectados el punto era ruido permanente.
+
+**Un solo respaldo en Ajustes** (`useEsOperador`)
+- «Datos» muestra solo «Copia de seguridad», que es el respaldo cifrado de
+  los chats de cada uno. Antes se llamaba «Respaldo en la mini».
+- «Respaldo del servidor» (volcado nocturno de la base entera) aparece solo
+  si el server dice `puedeRespaldar`, o sea para un operador.
+- El resto del texto del respaldo todavía nombra «la mini». Para quien no
+  conoce la máquina de José no dice nada; queda anotado.
+
+**«Ponme al día» con sentido** (`ponerAlDia.ts`, 6 tests)
+- Cuenta solo mensajes ajenos de verdad entre los no leídos: sin avisos ni
+  llamadas (`system`), sin lo propio, sin lo eliminado.
+- Se ofrece desde 10. Con menos se leen de un vistazo.
+- Se esconde al volver al final después de haber estado arriba
+  (`onLlegoAlFinal` de `ListaDeMensajes`). Un resumen ya pedido se queda.
+
+**E2E** (emulador contra :3104, chats con QA Ana y QA Beto):
+- Con 2 sin leer no salió «Ponme al día». Con 12 y con 30, sí. Con 30 abrió
+  en el primero no leído, y al bajar hasta el final la banda se fue.
+- QA Beto sembrado sin conectarse nunca: cabecera vacía. Después se conectó
+  por socket desde un script: «en línea». Al irse: «últ. vez hoy a las 7:42
+  a. m.» sin recargar. Al reabrir: la hora guardada.
+- Ajustes: un solo respaldo en «Datos»; «Si la olvidas», «Repítela».
+- Lista: 1 `GET /api/chats` al arrancar, al volver del fondo y al tirar.
+
+**Notas**
+- El server de QA escribió `lastSeenAt` en el usuario real de José al
+  desconectarse el emulador. Se borró en la limpieza y se verificó en 0.
+- Fast Refresh no conectaba con el build de desarrollo del emulador: hubo que
+  reiniciar la app para ver cada cambio. No es del código.
+- Tamaños: `ChatScreen.tsx` 598 líneas, `useChat.ts` 581, `chatRoutes.ts`
+  ~572. Lo próximo que entre ahí obliga a partir.
+
 ## 47. Lilachat Empresa — plan (17/10/2026)
 
 José aprobó llevar Lilachat a un uso empresarial tipo Slack, con D1 en (a).
@@ -4616,10 +4694,10 @@ Dos pasadas de solo lectura (conversaciones; todo lo demás), con evidencia
   cabecera de miembros. WhatsApp dice «Ya no eres participante» (E2E de FL8).
 
 ### 46.3 FL10 — pulido y coherencia
-- **Un solo registro: tuteo** (Perú). Hoy Agenda y onboarding tutean y
+- ✅ 18/10 **Un solo registro: tuteo** (Perú). Hoy Agenda y onboarding tutean y
   Ajustes, Contactos, respaldo e invitación vosean, a veces en el mismo
   mensaje («Te invito… Instalá»).
-- Áreas táctiles < 44 dp y botones sin etiqueta (volver/llamar 36 dp, RSVP 36
+- ✅ 18/10 Áreas táctiles < 44 dp y botones sin etiqueta (volver/llamar 36 dp, RSVP 36
   dp, quitar participante 24 dp…).
 - Encuestas: no dicen de qué chat ni quién preguntó, nunca muestran quién
   votó, «anónimo» no es real (el server manda los votantes a todos), no se
@@ -4627,13 +4705,54 @@ Dos pasadas de solo lectura (conversaciones; todo lo demás), con evidencia
 - Evento: sin detalle para quien no lo creó (quiénes van, en qué chat), sin
   hora de fin, «Pueden invitar a otros» sin efecto, invitar a 2+ siempre crea
   un grupo nuevo.
-- «Compartidos» en avisos nunca tiene nada (nadie crea un aviso de chat).
-- Presencia: sin «últ. vez»; los grupos muestran el punto de en línea.
-- Dos respaldos distintos en Ajustes; «Respaldar ahora» de la copia vieja
+- ✅ 17/10 «Compartidos» en avisos nunca tiene nada (nadie crea un aviso de chat).
+  Ya no hay pestaña: la sección solo aparece si hay alguno (`RemindersScreen`).
+- ✅ 18/10 Presencia: sin «últ. vez»; los grupos muestran el punto de en línea.
+- ✅ 18/10 Dos respaldos distintos en Ajustes; «Respaldar ahora» de la copia vieja
   deja a cualquiera lanzar un dump del server entero (`backupRoutes.ts:44`).
 - Un solo ErrorBoundary para toda la app; orientación fija en vertical.
-- Las líneas de llamada cuentan como no leídas y disparan «Ponme al día» de
+- ✅ 18/10 Las líneas de llamada cuentan como no leídas y disparan «Ponme al día» de
   Lila sobre puras llamadas (E2E de FL8.1).
-- La lista de chats se pide 5 veces al arrancar: `TabsShell` y
+- ✅ 18/10 La lista de chats se pide 5 veces al arrancar: `TabsShell` y
   `ChatListScreen` piden cada uno, y otra vez al reconectar (log del server de
   QA, FL8). Va con FL4.
+
+### 46.4 FL11 — lo que José vio con Wilson (18/10/2026, teléfonos reales, 0.1.86)
+
+La llamada ya ocupa la pantalla con la app cerrada (FL8.1 funciona en un
+teléfono real). Lo que falló o quedó raro:
+
+1. **ALTA. Contestar desde la notificación se queda en «Conectando…» y nunca
+   conecta**, en los dos sentidos (José → Wilson y Wilson → José). El chat
+   registra «Llamada de voz · 00:18»: el server vio el contestar, pero el
+   audio nunca se estableció.
+   **Hipótesis principal (leída en el código):** `socket.ts` reenvía
+   `call.ice` solo en vivo. Los candidatos que manda quien llama antes de que
+   el otro teléfono conecte se pierden; la oferta sí se repite al conectar
+   (`ofertasVigentes`), los candidatos no. Con la app abierta llegaban todos.
+   Arreglo probable: guardar los candidatos junto a la oferta
+   (`guardarOferta`), repetirlos con ella y aplicarlos después de
+   `setRemoteDescription`. Otras hipótesis, en este orden:
+   - la app arranca desde el aviso y contesta antes de tener la oferta o el
+     socket;
+   - los candidatos ICE se pierden mientras la pantalla se monta;
+   - la credencial TURN no llega en el arranque en frío.
+   En el emulador, con la app abierta, conectaba (FL8): el caso es la app
+   cerrada.
+2. **Los avisos de mensajes salen uno por mensaje**, sin agruparse por chat
+   como WhatsApp. Además algunos salen **duplicados** en dos formatos: «Los
+   originales · 960397018» con el texto, y «Los originales» con
+   «960397018: texto». Parece que el aviso nativo (`AvisoDeMensaje`) y el
+   local de JS (`avisoLocal`) se disparan los dos cuando el proceso está vivo.
+3. **El aviso dice el número y no el nombre de la agenda** («960397018» y no
+   «Wilson Zamora»): el código nativo no ve la agenda. Se puede buscar el
+   nombre con `ContactsContract.PhoneLookup`.
+4. **El aviso no tiene «Responder»** ni «Marcar como leído», como WhatsApp
+   (respuesta en línea desde la notificación).
+5. **Foto con pie: hueco a la derecha.** Con FL9e la foto vertical mide 240 de
+   ancho, pero un pie más largo ensancha la burbuja hasta el 80 % y la foto
+   queda pegada a la izquierda. WhatsApp ajusta el pie al ancho de la foto.
+6. ✅ 18/10 (§45.25) **«Ponme al día» sin sentido**: salió con «1 mensaje sin leer», que se lee
+   de un vistazo, y no se fue al leerlo. Mostrarlo solo con muchos sin leer
+   (p. ej. 10 o más), sin contar las líneas de llamada (§46.3), y esconderlo
+   cuando ya se leyó.

@@ -3396,7 +3396,7 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | FL8 | **Lo que se pierde o se rompe** (auditoría §46.1) — ver §45.15 | ningún mensaje desaparece sin aviso; la notificación abre su chat; la llamada suena fuera del chat | ✅ 17/10 (0.1.78) |
 | FL8.1 | **Llamada entrante como WhatsApp** (pedido de José tras probar con Wilson, 17/10): pantalla completa sobre el bloqueo con tono que se repite, deslizar para contestar, rechazar sin abrir la app, tono con la app abierta, «Llamada perdida» en el chat — ver §45.16 | con la app cerrada y el teléfono bloqueado la llamada ocupa la pantalla y suena hasta contestar, rechazar o 30 s; E2E en el emulador | 🟡 17/10 (0.1.79 publicada): verificada en el emulador, más el bug de presencia que frenaba todos los push; falta probar sobre un bloqueo real |
 | FL8.2 | **Doble check sin abrir la app** (José, 17/10, chat con Wilson: un solo check aunque Wilson tenía internet). Hoy «entregado» lo marca la app al conectarse; el push llega al teléfono pero es una notificación común, Android la muestra sin ejecutar código de la app y el server nunca se entera. Camino: push de mensaje solo-datos que recibe el servicio nativo de FL8.1, que dibuja la notificación y le confirma la entrega al server con un token corto del propio push (sin JWT) | con la app cerrada, el mensaje pasa a dos checks grises al llegar el push al otro teléfono — ver §45.17 | ✅ 17/10: hecho y verificado en el emulador; sale en 0.1.80 |
-| FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | 🟡 17/10: FL9a hecha (§45.18): pulsación larga completa, links, cita que salta, divisor de no leídos, atrás; editar mensajes (§45.19); FL9b: varias fotos con pie y notas de voz con velocidad (§45.20); FL9c: borradores, archivar, marcar no leído, perfil con nombre y foto, buscar en el chat (§45.21); FL9d: programados visibles y cancelables, búsqueda que salta al mensaje, «ya no eres participante», eliminar chat (§45.22). Falta: multiselección, nota de voz manteniendo, dimensiones de foto |
+| FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | 🟡 17/10: FL9a hecha (§45.18): pulsación larga completa, links, cita que salta, divisor de no leídos, atrás; editar mensajes (§45.19); FL9b: varias fotos con pie y notas de voz con velocidad (§45.20); FL9c: borradores, archivar, marcar no leído, perfil con nombre y foto, buscar en el chat (§45.21); FL9d: programados visibles y cancelables, búsqueda que salta al mensaje, «ya no eres participante», eliminar chat (§45.22); FL9e: varios mensajes a la vez, nota de voz sostenida con cancelar y bloquear, fotos con su forma (§45.23). Falta: «Info» del mensaje (quién lo leyó), onda de la nota de voz, que la grabación arranque sin demora |
 | FL10 | **Pulido y coherencia** (§46.3): un solo registro (tuteo), 44 dp, encuestas completas, detalle de evento | auditoría de pantalla entera sin hallazgos ALTA | ⬜ |
 
 ### 45.4 As-is FL0 (16/10/2026)
@@ -4439,6 +4439,62 @@ tests nuevos)
   - elegir varios mensajes a la vez;
   - mantener para grabar la nota de voz y deslizar para cancelar;
   - fotos con su tamaño real.
+
+### 45.23 As-is FL9e: varios mensajes, la voz sostenida y fotos con su forma (18/10/2026)
+
+**Varios mensajes a la vez** (`accionesDeVarios` y `textoParaCopiar`, 4
+tests; `useSeleccionDeMensajes`)
+- La pulsación larga elige el primero. Desde ahí, tocar una burbuja (o su foto
+  o su cita) la suma o la saca. Sin ninguno elegido se sale del modo, y atrás
+  suelta todo.
+- Responder y editar quedan para cuando hay uno solo. Copiar junta los textos
+  en orden y reenviar manda cada uno por separado.
+- «Eliminar para todos» solo aparece si todos son propios; «para mí» siempre.
+- Deslizar para responder se apaga en modo selección.
+
+**La nota de voz sostenida** (`gestoDeVoz`, 6 tests; `BotonDeVoz`)
+- Sostener el micrófono graba y soltar manda.
+- Deslizar 100 dp a la izquierda cancela: la barra avisa «Suelta para
+  cancelar».
+- Deslizar 80 dp hacia arriba deja la grabación sin el dedo.
+- Un toque corto también graba sin el dedo, como antes. El grabador decía a
+  propósito «se toca, no se mantiene», porque soltar sin querer mandaba audios
+  cortados; ese camino sigue igual.
+- El botón queda montado mientras se sostiene, porque si se reemplaza el gesto
+  se corta.
+- `terminar` lee un ref y no el estado: soltar justo después de empezar veía
+  el estado viejo y la nota no se cortaba.
+
+**Fotos con su forma** (shared: `dimensionValida` y `tamanoDeBurbuja`, 6
+tests; server: `width` y `height` al subir, 1 test; app: `filaDeArchivoEnCola`,
+1 test)
+- La galería y la cámara dan el ancho y el alto. Viajan por la cola y la
+  subida, y el server los guarda solo si son enteros razonables.
+- La burbuja respeta la forma dentro de 240×320 y nunca baja de 120 de lado.
+  Sin dimensiones, como en los mensajes viejos, queda el cuadrado de 220.
+- La foto que sube ya tiene la forma final: la burbuja no salta de tamaño al
+  llegar.
+
+**E2E** (emulador contra :3104):
+- **Selección:**
+  - elegidos dos propios, la barra dijo «2 seleccionados» con copiar,
+    reenviar y eliminar;
+  - con uno de Ana sumado, solo «Eliminar para mí»;
+  - sin el de Ana, «Eliminar para todos» borró los dos (lápidas en la base);
+  - atrás soltó la selección sin salir del chat.
+- **Voz:**
+  - sostener 2,5 s y soltar mandó una nota;
+  - deslizar a la izquierda mostró «Suelta para cancelar» y no mandó nada;
+  - un toque dejó la barra grabando con X y enviar, y enviar la mandó;
+  - deslizar hacia arriba la dejó sin el dedo, y la X canceló.
+- **Foto 800×400:** quedó en la base con sus dimensiones. La burbuja salió
+  apaisada 2:1, igual mientras subía y al llegar.
+
+**Notas**
+- La grabación arranca unos 0,7 s después de apoyar el dedo (preparar el
+  grabador). Se pierde el arranque de la primera palabra; queda como mejora.
+- El storage falso de QA no genera miniaturas: se puso una en la base para
+  ver la foto. En producción lila la genera.
 
 ## 47. Lilachat Empresa — plan (17/10/2026)
 

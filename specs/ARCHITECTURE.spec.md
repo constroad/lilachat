@@ -3397,8 +3397,8 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | FL8.1 | **Llamada entrante como WhatsApp** (pedido de José tras probar con Wilson, 17/10): pantalla completa sobre el bloqueo con tono que se repite, deslizar para contestar, rechazar sin abrir la app, tono con la app abierta, «Llamada perdida» en el chat — ver §45.16 | con la app cerrada y el teléfono bloqueado la llamada ocupa la pantalla y suena hasta contestar, rechazar o 30 s; E2E en el emulador | 🟡 17/10 (0.1.79 publicada): verificada en el emulador, más el bug de presencia que frenaba todos los push; falta probar sobre un bloqueo real |
 | FL8.2 | **Doble check sin abrir la app** (José, 17/10, chat con Wilson: un solo check aunque Wilson tenía internet). Hoy «entregado» lo marca la app al conectarse; el push llega al teléfono pero es una notificación común, Android la muestra sin ejecutar código de la app y el server nunca se entera. Camino: push de mensaje solo-datos que recibe el servicio nativo de FL8.1, que dibuja la notificación y le confirma la entrega al server con un token corto del propio push (sin JWT) | con la app cerrada, el mensaje pasa a dos checks grises al llegar el push al otro teléfono — ver §45.17 | ✅ 17/10: hecho y verificado en el emulador; sale en 0.1.80 |
 | FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | ✅ — FL9a hecha (§45.18): pulsación larga completa, links, cita que salta, divisor de no leídos, atrás; editar mensajes (§45.19); FL9b: varias fotos con pie y notas de voz con velocidad (§45.20); FL9c: borradores, archivar, marcar no leído, perfil con nombre y foto, buscar en el chat (§45.21); FL9d: programados visibles y cancelables, búsqueda que salta al mensaje, «ya no eres participante», eliminar chat (§45.22); FL9e: varios mensajes a la vez, nota de voz sostenida con cancelar y bloquear, fotos con su forma (§45.23); FL9f: «Info» del mensaje, onda de la nota de voz, arranque de ~90 ms (§45.24). ✅ 18/10 (0.1.87). Abierto menor: arrastrar en la onda, hora en la «Info» |
-| FL10 | **Pulido y coherencia** (§46.3): un solo registro (tuteo), 44 dp, encuestas completas, detalle de evento | auditoría de pantalla entera sin hallazgos ALTA | 🟡 18/10: tuteo, 44 dp, «últ. vez», punto verde solo en 1:1, un solo respaldo en Ajustes, «Ponme al día» sin llamadas (§45.25, 0.1.88); encuestas completas, detalle de evento con hora de fin e invitados de afuera, ErrorBoundary por pantalla (§45.26). Falta: orientación y tablet |
-| FL11 | **Lo que José vio con Wilson** (18/10, teléfonos reales con 0.1.86) — ver §46.4 | contestar desde la notificación conecta la llamada; avisos agrupados por chat, sin duplicados, con nombre de la agenda y «Responder»; foto con pie sin hueco; «Ponme al día» con sentido | 🟡 18/10: «Ponme al día» hecho (§45.25); lo demás ⬜ |
+| FL10 | **Pulido y coherencia** (§46.3): un solo registro (tuteo), 44 dp, encuestas completas, detalle de evento | auditoría de pantalla entera sin hallazgos ALTA | 🟡 18/10: tuteo, 44 dp, «últ. vez», punto verde solo en 1:1, un solo respaldo en Ajustes, «Ponme al día» sin llamadas (§45.25, 0.1.88); encuestas completas, detalle de evento con hora de fin e invitados de afuera, ErrorBoundary por pantalla (§45.26, 0.1.89); gira y tiene tablet con dos paneles (§45.27). ✅ 18/10 |
+| FL11 | **Lo que José vio con Wilson** (18/10, teléfonos reales con 0.1.86) — ver §46.4 | contestar desde la notificación conecta la llamada; avisos agrupados por chat, sin duplicados, con nombre de la agenda y «Responder»; foto con pie sin hueco; «Ponme al día» con sentido | 🟡 18/10: «Ponme al día» hecho (§45.25); llamada desde el aviso: arreglo del server desplegado (§45.28), falta la prueba con José en teléfonos reales; lo demás ⬜ |
 
 ### 45.4 As-is FL0 (16/10/2026)
 
@@ -4698,6 +4698,95 @@ manda `groups: []` (test) y la app se cuida igual.
   Lilachat usó el 8082, con `debug_http_host` escrito en las preferencias
   de la app, y lo borró al terminar.
 
+### 45.27 As-is FL10 (cierre): la app gira y tiene tablet (18/10/2026)
+
+**Motor** (`ui/disposicion.ts`, 5 tests; `useDisposicion` sobre
+`useWindowDimensions`, nunca `Dimensions.get`)
+- `apaisada` = más ancha que alta; `tablet` = lado corto ≥ 600 dp; `amplia` =
+  tablet o girada; `dosPaneles` = tablet con ancho para la lista (380) y el
+  chat (340).
+- `app.json › orientation: "default"`. `android/` está en `.gitignore` y lo
+  genera el prebuild; el manifest local se alineó (sin
+  `screenOrientation`).
+
+**Teléfono girado**
+- Las pestañas pasan a un riel a la izquierda (`BottomNav vertical`): sin él,
+  la cabecera y la barra abajo dejaban poca altura para la lista.
+- El contenido de cada pestaña se centra con ancho máximo de 720 dp. La raíz
+  y la conversación respetan los márgenes laterales del sistema (recorte de
+  la cámara y barra de navegación al costado).
+
+**Tablet: dos paneles, como WhatsApp**
+- En «Chats», la lista a la izquierda (380 dp) y la conversación a la
+  derecha. Sin chat elegido, «Elige un chat».
+- Abrir un chat, desde la lista o desde una notificación, lo pone en el
+  panel, no en el stack. La flecha atrás lo cierra.
+- El chat del panel no lleva el margen superior del sistema
+  (`SinMargenArriba`, insets con `top: 0`).
+- Al girar una tablet chica (600 dp parada), el chat pasa del stack al panel
+  y vuelve.
+- `chatQueSeVe` (`rutas.ts`, 3 tests): el chat del panel cuenta como abierto
+  (leído) solo con la pestaña Chats a la vista. En otra pestaña el panel se
+  desmonta.
+- La entrada (teléfono y código) se centra con 480 dp: las seis casillas se
+  repartían en 1280.
+
+**E2E** (build de desarrollo con la orientación libre):
+- **Teléfono** (Pixel 6, 868 × 411 dp girado): riel, lista, conversación,
+  Agenda y Ajustes girados sin cortes. Al volver a vertical vuelve la barra
+  abajo.
+- **Tablet** (Pixel Tablet, 1280 × 800 dp):
+  - dos paneles en las dos orientaciones;
+  - abrir y cerrar el chat del panel;
+  - la Agenda centrada;
+  - al volver a Chats, el chat sigue en su panel;
+  - la entrada, centrada.
+
+**Notas**
+- La fila del chat abierto no se resalta en la lista de la tablet; WhatsApp
+  la resalta. Queda anotado.
+- Al entrar en la tablet se negaron los permisos de notificaciones y de
+  contactos: el device de QA no debe recibir pushes de producción.
+
+### 45.28 As-is FL11: la llamada contestada desde la notificación (18/10/2026)
+
+**La causa, confirmada con un test:** el server reenviaba `call.ice` solo a
+los sockets conectados en ese instante. Quien llama manda sus candidatos ICE
+en el primer segundo. El otro teléfono, con la app cerrada, no tenía socket,
+así que se perdían. Al tocar «Contestar», la app conectaba y el server le
+repetía la oferta (`ofertasVigentes`), pero no los candidatos. Sin los
+candidatos de quien llama (sobre todo el `relay` del TURN), el audio no
+cruza los NAT del celular y la llamada queda en «Conectando…».
+
+**Arreglo (server, sin APK nueva):**
+- `guardarCandidato` guarda los candidatos de quien llama junto con la oferta
+  que sigue sonando: hasta 40, solo los de quien llama y solo mientras suena.
+- Al conectar, el server manda cada oferta vigente y después sus candidatos,
+  en orden (`candidatosDeLaOferta`). La app ya los guardaba en su buffer
+  hasta fijar la descripción remota.
+- **Segundo bug, encontrado por el test:** cada señal esperaba su propia
+  consulta a la base, y la oferta hace una más (el nombre de quien llama). Un
+  candidato podía salir antes que su oferta, y el que recibía lo descartaba
+  porque todavía no sabía de qué llamada era. Ahora las señales de cada socket
+  se procesan en orden (`crearColaSerial`).
+
+**Tests:** 4 unitarios (`llamadas.test.ts`) y 2 de socket
+(`llamadaDesdeElAviso.test.ts`):
+- quien conecta tarde recibe la oferta y después los candidatos;
+- en vivo, la oferta sale antes que sus candidatos aunque lleguen pegados.
+
+Con el código anterior, el primero recibía solo la oferta y el segundo,
+fuera de orden.
+
+**E2E en el emulador** (quien llama: una página en el navegador como QA Ana,
+con WebRTC):
+- con la app cerrada, sonó la llamada a pantalla completa con «Answer»;
+- el build de desarrollo tarda unos 23 s en arrancar en frío (baja el JS de
+  Metro) y la llamada venció a los 30 s antes de contestar. No es del
+  arreglo: la prueba definitiva es en teléfonos reales con la APK.
+
+**Falta:** la prueba con José (0.1.90) contestando desde la notificación.
+
 ## 47. Lilachat Empresa — plan (17/10/2026)
 
 José aprobó llevar Lilachat a un uso empresarial tipo Slack, con D1 en (a).
@@ -4787,8 +4876,8 @@ Dos pasadas de solo lectura (conversaciones; todo lo demás), con evidencia
 - ✅ 18/10 Presencia: sin «últ. vez»; los grupos muestran el punto de en línea.
 - ✅ 18/10 Dos respaldos distintos en Ajustes; «Respaldar ahora» de la copia vieja
   deja a cualquiera lanzar un dump del server entero (`backupRoutes.ts:44`).
-- 🟡 18/10 Un solo ErrorBoundary para toda la app (✅ §45.26); orientación fija en
-  vertical (⬜: cambio nativo + revisar cada pantalla girada y en tablet).
+- ✅ 18/10 Un solo ErrorBoundary para toda la app (§45.26); orientación fija en
+  vertical (§45.27).
 - ✅ 18/10 Las líneas de llamada cuentan como no leídas y disparan «Ponme al día» de
   Lila sobre puras llamadas (E2E de FL8.1).
 - ✅ 18/10 La lista de chats se pide 5 veces al arrancar: `TabsShell` y
@@ -4800,7 +4889,7 @@ Dos pasadas de solo lectura (conversaciones; todo lo demás), con evidencia
 La llamada ya ocupa la pantalla con la app cerrada (FL8.1 funciona en un
 teléfono real). Lo que falló o quedó raro:
 
-1. **ALTA. Contestar desde la notificación se queda en «Conectando…» y nunca
+1. 🟡 18/10 (§45.28) **ALTA. Contestar desde la notificación se queda en «Conectando…» y nunca
    conecta**, en los dos sentidos (José → Wilson y Wilson → José). El chat
    registra «Llamada de voz · 00:18»: el server vio el contestar, pero el
    audio nunca se estableció.

@@ -2,6 +2,7 @@ import type { Server as HttpServer } from 'node:http';
 import { Types } from 'mongoose';
 import { Server as SocketServer, type Socket } from 'socket.io';
 import { ChatModel, type Message } from './chatModels.js';
+import { crearColaSerial } from '@lilachat/shared';
 import {
   ForbiddenChatError,
   chatMemberIds,
@@ -18,7 +19,7 @@ import { isOnline, markOffline, markOnline, onlineAmong } from './presence.js';
 import { guardarUltimaVez, ultimaVezDeContacto } from './ultimaVez.js';
 import { autoResponderA } from './autoReply.js';
 import { avisarFinDeLlamada, avisarLlamada, notifyOffline } from './pushService.js';
-import { frameConAutor, hayOfertasPendientes, ofertasVigentes } from './llamadas.js';
+import { candidatosDeLaOferta, frameConAutor, guardarCandidato, hayOfertasPendientes, ofertasVigentes } from './llamadas.js';
 import { alContestar, alOfrecer, alTerminar, configurarCiclo } from './cicloDeLlamada.js';
 import { configurarEntrega } from './entregaPorAviso.js';
 import { maybeAnswerMention } from './assistantReply.js';
@@ -225,6 +226,11 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
         const misChats = await ChatModel.find({ 'members.userId': userId }).select('_id').lean();
         for (const oferta of ofertasVigentes(misChats.map((chat) => String(chat._id)), me)) {
           socket.emit('call.offer', oferta);
+          // Y sus candidatos, DESPUÉS de la oferta (FL11): sin ellos el audio
+          // no cruzaba y la llamada quedaba en «Conectando…».
+          for (const candidato of candidatosDeLaOferta(String((oferta as { chatId: string }).chatId))) {
+            socket.emit('call.ice', candidato);
+          }
         }
       }
     })();
@@ -331,8 +337,12 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
      * La membresía del chat es el permiso, igual que todo lo demás: sin eso,
      * cualquiera con sesión podría hacer sonar el teléfono de un desconocido.
      */
+    // EN ORDEN de llegada (FL11): la oferta consulta la base y un candidato
+    // no, así que sin cola el candidato le ganaba a su oferta y el otro lo
+    // descartaba (todavía no sabía de qué llamada era).
+    const señalesEnOrden = crearColaSerial();
     const reenviarSeñal = (evento: string) =>
-      socket.on(evento, async (frame: unknown) => {
+      socket.on(evento, (frame: unknown) => void señalesEnOrden(async () => {
         const payload = (frame ?? {}) as { chatId?: string; [k: string]: unknown };
         if (!payload.chatId || !Types.ObjectId.isValid(payload.chatId)) return;
 
@@ -357,14 +367,16 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
             // Mis OTROS teléfonos dejan de sonar: contesté en este.
             socket.to(userRoom(String(userId))).emit('call.end', { chatId: payload.chatId, motivo: 'contestada-en-otro' });
             await alContestar(payload.chatId);
-          } else if (evento !== 'call.ice') {
+          } else if (evento === 'call.ice') {
+            guardarCandidato(payload.chatId, frame, String(userId));
+          } else {
             await alTerminar(payload.chatId);
           }
         } catch {
           // Un chat inválido no tira la conexión: la señalización es best-effort
           // y el que llama ya tiene su propio tiempo de espera.
         }
-      });
+      }));
 
     for (const evento of ['call.offer', 'call.answer', 'call.ice', 'call.end', 'call.reject']) {
       reenviarSeñal(evento);

@@ -17,13 +17,15 @@ import { resolveJwtSecret } from './sessions.js';
  * muere igual (el socket del que llama también).
  */
 type DatosDeOferta = { video: boolean; members: string[] };
-type Pendiente = DatosDeOferta & { frame: object; from: string; at: number };
+type Pendiente = DatosDeOferta & { frame: object; from: string; at: number; candidatos: object[] };
 /** Contestada y en curso (FL8.1): de acá sale la duración al terminar. */
 type EnCurso = DatosDeOferta & { from: string; contestadaEn: number };
 /** Cómo terminó: `segundos: null` es que nadie contestó. */
 export type FinDeLlamada = DatosDeOferta & { from: string; segundos: number | null };
 
 const pendientes = new Map<string, Pendiente>();
+/** Una oferta junta unos pocos candidatos (host, srflx, relay por interfaz); más es ruido. */
+const MAX_CANDIDATOS_POR_OFERTA = 40;
 const enCurso = new Map<string, EnCurso>();
 
 export function guardarOferta(
@@ -33,7 +35,25 @@ export function guardarOferta(
   ahora: number = Date.now(),
   datos: DatosDeOferta = { video: false, members: [] }
 ): void {
-  pendientes.set(chatId, { ...datos, frame, from, at: ahora });
+  pendientes.set(chatId, { ...datos, frame, from, at: ahora, candidatos: [] });
+}
+
+/**
+ * Un candidato ICE de quien llama, guardado con su oferta (FL11). El que
+ * conecta tarde —contestando desde la notificación— recibe la oferta Y sus
+ * candidatos: antes le llegaba solo la oferta y quedaba en «Conectando…».
+ * Los del otro lado no se guardan: quien llama tiene la app abierta y le
+ * llegan en vivo.
+ */
+export function guardarCandidato(chatId: string, frame: object, from: string): void {
+  const pendiente = pendientes.get(chatId);
+  if (!pendiente || pendiente.from !== from || pendiente.candidatos.length >= MAX_CANDIDATOS_POR_OFERTA) return;
+  pendiente.candidatos.push(frame);
+}
+
+/** Los candidatos de la oferta que sigue sonando en ese chat, en el orden en que llegaron. */
+export function candidatosDeLaOferta(chatId: string): object[] {
+  return [...(pendientes.get(chatId)?.candidatos ?? [])];
 }
 
 /** ¿Sigue sonando esta oferta? (la que se guardó en `desde`, si se pasa). */

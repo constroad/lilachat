@@ -4,8 +4,10 @@ import mongoose, { Types } from 'mongoose';
 import { CALL_TIMEOUT_MS, CAPACIDAD_LLAMADA_NATIVA } from '@lilachat/shared';
 import {
   __reiniciarLlamadas,
+  candidatosDeLaOferta,
   firmarRechazo,
   frameConAutor,
+  guardarCandidato,
   guardarOferta,
   limpiarOferta,
   marcarContestada,
@@ -68,6 +70,51 @@ describe('ofertas pendientes', () => {
  * Lo que la llamada deja en el chat (FL8.1): el server sabe cuándo sonó, si la
  * contestaron y cuándo terminó, así que la línea la escribe él una sola vez.
  */
+/**
+ * FL11 (José y Wilson, 18/10, teléfonos reales): contestar desde la
+ * notificación quedaba en «Conectando…» para siempre. La oferta se repetía al
+ * conectar, pero los candidatos ICE de quien llama no: los mandó cuando el
+ * otro teléfono no tenía socket y se perdieron. Sin ellos el audio no cruza
+ * los NAT del celular.
+ */
+describe('candidatos de la oferta', () => {
+  beforeEach(() => __reiniciarLlamadas());
+  const chatA = '6a90cf90d2dbc98541f59dd0';
+  const hielo = (n: number) => ({ chatId: chatA, from: 'ana', candidate: { candidate: `c${n}`, sdpMid: '0', sdpMLineIndex: 0 } });
+
+  it('los de quien llama se guardan con la oferta, en orden', () => {
+    guardarOferta(chatA, { chatId: chatA, from: 'ana' }, 'ana');
+    guardarCandidato(chatA, hielo(1), 'ana');
+    guardarCandidato(chatA, hielo(2), 'ana');
+
+    expect(candidatosDeLaOferta(chatA)).toEqual([hielo(1), hielo(2)]);
+  });
+
+  it('los del otro lado no: quien llama está conectado y le llegan en vivo', () => {
+    guardarOferta(chatA, { chatId: chatA, from: 'ana' }, 'ana');
+    guardarCandidato(chatA, hielo(1), 'jose');
+
+    expect(candidatosDeLaOferta(chatA)).toEqual([]);
+  });
+
+  it('sin oferta sonando no se guarda nada, y al terminar se van con ella', () => {
+    guardarCandidato(chatA, hielo(1), 'ana');
+    expect(candidatosDeLaOferta(chatA)).toEqual([]);
+
+    guardarOferta(chatA, { chatId: chatA, from: 'ana' }, 'ana');
+    guardarCandidato(chatA, hielo(2), 'ana');
+    limpiarOferta(chatA);
+    expect(candidatosDeLaOferta(chatA)).toEqual([]);
+  });
+
+  it('con un tope: una oferta no junta candidatos sin fin', () => {
+    guardarOferta(chatA, { chatId: chatA, from: 'ana' }, 'ana');
+    for (let n = 0; n < 100; n += 1) guardarCandidato(chatA, hielo(n), 'ana');
+
+    expect(candidatosDeLaOferta(chatA).length).toBeLessThanOrEqual(40);
+  });
+});
+
 describe('ciclo de la llamada', () => {
   beforeEach(() => __reiniciarLlamadas());
   const chat = '6a90cf90d2dbc98541f59dd1';

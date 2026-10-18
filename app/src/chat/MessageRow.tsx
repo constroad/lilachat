@@ -236,7 +236,12 @@ function FilaDeMensaje({
           ) : null}
 
           {!isPending(item) && item.media && esVoz(item.media.mime) ? (
-            <NotaDeVoz id={`${item.chatId}:${item.seq}`} url={item.media.url ?? ''} durationMs={item.media.durationMs} />
+            <NotaDeVoz
+              id={`${item.chatId}:${item.seq}`}
+              url={item.media.url ?? ''}
+              durationMs={item.media.durationMs}
+              onda={item.media.onda}
+            />
           ) : null}
 
           {/* Un ARCHIVO no es una foto: es una tarjeta con su nombre.

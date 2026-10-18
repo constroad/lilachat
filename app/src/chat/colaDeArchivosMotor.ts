@@ -21,6 +21,8 @@ export type ArchivoEnCola = {
   /** La forma de la foto o el video (FL9): la burbuja la respeta. */
   width?: number;
   height?: number;
+  /** La onda de una nota de voz (FL9): barras de 0 a 100. */
+  onda?: number[];
   queuedAt: string;
   intentos: number;
   fallo?: string;

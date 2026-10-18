@@ -411,6 +411,8 @@ export function ChatScreen({
       {seleccion.enSeleccion ? (
         <SeleccionDeMensaje
           mensajes={seleccion.mensajes}
+          chatId={chatId}
+          jwt={credential.jwt}
           yo={credential.userId}
           chatSecreto={Boolean(encrypted)}
           onCancelar={seleccion.soltar}

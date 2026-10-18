@@ -10,6 +10,8 @@ export type AccionesDeMensaje = {
   copiar: boolean;
   reenviar: boolean;
   editar: boolean;
+  /** «Info» (FL9): quién lo leyó y a quién le llegó. Solo de lo propio. */
+  info: boolean;
   eliminarParaTodos: boolean;
   eliminarParaMi: boolean;
 };
@@ -26,7 +28,7 @@ export function accionesDeMensaje(params: {
   editable: boolean;
 }): AccionesDeMensaje {
   if (params.eliminado) {
-    return { responder: false, copiar: false, reenviar: false, editar: false, eliminarParaTodos: false, eliminarParaMi: true };
+    return { responder: false, copiar: false, reenviar: false, editar: false, info: false, eliminarParaTodos: false, eliminarParaMi: true };
   }
   return {
     responder: true,
@@ -34,6 +36,7 @@ export function accionesDeMensaje(params: {
     // Se reenvía el TEXTO; reenviar una foto pide que el server la comparta.
     reenviar: params.conTexto && !params.esMedia && !params.chatSecreto,
     editar: params.editable,
+    info: params.mio,
     eliminarParaTodos: params.mio,
     eliminarParaMi: true,
   };
@@ -44,13 +47,14 @@ const NINGUNA: AccionesDeMensaje = {
   copiar: false,
   reenviar: false,
   editar: false,
+  info: false,
   eliminarParaTodos: false,
   eliminarParaMi: false,
 };
 
 /**
- * Las acciones con VARIOS mensajes elegidos (FL9), como WhatsApp: responder y
- * editar son de uno solo; copiar, reenviar y eliminar «para todos» valen si
+ * Las acciones con VARIOS mensajes elegidos (FL9), como WhatsApp: responder,
+ * editar e «Info» son de uno solo; copiar, reenviar y eliminar «para todos» valen si
  * valen para cada uno. «Para mí» siempre.
  */
 export function accionesDeVarios(lista: readonly AccionesDeMensaje[]): AccionesDeMensaje {
@@ -59,6 +63,7 @@ export function accionesDeVarios(lista: readonly AccionesDeMensaje[]): AccionesD
   return {
     responder: false,
     editar: false,
+    info: false,
     copiar: lista.every((uno) => uno.copiar),
     reenviar: lista.every((uno) => uno.reenviar),
     eliminarParaTodos: lista.every((uno) => uno.eliminarParaTodos),

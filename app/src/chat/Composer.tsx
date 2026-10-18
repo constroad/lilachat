@@ -4,7 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { Camera, Paperclip, Plus, Send, X } from 'lucide-react-native';
 import { duracionDeVoz } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
-import { useGrabadorDeVoz, type NotaGrabada } from './useGrabadorDeVoz';
+import { precalentarPermisoDeVoz, useGrabadorDeVoz, type NotaGrabada } from './useGrabadorDeVoz';
 import { guardarBorrador, leerBorrador } from './borradores';
 import { BotonDeVoz } from './BotonDeVoz';
 import type { DecisionDeVoz, mientrasSostiene } from './gestoDeVoz';
@@ -61,6 +61,8 @@ export const Composer = memo(function Composer(props: {
   const colores = useColores();
   const [borrador, setBorrador] = useState('');
   const voz = useGrabadorDeVoz();
+  // Sin diálogo: si el micrófono ya está permitido, la primera nota no espera.
+  useEffect(() => precalentarPermisoDeVoz(), []);
 
   useImperativeHandle(props.ref, () => ({ limpiar: () => setBorrador('') }), []);
 

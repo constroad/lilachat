@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Alert, FlatList, Modal, Pressable, Text, ToastAndroid, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Crypto from 'expo-crypto';
-import { Copy, CornerUpLeft, Forward, Pencil, Trash2, X } from 'lucide-react-native';
+import { Copy, CornerUpLeft, Forward, Info, Pencil, Trash2, X } from 'lucide-react-native';
 import { buildOutboxItem, nombreDeContacto, puedeEditar } from '@lilachat/shared';
 import { accionesDeMensaje, accionesDeVarios, textoParaCopiar } from './accionesDeMensaje';
 import { chatsEnMemoria } from './chatsGuardados';
@@ -11,6 +11,7 @@ import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import type { ChatMessage } from './useChat';
+import { InfoDelMensaje } from './InfoDelMensaje';
 
 const avisar = (texto: string) => ToastAndroid.show(texto, ToastAndroid.SHORT);
 
@@ -28,6 +29,9 @@ export function SeleccionDeMensaje(params: {
   mensajes: ChatMessage[];
   yo: string;
   chatSecreto: boolean;
+  /** Para pedir la «Info» de un mensaje propio (FL9). */
+  chatId: string;
+  jwt: string;
   onCancelar: () => void;
   onResponder: (seq: number) => void;
   onEliminarParaTodos: (seq: number) => Promise<{ ok: boolean; motivo?: string }>;
@@ -39,6 +43,7 @@ export function SeleccionDeMensaje(params: {
   const colores = useColores();
   const margenes = useMargenes();
   const [reenviando, setReenviando] = useState(false);
+  const [viendoInfo, setViendoInfo] = useState(false);
   const { mensajes } = params;
   const mensaje = mensajes[0];
   const texto = mensaje?.body?.trim() ?? '';
@@ -102,8 +107,15 @@ export function SeleccionDeMensaje(params: {
         <Accion testID="btn-cancelar-seleccion" etiqueta="Cancelar la selección" onPress={params.onCancelar}>
           <X size={22} color={colores['on-surface']} />
         </Accion>
-        <Text testID="conteo-mensajes" className="flex-1 text-base font-semibold text-on-surface">
-          {seqs.length === 1 ? '1 seleccionado' : `${seqs.length} seleccionados`}
+        {/* Solo el número, como en la lista de chats: con seis acciones,
+            «1 seleccionado» se partía en dos líneas. */}
+        <Text
+          testID="conteo-mensajes"
+          accessibilityLabel={seqs.length === 1 ? '1 seleccionado' : `${seqs.length} seleccionados`}
+          className="flex-1 text-lg font-semibold text-on-surface"
+          numberOfLines={1}
+        >
+          {seqs.length}
         </Text>
         {acciones.responder ? (
           <Accion
@@ -141,6 +153,11 @@ export function SeleccionDeMensaje(params: {
             <Pencil size={19} color={colores['on-surface']} />
           </Accion>
         ) : null}
+        {acciones.info ? (
+          <Accion testID="btn-info-mensaje" etiqueta="Info del mensaje" onPress={() => setViendoInfo(true)}>
+            <Info size={20} color={colores['on-surface']} />
+          </Accion>
+        ) : null}
         {acciones.reenviar ? (
           <Accion testID="btn-reenviar-mensaje" etiqueta="Reenviar" onPress={() => setReenviando(true)}>
             <Forward size={20} color={colores['on-surface']} />
@@ -150,6 +167,13 @@ export function SeleccionDeMensaje(params: {
           <Trash2 size={20} color={colores.error} />
         </Accion>
       </View>
+      <InfoDelMensaje
+        visible={viendoInfo}
+        chatId={params.chatId}
+        seq={mensaje.seq}
+        jwt={params.jwt}
+        onCerrar={() => setViendoInfo(false)}
+      />
       <ReenviarA
         visible={reenviando}
         textos={textoParaCopiar(mensajes).split('\n')}

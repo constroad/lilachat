@@ -9,7 +9,7 @@ describe('accionesDeMensaje', () => {
   const base = { mio: true, eliminado: false, conTexto: true, esMedia: false, chatSecreto: false, editable: true };
 
   it('un texto propio: todo', () => {
-    expect(accionesDeMensaje(base)).toEqual({ responder: true, copiar: true, reenviar: true, editar: true, eliminarParaTodos: true, eliminarParaMi: true });
+    expect(accionesDeMensaje(base)).toEqual({ responder: true, copiar: true, reenviar: true, editar: true, info: true, eliminarParaTodos: true, eliminarParaMi: true });
   });
 
   it('uno ajeno: no se borra para todos, pero sí para mí', () => {
@@ -21,7 +21,13 @@ describe('accionesDeMensaje', () => {
   });
 
   it('una lápida: solo borrarla de mi vista', () => {
-    expect(accionesDeMensaje({ ...base, eliminado: true })).toEqual({ responder: false, copiar: false, reenviar: false, editar: false, eliminarParaTodos: false, eliminarParaMi: true });
+    expect(accionesDeMensaje({ ...base, eliminado: true })).toEqual({ responder: false, copiar: false, reenviar: false, editar: false, info: false, eliminarParaTodos: false, eliminarParaMi: true });
+  });
+
+  /** «Info» (FL9): quién lo leyó. Solo de lo propio, como WhatsApp. */
+  it('la info es de los mensajes propios', () => {
+    expect(accionesDeMensaje(base).info).toBe(true);
+    expect(accionesDeMensaje({ ...base, mio: false }).info).toBe(false);
   });
 
   it('chat secreto: no se reenvía (saldría en claro a otro chat)', () => {
@@ -55,7 +61,7 @@ describe('accionesDeVarios', () => {
   it('con varios: ni responder ni editar; copiar y reenviar si todos tienen texto', () => {
     const acciones = accionesDeVarios([texto(true), texto(false)]);
 
-    expect(acciones).toMatchObject({ responder: false, editar: false, copiar: true, reenviar: true, eliminarParaMi: true });
+    expect(acciones).toMatchObject({ responder: false, editar: false, info: false, copiar: true, reenviar: true, eliminarParaMi: true });
     expect(accionesDeVarios([texto(true), foto]).copiar).toBe(false);
   });
 

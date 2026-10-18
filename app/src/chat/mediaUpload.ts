@@ -34,6 +34,8 @@ export async function uploadMedia(params: {
   /** La forma de la foto o el video (FL9). */
   width?: number;
   height?: number;
+  /** La onda de una nota de voz (FL9). */
+  onda?: number[];
   /** 0→1 mientras suben los bytes. Un video sin progreso parece colgado. */
   onProgress?: (ratio: number) => void;
 }): Promise<UploadResult> {
@@ -47,6 +49,7 @@ export async function uploadMedia(params: {
   form.append('clientKey', params.clientKey);
   if (params.caption) form.append('caption', params.caption);
   if (params.durationMs) form.append('durationMs', String(params.durationMs));
+  if (params.onda?.length) form.append('onda', params.onda.join(','));
   if (params.width && params.height) {
     form.append('width', String(params.width));
     form.append('height', String(params.height));

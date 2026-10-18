@@ -250,6 +250,12 @@ export async function cambiarAjustesDeChat(
   }
 }
 
+/** Un miembro en la «Info» de un mensaje propio (FL9): su estado, sin hora. */
+export type MiembroDeInfo = { id: string; name: string | null; phone: string | null; estado: 'pending' | 'sent' | 'delivered' | 'read' };
+
+export const infoDeMensaje = (chatId: string, seq: number, token: string) =>
+  get<{ miembros: MiembroDeInfo[] }>(`/api/chats/${chatId}/messages/${seq}/info`, token);
+
 /** «Eliminar chat» para mí (FL9d). Devuelve solo si salió bien. */
 export async function borrarChatParaMi(chatId: string, token: string): Promise<boolean> {
   const respuesta = await authed<{ ok: boolean }>('POST', `/api/chats/${chatId}/borrar-para-mi`, token);

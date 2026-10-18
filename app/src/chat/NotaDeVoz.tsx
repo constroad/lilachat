@@ -18,7 +18,7 @@ import { useColores } from '../ui/tema';
  * lo peor que puede hacer una app de mensajería: suena en la mesa, en la
  * reunión, o encima de otro audio.
  */
-export function NotaDeVoz({ id, url, durationMs }: { id: string; url: string; durationMs?: number }) {
+export function NotaDeVoz({ id, url, durationMs, onda }: { id: string; url: string; durationMs?: number; onda?: number[] }) {
   const colores = useColores();
   const player = useAudioPlayer(url);
   const estado = useAudioPlayerStatus(player);
@@ -34,6 +34,8 @@ export function NotaDeVoz({ id, url, durationMs }: { id: string; url: string; du
   const enReposo = durationMs ?? estado.duration * 1000;
   const ms = sonando || estado.currentTime > 0 ? estado.currentTime * 1000 : enReposo;
   const duracion = estado.duration > 0 ? estado.duration : (durationMs ?? 0) / 1000;
+  /** 0→1: cuánto va sonando. */
+  const avance = duracion > 0 ? Math.min(1, estado.currentTime / duracion) : 0;
 
   const reproducir = () => {
     if (sonando) return player.pause();
@@ -70,12 +72,23 @@ export function NotaDeVoz({ id, url, durationMs }: { id: string; url: string; du
           onPress={(evento) => player.seekTo(segundosDelToque({ x: evento.nativeEvent.locationX, ancho: anchoBarra, duracion }))}
           className="h-6 justify-center"
         >
-          <View className="h-1 rounded-full bg-primary/15">
-            <View
-              className="h-1 rounded-full bg-primary"
-              style={{ width: `${duracion > 0 ? Math.min(100, (estado.currentTime / duracion) * 100) : 0}%` }}
-            />
-          </View>
+          {onda?.length ? (
+            // La onda que se midió al grabar (FL9), como WhatsApp: se llena
+            // con el avance. Sin onda (notas viejas), la línea de siempre.
+            <View testID="onda-voz" className="h-6 flex-row items-center justify-between">
+              {onda.map((valor, indice) => (
+                <View
+                  key={indice}
+                  className={`w-[3px] rounded-full ${indice / onda.length < avance ? 'bg-primary' : 'bg-primary/30'}`}
+                  style={{ height: 3 + (valor / 100) * 19 }}
+                />
+              ))}
+            </View>
+          ) : (
+            <View className="h-1 rounded-full bg-primary/15">
+              <View className="h-1 rounded-full bg-primary" style={{ width: `${Math.min(100, avance * 100)}%` }} />
+            </View>
+          )}
         </Pressable>
         <Text className="text-[11px] text-on-surface-variant">{duracionDeVoz(ms)}</Text>
       </View>

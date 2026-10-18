@@ -34,6 +34,8 @@ export type ServerMessage = {
     /** La forma de una foto o un video (FL9); sin ella, el cuadrado de 220. */
     width?: number;
     height?: number;
+    /** La onda de una nota de voz (FL9); sin ella, la línea de siempre. */
+    onda?: number[];
     /** Duración de una nota de voz en ms. */
     durationMs?: number;
   };

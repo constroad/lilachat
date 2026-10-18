@@ -29,6 +29,7 @@ export function useAdjuntosDelChat(params: { chatId: string; onError: (texto: st
     caption?: string;
     width?: number;
     height?: number;
+    onda?: number[];
   }) => {
     params.onError('');
     try {
@@ -53,6 +54,7 @@ export function useAdjuntosDelChat(params: { chatId: string; onError: (texto: st
         mimeType: nota.mime,
         sizeBytes: nota.bytes,
         durationMs: nota.ms,
+        onda: nota.onda,
       }),
     []
   );

@@ -23,7 +23,11 @@ export const vividPulse = {
       neutral: '#64748b',
       background: '#f8f9ff',
       surfaceContainerLowest: '#ffffff',
-      surfaceVariant: '#d3e4fe',
+      /**
+       * Neutro, apenas violeta (FL13, 18/10). Stitch lo había sacado del azul
+       * secundario (`#d3e4fe`) y salía celeste en «Cerrar sesión», campos y chips.
+       */
+      surfaceVariant: '#eeecf3',
       onSurface: '#0b1c30',
       onSurfaceVariant: '#494454',
       outline: '#7b7486',
@@ -35,8 +39,16 @@ export const vividPulse = {
        * apenas violeta que separa el chat de la lista.
        */
       chatBackground: '#f3f1fb',
-      bubbleOwn: '#ece5ff',
-      onBubbleOwn: '#0b1c30',
+      /**
+       * La propia es violeta SÓLIDO con texto blanco (FL13; diseño FL6 de
+       * Stitch). La lavanda clara con texto oscuro era el diseño viejo de FL3.
+       */
+      bubbleOwn: '#6b38d4',
+      onBubbleOwn: '#ffffff',
+      /** La hora y los íconos sobre la propia: el gris de siempre no se lee en violeta. */
+      onBubbleOwnMuted: '#ddd2fb',
+      /** El check de leído sobre la propia: celeste, como en el diseño. */
+      readTickOwn: '#7dd3fc',
       bubbleOther: '#ffffff',
       onBubbleOther: '#0b1c30',
       /** El doble check de leído: el azul de marca, como en WhatsApp. */
@@ -50,6 +62,12 @@ export const vividPulse = {
       author6: '#0e7490',
       /** El punto de «en línea» de la lista: verde, como toda mensajería. */
       online: '#16a34a',
+      /** Los fondos de los avatares sin foto (FL13): un tono por persona, como el diseño. */
+      avatar1: '#ece4fd',
+      avatar2: '#f6e3f4',
+      avatar3: '#e3e7fb',
+      avatar4: '#e7eefb',
+      avatar5: '#f3e8ff',
     },
     /**
      * El modo oscuro (27/08/2026). Hasta acá tenía DOS colores —`background` e
@@ -103,6 +121,8 @@ export const vividPulse = {
       chatBackground: '#0b1222',
       bubbleOwn: '#3b2a6b',
       onBubbleOwn: '#f1ecff',
+      onBubbleOwnMuted: '#b9addf',
+      readTickOwn: '#7dd3fc',
       bubbleOther: '#1e293b',
       onBubbleOther: '#e7e9f3',
       readTick: '#60a5fa',
@@ -114,6 +134,11 @@ export const vividPulse = {
       author5: '#c4b5fd',
       author6: '#67e8f9',
       online: '#4ade80',
+      avatar1: '#2e2752',
+      avatar2: '#3a2546',
+      avatar3: '#232c4f',
+      avatar4: '#1f3045',
+      avatar5: '#33244f',
     },
   },
   typography: {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validarInvitacion } from './invitacion.js';
+import { ENLACE_DE_DESCARGA, enlaceDeWhatsapp, mensajeDeInvitacion, nombreDePila, validarInvitacion } from './invitacion.js';
 
 /**
  * Invitar tiene que ADMITIR, no solo compartir un enlace.
@@ -53,5 +53,81 @@ describe('validarInvitacion', () => {
    */
   it('un número que no es celular se rechaza', () => {
     expect(validarInvitacion({ telefono: '014567890', yoSoy: '999000111' }).ok).toBe(false);
+  });
+});
+
+/**
+ * El mensaje de WhatsApp (FL13, José 18/10: «se sigue mostrando feo»). Antes eran
+ * cinco líneas con dos pasos numerados y dos enlaces pelados. Ahora es UNA frase
+ * con UN enlace al final, como la invitación de Pulso: WhatsApp arma la tarjeta
+ * con la vista previa de la ficha de LilaStore y el texto no compite con ella.
+ */
+describe('mensajeDeInvitacion', () => {
+  it('saluda por el nombre de pila y termina en el enlace', () => {
+    const mensaje = mensajeDeInvitacion({ para: 'Ana Torres' });
+    expect(mensaje.startsWith('Hola Ana, ')).toBe(true);
+    expect(mensaje.endsWith(ENLACE_DE_DESCARGA)).toBe(true);
+  });
+
+  it('una sola línea y un solo enlace: la tarjeta de WhatsApp sale del primero', () => {
+    const mensaje = mensajeDeInvitacion({ para: 'Ana' });
+    expect(mensaje).not.toContain('\n');
+    expect(mensaje.match(/https?:\/\//g)).toHaveLength(1);
+  });
+
+  it('corto: se lee entero sin «Leer más»', () => {
+    expect(mensajeDeInvitacion({ para: 'Maximiliano Fernández' }).length).toBeLessThanOrEqual(140);
+  });
+
+  it('en tuteo, sin voseo', () => {
+    const mensaje = mensajeDeInvitacion({ para: 'Ana' });
+    expect(mensaje).not.toMatch(/Instalá|Descargá|Bajá|vos\b/);
+  });
+
+  it('sin nombre (o con un número de agenda) el saludo sigue teniendo sentido', () => {
+    expect(mensajeDeInvitacion({ para: null }).startsWith('Hola, ')).toBe(true);
+    expect(mensajeDeInvitacion({ para: '+51 987 654 321' }).startsWith('Hola, ')).toBe(true);
+    expect(mensajeDeInvitacion({ para: '' })).not.toMatch(/undefined|null/);
+  });
+
+  it('un enlace propio reemplaza al de siempre', () => {
+    expect(mensajeDeInvitacion({ para: 'Ana', enlace: 'https://x.test/d' }).endsWith('https://x.test/d')).toBe(true);
+  });
+});
+
+describe('nombreDePila', () => {
+  it('la primera palabra con letras', () => {
+    expect(nombreDePila('Ana Torres')).toBe('Ana');
+    expect(nombreDePila('  María José  ')).toBe('María');
+    expect(nombreDePila('Ñato')).toBe('Ñato');
+  });
+
+  it('un teléfono, vacío o nada: no hay nombre', () => {
+    expect(nombreDePila('+51 987 654 321')).toBeNull();
+    expect(nombreDePila('')).toBeNull();
+    expect(nombreDePila(null)).toBeNull();
+    expect(nombreDePila(undefined)).toBeNull();
+  });
+});
+
+/**
+ * Invitar desde un contacto abre WhatsApp EN EL CHAT de esa persona, con el
+ * mensaje escrito (FL13). Con el menú de compartir había que elegir WhatsApp
+ * y después buscar otra vez a la persona.
+ */
+describe('enlaceDeWhatsapp', () => {
+  it('celular peruano: código de país y el mensaje codificado', () => {
+    expect(enlaceDeWhatsapp('+51 987 654 321', 'Hola Ana, ¿vienes?')).toBe(
+      'https://wa.me/51987654321?text=Hola%20Ana%2C%20%C2%BFvienes%3F'
+    );
+  });
+
+  it('el formato de la agenda no importa', () => {
+    expect(enlaceDeWhatsapp('987-654-321', 'x')).toBe('https://wa.me/51987654321?text=x');
+  });
+
+  it('un número que no es celular peruano no arma enlace: se comparte por el menú', () => {
+    expect(enlaceDeWhatsapp('01 234 5678', 'x')).toBeNull();
+    expect(enlaceDeWhatsapp('', 'x')).toBeNull();
   });
 });

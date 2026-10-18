@@ -132,6 +132,41 @@ describe('colores del chat', () => {
     expect(luminancia(paletaDe('dark')['burbuja-propia'])).toBeLessThan(90);
   });
 
+  /**
+   * FL13 (José, 18/10: «no se siente premium»; diseño FL6 de Stitch): la
+   * propia es violeta SÓLIDO con texto blanco, y la hora y el check de leído
+   * tienen su propio color sobre ella (el gris y el azul de siempre no se leen).
+   */
+  it('en claro la burbuja propia es el violeta de marca, con texto blanco', () => {
+    const paleta = paletaDe('light');
+    expect(paleta['burbuja-propia']).toBe(paleta.primary);
+    expect(paleta['on-burbuja-propia']).toBe('#ffffff');
+  });
+
+  it('la hora y el check de leído se leen sobre la burbuja propia', () => {
+    for (const esquema of ['light', 'dark'] as const) {
+      const paleta = paletaDe(esquema);
+      for (const nombre of ['on-burbuja-propia-suave', 'check-leido-propio'] as const) {
+        const diferencia = Math.abs(luminancia(paleta['burbuja-propia']) - luminancia(paleta[nombre]));
+        expect(diferencia, `${esquema} ${nombre}`).toBeGreaterThan(90);
+      }
+    }
+  });
+
+  it('el gris de las superficies es neutro: sin el celeste que venía de Stitch', () => {
+    const [r, g, b] = hexARgb(paletaDe('light')['surface-variant']).split(' ').map(Number);
+    expect(Math.max(r, g, b) - Math.min(r, g, b)).toBeLessThan(16);
+  });
+
+  it('los tonos de avatar son distintos entre sí y el texto primary se lee encima', () => {
+    for (const esquema of ['light', 'dark'] as const) {
+      const paleta = paletaDe(esquema);
+      const tonos = (['avatar-1', 'avatar-2', 'avatar-3', 'avatar-4', 'avatar-5'] as const).map((nombre) => paleta[nombre]);
+      expect(new Set(tonos).size, esquema).toBe(5);
+      for (const tono of tonos) expect(Math.abs(luminancia(tono) - luminancia(paleta.primary)), esquema).toBeGreaterThan(70);
+    }
+  });
+
   it('el fondo del chat se distingue de las burbujas ajenas', () => {
     for (const esquema of ['light', 'dark'] as const) {
       const paleta = paletaDe(esquema);

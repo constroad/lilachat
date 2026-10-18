@@ -72,6 +72,8 @@ export interface Message {
     url?: string;
     width?: number;
     height?: number;
+    /** La onda de una nota de voz (FL9): barras de 0 a 100. */
+    onda?: number[];
     mime?: string;
     /**
      * El nombre ORIGINAL del archivo y su tamaño.
@@ -197,6 +199,7 @@ const messageSchema = new Schema<Message>(
       url: String,
       width: Number,
       height: Number,
+      onda: { type: [Number], default: undefined },
       mime: String,
           fileName: String,
       sizeBytes: Number,

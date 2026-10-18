@@ -119,6 +119,31 @@ describe('POST /api/media', () => {
     expect(mala.body.message.media.height).toBeUndefined();
   });
 
+  /**
+   * La onda de una nota de voz (FL9): barras de 0 a 100, como WhatsApp. Lo que
+   * no son números se ignora y la nota se dibuja con la línea de siempre.
+   */
+  it('guarda la onda de la nota de voz; lo roto se ignora', async () => {
+    const { uploader } = fakeUploader();
+    const app = buildApp({ mediaUploader: uploader });
+    const audio = Buffer.from([0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70]);
+    const subir = (clientKey: string, onda: string) =>
+      request(app)
+        .post('/api/media')
+        .set('Authorization', `Bearer ${token}`)
+        .field('chatId', chatId)
+        .field('clientKey', clientKey)
+        .field('durationMs', '3000')
+        .field('onda', onda)
+        .attach('file', audio, { filename: 'nota.m4a', contentType: 'audio/m4a' });
+
+    const buena = await subir('ck-onda-1', '0,25,250,-3,60.4');
+    const mala = await subir('ck-onda-2', 'hola');
+
+    expect(buena.body.message.media.onda).toEqual([0, 25, 100, 0, 60]);
+    expect(mala.body.message.media.onda).toBeUndefined();
+  });
+
   /** La misma foto reenviada por la cola no puede duplicar el mensaje. */
   it('el mismo clientKey no crea un segundo mensaje', async () => {
     const { uploader } = fakeUploader();

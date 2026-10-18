@@ -94,7 +94,9 @@ export function buildRespaldoRouter(): Router {
 }
 
 async function ultimoDe(userId: Types.ObjectId) {
-  const doc = await RespaldoModel.findOne({ userId }).sort({ creadoEn: -1 }).lean();
+  // `_id` desempata: dos respaldos en el mismo milisegundo dejaban el orden al
+  // azar (el test intermitente del 18/10).
+  const doc = await RespaldoModel.findOne({ userId }).sort({ creadoEn: -1, _id: -1 }).lean();
   return doc ? { nombre: doc.nombre, huella: doc.huella, bytes: doc.bytes, creadoEn: doc.creadoEn } : null;
 }
 
@@ -182,7 +184,7 @@ async function recibirRespaldo(req: Request, res: Response): Promise<void> {
  */
 async function conservarLosUltimos(sesion: Sesion): Promise<void> {
   const sobrantes = await RespaldoModel.find({ userId: sesion.userId })
-    .sort({ creadoEn: -1 })
+    .sort({ creadoEn: -1, _id: -1 })
     .skip(RESPALDOS_QUE_QUEDAN)
     .lean();
   const disco = discoDeRespaldos();

@@ -33,6 +33,7 @@ import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './med
 import { avisarCambioDeChat, avisarMensajeNuevo } from './socket.js';
 import { requireSession } from './requireSession.js';
 import { multerDeAvatar, subirFotoRedonda } from './subirAvatar.js';
+import { infoDeMensaje } from './infoDeMensaje.js';
 
 /**
  * REST de chats: el arranque de la app (lista e historial). El tiempo real va
@@ -294,6 +295,17 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
     });
     if (!r.ok) return res.status(400).json({ message: r.motivo });
     return res.status(200).json({ ok: true });
+  });
+
+  /** «Info» de un mensaje propio (FL9): leído, entregado o enviado, por miembro. */
+  router.get('/:chatId/messages/:seq/info', async (req, res) => {
+    const r = await infoDeMensaje({
+      chatId: req.params.chatId!,
+      seq: Number(req.params.seq),
+      quien: new Types.ObjectId(req.session!.userId),
+    });
+    if (!r.ok) return res.status(404).json({ message: r.motivo });
+    return res.json({ miembros: r.miembros });
   });
 
   /**

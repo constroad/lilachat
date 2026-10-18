@@ -5,6 +5,7 @@ import { ForbiddenChatError, sendMessage } from './chatService.js';
 import { publicarMensaje } from './socket.js';
 import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
 import { requireSession } from './requireSession.js';
+import { ondaValida } from './ondaDeVoz.js';
 
 /**
  * Subir un archivo y publicarlo como mensaje, en UN request.
@@ -76,6 +77,8 @@ export function buildMediaRouter(uploader: MediaUploader = buildLilaUploader()):
           // forma. Lo que no es un entero razonable se ignora.
           width: dimensionValida(req.body?.width),
           height: dimensionValida(req.body?.height),
+          // La onda de una nota de voz (FL9): barras de 0 a 100.
+          onda: ondaValida(req.body?.onda),
           // RELATIVAS a propósito: se resuelven al servir (`messageView`).
           thumbUrl: uploaded.media.thumbnailUrl,
           url: uploaded.media.url,

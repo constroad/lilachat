@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { CalendarDays, MapPin, Pencil, RotateCw } from 'lucide-react-native';
-import { formatEventWhen, type Rsvp } from '@lilachat/shared';
+import { CalendarDays, ChevronRight, MapPin, RotateCw } from 'lucide-react-native';
+import type { Rsvp } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
+import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { agendaGet, agendaPost, type AgendaEvent } from './agendaApi';
+import { DetalleDeEvento } from './DetalleDeEvento';
+import { cuandoDelEvento, origenDelEvento } from './eventos';
 import { useColores } from '../ui/tema';
 
 /**
@@ -14,8 +17,8 @@ import { useColores } from '../ui/tema';
  * pantalla y esconderla detrás de un toque extra es lo que hace que nadie
  * responda.
  *
- * Desde el 17/10/2026, quien creó el evento lo toca para editarlo o
- * cancelarlo; los demás ven la descripción en la tarjeta.
+ * Tocar la tarjeta abre el detalle, para TODOS (FL10): quiénes van, en qué
+ * chat, hasta qué hora. Quien lo creó lo edita desde ahí.
  */
 const RSVP_OPTIONS: { value: Rsvp; label: string }[] = [
   { value: 'yes', label: 'Voy' },
@@ -37,6 +40,10 @@ export function EventsScreen({
   const [events, setEvents] = useState<AgendaEvent[] | null>(null);
   const [fallo, setFallo] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  /** El evento abierto en el detalle; se lee de la lista para verlo al día tras recargar. */
+  const [abiertoId, setAbiertoId] = useState<string | null>(null);
+  const abierto = (events ?? []).find((event) => event.id === abiertoId) ?? null;
+  const agenda = agendaPorTelefono();
 
   const load = useCallback(async () => {
     const result = await agendaGet<{ events: AgendaEvent[] }>('/events', credential.jwt);
@@ -107,14 +114,25 @@ export function EventsScreen({
             <Pressable
               key={event.id}
               testID={`evento-${event.id}`}
-              disabled={!event.mio}
-              onPress={() => onEditar(event)}
-              android_ripple={event.mio ? { color: colores.outline } : undefined}
+              onPress={() => setAbiertoId(event.id)}
+              android_ripple={{ color: colores.outline }}
               className="mb-3 rounded-xl border border-outline/10 bg-surface p-4"
             >
+              {event.createdBy ? (
+                <Text className="mb-1 text-[11px] text-on-surface-variant" numberOfLines={1}>
+                  {origenDelEvento({
+                    chat: event.chat,
+                    creadorId: event.createdBy,
+                    invitadoPor: event.attendees?.find((a) => a.userId === credential.userId)?.invitedBy,
+                    personas: event.personas ?? {},
+                    yo: credential.userId,
+                    agenda,
+                  })}
+                </Text>
+              ) : null}
               <View className="flex-row items-start gap-2">
                 <Text className="min-w-0 flex-1 text-base font-bold text-on-surface">{event.title}</Text>
-                {event.mio ? <Pencil size={15} color={colores.outline} accessibilityLabel="Editar evento" /> : null}
+                <ChevronRight size={16} color={colores.outline} accessibilityLabel="Ver el detalle" />
               </View>
               {event.description ? (
                 <Text className="mt-1 text-[13px] leading-5 text-on-surface-variant" numberOfLines={2}>
@@ -124,7 +142,7 @@ export function EventsScreen({
               <View className="mt-1.5 flex-row items-center gap-1.5">
                 <CalendarDays size={14} color={colores.outline} />
                 <Text className="text-sm text-on-surface-variant">
-                  {formatEventWhen(new Date(event.startsAt))}
+                  {cuandoDelEvento(event.startsAt, event.endsAt)}
                 </Text>
               </View>
               {event.location ? (
@@ -167,6 +185,16 @@ export function EventsScreen({
         </ScrollView>
       )}
 
+      <DetalleDeEvento
+        evento={abierto}
+        credential={credential}
+        onCerrar={() => setAbiertoId(null)}
+        onEditar={(evento) => {
+          setAbiertoId(null);
+          onEditar(evento);
+        }}
+        onInvitados={() => void load()}
+      />
     </View>
   );
 }

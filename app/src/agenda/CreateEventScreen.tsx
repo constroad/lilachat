@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
-import { Bell, MapPin, Send, Sparkles, Trash2, UserPlus, X } from 'lucide-react-native';
+import { Bell, Clock, MapPin, Send, Sparkles, Trash2, UserPlus, X } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { planTargetChat, type Contact } from '@lilachat/shared';
 import { agendaDelete, agendaPatch, agendaPost, type AgendaEvent } from './agendaApi';
 import { ContactPicker } from '../contacts/ContactPicker';
 import { createChat } from '../contacts/contactsApi';
 import { FilledField, PickerRow, PrimaryAction, SectionLabel, ToggleRow } from './createUi';
+import { terminaPorDefecto } from './eventos';
 import { SelectorDeCuando } from '../ui/SelectorDeCuando';
 import { valorInicial } from '../ui/cuando';
 import { useMargenes } from '../ui/useMargenes';
@@ -29,6 +30,8 @@ import { useColores } from '../ui/tema';
  * de grupo— y ahí se crea el evento.
  *
  * Abierto DESDE un chat (`fixedChat`), no se pregunta nada: ese es el destino.
+ * Con varios contactos, si ya hay un grupo con EXACTAMENTE esa gente, el evento
+ * va ahí y no a un grupo nuevo (FL10). La hora de fin es opcional («Ends at»).
  *
  * Desde el 17/10/2026, con `editando` la misma pantalla edita (solo quien lo
  * creó; el server lo exige igual) y ofrece cancelarlo. Los invitados no se
@@ -41,6 +44,7 @@ export function CreateEventScreen({
   credential,
   fixedChat,
   editando,
+  grupos,
   onClose,
   onCreated,
 }: {
@@ -50,6 +54,8 @@ export function CreateEventScreen({
   fixedChat?: { id: string; name: string };
   /** Con un evento propio, la pantalla lo edita; sin él, crea uno nuevo. */
   editando?: AgendaEvent;
+  /** Mis grupos: con la misma gente, el evento va al que ya existe (FL10). */
+  grupos?: readonly { id: string; memberIds: readonly string[] }[];
   onClose: () => void;
   onCreated: () => void;
 }) {
@@ -59,6 +65,7 @@ export function CreateEventScreen({
   const [description, setDescription] = useState(editando?.description ?? '');
   const [location, setLocation] = useState(editando?.location ?? '');
   const [cuando, setCuando] = useState(() => valorInicial(editando?.startsAt, new Date()));
+  const [termina, setTermina] = useState<Date | null>(() => (editando?.endsAt ? new Date(editando.endsAt) : null));
   const [editandoDonde, setEditandoDonde] = useState(false);
   const [invitados, setInvitados] = useState<Contact[]>([]);
   const [remind, setRemind] = useState(editando?.remindGuests ?? true);
@@ -74,6 +81,8 @@ export function CreateEventScreen({
       description: description.trim(),
       location: location.trim(),
       startsAt: cuando.toISOString(),
+      // Sin fin se manda vacío: el server lo borra si lo había.
+      endsAt: termina ? termina.toISOString() : '',
       remindGuests: remind,
     });
     setSaving(false);
@@ -103,6 +112,7 @@ export function CreateEventScreen({
     if (saving) return;
     if (!title.trim()) return setError('Ponle un nombre al evento.');
     if (cuando.getTime() < Date.now()) return setError('Esa hora ya pasó. Elige una que venga.');
+    if (termina && termina <= cuando) return setError('La hora de fin tiene que ser después del inicio.');
     if (editando) return guardarCambios();
 
     // Los contactos se vuelven la conversación donde vive el evento: con UNO,
@@ -113,6 +123,8 @@ export function CreateEventScreen({
       fixedChatId: fixedChat?.id,
       inviteeIds: invitados.map((contact) => contact.id),
       groupName: title,
+      yo: credential.userId,
+      grupos,
     });
     if (plan.kind === 'invalid') return setError(plan.message);
 
@@ -134,6 +146,7 @@ export function CreateEventScreen({
       description: description.trim() || undefined,
       location: location.trim() || undefined,
       startsAt: cuando.toISOString(),
+      endsAt: termina?.toISOString(),
       remindGuests: remind,
       guestsCanInvite: openInvite,
     });
@@ -236,6 +249,26 @@ export function CreateEventScreen({
             }}
           />
           <View className="h-2" />
+          {termina ? (
+            <>
+              <View className="mb-1 flex-row items-center justify-between">
+                <Text className="text-[13px] font-semibold text-on-surface-variant">Termina</Text>
+                <Pressable testID="btn-quitar-fin" onPress={() => setTermina(null)} className="min-h-[44px] justify-center px-2">
+                  <Text className="text-[13px] font-semibold text-primary">Quitar</Text>
+                </Pressable>
+              </View>
+              <SelectorDeCuando valor={termina} prefijo="termina" conAtajos={false} onCambiar={(fecha) => { setTermina(fecha); setError(''); }} />
+              <View className="h-2" />
+            </>
+          ) : (
+            <PickerRow
+              testID="fila-fin"
+              icon={<Clock size={18} color={colores.primary} />}
+              title="Agregar hora de fin"
+              hint="Opcional"
+              onPress={() => setTermina(terminaPorDefecto(cuando))}
+            />
+          )}
 
           <PickerRow
             testID="fila-donde"
@@ -314,7 +347,7 @@ export function CreateEventScreen({
             testID="switch-invitar"
             icon={<UserPlus size={16} color={colores.primary} />}
             label="Pueden invitar a otros"
-            hint="Cualquiera del chat puede sumar gente"
+            hint="Los invitados pueden sumar a sus contactos"
             value={openInvite}
             onChange={setOpenInvite}
           />

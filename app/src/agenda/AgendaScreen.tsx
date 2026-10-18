@@ -33,7 +33,16 @@ type Formulario =
   | { tipo: 'reminder'; editando?: AgendaReminder }
   | null;
 
-export function AgendaScreen({ credential, activa }: { credential: Credential; activa: boolean }) {
+export function AgendaScreen({
+  credential,
+  activa,
+  grupos,
+}: {
+  credential: Credential;
+  activa: boolean;
+  /** Mis grupos, para que un evento con la misma gente vaya al que ya existe (FL10). */
+  grupos?: readonly { id: string; memberIds: readonly string[] }[];
+}) {
   const colores = useColores();
   const margenes = useMargenes();
   const [vista, setVista] = useState<'eventos' | 'avisos'>('eventos');
@@ -132,6 +141,7 @@ export function AgendaScreen({ credential, activa }: { credential: Credential; a
           visible
           credential={credential}
           editando={formulario.editando}
+          grupos={grupos}
           onClose={() => setFormulario(null)}
           onCreated={alGuardar}
         />

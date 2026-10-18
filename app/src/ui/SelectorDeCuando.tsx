@@ -23,11 +23,14 @@ export function SelectorDeCuando({
   valor,
   onCambiar,
   prefijo = 'cuando',
+  conAtajos = true,
 }: {
   valor: Date;
   onCambiar: (fecha: Date) => void;
   /** Para los `testID`: dos selectores en la misma pantalla no chocan. */
   prefijo?: string;
+  /** «En 1 hora», «Esta noche»…: cuentan desde AHORA; para una hora de fin no sirven. */
+  conAtajos?: boolean;
 }) {
   const colores = useColores();
   const [picker, setPicker] = useState<'date' | 'time' | null>(null);
@@ -44,6 +47,7 @@ export function SelectorDeCuando({
 
   return (
     <View>
+      {conAtajos ? (
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 8 }}>
         {atajos.map((atajo) => {
           const elegido = atajo.fecha.getTime() === valor.getTime();
@@ -59,6 +63,7 @@ export function SelectorDeCuando({
           );
         })}
       </ScrollView>
+      ) : null}
 
       <View className="flex-row gap-2">
         <Casilla

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, BackHandler, Modal, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { ArrowLeft, BellRing, ChevronRight, CloudUpload, User, UserPlus } from 'lucide-react-native';
@@ -29,6 +29,7 @@ import { BuscarActualizacionesAjuste } from '../settings/BuscarActualizacionesAj
 import { Rotulo } from './Rotulo';
 import { AppHeader, BottomNav, type Tab } from './BottomNav';
 import { useMargenes } from './useMargenes';
+import { ErrorBoundary } from './ErrorBoundary';
 import { DiagnosticoAjuste } from '../diagnostico/DiagnosticoAjuste';
 import { visitadasCon } from './pestanas';
 import { useAlVolver } from './useAlVolver';
@@ -82,6 +83,11 @@ export function TabsShell({
   }, [pestanaPedida]);
   const [creating, setCreating] = useState<'poll' | null>(null);
   const [chats, setChats] = useState<ChatSummary[]>([]);
+  /** Mis grupos, para la agenda: un evento con la misma gente va al que ya existe (FL10). */
+  const grupos = useMemo(
+    () => chats.filter((chat) => chat.kind === 'group' && chat.memberIds.includes(credential.userId)).map((chat) => ({ id: chat.id, memberIds: chat.memberIds })),
+    [chats, credential.userId]
+  );
   /** La lista al día para el aviso, sin re-suscribir el socket en cada cambio. */
   const chatsRef = useRef<ChatSummary[]>([]);
 
@@ -315,24 +321,30 @@ export function TabsShell({
             onAbrirTienda={actualizaciones.abrirTienda}
             onDescartar={actualizaciones.descartarAviso}
           />
+          <ErrorBoundary pantalla="lista">
           <ChatListScreen
             credential={credential}
             chatAbierto={chatAbierto}
             onOpenChat={onOpenChat}
             onNewChat={() => setNewChat(true)}
           />
+          </ErrorBoundary>
           </View>
         ) : null}
         {visitadas.has('encuestas') ? (
           <View style={panel('encuestas')}>
-            <PollsScreen recarga={reloadKey} credential={credential} onCreate={() => setCreating('poll')} />
+            <ErrorBoundary pantalla="encuestas">
+              <PollsScreen recarga={reloadKey} credential={credential} onCreate={() => setCreating('poll')} />
+            </ErrorBoundary>
           </View>
         ) : null}
         {visitadas.has('agenda') ? (
           <View style={panel('agenda')}>
             {/* Eventos y avisos en una sola pestaña: el botón de crear ofrece
                 los dos tipos en vez de adivinar por el filtro activo. */}
-            <AgendaScreen credential={credential} activa={tab === 'agenda'} />
+            <ErrorBoundary pantalla="agenda">
+              <AgendaScreen credential={credential} activa={tab === 'agenda'} grupos={grupos} />
+            </ErrorBoundary>
           </View>
         ) : null}
         {visitadas.has('ajustes') ? (
@@ -340,6 +352,7 @@ export function TabsShell({
           {/* `padding` también en Android: con edge-to-edge la ventana ya no se
               encoge con el teclado, y la passphrase del respaldo quedaba tapada
               sin forma de subirla (mismo motivo que en ChatScreen). */}
+          <ErrorBoundary pantalla="ajustes">
           <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
           <ScrollView
             className="flex-1"
@@ -455,6 +468,7 @@ export function TabsShell({
             </Pressable>
           </ScrollView>
           </KeyboardAvoidingView>
+          </ErrorBoundary>
           </View>
         ) : null}
       </View>

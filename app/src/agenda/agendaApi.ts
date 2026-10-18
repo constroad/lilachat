@@ -24,6 +24,13 @@ export type AgendaEvent = {
   mio: boolean;
   /** «Avisar 1 hora antes»; los eventos viejos no lo traen y cuentan como sí. */
   remindGuests?: boolean;
+  /** Lo que el detalle muestra a todos (FL10). Un server viejo no lo manda. */
+  createdBy?: string;
+  attendees?: { userId: string; rsvp?: Rsvp; invitedBy?: string }[];
+  chat?: { kind: 'direct' | 'group'; name?: string; phone?: string };
+  personas?: Record<string, { phone: string; name?: string }>;
+  guestsCanInvite?: boolean;
+  puedoInvitar?: boolean;
 };
 
 export type AgendaReminder = {
@@ -44,6 +51,13 @@ export type AgendaPoll = {
   allowMultiple: boolean;
   anonymous: boolean;
   closedAt?: string | null;
+  /** De qué chat y quién preguntó (FL10). Un server viejo no los manda. */
+  chat?: { kind: 'direct' | 'group'; name?: string; phone?: string };
+  autor?: { id: string; phone: string; name?: string };
+  /** La creé yo: solo entonces se cierra o se elimina. */
+  esMia?: boolean;
+  /** Para nombrar al autor y, si no es anónima, a los votantes. */
+  personas?: Record<string, { phone: string; name?: string }>;
 };
 
 async function call<T>(

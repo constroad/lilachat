@@ -11,8 +11,17 @@ import { reportarError } from './reportarError';
  * nadie —ni el usuario ni el server ni Torre— se enteraba.
  *
  * Tiene que ser una clase: `componentDidCatch` no existe como hook.
+ *
+ * Hay uno por pantalla (FL10, auditoría §46.3: había uno solo para toda la
+ * app). Si se rompe la Agenda, las pestañas siguen andando; si se rompe un
+ * chat, se puede volver a la lista.
  */
-type Props = { children: ReactNode; pantalla: string };
+type Props = {
+  children: ReactNode;
+  pantalla: string;
+  /** Salir de la pantalla rota (una conversación): «Volver» además de «Reintentar». */
+  onVolver?: () => void;
+};
 type Estado = { rompio: boolean };
 
 export class ErrorBoundary extends Component<Props, Estado> {
@@ -46,6 +55,15 @@ export class ErrorBoundary extends Component<Props, Estado> {
         >
           <Text className="text-sm font-semibold text-on-primary">Reintentar</Text>
         </Pressable>
+        {this.props.onVolver ? (
+          <Pressable
+            testID="btn-volver-pantalla-rota"
+            onPress={this.props.onVolver}
+            className="mt-2 min-h-[48px] items-center justify-center px-6"
+          >
+            <Text className="text-sm font-semibold text-primary">Volver</Text>
+          </Pressable>
+        ) : null}
       </View>
     );
   }

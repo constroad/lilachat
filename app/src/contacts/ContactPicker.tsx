@@ -101,7 +101,10 @@ export function ContactPicker({
     // Con quien ya hablo SIEMPRE está, aunque no lo tenga agendado: perder una
     // conversación abierta porque el contacto no está en la libreta sería peor
     // que mostrar un número de más.
-    setGroups(emparejados.ok ? unirGrupos(base, emparejados.data.groups) : base);
+    //
+    // `?? []`: hasta el 18/10 el server contestaba sin `groups` si ningún número
+    // de la agenda era válido, y esto reventaba con el selector en esqueleto.
+    setGroups(emparejados.ok ? unirGrupos(base, emparejados.data.groups ?? []) : base);
   }, [credential.jwt, agendaCruda]);
 
   useEffect(() => {

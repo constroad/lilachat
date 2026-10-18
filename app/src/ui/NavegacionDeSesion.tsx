@@ -19,6 +19,7 @@ import { TabsShell } from './TabsShell';
 import { useColores, useTema } from './tema';
 import { chatAbiertoDe } from './rutas';
 import { useAbrirDesdeAviso } from './useAbrirDesdeAviso';
+import { ErrorBoundary } from './ErrorBoundary';
 
 type RutasDeSesion = {
   Inicio: undefined;
@@ -135,7 +136,9 @@ function PantallaDeChat({
   credential: Credential;
   onBack: () => void;
 }) {
+  // Su propia red (FL10): un chat roto no se lleva puesta la app, y se vuelve a la lista.
   return (
+    <ErrorBoundary pantalla="chat" onVolver={onBack}>
     <ChatScreen
       chatId={chat.id}
       // Mismo criterio que la lista: gana el nombre de TU agenda. Sin esto la
@@ -160,5 +163,6 @@ function PantallaDeChat({
       otherUserId={chat.kind === 'direct' ? (chat.memberIds.find((id) => id !== credential.userId) ?? null) : null}
       onBack={onBack}
     />
+    </ErrorBoundary>
   );
 }

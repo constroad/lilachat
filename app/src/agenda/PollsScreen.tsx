@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { BarChart3, Plus, RotateCw } from 'lucide-react-native';
-import { tallyPoll } from '@lilachat/shared';
+import { applyVote } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
-import { agendaGet, agendaPost, type AgendaPoll } from './agendaApi';
+import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
+import { agendaDelete, agendaGet, agendaPost, type AgendaPoll } from './agendaApi';
+import { TarjetaDeEncuesta } from './TarjetaDeEncuesta';
 import { useColores } from '../ui/tema';
 
 /**
@@ -27,6 +29,9 @@ export function PollsScreen({
   const [polls, setPolls] = useState<AgendaPoll[] | null>(null);
   const [fallo, setFallo] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  /** La encuesta que tiene un pedido en vuelo: no acepta otro (FL10). */
+  const [ocupada, setOcupada] = useState<string | null>(null);
+  const [errores, setErrores] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     const result = await agendaGet<{ polls: AgendaPoll[] }>('/polls', credential.jwt);
@@ -34,6 +39,8 @@ export function PollsScreen({
     if (result.ok) {
       setPolls(result.data.polls);
       setFallo(false);
+      // Lo que falló antes ya no vale contra la lista nueva.
+      setErrores({});
     } else setFallo(true);
   }, [credential.jwt]);
 
@@ -41,9 +48,41 @@ export function PollsScreen({
     void load();
   }, [load, recarga]);
 
-  const vote = async (pollId: string, optionIndex: number) => {
-    await agendaPost(`/polls/${pollId}/vote`, credential.jwt, { optionIndex });
-    void load();
+  const agenda = agendaPorTelefono();
+  const reemplazar = (id: string, nueva: AgendaPoll | null) =>
+    setPolls((antes) => (antes ?? []).flatMap((poll) => (poll.id !== id ? [poll] : nueva ? [nueva] : [])));
+  const decir = (id: string, mensaje: string) => setErrores((antes) => ({ ...antes, [id]: mensaje }));
+
+  /** El voto se ve al instante; si el server no lo toma, vuelve atrás y lo dice. */
+  const votar = async (poll: AgendaPoll, optionIndex: number) => {
+    if (ocupada) return;
+    const local = applyVote({ poll: { ...poll, closedAt: poll.closedAt ? new Date(poll.closedAt) : null }, optionIndex, userId: credential.userId });
+    if (!local.ok) return decir(poll.id, local.reason);
+    decir(poll.id, '');
+    reemplazar(poll.id, { ...poll, options: local.options });
+    setOcupada(poll.id);
+    const respuesta = await agendaPost<{ poll?: AgendaPoll }>(`/polls/${poll.id}/vote`, credential.jwt, { optionIndex });
+    setOcupada(null);
+    // Un server viejo contesta sin la encuesta: el voto entró, se recarga.
+    if (respuesta.ok) return respuesta.data.poll ? reemplazar(poll.id, respuesta.data.poll) : void load();
+    reemplazar(poll.id, poll);
+    decir(poll.id, respuesta.message ?? 'No se pudo votar. Inténtalo de nuevo.');
+  };
+
+  const cerrar = async (poll: AgendaPoll) => {
+    setOcupada(poll.id);
+    const respuesta = await agendaPost<{ poll?: AgendaPoll }>(`/polls/${poll.id}/close`, credential.jwt, {});
+    setOcupada(null);
+    if (respuesta.ok) return respuesta.data.poll ? reemplazar(poll.id, respuesta.data.poll) : void load();
+    decir(poll.id, respuesta.message ?? 'No se pudo cerrar. Inténtalo de nuevo.');
+  };
+
+  const eliminar = async (poll: AgendaPoll) => {
+    setOcupada(poll.id);
+    const respuesta = await agendaDelete(`/polls/${poll.id}`, credential.jwt);
+    setOcupada(null);
+    if (respuesta.ok) return reemplazar(poll.id, null);
+    decir(poll.id, respuesta.message ?? 'No se pudo eliminar. Inténtalo de nuevo.');
   };
 
   const refresco = (
@@ -87,70 +126,19 @@ export function PollsScreen({
           contentContainerStyle={{ padding: 16, paddingBottom: 96 }}
           refreshControl={refresco}
         >
-          {(polls ?? []).map((poll) => {
-            const tally = tallyPoll(
-              {
-                question: poll.question,
-                options: poll.options,
-                allowMultiple: poll.allowMultiple,
-                anonymous: poll.anonymous,
-                closedAt: poll.closedAt ? new Date(poll.closedAt) : null,
-              },
-              credential.userId
-            );
-            return (
-              <View
-                key={poll.id}
-                testID={`encuesta-${poll.id}`}
-                className="mb-3 rounded-xl border border-outline/10 bg-surface p-4"
-              >
-                <Text className="text-base font-bold text-on-surface">{poll.question}</Text>
-                {poll.allowMultiple || poll.anonymous ? (
-                  <Text className="mt-0.5 text-[11px] text-on-surface-variant">
-                    {[
-                      poll.allowMultiple ? 'Varias respuestas' : null,
-                      poll.anonymous ? 'Resultados anónimos' : null,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </Text>
-                ) : null}
-
-                <View className="mt-3">
-                  {tally.map((option) => (
-                    <Pressable
-                      key={option.optionIndex}
-                      testID={`opcion-${poll.id}-${option.optionIndex}`}
-                      onPress={() => void vote(poll.id, option.optionIndex)}
-                      className="mb-2 overflow-hidden rounded-lg border border-outline/15"
-                    >
-                      {/* La barra vive DETRÁS del texto, no al lado: así el
-                          porcentaje se lee sobre su propia proporción. */}
-                      <View
-                        className={`absolute bottom-0 left-0 top-0 ${
-                          option.votedByMe ? 'bg-primary/25' : 'bg-surface-variant'
-                        }`}
-                        style={{ width: `${option.percent}%` }}
-                      />
-                      <View className="min-h-[44px] flex-row items-center justify-between px-3 py-2">
-                        <Text
-                          className={`min-w-0 flex-1 text-sm ${
-                            option.votedByMe ? 'font-semibold text-primary' : 'text-on-surface'
-                          }`}
-                          numberOfLines={1}
-                        >
-                          {option.text}
-                        </Text>
-                        <Text className="ml-2 shrink-0 text-[11px] font-semibold text-on-surface-variant">
-                          {option.percent}% · {option.count}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-            );
-          })}
+          {(polls ?? []).map((poll) => (
+            <TarjetaDeEncuesta
+              key={poll.id}
+              poll={poll}
+              yo={credential.userId}
+              agenda={agenda}
+              ocupada={ocupada === poll.id}
+              error={errores[poll.id]}
+              onVotar={(indice) => void votar(poll, indice)}
+              onCerrar={() => void cerrar(poll)}
+              onEliminar={() => void eliminar(poll)}
+            />
+          ))}
         </ScrollView>
       )}
 

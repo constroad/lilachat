@@ -3396,7 +3396,7 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | FL8 | **Lo que se pierde o se rompe** (auditoría §46.1) — ver §45.15 | ningún mensaje desaparece sin aviso; la notificación abre su chat; la llamada suena fuera del chat | ✅ 17/10 (0.1.78) |
 | FL8.1 | **Llamada entrante como WhatsApp** (pedido de José tras probar con Wilson, 17/10): pantalla completa sobre el bloqueo con tono que se repite, deslizar para contestar, rechazar sin abrir la app, tono con la app abierta, «Llamada perdida» en el chat — ver §45.16 | con la app cerrada y el teléfono bloqueado la llamada ocupa la pantalla y suena hasta contestar, rechazar o 30 s; E2E en el emulador | 🟡 17/10 (0.1.79 publicada): verificada en el emulador, más el bug de presencia que frenaba todos los push; falta probar sobre un bloqueo real |
 | FL8.2 | **Doble check sin abrir la app** (José, 17/10, chat con Wilson: un solo check aunque Wilson tenía internet). Hoy «entregado» lo marca la app al conectarse; el push llega al teléfono pero es una notificación común, Android la muestra sin ejecutar código de la app y el server nunca se entera. Camino: push de mensaje solo-datos que recibe el servicio nativo de FL8.1, que dibuja la notificación y le confirma la entrega al server con un token corto del propio push (sin JWT) | con la app cerrada, el mensaje pasa a dos checks grises al llegar el push al otro teléfono — ver §45.17 | ✅ 17/10: hecho y verificado en el emulador; sale en 0.1.80 |
-| FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | 🟡 17/10: FL9a hecha (§45.18): pulsación larga completa, links, cita que salta, divisor de no leídos, atrás; editar mensajes (§45.19); FL9b: varias fotos con pie y notas de voz con velocidad (§45.20); FL9c: borradores, archivar, marcar no leído, perfil con nombre y foto, buscar en el chat (§45.21). Falta: dimensiones de foto, borrar chats |
+| FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | 🟡 17/10: FL9a hecha (§45.18): pulsación larga completa, links, cita que salta, divisor de no leídos, atrás; editar mensajes (§45.19); FL9b: varias fotos con pie y notas de voz con velocidad (§45.20); FL9c: borradores, archivar, marcar no leído, perfil con nombre y foto, buscar en el chat (§45.21); FL9d: programados visibles y cancelables, búsqueda que salta al mensaje, «ya no eres participante», eliminar chat (§45.22). Falta: multiselección, nota de voz manteniendo, dimensiones de foto |
 | FL10 | **Pulido y coherencia** (§46.3): un solo registro (tuteo), 44 dp, encuestas completas, detalle de evento | auditoría de pantalla entera sin hallazgos ALTA | ⬜ |
 
 ### 45.4 As-is FL0 (16/10/2026)
@@ -4360,6 +4360,85 @@ tests)
 - El perfil de José se guardó antes y se restauró después, sin nombre ni
   foto. QA Ana, su chat y el equipo del emulador se borraron: quedaron 20
   equipos y 0 de QA.
+
+### 45.22 As-is FL9d y el respaldo cerrado (17/10/2026)
+
+**Seguridad: «Respaldar ahora» solo para operadores** (`backupRoutes.ts`, 4
+tests nuevos)
+- `POST /api/backup/run` lanza un `mongodump` de la base ENTERA y lo podía
+  disparar cualquiera con sesión (auditoría §46.3).
+- Ahora exige que el teléfono del usuario esté en `LILACHAT_OPERADORES`
+  (separados por coma). Sin la variable no lo dispara nadie; el cron de cada
+  noche sigue igual. **Para usarlo hay que cargar la variable en Torre.**
+- `GET /api/backup` ya no devuelve `dir`, la ruta del disco del server.
+  Devuelve `puedeRespaldar`, y la app esconde el botón a quien no puede.
+
+**Ver y cancelar programados** (`programados.ts`, 2 tests;
+`ProgramadosDelChat`)
+- Sobre la barra de escribir aparece «N mensajes programados». Al tocarlo se
+  abre una hoja con el texto y la hora de cada uno, y «Cancelar» pide
+  confirmación.
+- La lista sale de `GET /api/chats/scheduled` (ya existía). Se pide al abrir
+  el chat y después de programar o cancelar.
+
+**La búsqueda general lleva al mensaje**
+- El resultado pasa su `seq` por la navegación (`Chat: { chat, irASeq }`).
+- El chat abre en ese mensaje, resaltado.
+- Si el mensaje no está cargado, avisa «Ese mensaje está más arriba».
+
+**«Ya no eres participante»** (`useGrupo`, que reemplaza a
+`useNombresDelGrupo`; `membresiaPorRespuesta`, 2 tests; socket, 1 test)
+- Nadie escuchaba `chat.changed`. Ahora:
+  - la lista se recarga con ese evento: te sacaron, o cambió el nombre o la
+    foto de un grupo;
+  - el chat abierto vuelve a pedir el detalle del grupo.
+- Un 403/404 significa que ya no sos miembro: la barra de escribir se cambia
+  por el aviso y el subtítulo deja de listar miembros. Sin red o con un error
+  se sigue como estaba.
+- El aviso «X te sacó del grupo» ahora le llega también al que sacaron. Antes
+  iba solo a los que quedaban.
+- `textoDeAviso` tiene `aMi`: «te sacó», «te agregó», «te nombró admin»,
+  «Quedaste como admin». Antes decía «sacó a 902049935», con el propio número.
+
+**Eliminar chat para mí** (server: `borradoHasta` en el subdoc del miembro y
+`POST /api/chats/:id/borrar-para-mi`, 4 tests; shared: `eliminar` en
+`accionesDeSeleccion`, 1 test)
+- El server guarda el último `seq` y deja el chat leído hasta ahí.
+- La lista lo oculta hasta que llega un mensaje nuevo. El historial
+  (`listMessages`), la sincronización (`pullSince`) y la búsqueda no
+  devuelven lo anterior.
+- La app lo ofrece en la selección cuando todos son 1:1 (un grupo se deja con
+  «Salir»), con confirmación. Borra también la caché local
+  (`olvidarMensajesDelChat`) y el borrador.
+- Las acciones de la selección salieron a `useAccionesDeSeleccion`.
+  `ChatListScreen` queda en 542 líneas.
+
+**E2E** (emulador contra :3104, con QA Ana, un 1:1 y «QA Grupo»):
+- **Respaldo:**
+  - la pantalla ya no muestra «Respaldar ahora»;
+  - por HTTP, `run` da 403 y el estado viene sin `dir`.
+- **Programado:**
+  - el aviso dijo «1 mensaje programado»;
+  - la hoja mostró «Hoy, 8:53 p. m.»;
+  - al cancelar quedó `canceledAt` en la base y el aviso se fue.
+- **Búsqueda general:** «chocolate» abrió el 1:1 con ese mensaje resaltado.
+- **Fuera del grupo:**
+  - con el grupo abierto, QA Ana me sacó por HTTP;
+  - apareció la barra de «ya no eres participante», llegó la línea en vivo y
+    el subtítulo quedó vacío;
+  - la lista quitó el grupo;
+  - al volver a entrar, las líneas dicen «QA Ana te sacó del grupo».
+- **Eliminar:**
+  - el 1:1 salió de la lista (`borradoHasta: 3`);
+  - con un mensaje nuevo volvió con 1 sin leer, y adentro solo estaba ese.
+
+**Notas**
+- `chatDetalle.test.ts` falló una vez con la CPU tomada por Gradle y pasó
+  tres veces después. Fue por tiempo de espera, no por la lógica.
+- Queda de FL9:
+  - elegir varios mensajes a la vez;
+  - mantener para grabar la nota de voz y deslizar para cancelar;
+  - fotos con su tamaño real.
 
 ## 47. Lilachat Empresa — plan (17/10/2026)
 

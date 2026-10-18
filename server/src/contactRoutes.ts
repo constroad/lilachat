@@ -80,7 +80,7 @@ export function buildContactRouter(): Router {
   router.post('/match', asyncRoute(async (req, res) => {
     const me = req.session!.userId;
     const numeros = limpiarNumerosParaEmparejar(req.body?.phones);
-    if (numeros.length === 0) return res.json({ contacts: [] });
+    if (numeros.length === 0) return res.json({ contacts: [], groups: [] });
 
     const [usuarios, directos] = await Promise.all([
       UserModel.find({ phone: { $in: numeros }, _id: { $ne: me } })

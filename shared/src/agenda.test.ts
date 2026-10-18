@@ -78,3 +78,26 @@ describe('planTargetChat', () => {
     });
   });
 });
+
+/**
+ * «Invitar a 2+ siempre crea un grupo nuevo» (FL10, auditoría §46.3): si ya
+ * hay un grupo con EXACTAMENTE esa gente, el evento va ahí.
+ */
+describe('planTargetChat — grupo que ya existe', () => {
+  const grupos = [
+    { id: 'g-familia', memberIds: ['yo', 'u2', 'u3'] },
+    { id: 'g-grande', memberIds: ['yo', 'u2', 'u3', 'u4'] },
+  ];
+
+  it('con la misma gente, ese grupo', () => {
+    expect(planTargetChat({ inviteeIds: ['u3', 'u2'], groupName: 'Asado', yo: 'yo', grupos })).toEqual({ kind: 'existing', chatId: 'g-familia' });
+  });
+
+  it('con un grupo que tiene a alguien más, uno nuevo', () => {
+    expect(planTargetChat({ inviteeIds: ['u2', 'u4'], groupName: 'Asado', yo: 'yo', grupos })).toMatchObject({ kind: 'create' });
+  });
+
+  it('sin saber quién soy, no se adivina', () => {
+    expect(planTargetChat({ inviteeIds: ['u2', 'u3'], groupName: 'Asado', grupos })).toMatchObject({ kind: 'create' });
+  });
+});

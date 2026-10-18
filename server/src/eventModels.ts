@@ -12,6 +12,8 @@ import type { Recurrence, Rsvp } from '@lilachat/shared';
 export interface EventAttendee {
   userId: Types.ObjectId;
   rsvp?: Rsvp;
+  /** Lo sumó alguien de afuera del chat (FL10, «Pueden invitar a otros»). */
+  invitedBy?: Types.ObjectId;
 }
 
 export interface ChatEvent {
@@ -68,6 +70,7 @@ const eventSchema = new Schema<ChatEvent>(
       {
         userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
         rsvp: { type: String, enum: ['yes', 'no', 'maybe'] },
+        invitedBy: { type: Schema.Types.ObjectId, ref: 'User' },
       },
     ],
     remindMinutesBefore: { type: Number, default: 60 },

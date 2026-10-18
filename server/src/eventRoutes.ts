@@ -1,16 +1,19 @@
-import { Router } from 'express';
+import { Router, type Response } from 'express';
 import { Types } from 'mongoose';
 import {
   applyVote,
   cambiosDeEvento,
   cambiosDeRecordatorio,
-  summarizeRsvp,
   validatePoll,
   type Recurrence,
 } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import { ForbiddenChatError } from './chatService.js';
 import { EventModel, PollModel, ReminderModel } from './eventModels.js';
+import { vistasDeEncuestas } from './vistaDeEncuesta.js';
+import { vistasDeEventos } from './vistaDeEvento.js';
+import { contactosDe } from './invitarAlEvento.js';
+import { pasosDelVoto } from './votoDeEncuesta.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 
 /**
@@ -20,6 +23,9 @@ import { asyncRoute, requireSession } from './requireSession.js';
  * conversación puede crear un evento o una encuesta ahí, y quien no, no ve
  * nada. Re-implementar permisos propios sería inventar una segunda verdad.
  */
+/** Cuántos se suman de una vez a un evento: más que eso es una lista de difusión. */
+const MAX_INVITADOS_POR_VEZ = 20;
+
 const asObjectId = (value: unknown): Types.ObjectId | null =>
   Types.ObjectId.isValid(String(value)) ? new Types.ObjectId(String(value)) : null;
 
@@ -55,6 +61,31 @@ async function myChatIds(userId: Types.ObjectId): Promise<Types.ObjectId[]> {
   return chats.map((chat) => chat._id);
 }
 
+/**
+ * La encuesta, si existe y soy miembro de su chat. Si no, responde (404/403)
+ * y devuelve null.
+ */
+async function encuestaDeMiembro(pollId: unknown, userId: Types.ObjectId, res: Response) {
+  const id = asObjectId(pollId);
+  const poll = id ? await PollModel.findById(id).lean() : null;
+  if (!poll) {
+    res.status(404).json({ message: 'Esa encuesta no existe.' });
+    return null;
+  }
+  try {
+    await assertMember(poll.chatId, userId);
+  } catch {
+    res.status(403).json({ message: 'No tienes acceso a esa encuesta.' });
+    return null;
+  }
+  return poll;
+}
+
+async function vistaDeUna(pollId: Types.ObjectId, userId: Types.ObjectId) {
+  const poll = await PollModel.findById(pollId).lean();
+  return poll ? (await vistasDeEncuestas([poll], userId))[0] : null;
+}
+
 /** Un evento de un chat del que soy miembro; `null` si no existe o no lo veo. */
 async function eventoVisible(eventId: unknown, userId: Types.ObjectId) {
   const id = asObjectId(eventId);
@@ -81,28 +112,46 @@ export function buildEventRouter(): Router {
 
   router.get('/events', asyncRoute(async (req, res) => {
     const chatIds = await myChatIds(req.session!.userId);
-    // Solo los que vienen: la pantalla es «qué se viene», no un archivo.
+    // Solo los que vienen: la pantalla es «qué se viene», no un archivo. Los
+    // de mis chats y aquellos a los que me invitaron de afuera (FL10).
     const events = await EventModel.find({
-      chatId: { $in: chatIds },
+      $or: [{ chatId: { $in: chatIds } }, { 'attendees.userId': req.session!.userId }],
       startsAt: { $gte: new Date(Date.now() - 6 * 3_600_000) },
     })
       .sort({ startsAt: 1 })
       .limit(100)
       .lean();
 
-    res.json({
-      events: events.map((event) => ({
-        ...event,
-        id: String(event._id),
-        // La app ofrece editar y cancelar solo a quien lo creó.
-        mio: String(event.createdBy) === String(req.session!.userId),
-        rsvpSummary: summarizeRsvp(event.attendees),
-        myRsvp:
-          event.attendees.find(
-            (attendee) => String(attendee.userId) === String(req.session!.userId)
-          )?.rsvp ?? null,
-      })),
-    });
+    // Quién lo creó, quiénes van y en qué chat, para todos (FL10).
+    res.json({ events: await vistasDeEventos(events, req.session!.userId, new Set(chatIds.map(String))) });
+  }));
+
+  /**
+   * Sumar gente a un evento (FL10). Quien lo creó, siempre; los demás, solo
+   * con «Pueden invitar a otros». Se invita a CONTACTOS de quien invita (con
+   * un chat en común): un id cualquiera no entra.
+   */
+  router.post('/events/:eventId/invitar', asyncRoute(async (req, res) => {
+    const yo = req.session!.userId;
+    const eventId = asObjectId(req.params.eventId);
+    const evento = eventId ? await EventModel.findById(eventId).lean() : null;
+    const loVeo = evento && (evento.attendees.some((a) => a.userId.equals(yo)) || (await ChatModel.exists({ _id: evento.chatId, 'members.userId': yo })));
+    if (!evento || !loVeo) return res.status(404).json({ message: 'Ese evento no existe.' });
+    if (!evento.createdBy.equals(yo) && !evento.guestsCanInvite) {
+      return res.status(403).json({ message: 'Solo quien creó el evento puede invitar.' });
+    }
+    const pedidos = Array.isArray(req.body?.userIds) ? req.body.userIds.map(String).slice(0, MAX_INVITADOS_POR_VEZ) : [];
+    const yaVan = new Set(evento.attendees.map((a) => String(a.userId)));
+    const nuevos = pedidos.filter((id: string) => !yaVan.has(id));
+    const contactos = await contactosDe(yo, nuevos);
+    if (contactos.length < nuevos.length) return res.status(400).json({ message: 'Solo puedes invitar a tus contactos de Lilachat.' });
+    if (contactos.length > 0) {
+      await EventModel.updateOne(
+        { _id: evento._id },
+        { $push: { attendees: { $each: contactos.map((userId) => ({ userId, invitedBy: yo })) } } }
+      );
+    }
+    res.json({ ok: true, agregados: contactos.length });
   }));
 
   router.post('/events', asyncRoute(async (req, res) => {
@@ -319,19 +368,13 @@ export function buildEventRouter(): Router {
       .sort({ createdAt: -1 })
       .limit(50)
       .lean();
-    res.json({ polls: polls.map((poll) => ({ ...poll, id: String(poll._id) })) });
+    // De qué chat, quién preguntó y quién votó; anónima de verdad (FL10).
+    res.json({ polls: await vistasDeEncuestas(polls, req.session!.userId) });
   }));
 
   router.post('/polls/:pollId/vote', asyncRoute(async (req, res) => {
-    const pollId = asObjectId(req.params.pollId);
-    if (!pollId) return res.status(404).json({ message: 'Esa encuesta no existe.' });
-    const poll = await PollModel.findById(pollId).lean();
-    if (!poll) return res.status(404).json({ message: 'Esa encuesta no existe.' });
-    try {
-      await assertMember(poll.chatId, req.session!.userId);
-    } catch {
-      return res.status(403).json({ message: 'No tienes acceso a esa encuesta.' });
-    }
+    const poll = await encuestaDeMiembro(req.params.pollId, req.session!.userId, res);
+    if (!poll) return;
 
     const outcome = applyVote({
       poll: {
@@ -349,17 +392,39 @@ export function buildEventRouter(): Router {
     });
     if (!outcome.ok) return res.status(400).json({ message: outcome.reason });
 
-    await PollModel.updateOne(
-      { _id: pollId },
-      {
-        $set: {
-          options: outcome.options.map((option) => ({
-            text: option.text,
-            votes: option.votes.map((voter) => new Types.ObjectId(voter)),
-          })),
-        },
-      }
-    );
+    const indice = Number(req.body?.optionIndex);
+    const pasos = pasosDelVoto({
+      yaVotada: poll.options[indice]!.votes.some((voter) => voter.equals(req.session!.userId)),
+      permiteVarias: poll.allowMultiple,
+      indice,
+      yo: req.session!.userId,
+    });
+    for (const paso of pasos) {
+      // Solo mientras siga abierta: si la cerraron en el medio, el voto no entra.
+      const { matchedCount } = await PollModel.updateOne({ _id: poll._id, closedAt: null }, paso);
+      if (matchedCount === 0) return res.status(400).json({ message: 'Esa encuesta ya se cerró.' });
+    }
+    res.json({ ok: true, poll: await vistaDeUna(poll._id, req.session!.userId) });
+  }));
+
+  /** Cerrar (FL10): solo quien la creó. Cerrada se ve, pero no se vota. */
+  router.post('/polls/:pollId/close', asyncRoute(async (req, res) => {
+    const poll = await encuestaDeMiembro(req.params.pollId, req.session!.userId, res);
+    if (!poll) return;
+    if (!poll.createdBy.equals(req.session!.userId)) {
+      return res.status(403).json({ message: 'Solo quien la creó puede cerrarla.' });
+    }
+    if (!poll.closedAt) await PollModel.updateOne({ _id: poll._id }, { $set: { closedAt: new Date() } });
+    res.json({ ok: true, poll: await vistaDeUna(poll._id, req.session!.userId) });
+  }));
+
+  router.delete('/polls/:pollId', asyncRoute(async (req, res) => {
+    const poll = await encuestaDeMiembro(req.params.pollId, req.session!.userId, res);
+    if (!poll) return;
+    if (!poll.createdBy.equals(req.session!.userId)) {
+      return res.status(403).json({ message: 'Solo quien la creó puede eliminarla.' });
+    }
+    await PollModel.deleteOne({ _id: poll._id });
     res.json({ ok: true });
   }));
 

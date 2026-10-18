@@ -17,6 +17,9 @@ export function planTargetChat(params: {
   inviteeIds: string[];
   /** El título del evento o la pregunta de la encuesta: es el nombre que llevará el grupo. */
   groupName: string;
+  /** Quién crea, y sus grupos: con la MISMA gente se reusa el grupo (FL10). */
+  yo?: string;
+  grupos?: readonly { id: string; memberIds: readonly string[] }[];
 }): TargetChatPlan {
   const fijo = (params.fixedChatId ?? '').trim();
   if (fijo) return { kind: 'existing', chatId: fijo };
@@ -28,8 +31,20 @@ export function planTargetChat(params: {
   // es un grupo nuevo, y el nombre lo hereda de lo que se está creando.
   if (memberIds.length === 1) return { kind: 'create', chat: { kind: 'direct', memberIds } };
 
+  const existente = params.yo ? grupoConLaMismaGente([params.yo, ...memberIds], params.grupos ?? []) : undefined;
+  if (existente) return { kind: 'existing', chatId: existente };
+
   const name = params.groupName.trim();
   if (!name) return { kind: 'invalid', message: 'Ponle un nombre.' };
 
   return { kind: 'create', chat: { kind: 'group', memberIds, name } };
+}
+
+/** El grupo cuyos miembros son EXACTAMENTE esos (sin importar el orden). */
+function grupoConLaMismaGente(gente: readonly string[], grupos: readonly { id: string; memberIds: readonly string[] }[]): string | undefined {
+  const buscada = new Set(gente);
+  return grupos.find((grupo) => {
+    const miembros = new Set(grupo.memberIds);
+    return miembros.size === buscada.size && [...buscada].every((id) => miembros.has(id));
+  })?.id;
 }

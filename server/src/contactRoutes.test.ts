@@ -95,6 +95,21 @@ describe('GET /api/contacts', () => {
     expect(JSON.stringify(respuesta.body)).toContain('Recién llegado');
   });
 
+  /**
+   * Una agenda sin números válidos (o vacía) también trae `groups`, vacío.
+   * Sin él la app reventaba al juntar listas y el selector quedaba en
+   * esqueleto para siempre (E2E de FL10, 18/10/2026).
+   */
+  it('sin números para emparejar, la misma forma: contactos y grupos vacíos', async () => {
+    const respuesta = await request(app)
+      .post('/api/contacts/match')
+      .set('Authorization', `Bearer ${jwt}`)
+      .send({ phones: ['abc', ''] });
+
+    expect(respuesta.status).toBe(200);
+    expect(respuesta.body).toEqual({ contacts: [], groups: [] });
+  });
+
   /** Si ya hay chat 1:1, la lista lo dice: abrir en vez de crear. */
   it('marca con quién ya tengo conversación', async () => {
     const chat = await ChatModel.create({

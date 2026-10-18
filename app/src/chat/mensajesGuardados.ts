@@ -424,6 +424,24 @@ export async function seqsGuardados(chatId: string): Promise<number[] | null> {
 }
 
 /**
+ * «Eliminar chat» (FL9d): sus mensajes se van de este teléfono. Si alguien
+ * escribe de nuevo, el server manda solo lo nuevo.
+ */
+export async function olvidarMensajesDelChat(chatId: string): Promise<void> {
+  try {
+    const abierta = await listo();
+    if (!abierta) return;
+    const deEstaSesion = generacion;
+    await enCola(async () => {
+      if (deEstaSesion !== generacion) return;
+      await abierta.runAsync('DELETE FROM mensajes WHERE chatId = ?', chatId);
+    });
+  } catch {
+    // Sin disco no quedó nada que borrar.
+  }
+}
+
+/**
  * Al cerrar sesión se borra TODO, incluida la clave.
  *
  * Sin borrar la clave, la base quedaría descifrable por quien entre después en

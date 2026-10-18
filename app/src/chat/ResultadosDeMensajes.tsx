@@ -12,7 +12,8 @@ export function ResultadosDeMensajes(props: {
   chats: ChatSummary[];
   busqueda: string;
   tituloDe: (chat: ChatSummary) => string;
-  onAbrir: (chat: ChatSummary) => void;
+  /** Con el `seq`: el chat se abre en ese mensaje (FL9d). */
+  onAbrir: (chat: ChatSummary, seq: number) => void;
 }) {
   return (
     <View className="mt-3 border-t border-outline/10 pt-3" testID="resultados-mensajes">
@@ -27,7 +28,7 @@ export function ResultadosDeMensajes(props: {
           <Pressable
             key={resultado.messageId}
             testID={`resultado-${resultado.messageId}`}
-            onPress={() => props.onAbrir(chat)}
+            onPress={() => props.onAbrir(chat, resultado.seq)}
             className="min-h-[56px] justify-center px-4 py-2"
           >
             <Text className="text-[13px] font-semibold text-on-surface" numberOfLines={1}>

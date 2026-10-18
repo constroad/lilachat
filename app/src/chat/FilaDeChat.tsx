@@ -253,6 +253,7 @@ function avisoDelUltimo(chat: ChatSummary, miUserId: string): string | null {
       esMio: chat.lastMessage?.senderId === miUserId,
       evento: aviso.evento,
       aQuien: nombreDe(aviso.aQuien) || undefined,
+      aMi: aviso.targetId === miUserId,
       valor: aviso.valor,
     }) || null
   );

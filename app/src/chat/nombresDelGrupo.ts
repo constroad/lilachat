@@ -19,3 +19,16 @@ export function nombresPorMiembro(
   }
   return nombres;
 }
+
+/**
+ * ¿Sigo siendo miembro, según la respuesta del detalle del grupo? Solo un
+ * «no» explícito (403/404) dice que no: sin red, con 401 (la sesión se
+ * renueva aparte) o con un error del server, `null` —no se sabe y se sigue
+ * como estaba—.
+ */
+export function membresiaPorRespuesta(status: number | 'sin-red'): boolean | null {
+  if (status === 'sin-red') return null;
+  if (status >= 200 && status < 300) return true;
+  if (status === 403 || status === 404) return false;
+  return null;
+}

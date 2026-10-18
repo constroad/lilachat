@@ -250,6 +250,12 @@ export async function cambiarAjustesDeChat(
   }
 }
 
+/** «Eliminar chat» para mí (FL9d). Devuelve solo si salió bien. */
+export async function borrarChatParaMi(chatId: string, token: string): Promise<boolean> {
+  const respuesta = await authed<{ ok: boolean }>('POST', `/api/chats/${chatId}/borrar-para-mi`, token);
+  return respuesta.ok;
+}
+
 /**
  * Salir de un grupo. Lo usa la selección múltiple («Salir» solo aparece si toda
  * la selección son grupos). El server promueve a otro admin si me voy siendo el

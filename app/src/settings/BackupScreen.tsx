@@ -91,7 +91,7 @@ export function BackupScreen({ credential }: { credential: Credential }) {
                 : 'El respaldo está atrasado'}
         </Text>
         <Text className="mt-1 text-center text-sm leading-5 text-on-surface-variant">
-          {status?.count === 0
+          {status?.count === 0 && status.puedeRespaldar
             ? 'Toca «Respaldar ahora» para crear el primero.'
             : 'Tus chats se guardan cada noche en nuestro servidor.'}
         </Text>
@@ -117,6 +117,9 @@ export function BackupScreen({ credential }: { credential: Credential }) {
         </View>
       </View>
 
+      {/* Respaldar a mano lanza un volcado de la base ENTERA: solo operadores
+          (auditoría §46.3). Para el resto, el respaldo es el de cada noche. */}
+      {status?.puedeRespaldar ? (
       <Pressable
         testID="btn-respaldar-ahora"
         disabled={running}
@@ -130,6 +133,7 @@ export function BackupScreen({ credential }: { credential: Credential }) {
           {running ? 'Respaldando…' : 'Respaldar ahora'}
         </Text>
       </Pressable>
+      ) : null}
 
       {message ? (
         <Text className="mt-3 text-center text-sm text-on-surface-variant" testID="aviso-respaldo">

@@ -12,14 +12,11 @@ import {
   type FiltroDeChats,
 } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
-import { connectSocket, getSocket } from './socketClient';
+import { connectSocket } from './socketClient';
 import { configureNotificationHandler, registerPushToken } from './pushRegistration';
 import {
   buscarMensajes,
-  cambiarAjustesDeChat,
-  leaveChat,
   listChats,
-  type AjustesDeChat,
   type ChatSummary,
   type ResultadoBusqueda,
 } from '../api/client';
@@ -30,6 +27,7 @@ import { inicioDelProceso, medirUnaVez } from '../diagnostico/diagnostico';
 import { FlashList } from '@shopify/flash-list';
 import { useBorradores } from './borradores';
 import { FilaDeChat } from './FilaDeChat';
+import { useAccionesDeSeleccion } from './useAccionesDeSeleccion';
 import { CabeceraDeArchivados, FilaDeArchivados } from './Archivados';
 import { BuscadorDeChats } from './BuscadorDeChats';
 import { ResultadosDeMensajes } from './ResultadosDeMensajes';
@@ -37,9 +35,6 @@ import { BarraDeSeleccionDeChats } from './BarraDeSeleccionDeChats';
 import { useColores } from '../ui/tema';
 import { decidirAtras } from '../ui/botonAtras';
 import { agendaPorTelefono, suscribirAgenda } from '../contacts/agendaEnMemoria';
-
-/** El acuse por socket no tiene respuesta: se recarga tras este respiro. */
-const ESPERA_TRAS_ACUSE_MS = 400;
 
 /**
  * La lista de chats (diseño Stitch «Lilachat: Chats»).
@@ -56,7 +51,8 @@ export function ChatListScreen({
   chatAbierto = null,
 }: {
   credential: Credential;
-  onOpenChat: (chat: ChatSummary) => void;
+  /** `irASeq`: abrir en ese mensaje (un resultado de la búsqueda, FL9d). */
+  onOpenChat: (chat: ChatSummary, irASeq?: number) => void;
   onNewChat: () => void;
   /** El chat abierto encima (FL1): sus mensajes se leen al llegar. */
   chatAbierto?: string | null;
@@ -196,8 +192,12 @@ export function ChatListScreen({
     // estuvo pausado llegaron mensajes por push que la lista no vio, y sin esto
     // el contador de no leídos queda viejo hasta un pull manual.
     const onConnect = () => void load();
+    // Un chat cambió (nombre, foto, miembros; o me sacaron, FL9d): la fila
+    // sale del server. Son eventos raros: un pedido cada uno.
+    const onCambio = () => void load();
     socket.on('msg.new', onNew);
     socket.on('connect', onConnect);
+    socket.on('chat.changed', onCambio);
     return () => {
       socket.off('presence.snapshot', onSnapshot);
       socket.off('presence', onPresence);
@@ -207,6 +207,7 @@ export function ChatListScreen({
       // pestaña.
       socket.off('msg.new', onNew);
       socket.off('connect', onConnect);
+      socket.off('chat.changed', onCambio);
       timers.forEach((timer) => clearTimeout(timer));
     };
   }, [credential.jwt, credential.userId, load]);
@@ -372,53 +373,12 @@ export function ChatListScreen({
     [chatsSeleccionados]
   );
 
-  /**
-   * Aplica un cambio de ajuste a cada seleccionado y recarga. Optimista sería
-   * mejor, pero un lote de 2-3 chats vuelve del server en un parpadeo y evita
-   * pintar un estado que el server podría no haber aceptado.
-   */
-  const aplicarAjuste = useCallback(
-    async (cambios: AjustesDeChat) => {
-      const ids = [...seleccion];
-      limpiarSeleccion();
-      await Promise.all(ids.map((id) => cambiarAjustesDeChat(id, credential.jwt, cambios)));
-      await load();
-    },
-    [seleccion, credential.jwt, limpiarSeleccion, load]
-  );
-
-  /**
-   * Leído: el acuse por socket para lo que tiene mensajes sin leer (el server
-   * quita además la marca), y la marca sola por HTTP donde no había mensajes.
-   * No leído: la marca, como WhatsApp (FL9).
-   */
-  const cambiarLectura = useCallback(
-    async (lectura: 'leido' | 'no-leido') => {
-      const elegidos = chatsSeleccionados;
-      limpiarSeleccion();
-      if (lectura === 'no-leido') {
-        await Promise.all(elegidos.map((chat) => cambiarAjustesDeChat(chat.id, credential.jwt, { markedUnread: true })));
-        return load();
-      }
-      const socket = getSocket();
-      for (const chat of elegidos) {
-        if (chat.unread > 0) socket?.emit('read.set', { chatId: chat.id, seq: chat.lastSeq });
-      }
-      const soloMarcados = elegidos.filter((chat) => chat.unread === 0 && chat.markedUnread);
-      await Promise.all(soloMarcados.map((chat) => cambiarAjustesDeChat(chat.id, credential.jwt, { markedUnread: false })));
-      // El server no responde al emit; recargar tras un respiro deja que el
-      // receipt vuelva y el badge baje a cero.
-      setTimeout(() => void load(), ESPERA_TRAS_ACUSE_MS);
-    },
-    [chatsSeleccionados, credential.jwt, limpiarSeleccion, load]
-  );
-
-  const salirDeGrupos = useCallback(async () => {
-    const ids = [...seleccion];
-    limpiarSeleccion();
-    await Promise.all(ids.map((id) => leaveChat(id, credential.jwt)));
-    await load();
-  }, [seleccion, credential.jwt, limpiarSeleccion, load]);
+  const { aplicarAjuste, cambiarLectura, salirDeGrupos, eliminarChats } = useAccionesDeSeleccion({
+    jwt: credential.jwt,
+    seleccionados: chatsSeleccionados,
+    limpiarSeleccion,
+    recargar: load,
+  });
 
   /**
    * El orden final: fijados arriba, cada grupo por recencia. Se aplica DESPUÉS
@@ -451,6 +411,7 @@ export function ChatListScreen({
           onSilenciar={(muted) => void aplicarAjuste({ muted })}
           onArchivar={(archived) => void aplicarAjuste({ archived })}
           onSalir={() => void salirDeGrupos()}
+          onEliminar={eliminarChats}
         />
       ) : verArchivados ? (
         <CabeceraDeArchivados onVolver={() => setVerArchivados(false)} />

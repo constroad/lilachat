@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
-import { Archive, ArchiveRestore, Bell, BellOff, CheckCheck, LogOut, MessageSquareDot, Pin, PinOff, X } from 'lucide-react-native';
+import { Archive, ArchiveRestore, Bell, BellOff, CheckCheck, LogOut, MessageSquareDot, Pin, PinOff, Trash2, X } from 'lucide-react-native';
 import type { AccionesDeSeleccion } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 
@@ -17,6 +17,8 @@ export function BarraDeSeleccionDeChats(props: {
   onSilenciar: (silenciar: boolean) => void;
   onArchivar: (archivar: boolean) => void;
   onSalir: () => void;
+  /** «Eliminar chat» para mí (FL9d), solo con chats 1:1. */
+  onEliminar: () => void;
 }) {
   const colores = useColores();
   const { acciones } = props;
@@ -63,6 +65,11 @@ export function BarraDeSeleccionDeChats(props: {
           onPress={() => props.onArchivar(acciones.archivar === 'archivar')}
         >
           {acciones.archivar === 'archivar' ? <Archive size={22} color={icono} /> : <ArchiveRestore size={22} color={icono} />}
+        </Accion>
+      ) : null}
+      {acciones.eliminar ? (
+        <Accion testID="accion-eliminar" etiqueta="Eliminar chat" onPress={props.onEliminar}>
+          <Trash2 size={22} color={colores.error} />
         </Accion>
       ) : null}
       {acciones.salir ? (

@@ -22,7 +22,8 @@ import { useAbrirDesdeAviso } from './useAbrirDesdeAviso';
 
 type RutasDeSesion = {
   Inicio: undefined;
-  Chat: { chat: ChatSummary };
+  /** `irASeq`: viene de un resultado de la búsqueda general (FL9d). */
+  Chat: { chat: ChatSummary; irASeq?: number };
 };
 
 const Stack = createNativeStackNavigator<RutasDeSesion>();
@@ -99,9 +100,9 @@ export function NavegacionDeSesion(props: {
               onSegundoPlano={props.onSegundoPlano}
               chatAbierto={props.chatAbierto}
               pestanaPedida={pestanaPedida}
-              onOpenChat={(chat) => {
+              onOpenChat={(chat, irASeq) => {
                 iniciarCronometro('abrir-chat');
-                navigation.navigate('Chat', { chat });
+                navigation.navigate('Chat', { chat, irASeq });
               }}
               onLogout={props.onLogout}
             />
@@ -111,6 +112,7 @@ export function NavegacionDeSesion(props: {
           {({ route, navigation }) => (
             <PantallaDeChat
               chat={route.params.chat}
+              irASeq={route.params.irASeq}
               credential={props.credential}
               onBack={() => navigation.goBack()}
             />
@@ -122,7 +124,17 @@ export function NavegacionDeSesion(props: {
   );
 }
 
-function PantallaDeChat({ chat, credential, onBack }: { chat: ChatSummary; credential: Credential; onBack: () => void }) {
+function PantallaDeChat({
+  chat,
+  irASeq,
+  credential,
+  onBack,
+}: {
+  chat: ChatSummary;
+  irASeq?: number;
+  credential: Credential;
+  onBack: () => void;
+}) {
   return (
     <ChatScreen
       chatId={chat.id}
@@ -139,6 +151,7 @@ function PantallaDeChat({ chat, credential, onBack }: { chat: ChatSummary; crede
       othersDeliveredSeq={chat.othersDeliveredSeq}
       unread={chat.unread}
       lastSeqInicial={chat.lastSeq}
+      irASeq={irASeq}
       encrypted={chat.encrypted}
       // El OTRO miembro, SOLO en un 1:1: con él se deriva la clave y se llama.
       // En un grupo es null — antes iba «el primero», así la pantalla no se

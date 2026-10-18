@@ -17,6 +17,8 @@ export type BackupStatus = {
   totalBytes: number;
   totalLabel: string;
   stale: boolean;
+  /** Solo un operador dispara un respaldo a mano (§46.3); el resto ve el estado. */
+  puedeRespaldar?: boolean;
 };
 
 async function call<T>(route: string, jwt: string, init: RequestInit = {}): Promise<BackupResult<T>> {

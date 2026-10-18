@@ -54,7 +54,7 @@ export function TabsShell({
   pestanaPedida,
 }: {
   credential: Credential;
-  onOpenChat: (chat: ChatSummary) => void;
+  onOpenChat: (chat: ChatSummary, irASeq?: number) => void;
   onLogout: () => void;
   /**
    * Si el servicio en primer plano puede correr. Baja desde `App.tsx` en vez de

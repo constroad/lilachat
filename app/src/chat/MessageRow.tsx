@@ -499,6 +499,7 @@ function AvisoDelGrupo({ item, myUserId }: { item: ChatMessage; myUserId: string
         esMio: item.senderId === myUserId,
         evento: aviso.evento,
         aQuien: nombreDe(aviso.aQuien) || undefined,
+        aMi: aviso.targetId === myUserId,
         valor: aviso.valor,
       }) || item.body || ''
     : (item.body ?? '');

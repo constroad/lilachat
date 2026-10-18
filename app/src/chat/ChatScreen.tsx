@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { ProgramarMensajeModal } from './ProgramarMensajeModal';
+import { ProgramadosDelChat } from './ProgramadosDelChat';
 import type { FlashListRef } from '@shopify/flash-list';
 import { KeyboardAvoidingView, useKeyboardState } from 'react-native-keyboard-controller';
 import { formatDayLabel, startsNewDay } from '@lilachat/shared';
@@ -32,7 +33,8 @@ import { BuscadorDelChat } from './BuscadorDelChat';
 import { useBuscarEnChat } from './useBuscarEnChat';
 import { textoDeSubida } from './progresoDeSubida';
 import { citadosPorSeq, fotosDelChat } from './filasDelChat';
-import { useNombresDelGrupo } from './useNombresDelGrupo';
+import { useGrupo } from './useGrupo';
+import { FueraDelGrupo } from './FueraDelGrupo';
 import { subtituloDelChat } from './cabeceraDelChat';
 import { ListaDeMensajes } from './ListaDeMensajes';
 import { useRespuestaYEdicion } from './useRespuestaYEdicion';
@@ -63,6 +65,7 @@ export function ChatScreen({
   othersDeliveredSeq,
   unread,
   lastSeqInicial,
+  irASeq,
   encrypted,
   otherUserId,
   onBack,
@@ -86,6 +89,8 @@ export function ChatScreen({
    * chat es haberlo visto todo lo que el server dice que hay.
    */
   lastSeqInicial?: number;
+  /** Abrir en este mensaje: viene de un resultado de la búsqueda general (FL9d). */
+  irASeq?: number;
   /** Chat secreto (F9): cifra, y apaga a Lila. */
   encrypted?: boolean;
   otherUserId?: string | null;
@@ -192,8 +197,12 @@ export function ChatScreen({
   const esGrupoChat = otherUserId === null || otherUserId === undefined;
   const otroEscribe = otherUserId ? escribiendo.has(otherUserId) : escribiendo.size > 0;
   const otroEnLinea = otherUserId ? enLinea.has(otherUserId) : false;
-  const nombresDelGrupo = useNombresDelGrupo(chatId, credential.jwt, esGrupoChat);
-  const subtitulo = subtituloDelChat({
+  const grupo = useGrupo(chatId, credential.jwt, esGrupoChat);
+  const nombresDelGrupo = grupo.nombres;
+  /** Me sacaron del grupo (FL9d): se lee, pero ya no se escribe. */
+  const fueraDelGrupo = esGrupoChat && grupo.soyMiembro === false;
+  // Fuera del grupo no se listan miembros: ya no es «QA Ana, Vos».
+  const subtitulo = fueraDelGrupo ? '' : subtituloDelChat({
     esGrupo: esGrupoChat,
     escriben: [...escribiendo],
     otroEnLinea,
@@ -257,15 +266,25 @@ export function ChatScreen({
     [rows]
   );
 
-  /** Tocar una cita: al original, resaltado un momento (FL9). */
-  const alTocarCita = useCallback(
-    (seq: number) => {
-      if (!irAMensaje(seq)) return setMediaError('El mensaje original está más arriba: sube para cargarlo.');
+  /** Ir a un mensaje y resaltarlo un momento; si no está cargado, se dice. */
+  const saltarA = useCallback(
+    (seq: number, siNoEsta: string) => {
+      if (!irAMensaje(seq)) return setMediaError(siNoEsta);
       setResaltado(seq);
       setTimeout(() => setResaltado((actual) => (actual === seq ? null : actual)), RESALTADO_DE_CITA_MS);
     },
     [irAMensaje]
   );
+  /** Tocar una cita: al original (FL9). */
+  const alTocarCita = useCallback(
+    (seq: number) => saltarA(seq, 'El mensaje original está más arriba: sube para cargarlo.'),
+    [saltarA]
+  );
+  /** Al abrir: al mensaje buscado si se vino de la búsqueda (FL9d); si no, al divisor o al final. */
+  const alAbrir = useCallback(() => {
+    if (irASeq === undefined) return irAlInicio();
+    saltarA(irASeq, 'Ese mensaje está más arriba: sube para cargarlo.');
+  }, [irASeq, irAlInicio, saltarA]);
 
   // Buscar dentro del chat (FL9): sobre lo que se ve —sin lo «eliminado para mí»—.
   const visiblesParaBuscar = useMemo(() => sinOcultos(messages, ocultos), [messages, ocultos]);
@@ -371,7 +390,7 @@ export function ChatScreen({
   // dejaba un hueco entre el campo y el teclado (auditoría del 16/10).
   const tecladoAbierto = useKeyboardState((estado) => estado.isVisible);
 
-  useAlAbrirElChat({ hayContenido: rows.length > 0, irAlInicio, mensajes: messages, lastSeqInicial, markRead });
+  useAlAbrirElChat({ hayContenido: rows.length > 0, irAlInicio: alAbrir, mensajes: messages, lastSeqInicial, markRead });
 
   return (
     <KeyboardAvoidingView
@@ -475,7 +494,7 @@ export function ChatScreen({
         mensajes={messages}
         yo={credential.userId}
         dibujarFila={dibujarFila}
-        onListo={irAlInicio}
+        onListo={alAbrir}
         onCargarAnteriores={() => void cargarAnteriores()}
         cargandoAnteriores={cargandoAnteriores}
         hayAnteriores={hayAnteriores}
@@ -493,6 +512,8 @@ export function ChatScreen({
         </Text>
       ) : null}
 
+      <ProgramadosDelChat pendientes={programados.pendientes} onCancelar={programados.cancelar} />
+
       {/* La barra, tal como está COMPUESTA en el diseño — y no era «los mismos
           iconos en una fila»:
             · el «+» va PLANO, sin círculo de fondo;
@@ -502,25 +523,29 @@ export function ChatScreen({
           La primera versión puso los cinco controles como hermanos: entraban
           todos, pero el campo quedaba tan angosto que el placeholder se partía
           en dos líneas. */}
-      <Composer
-        ref={composerRef}
-        chatId={chatId}
-        respondiendoA={respuesta.respondiendoA}
-        onCancelarRespuesta={cancelarRespuesta}
-        editando={respuesta.editando}
-        onCancelarEdicion={respuesta.cancelarEdicion}
-        onEditar={respuesta.guardarEdicion}
-        subiendo={false}
-        margenPie={tecladoAbierto ? MARGEN_CON_TECLADO : margenes.pie}
-        onAdjuntar={alAdjuntar}
-        onCamara={alCamara}
-        onEscribiendo={avisarEscribiendo}
-        onEnviar={alEnviar}
-        onProgramar={programados.abrir}
-        onNotaDeVoz={alNotaDeVoz}
-        // Chat secreto: sin clave no se manda nada; con clave, solo texto.
-        modoSecreto={encrypted ? (sesionLista ? 'solo-texto' : 'bloqueado') : undefined}
-      />
+      {fueraDelGrupo ? (
+        <FueraDelGrupo margenPie={tecladoAbierto ? MARGEN_CON_TECLADO : margenes.pie} />
+      ) : (
+        <Composer
+          ref={composerRef}
+          chatId={chatId}
+          respondiendoA={respuesta.respondiendoA}
+          onCancelarRespuesta={cancelarRespuesta}
+          editando={respuesta.editando}
+          onCancelarEdicion={respuesta.cancelarEdicion}
+          onEditar={respuesta.guardarEdicion}
+          subiendo={false}
+          margenPie={tecladoAbierto ? MARGEN_CON_TECLADO : margenes.pie}
+          onAdjuntar={alAdjuntar}
+          onCamara={alCamara}
+          onEscribiendo={avisarEscribiendo}
+          onEnviar={alEnviar}
+          onProgramar={programados.abrir}
+          onNotaDeVoz={alNotaDeVoz}
+          // Chat secreto: sin clave no se manda nada; con clave, solo texto.
+          modoSecreto={encrypted ? (sesionLista ? 'solo-texto' : 'bloqueado') : undefined}
+        />
+      )}
 
       <EnviarFotos fotos={fotosElegidas} onCancelar={cerrarFotos} onEnviar={(lista) => void alEnviarFotos(lista)} />
 

@@ -4892,6 +4892,140 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 49. Auditoría de fluidez contra WhatsApp (18/10/2026) — plan FL12
+
+Pasada de solo lectura sobre el código, archivo por archivo. El informe
+completo quedó en el scratchpad de la sesión; acá va lo que se ataca, por
+impacto en lo que se SIENTE.
+
+| # | Qué se siente | Causa (archivo) | Arreglo |
+| --- | --- | --- | --- |
+| 1 | El teclado tapa los últimos mensajes mientras sube | `KeyboardAvoidingView` re-mide la lista en cada frame (`ChatScreen.tsx`) | `KeyboardChatScrollView` como `renderScrollComponent` + `KeyboardStickyView` (ya instalado, 1.21.9) |
+| 2 | El chat entra vacío y las burbujas llegan 0,3–0,8 s después | estado inicial `[]`; lectura de disco asíncrona (`useChat.ts`, `mensajesGuardados.ts`) | caché en memoria de los últimos chats; precarga en `onPressIn` |
+| 3 | Re-render de toda la pantalla por cada acuse | `setVersion` aunque el cursor no se mueva; `dibujarFila` cambia de identidad (`useAcuses.ts`) | actualizar solo si cambió; `entrega` solo en filas propias; el server difunde solo si avanzó |
+| 4 | Tráfico de más al abrir y al scrollear | `read.set` en cada cambio de `messages` (`useAlAbrirElChat.ts`) | mandar solo cuando el seq sube |
+| 5 | Trabas al abrir | el relleno de historial cifra 100 filas en el hilo JS (`useChat.ts`, `App.tsx`) | no correr con un chat abierto; lotes que ceden |
+| 6 | Todas las burbujas se redibujan a los 0,5 s | conciliar con el server crea objetos nuevos (`conciliarMensajes.ts`, `sync.ts`) | conservar la referencia si no cambió |
+| 7 | La burbuja enviada «salta» y a veces sale dos veces | clave `p-<clientKey>` → `m-<seq>`; eco antes del ack | clave por `clientKey`; filtrar pendientes ya confirmados |
+| 8 | Costo por fila | `Intl.DateTimeFormat` nuevo en cada llamada (`chatDisplay.ts`) | formateadores a nivel de módulo |
+
+Siguen, de menor impacto: X25519 + HKDF por mensaje en chats secretos, un
+reproductor nativo por nota de voz visible, progreso de subida que redibuja la
+pantalla, la lista de abajo sin `freezeOnBlur`, el campo de texto controlado,
+`recyclingKey` en las imágenes recicladas, `inlineRequires` apagado.
+
+**Medir antes y después:** el detector actual solo ve trabas de más de
+250 ms. Hace falta un contador de frames caídos en la conversación para
+probar cada arreglo.
+
+## 48. Auditoría de diseño premium (18/10/2026, pedido de José)
+
+José, 18/10: «audita el diseño, es muy pobre, no me gusta, tiene errores de
+paddings, no se siente premium». La auditoría se hizo pantalla por pantalla en
+el emulador (claro y oscuro, datos QA sembrados por el socket) y al lado de
+las capturas de Stitch (`design/stitch/*`).
+
+**Sistema de diseño: lo que rompe varias pantallas a la vez**
+1. **Un celeste fuera de la paleta.** `surfaceVariant` claro es `#d3e4fe`. El
+   design system de Stitch lo sacó del azul secundario y se usa en 23
+   lugares: «Cerrar sesión», campos del respaldo, chips, esqueletos. Choca con
+   la paleta lila.
+2. **Una tarjeta por fila**, con 8–12 dp de aire entre tarjetas: cada
+   participante, cada ajuste, cada opción. Stitch y WhatsApp agrupan las filas
+   en una sola superficie con separadores finos. Así se ve pesado y gasta la
+   pantalla.
+3. **Todo lila.** Buscador, chips, banda, tarjetas y avatares con el mismo
+   relleno lavanda: no hay jerarquía. Falta un neutro.
+4. **Avatares distintos según la pantalla**: lavanda con letra violeta en la
+   lista y violeta sólido con letra blanca en Nuevo chat.
+5. **Sin título por pestaña**: todas dicen «Lilachat» arriba. WhatsApp y
+   Stitch muestran el nombre de la pestaña.
+
+**Pantalla por pantalla**
+- **Lista de chats:** las filas miden ~80 dp, igual que en Stitch (una
+  primera medida de «105 dp» estaba mal convertida). Con la banda de
+  actualización, buscador y chips suman ~170 dp antes del primer chat.
+- **Conversación:** «+» y además un clip en la barra de escribir, dos puertas
+  al mismo menú. La franja de no leídos va a todo el ancho, y no como
+  pastilla. En grupo, el avatar queda centrado en la burbuja en vez de arriba.
+- **Detalle del chat:** participantes y ajustes en tarjetas sueltas.
+  «Reportar grupo» parece deshabilitado. Stitch: lista agrupada con «Añadir
+  participante» como fila.
+- **Ajustes:** el formulario entero del respaldo está desplegado en la
+  pantalla, cuando debería ser una fila que abre su propia pantalla. «Cerrar
+  sesión» va celeste. Las filas van sueltas.
+- **Invitar:** muy por debajo del diseño «invitar-amigos». Falta la cabecera,
+  los contactos con «Invitar» y la tarjeta con el enlace, «Copiar» y
+  «Compartir». El mensaje de WhatsApp es un bloque de texto con dos enlaces
+  pelados; Pulso usa un mensaje corto con vista previa. La página pública por
+  app queda para LilaStore (tarea aparte).
+- **Agenda:** la pestaña dice «Avisos» y crear ofrece «Recordatorio».
+- **Avisos del sistema:** el ícono chico es un círculo genérico, no el logo.
+
+**Plan (FL13)**
+- **FL13a, sistema:** token neutro; una sola fila y un solo grupo de filas;
+  un avatar; título por pestaña; lista más densa; barra de escribir sin
+  duplicado; no leídos como pastilla; ícono de los avisos.
+- **FL13b, pantallas:** Ajustes, Detalle del chat, Invitar (con el mensaje
+  nuevo), Nuevo chat, Agenda y Encuestas.
+- **FL13c, contra Stitch:** entrada (teléfono y código) y llamada.
+
+### 48.1 Hecho en FL13a/b (18/10/2026, sin publicar)
+
+- **La causa de los paddings.** NativeWind compila `rem` = 14 por defecto y
+  Stitch dibuja con 16, así que toda clase de Tailwind salía 12,5 % más chica:
+  `h-11` medía 38,5 dp (no los 44 de toque) y `text-base`, 14. Ahora
+  `metro.config.js` pasa `inlineRem: 16`. Las clases en px no cambian.
+- **Tokens:** `surfaceVariant` neutro (`#eeecf3`), burbuja propia sólida
+  (`bubbleOwn`, `onBubbleOwn`, `onBubbleOwnMuted`, `readTickOwn`) y cinco tonos
+  de avatar.
+- **Piezas únicas en `src/ui/`:**
+  - `Avatar` + `avatarMotor`: dos iniciales y un tono que sale del nombre (la
+    misma persona tiene el mismo color en toda la app); si el nombre es un
+    teléfono, va el ícono. Reemplaza 14 versiones; la llamada usa solo las
+    iniciales.
+  - `FilaDeAjuste` y `GrupoDeAjustes`: listas agrupadas con línea fina.
+  - `PantallaEnModal`, `Segmentado` (uno solo, tonal; había tres estilos) e
+    `Interruptor` (colores de los tokens: en claro el riel apagado no se veía).
+- **Ajustes** pasa a `settings/PantallaDeAjustes.tsx` (TabsShell baja de 562
+  a 447 líneas):
+  - grupos Notificaciones, Chats, Lilachat y Cuenta;
+  - la copia de seguridad abre su propia pantalla;
+  - «Cerrar sesión» va en rojo;
+  - sin avatar en la cabecera (llevaba a la misma pantalla);
+  - «la mini» pasa a «el servidor» en todo texto de usuario; el disco del
+    server solo lo ven los operadores.
+- **Cabecera de pestañas:** el título de cada pestaña, sin línea y con el
+  fondo de la lista. Chips apagados en gris lleno.
+- **Composer:** la píldora y los botones miden 48 dp y quedan alineados.
+- **Detalle del chat:** participantes y ajustes agrupados. «Reportar» se quitó:
+  estaba deshabilitado y no tiene backend.
+- **Nuevo chat:** «Nuevo grupo» y «Chat secreto» en un mismo grupo.
+- **Agenda:** «Avisos» pasa a «Recordatorios», como el «+» y su pantalla.
+- **Invitar** (diseño `invitar-amigos`): cabecera, tarjeta del enlace
+  (copiar o compartir), contactos agrupados con «Invitar». Una sola FlashList
+  para todos los estados, así el buscador no se desmonta.
+- **Mensaje de invitación** en `shared/invitacion.ts` (`mensajeDeInvitacion`,
+  `nombreDePila`, `enlaceDeWhatsapp`): una frase en tuteo con el enlace al
+  final, como Pulso. Con un contacto se abre `wa.me` en su chat con el texto
+  listo; si no, el menú del sistema (`contacts/compartirInvitacion.ts`).
+  Invitar sigue creando la admisión antes de compartir.
+- **El enlace de la invitación es la ficha de LilaStore**
+  (`lilastore.constroad.com/app/lilachat`, LilaStore §10a-bis). WhatsApp arma la
+  tarjeta con su `og:*`, y el botón principal baja Lilachat directo: quien
+  recibe la invitación no tiene que instalar LilaStore (José, 18/10). Un
+  `/descargar` propio del server se probó y se quitó antes de publicar.
+- **Ícono chico de los avisos:** `notification_icon`, la silueta blanca en
+  cinco densidades, generada por `scripts/iconos-de-la-app.mts`. Lo usan los
+  avisos de mensaje, de llamada, de llamada en curso y el de conexión
+  permanente. Necesita build nativo.
+
+**Pendiente (FL13c):**
+- Inter: dependencia, build nativo y un `Text` propio en unos 100 archivos.
+- Entrada (teléfono y código) y llamada contra Stitch.
+- No leídos como pastilla.
+- El clip duplicado del composer.
+
 ## 47. Lilachat Empresa — plan (17/10/2026)
 
 José aprobó llevar Lilachat a un uso empresarial tipo Slack, con D1 en (a).

@@ -3398,7 +3398,7 @@ los motores de `shared`, que tienen tests; no se reescribe la app.
 | FL8.2 | **Doble check sin abrir la app** (José, 17/10, chat con Wilson: un solo check aunque Wilson tenía internet). Hoy «entregado» lo marca la app al conectarse; el push llega al teléfono pero es una notificación común, Android la muestra sin ejecutar código de la app y el server nunca se entera. Camino: push de mensaje solo-datos que recibe el servicio nativo de FL8.1, que dibuja la notificación y le confirma la entrega al server con un token corto del propio push (sin JWT) | con la app cerrada, el mensaje pasa a dos checks grises al llegar el push al otro teléfono — ver §45.17 | ✅ 17/10: hecho y verificado en el emulador; sale en 0.1.80 |
 | FL9 | **Lo que WhatsApp hace a diario** (§46.2) | pulsación larga completa, links tocables, varias fotos con pie, buscar en el chat, notas de voz con velocidad | ✅ — FL9a hecha (§45.18): pulsación larga completa, links, cita que salta, divisor de no leídos, atrás; editar mensajes (§45.19); FL9b: varias fotos con pie y notas de voz con velocidad (§45.20); FL9c: borradores, archivar, marcar no leído, perfil con nombre y foto, buscar en el chat (§45.21); FL9d: programados visibles y cancelables, búsqueda que salta al mensaje, «ya no eres participante», eliminar chat (§45.22); FL9e: varios mensajes a la vez, nota de voz sostenida con cancelar y bloquear, fotos con su forma (§45.23); FL9f: «Info» del mensaje, onda de la nota de voz, arranque de ~90 ms (§45.24). ✅ 18/10 (0.1.87). Abierto menor: arrastrar en la onda, hora en la «Info» |
 | FL10 | **Pulido y coherencia** (§46.3): un solo registro (tuteo), 44 dp, encuestas completas, detalle de evento | auditoría de pantalla entera sin hallazgos ALTA | 🟡 18/10: tuteo, 44 dp, «últ. vez», punto verde solo en 1:1, un solo respaldo en Ajustes, «Ponme al día» sin llamadas (§45.25, 0.1.88); encuestas completas, detalle de evento con hora de fin e invitados de afuera, ErrorBoundary por pantalla (§45.26, 0.1.89); gira y tiene tablet con dos paneles (§45.27). ✅ 18/10 |
-| FL11 | **Lo que José vio con Wilson** (18/10, teléfonos reales con 0.1.86) — ver §46.4 | contestar desde la notificación conecta la llamada; avisos agrupados por chat, sin duplicados, con nombre de la agenda y «Responder»; foto con pie sin hueco; «Ponme al día» con sentido | 🟡 18/10: «Ponme al día» hecho (§45.25); llamada desde el aviso: arreglo del server desplegado (§45.28), falta la prueba con José en teléfonos reales; lo demás ⬜ |
+| FL11 | **Lo que José vio con Wilson** (18/10, teléfonos reales con 0.1.86) — ver §46.4 | contestar desde la notificación conecta la llamada; avisos agrupados por chat, sin duplicados, con nombre de la agenda y «Responder»; foto con pie sin hueco; «Ponme al día» con sentido | ✅ 18/10: «Ponme al día» (§45.25); la llamada conecta desde el aviso y sigue al cambiar de app, probado con José (§45.28, 0.1.91); avisos uno por chat y sin duplicar, nombre de la agenda, «Responder» y «Marcar como leído», foto con pie (§45.29, 0.1.92) |
 
 ### 45.4 As-is FL0 (16/10/2026)
 
@@ -4824,8 +4824,73 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   recibió «fin: colgada» y el servicio se apagó.
 - **El otro cuelga con la app al fondo:** el aviso llegó, el servicio se
   apagó y recién ahí se pausó el socket (José sin conexión).
-- **Falta:** que José confirme en su teléfono que el audio no se corta al
-  cambiar de app.
+- **Prueba real (José, 0.1.91, 18/10):** contestó desde la notificación,
+  cambió de app y el tono siguió; colgó desde la notificación. ✅
+
+### 45.29 As-is FL11 (cierre): avisos como WhatsApp y la foto con pie (18/10/2026)
+
+**Duplicados y «uno por mensaje»: la causa estaba en los datos.**
+- El token de FCM del teléfono de José figuraba en 2 devices: uno nativo y uno
+  viejo. Le llegaban el push de datos (el aviso nativo, agrupado por chat) y el
+  común (uno por mensaje), con dos formatos distintos.
+- Además había un token viejo repetido en 6 devices y otro en 2, y cada uno
+  recibía N copias.
+- Arreglo (server, `repartoDePush.ts`, 3 tests y 3 de integración): un token,
+  un envío. Si un token es de un device nativo, no va el push común. Se aplica
+  a mensajes, llamadas y fin de llamada.
+
+**El aviso local (app viva, por el socket): uno por chat** (`avisosPorChat.ts`,
+3 tests)
+- Mismo identificador para todo el chat: el nuevo reemplaza al anterior, con
+  las últimas 5 líneas y «· 3 mensajes» en el título.
+- Abrir el chat borra su aviso nativo y el local.
+
+**El nombre de la agenda en el aviso nativo** (`Agenda.kt`)
+- El push de datos trae el teléfono de quien escribe y el código nativo lo
+  busca con `ContactsContract.PhoneLookup`: tal cual y con +51, porque «900…»
+  solo no coincidía con «+51 900…». Vale también para la llamada entrante.
+- Sin permiso de contactos o sin coincidencia, queda el nombre del server.
+
+**«Responder» y «Marcar como leído»** (server: `tokenDeRespuesta.ts`,
+`respuestaDesdeAviso.ts`, 7 tests; nativo: `ReceptorDeMensaje`)
+- El push trae un token de esa persona y ese chat, con secreto derivado (no
+  sirve como sesión) y 7 días de vida. En un chat secreto no va: la respuesta
+  saldría sin cifrar, y el server igual la rechaza.
+- `POST /api/push/responder` crea el mensaje con la `clientKey` que pone el
+  teléfono (un reintento no duplica) y lo publica. Responder marca leído lo
+  anterior.
+- `POST /api/push/leido` lee el chat hasta su último mensaje y avisa el check
+  azul.
+- La respuesta va en línea (`RemoteInput`, PendingIntent mutable). Si sale
+  bien, el aviso se va; si falla, se cambia por «No se envió tu respuesta», que
+  abre el chat.
+
+**Foto con pie** (`anchoDeBurbujaConFoto`, `miniaturaDe`, 7 tests)
+- La burbuja con foto no pasa del ancho de la foto: el pie se ajusta a ella.
+- Bug encontrado en el E2E: el storage no siempre genera la miniatura (un PNG
+  llegó sin ella) y la burbuja mostraba solo el pie. Una imagen sin miniatura
+  usa su archivo completo, en la burbuja, en el visor y en «Compartido».
+
+**E2E** (emulador contra :3104):
+- **Contacto de QA en la agenda del emulador** («Ana Agenda QA»). Con la app
+  cerrada, tres mensajes de QA Ana dieron un solo aviso: «Ana Agenda QA», las
+  tres líneas, «Responder» y «Marcar como leído».
+- **«Responder» en línea:** el mensaje de José llegó al server. La
+  notificación se canceló; SystemUI muestra «Tú: …» como confirmación.
+- **«Marcar como leído»:** el aviso se fue y José quedó leído hasta el
+  último.
+- **App abierta en la lista:** tres mensajes dieron un solo aviso local,
+  «Ana Agenda QA · 3 mensajes». Al abrir el chat, se borró.
+- **Foto vertical con pie largo:** el pie se ajustó al ancho de la foto, que
+  se vio aunque no tenía miniatura.
+
+**Notas**
+- En el E2E se abrió por error el chat real «Los originales» (la lista se
+  reordenó al irse la banda de actualización). No se tocó nada; no tenía
+  mensajes sin leer.
+- Al responder rápido con `adb`, el pie de la foto se cortó a mitad: se tocó
+  enviar antes de que el build de desarrollo procesara todas las teclas. No es
+  un límite de la app.
 
 ## 47. Lilachat Empresa — plan (17/10/2026)
 
@@ -4929,7 +4994,7 @@ Dos pasadas de solo lectura (conversaciones; todo lo demás), con evidencia
 La llamada ya ocupa la pantalla con la app cerrada (FL8.1 funciona en un
 teléfono real). Lo que falló o quedó raro:
 
-1. 🟡 18/10 (§45.28) **ALTA. Contestar desde la notificación se queda en «Conectando…» y nunca
+1. ✅ 18/10 (§45.28, probada con José en 0.1.90) **ALTA. Contestar desde la notificación se queda en «Conectando…» y nunca
    conecta**, en los dos sentidos (José → Wilson y Wilson → José). El chat
    registra «Llamada de voz · 00:18»: el server vio el contestar, pero el
    audio nunca se estableció.
@@ -4946,24 +5011,24 @@ teléfono real). Lo que falló o quedó raro:
    - la credencial TURN no llega en el arranque en frío.
    En el emulador, con la app abierta, conectaba (FL8): el caso es la app
    cerrada.
-2. **Los avisos de mensajes salen uno por mensaje**, sin agruparse por chat
+2. ✅ 18/10 (§45.29) **Los avisos de mensajes salen uno por mensaje**, sin agruparse por chat
    como WhatsApp. Además algunos salen **duplicados** en dos formatos: «Los
    originales · 960397018» con el texto, y «Los originales» con
    «960397018: texto». Parece que el aviso nativo (`AvisoDeMensaje`) y el
    local de JS (`avisoLocal`) se disparan los dos cuando el proceso está vivo.
-3. **El aviso dice el número y no el nombre de la agenda** («960397018» y no
+3. ✅ 18/10 (§45.29) **El aviso dice el número y no el nombre de la agenda** («960397018» y no
    «Wilson Zamora»): el código nativo no ve la agenda. Se puede buscar el
    nombre con `ContactsContract.PhoneLookup`.
-4. **El aviso no tiene «Responder»** ni «Marcar como leído», como WhatsApp
+4. ✅ 18/10 (§45.29) **El aviso no tiene «Responder»** ni «Marcar como leído», como WhatsApp
    (respuesta en línea desde la notificación).
-5. **Foto con pie: hueco a la derecha.** Con FL9e la foto vertical mide 240 de
+5. ✅ 18/10 (§45.29) **Foto con pie: hueco a la derecha.** Con FL9e la foto vertical mide 240 de
    ancho, pero un pie más largo ensancha la burbuja hasta el 80 % y la foto
    queda pegada a la izquierda. WhatsApp ajusta el pie al ancho de la foto.
 6. ✅ 18/10 (§45.25) **«Ponme al día» sin sentido**: salió con «1 mensaje sin leer», que se lee
    de un vistazo, y no se fue al leerlo. Mostrarlo solo con muchos sin leer
    (p. ej. 10 o más), sin contar las líneas de llamada (§46.3), y esconderlo
    cuando ya se leyó.
-7. 🟡 18/10 (§45.28) **ALTA. En plena llamada, al cambiar de app se deja de oír** (José, 18/10,
+7. ✅ 18/10 (§45.28, probada con José en 0.1.91) **ALTA. En plena llamada, al cambiar de app se deja de oír** (José, 18/10,
    0.1.90; al volver suena otra vez). Android congela una app de fondo sin
    servicio en primer plano, y con ella el audio. Además, el socket se pausaba
    al ir al fondo: tampoco llegaba que el otro colgó. Arreglo: servicio

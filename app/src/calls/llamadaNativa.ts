@@ -21,11 +21,22 @@ export function queHacerConElAviso(params: {
   const { aviso, estado } = params;
   // Tocar el aviso de un MENSAJE (FL8.2) lo atiende la navegación, no la llamada.
   if (aviso.accion === 'chat') return 'nada';
+  // «Colgar» viene de la notificación de la llamada EN CURSO (FL11): no se espera ninguna oferta.
+  if (aviso.accion === 'colgar') return estado && estado.fase !== 'terminada' && params.chatId === aviso.chatId ? 'colgar' : 'nada';
   if (!estado || estado.fase === 'terminada') return aviso.accion === 'rechazar' ? 'nada' : 'esperar';
   if (params.chatId !== aviso.chatId || estado.fase !== 'sonando') return 'nada';
   if (aviso.accion === 'contestar') return 'contestar';
   if (aviso.accion === 'rechazar') return 'colgar';
   return 'nada';
+}
+
+/**
+ * Si hace falta el servicio «Llamada en curso» (FL11). Sin él, Android congela
+ * la app de fondo y el audio se corta hasta volver. Va con la llamada activa y
+ * llamando hacia afuera; una entrante que suena tiene su propia notificación.
+ */
+export function necesitaServicioDeLlamada(estado: CallState | null): boolean {
+  return estado?.fase === 'activa' || estado?.fase === 'llamando';
 }
 
 /** Con la app adelante suena el tono; de fondo, la notificación nativa. */

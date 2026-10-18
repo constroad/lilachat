@@ -11,10 +11,10 @@ import {
 import type RTCIceCandidateEvent from 'react-native-webrtc/lib/typescript/RTCIceCandidateEvent';
 import type RTCTrackEvent from 'react-native-webrtc/lib/typescript/RTCTrackEvent';
 import { CALL_TIMEOUT_MS, nextCallState, type CallState } from '@lilachat/shared';
-import { connectSocket, getSocket } from '../chat/socketClient';
+import { connectSocket, getSocket, sostenerPorLlamada } from '../chat/socketClient';
 import { obtenerIceServers, type ServidorIce } from './iceServers';
 import { esperaAntesDeRendirse, estadoDeMedios, type EstadoDeMedios } from './estadoDeMedios';
-import { comoSuena, inicioDelTimbre, queHacerConElAviso } from './llamadaNativa';
+import { comoSuena, inicioDelTimbre, necesitaServicioDeLlamada, queHacerConElAviso } from './llamadaNativa';
 import { llamadaNativa, type AccionDeAviso } from '../../modules/llamada-entrante/src';
 import { reportarError } from '../ui/reportarError';
 
@@ -209,6 +209,24 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
   const speakerRef = useRef(speaker);
   speakerRef.current = speaker;
   const enCurso = state?.fase === 'activa';
+
+  // FL11 (José, 18/10): al cambiar de app se dejaba de oír. Mientras haya
+  // llamada, el servicio «Llamada en curso» mantiene viva la app y el socket no
+  // se pausa (por ahí llega que el otro colgó).
+  const sostener = necesitaServicioDeLlamada(state);
+  const conectadaEn = state?.fase === 'activa' ? state.conectadaEn : 0;
+  useEffect(() => {
+    if (!sostener) return;
+    sostenerPorLlamada(true);
+    return () => {
+      sostenerPorLlamada(false);
+      llamadaNativa.finDeEnCurso();
+    };
+  }, [sostener]);
+  useEffect(() => {
+    // Llamando, sin cronómetro; contestada, con el reloj desde que conectó.
+    if (sostener && chatIdRef.current) llamadaNativa.enCurso(chatIdRef.current, nombreRef.current, conVideoRef.current, conectadaEn);
+  }, [sostener, conectadaEn]);
   useEffect(() => {
     if (!enCurso) return;
     void setAudioModeAsync({ shouldRouteThroughEarpiece: !speakerRef.current }).catch((error) => reportarError('call.audio', error));

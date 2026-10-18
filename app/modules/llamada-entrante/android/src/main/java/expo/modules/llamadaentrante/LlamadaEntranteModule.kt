@@ -38,6 +38,11 @@ class LlamadaEntranteModule : Module() {
       Puente.tomarPendiente()?.let { mapOf("chatId" to it.first, "accion" to it.second) }
     }
     Function("soltarBloqueo") { Bloqueo.soltar(appContext.currentActivity) }
+    // FL11: la llamada en curso no se corta al ir al fondo.
+    Function("enCurso") { chatId: String, nombre: String, video: Boolean, desde: Double ->
+      ServicioDeLlamada.iniciar(contexto, chatId, nombre, video, desde.toLong())
+    }
+    Function("finDeEnCurso") { ServicioDeLlamada.detener(contexto) }
     // FL8.2: el aviso de mensaje tocado, y limpiar el de un chat al abrirlo.
     Function("chatPendiente") { Puente.tomarChatPendiente() }
     Function("limpiarChat") { chatId: String -> AvisoDeMensaje.limpiar(contexto, chatId) }

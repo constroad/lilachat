@@ -55,3 +55,28 @@ export function queHacerConElSocket(socket: { connected: boolean; active: boolea
   if (!socket) return 'crear';
   return reusarSocket(socket) ? 'reusar' : 'reconectar';
 }
+
+/** Si el socket puede pausarse al ir al fondo, o tiene que esperar a que termine la llamada. */
+export type PausaDelSocket = { enLlamada: boolean; pausaPendiente: boolean };
+
+/**
+ * En plena llamada el socket NO se pausa al ir al fondo (FL11): por ahí llega
+ * que el otro colgó, contestó o mandó un candidato. La pausa queda pendiente y
+ * se aplica al terminar la llamada si la app sigue atrás; volver adelante la
+ * cancela.
+ */
+export function pausaDelSocket(
+  estado: PausaDelSocket,
+  evento: 'pausar' | 'reanudar' | 'llamada' | 'fin-de-llamada'
+): { estado: PausaDelSocket; desconectar: boolean } {
+  switch (evento) {
+    case 'pausar':
+      return estado.enLlamada ? { estado: { ...estado, pausaPendiente: true }, desconectar: false } : { estado, desconectar: true };
+    case 'reanudar':
+      return { estado: { ...estado, pausaPendiente: false }, desconectar: false };
+    case 'llamada':
+      return { estado: { ...estado, enLlamada: true }, desconectar: false };
+    case 'fin-de-llamada':
+      return { estado: { enLlamada: false, pausaPendiente: false }, desconectar: estado.pausaPendiente };
+  }
+}

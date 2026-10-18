@@ -1,5 +1,5 @@
 import { io, type Socket } from 'socket.io-client';
-import { queHacerConElSocket } from './servicioDeConexion';
+import { pausaDelSocket, queHacerConElSocket, type PausaDelSocket } from './servicioDeConexion';
 import { registrarPerf } from '../diagnostico/diagnostico';
 
 /**
@@ -122,11 +122,26 @@ export function disconnectSocket(): void {
  * pierdan su referencia.
  */
 export function pauseSocket(): void {
-  socket?.disconnect();
+  aplicarPausa('pausar');
 }
 
 export function resumeSocket(): void {
+  aplicarPausa('reanudar');
   if (socket && !socket.connected) socket.connect();
+}
+
+/** En plena llamada la pausa espera (FL11): por el socket llega que el otro colgó. */
+let pausa: PausaDelSocket = { enLlamada: false, pausaPendiente: false };
+
+function aplicarPausa(evento: Parameters<typeof pausaDelSocket>[1]): void {
+  const resultado = pausaDelSocket(pausa, evento);
+  pausa = resultado.estado;
+  if (resultado.desconectar) socket?.disconnect();
+}
+
+/** La llamada empieza o termina: mientras dure, ir al fondo no pausa el socket. */
+export function sostenerPorLlamada(activa: boolean): void {
+  aplicarPausa(activa ? 'llamada' : 'fin-de-llamada');
 }
 
 export function getSocket(): Socket | null {

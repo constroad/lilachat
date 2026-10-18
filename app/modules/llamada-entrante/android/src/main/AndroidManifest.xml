@@ -3,6 +3,11 @@
        (FL8.1). Desde Android 14 el sistema puede negarlo: la app lo revisa con
        `puedePantallaCompleta()` y lleva a Ajustes. -->
   <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+  <!-- La llamada EN CURSO se sostiene con un servicio en primer plano de tipo
+       micrófono (FL11): sin él Android congela la app de fondo y el audio se
+       corta hasta volver. -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
   <application>
     <!-- Prioridad MAYOR que la del servicio de expo-notifications (-1): FCM
          entrega al de mayor prioridad. Este extiende al de expo, así que lo que
@@ -17,5 +22,9 @@
     <receiver
       android:name=".ReceptorDeLlamada"
       android:exported="false" />
+    <service
+      android:name=".ServicioDeLlamada"
+      android:exported="false"
+      android:foregroundServiceType="microphone" />
   </application>
 </manifest>

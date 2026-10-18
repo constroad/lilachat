@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CALL_TIMEOUT_MS, type CallState } from '@lilachat/shared';
-import { comoSuena, decidirDeslizamiento, inicioDelTimbre, queHacerConElAviso, UMBRAL_DE_DESLIZAR } from './llamadaNativa';
+import { comoSuena, decidirDeslizamiento, inicioDelTimbre, necesitaServicioDeLlamada, queHacerConElAviso, UMBRAL_DE_DESLIZAR } from './llamadaNativa';
 
 /** FL8.1: la llamada entrante como WhatsApp, desde la notificación nativa. */
 const sonando: CallState = { fase: 'sonando', desde: 1, entrante: true };
@@ -83,5 +83,46 @@ describe('inicioDelTimbre', () => {
   it('un valor imposible se acota al timbre', () => {
     expect(inicioDelTimbre(-5, 100_000)).toBe(100_000 - CALL_TIMEOUT_MS);
     expect(inicioDelTimbre(999_999, 100_000)).toBe(100_000);
+  });
+});
+
+/**
+ * FL11 (José, 18/10, teléfono real): en plena llamada, al cambiar de app se
+ * dejaba de oír; al volver, sonaba otra vez. Android congela una app de fondo
+ * sin servicio en primer plano. Mientras haya llamada, el servicio «Llamada en
+ * curso» la mantiene viva, como WhatsApp.
+ */
+describe('necesitaServicioDeLlamada', () => {
+  const desde = 1_000;
+  const activa: CallState = { fase: 'activa', desde, entrante: true, conectadaEn: 2_000 };
+  const llamando: CallState = { fase: 'llamando', desde, entrante: false };
+  const sonando: CallState = { fase: 'sonando', desde, entrante: true };
+  const terminada: CallState = { fase: 'terminada', desde, entrante: true, conectadaEn: 2_000, terminadaEn: 9_000, motivo: 'colgada', porMi: true };
+
+  it('activa y llamando hacia afuera: sí (la respuesta tiene que poder llegar)', () => {
+    expect(necesitaServicioDeLlamada(activa)).toBe(true);
+    expect(necesitaServicioDeLlamada(llamando)).toBe(true);
+  });
+
+  it('una entrante que suena, terminada o sin llamada: no', () => {
+    expect(necesitaServicioDeLlamada(sonando)).toBe(false);
+    expect(necesitaServicioDeLlamada(terminada)).toBe(false);
+    expect(necesitaServicioDeLlamada(null)).toBe(false);
+  });
+});
+
+/** «Colgar» en la notificación de la llamada en curso (FL11). */
+describe('queHacerConElAviso — colgar', () => {
+  const activa: CallState = { fase: 'activa', desde: 1, entrante: false, conectadaEn: 2 };
+  const llamando: CallState = { fase: 'llamando', desde: 1, entrante: false };
+
+  it('cuelga la llamada de ese chat, activa o llamando', () => {
+    expect(queHacerConElAviso({ aviso: { chatId: 'c1', accion: 'colgar' }, estado: activa, chatId: 'c1' })).toBe('colgar');
+    expect(queHacerConElAviso({ aviso: { chatId: 'c1', accion: 'colgar' }, estado: llamando, chatId: 'c1' })).toBe('colgar');
+  });
+
+  it('sin llamada o de otro chat, nada (no se espera una oferta para colgar)', () => {
+    expect(queHacerConElAviso({ aviso: { chatId: 'c1', accion: 'colgar' }, estado: null, chatId: null })).toBe('nada');
+    expect(queHacerConElAviso({ aviso: { chatId: 'c2', accion: 'colgar' }, estado: activa, chatId: 'c1' })).toBe('nada');
   });
 });

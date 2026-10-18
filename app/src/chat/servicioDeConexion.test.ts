@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decidirServicio, queHacerConElSocket, reusarSocket } from './servicioDeConexion';
+import { decidirServicio, queHacerConElSocket, reusarSocket, pausaDelSocket } from './servicioDeConexion';
 
 /**
  * Cuándo corre el servicio en primer plano — y por lo tanto, cuándo hay
@@ -100,5 +100,41 @@ describe('queHacerConElSocket', () => {
 
   it('pausado (desconectado a mano): reconectar el MISMO, con sus oyentes', () => {
     expect(queHacerConElSocket({ connected: false, active: false })).toBe('reconectar');
+  });
+});
+
+/**
+ * En plena llamada el socket no se pausa al ir al fondo (FL11): por ahí llega
+ * que el otro colgó o contestó. La pausa queda pendiente y se aplica al
+ * terminar la llamada, si la app sigue atrás.
+ */
+describe('pausaDelSocket', () => {
+  const libre = { enLlamada: false, pausaPendiente: false };
+
+  it('sin llamada, ir al fondo pausa', () => {
+    expect(pausaDelSocket(libre, 'pausar')).toEqual({ estado: libre, desconectar: true });
+  });
+
+  it('en llamada, la pausa espera', () => {
+    expect(pausaDelSocket({ enLlamada: true, pausaPendiente: false }, 'pausar')).toEqual({
+      estado: { enLlamada: true, pausaPendiente: true },
+      desconectar: false,
+    });
+  });
+
+  it('al terminar la llamada con la app atrás, se aplica la pausa pendiente', () => {
+    expect(pausaDelSocket({ enLlamada: true, pausaPendiente: true }, 'fin-de-llamada')).toEqual({ estado: libre, desconectar: true });
+  });
+
+  it('volver adelante cancela la pausa pendiente', () => {
+    expect(pausaDelSocket({ enLlamada: true, pausaPendiente: true }, 'reanudar')).toEqual({
+      estado: { enLlamada: true, pausaPendiente: false },
+      desconectar: false,
+    });
+    expect(pausaDelSocket({ enLlamada: true, pausaPendiente: false }, 'fin-de-llamada')).toEqual({ estado: libre, desconectar: false });
+  });
+
+  it('empieza una llamada', () => {
+    expect(pausaDelSocket(libre, 'llamada')).toEqual({ estado: { enLlamada: true, pausaPendiente: false }, desconectar: false });
   });
 });

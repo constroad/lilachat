@@ -7,8 +7,11 @@ import { requireOptionalNativeModule } from 'expo';
  * `requireOptionalNativeModule`: en una build sin el módulo (o en la web) todo
  * esto no hace nada, y la llamada sigue funcionando como antes de FL8.1.
  */
-/** `chat`: se tocó el aviso de un MENSAJE (FL8.2); lo demás es de la llamada. */
-export type AccionDeAviso = { chatId: string; accion: 'abrir' | 'contestar' | 'rechazar' | 'chat' };
+/**
+ * `chat`: se tocó el aviso de un MENSAJE (FL8.2). `colgar`: el botón de la
+ * notificación «Llamada en curso» (FL11). Lo demás es de la llamada entrante.
+ */
+export type AccionDeAviso = { chatId: string; accion: 'abrir' | 'contestar' | 'rechazar' | 'chat' | 'colgar' };
 
 type Suscripcion = { remove(): void };
 
@@ -24,6 +27,8 @@ type LlamadaNativa = {
   limpiarChat(chatId: string): void;
   puedePantallaCompleta(): boolean;
   abrirAjustesPantallaCompleta(): void;
+  enCurso(chatId: string, nombre: string, video: boolean, desdeMs: number): void;
+  finDeEnCurso(): void;
   addListener(evento: 'onAccion', oyente: (accion: AccionDeAviso) => void): Suscripcion;
 };
 
@@ -54,6 +59,13 @@ export const llamadaNativa = {
   limpiarChat: (chatId: string): void => seguro(() => nativo?.limpiarChat(chatId), undefined),
   puedePantallaCompleta: (): boolean => seguro(() => nativo?.puedePantallaCompleta() ?? true, true),
   abrirAjustesPantallaCompleta: (): void => seguro(() => nativo?.abrirAjustesPantallaCompleta(), undefined),
+  /**
+   * El servicio «Llamada en curso» (FL11): sin él Android congela la app de
+   * fondo y el audio se corta. En una build sin la función, no hace nada.
+   */
+  enCurso: (chatId: string, nombre: string, video: boolean, desdeMs: number): void =>
+    seguro(() => nativo?.enCurso(chatId, nombre, video, desdeMs), undefined),
+  finDeEnCurso: (): void => seguro(() => nativo?.finDeEnCurso(), undefined),
   alTocar: (oyente: (accion: AccionDeAviso) => void): Suscripcion =>
     seguro(() => nativo?.addListener('onAccion', oyente), undefined) ?? { remove: () => undefined },
 };

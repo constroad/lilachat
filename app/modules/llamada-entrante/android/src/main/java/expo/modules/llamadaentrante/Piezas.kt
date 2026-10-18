@@ -46,6 +46,12 @@ class ServicioDeAvisos : ExpoFirebaseMessagingService() {
  */
 class ReceptorDeLlamada : BroadcastReceiver() {
   override fun onReceive(contexto: Context, intent: Intent) {
+    // «Colgar» en la llamada en curso (FL11): JS cuelga; el servicio se va con la llamada.
+    if (intent.action == ServicioDeLlamada.ACCION_COLGAR) {
+      intent.getStringExtra(AvisoDeLlamada.EXTRA_CHAT)?.let { Puente.emitir(it, "colgar") }
+      ServicioDeLlamada.detener(contexto)
+      return
+    }
     if (intent.action != AvisoDeLlamada.ACCION_RECHAZAR) return
     val chatId = intent.getStringExtra(AvisoDeLlamada.EXTRA_CHAT) ?: return
     AvisoDeLlamada.quitar(contexto, chatId)

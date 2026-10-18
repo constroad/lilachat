@@ -130,14 +130,14 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
       clientKey?: unknown;
     };
     if (typeof body !== 'string' || !body.trim()) {
-      return res.status(400).json({ message: 'Escribí el mensaje a programar.' });
+      return res.status(400).json({ message: 'Escribe el mensaje a programar.' });
     }
     if (typeof clientKey !== 'string' || !clientKey) {
       return res.status(400).json({ message: 'Falta la clave del cliente.' });
     }
     const cuando = typeof sendAt === 'string' ? new Date(sendAt) : new Date(NaN);
     if (Number.isNaN(cuando.getTime()) || !puedeProgramar(cuando, new Date())) {
-      return res.status(400).json({ message: 'Elegí un momento futuro (hasta un año).' });
+      return res.status(400).json({ message: 'Elige un momento futuro (hasta un año).' });
     }
     if (!Types.ObjectId.isValid(req.params.chatId)) {
       return res.status(400).json({ message: 'Chat inválido.' });

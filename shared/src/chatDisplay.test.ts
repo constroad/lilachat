@@ -4,6 +4,7 @@ import {
   formatChatTimestamp,
   formatClock,
   formatDayLabel,
+  formatUltimaVez,
   groupsWithPrevious,
   resolveChatPreview,
   resolveDeliveryState,
@@ -218,5 +219,26 @@ describe('resolveChatPreview — borrador', () => {
 
   it('si el otro está escribiendo, eso gana al borrador', () => {
     expect(resolveChatPreview({ typing: true, lastBody: 'hola', borrador: 'x' }).style).toBe('typing');
+  });
+});
+
+/** «últ. vez» en la cabecera de un 1:1 (FL10, auditoría §46.3), como WhatsApp. */
+describe('formatUltimaVez', () => {
+  const ahora = new Date('2026-10-18T15:00:00');
+
+  it('hoy, ayer y el resto con fecha, siempre con la hora', () => {
+    const hoy = new Date('2026-10-18T07:31:00');
+
+    expect(formatUltimaVez(hoy, ahora)).toBe(`últ. vez hoy a las ${formatClock(hoy)}`);
+    expect(formatUltimaVez(new Date('2026-10-17T21:04:00'), ahora)).toMatch(/^últ\. vez ayer a las /);
+    expect(formatUltimaVez(new Date('2026-10-02T10:00:00'), ahora)).toMatch(/^últ\. vez 2 .+ a las /);
+  });
+
+  it('la una va en singular: «a la 1:05»', () => {
+    expect(formatUltimaVez(new Date('2026-10-18T13:05:00'), ahora)).toMatch(/hoy a la 1:05/);
+  });
+
+  it('sin una fecha válida, nada', () => {
+    expect(formatUltimaVez('no es fecha', ahora)).toBe('');
   });
 });

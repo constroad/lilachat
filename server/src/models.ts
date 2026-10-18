@@ -34,6 +34,8 @@ export interface User {
   /** Auto-respuesta de ausente (F11): cuando estás sin socket, el server
    *  contesta solo con este texto a los chats 1:1. */
   autoReply?: { enabled: boolean; text: string };
+  /** «últ. vez» (FL10): cuándo se cerró su último socket. */
+  lastSeenAt?: Date;
 }
 
 export interface Device {
@@ -65,6 +67,7 @@ const userSchema = new Schema<User>(
     name: { type: String },
     avatarMediaId: { type: String },
     avatarUrl: { type: String },
+    lastSeenAt: { type: Date },
     autoReply: {
       enabled: { type: Boolean, default: false },
       text: { type: String, default: '' },

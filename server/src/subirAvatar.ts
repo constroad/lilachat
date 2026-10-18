@@ -42,6 +42,6 @@ export async function subirFotoRedonda(params: {
   // reintentable y la app no descarta la foto que eligió la persona.
   const reintentable = subida.codigo !== 'rechazado';
   return reintentable
-    ? { ok: false, status: 503, message: 'No se pudo subir ahora. Probá de nuevo.' }
+    ? { ok: false, status: 503, message: 'No se pudo subir ahora. Prueba de nuevo.' }
     : { ok: false, status: 502, message: 'La foto no se pudo guardar.' };
 }

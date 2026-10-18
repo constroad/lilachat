@@ -15,6 +15,7 @@ import {
 } from './chatService.js';
 import { toClientMessage, toClientMessages } from './messageView.js';
 import { isOnline, markOffline, markOnline, onlineAmong } from './presence.js';
+import { guardarUltimaVez, ultimaVezDeContacto } from './ultimaVez.js';
 import { autoResponderA } from './autoReply.js';
 import { avisarFinDeLlamada, avisarLlamada, notifyOffline } from './pushService.js';
 import { frameConAutor, hayOfertasPendientes, ofertasVigentes } from './llamadas.js';
@@ -231,9 +232,15 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
     socket.on('disconnect', () => {
       // La baja también SINCRÓNICA, en el mismo orden que el alta.
       if (!markOffline(me).becameOffline) return;
+      // «últ. vez» (FL10): se guarda y se avisa con la hora en que se fue.
+      const lastSeenAt = new Date();
       void (async () => {
-        for (const contact of await contactIdsOf(userId)) {
-          io.to(userRoom(contact)).emit('presence', { userId: me, online: false });
+        const [contactos] = await Promise.all([
+          contactIdsOf(userId),
+          guardarUltimaVez(me, lastSeenAt).catch((error) => console.error('[presencia] últ. vez:', error?.message ?? error)),
+        ]);
+        for (const contact of contactos) {
+          io.to(userRoom(contact)).emit('presence', { userId: me, online: false, lastSeenAt: lastSeenAt.toISOString() });
         }
       })();
     });
@@ -508,6 +515,12 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
     socket.on('presence.request', async () => {
       const contacts = await contactIdsOf(userId);
       socket.emit('presence.snapshot', { online: onlineAmong(contacts) });
+    });
+
+    /** La «últ. vez» del otro de un 1:1, al abrirlo (FL10). */
+    socket.on('presence.ultimaVez', async (frame: unknown, ack: unknown) => {
+      if (typeof ack !== 'function') return;
+      ack({ lastSeenAt: await ultimaVezDeContacto(me, (frame as { userId?: unknown } | null)?.userId) });
     });
 
     socket.on('typing', async (frame: unknown) => {

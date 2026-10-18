@@ -36,6 +36,18 @@ export function formatDayLabel(at: string | Date, now: Date = new Date()): strin
   return new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short' }).format(date);
 }
 
+/**
+ * «últ. vez» de un 1:1 (FL10), como WhatsApp: «últ. vez hoy a las 7:31 a. m.».
+ * El día sale de `formatDayLabel` (calendario local); la una va en singular.
+ */
+export function formatUltimaVez(at: string | Date, now: Date = new Date()): string {
+  const reloj = formatClock(at);
+  if (!reloj) return '';
+  const dia = formatDayLabel(at, now);
+  const cuando = dia === 'Hoy' || dia === 'Ayer' ? dia.toLowerCase() : dia;
+  return `últ. vez ${cuando} ${reloj.startsWith('1:') ? 'a la' : 'a las'} ${reloj}`;
+}
+
 /** ¿Este mensaje abre un día nuevo respecto del anterior? */
 export function startsNewDay(current: string | Date, previous?: string | Date): boolean {
   if (!previous) return true;

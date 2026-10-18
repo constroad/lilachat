@@ -84,7 +84,7 @@ export function buildMeRouter(uploader: MediaUploader = buildLilaUploader()): Ro
       typeof req.body?.text === 'string' ? req.body.text.slice(0, MAX_TEXTO).trim() : '';
     // Encendida sin texto no sirve: mandaría un mensaje vacío.
     if (enabled && !text) {
-      return res.status(400).json({ message: 'Escribí el texto de la auto-respuesta.' });
+      return res.status(400).json({ message: 'Escribe el texto de la auto-respuesta.' });
     }
     await UserModel.updateOne(
       { _id: req.session!.userId },

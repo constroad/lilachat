@@ -186,7 +186,7 @@ export async function changeRole(params: {
     { $set: { 'members.$.role': params.rol } }
   );
   if (resultado.matchedCount === 0) {
-    return { ok: false, motivo: 'Alguien cambió eso mientras mirabas. Probá de nuevo.' };
+    return { ok: false, motivo: 'Alguien cambió eso mientras mirabas. Prueba de nuevo.' };
   }
 
   return { ok: true, miembros: chat.members.map((m) => String(m.userId)) };

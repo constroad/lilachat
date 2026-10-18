@@ -71,7 +71,7 @@ export function puedeSacar(params: {
   if (!yo) return { ok: false, motivo: 'No estás en este grupo.' };
 
   if (params.aQuien === params.quien) {
-    return { ok: false, motivo: 'Para irte del grupo usá «Salir del grupo».' };
+    return { ok: false, motivo: 'Para irte del grupo usa «Salir del grupo».' };
   }
 
   const victima = params.miembros.find((uno) => uno.userId === params.aQuien);
@@ -81,7 +81,7 @@ export function puedeSacar(params: {
     return { ok: false, motivo: 'Solo un admin puede sacar a alguien del grupo.' };
   }
   if (victima.role === 'admin') {
-    return { ok: false, motivo: 'No podés sacar a otro admin. Pedile que salga.' };
+    return { ok: false, motivo: 'No puedes sacar a otro admin. Pídele que salga.' };
   }
 
   return { ok: true };
@@ -130,13 +130,13 @@ export function puedeCambiarRol(params: {
 
   if (params.rol === 'member') {
     if (params.aQuien !== params.quien) {
-      return { ok: false, motivo: 'No podés quitarle el admin a otra persona. Solo ella puede dejarlo.' };
+      return { ok: false, motivo: 'No puedes quitarle el admin a otra persona. Solo ella puede dejarlo.' };
     }
     const otrosAdmins = params.miembros.filter(
       (uno) => uno.role === 'admin' && uno.userId !== params.quien
     );
     if (otrosAdmins.length === 0) {
-      return { ok: false, motivo: 'Sos el único admin. Nombrá a otro antes de dejar de serlo.' };
+      return { ok: false, motivo: 'Eres el único admin. Nombra a otro antes de dejar de serlo.' };
     }
   }
 

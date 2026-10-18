@@ -35,7 +35,7 @@ export function puedeEliminar(params: {
    * porque un cliente modificado se saltea cualquier validación de la app.
    */
   if (params.autor !== params.yo) {
-    return { permitido: false, motivo: 'Solo podés eliminar tus propios mensajes.' };
+    return { permitido: false, motivo: 'Solo puedes eliminar tus propios mensajes.' };
   }
 
   // Volver a borrar lo ya borrado no es un error que valga la pena mostrar,

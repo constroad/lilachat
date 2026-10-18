@@ -3,14 +3,14 @@ import mongoose, { Types } from 'mongoose';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ChatModel, MessageModel, ReceiptModel } from '../src/chatModels.js';
 import {
-  cambiarAjustesDeChat,
   ForbiddenChatError,
-  listChats,
   listMessages,
   markRead,
   pullSince,
   sendMessage,
 } from '../src/chatService.js';
+import { listChats } from '../src/listaDeChats.js';
+import { cambiarAjustesDeChat } from '../src/miembrosDelChat.js';
 import { UserModel } from '../src/models.js';
 
 let mongo: MongoMemoryServer;

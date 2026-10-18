@@ -4,7 +4,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { ChatModel } from '../src/chatModels.js';
-import { listChats } from '../src/chatService.js';
+import { listChats } from '../src/listaDeChats.js';
 import type { MediaUploader, UploadOutcome } from '../src/mediaClient.js';
 import { UserModel } from '../src/models.js';
 import { signSession } from '../src/sessions.js';

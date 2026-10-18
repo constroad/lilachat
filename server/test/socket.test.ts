@@ -9,7 +9,7 @@ import { UserModel } from '../src/models.js';
 import { signSession } from '../src/sessions.js';
 import { attachSocket } from '../src/socket.js';
 import { programarMensaje, runScheduledTick } from '../src/scheduledMessages.js';
-import { listChats } from '../src/chatService.js';
+import { listChats } from '../src/listaDeChats.js';
 
 /**
  * El socket de verdad, sobre un puerto real. Lo que NINGÚN test unitario ve:

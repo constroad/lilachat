@@ -5,19 +5,21 @@ import { ChatModel } from './chatModels.js';
 import { DeviceModel, UserModel } from './models.js';
 import {
   ForbiddenChatError,
-  addMember,
   buscarMensajes,
-  leaveChat,
-  listChats,
   listMessages,
-  cambiarAjustesDeChat,
-  changeRole,
-  editarInfoDeGrupo,
   datosDeUsuario,
   escribirAviso,
   markRead,
-  removeMember,
 } from './chatService.js';
+import { listChats } from './listaDeChats.js';
+import {
+  addMember,
+  cambiarAjustesDeChat,
+  changeRole,
+  editarInfoDeGrupo,
+  leaveChat,
+  removeMember,
+} from './miembrosDelChat.js';
 import {
   cancelarProgramado,
   pendientesDe,

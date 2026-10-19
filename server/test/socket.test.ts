@@ -274,3 +274,37 @@ describe('sacar a alguien del grupo', () => {
     expect(await aviso).toMatchObject({ kind: 'system', chatId: String(grupo._id) });
   });
 });
+
+/**
+ * W3a (19/10): lo que hago con MIS chats desde la web (archivar, silenciar,
+ * eliminar para mí) le llega a mi teléfono como `chat.changed`. Antes no se
+ * avisaba: con un solo dispositivo no hacía falta.
+ */
+describe('mis ajustes de un chat, en mis otros dispositivos', () => {
+  const pedir = (ruta: string, method: string, body?: unknown) =>
+    fetch(`http://127.0.0.1:${port}/api/chats/${chatId}${ruta}`, {
+      method,
+      headers: { Authorization: `Bearer ${tokenFor(jose)}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+  it('archivar avisa a mis sockets y NO al otro miembro', async () => {
+    const miTelefono = await connect(tokenFor(jose));
+    const otra = await connect(tokenFor(maria));
+    const cambio = new Promise((resolve) => miTelefono.on('chat.changed', resolve));
+    let alOtro = false;
+    otra.on('chat.changed', () => (alOtro = true));
+
+    expect((await pedir('/ajustes', 'PATCH', { archived: true })).status).toBe(200);
+    expect(await cambio).toEqual({ chatId });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(alOtro).toBe(false);
+  });
+
+  it('eliminar para mí también avisa a mis sockets', async () => {
+    const miTelefono = await connect(tokenFor(jose));
+    const cambio = new Promise((resolve) => miTelefono.on('chat.changed', resolve));
+    expect((await pedir('/borrar-para-mi', 'POST')).status).toBe(200);
+    expect(await cambio).toEqual({ chatId });
+  });
+});

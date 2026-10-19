@@ -270,6 +270,19 @@ export async function marcarPropioLeido(message: Pick<Message, 'chatId' | 'sende
  * teléfono. Se compara contra el documento ANTERIOR (mismo viaje): con
  * `timestamps`, `modifiedCount` da 1 siempre porque `updatedAt` cambia.
  */
+/**
+ * El chat de un miembro y su último `seq`. Un acuse nunca pasa de ahí: un
+ * `readSeq` adelantado hacía nacer leídos los mensajes que todavía no existían
+ * (E2E de W3a, 19/10: un recibo con 99 en un grupo con un mensaje).
+ */
+async function ultimoSeqDelMiembro(chatId: string, userId: Types.ObjectId): Promise<{ id: Types.ObjectId; lastSeq: number }> {
+  const id = toObjectId(chatId);
+  if (!id) throw new ForbiddenChatError();
+  const chat = await ChatModel.findOne({ _id: id, 'members.userId': userId }).select('lastSeq').lean();
+  if (!chat) throw new ForbiddenChatError();
+  return { id, lastSeq: chat.lastSeq ?? 0 };
+}
+
 async function moverCursor(
   filtro: { chatId: Types.ObjectId; userId: Types.ObjectId },
   campos: ('readSeq' | 'deliveredSeq')[],
@@ -287,11 +300,13 @@ export async function markRead(params: {
   chatId: string;
   userId: Types.ObjectId;
   seq: number;
-}): Promise<boolean> {
-  const chatId = await assertMember(params.chatId, params.userId);
+}): Promise<number | false> {
+  const { id: chatId, lastSeq } = await ultimoSeqDelMiembro(params.chatId, params.userId);
+  const seq = Math.min(params.seq, lastSeq);
+  if (seq <= 0) return false;
   const [avanzo] = await Promise.all([
     // Leer implica entregado: no se puede leer lo que no llego.
-    moverCursor({ chatId, userId: params.userId }, ['readSeq', 'deliveredSeq'], params.seq),
+    moverCursor({ chatId, userId: params.userId }, ['readSeq', 'deliveredSeq'], seq),
     // Abrir el chat quita la marca de «no leído» (FL9), como WhatsApp. El
     // filtro solo encuentra la fila si estaba marcada: no escribe de más.
     ChatModel.updateOne(
@@ -299,7 +314,8 @@ export async function markRead(params: {
       { $set: { 'members.$.markedUnread': false } }
     ),
   ]);
-  return avanzo;
+  // El seq que de verdad quedó (recortado): es el que se difunde a los demás.
+  return avanzo ? seq : false;
 }
 
 /**
@@ -314,9 +330,11 @@ export async function markDelivered(params: {
   chatId: string;
   userId: Types.ObjectId;
   seq: number;
-}): Promise<boolean> {
-  const chatId = await assertMember(params.chatId, params.userId);
-  return moverCursor({ chatId, userId: params.userId }, ['deliveredSeq'], params.seq);
+}): Promise<number | false> {
+  const { id: chatId, lastSeq } = await ultimoSeqDelMiembro(params.chatId, params.userId);
+  const seq = Math.min(params.seq, lastSeq);
+  if (seq <= 0) return false;
+  return (await moverCursor({ chatId, userId: params.userId }, ['deliveredSeq'], seq)) ? seq : false;
 }
 
 /** Los demás miembros de un chat: a quién notificar. */

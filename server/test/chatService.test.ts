@@ -307,7 +307,7 @@ describe('listChats y no leídos', () => {
     await sendMessage({ chatId, senderId: maria, clientKey: 'a', body: 'hola' });
     await sendMessage({ chatId, senderId: maria, clientKey: 'b', body: 'ahí?' });
 
-    expect(await markRead({ chatId, userId: jose, seq: 2 })).toBe(true);
+    expect(await markRead({ chatId, userId: jose, seq: 2 })).toBe(2);
     expect(await markRead({ chatId, userId: jose, seq: 2 })).toBe(false);
     expect(await markRead({ chatId, userId: jose, seq: 1 })).toBe(false);
   });
@@ -315,8 +315,33 @@ describe('listChats y no leídos', () => {
   it('markDelivered dice si el cursor avanzó', async () => {
     await sendMessage({ chatId, senderId: maria, clientKey: 'a', body: 'hola' });
 
-    expect(await markDelivered({ chatId, userId: jose, seq: 1 })).toBe(true);
+    expect(await markDelivered({ chatId, userId: jose, seq: 1 })).toBe(1);
     expect(await markDelivered({ chatId, userId: jose, seq: 1 })).toBe(false);
+  });
+
+  /**
+   * E2E de W3a (19/10): un recibo quedó con `readSeq: 99` en un grupo con UN
+   * mensaje. Así, los 98 siguientes nacían leídos (sin contador ni aviso) y
+   * con el check azul para el que escribía. El acuse nunca pasa el último seq.
+   */
+  it('un acuse por encima del último mensaje se recorta al último', async () => {
+    await sendMessage({ chatId, senderId: maria, clientKey: 'a', body: 'hola' });
+
+    // Devuelve el seq que quedó: es el que se difunde a los demás.
+    expect(await markRead({ chatId, userId: jose, seq: 99 })).toBe(1);
+    await markDelivered({ chatId, userId: maria, seq: 99 });
+    const receipt = await ReceiptModel.findOne({ chatId, userId: jose }).lean();
+    expect(receipt).toMatchObject({ readSeq: 1, deliveredSeq: 1 });
+    expect((await ReceiptModel.findOne({ chatId, userId: maria }).lean())?.deliveredSeq).toBe(1);
+
+    // El siguiente mensaje SÍ cuenta como no leído.
+    await sendMessage({ chatId, senderId: maria, clientKey: 'b', body: '¿ahí?' });
+    expect((await listChats(jose))[0]?.unread).toBe(1);
+  });
+
+  it('en un chat sin mensajes, un acuse no escribe nada', async () => {
+    expect(await markRead({ chatId, userId: jose, seq: 5 })).toBe(false);
+    expect(await ReceiptModel.countDocuments({ chatId, userId: jose })).toBe(0);
   });
 
   it('trae el último mensaje para la vista previa de la lista', async () => {

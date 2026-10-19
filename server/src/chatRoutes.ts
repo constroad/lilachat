@@ -305,6 +305,8 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
       markedUnread: soloBooleano(body.markedUnread),
     });
     if (!r.ok) return res.status(400).json({ message: r.motivo });
+    // Mis otros dispositivos (la web vinculada, W3a) reflejan el cambio.
+    avisarCambioDeChat(String(req.session!.userId), req.params.chatId!);
     return res.status(200).json({ ok: true });
   });
 
@@ -326,6 +328,7 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
   router.post('/:chatId/borrar-para-mi', async (req, res) => {
     const r = await borrarChatParaMi({ chatId: req.params.chatId!, quien: new Types.ObjectId(req.session!.userId) });
     if (!r.ok) return res.status(400).json({ message: r.motivo });
+    avisarCambioDeChat(String(req.session!.userId), req.params.chatId!);
     return res.status(200).json({ ok: true });
   });
 

@@ -501,16 +501,18 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
       try {
         // Sin avance no hay nada que avisar: cada `receipt` es un re-render en
         // cada teléfono del chat (FL12, §49 #3).
-        if (!(await markRead({ chatId: payload.chatId, userId, seq: payload.seq }))) return;
+        // Se difunde el seq que QUEDÓ (el server lo recorta al último mensaje), no el del cliente.
+        const leido = await markRead({ chatId: payload.chatId, userId, seq: payload.seq });
+        if (!leido) return;
         const members = await chatMemberIds(new Types.ObjectId(payload.chatId));
         for (const member of members) {
           io.to(userRoom(member)).emit('receipt', {
             chatId: payload.chatId,
             userId: String(userId),
-            readSeq: payload.seq,
+            readSeq: leido,
             // Leer implica entregado: sin esto el doble check gris nunca se
             // pondria azul si el otro ya lo tenia como entregado.
-            deliveredSeq: payload.seq,
+            deliveredSeq: leido,
           });
         }
       } catch {
@@ -528,13 +530,14 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
       const payload = (frame ?? {}) as { chatId?: string; seq?: number };
       if (!payload.chatId || typeof payload.seq !== 'number') return;
       try {
-        if (!(await markDelivered({ chatId: payload.chatId, userId, seq: payload.seq }))) return;
+        const entregado = await markDelivered({ chatId: payload.chatId, userId, seq: payload.seq });
+        if (!entregado) return;
         const members = await chatMemberIds(new Types.ObjectId(payload.chatId));
         for (const member of members) {
           io.to(userRoom(member)).emit('receipt', {
             chatId: payload.chatId,
             userId: String(userId),
-            deliveredSeq: payload.seq,
+            deliveredSeq: entregado,
           });
         }
       } catch {

@@ -22,6 +22,7 @@ import {
   mergeBySeq,
   tramoContiguoAntesDe,
   type Cursors,
+  type MencionEnMensaje,
   type Envelope,
   type OutboxItem,
 } from '@lilachat/shared';
@@ -553,7 +554,7 @@ export function useChat(params: {
    * pruebe último (y por eso se rompa).
    */
   const send = useCallback(
-    async (body: string, replyToSeq?: number) => {
+    async (body: string, replyToSeq?: number, menciones?: (texto: string) => MencionEnMensaje[]) => {
       // `buildOutboxItem` decide si va texto o sobre. En un chat cifrado
       // devuelve `null` si NO se pudo cifrar, y entonces no se encola nada:
       // caer a texto plano con el candado en pantalla sería mentir.
@@ -564,6 +565,7 @@ export function useChat(params: {
         queuedAt: new Date().toISOString(),
         replyToSeq,
         seal: params.seal,
+        menciones,
       });
       if (!item) return { ok: false as const };
       if (item.envelope) vistaLocal.current.set(item.clientKey, body.trim());

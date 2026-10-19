@@ -1,17 +1,24 @@
 import { memo, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { BackHandler, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { Camera, Paperclip, Plus, Send, X } from 'lucide-react-native';
-import { duracionDeVoz } from '@lilachat/shared';
+import { Camera, Keyboard as Teclado, Paperclip, Plus, Send, Smile, X } from 'lucide-react-native';
+import { duracionDeVoz, type MencionEnMensaje } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { precalentarPermisoDeVoz, useGrabadorDeVoz, type NotaGrabada } from './useGrabadorDeVoz';
 import { guardarBorrador, leerBorrador } from './borradores';
 import { BotonDeVoz } from './BotonDeVoz';
 import { formaDelTexto, type FormaDelTexto } from './campoDeTexto';
 import type { DecisionDeVoz, mientrasSostiene } from './gestoDeVoz';
+import { insertarEnTexto, type Seleccion } from './textoDelComposer';
+import { useMenciones, type MiembroMencionable } from './useMenciones';
+import { SugerenciasDeMencion } from './SugerenciasDeMencion';
+import { PanelDeEmojis } from './PanelDeEmojis';
+import { VistaPreviaAlEscribir } from './VistaPreviaAlEscribir';
 
 /** Cuánto se espera tras la última tecla para guardar el borrador. */
 const ESPERA_PARA_GUARDAR_MS = 500;
+/** Solo un texto con algo así lleva tarjeta: sin esto, cada tecla redibujaría la barra. */
+const PARECE_UN_LINK = /https?:\/\/|www\./i;
 
 export type Respondiendo = { seq: number; texto: string; mio: boolean };
 
@@ -48,7 +55,13 @@ export const Composer = memo(function Composer(props: {
   onCamara: () => void;
   onEscribiendo: () => void;
   /** Manda el texto; `false` si no salió (p. ej. no se pudo cifrar). */
-  onEnviar: (texto: string, respondeA?: number) => Promise<boolean>;
+  onEnviar: (texto: string, respondeA?: number, menciones?: (texto: string) => MencionEnMensaje[]) => Promise<boolean>;
+  /** Para la tarjeta del link que se está escribiendo (18/10). */
+  jwt?: string;
+  /** Apagado en los chats secretos: el server no tiene que ver sus links. */
+  conVistaPrevia?: boolean;
+  /** Solo en grupos: a quiénes se puede mencionar con «@» (sin mí). */
+  miembros?: MiembroMencionable[];
   /** Long-press en enviar: programarlo para más tarde (F11). */
   onProgramar: (texto: string) => void;
   onNotaDeVoz: (nota: NotaGrabada) => Promise<void>;
@@ -69,8 +82,12 @@ export const Composer = memo(function Composer(props: {
   const inputRef = useRef<TextInput>(null);
   const textoRef = useRef('');
   const [forma, setForma] = useState<FormaDelTexto>(() => formaDelTexto(''));
-  /** Poner un texto desde afuera (borrador, edición, devolverlo) remonta el campo con ese valor. */
-  const [inicial, setInicial] = useState({ texto: '', version: 0 });
+  /**
+   * Poner un texto desde la app (borrador, edición, devolverlo, un emoji, una
+   * mención) remonta el campo con ese valor. `enfocar` lo deja con el teclado
+   * abierto si lo tenía; `cursor`, dónde queda el cursor.
+   */
+  const [inicial, setInicial] = useState<{ texto: string; version: number; enfocar?: boolean; cursor?: number }>({ texto: '', version: 0 });
   const reflejar = (texto: string) => {
     textoRef.current = texto;
     const nueva = formaDelTexto(texto);
@@ -80,10 +97,64 @@ export const Composer = memo(function Composer(props: {
     reflejar(texto);
     setInicial((antes) => ({ texto, version: antes.version + 1 }));
   };
-  // `clear()` y no remontar: enviar no puede cerrar el teclado.
+  /**
+   * Vaciar tras enviar. `clear()` solo no alcanza: si el campo nació de un
+   * texto puesto por la app (un borrador restaurado), el nativo ignoraba el
+   * `clear()` y el texto quedaba después de enviarlo (emulador, 19/10: pasaba
+   * desde FL12). Se remonta vacío y, si tenía el teclado, lo conserva.
+   */
   const limpiarCampo = () => {
+    const enfocar = inputRef.current?.isFocused() ?? false;
     inputRef.current?.clear();
     reflejar('');
+    setTextoConLink('');
+    setInicial((antes) => ({ texto: '', version: antes.version + 1, enfocar }));
+  };
+  /**
+   * Escribir DESDE la app (un emoji, completar una mención). Se probó dejar el
+   * campo controlado un solo render (`value` + `selection`) y después de un
+   * borrador restaurado el `clear()` de enviar quedaba ignorado por el nativo:
+   * el texto seguía en el campo (emulador, 19/10). Remontar alinea los
+   * contadores del nativo y del JS; con el panel de emojis abierto el campo no
+   * tiene el foco, y con el teclado abierto el campo nuevo lo retoma.
+   */
+  const seleccion = useRef<Seleccion | null>(null);
+  const escribir = (texto: string, cursor: number) => {
+    reflejar(texto);
+    programarBorrador();
+    setTextoConLink(PARECE_UN_LINK.test(texto) ? texto : '');
+    seleccion.current = { start: cursor, end: cursor };
+    const enfocar = inputRef.current?.isFocused() ?? false;
+    setInicial((antes) => ({ texto, version: antes.version + 1, enfocar, cursor }));
+  };
+  // El cursor va donde quedó lo insertado, apenas el campo nuevo existe.
+  useEffect(() => {
+    const { cursor } = inicial;
+    if (cursor === undefined) return;
+    const ubicar = setTimeout(() => inputRef.current?.setSelection(cursor, cursor), 0);
+    return () => clearTimeout(ubicar);
+  }, [inicial]);
+  /** El texto, solo si parece tener un link: es lo único que mira la tarjeta. */
+  const [textoConLink, setTextoConLink] = useState('');
+  const menciones = useMenciones(props.miembros);
+  const [conEmojis, setConEmojis] = useState(false);
+  // ATRÁS con el panel abierto lo cierra, como el teclado; no sale del chat.
+  useEffect(() => {
+    if (!conEmojis) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setConEmojis(false);
+      return true;
+    });
+    return () => sub.remove();
+  }, [conEmojis]);
+  const alternarEmojis = () => {
+    if (conEmojis) {
+      setConEmojis(false);
+      inputRef.current?.focus();
+      return;
+    }
+    Keyboard.dismiss();
+    setConEmojis(true);
   };
   const voz = useGrabadorDeVoz();
   // Sin diálogo: si el micrófono ya está permitido, la primera nota no espera.
@@ -169,33 +240,52 @@ export const Composer = memo(function Composer(props: {
       });
       return;
     }
-    void props.onEnviar(texto, props.respondiendoA?.seq).then((ok) => {
+    const rangos = menciones.rangos();
+    menciones.limpiar();
+    void props.onEnviar(texto, props.respondiendoA?.seq, rangos).then((ok) => {
       // Si no salió, el texto vuelve al campo: perderlo sería peor que el aviso.
       if (!ok) ponerTexto(texto);
     });
   };
 
-  // La píldora de escribir: clip y cámara DENTRO, como el diseño y WhatsApp.
-  // El emoji que había acá no hacía nada: el teclado ya trae los suyos. Con
-  // texto escrito se esconden y el campo gana ancho.
+  // La píldora de escribir: el emoji a la izquierda y clip y cámara a la
+  // derecha, como el diseño y WhatsApp. Con texto escrito, clip y cámara se
+  // esconden y el campo gana ancho.
   const campoDeTexto = (
     <View className="min-w-0 flex-1 flex-row items-end rounded-3xl border border-outline/15 bg-background pr-1">
+      <Pressable
+        testID="btn-emojis"
+        accessibilityLabel={conEmojis ? 'Volver al teclado' : 'Emojis'}
+        onPress={alternarEmojis}
+        android_ripple={{ color: colores.outline, borderless: true, radius: 20 }}
+        className="h-[46px] w-11 items-center justify-center"
+      >
+        {conEmojis ? <Teclado size={21} color={colores.outline} /> : <Smile size={21} color={colores.outline} />}
+      </Pressable>
       <TextInput
         key={inicial.version}
         ref={inputRef}
         defaultValue={inicial.texto}
-        // Al entrar a editar el campo se remonta con el texto: que siga con el foco.
-        autoFocus={editandoAhora}
+        onFocus={() => setConEmojis(false)}
+        onSelectionChange={(evento) => {
+          seleccion.current = evento.nativeEvent.selection;
+          menciones.alCambiar(textoRef.current, evento.nativeEvent.selection.end);
+        }}
+        // Al entrar a editar, o al completar una mención con el teclado abierto,
+        // el campo se remonta con el texto: que siga con el foco.
+        autoFocus={editandoAhora || inicial.enfocar === true}
         testID="input-mensaje"
         // 46 + el borde = 48: la misma altura que el micrófono (FL13). Con 44
         // el multilínea de Android crecía y quedaban desalineados.
-        className="max-h-28 min-h-[46px] min-w-0 flex-1 px-4 py-3 text-base text-on-surface"
-        placeholder="Escribe un mensaje"
+        className="max-h-28 min-h-[46px] min-w-0 flex-1 py-3 pr-3 text-base text-on-surface"
+        // «Mensaje», como WhatsApp: con el emoji adentro, «Escribe un mensaje» se partía en dos líneas.
+        placeholder="Mensaje"
         placeholderTextColor={colores.outline}
         multiline
         onChangeText={(texto) => {
           reflejar(texto);
           programarBorrador();
+          setTextoConLink(PARECE_UN_LINK.test(texto) ? texto : '');
           // «Escribiendo» solo al agregar texto: vaciar el campo no lo es.
           if (texto.length > 0) props.onEscribiendo();
         }}
@@ -229,6 +319,14 @@ export const Composer = memo(function Composer(props: {
 
   return (
     <>
+      <SugerenciasDeMencion
+        sugerencias={menciones.sugerencias}
+        onElegir={(miembro) => {
+          const completado = menciones.elegir(textoRef.current, miembro);
+          if (completado) escribir(completado.texto, completado.cursor);
+        }}
+      />
+      {props.conVistaPrevia && textoConLink ? <VistaPreviaAlEscribir texto={textoConLink} jwt={props.jwt} /> : null}
       {props.editando ? (
         <View testID="barra-edicion" className="flex-row items-center gap-2 border-t border-outline/10 bg-surface px-3 pt-2">
           <View className="w-1 self-stretch rounded-full bg-primary" />
@@ -270,7 +368,7 @@ export const Composer = memo(function Composer(props: {
         </View>
       ) : null}
 
-      <View className="flex-row items-end gap-1.5 border-t border-outline/10 bg-surface px-2 pt-2" style={{ paddingBottom: props.margenPie }}>
+      <View className="flex-row items-end gap-1.5 border-t border-outline/10 bg-surface px-2 pt-2" style={{ paddingBottom: conEmojis ? 8 : props.margenPie }}>
         {props.modoSecreto === 'bloqueado' ? (
           <View testID="composer-bloqueado" className="min-h-[48px] flex-1 items-center justify-center rounded-3xl bg-background px-4">
             <Text className="text-center text-[13px] text-on-surface-variant">Esperando la clave del chat secreto…</Text>
@@ -369,6 +467,17 @@ export const Composer = memo(function Composer(props: {
           </>
         )}
       </View>
+
+      {conEmojis ? (
+        <View className="bg-surface" style={{ paddingBottom: props.margenPie }}>
+          <PanelDeEmojis
+            onElegir={(emoji) => {
+              const insertado = insertarEnTexto(textoRef.current, seleccion.current, emoji);
+              escribir(insertado.texto, insertado.cursor);
+            }}
+          />
+        </View>
+      ) : null}
 
       {voz.estado.fase === 'sin-permiso' || voz.estado.fase === 'error' ? (
         <Pressable onPress={voz.limpiarAviso} className="px-4 pb-2">

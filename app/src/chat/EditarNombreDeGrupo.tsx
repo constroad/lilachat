@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { KeyboardAvoidingView, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { MAX_NOMBRE_DE_GRUPO, normalizarNombreDeGrupo } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { useMargenes } from '../ui/useMargenes';
@@ -14,7 +14,20 @@ import { useMargenes } from '../ui/useMargenes';
  * El valor arranca con el nombre actual, no vacío: casi siempre se corrige una
  * palabra, y hacer reescribir todo es el tipo de detalle que hace abandonar la
  * pantalla.
+ *
+ * «Al cambiar el nombre del grupo el teclado se pierde» (José, 18/10): con
+ * `autoFocus` el campo tomaba el foco ANTES de que la ventana del modal lo
+ * tuviera, y en Android el teclado no aparecía (se vio en el emulador: cursor
+ * titilando, `mInputShown=false`). Ahora el foco va en `onShow`, y la hoja sube
+ * con el teclado (`KeyboardAvoidingView`): con edge-to-edge la ventana no se
+ * encoge sola.
  */
+/**
+ * Lo que se espera tras `onShow` para pedir el teclado: lo que dura el fundido
+ * del modal. Antes de eso la ventana no tiene el foco y Android ignora el
+ * pedido (con 60 ms no aparecía; con 350, 3 de 3 en el emulador).
+ */
+const ESPERA_PARA_ENFOCAR_MS = 350;
 export function EditarNombreDeGrupo({
   visible,
   nombreActual,
@@ -30,6 +43,7 @@ export function EditarNombreDeGrupo({
 }) {
   const colores = useColores();
   const margenes = useMargenes();
+  const campoRef = useRef<TextInput>(null);
   const [texto, setTexto] = useState(nombreActual);
   const [error, setError] = useState('');
 
@@ -55,8 +69,16 @@ export function EditarNombreDeGrupo({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCerrar}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onCerrar}
+      onShow={() => setTimeout(() => campoRef.current?.focus(), ESPERA_PARA_ENFOCAR_MS)}
+    >
       <Pressable className="flex-1 bg-black/40" onPress={onCerrar} accessibilityLabel="Cancelar" />
+      {/* Solo la hoja esquiva el teclado, con su color: el hueco no queda transparente. */}
+      <KeyboardAvoidingView behavior="padding" style={{ backgroundColor: colores.surface }}>
       <View
         testID="editar-nombre-grupo"
         className="rounded-t-xl bg-surface px-5 pt-4"
@@ -66,6 +88,7 @@ export function EditarNombreDeGrupo({
         <View className="flex-row items-center gap-2 rounded-xl bg-primary/[0.07] px-4">
           <TextInput
             testID="input-nombre-grupo-editar"
+            ref={campoRef}
             value={texto}
             onChangeText={(valor) => {
               setTexto(valor.slice(0, MAX_NOMBRE_DE_GRUPO));
@@ -73,7 +96,6 @@ export function EditarNombreDeGrupo({
             }}
             placeholder="Cómo se llama el grupo"
             placeholderTextColor={colores['on-surface-variant']}
-            autoFocus
             className="min-h-[52px] min-w-0 flex-1 text-base text-on-surface"
           />
           <Text className="text-[11px] text-on-surface-variant">
@@ -107,6 +129,7 @@ export function EditarNombreDeGrupo({
           </Pressable>
         </View>
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

@@ -4,7 +4,7 @@ import { ProgramarMensajeModal } from './ProgramarMensajeModal';
 import { ProgramadosDelChat } from './ProgramadosDelChat';
 import type { FlashListRef } from '@shopify/flash-list';
 import { KeyboardAvoidingView, useKeyboardState } from 'react-native-keyboard-controller';
-import { formatDayLabel, resolveDeliveryState, startsNewDay } from '@lilachat/shared';
+import type { MencionEnMensaje } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { AttachSheet } from './AttachSheet';
 import { CrearDesdeElChat } from './CrearDesdeElChat';
@@ -12,7 +12,7 @@ import { CatchUpBanner } from './CatchUpBanner';
 import { cuantosParaPonerAlDia } from './ponerAlDia';
 import { SecretChatBanner } from '../crypto/SecretChatBanner';
 import { useSecretChat } from '../crypto/useSecretChat';
-import { DaySeparator, MessageRow, isPending, previewDeMensaje, type Row } from './MessageRow';
+import { isPending, previewDeMensaje, type Row } from './MessageRow';
 import { abrirConOtraApp } from './guardarYCompartir';
 import { Composer, type ComposerHandle } from './Composer';
 import { ChatDetailScreen } from './ChatDetailScreen';
@@ -28,7 +28,7 @@ import { EncabezadoDelChat } from './EncabezadoDelChat';
 import { EnviarFotos } from './EnviarFotos';
 import { useAdjuntosDelChat } from './useAdjuntosDelChat';
 import { sinOcultos, useOcultos } from './ocultos';
-import { DivisorNoLeidos, useDivisorNoLeidos } from './useDivisorNoLeidos';
+import { useDivisorNoLeidos } from './useDivisorNoLeidos';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { BuscadorDelChat } from './BuscadorDelChat';
@@ -38,6 +38,7 @@ import { citadosPorSeq, filaDeArchivoEnCola, fotosDelChat, sinPendientesConfirma
 import { useGrupo } from './useGrupo';
 import { FueraDelGrupo } from './FueraDelGrupo';
 import { subtituloDelChat } from './cabeceraDelChat';
+import { useDibujarFila } from './useDibujarFila';
 import { useUltimaVez } from './useUltimaVez';
 import { ListaDeMensajes } from './ListaDeMensajes';
 import { useRespuestaYEdicion } from './useRespuestaYEdicion';
@@ -176,11 +177,11 @@ export function ChatScreen({
 
   const { cancelarRespuesta } = respuesta;
   const alEnviar = useCallback(
-    async (texto: string, respondeA?: number) => {
+    async (texto: string, respondeA?: number, menciones?: (texto: string) => MencionEnMensaje[]) => {
       cancelarRespuesta();
       // Lo que mando yo SIEMPRE se ve: aunque estuviera leyendo arriba.
       requestAnimationFrame(() => listaRef.current?.scrollToEnd({ animated: true }));
-      const resultado = await send(texto, respondeA);
+      const resultado = await send(texto, respondeA, menciones);
       // Si NO se pudo cifrar, el mensaje no salió y hay que decirlo: en un chat
       // con candado, un envío que falla en silencio engaña.
       if (resultado?.ok) return true;
@@ -211,6 +212,8 @@ export function ChatScreen({
   const grupo = useGrupo(chatId, credential.jwt, esGrupoChat);
   const nombresDelGrupo = grupo.nombres;
   const fotosDelGrupo = grupo.fotos;
+  // Memo: un arreglo nuevo en cada render redibujaría la barra de escribir (FL12).
+  const mencionables = useMemo(() => (esGrupoChat ? grupo.mencionables(credential.userId) : undefined), [esGrupoChat, grupo.mencionables, credential.userId]);
   /** Me sacaron del grupo (FL9d): se lee, pero ya no se escribe. */
   const fueraDelGrupo = esGrupoChat && grupo.soyMiembro === false;
   // Fuera del grupo no se listan miembros: ya no es «QA Ana, Vos».
@@ -364,50 +367,29 @@ export function ChatScreen({
    * `MessageRow` memoizado, un mensaje nuevo dibuja SU burbuja y la de al lado
    * (por el agrupado), no la pantalla entera (FL2).
    */
-  const dibujarFila = useCallback(
-    ({ item, index }: { item: Row; index: number }) => {
-      const previous = rows[index - 1];
-      const next = rows[index + 1];
-      const at = isPending(item) ? item.queuedAt : item.at;
-      const previousAt = previous ? (isPending(previous) ? previous.queuedAt : previous.at) : undefined;
-      const mia = isPending(item) || item.senderId === credential.userId;
-      return (
-        <>
-          {startsNewDay(at, previousAt) ? <DaySeparator label={formatDayLabel(at)} /> : null}
-          {!isPending(item) && item.seq === divisorSeq ? <DivisorNoLeidos cantidad={noLeidosAlAbrir} /> : null}
-          <MessageRow
-            item={item}
-            previous={previous}
-            next={next}
-            myUserId={credential.userId}
-            jwt={credential.jwt}
-            conVistaPrevia={!encrypted}
-            entrega={
-              mia
-                ? resolveDeliveryState({
-                    seq: isPending(item) ? null : item.seq,
-                    otherReadSeq: leidoHasta,
-                    otherDeliveredSeq: entregadoHasta,
-                  })
-                : undefined
-            }
-            esGrupo={esGrupoChat}
-            nombreAutor={isPending(item) ? undefined : nombresDelGrupo.get(String(item.senderId))}
-            fotoAutor={isPending(item) ? undefined : fotosDelGrupo.get(String(item.senderId))}
-            onVerImagen={alVerImagen}
-            onSeleccionar={seleccion.alternar}
-            enSeleccion={seleccion.enSeleccion}
-            onResponder={alResponder}
-            citado={isPending(item) ? null : (citados.get(item.seq) ?? null)}
-            seleccionado={!isPending(item) && (seleccion.elegidos.has(item.seq) || item.seq === resaltado || item.seq === busqueda.seqActual)}
-            onFallido={alFallido}
-            onTocarCita={alTocarCita}
-          />
-        </>
-      );
-    },
-    [rows, credential.userId, leidoHasta, entregadoHasta, esGrupoChat, encrypted, nombresDelGrupo, fotosDelGrupo, alVerImagen, alResponder, citados, seleccion.elegidos, seleccion.enSeleccion, seleccion.alternar, resaltado, busqueda.seqActual, divisorSeq, noLeidosAlAbrir, alFallido, alTocarCita]
-  );
+  const dibujarFila = useDibujarFila({
+    rows,
+    yo: credential.userId,
+    jwt: credential.jwt,
+    encrypted: Boolean(encrypted),
+    esGrupo: esGrupoChat,
+    nombres: nombresDelGrupo,
+    fotos: fotosDelGrupo,
+    leidoHasta,
+    entregadoHasta,
+    divisorSeq,
+    noLeidosAlAbrir,
+    citados,
+    elegidos: seleccion.elegidos,
+    enSeleccion: seleccion.enSeleccion,
+    resaltado,
+    seqBuscado: busqueda.seqActual,
+    onVerImagen: alVerImagen,
+    onSeleccionar: seleccion.alternar,
+    onResponder: alResponder,
+    onFallido: alFallido,
+    onTocarCita: alTocarCita,
+  });
 
   // Con el teclado abierto no hay barra de navegación debajo: el margen del pie
   // dejaba un hueco entre el campo y el teclado (auditoría del 16/10).
@@ -421,19 +403,10 @@ export function ChatScreen({
       // y sin `flex: 1` la pantalla se aplastaba.
       style={{ flex: 1, backgroundColor: colores['fondo-chat'] }}
       /**
-       * `padding` TAMBIEN en Android, y no es un descuido.
-       *
-       * Android trae `adjustResize` en el manifiesto, que historicamente
-       * alcanzaba: el sistema encogia la ventana y el compositor subia solo. Pero
-       * este proyecto tiene `edgeToEdgeEnabled=true` (Expo SDK 57), y con
-       * edge-to-edge la ventana YA NO se encoge — la app dibuja por debajo del
-       * teclado. Resultado: el campo de escribir desaparecia y quedaba una
-       * pantalla vacia con el teclado encima (visto por Jose el 27/08/2026,
-       * chateando con Wilson).
-       *
-       * FL12 (§49 #1) probó `KeyboardChatScrollView` + `KeyboardStickyView` para
-       * no relayoutear en cada cuadro, y se volvió atrás: tras un modal (llamada,
-       * hoja de adjuntar) la lista saltaba al principio de la conversación.
+       * `padding` también en Android: con `edgeToEdgeEnabled` (Expo 57) la
+       * ventana ya no se encoge con el teclado y el campo quedaba tapado (José,
+       * 27/08/2026). FL12 (§49 #1) probó `KeyboardChatScrollView` y se volvió
+       * atrás: tras un modal la lista saltaba al principio de la conversación.
        */
       behavior="padding"
       testID="pantalla-chat"
@@ -547,15 +520,7 @@ export function ChatScreen({
 
       <ProgramadosDelChat pendientes={programados.pendientes} onCancelar={programados.cancelar} />
 
-      {/* La barra, tal como está COMPUESTA en el diseño — y no era «los mismos
-          iconos en una fila»:
-            · el «+» va PLANO, sin círculo de fondo;
-            · hay UNA píldora larga y el emoji vive DENTRO, contra su borde;
-            · a la derecha hay UN SOLO botón circular, y es excluyente:
-              micrófono con el campo vacío, enviar apenas se escribe algo.
-          La primera versión puso los cinco controles como hermanos: entraban
-          todos, pero el campo quedaba tan angosto que el placeholder se partía
-          en dos líneas. */}
+      {/* La barra de escribir: su composición (el «+», la píldora, UN botón) se explica en `Composer`. */}
       {fueraDelGrupo ? (
         <FueraDelGrupo margenPie={tecladoAbierto ? MARGEN_CON_TECLADO : margenes.pie} />
       ) : (
@@ -572,6 +537,9 @@ export function ChatScreen({
           onAdjuntar={alAdjuntar}
           onCamara={alCamara}
           onEscribiendo={avisarEscribiendo}
+          jwt={credential.jwt}
+          conVistaPrevia={!encrypted}
+          miembros={mencionables}
           onEnviar={alEnviar}
           onProgramar={programados.abrir}
           onNotaDeVoz={alNotaDeVoz}

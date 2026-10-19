@@ -27,6 +27,7 @@ import { cambiarAjustesDeChat } from '../api/client';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useColores } from '../ui/tema';
 import { ParticipantesDelGrupo, type Miembro } from './ParticipantesDelGrupo';
+import { VisorDeFoto } from '../ui/VisorDeFoto';
 import { SeccionCompartido } from './CompartidoEnElChat';
 import { useMargenes } from '../ui/useMargenes';
 import type { ServerMessage } from './socketClient';
@@ -112,6 +113,7 @@ export function ChatDetailScreen({
   const [accionando, setAccionando] = useState(false);
   /** La hoja para elegir a quién sumar. */
   const [agregando, setAgregando] = useState(false);
+  const [viendoFoto, setViendoFoto] = useState(false);
   /** De qué participante está abierta la hoja de acciones. */
   const [menuDe, setMenuDe] = useState<Miembro | null>(null);
   const [editandoNombre, setEditandoNombre] = useState(false);
@@ -368,6 +370,7 @@ export function ChatDetailScreen({
               editable={puedoEditarInfo}
               subiendoFoto={subiendoFoto}
               onCambiarFoto={() => void cambiarFoto()}
+              onVerFoto={() => setViendoFoto(true)}
               onEditarNombre={() => setEditandoNombre(true)}
             />
 
@@ -458,6 +461,7 @@ export function ChatDetailScreen({
             />
           </ScrollView>
         )}
+        <VisorDeFoto foto={viendoFoto ? detalle?.avatarUrl : null} titulo={nombreVisible} onCerrar={() => setViendoFoto(false)} />
         <EditarNombreDeGrupo
           visible={editandoNombre}
           nombreActual={nombreVisible}

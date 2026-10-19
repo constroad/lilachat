@@ -137,6 +137,7 @@ export async function drainOutbox(): Promise<DrainReport> {
         // A qué mensaje responde, si es una respuesta. Sin esto el reply se
         // guardaba sin su cita: `buildOutboxItem` lo tenia y aca se perdia.
         replyToSeq: item.replyToSeq,
+        menciones: item.menciones,
       });
       const effect = resolveOutcome(item, outcome);
       queue = applyEffect(queue, effect);

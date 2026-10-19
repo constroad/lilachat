@@ -1,4 +1,4 @@
-import type { RefDeMensaje } from '@lilachat/shared';
+import type { MencionEnMensaje, RefDeMensaje } from '@lilachat/shared';
 import { io, type Socket } from 'socket.io-client';
 import { pausaDelSocket, queHacerConElSocket, type PausaDelSocket } from './servicioDeConexion';
 import { registrarPerf } from '../diagnostico/diagnostico';
@@ -24,6 +24,8 @@ export type ServerMessage = {
   envelope?: { v: 1; nonce: string; ciphertext: string };
   /** La encuesta o el evento que publica este mensaje (18/10): se dibuja como tarjeta. */
   ref?: RefDeMensaje;
+  /** Las @menciones del texto (18/10): se dibujan con el nombre que TÚ le tienes. */
+  menciones?: MencionEnMensaje[];
   media?: {
     mediaId: string;
     /** La miniatura, para la burbuja. */
@@ -162,6 +164,7 @@ export async function sendOverSocket(frame: {
   envelope?: { v: 1; nonce: string; ciphertext: string };
   kind?: string;
   replyToSeq?: number;
+  menciones?: MencionEnMensaje[];
 }): Promise<
   | { status: 'sent'; seq: number }
   | { status: 'duplicate'; seq: number }

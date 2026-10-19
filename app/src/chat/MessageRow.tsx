@@ -7,7 +7,7 @@ import { AVATAR_DE_AUTOR, colorDeAutor, dondeVaLaHora, mostrarAutor, radiosDeBur
 import { DeslizarParaResponder } from './DeslizarParaResponder';
 import { LineaDeLlamada } from './LineaDeLlamada';
 import { CitaDeRespuesta } from './CitaDeRespuesta';
-import { TextoConEnlaces } from './TextoConEnlaces';
+import { TextoDelMensaje } from './TextoDelMensaje';
 import { primerEnlace } from './enlaces';
 import { TarjetaDeArchivo } from './TarjetaDeArchivo';
 import { VistaPreviaDeEnlace } from './VistaPreviaDeEnlace';
@@ -72,6 +72,7 @@ function FilaDeMensaje({
   myUserId,
   jwt,
   conVistaPrevia = false,
+  nombres,
   entrega,
   esGrupo = false,
   nombreAutor,
@@ -93,6 +94,8 @@ function FilaDeMensaje({
   jwt?: string;
   /** La tarjeta de los enlaces (FL13d). Apagada en los chats secretos: el server no ve sus links. */
   conVistaPrevia?: boolean;
+  /** Los nombres del grupo, para dibujar cada @mención con el tuyo (18/10). */
+  nombres?: ReadonlyMap<string, string>;
   /**
    * El check, ya resuelto y SOLO en las propias (FL12, §49 #3). Antes llegaban
    * los cursores a todas las filas: cada acuse cambiaba una prop en todas y el
@@ -375,7 +378,7 @@ function FilaDeMensaje({
                 y la hora va encima, abajo a la derecha. Cero renglón extra. */}
             <View className="px-3 pb-1.5 pt-1.5">
               <Text className={`text-[15px] leading-[21px] ${mine ? 'text-on-burbuja-propia' : 'text-on-burbuja-ajena'}`}>
-                <TextoConEnlaces texto={item.body} enBurbujaPropia={mine} />
+                <TextoDelMensaje texto={item.body} menciones={isPending(item) ? undefined : item.menciones} nombres={nombres} yo={myUserId} enBurbujaPropia={mine} />
                 {/* El relleno es la MISMA hora, al mismo tamaño e invisible:
                     reserva exactamente su ancho (con espacios de nbsp, la hora
                     se montaba sobre los mensajes cortos). */}

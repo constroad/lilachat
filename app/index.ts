@@ -1,4 +1,5 @@
 import { registerRootComponent } from 'expo';
+import { LogBox } from 'react-native';
 import {
   instalarCapturaGlobal,
   instalarDetectorDeTrabas,
@@ -15,5 +16,9 @@ import App from './App';
 instalarCapturaGlobal();
 instalarDetectorDeTrabas();
 instalarEnvioAutomatico();
+
+// El panel de emojis (`rn-emoji-keyboard`) usa `InteractionManager`, que RN
+// deprecó: funciona igual y el aviso solo tapa la barra de escribir en desarrollo.
+LogBox.ignoreLogs(['InteractionManager has been deprecated']);
 
 registerRootComponent(App);

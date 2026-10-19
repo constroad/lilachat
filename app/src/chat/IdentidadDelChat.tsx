@@ -21,6 +21,7 @@ export function IdentidadDelChat({
   editable,
   subiendoFoto,
   onCambiarFoto,
+  onVerFoto,
   onEditarNombre,
 }: {
   nombre: string;
@@ -29,28 +30,38 @@ export function IdentidadDelChat({
   editable: boolean;
   subiendoFoto: boolean;
   onCambiarFoto: () => void;
+  /** Tocar la foto la muestra entera (18/10); la cámara es la que la cambia. */
+  onVerFoto: () => void;
   onEditarNombre: () => void;
 }) {
   const colores = useColores();
 
   return (
     <View className="items-center px-6 pt-6">
-      <Pressable
-        testID="btn-foto-grupo"
-        accessibilityLabel="Cambiar la foto del grupo"
-        disabled={!editable || subiendoFoto}
-        onPress={onCambiarFoto}
-      >
-        <Avatar nombre={nombre} foto={avatarUrl} tamano={AVATAR_DEL_DETALLE} />
+      <View style={{ width: AVATAR_DEL_DETALLE, height: AVATAR_DEL_DETALLE }}>
+        <Pressable
+          testID="btn-ver-foto-chat"
+          accessibilityLabel="Ver la foto"
+          disabled={!avatarUrl && (!editable || subiendoFoto)}
+          onPress={avatarUrl ? onVerFoto : onCambiarFoto}
+        >
+          <Avatar nombre={nombre} foto={avatarUrl} tamano={AVATAR_DEL_DETALLE} />
+        </Pressable>
         {/* La cámara ENCIMA de la foto: sin esa marca, un avatar redondo no se
-            lee como algo que se puede tocar, y la foto del grupo se queda sin
-            cambiar para siempre. */}
+            lee como algo que se puede cambiar. */}
         {editable ? (
-          <View className="absolute bottom-0 right-0 h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-primary">
+          <Pressable
+            testID="btn-foto-grupo"
+            accessibilityLabel="Cambiar la foto del grupo"
+            disabled={subiendoFoto}
+            onPress={onCambiarFoto}
+            hitSlop={8}
+            className="absolute bottom-0 right-0 h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-primary"
+          >
             <Camera size={15} color={colores['on-primary']} />
-          </View>
+          </Pressable>
         ) : null}
-      </Pressable>
+      </View>
 
       {subiendoFoto ? (
         <Text testID="subiendo-foto" className="mt-2 text-[12px] text-on-surface-variant">

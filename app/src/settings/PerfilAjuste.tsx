@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
-import { Camera, Check, Pencil, X } from 'lucide-react-native';
+import { Camera, Check, Pencil, Trash2, X } from 'lucide-react-native';
 import { MAX_NOMBRE_DE_PERFIL, formatPhoneDisplay, validarNombreDePerfil } from '@lilachat/shared';
 import { guardarNombreDePerfil, quitarFotoDePerfil } from '../api/client';
 import type { Credential } from '../auth/credentialStore';
@@ -8,6 +8,7 @@ import { elegirFotoRedonda } from '../chat/fotoDeGrupo';
 import { aplicarPerfil, subirFotoDePerfil, usePerfilPropio } from './perfilPropio';
 import { useColores } from '../ui/tema';
 import { Avatar } from '../ui/Avatar';
+import { VisorDeFoto } from '../ui/VisorDeFoto';
 
 const AVATAR = 64;
 
@@ -24,6 +25,7 @@ export function PerfilAjuste({ credential }: { credential: Credential }) {
   const [nombre, setNombre] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState<'nombre' | 'foto' | null>(null);
+  const [viendoFoto, setViendoFoto] = useState(false);
 
   const empezarEdicion = () => {
     setNombre(perfil.name ?? '');
@@ -77,13 +79,13 @@ export function PerfilAjuste({ credential }: { credential: Credential }) {
 
   return (
     <View className="flex-row items-center gap-4 rounded-2xl border border-outline/10 bg-surface p-4" testID="ajuste-perfil">
-      <View className="items-center">
+      <View style={{ width: AVATAR, height: AVATAR }}>
+        {/* Tocar la foto la MUESTRA, como WhatsApp (José, 18/10); sin foto, elige una. */}
         <Pressable
           testID="btn-foto-perfil"
-          accessibilityLabel="Cambiar tu foto"
-          onPress={() => void cambiarFoto()}
+          accessibilityLabel={perfil.avatarUrl ? 'Ver tu foto' : 'Ponerte una foto'}
+          onPress={() => (perfil.avatarUrl ? setViendoFoto(true) : void cambiarFoto())}
           disabled={ocupado !== null}
-          style={{ width: AVATAR, height: AVATAR }}
         >
           <Avatar testID="foto-perfil" nombre={perfil.name?.trim() ?? ''} foto={perfil.avatarUrl} tamano={AVATAR} />
           {ocupado === 'foto' ? (
@@ -91,16 +93,43 @@ export function PerfilAjuste({ credential }: { credential: Credential }) {
               <ActivityIndicator color="white" />
             </View>
           ) : null}
-          <View className="absolute -bottom-0.5 -right-0.5 h-6 w-6 items-center justify-center rounded-full border-2 border-surface bg-primary">
-            <Camera size={12} color={colores['on-primary']} />
-          </View>
         </Pressable>
-        {perfil.avatarUrl ? (
-          <Pressable testID="btn-quitar-foto-perfil" onPress={quitarFoto} disabled={ocupado !== null} className="min-h-[44px] justify-center px-2">
-            <Text className="text-[13px] font-semibold text-on-surface-variant">Quitar</Text>
-          </Pressable>
-        ) : null}
+        <Pressable
+          testID="btn-cambiar-foto-perfil"
+          accessibilityLabel="Cambiar tu foto"
+          onPress={() => void cambiarFoto()}
+          disabled={ocupado !== null}
+          hitSlop={8}
+          className="absolute -bottom-0.5 -right-0.5 h-6 w-6 items-center justify-center rounded-full border-2 border-surface bg-primary"
+        >
+          <Camera size={12} color={colores['on-primary']} />
+        </Pressable>
       </View>
+      <VisorDeFoto
+        foto={viendoFoto ? perfil.avatarUrl : null}
+        titulo="Tu foto"
+        onCerrar={() => setViendoFoto(false)}
+        acciones={[
+          {
+            testID: 'visor-cambiar-foto',
+            texto: 'Cambiar',
+            icono: <Camera size={22} color="white" />,
+            onPress: () => {
+              setViendoFoto(false);
+              void cambiarFoto();
+            },
+          },
+          {
+            testID: 'visor-quitar-foto',
+            texto: 'Quitar',
+            icono: <Trash2 size={22} color="white" />,
+            onPress: () => {
+              setViendoFoto(false);
+              quitarFoto();
+            },
+          },
+        ]}
+      />
 
       <View className="min-w-0 flex-1">
         {editando ? (

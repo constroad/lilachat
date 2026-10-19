@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { agendaPorTelefono, suscribirAgenda } from '../contacts/agendaEnMemoria';
 import { getSocket } from './socketClient';
+import type { MiembroMencionable } from './useMenciones';
 import { fotosPorMiembro, membresiaPorRespuesta, nombresPorMiembro, type MiembroConNombre } from './nombresDelGrupo';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
@@ -20,7 +21,12 @@ export function useGrupo(
   chatId: string,
   jwt: string,
   esGrupo: boolean
-): { nombres: Map<string, string>; fotos: Map<string, string>; soyMiembro: boolean | null } {
+): {
+  nombres: Map<string, string>;
+  fotos: Map<string, string>;
+  soyMiembro: boolean | null;
+  mencionables: (yo: string) => MiembroMencionable[];
+} {
   const agenda = useSyncExternalStore(suscribirAgenda, agendaPorTelefono, agendaPorTelefono);
   const [miembros, setMiembros] = useState<MiembroConNombre[]>(() => cache.get(chatId) ?? []);
   const [soyMiembro, setSoyMiembro] = useState<boolean | null>(null);
@@ -68,5 +74,8 @@ export function useGrupo(
 
   const nombres = useMemo(() => nombresPorMiembro(miembros, agenda), [miembros, agenda]);
   const fotos = useMemo(() => fotosPorMiembro(miembros), [miembros]);
-  return { nombres, fotos, soyMiembro };
+  /** A quiénes se puede mencionar con «@» (18/10): los del grupo, sin mí. */
+  const lista = useMemo(() => [...nombres].map(([id, nombre]) => ({ id, nombre, foto: fotos.get(id) })), [nombres, fotos]);
+  const mencionables = useCallback((yo: string) => lista.filter((uno) => uno.id !== yo), [lista]);
+  return { nombres, fotos, soyMiembro, mencionables };
 }

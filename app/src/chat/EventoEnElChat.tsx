@@ -6,6 +6,7 @@ import { agendaGet, agendaPost, type AgendaEvent } from '../agenda/agendaApi';
 import { BotonesDeRsvp } from '../agenda/BotonesDeRsvp';
 import { resumenDeRsvp } from '../agenda/eventos';
 import { useColores } from '../ui/tema';
+import { useTarjetaViva } from './useTarjetaViva';
 
 /** Lo último que se vio de cada evento, para que la celda reciclada no parpadee. `null` = ya no está. */
 const eventosVistos = new Map<string, AgendaEvent | null>();
@@ -29,12 +30,17 @@ export function EventoEnElChat({ eventId, jwt }: { eventId: string; jwt: string 
       eventosVistos.set(eventId, respuesta.data.event);
       setEvento(respuesta.data.event);
       setFallo(false);
+    } else if (respuesta.status === 404) {
+      // Cancelado (o ya no lo veo): lo dice, en vez de ofrecer reintentar.
+      eventosVistos.set(eventId, null);
+      setEvento(null);
     } else setFallo(true);
   }, [eventId, jwt]);
 
   useEffect(() => {
     void cargar();
   }, [cargar]);
+  useTarjetaViva('evento', eventId, cargar);
 
   const responder = async (rsvp: Rsvp) => {
     if (enviando) return;

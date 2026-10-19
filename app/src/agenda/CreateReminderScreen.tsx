@@ -3,8 +3,8 @@ import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { Bell, Send, Trash2, X } from 'lucide-react-native';
 import type { Recurrence } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
-import { agendaDelete, agendaPatch, agendaPost, publicarRecordatorio, subirImagenDeRecordatorio, type AgendaReminder } from './agendaApi';
-import { crearRecordatorio } from './guardarRecordatorio';
+import { agendaDelete, agendaPatch, agendaPost, publicarRecordatorio, quitarImagenDeRecordatorio, subirImagenDeRecordatorio, type AgendaReminder } from './agendaApi';
+import { crearRecordatorio, editarRecordatorio } from './guardarRecordatorio';
 import { ImagenDeRecordatorio } from './ImagenDeRecordatorio';
 import type { FotoElegida } from '../chat/fotoDeGrupo';
 import { FilledField, PrimaryAction, SectionLabel } from './createUi';
@@ -63,6 +63,8 @@ export function CreateReminderScreen({
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [imagen, setImagen] = useState<FotoElegida | null>(null);
+  /** Al editar: quitar la imagen que ya tenía. */
+  const [quitarImagen, setQuitarImagen] = useState(false);
 
   const submit = async () => {
     if (saving) return;
@@ -94,14 +96,19 @@ export function CreateReminderScreen({
       }
     );
 
-  /** Editar: los campos y, si se eligió una, la imagen nueva. */
-  const guardarEdicion = async (id: string, cuerpo: Cuerpo): Promise<{ ok: true } | { ok: false; motivo: string }> => {
-    const r = await agendaPatch<{ id?: string }>(`/reminders/${id}`, credential.jwt, cuerpo);
-    if (!r.ok) return { ok: false, motivo: r.message ?? 'No se pudo guardar.' };
-    if (!imagen) return { ok: true };
-    const subida = await subirImagenDeRecordatorio(id, credential.jwt, imagen);
-    return subida.ok ? { ok: true } : { ok: false, motivo: `Se guardó, pero la imagen no subió: ${subida.motivo}` };
-  };
+  /** Editar: los campos y la imagen —nueva, quitada o igual— (`guardarRecordatorio.ts`). */
+  const guardarEdicion = (id: string, cuerpo: Cuerpo) =>
+    editarRecordatorio(
+      { imagen: imagen ? 'nueva' : quitarImagen && editando?.imageUrl ? 'quitar' : 'igual' },
+      {
+        guardar: async () => {
+          const r = await agendaPatch<{ id?: string }>(`/reminders/${id}`, credential.jwt, cuerpo);
+          return r.ok ? { ok: true } : { ok: false, motivo: r.message ?? 'No se pudo guardar.' };
+        },
+        subirImagen: () => subirImagenDeRecordatorio(id, credential.jwt, imagen!),
+        quitarImagen: () => quitarImagenDeRecordatorio(id, credential.jwt),
+      }
+    );
 
   const eliminar = () => {
     if (!editando) return;
@@ -175,7 +182,12 @@ export function CreateReminderScreen({
           </View>
           {grupo ? (
             <View className="mt-2">
-              <ImagenDeRecordatorio foto={imagen} onCambiar={setImagen} />
+              <ImagenDeRecordatorio
+                foto={imagen}
+                onCambiar={setImagen}
+                actual={quitarImagen ? undefined : editando?.imageUrl}
+                onQuitarActual={() => setQuitarImagen(true)}
+              />
             </View>
           ) : null}
 

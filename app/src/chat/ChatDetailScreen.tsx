@@ -436,7 +436,8 @@ export function ChatDetailScreen({
             {esGrupo ? (
               <RecordatoriosDelGrupo
                 chatId={chatId}
-                jwt={credential.jwt}
+                nombreDelGrupo={nombreVisible}
+                credential={credential}
                 soyAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')}
               />
             ) : null}

@@ -116,6 +116,10 @@ export const recordatoriosDelGrupo = (chatId: string, jwt: string) =>
 export const publicarRecordatorio = (reminderId: string, jwt: string) =>
   agendaPost<Record<string, never>>(`/reminders/${reminderId}/publicar`, jwt, {});
 
+/** Quitar la imagen al editar un recordatorio del grupo. */
+export const quitarImagenDeRecordatorio = (reminderId: string, jwt: string) =>
+  agendaDelete<Record<string, never>>(`/reminders/${reminderId}/imagen`, jwt);
+
 /** La imagen de un recordatorio del grupo: se sube y se guarda en un request. */
 export function subirImagenDeRecordatorio(reminderId: string, jwt: string, foto: FotoElegida) {
   return subirFotoRedonda({ url: `${BASE_URL}/api/agenda/reminders/${reminderId}/imagen`, jwt, foto });

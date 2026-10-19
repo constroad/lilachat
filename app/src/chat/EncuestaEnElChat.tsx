@@ -4,6 +4,7 @@ import { agendaGet, type AgendaPoll } from '../agenda/agendaApi';
 import { TarjetaDeEncuesta } from '../agenda/TarjetaDeEncuesta';
 import { useAccionesDeEncuesta } from '../agenda/useAccionesDeEncuesta';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
+import { useTarjetaViva } from './useTarjetaViva';
 
 /**
  * Lo último que se vio de cada encuesta: la celda se recicla al scrollear y
@@ -26,6 +27,10 @@ export function EncuestaEnElChat({ pollId, jwt, yo }: { pollId: string; jwt: str
       encuestasVistas.set(pollId, respuesta.data.poll);
       setPoll(respuesta.data.poll);
       setFallo(false);
+    } else if (respuesta.status === 404) {
+      // Borrada (o ya no la veo): lo dice, en vez de ofrecer reintentar para siempre.
+      encuestasVistas.set(pollId, null);
+      setPoll(null);
     } else setFallo(true);
   }, [pollId, jwt]);
 
@@ -33,6 +38,7 @@ export function EncuestaEnElChat({ pollId, jwt, yo }: { pollId: string; jwt: str
   useEffect(() => {
     void cargar();
   }, [cargar]);
+  useTarjetaViva('encuesta', pollId, cargar);
 
   const reemplazar = (id: string, nueva: AgendaPoll | null) => {
     encuestasVistas.set(id, nueva);

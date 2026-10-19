@@ -2,6 +2,7 @@ import type { MencionEnMensaje, RefDeMensaje } from '@lilachat/shared';
 import { io, type Socket } from 'socket.io-client';
 import { pausaDelSocket, queHacerConElSocket, type PausaDelSocket } from './servicioDeConexion';
 import { registrarPerf } from '../diagnostico/diagnostico';
+import { avisarTarjeta, refrescarTodas } from './tarjetasVivas';
 
 /**
  * El socket de la app. Un ÚNICO socket para toda la sesión: abrir uno por
@@ -104,7 +105,11 @@ export function connectSocket(token: string): Socket {
   });
   socket.on('connect', () => {
     for (const listener of alConectarListeners) listener();
+    // Lo que cambió con el socket pausado: las tarjetas montadas se vuelven a pedir.
+    refrescarTodas();
   });
+  // Encuestas, eventos y recordatorios del grupo en vivo (19/10).
+  socket.on('ref.changed', avisarTarjeta);
   return socket;
 }
 

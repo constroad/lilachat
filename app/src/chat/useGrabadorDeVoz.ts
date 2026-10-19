@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import {
+  AudioModule,
   getRecordingPermissionsAsync,
   RecordingPresets,
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
-  useAudioRecorder,
+  type AudioRecorder,
 } from 'expo-audio';
 import * as FileSystem from 'expo-file-system/legacy';
-import { esVozUsable } from '@lilachat/shared';
-import { ondaDesdeMuestras } from './ondaDeVoz';
+import { esVozUsable, ondaDesdeMuestras } from '@lilachat/shared';
+import { opcionesNativasDeGrabacion } from './opcionesDeGrabacion';
 
 /** Con la medición del nivel encendida: de ahí sale la onda (FL9). Fija: el hook la compara. */
 const OPCIONES_DE_GRABACION = { ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true };
@@ -52,7 +54,25 @@ export type EstadoDeGrabacion =
 export type NotaGrabada = { uri: string; mime: string; ms: number; bytes: number; onda?: number[] };
 
 export function useGrabadorDeVoz() {
-  const grabador = useAudioRecorder(OPCIONES_DE_GRABACION);
+  /**
+   * El grabador nativo se crea recién al GRABAR (19/10). Con `useAudioRecorder`
+   * nacía al montar la barra, y si el chat se montaba mientras Android
+   * recreaba la actividad, el constructor fallaba y se caía la pantalla entera
+   * («the current activity is no longer available»). Ahora ese fallo es un
+   * «No se pudo grabar» y el chat sigue.
+   */
+  const grabadorRef = useRef<AudioRecorder | null>(null);
+  const obtenerGrabador = (): AudioRecorder => {
+    grabadorRef.current ??= new AudioModule.AudioRecorder(opcionesNativasDeGrabacion(OPCIONES_DE_GRABACION, Platform.OS));
+    return grabadorRef.current;
+  };
+  useEffect(
+    () => () => {
+      grabadorRef.current?.release();
+      grabadorRef.current = null;
+    },
+    []
+  );
   const [estado, setEstado] = useState<EstadoDeGrabacion>({ fase: 'quieto' });
   const desde = useRef(0);
   // En un ref y no solo en el estado: quien suelta el micrófono llama a
@@ -71,7 +91,7 @@ export function useGrabadorDeVoz() {
     if (estado.fase !== 'grabando') return;
     let segundoMostrado = -1;
     const t = setInterval(() => {
-      const nivel = grabador.getStatus().metering;
+      const nivel = grabadorRef.current?.getStatus().metering;
       if (typeof nivel === 'number') muestras.current.push(nivel);
       // La barra se redibuja solo cuando cambia el segundo que muestra.
       const ms = Date.now() - desde.current;
@@ -95,6 +115,7 @@ export function useGrabadorDeVoz() {
       // Sin esto Android graba en silencio: el modo por defecto no habilita la
       // captura y el archivo sale vacío.
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      const grabador = obtenerGrabador();
       await grabador.prepareToRecordAsync();
       muestras.current = [];
       grabador.record();
@@ -118,6 +139,8 @@ export function useGrabadorDeVoz() {
     const ms = Date.now() - desde.current;
     setEstado({ fase: 'quieto' });
 
+    const grabador = grabadorRef.current;
+    if (!grabador) return null;
     try {
       await grabador.stop();
       // Volver a dejar el audio como estaba: con `allowsRecording` puesto, en

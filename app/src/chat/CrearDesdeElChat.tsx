@@ -2,6 +2,10 @@ import type { Credential } from '../auth/credentialStore';
 import { CreateEventScreen } from '../agenda/CreateEventScreen';
 import { CreatePollScreen } from '../agenda/CreatePollScreen';
 import { CreateReminderScreen } from '../agenda/CreateReminderScreen';
+import type { AgendaReminder } from '../agenda/agendaApi';
+
+/** Qué se abre: crear algo, o editar un recordatorio del grupo (19/10). */
+export type QueSeCrea = 'event' | 'poll' | 'reminder' | { recordatorio: AgendaReminder } | null;
 
 /**
  * Crear un evento o una encuesta desde la conversación (salió de
@@ -9,12 +13,15 @@ import { CreateReminderScreen } from '../agenda/CreateReminderScreen';
  * dónde.
  */
 export function CrearDesdeElChat(props: {
-  creando: 'event' | 'poll' | 'reminder' | null;
+  creando: QueSeCrea;
   credential: Credential;
   chat: { id: string; name: string };
   onCerrar: () => void;
 }) {
   if (props.creando === null) return null;
+  if (typeof props.creando === 'object') {
+    return <CreateReminderScreen visible credential={props.credential} grupo={props.chat} editando={props.creando.recordatorio} onClose={props.onCerrar} onCreated={props.onCerrar} />;
+  }
   // El recordatorio del grupo (19/10) vive en ESTE grupo y le suena a todos.
   if (props.creando === 'reminder') {
     return <CreateReminderScreen visible credential={props.credential} grupo={props.chat} onClose={props.onCerrar} onCreated={props.onCerrar} />;

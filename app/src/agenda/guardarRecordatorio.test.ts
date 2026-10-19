@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { crearRecordatorio, type PasosDeCreacion } from './guardarRecordatorio';
+import { crearRecordatorio, editarRecordatorio, type PasosDeCreacion, type PasosDeEdicion } from './guardarRecordatorio';
 
 /**
  * E2E del 19/10: la tarjeta del grupo salió sin la imagen, porque el chat se
@@ -75,5 +75,63 @@ describe('crearRecordatorio', () => {
     await crearRecordatorio({ conImagen: true, delGrupo: false }, p);
 
     expect(llamadas).toEqual(['crear:publicando', 'subir:r1']);
+  });
+});
+
+/** José, 19/10: «creé el recordatorio grupal y no hay cómo editarlo». */
+describe('editarRecordatorio', () => {
+  function pasosDeEdicion(sobre: Partial<PasosDeEdicion> = {}) {
+    const llamadas: string[] = [];
+    const base: PasosDeEdicion = {
+      guardar: async () => {
+        llamadas.push('guardar');
+        return { ok: true };
+      },
+      subirImagen: async () => {
+        llamadas.push('subir');
+        return { ok: true };
+      },
+      quitarImagen: async () => {
+        llamadas.push('quitar');
+        return { ok: true };
+      },
+    };
+    return { llamadas, pasos: { ...base, ...sobre } };
+  }
+
+  it('solo los campos: un paso', async () => {
+    const { llamadas, pasos } = pasosDeEdicion();
+
+    expect(await editarRecordatorio({ imagen: 'igual' }, pasos)).toEqual({ ok: true });
+    expect(llamadas).toEqual(['guardar']);
+  });
+
+  it('con imagen nueva: guarda y la sube', async () => {
+    const { llamadas, pasos } = pasosDeEdicion();
+
+    await editarRecordatorio({ imagen: 'nueva' }, pasos);
+
+    expect(llamadas).toEqual(['guardar', 'subir']);
+  });
+
+  it('quitando la que tenía: guarda y la quita', async () => {
+    const { llamadas, pasos } = pasosDeEdicion();
+
+    await editarRecordatorio({ imagen: 'quitar' }, pasos);
+
+    expect(llamadas).toEqual(['guardar', 'quitar']);
+  });
+
+  it('si guardar falla, no toca la imagen', async () => {
+    const { llamadas, pasos } = pasosDeEdicion({ guardar: async () => ({ ok: false, motivo: 'Esa hora ya pasó' }) });
+
+    expect(await editarRecordatorio({ imagen: 'nueva' }, pasos)).toEqual({ ok: false, guardado: false, motivo: 'Esa hora ya pasó' });
+    expect(llamadas).toEqual([]);
+  });
+
+  it('si la imagen falla, lo dice: los campos sí quedaron', async () => {
+    const { pasos } = pasosDeEdicion({ subirImagen: async () => ({ ok: false, motivo: 'Muy pesada' }) });
+
+    expect(await editarRecordatorio({ imagen: 'nueva' }, pasos)).toEqual({ ok: false, guardado: true, motivo: 'Se guardó, pero la imagen no subió: Muy pesada' });
   });
 });

@@ -7,21 +7,32 @@ import { useColores } from '../ui/tema';
 /** La imagen de un recordatorio del grupo (19/10): 16:9, como una portada. */
 const PROPORCION = 16 / 9;
 
-/** Elegir (o quitar) la imagen del recordatorio del grupo. Se sube al guardar. */
-export function ImagenDeRecordatorio(props: { foto: FotoElegida | null; onCambiar: (foto: FotoElegida | null) => void }) {
+/**
+ * Elegir (o quitar) la imagen del recordatorio del grupo. Se sube al guardar.
+ * Al editar, `actual` es la que ya tiene: se ve, y la X la quita.
+ */
+export function ImagenDeRecordatorio(props: {
+  foto: FotoElegida | null;
+  onCambiar: (foto: FotoElegida | null) => void;
+  actual?: string;
+  onQuitarActual?: () => void;
+}) {
   const colores = useColores();
   const elegir = async () => {
     const r = await elegirFotoRedonda({ titulo: 'Imagen del recordatorio', mensaje: 'Una foto que acompañe el aviso.', nombrePorDefecto: 'recordatorio.jpg', aspecto: [16, 9] });
     if (r.tipo === 'foto') props.onCambiar(r.foto);
   };
-  if (props.foto) {
+  const uri = props.foto?.uri ?? props.actual;
+  if (uri) {
     return (
       <View testID="imagen-recordatorio" className="overflow-hidden rounded-xl">
-        <Image source={{ uri: props.foto.uri }} style={{ width: '100%', aspectRatio: PROPORCION }} contentFit="cover" />
+        <Pressable onPress={() => void elegir()} accessibilityLabel="Cambiar la imagen">
+          <Image source={{ uri }} style={{ width: '100%', aspectRatio: PROPORCION }} contentFit="cover" />
+        </Pressable>
         <Pressable
           testID="btn-quitar-imagen-recordatorio"
           accessibilityLabel="Quitar la imagen"
-          onPress={() => props.onCambiar(null)}
+          onPress={() => (props.foto ? props.onCambiar(null) : props.onQuitarActual?.())}
           className="absolute right-2 top-2 h-9 w-9 items-center justify-center rounded-full bg-black/50"
         >
           <X size={18} color="white" />

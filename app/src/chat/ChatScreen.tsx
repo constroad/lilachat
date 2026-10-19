@@ -7,7 +7,9 @@ import { KeyboardAvoidingView, useKeyboardState } from 'react-native-keyboard-co
 import type { MencionEnMensaje } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { AttachSheet } from './AttachSheet';
-import { CrearDesdeElChat } from './CrearDesdeElChat';
+import { CrearDesdeElChat, type QueSeCrea } from './CrearDesdeElChat';
+import { AccionesDeTarjetaContext } from './accionesDeTarjeta';
+import type { AgendaReminder } from '../agenda/agendaApi';
 import { CatchUpBanner } from './CatchUpBanner';
 import { cuantosParaPonerAlDia } from './ponerAlDia';
 import { SecretChatBanner } from '../crypto/SecretChatBanner';
@@ -147,7 +149,7 @@ export function ChatScreen({
   // Mensajes programados (F11): long-press en enviar abre el modal.
   const programados = useProgramados({ jwt: credential.jwt, chatId, alProgramado: () => composerRef.current?.limpiar() });
   const [attachOpen, setAttachOpen] = useState(false);
-  const [creando, setCreando] = useState<'event' | 'poll' | 'reminder' | null>(null);
+  const [creando, setCreando] = useState<QueSeCrea>(null);
   const [falloCifrado, setFalloCifrado] = useState(false);
   // Las llamadas son de la sesión (FL8): suenan en cualquier pantalla.
   const { llamar } = useLlamadas();
@@ -218,6 +220,9 @@ export function ChatScreen({
   const mencionables = useMemo(() => (esGrupoChat ? grupo.mencionables(credential.userId) : undefined), [esGrupoChat, grupo.mencionables, credential.userId]);
   /** Me sacaron del grupo (FL9d): se lee, pero ya no se escribe. */
   const fueraDelGrupo = esGrupoChat && grupo.soyMiembro === false;
+  const soyAdminDelGrupo = esGrupoChat && grupo.soyAdmin(credential.userId);
+  // Un admin edita el recordatorio del grupo tocando su tarjeta (José, 19/10).
+  const accionesDeTarjeta = useMemo(() => ({ editarRecordatorio: soyAdminDelGrupo ? (recordatorio: AgendaReminder) => setCreando({ recordatorio }) : undefined }), [soyAdminDelGrupo]);
   // Fuera del grupo no se listan miembros: ya no es «QA Ana, Vos».
   const subtitulo = fueraDelGrupo ? '' : esBorrador ? 'Solo tú lo ves' : subtituloDelChat({
     esGrupo: esGrupoChat,
@@ -241,8 +246,7 @@ export function ChatScreen({
    */
   const listaRef = useRef<FlashListRef<Row> | null>(null);
 
-  // Memoizadas: sin esto cada render (una tecla, un «escribiendo») rearmaba
-  // las filas y la lista volvía a dibujar todas las burbujas (FL2).
+  // Memoizadas: cada render (una tecla, un «escribiendo») redibujaba todas las burbujas (FL2).
   const rows: Row[] = useMemo(
     () => [
       // «Eliminar para mí» (FL9): ocultos en este teléfono.
@@ -363,11 +367,7 @@ export function ChatScreen({
   const { alResponder } = respuesta;
   const alFallido = useMensajeFallido(archivosEnCola);
 
-  /**
-   * Una fila. Estable mientras no cambien los mensajes ni los acuses: con
-   * `MessageRow` memoizado, un mensaje nuevo dibuja SU burbuja y la de al lado
-   * (por el agrupado), no la pantalla entera (FL2).
-   */
+  // Una fila, estable mientras no cambien mensajes ni acuses: un mensaje nuevo dibuja SU burbuja (FL2).
   const dibujarFila = useDibujarFila({
     rows,
     yo: credential.userId,
@@ -392,8 +392,7 @@ export function ChatScreen({
     onTocarCita: alTocarCita,
   });
 
-  // Con el teclado abierto no hay barra de navegación debajo: el margen del pie
-  // dejaba un hueco entre el campo y el teclado (auditoría del 16/10).
+  // Teclado abierto = sin barra de navegación: el margen del pie dejaba un hueco (16/10).
   const tecladoAbierto = useKeyboardState((estado) => estado.isVisible);
 
   useAlAbrirElChat({ hayContenido: rows.length > 0, irAlInicio: alAbrir, mensajes: messages, lastSeqInicial, markRead });
@@ -487,26 +486,27 @@ export function ChatScreen({
         </Text>
       ) : null}
 
-      {/* En un chat cifrado NO se ofrece «ponme al día»: Lila no puede leerlo,
-          y un botón que siempre falla es peor que no tenerlo. */}
+      {/* En un chat cifrado NO hay «ponme al día»: Lila no puede leerlo. */}
       {encrypted ? (
         <SecretChatBanner session={secreto} />
       ) : (
         <CatchUpBanner chatId={chatId} credential={credential} unread={paraPonerAlDia} leido={leyoHastaElFinal} />
       )}
 
-      <ListaDeMensajes
-        listaRef={listaRef}
-        rows={rows}
-        mensajes={messages}
-        yo={credential.userId}
-        dibujarFila={dibujarFila}
-        onListo={alAbrir}
-        onCargarAnteriores={() => void cargarAnteriores()}
-        cargandoAnteriores={cargandoAnteriores}
-        hayAnteriores={hayAnteriores}
-        onLlegoAlFinal={() => setLeyoHastaElFinal(true)}
-      />
+      <AccionesDeTarjetaContext.Provider value={accionesDeTarjeta}>
+        <ListaDeMensajes
+          listaRef={listaRef}
+          rows={rows}
+          mensajes={messages}
+          yo={credential.userId}
+          dibujarFila={dibujarFila}
+          onListo={alAbrir}
+          onCargarAnteriores={() => void cargarAnteriores()}
+          cargandoAnteriores={cargandoAnteriores}
+          hayAnteriores={hayAnteriores}
+          onLlegoAlFinal={() => setLeyoHastaElFinal(true)}
+        />
+      </AccionesDeTarjetaContext.Provider>
 
       {subidaEnCurso !== undefined ? (
         <Text className="px-4 pb-1 text-sm text-on-surface-variant" testID="subida-progreso">
@@ -559,7 +559,7 @@ export function ChatScreen({
         onPickGallery={() => void pickFromGallery()}
         onCreateEvent={() => setCreando('event')}
         onCreatePoll={() => setCreando('poll')}
-        onCreateReminder={esGrupoChat && grupo.soyAdmin(credential.userId) ? () => setCreando('reminder') : undefined}
+        onCreateReminder={soyAdminDelGrupo ? () => setCreando('reminder') : undefined}
         onPickFile={() => void pickFile()}
       />
       <VisorDelChat

@@ -30,3 +30,30 @@ export async function crearRecordatorio(
   if (!publicado.ok) return { ok: false, guardado: true, motivo: 'Se guardó, pero no salió en el chat. Revisa tu conexión.' };
   return { ok: true };
 }
+
+export type PasosDeEdicion = {
+  guardar: () => Promise<{ ok: true } | { ok: false; motivo: string }>;
+  subirImagen: () => Promise<{ ok: true } | { ok: false; motivo: string }>;
+  quitarImagen: () => Promise<{ ok: boolean }>;
+};
+
+/**
+ * Editar (José, 19/10): primero los campos, después la imagen —nueva, quitada
+ * o igual—. Si los campos fallan no se toca la imagen; si la imagen falla, se
+ * dice que lo demás sí quedó.
+ */
+export async function editarRecordatorio(
+  { imagen }: { imagen: 'igual' | 'nueva' | 'quitar' },
+  pasos: PasosDeEdicion
+): Promise<ResultadoDeCreacion> {
+  const guardado = await pasos.guardar();
+  if (!guardado.ok) return { ok: false, guardado: false, motivo: guardado.motivo };
+  if (imagen === 'nueva') {
+    const subida = await pasos.subirImagen();
+    if (!subida.ok) return { ok: false, guardado: true, motivo: `Se guardó, pero la imagen no subió: ${subida.motivo}` };
+  }
+  if (imagen === 'quitar' && !(await pasos.quitarImagen()).ok) {
+    return { ok: false, guardado: true, motivo: 'Se guardó, pero la imagen no se pudo quitar.' };
+  }
+  return { ok: true };
+}

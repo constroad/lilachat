@@ -5,6 +5,8 @@ import { Bell } from 'lucide-react-native';
 import { agendaGet, type AgendaReminder } from '../agenda/agendaApi';
 import { cuandoSuena } from '../agenda/recordatorios';
 import { useColores } from '../ui/tema';
+import { useTarjetaViva } from './useTarjetaViva';
+import { useAccionesDeTarjeta } from './accionesDeTarjeta';
 
 /** Lo último que se vio de cada recordatorio, para que la celda reciclada no parpadee. `null` = ya no está. */
 const recordatoriosVistos = new Map<string, AgendaReminder | null>();
@@ -18,6 +20,7 @@ export function RecordatorioEnElChat({ reminderId, jwt }: { reminderId: string; 
   const colores = useColores();
   const [recordatorio, setRecordatorio] = useState<AgendaReminder | null | undefined>(() => recordatoriosVistos.get(reminderId));
   const [fallo, setFallo] = useState(false);
+  const { editarRecordatorio } = useAccionesDeTarjeta();
 
   const cargar = useCallback(async () => {
     const respuesta = await agendaGet<{ reminder: AgendaReminder }>(`/reminders/${reminderId}`, jwt);
@@ -34,6 +37,7 @@ export function RecordatorioEnElChat({ reminderId, jwt }: { reminderId: string; 
   useEffect(() => {
     void cargar();
   }, [cargar]);
+  useTarjetaViva('recordatorio', reminderId, cargar);
 
   if (recordatorio === null) {
     return <Text className="px-1 text-[13px] italic text-on-surface-variant">Este recordatorio ya no está.</Text>;
@@ -47,8 +51,15 @@ export function RecordatorioEnElChat({ reminderId, jwt }: { reminderId: string; 
       <View className="h-28 rounded-xl bg-surface-variant" />
     );
   }
+  // Un admin lo edita tocándolo; para los demás, la tarjeta no responde al toque.
   return (
-    <View testID={`recordatorio-en-chat-${reminderId}`} className="overflow-hidden rounded-xl border border-outline/10 bg-surface">
+    <Pressable
+      testID={`recordatorio-en-chat-${reminderId}`}
+      disabled={!editarRecordatorio}
+      onPress={() => editarRecordatorio?.(recordatorio)}
+      accessibilityLabel={editarRecordatorio ? `Editar el recordatorio ${recordatorio.title}` : undefined}
+      className="overflow-hidden rounded-xl border border-outline/10 bg-surface"
+    >
       {recordatorio.imageUrl ? (
         <Image recyclingKey={recordatorio.imageUrl} source={{ uri: recordatorio.imageUrl }} style={{ width: '100%', aspectRatio: 16 / 9 }} contentFit="cover" transition={120} />
       ) : null}
@@ -65,6 +76,6 @@ export function RecordatorioEnElChat({ reminderId, jwt }: { reminderId: string; 
         </View>
         {recordatorio.note ? <Text className="mt-1 text-[14px] leading-5 text-on-surface">{recordatorio.note}</Text> : null}
       </View>
-    </View>
+    </Pressable>
   );
 }

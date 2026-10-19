@@ -4892,6 +4892,37 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 55. FL16 — tarjetas en vivo y editar el recordatorio del grupo (19/10/2026, 0.1.99)
+
+José, 19/10: «no se editan; creé el recordatorio grupal de tomar agua y no hay
+cómo editarlo». Y un voto, un cambio o un borrado se veía recién al reabrir
+el chat: las tarjetas se pedían solo al montarse. Va en el mismo paquete que
+W0–W2 de la web («luego publicamos todo junto»).
+
+| Qué | Cómo | Dónde |
+| --- | --- | --- |
+| Aviso en vivo | Cada cambio de una tarjeta avisa `ref.changed {chatId, tipo, id}` a TODOS los miembros: voto, cierre y borrado de encuesta; respuesta, edición y cancelación de evento; edición, interruptor, imagen (poner y quitar) y borrado del recordatorio del grupo. Sale DESPUÉS de responder y nunca lanza; el personal (sin chat) no avisa | server `avisoDeTarjeta.ts` (+8 tests), `eventRoutes.ts`, `recordatoriosDeGrupo.ts`, `socket.ts` |
+| Tarjetas que escuchan | Pub/sub por `tipo:id`; al reconectar se refrescan todas (lo que pasó con el socket pausado no se pierde). Un 404 dice «ya no está», no «reintentar» | app `tarjetasVivas.ts` (+5 tests), `useTarjetaViva.ts`, `socketClient.ts`, `EncuestaEnElChat`, `EventoEnElChat`, `RecordatorioEnElChat` |
+| Editar el recordatorio del grupo | Un admin toca la tarjeta en el chat o la fila en el detalle del grupo y se abre el editor lleno: título, descripción, cuándo, repetir e imagen (ver, cambiar o quitar). Para los demás, la tarjeta no responde al toque. La lista del detalle también va en vivo | app `accionesDeTarjeta.tsx` (contexto), `CrearDesdeElChat` (`QueSeCrea`), `RecordatoriosDelGrupo`, `CreateReminderScreen`, `ImagenDeRecordatorio`, `guardarRecordatorio.ts` (`editarRecordatorio`, +5 tests); server `DELETE /reminders/:id/imagen` (+2 tests) |
+
+**E2E en el emulador (19/10):** «QA Ana» vota desde el server y la encuesta
+cambia sola; editar el recordatorio tocando la tarjeta («QA Agua 2L») la
+actualiza en el acto; Ana borra su encuesta y la tarjeta dice «ya no está»;
+desde el detalle del grupo el editor abre lleno. QA en cero.
+
+**Encontrado al probar (no es de FL16):**
+- En desarrollo, dos «r» seguidas tecleadas por `adb` con el foco fuera del
+  campo recargan la app (atajo de React Native): para el E2E, verificar el foco
+  antes de escribir. No pasa en release.
+- **«AudioRecorder.constructor rejected: the current activity is no longer
+  available»**: la barra de escribir crea la grabadora al montarse
+  (`useGrabadorDeVoz`); si el chat se monta mientras la actividad se recrea, la
+  pantalla entera cae con un error de render. Visto tras una recarga de
+  desarrollo; en release sería un cierre. **Arreglado:** el grabador se crea
+  recién al grabar (`useGrabadorDeVoz` + `opcionesDeGrabacion.ts`, +3 tests) y
+  ese fallo pasa a «No se pudo grabar». Falta grabar una nota en el emulador
+  antes de publicar.
+
 ## 54. Lilachat Web como WhatsApp Web — plan W0–W8 (19/10/2026)
 
 José, 19/10: «enfoquémonos en Lilachat web (similar a WhatsApp Web) con todas
@@ -5068,6 +5099,105 @@ primero), así que esas consolas pueden salir en la web antes que en la app.
 
 **Fuera de alcance por ahora:** leer chats secretos en la web, llamadas
 grupales, stickers y GIFs (§53), página pública sin cuenta.
+
+### 54.7 W1 — núcleo local-first (19/10/2026, publicado con 0.1.99)
+
+Hecho, con 80 tests de la web en verde (eran 15):
+
+| Pieza | Qué | Dónde |
+| --- | --- | --- |
+| Base local | Dexie, una base por usuario (`lilachat-<userId>`): `chats`, `mensajes` (`[chatId+seq]`, solo lo confirmado), `cola` (`clientKey`), `meta`. Página conciliada con `conciliarPagina`; eco que pisa la misma fila; lápida y edición | `web/src/local/baseLocal.ts`, `mensajesLocales.ts` |
+| Cola | Motor de `shared/outbox.ts` sobre IndexedDB, drenado con candado por base; reintento al volver la red, la pestaña o el socket, nunca con la pestaña oculta | `local/colaDeEnvio.ts`, `sync/useSincronizacion.ts` |
+| Sincronización | `sync.pull` por cursor al conectar (sin nada guardado no pide: el server mandaría todo); acuse de `msg.send` traducido igual que la app | `sync/sincronizar.ts`, `sync/envioPorSocket.ts` |
+| Pantalla | Consultas vivas (`dexie-react-hooks`); lista ordenada con `ordenarChats` y sin archivados; conversación **virtualizada** (`@tanstack/react-virtual`), pegada al final, página anterior al acercarse arriba sin saltos; «No se envió · Reintentar · Borrar» | `local/useBaseLocal.ts`, `chat/ListaDeMensajes.tsx`, `BurbujaDeMensaje.tsx`, `filasDeLaConversacion.ts` |
+| Shell | `App.tsx` (486 líneas) → puerta + `Shell.tsx` + `useSesion`; chat en la URL (`/c/<id>`, entiende `?chat=`); «(N) Lilachat» e insignia de la app | `Shell.tsx`, `sesion/useSesion.ts`, `chat/useChatDeLaUrl.ts`, `tituloDeLaPestana.ts` |
+| Caché vieja | La de `localStorage` (historial en claro, tope 5 MB) se borra al arrancar | `chat/cacheLocal.ts` |
+
+**Defecto encontrado:** la web leía `createdAt`, que el server nunca mandó
+(es `at`): la hora y el chip del día salían vacíos desde F6. Los tipos se
+copiaron del server (`chat/types.ts`).
+
+**E2E en el navegador (19/10, server local sin crons):** entrar por código;
+lista y chat desde la base; abre abajo; 120 mensajes con 32 nodos en el DOM;
+páginas anteriores sin saltos; enviar (✓); entrante abajo lo sigue y se marca
+leído; **sin server**: el mensaje queda con reloj, sobrevive a recargar la
+pestaña y sale solo al volver, una sola vez en la base; 375 px sin desborde;
+cerrar sesión borra la base. QA en cero.
+
+**Pendiente de W1:** virtualizar la lista de chats; nombre del autor en los grupos
+(hoy no sale, tampoco antes); «escribiendo» guarda el `userId`, no un nombre;
+qué mostrar si el navegador no deja usar IndexedDB.
+
+### 54.8 W0 — sesión endurecida, instalable y con tarjeta (19/10/2026, publicado con 0.1.99)
+
+| Pieza | Qué | Dónde |
+| --- | --- | --- |
+| Cookie del dispositivo | Con `cliente: 'web'`, el canje y la renovación ponen `lilachat_dispositivo` (`HttpOnly; SameSite=Strict; Path=/api/auth`, `Secure` por HTTPS, 400 días) y el secreto NO viaja en el cuerpo. `/session` renueva con la cookie sola; una sesión vieja con el secreto en el cuerpo se muda a la cookie; revocada (401) la borra; sin respuesta (503) la deja. `POST /auth/salir` la borra y le quita el aviso a ese navegador. La app no cambia | server `cookieDeDispositivo.ts` (+4 tests), `authRoutes.ts` (+7 tests) |
+| JWT en memoria | En `localStorage` solo el perfil (quién soy, id del navegador). Sin red al abrir: sin JWT, la pantalla sale de la base y la sesión se renueva sola al volver la red | web `api.ts`, `sesion/useSesion.ts`, `auth/AccessScreens.tsx` |
+| CSP y cabeceras | `script-src 'self'` sin `eval`, `object-src 'none'`, `frame-ancestors 'none'`, socket al mismo host, fotos y audios por https; `nosniff`, `Referrer-Policy`, `X-Frame-Options`. Solo en lo que sirve la web, no en `/api` | server `cabecerasDeSeguridad.ts` (+3 tests), `app.ts` |
+| Instalable y tarjeta | `manifest.json` con íconos 192/512 y enmascarable (el logo al 80 % para que el círculo no lo corte), `apple-touch-icon`, metas `og:*` con imagen absoluta 1200×630; el aviso del SW usa el ícono real y abre `/c/<id>` | web `public/manifest.json`, `public/icons/*`, `index.html`, `public/sw.js` |
+
+**E2E (19/10, web compilada servida por el server local):** cabeceras y
+tarjeta con `curl -A WhatsApp`; entrar por código → en `localStorage` solo
+perfil e id, la cookie invisible a JavaScript; recargar entra solo con la
+cookie y sin errores de CSP (fuentes, fotos y socket); cerrar sesión → la
+renovación da 401, sin perfil ni base local. QA en cero.
+
+**Los tests de pantalla no tenían IndexedDB:** pasaban con errores sueltos de
+Dexie. `fake-indexeddb/auto` va en `src/test/setup.ts`.
+
+**Una vez, en la suite completa del server, falló «un admin le cambia título,
+descripción y hora»** y no se repitió en nueve corridas. Si vuelve, mirar la
+hora del `startsAt` contra el reloj.
+
+### 54.9 W2 — paridad de mensajes (19/10/2026, publicado con 0.1.99)
+
+**Motores que pasaron de la app a `shared`** (web y app con las mismas
+reglas): `accionesDeMensaje`, `mensajeLargo`, `textoDelComposer` (menciones al
+escribir), `enlaces` (links, correos y celulares tocables), `ondaDeVoz` y
+`colorDeAutor`. La app ahora resuelve `@lilachat/shared` al fuente también en
+sus tests (`app/vitest.config.ts`); antes leía `shared/dist` y un motor nuevo
+daba «is not a function».
+
+| Qué | Dónde (web) |
+| --- | --- |
+| Menú por mensaje como WhatsApp Web (flecha al pasar el mouse o con foco): Responder, Copiar, Reenviar, Editar (15 min), Info, Eliminar (para todos solo lo propio; para mí oculta en este navegador) | `MenuDelMensaje`, `useAccionesSobreMensajes`, `DialogosDelMensaje`, `local/ocultos.ts`, `sync/envioPorSocket.ts` (`msg.edit`/`msg.delete` con acuse) |
+| Franja «Respondiendo a…» y «Editando» sobre el campo; Escape sale | `Composer` (`ContextoDelComposer`) |
+| Autor con su color en grupos, cita de la respuesta, @menciones con el nombre que ve cada uno («@Tú») y al escribir (flechas, Enter, Tab) | `BurbujaDeMensaje`, `TextoDelMensaje`, `SugerenciasDeMencion`, `useMencionesDelCampo`, `useDetalleDelChat` |
+| Tarjeta del enlace en la burbuja y al escribir; links tocables; «Leer más» | `useVistaPrevia`, `TarjetaDeEnlace`, `VistaPreviaAlEscribir` |
+| Fotos y archivos: elegir varios, arrastrar y soltar, pegar capturas; vista previa con pie; medidas de la foto; visor a pantalla completa con flechas y Escape | `EnviarArchivos`, `VisorDeFotos`, `mediaUpload` (pie, medidas, duración y onda **separada por comas**, como lee el server) |
+| Notas de voz: grabar con `MediaRecorder` (permiso al tocar), onda con el motor compartido, reproducir con avance | `useGrabadoraDeVoz`, `nivelDeAudio`, `BarraDeGrabacion`, `NotaDeVoz` |
+| Emojis nativos en español, cargados recién al abrir el panel | `PanelDeEmojis` (`emoji-picker-react` 4.22.3, MIT) |
+| «Escribiendo» al tipear (regla de la app) y «Ana está escribiendo…» en grupos | `useSincronizacion` (`avisarEscribiendo`) |
+| Chat secreto: la web no lo escribe (saldría en claro): aviso en lugar del campo | `Conversation` |
+| Librerías en piezas propias para que el navegador las guarde entre versiones | `vite.config.ts` (`manualChunks`, sin los íconos) |
+
+**E2E (19/10, web compilada con CSP, server local):** autores con color,
+«Leer más», tarjeta y link, «@Tú»; responder (cita en la burbuja), editar
+(«Editado»), eliminar para todos (lápida sin cita, el server vacía el texto) y
+para mí (oculto); reenviar solo a «QA Web3» (verificado en la base); Info;
+copiar; mención al escribir (rango guardado en la base); foto con pie, visor y
+la lista que sigue abajo; panel de emojis; chat secreto sin campo; micrófono
+bloqueado → aviso, sin romperse; un audio sintético subido se reproduce. QA en
+cero. **Sin probar:** grabar con un micrófono real (el panel del navegador lo
+bloquea) — falta en Chrome.
+
+**Lo que encontró el E2E:**
+- El menú de Radix, al cerrarse, devolvía el foco a su flecha: lo tecleado tras
+  «Responder» iba a la flecha y el Enter reabría el menú. Ahora el menú no es
+  modal y no devuelve el foco.
+- Al crecer una fila (una foto), el navegador mueve el scroll y eso se leía
+  como «subió a leer»: la lista dejaba de seguir el final. Ahora solo un gesto
+  de la persona (rueda, toque, tecla) la despega (`sigueEnElFinal`), igual que
+  en la app; y si la lista se achica (panel de emojis) sigue abajo.
+- La lápida mostraba la cita de arriba; ahora no.
+- El portapapeles del panel está bloqueado por política: se agregó el respaldo
+  clásico (`copiarTexto`).
+- Los emojis recientes de la librería quedaban al cerrar sesión: se borran
+  (solo al salir, no al abrir).
+
+**Pendiente de W2:** reacciones (no existen en el server); la duración de un
+audio subido como archivo (no como nota) sale 0:00.
 
 ## 53. FL15 — barra como WhatsApp, borradores, recordatorios del grupo, novedades, mensajes largos (19/10/2026, 0.1.98)
 

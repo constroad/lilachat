@@ -20,6 +20,7 @@ import { pasosDelVoto } from './votoDeEncuesta.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import { publicarEnElChat } from './publicarEnElChat.js';
 import { permisoSobreRecordatorio, rolEnElChat } from './recordatoriosDeGrupo.js';
+import { avisarCambioDeTarjeta } from './avisoDeTarjeta.js';
 
 /**
  * Eventos, recordatorios y encuestas (F5).
@@ -271,6 +272,7 @@ export function buildEventRouter(): Router {
       );
     }
     res.json({ ok: true });
+    void avisarCambioDeTarjeta({ chatId: (await EventModel.findById(eventId).select('chatId').lean())?.chatId, tipo: 'evento', id: eventId });
   }));
 
   /**
@@ -288,6 +290,7 @@ export function buildEventRouter(): Router {
     if (!cambios.ok) return res.status(400).json({ message: cambios.message });
     await EventModel.updateOne({ _id: evento._id }, actualizacion(cambios.set, cambios.unset));
     res.json({ ok: true });
+    void avisarCambioDeTarjeta({ chatId: evento.chatId, tipo: 'evento', id: evento._id });
   }));
 
   router.delete('/events/:eventId', asyncRoute(async (req, res) => {
@@ -298,6 +301,7 @@ export function buildEventRouter(): Router {
     }
     await EventModel.deleteOne({ _id: evento._id });
     res.json({ ok: true });
+    void avisarCambioDeTarjeta({ chatId: evento.chatId, tipo: 'evento', id: evento._id });
   }));
 
   // ─── Recordatorios ────────────────────────────────────────────────────────
@@ -370,6 +374,7 @@ export function buildEventRouter(): Router {
       req.body?.active !== false ? { $set: { active: true, remindedAt: null } } : { $set: { active: false } }
     );
     res.json({ ok: true });
+    void avisarCambioDeTarjeta({ chatId: permiso.recordatorio!.chatId, tipo: 'recordatorio', id: permiso.recordatorio!._id });
   }));
 
   /**
@@ -385,6 +390,7 @@ export function buildEventRouter(): Router {
     if (!cambios.ok) return res.status(400).json({ message: cambios.message });
     await ReminderModel.updateOne({ _id: actual._id }, actualizacion(cambios.set, cambios.unset));
     res.json({ ok: true });
+    void avisarCambioDeTarjeta({ chatId: actual.chatId, tipo: 'recordatorio', id: actual._id });
   }));
 
   router.delete('/reminders/:reminderId', asyncRoute(async (req, res) => {
@@ -392,6 +398,7 @@ export function buildEventRouter(): Router {
     if (permiso.estado !== 200) return res.status(permiso.estado).json({ message: 'Ese recordatorio no existe.' });
     await ReminderModel.deleteOne({ _id: permiso.recordatorio!._id });
     res.json({ ok: true });
+    void avisarCambioDeTarjeta({ chatId: permiso.recordatorio!.chatId, tipo: 'recordatorio', id: permiso.recordatorio!._id });
   }));
 
   // ─── Encuestas ────────────────────────────────────────────────────────────
@@ -482,6 +489,7 @@ export function buildEventRouter(): Router {
       if (matchedCount === 0) return res.status(400).json({ message: 'Esa encuesta ya se cerró.' });
     }
     res.json({ ok: true, poll: await vistaDeUna(poll._id, req.session!.userId) });
+    void avisarCambioDeTarjeta({ chatId: poll.chatId, tipo: 'encuesta', id: poll._id });
   }));
 
   /** Cerrar (FL10): solo quien la creó. Cerrada se ve, pero no se vota. */
@@ -493,6 +501,7 @@ export function buildEventRouter(): Router {
     }
     if (!poll.closedAt) await PollModel.updateOne({ _id: poll._id }, { $set: { closedAt: new Date() } });
     res.json({ ok: true, poll: await vistaDeUna(poll._id, req.session!.userId) });
+    void avisarCambioDeTarjeta({ chatId: poll.chatId, tipo: 'encuesta', id: poll._id });
   }));
 
   router.delete('/polls/:pollId', asyncRoute(async (req, res) => {
@@ -503,6 +512,7 @@ export function buildEventRouter(): Router {
     }
     await PollModel.deleteOne({ _id: poll._id });
     res.json({ ok: true });
+    void avisarCambioDeTarjeta({ chatId: poll.chatId, tipo: 'encuesta', id: poll._id });
   }));
 
   return router;

@@ -21,6 +21,7 @@ import type { MediaUploader } from './mediaClient.js';
 import { buildVistaPreviaRouter, type TraerVistaPrevia } from './vistaPreviaRoutes.js';
 import { traerVistaPrevia } from './traerVistaPrevia.js';
 import { buildRecordatoriosDeGrupoRouter } from './recordatoriosDeGrupo.js';
+import { cabecerasDeSeguridad } from './cabecerasDeSeguridad.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -92,6 +93,8 @@ export function buildApp(deps: AppDeps = {}): Express {
   // el error más difícil de leer de todos.
   const webDir = resolveWebDir();
   if (webDir) {
+    // CSP y compañía para todo lo que sirve la web (W0).
+    app.use(/^(?!\/api\/).*/, cabecerasDeSeguridad);
     app.use(express.static(webDir, { index: false }));
     // Toda ruta que no sea API cae en el `index.html`: la SPA maneja su propio
     // ruteo y un refresco en cualquier URL tiene que seguir funcionando.

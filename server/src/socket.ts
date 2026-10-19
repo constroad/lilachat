@@ -22,6 +22,7 @@ import { avisarFinDeLlamada, avisarLlamada, notifyOffline } from './pushService.
 import { candidatosDeLaOferta, frameConAutor, guardarCandidato, hayOfertasPendientes, ofertasVigentes } from './llamadas.js';
 import { alContestar, alOfrecer, alTerminar, configurarCiclo } from './cicloDeLlamada.js';
 import { configurarEntrega } from './entregaPorAviso.js';
+import { configurarAvisoDeTarjeta } from './avisoDeTarjeta.js';
 import { maybeAnswerMention } from './assistantReply.js';
 import { verifySession } from './sessions.js';
 
@@ -179,6 +180,7 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
   // Se publica para que el camino HTTP (`/api/media`) pueda emitir `msg.new`.
   ioVivo = io;
   configurarEntrega((userId, frame) => void io.to(userRoom(userId)).emit('receipt', frame));
+  configurarAvisoDeTarjeta((userId, cambio) => void io.to(userRoom(userId)).emit('ref.changed', cambio));
   configurarCiclo({
     emitirA: (userId, evento, frame) => void io.to(userRoom(userId)).emit(evento, frame),
     publicar: (mensaje, members) => publicarMensaje(mensaje, members),

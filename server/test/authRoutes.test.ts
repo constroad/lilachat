@@ -287,3 +287,88 @@ describe('respaldo por correo', () => {
     expect(JSON.stringify(invited.body)).not.toContain('papa@gmail.com');
   });
 });
+
+/**
+ * W0 (19/10): la web guarda el secreto del dispositivo en una cookie
+ * `HttpOnly` y el JWT solo en memoria. Antes los dos vivían en `localStorage`,
+ * y un XSS se llevaba la sesión para siempre. La app no cambia: sigue
+ * recibiendo el secreto en el cuerpo (vive en el llavero del teléfono).
+ */
+describe('W0 — la sesión de la web va en una cookie HttpOnly', () => {
+  const verifyWeb = { phone: '902049935', code: '123456', deviceId: 'web-1', cliente: 'web' };
+  const cookieDe = (response: request.Response) => ([] as string[]).concat(response.headers['set-cookie'] ?? []).find((c) => c.startsWith('lilachat_dispositivo=')) ?? '';
+
+  it('al entrar desde la web: cookie HttpOnly, Strict y solo para /api/auth; el secreto NO viaja en el cuerpo', async () => {
+    const { client } = fakeAuthClient();
+    const response = await request(buildApp({ authClient: client })).post('/api/auth/otp/verify').send(verifyWeb);
+
+    expect(response.status).toBe(200);
+    expect(response.body.deviceSecret).toBeUndefined();
+    expect(typeof response.body.jwt).toBe('string');
+    const cookie = cookieDe(response);
+    expect(cookie).toContain('HttpOnly');
+    expect(cookie).toContain('SameSite=Strict');
+    expect(cookie).toContain('Path=/api/auth');
+  });
+
+  it('la app sigue igual: secreto en el cuerpo y sin cookie', async () => {
+    const { client } = fakeAuthClient();
+    const response = await request(buildApp({ authClient: client })).post('/api/auth/otp/verify').send({ ...verifyWeb, cliente: undefined, deviceId: 'dev-9' });
+
+    expect(response.body.deviceSecret).toBe('device-secret-123');
+    expect(cookieDe(response)).toBe('');
+  });
+
+  it('renovar con la cookie sola, sin mandar nada en el cuerpo', async () => {
+    const { client, calls } = fakeAuthClient();
+    const app = buildApp({ authClient: client });
+    const entrada = await request(app).post('/api/auth/otp/verify').send(verifyWeb);
+
+    const response = await request(app).post('/api/auth/session').set('Cookie', cookieDe(entrada).split(';')[0]!).send({ cliente: 'web' });
+
+    expect(response.status).toBe(200);
+    expect(typeof response.body.jwt).toBe('string');
+    expect(calls.find((c) => c.method === 'validateDevice')?.args).toEqual(['web-1', 'device-secret-123']);
+  });
+
+  it('una sesión vieja de la web (secreto en el cuerpo) se muda a la cookie', async () => {
+    const { client } = fakeAuthClient();
+    const app = buildApp({ authClient: client });
+    await request(app).post('/api/auth/otp/verify').send({ ...verifyWeb, cliente: undefined });
+
+    const response = await request(app).post('/api/auth/session').send({ deviceId: 'web-1', deviceSecret: 'device-secret-123', cliente: 'web' });
+
+    expect(response.status).toBe(200);
+    expect(cookieDe(response)).toContain('HttpOnly');
+  });
+
+  it('revocada: 401 y la cookie se borra', async () => {
+    const revoked = fakeAuthClient({ validateDevice: () => Promise.resolve({ ok: false, codigo: 'credencial_invalida' }) });
+    const response = await request(buildApp({ authClient: revoked.client }))
+      .post('/api/auth/session')
+      .set('Cookie', 'lilachat_dispositivo=web-1%3Ax')
+      .send({ cliente: 'web' });
+
+    expect(response.status).toBe(401);
+    expect(cookieDe(response)).toMatch(/Max-Age=0|Expires=Thu, 01 Jan 1970/);
+  });
+
+  it('sin respuesta del servicio: 503 y la cookie se queda', async () => {
+    const down = fakeAuthClient({ validateDevice: () => Promise.resolve({ ok: false, codigo: 'sin_respuesta' }) });
+    const response = await request(buildApp({ authClient: down.client }))
+      .post('/api/auth/session')
+      .set('Cookie', 'lilachat_dispositivo=web-1%3Ax')
+      .send({ cliente: 'web' });
+
+    expect(response.status).toBe(503);
+    expect(cookieDe(response)).toBe('');
+  });
+
+  it('cerrar sesión borra la cookie', async () => {
+    const { client } = fakeAuthClient();
+    const response = await request(buildApp({ authClient: client })).post('/api/auth/salir').set('Cookie', 'lilachat_dispositivo=web-1%3Ax');
+
+    expect(response.status).toBe(204);
+    expect(cookieDe(response)).toMatch(/Max-Age=0|Expires=Thu, 01 Jan 1970/);
+  });
+});

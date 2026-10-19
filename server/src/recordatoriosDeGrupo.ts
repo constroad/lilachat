@@ -8,6 +8,7 @@ import { buildLilaUploader, toAbsoluteMediaUrl } from './mediaClient.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import { multerDeAvatar, subirFotoRedonda } from './subirAvatar.js';
 import { publicarEnElChat } from './publicarEnElChat.js';
+import { avisarCambioDeTarjeta } from './avisoDeTarjeta.js';
 
 /**
  * Recordatorios del GRUPO (José, 19/10): viven en el grupo, los crean y
@@ -99,6 +100,19 @@ export function buildRecordatoriosDeGrupoRouter(uploaderInyectado?: MediaUploade
       if (!subida.ok) return res.status(subida.status).json({ message: subida.message });
       await ReminderModel.updateOne({ _id: permiso.recordatorio!._id }, { $set: { imageUrl: subida.url, imageMediaId: subida.mediaId } });
       res.json({ ok: true, imageUrl: toAbsoluteMediaUrl(subida.url) });
+      void avisarCambioDeTarjeta({ chatId: permiso.recordatorio!.chatId, tipo: 'recordatorio', id: permiso.recordatorio!._id });
+    })
+  );
+
+  /** Quitar la imagen al editar: solo un admin (o el dueño, si es personal). */
+  router.delete(
+    '/reminders/:reminderId/imagen',
+    asyncRoute(async (req, res) => {
+      const permiso = await permisoSobreRecordatorio(req.params.reminderId, req.session!.userId);
+      if (permiso.estado !== 200) return res.status(permiso.estado).json({ message: 'No puedes cambiar ese recordatorio.' });
+      await ReminderModel.updateOne({ _id: permiso.recordatorio!._id }, { $unset: { imageUrl: 1, imageMediaId: 1 } });
+      res.status(204).end();
+      void avisarCambioDeTarjeta({ chatId: permiso.recordatorio!.chatId, tipo: 'recordatorio', id: permiso.recordatorio!._id });
     })
   );
 

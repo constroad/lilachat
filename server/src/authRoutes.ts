@@ -14,6 +14,7 @@ import { signSession } from './sessions.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { alertarServidor } from './alertaTelegram.js';
 import { resolverUsuarioDeSesion } from './identidadDeSesion.js';
+import { cookieBorrada, cookieDeDispositivo, leerCookieDeDispositivo, pedidoSeguro } from './cookieDeDispositivo.js';
 
 /**
  * El alta (spec §5). El teléfono habla con ESTE server; este server habla con
@@ -141,17 +142,28 @@ export function buildAuthRouter(authClient: AuthClient): Router {
       { upsert: true }
     );
 
+    // La web (W0): el secreto va en una cookie HttpOnly y NO en el cuerpo.
+    const esWeb = req.body?.cliente === 'web';
+    if (esWeb && verified.valor.secreto) {
+      res.setHeader('Set-Cookie', cookieDeDispositivo({ deviceId, deviceSecret: verified.valor.secreto, segura: pedidoSeguro(req) }));
+    }
     return res.status(200).json({
-      deviceSecret: verified.valor.secreto,
+      ...(esWeb ? {} : { deviceSecret: verified.valor.secreto }),
       jwt: signSession({ userId: String(user._id), deviceId, email: user.email ?? phone }),
       user: { id: String(user._id), name: user.name ?? null, phone, avatarUrl: user.avatarUrl ? toAbsoluteMediaUrl(user.avatarUrl) : null },
     });
   });
 
   router.post('/session', async (req, res) => {
-    const deviceId = String(req.body?.deviceId ?? '').trim();
-    const deviceSecret = String(req.body?.deviceSecret ?? '').trim();
-    if (!deviceId || !deviceSecret) return res.status(400).json({ message: 'Faltan datos.' });
+    // La web (W0) renueva con la cookie; una sesión vieja suya todavía manda el
+    // secreto en el cuerpo, y se muda a la cookie al renovar.
+    const esWeb = req.body?.cliente === 'web';
+    const deCookie = esWeb ? leerCookieDeDispositivo(req.headers.cookie) : null;
+    const deviceId = String(req.body?.deviceId ?? deCookie?.deviceId ?? '').trim();
+    const deviceSecret = String(req.body?.deviceSecret ?? deCookie?.deviceSecret ?? '').trim();
+    if (!deviceId || !deviceSecret) {
+      return esWeb ? res.status(401).json({ message: 'Tu acceso ya no está activo.' }) : res.status(400).json({ message: 'Faltan datos.' });
+    }
 
     const validated = await authClient.validateDevice(deviceId, deviceSecret);
     if (!validated.ok) {
@@ -160,6 +172,7 @@ export function buildAuthRouter(authClient: AuthClient): Router {
       if (validated.codigo === 'sin_respuesta' || validated.codigo === 'sin_configurar') {
         return res.status(503).json({ message: 'No se pudo validar. Inténtalo de nuevo.' });
       }
+      if (esWeb) res.setHeader('Set-Cookie', cookieBorrada(pedidoSeguro(req)));
       // Se DICE por qué: un 401 acá desloguea el teléfono, y sin esta línea el
       // síntoma es «se me cerró la sesión sola» sin nada que investigar.
       console.error(`[auth] sesión rechazada por el servicio (${validated.codigo}) device=${deviceId}`);
@@ -207,6 +220,7 @@ export function buildAuthRouter(authClient: AuthClient): Router {
     }
 
     void DeviceModel.updateOne({ deviceId }, { $set: { lastSeenAt: new Date() } }).catch(() => {});
+    if (esWeb) res.setHeader('Set-Cookie', cookieDeDispositivo({ deviceId, deviceSecret, segura: pedidoSeguro(req) }));
     // Se devuelve el USUARIO además del jwt: una credencial guardada por una
     // versión vieja de la app puede no tener `userId`, y sin él la pantalla no
     // distingue los mensajes propios de los ajenos (pasó de verdad). Así se
@@ -221,6 +235,17 @@ export function buildAuthRouter(authClient: AuthClient): Router {
         avatarUrl: user.avatarUrl ? toAbsoluteMediaUrl(user.avatarUrl) : null,
       },
     });
+  });
+
+  /**
+   * Cerrar sesión en la web (W0): la cookie se borra y ese navegador deja de
+   * recibir avisos. Sin sesión a propósito: con el JWT vencido también se sale.
+   */
+  router.post('/salir', async (req, res) => {
+    const deCookie = leerCookieDeDispositivo(req.headers.cookie);
+    if (deCookie) await DeviceModel.updateOne({ deviceId: deCookie.deviceId }, { $unset: { pushToken: 1 } }).catch(() => undefined);
+    res.setHeader('Set-Cookie', cookieBorrada(pedidoSeguro(req)));
+    res.status(204).end();
   });
 
   return router;

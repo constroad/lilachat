@@ -127,6 +127,31 @@ describe('recordatorios del grupo', () => {
   });
 });
 
+describe('editar el recordatorio del grupo (José, 19/10: «no hay cómo editarlo»)', () => {
+  const png = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63f8ffff3f0005fe02fea7d6a6a30000000049454e44ae426082', 'hex');
+
+  it('un admin le cambia título, descripción y hora', async () => {
+    const { body } = await crear(admin);
+
+    await request(app).patch(`/api/agenda/reminders/${body.id}`).set(conJwt(admin)).send({ title: 'Tomar 2 litros', note: 'Cada hora', startsAt: '2026-10-21T15:00:00.000Z' }).expect(200);
+
+    const r = await ReminderModel.findById(body.id).lean();
+    expect([r?.title, r?.note, r?.startsAt.toISOString()]).toEqual(['Tomar 2 litros', 'Cada hora', '2026-10-21T15:00:00.000Z']);
+  });
+
+  it('un admin le quita la imagen; un miembro no', async () => {
+    const { body } = await crear(admin);
+    await request(app).post(`/api/agenda/reminders/${body.id}/imagen`).set(conJwt(admin)).attach('file', png, { filename: 'a.png', contentType: 'image/png' }).expect(200);
+
+    await request(app).delete(`/api/agenda/reminders/${body.id}/imagen`).set(conJwt(miembro)).expect(403);
+    await request(app).delete(`/api/agenda/reminders/${body.id}/imagen`).set(conJwt(admin)).expect(204);
+
+    const r = await ReminderModel.findById(body.id).lean();
+    expect(r?.imageUrl).toBeUndefined();
+    expect(r?.imageMediaId).toBeUndefined();
+  });
+});
+
 /**
  * E2E del 19/10: la tarjeta salió SIN la imagen. El chat se publicaba al crear,
  * la tarjeta se pedía en ese instante y la imagen llegaba un request después.

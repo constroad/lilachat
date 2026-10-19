@@ -87,6 +87,13 @@ const userSchema = new Schema<User>(
  * El índice viejo se borra con `scripts/fix-indexes.ts`.
  */
 userSchema.index({ email: 1 }, { unique: true, sparse: true });
+/**
+ * Lo mismo en las invitaciones (18/10/2026): el `email_1` viejo era único sin
+ * sparse y con UNA invitación sin correo «Invitar» daba 500 para todas las
+ * siguientes. En la bóveda no hay `autoIndex`: el índice de la base lo arregla
+ * `scripts/fix-indexes.ts`; declararlo acá deja la base en memoria igual.
+ */
+invitationSchema.index({ email: 1 }, { unique: true, sparse: true });
 
 const deviceSchema = new Schema<Device>(
   {

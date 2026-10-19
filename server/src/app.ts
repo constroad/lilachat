@@ -18,6 +18,8 @@ import { buildCallRouter } from './callRoutes.js';
 import { buildMeRouter } from './meRoutes.js';
 import { buildRespaldoRouter } from './respaldoRoutes.js';
 import type { MediaUploader } from './mediaClient.js';
+import { buildVistaPreviaRouter, type TraerVistaPrevia } from './vistaPreviaRoutes.js';
+import { traerVistaPrevia } from './traerVistaPrevia.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -45,7 +47,7 @@ function resolveWebDir(): string | null {
 }
 
 /** Dependencias inyectables: los tests pasan un constroad-auth falso. */
-export type AppDeps = { authClient?: AuthClient; mediaUploader?: MediaUploader };
+export type AppDeps = { authClient?: AuthClient; mediaUploader?: MediaUploader; traerVistaPrevia?: TraerVistaPrevia };
 
 /**
  * La app Express, separada del `listen` para poder testearla con supertest
@@ -76,6 +78,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/calls', buildCallRouter());
   app.use('/api/me', buildMeRouter(deps.mediaUploader));
   app.use('/api/respaldos', buildRespaldoRouter());
+  app.use('/api/enlaces', buildVistaPreviaRouter(deps.traerVistaPrevia ?? traerVistaPrevia));
 
   // ─── La web (F6) ─────────────────────────────────────────────────────────
   //

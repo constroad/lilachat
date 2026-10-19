@@ -232,6 +232,22 @@ describe('POST /api/contacts/invite', () => {
     expect(await InvitationModel.countDocuments({ phone: '988777666' })).toBe(1);
   });
 
+  /**
+   * José, 18/10/2026: «Invitar» contestaba «Algo falló de nuestro lado». En la
+   * base, `invitations` tenía un `email_1` único SIN sparse: con UNA invitación
+   * sin correo, ninguna otra sin correo podía entrar (`dup key: { email: null }`).
+   */
+  it('dos invitaciones sin correo no chocan: el índice de email es sparse', async () => {
+    await InvitationModel.syncIndexes();
+
+    for (const phone of ['988777661', '988777662']) {
+      const respuesta = await request(app).post('/api/contacts/invite').set('Authorization', `Bearer ${jwt}`).send({ phone });
+      expect(respuesta.status).toBe(201);
+    }
+    const indice = (await InvitationModel.collection.indexes()).find((uno) => uno.name === 'email_1');
+    expect(indice).toMatchObject({ unique: true, sparse: true });
+  });
+
   it('a quien ya es usuario no lo vuelve a invitar', async () => {
     const respuesta = await request(app)
       .post('/api/contacts/invite')

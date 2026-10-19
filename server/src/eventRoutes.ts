@@ -6,6 +6,7 @@ import {
   cambiosDeRecordatorio,
   textoDeEncuestaEnElChat,
   textoDeEventoEnElChat,
+  textoDeRecordatorioEnElChat,
   validatePoll,
   type Recurrence,
 } from '@lilachat/shared';
@@ -18,6 +19,7 @@ import { contactosDe } from './invitarAlEvento.js';
 import { pasosDelVoto } from './votoDeEncuesta.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import { publicarEnElChat } from './publicarEnElChat.js';
+import { permisoSobreRecordatorio, rolEnElChat } from './recordatoriosDeGrupo.js';
 
 /**
  * Eventos, recordatorios y encuestas (F5).
@@ -59,8 +61,10 @@ async function assertMemberNoSecreto(chatId: unknown, userId: Types.ObjectId): P
 }
 
 /** Los chats de los que soy miembro: el alcance de todo lo que se lista acá. */
-async function myChatIds(userId: Types.ObjectId): Promise<Types.ObjectId[]> {
-  const chats = await ChatModel.find({ 'members.userId': userId }).select('_id').lean();
+async function myChatIds(userId: Types.ObjectId, opciones: { sinGrupos?: boolean } = {}): Promise<Types.ObjectId[]> {
+  const chats = await ChatModel.find({ 'members.userId': userId, ...(opciones.sinGrupos ? { kind: { $ne: 'group' } } : {}) })
+    .select('_id')
+    .lean();
   return chats.map((chat) => chat._id);
 }
 
@@ -299,7 +303,8 @@ export function buildEventRouter(): Router {
   // ─── Recordatorios ────────────────────────────────────────────────────────
 
   router.get('/reminders', asyncRoute(async (req, res) => {
-    const chatIds = await myChatIds(req.session!.userId);
+    // Los de un GRUPO viven en el grupo (19/10), no en la agenda de cada uno.
+    const chatIds = await myChatIds(req.session!.userId, { sinGrupos: true });
     const [mine, shared] = await Promise.all([
       ReminderModel.find({ userId: req.session!.userId, chatId: { $exists: false } })
         .sort({ startsAt: 1 })
@@ -320,6 +325,7 @@ export function buildEventRouter(): Router {
     const note = typeof req.body?.note === 'string' ? req.body.note.trim() : undefined;
     const recurrence = String(req.body?.recurrence ?? 'once') as Recurrence;
     let chatId: Types.ObjectId | undefined;
+    let delGrupo = false;
     if (req.body?.chatId) {
       try {
         chatId = await assertMemberNoSecreto(req.body.chatId, req.session!.userId);
@@ -327,8 +333,15 @@ export function buildEventRouter(): Router {
         const mensaje = error instanceof ChatSecretoError ? error.message : 'No tienes acceso a esa conversación.';
         return res.status(403).json({ message: mensaje });
       }
+      // En un GRUPO, solo sus admins (José, 19/10).
+      const { esGrupo, rol } = await rolEnElChat(chatId, req.session!.userId);
+      if (esGrupo && rol !== 'admin') return res.status(403).json({ message: 'Solo los admins del grupo crean recordatorios.' });
+      delGrupo = esGrupo;
     }
 
+    // Con imagen, la app crea sin publicar y publica al final
+    // (`/reminders/:id/publicar`): si no, la tarjeta sale sin la imagen.
+    const publicarAhora = delGrupo && req.body?.publicar !== false;
     const reminder = await ReminderModel.create({
       userId: req.session!.userId,
       chatId,
@@ -336,21 +349,26 @@ export function buildEventRouter(): Router {
       note,
       startsAt,
       recurrence: ['once', 'daily', 'weekly'].includes(recurrence) ? recurrence : 'once',
+      publicadoEn: publicarAhora ? new Date() : null,
     });
+    // El del grupo se publica en el chat como tarjeta, como la encuesta.
+    if (publicarAhora && chatId) {
+      await publicarSinTumbar({ chatId: String(chatId), autor: req.session!.userId, ref: { tipo: 'recordatorio', id: String(reminder._id) }, texto: textoDeRecordatorioEnElChat(title) });
+    }
     res.status(201).json({ id: String(reminder._id) });
   }));
 
-  /** El switch de cada tarjeta. Solo el dueño lo toca. */
+  /** El switch de cada tarjeta. El personal, su dueño; el del grupo, sus admins. */
   router.post('/reminders/:reminderId/toggle', asyncRoute(async (req, res) => {
-    const reminderId = asObjectId(req.params.reminderId);
-    if (!reminderId) return res.status(404).json({ message: 'No existe.' });
-    const updated = await ReminderModel.updateOne(
-      { _id: reminderId, userId: req.session!.userId },
+    const permiso = await permisoSobreRecordatorio(req.params.reminderId, req.session!.userId);
+    if (permiso.estado === 404) return res.status(404).json({ message: 'No existe.' });
+    if (permiso.estado === 403) return res.status(403).json({ message: 'No es tuyo.' });
+    await ReminderModel.updateOne(
+      { _id: permiso.recordatorio!._id },
       // Reactivar limpia el sello: si no, uno que ya sonó quedaba con el
       // interruptor prendido y sin volver a sonar nunca.
       req.body?.active !== false ? { $set: { active: true, remindedAt: null } } : { $set: { active: false } }
     );
-    if (updated.matchedCount === 0) return res.status(403).json({ message: 'No es tuyo.' });
     res.json({ ok: true });
   }));
 
@@ -359,11 +377,10 @@ export function buildEventRouter(): Router {
    * el mismo que si no existiera, sin diferencia que sondear.
    */
   router.patch('/reminders/:reminderId', asyncRoute(async (req, res) => {
-    const reminderId = asObjectId(req.params.reminderId);
-    const actual = reminderId
-      ? await ReminderModel.findOne({ _id: reminderId, userId: req.session!.userId }).select('startsAt').lean()
-      : null;
-    if (!actual) return res.status(404).json({ message: 'Ese recordatorio no existe.' });
+    // El personal, su dueño; el del grupo, cualquier admin (19/10).
+    const permiso = await permisoSobreRecordatorio(req.params.reminderId, req.session!.userId);
+    if (permiso.estado !== 200) return res.status(permiso.estado).json({ message: 'Ese recordatorio no existe.' });
+    const actual = permiso.recordatorio!;
     const cambios = cambiosDeRecordatorio(req.body, { startsAt: actual.startsAt });
     if (!cambios.ok) return res.status(400).json({ message: cambios.message });
     await ReminderModel.updateOne({ _id: actual._id }, actualizacion(cambios.set, cambios.unset));
@@ -371,11 +388,9 @@ export function buildEventRouter(): Router {
   }));
 
   router.delete('/reminders/:reminderId', asyncRoute(async (req, res) => {
-    const reminderId = asObjectId(req.params.reminderId);
-    const borrado = reminderId
-      ? await ReminderModel.deleteOne({ _id: reminderId, userId: req.session!.userId })
-      : { deletedCount: 0 };
-    if (borrado.deletedCount === 0) return res.status(404).json({ message: 'Ese recordatorio no existe.' });
+    const permiso = await permisoSobreRecordatorio(req.params.reminderId, req.session!.userId);
+    if (permiso.estado !== 200) return res.status(permiso.estado).json({ message: 'Ese recordatorio no existe.' });
+    await ReminderModel.deleteOne({ _id: permiso.recordatorio!._id });
     res.json({ ok: true });
   }));
 

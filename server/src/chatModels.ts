@@ -35,7 +35,8 @@ export interface ChatMember {
 
 export interface Chat {
   _id: Types.ObjectId;
-  kind: 'direct' | 'group';
+  /** `notas`: un borrador, un chat solo contigo y con nombre (19/10). */
+  kind: 'direct' | 'group' | 'notas';
   name?: string;
   /** El nombre del archivo en el storage, para poder borrarlo algún día. */
   avatarMediaId?: string;
@@ -60,7 +61,7 @@ export interface Message {
   seq: number;
   senderId: Types.ObjectId;
   clientKey: string;
-  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'event' | 'poll' | 'system';
+  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'event' | 'poll' | 'reminder' | 'system';
   body?: string;
   /**
    * La encuesta o el evento que este mensaje publica en el chat (José, 18/10).
@@ -148,7 +149,7 @@ export interface Receipt {
 
 const chatSchema = new Schema<Chat>(
   {
-    kind: { type: String, enum: ['direct', 'group'], required: true },
+    kind: { type: String, enum: ['direct', 'group', 'notas'], required: true },
     name: { type: String },
     avatarMediaId: { type: String },
     avatarUrl: { type: String },
@@ -181,12 +182,12 @@ const messageSchema = new Schema<Message>(
     clientKey: { type: String, required: true },
     kind: {
       type: String,
-      enum: ['text', 'image', 'video', 'audio', 'file', 'event', 'poll', 'system'],
+      enum: ['text', 'image', 'video', 'audio', 'file', 'event', 'poll', 'reminder', 'system'],
       default: 'text',
     },
     body: { type: String },
     ref: {
-      type: new Schema({ tipo: { type: String, enum: ['encuesta', 'evento'], required: true }, id: { type: String, required: true } }, { _id: false }),
+      type: new Schema({ tipo: { type: String, enum: ['encuesta', 'evento', 'recordatorio'], required: true }, id: { type: String, required: true } }, { _id: false }),
     },
     envelope: {
       v: { type: Number },

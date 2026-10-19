@@ -10,7 +10,7 @@ import { toAbsoluteMediaUrl } from './mediaClient.js';
  */
 export type ChatSummary = {
   id: string;
-  kind: 'direct' | 'group';
+  kind: 'direct' | 'group' | 'notas';
   name?: string;
   /**
    * El teléfono de la OTRA persona, solo en chats 1:1.

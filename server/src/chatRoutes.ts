@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Types } from 'mongoose';
-import { CAPACIDADES_DE_PUSH, textoDeAviso } from '@lilachat/shared';
+import { CAPACIDADES_DE_PUSH, normalizarNombreDeGrupo, textoDeAviso } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import { DeviceModel, UserModel } from './models.js';
 import {
@@ -161,7 +161,19 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
   });
 
   router.post('/', async (req, res) => {
-    const kind = req.body?.kind === 'group' ? 'group' : 'direct';
+    const kind = req.body?.kind === 'group' ? 'group' : req.body?.kind === 'notas' ? 'notas' : 'direct';
+    const me = req.session!.userId;
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+
+    // UN BORRADOR (José, 19/10): un chat solo contigo y con nombre, para notas,
+    // fotos y links. Nunca cifrado —no hay con quién compartir una clave— y
+    // nadie más adentro, aunque el pedido traiga miembros.
+    if (kind === 'notas') {
+      const validado = normalizarNombreDeGrupo(name);
+      if (!validado.ok) return res.status(400).json({ message: 'Ponle un nombre al borrador.' });
+      const borrador = await ChatModel.create({ kind, encrypted: false, name: validado.nombre, members: [{ userId: me, role: 'admin' }], lastSeq: 0 });
+      return res.status(201).json({ chatId: String(borrador._id) });
+    }
     const rawMembers = Array.isArray(req.body?.memberIds) ? req.body.memberIds : [];
     const memberIds = rawMembers
       .map((value: unknown) => String(value))
@@ -170,14 +182,11 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
 
     // El creador SIEMPRE va adentro, aunque no se haya incluido: un chat sin su
     // autor es un chat que nadie puede abrir.
-    const me = req.session!.userId;
     const unique = new Map<string, Types.ObjectId>([[String(me), me]]);
     for (const id of memberIds) unique.set(String(id), id);
     if (unique.size < 2) {
       return res.status(400).json({ message: 'Elige con quién quieres hablar.' });
     }
-
-    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
 
     // UN GRUPO SIN NOMBRE NO ES USABLE: la lista lo mostraría sin título y no
     // habría forma de distinguirlo de los demás.

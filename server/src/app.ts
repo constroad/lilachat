@@ -20,6 +20,7 @@ import { buildRespaldoRouter } from './respaldoRoutes.js';
 import type { MediaUploader } from './mediaClient.js';
 import { buildVistaPreviaRouter, type TraerVistaPrevia } from './vistaPreviaRoutes.js';
 import { traerVistaPrevia } from './traerVistaPrevia.js';
+import { buildRecordatoriosDeGrupoRouter } from './recordatoriosDeGrupo.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -67,6 +68,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/auth', buildAuthRouter(deps.authClient ?? buildHttpAuthClient()));
   app.use('/api/chats', buildChatRouter(deps.mediaUploader));
   app.use('/api/media', buildMediaRouter(deps.mediaUploader));
+  app.use('/api/agenda', buildRecordatoriosDeGrupoRouter(deps.mediaUploader));
   app.use('/api/agenda', buildEventRouter());
   app.use('/api/push', buildPushRouter());
   app.use('/api/backup', buildBackupRouter());

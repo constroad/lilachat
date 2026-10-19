@@ -40,6 +40,10 @@ export interface Reminder {
   chatId?: Types.ObjectId;
   title: string;
   note?: string;
+  imageUrl?: string;
+  imageMediaId?: string;
+  /** Cuándo salió la tarjeta en el chat del grupo; sin esto, todavía no salió. */
+  publicadoEn?: Date | null;
   startsAt: Date;
   recurrence: Recurrence;
   active: boolean;
@@ -94,6 +98,10 @@ const reminderSchema = new Schema<Reminder>(
     // La segunda línea de la tarjeta del diseño («Cada 2 horas», «Llamada
     // semanal»). Es lo que distingue dos recordatorios de título parecido.
     note: { type: String, trim: true },
+    // La imagen de un recordatorio del grupo (19/10).
+    imageUrl: { type: String },
+    imageMediaId: { type: String },
+    publicadoEn: { type: Date, default: null },
     startsAt: { type: Date, required: true },
     recurrence: { type: String, enum: ['once', 'daily', 'weekly'], default: 'once' },
     active: { type: Boolean, default: true },

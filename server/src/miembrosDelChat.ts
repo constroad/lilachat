@@ -213,7 +213,8 @@ export async function editarInfoDeGrupo(params: {
 
   const decision = puedeEditarInfo({
     quien: String(params.quien),
-    esGrupo: chat.kind === 'group',
+    // Un borrador también tiene nombre y foto propios (19/10).
+    esGrupo: chat.kind !== 'direct',
     miembros: chat.members.map((m) => ({
       userId: String(m.userId),
       role: (m.role ?? 'member') as 'admin' | 'member',

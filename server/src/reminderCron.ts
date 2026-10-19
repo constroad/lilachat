@@ -1,6 +1,7 @@
 import { decidirRecordatorio, nextOccurrence, shouldRemind } from '@lilachat/shared';
 import { EventModel, ReminderModel } from './eventModels.js';
 import { DeviceModel } from './models.js';
+import { ChatModel } from './chatModels.js';
 import { buildPushSender, type PushSender } from './pushSender.js';
 import { runScheduledTick } from './scheduledMessages.js';
 
@@ -129,10 +130,14 @@ export async function runReminderTick(now: Date = new Date()): Promise<{ events:
     );
     if (claimed.modifiedCount === 0) continue;
 
-    await pushTo([String(reminder.userId)], reminder.title, reminder.note || 'Recordatorio', {
-      chatId: String(reminder.chatId ?? ''),
-      seq: 0,
-    });
+    // El del GRUPO le suena a todos sus miembros, con el nombre del grupo (19/10).
+    const grupo = reminder.chatId ? await ChatModel.findOne({ _id: reminder.chatId, kind: 'group' }).select('name members.userId').lean() : null;
+    await pushTo(
+      grupo ? grupo.members.map((m) => String(m.userId)) : [String(reminder.userId)],
+      grupo ? `${grupo.name ?? 'Grupo'} · ${reminder.title}` : reminder.title,
+      reminder.note || 'Recordatorio',
+      { chatId: String(reminder.chatId ?? ''), seq: 0 }
+    );
     reminders += 1;
 
     // Recurrente: se REPROGRAMA y se limpia el sello. Sin esto, un «cada día»

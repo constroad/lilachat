@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { CalendarDays, MapPin } from 'lucide-react-native';
 import { formatEventWhen, type Rsvp } from '@lilachat/shared';
 import { agendaGet, agendaPost, type AgendaEvent } from '../agenda/agendaApi';
+import { BotonesDeRsvp } from '../agenda/BotonesDeRsvp';
+import { resumenDeRsvp } from '../agenda/eventos';
 import { useColores } from '../ui/tema';
 
 /** Lo último que se vio de cada evento, para que la celda reciclada no parpadee. `null` = ya no está. */
@@ -53,13 +55,12 @@ export function EventoEnElChat({ eventId, jwt }: { eventId: string; jwt: string 
         <Text className="text-[13px] text-on-surface-variant">No se pudo cargar el evento. Toca para reintentar.</Text>
       </Pressable>
     ) : (
-      <View className="h-32 rounded-2xl bg-surface-variant" />
+      <View className="h-32 rounded-xl bg-surface-variant" />
     );
   }
 
-  const { yes } = evento.rsvpSummary;
   return (
-    <View testID={`evento-en-chat-${eventId}`} className="gap-3 rounded-2xl border border-outline/15 bg-surface p-4">
+    <View testID={`evento-en-chat-${eventId}`} className="gap-3 rounded-xl border border-outline/10 bg-surface p-4">
       <View className="flex-row items-start gap-3">
         <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
           <CalendarDays size={20} color={colores.primary} />
@@ -77,31 +78,10 @@ export function EventoEnElChat({ eventId, jwt }: { eventId: string; jwt: string 
           ) : null}
         </View>
       </View>
-      <Text className="text-[12px] text-on-surface-variant">{yes === 1 ? '1 va' : `${yes} van`}</Text>
-      {/* Quien lo creó ya va: no se le pregunta. */}
-      {evento.mio ? null : (
-        <View className="flex-row gap-2">
-          {(
-            [
-              { rsvp: 'yes', texto: 'Voy' },
-              { rsvp: 'no', texto: 'No voy' },
-            ] as const
-          ).map(({ rsvp, texto }) => {
-            const elegido = evento.myRsvp === rsvp;
-            return (
-              <Pressable
-                key={rsvp}
-                testID={`evento-${rsvp}-${eventId}`}
-                onPress={() => void responder(rsvp)}
-                className={`min-h-[44px] flex-1 flex-row items-center justify-center gap-2 rounded-xl ${elegido ? 'bg-primary' : 'border border-outline/20'}`}
-              >
-                {enviando === rsvp ? <ActivityIndicator size="small" color={elegido ? colores['on-primary'] : colores.primary} /> : null}
-                <Text className={`text-[14px] font-semibold ${elegido ? 'text-on-primary' : 'text-on-surface'}`}>{texto}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      )}
+      {/* Los mismos botones y el mismo resumen que la Agenda (FL13d). Quien lo
+          creó ya va: no se le pregunta. */}
+      {evento.mio ? null : <BotonesDeRsvp eventId={eventId} elegido={evento.myRsvp} enviando={enviando} onResponder={(rsvp) => void responder(rsvp)} />}
+      <Text className="text-[11px] text-on-surface-variant">{resumenDeRsvp(evento.rsvpSummary)}</Text>
       {error ? <Text className="text-[12px] text-error">{error}</Text> : null}
     </View>
   );

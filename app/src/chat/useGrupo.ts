@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { agendaPorTelefono, suscribirAgenda } from '../contacts/agendaEnMemoria';
 import { getSocket } from './socketClient';
-import { membresiaPorRespuesta, nombresPorMiembro, type MiembroConNombre } from './nombresDelGrupo';
+import { fotosPorMiembro, membresiaPorRespuesta, nombresPorMiembro, type MiembroConNombre } from './nombresDelGrupo';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
 const PLAZO_MS = 10_000;
@@ -20,7 +20,7 @@ export function useGrupo(
   chatId: string,
   jwt: string,
   esGrupo: boolean
-): { nombres: Map<string, string>; soyMiembro: boolean | null } {
+): { nombres: Map<string, string>; fotos: Map<string, string>; soyMiembro: boolean | null } {
   const agenda = useSyncExternalStore(suscribirAgenda, agendaPorTelefono, agendaPorTelefono);
   const [miembros, setMiembros] = useState<MiembroConNombre[]>(() => cache.get(chatId) ?? []);
   const [soyMiembro, setSoyMiembro] = useState<boolean | null>(null);
@@ -67,5 +67,6 @@ export function useGrupo(
   }, [chatId, jwt, esGrupo, version]);
 
   const nombres = useMemo(() => nombresPorMiembro(miembros, agenda), [miembros, agenda]);
-  return { nombres, soyMiembro };
+  const fotos = useMemo(() => fotosPorMiembro(miembros), [miembros]);
+  return { nombres, fotos, soyMiembro };
 }

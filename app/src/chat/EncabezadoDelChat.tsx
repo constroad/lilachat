@@ -67,6 +67,10 @@ export function EncabezadoDelChat(props: {
             testID="estado-presencia"
             className={`text-xs ${props.otroEscribe ? 'text-primary' : 'text-on-surface-variant'}`}
             numberOfLines={1}
+            // Con video, llamada y menú el espacio es poco: antes de cortar la
+            // «últ. vez» achica la letra un poco (FL13d).
+            adjustsFontSizeToFit
+            minimumFontScale={0.85}
           >
             {props.subtitulo}
           </Text>

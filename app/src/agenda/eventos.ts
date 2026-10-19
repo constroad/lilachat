@@ -1,4 +1,4 @@
-import { formatClock, formatEventWhen, nombreDeContacto, type Rsvp } from '@lilachat/shared';
+import { formatClock, formatEventWhen, nombreDeContacto, type AttendeeSummary, type Rsvp } from '@lilachat/shared';
 
 /**
  * Lo que muestra el detalle de un evento (FL10, auditoría §46.3: quien no lo
@@ -70,4 +70,13 @@ export function asistentesPorRespuesta(params: {
     const ordenados = ids.sort((a, b) => Number(b === params.yo) - Number(a === params.yo));
     return { clave, titulo, nombres: ordenados.map((id) => nombrar(id, params.personas, params.yo, params.agenda)) };
   }).filter((grupo) => grupo.nombres.length > 0);
+}
+
+/**
+ * Quién va, en una línea: el MISMO texto en la Agenda y en la tarjeta del chat
+ * (FL13d; la Agenda decía «1 van»).
+ */
+export function resumenDeRsvp(resumen: AttendeeSummary): string {
+  const van = resumen.yes === 1 ? '1 va' : `${resumen.yes} van`;
+  return `${van} · ${resumen.maybe} tal vez · ${resumen.pending} sin responder`;
 }

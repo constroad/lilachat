@@ -44,6 +44,9 @@ export function dondeVaLaHora(params: {
 /** Cuántos colores de autor hay en la paleta (`autor-1` … `autor-6`). */
 export const CANTIDAD_DE_COLORES_DE_AUTOR = 6;
 
+/** El avatar del autor en un grupo (dp): 28, como WhatsApp. */
+export const AVATAR_DE_AUTOR = 28;
+
 /**
  * El color de una persona en un grupo: estable (sale de su id, no del orden de
  * llegada), así Mamá es siempre rosa en todos los chats y en todos los

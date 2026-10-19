@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { membresiaPorRespuesta, nombresPorMiembro } from './nombresDelGrupo';
+import { fotosPorMiembro, membresiaPorRespuesta, nombresPorMiembro } from './nombresDelGrupo';
 
 describe('nombresPorMiembro', () => {
   it('gana el nombre de la agenda del teléfono', () => {
@@ -17,6 +17,19 @@ describe('nombresPorMiembro', () => {
   it('sin nombre en ningún lado, algo legible y nunca vacío', () => {
     const nombre = nombresPorMiembro([{ id: 'u3', name: null, phone: null }], new Map()).get('u3');
     expect(nombre).toBeTruthy();
+  });
+});
+
+/** La foto de cada autor en las burbujas del grupo (FL13d), como el diseño. */
+describe('fotosPorMiembro', () => {
+  it('solo los que tienen foto', () => {
+    const fotos = fotosPorMiembro([
+      { id: 'u1', name: 'Ana', phone: '900000001', avatarUrl: 'https://x/ana.jpg' },
+      { id: 'u2', name: 'Beto', phone: '900000002' },
+      { id: 'u3', name: 'Carla', phone: '900000003', avatarUrl: '' },
+    ]);
+
+    expect([...fotos.entries()]).toEqual([['u1', 'https://x/ana.jpg']]);
   });
 });
 

@@ -1,6 +1,6 @@
 import { nombreDeContacto } from '@lilachat/shared';
 
-export type MiembroConNombre = { id: string; name: string | null; phone: string | null };
+export type MiembroConNombre = { id: string; name: string | null; phone: string | null; avatarUrl?: string };
 
 /**
  * El nombre con que se muestra cada miembro de un grupo (FL3): gana TU agenda,
@@ -18,6 +18,11 @@ export function nombresPorMiembro(
     nombres.set(miembro.id, nombre || miembro.phone || 'Alguien');
   }
   return nombres;
+}
+
+/** La foto de cada miembro que tiene una (FL13d): el autor de cada burbuja del grupo. */
+export function fotosPorMiembro(miembros: readonly MiembroConNombre[]): Map<string, string> {
+  return new Map(miembros.flatMap((miembro) => (miembro.avatarUrl ? [[miembro.id, miembro.avatarUrl] as const] : [])));
 }
 
 /**

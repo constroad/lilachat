@@ -119,7 +119,7 @@ export function PantallaDeAjustes(props: {
               // Con un toque borraba historial y passphrase sin preguntar (FL8).
               Alert.alert(
                 'Cerrar sesión',
-                'Se borran de este teléfono el historial y la passphrase del respaldo, y deja de recibir avisos. Tus chats vuelven al entrar; el historial, si tienes respaldo.',
+                'Se borran de este teléfono el historial y la clave del respaldo, y deja de recibir avisos. Tus chats vuelven al entrar; el historial, si tienes respaldo.',
                 [
                   { text: 'Cancelar', style: 'cancel' },
                   { text: 'Cerrar sesión', style: 'destructive', onPress: props.onLogout },

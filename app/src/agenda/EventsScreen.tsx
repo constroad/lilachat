@@ -6,7 +6,8 @@ import type { Credential } from '../auth/credentialStore';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { agendaGet, agendaPost, type AgendaEvent } from './agendaApi';
 import { DetalleDeEvento } from './DetalleDeEvento';
-import { cuandoDelEvento, origenDelEvento } from './eventos';
+import { BotonesDeRsvp } from './BotonesDeRsvp';
+import { cuandoDelEvento, origenDelEvento, resumenDeRsvp } from './eventos';
 import { useColores } from '../ui/tema';
 
 /**
@@ -20,12 +21,6 @@ import { useColores } from '../ui/tema';
  * Tocar la tarjeta abre el detalle, para TODOS (FL10): quiénes van, en qué
  * chat, hasta qué hora. Quien lo creó lo edita desde ahí.
  */
-const RSVP_OPTIONS: { value: Rsvp; label: string }[] = [
-  { value: 'yes', label: 'Voy' },
-  { value: 'maybe', label: 'Tal vez' },
-  { value: 'no', label: 'No voy' },
-];
-
 export function EventsScreen({
   credential,
   recarga,
@@ -160,34 +155,11 @@ export function EventsScreen({
                 </View>
               ) : null}
 
-              <View className="mt-3 flex-row gap-2">
-                {RSVP_OPTIONS.map((option) => {
-                  const selected = event.myRsvp === option.value;
-                  return (
-                    <Pressable
-                      key={option.value}
-                      testID={`rsvp-${event.id}-${option.value}`}
-                      onPress={() => void answer(event.id, option.value)}
-                      className={`min-h-[44px] flex-1 items-center justify-center rounded-lg ${
-                        selected ? 'bg-primary' : 'bg-surface-variant'
-                      }`}
-                    >
-                      <Text
-                        className={`text-[13px] font-semibold ${
-                          selected ? 'text-on-primary' : 'text-on-surface-variant'
-                        }`}
-                      >
-                        {option.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+              <View className="mt-3">
+                <BotonesDeRsvp eventId={event.id} elegido={event.myRsvp} onResponder={(rsvp) => void answer(event.id, rsvp)} />
               </View>
 
-              <Text className="mt-2 text-[11px] text-on-surface-variant">
-                {event.rsvpSummary.yes} van · {event.rsvpSummary.maybe} tal vez ·{' '}
-                {event.rsvpSummary.pending} sin responder
-              </Text>
+              <Text className="mt-2 text-[11px] text-on-surface-variant">{resumenDeRsvp(event.rsvpSummary)}</Text>
             </Pressable>
           ))}
         </ScrollView>

@@ -3,7 +3,7 @@ import { memo } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { CircleAlert, Check, CheckCheck, Clock3, FileText, Play } from 'lucide-react-native';
-import { colorDeAutor, dondeVaLaHora, mostrarAutor, radiosDeBurbuja } from './burbuja';
+import { AVATAR_DE_AUTOR, colorDeAutor, dondeVaLaHora, mostrarAutor, radiosDeBurbuja } from './burbuja';
 import { DeslizarParaResponder } from './DeslizarParaResponder';
 import { LineaDeLlamada } from './LineaDeLlamada';
 import { CitaDeRespuesta } from './CitaDeRespuesta';
@@ -45,8 +45,6 @@ import { Avatar } from '../ui/Avatar';
  * se veían), el **avatar del otro** junto a su burbuja, y el agrupado por
  * emisor (solo el último del bloque lleva la cola).
  */
-/** El avatar del autor en un grupo (dp): 28, como WhatsApp. */
-const AVATAR_DE_AUTOR = 28;
 
 export type Row = ChatMessage | PendingMessage;
 
@@ -74,6 +72,7 @@ function FilaDeMensaje({
   entrega,
   esGrupo = false,
   nombreAutor,
+  fotoAutor,
   onVerImagen,
   onSeleccionar,
   onResponder,
@@ -99,6 +98,8 @@ function FilaDeMensaje({
   esGrupo?: boolean;
   /** El nombre de quien escribió (resuelto con la agenda), en un grupo. */
   nombreAutor?: string;
+  /** Su foto de perfil, si tiene (FL13d). */
+  fotoAutor?: string;
   /** Abre el visor a pantalla completa. */
   /** Abre el visor en esta foto (por su `seq`: la URL no la identifica). */
   onVerImagen?: (seq: number) => void;
@@ -127,7 +128,15 @@ function FilaDeMensaje({
   // La encuesta o el evento publicados en el chat (18/10): una tarjeta para
   // votar o confirmar, no una burbuja de texto.
   if (!isPending(item) && item.ref && jwt) {
-    return <TarjetaDelChat item={item} mia={item.senderId === myUserId} jwt={jwt} yo={myUserId} autor={esGrupo ? nombreAutor : undefined} />;
+    return (
+      <TarjetaDelChat
+        item={item}
+        mia={item.senderId === myUserId}
+        jwt={jwt}
+        yo={myUserId}
+        autor={esGrupo ? { nombre: nombreAutor ?? '', foto: fotoAutor } : undefined}
+      />
+    );
   }
 
   const mine = isPending(item) || item.senderId === myUserId;
@@ -184,7 +193,7 @@ function FilaDeMensaje({
         nextGrouped ? (
           <View style={{ width: AVATAR_DE_AUTOR }} />
         ) : (
-          <Avatar nombre={nombreAutor ?? ''} tamano={AVATAR_DE_AUTOR} />
+          <Avatar nombre={nombreAutor ?? ''} foto={fotoAutor} tamano={AVATAR_DE_AUTOR} />
         )
       ) : null}
 

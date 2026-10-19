@@ -52,7 +52,7 @@ describe('subtituloDelChat — últ. vez', () => {
   const ultimaVez = new Date('2026-10-18T07:31:00').toISOString();
 
   it('fuera de línea, con la última vez conocida', () => {
-    expect(subtituloDelChat({ ...base, ultimaVez, ahora })).toMatch(/^últ\. vez hoy a las /);
+    expect(subtituloDelChat({ ...base, ultimaVez, ahora })).toMatch(/^últ\. vez \d{1,2}:\d{2}/);
   });
 
   it('«en línea» y «escribiendo…» le ganan', () => {

@@ -47,7 +47,7 @@ export function AjustesDelChat({
             detalle={
               cifrado
                 ? 'Cifrado de punta a punta. El servidor no puede leerlo.'
-                : 'El servidor guarda los mensajes para sincronizarlos entre tus aparatos.'
+                : 'El servidor guarda los mensajes para sincronizarlos entre tus dispositivos.'
             }
           />
         </GrupoDeAjustes>

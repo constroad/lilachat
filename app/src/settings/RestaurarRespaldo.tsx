@@ -23,14 +23,14 @@ import { useColores } from '../ui/tema';
 const FRASE_DE_PASO: Record<PasoDeRestauracion, string> = {
   bajando: 'Bajando el respaldo del servidor…',
   verificando: 'Comprobando el archivo…',
-  abriendo: 'Abriendo con tu passphrase…',
+  abriendo: 'Abriendo con tu clave…',
   importando: 'Guardando los mensajes en el teléfono…',
 };
 
 const FRASE_DE_FALLO: Record<Extract<ResultadoDeRestauracion, { ok: false }>['motivo'], string> = {
   descarga: 'No se pudo bajar el respaldo. Revisa la conexión y prueba de nuevo.',
   huella: 'El archivo llegó incompleto. Prueba de nuevo.',
-  passphrase: 'La passphrase no es la de este respaldo.',
+  passphrase: 'La clave no es la de este respaldo.',
   importacion: 'No se pudo guardar el respaldo en el teléfono.',
 };
 
@@ -95,7 +95,7 @@ export function RestaurarRespaldo({
                 editable={!trabajando}
                 secureTextEntry
                 autoCapitalize="none"
-                placeholder="Tu passphrase de respaldo"
+                placeholder="Tu clave del respaldo"
                 placeholderTextColor={colores['on-surface-variant']}
                 className="mt-3 min-h-[44px] rounded-lg bg-surface-variant px-3 text-sm text-on-surface"
               />

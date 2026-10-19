@@ -145,7 +145,7 @@ export function RespaldoAjuste({ credential }: { credential: Credential }) {
               onPress={() => setCreando(true)}
               className="min-h-[48px] items-center justify-center rounded-xl border border-outline/20 px-4"
             >
-              <Text className="text-[15px] font-semibold text-on-surface">Cambiar passphrase</Text>
+              <Text className="text-[15px] font-semibold text-on-surface">Cambiar la clave</Text>
             </Pressable>
           </View>
         )}
@@ -199,7 +199,7 @@ function CrearPassphrase({ onListo, onCancelar }: { onListo: () => Promise<void>
   return (
     <View className="mt-4 gap-3">
       <Text className="text-sm leading-5 text-on-surface-variant">
-        Elige una passphrase de 8 caracteres o más. Cifra el respaldo en tu teléfono: ni el servidor ni
+        Elige una clave de 8 caracteres o más. Cifra el respaldo en tu teléfono: ni el servidor ni
         nadie más puede abrirlo. <Text className="font-semibold text-error">Si la olvidas, el respaldo no se recupera.</Text>
       </Text>
       <TextInput
@@ -208,7 +208,7 @@ function CrearPassphrase({ onListo, onCancelar }: { onListo: () => Promise<void>
         onChangeText={setUna}
         secureTextEntry
         autoCapitalize="none"
-        placeholder="Passphrase"
+        placeholder="Clave del respaldo"
         placeholderTextColor={colores['on-surface-variant']}
         className="min-h-[48px] rounded-xl border border-outline/15 bg-surface px-4 text-[15px] text-on-surface"
       />

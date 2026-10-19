@@ -210,6 +210,7 @@ export function ChatScreen({
   const ultimaVez = useUltimaVez(otherUserId);
   const grupo = useGrupo(chatId, credential.jwt, esGrupoChat);
   const nombresDelGrupo = grupo.nombres;
+  const fotosDelGrupo = grupo.fotos;
   /** Me sacaron del grupo (FL9d): se lee, pero ya no se escribe. */
   const fueraDelGrupo = esGrupoChat && grupo.soyMiembro === false;
   // Fuera del grupo no se listan miembros: ya no es «QA Ana, Vos».
@@ -391,6 +392,7 @@ export function ChatScreen({
             }
             esGrupo={esGrupoChat}
             nombreAutor={isPending(item) ? undefined : nombresDelGrupo.get(String(item.senderId))}
+            fotoAutor={isPending(item) ? undefined : fotosDelGrupo.get(String(item.senderId))}
             onVerImagen={alVerImagen}
             onSeleccionar={seleccion.alternar}
             enSeleccion={seleccion.enSeleccion}
@@ -403,7 +405,7 @@ export function ChatScreen({
         </>
       );
     },
-    [rows, credential.userId, leidoHasta, entregadoHasta, esGrupoChat, nombresDelGrupo, alVerImagen, alResponder, citados, seleccion.elegidos, seleccion.enSeleccion, seleccion.alternar, resaltado, busqueda.seqActual, divisorSeq, noLeidosAlAbrir, alFallido, alTocarCita]
+    [rows, credential.userId, leidoHasta, entregadoHasta, esGrupoChat, nombresDelGrupo, fotosDelGrupo, alVerImagen, alResponder, citados, seleccion.elegidos, seleccion.enSeleccion, seleccion.alternar, resaltado, busqueda.seqActual, divisorSeq, noLeidosAlAbrir, alFallido, alTocarCita]
   );
 
   // Con el teclado abierto no hay barra de navegación debajo: el margen del pie

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { Camera, Check, Pencil, X } from 'lucide-react-native';
-import { MAX_NOMBRE_DE_PERFIL, validarNombreDePerfil } from '@lilachat/shared';
+import { MAX_NOMBRE_DE_PERFIL, formatPhoneDisplay, validarNombreDePerfil } from '@lilachat/shared';
 import { guardarNombreDePerfil, quitarFotoDePerfil } from '../api/client';
 import type { Credential } from '../auth/credentialStore';
 import { elegirFotoRedonda } from '../chat/fotoDeGrupo';
@@ -144,7 +144,7 @@ export function PerfilAjuste({ credential }: { credential: Credential }) {
             <Pencil size={14} color={colores['on-surface-variant']} />
           </Pressable>
         )}
-        <Text className="text-sm text-on-surface-variant">{credential.phone}</Text>
+        <Text className="text-sm text-on-surface-variant">{formatPhoneDisplay(credential.phone)}</Text>
       </View>
     </View>
   );

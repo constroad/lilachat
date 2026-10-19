@@ -49,7 +49,7 @@ export function EncuestaEnElChat({ pollId, jwt, yo }: { pollId: string; jwt: str
         <Text className="text-[13px] text-on-surface-variant">No se pudo cargar la encuesta. Toca para reintentar.</Text>
       </Pressable>
     ) : (
-      <View className="h-40 rounded-2xl bg-surface-variant" />
+      <View className="h-40 rounded-xl bg-surface-variant" />
     );
   }
   return (
@@ -62,6 +62,7 @@ export function EncuestaEnElChat({ pollId, jwt, yo }: { pollId: string; jwt: str
       onVotar={(indice) => void acciones.votar(poll, indice)}
       onCerrar={() => void acciones.cerrar(poll)}
       onEliminar={() => void acciones.eliminar(poll)}
+      enElChat
     />
   );
 }

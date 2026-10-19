@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { asistentesPorRespuesta, cuandoDelEvento, origenDelEvento, terminaPorDefecto } from './eventos';
+import { asistentesPorRespuesta, cuandoDelEvento, origenDelEvento, resumenDeRsvp, terminaPorDefecto } from './eventos';
 
 const YO = '665f1a2b3c4d5e6f70818293';
 const WILSON = '665f1a2b3c4d5e6f70818294';
@@ -69,5 +69,20 @@ describe('asistentesPorRespuesta', () => {
       { clave: 'yes', titulo: 'Van', nombres: ['Tú', 'Wilson Zamora'] },
       { clave: 'pending', titulo: 'Sin responder', nombres: ['María'] },
     ]);
+  });
+});
+
+/**
+ * El resumen de quién va, el MISMO en la Agenda y en la tarjeta del chat
+ * (FL13d): la Agenda decía «1 van» y el chat «1 va».
+ */
+describe('resumenDeRsvp', () => {
+  it('singular y plural de «va»', () => {
+    expect(resumenDeRsvp({ yes: 1, maybe: 0, no: 0, pending: 3 })).toBe('1 va · 0 tal vez · 3 sin responder');
+    expect(resumenDeRsvp({ yes: 2, maybe: 1, no: 0, pending: 0 })).toBe('2 van · 1 tal vez · 0 sin responder');
+  });
+
+  it('nadie todavía: 0 van', () => {
+    expect(resumenDeRsvp({ yes: 0, maybe: 0, no: 0, pending: 0 })).toBe('0 van · 0 tal vez · 0 sin responder');
   });
 });

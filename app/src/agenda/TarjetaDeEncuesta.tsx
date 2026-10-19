@@ -20,6 +20,11 @@ export function TarjetaDeEncuesta(props: {
   onVotar: (indice: number) => void;
   onCerrar: () => void;
   onEliminar: () => void;
+  /**
+   * Dentro del chat (FL13d): sin «Familia · preguntó Ana» —el chat ya es ese y
+   * el autor va arriba de la tarjeta— y sin el margen de la lista.
+   */
+  enElChat?: boolean;
 }) {
   const colores = useColores();
   const { poll, yo, agenda } = props;
@@ -28,7 +33,7 @@ export function TarjetaDeEncuesta(props: {
     { question: poll.question, options: poll.options, allowMultiple: poll.allowMultiple, anonymous: poll.anonymous, closedAt: cerrada ? new Date(poll.closedAt!) : null },
     yo
   );
-  const origen = origenDeEncuesta({ chat: poll.chat, autor: poll.autor, yo, agenda });
+  const origen = props.enElChat ? null : origenDeEncuesta({ chat: poll.chat, autor: poll.autor, yo, agenda });
   const modos = [poll.allowMultiple ? 'Varias respuestas' : null, poll.anonymous ? 'Resultados anónimos' : null].filter(Boolean).join(' · ');
 
   const confirmarCierre = () =>
@@ -43,7 +48,7 @@ export function TarjetaDeEncuesta(props: {
     ]);
 
   return (
-    <View testID={`encuesta-${poll.id}`} className="mb-3 rounded-xl border border-outline/10 bg-surface p-4">
+    <View testID={`encuesta-${poll.id}`} className={`rounded-xl border border-outline/10 bg-surface p-4 ${props.enElChat ? '' : 'mb-3'}`}>
       {origen ? (
         <Text className="mb-1 text-[11px] text-on-surface-variant" numberOfLines={1} testID={`origen-${poll.id}`}>
           {origen}

@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   Phone,
   Search,
-  MoreVertical,
   UserPlus,
   Video,
 } from 'lucide-react-native';
@@ -13,6 +12,7 @@ import {
   nombreDeContacto,
   puedeEditarInfo,
   clasificarMedias,
+  formatPhoneDisplay,
   type AccionDeMiembro,
 } from '@lilachat/shared';
 import { EditarNombreDeGrupo } from './EditarNombreDeGrupo';
@@ -26,8 +26,7 @@ import type { Credential } from '../auth/credentialStore';
 import { cambiarAjustesDeChat } from '../api/client';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useColores } from '../ui/tema';
-import { Rotulo } from '../ui/Rotulo';
-import { Avatar } from '../ui/Avatar';
+import { ParticipantesDelGrupo, type Miembro } from './ParticipantesDelGrupo';
 import { SeccionCompartido } from './CompartidoEnElChat';
 import { useMargenes } from '../ui/useMargenes';
 import type { ServerMessage } from './socketClient';
@@ -45,14 +44,6 @@ import type { ServerMessage } from './socketClient';
  * «participantes» que listar ni grupo del que salir, y dejar esas filas vacías o
  * inertes es peor que no ponerlas. Lo que cambia se decide por `kind`.
  */
-type Miembro = {
-  id: string;
-  name: string | null;
-  phone: string | null;
-  role: 'admin' | 'member';
-  esYo: boolean;
-};
-
 type Detalle = {
   id: string;
   kind: 'direct' | 'group';
@@ -71,10 +62,6 @@ type Estado =
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
 
-/** El avatar de cada participante (dp), el de las filas de contacto. */
-const AVATAR_DE_MIEMBRO = 44;
-/** 16 de margen + el avatar + 12 de aire: donde empieza el nombre. */
-const SANGRIA_DE_MIEMBRO = 16 + AVATAR_DE_MIEMBRO + 12;
 
 export function ChatDetailScreen({
   visible,
@@ -376,7 +363,7 @@ export function ChatDetailScreen({
               debajo={
                 esGrupo
                   ? `${detalle!.members.length} participantes`
-                  : (detalle!.members.find((m) => !m.esYo)?.phone ?? '')
+                  : formatPhoneDisplay(detalle!.members.find((m) => !m.esYo)?.phone ?? '')
               }
               editable={puedoEditarInfo}
               subiendoFoto={subiendoFoto}
@@ -429,52 +416,14 @@ export function ChatDetailScreen({
             />
 
             {esGrupo ? (
-              <>
-                <Rotulo sangrado>Participantes</Rotulo>
-                {/* UNA tarjeta con líneas finas, como Ajustes (FL13): antes cada
-                    persona era su propia caja. */}
-                <View className="mx-4 overflow-hidden rounded-2xl border border-outline/10 bg-surface">
-                  {detalle!.members.map((miembro, indice) => (
-                    <View
-                      key={miembro.id}
-                      testID={`miembro-${miembro.id}`}
-                      className="min-h-[64px] flex-row items-center gap-3 px-4 py-2.5"
-                    >
-                      {/* La línea arranca donde arranca el nombre, como en Ajustes. */}
-                      {indice > 0 ? (
-                        <View className="absolute right-0 top-0 h-px bg-outline/10" style={{ left: SANGRIA_DE_MIEMBRO }} />
-                      ) : null}
-                      {/* Tu avatar lleva TU nombre: «Tú» salía como iniciales «TÚ». */}
-                      <Avatar nombre={miembro.esYo ? (miembro.name ?? '') : nombreDe(miembro)} tamano={AVATAR_DE_MIEMBRO} />
-                      <Text className="min-w-0 flex-1 text-[15px] font-semibold text-on-surface">
-                        {nombreDe(miembro)}
-                      </Text>
-                      {miembro.role === 'admin' ? (
-                        <View className="shrink-0 rounded-full bg-primary/[0.14] px-2.5 py-1">
-                          <Text className="text-[11px] font-semibold text-primary">Admin</Text>
-                        </View>
-                      ) : null}
-                      {/* El menú aparece solo si hay algo que hacer con esa
-                          persona. Una fila con «⋮» que abre una hoja vacía —o
-                          peor, con opciones que fallan— enseña que los botones
-                          de esta app no responden. Las mismas reglas las
-                          revalida el server: esconder un botón no es un
-                          permiso. */}
-                      {accionesPara(miembro).length > 0 ? (
-                        <Pressable
-                          testID={`btn-menu-${miembro.id}`}
-                          accessibilityLabel={`Opciones de ${nombreDe(miembro)}`}
-                          disabled={accionando}
-                          onPress={() => setMenuDe(miembro)}
-                          className={`h-11 w-11 shrink-0 items-center justify-center ${accionando ? 'opacity-40' : ''}`}
-                        >
-                          <MoreVertical size={18} color={colores['on-surface-variant']} />
-                        </Pressable>
-                      ) : null}
-                    </View>
-                  ))}
-                </View>
-              </>
+              <ParticipantesDelGrupo
+                miembros={detalle!.members}
+                nombreDe={nombreDe}
+                conAcciones={(miembro) => accionesPara(miembro).length > 0}
+                accionando={accionando}
+                onMenu={setMenuDe}
+                onAnadir={() => setAgregando(true)}
+              />
             ) : null}
 
             {aviso ? (

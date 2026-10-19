@@ -111,7 +111,7 @@ export type FraseDeEstado = { titulo: string; detalle: string; alerta: boolean }
  */
 export function fraseDeEstado(estado: EstadoDeRespaldo, ahora: number): FraseDeEstado {
   if (estado.decision === 'sin_passphrase') {
-    return { titulo: 'Sin respaldo', detalle: 'Crea una passphrase para respaldar tus chats.', alerta: true };
+    return { titulo: 'Sin respaldo', detalle: 'Crea una clave para respaldar tus chats.', alerta: true };
   }
   const titulo = estado.ultimoRespaldoEn === null ? 'Todavía sin respaldo' : `Respaldado ${haceCuanto(estado.ultimoRespaldoEn, ahora)}`;
   if (estado.fallo) return { titulo, detalle: estado.fallo, alerta: true };

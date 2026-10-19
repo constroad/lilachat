@@ -5146,9 +5146,13 @@ renovación da 401, sin perfil ni base local. QA en cero.
 **Los tests de pantalla no tenían IndexedDB:** pasaban con errores sueltos de
 Dexie. `fake-indexeddb/auto` va en `src/test/setup.ts`.
 
-**Una vez, en la suite completa del server, falló «un admin le cambia título,
-descripción y hora»** y no se repitió en nueve corridas. Si vuelve, mirar la
-hora del `startsAt` contra el reloj.
+**Prueba inestable del server, dos veces el 19/10, en tests distintos:**
+«un admin le cambia título, descripción y hora» (recordatorios) y «encendido:
+un invitado suma a un contacto suyo» (eventos: el invitar dio 404). Las dos,
+justo después de crear el documento, y solo en la suite completa (`npm test`
+de la raíz); aisladas y en 14 corridas más del server pasaron. Sospecha: algo
+que sigue escribiendo después de responder en el test anterior. Si vuelve en
+CI, el deploy no sale (`needs: verificar`).
 
 ### 54.9 W2 — paridad de mensajes (19/10/2026, publicado con 0.1.99)
 
@@ -5198,6 +5202,76 @@ bloquea) — falta en Chrome.
 
 **Pendiente de W2:** reacciones (no existen en el server); la duración de un
 audio subido como archivo (no como nota) sale 0:00.
+
+### 54.10 W4 — PWA: abre sin internet y avisa la versión nueva (19/10/2026, sin publicar)
+
+| Pieza | Qué | Dónde |
+| --- | --- | --- |
+| Service worker | A mano, 97 líneas con sus reglas en la cabecera: al instalar guarda la app y los archivos que nombra el `index.html`; cache-first solo `/assets/*`; navegación con 4 s de espera y, sin red, la app guardada; la API y el socket nunca pasan por él; la versión nueva espera a «Recargar» | `web/public/sw.js` |
+| Servido sin extensión | `/service-worker` (y la vieja `/sw.js`) con `no-store`, `Service-Worker-Allowed: /` y la VERSION sacada del `index.html` del build; `/assets/*` con caché de un año (`immutable`); `index.html` con `no-cache` | server `serviceWorker.ts` (+4 tests), `app.ts` |
+| Registro | Solo en producción, desde la primera visita (también sin sesión); busca versión nueva al volver a la pestaña, sin polling | `web/src/pwa/serviceWorker.ts`, `App.tsx` |
+| Avisos | «Sin conexión. Lo que escribas se enviará al volver» (sin red, o sin socket más de 5 s); «Hay una versión nueva · Recargar»; «Instalar Lilachat en esta computadora» en Ajustes cuando el navegador lo ofrece | `pwa/conexion.ts` (+4 tests), `pwa/instalar.ts`, `Shell.tsx` |
+| Sesión que vuelve sola | Sin sesión viva, se reintenta al volver la red o la pestaña y cada 15 s (solo al frente). Sin esto, si volvía el SERVER y no la red, quedaba «Sin conexión» hasta recargar | `sesion/useSesion.ts` (+1 test) |
+| Nombres sin red | Los miembros de cada chat se guardan en la base local: sin red, el autor sigue con su nombre y no «Alguien» | `useDetalleDelChat.ts` |
+
+**E2E (19/10):** el navegador del panel **no deja registrar service workers**
+(falla hasta `/sw.js`), así que la prueba fue en un Chromium aparte (Playwright
+sin ventana) contra la web compilada: el service worker queda activo y guarda
+la app y sus cinco archivos; **con el server apagado** una ruta interna abre la
+app, con los chats, los mensajes, los nombres y el aviso «Sin conexión»; un
+build nuevo aparece como «Hay una versión nueva» y «Recargar» lo activa y borra
+la caché vieja; al prender el server la web vuelve sola en 16 s; lo escrito con
+el server caído sale al volver (9 s). QA en cero.
+
+### 54.11 W5 — vincular la web con el QR del teléfono (19/10/2026, sin publicar)
+
+Diseños: `w5-web-vincular.png`, `w5-app-vinculados.png`, `w5-app-escaner.png`
+(Stitch, en `design/stitch/INVENTARIO.md`).
+
+| Pieza | Qué | Dónde |
+| --- | --- | --- |
+| Formato del QR | `https://<origen>/v/<token>`: 32 bytes en base64url. Lo arma la web y lo lee la app con el MISMO módulo; solo http/https y la ruta exacta | shared `vinculacion.ts` (+4 tests) |
+| Vinculaciones en curso | **En memoria, no en la base**: duran 5 min y un reinicio solo obliga a pedir otro QR (una colección pediría un índice TTL, y la bóveda no crea índices). La web recibe `id` + `clave` privada; el QR lleva un token que cambia cada 20 s y vence a los 60 s; se guardan hashes; aprobar es de un solo uso y canjear exige la clave | server `vinculaciones.ts` (+9 tests) |
+| Web (sin sesión) | `POST /api/auth/vincular/iniciar` (30 por minuto por IP, `cf-connecting-ip`), `/rotar`, `/esperar` (long-poll de 25 s; si la pestaña se fue, no canjea). Al canjear: dispositivo `vinculado-<uuid>` con el hash de su secreto, cookie `HttpOnly` y JWT. «Mantener la sesión iniciada» apagado = cookie sin `Max-Age`, también al renovar | `vincularRoutes.ts`, `dispositivosVinculados.ts`, `cookieDeDispositivo.ts` |
+| Teléfono (con sesión) | `POST /api/vinculos/consultar` (el nombre del navegador, sacado del User-Agent) y `/aprobar`; `GET /api/vinculos`; `DELETE /api/vinculos/:deviceId`. Una web vinculada recibe 403 en todo esto. Máximo 4 (se mira al aprobar y otra vez al canjear) | `vincularRoutes.ts`, `nombreDelNavegador.ts` (+2 tests) |
+| Revocar al instante | Toda ruta con sesión y el handshake del socket preguntan si la vinculada sigue (recordado 1 min; esa lectura anota el último uso). Cerrar desde el teléfono borra el dispositivo, corta su socket (sala `device:<id>`) y avisa `vinculos.changed`. La cookie de una borrada da 401 y se borra; **constroad-auth nunca se consulta** para una vinculada. «Cerrar sesión» en la web vinculada la desvincula | `requireSession.ts`, `socket.ts`, `authRoutes.ts` (`/session`, `/salir`) |
+| Pantalla web | Pasos + QR que se renueva solo con su barra; «Entrar con número de teléfono»; vencido → «Generar otro código». Rotación y espera **se pausan con la pestaña oculta**; si el teléfono aprueba en ese rato, se canjea al volver. En pantalla angosta abre por el número (un celular no escanea su propia pantalla). `/v/<token>` abierto con la cámara del teléfono explica dónde se escanea | `auth/PantallaDeVincular.tsx`, `useVinculacionPorQr.ts` (+8 tests), `caminoDelQr.ts` (`qrcode-generator` 2.0.4, MIT; corrección Q), `AccessScreens.tsx` (+3 tests), `CodigoParaLaApp.tsx` |
+| App | Ajustes → «Computadora» → **Dispositivos vinculados**: portada, «Vincular un dispositivo», lista con último uso y cerrar sesión (confirmado). Escáner con `expo-camera` (MIT) y hoja «¿Vincular Chrome en macOS?» con el aviso «solo una computadora tuya»; antes de aprobar pide el desbloqueo del teléfono (`expo-local-authentication`, MIT; sin bloqueo configurado, no hay qué pedir). **Exige APK nuevo** | `DispositivosVinculadosAjuste.tsx`, `EscanerDeVinculacion.tsx`, `useEscanerDeVinculacion.ts`, `desbloqueo.ts`, `vinculos.ts` (+5 tests), `api/client.ts` |
+
+**Decisiones no evidentes:** el long-poll en vez del socket de la vinculación
+(la web no tiene sesión y un long-poll en memoria no cuesta nada mientras
+espera); el JWT de la vinculada sigue de 24 h porque la revocación ya no
+depende de que venza.
+
+**Riesgo conocido (QRLjacking):** quien logre que la víctima escanee un QR
+ajeno se lleva la sesión. Lo frenan el nombre del navegador en la hoja, el
+aviso ámbar, el desbloqueo del teléfono y la lista con «Cerrar sesión».
+
+**E2E (19/10), de punta a punta:** web compilada en un Chromium sin ventana
+contra el server QA (sin crons) y la app de desarrollo en el emulador. La
+cámara del emulador se arranca con `-camera-back imagefile:<png>` y el PNG es
+la captura del QR que dibujó la web (la escena virtual deja el póster fuera de
+cuadro). Para que ese QR siga vigente mientras el emulador reinicia, el server
+QA inyecta un reloj 30 veces más lento en `crearVinculaciones` (solo en el
+script de QA, nada en el código). Verificado: el escáner lee el QR, la hoja
+pregunta por el navegador, «Vincular» (sin bloqueo en el emulador) aprueba, la
+web entra sola con su dispositivo `vinculado-…`, la fila aparece en el
+teléfono sin reabrir («Activo ahora»), «Cerrar sesión» en el teléfono saca a
+la web en menos de 5 s (perfil y base local borrados, vuelve al QR), recargar
+una web revocada vuelve al QR, y un QR ya usado avisa «El código venció». QA
+en cero (0 vinculadas, los 20 dispositivos de José).
+
+| Defecto que encontró el E2E | Causa | Arreglo |
+| --- | --- | --- |
+| La fila nueva no aparecía en el teléfono hasta reabrir | la app releía apenas aprobaba, y el dispositivo nace después, cuando la web canjea | la lista escucha `vinculos.changed` del socket |
+| La web revocada se quedaba con los chats guardados y «Sin conexión» | socket.io no reintenta un corte del SERVER, y sin un pedido HTTP nadie veía el 401 | `useSocket` renueva la sesión ante `io server disconnect` y ante `unauthorized` al reconectar (el JWT vencido de una pestaña abierta 24 h tampoco reconectaba); renovada, reconecta con el token NUEVO; rechazada, cierra (+3 tests) |
+| El escáner no leía nada | CameraX analiza solo lo que muestra el visor; el póster quedaba cortado | póster calibrado (detalle del E2E, no de la app) |
+| El título blanco no se leía sobre una cámara clara | sin fondo | franja `bg-black/50` en la cabecera del escáner |
+| Con un QR usado delante, consultaba al server cada 2,5 s | cada lectura volvía a preguntar | se recuerda el último rechazado (salvo sin red) |
+
+También: el test de W4 «se reintenta sola» tiraba un `TransactionInactiveError`
+suelto en 2 de cada 4 corridas (falseaba `setImmediate`, que usa
+fake-indexeddb); ahora solo falsea timeouts e intervalos (6 de 6 limpias).
 
 ## 53. FL15 — barra como WhatsApp, borradores, recordatorios del grupo, novedades, mensajes largos (19/10/2026, 0.1.98)
 

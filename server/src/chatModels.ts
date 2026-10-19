@@ -117,6 +117,8 @@ export interface Message {
     aQuien?: { phone?: string; name?: string };
   };
   replyToSeq?: number;
+  /** Las @menciones del texto (José, 18/10), ya validadas (`validarMenciones`). */
+  menciones?: { userId: string; desde: number; largo: number }[];
   editedAt?: Date;
   /**
    * Cuándo se borró, si se borró (27/08/2026).
@@ -216,6 +218,10 @@ const messageSchema = new Schema<Message>(
       durationMs: Number,
     },
     replyToSeq: { type: Number },
+    menciones: {
+      type: [new Schema({ userId: { type: String, required: true }, desde: { type: Number, required: true }, largo: { type: Number, required: true } }, { _id: false })],
+      default: undefined,
+    },
     editedAt: { type: Date },
     deletedAt: { type: Date },
     autoReply: { type: Boolean, default: false },

@@ -266,6 +266,7 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
               ? (payload.envelope as { v: number; nonce: string; ciphertext: string })
               : undefined,
           replyToSeq: typeof payload.replyToSeq === 'number' ? payload.replyToSeq : undefined,
+          menciones: payload.menciones,
         });
 
         // A TODOS los miembros (incluido el autor: sus otros dispositivos

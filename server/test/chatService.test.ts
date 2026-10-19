@@ -59,6 +59,32 @@ beforeEach(async () => {
   chatId = String(chat._id);
 });
 
+/** José, 18/10: «taggear con @». Se guardan solo las menciones que valen. */
+describe('sendMessage — menciones', () => {
+  it('guarda las de miembros y descarta las de ajenos o fuera del texto', async () => {
+    const { message } = await sendMessage({
+      chatId,
+      senderId: jose,
+      clientKey: 'men',
+      body: 'Hola @María',
+      menciones: [
+        { userId: String(maria), desde: 5, largo: 6 },
+        { userId: String(ajeno), desde: 5, largo: 6 },
+        { userId: String(maria), desde: 30, largo: 6 },
+      ],
+    });
+
+    expect(message.menciones).toEqual([{ userId: String(maria), desde: 5, largo: 6 }]);
+    const guardado = await MessageModel.findOne({ clientKey: 'men' }).lean();
+    expect(guardado?.menciones).toEqual([{ userId: String(maria), desde: 5, largo: 6 }]);
+  });
+
+  it('sin menciones válidas no guarda el campo', async () => {
+    const { message } = await sendMessage({ chatId, senderId: jose, clientKey: 'sin', body: 'hola', menciones: 'basura' });
+    expect(message.menciones).toBeUndefined();
+  });
+});
+
 describe('sendMessage — seq', () => {
   it('el seq arranca en 1 y avanza de a uno por chat', async () => {
     const first = await sendMessage({ chatId, senderId: jose, clientKey: 'a', body: 'hola' });

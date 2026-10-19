@@ -179,6 +179,24 @@ describe('notifyOffline — doble check sin abrir la app (FL8.2)', () => {
     expect(datos.map((d) => [d.tokens, d.data.silencioso])).toEqual([[['tok-maria-2'], '1']]);
   });
 
+  /**
+   * José, 18/10: «taggear con @». Como WhatsApp, a quien MENCIONAN le suena
+   * aunque haya silenciado el grupo: es justo para lo que sirve mencionar.
+   */
+  it('mencionado en un chat silenciado: le suena igual', async () => {
+    await ChatModel.updateOne({ _id: chatId, 'members.userId': maria }, { $set: { 'members.$.muted': true } });
+    await DeviceModel.create({ deviceId: 'd-maria-2', userId: maria, platform: 'android', pushToken: 'tok-maria-2', capacidades: [CAPACIDAD_MENSAJE_NATIVO] });
+
+    await notifyOffline({
+      message: message({ body: '@María ven', menciones: [{ userId: String(maria), desde: 0, largo: 6 }] }),
+      members: members(),
+      senderId: String(jose),
+    });
+
+    expect(sent.map((s) => s.tokens)).toEqual([['tok-maria']]);
+    expect(datos.map((d) => [d.tokens, d.data.silencioso])).toEqual([[['tok-maria-2'], '0']]);
+  });
+
   it('en un grupo dice de qué grupo', async () => {
     await ChatModel.updateOne({ _id: chatId }, { $set: { kind: 'group', name: 'Los originales' } });
     await DeviceModel.updateOne({ deviceId: 'd-maria' }, { $set: { platform: 'android', capacidades: [CAPACIDAD_MENSAJE_NATIVO] } });

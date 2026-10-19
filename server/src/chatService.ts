@@ -4,6 +4,7 @@ import {
   puedeEliminar,
   busquedaValida,
   escaparRegex,
+  validarMenciones,
 } from '@lilachat/shared';
 import { UserModel } from './models.js';
 import { ChatModel, MessageModel, ReceiptModel, type Chat, type Message } from './chatModels.js';
@@ -83,6 +84,8 @@ export async function sendMessage(params: {
   /** La encuesta o el evento que este mensaje publica (`publicarEnElChat`). */
   ref?: Message['ref'];
   replyToSeq?: number;
+  /** Las @menciones que mandó el cliente: se guardan solo las que valen. */
+  menciones?: unknown;
   /** Auto-respuesta de ausente (F11): se marca para no disparar otra. */
   autoReply?: boolean;
 }): Promise<SendResult> {
@@ -120,6 +123,8 @@ export async function sendMessage(params: {
     throw esMiembroDeUnSecreto ? new CifradoRequeridoError() : new ForbiddenChatError();
   }
   const members = chat.members.map((member) => String(member.userId));
+  // Solo sobre texto en claro: en un chat secreto el server no ve el texto.
+  const menciones = params.envelope ? [] : validarMenciones(params.body ?? '', params.menciones, members);
 
   try {
     const created = await MessageModel.create({
@@ -138,6 +143,7 @@ export async function sendMessage(params: {
       media: params.media,
       ref: params.ref,
       replyToSeq: params.replyToSeq,
+      ...(menciones.length > 0 ? { menciones } : {}),
       autoReply: params.autoReply ?? false,
       at: new Date(),
     });
@@ -411,7 +417,8 @@ export async function editMessage(params: {
 
   const actualizado = await MessageModel.findOneAndUpdate(
     { chatId: params.chatId, seq: params.seq },
-    { $set: { body, editedAt: new Date() } },
+    // Editar el texto deja sin sentido los rangos de las @menciones: se quitan.
+    { $set: { body, editedAt: new Date() }, $unset: { menciones: 1 } },
     { returnDocument: 'after' }
   ).lean<Message | null>();
   return actualizado ? { ok: true, message: actualizado } : { ok: false, motivo: 'No se pudo editar.' };

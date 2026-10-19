@@ -49,6 +49,8 @@ export async function notifyOffline(params: {
     ChatModel.findById(params.message.chatId).select('kind name encrypted').lean(),
   ]);
   if (dispositivos.length === 0) return;
+  // A quien MENCIONAN le suena aunque haya silenciado el chat, como WhatsApp.
+  for (const mencion of params.message.menciones ?? []) silenciados.delete(mencion.userId);
 
   const autor = sender_?.name ?? sender_?.phone ?? 'Alguien';
   const nombreDelGrupo = chat?.kind === 'group' ? chat.name : undefined;

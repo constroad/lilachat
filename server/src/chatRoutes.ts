@@ -268,6 +268,8 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
           id: String(m.userId),
           name: persona?.name ?? null,
           phone: persona?.phone ?? null,
+          // La foto de cada uno (FL13d): el detalle y las burbujas del grupo.
+          avatarUrl: persona?.avatarUrl ? toAbsoluteMediaUrl(persona.avatarUrl) : undefined,
           role: m.role ?? 'member',
           esYo: String(m.userId) === String(userId),
         };

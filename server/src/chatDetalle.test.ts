@@ -59,6 +59,24 @@ describe('GET /api/chats/:id/detail — silenciado', () => {
   });
 });
 
+/**
+ * FL13d (18/10): el detalle del grupo mostraba a cada participante con sus
+ * iniciales —y a «Tú» con un ícono— aunque tuviera foto de perfil. El diseño
+ * dibuja la foto de cada uno, y las burbujas del grupo la usan también.
+ */
+describe('GET /api/chats/:id/detail — foto de cada participante', () => {
+  it('manda la foto de quien la tiene y nada de quien no', async () => {
+    await UserModel.updateOne({ phone: '51999999999' }, { $set: { avatarUrl: '/media/ana.jpg' } });
+
+    const { body } = await request(app).get(`/api/chats/${chatId}/detail`).set('Authorization', `Bearer ${jwt}`).expect(200);
+
+    const ana = body.members.find((m: { esYo: boolean }) => !m.esYo);
+    const mia = body.members.find((m: { esYo: boolean }) => m.esYo);
+    expect(ana.avatarUrl).toMatch(/\/media\/ana\.jpg$/);
+    expect(mia.avatarUrl).toBeUndefined();
+  });
+});
+
 describe('GET /api/chats — check azul en grupos (FL8)', () => {
   it('leído solo cuando lo leyeron TODOS; quien nunca abrió cuenta como 0; Lila no cuenta', async () => {
     const [ana, luis] = await UserModel.find({ phone: { $in: ['51999999999'] } }).lean();

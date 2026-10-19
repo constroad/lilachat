@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,6 +22,8 @@ import { buildVistaPreviaRouter, type TraerVistaPrevia } from './vistaPreviaRout
 import { traerVistaPrevia } from './traerVistaPrevia.js';
 import { buildRecordatoriosDeGrupoRouter } from './recordatoriosDeGrupo.js';
 import { cabecerasDeSeguridad } from './cabecerasDeSeguridad.js';
+import { montarServiceWorker } from './serviceWorker.js';
+import { buildVincularRouters, type OpcionesDeVinculacion } from './vincularRoutes.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -49,7 +51,12 @@ function resolveWebDir(): string | null {
 }
 
 /** Dependencias inyectables: los tests pasan un constroad-auth falso. */
-export type AppDeps = { authClient?: AuthClient; mediaUploader?: MediaUploader; traerVistaPrevia?: TraerVistaPrevia };
+export type AppDeps = {
+  authClient?: AuthClient;
+  mediaUploader?: MediaUploader;
+  traerVistaPrevia?: TraerVistaPrevia;
+  vinculacion?: OpcionesDeVinculacion;
+};
 
 /**
  * La app Express, separada del `listen` para poder testearla con supertest
@@ -66,6 +73,10 @@ export function buildApp(deps: AppDeps = {}): Express {
     res.status(200).json({ status: 'ok', service: 'lilachat-server', version });
   });
 
+  // Vincular por QR (W5): antes que `/api/auth`, que no conoce estas rutas.
+  const vincular = buildVincularRouters(deps.vinculacion);
+  app.use('/api/auth/vincular', vincular.web);
+  app.use('/api/vinculos', vincular.telefono);
   app.use('/api/auth', buildAuthRouter(deps.authClient ?? buildHttpAuthClient()));
   app.use('/api/chats', buildChatRouter(deps.mediaUploader));
   app.use('/api/media', buildMediaRouter(deps.mediaUploader));
@@ -95,10 +106,24 @@ export function buildApp(deps: AppDeps = {}): Express {
   if (webDir) {
     // CSP y compañía para todo lo que sirve la web (W0).
     app.use(/^(?!\/api\/).*/, cabecerasDeSeguridad);
-    app.use(express.static(webDir, { index: false }));
+    // El service worker (W4), sin extensión y sin caché.
+    const indexHtml = readFileSync(path.join(webDir, 'index.html'), 'utf8');
+    const plantillaDelSw = path.join(webDir, 'sw.js');
+    if (existsSync(plantillaDelSw)) montarServiceWorker(app, { plantilla: readFileSync(plantillaDelSw, 'utf8'), indexHtml });
+    app.use(
+      express.static(webDir, {
+        index: false,
+        // Lo que tiene hash en el nombre no cambia nunca: se guarda un año.
+        setHeaders: (res, archivo) => {
+          if (archivo.includes(`${path.sep}assets${path.sep}`)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        },
+      })
+    );
     // Toda ruta que no sea API cae en el `index.html`: la SPA maneja su propio
-    // ruteo y un refresco en cualquier URL tiene que seguir funcionando.
+    // ruteo y un refresco en cualquier URL tiene que seguir funcionando. Sin
+    // caché: es el que apunta a los archivos de cada versión.
     app.get(/^(?!\/api\/).*/, (_req, res) => {
+      res.setHeader('Cache-Control', 'no-cache');
       res.sendFile(path.join(webDir, 'index.html'));
     });
   }

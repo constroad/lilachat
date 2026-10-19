@@ -10,6 +10,8 @@ import type { Request } from 'express';
  * - `Path=/api/auth`: solo viaja a entrar, renovar y salir — no en cada pedido.
  * - `Secure` cuando el pedido llegó por HTTPS (en local, localhost va sin).
  * - 400 días: el tope de Chrome. Se renueva en cada `/session`.
+ * - `temporal` (W5, «Mantener la sesión iniciada» apagado): sin `Max-Age`, se
+ *   va al cerrar el navegador.
  *
  * La app NO usa esto: su secreto vive en el llavero del teléfono.
  */
@@ -19,9 +21,10 @@ const ATRIBUTOS = 'Path=/api/auth; HttpOnly; SameSite=Strict';
 
 export const pedidoSeguro = (req: Request): boolean => req.secure || req.headers['x-forwarded-proto'] === 'https';
 
-export function cookieDeDispositivo(params: { deviceId: string; deviceSecret: string; segura: boolean }): string {
+export function cookieDeDispositivo(params: { deviceId: string; deviceSecret: string; segura: boolean; temporal?: boolean }): string {
   const valor = encodeURIComponent(`${params.deviceId}:${params.deviceSecret}`);
-  return `${NOMBRE_DE_LA_COOKIE}=${valor}; ${ATRIBUTOS}; Max-Age=${VIDA_EN_SEGUNDOS}${params.segura ? '; Secure' : ''}`;
+  const vida = params.temporal ? '' : `; Max-Age=${VIDA_EN_SEGUNDOS}`;
+  return `${NOMBRE_DE_LA_COOKIE}=${valor}; ${ATRIBUTOS}${vida}${params.segura ? '; Secure' : ''}`;
 }
 
 export const cookieBorrada = (segura: boolean): string =>

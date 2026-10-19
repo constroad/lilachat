@@ -1,6 +1,8 @@
 import type { NextFunction, Request, Response } from 'express';
 import { Types } from 'mongoose';
+import { esDispositivoVinculado } from '@lilachat/shared';
 import { verifySession } from './sessions.js';
+import { vinculadoVigente } from './dispositivosVinculados.js';
 
 /**
  * El guard de toda ruta que no sea el alta. La identidad sale del JWT firmado
@@ -25,7 +27,12 @@ export function requireSession(req: Request, res: Response, next: NextFunction):
     deviceId: claims.deviceId,
     email: claims.email,
   };
-  next();
+  if (!esDispositivoVinculado(claims.deviceId)) return next();
+  // Una web vinculada que el teléfono cerró pierde el acceso YA, no en 24 h (W5).
+  vinculadoVigente(claims.deviceId).then(
+    (vigente) => (vigente ? next() : void res.status(401).json({ message: 'Esta sesión se cerró desde el teléfono.' })),
+    next
+  );
 }
 
 /**

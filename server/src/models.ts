@@ -48,6 +48,16 @@ export interface Device {
   /** Lo que sabe hacer con un push (`CAPACIDADES_DE_PUSH`, FL8.1). */
   capacidades?: string[];
   lastSeenAt?: Date;
+  /**
+   * Web vinculada con el QR (W5): el teléfono que la autorizó. Su secreto NO
+   * está en constroad-auth; acá va solo su hash.
+   */
+  vinculadoPor?: string;
+  secretoHash?: string;
+  /** «Chrome en macOS», para reconocerla en «Dispositivos vinculados». */
+  nombre?: string;
+  /** «Mantener la sesión iniciada» apagado: la cookie muere con el navegador. */
+  sesionTemporal?: boolean;
 }
 
 const invitationSchema = new Schema<Invitation>(
@@ -105,6 +115,10 @@ const deviceSchema = new Schema<Device>(
     publicKey: { type: String },
     capacidades: { type: [String], default: undefined },
     lastSeenAt: { type: Date },
+    vinculadoPor: { type: String },
+    secretoHash: { type: String },
+    nombre: { type: String },
+    sesionTemporal: { type: Boolean },
   },
   { timestamps: true }
 );

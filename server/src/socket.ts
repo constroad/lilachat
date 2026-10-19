@@ -25,6 +25,8 @@ import { configurarEntrega } from './entregaPorAviso.js';
 import { configurarAvisoDeTarjeta } from './avisoDeTarjeta.js';
 import { maybeAnswerMention } from './assistantReply.js';
 import { verifySession } from './sessions.js';
+import { esDispositivoVinculado } from '@lilachat/shared';
+import { vinculadoVigente } from './dispositivosVinculados.js';
 
 /**
  * El tiempo real (spec §6.1). Socket.IO sobre WS: a esta escala el protocolo
@@ -42,9 +44,11 @@ import { verifySession } from './sessions.js';
  *    membresía e idempotencia viven en UN lugar.
  */
 
-type AuthedSocket = Socket & { userId?: Types.ObjectId };
+type AuthedSocket = Socket & { userId?: Types.ObjectId; deviceId?: string };
 
 const userRoom = (userId: string) => `user:${userId}`;
+/** Sala por dispositivo: revocar una web vinculada corta SOLO su socket (W5). */
+const deviceRoom = (deviceId: string) => `device:${deviceId}`;
 
 /**
  * Con quién comparto chats. Es a quién le importa mi presencia — y el único
@@ -158,6 +162,16 @@ export function avisarCambioDeChat(userId: string, chatId: string): void {
   ioVivo?.to(userRoom(userId)).emit('chat.changed', { chatId });
 }
 
+/** Revocada una web vinculada (W5): su socket se corta en el acto. */
+export function desconectarDispositivo(deviceId: string): void {
+  ioVivo?.in(deviceRoom(deviceId)).disconnectSockets(true);
+}
+
+/** Se vinculó o se cerró una web: el teléfono relee su lista. */
+export function avisarCambioDeVinculos(userId: string): void {
+  ioVivo?.to(userRoom(userId)).emit('vinculos.changed', {});
+}
+
 const PING_INTERVALO_MS = 15_000;
 const PING_ESPERA_MS = 10_000;
 
@@ -194,7 +208,13 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
     const claims = token ? verifySession(token) : null;
     if (!claims) return next(new Error('unauthorized'));
     socket.userId = new Types.ObjectId(claims.userId);
-    next();
+    socket.deviceId = claims.deviceId;
+    if (!esDispositivoVinculado(claims.deviceId)) return next();
+    // Una web vinculada y revocada no vuelve a entrar con su JWT viejo (W5).
+    vinculadoVigente(claims.deviceId).then(
+      (vigente) => next(vigente ? undefined : new Error('unauthorized')),
+      () => next(new Error('unauthorized'))
+    );
   });
 
   io.on('connection', (socket: AuthedSocket) => {
@@ -202,6 +222,7 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
     if (!userId) return socket.disconnect(true);
     const me = String(userId);
     void socket.join(userRoom(me));
+    if (socket.deviceId) void socket.join(deviceRoom(socket.deviceId));
 
     // Presencia: el alta es SINCRÓNICA, antes de cualquier `await`. Si se
     // contaba después de leer los contactos, un corte inmediato (salir rápido

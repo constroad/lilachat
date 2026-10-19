@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import mongoose from 'mongoose';
 import type { AuthClient } from './authClient.js';
-import { normalizePeruPhone } from '@lilachat/shared';
+import { esDispositivoVinculado, normalizePeruPhone } from '@lilachat/shared';
 import {
   GENERIC_OTP_RESPONSE,
   GENERIC_VERIFY_ERROR,
@@ -15,6 +15,8 @@ import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { alertarServidor } from './alertaTelegram.js';
 import { resolverUsuarioDeSesion } from './identidadDeSesion.js';
 import { cookieBorrada, cookieDeDispositivo, leerCookieDeDispositivo, pedidoSeguro } from './cookieDeDispositivo.js';
+import { revocarVinculado, validarVinculado } from './dispositivosVinculados.js';
+import { avisarCambioDeVinculos, desconectarDispositivo } from './socket.js';
 
 /**
  * El alta (spec §5). El teléfono habla con ESTE server; este server habla con
@@ -165,6 +167,22 @@ export function buildAuthRouter(authClient: AuthClient): Router {
       return esWeb ? res.status(401).json({ message: 'Tu acceso ya no está activo.' }) : res.status(400).json({ message: 'Faltan datos.' });
     }
 
+    // Una web vinculada con el QR (W5) es nuestra: constroad-auth no la conoce.
+    if (esDispositivoVinculado(deviceId)) {
+      const vinculado = await validarVinculado(deviceId, deviceSecret);
+      const user = vinculado ? await UserModel.findById(vinculado.userId).lean() : null;
+      if (!vinculado || !user) {
+        res.setHeader('Set-Cookie', cookieBorrada(pedidoSeguro(req)));
+        return res.status(401).json({ message: 'Esta sesión se cerró desde el teléfono.' });
+      }
+      void DeviceModel.updateOne({ deviceId }, { $set: { lastSeenAt: new Date() } }).catch(() => {});
+      res.setHeader('Set-Cookie', cookieDeDispositivo({ deviceId, deviceSecret, segura: pedidoSeguro(req), temporal: vinculado.temporal }));
+      return res.status(200).json({
+        jwt: signSession({ userId: String(user._id), deviceId, email: user.email ?? user.phone }),
+        user: { id: String(user._id), name: user.name ?? null, phone: user.phone, avatarUrl: user.avatarUrl ? toAbsoluteMediaUrl(user.avatarUrl) : null },
+      });
+    }
+
     const validated = await authClient.validateDevice(deviceId, deviceSecret);
     if (!validated.ok) {
       // LA REGLA: la ausencia de respuesta NO revoca. Red caída = 503
@@ -243,7 +261,14 @@ export function buildAuthRouter(authClient: AuthClient): Router {
    */
   router.post('/salir', async (req, res) => {
     const deCookie = leerCookieDeDispositivo(req.headers.cookie);
-    if (deCookie) await DeviceModel.updateOne({ deviceId: deCookie.deviceId }, { $unset: { pushToken: 1 } }).catch(() => undefined);
+    if (deCookie && esDispositivoVinculado(deCookie.deviceId)) {
+      // Una web vinculada que sale deja de estar vinculada (W5), con su secreto de prueba.
+      const vinculado = await validarVinculado(deCookie.deviceId, deCookie.deviceSecret).catch(() => null);
+      if (vinculado && (await revocarVinculado(vinculado.userId, deCookie.deviceId).catch(() => false))) {
+        desconectarDispositivo(deCookie.deviceId);
+        avisarCambioDeVinculos(String(vinculado.userId));
+      }
+    } else if (deCookie) await DeviceModel.updateOne({ deviceId: deCookie.deviceId }, { $unset: { pushToken: 1 } }).catch(() => undefined);
     res.setHeader('Set-Cookie', cookieBorrada(pedidoSeguro(req)));
     res.status(204).end();
   });

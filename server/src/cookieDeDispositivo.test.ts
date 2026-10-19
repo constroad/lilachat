@@ -14,6 +14,13 @@ describe('cookie del dispositivo de la web', () => {
     expect(cookieDeDispositivo({ deviceId: 'w', deviceSecret: 's', segura: false })).not.toContain('Secure');
   });
 
+  it('temporal (sin «Mantener la sesión iniciada»): sin Max-Age, muere con el navegador', () => {
+    const cookie = cookieDeDispositivo({ deviceId: 'w', deviceSecret: 's', segura: false, temporal: true });
+    expect(cookie).not.toContain('Max-Age');
+    expect(cookie).toContain('HttpOnly');
+    expect(cookieDeDispositivo({ deviceId: 'w', deviceSecret: 's', segura: false })).toContain('Max-Age=');
+  });
+
   it('borrada vence ya', () => {
     expect(cookieBorrada(false)).toContain('Max-Age=0');
   });

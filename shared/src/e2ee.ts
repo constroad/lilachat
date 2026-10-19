@@ -121,14 +121,26 @@ export function bytesToBase64(bytes: Uint8Array): string {
   return salida;
 }
 
+/**
+ * El valor de cada carácter, por código (FL12, §49 #14). Con `indexOf` sobre
+ * el alfabeto cada carácter recorría hasta 64 posiciones: descifrar 50 filas al
+ * scrollear hacia arriba eran cientos de miles de comparaciones en pleno fling.
+ */
+const VALOR_DE_CARACTER = (() => {
+  const tabla = new Int16Array(128).fill(-1);
+  for (let i = 0; i < ALFABETO.length; i += 1) tabla[ALFABETO.charCodeAt(i)] = i;
+  return tabla;
+})();
+
 export function base64ToBytes(value: string): Uint8Array {
   const limpio = value.replace(/=+$/, '');
   const bytes = new Uint8Array((limpio.length * 3) >> 2);
   let posicion = 0;
   let acumulado = 0;
   let bits = 0;
-  for (const caracter of limpio) {
-    const indice = ALFABETO.indexOf(caracter);
+  for (let i = 0; i < limpio.length; i += 1) {
+    const codigo = limpio.charCodeAt(i);
+    const indice = codigo < 128 ? VALOR_DE_CARACTER[codigo]! : -1;
     if (indice === -1) throw new Error('base64 inválido');
     acumulado = (acumulado << 6) | indice;
     bits += 6;

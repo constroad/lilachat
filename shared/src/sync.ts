@@ -1,3 +1,5 @@
+import { mismoValor } from './mismoValor.js';
+
 /**
  * Sincronización por CURSOR. Motor PURO, compartido por app y web.
  *
@@ -44,8 +46,18 @@ export function advanceCursors(cursors: Cursors, batches: SyncBatch[]): Cursors 
 export function mergeBySeq<T extends { seq: number }>(existing: T[], incoming: T[]): T[] {
   const bySeq = new Map<number, T>();
   for (const message of existing) bySeq.set(message.seq, message);
-  // El entrante gana: puede traer correcciones (editado, borrado).
-  for (const message of incoming) bySeq.set(message.seq, message);
+  let cambio = false;
+  for (const message of incoming) {
+    const previo = bySeq.get(message.seq);
+    // El entrante gana: puede traer correcciones (editado, borrado). Pero si
+    // dice lo MISMO se queda el objeto viejo (FL12): una referencia nueva
+    // redibuja la burbuja aunque nada haya cambiado.
+    if (previo !== undefined && mismoValor(previo, message)) continue;
+    bySeq.set(message.seq, message);
+    cambio = true;
+  }
+  // Nada cambió: el mismo array, y el `setState` de quien llama no redibuja.
+  if (!cambio) return existing;
   return [...bySeq.values()].sort((a, b) => a.seq - b.seq);
 }
 

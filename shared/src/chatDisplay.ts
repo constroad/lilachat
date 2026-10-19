@@ -7,15 +7,30 @@
  * la web va a necesitar idénticas en F6.
  */
 
+/**
+ * Los formateadores se crean UNA vez (FL12, §49 #8). En Hermes construir un
+ * `Intl.DateTimeFormat` va a ICU y es caro, y estas funciones corren por fila
+ * y por render: crearlo en cada llamada era trabajo constante en el hilo JS.
+ */
+const relojes = new Map<string, Intl.DateTimeFormat>();
+const relojDe = (locale: string): Intl.DateTimeFormat => {
+  let reloj = relojes.get(locale);
+  if (!reloj) {
+    reloj = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', hour12: true });
+    relojes.set(locale, reloj);
+  }
+  return reloj;
+};
+let diaYMes: Intl.DateTimeFormat | null = null;
+const diaYMesDe = () => (diaYMes ??= new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short' }));
+let diaDeLaSemana: Intl.DateTimeFormat | null = null;
+const diaDeLaSemanaDe = () => (diaDeLaSemana ??= new Intl.DateTimeFormat('es-PE', { weekday: 'short' }));
+
 /** Hora en formato de reloj de 12 h, como en el diseño («10:42 AM»). */
 export function formatClock(at: string | Date, locale = 'es-PE'): string {
   const date = at instanceof Date ? at : new Date(at);
   if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat(locale, {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  }).format(date);
+  return relojDe(locale).format(date);
 }
 
 /**
@@ -33,7 +48,7 @@ export function formatDayLabel(at: string | Date, now: Date = new Date()): strin
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   if (sameDay(date, yesterday)) return 'Ayer';
-  return new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short' }).format(date);
+  return diaYMesDe().format(date);
 }
 
 /**
@@ -126,12 +141,10 @@ export function formatChatTimestamp(at: string | Date, now: Date = new Date()): 
   if (daysApart <= 0) return formatClock(date);
   if (daysApart === 1) return 'Ayer';
   if (daysApart < 7) {
-    const day = new Intl.DateTimeFormat('es-PE', { weekday: 'short' }).format(date);
+    const day = diaDeLaSemanaDe().format(date);
     return day.charAt(0).toUpperCase() + day.slice(1).replace('.', '');
   }
-  return new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short' })
-    .format(date)
-    .replace('.', '');
+  return diaYMesDe().format(date).replace('.', '');
 }
 
 /**
@@ -139,14 +152,19 @@ export function formatChatTimestamp(at: string | Date, now: Date = new Date()): 
  * el otro está escribiendo —cursiva y en acento—, y eso ya lo sabemos: el
  * socket emite `typing` desde F2 y la lista no lo usaba.
  */
-export type MediaDePreview = 'foto' | 'video' | 'voz' | 'archivo';
+export type MediaDePreview = 'foto' | 'video' | 'voz' | 'archivo' | 'encuesta' | 'evento';
 
 const ETIQUETA_DE_MEDIA: Record<MediaDePreview, string> = {
   foto: 'Foto',
   video: 'Video',
   voz: 'Nota de voz',
   archivo: 'Archivo',
+  encuesta: 'Encuesta',
+  evento: 'Evento',
 };
+
+/** El prefijo que lleva el texto de una encuesta o un evento en el chat (`enElChat`). */
+const PREFIJO_DE_REF = /^(Encuesta|Evento):\s*/;
 
 export type ChatPreview = {
   text: string;
@@ -167,6 +185,12 @@ export function resolveChatPreview(params: {
   // En una sola línea: un salto cortaría la vista previa en la primera.
   const borrador = params.borrador?.replace(/\s+/g, ' ').trim();
   if (borrador) return { etiqueta: 'Borrador:', text: borrador, style: 'borrador' };
+  // Encuesta o evento publicados en el chat (18/10): su ícono y la pregunta o
+  // el título, como WhatsApp. El prefijo del texto sobra al lado del ícono.
+  if (params.lastKind === 'poll' || params.lastKind === 'event') {
+    const media: MediaDePreview = params.lastKind === 'poll' ? 'encuesta' : 'evento';
+    return { text: (params.lastBody ?? '').replace(PREFIJO_DE_REF, '') || ETIQUETA_DE_MEDIA[media], style: 'normal', media };
+  }
   if (params.lastBody) return { text: params.lastBody, style: 'normal' };
   if (params.lastKind && params.lastKind !== 'text') {
     // El tipo va aparte (FL3): la app dibuja un ícono vectorial como WhatsApp;

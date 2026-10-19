@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   DELIVERY_GLYPH,
   formatChatTimestamp,
@@ -240,5 +240,55 @@ describe('formatUltimaVez', () => {
 
   it('sin una fecha válida, nada', () => {
     expect(formatUltimaVez('no es fecha', ahora)).toBe('');
+  });
+});
+
+/**
+ * FL12 (auditoría de fluidez §49 #8): crear un `Intl.DateTimeFormat` en Hermes
+ * va a ICU y es caro, y estas funciones corren por fila y por render. Se
+ * construye UNO por formato y se reusa.
+ */
+describe('formateadores reusados', () => {
+  it('cien horas y fechas no construyen ningún formateador nuevo', () => {
+    const ahora = new Date(2026, 9, 18, 12, 0);
+    // La primera vuelta puede crear los de cada formato: son de módulo.
+    formatClock(ahora);
+    formatDayLabel(new Date(2026, 9, 1), ahora);
+    formatChatTimestamp(new Date(2026, 9, 15), ahora);
+    formatChatTimestamp(new Date(2026, 8, 1), ahora);
+
+    const espia = vi.spyOn(Intl, 'DateTimeFormat');
+    for (let i = 0; i < 100; i += 1) {
+      formatClock(new Date(2026, 9, 18, 9, i % 60));
+      formatDayLabel(new Date(2026, 9, 1), ahora);
+      formatChatTimestamp(new Date(2026, 9, 15), ahora);
+      formatChatTimestamp(new Date(2026, 8, 1), ahora);
+    }
+    expect(espia).not.toHaveBeenCalled();
+    espia.mockRestore();
+  });
+
+  it('el resultado no cambia por reusar', () => {
+    const at = new Date(2026, 9, 18, 9, 5);
+    expect(formatClock(at)).toBe(new Intl.DateTimeFormat('es-PE', { hour: 'numeric', minute: '2-digit', hour12: true }).format(at));
+  });
+});
+
+/** José, 18/10: la encuesta y el evento se publican en el chat; la lista los muestra como WhatsApp. */
+describe('vista previa de encuesta y evento', () => {
+  it('la encuesta: su ícono y la pregunta, sin el prefijo', () => {
+    expect(resolveChatPreview({ typing: false, lastKind: 'poll', lastBody: 'Encuesta: ¿Pizza o pollo?' })).toEqual({
+      text: '¿Pizza o pollo?',
+      style: 'normal',
+      media: 'encuesta',
+    });
+  });
+
+  it('el evento: su ícono y el título', () => {
+    expect(resolveChatPreview({ typing: false, lastKind: 'event', lastBody: 'Evento: Almuerzo' })).toEqual({
+      text: 'Almuerzo',
+      style: 'normal',
+      media: 'evento',
+    });
   });
 });

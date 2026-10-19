@@ -45,3 +45,5 @@ export * from './colaSerial.js';
 export * from './aviso.js';
 export * from './busquedaDeMensajes.js';
 export * from './subida/index.js';
+export * from './mismoValor.js';
+export * from './enElChat.js';

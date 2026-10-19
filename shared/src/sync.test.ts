@@ -95,3 +95,35 @@ describe('mergeIncoming', () => {
     expect(mergeIncoming(mergeIncoming([], uno), uno)).toHaveLength(1);
   });
 });
+
+/**
+ * FL12 (§49 #6): el mismo mensaje llega por el socket, el sync y el saneo. Si
+ * cada llegada crea un objeto nuevo, `memo` no sirve y TODAS las burbujas se
+ * redibujan. Lo que no cambió conserva su referencia.
+ */
+describe('mergeBySeq conserva la identidad', () => {
+  const a = { seq: 1, body: 'hola', media: { url: 'u1' } };
+  const b = { seq: 2, body: 'chau' };
+
+  it('el mismo contenido en otro objeto deja la referencia vieja', () => {
+    const resultado = mergeBySeq([a, b], [{ seq: 1, body: 'hola', media: { url: 'u1' } }]);
+    expect(resultado[0]).toBe(a);
+  });
+
+  it('si nada cambió devuelve el MISMO array: el setState no redibuja', () => {
+    const lista = [a, b];
+    expect(mergeBySeq(lista, [{ ...a, media: { url: 'u1' } }, { ...b }])).toBe(lista);
+  });
+
+  it('una edición sí reemplaza (el entrante gana)', () => {
+    const resultado = mergeBySeq([a, b], [{ seq: 2, body: 'chau (editado)' }]);
+    expect(resultado[1]).toEqual({ seq: 2, body: 'chau (editado)' });
+    expect(resultado[0]).toBe(a);
+  });
+
+  it('un mensaje nuevo entra ordenado', () => {
+    const resultado = mergeBySeq([a, b], [{ seq: 3, body: 'nuevo' }]);
+    expect(resultado.map((m) => m.seq)).toEqual([1, 2, 3]);
+    expect(resultado[0]).toBe(a);
+  });
+});

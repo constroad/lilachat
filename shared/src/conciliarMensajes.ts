@@ -1,3 +1,5 @@
+import { mismoValor } from './mismoValor.js';
+
 /**
  * Poner la caché del teléfono de acuerdo con lo que el server acaba de decir.
  * PURO.
@@ -54,6 +56,15 @@ export function conciliarPagina<T extends { seq: number }>(
   const fueraDelRango = dentroDelTope.filter((uno) => uno.seq < desde || uno.seq > hasta);
 
   // La versión del server pisa a la guardada: un mensaje editado o con su
-  // lápida puesta tiene que verse como está ahora, no como se guardó.
-  return [...fueraDelRango, ...pagina].sort((a, b) => a.seq - b.seq);
+  // lápida puesta tiene que verse como está ahora, no como se guardó. Si dice
+  // lo MISMO, queda la referencia guardada (FL12): el saneo al abrir no
+  // redibuja 50 burbujas idénticas.
+  const porSeq = new Map(dentroDelTope.map((uno) => [uno.seq, uno]));
+  const delServer = pagina.map((uno) => {
+    const guardado = porSeq.get(uno.seq);
+    return guardado !== undefined && mismoValor(guardado, uno) ? guardado : uno;
+  });
+  const resultado = [...fueraDelRango, ...delServer].sort((a, b) => a.seq - b.seq);
+  const igualQueAntes = resultado.length === guardados.length && resultado.every((uno, indice) => uno === guardados[indice]);
+  return igualQueAntes ? guardados : resultado;
 }

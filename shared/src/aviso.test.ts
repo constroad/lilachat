@@ -57,6 +57,13 @@ describe('armarAviso', () => {
    * La burbuja muestra dos líneas: un mensaje larguísimo se corta acá y no lo
    * corta Android a mitad de palabra.
    */
+  // E2E del 18/10: la encuesta de Ana llegó como «📎 Archivo».
+  it('una encuesta o un evento se anuncian con su texto, no como archivo', () => {
+    const base = { chatName: 'Ana', senderName: 'Ana', esGrupo: false };
+    expect(armarAviso({ ...base, kind: 'poll', body: 'Encuesta: ¿Pizza o pollo?' }).cuerpo).toBe('Encuesta: ¿Pizza o pollo?');
+    expect(armarAviso({ ...base, kind: 'event', body: 'Evento: Almuerzo' }).cuerpo).toBe('Evento: Almuerzo');
+  });
+
   it('un mensaje largo se recorta con puntos', () => {
     const largo = 'a'.repeat(500);
     const aviso = armarAviso({ ...base, esGrupo: false, body: largo });

@@ -89,3 +89,28 @@ describe('conciliarPagina', () => {
     expect(conciliarPagina([m(9), m(1)], [m(5)]).map((uno) => uno.seq)).toEqual([1, 5, 9]);
   });
 });
+
+/** FL12 (§49 #6): el saneo al abrir no reemplaza 50 mensajes idénticos. */
+describe('conciliarPagina conserva la identidad', () => {
+  const guardados = [
+    { seq: 1, body: 'uno' },
+    { seq: 2, body: 'dos' },
+  ];
+
+  it('una página idéntica devuelve el MISMO array', () => {
+    expect(conciliarPagina(guardados, [{ seq: 1, body: 'uno' }, { seq: 2, body: 'dos' }], 2)).toBe(guardados);
+  });
+
+  it('solo se reemplaza lo que cambió', () => {
+    const resultado = conciliarPagina(guardados, [{ seq: 1, body: 'uno' }, { seq: 2, body: 'dos (editado)' }], 2);
+    expect(resultado[0]).toBe(guardados[0]);
+    expect(resultado[1]).toEqual({ seq: 2, body: 'dos (editado)' });
+  });
+
+  it('lo que el server ya no tiene dentro del rango se sigue yendo', () => {
+    const tres = [...guardados, { seq: 3, body: 'tres' }];
+    const resultado = conciliarPagina(tres, [{ seq: 1, body: 'uno' }, { seq: 3, body: 'tres' }], 3);
+    expect(resultado.map((m) => m.seq)).toEqual([1, 3]);
+    expect(resultado[0]).toBe(tres[0]);
+  });
+});

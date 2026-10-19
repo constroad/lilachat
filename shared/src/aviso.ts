@@ -31,7 +31,7 @@ export function armarAviso(params: {
   chatName: string;
   senderName: string | null;
   esGrupo: boolean;
-  kind: 'text' | 'image' | 'video' | 'audio' | 'file';
+  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'poll' | 'event';
   body: string;
   cifrado?: boolean;
 }): Aviso {
@@ -43,8 +43,9 @@ export function armarAviso(params: {
     return { titulo, cuerpo: 'Mensaje nuevo' };
   }
 
+  // La encuesta y el evento traen su texto («Encuesta: …», 18/10).
   const texto =
-    params.kind === 'text'
+    params.kind === 'text' || params.kind === 'poll' || params.kind === 'event'
       ? params.body
       : params.kind === 'image'
         ? '📷 Foto'

@@ -72,6 +72,7 @@ export function ChatScreen({
   irASeq,
   encrypted,
   otherUserId,
+  esBorrador = false,
   onBack,
 }: {
   chatId: string;
@@ -98,6 +99,8 @@ export function ChatScreen({
   /** Chat secreto (F9): cifra, y apaga a Lila. */
   encrypted?: boolean;
   otherUserId?: string | null;
+  /** Un chat solo contigo (`notas`, 19/10): ni grupo ni 1:1. */
+  esBorrador?: boolean;
   onBack: () => void;
 }) {
   const colores = useColores();
@@ -144,7 +147,7 @@ export function ChatScreen({
   // Mensajes programados (F11): long-press en enviar abre el modal.
   const programados = useProgramados({ jwt: credential.jwt, chatId, alProgramado: () => composerRef.current?.limpiar() });
   const [attachOpen, setAttachOpen] = useState(false);
-  const [creando, setCreando] = useState<'event' | 'poll' | null>(null);
+  const [creando, setCreando] = useState<'event' | 'poll' | 'reminder' | null>(null);
   const [falloCifrado, setFalloCifrado] = useState(false);
   // Las llamadas son de la sesión (FL8): suenan en cualquier pantalla.
   const { llamar } = useLlamadas();
@@ -182,8 +185,7 @@ export function ChatScreen({
       // Lo que mando yo SIEMPRE se ve: aunque estuviera leyendo arriba.
       requestAnimationFrame(() => listaRef.current?.scrollToEnd({ animated: true }));
       const resultado = await send(texto, respondeA, menciones);
-      // Si NO se pudo cifrar, el mensaje no salió y hay que decirlo: en un chat
-      // con candado, un envío que falla en silencio engaña.
+      // Si NO se pudo cifrar, no salió y se dice: en un chat con candado, callar engaña.
       if (resultado?.ok) return true;
       setFalloCifrado(true);
       return false;
@@ -205,7 +207,7 @@ export function ChatScreen({
    * no vale la pena para un cartel—. «En línea» no se muestra en grupo: con
    * varios conectados sería ruido permanente.
    */
-  const esGrupoChat = otherUserId === null || otherUserId === undefined;
+  const esGrupoChat = !esBorrador && (otherUserId === null || otherUserId === undefined);
   const otroEscribe = otherUserId ? escribiendo.has(otherUserId) : escribiendo.size > 0;
   const otroEnLinea = otherUserId ? enLinea.has(otherUserId) : false;
   const ultimaVez = useUltimaVez(otherUserId);
@@ -217,7 +219,7 @@ export function ChatScreen({
   /** Me sacaron del grupo (FL9d): se lee, pero ya no se escribe. */
   const fueraDelGrupo = esGrupoChat && grupo.soyMiembro === false;
   // Fuera del grupo no se listan miembros: ya no es «QA Ana, Vos».
-  const subtitulo = fueraDelGrupo ? '' : subtituloDelChat({
+  const subtitulo = fueraDelGrupo ? '' : esBorrador ? 'Solo tú lo ves' : subtituloDelChat({
     esGrupo: esGrupoChat,
     escriben: [...escribiendo],
     otroEnLinea,
@@ -247,8 +249,7 @@ export function ChatScreen({
       ...sinOcultos(messages, ocultos),
       // El eco puede llegar antes que el ack: sin esto la burbuja salía doble.
       ...sinPendientesConfirmados(pending, messages),
-      // Los archivos también: comparten `clientKey` con su mensaje, y dos filas
-      // con la misma clave no pueden convivir en la lista.
+      // Los archivos también: comparten `clientKey` y dos filas iguales no conviven.
       ...sinPendientesConfirmados(
         archivosEnCola.map(({ archivo, progreso }) => filaDeArchivoEnCola(archivo, progreso)),
         messages
@@ -449,6 +450,7 @@ export function ChatScreen({
           nombre={nombreVisible}
           foto={fotoVisible}
           secreto={Boolean(encrypted)}
+          borrador={esBorrador}
           conectado={connected}
           subtitulo={subtitulo}
           otroEscribe={otroEscribe}
@@ -520,7 +522,7 @@ export function ChatScreen({
 
       <ProgramadosDelChat pendientes={programados.pendientes} onCancelar={programados.cancelar} />
 
-      {/* La barra de escribir: su composición (el «+», la píldora, UN botón) se explica en `Composer`. */}
+      {/* La barra de escribir: su composición (la píldora con emoji, clip y cámara; UN botón afuera) se explica en `Composer`. */}
       {fueraDelGrupo ? (
         <FueraDelGrupo margenPie={tecladoAbierto ? MARGEN_CON_TECLADO : margenes.pie} />
       ) : (
@@ -557,6 +559,7 @@ export function ChatScreen({
         onPickGallery={() => void pickFromGallery()}
         onCreateEvent={() => setCreando('event')}
         onCreatePoll={() => setCreando('poll')}
+        onCreateReminder={esGrupoChat && grupo.soyAdmin(credential.userId) ? () => setCreando('reminder') : undefined}
         onPickFile={() => void pickFile()}
       />
       <VisorDelChat

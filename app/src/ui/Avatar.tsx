@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, type ReactNode } from 'react';
 import { Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { User } from 'lucide-react-native';
@@ -30,6 +30,8 @@ export const Avatar = memo(function Avatar(props: {
   foto?: string | null;
   tamano: number;
   testID?: string;
+  /** En vez de las iniciales, cuando no hay foto (un borrador, 19/10). */
+  icono?: ReactNode;
 }) {
   const colores = useColores();
   const iniciales = inicialesDe(props.nombre);
@@ -42,6 +44,8 @@ export const Avatar = memo(function Avatar(props: {
     >
       {props.foto ? (
         <Image recyclingKey={props.foto} source={{ uri: props.foto }} style={lado} contentFit="cover" />
+      ) : props.icono ? (
+        props.icono
       ) : iniciales ? (
         <Text
           style={{ fontSize: Math.round(props.tamano * ESCALA_DE_INICIALES) }}

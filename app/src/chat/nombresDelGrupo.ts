@@ -1,6 +1,6 @@
 import { nombreDeContacto } from '@lilachat/shared';
 
-export type MiembroConNombre = { id: string; name: string | null; phone: string | null; avatarUrl?: string };
+export type MiembroConNombre = { id: string; name: string | null; phone: string | null; avatarUrl?: string; role?: 'admin' | 'member' };
 
 /**
  * El nombre con que se muestra cada miembro de un grupo (FL3): gana TU agenda,

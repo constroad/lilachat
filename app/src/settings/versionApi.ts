@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import { resultadoDelChequeo, type ResultadoDelChequeo } from './actualizacion';
+import { leerNovedades, type Novedad } from './novedades';
 
 /**
  * Preguntarle a LilaStore si hay una versión más nueva de ESTA app.
@@ -39,9 +40,12 @@ export async function buscarActualizacion(): Promise<{
   sha256: string;
   size: number;
   releaseId: string;
+  /** Lo nuevo de cada versión posterior a la instalada; vacío si el server no lo manda. */
+  novedades: Novedad[];
 }> {
   try {
-    const respuesta = await fetch(`${TIENDA}/api/v1/apps/${SLUG}/min-version`, {
+    // `desde`: LilaStore suma las notas de cada versión más nueva que esta (19/10).
+    const respuesta = await fetch(`${TIENDA}/api/v1/apps/${SLUG}/min-version?desde=${versionCodeActual()}`, {
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     const datos = (await respuesta.json()) as Record<string, unknown>;
@@ -61,6 +65,7 @@ export async function buscarActualizacion(): Promise<{
       sha256: typeof datos.sha256 === 'string' ? datos.sha256 : '',
       size: typeof datos.size === 'number' ? datos.size : 0,
       releaseId: typeof datos.releaseId === 'string' ? datos.releaseId : '',
+      novedades: leerNovedades(datos.novedades),
     };
   } catch {
     // Sin red no se afirma nada: «no se pudo» ≠ «estás al día».
@@ -73,6 +78,7 @@ export async function buscarActualizacion(): Promise<{
       sha256: '',
       size: 0,
       releaseId: '',
+      novedades: [],
     };
   }
 }

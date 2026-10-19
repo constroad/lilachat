@@ -29,17 +29,25 @@ export function useFinalDeLaConversacion<T>(
     setAbajoLejos((antes) => (antes === !cerca ? antes : !cerca));
   }, []);
   const alScrollear = useCallback(
-    (evento: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const { contentOffset, contentSize, layoutMeasurement } = evento.nativeEvent;
-      fijarCerca(posicion.alScrollear({ offset: contentOffset.y, alto: layoutMeasurement.height, contenido: contentSize.height }));
-    },
+    (evento: EventoDeScroll) => fijarCerca(posicion.alScrollear(medidasDe(evento))),
+    [fijarCerca, posicion]
+  );
+  /** Solo el dedo despega la lista del final (19/10): estos dicen cuándo es el dedo. */
+  const alEmpezarArrastre = useCallback(() => posicion.alEmpezarArrastre(), [posicion]);
+  const alTerminarArrastre = useCallback(
+    (evento: EventoDeScroll) => fijarCerca(posicion.alTerminarArrastre(medidasDe(evento))),
     [fijarCerca, posicion]
   );
   const alCambiarTamaño = useCallback(
     (_ancho: number, alto: number) => {
-      if (posicion.alCambiarTamaño(alto)) fijarCerca(true);
+      const decision = posicion.alCambiarTamaño(alto);
+      // Lo de abajo creció estando abajo: se sigue al final, como WhatsApp. Un
+      // cuadro DESPUÉS: en el mismo evento la lista todavía no acomodó el alto
+      // nuevo y el salto no hacía nada (emulador, 19/10: quedaba en 8 dp).
+      if (decision === 'seguir') requestAnimationFrame(() => listaRef.current?.scrollToEnd({ animated: false }));
+      if (decision) fijarCerca(true);
     },
-    [fijarCerca, posicion]
+    [fijarCerca, posicion, listaRef]
   );
 
   const [nuevosAbajo, setNuevosAbajo] = useState(0);
@@ -59,5 +67,12 @@ export function useFinalDeLaConversacion<T>(
     return () => sub.remove();
   }, [listaRef]);
 
-  return { alScrollear, alCambiarTamaño, abajoLejos, nuevosAbajo };
+  return { alScrollear, alEmpezarArrastre, alTerminarArrastre, alCambiarTamaño, abajoLejos, nuevosAbajo };
+}
+
+type EventoDeScroll = NativeSyntheticEvent<NativeScrollEvent>;
+
+function medidasDe(evento: EventoDeScroll) {
+  const { contentOffset, contentSize, layoutMeasurement } = evento.nativeEvent;
+  return { offset: contentOffset.y, alto: layoutMeasurement.height, contenido: contentSize.height };
 }

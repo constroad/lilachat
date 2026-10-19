@@ -15,6 +15,7 @@ import { NewChatScreen } from '../contacts/NewChatScreen';
 import { publishPublicKey } from '../crypto/deviceKeys';
 import { BackupScreen } from '../settings/BackupScreen';
 import { BandaDeActualizacion } from '../settings/BandaDeActualizacion';
+import { NovedadesDeLaVersion } from '../settings/NovedadesDeLaVersion';
 import { PantallaDeAjustes } from '../settings/PantallaDeAjustes';
 import { usePerfilPropio } from '../settings/perfilPropio';
 import { useEsOperador } from '../settings/useEsOperador';
@@ -343,7 +344,7 @@ export function TabsShell({
           <BandaDeActualizacion
             aviso={actualizaciones.aviso}
             estado={actualizaciones.estado}
-            onActualizar={actualizaciones.actualizarDesdeBanda}
+            onActualizar={actualizaciones.pedirActualizacion}
             onAbrirTienda={actualizaciones.abrirTienda}
             onDescartar={actualizaciones.descartarAviso}
           />
@@ -428,6 +429,13 @@ export function TabsShell({
         visible={invitando}
         credential={credential}
         onClose={() => setInvitando(false)}
+      />
+
+      <NovedadesDeLaVersion
+        novedades={actualizaciones.novedades}
+        visible={actualizaciones.viendoNovedades}
+        onCerrar={actualizaciones.cerrarNovedades}
+        onDescargar={actualizaciones.descargarDesdeNovedades}
       />
 
       {/* Pantalla completa y no una pestaña: el respaldo se visita de vez en

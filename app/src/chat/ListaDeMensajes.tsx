@@ -30,7 +30,11 @@ export function ListaDeMensajes(props: {
 }) {
   const colores = useColores();
   const { listaRef, rows } = props;
-  const { alScrollear, alCambiarTamaño, abajoLejos, nuevosAbajo } = useFinalDeLaConversacion(listaRef, props.mensajes, props.yo);
+  const { alScrollear, alEmpezarArrastre, alTerminarArrastre, alCambiarTamaño, abajoLejos, nuevosAbajo } = useFinalDeLaConversacion(
+    listaRef,
+    props.mensajes,
+    props.yo
+  );
   const estuvoArriba = useRef(false);
   const { onLlegoAlFinal } = props;
   useEffect(() => {
@@ -73,6 +77,10 @@ export function ListaDeMensajes(props: {
         // WhatsApp. Leyendo arriba, no mueve nada.
         maintainVisibleContentPosition={{ startRenderingFromBottom: true, autoscrollToBottomThreshold: 0.2 }}
         onScroll={alScrollear}
+        onScrollBeginDrag={alEmpezarArrastre}
+        onScrollEndDrag={alTerminarArrastre}
+        onMomentumScrollBegin={alEmpezarArrastre}
+        onMomentumScrollEnd={alTerminarArrastre}
         onContentSizeChange={alCambiarTamaño}
         scrollEventThrottle={100}
         ListHeaderComponent={

@@ -378,7 +378,7 @@ function FilaDeMensaje({
                 y la hora va encima, abajo a la derecha. Cero renglón extra. */}
             <View className="px-3 pb-1.5 pt-1.5">
               <Text className={`text-[15px] leading-[21px] ${mine ? 'text-on-burbuja-propia' : 'text-on-burbuja-ajena'}`}>
-                <TextoDelMensaje texto={item.body} menciones={isPending(item) ? undefined : item.menciones} nombres={nombres} yo={myUserId} enBurbujaPropia={mine} />
+                <TextoDelMensaje texto={item.body} menciones={isPending(item) ? undefined : item.menciones} nombres={nombres} yo={myUserId} enBurbujaPropia={mine} id={isPending(item) ? item.clientKey : `${item.chatId}:${item.seq}`} />
                 {/* El relleno es la MISMA hora, al mismo tamaño e invisible:
                     reserva exactamente su ancho (con espacios de nbsp, la hora
                     se montaba sobre los mensajes cortos). */}

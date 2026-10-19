@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { BarChart3, BellOff, CalendarDays, Camera, Check, CheckCheck, FileText, Lock, Mic, Pin, Video, type LucideIcon } from 'lucide-react-native';
+import { BarChart3, Bell, BellOff, CalendarDays, Camera, Check, CheckCheck, FileText, Lock, Mic, NotebookPen, Pin, Video, type LucideIcon } from 'lucide-react-native';
 import {
   formatChatTimestamp,
   nombreDeContacto,
@@ -27,6 +27,7 @@ const ICONO_DE_MEDIA: Record<MediaDePreview, LucideIcon> = {
   archivo: FileText,
   encuesta: BarChart3,
   evento: CalendarDays,
+  recordatorio: Bell,
 };
 
 /**
@@ -66,7 +67,13 @@ export const FilaDeChat = memo(function FilaDeChat(props: {
       className={`min-h-[76px] flex-row items-center gap-3 px-4 py-2.5 ${props.marcado ? 'bg-primary/10' : ''}`}
     >
       <View style={{ width: AVATAR_DE_LISTA, height: AVATAR_DE_LISTA }} className="shrink-0">
-        <Avatar nombre={props.titulo} foto={chat.avatarUrl} tamano={AVATAR_DE_LISTA} />
+        <Avatar
+          nombre={props.titulo}
+          foto={chat.avatarUrl}
+          tamano={AVATAR_DE_LISTA}
+          // Un borrador (chat contigo) se distingue de una persona y de un grupo.
+          icono={chat.kind === 'notas' ? <NotebookPen size={22} color={colores.primary} /> : undefined}
+        />
         {/* El tilde de selección tapa el avatar cuando la fila está
             marcada: es el feedback de «este entra en la acción». */}
         {props.marcado ? (

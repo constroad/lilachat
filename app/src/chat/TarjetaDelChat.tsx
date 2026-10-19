@@ -3,6 +3,7 @@ import { formatClock } from '@lilachat/shared';
 import type { ChatMessage } from './useChat';
 import { EncuestaEnElChat } from './EncuestaEnElChat';
 import { EventoEnElChat } from './EventoEnElChat';
+import { RecordatorioEnElChat } from './RecordatorioEnElChat';
 import { AVATAR_DE_AUTOR, colorDeAutor } from './burbuja';
 import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
@@ -46,6 +47,8 @@ export function TarjetaDelChat(props: {
           <View className="w-full">
             {item.ref!.tipo === 'encuesta' ? (
               <EncuestaEnElChat pollId={item.ref!.id} jwt={props.jwt} yo={props.yo} />
+            ) : item.ref!.tipo === 'recordatorio' ? (
+              <RecordatorioEnElChat reminderId={item.ref!.id} jwt={props.jwt} />
             ) : (
               <EventoEnElChat eventId={item.ref!.id} jwt={props.jwt} />
             )}

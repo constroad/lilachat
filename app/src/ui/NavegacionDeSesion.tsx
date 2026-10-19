@@ -230,6 +230,7 @@ function PantallaDeChat({
       // enteraba de que era un grupo (sin nombres de autor) y el botón de
       // llamar llamaba a un miembro cualquiera.
       otherUserId={chat.kind === 'direct' ? (chat.memberIds.find((id) => id !== credential.userId) ?? null) : null}
+      esBorrador={chat.kind === 'notas'}
       onBack={onBack}
     />
     </ErrorBoundary>

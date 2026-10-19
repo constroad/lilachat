@@ -28,6 +28,7 @@ import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useColores } from '../ui/tema';
 import { ParticipantesDelGrupo, type Miembro } from './ParticipantesDelGrupo';
 import { VisorDeFoto } from '../ui/VisorDeFoto';
+import { RecordatoriosDelGrupo } from './RecordatoriosDelGrupo';
 import { SeccionCompartido } from './CompartidoEnElChat';
 import { useMargenes } from '../ui/useMargenes';
 import type { ServerMessage } from './socketClient';
@@ -47,7 +48,7 @@ import type { ServerMessage } from './socketClient';
  */
 type Detalle = {
   id: string;
-  kind: 'direct' | 'group';
+  kind: 'direct' | 'group' | 'notas';
   name?: string;
   avatarUrl?: string;
   encrypted: boolean;
@@ -213,6 +214,8 @@ export function ChatDetailScreen({
 
   const detalle = estado.fase === 'listo' ? estado.detalle : null;
   const esGrupo = detalle?.kind === 'group';
+  /** Un chat solo contigo (19/10): nombre y foto propios, sin participantes ni ajustes de aviso. */
+  const esBorrador = detalle?.kind === 'notas';
 
   /**
    * Los ids de los que ya están. Va memoizado porque el selector lo recibe como
@@ -247,12 +250,12 @@ export function ChatDetailScreen({
     detalle !== null &&
     puedeEditarInfo({
       quien: detalle.members.find((uno) => uno.esYo)?.id ?? '',
-      esGrupo: detalle.kind === 'group',
+      esGrupo: detalle.kind !== 'direct',
       miembros: detalle.members.map((uno) => ({ userId: uno.id, role: uno.role })),
     }).ok;
 
   /** El nombre que se muestra: el del server manda sobre el que llegó por prop. */
-  const nombreVisible = (esGrupo ? detalle?.name : undefined) ?? chatName;
+  const nombreVisible = (esGrupo || esBorrador ? detalle?.name : undefined) ?? chatName;
 
   const guardarNombre = async (nombre: string) => {
     if (await llamar('', { name: nombre }, 'PATCH')) {
@@ -363,7 +366,9 @@ export function ChatDetailScreen({
               nombre={nombreVisible}
               avatarUrl={detalle!.avatarUrl}
               debajo={
-                esGrupo
+                esBorrador
+                  ? 'Solo tú lo ves'
+                  : esGrupo
                   ? `${detalle!.members.length} participantes`
                   : formatPhoneDisplay(detalle!.members.find((m) => !m.esYo)?.phone ?? '')
               }
@@ -428,6 +433,13 @@ export function ChatDetailScreen({
                 onAnadir={() => setAgregando(true)}
               />
             ) : null}
+            {esGrupo ? (
+              <RecordatoriosDelGrupo
+                chatId={chatId}
+                jwt={credential.jwt}
+                soyAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')}
+              />
+            ) : null}
 
             {aviso ? (
               <Text
@@ -438,6 +450,8 @@ export function ChatDetailScreen({
               </Text>
             ) : null}
 
+            {/* Un borrador no tiene avisos que silenciar ni cifrado que explicar. */}
+            {esBorrador ? null : (
             <AjustesDelChat
               esGrupo={esGrupo}
               cifrado={detalle!.encrypted}
@@ -459,6 +473,7 @@ export function ChatDetailScreen({
                 if (await llamar('leave')) (onSalio ?? onCerrar)();
               }}
             />
+            )}
           </ScrollView>
         )}
         <VisorDeFoto foto={viendoFoto ? detalle?.avatarUrl : null} titulo={nombreVisible} onCerrar={() => setViendoFoto(false)} />

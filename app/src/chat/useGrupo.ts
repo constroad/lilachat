@@ -26,6 +26,8 @@ export function useGrupo(
   fotos: Map<string, string>;
   soyMiembro: boolean | null;
   mencionables: (yo: string) => MiembroMencionable[];
+  /** ¿Soy admin? Para lo que solo ellos crean (el recordatorio del grupo, 19/10). */
+  soyAdmin: (yo: string) => boolean;
 } {
   const agenda = useSyncExternalStore(suscribirAgenda, agendaPorTelefono, agendaPorTelefono);
   const [miembros, setMiembros] = useState<MiembroConNombre[]>(() => cache.get(chatId) ?? []);
@@ -77,5 +79,6 @@ export function useGrupo(
   /** A quiénes se puede mencionar con «@» (18/10): los del grupo, sin mí. */
   const lista = useMemo(() => [...nombres].map(([id, nombre]) => ({ id, nombre, foto: fotos.get(id) })), [nombres, fotos]);
   const mencionables = useCallback((yo: string) => lista.filter((uno) => uno.id !== yo), [lista]);
-  return { nombres, fotos, soyMiembro, mencionables };
+  const soyAdmin = useCallback((yo: string) => miembros.some((uno) => uno.id === yo && uno.role === 'admin'), [miembros]);
+  return { nombres, fotos, soyMiembro, mencionables, soyAdmin };
 }

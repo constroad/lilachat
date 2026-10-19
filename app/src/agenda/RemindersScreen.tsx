@@ -3,6 +3,7 @@ import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { Interruptor } from '../ui/Interruptor';
 import { Bell, RotateCw } from 'lucide-react-native';
 import { formatEventWhen, nextOccurrence } from '@lilachat/shared';
+import { ETIQUETA_DE_REPETICION } from './recordatorios';
 import type { Credential } from '../auth/credentialStore';
 import { agendaGet, agendaPost, type AgendaReminder } from './agendaApi';
 import { useColores } from '../ui/tema';
@@ -30,11 +31,6 @@ function colorDe(id: string, paleta: readonly string[]): string {
   return paleta[suma % paleta.length]!;
 }
 
-const RECURRENCE_LABEL: Record<string, string> = {
-  once: 'Una vez',
-  daily: 'Diario',
-  weekly: 'Semanal',
-};
 
 type Lista = { mine: AgendaReminder[]; shared: AgendaReminder[] };
 
@@ -182,7 +178,7 @@ function Fila({
         ) : null}
         <View className="mt-1 flex-row items-center gap-2">
           <View className="rounded bg-primary/15 px-1.5 py-0.5">
-            <Text className="text-[10px] font-semibold text-primary">{RECURRENCE_LABEL[reminder.recurrence] ?? reminder.recurrence}</Text>
+            <Text className="text-[10px] font-semibold text-primary">{ETIQUETA_DE_REPETICION[reminder.recurrence] ?? reminder.recurrence}</Text>
           </View>
           <Text className="text-[11px] text-on-surface-variant">{next ? formatEventWhen(next) : 'Ya pasó'}</Text>
         </View>

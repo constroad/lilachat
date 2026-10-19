@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { Interruptor } from '../ui/Interruptor';
-import { ArrowLeft, Check, Lock, Users, X } from 'lucide-react-native';
+import { ArrowLeft, Check, Lock, NotebookPen, Users, X } from 'lucide-react-native';
 import { MAX_NOMBRE_DE_GRUPO, type Contact } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { ContactPicker } from './ContactPicker';
@@ -43,7 +43,7 @@ export function NewChatScreen({
   onOpenChat: (chat: {
     id: string;
     name?: string;
-    kind: 'direct' | 'group';
+    kind: 'direct' | 'group' | 'notas';
     /** Sin esto la conversación abre SIN candado hasta la primera recarga. */
     encrypted?: boolean;
     /** Yo incluido. Sin esto un 1:1 recién creado se trataba como grupo (FL8). */
@@ -52,13 +52,20 @@ export function NewChatScreen({
 }) {
   const colores = useColores();
   const margenes = useMargenes();
-  const [modo, setModo] = useState<'directo' | 'grupo'>('directo');
+  /** `borrador` (19/10): un chat solo contigo, con nombre. */
+  const [modo, setModo] = useState<'directo' | 'grupo' | 'borrador'>('directo');
   const [paso, setPaso] = useState<'contactos' | 'info'>('contactos');
   const [elegidos, setElegidos] = useState<Contact[]>([]);
   const [nombre, setNombre] = useState('');
   const [secreto, setSecreto] = useState(false);
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
+
+  const volverAContactos = () => {
+    setPaso('contactos');
+    if (modo === 'borrador') setModo('directo');
+    setError('');
+  };
 
   const cerrar = () => {
     setModo('directo');
@@ -119,6 +126,18 @@ export function NewChatScreen({
     cerrar();
   };
 
+  /** Un chat solo contigo, con nombre (José, 19/10): notas, fotos, links. */
+  const crearBorrador = async () => {
+    if (guardando) return;
+    if (!nombre.trim()) return setError('Ponle un nombre al borrador.');
+    setGuardando(true);
+    const result = await createChat(credential.jwt, { kind: 'notas', name: nombre.trim(), memberIds: [] });
+    setGuardando(false);
+    if (!result.ok) return setError(result.message ?? 'No se pudo crear el borrador.');
+    onOpenChat({ id: result.data.chatId, name: nombre.trim(), kind: 'notas', memberIds: [credential.userId] });
+    cerrar();
+  };
+
   const alternar = (contact: Contact) => {
     setError('');
     if (modo === 'directo') return void abrirDirecto(contact);
@@ -141,6 +160,7 @@ export function NewChatScreen({
    * elegido.
    */
   const atras = () => {
+    if (paso === 'info' && modo === 'borrador') return volverAContactos();
     if (paso === 'info') return setPaso('contactos');
     if (elegidos.length > 0) return;
     cerrar();
@@ -152,17 +172,19 @@ export function NewChatScreen({
         <View className="flex-row items-center gap-2 px-4 pb-3" style={{ paddingTop: margenes.cabecera }}>
           <Pressable
             testID="btn-cerrar-nuevo-chat"
-            onPress={() => (paso === 'info' ? setPaso('contactos') : cerrar())}
+            onPress={() => (paso === 'info' ? volverAContactos() : cerrar())}
             className="h-11 w-11 items-center justify-center"
           >
             <ArrowLeft size={22} color={colores["on-surface"]} />
           </Pressable>
           <View className="min-w-0 flex-1">
             <Text className="text-lg font-bold text-on-surface">
-              {paso === 'info' ? 'Información del grupo' : modo === 'grupo' ? 'Nuevo grupo' : 'Nuevo chat'}
+              {modo === 'borrador' ? 'Nuevo borrador' : paso === 'info' ? 'Información del grupo' : modo === 'grupo' ? 'Nuevo grupo' : 'Nuevo chat'}
             </Text>
             <Text className="text-[12px] text-on-surface-variant">
-              {paso === 'info'
+              {modo === 'borrador'
+                ? 'Un chat solo contigo'
+                : paso === 'info'
                 ? `${elegidos.length} ${elegidos.length === 1 ? 'participante' : 'participantes'}`
                 : modo === 'grupo'
                   ? 'Elige a quiénes agregar'
@@ -185,6 +207,16 @@ export function NewChatScreen({
                 <View className="mx-4 mb-3">
                   <GrupoDeAjustes>
                     <FilaDeAjuste testID="btn-nuevo-grupo" icono={Users} titulo="Nuevo grupo" onPress={() => setModo('grupo')} />
+                    <FilaDeAjuste
+                      testID="btn-nuevo-borrador"
+                      icono={NotebookPen}
+                      titulo="Nuevo borrador"
+                      detalle="Un chat solo contigo, con nombre: notas, fotos y links."
+                      onPress={() => {
+                        setModo('borrador');
+                        setPaso('info');
+                      }}
+                    />
                     {/* El chat secreto se elige ANTES de tocar a la persona: al
                         tocarla se abre la conversación, así que después ya es
                         tarde. */}
@@ -211,7 +243,7 @@ export function NewChatScreen({
                   setNombre(text.slice(0, MAX_NOMBRE_DE_GRUPO));
                   setError('');
                 }}
-                placeholder="Nombre del grupo"
+                placeholder={modo === 'borrador' ? 'Ideas, Compras, Obra…' : 'Nombre del grupo'}
                 placeholderTextColor={colores["on-surface-variant"]}
                 autoFocus
                 className="min-h-[52px] min-w-0 flex-1 text-base text-on-surface"
@@ -222,9 +254,15 @@ export function NewChatScreen({
               </Text>
             </View>
 
+            {modo === 'borrador' ? (
+              <Text className="mt-3 text-[13px] leading-5 text-on-surface-variant">
+                Solo tú lo ves. Guarda ahí notas, fotos, links y lo que quieras tener a mano. Puedes tener varios, uno por tema.
+              </Text>
+            ) : (
             <Text className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-wider text-primary">
               Participantes
             </Text>
+            )}
             <View className="flex-row flex-wrap gap-3">
               {elegidos.map((contact) => (
                 <View key={contact.id} className="w-16 items-center">
@@ -258,6 +296,19 @@ export function NewChatScreen({
           </Text>
         ) : null}
 
+        {modo === 'borrador' ? (
+          <View className="px-4 pt-2" style={{ paddingBottom: margenes.pie }}>
+            <Pressable
+              testID="btn-crear-borrador"
+              disabled={guardando || !nombre.trim()}
+              onPress={() => void crearBorrador()}
+              className={`min-h-[54px] flex-row items-center justify-center gap-2 rounded-xl ${guardando || !nombre.trim() ? 'bg-primary/40' : 'bg-primary'}`}
+            >
+              <Check size={18} color={colores['on-primary']} />
+              <Text className="text-base font-bold text-on-primary">{guardando ? 'Creando…' : 'Crear borrador'}</Text>
+            </Pressable>
+          </View>
+        ) : null}
         {modo === 'grupo' ? (
           <View className="px-4 pt-2" style={{ paddingBottom: margenes.pie }}>
             <Pressable

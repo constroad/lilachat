@@ -271,6 +271,7 @@ export function ChatListScreen({
           chat,
           titulo: '',
           esGrupo: chat.kind === 'group',
+          esBorrador: chat.kind === 'notas',
           sinLeer: chat.unread,
           marcadoNoLeido: chat.markedUnread === true,
           archivado: chat.archived === true,

@@ -65,5 +65,5 @@ export const invitarContacto = (jwt: string, phone: string) =>
 
 export const createChat = (
   jwt: string,
-  body: { kind: 'direct' | 'group'; memberIds: string[]; name?: string; encrypted?: boolean }
+  body: { kind: 'direct' | 'group' | 'notas'; memberIds: string[]; name?: string; encrypted?: boolean }
 ) => call<{ chatId: string }>('/api/chats', jwt, { method: 'POST', body: JSON.stringify(body) });

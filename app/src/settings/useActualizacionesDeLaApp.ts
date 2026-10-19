@@ -6,6 +6,7 @@ import { abrirActualizacion } from './abrirTienda';
 import { useActualizador, type InfoActualizacion } from './useActualizador';
 import { infoParaActualizar } from './actualizacionInfo';
 import { guardarActualizacionDescartada, leerActualizacionDescartada } from './preferencias';
+import type { Novedad } from './novedades';
 
 const SIN_INFO: InfoActualizacion = { downloadUrl: '', releaseId: '', sha256: '', size: 0 };
 
@@ -21,6 +22,9 @@ export function useActualizacionesDeLaApp() {
   const [infoApp, setInfoApp] = useState<InfoActualizacion>(SIN_INFO);
   const { estado, actualizar } = useActualizador();
   const [aviso, setAviso] = useState<AvisoDeActualizacion>({ tipo: 'ninguno' });
+  /** Lo nuevo de cada versión posterior (19/10): se muestra ANTES de bajar. */
+  const [novedades, setNovedades] = useState<Novedad[]>([]);
+  const [viendoNovedades, setViendoNovedades] = useState(false);
 
   /**
    * UNA sola consulta al arrancar, que sirve para las dos cosas: el enlace de
@@ -29,8 +33,9 @@ export function useActualizacionesDeLaApp() {
    */
   useEffect(() => {
     void (async () => {
-      const [{ downloadUrl, ultima, minima, version, sha256, size, releaseId }, descartada] =
+      const [{ downloadUrl, ultima, minima, version, sha256, size, releaseId, novedades: nuevas }, descartada] =
         await Promise.all([buscarActualizacion(), leerActualizacionDescartada()]);
+      setNovedades(nuevas);
       setEnlaceApp(downloadUrl);
       setInfoApp({ downloadUrl, releaseId, sha256, size });
       setAviso(decidirAvisoDeActualizacion({ actual: versionCodeActual(), ultima, minima, version, descartada }));
@@ -45,13 +50,17 @@ export function useActualizacionesDeLaApp() {
   const verificar = async () => {
     if (verificando) return;
     setVerificando(true);
-    const { resultado, downloadUrl, sha256, size, releaseId } = await buscarActualizacion();
+    const { resultado, downloadUrl, sha256, size, releaseId, novedades: nuevas } = await buscarActualizacion();
     setChequeo(resultado);
     setEnlaceApp(downloadUrl);
     const info = { downloadUrl, releaseId, sha256, size };
     setInfoApp(info);
+    setNovedades(nuevas);
     setVerificando(false);
-    if (resultado.estado === 'hay-nueva') void actualizar(info);
+    if (resultado.estado !== 'hay-nueva') return;
+    // Con novedades publicadas, primero se ven; la descarga sale de ahí.
+    if (nuevas.length > 0) setViendoNovedades(true);
+    else void actualizar(info);
   };
 
   /**
@@ -66,6 +75,13 @@ export function useActualizacionesDeLaApp() {
       return actualizar(info);
     });
 
+  /** «Actualizar» de la banda: primero las novedades, si las hay (19/10). */
+  const pedirActualizacion = () => (novedades.length > 0 ? setViendoNovedades(true) : actualizarDesdeBanda());
+  const descargarDesdeNovedades = () => {
+    setViendoNovedades(false);
+    actualizarDesdeBanda();
+  };
+
   const descartarAviso = () => {
     if (aviso.tipo !== 'ninguno') void guardarActualizacionDescartada(aviso.version);
     setAviso({ tipo: 'ninguno' });
@@ -79,6 +95,11 @@ export function useActualizacionesDeLaApp() {
     enlaceApp,
     verificar,
     actualizarDesdeBanda,
+    pedirActualizacion,
+    novedades,
+    viendoNovedades,
+    cerrarNovedades: () => setViendoNovedades(false),
+    descargarDesdeNovedades,
     abrirTienda: () => void abrirActualizacion(infoApp.downloadUrl),
     descartarAviso,
   };

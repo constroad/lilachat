@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
-import { ArrowLeft, Lock, MoreVertical, Phone, Video } from 'lucide-react-native';
+import { ArrowLeft, Lock, MoreVertical, NotebookPen, Phone, Video } from 'lucide-react-native';
 import { useMargenes } from '../ui/useMargenes';
 import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
@@ -16,6 +16,8 @@ export function EncabezadoDelChat(props: {
   nombre: string;
   foto?: string;
   secreto: boolean;
+  /** Un borrador (chat contigo mismo): la libreta, como en la lista. */
+  borrador?: boolean;
   conectado: boolean;
   subtitulo: string;
   otroEscribe: boolean;
@@ -45,7 +47,12 @@ export function EncabezadoDelChat(props: {
         onPress={props.onAbrirDetalle}
         className="min-w-0 flex-1 flex-row items-center gap-2"
       >
-      <Avatar nombre={nombreVisible} foto={fotoVisible} tamano={AVATAR_DE_CABECERA} />
+      <Avatar
+        nombre={nombreVisible}
+        foto={fotoVisible}
+        tamano={AVATAR_DE_CABECERA}
+        icono={props.borrador ? <NotebookPen size={20} color={colores.primary} /> : undefined}
+      />
       <View className="min-w-0 flex-1">
         <View className="flex-row items-center gap-1.5">
           {/* El candado va PEGADO al nombre y no en una banda aparte: es una

@@ -3,7 +3,10 @@ import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { Bell, Send, Trash2, X } from 'lucide-react-native';
 import type { Recurrence } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
-import { agendaDelete, agendaPatch, agendaPost, type AgendaReminder } from './agendaApi';
+import { agendaDelete, agendaPatch, agendaPost, publicarRecordatorio, subirImagenDeRecordatorio, type AgendaReminder } from './agendaApi';
+import { crearRecordatorio } from './guardarRecordatorio';
+import { ImagenDeRecordatorio } from './ImagenDeRecordatorio';
+import type { FotoElegida } from '../chat/fotoDeGrupo';
 import { FilledField, PrimaryAction, SectionLabel } from './createUi';
 import { SelectorDeCuando } from '../ui/SelectorDeCuando';
 import { valorInicial } from '../ui/cuando';
@@ -32,6 +35,7 @@ export function CreateReminderScreen({
   visible,
   credential,
   editando,
+  grupo,
   onClose,
   onCreated,
 }: {
@@ -39,6 +43,11 @@ export function CreateReminderScreen({
   credential: Credential;
   /** Con un recordatorio, la pantalla lo edita; sin él, crea uno nuevo. */
   editando?: AgendaReminder;
+  /**
+   * Del GRUPO (José, 19/10): vive en ese grupo, le suena a todos, y lleva
+   * descripción e imagen. Lo crean sus admins (el server lo exige).
+   */
+  grupo?: { id: string; name: string };
   onClose: () => void;
   /** Se creó, editó o borró algo: la lista vuelve a pedir. */
   onCreated: () => void;
@@ -53,6 +62,7 @@ export function CreateReminderScreen({
   const [recurrence, setRecurrence] = useState<Recurrence>(editando?.recurrence ?? 'once');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [imagen, setImagen] = useState<FotoElegida | null>(null);
 
   const submit = async () => {
     if (saving) return;
@@ -61,14 +71,36 @@ export function CreateReminderScreen({
 
     setSaving(true);
     const cuerpo = { title: title.trim(), note: note.trim(), startsAt: cuando.toISOString(), recurrence };
-    const result = editando
-      ? await agendaPatch(`/reminders/${editando._id}`, credential.jwt, cuerpo)
-      : await agendaPost('/reminders', credential.jwt, { ...cuerpo, note: cuerpo.note || undefined });
+    const resultado = editando ? await guardarEdicion(editando._id, cuerpo) : await guardarNuevo(cuerpo);
     setSaving(false);
-
-    if (!result.ok) return setError(result.message ?? 'No se pudo guardar.');
+    if (!resultado.ok) return setError(resultado.motivo);
     onCreated();
     onClose();
+  };
+
+  type Cuerpo = { title: string; note: string; startsAt: string; recurrence: Recurrence };
+
+  /** Nuevo: con imagen en un grupo, la tarjeta sale al final (`guardarRecordatorio.ts`). */
+  const guardarNuevo = (cuerpo: Cuerpo) =>
+    crearRecordatorio(
+      { conImagen: Boolean(imagen), delGrupo: Boolean(grupo) },
+      {
+        crear: async ({ publicar }) => {
+          const r = await agendaPost<{ id?: string }>('/reminders', credential.jwt, { ...cuerpo, note: cuerpo.note || undefined, chatId: grupo?.id, publicar });
+          return r.ok && r.data.id ? { ok: true, id: r.data.id } : { ok: false, motivo: (!r.ok && r.message) || 'No se pudo guardar.' };
+        },
+        subirImagen: (id) => subirImagenDeRecordatorio(id, credential.jwt, imagen!),
+        publicar: (id) => publicarRecordatorio(id, credential.jwt),
+      }
+    );
+
+  /** Editar: los campos y, si se eligió una, la imagen nueva. */
+  const guardarEdicion = async (id: string, cuerpo: Cuerpo): Promise<{ ok: true } | { ok: false; motivo: string }> => {
+    const r = await agendaPatch<{ id?: string }>(`/reminders/${id}`, credential.jwt, cuerpo);
+    if (!r.ok) return { ok: false, motivo: r.message ?? 'No se pudo guardar.' };
+    if (!imagen) return { ok: true };
+    const subida = await subirImagenDeRecordatorio(id, credential.jwt, imagen);
+    return subida.ok ? { ok: true } : { ok: false, motivo: `Se guardó, pero la imagen no subió: ${subida.motivo}` };
   };
 
   const eliminar = () => {
@@ -123,7 +155,9 @@ export function CreateReminderScreen({
               <Bell size={24} color={colores['on-primary']} />
             </View>
             <Text className="mt-3 text-2xl font-bold text-primary">{editando ? 'Editar recordatorio' : 'Nuevo recordatorio'}</Text>
-            <Text className="mt-1 text-center text-[13px] leading-5 text-on-surface-variant">Para que no se te pase nada.</Text>
+            <Text className="mt-1 text-center text-[13px] leading-5 text-on-surface-variant">
+              {grupo ? `Para «${grupo.name}»: le suena a todo el grupo.` : 'Para que no se te pase nada.'}
+            </Text>
           </View>
 
           <SectionLabel>Qué recordar</SectionLabel>
@@ -137,8 +171,13 @@ export function CreateReminderScreen({
             }}
           />
           <View className="mt-2">
-            <FilledField testID="input-nota" placeholder="Nota (opcional)" value={note} onChangeText={setNote} />
+            <FilledField testID="input-nota" placeholder={grupo ? 'Descripción (opcional)' : 'Nota (opcional)'} value={note} onChangeText={setNote} />
           </View>
+          {grupo ? (
+            <View className="mt-2">
+              <ImagenDeRecordatorio foto={imagen} onCambiar={setImagen} />
+            </View>
+          ) : null}
 
           <SectionLabel>Cuándo</SectionLabel>
           <SelectorDeCuando

@@ -1,5 +1,5 @@
 import { Modal, Pressable, Text, View } from 'react-native';
-import { BarChart3, CalendarDays, Camera, Image as ImageIcon, Paperclip } from 'lucide-react-native';
+import { BarChart3, Bell, CalendarDays, Camera, Image as ImageIcon, Paperclip } from 'lucide-react-native';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 
@@ -23,6 +23,7 @@ export function AttachSheet({
   onPickFile,
   onCreateEvent,
   onCreatePoll,
+  onCreateReminder,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -31,6 +32,8 @@ export function AttachSheet({
   onPickFile: () => void;
   onCreateEvent: () => void;
   onCreatePoll: () => void;
+  /** Solo para los admins de un grupo (19/10): el recordatorio que vive en el grupo. */
+  onCreateReminder?: () => void;
 }) {
   const colores = useColores();
   const margenes = useMargenes();
@@ -40,6 +43,7 @@ export function AttachSheet({
     { key: 'archivo', label: 'Archivo', icon: Paperclip, action: onPickFile, testID: 'attach-archivo' },
     { key: 'evento', label: 'Evento', icon: CalendarDays, action: onCreateEvent, testID: 'attach-evento' },
     { key: 'encuesta', label: 'Encuesta', icon: BarChart3, action: onCreatePoll, testID: 'attach-encuesta' },
+    ...(onCreateReminder ? [{ key: 'recordatorio', label: 'Recordatorio del grupo', icon: Bell, action: onCreateReminder, testID: 'attach-recordatorio' }] : []),
   ];
 
   return (

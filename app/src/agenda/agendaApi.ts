@@ -1,4 +1,5 @@
 import type { AttendeeSummary, Recurrence, Rsvp } from '@lilachat/shared';
+import { subirFotoRedonda, type FotoElegida } from '../chat/fotoDeGrupo';
 
 /**
  * Cliente de la agenda (eventos, recordatorios, encuestas). Comparte forma con
@@ -8,7 +9,8 @@ import type { AttendeeSummary, Recurrence, Rsvp } from '@lilachat/shared';
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
 const TIMEOUT_MS = 15_000;
 
-export type AgendaResult<T> = { ok: true; data: T } | { ok: false; message?: string };
+/** `status` (19/10): un 404 dice «ya no existe», que no es lo mismo que «sin red». */
+export type AgendaResult<T> = { ok: true; data: T } | { ok: false; message?: string; status?: number };
 
 export type AgendaEvent = {
   id: string;
@@ -41,6 +43,9 @@ export type AgendaReminder = {
   startsAt: string;
   recurrence: Recurrence;
   active: boolean;
+  /** Solo en los del grupo (19/10): el chat donde vive y su imagen. */
+  chatId?: string;
+  imageUrl?: string;
 };
 
 export type AgendaPoll = {
@@ -80,6 +85,7 @@ async function call<T>(
       return {
         ok: false,
         message: typeof payload.message === 'string' ? payload.message : undefined,
+        status: response.status,
       };
     }
     return { ok: true, data: payload as T };
@@ -101,3 +107,16 @@ export const agendaDelete = <T>(route: string, jwt: string) => call<T>(route, jw
 
 /** Lo que me espera, para los contadores de las pestañas (`GET /pendientes`, 18/10). */
 export type PendientesDeAgenda = { encuestas: number; eventos: number };
+
+/** Los recordatorios de un grupo, para su detalle (19/10). Solo miembros. */
+export const recordatoriosDelGrupo = (chatId: string, jwt: string) =>
+  agendaGet<{ reminders: AgendaReminder[] }>(`/reminders/del-chat/${chatId}`, jwt);
+
+/** Saca la tarjeta en el chat del grupo cuando ya tiene su imagen (idempotente). */
+export const publicarRecordatorio = (reminderId: string, jwt: string) =>
+  agendaPost<Record<string, never>>(`/reminders/${reminderId}/publicar`, jwt, {});
+
+/** La imagen de un recordatorio del grupo: se sube y se guarda en un request. */
+export function subirImagenDeRecordatorio(reminderId: string, jwt: string, foto: FotoElegida) {
+  return subirFotoRedonda({ url: `${BASE_URL}/api/agenda/reminders/${reminderId}/imagen`, jwt, foto });
+}

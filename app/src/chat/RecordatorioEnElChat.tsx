@@ -1,0 +1,70 @@
+import { useCallback, useEffect, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
+import { Image } from 'expo-image';
+import { Bell } from 'lucide-react-native';
+import { agendaGet, type AgendaReminder } from '../agenda/agendaApi';
+import { cuandoSuena } from '../agenda/recordatorios';
+import { useColores } from '../ui/tema';
+
+/** Lo último que se vio de cada recordatorio, para que la celda reciclada no parpadee. `null` = ya no está. */
+const recordatoriosVistos = new Map<string, AgendaReminder | null>();
+
+/**
+ * El recordatorio del GRUPO dentro del chat (José, 19/10): qué, cuándo suena,
+ * la descripción y la imagen. Vive en el grupo y le suena a todos; lo editan
+ * sus admins desde el detalle del grupo.
+ */
+export function RecordatorioEnElChat({ reminderId, jwt }: { reminderId: string; jwt: string }) {
+  const colores = useColores();
+  const [recordatorio, setRecordatorio] = useState<AgendaReminder | null | undefined>(() => recordatoriosVistos.get(reminderId));
+  const [fallo, setFallo] = useState(false);
+
+  const cargar = useCallback(async () => {
+    const respuesta = await agendaGet<{ reminder: AgendaReminder }>(`/reminders/${reminderId}`, jwt);
+    if (respuesta.ok) {
+      recordatoriosVistos.set(reminderId, respuesta.data.reminder);
+      setRecordatorio(respuesta.data.reminder);
+      setFallo(false);
+    } else if (respuesta.status === 404) {
+      recordatoriosVistos.set(reminderId, null);
+      setRecordatorio(null);
+    } else setFallo(true);
+  }, [reminderId, jwt]);
+
+  useEffect(() => {
+    void cargar();
+  }, [cargar]);
+
+  if (recordatorio === null) {
+    return <Text className="px-1 text-[13px] italic text-on-surface-variant">Este recordatorio ya no está.</Text>;
+  }
+  if (recordatorio === undefined) {
+    return fallo ? (
+      <Pressable testID={`recordatorio-reintentar-${reminderId}`} onPress={() => void cargar()} className="min-h-[44px] justify-center rounded-xl border border-outline/10 bg-surface px-4">
+        <Text className="text-[13px] text-on-surface-variant">No se pudo cargar el recordatorio. Toca para reintentar.</Text>
+      </Pressable>
+    ) : (
+      <View className="h-28 rounded-xl bg-surface-variant" />
+    );
+  }
+  return (
+    <View testID={`recordatorio-en-chat-${reminderId}`} className="overflow-hidden rounded-xl border border-outline/10 bg-surface">
+      {recordatorio.imageUrl ? (
+        <Image recyclingKey={recordatorio.imageUrl} source={{ uri: recordatorio.imageUrl }} style={{ width: '100%', aspectRatio: 16 / 9 }} contentFit="cover" transition={120} />
+      ) : null}
+      <View className="gap-1 p-4">
+        <View className="flex-row items-start gap-3">
+          <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+            <Bell size={20} color={colores.primary} />
+          </View>
+          <View className="min-w-0 flex-1 gap-0.5">
+            <Text className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Recordatorio del grupo</Text>
+            <Text className="text-[15px] font-semibold text-on-surface">{recordatorio.title}</Text>
+            <Text className="text-[13px] text-on-surface-variant">{cuandoSuena(recordatorio)}</Text>
+          </View>
+        </View>
+        {recordatorio.note ? <Text className="mt-1 text-[14px] leading-5 text-on-surface">{recordatorio.note}</Text> : null}
+      </View>
+    </View>
+  );
+}

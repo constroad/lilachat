@@ -1,7 +1,7 @@
 import { memo, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { BackHandler, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { Camera, Keyboard as Teclado, Paperclip, Plus, Send, Smile, X } from 'lucide-react-native';
+import { Camera, Keyboard as Teclado, Paperclip, Send, Smile, X } from 'lucide-react-native';
 import { duracionDeVoz, type MencionEnMensaje } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { precalentarPermisoDeVoz, useGrabadorDeVoz, type NotaGrabada } from './useGrabadorDeVoz';
@@ -33,8 +33,8 @@ export type ComposerHandle = { limpiar: () => void };
  * como un teclado que se arrastra. Acá el borrador y el contador de la nota de
  * voz son estado propio: tipear solo dibuja esta barra.
  *
- * La composición es la del diseño, y no «los mismos íconos en una fila»: el
- * «+» plano, UNA píldora con el emoji adentro, y a la derecha UN botón que es
+ * La composición es la de WhatsApp (José, 19/10): UNA píldora con el emoji a
+ * la izquierda y el clip y la cámara a la derecha, y afuera UN botón que es
  * micrófono con el campo vacío y enviar apenas hay texto.
  */
 export const Composer = memo(function Composer(props: {
@@ -290,7 +290,9 @@ export const Composer = memo(function Composer(props: {
           if (texto.length > 0) props.onEscribiendo();
         }}
       />
-      {forma.vacio && !soloTexto ? (
+      {/* Como WhatsApp (José, 19/10): el clip siempre adentro; la cámara, solo
+          con el campo vacío. El «+» de afuera se fue: era la misma puerta. */}
+      {soloTexto ? null : (
         <>
           <Pressable
             testID="btn-clip"
@@ -302,6 +304,7 @@ export const Composer = memo(function Composer(props: {
           >
             <Paperclip size={20} color={colores.outline} />
           </Pressable>
+          {forma.vacio ? (
           <Pressable
             testID="btn-camara"
             accessibilityLabel="Tomar una foto"
@@ -312,8 +315,9 @@ export const Composer = memo(function Composer(props: {
           >
             <Camera size={20} color={colores.outline} />
           </Pressable>
+          ) : null}
         </>
-      ) : null}
+      )}
     </View>
   );
 
@@ -417,22 +421,7 @@ export const Composer = memo(function Composer(props: {
                 </Text>
               </View>
             ) : (
-              <>
-                {/* El «+» sigue siendo un «+» mientras sube: el progreso ya se ve
-                    en la burbuja. Queda atenuado porque no se suben dos a la vez. */}
-                {soloTexto ? null : (
-                  <Pressable
-                    testID="btn-adjuntar"
-                    accessibilityLabel="Adjuntar"
-                    onPress={props.onAdjuntar}
-                    disabled={props.subiendo}
-                    className={`h-12 w-10 items-center justify-center ${props.subiendo ? 'opacity-40' : ''}`}
-                  >
-                    <Plus size={24} color={colores['on-surface-variant']} />
-                  </Pressable>
-                )}
-                {campoDeTexto}
-              </>
+              campoDeTexto
             )}
             {/* A la derecha, UN botón. El micrófono queda en el mismo lugar del
                 árbol mientras se sostiene: si se reemplazara, el gesto se cortaría. */}

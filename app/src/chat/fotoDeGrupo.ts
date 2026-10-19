@@ -55,8 +55,11 @@ export function elegirFotoDeGrupo(): Promise<ResultadoDeEleccion> {
 export function elegirFotoRedonda(params: {
   titulo: string;
   mensaje: string;
+  /** Otra proporción para el recorte (la imagen de un recordatorio, 16:9). Cuadrado por defecto. */
+  aspecto?: [number, number];
   nombrePorDefecto: string;
 }): Promise<ResultadoDeEleccion> {
+  const opciones = params.aspecto ? { ...OPCIONES_DE_RECORTE, aspect: params.aspecto } : OPCIONES_DE_RECORTE;
   return new Promise((resolver) => {
     Alert.alert(params.titulo, params.mensaje, [
       {
@@ -65,7 +68,7 @@ export function elegirFotoRedonda(params: {
           void (async () => {
             const permiso = await ImagePicker.requestCameraPermissionsAsync();
             if (!permiso.granted) return resolver({ tipo: 'sin-permiso' });
-            const tomada = await ImagePicker.launchCameraAsync(OPCIONES_DE_RECORTE);
+            const tomada = await ImagePicker.launchCameraAsync(opciones);
             const foto = tomada.assets?.[0];
             resolver(
               tomada.canceled || !foto ? { tipo: 'cancelado' } : { tipo: 'foto', foto: desdeAsset(foto, params.nombrePorDefecto) }
@@ -78,7 +81,7 @@ export function elegirFotoRedonda(params: {
         onPress: () => {
           void (async () => {
             const elegida = await ImagePicker.launchImageLibraryAsync({
-              ...OPCIONES_DE_RECORTE,
+              ...opciones,
               mediaTypes: ['images'],
             });
             const foto = elegida.assets?.[0];

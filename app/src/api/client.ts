@@ -146,7 +146,8 @@ export const verifyOtp = (
 
 export type ChatSummary = {
   id: string;
-  kind: 'direct' | 'group';
+  /** `notas`: un borrador, un chat solo contigo y con nombre (19/10). */
+  kind: 'direct' | 'group' | 'notas';
   name?: string;
   /** El teléfono del OTRO, solo en 1:1: con él se busca su nombre en tu agenda. */
   phone?: string;

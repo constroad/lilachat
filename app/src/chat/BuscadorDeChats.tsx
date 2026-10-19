@@ -12,7 +12,7 @@ export function BuscadorDeChats(props: {
   onBuscar: (texto: string) => void;
   filtro: FiltroDeChats;
   onFiltrar: (filtro: FiltroDeChats) => void;
-  cuentas: Record<'no-leidos' | 'grupos', number>;
+  cuentas: Record<'no-leidos' | 'grupos' | 'borradores', number>;
 }) {
   const colores = useColores();
   const { busqueda, filtro, cuentas } = props;
@@ -67,6 +67,8 @@ export function BuscadorDeChats(props: {
           { id: 'todos', etiqueta: 'Todos', cuenta: 0 },
           { id: 'no-leidos', etiqueta: 'No leídos', cuenta: cuentas['no-leidos'] },
           { id: 'grupos', etiqueta: 'Grupos', cuenta: cuentas.grupos },
+          // Los chats contigo mismo (José, 19/10).
+          { id: 'borradores', etiqueta: 'Borradores', cuenta: cuentas.borradores },
         ] as const
       ).map((chip) => {
         const activo = filtro === chip.id;

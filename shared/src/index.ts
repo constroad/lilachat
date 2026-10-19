@@ -55,3 +55,4 @@ export * from './colorDeAutor.js';
 export * from './textoDelComposer.js';
 export * from './enlaces.js';
 export * from './ondaDeVoz.js';
+export * from './vinculacion.js';

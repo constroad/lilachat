@@ -5273,6 +5273,45 @@ También: el test de W4 «se reintenta sola» tiraba un `TransactionInactiveErro
 suelto en 2 de cada 4 corridas (falseaba `setImmediate`, que usa
 fake-indexeddb); ahora solo falsea timeouts e intervalos (6 de 6 limpias).
 
+### 54.12 W3a — la lista de chats como WhatsApp Web (19/10/2026, sin publicar)
+
+W3 se partió en cuatro: **W3a** lista, **W3b** info del chat y del grupo
+(diseño `w3-web-info-grupo.png` listo), **W3c** agenda, encuestas, eventos y
+recordatorios, **W3d** Lila y ajustes completos. Diseño de W3a:
+`w3-web-lista.png`.
+
+| Pieza | Qué | Dónde |
+| --- | --- | --- |
+| Filtros y búsqueda | Chips Todos · No leídos · Grupos · Borradores con su cuenta (de la principal, sin la búsqueda); la búsqueda ignora tildes y mira el último mensaje. Mismos motores que la app (`filtrarChats`, `contarChats`) | `listaDeChats.ts` (`armarLista`, +3 tests), `FiltrosDeLaLista.tsx` |
+| Archivados | Fuera de la principal; fila «Archivados» con su cuenta; adentro, cabecera con «volver» y sin chips; vacío → vuelve sola | `FiltrosDeLaLista.tsx`, `ChatList.tsx` |
+| Menú por fila | Flecha al pasar el mouse o con el foco (Radix): archivar/desarchivar, silenciar/activar, fijar/desfijar, leído/no leído, salir (grupos) y eliminar (1:1 y borradores), del motor `accionesDeSeleccion` de la app. Un borrador no se silencia. Salir y eliminar se confirman | `menuDelChat.ts` (+6 tests), `MenuDeChat.tsx`, `FilaDeChat.tsx` |
+| Marcas en la fila | Chincheta (fijado), campana tachada (silenciado), número de sin leer (gris si silenciado) o punto de «no leído» | `FilaDeChat.tsx` |
+| Aplicar | Optimista en la base local y después `PATCH /chats/:id/ajustes`; si el server rechaza, vuelve atrás y lo dice. Eliminar (`borrar-para-mi`) y salir (`leave`) esperan al server. Un 401 renueva la sesión y reintenta una vez | `sync/accionesSobreChats.ts` (+8 tests), `local/chatsLocales.ts` (+3 tests) |
+| Borradores | «Nuevo borrador» en el menú de la cabecera (chat `notas` con nombre); lápiz «Nuevo chat» en la cabecera | `NuevoBorrador.tsx`, `ChatList.tsx` |
+| Mis otros dispositivos | Archivar, silenciar, fijar, leído y eliminar desde la web avisan `chat.changed` a MIS sockets (el teléfono lo refleja al toque), no al otro miembro | server `chatRoutes.ts` (+2 tests de socket) |
+| Ancho | Lista de 340 px en tablet y 400 px desde 1024: los cuatro chips entran | `ChatList.tsx` |
+
+**E2E (19/10)** con un Chromium propio (el del MCP se compartía y se cerraba
+solo, llevándose la cookie de la web vinculada): web vinculada por QR al
+teléfono del emulador; archivar → la fila se va, «Archivados 1», y en el
+TELÉFONO el chat pasa a Archivados en menos de 3 s; desarchivar, silenciar,
+fijar (queda primera), no leído (punto y «No leídos 1»), leído, desfijar,
+activar; nuevo borrador (se abre en `/c/…`, «Borradores 2») y eliminarlo con
+confirmación; salir del grupo (José deja de ser miembro); eliminar el 1:1. A
+1440, 900 y 390 px sin scroll horizontal. QA en cero.
+
+| Defecto que encontró el E2E | Causa | Arreglo |
+| --- | --- | --- |
+| **Un 401 al abrir cerraba la sesión** (y desvinculaba la web) | sin token todavía, `manejar401` comparaba `null` con la marca inicial `null`: «segundo 401 con el mismo token» | sin token, un 401 espera la renovación en curso y no cuenta; una sola renovación a la vez (`useSesion`, +2 tests) |
+| Archivar al abrir la página daba «Tu sesión venció» | el PATCH salía antes de terminar la renovación | las acciones renuevan y reintentan una vez; `manejar401` devuelve el token nuevo |
+| **Un acuse adelantado** (`readSeq: 99` en un chat de 1 mensaje): los 98 siguientes nacían leídos y con check azul para el otro | el server guardaba y re-difundía el `seq` del cliente sin mirar `lastSeq` | `markRead`/`markDelivered` recortan al último mensaje y devuelven el `seq` que quedó, que es el que se difunde (+2 tests). En producción solo había ese recibo (el del grupo QA, ya borrado). Quién mandó el 99 no se pudo identificar |
+| El menú abierto se cerraba solo tras fijar | dos recargas de la lista se cruzaban: la vieja pisaba el cambio optimista, la fila bajaba y volvía a subir | «gana la última» (`ultimaGana.ts`, +2 tests) y un cambio optimista invalida las recargas en vuelo |
+| Eliminar un borrador decía «a la otra persona no le cambia nada» | texto del 1:1 | texto propio del borrador (+1 test) |
+| Con la flecha enfocada, la hora se le superponía | la hora se ocultaba solo con el mouse | también con el foco (`group-focus-within`) |
+
+**Fuera de W3a (anotado):** el «Borrador: …» en rojo del diseño es el texto sin
+enviar de un chat (WhatsApp); Lilachat no guarda eso todavía.
+
 ## 53. FL15 — barra como WhatsApp, borradores, recordatorios del grupo, novedades, mensajes largos (19/10/2026, 0.1.98)
 
 José, 19/10: la barra de WhatsApp (emoji adentro a la izquierda, clip y cámara

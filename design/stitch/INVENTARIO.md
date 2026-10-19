@@ -44,3 +44,5 @@ Las capturas viven SOLO en la máquina (`design/stitch/`, en `.gitignore` desde 
 | `w5-web-vincular.png` | W5 · Web: vincular con el teléfono por QR (`screens/99d90e59f01146969dac9212d6858833`) |
 | `w5-app-vinculados.png` | W5 · App: Dispositivos vinculados (`screens/f1101cfa9e844df6a306cc1b90cf178d`) |
 | `w5-app-escaner.png` | W5 · App: escáner QR + confirmar vinculación (`screens/dbbdb512e8924d0b8898bd0f6c3bae1f`) |
+| `w3-web-lista.png` | W3a · Web: lista con chips, Archivados y menú por fila (`screens/76559642e4e74d18b44b8d6ecc707726`) |
+| `w3-web-info-grupo.png` | W3b · Web: panel «Info. del grupo» a la derecha (`screens/5abfefdbbe124207875108ad8737f106`) |

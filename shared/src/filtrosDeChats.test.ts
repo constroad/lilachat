@@ -75,11 +75,31 @@ describe('filtrarChats', () => {
 
 describe('contarChats', () => {
   it('cuenta lo que cada chip muestra al lado', () => {
-    expect(contarChats(chats)).toEqual({ 'no-leidos': 2, grupos: 2 });
+    expect(contarChats(chats)).toEqual({ 'no-leidos': 2, grupos: 2, borradores: 0 });
   });
 
   it('sin chats, todo en cero', () => {
-    expect(contarChats([])).toEqual({ 'no-leidos': 0, grupos: 0 });
+    expect(contarChats([])).toEqual({ 'no-leidos': 0, grupos: 0, borradores: 0 });
+  });
+});
+
+/**
+ * José, 19/10: chats contigo mismo, con nombre, «en otra categoría arriba,
+ * como Todos, No leídos, Grupos y Borradores».
+ */
+describe('borradores', () => {
+  const conBorradores = [...chats, chat({ titulo: 'Ideas obra', esBorrador: true }), chat({ titulo: 'Compras', esBorrador: true })];
+
+  it('el chip «Borradores» muestra solo los chats contigo', () => {
+    expect(titulos(filtrarChats({ chats: conBorradores, filtro: 'borradores', texto: '' }))).toEqual(['Ideas obra', 'Compras']);
+  });
+
+  it('un borrador no es un grupo', () => {
+    expect(titulos(filtrarChats({ chats: conBorradores, filtro: 'grupos', texto: '' }))).toEqual(['Los originales', 'Mis lokillos']);
+  });
+
+  it('se cuentan aparte', () => {
+    expect(contarChats(conBorradores).borradores).toBe(2);
   });
 });
 

@@ -10,7 +10,8 @@
  * chat como favorito ni fijarlo; poner el chip para que no filtre nada sería
  * repetir el error de la lupa apagada. Cuando exista la marca, existe el chip.
  */
-export type FiltroDeChats = 'todos' | 'no-leidos' | 'grupos';
+/** `borradores` (19/10): los chats contigo mismo, con nombre. */
+export type FiltroDeChats = 'todos' | 'no-leidos' | 'grupos' | 'borradores';
 
 export type ChatFiltrable = {
   /** El nombre YA resuelto contra la agenda: el que la persona ve y busca. */
@@ -18,6 +19,8 @@ export type ChatFiltrable = {
   /** Lo último que se dijo, para poder buscar «el chat donde hablamos de X». */
   ultimo?: string;
   esGrupo: boolean;
+  /** Un chat contigo mismo (`notas`): va en «Borradores», no en «Grupos». */
+  esBorrador?: boolean;
   sinLeer: number;
   /** Marcado a mano como no leído (FL9): cuenta como no leído. */
   marcadoNoLeido?: boolean;
@@ -54,16 +57,18 @@ export function filtrarChats<T extends ChatFiltrable>(params: {
   return params.chats.filter((chat) => {
     if (params.filtro === 'no-leidos' && !estaSinLeer(chat)) return false;
     if (params.filtro === 'grupos' && !chat.esGrupo) return false;
+    if (params.filtro === 'borradores' && !chat.esBorrador) return false;
     if (!aguja) return true;
     return clave(`${chat.titulo} ${chat.ultimo ?? ''}`).includes(aguja);
   });
 }
 
 /** Lo que cada chip muestra al lado, como en WhatsApp. */
-export function contarChats(chats: readonly ChatFiltrable[]): Record<'no-leidos' | 'grupos', number> {
+export function contarChats(chats: readonly ChatFiltrable[]): Record<'no-leidos' | 'grupos' | 'borradores', number> {
   return {
     'no-leidos': chats.filter(estaSinLeer).length,
     grupos: chats.filter((chat) => chat.esGrupo).length,
+    borradores: chats.filter((chat) => chat.esBorrador).length,
   };
 }
 

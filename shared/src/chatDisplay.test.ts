@@ -306,4 +306,13 @@ describe('vista previa de encuesta y evento', () => {
       media: 'evento',
     });
   });
+
+  /** José, 19/10: recordatorios del grupo, que viven en el chat. */
+  it('el recordatorio del grupo: su ícono y el título', () => {
+    expect(resolveChatPreview({ typing: false, lastKind: 'reminder', lastBody: 'Recordatorio: Vaciado de losa' })).toEqual({
+      text: 'Vaciado de losa',
+      style: 'normal',
+      media: 'recordatorio',
+    });
+  });
 });

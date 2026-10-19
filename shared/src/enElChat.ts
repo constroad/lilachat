@@ -14,5 +14,10 @@ export function textoDeEventoEnElChat(titulo: string): string {
   return `Evento: ${titulo.trim()}`;
 }
 
-/** A qué apunta un mensaje de encuesta o de evento. */
-export type RefDeMensaje = { tipo: 'encuesta' | 'evento'; id: string };
+/** Un recordatorio del grupo (José, 19/10): vive en el chat y le suena a todos. */
+export function textoDeRecordatorioEnElChat(titulo: string): string {
+  return `Recordatorio: ${titulo.trim()}`;
+}
+
+/** A qué apunta un mensaje de encuesta, de evento o de recordatorio del grupo. */
+export type RefDeMensaje = { tipo: 'encuesta' | 'evento' | 'recordatorio'; id: string };

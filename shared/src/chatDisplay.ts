@@ -155,7 +155,7 @@ export function formatChatTimestamp(at: string | Date, now: Date = new Date()): 
  * el otro está escribiendo —cursiva y en acento—, y eso ya lo sabemos: el
  * socket emite `typing` desde F2 y la lista no lo usaba.
  */
-export type MediaDePreview = 'foto' | 'video' | 'voz' | 'archivo' | 'encuesta' | 'evento';
+export type MediaDePreview = 'foto' | 'video' | 'voz' | 'archivo' | 'encuesta' | 'evento' | 'recordatorio';
 
 const ETIQUETA_DE_MEDIA: Record<MediaDePreview, string> = {
   foto: 'Foto',
@@ -164,10 +164,14 @@ const ETIQUETA_DE_MEDIA: Record<MediaDePreview, string> = {
   archivo: 'Archivo',
   encuesta: 'Encuesta',
   evento: 'Evento',
+  recordatorio: 'Recordatorio',
 };
 
+/** Los mensajes que se dibujan como tarjeta y su ícono en la lista. */
+const MEDIA_DE_TARJETA: Record<string, MediaDePreview> = { poll: 'encuesta', event: 'evento', reminder: 'recordatorio' };
+
 /** El prefijo que lleva el texto de una encuesta o un evento en el chat (`enElChat`). */
-const PREFIJO_DE_REF = /^(Encuesta|Evento):\s*/;
+const PREFIJO_DE_REF = /^(Encuesta|Evento|Recordatorio):\s*/;
 
 export type ChatPreview = {
   text: string;
@@ -190,8 +194,8 @@ export function resolveChatPreview(params: {
   if (borrador) return { etiqueta: 'Borrador:', text: borrador, style: 'borrador' };
   // Encuesta o evento publicados en el chat (18/10): su ícono y la pregunta o
   // el título, como WhatsApp. El prefijo del texto sobra al lado del ícono.
-  if (params.lastKind === 'poll' || params.lastKind === 'event') {
-    const media: MediaDePreview = params.lastKind === 'poll' ? 'encuesta' : 'evento';
+  const media = params.lastKind ? MEDIA_DE_TARJETA[params.lastKind] : undefined;
+  if (media) {
     return { text: (params.lastBody ?? '').replace(PREFIJO_DE_REF, '') || ETIQUETA_DE_MEDIA[media], style: 'normal', media };
   }
   if (params.lastBody) return { text: params.lastBody, style: 'normal' };

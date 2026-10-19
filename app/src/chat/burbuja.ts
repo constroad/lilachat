@@ -41,19 +41,8 @@ export function dondeVaLaHora(params: {
   return 'renglon-propio';
 }
 
-/** Cuántos colores de autor hay en la paleta (`autor-1` … `autor-6`). */
-export const CANTIDAD_DE_COLORES_DE_AUTOR = 6;
+// El color de autor es compartido con la web (W2): vive en `shared`.
+export { CANTIDAD_DE_COLORES_DE_AUTOR, colorDeAutor } from '@lilachat/shared';
 
 /** El avatar del autor en un grupo (dp): 28, como WhatsApp. */
 export const AVATAR_DE_AUTOR = 28;
-
-/**
- * El color de una persona en un grupo: estable (sale de su id, no del orden de
- * llegada), así Mamá es siempre rosa en todos los chats y en todos los
- * teléfonos.
- */
-export function colorDeAutor(userId: string): number {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i += 1) hash = (hash * 31 + userId.charCodeAt(i)) >>> 0;
-  return (hash % CANTIDAD_DE_COLORES_DE_AUTOR) + 1;
-}

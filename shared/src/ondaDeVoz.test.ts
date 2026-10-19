@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ondaDesdeMuestras } from './ondaDeVoz';
+import { ondaDesdeMuestras } from './ondaDeVoz.js';
 
 /**
  * La onda de la nota de voz (FL9), como WhatsApp: el nivel que se midió al

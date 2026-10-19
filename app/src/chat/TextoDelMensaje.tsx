@@ -1,9 +1,7 @@
 import { Fragment, useMemo, useState } from 'react';
 import { Text } from 'react-native';
-import { partirEnMenciones, type MencionEnMensaje } from '@lilachat/shared';
+import { partirEnMenciones, recorteDeMensaje, textoDeMencion, type MencionEnMensaje } from '@lilachat/shared';
 import { TextoConEnlaces } from './TextoConEnlaces';
-import { textoDeMencion } from './textoDelComposer';
-import { recorteDeMensaje } from './mensajeLargo';
 
 /**
  * Los mensajes largos que se abrieron, por id: la lista recicla las celdas y un

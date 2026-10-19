@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { recorteDeMensaje } from './mensajeLargo';
+import { recorteDeMensaje } from './mensajeLargo.js';
 
 /** José, 19/10: «los mensajes largos deberían poder colapsarse», como WhatsApp («Leer más»). */
 describe('recorteDeMensaje', () => {

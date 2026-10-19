@@ -4,7 +4,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as Crypto from 'expo-crypto';
 import { Copy, CornerUpLeft, Forward, Info, Pencil, Trash2, X } from 'lucide-react-native';
 import { buildOutboxItem, nombreDeContacto, puedeEditar } from '@lilachat/shared';
-import { accionesDeMensaje, accionesDeVarios, textoParaCopiar } from './accionesDeMensaje';
+import { accionesDeMensaje, accionesDeVarios, textoParaCopiar } from '@lilachat/shared';
 import { chatsEnMemoria } from './chatsGuardados';
 import { queueMessage } from './outboxStore';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';

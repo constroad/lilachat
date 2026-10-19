@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accionesDeMensaje, accionesDeVarios, textoParaCopiar } from './accionesDeMensaje';
+import { accionesDeMensaje, accionesDeVarios, textoParaCopiar } from './accionesDeMensaje.js';
 
 /**
  * La pulsación larga (FL9, auditoría §46.2: solo había «Eliminar», de a uno,

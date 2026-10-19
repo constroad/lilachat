@@ -1,6 +1,6 @@
 import { Linking, Text } from 'react-native';
 import { useMemo } from 'react';
-import { partirEnEnlaces } from './enlaces';
+import { partirEnEnlaces } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 
 /**

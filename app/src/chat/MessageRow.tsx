@@ -8,7 +8,6 @@ import { DeslizarParaResponder } from './DeslizarParaResponder';
 import { LineaDeLlamada } from './LineaDeLlamada';
 import { CitaDeRespuesta } from './CitaDeRespuesta';
 import { TextoDelMensaje } from './TextoDelMensaje';
-import { primerEnlace } from './enlaces';
 import { TarjetaDeArchivo } from './TarjetaDeArchivo';
 import { VistaPreviaDeEnlace } from './VistaPreviaDeEnlace';
 import { NotaDeVoz } from './NotaDeVoz';
@@ -16,6 +15,7 @@ import { etiquetaDeSubida, porcentajeDeSubida } from './progresoDeSubida';
 import {
   TEXTO_ELIMINADO,
   nombreDeContacto,
+  primerEnlace,
   textoDeAviso,
 } from '@lilachat/shared';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';

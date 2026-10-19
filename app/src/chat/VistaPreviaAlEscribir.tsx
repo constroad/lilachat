@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Link2, X } from 'lucide-react-native';
-import { primerEnlace } from './enlaces';
+import { primerEnlace } from '@lilachat/shared';
 import { useVistaPrevia } from './useVistaPrevia';
 import { useColores } from '../ui/tema';
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { completarMencion, consultaDeMencion, insertarEnTexto, rangosDeMenciones, textoDeMencion } from './textoDelComposer';
+import { completarMencion, consultaDeMencion, insertarEnTexto, rangosDeMenciones, textoDeMencion } from './textoDelComposer.js';
 
 const ANA = '665f1a2b3c4d5e6f70818294';
 const BETO = '665f1a2b3c4d5e6f70818295';

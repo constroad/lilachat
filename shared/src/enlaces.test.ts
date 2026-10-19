@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { partirEnEnlaces, primerEnlace } from './enlaces';
+import { partirEnEnlaces, primerEnlace } from './enlaces.js';
 
 /** Links, correos y teléfonos tocables (FL9, auditoría §46.2). */
 describe('partirEnEnlaces', () => {

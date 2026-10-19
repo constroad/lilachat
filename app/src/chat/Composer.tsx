@@ -2,14 +2,13 @@ import { memo, useEffect, useImperativeHandle, useRef, useState, type Ref } from
 import { BackHandler, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Camera, Keyboard as Teclado, Paperclip, Send, Smile, X } from 'lucide-react-native';
-import { duracionDeVoz, type MencionEnMensaje } from '@lilachat/shared';
+import { duracionDeVoz, insertarEnTexto, type MencionEnMensaje, type Seleccion } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { precalentarPermisoDeVoz, useGrabadorDeVoz, type NotaGrabada } from './useGrabadorDeVoz';
 import { guardarBorrador, leerBorrador } from './borradores';
 import { BotonDeVoz } from './BotonDeVoz';
 import { formaDelTexto, type FormaDelTexto } from './campoDeTexto';
 import type { DecisionDeVoz, mientrasSostiene } from './gestoDeVoz';
-import { insertarEnTexto, type Seleccion } from './textoDelComposer';
 import { useMenciones, type MiembroMencionable } from './useMenciones';
 import { SugerenciasDeMencion } from './SugerenciasDeMencion';
 import { PanelDeEmojis } from './PanelDeEmojis';

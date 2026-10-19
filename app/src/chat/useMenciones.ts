@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import type { MencionEnMensaje } from '@lilachat/shared';
-import { completarMencion, consultaDeMencion, rangosDeMenciones, type ConsultaDeMencion, type MencionElegida } from './textoDelComposer';
+import { completarMencion, consultaDeMencion, rangosDeMenciones, type ConsultaDeMencion, type MencionElegida, type MencionEnMensaje } from '@lilachat/shared';
 
 export type MiembroMencionable = { id: string; nombre: string; foto?: string };
 

@@ -1,4 +1,4 @@
-import type { MencionEnMensaje } from '@lilachat/shared';
+import type { MencionEnMensaje } from './menciones.js';
 
 export type Seleccion = { start: number; end: number };
 /** Un «@algo» que se está escribiendo: desde dónde y qué se lleva tipeado. */

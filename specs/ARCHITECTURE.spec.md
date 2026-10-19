@@ -4892,6 +4892,56 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 50. Encuestas y eventos en el chat, contadores y el recordatorio doble (18/10/2026)
+
+José, 18/10, tres reclamos sobre la 0.1.92/0.1.93:
+
+**1. «Llegaron 2 mensajes a la misma hora».** El recordatorio «Hacer ejercicios»
+sonó dos veces. `reminderCron.pushTo` juntaba los tokens de todos los devices
+de la persona sin quitar repetidos, y el mismo teléfono figuraba en dos devices
+(reinstalar deja el viejo con el mismo token). Es el mismo problema que FL11
+arregló para los mensajes con `repartirPorToken`; este camino había quedado
+afuera.
+- Arreglo: tokens únicos en `pushTo`, y también en el transporte de FCM
+  (`enviarA`), para que ningún camino vuelva a mandar dos veces al mismo token.
+- Test: dos devices con el mismo token dan un solo envío.
+
+**2. «Creé una encuesta desde el chat de Wilson y nunca se envió al chat».**
+La encuesta y el evento se guardaban, pero el chat no se enteraba.
+- Ahora crear una encuesta o un evento desde un chat publica un mensaje ahí
+  (`publicarEnElChat`): `kind: 'poll' | 'event'` y `ref: { tipo, id }`.
+- Es un mensaje más: toma su `seq`, llega por el socket y con push, y la lista
+  de chats lo muestra con su ícono (`resolveChatPreview`: encuesta y evento).
+  El `clientKey` sale del id, así que un reintento no duplica.
+- En la conversación se dibuja como tarjeta (`TarjetaDelChat`):
+  - la encuesta (`EncuestaEnElChat`) se vota ahí mismo, con la misma tarjeta y
+    las mismas acciones que la pestaña (`useAccionesDeEncuesta`, que salió de
+    `PollsScreen`);
+  - el evento (`EventoEnElChat`) muestra qué, cuándo y dónde, y deja confirmar
+    con «Voy» o «No voy».
+- Rutas nuevas: `GET /api/agenda/polls/:id` y `GET /api/agenda/events/:id`.
+  Quien no ve la encuesta o el evento recibe 404, para no confirmar que existe.
+- Si publicar falla, lo creado queda y se registra: no se tumba la creación.
+
+**3. «No hay un contador en los tabs».**
+- **Barra:** Agenda cuenta los eventos que vienen y no respondí; Encuestas, las
+  encuestas abiertas sin mi voto. Lo propio no cuenta.
+  - Sale de `GET /api/agenda/pendientes`: dos `countDocuments` en paralelo.
+  - Hook `usePendientesDeAgenda`, sin polling. Se refresca:
+    - al llegar un mensaje de encuesta o de evento;
+    - al cambiar de pestaña y al volver de un chat;
+    - al votar.
+- **Segmentos de Agenda:** «Eventos N» (los que vienen) y «Recordatorios N»
+  (activos), como los chips de la lista de chats.
+
+**E2E (emulador, QA Ana):**
+- Ana crea una encuesta y un evento: los dos llegan al chat como tarjetas, la
+  lista los muestra con su ícono y aparece «1» en Agenda y en Encuestas.
+- Votar y responder ahí mismo funciona, y los contadores vuelven a cero al
+  volver a la lista.
+- El aviso local mostraba «📎 Archivo» para estos tipos: `armarAviso` ahora usa
+  su texto.
+
 ## 49. Auditoría de fluidez contra WhatsApp (18/10/2026) — plan FL12
 
 Pasada de solo lectura sobre el código, archivo por archivo. El informe
@@ -4917,6 +4967,48 @@ pantalla, la lista de abajo sin `freezeOnBlur`, el campo de texto controlado,
 **Medir antes y después:** el detector actual solo ve trabas de más de
 250 ms. Hace falta un contador de frames caídos en la conversación para
 probar cada arreglo.
+
+### 49.1 Hecho en FL12 (18/10/2026, sin publicar)
+
+| # | Arreglo | Dónde |
+| --- | --- | --- |
+| 1 | **Se probó y se volvió atrás.** `KeyboardChatScrollView` + `KeyboardStickyView` hacían que la lista saltara al principio de la conversación al cerrar un modal (colgar una llamada, la hoja de adjuntar). Sigue el `KeyboardAvoidingView` de antes | — |
+| 1b | Abrir en frío quedaba ARRIBA 2 de cada 3 veces: la lista nacía vacía, los mensajes llegaban del disco y el scroll inicial de `startRenderingFromBottom` se pisaba con la corrección de posición de FlashList 2.0.2 (se medía `scroll 6621` → `scroll 7`). La lista se vuelve a montar al pasar de vacía a con filas | `ListaDeMensajes` (`key`) |
+| 1c | El botón «bajar» aparecía estando abajo al reabrir: el último evento de scroll llega con el alto ESTIMADO (9032 dp contra 7838 medidos). El alto del contenido sale de `onContentSizeChange`; un cambio de tamaño solo puede acercar, nunca alejar | `finalDeLaConversacion` (`PosicionEnLaLista`), `useFinalDeLaConversacion` |
+| 2 | El chat nace pintado: memoria de los últimos 10 chats con sus 50 mensajes ya descifrados, precargada al apoyar el dedo en la fila. Se vacía al cerrar sesión o borrar el chat | `memoriaDeChats`, `precargarChat`, `useChat`, `FilaDeChat` |
+| 3 | Un acuse que no cambia el check no redibuja; cada fila recibe su `entrega` resuelta y solo las propias; el server reparte un `receipt` solo si el cursor avanzó (compara contra el documento anterior: con `timestamps`, `modifiedCount` da 1 siempre) | `useAcuses`, `MessageRow`, `chatService.moverCursor`, `socket.ts` |
+| 3b | Sin `deliver.set` por `msg.new` en vivo: el server ya lo marcó entregado al repartirlo. Sigue el de `sync.pull` | `useChat` |
+| 4 | `read.set` solo cuando sube, y lo pendiente sale al reconectar | `useChat.markRead`, `emitirLeido` |
+| 5 | El relleno de huecos al abrir espera las animaciones y 3 s de calma; el cifrado de páginas cede el hilo cada 20 filas | `useChat`, `mensajesGuardados.escribirFilas` |
+| 6 | `mergeBySeq` y `conciliarPagina` conservan la referencia de lo que no cambió y devuelven el MISMO array si nada cambió (`mismoValor`) | `shared/sync`, `shared/conciliarMensajes`, `shared/mismoValor` |
+| 7 | Pendiente y confirmado comparten clave (`claveDeFila` por `clientKey`) y tipo de celda; un pendiente ya confirmado no se dibuja (fin de la burbuja doble) | `filasDelChat`, `ListaDeMensajes`, `ChatScreen` |
+| 8 | Formateadores de hora y fecha creados una vez | `shared/chatDisplay` |
+| 9 | Chat secreto: la clave de mensajes se deriva una vez por sesión y lo abierto se recuerda por sobre | `deviceKeys.claveDeMensajes`, `useSecretChat` |
+| 10 | Nota de voz: el reproductor nativo nace al primer toque | `NotaDeVoz` |
+| 11 | El progreso de subida avisa por pasos de 4 % | `progresoDeSubida.valeAvisarProgreso`, `colaDeArchivos` |
+| 12 | «Inicio» congelada con un chat encima (`freezeOnBlur`); la lista de chats se escribe al disco juntando ráfagas de 1,5 s | `NavegacionDeSesion`, `chatsGuardados` |
+| 13 | Pendientes, presencia y «escribiendo» no crean estado nuevo si nada cambió; el detalle del chat se monta al primer uso | `useChat`, `ChatScreen` |
+| 14 | base64 con tabla de valores en vez de `indexOf` por carácter | `shared/e2ee` |
+| — | `recyclingKey` en las imágenes de filas y avatares; gesto de deslizar memoizado | `MessageRow`, `Avatar`, `DeslizarParaResponder` |
+
+| 15 | El campo de escribir no es controlado: el texto vive en un ref y la barra solo se redibuja al cruzar vacío ↔ con texto (`formaDelTexto`); poner un texto desde afuera remonta el campo, limpiar usa `clear()` | `Composer`, `campoDeTexto` |
+| — | El «escribiendo…» se apaga cuando llega el mensaje de esa persona | `useChat` |
+
+**E2E (emulador, 18/10):**
+- Enviar no deja burbuja doble.
+- El campo no controlado cambia micrófono ↔ enviar y se limpia al mandar.
+- Se ve «escribiendo…» y el mensaje en vivo.
+- Reabrir el chat entra pintado (a los 0,6 s ya está entero).
+- Abrir en frío: 4 de 4 abajo (antes 1 de 3). Reabrir: 4 de 4 abajo y sin
+  botón «bajar». Colgar una llamada y cerrar la hoja de adjuntar: sigue abajo.
+- El botón «bajar» sale al subir, cuenta el mensaje que llega leyendo arriba
+  y no aparece si el mensaje llega estando abajo.
+- La subida con el teclado NO se pudo ver: los dos AVD declaran teclado físico
+  y Gboard queda flotante. Se verifica en un teléfono.
+
+**Pendiente (de menor impacto):** la caché de membresía del server (G2), el
+`explain` de `GET /api/chats` (G3), `inlineRequires` y la agenda persistida
+(F3/F4), y el contador de frames caídos para medir.
 
 ## 48. Auditoría de diseño premium (18/10/2026, pedido de José)
 
@@ -5020,11 +5112,16 @@ las capturas de Stitch (`design/stitch/*`).
   avisos de mensaje, de llamada, de llamada en curso y el de conexión
   permanente. Necesita build nativo.
 
-**Pendiente (FL13c):**
-- Inter: dependencia, build nativo y un `Text` propio en unos 100 archivos.
-- Entrada (teléfono y código) y llamada contra Stitch.
-- No leídos como pastilla.
-- El clip duplicado del composer.
+**FL13c (18/10), revisado contra Stitch:**
+- La entrada (teléfono y código) ya coincide; el teclado numérico del diseño lo
+  pone el sistema.
+- La llamada coincide en composición. Se corrigió la barra de estado: íconos
+  claros sobre el violeta en tema claro, y oscuros sobre la lavanda en oscuro.
+- Los no leídos como franja de ancho completo y el «+» junto al clip son del
+  diseño FL6: se quedan.
+- **Inter, no.** WhatsApp en Android usa Roboto, la fuente del sistema, que es
+  la que ya tiene la app. Cambiarla exigía un `Text` propio en unos 100
+  archivos y un build nativo, sin ganar parecido.
 
 ## 47. Lilachat Empresa — plan (17/10/2026)
 

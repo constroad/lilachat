@@ -58,9 +58,12 @@ export function formatDayLabel(at: string | Date, now: Date = new Date()): strin
 export function formatUltimaVez(at: string | Date, now: Date = new Date()): string {
   const reloj = formatClock(at);
   if (!reloj) return '';
+  // Corta, para que quepa en la cabecera con video, llamada y menú (FL13d):
+  // hoy solo la hora, ayer «ayer» y la hora, antes solo el día.
   const dia = formatDayLabel(at, now);
-  const cuando = dia === 'Hoy' || dia === 'Ayer' ? dia.toLowerCase() : dia;
-  return `últ. vez ${cuando} ${reloj.startsWith('1:') ? 'a la' : 'a las'} ${reloj}`;
+  if (dia === 'Hoy') return `últ. vez ${reloj}`;
+  if (dia === 'Ayer') return `últ. vez ayer ${reloj}`;
+  return `últ. vez ${dia}`;
 }
 
 /** ¿Este mensaje abre un día nuevo respecto del anterior? */

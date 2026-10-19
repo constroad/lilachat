@@ -226,16 +226,31 @@ describe('resolveChatPreview — borrador', () => {
 describe('formatUltimaVez', () => {
   const ahora = new Date('2026-10-18T15:00:00');
 
-  it('hoy, ayer y el resto con fecha, siempre con la hora', () => {
+  /**
+   * Corta, para que la hora quepa en la cabecera (FL13d, emulador 18/10): con
+   * video, llamada y menú, «últ. vez hoy a las 7:38 p. m.» se cortaba en
+   * «últ. vez hoy a las 7:…» y se perdía justo la hora.
+   */
+  it('hoy, solo la hora; ayer, «ayer» y la hora', () => {
     const hoy = new Date('2026-10-18T07:31:00');
+    const ayer = new Date('2026-10-17T21:04:00');
 
-    expect(formatUltimaVez(hoy, ahora)).toBe(`últ. vez hoy a las ${formatClock(hoy)}`);
-    expect(formatUltimaVez(new Date('2026-10-17T21:04:00'), ahora)).toMatch(/^últ\. vez ayer a las /);
-    expect(formatUltimaVez(new Date('2026-10-02T10:00:00'), ahora)).toMatch(/^últ\. vez 2 .+ a las /);
+    expect(formatUltimaVez(hoy, ahora)).toBe(`últ. vez ${formatClock(hoy)}`);
+    expect(formatUltimaVez(ayer, ahora)).toBe(`últ. vez ayer ${formatClock(ayer)}`);
   });
 
-  it('la una va en singular: «a la 1:05»', () => {
-    expect(formatUltimaVez(new Date('2026-10-18T13:05:00'), ahora)).toMatch(/hoy a la 1:05/);
+  it('antes de ayer, solo el día: la hora de hace días ya no dice nada', () => {
+    const viejo = formatUltimaVez(new Date('2026-10-02T10:00:00'), ahora);
+
+    expect(viejo).toMatch(/^últ\. vez 2 /);
+    expect(viejo).not.toContain(':');
+  });
+
+  // El peor caso es «ayer» con hora de dos cifras; la cabecera achica la letra
+  // hasta un 15 % si hace falta (`adjustsFontSizeToFit`).
+  it('cabe en la cabecera: hasta 25 caracteres', () => {
+    expect(formatUltimaVez(new Date('2026-10-17T12:59:00'), ahora).length).toBeLessThanOrEqual(25);
+    expect(formatUltimaVez(new Date('2026-10-18T10:59:00'), ahora).length).toBeLessThanOrEqual(25);
   });
 
   it('sin una fecha válida, nada', () => {

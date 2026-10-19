@@ -4892,6 +4892,223 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 54. Lilachat Web como WhatsApp Web — plan W0–W8 (19/10/2026)
+
+José, 19/10: «enfoquémonos en Lilachat web (similar a WhatsApp Web) con todas
+nuestras acciones… fluidez, fácil de usar, intuitivo, robusto y escalable…
+PWA con modo offline… incluye E1–E4… escaneo de código QR con la app…».
+
+**Ingeniería inversa: no.** `morluto/rea` sirve para analizar binarios y
+webs. Usarlo sobre WhatsApp Web es extraer código de Meta, y sus términos lo
+prohíben. El diseño sale del comportamiento observable y del *WhatsApp
+Security Whitepaper* público (vinculación de dispositivos). REA queda para
+auditar apps NUESTRAS.
+
+### 54.1 Lo que hay hoy (auditoría, con evidencia)
+
+La web de F6 lee y escribe, pero es un prototipo de un solo archivo:
+
+| Hallazgo | Evidencia |
+| --- | --- |
+| Todo el estado vive en `App.tsx` (486 líneas): chats, mensajes, socket, overlays, ajustes | `web/src/App.tsx:45-82` |
+| Solo texto y archivos: sin responder, editar, borrar, reenviar, reaccionar, fijar, menciones, notas de voz, vista previa de enlaces, mensajes largos | `web/src/App.tsx:243-299`, `chat/Composer.tsx` |
+| Llamada y videollamada dibujadas e inertes | `chat/Conversation.tsx:2,23` |
+| Sin detalle de chat ni de grupo, sin borradores, sin recordatorios del grupo | — |
+| Caché en `localStorage` (tope ~5 MB, síncrono, bloquea el hilo) | `chat/cacheLocal.ts` |
+| Envío sin cola: sin socket, el optimista queda «pendiente» para siempre | `App.tsx:264-281` |
+| Listas sin virtualizar: un grupo con 5 000 mensajes pinta 5 000 nodos | `chat/Conversation.tsx` |
+| JWT **y secreto del dispositivo** en `localStorage`: un XSS se lleva la sesión para siempre | `api.ts:39-46` |
+| SW solo de push: no hay PWA instalable ni offline (sin manifest, sin íconos) | `public/sw.js:1-7`, `index.html` |
+| Avisos con `icon-192.png` que no existe | `public/sw.js:22` |
+| Ajustes = un menú flotante con dos botones | `App.tsx:450-484` |
+| Sin atajos de teclado, sin arrastrar y soltar, sin pegar imágenes | — |
+| Ingreso solo por código; no hay vinculación por QR | `auth/AccessScreens.tsx` |
+| Sin título con no leídos ni insignia de la app instalada | — |
+
+Lo que sí sirve y se conserva: sesión con renovación por secreto (`api.ts`,
+§26.1), socket único por sesión (`useSocket.ts`, §30), `mergeIncoming` por
+`clientKey`, Web Push VAPID del server (`pushRoutes.ts`, `pushSender.ts`), y
+los motores de `shared/` (outbox, filtros, menciones, formatos, llamada).
+
+### 54.2 Respuestas a las preguntas de José
+
+**¿Funcionan las notificaciones push en la PWA?** Sí, con Web Push (VAPID),
+que el server ya tiene.
+- Chrome, Edge y Firefox (Windows, Mac, Linux, Android): llegan con la
+  pestaña cerrada mientras el navegador esté abierto.
+- Mac con Chrome cerrado del todo: no llegan. Al volver a abrirlo, la web se
+  pone al día.
+- iPhone y iPad (iOS 16.4+): solo si la web está **instalada** en la pantalla
+  de inicio. En Safari suelto, no.
+- El permiso se pide al tocar «Activar notificaciones», nunca al entrar.
+
+**¿Y las llamadas?** Sí, voz y video 1:1, con WebRTC del navegador.
+- Misma señalización que la app (Socket.IO) y el mismo TURN de Cloudflare.
+  No hace falta nada nuevo en el server.
+- Con la web abierta: suena y se contesta en la web.
+- Con la web cerrada: llega un aviso «Llamada de…». Al tocarlo se abre y se
+  contesta si sigue sonando (30 s, `llamadas.ts`).
+- Límite honesto: no suena como un teléfono con todo cerrado. En iPhone, la
+  llamada web solo funciona en primer plano.
+- Extra de escritorio: compartir pantalla (`getDisplayMedia`).
+
+**¿Escanear un QR con la app, como WhatsApp Web?** Sí. Diseño en §54.4.
+
+**¿Compartir chats públicos?** Enlaces de invitación: sí, con candados.
+Lectura pública sin cuenta: todavía no. Detalle en §54.5.
+
+### 54.3 Arquitectura de la web nueva
+
+- **Local-first, como WhatsApp Web.** IndexedDB es la fuente de la verdad de
+  la pantalla. El socket y la sincronización escriben en la base; la UI lee de
+  la base con consultas vivas. Abrir un chat es leer local: cero espera.
+  Librería: **Dexie 4** (Apache-2.0, gratis) con `liveQuery`.
+- **Cola de mutaciones** (`web-app-blueprint` §4): el motor de
+  `shared/outbox.ts` (el mismo de la app) + store en IndexedDB + drenado con
+  candado al volver la red o el socket. Cada envío lleva su `clientKey`.
+  Fotos, archivos y notas de voz entran a la cola como `Blob`.
+- **Listas virtualizadas** con `@tanstack/react-virtual` (MIT): lista de chats
+  y conversación con ancla abajo. 10 000 mensajes cuestan lo mismo que 30.
+- **Sesión endurecida.**
+  - El secreto del dispositivo pasa a una cookie `HttpOnly; Secure;
+    SameSite=Strict`, con `Path=/api/auth`. JavaScript ya no lo ve.
+  - El JWT vive solo en memoria y se renueva con esa cookie.
+  - CSP estricta desde Express: `script-src 'self'`, sin `eval`.
+  - Cerrar sesión borra IndexedDB, cachés y la suscripción push.
+  - Si el teléfono revoca la web, el socket avisa `session.revoked` y la web
+    se borra sola.
+- **Estado de UI**: un store chico con `useSyncExternalStore` (sin librería).
+  El chat abierto va en la URL (`/c/<chatId>`), así sirven atrás/adelante y el
+  aviso abre el chat correcto.
+- **Componentes**: primitivas Radix (MIT) estilo shadcn sobre los tokens
+  Vivid Pulse de `shared/tokens`. Íconos `lucide-react`. Claro y oscuro.
+- **Archivos ≤600 líneas.** `App.tsx` se parte en shell, store, sync y
+  pantallas.
+
+### 54.4 Vincular por QR (sin código, como WhatsApp Web)
+
+**Decisión (no evidente):** los dispositivos vinculados los autoriza el
+teléfono y son de Lilachat, no de constroad-auth. constroad-auth sigue siendo
+la identidad del teléfono (OTP). Así no hace falta tocar otro repo, y es el
+modelo de WhatsApp: el teléfono principal autoriza a los acompañantes.
+
+Flujo:
+1. La web pide `POST /api/link/start` (sin sesión, con límite por IP). El
+   server crea una vinculación con un token de 32 bytes al azar. Guarda solo su
+   hash y vence a los 60 s. La web muestra el QR y lo **rota cada 20 s**.
+2. El QR lleva `https://lilachat.constroad.com/v/<token>`. La cámara del
+   teléfono también lo abre (App Link → la app).
+3. En la app: Ajustes → **Dispositivos vinculados** → «Vincular un
+   dispositivo» → cámara (`expo-camera`, MIT). La app muestra «¿Vincular
+   Chrome en macOS?» y pide el desbloqueo del teléfono
+   (`expo-local-authentication`).
+4. La app manda `POST /api/link/approve {token}` con SU sesión. El server
+   comprueba token vigente, sin usar y del mismo origen; crea el dispositivo
+   vinculado con su secreto (hash en `linkedDevices`) y avisa a la web por el
+   socket de la vinculación.
+5. La web canjea con `POST /api/link/claim` y recibe la cookie del secreto
+   más un JWT. El token queda quemado.
+6. Todos los dispositivos del usuario reciben «Se vinculó Chrome en macOS».
+
+Candados: un solo uso; 60 s; el QR no sirve sin el teléfono desbloqueado; la
+lista de vinculados muestra nombre, último uso y «Cerrar sesión». Revocar corta
+el socket en el acto. Máximo 4 vinculados, como WhatsApp. El ingreso por código
+sigue como alternativa («Entrar con número de teléfono»).
+
+**Chats secretos:** la web no los lee hasta tener un sobre por dispositivo
+(pendiente de F9). Se muestran con candado y «Este chat secreto se lee en tu
+teléfono». El QR ya transporta la clave pública de la web para ese paso.
+
+### 54.5 Compartir chats: enlaces de invitación seguros
+
+Recomendación: **enlace de invitación a grupos y canales, sí. Página pública
+legible sin cuenta, no por ahora.**
+
+Enlace de invitación (`/i/<token>`):
+- Token de 128 bits al azar, guardado como hash. Adivinarlo es inviable.
+- Solo un admin lo crea, lo copia, lo **restablece** (el viejo deja de
+  servir) o lo apaga.
+- Vence a elegir (1 h, 1 día, 7 días, nunca) y con tope de usos.
+- Opción «Aprobar a cada uno»: quien entra queda en una lista de solicitudes
+  hasta que un admin lo acepta.
+- La vista previa muestra nombre, foto y cantidad de miembros; nunca los
+  teléfonos ni los mensajes.
+- Quien entra por enlace no ve los teléfonos de quienes no son sus contactos:
+  ve nombres.
+- Límite de intentos por IP y por usuario. Todo queda en la bitácora del
+  grupo: quién creó, quién entró y por qué enlace.
+- **Nunca compartibles**: chats directos, chats secretos y borradores.
+
+Página pública sin cuenta (estilo `t.me/s/canal`): el riesgo es filtrar
+información de una empresa e indexarla. Si hace falta, va después como «Canal
+de difusión público» explícito: solo admins publican, `noindex` por defecto y
+un aviso claro al crearlo. No se construye sin un pedido concreto.
+
+### 54.6 Fases
+
+Ciclo de siempre: test primero → implementar → E2E en el navegador real →
+as-is. Cada fase se publica sola. Antes de cada pantalla nueva, su diseño de
+Stitch (escritorio 1440, tablet y móvil 390), que hoy solo existe para la
+lista y la conversación (`web-claro.png`, `nexchat-web-oscuro.png`).
+
+| Fase | Qué | Depende de |
+| --- | --- | --- |
+| **W0** | Diseños Stitch de las pantallas nuevas; sesión endurecida (cookie `HttpOnly`, JWT en memoria, CSP); manifest con íconos 192/512/maskable y tarjeta para WhatsApp | — |
+| **W1** | Núcleo local-first: Dexie + sincronización por cursor + cola de mutaciones + listas virtualizadas; `App.tsx` partido; URL `/c/<chatId>`; título «(3) Lilachat» e insignia de la app | W0 |
+| **W2** | Paridad de mensajes: responder, editar, borrar para mí y para todos, reenviar, reaccionar, fijar, info de lectura, @menciones, enlaces con tarjeta, «Leer más», notas de voz (`MediaRecorder` + onda), fotos y archivos con arrastrar, pegar y pie de foto, visor, emojis | W1 |
+| **W3** | Paridad de chats: filtros Todos · No leídos · Grupos · Borradores, archivar, silenciar, fijar chat, borrar para mí; detalle de chat y de grupo (nombre, foto, miembros, admins, salir); borradores; agenda, encuestas, eventos y recordatorios del grupo; Lila (Ponme al día, respuesta automática, programados); ajustes completos | W1 |
+| **W4** | PWA: SW a mano (≤100 líneas), cache-first solo de lo que tiene hash, navegación con timeout y caída al shell; instalable; aviso «Hay una versión nueva · Recargar»; envío y lectura sin red | W1 |
+| **W5** | Vincular por QR (§54.4): endpoints, pantalla QR que rota, escáner y «Dispositivos vinculados» en la app (exige APK nuevo con `expo-camera`) | W0 |
+| **W6** | Llamadas WebRTC 1:1 en la web: voz, video, compartir pantalla, contestar desde el aviso | W1 |
+| **W7** | Atajos como WhatsApp Web (nuevo chat, buscar, siguiente chat, ↑ editar el último), paleta ⌘K, enlaces de invitación seguros (§54.5) en app y web | W3 |
+| **W8** | E1–E4 en la web, junto con la app: E1 consola del espacio (directorio, roles, desactivar), E2 canales en la barra lateral, E3 hilos en un tercer panel a la derecha, E4 comandos `/` con autocompletado, botones de bots y webhooks | E1–E4 del server |
+
+La web es el mejor lugar para la administración de E1 y E4 (escritorio
+primero), así que esas consolas pueden salir en la web antes que en la app.
+
+**Fuera de alcance por ahora:** leer chats secretos en la web, llamadas
+grupales, stickers y GIFs (§53), página pública sin cuenta.
+
+## 53. FL15 — barra como WhatsApp, borradores, recordatorios del grupo, novedades, mensajes largos (19/10/2026, 0.1.98)
+
+José, 19/10: la barra de WhatsApp (emoji adentro a la izquierda, clip y cámara
+adentro a la derecha, micrófono afuera); «chatear conmigo mismo, crear
+borradores y nombrarlos» (respuesta: chats contigo con nombre, en una categoría
+de arriba); «recordatorios grupales que vivan en el grupo, solo los admins, con
+descripción, imagen»; «al haber una actualización, mostrar las novedades y recién
+ahí descargar»; «los mensajes largos deberían poder colapsarse».
+
+| Pedido | Qué se hizo | Dónde |
+| --- | --- | --- |
+| Barra | Se fue el «+» de afuera (era la misma puerta que el clip). El clip queda siempre adentro; la cámara, solo con el campo vacío. Stickers y GIFs, después (José eligió emojis ahora) | `Composer` |
+| Borradores | Chat `notas`: solo yo, con nombre, nunca cifrado; varios, uno por tema. «Nuevo borrador» en Nuevo chat; chip «Borradores» con su cuenta; ícono propio en la lista; cabecera «Solo tú lo ves»; detalle con nombre y foto editables, sin participantes ni avisos | server `POST /api/chats` (`kind: 'notas'`), `editarInfoDeGrupo`; shared `filtrarChats`/`contarChats`; app `NewChatScreen`, `BuscadorDeChats`, `FilaDeChat`, `ChatScreen` (`esBorrador`), `ChatDetailScreen` |
+| Recordatorios del grupo | Los crea un admin desde el clip («Recordatorio del grupo»), con descripción e imagen (16:9). Se publican en el chat como tarjeta (`ref: recordatorio`, `kind: 'reminder'`), a la hora le suenan a TODOS con «Grupo · título», se listan en el detalle del grupo y los borra un admin. No aparecen en la agenda personal | server `recordatoriosDeGrupo.ts` (permisos, `GET /reminders/del-chat/:chatId`, `GET /reminders/:id`, `POST /reminders/:id/imagen`), `eventRoutes`, `reminderCron`; app `CreateReminderScreen` (`grupo`), `ImagenDeRecordatorio`, `RecordatorioEnElChat`, `RecordatoriosDelGrupo` |
+| Novedades | `lila apk publish --notes=<archivo>` sube las notas; LilaStore devuelve las de cada versión posterior con `min-version?desde=`; «Actualizar» abre «Novedades» y la descarga sale de ahí (también desde Ajustes) | LilaStore `minVersionRespuesta`; app `novedades.ts`, `NovedadesDeLaVersion`, `useActualizacionesDeLaApp` |
+| Mensajes largos | Más de 700 caracteres o 15 líneas: cortado en una palabra con «… Leer más»; «Ver menos» lo vuelve a cerrar. Se recuerda por mensaje (la lista recicla celdas) | `mensajeLargo.ts`, `TextoDelMensaje` |
+
+**Release:** las notas de 0.1.97 se publicaron con `--notes`. Desde ahora cada
+release lleva su archivo de novedades, escrito para quien usa la app.
+
+### 53.1 Lo que encontró el E2E en el emulador (19/10)
+
+Verificado: barra (vacía y con texto), «Leer más / Ver menos», novedades
+desde la banda (con el `versionCode` real del APK instalado), borrador
+(crear, mandar, chip con cuenta, ícono), recordatorio del grupo con imagen
+(tarjeta, lista en el detalle, borrar). Dos defectos, con su causa:
+
+| Defecto | Causa | Arreglo |
+| --- | --- | --- |
+| La tarjeta del recordatorio salía **sin la imagen**, en el teléfono de todos, hasta reabrir el chat | el chat se publicaba al CREAR; la tarjeta se pedía en ese instante y la imagen llegaba un request después | con imagen, la app crea con `publicar: false`, sube y llama `POST /reminders/:id/publicar` (idempotente y atómico por `publicadoEn`; si publicar falla, suelta la marca). Publica aunque la imagen falle. `guardarRecordatorio.ts` + 4 tests de server |
+| El chat **no quedaba abajo**: al crecer una tarjeta (~300 dp al cargar la imagen) y al abrir en frío (1 de cada 3) | los eventos de scroll que produce la propia lista al acomodarse traían posiciones viejas (8 dp con 916 de contenido) y se leían como «lejos»; además `scrollToEnd` en el mismo evento de tamaño no hace nada | `PosicionEnLaLista` pasa a **pegada al final**: abre pegada y solo un ARRASTRE del dedo la despega (`onScrollBeginDrag`/`onMomentumScroll*`); pegada, si lo de abajo crece, baja un cuadro después. 3 de 3 aperturas en frío abajo; entrante abajo lo sigue; arriba se queda con «⌄ 1» |
+
+También: la cabecera del borrador muestra la libreta, como la lista.
+
+**Pendiente (no es de FL15):** las tarjetas del chat (encuesta, evento,
+recordatorio) se piden al montar y no se enteran de cambios: un voto, una
+edición o un borrado se ve recién al reabrir el chat («Este recordatorio ya no
+está»). Hace falta un aviso por socket (`ref.cambio {tipo, id}`) que las
+refresque.
+
 ## 52. FL14 — emojis, @menciones, tarjeta al escribir, ver la foto, renombrar (19/10/2026, sin publicar)
 
 José, 19/10: «la tarjeta no se muestra cuando estamos escribiendo la url», «al

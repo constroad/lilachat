@@ -132,7 +132,8 @@ export async function avisarMensajeNuevo(
       isOnline(member)
     ) {
       void markDelivered({ chatId, userId: new Types.ObjectId(member), seq })
-        .then(() => {
+        .then((avanzo) => {
+          if (!avanzo) return;
           ioVivo?.to(userRoom(remitente)).emit('receipt', {
             chatId,
             userId: member,
@@ -474,7 +475,9 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
       const payload = (frame ?? {}) as { chatId?: string; seq?: number };
       if (!payload.chatId || typeof payload.seq !== 'number') return;
       try {
-        await markRead({ chatId: payload.chatId, userId, seq: payload.seq });
+        // Sin avance no hay nada que avisar: cada `receipt` es un re-render en
+        // cada teléfono del chat (FL12, §49 #3).
+        if (!(await markRead({ chatId: payload.chatId, userId, seq: payload.seq }))) return;
         const members = await chatMemberIds(new Types.ObjectId(payload.chatId));
         for (const member of members) {
           io.to(userRoom(member)).emit('receipt', {
@@ -501,7 +504,7 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
       const payload = (frame ?? {}) as { chatId?: string; seq?: number };
       if (!payload.chatId || typeof payload.seq !== 'number') return;
       try {
-        await markDelivered({ chatId: payload.chatId, userId, seq: payload.seq });
+        if (!(await markDelivered({ chatId: payload.chatId, userId, seq: payload.seq }))) return;
         const members = await chatMemberIds(new Types.ObjectId(payload.chatId));
         for (const member of members) {
           io.to(userRoom(member)).emit('receipt', {

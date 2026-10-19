@@ -4,6 +4,8 @@ import {
   applyVote,
   cambiosDeEvento,
   cambiosDeRecordatorio,
+  textoDeEncuestaEnElChat,
+  textoDeEventoEnElChat,
   validatePoll,
   type Recurrence,
 } from '@lilachat/shared';
@@ -15,6 +17,7 @@ import { vistasDeEventos } from './vistaDeEvento.js';
 import { contactosDe } from './invitarAlEvento.js';
 import { pasosDelVoto } from './votoDeEncuesta.js';
 import { asyncRoute, requireSession } from './requireSession.js';
+import { publicarEnElChat } from './publicarEnElChat.js';
 
 /**
  * Eventos, recordatorios y encuestas (F5).
@@ -96,6 +99,18 @@ async function eventoVisible(eventId: unknown, userId: Types.ObjectId) {
   return esMiembro ? evento : null;
 }
 
+/**
+ * Publicar en el chat no puede tumbar lo creado: la encuesta o el evento ya
+ * existen y se ven en su pestaña. Si el mensaje falla, se registra.
+ */
+async function publicarSinTumbar(params: Parameters<typeof publicarEnElChat>[0]): Promise<void> {
+  try {
+    await publicarEnElChat(params);
+  } catch (error) {
+    console.error('[agenda] no se pudo publicar en el chat:', error instanceof Error ? error.message : error);
+  }
+}
+
 /** `$set` y `$unset` juntos, sin mandar un operador vacío (Mongo lo rechaza). */
 function actualizacion(set: object, unset: string[]): Record<string, object> {
   const operaciones: Record<string, object> = {};
@@ -109,6 +124,37 @@ export function buildEventRouter(): Router {
   router.use(requireSession);
 
   // ─── Eventos ──────────────────────────────────────────────────────────────
+
+  /**
+   * Lo que me espera, para los contadores de las pestañas (José, 18/10): las
+   * encuestas abiertas de mis chats en las que no voté y los eventos que vienen
+   * y no respondí. Lo propio no cuenta. Dos conteos en paralelo, sin traer filas.
+   */
+  router.get('/pendientes', asyncRoute(async (req, res) => {
+    const yo = req.session!.userId;
+    const chatIds = await myChatIds(yo);
+    const [encuestas, eventos] = await Promise.all([
+      PollModel.countDocuments({ chatId: { $in: chatIds }, closedAt: null, createdBy: { $ne: yo }, 'options.votes': { $ne: yo } }),
+      EventModel.countDocuments({
+        startsAt: { $gte: new Date() },
+        createdBy: { $ne: yo },
+        attendees: { $elemMatch: { userId: yo, rsvp: null } },
+      }),
+    ]);
+    res.json({ encuestas, eventos });
+  }));
+
+  /** Un evento por su id, para la tarjeta del chat. Quien no lo ve, 404. */
+  router.get('/events/:eventId', asyncRoute(async (req, res) => {
+    const yo = req.session!.userId;
+    const id = asObjectId(req.params.eventId);
+    const evento = id ? await EventModel.findById(id).lean() : null;
+    const loVeo = evento && (evento.attendees.some((a) => a.userId.equals(yo)) || (await ChatModel.exists({ _id: evento.chatId, 'members.userId': yo })));
+    if (!evento || !loVeo) return res.status(404).json({ message: 'Ese evento no existe.' });
+    const chatIds = await myChatIds(yo);
+    const [vista] = await vistasDeEventos([evento], yo, new Set(chatIds.map(String)));
+    res.json({ event: vista });
+  }));
 
   router.get('/events', asyncRoute(async (req, res) => {
     const chatIds = await myChatIds(req.session!.userId);
@@ -185,6 +231,8 @@ export function buildEventRouter(): Router {
         remindGuests: req.body?.remindGuests !== false,
         guestsCanInvite: req.body?.guestsCanInvite === true,
       });
+      // Al chat, como WhatsApp (18/10): si no, nadie se entera del evento.
+      await publicarSinTumbar({ chatId: String(chatId), autor: req.session!.userId, ref: { tipo: 'evento', id: String(event._id) }, texto: textoDeEventoEnElChat(title) });
       res.status(201).json({ id: String(event._id) });
     } catch (error) {
       if (error instanceof ForbiddenChatError || error instanceof ChatSecretoError) {
@@ -353,6 +401,8 @@ export function buildEventRouter(): Router {
         anonymous: req.body?.anonymous === true,
         createdBy: req.session!.userId,
       });
+      // Al chat, como WhatsApp (José, 18/10: «Wilson nunca se enteró»).
+      await publicarSinTumbar({ chatId: String(chatId), autor: req.session!.userId, ref: { tipo: 'encuesta', id: String(poll._id) }, texto: textoDeEncuestaEnElChat(question) });
       res.status(201).json({ id: String(poll._id) });
     } catch (error) {
       if (error instanceof ForbiddenChatError || error instanceof ChatSecretoError) {
@@ -360,6 +410,18 @@ export function buildEventRouter(): Router {
       }
       throw error;
     }
+  }));
+
+  /**
+   * Una encuesta por su id: la tarjeta del mensaje en el chat la lee así. Para
+   * quien no es del chat, 404 y no 403: no se confirma que exista.
+   */
+  router.get('/polls/:pollId', asyncRoute(async (req, res) => {
+    const id = asObjectId(req.params.pollId);
+    const poll = id ? await PollModel.findById(id).select('chatId').lean() : null;
+    const esMiembro = poll && (await ChatModel.exists({ _id: poll.chatId, 'members.userId': req.session!.userId }));
+    if (!poll || !esMiembro) return res.status(404).json({ message: 'Esa encuesta no existe.' });
+    res.json({ poll: await vistaDeUna(poll._id, req.session!.userId) });
   }));
 
   router.get('/polls', asyncRoute(async (req, res) => {

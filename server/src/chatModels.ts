@@ -1,4 +1,5 @@
 import mongoose, { Schema, type Model, type Types } from 'mongoose';
+import type { RefDeMensaje } from '@lilachat/shared';
 
 /**
  * Chats, mensajes y acuses (spec §7).
@@ -59,8 +60,14 @@ export interface Message {
   seq: number;
   senderId: Types.ObjectId;
   clientKey: string;
-  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'event' | 'system';
+  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'event' | 'poll' | 'system';
   body?: string;
+  /**
+   * La encuesta o el evento que este mensaje publica en el chat (José, 18/10).
+   * El mensaje lleva solo la referencia: los votos y las confirmaciones cambian
+   * y se leen de la encuesta o del evento, no se copian acá.
+   */
+  ref?: RefDeMensaje;
   /**
    * El sobre cifrado, en los chats secretos. Cuando está, `body` NO está: son
    * excluyentes, y guardar los dos anularía el cifrado en la práctica.
@@ -172,10 +179,13 @@ const messageSchema = new Schema<Message>(
     clientKey: { type: String, required: true },
     kind: {
       type: String,
-      enum: ['text', 'image', 'video', 'audio', 'file', 'event', 'system'],
+      enum: ['text', 'image', 'video', 'audio', 'file', 'event', 'poll', 'system'],
       default: 'text',
     },
     body: { type: String },
+    ref: {
+      type: new Schema({ tipo: { type: String, enum: ['encuesta', 'evento'], required: true }, id: { type: String, required: true } }, { _id: false }),
+    },
     envelope: {
       v: { type: Number },
       nonce: { type: String },

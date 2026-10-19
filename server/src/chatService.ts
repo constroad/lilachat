@@ -80,6 +80,8 @@ export async function sendMessage(params: {
   /** El sobre cifrado, en los chats secretos (F9). Excluyente con `body`. */
   envelope?: Message['envelope'];
   media?: Message['media'];
+  /** La encuesta o el evento que este mensaje publica (`publicarEnElChat`). */
+  ref?: Message['ref'];
   replyToSeq?: number;
   /** Auto-respuesta de ausente (F11): se marca para no disparar otra. */
   autoReply?: boolean;
@@ -134,6 +136,7 @@ export async function sendMessage(params: {
         ? { envelope: params.envelope }
         : { body: params.body }),
       media: params.media,
+      ref: params.ref,
       replyToSeq: params.replyToSeq,
       autoReply: params.autoReply ?? false,
       at: new Date(),
@@ -255,19 +258,34 @@ export async function marcarPropioLeido(message: Pick<Message, 'chatId' | 'sende
  * mismo usuario mandan acuses desordenados, y el que llega tarde no puede
  * resucitar mensajes ya leídos.
  */
+/**
+ * Mueve el cursor y devuelve si AVANZÓ (FL12, §49 #3): quien re-difunde el
+ * acuse no avisa nada cuando no se movió — cada aviso es un re-render en cada
+ * teléfono. Se compara contra el documento ANTERIOR (mismo viaje): con
+ * `timestamps`, `modifiedCount` da 1 siempre porque `updatedAt` cambia.
+ */
+async function moverCursor(
+  filtro: { chatId: Types.ObjectId; userId: Types.ObjectId },
+  campos: ('readSeq' | 'deliveredSeq')[],
+  seq: number
+): Promise<boolean> {
+  const anterior = await ReceiptModel.findOneAndUpdate(
+    filtro,
+    { $max: Object.fromEntries(campos.map((campo) => [campo, seq])) },
+    { upsert: true, new: false, projection: { readSeq: 1, deliveredSeq: 1 } }
+  ).lean();
+  return !anterior || campos.some((campo) => (anterior[campo] ?? 0) < seq);
+}
+
 export async function markRead(params: {
   chatId: string;
   userId: Types.ObjectId;
   seq: number;
-}): Promise<void> {
+}): Promise<boolean> {
   const chatId = await assertMember(params.chatId, params.userId);
-  await Promise.all([
+  const [avanzo] = await Promise.all([
     // Leer implica entregado: no se puede leer lo que no llego.
-    ReceiptModel.updateOne(
-      { chatId, userId: params.userId },
-      { $max: { readSeq: params.seq, deliveredSeq: params.seq } },
-      { upsert: true }
-    ),
+    moverCursor({ chatId, userId: params.userId }, ['readSeq', 'deliveredSeq'], params.seq),
     // Abrir el chat quita la marca de «no leído» (FL9), como WhatsApp. El
     // filtro solo encuentra la fila si estaba marcada: no escribe de más.
     ChatModel.updateOne(
@@ -275,6 +293,7 @@ export async function markRead(params: {
       { $set: { 'members.$.markedUnread': false } }
     ),
   ]);
+  return avanzo;
 }
 
 /**
@@ -289,13 +308,9 @@ export async function markDelivered(params: {
   chatId: string;
   userId: Types.ObjectId;
   seq: number;
-}): Promise<void> {
+}): Promise<boolean> {
   const chatId = await assertMember(params.chatId, params.userId);
-  await ReceiptModel.updateOne(
-    { chatId, userId: params.userId },
-    { $max: { deliveredSeq: params.seq } },
-    { upsert: true }
-  );
+  return moverCursor({ chatId, userId: params.userId }, ['deliveredSeq'], params.seq);
 }
 
 /** Los demás miembros de un chat: a quién notificar. */

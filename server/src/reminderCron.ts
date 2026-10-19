@@ -47,7 +47,10 @@ async function pushTo(userIds: string[], title: string, body: string, data: { ch
     .select('pushToken')
     .lean();
   if (devices.length === 0) return;
-  await sender.send({ tokens: devices.map((device) => device.pushToken!), title, body, data: { ...data, tipo: 'agenda' } });
+  // Un token, un envío (José, 18/10: el recordatorio llegaba dos veces). El
+  // mismo teléfono puede figurar en dos devices después de reinstalar.
+  const tokens = [...new Set(devices.map((device) => device.pushToken!))];
+  await sender.send({ tokens, title, body, data: { ...data, tipo: 'agenda' } });
 }
 
 export async function runReminderTick(now: Date = new Date()): Promise<{ events: number; reminders: number }> {

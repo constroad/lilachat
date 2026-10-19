@@ -246,6 +246,24 @@ describe('cron de recordatorios', () => {
   });
 
   /**
+   * José, 18/10: «Hacer ejercicios» llegó DOS veces a la misma hora. El mismo
+   * teléfono figuraba en dos devices (reinstalar deja el viejo con el mismo
+   * token) y el aviso salía una vez por device. Un token, un envío.
+   */
+  it('un recordatorio suena una vez por teléfono aunque el token esté en dos devices', async () => {
+    await ReminderModel.create({ userId: jose, title: 'Hacer ejercicios', startsAt: new Date(Date.now() - 1000) });
+    await mongoose.connection.collection('devices').insertMany([
+      { deviceId: 'd-viejo', userId: jose, pushToken: 'tok-mismo' },
+      { deviceId: 'd-nuevo', userId: jose, pushToken: 'tok-mismo' },
+    ]);
+
+    await runReminderTick();
+
+    expect(pushes).toHaveLength(1);
+    expect(pushes[0]?.tokens).toEqual(['tok-mismo']);
+  });
+
+  /**
    * Un «cada día» que suena una sola vez en su vida es el bug clásico: hay que
    * REPROGRAMAR y limpiar el sello.
    */

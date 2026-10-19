@@ -121,12 +121,16 @@ async function obtenerAcceso(credencial: CredencialFcm): Promise<string | null> 
 function buildFcmSender(credencial: CredencialFcm): PushSender {
   const url = urlDeEnvio(credencial.projectId);
 
-  /** Un POST a FCM por token. Un fallo NUNCA propaga. */
+  /**
+   * Un POST a FCM por token, y UNO por token aunque venga repetido: un token
+   * duplicado es una notificación doble en el mismo teléfono (pasó con los
+   * recordatorios, 18/10). Un fallo NUNCA propaga.
+   */
   const enviarA = async (destinos: string[], armar: (destino: string) => object) => {
     const token = await obtenerAcceso(credencial);
     if (!token) return;
     await Promise.allSettled(
-      destinos.map(async (destino) => {
+      [...new Set(destinos)].map(async (destino) => {
         const respuesta = await fetch(url, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },

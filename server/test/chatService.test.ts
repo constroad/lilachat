@@ -6,6 +6,7 @@ import {
   buscarMensajes,
   ForbiddenChatError,
   listMessages,
+  markDelivered,
   markRead,
   pullSince,
   sendMessage,
@@ -270,6 +271,26 @@ describe('listChats y no leídos', () => {
 
     const receipt = await ReceiptModel.findOne({ chatId, userId: jose }).lean();
     expect(receipt?.readSeq).toBe(2);
+  });
+
+  /**
+   * FL12 (§49 #3): el acuse se re-difunde a todos los del chat y cada uno es un
+   * re-render en cada teléfono. Si el cursor no se movió, no hay nada que avisar.
+   */
+  it('markRead dice si el cursor avanzó', async () => {
+    await sendMessage({ chatId, senderId: maria, clientKey: 'a', body: 'hola' });
+    await sendMessage({ chatId, senderId: maria, clientKey: 'b', body: 'ahí?' });
+
+    expect(await markRead({ chatId, userId: jose, seq: 2 })).toBe(true);
+    expect(await markRead({ chatId, userId: jose, seq: 2 })).toBe(false);
+    expect(await markRead({ chatId, userId: jose, seq: 1 })).toBe(false);
+  });
+
+  it('markDelivered dice si el cursor avanzó', async () => {
+    await sendMessage({ chatId, senderId: maria, clientKey: 'a', body: 'hola' });
+
+    expect(await markDelivered({ chatId, userId: jose, seq: 1 })).toBe(true);
+    expect(await markDelivered({ chatId, userId: jose, seq: 1 })).toBe(false);
   });
 
   it('trae el último mensaje para la vista previa de la lista', async () => {

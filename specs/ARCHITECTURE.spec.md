@@ -4892,6 +4892,50 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 51. «Invitar» daba 500 y la tarjeta de los enlaces (18/10/2026, sin publicar)
+
+José, 18/10, con capturas: «el invitar en esas pantallas ya no funciona», «el
+buscar contacto busca pero el botón invitar no hace nada» y «cuando comparto un
+link en un chat no genera la tarjeta como sí lo hace WhatsApp con el SEO».
+
+### 51.1 Invitar
+
+- **La causa** estaba en la base, no en el código: `invitations` tenía un
+  `email_1` único SIN `sparse`. Con UNA invitación sin correo, ninguna otra sin
+  correo podía entrar (`E11000 … dup key: { email: null }` → 500 «Algo falló de
+  nuestro lado»). Se reprodujo contra la base y en el log del server de QA.
+- **El arreglo de la base** es `scripts/fix-indexes.ts --apply`, que ahora cubre
+  `users` e `invitations` y crea el índice `sparse` él mismo: en la bóveda no hay
+  `autoIndex`. El esquema declara el índice para que la base en memoria sea igual
+  (`contactRoutes.test.ts` lo prueba con `syncIndexes`).
+- **«No hace nada» en Nuevo chat:** el aviso salía al pie de la lista, fuera de
+  la pantalla. Ahora `useInvitar` (uno solo para «Invitar» y «Nuevo chat»)
+  muestra el progreso en el botón, no acepta otro toque mientras viaja y deja el
+  motivo debajo de la fila tocada (`textoDeInvitacionFallida`).
+
+### 51.2 Vista previa de enlaces
+
+- **Server:** `GET /api/enlaces/vista-previa?url=` (`vistaPreviaRoutes.ts`) con
+  sesión, freno de 60 por minuto por usuario, caché de 500 tarjetas (24 h; una
+  hora si la página no dio tarjeta) y una sola salida por enlace aunque lo pida
+  todo el grupo a la vez.
+- **SSRF** (el server vive en la mini junto a la bóveda y Torre): solo http(s)
+  en los puertos 80/443, sin credenciales ni nombres internos; el DNS de la
+  conexión rechaza toda IP privada, reservada o de la máquina, y cada
+  redirección (hasta 3) se valida de nuevo (`traerVistaPrevia.ts`,
+  `vistaPrevia.ts`). 5 s de plazo; se lee hasta `</head>` o 1,5 MB (YouTube pone
+  `og:title` pasados los 750 KB).
+- **Parser puro** `leerMetadatos`: `og:` → `twitter:` → `<title>`/`description`;
+  imagen absoluta y solo http(s); textos recortados.
+- **App:** `VistaPreviaDeEnlace` dentro de la burbuja, sobre el texto, con el
+  PRIMER link (`primerEnlace`). Imagen ancha arriba; un ícono o logo cuadrado va
+  chico al costado, como WhatsApp. Caché por enlace en memoria. **Los chats
+  secretos no la piden**: el server no tiene que ver sus enlaces.
+- La imagen la baja cada teléfono desde la página (no pasa por el server).
+- **E2E (emulador, server de QA):** LilaStore, El Comercio y YouTube con
+  tarjeta; un dominio que no existe, sin tarjeta; `MessageRow` bajó a 567 líneas
+  (la tarjeta de archivo salió a `TarjetaDeArchivo`).
+
 ## 50. Encuestas y eventos en el chat, contadores y el recordatorio doble (18/10/2026)
 
 José, 18/10, tres reclamos sobre la 0.1.92/0.1.93:
@@ -5147,8 +5191,7 @@ evento, crear recordatorio, nueva encuesta, nuevo grupo e invitar.
 
 **Pendiente:** la foto del grupo al crearlo (el diseño `nuevo-grupo-info` la
 pide; hoy se pone después, desde el detalle); el teléfono con espacios cuando
-es el NOMBRE de un chat sin contacto (toca la búsqueda de chats, va aparte);
-`MessageRow` quedó en 595 líneas.
+es el NOMBRE de un chat sin contacto (toca la búsqueda de chats, va aparte).
 
 ## 47. Lilachat Empresa — plan (17/10/2026)
 

@@ -47,3 +47,4 @@ export * from './busquedaDeMensajes.js';
 export * from './subida/index.js';
 export * from './mismoValor.js';
 export * from './enElChat.js';
+export * from './vistaPrevia.js';

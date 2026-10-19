@@ -4892,6 +4892,41 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 52. FL14 — emojis, @menciones, tarjeta al escribir, ver la foto, renombrar (19/10/2026, sin publicar)
+
+José, 19/10: «la tarjeta no se muestra cuando estamos escribiendo la url», «al
+tocar la foto de perfil no me permite verla, solo seleccionar otra», «no hay un
+botón de emojis como en WhatsApp», «al cambiar el nombre de un grupo el teclado
+se pierde», «en un grupo no puedo taggear un contacto con @».
+
+| Pedido | Qué se hizo | Dónde |
+| --- | --- | --- |
+| Emojis | Botón dentro de la píldora (alterna con el teclado) y panel en el lugar del teclado: recientes guardados, categorías y buscador en español, colores del tema. ATRÁS lo cierra. `rn-emoji-keyboard` 1.7.0 (MIT, sin nativo); su aviso de `InteractionManager` se silencia en desarrollo | `PanelDeEmojis`, `Composer`, `index.ts` |
+| @menciones | Al escribir «@» en un grupo salen los miembros (con foto); elegir completa «@Nombre ». Viaja el texto MÁS `menciones: [{userId, desde, largo}]`; el server guarda solo las válidas (`validarMenciones`: miembros, dentro del texto, sobre un «@», sin superponerse, máx. 20) y las quita al editar. Cada teléfono la dibuja con SU nombre para esa persona; a mí, «@Tú». Al mencionado le suena aunque haya silenciado el grupo | `shared/menciones`, `useMenciones`, `SugerenciasDeMencion`, `TextoDelMensaje`, `buildOutboxItem`, `chatService.sendMessage`, `pushService` |
+| Tarjeta al escribir | Arriba de la barra, 600 ms después de dejar de tipear, con X para quitarla; misma caché que la burbuja (`useVistaPrevia`). No en chats secretos. La barra solo se redibuja si el texto parece un link | `VistaPreviaAlEscribir`, `useVistaPrevia` |
+| Ver la foto | Tocar tu foto en Ajustes la abre entera con «Cambiar» y «Quitar»; la cámara la cambia directo. En el detalle, tocar la foto de un chat la muestra; la cámara del grupo la cambia | `ui/VisorDeFoto`, `PerfilAjuste`, `IdentidadDelChat` |
+| Renombrar el grupo | La causa: `autoFocus` dentro del modal tomaba el foco antes que la ventana y Android no abría el teclado (emulador: cursor titilando, `mInputShown=false`). El foco va 350 ms después de `onShow` (lo que dura el fundido; con 60 no alcanzaba) y la hoja sube con el teclado | `EditarNombreDeGrupo` |
+
+**Bug encontrado al probar (existía desde FL12):** un borrador restaurado que
+se enviaba sin tocarlo quedaba en el campo: el nativo ignoraba el `clear()` de
+un campo nacido de `defaultValue`. Enviar ahora vacía y remonta el campo, con el
+teclado si lo tenía. Insertar un emoji o completar una mención también remonta
+(un `value` controlado por un render dejaba el mismo problema).
+
+**Otros:** el placeholder pasa a «Mensaje», como WhatsApp (con el emoji adentro
+«Escribe un mensaje» se partía en dos líneas). `ChatScreen` bajó de 629 a 597
+líneas (`useDibujarFila`; los mencionables salen de `useGrupo`).
+
+**E2E (emulador con el teclado en pantalla forzado):** panel de emojis abierto
+tras cuatro emojis; borrador + emojis + enviar deja el campo vacío; «@an» →
+QA Ana con el teclado abierto → enviado con su rango; «@Tú» en la mención de
+Ana; tarjeta de El Comercio al escribir y en la burbuja; foto propia y ajena a
+pantalla completa; renombrar abre el teclado 3 de 3 y guarda.
+
+**Lilachat Empresa (§47):** las @menciones de grupo son el primer pedazo de E3.
+Los comandos con `/`, Lila como bot y los botones en el chat son E4; E1–E5
+siguen sin empezar.
+
 ## 51. «Invitar» daba 500 y la tarjeta de los enlaces (18/10/2026, sin publicar)
 
 José, 18/10, con capturas: «el invitar en esas pantallas ya no funciona», «el

@@ -5123,6 +5123,33 @@ las capturas de Stitch (`design/stitch/*`).
   la que ya tiene la app. Cambiarla exigía un `Text` propio en unos 100
   archivos y un build nativo, sin ganar parecido.
 
+### 48.2 FL13d — auditoría lado a lado (18/10/2026, sin publicar)
+
+Se recorrieron en el emulador todas las pantallas con datos QA sembrados por el
+socket y la API (un 1:1, un grupo de cuatro con encuesta y evento), en claro y
+oscuro, al lado de cada captura de Stitch. Lo que no coincidía y se arregló:
+
+| # | Diferencia | Arreglo | Dónde |
+| --- | --- | --- | --- |
+| 1 | La encuesta y el evento en un grupo quedaban fuera de la columna de las burbujas, sin avatar y con el autor dos veces («QA Ana» arriba y «Familia · preguntó QA Ana» adentro) | Van como un mensaje ajeno: avatar al pie de la tarjeta, el nombre en el color de esa persona y la hora debajo. Adentro del chat la encuesta no repite de qué chat es | `TarjetaDelChat`, `TarjetaDeEncuesta` (`enElChat`) |
+| 2 | El evento en el chat tenía «Voy / No voy» con otro estilo; la Agenda, «Voy / Tal vez / No voy», y decía «1 van» | Un solo `BotonesDeRsvp` y un solo `resumenDeRsvp` («1 va · 0 tal vez · 3 sin responder») | `agenda/BotonesDeRsvp`, `agenda/eventos` |
+| 3 | La cabecera cortaba «últ. vez hoy a las 7:…»: se perdía la hora | `formatUltimaVez` corta: hoy «últ. vez 7:38 p. m.», ayer «últ. vez ayer …», antes solo el día; el subtítulo achica la letra hasta 15 % antes de cortar | `shared/chatDisplay`, `EncabezadoDelChat` |
+| 4 | Participantes con iniciales aunque tuvieran foto; «Tú» con un ícono | El detalle manda la foto de cada miembro; se ve en el detalle y en las burbujas del grupo | server `GET /chats/:id/detail` (`avatarUrl`), `useGrupo` (`fotos`), `MessageRow` |
+| 5 | Sin «Añadir participante» en la lista, como el diseño | Primera fila de la tarjeta, y el rótulo con la cantidad | `ParticipantesDelGrupo` (salió de `ChatDetailScreen`) |
+| 6 | Teléfonos sin espacios en el detalle y en Ajustes | `formatPhoneDisplay`: «900 000 088» | `ChatDetailScreen`, `PerfilAjuste` |
+| 7 | «passphrase» y «aparatos» en textos de usuario | «clave del respaldo» y «dispositivos» | respaldo, `AjustesDelChat` |
+
+**Revisado y que se queda como está** (coincide con Stitch): el avatar del grupo
+al pie del ÚLTIMO mensaje del bloque (`chat-grupo`, `multimedia-emojis`); el
+interruptor apagado con bolita oscura (`crear-encuesta`, Material 3); la
+tarjeta de recordatorio tintada con ícono de color (`recordatorios`); crear
+evento, crear recordatorio, nueva encuesta, nuevo grupo e invitar.
+
+**Pendiente:** la foto del grupo al crearlo (el diseño `nuevo-grupo-info` la
+pide; hoy se pone después, desde el detalle); el teléfono con espacios cuando
+es el NOMBRE de un chat sin contacto (toca la búsqueda de chats, va aparte);
+`MessageRow` quedó en 595 líneas.
+
 ## 47. Lilachat Empresa — plan (17/10/2026)
 
 José aprobó llevar Lilachat a un uso empresarial tipo Slack, con D1 en (a).

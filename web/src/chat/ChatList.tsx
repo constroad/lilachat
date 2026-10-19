@@ -178,11 +178,11 @@ export function ChatList({
                   selected ? 'bg-primary/10' : 'hover:bg-background'
                 }`}
               >
-                <Avatar name={chat.name} kind={chat.kind} online={chat.online} />
+                <Avatar name={chat.name ?? chat.phone} kind={chat.kind} online={chat.online} foto={chat.avatarUrl} />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-baseline gap-2">
                     <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-                      {chat.name ?? 'Conversación'}
+                      {chat.name ?? chat.phone ?? 'Conversación'}
                     </span>
                     {chat.lastMessage ? (
                       <span className="shrink-0 text-[11px] text-on-surface-variant">

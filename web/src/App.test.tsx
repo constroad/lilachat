@@ -147,20 +147,47 @@ describe('App', () => {
 describe('la sesión se renueva sola', () => {
   const conSecreto = { ...credencial, deviceSecret: 'secreto-del-navegador' };
 
-  it('ante un 401 renueva con el secreto y NO pide código', async () => {
+  /**
+   * W0 (19/10): la sesión vieja (secreto en localStorage) se MUDA a la cookie
+   * HttpOnly en el primer arranque, y después en localStorage no queda nada que
+   * sirva para entrar: ni el secreto ni el JWT.
+   */
+  it('una sesión vieja se muda a la cookie y no queda ningún secreto en localStorage', async () => {
     localStorage.setItem('lilachat.credential', JSON.stringify(conSecreto));
-    // El caso REAL: el token viejo se rechaza una vez, y con el nuevo entra.
-    // Mockear un 401 eterno probaba otra cosa —un server que rechaza tokens
-    // recién emitidos— donde cerrar sesión sí es lo correcto.
-    let yaRenovo = false;
+    const cuerpos: unknown[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (String(url).includes('/auth/session')) {
+          cuerpos.push(JSON.parse(String(init?.body ?? '{}')));
+          return new Response(JSON.stringify({ jwt: 'jwt-nuevo', user: { name: 'José' } }), { status: 200 });
+        }
+        return new Response(JSON.stringify({ chats: [] }), { status: 200 });
+      })
+    );
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.queryByTestId('input-telefono')).toBeNull());
+    await waitFor(() => expect(localStorage.getItem('lilachat.credential')).toBeNull());
+    expect(cuerpos[0]).toEqual({ cliente: 'web', deviceId: 'device-1', deviceSecret: 'secreto-del-navegador' });
+    const guardado = localStorage.getItem('lilachat.perfil') ?? '';
+    expect(guardado).not.toContain('jwt');
+    expect(guardado).not.toContain('secreto');
+  });
+
+  it('ante un 401 renueva con la cookie y NO pide código', async () => {
+    localStorage.setItem('lilachat.perfil', JSON.stringify({ userId: 'u1', phone: '902049935', name: 'José', deviceId: 'device-1' }));
+    let renovaciones = 0;
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string) => {
         if (String(url).includes('/auth/session')) {
-          yaRenovo = true;
-          return new Response(JSON.stringify({ jwt: 'jwt-nuevo' }), { status: 200 });
+          renovaciones += 1;
+          return new Response(JSON.stringify({ jwt: `jwt-${renovaciones}` }), { status: 200 });
         }
-        return yaRenovo
+        // El primer token se rechaza una vez; con el segundo entra.
+        return renovaciones >= 2
           ? new Response(JSON.stringify({ chats: [] }), { status: 200 })
           : new Response(JSON.stringify({ message: 'no' }), { status: 401 });
       })
@@ -168,11 +195,8 @@ describe('la sesión se renueva sola', () => {
 
     render(<App />);
 
-    // No vuelve al alta: la pantalla del teléfono no aparece.
-    await waitFor(() => expect(screen.queryByTestId('input-telefono')).toBeNull());
-    await waitFor(() =>
-      expect(JSON.parse(localStorage.getItem('lilachat.credential') ?? '{}').jwt).toBe('jwt-nuevo')
-    );
+    await waitFor(() => expect(renovaciones).toBeGreaterThanOrEqual(2));
+    expect(screen.queryByTestId('input-telefono')).toBeNull();
   });
 
   /**

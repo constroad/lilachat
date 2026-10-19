@@ -27,6 +27,13 @@ export default {
         outline: colors.light.outline,
         error: colors.light.error,
         'on-primary': colors.light.onPrimary,
+        // El color de cada autor en los grupos (W2), el mismo que en la app.
+        'autor-1': colors.light.author1,
+        'autor-2': colors.light.author2,
+        'autor-3': colors.light.author3,
+        'autor-4': colors.light.author4,
+        'autor-5': colors.light.author5,
+        'autor-6': colors.light.author6,
       },
       borderRadius: { lg: `${radius.lg}px`, xl: `${radius.xl}px` },
       fontFamily: { sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'] },

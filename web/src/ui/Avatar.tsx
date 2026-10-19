@@ -1,4 +1,5 @@
-import { Users } from 'lucide-react';
+import { NotebookPen, Users } from 'lucide-react';
+import type { ChatSummary } from '../chat/types';
 
 /**
  * El avatar del diseño: círculo de acento con la inicial, o el icono de grupo
@@ -11,11 +12,14 @@ export function Avatar({
   kind = 'direct',
   size = 40,
   online,
+  foto,
 }: {
   name?: string | null;
-  kind?: 'direct' | 'group';
+  kind?: ChatSummary['kind'];
   size?: number;
   online?: boolean;
+  /** La foto del chat o de la persona; sin ella, la inicial o el ícono. */
+  foto?: string;
 }) {
   const initial = (name ?? '?').trim().slice(0, 1).toUpperCase() || '?';
 
@@ -25,7 +29,15 @@ export function Avatar({
         className="flex h-full w-full items-center justify-center rounded-full bg-primary text-on-primary"
         style={{ fontSize: size * 0.4 }}
       >
-        {kind === 'group' ? <Users size={size * 0.5} /> : <span className="font-semibold">{initial}</span>}
+        {foto ? (
+          <img src={foto} alt="" className="h-full w-full rounded-full object-cover" loading="lazy" />
+        ) : kind === 'group' ? (
+          <Users size={size * 0.5} />
+        ) : kind === 'notas' ? (
+          <NotebookPen size={size * 0.5} />
+        ) : (
+          <span className="font-semibold">{initial}</span>
+        )}
       </div>
       {online === undefined ? null : (
         <span

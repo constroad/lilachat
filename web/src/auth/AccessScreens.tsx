@@ -49,10 +49,11 @@ export function AccessScreens({ onReady }: { onReady: (credential: Credential) =
     setError('');
     const result = await api<{
       jwt: string;
-      deviceSecret?: string;
       user: { id: string; name: string | null; phone: string };
     }>('/auth/otp/verify', {
-      body: { phone: normalizePeruPhone(phone), code: value, deviceId: deviceId() },
+      // `cliente: 'web'` (W0): el secreto del dispositivo vuelve en una cookie
+      // HttpOnly, no en el cuerpo.
+      body: { phone: normalizePeruPhone(phone), code: value, deviceId: deviceId(), cliente: 'web' },
     });
     setBusy(false);
 
@@ -70,8 +71,6 @@ export function AccessScreens({ onReady }: { onReady: (credential: Credential) =
       phone: result.data.user.phone,
       name: result.data.user.name ?? undefined,
       deviceId: deviceId(),
-      // Sin esto la sesión moría a las 24 h y había que pedir otro código.
-      deviceSecret: result.data.deviceSecret,
     });
   };
 

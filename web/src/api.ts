@@ -6,47 +6,88 @@
  * sin una URL de API que configurar por entorno y sin la clase de bug donde el
  * build de producción apunta al localhost del desarrollador.
  */
-const CREDENTIAL_KEY = 'lilachat.credential';
+/**
+ * La sesión de la web (W0, 19/10).
+ *
+ * - En `localStorage` va SOLO el perfil (quién soy y el id de este navegador),
+ *   nada que sirva para entrar.
+ * - El secreto del dispositivo vive en una cookie `HttpOnly` que pone el server
+ *   y que JavaScript no ve.
+ * - El JWT (24 h) vive en MEMORIA: se renueva al abrir con la cookie.
+ *
+ * Antes el JWT y el secreto iban juntos en `localStorage`: un script inyectado
+ * se llevaba la sesión para siempre.
+ */
+const PERFIL_KEY = 'lilachat.perfil';
+/** La credencial de antes de W0: se lee una vez para mudarla a la cookie. */
+const CREDENCIAL_VIEJA_KEY = 'lilachat.credential';
 
-export type Credential = {
-  jwt: string;
+export type Perfil = {
   userId: string;
   phone: string;
   name?: string;
   deviceId: string;
-  /**
-   * El secreto del dispositivo, que es lo que permite renovar la sesión SIN
-   * pedir otro código.
-   *
-   * La web lo tiraba: guardaba solo el `jwt`, que dura 24 h, así que al día
-   * siguiente había que volver a escribir un código —mientras la app, que sí lo
-   * guardaba, seguía entrando sola—. WhatsApp Web mantiene la sesión hasta que
-   * uno la cierra, y esto es lo que faltaba para hacer lo mismo.
-   */
-  deviceSecret?: string;
 };
+
+/** Lo que usa la app con sesión: el perfil más el JWT en memoria (vacío sin red). */
+export type Credential = Perfil & { jwt: string };
 
 export type ApiResult<T> =
   | { ok: true; data: T }
   | { ok: false; status: number; message: string };
 
-export function loadCredential(): Credential | null {
-  const raw = localStorage.getItem(CREDENTIAL_KEY);
-  if (!raw) return null;
+function leerJson(clave: string): Record<string, unknown> | null {
   try {
-    const parsed = JSON.parse(raw) as Credential;
-    return parsed.jwt && parsed.deviceId ? parsed : null;
+    const crudo = localStorage.getItem(clave);
+    return crudo ? (JSON.parse(crudo) as Record<string, unknown>) : null;
   } catch {
     return null;
   }
 }
 
-export function saveCredential(credential: Credential): void {
-  localStorage.setItem(CREDENTIAL_KEY, JSON.stringify(credential));
+const esPerfil = (valor: Record<string, unknown> | null): valor is Perfil & Record<string, unknown> =>
+  Boolean(valor && typeof valor.userId === 'string' && typeof valor.deviceId === 'string');
+
+/** El perfil guardado; si solo está la credencial vieja, su perfil (sin secretos). */
+export function loadPerfil(): Perfil | null {
+  const actual = leerJson(PERFIL_KEY);
+  const fuente = esPerfil(actual) ? actual : leerJson(CREDENCIAL_VIEJA_KEY);
+  if (!esPerfil(fuente)) return null;
+  return { userId: fuente.userId, phone: String(fuente.phone ?? ''), name: typeof fuente.name === 'string' ? fuente.name : undefined, deviceId: fuente.deviceId };
 }
 
-export function clearCredential(): void {
-  localStorage.removeItem(CREDENTIAL_KEY);
+export function savePerfil(perfil: Perfil): void {
+  try {
+    localStorage.setItem(PERFIL_KEY, JSON.stringify(perfil));
+  } catch {
+    // Modo privado: la sesión dura lo que la pestaña.
+  }
+}
+
+/** El secreto de una sesión vieja, para mudarlo a la cookie en el primer arranque. */
+export function leerSecretoViejo(): { deviceId: string; deviceSecret: string } | null {
+  const vieja = leerJson(CREDENCIAL_VIEJA_KEY);
+  return vieja && typeof vieja.deviceId === 'string' && typeof vieja.deviceSecret === 'string'
+    ? { deviceId: vieja.deviceId, deviceSecret: vieja.deviceSecret }
+    : null;
+}
+
+/** Ya mudado (o revocado): el secreto viejo no puede quedar en `localStorage`. */
+export function borrarCredencialVieja(): void {
+  try {
+    localStorage.removeItem(CREDENCIAL_VIEJA_KEY);
+  } catch {
+    // Nada que borrar.
+  }
+}
+
+export function clearPerfil(): void {
+  try {
+    localStorage.removeItem(PERFIL_KEY);
+  } catch {
+    // Nada que borrar.
+  }
+  borrarCredencialVieja();
 }
 
 /**
@@ -65,24 +106,24 @@ export function deviceId(): string {
 }
 
 /**
- * Renovar el `jwt` con el secreto del dispositivo.
+ * Renovar el `jwt` con la cookie del dispositivo (o, una sola vez, con el
+ * secreto de una sesión vieja, que el server muda a la cookie).
  *
- * Se llama al arrancar y ante cualquier 401. **No borra la sesión si falla por
- * red**: quedarse afuera porque el wifi estaba mal es exactamente lo que esta
- * app existe para evitar.
+ * **No borra la sesión si falla por red**: solo un 401 real revoca.
  */
 export async function refreshSession(
-  credential: Credential
-): Promise<{ ok: true; jwt: string } | { ok: false; revocado: boolean }> {
-  if (!credential.deviceSecret) return { ok: false, revocado: false };
-
-  const result = await api<{ jwt: string }>('/auth/session', {
-    body: { deviceId: credential.deviceId, deviceSecret: credential.deviceSecret },
+  secretoViejo?: { deviceId: string; deviceSecret: string } | null
+): Promise<{ ok: true; jwt: string; user?: { name: string | null } } | { ok: false; revocado: boolean }> {
+  const result = await api<{ jwt: string; user?: { name: string | null } }>('/auth/session', {
+    body: { cliente: 'web', ...(secretoViejo ?? {}) },
   });
-
-  if (result.ok) return { ok: true, jwt: result.data.jwt };
-  // Solo un 401 REAL revoca. Un 503 o la falta de red dejan pasar con lo que hay.
+  if (result.ok) return { ok: true, jwt: result.data.jwt, user: result.data.user };
   return { ok: false, revocado: result.status === 401 };
+}
+
+/** Cerrar sesión: el server borra la cookie y este navegador deja de recibir avisos. */
+export async function salirDelServer(): Promise<void> {
+  await api('/auth/salir', { method: 'POST' });
 }
 
 export async function api<T>(

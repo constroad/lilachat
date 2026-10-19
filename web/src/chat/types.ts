@@ -1,51 +1,88 @@
+import type { MencionEnMensaje, OutboxItem } from '@lilachat/shared';
+
 /**
- * Las formas que devuelve el server, más lo que la web le agrega en vivo.
+ * Las formas que devuelve el server, copiadas de `server/src/listaDeChats.ts`
+ * y `server/src/messageView.ts` — no recordadas.
+ *
+ * Hasta W1 (19/10/2026) la web leía `createdAt`, un campo que el server nunca
+ * mandó (es `at`): la hora y el chip del día salían vacíos. Los tipos describían
+ * un contrato inventado y TypeScript no puede saber eso.
  *
  * `online` y `typingName` NO vienen del endpoint: los pinta el socket sobre la
- * lista ya cargada. Se marcan opcionales por eso — al montar todavía no se sabe
- * quién está conectado, y pintar «desconectado» antes del `presence.snapshot`
- * sería mentir durante el primer segundo.
+ * lista ya cargada.
  */
 export type ChatSummary = {
   id: string;
-  kind: 'direct' | 'group';
+  kind: 'direct' | 'group' | 'notas';
   name?: string;
+  /** El teléfono de la otra persona, solo en chats 1:1. */
+  phone?: string;
   memberIds: string[];
+  /** Los otros miembros cuyo acuse cuenta para mis checks. */
+  acuseDe?: string[];
   lastSeq: number;
   unread: number;
-  lastMessage: { seq: number; body?: string; kind?: string; senderId: string; at: string } | null;
+  lastMessage: {
+    seq: number;
+    body?: string;
+    kind?: string;
+    senderId: string;
+    at: string;
+  } | null;
   othersReadSeq: number;
   othersDeliveredSeq: number;
+  encrypted?: boolean;
+  avatarUrl?: string;
+  muted?: boolean;
+  pinned?: boolean;
+  archived?: boolean;
+  markedUnread?: boolean;
   online?: boolean;
   typingName?: string | null;
 };
+
+export type RefDeMensaje = { tipo: 'encuesta' | 'evento' | 'recordatorio'; id: string };
 
 export type ChatMessage = {
   _id?: string;
   chatId: string;
   seq: number;
   senderId: string;
-  kind: 'text' | 'image' | 'video' | 'file';
-  body?: string;
   clientKey: string;
-  createdAt: string;
-  /**
-   * El adjunto, con los nombres que MANDA el server.
-   *
-   * La web declaraba `mediaUrl` y `thumbnailUrl` —campos que no existen— así
-   * que una foto llegaba, se guardaba bien y se pintaba como una burbuja
-   * VACÍA. Nadie lo vio hasta subir una de verdad (27/08/2026): el tipo
-   * describía un contrato inventado y TypeScript no puede saber eso.
-   */
-  media?: { url: string; thumbUrl?: string; mime?: string; mediaId?: string };
-  /**
-   * El sobre cifrado de un chat secreto.
-   *
-   * El server lo manda desde F9 y el tipo de la web no lo modelaba: la web no
-   * sabe descifrar todavía, pero SÍ tiene que reconocerlo — es lo que impide
-   * que la caché guarde en claro un mensaje que se cifró a propósito.
-   */
+  kind: string;
+  body?: string;
+  /** El sobre de un chat secreto: llega EN VEZ de `body`. La web no lo abre. */
   envelope?: { v: number; nonce: string; ciphertext: string };
-  /** Solo en el cliente: el que todavía no confirmó el server. */
-  pending?: boolean;
+  ref?: RefDeMensaje;
+  menciones?: MencionEnMensaje[];
+  media?: {
+    mediaId?: string;
+    url?: string;
+    thumbUrl?: string;
+    mime?: string;
+    fileName?: string;
+    sizeBytes?: number;
+    durationMs?: number;
+    width?: number;
+    height?: number;
+    onda?: number[];
+  };
+  system?: { evento: string; valor?: string };
+  deletedAt?: string;
+  replyToSeq?: number;
+  editedAt?: string;
+  at: string;
 };
+
+/**
+ * Lo que se dibuja: un mensaje del server o uno de la cola que todavía no
+ * confirmó (`estado`). Viven en tablas distintas de la base local y se juntan
+ * recién al pintar.
+ */
+export type MensajeEnPantalla = ChatMessage & {
+  estado?: 'enviando' | 'fallido';
+  motivoDelFallo?: string;
+};
+
+/** Un ítem de la cola, con la hora local para ordenar lo pendiente. */
+export type EnvioPendiente = OutboxItem;

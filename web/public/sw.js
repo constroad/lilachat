@@ -18,8 +18,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(payload.title || 'Lilachat', {
       body: payload.body || '',
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
       // Una notificación por chat: diez mensajes del mismo grupo no apilan diez
       // avisos, reemplazan el anterior.
       tag: payload.data?.chatId || 'lilachat',
@@ -31,7 +31,8 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const chatId = event.notification.data?.chatId;
-  const url = chatId ? `/?chat=${chatId}` : '/';
+  // El chat abierto vive en la URL desde W1 (`/c/<id>`).
+  const url = chatId ? `/c/${chatId}` : '/';
 
   // Si la app ya está abierta se ENFOCA esa pestaña en vez de abrir otra:
   // acumular pestañas de la misma app es la queja clásica de las web apps.

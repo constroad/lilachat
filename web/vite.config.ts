@@ -28,6 +28,21 @@ export default defineConfig({
       '/socket.io': { target: 'http://127.0.0.1:4003', ws: true },
     },
   },
-  build: { outDir: 'dist', sourcemap: false },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        // Las librerías en piezas propias (W2): cambian poco, así que el
+        // navegador las guarda entre versiones y cada deploy baja solo la app.
+        // Los íconos NO van acá: forzarlos en una pieza mete los 1500 de lucide.
+        manualChunks: {
+          react: ['react', 'react-dom/client'],
+          datos: ['dexie', 'dexie-react-hooks', 'socket.io-client'],
+          interfaz: ['@radix-ui/react-dropdown-menu', '@tanstack/react-virtual'],
+        },
+      },
+    },
+  },
   test: { environment: 'jsdom', globals: true, setupFiles: './src/test/setup.ts' },
 });

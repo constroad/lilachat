@@ -57,6 +57,12 @@ export function useSocket(params: {
   userId: string | null;
   onMessage: (message: ChatMessage) => void;
   onReceipt: (data: { chatId: string; userId: string; readSeq: number }) => void;
+  /** Borrado para todos (`msg.deleted`): la lápida aparece sin recargar. */
+  onBorrado?: (data: { chatId: string; seq: number }) => void;
+  /** Editado (`msg.edited`). */
+  onEditado?: (data: { chatId: string; seq: number; body: string; editedAt: string }) => void;
+  /** Algo del chat cambió en otro dispositivo (nombre, foto, archivado…). */
+  onCambioDeChat?: (data: { chatId: string }) => void;
 }) {
   const socketRef = useRef<Socket | null>(null);
   const handlers = useRef(params);
@@ -102,6 +108,11 @@ export function useSocket(params: {
     socket.on('receipt', (data: { chatId: string; userId: string; readSeq: number }) =>
       handlers.current.onReceipt(data)
     );
+    socket.on('msg.deleted', (data: { chatId: string; seq: number }) => handlers.current.onBorrado?.(data));
+    socket.on('msg.edited', (data: { chatId: string; seq: number; body: string; editedAt: string }) =>
+      handlers.current.onEditado?.(data)
+    );
+    socket.on('chat.changed', (data: { chatId: string }) => handlers.current.onCambioDeChat?.(data));
 
     // El snapshot llega al conectar y trae a TODOS los que ya están en línea.
     // Sin él, los puntos verdes solo aparecerían para quien se conecte después

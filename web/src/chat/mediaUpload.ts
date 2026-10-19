@@ -20,6 +20,12 @@ export async function subirArchivo(params: {
   chatId: string;
   file: File;
   caption?: string;
+  /** La forma de una foto (la burbuja la usa para no saltar al cargar). */
+  width?: number;
+  height?: number;
+  /** Nota de voz: duración y onda. */
+  durationMs?: number;
+  onda?: number[];
 }): Promise<ResultadoSubida> {
   const veredicto = validateMedia({ mimeType: params.file.type, sizeBytes: params.file.size });
   if (!veredicto.ok) return { ok: false, message: veredicto.reason, reintentable: false };
@@ -30,6 +36,13 @@ export async function subirArchivo(params: {
   // reconoce el duplicado en vez de mandar la foto dos veces.
   cuerpo.append('clientKey', crypto.randomUUID());
   if (params.caption) cuerpo.append('caption', params.caption);
+  if (params.width && params.height) {
+    cuerpo.append('width', String(params.width));
+    cuerpo.append('height', String(params.height));
+  }
+  if (params.durationMs) cuerpo.append('durationMs', String(params.durationMs));
+  // Separada por comas: es lo que lee el server (`ondaValida`), igual que la app.
+  if (params.onda?.length) cuerpo.append('onda', params.onda.join(','));
   cuerpo.append('file', params.file, params.file.name);
 
   try {

@@ -35,6 +35,8 @@ const base = {
   onNewChat: () => undefined,
   onNewGroup: () => undefined,
   onAgenda: () => undefined,
+  onNewBorrador: () => undefined,
+  onAccion: () => undefined,
 };
 
 describe('ChatList', () => {
@@ -86,5 +88,89 @@ describe('ChatList', () => {
     await userEvent.click(screen.getByTestId('chat-c1'));
 
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }));
+  });
+});
+
+/** W3a (19/10): filtros, archivados y el menú de cada fila, como WhatsApp Web. */
+describe('ChatList — W3a', () => {
+  const lista = [
+    chat({ id: 'c1', name: 'Familia', kind: 'group', pinned: true, unread: 2 }),
+    chat({ id: 'c2', name: 'Ana', kind: 'direct', muted: true }),
+    chat({ id: 'c3', name: 'Ideas', kind: 'notas', markedUnread: true }),
+    chat({ id: 'c4', name: 'Viejo', kind: 'direct', archived: true }),
+  ];
+
+  it('los chips muestran cuántos hay y filtran', async () => {
+    render(<ChatList {...base} chats={lista} />);
+    expect(screen.getByTestId('filtro-no-leidos')).toHaveTextContent('No leídos2');
+    expect(screen.getByTestId('filtro-grupos')).toHaveTextContent('Grupos1');
+    expect(screen.getByTestId('filtro-borradores')).toHaveTextContent('Borradores1');
+
+    await userEvent.click(screen.getByTestId('filtro-borradores'));
+    expect(screen.getByTestId('chat-c3')).toBeInTheDocument();
+    expect(screen.queryByTestId('chat-c1')).toBeNull();
+    expect(screen.getByTestId('filtro-borradores')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('los archivados no están en la principal: se entra por su fila y se vuelve', async () => {
+    render(<ChatList {...base} chats={lista} />);
+    expect(screen.queryByTestId('chat-c4')).toBeNull();
+    expect(screen.getByTestId('fila-archivados')).toHaveTextContent('1');
+
+    await userEvent.click(screen.getByTestId('fila-archivados'));
+    expect(screen.getByTestId('chat-c4')).toBeInTheDocument();
+    expect(screen.queryByTestId('chat-c1')).toBeNull();
+    expect(screen.queryByTestId('filtro-grupos')).toBeNull();
+
+    await userEvent.click(screen.getByTestId('btn-salir-archivados'));
+    expect(screen.getByTestId('chat-c1')).toBeInTheDocument();
+  });
+
+  it('cada fila muestra fijado, silenciado y marcado como no leído', () => {
+    render(<ChatList {...base} chats={lista} />);
+    expect(screen.getByTestId('fijado-c1')).toBeInTheDocument();
+    expect(screen.getByTestId('silenciado-c2')).toBeInTheDocument();
+    expect(screen.getByTestId('marca-no-leido-c3')).toBeInTheDocument();
+  });
+
+  it('el menú de la fila ofrece las acciones y avisa la elegida', async () => {
+    const onAccion = vi.fn();
+    render(<ChatList {...base} chats={lista} onAccion={onAccion} />);
+    screen.getByTestId('menu-chat-c2').focus();
+    await userEvent.keyboard('{Enter}');
+    expect(await screen.findByTestId('accion-chat-reactivar')).toHaveTextContent('Activar notificaciones');
+    await userEvent.click(screen.getByTestId('accion-chat-archivar'));
+    expect(onAccion).toHaveBeenCalledWith(expect.objectContaining({ id: 'c2' }), 'archivar');
+  });
+
+  it('eliminar pide confirmación antes de avisar', async () => {
+    const onAccion = vi.fn();
+    render(<ChatList {...base} chats={lista} onAccion={onAccion} />);
+    screen.getByTestId('menu-chat-c2').focus();
+    await userEvent.keyboard('{Enter}');
+    await userEvent.click(await screen.findByTestId('accion-chat-eliminar'));
+    expect(onAccion).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: '¿Eliminar el chat con Ana?' })).toBeInTheDocument();
+    await userEvent.click(screen.getByTestId('btn-confirmar-accion-chat'));
+    expect(onAccion).toHaveBeenCalledWith(expect.objectContaining({ id: 'c2' }), 'eliminar');
+  });
+
+  it('«Nuevo borrador» está en el menú de la cabecera', async () => {
+    const onNewBorrador = vi.fn();
+    render(<ChatList {...base} chats={lista} onNewBorrador={onNewBorrador} />);
+    await userEvent.click(screen.getByTestId('btn-menu'));
+    await userEvent.click(screen.getByTestId('btn-nuevo-borrador'));
+    expect(onNewBorrador).toHaveBeenCalled();
+  });
+});
+
+describe('ChatList — confirmar un borrador', () => {
+  it('eliminar un borrador no habla de «la otra persona»', async () => {
+    render(<ChatList {...base} chats={[chat({ id: 'n1', name: 'Ideas', kind: 'notas' })]} />);
+    screen.getByTestId('menu-chat-n1').focus();
+    await userEvent.keyboard('{Enter}');
+    await userEvent.click(await screen.findByTestId('accion-chat-eliminar'));
+    const dialogo = screen.getByRole('dialog', { name: '¿Eliminar el borrador Ideas?' });
+    expect(dialogo).not.toHaveTextContent('otra persona');
   });
 });

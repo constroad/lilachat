@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, type MutableRefObject } from 'react';
 import type { Socket } from 'socket.io-client';
 import { api } from '../api';
+import { crearUltimaGana } from './ultimaGana';
 import type { BaseLocal } from '../local/baseLocal';
 import { descartarEnvio, drenarCola, encolarEnvio, reintentarEnvio } from '../local/colaDeEnvio';
 import { aplicarBorrado, aplicarEdicion, aplicarEntrante, guardarChats, guardarPagina } from '../local/mensajesLocales';
@@ -21,7 +22,7 @@ type Params = {
   jwt: string;
   socket: MutableRefObject<Socket | null>;
   conectado: boolean;
-  manejar401: () => Promise<boolean>;
+  manejar401: () => Promise<string | null>;
 };
 
 /**
@@ -33,12 +34,18 @@ type Params = {
  *   volver la red, el socket o la pestaña.
  */
 export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401 }: Params) {
+  const cargas = useMemo(crearUltimaGana, []);
   const cargarChats = useCallback(async () => {
     if (!base || !jwt) return;
+    const turno = cargas.empezar();
     const respuesta = await api<{ chats: ChatSummary[] }>('/chats', { jwt });
-    if (respuesta.ok) await guardarChats(base, respuesta.data.chats);
-    else if (respuesta.status === 401) await manejar401();
-  }, [base, jwt, manejar401]);
+    // Una recarga que ya no es la última trae el estado de antes: no escribe.
+    if (!respuesta.ok) {
+      if (respuesta.status === 401) await manejar401();
+      return;
+    }
+    if (cargas.vigente(turno)) await guardarChats(base, respuesta.data.chats);
+  }, [base, jwt, manejar401, cargas]);
 
   const recargarPronto = useRecargaAgrupada(cargarChats);
   const drenar = useDrenado(base, yo, socket);
@@ -76,7 +83,7 @@ export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401
 
   const acciones = useAccionesDelChat({ base, jwt, socket, drenar, cargarChats });
   const avisarEscribiendo = useAvisoDeEscribiendo(socket);
-  return { eventos, cargarChats, avisarEscribiendo, ...acciones };
+  return { eventos, cargarChats, invalidarCargas: cargas.invalidar, avisarEscribiendo, ...acciones };
 }
 
 /** Abrir, paginar, enviar, reintentar y descartar. */

@@ -9,6 +9,7 @@ import { CreateEventOverlay, CreatePollOverlay, NewChatOverlay, type ChatDestino
 import { ChatList } from './chat/ChatList';
 import { ConversacionConAcciones } from './chat/ConversacionConAcciones';
 import { EmptyState } from './chat/EmptyState';
+import { NuevoBorrador } from './chat/NuevoBorrador';
 import { ordenarParaLaLista } from './chat/listaDeChats';
 import { chatsSinLeer, tituloDeLaPestana } from './chat/tituloDeLaPestana';
 import type { ChatMessage, ChatSummary } from './chat/types';
@@ -17,6 +18,7 @@ import { resolveVisiblePanel } from './layout';
 import { useBaseLocal, useChatsLocales, useMensajesEnPantalla } from './local/useBaseLocal';
 import { disablePush, enablePush, pushState } from './push';
 import { puedeAbrirSocket } from './sesionLista';
+import { useAccionesSobreChats } from './sync/accionesSobreChats';
 import { TAMANO_DE_PAGINA, useSincronizacion } from './sync/useSincronizacion';
 import { useSocket } from './useSocket';
 
@@ -26,6 +28,7 @@ const DURACION_DEL_AVISO_MS = 3000;
 type Creando =
   | null
   | { tipo: 'chat'; kind: 'direct' | 'group' }
+  | { tipo: 'borrador' }
   | { tipo: 'agenda' }
   | { tipo: 'evento'; chat: ChatDestino | null }
   | { tipo: 'encuesta'; chat: ChatDestino | null };
@@ -34,7 +37,7 @@ type Props = {
   credential: Credential;
   refrescoResuelto: boolean;
   logout: () => void;
-  manejar401: () => Promise<boolean>;
+  manejar401: () => Promise<string | null>;
   /** El service worker tiene una versión nueva esperando (W4). */
   hayVersionNueva: boolean;
 };
@@ -96,15 +99,28 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
     historial.cargar(() => sync.traerPagina(selectedId, primero));
   }, [mensajes, selectedId, historial, sync]);
 
-  const chats = useMemo(() => {
-    const decorados: ChatSummary[] = ordenarParaLaLista(chatsGuardados ?? []).map((chat) => ({
-      ...chat,
-      online: chat.memberIds.some((miembro) => miembro !== yo && socket.online.has(miembro)),
-      typingName: socket.typingByChat.get(chat.id) ?? null,
-    }));
-    const aguja = query.trim().toLowerCase();
-    return aguja ? decorados.filter((chat) => (chat.name ?? chat.phone ?? '').toLowerCase().includes(aguja)) : decorados;
-  }, [chatsGuardados, query, socket.online, socket.typingByChat, yo]);
+  // TODOS los chats, archivados incluidos: la lista arma lo visible (W3a) y un
+  // archivado abierto sigue siendo el chat de la derecha.
+  const chats = useMemo<ChatSummary[]>(
+    () =>
+      (chatsGuardados ?? []).map((chat) => ({
+        ...chat,
+        online: chat.memberIds.some((miembro) => miembro !== yo && socket.online.has(miembro)),
+        typingName: socket.typingByChat.get(chat.id) ?? null,
+      })),
+    [chatsGuardados, socket.online, socket.typingByChat, yo]
+  );
+  const chatsParaReenviar = useMemo(() => ordenarParaLaLista(chats), [chats]);
+  const accionesSobreChats = useAccionesSobreChats({
+    base,
+    jwt: credential.jwt,
+    socket: socket.socket,
+    cargarChats: sync.cargarChats,
+    invalidarCargas: sync.invalidarCargas,
+    renovarSesion: manejar401,
+    onAviso: setAviso,
+    alQuitar: (chatId) => chatId === selectedId && abrirChat(null),
+  });
 
 
   const selected = chats.find((chat) => chat.id === selectedId) ?? null;
@@ -131,6 +147,8 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
           onNewChat={() => setCreando({ tipo: 'chat', kind: 'direct' })}
           onNewGroup={() => setCreando({ tipo: 'chat', kind: 'group' })}
           onAgenda={() => setCreando({ tipo: 'agenda' })}
+          onNewBorrador={() => setCreando({ tipo: 'borrador' })}
+          onAccion={(chat, accion) => void accionesSobreChats.aplicar(chat, accion)}
         />
       )}
 
@@ -142,7 +160,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
           jwt={credential.jwt}
           base={base}
           sync={sync}
-          chats={chats}
+          chats={chatsParaReenviar}
           onAviso={setAviso}
           typingName={selected.typingName ?? null}
           onBack={() => abrirChat(null)}
@@ -159,6 +177,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
         <EmptyState name={credential.name} onNewChat={() => setCreando({ tipo: 'chat', kind: 'direct' })} onAgenda={() => setCreando({ tipo: 'agenda' })} />
       )}
 
+      {creando?.tipo === 'borrador' ? <NuevoBorrador jwt={credential.jwt} onClose={() => setCreando(null)} onCreated={alCrear} /> : null}
       {creando?.tipo === 'chat' ? <NewChatOverlay jwt={credential.jwt} kind={creando.kind} onClose={() => setCreando(null)} onCreated={alCrear} /> : null}
       {creando?.tipo === 'agenda' ? (
         <AgendaOverlay

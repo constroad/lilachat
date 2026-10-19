@@ -66,9 +66,9 @@ export function useSocket(params: {
   /**
    * El server no quiere este socket: lo cortó él (el teléfono cerró la sesión
    * de esta web, W5) o rechazó el token al reconectar. Se renueva la sesión:
-   * `true` = hay token nuevo y se reconecta; si no, la sesión ya se cerró.
+   * con token nuevo se reconecta; con `null`, la sesión ya se cerró.
    */
-  onSinAutorizacion?: () => Promise<boolean>;
+  onSinAutorizacion?: () => Promise<string | null>;
 }) {
   const socketRef = useRef<Socket | null>(null);
   const handlers = useRef(params);

@@ -43,23 +43,34 @@ export function useSesion() {
     setJwt(null);
   }, [perfil?.userId]);
 
-  /** Renueva con la cookie. `true` si hay JWT nuevo; un 401 real cierra la sesión. */
-  const renovar = useCallback(async (): Promise<boolean> => {
-    const secretoViejo = leerSecretoViejo();
-    const renovado = await refreshSession(secretoViejo);
-    if (!renovado.ok) {
-      if (renovado.revocado) logout();
-      return false;
-    }
-    if (secretoViejo) borrarCredencialVieja();
-    setJwt(renovado.jwt);
-    setPerfil((actual) => {
-      if (!actual) return actual;
-      const siguiente = { ...actual, name: renovado.user?.name ?? actual.name };
-      savePerfil(siguiente);
-      return siguiente;
+  /**
+   * Renueva con la cookie: el JWT nuevo, o `null`; un 401 real cierra la sesión.
+   * UNA renovación a la vez: quien pide mientras hay una en curso espera esa.
+   */
+  const renovacionEnCurso = useRef<Promise<string | null> | null>(null);
+  const renovar = useCallback((): Promise<string | null> => {
+    if (renovacionEnCurso.current) return renovacionEnCurso.current;
+    const promesa = (async () => {
+      const secretoViejo = leerSecretoViejo();
+      const renovado = await refreshSession(secretoViejo);
+      if (!renovado.ok) {
+        if (renovado.revocado) logout();
+        return null;
+      }
+      if (secretoViejo) borrarCredencialVieja();
+      setJwt(renovado.jwt);
+      setPerfil((actual) => {
+        if (!actual) return actual;
+        const siguiente = { ...actual, name: renovado.user?.name ?? actual.name };
+        savePerfil(siguiente);
+        return siguiente;
+      });
+      return renovado.jwt;
+    })().finally(() => {
+      renovacionEnCurso.current = null;
     });
-    return true;
+    renovacionEnCurso.current = promesa;
+    return promesa;
   }, [logout]);
 
   // La caché vieja de localStorage (historial en claro) ya no se usa: se va.
@@ -91,9 +102,16 @@ export function useSesion() {
     };
   }, [perfil, jwt, renovar]);
 
-  /** Un 401 de la API: renovar una vez por token o salir. */
-  const manejar401 = useCallback(async (): Promise<boolean> => {
-    if (refrescoIntentado.current === jwt) return (logout(), false);
+  /**
+   * Un 401 de la API: renovar una vez por token o salir. Devuelve el token
+   * nuevo, o `null`. Sin token todavía (abriendo, W3a) el 401 era esperable:
+   * espera la renovación en curso y NO cuenta. Antes, el `null` inicial
+   * coincidía con la marca y un solo 401 al abrir cerraba la sesión (y
+   * desvinculaba la web).
+   */
+  const manejar401 = useCallback(async (): Promise<string | null> => {
+    if (!jwt) return renovar();
+    if (refrescoIntentado.current === jwt) return (logout(), null);
     refrescoIntentado.current = jwt;
     return renovar();
   }, [jwt, logout, renovar]);

@@ -37,6 +37,8 @@ export default {
       },
       borderRadius: { lg: `${radius.lg}px`, xl: `${radius.xl}px` },
       fontFamily: { sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'] },
+      // La barra del QR (W5): se vacía hasta el próximo token.
+      keyframes: { vaciar: { from: { transform: 'scaleX(1)' }, to: { transform: 'scaleX(0)' } } },
     },
   },
   plugins: [],

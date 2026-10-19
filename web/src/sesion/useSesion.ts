@@ -23,6 +23,9 @@ import { borrarBaseDe } from '../local/baseLocal';
  * - un 401 renueva UNA vez por token (sin el freno era un bucle contra la API);
  * - cerrar sesión borra la cookie, la base local y el perfil.
  */
+/** Sin sesión viva, cada cuánto se vuelve a probar (solo con la pestaña al frente). */
+const REINTENTO_DE_SESION_MS = 15_000;
+
 export function useSesion() {
   const [perfil, setPerfil] = useState<Perfil | null>(loadPerfil);
   const [jwt, setJwt] = useState<string | null>(null);
@@ -70,12 +73,22 @@ export function useSesion() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [perfil?.deviceId]);
 
-  // Sin red al abrir: al volver, se renueva sola.
+  // Sin sesión viva (sin red, o el server no contestaba): se reintenta al
+  // volver la red o la pestaña, y cada tanto mientras falte (W4). Sin esto, si
+  // volvía el SERVER y no la red, nada avisaba y quedaba «Sin conexión».
   useEffect(() => {
     if (!perfil || jwt) return;
-    const alVolver = () => void renovar();
-    window.addEventListener('online', alVolver);
-    return () => window.removeEventListener('online', alVolver);
+    const reintentar = () => {
+      if (document.visibilityState === 'visible') void renovar();
+    };
+    const reloj = setInterval(reintentar, REINTENTO_DE_SESION_MS);
+    window.addEventListener('online', reintentar);
+    document.addEventListener('visibilitychange', reintentar);
+    return () => {
+      clearInterval(reloj);
+      window.removeEventListener('online', reintentar);
+      document.removeEventListener('visibilitychange', reintentar);
+    };
   }, [perfil, jwt, renovar]);
 
   /** Un 401 de la API: renovar una vez por token o salir. */

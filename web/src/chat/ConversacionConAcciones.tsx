@@ -9,6 +9,7 @@ import { DialogoEliminar, DialogoInfo, DialogoReenviar } from './DialogosDelMens
 import { useAccionesSobreMensajes, type AccionesDeSync } from './useAccionesSobreMensajes';
 import { useDetalleDelChat } from './useDetalleDelChat';
 import type { ChatSummary } from './types';
+import type { BaseLocal } from '../local/baseLocal';
 
 type PropsDeConversacion = ComponentProps<typeof Conversation>;
 
@@ -20,13 +21,14 @@ type PropsDeConversacion = ComponentProps<typeof Conversation>;
 export function ConversacionConAcciones(
   props: Omit<PropsDeConversacion, 'contexto' | 'onCancelarContexto' | 'onSend' | 'mencionables' | 'jwtParaEnlaces' | 'onElegirArchivos' | 'onNotaDeVoz' | 'onEscribiendo'> & {
     jwt: string;
+    base: BaseLocal | null;
     sync: AccionesDeSync;
     chats: ChatSummary[];
     onAviso: (texto: string) => void;
   }
 ) {
   const { chat, mensajes, yo, sync, onAviso } = props;
-  const detalle = useDetalleDelChat(chat.id, props.jwt);
+  const detalle = useDetalleDelChat(chat.id, props.jwt, props.base);
   const nombres = useMemo(() => {
     const mapa = new Map<string, string>();
     for (const miembro of detalle?.miembros.values() ?? []) mapa.set(miembro.id, miembro.nombre);

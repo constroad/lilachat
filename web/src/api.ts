@@ -128,10 +128,11 @@ export async function salirDelServer(): Promise<void> {
 
 export async function api<T>(
   path: string,
-  options: { method?: string; body?: unknown; jwt?: string } = {}
+  options: { method?: string; body?: unknown; jwt?: string; signal?: AbortSignal } = {}
 ): Promise<ApiResult<T>> {
   try {
     const response = await fetch(`/api${path}`, {
+      signal: options.signal,
       method: options.method ?? (options.body ? 'POST' : 'GET'),
       headers: {
         ...(options.body ? { 'Content-Type': 'application/json' } : {}),

@@ -20,6 +20,7 @@ const socketFalso = {
   on: vi.fn(),
   close: vi.fn(),
   emit: vi.fn(),
+  connect: vi.fn(),
 };
 
 vi.mock('socket.io-client', () => ({ io: () => socketFalso }));
@@ -213,5 +214,99 @@ describe('la sesión se renueva sola', () => {
     render(<App />);
 
     expect(await screen.findByTestId('input-telefono')).toBeInTheDocument();
+  });
+});
+
+/** W4 (19/10): el server vuelve pero la red nunca se cayó: nada disparaba `online`. */
+describe('sin sesión viva, se reintenta sola', () => {
+  it('si el server no contestaba al abrir, vuelve a probar y entra', async () => {
+    // Solo timeouts e intervalos: fake-indexeddb agenda con `setImmediate`, y
+    // falsearlo dejaba transacciones de la base local cerradas a destiempo
+    // («TransactionInactiveError» suelto en 2 de cada 4 corridas).
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+    localStorage.setItem('lilachat.perfil', JSON.stringify({ userId: 'u1', phone: '902049935', name: 'José', deviceId: 'device-1' }));
+    let intentos = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (String(url).includes('/auth/session')) {
+          intentos += 1;
+          if (intentos === 1) throw new Error('server caído');
+          return new Response(JSON.stringify({ jwt: 'jwt-de-vuelta' }), { status: 200 });
+        }
+        return new Response(JSON.stringify({ chats: [] }), { status: 200 });
+      })
+    );
+
+    render(<App />);
+    await waitFor(() => expect(intentos).toBe(1));
+    await vi.advanceTimersByTimeAsync(16_000);
+
+    expect(intentos).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByTestId('input-telefono')).toBeNull();
+    vi.useRealTimers();
+  });
+});
+
+/** W5 (19/10): el teléfono cerró la sesión de esta web; el server corta su socket. */
+describe('sesión cerrada desde el teléfono', () => {
+  const manejadorDe = (evento: string) =>
+    socketFalso.on.mock.calls.filter((llamada) => llamada[0] === evento).at(-1)?.[1] as ((...args: unknown[]) => void) | undefined;
+
+  it('el server corta el socket: renueva, y rechazada vuelve al acceso sin quedarse con los chats', async () => {
+    localStorage.setItem('lilachat.perfil', JSON.stringify({ userId: 'u1', phone: '902049935', name: 'José', deviceId: 'vinculado-1' }));
+    let revocada = false;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (String(url).includes('/auth/session')) {
+          return revocada ? new Response(JSON.stringify({ message: 'cerrada' }), { status: 401 }) : new Response(JSON.stringify({ jwt: 'jwt-vivo' }), { status: 200 });
+        }
+        return new Response(JSON.stringify({ chats: [] }), { status: 200 });
+      })
+    );
+
+    render(<App />);
+    await waitFor(() => expect(manejadorDe('disconnect')).toBeDefined());
+    revocada = true;
+    manejadorDe('disconnect')?.('io server disconnect');
+
+    expect(await screen.findByTestId('input-telefono')).toBeInTheDocument();
+    expect(localStorage.getItem('lilachat.perfil')).toBeNull();
+  });
+
+  it('token rechazado al reconectar (venció): renueva y reconecta con el nuevo', async () => {
+    localStorage.setItem('lilachat.perfil', JSON.stringify({ userId: 'u1', phone: '902049935', name: 'José', deviceId: 'device-1' }));
+    let renovaciones = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (!String(url).includes('/auth/session')) return new Response(JSON.stringify({ chats: [] }), { status: 200 });
+        renovaciones += 1;
+        return new Response(JSON.stringify({ jwt: `jwt-${renovaciones}` }), { status: 200 });
+      })
+    );
+
+    render(<App />);
+    await waitFor(() => expect(manejadorDe('connect_error')).toBeDefined());
+    manejadorDe('connect_error')?.(new Error('unauthorized'));
+
+    await waitFor(() => expect(socketFalso.connect).toHaveBeenCalled());
+    expect(renovaciones).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByTestId('input-telefono')).toBeNull();
+  });
+
+  it('un corte de red (no del server) NO cierra nada', async () => {
+    localStorage.setItem('lilachat.perfil', JSON.stringify({ userId: 'u1', phone: '902049935', name: 'José', deviceId: 'vinculado-1' }));
+    const renovar = vi.fn(async () => new Response(JSON.stringify({ jwt: 'jwt-vivo' }), { status: 200 }));
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => (String(url).includes('/auth/session') ? renovar() : new Response(JSON.stringify({ chats: [] }), { status: 200 }))));
+
+    render(<App />);
+    await waitFor(() => expect(manejadorDe('disconnect')).toBeDefined());
+    const antes = renovar.mock.calls.length;
+    manejadorDe('disconnect')?.('transport close');
+    await new Promise((listo) => setTimeout(listo, 50));
+    expect(renovar.mock.calls.length).toBe(antes);
+    expect(screen.queryByTestId('input-telefono')).toBeNull();
   });
 });

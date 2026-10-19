@@ -1,48 +1,96 @@
 /**
- * El service worker de Lilachat (F6).
- *
- * Solo notificaciones: NO cachea la app. Un cache mal invalidado en una app de
- * mensajería sirve mensajes viejos, y el historial ya se sincroniza por cursor
- * — cachear el bundle es una optimización que puede esperar a tener usuarios.
+ * El service worker de Lilachat Web (W4). Reglas:
+ * 1. Lo sirve el server por `/service-worker` sin extensión ni caché; él pone la VERSION.
+ * 2. Cache-first SOLO para `/assets/*` (tienen hash, no cambian).
+ * 3. Navegación: red con 4 s de espera; sin red, la app guardada (los chats salen de IndexedDB).
+ * 4. La API y el socket NUNCA pasan por acá: los datos sin red viven en IndexedDB.
+ * 5. La versión nueva espera hasta que la página pide `{ tipo: 'activar' }` («Recargar»).
+ * 6. Los avisos push abren el chat; si la app ya está abierta, la enfocan.
  */
-self.addEventListener('push', (event) => {
-  if (!event.data) return;
+const VERSION = '__VERSION__';
+const CACHE = `lilachat-${VERSION}`;
+const SHELL = '/';
+const ESPERA_DE_RED_MS = 4000;
 
-  let payload;
+/** Al instalar: la app y los archivos que nombra, para que la primera vez sin red ya abra. */
+self.addEventListener('install', (evento) => {
+  evento.waitUntil(
+    (async () => {
+      const cache = await caches.open(CACHE);
+      const respuesta = await fetch(new Request(SHELL, { cache: 'reload' }));
+      await cache.put(SHELL, respuesta.clone());
+      const html = await respuesta.text();
+      const archivos = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((coincidencia) => coincidencia[1]);
+      await cache.addAll(archivos);
+    })()
+  );
+});
+
+self.addEventListener('activate', (evento) => {
+  evento.waitUntil(
+    caches
+      .keys()
+      .then((nombres) => Promise.all(nombres.filter((nombre) => nombre.startsWith('lilachat-') && nombre !== CACHE).map((nombre) => caches.delete(nombre))))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('message', (evento) => {
+  if (evento.data?.tipo === 'activar') self.skipWaiting();
+});
+
+self.addEventListener('fetch', (evento) => {
+  const pedido = evento.request;
+  if (pedido.method !== 'GET') return;
+  const url = new URL(pedido.url);
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/socket.io')) return;
+  if (url.pathname.startsWith('/assets/')) return evento.respondWith(primeroLaCache(pedido));
+  if (pedido.mode === 'navigate') evento.respondWith(primeroLaRed(pedido));
+});
+
+async function primeroLaCache(pedido) {
+  const guardada = await caches.match(pedido);
+  if (guardada) return guardada;
+  const respuesta = await fetch(pedido);
+  if (respuesta.ok) (await caches.open(CACHE)).put(pedido, respuesta.clone());
+  return respuesta;
+}
+
+/** La red con tope de espera; si no contesta, la app guardada (toda ruta es la misma SPA). */
+async function primeroLaRed(pedido) {
   try {
-    payload = event.data.json();
+    const respuesta = await Promise.race([fetch(pedido), new Promise((_, rechazar) => setTimeout(() => rechazar(new Error('lenta')), ESPERA_DE_RED_MS))]);
+    if (respuesta.ok) (await caches.open(CACHE)).put(SHELL, respuesta.clone());
+    return respuesta;
   } catch {
-    payload = { title: 'Lilachat', body: event.data.text() };
+    return (await caches.match(SHELL)) ?? Response.error();
   }
+}
 
-  event.waitUntil(
-    self.registration.showNotification(payload.title || 'Lilachat', {
-      body: payload.body || '',
+self.addEventListener('push', (evento) => {
+  if (!evento.data) return;
+  let datos = { title: 'Lilachat', body: '' };
+  try { datos = evento.data.json(); } catch { datos.body = evento.data.text(); }
+  // Una notificación por chat: diez mensajes del mismo grupo reemplazan la anterior.
+  evento.waitUntil(
+    self.registration.showNotification(datos.title || 'Lilachat', {
+      body: datos.body || '',
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
-      // Una notificación por chat: diez mensajes del mismo grupo no apilan diez
-      // avisos, reemplazan el anterior.
-      tag: payload.data?.chatId || 'lilachat',
-      data: payload.data || {},
+      tag: datos.data?.chatId || 'lilachat',
+      data: datos.data || {},
     })
   );
 });
 
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  const chatId = event.notification.data?.chatId;
-  // El chat abierto vive en la URL desde W1 (`/c/<id>`).
+self.addEventListener('notificationclick', (evento) => {
+  evento.notification.close();
+  const chatId = evento.notification.data?.chatId;
   const url = chatId ? `/c/${chatId}` : '/';
-
-  // Si la app ya está abierta se ENFOCA esa pestaña en vez de abrir otra:
-  // acumular pestañas de la misma app es la queja clásica de las web apps.
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-      const open = clients.find((client) => client.url.includes(self.location.origin));
-      if (open) {
-        open.focus();
-        return open.navigate(url);
-      }
+  evento.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((ventanas) => {
+      const abierta = ventanas.find((ventana) => ventana.url.startsWith(self.location.origin));
+      if (abierta) return abierta.focus().then(() => abierta.navigate(url));
       return self.clients.openWindow(url);
     })
   );

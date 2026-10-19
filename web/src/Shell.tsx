@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Bell, BellOff, LogOut } from 'lucide-react';
+import { Bell, BellOff, Download, LogOut, RefreshCw, WifiOff } from 'lucide-react';
+import { useSinConexion } from './pwa/conexion';
+import { useInstalarApp } from './pwa/instalar';
+import { activarVersionNueva } from './pwa/serviceWorker';
 import type { Credential } from './api';
 import { AgendaOverlay } from './agenda/AgendaOverlay';
 import { CreateEventOverlay, CreatePollOverlay, NewChatOverlay, type ChatDestino } from './agenda/CreatePanels';
@@ -32,13 +35,15 @@ type Props = {
   refrescoResuelto: boolean;
   logout: () => void;
   manejar401: () => Promise<boolean>;
+  /** El service worker tiene una versión nueva esperando (W4). */
+  hayVersionNueva: boolean;
 };
 
 /**
  * El shell de dos paneles (F6 → W1). Todo lo que se ve sale de la base local;
  * `useSincronizacion` la mantiene al día con la red y el socket.
  */
-export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Props) {
+export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVersionNueva }: Props) {
   const yo = credential.userId;
   const base = useBaseLocal(yo);
   const chatsGuardados = useChatsLocales(base);
@@ -65,11 +70,15 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
     onBorrado: (dato) => eventos.current.onBorrado?.(dato),
     onEditado: (dato) => eventos.current.onEditado?.(dato),
     onCambioDeChat: () => eventos.current.onCambioDeChat?.(),
+    onSinAutorizacion: manejar401,
   });
   const sync = useSincronizacion({ base, yo, jwt: credential.jwt, socket: socket.socket, conectado: socket.connected, manejar401 });
   eventos.current = sync.eventos;
 
   const mensajes = useMensajesEnPantalla(base, selectedId, historial.limite, yo);
+  const sinConexion = useSinConexion(socket.connected, true);
+  // El navegador ofrece instalar UNA vez al cargar: se escucha desde acá, no desde el panel.
+  const instalacion = useInstalarApp();
   useTituloConPendientes(chatsGuardados);
 
   useEffect(() => {
@@ -107,7 +116,8 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
   };
 
   return (
-    <div className="flex h-full">
+    <div className="relative flex h-full">
+      <AvisosDeLaWeb sinConexion={sinConexion} hayVersionNueva={hayVersionNueva} />
       {panel === 'conversation' ? null : (
         <ChatList
           chats={chats}
@@ -130,6 +140,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
           mensajes={mensajes}
           yo={yo}
           jwt={credential.jwt}
+          base={base}
           sync={sync}
           chats={chats}
           onAviso={setAviso}
@@ -161,7 +172,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
       {creando?.tipo === 'evento' ? <CreateEventOverlay jwt={credential.jwt} chat={creando.chat} onClose={() => setCreando(null)} onCreated={alCrear} /> : null}
       {creando?.tipo === 'encuesta' ? <CreatePollOverlay jwt={credential.jwt} chat={creando.chat} onClose={() => setCreando(null)} onCreated={alCrear} /> : null}
 
-      {aviso === 'ajustes' ? <PanelDeAjustes jwt={credential.jwt} onAviso={setAviso} onSalir={logout} /> : aviso ? (
+      {aviso === 'ajustes' ? <PanelDeAjustes jwt={credential.jwt} onAviso={setAviso} onSalir={logout} onCerrar={() => setAviso('')} instalacion={instalacion} /> : aviso ? (
         <p data-testid="aviso" role="status" className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-on-surface px-4 py-2 text-sm text-white">
           {aviso}
         </p>
@@ -170,8 +181,37 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
   );
 }
 
-/** Ajustes mínimos de F6: notificaciones y salir. W3 trae los completos. */
-function PanelDeAjustes({ jwt, onAviso, onSalir }: { jwt: string; onAviso: (texto: string) => void; onSalir: () => void }) {
+/** «Sin conexión» y «Hay una versión nueva», arriba al centro (W4). */
+function AvisosDeLaWeb({ sinConexion, hayVersionNueva }: { sinConexion: boolean; hayVersionNueva: boolean }) {
+  if (!sinConexion && !hayVersionNueva) return null;
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-2 z-30 flex flex-col items-center gap-2 px-4">
+      {sinConexion ? (
+        <p role="status" data-testid="aviso-sin-conexion" className="pointer-events-auto flex items-center gap-2 rounded-full bg-on-surface px-4 py-2 text-[13px] text-white shadow-lg">
+          <WifiOff size={15} /> Sin conexión. Lo que escribas se enviará al volver.
+        </p>
+      ) : null}
+      {hayVersionNueva ? (
+        <p role="status" data-testid="aviso-version-nueva" className="pointer-events-auto flex items-center gap-3 rounded-full border border-outline/15 bg-surface py-1.5 pl-4 pr-1.5 text-[13px] shadow-lg">
+          Hay una versión nueva de Lilachat
+          <button type="button" data-testid="btn-recargar-version" onClick={activarVersionNueva} className="flex min-h-[36px] items-center gap-1.5 rounded-full bg-primary px-3 font-semibold text-on-primary">
+            <RefreshCw size={14} /> Recargar
+          </button>
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** Ajustes mínimos: notificaciones, instalar y salir. W3 trae los completos. */
+function PanelDeAjustes(props: {
+  jwt: string;
+  onAviso: (texto: string) => void;
+  onSalir: () => void;
+  onCerrar: () => void;
+  instalacion: ReturnType<typeof useInstalarApp>;
+}) {
+  const { jwt, onAviso, onSalir, onCerrar, instalacion } = props;
   const [push, setPush] = useState(pushState);
   const alternar = async () => {
     if (push === 'encendido') {
@@ -188,6 +228,12 @@ function PanelDeAjustes({ jwt, onAviso, onSalir }: { jwt: string; onAviso: (text
         {push === 'encendido' ? <BellOff size={16} /> : <Bell size={16} />}
         <span className="min-w-0 flex-1">{push === 'encendido' ? 'Desactivar notificaciones' : 'Activar notificaciones'}</span>
       </button>
+      {instalacion.puedeInstalar ? (
+        <button type="button" data-testid="btn-instalar" onClick={() => void instalacion.instalar().then(onCerrar)} className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-left text-sm hover:bg-background">
+          <Download size={16} />
+          Instalar Lilachat en esta computadora
+        </button>
+      ) : null}
       <button type="button" data-testid="btn-salir" onClick={onSalir} className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-left text-sm text-error hover:bg-error/5">
         <LogOut size={16} />
         Cerrar sesión

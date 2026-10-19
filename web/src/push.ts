@@ -1,4 +1,5 @@
 import { api } from './api';
+import { OPCIONES_DEL_SW, RUTA_DEL_SW } from './pwa/serviceWorker';
 
 /**
  * Web Push en el navegador (F6).
@@ -7,7 +8,6 @@ import { api } from './api';
  * de notificaciones en el primer segundo lo rechaza casi todo el mundo, y en
  * Chrome un rechazo es definitivo — no se puede volver a preguntar.
  */
-const SW_PATH = '/sw.js';
 
 export type PushState = 'sin-soporte' | 'apagado' | 'encendido' | 'bloqueado';
 
@@ -43,7 +43,8 @@ export async function enablePush(jwt: string): Promise<{ ok: boolean; message?: 
     return { ok: false, message: 'No diste permiso para las notificaciones.' };
   }
 
-  const registration = await navigator.serviceWorker.register(SW_PATH);
+  // El MISMO service worker de la PWA (W4): uno solo por sitio.
+  const registration = await navigator.serviceWorker.register(RUTA_DEL_SW, OPCIONES_DEL_SW);
   await navigator.serviceWorker.ready;
 
   // Reusar la suscripción existente en vez de crear otra: dos suscripciones del
@@ -61,7 +62,7 @@ export async function enablePush(jwt: string): Promise<{ ok: boolean; message?: 
 
 export async function disablePush(jwt: string): Promise<void> {
   await api('/push/subscribe', { method: 'DELETE', jwt });
-  const registration = await navigator.serviceWorker.getRegistration(SW_PATH);
+  const registration = await navigator.serviceWorker.getRegistration(RUTA_DEL_SW);
   const subscription = await registration?.pushManager.getSubscription();
   await subscription?.unsubscribe();
 }

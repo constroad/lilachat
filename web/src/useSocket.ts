@@ -63,6 +63,12 @@ export function useSocket(params: {
   onEditado?: (data: { chatId: string; seq: number; body: string; editedAt: string }) => void;
   /** Algo del chat cambió en otro dispositivo (nombre, foto, archivado…). */
   onCambioDeChat?: (data: { chatId: string }) => void;
+  /**
+   * El server no quiere este socket: lo cortó él (el teléfono cerró la sesión
+   * de esta web, W5) o rechazó el token al reconectar. Se renueva la sesión:
+   * `true` = hay token nuevo y se reconecta; si no, la sesión ya se cerró.
+   */
+  onSinAutorizacion?: () => Promise<boolean>;
 }) {
   const socketRef = useRef<Socket | null>(null);
   const handlers = useRef(params);
@@ -83,6 +89,13 @@ export function useSocket(params: {
   jwtRef.current = params.jwt;
 
   const hayToken = Boolean(params.jwt);
+  const reconectarConTokenNuevo = useRef(false);
+
+  useEffect(() => {
+    if (!reconectarConTokenNuevo.current || !params.jwt) return;
+    reconectarConTokenNuevo.current = false;
+    socketRef.current?.connect();
+  }, [params.jwt]);
 
   const [state, setState] = useState<SocketState>({
     connected: false,
@@ -102,7 +115,26 @@ export function useSocket(params: {
     socketRef.current = socket;
 
     socket.on('connect', () => setState((prev) => ({ ...prev, connected: true })));
-    socket.on('disconnect', () => setState((prev) => ({ ...prev, connected: false })));
+    // Un corte del SERVER no se reintenta solo (socket.io lo deja así): sin
+    // esto, una web revocada se quedaba mostrando los chats con «Sin conexión».
+    // Con sesión renovada se reconecta con el token NUEVO: si React ya lo
+    // pintó, en el acto; si no, lo hace el efecto de abajo cuando llegue
+    // (reconectar con el viejo volvía a rebotar y cerraba la sesión).
+    const reautorizar = () => {
+      const rechazado = jwtRef.current;
+      void handlers.current.onSinAutorizacion?.().then((renovada) => {
+        if (!renovada) return;
+        if (jwtRef.current && jwtRef.current !== rechazado) socket.connect();
+        else reconectarConTokenNuevo.current = true;
+      });
+    };
+    socket.on('disconnect', (motivo: string) => {
+      setState((prev) => ({ ...prev, connected: false }));
+      if (motivo === 'io server disconnect') reautorizar();
+    });
+    socket.on('connect_error', (error: Error) => {
+      if (error?.message === 'unauthorized') reautorizar();
+    });
 
     socket.on('msg.new', (message: ChatMessage) => handlers.current.onMessage(message));
     socket.on('receipt', (data: { chatId: string; userId: string; readSeq: number }) =>

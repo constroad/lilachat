@@ -57,3 +57,10 @@ function unirTextos(partes: ParteDeTexto[]): ParteDeTexto[] {
   }
   return unidas;
 }
+
+/** El primer link del mensaje, que es el que lleva tarjeta (FL13d, como WhatsApp). */
+export function primerEnlace(texto: string | undefined): string | null {
+  if (!texto) return null;
+  const enlace = partirEnEnlaces(texto).find((parte) => parte.tipo === 'url');
+  return enlace && enlace.tipo === 'url' ? enlace.destino : null;
+}

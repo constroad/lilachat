@@ -2,17 +2,19 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { memo } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
-import { CircleAlert, Check, CheckCheck, Clock3, FileText, Play } from 'lucide-react-native';
+import { CircleAlert, Check, CheckCheck, Clock3, Play } from 'lucide-react-native';
 import { AVATAR_DE_AUTOR, colorDeAutor, dondeVaLaHora, mostrarAutor, radiosDeBurbuja } from './burbuja';
 import { DeslizarParaResponder } from './DeslizarParaResponder';
 import { LineaDeLlamada } from './LineaDeLlamada';
 import { CitaDeRespuesta } from './CitaDeRespuesta';
 import { TextoConEnlaces } from './TextoConEnlaces';
+import { primerEnlace } from './enlaces';
+import { TarjetaDeArchivo } from './TarjetaDeArchivo';
+import { VistaPreviaDeEnlace } from './VistaPreviaDeEnlace';
 import { NotaDeVoz } from './NotaDeVoz';
 import { etiquetaDeSubida, porcentajeDeSubida } from './progresoDeSubida';
 import {
   TEXTO_ELIMINADO,
-  formatBytes,
   nombreDeContacto,
   textoDeAviso,
 } from '@lilachat/shared';
@@ -69,6 +71,7 @@ function FilaDeMensaje({
   next,
   myUserId,
   jwt,
+  conVistaPrevia = false,
   entrega,
   esGrupo = false,
   nombreAutor,
@@ -88,6 +91,8 @@ function FilaDeMensaje({
   myUserId: string;
   /** Para las tarjetas de encuesta y evento, que leen y votan por su cuenta. */
   jwt?: string;
+  /** La tarjeta de los enlaces (FL13d). Apagada en los chats secretos: el server no ve sus links. */
+  conVistaPrevia?: boolean;
   /**
    * El check, ya resuelto y SOLO en las propias (FL12, §49 #3). Antes llegaban
    * los cursores a todas las filas: cada acuse cambiaba una prop en todas y el
@@ -268,52 +273,14 @@ function FilaDeMensaje({
             />
           ) : null}
 
-          {/* Un ARCHIVO no es una foto: es una tarjeta con su nombre.
-              Un PDF llegaba como un rectángulo blanco de 220×220 —lila le
-              genera miniatura de la primera página— sin nombre, sin tamaño y
-              sin nada que dijera qué era. Un documento ES su nombre. */}
+          {/* Un ARCHIVO no es una foto: es una tarjeta con su nombre. */}
           {!isPending(item) && item.media && esArchivo(item.media.mime) && !esVoz(item.media.mime) ? (
-            <Pressable
-              testID={`archivo-${item.seq}`}
+            <TarjetaDeArchivo
+              seq={item.seq}
+              media={item.media}
+              mia={mine}
               onPress={() => !isPending(item) && (enSeleccion ? onSeleccionar?.(item.seq) : onVerImagen?.(item.seq))}
-            >
-              {/* La MINIATURA de la primera página, como la preview card de
-                  WhatsApp. lila la genera para los PDF; sin ella, un documento
-                  es una tarjeta gris que no dice qué contiene. */}
-              {item.media.thumbUrl ? (
-                <View className="overflow-hidden">
-                  <Image
-                    // La celda se recicla: sin la clave, se veía la foto ANTERIOR
-                    // fundiéndose en la nueva al scrollear (FL12).
-                    recyclingKey={item.media.thumbUrl}
-                    source={{ uri: item.media.thumbUrl }}
-                    style={{ width: 240, height: 180 }}
-                    contentFit="cover"
-                    transition={120}
-                  />
-                </View>
-              ) : null}
-              <View className="min-w-[200px] flex-row items-center gap-3 px-3 py-2.5">
-                <View
-                  className={`h-10 w-10 items-center justify-center rounded-lg ${mine ? 'bg-white/20' : 'bg-primary/10'}`}
-                >
-                  <FileText size={20} color={mine ? colores['on-burbuja-propia'] : colores.primary} />
-                </View>
-                <View className="min-w-0 flex-1">
-                  <Text
-                    className={`text-[14px] font-semibold ${mine ? 'text-on-burbuja-propia' : 'text-on-burbuja-ajena'}`}
-                    numberOfLines={2}
-                  >
-                    {item.media.fileName ? nombreLimpio(item.media.fileName) : 'Archivo'}
-                  </Text>
-                  <Text
-                    className={`text-[11px] ${mine ? 'text-on-burbuja-propia-suave' : 'text-on-surface-variant'}`}
-                  >
-                    {item.media.sizeBytes ? formatBytes(item.media.sizeBytes) : 'Toca para abrirlo'}
-                  </Text>
-                </View>
-              </View>
-            </Pressable>
+            />
           ) : null}
 
           {!isPending(item) && item.media && miniaturaDe(item.media) && !esArchivo(item.media.mime) ? (
@@ -399,9 +366,13 @@ function FilaDeMensaje({
               {TEXTO_ELIMINADO}
             </Text>
           ) : item.body ? (
-            // Hora y checks DENTRO, alineados a la última línea (como WhatsApp):
-            // el texto lleva al final un relleno invisible del ancho de la hora
-            // y la hora va encima, abajo a la derecha. Cero renglón extra.
+            <>
+            {conVistaPrevia && jwt && !isPending(item) && !item.media && primerEnlace(item.body) ? (
+              <VistaPreviaDeEnlace url={primerEnlace(item.body)!} jwt={jwt} mia={mine} />
+            ) : null}
+            {/* Hora y checks DENTRO, alineados a la última línea (como WhatsApp):
+                el texto lleva al final un relleno invisible del ancho de la hora
+                y la hora va encima, abajo a la derecha. Cero renglón extra. */}
             <View className="px-3 pb-1.5 pt-1.5">
               <Text className={`text-[15px] leading-[21px] ${mine ? 'text-on-burbuja-propia' : 'text-on-burbuja-ajena'}`}>
                 <TextoConEnlaces texto={item.body} enBurbujaPropia={mine} />
@@ -421,6 +392,7 @@ function FilaDeMensaje({
                 <MetaDeMensaje {...meta} />
               </View>
             </View>
+            </>
           ) : null}
 
           {/* Lo que no es texto (foto, voz, archivo, borrado) lleva la hora en

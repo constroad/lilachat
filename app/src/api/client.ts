@@ -6,6 +6,7 @@
  * .env de dev sale apuntando al emulador y falla con wifi andando — el script
  * de release lo fija y lo verifica dentro del binario).
  */
+import type { VistaPreviaDeEnlace } from '@lilachat/shared';
 import { unSoloPedido } from './pedidoUnico';
 
 export const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
@@ -257,6 +258,10 @@ export async function cambiarAjustesDeChat(
     return false;
   }
 }
+
+/** La tarjeta de un enlace del chat (FL13d). `null`: la página no tiene. */
+export const pedirVistaPrevia = (url: string, token: string) =>
+  get<{ vistaPrevia: VistaPreviaDeEnlace | null }>(`/api/enlaces/vista-previa?url=${encodeURIComponent(url)}`, token);
 
 /** Un miembro en la «Info» de un mensaje propio (FL9): su estado, sin hora. */
 export type MiembroDeInfo = { id: string; name: string | null; phone: string | null; estado: 'pending' | 'sent' | 'delivered' | 'read' };

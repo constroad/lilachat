@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Send, X } from 'lucide-react-native';
 import type { Contact } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { useMargenes } from '../ui/useMargenes';
-import { compartirInvitacion } from './compartirInvitacion';
-import { invitarContacto, listContacts } from './contactsApi';
+import { listContacts } from './contactsApi';
+import { useInvitar } from './useInvitar';
 import { useAgendaParaInvitar } from './useAgendaParaInvitar';
 import { buscarEn, indexarParaBuscar } from './busqueda';
 import { useConsultaDiferida } from '../ui/useConsultaDiferida';
@@ -44,7 +44,6 @@ export function InviteScreen({
   const margenes = useMargenes();
   const [registrados, setRegistrados] = useState<Contact[] | null>(null);
   const [consulta, setConsulta] = useState('');
-  const [aviso, setAviso] = useState<string | null>(null);
 
   const cargarRegistrados = useCallback(async () => {
     const resultado = await listContacts(credential.jwt);
@@ -61,26 +60,7 @@ export function InviteScreen({
 
   const agenda = useAgendaParaInvitar(registrados);
 
-  /**
-   * Invitar de verdad: primero se CREA la admisión y recién después se comparte
-   * el enlace. Al revés —o sin el primer paso, que es como nació— la persona
-   * instala la app y no puede entrar: el server no le manda el código a alguien
-   * sin admisión, y contesta 200 igual para no revelar quién existe.
-   */
-  const invitar = async (contacto: { nombre: string; telefono: string } | null) => {
-    if (contacto) {
-      const alta = await invitarContacto(credential.jwt, contacto.telefono);
-      if (!alta.ok) {
-        // Se avisa y NO se comparte: mandar el enlace sabiendo que no va a poder
-        // entrar es hacerle perder el tiempo a dos personas.
-        setAviso(alta.message ?? 'No se pudo habilitar a esa persona. Prueba de nuevo.');
-        return;
-      }
-      setAviso(null);
-    }
-
-    await compartirInvitacion(contacto);
-  };
+  const { invitar, invitando, fallo } = useInvitar(credential.jwt);
 
   // La clave se calcula una vez y la búsqueda espera a que se deje de tipear:
   // con 600 contactos, filtrar en cada tecla trababa el teclado.
@@ -118,11 +98,12 @@ export function InviteScreen({
           data={filas}
           testID="lista-invitables"
           keyExtractor={(contacto) => contacto.id}
+          // Sin esto las filas visibles no se enteran de que una está invitando o falló.
+          extraData={`${invitando ?? ''}|${fallo?.id ?? ''}`}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: margenes.pie + 16 }}
           ListHeaderComponent={
             <CabeceraDeInvitar
-              aviso={aviso}
               porInvitar={agenda.estado === 'listo' ? indexados.length : null}
               consulta={consulta}
               onConsulta={setConsulta}
@@ -135,6 +116,8 @@ export function InviteScreen({
               contacto={item}
               primera={index === 0}
               ultima={index === filas.length - 1}
+              invitando={invitando === item.id}
+              fallo={fallo?.id === item.id ? fallo.texto : undefined}
               onInvitar={() => void invitar(item)}
             />
           )}
@@ -153,11 +136,16 @@ function FilaInvitable({
   contacto,
   primera,
   ultima,
+  invitando,
+  fallo,
   onInvitar,
 }: {
   contacto: { id: string; nombre: string; telefono: string };
   primera: boolean;
   ultima: boolean;
+  invitando: boolean;
+  /** Por qué no se pudo invitar a ESTA persona (FL13d). */
+  fallo?: string;
   onInvitar: () => void;
 }) {
   const colores = useColores();
@@ -177,13 +165,19 @@ function FilaInvitable({
         <Pressable
           testID={`invitar-${contacto.id}`}
           onPress={onInvitar}
+          disabled={invitando}
           hitSlop={{ top: 4, bottom: 4 }}
           className="min-h-[36px] flex-row items-center gap-1.5 rounded-full bg-primary/10 px-3.5"
         >
-          <Send size={14} color={colores.primary} />
+          {invitando ? <ActivityIndicator size="small" color={colores.primary} /> : <Send size={14} color={colores.primary} />}
           <Text className="text-[13px] font-semibold text-primary">Invitar</Text>
         </Pressable>
       </View>
+      {fallo ? (
+        <Text testID={`fallo-invitar-${contacto.id}`} className="px-4 pb-2.5 text-[12px] text-error" style={{ marginLeft: SANGRIA_DE_LA_LINEA - 16 }}>
+          {fallo}
+        </Text>
+      ) : null}
     </View>
   );
 }

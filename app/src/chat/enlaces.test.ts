@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { partirEnEnlaces } from './enlaces';
+import { partirEnEnlaces, primerEnlace } from './enlaces';
 
 /** Links, correos y teléfonos tocables (FL9, auditoría §46.2). */
 describe('partirEnEnlaces', () => {
@@ -41,5 +41,24 @@ describe('partirEnEnlaces', () => {
 
   it('un número que no es un celular (un monto, un código) no se toca', () => {
     expect(partirEnEnlaces('son 1500 soles y el pedido 12345')).toEqual([{ tipo: 'texto', texto: 'son 1500 soles y el pedido 12345' }]);
+  });
+});
+
+/** La tarjeta del chat (FL13d): sale del PRIMER link del mensaje, como WhatsApp. */
+describe('primerEnlace', () => {
+  it('el primer link, sin la puntuación que lo cierra', () => {
+    expect(primerEnlace('Mira esto: https://lila.pe/almuerzo. Y esto https://otro.pe')).toBe('https://lila.pe/almuerzo');
+  });
+
+  it('www. se completa con https', () => {
+    expect(primerEnlace('entra a www.lila.pe')).toBe('https://www.lila.pe');
+  });
+
+  it('correos y celulares no son enlaces con tarjeta', () => {
+    expect(primerEnlace('escríbeme a jose@lila.pe o al 987 654 321')).toBeNull();
+  });
+
+  it('sin texto, nada', () => {
+    expect(primerEnlace(undefined)).toBeNull();
   });
 });

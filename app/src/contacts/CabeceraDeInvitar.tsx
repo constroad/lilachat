@@ -14,7 +14,6 @@ const ENLACE_VISIBLE = ENLACE_DE_DESCARGA.replace(/^https?:\/\//, '');
  * ella y el buscador no se desmonte cuando nadie coincide.
  */
 export function CabeceraDeInvitar(props: {
-  aviso: string | null;
   /** `null` mientras la agenda no está lista: sin buscador ni cuenta. */
   porInvitar: number | null;
   consulta: string;
@@ -56,11 +55,6 @@ export function CabeceraDeInvitar(props: {
         </Pressable>
       </View>
 
-      {props.aviso ? (
-        <Text testID="aviso-invitar" className="mt-3 text-[13px] text-error">
-          {props.aviso}
-        </Text>
-      ) : null}
 
       {props.porInvitar !== null ? (
         <>

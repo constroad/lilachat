@@ -381,6 +381,7 @@ export function ChatScreen({
             next={next}
             myUserId={credential.userId}
             jwt={credential.jwt}
+            conVistaPrevia={!encrypted}
             entrega={
               mia
                 ? resolveDeliveryState({
@@ -405,7 +406,7 @@ export function ChatScreen({
         </>
       );
     },
-    [rows, credential.userId, leidoHasta, entregadoHasta, esGrupoChat, nombresDelGrupo, fotosDelGrupo, alVerImagen, alResponder, citados, seleccion.elegidos, seleccion.enSeleccion, seleccion.alternar, resaltado, busqueda.seqActual, divisorSeq, noLeidosAlAbrir, alFallido, alTocarCita]
+    [rows, credential.userId, leidoHasta, entregadoHasta, esGrupoChat, encrypted, nombresDelGrupo, fotosDelGrupo, alVerImagen, alResponder, citados, seleccion.elegidos, seleccion.enSeleccion, seleccion.alternar, resaltado, busqueda.seqActual, divisorSeq, noLeidosAlAbrir, alFallido, alTocarCita]
   );
 
   // Con el teclado abierto no hay barra de navegación debajo: el margen del pie

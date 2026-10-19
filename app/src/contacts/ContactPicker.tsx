@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Check, Search } from 'lucide-react-native';
 import {
   candidatosParaSumar,
@@ -8,16 +8,18 @@ import {
   type ContactGroup,
 } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
-import { emparejarAgenda, invitarContacto, listContacts } from './contactsApi';
+import { emparejarAgenda, listContacts } from './contactsApi';
 import { useAgendaDelTelefono, useAgendaParaInvitar } from './useAgendaParaInvitar';
 import { buscarEn, indexarParaBuscar } from './busqueda';
 import { useConsultaDiferida } from '../ui/useConsultaDiferida';
-import { compartirInvitacion } from './compartirInvitacion';
+import { useInvitar } from './useInvitar';
 import { useColores } from '../ui/tema';
 import { Avatar } from '../ui/Avatar';
 
 /** El avatar de cada contacto (dp): 44, el mismo en toda lista de personas. */
 const AVATAR_DE_CONTACTO = 44;
+/** 16 de margen + el avatar + 12 de aire: donde empieza el nombre. */
+const SANGRIA_DEL_NOMBRE = 16 + AVATAR_DE_CONTACTO + 12;
 
 /** Cuántos contactos de la agenda se dibujan sin buscar. Ver `SeccionInvitar`. */
 const MAXIMO_INVITABLES = 30;
@@ -249,8 +251,9 @@ function SeccionInvitar({
   registrados: Contact[] | null;
   consulta: string;
 }) {
+  const colores = useColores();
   const agenda = useAgendaParaInvitar(registrados);
-  const [aviso, setAviso] = useState<string | null>(null);
+  const { invitar, invitando, fallo } = useInvitar(jwt);
 
   /**
    * **Todos los hooks ANTES de cualquier return.**
@@ -271,21 +274,6 @@ function SeccionInvitar({
   const coinciden = useMemo(() => buscarEn(indexados, diferida), [indexados, diferida]);
 
 
-  /**
-   * Primero se CREA la admisión, después se comparte. Sin el primer paso la
-   * persona instala la app y el server nunca le manda el código.
-   */
-  const invitar = async (contacto: { nombre: string; telefono: string } | null) => {
-    if (contacto) {
-      const alta = await invitarContacto(jwt, contacto.telefono);
-      if (!alta.ok) {
-        setAviso(alta.message ?? 'No se pudo habilitar a esa persona.');
-        return;
-      }
-      setAviso(null);
-    }
-    await compartirInvitacion(contacto);
-  };
 
   if (agenda.estado === 'cargando') return null;
 
@@ -359,34 +347,36 @@ function SeccionInvitar({
         Invitar a Lilachat
       </Text>
       {visibles.map((contacto) => (
-        <View
-          key={contacto.id}
-          testID={`invitable-${contacto.id}`}
-          className="min-h-[64px] flex-row items-center gap-3 px-4 py-2.5"
-        >
-          <Avatar nombre={contacto.nombre} tamano={AVATAR_DE_CONTACTO} />
-          <View className="min-w-0 flex-1">
-            <Text className="text-[15px] font-semibold text-on-surface" numberOfLines={1}>
-              {contacto.nombre}
-            </Text>
-            <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>
-              {contacto.telefono}
-            </Text>
+        <View key={contacto.id}>
+          <View testID={`invitable-${contacto.id}`} className="min-h-[64px] flex-row items-center gap-3 px-4 py-2.5">
+            <Avatar nombre={contacto.nombre} tamano={AVATAR_DE_CONTACTO} />
+            <View className="min-w-0 flex-1">
+              <Text className="text-[15px] font-semibold text-on-surface" numberOfLines={1}>
+                {contacto.nombre}
+              </Text>
+              <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>
+                {contacto.telefono}
+              </Text>
+            </View>
+            <Pressable
+              testID={`btn-invitar-${contacto.id}`}
+              onPress={() => void invitar(contacto)}
+              disabled={invitando === contacto.id}
+              className="min-h-[44px] flex-row items-center justify-center gap-1.5 rounded-full bg-primary/[0.10] px-4"
+            >
+              {invitando === contacto.id ? <ActivityIndicator size="small" color={colores.primary} /> : null}
+              <Text className="text-[13px] font-semibold text-primary">Invitar</Text>
+            </Pressable>
           </View>
-          <Pressable
-            testID={`btn-invitar-${contacto.id}`}
-            onPress={() => void invitar(contacto)}
-            className="min-h-[44px] items-center justify-center rounded-full bg-primary/[0.10] px-4"
-          >
-            <Text className="text-[13px] font-semibold text-primary">Invitar</Text>
-          </Pressable>
+          {/* El motivo va debajo de ESTA fila (FL13d): al pie de la lista quedaba
+              fuera de la pantalla y el botón parecía no hacer nada. */}
+          {fallo?.id === contacto.id ? (
+            <Text testID={`fallo-invitar-${contacto.id}`} className="pb-2.5 pr-4 text-[12px] text-error" style={{ paddingLeft: SANGRIA_DEL_NOMBRE }}>
+              {fallo.texto}
+            </Text>
+          ) : null}
         </View>
       ))}
-      {aviso ? (
-        <Text testID="aviso-invitar" className="px-4 pb-1 text-[12px] text-error">
-          {aviso}
-        </Text>
-      ) : null}
       {ocultos > 0 ? (
         <Text className="px-4 py-3 text-[12px] text-on-surface-variant">
           Y {ocultos} más en tu agenda. Busca por nombre para encontrarlos.

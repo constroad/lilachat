@@ -190,6 +190,34 @@ describe('buildOutboxItem', () => {
    * server nunca lo vea — el candado no serviría de nada contra quien tenga el
    * aparato. Se cifra ANTES de encolar.
    */
+  /** Las @menciones (18/10) viajan con el texto, sobre el texto YA recortado. */
+  it('lleva las menciones en un chat normal, recalculadas sobre el texto recortado', () => {
+    const item = buildOutboxItem({
+      chatId: 'c1',
+      clientKey: 'k1',
+      text: '  Hola @Ana',
+      queuedAt: '2026-08-24T12:00:00Z',
+      menciones: (texto) => (texto === 'Hola @Ana' ? [{ userId: 'u-ana', desde: 5, largo: 4 }] : []),
+    });
+
+    expect(item?.menciones).toEqual([{ userId: 'u-ana', desde: 5, largo: 4 }]);
+  });
+
+  it('sin menciones no agrega el campo; en un chat cifrado nunca', () => {
+    const sinMenciones = buildOutboxItem({ chatId: 'c1', clientKey: 'k1', text: 'hola', queuedAt: '2026-08-24T12:00:00Z', menciones: () => [] });
+    const cifrado = buildOutboxItem({
+      chatId: 'c1',
+      clientKey: 'k1',
+      text: 'hola @Ana',
+      queuedAt: '2026-08-24T12:00:00Z',
+      seal: () => sobre,
+      menciones: () => [{ userId: 'u-ana', desde: 5, largo: 4 }],
+    });
+
+    expect(sinMenciones && 'menciones' in sinMenciones).toBe(false);
+    expect(cifrado && 'menciones' in cifrado).toBe(false);
+  });
+
   it('en un chat cifrado encola el SOBRE y nunca el texto', () => {
     const item = buildOutboxItem({
       chatId: 'c1',

@@ -22,6 +22,8 @@
  * 5. **Sin respuesta NO es rechazo**: se reintenta con espera creciente.
  */
 
+import type { MencionEnMensaje } from './menciones.js';
+
 export type OutboxItem = {
   /** Idempotencia: nace acá y no cambia jamás. */
   clientKey: string;
@@ -36,6 +38,8 @@ export type OutboxItem = {
   envelope?: { v: 1; nonce: string; ciphertext: string };
   mediaId?: string;
   replyToSeq?: number;
+  /** Las @menciones del texto (18/10). Nunca junto al sobre: el server no ve ese texto. */
+  menciones?: MencionEnMensaje[];
   /** Reloj del cliente: sirve para ordenar lo pendiente en pantalla. */
   queuedAt: string;
   attempts: number;
@@ -159,6 +163,8 @@ export function buildOutboxItem(params: {
   replyToSeq?: number;
   /** Solo en chats cifrados. `null` = no se pudo cifrar. */
   seal?: (text: string) => { v: 1; nonce: string; ciphertext: string } | null;
+  /** Las @menciones, calculadas sobre el texto YA recortado (los rangos cuentan desde ahí). */
+  menciones?: (text: string) => MencionEnMensaje[];
 }): OutboxItem | null {
   const text = params.text.trim();
   if (!text) return null;
@@ -172,7 +178,10 @@ export function buildOutboxItem(params: {
     ...(params.replyToSeq !== undefined ? { replyToSeq: params.replyToSeq } : {}),
   };
 
-  if (!params.seal) return { ...base, body: text };
+  if (!params.seal) {
+    const menciones = params.menciones?.(text) ?? [];
+    return { ...base, body: text, ...(menciones.length > 0 ? { menciones } : {}) };
+  }
 
   const envelope = params.seal(text);
   return envelope ? { ...base, envelope } : null;

@@ -148,7 +148,10 @@ export function NavegacionDeSesion(props: {
           contentStyle: { backgroundColor: colores.background },
         }}
       >
-        <Stack.Screen name="Inicio">
+        {/* Congelada mientras hay un chat encima (FL12, §49 #12): la lista
+            seguía redibujándose con cada «escribiendo», presencia y mensaje,
+            peleando con la conversación por el hilo JS. Al volver se pone al día. */}
+        <Stack.Screen name="Inicio" options={{ freezeOnBlur: true }}>
           {({ navigation }) => (
             <TabsShell
               credential={props.credential}

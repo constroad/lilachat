@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { BellOff, Camera, Check, CheckCheck, FileText, Lock, Mic, Pin, Video, type LucideIcon } from 'lucide-react-native';
+import { BarChart3, BellOff, CalendarDays, Camera, Check, CheckCheck, FileText, Lock, Mic, Pin, Video, type LucideIcon } from 'lucide-react-native';
 import {
   formatChatTimestamp,
   nombreDeContacto,
@@ -12,6 +12,7 @@ import {
 } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
+import { precargarChat } from './mensajesGuardados';
 import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
 
@@ -24,6 +25,8 @@ const ICONO_DE_MEDIA: Record<MediaDePreview, LucideIcon> = {
   video: Video,
   voz: Mic,
   archivo: FileText,
+  encuesta: BarChart3,
+  evento: CalendarDays,
 };
 
 /**
@@ -52,6 +55,8 @@ export const FilaDeChat = memo(function FilaDeChat(props: {
       // En modo selección el toque marca/desmarca; fuera de él, abre.
       // Mantener presionado SIEMPRE entra al modo y marca esta fila.
       onPress={() => props.onTocar(chat)}
+      // Al apoyar el dedo, ~100 ms antes del toque: el chat abre ya pintado (FL12).
+      onPressIn={() => precargarChat(chat.id)}
       onLongPress={() => props.onMantener(chat.id)}
       delayLongPress={250}
       // El ripple de Material al tocar (FL3): sin respuesta visual, la

@@ -28,6 +28,8 @@ import { useDisposicion } from './useDisposicion';
 import { SinChatElegido } from './PanelDeChat';
 import { visitadasCon } from './pestanas';
 import { useAlVolver } from './useAlVolver';
+import { usePendientesDeAgenda } from '../agenda/usePendientesDeAgenda';
+import { useIsFocused } from '@react-navigation/native';
 import { decidirAtras } from './botonAtras';
 import { nombreDeContacto } from '@lilachat/shared';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
@@ -83,6 +85,15 @@ export function TabsShell({
   const perfilPropio = usePerfilPropio(credential);
   const margenes = useMargenes();
   const [tab, setTab] = useState<Tab>('chats');
+  /** Los contadores de Agenda y Encuestas en la barra (18/10). */
+  const { pendientes, refrescar: refrescarPendientes } = usePendientesDeAgenda(credential.jwt);
+  // Al cambiar de pestaña (se pudo votar o responder) y al volver de un chat.
+  useEffect(() => {
+    void refrescarPendientes();
+  }, [tab, refrescarPendientes]);
+  const enFoco = useIsFocused();
+  useAlVolver(enFoco, () => void refrescarPendientes());
+  const cuentasDeLaBarra = { agenda: pendientes.eventos, encuestas: pendientes.encuestas };
   useEffect(() => {
     if (pestanaPedida) setTab(pestanaPedida.tab);
   }, [pestanaPedida]);
@@ -199,7 +210,7 @@ export function TabsShell({
     const alLlegar = async (mensaje: {
       chatId: string;
       senderId: string;
-      kind: 'text' | 'image' | 'video' | 'audio' | 'file';
+      kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'poll' | 'event';
       body?: string;
       envelope?: unknown;
     }) => {
@@ -242,13 +253,17 @@ export function TabsShell({
       });
     };
 
-    const onNew = (mensaje: Parameters<typeof alLlegar>[0]) => void alLlegar(mensaje);
+    const onNew = (mensaje: Parameters<typeof alLlegar>[0]) => {
+      // Una encuesta o un evento nuevos en algún chat: cambian los contadores.
+      if (mensaje.kind === 'poll' || mensaje.kind === 'event') void refrescarPendientes();
+      void alLlegar(mensaje);
+    };
     socket.on('msg.new', onNew);
     return () => {
       // Con el handler: a secas borraba los listeners de App y de la lista.
       socket.off('msg.new', onNew);
     };
-  }, [credential.jwt, credential.userId, loadChats]);
+  }, [credential.jwt, credential.userId, loadChats, refrescarPendientes]);
 
   useEffect(() => {
     void loadChats();
@@ -318,7 +333,7 @@ export function TabsShell({
           cambio. Al crear algo, la lista vuelve a pedir por la prop `recarga`,
           sin remontarse ni volver al esqueleto. */}
       <View className={amplia ? 'flex-1 flex-row' : 'flex-1'}>
-      {amplia ? <BottomNav vertical active={tab} onChange={setTab} /> : null}
+      {amplia ? <BottomNav vertical active={tab} onChange={setTab} cuentas={cuentasDeLaBarra} /> : null}
       <View className="flex-1">
         {visitadas.has('chats') ? (
           <View style={[panel('chats'), dosPaneles ? { flexDirection: 'row' } : centrado]}>
@@ -347,7 +362,7 @@ export function TabsShell({
         {visitadas.has('encuestas') ? (
           <View style={[panel('encuestas'), centrado]}>
             <ErrorBoundary pantalla="encuestas">
-              <PollsScreen recarga={reloadKey} credential={credential} onCreate={() => setCreating('poll')} />
+              <PollsScreen recarga={reloadKey} credential={credential} onCreate={() => setCreating('poll')} onCambio={() => void refrescarPendientes()} />
             </ErrorBoundary>
           </View>
         ) : null}
@@ -356,7 +371,7 @@ export function TabsShell({
             {/* Eventos y avisos en una sola pestaña: el botón de crear ofrece
                 los dos tipos en vez de adivinar por el filtro activo. */}
             <ErrorBoundary pantalla="agenda">
-              <AgendaScreen credential={credential} activa={tab === 'agenda'} grupos={grupos} />
+              <AgendaScreen credential={credential} activa={tab === 'agenda'} grupos={grupos} onCambio={() => void refrescarPendientes()} />
             </ErrorBoundary>
           </View>
         ) : null}
@@ -380,7 +395,7 @@ export function TabsShell({
       </View>
       </View>
 
-      {amplia ? null : <BottomNav active={tab} onChange={setTab} />}
+      {amplia ? null : <BottomNav active={tab} onChange={setTab} cuentas={cuentasDeLaBarra} />}
 
       {/* El lápiz de la lista, que no hacía nada. */}
       <NewChatScreen

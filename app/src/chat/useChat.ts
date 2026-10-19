@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decidirCargaAnterior } from './paginacion';
 import { hidratarChat } from './hidratador';
 import { useAcuses } from './useAcuses';
+import { chatsEnMemoria } from './memoriaDeChats';
 import { listOlderMessages } from '../api/client';
 import {
   conciliarPaginaGuardada,
@@ -17,6 +18,7 @@ import {
   buildOutboxItem,
   conciliarPagina,
   esAcuseDeOtro,
+  mismoValor,
   mergeBySeq,
   tramoContiguoAntesDe,
   type Cursors,
@@ -67,6 +69,8 @@ export type PendingMessage = {
  */
 const PAGINA_DE_SANEO = 50;
 const PAGINAS_AL_ABRIR = 5; // páginas de 100 del hidratador al abrir; el resto, el respaldo
+/** Calma después de abrir antes de rellenar huecos del historial (FL12). */
+const ESPERA_PARA_RELLENAR_MS = 3000;
 
 export function useChat(params: {
   chatId: string;
@@ -81,7 +85,12 @@ export function useChat(params: {
   baseLeido?: number;
   baseEntregado?: number;
 }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Nace con lo que quedó en memoria de la última vez (FL12, §49 #2): el chat
+  // entra pintado en vez de vacío, mientras el disco y la red confirman.
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [...(chatsEnMemoria.de(params.chatId) ?? [])]);
+  useEffect(() => {
+    chatsEnMemoria.recordar(params.chatId, messages);
+  }, [params.chatId, messages]);
 
   /**
    * Los mensajes ya descifrados, DERIVADOS del estado.
@@ -175,6 +184,8 @@ export function useChat(params: {
    */
   useEffect(() => {
     let vigente = true;
+    let relleno: number | null = null;
+    let demora: ReturnType<typeof setTimeout> | null = null;
     void (async () => {
       const ultimo = await ultimoSeqGuardado(params.chatId);
       if (!vigente || ultimo === null) return;
@@ -187,13 +198,24 @@ export function useChat(params: {
       aplicarPaginaDelServer(respuesta.data.messages as ChatMessage[], respuesta.data.lastSeq);
 
       // FL5: el cursor del `sync.pull` es el MAYOR seq guardado y no ve huecos
-      // del medio. Se rellenan de fondo al abrir; el scroll los lee del disco.
+      // del medio. Se rellenan de fondo; el scroll los lee del disco. NO apenas
+      // se abre (FL12, §49 #5): cifrar y escribir páginas peleaba por el hilo JS
+      // con la transición y el primer scroll. Después de las animaciones y de
+      // unos segundos de calma.
       const { lastSeq } = respuesta.data;
       if (!lastSeq) return;
-      void hidratarChat({ chatId: params.chatId, ultimoDelServer: lastSeq, token: params.token, sigue: () => vigente, maxPaginas: PAGINAS_AL_ABRIR });
+      // `requestIdleCallback` y no `InteractionManager`, que RN deprecó.
+      relleno = requestIdleCallback(() => {
+        demora = setTimeout(() => {
+          if (!vigente) return;
+          void hidratarChat({ chatId: params.chatId, ultimoDelServer: lastSeq, token: params.token, sigue: () => vigente, maxPaginas: PAGINAS_AL_ABRIR });
+        }, ESPERA_PARA_RELLENAR_MS);
+      });
     })();
     return () => {
       vigente = false;
+      if (relleno !== null) cancelIdleCallback(relleno);
+      if (demora) clearTimeout(demora);
     };
   }, [params.chatId, params.token, aplicarPaginaDelServer]);
 
@@ -293,14 +315,25 @@ export function useChat(params: {
   const vistaLocal = useRef(new Map<string, string>());
   const cursors = useRef<Cursors>({});
 
+  /** Hasta dónde quiero acusar lectura y hasta dónde ya lo dije (ver `markRead`). */
+  const leido = useRef({ chatId: params.chatId, deseado: 0, enviado: 0 });
+  /** Desconectado no se pierde: queda `deseado` y sale al reconectar. */
+  const emitirLeido = useCallback(() => {
+    const pendiente = leido.current;
+    if (pendiente.deseado <= pendiente.enviado) return;
+    const socket = getSocket();
+    if (!socket?.connected) return;
+    pendiente.enviado = pendiente.deseado;
+    socket.emit('read.set', { chatId: pendiente.chatId, seq: pendiente.deseado });
+  }, []);
+
   useEffect(() => {
     let alive = true;
     void hydrateOutbox();
 
     const unsubscribe = subscribeOutbox((items: OutboxItem[]) => {
       if (!alive) return;
-      setPending(
-        items
+      const delChat = items
           .filter((item) => item.chatId === params.chatId)
           .map((item) => ({
             clientKey: item.clientKey,
@@ -311,8 +344,10 @@ export function useChat(params: {
             queuedAt: item.queuedAt,
             pending: true as const,
             fallo: item.fallo,
-          }))
-      );
+          }));
+      // La cola es GLOBAL: avisa por cualquier chat. Si lo de ESTE no cambió se
+      // queda el array viejo y la lista no se rearma (FL12, §49 #13).
+      setPending((antes) => (mismoValor(antes, delChat) ? antes : delChat));
     });
 
     const socket = connectSocket(params.token);
@@ -357,6 +392,7 @@ export function useChat(params: {
       if (!alive) return;
       setConnected(true);
       void pull();
+      emitirLeido();
       // Pedir el estado de presencia: el snapshot del connect ya lo consumió la
       // lista de chats, así que sin esto el header abría sin «en línea».
       socket.emit('presence.request');
@@ -369,12 +405,22 @@ export function useChat(params: {
       ]);
       setMessages((current) => mergeBySeq(current, [message as ChatMessage]));
       void guardarMensajes(params.chatId, [message as ChatMessage]);
-      // Le llegó un mensaje del otro: se acusa ENTREGA (no lectura). Es lo que
-      // pone el doble check gris del lado de quien lo mandó, antes de que yo
-      // abra nada.
-      if (message && esAcuseDeOtro({ de: String(message.senderId), yo: params.miUserId })) {
-        getSocket()?.emit('deliver.set', { chatId: params.chatId, seq: message.seq });
-      }
+      // Su mensaje llegó: ya no está escribiendo (como WhatsApp). Sin esto el
+      // «escribiendo…» seguía hasta el temporizador de 6 s.
+      const autor = String(message.senderId);
+      const temporizador = timersTyping.current.get(autor);
+      if (temporizador) clearTimeout(temporizador);
+      timersTyping.current.delete(autor);
+      setEscribiendo((prev) => {
+        if (!prev.has(autor)) return prev;
+        const next = new Set(prev);
+        next.delete(autor);
+        return next;
+      });
+      // Sin `deliver.set` acá (FL12, §49 #3): si llegó en vivo es porque estoy
+      // conectado, y el server ya lo marcó entregado al repartirlo
+      // (`avisarMensajeNuevo`). El acuse de más se repartía a todo el chat.
+      // Lo que llega por `sync.pull` (estaba desconectado) sí se acusa.
     };
 
     const onReceipt = (frame: {
@@ -431,6 +477,8 @@ export function useChat(params: {
     const onPresence = (frame: { userId: string; online: boolean }) => {
       if (!alive) return;
       setEnLinea((prev) => {
+        // Sin cambio, el mismo Set: un «en línea» repetido no redibuja (FL12).
+        if (prev.has(frame.userId) === frame.online) return prev;
         const next = new Set(prev);
         if (frame.online) next.add(frame.userId);
         else next.delete(frame.userId);
@@ -450,7 +498,7 @@ export function useChat(params: {
       const anterior = timers.get(frame.userId);
       if (anterior) clearTimeout(anterior);
       if (frame.on) {
-        setEscribiendo((prev) => new Set(prev).add(frame.userId));
+        setEscribiendo((prev) => (prev.has(frame.userId) ? prev : new Set(prev).add(frame.userId)));
         timers.set(
           frame.userId,
           setTimeout(() => {
@@ -464,6 +512,7 @@ export function useChat(params: {
         );
       } else {
         setEscribiendo((prev) => {
+          if (!prev.has(frame.userId)) return prev;
           const next = new Set(prev);
           next.delete(frame.userId);
           return next;
@@ -496,7 +545,7 @@ export function useChat(params: {
       for (const t of timersTyping.current.values()) clearTimeout(t);
       timersTyping.current.clear();
     };
-  }, [params.chatId, params.token, registrarAcuse]);
+  }, [params.chatId, params.token, registrarAcuse, emitirLeido]);
 
   /**
    * Enviar = ENCOLAR. Nunca se manda directo: así el camino con red y el camino
@@ -529,11 +578,18 @@ export function useChat(params: {
    * El resultado no se inserta a mano en la lista — llega por `msg.new` como
    * cualquier otro mensaje, y `mergeBySeq` evita el duplicado.
    */
+  /**
+   * Solo cuando SUBE (FL12, §49 #4): el efecto que lo llama corre en cada
+   * cambio de `messages` —disco, saneo, páginas, ediciones, mi propio eco— y
+   * cada `read.set` eran cuatro viajes a la base y un acuse a todo el chat.
+   */
   const markRead = useCallback(
     (seq: number) => {
-      getSocket()?.emit('read.set', { chatId: params.chatId, seq });
+      if (leido.current.chatId !== params.chatId) leido.current = { chatId: params.chatId, deseado: 0, enviado: 0 };
+      leido.current.deseado = Math.max(leido.current.deseado, seq);
+      emitirLeido();
     },
-    [params.chatId]
+    [params.chatId, emitirLeido]
   );
 
   /**

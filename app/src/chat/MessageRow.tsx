@@ -22,8 +22,8 @@ import { anchoDeBurbujaConFoto, miniaturaDe } from './filasDelChat';
 import {
   formatClock,
   groupsWithPrevious,
-  resolveDeliveryState,
   tamanoDeBurbuja,
+  type DeliveryState,
 } from '@lilachat/shared';
 
 /** La foto o el video con su forma real (FL9); sin dimensiones, el cuadrado. */
@@ -33,6 +33,7 @@ const estiloDeFoto = (media: { width?: number; height?: number }) => {
 };
 import type { ChatMessage, PendingMessage } from './useChat';
 import { useColores } from '../ui/tema';
+import { TarjetaDelChat } from './TarjetaDelChat';
 import { Avatar } from '../ui/Avatar';
 
 /**
@@ -69,8 +70,8 @@ function FilaDeMensaje({
   previous,
   next,
   myUserId,
-  othersReadSeq,
-  othersDeliveredSeq,
+  jwt,
+  entrega,
   esGrupo = false,
   nombreAutor,
   onVerImagen,
@@ -86,8 +87,14 @@ function FilaDeMensaje({
   previous?: Row;
   next?: Row;
   myUserId: string;
-  othersReadSeq: number;
-  othersDeliveredSeq: number;
+  /** Para las tarjetas de encuesta y evento, que leen y votan por su cuenta. */
+  jwt?: string;
+  /**
+   * El check, ya resuelto y SOLO en las propias (FL12, §49 #3). Antes llegaban
+   * los cursores a todas las filas: cada acuse cambiaba una prop en todas y el
+   * `memo` no frenaba nada, ni siquiera en las ajenas, que no dibujan check.
+   */
+  entrega?: DeliveryState;
   /** En un grupo se muestran nombre y avatar de cada autor; en un 1:1, no. */
   esGrupo?: boolean;
   /** El nombre de quien escribió (resuelto con la agenda), en un grupo. */
@@ -117,6 +124,11 @@ function FilaDeMensaje({
   if (!isPending(item) && item.kind === 'system') {
     return <AvisoDelGrupo item={item} myUserId={myUserId} />;
   }
+  // La encuesta o el evento publicados en el chat (18/10): una tarjeta para
+  // votar o confirmar, no una burbuja de texto.
+  if (!isPending(item) && item.ref && jwt) {
+    return <TarjetaDelChat item={item} mia={item.senderId === myUserId} jwt={jwt} yo={myUserId} autor={esGrupo ? nombreAutor : undefined} />;
+  }
 
   const mine = isPending(item) || item.senderId === myUserId;
   const at = isPending(item) ? item.queuedAt : item.at;
@@ -138,11 +150,7 @@ function FilaDeMensaje({
       })
     : false;
 
-  const delivery = resolveDeliveryState({
-    seq: isPending(item) ? null : item.seq,
-    otherReadSeq: othersReadSeq,
-    otherDeliveredSeq: othersDeliveredSeq,
-  });
+  const delivery: DeliveryState = entrega ?? (isPending(item) ? 'pending' : 'sent');
 
   const radios = radiosDeBurbuja({ mia: mine, conAnterior: grouped, conSiguiente: nextGrouped });
   const conAutor = mostrarAutor({ esGrupo, mia: mine, conAnterior: grouped });
@@ -266,6 +274,9 @@ function FilaDeMensaje({
               {item.media.thumbUrl ? (
                 <View className="overflow-hidden">
                   <Image
+                    // La celda se recicla: sin la clave, se veía la foto ANTERIOR
+                    // fundiéndose en la nueva al scrollear (FL12).
+                    recyclingKey={item.media.thumbUrl}
                     source={{ uri: item.media.thumbUrl }}
                     style={{ width: 240, height: 180 }}
                     contentFit="cover"
@@ -302,6 +313,7 @@ function FilaDeMensaje({
               onPress={() => !isPending(item) && (enSeleccion ? onSeleccionar?.(item.seq) : onVerImagen?.(item.seq))}
             >
               <Image
+                recyclingKey={miniaturaDe(item.media)}
                 source={{ uri: miniaturaDe(item.media) }}
                 style={estiloDeFoto(item.media)}
                 contentFit="cover"
@@ -350,6 +362,7 @@ function FilaDeMensaje({
           {isPending(item) && item.mediaUri && !esArchivo(item.mediaMime) ? (
             <View testID={`media-pendiente-${item.clientKey}`}>
               <Image
+                recyclingKey={item.mediaUri}
                 source={{ uri: item.mediaUri }}
                 style={{ ...estiloDeFoto({ width: item.mediaAncho, height: item.mediaAlto }), opacity: 0.55 }}
                 contentFit="cover"
@@ -459,7 +472,7 @@ function MetaDeMensaje({
 }: {
   hora: string;
   mia: boolean;
-  entrega: ReturnType<typeof resolveDeliveryState>;
+  entrega: DeliveryState;
   id: string;
   sobreFoto?: boolean;
   /** No se envió (rechazado para siempre): alerta en vez del reloj. */

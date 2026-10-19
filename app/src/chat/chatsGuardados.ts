@@ -41,8 +41,26 @@ export async function leerChatsGuardados(): Promise<ChatSummary[] | null> {
   }
 }
 
+/** Cuánto se espera para escribir: una ráfaga de mensajes es UNA escritura. */
+const ESPERA_PARA_ESCRIBIR_MS = 1500;
+let escrituraPendiente: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * La memoria se actualiza YA; el disco, juntando ráfagas (FL12, §49 #12). Se
+ * llamaba por cada mensaje que llegaba, y cada vez era serializar 50 chats y
+ * escribirlos en AsyncStorage, en el hilo JS y con un chat abierto encima.
+ */
 export async function guardarChats(chats: ChatSummary[]): Promise<void> {
   enMemoria = chats;
+  if (escrituraPendiente) clearTimeout(escrituraPendiente);
+  escrituraPendiente = setTimeout(() => {
+    escrituraPendiente = null;
+    void escribirChats(enMemoria);
+  }, ESPERA_PARA_ESCRIBIR_MS);
+}
+
+async function escribirChats(chats: ChatSummary[] | null): Promise<void> {
+  if (!chats) return;
   try {
     await AsyncStorage.setItem(CLAVE, JSON.stringify(chats.slice(0, MAX_CHATS_EN_CACHE)));
   } catch {
@@ -53,6 +71,9 @@ export async function guardarChats(chats: ChatSummary[]): Promise<void> {
 /** Al cerrar sesión se borra: la lista de con quién habla alguien no se hereda. */
 export async function olvidarChats(): Promise<void> {
   enMemoria = null;
+  // Una escritura en espera no puede revivir la lista de quien ya salió.
+  if (escrituraPendiente) clearTimeout(escrituraPendiente);
+  escrituraPendiente = null;
   try {
     await AsyncStorage.removeItem(CLAVE);
   } catch {

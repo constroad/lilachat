@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { CalendarDays, ChevronRight, MapPin, RotateCw } from 'lucide-react-native';
 import type { Rsvp } from '@lilachat/shared';
@@ -30,14 +30,22 @@ export function EventsScreen({
   credential,
   recarga,
   onEditar,
+  onCantidad,
 }: {
   credential: Credential;
   /** Sube cuando algo se creó, editó o canceló: se vuelve a pedir SIN esqueleto. */
   recarga: number;
   onEditar: (event: AgendaEvent) => void;
+  /** Cuántos vienen: el número del segmento «Eventos» (18/10). */
+  onCantidad?: (cuantos: number) => void;
 }) {
   const colores = useColores();
   const [events, setEvents] = useState<AgendaEvent[] | null>(null);
+  const cantidadRef = useRef(onCantidad);
+  cantidadRef.current = onCantidad;
+  useEffect(() => {
+    if (events) cantidadRef.current?.(events.length);
+  }, [events]);
   const [fallo, setFallo] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   /** El evento abierto en el detalle; se lee de la lista para verlo al día tras recargar. */

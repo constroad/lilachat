@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { BarChart3, Plus, RotateCw } from 'lucide-react-native';
-import { applyVote } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
-import { agendaDelete, agendaGet, agendaPost, type AgendaPoll } from './agendaApi';
+import { agendaGet, type AgendaPoll } from './agendaApi';
 import { TarjetaDeEncuesta } from './TarjetaDeEncuesta';
+import { useAccionesDeEncuesta } from './useAccionesDeEncuesta';
 import { useColores } from '../ui/tema';
 
 /**
@@ -19,19 +19,19 @@ export function PollsScreen({
   credential,
   recarga,
   onCreate,
+  onCambio,
 }: {
   credential: Credential;
   /** Sube al crear una encuesta: se vuelve a pedir SIN esqueleto (17/10/2026). */
   recarga: number;
   onCreate: () => void;
+  /** Se votó, cerró o eliminó: cambia el contador de la pestaña. */
+  onCambio?: () => void;
 }) {
   const colores = useColores();
   const [polls, setPolls] = useState<AgendaPoll[] | null>(null);
   const [fallo, setFallo] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  /** La encuesta que tiene un pedido en vuelo: no acepta otro (FL10). */
-  const [ocupada, setOcupada] = useState<string | null>(null);
-  const [errores, setErrores] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     const result = await agendaGet<{ polls: AgendaPoll[] }>('/polls', credential.jwt);
@@ -40,7 +40,7 @@ export function PollsScreen({
       setPolls(result.data.polls);
       setFallo(false);
       // Lo que falló antes ya no vale contra la lista nueva.
-      setErrores({});
+      acciones.limpiarErrores();
     } else setFallo(true);
   }, [credential.jwt]);
 
@@ -49,42 +49,16 @@ export function PollsScreen({
   }, [load, recarga]);
 
   const agenda = agendaPorTelefono();
-  const reemplazar = (id: string, nueva: AgendaPoll | null) =>
+  const reemplazar = (id: string, nueva: AgendaPoll | null) => {
     setPolls((antes) => (antes ?? []).flatMap((poll) => (poll.id !== id ? [poll] : nueva ? [nueva] : [])));
-  const decir = (id: string, mensaje: string) => setErrores((antes) => ({ ...antes, [id]: mensaje }));
-
-  /** El voto se ve al instante; si el server no lo toma, vuelve atrás y lo dice. */
-  const votar = async (poll: AgendaPoll, optionIndex: number) => {
-    if (ocupada) return;
-    const local = applyVote({ poll: { ...poll, closedAt: poll.closedAt ? new Date(poll.closedAt) : null }, optionIndex, userId: credential.userId });
-    if (!local.ok) return decir(poll.id, local.reason);
-    decir(poll.id, '');
-    reemplazar(poll.id, { ...poll, options: local.options });
-    setOcupada(poll.id);
-    const respuesta = await agendaPost<{ poll?: AgendaPoll }>(`/polls/${poll.id}/vote`, credential.jwt, { optionIndex });
-    setOcupada(null);
-    // Un server viejo contesta sin la encuesta: el voto entró, se recarga.
-    if (respuesta.ok) return respuesta.data.poll ? reemplazar(poll.id, respuesta.data.poll) : void load();
-    reemplazar(poll.id, poll);
-    decir(poll.id, respuesta.message ?? 'No se pudo votar. Inténtalo de nuevo.');
+    onCambio?.();
   };
-
-  const cerrar = async (poll: AgendaPoll) => {
-    setOcupada(poll.id);
-    const respuesta = await agendaPost<{ poll?: AgendaPoll }>(`/polls/${poll.id}/close`, credential.jwt, {});
-    setOcupada(null);
-    if (respuesta.ok) return respuesta.data.poll ? reemplazar(poll.id, respuesta.data.poll) : void load();
-    decir(poll.id, respuesta.message ?? 'No se pudo cerrar. Inténtalo de nuevo.');
-  };
-
-  const eliminar = async (poll: AgendaPoll) => {
-    setOcupada(poll.id);
-    const respuesta = await agendaDelete(`/polls/${poll.id}`, credential.jwt);
-    setOcupada(null);
-    if (respuesta.ok) return reemplazar(poll.id, null);
-    decir(poll.id, respuesta.message ?? 'No se pudo eliminar. Inténtalo de nuevo.');
-  };
-
+  const { ocupada, errores, votar, cerrar, eliminar, ...acciones } = useAccionesDeEncuesta({
+    jwt: credential.jwt,
+    yo: credential.userId,
+    reemplazar,
+    recargar: () => void load(),
+  });
   const refresco = (
     <RefreshControl
       refreshing={refreshing}

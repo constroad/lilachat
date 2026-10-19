@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Envelope } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
-import { ensureIdentity, fetchPublicKey, fingerprintWith, openFrom, sealFor } from './deviceKeys';
+import { claveDeMensajes, ensureIdentity, fetchPublicKey, fingerprintWith, openFrom, sealFor } from './deviceKeys';
+
+/** Tope de textos abiertos guardados por sesión: un chat largo no crece sin fin. */
+const MAXIMO_DE_ABIERTOS = 2000;
 
 /**
  * La sesión de cifrado de UNA conversación secreta (F9).
@@ -45,18 +48,29 @@ export function useSecretChat(params: {
     const suya = await fetchPublicKey(params.credential.jwt, params.otherUserId);
     if (!suya) return setSession({ estado: 'sin-clave' });
 
+    const clave = claveDeMensajes(suya, mia.privateKey);
+    // Lo ya abierto no se vuelve a abrir: la pantalla re-deriva los visibles en
+    // cada cambio de mensajes (FL12, §49 #9). Por sobre, que no cambia.
+    const abiertos = new Map<string, string | null>();
     setSession({
       estado: 'listo',
       // Si algo falla al cifrar se devuelve `null` y NO se cae a texto plano:
       // el candado en pantalla tiene que significar lo que dice.
       seal: (text) => {
         try {
-          return sealFor(suya, mia.privateKey, text);
+          return sealFor(clave, text);
         } catch {
           return null;
         }
       },
-      open: (envelope) => openFrom(suya, mia.privateKey, envelope),
+      open: (envelope) => {
+        const id = `${envelope.nonce}.${envelope.ciphertext}`;
+        if (!abiertos.has(id)) {
+          if (abiertos.size >= MAXIMO_DE_ABIERTOS) abiertos.clear();
+          abiertos.set(id, openFrom(clave, envelope));
+        }
+        return abiertos.get(id) ?? null;
+      },
       fingerprint: fingerprintWith(mia.publicKey, suya),
     });
   }, [params.credential.jwt, params.otherUserId, params.enabled]);

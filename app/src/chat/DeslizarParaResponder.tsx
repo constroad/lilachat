@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -52,19 +52,29 @@ export function DeslizarParaResponder({
     }
   );
 
-  const gesto = Gesture.Pan()
-    .enabled(habilitado)
-    .activeOffsetX(ARRANQUE_HORIZONTAL)
-    .failOffsetY([-TOLERANCIA_VERTICAL, TOLERANCIA_VERTICAL])
-    .onUpdate((evento) => {
-      dx.value = desplazamientoVisible(evento.translationX);
-    })
-    .onEnd((evento) => {
-      if (cruzoElUmbral(evento.translationX)) runOnJS(onResponder)();
-    })
-    .onFinalize(() => {
-      dx.value = withSpring(0, { damping: 18, stiffness: 220 });
-    });
+  // El gesto se arma UNA vez por fila (FL12): recrearlo en cada render volvía
+  // a configurar el handler nativo y a mandar los worklets al hilo de UI en
+  // todas las filas visibles. El `onResponder` del momento se lee de un ref.
+  const responder = useRef(onResponder);
+  responder.current = onResponder;
+  const llamarResponder = useCallback(() => responder.current(), []);
+  const gesto = useMemo(
+    () =>
+      Gesture.Pan()
+        .enabled(habilitado)
+        .activeOffsetX(ARRANQUE_HORIZONTAL)
+        .failOffsetY([-TOLERANCIA_VERTICAL, TOLERANCIA_VERTICAL])
+        .onUpdate((evento) => {
+          dx.value = desplazamientoVisible(evento.translationX);
+        })
+        .onEnd((evento) => {
+          if (cruzoElUmbral(evento.translationX)) runOnJS(llamarResponder)();
+        })
+        .onFinalize(() => {
+          dx.value = withSpring(0, { damping: 18, stiffness: 220 });
+        }),
+    [habilitado, dx, llamarResponder]
+  );
 
   const estiloBurbuja = useAnimatedStyle(() => ({ transform: [{ translateX: dx.value }] }));
   const estiloIcono = useAnimatedStyle(() => ({

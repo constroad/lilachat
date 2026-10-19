@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { Pause, Play } from 'lucide-react-native';
@@ -6,38 +6,52 @@ import { duracionDeVoz } from '@lilachat/shared';
 import { segundosDelToque, siguienteVelocidad, soltarElAudio, tomarElAudio } from './notaDeVozMotor';
 import { useColores } from '../ui/tema';
 
-/**
- * La nota de voz, con su play, su tiempo y —como WhatsApp (FL9b)— la velocidad
- * (1× / 1,5× / 2×), una sola sonando a la vez, y tocar la barra para saltar.
- *
- * El reproductor vive en un componente aparte porque `useAudioPlayer` es un
- * hook: en la fila habría que montarlo para CADA mensaje, incluidos los de
- * texto, y quedarían decenas de reproductores vivos en una conversación larga.
- *
- * **No arranca solo.** Un audio que empieza a sonar al aparecer en pantalla es
- * lo peor que puede hacer una app de mensajería: suena en la mesa, en la
- * reunión, o encima de otro audio.
- */
-export function NotaDeVoz({
-  id,
-  url,
-  durationMs,
-  onda,
-  mia = false,
-}: {
+type PropsDeNota = {
   id: string;
   url: string;
   durationMs?: number;
   onda?: number[];
   /** En la propia (violeta sólido, FL13) todo va en el color del texto. */
   mia?: boolean;
-}) {
-  const colores = useColores();
-  const tinta = mia ? colores['on-burbuja-propia'] : colores.primary;
+};
+
+/**
+ * La nota de voz, con su play, su tiempo y —como WhatsApp (FL9b)— la velocidad
+ * (1× / 1,5× / 2×), una sola sonando a la vez, y tocar la barra para saltar.
+ *
+ * **El reproductor nace al primer toque** (FL12, §49 #10). `useAudioPlayer`
+ * crea un reproductor nativo y empieza a bajar el audio al montarse: un chat
+ * con diez notas visibles eran diez reproductores y diez descargas peleando
+ * con las fotos. Hasta que se toca, es solo la onda y la duración guardadas.
+ *
+ * **No arranca solo.** Un audio que empieza a sonar al aparecer en pantalla es
+ * lo peor que puede hacer una app de mensajería: suena en la mesa, en la
+ * reunión, o encima de otro audio.
+ */
+export function NotaDeVoz(props: PropsDeNota) {
+  const [activa, setActiva] = useState(false);
+  const [velocidad, setVelocidad] = useState(1);
+  if (activa) return <NotaDeVozActiva {...props} velocidadInicial={velocidad} />;
+  return (
+    <VistaDeNota
+      mia={props.mia}
+      onda={props.onda}
+      sonando={false}
+      ms={props.durationMs ?? 0}
+      avance={0}
+      velocidad={velocidad}
+      onPlay={() => setActiva(true)}
+      onVelocidad={() => setVelocidad(siguienteVelocidad(velocidad))}
+    />
+  );
+}
+
+/** Ya tocada: el reproductor vive y arranca solo, porque es la respuesta al toque. */
+function NotaDeVozActiva({ id, url, durationMs, onda, mia, velocidadInicial }: PropsDeNota & { velocidadInicial: number }) {
   const player = useAudioPlayer(url);
   const estado = useAudioPlayerStatus(player);
-  const [velocidad, setVelocidad] = useState(1);
-  const [anchoBarra, setAnchoBarra] = useState(0);
+  const [velocidad, setVelocidad] = useState(velocidadInicial);
+  const arrancada = useRef(false);
 
   useEffect(() => () => soltarElAudio(id), [id]);
 
@@ -61,18 +75,58 @@ export function NotaDeVoz({
     player.play();
   };
 
-  const cambiarVelocidad = () => {
-    const nueva = siguienteVelocidad(velocidad);
-    setVelocidad(nueva);
-    player.setPlaybackRate(nueva);
-  };
+  // El toque que la activó ya pidió reproducir: arranca una sola vez al montar.
+  useEffect(() => {
+    if (arrancada.current) return;
+    arrancada.current = true;
+    tomarElAudio(id, () => player.pause());
+    player.setPlaybackRate(velocidad);
+    player.play();
+  }, [id, player, velocidad]);
+
+  return (
+    <VistaDeNota
+      mia={mia}
+      onda={onda}
+      sonando={sonando}
+      ms={ms}
+      avance={avance}
+      velocidad={velocidad}
+      onPlay={reproducir}
+      onVelocidad={() => {
+        const nueva = siguienteVelocidad(velocidad);
+        setVelocidad(nueva);
+        player.setPlaybackRate(nueva);
+      }}
+      onSaltar={(x, ancho) => player.seekTo(segundosDelToque({ x, ancho, duracion }))}
+    />
+  );
+}
+
+/** Lo que se ve, igual con o sin reproductor. */
+function VistaDeNota(props: {
+  mia?: boolean;
+  onda?: number[];
+  sonando: boolean;
+  ms: number;
+  avance: number;
+  velocidad: number;
+  onPlay: () => void;
+  onVelocidad: () => void;
+  /** Sin reproductor todavía no hay a dónde saltar. */
+  onSaltar?: (x: number, ancho: number) => void;
+}) {
+  const { mia, onda, sonando, avance, velocidad } = props;
+  const colores = useColores();
+  const tinta = mia ? colores['on-burbuja-propia'] : colores.primary;
+  const [anchoBarra, setAnchoBarra] = useState(0);
 
   return (
     <View testID="nota-de-voz" className="min-w-[210px] flex-row items-center gap-3 px-3 py-2.5">
       <Pressable
         testID={sonando ? 'btn-pausar-voz' : 'btn-reproducir-voz'}
         accessibilityLabel={sonando ? 'Pausar' : 'Reproducir'}
-        onPress={reproducir}
+        onPress={props.onPlay}
         hitSlop={2}
         className={`h-10 w-10 items-center justify-center rounded-full ${mia ? 'bg-white/20' : 'bg-primary/10'}`}
       >
@@ -85,7 +139,7 @@ export function NotaDeVoz({
           accessibilityLabel="Ir a un punto de la nota"
           onLayout={(evento) => setAnchoBarra(evento.nativeEvent.layout.width)}
           hitSlop={{ top: 10, bottom: 10 }}
-          onPress={(evento) => player.seekTo(segundosDelToque({ x: evento.nativeEvent.locationX, ancho: anchoBarra, duracion }))}
+          onPress={(evento) => props.onSaltar?.(evento.nativeEvent.locationX, anchoBarra)}
           className="h-6 justify-center"
         >
           {onda?.length ? (
@@ -108,12 +162,12 @@ export function NotaDeVoz({
             </View>
           )}
         </Pressable>
-        <Text className={`text-[11px] ${mia ? 'text-on-burbuja-propia-suave' : 'text-on-surface-variant'}`}>{duracionDeVoz(ms)}</Text>
+        <Text className={`text-[11px] ${mia ? 'text-on-burbuja-propia-suave' : 'text-on-surface-variant'}`}>{duracionDeVoz(props.ms)}</Text>
       </View>
       <Pressable
         testID="btn-velocidad-voz"
         accessibilityLabel={`Velocidad ${velocidad}×`}
-        onPress={cambiarVelocidad}
+        onPress={props.onVelocidad}
         className="h-11 min-w-[44px] items-center justify-center"
       >
         <Text className={`rounded-full px-2 py-1 text-[12px] font-bold ${mia ? 'bg-white/20 text-on-burbuja-propia' : 'bg-primary/10 text-primary'}`}>

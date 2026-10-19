@@ -27,13 +27,19 @@ const TABS: { key: Tab; label: string; Icon: typeof MessageCircle }[] = [
   { key: 'ajustes', label: 'Ajustes', Icon: Settings },
 ];
 
+/** Más que esto se lee «99+»: el número exacto ya no informa. */
+const TOPE_DEL_CONTADOR = 99;
+
 export function BottomNav({
   active,
   onChange,
   vertical = false,
+  cuentas,
 }: {
   active: Tab;
   onChange: (tab: Tab) => void;
+  /** Lo que espera en cada pestaña (eventos por responder, encuestas por votar). */
+  cuentas?: Partial<Record<Tab, number>>;
   /** Riel a la izquierda (FL10): girado o en tablet, la altura no alcanza para la barra abajo. */
   vertical?: boolean;
 }) {
@@ -54,7 +60,19 @@ export function BottomNav({
             onPress={() => onChange(key)}
             className={vertical ? 'min-h-[64px] items-center justify-center gap-0.5' : 'min-h-[44px] flex-1 items-center justify-center gap-0.5'}
           >
-            <Icon size={20} color={selected ? colores.primary : colores.outline} />
+            <View>
+              <Icon size={20} color={selected ? colores.primary : colores.outline} />
+              {cuentas?.[key] ? (
+                <View
+                  testID={`contador-${key}`}
+                  className="absolute -right-3 -top-1.5 h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-surface bg-primary px-1"
+                >
+                  <Text className="text-[10px] font-bold text-on-primary" allowFontScaling={false}>
+                    {cuentas[key]! > TOPE_DEL_CONTADOR ? `${TOPE_DEL_CONTADOR}+` : cuentas[key]}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
             <Text
               className={`text-[10px] ${
                 selected ? 'font-semibold text-primary' : 'text-on-surface-variant'

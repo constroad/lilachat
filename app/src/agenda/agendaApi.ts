@@ -98,3 +98,6 @@ export const agendaPatch = <T>(route: string, jwt: string, body: Record<string, 
   call<T>(route, jwt, { method: 'PATCH', body: JSON.stringify(body) });
 
 export const agendaDelete = <T>(route: string, jwt: string) => call<T>(route, jwt, { method: 'DELETE' });
+
+/** Lo que me espera, para los contadores de las pestañas (`GET /pendientes`, 18/10). */
+export type PendientesDeAgenda = { encuestas: number; eventos: number };

@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { Keyboard, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import type { FlashListRef } from '@shopify/flash-list';
-
-/** Cuánto (en dp) cuenta como «estar abajo» en la conversación. */
-const MARGEN_DEL_FINAL = 160;
+import { PosicionEnLaLista } from './finalDeLaConversacion';
 
 /**
  * Dónde está la conversación respecto de su final (FL2/FL3).
@@ -14,6 +12,8 @@ const MARGEN_DEL_FINAL = 160;
  * - Lejos del final aparece el botón «bajar», con cuántos mensajes de otros
  *   llegaron mientras tanto (por `seq`: el historial viejo que se carga ARRIBA
  *   también alarga la lista y no es «nuevo»).
+ * - Cuánto falta para el final lo decide `PosicionEnLaLista`: el alto del
+ *   contenido sale de la medición, no del evento de scroll (que llega atrasado).
  */
 export function useFinalDeLaConversacion<T>(
   listaRef: RefObject<FlashListRef<T> | null>,
@@ -21,14 +21,26 @@ export function useFinalDeLaConversacion<T>(
   yo: string
 ) {
   const cercaDelFinal = useRef(true);
+  const [posicion] = useState(() => new PosicionEnLaLista());
   /** Lejos del final: muestra el botón «bajar». Estado solo al CAMBIAR. */
   const [abajoLejos, setAbajoLejos] = useState(false);
-  const alScrollear = useCallback((evento: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const { contentOffset, contentSize, layoutMeasurement } = evento.nativeEvent;
-    const cerca = contentSize.height - (contentOffset.y + layoutMeasurement.height) < MARGEN_DEL_FINAL;
+  const fijarCerca = useCallback((cerca: boolean) => {
     cercaDelFinal.current = cerca;
     setAbajoLejos((antes) => (antes === !cerca ? antes : !cerca));
   }, []);
+  const alScrollear = useCallback(
+    (evento: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { contentOffset, contentSize, layoutMeasurement } = evento.nativeEvent;
+      fijarCerca(posicion.alScrollear({ offset: contentOffset.y, alto: layoutMeasurement.height, contenido: contentSize.height }));
+    },
+    [fijarCerca, posicion]
+  );
+  const alCambiarTamaño = useCallback(
+    (_ancho: number, alto: number) => {
+      if (posicion.alCambiarTamaño(alto)) fijarCerca(true);
+    },
+    [fijarCerca, posicion]
+  );
 
   const [nuevosAbajo, setNuevosAbajo] = useState(0);
   const ultimoSeqVisto = useRef(0);
@@ -47,5 +59,5 @@ export function useFinalDeLaConversacion<T>(
     return () => sub.remove();
   }, [listaRef]);
 
-  return { alScrollear, abajoLejos, nuevosAbajo };
+  return { alScrollear, alCambiarTamaño, abajoLejos, nuevosAbajo };
 }

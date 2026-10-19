@@ -4,9 +4,10 @@ import { RTCView, type MediaStream } from 'react-native-webrtc';
 import { Mic, MicOff, PhoneOff, User, Video, VideoOff, Volume2 } from 'lucide-react-native';
 import type { CallState } from '@lilachat/shared';
 import { leyendaDeLlamada, type EstadoDeMedios } from './estadoDeMedios';
-import { useColores } from '../ui/tema';
+import { useColores, useTema } from '../ui/tema';
 import { inicialesDe } from '../ui/avatarMotor';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { StatusBar } from 'expo-status-bar';
 import { DeslizarParaContestar } from './DeslizarParaContestar';
 
 /**
@@ -61,6 +62,7 @@ export function CallScreen({
   onHangUp: () => void;
 }) {
   const colores = useColores();
+  const { oscuro } = useTema();
   const inicialesDelOtro = inicialesDe(peerName);
   // El reloj se recalcula cada segundo; el ESTADO no cambia por eso.
   const [ahora, setAhora] = useState(() => Date.now());
@@ -76,6 +78,9 @@ export function CallScreen({
     <Modal visible={visible} animationType="slide" statusBarTranslucent>
       {/* Un Modal de Android necesita su propia raíz de gestos para deslizar. */}
       <GestureHandlerRootView style={{ flex: 1 }}>
+      {/* Los íconos del sistema contra el fondo de la llamada (FL13): en claro el
+          fondo es violeta y van claros; en oscuro es lavanda y van oscuros. */}
+      <StatusBar style={oscuro ? 'dark' : 'light'} />
       <View className="flex-1 bg-primary" testID="pantalla-llamada">
         {/* Video: el remoto llena la pantalla y el propio va en un recuadro
             arriba a la derecha, como en el diseño «Video Llamada». El audio no

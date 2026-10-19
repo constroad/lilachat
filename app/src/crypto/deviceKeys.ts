@@ -95,19 +95,24 @@ export async function fetchPublicKey(
  * verdad en el uso real, y está anotado como pendiente. Con esto ya se cumple
  * lo esencial —el server no puede leer— sin fingir que es Signal.
  */
-export function sealFor(theirPublicKey: Uint8Array, privateKey: Uint8Array, text: string): Envelope {
+/**
+ * La clave de los mensajes de una pareja. Se deriva UNA vez por sesión (FL12,
+ * §49 #9): antes cada sobre hacía X25519 + tres HKDF en JS puro, y la pantalla
+ * volvía a abrir todos los mensajes en cada cambio. Como la cadena arranca
+ * siempre de la raíz, la clave es la misma para todos.
+ */
+export function claveDeMensajes(theirPublicKey: Uint8Array, privateKey: Uint8Array): Uint8Array {
   const raiz = deriveSessionRoot({ myPrivateKey: privateKey, theirPublicKey });
-  return encryptMessage(advanceChain(raiz).messageKey, text);
+  return advanceChain(raiz).messageKey;
 }
 
-export function openFrom(
-  theirPublicKey: Uint8Array,
-  privateKey: Uint8Array,
-  envelope: Envelope
-): string | null {
+export function sealFor(messageKey: Uint8Array, text: string): Envelope {
+  return encryptMessage(messageKey, text);
+}
+
+export function openFrom(messageKey: Uint8Array, envelope: Envelope): string | null {
   try {
-    const raiz = deriveSessionRoot({ myPrivateKey: privateKey, theirPublicKey });
-    return decryptMessage(advanceChain(raiz).messageKey, envelope);
+    return decryptMessage(messageKey, envelope);
   } catch {
     // Un sobre que no abre NO se muestra como texto vacío: la pantalla tiene
     // que poder decir «no se pudo descifrar», que es información real.

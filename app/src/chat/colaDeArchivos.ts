@@ -6,6 +6,7 @@ import { reportarError } from '../ui/reportarError';
 import { decidirSubida, siguienteArchivo, type ArchivoEnCola } from './colaDeArchivosMotor';
 import { uploadMedia } from './mediaUpload';
 import { alConectar } from './socketClient';
+import { valeAvisarProgreso } from './progresoDeSubida';
 
 /**
  * La cola de FOTOS, ARCHIVOS y NOTAS DE VOZ, persistida (FL8).
@@ -132,6 +133,9 @@ export async function drenarArchivos(): Promise<void> {
         height: archivo.height,
         onda: archivo.onda,
         onProgress: (ratio) => {
+          const avisado = progreso?.clientKey === archivo.clientKey ? progreso.ratio : null;
+          // Por pasos visibles (FL12): cada aviso redibuja la pantalla del chat.
+          if (!valeAvisarProgreso(avisado, ratio)) return;
           progreso = { clientKey: archivo.clientKey, ratio };
           avisar();
         },

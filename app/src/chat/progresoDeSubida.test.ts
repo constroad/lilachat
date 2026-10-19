@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { etiquetaDeSubida, porcentajeDeSubida, textoDeSubida } from './progresoDeSubida';
+import { etiquetaDeSubida, porcentajeDeSubida, textoDeSubida, valeAvisarProgreso } from './progresoDeSubida';
 
 describe('porcentajeDeSubida', () => {
   it('convierte la razón a porcentaje', () => {
@@ -64,5 +64,21 @@ describe('etiquetaDeSubida', () => {
   it('fallido: lo dice y deja de girar, con cualquier progreso', () => {
     expect(etiquetaDeSubida({ razon: 0, fallido: true })).toEqual({ texto: 'No se envió', girando: false });
     expect(etiquetaDeSubida({ razon: 0.8, fallido: true })).toEqual({ texto: 'No se envió', girando: false });
+  });
+});
+
+/**
+ * FL12 (§49 #11): cada `onprogress` del XHR redibujaba la pantalla entera,
+ * ~10 veces por segundo mientras subía una foto. Se avisa por pasos visibles.
+ */
+describe('valeAvisarProgreso', () => {
+  it('un paso chico no avisa; uno visible sí', () => {
+    expect(valeAvisarProgreso(0.1, 0.11)).toBe(false);
+    expect(valeAvisarProgreso(0.1, 0.15)).toBe(true);
+  });
+
+  it('el primero y el final siempre avisan', () => {
+    expect(valeAvisarProgreso(null, 0.01)).toBe(true);
+    expect(valeAvisarProgreso(0.99, 1)).toBe(true);
   });
 });

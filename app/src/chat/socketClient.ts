@@ -1,3 +1,4 @@
+import type { RefDeMensaje } from '@lilachat/shared';
 import { io, type Socket } from 'socket.io-client';
 import { pausaDelSocket, queHacerConElSocket, type PausaDelSocket } from './servicioDeConexion';
 import { registrarPerf } from '../diagnostico/diagnostico';
@@ -21,6 +22,8 @@ export type ServerMessage = {
   body?: string;
   /** El sobre cifrado, en chats secretos (F9). Llega en vez de `body`. */
   envelope?: { v: 1; nonce: string; ciphertext: string };
+  /** La encuesta o el evento que publica este mensaje (18/10): se dibuja como tarjeta. */
+  ref?: RefDeMensaje;
   media?: {
     mediaId: string;
     /** La miniatura, para la burbuja. */

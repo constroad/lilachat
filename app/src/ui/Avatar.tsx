@@ -41,7 +41,7 @@ export const Avatar = memo(function Avatar(props: {
       className={`items-center justify-center overflow-hidden ${FONDO_DEL_TONO[tonoDeAvatar(props.nombre)]}`}
     >
       {props.foto ? (
-        <Image source={{ uri: props.foto }} style={lado} contentFit="cover" />
+        <Image recyclingKey={props.foto} source={{ uri: props.foto }} style={lado} contentFit="cover" />
       ) : iniciales ? (
         <Text
           style={{ fontSize: Math.round(props.tamano * ESCALA_DE_INICIALES) }}

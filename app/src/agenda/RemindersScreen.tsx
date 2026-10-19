@@ -42,14 +42,22 @@ export function RemindersScreen({
   credential,
   recarga,
   onEditar,
+  onCantidad,
 }: {
   credential: Credential;
   /** Sube cuando algo se creó, editó o borró: se vuelve a pedir SIN esqueleto. */
   recarga: number;
   onEditar: (reminder: AgendaReminder) => void;
+  /** Cuántos están activos: el número del segmento «Recordatorios» (18/10). */
+  onCantidad?: (cuantos: number) => void;
 }) {
   const colores = useColores();
   const [data, setData] = useState<Lista | null>(null);
+  const cantidadRef = useRef(onCantidad);
+  cantidadRef.current = onCantidad;
+  useEffect(() => {
+    if (data) cantidadRef.current?.([...data.mine, ...data.shared].filter((recordatorio) => recordatorio.active).length);
+  }, [data]);
   const [fallo, setFallo] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const dataRef = useRef<Lista | null>(null);

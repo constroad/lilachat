@@ -38,9 +38,12 @@ export function AgendaScreen({
   credential,
   activa,
   grupos,
+  onCambio,
 }: {
   credential: Credential;
   activa: boolean;
+  /** Algo se creó, se respondió o se recargó: cambia el contador de la pestaña. */
+  onCambio?: () => void;
   /** Mis grupos, para que un evento con la misma gente vaya al que ya existe (FL10). */
   grupos?: readonly { id: string; memberIds: readonly string[] }[];
 }) {
@@ -50,6 +53,12 @@ export function AgendaScreen({
   const [eligiendo, setEligiendo] = useState(false);
   const [formulario, setFormulario] = useState<Formulario>(null);
   const [recarga, setRecarga] = useState(0);
+  /** Cuántos hay de cada uno, para los segmentos (José, 18/10: «no hay un contador»). */
+  const [cuantos, setCuantos] = useState({ eventos: 0, avisos: 0 });
+  const contar = (cual: keyof typeof cuantos) => (n: number) => {
+    setCuantos((antes) => (antes[cual] === n ? antes : { ...antes, [cual]: n }));
+    onCambio?.();
+  };
 
   const oculta = (cual: typeof vista) => ({ flex: 1, display: cual === vista ? ('flex' as const) : ('none' as const) });
   const alGuardar = () => setRecarga((n) => n + 1);
@@ -61,10 +70,10 @@ export function AgendaScreen({
       <View className="mx-4 mt-2">
         <Segmentado
           opciones={[
-            { key: 'eventos', etiqueta: 'Eventos', testID: 'tab-agenda-eventos' },
+            { key: 'eventos', etiqueta: 'Eventos', testID: 'tab-agenda-eventos', cuenta: cuantos.eventos },
             // «Recordatorios» y no «Avisos»: es como los llama el «+» y su
             // pantalla («Nuevo recordatorio»). Dos nombres para lo mismo confunden.
-            { key: 'avisos', etiqueta: 'Recordatorios', testID: 'tab-agenda-avisos' },
+            { key: 'avisos', etiqueta: 'Recordatorios', testID: 'tab-agenda-avisos', cuenta: cuantos.avisos },
           ]}
           valor={vista}
           onCambiar={setVista}
@@ -74,10 +83,10 @@ export function AgendaScreen({
       {/* Las pantallas siguen siendo dos: cada una tiene su carga, su vacío y
           su forma de fila. Lo que se unificó es la NAVEGACIÓN. */}
       <View style={oculta('eventos')}>
-        <EventsScreen credential={credential} recarga={recarga} onEditar={(editando) => setFormulario({ tipo: 'event', editando })} />
+        <EventsScreen credential={credential} recarga={recarga} onEditar={(editando) => setFormulario({ tipo: 'event', editando })} onCantidad={contar('eventos')} />
       </View>
       <View style={oculta('avisos')}>
-        <RemindersScreen credential={credential} recarga={recarga} onEditar={(editando) => setFormulario({ tipo: 'reminder', editando })} />
+        <RemindersScreen credential={credential} recarga={recarga} onEditar={(editando) => setFormulario({ tipo: 'reminder', editando })} onCantidad={contar('avisos')} />
       </View>
 
       <Pressable

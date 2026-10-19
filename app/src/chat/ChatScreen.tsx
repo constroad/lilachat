@@ -4,7 +4,7 @@ import { ProgramarMensajeModal } from './ProgramarMensajeModal';
 import { ProgramadosDelChat } from './ProgramadosDelChat';
 import type { FlashListRef } from '@shopify/flash-list';
 import { KeyboardAvoidingView, useKeyboardState } from 'react-native-keyboard-controller';
-import { formatDayLabel, startsNewDay } from '@lilachat/shared';
+import { formatDayLabel, resolveDeliveryState, startsNewDay } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { AttachSheet } from './AttachSheet';
 import { CrearDesdeElChat } from './CrearDesdeElChat';
@@ -34,7 +34,7 @@ import { useColores } from '../ui/tema';
 import { BuscadorDelChat } from './BuscadorDelChat';
 import { useBuscarEnChat } from './useBuscarEnChat';
 import { textoDeSubida } from './progresoDeSubida';
-import { citadosPorSeq, filaDeArchivoEnCola, fotosDelChat } from './filasDelChat';
+import { citadosPorSeq, filaDeArchivoEnCola, fotosDelChat, sinPendientesConfirmados } from './filasDelChat';
 import { useGrupo } from './useGrupo';
 import { FueraDelGrupo } from './FueraDelGrupo';
 import { subtituloDelChat } from './cabeceraDelChat';
@@ -159,6 +159,13 @@ export function ChatScreen({
   const { ocultos, ocultar } = useOcultos(chatId);
   const [verDetalle, setVerDetalle] = useState(false);
   /**
+   * El detalle se monta la PRIMERA vez que se abre y queda (FL12, §49 #13):
+   * cerrado igual clasificaba las medias del chat en cada mensaje nuevo, y la
+   * mayoría de las veces nadie lo abre. Quedarse montado conserva la animación.
+   */
+  const [detalleUsado, setDetalleUsado] = useState(false);
+  if (verDetalle && !detalleUsado) setDetalleUsado(true);
+  /**
    * Lo que se cambió en el detalle, para pintarlo YA en esta cabecera.
    *
    * Los props vienen de la lista, que es una foto del momento en que se abrió
@@ -234,8 +241,14 @@ export function ChatScreen({
     () => [
       // «Eliminar para mí» (FL9): ocultos en este teléfono.
       ...sinOcultos(messages, ocultos),
-      ...pending,
-      ...archivosEnCola.map(({ archivo, progreso }) => filaDeArchivoEnCola(archivo, progreso)),
+      // El eco puede llegar antes que el ack: sin esto la burbuja salía doble.
+      ...sinPendientesConfirmados(pending, messages),
+      // Los archivos también: comparten `clientKey` con su mensaje, y dos filas
+      // con la misma clave no pueden convivir en la lista.
+      ...sinPendientesConfirmados(
+        archivosEnCola.map(({ archivo, progreso }) => filaDeArchivoEnCola(archivo, progreso)),
+        messages
+      ),
     ],
     [messages, ocultos, pending, archivosEnCola]
   );
@@ -356,6 +369,7 @@ export function ChatScreen({
       const next = rows[index + 1];
       const at = isPending(item) ? item.queuedAt : item.at;
       const previousAt = previous ? (isPending(previous) ? previous.queuedAt : previous.at) : undefined;
+      const mia = isPending(item) || item.senderId === credential.userId;
       return (
         <>
           {startsNewDay(at, previousAt) ? <DaySeparator label={formatDayLabel(at)} /> : null}
@@ -365,8 +379,16 @@ export function ChatScreen({
             previous={previous}
             next={next}
             myUserId={credential.userId}
-            othersReadSeq={leidoHasta}
-            othersDeliveredSeq={entregadoHasta}
+            jwt={credential.jwt}
+            entrega={
+              mia
+                ? resolveDeliveryState({
+                    seq: isPending(item) ? null : item.seq,
+                    otherReadSeq: leidoHasta,
+                    otherDeliveredSeq: entregadoHasta,
+                  })
+                : undefined
+            }
             esGrupo={esGrupoChat}
             nombreAutor={isPending(item) ? undefined : nombresDelGrupo.get(String(item.senderId))}
             onVerImagen={alVerImagen}
@@ -405,6 +427,10 @@ export function ChatScreen({
        * teclado. Resultado: el campo de escribir desaparecia y quedaba una
        * pantalla vacia con el teclado encima (visto por Jose el 27/08/2026,
        * chateando con Wilson).
+       *
+       * FL12 (§49 #1) probó `KeyboardChatScrollView` + `KeyboardStickyView` para
+       * no relayoutear en cada cuadro, y se volvió atrás: tras un modal (llamada,
+       * hoja de adjuntar) la lista saltaba al principio de la conversación.
        */
       behavior="padding"
       testID="pantalla-chat"
@@ -570,6 +596,7 @@ export function ChatScreen({
         onError={setMediaError}
       />
 
+      {detalleUsado ? (
       <ChatDetailScreen
         visible={verDetalle}
         chatId={chatId}
@@ -593,6 +620,7 @@ export function ChatScreen({
           busqueda.abrir();
         }}
       />
+      ) : null}
     </KeyboardAvoidingView>
   );
 }

@@ -17,16 +17,49 @@ export type FilaMinima = {
   media?: { mime?: string };
   pending?: boolean;
   clientKey?: string;
+  /** Un archivo en cola (pendiente con foto, video o documento). */
+  mediaUri?: string;
 };
 
-export type TipoDeFila = 'texto' | 'media' | 'aviso' | 'pendiente';
+export type TipoDeFila = 'texto' | 'media' | 'aviso';
 
-/** FlashList recicla celdas por tipo: una burbuja de foto no se reusa para un texto. */
+/**
+ * FlashList recicla celdas por tipo: una burbuja de foto no se reusa para un
+ * texto. El pendiente lleva el tipo que tendrá al confirmarse (FL12, §49 #7):
+ * con uno propio, la celda cambiaba justo cuando aparecía el check.
+ */
 export function tipoDeFila(fila: FilaMinima): TipoDeFila {
-  if (fila.pending) return 'pendiente';
+  if (fila.pending) return fila.mediaUri ? 'media' : 'texto';
   if (fila.kind === 'system') return 'aviso';
   if (fila.deletedAt) return 'texto';
   return fila.media ? 'media' : 'texto';
+}
+
+/**
+ * La clave de la fila en la lista (FL12, §49 #7). Pendiente y confirmado del
+ * mismo envío comparten `clientKey`, así que son la MISMA celda: solo cambia el
+ * reloj por el check. El historial sin `clientKey` usa el `seq`.
+ */
+export function claveDeFila(fila: FilaMinima): string {
+  return fila.clientKey ? `k-${fila.clientKey}` : `m-${fila.seq}`;
+}
+
+/** Cuántos mensajes del final se miran: el eco de lo que acabo de mandar está ahí. */
+const ULTIMOS_PARA_CONFIRMAR = 50;
+
+/**
+ * Los pendientes cuyo mensaje todavía NO llegó confirmado. El eco del server
+ * (`msg.new`) puede llegar antes que el ack que saca el pendiente de la cola:
+ * en ese hueco la burbuja se veía dos veces, con reloj y con check.
+ */
+export function sinPendientesConfirmados<P extends { clientKey: string }>(
+  pendientes: P[],
+  mensajes: readonly FilaMinima[]
+): P[] {
+  if (pendientes.length === 0) return pendientes;
+  const confirmados = new Set(mensajes.slice(-ULTIMOS_PARA_CONFIRMAR).map((mensaje) => mensaje.clientKey));
+  const quedan = pendientes.filter((pendiente) => !confirmados.has(pendiente.clientKey));
+  return quedan.length === pendientes.length ? pendientes : quedan;
 }
 
 export type Citado = { autor: string; texto: string };

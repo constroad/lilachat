@@ -7,6 +7,7 @@ import { useColores } from '../ui/tema';
 import { precalentarPermisoDeVoz, useGrabadorDeVoz, type NotaGrabada } from './useGrabadorDeVoz';
 import { guardarBorrador, leerBorrador } from './borradores';
 import { BotonDeVoz } from './BotonDeVoz';
+import { formaDelTexto, type FormaDelTexto } from './campoDeTexto';
 import type { DecisionDeVoz, mientrasSostiene } from './gestoDeVoz';
 
 /** Cuánto se espera tras la última tecla para guardar el borrador. */
@@ -59,12 +60,36 @@ export const Composer = memo(function Composer(props: {
   modoSecreto?: 'bloqueado' | 'solo-texto';
 }) {
   const colores = useColores();
-  const [borrador, setBorrador] = useState('');
+  /**
+   * El campo NO es controlado (FL12, §49 #15): con `value` cada tecla iba y
+   * volvía entre JS y el nativo y redibujaba la barra, y con el hilo JS ocupado
+   * se veían letras que tardaban. El texto vive en un ref; el estado solo
+   * guarda su FORMA, que cambia al cruzar vacío ↔ con texto.
+   */
+  const inputRef = useRef<TextInput>(null);
+  const textoRef = useRef('');
+  const [forma, setForma] = useState<FormaDelTexto>(() => formaDelTexto(''));
+  /** Poner un texto desde afuera (borrador, edición, devolverlo) remonta el campo con ese valor. */
+  const [inicial, setInicial] = useState({ texto: '', version: 0 });
+  const reflejar = (texto: string) => {
+    textoRef.current = texto;
+    const nueva = formaDelTexto(texto);
+    setForma((antes) => (antes.vacio === nueva.vacio && antes.conTexto === nueva.conTexto ? antes : nueva));
+  };
+  const ponerTexto = (texto: string) => {
+    reflejar(texto);
+    setInicial((antes) => ({ texto, version: antes.version + 1 }));
+  };
+  // `clear()` y no remontar: enviar no puede cerrar el teclado.
+  const limpiarCampo = () => {
+    inputRef.current?.clear();
+    reflejar('');
+  };
   const voz = useGrabadorDeVoz();
   // Sin diálogo: si el micrófono ya está permitido, la primera nota no espera.
   useEffect(() => precalentarPermisoDeVoz(), []);
 
-  useImperativeHandle(props.ref, () => ({ limpiar: () => setBorrador('') }), []);
+  useImperativeHandle(props.ref, () => ({ limpiar: limpiarCampo }), []);
 
   // Al empezar a editar, el texto del mensaje va al campo; al terminar o
   // cancelar vuelve el borrador del chat, como WhatsApp. Lo mismo al abrir.
@@ -75,12 +100,12 @@ export const Composer = memo(function Composer(props: {
   useEffect(() => {
     if (editandoSeq !== null) {
       restaurado.current = false;
-      return setBorrador(textoAEditar);
+      return ponerTexto(textoAEditar);
     }
     let vigente = true;
     void leerBorrador(chatId).then((guardado) => {
       if (!vigente) return;
-      setBorrador(guardado);
+      ponerTexto(guardado);
       restaurado.current = true;
     });
     return () => {
@@ -92,16 +117,18 @@ export const Composer = memo(function Composer(props: {
   // Nunca antes de restaurarlo (pisaría el guardado con el campo vacío) ni lo
   // que se está editando, que es otro mensaje.
   const editandoAhora = editandoSeq !== null;
-  const pendiente = useRef({ texto: '', guardable: false });
-  pendiente.current = { texto: borrador, guardable: restaurado.current && !editandoAhora };
-  useEffect(() => {
-    if (!pendiente.current.guardable) return;
-    const espera = setTimeout(() => guardarBorrador(chatId, borrador), ESPERA_PARA_GUARDAR_MS);
-    return () => clearTimeout(espera);
-  }, [borrador, editandoAhora, chatId]);
+  const guardable = useRef(false);
+  guardable.current = restaurado.current && !editandoAhora;
+  const esperaDelBorrador = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const programarBorrador = () => {
+    if (esperaDelBorrador.current) clearTimeout(esperaDelBorrador.current);
+    if (!guardable.current) return;
+    esperaDelBorrador.current = setTimeout(() => guardarBorrador(chatId, textoRef.current), ESPERA_PARA_GUARDAR_MS);
+  };
   useEffect(
     () => () => {
-      if (pendiente.current.guardable) guardarBorrador(chatId, pendiente.current.texto);
+      if (esperaDelBorrador.current) clearTimeout(esperaDelBorrador.current);
+      if (guardable.current) guardarBorrador(chatId, textoRef.current);
     },
     [chatId],
   );
@@ -132,18 +159,19 @@ export const Composer = memo(function Composer(props: {
   const soloTexto = props.modoSecreto === 'solo-texto';
 
   const enviar = () => {
-    const texto = borrador;
-    setBorrador('');
+    const texto = textoRef.current;
+    limpiarCampo();
+    programarBorrador();
     if (props.editando) {
       const { seq } = props.editando;
       void props.onEditar(seq, texto).then((ok) => {
-        if (!ok) setBorrador(texto);
+        if (!ok) ponerTexto(texto);
       });
       return;
     }
     void props.onEnviar(texto, props.respondiendoA?.seq).then((ok) => {
       // Si no salió, el texto vuelve al campo: perderlo sería peor que el aviso.
-      if (!ok) setBorrador(texto);
+      if (!ok) ponerTexto(texto);
     });
   };
 
@@ -153,6 +181,11 @@ export const Composer = memo(function Composer(props: {
   const campoDeTexto = (
     <View className="min-w-0 flex-1 flex-row items-end rounded-3xl border border-outline/15 bg-background pr-1">
       <TextInput
+        key={inicial.version}
+        ref={inputRef}
+        defaultValue={inicial.texto}
+        // Al entrar a editar el campo se remonta con el texto: que siga con el foco.
+        autoFocus={editandoAhora}
         testID="input-mensaje"
         // 46 + el borde = 48: la misma altura que el micrófono (FL13). Con 44
         // el multilínea de Android crecía y quedaban desalineados.
@@ -160,14 +193,14 @@ export const Composer = memo(function Composer(props: {
         placeholder="Escribe un mensaje"
         placeholderTextColor={colores.outline}
         multiline
-        value={borrador}
         onChangeText={(texto) => {
-          setBorrador(texto);
+          reflejar(texto);
+          programarBorrador();
           // «Escribiendo» solo al agregar texto: vaciar el campo no lo es.
           if (texto.length > 0) props.onEscribiendo();
         }}
       />
-      {borrador.length === 0 && !soloTexto ? (
+      {forma.vacio && !soloTexto ? (
         <>
           <Pressable
             testID="btn-clip"
@@ -314,14 +347,14 @@ export const Composer = memo(function Composer(props: {
               >
                 <Send size={20} color={colores['on-primary']} />
               </Pressable>
-            ) : modoVoz === 'normal' && (borrador.trim() || soloTexto) ? (
+            ) : modoVoz === 'normal' && (forma.conTexto || soloTexto) ? (
               <Pressable
                 testID="btn-enviar"
                 accessibilityLabel="Enviar"
-                disabled={!borrador.trim()}
-                onLongPress={soloTexto ? undefined : () => props.onProgramar(borrador.trim())}
+                disabled={!forma.conTexto}
+                onLongPress={soloTexto ? undefined : () => props.onProgramar(textoRef.current.trim())}
                 onPress={enviar}
-                className={`h-12 w-12 items-center justify-center rounded-full bg-primary ${borrador.trim() ? '' : 'opacity-40'}`}
+                className={`h-12 w-12 items-center justify-center rounded-full bg-primary ${forma.conTexto ? '' : 'opacity-40'}`}
               >
                 <Send size={20} color={colores['on-primary']} />
               </Pressable>

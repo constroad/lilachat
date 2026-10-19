@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { citadosPorSeq, filaDeArchivoEnCola, fotosDelChat, tipoDeFila, type FilaMinima, anchoDeBurbujaConFoto, miniaturaDe } from './filasDelChat';
+import { citadosPorSeq, claveDeFila, filaDeArchivoEnCola, fotosDelChat, sinPendientesConfirmados, tipoDeFila, type FilaMinima, anchoDeBurbujaConFoto, miniaturaDe } from './filasDelChat';
 
 const msj = (seq: number, cambios: Partial<FilaMinima> = {}): FilaMinima => ({
   seq,
@@ -20,7 +20,11 @@ describe('tipoDeFila', () => {
     expect(tipoDeFila(msj(1))).toBe('texto');
     expect(tipoDeFila(msj(2, { media: { mime: 'image/jpeg' } }))).toBe('media');
     expect(tipoDeFila(msj(3, { kind: 'system' }))).toBe('aviso');
-    expect(tipoDeFila({ pending: true, clientKey: 'k' })).toBe('pendiente');
+    // FL12 (§49 #7): el pendiente recicla con el MISMO tipo que tendrá al
+    // confirmarse. Con un tipo propio, FlashList cambiaba de celda justo cuando
+    // aparecía el check.
+    expect(tipoDeFila({ pending: true, clientKey: 'k' })).toBe('texto');
+    expect(tipoDeFila({ pending: true, clientKey: 'k', mediaUri: 'file://foto.jpg' })).toBe('media');
   });
 
   it('un mensaje borrado es texto (la lápida), aunque tuviera media', () => {
@@ -182,5 +186,33 @@ describe('miniaturaDe', () => {
       yo: 'b', esGrupo: false, nombres: new Map(), nombreDelChat: 'QA Ana',
     });
     expect(fotos.map((foto) => foto.miniatura)).toEqual(['f.png']);
+  });
+});
+
+/**
+ * FL12 (§49 #7): al enviar, la burbuja pasa de pendiente a confirmada. Con la
+ * MISMA clave es la misma celda y solo cambia el reloj por el check; con claves
+ * distintas FlashList sacaba una celda y metía otra, y a veces se veían dos.
+ */
+describe('claveDeFila', () => {
+  it('pendiente y confirmado del mismo envío comparten clave', () => {
+    expect(claveDeFila({ pending: true, clientKey: 'abc' })).toBe(claveDeFila({ seq: 7, clientKey: 'abc' }));
+  });
+
+  it('sin clientKey (historial viejo) la clave sale del seq', () => {
+    expect(claveDeFila({ seq: 7 })).toBe('m-7');
+  });
+});
+
+describe('sinPendientesConfirmados', () => {
+  it('saca el pendiente cuyo mensaje ya llegó confirmado', () => {
+    const pendientes = [{ pending: true as const, clientKey: 'a' }, { pending: true as const, clientKey: 'b' }];
+    const mensajes = [{ seq: 1, clientKey: 'x' }, { seq: 2, clientKey: 'a' }];
+    expect(sinPendientesConfirmados(pendientes, mensajes).map((p) => p.clientKey)).toEqual(['b']);
+  });
+
+  it('sin coincidencias devuelve la MISMA lista', () => {
+    const pendientes = [{ pending: true as const, clientKey: 'a' }];
+    expect(sinPendientesConfirmados(pendientes, [{ seq: 1, clientKey: 'x' }])).toBe(pendientes);
   });
 });

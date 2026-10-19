@@ -16,6 +16,7 @@ import {
 } from '@lilachat/shared';
 import type { ChatMessage } from './useChat';
 import { chatIdsAMigrar, PREFIJO_CACHE_VIEJA } from './migracionDeCache';
+import { chatsEnMemoria } from './memoriaDeChats';
 
 /**
  * El almacén de mensajes del teléfono (F12.0): SQLite, una fila por mensaje,
@@ -42,6 +43,10 @@ import { chatIdsAMigrar, PREFIJO_CACHE_VIEJA } from './migracionDeCache';
  */
 const CLAVE_SECRETA = 'lilachat.cacheKey';
 const NOMBRE_BASE = 'lilachat.db';
+/** Cuántos mensajes se cifran entre dos respiros del hilo. */
+const LOTE_DE_CIFRADO = 20;
+/** La primera pantalla de un chat: la misma página que pinta `useChat` al abrir. */
+const MENSAJES_DE_PRECARGA = 50;
 
 const OPCIONES: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
@@ -153,10 +158,18 @@ async function escribirFilas(
   deEstaSesion: number = generacion,
   conflicto: 'REPLACE' | 'IGNORE' = 'REPLACE'
 ): Promise<number> {
-  const filas = mensajes.map((mensaje) => ({
-    seq: mensaje.seq,
-    sobre: JSON.stringify(cerrarCache(clave, mensaje)),
-  }));
+  // Cifrar por lotes que CEDEN el hilo (FL12, §49 #5): una página del
+  // hidratador eran 100 cifrados seguidos en JS puro, decenas de ms sin dibujar
+  // justo mientras se scrollea. Un mensaje solo (lo más común) no cede nunca.
+  const filas: { seq: number; sobre: string }[] = [];
+  await porLotes(
+    mensajes,
+    LOTE_DE_CIFRADO,
+    async (lote) => {
+      for (const mensaje of lote) filas.push({ seq: mensaje.seq, sobre: JSON.stringify(cerrarCache(clave, mensaje)) });
+    },
+    cederAlHilo
+  );
   let escritas = 0;
   await enCola(async () => {
     if (deEstaSesion !== generacion) return;
@@ -424,10 +437,23 @@ export async function seqsGuardados(chatId: string): Promise<number[] | null> {
 }
 
 /**
+ * Lee del disco la primera pantalla de un chat ANTES de abrirlo (FL12, §49 #2):
+ * se llama al apoyar el dedo en la fila, unos 100 ms antes del toque. Así el
+ * chat nace pintado desde `chatsEnMemoria`. Si ya estaba en memoria, nada.
+ */
+export function precargarChat(chatId: string): void {
+  if (chatsEnMemoria.de(chatId)) return;
+  void leerMensajesGuardados(chatId, { limite: MENSAJES_DE_PRECARGA }).then((guardados) => {
+    if (guardados && guardados.length > 0 && !chatsEnMemoria.de(chatId)) chatsEnMemoria.recordar(chatId, guardados);
+  });
+}
+
+/**
  * «Eliminar chat» (FL9d): sus mensajes se van de este teléfono. Si alguien
  * escribe de nuevo, el server manda solo lo nuevo.
  */
 export async function olvidarMensajesDelChat(chatId: string): Promise<void> {
+  chatsEnMemoria.olvidar(chatId);
   try {
     const abierta = await listo();
     if (!abierta) return;
@@ -451,6 +477,7 @@ export async function olvidarMensajesDelChat(chatId: string): Promise<void> {
 export async function olvidarMensajes(): Promise<void> {
   // Antes de cualquier await: lo que ya estaba en la cola queda descartado.
   generacion += 1;
+  chatsEnMemoria.olvidarTodo();
   try {
     const abierta = abrirBase();
     await enCola(() => abierta.runAsync('DELETE FROM mensajes'));

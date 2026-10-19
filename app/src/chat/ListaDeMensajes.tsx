@@ -2,8 +2,8 @@ import { useEffect, useRef, type ReactElement, type RefObject } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { ChevronDown } from 'lucide-react-native';
-import { isPending, type Row } from './MessageRow';
-import { tipoDeFila } from './filasDelChat';
+import type { Row } from './MessageRow';
+import { claveDeFila, tipoDeFila } from './filasDelChat';
 import { FondoDelChat } from './FondoDelChat';
 import { useFinalDeLaConversacion } from './useFinalDeLaConversacion';
 import { useColores } from '../ui/tema';
@@ -30,7 +30,7 @@ export function ListaDeMensajes(props: {
 }) {
   const colores = useColores();
   const { listaRef, rows } = props;
-  const { alScrollear, abajoLejos, nuevosAbajo } = useFinalDeLaConversacion(listaRef, props.mensajes, props.yo);
+  const { alScrollear, alCambiarTamaño, abajoLejos, nuevosAbajo } = useFinalDeLaConversacion(listaRef, props.mensajes, props.yo);
   const estuvoArriba = useRef(false);
   const { onLlegoAlFinal } = props;
   useEffect(() => {
@@ -44,6 +44,14 @@ export function ListaDeMensajes(props: {
     <View className="flex-1">
       <FondoDelChat />
       <FlashList
+        /**
+         * Se vuelve a montar al pasar de vacía a con filas (18/10, emulador). En
+         * frío la lista nace vacía y los mensajes llegan del disco después: con
+         * `startRenderingFromBottom`, su scroll inicial y la corrección de
+         * posición se pisaban y 2 de cada 3 aperturas quedaban ARRIBA de todo.
+         * Montada ya con filas —como al reabrir desde la memoria— abre abajo.
+         */
+        key={rows.length > 0 ? 'con-filas' : 'vacia'}
         ref={listaRef}
         data={rows}
         onLoad={props.onListo}
@@ -65,6 +73,7 @@ export function ListaDeMensajes(props: {
         // WhatsApp. Leyendo arriba, no mueve nada.
         maintainVisibleContentPosition={{ startRenderingFromBottom: true, autoscrollToBottomThreshold: 0.2 }}
         onScroll={alScrollear}
+        onContentSizeChange={alCambiarTamaño}
         scrollEventThrottle={100}
         ListHeaderComponent={
           props.cargandoAnteriores ? (
@@ -79,7 +88,7 @@ export function ListaDeMensajes(props: {
             </Text>
           ) : null
         }
-        keyExtractor={(row) => (isPending(row) ? `p-${row.clientKey}` : `m-${row.seq}`)}
+        keyExtractor={claveDeFila}
         contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 8 }}
         renderItem={props.dibujarFila}
         getItemType={tipoDeFila}

@@ -40,3 +40,16 @@ export function etiquetaDeSubida(params: { razon: number; fallido: boolean }): {
   if (params.fallido) return { texto: 'No se envió', girando: false };
   return { texto: textoDeSubida(params.razon), girando: true };
 }
+
+/** Cuánto tiene que avanzar para volver a dibujar: ~25 avisos por archivo. */
+const PASO_VISIBLE = 0.04;
+
+/**
+ * ¿Vale redibujar por este avance? (FL12, §49 #11). El XHR avisa muchas veces
+ * por segundo y cada aviso redibujaba la pantalla: se avisa el primero, cada
+ * paso visible y el final.
+ */
+export function valeAvisarProgreso(avisado: number | null, ahora: number): boolean {
+  if (avisado === null || ahora >= 1) return true;
+  return ahora - avisado >= PASO_VISIBLE;
+}

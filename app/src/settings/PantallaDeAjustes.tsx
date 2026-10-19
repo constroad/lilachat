@@ -10,6 +10,7 @@ import { Rotulo } from '../ui/Rotulo';
 import { AparienciaAjuste } from './AparienciaAjuste';
 import { AutoRespuestaAjuste } from './AutoRespuestaAjuste';
 import { BuscarActualizacionesAjuste } from './BuscarActualizacionesAjuste';
+import { DispositivosVinculadosAjuste } from './DispositivosVinculadosAjuste';
 import { PerfilAjuste } from './PerfilAjuste';
 import { RespaldoAjuste } from './RespaldoAjuste';
 import type { ResultadoDelChequeo } from './actualizacion';
@@ -71,6 +72,12 @@ export function PantallaDeAjustes(props: {
             }
             derecha={<Interruptor testID="sw-segundo-plano" value={props.segundoPlano} onValueChange={props.onSegundoPlano} />}
           />
+        </GrupoDeAjustes>
+
+        {/* Usar Lilachat en la computadora con el QR (W5): la web dice «Ajustes → Dispositivos vinculados». */}
+        <Rotulo>Computadora</Rotulo>
+        <GrupoDeAjustes>
+          <DispositivosVinculadosAjuste jwt={credential.jwt} />
         </GrupoDeAjustes>
 
         <Rotulo>Chats</Rotulo>

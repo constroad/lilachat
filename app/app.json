@@ -2,7 +2,7 @@
   "expo": {
     "name": "Lilachat",
     "slug": "lilachat",
-    "version": "0.1.99",
+    "version": "0.1.100",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -18,7 +18,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.lilachat.app",
-      "versionCode": 100,
+      "versionCode": 101,
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.POST_NOTIFICATIONS",
@@ -59,7 +59,20 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-sqlite",
-      "expo-background-task"
+      "expo-background-task",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Lilachat usa la cámara para leer el código QR con que vinculas tu computadora.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Lilachat te pide desbloquear el teléfono antes de vincular una computadora."
+        }
+      ]
     ]
   }
 }

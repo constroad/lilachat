@@ -345,3 +345,18 @@ export const refreshSession = (
     params,
     fetchImpl
   );
+
+/** Una web vinculada con el QR (W5): sin secretos, solo lo que se muestra. */
+export type DispositivoVinculado = { deviceId: string; nombre: string; ultimoUso: string | null; vinculadoEn: string | null };
+
+/** El nombre del navegador de un QR escaneado, antes de aprobar (W5). */
+export const consultarVinculacion = (token: string, codigo: string) =>
+  authed<{ nombre: string }>('POST', '/api/vinculos/consultar', token, { token: codigo });
+
+export const aprobarVinculacion = (token: string, codigo: string) =>
+  authed<{ nombre: string }>('POST', '/api/vinculos/aprobar', token, { token: codigo });
+
+export const listarVinculados = (token: string) => get<{ dispositivos: DispositivoVinculado[] }>('/api/vinculos', token);
+
+export const cerrarVinculado = (token: string, deviceId: string) =>
+  authed<Record<string, never>>('DELETE', `/api/vinculos/${encodeURIComponent(deviceId)}`, token);

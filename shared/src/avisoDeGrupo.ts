@@ -18,6 +18,8 @@ export type EventoDeGrupo =
   | 'nombre'
   | 'foto'
   | 'descripcion'
+  | 'recordatorio-suena'
+  | 'evento-pronto'
   | 'sumo'
   | 'saco'
   | 'salio'
@@ -54,6 +56,12 @@ export function textoDeAviso(params: {
 
     case 'foto':
       return esMio ? 'Cambiaste la foto del grupo' : `${quien} cambió la foto del grupo`;
+
+    // 20/10: cuando suena un recordatorio o se acerca un evento, también queda en el chat.
+    case 'recordatorio-suena':
+      return valor ? `⏰ Recordatorio: ${valor}` : '';
+    case 'evento-pronto':
+      return valor ? `📅 ${valor}` : '';
 
     // 20/10: el texto no va en el aviso (puede ser largo); está en la info del grupo.
     case 'descripcion':
@@ -99,4 +107,9 @@ export function textoDeAviso(params: {
     default:
       return '';
   }
+}
+
+/** Los avisos que se destacan en el chat (con su ícono), no una línea gris más (20/10). */
+export function esAvisoDestacado(evento: string | undefined): evento is 'recordatorio-suena' | 'evento-pronto' {
+  return evento === 'recordatorio-suena' || evento === 'evento-pronto';
 }

@@ -26,6 +26,15 @@ describe('leerMetadatos', () => {
     });
   });
 
+  it('un video (og:type video.* u og:video) lleva la marca para el botón de play (20/10)', () => {
+    const reel = `<head><meta property="og:title" content="Reel"><meta property="og:type" content="video.other"></head>`;
+    const conVideo = `<head><meta property="og:title" content="Clip"><meta property="og:video" content="https://x.pe/v.mp4"></head>`;
+    const articulo = `<head><meta property="og:title" content="Nota"><meta property="og:type" content="article"></head>`;
+    expect(leerMetadatos(reel, base)?.video).toBe(true);
+    expect(leerMetadatos(conVideo, base)?.video).toBe(true);
+    expect(leerMetadatos(articulo, base)?.video).toBeUndefined();
+  });
+
   it('sin og, usa twitter, <title> y la descripción común; el sitio es el dominio', () => {
     const html = `<head><title> Menú del día </title>
       <meta name="description" content="Almuerzos a 15 soles">

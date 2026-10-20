@@ -60,7 +60,9 @@ export function leerMetadatos(html: string, base: string): VistaPreviaDeEnlace |
   const descripcion = limpiar(meta.get('og:description') ?? meta.get('twitter:description') ?? meta.get('description'), MAX_DESCRIPCION);
   const imagen = imagenAbsoluta(meta.get('og:image') ?? meta.get('og:image:url') ?? meta.get('twitter:image'), base);
   const sitio = limpiar(meta.get('og:site_name'), MAX_TITULO) ?? new URL(base).hostname.replace(/^www\./, '');
-  return { url: base, titulo, ...(descripcion ? { descripcion } : {}), ...(imagen ? { imagen } : {}), sitio };
+  // Un reel, un TikTok o un video: la tarjeta lleva el botón de play (20/10).
+  const video = (meta.get('og:type') ?? '').startsWith('video') || meta.has('og:video') || meta.has('og:video:url');
+  return { url: base, titulo, ...(descripcion ? { descripcion } : {}), ...(imagen ? { imagen } : {}), sitio, ...(video ? { video: true } : {}) };
 }
 
 function esIpv4Privada(ip: string): boolean {

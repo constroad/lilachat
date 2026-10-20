@@ -3,6 +3,7 @@ import http, { type IncomingMessage } from 'node:http';
 import https from 'node:https';
 import type { VistaPreviaDeEnlace } from '@lilachat/shared';
 import { esDireccionPrivada, leerMetadatos, urlPublica } from './vistaPrevia.js';
+import { agenteParaHost, urlDeOembed, vistaDeOembed } from './vistaPreviaPorSitio.js';
 
 /** Lo que se espera a una página antes de rendirse. */
 const PLAZO_MS = 5_000;
@@ -13,7 +14,6 @@ const PLAZO_MS = 5_000;
 const MAX_BYTES = 1536 * 1024;
 const FIN_DEL_HEAD = Buffer.from('</head>');
 const MAX_REDIRECCIONES = 3;
-const AGENTE = 'Mozilla/5.0 (compatible; LilachatBot/1.0; +https://lilachat.constroad.com)';
 
 type Resolver = (error: NodeJS.ErrnoException | null, direccion: string | LookupAddress[], familia?: number) => void;
 
@@ -34,21 +34,23 @@ function dnsSoloPublico(host: string, opciones: { all?: boolean; family?: number
 }
 
 type Respuesta = { estado: number; destino?: string; html?: string };
+/** Qué se pide: la página (HTML) o el oEmbed (JSON). El agente depende del sitio (`agenteParaHost`). */
+type Tipo = 'text/html' | 'application/json';
 
-/** Un GET, sin seguir redirecciones; trae a lo sumo `MAX_BYTES` de HTML. */
-function pedir(url: URL): Promise<Respuesta> {
+/** Un GET, sin seguir redirecciones; trae a lo sumo `MAX_BYTES` del tipo pedido. */
+function pedir(url: URL, tipo: Tipo = 'text/html'): Promise<Respuesta> {
   return new Promise((resolver, rechazar) => {
     const cliente = url.protocol === 'https:' ? https : http;
     const pedido = cliente.get(
       url,
-      { lookup: dnsSoloPublico as never, timeout: PLAZO_MS, headers: { 'User-Agent': AGENTE, Accept: 'text/html', 'Accept-Language': 'es' } },
+      { lookup: dnsSoloPublico as never, timeout: PLAZO_MS, headers: { 'User-Agent': agenteParaHost(url.hostname), Accept: tipo, 'Accept-Language': 'es' } },
       (respuesta: IncomingMessage) => {
         const estado = respuesta.statusCode ?? 0;
         if (estado >= 300 && estado < 400) {
           respuesta.resume();
           return resolver({ estado, destino: respuesta.headers.location });
         }
-        if (estado !== 200 || !String(respuesta.headers['content-type'] ?? '').includes('text/html')) {
+        if (estado !== 200 || !String(respuesta.headers['content-type'] ?? '').includes(tipo)) {
           respuesta.resume();
           return resolver({ estado });
         }
@@ -57,7 +59,7 @@ function pedir(url: URL): Promise<Respuesta> {
         respuesta.on('data', (trozo: Buffer) => {
           trozos.push(trozo);
           leidos += trozo.length;
-          if (leidos >= MAX_BYTES || trozo.includes(FIN_DEL_HEAD)) respuesta.destroy();
+          if (leidos >= MAX_BYTES || (tipo === 'text/html' && trozo.includes(FIN_DEL_HEAD))) respuesta.destroy();
         });
         const terminar = () => resolver({ estado, html: Buffer.concat(trozos).subarray(0, MAX_BYTES).toString('utf8') });
         respuesta.on('end', terminar);
@@ -76,6 +78,8 @@ function pedir(url: URL): Promise<Respuesta> {
  * página no responde, no es HTML o apunta adentro— devuelve `null`.
  */
 export async function traerVistaPrevia(cruda: string): Promise<VistaPreviaDeEnlace | null> {
+  const desdeOembed = await traerOembed(cruda);
+  if (desdeOembed) return desdeOembed;
   let url = urlPublica(cruda);
   for (let salto = 0; url && salto <= MAX_REDIRECCIONES; salto += 1) {
     const respuesta = await pedir(url);
@@ -87,4 +91,22 @@ export async function traerVistaPrevia(cruda: string): Promise<VistaPreviaDeEnla
     url = urlPublica(new URL(respuesta.destino, url).toString());
   }
   return null;
+}
+
+/**
+ * YouTube y TikTok por oEmbed (20/10): JSON con título, autor y miniatura,
+ * aunque la página no se los dé a un robot (los Shorts). Si falla, sigue el
+ * camino de las etiquetas `og:`.
+ */
+async function traerOembed(cruda: string): Promise<VistaPreviaDeEnlace | null> {
+  const url = urlPublica(cruda);
+  const endpoint = url ? urlDeOembed(url) : null;
+  const destino = endpoint ? urlPublica(endpoint) : null;
+  if (!destino) return null;
+  try {
+    const respuesta = await pedir(destino, 'application/json');
+    return respuesta.html ? vistaDeOembed(JSON.parse(respuesta.html), cruda) : null;
+  } catch {
+    return null;
+  }
 }

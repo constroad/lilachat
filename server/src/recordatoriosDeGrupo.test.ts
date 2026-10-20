@@ -236,3 +236,24 @@ describe('recordatorios en un 1:1 y en un borrador', () => {
     expect(enviados[0]!.tokens).toEqual(['tok-admin']);
   });
 });
+
+/** José, 20/10: cuando suena, también queda en el chat (no solo en la barra del teléfono). */
+describe('el recordatorio que suena queda en el chat', () => {
+  it('a la hora, el chat recibe «⏰ Recordatorio: …»', async () => {
+    await crear(admin);
+
+    await runReminderTick(new Date('2026-10-20T15:00:10.000Z'));
+
+    const aviso = await MessageModel.findOne({ chatId: grupoId, kind: 'system', 'system.evento': 'recordatorio-suena' }).lean();
+    expect(aviso?.body).toBe('⏰ Recordatorio: Vaciado de losa');
+    expect(aviso?.system?.valor).toBe('Vaciado de losa');
+  });
+
+  it('un recordatorio personal (sin chat) no escribe en ningún chat', async () => {
+    await request(app).post('/api/agenda/reminders').set(conJwt(admin)).send({ title: 'Tomar agua', startsAt: '2026-10-20T15:00:00.000Z' }).expect(201);
+
+    await runReminderTick(new Date('2026-10-20T15:00:10.000Z'));
+
+    expect(await MessageModel.countDocuments({ kind: 'system' })).toBe(0);
+  });
+});

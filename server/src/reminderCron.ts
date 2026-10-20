@@ -4,6 +4,7 @@ import { DeviceModel } from './models.js';
 import { ChatModel } from './chatModels.js';
 import { buildPushSender, type PushSender } from './pushSender.js';
 import { runScheduledTick } from './scheduledMessages.js';
+import { avisarEnElChat } from './chatRoutes.js';
 
 /**
  * El cron que dispara eventos y recordatorios (F5).
@@ -93,6 +94,8 @@ export async function runReminderTick(now: Date = new Date()): Promise<{ events:
       `Empieza en ${event.remindMinutesBefore} minutos`,
       { chatId: String(event.chatId), seq: 0 }
     );
+    // También en el chat del evento (José, 20/10), no solo en la barra del teléfono.
+    await avisarSinTumbar({ chatId: String(event.chatId), quien: event.createdBy, evento: 'evento-pronto', valor: `${event.title} · empieza en ${event.remindMinutesBefore} minutos` });
     events += 1;
   }
 
@@ -139,6 +142,8 @@ export async function runReminderTick(now: Date = new Date()): Promise<{ events:
       reminder.note || 'Recordatorio',
       { chatId: String(reminder.chatId ?? ''), seq: 0 }
     );
+    // El de un chat también queda escrito en el chat (José, 20/10).
+    if (chat) await avisarSinTumbar({ chatId: String(chat._id), quien: reminder.userId, evento: 'recordatorio-suena', valor: reminder.title });
     reminders += 1;
 
     // Recurrente: se REPROGRAMA y se limpia el sello. Sin esto, un «cada día»
@@ -176,4 +181,13 @@ export function startReminderCron(): void {
 export function stopReminderCron(): void {
   if (timer) clearInterval(timer);
   timer = null;
+}
+
+/** Un aviso en el chat que falla no frena el resto de la corrida: el push ya salió. */
+async function avisarSinTumbar(params: Parameters<typeof avisarEnElChat>[0]): Promise<void> {
+  try {
+    await avisarEnElChat(params);
+  } catch (error) {
+    console.error('[cron] no se pudo escribir el aviso en el chat:', error instanceof Error ? error.message : error);
+  }
 }

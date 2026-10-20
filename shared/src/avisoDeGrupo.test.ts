@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { textoDeAviso } from './avisoDeGrupo.js';
+import { esAvisoDestacado, textoDeAviso } from './avisoDeGrupo.js';
 
 describe('textoDeAviso', () => {
   const wilson = { quien: 'Wilson', esMio: false };
@@ -132,5 +132,28 @@ describe('textoDeAviso — descripción (20/10)', () => {
     expect(textoDeAviso({ evento: 'descripcion', quien: 'Ana', esMio: false })).toBe('Ana cambió la descripción del grupo');
     expect(textoDeAviso({ evento: 'descripcion', quien: 'Ana', esMio: true })).toBe('Cambiaste la descripción del grupo');
     expect(textoDeAviso({ evento: 'descripcion', quien: 'Ana', esMio: false, valor: 'borrada' })).toBe('Ana borró la descripción del grupo');
+  });
+});
+
+/** José, 20/10: «cuando hay un recordatorio o un evento, ¿no debería aparecer también en el chat?». */
+describe('textoDeAviso — recordatorio y evento que suenan', () => {
+  it('el recordatorio dice qué es, no quién lo creó', () => {
+    expect(textoDeAviso({ evento: 'recordatorio-suena', quien: 'Ana', esMio: false, valor: 'Llamar al laboratorio' })).toBe('⏰ Recordatorio: Llamar al laboratorio');
+    expect(textoDeAviso({ evento: 'recordatorio-suena', quien: 'Ana', esMio: true, valor: 'Llamar al laboratorio' })).toBe('⏰ Recordatorio: Llamar al laboratorio');
+  });
+  it('el evento dice cuánto falta', () => {
+    expect(textoDeAviso({ evento: 'evento-pronto', quien: 'Ana', esMio: false, valor: 'Vaciado de losa · empieza en 30 minutos' })).toBe('📅 Vaciado de losa · empieza en 30 minutos');
+  });
+  it('sin título no hay aviso', () => {
+    expect(textoDeAviso({ evento: 'recordatorio-suena', quien: 'Ana', esMio: false })).toBe('');
+  });
+});
+
+describe('esAvisoDestacado', () => {
+  it('solo el recordatorio que suena y el evento que se acerca', () => {
+    expect(esAvisoDestacado('recordatorio-suena')).toBe(true);
+    expect(esAvisoDestacado('evento-pronto')).toBe(true);
+    expect(esAvisoDestacado('nombre')).toBe(false);
+    expect(esAvisoDestacado(undefined)).toBe(false);
   });
 });

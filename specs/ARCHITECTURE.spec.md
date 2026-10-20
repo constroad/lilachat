@@ -4930,11 +4930,31 @@ va la original. «HD» en la previsualización manda la original; un documento
 («Archivo») va intacto aunque sea imagen; videos y GIF no se tocan. E2E: una
 foto de 4000×3000 (23,6 MB) llegó en 1600×1200 y 102 KB; con «HD», la original.
 
-**Pendiente de la auditoría:** «entregado» al reconectar sin push (server);
-divisor de no leídos que cuenta líneas de sistema; texto pendiente que sale
-antes que la foto pendiente; reenviar fotos; ticks en la fila de la web; las
-líneas de sistema AJENAS cuentan como no leídas (decisión de producto: WhatsApp
-no las cuenta); la web: burbuja inmediata y cola para fotos.
+**Segunda tanda (19/10, sin publicar):**
+
+| Defecto | Arreglo |
+| --- | --- |
+| Lo recibido sin conexión quedaba en un check hasta abrir el chat | Al conectar, el server lo da por entregado (`entregarAlConectar`, solo chats atrasados) y avisa al remitente |
+| El divisor de no leídos quedaba más arriba (el contador incluye lo propio y los avisos) | La lista trae mi `readSeq`; el divisor va arriba del primer ajeno después de lo leído y dice cuántos son (`divisorDesdeLeido`) |
+| Un texto escrito después de una foto pendiente salía antes | `pendientesEnOrden`: texto y archivos por hora de envío |
+| Abrir un chat marcado «no leído» sin nada nuevo no avisaba a mis otros equipos | `marcarLeidoDetallado` → `chat.changed` a mis sockets |
+| La respuesta de `@lila` salía por un camino propio | Por `publicarMensaje`, como todo mensaje |
+| Las fotos y archivos no se reenviaban | `POST /api/chats/:id/reenviar` copia la referencia y el pie (miembro del origen, nada borrado ni cifrado, idempotente); `planDeReenvio` en shared; app y web lo usan |
+| Web: sin burbuja hasta subir, sin progreso, sin compresión, reintento duplicado, un fallo cortaba el lote | `colaDeArchivos` de la web: burbuja ya con la vista local, anillo de progreso (XHR), compresión con la regla compartida (`planDeCompresion` pasó a shared) y «HD», una clave por archivo, «No se envió» con reintentar |
+| Web: la fila no tenía checks | `ChecksDeLaFila` con la regla de la burbuja |
+| Web: cada mensaje y cada acuse pedían la lista entera (agregación sobre todos los mensajes) | La fila cambia en la base local con las reglas de la app (`listaEnVivo` pasó a shared, genérica); la lista entera solo ante un chat nuevo, al reconectar o con `chat.changed` |
+
+E2E: en el emulador, el divisor («3 mensajes no leídos» arriba del primer
+ajeno después de lo leído) y reenviar una foto a un grupo (mismo archivo y
+pie); en el navegador, la web vinculada como usuario QA: fila que cambia sin
+pedir la lista (0 pedidos por mensaje y por acuse), contador a 0 al abrir,
+foto con anillo comprimida a 102 KB y con «HD» la original, checks azules en
+la fila y el borrado en vivo. Sin E2E: el orden de lo pendiente sin red (el
+corte de la Mac interrumpió la prueba; tiene test) y reenviar desde la web.
+QA en cero y los dispositivos de José en 20.
+
+**Queda:** las líneas de sistema AJENAS cuentan como no leídas (decisión de
+producto).
 
 ## 55. FL16 — tarjetas en vivo y editar el recordatorio del grupo (19/10/2026, 0.1.99)
 

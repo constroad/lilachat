@@ -1,5 +1,7 @@
 import { useEffect, useRef, type ReactElement, type RefObject } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import { useScrollConTeclado } from './useScrollConTeclado';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { ChevronDown } from 'lucide-react-native';
 import type { Row } from './MessageRow';
@@ -27,6 +29,8 @@ export function ListaDeMensajes(props: {
   hayAnteriores: boolean;
   /** Volvió al final después de haber estado arriba: leyó lo que había. */
   onLlegoAlFinal?: () => void;
+  /** Lo que la barra de escribir sube MENOS que el teclado (su margen de la barra de navegación). */
+  sinSubir: number;
 }) {
   const colores = useColores();
   const { listaRef, rows } = props;
@@ -44,6 +48,9 @@ export function ListaDeMensajes(props: {
       onLlegoAlFinal?.();
     }
   }, [abajoLejos, onLlegoAlFinal]);
+  // El scroll sigue al teclado como Telegram (ver `useScrollConTeclado`).
+  const { sinSubir } = props;
+  const scrollDelChat = useScrollConTeclado(sinSubir);
   return (
     <View className="flex-1">
       <FondoDelChat />
@@ -57,6 +64,7 @@ export function ListaDeMensajes(props: {
          */
         key={rows.length > 0 ? 'con-filas' : 'vacia'}
         ref={listaRef}
+        renderScrollComponent={scrollDelChat}
         data={rows}
         onLoad={props.onListo}
         testID="lista-mensajes"
@@ -103,13 +111,14 @@ export function ListaDeMensajes(props: {
       />
       {abajoLejos ? (
         // «Bajar al final» con los que llegaron mientras se leía arriba, como
-        // WhatsApp. Aparece solo lejos del final: abajo no hace falta.
+        // WhatsApp. Aparece solo lejos del final: abajo no hace falta. Sube con el teclado.
+        <KeyboardStickyView offset={{ closed: 0, opened: sinSubir }} className="absolute bottom-3 right-3">
         <Pressable
           testID="btn-bajar"
           accessibilityLabel="Ir al último mensaje"
           onPress={() => listaRef.current?.scrollToEnd({ animated: true })}
           hitSlop={2}
-          className="absolute bottom-3 right-3 h-10 w-10 items-center justify-center rounded-full bg-surface shadow-md"
+          className="h-10 w-10 items-center justify-center rounded-full bg-surface shadow-md"
         >
           <ChevronDown size={22} color={colores['on-surface-variant']} />
           {nuevosAbajo > 0 ? (
@@ -120,6 +129,7 @@ export function ListaDeMensajes(props: {
             </View>
           ) : null}
         </Pressable>
+        </KeyboardStickyView>
       ) : null}
     </View>
   );

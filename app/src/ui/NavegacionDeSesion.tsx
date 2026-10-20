@@ -144,7 +144,8 @@ export function NavegacionDeSesion(props: {
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
-          animation: 'slide_from_right',
+          // 200 ms con la de atrás en parallax, como WhatsApp (20/10): `slide_from_right` dura 400 en Android y se sentía lenta.
+          animation: 'ios_from_right',
           contentStyle: { backgroundColor: colores.background },
         }}
       >

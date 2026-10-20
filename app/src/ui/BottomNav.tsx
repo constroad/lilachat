@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
-import { BarChart3, CalendarDays, MessageCircle, Settings } from 'lucide-react-native';
+import { BarChart3, ListTodo, MessageCircle, Settings } from 'lucide-react-native';
 import { useMargenes } from './useMargenes';
 import { useColores } from './tema';
 import { Logo } from './Logo';
@@ -7,10 +7,9 @@ import { Logo } from './Logo';
 /**
  * La barra inferior.
  *
- * **Eventos y Avisos son UNA sola pestaña, «Agenda»** (pedido de José): las dos
- * responden a «¿qué tengo por delante?» y separarlas obligaba a mirar en dos
- * lugares lo que se piensa junto. Adentro se filtra con un segmentado y el
- * botón de crear ofrece los dos tipos.
+ * **Eventos y recordatorios son UNA sola pestaña, «Pendientes»** (José, 20/10;
+ * antes «Agenda» con un segmentado): una línea por cuándo tocan, con los
+ * recordatorios de los chats. El botón de crear ofrece los dos tipos.
  *
  * La primera versión tenía cuatro —Chats/Estado/Llamadas/Ajustes— copiadas del
  * mock en inglés, que es una generación anterior del diseño: los mocks en
@@ -22,7 +21,7 @@ export type Tab = 'chats' | 'agenda' | 'encuestas' | 'ajustes';
 
 const TABS: { key: Tab; label: string; Icon: typeof MessageCircle }[] = [
   { key: 'chats', label: 'Chats', Icon: MessageCircle },
-  { key: 'agenda', label: 'Agenda', Icon: CalendarDays },
+  { key: 'agenda', label: 'Pendientes', Icon: ListTodo },
   { key: 'encuestas', label: 'Encuestas', Icon: BarChart3 },
   { key: 'ajustes', label: 'Ajustes', Icon: Settings },
 ];

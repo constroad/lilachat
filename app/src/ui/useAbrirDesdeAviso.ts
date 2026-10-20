@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
-import { listChats, type ChatSummary } from '../api/client';
-import { chatsEnMemoria, leerChatsGuardados } from '../chat/chatsGuardados';
+import type { ChatSummary } from '../api/client';
+import { buscarChat } from './buscarChat';
 import { destinoDeAviso } from './destinoDeAviso';
 import { llamadaNativa } from '../../modules/llamada-entrante/src';
 
@@ -66,12 +66,4 @@ export function useAbrirDesdeAviso(params: {
       toques.remove();
     };
   }, [params.jwt]);
-}
-
-async function buscarChat(chatId: string, jwt: string): Promise<ChatSummary | null> {
-  const enMano = chatsEnMemoria() ?? (await leerChatsGuardados());
-  const conocido = enMano?.find((chat) => chat.id === chatId);
-  if (conocido) return conocido;
-  const respuesta = await listChats(jwt);
-  return respuesta.ok ? (respuesta.data.chats.find((chat) => chat.id === chatId) ?? null) : null;
 }

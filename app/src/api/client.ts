@@ -6,7 +6,7 @@
  * .env de dev sale apuntando al emulador y falla con wifi andando — el script
  * de release lo fija y lo verifica dentro del binario).
  */
-import type { ResumenDeHiloEnCliente, VistaDelFijado, VistaPreviaDeEnlace } from '@lilachat/shared';
+import type { DestacadoEnLista, ResumenDeHiloEnCliente, VistaDelFijado, VistaPreviaDeEnlace } from '@lilachat/shared';
 import type { ServerMessage } from '../chat/socketClient';
 import { unSoloPedido } from './pedidoUnico';
 
@@ -399,3 +399,10 @@ export const hilosDelChat = (token: string, chatId: string) =>
 /** E3: un hilo entero, al abrirlo (trae lo que el teléfono no tenía guardado). */
 export const hiloCompleto = (token: string, chatId: string, raiz: number) =>
   get<{ raiz: ServerMessage; respuestas: ServerMessage[] }>(`/api/chats/${chatId}/hilos/${raiz}`, token);
+
+/** «Destacados» (20/10): la estrella personal. Los `seq` de un chat, para la estrella de cada burbuja. */
+export const leerDestacadosDelChat = (token: string, chatId: string) => get<{ seqs: number[] }>(`/api/chats/${chatId}/destacados`, token);
+export const destacarMensaje = (token: string, chatId: string, seq: number) => authed<Record<string, never>>('PUT', `/api/chats/${chatId}/destacados/${seq}`, token);
+export const quitarDestacado = (token: string, chatId: string, seq: number) => authed<Record<string, never>>('DELETE', `/api/chats/${chatId}/destacados/${seq}`, token);
+/** Todos los míos, del más reciente (la lista global). */
+export const listarDestacados = (token: string) => get<{ destacados: DestacadoEnLista[] }>('/api/destacados', token);

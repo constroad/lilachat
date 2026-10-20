@@ -9,6 +9,8 @@ import { useColores } from '../ui/tema';
 const NBSP = '\u00A0';
 /** El lugar de los checks (14 dp) a 11 sp. */
 const RELLENO_CHECKS = NBSP.repeat(6);
+/** El lugar de la estrella de destacado (11 dp + el espacio) a 11 sp. */
+const RELLENO_ESTRELLA = NBSP.repeat(4);
 
 /**
  * El texto de una burbuja con la hora y los checks DENTRO, alineados a la
@@ -37,7 +39,7 @@ export function TextoConHora(props: {
             exactamente su ancho. Del color de la burbuja y no `transparent`: en
             Android un span anidado transparente se pinta gris. */}
         <Text className="text-[11px]" style={{ color: mia ? colores['burbuja-propia'] : colores['burbuja-ajena'] }}>
-          {`${NBSP}${NBSP}${meta.editado ? `${ETIQUETA_EDITADO}${NBSP}` : ''}${meta.hora}${mia ? RELLENO_CHECKS : NBSP}`}
+          {`${NBSP}${NBSP}${meta.destacado ? RELLENO_ESTRELLA : ''}${meta.editado ? `${ETIQUETA_EDITADO}${NBSP}` : ''}${meta.hora}${mia ? RELLENO_CHECKS : NBSP}`}
         </Text>
       </Text>
       <View className="absolute bottom-1 right-2.5">

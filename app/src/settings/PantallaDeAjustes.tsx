@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { Alert, ScrollView } from 'react-native';
 import { Interruptor } from '../ui/Interruptor';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { BellRing, CloudUpload, LogOut, UserPlus } from 'lucide-react-native';
+import { BellRing, CloudUpload, LogOut, Star, UserPlus } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { DiagnosticoAjuste } from '../diagnostico/DiagnosticoAjuste';
 import { AvisoDePantallaCompleta } from '../ui/AvisoDePantallaCompleta';
@@ -15,6 +16,7 @@ import { PerfilAjuste } from './PerfilAjuste';
 import { RespaldoAjuste } from './RespaldoAjuste';
 import type { ResultadoDelChequeo } from './actualizacion';
 import type { EstadoActualizacion } from './useActualizador';
+import { ListaDeDestacados } from '../chat/destacados/ListaDeDestacados';
 
 /**
  * La pestaña Ajustes (salió de `TabsShell`, que pasaba de 560 líneas). Listas
@@ -37,12 +39,16 @@ export function PantallaDeAjustes(props: {
   onInvitar: () => void;
   onRespaldoDelServidor: () => void;
   onLogout: () => void;
+  /** Abrir el chat de un destacado en ese mensaje (20/10). */
+  onAbrirDestacado: (chatId: string, seq: number) => void;
 }) {
   const { credential, actualizaciones } = props;
+  const [verDestacados, setVerDestacados] = useState(false);
   return (
     // `padding` también en Android: el texto de la auto-respuesta quedaba
     // tapado por el teclado (mismo motivo que en ChatScreen).
     <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+      <ListaDeDestacados visible={verDestacados} jwt={credential.jwt} yo={credential.userId} onIr={(destacado) => props.onAbrirDestacado(destacado.chatId, destacado.seq)} onCerrar={() => setVerDestacados(false)} />
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 }}
@@ -82,6 +88,8 @@ export function PantallaDeAjustes(props: {
 
         <Rotulo>Chats</Rotulo>
         <GrupoDeAjustes>
+          {/* La estrella personal (20/10), como WhatsApp: todos los que destaqué, de todos los chats. */}
+          <FilaDeAjuste testID="btn-destacados" icono={Star} titulo="Mensajes destacados" detalle="Los que guardaste con la estrella · solo tú los ves" onPress={() => setVerDestacados(true)} />
           <RespaldoAjuste credential={credential} />
           <AutoRespuestaAjuste jwt={credential.jwt} />
           {/* El volcado de la base entera es de operadores (FL10). */}

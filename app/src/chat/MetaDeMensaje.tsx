@@ -1,5 +1,5 @@
 import { Text, View } from 'react-native';
-import { CircleAlert, Check, CheckCheck, Clock3 } from 'lucide-react-native';
+import { CircleAlert, Check, CheckCheck, Clock3, Star } from 'lucide-react-native';
 import type { DeliveryState } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 
@@ -19,6 +19,7 @@ export function MetaDeMensaje({
   sobreFoto = false,
   fallido = false,
   editado = false,
+  destacado = false,
 }: {
   hora: string;
   mia: boolean;
@@ -29,6 +30,8 @@ export function MetaDeMensaje({
   fallido?: boolean;
   /** Se editó: «Editado» antes de la hora, como WhatsApp. */
   editado?: boolean;
+  /** Lo destaqué (20/10): la estrella chica antes de la hora, como WhatsApp. */
+  destacado?: boolean;
 }) {
   const colores = useColores();
   // Sobre la propia (violeta sólido, FL13) la hora y los íconos van claros.
@@ -36,6 +39,7 @@ export function MetaDeMensaje({
   const leido = mia ? colores['check-leido-propio'] : colores['check-leido'];
   return (
     <View className="flex-row items-center gap-1">
+      {destacado ? <Star testID={`destacado-${id}`} size={TAMANO_CHECK - 3} color={tono} fill={tono} /> : null}
       <Text className="text-[11px]" style={{ color: tono }} testID={`hora-${id}`}>
         {editado ? `${ETIQUETA_EDITADO} ` : ''}
         {hora}

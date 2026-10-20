@@ -43,10 +43,12 @@ export function useDibujarFila(p: {
   onReaccionar: (seq: number, emoji: string | null) => void;
   onMasEmojis: (seq: number) => void;
   onVerReacciones: (seq: number) => void;
+  /** Los que destaqué (20/10), para la estrella de cada burbuja. */
+  destacados: ReadonlySet<number>;
 }) {
   const { rows, yo, jwt, encrypted, esGrupo, nombres, fotos, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir } = p;
   const { citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas } = p;
-  const { onReaccionar, onMasEmojis, onVerReacciones } = p;
+  const { onReaccionar, onMasEmojis, onVerReacciones, destacados } = p;
   return useCallback(
     ({ item, index }: { item: Row; index: number }) => {
       const previous = rows[index - 1];
@@ -83,6 +85,7 @@ export function useDibujarFila(p: {
             seleccionado={!isPending(item) && (elegidos.has(item.seq) || item.seq === resaltado || item.seq === seqBuscado)}
             onFallido={onFallido}
             onTocarCita={onTocarCita}
+            destacado={!isPending(item) && destacados.has(item.seq)}
           />
           {!isPending(item) && item.reacciones?.length && !item.deletedAt ? (
             <PastillaDeReacciones id={String(item.seq)} reacciones={item.reacciones} yo={yo} mia={mia} conAvatar={conAvatar} onTocar={() => onVerReacciones(item.seq)} />
@@ -102,6 +105,6 @@ export function useDibujarFila(p: {
         </>
       );
     },
-    [rows, yo, jwt, encrypted, esGrupo, nombres, fotos, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir, citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas, onReaccionar, onMasEmojis, onVerReacciones]
+    [rows, yo, jwt, encrypted, esGrupo, nombres, fotos, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir, citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas, onReaccionar, onMasEmojis, onVerReacciones, destacados]
   );
 }

@@ -35,6 +35,7 @@ import { decidirAtras } from './botonAtras';
 import { nombreDeContacto } from '@lilachat/shared';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useColores } from './tema';
+import { buscarChat } from './buscarChat';
 import { Avatar } from './Avatar';
 
 /** Tu avatar en la cabecera (dp): 36 de dibujo dentro de 44 de toque. */
@@ -389,6 +390,7 @@ export function TabsShell({
             onInvitar={() => setInvitando(true)}
             onRespaldoDelServidor={() => setShowBackup(true)}
             onLogout={onLogout}
+            onAbrirDestacado={(chatId, seq) => void buscarChat(chatId, credential.jwt).then((chat) => chat && onOpenChat(chat, seq))}
           />
           </ErrorBoundary>
           </View>

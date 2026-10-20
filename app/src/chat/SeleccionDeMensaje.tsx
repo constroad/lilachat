@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Alert, Modal, Pressable, Text, ToastAndroid, useWindowDimensions, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { Copy, CornerUpLeft, EllipsisVertical, Forward, Info, MessagesSquare, Pencil, Pin, PinOff, Trash2, X } from 'lucide-react-native';
+import { Copy, CornerUpLeft, EllipsisVertical, Forward, Info, MessagesSquare, Pencil, Pin, PinOff, Star, StarOff, Trash2, X } from 'lucide-react-native';
 import { puedeEditar } from '@lilachat/shared';
 import { accionesDeMensaje, accionesDeVarios, planDeReenvio, textoParaCopiar } from '@lilachat/shared';
 import { PantallaDeReenviar } from './reenviar/PantallaDeReenviar';
@@ -10,6 +10,7 @@ import { useColores } from '../ui/tema';
 import type { ChatMessage } from './useChat';
 import { InfoDelMensaje } from './InfoDelMensaje';
 import { repartirAcciones, type AccionDeBarra } from './barraDeSeleccion';
+import type { DestacadosDelChat } from './destacados/useDestacadosDelChat';
 
 const avisar = (texto: string) => ToastAndroid.show(texto, ToastAndroid.SHORT);
 
@@ -44,6 +45,8 @@ export function SeleccionDeMensaje(params: {
   onDesfijar: (seq: number) => void;
   /** E3: abrir el hilo de este mensaje. */
   onAbrirHilo?: (seq: number) => void;
+  /** La estrella personal (20/10): destacar o quitar los elegidos. */
+  destacados?: DestacadosDelChat;
 }) {
   const colores = useColores();
   const margenes = useMargenes();
@@ -74,6 +77,7 @@ export function SeleccionDeMensaje(params: {
         }).permitido,
         puedeFijar: params.puedeFijar,
         fijado: params.fijados.has(uno.seq),
+        destacado: params.destacados?.seqs.has(uno.seq),
       })
     )
   );
@@ -110,6 +114,7 @@ export function SeleccionDeMensaje(params: {
   const disponibles = [
     acciones.responder ? 'responder' : null,
     acciones.hilo && params.onAbrirHilo ? 'hilo' : null,
+    acciones.destacar && params.destacados ? 'destacar' : null,
     acciones.fijar ? 'fijar' : null,
     acciones.reenviar ? 'reenviar' : null,
     'eliminar',
@@ -136,6 +141,15 @@ export function SeleccionDeMensaje(params: {
       icono: <MessagesSquare size={20} color={icono} />,
       onPress: () => {
         params.onAbrirHilo?.(mensaje.seq);
+        params.onCancelar();
+      },
+    },
+    destacar: {
+      testID: acciones.destacar === 'quitar' ? 'btn-quitar-destacado' : 'btn-destacar-mensaje',
+      etiqueta: acciones.destacar === 'quitar' ? 'Quitar destacado' : 'Destacar',
+      icono: acciones.destacar === 'quitar' ? <StarOff size={20} color={icono} /> : <Star size={20} color={icono} />,
+      onPress: () => {
+        void params.destacados?.alternar(seqs).then((resultado) => !resultado.ok && params.onError('No se pudo destacar. Revisa tu conexión.'));
         params.onCancelar();
       },
     },

@@ -7,10 +7,14 @@
  * Regla: todo en una línea; si no entra, las de más prioridad a la vista y el
  * resto en «⋮». Eliminar nunca se esconde.
  */
-export type AccionDeBarra = 'responder' | 'hilo' | 'fijar' | 'reenviar' | 'eliminar' | 'copiar' | 'editar' | 'info';
+export type AccionDeBarra = 'responder' | 'hilo' | 'destacar' | 'fijar' | 'reenviar' | 'eliminar' | 'copiar' | 'editar' | 'info';
 
-/** El orden en que se dibujan Y su prioridad para quedarse a la vista. */
-const ORDEN: AccionDeBarra[] = ['responder', 'hilo', 'fijar', 'reenviar', 'eliminar', 'copiar', 'editar', 'info'];
+/**
+ * El orden en que se dibujan Y su prioridad para quedarse a la vista. Destacar
+ * (20/10) va con lo frecuente, como la estrella de WhatsApp; fijar (en un grupo,
+ * solo admins) cede su lugar y queda en «⋮» si no entra.
+ */
+const ORDEN: AccionDeBarra[] = ['responder', 'hilo', 'destacar', 'reenviar', 'eliminar', 'fijar', 'copiar', 'editar', 'info'];
 const LADO_DEL_BOTON = 44;
 /** La X, el número y el margen de la barra. */
 const FIJO_DE_LA_BARRA = 44 + 32 + 16;

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FlatList, Modal, Pressable, Text, TextInput, View } from 'react-native';
-import { KeyboardAvoidingView, useKeyboardState } from 'react-native-keyboard-controller';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import { useScrollConTeclado } from './useScrollConTeclado';
 import { ArrowLeft, Send, Square, SquareCheck } from 'lucide-react-native';
 import { formatClock, miReaccion, primerEnlace, puedeReaccionar, resolveDeliveryState, type DeliveryState } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
@@ -49,8 +50,9 @@ export function HiloScreen(props: {
 }) {
   const colores = useColores();
   const margenes = useMargenes();
-  // Teclado abierto = sin barra de navegación: su margen dejaba una franja vacía bajo «También enviar al chat» (20/10).
-  const tecladoAbierto = useKeyboardState((estado) => estado.isVisible);
+  // El teclado tapa el margen de la barra de navegación: la barra de escribir sube eso menos (20/10:
+  // la franja vacía bajo «También enviar al chat»), y la lista sigue al teclado como el chat.
+  const ScrollConTeclado = useScrollConTeclado(margenes.pie);
   const clave = `${props.chatId}:${props.raiz?.seq ?? ''}`;
   const [texto, setTexto] = useState('');
   const [enElChat, setEnElChat] = useState(false);
@@ -61,10 +63,6 @@ export function HiloScreen(props: {
     setEnElChat(false);
     setBarraEn(null);
   }, [clave]);
-  // Al abrir el teclado la lista se achica: que la última respuesta siga a la vista.
-  useEffect(() => {
-    if (tecladoAbierto) lista.current?.scrollToEnd({ animated: true });
-  }, [tecladoAbierto]);
   // Las hojas viven DENTRO del modal del hilo: las del chat quedarían detrás.
   const reacciones = useReaccionesEnPantalla({ mensajes: props.respuestas, reaccionar: props.reaccionar, yo: props.yo, nombres: props.nombres, fotos: props.fotos, alReaccionar: () => setBarraEn(null) });
   const filas: Respuesta[] = [...props.respuestas, ...props.pendientes];
@@ -87,7 +85,7 @@ export function HiloScreen(props: {
 
   return (
     <Modal visible={props.raiz !== null} animationType="slide" onRequestClose={props.onCerrar}>
-      <KeyboardAvoidingView behavior="padding" className="flex-1 bg-background" testID="pantalla-hilo">
+      <View className="flex-1 bg-background" testID="pantalla-hilo">
         <View className="flex-row items-center gap-2 border-b border-outline/10 bg-surface px-2 pb-2" style={{ paddingTop: margenes.cabecera }}>
           <Pressable testID="btn-cerrar-hilo" accessibilityLabel="Volver al chat" onPress={props.onCerrar} className="h-11 w-11 items-center justify-center">
             <ArrowLeft size={22} color={colores['on-surface']} />
@@ -102,6 +100,7 @@ export function HiloScreen(props: {
         {props.raiz ? (
           <FlatList
             ref={lista}
+            renderScrollComponent={(propsDelScroll) => <ScrollConTeclado {...propsDelScroll} />}
             data={filas}
             keyExtractor={(fila) => fila.clientKey}
             contentContainerStyle={{ padding: 12, gap: 8 }}
@@ -134,7 +133,8 @@ export function HiloScreen(props: {
             }}
           />
         ) : null}
-        <View className="border-t border-outline/10 bg-surface px-3 pt-2" style={{ paddingBottom: (tecladoAbierto ? 0 : margenes.pie) + 4 }}>
+        <KeyboardStickyView offset={{ closed: 0, opened: margenes.pie }}>
+        <View className="border-t border-outline/10 bg-surface px-3 pt-2" style={{ paddingBottom: margenes.pie + 4 }}>
           <View className="flex-row items-end gap-2">
             <TextInput
               testID="input-hilo"
@@ -157,7 +157,8 @@ export function HiloScreen(props: {
             <Text className="text-[13px] text-on-surface-variant">También enviar al chat</Text>
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
+        </KeyboardStickyView>
+      </View>
       {reacciones.hojas}
     </Modal>
   );

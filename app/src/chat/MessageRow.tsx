@@ -91,6 +91,7 @@ function FilaDeMensaje({
   enSeleccion = false,
   onFallido,
   onTocarCita,
+  destacado = false,
 }: {
   item: Row;
   previous?: Row;
@@ -130,6 +131,8 @@ function FilaDeMensaje({
   onFallido?: (clientKey: string, motivo: string) => void;
   /** Tocar la cita lleva al mensaje original (FL9). */
   onTocarCita?: (seq: number) => void;
+  /** Lo destaqué (20/10): estrella junto a la hora. */
+  destacado?: boolean;
 }) {
   const colores = useColores();
 
@@ -186,7 +189,7 @@ function FilaDeMensaje({
   const idDeFila = isPending(item) ? item.clientKey : String(item.seq);
   const fallo = isPending(item) ? item.fallo : undefined;
   const editado = !isPending(item) && Boolean(item.editedAt) && !item.deletedAt;
-  const meta = { hora, mia: mine, entrega: delivery, id: idDeFila, fallido: Boolean(fallo), editado };
+  const meta = { hora, mia: mine, entrega: delivery, id: idDeFila, fallido: Boolean(fallo), editado, destacado };
   const subida = etiquetaDeSubida({ razon: isPending(item) ? (item.progreso ?? 0) : 0, fallido: Boolean(fallo) });
   const lugarDeLaHora = dondeVaLaHora({
     conTexto: Boolean(item.body),

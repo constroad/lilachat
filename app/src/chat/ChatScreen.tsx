@@ -3,7 +3,7 @@ import { Text, View } from 'react-native';
 import { ProgramarMensajeModal } from './ProgramarMensajeModal';
 import { ProgramadosDelChat } from './ProgramadosDelChat';
 import type { FlashListRef } from '@shopify/flash-list';
-import { KeyboardAvoidingView, useKeyboardState } from 'react-native-keyboard-controller';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { etiquetaDeRecordatorioEnElChat, type MencionEnMensaje } from '@lilachat/shared';
 import { AttachSheet } from './AttachSheet';
 import { CrearDesdeElChat, type QueSeCrea } from './CrearDesdeElChat';
@@ -47,6 +47,8 @@ import { useMensajeFallido } from './useMensajeFallido';
 import { useAlAbrirElChat } from './useAlAbrirElChat';
 import { useIrAMensaje } from './useIrAMensaje';
 import { useFijarMensajes } from './useFijarMensajes';
+import { useDestacadosDelChat } from './destacados/useDestacadosDelChat';
+import { TarjetaDeDestacados } from './destacados/TarjetaDeDestacados';
 import { useAcuseVivo } from './acuseVivo';
 import { useHilosEnElChat } from './useHilosEnElChat';
 import { HiloScreen } from './HiloScreen';
@@ -140,6 +142,7 @@ export function ChatScreen({
   const hilos = useHilosEnElChat({ chatId, yo: credential.userId, jwt: credential.jwt, messages, pending });
   /** Los mensajes elegidos con pulsación larga (FL9: uno o varios). */
   const seleccion = useSeleccionDeMensajes(messages);
+  const destacados = useDestacadosDelChat({ chatId, jwt: credential.jwt, secreto: Boolean(encrypted) });
   const { ocultos, ocultar } = useOcultos(chatId);
   const [verDetalle, setVerDetalle] = useState(false);
   /**
@@ -357,10 +360,11 @@ export function ChatScreen({
     onReaccionar: reacciones.elegir,
     onMasEmojis: reacciones.masEmojis,
     onVerReacciones: reacciones.verReacciones,
+    destacados: destacados.seqs,
   });
 
-  // Teclado abierto = sin barra de navegación: el margen del pie dejaba un hueco (16/10).
-  const tecladoAbierto = useKeyboardState((estado) => estado.isVisible);
+  // Lo que la barra sube MENOS que el teclado: su margen de navegación queda tapado (20/10, sin salto de layout).
+  const sinSubir = margenes.pie - MARGEN_CON_TECLADO;
 
   useAlAbrirElChat({ hayContenido: rows.length > 0, irAlInicio: alAbrir, mensajes: messages, lastSeqInicial, markRead });
 
@@ -395,6 +399,7 @@ export function ChatScreen({
           onFijar={fijar.pedirFijar}
           onDesfijar={(seq) => void fijar.desfijar(seq)}
           onAbrirHilo={encrypted ? undefined : hilos.abrir}
+          destacados={encrypted ? undefined : destacados}
         />
       ) : busqueda.activo ? (
         <BuscadorDelChat
@@ -431,7 +436,8 @@ export function ChatScreen({
        * la conversación como un bloque (transform, sin medir) y ajusta el
        * tamaño una sola vez al final. Ver §59.
        */}
-      <KeyboardAvoidingView style={{ flex: 1, zIndex: 1 }} behavior="translate-with-padding">
+      {/* Teclado como Telegram (20/10): ver `useScrollConTeclado`; la barra sube en un `KeyboardStickyView`. */}
+      <View style={{ flex: 1, zIndex: 1 }}>
       {fijar.hoja}
 
       <CrearDesdeElChat
@@ -479,9 +485,11 @@ export function ChatScreen({
           cargandoAnteriores={cargandoAnteriores}
           hayAnteriores={hayAnteriores}
           onLlegoAlFinal={() => setLeyoHastaElFinal(true)}
+          sinSubir={sinSubir}
         />
       </AccionesDeTarjetaContext.Provider>
 
+      <KeyboardStickyView offset={{ closed: 0, opened: sinSubir }}>
       {mediaError ? (
         <Text className="px-4 pb-1 text-sm text-error" testID="error-media">
           {mediaError}
@@ -492,7 +500,7 @@ export function ChatScreen({
 
       {/* La barra de escribir: su composición (la píldora con emoji, clip y cámara; UN botón afuera) se explica en `Composer`. */}
       {fueraDelGrupo ? (
-        <FueraDelGrupo margenPie={tecladoAbierto ? MARGEN_CON_TECLADO : margenes.pie} />
+        <FueraDelGrupo margenPie={margenes.pie} />
       ) : (
         <Composer
           ref={composerRef}
@@ -503,7 +511,7 @@ export function ChatScreen({
           onCancelarEdicion={respuesta.cancelarEdicion}
           onEditar={respuesta.guardarEdicion}
           subiendo={false}
-          margenPie={tecladoAbierto ? MARGEN_CON_TECLADO : margenes.pie}
+          margenPie={margenes.pie}
           onAdjuntar={alAdjuntar}
           onCamara={alCamara}
           onEscribiendo={avisarEscribiendo}
@@ -517,6 +525,8 @@ export function ChatScreen({
           modoSecreto={encrypted ? (sesionLista ? 'solo-texto' : 'bloqueado') : undefined}
         />
       )}
+
+      </KeyboardStickyView>
 
       <CamaraDelChat visible={camara.abierta} nombreDelChat={nombreVisible} onEnviar={(lista, opciones) => void camara.enviar(lista, opciones)} onGaleria={camara.aLaGaleria} onCerrar={camara.cerrar} />
       <EnviarFotos fotos={fotosElegidas} onCancelar={cerrarFotos} onEnviar={(lista, opciones) => void alEnviarFotos(lista, opciones)} />
@@ -581,10 +591,10 @@ export function ChatScreen({
           setVerDetalle(false);
           busqueda.abrir();
         }}
-        tarjetas={<TarjetaDeFijados fijados={fijar.fijados} textoDe={fijar.textoDe} nombreDe={nombreDe} onVerTodos={() => { setVerDetalle(false); fijar.verTodos(); }} />}
+        tarjetas={<><TarjetaDeFijados fijados={fijar.fijados} textoDe={fijar.textoDe} nombreDe={nombreDe} onVerTodos={() => { setVerDetalle(false); fijar.verTodos(); }} />{encrypted ? null : <TarjetaDeDestacados chatId={chatId} jwt={credential.jwt} yo={credential.userId} cuantos={destacados.seqs.size} onIr={(seq) => { setVerDetalle(false); alTocarCita(seq); }} />}</>}
       />
       ) : null}
-    </KeyboardAvoidingView>
+    </View>
     </View>
   );
 }

@@ -1,6 +1,6 @@
 import { memo, useContext } from 'react';
-import { AlertCircle, FileText, Lock } from 'lucide-react';
-import { colorDeAutor, DELIVERY_GLYPH, formatClock, primerEnlace, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
+import { AlertCircle, BellRing, CalendarDays, FileText, Lock } from 'lucide-react';
+import { colorDeAutor, DELIVERY_GLYPH, esAvisoDestacado, formatClock, primerEnlace, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
 import { TarjetaDeEnlace } from './TarjetaDeEnlace';
 import { NotaDeVoz } from './NotaDeVoz';
 import { useVistaPrevia } from './useVistaPrevia';
@@ -182,6 +182,19 @@ function LineaDeSistema({ mensaje }: { mensaje: MensajeEnPantalla }) {
         }) || mensaje.body
       : mensaje.body;
   if (!texto) return null;
+  // El recordatorio que sonó o el evento que se acerca (20/10): tarjeta con su ícono.
+  if (esAvisoDestacado(aviso?.evento)) {
+    const Icono = aviso?.evento === 'evento-pronto' ? CalendarDays : BellRing;
+    return (
+      <div data-testid={`aviso-destacado-${mensaje.seq}`} className="my-3 flex justify-center">
+        <span className="flex max-w-[80%] items-center gap-3 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-2.5">
+          <Icono size={18} className="shrink-0 text-primary" />
+          <span className="text-sm font-semibold">{texto.replace(/^(⏰|📅)\s*/u, '')}</span>
+          <span className="text-[11px] text-on-surface-variant">{formatClock(mensaje.at)}</span>
+        </span>
+      </div>
+    );
+  }
   return <p className="my-3 text-center text-[12px] text-on-surface-variant">{texto}</p>;
 }
 

@@ -27,3 +27,11 @@ describe('la línea de aviso en la web', () => {
     expect(screen.getByText('Ana fijó un mensaje')).toBeInTheDocument();
   });
 });
+
+describe('el recordatorio que suena, en la web (20/10)', () => {
+  it('se dibuja como tarjeta destacada, sin el emoji del texto', () => {
+    dibujar({ chatId: 'c1', seq: 9, senderId: 'ana', clientKey: 'sis-rec-9', kind: 'system', body: '⏰ Recordatorio: Llamar al laboratorio', system: { evento: 'recordatorio-suena', valor: 'Llamar al laboratorio' }, at: new Date().toISOString() });
+    expect(screen.getByTestId('aviso-destacado-9')).toHaveTextContent('Recordatorio: Llamar al laboratorio');
+    expect(screen.getByTestId('aviso-destacado-9').textContent).not.toContain('⏰');
+  });
+});

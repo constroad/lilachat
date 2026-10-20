@@ -12,6 +12,7 @@ import { aplicarAcuseALista, aplicarBorradoALista, aplicarEdicionALista, aplicar
 import { cambiarFila } from '../local/listaLocal';
 import { sincronizar } from './sincronizar';
 import { anotarEnvio } from '../chat/reenviar/frecuenciasDeEnvio';
+import { debeSonarEnLaWeb, sonarMensaje } from '../sonidos/sonidoDeMensaje';
 
 /** Una página del historial: lo que entra en pantalla y algo más. */
 export const TAMANO_DE_PAGINA = 50;
@@ -81,6 +82,7 @@ export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401
       onMessage: (mensaje: ChatMessage) => {
         if (base) void aplicarEntrante(base, mensaje);
         enLaFila(mensaje.chatId, (chats) => aplicarMensajeALista(chats, mensaje, yo, visibleAbierto()));
+        void sonarSiCorresponde(base, mensaje, yo, abiertoRef.current);
       },
       onReceipt: (acuse: AcuseEnVivo & { chatId: string }) => enLaFila(acuse.chatId, (chats) => aplicarAcuseALista(chats, acuse, yo, cursores.current)),
       onBorrado: (dato: { chatId: string; seq: number }) => {
@@ -311,4 +313,11 @@ function useDrenado(base: BaseLocal | null, yo: string, socket: MutableRefObject
   }, [drenar]);
 
   return drenar;
+}
+
+/** El sonido de un mensaje que llega (20/10): las reglas de `debeSonarEnLaWeb`. */
+async function sonarSiCorresponde(base: BaseLocal | null, mensaje: ChatMessage, yo: string, abierto: string | null): Promise<void> {
+  const silenciado = base ? Boolean((await base.chats.get(mensaje.chatId))?.muted) : false;
+  const visible = document.visibilityState === 'visible';
+  if (debeSonarEnLaWeb({ senderId: mensaje.senderId, yo, chatId: mensaje.chatId, abierto, visible, silenciado, kind: mensaje.kind, soloEnElHilo: mensaje.hiloDe !== undefined && !mensaje.enElChat })) sonarMensaje();
 }

@@ -58,11 +58,14 @@ async function crearRecordatorio(): Promise<string> {
   return r.body.id as string;
 }
 
+/** Tomorrow, relative to the run: the list shows events up to 6 h old, and a fixed date expired at 21:00 UTC on 20/10. */
+const TOMORROW = new Date(Date.now() + 24 * 3_600_000).toISOString();
+
 async function crearEvento(): Promise<string> {
   const r = await request(app)
     .post('/api/agenda/events')
     .set(conJwt(jwtYo))
-    .send({ chatId: String(chatId), title: 'Asado', startsAt: '2026-10-20T15:00:00.000Z', location: 'Casa' })
+    .send({ chatId: String(chatId), title: 'Asado', startsAt: TOMORROW, location: 'Casa' })
     .expect(201);
   return r.body.id as string;
 }

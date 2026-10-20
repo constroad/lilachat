@@ -31,7 +31,7 @@ export function armarAviso(params: {
   chatName: string;
   senderName: string | null;
   esGrupo: boolean;
-  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'poll' | 'event' | 'reminder';
+  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'poll' | 'event' | 'reminder' | 'sticker';
   body: string;
   cifrado?: boolean;
 }): Aviso {
@@ -47,7 +47,9 @@ export function armarAviso(params: {
   const texto =
     params.kind === 'text' || params.kind === 'poll' || params.kind === 'event' || params.kind === 'reminder'
       ? params.body
-      : params.kind === 'image'
+      : params.kind === 'sticker'
+        ? 'Sticker'
+        : params.kind === 'image'
         ? '📷 Foto'
         : params.kind === 'video'
           ? '🎥 Video'

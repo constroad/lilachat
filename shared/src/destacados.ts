@@ -24,6 +24,7 @@ export type DestacadoEnLista = {
 
 /** La línea de un destacado en la lista: el texto, o la etiqueta de lo que no es texto. */
 export function textoDelDestacado(mensaje: MensajeDestacado): string {
+  if (mensaje.kind === 'sticker') return 'Sticker';
   const mime = mensaje.media?.mime ?? '';
   const pie = mensaje.body?.trim();
   if (mime.startsWith('image/')) return `📷 ${pie || 'Foto'}`;

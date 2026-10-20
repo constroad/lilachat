@@ -15,6 +15,46 @@ export function insertarEnTexto(texto: string, seleccion: Seleccion | null, frag
   return { texto: texto.slice(0, inicio) + fragmento + texto.slice(fin), cursor: inicio + fragmento.length };
 }
 
+/** Joiners and modifiers that belong to the emoji before them (ZWJ, variation selector, skin tones, tags, keycap). */
+const EMOJI_TAIL = /^(?:\u200D|\uFE0F|\u20E3|[\u{1F3FB}-\u{1F3FF}]|[\u{E0020}-\u{E007F}])$/u;
+const REGIONAL_INDICATOR = /^[\u{1F1E6}-\u{1F1FF}]$/u;
+
+/** How many code points the last visible character takes (a composed emoji counts as one). */
+function lastCharacterLength(points: string[]): number {
+  let count = 0;
+  let index = points.length - 1;
+  while (index >= 0) {
+    const point = points[index]!;
+    count += 1;
+    index -= 1;
+    const joined = index >= 0 && points[index] === '\u200D';
+    if (EMOJI_TAIL.test(point) && index >= 0) continue;
+    if (joined) {
+      count += 1;
+      index -= 1;
+      continue;
+    }
+    if (REGIONAL_INDICATOR.test(point) && index >= 0 && REGIONAL_INDICATOR.test(points[index]!) && count === 1) count += 1;
+    break;
+  }
+  return count;
+}
+
+/**
+ * The backspace key of the emoji panel (design `s1-app-panel-stickers`): it
+ * removes the selection, or the character before the cursor — a whole emoji,
+ * even a composed one, not half of it.
+ */
+export function deleteBeforeCursor(texto: string, seleccion: Seleccion | null): { texto: string; cursor: number } {
+  const start = seleccion ? Math.min(seleccion.start, texto.length) : texto.length;
+  const end = seleccion ? Math.min(Math.max(seleccion.end, start), texto.length) : texto.length;
+  if (end > start) return { texto: texto.slice(0, start) + texto.slice(end), cursor: start };
+  const before = Array.from(texto.slice(0, start));
+  if (!before.length) return { texto, cursor: start };
+  const kept = before.slice(0, before.length - lastCharacterLength(before)).join('');
+  return { texto: kept + texto.slice(start), cursor: kept.length };
+}
+
 /**
  * ¿Se está escribiendo una mención? Un «@» al principio o tras un espacio,
  * seguido de lo tipeado hasta el cursor sin espacios. Un correo no lo es.

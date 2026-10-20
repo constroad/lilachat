@@ -156,7 +156,7 @@ export function formatChatTimestamp(at: string | Date, now: Date = new Date()): 
  * el otro está escribiendo —cursiva y en acento—, y eso ya lo sabemos: el
  * socket emite `typing` desde F2 y la lista no lo usaba.
  */
-export type MediaDePreview = 'foto' | 'video' | 'voz' | 'archivo' | 'encuesta' | 'evento' | 'recordatorio';
+export type MediaDePreview = 'foto' | 'video' | 'voz' | 'archivo' | 'encuesta' | 'evento' | 'recordatorio' | 'sticker';
 
 const ETIQUETA_DE_MEDIA: Record<MediaDePreview, string> = {
   foto: 'Foto',
@@ -166,6 +166,7 @@ const ETIQUETA_DE_MEDIA: Record<MediaDePreview, string> = {
   encuesta: 'Encuesta',
   evento: 'Evento',
   recordatorio: 'Recordatorio',
+  sticker: 'Sticker',
 };
 
 /** Los mensajes que se dibujan como tarjeta y su ícono en la lista. */
@@ -210,7 +211,9 @@ export function resolveChatPreview(params: {
     // El tipo va aparte (FL3): la app dibuja un ícono vectorial como WhatsApp;
     // con el emoji pegado al texto se veía distinto en cada teléfono.
     const media: MediaDePreview =
-      params.lastKind === 'image'
+      params.lastKind === 'sticker'
+        ? 'sticker'
+        : params.lastKind === 'image'
         ? 'foto'
         : params.lastKind === 'video'
           ? 'video'

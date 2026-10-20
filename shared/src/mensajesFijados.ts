@@ -69,6 +69,7 @@ export type VistaDelFijado = { senderId: string; kind: string; body?: string; mi
 export function textoDelFijado(vista: VistaDelFijado, textoLocal?: string): string {
   const texto = (vista.body ?? textoLocal ?? '').replace(/\s+/g, ' ').trim();
   if (texto) return texto;
+  if (vista.kind === 'sticker') return 'Sticker';
   const mime = vista.mime ?? '';
   if (vista.kind === 'voice' || (mime.startsWith('audio/') && vista.kind !== 'file')) return 'Nota de voz';
   if (mime.startsWith('image/')) return 'Foto';

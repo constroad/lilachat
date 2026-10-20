@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { completarMencion, consultaDeMencion, insertarEnTexto, rangosDeMenciones, textoDeMencion } from './textoDelComposer.js';
+import { completarMencion, consultaDeMencion, deleteBeforeCursor, insertarEnTexto, rangosDeMenciones, textoDeMencion } from './textoDelComposer.js';
 
 const ANA = '665f1a2b3c4d5e6f70818294';
 const BETO = '665f1a2b3c4d5e6f70818295';
@@ -88,5 +88,25 @@ describe('textoDeMencion', () => {
 
   it('sin nombres cargados, el texto original', () => {
     expect(textoDeMencion({ userId: ANA, original: '@Anita', nombres: undefined, yo: 'yo' })).toBe('@Anita');
+  });
+});
+
+describe('deleteBeforeCursor (the backspace key of the emoji panel)', () => {
+  it('removes the character before the cursor', () => {
+    expect(deleteBeforeCursor('hola', null)).toEqual({ texto: 'hol', cursor: 3 });
+    expect(deleteBeforeCursor('hola', { start: 2, end: 2 })).toEqual({ texto: 'hla', cursor: 1 });
+  });
+
+  it('removes a whole emoji, even a composed one (skin tone, family, flag)', () => {
+    expect(deleteBeforeCursor('ok 👍🏽', null).texto).toBe('ok ');
+    expect(deleteBeforeCursor('a👨‍👩‍👧', null).texto).toBe('a');
+    expect(deleteBeforeCursor('x❤️', null).texto).toBe('x');
+    expect(deleteBeforeCursor('pe🇵🇪', null).texto).toBe('pe');
+  });
+
+  it('with a selection removes the selection; at the start or empty it does nothing', () => {
+    expect(deleteBeforeCursor('hola', { start: 1, end: 3 })).toEqual({ texto: 'ha', cursor: 1 });
+    expect(deleteBeforeCursor('hola', { start: 0, end: 0 })).toEqual({ texto: 'hola', cursor: 0 });
+    expect(deleteBeforeCursor('', null)).toEqual({ texto: '', cursor: 0 });
   });
 });

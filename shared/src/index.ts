@@ -60,6 +60,8 @@ export * from './mensajesFijados.js';
 export * from './tiposDeAgenda.js';
 export * from './pendientes.js';
 export * from './destacados.js';
+export * from './stickers.js';
+export * from './stickerEditor.js';
 export * from './encuestas.js';
 export * from './eventos.js';
 export * from './recordatorios.js';

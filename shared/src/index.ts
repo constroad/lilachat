@@ -67,3 +67,4 @@ export * from './tarjetasVivas.js';
 export * from './escribiendo.js';
 export * from './compresionDeFoto.js';
 export * from './listaEnVivo.js';
+export * from './hilos.js';

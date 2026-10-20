@@ -5,7 +5,7 @@ import { acuseDelGrupo } from './acuses.js';
  * que la web haga lo mismo: pedía la lista entera con cada mensaje y cada
  * acuse). Genérica: la app y la web tienen su `ChatSummary`, con estos campos.
  */
-export type UltimoDeLaFila = { seq: number; body?: string; kind?: string; senderId: string; at: string; system?: unknown; deletedAt?: string };
+export type UltimoDeLaFila = { seq: number; body?: string; kind?: string; senderId: string; at: string; system?: unknown; deletedAt?: string; hiloDe?: number };
 export type ResumenEnVivo = {
   id: string;
   kind?: string;
@@ -28,6 +28,8 @@ export type MensajeEnVivo = {
   body?: string;
   at: string;
   system?: unknown;
+  /** E3: es una respuesta de hilo (la vista previa lo dice). */
+  hiloDe?: number;
 };
 
 /**
@@ -66,6 +68,7 @@ export function aplicarMensajeALista<C extends ResumenEnVivo>(
       senderId: String(mensaje.senderId),
       at: mensaje.at,
       system: mensaje.system,
+      ...(mensaje.hiloDe !== undefined ? { hiloDe: mensaje.hiloDe } : {}),
     },
   } as C;
   return chats.map((chat, i) => (i === indice ? actualizado : chat));

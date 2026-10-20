@@ -16,6 +16,8 @@ export type AccionesDeMensaje = {
   eliminarParaMi: boolean;
   /** Fijar arriba del chat (19/10): `null` si no se puede (permiso, borrado o varios). */
   fijar: 'fijar' | 'desfijar' | null;
+  /** «Responder en hilo» (E3, 20/10): de uno, vivo, no secreto, no aviso ni ya respuesta de un hilo. */
+  hilo: boolean;
 };
 
 export function accionesDeMensaje(params: {
@@ -32,9 +34,11 @@ export function accionesDeMensaje(params: {
   puedeFijar?: boolean;
   /** Ya está fijado: la acción es desfijar. */
   fijado?: boolean;
+  /** Ya es la respuesta de un hilo: no hay hilos de hilos (E3). */
+  esRespuestaDeHilo?: boolean;
 }): AccionesDeMensaje {
   if (params.eliminado) {
-    return { responder: false, copiar: false, reenviar: false, editar: false, info: false, eliminarParaTodos: false, eliminarParaMi: true, fijar: null };
+    return { responder: false, copiar: false, reenviar: false, editar: false, info: false, eliminarParaTodos: false, eliminarParaMi: true, fijar: null, hilo: false };
   }
   return {
     responder: true,
@@ -47,6 +51,7 @@ export function accionesDeMensaje(params: {
     eliminarParaTodos: params.mio,
     eliminarParaMi: true,
     fijar: params.puedeFijar ? (params.fijado ? 'desfijar' : 'fijar') : null,
+    hilo: !params.chatSecreto && !params.esRespuestaDeHilo,
   };
 }
 
@@ -59,6 +64,7 @@ const NINGUNA: AccionesDeMensaje = {
   eliminarParaTodos: false,
   eliminarParaMi: false,
   fijar: null,
+  hilo: false,
 };
 
 /**
@@ -73,8 +79,9 @@ export function accionesDeVarios(lista: readonly AccionesDeMensaje[]): AccionesD
     responder: false,
     editar: false,
     info: false,
-    // Se fija de a uno, como WhatsApp.
+    // Se fija de a uno, como WhatsApp; el hilo también.
     fijar: null,
+    hilo: false,
     copiar: lista.every((uno) => uno.copiar),
     reenviar: lista.every((uno) => uno.reenviar),
     eliminarParaTodos: lista.every((uno) => uno.eliminarParaTodos),

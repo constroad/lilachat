@@ -40,6 +40,9 @@ export type OutboxItem = {
   replyToSeq?: number;
   /** Las @menciones del texto (18/10). Nunca junto al sobre: el server no ve ese texto. */
   menciones?: MencionEnMensaje[];
+  /** E3: respuesta en el hilo de este `seq`; `enElChat` = también en el chat principal. */
+  hiloDe?: number;
+  enElChat?: boolean;
   /** Reloj del cliente: sirve para ordenar lo pendiente en pantalla. */
   queuedAt: string;
   attempts: number;
@@ -165,6 +168,9 @@ export function buildOutboxItem(params: {
   seal?: (text: string) => { v: 1; nonce: string; ciphertext: string } | null;
   /** Las @menciones, calculadas sobre el texto YA recortado (los rangos cuentan desde ahí). */
   menciones?: (text: string) => MencionEnMensaje[];
+  /** E3: responder en un hilo (y si se ve también en el chat). */
+  hiloDe?: number;
+  enElChat?: boolean;
 }): OutboxItem | null {
   const text = params.text.trim();
   if (!text) return null;
@@ -176,6 +182,7 @@ export function buildOutboxItem(params: {
     queuedAt: params.queuedAt,
     attempts: 0,
     ...(params.replyToSeq !== undefined ? { replyToSeq: params.replyToSeq } : {}),
+    ...(params.hiloDe !== undefined ? { hiloDe: params.hiloDe, ...(params.enElChat ? { enElChat: true } : {}) } : {}),
   };
 
   if (!params.seal) {

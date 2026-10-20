@@ -281,3 +281,13 @@ describe('ediciones y borrados en la vista previa', () => {
     expect(aplicarEdicionALista(chats, { chatId: CHAT })).toBe(chats);
   });
 });
+
+/** E3 (20/10): una respuesta de hilo llega en vivo a la fila con su marca. */
+describe('respuesta de hilo en la fila', () => {
+  it('el último mensaje lleva `hiloDe`', () => {
+    const chats = [chat()];
+    const nuevos = aplicarMensajeALista(chats, { chatId: CHAT, seq: 5, senderId: OTRO, body: 'en el hilo', at: '2026-10-20T10:00:00.000Z', hiloDe: 2 }, YO);
+    expect(nuevos?.[0]?.lastMessage).toMatchObject({ body: 'en el hilo', hiloDe: 2 });
+  });
+});
+

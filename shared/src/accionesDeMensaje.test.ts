@@ -9,7 +9,7 @@ describe('accionesDeMensaje', () => {
   const base = { mio: true, eliminado: false, conTexto: true, esMedia: false, chatSecreto: false, editable: true };
 
   it('un texto propio: todo', () => {
-    expect(accionesDeMensaje(base)).toEqual({ responder: true, copiar: true, reenviar: true, editar: true, info: true, eliminarParaTodos: true, eliminarParaMi: true, fijar: null });
+    expect(accionesDeMensaje(base)).toEqual({ responder: true, copiar: true, reenviar: true, editar: true, info: true, eliminarParaTodos: true, eliminarParaMi: true, fijar: null, hilo: true });
   });
 
   it('uno ajeno: no se borra para todos, pero sí para mí', () => {
@@ -22,7 +22,7 @@ describe('accionesDeMensaje', () => {
   });
 
   it('una lápida: solo borrarla de mi vista', () => {
-    expect(accionesDeMensaje({ ...base, eliminado: true })).toEqual({ responder: false, copiar: false, reenviar: false, editar: false, info: false, eliminarParaTodos: false, eliminarParaMi: true, fijar: null });
+    expect(accionesDeMensaje({ ...base, eliminado: true })).toEqual({ responder: false, copiar: false, reenviar: false, editar: false, info: false, eliminarParaTodos: false, eliminarParaMi: true, fijar: null, hilo: false });
   });
 
   /** «Info» (FL9): quién lo leyó. Solo de lo propio, como WhatsApp. */
@@ -104,6 +104,21 @@ describe('planDeReenvio', () => {
       { tipo: 'texto', texto: 'hola' },
       { tipo: 'mensaje', chatId: 'c', seq: 5 },
     ]);
+  });
+});
+
+/** E3 (20/10): responder en hilo. */
+describe('responder en hilo', () => {
+  const base = { mio: false, eliminado: false, conTexto: true, esMedia: false, chatSecreto: false, editable: false };
+  it('un mensaje vivo de un chat común abre su hilo; uno secreto o una respuesta de hilo, no', () => {
+    expect(accionesDeMensaje(base).hilo).toBe(true);
+    expect(accionesDeMensaje({ ...base, chatSecreto: true }).hilo).toBe(false);
+    expect(accionesDeMensaje({ ...base, esRespuestaDeHilo: true }).hilo).toBe(false);
+    expect(accionesDeMensaje({ ...base, eliminado: true }).hilo).toBe(false);
+  });
+
+  it('con varios elegidos, no', () => {
+    expect(accionesDeVarios([accionesDeMensaje(base), accionesDeMensaje(base)]).hilo).toBe(false);
   });
 });
 

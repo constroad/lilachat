@@ -156,6 +156,11 @@ describe('resolveChatPreview', () => {
     expect(resolveChatPreview({ typing: false, lastKind: 'image', eliminado: true })).toEqual({ text: 'Se eliminó este mensaje', style: 'eliminado' });
   });
 
+  /** E3 (20/10): lo último fue una respuesta en un hilo. */
+  it('una respuesta de hilo lo dice antes del texto', () => {
+    expect(resolveChatPreview({ typing: false, lastBody: 'Yo llamo', enHilo: true }).text).toBe('En un hilo: Yo llamo');
+  });
+
   it('sin texto pero con media, dice QUÉ llegó', () => {
     expect(resolveChatPreview({ typing: false, lastKind: 'image' }).text).toContain('Foto');
     expect(resolveChatPreview({ typing: false, lastKind: 'video' }).text).toContain('Video');

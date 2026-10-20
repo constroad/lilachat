@@ -191,6 +191,8 @@ export function resolveChatPreview(params: {
   borrador?: string;
   /** El último mensaje se borró para todos: su tipo ya no dice nada (una foto borrada no es «Foto»). */
   eliminado?: boolean;
+  /** E3: el último fue una respuesta en un hilo. */
+  enHilo?: boolean;
 }): ChatPreview {
   if (params.typing) return { text: 'Escribiendo…', style: 'typing' };
   // En una sola línea: un salto cortaría la vista previa en la primera.
@@ -203,7 +205,7 @@ export function resolveChatPreview(params: {
   if (media) {
     return { text: (params.lastBody ?? '').replace(PREFIJO_DE_REF, '') || ETIQUETA_DE_MEDIA[media], style: 'normal', media };
   }
-  if (params.lastBody) return { text: params.lastBody, style: 'normal' };
+  if (params.lastBody) return { text: params.enHilo ? `En un hilo: ${params.lastBody}` : params.lastBody, style: 'normal' };
   if (params.lastKind && params.lastKind !== 'text') {
     // El tipo va aparte (FL3): la app dibuja un ícono vectorial como WhatsApp;
     // con el emoji pegado al texto se veía distinto en cada teléfono.

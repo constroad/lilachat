@@ -97,6 +97,22 @@ describe('notifyOffline', () => {
     expect(sent).toHaveLength(0);
   });
 
+  /**
+   * José, 20/10: «no suena cuando recibo un mensaje». «Conectado» es por
+   * persona: con la web abierta (o la app dormida con el socket colgado) el
+   * teléfono quedaba mudo. El teléfono nativo lo recibe SIEMPRE: con la app
+   * adelante solo acusa la entrega y no dibuja nada.
+   */
+  it('al teléfono nativo le llega aunque la persona tenga un socket vivo; el común, no', async () => {
+    await DeviceModel.create({ deviceId: 'd-maria-tel', userId: maria, platform: 'android', pushToken: 'tok-maria-tel', capacidades: [CAPACIDAD_MENSAJE_NATIVO] });
+    markOnline(String(maria));
+
+    await notifyOffline({ message: message(), members: members(), senderId: String(jose) });
+
+    expect(datos.map((d) => d.tokens)).toEqual([['tok-maria-tel']]);
+    expect(sent).toHaveLength(0);
+  });
+
   /** Ni al autor ni a sus otros dispositivos: ya recibieron `msg.new`. */
   it('nunca notifica al autor', async () => {
     await notifyOffline({ message: message(), members: members(), senderId: String(jose) });

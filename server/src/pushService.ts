@@ -42,12 +42,12 @@ export async function notifyOffline(params: {
   members: string[];
   senderId: string;
 }): Promise<void> {
-  // Al autor NUNCA (ni a sus otros dispositivos: ya recibieron `msg.new`), y a
-  // quien tiene un socket vivo tampoco — está mirando la conversación.
-  const conectadosFuera = params.members.filter(
-    (member) => member !== params.senderId && !isOnline(member)
-  );
-  const candidatos = await soloInteresadosDelHilo(params.message, conectadosFuera);
+  // Al autor NUNCA (ni a sus otros dispositivos: ya recibieron `msg.new`).
+  // Estar «conectado» ya no corta el push del TELÉFONO (José, 20/10: «no suena»):
+  // la conexión es por persona —la web abierta o una app dormida con el socket
+  // colgado contaban— y el teléfono quedaba mudo. Ver `comunes` abajo.
+  const otros = params.members.filter((member) => member !== params.senderId);
+  const candidatos = await soloInteresadosDelHilo(params.message, otros);
   if (candidatos.length === 0) return;
 
   // Quien SILENCIÓ este chat no recibe una notificación que suene: es el punto
@@ -79,8 +79,11 @@ export async function notifyOffline(params: {
 
   // Un token, un envío (FL11): el teléfono con el aviso nativo no recibe además el común.
   const reparto = repartirPorToken(dispositivos, dibujaElMensaje);
+  // El teléfono nativo lo recibe SIEMPRE: con la app adelante solo acusa la
+  // entrega y no dibuja nada. El común (web, teléfono viejo) solo a quien no
+  // tiene un socket vivo: si lo tiene, ya le llegó en vivo.
   const nativos = reparto.nativos;
-  const comunes = reparto.comunes.filter((d) => !silenciados.has(String(d.userId)));
+  const comunes = reparto.comunes.filter((d) => !silenciados.has(String(d.userId)) && !isOnline(String(d.userId)));
   const data = { chatId: String(params.message.chatId), seq: params.message.seq };
   // DOS transportes para el mismo aviso: el teléfono por FCM y la pestaña del
   // navegador por Web Push. Son dispositivos distintos del mismo dueño, así que
@@ -181,10 +184,14 @@ async function chatsSilenciadosDeChat(chatId: string, userIds: string[]): Promis
  * Silenciar un chat NO calla sus llamadas (como WhatsApp).
  */
 export async function avisarLlamada(params: { chatId: string; from: string; members: string[]; video: boolean }): Promise<void> {
-  const desconectados = params.members.filter((member) => member !== params.from && !isOnline(member));
-  if (desconectados.length === 0) return;
+  // A TODOS menos a quien llama (José, 20/10: «la pantalla de Wilson estaba
+  // apagada y no sonó; se enteró al desbloquear»): figuraba conectado y no le
+  // iba push. El teléfono nativo suena siempre (con la app adelante no la
+  // dibuja: la trae el socket); el común, solo si está desconectado.
+  const otros = params.members.filter((member) => member !== params.from);
+  if (otros.length === 0) return;
   const [dispositivos, quien] = await Promise.all([
-    DeviceModel.find({ userId: { $in: desconectados }, pushToken: { $exists: true, $ne: '' } })
+    DeviceModel.find({ userId: { $in: otros }, pushToken: { $exists: true, $ne: '' } })
       .select('pushToken platform userId capacidades')
       .lean(),
     UserModel.findById(params.from).select('name phone').lean(),
@@ -193,10 +200,11 @@ export async function avisarLlamada(params: { chatId: string; from: string; memb
   const nombre = quien?.name ?? quien?.phone ?? 'Alguien';
   // FL8.1: el que sabe dibujarla a pantalla completa la recibe solo-datos.
   // Un token, un envío (FL11): sin esto el mismo teléfono recibía la pantalla completa Y «Llamada de…».
-  const { nativos, comunes: resto } = repartirPorToken(
+  const { nativos, comunes } = repartirPorToken(
     dispositivos,
     (d) => d.platform !== 'web' && Boolean(d.capacidades?.includes(CAPACIDAD_LLAMADA_NATIVA))
   );
+  const resto = comunes.filter((d) => !isOnline(String(d.userId)));
   const aviso = {
     title: `${params.video ? 'Videollamada' : 'Llamada'} de ${nombre}`,
     body: 'Toca para contestar',

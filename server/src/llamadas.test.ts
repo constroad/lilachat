@@ -255,6 +255,29 @@ describe('avisarLlamada', () => {
     expect(datos[0]!.data.queda).toBe(String(CALL_TIMEOUT_MS));
   });
 
+  /**
+   * José, 20/10: «al llamar a Wilson con la pantalla apagada no vibró ni sonó;
+   * se enteró al desbloquear». «Conectado» es por persona: con la web abierta,
+   * o con la app dormida y su socket todavía colgado, NO le llegaba push. Al
+   * teléfono nativo le va SIEMPRE (con la app adelante no la dibuja: la trae el
+   * socket); a la web o a un teléfono viejo, solo si está desconectado.
+   */
+  it('al teléfono nativo le suena aunque la persona figure conectada; al viejo, no', async () => {
+    const ana = (await UserModel.create({ phone: '999999999', name: 'Ana' }))._id;
+    const wilson = (await UserModel.create({ phone: '960397018', name: 'Wilson' }))._id;
+    await DeviceModel.create([
+      { deviceId: 'w-tel', userId: wilson, platform: 'android', pushToken: 'tok-tel', capacidades: [CAPACIDAD_LLAMADA_NATIVA] },
+      { deviceId: 'w-viejo', userId: wilson, platform: 'android', pushToken: 'tok-viejo' },
+    ]);
+    markOnline(String(wilson));
+    const chatId = String(new Types.ObjectId());
+
+    await avisarLlamada({ chatId, from: String(ana), members: [String(ana), String(wilson)], video: false });
+
+    expect(datos.map((d) => d.tokens)).toEqual([['tok-tel']]);
+    expect(enviados).toHaveLength(0);
+  });
+
   it('el fin le llega a los teléfonos nativos de todos menos de quien llamó, conectados o no', async () => {
     const ana = (await UserModel.create({ phone: '999999999', name: 'Ana' }))._id;
     const jose = (await UserModel.create({ phone: '902049935', name: 'José' }))._id;

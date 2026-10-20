@@ -130,11 +130,12 @@ export async function runReminderTick(now: Date = new Date()): Promise<{ events:
     );
     if (claimed.modifiedCount === 0) continue;
 
-    // El del GRUPO le suena a todos sus miembros, con el nombre del grupo (19/10).
-    const grupo = reminder.chatId ? await ChatModel.findOne({ _id: reminder.chatId, kind: 'group' }).select('name members.userId').lean() : null;
+    // El de un CHAT le suena a todos sus miembros (grupo 19/10; 1:1 y borrador
+    // 20/10); el del grupo lleva su nombre.
+    const chat = reminder.chatId ? await ChatModel.findById(reminder.chatId).select('kind name members.userId').lean() : null;
     await pushTo(
-      grupo ? grupo.members.map((m) => String(m.userId)) : [String(reminder.userId)],
-      grupo ? `${grupo.name ?? 'Grupo'} · ${reminder.title}` : reminder.title,
+      chat ? chat.members.map((m) => String(m.userId)) : [String(reminder.userId)],
+      chat?.kind === 'group' ? `${chat.name ?? 'Grupo'} · ${reminder.title}` : reminder.title,
       reminder.note || 'Recordatorio',
       { chatId: String(reminder.chatId ?? ''), seq: 0 }
     );

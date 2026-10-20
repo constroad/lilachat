@@ -161,8 +161,17 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
   });
 
   router.post('/', async (req, res) => {
-    const kind = req.body?.kind === 'group' ? 'group' : req.body?.kind === 'notas' ? 'notas' : 'direct';
     const me = req.session!.userId;
+    // EL CHAT CONTIGO (José, 20/10), como el «Tú» de WhatsApp: siempre el mismo,
+    // se crea la primera vez. Sin índice único (la base no crea índices sola):
+    // dos toques a la vez son de la misma persona y la app no los permite.
+    if (req.body?.kind === 'yo') {
+      const existente = await ChatModel.findOne({ kind: 'notas', propio: true, 'members.userId': me }).select('_id').lean();
+      if (existente) return res.status(200).json({ chatId: String(existente._id) });
+      const propio = await ChatModel.create({ kind: 'notas', propio: true, encrypted: false, name: 'Tú', members: [{ userId: me, role: 'admin' }], lastSeq: 0 });
+      return res.status(201).json({ chatId: String(propio._id) });
+    }
+    const kind = req.body?.kind === 'group' ? 'group' : req.body?.kind === 'notas' ? 'notas' : 'direct';
     const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
 
     // UN BORRADOR (José, 19/10): un chat solo contigo y con nombre, para notas,
@@ -266,6 +275,7 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
       id: String(chat._id),
       kind: chat.kind,
       name: chat.name,
+      descripcion: chat.descripcion,
       encrypted: chat.encrypted === true,
       // MI silenciado (es por persona): el interruptor del detalle lo muestra
       // como está, en vez de arrancar siempre apagado.
@@ -333,27 +343,21 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
   });
 
   /**
-   * Cambiar el nombre del grupo.
+   * Cambiar el nombre o la descripción del grupo (`{name?, descripcion?}`).
    *
    * `PATCH` sobre el chat, no sobre una membresía: lo que cambia es el chat.
    */
   router.patch('/:chatId', async (req, res) => {
-    const r = await editarInfoDeGrupo({
-      chatId: req.params.chatId!,
-      quien: new Types.ObjectId(req.session!.userId),
-      nombre: req.body?.name,
-    });
+    const quien = new Types.ObjectId(req.session!.userId);
+    const r = await editarInfoDeGrupo({ chatId: req.params.chatId!, quien, nombre: req.body?.name, descripcion: req.body?.descripcion });
     if (!r.ok) return res.status(400).json({ message: r.motivo });
 
     // El nombre se ve en la lista de TODOS, no solo de quien lo cambió.
     for (const id of r.miembros) avisarCambioDeChat(id, req.params.chatId!);
-    await avisarEnElChat({
-      chatId: req.params.chatId!,
-      quien: new Types.ObjectId(req.session!.userId),
-      evento: 'nombre',
-      valor: r.nombre,
-    });
-    return res.status(200).json({ ok: true, name: r.nombre });
+    if (r.nombre !== undefined) await avisarEnElChat({ chatId: req.params.chatId!, quien, evento: 'nombre', valor: r.nombre });
+    // La descripción (20/10): el aviso dice que cambió, no el texto (puede ser largo).
+    if (r.descripcion !== undefined) await avisarEnElChat({ chatId: req.params.chatId!, quien, evento: 'descripcion', valor: r.descripcion ? undefined : 'borrada' });
+    return res.status(200).json({ ok: true, name: r.nombre, descripcion: r.descripcion });
   });
 
   /**

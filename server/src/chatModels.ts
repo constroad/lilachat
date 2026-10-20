@@ -42,6 +42,10 @@ export interface Chat {
   avatarMediaId?: string;
   /** La foto del grupo, RELATIVA (`/files/…`); el host lo pone el server. */
   avatarUrl?: string;
+  /** La descripción del grupo (20/10): larga, con párrafos (`normalizarDescripcion`). */
+  descripcion?: string;
+  /** El chat contigo («Tú · Envíate un mensaje», 20/10): un borrador único por persona. */
+  propio?: boolean;
   members: ChatMember[];
   /** Último `seq` asignado. Es el contador que `$inc` mueve. */
   lastSeq: number;
@@ -131,6 +135,8 @@ export interface Message {
   enElChat?: boolean;
   /** En la RAÍZ: cuántas respuestas, la última y los 3 últimos que respondieron. */
   hilo?: ResumenDeHilo;
+  /** Reacciones (20/10): una por persona, en el orden en que llegaron. */
+  reacciones?: { userId: string; emoji: string; en: Date }[];
   editedAt?: Date;
   /**
    * Cuándo se borró, si se borró (27/08/2026).
@@ -164,6 +170,8 @@ const chatSchema = new Schema<Chat>(
     name: { type: String },
     avatarMediaId: { type: String },
     avatarUrl: { type: String },
+    descripcion: { type: String },
+    propio: { type: Boolean },
     members: [
       {
         userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
@@ -241,6 +249,10 @@ const messageSchema = new Schema<Message>(
     hiloDe: { type: Number },
     enElChat: { type: Boolean },
     hilo: { type: new Schema({ respuestas: { type: Number, default: 0 }, ultimaEn: Date, ultimaSeq: Number, autores: { type: [String], default: undefined } }, { _id: false }) },
+    reacciones: {
+      type: [new Schema({ userId: { type: String, required: true }, emoji: { type: String, required: true }, en: { type: Date, required: true } }, { _id: false })],
+      default: undefined,
+    },
     editedAt: { type: Date },
     deletedAt: { type: Date },
     autoReply: { type: Boolean, default: false },

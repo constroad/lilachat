@@ -50,6 +50,8 @@ export type ChatSummary = {
   encrypted?: boolean;
   /** La foto del grupo, ABSOLUTA. Sin foto va vacío y se dibuja la inicial. */
   avatarUrl?: string;
+  /** El chat contigo («Tú», 20/10). */
+  propio?: boolean;
   /** Silenciado por MÍ: la lista lo marca y no me llega push de acá. */
   muted?: boolean;
   /** Fijado por MÍ: va arriba en mi lista. */
@@ -151,6 +153,7 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
         const foto = chat.avatarUrl ?? (chat.kind === 'direct' ? fotos.get(otroId) : undefined);
         return foto ? toAbsoluteMediaUrl(foto) : undefined;
       })(),
+      ...(chat.propio ? { propio: true } : {}),
       muted: yo?.muted === true,
       pinned: yo?.pinned === true,
       archived: yo?.archived === true,

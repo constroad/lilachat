@@ -195,3 +195,44 @@ describe('recordatorio del grupo con imagen: se publica cuando está completo', 
     expect(await MessageModel.countDocuments({ chatId: grupoId })).toBe(0);
   });
 });
+
+/**
+ * José, 20/10: «los recordatorios no deberían ser solo grupales: también en
+ * los chats individuales, los borradores y el chat conmigo mismo».
+ */
+describe('recordatorios en un 1:1 y en un borrador', () => {
+  const chat = async (kind: 'direct' | 'notas') =>
+    (await ChatModel.create({ kind, ...(kind === 'notas' ? { name: 'Notas' } : {}), members: kind === 'notas' ? [{ userId: admin, role: 'admin' }] : [{ userId: admin }, { userId: miembro }], lastSeq: 0 }))._id;
+  const crearEn = (quien: Types.ObjectId, chatId: Types.ObjectId) =>
+    request(app).post('/api/agenda/reminders').set(conJwt(quien)).send({ chatId: String(chatId), title: 'Llamar al laboratorio', startsAt: '2026-10-20T15:00:00.000Z' });
+
+  it('en un 1:1 lo crea cualquiera de los dos, sale en el chat y les suena a los dos', async () => {
+    const directo = await chat('direct');
+    const r = await crearEn(miembro, directo);
+
+    expect(r.status).toBe(201);
+    expect((await MessageModel.findOne({ chatId: directo }).lean())?.ref).toEqual({ tipo: 'recordatorio', id: r.body.id });
+    await runReminderTick(new Date('2026-10-20T15:00:10.000Z'));
+    expect(new Set(enviados[0]!.tokens)).toEqual(new Set(['tok-admin', 'tok-miembro']));
+    expect(enviados[0]!.title).toBe('Llamar al laboratorio');
+  });
+
+  it('en un 1:1 cualquiera de los dos lo edita o lo borra; un ajeno no lo ve', async () => {
+    const directo = await chat('direct');
+    const { body } = await crearEn(admin, directo);
+
+    await request(app).patch(`/api/agenda/reminders/${body.id}`).set(conJwt(miembro)).send({ title: 'Llamar a las 4' }).expect(200);
+    await request(app).delete(`/api/agenda/reminders/${body.id}`).set(conJwt(ajeno)).expect(404);
+    await request(app).delete(`/api/agenda/reminders/${body.id}`).set(conJwt(miembro)).expect(200);
+  });
+
+  it('en un borrador (chat contigo) sale en el chat y te suena solo a ti', async () => {
+    const notas = await chat('notas');
+    const r = await crearEn(admin, notas);
+
+    expect(r.status).toBe(201);
+    expect((await MessageModel.findOne({ chatId: notas }).lean())?.ref?.tipo).toBe('recordatorio');
+    await runReminderTick(new Date('2026-10-20T15:00:10.000Z'));
+    expect(enviados[0]!.tokens).toEqual(['tok-admin']);
+  });
+});

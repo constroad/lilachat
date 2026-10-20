@@ -11,7 +11,8 @@ import { signSession } from '../src/sessions.js';
 
 /**
  * Fijar mensajes arriba del chat (José, 19/10: «hacer pin a mensajes»), como
- * WhatsApp: 24 h, 7 días o 30 días; hasta 3; en un grupo, solo los admins.
+ * Empezó como WhatsApp (24 h, 7 días o 30 días; hasta 3); desde el 20/10 como
+ * Slack: hasta 50 y «sin vencimiento». En un grupo, solo los admins.
  */
 let mongo: MongoMemoryServer;
 let jose: Types.ObjectId;
@@ -78,12 +79,20 @@ describe('fijar un mensaje', () => {
     expect((await fijar(directo, extraño, { seq, duracion: '24h' })).status).toBe(403);
   });
 
-  it('hasta 3: el cuarto saca al fijado hace más tiempo', async () => {
+  it('varios fijados a la vez (20/10): el cuarto ya no saca a nadie, el más reciente primero', async () => {
     const seqs: number[] = [];
     for (const texto of ['uno', 'dos', 'tres', 'cuatro']) seqs.push(await escribir(directo, jose, texto));
     for (const seq of seqs) expect((await fijar(directo, jose, { seq, duracion: '24h' })).status).toBe(200);
     const [chat] = await listChats(jose);
-    expect(chat?.fijados?.map((uno) => uno.seq)).toEqual([seqs[3], seqs[2], seqs[1]]);
+    expect(chat?.fijados?.map((uno) => uno.seq)).toEqual([seqs[3], seqs[2], seqs[1], seqs[0]]);
+  });
+
+  it('«sin vencimiento» se acepta y queda vigente', async () => {
+    const seq = await escribir(directo, jose, 'reglas de la obra');
+    expect((await fijar(directo, jose, { seq, duracion: 'siempre' })).status).toBe(200);
+    const fijado = (await listChats(jose))[0]?.fijados?.[0];
+    expect(fijado?.seq).toBe(seq);
+    expect(Date.parse(String(fijado?.hasta)) - Date.now()).toBeGreaterThan(10 * 365 * 24 * 3_600_000);
   });
 
   it('desfijar lo saca de la lista', async () => {

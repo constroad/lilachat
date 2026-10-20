@@ -8,7 +8,7 @@ import { isOnline } from './presence.js';
 import { buildPushSender, buildPushText, type PushSender } from './pushSender.js';
 import { splitPushTargets } from './pushTargets.js';
 import { sendWebPush } from './webPushSender.js';
-import { CALL_TIMEOUT_MS, CAPACIDAD_LLAMADA_NATIVA, CAPACIDAD_MENSAJE_NATIVO } from '@lilachat/shared';
+import { CALL_TIMEOUT_MS, CAPACIDAD_LLAMADA_NATIVA, CAPACIDAD_MENSAJE_NATIVO, textoDelAvisoDeReaccion } from '@lilachat/shared';
 import { firmarEntrega } from './entregaPorAviso.js';
 import { firmarRechazo } from './llamadas.js';
 
@@ -280,5 +280,30 @@ export async function avisarFinDeLlamada(params: { chatId: string; from: string;
     await sender.sendDatos({ tokens, ttlSegundos: VIDA_DEL_FIN_S, data: { tipo: 'llamada-fin', chatId: params.chatId } });
   } catch (error) {
     console.error('[push] no se pudo apagar la llamada:', error instanceof Error ? error.message : error);
+  }
+}
+
+/**
+ * «Ana reaccionó 👍 a «…»» (20/10), como WhatsApp: solo al AUTOR del
+ * mensaje, si no es quien reaccionó, si está fuera de línea y si no silenció
+ * el chat. Quitar una reacción no avisa nada.
+ */
+export async function avisarReaccion(params: { chatId: string; seq: number; autor: string; quien: string; emoji: string; cuerpo?: string }): Promise<void> {
+  if (params.autor === params.quien || isOnline(params.autor)) return;
+  try {
+    const [silenciados, dispositivos, quien, chat] = await Promise.all([
+      chatsSilenciadosDeChat(params.chatId, [params.autor]),
+      DeviceModel.find({ userId: params.autor, pushToken: { $exists: true, $ne: '' } }).select('pushToken platform userId').lean(),
+      UserModel.findById(params.quien).select('name phone').lean(),
+      ChatModel.findById(params.chatId).select('kind name').lean(),
+    ]);
+    if (silenciados.has(params.autor) || dispositivos.length === 0) return;
+    const nombre = quien?.name ?? quien?.phone ?? 'Alguien';
+    const text = { title: chat?.kind === 'group' && chat.name ? `${chat.name} · ${nombre}` : nombre, body: textoDelAvisoDeReaccion(params.emoji, params.cuerpo) };
+    const data = { chatId: params.chatId, seq: params.seq };
+    const destinos = splitPushTargets(dispositivos);
+    await Promise.all([destinos.fcm.length > 0 ? sender.send({ tokens: destinos.fcm, ...text, data }) : undefined, sendWebPush(destinos.web, { ...text, data })]);
+  } catch (error) {
+    console.error('[push] aviso de reacción falló:', error instanceof Error ? error.message : error);
   }
 }

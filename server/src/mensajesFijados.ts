@@ -46,7 +46,7 @@ async function permiso(chatId: string, quien: Types.ObjectId): Promise<{ ok: tru
 export async function fijarMensaje(params: { chatId: string; quien: Types.ObjectId; seq: number; duracion: string }): Promise<Resultado> {
   const ahora = Date.now();
   const hasta = venceDelFijado(params.duracion, ahora);
-  if (!hasta || !Number.isInteger(params.seq)) return { ok: false, status: 400, motivo: 'Elige 24 horas, 7 días o 30 días.' };
+  if (!hasta || !Number.isInteger(params.seq)) return { ok: false, status: 400, motivo: 'Elige 24 horas, 7 días, 30 días o sin vencimiento.' };
   const decision = await permiso(params.chatId, params.quien);
   if (!decision.ok) return decision;
   const mensaje = await MessageModel.findOne({ chatId: decision.chat._id, seq: params.seq }).select('deletedAt kind').lean();

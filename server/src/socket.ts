@@ -17,7 +17,8 @@ import { toClientMessages } from './messageView.js';
 import { isOnline, markOffline, markOnline, onlineAmong } from './presence.js';
 import { guardarUltimaVez, ultimaVezDeContacto } from './ultimaVez.js';
 import { autoResponderA } from './autoReply.js';
-import { avisarFinDeLlamada, avisarLlamada, notifyOffline } from './pushService.js';
+import { avisarFinDeLlamada, avisarLlamada, avisarReaccion, notifyOffline } from './pushService.js';
+import { reaccionar } from './reacciones.js';
 import { candidatosDeLaOferta, frameConAutor, guardarCandidato, hayOfertasPendientes, ofertasVigentes } from './llamadas.js';
 import { alContestar, alOfrecer, alTerminar, configurarCiclo } from './cicloDeLlamada.js';
 import { configurarEntrega } from './entregaPorAviso.js';
@@ -387,6 +388,34 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
       } catch (error) {
         console.error('[chat] no se pudo editar:', (error as Error).message);
         ack?.({ ok: false, motivo: 'No se pudo editar.' });
+      }
+    });
+
+    /**
+     * REACCIONAR (20/10). El server decide (`reaccionar`) y manda la lista
+     * entera a TODOS —incluidos mis otros equipos—: con la lista no hay orden
+     * de llegada que reconciliar. Le suena solo al autor del mensaje.
+     */
+    socket.on('msg.react', async (frame: unknown, ack?: (r: unknown) => void) => {
+      const payload = (frame ?? {}) as Record<string, unknown>;
+      try {
+        const resultado = await reaccionar({
+          chatId: String(payload.chatId ?? ''),
+          seq: Number(payload.seq ?? 0),
+          userId: String(userId),
+          emoji: typeof payload.emoji === 'string' ? payload.emoji : null,
+        });
+        if (!resultado.ok) {
+          ack?.({ ok: false, status: resultado.status, motivo: resultado.motivo });
+          return;
+        }
+        const aviso = { chatId: resultado.chatId, seq: resultado.seq, reacciones: resultado.reacciones };
+        for (const member of await chatMemberIds(new Types.ObjectId(resultado.chatId))) io.to(userRoom(member)).emit('msg.reacciones', aviso);
+        ack?.({ ok: true, reacciones: resultado.reacciones });
+        if (typeof payload.emoji === 'string') void avisarReaccion({ chatId: resultado.chatId, seq: resultado.seq, autor: resultado.autor, quien: String(userId), emoji: payload.emoji, cuerpo: resultado.cuerpo });
+      } catch (error) {
+        console.error('[chat] no se pudo reaccionar:', (error as Error).message);
+        ack?.({ ok: false, motivo: 'No se pudo reaccionar.' });
       }
     });
 

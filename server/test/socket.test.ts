@@ -430,3 +430,26 @@ describe('hilos por el socket', () => {
     expect(r).toMatchObject({ ok: false, motivo: 'Ese mensaje no admite respuestas en hilo.' });
   });
 });
+
+describe('reacciones por el socket', () => {
+  it('reaccionar avisa la lista nueva a todos los miembros, también a mis otros equipos', async () => {
+    const emisor = await connect(tokenFor(jose));
+    const otra = await connect(tokenFor(maria));
+    const enviado = await emisor.timeout(5000).emitWithAck('msg.send', { chatId, clientKey: 'r-1', body: 'Ya llegó la tolva' });
+    const enLaOtra = new Promise<{ seq: number; reacciones: { userId: string; emoji: string }[] }>((resolve) => otra.once('msg.reacciones', resolve));
+    const enMiEquipo = new Promise<{ seq: number }>((resolve) => emisor.once('msg.reacciones', resolve));
+
+    const r = await otra.timeout(5000).emitWithAck('msg.react', { chatId, seq: enviado.seq, emoji: '👍' });
+
+    expect(r).toMatchObject({ ok: true });
+    await expect(enLaOtra).resolves.toMatchObject({ seq: enviado.seq, reacciones: [{ userId: String(maria), emoji: '👍' }] });
+    await expect(enMiEquipo).resolves.toMatchObject({ seq: enviado.seq });
+  });
+
+  it('un emoji inválido se rechaza con su motivo', async () => {
+    const emisor = await connect(tokenFor(jose));
+    const enviado = await emisor.timeout(5000).emitWithAck('msg.send', { chatId, clientKey: 'r-2', body: 'Hola' });
+    const r = await emisor.timeout(5000).emitWithAck('msg.react', { chatId, seq: enviado.seq, emoji: 'jaja' });
+    expect(r).toMatchObject({ ok: false, motivo: 'Esa reacción no es un emoji.' });
+  });
+});

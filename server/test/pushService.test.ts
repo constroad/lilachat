@@ -7,7 +7,7 @@ import { __resetPresence, markOnline } from '../src/presence.js';
 import { buildPushText, type PushDeDatos, type PushMessage } from '../src/pushSender.js';
 import { CAPACIDAD_MENSAJE_NATIVO } from '@lilachat/shared';
 import { verificarEntrega } from '../src/entregaPorAviso.js';
-import { notifyOffline, setPushSender } from '../src/pushService.js';
+import { avisarReaccion, notifyOffline, setPushSender } from '../src/pushService.js';
 
 let mongo: MongoMemoryServer;
 let jose: Types.ObjectId;
@@ -290,5 +290,25 @@ describe('notifyOffline — respuestas en un hilo', () => {
     sent = [];
     await notifyOffline({ message: message({ seq: 3, hiloDe: 1, enElChat: true }), members: [...members(), String(carla)], senderId: String(jose) });
     expect(sent.flatMap((envio) => envio.tokens).sort()).toEqual(['tok-carla', 'tok-maria']);
+  });
+});
+
+describe('avisarReaccion', () => {
+  it('le suena al autor del mensaje con el emoji y el extracto', async () => {
+    await avisarReaccion({ chatId: String(chatId), seq: 4, autor: String(maria), quien: String(jose), emoji: '👍', cuerpo: 'Ya llegó la tolva' });
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({ tokens: ['tok-maria'], title: 'José', body: 'Reaccionó 👍 a «Ya llegó la tolva»' });
+  });
+
+  it('nada si reacciono a lo mío, si el autor está conectado o si silenció el chat', async () => {
+    await avisarReaccion({ chatId: String(chatId), seq: 4, autor: String(jose), quien: String(jose), emoji: '👍' });
+    markOnline(String(maria));
+    await avisarReaccion({ chatId: String(chatId), seq: 4, autor: String(maria), quien: String(jose), emoji: '👍' });
+    __resetPresence();
+    await ChatModel.updateOne({ _id: chatId, 'members.userId': maria }, { $set: { 'members.$.muted': true } });
+    await avisarReaccion({ chatId: String(chatId), seq: 4, autor: String(maria), quien: String(jose), emoji: '👍' });
+
+    expect(sent).toHaveLength(0);
   });
 });

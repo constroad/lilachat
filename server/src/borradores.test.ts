@@ -80,3 +80,38 @@ describe('borradores (chats `notas`)', () => {
     expect(suma.ok).toBe(false);
   });
 });
+
+/**
+ * José, 20/10: «hasta ahora no me dices cómo creo un chat conmigo mismo».
+ * Como WhatsApp: «Tú · Envíate un mensaje» abre SIEMPRE el mismo chat contigo
+ * (un borrador marcado `propio`), y se crea la primera vez.
+ */
+describe('el chat contigo («Tú»)', () => {
+  it('la primera vez se crea; las siguientes devuelve el MISMO', async () => {
+    const primero = await crear({ kind: 'yo' });
+    const segundo = await crear({ kind: 'yo' });
+
+    expect(primero.status).toBe(201);
+    expect(segundo.status).toBe(200);
+    expect(segundo.body.chatId).toBe(primero.body.chatId);
+    const chat = await ChatModel.findById(primero.body.chatId).lean();
+    expect(chat).toMatchObject({ kind: 'notas', propio: true, name: 'Tú', encrypted: false });
+    expect(chat?.members.map((m) => String(m.userId))).toEqual([String(yo)]);
+  });
+
+  it('la lista lo marca como propio y no es el de otra persona', async () => {
+    const { body } = await crear({ kind: 'yo' });
+    const jwtOtro = signSession({ userId: String(otro), deviceId: 'd2', email: 'y' });
+    const delOtro = await request(app).post('/api/chats').set('Authorization', `Bearer ${jwtOtro}`).send({ kind: 'yo' });
+
+    expect(delOtro.body.chatId).not.toBe(body.chatId);
+    const lista = await request(app).get('/api/chats').set('Authorization', `Bearer ${jwt}`).expect(200);
+    expect(lista.body.chats.find((c: { id: string }) => c.id === body.chatId)).toMatchObject({ propio: true, name: 'Tú', kind: 'notas' });
+  });
+
+  it('no se renombra (siempre es «Tú»), pero sí lleva descripción', async () => {
+    const { body } = await crear({ kind: 'yo' });
+    await request(app).patch(`/api/chats/${body.chatId}`).set('Authorization', `Bearer ${jwt}`).send({ name: 'Otro' }).expect(400);
+    await request(app).patch(`/api/chats/${body.chatId}`).set('Authorization', `Bearer ${jwt}`).send({ descripcion: 'Pendientes de la semana' }).expect(200);
+  });
+});

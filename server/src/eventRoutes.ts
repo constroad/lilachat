@@ -329,7 +329,6 @@ export function buildEventRouter(): Router {
     const note = typeof req.body?.note === 'string' ? req.body.note.trim() : undefined;
     const recurrence = String(req.body?.recurrence ?? 'once') as Recurrence;
     let chatId: Types.ObjectId | undefined;
-    let delGrupo = false;
     if (req.body?.chatId) {
       try {
         chatId = await assertMemberNoSecreto(req.body.chatId, req.session!.userId);
@@ -337,15 +336,15 @@ export function buildEventRouter(): Router {
         const mensaje = error instanceof ChatSecretoError ? error.message : 'No tienes acceso a esa conversación.';
         return res.status(403).json({ message: mensaje });
       }
-      // En un GRUPO, solo sus admins (José, 19/10).
+      // En un GRUPO, solo sus admins (José, 19/10); en un 1:1 o un borrador, cualquiera (20/10).
       const { esGrupo, rol } = await rolEnElChat(chatId, req.session!.userId);
       if (esGrupo && rol !== 'admin') return res.status(403).json({ message: 'Solo los admins del grupo crean recordatorios.' });
-      delGrupo = esGrupo;
     }
 
-    // Con imagen, la app crea sin publicar y publica al final
-    // (`/reminders/:id/publicar`): si no, la tarjeta sale sin la imagen.
-    const publicarAhora = delGrupo && req.body?.publicar !== false;
+    // El de un chat vive en el chat como tarjeta (grupo desde el 19/10; 1:1 y
+    // borrador desde el 20/10). Con imagen, la app crea sin publicar y publica
+    // al final (`/reminders/:id/publicar`): si no, la tarjeta sale sin la imagen.
+    const publicarAhora = Boolean(chatId) && req.body?.publicar !== false;
     const reminder = await ReminderModel.create({
       userId: req.session!.userId,
       chatId,

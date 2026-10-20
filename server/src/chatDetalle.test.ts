@@ -130,3 +130,34 @@ describe('POST /api/chats/push-token — capacidades', () => {
     expect(device?.capacidades).toBeUndefined();
   });
 });
+
+/** La descripción larga del grupo (José, 20/10: «como Slack»). */
+describe('PATCH /api/chats/:id — descripción', () => {
+  it('guarda la descripción con sus párrafos, el detalle la trae y queda el aviso en el chat', async () => {
+    const texto = 'Coordinación diaria de la obra.\n\nReglas:\n1) Fotos antes de las 6 p. m.';
+    const r = await request(app).patch(`/api/chats/${chatId}`).set('Authorization', `Bearer ${jwt}`).send({ descripcion: texto }).expect(200);
+    expect(r.body.descripcion).toBe(texto);
+
+    const detalle = await request(app).get(`/api/chats/${chatId}/detail`).set('Authorization', `Bearer ${jwt}`).expect(200);
+    expect(detalle.body.descripcion).toBe(texto);
+    expect(detalle.body.name).toBe('Familia');
+    const { MessageModel } = await import('./chatModels.js');
+    const aviso = await MessageModel.findOne({ chatId, kind: 'system' }).lean();
+    expect(aviso?.system?.evento).toBe('descripcion');
+  });
+
+  it('vacía la borra; muy larga se rechaza sin tocar nada', async () => {
+    await request(app).patch(`/api/chats/${chatId}`).set('Authorization', `Bearer ${jwt}`).send({ descripcion: 'algo' }).expect(200);
+    await request(app).patch(`/api/chats/${chatId}`).set('Authorization', `Bearer ${jwt}`).send({ descripcion: '   ' }).expect(200);
+    expect((await request(app).get(`/api/chats/${chatId}/detail`).set('Authorization', `Bearer ${jwt}`)).body.descripcion).toBeUndefined();
+
+    const larga = await request(app).patch(`/api/chats/${chatId}`).set('Authorization', `Bearer ${jwt}`).send({ descripcion: 'a'.repeat(2049) }).expect(400);
+    expect(larga.body.message).toBe('La descripción no puede pasar de 2048 caracteres.');
+  });
+
+  it('cambiar solo la descripción no avisa un cambio de nombre', async () => {
+    await request(app).patch(`/api/chats/${chatId}`).set('Authorization', `Bearer ${jwt}`).send({ descripcion: 'x' }).expect(200);
+    const { MessageModel } = await import('./chatModels.js');
+    expect(await MessageModel.countDocuments({ chatId, 'system.evento': 'nombre' })).toBe(0);
+  });
+});

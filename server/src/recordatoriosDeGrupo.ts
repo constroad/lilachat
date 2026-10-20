@@ -37,7 +37,8 @@ export async function rolEnElChat(chatId: unknown, userId: Types.ObjectId): Prom
 
 /**
  * ¿Puedo editar o borrar este recordatorio? El personal, solo su dueño; el del
- * grupo, cualquier admin. `404` si no lo puedo ver; `403` si lo veo y no es mío.
+ * grupo, cualquier admin; el de un 1:1 o un borrador (20/10), cualquiera de
+ * sus miembros. `404` si no lo puedo ver; `403` si lo veo y no es mío.
  */
 export async function permisoSobreRecordatorio(reminderId: unknown, userId: Types.ObjectId): Promise<{ estado: 200 | 403 | 404; recordatorio?: Reminder }> {
   const id = asObjectId(reminderId);
@@ -46,6 +47,7 @@ export async function permisoSobreRecordatorio(reminderId: unknown, userId: Type
   if (recordatorio.chatId) {
     const { esGrupo, rol } = await rolEnElChat(recordatorio.chatId, userId);
     if (esGrupo) return rol === 'admin' ? { estado: 200, recordatorio } : { estado: rol === 'miembro' ? 403 : 404 };
+    if (rol !== 'ajeno') return { estado: 200, recordatorio };
   }
   return String(recordatorio.userId) === String(userId) ? { estado: 200, recordatorio } : { estado: 404 };
 }
@@ -127,7 +129,7 @@ export function buildRecordatoriosDeGrupoRouter(uploaderInyectado?: MediaUploade
       const permiso = await permisoSobreRecordatorio(req.params.reminderId, req.session!.userId);
       if (permiso.estado !== 200) return res.status(permiso.estado).json({ message: 'No puedes publicar ese recordatorio.' });
       const recordatorio = permiso.recordatorio!;
-      if (!recordatorio.chatId) return res.status(400).json({ message: 'Ese recordatorio no es de un grupo.' });
+      if (!recordatorio.chatId) return res.status(400).json({ message: 'Ese recordatorio no es de un chat.' });
       const tomado = await ReminderModel.findOneAndUpdate({ _id: recordatorio._id, publicadoEn: null }, { $set: { publicadoEn: new Date() } });
       if (!tomado) return res.status(204).end();
       try {

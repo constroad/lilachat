@@ -1,6 +1,7 @@
 import { Types } from 'mongoose';
 import {
   decidirSalida,
+  normalizarDescripcion,
   normalizarNombreDeGrupo,
   puedeAgregar,
   puedeCambiarRol,
@@ -210,7 +211,8 @@ export async function editarInfoDeGrupo(params: {
   quien: Types.ObjectId;
   nombre?: unknown;
   avatar?: { url: string; mediaId: string };
-}): Promise<{ ok: true; miembros: string[]; nombre?: string } | { ok: false; motivo: string }> {
+  descripcion?: unknown;
+}): Promise<{ ok: true; miembros: string[]; nombre?: string; descripcion?: string } | { ok: false; motivo: string }> {
   const chat = await ChatModel.findOne({ _id: params.chatId }).lean<Chat | null>();
   if (!chat) return { ok: false, motivo: 'No encontramos esa conversación.' };
 
@@ -229,6 +231,7 @@ export async function editarInfoDeGrupo(params: {
   let nombreNuevo: string | undefined;
 
   if (params.nombre !== undefined) {
+    if (chat.propio) return { ok: false, motivo: 'Tu chat contigo siempre se llama «Tú».' };
     const validado = normalizarNombreDeGrupo(params.nombre);
     if (!validado.ok) return { ok: false, motivo: validado.motivo };
     nombreNuevo = validado.nombre;
@@ -238,12 +241,22 @@ export async function editarInfoDeGrupo(params: {
     cambios.avatarUrl = params.avatar.url;
     cambios.avatarMediaId = params.avatar.mediaId;
   }
-  if (Object.keys(cambios).length === 0) {
+  let descripcionNueva: string | undefined;
+  const sacar: Record<string, 1> = {};
+  if (params.descripcion !== undefined) {
+    const validada = normalizarDescripcion(params.descripcion);
+    if (!validada.ok) return { ok: false, motivo: validada.motivo };
+    descripcionNueva = validada.descripcion;
+    // Vacía = borrarla: un campo que no está, no uno vacío.
+    if (validada.descripcion) cambios.descripcion = validada.descripcion;
+    else sacar.descripcion = 1;
+  }
+  if (Object.keys(cambios).length === 0 && Object.keys(sacar).length === 0) {
     return { ok: false, motivo: 'No hay nada que cambiar.' };
   }
 
-  await ChatModel.updateOne({ _id: params.chatId }, { $set: cambios });
-  return { ok: true, miembros: chat.members.map((m) => String(m.userId)), nombre: nombreNuevo };
+  await ChatModel.updateOne({ _id: params.chatId }, { ...(Object.keys(cambios).length ? { $set: cambios } : {}), ...(Object.keys(sacar).length ? { $unset: sacar } : {}) });
+  return { ok: true, miembros: chat.members.map((m) => String(m.userId)), nombre: nombreNuevo, descripcion: descripcionNueva };
 }
 
 /**

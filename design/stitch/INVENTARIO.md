@@ -46,3 +46,6 @@ Las capturas viven SOLO en la máquina (`design/stitch/`, en `.gitignore` desde 
 | `w5-app-escaner.png` | W5 · App: escáner QR + confirmar vinculación (`screens/dbbdb512e8924d0b8898bd0f6c3bae1f`) |
 | `w3-web-lista.png` | W3a · Web: lista con chips, Archivados y menú por fila (`screens/76559642e4e74d18b44b8d6ecc707726`) |
 | `w3-web-info-grupo.png` | W3b · Web: panel «Info. del grupo» a la derecha (`screens/5abfefdbbe124207875108ad8737f106`) |
+| `fm-app-seleccion.png` | Fijar mensaje · App: barra de selección en una línea con «⋮» y franja del fijado (`screens/2e7579183b1747c58001cbab5a657d4c`) |
+| `fm-app-duracion.png` | Fijar mensaje · App: hoja «¿Por cuánto tiempo?» (`screens/fb30791655af41a49c42cb45f4aaac10`) |
+| `fm-web-fijado.png` | Fijar mensaje · Web: franja del fijado y «Fijar» en el menú del mensaje (`screens/f124a74d40884544be1b635a06b2979b`) |

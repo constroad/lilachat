@@ -5312,6 +5312,57 @@ confirmación; salir del grupo (José deja de ser miembro); eliminar el 1:1. A
 **Fuera de W3a (anotado):** el «Borrador: …» en rojo del diseño es el texto sin
 enviar de un chat (WhatsApp); Lilachat no guarda eso todavía.
 
+### 54.13 Fijar mensajes y la barra de selección en una línea (19/10/2026, sin publicar)
+
+José, 19/10: «falta fijar chat y hacer pin a mensajes. El botón borrar se
+pierde en la parte de arriba, ¿no deberían estar todos en la misma línea y
+visibles?». Fijar **chats** ya estaba (selección de la app y menú de la web,
+W3a). Diseños: `fm-app-seleccion.png`, `fm-app-duracion.png`, `fm-web-fijado.png`.
+
+| Pieza | Qué | Dónde |
+| --- | --- | --- |
+| Motor | 24 h, 7 días o 30 días; hasta 3 por chat (el cuarto saca al fijado hace más tiempo; refijar renueva); en un grupo solo admins, en un 1:1 o borrador cualquiera; la acción «Fijar/Desfijar» de un mensaje (no con varios ni borrados); el texto de la franja (secreto: el que descifró el dispositivo; adjunto: «Foto», «Nota de voz»…); la línea «X fijó / Fijaste un mensaje» | shared `mensajesFijados.ts` (+13 tests), `accionesDeMensaje.ts`, `avisoDeGrupo.ts` (`fijo`) |
+| Server | `chat.fijados` (sin índices nuevos); `POST /api/chats/:id/fijados {seq, duracion}` y `DELETE …/:seq` con el permiso comprobado contra la base; la línea en el chat (no en uno secreto); `chat.changed` a todos; la lista de chats trae los vigentes con su vista previa (una consulta para todos, en paralelo; sin texto si es secreto; respeta «borrar para mí»); borrar para todos desfija | `mensajesFijados.ts`, `fijadosRoutes.ts`, `listaDeChats.ts`, `chatService.ts` (+10 tests) |
+| Barra de la app | En UNA línea: lo que entra por ancho a la vista (Responder, Fijar, Reenviar, **Eliminar siempre**, Copiar…) y el resto en «⋮». A 360 dp con un mensaje propio: cinco a la vista, Editar e Info en «⋮»; con uno ajeno, todo a la vista | `barraDeSeleccion.ts` (+5 tests), `SeleccionDeMensaje.tsx` |
+| App | Hoja «¿Por cuánto tiempo?» (abre en 7 días); franja bajo la cabecera: tocar va al mensaje y pasa al siguiente («1/3»), mantener ofrece desfijar; se relee con `chat.changed`. «Ir a un mensaje» salió de `ChatScreen` (estaba en 600 líneas) | `HojaDeFijarMensaje.tsx`, `FranjaDeFijados.tsx`, `useFijarMensajes.tsx`, `useIrAMensaje.ts` |
+| Web | «Fijar/Desfijar» en el menú del mensaje, diálogo de duración, franja con «Ir al mensaje» y «Desfijar», y la lista virtualizada que salta y resalta el mensaje. Las líneas de aviso (en la conversación y en la vista previa de la lista) se arman con el motor compartido: decían «902049935 fijó un mensaje» | `MenuDelMensaje.tsx`, `DialogoFijar.tsx`, `FranjaDeFijados.tsx`, `useFijarEnLaWeb.ts`, `ListaDeMensajes.tsx` (`salto`), `BurbujaDeMensaje.tsx` (`LineaDeSistema`), `FilaDeChat.tsx` (+12 tests) |
+
+**E2E (19/10)**, web vinculada por QR y app en el emulador a **360 dp**
+(`wm density 480`): la barra entra entera con Eliminar a la vista; fijar 7 días
+y 24 h desde la app (franja «1/2», «Fijaste un mensaje»); la web ve los dos, va
+al mensaje (resaltado), fija un tercero (30 días) y la APP lo muestra «1/3» en
+3 s; desfijar desde la web y desde la app (mantener la franja); en un grupo
+donde José no es admin, no hay «Fijar». QA en cero.
+
+| Defecto que encontró el E2E | Arreglo |
+| --- | --- |
+| Tras fijar, la franja seguía en el índice anterior | un fijado nuevo vuelve al principio (+1 test) |
+| La web decía «902049935 fijó un mensaje» (en el chat y en la lista) | se arma con `textoDeAviso`: «Fijaste un mensaje» / «Ana fijó…» (+4 tests) |
+
+### 54.14 W3b — «Info.» del chat y del grupo en la web (19/10/2026, sin publicar)
+
+Diseño: `w3-web-info-grupo.png`. Se abre tocando el nombre o la foto de la
+cabecera; tercera columna de 400 px desde 1024 px, encima de la conversación en
+pantallas más angostas.
+
+| Pieza | Qué | Dónde |
+| --- | --- | --- |
+| Vista | Título por tipo (grupo / contacto / borrador), «Grupo · N participantes», el teléfono del contacto o «Solo tú lo ves»; yo primero, después admins y el resto por nombre. Quién edita, suma, saca o nombra admin lo preguntan las MISMAS reglas del server (`puedeEditarInfo`, `puedeAgregar`, `accionesDeMiembro`) | `info/infoDelChat.ts` (+5 tests) |
+| Editar | Nombre en línea (Enter guarda), foto (archivo), sumar desde los contactos, nombrar o quitar admin, sacar (confirmado); el motivo del server se muestra | `info/useEditarChat.ts` (+4 tests), `IdentidadDelChat.tsx`, `ParticipantesDelChat.tsx` |
+| Resto | Silenciar (la misma acción de la lista), archivos de la base local con miniaturas que abren el visor, «Salir del grupo» y «Eliminar chat» confirmados | `PanelDeInfo.tsx` (+5 tests), `ArchivosDelChat.tsx` |
+| Detalle | Trae silenciado, foto y nombre; se relee si cambian miembros, nombre o foto de la lista, o tras editar | `useDetalleDelChat.ts` |
+| Avatar | Una foto que no carga cae a la inicial | `ui/Avatar.tsx` |
+
+**E2E (19/10):** renombrar (cabecera, lista y la APP con el nombre nuevo),
+cambiar la foto (la app la muestra), silenciar, nombrar admin, sacar a un
+miembro («2 participantes»), salir de un grupo sin ser admin (sin menús de
+participantes), «Info. del contacto» a 390 px a pantalla completa sin scroll
+lateral y eliminar el 1:1 (cierra el panel). QA en cero.
+
+**No es un defecto:** a otro admin no se le quita el rol (solo uno mismo deja de
+serlo; `puedeCambiarRol`). **Pendiente:** si OTRO cambia los roles, el panel
+abierto no se entera hasta reabrirlo (la lista no trae roles).
+
 ## 53. FL15 — barra como WhatsApp, borradores, recordatorios del grupo, novedades, mensajes largos (19/10/2026, 0.1.98)
 
 José, 19/10: la barra de WhatsApp (emoji adentro a la izquierda, clip y cámara

@@ -4892,6 +4892,43 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 60. Tarjetas como mensajes, «Responder en hilo» a mano y la burbuja del hilo (20/10/2026, 0.1.107)
+
+José, 20/10, con 0.1.106 en el teléfono: a un recordatorio del chat no se le
+puede deslizar para responder, reaccionar ni abrir hilo; el link de su
+descripción queda como texto y sin miniatura; al tocar un mensaje solo
+aparecen emojis («ahí también la manera de crear hilos»); en el hilo un link
+no muestra la tarjeta, queda un espacio feo bajo «También enviar al chat» y en
+modo oscuro la hora no se ve.
+
+| Pedido | Qué se hizo | Dónde |
+| --- | --- | --- |
+| Tarjeta = mensaje | Recordatorio, evento y encuesta del chat: deslizar los responde («Respondiendo a tu mensaje · Recordatorio: …»), mantenerlos los elige (barra de reacciones, «Responder en hilo», fijar…) y, con mensajes elegidos, un toque los suma o saca en vez de votar o editar. Con reacciones, la hora de la tarjeta lleva aire para que la pastilla no la tape. «Editar» no aparece (el server las guarda como `reminder`/`event`/`poll`) | app `TarjetaDelChat`, `MessageRow` |
+| Link en el recordatorio | La descripción tiene los links tocables y el primero trae su tarjeta (YouTube con miniatura y play) | app `RecordatorioEnElChat` |
+| «Responder en hilo» bajo los emojis | La barra de reacciones suma una fila «Responder en hilo» cuando se puede (`puedeAbrirHilo`: confirmado, vivo, no aviso, no respuesta de otro hilo, no secreto); suelta la selección y abre el hilo. En la web, un botón de hilo junto al de reaccionar al pasar el mouse | shared `hilos.puedeAbrirHilo`; app `BarraDeReacciones`, `useDibujarFila`; web `BotonDeHilo` |
+| Burbuja del hilo | Ahora es la del chat: sus colores (la propia era `bg-primary`, clara en modo oscuro, y la hora no se veía), la hora dentro de la última línea, links tocables con su tarjeta y @menciones. La raíz del hilo también tiene sus links tocables (app y web) | app `TextoConHora` (sale de `MessageRow`), `MetaDeMensaje` (archivo propio), `HiloScreen`; web `PanelDeHilo` |
+| Espacio bajo el check | Con el teclado abierto, el pie del hilo sumaba el margen de la barra de navegación (que no se ve): franja vacía sobre el teclado. Igual que el chat, sin ese margen con teclado. Además la lista baja a la última respuesta al abrirlo | app `HiloScreen` |
+
+**Defectos que salieron en el E2E y se corrigieron:** el texto de la tarjeta
+de enlace colapsaba a alto cero al elegir el recordatorio (`flex-1` con base
+0 en columna; ahora solo al costado de la miniatura); en la web, mientras
+cargaba la miniatura, el play flotaba sobre el título (ahora se reserva el
+lugar 1.91:1).
+
+### 60.1 E2E
+
+Emulador reiniciado en frío (el DNS de internet volvió) y server QA local:
+recordatorio creado desde la app con un link de YouTube en la descripción →
+tarjeta con link y miniatura con play; mantenerla → selección + barra con
+«Responder en hilo»; 👍 → pastilla bajo la hora; hilo abierto desde la barra
+→ respuesta con link: tarjeta, hora dentro, en claro y oscuro; deslizar la
+tarjeta → «Respondiendo a tu mensaje»; con un mensaje elegido, tocar la
+tarjeta → 2 elegidos. Web (navegador propio como QA Ana): botón de hilo al
+pasar el mouse abre el panel, raíz con el link tocable.
+
+**Queda:** la web todavía no dibuja las tarjetas de recordatorio, evento y
+encuesta (las muestra como texto): es W3c, lo siguiente.
+
 ## 59. Revisión de fluidez: avisos en el chat, foto al instante, teclado, miniaturas de enlaces y sonidos (20/10/2026, 0.1.106)
 
 José, 20/10, después de publicar 0.1.105: un recordatorio o un evento que
@@ -6137,3 +6174,56 @@ teléfono real). Lo que falló o quedó raro:
    «Llamada en curso» de tipo micrófono, con cronómetro y «Colgar» en la
    notificación, mientras la llamada esté activa o sonando hacia afuera; y el
    socket no se pausa en plena llamada.
+
+## Pendientes de José (backlog, desde 20/10/2026)
+
+Lo que José pidió dejar anotado para después. Se agrega acá, al final, y se
+tacha con la versión que lo cierra.
+
+1. **Configurar la fuente del chat.** Como WhatsApp (Ajustes › Chats › Tamaño
+   de la fuente: Pequeña · Mediana · Grande): un multiplicador que leen la
+   burbuja, la cita, la tarjeta de enlace y la barra (app, por contexto; web,
+   con una variable CSS), encima del tamaño de letra del sistema, que se sigue
+   respetando. Se guarda por equipo. Tests del motor de tamaños y captura a
+   360 dp con «Grande» para que nada se corte.
+2. **Crear stickers como WhatsApp.** Desde una foto: recortar el sujeto
+   (Android: ML Kit Subject Segmentation, en el equipo y gratis; web:
+   segmentación de MediaPipe, Apache 2.0), sumar texto o emoji, y guardar
+   en «Mis stickers» como WebP 512×512 con transparencia. Se mandan como
+   mensaje `sticker` (sin burbuja, con reacciones), se pueden tocar para
+   guardar el de otro y tienen favoritos. Antes de elegir una librería de
+   recorte se revisa la licencia (sin AGPL ni de pago sin preguntar).
+3. **Guiños y zumbido, como el Messenger de antes.** Análisis abajo.
+
+### Guiños y zumbido (análisis, 20/10)
+
+**Qué era:** en MSN Messenger un *guiño* era una animación a pantalla
+completa con sonido (el chanchito bailando, el globo de agua que se revienta,
+el beso) y el *zumbido* sacudía la ventana del otro. Las animaciones
+originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
+(Claude Design o un ilustrador) con la misma idea.
+
+**Cómo se haría en Lilachat:**
+- **Mensaje nuevo, `guino` o `zumbido`**: solo el id del guiño (`{guino:
+  'chanchito'}`). Viaja como cualquier mensaje: cola offline, acuses y
+  reacciones; en el historial queda una línea «🐷 Wilson te mandó un guiño ·
+  Ver otra vez». Sirve también en chats secretos (no lleva contenido).
+- **Catálogo compartido** en `shared` (id, nombre, archivo, duración, sonido)
+  con animaciones **Lottie** (JSON vectorial de 20–80 KB). Se bajan la primera
+  vez que se usan y quedan en caché: no pesan en el APK ni en la web.
+- **App:** si el chat está abierto, un overlay transparente a pantalla
+  completa (sin capturar toques) reproduce la animación con
+  `lottie-react-native` (MIT), su sonido y una vibración. El zumbido sacude la
+  pantalla del chat (Reanimated, `translateX` de ±12 dp por 600 ms) con un
+  patrón de vibración. Si el chat está cerrado: aviso «Wilson te mandó un
+  zumbido» y la animación corre una sola vez al abrirlo.
+- **Web:** el mismo overlay con `@lottiefiles/dotlottie-web` (MIT) sobre un
+  canvas; el zumbido sacude el panel con un keyframe CSS y suena con Web
+  Audio. Con `prefers-reduced-motion` no se anima: queda la línea del chat.
+- **Dónde se elige:** una pestaña «Guiños» en el panel de emojis y «Zumbido»
+  en el menú de adjuntar (app y web).
+- **Límites:** un zumbido cada 10 s por persona y chat (el server lo
+  rechaza); en grupos solo si el admin lo permite, para que no sea spam; un
+  chat silenciado no anima ni suena; el sonido respeta el modo silencio.
+- **Costo:** sin servicios pagos. El trabajo grande son las animaciones
+  propias (6–8 para arrancar) y sus sonidos.

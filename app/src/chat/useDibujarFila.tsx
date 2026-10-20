@@ -1,5 +1,5 @@
 import { useCallback, type ComponentProps } from 'react';
-import { formatDayLabel, miReaccion, puedeReaccionar, resolveDeliveryState, startsNewDay } from '@lilachat/shared';
+import { formatDayLabel, miReaccion, puedeAbrirHilo, puedeReaccionar, resolveDeliveryState, startsNewDay } from '@lilachat/shared';
 import { DivisorNoLeidos } from './useDivisorNoLeidos';
 import { DaySeparator, isPending, MessageRow, type Row } from './MessageRow';
 import { ChipDeHilo } from './ChipDeHilo';
@@ -56,11 +56,13 @@ export function useDibujarFila(p: {
       const mia = isPending(item) || item.senderId === yo;
       const conAvatar = esGrupo && !mia;
       const conBarra = !isPending(item) && elegidos.size === 1 && elegidos.has(item.seq) && puedeReaccionar({ seq: item.seq, deletedAt: item.deletedAt, kind: item.kind, cifrado: encrypted });
+      // «Responder en hilo» bajo los emojis: suelta la selección y abre el hilo.
+      const conHilo = conBarra && !isPending(item) && puedeAbrirHilo({ seq: item.seq, kind: item.kind, hiloDe: item.hiloDe, deletedAt: item.deletedAt, cifrado: encrypted });
       return (
         <>
           {startsNewDay(at, previousAt) ? <DaySeparator label={formatDayLabel(at)} /> : null}
           {!isPending(item) && item.seq === divisorSeq ? <DivisorNoLeidos cantidad={noLeidosAlAbrir} /> : null}
-          {conBarra ? <BarraDeReacciones seq={item.seq} mia={mia} conAvatar={false} miEmoji={miReaccion(item.reacciones, yo)} onElegir={onReaccionar} onMas={onMasEmojis} /> : null}
+          {conBarra ? <BarraDeReacciones seq={item.seq} mia={mia} conAvatar={false} miEmoji={miReaccion(item.reacciones, yo)} onElegir={onReaccionar} onMas={onMasEmojis} onHilo={conHilo ? (seq) => { onSeleccionar?.(seq); onAbrirHilo(seq); } : undefined} /> : null}
           <MessageRow
             item={item}
             previous={previous}

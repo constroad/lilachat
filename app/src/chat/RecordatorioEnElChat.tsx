@@ -3,10 +3,12 @@ import { Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Bell } from 'lucide-react-native';
 import { agendaGet, type AgendaReminder } from '../agenda/agendaApi';
-import { cuandoSuena } from '@lilachat/shared';
+import { cuandoSuena, primerEnlace } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { useTarjetaViva } from './useTarjetaViva';
 import { useAccionesDeTarjeta } from './accionesDeTarjeta';
+import { TextoConEnlaces } from './TextoConEnlaces';
+import { VistaPreviaDeEnlace } from './VistaPreviaDeEnlace';
 
 /** Lo último que se vio de cada recordatorio, para que la celda reciclada no parpadee. `null` = ya no está. */
 const recordatoriosVistos = new Map<string, AgendaReminder | null>();
@@ -14,9 +16,10 @@ const recordatoriosVistos = new Map<string, AgendaReminder | null>();
 /**
  * El recordatorio del GRUPO dentro del chat (José, 19/10): qué, cuándo suena,
  * la descripción y la imagen. Vive en el grupo y le suena a todos; lo editan
- * sus admins desde el detalle del grupo.
+ * sus admins desde el detalle del grupo. Los links de la descripción se tocan
+ * y el primero trae su tarjeta (José, 20/10: «quedaba como texto»).
  */
-export function RecordatorioEnElChat({ reminderId, jwt }: { reminderId: string; jwt: string }) {
+export function RecordatorioEnElChat({ reminderId, jwt, onLongPress }: { reminderId: string; jwt: string; onLongPress?: () => void }) {
   const colores = useColores();
   const [recordatorio, setRecordatorio] = useState<AgendaReminder | null | undefined>(() => recordatoriosVistos.get(reminderId));
   const [fallo, setFallo] = useState(false);
@@ -57,6 +60,8 @@ export function RecordatorioEnElChat({ reminderId, jwt }: { reminderId: string; 
       testID={`recordatorio-en-chat-${reminderId}`}
       disabled={!editarRecordatorio}
       onPress={() => editarRecordatorio?.(recordatorio)}
+      onLongPress={onLongPress}
+      delayLongPress={350}
       accessibilityLabel={editarRecordatorio ? `Editar el recordatorio ${recordatorio.title}` : undefined}
       className="overflow-hidden rounded-xl border border-outline/10 bg-surface"
     >
@@ -74,7 +79,12 @@ export function RecordatorioEnElChat({ reminderId, jwt }: { reminderId: string; 
             <Text className="text-[13px] text-on-surface-variant">{cuandoSuena(recordatorio)}</Text>
           </View>
         </View>
-        {recordatorio.note ? <Text className="mt-1 text-[14px] leading-5 text-on-surface">{recordatorio.note}</Text> : null}
+        {recordatorio.note ? (
+          <Text className="mt-1 text-[14px] leading-5 text-on-surface">
+            <TextoConEnlaces texto={recordatorio.note} />
+          </Text>
+        ) : null}
+        {recordatorio.note && primerEnlace(recordatorio.note) ? <VistaPreviaDeEnlace url={primerEnlace(recordatorio.note)!} jwt={jwt} mia={false} /> : null}
       </View>
     </Pressable>
   );

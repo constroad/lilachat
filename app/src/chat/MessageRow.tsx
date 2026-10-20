@@ -2,12 +2,13 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { memo } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
-import { BellRing, CalendarDays, CircleAlert, Check, CheckCheck, Clock3, Play } from 'lucide-react-native';
+import { BellRing, CalendarDays, CircleAlert, Play } from 'lucide-react-native';
 import { AVATAR_DE_AUTOR, colorDeAutor, dondeVaLaHora, mostrarAutor, radiosDeBurbuja } from './burbuja';
 import { DeslizarParaResponder } from './DeslizarParaResponder';
 import { LineaDeLlamada } from './LineaDeLlamada';
 import { CitaDeRespuesta } from './CitaDeRespuesta';
-import { TextoDelMensaje } from './TextoDelMensaje';
+import { TextoConHora } from './TextoConHora';
+import { MetaDeMensaje } from './MetaDeMensaje';
 import { TarjetaDeArchivo } from './TarjetaDeArchivo';
 import { VistaPreviaDeEnlace } from './VistaPreviaDeEnlace';
 import { NotaDeVoz } from './NotaDeVoz';
@@ -30,6 +31,8 @@ import {
   tamanoDeBurbuja,
   type DeliveryState,
 } from '@lilachat/shared';
+
+export { MetaDeMensaje } from './MetaDeMensaje';
 
 /** La foto o el video con su forma real (FL9); sin dimensiones, el cuadrado. */
 const estiloDeFoto = (media: { width?: number; height?: number }) => {
@@ -146,6 +149,10 @@ function FilaDeMensaje({
         jwt={jwt}
         yo={myUserId}
         autor={esGrupo ? { nombre: nombreAutor ?? '', foto: fotoAutor } : undefined}
+        onSeleccionar={onSeleccionar}
+        enSeleccion={enSeleccion}
+        seleccionado={seleccionado}
+        onResponder={onResponder}
       />
     );
   }
@@ -371,28 +378,8 @@ function FilaDeMensaje({
             {conVistaPrevia && jwt && !isPending(item) && !item.media && primerEnlace(item.body) ? (
               <VistaPreviaDeEnlace url={primerEnlace(item.body)!} jwt={jwt} mia={mine} />
             ) : null}
-            {/* Hora y checks DENTRO, alineados a la última línea (como WhatsApp):
-                el texto lleva al final un relleno invisible del ancho de la hora
-                y la hora va encima, abajo a la derecha. Cero renglón extra. */}
-            <View className="px-3 pb-1.5 pt-1.5">
-              <Text className={`text-[15px] leading-[21px] ${mine ? 'text-on-burbuja-propia' : 'text-on-burbuja-ajena'}`}>
-                <TextoDelMensaje texto={item.body} menciones={isPending(item) ? undefined : item.menciones} nombres={nombres} yo={myUserId} enBurbujaPropia={mine} id={isPending(item) ? item.clientKey : `${item.chatId}:${item.seq}`} />
-                {/* El relleno es la MISMA hora, al mismo tamaño e invisible:
-                    reserva exactamente su ancho (con espacios de nbsp, la hora
-                    se montaba sobre los mensajes cortos). */}
-                <Text
-                  className="text-[11px]"
-                  // Del color de la burbuja y no `transparent`: en Android un
-                  // span anidado transparente se pinta gris.
-                  style={{ color: mine ? colores['burbuja-propia'] : colores['burbuja-ajena'] }}
-                >
-                  {`${NBSP}${NBSP}${editado ? `${ETIQUETA_EDITADO}${NBSP}` : ''}${hora}${mine ? RELLENO_CHECKS : NBSP}`}
-                </Text>
-              </Text>
-              <View className="absolute bottom-1 right-2.5">
-                <MetaDeMensaje {...meta} />
-              </View>
-            </View>
+            {/* Hora y checks DENTRO, alineados a la última línea (como WhatsApp). */}
+            <TextoConHora texto={item.body} menciones={isPending(item) ? undefined : item.menciones} nombres={nombres} yo={myUserId} id={isPending(item) ? item.clientKey : `${item.chatId}:${item.seq}`} meta={meta} />
             </>
           ) : null}
 
@@ -425,68 +412,10 @@ function FilaDeMensaje({
   );
 }
 
-/** El relleno invisible al final del texto: reserva el lugar de la hora. */
-const NBSP = '\u00A0';
-/** El lugar de los checks (14 dp) a 11 sp. */
-const RELLENO_CHECKS = NBSP.repeat(6);
-const TAMANO_CHECK = 14;
-const ETIQUETA_EDITADO = 'Editado';
-
 /** Una foto o un video que se ve en la burbuja: la hora va ENCIMA de la imagen. */
 function esFotoVisible(item: Row): boolean {
   if (isPending(item)) return Boolean(item.mediaUri) && !esArchivo(item.mediaMime);
   return Boolean(item.media && miniaturaDe(item.media)) && !esArchivo(item.media?.mime) && !item.deletedAt;
-}
-
-/**
- * Hora y estado DENTRO de la burbuja. Checks vectoriales, como WhatsApp: uno
- * gris (enviado), dos grises (entregado), dos azules (leído) y un relojito
- * mientras está en la cola. Antes eran glifos de texto y un emoji 🕐.
- */
-export function MetaDeMensaje({
-  hora,
-  mia,
-  entrega,
-  id,
-  sobreFoto = false,
-  fallido = false,
-  editado = false,
-}: {
-  hora: string;
-  mia: boolean;
-  entrega: DeliveryState;
-  id: string;
-  sobreFoto?: boolean;
-  /** No se envió (rechazado para siempre): alerta en vez del reloj. */
-  fallido?: boolean;
-  /** Se editó: «Editado» antes de la hora, como WhatsApp. */
-  editado?: boolean;
-}) {
-  const colores = useColores();
-  // Sobre la propia (violeta sólido, FL13) la hora y los íconos van claros.
-  const tono = sobreFoto ? 'white' : mia ? colores['on-burbuja-propia-suave'] : colores['on-surface-variant'];
-  const leido = mia ? colores['check-leido-propio'] : colores['check-leido'];
-  return (
-    <View className="flex-row items-center gap-1">
-      <Text className="text-[11px]" style={{ color: tono }} testID={`hora-${id}`}>
-        {editado ? `${ETIQUETA_EDITADO} ` : ''}
-        {hora}
-      </Text>
-      {mia ? (
-        <View testID={`estado-${id}`} accessibilityLabel={`estado ${entrega}`}>
-          {fallido ? (
-            <CircleAlert size={TAMANO_CHECK - 2} color={colores.error} />
-          ) : entrega === 'pending' ? (
-            <Clock3 size={TAMANO_CHECK - 2} color={tono} />
-          ) : entrega === 'sent' ? (
-            <Check size={TAMANO_CHECK} color={tono} />
-          ) : (
-            <CheckCheck size={TAMANO_CHECK} color={entrega === 'read' ? leido : tono} />
-          )}
-        </View>
-      ) : null}
-    </View>
-  );
 }
 
 /** El chip centrado que separa los días («Hoy», «Ayer», «2 ago»). */

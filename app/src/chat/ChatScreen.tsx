@@ -524,7 +524,7 @@ export function ChatScreen({
         raiz={hilos.raiz}
         chatId={chatId}
         chatName={chatName}
-        yo={credential.userId}
+        yo={credential.userId} jwt={credential.jwt}
         esGrupo={esGrupoChat}
         nombres={nombresDelGrupo}
         fotos={fotosDelGrupo}

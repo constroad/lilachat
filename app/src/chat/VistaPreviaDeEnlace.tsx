@@ -64,7 +64,9 @@ export function VistaPreviaDeEnlace({ url, jwt, mia }: { url: string; jwt: strin
           ) : null}
         </View>
       ) : null}
-      <View className="min-w-0 flex-1 gap-0.5 px-2.5 py-2">
+      {/* `flex-1` solo al costado de la miniatura: en columna, con base 0, el texto
+          colapsaba a alto cero al relayout (tarjeta dentro de un recordatorio elegido, 20/10). */}
+      <View className={`gap-0.5 px-2.5 py-2 ${compacta ? 'min-w-0 flex-1' : ''}`}>
         <Text className={`text-[14px] font-semibold ${mia ? 'text-on-burbuja-propia' : 'text-on-burbuja-ajena'}`} numberOfLines={2}>
           {vista.titulo}
         </Text>

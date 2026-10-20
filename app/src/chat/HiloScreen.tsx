@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { FlatList, Modal, Pressable, Text, TextInput, View } from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { KeyboardAvoidingView, useKeyboardState } from 'react-native-keyboard-controller';
 import { ArrowLeft, Send, Square, SquareCheck } from 'lucide-react-native';
-import { formatClock, miReaccion, puedeReaccionar, resolveDeliveryState, type DeliveryState } from '@lilachat/shared';
+import { formatClock, miReaccion, primerEnlace, puedeReaccionar, resolveDeliveryState, type DeliveryState } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { colorDeAutor } from './burbuja';
-import { MetaDeMensaje } from './MessageRow';
+import { TextoConHora } from './TextoConHora';
+import { TextoConEnlaces } from './TextoConEnlaces';
+import { VistaPreviaDeEnlace } from './VistaPreviaDeEnlace';
 import type { ChatMessage, PendingMessage } from './useChat';
 import type { RespuestaDeReaccion } from './useCambiosDeMensajes';
 import { BarraDeReacciones } from './reacciones/BarraDeReacciones';
@@ -31,6 +33,8 @@ export function HiloScreen(props: {
   chatId: string;
   chatName: string;
   yo: string;
+  /** Para la tarjeta de los enlaces (20/10: en el hilo un link quedaba como texto). */
+  jwt: string;
   esGrupo: boolean;
   nombres: ReadonlyMap<string, string>;
   fotos: ReadonlyMap<string, string>;
@@ -45,6 +49,8 @@ export function HiloScreen(props: {
 }) {
   const colores = useColores();
   const margenes = useMargenes();
+  // Teclado abierto = sin barra de navegación: su margen dejaba una franja vacía bajo «También enviar al chat» (20/10).
+  const tecladoAbierto = useKeyboardState((estado) => estado.isVisible);
   const clave = `${props.chatId}:${props.raiz?.seq ?? ''}`;
   const [texto, setTexto] = useState('');
   const [enElChat, setEnElChat] = useState(false);
@@ -55,6 +61,10 @@ export function HiloScreen(props: {
     setEnElChat(false);
     setBarraEn(null);
   }, [clave]);
+  // Al abrir el teclado la lista se achica: que la última respuesta siga a la vista.
+  useEffect(() => {
+    if (tecladoAbierto) lista.current?.scrollToEnd({ animated: true });
+  }, [tecladoAbierto]);
   // Las hojas viven DENTRO del modal del hilo: las del chat quedarían detrás.
   const reacciones = useReaccionesEnPantalla({ mensajes: props.respuestas, reaccionar: props.reaccionar, yo: props.yo, nombres: props.nombres, fotos: props.fotos, alReaccionar: () => setBarraEn(null) });
   const filas: Respuesta[] = [...props.respuestas, ...props.pendientes];
@@ -110,6 +120,9 @@ export function HiloScreen(props: {
                     mia={mia}
                     autor={esPendiente(item) ? 'Tú' : nombreDe(String(item.senderId))}
                     conAutor={props.esGrupo}
+                    yo={props.yo}
+                    jwt={props.jwt}
+                    nombres={props.nombres}
                     entrega={resolveDeliveryState({ seq: confirmada ? confirmada.seq : null, otherReadSeq: props.leidoHasta, otherDeliveredSeq: props.entregadoHasta })}
                     onLongPress={confirmada && puedeReaccionar({ seq: confirmada.seq, deletedAt: confirmada.deletedAt, kind: confirmada.kind }) ? () => setBarraEn((antes) => (antes === confirmada.seq ? null : confirmada.seq)) : undefined}
                   />
@@ -121,7 +134,7 @@ export function HiloScreen(props: {
             }}
           />
         ) : null}
-        <View className="border-t border-outline/10 bg-surface px-3 pt-2" style={{ paddingBottom: margenes.pie + 4 }}>
+        <View className="border-t border-outline/10 bg-surface px-3 pt-2" style={{ paddingBottom: (tecladoAbierto ? 0 : margenes.pie) + 4 }}>
           <View className="flex-row items-end gap-2">
             <TextInput
               testID="input-hilo"
@@ -160,7 +173,7 @@ function CabeceraDelHilo(props: { raiz: ChatMessage; nombre: string; foto?: stri
             <Text className="text-[14px] font-semibold text-on-surface">{props.nombre}</Text>
             <Text className="text-[11px] text-on-surface-variant">{formatClock(props.raiz.at)}</Text>
           </View>
-          <Text className="mt-0.5 text-[15px] text-on-surface">{props.raiz.deletedAt ? 'Se eliminó este mensaje' : (props.raiz.body ?? (props.raiz.media ? 'Archivo' : ''))}</Text>
+          <Text className="mt-0.5 text-[15px] text-on-surface">{props.raiz.deletedAt ? 'Se eliminó este mensaje' : props.raiz.body ? <TextoConEnlaces texto={props.raiz.body} /> : props.raiz.media ? 'Archivo' : ''}</Text>
         </View>
       </View>
       <View className="flex-row items-center gap-3">
@@ -172,19 +185,30 @@ function CabeceraDelHilo(props: { raiz: ChatMessage; nombre: string; foto?: stri
   );
 }
 
-function BurbujaDelHilo(props: { mensaje: Respuesta; mia: boolean; autor: string; conAutor: boolean; entrega: DeliveryState; onLongPress?: () => void }) {
+/**
+ * Una respuesta del hilo con la MISMA burbuja del chat (20/10): sus colores
+ * (en modo oscuro la propia era clara y la hora no se veía), la hora dentro de
+ * la última línea (antes iba en un renglón aparte y dejaba un hueco bajo el
+ * check), los links tocables con su tarjeta y las @menciones.
+ */
+function BurbujaDelHilo(props: { mensaje: Respuesta; mia: boolean; autor: string; conAutor: boolean; yo: string; jwt: string; nombres: ReadonlyMap<string, string>; entrega: DeliveryState; onLongPress?: () => void }) {
   const colores = useColores();
   const { mensaje, mia } = props;
   const pendiente = esPendiente(mensaje);
+  const eliminado = !pendiente && Boolean(mensaje.deletedAt);
   const hora = formatClock(pendiente ? mensaje.queuedAt : mensaje.at);
   const colorAutor = !pendiente ? (colores[`autor-${colorDeAutor(String(mensaje.senderId))}` as keyof typeof colores] as string) : undefined;
+  const enlace = !pendiente && !eliminado && mensaje.body ? primerEnlace(mensaje.body) : null;
+  const meta = { hora, mia, entrega: pendiente ? ('pending' as const) : props.entrega, id: mensaje.clientKey, fallido: pendiente && Boolean(mensaje.fallo), editado: !pendiente && Boolean(mensaje.editedAt) && !eliminado };
   return (
-    <Pressable testID={`respuesta-${mensaje.clientKey}`} onLongPress={props.onLongPress} delayLongPress={350} className={`max-w-[85%] rounded-xl px-3 py-2 ${mia ? 'self-end bg-primary' : 'self-start border border-outline/10 bg-surface'}`}>
-      {!mia && props.conAutor ? <Text className="mb-0.5 text-[13px] font-semibold" style={{ color: colorAutor }}>{props.autor}</Text> : null}
-      <Text className={`text-[15px] ${mia ? 'text-on-primary' : 'text-on-surface'}`}>{!pendiente && mensaje.deletedAt ? 'Se eliminó este mensaje' : mensaje.body}</Text>
-      <View className="mt-0.5 items-end">
-        <MetaDeMensaje hora={hora} mia={mia} entrega={pendiente ? 'pending' : props.entrega} id={mensaje.clientKey} fallido={pendiente && Boolean(mensaje.fallo)} />
-      </View>
+    <Pressable testID={`respuesta-${mensaje.clientKey}`} onLongPress={props.onLongPress} delayLongPress={350} className={`max-w-[85%] overflow-hidden rounded-2xl ${mia ? 'self-end bg-burbuja-propia' : 'self-start bg-burbuja-ajena'}`}>
+      {!mia && props.conAutor ? <Text className="px-3 pt-1.5 text-[13px] font-semibold" style={{ color: colorAutor }}>{props.autor}</Text> : null}
+      {enlace ? <VistaPreviaDeEnlace url={enlace} jwt={props.jwt} mia={mia} /> : null}
+      {eliminado ? (
+        <Text className={`px-3 py-1.5 text-[15px] italic ${mia ? 'text-on-burbuja-propia-suave' : 'text-on-surface-variant'}`}>Se eliminó este mensaje</Text>
+      ) : (
+        <TextoConHora texto={mensaje.body ?? ''} menciones={pendiente ? undefined : mensaje.menciones} nombres={props.nombres} yo={props.yo} id={mensaje.clientKey} meta={meta} />
+      )}
     </Pressable>
   );
 }

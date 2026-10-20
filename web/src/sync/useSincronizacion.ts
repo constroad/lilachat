@@ -4,7 +4,7 @@ import { api } from '../api';
 import { crearUltimaGana } from './ultimaGana';
 import type { BaseLocal } from '../local/baseLocal';
 import { descartarEnvio, drenarCola, encolarEnvio, reintentarEnvio } from '../local/colaDeEnvio';
-import { aplicarBorrado, aplicarEdicion, aplicarEntrante, guardarChats, guardarPagina } from '../local/mensajesLocales';
+import { aplicarBorrado, aplicarEdicion, aplicarEntrante, aplicarResumenDeHilo, guardarChats, guardarPagina } from '../local/mensajesLocales';
 import type { ChatMessage, ChatSummary } from '../chat/types';
 import { accionPorSocket, enviarPorSocket, pedirSincronizacion, type ResultadoDeAccion } from './envioPorSocket';
 import { ocultar } from '../local/ocultos';
@@ -92,6 +92,7 @@ export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401
         enLaFila(dato.chatId, (chats) => aplicarEdicionALista(chats, dato));
       },
       onCambioDeChat: () => recargarPronto(),
+      onHilo: (dato: { chatId: string; raiz: number; hilo: NonNullable<ChatMessage['hilo']> }) => base && void aplicarResumenDeHilo(base, dato),
     };
   }, [base, yo, recargarPronto]);
 
@@ -137,7 +138,7 @@ function useAccionesDelChat(params: {
 
   /** Enviar texto (con respuesta y menciones si las hay): a la cola, y que salga. */
   const enviarTexto = useCallback(
-    async (chatId: string, body: string, extra: { replyToSeq?: number; menciones?: MencionEnMensaje[] } = {}) => {
+    async (chatId: string, body: string, extra: { replyToSeq?: number; menciones?: MencionEnMensaje[]; hiloDe?: number; enElChat?: boolean } = {}) => {
       if (!base) return;
       await encolarEnvio(base, { clientKey: crypto.randomUUID(), chatId, kind: 'text', body, ...extra, queuedAt: new Date().toISOString(), attempts: 0 });
       void drenar();

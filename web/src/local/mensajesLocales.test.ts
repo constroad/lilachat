@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it } from 'vitest';
 import { BaseLocal } from './baseLocal';
 import {
+  aplicarResumenDeHilo,
   aplicarBorrado,
   aplicarEdicion,
   aplicarEntrante,
@@ -159,5 +160,21 @@ describe('cursoresLocales', () => {
     await guardarPagina(base, 'c1', [mensaje(3), mensaje(8)]);
 
     expect(await cursoresLocales(base)).toEqual({ c1: 8 });
+  });
+});
+
+/** E3 (20/10): el chip de la raíz al día en la base local. */
+describe('aplicarResumenDeHilo', () => {
+  it('pone el resumen en la raíz y no toca lo demás', async () => {
+    const base = new BaseLocal(`hilos-${Math.random()}`);
+    await base.mensajes.bulkPut([
+      { chatId: 'c', seq: 1, senderId: 'a', clientKey: 'k1', kind: 'text', body: 'raíz', at: 'x' },
+      { chatId: 'c', seq: 2, senderId: 'b', clientKey: 'k2', kind: 'text', body: 'r', at: 'x', hiloDe: 1 },
+    ]);
+    await aplicarResumenDeHilo(base, { chatId: 'c', raiz: 1, hilo: { respuestas: 1, ultimaSeq: 2 } });
+    expect((await base.mensajes.get(['c', 1]))?.hilo).toEqual({ respuestas: 1, ultimaSeq: 2 });
+    expect((await base.mensajes.get(['c', 2]))?.hilo).toBeUndefined();
+    base.close();
+    await base.delete();
   });
 });

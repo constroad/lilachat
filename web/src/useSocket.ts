@@ -60,6 +60,8 @@ export function useSocket(params: {
   onReceipt: (data: { chatId: string; userId: string; readSeq: number }) => void;
   /** Borrado para todos (`msg.deleted`): la lápida aparece sin recargar. */
   onBorrado?: (data: { chatId: string; seq: number }) => void;
+  /** E3: el resumen nuevo del hilo de una raíz. */
+  onHilo?: (data: { chatId: string; raiz: number; hilo: NonNullable<ChatMessage['hilo']> }) => void;
   /** Editado (`msg.edited`). */
   onEditado?: (data: { chatId: string; seq: number; body: string; editedAt: string }) => void;
   /** Algo del chat cambió en otro dispositivo (nombre, foto, archivado…). */
@@ -148,6 +150,8 @@ export function useSocket(params: {
       handlers.current.onEditado?.(data)
     );
     socket.on('chat.changed', (data: { chatId: string }) => handlers.current.onCambioDeChat?.(data));
+    // E3: el resumen nuevo de una raíz («4 respuestas · última 10:42»).
+    socket.on('msg.hilo', (data: { chatId: string; raiz: number; hilo: NonNullable<ChatMessage['hilo']> }) => handlers.current.onHilo?.(data));
 
     // El snapshot llega al conectar y trae a TODOS los que ya están en línea.
     // Sin él, los puntos verdes solo aparecerían para quien se conecte después

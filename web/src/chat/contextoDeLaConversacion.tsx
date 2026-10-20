@@ -3,7 +3,7 @@ import type { DetalleDelChat } from './useDetalleDelChat';
 import type { ChatSummary, MensajeEnPantalla } from './types';
 
 /** Lo que se puede pedir sobre un mensaje desde su menú (W2). */
-export type AccionSobreMensaje = 'responder' | 'copiar' | 'reenviar' | 'editar' | 'info' | 'eliminar' | 'fijar' | 'desfijar';
+export type AccionSobreMensaje = 'responder' | 'hilo' | 'copiar' | 'reenviar' | 'editar' | 'info' | 'eliminar' | 'fijar' | 'desfijar';
 
 /**
  * Lo que las burbujas necesitan del chat abierto, sin pasarlo por cada nivel
@@ -24,6 +24,9 @@ export type ContextoDeLaConversacion = {
   /** Fijar mensajes (19/10): en un grupo, solo los admins. */
   puedeFijar: boolean;
   fijados: ReadonlySet<number>;
+  /** E3: abrir el hilo de una raíz, y si tiene respuestas que no vi. Sin esto (en el panel del hilo), no hay chip. */
+  onAbrirHilo?: (seq: number) => void;
+  hiloConNuevas?: (seq: number) => boolean;
 };
 
 export const ConversacionContext = createContext<ContextoDeLaConversacion | null>(null);

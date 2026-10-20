@@ -7,7 +7,7 @@ import type { MensajeEnPantalla } from './types';
 import { copiarTexto } from './copiarTexto';
 
 export type AccionesDeSync = {
-  enviarTexto: (chatId: string, body: string, extra?: { replyToSeq?: number; menciones?: MencionEnMensaje[] }) => Promise<void>;
+  enviarTexto: (chatId: string, body: string, extra?: { replyToSeq?: number; menciones?: MencionEnMensaje[]; hiloDe?: number; enElChat?: boolean }) => Promise<void>;
   editar: (chatId: string, seq: number, body: string) => Promise<ResultadoDeAccion>;
   eliminarParaTodos: (chatId: string, seq: number) => Promise<ResultadoDeAccion>;
   eliminarParaMi: (chatId: string, seq: number) => Promise<void>;

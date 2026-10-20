@@ -21,6 +21,8 @@ export function juntarConPendientes(confirmados: ChatMessage[], cola: OutboxItem
         body: item.body,
         menciones: item.menciones,
         replyToSeq: item.replyToSeq,
+        ...(item.hiloDe !== undefined ? { hiloDe: item.hiloDe } : {}),
+        ...(item.enElChat ? { enElChat: true } : {}),
         at: item.queuedAt,
         estado: item.fallo ? 'fallido' : 'enviando',
         motivoDelFallo: item.fallo,

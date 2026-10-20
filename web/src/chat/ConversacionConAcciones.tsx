@@ -12,6 +12,8 @@ import type { MensajeEnPantalla } from './types';
 import { comoMensaje, usePendientesDeArchivos } from './colaDeArchivos';
 import { colaDeArchivosWeb, usarJwtParaSubir } from './colaDeArchivosWeb';
 import { aplicarEntrante } from '../local/mensajesLocales';
+import { useHilosWeb } from './hilos/useHilosWeb';
+import { PanelDeHilo } from './hilos/PanelDeHilo';
 import { api } from '../api';
 import { Conversation } from './Conversation';
 import { ConversacionContext, type ContextoDeLaConversacion } from './contextoDeLaConversacion';
@@ -43,6 +45,8 @@ export function ConversacionConAcciones(
 ) {
   const { chat, yo, sync, onAviso } = props;
   const mensajes = useConArchivosPendientes(props.mensajes, chat.id, yo, props.jwt, props.base);
+  // E3: el chat sin las respuestas de los hilos; el hilo abierto, en su panel.
+  const hilos = useHilosWeb({ chatId: chat.id, jwt: props.jwt, base: props.base, yo, mensajes });
   // El detalle se relee si cambian los miembros, el nombre o la foto (llega con la
   // lista), o tras editar algo desde «Info.» (W3b).
   const [versionDelDetalle, setVersionDelDetalle] = useState(0);
@@ -77,17 +81,25 @@ export function ConversacionConAcciones(
   const seqsFijados = useMemo(() => new Set(fijados.map((uno) => uno.seq)), [fijados]);
   const fijar = useFijarEnLaWeb({ chatId: chat.id, jwt: props.jwt, onAviso, onCambio: props.onRecargarChats });
   const [salto, setSalto] = useState<{ seq: number; vez: number } | null>(null);
+  const abrirHilo = useCallback(
+    (seq: number) => {
+      setInfoAbierta(false);
+      hilos.abrir(seq);
+    },
+    [hilos.abrir]
+  );
   const onAccion = useCallback(
     (mensaje: MensajeEnPantalla, accion: AccionSobreMensaje) => {
       if (accion === 'fijar') return fijar.pedir(mensaje.seq);
+      if (accion === 'hilo') return abrirHilo(mensaje.seq);
       if (accion === 'desfijar') return void fijar.desfijar(mensaje.seq);
       acciones.onAccion(mensaje, accion);
     },
-    [fijar, acciones]
+    [fijar, acciones, abrirHilo]
   );
   const contexto = useMemo<ContextoDeLaConversacion>(
-    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, citado, onAccion, onVerFoto, puedeFijar, fijados: seqsFijados }),
-    [yo, props.jwt, chat, detalle, nombres, citado, onAccion, onVerFoto, puedeFijar, seqsFijados]
+    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, citado, onAccion, onVerFoto, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas }),
+    [yo, props.jwt, chat, detalle, nombres, citado, onAccion, onVerFoto, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas]
   );
 
   return (
@@ -103,7 +115,7 @@ export function ConversacionConAcciones(
         jwtParaEnlaces={chat.encrypted ? undefined : props.jwt}
         onElegirArchivos={setArchivos}
         onNotaDeVoz={(nota) => void colaDeArchivosWeb.encolar(chat.id, nota.file, { durationMs: nota.ms, onda: nota.onda, hd: true })}
-        mensajes={mensajes}
+        mensajes={hilos.visibles}
         onReintentar={(clave) => (colaDeArchivosWeb.tiene(clave) ? void colaDeArchivosWeb.reintentar(clave) : props.onReintentar(clave))}
         onDescartar={(clave) => (colaDeArchivosWeb.tiene(clave) ? colaDeArchivosWeb.descartar(clave) : props.onDescartar(clave))}
         onSend={(texto, menciones) => void acciones.enviar(texto, menciones)}
@@ -119,8 +131,24 @@ export function ConversacionConAcciones(
         }
         salto={salto}
         onNoEsta={() => onAviso('Ese mensaje está más arriba: sube para cargarlo.')}
-        onAbrirInfo={() => setInfoAbierta(true)}
+        onAbrirInfo={() => {
+          hilos.cerrar();
+          setInfoAbierta(true);
+        }}
       />
+      {hilos.raiz ? (
+        <PanelDeHilo
+          chat={chat}
+          raiz={hilos.raiz}
+          respuestas={hilos.respuestas}
+          yo={yo}
+          nombres={nombres}
+          onEnviar={(texto, enElChat) => void sync.enviarTexto(chat.id, texto, { hiloDe: hilos.raiz!.seq, ...(enElChat ? { enElChat: true } : {}) })}
+          onReintentar={props.onReintentar}
+          onDescartar={props.onDescartar}
+          onCerrar={hilos.cerrar}
+        />
+      ) : null}
       {infoAbierta ? (
         <PanelDeInfo
           chat={chat}

@@ -1,5 +1,5 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { ChevronDown, Copy, CornerUpLeft, Forward, Info, Pencil, Pin, PinOff, Trash2 } from 'lucide-react';
+import { ChevronDown, Copy, CornerUpLeft, Forward, Info, MessagesSquare, Pencil, Pin, PinOff, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { accionesDeMensaje, puedeEditar } from '@lilachat/shared';
 import { useConversacion, type AccionSobreMensaje } from './contextoDeLaConversacion';
@@ -12,7 +12,7 @@ import type { MensajeEnPantalla } from './types';
  * Lo pendiente o fallido no tiene menú: todavía no existe en el server.
  */
 export function MenuDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio: boolean }) {
-  const { chat, yo, onAccion, puedeFijar, fijados } = useConversacion();
+  const { chat, yo, onAccion, puedeFijar, fijados, onAbrirHilo } = useConversacion();
   if (mensaje.estado) return null;
   const secreto = Boolean(chat.encrypted);
   const acciones = accionesDeMensaje({
@@ -24,6 +24,7 @@ export function MenuDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; m
     editable: puedeEditar({ yo, autor: mensaje.senderId, kind: mensaje.kind, eliminado: Boolean(mensaje.deletedAt), secreto, enviadoEn: mensaje.at, ahora: Date.now() }).permitido,
     puedeFijar,
     fijado: fijados.has(mensaje.seq),
+    esRespuestaDeHilo: mensaje.hiloDe !== undefined,
   });
   const item = (accion: AccionSobreMensaje, icono: ReactNode, etiqueta: string, peligro = false) => (
     <DropdownMenu.Item
@@ -59,6 +60,7 @@ export function MenuDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; m
           className="z-40 min-w-[200px] rounded-xl border border-outline/15 bg-surface p-1 shadow-lg"
         >
           {acciones.responder ? item('responder', <CornerUpLeft size={16} />, 'Responder') : null}
+          {acciones.hilo && onAbrirHilo ? item('hilo', <MessagesSquare size={16} />, 'Responder en hilo') : null}
           {acciones.copiar ? item('copiar', <Copy size={16} />, 'Copiar') : null}
           {acciones.reenviar ? item('reenviar', <Forward size={16} />, 'Reenviar') : null}
           {acciones.fijar === 'fijar' ? item('fijar', <Pin size={16} />, 'Fijar') : null}

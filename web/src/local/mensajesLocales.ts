@@ -98,3 +98,8 @@ export async function cursoresLocales(base: BaseLocal): Promise<Cursors> {
   }
   return cursores;
 }
+
+/** E3: el resumen nuevo del hilo en su raíz guardada («4 respuestas · última 10:42»). */
+export async function aplicarResumenDeHilo(base: BaseLocal, { chatId, raiz, hilo }: { chatId: string; raiz: number; hilo: NonNullable<ChatMessage['hilo']> }): Promise<void> {
+  await base.mensajes.where('[chatId+seq]').equals([chatId, raiz]).modify({ hilo });
+}

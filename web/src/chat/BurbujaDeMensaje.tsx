@@ -5,6 +5,7 @@ import { TarjetaDeEnlace } from './TarjetaDeEnlace';
 import { NotaDeVoz } from './NotaDeVoz';
 import { useVistaPrevia } from './useVistaPrevia';
 import { AnilloDeSubida } from './AnilloDeSubida';
+import { ChipDeHilo } from './hilos/ChipDeHilo';
 import { MenuDelMensaje } from './MenuDelMensaje';
 import { TextoDelMensaje } from './TextoDelMensaje';
 import { ConversacionContext, useConversacion } from './contextoDeLaConversacion';
@@ -47,6 +48,7 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
           {mensaje.replyToSeq && !mensaje.deletedAt ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={mio} /> : null}
           <ContenidoDelMensaje mensaje={mensaje} mio={mio} />
         </div>
+        {mensaje.hilo && mensaje.hilo.respuestas > 0 && !mensaje.deletedAt ? <ChipDeLaRaiz seq={mensaje.seq} hilo={mensaje.hilo} /> : null}
         {mensaje.estado === 'fallido' ? (
           <FalloDelEnvio mensaje={mensaje} onReintentar={props.onReintentar} onDescartar={props.onDescartar} />
         ) : ultimoDelGrupo ? (
@@ -178,3 +180,11 @@ function LineaDeSistema({ mensaje }: { mensaje: MensajeEnPantalla }) {
   if (!texto) return null;
   return <p className="my-3 text-center text-[12px] text-on-surface-variant">{texto}</p>;
 }
+
+/** E3: el chip del hilo, solo donde se puede abrir (en el panel del hilo no se repite). */
+function ChipDeLaRaiz({ seq, hilo }: { seq: number; hilo: NonNullable<MensajeEnPantalla['hilo']> }) {
+  const contexto = useContext(ConversacionContext);
+  if (!contexto?.onAbrirHilo) return null;
+  return <ChipDeHilo seq={seq} hilo={hilo} nombres={contexto.nombres} nuevas={contexto.hiloConNuevas?.(seq) ?? false} onAbrir={contexto.onAbrirHilo} />;
+}
+

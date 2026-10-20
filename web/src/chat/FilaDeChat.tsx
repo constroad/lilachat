@@ -13,7 +13,7 @@ import type { ChatSummary } from './types';
 export function FilaDeChat(props: { chat: ChatSummary; yo?: string; seleccionado: boolean; onSelect: () => void; onAccion: (chat: ChatSummary, accion: AccionDelChat) => void }) {
   const { chat } = props;
   const aviso = props.yo ? textoDelAviso(chat, props.yo) : '';
-  const preview = resolveChatPreview({ typing: Boolean(chat.typingName), lastBody: aviso || chat.lastMessage?.body, lastKind: aviso ? 'text' : chat.lastMessage?.kind, eliminado: Boolean(chat.lastMessage?.deletedAt) });
+  const preview = resolveChatPreview({ typing: Boolean(chat.typingName), lastBody: aviso || chat.lastMessage?.body, lastKind: aviso ? 'text' : chat.lastMessage?.kind, eliminado: Boolean(chat.lastMessage?.deletedAt), enHilo: chat.lastMessage?.hiloDe !== undefined });
   return (
     <div className="group relative">
       <button

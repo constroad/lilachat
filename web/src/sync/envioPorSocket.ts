@@ -25,11 +25,11 @@ export function resultadoDelAck(acuse: unknown): SendOutcome {
 /** Manda un ítem de la cola por el socket. Sin socket o sin acuse: «sin respuesta». */
 export async function enviarPorSocket(socket: Socket | null, item: OutboxItem): Promise<SendOutcome> {
   if (!socket?.connected) return { status: 'unreachable' };
-  const { clientKey, chatId, kind, body, menciones, replyToSeq } = item;
+  const { clientKey, chatId, kind, body, menciones, replyToSeq, hiloDe, enElChat } = item;
   try {
     const acuse = await socket
       .timeout(ESPERA_DEL_ACUSE_MS)
-      .emitWithAck('msg.send', { clientKey, chatId, kind, body, menciones, replyToSeq });
+      .emitWithAck('msg.send', { clientKey, chatId, kind, body, menciones, replyToSeq, hiloDe, enElChat });
     return resultadoDelAck(acuse);
   } catch {
     // Timeout: el mensaje pudo haber llegado. La clave evita el duplicado.

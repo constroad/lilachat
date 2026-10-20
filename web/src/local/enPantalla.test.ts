@@ -49,4 +49,13 @@ describe('juntarConPendientes', () => {
     expect(lista).toHaveLength(1);
     expect(lista[0]?.estado).toBeUndefined();
   });
+
+  it('una respuesta de hilo en la cola conserva su raíz: sale en el panel y no en el chat (E3)', () => {
+    const [soloHilo, tambienAlChat] = juntarConPendientes([], [enCola('a', { hiloDe: 3 }), enCola('b', { hiloDe: 3, enElChat: true, queuedAt: '2026-10-19T15:02:00.000Z' })], 'u1');
+
+    expect(soloHilo?.hiloDe).toBe(3);
+    expect(soloHilo?.enElChat).toBeUndefined();
+    expect(tambienAlChat?.hiloDe).toBe(3);
+    expect(tambienAlChat?.enElChat).toBe(true);
+  });
 });

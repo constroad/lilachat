@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resultadoDeAccion, resultadoDelAck } from './envioPorSocket';
+import { enviarPorSocket, resultadoDeAccion, resultadoDelAck } from './envioPorSocket';
 
 /** El acuse de `msg.send` (server/src/socket.ts) traducido al motor de la cola. */
 describe('resultadoDelAck', () => {
@@ -46,5 +46,16 @@ describe('resultadoDeAccion', () => {
 
   it('sin acuse o raro: falla con un motivo que se entiende', () => {
     expect(resultadoDeAccion(undefined)).toEqual({ ok: false, motivo: 'No se pudo. Revisa tu conexión.' });
+  });
+});
+
+/** E3 (20/10): la respuesta de un hilo viaja con su raíz. */
+describe('enviarPorSocket con hilo', () => {
+  it('manda hiloDe y enElChat en el frame', async () => {
+    let frame: Record<string, unknown> = {};
+    const socket = { connected: true, timeout: () => ({ emitWithAck: async (_evento: string, datos: Record<string, unknown>) => ((frame = datos), { ok: true, seq: 9 }) }) };
+    const r = await enviarPorSocket(socket as never, { clientKey: 'k', chatId: 'c', kind: 'text', body: 'yo', hiloDe: 3, enElChat: true, queuedAt: 'x', attempts: 0 });
+    expect(r).toEqual({ status: 'sent', seq: 9 });
+    expect(frame).toMatchObject({ hiloDe: 3, enElChat: true });
   });
 });

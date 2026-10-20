@@ -1,4 +1,4 @@
-import type { MencionEnMensaje, OutboxItem, VistaDelFijado } from '@lilachat/shared';
+import type { MencionEnMensaje, OutboxItem, ResumenDeHiloEnCliente, VistaDelFijado } from '@lilachat/shared';
 
 /**
  * Las formas que devuelve el server, copiadas de `server/src/listaDeChats.ts`
@@ -32,6 +32,8 @@ export type ChatSummary = {
     system?: ChatMessage['system'];
     /** Borrado para todos (19/10): la vista previa lo dice. */
     deletedAt?: string;
+    /** E3: fue una respuesta en un hilo. */
+    hiloDe?: number;
   } | null;
   othersReadSeq: number;
   othersDeliveredSeq: number;
@@ -64,6 +66,11 @@ export type ChatMessage = {
   envelope?: { v: number; nonce: string; ciphertext: string };
   ref?: RefDeMensaje;
   menciones?: MencionEnMensaje[];
+  /** E3: respuesta en el hilo de este `seq`; `enElChat` = también en el chat. */
+  hiloDe?: number;
+  enElChat?: boolean;
+  /** En la raíz: el resumen de su hilo. */
+  hilo?: ResumenDeHiloEnCliente;
   media?: {
     mediaId?: string;
     url?: string;

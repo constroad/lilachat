@@ -35,7 +35,6 @@ object Composition {
   private const val OUTLINE_RADIUS = 9f
   private const val OUTLINE_STEPS = 24
   private const val TEXT_STROKE = 0.14f
-  private const val MIN_ALPHA = 12
   private const val MIN_LETTER = 12f
   /** Limit of a static sticker; past it the WebP quality goes down. */
   private const val MAX_BYTES = 480 * 1024
@@ -76,28 +75,6 @@ object Composition {
         )
       }
     }
-  }
-
-  /** The smallest box holding what is visible (what ML Kit left with alpha). `null` if nothing is left. */
-  fun cropToContent(source: Bitmap): Bitmap? {
-    var left = source.width
-    var top = source.height
-    var right = -1
-    var bottom = -1
-    val row = IntArray(source.width)
-    for (y in 0 until source.height) {
-      source.getPixels(row, 0, source.width, 0, y, source.width, 1)
-      for (x in row.indices) {
-        if (Color.alpha(row[x]) > MIN_ALPHA) {
-          if (x < left) left = x
-          if (x > right) right = x
-          if (y < top) top = y
-          bottom = y
-        }
-      }
-    }
-    if (right < 0) return null
-    return Bitmap.createBitmap(source, left, top, right - left + 1, bottom - top + 1)
   }
 
   fun savePng(image: Bitmap, file: File) {

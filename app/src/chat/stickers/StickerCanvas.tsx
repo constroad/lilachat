@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
-import { Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import Svg, { Defs, Path, Pattern, Rect } from 'react-native-svg';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedProps, useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
-import type { Layer, Point } from '@lilachat/shared';
+import type { Layer, Point, Rect as Frame } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 
 const CHECKER = 14;
@@ -15,6 +15,8 @@ const HANDLE = 22;
 const ROTATE_HANDLE_GAP = 26;
 /** Minimum pencil step (fraction of the side) so a stroke is not thousands of points. */
 const PEN_STEP = 0.004;
+/** How visible the whole photo is behind the cutout while restoring (Telegram shows it faded). */
+const BACKDROP_OPACITY = 0.35;
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
@@ -226,6 +228,10 @@ export function StickerCanvas(props: {
   selection: string | null;
   cutoutBadge: boolean;
   pen: { color: string; width: number } | null;
+  /** «Restaurar»: the whole photo faded behind, where it sits (0..1 of the sticker). */
+  backdrop?: { uri: string; frame: Frame } | null;
+  /** The cutout is being redone after a brush stroke. */
+  busy?: boolean;
   onSelect: (id: string | null) => void;
   onEditText: (id: string) => void;
   onTransform: (id: string, change: LayerTransform) => void;
@@ -245,6 +251,11 @@ export function StickerCanvas(props: {
         <View style={{ position: 'absolute', width: props.width, height: props.height }} />
       </GestureDetector>
       <View style={{ position: 'absolute', left: (props.width - side) / 2, top: (props.height - side) / 2, width: side, height: side }}>
+        {props.backdrop ? (
+          <View testID="foto-de-fondo-sticker" pointerEvents="none" style={{ position: 'absolute', width: side, height: side, overflow: 'hidden', opacity: BACKDROP_OPACITY }}>
+            <Image source={{ uri: props.backdrop.uri }} style={{ position: 'absolute', left: props.backdrop.frame.x * side, top: props.backdrop.frame.y * side, width: props.backdrop.frame.width * side, height: props.backdrop.frame.height * side }} contentFit="fill" />
+          </View>
+        ) : null}
         {props.image ? <Image source={{ uri: props.image }} style={{ width: side, height: side }} contentFit="contain" transition={80} pointerEvents="none" /> : null}
         <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: side / 2 - 0.5, top: 0, width: 1, height: side, backgroundColor: colors.primary }, verticalStyle]} />
         <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: side / 2 - 0.5, left: 0, height: 1, width: side, backgroundColor: colors.primary }, horizontalStyle]} />
@@ -266,6 +277,7 @@ export function StickerCanvas(props: {
         )}
         {props.pen ? <PenOverlay side={side} color={props.pen.color} width={props.pen.width} onStroke={props.onStroke} /> : null}
       </View>
+      {props.busy ? <ActivityIndicator testID="sticker-aplicando" color={colors.primary} style={{ position: 'absolute', right: 16, top: 16 }} /> : null}
       {props.cutoutBadge ? (
         <View testID="pastilla-fondo-eliminado" className="absolute left-4 top-4 flex-row items-center gap-2 rounded-full px-3 py-1.5" style={{ backgroundColor: 'rgba(17,17,17,0.6)' }}>
           <View className="h-2 w-2 rounded-full" style={{ backgroundColor: colors['en-linea'] }} />

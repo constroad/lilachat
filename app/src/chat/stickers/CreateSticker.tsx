@@ -1,40 +1,23 @@
-import { useEffect, useReducer, useRef, useState, type ReactNode } from 'react';
+import { useReducer, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Modal } from '../../ui/Modal';
-import * as ImagePicker from 'expo-image-picker';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Bookmark, Pencil, Scissors, Send, Smile, Trash2, Undo2, X } from 'lucide-react-native';
-import { editSticker, initialEditorState, layersForComposition, STICKER_SIZE, TEXT_COLORS, type LibrarySticker } from '@lilachat/shared';
-import { composeSticker, subjectCutout } from '../../../modules/subject-cutout/src';
+import { BRUSH_SIZES, editSticker, initialEditorState, layersForComposition, maskStroke, photoFrame, STICKER_SIZE, TEXT_COLORS, type BrushSize, type LibrarySticker, type MaskMode, type Point } from '@lilachat/shared';
+import { composeSticker } from '../../../modules/subject-cutout/src';
 import { useMargenes } from '../../ui/useMargenes';
 import { useColores } from '../../ui/tema';
-import { reportarError } from '../../ui/reportarError';
 import { StickerCanvas } from './StickerCanvas';
+import { CutoutTools } from './CutoutTools';
+import { useStickerCutout } from './useStickerCutout';
 import type { ApiOutcome } from './stickersApi';
 
 const EMOJIS = ['😂', '😍', '🔥', '👍', '🎉', '❤️', '😎', '🙏', '💯', '🥳', '😮', '😢', '🤝', '👏', '🚀', '⭐', '😅', '🤣', '😘', '🤔', '👌', '💪', '✅', '🏗️'];
 /** Pencil line width, relative to the sticker side (WhatsApp's medium pen). */
 const PEN_WIDTH = 0.022;
-const NO_CUTOUT = 'No se pudo quitar el fondo: el sticker va con la foto entera.';
-type Phase = 'picking' | 'cutting' | 'editing' | 'saving';
-type Tool = 'none' | 'emoji' | 'pen';
-
-/**
- * ML Kit's cutout. The first time Play services downloads the model (a few
- * seconds): `prepare` waits for it with a limit; if it did not arrive the
- * editor says so and «Recortar» tries again.
- */
-async function removeBackground(uri: string): Promise<{ uri: string } | { reason: string }> {
-  if (!subjectCutout) return { reason: NO_CUTOUT };
-  try {
-    if (!(await subjectCutout.prepare())) return { reason: 'El recorte automático se está descargando (solo la primera vez). Toca «Recortar» en un rato; mientras, va la foto entera.' };
-    return { uri: (await subjectCutout.cutout(uri)).uri };
-  } catch (error) {
-    if ((error as { code?: string }).code === 'ERR_NO_SUBJECT') return { reason: 'No encontré a nadie ni nada para recortar: va la foto entera.' };
-    reportarError('CreateSticker.removeBackground', error);
-    return { reason: NO_CUTOUT };
-  }
-}
+type Tool = 'none' | 'emoji' | 'pen' | 'cut';
+/** How the brush stroke looks while drawing, before the cutout is redone. */
+const BRUSH_TRAIL: Record<MaskMode, string> = { erase: 'rgba(239,68,68,0.55)', restore: 'rgba(34,197,94,0.55)' };
 
 /** One button of the toolbar pill (design: cut · Aa · emoji · pencil · undo). */
 function ToolButton(props: { testID: string; label: string; active?: boolean; disabled?: boolean; onPress: () => void; children: ReactNode }) {
@@ -55,86 +38,36 @@ function ToolButton(props: { testID: string; label: string; active?: boolean; di
 export function CreateSticker(props: { visible: boolean; chatName: string; onClose: () => void; onSave: (file: { uri: string; width: number; height: number }) => Promise<ApiOutcome<LibrarySticker>>; onSend: (sticker: LibrarySticker) => Promise<boolean> }) {
   const colors = useColores();
   const margins = useMargenes();
-  const [phase, setPhase] = useState<Phase>('picking');
-  const [original, setOriginal] = useState<string | null>(null);
-  const [cutout, setCutout] = useState<string | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [notice, setNotice] = useState('');
   const [tool, setTool] = useState<Tool>('none');
   const [penColor, setPenColor] = useState<string>(TEXT_COLORS[0]);
+  const [brush, setBrush] = useState<{ mode: MaskMode; size: BrushSize }>({ mode: 'erase', size: 'M' });
   const [typing, setTyping] = useState<{ id: string | null; text: string } | null>(null);
   const [area, setArea] = useState({ width: 0, height: 0 });
   const [state, dispatch] = useReducer(editSticker, undefined, initialEditorState);
-  const image = state.cutout && cutout ? cutout : original;
   const { visible, onClose } = props;
-  // Opening depends ONLY on `visible`: with `onClose` (a new function on each
-  // panel render) saving the sticker used to reopen the gallery (E2E, 20/10).
-  const closeRef = useRef(onClose);
-  closeRef.current = onClose;
+  const cutout = useStickerCutout({ visible, automatic: state.cutout, strokes: state.maskStrokes, outline: state.outline, onCancel: onClose });
+  const { phase, view } = cutout;
 
-  useEffect(() => {
-    if (!visible) return;
-    let current = true;
-    setPhase('picking');
-    setOriginal(null);
-    setCutout(null);
-    setPreview(null);
-    setNotice('');
-    setTool('none');
-    void (async () => {
-      const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
-      if (!current) return;
-      if (picked.canceled || !picked.assets[0]) return closeRef.current();
-      setOriginal(picked.assets[0].uri);
-      setPhase('cutting');
-      const result = await removeBackground(picked.assets[0].uri);
-      if (!current) return;
-      if ('uri' in result) setCutout(result.uri);
-      else setNotice(result.reason);
-      setPhase('editing');
-    })();
-    return () => {
-      current = false;
-    };
-  }, [visible]);
+  /** The automatic-background switch: on and off; with no mask yet (the model was downloading), tries again. */
+  const toggleAutomatic = () => (cutout.mask ? dispatch({ type: 'toggle-cutout' }) : void cutout.retryAutomatic());
 
-  // The image with its outline (the same composition as the final sticker, without layers).
-  useEffect(() => {
-    if (!image) return;
-    let current = true;
-    composeSticker({ image, outline: state.outline, layers: [] })
-      .then((result) => current && setPreview(result.uri))
-      .catch(() => current && setPreview(image));
-    return () => {
-      current = false;
-    };
-  }, [image, state.outline]);
-
-  /** «Recortar»: toggles the cutout; if there is none yet (the model was downloading), tries again. */
-  const pressCutout = async () => {
-    if (cutout) return dispatch({ type: 'toggle-cutout' });
-    if (!original || phase !== 'editing') return;
-    setPhase('cutting');
-    const result = await removeBackground(original);
-    if ('uri' in result) {
-      setCutout(result.uri);
-      setNotice('');
-    } else setNotice(result.reason);
-    setPhase('editing');
+  const brushStroke = (points: Point[]) => {
+    const stroke = view ? maskStroke(brush.mode, BRUSH_SIZES[brush.size], points, view) : null;
+    if (stroke) dispatch({ type: 'add-mask-stroke', stroke });
   };
 
   const finish = async (send: boolean) => {
-    if (!image || phase === 'saving') return;
-    setPhase('saving');
+    if (!cutout.shown || phase === 'saving') return;
+    cutout.setPhase('saving');
     try {
-      const built = await composeSticker({ image, outline: state.outline, layers: layersForComposition(state) });
+      const built = await composeSticker({ image: cutout.shown.uri, outline: state.outline, layers: layersForComposition(state) });
       const saved = await props.onSave({ uri: built.uri, width: STICKER_SIZE, height: STICKER_SIZE });
       if (!saved.ok) throw new Error(saved.reason);
       if (send && !(await props.onSend(saved.data))) throw new Error('Se guardó en Mis stickers, pero no se pudo mandar.');
       onClose();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'No se pudo armar el sticker.');
-      setPhase('editing');
+      cutout.setNotice(error instanceof Error ? error.message : 'No se pudo armar el sticker.');
+      cutout.setPhase('editing');
     }
   };
 
@@ -147,9 +80,13 @@ export function CreateSticker(props: { visible: boolean; chatName: string; onClo
 
   const selected = state.layers.find((layer) => layer.id === state.selection);
   const drawing = tool === 'pen';
+  const cutting = tool === 'cut';
   const activeColor = drawing ? penColor : selected?.color;
   const pickColor = (color: string) => (drawing ? setPenColor(color) : dispatch({ type: 'set-color', color }));
   const ready = phase === 'editing';
+  const hasCutout = state.cutout && Boolean(cutout.mask);
+  const pen = drawing ? { color: penColor, width: PEN_WIDTH } : cutting ? { color: BRUSH_TRAIL[brush.mode], width: BRUSH_SIZES[brush.size] * 2 } : null;
+  const backdrop = cutting && brush.mode === 'restore' && cutout.photo && view ? { uri: cutout.photo.uri, frame: photoFrame(cutout.photo, view) } : null;
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <GestureHandlerRootView style={{ flex: 1 }}>
@@ -159,7 +96,7 @@ export function CreateSticker(props: { visible: boolean; chatName: string; onClo
               <X size={24} color="white" />
             </Pressable>
             <View className="flex-row items-center gap-0.5 rounded-full p-1" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
-              <ToolButton testID="btn-recortar" label="Quitar el fondo" active={state.cutout && Boolean(cutout)} disabled={!ready} onPress={() => void pressCutout()}>
+              <ToolButton testID="btn-recortar" label="Recortar: borrar o restaurar" active={cutting} disabled={!ready} onPress={() => { dispatch({ type: 'select', id: null }); setTool((before) => (before === 'cut' ? 'none' : 'cut')); }}>
                 <Scissors size={18} color="white" />
                 <Text className="text-[13px] font-semibold" style={{ color: 'white' }}>Recortar</Text>
               </ToolButton>
@@ -188,18 +125,20 @@ export function CreateSticker(props: { visible: boolean; chatName: string; onClo
               <StickerCanvas
                 width={area.width}
                 height={area.height}
-                image={preview}
+                image={cutout.preview}
                 layers={state.layers}
                 selection={state.selection}
-                cutoutBadge={state.cutout && Boolean(cutout)}
-                pen={drawing ? { color: penColor, width: PEN_WIDTH } : null}
+                cutoutBadge={hasCutout && !cutting}
+                pen={pen}
+                backdrop={backdrop}
+                busy={cutout.busy}
                 onSelect={(id) => dispatch({ type: 'select', id })}
                 onEditText={(id) => setTyping({ id, text: state.layers.find((layer) => layer.id === id)?.text ?? '' })}
                 onTransform={(id, change) => dispatch({ type: 'transform', id, ...change })}
-                onStroke={(points) => dispatch({ type: 'add-stroke', points, color: penColor, width: PEN_WIDTH })}
+                onStroke={(points) => (cutting ? brushStroke(points) : dispatch({ type: 'add-stroke', points, color: penColor, width: PEN_WIDTH }))}
               />
             )}
-            {notice ? <Text testID="aviso-sticker" className="absolute bottom-6 left-8 right-8 rounded-xl px-3 py-2 text-center text-[13px]" style={{ color: 'white', backgroundColor: 'rgba(0,0,0,0.65)' }}>{notice}</Text> : null}
+            {cutout.notice ? <Text testID="aviso-sticker" className="absolute bottom-6 left-8 right-8 rounded-xl px-3 py-2 text-center text-[13px]" style={{ color: 'white', backgroundColor: 'rgba(0,0,0,0.65)' }}>{cutout.notice}</Text> : null}
           </View>
 
           {tool === 'emoji' ? (
@@ -210,6 +149,9 @@ export function CreateSticker(props: { visible: boolean; chatName: string; onClo
             </ScrollView>
           ) : null}
 
+          {cutting ? (
+            <CutoutTools mode={brush.mode} size={brush.size} automatic={state.cutout} automaticAvailable={Boolean(cutout.mask)} onMode={(mode) => setBrush((before) => ({ ...before, mode }))} onSize={(size) => setBrush((before) => ({ ...before, size }))} onAutomatic={toggleAutomatic} />
+          ) : (
           <View className="flex-row items-center justify-between gap-2 border-t px-4 py-3" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
             <View className="flex-row items-center gap-0.5 rounded-full px-1.5 py-1" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
               {TEXT_COLORS.map((color) => (
@@ -228,6 +170,7 @@ export function CreateSticker(props: { visible: boolean; chatName: string; onClo
               </Pressable>
             )}
           </View>
+          )}
 
           <View className="px-4">
             <View className="flex-row items-center justify-between">
@@ -235,11 +178,11 @@ export function CreateSticker(props: { visible: boolean; chatName: string; onClo
               <Text className="text-[12px]" style={{ color: 'rgba(255,255,255,0.45)' }}>Sticker personal</Text>
             </View>
             <View className="mt-1 flex-row items-center justify-between">
-              <Pressable testID="btn-guardar-sticker" disabled={!ready} onPress={() => void finish(false)} className="min-h-[44px] flex-row items-center gap-2">
+              <Pressable testID="btn-guardar-sticker" disabled={!ready || !cutout.shown} onPress={() => void finish(false)} className="min-h-[44px] flex-row items-center gap-2">
                 <Bookmark size={18} color="white" />
                 <Text className="text-[14px] font-semibold" style={{ color: 'white' }}>Guardar en Mis stickers</Text>
               </Pressable>
-              <Pressable testID="btn-mandar-sticker" accessibilityLabel="Enviar el sticker" disabled={!ready} onPress={() => void finish(true)} className="h-16 w-16 items-center justify-center rounded-full bg-primary">
+              <Pressable testID="btn-mandar-sticker" accessibilityLabel="Enviar el sticker" disabled={!ready || !cutout.shown} onPress={() => void finish(true)} className="h-16 w-16 items-center justify-center rounded-full bg-primary">
                 {phase === 'saving' ? <ActivityIndicator color="white" /> : <Send size={24} color="white" />}
               </Pressable>
             </View>

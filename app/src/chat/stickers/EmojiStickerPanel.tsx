@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Delete, Smile, Sticker } from 'lucide-react-native';
-import { ALTO_DEL_PANEL_DE_EMOJIS, PanelDeEmojis } from '../PanelDeEmojis';
+import { PanelDeEmojis } from '../PanelDeEmojis';
 import { useColores } from '../../ui/tema';
 import { reportarError } from '../../ui/reportarError';
 import { subjectCutout } from '../../../modules/subject-cutout/src';
@@ -28,6 +28,8 @@ export function EmojiStickerPanel(props: { jwt: string; chatId: string; chatName
   const colors = useColores();
   const [tab, setTab] = useState<Tab>('emoji');
   const [creating, setCreating] = useState(false);
+  /** A new editor each time (its layers and brushes do not leak into the next sticker); it stays mounted to slide out. */
+  const [editorSession, setEditorSession] = useState(0);
   const stickers = useStickers(props.jwt);
   const closeEditor = useCallback(() => setCreating(false), []);
   const tabs: { key: Tab; label: string; Icon: typeof Smile }[] = [
@@ -35,7 +37,7 @@ export function EmojiStickerPanel(props: { jwt: string; chatId: string; chatName
     ...(props.withStickers ? [{ key: 'stickers' as const, label: 'Stickers', Icon: Sticker }] : []),
   ];
   return (
-    <View>
+    <View style={{ flex: 1 }}>
       <View className="flex-row items-center border-b border-outline/10">
         {tabs.map(({ key, label, Icon }) => {
           const active = tab === key;
@@ -61,11 +63,11 @@ export function EmojiStickerPanel(props: { jwt: string; chatId: string; chatName
       {tab === 'emoji' ? (
         <PanelDeEmojis onElegir={props.onPickEmoji} />
       ) : (
-        <View style={{ height: ALTO_DEL_PANEL_DE_EMOJIS }}>
-          <StickerPanel stickers={stickers} onSend={(sticker) => void stickers.send(props.chatId, sticker)} onCreate={() => setCreating(true)} />
+        <View style={{ flex: 1 }}>
+          <StickerPanel stickers={stickers} onSend={(sticker) => void stickers.send(props.chatId, sticker)} onCreate={() => { setEditorSession((before) => before + 1); setCreating(true); }} />
         </View>
       )}
-      <CreateSticker visible={creating} chatName={props.chatName} onClose={closeEditor} onSave={stickers.save} onSend={(sticker) => stickers.send(props.chatId, sticker)} />
+      <CreateSticker key={editorSession} visible={creating} chatName={props.chatName} onClose={closeEditor} onSave={stickers.save} onSend={(sticker) => stickers.send(props.chatId, sticker)} />
     </View>
   );
 }

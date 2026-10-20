@@ -14,7 +14,8 @@ import com.google.mlkit.vision.segmentation.subject.SubjectSegmenterOptions
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
-import java.io.File
+import org.json.JSONObject
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 /** How long the first model download is awaited before going on without the cutout. */
@@ -29,8 +30,10 @@ private const val MODEL_WAIT_MS = 45_000L
 class SubjectCutoutModule : Module() {
   private val context get() = requireNotNull(appContext.reactContext) { "No Android context" }
   private val segmenter by lazy {
-    SubjectSegmentation.getClient(SubjectSegmenterOptions.Builder().enableForegroundBitmap().build())
+    SubjectSegmentation.getClient(SubjectSegmenterOptions.Builder().enableForegroundConfidenceMask().build())
   }
+  /** The mask is built off the main thread: it walks every pixel. */
+  private val worker = Executors.newSingleThreadExecutor()
 
   override fun definition() = ModuleDefinition {
     Name("SubjectCutout")
@@ -63,25 +66,48 @@ class SubjectCutoutModule : Module() {
         .addOnFailureListener { finish(false) }
     }
 
-    /** The photo without its background, cropped to the subject: a transparent PNG in the cache. */
-    AsyncFunction("cutout") { uri: String, promise: Promise ->
+    /** The working copy of the picked photo: oriented and at most 1280 px (see `CutoutMask`). */
+    AsyncFunction("preparePhoto") { uri: String, promise: Promise ->
+      try {
+        val photo = CutoutMask.preparePhoto(context, uri)
+        promise.resolve(mapOf("uri" to Uri.fromFile(photo.file).toString(), "width" to photo.width, "height" to photo.height))
+      } catch (error: Exception) {
+        promise.reject("ERR_PHOTO", "No se pudo leer la foto.", error)
+      }
+    }
+
+    /** ML Kit's mask over the working copy: soft edges, without loose small pieces (transparent PNG). */
+    AsyncFunction("cutout") { photoUri: String, promise: Promise ->
       val image = try {
-        InputImage.fromFilePath(context, Uri.parse(uri))
+        InputImage.fromFilePath(context, Uri.parse(photoUri))
       } catch (error: Exception) {
         return@AsyncFunction promise.reject("ERR_PHOTO", "No se pudo leer la foto.", error)
       }
       segmenter.process(image)
-        .addOnSuccessListener { result ->
-          val subject = result.foregroundBitmap?.let { Composition.cropToContent(it) }
+        .addOnSuccessListener(worker) { result ->
+          val confidence = result.foregroundConfidenceMask
+          val mask = confidence?.let { CutoutMask.fromConfidence(it, image.width, image.height) }
             ?: return@addOnSuccessListener promise.reject("ERR_NO_SUBJECT", "No se encontró a nadie ni nada para recortar.", null)
-          val file = File(context.cacheDir, "cutout-${System.currentTimeMillis()}.png")
-          Composition.savePng(subject, file)
-          promise.resolve(mapOf("uri" to Uri.fromFile(file).toString(), "width" to subject.width, "height" to subject.height))
+          promise.resolve(mapOf("uri" to Uri.fromFile(CutoutMask.saveMask(context, mask)).toString()))
         }
-        .addOnFailureListener { error ->
+        .addOnFailureListener(worker) { error ->
           // No model yet (just installed, no Play services): the app goes on without the cutout.
           promise.reject("ERR_MODEL", "El recorte automático no está listo todavía.", error)
         }
+    }
+
+    /** The photo through the mask (or whole) with the erase/restore strokes, cropped: `{uri, width, height, box}`. */
+    AsyncFunction("refine") { request: String, promise: Promise ->
+      try {
+        val json = JSONObject(request)
+        val mask = if (json.isNull("mask")) null else json.optString("mask").ifEmpty { null }
+        val refined = CutoutMask.refine(context, json.getString("photo"), mask, CutoutMask.strokesFrom(json))
+          ?: return@AsyncFunction promise.reject("ERR_EMPTY", "Borraste todo: restaura una parte o deshaz.", null)
+        val box = mapOf("x" to refined.box.left, "y" to refined.box.top, "width" to refined.box.width(), "height" to refined.box.height())
+        promise.resolve(mapOf("uri" to Uri.fromFile(refined.file).toString(), "width" to refined.width, "height" to refined.height, "box" to box))
+      } catch (error: Exception) {
+        promise.reject("ERR_REFINE", "No se pudo aplicar el borrador.", error)
+      }
     }
 
     /** The final sticker: 512×512 WebP with the optional white outline and the layers. JSON as in `Composition.Request`. */

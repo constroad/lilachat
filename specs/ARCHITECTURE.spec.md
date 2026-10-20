@@ -4892,6 +4892,157 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 63. Stickers como WhatsApp, el clip con la galería, el scroll al entrar a un chat y volver de un hilo (20/10/2026, 0.1.111)
+
+José (20/10): «subo una foto, se quita el fondo, le pongo letras y creo el
+sticker; esto debe mantenerse en Lilachat»; después: «no respetas el diseño»
+(faltaban los stickers por defecto, rotar el texto y el lápiz), «el clip debe
+mostrar la galería como WhatsApp y Telegram» y «al entrar al chat con Wilson el
+scroll sigue y parpadea». Diseños: `s1-app-panel-stickers`,
+`s1-app-crear-sticker`, `s1-web-stickers` y la hoja `s1-pack-lila`.
+
+### 63.1 Stickers: qué ve la persona
+
+- Botón de emojis → pestañas **Emoji · Stickers** y la tecla de borrar (app; en
+  la web, las pestañas). Filtros Recientes · Favoritos · Mis stickers; «Crear»
+  primero; «Mis stickers» muestra dos filas y «Ver todos»; abajo, el **paquete
+  «Lila»** (24 stickers listos para mandar). En un chat secreto no hay pestaña.
+- **Crear** (app): foto → fondo quitado (sujeto del centro) → barra Recortar ·
+  Aa · emoji · lápiz · deshacer. Texto y emojis se mueven, se agrandan
+  (pellizco o manija de la esquina) y **rotan** (dos dedos o la manija de
+  arriba), con guías al centro. El lápiz dibuja con los 6 colores. «Borde ON»,
+  «Para: …», «Sticker personal», «Guardar en Mis stickers» y enviar.
+- **Crear** (web): el mismo motor; S/M/L, color, manijas de rotar y agrandar en
+  el lienzo, lápiz, emojis, «Quitar fondo automáticamente», «Borde blanco»,
+  «Cambiar» y clic sobre la foto para recortar otra cosa.
+- En el chat el sticker va sin burbuja (160 px), con hora, reacciones, hilo y el
+  autor en grupos. Uno recibido se guarda o se marca favorito (app: tocándolo;
+  web: menú del mensaje). Una estrella en un sticker del paquete lo deja en
+  «Mis stickers» como favorito.
+
+### 63.2 Stickers: cómo está hecho (código nuevo en inglés)
+
+| Pieza | Dónde |
+| --- | --- |
+| Motor del editor (capas texto/emoji/trazo, mover, escalar, rotar, S/M/L, color, deshacer con `checkpoint` + movimientos `transient`) y geometría 512×512 | `shared/src/stickerEditor.ts` |
+| Biblioteca, recientes, paquetes y secciones | `shared/src/stickers.ts` (`STICKER_PACKS`, `findPackSticker`, `stickerSections`) |
+| Server | `server/src/stickersRoutes.ts`, `stickerModel.ts` (`width`, `height`, `favorite`, `createdAt`) |
+| Recorte y composición en Android | `app/modules/subject-cutout` (ML Kit + `Composition.kt`: borde, texto rotado con contorno, emojis, trazos) |
+| App | `app/src/chat/stickers/*` (`CreateSticker`, `StickerCanvas`, `StickerPanel`, `EmojiStickerPanel`, `StickerMessage`) |
+| Web | `web/src/chat/stickers/*` (`cutoutWeb` con MediaPipe, `composeWeb`, `CreateStickerWeb`) |
+| Paquete Lila | arte de la hoja de Stitch `s1-pack-lila` (SVG) → `web/scripts/extract-sticker-pack.mjs` → `web/public/stickers/lila-1/*.webp` (24, 676 KB) |
+
+- **Endpoints**: `GET/POST /api/stickers`, `PATCH/DELETE /api/stickers/:id`,
+  `POST /api/stickers/from-message`, `POST /api/stickers/from-pack`,
+  `POST /api/chats/:id/stickers` (`stickerId` propio o `pack:<paquete>/<slug>`;
+  `clientKey` idempotente). Un sticker del paquete se manda con la URL del
+  mismo server que sirve la web (Host validado; uno falso → 400).
+- El paquete y el wasm de MediaPipe se sirven con caché inmutable (versión en
+  la carpeta). CSP: `'wasm-unsafe-eval'` y la carpeta de modelos de MediaPipe.
+- **Índices creados** (OK de José, 20/10): `stickers {userId, createdAt}` y
+  único `{userId, mediaId}`; se borró uno viejo de la colección vacía. Los de
+  `destacados` ya existían.
+- El primer recorte en Android espera la descarga del modelo (tope 45 s) y se
+  pide al abrir la pestaña Stickers.
+
+### 63.3 El clip, como WhatsApp
+
+`app/src/chat/AttachSheet.tsx`: arriba Galería · Documento · Evento · Encuesta
+· Recordatorio (sin Cámara: tiene su botón en la barra, pendiente 10); abajo las
+últimas 60 fotos y videos del teléfono, con duración; se eligen en orden (hasta
+10) y «Enviar N» abre la vista previa de siempre (pie y HD). Sin permiso, una
+tarjeta «Permitir acceso» (o «Abrir ajustes» si se negó para siempre). Bug que
+salió en el E2E: lo elegido así no traía tamaño y la cola lo rechazaba como
+«archivo vacío»; ahora la cola mide la copia (`colaDeArchivos.knownSize`).
+
+### 63.4 El scroll al entrar a un chat: la causa raíz
+
+- **Causa** (análisis con evidencia, `scroll-analisis` de la sesión): al
+  volver a un chat, la lista nacía de la copia en memoria
+  (`chatsEnMemoria`), que no se enteraba de lo que llegó con el chat cerrado
+  (iba solo al disco). El control con el server lo agregaba abajo 150–600 ms
+  después y el autoscroll animado lo perseguía: «el scroll sigue». Además, el
+  divisor de no leídos se calculaba sobre la copia vieja y se perdía.
+- **Arreglo**: la memoria sigue a cada escritura en disco
+  (`MemoriaDeChats.add/drop` desde `guardarMensajes` y
+  `eliminarMensajesGuardados`); `useChat` suma del disco solo los `seq` que
+  falten. La lista se muestra recién cuando quedó ubicada (`onLoad` + dos
+  cuadros, tope 350 ms) y se sacó el segundo scroll de 150 ms. Abrir en el
+  divisor despega la lista del final (`releaseFromEnd`): antes, una tarjeta que
+  crecía abajo la arrastraba al final. La cabecera ya no dice «Sin conexión…»
+  un instante en cada apertura.
+- **Tarjetas de enlace**: reservan su lugar mientras llega la vista previa y
+  las ya vistas quedan en el teléfono (200, `linkPreviewCache`): al reabrir
+  tras reiniciar no crecen de 0 a ~200 dp.
+- **Medido en el emulador** (grabación cuadro a cuadro, 3 mensajes nuevos con
+  el chat cerrado): los mensajes y el divisor están en el primer cuadro; queda
+  un ajuste chico cuando la tarjeta real mide distinto que la reservada. En la
+  build de desarrollo el montaje de la pantalla tarda y varía; el veredicto
+  final va con la build de release.
+
+### 63.5 Verificación
+
+- Tests: shared 870, server (stickers 11, CSP 4, disco 15), web 268, app 440+
+  (motor, memoria, selección del clip, caché de tarjetas, posición en la
+  lista). Gates en verde, inglés y español neutro en cero sobre el árbol.
+- App en el emulador: paquete, enviar del paquete, crear (texto rotado, lápiz,
+  emoji, color), composición nativa correcta, recibir y favorito, clip con
+  foto y video.
+- Web (Chrome con GPU, servida por Express con la CSP real): paquete, recorte
+  con «Fondo eliminado», texto rotado, lápiz, enviar, favorito.
+- **No probado: el recorte de Android** (el emulador no tiene Play Store).
+  Va en la build de prueba para el teléfono de José antes de publicar.
+- Arreglado de paso: `disco.recibir` borraba el temporal antes de que el
+  archivo terminara de abrirse y podía quedar un huérfano (gate rojo bajo
+  carga).
+
+### 63.6 Decisiones de José (20/10)
+
+- Probar el recorte en su teléfono antes de publicar; después APK y web.
+- Índices aprobados.
+- Código nuevo en inglés; los textos de la app, en español (neutro).
+- No silenciar los avisos del teléfono mientras la web está activa.
+- 0.1.110 se probó en su teléfono y no se publicó: salió 0.1.111 con §63.7.
+
+### 63.7 Volver de un hilo mandaba el chat al principio (0.1.111)
+
+José (20/10): «cuando un usuario responde un hilo y da para atrás, regresa al
+inicio de la conversación; es un error garrafal».
+
+- **Reproducido en el emulador** con un grupo de 44 mensajes: leyendo el
+  mensaje 18, abrir su hilo, responder y volver dejaba el chat en «Este es el
+  principio de la conversación». Con un log del scroll se vio el momento:
+  `offset 0` en el instante en que se ABRE el modal del hilo, y otra vez al
+  cerrarlo.
+- **Causa raíz.** En Android, un `Modal` que aparece o se va manda un evento
+  del teclado (alto 0, duración 0) sin `onStart`. El `KeyboardChatScrollView`
+  de la conversación (§61), que quedó detrás, lo procesa: su `onMove` hace
+  `scrollTo` a la posición que guardó al abrirse el teclado la última vez, y
+  si nunca se abrió, a 0. No era solo el hilo: el clip, el detalle, el visor
+  y cualquier modal sobre el chat hacían lo mismo (el clip lo disimulaba
+  porque después de mandar se baja al final). La versión 1.22.8 de la
+  librería tiene la misma lógica: actualizarla no lo arregla.
+- **Arreglo.** `ui/Modal.tsx` reemplaza al `Modal` de React Native en toda la
+  app (35 archivos, mismo uso). Mientras está visible se cuenta
+  (`ui/overlays.ts`) y le pasa a lo que contiene su nivel por contexto (la
+  lista del hilo vive en el nivel 1). La lista que sigue al teclado
+  (`useScrollConTeclado`) se congela mientras hay un modal por ENCIMA de su
+  nivel y el teclado está abajo; si estaba arriba, sigue su cierre real y se
+  congela al terminar (si no, quedaría el hueco del teclado).
+- **Dos carreras medidas.** Congelar en el mismo render en que aparece el
+  modal llegaba tarde: Reanimated pasa el valor al hilo de UI (y a la copia
+  derivada de la librería) un cuadro después y el evento ganaba. El modal se
+  muestra dos cuadros después de contarse (unos 30 ms, no se nota). Al
+  cerrarse, el segundo evento llega unos 40 ms después: el modal se descuenta
+  400 ms más tarde.
+- **Verificado en el emulador:** responder en el hilo del mensaje 18 y volver
+  deja el chat en el mensaje 18, con el chip en «6 respuestas»; abrir y
+  cerrar el clip no mueve el chat; escribir en el chat sigue subiendo la
+  lista con el teclado y bajándola al cerrarlo; la lista del hilo sigue al
+  teclado. 448 tests de la app en verde (3 nuevos de `overlays`).
+- **Límite conocido:** si alguien toca la barra de escribir antes de 400 ms de
+  cerrar un modal, ese teclado no levanta la lista (la barra sí sube).
+
 ## 62. La llamada no sonaba con la pantalla apagada (20/10/2026, 0.1.109)
 
 José, 20/10: «al llamar a Wilson con la pantalla apagada no vibró ni sonó;
@@ -6274,7 +6425,7 @@ tacha con la versión que lo cierra.
    con una variable CSS), encima del tamaño de letra del sistema, que se sigue
    respetando. Se guarda por equipo. Tests del motor de tamaños y captura a
    360 dp con «Grande» para que nada se corte.
-2. **Crear stickers como WhatsApp.** Desde una foto: recortar el sujeto
+2. ~~**Crear stickers como WhatsApp.**~~ Hecho en §63 (sin publicar). Desde una foto: recortar el sujeto
    (Android: ML Kit Subject Segmentation, en el equipo y gratis; web:
    segmentación de MediaPipe, Apache 2.0), sumar texto o emoji, y guardar
    en «Mis stickers» como WebP 512×512 con transparencia. Se mandan como
@@ -6312,7 +6463,7 @@ tacha con la versión que lo cierra.
    actualiza en vivo (`ref.changed`). App y web.
 9. **Compartir un contacto** en el chat (como WhatsApp): tarjeta con nombre y
    teléfono, «Enviar mensaje» si está en Lilachat y «Agregar a contactos».
-10. **Sacar «Cámara» del menú del clip**: ya hay botón de cámara en la barra;
+10. ~~**Sacar «Cámara» del menú del clip**~~ (hecho en §63.3): ya hay botón de cámara en la barra;
     en el clip sobra y además aparece primero.
 11. **Compartir ubicación y ubicación en tiempo real** (15 min / 1 h / 8 h),
     que se siga actualizando con la pantalla bloqueada: servicio en primer
@@ -6359,6 +6510,61 @@ tacha con la versión que lo cierra.
     para copiar Zernio u otro producto ajeno queda fuera de su uso declarado
     (software propio o autorizado) y sería un riesgo legal. Para construir
     algo como Zernio se usan las APIs oficiales.
+
+17. **Recordatorio de cumpleaños en grupos y chats (opcional)** (José, 20/10).
+    - **Alta:** nombre y fecha de cumpleaños pasan a ser OBLIGATORIOS al
+      registrarse (hoy el nombre es opcional y la fecha no existe). Quien ya
+      tiene cuenta los completa la próxima vez que abre la app (pantalla de
+      «Completa tu perfil»), sin poder saltarla. El año es opcional al
+      mostrarlo («cumple 29 años» solo si lo dejó ver); cada persona elige si su
+      fecha la ven todos sus chats o nadie.
+    - **Por chat:** «Cumpleaños» se activa en la info del grupo (sus admins) o
+      del 1:1 (cualquiera de los dos); apagado por defecto.
+    - **El día del cumpleaños** (hora local de quien mira, a partir de las
+      8:00): al abrir ese chat sale el aviso a **pantalla completa con
+      confeti** y la **tarjeta de felicitación** con el avatar del
+      cumpleañero, «¡Feliz cumpleaños, Carla!», «Hoy cumple 29 años · Obra
+      Miraflores», reacciones rápidas (pastel, aplausos, corazón, fiesta) y
+      «Saludar en el grupo» (escribe el saludo en el campo). Una vez por día y
+      por chat; al cumpleañero no se le muestra su propia tarjeta, sino los
+      saludos. Además, un aviso destacado en el chat («Hoy cumple Carla») y un
+      push suave a la mañana.
+    - **Extra pro: «Crear tarjeta con IA»**: genera una imagen de felicitación
+      (con el nombre y, si se quiere, el avatar) para mandarla al chat. Necesita
+      un modelo de imágenes: es un servicio con costo, se elige con José antes.
+    - **Diseño:** `c1-app-cumpleanos` (Stitch, pantalla
+      `cd0ecbeba4524e54b2bd8ba2886d7b9b`). Al implementar se quita el logo
+      que Stitch inventó arriba a la izquierda de la tarjeta («RKLES»).
+18. **Hilos: el nombre de quien escribe y los avatares** (José, 20/10,
+    captura del hilo con Wilson). En la app, la raíz del hilo dice «Alguien»
+    en vez del nombre: en un 1:1 el autor no está en el mapa de nombres del
+    grupo; hay que resolverlo como la lista (contacto de la agenda → nombre
+    del perfil → número). Y el chip del hilo en el chat no muestra los
+    avatares de quienes participan (Slack muestra hasta 3 caras + «N
+    respuestas»). Revisar y corregir lo mismo en la web.
+19. **Emojis propios para reaccionar, como Slack** (estáticos o GIF
+    animados). Cada uno: nombre corto (`:vamos:`), imagen de hasta 128×128 y
+    256 KB (PNG, WebP o GIF), quién lo subió y cuándo. Salen en una sección
+    propia del panel de reacciones y del de emojis, y se escriben con `:`.
+    - **¿Por grupo o por workspace?** En Slack son del **workspace** (toda la
+      empresa los comparte; los admins pueden limitar quién sube). Para
+      Lilachat se propone: en **Lilachat Empresa**, por empresa (como Slack);
+      en el Lilachat personal, **por grupo** (los suben los admins del
+      grupo) más los que cada uno se guarde para sus chats 1:1. Una
+      reacción con un emoji propio guarda su id y su URL, así se sigue
+      viendo aunque después lo borren del catálogo.
+    - Server: colección de emojis por dueño (grupo o empresa) con índice
+      `{dueño, nombre}` único; los archivos van al almacenamiento como la
+      media. App y web: el GIF se anima en el panel y en la reacción.
+20. **Contactos en la web, como WhatsApp Web** (José, 20/10: «¿por qué no
+    los listas como WhatsApp o Telegram?»). Amplía el 5. WhatsApp Web no lee
+    una agenda propia: muestra la del TELÉFONO, que la app sube a sus
+    servidores. Lilachat hace lo mismo a medias: la app ya sincroniza la
+    agenda con `/api/contacts`, pero la web no la pide. Falta: que la web
+    baje esos contactos (nombre como lo guardaste) y los use en la lista,
+    el chat, el detalle y «Nuevo chat» (la lista de contactos con Lilachat
+    primero, como en WhatsApp Web), y que se actualice cuando el teléfono
+    vuelva a sincronizar.
 
 ### Guiños y zumbido (análisis, 20/10)
 

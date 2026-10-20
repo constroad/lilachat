@@ -66,3 +66,5 @@ Las capturas viven SOLO en la máquina (`design/stitch/`, en `.gitignore` desde 
 | `s1-app-panel-stickers.png` | S1 · App: panel de emojis con la pestaña Stickers (Recientes · Favoritos · Mis stickers, «Crear») y un sticker recibido sin burbuja (`screens/3c17da95de5f4e0aa7ec0c2fb77b24cc`) |
 | `s1-app-crear-sticker.png` | S1 · App: «Crear sticker» con fondo eliminado, texto arrastrable, colores, borde, «Guardar en Mis stickers» y enviar (`screens/6f5a829bc10c432f94ba2d99993a371f`) |
 | `s1-web-stickers.png` | S1 · Web: panel de stickers sobre la barra y diálogo «Crear sticker» (`screens/5901b731b3a742c3b2aeb64930f6d31d`) |
+| `s1-pack-lila.png` | S1 · Hoja de 24 stickers del paquete por defecto «Lila» (SVG; `web/scripts/extract-sticker-pack.mjs` los pasa a WebP) (`screens/10f511ccc1aa4b34ad04df756730e310`) |
+| `c1-app-cumpleanos.png` | C1 · App: aviso de cumpleaños a pantalla completa con confeti, tarjeta con el avatar, reacciones, «Saludar en el grupo» y «Crear tarjeta con IA» (`screens/cd0ecbeba4524e54b2bd8ba2886d7b9b`; sin el logo inventado arriba a la izquierda) |

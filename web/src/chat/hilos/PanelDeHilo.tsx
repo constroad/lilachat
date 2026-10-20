@@ -21,6 +21,7 @@ export function PanelDeHilo(props: {
   respuestas: MensajeEnPantalla[];
   yo: string;
   nombres: ReadonlyMap<string, string>;
+  photos?: ReadonlyMap<string, string>;
   onEnviar: (texto: string, enElChat: boolean) => void;
   onReintentar: (clientKey: string) => void;
   onDescartar: (clientKey: string) => void;
@@ -62,7 +63,7 @@ export function PanelDeHilo(props: {
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         <div data-testid="raiz-del-hilo" className="rounded-xl border border-outline/15 bg-surface p-3">
           <div className="flex items-center gap-2">
-            <Avatar name={nombreDe(props.raiz.senderId)} size={28} />
+            <Avatar name={nombreDe(props.raiz.senderId)} foto={props.photos?.get(props.raiz.senderId)} size={28} />
             <span className="text-sm font-semibold">{nombreDe(props.raiz.senderId)}</span>
             <span className="text-[12px] text-on-surface-variant">{formatClock(props.raiz.at)}</span>
           </div>

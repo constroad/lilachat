@@ -7,7 +7,7 @@ import { Avatar } from '../../ui/Avatar';
  * que respondieron, «4 respuestas · última 10:42», un punto si hay nuevas y la
  * flecha. Abre el panel del hilo a la derecha.
  */
-export function ChipDeHilo(props: { seq: number; hilo: ResumenDeHiloEnCliente; nombres: ReadonlyMap<string, string>; nuevas: boolean; onAbrir: (seq: number) => void }) {
+export function ChipDeHilo(props: { seq: number; hilo: ResumenDeHiloEnCliente; nombres: ReadonlyMap<string, string>; photos?: ReadonlyMap<string, string>; nuevas: boolean; onAbrir: (seq: number) => void }) {
   const texto = textoDelChipDeHilo(props.hilo);
   if (!texto) return null;
   return (
@@ -20,7 +20,7 @@ export function ChipDeHilo(props: { seq: number; hilo: ResumenDeHiloEnCliente; n
     >
       <span className="flex -space-x-1.5">
         {(props.hilo.autores ?? []).map((autor) => (
-          <Avatar key={autor} name={props.nombres.get(autor) ?? '?'} kind="direct" size={20} />
+          <Avatar key={autor} name={props.nombres.get(autor) ?? '?'} foto={props.photos?.get(autor)} kind="direct" size={20} />
         ))}
       </span>
       <span className="truncate font-semibold text-primary">{texto}</span>

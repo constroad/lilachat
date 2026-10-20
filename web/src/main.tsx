@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { AppBoundary } from './ui/ErrorBoundary';
 import './index.css';
 import { prepararSonidos } from './sonidos/sonidoDeMensaje';
 
@@ -9,6 +10,8 @@ prepararSonidos();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <AppBoundary>
+      <App />
+    </AppBoundary>
   </StrictMode>
 );

@@ -216,6 +216,6 @@ function LineaDeSistema({ mensaje }: { mensaje: MensajeEnPantalla }) {
 function ChipDeLaRaiz({ seq, hilo }: { seq: number; hilo: NonNullable<MensajeEnPantalla['hilo']> }) {
   const contexto = useContext(ConversacionContext);
   if (!contexto?.onAbrirHilo) return null;
-  return <ChipDeHilo seq={seq} hilo={hilo} nombres={contexto.nombres} nuevas={contexto.hiloConNuevas?.(seq) ?? false} onAbrir={contexto.onAbrirHilo} />;
+  return <ChipDeHilo seq={seq} hilo={hilo} nombres={contexto.nombres} photos={contexto.photos} nuevas={contexto.hiloConNuevas?.(seq) ?? false} onAbrir={contexto.onAbrirHilo} />;
 }
 

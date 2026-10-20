@@ -17,6 +17,14 @@ describe('ChipDeHilo', () => {
     expect(onAbrir).toHaveBeenCalledWith(7);
   });
 
+  it('shows the faces of who replied when they have a photo (backlog 18)', () => {
+    const photos = new Map([['b', 'https://storage.test/beto.jpg']]);
+    const { container } = render(<ChipDeHilo seq={7} hilo={{ respuestas: 2, autores: ['b', 'c'] }} nombres={nombres} photos={photos} nuevas={false} onAbrir={() => undefined} />);
+
+    const faces = [...container.querySelectorAll('img')].map((img) => img.getAttribute('src'));
+    expect(faces).toEqual(['https://storage.test/beto.jpg']);
+  });
+
   it('sin respuestas (todas borradas) no se dibuja', () => {
     const { container } = render(<ChipDeHilo seq={7} hilo={{ respuestas: 0 }} nombres={nombres} nuevas={false} onAbrir={() => undefined} />);
     expect(container).toBeEmptyDOMElement();

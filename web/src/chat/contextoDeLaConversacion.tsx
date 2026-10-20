@@ -19,6 +19,8 @@ export type ContextoDeLaConversacion = {
   detalle: DetalleDelChat | null;
   /** id → nombre que ve esta persona, para autores y menciones. */
   nombres: ReadonlyMap<string, string>;
+  /** Member photos for the thread chip and root (backlog 18: only initials showed). */
+  photos?: ReadonlyMap<string, string>;
   /** El mensaje citado por `replyToSeq`, si está cargado. */
   citado: (seq: number) => MensajeEnPantalla | undefined;
   onAccion: (mensaje: MensajeEnPantalla, accion: AccionSobreMensaje) => void;

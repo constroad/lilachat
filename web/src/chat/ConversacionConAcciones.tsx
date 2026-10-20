@@ -15,6 +15,7 @@ import { colaDeArchivosWeb, usarJwtParaSubir } from './colaDeArchivosWeb';
 import { aplicarEntrante } from '../local/mensajesLocales';
 import { useHilosWeb } from './hilos/useHilosWeb';
 import { PanelDeHilo } from './hilos/PanelDeHilo';
+import { PanelBoundary } from '../ui/ErrorBoundary';
 import { api } from '../api';
 import { Conversation } from './Conversation';
 import { ConversacionContext, type ContextoDeLaConversacion } from './contextoDeLaConversacion';
@@ -67,6 +68,8 @@ export function ConversacionConAcciones(
     if (!mapa.has(yo)) mapa.set(yo, 'Tú');
     return mapa;
   }, [detalle, yo]);
+  /** Who has a photo, for the thread chip and root (backlog 18). */
+  const photos = useMemo(() => new Map([...(detalle?.miembros.values() ?? [])].flatMap((member) => (member.foto ? [[member.id, member.foto] as const] : []))), [detalle]);
   const acciones = useAccionesSobreMensajes({ chatId: chat.id, sync, nombres, onAviso });
   // Solo en grupos se menciona; a uno mismo, no.
   const mencionables = useMemo(
@@ -125,8 +128,8 @@ export function ConversacionConAcciones(
   // El recordatorio del chat (W3c): lo crean y editan quienes pueden fijar (en un grupo, sus admins), nunca en un secreto.
   const editarRecordatorio = !chat.encrypted && puedeFijar ? props.onEditReminder : undefined;
   const contexto = useMemo<ContextoDeLaConversacion>(
-    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, citado, onAccion, onVerFoto, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar, onEditarRecordatorio: editarRecordatorio, destacados: destacados.seqs, onStickerAction: chat.encrypted ? undefined : onStickerAction }),
-    [yo, props.jwt, chat, detalle, nombres, citado, onAccion, onVerFoto, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editarRecordatorio, destacados.seqs, onStickerAction]
+    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar, onEditarRecordatorio: editarRecordatorio, destacados: destacados.seqs, onStickerAction: chat.encrypted ? undefined : onStickerAction }),
+    [yo, props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editarRecordatorio, destacados.seqs, onStickerAction]
   );
 
   return (
@@ -166,19 +169,23 @@ export function ConversacionConAcciones(
         }}
       />
       {hilos.raiz ? (
+        <PanelBoundary label="el hilo" onClose={hilos.cerrar}>
         <PanelDeHilo
           chat={chat}
           raiz={hilos.raiz}
           respuestas={hilos.respuestas}
           yo={yo}
           nombres={nombres}
+          photos={photos}
           onEnviar={(texto, enElChat) => void sync.enviarTexto(chat.id, texto, { hiloDe: hilos.raiz!.seq, ...(enElChat ? { enElChat: true } : {}) })}
           onReintentar={props.onReintentar}
           onDescartar={props.onDescartar}
           onCerrar={hilos.cerrar}
         />
+        </PanelBoundary>
       ) : null}
       {infoAbierta ? (
+        <PanelBoundary label="la información del chat" onClose={() => setInfoAbierta(false)}>
         <PanelDeInfo
           chat={chat}
           detalle={detalle}
@@ -195,6 +202,7 @@ export function ConversacionConAcciones(
           onVerFoto={onVerFoto}
           tarjetas={<><TarjetaDeFijados fijados={fijados} nombreDe={nombreDe} textoLocal={textoLocal} onVerTodos={() => setVerFijados(true)} />{chat.encrypted ? null : <TarjetaDeDestacados chatId={chat.id} jwt={props.jwt} yo={yo} cuantos={destacados.seqs.size} onIr={(seq) => setSalto({ seq, vez: Date.now() })} />}</>}
         />
+        </PanelBoundary>
       ) : null}
       {verFijados ? (
         <ListaDeFijados fijados={fijados} nombreDe={nombreDe} textoLocal={textoLocal} puedeDesfijar={puedeFijar} onIr={(seq) => setSalto({ seq, vez: Date.now() })} onDesfijar={(seq) => void fijar.desfijar(seq)} onCerrar={() => setVerFijados(false)} />

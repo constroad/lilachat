@@ -62,3 +62,4 @@ Las capturas viven SOLO en la máquina (`design/stitch/`, en `.gitignore` desde 
 | `f1-app-info-fijados.png` | F1 · App: info del grupo con descripción larga y tarjeta de fijados (`screens/1ee00f3297e7451086f6e1b87c707f63`) |
 | `f1-web-reacciones-reenviar.png` | F1 · Web: barra de reacciones al pasar el mouse y diálogo «Reenviar mensaje» (`screens/626bddd520924ab284c99616e1693b7b`) |
 | `f1-web-info-fijados.png` | F1 · Web: panel «Info. del grupo» con descripción y fijados (`screens/46c1e8d2f7674d1ebac5a53170bc69b0`) |
+| `f2-app-camara.png` | F2 · App: cámara propia del chat con flash, «Para:», tira de recientes y disparador (`screens/b3aca9e6e5514876a89d252fc3ac4f49`) |

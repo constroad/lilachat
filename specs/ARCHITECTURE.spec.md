@@ -4892,7 +4892,54 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
-## 58. F1 — reacciones, recordatorios en todo chat, «Tú», fijados de Slack, descripción larga y reenviar (20/10/2026, sin publicar)
+## 59. Revisión de fluidez: avisos en el chat, foto al instante, teclado, miniaturas de enlaces y sonidos (20/10/2026, 0.1.106)
+
+José, 20/10, después de publicar 0.1.105: un recordatorio o un evento que
+empieza debería verse también en el chat, no solo en la barra de
+notificaciones; la foto tomada en un chat tarda segundos en aparecer; el
+teclado sube y baja «torpe y lento»; WhatsApp muestra la miniatura de
+Instagram y YouTube y Lilachat no (revisar también Facebook y TikTok); «no hay
+sonidos». Diseño `f2-app-camara` (INVENTARIO).
+
+| Pedido | Qué se hizo | Dónde |
+| --- | --- | --- |
+| Avisos en el chat | Cuando el cron hace sonar un recordatorio de chat o avisa que un evento empieza, además del push deja un aviso destacado en la conversación: tarjeta tintada con campana o calendario y la hora («Recordatorio: Pagar la luz», «Reunión de obra · empieza en 15 minutos»). Va sin push propio (el push ya salió) y cuenta como no leído. Si escribirlo falla, el push no se cae | shared `avisoDeGrupo` (`recordatorio-suena`, `evento-pronto`, `esAvisoDestacado`); server `reminderCron` → `avisarEnElChat`; app `MessageRow › AvisoDestacado`; web `BurbujaDeMensaje › LineaDeSistema` |
+| Foto al instante | Cámara propia del chat en vez de la del sistema (arrancarla, confirmar y volver costaba segundos): la vista está lista al abrir, el disparo destella y «Enviar» se abre encima en ~0,2 s, dentro del mismo modal (dos modales no se apilan bien en Android). Mientras captura va negro (la vista de la cámara se vuelve transparente y dejaba ver el chat). Flash Auto/Sí/No, girar, galería y tira de recientes solo si la galería ya tiene permiso | app `camara/CamaraDelChat.tsx`, `EnviarFotos` (`embebido`), `useAdjuntosDelChat` (`camara`) |
+| Teclado | `KeyboardAvoidingView` de keyboard-controller en modo `translate-with-padding`: durante la animación se traslada el bloque (lista + barra) y el padding se aplica una sola vez al final. La cabecera queda fuera, encima (`zIndex`) | app `ChatScreen` |
+| Miniaturas de enlaces | YouTube (watch, Shorts, live, youtu.be) y TikTok (videos) por oEmbed; Instagram, Facebook, fb.watch y TikTok se piden con el agente de facebookexternalhit (a un agente común le devuelven la pantalla de login sin `og:`). Un video (`og:type video.*`, `og:video` u oEmbed) lleva el play encima y va siempre grande. Un logo o perfil cuadrado va chico al costado (regla compartida `esMiniaturaCompacta`, ahora también en la web). Una imagen que no carga se oculta | shared `vistaPrevia` (`video`, `esMiniaturaCompacta`); server `vistaPreviaPorSitio.ts`, `traerVistaPrevia`, `vistaPrevia.leerMetadatos`; app `VistaPreviaDeEnlace`; web `TarjetaDeEnlace` |
+| Sonidos | **App:** el mensaje ya sonaba por el canal de notificaciones y el timbre de llamada entrante es nativo; los dos respetan el modo silencio del teléfono, como WhatsApp (las capturas de José muestran el ícono de silencio). Nuevo: tono de «llamando…» al llamar (425 Hz, 1 s de cada 4, generado, sin licencia). **Web:** sonido sintetizado (Web Audio) para lo que no estoy mirando: otro chat o la pestaña oculta; no lo mío, ni silenciados, ni avisos, ni respuestas que quedan en su hilo. Suena recién después del primer gesto en la página (regla del navegador) | app `calls/tonoDeLlamando.ts`, `llamadaNativa.suenaTonoDeLlamando`, `useCall`, `assets/sonidos/llamando.wav`; web `sonidos/sonidoDeMensaje.ts`, `useSincronizacion`, `main.tsx` |
+
+**Respuestas a José**
+- **¿Un hilo avisa?** Sí: al autor del mensaje raíz, a quien ya respondió en
+  el hilo y a los mencionados. Con «También enviar al chat», a todos.
+- **¿Qué falta para videollamadas?** Probar entre dos teléfonos reales (el
+  emulador no tiene cámara de verdad). La web todavía no llama (W6).
+
+**Facebook:** un video de Facebook sale con título y sin imagen: Facebook no
+pone `og:image` para bots en esos enlaces. Es su decisión, no un fallo.
+
+### 59.1 E2E
+
+Server QA local (sin crons, base de producción), QA Ana y QA Beto:
+- **App:** cámara → disparo → «1 foto» en ~0,2 s sin ver el chat detrás
+  (grabación cuadro a cuadro); los dos avisos destacados en QA Hilos; tarjetas
+  de YouTube Short, perfil de TikTok y de Instagram con título y descripción.
+  El emulador no resuelve DNS de internet (sí la Mac): las miniaturas no
+  cargaron ahí, y la del Short se ocultó al fallar, que es lo esperado.
+- **Web (navegador propio como QA Ana):** YouTube 480×360 grande con play;
+  TikTok 720×720 e Instagram 100×100 chicos al costado (antes el logo salía
+  estirado y borroso: corregido en esta pasada); los dos avisos destacados.
+- **Trampa del E2E web:** el Chrome for Testing copiado muere con SIGTRAP
+  («Mach rendezvous failed») al crear un subproceso, intermitente. No es la
+  web: con `--disable-features=AudioServiceOutOfProcess` y reintentos pasó
+  cuatro veces seguidas.
+- QA en cero y los dispositivos de José en 20.
+
+**Límite conocido:** en un chat muy corto (pocos mensajes) el cierre del
+teclado da un salto de ~50 ms al aplicar el padding; en un chat lleno es
+suave.
+
+## 58. F1 — reacciones, recordatorios en todo chat, «Tú», fijados de Slack, descripción larga y reenviar (20/10/2026, 0.1.105)
 
 José, 20/10, después de publicar 0.1.104: reaccionar en chats y en hilos; los
 recordatorios no solo en grupos (también 1:1, borradores y el chat contigo);
@@ -4959,7 +5006,7 @@ sus tarjetas (W3c, §54.15) — con la regla «APK = web» pasa a ser lo siguien
 la sección «Contactos en Lilachat» del diseño de reenviar (hoy solo chats);
 reacciones en chats secretos; «Destacados» y «Pendientes» si José los aprueba.
 
-## 57. E3a — hilos en la app y en la web (20/10/2026, sin publicar)
+## 57. E3a — hilos en la app y en la web (20/10/2026, 0.1.104)
 
 José, 19/10: «quiero ya probar los threads o hilos». Diseños `e3-app-chip-hilo`,
 `e3-app-hilo` y `e3-web-hilo` (INVENTARIO). Primer pedazo de E3 (§47); las

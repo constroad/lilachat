@@ -4892,6 +4892,75 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 57. E3a — hilos en la app y en la web (20/10/2026, sin publicar)
+
+José, 19/10: «quiero ya probar los threads o hilos». Diseños `e3-app-chip-hilo`,
+`e3-app-hilo` y `e3-web-hilo` (INVENTARIO). Primer pedazo de E3 (§47); las
+menciones de grupo y la preferencia de avisos van en E3b.
+
+**Modelo.** Una respuesta es un mensaje más del chat con `hiloDe` (el `seq` de
+la raíz), en el mismo espacio de `seq`: reutiliza sync, cola, editar, borrar,
+acuses y push sin caminos nuevos. `enElChat: true` («También enviar al chat»)
+la muestra además en el chat. La raíz guarda el resumen
+`hilo {respuestas, ultimaEn, ultimaSeq, autores}` (los 3 últimos), que se
+actualiza con un update pipeline atómico (`server/src/hilos.ts`,
+`updatePipeline: true`); al borrar una respuesta se descuenta.
+
+**Reglas del server** (`validarRaiz`, antes de reservar el `seq`): no hay hilos
+dentro de hilos; no admiten respuestas las líneas de sistema, lo borrado ni lo
+cifrado → 400 con «Ese mensaje no admite respuestas en hilo.». Evento
+`msg.hilo {chatId, raiz, hilo}` a los miembros cuando cambia el resumen.
+`GET /api/chats/:id/hilos` (resúmenes, al abrir/reconectar) y
+`GET /api/chats/:id/hilos/:raiz` (raíz + respuestas, tope 500). Push de una
+respuesta solo a quien escribió la raíz, a los que respondieron y a los
+mencionados («En un hilo: …»); con `enElChat`, a todos.
+
+**Cliente** (reglas puras en `shared/src/hilos.ts`: `visibleEnElChat`,
+`textoDelChipDeHilo`, `hayRespuestasNuevas`, `respuestasDelHilo`,
+`aplicarResumenDeHilo`):
+- Debajo de la raíz, el chip «1 respuesta · 6:53» / «N respuestas · última
+  HH:MM» con los últimos que respondieron y un punto si hay nuevas de otros.
+  Lo visto vive en el equipo (app: AsyncStorage `lilachat-hilos-vistos`; web:
+  localStorage), por raíz.
+- «Responder en hilo» en la barra de selección (app) y en el menú del mensaje
+  (web); no aparece en respuestas, sistema, borrado ni cifrado.
+- App: `HiloScreen` (modal; atrás lo cierra y lo escrito queda como borrador).
+  Web: `PanelDeHilo` como tercera columna desde 1024 px (cierra «Info.») y
+  pantalla completa debajo, con las mismas burbujas del chat (menú, checks,
+  reintentar).
+- La respuesta pendiente sale al instante en el hilo (y en el chat solo con la
+  casilla). La casilla se desmarca tras cada envío, como en Slack.
+- La lista muestra «En un hilo: …» si lo último fue una respuesta.
+
+**Decisiones del MVP:** las respuestas cuentan como no leídas del chat (como
+Slack sin «solo menciones»; se afina con la preferencia de E3b). Sin índice
+`{chatId, hiloDe}`: las consultas van por `chatId` + `seq`, que ya está
+indexado; si el volumen lo pide se crea con el OK de José (base de
+producción).
+
+**Archivos que se partieron por el tope de 600 líneas:** `chatService` →
+`acusesDelChat.ts` y `erroresDelChat.ts` (re-exportados); `socket.ts` →
+`reparto.ts`; `useChat` → `useResumenesDeHilos.ts`.
+
+**E2E** (server de QA local sin crons, grupo «QA Hilos» con QA Ana y QA Beto):
+- App (emulador, José): respuesta de Beto por socket → chip con punto, la
+  respuesta no sale en el chat; el hilo coincide con el diseño; responder solo
+  al hilo y con «También enviar al chat» (sale en los dos); el chip pasa a
+  «3 respuestas · última …» sin punto; la fila dice «En un hilo: Confirmado
+  para las 7»; la casilla se desmarca al enviar.
+- Web (navegador propio vinculado como QA Ana): fila «En un hilo: …», chip
+  con punto, panel con raíz y respuestas de José; responder solo al hilo y
+  con la casilla; la respuesta de Beto entra en vivo; el chat muestra solo lo
+  enviado también al chat; la pendiente sale al instante en el panel (había
+  un defecto: la cola perdía `hiloDe` al dibujarse; test + arreglo en
+  `local/enPantalla.ts`); a 390 px el panel ocupa la pantalla.
+- QA en cero (usuarios, chats, mensajes, acuses) y los dispositivos de José
+  en 20. El re-ingreso por OTP del emulador mandó un código por WhatsApp al
+  teléfono de José; el correo de la invitación quedó restaurado.
+
+**Queda (E3b):** `@todos` / `@aquí` en grupos y la preferencia por chat
+«todo / solo menciones» (push y contador). Después, E4.
+
 ## 56. Auditoría de chats 1:1 y grupos (19/10/2026, 0.1.102)
 
 José, 19/10: «mando un mensaje, aparecen 2 checks; salgo y en la lista aparece
@@ -5820,7 +5889,7 @@ Fases propuestas, por impacto:
 | --- | --- | --- |
 | E1 | **Espacio por empresa y directorio**: miembros sin depender de la agenda, roles dueño/admin/miembro/invitado, desactivar a alguien corta sus equipos | ⬜ |
 | E2 | **Canales** públicos y privados por tema, con descripción y fijados; unirse sin invitación | ⬜ |
-| E3 | **Hilos y menciones** (@persona, @canal, @aquí); avisos configurables: todo o solo menciones | ⬜ |
+| E3 | **Hilos y menciones** (@persona, @canal, @aquí); avisos configurables: todo o solo menciones | 🟡 E3a hilos hecho (§57); E3b menciones y avisos ⬜ |
 | E4 | **Integraciones**: webhooks entrantes (el Portal publica en un canal), comandos con `/`, Lila como bot y **mensajes con botones** como WhatsApp Business (respuestas rápidas, listas, «Ver detalle»); solo los bots los mandan, tocar uno responde y le avisa al bot | ⬜ |
 | E5 | **Búsqueda** en todo el historial con filtros, retención, exportación y auditoría | ⬜ |
 

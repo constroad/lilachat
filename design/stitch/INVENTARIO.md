@@ -52,3 +52,6 @@ Las capturas viven SOLO en la máquina (`design/stitch/`, en `.gitignore` desde 
 | `w3c-web-tarjetas.png` | W3c · Web: encuesta, evento y recordatorio dentro del chat, menú «+» con Recordatorio (`screens/cb1d85b78c3746d696242142d7e8fd79`) |
 | `w3c-web-agenda.png` | W3c · Web: Agenda con pestañas, lista y detalle del evento (`screens/182ca796eec94754a84ad6d8f1454bf8`) |
 | `w3c-web-recordatorio.png` | W3c · Web: Nuevo recordatorio (para, cuándo, repetir, imagen) (`screens/4b02d609906645299c0649bdfbbe30c5`) |
+| `e3-app-chip-hilo.png` | E3a · App: chip del hilo debajo de la raíz, con punto de nuevas (`screens/d18f0a602711485394b8aae21ee6af13`) |
+| `e3-app-hilo.png` | E3a · App: pantalla del hilo con raíz, respuestas y «También enviar al chat» (`screens/990b620ad72e43488498890a0fb68f76`) |
+| `e3-web-hilo.png` | E3a · Web: hilo como tercera columna a la derecha (`screens/809a9ff518124644961a435f8fdf69e2`) |

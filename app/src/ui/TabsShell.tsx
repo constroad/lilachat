@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { BackHandler, Modal, Pressable, Text, View } from 'react-native';
+import { AppState, BackHandler, Modal, Pressable, Text, View } from 'react-native';
 import { ArrowLeft } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { listChats, type ChatSummary } from '../api/client';
@@ -221,6 +221,9 @@ export function TabsShell({
       // Con un chat abierto avisa `App` (`sonarPorMensaje`): la lista ya no se
       // desmonta al abrir uno, y sin esto sonaba dos veces.
       if (chatAbiertoRef.current) return;
+      // En el fondo (pantalla apagada, otra app) avisa el teléfono con el push
+      // nativo, que ahora llega siempre (20/10): este aviso local lo duplicaba.
+      if (AppState.currentState !== 'active') return;
 
       /**
        * Si el chat no está en la lista, se recarga ANTES de avisar.

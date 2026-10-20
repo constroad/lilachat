@@ -2,6 +2,8 @@ import { useCallback, type ComponentProps } from 'react';
 import { formatDayLabel, resolveDeliveryState, startsNewDay } from '@lilachat/shared';
 import { DivisorNoLeidos } from './useDivisorNoLeidos';
 import { DaySeparator, isPending, MessageRow, type Row } from './MessageRow';
+import { ChipDeHilo } from './ChipDeHilo';
+import type { ChatMessage } from './useChat';
 
 type PropsDeFila = ComponentProps<typeof MessageRow>;
 
@@ -32,9 +34,12 @@ export function useDibujarFila(p: {
   onResponder: PropsDeFila['onResponder'];
   onFallido: PropsDeFila['onFallido'];
   onTocarCita: PropsDeFila['onTocarCita'];
+  /** E3: abrir el hilo de una raíz, y si tiene respuestas que no vi. */
+  onAbrirHilo: (seq: number) => void;
+  hiloConNuevas: (seq: number, hilo: NonNullable<ChatMessage['hilo']>) => boolean;
 }) {
   const { rows, yo, jwt, encrypted, esGrupo, nombres, fotos, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir } = p;
-  const { citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita } = p;
+  const { citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas } = p;
   return useCallback(
     ({ item, index }: { item: Row; index: number }) => {
       const previous = rows[index - 1];
@@ -67,9 +72,21 @@ export function useDibujarFila(p: {
             onFallido={onFallido}
             onTocarCita={onTocarCita}
           />
+          {!isPending(item) && item.hilo && item.hilo.respuestas > 0 && !item.deletedAt ? (
+            <ChipDeHilo
+              seq={item.seq}
+              hilo={item.hilo}
+              mia={mia}
+              conAvatar={esGrupo && !mia}
+              nombres={nombres}
+              fotos={fotos}
+              nuevas={hiloConNuevas(item.seq, item.hilo)}
+              onAbrir={onAbrirHilo}
+            />
+          ) : null}
         </>
       );
     },
-    [rows, yo, jwt, encrypted, esGrupo, nombres, fotos, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir, citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita]
+    [rows, yo, jwt, encrypted, esGrupo, nombres, fotos, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir, citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas]
   );
 }

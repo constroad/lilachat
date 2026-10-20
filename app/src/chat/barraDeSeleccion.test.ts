@@ -30,3 +30,12 @@ describe('repartirAcciones', () => {
     expect(enMenu.at(-1)).toBe('info');
   });
 });
+
+/** E3 (20/10): «Responder en hilo» va segunda; en 360 dp, eliminar sigue a la vista. */
+describe('con «Responder en hilo»', () => {
+  it('en 360 dp: responder, hilo, fijar y eliminar a la vista; el resto en «Más»', () => {
+    const { visibles, enMenu } = repartirAcciones(['responder', 'hilo', 'fijar', 'reenviar', 'eliminar', 'copiar', 'editar', 'info'], 360);
+    expect(visibles).toEqual(['responder', 'hilo', 'fijar', 'reenviar', 'eliminar']);
+    expect(enMenu).toEqual(['copiar', 'editar', 'info']);
+  });
+});

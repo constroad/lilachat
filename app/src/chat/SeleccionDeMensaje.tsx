@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Alert, FlatList, Modal, Pressable, Text, ToastAndroid, useWindowDimensions, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Crypto from 'expo-crypto';
-import { Copy, CornerUpLeft, EllipsisVertical, Forward, Info, Pencil, Pin, PinOff, Trash2, X } from 'lucide-react-native';
+import { Copy, CornerUpLeft, EllipsisVertical, Forward, Info, MessagesSquare, Pencil, Pin, PinOff, Trash2, X } from 'lucide-react-native';
 import { buildOutboxItem, nombreDeContacto, puedeEditar } from '@lilachat/shared';
 import { reenviarMensajeA } from '../api/client';
 import { accionesDeMensaje, accionesDeVarios, planDeReenvio, textoParaCopiar, type PasoDeReenvio } from '@lilachat/shared';
@@ -49,6 +49,8 @@ export function SeleccionDeMensaje(params: {
   fijados: ReadonlySet<number>;
   onFijar: (seq: number) => void;
   onDesfijar: (seq: number) => void;
+  /** E3: abrir el hilo de este mensaje. */
+  onAbrirHilo?: (seq: number) => void;
 }) {
   const colores = useColores();
   const margenes = useMargenes();
@@ -67,6 +69,7 @@ export function SeleccionDeMensaje(params: {
         conTexto: Boolean(uno.body?.trim()),
         esMedia: Boolean(uno.media),
         chatSecreto: params.chatSecreto,
+        esRespuestaDeHilo: uno.hiloDe !== undefined,
         editable: puedeEditar({
           yo: params.yo,
           autor: uno.senderId,
@@ -113,6 +116,7 @@ export function SeleccionDeMensaje(params: {
 
   const disponibles = [
     acciones.responder ? 'responder' : null,
+    acciones.hilo && params.onAbrirHilo ? 'hilo' : null,
     acciones.fijar ? 'fijar' : null,
     acciones.reenviar ? 'reenviar' : null,
     'eliminar',
@@ -130,6 +134,15 @@ export function SeleccionDeMensaje(params: {
       icono: <CornerUpLeft size={20} color={icono} />,
       onPress: () => {
         params.onResponder(mensaje.seq);
+        params.onCancelar();
+      },
+    },
+    hilo: {
+      testID: 'btn-hilo-mensaje',
+      etiqueta: 'Responder en hilo',
+      icono: <MessagesSquare size={20} color={icono} />,
+      onPress: () => {
+        params.onAbrirHilo?.(mensaje.seq);
         params.onCancelar();
       },
     },

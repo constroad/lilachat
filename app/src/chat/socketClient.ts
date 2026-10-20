@@ -1,4 +1,4 @@
-import { type MencionEnMensaje, type RefDeMensaje, avisarTarjeta, refrescarTodas } from '@lilachat/shared';
+import { type MencionEnMensaje, type RefDeMensaje, type ResumenDeHiloEnCliente, avisarTarjeta, refrescarTodas } from '@lilachat/shared';
 import { io, type Socket } from 'socket.io-client';
 import { pausaDelSocket, queHacerConElSocket, type PausaDelSocket } from './servicioDeConexion';
 import { registrarPerf } from '../diagnostico/diagnostico';
@@ -63,6 +63,11 @@ export type ServerMessage = {
   deletedAt?: string;
   /** A qué mensaje responde, si es una respuesta. */
   replyToSeq?: number;
+  /** E3: respuesta en el hilo de este `seq`; `enElChat` = se ve también en el chat. */
+  hiloDe?: number;
+  enElChat?: boolean;
+  /** En la raíz: el resumen de su hilo (cuántas, la última, quiénes). */
+  hilo?: ResumenDeHiloEnCliente;
   /** Se editó (José, 17/10/2026): la burbuja dice «Editado». */
   editedAt?: string;
   at: string;
@@ -169,6 +174,8 @@ export async function sendOverSocket(frame: {
   kind?: string;
   replyToSeq?: number;
   menciones?: MencionEnMensaje[];
+  hiloDe?: number;
+  enElChat?: boolean;
 }): Promise<
   | { status: 'sent'; seq: number }
   | { status: 'duplicate'; seq: number }

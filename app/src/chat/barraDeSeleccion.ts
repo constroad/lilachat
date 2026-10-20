@@ -7,10 +7,10 @@
  * Regla: todo en una línea; si no entra, las de más prioridad a la vista y el
  * resto en «⋮». Eliminar nunca se esconde.
  */
-export type AccionDeBarra = 'responder' | 'fijar' | 'reenviar' | 'eliminar' | 'copiar' | 'editar' | 'info';
+export type AccionDeBarra = 'responder' | 'hilo' | 'fijar' | 'reenviar' | 'eliminar' | 'copiar' | 'editar' | 'info';
 
 /** El orden en que se dibujan Y su prioridad para quedarse a la vista. */
-const ORDEN: AccionDeBarra[] = ['responder', 'fijar', 'reenviar', 'eliminar', 'copiar', 'editar', 'info'];
+const ORDEN: AccionDeBarra[] = ['responder', 'hilo', 'fijar', 'reenviar', 'eliminar', 'copiar', 'editar', 'info'];
 const LADO_DEL_BOTON = 44;
 /** La X, el número y el margen de la barra. */
 const FIJO_DE_LA_BARRA = 44 + 32 + 16;

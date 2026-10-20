@@ -152,6 +152,7 @@ export const FilaDeChat = memo(function FilaDeChat(props: {
                   lastBody: avisoDelUltimo(chat, props.miUserId) ?? chat.lastMessage?.body,
                   lastKind: chat.lastMessage?.kind,
                   eliminado: Boolean(chat.lastMessage?.deletedAt),
+                  enHilo: chat.lastMessage?.hiloDe !== undefined,
                 });
             // Lo último es MÍO: los checks van antes del texto, como
             // WhatsApp (gris enviado/entregado, azul leído).

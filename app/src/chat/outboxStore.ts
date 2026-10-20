@@ -138,6 +138,9 @@ export async function drainOutbox(): Promise<DrainReport> {
         // guardaba sin su cita: `buildOutboxItem` lo tenia y aca se perdia.
         replyToSeq: item.replyToSeq,
         menciones: item.menciones,
+        // E3: sin esto la respuesta caía en el chat y no en su hilo.
+        hiloDe: item.hiloDe,
+        enElChat: item.enElChat,
       });
       const effect = resolveOutcome(item, outcome);
       queue = applyEffect(queue, effect);

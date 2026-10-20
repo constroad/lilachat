@@ -31,6 +31,7 @@ import { pedirEditar, pedirEliminar } from './pedidosDeMensaje';
 import { drainOutbox, hydrateOutbox, queueMessage, subscribeOutbox } from './outboxStore';
 import { suscribirConfirmados } from './colaDeArchivos';
 import { useAvisoDeEscribiendo } from './useAvisoDeEscribiendo';
+import { useResumenesDeHilos } from './useResumenesDeHilos';
 
 /**
  * El estado vivo de un chat: mensajes confirmados + lo que está en la cola.
@@ -63,6 +64,9 @@ export type PendingMessage = {
   mediaAlto?: number;
   /** 0→1 de esa subida, para pintar el velo de progreso encima. */
   progreso?: number;
+  /** E3: respuesta pendiente en el hilo de este `seq`. */
+  hiloDe?: number;
+  enElChat?: boolean;
 };
 
 /**
@@ -347,6 +351,8 @@ export function useChat(params: {
             queuedAt: item.queuedAt,
             pending: true as const,
             fallo: item.fallo,
+            // E3: la respuesta pendiente de un hilo no se dibuja en el chat (salvo «también al chat»).
+            ...(item.hiloDe !== undefined ? { hiloDe: item.hiloDe, enElChat: item.enElChat } : {}),
           }));
       // La cola es GLOBAL: avisa por cualquier chat. Si lo de ESTE no cambió se
       // queda el array viejo y la lista no se rearma (FL12, §49 #13).
@@ -555,6 +561,8 @@ export function useChat(params: {
       timersTyping.current.clear();
     };
   }, [params.chatId, params.token, registrarAcuse, emitirLeido]);
+  // E3: el chip de cada raíz al día, en vivo y al reconectar.
+  useResumenesDeHilos({ chatId: params.chatId, token: params.token, setMessages });
 
   /**
    * Enviar = ENCOLAR. Nunca se manda directo: así el camino con red y el camino
@@ -562,7 +570,7 @@ export function useChat(params: {
    * pruebe último (y por eso se rompa).
    */
   const send = useCallback(
-    async (body: string, replyToSeq?: number, menciones?: (texto: string) => MencionEnMensaje[]) => {
+    async (body: string, replyToSeq?: number, menciones?: (texto: string) => MencionEnMensaje[], hilo?: { de: number; enElChat?: boolean }) => {
       // `buildOutboxItem` decide si va texto o sobre. En un chat cifrado
       // devuelve `null` si NO se pudo cifrar, y entonces no se encola nada:
       // caer a texto plano con el candado en pantalla sería mentir.
@@ -574,6 +582,7 @@ export function useChat(params: {
         replyToSeq,
         seal: params.seal,
         menciones,
+        ...(hilo ? { hiloDe: hilo.de, enElChat: hilo.enElChat } : {}),
       });
       if (!item) return { ok: false as const };
       if (item.envelope) vistaLocal.current.set(item.clientKey, body.trim());

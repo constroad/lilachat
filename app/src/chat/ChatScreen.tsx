@@ -49,6 +49,8 @@ import { useAlAbrirElChat } from './useAlAbrirElChat';
 import { useIrAMensaje } from './useIrAMensaje';
 import { useFijarMensajes } from './useFijarMensajes';
 import { useAcuseVivo } from './acuseVivo';
+import { useHilosEnElChat } from './useHilosEnElChat';
+import { HiloScreen } from './HiloScreen';
 
 /** El pie del composer con el teclado abierto (dp). */
 const MARGEN_CON_TECLADO = 8;
@@ -160,6 +162,8 @@ export function ChatScreen({
   const archivosEnCola = useArchivosDelChat(chatId);
   /** El `seq` de la foto abierta a pantalla completa, o `null`. */
   const [viendoSeq, setViendoSeq] = useState<number | null>(null);
+  // E3: las respuestas de un hilo no van en el chat; el hilo abierto, en su pantalla.
+  const hilos = useHilosEnElChat({ chatId, yo: credential.userId, jwt: credential.jwt, messages, pending });
   /** Los mensajes elegidos con pulsación larga (FL9: uno o varios). */
   const seleccion = useSeleccionDeMensajes(messages);
   const { ocultos, ocultar } = useOcultos(chatId);
@@ -250,15 +254,15 @@ export function ChatScreen({
   const rows: Row[] = useMemo(
     () => [
       // «Eliminar para mí» (FL9): ocultos en este teléfono.
-      ...sinOcultos(messages, ocultos),
+      ...sinOcultos(hilos.delChat, ocultos),
       // Lo pendiente, en el orden en que se mandó. El eco puede llegar antes que
       // el ack: sin el filtro la burbuja salía doble (los archivos comparten `clientKey`).
       ...pendientesEnOrden(
-        sinPendientesConfirmados(pending, messages),
+        sinPendientesConfirmados(hilos.pendientesDelChat, messages),
         sinPendientesConfirmados(archivosEnCola.map(({ archivo, progreso }) => filaDeArchivoEnCola(archivo, progreso)), messages)
       ),
     ],
-    [messages, ocultos, pending, archivosEnCola]
+    [messages, ocultos, archivosEnCola, hilos.delChat, hilos.pendientesDelChat]
   );
 
   const { divisorSeq, noLeidos: noLeidosAlAbrir, irAlInicio } = useDivisorNoLeidos({
@@ -366,6 +370,8 @@ export function ChatScreen({
     onResponder: alResponder,
     onFallido: alFallido,
     onTocarCita: alTocarCita,
+    onAbrirHilo: hilos.abrir,
+    hiloConNuevas: hilos.hiloConNuevas,
   });
 
   // Teclado abierto = sin barra de navegación: el margen del pie dejaba un hueco (16/10).
@@ -413,6 +419,7 @@ export function ChatScreen({
           fijados={fijar.seqsFijados}
           onFijar={fijar.pedirFijar}
           onDesfijar={(seq) => void fijar.desfijar(seq)}
+          onAbrirHilo={encrypted ? undefined : hilos.abrir}
         />
       ) : busqueda.activo ? (
         <BuscadorDelChat
@@ -528,6 +535,21 @@ export function ChatScreen({
       )}
 
       <EnviarFotos fotos={fotosElegidas} onCancelar={cerrarFotos} onEnviar={(lista, opciones) => void alEnviarFotos(lista, opciones)} />
+      <HiloScreen
+        raiz={hilos.raiz}
+        chatId={chatId}
+        chatName={chatName}
+        yo={credential.userId}
+        esGrupo={esGrupoChat}
+        nombres={nombresDelGrupo}
+        fotos={fotosDelGrupo}
+        respuestas={hilos.respuestas}
+        pendientes={hilos.pendientesDelHilo}
+        leidoHasta={leidoHasta}
+        entregadoHasta={entregadoHasta}
+        onEnviar={(texto, enElChat) => send(texto, undefined, undefined, { de: hilos.abierto!, enElChat })}
+        onCerrar={hilos.cerrar}
+      />
 
       <AttachSheet
         visible={attachOpen}

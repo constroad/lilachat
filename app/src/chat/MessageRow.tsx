@@ -442,7 +442,7 @@ function esFotoVisible(item: Row): boolean {
  * gris (enviado), dos grises (entregado), dos azules (leído) y un relojito
  * mientras está en la cola. Antes eran glifos de texto y un emoji 🕐.
  */
-function MetaDeMensaje({
+export function MetaDeMensaje({
   hora,
   mia,
   entrega,

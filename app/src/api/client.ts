@@ -6,7 +6,8 @@
  * .env de dev sale apuntando al emulador y falla con wifi andando — el script
  * de release lo fija y lo verifica dentro del binario).
  */
-import type { VistaDelFijado, VistaPreviaDeEnlace } from '@lilachat/shared';
+import type { ResumenDeHiloEnCliente, VistaDelFijado, VistaPreviaDeEnlace } from '@lilachat/shared';
+import type { ServerMessage } from '../chat/socketClient';
 import { unSoloPedido } from './pedidoUnico';
 
 export const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
@@ -164,6 +165,8 @@ export type ChatSummary = {
     at: string;
     /** Borrado para todos (19/10): la vista previa lo dice y no lleva checks. */
     deletedAt?: string;
+    /** E3: fue una respuesta en un hilo. */
+    hiloDe?: number;
     /** El aviso de grupo, para resolver el nombre con la agenda del teléfono. */
     system?: {
       evento: string;
@@ -386,3 +389,11 @@ export const desfijarMensajeEnChat = (token: string, chatId: string, seq: number
 /** Reenviar una foto o un archivo (auditoría 19/10): el server copia la referencia y el pie. */
 export const reenviarMensajeA = (token: string, haciaChatId: string, origen: { desde: string; seq: number; clientKey: string }) =>
   authed<{ message: unknown; duplicate: boolean }>('POST', `/api/chats/${haciaChatId}/reenviar`, token, origen);
+
+/** E3: el resumen de cada raíz del chat (el chip al día tras estar desconectado). */
+export const hilosDelChat = (token: string, chatId: string) =>
+  get<{ hilos: { raiz: number; hilo: ResumenDeHiloEnCliente }[] }>(`/api/chats/${chatId}/hilos`, token);
+
+/** E3: un hilo entero, al abrirlo (trae lo que el teléfono no tenía guardado). */
+export const hiloCompleto = (token: string, chatId: string, raiz: number) =>
+  get<{ raiz: ServerMessage; respuestas: ServerMessage[] }>(`/api/chats/${chatId}/hilos/${raiz}`, token);

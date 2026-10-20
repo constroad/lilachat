@@ -8,7 +8,8 @@ import { aplicarBorrado, aplicarEdicion, aplicarEntrante, guardarChats, guardarP
 import type { ChatMessage, ChatSummary } from '../chat/types';
 import { accionPorSocket, enviarPorSocket, pedirSincronizacion, type ResultadoDeAccion } from './envioPorSocket';
 import { ocultar } from '../local/ocultos';
-import { debeAvisarEscribiendo, type MencionEnMensaje } from '@lilachat/shared';
+import { aplicarAcuseALista, aplicarBorradoALista, aplicarEdicionALista, aplicarMensajeALista, debeAvisarEscribiendo, type AcuseEnVivo, type CursoresEnVivo, type MencionEnMensaje } from '@lilachat/shared';
+import { cambiarFila } from '../local/listaLocal';
 import { sincronizar } from './sincronizar';
 
 /** Una página del historial: lo que entra en pantalla y algo más. */
@@ -23,6 +24,8 @@ type Params = {
   socket: MutableRefObject<Socket | null>;
   conectado: boolean;
   manejar401: () => Promise<string | null>;
+  /** El chat abierto: lo que llega ahí, con la pestaña a la vista, ya se lee. */
+  chatAbierto?: string | null;
 };
 
 /**
@@ -33,7 +36,7 @@ type Params = {
  * - Enviar = encolar y drenar; sin red queda en la cola (IndexedDB) y sale al
  *   volver la red, el socket o la pestaña.
  */
-export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401 }: Params) {
+export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401, chatAbierto = null }: Params) {
   const cargas = useMemo(crearUltimaGana, []);
   const cargarChats = useCallback(async () => {
     if (!base || !jwt) return;
@@ -63,27 +66,34 @@ export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401
     })();
   }, [conectado, base, socket, drenar, cargarChats]);
 
-  const eventos = useMemo(
-    () => ({
+  const abiertoRef = useRef(chatAbierto);
+  abiertoRef.current = chatAbierto;
+  /** Lo que cada miembro acusó en vivo, por chat (el mínimo de un grupo lo necesita). */
+  const cursores = useRef<CursoresEnVivo>(new Map());
+  const eventos = useMemo(() => {
+    // La fila cambia acá, con las reglas de shared (auditoría 19/10: antes cada
+    // evento pedía la lista entera). Un chat que no está sí la pide.
+    const enLaFila = (chatId: string, cambiar: Parameters<typeof cambiarFila>[2]) =>
+      base && void cambiarFila(base, chatId, cambiar).then((estaba) => !estaba && recargarPronto());
+    const visibleAbierto = () => (document.visibilityState === 'visible' ? abiertoRef.current : null);
+    return {
       onMessage: (mensaje: ChatMessage) => {
         if (base) void aplicarEntrante(base, mensaje);
-        recargarPronto();
+        enLaFila(mensaje.chatId, (chats) => aplicarMensajeALista(chats, mensaje, yo, visibleAbierto()));
       },
-      onReceipt: () => recargarPronto(),
-      // La vista previa de la lista sale del server: una edición o un borrado
-      // la relee (auditoría 19/10: seguía diciendo lo de antes).
+      onReceipt: (acuse: AcuseEnVivo & { chatId: string }) => enLaFila(acuse.chatId, (chats) => aplicarAcuseALista(chats, acuse, yo, cursores.current)),
       onBorrado: (dato: { chatId: string; seq: number }) => {
-        if (base) void aplicarBorrado(base, { ...dato, deletedAt: new Date().toISOString() });
-        recargarPronto();
+        const ahora = new Date().toISOString();
+        if (base) void aplicarBorrado(base, { ...dato, deletedAt: ahora });
+        enLaFila(dato.chatId, (chats) => aplicarBorradoALista(chats, dato, ahora));
       },
       onEditado: (dato: { chatId: string; seq: number; body: string; editedAt: string }) => {
         if (base) void aplicarEdicion(base, dato);
-        recargarPronto();
+        enLaFila(dato.chatId, (chats) => aplicarEdicionALista(chats, dato));
       },
       onCambioDeChat: () => recargarPronto(),
-    }),
-    [base, recargarPronto]
-  );
+    };
+  }, [base, yo, recargarPronto]);
 
   const acciones = useAccionesDelChat({ base, jwt, socket, drenar, cargarChats });
   const avisarEscribiendo = useAvisoDeEscribiendo(socket);

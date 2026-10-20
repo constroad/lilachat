@@ -69,13 +69,13 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
     // Sin JWT (abrió sin red) no hay socket; con JWT, espera a que la sesión esté resuelta.
     userId: puedeAbrirSocket({ userId: credential.jwt ? yo : null, tieneSecreto: true, refrescoResuelto }) ? yo : null,
     onMessage: (mensaje: ChatMessage) => eventos.current.onMessage?.(mensaje),
-    onReceipt: () => eventos.current.onReceipt?.(),
+    onReceipt: (acuse) => eventos.current.onReceipt?.(acuse),
     onBorrado: (dato) => eventos.current.onBorrado?.(dato),
     onEditado: (dato) => eventos.current.onEditado?.(dato),
     onCambioDeChat: () => eventos.current.onCambioDeChat?.(),
     onSinAutorizacion: manejar401,
   });
-  const sync = useSincronizacion({ base, yo, jwt: credential.jwt, socket: socket.socket, conectado: socket.connected, manejar401 });
+  const sync = useSincronizacion({ base, yo, jwt: credential.jwt, socket: socket.socket, conectado: socket.connected, manejar401, chatAbierto: selectedId });
   eventos.current = sync.eventos;
 
   const mensajes = useMensajesEnPantalla(base, selectedId, historial.limite, yo);

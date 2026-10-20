@@ -92,6 +92,8 @@ export type ChatMessage = {
 export type MensajeEnPantalla = ChatMessage & {
   estado?: 'enviando' | 'fallido';
   motivoDelFallo?: string;
+  /** 0→1 de un archivo que sube (19/10): el anillo sobre la foto. */
+  progreso?: number;
 };
 
 /** Un ítem de la cola, con la hora local para ordenar lo pendiente. */

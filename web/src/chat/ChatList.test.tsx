@@ -40,6 +40,23 @@ const base = {
 };
 
 describe('ChatList', () => {
+  /** Auditoría (19/10): la fila de la web no tenía los checks de mi último mensaje. */
+  it('mi último mensaje lleva sus checks; el ajeno y el borrado, no', () => {
+    const mio = { seq: 3, body: 'Ya voy', senderId: 'u1', at: new Date().toISOString() };
+    const { rerender } = render(<ChatList {...base} yo="u1" chats={[chat({ lastMessage: mio, othersDeliveredSeq: 3 })]} />);
+    expect(screen.getByTestId('checks-fila-delivered')).toBeInTheDocument();
+
+    rerender(<ChatList {...base} yo="u1" chats={[chat({ lastMessage: mio, othersReadSeq: 3, othersDeliveredSeq: 3 })]} />);
+    expect(screen.getByTestId('checks-fila-read')).toBeInTheDocument();
+
+    rerender(<ChatList {...base} yo="u1" chats={[chat()]} />);
+    expect(screen.queryByTestId(/checks-fila-/)).toBeNull();
+
+    rerender(<ChatList {...base} yo="u1" chats={[chat({ lastMessage: { ...mio, deletedAt: new Date().toISOString() } })]} />);
+    expect(screen.queryByTestId(/checks-fila-/)).toBeNull();
+    expect(screen.getByText('Se eliminó este mensaje')).toBeInTheDocument();
+  });
+
   it('muestra nombre, vista previa y hora', () => {
     render(<ChatList {...base} chats={[chat()]} />);
 

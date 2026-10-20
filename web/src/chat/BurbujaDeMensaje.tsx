@@ -4,6 +4,7 @@ import { colorDeAutor, DELIVERY_GLYPH, formatClock, primerEnlace, resolveDeliver
 import { TarjetaDeEnlace } from './TarjetaDeEnlace';
 import { NotaDeVoz } from './NotaDeVoz';
 import { useVistaPrevia } from './useVistaPrevia';
+import { AnilloDeSubida } from './AnilloDeSubida';
 import { MenuDelMensaje } from './MenuDelMensaje';
 import { TextoDelMensaje } from './TextoDelMensaje';
 import { ConversacionContext, useConversacion } from './contextoDeLaConversacion';
@@ -96,7 +97,7 @@ function ContenidoDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio
   return (
     <>
       {media?.url && esImagen ? (
-        <button type="button" data-testid={`foto-${mensaje.clientKey}`} onClick={() => onVerFoto(mensaje)} className="block w-full">
+        <button type="button" data-testid={`foto-${mensaje.clientKey}`} onClick={() => !mensaje.estado && onVerFoto(mensaje)} className="relative block w-full">
           <img
             src={media.thumbUrl || media.url}
             alt={mensaje.body ?? 'Foto'}
@@ -104,6 +105,7 @@ function ContenidoDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio
             className="mb-1 max-h-64 w-full rounded-lg object-cover"
             style={media.width && media.height ? { aspectRatio: `${media.width} / ${media.height}` } : undefined}
           />
+          {mensaje.estado === 'enviando' ? <AnilloDeSubida razon={mensaje.progreso} /> : null}
         </button>
       ) : media?.url ? (
         <a href={media.url} target="_blank" rel="noreferrer" className="mb-1 flex items-center gap-2 underline-offset-2 hover:underline">

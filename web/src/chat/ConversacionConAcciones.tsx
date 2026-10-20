@@ -6,10 +6,13 @@ import { DialogoFijar } from './DialogoFijar';
 import { FranjaDeFijados } from './FranjaDeFijados';
 import { useFijarEnLaWeb } from './useFijarEnLaWeb';
 import type { AccionSobreMensaje } from './contextoDeLaConversacion';
-import { EnviarArchivos, medidasDeImagen } from './EnviarArchivos';
+import { EnviarArchivos } from './EnviarArchivos';
 import { VisorDeFotos } from './VisorDeFotos';
 import type { MensajeEnPantalla } from './types';
-import { subirArchivo } from './mediaUpload';
+import { comoMensaje, usePendientesDeArchivos } from './colaDeArchivos';
+import { colaDeArchivosWeb, usarJwtParaSubir } from './colaDeArchivosWeb';
+import { aplicarEntrante } from '../local/mensajesLocales';
+import { api } from '../api';
 import { Conversation } from './Conversation';
 import { ConversacionContext, type ContextoDeLaConversacion } from './contextoDeLaConversacion';
 import { DialogoEliminar, DialogoInfo, DialogoReenviar } from './DialogosDelMensaje';
@@ -38,7 +41,8 @@ export function ConversacionConAcciones(
     onAccionDeChat: (chat: ChatSummary, accion: AccionDelChat) => void;
   }
 ) {
-  const { chat, mensajes, yo, sync, onAviso } = props;
+  const { chat, yo, sync, onAviso } = props;
+  const mensajes = useConArchivosPendientes(props.mensajes, chat.id, yo, props.jwt, props.base);
   // El detalle se relee si cambian los miembros, el nombre o la foto (llega con la
   // lista), o tras editar algo desde «Info.» (W3b).
   const [versionDelDetalle, setVersionDelDetalle] = useState(0);
@@ -61,15 +65,10 @@ export function ConversacionConAcciones(
   const [fotoAbierta, setFotoAbierta] = useState<number | null>(null);
   const fotos = useMemo(() => (mensajes ?? []).filter((uno) => !uno.deletedAt && uno.media?.url && (uno.media.mime?.startsWith('image/') || uno.media.thumbUrl)), [mensajes]);
   const onVerFoto = useCallback((mensaje: MensajeEnPantalla) => setFotoAbierta(Math.max(0, fotos.findIndex((uno) => uno.clientKey === mensaje.clientKey))), [fotos]);
-  /** Uno por uno, con su forma; el server crea cada mensaje y llega por el socket. */
-  const subir = async (lista: File[], pie: string) => {
+  /** A la cola (auditoría 19/10): cada burbuja aparece ya y sube por detrás; el pie va en el primero. */
+  const subir = (lista: File[], pie: string, hd: boolean) => {
     setArchivos(null);
-    for (const [indice, archivo] of lista.entries()) {
-      onAviso(lista.length > 1 ? `Subiendo ${indice + 1} de ${lista.length}…` : 'Subiendo…');
-      const resultado = await subirArchivo({ jwt: props.jwt, chatId: chat.id, file: archivo, caption: indice === 0 ? pie : undefined, ...(await medidasDeImagen(archivo)) });
-      if (!resultado.ok) return onAviso(resultado.message);
-    }
-    onAviso('');
+    lista.forEach((archivo, indice) => void colaDeArchivosWeb.encolar(chat.id, archivo, { caption: indice === 0 && pie ? pie : undefined, hd }));
   };
   const citado = useCallback((seq: number) => mensajes?.find((uno) => uno.seq === seq), [mensajes]);
   // Fijar mensajes (19/10): en un grupo, solo los admins.
@@ -103,11 +102,10 @@ export function ConversacionConAcciones(
         mencionables={mencionables}
         jwtParaEnlaces={chat.encrypted ? undefined : props.jwt}
         onElegirArchivos={setArchivos}
-        onNotaDeVoz={(nota) =>
-          void subirArchivo({ jwt: props.jwt, chatId: chat.id, file: nota.file, durationMs: nota.ms, onda: nota.onda }).then((resultado) => {
-            if (!resultado.ok) onAviso(resultado.message);
-          })
-        }
+        onNotaDeVoz={(nota) => void colaDeArchivosWeb.encolar(chat.id, nota.file, { durationMs: nota.ms, onda: nota.onda, hd: true })}
+        mensajes={mensajes}
+        onReintentar={(clave) => (colaDeArchivosWeb.tiene(clave) ? void colaDeArchivosWeb.reintentar(clave) : props.onReintentar(clave))}
+        onDescartar={(clave) => (colaDeArchivosWeb.tiene(clave) ? colaDeArchivosWeb.descartar(clave) : props.onDescartar(clave))}
         onSend={(texto, menciones) => void acciones.enviar(texto, menciones)}
         franja={
           <FranjaDeFijados
@@ -157,15 +155,49 @@ export function ConversacionConAcciones(
           chats={props.chats}
           onCerrar={acciones.cerrarReenviar}
           onReenviar={(chatIds) => {
-            void sync.reenviar(chatIds, acciones.reenviando!.body ?? '');
+            const original = acciones.reenviando!;
+            // Una foto o un archivo, por referencia: el server copia el archivo y su pie (auditoría 19/10).
+            if (original.media) void reenviarPorReferencia(props.jwt, chatIds, original).then((motivo) => motivo && onAviso(motivo));
+            else void sync.reenviar(chatIds, original.body ?? '');
             acciones.cerrarReenviar();
             onAviso(chatIds.length === 1 ? 'Reenviado' : `Reenviado a ${chatIds.length} chats`);
           }}
         />
       ) : null}
-      {archivos ? <EnviarArchivos archivos={archivos} onCerrar={() => setArchivos(null)} onEnviar={(lista, pie) => void subir(lista, pie)} /> : null}
+      {archivos ? <EnviarArchivos archivos={archivos} onCerrar={() => setArchivos(null)} onEnviar={subir} /> : null}
       {fotoAbierta !== null ? <VisorDeFotos fotos={fotos} indice={fotoAbierta} onCambiar={setFotoAbierta} onCerrar={() => setFotoAbierta(null)} /> : null}
       {acciones.viendoInfo ? <DialogoInfo chatId={chat.id} mensaje={acciones.viendoInfo} jwt={props.jwt} onCerrar={acciones.cerrarInfo} /> : null}
     </ConversacionContext.Provider>
   );
 }
+
+/**
+ * Los mensajes del chat con los archivos que todavía suben (auditoría 19/10):
+ * lo pendiente va al final en el orden en que se mandó, y lo que ya llegó
+ * confirmado (por el socket o por la respuesta) no sale dos veces.
+ */
+function useConArchivosPendientes(mensajes: MensajeEnPantalla[] | null, chatId: string, yo: string, jwt: string, base: BaseLocal | null): MensajeEnPantalla[] | null {
+  const pendientes = usePendientesDeArchivos(colaDeArchivosWeb, chatId);
+  useEffect(() => usarJwtParaSubir(jwt), [jwt]);
+  useEffect(() => {
+    colaDeArchivosWeb.configurar({ alConfirmar: (mensaje) => base && void aplicarEntrante(base, mensaje) });
+  }, [base]);
+  return useMemo(() => {
+    if (!mensajes || pendientes.length === 0) return mensajes;
+    const confirmadas = new Set(mensajes.map((uno) => uno.clientKey));
+    const enCola = pendientes.filter((uno) => !confirmadas.has(uno.clientKey)).map((uno) => comoMensaje(uno, yo));
+    const listos = mensajes.filter((uno) => !uno.estado);
+    const enviando = [...mensajes.filter((uno) => uno.estado), ...enCola].sort((a, b) => a.at.localeCompare(b.at));
+    return [...listos, ...enviando];
+  }, [mensajes, pendientes, yo]);
+}
+
+/** Reenvía una foto o un archivo a cada chat; devuelve el motivo del primer rechazo. */
+async function reenviarPorReferencia(jwt: string, chatIds: string[], original: MensajeEnPantalla): Promise<string | null> {
+  for (const chatId of chatIds) {
+    const respuesta = await api(`/chats/${chatId}/reenviar`, { jwt, body: { desde: original.chatId, seq: original.seq, clientKey: crypto.randomUUID() } });
+    if (!respuesta.ok) return respuesta.message;
+  }
+  return null;
+}
+

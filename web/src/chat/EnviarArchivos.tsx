@@ -19,11 +19,14 @@ export async function medidasDeImagen(archivo: File): Promise<{ width?: number; 
 /**
  * Lo elegido, antes de mandarlo (W2), como WhatsApp Web: la vista de cada foto
  * o archivo, quitar alguno y un pie para el primero. Lo que el server rechazaría
- * (vacío o demasiado pesado) se marca acá, antes de subir.
+ * (vacío o demasiado pesado) se marca acá, antes de subir. Las fotos salen más
+ * livianas, como en WhatsApp (19/10); «HD» manda la original.
  */
-export function EnviarArchivos(props: { archivos: File[]; onCerrar: () => void; onEnviar: (archivos: File[], pie: string) => void }) {
+export function EnviarArchivos(props: { archivos: File[]; onCerrar: () => void; onEnviar: (archivos: File[], pie: string, hd: boolean) => void }) {
   const [lista, setLista] = useState(props.archivos);
   const [pie, setPie] = useState('');
+  const [hd, setHd] = useState(false);
+  const hayFotos = lista.some((archivo) => archivo.type.startsWith('image/') && archivo.type !== 'image/gif');
   const vistas = useMemo(() => lista.map((archivo) => (archivo.type.startsWith('image/') ? URL.createObjectURL(archivo) : null)), [lista]);
   useEffect(() => () => vistas.forEach((url) => url && URL.revokeObjectURL(url)), [vistas]);
   useEffect(() => {
@@ -34,7 +37,7 @@ export function EnviarArchivos(props: { archivos: File[]; onCerrar: () => void; 
     <Overlay
       title={lista.length === 1 ? 'Enviar 1 archivo' : `Enviar ${lista.length} archivos`}
       onClose={props.onCerrar}
-      footer={<PrimaryButton testId="btn-enviar-archivos" disabled={validos.length === 0} onClick={() => props.onEnviar(validos, pie.trim())}>Enviar</PrimaryButton>}
+      footer={<PrimaryButton testId="btn-enviar-archivos" disabled={validos.length === 0} onClick={() => props.onEnviar(validos, pie.trim(), hd)}>Enviar</PrimaryButton>}
     >
       <ul className="mb-3 grid grid-cols-3 gap-2">
         {lista.map((archivo, indice) => {
@@ -58,6 +61,15 @@ export function EnviarArchivos(props: { archivos: File[]; onCerrar: () => void; 
           );
         })}
       </ul>
+      {hayFotos ? (
+        <label className="mb-3 flex min-h-[44px] cursor-pointer items-center gap-3 text-sm">
+          <input data-testid="interruptor-hd" type="checkbox" checked={hd} onChange={(evento) => setHd(evento.target.checked)} className="h-5 w-5 accent-primary" />
+          <span>
+            <span className="font-semibold">Calidad HD</span>
+            <span className="block text-[12px] text-on-surface-variant">{hd ? 'Se manda la foto original.' : 'Se manda más liviana, como en WhatsApp.'}</span>
+          </span>
+        </label>
+      ) : null}
       <input data-testid="input-pie" value={pie} onChange={(evento) => setPie(evento.target.value)} placeholder="Añade un comentario" className="min-h-[44px] w-full rounded-lg border border-outline/25 bg-background px-3 text-sm outline-none focus:border-primary" />
     </Overlay>
   );

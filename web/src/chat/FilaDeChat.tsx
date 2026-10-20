@@ -1,5 +1,5 @@
 import { BellOff, Pin } from 'lucide-react';
-import { formatChatTimestamp, resolveChatPreview, textoDeAviso } from '@lilachat/shared';
+import { DELIVERY_GLYPH, formatChatTimestamp, resolveChatPreview, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { MenuDeChat } from './MenuDeChat';
 import type { AccionDelChat } from './menuDelChat';
@@ -36,6 +36,7 @@ export function FilaDeChat(props: { chat: ChatSummary; yo?: string; seleccionado
             ) : null}
           </span>
           <span className="mt-0.5 flex items-center gap-2">
+            <ChecksDeLaFila chat={chat} yo={props.yo} visible={preview.style === 'normal'} />
             <span className={`min-w-0 flex-1 truncate text-[13px] ${preview.style === 'typing' ? 'italic text-primary' : preview.style === 'eliminado' ? 'italic text-on-surface-variant' : 'text-on-surface-variant'}`}>{preview.text}</span>
             {chat.muted ? <BellOff data-testid={`silenciado-${chat.id}`} size={14} className="shrink-0 text-on-surface-variant" /> : null}
             <MarcaDeSinLeer chat={chat} />
@@ -79,4 +80,19 @@ function textoDelAviso(chat: ChatSummary, yo: string): string {
     aMi: system.targetId === yo,
     valor: system.valor,
   });
+}
+
+/**
+ * Los checks del último mensaje si es MÍO, antes del texto (auditoría 19/10:
+ * la fila de la web no los tenía), con la misma regla que la burbuja.
+ */
+function ChecksDeLaFila({ chat, yo, visible }: { chat: ChatSummary; yo?: string; visible: boolean }) {
+  const ultimo = chat.lastMessage;
+  if (!visible || !yo || !ultimo || ultimo.senderId !== yo || ultimo.kind === 'system' || ultimo.deletedAt) return null;
+  const estado = resolveDeliveryState({ seq: ultimo.seq, otherReadSeq: chat.othersReadSeq, otherDeliveredSeq: chat.othersDeliveredSeq });
+  return (
+    <span data-testid={`checks-fila-${estado}`} className={`shrink-0 text-[12px] ${estado === 'read' ? 'text-primary' : 'text-on-surface-variant'}`}>
+      {DELIVERY_GLYPH[estado]}
+    </span>
+  );
 }

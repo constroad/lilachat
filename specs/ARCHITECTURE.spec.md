@@ -4892,6 +4892,57 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 61. Teclado como Telegram, transiciones de 200 ms, W3c, «Pendientes» y «Destacados» (20/10/2026, 0.1.108)
+
+José, 20/10, con 0.1.107: el teclado todavía tiene «un scroll incómodo y un
+efecto de rebote» al abrir y cerrar; volver de un chat tiene «una animación muy
+lenta»; «hacer lo que falta» (W3c, aprobados «Pendientes» y «Destacados») y
+después terminar los E.
+
+| Pedido | Qué se hizo | Dónde |
+| --- | --- | --- |
+| Teclado | Fuera el `KeyboardAvoidingView`. La lista es un `KeyboardChatScrollView` (keyboard-controller, ya instalado): NO cambia de tamaño; padding y scroll siguen al teclado cuadro a cuadro en el hilo de UI (patrón Telegram, `keyboardLiftBehavior="always"`). La barra sube en un `KeyboardStickyView` que sube su margen de navegación menos (el teclado lo tapa): el pie ya no cambia de `pie` a 8 al abrir. Igual en el hilo. Congelado hasta medirse: montado dentro del Modal del hilo, Reanimated avisaba «scrollTo with an uninitialized ref» | app `useScrollConTeclado.tsx`, `ListaDeMensajes`, `ChatScreen`, `HiloScreen` |
+| Transiciones | `animation: 'ios_from_right'`: 200 ms con la pantalla de atrás en parallax. `slide_from_right` usaba `config_mediumAnimTime` (400 ms en Android). Medido en el emulador: abrir y volver ≈ 200 ms | app `NavegacionDeSesion` |
+| W3c — tarjetas en la web | Encuesta (votar optimista con vuelta atrás), evento (día, cuándo, dónde, Voy / Tal vez / No voy; a quien lo creó no se le pregunta) y recordatorio (cuándo suena, descripción con links y su tarjeta, imagen, editar si puede) en vez del texto; heredan reacciones, hilo y menú. En vivo: `ref.changed` refresca la tarjeta; al reconectar, todas | web `chat/tarjetas/*`, `BurbujaDeMensaje`, `useSocket` |
+| W3c — recordatorio desde la web | «Recordatorio» en el «+» (en un grupo, sus admins; nunca en un secreto) y editar desde la tarjeta: título, descripción, cuándo (fecha y hora + atajos), repetir, imagen; eliminar con confirmación. El mismo cuerpo y orden que la app (`crearRecordatorio`/`editarRecordatorio`). También personal, sin chat, desde «Pendientes» | web `agenda/CrearRecordatorio.tsx`, `formularioDeRecordatorio.ts`, `Composer`, `Shell` |
+| «Pendientes» | La pestaña «Agenda» pasa a «Pendientes»: UNA línea por cuándo tocan —Vencidos (los de una vez que sonaron en las últimas 24 h), Hoy, Mañana, Esta semana, Más adelante— con los eventos y los recordatorios que me suenan, incluidos los de mis chats (antes los de un grupo no salían), con su origen («En «Obra»», «Con Wilson», «Solo para ti») y la pastilla del evento (Sin responder / Voy / Creado por ti). «Posponer» abre el vencido; al final, «Apagados» con su interruptor (lo que hacía la vieja pestaña Recordatorios). En la web, el panel «Pendientes» con dos pestañas (Pendientes, Encuestas) y crear evento, encuesta o recordatorio | server `GET /api/agenda/linea` (`pendientesRoutes.ts`); shared `pendientes.ts` (`lineaDePendientes`, `origenDelRecordatorio`, `estadoDelEvento`); app `PendientesScreen`, `FilasDePendientes`, `usePendientes`, `BottomNav`; web `LineaDePendientes`, `AgendaOverlay` |
+| «Destacados» | La estrella personal de WhatsApp (el fijado es para todos; esto lo ve solo quien lo marca). App: «Destacar / Quitar destacado» en la barra de selección (también de varios: quitar si todos ya están), estrella junto a la hora, «Mensajes destacados» en la info del chat y en Ajustes (todos; tocar abre el chat en ese mensaje). Web: en el menú del mensaje, ★ en el pie, en la info y en el menú de la lista. No en chats secretos | server `destacadoModel.ts` (colección `destacados`), `destacadosRoutes.ts` (`PUT/DELETE /api/chats/:id/destacados/:seq`, `GET /api/chats/:id/destacados`, `GET /api/destacados`); shared `destacados.ts`, `accionesDeMensaje.destacar`; app `destacados/*`, `SeleccionDeMensaje`, `barraDeSeleccion`, `MetaDeMensaje`, `PantallaDeAjustes`, `ui/buscarChat.ts`; web `chat/destacados/*`, `MenuDelMensaje`, `ChatList`, `Shell` |
+
+**Barra de selección a 360 dp:** Responder, Hilo, Destacar, Reenviar y
+Eliminar a la vista; Fijar pasa al «⋮» (en un grupo es solo de admins).
+
+**Índices pendientes del OK de José (bóveda sin autoIndex):** `destacados`
+`{userId, chatId, seq}` único y `{userId, en}`. Mientras tanto la
+idempotencia la da el upsert y la colección es chica.
+
+**Riesgo encontrado y corregido en el server:** el router de Destacados va
+montado en `/api`; con `router.use(requireSession)` hubiera pedido sesión a
+rutas públicas montadas después (`/api/crash`, `/api/push/key`). Va sesión
+por ruta (verificado: `/api/crash` sigue en 204 sin sesión).
+
+**Deuda:** `ChatScreen` quedó en 600 líneas (el tope): lo próximo que entre
+ahí exige partirlo antes.
+
+### 61.1 E2E
+
+- **Teclado (app, grabación cuadro a cuadro):** chat lleno y chat de un
+  mensaje, abrir y cerrar: lista y barra se mueven juntas con el teclado, sin
+  pasarse ni rebotar; el hilo igual, sin franja vacía.
+- **Transiciones:** abrir y volver de un chat ≈ 200 ms (antes 400).
+- **W3c (web como QA Ana):** encuesta y evento creados desde el «+» se
+  dibujan como tarjetas; votar; «Recordatorio» no aparece para una miembro
+  del grupo y sí en el 1:1; recordatorio con link y miniatura; editarlo;
+  **en vivo**: José votó y respondió «Voy» desde la app y la web de Ana pasó a
+  «1 votante» y «2 van» sin recargar.
+- **Pendientes:** app con Hoy/Mañana y el evento de QA «Sin responder»;
+  web con el evento en «Mañana · Creado por ti».
+- **Destacados:** app: destacar, estrella, lista del chat (tocar vuelve al
+  mensaje), lista global en Ajustes (abre el chat). Web: destacar/quitar,
+  ★, lista del chat, lista global → abre el chat.
+- QA en cero (también encuestas, eventos, recordatorios y destacados de QA).
+  Tus dispositivos: 22, por dos tuyos de hoy (Android 11:07 y la web en
+  Chrome 11:08), que no se tocaron.
+
 ## 60. Tarjetas como mensajes, «Responder en hilo» a mano y la burbuja del hilo (20/10/2026, 0.1.107)
 
 José, 20/10, con 0.1.106 en el teléfono: a un recordatorio del chat no se le

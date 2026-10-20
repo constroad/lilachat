@@ -56,3 +56,4 @@ export * from './textoDelComposer.js';
 export * from './enlaces.js';
 export * from './ondaDeVoz.js';
 export * from './vinculacion.js';
+export * from './mensajesFijados.js';

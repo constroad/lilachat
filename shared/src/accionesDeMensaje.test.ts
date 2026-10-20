@@ -9,7 +9,7 @@ describe('accionesDeMensaje', () => {
   const base = { mio: true, eliminado: false, conTexto: true, esMedia: false, chatSecreto: false, editable: true };
 
   it('un texto propio: todo', () => {
-    expect(accionesDeMensaje(base)).toEqual({ responder: true, copiar: true, reenviar: true, editar: true, info: true, eliminarParaTodos: true, eliminarParaMi: true });
+    expect(accionesDeMensaje(base)).toEqual({ responder: true, copiar: true, reenviar: true, editar: true, info: true, eliminarParaTodos: true, eliminarParaMi: true, fijar: null });
   });
 
   it('uno ajeno: no se borra para todos, pero sí para mí', () => {
@@ -21,7 +21,7 @@ describe('accionesDeMensaje', () => {
   });
 
   it('una lápida: solo borrarla de mi vista', () => {
-    expect(accionesDeMensaje({ ...base, eliminado: true })).toEqual({ responder: false, copiar: false, reenviar: false, editar: false, info: false, eliminarParaTodos: false, eliminarParaMi: true });
+    expect(accionesDeMensaje({ ...base, eliminado: true })).toEqual({ responder: false, copiar: false, reenviar: false, editar: false, info: false, eliminarParaTodos: false, eliminarParaMi: true, fijar: null });
   });
 
   /** «Info» (FL9): quién lo leyó. Solo de lo propio, como WhatsApp. */
@@ -74,5 +74,19 @@ describe('accionesDeVarios', () => {
 describe('textoParaCopiar', () => {
   it('uno debajo del otro, en el orden de la conversación', () => {
     expect(textoParaCopiar([{ seq: 7, body: 'después' }, { seq: 3, body: 'antes' }])).toBe('antes\ndespués');
+  });
+});
+
+describe('accionesDeMensaje — fijar (19/10)', () => {
+  const base = { mio: false, eliminado: false, conTexto: true, esMedia: false, chatSecreto: false, editable: false };
+  it('con permiso ofrece fijar, o desfijar si ya está', () => {
+    expect(accionesDeMensaje({ ...base, puedeFijar: true }).fijar).toBe('fijar');
+    expect(accionesDeMensaje({ ...base, puedeFijar: true, fijado: true }).fijar).toBe('desfijar');
+  });
+  it('sin permiso, borrado o con varios elegidos, no', () => {
+    expect(accionesDeMensaje(base).fijar).toBeNull();
+    expect(accionesDeMensaje({ ...base, puedeFijar: true, eliminado: true }).fijar).toBeNull();
+    const uno = accionesDeMensaje({ ...base, puedeFijar: true });
+    expect(accionesDeVarios([uno, uno]).fijar).toBeNull();
   });
 });

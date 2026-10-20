@@ -119,3 +119,10 @@ describe('textoDeAviso — a mí', () => {
     expect(textoDeAviso({ ...base, aMi: false, evento: 'saco' })).toBe('Ana sacó a 902049935');
   });
 });
+
+describe('textoDeAviso — fijó un mensaje (19/10)', () => {
+  it('en segunda persona si lo hice yo', () => {
+    expect(textoDeAviso({ quien: 'Mamá', esMio: false, evento: 'fijo' })).toBe('Mamá fijó un mensaje');
+    expect(textoDeAviso({ quien: 'Yo', esMio: true, evento: 'fijo' })).toBe('Fijaste un mensaje');
+  });
+});

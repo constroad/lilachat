@@ -14,6 +14,8 @@ export type AccionesDeMensaje = {
   info: boolean;
   eliminarParaTodos: boolean;
   eliminarParaMi: boolean;
+  /** Fijar arriba del chat (19/10): `null` si no se puede (permiso, borrado o varios). */
+  fijar: 'fijar' | 'desfijar' | null;
 };
 
 export function accionesDeMensaje(params: {
@@ -26,9 +28,13 @@ export function accionesDeMensaje(params: {
   chatSecreto: boolean;
   /** Lo decide `shared/puedeEditar` (propio, texto, < 15 min, no secreto). */
   editable: boolean;
+  /** Lo decide `puedeFijarEnElChat` (en un grupo, solo admins). */
+  puedeFijar?: boolean;
+  /** Ya está fijado: la acción es desfijar. */
+  fijado?: boolean;
 }): AccionesDeMensaje {
   if (params.eliminado) {
-    return { responder: false, copiar: false, reenviar: false, editar: false, info: false, eliminarParaTodos: false, eliminarParaMi: true };
+    return { responder: false, copiar: false, reenviar: false, editar: false, info: false, eliminarParaTodos: false, eliminarParaMi: true, fijar: null };
   }
   return {
     responder: true,
@@ -39,6 +45,7 @@ export function accionesDeMensaje(params: {
     info: params.mio,
     eliminarParaTodos: params.mio,
     eliminarParaMi: true,
+    fijar: params.puedeFijar ? (params.fijado ? 'desfijar' : 'fijar') : null,
   };
 }
 
@@ -50,6 +57,7 @@ const NINGUNA: AccionesDeMensaje = {
   info: false,
   eliminarParaTodos: false,
   eliminarParaMi: false,
+  fijar: null,
 };
 
 /**
@@ -64,6 +72,8 @@ export function accionesDeVarios(lista: readonly AccionesDeMensaje[]): AccionesD
     responder: false,
     editar: false,
     info: false,
+    // Se fija de a uno, como WhatsApp.
+    fijar: null,
     copiar: lista.every((uno) => uno.copiar),
     reenviar: lista.every((uno) => uno.reenviar),
     eliminarParaTodos: lista.every((uno) => uno.eliminarParaTodos),

@@ -23,7 +23,9 @@ export type EventoDeGrupo =
   | 'admin'
   | 'dejo-admin'
   /** Promoción automática al irse el último admin: no la decidió nadie. */
-  | 'admin-auto';
+  | 'admin-auto'
+  /** Fijó un mensaje arriba del chat (19/10). */
+  | 'fijo';
 
 export function textoDeAviso(params: {
   /** Quién lo hizo, con el nombre ya resuelto. */
@@ -78,6 +80,9 @@ export function textoDeAviso(params: {
     case 'admin-auto':
       if (aMi) return 'Quedaste como admin del grupo';
       return aQuien ? `${aQuien} quedó como admin del grupo` : '';
+
+    case 'fijo':
+      return esMio ? 'Fijaste un mensaje' : `${quien} fijó un mensaje`;
 
     // La línea que deja una llamada (FL8.1): la frase depende de quién mira.
     case 'llamada':

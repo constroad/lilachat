@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { citadosPorSeq, claveDeFila, filaDeArchivoEnCola, fotosDelChat, sinPendientesConfirmados, tipoDeFila, type FilaMinima, anchoDeBurbujaConFoto, miniaturaDe } from './filasDelChat';
+import { citadosPorSeq, pendientesEnOrden, claveDeFila, filaDeArchivoEnCola, fotosDelChat, sinPendientesConfirmados, tipoDeFila, type FilaMinima, anchoDeBurbujaConFoto, miniaturaDe } from './filasDelChat';
 
 const msj = (seq: number, cambios: Partial<FilaMinima> = {}): FilaMinima => ({
   seq,
@@ -214,5 +214,20 @@ describe('sinPendientesConfirmados', () => {
   it('sin coincidencias devuelve la MISMA lista', () => {
     const pendientes = [{ pending: true as const, clientKey: 'a' }];
     expect(sinPendientesConfirmados(pendientes, [{ seq: 1, clientKey: 'x' }])).toBe(pendientes);
+  });
+});
+
+/** Auditoría (19/10): el texto pendiente salía siempre antes que la foto pendiente, aunque se escribió después. */
+describe('pendientesEnOrden', () => {
+  it('texto y archivos pendientes, en el orden en que se mandaron', () => {
+    const textos = [{ clientKey: 't1', queuedAt: '2026-10-19T20:00:02.000Z' }];
+    const archivos = [{ clientKey: 'f1', queuedAt: '2026-10-19T20:00:01.000Z' }, { clientKey: 'f2', queuedAt: '2026-10-19T20:00:03.000Z' }];
+    expect(pendientesEnOrden(textos, archivos).map((uno) => uno.clientKey)).toEqual(['f1', 't1', 'f2']);
+  });
+
+  it('con la misma hora, conserva el orden de llegada', () => {
+    const a = [{ clientKey: 'a', queuedAt: '2026-10-19T20:00:00.000Z' }];
+    const b = [{ clientKey: 'b', queuedAt: '2026-10-19T20:00:00.000Z' }];
+    expect(pendientesEnOrden(a, b).map((uno) => uno.clientKey)).toEqual(['a', 'b']);
   });
 });

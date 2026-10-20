@@ -23,3 +23,19 @@ export function seqDelDivisor(
   }
   return primero;
 }
+
+/**
+ * Con el `readSeq` del server (auditoría 19/10): el divisor va arriba del
+ * primer mensaje AJENO (no aviso) después de lo leído, y dice cuántos ajenos
+ * hay. El contador de la lista cuenta también lo propio y los avisos, y el
+ * divisor quedaba más arriba de lo nuevo.
+ */
+export function divisorDesdeLeido(
+  filas: readonly { seq?: number; senderId?: string; kind?: string }[],
+  yo: string,
+  readSeq: number
+): { seq: number; cantidad: number } | null {
+  const nuevos = filas.filter((fila) => typeof fila.seq === 'number' && fila.seq > readSeq && fila.senderId !== yo && fila.kind !== 'system');
+  const primero = nuevos[0]?.seq;
+  return typeof primero === 'number' ? { seq: primero, cantidad: nuevos.length } : null;
+}

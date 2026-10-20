@@ -175,6 +175,8 @@ export type ChatSummary = {
   } | null;
   othersReadSeq: number;
   othersDeliveredSeq: number;
+  /** Hasta dónde leí yo (19/10): el divisor de no leídos va justo después. Un server viejo no lo manda. */
+  readSeq?: number;
   /** Chat secreto (F9). */
   encrypted?: boolean;
   /** La foto del grupo, absoluta. Sin foto se dibuja la inicial. */
@@ -380,3 +382,7 @@ export const fijarMensajeEnChat = (token: string, chatId: string, seq: number, d
 
 export const desfijarMensajeEnChat = (token: string, chatId: string, seq: number) =>
   authed<{ ok: true }>('DELETE', `/api/chats/${chatId}/fijados/${seq}`, token);
+
+/** Reenviar una foto o un archivo (auditoría 19/10): el server copia la referencia y el pie. */
+export const reenviarMensajeA = (token: string, haciaChatId: string, origen: { desde: string; seq: number; clientKey: string }) =>
+  authed<{ message: unknown; duplicate: boolean }>('POST', `/api/chats/${haciaChatId}/reenviar`, token, origen);

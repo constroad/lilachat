@@ -35,7 +35,7 @@ import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { BuscadorDelChat } from './BuscadorDelChat';
 import { useBuscarEnChat } from './useBuscarEnChat';
-import { citadosPorSeq, filaDeArchivoEnCola, fotosDelChat, sinPendientesConfirmados } from './filasDelChat';
+import { citadosPorSeq, filaDeArchivoEnCola, fotosDelChat, pendientesEnOrden, sinPendientesConfirmados } from './filasDelChat';
 import { useGrupo } from './useGrupo';
 import { FueraDelGrupo } from './FueraDelGrupo';
 import { subtituloDelChat } from './cabeceraDelChat';
@@ -68,6 +68,7 @@ export function ChatScreen({
   acuseDe,
   othersDeliveredSeq,
   unread,
+  readSeq,
   lastSeqInicial,
   irASeq,
   encrypted,
@@ -86,6 +87,8 @@ export function ChatScreen({
   othersDeliveredSeq: number;
   /** Cuántos sin leer traía la lista: decide si la banda de Lila aparece. */
   unread: number;
+  /** Hasta dónde leí al abrir (19/10): el divisor de no leídos va justo después. */
+  readSeq?: number;
   /**
    * El `lastSeq` que el server reportó al abrir. Se marca leído HASTA acá, no
    * solo hasta el último mensaje cargado: si un mensaje del final se borró en
@@ -248,12 +251,11 @@ export function ChatScreen({
     () => [
       // «Eliminar para mí» (FL9): ocultos en este teléfono.
       ...sinOcultos(messages, ocultos),
-      // El eco puede llegar antes que el ack: sin esto la burbuja salía doble.
-      ...sinPendientesConfirmados(pending, messages),
-      // Los archivos también: comparten `clientKey` y dos filas iguales no conviven.
-      ...sinPendientesConfirmados(
-        archivosEnCola.map(({ archivo, progreso }) => filaDeArchivoEnCola(archivo, progreso)),
-        messages
+      // Lo pendiente, en el orden en que se mandó. El eco puede llegar antes que
+      // el ack: sin el filtro la burbuja salía doble (los archivos comparten `clientKey`).
+      ...pendientesEnOrden(
+        sinPendientesConfirmados(pending, messages),
+        sinPendientesConfirmados(archivosEnCola.map(({ archivo, progreso }) => filaDeArchivoEnCola(archivo, progreso)), messages)
       ),
     ],
     [messages, ocultos, pending, archivosEnCola]
@@ -263,6 +265,7 @@ export function ChatScreen({
     rows,
     yo: credential.userId,
     noLeidos: unread,
+    leidoHasta: readSeq,
     listaRef,
   });
 

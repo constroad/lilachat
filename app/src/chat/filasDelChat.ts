@@ -186,3 +186,12 @@ export function filaDeArchivoEnCola(archivo: ArchivoEnCola, progreso?: number) {
 export function anchoDeBurbujaConFoto(media: { width?: number; height?: number }): number {
   return tamanoDeBurbuja(media).ancho;
 }
+
+/**
+ * Lo pendiente —texto y archivos— en el orden en que se mandó (auditoría
+ * 19/10: el texto salía siempre antes, aunque se escribió después de la foto).
+ * `sort` es estable: con la misma hora queda el orden de llegada.
+ */
+export function pendientesEnOrden<P extends { queuedAt: string }>(textos: readonly P[], archivos: readonly P[]): P[] {
+  return [...textos, ...archivos].sort((a, b) => a.queuedAt.localeCompare(b.queuedAt));
+}

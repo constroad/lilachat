@@ -222,6 +222,7 @@ function PantallaDeChat({
       acuseDe={chat.acuseDe}
       othersDeliveredSeq={chat.othersDeliveredSeq}
       unread={chat.unread}
+      readSeq={chat.readSeq}
       lastSeqInicial={chat.lastSeq}
       irASeq={irASeq}
       encrypted={chat.encrypted}

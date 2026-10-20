@@ -4,7 +4,8 @@ import * as Clipboard from 'expo-clipboard';
 import * as Crypto from 'expo-crypto';
 import { Copy, CornerUpLeft, EllipsisVertical, Forward, Info, Pencil, Pin, PinOff, Trash2, X } from 'lucide-react-native';
 import { buildOutboxItem, nombreDeContacto, puedeEditar } from '@lilachat/shared';
-import { accionesDeMensaje, accionesDeVarios, textoParaCopiar } from '@lilachat/shared';
+import { reenviarMensajeA } from '../api/client';
+import { accionesDeMensaje, accionesDeVarios, planDeReenvio, textoParaCopiar, type PasoDeReenvio } from '@lilachat/shared';
 import { chatsEnMemoria } from './chatsGuardados';
 import { queueMessage } from './outboxStore';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
@@ -224,7 +225,9 @@ export function SeleccionDeMensaje(params: {
       />
       <ReenviarA
         visible={reenviando}
-        textos={textoParaCopiar(mensajes).split('\n')}
+        pasos={planDeReenvio(mensajes.map((uno) => ({ ...uno, chatId: params.chatId })))}
+        token={params.jwt}
+        onError={params.onError}
         onCerrar={() => setReenviando(false)}
         onReenviado={(nombre) => {
           setReenviando(false);
@@ -254,7 +257,7 @@ function Accion(props: { testID: string; etiqueta: string; onPress: () => void; 
  * texto tendría que salir cifrado con la clave de ese chat, y encolarlo en
  * claro sería justo lo que el server rechaza.
  */
-function ReenviarA(props: { visible: boolean; textos: string[]; onCerrar: () => void; onReenviado: (nombre: string) => void }) {
+function ReenviarA(props: { visible: boolean; pasos: PasoDeReenvio[]; token: string; onCerrar: () => void; onReenviado: (nombre: string) => void; onError: (texto: string) => void }) {
   const colores = useColores();
   const margenes = useMargenes();
   const destinos = useMemo(() => {
@@ -265,15 +268,16 @@ function ReenviarA(props: { visible: boolean; textos: string[]; onCerrar: () => 
       .map((chat) => ({ id: chat.id, nombre: nombreDeContacto({ delServidor: chat.name, telefono: chat.phone, agenda }) || 'Chat' }));
   }, [props.visible]);
 
-  // Cada mensaje por separado y en orden, como WhatsApp (FL9).
+  // Cada mensaje por separado y en orden, como WhatsApp (FL9): el texto por la
+  // cola; la foto o el archivo, por referencia (auditoría 19/10).
   const reenviar = async (destino: { id: string; nombre: string }) => {
-    for (const texto of props.textos) {
-      const item = buildOutboxItem({
-        chatId: destino.id,
-        clientKey: Crypto.randomUUID(),
-        text: texto,
-        queuedAt: new Date().toISOString(),
-      });
+    for (const paso of props.pasos) {
+      if (paso.tipo === 'mensaje') {
+        const r = await reenviarMensajeA(props.token, destino.id, { desde: paso.chatId, seq: paso.seq, clientKey: Crypto.randomUUID() });
+        if (!r.ok) return props.onError(r.message ?? 'No se pudo reenviar.');
+        continue;
+      }
+      const item = buildOutboxItem({ chatId: destino.id, clientKey: Crypto.randomUUID(), text: paso.texto, queuedAt: new Date().toISOString() });
       if (item) await queueMessage(item);
     }
     props.onReenviado(destino.nombre);

@@ -6,7 +6,7 @@ const PanelDeEmojis = lazy(() => import('./PanelDeEmojis'));
 import { SugerenciasDeMencion, type Mencionable } from './SugerenciasDeMencion';
 import { useMencionesDelCampo } from './useMencionesDelCampo';
 import { VistaPreviaAlEscribir } from './VistaPreviaAlEscribir';
-import { CalendarPlus, CornerUpLeft, ListPlus, Mic, Paperclip, Pencil, Plus, Send, Smile, X } from 'lucide-react';
+import { Bell, CalendarPlus, CornerUpLeft, ListPlus, Mic, Paperclip, Pencil, Plus, Send, Smile, X } from 'lucide-react';
 import { BarraDeGrabacion } from './BarraDeGrabacion';
 import { useGrabadoraDeVoz, type NotaDeVozGrabada } from './useGrabadoraDeVoz';
 
@@ -25,6 +25,7 @@ export function Composer({
   onSend,
   onCreateEvent,
   onCreatePoll,
+  onCreateReminder,
   onElegirArchivos,
   contexto,
   onCancelarContexto,
@@ -46,6 +47,8 @@ export function Composer({
   onSend: (text: string, menciones?: MencionEnMensaje[]) => void;
   onCreateEvent: () => void;
   onCreatePoll: () => void;
+  /** W3c: solo cuando se puede (en un grupo, sus admins; nunca en un secreto). */
+  onCreateReminder?: () => void;
   /** Las fotos o archivos elegidos (o pegados). Quien recibe esto muestra la vista previa y sube. */
   onElegirArchivos: (files: File[]) => void;
 }) {
@@ -217,6 +220,20 @@ export function Composer({
                 <ListPlus size={16} className="shrink-0 text-on-surface-variant" />
                 Encuesta
               </button>
+              {onCreateReminder ? (
+                <button
+                  type="button"
+                  data-testid="btn-recordatorio-chat"
+                  onClick={() => {
+                    setMenuAbierto(false);
+                    onCreateReminder();
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-background"
+                >
+                  <Bell size={16} className="shrink-0 text-on-surface-variant" />
+                  Recordatorio
+                </button>
+              ) : null}
             </div>
           ) : null}
         </div>

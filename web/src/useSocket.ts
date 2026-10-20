@@ -36,7 +36,7 @@ function soltarSocket(): void {
     }
   }, 0);
 }
-import { APAGADO_DE_ESCRIBIENDO_MS } from '@lilachat/shared';
+import { APAGADO_DE_ESCRIBIENDO_MS, avisarTarjeta, refrescarTodas } from '@lilachat/shared';
 import type { ChatMessage } from './chat/types';
 
 /**
@@ -122,7 +122,13 @@ export function useSocket(params: {
     /** El apagado pendiente de «escribiendo» por chat: un `on` nuevo lo reinicia. */
     const apagadoDeEscribiendo = new Map<string, ReturnType<typeof setTimeout>>();
 
-    socket.on('connect', () => setState((prev) => ({ ...prev, connected: true })));
+    socket.on('connect', () => {
+      setState((prev) => ({ ...prev, connected: true }));
+      // Lo que cambió con el socket caído no se pierde: las tarjetas montadas se vuelven a pedir (W3c).
+      refrescarTodas();
+    });
+    // Una encuesta, un evento o un recordatorio del chat cambió: su tarjeta se vuelve a pedir (W3c).
+    socket.on('ref.changed', avisarTarjeta);
     // Un corte del SERVER no se reintenta solo (socket.io lo deja así): sin
     // esto, una web revocada se quedaba mostrando los chats con «Sin conexión».
     // Con sesión renovada se reconecta con el token NUEVO: si React ya lo

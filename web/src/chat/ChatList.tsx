@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, MessageSquarePlus, MoreVertical, NotebookPen, Search, Settings, SquarePen, Users } from 'lucide-react';
+import { ListTodo, MessageSquarePlus, MoreVertical, NotebookPen, Search, Settings, SquarePen, Star, Users } from 'lucide-react';
 import type { FiltroDeChats } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { FilaDeChat } from './FilaDeChat';
@@ -31,6 +31,7 @@ export function ChatList({
   onNewChat,
   onNewGroup,
   onAgenda,
+  onDestacados,
   onNewBorrador,
   onAccion,
   yo,
@@ -46,6 +47,8 @@ export function ChatList({
   onNewChat: () => void;
   onNewGroup: () => void;
   onAgenda: () => void;
+  /** Los mensajes que destaqué, de todos los chats (20/10). */
+  onDestacados?: () => void;
   onNewBorrador: () => void;
   onAccion: (chat: ChatSummary, accion: AccionDelChat) => void;
   /** Mi id: los avisos de la vista previa en segunda persona («Fijaste…»). */
@@ -83,7 +86,8 @@ export function ChatList({
     { id: 'nuevo-chat', label: 'Nuevo chat', icon: MessageSquarePlus, run: onNewChat },
     { id: 'nuevo-grupo', label: 'Nuevo grupo', icon: Users, run: onNewGroup },
     { id: 'nuevo-borrador', label: 'Nuevo borrador', icon: NotebookPen, run: onNewBorrador },
-    { id: 'agenda', label: 'Eventos y encuestas', icon: CalendarDays, run: onAgenda },
+    { id: 'agenda', label: 'Pendientes y encuestas', icon: ListTodo, run: onAgenda },
+    ...(onDestacados ? [{ id: 'destacados', label: 'Mensajes destacados', icon: Star, run: onDestacados }] : []),
   ];
 
   return (

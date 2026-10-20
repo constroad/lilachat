@@ -11,6 +11,7 @@ import { BotonDeReaccionar } from './reacciones/BotonDeReaccionar';
 import { BotonDeHilo } from './BotonDeHilo';
 import { PastillaDeReacciones } from './reacciones/PastillaDeReacciones';
 import { TextoDelMensaje } from './TextoDelMensaje';
+import { TarjetaDelMensaje } from './tarjetas/TarjetaDelMensaje';
 import { ConversacionContext, useConversacion } from './contextoDeLaConversacion';
 import type { ChatSummary, MensajeEnPantalla } from './types';
 
@@ -41,6 +42,10 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
   return (
     <div data-testid={`mensaje-${mensaje.clientKey}`} className={`group flex items-start gap-1 ${agrupado ? 'mt-1' : 'mt-3'} ${mio ? 'flex-row-reverse' : ''}`}>
       <div className={`flex max-w-[68%] min-w-0 flex-col ${mio ? 'items-end' : 'items-start'}`}>
+        {/* Una encuesta, un evento o un recordatorio: su tarjeta en vez de la burbuja (W3c). */}
+        {mensaje.ref && !mensaje.deletedAt ? (
+          <TarjetaDelMensaje mensaje={mensaje} mio={mio} conAutor={props.conAutor} />
+        ) : (
         <div
           className={`rounded-xl px-3 py-2 text-sm ${
             mio ? 'bg-primary text-on-primary' : 'border border-outline/15 bg-surface text-on-surface'
@@ -51,11 +56,12 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
           {mensaje.replyToSeq && !mensaje.deletedAt ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={mio} /> : null}
           <ContenidoDelMensaje mensaje={mensaje} mio={mio} />
         </div>
+        )}
         {mensaje.reacciones?.length ? <PastillaDeReacciones mensaje={mensaje} mio={mio} /> : null}
         {mensaje.hilo && mensaje.hilo.respuestas > 0 && !mensaje.deletedAt ? <ChipDeLaRaiz seq={mensaje.seq} hilo={mensaje.hilo} /> : null}
         {mensaje.estado === 'fallido' ? (
           <FalloDelEnvio mensaje={mensaje} onReintentar={props.onReintentar} onDescartar={props.onDescartar} />
-        ) : ultimoDelGrupo ? (
+        ) : ultimoDelGrupo && !mensaje.ref ? (
           <PieDelMensaje mensaje={mensaje} mio={mio} chat={props.chat} />
         ) : null}
       </div>
@@ -127,6 +133,7 @@ function ContenidoDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio
 }
 
 function PieDelMensaje({ mensaje, mio, chat }: { mensaje: MensajeEnPantalla; mio: boolean; chat: Props['chat'] }) {
+  const destacado = useContext(ConversacionContext)?.destacados?.has(mensaje.seq) ?? false;
   const estado = resolveDeliveryState({
     seq: mensaje.estado === 'enviando' ? null : mensaje.seq,
     otherReadSeq: chat.othersReadSeq,
@@ -134,6 +141,8 @@ function PieDelMensaje({ mensaje, mio, chat }: { mensaje: MensajeEnPantalla; mio
   });
   return (
     <p className="mt-1 text-[11px] text-on-surface-variant">
+      {/* Lo destaqué (20/10): la estrella antes de la hora, como WhatsApp. */}
+      {destacado ? <span data-testid={`destacado-${mensaje.clientKey}`} className="mr-1 text-primary">★</span> : null}
       {mensaje.editedAt && !mensaje.deletedAt ? 'Editado · ' : ''}
       {formatClock(mensaje.at)}
       {mio ? (

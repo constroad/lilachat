@@ -1,9 +1,10 @@
 import { createContext, useContext } from 'react';
+import type { AgendaReminder } from '@lilachat/shared';
 import type { DetalleDelChat } from './useDetalleDelChat';
 import type { ChatSummary, MensajeEnPantalla } from './types';
 
 /** Lo que se puede pedir sobre un mensaje desde su menú (W2). */
-export type AccionSobreMensaje = 'responder' | 'hilo' | 'copiar' | 'reenviar' | 'editar' | 'info' | 'eliminar' | 'fijar' | 'desfijar';
+export type AccionSobreMensaje = 'responder' | 'hilo' | 'copiar' | 'reenviar' | 'editar' | 'info' | 'eliminar' | 'fijar' | 'desfijar' | 'destacar' | 'quitarDestacado';
 
 /**
  * Lo que las burbujas necesitan del chat abierto, sin pasarlo por cada nivel
@@ -29,6 +30,10 @@ export type ContextoDeLaConversacion = {
   hiloConNuevas?: (seq: number) => boolean;
   /** Reaccionar (20/10). Sin esto (chat secreto), no hay botón. */
   onReaccionar?: (seq: number, emoji: string | null) => void;
+  /** Los que destaqué (20/10): estrella en el pie y «Destacar / Quitar» en el menú. */
+  destacados?: ReadonlySet<number>;
+  /** Editar un recordatorio del chat (W3c). Sin esto (sin permiso), la tarjeta no ofrece editar. */
+  onEditarRecordatorio?: (recordatorio: AgendaReminder) => void;
 };
 
 export const ConversacionContext = createContext<ContextoDeLaConversacion | null>(null);

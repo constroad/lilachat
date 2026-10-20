@@ -6,6 +6,9 @@ import { activarVersionNueva } from './pwa/serviceWorker';
 import type { Credential } from './api';
 import { AgendaOverlay } from './agenda/AgendaOverlay';
 import { CreateEventOverlay, CreatePollOverlay, NewChatOverlay, type ChatDestino } from './agenda/CreatePanels';
+import { CrearRecordatorio } from './agenda/CrearRecordatorio';
+import { ListaDeDestacados } from './chat/destacados/ListaDeDestacados';
+import type { AgendaReminder } from '@lilachat/shared';
 import { ChatList } from './chat/ChatList';
 import { ConversacionConAcciones } from './chat/ConversacionConAcciones';
 import { EmptyState } from './chat/EmptyState';
@@ -30,8 +33,10 @@ type Creando =
   | { tipo: 'chat'; kind: 'direct' | 'group' }
   | { tipo: 'borrador' }
   | { tipo: 'agenda' }
+  | { tipo: 'destacados' }
   | { tipo: 'evento'; chat: ChatDestino | null }
-  | { tipo: 'encuesta'; chat: ChatDestino | null };
+  | { tipo: 'encuesta'; chat: ChatDestino | null }
+  | { tipo: 'recordatorio'; chat: { id: string; name?: string | null; kind: 'direct' | 'group' | 'notas' } | null; editando?: AgendaReminder };
 
 type Props = {
   credential: Credential;
@@ -55,6 +60,8 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
   const width = useAnchoDeVentana();
   const [aviso, setAviso] = useState('');
   const [creando, setCreando] = useState<Creando>(null);
+  /** Ir a un mensaje de otro chat (un destacado de la lista global, 20/10). */
+  const [irA, setIrA] = useState<{ chatId: string; seq: number; vez: number } | null>(null);
   const historial = useHistorialDelChat(selectedId);
   // Los avisos cortos («Copiado», «Reenviado») se van solos; «Subiendo…» y los ajustes, no.
   useEffect(() => {
@@ -149,6 +156,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
           onNewChat={() => setCreando({ tipo: 'chat', kind: 'direct' })}
           onNewGroup={() => setCreando({ tipo: 'chat', kind: 'group' })}
           onAgenda={() => setCreando({ tipo: 'agenda' })}
+          onDestacados={() => setCreando({ tipo: 'destacados' })}
           onNewBorrador={() => setCreando({ tipo: 'borrador' })}
           yo={yo}
           onAccion={(chat, accion) => void accionesSobreChats.aplicar(chat, accion)}
@@ -175,8 +183,11 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
           onReintentar={(clave) => void sync.reintentar(clave)}
           onDescartar={(clave) => void sync.descartar(clave)}
           onLeido={(seq) => sync.marcarLeido(selected.id, seq)}
+          irA={irA?.chatId === selected.id ? irA : null}
           onCreateEvent={() => setCreando({ tipo: 'evento', chat: { id: selected.id, name: selected.name } })}
           onCreatePoll={() => setCreando({ tipo: 'encuesta', chat: { id: selected.id, name: selected.name } })}
+          onCreateReminder={() => setCreando({ tipo: 'recordatorio', chat: { id: selected.id, name: selected.propio ? 'Tú' : selected.name, kind: selected.kind } })}
+          onEditReminder={(recordatorio) => setCreando({ tipo: 'recordatorio', chat: { id: selected.id, name: selected.name, kind: selected.kind }, editando: recordatorio })}
         />
       ) : (
         <EmptyState name={credential.name} onNewChat={() => setCreando({ tipo: 'chat', kind: 'direct' })} onAgenda={() => setCreando({ tipo: 'agenda' })} />
@@ -191,10 +202,26 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
           onClose={() => setCreando(null)}
           onCreateEvent={() => setCreando({ tipo: 'evento', chat: null })}
           onCreatePoll={() => setCreando({ tipo: 'encuesta', chat: null })}
+          onCreateReminder={() => setCreando({ tipo: 'recordatorio', chat: null })}
+          onEditarRecordatorio={(recordatorio) =>
+            setCreando({ tipo: 'recordatorio', chat: recordatorio.chatId ? { id: recordatorio.chatId, name: recordatorio.chat?.name ?? recordatorio.chat?.phone, kind: recordatorio.chat?.kind ?? 'group' } : null, editando: recordatorio })
+          }
         />
       ) : null}
       {creando?.tipo === 'evento' ? <CreateEventOverlay jwt={credential.jwt} chat={creando.chat} onClose={() => setCreando(null)} onCreated={alCrear} /> : null}
       {creando?.tipo === 'encuesta' ? <CreatePollOverlay jwt={credential.jwt} chat={creando.chat} onClose={() => setCreando(null)} onCreated={alCrear} /> : null}
+      {creando?.tipo === 'destacados' ? (
+        <ListaDeDestacados
+          jwt={credential.jwt}
+          yo={yo}
+          onIr={(destacado) => {
+            abrirChat(destacado.chatId);
+            setIrA({ chatId: destacado.chatId, seq: destacado.seq, vez: Date.now() });
+          }}
+          onCerrar={() => setCreando(null)}
+        />
+      ) : null}
+      {creando?.tipo === 'recordatorio' ? <CrearRecordatorio jwt={credential.jwt} chat={creando.chat} editando={creando.editando} onClose={() => setCreando(null)} onGuardado={() => setCreando(null)} /> : null}
 
       {aviso === 'ajustes' ? <PanelDeAjustes jwt={credential.jwt} onAviso={setAviso} onSalir={logout} onCerrar={() => setAviso('')} instalacion={instalacion} /> : aviso ? (
         <p data-testid="aviso" role="status" className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-on-surface px-4 py-2 text-sm text-white">

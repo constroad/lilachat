@@ -24,6 +24,8 @@ import { useAccionesSobreMensajes, type AccionesDeSync } from './useAccionesSobr
 import { useDetalleDelChat } from './useDetalleDelChat';
 import type { ChatSummary } from './types';
 import type { BaseLocal } from '../local/baseLocal';
+import { useDestacadosWeb } from './destacados/useDestacadosWeb';
+import { TarjetaDeDestacados } from './destacados/TarjetaDeDestacados';
 
 type PropsDeConversacion = ComponentProps<typeof Conversation>;
 
@@ -43,6 +45,8 @@ export function ConversacionConAcciones(
     onRecargarChats: () => void;
     /** Silenciar, salir o eliminar desde «Info.» (W3b): las mismas acciones de la lista. */
     onAccionDeChat: (chat: ChatSummary, accion: AccionDelChat) => void;
+    /** Ir a un mensaje pedido desde afuera (un destacado de la lista global, 20/10). */
+    irA?: { seq: number; vez: number } | null;
   }
 ) {
   const { chat, yo, sync, onAviso } = props;
@@ -83,6 +87,10 @@ export function ConversacionConAcciones(
   const seqsFijados = useMemo(() => new Set(fijados.map((uno) => uno.seq)), [fijados]);
   const fijar = useFijarEnLaWeb({ chatId: chat.id, jwt: props.jwt, onAviso, onCambio: props.onRecargarChats });
   const [salto, setSalto] = useState<{ seq: number; vez: number } | null>(null);
+  useEffect(() => {
+    if (props.irA) setSalto(props.irA);
+  }, [props.irA]);
+  const destacados = useDestacadosWeb({ chatId: chat.id, jwt: props.jwt, secreto: Boolean(chat.encrypted) });
   const [verFijados, setVerFijados] = useState(false);
   const nombreDe = useCallback((id: string) => (id === yo ? 'Tú' : (nombres.get(id) ?? 'Alguien')), [yo, nombres]);
   const textoLocal = useCallback((seq: number) => citado(seq)?.body, [citado]);
@@ -98,23 +106,27 @@ export function ConversacionConAcciones(
       if (accion === 'fijar') return fijar.pedir(mensaje.seq);
       if (accion === 'hilo') return abrirHilo(mensaje.seq);
       if (accion === 'desfijar') return void fijar.desfijar(mensaje.seq);
+      if (accion === 'destacar' || accion === 'quitarDestacado') return void destacados.alternar(mensaje.seq).then((r) => !r.ok && onAviso('No se pudo destacar. Revisa tu conexión.'));
       acciones.onAccion(mensaje, accion);
     },
-    [fijar, acciones, abrirHilo]
+    [fijar, acciones, abrirHilo, destacados, onAviso]
   );
   const onReaccionar = useCallback(
     (seq: number, emoji: string | null) => void sync.reaccionar(chat.id, seq, emoji).then((r) => !r.ok && r.motivo && onAviso(r.motivo)),
     [sync, chat.id, onAviso]
   );
+  // El recordatorio del chat (W3c): lo crean y editan quienes pueden fijar (en un grupo, sus admins), nunca en un secreto.
+  const editarRecordatorio = !chat.encrypted && puedeFijar ? props.onEditReminder : undefined;
   const contexto = useMemo<ContextoDeLaConversacion>(
-    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, citado, onAccion, onVerFoto, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar }),
-    [yo, props.jwt, chat, detalle, nombres, citado, onAccion, onVerFoto, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar]
+    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, citado, onAccion, onVerFoto, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar, onEditarRecordatorio: editarRecordatorio, destacados: destacados.seqs }),
+    [yo, props.jwt, chat, detalle, nombres, citado, onAccion, onVerFoto, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editarRecordatorio, destacados.seqs]
   );
 
   return (
     <ConversacionContext.Provider value={contexto}>
       <Conversation
         {...props}
+        onCreateReminder={!chat.encrypted && puedeFijar ? props.onCreateReminder : undefined}
         // En un grupo, quién escribe (el socket trae su id).
         typingName={props.typingName ? nombres.get(props.typingName) ?? 'Alguien' : null}
         onEscribiendo={() => sync.avisarEscribiendo(chat.id)}
@@ -174,7 +186,7 @@ export function ConversacionConAcciones(
           }}
           onAccionDeChat={props.onAccionDeChat}
           onVerFoto={onVerFoto}
-          tarjetas={<TarjetaDeFijados fijados={fijados} nombreDe={nombreDe} textoLocal={textoLocal} onVerTodos={() => setVerFijados(true)} />}
+          tarjetas={<><TarjetaDeFijados fijados={fijados} nombreDe={nombreDe} textoLocal={textoLocal} onVerTodos={() => setVerFijados(true)} />{chat.encrypted ? null : <TarjetaDeDestacados chatId={chat.id} jwt={props.jwt} yo={yo} cuantos={destacados.seqs.size} onIr={(seq) => setSalto({ seq, vez: Date.now() })} />}</>}
         />
       ) : null}
       {verFijados ? (

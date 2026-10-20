@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { ArrowLeft, Phone, Search, Video } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
-import type { MencionEnMensaje } from '@lilachat/shared';
+import type { AgendaReminder, MencionEnMensaje } from '@lilachat/shared';
 import { Composer, type ContextoDelComposer } from './Composer';
 import type { Mencionable } from './SugerenciasDeMencion';
 import type { NotaDeVozGrabada } from './useGrabadoraDeVoz';
@@ -42,6 +42,10 @@ export function Conversation(props: {
   onLeido: (seq: number) => void;
   onCreateEvent: () => void;
   onCreatePoll: () => void;
+  /** W3c: el recordatorio del chat. Sin esto (sin permiso o secreto), el «+» no lo ofrece. */
+  onCreateReminder?: () => void;
+  /** Editar uno desde su tarjeta (W3c). */
+  onEditReminder?: (recordatorio: AgendaReminder) => void;
   onElegirArchivos: (files: File[]) => void;
   /** La franja del mensaje fijado (19/10), bajo la cabecera. */
   franja?: ReactNode;
@@ -109,6 +113,7 @@ export function Conversation(props: {
         onSend={props.onSend}
         onCreateEvent={props.onCreateEvent}
         onCreatePoll={props.onCreatePoll}
+        onCreateReminder={props.onCreateReminder}
         onElegirArchivos={props.onElegirArchivos}
         contexto={props.contexto}
         onCancelarContexto={props.onCancelarContexto}

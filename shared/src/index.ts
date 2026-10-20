@@ -68,3 +68,5 @@ export * from './escribiendo.js';
 export * from './compresionDeFoto.js';
 export * from './listaEnVivo.js';
 export * from './hilos.js';
+export * from './reacciones.js';
+export * from './reenvio.js';

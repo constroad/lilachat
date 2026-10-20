@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { agregarFijado, fijadosVigentes, MAXIMO_DE_FIJADOS, puedeFijarEnElChat, venceDelFijado } from './mensajesFijados.js';
+import { agregarFijado, esSinVencimiento, fijadosVigentes, MAXIMO_DE_FIJADOS, puedeFijarEnElChat, textoDelVencimiento, venceDelFijado } from './mensajesFijados.js';
 
 const AHORA = Date.parse('2026-10-19T12:00:00.000Z');
 const fijado = (seq: number, horasAtras: number, horasQueQuedan: number) => ({
@@ -16,6 +16,12 @@ describe('venceDelFijado', () => {
     expect(venceDelFijado('30d', AHORA)).toBe('2026-11-18T12:00:00.000Z');
     expect(venceDelFijado('1y', AHORA)).toBeNull();
   });
+  it('«sin vencimiento» (20/10, como Slack) queda fijado hasta que alguien lo saque', () => {
+    const hasta = venceDelFijado('siempre', AHORA);
+    expect(hasta).not.toBeNull();
+    expect(esSinVencimiento(hasta!, AHORA)).toBe(true);
+    expect(esSinVencimiento(venceDelFijado('30d', AHORA)!, AHORA)).toBe(false);
+  });
 });
 
 describe('fijadosVigentes', () => {
@@ -30,11 +36,18 @@ describe('fijadosVigentes', () => {
 });
 
 describe('agregarFijado', () => {
-  it('hasta 3: el cuarto saca al fijado hace más tiempo, como WhatsApp', () => {
-    const lista = [fijado(1, 3, 10), fijado(2, 2, 10), fijado(3, 1, 10)];
-    const nueva = agregarFijado(lista, fijado(4, 0, 24), AHORA);
-    expect(nueva.map((uno) => uno.seq)).toEqual([4, 3, 2]);
+  it('hasta 50 (20/10, como Slack): el siguiente saca al fijado hace más tiempo', () => {
+    expect(MAXIMO_DE_FIJADOS).toBe(50);
+    const lista = Array.from({ length: MAXIMO_DE_FIJADOS }, (_, i) => fijado(i + 1, MAXIMO_DE_FIJADOS - i, 10));
+    const nueva = agregarFijado(lista, fijado(99, 0, 24), AHORA);
     expect(nueva).toHaveLength(MAXIMO_DE_FIJADOS);
+    expect(nueva[0]?.seq).toBe(99);
+    expect(nueva.some((uno) => uno.seq === 1)).toBe(false);
+  });
+
+  it('cuatro fijados ya no sacan a nadie (antes el tope era 3)', () => {
+    const lista = [fijado(1, 3, 10), fijado(2, 2, 10), fijado(3, 1, 10)];
+    expect(agregarFijado(lista, fijado(4, 0, 24), AHORA).map((uno) => uno.seq)).toEqual([4, 3, 2, 1]);
   });
 
   it('volver a fijar el mismo mensaje renueva su plazo sin duplicarlo', () => {
@@ -55,5 +68,17 @@ describe('puedeFijarEnElChat', () => {
     expect(puedeFijarEnElChat({ kind: 'notas', esAdmin: false })).toBe(true);
     expect(puedeFijarEnElChat({ kind: 'group', esAdmin: true })).toBe(true);
     expect(puedeFijarEnElChat({ kind: 'group', esAdmin: false })).toBe(false);
+  });
+});
+
+describe('textoDelVencimiento', () => {
+  it('sin vencimiento, días u horas que quedan', () => {
+    expect(textoDelVencimiento(venceDelFijado('siempre', AHORA)!, AHORA)).toBe('sin vencimiento');
+    expect(textoDelVencimiento(new Date(AHORA + 6 * 24 * 3_600_000 + 60_000).toISOString(), AHORA)).toBe('vence en 6 días');
+    expect(textoDelVencimiento(new Date(AHORA + 26 * 3_600_000).toISOString(), AHORA)).toBe('vence en 1 día');
+    expect(textoDelVencimiento(new Date(AHORA + 7 * 24 * 3_600_000 - 60_000).toISOString(), AHORA)).toBe('vence en 7 días');
+    expect(textoDelVencimiento(new Date(AHORA + 23 * 3_600_000).toISOString(), AHORA)).toBe('vence en 23 h');
+    expect(textoDelVencimiento(new Date(AHORA + 5 * 3_600_000).toISOString(), AHORA)).toBe('vence en 5 h');
+    expect(textoDelVencimiento(new Date(AHORA + 10 * 60_000).toISOString(), AHORA)).toBe('vence en menos de 1 h');
   });
 });

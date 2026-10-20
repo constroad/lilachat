@@ -17,6 +17,7 @@ import { textoDeLlamada } from './registroDeLlamada.js';
 export type EventoDeGrupo =
   | 'nombre'
   | 'foto'
+  | 'descripcion'
   | 'sumo'
   | 'saco'
   | 'salio'
@@ -53,6 +54,11 @@ export function textoDeAviso(params: {
 
     case 'foto':
       return esMio ? 'Cambiaste la foto del grupo' : `${quien} cambió la foto del grupo`;
+
+    // 20/10: el texto no va en el aviso (puede ser largo); está en la info del grupo.
+    case 'descripcion':
+      if (valor === 'borrada') return esMio ? 'Borraste la descripción del grupo' : `${quien} borró la descripción del grupo`;
+      return esMio ? 'Cambiaste la descripción del grupo' : `${quien} cambió la descripción del grupo`;
 
     case 'sumo':
       if (aMi && !esMio) return `${quien} te agregó`;

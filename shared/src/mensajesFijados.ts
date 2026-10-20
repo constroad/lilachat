@@ -1,19 +1,41 @@
 /**
- * Mensajes fijados en un chat (19/10, pedido de José: «hacer pin a mensajes»),
- * como WhatsApp: por 24 horas, 7 días o 30 días, hasta 3 por chat (el cuarto
- * saca al fijado hace más tiempo). En un 1:1 o un borrador fija cualquiera; en
- * un grupo, los admins (como los recordatorios del grupo). PURO: lo usan el
- * server, la app y la web.
+ * Mensajes fijados en un chat (19/10, pedido de José: «hacer pin a mensajes»).
+ * Empezó como WhatsApp (3, con plazo); el 20/10 José pidió los de Slack:
+ * varios por chat (hasta 50; el siguiente saca al fijado hace más tiempo),
+ * con lista «Ver todos» y la opción «sin vencimiento». En un 1:1 o un
+ * borrador fija cualquiera; en un grupo, los admins. PURO: lo usan el server,
+ * la app y la web.
  */
-export const DURACIONES_DE_FIJADO = { '24h': 24, '7d': 7 * 24, '30d': 30 * 24 } as const;
+const SIN_VENCIMIENTO_HORAS = 100 * 365 * 24;
+export const DURACIONES_DE_FIJADO = { '24h': 24, '7d': 7 * 24, '30d': 30 * 24, siempre: SIN_VENCIMIENTO_HORAS } as const;
 export type DuracionDeFijado = keyof typeof DURACIONES_DE_FIJADO;
-export const MAXIMO_DE_FIJADOS = 3;
+export const MAXIMO_DE_FIJADOS = 50;
 const HORA_MS = 3_600_000;
+const DIA_MS = 24 * HORA_MS;
+/** Más allá de esto, el plazo es «sin vencimiento» (el guardado es a 100 años). */
+const UMBRAL_SIN_VENCIMIENTO_MS = 10 * 365 * DIA_MS;
 
 /** Un fijado: qué mensaje, quién, cuándo y hasta cuándo (ISO). */
 export type MensajeFijado = { seq: number; por: string; en: string; hasta: string };
 
-export const ETIQUETAS_DE_DURACION: Record<DuracionDeFijado, string> = { '24h': '24 horas', '7d': '7 días', '30d': '30 días' };
+export const ETIQUETAS_DE_DURACION: Record<DuracionDeFijado, string> = { '24h': '24 horas', '7d': '7 días', '30d': '30 días', siempre: 'Sin vencimiento' };
+
+export function esSinVencimiento(hasta: string, ahora: number): boolean {
+  return Date.parse(hasta) - ahora > UMBRAL_SIN_VENCIMIENTO_MS;
+}
+
+/** «sin vencimiento», «vence en 6 días», «vence en 5 h»: lo que queda, para la lista de fijados. */
+export function textoDelVencimiento(hasta: string, ahora: number): string {
+  if (esSinVencimiento(hasta, ahora)) return 'sin vencimiento';
+  const queda = Date.parse(hasta) - ahora;
+  // Redondeado: recién fijado por 7 días dice «7 días», no «6».
+  if (queda >= DIA_MS) {
+    const dias = Math.round(queda / DIA_MS);
+    return `vence en ${dias} ${dias === 1 ? 'día' : 'días'}`;
+  }
+  const horas = Math.round(queda / HORA_MS);
+  return horas >= 1 ? `vence en ${horas} h` : 'vence en menos de 1 h';
+}
 
 /** Hasta cuándo queda fijado; `null` si la duración no es una de las tres. */
 export function venceDelFijado(duracion: string, ahora: number): string | null {

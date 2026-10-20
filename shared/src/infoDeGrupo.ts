@@ -51,3 +51,20 @@ export function normalizarNombreDeGrupo(valor: unknown): NombreDeGrupo {
   }
   return { ok: true, nombre };
 }
+
+/** La descripción del grupo (20/10): larga, como WhatsApp (2048) y no como el «topic» de Slack (250). */
+export const MAX_DESCRIPCION_DE_GRUPO = 2048;
+
+export type DescripcionDeGrupo = { ok: true; descripcion: string } | { ok: false; motivo: string };
+
+/**
+ * Limpiar y validar la descripción. A diferencia del nombre, **los saltos de
+ * línea se conservan**: son los párrafos y las listas de reglas («1) …»). Solo
+ * se colapsan las líneas en blanco de más. Vacía = borrarla.
+ */
+export function normalizarDescripcion(valor: unknown): DescripcionDeGrupo {
+  if (typeof valor !== 'string') return { ok: false, motivo: 'La descripción tiene que ser un texto.' };
+  const descripcion = valor.replace(/\r\n?/g, '\n').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  if ([...descripcion].length > MAX_DESCRIPCION_DE_GRUPO) return { ok: false, motivo: `La descripción no puede pasar de ${MAX_DESCRIPCION_DE_GRUPO} caracteres.` };
+  return { ok: true, descripcion };
+}

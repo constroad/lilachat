@@ -126,3 +126,11 @@ describe('textoDeAviso — fijó un mensaje (19/10)', () => {
     expect(textoDeAviso({ quien: 'Yo', esMio: true, evento: 'fijo' })).toBe('Fijaste un mensaje');
   });
 });
+
+describe('textoDeAviso — descripción (20/10)', () => {
+  it('dice quién cambió o borró la descripción', () => {
+    expect(textoDeAviso({ evento: 'descripcion', quien: 'Ana', esMio: false })).toBe('Ana cambió la descripción del grupo');
+    expect(textoDeAviso({ evento: 'descripcion', quien: 'Ana', esMio: true })).toBe('Cambiaste la descripción del grupo');
+    expect(textoDeAviso({ evento: 'descripcion', quien: 'Ana', esMio: false, valor: 'borrada' })).toBe('Ana borró la descripción del grupo');
+  });
+});

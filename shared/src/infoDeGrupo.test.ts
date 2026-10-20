@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizarNombreDeGrupo, puedeEditarInfo } from './infoDeGrupo.js';
+import { MAX_DESCRIPCION_DE_GRUPO, normalizarDescripcion, normalizarNombreDeGrupo, puedeEditarInfo } from './infoDeGrupo.js';
 import type { MiembroDeChat } from './miembrosDeGrupo.js';
 
 const m = (userId: string, role: 'admin' | 'member' = 'member'): MiembroDeChat => ({
@@ -85,5 +85,27 @@ describe('normalizarNombreDeGrupo', () => {
       ok: true,
       nombre: 'Familia Zamora 🎉',
     });
+  });
+});
+
+/** La descripción larga del grupo (José, 20/10: «como Slack, con textos grandes»). */
+describe('normalizarDescripcion', () => {
+  it('conserva los saltos de línea (son párrafos) y recorta los bordes', () => {
+    expect(normalizarDescripcion('  Reglas:\n1) Fotos antes de las 6\n2) Pedidos con 24 h  ')).toEqual({ ok: true, descripcion: 'Reglas:\n1) Fotos antes de las 6\n2) Pedidos con 24 h' });
+  });
+  it('más de una línea en blanco seguida se colapsa en una', () => {
+    expect(normalizarDescripcion('Uno\n\n\n\nDos')).toEqual({ ok: true, descripcion: 'Uno\n\nDos' });
+  });
+  it('vacía = sin descripción (borrarla)', () => {
+    expect(normalizarDescripcion('   \n ')).toEqual({ ok: true, descripcion: '' });
+  });
+  it('hasta 2048 caracteres visibles, como WhatsApp; más, se rechaza con el tope', () => {
+    expect(MAX_DESCRIPCION_DE_GRUPO).toBe(2048);
+    expect(normalizarDescripcion('a'.repeat(2048)).ok).toBe(true);
+    expect(normalizarDescripcion('😀'.repeat(2048)).ok).toBe(true);
+    expect(normalizarDescripcion('a'.repeat(2049))).toEqual({ ok: false, motivo: 'La descripción no puede pasar de 2048 caracteres.' });
+  });
+  it('lo que no es texto se rechaza', () => {
+    expect(normalizarDescripcion(42)).toEqual({ ok: false, motivo: 'La descripción tiene que ser un texto.' });
   });
 });

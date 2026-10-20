@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, Text, TextInput, ToastAndroid, View } from 'react-native';
+import { FlatList, Pressable, Text, TextInput, ToastAndroid, View } from 'react-native';
+import { Modal } from '../../ui/Modal';
 import * as Crypto from 'expo-crypto';
 import { ArrowLeft, Check, NotebookPen, Search, Send, Users } from 'lucide-react-native';
 import { alternarDestino, buildOutboxItem, destinosDeReenvio, MAXIMO_DE_DESTINOS, nombreDeContacto, type ChatParaReenviar, type Frecuencias, type PasoDeReenvio } from '@lilachat/shared';

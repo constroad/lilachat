@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { Modal } from '../ui/Modal';
 import { DatabaseBackup } from 'lucide-react-native';
 import { passphraseValida } from '@lilachat/shared';
 import { descripcionDeRespaldo, descripcionDeRestauracion } from '../respaldo/planDeRestauracion';

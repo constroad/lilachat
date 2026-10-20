@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View, useWindowDimensions, type ViewToken } from 'react-native';
+import { Pressable, ScrollView, Text, View, useWindowDimensions, type ViewToken } from 'react-native';
+import { Modal } from '../ui/Modal';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { FlatList, GestureHandlerRootView } from 'react-native-gesture-handler';

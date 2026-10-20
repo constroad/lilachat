@@ -1,4 +1,5 @@
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { Modal } from '../ui/Modal';
 import { ShieldCheck, ShieldOff, UserMinus } from 'lucide-react-native';
 import type { AccionDeMiembro } from '@lilachat/shared';
 import { useColores } from '../ui/tema';

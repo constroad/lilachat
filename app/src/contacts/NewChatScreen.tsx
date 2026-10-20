@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
+import { Modal } from '../ui/Modal';
 import { Interruptor } from '../ui/Interruptor';
 import { ArrowLeft, Check, Lock, NotebookPen, UserRound, Users, X } from 'lucide-react-native';
 import { MAX_NOMBRE_DE_GRUPO, type Contact } from '@lilachat/shared';

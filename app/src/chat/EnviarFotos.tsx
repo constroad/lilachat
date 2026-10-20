@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { FlatList, Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
+import { Modal } from '../ui/Modal';
 import { Image } from 'expo-image';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Send, Video, X } from 'lucide-react-native';

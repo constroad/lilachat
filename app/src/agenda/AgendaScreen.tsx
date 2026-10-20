@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { Modal } from '../ui/Modal';
 import { Bell, CalendarDays, Plus, X } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import type { AgendaEvent, AgendaReminder } from './agendaApi';

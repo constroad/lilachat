@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal } from '../ui/Modal';
 import { Check, CheckCheck, X } from 'lucide-react-native';
 import { nombreDeContacto } from '@lilachat/shared';
 import { infoDeMensaje, type MiembroDeInfo } from '../api/client';

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal } from '../ui/Modal';
 import { Bell, Send, Trash2, X } from 'lucide-react-native';
 import { type Recurrence, aQuienSuena, crearRecordatorio, editarRecordatorio, valorInicial } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';

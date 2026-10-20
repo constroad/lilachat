@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Modal, Pressable, StatusBar, Text, View } from 'react-native';
+import { Pressable, StatusBar, Text, View } from 'react-native';
+import { Modal } from './Modal';
 import { Image } from 'expo-image';
 import { ArrowLeft } from 'lucide-react-native';
 import { useMargenes } from './useMargenes';

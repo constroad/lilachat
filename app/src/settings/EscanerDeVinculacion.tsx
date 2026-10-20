@@ -1,4 +1,5 @@
-import { ActivityIndicator, Linking, Modal, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
+import { Modal } from '../ui/Modal';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { ArrowLeft, Info, Monitor } from 'lucide-react-native';
 import { useColores } from '../ui/tema';

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, FlatList, Modal, Pressable, Text, View } from 'react-native';
+import { Animated, FlatList, Pressable, Text, View } from 'react-native';
+import { Modal } from '../../ui/Modal';
 import { CameraView, type CameraCapturedPicture } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { Image } from 'expo-image';

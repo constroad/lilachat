@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { Alert, Modal, Pressable, Text, ToastAndroid, useWindowDimensions, View } from 'react-native';
+import { Alert, Pressable, Text, ToastAndroid, useWindowDimensions, View } from 'react-native';
+import { Modal } from '../ui/Modal';
 import * as Clipboard from 'expo-clipboard';
 import { Copy, CornerUpLeft, EllipsisVertical, Forward, Info, MessagesSquare, Pencil, Pin, PinOff, Star, StarOff, Trash2, X } from 'lucide-react-native';
 import { puedeEditar } from '@lilachat/shared';

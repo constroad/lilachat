@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, Text, TextInput, View } from 'react-native';
+import { Modal } from '../ui/Modal';
 import { MAX_NOMBRE_DE_GRUPO, normalizarNombreDeGrupo } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { useMargenes } from '../ui/useMargenes';

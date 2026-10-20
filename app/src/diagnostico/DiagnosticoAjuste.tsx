@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal } from '../ui/Modal';
 import { Activity, ArrowLeft, Send, Trash2 } from 'lucide-react-native';
 import { useColores } from '../ui/tema';
 import { FilaDeAjuste } from '../ui/FilaDeAjuste';

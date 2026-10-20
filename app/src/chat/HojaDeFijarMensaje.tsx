@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { Modal } from '../ui/Modal';
 import { ETIQUETAS_DE_DURACION, type DuracionDeFijado } from '@lilachat/shared';
 import { useMargenes } from '../ui/useMargenes';
 

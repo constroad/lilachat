@@ -1,4 +1,5 @@
-import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal } from '../../ui/Modal';
 import { EllipsisVertical, FileText, X } from 'lucide-react-native';
 import { formatChatTimestamp, MAXIMO_DE_FIJADOS, textoDelVencimiento } from '@lilachat/shared';
 import type { FijadoEnLista } from '../../api/client';

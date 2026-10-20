@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { FlatList, Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
+import { Modal } from '../ui/Modal';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useScrollConTeclado } from './useScrollConTeclado';
 import { ArrowLeft, Send, Square, SquareCheck } from 'lucide-react-native';

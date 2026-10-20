@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { AppState, BackHandler, Modal, Pressable, Text, View } from 'react-native';
+import { AppState, BackHandler, Pressable, Text, View } from 'react-native';
+import { Modal } from './Modal';
 import { ArrowLeft } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { listChats, type ChatSummary } from '../api/client';
@@ -212,7 +213,7 @@ export function TabsShell({
     const alLlegar = async (mensaje: {
       chatId: string;
       senderId: string;
-      kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'poll' | 'event';
+      kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'poll' | 'event' | 'sticker';
       body?: string;
       envelope?: unknown;
     }) => {

@@ -1,4 +1,5 @@
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { Modal } from '../ui/Modal';
 import { ArrowLeft } from 'lucide-react-native';
 import { ContactPicker } from '../contacts/ContactPicker';
 import type { Credential } from '../auth/credentialStore';

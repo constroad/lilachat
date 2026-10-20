@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal } from '../ui/Modal';
 import { CalendarClock, X } from 'lucide-react-native';
 import { formatEventWhen } from '@lilachat/shared';
 import type { Programado } from '../api/client';

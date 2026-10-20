@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal } from '../../ui/Modal';
 import { Star, X } from 'lucide-react-native';
 import { formatChatTimestamp, nombreDeContacto, textoDelDestacado, type DestacadoEnLista } from '@lilachat/shared';
 import { listarDestacados, quitarDestacado } from '../../api/client';

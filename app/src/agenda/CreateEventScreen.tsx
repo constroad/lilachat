@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal } from '../ui/Modal';
 import { Bell, Clock, MapPin, Send, Sparkles, Trash2, UserPlus, X } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { planTargetChat, type Contact, terminaPorDefecto, valorInicial } from '@lilachat/shared';

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { Modal } from '../ui/Modal';
 import { KeyRound, ShieldCheck, TriangleAlert, X } from 'lucide-react-native';
 import type { SecretSession } from './useSecretChat';
 import { useMargenes } from '../ui/useMargenes';

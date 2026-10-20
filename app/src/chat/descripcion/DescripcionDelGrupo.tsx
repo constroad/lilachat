@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Linking, Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Linking, Pressable, Text, TextInput, View } from 'react-native';
+import { Modal } from '../../ui/Modal';
 import { Pencil } from 'lucide-react-native';
 import { MAX_DESCRIPCION_DE_GRUPO, normalizarDescripcion, partirEnEnlaces } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';

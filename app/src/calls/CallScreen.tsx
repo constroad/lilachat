@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal } from '../ui/Modal';
 import { RTCView, type MediaStream } from 'react-native-webrtc';
 import { Mic, MicOff, PhoneOff, User, Video, VideoOff, Volume2 } from 'lucide-react-native';
 import type { CallState } from '@lilachat/shared';

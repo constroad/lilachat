@@ -30,6 +30,8 @@ export type ChatSummary = {
     at: string;
     /** Un aviso: la lista arma la frase como la conversación (W3b). */
     system?: ChatMessage['system'];
+    /** Borrado para todos (19/10): la vista previa lo dice. */
+    deletedAt?: string;
   } | null;
   othersReadSeq: number;
   othersDeliveredSeq: number;

@@ -35,6 +35,7 @@ function soltarSocket(): void {
     }
   }, 0);
 }
+import { APAGADO_DE_ESCRIBIENDO_MS } from '@lilachat/shared';
 import type { ChatMessage } from './chat/types';
 
 /**
@@ -113,6 +114,8 @@ export function useSocket(params: {
       transports: ['websocket', 'polling'],
     });
     socketRef.current = socket;
+    /** El apagado pendiente de «escribiendo» por chat: un `on` nuevo lo reinicia. */
+    const apagadoDeEscribiendo = new Map<string, ReturnType<typeof setTimeout>>();
 
     socket.on('connect', () => setState((prev) => ({ ...prev, connected: true })));
     // Un corte del SERVER no se reintenta solo (socket.io lo deja así): sin
@@ -174,17 +177,25 @@ export function useSocket(params: {
         else typingByChat.delete(data.chatId);
         return { ...prev, typingByChat };
       });
+      const previo = apagadoDeEscribiendo.get(data.chatId);
+      if (previo) clearTimeout(previo);
+      apagadoDeEscribiendo.delete(data.chatId);
       if (!data.on) return;
       // «Escribiendo» se APAGA solo. El evento de fin puede perderse —una
       // pestaña que se cierra no avisa— y el cartel quedaría encendido para
-      // siempre, que se lee como la app colgada.
-      setTimeout(() => {
-        setState((prev) => {
-          const typingByChat = new Map(prev.typingByChat);
-          typingByChat.delete(data.chatId);
-          return { ...prev, typingByChat };
-        });
-      }, 4000);
+      // siempre, que se lee como la app colgada. Un `on` nuevo reinicia la
+      // cuenta (auditoría 19/10: el timer viejo apagaba al que seguía escribiendo).
+      apagadoDeEscribiendo.set(
+        data.chatId,
+        setTimeout(() => {
+          apagadoDeEscribiendo.delete(data.chatId);
+          setState((prev) => {
+            const typingByChat = new Map(prev.typingByChat);
+            typingByChat.delete(data.chatId);
+            return { ...prev, typingByChat };
+          });
+        }, APAGADO_DE_ESCRIBIENDO_MS)
+      );
     });
 
     return () => {
@@ -195,6 +206,7 @@ export function useSocket(params: {
       // el mismo usuario vuelve a montar, y solo se cierra al cambiar de sesión.
       soltarSocket();
       socketRef.current = null;
+      for (const espera of apagadoDeEscribiendo.values()) clearTimeout(espera);
     };
     // Depende de QUIÉN, no del token: renovar la sesión no puede tirar el
     // socket. `hayToken` cubre el paso de deslogueado a logueado.

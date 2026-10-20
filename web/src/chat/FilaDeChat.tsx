@@ -13,7 +13,7 @@ import type { ChatSummary } from './types';
 export function FilaDeChat(props: { chat: ChatSummary; yo?: string; seleccionado: boolean; onSelect: () => void; onAccion: (chat: ChatSummary, accion: AccionDelChat) => void }) {
   const { chat } = props;
   const aviso = props.yo ? textoDelAviso(chat, props.yo) : '';
-  const preview = resolveChatPreview({ typing: Boolean(chat.typingName), lastBody: aviso || chat.lastMessage?.body, lastKind: aviso ? 'text' : chat.lastMessage?.kind });
+  const preview = resolveChatPreview({ typing: Boolean(chat.typingName), lastBody: aviso || chat.lastMessage?.body, lastKind: aviso ? 'text' : chat.lastMessage?.kind, eliminado: Boolean(chat.lastMessage?.deletedAt) });
   return (
     <div className="group relative">
       <button
@@ -36,7 +36,7 @@ export function FilaDeChat(props: { chat: ChatSummary; yo?: string; seleccionado
             ) : null}
           </span>
           <span className="mt-0.5 flex items-center gap-2">
-            <span className={`min-w-0 flex-1 truncate text-[13px] ${preview.style === 'typing' ? 'italic text-primary' : 'text-on-surface-variant'}`}>{preview.text}</span>
+            <span className={`min-w-0 flex-1 truncate text-[13px] ${preview.style === 'typing' ? 'italic text-primary' : preview.style === 'eliminado' ? 'italic text-on-surface-variant' : 'text-on-surface-variant'}`}>{preview.text}</span>
             {chat.muted ? <BellOff data-testid={`silenciado-${chat.id}`} size={14} className="shrink-0 text-on-surface-variant" /> : null}
             <MarcaDeSinLeer chat={chat} />
           </span>

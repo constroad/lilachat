@@ -8,7 +8,7 @@ import { aplicarBorrado, aplicarEdicion, aplicarEntrante, guardarChats, guardarP
 import type { ChatMessage, ChatSummary } from '../chat/types';
 import { accionPorSocket, enviarPorSocket, pedirSincronizacion, type ResultadoDeAccion } from './envioPorSocket';
 import { ocultar } from '../local/ocultos';
-import type { MencionEnMensaje } from '@lilachat/shared';
+import { debeAvisarEscribiendo, type MencionEnMensaje } from '@lilachat/shared';
 import { sincronizar } from './sincronizar';
 
 /** Una página del historial: lo que entra en pantalla y algo más. */
@@ -70,11 +70,15 @@ export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401
         recargarPronto();
       },
       onReceipt: () => recargarPronto(),
+      // La vista previa de la lista sale del server: una edición o un borrado
+      // la relee (auditoría 19/10: seguía diciendo lo de antes).
       onBorrado: (dato: { chatId: string; seq: number }) => {
         if (base) void aplicarBorrado(base, { ...dato, deletedAt: new Date().toISOString() });
+        recargarPronto();
       },
       onEditado: (dato: { chatId: string; seq: number; body: string; editedAt: string }) => {
         if (base) void aplicarEdicion(base, dato);
+        recargarPronto();
       },
       onCambioDeChat: () => recargarPronto(),
     }),
@@ -207,6 +211,8 @@ const APAGAR_ESCRIBIENDO_MS = 3000;
  */
 function useAvisoDeEscribiendo(socket: MutableRefObject<Socket | null>): (chatId: string) => void {
   const encendidoEn = useRef<string | null>(null);
+  /** Cuándo se mandó el último `on:true`: se renueva (`debeAvisarEscribiendo`, auditoría 19/10). */
+  const ultimoAviso = useRef<number | null>(null);
   const apagar = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
     if (apagar.current) clearTimeout(apagar.current);
@@ -216,11 +222,17 @@ function useAvisoDeEscribiendo(socket: MutableRefObject<Socket | null>): (chatId
       if (encendidoEn.current !== chatId) {
         if (encendidoEn.current) socket.current?.emit('typing', { chatId: encendidoEn.current, on: false });
         encendidoEn.current = chatId;
+        ultimoAviso.current = null;
+      }
+      const ahora = Date.now();
+      if (debeAvisarEscribiendo({ ultimoAviso: ultimoAviso.current, ahora })) {
+        ultimoAviso.current = ahora;
         socket.current?.emit('typing', { chatId, on: true });
       }
       if (apagar.current) clearTimeout(apagar.current);
       apagar.current = setTimeout(() => {
         encendidoEn.current = null;
+        ultimoAviso.current = null;
         socket.current?.emit('typing', { chatId, on: false });
       }, APAGAR_ESCRIBIENDO_MS);
     },

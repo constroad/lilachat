@@ -3,6 +3,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronDown } from 'lucide-react';
 import { formatDayLabel } from '@lilachat/shared';
 import { BurbujaDeMensaje } from './BurbujaDeMensaje';
+import { seqParaAcusar } from './acuseDeLeido';
 import { estaCercaDelFinal, filasDeLaConversacion, sigueEnElFinal } from './filasDeLaConversacion';
 import type { ChatSummary, MensajeEnPantalla } from './types';
 
@@ -62,7 +63,7 @@ export function ListaDeMensajes(props: Props) {
   useConservarAlCargarAnteriores(contenedor, filas[0]?.mensaje.clientKey, virtualizador.getTotalSize());
   useSeguirElFinal({ pegado, bajar, alto: virtualizador.getTotalSize(), cantidad: filas.length, chatId: chat.id });
   useSeguirAlAchicarse(contenedor, pegado, bajar);
-  useAcuseDeLeido({ mensajes, yo, pegado, lejos, onLeido: props.onLeido });
+  useAcuseDeLeido({ mensajes, pegado, lejos, onLeido: props.onLeido });
   const resaltado = useSaltoAMensaje({ salto: props.salto, filas, pegado, setLejos, scrollToIndex: (indice) => virtualizador.scrollToIndex(indice, { align: 'center' }), onNoEsta: props.onNoEsta });
 
   const alScrollear = () => {
@@ -187,17 +188,26 @@ function useConservarAlCargarAnteriores(contenedor: React.RefObject<HTMLDivEleme
   }, [contenedor, primeraClave, alto]);
 }
 
-/** El acuse sale cuando se VIO: pestaña al frente y abajo. Una vez por `seq`. */
-function useAcuseDeLeido(p: { mensajes: MensajeEnPantalla[]; yo: string; pegado: React.MutableRefObject<boolean>; lejos: boolean; onLeido: (seq: number) => void }) {
-  const { mensajes, yo, pegado, lejos, onLeido } = p;
+/**
+ * El acuse sale cuando se VIO: pestaña al frente y abajo (`seqParaAcusar`).
+ * Volver a la pestaña también cuenta (auditoría 19/10: lo que llegaba con la
+ * pestaña oculta quedaba sin leer hasta el próximo mensaje).
+ */
+function useAcuseDeLeido(p: { mensajes: MensajeEnPantalla[]; pegado: React.MutableRefObject<boolean>; lejos: boolean; onLeido: (seq: number) => void }) {
+  const { mensajes, pegado, lejos, onLeido } = p;
   const ultimoAvisado = useRef(0);
+  const [vuelta, setVuelta] = useState(0);
   useEffect(() => {
-    const ultimoAjeno = [...mensajes].reverse().find((uno) => uno.senderId !== yo && !uno.estado);
-    if (!ultimoAjeno || ultimoAjeno.seq <= ultimoAvisado.current) return;
-    if (document.visibilityState !== 'visible' || !pegado.current) return;
-    ultimoAvisado.current = ultimoAjeno.seq;
-    onLeido(ultimoAjeno.seq);
-  }, [mensajes, yo, pegado, lejos, onLeido]);
+    const alVolver = () => document.visibilityState === 'visible' && setVuelta((antes) => antes + 1);
+    document.addEventListener('visibilitychange', alVolver);
+    return () => document.removeEventListener('visibilitychange', alVolver);
+  }, []);
+  useEffect(() => {
+    const seq = seqParaAcusar({ mensajes, ultimoAvisado: ultimoAvisado.current, visible: document.visibilityState === 'visible', pegado: pegado.current });
+    if (seq === null) return;
+    ultimoAvisado.current = seq;
+    onLeido(seq);
+  }, [mensajes, pegado, lejos, onLeido, vuelta]);
 }
 
 /**

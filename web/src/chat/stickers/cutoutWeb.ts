@@ -1,5 +1,6 @@
 import type { InteractiveSegmenter } from '@mediapipe/tasks-vision';
-import { alphaFromConfidence, MEDIAPIPE_PATH, resample, visibleBox } from './mask';
+import type { MaskStroke, Rect } from '@lilachat/shared';
+import { alphaFromConfidence, dropSmallPieces, MEDIAPIPE_PATH, resample, visibleBox } from './mask';
 
 /**
  * Background removal on the web (José, 20/10: «WhatsApp removes the background…
@@ -45,8 +46,8 @@ export async function photoToCanvas(file: Blob): Promise<HTMLCanvasElement> {
   return canvas;
 }
 
-/** The subject at the point, without background and cropped to its box; `null` if nothing is left. */
-export async function removeBackground(photo: HTMLCanvasElement, point: Point): Promise<HTMLCanvasElement | null> {
+/** The subject at the point as a mask over the whole photo (alpha per pixel); `null` if nothing is left. */
+export async function removeBackground(photo: HTMLCanvasElement, point: Point): Promise<Uint8ClampedArray | null> {
   const cutter = await segmenter();
   const confidence = await new Promise<{ values: Float32Array; width: number; height: number } | null>((resolve) => {
     cutter.segment(photo, { keypoint: point }, (result) => {
@@ -56,20 +57,67 @@ export async function removeBackground(photo: HTMLCanvasElement, point: Point): 
     });
   });
   if (!confidence) return null;
-  return applyMask(photo, confidence);
+  const alpha = dropSmallPieces(alphaFromConfidence(resample(confidence.values, confidence, { width: photo.width, height: photo.height })), photo.width, photo.height);
+  return visibleBox(alpha, photo.width, photo.height) ? alpha : null;
 }
 
-function applyMask(photo: HTMLCanvasElement, confidence: { values: Float32Array; width: number; height: number }): HTMLCanvasElement | null {
-  const context = photo.getContext('2d');
-  if (!context) return null;
-  const pixels = context.getImageData(0, 0, photo.width, photo.height);
-  const alpha = alphaFromConfidence(resample(confidence.values, confidence, { width: photo.width, height: photo.height }));
-  for (let index = 0; index < alpha.length; index += 1) pixels.data[index * 4 + 3] = alpha[index]!;
-  const box = visibleBox(alpha, photo.width, photo.height);
-  if (!box) return null;
+/**
+ * The photo through the mask (or whole, without one) with the erase/restore
+ * strokes (photo pixels), cropped to what is visible; `null` if everything was
+ * erased. The same as the app's `CutoutMask.refine`.
+ */
+export function refineWeb(photo: HTMLCanvasElement, alpha: Uint8ClampedArray | null, strokes: MaskStroke[]): { canvas: HTMLCanvasElement; box: Rect } | null {
+  const { width, height } = photo;
+  const mask = document.createElement('canvas');
+  mask.width = width;
+  mask.height = height;
+  const brush = mask.getContext('2d');
+  if (!brush) return null;
+  const base = brush.createImageData(width, height);
+  base.data.fill(255);
+  if (alpha) for (let index = 0; index < alpha.length; index += 1) base.data[index * 4 + 3] = alpha[index]!;
+  brush.putImageData(base, 0, 0);
+  for (const stroke of strokes) drawMaskStroke(brush, stroke);
   const output = document.createElement('canvas');
-  output.width = box.width;
-  output.height = box.height;
-  output.getContext('2d')?.putImageData(pixels, -box.x, -box.y);
-  return output;
+  output.width = width;
+  output.height = height;
+  const context = output.getContext('2d');
+  if (!context) return null;
+  context.drawImage(mask, 0, 0);
+  context.globalCompositeOperation = 'source-in';
+  context.drawImage(photo, 0, 0);
+  const pixels = context.getImageData(0, 0, width, height).data;
+  const visible = new Uint8ClampedArray(width * height);
+  for (let index = 0; index < visible.length; index += 1) visible[index] = pixels[index * 4 + 3]!;
+  const box = visibleBox(visible, width, height);
+  if (!box) return null;
+  const cropped = document.createElement('canvas');
+  cropped.width = box.width;
+  cropped.height = box.height;
+  cropped.getContext('2d')?.drawImage(output, -box.x, -box.y);
+  return { canvas: cropped, box };
+}
+
+/** Erase clears the mask, restore paints it opaque; a single point is a dot. */
+function drawMaskStroke(context: CanvasRenderingContext2D, stroke: MaskStroke) {
+  const [first, ...rest] = stroke.points;
+  if (!first) return;
+  context.save();
+  context.globalCompositeOperation = stroke.mode === 'erase' ? 'destination-out' : 'source-over';
+  context.fillStyle = 'white';
+  context.strokeStyle = 'white';
+  context.lineWidth = stroke.radius * 2;
+  context.lineCap = 'round';
+  context.lineJoin = 'round';
+  if (rest.length === 0) {
+    context.beginPath();
+    context.arc(first.x, first.y, stroke.radius, 0, 2 * Math.PI);
+    context.fill();
+  } else {
+    context.beginPath();
+    context.moveTo(first.x, first.y);
+    for (const point of rest) context.lineTo(point.x, point.y);
+    context.stroke();
+  }
+  context.restore();
 }

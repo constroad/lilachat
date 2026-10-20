@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { alphaFromConfidence, MEDIAPIPE_PATH, MEDIAPIPE_VERSION, resample, visibleBox } from './mask';
+import { alphaFromConfidence, MEDIAPIPE_PATH, MEDIAPIPE_VERSION, resample, visibleBox, dropSmallPieces } from './mask';
 
 /**
  * The web cutout (José, 20/10: «WhatsApp removes the background… Lilachat must
@@ -48,5 +48,27 @@ describe('MediaPipe files', () => {
     const manifest = JSON.parse(readFileSync(resolve(process.cwd(), 'package.json'), 'utf8')) as { dependencies: Record<string, string> };
     expect(manifest.dependencies['@mediapipe/tasks-vision']).toBe(MEDIAPIPE_VERSION);
     expect(MEDIAPIPE_PATH).toBe(`/mediapipe/${MEDIAPIPE_VERSION}`);
+  });
+});
+
+/** The loose pieces of the cutout (José, 20/10: a hand floating next to the person). */
+describe('dropSmallPieces', () => {
+  it('drops loose small pieces and keeps the big ones (the hand left next to the person)', () => {
+    // 10×4: a 12-pixel body on the left, a 1-pixel crumb, and a second big piece of 8 on the right.
+    const width = 10;
+    const alpha = new Uint8ClampedArray(40);
+    for (const y of [0, 1, 2, 3]) for (const x of [0, 1, 2]) alpha[y * width + x] = 255;
+    alpha[1 * width + 5] = 200;
+    for (const y of [0, 1, 2, 3]) for (const x of [8, 9]) alpha[y * width + x] = 255;
+
+    const kept = dropSmallPieces(alpha, width, 4);
+
+    expect(kept[1 * width + 5]).toBe(0);
+    expect(kept[0]).toBe(255);
+    expect(kept[3 * width + 9]).toBe(255);
+  });
+
+  it('an empty cutout stays empty', () => {
+    expect([...dropSmallPieces(new Uint8ClampedArray(6), 3, 2)]).toEqual([0, 0, 0, 0, 0, 0]);
   });
 });

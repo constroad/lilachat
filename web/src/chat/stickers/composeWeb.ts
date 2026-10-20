@@ -1,4 +1,4 @@
-import { STICKER_COMPOSITION, stickerGeometry, type Layer, type Point } from '@lilachat/shared';
+import { STICKER_COMPOSITION, stickerGeometry, type Layer, type Point, type Rect } from '@lilachat/shared';
 
 /**
  * The web sticker: 512×512 with a transparent background, the image centered,
@@ -11,19 +11,27 @@ const START_QUALITY = 0.9;
 const MIN_QUALITY = 0.4;
 const QUALITY_STEP = 0.1;
 const MIN_LETTER = 12;
+/** How visible the whole photo is behind the cutout while restoring (like the app). */
+const BACKDROP_OPACITY = 0.35;
 /** The web font (Inter), with the system fallback. */
 export const STICKER_FONT = 'Inter, system-ui, sans-serif';
 
 type DrawnLayer = Omit<Layer, 'id'> & { id?: string };
 type Image = CanvasImageSource & { width: number; height: number };
 
-export function drawSticker(canvas: HTMLCanvasElement, image: Image, outline: boolean, layers: DrawnLayer[]): void {
+/** `backdrop`: only in the editor, with «Restaurar» — the whole photo faded where it sits (0..1 of the sticker). */
+export function drawSticker(canvas: HTMLCanvasElement, image: Image, outline: boolean, layers: DrawnLayer[], backdrop?: { image: Image; frame: Rect }): void {
   const { side } = STICKER_COMPOSITION;
   canvas.width = side;
   canvas.height = side;
   const context = canvas.getContext('2d');
   if (!context) return;
   context.clearRect(0, 0, side, side);
+  if (backdrop) {
+    context.globalAlpha = BACKDROP_OPACITY;
+    context.drawImage(backdrop.image, backdrop.frame.x * side, backdrop.frame.y * side, backdrop.frame.width * side, backdrop.frame.height * side);
+    context.globalAlpha = 1;
+  }
   const target = stickerGeometry({ width: image.width, height: image.height, outline });
   if (outline) drawOutline(context, image, target);
   context.drawImage(image, target.x, target.y, target.width, target.height);

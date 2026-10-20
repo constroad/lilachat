@@ -1,13 +1,15 @@
-import { useEffect, useReducer, useRef, useState, type PointerEvent, type ReactNode } from 'react';
-import { ImageUp, Loader2, Pencil, Scissors, Undo2, X } from 'lucide-react';
-import { editSticker, initialEditorState, paletaDe, STICKER_COMPOSITION, STICKER_TEXT_SIZES, stickerGeometry, TEXT_COLORS, type Layer, type LibrarySticker, type Point } from '@lilachat/shared';
+import { useEffect, useMemo, useReducer, useRef, useState, type PointerEvent, type ReactNode } from 'react';
+import { Eraser, ImageUp, Loader2, Paintbrush, Pencil, Scissors, Undo2, X } from 'lucide-react';
+import { BRUSH_SIZES, editSticker, initialEditorState, maskStroke, paletaDe, photoFrame, STICKER_COMPOSITION, STICKER_TEXT_SIZES, stickerGeometry, TEXT_COLORS, type BrushSize, type CutoutView, type Layer, type LibrarySticker, type MaskMode, type Point } from '@lilachat/shared';
 import type { ApiResult } from '../../api';
 import { drawSticker, exportSticker, layerBox, toLayerFrame } from './composeWeb';
-import { photoToCanvas, removeBackground } from './cutoutWeb';
+import { photoToCanvas, refineWeb, removeBackground } from './cutoutWeb';
 
 type Phase = 'picking' | 'cutting' | 'editing' | 'saving';
 type Size = keyof typeof STICKER_TEXT_SIZES;
-type Drag = { mode: 'move' | 'rotate' | 'scale'; layer: Layer; start: Point } | { mode: 'pen'; points: Point[] };
+type Drag = { mode: 'move' | 'rotate' | 'scale'; layer: Layer; start: Point } | { mode: 'pen' | 'brush'; points: Point[] };
+/** How the brush stroke looks while drawing, before the cutout is redone (like the app). */
+const BRUSH_TRAIL: Record<MaskMode, string> = { erase: 'rgba(239,68,68,0.55)', restore: 'rgba(34,197,94,0.55)' };
 const EMOJIS = ['😂', '😍', '🔥', '👍', '🎉', '❤️', '😎', '🙏', '💯', '👏', '🚀', '✅'];
 const CENTER: Point = { x: 0.5, y: 0.5 };
 const SIDE = STICKER_COMPOSITION.side;
@@ -16,7 +18,7 @@ const ROTATE_GAP = 30;
 const HANDLE_RADIUS = 9;
 const HIT_RADIUS = 18;
 const PEN_WIDTH = 0.022;
-const NO_CUTOUT = 'No se pudo quitar el fondo: el sticker va con la foto entera.';
+const NO_CUTOUT = 'No se pudo quitar el fondo: borra a mano lo que no quieras, o va la foto entera.';
 /** The canvas cannot read the Tailwind tokens: the brand color comes from the shared palette. */
 const SELECTION_COLOR = paletaDe('light').primary;
 
@@ -73,14 +75,19 @@ export function CreateStickerWeb(props: Props) {
   const drag = useRef<Drag | null>(null);
   const [phase, setPhase] = useState<Phase>('picking');
   const [photo, setPhoto] = useState<HTMLCanvasElement | null>(null);
-  const [cutout, setCutout] = useState<HTMLCanvasElement | null>(null);
+  /** The cutout as a mask over the photo (alpha per pixel); erase/restore strokes go on top. */
+  const [mask, setMask] = useState<Uint8ClampedArray | null>(null);
+  const [brush, setBrush] = useState<{ mode: MaskMode; size: BrushSize } | null>(null);
   const [notice, setNotice] = useState('');
   const [penOn, setPenOn] = useState(false);
   const [penColor, setPenColor] = useState<string>(TEXT_COLORS[0]);
   const [livePen, setLivePen] = useState<Point[]>([]);
   const [keepInMine, setKeepInMine] = useState(true);
   const [state, dispatch] = useReducer(editSticker, undefined, initialEditorState);
-  const image = state.cutout && cutout ? cutout : photo;
+  // The image as it looks now: the mask (if on) and every brush stroke, cropped (`refineWeb`, like the app's `CutoutMask`).
+  const shown = useMemo(() => (photo ? refineWeb(photo, state.cutout ? mask : null, state.maskStrokes) : null), [photo, mask, state.cutout, state.maskStrokes]);
+  const image = shown?.canvas ?? null;
+  const view: CutoutView | null = shown ? { box: shown.box, geometry: stickerGeometry({ width: shown.canvas.width, height: shown.canvas.height, outline: state.outline }), side: SIDE } : null;
   const textLayer = state.layers.find((layer) => layer.kind === 'text');
   const selected = state.layers.find((layer) => layer.id === state.selection);
 
@@ -90,16 +97,18 @@ export function CreateStickerWeb(props: Props) {
     const canvas = canvasRef.current;
     const context = canvas?.getContext('2d');
     if (!canvas || !context || !image) return;
-    const live = livePen.length > 1 ? [{ kind: 'stroke' as const, text: '', x: 0, y: 0, scale: 1, rotation: 0, color: penColor, points: livePen, width: PEN_WIDTH }] : [];
-    drawSticker(canvas, image, state.outline, [...state.layers, ...live]);
+    const trail = brush ? { color: BRUSH_TRAIL[brush.mode], width: BRUSH_SIZES[brush.size] * 2 } : { color: penColor, width: PEN_WIDTH };
+    const live = livePen.length > 1 ? [{ kind: 'stroke' as const, text: '', x: 0, y: 0, scale: 1, rotation: 0, points: livePen, ...trail }] : [];
+    const backdrop = brush?.mode === 'restore' && photo && view ? { image: photo, frame: photoFrame(photo, view) } : undefined;
+    drawSticker(canvas, image, state.outline, [...state.layers, ...live], backdrop);
     if (selected && selected.kind !== 'stroke') drawSelection(context, selected);
-  }, [image, state.outline, state.layers, selected, livePen, penColor]);
+  }, [image, state.outline, state.layers, selected, livePen, penColor, brush, photo, view]);
 
   const cut = async (source: HTMLCanvasElement, point: Point) => {
     setPhase('cutting');
     try {
       const subject = await removeBackground(source, point);
-      setCutout(subject);
+      setMask(subject);
       setNotice(subject ? '' : 'No encontré a nadie ni nada para recortar: haz clic sobre lo que quieres.');
       if (subject && !state.cutout) dispatch({ type: 'toggle-cutout' });
     } catch (error) {
@@ -114,7 +123,7 @@ export function CreateStickerWeb(props: Props) {
     try {
       const fresh = await photoToCanvas(file);
       setPhoto(fresh);
-      setCutout(null);
+      setMask(null);
       await cut(fresh, CENTER);
     } catch {
       setNotice('No se pudo abrir esa imagen.');
@@ -161,8 +170,8 @@ export function CreateStickerWeb(props: Props) {
     if (!context || phase !== 'editing') return;
     const point = pointOf(event);
     event.currentTarget.setPointerCapture(event.pointerId);
-    if (penOn) {
-      drag.current = { mode: 'pen', points: [{ x: point.x / SIDE, y: point.y / SIDE }] };
+    if (penOn || brush) {
+      drag.current = { mode: brush ? 'brush' : 'pen', points: [{ x: point.x / SIDE, y: point.y / SIDE }] };
       return;
     }
     if (selected && selected.kind !== 'stroke') {
@@ -184,7 +193,7 @@ export function CreateStickerWeb(props: Props) {
     }
     dispatch({ type: 'select', id: null });
     // Without the cutout on, a click on the photo cuts THAT (in case the center was not the subject).
-    if (photo && !(state.cutout && cutout)) {
+    if (photo && !(state.cutout && mask)) {
       const target = stickerGeometry({ width: photo.width, height: photo.height, outline: state.outline });
       const inPhoto = { x: (point.x - target.x) / target.width, y: (point.y - target.y) / target.height };
       if (inPhoto.x >= 0 && inPhoto.x <= 1 && inPhoto.y >= 0 && inPhoto.y <= 1) void cut(photo, inPhoto);
@@ -195,7 +204,7 @@ export function CreateStickerWeb(props: Props) {
     const current = drag.current;
     if (!current) return;
     const point = pointOf(event);
-    if (current.mode === 'pen') {
+    if ('points' in current) {
       current.points.push({ x: point.x / SIDE, y: point.y / SIDE });
       return setLivePen([...current.points]);
     }
@@ -210,9 +219,17 @@ export function CreateStickerWeb(props: Props) {
   const release = () => {
     const current = drag.current;
     drag.current = null;
-    if (current?.mode !== 'pen') return;
-    dispatch({ type: 'add-stroke', points: current.points, color: penColor, width: PEN_WIDTH });
+    if (current?.mode === 'brush' && brush && view) {
+      const stroke = maskStroke(brush.mode, BRUSH_SIZES[brush.size], current.points, view);
+      if (stroke) dispatch({ type: 'add-mask-stroke', stroke });
+    }
+    if (current?.mode === 'pen') dispatch({ type: 'add-stroke', points: current.points, color: penColor, width: PEN_WIDTH });
     setLivePen([]);
+  };
+  const pickBrush = (mode: MaskMode) => {
+    dispatch({ type: 'select', id: null });
+    setPenOn(false);
+    setBrush((before) => (before?.mode === mode ? null : { mode, size: before?.size ?? 'M' }));
   };
 
   const pickColor = (color: string) => {
@@ -236,21 +253,36 @@ export function CreateStickerWeb(props: Props) {
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
           <div className="relative mx-auto grid aspect-square w-full max-w-[320px] place-items-center overflow-hidden rounded-xl border border-outline/15 bg-[conic-gradient(rgb(0_0_0/0.06)_25%,transparent_0_50%,rgb(0_0_0/0.06)_0_75%,transparent_0)] bg-[length:20px_20px]">
             {image ? (
-              <canvas ref={canvasRef} data-testid="lienzo-sticker" onPointerDown={press} onPointerMove={moveTo} onPointerUp={release} onPointerCancel={release} className={`h-full w-full touch-none ${penOn ? 'cursor-crosshair' : 'cursor-move'}`} />
+              <canvas ref={canvasRef} data-testid="lienzo-sticker" onPointerDown={press} onPointerMove={moveTo} onPointerUp={release} onPointerCancel={release} className={`h-full w-full touch-none ${penOn || brush ? 'cursor-crosshair' : 'cursor-move'}`} />
             ) : (
               <button type="button" onClick={() => fileRef.current?.click()} className="flex flex-col items-center gap-2 text-sm text-on-surface-variant"><ImageUp size={28} /> Elige una foto</button>
             )}
             {phase === 'cutting' ? (
               <span className="absolute inset-0 grid place-items-center bg-surface/60 text-sm font-semibold"><span className="flex flex-col items-center"><span className="flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> Quitando el fondo…</span><span className="mt-1 block text-[11px] font-normal text-on-surface-variant">La primera vez tarda unos segundos.</span></span></span>
             ) : null}
-            {cutout && state.cutout ? <span data-testid="pastilla-fondo-eliminado" className="absolute left-2 top-2 flex items-center gap-1.5 rounded-full border border-outline/15 bg-surface px-2.5 py-1 text-[12px] font-semibold text-primary"><span className="h-2 w-2 rounded-full bg-primary" /> Fondo eliminado</span> : null}
+            {mask && state.cutout && !brush ? <span data-testid="pastilla-fondo-eliminado" className="absolute left-2 top-2 flex items-center gap-1.5 rounded-full border border-outline/15 bg-surface px-2.5 py-1 text-[12px] font-semibold text-primary"><span className="h-2 w-2 rounded-full bg-primary" /> Fondo eliminado</span> : null}
             {image ? <button type="button" data-testid="btn-cambiar-foto" onClick={() => fileRef.current?.click()} className="absolute right-2 top-2 flex items-center gap-1 rounded-full border border-outline/15 bg-surface px-2.5 py-1 text-[12px] font-semibold"><ImageUp size={13} /> Cambiar</button> : null}
           </div>
           {notice ? <p role="status" data-testid="aviso-sticker" className="mt-2 text-center text-[12px] text-on-surface-variant">{notice}</p> : null}
-          {photo && !(cutout && state.cutout) && phase === 'editing' && !penOn ? <p className="mt-1 text-center text-[12px] text-on-surface-variant">Haz clic sobre lo que quieras recortar.</p> : null}
+          {photo && !(mask && state.cutout) && phase === 'editing' && !penOn && !brush ? <p className="mt-1 text-center text-[12px] text-on-surface-variant">Haz clic sobre lo que quieras recortar.</p> : null}
+          {brush ? <p data-testid="ayuda-pincel" className="mt-1 text-center text-[12px] text-on-surface-variant">{brush.mode === 'erase' ? 'Pasa el mouse con el botón apretado por lo que quieras quitar.' : 'Pasa el mouse con el botón apretado por lo que quieras recuperar de la foto.'}</p> : null}
+
+          <div role="group" aria-label="Retocar el recorte" className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-outline/15 p-2">
+            <div className="flex gap-1">
+              <button type="button" data-testid="btn-borrar-sticker" aria-pressed={brush?.mode === 'erase'} disabled={!image} onClick={() => pickBrush('erase')} className={`flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold disabled:opacity-40 ${brush?.mode === 'erase' ? 'bg-primary text-on-primary' : 'text-on-surface hover:bg-background'}`}><Eraser size={15} /> Borrar</button>
+              <button type="button" data-testid="btn-restaurar-sticker" aria-pressed={brush?.mode === 'restore'} disabled={!image} onClick={() => pickBrush('restore')} className={`flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold disabled:opacity-40 ${brush?.mode === 'restore' ? 'bg-primary text-on-primary' : 'text-on-surface hover:bg-background'}`}><Paintbrush size={15} /> Restaurar</button>
+            </div>
+            <div role="group" aria-label="Tamaño del pincel" className="flex items-center gap-1">
+              {(Object.keys(BRUSH_SIZES) as BrushSize[]).map((size) => (
+                <button key={size} type="button" data-testid={`pincel-${size}`} aria-label={`Pincel ${size}`} aria-pressed={brush?.size === size} disabled={!brush} onClick={() => setBrush((before) => (before ? { ...before, size } : before))} className={`grid h-8 w-8 place-items-center rounded-full disabled:opacity-40 ${brush?.size === size ? 'ring-2 ring-primary' : ''}`}>
+                  <span className="rounded-full bg-on-surface-variant" style={{ width: { S: 6, M: 10, L: 16 }[size], height: { S: 6, M: 10, L: 16 }[size] }} />
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="mt-3 divide-y divide-outline/10">
-            <Toggle testId="interruptor-recorte" icon={<Scissors size={15} />} label="Quitar fondo automáticamente" on={Boolean(cutout) && state.cutout} onToggle={() => (cutout ? dispatch({ type: 'toggle-cutout' }) : photo && void cut(photo, CENTER))} />
+            <Toggle testId="interruptor-recorte" icon={<Scissors size={15} />} label="Quitar fondo automáticamente" on={Boolean(mask) && state.cutout} onToggle={() => (mask ? dispatch({ type: 'toggle-cutout' }) : photo && void cut(photo, CENTER))} />
             <Toggle testId="interruptor-borde" label="Borde blanco" on={state.outline} onToggle={() => dispatch({ type: 'toggle-outline' })} />
           </div>
 
@@ -277,7 +309,7 @@ export function CreateStickerWeb(props: Props) {
 
           <div className="mt-3 flex items-center gap-1 overflow-x-auto">
             {EMOJIS.map((emoji) => <button key={emoji} type="button" data-testid={`emoji-sticker-${emoji}`} aria-label={`Agregar ${emoji}`} onClick={() => { setPenOn(false); dispatch({ type: 'add-emoji', emoji }); }} className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-xl hover:bg-background">{emoji}</button>)}
-            <button type="button" data-testid="btn-lapiz-sticker" aria-label="Dibujar" aria-pressed={penOn} onClick={() => { dispatch({ type: 'select', id: null }); setPenOn((before) => !before); }} className={`ml-auto grid h-10 w-10 shrink-0 place-items-center rounded-lg ${penOn ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-background'}`}><Pencil size={18} /></button>
+            <button type="button" data-testid="btn-lapiz-sticker" aria-label="Dibujar" aria-pressed={penOn} onClick={() => { dispatch({ type: 'select', id: null }); setBrush(null); setPenOn((before) => !before); }} className={`ml-auto grid h-10 w-10 shrink-0 place-items-center rounded-lg ${penOn ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-background'}`}><Pencil size={18} /></button>
             <button type="button" data-testid="btn-deshacer-sticker" aria-label="Deshacer" onClick={() => dispatch({ type: 'undo' })} className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-on-surface-variant hover:bg-background"><Undo2 size={18} /></button>
           </div>
 

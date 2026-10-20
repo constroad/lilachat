@@ -70,7 +70,7 @@ export interface Message {
   seq: number;
   senderId: Types.ObjectId;
   clientKey: string;
-  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'event' | 'poll' | 'reminder' | 'system';
+  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'event' | 'poll' | 'reminder' | 'system' | 'sticker';
   body?: string;
   /**
    * La encuesta o el evento que este mensaje publica en el chat (José, 18/10).
@@ -205,7 +205,7 @@ const messageSchema = new Schema<Message>(
     clientKey: { type: String, required: true },
     kind: {
       type: String,
-      enum: ['text', 'image', 'video', 'audio', 'file', 'event', 'poll', 'reminder', 'system'],
+      enum: ['text', 'image', 'video', 'audio', 'file', 'event', 'poll', 'reminder', 'system', 'sticker'],
       default: 'text',
     },
     body: { type: String },

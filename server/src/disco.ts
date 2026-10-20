@@ -145,6 +145,9 @@ export class Disco {
       });
     } catch (error) {
       salida.destroy();
+      // Wait for the stream to close: if it was still opening, `rm` ran first and the
+      // file appeared afterwards, an orphan temp (flaky gate under load, 20/10).
+      if (!salida.closed) await new Promise<void>((resolve) => salida.once('close', () => resolve()));
       await rm(temporal, { force: true });
       throw error;
     }

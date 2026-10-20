@@ -22,10 +22,17 @@ describe('cabecerasDeSeguridad', () => {
     const csp = politicaDeContenido('lilachat.constroad.com');
 
     expect(csp).toContain("script-src 'self'");
-    expect(csp).not.toContain('unsafe-eval');
+    expect(csp).not.toContain("'unsafe-eval'");
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain('wss://lilachat.constroad.com');
+  });
+
+  it('el recorte de stickers de la web: wasm sí (no el eval de JS) y el modelo solo del almacenamiento de MediaPipe', () => {
+    const csp = politicaDeContenido('lilachat.constroad.com');
+
+    expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval'");
+    expect(csp).toMatch(/connect-src [^;]*https:\/\/storage\.googleapis\.com\/mediapipe-models\//);
   });
 
   it('un Host raro no se cuela en la política', () => {

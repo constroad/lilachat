@@ -4892,6 +4892,50 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 56. Auditoría de chats 1:1 y grupos (19/10/2026, 0.1.102)
+
+José, 19/10: «mando un mensaje, aparecen 2 checks; salgo y en la lista aparece
+un check y encima el círculo de no leído, siendo mío. Vuelvo a entrar y aparece
+un check». Y: «al subir una imagen se marca el porcentaje y se siente lento; en
+WhatsApp se muestra la foto y se sube por detrás». Auditoría de solo lectura
+(server ↔ app ↔ web) con evidencia; el informe completo quedó en el scratchpad
+de la sesión. Lo corregido:
+
+| Defecto | Causa | Arreglo |
+| --- | --- | --- |
+| 2 checks en el chat, 1 en la lista y 1 al volver | Solo el chat abierto escuchaba `receipt`; la lista guardaba el acuse del server y el chat partía de esa foto (parámetros de la ruta) | La lista aplica los acuses en vivo (`aplicarAcuseALista`, misma regla que `useAcuses`) y el chat toma su base de la lista viva (`useAcuseVivo` sobre `chatsGuardados`) |
+| Círculo de no leído en un mensaje propio | Al volver de la galería la lista se recarga ANTES de que llegue mi acuse; y el server marcaba lo propio después de repartir el mensaje | La recarga deja leído el chat abierto; MI acuse baja mis no leídos en la fila; el server marca lo propio ANTES de repartir (`leerLoPropio`) y avisa el acuse si responder leyó lo ajeno |
+| Mi línea de sistema («Fijaste un mensaje») me contaba como sin leer | `avisarEnElChat` y la línea de llamada no marcaban lo propio | `publicarAviso`: leída para quien actuó si estaba al día (sin push) |
+| Programados y auto-respuestas daban por leído lo ajeno (azul falso) | `marcarPropioLeido` sin condición | `soloSiAlDia`: solo avanza si ya estaba al día |
+| Sumar a alguien bajaba a 1 check todo el grupo | El nuevo no tenía acuse (cuenta 0 y manda el menor) | Al sumarlo, su acuse arranca en el último `seq` |
+| Con «Conexión permanente», leído con la pantalla apagada | `useAlAbrirElChat` acusaba sin mirar `AppState` | `hastaDondeLeer`: en segundo plano no se acusa; al volver, sí |
+| La vista previa no se enteraba de ediciones ni borrados; una foto borrada seguía «Foto» | Sin oyentes en la lista; `lastMessage` sin `deletedAt` | Oyentes `msg.edited`/`msg.deleted` en la app (la web relee); `deletedAt` en la lista; `resolveChatPreview({eliminado})` → «Se eliminó este mensaje» en cursiva y sin checks |
+| «Escribiendo…» se apagaba escribiendo un párrafo | `on:true` una vez por ráfaga; el que mira apaga a los 4–6 s | Se renueva cada 3 s (`debeAvisarEscribiendo`, shared); la web reinicia el apagado con cada `on` |
+| Web: mi línea de sistema quedaba sin leer con el chat abierto; volver a la pestaña no acusaba | Solo acusaba hasta el último ajeno, sin `visibilitychange` | `seqParaAcusar` (último confirmado) + acusa al volver |
+| Foto: burbuja tarde, de a una, «Enviando… %» dos veces, parpadeo al confirmar, y desaparecía con el socket caído | La burbuja esperaba la copia; cola secuencial; % en la foto y en una línea; la copia se borraba; se quitaba la pendiente antes del `msg.new` | Burbuja YA con la uri original (`preparando`), todas a la vez, foto nítida con anillo (`AnilloDeSubida`), copia local conservada en la sesión, y el mensaje confirmado de la respuesta (`mensajeSubido`) entra al chat antes de quitar la pendiente |
+| Reintento de una foto volvía a subirla a lila | El duplicado se detectaba después de subir | `mensajePropioPorClave` antes de subir; la respuesta trae el mensaje en forma de cliente |
+
+**E2E en el emulador** (server de QA local, usuarios QA y «Ana» por socket):
+checks gris → azul en vivo en la fila y al reentrar; foto sin red con anillo,
+sube sola al volver la red sin desaparecer y queda con ✓✓; «✓✓ Foto» sin
+círculo; borrado en vivo en la fila; «Fijaste un mensaje» sin círculo. QA en
+cero (usuarios, chats, mensajes, acuses) y los dispositivos de José en 20. La
+web quedó con tests, sin E2E en el navegador.
+
+**Compresión (José, 19/10: «sí, comprime»):** como WhatsApp, el lado largo a
+1600 px y JPEG al 70 % (`compresionDeFoto.ts`, puro con tests; `comprimirFoto.ts`
+con `expo-image-manipulator`, dependencia nueva, gratuita, del SDK de Expo). Se
+hace en la etapa «preparando» de la cola, con la burbuja ya visible; si falla,
+va la original. «HD» en la previsualización manda la original; un documento
+(«Archivo») va intacto aunque sea imagen; videos y GIF no se tocan. E2E: una
+foto de 4000×3000 (23,6 MB) llegó en 1600×1200 y 102 KB; con «HD», la original.
+
+**Pendiente de la auditoría:** «entregado» al reconectar sin push (server);
+divisor de no leídos que cuenta líneas de sistema; texto pendiente que sale
+antes que la foto pendiente; reenviar fotos; ticks en la fila de la web; las
+líneas de sistema AJENAS cuentan como no leídas (decisión de producto: WhatsApp
+no las cuenta); la web: burbuja inmediata y cola para fotos.
+
 ## 55. FL16 — tarjetas en vivo y editar el recordatorio del grupo (19/10/2026, 0.1.99)
 
 José, 19/10: «no se editan; creé el recordatorio grupal de tomar agua y no hay
@@ -5362,6 +5406,14 @@ lateral y eliminar el 1:1 (cierra el panel). QA en cero.
 **No es un defecto:** a otro admin no se le quita el rol (solo uno mismo deja de
 serlo; `puedeCambiarRol`). **Pendiente:** si OTRO cambia los roles, el panel
 abierto no se entera hasta reabrirlo (la lista no trae roles).
+
+### 54.15 W3c — agenda en la web (19/10/2026, en pausa)
+
+Diseños listos en Stitch (`w3c-web-tarjetas`, `w3c-web-agenda`,
+`w3c-web-recordatorio`). Primer paso hecho: la lógica pura de la agenda pasó de
+la app a `shared` para que la web use la misma (`encuestas`, `eventos`,
+`recordatorios`, `guardarRecordatorio`, `cuando`, `tarjetasVivas` y los tipos en
+`tiposDeAgenda`). En pausa: José priorizó la auditoría de chats, las fotos y E3/E4.
 
 ## 53. FL15 — barra como WhatsApp, borradores, recordatorios del grupo, novedades, mensajes largos (19/10/2026, 0.1.98)
 

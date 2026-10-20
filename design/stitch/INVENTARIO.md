@@ -49,3 +49,6 @@ Las capturas viven SOLO en la máquina (`design/stitch/`, en `.gitignore` desde 
 | `fm-app-seleccion.png` | Fijar mensaje · App: barra de selección en una línea con «⋮» y franja del fijado (`screens/2e7579183b1747c58001cbab5a657d4c`) |
 | `fm-app-duracion.png` | Fijar mensaje · App: hoja «¿Por cuánto tiempo?» (`screens/fb30791655af41a49c42cb45f4aaac10`) |
 | `fm-web-fijado.png` | Fijar mensaje · Web: franja del fijado y «Fijar» en el menú del mensaje (`screens/f124a74d40884544be1b635a06b2979b`) |
+| `w3c-web-tarjetas.png` | W3c · Web: encuesta, evento y recordatorio dentro del chat, menú «+» con Recordatorio (`screens/cb1d85b78c3746d696242142d7e8fd79`) |
+| `w3c-web-agenda.png` | W3c · Web: Agenda con pestañas, lista y detalle del evento (`screens/182ca796eec94754a84ad6d8f1454bf8`) |
+| `w3c-web-recordatorio.png` | W3c · Web: Nuevo recordatorio (para, cuándo, repetir, imagen) (`screens/4b02d609906645299c0649bdfbbe30c5`) |

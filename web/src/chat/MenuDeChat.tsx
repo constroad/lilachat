@@ -81,7 +81,7 @@ export function MenuDeChat({ chat, onAccion }: { chat: ChatSummary; onAccion: (c
 }
 
 /** Lo que no se deshace, dicho antes: qué pasa y qué no. */
-function ConfirmarAccionDeChat(props: { chat: ChatSummary; accion: AccionDelChat; onConfirmar: () => void; onCerrar: () => void }) {
+export function ConfirmarAccionDeChat(props: { chat: ChatSummary; accion: AccionDelChat; onConfirmar: () => void; onCerrar: () => void }) {
   const nombre = props.chat.name ?? props.chat.phone ?? 'esta conversación';
   const salir = props.accion === 'salir';
   const borrador = props.chat.kind === 'notas';

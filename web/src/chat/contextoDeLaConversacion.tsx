@@ -3,7 +3,7 @@ import type { DetalleDelChat } from './useDetalleDelChat';
 import type { ChatSummary, MensajeEnPantalla } from './types';
 
 /** Lo que se puede pedir sobre un mensaje desde su menú (W2). */
-export type AccionSobreMensaje = 'responder' | 'copiar' | 'reenviar' | 'editar' | 'info' | 'eliminar';
+export type AccionSobreMensaje = 'responder' | 'copiar' | 'reenviar' | 'editar' | 'info' | 'eliminar' | 'fijar' | 'desfijar';
 
 /**
  * Lo que las burbujas necesitan del chat abierto, sin pasarlo por cada nivel
@@ -21,6 +21,9 @@ export type ContextoDeLaConversacion = {
   onAccion: (mensaje: MensajeEnPantalla, accion: AccionSobreMensaje) => void;
   /** Abrir una foto en el visor del chat. */
   onVerFoto: (mensaje: MensajeEnPantalla) => void;
+  /** Fijar mensajes (19/10): en un grupo, solo los admins. */
+  puedeFijar: boolean;
+  fijados: ReadonlySet<number>;
 };
 
 export const ConversacionContext = createContext<ContextoDeLaConversacion | null>(null);

@@ -1,12 +1,12 @@
-import { memo } from 'react';
+import { memo, useContext } from 'react';
 import { AlertCircle, FileText, Lock } from 'lucide-react';
-import { colorDeAutor, DELIVERY_GLYPH, formatClock, primerEnlace, resolveDeliveryState } from '@lilachat/shared';
+import { colorDeAutor, DELIVERY_GLYPH, formatClock, primerEnlace, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
 import { TarjetaDeEnlace } from './TarjetaDeEnlace';
 import { NotaDeVoz } from './NotaDeVoz';
 import { useVistaPrevia } from './useVistaPrevia';
 import { MenuDelMensaje } from './MenuDelMensaje';
 import { TextoDelMensaje } from './TextoDelMensaje';
-import { useConversacion } from './contextoDeLaConversacion';
+import { ConversacionContext, useConversacion } from './contextoDeLaConversacion';
 import type { ChatSummary, MensajeEnPantalla } from './types';
 
 /** Las clases de color de autor, escritas enteras para que Tailwind las genere. */
@@ -32,9 +32,7 @@ type Props = {
  */
 export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
   const { mensaje, mio, agrupado, ultimoDelGrupo } = props;
-  if (mensaje.kind === 'system') {
-    return <p className="my-3 text-center text-[12px] text-on-surface-variant">{mensaje.body}</p>;
-  }
+  if (mensaje.kind === 'system') return <LineaDeSistema mensaje={mensaje} />;
   return (
     <div data-testid={`mensaje-${mensaje.clientKey}`} className={`group flex items-start gap-1 ${agrupado ? 'mt-1' : 'mt-3'} ${mio ? 'flex-row-reverse' : ''}`}>
       <div className={`flex max-w-[68%] min-w-0 flex-col ${mio ? 'items-end' : 'items-start'}`}>
@@ -151,4 +149,30 @@ function FalloDelEnvio({ mensaje, onReintentar, onDescartar }: Pick<Props, 'mens
       </button>
     </p>
   );
+}
+
+/**
+ * Una línea de aviso («Fijaste un mensaje», «Ana agregó a Beto»): la frase se
+ * arma con el MISMO motor que la app, con los nombres de quien mira y en
+ * segunda persona si lo hizo uno. El texto del server es solo el respaldo
+ * (decía «902049935 fijó un mensaje»).
+ */
+function LineaDeSistema({ mensaje }: { mensaje: MensajeEnPantalla }) {
+  const contexto = useContext(ConversacionContext);
+  const aviso = mensaje.system;
+  const nombre = (id: string | undefined, persona?: { phone?: string; name?: string }) =>
+    (id ? contexto?.nombres.get(id) : undefined) ?? persona?.name ?? persona?.phone;
+  const texto =
+    aviso && contexto
+      ? textoDeAviso({
+          quien: nombre(mensaje.senderId, aviso.quien) ?? 'Alguien',
+          esMio: mensaje.senderId === contexto.yo,
+          evento: aviso.evento,
+          aQuien: nombre(aviso.targetId, aviso.aQuien),
+          aMi: aviso.targetId === contexto.yo,
+          valor: aviso.valor,
+        }) || mensaje.body
+      : mensaje.body;
+  if (!texto) return null;
+  return <p className="my-3 text-center text-[12px] text-on-surface-variant">{texto}</p>;
 }

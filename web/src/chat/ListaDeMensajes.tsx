@@ -17,7 +17,14 @@ type Props = {
   onDescartar: (clientKey: string) => void;
   /** El último del otro que se vio con la pestaña al frente y abajo. */
   onLeido: (seq: number) => void;
+  /** Ir a un mensaje (el fijado, 19/10): `vez` cambia en cada pedido. */
+  salto?: { seq: number; vez: number } | null;
+  /** El mensaje pedido no está cargado. */
+  onNoEsta?: () => void;
 };
+
+/** Cuánto queda resaltado el mensaje al que se saltó. */
+const RESALTADO_MS = 1500;
 
 /** Cerca del borde de arriba se piden los anteriores, antes de tocarlo. */
 const UMBRAL_DE_ANTERIORES_PX = 400;
@@ -56,6 +63,7 @@ export function ListaDeMensajes(props: Props) {
   useSeguirElFinal({ pegado, bajar, alto: virtualizador.getTotalSize(), cantidad: filas.length, chatId: chat.id });
   useSeguirAlAchicarse(contenedor, pegado, bajar);
   useAcuseDeLeido({ mensajes, yo, pegado, lejos, onLeido: props.onLeido });
+  const resaltado = useSaltoAMensaje({ salto: props.salto, filas, pegado, setLejos, scrollToIndex: (indice) => virtualizador.scrollToIndex(indice, { align: 'center' }), onNoEsta: props.onNoEsta });
 
   const alScrollear = () => {
     const elemento = contenedor.current;
@@ -84,7 +92,14 @@ export function ListaDeMensajes(props: Props) {
           {virtualizador.getVirtualItems().map((item) => {
             const fila = filas[item.index]!;
             return (
-              <div key={item.key} data-index={item.index} ref={virtualizador.measureElement} className="absolute left-0 top-0 w-full" style={{ transform: `translateY(${item.start}px)` }}>
+              <div
+                key={item.key}
+                data-index={item.index}
+                ref={virtualizador.measureElement}
+                data-resaltado={fila.mensaje.seq === resaltado || undefined}
+                className="absolute left-0 top-0 w-full rounded-lg transition-colors duration-500 data-[resaltado]:bg-primary/10"
+                style={{ transform: `translateY(${item.start}px)` }}
+              >
                 {fila.nuevoDia ? <ChipDeDia at={fila.mensaje.at} /> : null}
                 <BurbujaDeMensaje
                   mensaje={fila.mensaje}
@@ -183,4 +198,36 @@ function useAcuseDeLeido(p: { mensajes: MensajeEnPantalla[]; yo: string; pegado:
     ultimoAvisado.current = ultimoAjeno.seq;
     onLeido(ultimoAjeno.seq);
   }, [mensajes, yo, pegado, lejos, onLeido]);
+}
+
+/**
+ * Ir a un mensaje (el fijado, 19/10): la lista deja de seguir el final, lo
+ * centra y lo resalta un momento. Si no está cargado, se dice.
+ */
+function useSaltoAMensaje(p: {
+  salto?: { seq: number; vez: number } | null;
+  filas: { mensaje: MensajeEnPantalla }[];
+  pegado: React.MutableRefObject<boolean>;
+  setLejos: (lejos: boolean) => void;
+  scrollToIndex: (indice: number) => void;
+  onNoEsta?: () => void;
+}): number | null {
+  const [resaltado, setResaltado] = useState<number | null>(null);
+  // Lo demás en una ref: el efecto corre por cada pedido (`vez`), no por cada render.
+  const datos = useRef(p);
+  datos.current = p;
+  const vez = p.salto?.vez;
+  useEffect(() => {
+    const { salto, filas, pegado, setLejos, scrollToIndex, onNoEsta } = datos.current;
+    if (!salto) return;
+    const indice = filas.findIndex((fila) => fila.mensaje.seq === salto.seq && !fila.mensaje.estado);
+    if (indice < 0) return onNoEsta?.();
+    pegado.current = false;
+    setLejos(true);
+    scrollToIndex(indice);
+    setResaltado(salto.seq);
+    const reloj = setTimeout(() => setResaltado(null), RESALTADO_MS);
+    return () => clearTimeout(reloj);
+  }, [vez]);
+  return resaltado;
 }

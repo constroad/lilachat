@@ -1,5 +1,5 @@
 import { BellOff, Pin } from 'lucide-react';
-import { formatChatTimestamp, resolveChatPreview } from '@lilachat/shared';
+import { formatChatTimestamp, resolveChatPreview, textoDeAviso } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { MenuDeChat } from './MenuDeChat';
 import type { AccionDelChat } from './menuDelChat';
@@ -10,9 +10,10 @@ import type { ChatSummary } from './types';
  * silenciado y lo sin leer. La flecha del menú va APARTE del botón de la fila
  * (un botón dentro de otro no es HTML válido y el lector de pantalla lo lee mal).
  */
-export function FilaDeChat(props: { chat: ChatSummary; seleccionado: boolean; onSelect: () => void; onAccion: (chat: ChatSummary, accion: AccionDelChat) => void }) {
+export function FilaDeChat(props: { chat: ChatSummary; yo?: string; seleccionado: boolean; onSelect: () => void; onAccion: (chat: ChatSummary, accion: AccionDelChat) => void }) {
   const { chat } = props;
-  const preview = resolveChatPreview({ typing: Boolean(chat.typingName), lastBody: chat.lastMessage?.body, lastKind: chat.lastMessage?.kind });
+  const aviso = props.yo ? textoDelAviso(chat, props.yo) : '';
+  const preview = resolveChatPreview({ typing: Boolean(chat.typingName), lastBody: aviso || chat.lastMessage?.body, lastKind: aviso ? 'text' : chat.lastMessage?.kind });
   return (
     <div className="group relative">
       <button
@@ -59,4 +60,23 @@ function MarcaDeSinLeer({ chat }: { chat: ChatSummary }) {
   }
   if (!chat.markedUnread) return null;
   return <span data-testid={`marca-no-leido-${chat.id}`} aria-label="Marcado como no leído" className="h-3 w-3 shrink-0 rounded-full bg-primary" />;
+}
+
+/**
+ * La vista previa de un aviso («Fijaste un mensaje»), con el MISMO motor que
+ * la conversación: el texto del server decía «902049935 fijó un mensaje».
+ */
+function textoDelAviso(chat: ChatSummary, yo: string): string {
+  const ultimo = chat.lastMessage;
+  if (ultimo?.kind !== 'system' || !ultimo.system) return '';
+  const { system } = ultimo;
+  const quien = ultimo.senderId !== yo && chat.kind === 'direct' ? chat.name : system.quien?.name ?? system.quien?.phone;
+  return textoDeAviso({
+    quien: quien ?? 'Alguien',
+    esMio: ultimo.senderId === yo,
+    evento: system.evento,
+    aQuien: system.aQuien?.name ?? system.aQuien?.phone,
+    aMi: system.targetId === yo,
+    valor: system.valor,
+  });
 }

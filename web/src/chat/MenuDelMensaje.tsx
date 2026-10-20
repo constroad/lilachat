@@ -1,5 +1,5 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { ChevronDown, Copy, CornerUpLeft, Forward, Info, Pencil, Trash2 } from 'lucide-react';
+import { ChevronDown, Copy, CornerUpLeft, Forward, Info, Pencil, Pin, PinOff, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { accionesDeMensaje, puedeEditar } from '@lilachat/shared';
 import { useConversacion, type AccionSobreMensaje } from './contextoDeLaConversacion';
@@ -12,7 +12,7 @@ import type { MensajeEnPantalla } from './types';
  * Lo pendiente o fallido no tiene menú: todavía no existe en el server.
  */
 export function MenuDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio: boolean }) {
-  const { chat, yo, onAccion } = useConversacion();
+  const { chat, yo, onAccion, puedeFijar, fijados } = useConversacion();
   if (mensaje.estado) return null;
   const secreto = Boolean(chat.encrypted);
   const acciones = accionesDeMensaje({
@@ -22,6 +22,8 @@ export function MenuDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; m
     esMedia: Boolean(mensaje.media),
     chatSecreto: secreto,
     editable: puedeEditar({ yo, autor: mensaje.senderId, kind: mensaje.kind, eliminado: Boolean(mensaje.deletedAt), secreto, enviadoEn: mensaje.at, ahora: Date.now() }).permitido,
+    puedeFijar,
+    fijado: fijados.has(mensaje.seq),
   });
   const item = (accion: AccionSobreMensaje, icono: ReactNode, etiqueta: string, peligro = false) => (
     <DropdownMenu.Item
@@ -59,6 +61,8 @@ export function MenuDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; m
           {acciones.responder ? item('responder', <CornerUpLeft size={16} />, 'Responder') : null}
           {acciones.copiar ? item('copiar', <Copy size={16} />, 'Copiar') : null}
           {acciones.reenviar ? item('reenviar', <Forward size={16} />, 'Reenviar') : null}
+          {acciones.fijar === 'fijar' ? item('fijar', <Pin size={16} />, 'Fijar') : null}
+          {acciones.fijar === 'desfijar' ? item('desfijar', <PinOff size={16} />, 'Desfijar') : null}
           {acciones.editar ? item('editar', <Pencil size={16} />, 'Editar') : null}
           {acciones.info ? item('info', <Info size={16} />, 'Info') : null}
           {acciones.eliminarParaMi ? item('eliminar', <Trash2 size={16} />, 'Eliminar', true) : null}

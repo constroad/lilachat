@@ -33,6 +33,7 @@ export function ChatList({
   onAgenda,
   onNewBorrador,
   onAccion,
+  yo,
 }: {
   chats: ChatSummary[];
   selectedChatId: string | null;
@@ -47,6 +48,8 @@ export function ChatList({
   onAgenda: () => void;
   onNewBorrador: () => void;
   onAccion: (chat: ChatSummary, accion: AccionDelChat) => void;
+  /** Mi id: los avisos de la vista previa en segunda persona («Fijaste…»). */
+  yo?: string;
 }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [filtro, setFiltro] = useState<FiltroDeChats>('todos');
@@ -167,7 +170,7 @@ export function ChatList({
           <ListaVacia query={query} filtro={filtro} verArchivados={verArchivados} hayChats={chats.length > 0} onNewChat={onNewChat} />
         ) : (
           lista.visibles.map((chat) => (
-            <FilaDeChat key={chat.id} chat={chat} seleccionado={chat.id === selectedChatId} onSelect={() => onSelect(chat)} onAccion={onAccion} />
+            <FilaDeChat key={chat.id} chat={chat} yo={yo} seleccionado={chat.id === selectedChatId} onSelect={() => onSelect(chat)} onAccion={onAccion} />
           ))
         )}
       </div>

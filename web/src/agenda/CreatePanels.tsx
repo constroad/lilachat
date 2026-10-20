@@ -27,7 +27,7 @@ import { FieldError, Overlay, PrimaryButton } from '../ui/Overlay';
 export type ChatDestino = { id: string; name?: string | null };
 
 /** Los contactos, pedidos una vez por apertura del modal. */
-function useContactos(jwt: string, activo: boolean) {
+export function useContactos(jwt: string, activo: boolean) {
   const [groups, setGroups] = useState<ContactGroup[] | null>(null);
 
   useEffect(() => {

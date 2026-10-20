@@ -1,4 +1,11 @@
-import { useCallback, useMemo, useState, type ComponentProps } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
+import { PanelDeInfo } from './info/PanelDeInfo';
+import type { AccionDelChat } from './menuDelChat';
+import { fijadosVigentes, puedeFijarEnElChat } from '@lilachat/shared';
+import { DialogoFijar } from './DialogoFijar';
+import { FranjaDeFijados } from './FranjaDeFijados';
+import { useFijarEnLaWeb } from './useFijarEnLaWeb';
+import type { AccionSobreMensaje } from './contextoDeLaConversacion';
 import { EnviarArchivos, medidasDeImagen } from './EnviarArchivos';
 import { VisorDeFotos } from './VisorDeFotos';
 import type { MensajeEnPantalla } from './types';
@@ -19,16 +26,25 @@ type PropsDeConversacion = ComponentProps<typeof Conversation>;
  * de los miembros para autores y menciones. Así `Shell` no crece.
  */
 export function ConversacionConAcciones(
-  props: Omit<PropsDeConversacion, 'contexto' | 'onCancelarContexto' | 'onSend' | 'mencionables' | 'jwtParaEnlaces' | 'onElegirArchivos' | 'onNotaDeVoz' | 'onEscribiendo'> & {
+  props: Omit<PropsDeConversacion, 'contexto' | 'onCancelarContexto' | 'onSend' | 'mencionables' | 'jwtParaEnlaces' | 'onElegirArchivos' | 'onNotaDeVoz' | 'onEscribiendo' | 'franja' | 'salto' | 'onNoEsta'> & {
     jwt: string;
     base: BaseLocal | null;
     sync: AccionesDeSync;
     chats: ChatSummary[];
     onAviso: (texto: string) => void;
+    /** Los fijados viajan con la lista: tras fijar o desfijar se relee. */
+    onRecargarChats: () => void;
+    /** Silenciar, salir o eliminar desde «Info.» (W3b): las mismas acciones de la lista. */
+    onAccionDeChat: (chat: ChatSummary, accion: AccionDelChat) => void;
   }
 ) {
   const { chat, mensajes, yo, sync, onAviso } = props;
-  const detalle = useDetalleDelChat(chat.id, props.jwt, props.base);
+  // El detalle se relee si cambian los miembros, el nombre o la foto (llega con la
+  // lista), o tras editar algo desde «Info.» (W3b).
+  const [versionDelDetalle, setVersionDelDetalle] = useState(0);
+  const detalle = useDetalleDelChat(chat.id, props.jwt, props.base, `${versionDelDetalle}|${chat.memberIds.join(',')}|${chat.name ?? ''}|${chat.avatarUrl ?? ''}`);
+  const [infoAbierta, setInfoAbierta] = useState(false);
+  useEffect(() => setInfoAbierta(false), [chat.id]);
   const nombres = useMemo(() => {
     const mapa = new Map<string, string>();
     for (const miembro of detalle?.miembros.values() ?? []) mapa.set(miembro.id, miembro.nombre);
@@ -56,9 +72,23 @@ export function ConversacionConAcciones(
     onAviso('');
   };
   const citado = useCallback((seq: number) => mensajes?.find((uno) => uno.seq === seq), [mensajes]);
+  // Fijar mensajes (19/10): en un grupo, solo los admins.
+  const puedeFijar = puedeFijarEnElChat({ kind: chat.kind, esAdmin: detalle?.soyAdmin ?? false });
+  const fijados = useMemo(() => fijadosVigentes(chat.fijados, Date.now()), [chat.fijados]);
+  const seqsFijados = useMemo(() => new Set(fijados.map((uno) => uno.seq)), [fijados]);
+  const fijar = useFijarEnLaWeb({ chatId: chat.id, jwt: props.jwt, onAviso, onCambio: props.onRecargarChats });
+  const [salto, setSalto] = useState<{ seq: number; vez: number } | null>(null);
+  const onAccion = useCallback(
+    (mensaje: MensajeEnPantalla, accion: AccionSobreMensaje) => {
+      if (accion === 'fijar') return fijar.pedir(mensaje.seq);
+      if (accion === 'desfijar') return void fijar.desfijar(mensaje.seq);
+      acciones.onAccion(mensaje, accion);
+    },
+    [fijar, acciones]
+  );
   const contexto = useMemo<ContextoDeLaConversacion>(
-    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, citado, onAccion: acciones.onAccion, onVerFoto }),
-    [yo, props.jwt, chat, detalle, nombres, citado, acciones.onAccion, onVerFoto]
+    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, citado, onAccion, onVerFoto, puedeFijar, fijados: seqsFijados }),
+    [yo, props.jwt, chat, detalle, nombres, citado, onAccion, onVerFoto, puedeFijar, seqsFijados]
   );
 
   return (
@@ -79,7 +109,38 @@ export function ConversacionConAcciones(
           })
         }
         onSend={(texto, menciones) => void acciones.enviar(texto, menciones)}
+        franja={
+          <FranjaDeFijados
+            fijados={fijados}
+            nombreDe={(id) => (id === yo ? 'Tú' : nombres.get(id) ?? 'Alguien')}
+            textoLocal={(seq) => citado(seq)?.body}
+            puedeDesfijar={puedeFijar}
+            onIr={(seq) => setSalto({ seq, vez: Date.now() })}
+            onDesfijar={(seq) => void fijar.desfijar(seq)}
+          />
+        }
+        salto={salto}
+        onNoEsta={() => onAviso('Ese mensaje está más arriba: sube para cargarlo.')}
+        onAbrirInfo={() => setInfoAbierta(true)}
       />
+      {infoAbierta ? (
+        <PanelDeInfo
+          chat={chat}
+          detalle={detalle}
+          yo={yo}
+          jwt={props.jwt}
+          base={props.base}
+          onCerrar={() => setInfoAbierta(false)}
+          onAviso={onAviso}
+          onCambio={() => {
+            setVersionDelDetalle((anterior) => anterior + 1);
+            props.onRecargarChats();
+          }}
+          onAccionDeChat={props.onAccionDeChat}
+          onVerFoto={onVerFoto}
+        />
+      ) : null}
+      {fijar.pidiendo !== null ? <DialogoFijar onFijar={(duracion) => void fijar.fijar(duracion)} onCerrar={fijar.cancelar} /> : null}
       {acciones.eliminando ? (
         <DialogoEliminar
           mensaje={acciones.eliminando}

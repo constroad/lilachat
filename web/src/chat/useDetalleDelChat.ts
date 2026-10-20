@@ -3,11 +3,22 @@ import { api } from '../api';
 import type { BaseLocal } from '../local/baseLocal';
 
 /** Un miembro como lo pinta la web: el nombre ya resuelto. */
-export type MiembroDelChat = { id: string; nombre: string; foto?: string; rol: 'admin' | 'member'; esYo: boolean };
-export type DetalleDelChat = { miembros: Map<string, MiembroDelChat>; soyAdmin: boolean; secreto: boolean };
+export type MiembroDelChat = { id: string; nombre: string; foto?: string; telefono?: string; rol: 'admin' | 'member'; esYo: boolean };
+export type DetalleDelChat = {
+  miembros: Map<string, MiembroDelChat>;
+  soyAdmin: boolean;
+  secreto: boolean;
+  /** Para el panel de info (W3b): MI silenciado, la foto y el nombre propio del chat. */
+  silenciado: boolean;
+  foto?: string;
+  nombre?: string;
+};
 
 export type Respuesta = {
   encrypted?: boolean;
+  muted?: boolean;
+  avatarUrl?: string;
+  name?: string;
   members: { id: string; name: string | null; phone: string | null; avatarUrl?: string; role?: 'admin' | 'member'; esYo?: boolean }[];
 };
 
@@ -22,11 +33,19 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
       // «Tú» como en la app; sin nombre, el teléfono; sin nada, «Alguien».
       nombre: uno.esYo ? 'Tú' : uno.name ?? uno.phone ?? 'Alguien',
       foto: uno.avatarUrl,
+      telefono: uno.phone ?? undefined,
       rol: uno.role ?? 'member',
       esYo: uno.esYo === true,
     });
   }
-  return { miembros, soyAdmin: respuesta.members.some((uno) => uno.esYo && uno.role === 'admin'), secreto: respuesta.encrypted === true };
+  return {
+    miembros,
+    soyAdmin: respuesta.members.some((uno) => uno.esYo && uno.role === 'admin'),
+    secreto: respuesta.encrypted === true,
+    silenciado: respuesta.muted === true,
+    foto: respuesta.avatarUrl,
+    nombre: respuesta.name,
+  };
 }
 
 const claveGuardada = (chatId: string) => `detalle:${chatId}`;
@@ -36,7 +55,7 @@ const claveGuardada = (chatId: string) => `detalle:${chatId}`;
  * autor en los grupos, las menciones y la «Info». Se guardan en la base local
  * (W4): sin red, los autores siguen con su nombre y no «Alguien».
  */
-export function useDetalleDelChat(chatId: string | null, jwt: string, base: BaseLocal | null, version = 0): DetalleDelChat | null {
+export function useDetalleDelChat(chatId: string | null, jwt: string, base: BaseLocal | null, version: number | string = 0): DetalleDelChat | null {
   const [detalle, setDetalle] = useState<DetalleDelChat | null>(() => (chatId ? vistos.get(chatId) ?? null : null));
 
   useEffect(() => {

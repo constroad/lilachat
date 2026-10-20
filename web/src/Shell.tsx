@@ -148,6 +148,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
           onNewGroup={() => setCreando({ tipo: 'chat', kind: 'group' })}
           onAgenda={() => setCreando({ tipo: 'agenda' })}
           onNewBorrador={() => setCreando({ tipo: 'borrador' })}
+          yo={yo}
           onAccion={(chat, accion) => void accionesSobreChats.aplicar(chat, accion)}
         />
       )}
@@ -162,6 +163,8 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
           sync={sync}
           chats={chatsParaReenviar}
           onAviso={setAviso}
+          onRecargarChats={() => void sync.cargarChats()}
+          onAccionDeChat={(chat, accion) => void accionesSobreChats.aplicar(chat, accion)}
           typingName={selected.typingName ?? null}
           onBack={() => abrirChat(null)}
           showBack={panel === 'conversation'}

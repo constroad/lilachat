@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NotebookPen, Users } from 'lucide-react';
 import type { ChatSummary } from '../chat/types';
 
@@ -22,6 +23,9 @@ export function Avatar({
   foto?: string;
 }) {
   const initial = (name ?? '?').trim().slice(0, 1).toUpperCase() || '?';
+  // Una foto que no carga (enlace roto, bloqueada) cae a la inicial: un círculo vacío no dice quién es.
+  const [fallo, setFallo] = useState<string | null>(null);
+  const conFoto = Boolean(foto) && fallo !== foto;
 
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
@@ -29,8 +33,8 @@ export function Avatar({
         className="flex h-full w-full items-center justify-center rounded-full bg-primary text-on-primary"
         style={{ fontSize: size * 0.4 }}
       >
-        {foto ? (
-          <img src={foto} alt="" className="h-full w-full rounded-full object-cover" loading="lazy" />
+        {conFoto ? (
+          <img src={foto} alt="" className="h-full w-full rounded-full object-cover" loading="lazy" onError={() => setFallo(foto ?? null)} />
         ) : kind === 'group' ? (
           <Users size={size * 0.5} />
         ) : kind === 'notas' ? (

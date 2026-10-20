@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ArrowLeft, Phone, Search, Video } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import type { MencionEnMensaje } from '@lilachat/shared';
@@ -43,6 +43,13 @@ export function Conversation(props: {
   onCreateEvent: () => void;
   onCreatePoll: () => void;
   onElegirArchivos: (files: File[]) => void;
+  /** La franja del mensaje fijado (19/10), bajo la cabecera. */
+  franja?: ReactNode;
+  /** Ir a un mensaje (desde la franja). */
+  salto?: { seq: number; vez: number } | null;
+  onNoEsta?: () => void;
+  /** Abrir «Info.» del chat (W3b) al tocar su nombre o su foto. */
+  onAbrirInfo?: () => void;
 }) {
   const { chat } = props;
   const [soltando, setSoltando] = useState(false);
@@ -70,7 +77,8 @@ export function Conversation(props: {
           Suelta para enviar
         </div>
       ) : null}
-      <CabeceraDeLaConversacion chat={chat} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} />
+      <CabeceraDeLaConversacion chat={chat} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} />
+      {props.franja}
       {props.mensajes === null ? (
         <EsqueletoDeMensajes />
       ) : props.mensajes.length === 0 ? (
@@ -87,6 +95,8 @@ export function Conversation(props: {
           onReintentar={props.onReintentar}
           onDescartar={props.onDescartar}
           onLeido={props.onLeido}
+          salto={props.salto}
+          onNoEsta={props.onNoEsta}
         />
       )}
       {chat.encrypted ? (
@@ -112,7 +122,7 @@ export function Conversation(props: {
   );
 }
 
-function CabeceraDeLaConversacion(props: { chat: ChatSummary; typingName: string | null; showBack: boolean; onBack: () => void }) {
+function CabeceraDeLaConversacion(props: { chat: ChatSummary; typingName: string | null; showBack: boolean; onBack: () => void; onAbrirInfo?: () => void }) {
   const { chat, typingName } = props;
   const nombre = chat.name ?? chat.phone ?? 'Conversación';
   return (
@@ -122,6 +132,8 @@ function CabeceraDeLaConversacion(props: { chat: ChatSummary; typingName: string
           <ArrowLeft size={20} />
         </button>
       ) : null}
+      {/* Nombre y foto abren «Info.» (W3b), como en WhatsApp Web. */}
+      <button type="button" data-testid="btn-info-del-chat" aria-label={`Info. de ${nombre}`} onClick={props.onAbrirInfo} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left">
       <Avatar name={nombre} kind={chat.kind} online={chat.online} foto={chat.avatarUrl} />
       <div className="min-w-0 flex-1">
         <h2 className="truncate text-base font-bold">{nombre}</h2>
@@ -131,6 +143,7 @@ function CabeceraDeLaConversacion(props: { chat: ChatSummary; typingName: string
           {typingName ? (chat.kind === 'group' ? `${typingName} está escribiendo…` : 'Escribiendo…') : chat.kind === 'notas' ? 'Solo tú lo ves' : chat.online ? 'En línea' : ' '}
         </p>
       </div>
+      </button>
       <div className="hidden items-center gap-1 text-on-surface-variant/40 sm:flex">
         <span className="grid h-9 w-9 place-items-center" title="Videollamada (próximamente)">
           <Video size={18} />

@@ -1,4 +1,4 @@
-import type { MencionEnMensaje, OutboxItem } from '@lilachat/shared';
+import type { MencionEnMensaje, OutboxItem, VistaDelFijado } from '@lilachat/shared';
 
 /**
  * Las formas que devuelve el server, copiadas de `server/src/listaDeChats.ts`
@@ -28,6 +28,8 @@ export type ChatSummary = {
     kind?: string;
     senderId: string;
     at: string;
+    /** Un aviso: la lista arma la frase como la conversación (W3b). */
+    system?: ChatMessage['system'];
   } | null;
   othersReadSeq: number;
   othersDeliveredSeq: number;
@@ -37,9 +39,14 @@ export type ChatSummary = {
   pinned?: boolean;
   archived?: boolean;
   markedUnread?: boolean;
+  /** Mensajes fijados arriba del chat (19/10), el más reciente primero. */
+  fijados?: FijadoEnLista[];
   online?: boolean;
   typingName?: string | null;
 };
+
+/** Un fijado como lo manda la lista (`server/src/mensajesFijados.ts`). */
+export type FijadoEnLista = { seq: number; por: string; en: string; hasta: string; vista: VistaDelFijado };
 
 export type RefDeMensaje = { tipo: 'encuesta' | 'evento' | 'recordatorio'; id: string };
 
@@ -67,7 +74,8 @@ export type ChatMessage = {
     height?: number;
     onda?: number[];
   };
-  system?: { evento: string; valor?: string };
+  /** Un aviso del server (W3/19-10): la frase se arma acá, con los nombres de quien mira. */
+  system?: { evento: string; valor?: string; targetId?: string; quien?: { phone?: string; name?: string }; aQuien?: { phone?: string; name?: string } };
   deletedAt?: string;
   replyToSeq?: number;
   editedAt?: string;

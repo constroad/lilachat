@@ -174,3 +174,17 @@ describe('ChatList — confirmar un borrador', () => {
     expect(dialogo).not.toHaveTextContent('otra persona');
   });
 });
+
+describe('ChatList — vista previa de avisos (W3b)', () => {
+  it('«Fijaste un mensaje» en vez del teléfono que manda el server', () => {
+    const aviso = chat({ id: 'a1', kind: 'direct', name: 'Ana', lastMessage: { seq: 5, kind: 'system', body: '902049935 fijó un mensaje', senderId: 'yo', at: new Date().toISOString(), system: { evento: 'fijo', quien: { phone: '902049935' } } } });
+    render(<ChatList {...base} chats={[aviso]} yo="yo" />);
+    expect(screen.getByText('Fijaste un mensaje')).toBeInTheDocument();
+  });
+
+  it('si lo hizo la otra persona de un 1:1, con el nombre del chat', () => {
+    const aviso = chat({ id: 'a2', kind: 'direct', name: 'Ana', lastMessage: { seq: 5, kind: 'system', body: '900000088 fijó un mensaje', senderId: 'ana', at: new Date().toISOString(), system: { evento: 'fijo', quien: { phone: '900000088' } } } });
+    render(<ChatList {...base} chats={[aviso]} yo="yo" />);
+    expect(screen.getByText('Ana fijó un mensaje')).toBeInTheDocument();
+  });
+});

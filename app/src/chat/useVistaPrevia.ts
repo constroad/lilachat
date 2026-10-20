@@ -1,10 +1,33 @@
 import { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { VistaPreviaDeEnlace } from '@lilachat/shared';
 import { pedirVistaPrevia } from '../api/client';
+import { rememberPreview, type PreviewEntry } from './linkPreviewCache';
 
 /** Lo último que se supo de cada enlace: la celda reciclada no vuelve a pedir. `null` = no tiene. */
 const vistas = new Map<string, VistaPreviaDeEnlace | null>();
 const enCamino = new Map<string, Promise<VistaPreviaDeEnlace | null>>();
+const STORED_PREVIEWS_KEY = 'lilachat.vistasPrevias';
+let storedEntries: PreviewEntry[] = [];
+
+/**
+ * The cards already seen survive a restart (E2E, 20/10: on the first open after
+ * a restart every card was born at 0 dp and pushed the chat when it arrived).
+ * Loaded once, at import, before any chat opens.
+ */
+const hydration = AsyncStorage.getItem(STORED_PREVIEWS_KEY)
+  .then((raw) => {
+    storedEntries = raw ? (JSON.parse(raw) as PreviewEntry[]) : [];
+    for (const [url, preview] of storedEntries) if (!vistas.has(url)) vistas.set(url, preview);
+  })
+  .catch(() => {
+    storedEntries = [];
+  });
+
+function storePreview(url: string, preview: VistaPreviaDeEnlace | null) {
+  storedEntries = rememberPreview(storedEntries, url, preview);
+  AsyncStorage.setItem(STORED_PREVIEWS_KEY, JSON.stringify(storedEntries)).catch(() => undefined);
+}
 
 function buscar(url: string, jwt: string): Promise<VistaPreviaDeEnlace | null> {
   const yaVa = enCamino.get(url);
@@ -12,7 +35,10 @@ function buscar(url: string, jwt: string): Promise<VistaPreviaDeEnlace | null> {
   const viaje = pedirVistaPrevia(url, jwt)
     .then((respuesta) => {
       // Sin red no se recuerda nada: se vuelve a probar la próxima vez.
-      if (respuesta.ok) vistas.set(url, respuesta.data.vistaPrevia);
+      if (respuesta.ok) {
+        vistas.set(url, respuesta.data.vistaPrevia);
+        storePreview(url, respuesta.data.vistaPrevia);
+      }
       return respuesta.ok ? respuesta.data.vistaPrevia : null;
     })
     .finally(() => enCamino.delete(url));
@@ -32,7 +58,9 @@ export function useVistaPrevia(url: string | null, jwt: string | undefined): Vis
     if (vistas.has(url)) return setVista(vistas.get(url));
     setVista(undefined);
     let vigente = true;
-    void buscar(url, jwt).then((encontrada) => vigente && setVista(encontrada));
+    void hydration
+      .then(() => (vistas.has(url) ? vistas.get(url)! : buscar(url, jwt)))
+      .then((encontrada) => vigente && setVista(encontrada));
     return () => {
       vigente = false;
     };

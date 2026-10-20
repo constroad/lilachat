@@ -176,7 +176,7 @@ export function ChatScreen({
     [send, cancelarRespuesta]
   );
   const alAdjuntar = useCallback(() => setAttachOpen(true), []);
-  const { fotosElegidas, cerrarFotos, alEnviarFotos, alCamara, alNotaDeVoz, pickFromCamera, pickFromGallery, pickFile, camara } =
+  const { fotosElegidas, cerrarFotos, alEnviarFotos, alCamara, alNotaDeVoz, pickFromGallery, pickMedia, pickFile, camara } =
     useAdjuntosDelChat({ chatId, onError: setMediaError });
 
   const nombreVisible = infoPropia.name ?? chatName;
@@ -366,7 +366,7 @@ export function ChatScreen({
   // Lo que la barra sube MENOS que el teclado: su margen de navegación queda tapado (20/10, sin salto de layout).
   const sinSubir = margenes.pie - MARGEN_CON_TECLADO;
 
-  useAlAbrirElChat({ hayContenido: rows.length > 0, irAlInicio: alAbrir, mensajes: messages, lastSeqInicial, markRead });
+  useAlAbrirElChat({ hayContenido: rows.length > 0, mensajes: messages, lastSeqInicial, markRead });
 
   return (
     <View style={{ flex: 1, backgroundColor: colores['fondo-chat'] }} testID="pantalla-chat">
@@ -504,7 +504,7 @@ export function ChatScreen({
       ) : (
         <Composer
           ref={composerRef}
-          chatId={chatId}
+          chatId={chatId} nombreDelChat={nombreVisible}
           respondiendoA={respuesta.respondiendoA}
           onCancelarRespuesta={cancelarRespuesta}
           editando={respuesta.editando}
@@ -551,7 +551,7 @@ export function ChatScreen({
       <AttachSheet
         visible={attachOpen}
         onClose={() => setAttachOpen(false)}
-        onPickCamera={() => void pickFromCamera()}
+        onPickMedia={pickMedia}
         onPickGallery={() => void pickFromGallery()}
         onCreateEvent={() => setCreando('event')}
         onCreatePoll={() => setCreando('poll')}

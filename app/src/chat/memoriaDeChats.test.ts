@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MemoriaDeChats } from './memoriaDeChats';
+import { addMissingBySeq, MemoriaDeChats } from './memoriaDeChats';
 
 /**
  * FL12 (§49 #2): el chat entraba VACÍO deslizándose y las burbujas llegaban
@@ -54,5 +54,70 @@ describe('MemoriaDeChats', () => {
     memoria.recordar('a', [m(1)]);
     memoria.olvidarTodo();
     expect(memoria.de('a')).toBeNull();
+  });
+});
+
+/**
+ * Scroll on re-entering a chat (José, 20/10: «the scroll keeps going and
+ * flickers»): the memory copy was older than the disk — messages that arrived
+ * with the chat closed went to disk only — and the server check appended them
+ * after the list was placed. The memory has to follow every disk write.
+ */
+describe('MemoriaDeChats keeps up with the disk', () => {
+  const message = (seq: number, body = `m${seq}`) => ({ seq, body });
+
+  it('add merges by seq, keeps the limit and the newest', () => {
+    const memory = new MemoriaDeChats<{ seq: number; body: string }>({ chats: 3, mensajes: 3 });
+    memory.recordar('a', [message(1), message(2)]);
+    memory.add('a', [message(3), message(4), message(2, 'edited')]);
+    expect(memory.de('a')).toEqual([message(2, 'edited'), message(3), message(4)]);
+  });
+
+  it('add does not create a chat (useChat would start with one row and skip the disk)', () => {
+    const memory = new MemoriaDeChats<{ seq: number; body: string }>({ chats: 3, mensajes: 3 });
+    memory.add('b', [message(1)]);
+    expect(memory.de('b')).toBeNull();
+  });
+
+  it('add does not refresh the least-recently-used order', () => {
+    const memory = new MemoriaDeChats<{ seq: number; body: string }>({ chats: 2, mensajes: 5 });
+    memory.recordar('a', [message(1)]);
+    memory.recordar('b', [message(1)]);
+    memory.add('a', [message(2)]);
+    memory.recordar('c', [message(1)]);
+    expect(memory.de('a')).toBeNull();
+    expect(memory.de('b')).not.toBeNull();
+  });
+
+  it('add with nothing new keeps the same array (no re-render)', () => {
+    const memory = new MemoriaDeChats<{ seq: number; body: string }>({ chats: 3, mensajes: 5 });
+    const first = [message(1), message(2)];
+    memory.recordar('a', first);
+    const before = memory.de('a');
+    memory.add('a', [message(2)]);
+    expect(memory.de('a')).toBe(before);
+  });
+
+  it('drop removes what the disk removed', () => {
+    const memory = new MemoriaDeChats<{ seq: number; body: string }>({ chats: 3, mensajes: 5 });
+    memory.recordar('a', [message(1), message(2), message(3)]);
+    memory.drop('a', [2]);
+    expect(memory.de('a')).toEqual([message(1), message(3)]);
+    memory.drop('missing', [1]);
+    expect(memory.de('missing')).toBeNull();
+  });
+});
+
+describe('addMissingBySeq (safety net when memory and disk disagree, e.g. offline)', () => {
+  const message = (seq: number, body = `m${seq}`) => ({ seq, body });
+
+  it('adds only the seqs the screen does not have, in order, keeping what it has', () => {
+    const current = [message(1), message(3, 'mine')];
+    expect(addMissingBySeq(current, [message(2), message(3, 'disk'), message(4)])).toEqual([message(1), message(2), message(3, 'mine'), message(4)]);
+  });
+
+  it('returns the same array when nothing is missing (no re-render, no scroll)', () => {
+    const current = [message(1), message(2)];
+    expect(addMissingBySeq(current, [message(2)])).toBe(current);
   });
 });

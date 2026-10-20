@@ -4,6 +4,9 @@ import type { FlashListRef } from '@shopify/flash-list';
 import { divisorDesdeLeido, seqDelDivisor } from './divisorNoLeidos';
 import { isPending, type Row } from './MessageRow';
 
+/** Where the list was placed on opening: at the end, or away from it (the unread divider, a searched message). */
+export type OpeningPlace = 'end' | 'away';
+
 /**
  * «N mensajes no leídos» y abrir el chat AHÍ, no abajo (FL9; auditoría §46.2).
  *
@@ -18,7 +21,7 @@ export function useDivisorNoLeidos(params: {
   /** Hasta dónde había leído al abrir (del server); sin él, se cuenta desde el final. */
   leidoHasta?: number;
   listaRef: RefObject<FlashListRef<Row> | null>;
-}): { divisorSeq: number | null; noLeidos: number; irAlInicio: () => void } {
+}): { divisorSeq: number | null; noLeidos: number; irAlInicio: () => OpeningPlace } {
   const noLeidosAlAbrir = useRef(params.noLeidos).current;
   const leidoAlAbrir = useRef(params.leidoHasta).current;
   const [divisorSeq, setDivisorSeq] = useState<number | null>(null);
@@ -48,8 +51,12 @@ export function useDivisorNoLeidos(params: {
   const irAlInicio = useCallback(() => {
     const seq = calcular();
     const indice = seq === null ? -1 : rowsRef.current.findIndex((fila) => !isPending(fila) && fila.seq === seq);
-    if (indice >= 0) params.listaRef.current?.scrollToIndex({ index: indice, animated: false, viewPosition: 0.15 });
-    else params.listaRef.current?.scrollToEnd({ animated: false });
+    if (indice >= 0) {
+      params.listaRef.current?.scrollToIndex({ index: indice, animated: false, viewPosition: 0.15 });
+      return 'away';
+    }
+    params.listaRef.current?.scrollToEnd({ animated: false });
+    return 'end';
   }, [calcular, params.listaRef]);
 
   return { divisorSeq, noLeidos: cantidad, irAlInicio };

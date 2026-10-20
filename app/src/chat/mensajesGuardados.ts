@@ -285,6 +285,9 @@ export async function leerTodosLosMensajes(
 /** Guardar (o pisar) mensajes. Se llama con lo que LLEGA, no con la lista entera. */
 export async function guardarMensajes(chatId: string, mensajes: readonly ChatMessage[]): Promise<void> {
   if (mensajes.length === 0) return;
+  // Memory follows the disk, synchronously, before any wait (José, 20/10:
+  // re-entering a chat started from an older copy and the list kept scrolling).
+  chatsEnMemoria.add(chatId, mensajes);
   // La sesión se fija ANTES de esperar la clave: si se cierra en el medio, la
   // clave que llega es la vieja y estas filas no se escriben.
   const deEstaSesion = generacion;
@@ -352,6 +355,7 @@ export async function conciliarPaginaGuardada(
 /** Lo que el server dejó de tener se va también del disco (`seqsQueSobran`). */
 export async function eliminarMensajesGuardados(chatId: string, seqs: readonly number[]): Promise<void> {
   if (seqs.length === 0) return;
+  chatsEnMemoria.drop(chatId, seqs);
   try {
     const abierta = await listo();
     if (!abierta) return;

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decidirCargaAnterior } from './paginacion';
 import { hidratarChat } from './hidratador';
 import { useAcuses } from './useAcuses';
-import { chatsEnMemoria } from './memoriaDeChats';
+import { addMissingBySeq, chatsEnMemoria } from './memoriaDeChats';
 import { listOlderMessages } from '../api/client';
 import {
   conciliarPaginaGuardada,
@@ -122,7 +122,8 @@ export function useChat(params: {
     [messages, params.open]
   );
   const [pending, setPending] = useState<PendingMessage[]>([]);
-  const [connected, setConnected] = useState(false);
+  // Born from the live socket: starting at `false` flashed the offline notice in the header on every open (20/10).
+  const [connected, setConnected] = useState(() => getSocket()?.connected ?? false);
   /**
    * El scroll hacia arriba, como WhatsApp.
    *
@@ -156,7 +157,7 @@ export function useChat(params: {
     let vigente = true;
     void leerMensajesGuardados(params.chatId, { limite: PAGINA_DE_SANEO }).then((guardados) => {
       if (!vigente || !guardados || guardados.length === 0) return;
-      setMessages((actuales) => (actuales.length === 0 ? guardados : actuales));
+      setMessages((actuales) => (actuales.length === 0 ? guardados : addMissingBySeq(actuales, guardados)));
     });
     return () => {
       vigente = false;

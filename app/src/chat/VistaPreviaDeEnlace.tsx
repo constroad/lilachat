@@ -15,10 +15,10 @@ const LADO_DE_LA_MINIATURA = 72;
 const cuadradas = new Set<string>();
 
 /**
- * La tarjeta de un enlace dentro de la burbuja, como WhatsApp (José, 18/10):
- * la foto, el título, la descripción y el sitio, sacados del `og:` de la
- * página por el server. Mientras no llega no ocupa lugar; si la página no
- * tiene, no se dibuja nada y queda el link tocable de siempre.
+ * A link card inside the bubble, like WhatsApp (José, 18/10): the image, title,
+ * description and site, taken by the server from the page's `og:` tags. While
+ * it travels its place is reserved; if the page has none, nothing is drawn and
+ * the usual tappable link stays.
  */
 export function VistaPreviaDeEnlace({ url, jwt, mia }: { url: string; jwt: string; mia: boolean }) {
   const vista = useVistaPrevia(url, jwt);
@@ -26,6 +26,8 @@ export function VistaPreviaDeEnlace({ url, jwt, mia }: { url: string; jwt: strin
   // Una imagen que no carga (un `og:image` roto) no deja un hueco: la tarjeta sigue sin ella (20/10).
   const [sinImagen, setSinImagen] = useState(false);
 
+  // While it travels, the card's place is reserved (most links have a wide image): born at 0 dp it pushed the chat when it arrived (20/10).
+  if (vista === undefined) return <ReservedCard mine={mia} />;
   if (!vista) return null;
   const imagen = sinImagen ? undefined : vista.imagen;
   // Un video (YouTube, TikTok, un reel) va siempre grande, con el play encima, como WhatsApp.
@@ -81,5 +83,19 @@ export function VistaPreviaDeEnlace({ url, jwt, mia }: { url: string; jwt: strin
       </View>
       </View>
     </Pressable>
+  );
+}
+
+/** The place of a wide card while its preview travels: same width, image and text height. */
+function ReservedCard({ mine }: { mine: boolean }) {
+  return (
+    <View testID="vista-previa-reservada" className={`m-1 mb-0 overflow-hidden rounded-lg ${mine ? 'bg-black/15' : 'bg-primary/[0.06]'}`} style={{ width: ANCHO_DE_LA_TARJETA }}>
+      <View className={mine ? 'bg-black/10' : 'bg-primary/10'} style={{ width: '100%', aspectRatio: PROPORCION_DE_LA_IMAGEN, maxHeight: ALTO_MAXIMO_DE_LA_IMAGEN }} />
+      <View className="gap-1.5 px-2.5 py-2">
+        <View className={`h-3.5 w-4/5 rounded ${mine ? 'bg-black/10' : 'bg-primary/10'}`} />
+        <View className={`h-3 w-3/5 rounded ${mine ? 'bg-black/10' : 'bg-primary/10'}`} />
+        <View className={`h-2.5 w-1/3 rounded ${mine ? 'bg-black/10' : 'bg-primary/10'}`} />
+      </View>
+    </View>
   );
 }

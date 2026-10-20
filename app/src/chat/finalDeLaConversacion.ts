@@ -65,6 +65,11 @@ export class PosicionEnLaLista {
     return undefined;
   }
 
+  /** The program placed the list away from the end (the unread divider, a searched message): stop following it. */
+  releaseFromEnd(): void {
+    this.pegado = false;
+  }
+
   private cerca(contenido: number): boolean {
     return contenido - (this.offset + this.alto) < MARGEN_DEL_FINAL;
   }

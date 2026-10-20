@@ -96,3 +96,26 @@ describe('PosicionEnLaLista', () => {
     expect(arrastrarHasta(posicion, 7838 - ALTO - 159, 7838)).toBe(true);
   });
 });
+
+/**
+ * Opening at the unread divider (José, 20/10: the chat showed the divider and
+ * then jumped to the end): that placement is the program's, not the finger's,
+ * so it has to unstick the list or a card that grows below drags it down.
+ */
+describe('PosicionEnLaLista.releaseFromEnd', () => {
+  it('opened at the divider, a row that grows below does not pull the list to the end', () => {
+    const position = new PosicionEnLaLista();
+    position.alCambiarTamaño(3000);
+    position.alScrollear({ offset: 1200, alto: ALTO, contenido: 3000 });
+    position.releaseFromEnd();
+    expect(position.alCambiarTamaño(3200)).toBeUndefined();
+  });
+
+  it('if the person later reaches the end, it sticks again', () => {
+    const position = new PosicionEnLaLista();
+    position.alCambiarTamaño(3000);
+    position.releaseFromEnd();
+    expect(arrastrarHasta(position, 3000 - ALTO, 3000)).toBe(true);
+    expect(position.alCambiarTamaño(3200)).toBe('seguir');
+  });
+});

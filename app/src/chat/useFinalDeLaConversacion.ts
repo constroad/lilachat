@@ -67,7 +67,13 @@ export function useFinalDeLaConversacion<T>(
     return () => sub.remove();
   }, [listaRef]);
 
-  return { alScrollear, alEmpezarArrastre, alTerminarArrastre, alCambiarTamaño, abajoLejos, nuevosAbajo };
+  /** Placed away from the end by the program (the unread divider): do not follow the end until the person gets there. */
+  const releaseFromEnd = useCallback(() => {
+    posicion.releaseFromEnd();
+    cercaDelFinal.current = false;
+  }, [posicion]);
+
+  return { alScrollear, alEmpezarArrastre, alTerminarArrastre, alCambiarTamaño, abajoLejos, nuevosAbajo, releaseFromEnd };
 }
 
 type EventoDeScroll = NativeSyntheticEvent<NativeScrollEvent>;

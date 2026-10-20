@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactElement, type RefObject } from 'react';
+import { useEffect, useRef, useState, type ReactElement, type RefObject } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useScrollConTeclado } from './useScrollConTeclado';
@@ -9,6 +9,31 @@ import { claveDeFila, tipoDeFila } from './filasDelChat';
 import { FondoDelChat } from './FondoDelChat';
 import { useFinalDeLaConversacion } from './useFinalDeLaConversacion';
 import { useColores } from '../ui/tema';
+import type { OpeningPlace } from './useDivisorNoLeidos';
+
+/** Upper bound for keeping the list hidden while it places itself: it never stays blank longer. */
+const MAX_HIDDEN_MS = 350;
+
+/**
+ * The list is shown once it is placed (José, 20/10: on entering, it painted at
+ * an older position and then jumped to the end). It waits for its own first
+ * layout (`onLoad`, then two frames), never for the network, and at most
+ * `MAX_HIDDEN_MS`.
+ */
+function useRevealWhenPlaced(hasRows: boolean, onPlaced: () => OpeningPlace, onAway: () => void) {
+  const [revealed, setRevealed] = useState(!hasRows);
+  useEffect(() => {
+    if (!hasRows) return setRevealed(true);
+    setRevealed(false);
+    const fallback = setTimeout(() => setRevealed(true), MAX_HIDDEN_MS);
+    return () => clearTimeout(fallback);
+  }, [hasRows]);
+  const onLoad = () => {
+    if (onPlaced() === 'away') onAway();
+    requestAnimationFrame(() => requestAnimationFrame(() => setRevealed(true)));
+  };
+  return { revealed, onLoad };
+}
 
 /**
  * La lista de la conversación con su fondo y el botón «bajar» (salió de
@@ -23,7 +48,7 @@ export function ListaDeMensajes(props: {
   yo: string;
   dibujarFila: (info: { item: Row; index: number }) => ReactElement;
   /** Al terminar de montar: el momento exacto en que la lista ya midió. */
-  onListo: () => void;
+  onListo: () => OpeningPlace;
   onCargarAnteriores: () => void;
   cargandoAnteriores: boolean;
   hayAnteriores: boolean;
@@ -34,7 +59,7 @@ export function ListaDeMensajes(props: {
 }) {
   const colores = useColores();
   const { listaRef, rows } = props;
-  const { alScrollear, alEmpezarArrastre, alTerminarArrastre, alCambiarTamaño, abajoLejos, nuevosAbajo } = useFinalDeLaConversacion(
+  const { alScrollear, alEmpezarArrastre, alTerminarArrastre, alCambiarTamaño, abajoLejos, nuevosAbajo, releaseFromEnd } = useFinalDeLaConversacion(
     listaRef,
     props.mensajes,
     props.yo
@@ -51,9 +76,11 @@ export function ListaDeMensajes(props: {
   // El scroll sigue al teclado como Telegram (ver `useScrollConTeclado`).
   const { sinSubir } = props;
   const scrollDelChat = useScrollConTeclado(sinSubir);
+  const { revealed, onLoad } = useRevealWhenPlaced(rows.length > 0, props.onListo, releaseFromEnd);
   return (
     <View className="flex-1">
       <FondoDelChat />
+      <View className="flex-1" style={{ opacity: revealed ? 1 : 0 }}>
       <FlashList
         /**
          * Se vuelve a montar al pasar de vacía a con filas (18/10, emulador). En
@@ -66,7 +93,7 @@ export function ListaDeMensajes(props: {
         ref={listaRef}
         renderScrollComponent={scrollDelChat}
         data={rows}
-        onLoad={props.onListo}
+        onLoad={onLoad}
         testID="lista-mensajes"
         /**
          * `flex-1` NO es cosmético: sin él la lista no está acotada por la
@@ -109,6 +136,7 @@ export function ListaDeMensajes(props: {
         renderItem={props.dibujarFila}
         getItemType={tipoDeFila}
       />
+      </View>
       {abajoLejos ? (
         // «Bajar al final» con los que llegaron mientras se leía arriba, como
         // WhatsApp. Aparece solo lejos del final: abajo no hace falta. Sube con el teclado.

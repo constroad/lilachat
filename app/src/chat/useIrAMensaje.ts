@@ -1,6 +1,7 @@
 import { useCallback, useState, type MutableRefObject } from 'react';
 import type { FlashListRef } from '@shopify/flash-list';
 import { isPending, type Row } from './MessageRow';
+import type { OpeningPlace } from './useDivisorNoLeidos';
 
 /** El segundo `scrollToIndex`, cuando la zona ya se midió. */
 const SEGUNDO_PASE_MS = 400;
@@ -16,7 +17,7 @@ export function useIrAMensaje(params: {
   rows: Row[];
   listaRef: MutableRefObject<FlashListRef<Row> | null>;
   irASeq?: number;
-  irAlInicio: () => void;
+  irAlInicio: () => OpeningPlace;
   /** Si el mensaje no está cargado, se dice por qué (no se mueve en silencio). */
   onNoEsta: (texto: string) => void;
 }) {
@@ -51,6 +52,7 @@ export function useIrAMensaje(params: {
   const alAbrir = useCallback(() => {
     if (irASeq === undefined) return irAlInicio();
     saltarA(irASeq, 'Ese mensaje está más arriba: sube para cargarlo.');
+    return 'away' as const;
   }, [irASeq, irAlInicio, saltarA]);
 
   return { irAMensaje, saltarA, alTocarCita, alAbrir, resaltado };

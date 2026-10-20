@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+  <application>
+    <!-- ML Kit models are fetched by Play services at install time, not on first use.
+         expo-camera declares the same key with «barcode_ui»: both go, comma separated. -->
+    <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="barcode_ui,subject_segment" tools:replace="android:value" />
+  </application>
+</manifest>

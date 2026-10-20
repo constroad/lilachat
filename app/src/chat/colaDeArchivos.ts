@@ -169,7 +169,17 @@ async function prepararArchivo(archivo: ArchivoNuevo, clientKey: string, hd: boo
   await FileSystem.makeDirectoryAsync(CARPETA, { intermediates: true }).catch(() => undefined);
   const destino = `${CARPETA}${clientKey}${extensionDe(fuente.fileName)}`;
   await (temporal ? FileSystem.moveAsync({ from: fuente.uri, to: destino }) : FileSystem.copyAsync({ from: fuente.uri, to: destino }));
-  return { ...fuente, uri: destino };
+  return { ...fuente, uri: destino, sizeBytes: await knownSize(destino, fuente.sizeBytes) };
+}
+
+/**
+ * The real size when the source did not say it: the clip's gallery (20/10)
+ * lists files without a size, and a 0 failed as an «empty file».
+ */
+async function knownSize(uri: string, reported: number): Promise<number> {
+  if (reported > 0) return reported;
+  const info = await FileSystem.getInfoAsync(uri);
+  return info.exists && !info.isDirectory ? info.size : 0;
 }
 
 async function sacar(clientKey: string, opciones: { confirmado?: boolean } = {}): Promise<void> {

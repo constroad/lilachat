@@ -119,6 +119,10 @@ export function useAdjuntosDelChat(params: { chatId: string; onError: (texto: st
   const cerrarFotos = useCallback(() => setFotosElegidas([]), []);
 
   // La cámara propia manda sola (su «Enviar» va adentro): acá solo se abre, se cierra o salta a la galería.
+  /** From the clip's gallery (20/10): straight to the preview with captions and HD. */
+  const pickMedia = (photos: FotoElegida[]) => {
+    if (photos.length) setFotosElegidas(photos);
+  };
   const camara = { abierta: camaraAbierta, enviar: alEnviarFotos, cerrar: () => setCamaraAbierta(false), aLaGaleria: () => { setCamaraAbierta(false); void pickFromGallery(); } };
-  return { fotosElegidas, cerrarFotos, alEnviarFotos, alCamara, alNotaDeVoz, pickFromCamera, pickFromGallery, pickFile, camara };
+  return { fotosElegidas, cerrarFotos, alEnviarFotos, alCamara, alNotaDeVoz, pickFromCamera, pickFromGallery, pickMedia, pickFile, camara };
 }

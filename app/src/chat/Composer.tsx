@@ -3,6 +3,7 @@ import { BackHandler, Keyboard, Pressable, Text, TextInput, View } from 'react-n
 import * as Haptics from 'expo-haptics';
 import { Camera, Keyboard as Teclado, Paperclip, Send, Smile, X } from 'lucide-react-native';
 import { duracionDeVoz, insertarEnTexto, type MencionEnMensaje, type Seleccion } from '@lilachat/shared';
+import { deleteBeforeCursor } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { precalentarPermisoDeVoz, useGrabadorDeVoz, type NotaGrabada } from './useGrabadorDeVoz';
 import { guardarBorrador, leerBorrador } from './borradores';
@@ -11,7 +12,7 @@ import { formaDelTexto, type FormaDelTexto } from './campoDeTexto';
 import type { DecisionDeVoz, mientrasSostiene } from './gestoDeVoz';
 import { useMenciones, type MiembroMencionable } from './useMenciones';
 import { SugerenciasDeMencion } from './SugerenciasDeMencion';
-import { PanelDeEmojis } from './PanelDeEmojis';
+import { EmojiStickerPanel } from './stickers/EmojiStickerPanel';
 import { VistaPreviaAlEscribir } from './VistaPreviaAlEscribir';
 
 /** Cuánto se espera tras la última tecla para guardar el borrador. */
@@ -40,6 +41,8 @@ export const Composer = memo(function Composer(props: {
   ref?: Ref<ComposerHandle>;
   /** De qué chat es el borrador que se guarda y se restaura (FL9). */
   chatId: string;
+  /** «Para: …» in the sticker editor (20/10). */
+  nombreDelChat?: string;
   respondiendoA: Respondiendo | null;
   onCancelarRespuesta: () => void;
   /** Editando un mensaje propio (José, 17/10/2026): el campo trae su texto. */
@@ -458,10 +461,19 @@ export const Composer = memo(function Composer(props: {
 
       {conEmojis ? (
         <View className="bg-surface" style={{ paddingBottom: props.margenPie }}>
-          <PanelDeEmojis
-            onElegir={(emoji) => {
-              const insertado = insertarEnTexto(textoRef.current, seleccion.current, emoji);
-              escribir(insertado.texto, insertado.cursor);
+          <EmojiStickerPanel
+            jwt={props.jwt ?? ''}
+            chatId={props.chatId}
+            chatName={props.nombreDelChat ?? ''}
+            // No stickers in a secret chat yet (the server does not send them encrypted).
+            withStickers={!props.modoSecreto && Boolean(props.jwt)}
+            onPickEmoji={(emoji) => {
+              const inserted = insertarEnTexto(textoRef.current, seleccion.current, emoji);
+              escribir(inserted.texto, inserted.cursor);
+            }}
+            onBackspace={() => {
+              const remaining = deleteBeforeCursor(textoRef.current, seleccion.current);
+              escribir(remaining.texto, remaining.cursor);
             }}
           />
         </View>

@@ -42,6 +42,7 @@ const estiloDeFoto = (media: { width?: number; height?: number }) => {
 import type { ChatMessage, PendingMessage } from './useChat';
 import { useColores } from '../ui/tema';
 import { TarjetaDelChat } from './TarjetaDelChat';
+import { StickerMessage } from './stickers/StickerMessage';
 import { Avatar } from '../ui/Avatar';
 
 /**
@@ -157,6 +158,15 @@ function FilaDeMensaje({
         seleccionado={seleccionado}
         onResponder={onResponder}
       />
+    );
+  }
+
+  // A sticker (20/10): no bubble, the time on top.
+  if (!isPending(item) && item.kind === 'sticker' && item.media?.url && !item.deletedAt && jwt) {
+    const isMine = item.senderId === myUserId;
+    return (
+      <StickerMessage item={item} mine={isMine} jwt={jwt} delivery={entrega ?? 'sent'} starred={destacado} author={esGrupo && !isMine ? { name: nombreAutor ?? '', photo: fotoAutor } : undefined}
+        onSelect={onSeleccionar} selecting={enSeleccion} selected={Boolean(seleccionado)} onReply={onResponder} />
     );
   }
 
@@ -491,6 +501,7 @@ function AvisoDelGrupo({ item, myUserId }: { item: ChatMessage; myUserId: string
 export function previewDeMensaje(item: Row): string {
   if (isPending(item)) return item.body ?? 'Mensaje';
   if (item.deletedAt) return TEXTO_ELIMINADO;
+  if (item.kind === 'sticker') return 'Sticker';
   if (item.body) return item.body;
   const mime = item.media?.mime ?? '';
   if (mime.startsWith('image/')) return '📷 Foto';

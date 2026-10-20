@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { BarChart3, Bell, BellOff, CalendarDays, Camera, Check, CheckCheck, FileText, Lock, Mic, NotebookPen, Pin, Video, type LucideIcon } from 'lucide-react-native';
+import { BarChart3, Bell, BellOff, CalendarDays, Camera, Check, CheckCheck, FileText, Lock, Mic, NotebookPen, Pin, Sticker, Video, type LucideIcon } from 'lucide-react-native';
 import {
   formatChatTimestamp,
   nombreDeContacto,
@@ -28,6 +28,7 @@ const ICONO_DE_MEDIA: Record<MediaDePreview, LucideIcon> = {
   encuesta: BarChart3,
   evento: CalendarDays,
   recordatorio: Bell,
+  sticker: Sticker,
 };
 
 /**

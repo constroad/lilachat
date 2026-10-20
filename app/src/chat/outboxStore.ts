@@ -9,6 +9,7 @@ import {
   type OutboxItem,
 } from '@lilachat/shared';
 import { alConectar, sendOverSocket } from './socketClient';
+import { anotarEnvio } from './reenviar/frecuenciasDeEnvio';
 
 /**
  * La cola de salida, PERSISTIDA.
@@ -73,6 +74,8 @@ export function hydrateOutbox(): Promise<void> {
 export async function queueMessage(item: OutboxItem): Promise<void> {
   queue = enqueue(queue, item);
   notify();
+  // Los «Chats frecuentes» al reenviar salen de acá (20/10).
+  void anotarEnvio(item.chatId);
   await persist();
   void drainOutbox();
 }

@@ -537,6 +537,7 @@ export function ChatListScreen({
               chat={chat}
               titulo={title(chat)}
               miUserId={credential.userId}
+              miFoto={credential.avatarUrl}
               marcado={seleccion.has(chat.id)}
               enLinea={puntoEnLinea(chat, credential.userId, onlineIds)}
               escribiendo={typingIn.has(chat.id)}

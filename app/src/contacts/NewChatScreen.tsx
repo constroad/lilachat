@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { Interruptor } from '../ui/Interruptor';
-import { ArrowLeft, Check, Lock, NotebookPen, Users, X } from 'lucide-react-native';
+import { ArrowLeft, Check, Lock, NotebookPen, UserRound, Users, X } from 'lucide-react-native';
 import { MAX_NOMBRE_DE_GRUPO, type Contact } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { ContactPicker } from './ContactPicker';
@@ -126,6 +126,17 @@ export function NewChatScreen({
     cerrar();
   };
 
+  /** «Tú · Envíate un mensaje» (José, 20/10): siempre el MISMO chat contigo; la primera vez se crea. */
+  const abrirChatContigo = async () => {
+    if (guardando) return;
+    setGuardando(true);
+    const result = await createChat(credential.jwt, { kind: 'yo', memberIds: [] });
+    setGuardando(false);
+    if (!result.ok) return setError(result.message ?? 'No se pudo abrir tu chat.');
+    onOpenChat({ id: result.data.chatId, name: 'Tú', kind: 'notas', memberIds: [credential.userId] });
+    cerrar();
+  };
+
   /** Un chat solo contigo, con nombre (José, 19/10): notas, fotos, links. */
   const crearBorrador = async () => {
     if (guardando) return;
@@ -206,6 +217,7 @@ export function NewChatScreen({
               modo === 'directo' ? (
                 <View className="mx-4 mb-3">
                   <GrupoDeAjustes>
+                    <FilaDeAjuste testID="btn-chat-contigo" icono={UserRound} titulo="Tú" detalle="Envíate un mensaje: lo que quieras guardar, solo para ti." onPress={() => void abrirChatContigo()} />
                     <FilaDeAjuste testID="btn-nuevo-grupo" icono={Users} titulo="Nuevo grupo" onPress={() => setModo('grupo')} />
                     <FilaDeAjuste
                       testID="btn-nuevo-borrador"

@@ -5,6 +5,7 @@ import { chatsEnMemoria } from './chatsGuardados';
 
 import { FranjaDeFijados } from './FranjaDeFijados';
 import { HojaDeFijarMensaje } from './HojaDeFijarMensaje';
+import { ListaDeFijados } from './fijados/ListaDeFijados';
 import { getSocket } from './socketClient';
 
 const fijadosDe = (chats: { id: string; fijados?: FijadoEnLista[] }[] | null, chatId: string): FijadoEnLista[] =>
@@ -21,12 +22,16 @@ export function useFijarMensajes(params: {
   puedeFijar: boolean;
   /** El texto descifrado de un mensaje propio del teléfono (chats secretos). */
   textoLocal: (seq: number) => string | undefined;
+  /** Para la franja y la lista: «Ana · …», «Fijado por Tú». */
+  nombreDe: (userId: string) => string;
+  fotoDe: (userId: string) => string | undefined;
   onIr: (seq: number) => void;
   onError: (texto: string) => void;
 }) {
   const { chatId, jwt, onError } = params;
   const [fijados, setFijados] = useState<FijadoEnLista[]>(() => fijadosDe(chatsEnMemoria(), chatId));
   const [pidiendo, setPidiendo] = useState<number | null>(null);
+  const [verLista, setVerLista] = useState(false);
 
   const recargar = useCallback(async () => {
     const respuesta = await listChats(jwt);
@@ -65,17 +70,33 @@ export function useFijarMensajes(params: {
   );
 
   const seqsFijados = useMemo(() => new Set(fijados.map((uno) => uno.seq)), [fijados]);
+  const textoDe = (fijado: FijadoEnLista) => textoDelFijado(fijado.vista, params.textoLocal(fijado.seq));
   const franja = (
     <FranjaDeFijados
       fijados={fijados}
-      textoDe={(fijado) => textoDelFijado(fijado.vista, params.textoLocal(fijado.seq))}
+      textoDe={textoDe}
+      nombreDe={params.nombreDe}
       puedeDesfijar={params.puedeFijar}
       onIr={params.onIr}
       onDesfijar={(seq) => void desfijar(seq)}
+      onVerTodos={() => setVerLista(true)}
     />
   );
   const hoja = (
-    <HojaDeFijarMensaje visible={pidiendo !== null} onCerrar={() => setPidiendo(null)} onFijar={(duracion) => pidiendo !== null && void fijar(pidiendo, duracion)} />
+    <>
+      <HojaDeFijarMensaje visible={pidiendo !== null} onCerrar={() => setPidiendo(null)} onFijar={(duracion) => pidiendo !== null && void fijar(pidiendo, duracion)} />
+      <ListaDeFijados
+        visible={verLista}
+        fijados={fijados}
+        textoDe={textoDe}
+        nombreDe={params.nombreDe}
+        fotoDe={params.fotoDe}
+        puedeDesfijar={params.puedeFijar}
+        onIr={params.onIr}
+        onDesfijar={(seq) => void desfijar(seq)}
+        onCerrar={() => setVerLista(false)}
+      />
+    </>
   );
-  return { seqsFijados, pedirFijar: setPidiendo, desfijar, franja, hoja };
+  return { fijados, textoDe, seqsFijados, pedirFijar: setPidiendo, desfijar, verTodos: () => setVerLista(true), franja, hoja };
 }

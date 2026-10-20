@@ -216,7 +216,8 @@ function PantallaDeChat({
         nombreDeContacto({ delServidor: chat.name, telefono: chat.phone, agenda: agendaPorTelefono() }) ||
         'Conversación'
       }
-      chatAvatarUrl={chat.avatarUrl}
+      // El chat contigo («Tú», 20/10) lleva tu foto, como WhatsApp.
+      chatAvatarUrl={chat.propio ? (credential.avatarUrl ?? undefined) : chat.avatarUrl}
       credential={credential}
       othersReadSeq={chat.othersReadSeq}
       acuseDe={chat.acuseDe}

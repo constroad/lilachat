@@ -4,7 +4,7 @@ import { ETIQUETAS_DE_DURACION, type DuracionDeFijado } from '@lilachat/shared';
 import { useMargenes } from '../ui/useMargenes';
 
 /** «¿Por cuánto tiempo?» al fijar (diseño `fm-app-duracion.png`). Abre en 7 días, como WhatsApp. */
-const OPCIONES: DuracionDeFijado[] = ['24h', '7d', '30d'];
+const OPCIONES: DuracionDeFijado[] = ['24h', '7d', '30d', 'siempre'];
 
 export function HojaDeFijarMensaje(props: { visible: boolean; onFijar: (duracion: DuracionDeFijado) => void; onCerrar: () => void }) {
   const margenes = useMargenes();

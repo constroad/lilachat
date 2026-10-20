@@ -509,3 +509,8 @@ export async function resumenDelAlmacen(): Promise<{ chatId: string; ultimoSeq: 
     return [];
   }
 }
+
+/** Las reacciones de un mensaje (20/10), tal como las mandó el server. */
+export function marcarReaccionesGuardadas(chatId: string, seq: number, reacciones: ChatMessage['reacciones']): Promise<void> {
+  return reescribirGuardado(chatId, seq, (mensaje) => ({ ...mensaje, reacciones }));
+}

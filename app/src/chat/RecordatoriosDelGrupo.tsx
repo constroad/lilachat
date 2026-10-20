@@ -16,7 +16,7 @@ const LADO_DE_LA_MINIATURA = 44;
  * ven todos; un admin los edita tocándolos y los borra. En vivo: si otro admin
  * cambia uno, la lista se vuelve a pedir. Sin recordatorios, no aparece.
  */
-export function RecordatoriosDelGrupo(props: { chatId: string; nombreDelGrupo: string; credential: Credential; soyAdmin: boolean }) {
+export function RecordatoriosDelGrupo(props: { chatId: string; nombreDelGrupo: string; credential: Credential; soyAdmin: boolean; esGrupo?: boolean }) {
   const colores = useColores();
   const jwt = props.credential.jwt;
   const [lista, setLista] = useState<AgendaReminder[]>([]);
@@ -42,7 +42,7 @@ export function RecordatoriosDelGrupo(props: { chatId: string; nombreDelGrupo: s
   if (lista.length === 0) return null;
   return (
     <>
-      <Rotulo sangrado>{`Recordatorios del grupo · ${lista.length}`}</Rotulo>
+      <Rotulo sangrado>{`${props.esGrupo === false ? 'Recordatorios' : 'Recordatorios del grupo'} · ${lista.length}`}</Rotulo>
       <View className="mx-4 overflow-hidden rounded-2xl border border-outline/10 bg-surface" testID="recordatorios-del-grupo">
         {lista.map((recordatorio, indice) => (
           <Pressable

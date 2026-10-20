@@ -8,8 +8,6 @@ import {
   conciliarPaginaGuardada,
   guardarMensajes,
   leerMensajesGuardados,
-  marcarBorradoGuardado,
-  marcarEditadoGuardado,
   ultimoSeqGuardado,
 } from './mensajesGuardados';
 import * as Crypto from 'expo-crypto';
@@ -32,6 +30,8 @@ import { drainOutbox, hydrateOutbox, queueMessage, subscribeOutbox } from './out
 import { suscribirConfirmados } from './colaDeArchivos';
 import { useAvisoDeEscribiendo } from './useAvisoDeEscribiendo';
 import { useResumenesDeHilos } from './useResumenesDeHilos';
+import { useCambiosDeMensajes } from './useCambiosDeMensajes';
+import { useEscribiendoDelChat } from './useEscribiendoDelChat';
 
 /**
  * El estado vivo de un chat: mensajes confirmados + lo que está en la cola.
@@ -306,8 +306,7 @@ export function useChat(params: {
   /** Quiénes del OTRO lado están en línea (ids). */
   const [enLinea, setEnLinea] = useState<Set<string>>(new Set());
   /** Quiénes están escribiendo AHORA en este chat (ids), con auto-apagado. */
-  const [escribiendo, setEscribiendo] = useState<Set<string>>(new Set());
-  const timersTyping = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const { escribiendo, dejoDeEscribir } = useEscribiendoDelChat(params.chatId, params.miUserId, params.token);
 
   /**
    * El texto de lo que YO acabo de mandar en un chat cifrado, solo para
@@ -421,16 +420,7 @@ export function useChat(params: {
       incorporar(message);
       // Su mensaje llegó: ya no está escribiendo (como WhatsApp). Sin esto el
       // «escribiendo…» seguía hasta el temporizador de 6 s.
-      const autor = String(message.senderId);
-      const temporizador = timersTyping.current.get(autor);
-      if (temporizador) clearTimeout(temporizador);
-      timersTyping.current.delete(autor);
-      setEscribiendo((prev) => {
-        if (!prev.has(autor)) return prev;
-        const next = new Set(prev);
-        next.delete(autor);
-        return next;
-      });
+      dejoDeEscribir(String(message.senderId));
       // Sin `deliver.set` acá (FL12, §49 #3): si llegó en vivo es porque estoy
       // conectado, y el server ya lo marcó entregado al repartirlo
       // (`avisarMensajeNuevo`). El acuse de más se repartía a todo el chat.
@@ -454,37 +444,6 @@ export function useChat(params: {
       registrarAcuse(frame.userId, frame.readSeq, frame.deliveredSeq);
     };
 
-    /**
-     * Alguien borró un mensaje: se reemplaza por su lápida en el acto.
-     *
-     * No se saca de la lista: el `seq` sostiene el orden y la sincronización por
-     * cursor, y además un hueco cambiaría el sentido de la conversación sin
-     * avisar.
-     */
-    const onDeleted = (frame: { chatId: string; seq: number }) => {
-      if (!alive || frame.chatId !== params.chatId) return;
-      setMessages((current) =>
-        current.map((m) =>
-          m.seq === frame.seq
-            ? { ...m, deletedAt: new Date().toISOString(), body: undefined, media: undefined, envelope: undefined }
-            : m
-        )
-      );
-      // La lápida también al disco: si no, el texto seguiría guardado hasta
-      // que una página del server pisara esa fila.
-      void marcarBorradoGuardado(params.chatId, frame.seq);
-    };
-    socket.on('msg.deleted', onDeleted);
-
-    // Editado (José, 17/10/2026): el texto nuevo con su marca, también al disco.
-    const onEdited = (frame: { chatId: string; seq: number; body: string; editedAt: string }) => {
-      if (!alive || frame.chatId !== params.chatId) return;
-      setMessages((current) =>
-        current.map((m) => (m.seq === frame.seq ? { ...m, body: frame.body, editedAt: frame.editedAt } : m))
-      );
-      void marcarEditadoGuardado(params.chatId, frame.seq, frame.body, frame.editedAt);
-    };
-    socket.on('msg.edited', onEdited);
 
     const onSnapshot = (frame: { online: string[] }) =>
       alive && setEnLinea(new Set(frame.online));
@@ -499,44 +458,8 @@ export function useChat(params: {
         return next;
       });
     };
-    /**
-     * «Escribiendo» se APAGA solo. El otro manda `on:true` mientras teclea y
-     * `on:false` al parar, pero si su app se cierra el `false` no llega nunca —
-     * y quedaría «escribiendo…» para siempre. El timer de 6 s es la red de
-     * seguridad; cada tecla lo reinicia.
-     */
-    const onTyping = (frame: { chatId: string; userId: string; on: boolean }) => {
-      if (!alive || frame.chatId !== params.chatId) return;
-      if (frame.userId === params.miUserId) return;
-      const timers = timersTyping.current;
-      const anterior = timers.get(frame.userId);
-      if (anterior) clearTimeout(anterior);
-      if (frame.on) {
-        setEscribiendo((prev) => (prev.has(frame.userId) ? prev : new Set(prev).add(frame.userId)));
-        timers.set(
-          frame.userId,
-          setTimeout(() => {
-            setEscribiendo((prev) => {
-              const next = new Set(prev);
-              next.delete(frame.userId);
-              return next;
-            });
-            timers.delete(frame.userId);
-          }, 6000)
-        );
-      } else {
-        setEscribiendo((prev) => {
-          if (!prev.has(frame.userId)) return prev;
-          const next = new Set(prev);
-          next.delete(frame.userId);
-          return next;
-        });
-        timers.delete(frame.userId);
-      }
-    };
     socket.on('presence.snapshot', onSnapshot);
     socket.on('presence', onPresence);
-    socket.on('typing', onTyping);
 
     socket.on('receipt', onReceipt);
     socket.on('connect', onConnect);
@@ -552,17 +475,14 @@ export function useChat(params: {
       socket.off('disconnect', onDisconnect);
       socket.off('msg.new', onNew);
       socket.off('receipt', onReceipt);
-      socket.off('msg.deleted', onDeleted);
-      socket.off('msg.edited', onEdited);
       socket.off('presence.snapshot', onSnapshot);
       socket.off('presence', onPresence);
-      socket.off('typing', onTyping);
-      for (const t of timersTyping.current.values()) clearTimeout(t);
-      timersTyping.current.clear();
     };
-  }, [params.chatId, params.token, registrarAcuse, emitirLeido]);
+  }, [params.chatId, params.token, registrarAcuse, emitirLeido, dejoDeEscribir]);
   // E3: el chip de cada raíz al día, en vivo y al reconectar.
   useResumenesDeHilos({ chatId: params.chatId, token: params.token, setMessages });
+  // Borrado, editado y reacciones de lo ya enviado.
+  const { reaccionar } = useCambiosDeMensajes({ chatId: params.chatId, token: params.token, yo: params.miUserId, setMessages, mensajes: messages });
 
   /**
    * Enviar = ENCOLAR. Nunca se manda directo: así el camino con red y el camino
@@ -620,6 +540,7 @@ export function useChat(params: {
   return {
     eliminar,
     editar,
+    reaccionar,
     messages: visibles,
     pending,
     connected,

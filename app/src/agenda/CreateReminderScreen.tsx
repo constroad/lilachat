@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { Bell, Send, Trash2, X } from 'lucide-react-native';
-import { type Recurrence, crearRecordatorio, editarRecordatorio, valorInicial } from '@lilachat/shared';
+import { type Recurrence, aQuienSuena, crearRecordatorio, editarRecordatorio, valorInicial } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { agendaDelete, agendaPatch, agendaPost, publicarRecordatorio, quitarImagenDeRecordatorio, subirImagenDeRecordatorio, type AgendaReminder } from './agendaApi';
 import { ImagenDeRecordatorio } from './ImagenDeRecordatorio';
@@ -45,7 +45,7 @@ export function CreateReminderScreen({
    * Del GRUPO (José, 19/10): vive en ese grupo, le suena a todos, y lleva
    * descripción e imagen. Lo crean sus admins (el server lo exige).
    */
-  grupo?: { id: string; name: string };
+  grupo?: { id: string; name: string; kind?: 'direct' | 'group' | 'notas' };
   onClose: () => void;
   /** Se creó, editó o borró algo: la lista vuelve a pedir. */
   onCreated: () => void;
@@ -161,7 +161,7 @@ export function CreateReminderScreen({
             </View>
             <Text className="mt-3 text-2xl font-bold text-primary">{editando ? 'Editar recordatorio' : 'Nuevo recordatorio'}</Text>
             <Text className="mt-1 text-center text-[13px] leading-5 text-on-surface-variant">
-              {grupo ? `Para «${grupo.name}»: le suena a todo el grupo.` : 'Para que no se te pase nada.'}
+              {grupo ? aQuienSuena(grupo.kind ?? 'group', grupo.name) : 'Para que no se te pase nada.'}
             </Text>
           </View>
 

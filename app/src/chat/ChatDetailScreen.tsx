@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import {
   ArrowLeft,
@@ -29,6 +29,7 @@ import { useColores } from '../ui/tema';
 import { ParticipantesDelGrupo, type Miembro } from './ParticipantesDelGrupo';
 import { VisorDeFoto } from '../ui/VisorDeFoto';
 import { RecordatoriosDelGrupo } from './RecordatoriosDelGrupo';
+import { EditarDescripcion, TarjetaDeDescripcion } from './descripcion/DescripcionDelGrupo';
 import { SeccionCompartido } from './CompartidoEnElChat';
 import { useMargenes } from '../ui/useMargenes';
 import type { ServerMessage } from './socketClient';
@@ -50,6 +51,8 @@ type Detalle = {
   id: string;
   kind: 'direct' | 'group' | 'notas';
   name?: string;
+  /** La descripción del grupo o del borrador (20/10). */
+  descripcion?: string;
   avatarUrl?: string;
   encrypted: boolean;
   /** MI silenciado de este chat (FL8: antes el interruptor arrancaba siempre apagado). */
@@ -77,6 +80,7 @@ export function ChatDetailScreen({
   onVerImagen,
   onBuscar,
   onInfoCambiada,
+  tarjetas,
 }: {
   visible: boolean;
   chatId: string;
@@ -105,6 +109,8 @@ export function ChatDetailScreen({
    * acá y el viejo al cerrar se lee como que no se guardó.
    */
   onInfoCambiada?: (info: { name?: string; avatarUrl?: string }) => void;
+  /** Tarjetas que arma la conversación (20/10: los fijados), bajo las acciones. */
+  tarjetas?: ReactNode;
 }) {
   const colores = useColores();
   const margenes = useMargenes();
@@ -118,6 +124,7 @@ export function ChatDetailScreen({
   /** De qué participante está abierta la hoja de acciones. */
   const [menuDe, setMenuDe] = useState<Miembro | null>(null);
   const [editandoNombre, setEditandoNombre] = useState(false);
+  const [editandoDescripcion, setEditandoDescripcion] = useState(false);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [aviso, setAviso] = useState('');
 
@@ -261,6 +268,13 @@ export function ChatDetailScreen({
     if (await llamar('', { name: nombre }, 'PATCH')) {
       setEditandoNombre(false);
       onInfoCambiada?.({ name: nombre });
+      await cargar();
+    }
+  };
+
+  const guardarDescripcion = async (descripcion: string) => {
+    if (await llamar('', { descripcion }, 'PATCH')) {
+      setEditandoDescripcion(false);
       await cargar();
     }
   };
@@ -416,6 +430,9 @@ export function ChatDetailScreen({
               ) : null}
             </View>
 
+            {esGrupo || esBorrador ? <TarjetaDeDescripcion descripcion={detalle!.descripcion} editable={puedoEditarInfo} onEditar={() => setEditandoDescripcion(true)} /> : null}
+            {tarjetas}
+
             <SeccionCompartido
               clasificado={clasificado}
               pestana={pestana}
@@ -433,12 +450,14 @@ export function ChatDetailScreen({
                 onAnadir={() => setAgregando(true)}
               />
             ) : null}
-            {esGrupo ? (
+            {/* 20/10: también en un 1:1 y en un borrador (ahí cualquiera los administra); no en un chat secreto. */}
+            {!detalle!.encrypted ? (
               <RecordatoriosDelGrupo
                 chatId={chatId}
                 nombreDelGrupo={nombreVisible}
                 credential={credential}
-                soyAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')}
+                esGrupo={esGrupo}
+                soyAdmin={!esGrupo || detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')}
               />
             ) : null}
 
@@ -478,6 +497,13 @@ export function ChatDetailScreen({
           </ScrollView>
         )}
         <VisorDeFoto foto={viendoFoto ? detalle?.avatarUrl : null} titulo={nombreVisible} onCerrar={() => setViendoFoto(false)} />
+        <EditarDescripcion
+          visible={editandoDescripcion}
+          actual={detalle?.descripcion}
+          guardando={accionando}
+          onCerrar={() => setEditandoDescripcion(false)}
+          onGuardar={(descripcion) => void guardarDescripcion(descripcion)}
+        />
         <EditarNombreDeGrupo
           visible={editandoNombre}
           nombreActual={nombreVisible}

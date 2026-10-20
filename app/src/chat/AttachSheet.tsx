@@ -24,6 +24,7 @@ export function AttachSheet({
   onCreateEvent,
   onCreatePoll,
   onCreateReminder,
+  etiquetaDelRecordatorio = 'Recordatorio del grupo',
 }: {
   visible: boolean;
   onClose: () => void;
@@ -32,8 +33,9 @@ export function AttachSheet({
   onPickFile: () => void;
   onCreateEvent: () => void;
   onCreatePoll: () => void;
-  /** Solo para los admins de un grupo (19/10): el recordatorio que vive en el grupo. */
+  /** El recordatorio que vive en el chat: en un grupo, sus admins (19/10); en un 1:1 o un borrador, cualquiera (20/10). */
   onCreateReminder?: () => void;
+  etiquetaDelRecordatorio?: string;
 }) {
   const colores = useColores();
   const margenes = useMargenes();
@@ -43,7 +45,7 @@ export function AttachSheet({
     { key: 'archivo', label: 'Archivo', icon: Paperclip, action: onPickFile, testID: 'attach-archivo' },
     { key: 'evento', label: 'Evento', icon: CalendarDays, action: onCreateEvent, testID: 'attach-evento' },
     { key: 'encuesta', label: 'Encuesta', icon: BarChart3, action: onCreatePoll, testID: 'attach-encuesta' },
-    ...(onCreateReminder ? [{ key: 'recordatorio', label: 'Recordatorio del grupo', icon: Bell, action: onCreateReminder, testID: 'attach-recordatorio' }] : []),
+    ...(onCreateReminder ? [{ key: 'recordatorio', label: etiquetaDelRecordatorio, icon: Bell, action: onCreateReminder, testID: 'attach-recordatorio' }] : []),
   ];
 
   return (

@@ -1,0 +1,43 @@
+import { Pressable, Text, View } from 'react-native';
+import { Plus } from 'lucide-react-native';
+import { EMOJIS_RAPIDOS } from '@lilachat/shared';
+import { useColores } from '../../ui/tema';
+import { AVATAR_DE_AUTOR } from '../burbuja';
+
+/** El `gap-2` entre el avatar del autor y su burbuja (dp). */
+const SEPARACION_DEL_AVATAR = 8;
+
+/**
+ * La barra de reacciones sobre el mensaje elegido (20/10; diseño
+ * `f1-app-reacciones`): los seis rápidos y «+» para el resto. El emoji que ya
+ * puse lleva un círculo tintado; tocarlo de nuevo lo quita. Botones de 40 de
+ * ancho (44 de alto) y sin la sangría del avatar: así entra en 360 dp.
+ */
+export function BarraDeReacciones(props: { seq: number; mia: boolean; conAvatar: boolean; miEmoji: string | null; onElegir: (seq: number, emoji: string | null) => void; onMas: (seq: number) => void }) {
+  const colores = useColores();
+  return (
+    <View className={`mb-1 mt-1 flex-row ${props.mia ? 'justify-end' : ''}`} style={props.conAvatar ? { paddingLeft: AVATAR_DE_AUTOR + SEPARACION_DEL_AVATAR } : undefined}>
+      <View testID={`barra-reacciones-${props.seq}`} className="flex-row items-center gap-0.5 rounded-full border border-outline/10 bg-surface px-1.5 py-1 shadow-sm" style={{ elevation: 4 }}>
+        {EMOJIS_RAPIDOS.map((emoji) => {
+          const elegido = props.miEmoji === emoji;
+          return (
+            <Pressable
+              key={emoji}
+              testID={`reaccion-rapida-${emoji}`}
+              accessibilityRole="button"
+              accessibilityLabel={elegido ? `Quitar ${emoji}` : `Reaccionar con ${emoji}`}
+              onPress={() => props.onElegir(props.seq, elegido ? null : emoji)}
+              className={`h-11 w-10 items-center justify-center rounded-full ${elegido ? 'bg-primary/15' : ''}`}
+            >
+              <Text className="text-[26px]">{emoji}</Text>
+            </Pressable>
+          );
+        })}
+        <View className="mx-0.5 h-6 w-px bg-outline/20" />
+        <Pressable testID="reaccion-mas" accessibilityRole="button" accessibilityLabel="Más emojis" onPress={() => props.onMas(props.seq)} className="h-11 w-10 items-center justify-center rounded-full bg-background">
+          <Plus size={20} color={colores['on-surface-variant']} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}

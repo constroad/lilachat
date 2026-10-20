@@ -1,4 +1,4 @@
-import { type MencionEnMensaje, type RefDeMensaje, type ResumenDeHiloEnCliente, avisarTarjeta, refrescarTodas } from '@lilachat/shared';
+import { type MencionEnMensaje, type RefDeMensaje, type ResumenDeHiloEnCliente, type Reaccion, avisarTarjeta, refrescarTodas } from '@lilachat/shared';
 import { io, type Socket } from 'socket.io-client';
 import { pausaDelSocket, queHacerConElSocket, type PausaDelSocket } from './servicioDeConexion';
 import { registrarPerf } from '../diagnostico/diagnostico';
@@ -68,6 +68,8 @@ export type ServerMessage = {
   enElChat?: boolean;
   /** En la raíz: el resumen de su hilo (cuántas, la última, quiénes). */
   hilo?: ResumenDeHiloEnCliente;
+  /** Reacciones (20/10): una por persona, en el orden en que llegaron. */
+  reacciones?: Reaccion[];
   /** Se editó (José, 17/10/2026): la burbuja dice «Editado». */
   editedAt?: string;
   at: string;

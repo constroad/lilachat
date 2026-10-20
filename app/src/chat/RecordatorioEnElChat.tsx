@@ -69,7 +69,7 @@ export function RecordatorioEnElChat({ reminderId, jwt }: { reminderId: string; 
             <Bell size={20} color={colores.primary} />
           </View>
           <View className="min-w-0 flex-1 gap-0.5">
-            <Text className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Recordatorio del grupo</Text>
+            <Text className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Recordatorio</Text>
             <Text className="text-[15px] font-semibold text-on-surface">{recordatorio.title}</Text>
             <Text className="text-[13px] text-on-surface-variant">{cuandoSuena(recordatorio)}</Text>
           </View>

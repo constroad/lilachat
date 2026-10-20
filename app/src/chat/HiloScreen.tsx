@@ -2,13 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import { FlatList, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { ArrowLeft, Send, Square, SquareCheck } from 'lucide-react-native';
-import { formatClock, resolveDeliveryState, type DeliveryState } from '@lilachat/shared';
+import { formatClock, miReaccion, puedeReaccionar, resolveDeliveryState, type DeliveryState } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { colorDeAutor } from './burbuja';
 import { MetaDeMensaje } from './MessageRow';
 import type { ChatMessage, PendingMessage } from './useChat';
+import type { RespuestaDeReaccion } from './useCambiosDeMensajes';
+import { BarraDeReacciones } from './reacciones/BarraDeReacciones';
+import { PastillaDeReacciones } from './reacciones/PastillaDeReacciones';
+import { useReaccionesEnPantalla } from './reacciones/useReaccionesEnPantalla';
 
 /** Lo escrito y no mandado en cada hilo, mientras la app está abierta. */
 const borradores = new Map<string, string>();
@@ -35,6 +39,8 @@ export function HiloScreen(props: {
   leidoHasta: number;
   entregadoHasta: number;
   onEnviar: (texto: string, enElChat: boolean) => Promise<{ ok: boolean }>;
+  /** Reacciones (20/10): mantener presionada una respuesta muestra la barra. */
+  reaccionar: (seq: number, emoji: string | null) => Promise<RespuestaDeReaccion>;
   onCerrar: () => void;
 }) {
   const colores = useColores();
@@ -43,10 +49,14 @@ export function HiloScreen(props: {
   const [texto, setTexto] = useState('');
   const [enElChat, setEnElChat] = useState(false);
   const lista = useRef<FlatList<Respuesta>>(null);
+  const [barraEn, setBarraEn] = useState<number | null>(null);
   useEffect(() => {
     setTexto(borradores.get(clave) ?? '');
     setEnElChat(false);
+    setBarraEn(null);
   }, [clave]);
+  // Las hojas viven DENTRO del modal del hilo: las del chat quedarían detrás.
+  const reacciones = useReaccionesEnPantalla({ mensajes: props.respuestas, reaccionar: props.reaccionar, yo: props.yo, nombres: props.nombres, fotos: props.fotos, alReaccionar: () => setBarraEn(null) });
   const filas: Respuesta[] = [...props.respuestas, ...props.pendientes];
   const nombreDe = (id: string) => (id === props.yo ? 'Tú' : (props.nombres.get(id) ?? 'Alguien'));
 
@@ -87,15 +97,28 @@ export function HiloScreen(props: {
             contentContainerStyle={{ padding: 12, gap: 8 }}
             onContentSizeChange={() => lista.current?.scrollToEnd({ animated: false })}
             ListHeaderComponent={<CabeceraDelHilo raiz={props.raiz} nombre={nombreDe(String(props.raiz.senderId))} foto={props.fotos.get(String(props.raiz.senderId))} cuantas={props.respuestas.length} />}
-            renderItem={({ item }) => (
-              <BurbujaDelHilo
-                mensaje={item}
-                mia={esPendiente(item) || String(item.senderId) === props.yo}
-                autor={esPendiente(item) ? 'Tú' : nombreDe(String(item.senderId))}
-                conAutor={props.esGrupo}
-                entrega={resolveDeliveryState({ seq: esPendiente(item) ? null : item.seq, otherReadSeq: props.leidoHasta, otherDeliveredSeq: props.entregadoHasta })}
-              />
-            )}
+            renderItem={({ item }) => {
+              const mia = esPendiente(item) || String(item.senderId) === props.yo;
+              const confirmada = esPendiente(item) ? null : item;
+              return (
+                <View>
+                  {confirmada && barraEn === confirmada.seq ? (
+                    <BarraDeReacciones seq={confirmada.seq} mia={mia} conAvatar={false} miEmoji={miReaccion(confirmada.reacciones, props.yo)} onElegir={reacciones.elegir} onMas={reacciones.masEmojis} />
+                  ) : null}
+                  <BurbujaDelHilo
+                    mensaje={item}
+                    mia={mia}
+                    autor={esPendiente(item) ? 'Tú' : nombreDe(String(item.senderId))}
+                    conAutor={props.esGrupo}
+                    entrega={resolveDeliveryState({ seq: confirmada ? confirmada.seq : null, otherReadSeq: props.leidoHasta, otherDeliveredSeq: props.entregadoHasta })}
+                    onLongPress={confirmada && puedeReaccionar({ seq: confirmada.seq, deletedAt: confirmada.deletedAt, kind: confirmada.kind }) ? () => setBarraEn((antes) => (antes === confirmada.seq ? null : confirmada.seq)) : undefined}
+                  />
+                  {confirmada?.reacciones?.length && !confirmada.deletedAt ? (
+                    <PastillaDeReacciones id={`hilo-${confirmada.seq}`} reacciones={confirmada.reacciones} yo={props.yo} mia={mia} conAvatar={false} onTocar={() => reacciones.verReacciones(confirmada.seq)} />
+                  ) : null}
+                </View>
+              );
+            }}
           />
         ) : null}
         <View className="border-t border-outline/10 bg-surface px-3 pt-2" style={{ paddingBottom: margenes.pie + 4 }}>
@@ -122,6 +145,7 @@ export function HiloScreen(props: {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+      {reacciones.hojas}
     </Modal>
   );
 }
@@ -148,19 +172,19 @@ function CabeceraDelHilo(props: { raiz: ChatMessage; nombre: string; foto?: stri
   );
 }
 
-function BurbujaDelHilo(props: { mensaje: Respuesta; mia: boolean; autor: string; conAutor: boolean; entrega: DeliveryState }) {
+function BurbujaDelHilo(props: { mensaje: Respuesta; mia: boolean; autor: string; conAutor: boolean; entrega: DeliveryState; onLongPress?: () => void }) {
   const colores = useColores();
   const { mensaje, mia } = props;
   const pendiente = esPendiente(mensaje);
   const hora = formatClock(pendiente ? mensaje.queuedAt : mensaje.at);
   const colorAutor = !pendiente ? (colores[`autor-${colorDeAutor(String(mensaje.senderId))}` as keyof typeof colores] as string) : undefined;
   return (
-    <View testID={`respuesta-${mensaje.clientKey}`} className={`max-w-[85%] rounded-xl px-3 py-2 ${mia ? 'self-end bg-primary' : 'self-start border border-outline/10 bg-surface'}`}>
+    <Pressable testID={`respuesta-${mensaje.clientKey}`} onLongPress={props.onLongPress} delayLongPress={350} className={`max-w-[85%] rounded-xl px-3 py-2 ${mia ? 'self-end bg-primary' : 'self-start border border-outline/10 bg-surface'}`}>
       {!mia && props.conAutor ? <Text className="mb-0.5 text-[13px] font-semibold" style={{ color: colorAutor }}>{props.autor}</Text> : null}
       <Text className={`text-[15px] ${mia ? 'text-on-primary' : 'text-on-surface'}`}>{!pendiente && mensaje.deletedAt ? 'Se eliminó este mensaje' : mensaje.body}</Text>
       <View className="mt-0.5 items-end">
         <MetaDeMensaje hora={hora} mia={mia} entrega={pendiente ? 'pending' : props.entrega} id={mensaje.clientKey} fallido={pendiente && Boolean(mensaje.fallo)} />
       </View>
-    </View>
+    </Pressable>
   );
 }

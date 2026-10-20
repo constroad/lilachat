@@ -40,6 +40,8 @@ export const FilaDeChat = memo(function FilaDeChat(props: {
   /** El nombre ya resuelto contra la agenda. */
   titulo: string;
   miUserId: string;
+  /** Mi foto: el chat contigo («Tú») la lleva, como WhatsApp. */
+  miFoto?: string | null;
   marcado: boolean;
   enLinea: boolean;
   escribiendo: boolean;
@@ -69,10 +71,10 @@ export const FilaDeChat = memo(function FilaDeChat(props: {
       <View style={{ width: AVATAR_DE_LISTA, height: AVATAR_DE_LISTA }} className="shrink-0">
         <Avatar
           nombre={props.titulo}
-          foto={chat.avatarUrl}
+          foto={chat.propio ? (props.miFoto ?? undefined) : chat.avatarUrl}
           tamano={AVATAR_DE_LISTA}
-          // Un borrador (chat contigo) se distingue de una persona y de un grupo.
-          icono={chat.kind === 'notas' ? <NotebookPen size={22} color={colores.primary} /> : undefined}
+          // Un borrador se distingue de una persona y de un grupo; el chat contigo lleva tu foto.
+          icono={chat.kind === 'notas' && !chat.propio ? <NotebookPen size={22} color={colores.primary} /> : undefined}
         />
         {/* El tilde de selección tapa el avatar cuando la fila está
             marcada: es el feedback de «este entra en la acción». */}

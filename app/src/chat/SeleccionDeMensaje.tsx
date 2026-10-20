@@ -1,23 +1,16 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import { Alert, FlatList, Modal, Pressable, Text, ToastAndroid, useWindowDimensions, View } from 'react-native';
+import { useState, type ReactNode } from 'react';
+import { Alert, Modal, Pressable, Text, ToastAndroid, useWindowDimensions, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import * as Crypto from 'expo-crypto';
 import { Copy, CornerUpLeft, EllipsisVertical, Forward, Info, MessagesSquare, Pencil, Pin, PinOff, Trash2, X } from 'lucide-react-native';
-import { buildOutboxItem, nombreDeContacto, puedeEditar } from '@lilachat/shared';
-import { reenviarMensajeA } from '../api/client';
-import { accionesDeMensaje, accionesDeVarios, planDeReenvio, textoParaCopiar, type PasoDeReenvio } from '@lilachat/shared';
-import { chatsEnMemoria } from './chatsGuardados';
-import { queueMessage } from './outboxStore';
-import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
+import { puedeEditar } from '@lilachat/shared';
+import { accionesDeMensaje, accionesDeVarios, planDeReenvio, textoParaCopiar } from '@lilachat/shared';
+import { PantallaDeReenviar } from './reenviar/PantallaDeReenviar';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
-import { Avatar } from '../ui/Avatar';
 import type { ChatMessage } from './useChat';
 import { InfoDelMensaje } from './InfoDelMensaje';
 import { repartirAcciones, type AccionDeBarra } from './barraDeSeleccion';
 
-/** El avatar de cada chat al reenviar (dp): el de las listas de personas. */
-const AVATAR_DE_DESTINO = 44;
 const avisar = (texto: string) => ToastAndroid.show(texto, ToastAndroid.SHORT);
 
 /**
@@ -236,16 +229,16 @@ export function SeleccionDeMensaje(params: {
         jwt={params.jwt}
         onCerrar={() => setViendoInfo(false)}
       />
-      <ReenviarA
+      <PantallaDeReenviar
         visible={reenviando}
         pasos={planDeReenvio(mensajes.map((uno) => ({ ...uno, chatId: params.chatId })))}
         token={params.jwt}
         onError={params.onError}
         onCerrar={() => setReenviando(false)}
-        onReenviado={(nombre) => {
+        onReenviado={(nombres) => {
           setReenviando(false);
           params.onCancelar();
-          avisar(`Reenviado a ${nombre}`);
+          avisar(`Reenviado a ${nombres.join(', ')}`);
         }}
       />
     </>
@@ -262,66 +255,5 @@ function Accion(props: { testID: string; etiqueta: string; onPress: () => void; 
     >
       {props.children}
     </Pressable>
-  );
-}
-
-/**
- * Elegir a qué chat reenviar el texto. Los chats secretos no aparecen: el
- * texto tendría que salir cifrado con la clave de ese chat, y encolarlo en
- * claro sería justo lo que el server rechaza.
- */
-function ReenviarA(props: { visible: boolean; pasos: PasoDeReenvio[]; token: string; onCerrar: () => void; onReenviado: (nombre: string) => void; onError: (texto: string) => void }) {
-  const colores = useColores();
-  const margenes = useMargenes();
-  const destinos = useMemo(() => {
-    if (!props.visible) return [];
-    const agenda = agendaPorTelefono();
-    return (chatsEnMemoria() ?? [])
-      .filter((chat) => !chat.encrypted)
-      .map((chat) => ({ id: chat.id, nombre: nombreDeContacto({ delServidor: chat.name, telefono: chat.phone, agenda }) || 'Chat' }));
-  }, [props.visible]);
-
-  // Cada mensaje por separado y en orden, como WhatsApp (FL9): el texto por la
-  // cola; la foto o el archivo, por referencia (auditoría 19/10).
-  const reenviar = async (destino: { id: string; nombre: string }) => {
-    for (const paso of props.pasos) {
-      if (paso.tipo === 'mensaje') {
-        const r = await reenviarMensajeA(props.token, destino.id, { desde: paso.chatId, seq: paso.seq, clientKey: Crypto.randomUUID() });
-        if (!r.ok) return props.onError(r.message ?? 'No se pudo reenviar.');
-        continue;
-      }
-      const item = buildOutboxItem({ chatId: destino.id, clientKey: Crypto.randomUUID(), text: paso.texto, queuedAt: new Date().toISOString() });
-      if (item) await queueMessage(item);
-    }
-    props.onReenviado(destino.nombre);
-  };
-
-  return (
-    <Modal visible={props.visible} animationType="slide" onRequestClose={props.onCerrar}>
-      <View className="flex-1 bg-background" testID="pantalla-reenviar">
-        <View className="flex-row items-center gap-2 px-3 pb-3" style={{ paddingTop: margenes.cabecera }}>
-          <Pressable testID="btn-cerrar-reenviar" accessibilityLabel="Cerrar" onPress={props.onCerrar} className="h-11 w-11 items-center justify-center">
-            <X size={22} color={colores['on-surface']} />
-          </Pressable>
-          <Text className="text-lg font-bold text-on-surface">Reenviar a…</Text>
-        </View>
-        <FlatList
-          data={destinos}
-          keyExtractor={(destino) => destino.id}
-          renderItem={({ item }) => (
-            <Pressable
-              testID={`reenviar-a-${item.id}`}
-              onPress={() => void reenviar(item)}
-              className="min-h-[56px] flex-row items-center gap-3 px-4"
-            >
-              <Avatar nombre={item.nombre} tamano={AVATAR_DE_DESTINO} />
-              <Text className="flex-1 text-[15px] text-on-surface" numberOfLines={1}>
-                {item.nombre}
-              </Text>
-            </Pressable>
-          )}
-        />
-      </View>
-    </Modal>
   );
 }

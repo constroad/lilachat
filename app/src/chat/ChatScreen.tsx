@@ -4,8 +4,7 @@ import { ProgramarMensajeModal } from './ProgramarMensajeModal';
 import { ProgramadosDelChat } from './ProgramadosDelChat';
 import type { FlashListRef } from '@shopify/flash-list';
 import { KeyboardAvoidingView, useKeyboardState } from 'react-native-keyboard-controller';
-import type { MencionEnMensaje } from '@lilachat/shared';
-import type { Credential } from '../auth/credentialStore';
+import { etiquetaDeRecordatorioEnElChat, type MencionEnMensaje } from '@lilachat/shared';
 import { AttachSheet } from './AttachSheet';
 import { CrearDesdeElChat, type QueSeCrea } from './CrearDesdeElChat';
 import { AccionesDeTarjetaContext } from './accionesDeTarjeta';
@@ -51,6 +50,9 @@ import { useFijarMensajes } from './useFijarMensajes';
 import { useAcuseVivo } from './acuseVivo';
 import { useHilosEnElChat } from './useHilosEnElChat';
 import { HiloScreen } from './HiloScreen';
+import type { PropsDelChat } from './propsDelChat';
+import { useReaccionesEnPantalla } from './reacciones/useReaccionesEnPantalla';
+import { TarjetaDeFijados } from './fijados/TarjetaDeFijados';
 
 /** El pie del composer con el teclado abierto (dp). */
 const MARGEN_CON_TECLADO = 8;
@@ -77,37 +79,7 @@ export function ChatScreen({
   otherUserId,
   esBorrador = false,
   onBack,
-}: {
-  chatId: string;
-  chatName: string;
-  /** La foto del grupo, si tiene. Sin ella se dibuja la inicial. */
-  chatAvatarUrl?: string;
-  credential: Credential;
-  othersReadSeq: number;
-  /** Quiénes cuentan para el check azul (FL8): en un grupo, todos menos yo y Lila. */
-  acuseDe?: readonly string[];
-  othersDeliveredSeq: number;
-  /** Cuántos sin leer traía la lista: decide si la banda de Lila aparece. */
-  unread: number;
-  /** Hasta dónde leí al abrir (19/10): el divisor de no leídos va justo después. */
-  readSeq?: number;
-  /**
-   * El `lastSeq` que el server reportó al abrir. Se marca leído HASTA acá, no
-   * solo hasta el último mensaje cargado: si un mensaje del final se borró en
-   * duro, `lastSeq` queda por delante y el cliente nunca llegaria a marcarlo
-   * —dejando un «sin leer» fantasma que no baja (José, 31/08/2026)—. Abrir el
-   * chat es haberlo visto todo lo que el server dice que hay.
-   */
-  lastSeqInicial?: number;
-  /** Abrir en este mensaje: viene de un resultado de la búsqueda general (FL9d). */
-  irASeq?: number;
-  /** Chat secreto (F9): cifra, y apaga a Lila. */
-  encrypted?: boolean;
-  otherUserId?: string | null;
-  /** Un chat solo contigo (`notas`, 19/10): ni grupo ni 1:1. */
-  esBorrador?: boolean;
-  onBack: () => void;
-}) {
+}: PropsDelChat) {
   const colores = useColores();
   const margenes = useMargenes();
   const secreto = useSecretChat({
@@ -121,6 +93,7 @@ export function ChatScreen({
   const {
     eliminar,
     editar,
+    reaccionar,
     messages,
     pending,
     connected,
@@ -220,13 +193,18 @@ export function ChatScreen({
   const grupo = useGrupo(chatId, credential.jwt, esGrupoChat);
   const nombresDelGrupo = grupo.nombres;
   const fotosDelGrupo = grupo.fotos;
+  // En un 1:1 el otro se llama como el chat (reacciones y fijados).
+  const nombresDeReacciones = useMemo(() => (esGrupoChat ? nombresDelGrupo : new Map(otherUserId ? [[otherUserId, chatName]] : [])), [esGrupoChat, nombresDelGrupo, otherUserId, chatName]);
+  const nombreDe = useCallback((id: string) => (id === credential.userId ? 'Tú' : (nombresDeReacciones.get(id) ?? 'Alguien')), [credential.userId, nombresDeReacciones]);
   // Memo: un arreglo nuevo en cada render redibujaría la barra de escribir (FL12).
   const mencionables = useMemo(() => (esGrupoChat ? grupo.mencionables(credential.userId) : undefined), [esGrupoChat, grupo.mencionables, credential.userId]);
   /** Me sacaron del grupo (FL9d): se lee, pero ya no se escribe. */
   const fueraDelGrupo = esGrupoChat && grupo.soyMiembro === false;
   const soyAdminDelGrupo = esGrupoChat && grupo.soyAdmin(credential.userId);
   // Un admin edita el recordatorio del grupo tocando su tarjeta (José, 19/10).
-  const accionesDeTarjeta = useMemo(() => ({ editarRecordatorio: soyAdminDelGrupo ? (recordatorio: AgendaReminder) => setCreando({ recordatorio }) : undefined }), [soyAdminDelGrupo]);
+  // Editar el recordatorio del chat: en un grupo, sus admins; en un 1:1 o un borrador, cualquiera (20/10).
+  const puedeEditarRecordatorios = !esGrupoChat || soyAdminDelGrupo;
+  const accionesDeTarjeta = useMemo(() => ({ editarRecordatorio: puedeEditarRecordatorios ? (recordatorio: AgendaReminder) => setCreando({ recordatorio }) : undefined }), [puedeEditarRecordatorios]);
   // Fuera del grupo no se listan miembros: ya no es «QA Ana, Vos».
   const subtitulo = fueraDelGrupo ? '' : esBorrador ? 'Solo tú lo ves' : subtituloDelChat({
     esGrupo: esGrupoChat,
@@ -279,6 +257,8 @@ export function ChatScreen({
     jwt: credential.jwt,
     puedeFijar: esBorrador || !esGrupoChat || soyAdminDelGrupo,
     textoLocal: (seq) => messages.find((uno) => uno.seq === seq)?.body,
+    nombreDe,
+    fotoDe: (id) => fotosDelGrupo.get(id),
     onIr: (seq) => saltarA(seq, 'Ese mensaje está más arriba: sube para cargarlo.'),
     onError: setMediaError,
   });
@@ -347,6 +327,7 @@ export function ChatScreen({
   const { alResponder } = respuesta;
   const alFallido = useMensajeFallido(archivosEnCola);
 
+  const reacciones = useReaccionesEnPantalla({ mensajes: messages, reaccionar, yo: credential.userId, nombres: nombresDeReacciones, fotos: fotosDelGrupo, alReaccionar: seleccion.soltar });
   // Una fila, estable mientras no cambien mensajes ni acuses: un mensaje nuevo dibuja SU burbuja (FL2).
   const dibujarFila = useDibujarFila({
     rows,
@@ -372,6 +353,9 @@ export function ChatScreen({
     onTocarCita: alTocarCita,
     onAbrirHilo: hilos.abrir,
     hiloConNuevas: hilos.hiloConNuevas,
+    onReaccionar: reacciones.elegir,
+    onMasEmojis: reacciones.masEmojis,
+    onVerReacciones: reacciones.verReacciones,
   });
 
   // Teclado abierto = sin barra de navegación: el margen del pie dejaba un hueco (16/10).
@@ -453,7 +437,7 @@ export function ChatScreen({
       <CrearDesdeElChat
         creando={creando}
         credential={credential}
-        chat={{ id: chatId, name: chatName }}
+        chat={{ id: chatId, name: chatName, kind: esBorrador ? 'notas' : esGrupoChat ? 'group' : 'direct' }}
         onCerrar={() => setCreando(null)}
       />
 
@@ -548,8 +532,10 @@ export function ChatScreen({
         leidoHasta={leidoHasta}
         entregadoHasta={entregadoHasta}
         onEnviar={(texto, enElChat) => send(texto, undefined, undefined, { de: hilos.abierto!, enElChat })}
+        reaccionar={reaccionar}
         onCerrar={hilos.cerrar}
       />
+      {reacciones.hojas}
 
       <AttachSheet
         visible={attachOpen}
@@ -558,7 +544,9 @@ export function ChatScreen({
         onPickGallery={() => void pickFromGallery()}
         onCreateEvent={() => setCreando('event')}
         onCreatePoll={() => setCreando('poll')}
-        onCreateReminder={soyAdminDelGrupo ? () => setCreando('reminder') : undefined}
+        // 20/10: también en un 1:1 y en un borrador; en un grupo, sus admins. No en un chat secreto.
+        onCreateReminder={!encrypted && (!esGrupoChat || soyAdminDelGrupo) ? () => setCreando('reminder') : undefined}
+        etiquetaDelRecordatorio={etiquetaDeRecordatorioEnElChat(esBorrador ? 'notas' : esGrupoChat ? 'group' : 'direct')}
         onPickFile={() => void pickFile()}
       />
       <VisorDelChat
@@ -592,6 +580,7 @@ export function ChatScreen({
           setVerDetalle(false);
           busqueda.abrir();
         }}
+        tarjetas={<TarjetaDeFijados fijados={fijar.fijados} textoDe={fijar.textoDe} nombreDe={nombreDe} onVerTodos={() => { setVerDetalle(false); fijar.verTodos(); }} />}
       />
       ) : null}
     </KeyboardAvoidingView>

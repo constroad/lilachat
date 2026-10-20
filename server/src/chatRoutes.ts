@@ -48,7 +48,7 @@ import { infoDeMensaje } from './infoDeMensaje.js';
  * el primer cambio de copy. Lo que cambia es el nombre: acá va el que conoce el
  * server; en el teléfono, el de la agenda de quien mira.
  */
-async function avisarEnElChat(params: {
+export async function avisarEnElChat(params: {
   chatId: string;
   quien: Types.ObjectId;
   evento: string;

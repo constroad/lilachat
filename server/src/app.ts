@@ -24,6 +24,7 @@ import { buildRecordatoriosDeGrupoRouter } from './recordatoriosDeGrupo.js';
 import { cabecerasDeSeguridad } from './cabecerasDeSeguridad.js';
 import { montarServiceWorker } from './serviceWorker.js';
 import { buildVincularRouters, type OpcionesDeVinculacion } from './vincularRoutes.js';
+import { buildFijadosRouter } from './fijadosRoutes.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -78,6 +79,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/auth/vincular', vincular.web);
   app.use('/api/vinculos', vincular.telefono);
   app.use('/api/auth', buildAuthRouter(deps.authClient ?? buildHttpAuthClient()));
+  app.use('/api/chats', buildFijadosRouter());
   app.use('/api/chats', buildChatRouter(deps.mediaUploader));
   app.use('/api/media', buildMediaRouter(deps.mediaUploader));
   app.use('/api/agenda', buildRecordatoriosDeGrupoRouter(deps.mediaUploader));

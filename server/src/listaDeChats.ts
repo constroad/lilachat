@@ -3,6 +3,7 @@ import { acuseDelGrupo, TELEFONO_DE_LILA, unreadCount } from '@lilachat/shared';
 import { UserModel } from './models.js';
 import { ChatModel, MessageModel, ReceiptModel, type Message } from './chatModels.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
+import { fijadosParaLaLista, type FijadoEnLista } from './mensajesFijados.js';
 
 /**
  * La lista de chats de una persona: la primera pantalla de la app. Salió de
@@ -53,6 +54,8 @@ export type ChatSummary = {
   archived?: boolean;
   /** Marcado por MÍ como no leído (FL9). */
   markedUnread?: boolean;
+  /** Mensajes fijados arriba del chat (19/10), el más reciente primero. */
+  fijados?: FijadoEnLista[];
 };
 
 export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> {
@@ -77,7 +80,7 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
   // mensaje de todos los chats sale de UNA agregación sobre el índice
   // {chatId, seq} —antes era un `findOne` por chat—, y los nombres van en el
   // mismo viaje en vez de esperar a los otros dos.
-  const [allReceipts, ultimos, otros] = await Promise.all([
+  const [allReceipts, ultimos, otros, fijados] = await Promise.all([
     ReceiptModel.find({ chatId: { $in: chatIds } }).lean(),
     MessageModel.aggregate<{ _id: Types.ObjectId; ultimo: Message }>([
       { $match: { chatId: { $in: chatIds } } },
@@ -85,6 +88,8 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
       { $group: { _id: '$chatId', ultimo: { $first: '$$ROOT' } } },
     ]),
     UserModel.find({ _id: { $in: otrosIds } }).select('name phone avatarUrl').lean(),
+    // Los fijados (19/10) en el mismo viaje: casi ningún chat tiene, y sin fijados no consulta.
+    fijadosParaLaLista(chats, userId),
   ]);
   const ultimoPorChat = new Map(ultimos.map((fila) => [String(fila._id), fila.ultimo]));
   const lastMessages = chats.map((chat) => ultimoPorChat.get(String(chat._id)) ?? null);
@@ -169,6 +174,7 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
         : null,
       othersReadSeq: acuseDelGrupo({ otros: acusan, porMiembro: acuses?.read ?? new Map() }),
       othersDeliveredSeq: acuseDelGrupo({ otros: acusan, porMiembro: acuses?.delivered ?? new Map() }),
+      ...(fijados.has(String(chat._id)) ? { fijados: fijados.get(String(chat._id)) } : {}),
     };
   });
 }

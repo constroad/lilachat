@@ -53,6 +53,8 @@ export interface Chat {
    * una promesa que no puede sostener.
    */
   encrypted?: boolean;
+  /** Mensajes fijados arriba del chat (19/10): hasta 3, cada uno con su vencimiento. */
+  fijados?: { seq: number; por: Types.ObjectId; en: Date; hasta: Date }[];
 }
 
 export interface Message {
@@ -167,6 +169,10 @@ const chatSchema = new Schema<Chat>(
     ],
     lastSeq: { type: Number, default: 0 },
     encrypted: { type: Boolean, default: false },
+    fijados: {
+      type: [{ seq: { type: Number, required: true }, por: { type: Schema.Types.ObjectId, required: true }, en: { type: Date, required: true }, hasta: { type: Date, required: true }, _id: false }],
+      default: undefined,
+    },
   },
   { timestamps: true }
 );

@@ -392,6 +392,8 @@ export async function deleteMessage(params: {
     { $set: { deletedAt: new Date() }, $unset: { body: '', envelope: '', media: '' } },
     { returnDocument: 'after' }
   ).lean<Message | null>();
+  // Borrado para todos no puede seguir fijado arriba del chat (19/10).
+  if (actualizado) await ChatModel.updateOne({ _id: params.chatId }, { $pull: { fijados: { seq: params.seq } } });
 
   return actualizado
     ? { ok: true, message: actualizado }

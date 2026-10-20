@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { MAX_BYTES_BY_KIND, dimensionValida, validateMedia } from '@lilachat/shared';
-import { ForbiddenChatError, sendMessage } from './chatService.js';
+import { ForbiddenChatError, mensajePropioPorClave, sendMessage } from './chatService.js';
 import { publicarMensaje } from './socket.js';
 import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
 import { requireSession } from './requireSession.js';
 import { ondaValida } from './ondaDeVoz.js';
+import { toClientMessage } from './messageView.js';
 
 /**
  * Subir un archivo y publicarlo como mensaje, en UN request.
@@ -39,6 +40,17 @@ export function buildMediaRouter(uploader: MediaUploader = buildLilaUploader()):
     if (!validation.ok) return res.status(413).json({ message: validation.reason });
 
     try {
+      // El reintento (el teléfono no vio la respuesta) se reconoce ANTES de
+      // subir: si no, el archivo viajaba otra vez a lila y quedaba huérfano.
+      const previo = await mensajePropioPorClave({ chatId, senderId: req.session!.userId, clientKey });
+      if (previo) {
+        return res.status(200).json({
+          message: toClientMessage(previo),
+          duplicate: true,
+          url: toAbsoluteMediaUrl(previo.media?.url ?? ''),
+          thumbnailUrl: toAbsoluteMediaUrl(previo.media?.thumbUrl ?? ''),
+        });
+      }
       const uploaded = await uploader.upload({
         chatId,
         fileName: file.originalname,
@@ -101,8 +113,10 @@ export function buildMediaRouter(uploader: MediaUploader = buildLilaUploader()):
        */
       if (!result.duplicate) await publicarMensaje(result.message, result.members);
 
+      // En la forma del socket (URLs absolutas): la app pinta el mensaje
+      // confirmado con esto, sin esperar el `msg.new` (auditoría 19/10).
       res.status(201).json({
-        message: result.message,
+        message: toClientMessage(result.message),
         duplicate: result.duplicate,
         url: toAbsoluteMediaUrl(uploaded.media.url),
         thumbnailUrl: toAbsoluteMediaUrl(uploaded.media.thumbnailUrl ?? ''),

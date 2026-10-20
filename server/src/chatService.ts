@@ -72,6 +72,13 @@ export type SendResult = {
  * consume un `seq`. Al revés, cada reintento quemaría un número y dejaría
  * huecos en la numeración del chat.
  */
+/** El mensaje que ESTA persona ya mandó con esa clave (idempotencia del reintento). */
+export async function mensajePropioPorClave(params: { chatId: Types.ObjectId | string; senderId: Types.ObjectId; clientKey: string }): Promise<Message | null> {
+  const chatId = typeof params.chatId === 'string' ? toObjectId(params.chatId) : params.chatId;
+  if (!chatId) return null;
+  return MessageModel.findOne({ chatId, senderId: params.senderId, clientKey: params.clientKey }).lean<Message | null>();
+}
+
 export async function sendMessage(params: {
   chatId: string;
   senderId: Types.ObjectId;
@@ -94,11 +101,7 @@ export async function sendMessage(params: {
 
   // Un duplicado devuelve el mensaje propio ya guardado: no filtra nada ajeno,
   // así que no hace falta mirar la membresía antes (un viaje menos).
-  const existing = await MessageModel.findOne({
-    chatId,
-    senderId: params.senderId,
-    clientKey: params.clientKey,
-  }).lean<Message | null>();
+  const existing = await mensajePropioPorClave({ chatId, senderId: params.senderId, clientKey: params.clientKey });
   if (existing) return { message: existing, duplicate: true };
 
   // `$inc` atómico: es lo que garantiza que dos envíos simultáneos no tomen el
@@ -249,14 +252,24 @@ export async function pullSince(params: {
  * Lo que mando yo queda leído por mí, en todos mis dispositivos (como
  * WhatsApp). Sin esto un mensaje propio enviado desde el teléfono contaba como
  * «sin leer» en la web y en el otro teléfono. Sin chequeo de membresía: quien
- * llama acaba de crear el mensaje en ese chat.
+ * llama acaba de crear el mensaje en ese chat. Devuelve el `readSeq` que había
+ * (para avisar si avanzó sobre lo ajeno), o `null` si no se marcó.
  */
-export async function marcarPropioLeido(message: Pick<Message, 'chatId' | 'senderId' | 'seq'>): Promise<void> {
-  await ReceiptModel.updateOne(
-    { chatId: message.chatId, userId: message.senderId },
-    { $max: { readSeq: message.seq, deliveredSeq: message.seq } },
-    { upsert: true }
-  );
+export async function marcarPropioLeido(
+  message: Pick<Message, 'chatId' | 'senderId' | 'seq'>,
+  opciones: { soloSiAlDia?: boolean } = {}
+): Promise<number | null> {
+  const cursor = { $max: { readSeq: message.seq, deliveredSeq: message.seq } };
+  const proyeccion = { projection: { readSeq: 1 }, new: false } as const;
+  // Lo que sale SIN que el autor esté mirando —un programado, la auto-respuesta,
+  // una línea de sistema— no da por leído lo ajeno (auditoría 19/10): solo se
+  // marca si ya estaba al día. Sin `upsert`: el filtro por `readSeq` crearía
+  // un acuse duplicado.
+  const anterior = opciones.soloSiAlDia
+    ? await ReceiptModel.findOneAndUpdate({ chatId: message.chatId, userId: message.senderId, readSeq: { $gte: message.seq - 1 } }, cursor, proyeccion).lean()
+    : await ReceiptModel.findOneAndUpdate({ chatId: message.chatId, userId: message.senderId }, cursor, { ...proyeccion, upsert: true }).lean();
+  if (opciones.soloSiAlDia && !anterior) return null;
+  return anterior?.readSeq ?? 0;
 }
 
 /**

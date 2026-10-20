@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ChatModel, MessageModel, ReceiptModel } from '../src/chatModels.js';
 import {
   buscarMensajes,
+  deleteMessage,
   ForbiddenChatError,
   listMessages,
   markDelivered,
@@ -12,7 +13,7 @@ import {
   sendMessage,
 } from '../src/chatService.js';
 import { listChats } from '../src/listaDeChats.js';
-import { borrarChatParaMi, cambiarAjustesDeChat } from '../src/miembrosDelChat.js';
+import { addMember, borrarChatParaMi, cambiarAjustesDeChat } from '../src/miembrosDelChat.js';
 import { UserModel } from '../src/models.js';
 
 let mongo: MongoMemoryServer;
@@ -438,5 +439,45 @@ describe('borrar el chat para mí', () => {
 
   it('quien no es miembro no puede', async () => {
     expect((await borrarChatParaMi({ chatId, quien: ajeno })).ok).toBe(false);
+  });
+});
+
+/**
+ * Auditoría (19/10): sumar a alguien a un grupo bajaba a UN check todos los
+ * mensajes de los demás — el nuevo no tenía acuse y contaba como 0, y en un
+ * grupo manda el menor. Lo de antes de entrar no lo frena.
+ */
+describe('sumar a alguien a un grupo', () => {
+  it('los checks de lo ya leído no bajan', async () => {
+    // Arrange
+    const grupo = String(
+      (await ChatModel.create({ kind: 'group', name: 'Obra', members: [{ userId: jose, role: 'admin' }, { userId: maria, role: 'member' }], lastSeq: 0 }))._id
+    );
+    const { message } = await sendMessage({ chatId: grupo, senderId: jose, clientKey: 'g-1', body: 'hola' });
+    await markRead({ chatId: grupo, userId: maria, seq: message.seq });
+
+    // Act
+    const r = await addMember({ chatId: grupo, quien: jose, aQuien: String(ajeno) });
+
+    // Assert
+    expect(r.ok).toBe(true);
+    const deJose = (await listChats(jose)).find((chat) => chat.id === grupo);
+    expect(deJose?.othersReadSeq).toBe(message.seq);
+    expect(deJose?.othersDeliveredSeq).toBe(message.seq);
+  });
+});
+
+/** Auditoría (19/10): la lista seguía diciendo «Foto» de una foto borrada para todos. */
+describe('el último mensaje borrado para todos', () => {
+  it('la lista lo trae marcado como eliminado', async () => {
+    // Arrange
+    const { message } = await sendMessage({ chatId, senderId: jose, clientKey: 'b-1', body: 'ups' });
+
+    // Act
+    await deleteMessage({ chatId, seq: message.seq, userId: jose });
+
+    // Assert
+    const [chat] = await listChats(jose);
+    expect(chat?.lastMessage?.deletedAt).toBeTruthy();
   });
 });

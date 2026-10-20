@@ -55,9 +55,12 @@ export async function addMember(params: {
     { returnDocument: 'after' }
   ).lean<Chat | null>();
 
-  return actualizado
-    ? { ok: true, chat: actualizado }
-    : { ok: false, motivo: 'Esa persona ya está en el grupo.' };
+  if (!actualizado) return { ok: false, motivo: 'Esa persona ya está en el grupo.' };
+  // Lo de antes de entrar no lo frena (auditoría 19/10): sin acuse contaba como
+  // 0 y, en un grupo, manda el menor — todos los checks bajaban a uno.
+  const hasta = actualizado.lastSeq ?? 0;
+  await ReceiptModel.updateOne({ chatId: actualizado._id, userId: persona._id }, { $max: { readSeq: hasta, deliveredSeq: hasta } }, { upsert: true });
+  return { ok: true, chat: actualizado };
 }
 
 /** Los ajustes que cada miembro cambia para sí (el subdoc de `members`). */

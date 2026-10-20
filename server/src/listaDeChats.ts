@@ -38,6 +38,7 @@ export type ChatSummary = {
     senderId: string;
     at: Date;
     system?: Message['system'];
+    deletedAt?: Date;
   } | null;
   /** Hasta qué `seq` leyeron los DEMÁS: de acá salen los checks del diseño. */
   othersReadSeq: number;
@@ -170,6 +171,8 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
             // vista previa decía «902049935 cambió la foto del grupo», que es
             // exactamente la queja que arregló `nombreDeContacto`.
             system: last.system,
+            // Borrado para todos (19/10): sin esto la lista seguía diciendo «Foto».
+            ...(last.deletedAt ? { deletedAt: last.deletedAt } : {}),
           }
         : null,
       othersReadSeq: acuseDelGrupo({ otros: acusan, porMiembro: acuses?.read ?? new Map() }),

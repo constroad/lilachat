@@ -10,6 +10,7 @@ import { signSession } from '../src/sessions.js';
 import { attachSocket } from '../src/socket.js';
 import { programarMensaje, runScheduledTick } from '../src/scheduledMessages.js';
 import { listChats } from '../src/listaDeChats.js';
+import { sendMessage } from '../src/chatService.js';
 
 /**
  * El socket de verdad, sobre un puerto real. Lo que NINGÚN test unitario ve:
@@ -211,6 +212,60 @@ describe('lo propio no queda sin leer', () => {
 
     // Assert
     const chats = await listChats(jose);
+    expect(chats.find((chat) => chat.id === chatId)?.unread).toBe(0);
+  });
+
+  /**
+   * José, 19/10: «mando un mensaje, salgo y en la lista aparece el círculo de
+   * no leído en MI mensaje». El acuse propio se escribía después de repartir el
+   * mensaje y del ack: una lista pedida en ese hueco contaba lo propio.
+   */
+  it('mi otro dispositivo pide la lista apenas le llega mi mensaje y no cuenta como sin leer', async () => {
+    // Arrange
+    const emisor = await connect(tokenFor(jose));
+    const otroDispositivo = await connect(tokenFor(jose));
+    const noLeidosAlLlegar = new Promise<number | undefined>((resolve) =>
+      otroDispositivo.once('msg.new', () => void listChats(jose).then((chats) => resolve(chats.find((chat) => chat.id === chatId)?.unread)))
+    );
+
+    // Act
+    await emisor.timeout(10_000).emitWithAck('msg.send', { chatId, clientKey: 'propio-2', body: 'hola' });
+
+    // Assert
+    await expect(noLeidosAlLlegar).resolves.toBe(0);
+  });
+
+  /**
+   * Auditoría (19/10): un programado sale solo, de madrugada; no es que su
+   * autor haya leído el chat. Antes daba por leídos los mensajes ajenos y el
+   * otro veía azul sin que nadie los abriera.
+   */
+  it('un mensaje programado no da por leídos los mensajes ajenos', async () => {
+    // Arrange
+    await sendMessage({ chatId, senderId: maria, clientKey: 'm-1', body: 'uno' });
+    await sendMessage({ chatId, senderId: maria, clientKey: 'm-2', body: 'dos' });
+    const ahora = new Date();
+    await programarMensaje({ chatId: new Types.ObjectId(chatId), senderId: jose, body: 'buen día', sendAt: new Date(ahora.getTime() + 60_000), clientKey: 'prog-2' });
+
+    // Act
+    await runScheduledTick(new Date(ahora.getTime() + 120_000));
+
+    // Assert
+    const deJose = (await listChats(jose)).find((chat) => chat.id === chatId);
+    const deMaria = (await listChats(maria)).find((chat) => chat.id === chatId);
+    expect(deJose?.unread).toBeGreaterThanOrEqual(2);
+    expect(deMaria?.othersReadSeq).toBe(0);
+  });
+
+  it('con el ack en la mano, la lista ya no cuenta lo propio', async () => {
+    // Arrange
+    const emisor = await connect(tokenFor(jose));
+
+    // Act
+    await emisor.timeout(10_000).emitWithAck('msg.send', { chatId, clientKey: 'propio-3', body: 'hola' });
+    const chats = await listChats(jose);
+
+    // Assert
     expect(chats.find((chat) => chat.id === chatId)?.unread).toBe(0);
   });
 });

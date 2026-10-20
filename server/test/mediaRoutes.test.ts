@@ -260,3 +260,46 @@ describe('URLs de media hacia el cliente', () => {
     expect(served.body.messages[0].media.thumbUrl).toMatch(/^https?:\/\//);
   });
 });
+
+/**
+ * Auditoría (19/10): el reintento de una foto (el teléfono no vio la
+ * respuesta) volvía a subir el archivo a lila y dejaba uno huérfano. El
+ * duplicado se reconoce ANTES de subir.
+ */
+describe('reintento de la misma foto', () => {
+  it('con el mismo clientKey no se vuelve a subir a lila', async () => {
+    const { uploader, calls } = fakeUploader();
+    const app = buildApp({ mediaUploader: uploader });
+    const send = () =>
+      request(app)
+        .post('/api/media')
+        .set('Authorization', `Bearer ${token}`)
+        .field('chatId', chatId)
+        .field('clientKey', 'ck-media-reintento')
+        .attach('file', jpeg, { filename: 'foto.jpg', contentType: 'image/jpeg' });
+
+    await send();
+    const retry = await send();
+
+    expect(retry.status).toBe(200);
+    expect(retry.body.duplicate).toBe(true);
+    expect(retry.body.url).toMatch(/^https:\/\/lila\.constroad\.com\//);
+    expect(calls).toHaveLength(1);
+  });
+});
+
+describe('la respuesta de la subida', () => {
+  it('trae el mensaje con las URLs absolutas, como el socket', async () => {
+    const { uploader } = fakeUploader();
+    const response = await request(buildApp({ mediaUploader: uploader }))
+      .post('/api/media')
+      .set('Authorization', `Bearer ${token}`)
+      .field('chatId', chatId)
+      .field('clientKey', 'ck-forma')
+      .attach('file', jpeg, { filename: 'foto.jpg', contentType: 'image/jpeg' });
+
+    expect(response.status).toBe(201);
+    expect(response.body.message.clientKey).toBe('ck-forma');
+    expect(response.body.message.media.url).toMatch(/^https:\/\/lila\.constroad\.com\//);
+  });
+});

@@ -96,11 +96,15 @@ let ioVivo: SocketServer | null = null;
  * programados. Antes la media no mandaba push y los programados y las
  * auto-respuestas no se emitían: se veían recién al reabrir el chat.
  */
-export async function publicarMensaje(message: Message, conocidos?: string[]): Promise<string[]> {
-  const members = await avisarMensajeNuevo(message, conocidos);
-  void marcarPropioLeido(message).catch((error) =>
-    console.error('[leído] no se pudo marcar lo propio:', error?.message ?? error)
-  );
+export async function publicarMensaje(
+  message: Message,
+  conocidos?: string[],
+  /** Lo que sale sin que el autor esté mirando (programado, auto-respuesta, aviso). */
+  opciones: { soloSiAlDia?: boolean } = {}
+): Promise<string[]> {
+  const miembros = conocidos ?? (await chatMemberIds(message.chatId));
+  await leerLoPropio(message, miembros, opciones);
+  const members = await avisarMensajeNuevo(message, miembros);
   const senderId = String(message.senderId);
   // `.catch` y no `void` a secas: un rechazo sin dueño tumba los tests y
   // despierta la red de seguridad del proceso por algo que no es un error real.
@@ -108,6 +112,31 @@ export async function publicarMensaje(message: Message, conocidos?: string[]): P
     console.error('[push] no se pudo avisar:', error?.message ?? error)
   );
   return members;
+}
+
+/**
+ * Lo propio queda leído ANTES de repartirlo (auditoría 19/10): si se marcaba
+ * después, una lista pedida en ese hueco —el teléfono que vuelve de la galería,
+ * la web— contaba como sin leer el mensaje de uno mismo. Si al hacerlo quedó
+ * leído algo ajeno (responder es leer), los demás lo ven en vivo.
+ */
+async function leerLoPropio(message: Pick<Message, 'chatId' | 'senderId' | 'seq'>, conocidos: string[] | undefined, opciones: { soloSiAlDia?: boolean } = {}): Promise<void> {
+  try {
+    const antes = await marcarPropioLeido(message, opciones);
+    if (antes === null || antes >= message.seq - 1) return;
+    const miembros = conocidos ?? (await chatMemberIds(new Types.ObjectId(String(message.chatId))));
+    const acuse = { chatId: String(message.chatId), userId: String(message.senderId), readSeq: message.seq, deliveredSeq: message.seq };
+    for (const miembro of miembros) ioVivo?.to(userRoom(miembro)).emit('receipt', acuse);
+  } catch (error) {
+    console.error('[leído] no se pudo marcar lo propio:', (error as Error)?.message ?? error);
+  }
+}
+
+/** Una línea de sistema (pin, miembros, llamada): leída para quien actuó si estaba al día, sin push. */
+export async function publicarAviso(message: Message, miembros?: string[]): Promise<string[]> {
+  const destino = miembros ?? (await chatMemberIds(message.chatId));
+  await leerLoPropio(message, destino, { soloSiAlDia: true });
+  return avisarMensajeNuevo(message, destino);
 }
 
 export async function avisarMensajeNuevo(
@@ -197,8 +226,8 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
   configurarAvisoDeTarjeta((userId, cambio) => void io.to(userRoom(userId)).emit('ref.changed', cambio));
   configurarCiclo({
     emitirA: (userId, evento, frame) => void io.to(userRoom(userId)).emit(evento, frame),
-    publicar: (mensaje, members) => publicarMensaje(mensaje, members),
-    avisarSinPush: (mensaje, members) => avisarMensajeNuevo(mensaje, members),
+    publicar: (mensaje, members) => publicarMensaje(mensaje, members, { soloSiAlDia: true }),
+    avisarSinPush: (mensaje, members) => publicarAviso(mensaje, members),
     avisarFin: avisarFinDeLlamada,
     avisarLlamada,
   });
@@ -292,6 +321,8 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
           menciones: payload.menciones,
         });
 
+        // Lo propio, leído antes de que nadie vea el mensaje (`leerLoPropio`).
+        if (!result.duplicate) await leerLoPropio(result.message, result.members);
         // A TODOS los miembros (incluido el autor: sus otros dispositivos
         // también tienen que ver el mensaje).
         const members = await avisarMensajeNuevo(result.message, result.members);
@@ -314,12 +345,6 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
           }).catch((error) => console.error('[auto-reply] falló:', error?.message ?? error));
         }
         ack?.({ ok: true, seq: result.message.seq, duplicate: result.duplicate });
-        // Después del ack: mis otros dispositivos no lo cuentan como sin leer.
-        if (!result.duplicate) {
-          void marcarPropioLeido(result.message).catch((error) =>
-            console.error('[leído] no se pudo marcar lo propio:', error?.message ?? error)
-          );
-        }
 
         // `@lila`, DESPUÉS del ack: el mensaje de quien escribió ya está
         // guardado y repartido, así que si el modelo tarda o falla la

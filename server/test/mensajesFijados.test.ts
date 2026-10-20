@@ -4,7 +4,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { ChatModel, MessageModel } from '../src/chatModels.js';
-import { deleteMessage, sendMessage } from '../src/chatService.js';
+import { deleteMessage, markRead, sendMessage } from '../src/chatService.js';
 import { listChats } from '../src/listaDeChats.js';
 import { UserModel } from '../src/models.js';
 import { signSession } from '../src/sessions.js';
@@ -123,5 +123,35 @@ describe('fijar un mensaje', () => {
     await ChatModel.updateOne({ _id: directo, 'members.userId': jose }, { $set: { 'members.$.borradoHasta': seq + 1 } });
     expect((await listChats(jose))[0]?.fijados ?? []).toEqual([]);
     expect((await listChats(ana))[0]?.fijados).toHaveLength(1);
+  });
+});
+
+/**
+ * Auditoría de chats (19/10): la línea «Fijaste un mensaje» la escribe quien
+ * fijó y le contaba como sin leer A ÉL (badge «1» en su propio aviso). Al día,
+ * su línea queda leída; con mensajes ajenos sin leer, esos NO se marcan.
+ */
+describe('la línea de sistema de quien actuó', () => {
+  it('al día: su propia línea no le cuenta como sin leer; al otro sí', async () => {
+    const seq = await escribir(directo, ana, 'Mañana a las 5');
+    await markRead({ chatId: directo, userId: jose, seq });
+    const noLeidosDeAna = async () => (await listChats(ana)).find((chat) => chat.id === directo)?.unread ?? 0;
+    const antesAna = await noLeidosDeAna();
+
+    await fijar(directo, jose, { seq, duracion: '24h' });
+
+    const deJose = (await listChats(jose)).find((chat) => chat.id === directo);
+    expect(deJose?.unread).toBe(0);
+    expect(await noLeidosDeAna()).toBe(antesAna + 1);
+  });
+
+  it('con mensajes ajenos sin leer, fijar no los da por leídos', async () => {
+    await escribir(directo, ana, 'uno');
+    const seq = await escribir(directo, ana, 'dos');
+
+    await fijar(directo, jose, { seq, duracion: '24h' });
+
+    const deJose = (await listChats(jose)).find((chat) => chat.id === directo);
+    expect(deJose?.unread).toBeGreaterThanOrEqual(2);
   });
 });

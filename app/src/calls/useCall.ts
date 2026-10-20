@@ -14,7 +14,8 @@ import { CALL_TIMEOUT_MS, nextCallState, type CallState } from '@lilachat/shared
 import { connectSocket, getSocket, sostenerPorLlamada } from '../chat/socketClient';
 import { obtenerIceServers, type ServidorIce } from './iceServers';
 import { esperaAntesDeRendirse, estadoDeMedios, type EstadoDeMedios } from './estadoDeMedios';
-import { comoSuena, inicioDelTimbre, necesitaServicioDeLlamada, queHacerConElAviso } from './llamadaNativa';
+import { comoSuena, inicioDelTimbre, necesitaServicioDeLlamada, queHacerConElAviso, suenaTonoDeLlamando } from './llamadaNativa';
+import { detenerTonoDeLlamando, iniciarTonoDeLlamando } from './tonoDeLlamando';
 import { llamadaNativa, type AccionDeAviso } from '../../modules/llamada-entrante/src';
 import { reportarError } from '../ui/reportarError';
 
@@ -247,6 +248,14 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
     Vibration.vibrate(TIMBRE, true);
     return () => Vibration.cancel();
   }, [sonandoEntrante]);
+
+  // Mientras llamo, el «tuu… tuu» (20/10): se corta al contestar, rechazar o colgar.
+  const llamandoSaliente = suenaTonoDeLlamando(state);
+  useEffect(() => {
+    if (!llamandoSaliente) return;
+    iniciarTonoDeLlamando();
+    return () => detenerTonoDeLlamando();
+  }, [llamandoSaliente]);
 
   useEffect(() => {
     const suscripcion = AppState.addEventListener('change', (estado) => setAppActiva(estado === 'active'));

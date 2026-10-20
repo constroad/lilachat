@@ -39,6 +39,11 @@ export function necesitaServicioDeLlamada(estado: CallState | null): boolean {
   return estado?.fase === 'activa' || estado?.fase === 'llamando';
 }
 
+/** El «tuu… tuu» de quien llama, hasta que contestan (20/10). */
+export function suenaTonoDeLlamando(estado: CallState | null): boolean {
+  return estado?.fase === 'llamando';
+}
+
 /** Con la app adelante suena el tono; de fondo, la notificación nativa. */
 export function comoSuena(params: { sonandoEntrante: boolean; appActiva: boolean }): 'tono' | 'aviso-nativo' | 'nada' {
   if (!params.sonandoEntrante) return 'nada';

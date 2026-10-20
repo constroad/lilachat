@@ -53,6 +53,7 @@ import { HiloScreen } from './HiloScreen';
 import type { PropsDelChat } from './propsDelChat';
 import { useReaccionesEnPantalla } from './reacciones/useReaccionesEnPantalla';
 import { TarjetaDeFijados } from './fijados/TarjetaDeFijados';
+import { CamaraDelChat } from './camara/CamaraDelChat';
 
 /** El pie del composer con el teclado abierto (dp). */
 const MARGEN_CON_TECLADO = 8;
@@ -172,7 +173,7 @@ export function ChatScreen({
     [send, cancelarRespuesta]
   );
   const alAdjuntar = useCallback(() => setAttachOpen(true), []);
-  const { fotosElegidas, cerrarFotos, alEnviarFotos, alCamara, alNotaDeVoz, pickFromCamera, pickFromGallery, pickFile } =
+  const { fotosElegidas, cerrarFotos, alEnviarFotos, alCamara, alNotaDeVoz, pickFromCamera, pickFromGallery, pickFile, camara } =
     useAdjuntosDelChat({ chatId, onError: setMediaError });
 
   const nombreVisible = infoPropia.name ?? chatName;
@@ -364,19 +365,9 @@ export function ChatScreen({
   useAlAbrirElChat({ hayContenido: rows.length > 0, irAlInicio: alAbrir, mensajes: messages, lastSeqInicial, markRead });
 
   return (
-    <KeyboardAvoidingView
-      // `style` y no `className`: NativeWind no estiliza componentes de terceros
-      // y sin `flex: 1` la pantalla se aplastaba.
-      style={{ flex: 1, backgroundColor: colores['fondo-chat'] }}
-      /**
-       * `padding` también en Android: con `edgeToEdgeEnabled` (Expo 57) la
-       * ventana ya no se encoge con el teclado y el campo quedaba tapado (José,
-       * 27/08/2026). FL12 (§49 #1) probó `KeyboardChatScrollView` y se volvió
-       * atrás: tras un modal la lista saltaba al principio de la conversación.
-       */
-      behavior="padding"
-      testID="pantalla-chat"
-    >
+    <View style={{ flex: 1, backgroundColor: colores['fondo-chat'] }} testID="pantalla-chat">
+      {/* La cabecera queda FUERA de lo que sube con el teclado y por encima: la conversación pasa por debajo. */}
+      <View style={{ zIndex: 2, elevation: 2 }}>
       {/**
        * Con un mensaje seleccionado, la cabecera se REEMPLAZA por la barra de
        * acciones — no se apila encima. Es lo que hace WhatsApp: mientras estás
@@ -432,6 +423,15 @@ export function ChatScreen({
       )}
 
       {fijar.franja}
+      </View>
+      {/**
+       * El teclado (José, 20/10: «la animación de subida y bajada se siente
+       * torpe; WhatsApp es más ágil»). Con `padding` la lista se volvía a
+       * medir en CADA cuadro de la animación. `translate-with-padding` mueve
+       * la conversación como un bloque (transform, sin medir) y ajusta el
+       * tamaño una sola vez al final. Ver §59.
+       */}
+      <KeyboardAvoidingView style={{ flex: 1, zIndex: 1 }} behavior="translate-with-padding">
       {fijar.hoja}
 
       <CrearDesdeElChat
@@ -518,6 +518,7 @@ export function ChatScreen({
         />
       )}
 
+      <CamaraDelChat visible={camara.abierta} nombreDelChat={nombreVisible} onEnviar={(lista, opciones) => void camara.enviar(lista, opciones)} onGaleria={camara.aLaGaleria} onCerrar={camara.cerrar} />
       <EnviarFotos fotos={fotosElegidas} onCancelar={cerrarFotos} onEnviar={(lista, opciones) => void alEnviarFotos(lista, opciones)} />
       <HiloScreen
         raiz={hilos.raiz}
@@ -584,5 +585,6 @@ export function ChatScreen({
       />
       ) : null}
     </KeyboardAvoidingView>
+    </View>
   );
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CALL_TIMEOUT_MS, type CallState } from '@lilachat/shared';
-import { comoSuena, decidirDeslizamiento, inicioDelTimbre, necesitaServicioDeLlamada, queHacerConElAviso, UMBRAL_DE_DESLIZAR } from './llamadaNativa';
+import { comoSuena, decidirDeslizamiento, inicioDelTimbre, necesitaServicioDeLlamada, queHacerConElAviso, suenaTonoDeLlamando, UMBRAL_DE_DESLIZAR } from './llamadaNativa';
 
 /** FL8.1: la llamada entrante como WhatsApp, desde la notificación nativa. */
 const sonando: CallState = { fase: 'sonando', desde: 1, entrante: true };
@@ -124,5 +124,15 @@ describe('queHacerConElAviso — colgar', () => {
   it('sin llamada o de otro chat, nada (no se espera una oferta para colgar)', () => {
     expect(queHacerConElAviso({ aviso: { chatId: 'c1', accion: 'colgar' }, estado: null, chatId: null })).toBe('nada');
     expect(queHacerConElAviso({ aviso: { chatId: 'c2', accion: 'colgar' }, estado: activa, chatId: 'c1' })).toBe('nada');
+  });
+});
+
+/** José, 20/10: «no hay sonido cuando hago una llamada». El «tuu… tuu» mientras llama. */
+describe('suenaTonoDeLlamando', () => {
+  it('solo mientras MI llamada todavía no contestan', () => {
+    expect(suenaTonoDeLlamando({ fase: 'llamando', desde: 1, entrante: false })).toBe(true);
+    expect(suenaTonoDeLlamando(sonando)).toBe(false);
+    expect(suenaTonoDeLlamando(activa)).toBe(false);
+    expect(suenaTonoDeLlamando(null)).toBe(false);
   });
 });

@@ -17,6 +17,8 @@ export function EnviarFotos(props: {
   fotos: FotoElegida[];
   onCancelar: () => void;
   onEnviar: (fotos: FotoAEnviar[], opciones: { hd: boolean }) => void;
+  /** Dentro de la cámara (20/10): sin su propio modal, encima de la vista, como WhatsApp. */
+  embebido?: boolean;
 }) {
   const colores = useColores();
   const margenes = useMargenes();
@@ -44,100 +46,105 @@ export function EnviarFotos(props: {
     setActual(resultado.actual);
   };
 
-  return (
-    <Modal visible={props.fotos.length > 0} animationType="slide" onRequestClose={props.onCancelar}>
-      {/* Con el teclado abierto el campo del pie sube con él, como en el chat. */}
-      <KeyboardAvoidingView behavior="padding" className="flex-1 bg-black" testID="pantalla-enviar-fotos">
-        <View className="flex-row items-center px-3 pb-2" style={{ paddingTop: margenes.cabecera }}>
-          <Pressable testID="btn-cancelar-fotos" accessibilityLabel="Cancelar" onPress={props.onCancelar} className="h-11 w-11 items-center justify-center">
-            <X size={24} color="white" />
-          </Pressable>
-          <Text className="flex-1 text-base font-semibold" style={{ color: 'white' }}>
-            {fotos.length === 1 ? '1 foto' : `${fotos.length} fotos`}
+  // Con el teclado abierto el campo del pie sube con él, como en el chat.
+  const contenido = (
+    <KeyboardAvoidingView behavior="padding" className="flex-1 bg-black" testID="pantalla-enviar-fotos">
+      <View className="flex-row items-center px-3 pb-2" style={{ paddingTop: margenes.cabecera }}>
+        <Pressable testID="btn-cancelar-fotos" accessibilityLabel="Cancelar" onPress={props.onCancelar} className="h-11 w-11 items-center justify-center">
+          <X size={24} color="white" />
+        </Pressable>
+        <Text className="flex-1 text-base font-semibold" style={{ color: 'white' }}>
+          {fotos.length === 1 ? '1 foto' : `${fotos.length} fotos`}
+        </Text>
+        <Pressable
+          testID="btn-hd"
+          accessibilityRole="switch"
+          accessibilityState={{ checked: hd }}
+          accessibilityLabel={hd ? 'Calidad HD: se manda la original' : 'Calidad estándar: se manda más liviana'}
+          onPress={() => setHd((antes) => !antes)}
+          className="h-11 min-w-[44px] items-center justify-center px-2"
+        >
+          <Text
+            className="rounded-md border-2 px-1.5 text-[13px] font-bold"
+            style={{ color: hd ? colores.primary : 'white', borderColor: hd ? colores.primary : 'white' }}
+          >
+            HD
           </Text>
-          <Pressable
-            testID="btn-hd"
-            accessibilityRole="switch"
-            accessibilityState={{ checked: hd }}
-            accessibilityLabel={hd ? 'Calidad HD: se manda la original' : 'Calidad estándar: se manda más liviana'}
-            onPress={() => setHd((antes) => !antes)}
-            className="h-11 min-w-[44px] items-center justify-center px-2"
-          >
-            <Text
-              className="rounded-md border-2 px-1.5 text-[13px] font-bold"
-              style={{ color: hd ? colores.primary : 'white', borderColor: hd ? colores.primary : 'white' }}
+        </Pressable>
+      </View>
+
+      <View className="flex-1 items-center justify-center">
+        {vista && !esVideo(vista) ? (
+          <Image source={{ uri: vista.uri }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
+        ) : (
+          <Video size={64} color="white" />
+        )}
+      </View>
+
+      {fotos.length > 1 ? (
+        <FlatList
+          horizontal
+          // Sin esto la tira horizontal se estira a todo el alto que sobra y
+          // achica la foto principal (visto en el E2E).
+          style={{ flexGrow: 0 }}
+          data={fotos}
+          keyExtractor={(foto) => foto.uri}
+          contentContainerStyle={{ gap: 8, paddingHorizontal: 12, paddingVertical: 8 }}
+          renderItem={({ item, index }) => (
+            <Pressable
+              testID={`miniatura-${index}`}
+              onPress={() => setActual(index)}
+              style={{ borderWidth: 2, borderColor: index === actual ? colores.primary : 'transparent', borderRadius: 8 }}
             >
-              HD
-            </Text>
-          </Pressable>
-        </View>
-
-        <View className="flex-1 items-center justify-center">
-          {vista && !esVideo(vista) ? (
-            <Image source={{ uri: vista.uri }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
-          ) : (
-            <Video size={64} color="white" />
-          )}
-        </View>
-
-        {fotos.length > 1 ? (
-          <FlatList
-            horizontal
-            // Sin esto la tira horizontal se estira a todo el alto que sobra y
-            // achica la foto principal (visto en el E2E).
-            style={{ flexGrow: 0 }}
-            data={fotos}
-            keyExtractor={(foto) => foto.uri}
-            contentContainerStyle={{ gap: 8, paddingHorizontal: 12, paddingVertical: 8 }}
-            renderItem={({ item, index }) => (
+              {esVideo(item) ? (
+                <View className="h-14 w-14 items-center justify-center rounded-md bg-white/10">
+                  <Video size={20} color="white" />
+                </View>
+              ) : (
+                <Image source={{ uri: item.uri }} style={{ width: 56, height: 56, borderRadius: 6 }} contentFit="cover" />
+              )}
               <Pressable
-                testID={`miniatura-${index}`}
-                onPress={() => setActual(index)}
-                style={{ borderWidth: 2, borderColor: index === actual ? colores.primary : 'transparent', borderRadius: 8 }}
+                testID={`quitar-foto-${index}`}
+                // 24 dp de dibujo, 44 de toque.
+                hitSlop={10}
+                accessibilityLabel="Sacar esta foto"
+                onPress={() => quitar(index)}
+                className="absolute -right-2 -top-2 h-6 w-6 items-center justify-center rounded-full bg-black/80"
               >
-                {esVideo(item) ? (
-                  <View className="h-14 w-14 items-center justify-center rounded-md bg-white/10">
-                    <Video size={20} color="white" />
-                  </View>
-                ) : (
-                  <Image source={{ uri: item.uri }} style={{ width: 56, height: 56, borderRadius: 6 }} contentFit="cover" />
-                )}
-                <Pressable
-                  testID={`quitar-foto-${index}`}
-                  // 24 dp de dibujo, 44 de toque.
-                  hitSlop={10}
-                  accessibilityLabel="Sacar esta foto"
-                  onPress={() => quitar(index)}
-                  className="absolute -right-2 -top-2 h-6 w-6 items-center justify-center rounded-full bg-black/80"
-                >
-                  <X size={12} color="white" />
-                </Pressable>
+                <X size={12} color="white" />
               </Pressable>
-            )}
-          />
-        ) : null}
+            </Pressable>
+          )}
+        />
+      ) : null}
 
-        <View className="flex-row items-end gap-2 px-3 pt-2" style={{ paddingBottom: margenes.pie + 8 }}>
-          <TextInput
-            testID="input-pie-de-foto"
-            value={vista ? (pies[vista.uri] ?? '') : ''}
-            onChangeText={(texto) => vista && setPies((actuales) => ({ ...actuales, [vista.uri]: texto }))}
-            placeholder="Añade un comentario…"
-            placeholderTextColor="rgba(255,255,255,0.6)"
-            multiline
-            className="min-h-[44px] flex-1 rounded-3xl bg-white/15 px-4 py-2.5 text-[15px]"
-            style={{ color: 'white' }}
-          />
-          <Pressable
-            testID="btn-enviar-fotos"
-            accessibilityLabel="Enviar"
-            onPress={() => props.onEnviar(armarEnvioDeFotos(fotos, pies), { hd })}
-            className="h-12 w-12 items-center justify-center rounded-full bg-primary"
-          >
-            <Send size={20} color={colores['on-primary']} />
-          </Pressable>
-        </View>
-      </KeyboardAvoidingView>
+      <View className="flex-row items-end gap-2 px-3 pt-2" style={{ paddingBottom: margenes.pie + 8 }}>
+        <TextInput
+          testID="input-pie-de-foto"
+          value={vista ? (pies[vista.uri] ?? '') : ''}
+          onChangeText={(texto) => vista && setPies((actuales) => ({ ...actuales, [vista.uri]: texto }))}
+          placeholder="Añade un comentario…"
+          placeholderTextColor="rgba(255,255,255,0.6)"
+          multiline
+          className="min-h-[44px] flex-1 rounded-3xl bg-white/15 px-4 py-2.5 text-[15px]"
+          style={{ color: 'white' }}
+        />
+        <Pressable
+          testID="btn-enviar-fotos"
+          accessibilityLabel="Enviar"
+          onPress={() => props.onEnviar(armarEnvioDeFotos(fotos, pies), { hd })}
+          className="h-12 w-12 items-center justify-center rounded-full bg-primary"
+        >
+          <Send size={20} color={colores['on-primary']} />
+        </Pressable>
+      </View>
+    </KeyboardAvoidingView>
+  );
+  if (props.embebido) return props.fotos.length > 0 ? <View className="absolute inset-0">{contenido}</View> : null;
+  return (
+    // Fundido y no deslizamiento (20/10): desde la cámara, la foto aparece en el acto.
+    <Modal visible={props.fotos.length > 0} animationType="fade" onRequestClose={props.onCancelar}>
+      {contenido}
     </Modal>
   );
 }

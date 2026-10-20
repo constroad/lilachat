@@ -2,7 +2,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { memo } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
-import { CircleAlert, Check, CheckCheck, Clock3, Play } from 'lucide-react-native';
+import { BellRing, CalendarDays, CircleAlert, Check, CheckCheck, Clock3, Play } from 'lucide-react-native';
 import { AVATAR_DE_AUTOR, colorDeAutor, dondeVaLaHora, mostrarAutor, radiosDeBurbuja } from './burbuja';
 import { DeslizarParaResponder } from './DeslizarParaResponder';
 import { LineaDeLlamada } from './LineaDeLlamada';
@@ -16,6 +16,7 @@ import { AnilloDeSubida } from './AnilloDeSubida';
 import { copiaLocalDe } from './colaDeArchivos';
 import {
   TEXTO_ELIMINADO,
+  esAvisoDestacado,
   nombreDeContacto,
   primerEnlace,
   textoDeAviso,
@@ -540,6 +541,7 @@ function AvisoDelGrupo({ item, myUserId }: { item: ChatMessage; myUserId: string
     : (item.body ?? '');
 
   if (!texto) return null;
+  if (esAvisoDestacado(aviso?.evento)) return <AvisoDestacado item={item} texto={texto} />;
 
   return (
     <View className="items-center py-1.5" testID={`aviso-${item.seq}`}>
@@ -564,4 +566,23 @@ export function previewDeMensaje(item: Row): string {
   if (mime.startsWith('audio/')) return '🎤 Nota de voz';
   if (item.media) return '📎 ' + (item.media.fileName ? nombreLimpio(item.media.fileName) : 'Archivo');
   return 'Mensaje';
+}
+
+/**
+ * El recordatorio que sonó o el evento que se acerca (José, 20/10: «¿no
+ * debería aparecer también en el chat?»): una tarjeta con su ícono, no una
+ * línea gris más. El emoji del texto lo reemplaza el ícono.
+ */
+function AvisoDestacado({ item, texto }: { item: ChatMessage; texto: string }) {
+  const colores = useColores();
+  const Icono = item.system?.evento === 'evento-pronto' ? CalendarDays : BellRing;
+  return (
+    <View className="items-center py-2" testID={`aviso-destacado-${item.seq}`}>
+      <View className="max-w-[88%] flex-row items-center gap-3 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-2.5">
+        <Icono size={18} color={colores.primary} />
+        <Text className="flex-shrink text-[14px] font-semibold text-on-surface">{texto.replace(/^(⏰|📅)\s*/u, '')}</Text>
+        <Text className="text-[11px] text-on-surface-variant">{formatClock(item.at)}</Text>
+      </View>
+    </View>
+  );
 }

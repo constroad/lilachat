@@ -14,6 +14,7 @@ import { reportarError } from '../ui/reportarError';
 export function useAdjuntosDelChat(params: { chatId: string; onError: (texto: string) => void }) {
   /** Las fotos elegidas que se están por mandar; vacío = previsualización cerrada. */
   const [fotosElegidas, setFotosElegidas] = useState<FotoElegida[]>([]);
+  const [camaraAbierta, setCamaraAbierta] = useState(false);
 
   /**
    * Foto, archivo o nota de voz: a la cola PERSISTIDA (FL8). La burbuja aparece
@@ -66,12 +67,11 @@ export function useAdjuntosDelChat(params: { chatId: string; onError: (texto: st
       params.onError('Permite la cámara para poder tomar fotos.');
       return;
     }
-    const shot = await ImagePicker.launchCameraAsync({ quality: 1 });
-    const asset = shot.assets?.[0];
-    if (shot.canceled || !asset) return;
-    // FL9b: antes de mandarla, se ve y se le pone pie.
-    setFotosElegidas([asset]);
+    // 20/10: la cámara PROPIA (`CamaraDelChat`), lista al abrir; la del sistema tardaba segundos.
+    setCamaraAbierta(true);
   }
+
+
 
   const pickFromGallery = async () => {
     const picked = await ImagePicker.launchImageLibraryAsync({
@@ -118,5 +118,7 @@ export function useAdjuntosDelChat(params: { chatId: string; onError: (texto: st
   const alCamara = useCallback(() => void camaraRef.current(), []);
   const cerrarFotos = useCallback(() => setFotosElegidas([]), []);
 
-  return { fotosElegidas, cerrarFotos, alEnviarFotos, alCamara, alNotaDeVoz, pickFromCamera, pickFromGallery, pickFile };
+  // La cámara propia manda sola (su «Enviar» va adentro): acá solo se abre, se cierra o salta a la galería.
+  const camara = { abierta: camaraAbierta, enviar: alEnviarFotos, cerrar: () => setCamaraAbierta(false), aLaGaleria: () => { setCamaraAbierta(false); void pickFromGallery(); } };
+  return { fotosElegidas, cerrarFotos, alEnviarFotos, alCamara, alNotaDeVoz, pickFromCamera, pickFromGallery, pickFile, camara };
 }

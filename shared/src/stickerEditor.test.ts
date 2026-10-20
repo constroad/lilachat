@@ -9,7 +9,7 @@ const withText = (text = 'Hola'): EditorState => editSticker(initialEditorState(
 
 describe('sticker editor', () => {
   it('starts with the cutout and the white outline on, and nothing on top', () => {
-    expect(initialEditorState()).toEqual({ layers: [], selection: null, cutout: true, outline: true, history: [] });
+    expect(initialEditorState()).toEqual({ layers: [], selection: null, cutout: true, outline: true, maskStrokes: [], history: [] });
   });
 
   it('new text goes at the bottom, white, upright and selected; blank text is ignored', () => {
@@ -123,5 +123,28 @@ describe('sticker geometry (same numbers as the Android composition)', () => {
 
   it('an empty image does not divide by zero', () => {
     expect(stickerGeometry({ width: 0, height: 0, outline: true })).toEqual({ x: 256, y: 256, width: 0, height: 0 });
+  });
+
+  it('erase and restore strokes are kept in order and «Deshacer» removes the last one', () => {
+    const erase = { mode: 'erase' as const, radius: 20, points: [{ x: 10, y: 10 }] };
+    const restore = { mode: 'restore' as const, radius: 30, points: [{ x: 50, y: 60 }, { x: 70, y: 60 }] };
+    let state = editSticker(initialEditorState(), { type: 'add-text', text: 'Hola' });
+    state = editSticker(state, { type: 'add-mask-stroke', stroke: erase });
+    state = editSticker(state, { type: 'add-mask-stroke', stroke: restore });
+    expect(state.maskStrokes).toEqual([erase, restore]);
+    expect(state.selection).toBeNull();
+
+    state = editSticker(state, { type: 'undo' });
+    expect(state.maskStrokes).toEqual([erase]);
+    expect(state.layers).toHaveLength(1);
+
+    state = editSticker(editSticker(state, { type: 'undo' }), { type: 'undo' });
+    expect(state.maskStrokes).toEqual([]);
+    expect(state.layers).toHaveLength(0);
+  });
+
+  it('a mask stroke with no points changes nothing', () => {
+    const state = initialEditorState();
+    expect(editSticker(state, { type: 'add-mask-stroke', stroke: { mode: 'erase', radius: 10, points: [] } })).toBe(state);
   });
 });

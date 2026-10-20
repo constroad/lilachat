@@ -6,6 +6,8 @@
  * sticker, and the geometry is the one of the Android composition
  * (`Composition.kt`), so a sticker looks the same on both sides.
  */
+import type { MaskStroke } from './stickerMask.js';
+
 export type LayerKind = 'text' | 'emoji' | 'stroke';
 export type Point = { x: number; y: number };
 export type Layer = {
@@ -30,15 +32,20 @@ export type EditorState = {
   /** With the photo without background (the cutout) or the whole photo. */
   cutout: boolean;
   outline: boolean;
-  /** The layers before each change, for «Deshacer». */
-  history: Layer[][];
+  /** Erase and restore brushes over the cutout, in photo pixels (`stickerMask`). */
+  maskStrokes: MaskStroke[];
+  /** The layers and brushes before each change, for «Deshacer». */
+  history: Snapshot[];
 };
+
+type Snapshot = { layers: Layer[]; maskStrokes: MaskStroke[] };
 
 type LayerChange = { id: string; transient?: boolean };
 export type EditorAction =
   | { type: 'add-text'; text: string }
   | { type: 'add-emoji'; emoji: string }
   | { type: 'add-stroke'; points: Point[]; color: string; width: number }
+  | { type: 'add-mask-stroke'; stroke: MaskStroke }
   | (LayerChange & { type: 'move'; x: number; y: number })
   | (LayerChange & { type: 'scale'; factor: number })
   | (LayerChange & { type: 'set-scale'; scale: number })
@@ -76,13 +83,16 @@ let nextId = 0;
 const newId = () => `layer-${Date.now().toString(36)}-${(nextId += 1)}`;
 
 export function initialEditorState(): EditorState {
-  return { layers: [], selection: null, cutout: true, outline: true, history: [] };
+  return { layers: [], selection: null, cutout: true, outline: true, maskStrokes: [], history: [] };
 }
+
+const snapshot = (state: EditorState): Snapshot => ({ layers: state.layers, maskStrokes: state.maskStrokes });
+const remember = (state: EditorState) => [...state.history, snapshot(state)].slice(-UNDO_STEPS);
 
 /** A layer change that can be undone (a transient one, mid-drag, cannot: the drag checkpointed first). */
 function withLayers(state: EditorState, layers: Layer[], selection: string | null = state.selection, transient = false): EditorState {
   if (transient) return { ...state, layers, selection };
-  return { ...state, layers, selection, history: [...state.history, state.layers].slice(-UNDO_STEPS) };
+  return { ...state, layers, selection, history: remember(state) };
 }
 
 function add(state: EditorState, kind: 'text' | 'emoji', text: string): EditorState {
@@ -131,8 +141,8 @@ function remove(state: EditorState, id: string): EditorState {
 function undo(state: EditorState): EditorState {
   const previous = state.history.at(-1);
   if (!previous) return state;
-  const selection = previous.some((layer) => layer.id === state.selection) ? state.selection : null;
-  return { ...state, layers: previous, history: state.history.slice(0, -1), selection };
+  const selection = previous.layers.some((layer) => layer.id === state.selection) ? state.selection : null;
+  return { ...state, layers: previous.layers, maskStrokes: previous.maskStrokes, history: state.history.slice(0, -1), selection };
 }
 
 export function editSticker(state: EditorState, action: EditorAction): EditorState {
@@ -143,6 +153,8 @@ export function editSticker(state: EditorState, action: EditorAction): EditorSta
       return add(state, 'emoji', action.emoji);
     case 'add-stroke':
       return addStroke(state, action);
+    case 'add-mask-stroke':
+      return action.stroke.points.length ? { ...state, maskStrokes: [...state.maskStrokes, action.stroke], selection: null, history: remember(state) } : state;
     case 'move':
     case 'scale':
     case 'set-scale':
@@ -161,7 +173,7 @@ export function editSticker(state: EditorState, action: EditorAction): EditorSta
     case 'remove':
       return remove(state, action.id);
     case 'checkpoint':
-      return { ...state, history: [...state.history, state.layers].slice(-UNDO_STEPS) };
+      return { ...state, history: remember(state) };
     case 'undo':
       return undo(state);
     case 'toggle-cutout':

@@ -8,6 +8,7 @@ import { AnilloDeSubida } from './AnilloDeSubida';
 import { ChipDeHilo } from './hilos/ChipDeHilo';
 import { MenuDelMensaje } from './MenuDelMensaje';
 import { BotonDeReaccionar } from './reacciones/BotonDeReaccionar';
+import { BotonDeHilo } from './BotonDeHilo';
 import { PastillaDeReacciones } from './reacciones/PastillaDeReacciones';
 import { TextoDelMensaje } from './TextoDelMensaje';
 import { ConversacionContext, useConversacion } from './contextoDeLaConversacion';
@@ -59,6 +60,7 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
         ) : null}
       </div>
       <BotonDeReaccionar mensaje={mensaje} mio={mio} />
+      <BotonDeHilo mensaje={mensaje} />
       <MenuDelMensaje mensaje={mensaje} mio={mio} />
     </div>
   );

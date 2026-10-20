@@ -3,6 +3,7 @@ import { SendHorizontal, X } from 'lucide-react';
 import { formatClock } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { BurbujaDeMensaje } from '../BurbujaDeMensaje';
+import { TextoDelMensaje } from '../TextoDelMensaje';
 import type { ChatSummary, MensajeEnPantalla } from '../types';
 
 /** Lo escrito y no mandado en cada hilo, mientras la pestaña está abierta. */
@@ -65,7 +66,10 @@ export function PanelDeHilo(props: {
             <span className="text-sm font-semibold">{nombreDe(props.raiz.senderId)}</span>
             <span className="text-[12px] text-on-surface-variant">{formatClock(props.raiz.at)}</span>
           </div>
-          <p className="mt-2 whitespace-pre-wrap text-sm">{props.raiz.deletedAt ? 'Se eliminó este mensaje' : (props.raiz.body ?? (props.raiz.media ? 'Archivo' : ''))}</p>
+          {/* Con sus links y menciones, como en la app (20/10). */}
+          <div className="mt-2 text-sm">
+            {props.raiz.deletedAt ? 'Se eliminó este mensaje' : props.raiz.body ? <TextoDelMensaje clave={`raiz-${props.raiz.clientKey}`} texto={props.raiz.body} menciones={props.raiz.menciones} nombres={props.nombres} yo={props.yo} mio={false} /> : props.raiz.media ? 'Archivo' : ''}
+          </div>
         </div>
         <div className="my-3 flex items-center gap-3 text-[12px] text-on-surface-variant">
           <span className="h-px flex-1 bg-outline/15" />

@@ -37,7 +37,8 @@ export function TarjetaDeEnlace({ vista, mio }: { vista: VistaPreviaDeEnlace; mi
             referrerPolicy="no-referrer"
             onLoad={alCargar}
             onError={() => setSinImagen(true)}
-            className={compacta ? 'object-cover' : 'max-h-44 w-full object-cover'}
+            // El lugar reservado (1.91:1, el de `og:image`) mientras carga: sin él, el play flotaba sobre el título.
+            className={compacta ? 'object-cover' : 'aspect-[1.91/1] max-h-44 w-full object-cover'}
             style={compacta ? { width: LADO_DE_LA_MINIATURA, height: LADO_DE_LA_MINIATURA } : undefined}
           />
           {vista.video ? (

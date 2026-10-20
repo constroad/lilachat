@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, UserRound } from 'lucide-react';
 import {
   planTargetChat,
   validatePoll,
@@ -129,6 +129,30 @@ export function NewChatOverlay({
         </>
       }
     >
+      {kind === 'direct' ? (
+        // «Tú · Envíate un mensaje» (José, 20/10), como WhatsApp: siempre el mismo chat contigo.
+        <button
+          type="button"
+          data-testid="btn-chat-contigo"
+          disabled={guardando}
+          onClick={async () => {
+            setGuardando(true);
+            const resultado = await api<{ chatId: string }>('/chats', { jwt, body: { kind: 'yo' } });
+            setGuardando(false);
+            if (!resultado.ok) return setError(resultado.message);
+            onCreated(resultado.data.chatId);
+          }}
+          className="-mx-4 mb-2 flex min-h-[56px] w-[calc(100%+2rem)] items-center gap-3 px-4 text-left hover:bg-background"
+        >
+          <span className="grid h-10 w-10 place-items-center rounded-full bg-primary/10 text-primary">
+            <UserRound size={18} />
+          </span>
+          <span>
+            <span className="block text-sm font-semibold">Tú</span>
+            <span className="block text-[12px] text-on-surface-variant">Envíate un mensaje: lo que quieras guardar, solo para ti.</span>
+          </span>
+        </button>
+      ) : null}
       {kind === 'group' ? (
         <label className="mb-3 block">
           <span className="text-[12px] font-semibold text-on-surface-variant">

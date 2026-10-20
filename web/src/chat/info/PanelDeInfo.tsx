@@ -1,5 +1,5 @@
 import { Bell, LogOut, Trash2, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { BaseLocal } from '../../local/baseLocal';
 import { ConfirmarAccionDeChat } from '../MenuDeChat';
 import type { AccionDelChat } from '../menuDelChat';
@@ -7,6 +7,7 @@ import type { DetalleDelChat } from '../useDetalleDelChat';
 import type { ChatSummary, MensajeEnPantalla } from '../types';
 import { ArchivosDelChat } from './ArchivosDelChat';
 import { IdentidadDelChat } from './IdentidadDelChat';
+import { DescripcionDelChat } from './DescripcionDelChat';
 import { armarInfo } from './infoDelChat';
 import { ParticipantesDelChat } from './ParticipantesDelChat';
 import { useEditarChat } from './useEditarChat';
@@ -27,6 +28,8 @@ export function PanelDeInfo(props: {
   onCambio: () => void;
   onAccionDeChat: (chat: ChatSummary, accion: AccionDelChat) => void;
   onVerFoto: (mensaje: MensajeEnPantalla) => void;
+  /** Tarjetas que arma la conversación (20/10: los fijados), antes de los archivos. */
+  tarjetas?: ReactNode;
 }) {
   const { chat, detalle } = props;
   const info = armarInfo({ chat, detalle, yo: props.yo });
@@ -51,6 +54,7 @@ export function PanelDeInfo(props: {
           onRenombrar={editar.renombrar}
           onCambiarFoto={(archivo) => void editar.cambiarFoto(archivo)}
         />
+        {chat.kind !== 'direct' ? <DescripcionDelChat descripcion={detalle?.descripcion} editable={info.puedeEditar} onGuardar={editar.describir} /> : null}
         {chat.kind === 'notas' ? null : (
           <label className="mt-2 flex min-h-[56px] cursor-pointer items-center gap-4 bg-surface px-6">
             <Bell size={18} className="text-on-surface-variant" />
@@ -65,6 +69,7 @@ export function PanelDeInfo(props: {
             />
           </label>
         )}
+        {props.tarjetas}
         <ArchivosDelChat base={props.base} chatId={chat.id} onVerFoto={props.onVerFoto} />
         {info.miembros.length ? (
           <ParticipantesDelChat

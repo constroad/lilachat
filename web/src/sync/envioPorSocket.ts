@@ -67,8 +67,8 @@ export function resultadoDeAccion(acuse: unknown): ResultadoDeAccion {
 /** `msg.edit` o `msg.delete` con acuse. Sin socket: falla, no se encola (es sobre algo ya enviado). */
 export async function accionPorSocket(
   socket: Socket | null,
-  evento: 'msg.edit' | 'msg.delete',
-  frame: { chatId: string; seq: number; body?: string }
+  evento: 'msg.edit' | 'msg.delete' | 'msg.react',
+  frame: { chatId: string; seq: number; body?: string; emoji?: string | null }
 ): Promise<ResultadoDeAccion> {
   if (!socket?.connected) return { ok: false, motivo: 'Sin conexión. Inténtalo cuando vuelva la red.' };
   try {

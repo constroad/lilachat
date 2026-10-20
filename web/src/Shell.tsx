@@ -73,6 +73,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
     onBorrado: (dato) => eventos.current.onBorrado?.(dato),
     onEditado: (dato) => eventos.current.onEditado?.(dato),
     onHilo: (dato) => eventos.current.onHilo?.(dato),
+    onReacciones: (dato) => eventos.current.onReacciones?.(dato),
     onCambioDeChat: () => eventos.current.onCambioDeChat?.(),
     onSinAutorizacion: manejar401,
   });

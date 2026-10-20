@@ -10,9 +10,9 @@ describe('FranjaDeFijados (web)', () => {
   it('muestra el más reciente con su autor y el contador; tocar lleva al mensaje y pasa al siguiente', async () => {
     const onIr = vi.fn();
     render(<FranjaDeFijados fijados={[fijado(9, 'El sábado almorzamos'), fijado(4, 'Llevar torta')]} nombreDe={() => 'Mamá'} puedeDesfijar onIr={onIr} onDesfijar={vi.fn()} />);
-    expect(screen.getByTestId('franja-fijados')).toHaveTextContent('Mensaje fijado · Mamá');
+    expect(screen.getByTestId('franja-fijados')).toHaveTextContent('Mamá');
     expect(screen.getByTestId('texto-fijado')).toHaveTextContent('El sábado almorzamos');
-    expect(screen.getByTestId('contador-fijados')).toHaveTextContent('1/2');
+    expect(screen.getByTestId('contador-fijados')).toHaveTextContent('1 de 2');
 
     await userEvent.click(screen.getByTestId('btn-ir-fijado'));
     expect(onIr).toHaveBeenCalledWith(9);
@@ -40,6 +40,17 @@ describe('FranjaDeFijados (web)', () => {
   });
 });
 
+describe('FranjaDeFijados — ver todos (20/10)', () => {
+  it('el menú ofrece la lista entera con la cantidad', async () => {
+    const onVerTodos = vi.fn();
+    render(<FranjaDeFijados fijados={[fijado(9, 'Uno'), fijado(4, 'Dos')]} nombreDe={() => 'Ana'} puedeDesfijar onIr={vi.fn()} onDesfijar={vi.fn()} onVerTodos={onVerTodos} />);
+    screen.getByTestId('menu-fijado').focus();
+    await userEvent.keyboard('{Enter}');
+    await userEvent.click(await screen.findByTestId('accion-ver-fijados'));
+    expect(onVerTodos).toHaveBeenCalled();
+  });
+});
+
 describe('FranjaDeFijados — un fijado nuevo', () => {
   it('vuelve al principio para mostrar el recién fijado', async () => {
     const { rerender } = render(<FranjaDeFijados fijados={[fijado(9, 'Uno'), fijado(4, 'Dos')]} nombreDe={() => 'Ana'} puedeDesfijar onIr={vi.fn()} onDesfijar={vi.fn()} />);
@@ -47,6 +58,6 @@ describe('FranjaDeFijados — un fijado nuevo', () => {
     expect(screen.getByTestId('texto-fijado')).toHaveTextContent('Dos');
     rerender(<FranjaDeFijados fijados={[fijado(12, 'Nuevo'), fijado(9, 'Uno'), fijado(4, 'Dos')]} nombreDe={() => 'Ana'} puedeDesfijar onIr={vi.fn()} onDesfijar={vi.fn()} />);
     expect(screen.getByTestId('texto-fijado')).toHaveTextContent('Nuevo');
-    expect(screen.getByTestId('contador-fijados')).toHaveTextContent('1/3');
+    expect(screen.getByTestId('contador-fijados')).toHaveTextContent('1 de 3');
   });
 });

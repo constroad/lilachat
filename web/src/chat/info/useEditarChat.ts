@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { normalizarNombreDeGrupo } from '@lilachat/shared';
+import { normalizarDescripcion, normalizarNombreDeGrupo } from '@lilachat/shared';
 import { api, type ApiResult } from '../../api';
 
 /**
@@ -34,6 +34,19 @@ export function useEditarChat(params: { chatId: string; jwt: string; onCambio: (
     [chatId, jwt, onAviso, resolver]
   );
 
+  /** La descripción (20/10): la misma validación que el server; vacía la borra. */
+  const describir = useCallback(
+    async (descripcion: string): Promise<boolean> => {
+      const validada = normalizarDescripcion(descripcion);
+      if (!validada.ok) {
+        onAviso(validada.motivo);
+        return false;
+      }
+      return resolver(await api(`/chats/${chatId}`, { method: 'PATCH', body: { descripcion: validada.descripcion }, jwt }));
+    },
+    [chatId, jwt, onAviso, resolver]
+  );
+
   /** La foto va como archivo: el `api` común manda JSON. */
   const cambiarFoto = useCallback(
     async (archivo: File) => {
@@ -57,5 +70,5 @@ export function useEditarChat(params: { chatId: string; jwt: string; onCambio: (
   );
   const sacar = useCallback(async (userId: string) => void resolver(await api(`/chats/${chatId}/members/${userId}`, { method: 'DELETE', jwt })), [chatId, jwt, resolver]);
 
-  return { renombrar, cambiarFoto, agregar, cambiarRol, sacar };
+  return { renombrar, describir, cambiarFoto, agregar, cambiarRol, sacar };
 }

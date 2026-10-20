@@ -18,4 +18,8 @@ describe('aDetalle', () => {
   it('sin ser admin, no lo es', () => {
     expect(aDetalle({ members: [{ id: 'u1', name: 'José', phone: '9', esYo: true }] }).soyAdmin).toBe(false);
   });
+
+  it('trae la descripción del grupo (20/10)', () => {
+    expect(aDetalle({ descripcion: 'Reglas:\n1) Fotos', members: [{ id: 'u1', name: 'José', phone: '9', esYo: true }] }).descripcion).toBe('Reglas:\n1) Fotos');
+  });
 });

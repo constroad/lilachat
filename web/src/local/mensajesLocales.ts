@@ -1,5 +1,5 @@
 import Dexie from 'dexie';
-import { conciliarPagina, seqsQueSobran, type Cursors } from '@lilachat/shared';
+import { conciliarPagina, seqsQueSobran, type Cursors, type Reaccion } from '@lilachat/shared';
 import type { BaseLocal } from './baseLocal';
 import type { ChatMessage, ChatSummary } from '../chat/types';
 
@@ -102,4 +102,9 @@ export async function cursoresLocales(base: BaseLocal): Promise<Cursors> {
 /** E3: el resumen nuevo del hilo en su raíz guardada («4 respuestas · última 10:42»). */
 export async function aplicarResumenDeHilo(base: BaseLocal, { chatId, raiz, hilo }: { chatId: string; raiz: number; hilo: NonNullable<ChatMessage['hilo']> }): Promise<void> {
   await base.mensajes.where('[chatId+seq]').equals([chatId, raiz]).modify({ hilo });
+}
+
+/** Reacciones (20/10): la lista que manda el server reemplaza la guardada. */
+export async function aplicarReacciones(base: BaseLocal, { chatId, seq, reacciones }: { chatId: string; seq: number; reacciones: Reaccion[] }): Promise<void> {
+  await base.mensajes.where('[chatId+seq]').equals([chatId, seq]).modify({ reacciones });
 }

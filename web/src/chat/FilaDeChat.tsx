@@ -23,7 +23,8 @@ export function FilaDeChat(props: { chat: ChatSummary; yo?: string; seleccionado
         onClick={props.onSelect}
         className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${props.seleccionado ? 'bg-primary/10' : 'hover:bg-background'}`}
       >
-        <Avatar name={chat.name ?? chat.phone} kind={chat.kind} online={chat.online} foto={chat.avatarUrl} />
+        {/* El chat contigo («Tú») va como una persona, no con la libreta del borrador. */}
+        <Avatar name={chat.name ?? chat.phone} kind={chat.propio ? 'direct' : chat.kind} online={chat.propio ? undefined : chat.online} foto={chat.avatarUrl} />
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-2">
             <span className="min-w-0 flex-1 truncate text-sm font-semibold">{chat.name ?? chat.phone ?? 'Conversación'}</span>

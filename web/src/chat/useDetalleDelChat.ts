@@ -12,6 +12,8 @@ export type DetalleDelChat = {
   silenciado: boolean;
   foto?: string;
   nombre?: string;
+  /** La descripción del grupo o del borrador (20/10). */
+  descripcion?: string;
 };
 
 export type Respuesta = {
@@ -19,6 +21,7 @@ export type Respuesta = {
   muted?: boolean;
   avatarUrl?: string;
   name?: string;
+  descripcion?: string;
   members: { id: string; name: string | null; phone: string | null; avatarUrl?: string; role?: 'admin' | 'member'; esYo?: boolean }[];
 };
 
@@ -45,6 +48,7 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
     silenciado: respuesta.muted === true,
     foto: respuesta.avatarUrl,
     nombre: respuesta.name,
+    descripcion: respuesta.descripcion,
   };
 }
 

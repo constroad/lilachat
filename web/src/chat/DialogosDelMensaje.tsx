@@ -43,42 +43,6 @@ export function DialogoEliminar(props: {
   );
 }
 
-/** Reenviar un texto a uno o varios chats. Los secretos no: llegaría en claro. */
-export function DialogoReenviar(props: { mensaje: MensajeEnPantalla; chats: ChatSummary[]; onReenviar: (chatIds: string[]) => void; onCerrar: () => void }) {
-  const [elegidos, setElegidos] = useState<Set<string>>(new Set());
-  const [busqueda, setBusqueda] = useState('');
-  const destinos = useMemo(() => {
-    const aguja = busqueda.trim().toLowerCase();
-    return props.chats.filter((chat) => !chat.encrypted && (!aguja || (chat.name ?? chat.phone ?? '').toLowerCase().includes(aguja)));
-  }, [props.chats, busqueda]);
-  const alternar = (id: string) =>
-    setElegidos((actual) => {
-      const siguiente = new Set(actual);
-      if (siguiente.has(id)) siguiente.delete(id);
-      else siguiente.add(id);
-      return siguiente;
-    });
-  return (
-    <Overlay
-      title="Reenviar a…"
-      onClose={props.onCerrar}
-      footer={<PrimaryButton testId="btn-reenviar" disabled={elegidos.size === 0} onClick={() => props.onReenviar([...elegidos])}>{elegidos.size > 0 ? `Enviar a ${elegidos.size}` : 'Elige a quién'}</PrimaryButton>}
-    >
-      <input value={busqueda} onChange={(evento) => setBusqueda(evento.target.value)} placeholder="Buscar un chat" className="mb-3 min-h-[44px] w-full rounded-lg border border-outline/25 bg-background px-3 text-sm outline-none focus:border-primary" />
-      <ul className="flex flex-col">
-        {destinos.map((chat) => (
-          <li key={chat.id}>
-            <label className="flex min-h-[52px] cursor-pointer items-center gap-3 rounded-lg px-2 hover:bg-background">
-              <input type="checkbox" data-testid={`destino-${chat.id}`} checked={elegidos.has(chat.id)} onChange={() => alternar(chat.id)} className="h-4 w-4 accent-primary" />
-              <Avatar name={chat.name ?? chat.phone} kind={chat.kind} foto={chat.avatarUrl} size={36} />
-              <span className="min-w-0 flex-1 truncate text-sm font-medium">{chat.name ?? chat.phone ?? 'Conversación'}</span>
-            </label>
-          </li>
-        ))}
-      </ul>
-    </Overlay>
-  );
-}
 
 type MiembroDeInfo = { id: string; name: string | null; phone: string | null; estado: 'pending' | 'sent' | 'delivered' | 'read' };
 const GRUPOS: { estado: MiembroDeInfo['estado']; titulo: string }[] = [

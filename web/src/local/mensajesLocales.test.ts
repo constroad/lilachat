@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it } from 'vitest';
 import { BaseLocal } from './baseLocal';
 import {
+  aplicarReacciones,
   aplicarResumenDeHilo,
   aplicarBorrado,
   aplicarEdicion,
@@ -174,6 +175,22 @@ describe('aplicarResumenDeHilo', () => {
     await aplicarResumenDeHilo(base, { chatId: 'c', raiz: 1, hilo: { respuestas: 1, ultimaSeq: 2 } });
     expect((await base.mensajes.get(['c', 1]))?.hilo).toEqual({ respuestas: 1, ultimaSeq: 2 });
     expect((await base.mensajes.get(['c', 2]))?.hilo).toBeUndefined();
+    base.close();
+    await base.delete();
+  });
+});
+
+/** Reacciones (20/10): la lista del server reemplaza la guardada. */
+describe('aplicarReacciones', () => {
+  it('pone la lista nueva en ese mensaje y no toca los demás', async () => {
+    const base = new BaseLocal(`reacciones-${Math.random()}`);
+    await base.mensajes.bulkPut([
+      { chatId: 'c', seq: 1, senderId: 'a', clientKey: 'k1', kind: 'text', body: 'uno', at: 'x', reacciones: [{ userId: 'b', emoji: '❤️' }] },
+      { chatId: 'c', seq: 2, senderId: 'b', clientKey: 'k2', kind: 'text', body: 'dos', at: 'x' },
+    ]);
+    await aplicarReacciones(base, { chatId: 'c', seq: 1, reacciones: [{ userId: 'b', emoji: '❤️' }, { userId: 'a', emoji: '👍' }] });
+    expect((await base.mensajes.get(['c', 1]))?.reacciones).toEqual([{ userId: 'b', emoji: '❤️' }, { userId: 'a', emoji: '👍' }]);
+    expect((await base.mensajes.get(['c', 2]))?.reacciones).toBeUndefined();
     base.close();
     await base.delete();
   });

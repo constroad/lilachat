@@ -4,13 +4,14 @@ import { api } from '../api';
 import { crearUltimaGana } from './ultimaGana';
 import type { BaseLocal } from '../local/baseLocal';
 import { descartarEnvio, drenarCola, encolarEnvio, reintentarEnvio } from '../local/colaDeEnvio';
-import { aplicarBorrado, aplicarEdicion, aplicarEntrante, aplicarResumenDeHilo, guardarChats, guardarPagina } from '../local/mensajesLocales';
+import { aplicarBorrado, aplicarEdicion, aplicarEntrante, aplicarReacciones, aplicarResumenDeHilo, guardarChats, guardarPagina } from '../local/mensajesLocales';
 import type { ChatMessage, ChatSummary } from '../chat/types';
 import { accionPorSocket, enviarPorSocket, pedirSincronizacion, type ResultadoDeAccion } from './envioPorSocket';
 import { ocultar } from '../local/ocultos';
-import { aplicarAcuseALista, aplicarBorradoALista, aplicarEdicionALista, aplicarMensajeALista, debeAvisarEscribiendo, type AcuseEnVivo, type CursoresEnVivo, type MencionEnMensaje } from '@lilachat/shared';
+import { aplicarAcuseALista, aplicarBorradoALista, aplicarEdicionALista, aplicarMensajeALista, aplicarReaccion, debeAvisarEscribiendo, type AcuseEnVivo, type CursoresEnVivo, type MencionEnMensaje, type Reaccion } from '@lilachat/shared';
 import { cambiarFila } from '../local/listaLocal';
 import { sincronizar } from './sincronizar';
+import { anotarEnvio } from '../chat/reenviar/frecuenciasDeEnvio';
 
 /** Una página del historial: lo que entra en pantalla y algo más. */
 export const TAMANO_DE_PAGINA = 50;
@@ -93,10 +94,11 @@ export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401
       },
       onCambioDeChat: () => recargarPronto(),
       onHilo: (dato: { chatId: string; raiz: number; hilo: NonNullable<ChatMessage['hilo']> }) => base && void aplicarResumenDeHilo(base, dato),
+      onReacciones: (dato: { chatId: string; seq: number; reacciones: Reaccion[] }) => base && void aplicarReacciones(base, dato),
     };
   }, [base, yo, recargarPronto]);
 
-  const acciones = useAccionesDelChat({ base, jwt, socket, drenar, cargarChats });
+  const acciones = useAccionesDelChat({ base, jwt, yo, socket, drenar, cargarChats });
   const avisarEscribiendo = useAvisoDeEscribiendo(socket);
   return { eventos, cargarChats, invalidarCargas: cargas.invalidar, avisarEscribiendo, ...acciones };
 }
@@ -105,11 +107,12 @@ export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401
 function useAccionesDelChat(params: {
   base: BaseLocal | null;
   jwt: string;
+  yo: string;
   socket: MutableRefObject<Socket | null>;
   drenar: () => Promise<void>;
   cargarChats: () => Promise<void>;
 }) {
-  const { base, jwt, socket, drenar, cargarChats } = params;
+  const { base, jwt, yo, socket, drenar, cargarChats } = params;
 
   /** Una página del server, conciliada con la base. Devuelve si quedan más atrás. */
   const traerPagina = useCallback(
@@ -141,6 +144,8 @@ function useAccionesDelChat(params: {
     async (chatId: string, body: string, extra: { replyToSeq?: number; menciones?: MencionEnMensaje[]; hiloDe?: number; enElChat?: boolean } = {}) => {
       if (!base) return;
       await encolarEnvio(base, { clientKey: crypto.randomUUID(), chatId, kind: 'text', body, ...extra, queuedAt: new Date().toISOString(), attempts: 0 });
+      // Los «Chats frecuentes» al reenviar salen de acá (20/10).
+      anotarEnvio(chatId);
       void drenar();
     },
     [base, drenar]
@@ -166,6 +171,18 @@ function useAccionesDelChat(params: {
       return resultado;
     },
     [base, socket]
+  );
+
+  /** Reaccionar (20/10): se pinta al tocar y vuelve atrás si el server dice que no. */
+  const reaccionar = useCallback(
+    async (chatId: string, seq: number, emoji: string | null): Promise<ResultadoDeAccion> => {
+      const antes = base ? (await base.mensajes.get([chatId, seq]))?.reacciones : undefined;
+      if (base) await aplicarReacciones(base, { chatId, seq, reacciones: aplicarReaccion(antes, yo, emoji, new Date().toISOString()) });
+      const resultado = await accionPorSocket(socket.current, 'msg.react', { chatId, seq, emoji });
+      if (!resultado.ok && base) await aplicarReacciones(base, { chatId, seq, reacciones: antes ?? [] });
+      return resultado;
+    },
+    [base, socket, yo]
   );
 
   const eliminarParaTodos = useCallback(
@@ -200,6 +217,7 @@ function useAccionesDelChat(params: {
     enviarTexto,
     reenviar,
     editar,
+    reaccionar,
     eliminarParaTodos,
     eliminarParaMi,
     reintentar,

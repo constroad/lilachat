@@ -7,6 +7,8 @@ import { useVistaPrevia } from './useVistaPrevia';
 import { AnilloDeSubida } from './AnilloDeSubida';
 import { ChipDeHilo } from './hilos/ChipDeHilo';
 import { MenuDelMensaje } from './MenuDelMensaje';
+import { BotonDeReaccionar } from './reacciones/BotonDeReaccionar';
+import { PastillaDeReacciones } from './reacciones/PastillaDeReacciones';
 import { TextoDelMensaje } from './TextoDelMensaje';
 import { ConversacionContext, useConversacion } from './contextoDeLaConversacion';
 import type { ChatSummary, MensajeEnPantalla } from './types';
@@ -48,6 +50,7 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
           {mensaje.replyToSeq && !mensaje.deletedAt ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={mio} /> : null}
           <ContenidoDelMensaje mensaje={mensaje} mio={mio} />
         </div>
+        {mensaje.reacciones?.length ? <PastillaDeReacciones mensaje={mensaje} mio={mio} /> : null}
         {mensaje.hilo && mensaje.hilo.respuestas > 0 && !mensaje.deletedAt ? <ChipDeLaRaiz seq={mensaje.seq} hilo={mensaje.hilo} /> : null}
         {mensaje.estado === 'fallido' ? (
           <FalloDelEnvio mensaje={mensaje} onReintentar={props.onReintentar} onDescartar={props.onDescartar} />
@@ -55,6 +58,7 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
           <PieDelMensaje mensaje={mensaje} mio={mio} chat={props.chat} />
         ) : null}
       </div>
+      <BotonDeReaccionar mensaje={mensaje} mio={mio} />
       <MenuDelMensaje mensaje={mensaje} mio={mio} />
     </div>
   );

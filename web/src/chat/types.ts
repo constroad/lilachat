@@ -1,4 +1,4 @@
-import type { MencionEnMensaje, OutboxItem, ResumenDeHiloEnCliente, VistaDelFijado } from '@lilachat/shared';
+import type { MencionEnMensaje, OutboxItem, Reaccion, ResumenDeHiloEnCliente, VistaDelFijado } from '@lilachat/shared';
 
 /**
  * Las formas que devuelve el server, copiadas de `server/src/listaDeChats.ts`
@@ -14,6 +14,8 @@ import type { MencionEnMensaje, OutboxItem, ResumenDeHiloEnCliente, VistaDelFija
 export type ChatSummary = {
   id: string;
   kind: 'direct' | 'group' | 'notas';
+  /** El chat contigo («Tú · Envíate un mensaje», 20/10). */
+  propio?: boolean;
   name?: string;
   /** El teléfono de la otra persona, solo en chats 1:1. */
   phone?: string;
@@ -71,6 +73,8 @@ export type ChatMessage = {
   enElChat?: boolean;
   /** En la raíz: el resumen de su hilo. */
   hilo?: ResumenDeHiloEnCliente;
+  /** Reacciones (20/10): una por persona. */
+  reacciones?: Reaccion[];
   media?: {
     mediaId?: string;
     url?: string;

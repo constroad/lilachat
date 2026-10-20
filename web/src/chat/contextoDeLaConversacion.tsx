@@ -27,6 +27,8 @@ export type ContextoDeLaConversacion = {
   /** E3: abrir el hilo de una raíz, y si tiene respuestas que no vi. Sin esto (en el panel del hilo), no hay chip. */
   onAbrirHilo?: (seq: number) => void;
   hiloConNuevas?: (seq: number) => boolean;
+  /** Reaccionar (20/10). Sin esto (chat secreto), no hay botón. */
+  onReaccionar?: (seq: number, emoji: string | null) => void;
 };
 
 export const ConversacionContext = createContext<ContextoDeLaConversacion | null>(null);

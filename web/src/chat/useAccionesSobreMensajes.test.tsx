@@ -9,6 +9,7 @@ function preparar() {
   const sync: AccionesDeSync = {
     enviarTexto: vi.fn(async () => undefined),
     editar: vi.fn(async () => ({ ok: true as const })),
+    reaccionar: vi.fn(async () => ({ ok: true as const })),
     eliminarParaTodos: vi.fn(async () => ({ ok: true as const })),
     eliminarParaMi: vi.fn(async () => undefined),
     reenviar: vi.fn(async () => undefined),

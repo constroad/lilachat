@@ -4,6 +4,7 @@ import type { AccionDelChat } from './menuDelChat';
 import { fijadosVigentes, puedeFijarEnElChat } from '@lilachat/shared';
 import { DialogoFijar } from './DialogoFijar';
 import { FranjaDeFijados } from './FranjaDeFijados';
+import { ListaDeFijados, TarjetaDeFijados } from './fijados/ListaDeFijados';
 import { useFijarEnLaWeb } from './useFijarEnLaWeb';
 import type { AccionSobreMensaje } from './contextoDeLaConversacion';
 import { EnviarArchivos } from './EnviarArchivos';
@@ -17,7 +18,8 @@ import { PanelDeHilo } from './hilos/PanelDeHilo';
 import { api } from '../api';
 import { Conversation } from './Conversation';
 import { ConversacionContext, type ContextoDeLaConversacion } from './contextoDeLaConversacion';
-import { DialogoEliminar, DialogoInfo, DialogoReenviar } from './DialogosDelMensaje';
+import { DialogoEliminar, DialogoInfo } from './DialogosDelMensaje';
+import { DialogoReenviar, TU_NUEVO } from './reenviar/DialogoReenviar';
 import { useAccionesSobreMensajes, type AccionesDeSync } from './useAccionesSobreMensajes';
 import { useDetalleDelChat } from './useDetalleDelChat';
 import type { ChatSummary } from './types';
@@ -81,6 +83,9 @@ export function ConversacionConAcciones(
   const seqsFijados = useMemo(() => new Set(fijados.map((uno) => uno.seq)), [fijados]);
   const fijar = useFijarEnLaWeb({ chatId: chat.id, jwt: props.jwt, onAviso, onCambio: props.onRecargarChats });
   const [salto, setSalto] = useState<{ seq: number; vez: number } | null>(null);
+  const [verFijados, setVerFijados] = useState(false);
+  const nombreDe = useCallback((id: string) => (id === yo ? 'Tú' : (nombres.get(id) ?? 'Alguien')), [yo, nombres]);
+  const textoLocal = useCallback((seq: number) => citado(seq)?.body, [citado]);
   const abrirHilo = useCallback(
     (seq: number) => {
       setInfoAbierta(false);
@@ -97,9 +102,13 @@ export function ConversacionConAcciones(
     },
     [fijar, acciones, abrirHilo]
   );
+  const onReaccionar = useCallback(
+    (seq: number, emoji: string | null) => void sync.reaccionar(chat.id, seq, emoji).then((r) => !r.ok && r.motivo && onAviso(r.motivo)),
+    [sync, chat.id, onAviso]
+  );
   const contexto = useMemo<ContextoDeLaConversacion>(
-    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, citado, onAccion, onVerFoto, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas }),
-    [yo, props.jwt, chat, detalle, nombres, citado, onAccion, onVerFoto, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas]
+    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, citado, onAccion, onVerFoto, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar }),
+    [yo, props.jwt, chat, detalle, nombres, citado, onAccion, onVerFoto, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar]
   );
 
   return (
@@ -122,11 +131,12 @@ export function ConversacionConAcciones(
         franja={
           <FranjaDeFijados
             fijados={fijados}
-            nombreDe={(id) => (id === yo ? 'Tú' : nombres.get(id) ?? 'Alguien')}
-            textoLocal={(seq) => citado(seq)?.body}
+            nombreDe={nombreDe}
+            textoLocal={textoLocal}
             puedeDesfijar={puedeFijar}
             onIr={(seq) => setSalto({ seq, vez: Date.now() })}
             onDesfijar={(seq) => void fijar.desfijar(seq)}
+            onVerTodos={() => setVerFijados(true)}
           />
         }
         salto={salto}
@@ -164,7 +174,11 @@ export function ConversacionConAcciones(
           }}
           onAccionDeChat={props.onAccionDeChat}
           onVerFoto={onVerFoto}
+          tarjetas={<TarjetaDeFijados fijados={fijados} nombreDe={nombreDe} textoLocal={textoLocal} onVerTodos={() => setVerFijados(true)} />}
         />
+      ) : null}
+      {verFijados ? (
+        <ListaDeFijados fijados={fijados} nombreDe={nombreDe} textoLocal={textoLocal} puedeDesfijar={puedeFijar} onIr={(seq) => setSalto({ seq, vez: Date.now() })} onDesfijar={(seq) => void fijar.desfijar(seq)} onCerrar={() => setVerFijados(false)} />
       ) : null}
       {fijar.pidiendo !== null ? <DialogoFijar onFijar={(duracion) => void fijar.fijar(duracion)} onCerrar={fijar.cancelar} /> : null}
       {acciones.eliminando ? (
@@ -179,16 +193,17 @@ export function ConversacionConAcciones(
       ) : null}
       {acciones.reenviando ? (
         <DialogoReenviar
-          mensaje={acciones.reenviando}
           chats={props.chats}
+          onAviso={onAviso}
           onCerrar={acciones.cerrarReenviar}
-          onReenviar={(chatIds) => {
+          onReenviar={(destinos, mensaje) => {
             const original = acciones.reenviando!;
-            // Una foto o un archivo, por referencia: el server copia el archivo y su pie (auditoría 19/10).
-            if (original.media) void reenviarPorReferencia(props.jwt, chatIds, original).then((motivo) => motivo && onAviso(motivo));
-            else void sync.reenviar(chatIds, original.body ?? '');
             acciones.cerrarReenviar();
-            onAviso(chatIds.length === 1 ? 'Reenviado' : `Reenviado a ${chatIds.length} chats`);
+            void reenviarA({ jwt: props.jwt, destinos, original, mensaje, sync }).then((motivo) => {
+              onAviso(motivo ?? (destinos.length === 1 ? 'Reenviado' : `Reenviado a ${destinos.length} chats`));
+              // Un «Tú» recién creado tiene que aparecer en la lista.
+              if (destinos.includes(TU_NUEVO)) props.onRecargarChats();
+            });
           }}
         />
       ) : null}
@@ -221,11 +236,25 @@ function useConArchivosPendientes(mensajes: MensajeEnPantalla[] | null, chatId: 
 }
 
 /** Reenvía una foto o un archivo a cada chat; devuelve el motivo del primer rechazo. */
-async function reenviarPorReferencia(jwt: string, chatIds: string[], original: MensajeEnPantalla): Promise<string | null> {
-  for (const chatId of chatIds) {
-    const respuesta = await api(`/chats/${chatId}/reenviar`, { jwt, body: { desde: original.chatId, seq: original.seq, clientKey: crypto.randomUUID() } });
-    if (!respuesta.ok) return respuesta.message;
+/**
+ * Reenviar a cada destino (20/10): el «Tú» que no existe se crea primero; una
+ * foto o un archivo va por referencia (el server copia el archivo y su pie);
+ * el texto, por la cola. Después, el mensaje que se agregó. Devuelve el motivo
+ * si algo falló.
+ */
+async function reenviarA(params: { jwt: string; destinos: string[]; original: MensajeEnPantalla; mensaje: string; sync: AccionesDeSync }): Promise<string | null> {
+  for (const destino of params.destinos) {
+    let chatId = destino;
+    if (destino === TU_NUEVO) {
+      const creado = await api<{ chatId: string }>('/chats', { jwt: params.jwt, body: { kind: 'yo' } });
+      if (!creado.ok) return creado.message;
+      chatId = creado.data.chatId;
+    }
+    if (params.original.media) {
+      const respuesta = await api(`/chats/${chatId}/reenviar`, { jwt: params.jwt, body: { desde: params.original.chatId, seq: params.original.seq, clientKey: crypto.randomUUID() } });
+      if (!respuesta.ok) return respuesta.message;
+    } else await params.sync.enviarTexto(chatId, params.original.body ?? '');
+    if (params.mensaje) await params.sync.enviarTexto(chatId, params.mensaje);
   }
   return null;
 }
-

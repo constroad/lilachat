@@ -4892,6 +4892,43 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 62. La llamada no sonaba con la pantalla apagada (20/10/2026, 0.1.109)
+
+José, 20/10: «al llamar a Wilson con la pantalla apagada no vibró ni sonó;
+se dio cuenta al desbloquear. ¿Dónde quedó lo del sonido de llamadas y
+mensajes?».
+
+**Causa.** El aviso nativo estaba bien (canal de llamadas con el tono del
+teléfono, vibración, pantalla completa e insistente; FL8.1). Lo que fallaba
+era QUIÉN recibía el push: el server lo mandaba solo a quien figuraba
+desconectado, y «conectado» se cuenta **por persona** (`presence.isOnline`:
+cualquier socket vivo). Con la web abierta en una computadora, o con la app
+recién dormida y su socket todavía colgado (Android congela la app sin
+cerrar la conexión; el server tarda hasta ~45 s en notarlo), el teléfono no
+recibía nada: la llamada viajaba por un socket que nadie atendía y aparecía
+al desbloquear. Lo mismo pasaba con los mensajes («no suena»).
+
+**Arreglo.**
+- Llamadas y mensajes: el teléfono con aviso nativo recibe el push
+  **siempre**, figure conectado o no. Con la app adelante no dibuja nada (la
+  llamada la trae el socket; el mensaje solo se acusa); con la pantalla
+  apagada o la app en el fondo, suena, vibra y se enciende la pantalla. La
+  web y los teléfonos viejos lo reciben solo si están desconectados.
+- El aviso local de JS (el que dispara la app al recibir por el socket) sale
+  solo con la app adelante: en el fondo ya avisa el nativo y lo duplicaba.
+
+**El sonido respeta el teléfono**, como WhatsApp: en modo silencio o vibrar,
+el timbre y el aviso de mensaje siguen ese modo.
+
+**Decisión pendiente para José:** WhatsApp silencia los avisos de mensaje del
+teléfono mientras se usa la web. Hoy, con este arreglo, el teléfono avisa
+aunque la web esté abierta (las llamadas suenan en todos lados).
+
+Dónde: server `pushService.avisarLlamada` y `notifyOffline` (+ tests en
+`llamadas.test.ts` y `pushService.test.ts`); app `TabsShell` (aviso local
+solo con la app activa). La prueba real necesita dos teléfonos: el emulador
+no reproduce el Doze de un Samsung con la pantalla apagada.
+
 ## 61. Teclado como Telegram, transiciones de 200 ms, W3c, «Pendientes» y «Destacados» (20/10/2026, 0.1.108)
 
 José, 20/10, con 0.1.107: el teclado todavía tiene «un scroll incómodo y un
@@ -6245,6 +6282,83 @@ tacha con la versión que lo cierra.
    guardar el de otro y tienen favoritos. Antes de elegir una librería de
    recorte se revisa la licencia (sin AGPL ni de pago sin preguntar).
 3. **Guiños y zumbido, como el Messenger de antes.** Análisis abajo.
+
+4. **Bug web: cerrar un hilo deja la pantalla en blanco** (José, 20/10). Crear
+   un hilo y tocar la X del panel: toda la web queda en blanco hasta
+   recargar. Reproducir en su Chrome con la sesión viva y mirar la consola
+   (un error de React sin `ErrorBoundary` tumba todo el árbol).
+5. **Bug web: la lista, el chat y su detalle muestran el número y no el
+   nombre del contacto** (José, 20/10: «pésima experiencia»). La web no tiene
+   la agenda del teléfono: usar los contactos que la app ya sincroniza con el
+   server (`/api/contacts`) para nombrar, como hace la app con
+   `nombreDeContacto`. Probar en su Chrome real, no solo en el navegador de QA.
+6. **Ver videos de YouTube, Instagram, Facebook y TikTok dentro de Lilachat**,
+   sin salir, con **mini reproductor flotante** que siga al salir de la app o
+   con la pantalla bloqueada. Viable con límites: YouTube permite su
+   reproductor embebido (IFrame API; en Android, WebView), pero sus términos
+   prohíben reproducir con la pantalla bloqueada o en segundo plano fuera de
+   YouTube Premium, así que el flotante con pantalla bloqueada no es posible
+   para YouTube; sí el PiP de Android mientras se usa otra app. Instagram,
+   Facebook y TikTok permiten embeber su publicación (oEmbed / embed.js), sin
+   PiP garantizado. Para videos subidos al chat (archivos propios) sí se
+   puede todo: `expo-video` con PiP y audio en segundo plano.
+7. **Ver PDF dentro de la app**: viable. Android tiene `PdfRenderer` nativo
+   (páginas como imágenes, sin dependencias) y existe `react-native-pdf`
+   (MIT); la web usa el visor del navegador o pdf.js con rangos (como el visor
+   de Lab Vial). Hoy un PDF se abre con otra app.
+8. **Checklist en los chats, como Telegram**: lista con tareas que cualquiera
+   del chat (o solo quien la creó, según se configure) puede marcar; cada ítem
+   dice quién lo marcó; se agregan ítems después; se ve como tarjeta y se
+   actualiza en vivo (`ref.changed`). App y web.
+9. **Compartir un contacto** en el chat (como WhatsApp): tarjeta con nombre y
+   teléfono, «Enviar mensaje» si está en Lilachat y «Agregar a contactos».
+10. **Sacar «Cámara» del menú del clip**: ya hay botón de cámara en la barra;
+    en el clip sobra y además aparece primero.
+11. **Compartir ubicación y ubicación en tiempo real** (15 min / 1 h / 8 h),
+    que se siga actualizando con la pantalla bloqueada: servicio en primer
+    plano de tipo `location` en Android con el permiso de ubicación «siempre»
+    (o «mientras se usa» + servicio visible), envío por socket con pausa si no
+    hay red, y en el mapa del chat (MapLibre, sin servicio pago). Ver la
+    memoria de GPS en segundo plano (en una PWA no es posible; en la app sí).
+
+12. **Varias fotos o videos en carrusel, como Instagram**: un envío de varias
+    fotos/videos se agrupa en una sola tarjeta (álbum) que se desliza de
+    lado, con el contador «2/5»; tocar abre el visor en esa foto. App y web.
+13. **Administrar el almacenamiento**, como WhatsApp: por chat (cuánto pesa
+    cada uno, fotos, videos, documentos y audios, con borrar en lote) y la
+    lista global «chats que más pesan» para limpiar, más «archivos de más de
+    5 MB» y «reenviados muchas veces». En el teléfono es la copia local; en la
+    web, la caché del navegador.
+14. **Visor de videos y PDF en la web** (hoy solo hay visor de fotos) y **mini
+    reproductor** para videos: viable con el Picture-in-Picture del navegador
+    (`requestPictureInPicture` sobre el `<video>`), que sigue flotando aunque
+    se cambie de pestaña.
+15. **Estado que maneja la persona**: En línea · Ausente · Ocupado ·
+    Invisible (se ve desconectado aunque esté usando la app), más quién ve mi
+    «última vez». Hoy la presencia es automática (socket vivo o no).
+16. **Lilachat Empresa: catálogo, bot de publicidad y redes sociales**, como
+    WhatsApp Business: catálogo de productos con foto, precio y stock que se
+    comparte en el chat; respuestas rápidas, mensajes de bienvenida y de
+    ausencia, etiquetas de clientes; un bot (Lila) que redacta y diseña la
+    publicidad de un producto y la publica en las redes.
+    **Zernio (zernio.com), analizado el 20/10:** es una API REST y un
+    servidor MCP para publicar, programar y medir en ~15 redes (Instagram,
+    TikTok, YouTube, Facebook, LinkedIn, X, Threads, Pinterest, WhatsApp,
+    Telegram, Google Business…) y para manejar campañas en 8 redes de
+    anuncios. No genera el contenido ni tiene catálogo: es el «caño» de
+    publicación. Cobra por cuenta conectada (2 gratis, después 6 / 3 / 1 USD
+    por cuenta según volumen). Dos caminos: (a) usar Zernio como proveedor
+    (rápido, pago por cuenta: se pregunta antes por ser un servicio con costo)
+    o (b) integrar directo las APIs oficiales (Meta Graph para Instagram y
+    Facebook, TikTok Content Posting, YouTube Data) con la aprobación de cada
+    plataforma, que tarda semanas. El contenido lo genera Lila (texto e
+    imagen); el catálogo es nuestro.
+    **REA (github.com/morluto/rea), analizado el 20/10:** NO sirve para esto.
+    Es una herramienta MIT de **ingeniería inversa** (binarios, APKs, webs,
+    capturas de red) para agentes; no publica ni genera publicidad. Usarla
+    para copiar Zernio u otro producto ajeno queda fuera de su uso declarado
+    (software propio o autorizado) y sería un riesgo legal. Para construir
+    algo como Zernio se usan las APIs oficiales.
 
 ### Guiños y zumbido (análisis, 20/10)
 

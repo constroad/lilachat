@@ -63,3 +63,6 @@ Las capturas viven SOLO en la máquina (`design/stitch/`, en `.gitignore` desde 
 | `f1-web-reacciones-reenviar.png` | F1 · Web: barra de reacciones al pasar el mouse y diálogo «Reenviar mensaje» (`screens/626bddd520924ab284c99616e1693b7b`) |
 | `f1-web-info-fijados.png` | F1 · Web: panel «Info. del grupo» con descripción y fijados (`screens/46c1e8d2f7674d1ebac5a53170bc69b0`) |
 | `f2-app-camara.png` | F2 · App: cámara propia del chat con flash, «Para:», tira de recientes y disparador (`screens/b3aca9e6e5514876a89d252fc3ac4f49`) |
+| `s1-app-panel-stickers.png` | S1 · App: panel de emojis con la pestaña Stickers (Recientes · Favoritos · Mis stickers, «Crear») y un sticker recibido sin burbuja (`screens/3c17da95de5f4e0aa7ec0c2fb77b24cc`) |
+| `s1-app-crear-sticker.png` | S1 · App: «Crear sticker» con fondo eliminado, texto arrastrable, colores, borde, «Guardar en Mis stickers» y enviar (`screens/6f5a829bc10c432f94ba2d99993a371f`) |
+| `s1-web-stickers.png` | S1 · Web: panel de stickers sobre la barra y diálogo «Crear sticker» (`screens/5901b731b3a742c3b2aeb64930f6d31d`) |

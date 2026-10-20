@@ -1,8 +1,9 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { ChevronDown, Copy, CornerUpLeft, Forward, Info, MessagesSquare, Pencil, Pin, PinOff, Star, StarOff, Trash2 } from 'lucide-react';
+import { Bookmark, ChevronDown, Copy, CornerUpLeft, Forward, Heart, Info, MessagesSquare, Pencil, Pin, PinOff, Star, StarOff, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { accionesDeMensaje, puedeEditar } from '@lilachat/shared';
 import { useConversacion, type AccionSobreMensaje } from './contextoDeLaConversacion';
+import type { StickerAction } from './contextoDeLaConversacion';
 import type { MensajeEnPantalla } from './types';
 
 /**
@@ -12,7 +13,7 @@ import type { MensajeEnPantalla } from './types';
  * Lo pendiente o fallido no tiene menú: todavía no existe en el server.
  */
 export function MenuDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio: boolean }) {
-  const { chat, yo, onAccion, puedeFijar, fijados, onAbrirHilo, destacados } = useConversacion();
+  const { chat, yo, onAccion, puedeFijar, fijados, onAbrirHilo, destacados, onStickerAction } = useConversacion();
   if (mensaje.estado) return null;
   const secreto = Boolean(chat.encrypted);
   const acciones = accionesDeMensaje({
@@ -27,6 +28,18 @@ export function MenuDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; m
     esRespuestaDeHilo: mensaje.hiloDe !== undefined,
     destacado: destacados?.has(mensaje.seq),
   });
+  // A received (or own) sticker can be kept in «Mis stickers» or as a favorite (20/10), like the app.
+  const isSticker = mensaje.kind === 'sticker' && Boolean(mensaje.media?.url) && !mensaje.deletedAt && Boolean(onStickerAction);
+  const stickerItem = (action: StickerAction, icon: ReactNode, label: string) => (
+    <DropdownMenu.Item
+      data-testid={`accion-sticker-${action}`}
+      onSelect={() => onStickerAction?.(mensaje, action)}
+      className="flex min-h-[40px] cursor-pointer select-none items-center gap-3 rounded-lg px-3 text-sm outline-none data-[highlighted]:bg-background"
+    >
+      {icon}
+      {label}
+    </DropdownMenu.Item>
+  );
   const item = (accion: AccionSobreMensaje, icono: ReactNode, etiqueta: string, peligro = false) => (
     <DropdownMenu.Item
       data-testid={`accion-${accion}`}
@@ -63,6 +76,8 @@ export function MenuDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; m
           {acciones.responder ? item('responder', <CornerUpLeft size={16} />, 'Responder') : null}
           {acciones.hilo && onAbrirHilo ? item('hilo', <MessagesSquare size={16} />, 'Responder en hilo') : null}
           {acciones.copiar ? item('copiar', <Copy size={16} />, 'Copiar') : null}
+          {isSticker ? stickerItem('keep', <Bookmark size={16} />, 'Guardar en Mis stickers') : null}
+          {isSticker ? stickerItem('favorite', <Heart size={16} />, 'Agregar a favoritos') : null}
           {acciones.reenviar ? item('reenviar', <Forward size={16} />, 'Reenviar') : null}
           {acciones.destacar === 'destacar' && mensaje.kind !== 'system' ? item('destacar', <Star size={16} />, 'Destacar') : null}
           {acciones.destacar === 'quitar' ? item('quitarDestacado', <StarOff size={16} />, 'Quitar destacado') : null}

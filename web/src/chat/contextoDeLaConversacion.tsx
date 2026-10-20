@@ -5,6 +5,8 @@ import type { ChatSummary, MensajeEnPantalla } from './types';
 
 /** Lo que se puede pedir sobre un mensaje desde su menú (W2). */
 export type AccionSobreMensaje = 'responder' | 'hilo' | 'copiar' | 'reenviar' | 'editar' | 'info' | 'eliminar' | 'fijar' | 'desfijar' | 'destacar' | 'quitarDestacado';
+/** What the menu of a sticker offers (20/10): keep it in «Mis stickers» or as a favorite. */
+export type StickerAction = 'keep' | 'favorite';
 
 /**
  * Lo que las burbujas necesitan del chat abierto, sin pasarlo por cada nivel
@@ -32,6 +34,8 @@ export type ContextoDeLaConversacion = {
   onReaccionar?: (seq: number, emoji: string | null) => void;
   /** Los que destaqué (20/10): estrella en el pie y «Destacar / Quitar» en el menú. */
   destacados?: ReadonlySet<number>;
+  /** Keep a sticker from the chat (20/10). Without it (secret chat), the menu does not offer it. */
+  onStickerAction?: (mensaje: MensajeEnPantalla, action: StickerAction) => void;
   /** Editar un recordatorio del chat (W3c). Sin esto (sin permiso), la tarjeta no ofrece editar. */
   onEditarRecordatorio?: (recordatorio: AgendaReminder) => void;
 };

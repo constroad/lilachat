@@ -121,6 +121,7 @@ export function Conversation(props: {
         jwtParaEnlaces={props.jwtParaEnlaces}
         onNotaDeVoz={props.onNotaDeVoz}
         onEscribiendo={props.onEscribiendo}
+        stickers={props.jwtParaEnlaces ? { jwt: props.jwtParaEnlaces, me: props.yo, chatId: chat.id, chatName: chat.name ?? chat.phone ?? '' } : undefined}
       />
       )}
     </section>

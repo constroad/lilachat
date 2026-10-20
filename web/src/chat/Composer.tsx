@@ -2,13 +2,14 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { insertarEnTexto, type MencionEnMensaje } from '@lilachat/shared';
 
 /** Se baja recién al abrir el panel (W2): pesa, y la mayoría no lo abre. */
-const PanelDeEmojis = lazy(() => import('./PanelDeEmojis'));
+const EmojiStickerPanel = lazy(() => import('./stickers/EmojiStickerPanel'));
 import { SugerenciasDeMencion, type Mencionable } from './SugerenciasDeMencion';
 import { useMencionesDelCampo } from './useMencionesDelCampo';
 import { VistaPreviaAlEscribir } from './VistaPreviaAlEscribir';
 import { Bell, CalendarPlus, CornerUpLeft, ListPlus, Mic, Paperclip, Pencil, Plus, Send, Smile, X } from 'lucide-react';
 import { BarraDeGrabacion } from './BarraDeGrabacion';
 import { useGrabadoraDeVoz, type NotaDeVozGrabada } from './useGrabadoraDeVoz';
+import type { StickerChat } from './stickers/EmojiStickerPanel';
 
 /**
  * La barra de escritura del diseño: «+» suelto a la izquierda, el campo con
@@ -33,7 +34,10 @@ export function Composer({
   jwtParaEnlaces,
   onNotaDeVoz,
   onEscribiendo,
+  stickers,
 }: {
+  /** For the Stickers tab (20/10); without it (secret chat), emojis only. */
+  stickers?: StickerChat;
   contexto?: ContextoDelComposer | null;
   onCancelarContexto?: () => void;
   /** En grupos (W2): a quién se puede @mencionar. */
@@ -149,7 +153,7 @@ export function Composer({
       {conEmojis ? (
         <div data-testid="panel-emojis" className="mb-2" onKeyDown={(evento) => evento.key === 'Escape' && setConEmojis(false)}>
           <Suspense fallback={<div className="h-[360px] animate-pulse rounded-lg bg-background" />}>
-            <PanelDeEmojis onElegir={ponerEmoji} />
+            <EmojiStickerPanel onPickEmoji={ponerEmoji} chat={stickers} />
           </Suspense>
         </div>
       ) : null}

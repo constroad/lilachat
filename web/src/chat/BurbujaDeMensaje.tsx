@@ -12,6 +12,7 @@ import { BotonDeHilo } from './BotonDeHilo';
 import { PastillaDeReacciones } from './reacciones/PastillaDeReacciones';
 import { TextoDelMensaje } from './TextoDelMensaje';
 import { TarjetaDelMensaje } from './tarjetas/TarjetaDelMensaje';
+import { StickerMessage } from './stickers/StickerMessage';
 import { ConversacionContext, useConversacion } from './contextoDeLaConversacion';
 import type { ChatSummary, MensajeEnPantalla } from './types';
 
@@ -45,6 +46,8 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
         {/* Una encuesta, un evento o un recordatorio: su tarjeta en vez de la burbuja (W3c). */}
         {mensaje.ref && !mensaje.deletedAt ? (
           <TarjetaDelMensaje mensaje={mensaje} mio={mio} conAutor={props.conAutor} />
+        ) : mensaje.kind === 'sticker' && mensaje.media?.url && !mensaje.deletedAt ? (
+          <StickerMessage message={mensaje} url={mensaje.media.url} author={props.conAutor ? <NombreDelAutor senderId={mensaje.senderId} /> : null} />
         ) : (
         <div
           className={`rounded-xl px-3 py-2 text-sm ${

@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# El wasm de MediaPipe: lo copia `web/scripts/copy-mediapipe.mjs` antes de dev y build.
+web/public/mediapipe/
 .env
 *.log
 .DS_Store

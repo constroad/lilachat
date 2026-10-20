@@ -4,13 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "node scripts/copy-mediapipe.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/copy-mediapipe.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run"
   },
   "dependencies": {
     "@lilachat/shared": "*",
+    "@mediapipe/tasks-vision": "0.10.21",
     "@radix-ui/react-dropdown-menu": "2.1.24",
     "@tanstack/react-virtual": "3.14.13",
     "dexie": "4.4.6",

@@ -26,6 +26,8 @@ import type { ChatSummary } from './types';
 import type { BaseLocal } from '../local/baseLocal';
 import { useDestacadosWeb } from './destacados/useDestacadosWeb';
 import { TarjetaDeDestacados } from './destacados/TarjetaDeDestacados';
+import { useStickers } from './stickers/useStickers';
+import type { StickerAction } from './contextoDeLaConversacion';
 
 type PropsDeConversacion = ComponentProps<typeof Conversation>;
 
@@ -101,6 +103,11 @@ export function ConversacionConAcciones(
     },
     [hilos.abrir]
   );
+  const { keepReceived } = useStickers(props.jwt, yo);
+  const onStickerAction = useCallback(
+    (mensaje: MensajeEnPantalla, action: StickerAction) => void keepReceived(chat.id, mensaje.seq, action === 'favorite').then(onAviso),
+    [keepReceived, chat.id, onAviso]
+  );
   const onAccion = useCallback(
     (mensaje: MensajeEnPantalla, accion: AccionSobreMensaje) => {
       if (accion === 'fijar') return fijar.pedir(mensaje.seq);
@@ -118,8 +125,8 @@ export function ConversacionConAcciones(
   // El recordatorio del chat (W3c): lo crean y editan quienes pueden fijar (en un grupo, sus admins), nunca en un secreto.
   const editarRecordatorio = !chat.encrypted && puedeFijar ? props.onEditReminder : undefined;
   const contexto = useMemo<ContextoDeLaConversacion>(
-    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, citado, onAccion, onVerFoto, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar, onEditarRecordatorio: editarRecordatorio, destacados: destacados.seqs }),
-    [yo, props.jwt, chat, detalle, nombres, citado, onAccion, onVerFoto, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editarRecordatorio, destacados.seqs]
+    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, citado, onAccion, onVerFoto, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar, onEditarRecordatorio: editarRecordatorio, destacados: destacados.seqs, onStickerAction: chat.encrypted ? undefined : onStickerAction }),
+    [yo, props.jwt, chat, detalle, nombres, citado, onAccion, onVerFoto, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editarRecordatorio, destacados.seqs, onStickerAction]
   );
 
   return (

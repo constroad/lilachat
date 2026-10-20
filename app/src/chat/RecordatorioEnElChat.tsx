@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Bell } from 'lucide-react-native';
 import { agendaGet, type AgendaReminder } from '../agenda/agendaApi';
-import { cuandoSuena } from '../agenda/recordatorios';
+import { cuandoSuena } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { useTarjetaViva } from './useTarjetaViva';
 import { useAccionesDeTarjeta } from './accionesDeTarjeta';

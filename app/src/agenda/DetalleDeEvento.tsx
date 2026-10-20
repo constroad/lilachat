@@ -5,7 +5,7 @@ import type { Credential } from '../auth/credentialStore';
 import { ContactPicker } from '../contacts/ContactPicker';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { agendaPost, type AgendaEvent } from './agendaApi';
-import { asistentesPorRespuesta, cuandoDelEvento, origenDelEvento } from './eventos';
+import { asistentesPorRespuesta, cuandoDelEvento, origenDelEvento } from '@lilachat/shared';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 

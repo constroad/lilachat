@@ -1,15 +1,13 @@
 import { useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { Bell, Send, Trash2, X } from 'lucide-react-native';
-import type { Recurrence } from '@lilachat/shared';
+import { type Recurrence, crearRecordatorio, editarRecordatorio, valorInicial } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { agendaDelete, agendaPatch, agendaPost, publicarRecordatorio, quitarImagenDeRecordatorio, subirImagenDeRecordatorio, type AgendaReminder } from './agendaApi';
-import { crearRecordatorio, editarRecordatorio } from './guardarRecordatorio';
 import { ImagenDeRecordatorio } from './ImagenDeRecordatorio';
 import type { FotoElegida } from '../chat/fotoDeGrupo';
 import { FilledField, PrimaryAction, SectionLabel } from './createUi';
 import { SelectorDeCuando } from '../ui/SelectorDeCuando';
-import { valorInicial } from '../ui/cuando';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 

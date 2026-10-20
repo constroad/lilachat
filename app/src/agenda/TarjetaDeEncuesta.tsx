@@ -1,8 +1,7 @@
 import { Alert, Pressable, Text, View } from 'react-native';
 import { Lock, Trash2 } from 'lucide-react-native';
-import { tallyPoll } from '@lilachat/shared';
+import { tallyPoll, origenDeEncuesta, resumenDeEncuesta, votantesDeOpcion } from '@lilachat/shared';
 import type { AgendaPoll } from './agendaApi';
-import { origenDeEncuesta, resumenDeEncuesta, votantesDeOpcion } from './encuestas';
 import { useColores } from '../ui/tema';
 
 /**

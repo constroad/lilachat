@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { CalendarDays, MapPin } from 'lucide-react-native';
-import { formatEventWhen, type Rsvp } from '@lilachat/shared';
+import { formatEventWhen, type Rsvp, resumenDeRsvp } from '@lilachat/shared';
 import { agendaGet, agendaPost, type AgendaEvent } from '../agenda/agendaApi';
 import { BotonesDeRsvp } from '../agenda/BotonesDeRsvp';
-import { resumenDeRsvp } from '../agenda/eventos';
 import { useColores } from '../ui/tema';
 import { useTarjetaViva } from './useTarjetaViva';
 

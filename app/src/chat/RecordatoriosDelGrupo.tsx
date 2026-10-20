@@ -3,10 +3,9 @@ import { Alert, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Bell, Trash2 } from 'lucide-react-native';
 import { agendaDelete, recordatoriosDelGrupo, type AgendaReminder } from '../agenda/agendaApi';
-import { cuandoSuena } from '../agenda/recordatorios';
+import { cuandoSuena, suscribirTarjeta } from '@lilachat/shared';
 import { CreateReminderScreen } from '../agenda/CreateReminderScreen';
 import type { Credential } from '../auth/credentialStore';
-import { suscribirTarjeta } from './tarjetasVivas';
 import { Rotulo } from '../ui/Rotulo';
 import { useColores } from '../ui/tema';
 

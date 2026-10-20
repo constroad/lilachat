@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { avisarTarjeta, refrescarTodas, suscribirTarjeta } from './tarjetasVivas';
+import { avisarTarjeta, refrescarTodas, suscribirTarjeta } from './tarjetasVivas.js';
 
 /** José, 19/10: un voto o un borrado se veía recién al reabrir el chat. */
 describe('tarjetasVivas', () => {

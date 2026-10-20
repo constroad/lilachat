@@ -1,8 +1,7 @@
-import type { MencionEnMensaje, RefDeMensaje } from '@lilachat/shared';
+import { type MencionEnMensaje, type RefDeMensaje, avisarTarjeta, refrescarTodas } from '@lilachat/shared';
 import { io, type Socket } from 'socket.io-client';
 import { pausaDelSocket, queHacerConElSocket, type PausaDelSocket } from './servicioDeConexion';
 import { registrarPerf } from '../diagnostico/diagnostico';
-import { avisarTarjeta, refrescarTodas } from './tarjetasVivas';
 
 /**
  * El socket de la app. Un ÚNICO socket para toda la sesión: abrir uno por

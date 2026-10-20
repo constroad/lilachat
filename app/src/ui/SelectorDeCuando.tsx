@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { CalendarDays, Clock } from 'lucide-react-native';
-import { combinarFecha, opcionesRapidas } from './cuando';
+import { combinarFecha, opcionesRapidas } from '@lilachat/shared';
 import { useColores } from './tema';
 
 const DIA = new Intl.DateTimeFormat('es-PE', { weekday: 'short', day: 'numeric', month: 'short' });

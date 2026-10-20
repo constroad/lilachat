@@ -1,3 +1,4 @@
+import { TEXTO_ELIMINADO } from './eliminarMensaje.js';
 /**
  * Lo que el diseño de Stitch pide MOSTRAR en un chat y no estaba: la hora de
  * cada mensaje, el estado de entrega, y el separador de día. Motor PURO.
@@ -175,7 +176,8 @@ const PREFIJO_DE_REF = /^(Encuesta|Evento|Recordatorio):\s*/;
 
 export type ChatPreview = {
   text: string;
-  style: 'normal' | 'typing' | 'borrador';
+  /** `eliminado` (19/10): el último se borró para todos; va en cursiva, como la burbuja. */
+  style: 'normal' | 'typing' | 'borrador' | 'eliminado';
   media?: MediaDePreview;
   /** Va antes del texto y en el color de la marca: «Borrador:» (FL9). */
   etiqueta?: string;
@@ -187,11 +189,14 @@ export function resolveChatPreview(params: {
   lastKind?: string;
   /** Lo escrito y no mandado en ese chat (FL9), como «Borrador:» de WhatsApp. */
   borrador?: string;
+  /** El último mensaje se borró para todos: su tipo ya no dice nada (una foto borrada no es «Foto»). */
+  eliminado?: boolean;
 }): ChatPreview {
   if (params.typing) return { text: 'Escribiendo…', style: 'typing' };
   // En una sola línea: un salto cortaría la vista previa en la primera.
   const borrador = params.borrador?.replace(/\s+/g, ' ').trim();
   if (borrador) return { etiqueta: 'Borrador:', text: borrador, style: 'borrador' };
+  if (params.eliminado) return { text: TEXTO_ELIMINADO, style: 'eliminado' };
   // Encuesta o evento publicados en el chat (18/10): su ícono y la pregunta o
   // el título, como WhatsApp. El prefijo del texto sobra al lado del ícono.
   const media = params.lastKind ? MEDIA_DE_TARJETA[params.lastKind] : undefined;

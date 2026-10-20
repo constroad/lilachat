@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { origenDeEncuesta, resumenDeEncuesta, votantesDeOpcion } from './encuestas';
+import { origenDeEncuesta, resumenDeEncuesta, votantesDeOpcion } from './encuestas.js';
 
 const YO = '665f1a2b3c4d5e6f70818293';
 const WILSON = '665f1a2b3c4d5e6f70818294';

@@ -1,4 +1,4 @@
-import { formatEventWhen, nextOccurrence, type Recurrence } from '@lilachat/shared';
+import { formatEventWhen, nextOccurrence, type Recurrence } from './events.js';
 
 export const ETIQUETA_DE_REPETICION: Record<Recurrence, string> = {
   once: 'Una vez',

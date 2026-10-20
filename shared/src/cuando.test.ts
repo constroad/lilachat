@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { combinarFecha, opcionesRapidas, valorInicial } from './cuando';
+import { combinarFecha, opcionesRapidas, valorInicial } from './cuando.js';
 
 /**
  * Elegir CUÁNDO en avisos y eventos (José, 17/10/2026: «no hay como elegir una

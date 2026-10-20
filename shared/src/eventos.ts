@@ -1,4 +1,6 @@
-import { formatClock, formatEventWhen, nombreDeContacto, type AttendeeSummary, type Rsvp } from '@lilachat/shared';
+import { formatClock } from './chatDisplay.js';
+import { formatEventWhen, type AttendeeSummary, type Rsvp } from './events.js';
+import { nombreDeContacto } from './nombreDeContacto.js';
 
 /**
  * Lo que muestra el detalle de un evento (FL10, auditoría §46.3: quien no lo

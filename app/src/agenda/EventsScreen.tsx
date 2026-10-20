@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { CalendarDays, ChevronRight, MapPin, RotateCw } from 'lucide-react-native';
-import type { Rsvp } from '@lilachat/shared';
+import { type Rsvp, cuandoDelEvento, origenDelEvento, resumenDeRsvp } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { agendaGet, agendaPost, type AgendaEvent } from './agendaApi';
 import { DetalleDeEvento } from './DetalleDeEvento';
 import { BotonesDeRsvp } from './BotonesDeRsvp';
-import { cuandoDelEvento, origenDelEvento, resumenDeRsvp } from './eventos';
 import { useColores } from '../ui/tema';
 
 /**

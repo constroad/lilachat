@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cuandoSuena, ETIQUETA_DE_REPETICION } from './recordatorios';
+import { cuandoSuena, ETIQUETA_DE_REPETICION } from './recordatorios.js';
 
 /** Cómo se lee cuándo suena un recordatorio: la tarjeta del chat y la lista del grupo (19/10). */
 describe('cuandoSuena', () => {

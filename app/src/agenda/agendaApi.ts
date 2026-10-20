@@ -1,4 +1,4 @@
-import type { AttendeeSummary, Recurrence, Rsvp } from '@lilachat/shared';
+import type { AgendaReminder } from '@lilachat/shared';
 import { subirFotoRedonda, type FotoElegida } from '../chat/fotoDeGrupo';
 
 /**
@@ -12,58 +12,7 @@ const TIMEOUT_MS = 15_000;
 /** `status` (19/10): un 404 dice «ya no existe», que no es lo mismo que «sin red». */
 export type AgendaResult<T> = { ok: true; data: T } | { ok: false; message?: string; status?: number };
 
-export type AgendaEvent = {
-  id: string;
-  chatId: string;
-  title: string;
-  description?: string;
-  startsAt: string;
-  endsAt?: string;
-  location?: string;
-  rsvpSummary: AttendeeSummary;
-  myRsvp: Rsvp | null;
-  /** Lo creé yo: solo entonces se ofrece editarlo y cancelarlo. */
-  mio: boolean;
-  /** «Avisar 1 hora antes»; los eventos viejos no lo traen y cuentan como sí. */
-  remindGuests?: boolean;
-  /** Lo que el detalle muestra a todos (FL10). Un server viejo no lo manda. */
-  createdBy?: string;
-  attendees?: { userId: string; rsvp?: Rsvp; invitedBy?: string }[];
-  chat?: { kind: 'direct' | 'group'; name?: string; phone?: string };
-  personas?: Record<string, { phone: string; name?: string }>;
-  guestsCanInvite?: boolean;
-  puedoInvitar?: boolean;
-};
-
-export type AgendaReminder = {
-  _id: string;
-  title: string;
-  /** La segunda línea de la tarjeta del diseño («Cada 2 horas»). */
-  note?: string;
-  startsAt: string;
-  recurrence: Recurrence;
-  active: boolean;
-  /** Solo en los del grupo (19/10): el chat donde vive y su imagen. */
-  chatId?: string;
-  imageUrl?: string;
-};
-
-export type AgendaPoll = {
-  id: string;
-  chatId: string;
-  question: string;
-  options: { text: string; votes: string[] }[];
-  allowMultiple: boolean;
-  anonymous: boolean;
-  closedAt?: string | null;
-  /** De qué chat y quién preguntó (FL10). Un server viejo no los manda. */
-  chat?: { kind: 'direct' | 'group'; name?: string; phone?: string };
-  autor?: { id: string; phone: string; name?: string };
-  /** La creé yo: solo entonces se cierra o se elimina. */
-  esMia?: boolean;
-  /** Para nombrar al autor y, si no es anónima, a los votantes. */
-  personas?: Record<string, { phone: string; name?: string }>;
-};
+export type { AgendaEvent, AgendaPoll, AgendaReminder, PendientesDeAgenda } from '@lilachat/shared';
 
 async function call<T>(
   route: string,
@@ -104,9 +53,6 @@ export const agendaPatch = <T>(route: string, jwt: string, body: Record<string, 
   call<T>(route, jwt, { method: 'PATCH', body: JSON.stringify(body) });
 
 export const agendaDelete = <T>(route: string, jwt: string) => call<T>(route, jwt, { method: 'DELETE' });
-
-/** Lo que me espera, para los contadores de las pestañas (`GET /pendientes`, 18/10). */
-export type PendientesDeAgenda = { encuestas: number; eventos: number };
 
 /** Los recordatorios de un grupo, para su detalle (19/10). Solo miembros. */
 export const recordatoriosDelGrupo = (chatId: string, jwt: string) =>

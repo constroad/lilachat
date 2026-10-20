@@ -151,6 +151,11 @@ describe('resolveChatPreview', () => {
     });
   });
 
+  /** Auditoría (19/10): una foto borrada para todos seguía diciendo «Foto» en la lista. */
+  it('el último borrado para todos dice «Se eliminó este mensaje», aunque fuera una foto', () => {
+    expect(resolveChatPreview({ typing: false, lastKind: 'image', eliminado: true })).toEqual({ text: 'Se eliminó este mensaje', style: 'eliminado' });
+  });
+
   it('sin texto pero con media, dice QUÉ llegó', () => {
     expect(resolveChatPreview({ typing: false, lastKind: 'image' }).text).toContain('Foto');
     expect(resolveChatPreview({ typing: false, lastKind: 'video' }).text).toContain('Video');

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { crearRecordatorio, editarRecordatorio, type PasosDeCreacion, type PasosDeEdicion } from './guardarRecordatorio';
+import { crearRecordatorio, editarRecordatorio, type PasosDeCreacion, type PasosDeEdicion } from './guardarRecordatorio.js';
 
 /**
  * E2E del 19/10: la tarjeta del grupo salió sin la imagen, porque el chat se

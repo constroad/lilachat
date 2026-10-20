@@ -1,4 +1,4 @@
-import { nombreDeContacto } from '@lilachat/shared';
+import { nombreDeContacto } from './nombreDeContacto.js';
 
 /**
  * Lo que dice la tarjeta de una encuesta (FL10, auditoría §46.3: no decían de

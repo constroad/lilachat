@@ -4892,6 +4892,73 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 58. F1 — reacciones, recordatorios en todo chat, «Tú», fijados de Slack, descripción larga y reenviar (20/10/2026, sin publicar)
+
+José, 20/10, después de publicar 0.1.104: reaccionar en chats y en hilos; los
+recordatorios no solo en grupos (también 1:1, borradores y el chat contigo);
+«cómo creo un chat conmigo mismo, pruébalo de punta a punta»; fijar varios
+como Slack («¿conflicto con los fijados actuales o mejor un star?»);
+descripciones largas de grupo; responder al hilo principal desde un hilo; la
+pantalla de reenviar como WhatsApp (frecuentes, recientes). Y una regla nueva:
+**lo que tiene el APK lo tiene la web**. Diseños `f1-*` (INVENTARIO).
+
+| Pedido | Qué se hizo | Dónde |
+| --- | --- | --- |
+| Reacciones | Como WhatsApp: una por persona (otra la cambia, la misma la quita). App: la barra de seis y «+» (el panel de emojis) aparece sobre el mensaje al elegirlo; la pastilla «👍 2 · ❤️ 1» se monta sobre el borde de la burbuja y abre «Reacciones» con pestañas («Toca para quitar»). En el hilo, mantener presionada una respuesta. Web: botón al pasar el mouse, la misma barra, pastilla con «quién reaccionó». Optimista con vuelta atrás si el server dice que no. Push solo al autor (fuera de línea y sin silenciar). No en un chat secreto (el emoji iría en claro) | shared `reacciones.ts`; server `reacciones.ts` (update pipeline atómico), `msg.react` → `msg.reacciones`, `avisarReaccion`; app `useCambiosDeMensajes`, `reacciones/*`; web `reacciones/*`, `aplicarReacciones` |
+| Recordatorios en todo chat | En un 1:1 los crea cualquiera de los dos y les suena a los dos; en un borrador o en «Tú», te suena a ti. Se publican como tarjeta, se listan en el detalle y los edita cualquier miembro (en un grupo, sus admins). La tarjeta dice «Recordatorio» | server `eventRoutes`, `recordatoriosDeGrupo` (permiso), `reminderCron`; shared `aQuienSuena`, `etiquetaDeRecordatorioEnElChat`; app `AttachSheet`, `CreateReminderScreen`, `RecordatoriosDelGrupo` |
+| «Tú · Envíate un mensaje» | Como WhatsApp: primera fila de «Nuevo chat» (app y web); abre SIEMPRE el mismo chat contigo (`POST /api/chats {kind:'yo'}`: un borrador `propio`, se crea la primera vez). En la lista y la cabecera, tu foto; no se renombra; sí lleva descripción y recordatorios. Los borradores con nombre siguen como antes | server `chatRoutes`, `chatModels.propio`, `listaDeChats`; app `NewChatScreen`, `FilaDeChat`, `NavegacionDeSesion`; web `CreatePanels`, `FilaDeChat` |
+| Fijados de Slack | **Sin conflicto: es el mismo fijado, ampliado.** Hasta 50 por chat (el 51 saca al más viejo), «Sin vencimiento» además de 24 h / 7 d / 30 d, la franja con barrita partida y «1 de N», la lista «Mensajes fijados» (quién lo fijó y cuánto le queda) y la tarjeta en la info. En un grupo fijan los admins | shared `mensajesFijados.ts`; app `FranjaDeFijados`, `fijados/*`; web `FranjaDeFijados`, `fijados/ListaDeFijados` |
+| Descripción del grupo | Hasta 2048 caracteres (WhatsApp), con párrafos y enlaces tocables; «Leer más» tras 6 líneas; aviso «X cambió la descripción del grupo» (sin el texto). Grupos y borradores; un 1:1 no tiene | shared `normalizarDescripcion`, aviso `descripcion`; server `PATCH /api/chats/:id {descripcion}`, `detail`; app `descripcion/*`; web `info/DescripcionDelChat` |
+| Responder al hilo principal | Ya estaba en 0.1.104: «También enviar al chat» en el hilo (app y web) | §57 |
+| Reenviar | Buscador, «Chats frecuentes» (a donde más mando: se anota en cada envío y lo viejo pesa la mitad por semana; vive en el equipo), «Chats recientes», casillas hasta 5, abajo los elegidos con «Añadir un mensaje…» y enviar. «Tú» aparece aunque todavía no exista (se crea al mandar). Sin chats secretos | shared `reenvio.ts`; app `reenviar/*` (anota en `queueMessage`); web `reenviar/*` (anota en `enviarTexto`) |
+
+**Archivos partidos por el tope de 600 líneas:** `useChat` → `useCambiosDeMensajes`
+y `useEscribiendoDelChat`; `ChatScreen` → `propsDelChat.ts`.
+
+### 58.1 Análisis: ¿Agenda como pestaña aparte? ¿fijar o destacar?
+
+Investigación con fuentes (WhatsApp, Slack, Teams, Telegram, Google Chat,
+Discord, Signal; 2024–2026):
+- **Ninguna app de consumo tiene una pestaña de agenda**: el evento vive en el
+  chat y en la info del grupo (WhatsApp prueba en beta un listado de eventos,
+  pero dentro de Ajustes). **Las de trabajo sí tienen una vista global**
+  (Teams: Calendario; Slack: «To-dos» desde oct-2026 y «Today» en beta).
+- Slack mezcló guardados y recordatorios en «Later» (2023), hubo quejas y en
+  2026 los separó.
+- **Recomendación:** que «Agenda» pase a ser **«Pendientes»** (solo lo que
+  tiene fecha: eventos de todos mis chats y recordatorios; Vencidos · Hoy ·
+  Próximos) y que lo guardado sin fecha sea **«Destacados»** (estrella
+  personal, lista por chat y global, como WhatsApp/Slack). «Destacar» es
+  personal y el fijado es para todos: son cosas distintas, por eso el fijado
+  se amplió en vez de reemplazarse. Pendiente de decisión de José.
+
+### 58.2 E2E
+
+Server QA local (sin crons, base de producción) con QA Ana y QA Beto:
+- **App (emulador):** barra de reacciones, reacción propia y la de Beto en vivo,
+  pastilla, «Reacciones» y quitar la mía, «+» con el panel; reacción a una
+  respuesta del hilo; fijar «Sin vencimiento» y 7 días → franja «1 de 2» y
+  lista («vence en 7 días» / «sin vencimiento»); descripción larga con «Leer
+  más», enlace y aviso; recordatorio en el 1:1 («Con «QA Ana»: les suena a los
+  dos»); «Tú» desde Nuevo chat, mensaje y recordatorio («te suena a ti»);
+  reenviar a dos chats con mensaje agregado (verificado en la base).
+- **Web (navegador propio vinculado como QA Ana):** reaccionar al pasar el
+  mouse, «quién reaccionó» y quitar; la reacción de Beto en vivo; reaccionar en
+  el panel del hilo; lista de fijados; info con descripción, «Leer más», enlace
+  y tarjeta de fijados; fijar «sin vencimiento» en el 1:1; editar la
+  descripción; reenviar a «Tú» (se creó) con mensaje; «Tú» en Nuevo chat.
+- Defectos que encontró el E2E: la tarjeta decía «Recordatorio del grupo» en un
+  1:1; «vence en 6 días» recién fijado por 7 (ahora redondea); la barra no
+  entraba en 360 dp; la lista de la web no mostraba el «Tú» recién creado; un
+  punto de presencia en «Tú». Corregidos.
+- QA en cero (usuarios, chats, mensajes, acuses, recordatorios, el «Tú» de
+  prueba) y los dispositivos de José en 20.
+
+**Queda:** la web no crea eventos/encuestas/recordatorios desde el chat ni dibuja
+sus tarjetas (W3c, §54.15) — con la regla «APK = web» pasa a ser lo siguiente;
+la sección «Contactos en Lilachat» del diseño de reenviar (hoy solo chats);
+reacciones en chats secretos; «Destacados» y «Pendientes» si José los aprueba.
+
 ## 57. E3a — hilos en la app y en la web (20/10/2026, sin publicar)
 
 José, 19/10: «quiero ya probar los threads o hilos». Diseños `e3-app-chip-hilo`,

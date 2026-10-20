@@ -55,3 +55,10 @@ Las capturas viven SOLO en la máquina (`design/stitch/`, en `.gitignore` desde 
 | `e3-app-chip-hilo.png` | E3a · App: chip del hilo debajo de la raíz, con punto de nuevas (`screens/d18f0a602711485394b8aae21ee6af13`) |
 | `e3-app-hilo.png` | E3a · App: pantalla del hilo con raíz, respuestas y «También enviar al chat» (`screens/990b620ad72e43488498890a0fb68f76`) |
 | `e3-web-hilo.png` | E3a · Web: hilo como tercera columna a la derecha (`screens/809a9ff518124644961a435f8fdf69e2`) |
+| `f1-app-reacciones.png` | F1 · App: barra de reacciones sobre el mensaje elegido y pastillas (`screens/cef300c395f3456d80f4b0a6a495d2be`) |
+| `f1-app-quien-reacciono.png` | F1 · App: hoja «Reacciones» con pestañas por emoji (`screens/6de8cea67b2444a58697c91cc9804dd7`) |
+| `f1-app-reenviar.png` | F1 · App: «Reenviar a» con frecuentes, recientes y elegidos abajo (`screens/79fdae0d9fd94b92bb4ea9f835035026`) |
+| `f1-app-fijados.png` | F1 · App: franja «1 de 5» y hoja «Mensajes fijados» (`screens/002893bb8a4d48cd901c41164cb75222`) |
+| `f1-app-info-fijados.png` | F1 · App: info del grupo con descripción larga y tarjeta de fijados (`screens/1ee00f3297e7451086f6e1b87c707f63`) |
+| `f1-web-reacciones-reenviar.png` | F1 · Web: barra de reacciones al pasar el mouse y diálogo «Reenviar mensaje» (`screens/626bddd520924ab284c99616e1693b7b`) |
+| `f1-web-info-fijados.png` | F1 · Web: panel «Info. del grupo» con descripción y fijados (`screens/46c1e8d2f7674d1ebac5a53170bc69b0`) |

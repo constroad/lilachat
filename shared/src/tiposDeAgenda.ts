@@ -5,7 +5,7 @@ import type { AttendeeSummary, Recurrence, Rsvp } from './events.js';
  * vez para la app y la web (W3c, 19/10). Antes cada cliente tenía su copia y
  * la de la web había quedado sin `mio`, `esMia` ni los asistentes.
  */
-type ChatDeOrigen = { kind: 'direct' | 'group'; name?: string; phone?: string };
+export type ChatDeOrigen = { kind: 'direct' | 'group'; name?: string; phone?: string };
 type Personas = Record<string, { phone: string; name?: string }>;
 
 export type AgendaEvent = {
@@ -42,6 +42,8 @@ export type AgendaReminder = {
   /** Solo en los del grupo (19/10): el chat donde vive y su imagen. */
   chatId?: string;
   imageUrl?: string;
+  /** El chat visible, en la línea de «Pendientes» (20/10): el grupo por su nombre; el 1:1, por el otro. */
+  chat?: ChatDeOrigen;
 };
 
 export type AgendaPoll = {

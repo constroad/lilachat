@@ -58,6 +58,8 @@ export * from './ondaDeVoz.js';
 export * from './vinculacion.js';
 export * from './mensajesFijados.js';
 export * from './tiposDeAgenda.js';
+export * from './pendientes.js';
+export * from './destacados.js';
 export * from './encuestas.js';
 export * from './eventos.js';
 export * from './recordatorios.js';

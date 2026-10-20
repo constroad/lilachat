@@ -18,6 +18,8 @@ export type AccionesDeMensaje = {
   fijar: 'fijar' | 'desfijar' | null;
   /** «Responder en hilo» (E3, 20/10): de uno, vivo, no secreto, no aviso ni ya respuesta de un hilo. */
   hilo: boolean;
+  /** La estrella personal (20/10): `null` si no se puede (borrado o chat secreto). */
+  destacar: 'destacar' | 'quitar' | null;
 };
 
 export function accionesDeMensaje(params: {
@@ -36,9 +38,11 @@ export function accionesDeMensaje(params: {
   fijado?: boolean;
   /** Ya es la respuesta de un hilo: no hay hilos de hilos (E3). */
   esRespuestaDeHilo?: boolean;
+  /** Ya lo destaqué: la acción es quitar la estrella. */
+  destacado?: boolean;
 }): AccionesDeMensaje {
   if (params.eliminado) {
-    return { responder: false, copiar: false, reenviar: false, editar: false, info: false, eliminarParaTodos: false, eliminarParaMi: true, fijar: null, hilo: false };
+    return { responder: false, copiar: false, reenviar: false, editar: false, info: false, eliminarParaTodos: false, eliminarParaMi: true, fijar: null, hilo: false, destacar: null };
   }
   return {
     responder: true,
@@ -52,6 +56,7 @@ export function accionesDeMensaje(params: {
     eliminarParaMi: true,
     fijar: params.puedeFijar ? (params.fijado ? 'desfijar' : 'fijar') : null,
     hilo: !params.chatSecreto && !params.esRespuestaDeHilo,
+    destacar: params.chatSecreto ? null : params.destacado ? 'quitar' : 'destacar',
   };
 }
 
@@ -65,6 +70,7 @@ const NINGUNA: AccionesDeMensaje = {
   eliminarParaMi: false,
   fijar: null,
   hilo: false,
+  destacar: null,
 };
 
 /**
@@ -86,6 +92,8 @@ export function accionesDeVarios(lista: readonly AccionesDeMensaje[]): AccionesD
     reenviar: lista.every((uno) => uno.reenviar),
     eliminarParaTodos: lista.every((uno) => uno.eliminarParaTodos),
     eliminarParaMi: true,
+    // Como WhatsApp: quitar si todos ya tienen estrella; si no, destacar los que falten.
+    destacar: lista.some((uno) => uno.destacar === null) ? null : lista.every((uno) => uno.destacar === 'quitar') ? 'quitar' : 'destacar',
   };
 }
 

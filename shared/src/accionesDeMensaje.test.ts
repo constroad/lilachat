@@ -9,7 +9,7 @@ describe('accionesDeMensaje', () => {
   const base = { mio: true, eliminado: false, conTexto: true, esMedia: false, chatSecreto: false, editable: true };
 
   it('un texto propio: todo', () => {
-    expect(accionesDeMensaje(base)).toEqual({ responder: true, copiar: true, reenviar: true, editar: true, info: true, eliminarParaTodos: true, eliminarParaMi: true, fijar: null, hilo: true });
+    expect(accionesDeMensaje(base)).toEqual({ responder: true, copiar: true, reenviar: true, editar: true, info: true, eliminarParaTodos: true, eliminarParaMi: true, fijar: null, hilo: true, destacar: 'destacar' });
   });
 
   it('uno ajeno: no se borra para todos, pero sí para mí', () => {
@@ -22,7 +22,7 @@ describe('accionesDeMensaje', () => {
   });
 
   it('una lápida: solo borrarla de mi vista', () => {
-    expect(accionesDeMensaje({ ...base, eliminado: true })).toEqual({ responder: false, copiar: false, reenviar: false, editar: false, info: false, eliminarParaTodos: false, eliminarParaMi: true, fijar: null, hilo: false });
+    expect(accionesDeMensaje({ ...base, eliminado: true })).toEqual({ responder: false, copiar: false, reenviar: false, editar: false, info: false, eliminarParaTodos: false, eliminarParaMi: true, fijar: null, hilo: false, destacar: null });
   });
 
   /** «Info» (FL9): quién lo leyó. Solo de lo propio, como WhatsApp. */
@@ -89,6 +89,26 @@ describe('accionesDeMensaje — fijar (19/10)', () => {
     expect(accionesDeMensaje({ ...base, puedeFijar: true, eliminado: true }).fijar).toBeNull();
     const uno = accionesDeMensaje({ ...base, puedeFijar: true });
     expect(accionesDeVarios([uno, uno]).fijar).toBeNull();
+  });
+});
+
+/** «Destacados» (José aprobó el 20/10): la estrella personal, también de varios a la vez. */
+describe('accionesDeMensaje — destacar', () => {
+  const base = { mio: false, eliminado: false, conTexto: true, esMedia: false, chatSecreto: false, editable: false };
+  it('destacar, o quitar si ya está destacado', () => {
+    expect(accionesDeMensaje(base).destacar).toBe('destacar');
+    expect(accionesDeMensaje({ ...base, destacado: true }).destacar).toBe('quitar');
+  });
+  it('no en lo borrado ni en un chat secreto', () => {
+    expect(accionesDeMensaje({ ...base, eliminado: true }).destacar).toBeNull();
+    expect(accionesDeMensaje({ ...base, chatSecreto: true }).destacar).toBeNull();
+  });
+  it('con varios: quitar si TODOS ya están; si no, destacar los que falten', () => {
+    const destacado = accionesDeMensaje({ ...base, destacado: true });
+    const suelto = accionesDeMensaje(base);
+    expect(accionesDeVarios([destacado, destacado]).destacar).toBe('quitar');
+    expect(accionesDeVarios([destacado, suelto]).destacar).toBe('destacar');
+    expect(accionesDeVarios([suelto, accionesDeMensaje({ ...base, eliminado: true })]).destacar).toBeNull();
   });
 });
 

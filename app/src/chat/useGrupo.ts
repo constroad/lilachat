@@ -11,11 +11,13 @@ const PLAZO_MS = 10_000;
 const cache = new Map<string, MiembroConNombre[]>();
 
 /**
- * Lo que la conversación necesita saber de su grupo (FL3, FL9d): los nombres
- * de los miembros —para el autor de cada burbuja— y si sigo siendo uno de
- * ellos. UN pedido por grupo y por sesión (`/api/chats/:id/detail`), y otro
- * cada vez que el server avisa `chat.changed` de ese chat (sumaron o sacaron a
- * alguien, o me sacaron a mí). En un 1:1 no pide nada.
+ * What the conversation needs from its members (FL3, FL9d): each member's
+ * name and photo, for the author of each bubble, and whether I am still in the
+ * group. ONE request per chat and session (`/api/chats/:id/detail`), and
+ * another each time the server sends `chat.changed` for that group (someone
+ * was added or removed, or I was). In a 1:1 it asks once too (backlog 18: the
+ * thread and its chip named the other person «Alguien» and showed «?» faces);
+ * membership and mentions stay group-only.
  */
 export function useGrupo(
   chatId: string,
@@ -50,7 +52,7 @@ export function useGrupo(
   }, [chatId, esGrupo]);
 
   useEffect(() => {
-    if (!esGrupo || cache.has(chatId)) return;
+    if (cache.has(chatId)) return;
     let vigente = true;
     void (async () => {
       try {
@@ -59,7 +61,7 @@ export function useGrupo(
           signal: AbortSignal.timeout(PLAZO_MS),
         });
         const membresia = membresiaPorRespuesta(respuesta.status);
-        if (vigente && membresia !== null) setSoyMiembro(membresia);
+        if (vigente && esGrupo && membresia !== null) setSoyMiembro(membresia);
         if (!respuesta.ok) return;
         const detalle = (await respuesta.json()) as { members?: MiembroConNombre[] };
         const lista = detalle.members ?? [];

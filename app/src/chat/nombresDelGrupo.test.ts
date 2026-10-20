@@ -14,6 +14,17 @@ describe('nombresPorMiembro', () => {
     expect(nombresPorMiembro([{ id: 'u2', name: 'Mamá', phone: '900000002' }], new Map()).get('u2')).toBe('Mamá');
   });
 
+  it('a 1:1 names both people too: the thread said «Alguien» (backlog 18)', () => {
+    const agenda = new Map([['960397018', 'Wilson']]);
+    const members = [
+      { id: 'me', name: 'J zamora', phone: '902049935', avatarUrl: 'https://x/me.jpg' },
+      { id: 'wilson', name: null, phone: '960397018', avatarUrl: 'https://x/wilson.jpg' },
+    ];
+
+    expect(nombresPorMiembro(members, agenda).get('wilson')).toBe('Wilson');
+    expect(fotosPorMiembro(members).get('wilson')).toBe('https://x/wilson.jpg');
+  });
+
   it('sin nombre en ningún lado, algo legible y nunca vacío', () => {
     const nombre = nombresPorMiembro([{ id: 'u3', name: null, phone: null }], new Map()).get('u3');
     expect(nombre).toBeTruthy();

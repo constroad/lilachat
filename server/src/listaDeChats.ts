@@ -41,6 +41,7 @@ export type ChatSummary = {
     at: Date;
     system?: Message['system'];
     deletedAt?: Date;
+    hiloDe?: number;
   } | null;
   /** Hasta qué `seq` leyeron los DEMÁS: de acá salen los checks del diseño. */
   othersReadSeq: number;
@@ -176,6 +177,8 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
             system: last.system,
             // Borrado para todos (19/10): sin esto la lista seguía diciendo «Foto».
             ...(last.deletedAt ? { deletedAt: last.deletedAt } : {}),
+            // E3: el último fue una respuesta en un hilo (la vista previa lo dice).
+            ...(last.hiloDe ? { hiloDe: last.hiloDe } : {}),
           }
         : null,
       othersReadSeq: acuseDelGrupo({ otros: acusan, porMiembro: acuses?.read ?? new Map() }),

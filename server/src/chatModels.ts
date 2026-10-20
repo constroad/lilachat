@@ -57,6 +57,9 @@ export interface Chat {
   fijados?: { seq: number; por: Types.ObjectId; en: Date; hasta: Date }[];
 }
 
+/** El resumen de un hilo, guardado en su raíz (E3). */
+export type ResumenDeHilo = { respuestas: number; ultimaEn?: Date; ultimaSeq?: number; autores?: string[] };
+
 export interface Message {
   _id: Types.ObjectId;
   chatId: Types.ObjectId;
@@ -122,6 +125,12 @@ export interface Message {
   replyToSeq?: number;
   /** Las @menciones del texto (José, 18/10), ya validadas (`validarMenciones`). */
   menciones?: { userId: string; desde: number; largo: number }[];
+  /** E3 (20/10): es una respuesta en el hilo de este `seq` (la raíz). */
+  hiloDe?: number;
+  /** La respuesta del hilo se ve también en el chat («También enviar al chat»). */
+  enElChat?: boolean;
+  /** En la RAÍZ: cuántas respuestas, la última y los 3 últimos que respondieron. */
+  hilo?: ResumenDeHilo;
   editedAt?: Date;
   /**
    * Cuándo se borró, si se borró (27/08/2026).
@@ -229,6 +238,9 @@ const messageSchema = new Schema<Message>(
       type: [new Schema({ userId: { type: String, required: true }, desde: { type: Number, required: true }, largo: { type: Number, required: true } }, { _id: false })],
       default: undefined,
     },
+    hiloDe: { type: Number },
+    enElChat: { type: Boolean },
+    hilo: { type: new Schema({ respuestas: { type: Number, default: 0 }, ultimaEn: Date, ultimaSeq: Number, autores: { type: [String], default: undefined } }, { _id: false }) },
     editedAt: { type: Date },
     deletedAt: { type: Date },
     autoReply: { type: Boolean, default: false },

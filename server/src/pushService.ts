@@ -1,3 +1,4 @@
+import { interesadosEnElHilo } from './hilos.js';
 import { repartirPorToken } from './repartoDePush.js';
 import { firmarRespuesta } from './tokenDeRespuesta.js';
 import type { Message } from './chatModels.js';
@@ -25,6 +26,17 @@ export function setPushSender(next: PushSender): void {
   sender = next;
 }
 
+/**
+ * E3 (20/10): una respuesta de hilo le suena a quien escribió la raíz, a quien
+ * ya respondió y a los mencionados. Con «También enviar al chat», a todos.
+ */
+async function soloInteresadosDelHilo(message: Message, candidatos: string[]): Promise<string[]> {
+  if (!message.hiloDe || message.enElChat || candidatos.length === 0) return candidatos;
+  const interesados = await interesadosEnElHilo(message.chatId, message.hiloDe);
+  for (const mencion of message.menciones ?? []) interesados.add(mencion.userId);
+  return candidatos.filter((candidato) => interesados.has(candidato));
+}
+
 export async function notifyOffline(params: {
   message: Message;
   members: string[];
@@ -32,9 +44,10 @@ export async function notifyOffline(params: {
 }): Promise<void> {
   // Al autor NUNCA (ni a sus otros dispositivos: ya recibieron `msg.new`), y a
   // quien tiene un socket vivo tampoco — está mirando la conversación.
-  const candidatos = params.members.filter(
+  const conectadosFuera = params.members.filter(
     (member) => member !== params.senderId && !isOnline(member)
   );
+  const candidatos = await soloInteresadosDelHilo(params.message, conectadosFuera);
   if (candidatos.length === 0) return;
 
   // Quien SILENCIÓ este chat no recibe una notificación que suene: es el punto
@@ -59,7 +72,8 @@ export async function notifyOffline(params: {
     // El nombre del chat solo aporta en un grupo: en un 1:1 sería el mismo
     // nombre dos veces.
     chatName: nombreDelGrupo,
-    body: params.message.body,
+    // E3: la respuesta de un hilo lo dice («En un hilo: …»).
+    body: params.message.hiloDe && params.message.body ? `En un hilo: ${params.message.body}` : params.message.body,
     kind: params.message.kind,
   });
 

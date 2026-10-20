@@ -407,3 +407,26 @@ describe('entregado al conectar', () => {
   });
 });
 
+
+/** E3 (20/10): responder en un hilo por el socket. */
+describe('hilos por el socket', () => {
+  it('la respuesta llega con su raíz y todos reciben el resumen nuevo de la raíz', async () => {
+    const emisor = await connect(tokenFor(jose));
+    const otra = await connect(tokenFor(maria));
+    const raiz = await emisor.timeout(5000).emitWithAck('msg.send', { chatId, clientKey: 'h-raiz', body: '¿Quién confirma?' });
+    const llegada = new Promise<{ hiloDe?: number }>((resolve) => otra.on('msg.new', (m: { hiloDe?: number }) => m.hiloDe && resolve(m)));
+    const resumen = new Promise<{ raiz: number; hilo: { respuestas: number } }>((resolve) => otra.once('msg.hilo', resolve));
+
+    const respuesta = await otra.timeout(5000).emitWithAck('msg.send', { chatId, clientKey: 'h-1', body: 'Yo', hiloDe: raiz.seq });
+
+    expect(respuesta).toMatchObject({ ok: true });
+    await expect(llegada).resolves.toMatchObject({ hiloDe: raiz.seq });
+    await expect(resumen).resolves.toMatchObject({ raiz: raiz.seq, hilo: { respuestas: 1 } });
+  });
+
+  it('una raíz inválida se rechaza con su motivo', async () => {
+    const emisor = await connect(tokenFor(jose));
+    const r = await emisor.timeout(5000).emitWithAck('msg.send', { chatId, clientKey: 'h-mal', body: 'x', hiloDe: 999 });
+    expect(r).toMatchObject({ ok: false, motivo: 'Ese mensaje no admite respuestas en hilo.' });
+  });
+});

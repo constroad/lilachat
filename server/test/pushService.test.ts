@@ -255,3 +255,40 @@ describe('notifyOffline — responder desde el aviso (FL11)', () => {
     expect(datos[1]!.data.respuesta).toBe('');
   });
 });
+
+/**
+ * E3 (20/10): una respuesta en un hilo le suena a quien escribió la raíz, a
+ * quien ya respondió y a los mencionados; a los demás, no. Con «También enviar
+ * al chat», a todos.
+ */
+describe('notifyOffline — respuestas en un hilo', () => {
+  const tercero = async () => {
+    const carla = (await UserModel.create({ phone: '900000003', name: 'Carla' }))._id;
+    await ChatModel.updateOne({ _id: chatId }, { $push: { members: { userId: carla, role: 'member' } } });
+    await DeviceModel.create({ deviceId: 'd-carla', userId: carla, pushToken: 'tok-carla' });
+    return carla;
+  };
+
+  it('solo a quien escribió la raíz (y a quien ya respondió), no al resto del grupo', async () => {
+    const carla = await tercero();
+    await MessageModel.create({ chatId, seq: 1, senderId: maria, clientKey: 'raiz', kind: 'text', body: 'raíz', at: new Date() });
+
+    await notifyOffline({ message: message({ seq: 2, hiloDe: 1, body: 'respuesta' }), members: [...members(), String(carla)], senderId: String(jose) });
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.tokens).toEqual(['tok-maria']);
+    expect(sent[0]?.body).toContain('En un hilo');
+  });
+
+  it('al mencionado le suena aunque no esté en el hilo; con «también al chat», a todos', async () => {
+    const carla = await tercero();
+    await MessageModel.create({ chatId, seq: 1, senderId: maria, clientKey: 'raiz', kind: 'text', body: 'raíz', at: new Date() });
+
+    await notifyOffline({ message: message({ seq: 2, hiloDe: 1, menciones: [{ userId: String(carla), desde: 0, largo: 6 }] }), members: [...members(), String(carla)], senderId: String(jose) });
+    expect(sent.flatMap((envio) => envio.tokens).sort()).toEqual(['tok-carla', 'tok-maria']);
+
+    sent = [];
+    await notifyOffline({ message: message({ seq: 3, hiloDe: 1, enElChat: true }), members: [...members(), String(carla)], senderId: String(jose) });
+    expect(sent.flatMap((envio) => envio.tokens).sort()).toEqual(['tok-carla', 'tok-maria']);
+  });
+});

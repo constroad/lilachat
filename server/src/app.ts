@@ -26,6 +26,7 @@ import { montarServiceWorker } from './serviceWorker.js';
 import { buildVincularRouters, type OpcionesDeVinculacion } from './vincularRoutes.js';
 import { buildFijadosRouter } from './fijadosRoutes.js';
 import { buildReenvioRouter } from './reenvioRoutes.js';
+import { buildHilosRouter } from './hilosRoutes.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -82,6 +83,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/auth', buildAuthRouter(deps.authClient ?? buildHttpAuthClient()));
   app.use('/api/chats', buildFijadosRouter());
   app.use('/api/chats', buildReenvioRouter());
+  app.use('/api/chats', buildHilosRouter());
   app.use('/api/chats', buildChatRouter(deps.mediaUploader));
   app.use('/api/media', buildMediaRouter(deps.mediaUploader));
   app.use('/api/agenda', buildRecordatoriosDeGrupoRouter(deps.mediaUploader));

@@ -12,6 +12,16 @@ export function visibleEnElChat(mensaje: { hiloDe?: number; enElChat?: boolean }
   return mensaje.hiloDe === undefined || mensaje.enElChat === true;
 }
 
+/**
+ * ¿Se abre un hilo desde este mensaje? Confirmado, vivo, no un aviso ni ya
+ * respuesta de otro hilo, y fuera de un chat secreto (las mismas reglas que el
+ * server en `validarRaiz`). Una tarjeta de recordatorio, evento o encuesta
+ * también (José, 20/10).
+ */
+export function puedeAbrirHilo(mensaje: { seq: number | null; kind?: string; hiloDe?: number; deletedAt?: string | null; cifrado?: boolean }): boolean {
+  return mensaje.seq !== null && mensaje.kind !== 'system' && mensaje.hiloDe === undefined && !mensaje.deletedAt && !mensaje.cifrado;
+}
+
 /** «1 respuesta · 11:05» o «4 respuestas · última 10:42». Sin respuestas, nada. */
 export function textoDelChipDeHilo(hilo: ResumenDeHiloEnCliente): string {
   if (hilo.respuestas <= 0) return '';

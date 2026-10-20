@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aplicarResumenDeHilo, hayRespuestasNuevas, respuestasDelHilo, textoDelChipDeHilo, visibleEnElChat } from './hilos.js';
+import { aplicarResumenDeHilo, hayRespuestasNuevas, puedeAbrirHilo, respuestasDelHilo, textoDelChipDeHilo, visibleEnElChat } from './hilos.js';
 
 /** E3 (20/10): hilos. */
 describe('visibleEnElChat', () => {
@@ -43,5 +43,26 @@ describe('respuestasDelHilo y aplicarResumenDeHilo', () => {
     const nuevos = aplicarResumenDeHilo(mensajes, 1, { respuestas: 2, ultimaSeq: 3 });
     expect(nuevos[0]).toMatchObject({ seq: 1, hilo: { respuestas: 2 } });
     expect(aplicarResumenDeHilo(mensajes, 99, { respuestas: 1 })).toBe(mensajes);
+  });
+});
+
+/** José, 20/10: «al tocar un mensaje aparecen solo emojis; ahí también la manera de crear hilos», y en un recordatorio. */
+describe('puedeAbrirHilo', () => {
+  const vivo = { seq: 12, kind: 'text' };
+
+  it('un mensaje o una tarjeta (recordatorio, evento, encuesta) confirmados abren hilo', () => {
+    expect(puedeAbrirHilo(vivo)).toBe(true);
+    expect(puedeAbrirHilo({ seq: 30, kind: 'text', ref: { tipo: 'recordatorio' } })).toBe(true);
+  });
+
+  it('no hay hilos de hilos, ni de avisos, ni de lo borrado', () => {
+    expect(puedeAbrirHilo({ ...vivo, hiloDe: 4 })).toBe(false);
+    expect(puedeAbrirHilo({ ...vivo, kind: 'system' })).toBe(false);
+    expect(puedeAbrirHilo({ ...vivo, deletedAt: '2026-10-20T10:00:00Z' })).toBe(false);
+  });
+
+  it('ni en un chat secreto, ni de lo que todavía no llegó al server', () => {
+    expect(puedeAbrirHilo({ ...vivo, cifrado: true })).toBe(false);
+    expect(puedeAbrirHilo({ ...vivo, seq: null })).toBe(false);
   });
 });

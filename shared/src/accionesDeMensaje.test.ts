@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accionesDeMensaje, accionesDeVarios, textoParaCopiar } from './accionesDeMensaje.js';
+import { accionesDeMensaje, planDeReenvio, accionesDeVarios, textoParaCopiar } from './accionesDeMensaje.js';
 
 /**
  * La pulsación larga (FL9, auditoría §46.2: solo había «Eliminar», de a uno,
@@ -16,8 +16,9 @@ describe('accionesDeMensaje', () => {
     expect(accionesDeMensaje({ ...base, mio: false })).toMatchObject({ eliminarParaTodos: false, eliminarParaMi: true });
   });
 
-  it('una foto sin pie: no hay qué copiar; se reenvía el texto, así que tampoco', () => {
-    expect(accionesDeMensaje({ ...base, conTexto: false, esMedia: true })).toMatchObject({ copiar: false, reenviar: false, responder: true });
+  it('una foto sin pie: no hay qué copiar, pero se reenvía', () => {
+    // Auditoría (19/10): una foto se reenvía (el server comparte el archivo), como WhatsApp.
+    expect(accionesDeMensaje({ ...base, conTexto: false, esMedia: true })).toMatchObject({ copiar: false, reenviar: true, responder: true });
   });
 
   it('una lápida: solo borrarla de mi vista', () => {
@@ -90,3 +91,19 @@ describe('accionesDeMensaje — fijar (19/10)', () => {
     expect(accionesDeVarios([uno, uno]).fijar).toBeNull();
   });
 });
+
+/** Auditoría (19/10): reenviar fotos y archivos, no solo texto. */
+describe('planDeReenvio', () => {
+  it('en orden: el texto viaja como texto; la foto y el archivo, por referencia (con su pie)', () => {
+    const plan = planDeReenvio([
+      { chatId: 'c', seq: 5, body: 'mira esto', media: { url: 'x' } },
+      { chatId: 'c', seq: 3, body: ' hola ' },
+      { chatId: 'c', seq: 4 },
+    ]);
+    expect(plan).toEqual([
+      { tipo: 'texto', texto: 'hola' },
+      { tipo: 'mensaje', chatId: 'c', seq: 5 },
+    ]);
+  });
+});
+

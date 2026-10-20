@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { ChatSummary } from '../api/client';
-import { aplicarAcuseALista, aplicarBorradoALista, aplicarEdicionALista, aplicarMensajeALista, debeRecargarAlConectar, marcarLeido, puntoEnLinea } from './listaEnVivo';
+import { aplicarAcuseALista, aplicarBorradoALista, aplicarEdicionALista, aplicarMensajeALista, debeRecargarAlConectar, marcarLeido, puntoEnLinea, type ResumenEnVivo } from './listaEnVivo.js';
+
+type ChatSummary = ResumenEnVivo & { name?: string; pinned?: boolean };
 
 const YO = '665f1a2b3c4d5e6f70818293';
 const OTRO = '665f1a2b3c4d5e6f70818294';

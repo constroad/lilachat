@@ -1,5 +1,23 @@
-import { acuseDelGrupo } from '@lilachat/shared';
-import type { ChatSummary } from '../api/client';
+import { acuseDelGrupo } from './acuses.js';
+
+/**
+ * La lista de chats en vivo, sin ir al server (salió de la app el 19/10 para
+ * que la web haga lo mismo: pedía la lista entera con cada mensaje y cada
+ * acuse). Genérica: la app y la web tienen su `ChatSummary`, con estos campos.
+ */
+export type UltimoDeLaFila = { seq: number; body?: string; kind?: string; senderId: string; at: string; system?: unknown; deletedAt?: string };
+export type ResumenEnVivo = {
+  id: string;
+  kind?: string;
+  memberIds: readonly string[];
+  lastSeq: number;
+  unread: number;
+  markedUnread?: boolean;
+  othersReadSeq: number;
+  othersDeliveredSeq: number;
+  acuseDe?: readonly string[];
+  lastMessage: UltimoDeLaFila | null;
+};
 
 /** Lo que trae un `msg.new` y le importa a la lista. */
 export type MensajeEnVivo = {
@@ -9,7 +27,7 @@ export type MensajeEnVivo = {
   kind?: string;
   body?: string;
   at: string;
-  system?: NonNullable<ChatSummary['lastMessage']>['system'];
+  system?: unknown;
 };
 
 /**
@@ -23,20 +41,20 @@ export type MensajeEnVivo = {
  * lista, y los chats que no cambian conservan su referencia: así la fila
  * memoizada no se vuelve a dibujar.
  */
-export function aplicarMensajeALista(
-  chats: ChatSummary[],
+export function aplicarMensajeALista<C extends ResumenEnVivo>(
+  chats: C[],
   mensaje: MensajeEnVivo,
   yo: string,
   /** El chat que se está mirando: sus mensajes se leen al llegar. */
   chatAbierto: string | null = null
-): ChatSummary[] | null {
+): C[] | null {
   const indice = chats.findIndex((chat) => chat.id === mensaje.chatId);
   if (indice === -1) return null;
   const actual = chats[indice];
   if (!actual || mensaje.seq <= actual.lastSeq) return chats;
 
   const yaLeido = String(mensaje.senderId) === yo || mensaje.chatId === chatAbierto;
-  const actualizado: ChatSummary = {
+  const actualizado = {
     ...actual,
     lastSeq: mensaje.seq,
     unread: yaLeido ? actual.unread : actual.unread + 1,
@@ -49,7 +67,7 @@ export function aplicarMensajeALista(
       at: mensaje.at,
       system: mensaje.system,
     },
-  };
+  } as C;
   return chats.map((chat, i) => (i === indice ? actualizado : chat));
 }
 
@@ -57,7 +75,7 @@ export function aplicarMensajeALista(
  * Al volver de un chat, su contador queda en 0. Antes la lista se remontaba y
  * lo traía del server; con la lista viva debajo (FL1) se corrige acá.
  */
-export function marcarLeido(chats: ChatSummary[], chatId: string): ChatSummary[] {
+export function marcarLeido<C extends ResumenEnVivo>(chats: C[], chatId: string): C[] {
   const indice = chats.findIndex((chat) => chat.id === chatId);
   const actual = chats[indice];
   // Abrir el chat también quita la marca de «no leído» (FL9; el server igual).
@@ -69,7 +87,7 @@ export function marcarLeido(chats: ChatSummary[], chatId: string): ChatSummary[]
  * El punto verde de una fila (FL10, auditoría §46.3): solo en un 1:1, como
  * WhatsApp. En un grupo, con varios conectados, sería ruido permanente.
  */
-export function puntoEnLinea(chat: Pick<ChatSummary, 'kind' | 'memberIds'>, yo: string, enLinea: ReadonlySet<string>): boolean {
+export function puntoEnLinea(chat: Pick<ResumenEnVivo, 'kind' | 'memberIds'>, yo: string, enLinea: ReadonlySet<string>): boolean {
   return chat.kind === 'direct' && chat.memberIds.some((id) => id !== yo && enLinea.has(id));
 }
 
@@ -105,7 +123,7 @@ const calcular = (mapa: Map<string, number>, base: number, acuseDe?: readonly st
  * grupo manda el menor, y quien no acusó en vivo vale lo que dijo el server.
  * Si el check no cambia, devuelve la MISMA lista.
  */
-export function aplicarAcuseALista(chats: ChatSummary[], acuse: AcuseEnVivo, yo: string, cursores: CursoresEnVivo): ChatSummary[] {
+export function aplicarAcuseALista<C extends ResumenEnVivo>(chats: C[], acuse: AcuseEnVivo, yo: string, cursores: CursoresEnVivo): C[] {
   const { chatId, userId } = acuse;
   if (typeof chatId !== 'string' || typeof userId !== 'string') return chats;
   const indice = chats.findIndex((chat) => chat.id === chatId);
@@ -126,7 +144,7 @@ export function aplicarAcuseALista(chats: ChatSummary[], acuse: AcuseEnVivo, yo:
  * MI acuse (leí en la web, o el server marcó lo mío al enviar): baja mis no
  * leídos de esa fila y quita la marca de «no leído», como hace el server.
  */
-function aplicarMiAcuse(chats: ChatSummary[], indice: number, actual: ChatSummary, readSeq: unknown): ChatSummary[] {
+function aplicarMiAcuse<C extends ResumenEnVivo>(chats: C[], indice: number, actual: C, readSeq: unknown): C[] {
   if (typeof readSeq !== 'number') return chats;
   const unread = Math.min(actual.unread, Math.max(0, actual.lastSeq - readSeq));
   if (unread === actual.unread && !actual.markedUnread) return chats;
@@ -137,13 +155,13 @@ function aplicarMiAcuse(chats: ChatSummary[], indice: number, actual: ChatSummar
 export type CambioDeMensaje = { chatId?: unknown; seq?: unknown; body?: unknown };
 
 /** La fila cuyo último mensaje es ese `seq`, o -1. */
-function filaDelUltimo(chats: ChatSummary[], cambio: CambioDeMensaje): number {
+function filaDelUltimo(chats: readonly ResumenEnVivo[], cambio: CambioDeMensaje): number {
   if (typeof cambio.chatId !== 'string' || typeof cambio.seq !== 'number') return -1;
   return chats.findIndex((chat) => chat.id === cambio.chatId && chat.lastMessage?.seq === cambio.seq);
 }
 
 /** Editaron el último mensaje: la vista previa dice lo nuevo (auditoría 19/10). */
-export function aplicarEdicionALista(chats: ChatSummary[], cambio: CambioDeMensaje): ChatSummary[] {
+export function aplicarEdicionALista<C extends ResumenEnVivo>(chats: C[], cambio: CambioDeMensaje): C[] {
   const indice = filaDelUltimo(chats, cambio);
   const actual = chats[indice];
   if (!actual?.lastMessage || typeof cambio.body !== 'string') return chats;
@@ -152,7 +170,7 @@ export function aplicarEdicionALista(chats: ChatSummary[], cambio: CambioDeMensa
 }
 
 /** Borraron el último para todos: la vista previa dice «Se eliminó este mensaje». */
-export function aplicarBorradoALista(chats: ChatSummary[], cambio: CambioDeMensaje, ahora: string): ChatSummary[] {
+export function aplicarBorradoALista<C extends ResumenEnVivo>(chats: C[], cambio: CambioDeMensaje, ahora: string): C[] {
   const indice = filaDelUltimo(chats, cambio);
   const actual = chats[indice];
   if (!actual?.lastMessage) return chats;

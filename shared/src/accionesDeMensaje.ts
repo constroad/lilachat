@@ -39,8 +39,9 @@ export function accionesDeMensaje(params: {
   return {
     responder: true,
     copiar: params.conTexto,
-    // Se reenvía el TEXTO; reenviar una foto pide que el server la comparta.
-    reenviar: params.conTexto && !params.esMedia && !params.chatSecreto,
+    // El texto viaja como texto; una foto o un archivo, por referencia (el
+    // server comparte el archivo, auditoría 19/10). Desde un secreto, no.
+    reenviar: (params.conTexto || params.esMedia) && !params.chatSecreto,
     editar: params.editable,
     info: params.mio,
     eliminarParaTodos: params.mio,
@@ -89,3 +90,21 @@ export function textoParaCopiar(mensajes: readonly { seq: number; body?: string 
     .filter(Boolean)
     .join('\n');
 }
+
+export type PasoDeReenvio = { tipo: 'texto'; texto: string } | { tipo: 'mensaje'; chatId: string; seq: number };
+
+/**
+ * Qué se manda al reenviar varios mensajes, en orden (auditoría 19/10): el
+ * texto como texto; una foto o un archivo, por referencia —el server copia el
+ * archivo y su pie (`POST /api/chats/:id/reenviar`)—. Lo vacío no sale.
+ */
+export function planDeReenvio(mensajes: readonly { chatId: string; seq: number; body?: string; media?: unknown }[]): PasoDeReenvio[] {
+  return [...mensajes]
+    .sort((a, b) => a.seq - b.seq)
+    .flatMap((mensaje): PasoDeReenvio[] => {
+      if (mensaje.media) return [{ tipo: 'mensaje', chatId: mensaje.chatId, seq: mensaje.seq }];
+      const texto = mensaje.body?.trim();
+      return texto ? [{ tipo: 'texto', texto }] : [];
+    });
+}
+

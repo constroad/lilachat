@@ -65,3 +65,5 @@ export * from './guardarRecordatorio.js';
 export * from './cuando.js';
 export * from './tarjetasVivas.js';
 export * from './escribiendo.js';
+export * from './compresionDeFoto.js';
+export * from './listaEnVivo.js';

@@ -8,7 +8,7 @@ import { uploadMedia } from './mediaUpload';
 import type { ServerMessage } from './socketClient';
 import { alConectar } from './socketClient';
 import { valeAvisarProgreso } from './progresoDeSubida';
-import { nombreComprimido, planDeCompresion } from './compresionDeFoto';
+import { nombreComprimido, planDeCompresion } from '@lilachat/shared';
 import { comprimirFoto } from './comprimirFoto';
 
 /**

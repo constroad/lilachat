@@ -1,6 +1,6 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
-import type { PlanDeCompresion } from './compresionDeFoto';
+import type { PlanDeCompresion } from '@lilachat/shared';
 
 export type FotoComprimida = { uri: string; width: number; height: number; sizeBytes: number };
 

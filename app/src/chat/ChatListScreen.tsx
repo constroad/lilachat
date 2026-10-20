@@ -22,7 +22,7 @@ import {
 } from '../api/client';
 import { conciliarCache } from './cacheDeChats';
 import { chatsEnMemoria, guardarChats, leerChatsGuardados } from './chatsGuardados';
-import { aplicarAcuseALista, aplicarBorradoALista, aplicarEdicionALista, aplicarMensajeALista, debeRecargarAlConectar, marcarLeido, puntoEnLinea, type AcuseEnVivo, type CambioDeMensaje, type CursoresEnVivo, type MensajeEnVivo } from './listaEnVivo';
+import { aplicarAcuseALista, aplicarBorradoALista, aplicarEdicionALista, aplicarMensajeALista, debeRecargarAlConectar, marcarLeido, puntoEnLinea, type AcuseEnVivo, type CambioDeMensaje, type CursoresEnVivo, type MensajeEnVivo } from '@lilachat/shared';
 import { inicioDelProceso, medirUnaVez } from '../diagnostico/diagnostico';
 import { FlashList } from '@shopify/flash-list';
 import { useBorradores } from './borradores';

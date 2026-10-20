@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CALIDAD_JPEG, LADO_MAXIMO, nombreComprimido, planDeCompresion } from './compresionDeFoto';
+import { CALIDAD_JPEG, LADO_MAXIMO, nombreComprimido, planDeCompresion } from './compresionDeFoto.js';
 
 /** José, 19/10: «sí, comprime» (como WhatsApp, con «HD» para mandar la original). */
 describe('planDeCompresion', () => {

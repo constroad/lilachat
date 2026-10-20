@@ -4892,6 +4892,81 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 64. Recorte con borrador y restaurar, el panel de emojis como el teclado (20/10/2026, 0.1.112)
+
+José (20/10, con capturas de WhatsApp y Lilachat): «nuestra versión es la más
+peor; no hay un borrador para borrar lo que no quiero» y «cuando abro los
+emojis hay un rebote o doble parpadeo, es muy incómodo; revisa y audita todo».
+
+### 64.1 El recorte: máscara, piezas sueltas, borrar y restaurar
+
+- **Por qué salía peor que WhatsApp.** ML Kit tomó la laptop como fondo: la
+  camiseta quedaba cortada en línea recta donde estaba la laptop y la mano
+  que estaba sobre el teclado quedaba suelta al costado. Además `compose`
+  ignoraba la orientación EXIF de la foto.
+- **El recorte ahora es una MÁSCARA sobre una copia de trabajo** de la foto
+  (orientada y de 1280 px como mucho; `CutoutMask.kt`): la confianza de ML Kit
+  da bordes suaves (0,4–0,6) y se borran las piezas sueltas menores al 12 %
+  de la más grande (la mano). La web hace lo mismo sobre MediaPipe
+  (`dropSmallPieces`, con test).
+- **«Recortar» abre Borrar y Restaurar** (como Telegram), con tres tamaños de
+  pincel y el interruptor «Fondo automático». Restaurar muestra la foto entera
+  atenuada detrás, para ver qué recuperar (la laptop). Cada trazo vive en
+  píxeles de la foto (`shared/stickerMask`, con test): sobrevive a que el
+  recorte cambie de tamaño, y «Deshacer» los quita uno por uno junto con el
+  texto y el lápiz. El recorte se rehace en nativo (`refine`) o en el canvas
+  (`refineWeb`) y se recorta a lo visible.
+- **Arreglado de paso:** el editor quedaba montado entre un sticker y el
+  siguiente, y sus capas pasaban al próximo. Ahora nace limpio cada vez.
+- **Límite:** el emulador no tiene Play Store, así que el modelo de ML Kit no
+  se puede probar acá. Lo que se probó en el emulador: la foto entera con
+  Borrar, Restaurar con la foto atrás y Deshacer. En la web, E2E con el
+  recorte de MediaPipe: borrar deja alfa 0, restaurar muestra la foto
+  atenuada (89 = 35 %) y la recupera (255), y deshacer vuelve a 0.
+
+### 64.2 El panel de emojis toma el lugar del teclado
+
+- **Causa del rebote** (grabación cuadro a cuadro): el panel se abría DEBAJO
+  de la barra, dentro del layout. La conversación se achicaba de golpe y,
+  viniendo del teclado, la barra subía primero la altura del panel y después
+  bajaba con el teclado que se cerraba. Encima, la barra cambiaba su margen
+  inferior al abrirlo.
+- **Ahora** (`emojiPanel.ts`, `ChatBottom.tsx`): el panel está debajo de la
+  barra, tan alto como el último teclado. La barra sube lo que sea mayor
+  entre el teclado y el panel, y la lista nunca cambia de tamaño:
+  - Teclado → emojis: el panel aparece entero detrás del teclado, que se va
+    sin mover nada (el scroll del teclado en modo «persistent» con
+    `blankSpace` del tamaño del panel).
+  - Emojis → teclado: el teclado sube sobre el panel, que se va cuando llegó.
+  - Sin teclado: el contenido sube con el panel cuadro a cuadro en el hilo de
+    UI (posición al empezar + lo que subió el panel), y al cerrar baja con él.
+  - El panel se arma oculto un segundo después de entrar al chat: armarlo al
+    primer toque bloqueaba el hilo de JS y el contenido llegaba medio segundo
+    tarde.
+- **Medido en el emulador** (grabaciones a 30 cuadros): en las cuatro
+  transiciones el último mensaje queda justo sobre la barra en todos los
+  cuadros. Lo que se descartó en el camino:
+  - `extraContentPadding` animado: el padding y el scroll en el mismo cuadro
+    quedaban recortados por la lista nativa, que llegaba a +59 de 340 dp.
+  - Los métodos de posición de FlashList (`getAbsoluteLastScrollOffset` y
+    `computeVisibleIndices`) devolvían valores viejos sobre este scroll, y el
+    contenido iba HACIA ATRÁS.
+- **Teclados raros:** un «teclado» de menos de 200 dp es una barra (stylus,
+  teclado físico o flotante) y no define la altura del panel. En el emulador,
+  Gboard en modo stylus medía 60 dp y el panel salía diminuto.
+
+### 64.3 Verificación y entorno
+
+- Tests: app 449, shared 878 (con `stickerMask` y los trazos del editor) y
+  web 275 (con `dropSmallPieces`, el chip con fotos y `ErrorBoundary`).
+- El emulador traía el teclado físico de la Mac activado: Gboard quedaba
+  flotante o en modo stylus y los toques caían en otro lado. Se probó con
+  `hw.keyboard = no` en el AVD y después se volvió a dejar como estaba.
+- En una prueba, un toque con la lista recién reordenada abrió «Los
+  originales», un chat real de José; ahí solo se abrió y se cerró el panel.
+  Desde entonces el script de QA confirma el título «QA Hilos» antes de tocar
+  nada.
+
 ## 63. Stickers como WhatsApp, el clip con la galería, el scroll al entrar a un chat y volver de un hilo (20/10/2026, 0.1.111)
 
 José (20/10): «subo una foto, se quita el fondo, le pongo letras y creo el
@@ -6438,6 +6513,15 @@ tacha con la versión que lo cierra.
    un hilo y tocar la X del panel: toda la web queda en blanco hasta
    recargar. Reproducir en su Chrome con la sesión viva y mirar la consola
    (un error de React sin `ErrorBoundary` tumba todo el árbol).
+   **20/10, sin publicar: mitigado, sin reproducir.** Con el código actual no
+   se reprodujo (E2E contra el server QA: crear el hilo desde el botón,
+   responder y cerrar; sin responder; cerrar al instante; en un 1:1; a 1280 y
+   800 px: el chat queda y no hay errores). La web no tenía ningún
+   `ErrorBoundary`: ahora `ui/ErrorBoundary` envuelve el panel del hilo y el
+   de «Info.» («No se pudo mostrar el hilo.» + Cerrar, el chat sigue) y la app
+   entera («Algo falló al mostrar Lilachat.» + Recargar, nunca en blanco). El
+   error queda en la consola como `[lilachat] el hilo failed to render`: si
+   vuelve a pasar, ese texto dice la causa.
 5. **Bug web: la lista, el chat y su detalle muestran el número y no el
    nombre del contacto** (José, 20/10: «pésima experiencia»). La web no tiene
    la agenda del teléfono: usar los contactos que la app ya sincroniza con el
@@ -6535,13 +6619,21 @@ tacha con la versión que lo cierra.
     - **Diseño:** `c1-app-cumpleanos` (Stitch, pantalla
       `cd0ecbeba4524e54b2bd8ba2886d7b9b`). Al implementar se quita el logo
       que Stitch inventó arriba a la izquierda de la tarjeta («RKLES»).
-18. **Hilos: el nombre de quien escribe y los avatares** (José, 20/10,
+18. ~~**Hilos: el nombre de quien escribe y los avatares**~~ (hecho el 20/10, sin publicar; José, 20/10,
     captura del hilo con Wilson). En la app, la raíz del hilo dice «Alguien»
     en vez del nombre: en un 1:1 el autor no está en el mapa de nombres del
     grupo; hay que resolverlo como la lista (contacto de la agenda → nombre
     del perfil → número). Y el chip del hilo en el chat no muestra los
     avatares de quienes participan (Slack muestra hasta 3 caras + «N
     respuestas»). Revisar y corregir lo mismo en la web.
+    **Hecho:** la app pide los miembros (`/api/chats/:id/detail`, una vez por
+    sesión) también en un 1:1, así la raíz del hilo, su chip y las
+    reacciones nombran al otro como la lista (agenda → perfil → número) y
+    muestran su foto; la membresía y las @menciones siguen siendo solo de
+    grupos. En la web los nombres ya salían del detalle; faltaban las fotos
+    en el chip y en la raíz del panel. Verificado: app en el emulador (raíz
+    «QA Ana», chip con su inicial y la foto de José) y web E2E (chip con la
+    foto de José en un 1:1).
 19. **Emojis propios para reaccionar, como Slack** (estáticos o GIF
     animados). Cada uno: nombre corto (`:vamos:`), imagen de hasta 128×128 y
     256 KB (PNG, WebP o GIF), quién lo subió y cuándo. Salen en una sección
@@ -6565,6 +6657,20 @@ tacha con la versión que lo cierra.
     el chat, el detalle y «Nuevo chat» (la lista de contactos con Lilachat
     primero, como en WhatsApp Web), y que se actualice cuando el teléfono
     vuelva a sincronizar.
+    **Corrección (20/10, leyendo el código):** la app NO sube la agenda.
+    `POST /api/contacts/match` usa los números solo para la consulta y los
+    descarta («No se guarda nada de lo que llega»), y `GET /api/contacts`
+    devuelve con quién ya hay un 1:1 con el nombre que cada persona puso en
+    Lilachat. Por eso la web muestra el número de quien no se puso nombre:
+    no tiene de dónde sacar «Wilson». Para nombrar como el teléfono hay que
+    decidir (José) una de dos: (a) que la app guarde en el server los nombres
+    de agenda **solo de las personas con las que ya hay chat** (colección
+    nueva por usuario, con su índice; el server sabría cómo tienes guardado a
+    cada uno), o (b) que el teléfono se los pase a la web al vincularla y por
+    el socket mientras ambos estén conectados, sin guardarlos en el server
+    (la web no tendría nombres si el teléfono está apagado). WhatsApp Web
+    hace lo segundo, sobre su protocolo de dispositivos vinculados.
+    **Decisión de José (20/10): la (b).** Sin guardar la agenda en el server.
 
 ### Guiños y zumbido (análisis, 20/10)
 

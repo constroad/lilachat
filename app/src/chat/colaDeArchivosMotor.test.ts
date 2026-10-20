@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decidirSubida, siguienteArchivo, type ArchivoEnCola } from './colaDeArchivosMotor';
+import { decidirSubida, paraPersistir, siguienteArchivo, type ArchivoEnCola } from './colaDeArchivosMotor';
 
 /**
  * Fotos, archivos y notas de voz a una cola PERSISTIDA (FL8; auditoría
@@ -48,5 +48,20 @@ describe('siguienteArchivo', () => {
   it('vacía o todo fallido: nada', () => {
     expect(siguienteArchivo([])).toBeNull();
     expect(siguienteArchivo([archivo({ fallo: 'x' })])).toBeNull();
+  });
+
+  /** Auditoría (19/10): la burbuja sale antes de copiar; mientras se copia, no se sube (ni lo de atrás). */
+  it('el primero todavía se está copiando: espera, sin adelantar a los de atrás', () => {
+    const cola = [archivo({ clientKey: 'a', preparando: true }), archivo({ clientKey: 'b' })];
+
+    expect(siguienteArchivo(cola)).toBeNull();
+  });
+});
+
+describe('paraPersistir', () => {
+  it('lo que se está copiando no se guarda: su uri es de la caché, que el sistema limpia', () => {
+    const cola = [archivo({ clientKey: 'a', preparando: true }), archivo({ clientKey: 'b' })];
+
+    expect(paraPersistir(cola).map((uno) => uno.clientKey)).toEqual(['b']);
   });
 });

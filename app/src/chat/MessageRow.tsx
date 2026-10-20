@@ -11,7 +11,9 @@ import { TextoDelMensaje } from './TextoDelMensaje';
 import { TarjetaDeArchivo } from './TarjetaDeArchivo';
 import { VistaPreviaDeEnlace } from './VistaPreviaDeEnlace';
 import { NotaDeVoz } from './NotaDeVoz';
-import { etiquetaDeSubida, porcentajeDeSubida } from './progresoDeSubida';
+import { etiquetaDeSubida } from './progresoDeSubida';
+import { AnilloDeSubida } from './AnilloDeSubida';
+import { copiaLocalDe } from './colaDeArchivos';
 import {
   TEXTO_ELIMINADO,
   nombreDeContacto,
@@ -292,8 +294,9 @@ function FilaDeMensaje({
               onPress={() => !isPending(item) && (enSeleccion ? onSeleccionar?.(item.seq) : onVerImagen?.(item.seq))}
             >
               <Image
-                recyclingKey={miniaturaDe(item.media)}
-                source={{ uri: miniaturaDe(item.media) }}
+                recyclingKey={item.clientKey}
+                // Lo que acabo de mandar sigue con su copia local (no se baja de nuevo).
+                source={{ uri: copiaLocalDe(item.clientKey) ?? miniaturaDe(item.media) }}
                 style={estiloDeFoto(item.media)}
                 contentFit="cover"
                 transition={120}
@@ -343,16 +346,10 @@ function FilaDeMensaje({
               <Image
                 recyclingKey={item.mediaUri}
                 source={{ uri: item.mediaUri }}
-                style={{ ...estiloDeFoto({ width: item.mediaAncho, height: item.mediaAlto }), opacity: 0.55 }}
+                style={estiloDeFoto({ width: item.mediaAncho, height: item.mediaAlto })}
                 contentFit="cover"
               />
-              <View className="absolute inset-0 items-center justify-center">
-                {/* Encima de una foto atenuada: blanco en los dos modos. */}
-                {subida.girando ? <ActivityIndicator color="white" /> : <CircleAlert size={26} color="white" />}
-                <Text className="mt-1 text-[11px] font-semibold" style={{ color: 'white' }}>
-                  {subida.girando ? `${porcentajeDeSubida(item.progreso ?? 0)}%` : subida.texto}
-                </Text>
-              </View>
+              <AnilloDeSubida razon={item.progreso ?? 0} fallido={!subida.girando} textoDelFallo={subida.texto} />
             </View>
           ) : null}
           {!isPending(item) && item.deletedAt ? (

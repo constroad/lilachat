@@ -1,3 +1,4 @@
+import { acuseDelGrupo } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 
 /** Lo que trae un `msg.new` y le importa a la lista. */
@@ -82,4 +83,79 @@ const CARGA_RECIENTE_MS = 3000;
  */
 export function debeRecargarAlConectar(params: { ultimaCarga: number | null; ahora: number }): boolean {
   return params.ultimaCarga === null || params.ahora - params.ultimaCarga > CARGA_RECIENTE_MS;
+}
+
+/** Un `receipt` del socket, tal como llega. */
+export type AcuseEnVivo = { chatId?: unknown; userId?: unknown; readSeq?: unknown; deliveredSeq?: unknown };
+/** Lo que cada miembro acusó en vivo, por chat: el mínimo de un grupo lo necesita. */
+export type CursoresEnVivo = Map<string, { leido: Map<string, number>; entregado: Map<string, number> }>;
+
+const subir = (mapa: Map<string, number>, quien: string, seq: unknown) => {
+  if (typeof seq === 'number' && seq > (mapa.get(quien) ?? 0)) mapa.set(quien, seq);
+};
+
+const calcular = (mapa: Map<string, number>, base: number, acuseDe?: readonly string[]) =>
+  acuseDe ? acuseDelGrupo({ otros: acuseDe, porMiembro: mapa, base }) : Math.max(base, ...mapa.values());
+
+/**
+ * Un acuse en vivo, aplicado a la fila (José, 19/10: «2 checks en el chat, 1
+ * en la lista, y al volver a entrar 1»). Antes solo el chat abierto escuchaba
+ * los acuses: la lista se quedaba con los del server y el chat, al volver,
+ * partía de esa base vieja. Misma regla que el chat (`useAcuses`): en un
+ * grupo manda el menor, y quien no acusó en vivo vale lo que dijo el server.
+ * Si el check no cambia, devuelve la MISMA lista.
+ */
+export function aplicarAcuseALista(chats: ChatSummary[], acuse: AcuseEnVivo, yo: string, cursores: CursoresEnVivo): ChatSummary[] {
+  const { chatId, userId } = acuse;
+  if (typeof chatId !== 'string' || typeof userId !== 'string') return chats;
+  const indice = chats.findIndex((chat) => chat.id === chatId);
+  const actual = chats[indice];
+  if (!actual) return chats;
+  if (userId === yo) return aplicarMiAcuse(chats, indice, actual, acuse.readSeq);
+  const delChat = cursores.get(chatId) ?? { leido: new Map(), entregado: new Map() };
+  cursores.set(chatId, delChat);
+  subir(delChat.leido, userId, acuse.readSeq);
+  subir(delChat.entregado, userId, acuse.deliveredSeq);
+  const othersReadSeq = calcular(delChat.leido, actual.othersReadSeq, actual.acuseDe);
+  const othersDeliveredSeq = Math.max(othersReadSeq, calcular(delChat.entregado, actual.othersDeliveredSeq, actual.acuseDe));
+  if (othersReadSeq === actual.othersReadSeq && othersDeliveredSeq === actual.othersDeliveredSeq) return chats;
+  return chats.map((chat, i) => (i === indice ? { ...actual, othersReadSeq, othersDeliveredSeq } : chat));
+}
+
+/**
+ * MI acuse (leí en la web, o el server marcó lo mío al enviar): baja mis no
+ * leídos de esa fila y quita la marca de «no leído», como hace el server.
+ */
+function aplicarMiAcuse(chats: ChatSummary[], indice: number, actual: ChatSummary, readSeq: unknown): ChatSummary[] {
+  if (typeof readSeq !== 'number') return chats;
+  const unread = Math.min(actual.unread, Math.max(0, actual.lastSeq - readSeq));
+  if (unread === actual.unread && !actual.markedUnread) return chats;
+  return chats.map((chat, i) => (i === indice ? { ...actual, unread, markedUnread: false } : chat));
+}
+
+/** Un `msg.edited` o `msg.deleted` del socket, tal como llega. */
+export type CambioDeMensaje = { chatId?: unknown; seq?: unknown; body?: unknown };
+
+/** La fila cuyo último mensaje es ese `seq`, o -1. */
+function filaDelUltimo(chats: ChatSummary[], cambio: CambioDeMensaje): number {
+  if (typeof cambio.chatId !== 'string' || typeof cambio.seq !== 'number') return -1;
+  return chats.findIndex((chat) => chat.id === cambio.chatId && chat.lastMessage?.seq === cambio.seq);
+}
+
+/** Editaron el último mensaje: la vista previa dice lo nuevo (auditoría 19/10). */
+export function aplicarEdicionALista(chats: ChatSummary[], cambio: CambioDeMensaje): ChatSummary[] {
+  const indice = filaDelUltimo(chats, cambio);
+  const actual = chats[indice];
+  if (!actual?.lastMessage || typeof cambio.body !== 'string') return chats;
+  const lastMessage = { ...actual.lastMessage, body: cambio.body };
+  return chats.map((chat, i) => (i === indice ? { ...actual, lastMessage } : chat));
+}
+
+/** Borraron el último para todos: la vista previa dice «Se eliminó este mensaje». */
+export function aplicarBorradoALista(chats: ChatSummary[], cambio: CambioDeMensaje, ahora: string): ChatSummary[] {
+  const indice = filaDelUltimo(chats, cambio);
+  const actual = chats[indice];
+  if (!actual?.lastMessage) return chats;
+  const lastMessage = { ...actual.lastMessage, body: undefined, deletedAt: ahora };
+  return chats.map((chat, i) => (i === indice ? { ...actual, lastMessage } : chat));
 }

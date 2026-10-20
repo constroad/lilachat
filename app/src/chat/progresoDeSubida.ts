@@ -53,3 +53,13 @@ export function valeAvisarProgreso(avisado: number | null, ahora: number): boole
   if (avisado === null || ahora >= 1) return true;
   return ahora - avisado >= PASO_VISIBLE;
 }
+
+/**
+ * El anillo sobre la foto que sube (auditoría 19/10), como WhatsApp: la
+ * fracción del círculo, y gira mientras no hay medida o ya llegó todo y el
+ * server procesa —un círculo lleno y quieto se lee como colgado—.
+ */
+export function anilloDeSubida(razon: number): { fraccion: number; girando: boolean } {
+  const porcentaje = porcentajeDeSubida(razon);
+  return { fraccion: porcentaje / 100, girando: porcentaje === 0 || porcentaje >= 100 };
+}

@@ -50,8 +50,17 @@ let escrituraPendiente: ReturnType<typeof setTimeout> | null = null;
  * llamaba por cada mensaje que llegaba, y cada vez era serializar 50 chats y
  * escribirlos en AsyncStorage, en el hilo JS y con un chat abierto encima.
  */
+/** Quien mira un chat abierto se entera de sus acuses en vivo (auditoría 19/10). */
+const oyentes = new Set<() => void>();
+
+export function suscribirChatsEnMemoria(oyente: () => void): () => void {
+  oyentes.add(oyente);
+  return () => oyentes.delete(oyente);
+}
+
 export async function guardarChats(chats: ChatSummary[]): Promise<void> {
   enMemoria = chats;
+  oyentes.forEach((oyente) => oyente());
   if (escrituraPendiente) clearTimeout(escrituraPendiente);
   escrituraPendiente = setTimeout(() => {
     escrituraPendiente = null;

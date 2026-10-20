@@ -1,5 +1,7 @@
 import { resolveMediaKind, validateMedia } from '@lilachat/shared';
 import { subirPorXhr } from './subidaXhr';
+import { mensajeSubido } from './mensajeSubido';
+import type { ServerMessage } from './socketClient';
 
 /**
  * Subida de un archivo desde el teléfono. Va por HTTP y no por el socket: son
@@ -17,7 +19,7 @@ const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.
 const UPLOAD_TIMEOUT_MS = 120_000;
 
 export type UploadResult =
-  | { ok: true; seq: number; url: string; thumbnailUrl?: string }
+  | { ok: true; seq: number; url: string; thumbnailUrl?: string; mensaje?: ServerMessage }
   | { ok: false; reason: string; retryable: boolean };
 
 export async function uploadMedia(params: {
@@ -88,6 +90,7 @@ export async function uploadMedia(params: {
     seq: message?.seq ?? 0,
     url: String(payload.url ?? ''),
     thumbnailUrl: typeof payload.thumbnailUrl === 'string' ? payload.thumbnailUrl : undefined,
+    mensaje: mensajeSubido(payload),
   };
 }
 

@@ -30,6 +30,8 @@ export function useAdjuntosDelChat(params: { chatId: string; onError: (texto: st
     width?: number;
     height?: number;
     onda?: number[];
+    /** Mandar como está, sin achicar (la foto con «HD», un documento). */
+    hd?: boolean;
   }) => {
     params.onError('');
     try {
@@ -73,8 +75,8 @@ export function useAdjuntosDelChat(params: { chatId: string; onError: (texto: st
 
   const pickFromGallery = async () => {
     const picked = await ImagePicker.launchImageLibraryAsync({
-      // `quality: 1` y sin edición: la foto se manda como está. Recomprimir es
-      // justo la queja que esta app viene a no repetir.
+      // `quality: 1` y sin edición: la original llega intacta a la cola, que la
+      // achica al prepararla (salvo «HD», José 19/10).
       quality: 1,
       mediaTypes: ['images', 'videos'],
       // FL9b: varias a la vez, y antes de mandarlas se ven y llevan su pie.
@@ -86,21 +88,27 @@ export function useAdjuntosDelChat(params: { chatId: string; onError: (texto: st
     setFotosElegidas(picked.assets);
   };
 
-  /** Las elegidas, a la cola en el orden en que se eligieron (cada una con su pie). */
-  const alEnviarFotos = async (fotosAEnviar: FotoAEnviar[]) => {
+  /**
+   * Las elegidas, a la cola en el orden en que se eligieron (cada una con su
+   * pie). Todas a la vez (auditoría 19/10: de a una, cada burbuja esperaba la
+   * copia de la anterior); el orden lo conserva la cola.
+   */
+  const alEnviarFotos = async (fotosAEnviar: FotoAEnviar[], opciones: { hd: boolean } = { hd: false }) => {
     setFotosElegidas([]);
-    for (const foto of fotosAEnviar) await upload(foto);
+    await Promise.all(fotosAEnviar.map((foto) => upload({ ...foto, hd: opciones.hd })));
   };
 
   const pickFile = async () => {
     const picked = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
     const asset = picked.assets?.[0];
     if (picked.canceled || !asset) return;
+    // Un documento va intacto, aunque sea una imagen (como WhatsApp).
     await upload({
       uri: asset.uri,
       fileName: asset.name,
       mimeType: asset.mimeType ?? 'application/octet-stream',
       sizeBytes: asset.size ?? 0,
+      hd: true,
     });
   };
 

@@ -22,7 +22,7 @@ import {
 } from '../api/client';
 import { conciliarCache } from './cacheDeChats';
 import { chatsEnMemoria, guardarChats, leerChatsGuardados } from './chatsGuardados';
-import { aplicarMensajeALista, debeRecargarAlConectar, marcarLeido, puntoEnLinea, type MensajeEnVivo } from './listaEnVivo';
+import { aplicarAcuseALista, aplicarBorradoALista, aplicarEdicionALista, aplicarMensajeALista, debeRecargarAlConectar, marcarLeido, puntoEnLinea, type AcuseEnVivo, type CambioDeMensaje, type CursoresEnVivo, type MensajeEnVivo } from './listaEnVivo';
 import { inicioDelProceso, medirUnaVez } from '../diagnostico/diagnostico';
 import { FlashList } from '@shopify/flash-list';
 import { useBorradores } from './borradores';
@@ -75,6 +75,8 @@ export function ChatListScreen({
    */
   const chatsRef = useRef<ChatSummary[] | null>(chats);
 
+  /** Lo que cada miembro acusó en vivo (`aplicarAcuseALista`). */
+  const cursoresEnVivo = useRef<CursoresEnVivo>(new Map());
   // En un ref: el listener del socket lo lee sin re-suscribirse.
   const chatAbiertoRef = useRef(chatAbierto);
   chatAbiertoRef.current = chatAbierto;
@@ -111,7 +113,14 @@ export function ChatListScreen({
     // otro teléfono tiene que desaparecer de este.
     if (result.ok) {
       ultimaCarga.current = Date.now();
-      setChats(conciliarCache({ guardado: null, delServer: result.data.chats }));
+      // El chat que está abierto encima queda leído (auditoría 19/10): al volver
+      // de la galería la lista se recarga ANTES de que llegue mi acuse, y el
+      // server todavía contaba como sin leer lo que estoy mirando.
+      const delServer = conciliarCache({ guardado: null, delServer: result.data.chats });
+      const abierto = chatAbiertoRef.current;
+      const visibles = abierto && delServer ? marcarLeido(delServer, abierto) : delServer;
+      chatsRef.current = visibles;
+      setChats(visibles);
       void guardarChats(result.data.chats);
     } else if (chatsRef.current === null) {
       // Sin red y sin caché: recién ahí se dice «no hay». Con caché se deja lo
@@ -191,6 +200,8 @@ export function ChatListScreen({
         return;
       }
       if (parchada === actual) return;
+      // Ya, no en el efecto: dos avisos seguidos leían la lista de antes y el segundo pisaba al primero.
+      chatsRef.current = parchada;
       setChats(parchada);
       void guardarChats(parchada);
     };
@@ -203,7 +214,23 @@ export function ChatListScreen({
     // Un chat cambió (nombre, foto, miembros; o me sacaron, FL9d): la fila
     // sale del server. Son eventos raros: un pedido cada uno.
     const onCambio = () => void load();
+    // Checks, ediciones y borrados, en vivo en la fila (auditoría 19/10): sin
+    // esto la lista —y el chat, al volver a abrirlo— se quedaban con lo viejo.
+    const aplicarALista = (cambiar: (chats: ChatSummary[]) => ChatSummary[]) => {
+      const actual = chatsRef.current;
+      const parchada = actual ? cambiar(actual) : actual;
+      if (!parchada || parchada === actual) return;
+      chatsRef.current = parchada;
+      setChats(parchada);
+      void guardarChats(parchada);
+    };
+    const onAcuse = (acuse: AcuseEnVivo) => aplicarALista((chats) => aplicarAcuseALista(chats, acuse, credential.userId, cursoresEnVivo.current));
+    const onEditado = (cambio: CambioDeMensaje) => aplicarALista((chats) => aplicarEdicionALista(chats, cambio));
+    const onBorrado = (cambio: CambioDeMensaje) => aplicarALista((chats) => aplicarBorradoALista(chats, cambio, new Date().toISOString()));
     socket.on('msg.new', onNew);
+    socket.on('receipt', onAcuse);
+    socket.on('msg.edited', onEditado);
+    socket.on('msg.deleted', onBorrado);
     socket.on('connect', onConnect);
     socket.on('chat.changed', onCambio);
     return () => {
@@ -214,6 +241,9 @@ export function ChatListScreen({
       // listeners de App y TabsShell (guardar mensajes, sonar) al cambiar de
       // pestaña.
       socket.off('msg.new', onNew);
+      socket.off('receipt', onAcuse);
+      socket.off('msg.edited', onEditado);
+      socket.off('msg.deleted', onBorrado);
       socket.off('connect', onConnect);
       socket.off('chat.changed', onCambio);
       timers.forEach((timer) => clearTimeout(timer));

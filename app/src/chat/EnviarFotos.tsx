@@ -10,24 +10,28 @@ import { useColores } from '../ui/tema';
 /**
  * Antes de mandar fotos: verlas, sacar alguna y ponerle su pie a cada una,
  * como WhatsApp (FL9b; auditoría §46.2: se mandaba una sola, sin ver y sin pie).
- * La foto va sin recomprimir; el pie viaja con ella (el server ya lo aceptaba).
+ * El pie viaja con ella. La foto se comprime como en WhatsApp (José, 19/10);
+ * «HD» la manda original.
  */
 export function EnviarFotos(props: {
   fotos: FotoElegida[];
   onCancelar: () => void;
-  onEnviar: (fotos: FotoAEnviar[]) => void;
+  onEnviar: (fotos: FotoAEnviar[], opciones: { hd: boolean }) => void;
 }) {
   const colores = useColores();
   const margenes = useMargenes();
   const [fotos, setFotos] = useState(props.fotos);
   const [actual, setActual] = useState(0);
   const [pies, setPies] = useState<Record<string, string>>({});
+  /** Mandar la original, sin achicar (como el «HD» de WhatsApp). */
+  const [hd, setHd] = useState(false);
 
   // Cada vez que se abre con fotos nuevas, arranca de cero.
   useEffect(() => {
     setFotos(props.fotos);
     setActual(0);
     setPies({});
+    setHd(false);
   }, [props.fotos]);
 
   const vista = fotos[actual];
@@ -51,6 +55,21 @@ export function EnviarFotos(props: {
           <Text className="flex-1 text-base font-semibold" style={{ color: 'white' }}>
             {fotos.length === 1 ? '1 foto' : `${fotos.length} fotos`}
           </Text>
+          <Pressable
+            testID="btn-hd"
+            accessibilityRole="switch"
+            accessibilityState={{ checked: hd }}
+            accessibilityLabel={hd ? 'Calidad HD: se manda la original' : 'Calidad estándar: se manda más liviana'}
+            onPress={() => setHd((antes) => !antes)}
+            className="h-11 min-w-[44px] items-center justify-center px-2"
+          >
+            <Text
+              className="rounded-md border-2 px-1.5 text-[13px] font-bold"
+              style={{ color: hd ? colores.primary : 'white', borderColor: hd ? colores.primary : 'white' }}
+            >
+              HD
+            </Text>
+          </Pressable>
         </View>
 
         <View className="flex-1 items-center justify-center">
@@ -112,7 +131,7 @@ export function EnviarFotos(props: {
           <Pressable
             testID="btn-enviar-fotos"
             accessibilityLabel="Enviar"
-            onPress={() => props.onEnviar(armarEnvioDeFotos(fotos, pies))}
+            onPress={() => props.onEnviar(armarEnvioDeFotos(fotos, pies), { hd })}
             className="h-12 w-12 items-center justify-center rounded-full bg-primary"
           >
             <Send size={20} color={colores['on-primary']} />

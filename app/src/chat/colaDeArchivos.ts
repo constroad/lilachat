@@ -3,10 +3,13 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Crypto from 'expo-crypto';
 import { loadCredential } from '../auth/credentialStore';
 import { reportarError } from '../ui/reportarError';
-import { decidirSubida, siguienteArchivo, type ArchivoEnCola } from './colaDeArchivosMotor';
+import { decidirSubida, paraPersistir, siguienteArchivo, type ArchivoEnCola } from './colaDeArchivosMotor';
 import { uploadMedia } from './mediaUpload';
+import type { ServerMessage } from './socketClient';
 import { alConectar } from './socketClient';
 import { valeAvisarProgreso } from './progresoDeSubida';
+import { nombreComprimido, planDeCompresion } from './compresionDeFoto';
+import { comprimirFoto } from './comprimirFoto';
 
 /**
  * La cola de FOTOS, ARCHIVOS y NOTAS DE VOZ, persistida (FL8).
@@ -50,7 +53,37 @@ export function archivosDelChat(chatId: string): { archivo: ArchivoEnCola; progr
 }
 
 async function persistir(): Promise<void> {
-  await AsyncStorage.setItem(CLAVE, JSON.stringify(cola)).catch(() => undefined);
+  await AsyncStorage.setItem(CLAVE, JSON.stringify(paraPersistir(cola))).catch(() => undefined);
+}
+
+/**
+ * La copia local de lo que YA subió, en esta sesión (auditoría 19/10): la
+ * burbuja confirmada la sigue mostrando en vez de bajar la foto que acabo de
+ * mandar (parpadeaba). Al reiniciar se limpia (`limpiarHuerfanas`).
+ */
+const copiasConfirmadas = new Map<string, string>();
+
+export function copiaLocalDe(clientKey: string): string | undefined {
+  return copiasConfirmadas.get(clientKey);
+}
+
+/** Quien pinta el chat recibe el mensaje confirmado ANTES de que se quite la burbuja pendiente. */
+const oyentesDeConfirmados = new Set<(mensaje: ServerMessage) => void>();
+
+export function suscribirConfirmados(oyente: (mensaje: ServerMessage) => void): () => void {
+  oyentesDeConfirmados.add(oyente);
+  return () => oyentesDeConfirmados.delete(oyente);
+}
+
+/** Al arrancar: lo que quedó en la carpeta y ya no está en la cola, se borra. */
+async function limpiarHuerfanas(): Promise<void> {
+  const archivos = await FileSystem.readDirectoryAsync(CARPETA).catch(() => [] as string[]);
+  // Se mira la cola AL BORRAR, por clave: una foto encolada mientras tanto ya
+  // está copiándose acá y no es huérfana.
+  const enUso = (nombre: string) => cola.some((archivo) => nombre.startsWith(archivo.clientKey)) || [...copiasConfirmadas.keys()].some((clave) => nombre.startsWith(clave));
+  await Promise.all(
+    archivos.filter((nombre) => !enUso(nombre)).map((nombre) => FileSystem.deleteAsync(`${CARPETA}${nombre}`, { idempotent: true }).catch(() => undefined))
+  );
 }
 
 function hidratar(): Promise<void> {
@@ -65,6 +98,7 @@ function hidratar(): Promise<void> {
         }
       }
       avisar();
+      void limpiarHuerfanas();
     })();
   }
   return hidratando;
@@ -73,7 +107,7 @@ function hidratar(): Promise<void> {
 const extensionDe = (nombre: string) => (nombre.includes('.') ? nombre.slice(nombre.lastIndexOf('.')) : '');
 
 /** Encola un archivo: copia al disco de la app, persiste y empieza a subir. */
-export async function encolarArchivo(params: {
+type ArchivoNuevo = {
   chatId: string;
   uri: string;
   fileName: string;
@@ -84,22 +118,66 @@ export async function encolarArchivo(params: {
   width?: number;
   height?: number;
   onda?: number[];
-}): Promise<void> {
+};
+
+/**
+ * Encola un archivo: la burbuja YA, con la uri original (auditoría 19/10:
+ * aparecía recién copiada, y de a una), y en segundo plano se prepara —la foto
+ * se comprime salvo `hd` (José, 19/10) y se copia a la carpeta de la app—.
+ * Se sube cuando está lista.
+ */
+export async function encolarArchivo(params: ArchivoNuevo & { hd?: boolean }): Promise<void> {
   await hidratar();
+  const { hd, ...archivo } = params;
   const clientKey = Crypto.randomUUID();
-  await FileSystem.makeDirectoryAsync(CARPETA, { intermediates: true }).catch(() => undefined);
-  const copia = `${CARPETA}${clientKey}${extensionDe(params.fileName)}`;
-  await FileSystem.copyAsync({ from: params.uri, to: copia });
-  cola = [...cola, { ...params, uri: copia, clientKey, queuedAt: new Date().toISOString(), intentos: 0 }];
+  cola = [...cola, { ...archivo, clientKey, queuedAt: new Date().toISOString(), intentos: 0, preparando: true }];
+  avisar();
+  let preparado: Awaited<ReturnType<typeof prepararArchivo>>;
+  try {
+    preparado = await prepararArchivo(archivo, clientKey, Boolean(hd));
+  } catch (error) {
+    cola = cola.filter((uno) => uno.clientKey !== clientKey);
+    avisar();
+    throw error;
+  }
+  // Descartada mientras se preparaba: la copia sobra.
+  if (!cola.some((uno) => uno.clientKey === clientKey)) {
+    await FileSystem.deleteAsync(preparado.uri, { idempotent: true }).catch(() => undefined);
+    return;
+  }
+  actualizar(clientKey, { ...preparado, preparando: false });
   avisar();
   await persistir();
   void drenarArchivos();
 }
 
-async function sacar(clientKey: string): Promise<void> {
+/** La foto comprimida (o el archivo tal cual), ya en la carpeta de la app. */
+async function prepararArchivo(archivo: ArchivoNuevo, clientKey: string, hd: boolean) {
+  let fuente = { uri: archivo.uri, fileName: archivo.fileName, mimeType: archivo.mimeType, sizeBytes: archivo.sizeBytes, width: archivo.width, height: archivo.height };
+  let temporal = false;
+  const plan = planDeCompresion({ width: archivo.width, height: archivo.height, mimeType: archivo.mimeType, hd });
+  if (plan) {
+    try {
+      const comprimida = await comprimirFoto(archivo.uri, plan);
+      fuente = { ...comprimida, fileName: nombreComprimido(archivo.fileName), mimeType: 'image/jpeg' };
+      temporal = true;
+    } catch (error) {
+      // Si no se pudo achicar, va la original: mejor lenta que perdida.
+      reportarError('comprimirFoto', error);
+    }
+  }
+  await FileSystem.makeDirectoryAsync(CARPETA, { intermediates: true }).catch(() => undefined);
+  const destino = `${CARPETA}${clientKey}${extensionDe(fuente.fileName)}`;
+  await (temporal ? FileSystem.moveAsync({ from: fuente.uri, to: destino }) : FileSystem.copyAsync({ from: fuente.uri, to: destino }));
+  return { ...fuente, uri: destino };
+}
+
+async function sacar(clientKey: string, opciones: { confirmado?: boolean } = {}): Promise<void> {
   const archivo = cola.find((uno) => uno.clientKey === clientKey);
   cola = cola.filter((uno) => uno.clientKey !== clientKey);
-  if (archivo) await FileSystem.deleteAsync(archivo.uri, { idempotent: true }).catch(() => undefined);
+  // Lo que subió conserva su copia para la burbuja; lo descartado, no.
+  if (archivo && opciones.confirmado && !archivo.preparando) copiasConfirmadas.set(clientKey, archivo.uri);
+  else if (archivo && !archivo.preparando) await FileSystem.deleteAsync(archivo.uri, { idempotent: true }).catch(() => undefined);
   avisar();
   await persistir();
 }
@@ -143,7 +221,11 @@ export async function drenarArchivos(): Promise<void> {
       progreso = null;
       const decision = decidirSubida(resultado, archivo);
       if (decision.accion === 'confirmar') {
-        await sacar(archivo.clientKey);
+        // Primero el confirmado al chat, después se quita la pendiente: sin
+        // hueco aunque el socket esté caído (auditoría 19/10).
+        const confirmado = resultado.ok ? resultado.mensaje : undefined;
+        if (confirmado) oyentesDeConfirmados.forEach((oyente) => oyente(confirmado));
+        await sacar(archivo.clientKey, { confirmado: true });
         continue;
       }
       if (decision.accion === 'fallar') {
@@ -192,6 +274,7 @@ export const descartarArchivo = (clientKey: string): Promise<void> => sacar(clie
 /** Al cerrar sesión: lo que quedó sin subir es de quien se fue. */
 export async function olvidarArchivos(): Promise<void> {
   cola = [];
+  copiasConfirmadas.clear();
   progreso = null;
   if (reintento) clearTimeout(reintento);
   reintento = null;

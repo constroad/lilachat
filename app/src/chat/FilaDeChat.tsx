@@ -151,6 +151,7 @@ export const FilaDeChat = memo(function FilaDeChat(props: {
                   // se puede, queda el texto del server.
                   lastBody: avisoDelUltimo(chat, props.miUserId) ?? chat.lastMessage?.body,
                   lastKind: chat.lastMessage?.kind,
+                  eliminado: Boolean(chat.lastMessage?.deletedAt),
                 });
             // Lo último es MÍO: los checks van antes del texto, como
             // WhatsApp (gris enviado/entregado, azul leído).
@@ -183,7 +184,7 @@ export const FilaDeChat = memo(function FilaDeChat(props: {
                 {IconoDeMedia ? <IconoDeMedia size={15} color={colores['on-surface-variant']} /> : null}
                 <Text
                   className={`min-w-0 flex-1 text-sm ${
-                    preview.style === 'typing' ? 'italic text-primary' : 'text-on-surface-variant'
+                    preview.style === 'typing' ? 'italic text-primary' : preview.style === 'eliminado' ? 'italic text-on-surface-variant' : 'text-on-surface-variant'
                   }`}
                   numberOfLines={1}
                   testID={`preview-${chat.id}`}

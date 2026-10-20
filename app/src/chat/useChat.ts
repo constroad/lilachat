@@ -29,6 +29,8 @@ import {
 import { connectSocket, getSocket, type ServerMessage } from './socketClient';
 import { pedirEditar, pedirEliminar } from './pedidosDeMensaje';
 import { drainOutbox, hydrateOutbox, queueMessage, subscribeOutbox } from './outboxStore';
+import { suscribirConfirmados } from './colaDeArchivos';
+import { useAvisoDeEscribiendo } from './useAvisoDeEscribiendo';
 
 /**
  * El estado vivo de un chat: mensajes confirmados + lo que está en la cola.
@@ -399,13 +401,18 @@ export function useChat(params: {
       socket.emit('presence.request');
     };
     const onDisconnect = () => alive && setConnected(false);
-    const onNew = (message: ServerMessage) => {
-      if (!alive || message.chatId !== params.chatId) return;
+    /** Un mensaje confirmado, venga del socket o de la respuesta de una subida (`mergeBySeq` deduplica). */
+    const incorporar = (message: ServerMessage) => {
       cursors.current = advanceCursors(cursors.current, [
         { chatId: message.chatId, messages: [message] },
       ]);
       setMessages((current) => mergeBySeq(current, [message as ChatMessage]));
       void guardarMensajes(params.chatId, [message as ChatMessage]);
+    };
+    const dejarDeOirSubidas = suscribirConfirmados((message) => alive && message.chatId === params.chatId && incorporar(message));
+    const onNew = (message: ServerMessage) => {
+      if (!alive || message.chatId !== params.chatId) return;
+      incorporar(message);
       // Su mensaje llegó: ya no está escribiendo (como WhatsApp). Sin esto el
       // «escribiendo…» seguía hasta el temporizador de 6 s.
       const autor = String(message.senderId);
@@ -534,6 +541,7 @@ export function useChat(params: {
     return () => {
       alive = false;
       unsubscribe();
+      dejarDeOirSubidas();
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('msg.new', onNew);
@@ -594,26 +602,7 @@ export function useChat(params: {
     [params.chatId, emitirLeido]
   );
 
-  /**
-   * Avisar que estoy escribiendo. Se llama en cada tecla; manda `on:true` una
-   * sola vez y programa el `on:false` para 3 s después de la ÚLTIMA tecla — sin
-   * eso, o no se apaga nunca, o se manda un evento por letra.
-   */
-  const typingOn = useRef(false);
-  const typingOffTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const avisarEscribiendo = useCallback(() => {
-    const socket = getSocket();
-    if (!socket) return;
-    if (!typingOn.current) {
-      typingOn.current = true;
-      socket.emit('typing', { chatId: params.chatId, on: true });
-    }
-    if (typingOffTimer.current) clearTimeout(typingOffTimer.current);
-    typingOffTimer.current = setTimeout(() => {
-      typingOn.current = false;
-      getSocket()?.emit('typing', { chatId: params.chatId, on: false });
-    }, 3000);
-  }, [params.chatId]);
+  const avisarEscribiendo = useAvisoDeEscribiendo(params.chatId);
 
   // `visibles`, no `messages`: la pantalla recibe lo ya descifrado.
   const eliminar = useCallback((seq: number) => pedirEliminar(params.chatId, seq), [params.chatId]);

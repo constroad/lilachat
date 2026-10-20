@@ -35,7 +35,6 @@ import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { BuscadorDelChat } from './BuscadorDelChat';
 import { useBuscarEnChat } from './useBuscarEnChat';
-import { textoDeSubida } from './progresoDeSubida';
 import { citadosPorSeq, filaDeArchivoEnCola, fotosDelChat, sinPendientesConfirmados } from './filasDelChat';
 import { useGrupo } from './useGrupo';
 import { FueraDelGrupo } from './FueraDelGrupo';
@@ -49,6 +48,7 @@ import { useMensajeFallido } from './useMensajeFallido';
 import { useAlAbrirElChat } from './useAlAbrirElChat';
 import { useIrAMensaje } from './useIrAMensaje';
 import { useFijarMensajes } from './useFijarMensajes';
+import { useAcuseVivo } from './acuseVivo';
 
 /** El pie del composer con el teclado abierto (dp). */
 const MARGEN_CON_TECLADO = 8;
@@ -112,6 +112,7 @@ export function ChatScreen({
   });
   const sesionLista = encrypted && secreto.estado === 'listo' ? secreto : null;
   useLimpiarAvisoDelChat(chatId);
+  const acuseDeLaLista = useAcuseVivo(chatId);
   const {
     eliminar,
     editar,
@@ -135,8 +136,9 @@ export function ChatScreen({
     seal: sesionLista?.seal,
     open: sesionLista?.open,
     acuseDe,
-    baseLeido: othersReadSeq,
-    baseEntregado: othersDeliveredSeq,
+    // Lo que la lista sabe ahora (en vivo y releído al reconectar), no solo la foto de la ruta.
+    baseLeido: Math.max(othersReadSeq, acuseDeLaLista.leido),
+    baseEntregado: Math.max(othersDeliveredSeq, acuseDeLaLista.entregado),
   });
   // El borrador vive en el Composer (FL2): una tecla ya no re-renderiza esto.
   const composerRef = useRef<ComposerHandle>(null);
@@ -153,7 +155,6 @@ export function ChatScreen({
   const { llamar } = useLlamadas();
 
   const archivosEnCola = useArchivosDelChat(chatId);
-  const subidaEnCurso = archivosEnCola.find((uno) => uno.progreso !== undefined)?.progreso;
   /** El `seq` de la foto abierta a pantalla completa, o `null`. */
   const [viendoSeq, setViendoSeq] = useState<number | null>(null);
   /** Los mensajes elegidos con pulsación larga (FL9: uno o varios). */
@@ -487,12 +488,6 @@ export function ChatScreen({
         />
       </AccionesDeTarjetaContext.Provider>
 
-      {subidaEnCurso !== undefined ? (
-        <Text className="px-4 pb-1 text-sm text-on-surface-variant" testID="subida-progreso">
-          {textoDeSubida(subidaEnCurso)}
-        </Text>
-      ) : null}
-
       {mediaError ? (
         <Text className="px-4 pb-1 text-sm text-error" testID="error-media">
           {mediaError}
@@ -529,7 +524,7 @@ export function ChatScreen({
         />
       )}
 
-      <EnviarFotos fotos={fotosElegidas} onCancelar={cerrarFotos} onEnviar={(lista) => void alEnviarFotos(lista)} />
+      <EnviarFotos fotos={fotosElegidas} onCancelar={cerrarFotos} onEnviar={(lista, opciones) => void alEnviarFotos(lista, opciones)} />
 
       <AttachSheet
         visible={attachOpen}

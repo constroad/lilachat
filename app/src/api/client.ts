@@ -162,6 +162,8 @@ export type ChatSummary = {
     kind?: string;
     senderId: string;
     at: string;
+    /** Borrado para todos (19/10): la vista previa lo dice y no lleva checks. */
+    deletedAt?: string;
     /** El aviso de grupo, para resolver el nombre con la agenda del teléfono. */
     system?: {
       evento: string;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { etiquetaDeSubida, porcentajeDeSubida, textoDeSubida, valeAvisarProgreso } from './progresoDeSubida';
+import { anilloDeSubida, etiquetaDeSubida, porcentajeDeSubida, textoDeSubida, valeAvisarProgreso } from './progresoDeSubida';
 
 describe('porcentajeDeSubida', () => {
   it('convierte la razón a porcentaje', () => {
@@ -80,5 +80,18 @@ describe('valeAvisarProgreso', () => {
   it('el primero y el final siempre avisan', () => {
     expect(valeAvisarProgreso(null, 0.01)).toBe(true);
     expect(valeAvisarProgreso(0.99, 1)).toBe(true);
+  });
+});
+
+/** Auditoría (19/10): un anillo sobre la foto, como WhatsApp, en vez de «Enviando… 37%» dos veces. */
+describe('anilloDeSubida', () => {
+  it('mientras sube, la fracción acotada', () => {
+    expect(anilloDeSubida(0.37)).toEqual({ fraccion: 0.37, girando: false });
+    expect(anilloDeSubida(1.99)).toEqual({ fraccion: 1, girando: true });
+  });
+
+  it('sin medir todavía, gira (no dice 0 % para siempre)', () => {
+    expect(anilloDeSubida(Number.NaN)).toEqual({ fraccion: 0, girando: true });
+    expect(anilloDeSubida(0)).toEqual({ fraccion: 0, girando: true });
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ChatSummary } from '../api/client';
-import { aplicarMensajeALista, debeRecargarAlConectar, marcarLeido, puntoEnLinea } from './listaEnVivo';
+import { aplicarAcuseALista, aplicarBorradoALista, aplicarEdicionALista, aplicarMensajeALista, debeRecargarAlConectar, marcarLeido, puntoEnLinea } from './listaEnVivo';
 
 const YO = '665f1a2b3c4d5e6f70818293';
 const OTRO = '665f1a2b3c4d5e6f70818294';
@@ -148,5 +148,135 @@ describe('puntoEnLinea', () => {
 
   it('en un grupo nunca: con varios conectados sería ruido permanente', () => {
     expect(puntoEnLinea(chat({ kind: 'group', memberIds: [YO, OTRO] }), YO, new Set([OTRO]))).toBe(false);
+  });
+});
+
+/**
+ * José, 19/10: «mando un mensaje, veo 2 checks; salgo y la lista muestra uno;
+ * vuelvo a entrar y queda uno». Solo el chat abierto escuchaba los acuses; la
+ * lista guardaba los del server y el chat, al volver, partía de ahí.
+ */
+describe('aplicarAcuseALista', () => {
+  const OTRA = '665f1a2b3c4d5e6f70818295';
+  const mio = (cambios: Partial<ChatSummary> = {}) =>
+    chat({ lastSeq: 7, othersReadSeq: 5, othersDeliveredSeq: 5, acuseDe: [OTRO], ...cambios });
+
+  it('en un 1:1, el «me llegó» del otro sube el entregado de la fila', () => {
+    // Arrange
+    const chats = [mio()];
+
+    // Act
+    const nuevos = aplicarAcuseALista(chats, { chatId: CHAT, userId: OTRO, deliveredSeq: 7 }, YO, new Map());
+
+    // Assert
+    expect(nuevos[0]).toMatchObject({ othersDeliveredSeq: 7, othersReadSeq: 5 });
+  });
+
+  it('leer sube leído y entregado', () => {
+    // Arrange
+    const chats = [mio()];
+
+    // Act
+    const nuevos = aplicarAcuseALista(chats, { chatId: CHAT, userId: OTRO, readSeq: 7, deliveredSeq: 7 }, YO, new Map());
+
+    // Assert
+    expect(nuevos[0]).toMatchObject({ othersDeliveredSeq: 7, othersReadSeq: 7 });
+  });
+
+  it('mi propio acuse (otro dispositivo mío) no dice nada del otro, pero baja MIS no leídos', () => {
+    // Arrange
+    const chats = [mio({ unread: 3, markedUnread: true })];
+
+    // Act
+    const nuevos = aplicarAcuseALista(chats, { chatId: CHAT, userId: YO, readSeq: 6, deliveredSeq: 6 }, YO, new Map());
+
+    // Assert
+    expect(nuevos[0]).toMatchObject({ unread: 1, markedUnread: false, othersReadSeq: 5, othersDeliveredSeq: 5 });
+  });
+
+  it('mi acuse que no baja nada devuelve la misma lista', () => {
+    // Arrange
+    const chats = [mio({ unread: 0 })];
+
+    // Act
+    const nuevos = aplicarAcuseALista(chats, { chatId: CHAT, userId: YO, readSeq: 7 }, YO, new Map());
+
+    // Assert
+    expect(nuevos).toBe(chats);
+  });
+
+  it('en un grupo, sube recién cuando le llegó a todos los que cuentan', () => {
+    // Arrange
+    const cursores = new Map();
+    const chats = [mio({ kind: 'group', memberIds: [YO, OTRO, OTRA], acuseDe: [OTRO, OTRA] })];
+
+    // Act
+    const conUno = aplicarAcuseALista(chats, { chatId: CHAT, userId: OTRO, deliveredSeq: 7 }, YO, cursores);
+    const conLosDos = aplicarAcuseALista(conUno, { chatId: CHAT, userId: OTRA, deliveredSeq: 7 }, YO, cursores);
+
+    // Assert
+    expect(conUno).toBe(chats);
+    expect(conLosDos[0]?.othersDeliveredSeq).toBe(7);
+  });
+
+  it('un acuse que no mueve el check devuelve la misma lista (no redibuja)', () => {
+    // Arrange
+    const chats = [mio({ othersDeliveredSeq: 7 })];
+
+    // Act
+    const nuevos = aplicarAcuseALista(chats, { chatId: CHAT, userId: OTRO, deliveredSeq: 6 }, YO, new Map());
+
+    // Assert
+    expect(nuevos).toBe(chats);
+  });
+
+  it('un chat que la lista no tiene o un acuse sin forma no cambian nada', () => {
+    // Arrange
+    const chats = [mio()];
+
+    // Act
+    const otroChat = aplicarAcuseALista(chats, { chatId: 'otro', userId: OTRO, deliveredSeq: 9 }, YO, new Map());
+    const roto = aplicarAcuseALista(chats, { chatId: CHAT }, YO, new Map());
+
+    // Assert
+    expect(otroChat).toBe(chats);
+    expect(roto).toBe(chats);
+  });
+
+  it('sin `acuseDe` (server viejo) vale el mayor que llegó', () => {
+    // Arrange
+    const chats = [mio({ acuseDe: undefined })];
+
+    // Act
+    const nuevos = aplicarAcuseALista(chats, { chatId: CHAT, userId: OTRO, deliveredSeq: 7 }, YO, new Map());
+
+    // Assert
+    expect(nuevos[0]?.othersDeliveredSeq).toBe(7);
+  });
+});
+
+/** Auditoría (19/10): la vista previa no se enteraba de ediciones ni de borrados. */
+describe('ediciones y borrados en la vista previa', () => {
+  it('editar el último cambia el texto de la fila', () => {
+    const chats = [chat()];
+    const nuevos = aplicarEdicionALista(chats, { chatId: CHAT, seq: 4, body: 'hola, corregido' });
+    expect(nuevos[0]?.lastMessage?.body).toBe('hola, corregido');
+  });
+
+  it('editar uno que no es el último no toca nada', () => {
+    const chats = [chat()];
+    expect(aplicarEdicionALista(chats, { chatId: CHAT, seq: 3, body: 'x' })).toBe(chats);
+  });
+
+  it('borrar el último lo marca eliminado y le quita el texto', () => {
+    const chats = [chat()];
+    const nuevos = aplicarBorradoALista(chats, { chatId: CHAT, seq: 4 }, '2026-10-19T20:00:00.000Z');
+    expect(nuevos[0]?.lastMessage).toMatchObject({ deletedAt: '2026-10-19T20:00:00.000Z', body: undefined });
+  });
+
+  it('un aviso sin forma o de otro chat no cambia nada', () => {
+    const chats = [chat()];
+    expect(aplicarBorradoALista(chats, { chatId: 'otro', seq: 4 }, 'x')).toBe(chats);
+    expect(aplicarEdicionALista(chats, { chatId: CHAT })).toBe(chats);
   });
 });

@@ -1,5 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 import { terminarCronometro } from '../diagnostico/diagnostico';
+import { hastaDondeLeer } from './hastaDondeLeer';
 
 /** Tras el primer pintado: con 0 la lista todavía no midió (visto en el emulador). */
 const ESPERA_PRIMER_SCROLL_MS = 150;
@@ -28,11 +30,16 @@ export function useAlAbrirElChat(params: {
     // con quien está leyendo mensajes viejos más arriba.
   }, [hayContenido]);
 
+  // Con «Conexión permanente» el socket sigue vivo en segundo plano: sin esto,
+  // lo que llegaba con la pantalla apagada salía leído (azul) para el otro.
+  const [enPrimerPlano, setEnPrimerPlano] = useState(AppState.currentState === 'active');
   useEffect(() => {
-    const ultimo = mensajes[mensajes.length - 1];
-    // Hasta el MÁXIMO entre lo cargado y lo que el server dijo que existe: así
-    // un mensaje final borrado en duro no deja un «sin leer» que no baja.
-    const hasta = Math.max(ultimo?.seq ?? 0, lastSeqInicial ?? 0);
-    if (hasta > 0) markRead(hasta);
-  }, [mensajes, markRead, lastSeqInicial]);
+    const suscripcion = AppState.addEventListener('change', (estado) => setEnPrimerPlano(estado === 'active'));
+    return () => suscripcion.remove();
+  }, []);
+
+  useEffect(() => {
+    const hasta = hastaDondeLeer({ mensajes, lastSeqInicial, enPrimerPlano });
+    if (hasta !== null) markRead(hasta);
+  }, [mensajes, markRead, lastSeqInicial, enPrimerPlano]);
 }

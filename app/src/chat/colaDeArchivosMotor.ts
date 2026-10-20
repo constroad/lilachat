@@ -26,6 +26,11 @@ export type ArchivoEnCola = {
   queuedAt: string;
   intentos: number;
   fallo?: string;
+  /**
+   * Se está copiando a la carpeta de la app (auditoría 19/10): la burbuja sale
+   * ya, con la `uri` original; se sube recién con la copia lista.
+   */
+  preparando?: boolean;
 };
 
 export type DecisionDeSubida = { accion: 'confirmar' } | { accion: 'reintentar'; esperaMs: number } | { accion: 'fallar'; motivo: string };
@@ -38,5 +43,12 @@ export function decidirSubida(resultado: UploadResult, archivo: ArchivoEnCola): 
 
 /** El próximo a subir: en orden, salteando los fallidos (no bloquean a los de atrás). */
 export function siguienteArchivo(cola: readonly ArchivoEnCola[]): ArchivoEnCola | null {
-  return cola.find((archivo) => !archivo.fallo) ?? null;
+  const siguiente = cola.find((archivo) => !archivo.fallo) ?? null;
+  // Si todavía se copia, se espera: subir el de atrás primero desordenaría el chat.
+  return siguiente?.preparando ? null : siguiente;
+}
+
+/** Lo que se guarda en disco: lo que se está copiando no (su `uri` es de la caché). */
+export function paraPersistir(cola: readonly ArchivoEnCola[]): ArchivoEnCola[] {
+  return cola.filter((archivo) => !archivo.preparando);
 }

@@ -356,6 +356,25 @@ describe('mis ajustes de un chat, en mis otros dispositivos', () => {
     expect(alOtro).toBe(false);
   });
 
+  /**
+   * Auditoría (19/10): abrir un chat marcado como «no leído» lo desmarca, pero
+   * si no había nada nuevo que leer no salía ningún aviso y mis otros equipos
+   * seguían con el punto.
+   */
+  it('abrir un chat marcado «no leído» sin nada nuevo avisa a mis otros sockets', async () => {
+    const { message } = await sendMessage({ chatId, senderId: maria, clientKey: 'mu-1', body: 'hola' });
+    const miTelefono = await connect(tokenFor(jose));
+    const miWeb = await connect(tokenFor(jose));
+    await miTelefono.timeout(5000).emitWithAck('msg.send', { chatId, clientKey: 'mu-2', body: 'leído' });
+    expect((await pedir('/ajustes', 'PATCH', { markedUnread: true })).status).toBe(200);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const cambio = new Promise((resolve) => miWeb.on('chat.changed', resolve));
+
+    miTelefono.emit('read.set', { chatId, seq: message.seq });
+
+    expect(await cambio).toEqual({ chatId });
+  });
+
   it('eliminar para mí también avisa a mis sockets', async () => {
     const miTelefono = await connect(tokenFor(jose));
     const cambio = new Promise((resolve) => miTelefono.on('chat.changed', resolve));
@@ -363,3 +382,28 @@ describe('mis ajustes de un chat, en mis otros dispositivos', () => {
     expect(await cambio).toEqual({ chatId });
   });
 });
+
+/**
+ * Auditoría (19/10): sin push (o con el push perdido), lo que llegó mientras
+ * estaba desconectado quedaba en UN check hasta que abriera ese chat. Al
+ * conectar, el server lo da por entregado y se lo avisa a quien lo mandó.
+ */
+describe('entregado al conectar', () => {
+  it('lo que me mandaron offline pasa a entregado apenas conecto, y el remitente lo ve', async () => {
+    // Arrange
+    await sendMessage({ chatId, senderId: maria, clientKey: 'off-1', body: 'uno' });
+    await sendMessage({ chatId, senderId: maria, clientKey: 'off-2', body: 'dos' });
+    const remitente = await connect(tokenFor(maria));
+    const acuse = new Promise<{ userId: string; deliveredSeq?: number }>((resolve) => remitente.on('receipt', (frame) => frame.userId === String(jose) && resolve(frame)));
+
+    // Act
+    await connect(tokenFor(jose));
+
+    // Assert
+    await expect(acuse).resolves.toMatchObject({ deliveredSeq: 2 });
+    const deMaria = (await listChats(maria)).find((chat) => chat.id === chatId);
+    expect(deMaria?.othersDeliveredSeq).toBe(2);
+    expect(deMaria?.othersReadSeq).toBe(0);
+  });
+});
+

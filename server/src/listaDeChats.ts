@@ -31,6 +31,8 @@ export type ChatSummary = {
   acuseDe: string[];
   lastSeq: number;
   unread: number;
+  /** Hasta dónde leí YO: el divisor de no leídos va justo después (auditoría 19/10). */
+  readSeq: number;
   lastMessage: {
     seq: number;
     body?: string;
@@ -155,6 +157,7 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
       memberIds: chat.members.map((member) => String(member.userId)),
       acuseDe: acusan,
       lastSeq: chat.lastSeq,
+      readSeq: readByChat.get(String(chat._id)) ?? 0,
       unread: unreadCount({
         lastSeq: chat.lastSeq,
         readSeq: readByChat.get(String(chat._id)) ?? 0,

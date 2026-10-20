@@ -309,15 +309,20 @@ async function moverCursor(
   return !anterior || campos.some((campo) => (anterior[campo] ?? 0) < seq);
 }
 
-export async function markRead(params: {
-  chatId: string;
-  userId: Types.ObjectId;
-  seq: number;
-}): Promise<number | false> {
+export async function markRead(params: { chatId: string; userId: Types.ObjectId; seq: number }): Promise<number | false> {
+  return (await marcarLeidoDetallado(params)).leido;
+}
+
+/**
+ * `markRead` con lo que cambió: el `seq` que avanzó (o `false`) y si quitó la
+ * marca de «no leído» (auditoría 19/10: sin nada nuevo que leer no salía
+ * ningún aviso y mis otros equipos seguían con el punto).
+ */
+export async function marcarLeidoDetallado(params: { chatId: string; userId: Types.ObjectId; seq: number }): Promise<{ leido: number | false; desmarcado: boolean }> {
   const { id: chatId, lastSeq } = await ultimoSeqDelMiembro(params.chatId, params.userId);
   const seq = Math.min(params.seq, lastSeq);
-  if (seq <= 0) return false;
-  const [avanzo] = await Promise.all([
+  if (seq <= 0) return { leido: false, desmarcado: false };
+  const [avanzo, marca] = await Promise.all([
     // Leer implica entregado: no se puede leer lo que no llego.
     moverCursor({ chatId, userId: params.userId }, ['readSeq', 'deliveredSeq'], seq),
     // Abrir el chat quita la marca de «no leído» (FL9), como WhatsApp. El
@@ -328,7 +333,7 @@ export async function markRead(params: {
     ),
   ]);
   // El seq que de verdad quedó (recortado): es el que se difunde a los demás.
-  return avanzo ? seq : false;
+  return { leido: avanzo ? seq : false, desmarcado: marca.modifiedCount > 0 };
 }
 
 /**
@@ -348,6 +353,25 @@ export async function markDelivered(params: {
   const seq = Math.min(params.seq, lastSeq);
   if (seq <= 0) return false;
   return (await moverCursor({ chatId, userId: params.userId }, ['deliveredSeq'], seq)) ? seq : false;
+}
+
+/**
+ * Al CONECTAR, lo que me llegó mientras estaba desconectado queda entregado
+ * (auditoría 19/10): sin push —o con el push perdido— quedaba en un check
+ * hasta abrir ese chat. Solo los chats atrasados, en un viaje; devuelve a
+ * quién avisar. Nunca toca `readSeq`.
+ */
+export async function entregarAlConectar(userId: Types.ObjectId): Promise<{ chatId: string; seq: number; miembros: string[] }[]> {
+  const chats = await ChatModel.find({ 'members.userId': userId, lastSeq: { $gt: 0 } }).select('lastSeq members.userId').lean<{ _id: Types.ObjectId; lastSeq: number; members: { userId: Types.ObjectId }[] }[]>();
+  if (chats.length === 0) return [];
+  const acuses = await ReceiptModel.find({ userId, chatId: { $in: chats.map((chat) => chat._id) } }).select('chatId deliveredSeq').lean();
+  const entregado = new Map(acuses.map((acuse) => [String(acuse.chatId), acuse.deliveredSeq ?? 0]));
+  const atrasados = chats.filter((chat) => chat.lastSeq > (entregado.get(String(chat._id)) ?? 0));
+  if (atrasados.length === 0) return [];
+  await ReceiptModel.bulkWrite(
+    atrasados.map((chat) => ({ updateOne: { filter: { chatId: chat._id, userId }, update: { $max: { deliveredSeq: chat.lastSeq } }, upsert: true } }))
+  );
+  return atrasados.map((chat) => ({ chatId: String(chat._id), seq: chat.lastSeq, miembros: chat.members.map((miembro) => String(miembro.userId)) }));
 }
 
 /** Los demás miembros de un chat: a quién notificar. */

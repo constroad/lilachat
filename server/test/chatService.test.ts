@@ -481,3 +481,19 @@ describe('el último mensaje borrado para todos', () => {
     expect(chat?.lastMessage?.deletedAt).toBeTruthy();
   });
 });
+
+/** Auditoría (19/10): el divisor de no leídos necesita saber hasta dónde leí. */
+describe('la lista dice hasta dónde leí', () => {
+  it('trae mi readSeq de cada chat', async () => {
+    // Arrange
+    const { message } = await sendMessage({ chatId, senderId: maria, clientKey: 'r-1', body: 'uno' });
+    await sendMessage({ chatId, senderId: maria, clientKey: 'r-2', body: 'dos' });
+
+    // Act
+    await markRead({ chatId, userId: jose, seq: message.seq });
+
+    // Assert
+    const [chat] = await listChats(jose);
+    expect(chat).toMatchObject({ readSeq: message.seq, unread: 1 });
+  });
+});

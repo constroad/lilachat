@@ -6,13 +6,14 @@ import { crearColaSerial } from '@lilachat/shared';
 import {
   ForbiddenChatError,
   chatMemberIds,
-  markRead,
+  marcarLeidoDetallado,
   pullSince,
   sendMessage,
   deleteMessage,
   editMessage,
   markDelivered,
   marcarPropioLeido,
+  entregarAlConectar,
 } from './chatService.js';
 import { toClientMessage, toClientMessages } from './messageView.js';
 import { isOnline, markOffline, markOnline, onlineAmong } from './presence.js';
@@ -129,6 +130,17 @@ async function leerLoPropio(message: Pick<Message, 'chatId' | 'senderId' | 'seq'
     for (const miembro of miembros) ioVivo?.to(userRoom(miembro)).emit('receipt', acuse);
   } catch (error) {
     console.error('[leído] no se pudo marcar lo propio:', (error as Error)?.message ?? error);
+  }
+}
+
+/** El «me llegó» de lo que estaba pendiente al conectar, a quien lo mandó (y a mis otros equipos). */
+async function avisarEntregadoAlConectar(userId: Types.ObjectId, me: string): Promise<void> {
+  try {
+    for (const { chatId, seq, miembros } of await entregarAlConectar(userId)) {
+      for (const miembro of miembros) ioVivo?.to(userRoom(miembro)).emit('receipt', { chatId, userId: me, deliveredSeq: seq });
+    }
+  } catch (error) {
+    console.error('[entregado] no se pudo marcar al conectar:', (error as Error)?.message ?? error);
   }
 }
 
@@ -273,6 +285,9 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
       // verdes solo aparecerían cuando alguien se conecta después que yo.
       socket.emit('presence.snapshot', { online: onlineAmong(contacts) });
 
+      // Lo que me llegó desconectado, entregado ahora (auditoría 19/10).
+      await avisarEntregadoAlConectar(userId, me);
+
       // Una llamada que sigue sonando en uno de mis chats (FL8): conecté
       // tarde —abrí la app desde el push «Llamada de…»— y todavía se contesta.
       if (hayOfertasPendientes()) {
@@ -354,19 +369,9 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
             chatId: result.message.chatId,
             askedBy: userId,
             body: result.message.body,
-            onReply: async (reply) => {
-              const destinatarios = await chatMemberIds(reply.chatId);
-              for (const member of destinatarios) {
-                io.to(userRoom(member)).emit('msg.new', toClientMessage(reply));
-              }
-              void notifyOffline({
-                message: reply,
-                members: destinatarios,
-                senderId: String(reply.senderId),
-              }).catch((error) =>
-                console.error('[push] no se pudo avisar la respuesta:', error?.message ?? error)
-              );
-            },
+            // Por el MISMO camino que todo mensaje (auditoría 19/10): socket,
+            // entregado a los conectados y push a los demás.
+            onReply: async (reply) => void (await publicarMensaje(reply)),
           }).catch((error) => console.error('[lila] mención falló:', error?.message ?? error));
         }
       } catch (error) {
@@ -527,8 +532,9 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
         // Sin avance no hay nada que avisar: cada `receipt` es un re-render en
         // cada teléfono del chat (FL12, §49 #3).
         // Se difunde el seq que QUEDÓ (el server lo recorta al último mensaje), no el del cliente.
-        const leido = await markRead({ chatId: payload.chatId, userId, seq: payload.seq });
-        if (!leido) return;
+        const { leido, desmarcado } = await marcarLeidoDetallado({ chatId: payload.chatId, userId, seq: payload.seq });
+        // Sin avance pero con la marca de «no leído» quitada: mis otros equipos releen.
+        if (!leido) return void (desmarcado && avisarCambioDeChat(me, payload.chatId));
         const members = await chatMemberIds(new Types.ObjectId(payload.chatId));
         for (const member of members) {
           io.to(userRoom(member)).emit('receipt', {

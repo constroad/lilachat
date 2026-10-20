@@ -12,7 +12,7 @@ import { formaDelTexto, type FormaDelTexto } from './campoDeTexto';
 import type { DecisionDeVoz, mientrasSostiene } from './gestoDeVoz';
 import { useMenciones, type MiembroMencionable } from './useMenciones';
 import { SugerenciasDeMencion } from './SugerenciasDeMencion';
-import { EmojiStickerPanel } from './stickers/EmojiStickerPanel';
+import { closeEmojiPanel, openEmojiPanel, useEmojiPanelOpen } from './emojiPanel';
 import { VistaPreviaAlEscribir } from './VistaPreviaAlEscribir';
 
 /** Cuánto se espera tras la última tecla para guardar el borrador. */
@@ -23,7 +23,8 @@ const PARECE_UN_LINK = /https?:\/\/|www\./i;
 export type Respondiendo = { seq: number; texto: string; mio: boolean };
 
 /** Lo que la pantalla le puede pedir al composer sin conocer su borrador. */
-export type ComposerHandle = { limpiar: () => void };
+/** `insertEmoji` and `backspace` come from the emoji panel, which lives under the bar (`ChatBottom`). */
+export type ComposerHandle = { limpiar: () => void; insertEmoji: (emoji: string) => void; backspace: () => void };
 
 /**
  * La barra de escribir, APARTE de la pantalla (FL2, spec §45).
@@ -41,8 +42,6 @@ export const Composer = memo(function Composer(props: {
   ref?: Ref<ComposerHandle>;
   /** De qué chat es el borrador que se guarda y se restaura (FL9). */
   chatId: string;
-  /** «Para: …» in the sticker editor (20/10). */
-  nombreDelChat?: string;
   respondiendoA: Respondiendo | null;
   onCancelarRespuesta: () => void;
   /** Editando un mensaje propio (José, 17/10/2026): el campo trae su texto. */
@@ -139,30 +138,41 @@ export const Composer = memo(function Composer(props: {
   /** El texto, solo si parece tener un link: es lo único que mira la tarjeta. */
   const [textoConLink, setTextoConLink] = useState('');
   const menciones = useMenciones(props.miembros);
-  const [conEmojis, setConEmojis] = useState(false);
-  // ATRÁS con el panel abierto lo cierra, como el teclado; no sale del chat.
+  const emojiPanelOpen = useEmojiPanelOpen();
+  // Back with the panel open closes it, like the keyboard; it does not leave the chat.
   useEffect(() => {
-    if (!conEmojis) return;
+    if (!emojiPanelOpen) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      setConEmojis(false);
+      closeEmojiPanel(false);
       return true;
     });
     return () => sub.remove();
-  }, [conEmojis]);
+  }, [emojiPanelOpen]);
   const alternarEmojis = () => {
-    if (conEmojis) {
-      setConEmojis(false);
-      inputRef.current?.focus();
-      return;
-    }
-    Keyboard.dismiss();
-    setConEmojis(true);
+    // To the keyboard: it rises over the panel, which leaves once it is up (`ChatBottom`).
+    if (emojiPanelOpen) return inputRef.current?.focus();
+    // From the keyboard: the panel is already whole behind it while it goes down; nothing moves.
+    const keyboardUp = Keyboard.isVisible();
+    openEmojiPanel(keyboardUp);
+    if (keyboardUp) Keyboard.dismiss();
+  };
+  /** What the emoji panel types, always with this render's text and cursor. */
+  const typeFromPanel = useRef({ insert: (_emoji: string) => {}, back: () => {} });
+  typeFromPanel.current = {
+    insert: (emoji) => {
+      const inserted = insertarEnTexto(textoRef.current, seleccion.current, emoji);
+      escribir(inserted.texto, inserted.cursor);
+    },
+    back: () => {
+      const remaining = deleteBeforeCursor(textoRef.current, seleccion.current);
+      escribir(remaining.texto, remaining.cursor);
+    },
   };
   const voz = useGrabadorDeVoz();
   // Sin diálogo: si el micrófono ya está permitido, la primera nota no espera.
   useEffect(() => precalentarPermisoDeVoz(), []);
 
-  useImperativeHandle(props.ref, () => ({ limpiar: limpiarCampo }), []);
+  useImperativeHandle(props.ref, () => ({ limpiar: limpiarCampo, insertEmoji: (emoji: string) => typeFromPanel.current.insert(emoji), backspace: () => typeFromPanel.current.back() }), []);
 
   // Al empezar a editar, el texto del mensaje va al campo; al terminar o
   // cancelar vuelve el borrador del chat, como WhatsApp. Lo mismo al abrir.
@@ -257,18 +267,17 @@ export const Composer = memo(function Composer(props: {
     <View className="min-w-0 flex-1 flex-row items-end rounded-3xl border border-outline/15 bg-background pr-1">
       <Pressable
         testID="btn-emojis"
-        accessibilityLabel={conEmojis ? 'Volver al teclado' : 'Emojis'}
+        accessibilityLabel={emojiPanelOpen ? 'Volver al teclado' : 'Emojis'}
         onPress={alternarEmojis}
         android_ripple={{ color: colores.outline, borderless: true, radius: 20 }}
         className="h-[46px] w-11 items-center justify-center"
       >
-        {conEmojis ? <Teclado size={21} color={colores.outline} /> : <Smile size={21} color={colores.outline} />}
+        {emojiPanelOpen ? <Teclado size={21} color={colores.outline} /> : <Smile size={21} color={colores.outline} />}
       </Pressable>
       <TextInput
         key={inicial.version}
         ref={inputRef}
         defaultValue={inicial.texto}
-        onFocus={() => setConEmojis(false)}
         onSelectionChange={(evento) => {
           seleccion.current = evento.nativeEvent.selection;
           menciones.alCambiar(textoRef.current, evento.nativeEvent.selection.end);
@@ -374,7 +383,7 @@ export const Composer = memo(function Composer(props: {
         </View>
       ) : null}
 
-      <View className="flex-row items-end gap-1.5 border-t border-outline/10 bg-surface px-2 pt-2" style={{ paddingBottom: conEmojis ? 8 : props.margenPie }}>
+      <View className="flex-row items-end gap-1.5 border-t border-outline/10 bg-surface px-2 pt-2" style={{ paddingBottom: props.margenPie }}>
         {props.modoSecreto === 'bloqueado' ? (
           <View testID="composer-bloqueado" className="min-h-[48px] flex-1 items-center justify-center rounded-3xl bg-background px-4">
             <Text className="text-center text-[13px] text-on-surface-variant">Esperando la clave del chat secreto…</Text>
@@ -458,26 +467,6 @@ export const Composer = memo(function Composer(props: {
           </>
         )}
       </View>
-
-      {conEmojis ? (
-        <View className="bg-surface" style={{ paddingBottom: props.margenPie }}>
-          <EmojiStickerPanel
-            jwt={props.jwt ?? ''}
-            chatId={props.chatId}
-            chatName={props.nombreDelChat ?? ''}
-            // No stickers in a secret chat yet (the server does not send them encrypted).
-            withStickers={!props.modoSecreto && Boolean(props.jwt)}
-            onPickEmoji={(emoji) => {
-              const inserted = insertarEnTexto(textoRef.current, seleccion.current, emoji);
-              escribir(inserted.texto, inserted.cursor);
-            }}
-            onBackspace={() => {
-              const remaining = deleteBeforeCursor(textoRef.current, seleccion.current);
-              escribir(remaining.texto, remaining.cursor);
-            }}
-          />
-        </View>
-      ) : null}
 
       {voz.estado.fase === 'sin-permiso' || voz.estado.fase === 'error' ? (
         <Pressable onPress={voz.limpiarAviso} className="px-4 pb-2">

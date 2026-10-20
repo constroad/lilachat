@@ -3,7 +3,7 @@ import { Text, View } from 'react-native';
 import { ProgramarMensajeModal } from './ProgramarMensajeModal';
 import { ProgramadosDelChat } from './ProgramadosDelChat';
 import type { FlashListRef } from '@shopify/flash-list';
-import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import { ChatBottom } from './ChatBottom';
 import { etiquetaDeRecordatorioEnElChat, type MencionEnMensaje } from '@lilachat/shared';
 import { AttachSheet } from './AttachSheet';
 import { CrearDesdeElChat, type QueSeCrea } from './CrearDesdeElChat';
@@ -436,7 +436,7 @@ export function ChatScreen({
        * la conversación como un bloque (transform, sin medir) y ajusta el
        * tamaño una sola vez al final. Ver §59.
        */}
-      {/* Teclado como Telegram (20/10): ver `useScrollConTeclado`; la barra sube en un `KeyboardStickyView`. */}
+      {/* Keyboard like Telegram (20/10): see `useScrollConTeclado`; the bar rides on the keyboard or the emoji panel in `ChatBottom`. */}
       <View style={{ flex: 1, zIndex: 1 }}>
       {fijar.hoja}
 
@@ -489,7 +489,7 @@ export function ChatScreen({
         />
       </AccionesDeTarjetaContext.Provider>
 
-      <KeyboardStickyView offset={{ closed: 0, opened: sinSubir }}>
+      <ChatBottom coveredMargin={sinSubir} composerRef={composerRef} chat={{ jwt: credential.jwt, id: chatId, name: nombreVisible, withStickers: !encrypted }}>
       {mediaError ? (
         <Text className="px-4 pb-1 text-sm text-error" testID="error-media">
           {mediaError}
@@ -504,7 +504,7 @@ export function ChatScreen({
       ) : (
         <Composer
           ref={composerRef}
-          chatId={chatId} nombreDelChat={nombreVisible}
+          chatId={chatId}
           respondiendoA={respuesta.respondiendoA}
           onCancelarRespuesta={cancelarRespuesta}
           editando={respuesta.editando}
@@ -526,7 +526,7 @@ export function ChatScreen({
         />
       )}
 
-      </KeyboardStickyView>
+      </ChatBottom>
 
       <CamaraDelChat visible={camara.abierta} nombreDelChat={nombreVisible} onEnviar={(lista, opciones) => void camara.enviar(lista, opciones)} onGaleria={camara.aLaGaleria} onCerrar={camara.cerrar} />
       <EnviarFotos fotos={fotosElegidas} onCancelar={cerrarFotos} onEnviar={(lista, opciones) => void alEnviarFotos(lista, opciones)} />

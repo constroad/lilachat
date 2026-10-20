@@ -3,8 +3,6 @@ import { View } from 'react-native';
 import { EmojiKeyboard, es, useRecentPicksPersistence, type EmojiType } from 'rn-emoji-keyboard';
 import { useColores } from '../ui/tema';
 
-/** El alto del panel (dp): el de un teclado de teléfono. */
-export const ALTO_DEL_PANEL_DE_EMOJIS = 300;
 const CLAVE_DE_RECIENTES = 'lilachat.emojis.recientes';
 
 /** Los recientes sobreviven al cerrar la app, como en WhatsApp. No son secretos: AsyncStorage alcanza. */
@@ -29,7 +27,7 @@ export function PanelDeEmojis({ onElegir }: { onElegir: (emoji: string) => void 
     onStateChange: (recientes) => AsyncStorage.setItem(CLAVE_DE_RECIENTES, JSON.stringify(recientes)).catch(() => undefined),
   });
   return (
-    <View testID="panel-emojis" style={{ height: ALTO_DEL_PANEL_DE_EMOJIS }}>
+    <View testID="panel-emojis" style={{ flex: 1 }}>
       <EmojiKeyboard
         onEmojiSelected={(emoji: EmojiType) => onElegir(emoji.emoji)}
         translation={es}

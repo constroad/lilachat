@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type ReactElement, type RefObject } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import { KeyboardStickyView } from 'react-native-keyboard-controller';
-import { useScrollConTeclado } from './useScrollConTeclado';
+import Animated from 'react-native-reanimated';
+import { BottomRoom, useScrollConTeclado } from './useScrollConTeclado';
+import { useBottomLiftStyle } from './ChatBottom';
+import { contentLift, roomHeld } from './emojiPanel';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { ChevronDown } from 'lucide-react-native';
 import type { Row } from './MessageRow';
@@ -11,6 +13,8 @@ import { useFinalDeLaConversacion } from './useFinalDeLaConversacion';
 import { useColores } from '../ui/tema';
 import type { OpeningPlace } from './useDivisorNoLeidos';
 
+/** The emoji panel's room under the conversation (`emojiPanel`). */
+const EMOJI_PANEL_ROOM = { held: roomHeld, lift: contentLift };
 /** Upper bound for keeping the list hidden while it places itself: it never stays blank longer. */
 const MAX_HIDDEN_MS = 350;
 
@@ -77,10 +81,12 @@ export function ListaDeMensajes(props: {
   const { sinSubir } = props;
   const scrollDelChat = useScrollConTeclado(sinSubir);
   const { revealed, onLoad } = useRevealWhenPlaced(rows.length > 0, props.onListo, releaseFromEnd);
+  const liftStyle = useBottomLiftStyle(sinSubir);
   return (
     <View className="flex-1">
       <FondoDelChat />
       <View className="flex-1" style={{ opacity: revealed ? 1 : 0 }}>
+      <BottomRoom.Provider value={EMOJI_PANEL_ROOM}>
       <FlashList
         /**
          * Se vuelve a montar al pasar de vacía a con filas (18/10, emulador). En
@@ -136,11 +142,12 @@ export function ListaDeMensajes(props: {
         renderItem={props.dibujarFila}
         getItemType={tipoDeFila}
       />
+      </BottomRoom.Provider>
       </View>
       {abajoLejos ? (
         // «Bajar al final» con los que llegaron mientras se leía arriba, como
         // WhatsApp. Aparece solo lejos del final: abajo no hace falta. Sube con el teclado.
-        <KeyboardStickyView offset={{ closed: 0, opened: sinSubir }} className="absolute bottom-3 right-3">
+        <Animated.View style={liftStyle} className="absolute bottom-3 right-3">
         <Pressable
           testID="btn-bajar"
           accessibilityLabel="Ir al último mensaje"
@@ -157,7 +164,7 @@ export function ListaDeMensajes(props: {
             </View>
           ) : null}
         </Pressable>
-        </KeyboardStickyView>
+        </Animated.View>
       ) : null}
     </View>
   );

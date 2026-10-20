@@ -14,7 +14,7 @@ import { CatchUpBanner } from './CatchUpBanner';
 import { cuantosParaPonerAlDia } from './ponerAlDia';
 import { SecretChatBanner } from '../crypto/SecretChatBanner';
 import { useSecretChat } from '../crypto/useSecretChat';
-import { isPending, previewDeMensaje, type Row } from './MessageRow';
+import { previewDeMensaje, type Row } from './MessageRow';
 import { abrirConOtraApp } from './guardarYCompartir';
 import { Composer, type ComposerHandle } from './Composer';
 import { ChatDetailScreen } from './ChatDetailScreen';
@@ -47,13 +47,11 @@ import { useRespuestaYEdicion } from './useRespuestaYEdicion';
 import { useAtrasDelChat } from './useAtrasDelChat';
 import { useMensajeFallido } from './useMensajeFallido';
 import { useAlAbrirElChat } from './useAlAbrirElChat';
+import { useIrAMensaje } from './useIrAMensaje';
+import { useFijarMensajes } from './useFijarMensajes';
 
 /** El pie del composer con el teclado abierto (dp). */
 const MARGEN_CON_TECLADO = 8;
-/** El segundo `scrollToIndex`, cuando la zona ya se midió. */
-const SEGUNDO_PASE_MS = 400;
-/** Cuánto queda resaltado el original de una cita. */
-const RESALTADO_DE_CITA_MS = 1500;
 
 /**
  * La conversación (diseño Stitch «Chat de Grupo»). Burbuja propia a la derecha
@@ -160,8 +158,6 @@ export function ChatScreen({
   const [viendoSeq, setViendoSeq] = useState<number | null>(null);
   /** Los mensajes elegidos con pulsación larga (FL9: uno o varios). */
   const seleccion = useSeleccionDeMensajes(messages);
-  /** El mensaje resaltado un momento al saltar desde una cita (FL9). */
-  const [resaltado, setResaltado] = useState<number | null>(null);
   const { ocultos, ocultar } = useOcultos(chatId);
   const [verDetalle, setVerDetalle] = useState(false);
   /**
@@ -269,39 +265,15 @@ export function ChatScreen({
     listaRef,
   });
 
-  /** Llevar la lista a un mensaje (la cita y la búsqueda, FL9). */
-  const irAMensaje = useCallback(
-    (seq: number): boolean => {
-      const indice = rows.findIndex((fila) => !isPending(fila) && fila.seq === seq);
-      if (indice < 0) return false;
-      listaRef.current?.scrollToIndex({ index: indice, animated: true, viewPosition: 0.4 });
-      // Segundo pase: con alturas variables, si esa zona todavía no se midió el
-      // primero cae corto o no se mueve (visto en el E2E con el chat recién abierto).
-      setTimeout(() => listaRef.current?.scrollToIndex({ index: indice, animated: false, viewPosition: 0.4 }), SEGUNDO_PASE_MS);
-      return true;
-    },
-    [rows]
-  );
-
-  /** Ir a un mensaje y resaltarlo un momento; si no está cargado, se dice. */
-  const saltarA = useCallback(
-    (seq: number, siNoEsta: string) => {
-      if (!irAMensaje(seq)) return setMediaError(siNoEsta);
-      setResaltado(seq);
-      setTimeout(() => setResaltado((actual) => (actual === seq ? null : actual)), RESALTADO_DE_CITA_MS);
-    },
-    [irAMensaje]
-  );
-  /** Tocar una cita: al original (FL9). */
-  const alTocarCita = useCallback(
-    (seq: number) => saltarA(seq, 'El mensaje original está más arriba: sube para cargarlo.'),
-    [saltarA]
-  );
-  /** Al abrir: al mensaje buscado si se vino de la búsqueda (FL9d); si no, al divisor o al final. */
-  const alAbrir = useCallback(() => {
-    if (irASeq === undefined) return irAlInicio();
-    saltarA(irASeq, 'Ese mensaje está más arriba: sube para cargarlo.');
-  }, [irASeq, irAlInicio, saltarA]);
+  const { irAMensaje, alTocarCita, alAbrir, saltarA, resaltado } = useIrAMensaje({ rows, listaRef, irASeq, irAlInicio, onNoEsta: setMediaError });
+  const fijar = useFijarMensajes({
+    chatId,
+    jwt: credential.jwt,
+    puedeFijar: esBorrador || !esGrupoChat || soyAdminDelGrupo,
+    textoLocal: (seq) => messages.find((uno) => uno.seq === seq)?.body,
+    onIr: (seq) => saltarA(seq, 'Ese mensaje está más arriba: sube para cargarlo.'),
+    onError: setMediaError,
+  });
 
   // Buscar dentro del chat (FL9): sobre lo que se ve —sin lo «eliminado para mí»—.
   const visiblesParaBuscar = useMemo(() => sinOcultos(messages, ocultos), [messages, ocultos]);
@@ -433,6 +405,10 @@ export function ChatScreen({
           onEliminarParaMi={ocultar}
           onEditar={respuesta.empezarEdicion}
           onError={setMediaError}
+          puedeFijar={esBorrador || !esGrupoChat || soyAdminDelGrupo}
+          fijados={fijar.seqsFijados}
+          onFijar={fijar.pedirFijar}
+          onDesfijar={(seq) => void fijar.desfijar(seq)}
         />
       ) : busqueda.activo ? (
         <BuscadorDelChat
@@ -459,6 +435,9 @@ export function ChatScreen({
           onLlamar={(conVideo) => llamar(chatId, chatName, conVideo)}
         />
       )}
+
+      {fijar.franja}
+      {fijar.hoja}
 
       <CrearDesdeElChat
         creando={creando}

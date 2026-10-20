@@ -6,7 +6,7 @@
  * .env de dev sale apuntando al emulador y falla con wifi andando — el script
  * de release lo fija y lo verifica dentro del binario).
  */
-import type { VistaPreviaDeEnlace } from '@lilachat/shared';
+import type { VistaDelFijado, VistaPreviaDeEnlace } from '@lilachat/shared';
 import { unSoloPedido } from './pedidoUnico';
 
 export const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
@@ -185,6 +185,17 @@ export type ChatSummary = {
   archived?: boolean;
   /** Marcado por mí como no leído (FL9): el punto sin número. */
   markedUnread?: boolean;
+  /** Mensajes fijados arriba del chat (19/10), el más reciente primero. */
+  fijados?: FijadoEnLista[];
+};
+
+/** Un fijado como lo manda la lista: con su vista previa (sin texto en un chat secreto). */
+export type FijadoEnLista = {
+  seq: number;
+  por: string;
+  en: string;
+  hasta: string;
+  vista: VistaDelFijado;
 };
 
 /** Lo que cada uno ajusta para sí en un chat (FL9 suma archivar y no leído). */
@@ -360,3 +371,10 @@ export const listarVinculados = (token: string) => get<{ dispositivos: Dispositi
 
 export const cerrarVinculado = (token: string, deviceId: string) =>
   authed<Record<string, never>>('DELETE', `/api/vinculos/${encodeURIComponent(deviceId)}`, token);
+
+/** Fijar un mensaje arriba del chat (19/10): `24h`, `7d` o `30d`. */
+export const fijarMensajeEnChat = (token: string, chatId: string, seq: number, duracion: string) =>
+  authed<{ ok: true }>('POST', `/api/chats/${chatId}/fijados`, token, { seq, duracion });
+
+export const desfijarMensajeEnChat = (token: string, chatId: string, seq: number) =>
+  authed<{ ok: true }>('DELETE', `/api/chats/${chatId}/fijados/${seq}`, token);

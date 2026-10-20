@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
-import { Alert, FlatList, Modal, Pressable, Text, ToastAndroid, View } from 'react-native';
+import { useMemo, useState, type ReactNode } from 'react';
+import { Alert, FlatList, Modal, Pressable, Text, ToastAndroid, useWindowDimensions, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Crypto from 'expo-crypto';
-import { Copy, CornerUpLeft, Forward, Info, Pencil, Trash2, X } from 'lucide-react-native';
+import { Copy, CornerUpLeft, EllipsisVertical, Forward, Info, Pencil, Pin, PinOff, Trash2, X } from 'lucide-react-native';
 import { buildOutboxItem, nombreDeContacto, puedeEditar } from '@lilachat/shared';
 import { accionesDeMensaje, accionesDeVarios, textoParaCopiar } from '@lilachat/shared';
 import { chatsEnMemoria } from './chatsGuardados';
@@ -13,6 +13,7 @@ import { useColores } from '../ui/tema';
 import { Avatar } from '../ui/Avatar';
 import type { ChatMessage } from './useChat';
 import { InfoDelMensaje } from './InfoDelMensaje';
+import { repartirAcciones, type AccionDeBarra } from './barraDeSeleccion';
 
 /** El avatar de cada chat al reenviar (dp): el de las listas de personas. */
 const AVATAR_DE_DESTINO = 44;
@@ -42,11 +43,18 @@ export function SeleccionDeMensaje(params: {
   /** Editar (José, 17/10/2026): el texto vuelve al campo de escribir. */
   onEditar: (seq: number, texto: string) => void;
   onError: (texto: string) => void;
+  /** Fijar arriba del chat (19/10): en un grupo, solo los admins. */
+  puedeFijar: boolean;
+  fijados: ReadonlySet<number>;
+  onFijar: (seq: number) => void;
+  onDesfijar: (seq: number) => void;
 }) {
   const colores = useColores();
   const margenes = useMargenes();
+  const { width } = useWindowDimensions();
   const [reenviando, setReenviando] = useState(false);
   const [viendoInfo, setViendoInfo] = useState(false);
+  const [menuAbierto, setMenuAbierto] = useState(false);
   const { mensajes } = params;
   const mensaje = mensajes[0];
   const texto = mensaje?.body?.trim() ?? '';
@@ -67,6 +75,8 @@ export function SeleccionDeMensaje(params: {
           enviadoEn: uno.at,
           ahora: Date.now(),
         }).permitido,
+        puedeFijar: params.puedeFijar,
+        fijado: params.fijados.has(uno.seq),
       })
     )
   );
@@ -100,76 +110,111 @@ export function SeleccionDeMensaje(params: {
     Alert.alert(seqs.length === 1 ? '¿Eliminar el mensaje?' : `¿Eliminar ${seqs.length} mensajes?`, undefined, opciones);
   };
 
+  const disponibles = [
+    acciones.responder ? 'responder' : null,
+    acciones.fijar ? 'fijar' : null,
+    acciones.reenviar ? 'reenviar' : null,
+    'eliminar',
+    acciones.copiar ? 'copiar' : null,
+    acciones.editar ? 'editar' : null,
+    acciones.info ? 'info' : null,
+  ].filter((accion): accion is AccionDeBarra => accion !== null);
+  // Todo en UNA línea (José, 19/10): lo que no entra va a «⋮», y eliminar nunca.
+  const { visibles, enMenu } = repartirAcciones(disponibles, width);
+  const icono = colores['on-surface'];
+  const botones: Record<AccionDeBarra, { testID: string; etiqueta: string; icono: ReactNode; onPress: () => void }> = {
+    responder: {
+      testID: 'btn-responder-mensaje',
+      etiqueta: 'Responder',
+      icono: <CornerUpLeft size={20} color={icono} />,
+      onPress: () => {
+        params.onResponder(mensaje.seq);
+        params.onCancelar();
+      },
+    },
+    fijar: {
+      testID: acciones.fijar === 'desfijar' ? 'btn-desfijar-mensaje' : 'btn-fijar-mensaje',
+      etiqueta: acciones.fijar === 'desfijar' ? 'Desfijar' : 'Fijar',
+      icono: acciones.fijar === 'desfijar' ? <PinOff size={20} color={icono} /> : <Pin size={20} color={icono} />,
+      onPress: () => {
+        if (acciones.fijar === 'desfijar') params.onDesfijar(mensaje.seq);
+        else params.onFijar(mensaje.seq);
+        params.onCancelar();
+      },
+    },
+    reenviar: { testID: 'btn-reenviar-mensaje', etiqueta: 'Reenviar', icono: <Forward size={20} color={icono} />, onPress: () => setReenviando(true) },
+    eliminar: { testID: 'btn-eliminar-mensaje', etiqueta: 'Eliminar', icono: <Trash2 size={20} color={colores.error} />, onPress: eliminar },
+    copiar: {
+      testID: 'btn-copiar-mensaje',
+      etiqueta: 'Copiar',
+      icono: <Copy size={20} color={icono} />,
+      onPress: () => {
+        void Clipboard.setStringAsync(textoParaCopiar(mensajes)).then(() => avisar('Copiado'));
+        params.onCancelar();
+      },
+    },
+    editar: {
+      testID: 'btn-editar-mensaje',
+      etiqueta: 'Editar',
+      icono: <Pencil size={19} color={icono} />,
+      onPress: () => {
+        params.onEditar(mensaje.seq, texto);
+        params.onCancelar();
+      },
+    },
+    info: { testID: 'btn-info-mensaje', etiqueta: 'Info', icono: <Info size={20} color={icono} />, onPress: () => setViendoInfo(true) },
+  };
+
   return (
     <>
       <View
         testID="barra-seleccion"
-        className="flex-row items-center gap-1 border-b border-outline/10 bg-surface px-3 pb-3"
+        className="flex-row items-center border-b border-outline/10 bg-surface px-2 pb-3"
         style={{ paddingTop: margenes.cabecera }}
       >
         <Accion testID="btn-cancelar-seleccion" etiqueta="Cancelar la selección" onPress={params.onCancelar}>
           <X size={22} color={colores['on-surface']} />
         </Accion>
-        {/* Solo el número, como en la lista de chats: con seis acciones,
-            «1 seleccionado» se partía en dos líneas. */}
+        {/* Solo el número: con todas las acciones, «1 seleccionado» se partía en dos líneas. */}
         <Text
           testID="conteo-mensajes"
           accessibilityLabel={seqs.length === 1 ? '1 seleccionado' : `${seqs.length} seleccionados`}
-          className="flex-1 text-lg font-semibold text-on-surface"
+          className="flex-1 pl-1 text-lg font-semibold text-on-surface"
           numberOfLines={1}
         >
           {seqs.length}
         </Text>
-        {acciones.responder ? (
-          <Accion
-            testID="btn-responder-mensaje"
-            etiqueta="Responder"
-            onPress={() => {
-              params.onResponder(mensaje.seq);
-              params.onCancelar();
-            }}
-          >
-            <CornerUpLeft size={20} color={colores['on-surface']} />
+        {visibles.map((accion) => (
+          <Accion key={accion} testID={botones[accion].testID} etiqueta={botones[accion].etiqueta} onPress={botones[accion].onPress}>
+            {botones[accion].icono}
+          </Accion>
+        ))}
+        {enMenu.length ? (
+          <Accion testID="btn-mas-acciones" etiqueta="Más acciones" onPress={() => setMenuAbierto(true)}>
+            <EllipsisVertical size={20} color={colores['on-surface']} />
           </Accion>
         ) : null}
-        {acciones.copiar ? (
-          <Accion
-            testID="btn-copiar-mensaje"
-            etiqueta="Copiar"
-            onPress={() => {
-              void Clipboard.setStringAsync(textoParaCopiar(mensajes)).then(() => avisar('Copiado'));
-              params.onCancelar();
-            }}
-          >
-            <Copy size={20} color={colores['on-surface']} />
-          </Accion>
-        ) : null}
-        {acciones.editar ? (
-          <Accion
-            testID="btn-editar-mensaje"
-            etiqueta="Editar"
-            onPress={() => {
-              params.onEditar(mensaje.seq, texto);
-              params.onCancelar();
-            }}
-          >
-            <Pencil size={19} color={colores['on-surface']} />
-          </Accion>
-        ) : null}
-        {acciones.info ? (
-          <Accion testID="btn-info-mensaje" etiqueta="Info del mensaje" onPress={() => setViendoInfo(true)}>
-            <Info size={20} color={colores['on-surface']} />
-          </Accion>
-        ) : null}
-        {acciones.reenviar ? (
-          <Accion testID="btn-reenviar-mensaje" etiqueta="Reenviar" onPress={() => setReenviando(true)}>
-            <Forward size={20} color={colores['on-surface']} />
-          </Accion>
-        ) : null}
-        <Accion testID="btn-eliminar-mensaje" etiqueta="Eliminar el mensaje" onPress={eliminar}>
-          <Trash2 size={20} color={colores.error} />
-        </Accion>
       </View>
+      <Modal visible={menuAbierto} transparent animationType="fade" onRequestClose={() => setMenuAbierto(false)} statusBarTranslucent>
+        <Pressable className="flex-1" onPress={() => setMenuAbierto(false)} accessibilityLabel="Cerrar el menú">
+          <View testID="menu-mas-acciones" className="absolute right-2 min-w-[180px] rounded-xl border border-outline/10 bg-surface py-1" style={{ top: margenes.cabecera + 48, elevation: 6 }}>
+            {enMenu.map((accion) => (
+              <Pressable
+                key={accion}
+                testID={botones[accion].testID}
+                onPress={() => {
+                  setMenuAbierto(false);
+                  botones[accion].onPress();
+                }}
+                className="min-h-[48px] flex-row items-center gap-3 px-4"
+              >
+                {botones[accion].icono}
+                <Text className="text-base text-on-surface">{botones[accion].etiqueta}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
       <InfoDelMensaje
         visible={viendoInfo}
         chatId={params.chatId}

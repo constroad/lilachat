@@ -4892,6 +4892,56 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 79. Guiños fluidos en Android, miniaturas, hilos grandes y el zumbido para quien lo manda (21/10/2026, 0.1.120)
+
+José, 21/10, probando la 0.1.119 en su teléfono:
+- «el chanchito lo veo muy lento, en la web se ve fluido»; después «la apk se siente lenta»;
+- el guiño se repetía al volver a entrar al chat, y seguía sonando afuera;
+- quería ver una miniatura del guiño en el chat, y los hilos «aparecen pero son muy pequeños»;
+- su propio zumbido no le vibraba, y no había forma de repetirlo sin mandar otro.
+
+**Medido en el emulador** (build de desarrollo, `dumpsys gfxinfo` durante el chancho):
+
+| | Antes | Después |
+| --- | --- | --- |
+| Cuadros en ~8 s | 112 (14 por segundo) | 392 (~46 por segundo) |
+| Cuadros lentos | 100 % | 3 % |
+| Cuadro típico | 133 ms | 24 ms |
+| Imágenes resubidas a la GPU | 112 de 112 | 0 |
+
+**Causa.** En Android, react-native-svg dibuja cada SVG en un bitmap del tamaño
+de su vista y lo tira en cada `invalidate()`. Cada parte del personaje era una
+capa del tamaño de todo el actor (~20 capas): por cuadro se redibujaban ~20
+bitmaps grandes. La web anima el SVG en la GPU y por eso iba fluida.
+
+**Arreglo** (`web/scripts/render-wink-images.mts`, `app/src/chat/winkImages.ts`):
+- Cada parte del personaje y cada pieza se pre-renderiza como WebP recortado a
+  su propia caja (`WinkArtPart.box`, que ahora escribe el extractor). Son 163
+  imágenes en 2 MB.
+- La app reproduce la misma línea de tiempo moviendo imágenes (expo-image), que
+  se decodifican una vez. La web sigue con el SVG vivo.
+- Las miniaturas (tarjeta del guiño y panel) también son imágenes: el chat ya
+  no parsea un SVG por guiño al hacer scroll.
+
+**Otros arreglos de rendimiento:**
+- **Audio:** cada sonido se libera al terminar (`winkSounds`). Antes quedaban
+  vivos hasta 26 reproductores.
+- **Al salir del chat**, el guiño y sus sonidos se cortan (`stopFun`).
+
+**Comportamiento:**
+- Al abrir el chat solo se reproduce lo que te mandaron. Lo tuyo suena cuando
+  sale, en vivo (`funMessageToPlay({ mineToo })`): ya no se repite al volver.
+- Tu propio zumbido te sacude la pantalla y vibra cuando sale.
+- La línea del zumbido trae «Ver otra vez» (sacude y vibra, sin mandar nada).
+- La tarjeta del guiño muestra la miniatura (64 dp), quién y cuál
+  (`winkCardLines`).
+- El resumen del hilo mide 48 dp, con avatares de 28 y «N respuestas» en 15 px
+  en negrita. En la web, 44 px.
+
+**Pendiente de medir:** la memoria base del build de desarrollo es alta (~440 MB
+nativos en la lista) y no se puede comparar con el teléfono. Hace falta medirla
+en un build de release.
+
 ## 78. El guiño que Wilson no veía, el hueco bajo el sticker y los avisos como WhatsApp (21/10/2026, 0.1.119)
 
 José, 21/10, con la 0.1.117:

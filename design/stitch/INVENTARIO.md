@@ -119,4 +119,8 @@ Las capturas viven SOLO en la máquina (`design/stitch/`, en `.gitignore` desde 
 | x-a … x-e | Hojas de personajes adultos para animar (15) | escritorio | Fuente de `shared/winkArt.ts` |
 | y-a | Chancho de frente y de espaldas, galán y café, con cara articulada | escritorio | Fuente de `shared/winkArt.ts` (gana sobre x-*; §77) |
 | y-b, y-c | Utilería de los sketches (16 piezas: globo, salpicón, grietas, PARE, ¡GOL!…) | escritorio | Fuente de `WINK_PROPS` (§77) |
+| s-01-grupo-formato-slack | Grupo o canal en formato Slack: filas planas, rol, hilo grande | móvil, tablet, escritorio | Pendiente de aprobación de José (21/10). En escritorio sobran «Ficha de obra», «Sincronizado con Portal» y los atajos (inventados) |
+| s-02-hilo-abierto | Hilo abierto en formato Slack | móvil, tablet, escritorio | Pendiente de aprobación |
+| s-03-lista-con-secciones | Lista de chats por secciones (Canales · Grupos · Mensajes directos · Apps) | móvil, tablet, escritorio | Pendiente de aprobación |
+| s-04-directo-guino-e-hilo | Chat directo con burbujas, tarjeta del guiño con miniatura y resumen de hilo grande | móvil, tablet, escritorio | Referencia de la tarjeta del guiño y el chip de hilo (21/10) |
 | w-a … w-e | Primera versión de personajes, chibi e infantil | escritorio | NO vale: rechazada por infantil (§74) |

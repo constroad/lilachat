@@ -52,3 +52,14 @@ export function cuerpoDeLlamada(params: { valor: string; quien: string }): strin
   if (registro.segundos !== null) return contestada({ ...registro, segundos: registro.segundos });
   return `${registro.video ? 'Videollamada' : 'Llamada'} perdida de ${params.quien}`;
 }
+
+/** A missed call FOR ME: someone called and I did not answer (it is not mine and has no length). */
+export function isMissedCallForMe(params: { valor: string | undefined; esMio: boolean }): boolean {
+  const registro = leerValorDeLlamada(params.valor);
+  return Boolean(registro) && registro!.segundos === null && !params.esMio;
+}
+
+/** The title of «Recordarme devolverla» (backlog 23). */
+export function callBackTitle(name: string): string {
+  return name.trim() ? `Devolver la llamada a ${name.trim()}` : 'Devolver una llamada perdida';
+}

@@ -13,6 +13,12 @@ import {
 } from './chatDisplay.js';
 
 describe('formatClock', () => {
+  /** José, 21/10, web: «0:37 p. m.» — with `hour12` some browsers use the 0–11 clock. */
+  it('noon and midnight are 12, never 0', () => {
+    expect(formatClock(new Date(2026, 9, 21, 12, 37))).toMatch(/^12:37/);
+    expect(formatClock(new Date(2026, 9, 21, 0, 5))).toMatch(/^12:05/);
+  });
+
   it('da la hora de reloj que el diseño muestra bajo cada mensaje', () => {
     expect(formatClock('2026-08-20T15:42:00.000Z')).toMatch(/\d{1,2}:\d{2}/);
   });
@@ -307,6 +313,11 @@ describe('vista previa de encuesta y evento', () => {
       style: 'normal',
       media: 'encuesta',
     });
+  });
+
+  /** Backlog 8 (José, 21/10): the checklist, like Telegram's. */
+  it('the checklist: its icon and its title, without the prefix', () => {
+    expect(resolveChatPreview({ typing: false, lastKind: 'checklist', lastBody: 'Checklist: Vaciado de losa' })).toEqual({ text: 'Vaciado de losa', style: 'normal', media: 'checklist' });
   });
 
   it('el evento: su ícono y el título', () => {

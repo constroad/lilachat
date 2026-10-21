@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cuerpoDeLlamada, leerValorDeLlamada, textoDeLlamada, valorDeLlamada } from './registroDeLlamada.js';
+import { callBackTitle, isMissedCallForMe, cuerpoDeLlamada, leerValorDeLlamada, textoDeLlamada, valorDeLlamada } from './registroDeLlamada.js';
 import { textoDeAviso } from './avisoDeGrupo.js';
 
 /**
@@ -54,5 +54,18 @@ describe('cuerpoDeLlamada', () => {
     expect(cuerpoDeLlamada({ valor: 'voz:perdida', quien: 'Wilson' })).toBe('Llamada perdida de Wilson');
     expect(cuerpoDeLlamada({ valor: 'video:perdida', quien: 'Wilson' })).toBe('Videollamada perdida de Wilson');
     expect(cuerpoDeLlamada({ valor: 'voz:65', quien: 'Wilson' })).toBe('Llamada de voz · 01:05');
+  });
+});
+
+describe('call back (backlog 23)', () => {
+  it('a missed call is one I did not answer: not mine, without seconds', () => {
+    expect(isMissedCallForMe({ valor: 'voz:perdida', esMio: false })).toBe(true);
+    expect(isMissedCallForMe({ valor: 'voz:perdida', esMio: true })).toBe(false);
+    expect(isMissedCallForMe({ valor: 'voz:95', esMio: false })).toBe(false);
+    expect(isMissedCallForMe({ valor: undefined, esMio: false })).toBe(false);
+  });
+  it('the reminder title names who to call back', () => {
+    expect(callBackTitle('Ana Torres')).toBe('Devolver la llamada a Ana Torres');
+    expect(callBackTitle('')).toBe('Devolver una llamada perdida');
   });
 });

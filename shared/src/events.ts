@@ -82,7 +82,7 @@ export function formatEventWhen(startsAt: Date, now: Date = new Date()): string 
   const time = new Intl.DateTimeFormat('es-PE', {
     hour: 'numeric',
     minute: '2-digit',
-    hour12: true,
+    hourCycle: 'h12',
   }).format(startsAt);
 
   if (days === 0) return `Hoy, ${time}`;

@@ -83,3 +83,4 @@ export * from './winkDances.js';
 export * from './winkArt.js';
 export * from './winkTimeline.js';
 export * from './winkSketches.js';
+export * from './checklists.js';

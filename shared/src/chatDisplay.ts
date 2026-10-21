@@ -17,7 +17,8 @@ const relojes = new Map<string, Intl.DateTimeFormat>();
 const relojDe = (locale: string): Intl.DateTimeFormat => {
   let reloj = relojes.get(locale);
   if (!reloj) {
-    reloj = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', hour12: true });
+    // `hourCycle: 'h12'`, not `hour12`: with it some browsers pick the 0–11 clock and noon read «0:37 p. m.» (21/10).
+    reloj = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', hourCycle: 'h12' });
     relojes.set(locale, reloj);
   }
   return reloj;
@@ -156,7 +157,7 @@ export function formatChatTimestamp(at: string | Date, now: Date = new Date()): 
  * el otro está escribiendo —cursiva y en acento—, y eso ya lo sabemos: el
  * socket emite `typing` desde F2 y la lista no lo usaba.
  */
-export type MediaDePreview = 'foto' | 'video' | 'voz' | 'archivo' | 'encuesta' | 'evento' | 'recordatorio' | 'sticker';
+export type MediaDePreview = 'foto' | 'video' | 'voz' | 'archivo' | 'encuesta' | 'evento' | 'recordatorio' | 'sticker' | 'checklist';
 
 const ETIQUETA_DE_MEDIA: Record<MediaDePreview, string> = {
   foto: 'Foto',
@@ -167,13 +168,14 @@ const ETIQUETA_DE_MEDIA: Record<MediaDePreview, string> = {
   evento: 'Evento',
   recordatorio: 'Recordatorio',
   sticker: 'Sticker',
+  checklist: 'Checklist',
 };
 
 /** Los mensajes que se dibujan como tarjeta y su ícono en la lista. */
-const MEDIA_DE_TARJETA: Record<string, MediaDePreview> = { poll: 'encuesta', event: 'evento', reminder: 'recordatorio' };
+const MEDIA_DE_TARJETA: Record<string, MediaDePreview> = { poll: 'encuesta', event: 'evento', reminder: 'recordatorio', checklist: 'checklist' };
 
 /** El prefijo que lleva el texto de una encuesta o un evento en el chat (`enElChat`). */
-const PREFIJO_DE_REF = /^(Encuesta|Evento|Recordatorio):\s*/;
+const PREFIJO_DE_REF = /^(Encuesta|Evento|Recordatorio|Checklist):\s*/;
 
 export type ChatPreview = {
   text: string;

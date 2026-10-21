@@ -62,6 +62,7 @@ describe('armarAviso', () => {
     const base = { chatName: 'Ana', senderName: 'Ana', esGrupo: false };
     expect(armarAviso({ ...base, kind: 'poll', body: 'Encuesta: ¿Pizza o pollo?' }).cuerpo).toBe('Encuesta: ¿Pizza o pollo?');
     expect(armarAviso({ ...base, kind: 'event', body: 'Evento: Almuerzo' }).cuerpo).toBe('Evento: Almuerzo');
+    expect(armarAviso({ ...base, kind: 'checklist', body: 'Checklist: Vaciado de losa' }).cuerpo).toBe('Checklist: Vaciado de losa');
   });
 
   it('un mensaje largo se recorta con puntos', () => {

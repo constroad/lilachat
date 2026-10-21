@@ -5,9 +5,9 @@
  * pedir. Al reconectar se refrescan todas: lo que pasó con el socket pausado
  * (app en el fondo) no se pierde.
  */
-export type TipoDeTarjeta = 'encuesta' | 'evento' | 'recordatorio';
+export type TipoDeTarjeta = 'encuesta' | 'evento' | 'recordatorio' | 'checklist';
 
-const TIPOS: ReadonlySet<string> = new Set<TipoDeTarjeta>(['encuesta', 'evento', 'recordatorio']);
+const TIPOS: ReadonlySet<string> = new Set<TipoDeTarjeta>(['encuesta', 'evento', 'recordatorio', 'checklist']);
 const oyentes = new Map<string, Set<() => void>>();
 const clave = (tipo: TipoDeTarjeta, id: string) => `${tipo}:${id}`;
 

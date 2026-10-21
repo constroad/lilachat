@@ -57,3 +57,22 @@ export function valorInicial(guardado: string | undefined, ahora: Date): Date {
   proxima.setHours(ahora.getHours() + 1, 0, 0, 0);
   return proxima;
 }
+
+/** A quick choice for «Recordarme devolverla» (backlog 23). */
+export type CallBackOption = { id: 'quarter' | 'hour' | 'afternoon' | 'tonight' | 'tomorrow'; label: string; date: Date };
+const QUARTER_MS = 15 * 60_000;
+const AFTERNOON_HOUR = 17;
+/** «Esta tarde» or «esta noche» less than an hour away is not offered. */
+const LEAD_HOURS = 1;
+
+/** A call is returned soon (José, 21/10): 15 min, 1 h, this afternoon, tonight, tomorrow morning, in the phone's local time. */
+export function callBackOptions(now: Date): CallBackOption[] {
+  const options: CallBackOption[] = [
+    { id: 'quarter', label: 'En 15 min', date: new Date(now.getTime() + QUARTER_MS) },
+    { id: 'hour', label: 'En 1 hora', date: new Date(now.getTime() + HORA_MS) },
+  ];
+  if (now.getHours() < AFTERNOON_HOUR - LEAD_HOURS) options.push({ id: 'afternoon', label: 'Esta tarde', date: enElDia(now, 0, AFTERNOON_HOUR) });
+  if (now.getHours() < HORA_DE_LA_NOCHE - LEAD_HOURS) options.push({ id: 'tonight', label: 'Esta noche', date: enElDia(now, 0, HORA_DE_LA_NOCHE) });
+  options.push({ id: 'tomorrow', label: 'Mañana', date: enElDia(now, 1, HORA_DE_LA_MANANA) });
+  return options;
+}

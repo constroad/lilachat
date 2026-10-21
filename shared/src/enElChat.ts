@@ -20,4 +20,4 @@ export function textoDeRecordatorioEnElChat(titulo: string): string {
 }
 
 /** A qué apunta un mensaje de encuesta, de evento o de recordatorio del grupo. */
-export type RefDeMensaje = { tipo: 'encuesta' | 'evento' | 'recordatorio'; id: string };
+export type RefDeMensaje = { tipo: 'encuesta' | 'evento' | 'recordatorio' | 'checklist'; id: string };

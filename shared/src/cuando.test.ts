@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { combinarFecha, opcionesRapidas, valorInicial } from './cuando.js';
+import { callBackOptions, combinarFecha, opcionesRapidas, valorInicial } from './cuando.js';
 
 /**
  * Elegir CUÁNDO en avisos y eventos (José, 17/10/2026: «no hay como elegir una
@@ -76,5 +76,22 @@ describe('valorInicial', () => {
 
   it('una fecha guardada rota cae a la próxima hora', () => {
     expect(valorInicial('no-es-fecha', local(2026, 10, 17, 15, 12)).getTime()).toBe(local(2026, 10, 17, 16).getTime());
+  });
+});
+
+/** Backlog 23 (José, 21/10): «Recordarme devolverla», a call is returned soon: 15 min, 1 h, this afternoon, tonight, tomorrow. */
+describe('callBackOptions', () => {
+  it('in the morning: all five, in local time', () => {
+    const now = new Date(2026, 9, 21, 9, 10);
+    const options = callBackOptions(now);
+    expect(options.map((option) => option.label)).toEqual(['En 15 min', 'En 1 hora', 'Esta tarde', 'Esta noche', 'Mañana']);
+    expect(options[0]!.date).toEqual(new Date(2026, 9, 21, 9, 25));
+    expect(options[2]!.date).toEqual(new Date(2026, 9, 21, 17, 0));
+    expect(options[3]!.date).toEqual(new Date(2026, 9, 21, 20, 0));
+    expect(options[4]!.date).toEqual(new Date(2026, 9, 22, 9, 0));
+  });
+  it('late in the day there is no «this afternoon» nor «tonight» that is less than an hour away', () => {
+    expect(callBackOptions(new Date(2026, 9, 21, 16, 30)).map((option) => option.id)).toEqual(['quarter', 'hour', 'tonight', 'tomorrow']);
+    expect(callBackOptions(new Date(2026, 9, 21, 19, 30)).map((option) => option.id)).toEqual(['quarter', 'hour', 'tomorrow']);
   });
 });

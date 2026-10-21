@@ -117,7 +117,9 @@ export function TabsShell({
   // Encuestas vuelve a pedir al entrar otra vez (votos y encuestas de otros).
   useAlVolver(tab === 'encuestas', () => setReloadKey((key) => key + 1));
   const [visitadas, setVisitadas] = useState<ReadonlySet<Tab>>(() => new Set<Tab>(['chats']));
-  useEffect(() => setVisitadas((antes) => visitadasCon(antes, tab)), [tab]);
+  useEffect(() => {
+    setVisitadas((antes) => visitadasCon(antes, tab));
+  }, [tab]);
   /** Una pestaña montada pero no activa se oculta sin desmontarse. */
   const panel = (cual: Tab) => ({ flex: 1, display: cual === tab ? ('flex' as const) : ('none' as const) });
   // Girado o en tablet (FL10): riel a la izquierda y el contenido centrado; en

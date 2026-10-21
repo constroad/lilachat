@@ -2,6 +2,7 @@ import { type MencionEnMensaje, type RefDeMensaje, type ResumenDeHiloEnCliente, 
 import { io, type Socket } from 'socket.io-client';
 import { pausaDelSocket, queHacerConElSocket, type PausaDelSocket } from './servicioDeConexion';
 import { registrarPerf } from '../diagnostico/diagnostico';
+import { answerAgendaRequest } from '../contacts/webAgendaRelay';
 
 /**
  * El socket de la app. Un ÚNICO socket para toda la sesión: abrir uno por
@@ -116,6 +117,9 @@ export function connectSocket(token: string): Socket {
   });
   // Encuestas, eventos y recordatorios del grupo en vivo (19/10).
   socket.on('ref.changed', avisarTarjeta);
+  // The linked web asks this phone for contact names (20/10, option «b»).
+  const current = socket;
+  current.on('agenda.pedido', (request: { requestId?: unknown; phones?: unknown }) => void answerAgendaRequest(current, request));
   return socket;
 }
 

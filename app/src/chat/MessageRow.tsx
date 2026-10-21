@@ -24,7 +24,7 @@ import {
 } from '@lilachat/shared';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { nombreLimpio } from './archivoDescargado';
-import { anchoDeBurbujaConFoto, miniaturaDe } from './filasDelChat';
+import { anchoDeBurbujaConFoto, miniaturaDe, type Citado } from './filasDelChat';
 import {
   formatClock,
   groupsWithPrevious,
@@ -92,6 +92,7 @@ function FilaDeMensaje({
   enSeleccion = false,
   onFallido,
   onTocarCita,
+  onAbrirHilo,
   destacado = false,
 }: {
   item: Row;
@@ -126,12 +127,14 @@ function FilaDeMensaje({
   /** Deslizar sobre el mensaje: responderlo (como WhatsApp). */
   onResponder?: (seq: number, textoPreview: string, mio: boolean) => void;
   /** El mensaje al que ESTE responde, ya resuelto, para pintar la cita. */
-  citado?: { texto: string; autor: string } | null;
+  citado?: Citado | null;
   seleccionado?: boolean;
   /** Tocar un mensaje que NO se envió: reintentar o borrar (FL8). */
   onFallido?: (clientKey: string, motivo: string) => void;
   /** Tocar la cita lleva al mensaje original (FL9). */
   onTocarCita?: (seq: number) => void;
+  /** A thread reply sent to the chat: its quote opens the thread (20/10). */
+  onAbrirHilo?: (seq: number) => void;
   /** Lo destaqué (20/10): estrella junto a la hora. */
   destacado?: boolean;
 }) {
@@ -282,7 +285,9 @@ function FilaDeMensaje({
                   ? undefined
                   : enSeleccion
                     ? () => onSeleccionar?.(item.seq)
-                    : item.replyToSeq && onTocarCita
+                    : citado.enHilo && onAbrirHilo
+                      ? () => onAbrirHilo(citado.enHilo!)
+                      : item.replyToSeq && onTocarCita
                       ? () => onTocarCita(item.replyToSeq!)
                       : undefined
               }

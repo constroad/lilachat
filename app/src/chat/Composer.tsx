@@ -170,7 +170,9 @@ export const Composer = memo(function Composer(props: {
   };
   const voz = useGrabadorDeVoz();
   // Sin diálogo: si el micrófono ya está permitido, la primera nota no espera.
-  useEffect(() => precalentarPermisoDeVoz(), []);
+  useEffect(() => {
+    precalentarPermisoDeVoz();
+  }, []);
 
   useImperativeHandle(props.ref, () => ({ limpiar: limpiarCampo, insertEmoji: (emoji: string) => typeFromPanel.current.insert(emoji), backspace: () => typeFromPanel.current.back() }), []);
 

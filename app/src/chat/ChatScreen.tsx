@@ -543,7 +543,7 @@ export function ChatScreen({
         leidoHasta={leidoHasta}
         entregadoHasta={entregadoHasta}
         onEnviar={(texto, enElChat) => send(texto, undefined, undefined, { de: hilos.abierto!, enElChat })}
-        reaccionar={reaccionar}
+        reaccionar={reaccionar} editar={editar}
         onCerrar={hilos.cerrar}
       />
       {reacciones.hojas}

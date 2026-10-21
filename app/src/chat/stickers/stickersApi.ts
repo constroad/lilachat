@@ -30,8 +30,11 @@ export const removeSticker = (jwt: string, id: string) => call<Record<string, ne
 export const keepFromMessage = (jwt: string, chatId: string, seq: number) => call<{ sticker: LibrarySticker }>('/stickers/from-message', jwt, { body: { chatId, seq } });
 export const keepFromPack = (jwt: string, stickerId: string, favorite: boolean) => call<{ sticker: LibrarySticker }>('/stickers/from-pack', jwt, { body: { stickerId, favorite } });
 /** One of mine or a pack one: the server reuses the file; the `clientKey` avoids a duplicate on retry. */
-export const sendSticker = (jwt: string, chatId: string, stickerId: string, clientKey: string) =>
-  call<{ message: unknown; duplicate: boolean }>(`/chats/${chatId}/stickers`, jwt, { body: { stickerId, clientKey } });
+/** In a thread (20/10): the root, and whether it also goes to the chat. */
+export type StickerThread = { hiloDe: number; enElChat: boolean };
+
+export const sendSticker = (jwt: string, chatId: string, stickerId: string, clientKey: string, thread?: StickerThread) =>
+  call<{ message: unknown; duplicate: boolean }>(`/chats/${chatId}/stickers`, jwt, { body: { stickerId, clientKey, ...thread } });
 
 /** Uploads the WebP the editor built and keeps it in «Mis stickers». */
 export async function uploadSticker(jwt: string, file: { uri: string; width: number; height: number }): Promise<ApiOutcome<LibrarySticker>> {

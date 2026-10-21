@@ -44,6 +44,16 @@ describe('citadosPorSeq', () => {
     expect(citados.has(1)).toBe(false);
   });
 
+  it('a thread reply also sent to the chat cites its root, marked as a thread (José, 20/10: «como Slack»)', () => {
+    const mensajes = [msj(1, { body: '¿Vamos?' }), msj(2, { hiloDe: 1, enElChat: true, senderId: 'yo', body: 'frustrado' }), msj(3, { hiloDe: 1, senderId: 'yo' })];
+
+    const citados = citadosPorSeq(mensajes, contexto, preview);
+
+    expect(citados.get(2)).toEqual({ autor: 'Wilson', texto: '¿Vamos?', enHilo: 1 });
+    // Only in the thread: it is not in the chat, nothing to cite.
+    expect(citados.has(3)).toBe(false);
+  });
+
   it('si el citado es mío, el autor es «Tú»', () => {
     const mensajes = [msj(1, { senderId: 'yo', body: 'mío' }), msj(2, { replyToSeq: 1 })];
 

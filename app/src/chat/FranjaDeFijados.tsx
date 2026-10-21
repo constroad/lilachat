@@ -30,7 +30,9 @@ export function FranjaDeFijados(props: {
   }, [indice, total]);
   // Un fijado nuevo se muestra primero (va al principio de la lista).
   const primero = props.fijados[0]?.seq;
-  useEffect(() => setIndice(0), [primero]);
+  useEffect(() => {
+    setIndice(0);
+  }, [primero]);
   const actual = props.fijados[indice % Math.max(total, 1)];
   if (!actual) return null;
   const posicion = indice % total;

@@ -85,6 +85,7 @@ export function useDibujarFila(p: {
             seleccionado={!isPending(item) && (elegidos.has(item.seq) || item.seq === resaltado || item.seq === seqBuscado)}
             onFallido={onFallido}
             onTocarCita={onTocarCita}
+            onAbrirHilo={onAbrirHilo}
             destacado={!isPending(item) && destacados.has(item.seq)}
           />
           {!isPending(item) && item.reacciones?.length && !item.deletedAt ? (

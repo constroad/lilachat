@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
+import { FlatList, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Modal } from '../ui/Modal';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useScrollConTeclado } from './useScrollConTeclado';
-import { ArrowLeft, Send, Square, SquareCheck } from 'lucide-react-native';
-import { formatClock, miReaccion, primerEnlace, puedeReaccionar, resolveDeliveryState, type DeliveryState } from '@lilachat/shared';
+import { ArrowLeft, Check, Send, Smile, Square, SquareCheck, X } from 'lucide-react-native';
+import { deleteBeforeCursor, formatClock, miReaccion, primerEnlace, puedeEditar, puedeReaccionar, resolveDeliveryState, type DeliveryState } from '@lilachat/shared';
+import { ThreadPicker } from './ThreadPicker';
 import { Avatar } from '../ui/Avatar';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
@@ -18,6 +20,8 @@ import { BarraDeReacciones } from './reacciones/BarraDeReacciones';
 import { PastillaDeReacciones } from './reacciones/PastillaDeReacciones';
 import { useReaccionesEnPantalla } from './reacciones/useReaccionesEnPantalla';
 
+/** Side of a sticker reply in the thread (dp). */
+const STICKER_IN_THREAD = 120;
 /** Lo escrito y no mandado en cada hilo, mientras la app está abierta. */
 const borradores = new Map<string, string>();
 
@@ -47,6 +51,8 @@ export function HiloScreen(props: {
   onEnviar: (texto: string, enElChat: boolean) => Promise<{ ok: boolean }>;
   /** Reacciones (20/10): mantener presionada una respuesta muestra la barra. */
   reaccionar: (seq: number, emoji: string | null) => Promise<RespuestaDeReaccion>;
+  /** Edit an own reply (José, 20/10: «in a thread I can't edit my message»); the same rule as the chat. */
+  editar: (seq: number, texto: string) => Promise<{ ok: boolean; motivo?: string }>;
   onCerrar: () => void;
 }) {
   const colores = useColores();
@@ -59,17 +65,48 @@ export function HiloScreen(props: {
   const [enElChat, setEnElChat] = useState(false);
   const lista = useRef<FlatList<Respuesta>>(null);
   const [barraEn, setBarraEn] = useState<number | null>(null);
+  const [editing, setEditing] = useState<{ seq: number; original: string } | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [notice, setNotice] = useState('');
+  const input = useRef<TextInput>(null);
   useEffect(() => {
     setTexto(borradores.get(clave) ?? '');
     setEnElChat(false);
     setBarraEn(null);
+    setEditing(null);
+    setPicking(false);
+    setNotice('');
   }, [clave]);
   // Las hojas viven DENTRO del modal del hilo: las del chat quedarían detrás.
   const reacciones = useReaccionesEnPantalla({ mensajes: props.respuestas, reaccionar: props.reaccionar, yo: props.yo, nombres: props.nombres, fotos: props.fotos, alReaccionar: () => setBarraEn(null) });
   const filas: Respuesta[] = [...props.respuestas, ...props.pendientes];
   const nombreDe = (id: string) => (id === props.yo ? 'Tú' : (props.nombres.get(id) ?? 'Alguien'));
 
+  const startEditing = (seq: number) => {
+    const reply = props.respuestas.find((one) => one.seq === seq);
+    if (!reply?.body) return;
+    setBarraEn(null);
+    setEditing({ seq, original: reply.body });
+    setTexto(reply.body);
+    setNotice('');
+    input.current?.focus();
+  };
+  const stopEditing = () => {
+    setEditing(null);
+    setTexto(borradores.get(clave) ?? '');
+  };
+  const saveEdit = async (edit: { seq: number; original: string }) => {
+    const limpio = texto.trim();
+    if (!limpio || limpio === edit.original) return stopEditing();
+    const result = await props.editar(edit.seq, limpio);
+    if (!result.ok) return setNotice(result.motivo ?? 'No se pudo editar.');
+    stopEditing();
+  };
+  const canEdit = (reply: ChatMessage) =>
+    puedeEditar({ yo: props.yo, autor: String(reply.senderId), kind: reply.kind, eliminado: Boolean(reply.deletedAt), secreto: false, enviadoEn: reply.at, ahora: Date.now() }).permitido;
+
   const enviar = async () => {
+    if (editing) return saveEdit(editing);
     const limpio = texto.trim();
     if (!limpio) return;
     setTexto('');
@@ -113,7 +150,7 @@ export function HiloScreen(props: {
               return (
                 <View>
                   {confirmada && barraEn === confirmada.seq ? (
-                    <BarraDeReacciones seq={confirmada.seq} mia={mia} conAvatar={false} miEmoji={miReaccion(confirmada.reacciones, props.yo)} onElegir={reacciones.elegir} onMas={reacciones.masEmojis} />
+                    <BarraDeReacciones seq={confirmada.seq} mia={mia} conAvatar={false} miEmoji={miReaccion(confirmada.reacciones, props.yo)} onElegir={reacciones.elegir} onMas={reacciones.masEmojis} onEditar={canEdit(confirmada) ? startEditing : undefined} />
                   ) : null}
                   <BurbujaDelHilo
                     mensaje={item}
@@ -136,21 +173,35 @@ export function HiloScreen(props: {
         ) : null}
         <KeyboardStickyView offset={{ closed: 0, opened: margenes.pie }}>
         <View className="border-t border-outline/10 bg-surface px-3 pt-2" style={{ paddingBottom: margenes.pie + 4 }}>
+          {editing ? (
+            <View testID="barra-edicion-hilo" className="mb-1.5 flex-row items-center gap-2 rounded-lg bg-primary/[0.08] px-3 py-1.5">
+              <Text className="min-w-0 flex-1 text-[13px] font-semibold text-primary" numberOfLines={1}>Editando tu mensaje</Text>
+              <Pressable testID="btn-cancelar-edicion-hilo" accessibilityLabel="Cancelar la edición" onPress={stopEditing} hitSlop={8}>
+                <X size={18} color={colores['on-surface-variant']} />
+              </Pressable>
+            </View>
+          ) : null}
+          {notice ? <Text testID="aviso-hilo" className="mb-1 text-[12px] text-error">{notice}</Text> : null}
           <View className="flex-row items-end gap-2">
+            <Pressable testID="btn-emojis-hilo" accessibilityLabel="Emojis y stickers" onPress={() => { Keyboard.dismiss(); setPicking(true); }} className="h-11 w-9 items-center justify-center">
+              <Smile size={22} color={colores['on-surface-variant']} />
+            </Pressable>
             <TextInput
+              ref={input}
               testID="input-hilo"
               value={texto}
               onChangeText={(nuevo) => {
                 setTexto(nuevo);
-                borradores.set(clave, nuevo);
+                // While editing, the draft of a new reply is kept as it was (it comes back after saving).
+                if (!editing) borradores.set(clave, nuevo);
               }}
               placeholder="Responder en el hilo…"
               placeholderTextColor={colores['on-surface-variant']}
               multiline
               className="min-h-[44px] flex-1 rounded-3xl bg-background px-4 py-2.5 text-[15px] text-on-surface"
             />
-            <Pressable testID="btn-enviar-hilo" accessibilityLabel="Enviar al hilo" onPress={() => void enviar()} className="h-11 w-11 items-center justify-center rounded-full bg-primary">
-              <Send size={18} color={colores['on-primary']} />
+            <Pressable testID="btn-enviar-hilo" accessibilityLabel={editing ? 'Guardar la edición' : 'Enviar al hilo'} onPress={() => void enviar()} className="h-11 w-11 items-center justify-center rounded-full bg-primary">
+              {editing ? <Check size={20} color={colores['on-primary']} /> : <Send size={18} color={colores['on-primary']} />}
             </Pressable>
           </View>
           <Pressable testID="casilla-tambien-al-chat" accessibilityRole="checkbox" accessibilityState={{ checked: enElChat }} onPress={() => setEnElChat((antes) => !antes)} className="min-h-[40px] flex-row items-center gap-2 px-1">
@@ -161,6 +212,28 @@ export function HiloScreen(props: {
         </KeyboardStickyView>
       </View>
       {reacciones.hojas}
+      {props.raiz ? (
+        <ThreadPicker
+          visible={picking}
+          jwt={props.jwt}
+          chatId={props.chatId}
+          chatName={props.chatName}
+          root={props.raiz.seq}
+          alsoInChat={enElChat}
+          onEmoji={(emoji) => {
+            setTexto((before) => before + emoji);
+            setPicking(false);
+          }}
+          onBackspace={() => setTexto((before) => deleteBeforeCursor(before, { start: before.length, end: before.length }).texto)}
+          onStickerSent={() => {
+            setPicking(false);
+            // Like a text reply: «También enviar al chat» counts for one.
+            setEnElChat(false);
+            setTimeout(() => lista.current?.scrollToEnd({ animated: true }), 300);
+          }}
+          onClose={() => setPicking(false)}
+        />
+      ) : null}
     </Modal>
   );
 }
@@ -202,6 +275,16 @@ function BurbujaDelHilo(props: { mensaje: Respuesta; mia: boolean; autor: string
   const colorAutor = !pendiente ? (colores[`autor-${colorDeAutor(String(mensaje.senderId))}` as keyof typeof colores] as string) : undefined;
   const enlace = !pendiente && !eliminado && mensaje.body ? primerEnlace(mensaje.body) : null;
   const meta = { hora, mia, entrega: pendiente ? ('pending' as const) : props.entrega, id: mensaje.clientKey, fallido: pendiente && Boolean(mensaje.fallo), editado: !pendiente && Boolean(mensaje.editedAt) && !eliminado };
+  // A sticker reply (20/10): no bubble, like in the chat.
+  if (!pendiente && !eliminado && mensaje.kind === 'sticker' && mensaje.media?.url) {
+    return (
+      <Pressable testID={`respuesta-${mensaje.clientKey}`} onLongPress={props.onLongPress} delayLongPress={350} className={mia ? 'items-end self-end' : 'items-start self-start'}>
+        {!mia && props.conAutor ? <Text className="pb-0.5 text-[13px] font-semibold" style={{ color: colorAutor }}>{props.autor}</Text> : null}
+        <Image source={{ uri: mensaje.media.url }} style={{ width: STICKER_IN_THREAD, height: STICKER_IN_THREAD }} contentFit="contain" recyclingKey={mensaje.clientKey} />
+        <Text className="text-[11px] text-on-surface-variant">{hora}</Text>
+      </Pressable>
+    );
+  }
   return (
     <Pressable testID={`respuesta-${mensaje.clientKey}`} onLongPress={props.onLongPress} delayLongPress={350} className={`max-w-[85%] overflow-hidden rounded-2xl ${mia ? 'self-end bg-burbuja-propia' : 'self-start bg-burbuja-ajena'}`}>
       {!mia && props.conAutor ? <Text className="px-3 pt-1.5 text-[13px] font-semibold" style={{ color: colorAutor }}>{props.autor}</Text> : null}

@@ -8,6 +8,7 @@ import { subjectCutout } from '../../../modules/subject-cutout/src';
 import { StickerPanel } from './StickerPanel';
 import { CreateSticker } from './CreateSticker';
 import { useStickers } from './useStickers';
+import type { StickerThread } from './stickersApi';
 
 type Tab = 'emoji' | 'stickers';
 
@@ -24,7 +25,17 @@ function prefetchCutoutModel() {
  * Emoji · Stickers tabs and the backspace key, like WhatsApp. It owns the
  * «Crear sticker» editor: the result goes to «Mis stickers» and to THIS chat.
  */
-export function EmojiStickerPanel(props: { jwt: string; chatId: string; chatName: string; withStickers: boolean; onPickEmoji: (emoji: string) => void; onBackspace: () => void }) {
+export function EmojiStickerPanel(props: {
+  jwt: string;
+  chatId: string;
+  chatName: string;
+  withStickers: boolean;
+  onPickEmoji: (emoji: string) => void;
+  onBackspace: () => void;
+  /** From a thread (20/10): the stickers go to it; `onStickerSent` lets the thread close its sheet. */
+  thread?: StickerThread;
+  onStickerSent?: () => void;
+}) {
   const colors = useColores();
   const [tab, setTab] = useState<Tab>('emoji');
   const [creating, setCreating] = useState(false);
@@ -64,10 +75,10 @@ export function EmojiStickerPanel(props: { jwt: string; chatId: string; chatName
         <PanelDeEmojis onElegir={props.onPickEmoji} />
       ) : (
         <View style={{ flex: 1 }}>
-          <StickerPanel stickers={stickers} onSend={(sticker) => void stickers.send(props.chatId, sticker)} onCreate={() => { setEditorSession((before) => before + 1); setCreating(true); }} />
+          <StickerPanel stickers={stickers} onSend={(sticker) => void stickers.send(props.chatId, sticker, props.thread).then((sent) => sent && props.onStickerSent?.())} onCreate={() => { setEditorSession((before) => before + 1); setCreating(true); }} />
         </View>
       )}
-      <CreateSticker key={editorSession} visible={creating} chatName={props.chatName} onClose={closeEditor} onSave={stickers.save} onSend={(sticker) => stickers.send(props.chatId, sticker)} />
+      <CreateSticker key={editorSession} visible={creating} chatName={props.chatName} onClose={closeEditor} onSave={stickers.save} onSend={(sticker) => stickers.send(props.chatId, sticker, props.thread)} />
     </View>
   );
 }

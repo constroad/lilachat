@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addRecentSticker, packLibrary, STICKER_PACKS, type LibrarySticker } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
-import { keepFromMessage, keepFromPack, listStickers, removeSticker, sendSticker, setFavorite, uploadSticker } from './stickersApi';
+import { keepFromMessage, keepFromPack, listStickers, removeSticker, sendSticker, setFavorite, uploadSticker, type StickerThread } from './stickersApi';
 
 const RECENTS_KEY = 'lilachat.stickers.recientes';
 /** The session library: the panel opens and closes often, no need to ask every time. */
@@ -78,9 +78,9 @@ export function useStickers(jwt: string) {
   };
   const withSticker = (sticker: LibrarySticker) => [sticker, ...(cachedLibrary ?? []).filter((one) => one.id !== sticker.id)];
 
-  const send = async (chatId: string, sticker: LibrarySticker) => {
+  const send = async (chatId: string, sticker: LibrarySticker, thread?: StickerThread) => {
     markUsed(sticker.id);
-    const response = await sendSticker(jwt, chatId, sticker.id, `st-${sticker.id}-${Date.now().toString(36)}`);
+    const response = await sendSticker(jwt, chatId, sticker.id, `st-${sticker.id}-${Date.now().toString(36)}`, thread);
     if (!response.ok) setError(response.reason);
     return response.ok;
   };

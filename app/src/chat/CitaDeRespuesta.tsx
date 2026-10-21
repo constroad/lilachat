@@ -24,11 +24,17 @@ export function CitaDeRespuesta({
       onPress={onPress}
       disabled={!onPress}
       accessibilityRole={onPress ? 'button' : undefined}
-      accessibilityHint={onPress ? 'Ir al mensaje original' : undefined}
+      accessibilityHint={onPress ? (citado.enHilo ? 'Abrir el hilo' : 'Ir al mensaje original') : undefined}
       className={`mx-1.5 mt-1.5 rounded-md border-l-2 px-2 py-1 ${
         enBurbujaPropia ? 'border-on-burbuja-propia bg-white/15' : 'border-primary bg-primary/[0.08]'
       }`}
     >
+      {/* A thread reply sent to the chat says so, like Slack (José, 20/10). */}
+      {citado.enHilo ? (
+        <Text className={`text-[11px] ${enBurbujaPropia ? 'text-on-burbuja-propia-suave' : 'text-on-surface-variant'}`} numberOfLines={1}>
+          Respondió en un hilo
+        </Text>
+      ) : null}
       {citado.autor ? (
         <Text className={`text-[11px] font-semibold ${enBurbujaPropia ? 'text-on-burbuja-propia' : 'text-primary'}`} numberOfLines={1}>
           {citado.autor}

@@ -14,6 +14,9 @@ export type FilaMinima = {
   kind?: string;
   deletedAt?: string;
   replyToSeq?: number;
+  /** E3: a thread reply, and whether it was also sent to the chat. */
+  hiloDe?: number;
+  enElChat?: boolean;
   media?: { mime?: string };
   pending?: boolean;
   clientKey?: string;
@@ -62,7 +65,8 @@ export function sinPendientesConfirmados<P extends { clientKey: string }>(
   return quedan.length === pendientes.length ? pendientes : quedan;
 }
 
-export type Citado = { autor: string; texto: string };
+/** `enHilo`: it is a thread reply sent to the chat too; the quote is its root and opens the thread. */
+export type Citado = { autor: string; texto: string; enHilo?: number };
 
 /**
  * La cita de cada respuesta, por `seq` de la respuesta. Se calcula una vez por
@@ -85,8 +89,10 @@ export function citadosPorSeq<M extends FilaMinima>(
 
   const citados = new Map<number, Citado>();
   for (const mensaje of mensajes) {
-    if (typeof mensaje.seq !== 'number' || !mensaje.replyToSeq) continue;
-    const respondido = porSeq.get(mensaje.replyToSeq);
+    const threadRoot = mensaje.hiloDe !== undefined && mensaje.enElChat ? mensaje.hiloDe : undefined;
+    const citedSeq = threadRoot ?? mensaje.replyToSeq;
+    if (typeof mensaje.seq !== 'number' || !citedSeq) continue;
+    const respondido = porSeq.get(citedSeq);
     if (!respondido) continue;
     // En un 1:1 el autor es el otro (o «Vos»); en un grupo, el nombre de ese
     // miembro si ya se conoce (FL9) y si no, nada en vez de uno falso.
@@ -96,7 +102,7 @@ export function citadosPorSeq<M extends FilaMinima>(
         : contexto.esGrupo
           ? (contexto.nombres?.get(String(respondido.senderId)) ?? '')
           : contexto.nombreDelOtro;
-    citados.set(mensaje.seq, { autor, texto: preview(respondido) });
+    citados.set(mensaje.seq, { autor, texto: preview(respondido), ...(threadRoot !== undefined ? { enHilo: threadRoot } : {}) });
   }
   return citados;
 }

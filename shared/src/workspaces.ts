@@ -66,3 +66,24 @@ export function normalizeChannelName(input: string): string | null {
     .replace(/-+$/g, '');
   return slug.length >= CHANNEL_NAME_MIN ? slug : null;
 }
+
+/** A space as my spaces list returns it (`GET /api/workspaces`): the switcher reads members and unread chats (design `e1-06`). */
+export type ClientWorkspace = {
+  id: string;
+  name: string;
+  rubro?: string;
+  logoUrl?: string;
+  joinPolicy: JoinPolicy;
+  role: WorkspaceRole;
+  status: WorkspaceMemberStatus;
+  /** Only for those who can invite. */
+  joinCode?: string;
+  members: number;
+  unreadChats: number;
+};
+
+/** What a code shows before joining (`GET /api/workspaces/preview/:code`). */
+export type WorkspacePreview = { id: string; name: string; rubro?: string; logoUrl?: string; members: number; joinPolicy: JoinPolicy };
+
+/** A channel of a space as exploring lists it (design `e2-15-explorar-canales`). */
+export type ClientChannel = { id: string; name: string; descripcion?: string; visibility: ChannelVisibility; members: number; joined: boolean };

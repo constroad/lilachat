@@ -89,3 +89,4 @@ export * from './animatedStickers.js';
 export * from './flatLayout.js';
 export * from './voiceNote.js';
 export * from './panelTab.js';
+export * from './spaceSections.js';

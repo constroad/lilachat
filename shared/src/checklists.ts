@@ -185,3 +185,35 @@ export function checklistSummaryLine(summary: Pick<ChecklistSummary, 'done' | 't
     complete: summary.total > 0 && summary.done === summary.total,
   };
 }
+
+// ─── Notices when tasks get done (backlog 35, José 21/10) ───
+
+export type TaskDoneNotice = { to: string; body: string };
+
+/**
+ * Who hears that tasks were ticked, and what they read. Not the whole chat (a
+ * site group would drown in it): the author hears about every tick, each
+ * assignee about their own, and who ticked hears nothing. Ticks in a row
+ * arrive together (the server waits a minute); when the checklist ends up
+ * complete, the author and every assignee hear that instead.
+ */
+export function taskDoneNotices(params: {
+  checklist: { title: string; createdBy: string; total: number; done: number; assignees?: readonly string[] };
+  who: string;
+  whoName: string;
+  ticked: readonly { text: string; assignee: string | null | undefined }[];
+}): TaskDoneNotice[] {
+  const { checklist, who, whoName, ticked } = params;
+  if (ticked.length === 0) return [];
+  const title = `«${checklist.title}»`;
+  if (checklist.total > 0 && checklist.done === checklist.total) {
+    const body = `${whoName} completó ${title} (${checklist.done} de ${checklist.total} listas)`;
+    return [...new Set([checklist.createdBy, ...(checklist.assignees ?? [])])].filter((to) => to !== who).map((to) => ({ to, body }));
+  }
+  const said = (tasks: readonly { text: string }[]) => (tasks.length === 1 ? `${whoName} marcó «${tasks[0]!.text}» de ${title}` : `${whoName} marcó ${tasks.length} tareas de ${title}`);
+  const notices: TaskDoneNotice[] = checklist.createdBy !== who ? [{ to: checklist.createdBy, body: said(ticked) }] : [];
+  const assignees = [...new Set(ticked.map((task) => task.assignee).filter((to): to is string => Boolean(to) && to !== who && to !== checklist.createdBy))];
+  for (const to of assignees) notices.push({ to, body: said(ticked.filter((task) => task.assignee === to)) });
+  return notices;
+}
+

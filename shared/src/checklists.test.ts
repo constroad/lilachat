@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHECKLIST_LIMITS, activeDueChoice, checklistMembers, checklistSummaryLine, checklistOverdue, checklistPermissions, checklistProgress, checklistTextInChat, myTasks, shortPersonName, taskDueLabel, taskDueOptions, taskDueState, toggleChecklistItem, validateChecklist, validateChecklistItem } from './checklists.js';
+import { CHECKLIST_LIMITS, activeDueChoice, checklistMembers, checklistSummaryLine, taskDoneNotices, checklistOverdue, checklistPermissions, checklistProgress, checklistTextInChat, myTasks, shortPersonName, taskDueLabel, taskDueOptions, taskDueState, toggleChecklistItem, validateChecklist, validateChecklistItem } from './checklists.js';
 
 /** José, 21/10: «agrega el checklist al estilo de Telegram» (backlog 8). */
 describe('validateChecklist', () => {
@@ -145,3 +145,35 @@ describe('checklistSummaryLine', () => {
     expect(checklistSummaryLine({ done: 5, total: 5, overdue: 0 })).toEqual({ progress: '5 de 5 listas', late: null, complete: true });
   });
 });
+
+/**
+ * Backlog 35 (José, 21/10: «cuando alguien complete un item, ¿debería llegar
+ * una notificación?»): not to the whole chat; to whoever made the checklist
+ * and to the assignee of each task, never to who ticked it; several ticks in
+ * a row go as one notice, and a completed checklist says so.
+ */
+describe('taskDoneNotices', () => {
+  const checklist = { title: 'Vaciado de losa', createdBy: 'ana', total: 4, done: 3 };
+  const ticked = [{ text: 'Acero', assignee: 'luis' }, { text: 'Bomba', assignee: null }];
+  it('the author hears about every tick; an assignee about their own; who ticked, nothing', () => {
+    expect(taskDoneNotices({ checklist, who: 'beto', whoName: 'Beto', ticked })).toEqual([
+      { to: 'ana', body: 'Beto marcó 2 tareas de «Vaciado de losa»' },
+      { to: 'luis', body: 'Beto marcó «Acero» de «Vaciado de losa»' },
+    ]);
+  });
+  it('the author ticking their own checklist only tells the assignees', () => {
+    expect(taskDoneNotices({ checklist, who: 'ana', whoName: 'Ana', ticked: [{ text: 'Acero', assignee: 'luis' }] })).toEqual([{ to: 'luis', body: 'Ana marcó «Acero» de «Vaciado de losa»' }]);
+  });
+  it('a completed checklist: one notice to the author and every assignee', () => {
+    const complete = { ...checklist, done: 4, assignees: ['luis', 'carla', 'beto'] };
+    expect(taskDoneNotices({ checklist: complete, who: 'beto', whoName: 'Beto', ticked })).toEqual([
+      { to: 'ana', body: 'Beto completó «Vaciado de losa» (4 de 4 listas)' },
+      { to: 'luis', body: 'Beto completó «Vaciado de losa» (4 de 4 listas)' },
+      { to: 'carla', body: 'Beto completó «Vaciado de losa» (4 de 4 listas)' },
+    ]);
+  });
+  it('nothing ticked, nothing to say', () => {
+    expect(taskDoneNotices({ checklist, who: 'beto', whoName: 'Beto', ticked: [] })).toEqual([]);
+  });
+});
+

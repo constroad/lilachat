@@ -4892,6 +4892,95 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 84. Espacios de empresa y canales en la app y en la web, y los arreglos del zumbido y los stickers (21/10/2026, 0.1.124)
+
+**Server** (`server/src/workspaces.ts`, 19 tests).
+- `GET /api/workspaces` suma `members` (miembros activos) y `unreadChats`
+  (chats del espacio con algo sin leer para mí), que piden el selector y el
+  riel.
+- `POST /api/workspaces/:id/leave` con una solicitud pendiente la retira
+  («Cancelar solicitud» de `e1-03`).
+
+**Shared** (`shared/spaceSections.ts`, 11 tests).
+- `spaceSections`: Canales (por nombre, #general primero), Grupos y Mensajes
+  directos (por última actividad). Las tres secciones salen siempre.
+- `spaceInitials`, `spaceInviteMessage`, `filterChannels` (Todos · Públicos ·
+  Privados con su cuenta), `SPACE_RUBROS`, `spaceSubtitle` («Construcción · 48
+  miembros»), `membersLabel` y `railSpaces` (activos y pendientes; sin
+  espacios no hay riel).
+- Tipos `ClientWorkspace`, `WorkspacePreview` y `ClientChannel` en
+  `shared/workspaces.ts`.
+
+**App** (`app/src/spaces/*`; diseños `e1-02`…`e1-06`, `e2-15`, `e2-16`, `s-03`).
+- El título de Chats («Lilachat ▾» o el espacio con su logo) abre «Cambiar de
+  espacio». Desde ahí: unirse con código (con vista previa y solicitud
+  pendiente que se puede cancelar), crear un espacio (al crearlo se abre
+  «Invitar»), invitar (código, WhatsApp y agregar por número).
+- Dentro de un espacio, la lista va por secciones (`SpaceChatsScreen`), cada
+  una se pliega, y los canales son filas cortas con «Agregar canal». Todo chat
+  del espacio abre en formato Slack.
+- «Canales» explora y crea canales (públicos o privados).
+- El espacio abierto se recuerda (`lilachat.pref.space`). Si la persona sale
+  o le quitan el acceso, vuelve a Personal.
+
+**Web** (`web/src/spaces/*`, 10 tests).
+- **Riel de espacios** a la izquierda (`SpacesRail`, como el `e1-06` de
+  escritorio): Personal con sus sin leer, cada espacio con los suyos, y «+».
+  Solo aparece si la persona está en algún espacio: con la cuenta personal
+  sola, la web sigue igual a WhatsApp Web.
+- Sin espacios, la flecha junto a «Lilachat» abre el mismo selector.
+- `SpaceChatList` reemplaza a la lista personal dentro de un espacio: cabecera
+  con logo, miembros y rubro, buscador, secciones plegables, el código con
+  «Copiar» al pie y los Ajustes.
+- Diálogos: `SpaceSwitcher`, `JoinSpaceDialog`, `CreateSpaceDialog`,
+  `InviteToSpaceDialog`, `ChannelsDialog` (con `wide` en el `Overlay`
+  compartido) y `CreateChannelDialog`.
+- El espacio abierto se recuerda en este navegador (`lilachat.espacio`).
+- **Sin polling:** un evento del socket (`msg.new`, `receipt`,
+  `chat.changed`) de un chat que no está en la lista personal recarga la
+  lista del espacio (600 ms) y las cuentas del riel (2 s), una vez por ráfaga.
+- La cabecera de un canal dice «#planta-web».
+
+**La carrera que encontró el E2E** (test en `currentSpace.test.tsx`).
+- La primera carga de «mis espacios» respondió DESPUÉS de la recarga de un
+  espacio recién creado. La lista vieja, vacía, ganó, y la pantalla volvió a
+  Personal.
+- Ahora solo escribe la respuesta del último pedido, en la web y en la app.
+- La lista de un espacio tampoco acepta la respuesta de otro espacio si la
+  persona cambió en el camino (web: comparación con el espacio a la vista;
+  app: `key` por espacio).
+
+**Arreglos de la web y de la app** (José, 21/10, ya publicados en `main`).
+- El zumbido o guiño propio viejo ya no vuelve a sonar al entrar al chat:
+  `funMessageToPlay` solo cuenta los míos de los últimos 30 s
+  (`FUN_LIVE_MS`).
+- Mandar un sticker cierra el panel, como WhatsApp.
+- El panel recuerda su última pestaña (emojis, stickers o guiños):
+  `lastPanelTab` en shared, localStorage en la web y una preferencia en la
+  app.
+- La lista de emojis de la web sigue el tema oscuro.
+- App: un sticker guardado en favoritos aparece al instante en «Favoritos»
+  (la biblioteca es un store con suscripción).
+
+**E2E.**
+- App en el emulador: crear, invitar, entrar, crear canal, mensaje plano y
+  volver a Personal.
+- Web en Chrome sin ventana como QA Ana, a 1280 y 390 px: selector, crear,
+  invitar, riel, canal, mensaje plano, Personal y vuelta, y recarga con el
+  espacio recordado. Sin errores en la página y sin scroll lateral a 390.
+- Limpieza verificada en cero (espacios, miembros, chats, mensajes, acuses y
+  dispositivos web de QA).
+
+**Lo que falta del modo empresa.**
+- Pantallas `e1-08`…`e1-14`: directorio, perfil del miembro, miembros y
+  roles, solicitudes, ajustes, agregado y desactivado.
+- Chips Hilos y Menciones, sección APPS, mensaje directo y grupo nuevo dentro
+  del espacio, subir el logo, y el cargo del espacio en la pastilla (hoy va
+  el rol del chat).
+- Deuda: archivar un chat dentro de un espacio no lo esconde de esa lista. La
+  web personal pide `/chats` cuando llega un evento de un chat de espacio
+  (venía de antes).
+
 ## 83. Formato Slack en grupos, el audio que arranca al primer toque, avisos de tareas y la versión nueva al volver (21/10/2026, 0.1.123)
 
 **Formato Slack** (diseños `s-01-grupo-formato-slack` y `s-02-hilo-abierto`).
@@ -8064,6 +8153,20 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
       by GIPHY» que exige su licencia y su filtro de contenido en `pg-13`.
       Falta la **llave de GIPHY**: la saca José en developers.giphy.com y la
       carga en Torre; sin llave la pestaña no aparece.
+
+38. **Riel lateral como WhatsApp Web, y el botón de medios** (José, 21/10,
+    con captura de WhatsApp Web; no necesita Stitch). WhatsApp Web tiene a la
+    izquierda un riel de íconos que agrupa Chats, Llamadas, Estados, Canales y
+    Comunidades, y abajo Medios, Ajustes y el perfil. Propuesta:
+    - Extender el riel de espacios de la §84 para que sea EL riel de la web:
+      arriba Chats, Llamadas (un historial armado con las líneas de llamada de cada chat), Pendientes y
+      Encuestas (hoy dentro del menú «⋮»), y Destacados; debajo, los espacios
+      y «+».
+    - Abajo, **Medios**: fotos, videos, documentos y enlaces de todos los
+      chats, con filtros por tipo y chat (falta en la web y en la app).
+      Después, Ajustes y mi perfil.
+    - El riel se muestra siempre en escritorio (ya no solo con espacios). En
+      el celular, las mismas secciones van en la barra de abajo.
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

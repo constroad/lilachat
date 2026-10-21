@@ -6,7 +6,8 @@
  */
 import type { RigPart } from './winkTimeline.js';
 
-export type WinkArtPart = { part: RigPart; pivot: readonly [number, number]; markup: string; parent?: RigPart };
+/** `box`: the part's own [x, y, width, height] in viewBox units, stroke included (the app draws each part as an image of it). */
+export type WinkArtPart = { part: RigPart; pivot: readonly [number, number]; box: readonly [number, number, number, number]; markup: string; parent?: RigPart };
 export type WinkArt = { viewBox: string; defs: string; parts: readonly WinkArtPart[] };
 export type WinkArtId = 'piggy' | 'worker' | 'cuppa' | 'sweetheart' | 'bear' | 'kitty' | 'puppy' | 'panda' | 'brick' | 'cone' | 'roller' | 'dumptruck' | 'excavator' | 'paver' | 'flagger' | 'piggy-back';
 export type WinkPropId = 'balloon' | 'splash' | 'drip' | 'cracks' | 'fist' | 'rose' | 'heart' | 'zzz' | 'guitar' | 'guitar-piece' | 'sand' | 'stop' | 'asphalt' | 'goal' | 'alarm' | 'sweat';
@@ -22,6 +23,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           81.5,
           248.6
         ],
+        "box": [
+          58,
+          240,
+          47,
+          65
+        ],
         "markup": "<rect x=\"74\" y=\"244\" width=\"22\" height=\"36\" rx=\"6\" fill=\"#f472b6\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <rect x=\"74\" y=\"244\" width=\"7\" height=\"36\" fill=\"#db2777\"></rect> <path d=\"M68 280 H98 C100 280 101 282 101 285 V298 C101 300 99 301 97 301 H65 C63 301 62 299 62 297 V288 C62 284 65 280 68 280 Z\" fill=\"#475569\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <rect x=\"62\" y=\"295\" width=\"39\" height=\"6\" fill=\"#0f172a\"></rect>"
       },
       {
@@ -29,6 +36,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           156.5,
           248.6
+        ],
+        "box": [
+          131,
+          240,
+          51,
+          65
         ],
         "markup": "<rect x=\"144\" y=\"244\" width=\"22\" height=\"36\" rx=\"6\" fill=\"#f472b6\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <rect x=\"159\" y=\"244\" width=\"7\" height=\"36\" fill=\"#db2777\"></rect> <path d=\"M142 280 H172 C175 280 178 284 178 288 V297 C178 299 177 301 175 301 H139 C137 301 135 300 135 298 V285 C135 282 138 280 142 280 Z\" fill=\"#475569\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <rect x=\"135\" y=\"295\" width=\"43\" height=\"6\" fill=\"#0f172a\"></rect>"
       },
@@ -38,6 +51,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           68,
           209.7
         ],
+        "box": [
+          43.7,
+          193.4,
+          28.3,
+          32.6
+        ],
         "markup": "<path d=\"M64 220 Q50 216 48 206 Q46 195 56 198 Q64 200 58 208 Q52 216 68 222\" fill=\"none\" stroke=\"#db2777\" stroke-width=\"5\" stroke-linecap=\"round\"></path>"
       },
       {
@@ -45,6 +64,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           120,
           254
+        ],
+        "box": [
+          51.6,
+          128,
+          136.8,
+          130
         ],
         "markup": "<ellipse cx=\"120\" cy=\"192\" rx=\"64\" ry=\"60\" fill=\"#f472b6\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <path d=\"M68 214 Q120 262 172 214 Q152 254 120 254 Q88 254 68 214 Z\" fill=\"#db2777\"></path> <ellipse cx=\"120\" cy=\"204\" rx=\"42\" ry=\"42\" fill=\"#fbcfe8\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <ellipse cx=\"120\" cy=\"224\" rx=\"3.5\" ry=\"2\" fill=\"#be185d\"></ellipse> <path d=\"M56 160 C56 160 52 210 70 236 C78 224 82 200 82 174 C74 168 62 162 56 160 Z\" fill=\"#ef4444\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <circle cx=\"68\" cy=\"180\" r=\"4\" fill=\"#facc15\"></circle> <circle cx=\"64\" cy=\"206\" r=\"3.5\" fill=\"#facc15\"></circle> <path d=\"M184 160 C184 160 188 210 170 236 C162 224 158 200 158 174 C166 168 178 162 184 160 Z\" fill=\"#ef4444\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <circle cx=\"172\" cy=\"180\" r=\"4\" fill=\"#facc15\"></circle> <circle cx=\"176\" cy=\"206\" r=\"3.5\" fill=\"#facc15\"></circle> <path d=\"M86 142 L72 168 L98 160 Z\" fill=\"#dc2626\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <path d=\"M154 142 L168 168 L142 160 Z\" fill=\"#dc2626\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <path d=\"M96 150 Q120 180 144 150\" fill=\"none\" stroke=\"#f59e0b\" stroke-width=\"5\" stroke-linecap=\"round\"></path> <circle cx=\"120\" cy=\"172\" r=\"7\" fill=\"#fbbf24\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></circle> <circle cx=\"120\" cy=\"172\" r=\"3\" fill=\"#d97706\"></circle>"
       },
@@ -54,6 +79,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           120,
           143
         ],
+        "box": [
+          50,
+          58,
+          140,
+          96
+        ],
         "markup": "<path d=\"M80 84 Q62 60 54 80 Q62 102 78 98 Z\" fill=\"#f472b6\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <path d=\"M74 84 Q65 72 62 82 Q68 94 76 92 Z\" fill=\"#be185d\"></path> <path d=\"M160 84 Q178 60 186 80 Q178 102 162 98 Z\" fill=\"#f472b6\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <path d=\"M166 84 Q175 72 178 82 Q172 94 164 92 Z\" fill=\"#be185d\"></path> <ellipse cx=\"120\" cy=\"106\" rx=\"52\" ry=\"44\" fill=\"#f472b6\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <path d=\"M92 134 Q120 148 148 134\" fill=\"none\" stroke=\"#db2777\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <ellipse cx=\"120\" cy=\"112\" rx=\"22\" ry=\"14\" fill=\"#fbcfe8\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <ellipse cx=\"111\" cy=\"112\" rx=\"4\" ry=\"5.5\" fill=\"#831843\"></ellipse> <ellipse cx=\"129\" cy=\"112\" rx=\"4\" ry=\"5.5\" fill=\"#831843\"></ellipse> <g id=\"piggy-sunglasses-front\"> <rect x=\"76\" y=\"66\" width=\"38\" height=\"18\" rx=\"4\" fill=\"#0f172a\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></rect> <rect x=\"126\" y=\"66\" width=\"38\" height=\"18\" rx=\"4\" fill=\"#0f172a\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></rect> <rect x=\"114\" y=\"70\" width=\"12\" height=\"5\" fill=\"#0f172a\"></rect> <path d=\"M80 70 L92 70 L84 80 L78 80 Z\" fill=\"#38bdf8\" opacity=\"0.6\"></path> <path d=\"M130 70 L142 70 L134 80 L128 80 Z\" fill=\"#38bdf8\" opacity=\"0.6\"></path> </g>"
       },
       {
@@ -61,6 +92,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           100.5,
           91.7
+        ],
+        "box": [
+          86,
+          76.4,
+          29,
+          30.6
         ],
         "markup": "<path d=\"M90 82 Q102 78 108 84\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M92 88 Q103 84 111 88\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <ellipse cx=\"102\" cy=\"94\" rx=\"7.5\" ry=\"9\" fill=\"#ffffff\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></ellipse> <ellipse cx=\"104\" cy=\"94\" rx=\"4\" ry=\"5\" fill=\"#0f172a\"></ellipse> <circle cx=\"106\" cy=\"92\" r=\"1.5\" fill=\"#ffffff\"></circle>",
         "parent": "head"
@@ -71,6 +108,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           139.5,
           91.7
         ],
+        "box": [
+          125,
+          76.4,
+          29,
+          30.6
+        ],
         "markup": "<path d=\"M132 84 Q138 78 150 82\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M129 88 Q137 84 148 88\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <ellipse cx=\"138\" cy=\"94\" rx=\"7.5\" ry=\"9\" fill=\"#ffffff\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></ellipse> <ellipse cx=\"140\" cy=\"94\" rx=\"4\" ry=\"5\" fill=\"#0f172a\"></ellipse> <circle cx=\"142\" cy=\"92\" r=\"1.5\" fill=\"#ffffff\"></circle>",
         "parent": "head"
       },
@@ -79,6 +122,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           124.3,
           135
+        ],
+        "box": [
+          98,
+          120,
+          52.6,
+          30
         ],
         "markup": "<path d=\"M102 128 Q120 144 144 126 C144 136 136 146 120 146 C106 146 102 136 102 128 Z\" fill=\"#991b1b\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></path> <rect x=\"110\" y=\"128\" width=\"6\" height=\"5\" fill=\"#fbbf24\" stroke=\"#1e1b4b\" stroke-width=\"1.5\"></rect> <path d=\"M112 142 Q120 136 128 142 Q120 145 112 142 Z\" fill=\"#f43f5e\"></path> <path d=\"M143 124 Q148 128 146 132\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path>",
         "parent": "head"
@@ -89,6 +138,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           64.1,
           136.6
         ],
+        "box": [
+          15,
+          125,
+          61,
+          71
+        ],
         "markup": "<path d=\"M64 162 L42 176 L52 192 L72 176 Z\" fill=\"#ef4444\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <path d=\"M46 182 Q28 190 22 170 Q18 152 28 140\" fill=\"none\" stroke=\"#f472b6\" stroke-width=\"15\" stroke-linecap=\"round\"></path> <path d=\"M46 182 Q28 190 22 170 Q18 152 28 140\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <circle cx=\"28\" cy=\"138\" r=\"9\" fill=\"#f472b6\" stroke=\"#1e1b4b\" stroke-width=\"3\"></circle> <path d=\"M26 130 V146\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></path>"
       },
       {
@@ -96,6 +151,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           175.7,
           129.5
+        ],
+        "box": [
+          164,
+          117,
+          59,
+          79
         ],
         "markup": "<path d=\"M176 162 L198 176 L188 192 L168 176 Z\" fill=\"#ef4444\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <path d=\"M194 182 Q214 184 218 162 Q222 142 210 132\" fill=\"none\" stroke=\"#f472b6\" stroke-width=\"15\" stroke-linecap=\"round\"></path> <path d=\"M194 182 Q214 184 218 162 Q222 142 210 132\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <circle cx=\"210\" cy=\"130\" r=\"9\" fill=\"#f472b6\" stroke=\"#1e1b4b\" stroke-width=\"3\"></circle> <path d=\"M210 122 V138\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></path>"
       }
@@ -111,6 +172,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           86,
           231.1
         ],
+        "box": [
+          58,
+          221,
+          56,
+          84
+        ],
         "markup": "<rect x=\"76\" y=\"225\" width=\"26\" height=\"52\" rx=\"8\" fill=\"#1e40af\" stroke=\"#1e293b\" stroke-width=\"3\"></rect> <line x1=\"80\" y1=\"250\" x2=\"98\" y2=\"250\" stroke=\"#1d4ed8\" stroke-width=\"2\"></line> <path d=\"M72 277 L104 277 L108 298 L64 298 Z\" fill=\"#92400e\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <rect x=\"62\" y=\"295\" width=\"48\" height=\"6\" rx=\"3\" fill=\"#0f172a\" stroke=\"#1e293b\" stroke-width=\"2\"></rect>"
       },
       {
@@ -118,6 +185,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           154,
           231.1
+        ],
+        "box": [
+          126,
+          221,
+          56,
+          84
         ],
         "markup": "<rect x=\"138\" y=\"225\" width=\"26\" height=\"52\" rx=\"8\" fill=\"#1e40af\" stroke=\"#1e293b\" stroke-width=\"3\"></rect> <line x1=\"142\" y1=\"250\" x2=\"160\" y2=\"250\" stroke=\"#1d4ed8\" stroke-width=\"2\"></line> <path d=\"M136 277 L168 277 L176 298 L132 298 Z\" fill=\"#92400e\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <rect x=\"130\" y=\"295\" width=\"48\" height=\"6\" rx=\"3\" fill=\"#0f172a\" stroke=\"#1e293b\" stroke-width=\"2\"></rect>"
       },
@@ -127,6 +200,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           120,
           236
         ],
+        "box": [
+          62,
+          124,
+          116,
+          116
+        ],
         "markup": "<ellipse cx=\"120\" cy=\"180\" rx=\"54\" ry=\"52\" fill=\"#ea580c\" stroke=\"#1e293b\" stroke-width=\"3\"></ellipse> <path d=\"M72 150 L88 226 L152 226 L168 150 Z\" fill=\"#f97316\" stroke=\"#1e293b\" stroke-width=\"3\"></path> <rect x=\"88\" y=\"150\" width=\"12\" height=\"74\" fill=\"#f1f5f9\" stroke=\"#1e293b\" stroke-width=\"2\"></rect> <rect x=\"140\" y=\"150\" width=\"12\" height=\"74\" fill=\"#f1f5f9\" stroke=\"#1e293b\" stroke-width=\"2\"></rect> <rect x=\"76\" y=\"196\" width=\"88\" height=\"12\" fill=\"#a3e635\" stroke=\"#1e293b\" stroke-width=\"2\"></rect> <rect x=\"70\" y=\"222\" width=\"100\" height=\"12\" rx=\"2\" fill=\"#451a03\" stroke=\"#1e293b\" stroke-width=\"3\"></rect> <rect x=\"110\" y=\"220\" width=\"20\" height=\"16\" rx=\"3\" fill=\"#facc15\" stroke=\"#1e293b\" stroke-width=\"2\"></rect> <rect x=\"116\" y=\"224\" width=\"8\" height=\"8\" fill=\"#451a03\"></rect>"
       },
       {
@@ -134,6 +213,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           120,
           142
+        ],
+        "box": [
+          76,
+          46,
+          88,
+          108
         ],
         "markup": "<rect x=\"106\" y=\"132\" width=\"28\" height=\"18\" fill=\"#fed7aa\" stroke=\"#1e293b\" stroke-width=\"3\"></rect> <rect x=\"92\" y=\"82\" width=\"56\" height=\"54\" rx=\"22\" fill=\"#fed7aa\" stroke=\"#1e293b\" stroke-width=\"3\"></rect> <path d=\"M88 102 C82 98 82 114 88 116 Z\" fill=\"#fed7aa\" stroke=\"#1e293b\" stroke-width=\"3\"></path> <path d=\"M152 102 C158 98 158 114 152 116 Z\" fill=\"#fed7aa\" stroke=\"#1e293b\" stroke-width=\"3\"></path> <path d=\"M84 82 C84 48 156 48 156 82 Z\" fill=\"#eab308\" stroke=\"#1e293b\" stroke-width=\"3\"></path> <path d=\"M116 50 L124 50 L124 76 L116 76 Z\" fill=\"#ca8a04\" stroke=\"#1e293b\" stroke-width=\"2\"></path> <rect x=\"80\" y=\"78\" width=\"80\" height=\"9\" rx=\"4\" fill=\"#facc15\" stroke=\"#1e293b\" stroke-width=\"3\"></rect> <ellipse cx=\"107\" cy=\"98\" rx=\"4\" ry=\"5\" fill=\"#0f172a\"></ellipse> <ellipse cx=\"133\" cy=\"98\" rx=\"4\" ry=\"5\" fill=\"#0f172a\"></ellipse> <path d=\"M100 88 Q108 84 114 91\" fill=\"none\" stroke=\"#1e293b\" stroke-width=\"3.5\" stroke-linecap=\"round\"></path> <path d=\"M126 91 Q132 82 140 86\" fill=\"none\" stroke=\"#1e293b\" stroke-width=\"3.5\" stroke-linecap=\"round\"></path> <circle cx=\"120\" cy=\"104\" r=\"6\" fill=\"#fb923c\" stroke=\"#1e293b\" stroke-width=\"2\"></circle> <path d=\"M102 116 C108 108 120 114 120 118 C120 114 132 108 138 116 C142 124 128 126 120 120 C112 126 98 124 102 116 Z\" fill=\"#1e293b\" stroke=\"#1e293b\" stroke-width=\"2\"></path> <path d=\"M110 124 Q120 134 132 124\" fill=\"#881337\" stroke=\"#1e293b\" stroke-width=\"2.5\"></path> <rect x=\"122\" y=\"124\" width=\"4\" height=\"4\" fill=\"#facc15\"></rect>"
       },
@@ -143,6 +228,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           63,
           147
         ],
+        "box": [
+          8,
+          138,
+          68,
+          50
+        ],
         "markup": "<path d=\"M68 152 L34 142 L18 168\" fill=\"none\" stroke=\"#fed7aa\" stroke-width=\"16\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M68 152 L34 142 L18 168\" fill=\"none\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M72 142 L52 148 L62 165 Z\" fill=\"#ea580c\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M22 166 L12 178 L18 184 L28 172 Z\" fill=\"#f59e0b\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <circle cx=\"20\" cy=\"172\" r=\"8\" fill=\"#d97706\" stroke=\"#1e293b\" stroke-width=\"3\"></circle>"
       },
       {
@@ -150,6 +241,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           177,
           147
+        ],
+        "box": [
+          164,
+          138,
+          68,
+          50
         ],
         "markup": "<path d=\"M172 152 L206 142 L222 168\" fill=\"none\" stroke=\"#fed7aa\" stroke-width=\"16\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M172 152 L206 142 L222 168\" fill=\"none\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M168 142 L188 148 L178 165 Z\" fill=\"#ea580c\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M218 166 L228 178 L222 184 L212 172 Z\" fill=\"#f59e0b\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <circle cx=\"220\" cy=\"172\" r=\"8\" fill=\"#d97706\" stroke=\"#1e293b\" stroke-width=\"3\"></circle>"
       }
@@ -165,6 +262,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           80,
           246.6
         ],
+        "box": [
+          57.2,
+          238,
+          45.6,
+          66
+        ],
         "markup": "<path d=\"M96 242 L88 284\" stroke=\"#1e1b4b\" stroke-width=\"5\" stroke-linecap=\"round\"></path> <path d=\"M88 284 H66 C62 284 60 288 62 294 L66 298 C68 300 72 300 78 300 H94 C98 300 100 296 98 290 Z\" fill=\"#64748b\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path>"
       },
       {
@@ -172,6 +275,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           158,
           246.6
+        ],
+        "box": [
+          135.2,
+          238,
+          45.6,
+          66
         ],
         "markup": "<path d=\"M144 242 L150 284\" stroke=\"#1e1b4b\" stroke-width=\"5\" stroke-linecap=\"round\"></path> <path d=\"M150 284 H172 C176 284 178 288 176 294 L172 298 C170 300 166 300 160 300 H144 C140 300 138 296 140 290 Z\" fill=\"#64748b\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path>"
       },
@@ -181,6 +290,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           125.3,
           256
         ],
+        "box": [
+          56,
+          136,
+          138.5,
+          124
+        ],
         "markup": "<ellipse cx=\"120\" cy=\"244\" rx=\"60\" ry=\"12\" fill=\"#e2e8f0\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <ellipse cx=\"120\" cy=\"244\" rx=\"46\" ry=\"7\" fill=\"#cbd5e1\"></ellipse> <path d=\"M168 140 C198 140 198 200 168 200\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"15\" stroke-linecap=\"round\"></path> <path d=\"M168 140 C194 140 194 200 168 200\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"9\" stroke-linecap=\"round\"></path>"
       },
       {
@@ -189,6 +304,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           120,
           220.7
         ],
+        "box": [
+          68,
+          6,
+          104,
+          237
+        ],
         "markup": "<g id=\"cuppa-steam\"> <path d=\"M96 90 Q86 64 98 44 Q106 28 94 16\" fill=\"none\" stroke=\"#94a3b8\" stroke-width=\"3.5\" stroke-linecap=\"round\"></path> <path d=\"M120 86 Q134 58 118 38 Q108 20 122 10\" fill=\"none\" stroke=\"#94a3b8\" stroke-width=\"4\" stroke-linecap=\"round\"></path> <path d=\"M144 90 Q154 66 142 46 Q132 30 146 18\" fill=\"none\" stroke=\"#94a3b8\" stroke-width=\"3.5\" stroke-linecap=\"round\"></path> </g> <ellipse cx=\"120\" cy=\"112\" rx=\"48\" ry=\"14\" fill=\"#3e1f11\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <ellipse cx=\"120\" cy=\"112\" rx=\"42\" ry=\"10\" fill=\"#29140a\"></ellipse> <path d=\"M72 112 L78 234 Q120 244 162 234 L168 112 Z\" fill=\"#f8fafc\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <path d=\"M148 114 L144 234 Q154 230 162 226 L168 112 Z\" fill=\"#e2e8f0\"></path> <path d=\"M88 116 L88 148 Q91 154 94 148 L94 116 Z\" fill=\"#3e1f11\"></path>"
       },
       {
@@ -196,6 +317,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           98,
           152.5
+        ],
+        "box": [
+          79,
+          136,
+          38,
+          33
         ],
         "markup": "<ellipse cx=\"98\" cy=\"154\" rx=\"15\" ry=\"11\" fill=\"#c4b5fd\" opacity=\"0.8\"></ellipse> <path d=\"M85 160 Q98 168 111 160\" stroke=\"#7c3aed\" stroke-width=\"1.5\" fill=\"none\" opacity=\"0.6\"></path> <path d=\"M86 140 Q96 146 108 142\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M87 148 Q98 144 109 148\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M89 148 Q98 158 107 148 Z\" fill=\"#ffffff\" stroke=\"#1e1b4b\" stroke-width=\"2\"></path> <ellipse cx=\"98\" cy=\"150\" rx=\"3\" ry=\"2.5\" fill=\"#0f172a\"></ellipse> <path d=\"M90 151 L93 150\" stroke=\"#ef4444\"></path>",
         "parent": "head"
@@ -206,6 +333,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           140,
           152.5
         ],
+        "box": [
+          121,
+          136,
+          38,
+          33
+        ],
         "markup": "<ellipse cx=\"140\" cy=\"154\" rx=\"15\" ry=\"11\" fill=\"#c4b5fd\" opacity=\"0.8\"></ellipse> <path d=\"M127 160 Q140 168 153 160\" stroke=\"#7c3aed\" stroke-width=\"1.5\" fill=\"none\" opacity=\"0.6\"></path> <path d=\"M130 142 Q142 146 152 140\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M129 148 Q140 144 151 148\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M131 148 Q140 158 149 148 Z\" fill=\"#ffffff\" stroke=\"#1e1b4b\" stroke-width=\"2\"></path> <ellipse cx=\"140\" cy=\"150\" rx=\"3\" ry=\"2.5\" fill=\"#0f172a\"></ellipse> <path d=\"M147 151 L144 150\" stroke=\"#ef4444\"></path>",
         "parent": "head"
       },
@@ -214,6 +347,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           120.7,
           187.4
+        ],
+        "box": [
+          102,
+          178.4,
+          37.3,
+          17.9
         ],
         "markup": "<path d=\"M106 186 Q118 180 134 184\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M130 184 Q132 194 135 192 Q136 186 134 184 Z\" fill=\"#3e1f11\"></path>",
         "parent": "head"
@@ -224,6 +363,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           67.5,
           174.5
         ],
+        "box": [
+          38,
+          164,
+          38,
+          62
+        ],
         "markup": "<path d=\"M72 168 Q54 184 48 214\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"5\" stroke-linecap=\"round\"></path> <circle cx=\"48\" cy=\"216\" r=\"6\" fill=\"#f8fafc\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></circle>"
       },
       {
@@ -231,6 +376,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           173.9,
           179.9
+        ],
+        "box": [
+          164,
+          170,
+          47.5,
+          57.4
         ],
         "markup": "<path d=\"M168 174 Q186 190 196 214\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"5\" stroke-linecap=\"round\"></path> <circle cx=\"196\" cy=\"216\" r=\"6\" fill=\"#f8fafc\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></circle> <rect x=\"194\" y=\"214\" width=\"14\" height=\"6\" rx=\"1\" fill=\"#fde047\" stroke=\"#1e1b4b\" stroke-width=\"1.5\" transform=\"rotate(15 194 214)\"></rect>"
       }
@@ -246,6 +397,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           84.4,
           237.4
         ],
+        "box": [
+          57.9,
+          228,
+          52.9,
+          76
+        ],
         "markup": "<path d=\"M102 232 L88 280\" stroke=\"#1e1b4b\" stroke-width=\"12\" stroke-linecap=\"round\"></path> <path d=\"M102 232 L88 280\" stroke=\"#dc2626\" stroke-width=\"8\" stroke-linecap=\"round\"></path> <path d=\"M96 280 H68 C62 280 60 286 64 292 L72 298 C76 300 80 300 86 300 H102 C106 300 108 296 106 290 L102 280 Z\" fill=\"#0f172a\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <rect x=\"94\" y=\"294\" width=\"8\" height=\"6\" fill=\"#334155\"></rect>"
       },
       {
@@ -253,6 +410,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           155.6,
           237.4
+        ],
+        "box": [
+          129.2,
+          228,
+          52.9,
+          76
         ],
         "markup": "<path d=\"M138 232 L152 280\" stroke=\"#1e1b4b\" stroke-width=\"12\" stroke-linecap=\"round\"></path> <path d=\"M138 232 L152 280\" stroke=\"#dc2626\" stroke-width=\"8\" stroke-linecap=\"round\"></path> <path d=\"M144 280 H172 C178 280 180 286 176 292 L168 298 C164 300 160 300 154 300 H138 C134 300 132 296 134 290 L138 280 Z\" fill=\"#0f172a\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <rect x=\"138\" y=\"294\" width=\"8\" height=\"6\" fill=\"#334155\"></rect>"
       },
@@ -262,6 +425,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           120,
           248
         ],
+        "box": [
+          96,
+          216,
+          48,
+          36
+        ],
         "markup": "<path d=\"M100 220 L120 248 L140 220 Z\" fill=\"#0f172a\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <circle cx=\"120\" cy=\"230\" r=\"3\" fill=\"#f8fafc\"></circle>"
       },
       {
@@ -270,6 +439,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           120,
           210.7
         ],
+        "box": [
+          36,
+          30.4,
+          168,
+          199.6
+        ],
         "markup": "<path d=\"M120 226 C70 190 40 144 40 102 C40 68 66 44 98 44 C112 44 120 52 120 58 C120 52 128 44 142 44 C174 44 200 68 200 102 C200 144 170 190 120 226 Z\" fill=\"#ef4444\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <path d=\"M120 226 C150 196 194 150 194 102 C194 72 176 52 152 46 C176 56 190 80 190 106 C190 148 160 192 120 226 Z\" fill=\"#dc2626\"></path> <path d=\"M60 90 C56 74 68 58 84 54 C80 62 82 76 88 84 C76 86 64 92 60 90 Z\" fill=\"#f87171\"></path> <path d=\"M106 50 Q120 34 134 50 Q126 42 118 42 Q112 42 106 50 Z\" fill=\"#0f172a\" stroke=\"#1e1b4b\" stroke-width=\"2\"></path> <path d=\"M116 38 Q124 30 130 40\" stroke=\"#1e1b4b\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M100 136 Q112 134 120 142 Q128 134 140 136 Q130 144 120 144 Q110 144 100 136 Z\" fill=\"#0f172a\" stroke=\"#1e1b4b\" stroke-width=\"2\"></path> <path d=\"M98 135 Q92 131 92 127\" stroke=\"#1e1b4b\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\"></path> <path d=\"M142 135 Q148 131 148 127\" stroke=\"#1e1b4b\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\"></path> <path d=\"M117 172 Q120 175 123 172\" stroke=\"#991b1b\" stroke-width=\"2.5\" stroke-linecap=\"round\" fill=\"none\"></path>"
       },
       {
@@ -277,6 +452,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           92,
           104
+        ],
+        "box": [
+          74,
+          85,
+          36,
+          38
         ],
         "markup": "<path d=\"M78 94 Q92 84 106 94\" fill=\"none\" stroke=\"#0f172a\" stroke-width=\"4.5\" stroke-linecap=\"round\"></path> <path d=\"M82 100 Q92 96 102 100\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <ellipse cx=\"92\" cy=\"108\" rx=\"10\" ry=\"11\" fill=\"#ffffff\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <ellipse cx=\"94\" cy=\"108\" rx=\"5\" ry=\"6\" fill=\"#1e293b\"></ellipse> <circle cx=\"96\" cy=\"105\" r=\"2\" fill=\"#ffffff\"></circle>",
         "parent": "head"
@@ -287,6 +468,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           148,
           100.5
         ],
+        "box": [
+          130,
+          80,
+          36,
+          41
+        ],
         "markup": "<path d=\"M134 90 Q148 78 162 90\" fill=\"none\" stroke=\"#0f172a\" stroke-width=\"4.5\" stroke-linecap=\"round\"></path> <path d=\"M138 98 Q148 94 158 98\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <ellipse cx=\"148\" cy=\"106\" rx=\"10\" ry=\"11\" fill=\"#ffffff\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <ellipse cx=\"146\" cy=\"106\" rx=\"5\" ry=\"6\" fill=\"#1e293b\"></ellipse> <circle cx=\"148\" cy=\"103\" r=\"2\" fill=\"#ffffff\"></circle>",
         "parent": "head"
       },
@@ -295,6 +482,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           121.8,
           151.5
+        ],
+        "box": [
+          104,
+          142.5,
+          35.5,
+          18
         ],
         "markup": "<path d=\"M108 150 Q120 162 132 150\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M112 153 Q120 160 128 153\" fill=\"#7f1d1d\" stroke=\"#1e1b4b\" stroke-width=\"1.5\"></path> <circle cx=\"134\" cy=\"148\" r=\"1.5\" fill=\"#1e1b4b\"></circle>",
         "parent": "head"
@@ -305,6 +498,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           66.4,
           140.1
         ],
+        "box": [
+          36.4,
+          130,
+          38.6,
+          59
+        ],
         "markup": "<path d=\"M60 134 Q32 150 44 176 Q52 186 64 178\" fill=\"none\" stroke=\"#ef4444\" stroke-width=\"12\" stroke-linecap=\"round\"></path> <path d=\"M60 134 Q32 150 44 176 Q52 186 64 178\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <circle cx=\"64\" cy=\"178\" r=\"7\" fill=\"#ef4444\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></circle> <rect x=\"61\" y=\"176\" width=\"6\" height=\"4\" rx=\"1\" fill=\"#f59e0b\"></rect>"
       },
       {
@@ -313,6 +512,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           183.7,
           142.4
         ],
+        "box": [
+          174,
+          130,
+          46,
+          78
+        ],
         "markup": "<path d=\"M178 134 Q204 148 206 172\" fill=\"none\" stroke=\"#ef4444\" stroke-width=\"12\" stroke-linecap=\"round\"></path> <path d=\"M178 134 Q204 148 206 172\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <circle cx=\"206\" cy=\"172\" r=\"7\" fill=\"#ef4444\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></circle>"
       },
       {
@@ -320,6 +525,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           206,
           169
+        ],
+        "box": [
+          192,
+          130,
+          28,
+          78
         ],
         "markup": "<path d=\"M206 150 L206 204\" stroke=\"#15803d\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M206 182 L212 186\" stroke=\"#15803d\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <path d=\"M206 174 Q196 170 198 178 Q204 178 206 174 Z\" fill=\"#22c55e\" stroke=\"#1e1b4b\" stroke-width=\"1.5\"></path> <circle cx=\"206\" cy=\"144\" r=\"10\" fill=\"#991b1b\" stroke=\"#1e1b4b\" stroke-width=\"2\"></circle> <path d=\"M200 140 C200 134 212 134 212 140 C212 146 200 148 206 150 Z\" fill=\"#dc2626\" stroke=\"#1e1b4b\" stroke-width=\"1.5\"></path> <circle cx=\"206\" cy=\"143\" r=\"4\" fill=\"#ef4444\"></circle>",
         "parent": "arm-right"
@@ -336,6 +547,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           74,
           232.1
         ],
+        "box": [
+          46,
+          222,
+          56,
+          84
+        ],
         "markup": "<path d=\"M88 226 L66 260 L88 266 L98 230 Z\" fill=\"#1e3a8a\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M72 260 L68 288 L84 288 L84 264\" fill=\"#78350f\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M50 292 C50 286 70 284 84 286 L86 298 C80 302 52 302 50 292 Z\" fill=\"#f8fafc\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M66 288 L60 298 M72 288 L68 298 M78 288 L76 298\" stroke=\"#dc2626\" stroke-width=\"2\"></path> <rect x=\"54\" y=\"298\" width=\"28\" height=\"4\" fill=\"#0f172a\" rx=\"1\"></rect>"
       },
       {
@@ -343,6 +560,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           166,
           232.1
+        ],
+        "box": [
+          138,
+          222,
+          56,
+          84
         ],
         "markup": "<path d=\"M152 226 L174 260 L152 266 L142 230 Z\" fill=\"#1e3a8a\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M168 260 L172 288 L156 288 L156 264\" fill=\"#78350f\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M190 292 C190 286 170 284 156 286 L154 298 C160 302 188 302 190 292 Z\" fill=\"#f8fafc\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M174 288 L180 298 M168 288 L172 298 M162 288 L164 298\" stroke=\"#dc2626\" stroke-width=\"2\"></path> <rect x=\"158\" y=\"298\" width=\"28\" height=\"4\" fill=\"#0f172a\" rx=\"1\"></rect>"
       },
@@ -352,6 +575,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           74,
           222
         ],
+        "box": [
+          50,
+          209,
+          28,
+          26
+        ],
         "markup": "<ellipse cx=\"64\" cy=\"222\" rx=\"10\" ry=\"9\" fill=\"#5c2608\" stroke=\"#1e293b\" stroke-width=\"3\"></ellipse>"
       },
       {
@@ -359,6 +588,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           120,
           238
+        ],
+        "box": [
+          65,
+          132,
+          110.1,
+          110
         ],
         "markup": "<path d=\"M72 136 C66 170 68 226 86 238 L154 238 C172 226 174 170 168 136 Z\" fill=\"#92400e\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M74 136 L70 228 L170 228 L166 136 Z\" fill=\"#ffffff\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <rect x=\"88\" y=\"136\" width=\"18\" height=\"92\" fill=\"#0284c7\"></rect> <rect x=\"134\" y=\"136\" width=\"18\" height=\"92\" fill=\"#0284c7\"></rect> <polygon points=\"108,136 132,136 120,154\" fill=\"#1e293b\"></polygon> <text x=\"120\" y=\"196\" font-family=\"Inter, sans-serif\" font-weight=\"900\" font-size=\"28\" fill=\"#1e293b\" text-anchor=\"middle\">10</text>"
       },
@@ -368,6 +603,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           124.5,
           133.6
         ],
+        "box": [
+          61,
+          33,
+          127,
+          113
+        ],
         "markup": "<circle cx=\"80\" cy=\"52\" r=\"15\" fill=\"#78350f\" stroke=\"#1e293b\" stroke-width=\"3\"></circle> <circle cx=\"80\" cy=\"52\" r=\"8\" fill=\"#d97706\"></circle> <circle cx=\"160\" cy=\"52\" r=\"15\" fill=\"#78350f\" stroke=\"#1e293b\" stroke-width=\"3\"></circle> <circle cx=\"160\" cy=\"52\" r=\"8\" fill=\"#d97706\"></circle> <path d=\"M76 80 C70 56 170 56 164 80 C176 110 166 138 120 142 C74 138 64 110 76 80 Z\" fill=\"#92400e\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <rect x=\"73\" y=\"66\" width=\"94\" height=\"12\" fill=\"#dc2626\" stroke=\"#1e293b\" stroke-width=\"2.5\" rx=\"2\"></rect> <path d=\"M166 70 L180 64 L176 74 Z\" fill=\"#dc2626\" stroke=\"#1e293b\" stroke-width=\"2\"></path> <path d=\"M166 74 L184 78 L174 82 Z\" fill=\"#dc2626\" stroke=\"#1e293b\" stroke-width=\"2\"></path> <ellipse cx=\"120\" cy=\"106\" rx=\"26\" ry=\"22\" fill=\"#d97706\" stroke=\"#1e293b\" stroke-width=\"3\"></ellipse> <path d=\"M110 92 Q120 88 130 92 Q120 102 110 92 Z\" fill=\"#0f172a\" stroke=\"#1e293b\" stroke-width=\"2.5\"></path> <path d=\"M92 84 L104 88 L92 92\" stroke=\"#1e293b\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path> <path d=\"M148 84 L136 88 L148 92\" stroke=\"#1e293b\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path> <path d=\"M102 104 Q120 98 138 104 C144 132 96 132 102 104 Z\" fill=\"#881337\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M110 124 Q120 114 130 124 Q120 132 110 124 Z\" fill=\"#f43f5e\" stroke=\"#1e293b\" stroke-width=\"2\"></path> <polygon points=\"108,104 112,110 114,104\" fill=\"#ffffff\" stroke=\"#1e293b\" stroke-width=\"1.5\"></polygon> <polygon points=\"126,104 128,110 132,104\" fill=\"#ffffff\" stroke=\"#1e293b\" stroke-width=\"1.5\"></polygon> <circle cx=\"94\" cy=\"116\" r=\"2.5\" fill=\"#38bdf8\"></circle> <circle cx=\"146\" cy=\"112\" r=\"3\" fill=\"#38bdf8\"></circle> <circle cx=\"152\" cy=\"122\" r=\"2\" fill=\"#38bdf8\"></circle>"
       },
       {
@@ -376,6 +617,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           88.9,
           143.3
         ],
+        "box": [
+          28,
+          132,
+          75,
+          69
+        ],
         "markup": "<path d=\"M74 136 L48 152 L58 168 L80 152 Z\" fill=\"#ffffff\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M54 162 L32 176 L78 184\" stroke=\"#1e293b\" stroke-width=\"16\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path> <path d=\"M54 162 L32 176 L78 184\" stroke=\"#92400e\" stroke-width=\"10\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path> <circle cx=\"82\" cy=\"184\" r=\"13\" fill=\"#78350f\" stroke=\"#1e293b\" stroke-width=\"3\"></circle> <ellipse cx=\"82\" cy=\"184\" rx=\"7\" ry=\"6\" fill=\"#fbcfe8\"></ellipse> <path d=\"M96 172 Q102 184 96 196\" stroke=\"#f59e0b\" stroke-width=\"3\" stroke-linecap=\"round\" fill=\"none\"></path>"
       },
       {
@@ -383,6 +630,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           133.2,
           144.4
+        ],
+        "box": [
+          116,
+          132,
+          96,
+          78
         ],
         "markup": "<path d=\"M166 136 L192 152 L182 168 L160 152 Z\" fill=\"#ffffff\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M186 162 L208 176 L162 184\" stroke=\"#1e293b\" stroke-width=\"16\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path> <path d=\"M186 162 L208 176 L162 184\" stroke=\"#92400e\" stroke-width=\"10\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path> <circle cx=\"158\" cy=\"184\" r=\"13\" fill=\"#78350f\" stroke=\"#1e293b\" stroke-width=\"3\"></circle> <ellipse cx=\"158\" cy=\"184\" rx=\"7\" ry=\"6\" fill=\"#fbcfe8\"></ellipse> <path d=\"M144 172 Q138 184 144 196\" stroke=\"#f59e0b\" stroke-width=\"3\" stroke-linecap=\"round\" fill=\"none\"></path> <line x1=\"120\" y1=\"170\" x2=\"120\" y2=\"162\" stroke=\"#f59e0b\" stroke-width=\"3\" stroke-linecap=\"round\"></line> <line x1=\"120\" y1=\"198\" x2=\"120\" y2=\"206\" stroke=\"#f59e0b\" stroke-width=\"3\" stroke-linecap=\"round\"></line>"
       }
@@ -398,6 +651,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           78,
           232.3
         ],
+        "box": [
+          56,
+          222,
+          44,
+          87
+        ],
         "markup": "<path d=\"M96 226 L78 266 L74 294\" stroke=\"#1e293b\" stroke-width=\"12\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path> <path d=\"M96 226 L78 266 L74 294\" stroke=\"#334155\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path> <path d=\"M60 297 C60 291 74 290 82 292 L84 300 C80 302 62 303 60 297 Z\" fill=\"#0f172a\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M72 294 Q64 298 62 305\" stroke=\"#94a3b8\" stroke-width=\"1.5\" fill=\"none\"></path>"
       },
       {
@@ -405,6 +664,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           162,
           232
+        ],
+        "box": [
+          140,
+          222,
+          44,
+          83.5
         ],
         "markup": "<path d=\"M144 226 L162 266 L166 294\" stroke=\"#1e293b\" stroke-width=\"12\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path> <path d=\"M144 226 L162 266 L166 294\" stroke=\"#334155\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path> <path d=\"M180 297 C180 291 166 290 158 292 L156 300 C160 302 178 303 180 297 Z\" fill=\"#0f172a\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path>"
       },
@@ -414,6 +679,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           94,
           177.8
         ],
+        "box": [
+          39.1,
+          126.5,
+          58.9,
+          102.5
+        ],
         "markup": "<path d=\"M94 225 Q50 220 44 175 Q40 148 54 135\" stroke=\"#1e293b\" stroke-width=\"11\" stroke-linecap=\"round\" fill=\"none\"></path> <path d=\"M94 225 Q50 220 44 175 Q40 148 54 135\" stroke=\"#64748b\" stroke-width=\"5\" stroke-linecap=\"round\" fill=\"none\"></path> <circle cx=\"54\" cy=\"135\" r=\"4.5\" fill=\"#f8fafc\"></circle>"
       },
       {
@@ -421,6 +692,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           120,
           228
+        ],
+        "box": [
+          74,
+          141,
+          92,
+          91
         ],
         "markup": "<path d=\"M84 145 L78 228 L162 228 L156 145 Z\" fill=\"#f8fafc\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <polygon points=\"106,145 134,145 120,172\" fill=\"#64748b\" stroke=\"#1e293b\" stroke-width=\"2.5\"></polygon> <polygon points=\"112,145 128,145 120,165\" fill=\"#94a3b8\"></polygon> <circle cx=\"120\" cy=\"186\" r=\"2\" fill=\"#94a3b8\"></circle> <circle cx=\"120\" cy=\"204\" r=\"2\" fill=\"#94a3b8\"></circle> <path d=\"M92 195 Q96 190 98 196 Q94 200 92 195 Z\" fill=\"#f43f5e\" opacity=\"0.6\"></path>"
       },
@@ -430,6 +707,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           132.3,
           132.2
         ],
+        "box": [
+          56,
+          1,
+          152.5,
+          146.3
+        ],
         "markup": "<polygon points=\"68,78 60,34 92,58\" fill=\"#64748b\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></polygon> <polygon points=\"68,70 64,46 84,60\" fill=\"#f472b6\"></polygon> <polygon points=\"172,78 180,34 148,58\" fill=\"#64748b\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></polygon> <polygon points=\"172,70 176,46 156,60\" fill=\"#f472b6\"></polygon> <path d=\"M72 82 C56 94 56 122 74 135 C88 146 152 146 166 135 C184 122 184 94 168 82 C158 72 82 72 72 82 Z\" fill=\"#64748b\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <ellipse cx=\"120\" cy=\"124\" rx=\"20\" ry=\"14\" fill=\"#f8fafc\" stroke=\"#1e293b\" stroke-width=\"2.5\"></ellipse> <polygon points=\"116,116 124,116 120,122\" fill=\"#fb7185\" stroke=\"#1e293b\" stroke-width=\"1.5\"></polygon> <polygon points=\"76,90 110,87 106,108 80,111\" fill=\"#0f172a\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></polygon> <line x1=\"82\" y1=\"94\" x2=\"96\" y2=\"106\" stroke=\"#475569\" stroke-width=\"2\"></line> <polygon points=\"118,88 152,93 148,114 122,109\" fill=\"#0f172a\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linejoin=\"round\"></polygon> <line x1=\"126\" y1=\"96\" x2=\"138\" y2=\"108\" stroke=\"#475569\" stroke-width=\"2\"></line> <line x1=\"110\" y1=\"88\" x2=\"118\" y2=\"89\" stroke=\"#1e293b\" stroke-width=\"3\"></line> <path d=\"M62 76 Q120 62 178 76\" stroke=\"#be123c\" stroke-width=\"7\" stroke-linecap=\"round\" fill=\"none\"></path> <path d=\"M62 76 Q120 62 178 76\" stroke=\"#fbbf24\" stroke-width=\"7\" stroke-dasharray=\"8 8\" stroke-linecap=\"round\" fill=\"none\"></path> <circle cx=\"176\" cy=\"74\" r=\"6\" fill=\"#be123c\" stroke=\"#1e293b\" stroke-width=\"2\"></circle> <polygon points=\"174,78 186,112 176,118 168,82\" fill=\"#be123c\" stroke=\"#1e293b\" stroke-width=\"2.5\" stroke-linejoin=\"round\"></polygon> <polygon points=\"176,118 181,115 186,112\" fill=\"#9f1239\"></polygon> <polygon points=\"98,58 132,12 144,54\" fill=\"#8b5cf6\" stroke=\"#1e293b\" stroke-width=\"2.5\" stroke-linejoin=\"round\"></polygon> <path d=\"M106,47 L137,34 M116,36 L140,24\" stroke=\"#facc15\" stroke-width=\"2.5\"></path> <circle cx=\"132\" cy=\"10\" r=\"5\" fill=\"#f43f5e\" stroke=\"#1e293b\" stroke-width=\"2\"></circle> <path d=\"M96 122 Q78 120 62 126\" stroke=\"#1e293b\" stroke-width=\"2\" fill=\"none\"></path> <path d=\"M96 126 Q78 130 64 138\" stroke=\"#1e293b\" stroke-width=\"2\" fill=\"none\"></path> <path d=\"M144 122 Q162 120 178 126\" stroke=\"#1e293b\" stroke-width=\"2\" fill=\"none\"></path> <path d=\"M144 126 Q162 130 176 138\" stroke=\"#1e293b\" stroke-width=\"2\" fill=\"none\"></path> <path d=\"M124 126 Q146 128 174 122 Q194 116 198 125\" stroke=\"#10b981\" stroke-width=\"5\" stroke-linecap=\"round\" fill=\"none\"></path> <path d=\"M198 125 C202 128 206 124 204 120 C201 117 196 120 197 123\" stroke=\"#f59e0b\" stroke-width=\"3\" fill=\"none\"></path>"
       },
       {
@@ -438,6 +721,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           70.8,
           161.1
         ],
+        "box": [
+          26,
+          148,
+          56,
+          84
+        ],
         "markup": "<path d=\"M78 152 L42 178 L38 214\" stroke=\"#1e293b\" stroke-width=\"12\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path> <path d=\"M78 152 L42 178 L38 214\" stroke=\"#64748b\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path> <circle cx=\"42\" cy=\"216\" r=\"8\" fill=\"#f8fafc\" stroke=\"#1e293b\" stroke-width=\"3\"></circle> <polygon points=\"30,204 54,204 48,228 36,228\" fill=\"#dc2626\" stroke=\"#1e293b\" stroke-width=\"2.5\" stroke-linejoin=\"round\"></polygon> <ellipse cx=\"42\" cy=\"204\" rx=\"12\" ry=\"2.5\" fill=\"#f87171\" stroke=\"#1e293b\" stroke-width=\"1.5\"></ellipse> <circle cx=\"36\" cy=\"196\" r=\"2\" fill=\"#fbbf24\"></circle> <circle cx=\"48\" cy=\"194\" r=\"1.5\" fill=\"#fbbf24\"></circle>"
       },
       {
@@ -445,6 +734,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           169.8,
           162.1
+        ],
+        "box": [
+          158,
+          148,
+          60,
+          92
         ],
         "markup": "<path d=\"M162 152 L198 178 L204 206\" stroke=\"#1e293b\" stroke-width=\"12\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path> <path d=\"M162 152 L198 178 L204 206\" stroke=\"#64748b\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"></path> <circle cx=\"204\" cy=\"208\" r=\"8\" fill=\"#f8fafc\" stroke=\"#1e293b\" stroke-width=\"3\"></circle> <path d=\"M200 200 L198 190 M210 200 L214 190\" stroke=\"#1e293b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M196 214 Q208 218 200 226 Q194 230 202 236\" stroke=\"#eab308\" stroke-width=\"2.5\" stroke-linecap=\"round\" fill=\"none\"></path>"
       }
@@ -460,6 +755,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           70.5,
           237.8
         ],
+        "box": [
+          49,
+          228,
+          43,
+          80
+        ],
         "markup": "<path d=\"M 88 235 L 75 275 L 82 298 L 62 298 C 55 298 52 290 56 280 L 72 232 Z\" fill=\"#d97706\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 88 235 L 80 260 L 72 232 Z\" fill=\"#b45309\"></path> <path d=\"M 82 298 C 82 302 78 304 68 304 C 54 304 48 296 58 290 L 82 298 Z\" fill=\"#78350f\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <ellipse cx=\"64\" cy=\"301\" rx=\"3\" ry=\"1.5\" fill=\"#18181b\"></ellipse> <ellipse cx=\"72\" cy=\"301\" rx=\"3\" ry=\"1.5\" fill=\"#18181b\"></ellipse>"
       },
       {
@@ -467,6 +768,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           169.5,
           237.8
+        ],
+        "box": [
+          148,
+          228,
+          43,
+          80
         ],
         "markup": "<path d=\"M 152 235 L 165 275 L 158 298 L 178 298 C 185 298 188 290 184 280 L 168 232 Z\" fill=\"#d97706\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 152 235 L 160 260 L 168 232 Z\" fill=\"#b45309\"></path> <path d=\"M 158 298 C 158 302 162 304 172 304 C 186 304 192 296 182 290 L 158 298 Z\" fill=\"#78350f\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <ellipse cx=\"176\" cy=\"301\" rx=\"3\" ry=\"1.5\" fill=\"#18181b\"></ellipse> <ellipse cx=\"168\" cy=\"301\" rx=\"3\" ry=\"1.5\" fill=\"#18181b\"></ellipse>"
       },
@@ -476,6 +783,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           78,
           190
         ],
+        "box": [
+          24,
+          146,
+          58,
+          88
+        ],
         "markup": "<path d=\"M 72 230 C 40 220 28 180 42 165 C 48 158 54 165 50 178 C 45 195 56 215 78 222 Z\" fill=\"#b45309\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 36 172 L 28 168 L 38 162 Z\" fill=\"#18181b\"></path> <path d=\"M 44 158 L 42 150 L 50 156 Z\" fill=\"#18181b\"></path>"
       },
       {
@@ -483,6 +796,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           120,
           249.5
+        ],
+        "box": [
+          70.3,
+          146,
+          99.4,
+          107.5
         ],
         "markup": "<path d=\"M 90 150 C 70 170 70 215 85 242 C 100 252 140 252 155 242 C 170 215 170 170 150 150 Z\" fill=\"#d97706\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 85 242 C 70 215 70 170 90 150 C 95 160 92 210 102 247 C 95 245 90 244 85 242 Z\" fill=\"#b45309\"></path> <path d=\"M 100 170 C 90 190 92 235 120 245 C 148 235 150 190 140 170 C 130 162 110 162 100 170 Z\" fill=\"#fef3c7\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <ellipse cx=\"120\" cy=\"225\" rx=\"2.5\" ry=\"1.5\" fill=\"#78350f\"></ellipse> <path d=\"M 85 195 C 80 200 80 210 85 215\" fill=\"none\" stroke=\"#b45309\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M 155 195 C 160 200 160 210 155 215\" fill=\"none\" stroke=\"#b45309\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path>"
       },
@@ -492,6 +811,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           120,
           170.7
         ],
+        "box": [
+          36.7,
+          59.8,
+          166.7,
+          124.3
+        ],
         "markup": "<path d=\"M 75 95 C 50 80 32 105 45 130 C 55 145 75 135 78 115 Z\" fill=\"#78350f\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 52 100 C 42 110 48 125 56 128 C 62 120 62 110 52 100 Z\" fill=\"#f87171\"></path> <path d=\"M 165 95 C 190 80 208 105 195 130 C 185 145 165 135 162 115 Z\" fill=\"#78350f\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 188 100 C 198 110 192 125 184 128 C 178 120 178 110 188 100 Z\" fill=\"#f87171\"></path> <path d=\"M 80 90 C 80 55 160 55 160 90 C 180 105 185 145 155 158 C 145 162 95 162 85 158 C 55 145 60 105 80 90 Z\" fill=\"#d97706\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 85 85 C 80 70 105 65 115 80 C 118 95 105 110 92 108 C 82 105 82 95 85 85 Z\" fill=\"#b45309\"></path> <path d=\"M 95 115 C 85 125 100 148 120 148 C 140 148 155 125 145 115 C 135 110 105 110 95 115 Z\" fill=\"#fef3c7\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 112 112 C 112 108 128 108 128 112 C 128 118 122 122 120 122 C 118 122 112 118 112 112 Z\" fill=\"#18181b\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <ellipse cx=\"117\" cy=\"111\" rx=\"2\" ry=\"1\" fill=\"#ffffff\"></ellipse> <path d=\"M 92 125 C 105 155 135 155 148 125 C 158 152 145 178 120 180 C 95 178 82 152 92 125 Z\" fill=\"#450a0a\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 102 165 C 105 145 135 145 138 165 C 130 178 110 178 102 165 Z\" fill=\"#ef4444\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 120 152 L 120 172\" stroke=\"#7f1d1d\" stroke-width=\"2\"></path> <path d=\"M 102 127 L 107 135 L 112 128 Z\" fill=\"#ffffff\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 128 128 L 133 135 L 138 127 Z\" fill=\"#ffffff\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 90 92 Q 100 86 108 94\" fill=\"none\" stroke=\"#18181b\" stroke-width=\"4\" stroke-linecap=\"round\"></path> <path d=\"M 87 90 L 92 92 L 88 96\" fill=\"none\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M 132 94 Q 140 86 150 92\" fill=\"none\" stroke=\"#18181b\" stroke-width=\"4\" stroke-linecap=\"round\"></path> <path d=\"M 153 90 L 148 92 L 152 96\" fill=\"none\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M 88 78 Q 100 70 110 80\" fill=\"none\" stroke=\"#18181b\" stroke-width=\"4\" stroke-linecap=\"round\"></path> <path d=\"M 130 80 Q 140 70 152 78\" fill=\"none\" stroke=\"#18181b\" stroke-width=\"4\" stroke-linecap=\"round\"></path> <path d=\"M 75 92 C 60 85 55 105 70 110 C 78 112 85 100 75 92 Z\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <circle cx=\"68\" cy=\"98\" r=\"2\" fill=\"#ffffff\"></circle> <circle cx=\"54\" cy=\"85\" r=\"4\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></circle> <path d=\"M 165 92 C 180 85 185 105 170 110 C 162 112 155 100 165 92 Z\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <circle cx=\"172\" cy=\"98\" r=\"2\" fill=\"#ffffff\"></circle> <circle cx=\"186\" cy=\"85\" r=\"4\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></circle>"
       },
       {
@@ -500,6 +825,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           102.8,
           168.3
         ],
+        "box": [
+          56,
+          156,
+          58.3,
+          77.3
+        ],
         "markup": "<path d=\"M 85 160 L 60 190 L 80 215 L 98 215 L 85 195 L 95 168 Z\" fill=\"#d97706\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 95 210 C 105 210 112 215 110 224 C 105 232 95 230 85 224 Z\" fill=\"#fef3c7\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 98 214 L 102 225\" stroke=\"#78350f\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <path d=\"M 104 216 L 107 224\" stroke=\"#78350f\" stroke-width=\"2\" stroke-linecap=\"round\"></path>"
       },
       {
@@ -507,6 +838,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           166.1,
           147.6
+        ],
+        "box": [
+          148,
+          140,
+          92,
+          38
         ],
         "markup": "<path d=\"M 155 160 L 190 170 L 215 165 L 210 152 L 182 155 L 152 148 Z\" fill=\"#d97706\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 155 160 L 175 168 L 152 148 Z\" fill=\"#b45309\"></path> <ellipse cx=\"215\" cy=\"160\" rx=\"9\" ry=\"8\" fill=\"#fef3c7\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></ellipse> <path d=\"M 218 156 L 236 156 C 238 156 239 160 236 163 L 218 163 Z\" fill=\"#fef3c7\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 214 163 C 218 166 220 170 216 172 C 212 174 208 170 210 165\" fill=\"#fef3c7\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 212 153 C 215 146 222 148 220 155 Z\" fill=\"#fef3c7\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 235 148 L 240 144\" stroke=\"#d97706\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M 240 160 L 246 160\" stroke=\"#d97706\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M 235 170 L 241 174\" stroke=\"#d97706\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path>"
       }
@@ -522,6 +859,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           79.6,
           235.9
         ],
+        "box": [
+          53.2,
+          226,
+          52.8,
+          82
+        ],
         "markup": "<path d=\"M 85 230 L 70 268 L 65 298 L 92 298 L 102 240 Z\" fill=\"#1e1b4b\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 60 298 C 55 298 56 304 68 304 L 95 304 C 100 304 100 298 95 298 Z\" fill=\"#0f172a\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <ellipse cx=\"68\" cy=\"301\" rx=\"2.5\" ry=\"1.5\" fill=\"#e2e8f0\"></ellipse> <ellipse cx=\"78\" cy=\"301\" rx=\"2.5\" ry=\"1.5\" fill=\"#e2e8f0\"></ellipse> <ellipse cx=\"88\" cy=\"301\" rx=\"2.5\" ry=\"1.5\" fill=\"#e2e8f0\"></ellipse>"
       },
       {
@@ -529,6 +872,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           160.4,
           235.9
+        ],
+        "box": [
+          134,
+          226,
+          52.8,
+          82
         ],
         "markup": "<path d=\"M 155 230 L 170 268 L 175 298 L 148 298 L 138 240 Z\" fill=\"#1e1b4b\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 180 298 C 185 298 184 304 172 304 L 145 304 C 140 304 140 298 145 298 Z\" fill=\"#0f172a\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <ellipse cx=\"152\" cy=\"301\" rx=\"2.5\" ry=\"1.5\" fill=\"#e2e8f0\"></ellipse> <ellipse cx=\"162\" cy=\"301\" rx=\"2.5\" ry=\"1.5\" fill=\"#e2e8f0\"></ellipse> <ellipse cx=\"172\" cy=\"301\" rx=\"2.5\" ry=\"1.5\" fill=\"#e2e8f0\"></ellipse>"
       },
@@ -538,6 +887,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           110,
           248
         ],
+        "box": [
+          106,
+          236,
+          28,
+          24
+        ],
         "markup": "<ellipse cx=\"120\" cy=\"248\" rx=\"10\" ry=\"8\" fill=\"#1e1b4b\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></ellipse>"
       },
       {
@@ -545,6 +900,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           120,
           259
+        ],
+        "box": [
+          51.9,
+          138,
+          136.3,
+          125
         ],
         "markup": "<path d=\"M 75 142 C 50 175 50 220 72 250 C 95 262 145 262 168 250 C 190 220 190 175 165 142 Z\" fill=\"#f8fafc\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 75 142 C 64 158 62 178 68 195 C 95 188 145 188 172 195 C 178 178 176 158 165 142 Z\" fill=\"#1e1b4b\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 72 250 C 95 262 145 262 168 250 C 158 240 82 240 72 250 Z\" fill=\"#cbd5e1\"></path> <path d=\"M 115 198 L 120 205 L 125 198\" fill=\"none\" stroke=\"#94a3b8\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M 110 215 L 120 224 L 130 215\" fill=\"none\" stroke=\"#94a3b8\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path>"
       },
@@ -554,6 +915,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           120,
           155.5
         ],
+        "box": [
+          50,
+          48,
+          140,
+          120.5
+        ],
         "markup": "<circle cx=\"70\" cy=\"68\" r=\"16\" fill=\"#1e1b4b\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></circle> <circle cx=\"170\" cy=\"68\" r=\"16\" fill=\"#1e1b4b\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></circle> <path d=\"M 72 95 C 65 65 175 65 168 95 C 185 115 182 150 160 160 C 145 166 95 166 80 160 C 58 150 55 115 72 95 Z\" fill=\"#f8fafc\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 80 160 C 95 166 145 166 160 160 C 150 154 90 154 80 160 Z\" fill=\"#cbd5e1\"></path> <ellipse cx=\"94\" cy=\"104\" rx=\"16\" ry=\"20\" transform=\"rotate(-15 94 104)\" fill=\"#1e1b4b\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></ellipse> <ellipse cx=\"146\" cy=\"104\" rx=\"16\" ry=\"20\" transform=\"rotate(15 146 104)\" fill=\"#1e1b4b\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></ellipse> <circle cx=\"98\" cy=\"105\" r=\"7\" fill=\"#ffffff\"></circle> <circle cx=\"99\" cy=\"105\" r=\"4\" fill=\"#0f172a\"></circle> <circle cx=\"98\" cy=\"103\" r=\"1.5\" fill=\"#ffffff\"></circle> <circle cx=\"142\" cy=\"105\" r=\"7\" fill=\"#ffffff\"></circle> <circle cx=\"141\" cy=\"105\" r=\"4\" fill=\"#0f172a\"></circle> <circle cx=\"142\" cy=\"103\" r=\"1.5\" fill=\"#ffffff\"></circle> <path d=\"M 82 82 L 108 90\" stroke=\"#0f172a\" stroke-width=\"5\" stroke-linecap=\"round\"></path> <path d=\"M 158 82 L 132 90\" stroke=\"#0f172a\" stroke-width=\"5\" stroke-linecap=\"round\"></path> <ellipse cx=\"120\" cy=\"122\" rx=\"18\" ry=\"12\" fill=\"#f1f5f9\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></ellipse> <path d=\"M 112 116 C 112 112 128 112 128 116 C 128 122 122 126 120 126 C 118 126 112 122 112 116 Z\" fill=\"#0f172a\"></path> <path d=\"M 120 126 L 120 134\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M 104 133 C 110 144 130 144 136 133\" fill=\"none\" stroke=\"#0f172a\" stroke-width=\"3.5\" stroke-linecap=\"round\"></path> <path d=\"M 102 131 L 105 135\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M 138 131 L 135 135\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linecap=\"round\"></path>"
       },
       {
@@ -562,6 +929,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           58.1,
           127
         ],
+        "box": [
+          0,
+          116,
+          72,
+          66
+        ],
         "markup": "<path d=\"M 68 150 L 32 125 L 12 135 L 8 152 L 35 168 L 65 178 Z\" fill=\"#1e1b4b\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <circle cx=\"14\" cy=\"142\" r=\"12\" fill=\"#1e1b4b\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></circle> <ellipse cx=\"14\" cy=\"142\" rx=\"7\" ry=\"6\" fill=\"#f43f5e\"></ellipse> <circle cx=\"8\" cy=\"130\" r=\"2.5\" fill=\"#f43f5e\"></circle> <circle cx=\"16\" cy=\"127\" r=\"2.5\" fill=\"#f43f5e\"></circle> <circle cx=\"23\" cy=\"132\" r=\"2.5\" fill=\"#f43f5e\"></circle> <circle cx=\"6\" cy=\"142\" r=\"2\" fill=\"#f43f5e\"></circle> <path d=\"M 6 120 C 2 125 0 135 4 142\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2\" stroke-linecap=\"round\"></path>"
       },
       {
@@ -569,6 +942,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           181.9,
           127
+        ],
+        "box": [
+          168,
+          116,
+          72,
+          66
         ],
         "markup": "<path d=\"M 172 150 L 208 125 L 228 135 L 232 152 L 205 168 L 175 178 Z\" fill=\"#1e1b4b\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <circle cx=\"226\" cy=\"142\" r=\"12\" fill=\"#1e1b4b\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></circle> <ellipse cx=\"226\" cy=\"142\" rx=\"7\" ry=\"6\" fill=\"#f43f5e\"></ellipse> <circle cx=\"232\" cy=\"130\" r=\"2.5\" fill=\"#f43f5e\"></circle> <circle cx=\"224\" cy=\"127\" r=\"2.5\" fill=\"#f43f5e\"></circle> <circle cx=\"217\" cy=\"132\" r=\"2.5\" fill=\"#f43f5e\"></circle> <circle cx=\"234\" cy=\"142\" r=\"2\" fill=\"#f43f5e\"></circle> <path d=\"M 234 120 C 238 125 240 135 236 142\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2\" stroke-linecap=\"round\"></path>"
       }
@@ -584,6 +963,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           73.4,
           240.6
         ],
+        "box": [
+          45.9,
+          231,
+          54.9,
+          78
+        ],
         "markup": "<path d=\"M 82 235 L 70 268 C 65 278 68 288 72 298 L 92 298 C 96 285 96 265 94 235 Z\" fill=\"#ea580c\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 82 235 L 88 260 L 94 235 Z\" fill=\"#9a3412\"></path> <path d=\"M 72 294 L 56 295 C 50 295 48 300 52 304 L 94 304 C 98 304 98 296 92 294 Z\" fill=\"#1e293b\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 52 304 L 94 304\" stroke=\"#e2e8f0\" stroke-width=\"2\"></path> <rect x=\"52\" y=\"302\" width=\"10\" height=\"3\" fill=\"#cbd5e1\"></rect>"
       },
       {
@@ -591,6 +976,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           166.6,
           240.6
+        ],
+        "box": [
+          139.2,
+          231,
+          54.9,
+          78
         ],
         "markup": "<path d=\"M 158 235 L 170 268 C 175 278 172 288 168 298 L 148 298 C 144 285 144 265 146 235 Z\" fill=\"#ea580c\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 158 235 L 152 260 L 146 235 Z\" fill=\"#9a3412\"></path> <path d=\"M 168 294 L 184 295 C 190 295 192 300 188 304 L 146 304 C 142 304 142 296 148 294 Z\" fill=\"#1e293b\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 146 304 L 188 304\" stroke=\"#e2e8f0\" stroke-width=\"2\"></path> <rect x=\"178\" y=\"302\" width=\"10\" height=\"3\" fill=\"#cbd5e1\"></rect>"
       },
@@ -600,6 +991,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           120,
           240
         ],
+        "box": [
+          64,
+          121,
+          112,
+          123
+        ],
         "markup": "<rect x=\"68\" y=\"125\" width=\"104\" height=\"115\" rx=\"8\" fill=\"#f97316\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></rect> <path d=\"M 164 125 L 172 133 L 172 232 C 172 236 168 240 164 240 L 76 240 L 68 232 L 164 232 Z\" fill=\"#c2410c\"></path> <path d=\"M 68 133 L 164 133 L 164 125 L 68 125 Z\" fill=\"#fdba74\"></path> <rect x=\"80\" y=\"180\" width=\"18\" height=\"14\" rx=\"4\" fill=\"#7c2d12\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></rect> <rect x=\"111\" y=\"180\" width=\"18\" height=\"14\" rx=\"4\" fill=\"#7c2d12\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></rect> <rect x=\"142\" y=\"180\" width=\"18\" height=\"14\" rx=\"4\" fill=\"#7c2d12\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></rect> <rect x=\"80\" y=\"204\" width=\"18\" height=\"14\" rx=\"4\" fill=\"#7c2d12\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></rect> <rect x=\"111\" y=\"204\" width=\"18\" height=\"14\" rx=\"4\" fill=\"#7c2d12\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></rect> <rect x=\"142\" y=\"204\" width=\"18\" height=\"14\" rx=\"4\" fill=\"#7c2d12\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></rect> <path d=\"M 68 230 L 172 230 L 172 238 L 68 238 Z\" fill=\"#0f172a\"></path> <rect x=\"112\" y=\"227\" width=\"16\" height=\"12\" rx=\"2\" fill=\"#eab308\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></rect>"
       },
       {
@@ -607,6 +1004,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           120,
           163.2
+        ],
+        "box": [
+          48,
+          69,
+          144,
+          106
         ],
         "markup": "<path d=\"M 60 115 C 60 70 180 70 180 115 Z\" fill=\"#f8fafc\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 116 73 L 124 73 L 124 115 L 116 115 Z\" fill=\"#e2e8f0\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 52 115 C 52 110 188 110 188 115 L 180 123 C 140 126 100 126 60 123 Z\" fill=\"#e2e8f0\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <polygon points=\"120,86 126,96 114,96\" fill=\"#f97316\"></polygon> <path d=\"M 88 148 L 98 153 L 88 158\" fill=\"none\" stroke=\"#18181b\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 84 138 Q 94 132 104 140\" fill=\"none\" stroke=\"#18181b\" stroke-width=\"4\" stroke-linecap=\"round\"></path> <ellipse cx=\"138\" cy=\"151\" rx=\"8\" ry=\"9\" fill=\"#18181b\"></ellipse> <circle cx=\"140\" cy=\"149\" r=\"3\" fill=\"#ffffff\"></circle> <path d=\"M 126 142 L 148 140\" stroke=\"#18181b\" stroke-width=\"4\" stroke-linecap=\"round\"></path> <path d=\"M 100 166 C 112 174 132 172 142 163\" fill=\"none\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\"></path> <rect x=\"134\" y=\"163\" width=\"5\" height=\"4\" rx=\"1\" fill=\"#eab308\" stroke=\"#18181b\" stroke-width=\"1.5\"></rect> <path d=\"M 142 160 L 146 156 M 146 160 L 142 156\" stroke=\"#eab308\" stroke-width=\"2\" stroke-linecap=\"round\"></path>"
       },
@@ -616,6 +1019,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           60.5,
           96.4
         ],
+        "box": [
+          14,
+          84,
+          58,
+          78
+        ],
         "markup": "<path d=\"M 68 135 L 42 130 C 30 130 25 145 32 155 L 45 158 L 38 120 Z\" fill=\"#ea580c\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 45 138 C 45 125 25 122 28 140 C 30 148 40 148 45 138 Z\" fill=\"#f97316\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 32 148 L 22 108 L 36 102 L 46 142 Z\" fill=\"#ea580c\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 30 132 Q 34 135 32 140\" fill=\"none\" stroke=\"#9a3412\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <circle cx=\"28\" cy=\"98\" r=\"10\" fill=\"#f97316\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></circle> <path d=\"M 22 94 C 24 90 32 90 35 95\" fill=\"none\" stroke=\"#18181b\" stroke-width=\"2\"></path> <path d=\"M 22 99 C 24 95 32 95 35 100\" fill=\"none\" stroke=\"#18181b\" stroke-width=\"2\"></path> <path d=\"M 24 105 C 28 106 34 104 36 100\" fill=\"none\" stroke=\"#18181b\" stroke-width=\"2.5\"></path>"
       },
       {
@@ -623,6 +1032,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           181.6,
           92.9
+        ],
+        "box": [
+          168,
+          80,
+          72,
+          82
         ],
         "markup": "<path d=\"M 172 135 L 198 130 C 210 130 215 145 208 155 L 195 158 L 202 120 Z\" fill=\"#ea580c\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 195 138 C 195 125 215 122 212 140 C 210 148 200 148 195 138 Z\" fill=\"#f97316\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 208 148 L 218 108 L 204 102 L 194 142 Z\" fill=\"#ea580c\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 210 132 Q 206 135 208 140\" fill=\"none\" stroke=\"#9a3412\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <circle cx=\"212\" cy=\"98\" r=\"10\" fill=\"#f97316\" stroke=\"#18181b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></circle> <path d=\"M 218 94 C 216 90 208 90 205 95\" fill=\"none\" stroke=\"#18181b\" stroke-width=\"2\"></path> <path d=\"M 218 99 C 216 95 208 95 205 100\" fill=\"none\" stroke=\"#18181b\" stroke-width=\"2\"></path> <path d=\"M 216 105 C 212 106 206 104 204 100\" fill=\"none\" stroke=\"#18181b\" stroke-width=\"2.5\"></path> <path d=\"M 226 88 L 234 84\" stroke=\"#f97316\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M 228 100 L 236 100\" stroke=\"#f97316\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M 224 112 L 232 116\" stroke=\"#f97316\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path>"
       }
@@ -638,6 +1053,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           60.3,
           231.2
         ],
+        "box": [
+          31.6,
+          221,
+          57.4,
+          85
+        ],
         "markup": "<path d=\"M 85 225 L 65 285\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"14\" stroke-linecap=\"round\"></path> <path d=\"M 85 225 L 65 285\" fill=\"none\" stroke=\"#0284c7\" stroke-width=\"8\" stroke-linecap=\"round\"></path> <path d=\"M 65 280 L 40 286 C 36 288 34 294 37 298 L 40 300 L 75 300 C 78 300 80 295 78 288 L 74 282 Z\" fill=\"#d97706\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M 37 298 L 40 302 L 78 302 L 78 298 Z\" fill=\"#1e1b4b\"></path>"
       },
       {
@@ -645,6 +1066,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           179.7,
           231.2
+        ],
+        "box": [
+          151,
+          221,
+          57.4,
+          85
         ],
         "markup": "<path d=\"M 155 225 L 175 285\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"14\" stroke-linecap=\"round\"></path> <path d=\"M 155 225 L 175 285\" fill=\"none\" stroke=\"#0284c7\" stroke-width=\"8\" stroke-linecap=\"round\"></path> <path d=\"M 175 280 L 165 282 C 160 288 162 300 165 300 L 200 300 L 203 298 C 206 294 204 288 200 286 Z\" fill=\"#b45309\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M 163 298 L 165 302 L 203 302 L 203 298 Z\" fill=\"#1e1b4b\"></path>"
       },
@@ -654,6 +1081,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           120,
           230
         ],
+        "box": [
+          48,
+          76,
+          144,
+          158
+        ],
         "markup": "<rect x=\"52\" y=\"210\" width=\"136\" height=\"20\" rx=\"8\" fill=\"#ea580c\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <path d=\"M 54 220 L 186 220 L 186 226 C 186 228 184 230 180 230 L 60 230 C 56 230 54 228 54 226 Z\" fill=\"#c2410c\"></path> <path d=\"M 100 80 L 64 210 L 176 210 L 140 80 Z\" fill=\"#f97316\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M 130 80 L 158 210 L 176 210 L 140 80 Z\" fill=\"#ea580c\"></path> <path d=\"M 72 180 L 168 180 L 163 155 L 77 155 Z\" fill=\"#f1f5f9\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <path d=\"M 148 180 L 168 180 L 163 155 L 145 155 Z\" fill=\"#cbd5e1\"></path> <path d=\"M 83 135 L 157 135 L 151 112 L 89 112 Z\" fill=\"#f1f5f9\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <path d=\"M 140 135 L 157 135 L 151 112 L 137 112 Z\" fill=\"#cbd5e1\"></path> <path d=\"M 68 194 L 172 194\" stroke=\"#1e1b4b\" stroke-width=\"7\"></path> <rect x=\"110\" y=\"188\" width=\"20\" height=\"12\" rx=\"2\" fill=\"#facc15\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></rect>"
       },
       {
@@ -661,6 +1094,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           120,
           126.8
+        ],
+        "box": [
+          77.8,
+          46,
+          84.4,
+          91.5
         ],
         "markup": "<path d=\"M 98 80 C 98 62 108 50 120 50 C 132 50 142 62 142 80 Z\" fill=\"#f97316\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <path d=\"M 125 51 C 133 53 140 64 142 80 L 130 80 Z\" fill=\"#ea580c\"></path> <path d=\"M 88 84 Q 105 76 116 85\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3.5\" stroke-linecap=\"round\"></path> <path d=\"M 124 85 Q 135 78 152 82\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3.5\" stroke-linecap=\"round\"></path> <path d=\"M 82 92 C 84 87 114 88 120 91 C 126 88 156 87 158 92 C 160 106 148 114 125 112 C 120 111 120 111 115 112 C 92 114 80 106 82 92 Z\" fill=\"#0f172a\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <polygon points=\"90,92 100,92 92,108 86,108\" fill=\"#38bdf8\" opacity=\"0.9\"></polygon> <polygon points=\"103,92 108,92 102,108 98,108\" fill=\"#38bdf8\" opacity=\"0.6\"></polygon> <polygon points=\"132,92 142,92 134,108 128,108\" fill=\"#38bdf8\" opacity=\"0.9\"></polygon> <path d=\"M 98 122 Q 120 146 144 120 Q 120 128 98 122 Z\" fill=\"#7f1d1d\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M 112 126 Q 125 138 138 123 Q 128 133 112 126 Z\" fill=\"#f43f5e\"></path> <rect x=\"104\" y=\"122\" width=\"6\" height=\"6\" fill=\"#facc15\" stroke=\"#1e1b4b\" stroke-width=\"1.5\"></rect> <circle cx=\"120\" cy=\"116\" r=\"3\" fill=\"#c2410c\"></circle>"
       },
@@ -670,6 +1109,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           67,
           152.1
         ],
+        "box": [
+          12,
+          137.9,
+          68,
+          93.1
+        ],
         "markup": "<path d=\"M 76 142 Q 40 140 28 165\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"12\" stroke-linecap=\"round\"></path> <path d=\"M 76 142 Q 40 140 28 165\" fill=\"none\" stroke=\"#f97316\" stroke-width=\"7\" stroke-linecap=\"round\"></path> <path d=\"M 28 165 Q 22 195 24 205\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"12\" stroke-linecap=\"round\"></path> <path d=\"M 28 165 Q 22 195 24 205\" fill=\"none\" stroke=\"#f97316\" stroke-width=\"7\" stroke-linecap=\"round\"></path> <ellipse cx=\"26\" cy=\"214\" rx=\"10\" ry=\"12\" fill=\"#e2e8f0\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <circle cx=\"34\" cy=\"208\" r=\"4\" fill=\"#cbd5e1\" stroke=\"#1e1b4b\" stroke-width=\"2\"></circle> <circle cx=\"33\" cy=\"216\" r=\"4\" fill=\"#cbd5e1\" stroke=\"#1e1b4b\" stroke-width=\"2\"></circle> <circle cx=\"28\" cy=\"223\" r=\"4\" fill=\"#cbd5e1\" stroke=\"#1e1b4b\" stroke-width=\"2\"></circle>"
       },
       {
@@ -677,6 +1122,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           173.3,
           64.3
+        ],
+        "box": [
+          160,
+          49.7,
+          70,
+          96.3
         ],
         "markup": "<path d=\"M 164 142 Q 198 135 212 115\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"12\" stroke-linecap=\"round\"></path> <path d=\"M 164 142 Q 198 135 212 115\" fill=\"none\" stroke=\"#f97316\" stroke-width=\"7\" stroke-linecap=\"round\"></path> <path d=\"M 212 115 Q 222 92 216 75\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"12\" stroke-linecap=\"round\"></path> <path d=\"M 212 115 Q 222 92 216 75\" fill=\"none\" stroke=\"#f97316\" stroke-width=\"7\" stroke-linecap=\"round\"></path> <ellipse cx=\"215\" cy=\"68\" rx=\"11\" ry=\"10\" fill=\"#e2e8f0\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <path d=\"M 212 60 C 212 52 218 52 219 58 L 219 66 Z\" fill=\"#e2e8f0\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></path>"
       }
@@ -692,6 +1143,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           58.1,
           235.6
         ],
+        "box": [
+          32.3,
+          226,
+          51.7,
+          78
+        ],
         "markup": "<path d=\"M 80 230 L 62 285\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"14\" stroke-linecap=\"round\"></path> <path d=\"M 80 230 L 62 285\" fill=\"none\" stroke=\"#475569\" stroke-width=\"8\" stroke-linecap=\"round\"></path> <circle cx=\"71\" cy=\"257\" r=\"7\" fill=\"#64748b\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></circle> <path d=\"M 64 280 L 38 286 C 35 289 36 298 40 300 L 76 300 C 80 300 80 290 76 284 Z\" fill=\"#334155\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M 38 286 C 35 289 36 298 40 300 L 52 300 L 48 288 Z\" fill=\"#cbd5e1\" stroke=\"#1e1b4b\" stroke-width=\"2\"></path>"
       },
       {
@@ -699,6 +1156,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           187.9,
           235.6
+        ],
+        "box": [
+          156,
+          226,
+          63.7,
+          78
         ],
         "markup": "<path d=\"M 160 230 L 178 285\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"14\" stroke-linecap=\"round\"></path> <path d=\"M 160 230 L 178 285\" fill=\"none\" stroke=\"#475569\" stroke-width=\"8\" stroke-linecap=\"round\"></path> <circle cx=\"169\" cy=\"257\" r=\"7\" fill=\"#64748b\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></circle> <path d=\"M 176 284 C 172 290 172 300 176 300 L 212 300 C 216 298 217 289 214 286 L 188 280 Z\" fill=\"#334155\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M 212 300 C 216 298 217 289 214 286 L 204 288 L 200 300 Z\" fill=\"#cbd5e1\" stroke=\"#1e1b4b\" stroke-width=\"2\"></path>"
       },
@@ -708,6 +1171,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           120,
           234
         ],
+        "box": [
+          40,
+          156,
+          160,
+          82
+        ],
         "markup": "<rect x=\"52\" y=\"160\" width=\"136\" height=\"66\" rx=\"14\" fill=\"#64748b\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <path d=\"M 54 175 L 186 175\" stroke=\"#94a3b8\" stroke-width=\"5\" stroke-linecap=\"round\"></path> <path d=\"M 54 205 L 186 205\" stroke=\"#475569\" stroke-width=\"6\" stroke-linecap=\"round\"></path> <rect x=\"74\" y=\"180\" width=\"92\" height=\"26\" rx=\"6\" fill=\"#334155\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></rect> <circle cx=\"84\" cy=\"193\" r=\"3\" fill=\"#facc15\"></circle> <circle cx=\"156\" cy=\"193\" r=\"3\" fill=\"#facc15\"></circle> <line x1=\"94\" y1=\"193\" x2=\"146\" y2=\"193\" stroke=\"#facc15\" stroke-dasharray=\"4 4\" stroke-width=\"2\"></line> <rect x=\"44\" y=\"170\" width=\"12\" height=\"48\" rx=\"4\" fill=\"#eab308\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <rect x=\"184\" y=\"170\" width=\"12\" height=\"48\" rx=\"4\" fill=\"#ca8a04\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <rect x=\"78\" y=\"222\" width=\"84\" height=\"12\" rx=\"4\" fill=\"#0f172a\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></rect>"
       },
       {
@@ -715,6 +1184,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           120,
           150.7
+        ],
+        "box": [
+          42,
+          17,
+          156,
+          149
         ],
         "markup": "<path d=\"M 46 64 C 46 54 62 48 120 48 C 178 48 194 54 194 64 L 186 76 L 54 76 Z\" fill=\"#ca8a04\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <path d=\"M 52 62 L 188 62\" stroke=\"#fef08a\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <rect x=\"110\" y=\"36\" width=\"20\" height=\"12\" rx=\"4\" fill=\"#f59e0b\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <path d=\"M 116 38 L 124 38\" stroke=\"#fef08a\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <line x1=\"172\" y1=\"48\" x2=\"182\" y2=\"24\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></line> <circle cx=\"182\" cy=\"24\" r=\"3\" fill=\"#ef4444\"></circle> <rect x=\"56\" y=\"74\" width=\"128\" height=\"88\" rx=\"14\" fill=\"#facc15\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <path d=\"M 152 76 L 182 76 C 183 76 184 77 184 78 L 184 148 C 184 156 178 162 170 162 L 152 162 Z\" fill=\"#eab308\"></path> <rect x=\"66\" y=\"82\" width=\"108\" height=\"68\" rx=\"10\" fill=\"#e0f2fe\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <polygon points=\"74,84 86,84 72,136 68,136\" fill=\"#ffffff\" opacity=\"0.8\"></polygon> <path d=\"M 74 96 C 76 92 100 93 104 96 C 108 93 132 92 134 96 C 136 108 126 116 106 114 C 104 114 104 114 102 114 C 82 116 72 108 74 96 Z\" fill=\"#0f172a\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <polygon points=\"80,97 88,97 82,109 77,109\" fill=\"#38bdf8\"></polygon> <polygon points=\"112,97 120,97 114,109 109,109\" fill=\"#38bdf8\"></polygon> <path d=\"M 94 126 Q 110 134 132 124\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3.5\" stroke-linecap=\"round\"></path> <line x1=\"130\" y1=\"126\" x2=\"148\" y2=\"120\" stroke=\"#fbbf24\" stroke-width=\"2.5\" stroke-linecap=\"round\"></line> <circle cx=\"148\" cy=\"120\" r=\"1.5\" fill=\"#ef4444\"></circle> <path d=\"M 76 90 Q 88 86 98 89\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M 110 89 Q 120 86 132 90\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></path>"
       },
@@ -724,6 +1199,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           55.4,
           157.8
         ],
+        "box": [
+          19.9,
+          146,
+          45.1,
+          73
+        ],
         "markup": "<path d=\"M 54 150 Q 22 165 24 195\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"12\" stroke-linecap=\"round\"></path> <path d=\"M 54 150 Q 22 165 24 195\" fill=\"none\" stroke=\"#facc15\" stroke-width=\"7\" stroke-linecap=\"round\"></path> <path d=\"M 24 195 Q 32 208 50 206\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"12\" stroke-linecap=\"round\"></path> <path d=\"M 24 195 Q 32 208 50 206\" fill=\"none\" stroke=\"#facc15\" stroke-width=\"7\" stroke-linecap=\"round\"></path> <circle cx=\"52\" cy=\"206\" r=\"9\" fill=\"#e2e8f0\" stroke=\"#1e1b4b\" stroke-width=\"3\"></circle>"
       },
       {
@@ -731,6 +1212,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           194.9,
           52.6
+        ],
+        "box": [
+          184,
+          31,
+          54,
+          155
         ],
         "markup": "<path d=\"M 188 150 Q 212 162 216 182\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"12\" stroke-linecap=\"round\"></path> <path d=\"M 188 150 Q 212 162 216 182\" fill=\"none\" stroke=\"#facc15\" stroke-width=\"7\" stroke-linecap=\"round\"></path> <path d=\"M 216 182 L 214 140\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"12\" stroke-linecap=\"round\"></path> <path d=\"M 216 182 L 214 140\" fill=\"none\" stroke=\"#facc15\" stroke-width=\"7\" stroke-linecap=\"round\"></path> <circle cx=\"214\" cy=\"136\" r=\"9\" fill=\"#e2e8f0\" stroke=\"#1e1b4b\" stroke-width=\"3\"></circle> <line x1=\"214\" y1=\"165\" x2=\"214\" y2=\"70\" stroke=\"#92400e\" stroke-width=\"5\" stroke-linecap=\"round\"></line> <polygon points=\"214,35 228,41 234,55 228,69 214,75 200,69 194,55 200,41\" fill=\"#dc2626\" stroke=\"#1e1b4b\" stroke-width=\"3\"></polygon> <polygon points=\"214,39 225,44 230,55 225,66 214,71 203,66 198,55 203,44\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"1.8\"></polygon> <text x=\"214\" y=\"58\" font-family=\"&quot;Plus Jakarta Sans&quot;, sans-serif\" font-weight=\"900\" font-size=\"8.5\" fill=\"#ffffff\" text-anchor=\"middle\" dominant-baseline=\"middle\" letter-spacing=\"0.5\">PARE</text>"
       }
@@ -746,6 +1233,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           64,
           231.2
         ],
+        "box": [
+          36,
+          221,
+          56,
+          85
+        ],
         "markup": "<path d=\"M 85 225 L 68 275\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"14\" stroke-linecap=\"round\"></path> <path d=\"M 85 225 L 68 275\" fill=\"none\" stroke=\"#334155\" stroke-width=\"8\" stroke-linecap=\"round\"></path> <rect x=\"70\" y=\"240\" width=\"14\" height=\"8\" rx=\"2\" fill=\"#e2e8f0\" stroke=\"#1e1b4b\" stroke-width=\"2\"></rect> <ellipse cx=\"64\" cy=\"290\" rx=\"24\" ry=\"12\" fill=\"#0f172a\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <ellipse cx=\"64\" cy=\"290\" rx=\"13\" ry=\"6\" fill=\"#cbd5e1\" stroke=\"#1e1b4b\" stroke-width=\"2\"></ellipse> <circle cx=\"64\" cy=\"290\" r=\"3\" fill=\"#1e1b4b\"></circle> <path d=\"M 43 294 L 41 288 M 50 299 L 49 293 M 78 299 L 79 293 M 85 294 L 87 288\" stroke=\"#334155\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path>"
       },
       {
@@ -753,6 +1246,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           176,
           231.2
+        ],
+        "box": [
+          148,
+          221,
+          56,
+          85
         ],
         "markup": "<path d=\"M 155 225 L 172 275\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"14\" stroke-linecap=\"round\"></path> <path d=\"M 155 225 L 172 275\" fill=\"none\" stroke=\"#334155\" stroke-width=\"8\" stroke-linecap=\"round\"></path> <rect x=\"156\" y=\"240\" width=\"14\" height=\"8\" rx=\"2\" fill=\"#e2e8f0\" stroke=\"#1e1b4b\" stroke-width=\"2\"></rect> <ellipse cx=\"176\" cy=\"290\" rx=\"24\" ry=\"12\" fill=\"#0f172a\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <ellipse cx=\"176\" cy=\"290\" rx=\"13\" ry=\"6\" fill=\"#cbd5e1\" stroke=\"#1e1b4b\" stroke-width=\"2\"></ellipse> <circle cx=\"176\" cy=\"290\" r=\"3\" fill=\"#1e1b4b\"></circle> <path d=\"M 155 294 L 153 288 M 162 299 L 161 293 M 190 299 L 191 293 M 197 294 L 199 288\" stroke=\"#334155\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path>"
       },
@@ -762,6 +1261,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           120,
           230
         ],
+        "box": [
+          40,
+          49.5,
+          160,
+          184.5
+        ],
         "markup": "<path d=\"M 60 76 Q 120 40 180 76 Z\" fill=\"#fbbf24\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <circle cx=\"100\" cy=\"62\" r=\"2\" fill=\"#d97706\"></circle> <circle cx=\"120\" cy=\"56\" r=\"2.5\" fill=\"#d97706\"></circle> <circle cx=\"140\" cy=\"64\" r=\"2\" fill=\"#d97706\"></circle> <path d=\"M 44 76 L 196 76 L 186 112 L 54 112 Z\" fill=\"#c2410c\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M 46 80 L 194 80\" stroke=\"#ea580c\" stroke-width=\"3\"></path> <rect x=\"52\" y=\"106\" width=\"136\" height=\"110\" rx=\"16\" fill=\"#f97316\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <path d=\"M 160 108 L 182 108 C 186 108 188 112 188 116 L 188 200 C 188 208 182 214 174 214 L 160 214 Z\" fill=\"#ea580c\"></path> <rect x=\"74\" y=\"174\" width=\"92\" height=\"34\" rx=\"8\" fill=\"#1e293b\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <line x1=\"82\" y1=\"183\" x2=\"158\" y2=\"183\" stroke=\"#94a3b8\" stroke-width=\"3\" stroke-linecap=\"round\"></line> <line x1=\"82\" y1=\"191\" x2=\"158\" y2=\"191\" stroke=\"#94a3b8\" stroke-width=\"3\" stroke-linecap=\"round\"></line> <line x1=\"82\" y1=\"199\" x2=\"158\" y2=\"199\" stroke=\"#94a3b8\" stroke-width=\"3\" stroke-linecap=\"round\"></line> <circle cx=\"62\" cy=\"191\" r=\"6\" fill=\"#facc15\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></circle> <circle cx=\"178\" cy=\"191\" r=\"6\" fill=\"#facc15\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></circle> <rect x=\"46\" y=\"214\" width=\"148\" height=\"16\" rx=\"4\" fill=\"#facc15\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <polygon points=\"56,215 64,215 56,229 48,229\" fill=\"#1e1b4b\"></polygon> <polygon points=\"80,215 88,215 80,229 72,229\" fill=\"#1e1b4b\"></polygon> <polygon points=\"104,215 112,215 104,229 96,229\" fill=\"#1e1b4b\"></polygon> <polygon points=\"128,215 136,215 128,229 120,229\" fill=\"#1e1b4b\"></polygon> <polygon points=\"152,215 160,215 152,229 144,229\" fill=\"#1e1b4b\"></polygon> <polygon points=\"176,215 184,215 176,229 168,229\" fill=\"#1e1b4b\"></polygon>"
       },
       {
@@ -769,6 +1274,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           149.5,
           153.6
+        ],
+        "box": [
+          60,
+          7,
+          179,
+          163
         ],
         "markup": "<rect x=\"64\" y=\"112\" width=\"112\" height=\"54\" rx=\"10\" fill=\"#e0f2fe\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <path d=\"M 65 114 L 175 114 L 175 122 L 65 122 Z\" fill=\"#38bdf8\" opacity=\"0.6\"></path> <path d=\"M 76 124 Q 90 114 104 121\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"4\" stroke-linecap=\"round\"></path> <ellipse cx=\"90\" cy=\"134\" rx=\"9\" ry=\"11\" fill=\"#ffffff\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></ellipse> <circle cx=\"93\" cy=\"134\" r=\"5\" fill=\"#0f172a\"></circle> <circle cx=\"95\" cy=\"132\" r=\"1.8\" fill=\"#ffffff\"></circle> <path d=\"M 132 127 Q 146 125 158 131\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"4\" stroke-linecap=\"round\"></path> <path d=\"M 134 136 Q 146 145 158 135\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"4\" stroke-linecap=\"round\"></path> <path d=\"M 146 142 L 146 146\" stroke=\"#1e1b4b\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M 102 154 Q 124 165 146 149\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"4\" stroke-linecap=\"round\"></path> <path d=\"M 124 157 Q 136 153 144 150 L 142 155 Q 133 158 124 157 Z\" fill=\"#ffffff\" stroke=\"#1e1b4b\" stroke-width=\"1.5\"></path> <path d=\"M 190 115 L 190 55 C 190 48 195 44 202 44 L 205 44\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"8\" stroke-linecap=\"round\"></path> <path d=\"M 190 115 L 190 55 C 190 48 195 44 202 44 L 205 44\" fill=\"none\" stroke=\"#cbd5e1\" stroke-width=\"4\" stroke-linecap=\"round\"></path> <circle cx=\"210\" cy=\"38\" r=\"5\" fill=\"#475569\" opacity=\"0.8\"></circle> <circle cx=\"218\" cy=\"30\" r=\"7\" fill=\"#64748b\" opacity=\"0.7\"></circle> <circle cx=\"226\" cy=\"20\" r=\"9\" fill=\"#94a3b8\" opacity=\"0.5\"></circle>"
       },
@@ -778,6 +1289,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           47.8,
           124.6
         ],
+        "box": [
+          14,
+          114,
+          43,
+          63
+        ],
         "markup": "<path d=\"M 50 118 Q 20 120 18 145\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"12\" stroke-linecap=\"round\"></path> <path d=\"M 50 118 Q 20 120 18 145\" fill=\"none\" stroke=\"#f97316\" stroke-width=\"7\" stroke-linecap=\"round\"></path> <path d=\"M 18 145 Q 22 170 42 165\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"12\" stroke-linecap=\"round\"></path> <path d=\"M 18 145 Q 22 170 42 165\" fill=\"none\" stroke=\"#f97316\" stroke-width=\"7\" stroke-linecap=\"round\"></path> <circle cx=\"44\" cy=\"164\" r=\"9\" fill=\"#e2e8f0\" stroke=\"#1e1b4b\" stroke-width=\"3\"></circle> <path d=\"M 44 160 L 52 162 L 44 166 Z\" fill=\"#cbd5e1\" stroke=\"#1e1b4b\" stroke-width=\"2\"></path>"
       },
       {
@@ -785,6 +1302,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           194.9,
           129.4
+        ],
+        "box": [
+          184,
+          114,
+          54,
+          103
         ],
         "markup": "<path d=\"M 188 118 Q 215 125 224 150\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"12\" stroke-linecap=\"round\"></path> <path d=\"M 188 118 Q 215 125 224 150\" fill=\"none\" stroke=\"#f97316\" stroke-width=\"7\" stroke-linecap=\"round\"></path> <path d=\"M 224 150 Q 230 178 226 195\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"12\" stroke-linecap=\"round\"></path> <path d=\"M 224 150 Q 230 178 226 195\" fill=\"none\" stroke=\"#f97316\" stroke-width=\"7\" stroke-linecap=\"round\"></path> <circle cx=\"225\" cy=\"204\" r=\"9\" fill=\"#e2e8f0\" stroke=\"#1e1b4b\" stroke-width=\"3\"></circle> <rect x=\"220\" y=\"196\" width=\"10\" height=\"4\" rx=\"2\" fill=\"#cbd5e1\" stroke=\"#1e1b4b\" stroke-width=\"1.5\"></rect>"
       }
@@ -800,6 +1323,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           76,
           244.8
         ],
+        "box": [
+          44,
+          236,
+          64,
+          68
+        ],
         "markup": "<rect x=\"74\" y=\"240\" width=\"14\" height=\"42\" rx=\"4\" fill=\"#475569\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></rect> <rect x=\"70\" y=\"248\" width=\"22\" height=\"6\" fill=\"#334155\" stroke=\"#0f172a\" stroke-width=\"3\"></rect> <rect x=\"48\" y=\"278\" width=\"56\" height=\"22\" rx=\"10\" fill=\"#1e293b\" stroke=\"#0f172a\" stroke-width=\"3\"></rect> <circle cx=\"58\" cy=\"289\" r=\"6\" fill=\"#64748b\" stroke=\"#0f172a\" stroke-width=\"3\"></circle> <circle cx=\"76\" cy=\"289\" r=\"6\" fill=\"#64748b\" stroke=\"#0f172a\" stroke-width=\"3\"></circle> <circle cx=\"94\" cy=\"289\" r=\"6\" fill=\"#64748b\" stroke=\"#0f172a\" stroke-width=\"3\"></circle>"
       },
       {
@@ -807,6 +1336,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           164,
           244.8
+        ],
+        "box": [
+          132,
+          236,
+          64,
+          68
         ],
         "markup": "<rect x=\"152\" y=\"240\" width=\"14\" height=\"42\" rx=\"4\" fill=\"#475569\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></rect> <rect x=\"148\" y=\"248\" width=\"22\" height=\"6\" fill=\"#334155\" stroke=\"#0f172a\" stroke-width=\"3\"></rect> <rect x=\"136\" y=\"278\" width=\"56\" height=\"22\" rx=\"10\" fill=\"#1e293b\" stroke=\"#0f172a\" stroke-width=\"3\"></rect> <circle cx=\"146\" cy=\"289\" r=\"6\" fill=\"#64748b\" stroke=\"#0f172a\" stroke-width=\"3\"></circle> <circle cx=\"164\" cy=\"289\" r=\"6\" fill=\"#64748b\" stroke=\"#0f172a\" stroke-width=\"3\"></circle> <circle cx=\"182\" cy=\"289\" r=\"6\" fill=\"#64748b\" stroke=\"#0f172a\" stroke-width=\"3\"></circle>"
       },
@@ -816,6 +1351,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           113.5,
           246
         ],
+        "box": [
+          48,
+          162,
+          131,
+          88
+        ],
         "markup": "<rect x=\"65\" y=\"228\" width=\"110\" height=\"18\" rx=\"5\" fill=\"#334155\" stroke=\"#0f172a\" stroke-width=\"3\"></rect> <path d=\"M72 232 L80 240 L74 240 L68 232 Z\" fill=\"#eab308\"></path> <path d=\"M88 232 L96 240 L90 240 L84 232 Z\" fill=\"#eab308\"></path> <path d=\"M104 232 L112 240 L106 240 L100 232 Z\" fill=\"#eab308\"></path> <path d=\"M120 232 L128 240 L122 240 L116 232 Z\" fill=\"#eab308\"></path> <path d=\"M136 232 L144 240 L138 240 L132 232 Z\" fill=\"#eab308\"></path> <path d=\"M152 232 L160 240 L154 240 L148 232 Z\" fill=\"#eab308\"></path> <path d=\"M168 232 L174 238 L170 240 L164 232 Z\" fill=\"#eab308\"></path> <rect x=\"52\" y=\"210\" width=\"30\" height=\"24\" rx=\"4\" fill=\"#ca8a04\" stroke=\"#0f172a\" stroke-width=\"3\"></rect> <rect x=\"56\" y=\"172\" width=\"8\" height=\"38\" rx=\"2\" fill=\"#1e293b\" stroke=\"#0f172a\" stroke-width=\"3\"></rect> <path d=\"M54 172 L66 172 L68 166 L52 166 Z\" fill=\"#334155\" stroke=\"#0f172a\" stroke-width=\"3\"></path>"
       },
       {
@@ -823,6 +1364,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           120,
           217
+        ],
+        "box": [
+          60,
+          86,
+          120,
+          146
         ],
         "markup": "<rect x=\"70\" y=\"100\" width=\"100\" height=\"128\" rx=\"14\" fill=\"#eab308\" stroke=\"#0f172a\" stroke-width=\"3\"></rect> <path d=\"M64 102 L176 102 L172 90 L68 90 Z\" fill=\"#ca8a04\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <rect x=\"79\" y=\"112\" width=\"82\" height=\"78\" rx=\"10\" fill=\"#cbd5e1\" stroke=\"#0f172a\" stroke-width=\"3\"></rect> <path d=\"M86 126 L108 135\" stroke=\"#0f172a\" stroke-width=\"4\" stroke-linecap=\"round\"></path> <path d=\"M154 126 L132 135\" stroke=\"#0f172a\" stroke-width=\"4\" stroke-linecap=\"round\"></path> <path d=\"M88 140 Q98 132 108 140\" fill=\"none\" stroke=\"#0f172a\" stroke-width=\"4\" stroke-linecap=\"round\"></path> <path d=\"M132 140 Q142 132 152 140\" fill=\"none\" stroke=\"#0f172a\" stroke-width=\"4\" stroke-linecap=\"round\"></path> <path d=\"M96 155 Q120 152 144 155 Q136 182 120 184 Q104 182 96 155 Z\" fill=\"#7f1d1d\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M102 155 L106 161 L110 155 L114 161 L118 155 L132 155 L135 160 L138 155\" fill=\"#f8fafc\" stroke=\"#0f172a\" stroke-width=\"2\"></path> <path d=\"M110 166 C108 186 114 196 122 196 C130 196 132 186 128 166 Z\" fill=\"#ef4444\" stroke=\"#0f172a\" stroke-width=\"3\"></path> <line x1=\"120\" y1=\"168\" x2=\"120\" y2=\"190\" stroke=\"#7f1d1d\" stroke-width=\"2\"></line> <rect x=\"94\" y=\"200\" width=\"52\" height=\"18\" rx=\"4\" fill=\"#1e293b\" stroke=\"#0f172a\" stroke-width=\"3\"></rect> <line x1=\"102\" y1=\"204\" x2=\"102\" y2=\"214\" stroke=\"#94a3b8\" stroke-width=\"2\"></line> <line x1=\"110\" y1=\"204\" x2=\"110\" y2=\"214\" stroke=\"#94a3b8\" stroke-width=\"2\"></line> <line x1=\"120\" y1=\"204\" x2=\"120\" y2=\"214\" stroke=\"#94a3b8\" stroke-width=\"2\"></line> <line x1=\"130\" y1=\"204\" x2=\"130\" y2=\"214\" stroke=\"#94a3b8\" stroke-width=\"2\"></line> <line x1=\"138\" y1=\"204\" x2=\"138\" y2=\"214\" stroke=\"#94a3b8\" stroke-width=\"2\"></line>"
       },
@@ -832,6 +1379,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           68.4,
           118.7
         ],
+        "box": [
+          16,
+          108,
+          65,
+          64
+        ],
         "markup": "<circle cx=\"68\" cy=\"154\" r=\"9\" fill=\"#ca8a04\" stroke=\"#0f172a\" stroke-width=\"3\"></circle> <path d=\"M66 156 L38 168 L32 152\" fill=\"none\" stroke=\"#475569\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M66 156 L38 168 L32 152\" fill=\"none\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <rect x=\"22\" y=\"140\" width=\"16\" height=\"10\" rx=\"2\" fill=\"#0f172a\" stroke=\"#0f172a\" stroke-width=\"2\"></rect> <polygon points=\"26,140 28,134 30,140\" fill=\"#f8fafc\" stroke=\"#0f172a\" stroke-width=\"1.5\"></polygon> <polygon points=\"32,140 34,134 36,140\" fill=\"#f8fafc\" stroke=\"#0f172a\" stroke-width=\"1.5\"></polygon> <g id=\"rock-horns-hand\"> <circle cx=\"28\" cy=\"132\" r=\"8\" fill=\"#1e293b\" stroke=\"#0f172a\" stroke-width=\"3\"></circle> <rect x=\"20\" y=\"112\" width=\"6\" height=\"16\" rx=\"3\" fill=\"#1e293b\" stroke=\"#0f172a\" stroke-width=\"2.5\"></rect> <circle cx=\"28\" cy=\"128\" r=\"4\" fill=\"#334155\" stroke=\"#0f172a\" stroke-width=\"2\"></circle> <rect x=\"34\" y=\"116\" width=\"5.5\" height=\"14\" rx=\"2.5\" fill=\"#1e293b\" stroke=\"#0f172a\" stroke-width=\"2.5\"></rect> <path d=\"M24 130 Q30 134 33 130\" stroke=\"#0f172a\" stroke-width=\"2.5\" fill=\"none\"></path> </g>"
       },
       {
@@ -839,6 +1392,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           174.6,
           27.8
+        ],
+        "box": [
+          158,
+          6,
+          82,
+          156
         ],
         "markup": "<circle cx=\"172\" cy=\"148\" r=\"10\" fill=\"#ca8a04\" stroke=\"#0f172a\" stroke-width=\"3\"></circle> <polygon points=\"172,142 198,82 210,88 178,154\" fill=\"#eab308\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></polygon> <line x1=\"176\" y1=\"138\" x2=\"200\" y2=\"92\" stroke=\"#94a3b8\" stroke-width=\"5\" stroke-linecap=\"round\"></line> <line x1=\"176\" y1=\"138\" x2=\"200\" y2=\"92\" stroke=\"#0f172a\" stroke-width=\"1.5\"></line> <circle cx=\"204\" cy=\"85\" r=\"8\" fill=\"#334155\" stroke=\"#0f172a\" stroke-width=\"3\"></circle> <polygon points=\"202,82 214,40 224,44 208,88\" fill=\"#ca8a04\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></polygon> <g id=\"bucket\"> <path d=\"M214,40 C214,24 234,18 238,32 C240,46 228,52 222,46 Z\" fill=\"#334155\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <polygon points=\"234,18 236,10 240,16\" fill=\"#f1f5f9\" stroke=\"#0f172a\" stroke-width=\"2\"></polygon> <polygon points=\"239,22 244,16 243,26\" fill=\"#f1f5f9\" stroke=\"#0f172a\" stroke-width=\"2\"></polygon> <polygon points=\"240,30 246,28 241,36\" fill=\"#f1f5f9\" stroke=\"#0f172a\" stroke-width=\"2\"></polygon> </g>"
       }
@@ -854,6 +1413,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           90,
           226.2
         ],
+        "box": [
+          66,
+          216,
+          48,
+          85
+        ],
         "markup": "<path d=\"M96 220 L86 274 L104 274 L110 220 Z\" fill=\"#1e3a8a\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <rect x=\"88\" y=\"254\" width=\"16\" height=\"6\" fill=\"#84cc16\" stroke=\"#0f172a\" stroke-width=\"2\"></rect> <path d=\"M84 274 L106 274 L108 288 L72 288 L72 282 Z\" fill=\"#78350f\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <rect x=\"70\" y=\"288\" width=\"40\" height=\"9\" rx=\"2\" fill=\"#0f172a\"></rect>"
       },
       {
@@ -861,6 +1426,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           150,
           226.2
+        ],
+        "box": [
+          126,
+          216,
+          48,
+          85
         ],
         "markup": "<path d=\"M130 220 L136 274 L154 274 L144 220 Z\" fill=\"#1e3a8a\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <rect x=\"136\" y=\"254\" width=\"16\" height=\"6\" fill=\"#84cc16\" stroke=\"#0f172a\" stroke-width=\"2\"></rect> <path d=\"M134 274 L156 274 L168 282 L168 288 L132 288 Z\" fill=\"#78350f\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <rect x=\"130\" y=\"288\" width=\"40\" height=\"9\" rx=\"2\" fill=\"#0f172a\"></rect>"
       },
@@ -870,6 +1441,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           120,
           228
         ],
+        "box": [
+          82,
+          148,
+          76,
+          84
+        ],
         "markup": "<path d=\"M88 152 L152 152 L146 222 L94 222 Z\" fill=\"#e2e8f0\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M86 152 L108 152 L102 220 L88 218 Z\" fill=\"#84cc16\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M132 152 L154 152 L152 218 L138 220 Z\" fill=\"#84cc16\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <rect x=\"88\" y=\"180\" width=\"18\" height=\"6\" fill=\"#ffffff\" stroke=\"#0f172a\" stroke-width=\"2\"></rect> <rect x=\"134\" y=\"180\" width=\"18\" height=\"6\" fill=\"#ffffff\" stroke=\"#0f172a\" stroke-width=\"2\"></rect> <path d=\"M108 152 L120 184 L132 152 Z\" fill=\"#fbcfe8\" opacity=\"0.3\"></path> <path d=\"M118 168 Q120 164 122 168\" stroke=\"#0f172a\" stroke-width=\"1.5\" fill=\"none\"></path> <path d=\"M116 174 Q120 170 124 174\" stroke=\"#0f172a\" stroke-width=\"1.5\" fill=\"none\"></path> <rect x=\"88\" y=\"214\" width=\"64\" height=\"12\" rx=\"2\" fill=\"#451a03\" stroke=\"#0f172a\" stroke-width=\"3\"></rect> <rect x=\"114\" y=\"212\" width=\"12\" height=\"16\" rx=\"2\" fill=\"#eab308\" stroke=\"#0f172a\" stroke-width=\"2\"></rect>"
       },
       {
@@ -877,6 +1454,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           120,
           150.3
+        ],
+        "box": [
+          70,
+          58,
+          100,
+          104
         ],
         "markup": "<rect x=\"108\" y=\"136\" width=\"24\" height=\"22\" fill=\"#fdba74\" stroke=\"#0f172a\" stroke-width=\"3\"></rect> <path d=\"M92 110 C92 90 148 90 148 110 C148 138 142 148 120 148 C98 148 92 138 92 110 Z\" fill=\"#fed7aa\" stroke=\"#0f172a\" stroke-width=\"3\"></path> <path d=\"M98 112 Q106 106 112 114\" stroke=\"#0f172a\" stroke-width=\"3.5\" fill=\"none\" stroke-linecap=\"round\"></path> <circle cx=\"106\" cy=\"118\" r=\"2.5\" fill=\"#0f172a\"></circle> <path d=\"M128 114 Q134 106 142 112\" stroke=\"#0f172a\" stroke-width=\"3.5\" fill=\"none\" stroke-linecap=\"round\"></path> <circle cx=\"134\" cy=\"118\" r=\"2.5\" fill=\"#0f172a\"></circle> <path d=\"M96 104 L110 108\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M144 104 L130 108\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M120 114 Q126 124 118 126 Q114 126 116 120\" fill=\"#fb923c\" stroke=\"#0f172a\" stroke-width=\"2.5\"></path> <path d=\"M106 132 Q120 130 134 132 Q130 144 120 144 Q110 144 106 132 Z\" fill=\"#7f1d1d\" stroke=\"#0f172a\" stroke-width=\"2.5\"></path> <path d=\"M114 136 C114 146 126 146 126 136 Z\" fill=\"#f87171\" stroke=\"#0f172a\" stroke-width=\"2\"></path> <path d=\"M84 96 C84 90 90 92 90 96 C90 100 84 102 84 96 Z\" fill=\"#38bdf8\" stroke=\"#0f172a\" stroke-width=\"2\"></path> <path d=\"M152 98 C152 92 158 94 158 98 C158 102 152 104 152 98 Z\" fill=\"#38bdf8\" stroke=\"#0f172a\" stroke-width=\"2\"></path> <path d=\"M142 124 C142 120 146 122 146 124 C146 128 142 128 142 124 Z\" fill=\"#38bdf8\" stroke=\"#0f172a\" stroke-width=\"2\"></path> <path d=\"M104 140 Q120 146 136 140\" stroke=\"#78716c\" stroke-dasharray=\"2,3\" stroke-width=\"2\" fill=\"none\"></path> <path d=\"M82 92 L158 92 C158 92 154 62 120 62 C86 62 82 92 82 92 Z\" fill=\"#f8fafc\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M74 92 L166 92 L162 98 L78 98 Z\" fill=\"#e2e8f0\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <rect x=\"88\" y=\"84\" width=\"64\" height=\"4\" fill=\"#64748b\"></rect>"
       },
@@ -886,6 +1469,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           103.1,
           96.5
         ],
+        "box": [
+          60,
+          83,
+          54,
+          87
+        ],
         "markup": "<circle cx=\"86\" cy=\"156\" r=\"10\" fill=\"#fdba74\" stroke=\"#0f172a\" stroke-width=\"3\"></circle> <path d=\"M86 156 L64 130 L98 94\" fill=\"none\" stroke=\"#fdba74\" stroke-width=\"14\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M86 156 L64 130 L98 94\" fill=\"none\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <ellipse cx=\"102\" cy=\"94\" rx=\"8\" ry=\"7\" fill=\"#cbd5e1\" stroke=\"#0f172a\" stroke-width=\"3\"></ellipse> <path d=\"M96 92 L108 92\" stroke=\"#0f172a\" stroke-width=\"2\"></path>"
       },
       {
@@ -893,6 +1482,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           154.2,
           132.8
+        ],
+        "box": [
+          140,
+          106,
+          76,
+          198
         ],
         "markup": "<circle cx=\"154\" cy=\"156\" r=\"10\" fill=\"#fdba74\" stroke=\"#0f172a\" stroke-width=\"3\"></circle> <path d=\"M154 156 L188 180 L194 206\" fill=\"none\" stroke=\"#fdba74\" stroke-width=\"13\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M154 156 L188 180 L194 206\" fill=\"none\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <circle cx=\"194\" cy=\"208\" r=\"8\" fill=\"#cbd5e1\" stroke=\"#0f172a\" stroke-width=\"3\"></circle> <g id=\"asphalt-rake\"> <line x1=\"194\" y1=\"110\" x2=\"194\" y2=\"295\" stroke=\"#78350f\" stroke-width=\"5\" stroke-linecap=\"round\"></line> <line x1=\"194\" y1=\"110\" x2=\"194\" y2=\"295\" stroke=\"#0f172a\" stroke-width=\"1.5\"></line> <rect x=\"176\" y=\"286\" width=\"36\" height=\"8\" rx=\"2\" fill=\"#334155\" stroke=\"#0f172a\" stroke-width=\"3\"></rect> <line x1=\"180\" y1=\"294\" x2=\"180\" y2=\"300\" stroke=\"#0f172a\" stroke-width=\"3\"></line> <line x1=\"186\" y1=\"294\" x2=\"186\" y2=\"300\" stroke=\"#0f172a\" stroke-width=\"3\"></line> <line x1=\"194\" y1=\"294\" x2=\"194\" y2=\"300\" stroke=\"#0f172a\" stroke-width=\"3\"></line> <line x1=\"202\" y1=\"294\" x2=\"202\" y2=\"300\" stroke=\"#0f172a\" stroke-width=\"3\"></line> <line x1=\"208\" y1=\"294\" x2=\"208\" y2=\"300\" stroke=\"#0f172a\" stroke-width=\"3\"></line> </g>"
       }
@@ -908,6 +1503,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           88,
           224.3
         ],
+        "box": [
+          62,
+          214,
+          52,
+          87
+        ],
         "markup": "<path d=\"M96 218 L84 274 L102 274 L110 218 Z\" fill=\"#334155\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <rect x=\"86\" y=\"252\" width=\"16\" height=\"6\" fill=\"#f97316\" stroke=\"#0f172a\" stroke-width=\"2\"></rect> <path d=\"M82 274 L104 274 L106 288 L68 288 L68 282 Z\" fill=\"#0f172a\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <rect x=\"66\" y=\"288\" width=\"40\" height=\"9\" rx=\"2\" fill=\"#1e293b\"></rect>"
       },
       {
@@ -915,6 +1516,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           152,
           224.3
+        ],
+        "box": [
+          126,
+          214,
+          52,
+          87
         ],
         "markup": "<path d=\"M130 218 L138 274 L156 274 L144 218 Z\" fill=\"#334155\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <rect x=\"138\" y=\"252\" width=\"16\" height=\"6\" fill=\"#f97316\" stroke=\"#0f172a\" stroke-width=\"2\"></rect> <path d=\"M136 274 L158 274 L172 282 L172 288 L134 288 Z\" fill=\"#0f172a\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <rect x=\"132\" y=\"288\" width=\"42\" height=\"9\" rx=\"2\" fill=\"#1e293b\"></rect>"
       },
@@ -924,6 +1531,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           120,
           226
         ],
+        "box": [
+          82,
+          144,
+          76,
+          86
+        ],
         "markup": "<path d=\"M86 148 L154 148 L148 220 L92 220 Z\" fill=\"#1e293b\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M88 148 L106 148 L104 218 L90 218 Z\" fill=\"#ea580c\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M134 148 L152 148 L150 218 L136 218 Z\" fill=\"#ea580c\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <polygon points=\"98,148 104,148 142,218 136,218\" fill=\"#f8fafc\" stroke=\"#0f172a\" stroke-width=\"1.5\"></polygon> <polygon points=\"142,148 136,148 98,218 104,218\" fill=\"#f8fafc\" stroke=\"#0f172a\" stroke-width=\"1.5\"></polygon> <rect x=\"134\" y=\"174\" width=\"12\" height=\"20\" rx=\"3\" fill=\"#0f172a\" stroke=\"#0f172a\" stroke-width=\"2\"></rect> <line x1=\"140\" y1=\"174\" x2=\"140\" y2=\"162\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linecap=\"round\"></line> <rect x=\"88\" y=\"214\" width=\"64\" height=\"10\" fill=\"#0f172a\" stroke=\"#0f172a\" stroke-width=\"2.5\"></rect> <rect x=\"114\" y=\"212\" width=\"12\" height=\"14\" fill=\"#cbd5e1\" stroke=\"#0f172a\" stroke-width=\"2\"></rect>"
       },
       {
@@ -931,6 +1544,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           120,
           144.5
+        ],
+        "box": [
+          72,
+          54,
+          96,
+          102
         ],
         "markup": "<rect x=\"108\" y=\"132\" width=\"24\" height=\"20\" fill=\"#fed7aa\" stroke=\"#0f172a\" stroke-width=\"3\"></rect> <path d=\"M126 136 Q128 142 126 148\" stroke=\"#ef4444\" stroke-width=\"2\" fill=\"none\"></path> <polygon points=\"90,104 150,104 146,144 136,150 104,150 94,144\" fill=\"#fed7aa\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></polygon> <circle cx=\"106\" cy=\"112\" r=\"9\" fill=\"#ffffff\" stroke=\"#0f172a\" stroke-width=\"3\"></circle> <circle cx=\"108\" cy=\"112\" r=\"3.5\" fill=\"#0f172a\"></circle> <path d=\"M99 110 L102 112\" stroke=\"#ef4444\" stroke-width=\"1.5\"></path> <path d=\"M102 118 L104 115\" stroke=\"#ef4444\" stroke-width=\"1.5\"></path> <circle cx=\"134\" cy=\"112\" r=\"9\" fill=\"#ffffff\" stroke=\"#0f172a\" stroke-width=\"3\"></circle> <circle cx=\"132\" cy=\"112\" r=\"3.5\" fill=\"#0f172a\"></circle> <path d=\"M141 110 L138 112\" stroke=\"#ef4444\" stroke-width=\"1.5\"></path> <path d=\"M94 100 L114 108 L120 102 L126 108 L146 100\" stroke=\"#0f172a\" stroke-width=\"4.5\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M100 130 Q120 126 140 130 Q138 138 120 137 Q102 138 100 130 Z\" fill=\"#451a03\" stroke=\"#0f172a\" stroke-width=\"2.5\"></path> <rect x=\"114\" y=\"132\" width=\"22\" height=\"8\" rx=\"2\" fill=\"#cbd5e1\" stroke=\"#0f172a\" stroke-width=\"2.5\"></rect> <circle cx=\"136\" cy=\"136\" r=\"6\" fill=\"#94a3b8\" stroke=\"#0f172a\" stroke-width=\"2.5\"></circle> <path d=\"M116 138 Q108 144 114 150\" stroke=\"#0f172a\" stroke-width=\"2\" fill=\"none\"></path> <path d=\"M144 128 Q150 134 144 140\" stroke=\"#0f172a\" stroke-width=\"2.5\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M149 124 Q157 134 149 144\" stroke=\"#0f172a\" stroke-width=\"2.5\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M84 92 L156 92 C156 92 152 58 120 58 C88 58 84 92 84 92 Z\" fill=\"#ea580c\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M76 92 L164 92 L160 98 L80 98 Z\" fill=\"#c2410c\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <rect x=\"80\" y=\"104\" width=\"10\" height=\"18\" rx=\"4\" fill=\"#0f172a\" stroke=\"#0f172a\" stroke-width=\"2\"></rect> <rect x=\"150\" y=\"104\" width=\"10\" height=\"18\" rx=\"4\" fill=\"#0f172a\" stroke=\"#0f172a\" stroke-width=\"2\"></rect> <path d=\"M84 104 C84 74 156 74 156 104\" stroke=\"#0f172a\" stroke-width=\"3\" fill=\"none\"></path>"
       },
@@ -940,6 +1559,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           83.9,
           35.5
         ],
+        "box": [
+          0,
+          14,
+          102,
+          154
+        ],
         "markup": "<circle cx=\"88\" cy=\"154\" r=\"10\" fill=\"#1e293b\" stroke=\"#0f172a\" stroke-width=\"3\"></circle> <path d=\"M88 154 L52 120 L40 92\" fill=\"none\" stroke=\"#fed7aa\" stroke-width=\"13\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M88 154 L52 120 L40 92\" fill=\"none\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <circle cx=\"38\" cy=\"90\" r=\"8\" fill=\"#ea580c\" stroke=\"#0f172a\" stroke-width=\"3\"></circle> <g id=\"stop-paddle\"> <line x1=\"38\" y1=\"36\" x2=\"38\" y2=\"124\" stroke=\"#64748b\" stroke-width=\"5\" stroke-linecap=\"round\"></line> <line x1=\"38\" y1=\"36\" x2=\"38\" y2=\"124\" stroke=\"#0f172a\" stroke-width=\"1.5\"></line> <polygon points=\"20,18 48,18 64,34 64,62 48,78 20,78 4,62 4,34\" fill=\"#dc2626\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linejoin=\"round\"></polygon> <polygon points=\"22,22 46,22 60,36 60,60 46,74 22,74 8,60 8,36\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"2.5\"></polygon> <text x=\"34\" y=\"55\" font-size=\"16\" font-weight=\"900\" fill=\"#ffffff\" text-anchor=\"middle\" letter-spacing=\"1\" font-family=\"Impact, &quot;Arial Black&quot;, sans-serif\">PARE</text> </g>"
       },
       {
@@ -947,6 +1572,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           155.7,
           148.1
+        ],
+        "box": [
+          140,
+          140,
+          86,
+          42
         ],
         "markup": "<circle cx=\"154\" cy=\"154\" r=\"10\" fill=\"#1e293b\" stroke=\"#0f172a\" stroke-width=\"3\"></circle> <path d=\"M154 154 L188 162 L208 162\" fill=\"none\" stroke=\"#fed7aa\" stroke-width=\"13\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M154 154 L188 162 L208 162\" fill=\"none\" stroke=\"#0f172a\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <g id=\"stop-hand-palm\"> <ellipse cx=\"212\" cy=\"162\" rx=\"9\" ry=\"11\" fill=\"#ea580c\" stroke=\"#0f172a\" stroke-width=\"3\"></ellipse> <rect x=\"216\" y=\"146\" width=\"6\" height=\"26\" rx=\"3\" fill=\"#ea580c\" stroke=\"#0f172a\" stroke-width=\"2.5\"></rect> <rect x=\"212\" y=\"144\" width=\"6\" height=\"28\" rx=\"3\" fill=\"#ea580c\" stroke=\"#0f172a\" stroke-width=\"2.5\"></rect> <rect x=\"207\" y=\"145\" width=\"6\" height=\"26\" rx=\"3\" fill=\"#ea580c\" stroke=\"#0f172a\" stroke-width=\"2.5\"></rect> <path d=\"M204 168 Q198 172 202 178 Q208 178 208 170 Z\" fill=\"#ea580c\" stroke=\"#0f172a\" stroke-width=\"2.5\"></path> </g>"
       }
@@ -962,6 +1593,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           81.5,
           248.6
         ],
+        "box": [
+          58,
+          240,
+          47,
+          65
+        ],
         "markup": "<rect x=\"74\" y=\"244\" width=\"22\" height=\"36\" rx=\"6\" fill=\"#f472b6\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <rect x=\"89\" y=\"244\" width=\"7\" height=\"36\" fill=\"#db2777\"></rect> <path d=\"M68 280 H98 C100 280 101 282 101 285 V298 C101 300 99 301 97 301 H65 C63 301 62 299 62 297 V288 C62 284 65 280 68 280 Z\" fill=\"#334155\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <rect x=\"62\" y=\"295\" width=\"39\" height=\"6\" fill=\"#0f172a\"></rect> <rect x=\"66\" y=\"284\" width=\"8\" height=\"10\" fill=\"#64748b\"></rect>"
       },
       {
@@ -969,6 +1606,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           156.5,
           248.6
+        ],
+        "box": [
+          131,
+          240,
+          51,
+          65
         ],
         "markup": "<rect x=\"144\" y=\"244\" width=\"22\" height=\"36\" rx=\"6\" fill=\"#f472b6\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <rect x=\"144\" y=\"244\" width=\"7\" height=\"36\" fill=\"#db2777\"></rect> <path d=\"M142 280 H172 C175 280 178 284 178 288 V297 C178 299 177 301 175 301 H139 C137 301 135 300 135 298 V285 C135 282 138 280 142 280 Z\" fill=\"#334155\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <rect x=\"135\" y=\"295\" width=\"43\" height=\"6\" fill=\"#0f172a\"></rect> <rect x=\"166\" y=\"284\" width=\"8\" height=\"10\" fill=\"#64748b\"></rect>"
       },
@@ -978,6 +1621,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           120,
           252
         ],
+        "box": [
+          52,
+          132,
+          136,
+          124
+        ],
         "markup": "<ellipse cx=\"120\" cy=\"194\" rx=\"64\" ry=\"58\" fill=\"#f472b6\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <ellipse cx=\"102\" cy=\"228\" rx=\"26\" ry=\"24\" fill=\"#f472b6\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <path d=\"M84 238 Q102 254 120 238 Q102 248 84 238 Z\" fill=\"#db2777\"></path> <ellipse cx=\"138\" cy=\"228\" rx=\"26\" ry=\"24\" fill=\"#f472b6\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <path d=\"M120 238 Q138 254 156 238 Q138 248 120 238 Z\" fill=\"#db2777\"></path> <path d=\"M120 210 V244\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M60 160 C60 160 84 152 120 152 C156 152 180 160 180 160 C182 196 172 208 148 206 C128 204 120 206 92 206 C68 208 58 196 60 160 Z\" fill=\"#ef4444\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <circle cx=\"86\" cy=\"178\" r=\"4\" fill=\"#facc15\"></circle> <circle cx=\"120\" cy=\"174\" r=\"4.5\" fill=\"#facc15\"></circle> <circle cx=\"154\" cy=\"178\" r=\"4\" fill=\"#facc15\"></circle> <circle cx=\"100\" cy=\"196\" r=\"3\" fill=\"#facc15\"></circle> <circle cx=\"140\" cy=\"196\" r=\"3\" fill=\"#facc15\"></circle>"
       },
       {
@@ -986,6 +1635,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           120,
           141.3
         ],
+        "box": [
+          52,
+          60,
+          136,
+          92
+        ],
         "markup": "<ellipse cx=\"120\" cy=\"106\" rx=\"50\" ry=\"42\" fill=\"#f472b6\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <path d=\"M158 80 Q180 62 184 82 Q174 100 158 96 Z\" fill=\"#f472b6\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <path d=\"M164 82 Q176 72 178 82 Q172 92 164 90 Z\" fill=\"#db2777\"></path> <path d=\"M74 86 Q60 68 56 86 Q66 102 80 98 Z\" fill=\"#f472b6\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <path d=\"M96 74 Q128 66 160 74\" fill=\"none\" stroke=\"#0f172a\" stroke-width=\"8\" stroke-linecap=\"round\"></path> <path d=\"M142 70 L156 70 L150 78 L140 78 Z\" fill=\"#38bdf8\" opacity=\"0.6\"></path> <path d=\"M156 100 Q178 104 176 116 Q168 126 150 124\" fill=\"#fbcfe8\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <ellipse cx=\"170\" cy=\"112\" rx=\"3\" ry=\"4\" fill=\"#831843\"></ellipse>"
       },
       {
@@ -993,6 +1648,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           154,
           95.5
+        ],
+        "box": [
+          140,
+          81,
+          28,
+          29
         ],
         "markup": "<path d=\"M144 88 Q154 82 164 88\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M146 94 Q154 90 162 94\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <ellipse cx=\"154\" cy=\"98\" rx=\"7\" ry=\"8\" fill=\"#ffffff\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></ellipse> <ellipse cx=\"152\" cy=\"98\" rx=\"3.5\" ry=\"4.5\" fill=\"#0f172a\"></ellipse> <circle cx=\"150\" cy=\"96\" r=\"1.5\" fill=\"#ffffff\"></circle>",
         "parent": "head"
@@ -1003,6 +1664,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           90,
           95
         ],
+        "box": [
+          80,
+          90,
+          20,
+          10
+        ],
         "markup": "<path d=\"M84 96 Q90 92 96 96\" fill=\"none\" stroke=\"#db2777\" stroke-width=\"2\"></path>",
         "parent": "head"
       },
@@ -1011,6 +1678,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           160.8,
           121.8
+        ],
+        "box": [
+          148,
+          114.5,
+          25.5,
+          14.5
         ],
         "markup": "<path d=\"M152 122 Q160 128 168 122\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <circle cx=\"168\" cy=\"120\" r=\"1.5\" fill=\"#1e1b4b\"></circle>",
         "parent": "head"
@@ -1021,6 +1694,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           67.8,
           167.6
         ],
+        "box": [
+          34.6,
+          156,
+          42.4,
+          71
+        ],
         "markup": "<path d=\"M66 160 L44 172 L52 188 L72 176 Z\" fill=\"#ef4444\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <path d=\"M52 182 Q30 200 44 214 Q52 220 66 216\" fill=\"none\" stroke=\"#f472b6\" stroke-width=\"14\" stroke-linecap=\"round\"></path> <path d=\"M52 182 Q30 200 44 214 Q52 220 66 216\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <circle cx=\"66\" cy=\"216\" r=\"7\" fill=\"#f472b6\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></circle>"
       },
       {
@@ -1029,6 +1708,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
           172.1,
           168
         ],
+        "box": [
+          163,
+          156,
+          42.3,
+          75
+        ],
         "markup": "<path d=\"M174 160 L196 172 L188 188 L168 176 Z\" fill=\"#ef4444\" stroke=\"#1e1b4b\" stroke-width=\"3\"></path> <path d=\"M188 182 Q208 198 198 214 Q188 226 174 220\" fill=\"none\" stroke=\"#f472b6\" stroke-width=\"14\" stroke-linecap=\"round\"></path> <path d=\"M188 182 Q208 198 198 214 Q188 226 174 220\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <circle cx=\"174\" cy=\"220\" r=\"7\" fill=\"#f472b6\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></circle>"
       },
       {
@@ -1036,6 +1721,12 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "pivot": [
           122.2,
           227
+        ],
+        "box": [
+          106.6,
+          188.8,
+          31.3,
+          42.2
         ],
         "markup": "<circle cx=\"120\" cy=\"222\" r=\"5\" fill=\"#db2777\"></circle> <path d=\"M120 220 C110 215 106 200 118 194 C132 188 140 206 128 214 C120 218 116 210 122 206 C126 203 130 207 127 210\" fill=\"none\" stroke=\"#db2777\" stroke-width=\"5\" stroke-linecap=\"round\"></path> <path d=\"M120 220 C110 215 106 200 118 194 C132 188 140 206 128 214 C120 218 116 210 122 206 C126 203 130 207 127 210\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2\" stroke-linecap=\"round\"></path>"
       }
@@ -1054,6 +1745,12 @@ export const WINK_PROPS: Record<WinkPropId, WinkArt> = {
           100,
           104.3
         ],
+        "box": [
+          33.9,
+          20,
+          132.2,
+          168.5
+        ],
         "markup": "<polygon points=\"94,178 106,178 102,170 98,170\" fill=\"#0284c7\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></polygon> <ellipse cx=\"100\" cy=\"180\" rx=\"9\" ry=\"4.5\" fill=\"#0369a1\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <rect x=\"97\" y=\"171\" width=\"6\" height=\"5\" rx=\"2\" fill=\"#bae6fd\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></rect> <path d=\"M100,24 C68,24 40,68 38,114 C36,146 62,172 100,172 C138,172 164,146 162,114 C160,68 132,24 100,24 Z\" fill=\"#0284c7\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M100,28 C72,28 46,70 44,112 C42,141 66,166 100,166 C134,166 158,141 156,112 C154,70 128,28 100,28 Z\" fill=\"#38bdf8\"></path> <path d=\"M50,116 C50,146 72,162 100,162 C132,162 150,144 150,114 C150,94 136,54 116,40 C128,68 138,118 114,140 C94,158 64,144 50,116 Z\" fill=\"#0ea5e9\"></path> <path d=\"M60,60 C52,78 50,102 54,124\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"6\" stroke-linecap=\"round\"></path> <circle cx=\"62\" cy=\"138\" r=\"3.5\" fill=\"#ffffff\"></circle> <ellipse cx=\"88\" cy=\"44\" rx=\"14\" ry=\"6\" transform=\"rotate(-30 88 44)\" fill=\"#ffffff\" opacity=\"0.85\"></ellipse> <path d=\"M92,30 C97,32 103,32 108,30\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"3\" stroke-linecap=\"round\"></path>"
       }
     ]
@@ -1067,6 +1764,12 @@ export const WINK_PROPS: Record<WinkPropId, WinkArt> = {
         "pivot": [
           102.4,
           104.3
+        ],
+        "box": [
+          7.9,
+          6.6,
+          189.1,
+          193.4
         ],
         "markup": "<path d=\"M100,54 C108,30 118,20 128,26 C136,32 126,58 134,66 C148,46 172,32 180,44 C186,54 158,80 162,94 C178,92 196,104 192,118 C188,130 156,124 148,136 C164,152 170,174 156,182 C144,188 132,160 120,164 C116,180 106,194 94,190 C84,186 90,160 82,154 C66,170 42,176 34,162 C28,150 54,136 48,122 C30,128 10,114 12,98 C14,84 44,94 52,82 C36,66 26,44 40,36 C52,30 68,56 80,60 C86,42 92,24 100,54 Z\" fill=\"#0284c7\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M100,60 C106,40 114,32 122,36 C128,40 120,62 128,70 C140,54 160,42 166,52 C172,60 148,82 152,94 C166,92 180,102 178,112 C176,120 148,116 142,126 C154,140 158,158 148,164 C138,170 128,148 118,152 C114,164 106,176 96,172 C88,168 94,148 86,142 C74,154 54,158 48,148 C42,138 64,126 60,116 C44,120 28,108 30,96 C32,86 56,94 62,84 C50,72 42,54 52,48 C62,44 74,64 84,68 C88,52 94,38 100,60 Z\" fill=\"#38bdf8\"></path> <path d=\"M96,82 C114,78 128,88 132,104 C134,118 120,132 104,134 C86,136 74,122 76,104 C78,88 88,84 96,82 Z\" fill=\"#bae6fd\"></path> <ellipse cx=\"148\" cy=\"22\" rx=\"6\" ry=\"9\" transform=\"rotate(35 148 22)\" fill=\"#38bdf8\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <ellipse cx=\"64\" cy=\"20\" rx=\"5\" ry=\"8\" transform=\"rotate(-30 64 20)\" fill=\"#38bdf8\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <circle cx=\"188\" cy=\"80\" r=\"5\" fill=\"#38bdf8\" stroke=\"#1e1b4b\" stroke-width=\"3\"></circle> <ellipse cx=\"178\" cy=\"156\" rx=\"6\" ry=\"10\" transform=\"rotate(50 178 156)\" fill=\"#38bdf8\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <ellipse cx=\"22\" cy=\"148\" rx=\"6\" ry=\"8\" transform=\"rotate(-45 22 148)\" fill=\"#38bdf8\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <circle cx=\"18\" cy=\"62\" r=\"4.5\" fill=\"#38bdf8\" stroke=\"#1e1b4b\" stroke-width=\"3\"></circle> <ellipse cx=\"98\" cy=\"192\" rx=\"4\" ry=\"6\" fill=\"#38bdf8\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></ellipse>"
       }
@@ -1082,6 +1785,12 @@ export const WINK_PROPS: Record<WinkPropId, WinkArt> = {
           100,
           103
         ],
+        "box": [
+          50,
+          6,
+          100,
+          194
+        ],
         "markup": "<path d=\"M100,10 L100,54\" stroke=\"#0284c7\" stroke-width=\"14\" stroke-linecap=\"round\"></path> <path d=\"M100,10 L100,54\" stroke=\"#38bdf8\" stroke-width=\"8\" stroke-linecap=\"round\"></path> <path d=\"M98,12 L98,48\" stroke=\"#ffffff\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <ellipse cx=\"100\" cy=\"46\" rx=\"6\" ry=\"8\" fill=\"#38bdf8\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <circle cx=\"98\" cy=\"44\" r=\"1.5\" fill=\"#ffffff\"></circle> <path d=\"M100,68 C100,68 54,120 54,152 C54,178 74,196 100,196 C126,196 146,178 146,152 C146,120 100,68 100,68 Z\" fill=\"#0284c7\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M100,74 C100,74 60,122 60,150 C60,172 78,190 100,190 C122,190 140,172 140,150 C140,122 100,74 100,74 Z\" fill=\"#38bdf8\"></path> <path d=\"M78,142 C74,166 90,184 108,184 C128,184 136,170 136,156 C136,140 126,126 114,106 C124,128 126,154 114,168 C102,180 84,170 78,142 Z\" fill=\"#0284c7\"></path> <path d=\"M74,124 C68,136 68,154 74,168\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"6\" stroke-linecap=\"round\"></path> <circle cx=\"82\" cy=\"178\" r=\"3\" fill=\"#ffffff\"></circle> <ellipse cx=\"100\" cy=\"94\" rx=\"4\" ry=\"10\" transform=\"rotate(-15 100 94)\" fill=\"#ffffff\" opacity=\"0.9\"></ellipse> <circle cx=\"78\" cy=\"80\" r=\"3\" fill=\"#38bdf8\" stroke=\"#1e1b4b\" stroke-width=\"2\"></circle> <circle cx=\"124\" cy=\"92\" r=\"2.5\" fill=\"#38bdf8\" stroke=\"#1e1b4b\" stroke-width=\"2\"></circle>"
       }
     ]
@@ -1095,6 +1804,12 @@ export const WINK_PROPS: Record<WinkPropId, WinkArt> = {
         "pivot": [
           102,
           104
+        ],
+        "box": [
+          6,
+          8,
+          192,
+          192
         ],
         "markup": "<polygon points=\"100,90 108,96 114,92 110,104 116,112 104,110 98,118 94,106 84,104 92,96\" fill=\"#e0f2fe\" stroke=\"#1e1b4b\" stroke-width=\"3\"></polygon> <polygon points=\"98,96 104,98 106,104 100,106 96,102\" fill=\"#38bdf8\" stroke=\"#1e1b4b\" stroke-width=\"2\"></polygon> <polygon points=\"86,84 94,78 90,88\" fill=\"#f8fafc\" stroke=\"#1e1b4b\" stroke-width=\"2\"></polygon> <polygon points=\"118,88 126,92 122,82\" fill=\"#f8fafc\" stroke=\"#1e1b4b\" stroke-width=\"2\"></polygon> <polygon points=\"112,120 120,124 114,130\" fill=\"#f8fafc\" stroke=\"#1e1b4b\" stroke-width=\"2\"></polygon> <polygon points=\"82,112 88,118 80,122\" fill=\"#f8fafc\" stroke=\"#1e1b4b\" stroke-width=\"2\"></polygon> <path d=\"M94,92 L76,68 L54,58 L24,22\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M76,68 L82,42 L72,16\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M54,58 L46,80 L20,92\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <path d=\"M108,92 L132,64 L160,52 L186,18\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M132,64 L126,38 L142,12\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M160,52 L172,74 L194,84\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <path d=\"M108,110 L136,134 L158,148 L188,184\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M136,134 L152,122 L182,128\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M158,148 L146,172 L154,196\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <path d=\"M96,112 L68,136 L48,154 L16,186\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M68,136 L74,166 L64,192\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M48,154 L34,142 L10,140\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <path d=\"M74,68 C86,60 114,60 132,64\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M136,134 C120,142 92,142 68,136\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M54,58 C38,80 34,116 48,154\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <path d=\"M160,52 C178,78 178,122 158,148\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <path d=\"M78,66 L56,56\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <path d=\"M130,66 L158,54\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <path d=\"M134,132 L156,146\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <path d=\"M70,134 L50,152\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"2\" stroke-linecap=\"round\"></path>"
       }
@@ -1110,6 +1825,12 @@ export const WINK_PROPS: Record<WinkPropId, WinkArt> = {
           100,
           118
         ],
+        "box": [
+          14,
+          40,
+          172,
+          156
+        ],
         "markup": "<path d=\"M24,44 L44,56\" stroke=\"#f59e0b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M18,100 L38,100\" stroke=\"#f59e0b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M26,154 L44,144\" stroke=\"#f59e0b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M176,44 L156,56\" stroke=\"#f59e0b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M182,100 L162,100\" stroke=\"#f59e0b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M174,154 L156,144\" stroke=\"#f59e0b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <path d=\"M72,156 L64,192 L136,192 L128,156 Z\" fill=\"#b45309\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <rect x=\"60\" y=\"174\" width=\"80\" height=\"16\" rx=\"4\" fill=\"#d97706\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <line x1=\"68\" y1=\"182\" x2=\"132\" y2=\"182\" stroke=\"#fef08a\" stroke-width=\"3\" stroke-dasharray=\"8 4\"></line> <path d=\"M44,98 C40,64 70,50 100,50 C130,50 160,64 156,98 C154,124 146,158 100,160 C54,158 46,124 44,98 Z\" fill=\"#d97706\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M46,96 C42,68 70,54 100,54 C130,54 158,68 154,96 C152,120 144,152 100,154 C56,152 48,120 46,96 Z\" fill=\"#f59e0b\"></path> <rect x=\"52\" y=\"60\" width=\"22\" height=\"34\" rx=\"7\" fill=\"#fbbf24\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <path d=\"M56,66 C62,64 68,64 70,68\" stroke=\"#ffffff\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <rect x=\"76\" y=\"54\" width=\"23\" height=\"38\" rx=\"8\" fill=\"#fbbf24\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <path d=\"M80,60 C87,58 93,58 95,62\" stroke=\"#ffffff\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <rect x=\"101\" y=\"56\" width=\"23\" height=\"37\" rx=\"8\" fill=\"#fbbf24\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <path d=\"M105,62 C112,60 118,60 120,64\" stroke=\"#ffffff\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <rect x=\"126\" y=\"64\" width=\"21\" height=\"32\" rx=\"7\" fill=\"#fbbf24\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <path d=\"M130,70 C136,68 141,68 143,72\" stroke=\"#ffffff\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <path d=\"M54,96 C54,112 74,116 74,96\" fill=\"#d97706\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></path> <path d=\"M76,96 C76,116 99,118 99,96\" fill=\"#d97706\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></path> <path d=\"M101,96 C101,116 124,116 124,96\" fill=\"#d97706\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></path> <path d=\"M126,96 C126,112 146,112 146,96\" fill=\"#d97706\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></path> <path d=\"M46,118 C46,96 66,94 92,106 C114,116 124,124 116,142 C108,154 62,154 48,136 Z\" fill=\"#f59e0b\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M56,112 C72,108 96,114 108,126\" fill=\"none\" stroke=\"#fbbf24\" stroke-width=\"4\" stroke-linecap=\"round\"></path> <circle cx=\"56\" cy=\"132\" r=\"3\" fill=\"#78350f\" stroke=\"#1e1b4b\" stroke-width=\"2\"></circle> <path d=\"M68,138 L104,138\" stroke=\"#78350f\" stroke-width=\"2\" stroke-dasharray=\"4 3\"></path>"
       }
     ]
@@ -1123,6 +1844,12 @@ export const WINK_PROPS: Record<WinkPropId, WinkArt> = {
         "pivot": [
           95,
           106
+        ],
+        "box": [
+          46,
+          20,
+          98,
+          172
         ],
         "markup": "<path d=\"M102,96 C104,124 96,150 78,188\" fill=\"none\" stroke=\"#15803d\" stroke-width=\"6\" stroke-linecap=\"round\"></path> <path d=\"M102,96 C104,124 96,150 78,188\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <polygon points=\"102,118 114,122 101,126\" fill=\"#166534\" stroke=\"#1e1b4b\" stroke-width=\"2\"></polygon> <polygon points=\"98,144 86,148 97,152\" fill=\"#166534\" stroke=\"#1e1b4b\" stroke-width=\"2\"></polygon> <path d=\"M99,132 C72,126 56,136 50,146 C64,152 86,148 97,136 Z\" fill=\"#22c55e\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M96,134 L62,143\" stroke=\"#15803d\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <path d=\"M96,156 C118,150 134,158 140,168 C128,172 108,170 95,160 Z\" fill=\"#22c55e\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M98,158 L128,165\" stroke=\"#15803d\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <polygon points=\"86,96 98,108 102,96\" fill=\"#166534\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></polygon> <polygon points=\"118,96 104,108 102,96\" fill=\"#166534\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></polygon> <polygon points=\"102,108 100,118 104,108\" fill=\"#15803d\" stroke=\"#1e1b4b\" stroke-width=\"2\"></polygon> <path d=\"M72,56 C68,82 86,98 102,98 C120,98 136,82 132,56 C130,36 116,24 102,24 C88,24 74,36 72,56 Z\" fill=\"#991b1b\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M72,60 C70,82 86,96 102,96 C90,82 86,64 88,52 Z\" fill=\"#dc2626\" stroke=\"#1e1b4b\" stroke-width=\"2.5\" stroke-linejoin=\"round\"></path> <path d=\"M132,60 C134,82 118,96 102,96 C114,82 118,64 116,52 Z\" fill=\"#ef4444\" stroke=\"#1e1b4b\" stroke-width=\"2.5\" stroke-linejoin=\"round\"></path> <path d=\"M82,64 C86,88 118,88 122,64 C124,54 118,48 102,48 C86,48 80,54 82,64 Z\" fill=\"#f43f5e\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M94,44 C92,34 112,34 110,44 C108,52 96,52 98,42\" fill=\"#be123c\" stroke=\"#1e1b4b\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M84,70 C88,78 98,82 106,82\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <circle cx=\"114\" cy=\"74\" r=\"2\" fill=\"#ffffff\"></circle> <path d=\"M96,36 C102,34 108,36 108,38\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"2\" stroke-linecap=\"round\"></path>"
       }
@@ -1138,6 +1865,12 @@ export const WINK_PROPS: Record<WinkPropId, WinkArt> = {
           100,
           106
         ],
+        "box": [
+          29.4,
+          30,
+          141.2,
+          152
+        ],
         "markup": "<path d=\"M100,64 C82,32 40,36 34,74 C28,110 68,144 100,178 C132,144 172,110 166,74 C160,36 118,32 100,64 Z\" fill=\"#991b1b\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M100,58 C82,26 42,30 36,68 C30,104 70,138 100,170 C130,138 170,104 164,68 C158,30 118,26 100,58 Z\" fill=\"#dc2626\"></path> <path d=\"M100,66 C85,38 52,42 46,72 C42,100 74,130 100,158 C122,132 152,104 150,78 C144,70 136,88 124,106 C108,128 92,128 76,108 C64,94 62,68 80,56 C88,50 96,56 100,66 Z\" fill=\"#ef4444\"></path> <path d=\"M50,56 C44,68 44,82 50,96 C52,98 56,98 56,94 C52,82 52,70 58,60 C60,56 54,52 50,56 Z\" fill=\"#ffffff\"></path> <circle cx=\"58\" cy=\"108\" r=\"3.5\" fill=\"#ffffff\"></circle> <ellipse cx=\"134\" cy=\"54\" rx=\"14\" ry=\"5\" transform=\"rotate(-35 134 54)\" fill=\"#ffffff\" opacity=\"0.85\"></ellipse> <polygon points=\"154,34 157,40 163,43 157,46 154,52 151,46 145,43 151,40\" fill=\"#fef08a\" stroke=\"#1e1b4b\" stroke-width=\"1.5\"></polygon>"
       }
     ]
@@ -1151,6 +1884,12 @@ export const WINK_PROPS: Record<WinkPropId, WinkArt> = {
         "pivot": [
           110.8,
           98.3
+        ],
+        "box": [
+          36.6,
+          20.6,
+          148.4,
+          155.4
         ],
         "markup": "<circle cx=\"48\" cy=\"166\" r=\"6\" fill=\"#e0e7ff\" stroke=\"#1e1b4b\" stroke-width=\"3\"></circle> <circle cx=\"60\" cy=\"148\" r=\"9\" fill=\"#e0e7ff\" stroke=\"#1e1b4b\" stroke-width=\"3\"></circle> <circle cx=\"74\" cy=\"130\" r=\"13\" fill=\"#e0e7ff\" stroke=\"#1e1b4b\" stroke-width=\"3\"></circle> <path d=\"M72,118 C50,118 36,98 42,78 C36,58 54,38 74,40 C84,24 114,20 132,32 C148,22 172,34 170,54 C186,68 184,96 168,108 C162,122 140,126 126,118 C112,126 84,126 72,118 Z\" fill=\"#c7d2fe\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M74,112 C54,112 42,94 46,76 C42,58 58,42 76,44 C86,30 112,26 128,36 C144,28 164,38 164,56 C178,68 176,92 162,102 C156,116 136,118 124,112 C112,120 86,120 74,112 Z\" fill=\"#ffffff\"></path> <path d=\"M52,86 C54,104 74,108 94,108 C120,108 148,104 156,92 C148,104 126,112 100,112 C74,112 58,104 52,86 Z\" fill=\"#e0e7ff\"></path> <text x=\"64\" y=\"98\" font-family=\"&quot;Plus Jakarta Sans&quot;, sans-serif\" font-size=\"24\" font-weight=\"800\" fill=\"#6366f1\" stroke=\"#1e1b4b\" stroke-width=\"2.5\" paint-order=\"stroke fill\" transform=\"rotate(-15 64 98)\" text-anchor=\"start\">Z</text> <text x=\"96\" y=\"84\" font-family=\"&quot;Plus Jakarta Sans&quot;, sans-serif\" font-size=\"34\" font-weight=\"800\" fill=\"#818cf8\" stroke=\"#1e1b4b\" stroke-width=\"3\" paint-order=\"stroke fill\" transform=\"rotate(6 96 84)\" text-anchor=\"start\">Z</text> <text x=\"132\" y=\"70\" font-family=\"&quot;Plus Jakarta Sans&quot;, sans-serif\" font-size=\"46\" font-weight=\"900\" fill=\"#4f46e5\" stroke=\"#1e1b4b\" stroke-width=\"3.5\" paint-order=\"stroke fill\" transform=\"rotate(18 132 70)\" text-anchor=\"start\">Z</text> <circle cx=\"166\" cy=\"38\" r=\"2.5\" fill=\"#818cf8\"></circle> <circle cx=\"174\" cy=\"44\" r=\"1.5\" fill=\"#818cf8\"></circle>"
       }
@@ -1166,6 +1905,12 @@ export const WINK_PROPS: Record<WinkPropId, WinkArt> = {
           109.3,
           105.5
         ],
+        "box": [
+          50.5,
+          18,
+          117.5,
+          175
+        ],
         "markup": "<ellipse cx=\"100\" cy=\"182\" rx=\"42\" ry=\"7\" fill=\"#cbd5e1\" opacity=\"0.6\"></ellipse> <path d=\"M 60 22 L 78 28 L 74 52 L 62 46 Z\" fill=\"#b91c1c\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <circle cx=\"58\" cy=\"27\" r=\"3.5\" fill=\"#f8fafc\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></circle> <circle cx=\"61\" cy=\"35\" r=\"3.5\" fill=\"#f8fafc\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></circle> <circle cx=\"64\" cy=\"43\" r=\"3.5\" fill=\"#f8fafc\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></circle> <path d=\"M 68 49 L 92 108 L 103 104 L 79 45 Z\" fill=\"#f59e0b\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M 70 55 L 81 51 M 73 67 L 85 63 M 78 80 L 90 76 M 83 93 L 95 89\" stroke=\"#78350f\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <path d=\"M 100 102 L 148 114 L 164 168 L 138 162 L 116 172 L 78 142 L 72 116 Z\" fill=\"#991b1b\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M 96 100 L 144 110 L 160 162 L 134 156 L 114 168 L 76 138 L 74 116 Z\" fill=\"#ef4444\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M 94 114 L 126 122 L 132 144 L 104 140 Z\" fill=\"#f8fafc\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <rect x=\"98\" y=\"118\" width=\"16\" height=\"5\" transform=\"rotate(14 98 118)\" fill=\"#1e1b4b\" rx=\"1.5\"></rect> <rect x=\"103\" y=\"128\" width=\"16\" height=\"5\" transform=\"rotate(14 103 128)\" fill=\"#1e1b4b\" rx=\"1.5\"></rect> <circle cx=\"120\" cy=\"144\" r=\"3\" fill=\"#f59e0b\" stroke=\"#1e1b4b\" stroke-width=\"1.5\"></circle> <circle cx=\"128\" cy=\"146\" r=\"3\" fill=\"#f59e0b\" stroke=\"#1e1b4b\" stroke-width=\"1.5\"></circle> <path d=\"M 68 33 L 112 138 M 72 34 L 115 139 M 76 35 L 118 140\" stroke=\"#f8fafc\" stroke-width=\"1.5\"></path> <path d=\"M 148 102 L 151 108 L 157 111 L 151 114 L 148 120 L 145 114 L 139 111 L 145 108 Z\" fill=\"#fef08a\" stroke=\"#1e1b4b\" stroke-width=\"2\"></path>"
       }
     ]
@@ -1179,6 +1924,12 @@ export const WINK_PROPS: Record<WinkPropId, WinkArt> = {
         "pivot": [
           112.3,
           106.3
+        ],
+        "box": [
+          40.5,
+          28.5,
+          143.5,
+          155.5
         ],
         "markup": "<ellipse cx=\"106\" cy=\"170\" rx=\"34\" ry=\"6\" fill=\"#cbd5e1\" opacity=\"0.6\"></ellipse> <path d=\"M 45 42 L 68 36 L 76 60 L 53 66 Z\" fill=\"#b91c1c\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <circle cx=\"48\" cy=\"40\" r=\"3.5\" fill=\"#f8fafc\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></circle> <circle cx=\"56\" cy=\"38\" r=\"3.5\" fill=\"#f8fafc\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></circle> <circle cx=\"64\" cy=\"36\" r=\"3.5\" fill=\"#f8fafc\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></circle> <path d=\"M 58 65 L 115 136 L 126 130 L 70 59 Z\" fill=\"#d97706\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M 60 63 L 112 133 L 122 127 L 70 57 Z\" fill=\"#f59e0b\"></path> <path d=\"M 112 133 L 120 128 L 128 144 L 134 130 L 145 152 L 138 156 L 125 142 L 118 150 L 112 133 Z\" fill=\"#fef3c7\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M 66 73 L 78 68 M 76 87 L 89 81 M 88 102 L 100 96 M 100 118 L 112 111\" stroke=\"#78350f\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <path d=\"M 124 135 C 142 125 158 140 162 118 C 165 102 148 94 158 84\" fill=\"none\" stroke=\"#94a3b8\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M 130 142 C 150 152 168 135 174 154 C 178 168 164 176 180 180\" fill=\"none\" stroke=\"#64748b\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M 118 146 C 130 165 145 160 148 178\" fill=\"none\" stroke=\"#cbd5e1\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <polygon points=\"152,130 160,126 155,136\" fill=\"#f59e0b\" stroke=\"#1e1b4b\" stroke-width=\"2\"></polygon> <polygon points=\"135,108 142,106 138,114\" fill=\"#b91c1c\" stroke=\"#1e1b4b\" stroke-width=\"2\"></polygon> <polygon points=\"120,166 126,170 122,174\" fill=\"#fef3c7\" stroke=\"#1e1b4b\" stroke-width=\"2\"></polygon>"
       }
@@ -1194,6 +1945,12 @@ export const WINK_PROPS: Record<WinkPropId, WinkArt> = {
           100,
           133
         ],
+        "box": [
+          8,
+          82,
+          184,
+          102
+        ],
         "markup": "<ellipse cx=\"100\" cy=\"168\" rx=\"84\" ry=\"12\" fill=\"#cbd5e1\" opacity=\"0.7\"></ellipse> <path d=\"M 12 165 C 24 135 60 102 96 90 C 132 100 176 132 188 165 C 160 174 40 174 12 165 Z\" fill=\"#b45309\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M 16 163 C 28 132 64 96 100 86 C 134 94 172 128 184 163 C 150 170 50 170 16 163 Z\" fill=\"#f59e0b\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M 52 135 C 72 108 92 92 104 90 C 114 90 126 98 136 108 C 112 118 78 128 52 135 Z\" fill=\"#fde047\" stroke=\"#1e1b4b\" stroke-width=\"2.5\" stroke-linejoin=\"round\"></path> <path d=\"M 38 152 C 55 146 72 150 86 154\" stroke=\"#92400e\" stroke-width=\"3\" stroke-linecap=\"round\" fill=\"none\"></path> <path d=\"M 112 148 C 130 144 148 148 162 153\" stroke=\"#92400e\" stroke-width=\"3\" stroke-linecap=\"round\" fill=\"none\"></path> <path d=\"M 78 124 C 92 120 106 122 118 126\" stroke=\"#92400e\" stroke-width=\"3\" stroke-linecap=\"round\" fill=\"none\"></path> <circle cx=\"28\" cy=\"164\" r=\"5\" fill=\"#78350f\" stroke=\"#1e1b4b\" stroke-width=\"2\"></circle> <circle cx=\"44\" cy=\"168\" r=\"4\" fill=\"#92400e\" stroke=\"#1e1b4b\" stroke-width=\"2\"></circle> <circle cx=\"166\" cy=\"166\" r=\"6\" fill=\"#78350f\" stroke=\"#1e1b4b\" stroke-width=\"2\"></circle> <circle cx=\"178\" cy=\"163\" r=\"3.5\" fill=\"#b45309\" stroke=\"#1e1b4b\" stroke-width=\"2\"></circle> <circle cx=\"102\" cy=\"167\" r=\"4.5\" fill=\"#78350f\" stroke=\"#1e1b4b\" stroke-width=\"2\"></circle>"
       }
     ]
@@ -1207,6 +1964,12 @@ export const WINK_PROPS: Record<WinkPropId, WinkArt> = {
         "pivot": [
           102,
           95.5
+        ],
+        "box": [
+          16,
+          0,
+          172,
+          197
         ],
         "markup": "<ellipse cx=\"100\" cy=\"188\" rx=\"22\" ry=\"5\" fill=\"#cbd5e1\" opacity=\"0.6\"></ellipse> <rect x=\"94\" y=\"142\" width=\"12\" height=\"44\" fill=\"#94a3b8\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></rect> <polygon points=\"63,22 143,22 184,63 184,143 143,184 63,184 22,143 22,63\" fill=\"#991b1b\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\" transform=\"translate(0, -18)\"></polygon> <polygon points=\"60,20 140,20 180,60 180,140 140,180 60,180 20,140 20,60\" fill=\"#dc2626\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\" transform=\"translate(0, -22)\"></polygon> <polygon points=\"64,28 136,28 172,64 172,136 136,172 64,172 28,136 28,64\" fill=\"none\" stroke=\"#f8fafc\" stroke-width=\"4\" stroke-linejoin=\"round\" transform=\"translate(0, -22)\"></polygon> <g transform=\"translate(0, -22)\"> <text x=\"100\" y=\"112\" font-family=\"&quot;Plus Jakarta Sans&quot;, sans-serif\" font-size=\"38\" font-weight=\"900\" text-anchor=\"middle\" fill=\"#f8fafc\" stroke=\"#1e1b4b\" stroke-width=\"2\" letter-spacing=\"2\">PARE</text> </g> <circle cx=\"100\" cy=\"22\" r=\"3\" fill=\"#64748b\" stroke=\"#1e1b4b\" stroke-width=\"1.5\"></circle> <circle cx=\"100\" cy=\"132\" r=\"3\" fill=\"#64748b\" stroke=\"#1e1b4b\" stroke-width=\"1.5\"></circle>"
       }
@@ -1222,6 +1985,12 @@ export const WINK_PROPS: Record<WinkPropId, WinkArt> = {
           100,
           100
         ],
+        "box": [
+          0,
+          12,
+          200,
+          176
+        ],
         "markup": "<rect x=\"0\" y=\"118\" width=\"200\" height=\"66\" fill=\"#0f172a\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <rect x=\"0\" y=\"112\" width=\"200\" height=\"66\" fill=\"#1e293b\" stroke=\"#1e1b4b\" stroke-width=\"3\"></rect> <circle cx=\"22\" cy=\"126\" r=\"2.5\" fill=\"#475569\"></circle> <circle cx=\"58\" cy=\"164\" r=\"2\" fill=\"#64748b\"></circle> <circle cx=\"94\" cy=\"122\" r=\"3\" fill=\"#334155\"></circle> <circle cx=\"140\" cy=\"168\" r=\"2.5\" fill=\"#475569\"></circle> <circle cx=\"178\" cy=\"124\" r=\"2\" fill=\"#64748b\"></circle> <circle cx=\"120\" cy=\"160\" r=\"3\" fill=\"#334155\"></circle> <rect x=\"10\" y=\"140\" width=\"38\" height=\"10\" fill=\"#facc15\" stroke=\"#1e1b4b\" stroke-width=\"3\" rx=\"2\"></rect> <rect x=\"81\" y=\"140\" width=\"38\" height=\"10\" fill=\"#facc15\" stroke=\"#1e1b4b\" stroke-width=\"3\" rx=\"2\"></rect> <rect x=\"152\" y=\"140\" width=\"38\" height=\"10\" fill=\"#facc15\" stroke=\"#1e1b4b\" stroke-width=\"3\" rx=\"2\"></rect> <path d=\"M 38 106 C 28 85 46 68 36 48 C 28 36 38 24 44 20\" fill=\"none\" stroke=\"#94a3b8\" stroke-width=\"3.5\" stroke-linecap=\"round\"></path> <path d=\"M 44 104 C 36 88 52 74 42 56\" fill=\"none\" stroke=\"#cbd5e1\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M 100 104 C 114 84 94 65 106 44 C 112 32 104 20 98 16\" fill=\"none\" stroke=\"#94a3b8\" stroke-width=\"4\" stroke-linecap=\"round\"></path> <path d=\"M 106 102 C 120 86 102 72 112 52\" fill=\"none\" stroke=\"#cbd5e1\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M 160 106 C 150 86 168 70 158 50 C 152 38 162 26 168 22\" fill=\"none\" stroke=\"#94a3b8\" stroke-width=\"3.5\" stroke-linecap=\"round\"></path> <path d=\"M 166 104 C 158 88 174 74 164 58\" fill=\"none\" stroke=\"#cbd5e1\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path>"
       }
     ]
@@ -1235,6 +2004,12 @@ export const WINK_PROPS: Record<WinkPropId, WinkArt> = {
         "pivot": [
           101,
           100
+        ],
+        "box": [
+          12,
+          14,
+          178,
+          172
         ],
         "markup": "<path d=\"M 100 18 L 100 36 M 156 38 L 142 50 M 184 96 L 164 98 M 166 156 L 150 144 M 100 182 L 100 164 M 40 160 L 54 146 M 16 104 L 36 102 M 38 42 L 52 56\" stroke=\"#f97316\" stroke-width=\"4\" stroke-linecap=\"round\"></path> <polygon points=\"100,32 124,54 158,40 152,74 186,88 160,112 178,142 144,144 140,178 110,158 88,182 80,148 46,156 56,124 24,110 50,86 34,56 70,62\" fill=\"#ffedd5\" stroke=\"#ea580c\" stroke-width=\"3\" stroke-linejoin=\"round\"></polygon> <text x=\"104\" y=\"128\" font-family=\"&quot;Plus Jakarta Sans&quot;, sans-serif\" font-size=\"52\" font-weight=\"900\" text-anchor=\"middle\" fill=\"#7c2d12\" stroke=\"#1e1b4b\" stroke-width=\"6\" stroke-linejoin=\"round\" letter-spacing=\"1\">¡GOL!</text> <text x=\"98\" y=\"122\" font-family=\"&quot;Plus Jakarta Sans&quot;, sans-serif\" font-size=\"52\" font-weight=\"900\" text-anchor=\"middle\" fill=\"#facc15\" stroke=\"#1e1b4b\" stroke-width=\"3.5\" stroke-linejoin=\"round\" letter-spacing=\"1\">¡GOL!</text> <polygon points=\"42,28 46,34 52,36 46,38 42,44 40,38 34,36 40,34\" fill=\"#fbbf24\" stroke=\"#1e1b4b\" stroke-width=\"1.5\"></polygon> <polygon points=\"160,166 163,171 168,172 163,174 160,179 158,174 153,172 158,171\" fill=\"#fbbf24\" stroke=\"#1e1b4b\" stroke-width=\"1.5\"></polygon>"
       }
@@ -1250,6 +2025,12 @@ export const WINK_PROPS: Record<WinkPropId, WinkArt> = {
           100,
           107
         ],
+        "box": [
+          2,
+          19,
+          196,
+          176
+        ],
         "markup": "<ellipse cx=\"100\" cy=\"184\" rx=\"46\" ry=\"7\" fill=\"#cbd5e1\" opacity=\"0.6\"></ellipse> <path d=\"M 62 156 L 48 180 M 138 156 L 152 180\" stroke=\"#1e1b4b\" stroke-width=\"5\" stroke-linecap=\"round\"></path> <ellipse cx=\"54\" cy=\"54\" rx=\"18\" ry=\"14\" transform=\"rotate(-30 54 54)\" fill=\"#dc2626\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <ellipse cx=\"146\" cy=\"54\" rx=\"18\" ry=\"14\" transform=\"rotate(30 146 54)\" fill=\"#dc2626\" stroke=\"#1e1b4b\" stroke-width=\"3\"></ellipse> <path d=\"M 86 52 C 86 38 114 38 114 52\" fill=\"none\" stroke=\"#64748b\" stroke-width=\"4\" stroke-linecap=\"round\"></path> <rect x=\"96\" y=\"32\" width=\"8\" height=\"18\" fill=\"#475569\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></rect> <circle cx=\"100\" cy=\"30\" r=\"7\" fill=\"#f59e0b\" stroke=\"#1e1b4b\" stroke-width=\"2.5\"></circle> <circle cx=\"102\" cy=\"116\" r=\"54\" fill=\"#991b1b\" stroke=\"#1e1b4b\" stroke-width=\"3\"></circle> <circle cx=\"100\" cy=\"114\" r=\"54\" fill=\"#ef4444\" stroke=\"#1e1b4b\" stroke-width=\"3\"></circle> <circle cx=\"100\" cy=\"114\" r=\"42\" fill=\"#f8fafc\" stroke=\"#1e1b4b\" stroke-width=\"3\"></circle> <line x1=\"100\" y1=\"76\" x2=\"100\" y2=\"82\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></line> <line x1=\"100\" y1=\"152\" x2=\"100\" y2=\"146\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></line> <line x1=\"62\" y1=\"114\" x2=\"68\" y2=\"114\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></line> <line x1=\"138\" y1=\"114\" x2=\"132\" y2=\"114\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linecap=\"round\"></line> <path d=\"M 100 114 L 100 88\" stroke=\"#1e1b4b\" stroke-width=\"3.5\" stroke-linecap=\"round\"></path> <path d=\"M 100 114 L 78 132\" stroke=\"#1e1b4b\" stroke-width=\"4.5\" stroke-linecap=\"round\"></path> <circle cx=\"100\" cy=\"114\" r=\"4\" fill=\"#f59e0b\" stroke=\"#1e1b4b\" stroke-width=\"2\"></circle> <path d=\"M 24 44 C 18 56 18 70 24 82\" fill=\"none\" stroke=\"#f97316\" stroke-width=\"3.5\" stroke-linecap=\"round\"></path> <path d=\"M 12 40 C 4 56 4 74 12 90\" fill=\"none\" stroke=\"#f97316\" stroke-width=\"3.5\" stroke-linecap=\"round\"></path> <path d=\"M 176 44 C 182 56 182 70 176 82\" fill=\"none\" stroke=\"#f97316\" stroke-width=\"3.5\" stroke-linecap=\"round\"></path> <path d=\"M 188 40 C 196 56 196 74 188 90\" fill=\"none\" stroke=\"#f97316\" stroke-width=\"3.5\" stroke-linecap=\"round\"></path>"
       }
     ]
@@ -1263,6 +2044,12 @@ export const WINK_PROPS: Record<WinkPropId, WinkArt> = {
         "pivot": [
           103.1,
           102.5
+        ],
+        "box": [
+          21,
+          14,
+          164.2,
+          177
         ],
         "markup": "<ellipse cx=\"106\" cy=\"180\" rx=\"34\" ry=\"7\" fill=\"#cbd5e1\" opacity=\"0.6\"></ellipse> <path d=\"M 104 22 C 104 22 168 106 168 144 C 168 174 138 184 106 184 C 74 184 44 174 44 144 C 44 106 104 22 104 22 Z\" fill=\"#0284c7\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M 100 18 C 100 18 160 102 160 140 C 160 168 132 178 100 178 C 68 178 40 168 40 140 C 40 102 100 18 100 18 Z\" fill=\"#38bdf8\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M 80 50 C 66 84 56 112 56 138 C 56 156 68 166 76 168 C 68 162 64 150 64 136 C 64 114 74 86 86 54 Z\" fill=\"#f0f9ff\"></path> <ellipse cx=\"128\" cy=\"148\" rx=\"7\" ry=\"12\" transform=\"rotate(25 128 148)\" fill=\"#f0f9ff\"></ellipse> <ellipse cx=\"172\" cy=\"94\" rx=\"5\" ry=\"9\" transform=\"rotate(35 172 94)\" fill=\"#38bdf8\" stroke=\"#1e1b4b\" stroke-width=\"2\"></ellipse> <ellipse cx=\"32\" cy=\"116\" rx=\"4\" ry=\"7\" transform=\"rotate(-30 32 116)\" fill=\"#38bdf8\" stroke=\"#1e1b4b\" stroke-width=\"2\"></ellipse>"
       }

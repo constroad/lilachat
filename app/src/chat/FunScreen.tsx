@@ -61,6 +61,14 @@ function stopWink(): void {
   notify();
 }
 
+/** Leaving the chat: what had not sounded yet is cancelled, the music stops and the wink goes. */
+export function stopFun(): void {
+  pendingCues.forEach(clearTimeout);
+  pendingCues = [];
+  if (playing) stopWink();
+  else stopWinkSounds();
+}
+
 export function FunScreen({ children }: { children: ReactNode }) {
   const current = useSyncExternalStore(subscribe, () => playing, () => playing);
   const style = useAnimatedStyle(() => ({ transform: [{ translateX: shakeX.value }, { scaleX: squeezeX.value }] }));

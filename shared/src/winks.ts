@@ -174,16 +174,17 @@ export type FunToPlay = { seq: number; kind: 'zumbido'; mine: boolean } | { seq:
 /**
  * The nudge or wink to play: the newest after `afterSeq`. When the chat opens,
  * `afterSeq` is what was already read, so the one that came while it was closed
- * plays once (spec: «la animación corre una sola vez al abrirlo»). A wink I
- * sent also plays for me; my own nudge does not shake my screen.
+ * plays once (spec: «la animación corre una sola vez al abrirlo»). A wink or
+ * nudge I send plays for me when it goes (`mineToo`; José, 21/10: «yo no
+ * veo la vibración»), not again when I open the chat later.
  */
-export function funMessageToPlay(messages: readonly { seq: number; kind?: string; senderId: string; wink?: string }[], me: string, afterSeq: number): FunToPlay | null {
+export function funMessageToPlay(messages: readonly { seq: number; kind?: string; senderId: string; wink?: string }[], me: string, afterSeq: number, options: { mineToo: boolean } = { mineToo: true }): FunToPlay | null {
   let newest: FunToPlay | null = null;
   for (const message of messages) {
     if (message.seq <= afterSeq || (newest && message.seq < newest.seq)) continue;
     const mine = message.senderId === me;
-    if (message.kind === 'zumbido' && !mine) newest = { seq: message.seq, kind: 'zumbido', mine };
-    if (message.kind === 'guino' && isWinkId(message.wink)) newest = { seq: message.seq, kind: 'guino', wink: message.wink, mine };
+    if (message.kind === 'zumbido' && (!mine || options.mineToo)) newest = { seq: message.seq, kind: 'zumbido', mine };
+    if (message.kind === 'guino' && isWinkId(message.wink) && (!mine || options.mineToo)) newest = { seq: message.seq, kind: 'guino', wink: message.wink, mine };
   }
   return newest;
 }
@@ -196,21 +197,29 @@ export type FunPlace = 'chat' | 'row' | 'replay';
  * looking at, so it always plays (José, 21/10: Wilson never saw them — a muted
  * chat or the phone's «remove animations», which Samsung's battery saver turns
  * on, skipped them): muting only silences it. «Ver otra vez» was asked for, so
- * it plays whole with its sound. A row of the list stays quiet when muted and
+ * it plays whole, with its sound and buzz. A row of the list stays quiet when muted and
  * still with reduced motion.
  */
 export function shouldPlayFun(params: { muted: boolean; reducedMotion: boolean; place: FunPlace }): { animate: boolean; sound: boolean; vibrate: boolean } {
-  if (params.place === 'replay') return { animate: true, sound: true, vibrate: false };
+  if (params.place === 'replay') return { animate: true, sound: true, vibrate: true };
   if (params.place === 'chat') return { animate: true, sound: !params.muted, vibrate: !params.muted };
   if (params.muted) return { animate: false, sound: false, vibrate: false };
   return { animate: !params.reducedMotion, sound: true, vibrate: true };
 }
 
+const winkWho = (mine: boolean, author?: string) => (mine ? 'Mandaste un guiño' : author ? `${author} te mandó un guiño` : 'Te mandaron un guiño');
+
 /** The line that stays in the chat for a wink. */
 export function funNoticeText(params: { kind: 'guino'; wink?: string; mine: boolean; author?: string }): string {
   const name = winkById(params.wink)?.name;
-  const who = params.mine ? 'Mandaste un guiño' : params.author ? `${params.author} te mandó un guiño` : 'Te mandaron un guiño';
+  const who = winkWho(params.mine, params.author);
   return name ? `${who} · ${name}` : who;
+}
+
+/** The wink's card in the chat, next to its thumbnail (José, 21/10): who on top; which wink and when below. */
+export function winkCardLines(params: { wink?: string; mine: boolean; author?: string; time?: string }): { who: string; detail: string } {
+  const detail = [winkById(params.wink)?.name, params.time].filter(Boolean).join(' · ');
+  return { who: winkWho(params.mine, params.author), detail };
 }
 
 /**

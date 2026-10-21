@@ -1,8 +1,9 @@
 import { useEffect, useMemo, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { Easing, ReduceMotion, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
-import { SvgXml } from 'react-native-svg';
+import { Image } from 'expo-image';
 import { WINK_ART, WINK_PROPS, actorBox, actorTracks, isStillTrack, partTracks, type Ease, type PartKey, type Sketch, type SketchActor, type Track, type WinkArt, type WinkArtPart } from '@lilachat/shared';
+import { WINK_IMAGES } from './winkImages';
 
 type Screen = { width: number; height: number };
 /** A track ready for the UI thread: the eases as numbers (0 smooth, 1 linear, 2 in, 3 out). */
@@ -27,9 +28,8 @@ function sample(at: number, track: WorkletTrack): number {
   return values[values.length - 1]!;
 }
 
+const artIdOf = (actor: SketchActor): string => ('character' in actor.art ? actor.art.character : actor.art.prop);
 const artOf = (actor: SketchActor): WinkArt => ('character' in actor.art ? WINK_ART[actor.art.character] : WINK_PROPS[actor.art.prop]);
-const svgOf = (art: WinkArt, markup: string, stretch: boolean) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${art.viewBox}"${stretch ? ' preserveAspectRatio="none"' : ''}>${art.defs ? `<defs>${art.defs}</defs>` : ''}${markup}</svg>`;
 
 /**
  * A wink sketch over the whole screen (José, 21/10: winks are meant to be
@@ -37,7 +37,9 @@ const svgOf = (art: WinkArt, markup: string, stretch: boolean) =>
  * follows the shared timeline (`WINK_SKETCHES`) from ONE progress value, each
  * property interpolated on the UI thread; its parts turn around their joints
  * and the eyes and the mouth ride on the head. A part the sketch never moves
- * is a still layer.
+ * is a still layer. Each part is an IMAGE cropped to its own box
+ * (`winkImages`): Android redrew a live SVG on every frame (José, 21/10: «el
+ * chanchito lo veo muy lento»; measured 14 fps), an image is decoded once.
  */
 export function WinkSketch({ sketch, screen }: { sketch: Sketch; screen: Screen }) {
   const progress = useSharedValue(0);
@@ -80,17 +82,19 @@ function ActorView({ actor, screen, progress }: { actor: SketchActor; screen: Sc
   const [, , viewWidth = 1, viewHeight = 1] = art.viewBox.split(/\s+/).map(Number);
   // Pixels per viewBox unit (different on each axis only for a stretched actor).
   const units = { x: box.width / viewWidth, y: box.height / viewHeight };
-  const draw = (part: WinkArtPart) => (
-    <PartLayer key={part.part} art={art} part={part} box={box} units={units} stretch={actor.fit === 'width'} keys={actor.parts?.[part.part]} progress={progress}>
-      {art.parts.filter((child) => child.parent === part.part).map(draw)}
+  const images = WINK_IMAGES[artIdOf(actor)];
+  const draw = (part: WinkArtPart, parentBox: readonly [number, number, number, number] | null) => (
+    <PartLayer key={part.part} part={part} parentBox={parentBox} units={units} source={images?.parts[part.part]} keys={actor.parts?.[part.part]} progress={progress}>
+      {art.parts.filter((child) => child.parent === part.part).map((child) => draw(child, part.box))}
     </PartLayer>
   );
-  return <Animated.View style={[styles.actor, { width: box.width, height: box.height }, style]}>{art.parts.filter((part) => !part.parent).map(draw)}</Animated.View>;
+  return <Animated.View style={[styles.actor, { width: box.width, height: box.height }, style]}>{art.parts.filter((part) => !part.parent).map((part) => draw(part, null))}</Animated.View>;
 }
 
-function PartLayer(props: { art: WinkArt; part: WinkArtPart; box: Screen; units: { x: number; y: number }; stretch: boolean; keys: readonly PartKey[] | undefined; progress: SharedValue<number>; children: ReactNode }) {
-  const { art, part, box, units, stretch, keys, progress } = props;
-  const xml = useMemo(() => svgOf(art, part.markup, stretch), [art, part.markup, stretch]);
+/** A part: its image at its own box (relative to the part it rides on), turning around its joint. */
+function PartLayer(props: { part: WinkArtPart; parentBox: readonly [number, number, number, number] | null; units: { x: number; y: number }; source: number | undefined; keys: readonly PartKey[] | undefined; progress: SharedValue<number>; children: ReactNode }) {
+  const { part, parentBox, units, source, keys, progress } = props;
+  const [x, y, width, height] = part.box;
   const tracks = useMemo(() => {
     const all = partTracks(keys);
     const moves = !Object.values(all).every(isStillTrack) || all.rotate.values[0] !== 0 || all.scale.values[0] !== 1 || all.scaleY.values[0] !== 1 || all.opacity.values[0] !== 1;
@@ -102,12 +106,19 @@ function PartLayer(props: { art: WinkArt; part: WinkArtPart; box: Screen; units:
     const grow = sample(at, tracks.scale);
     return { opacity: sample(at, tracks.opacity), transform: [{ rotate: `${sample(at, tracks.rotate)}deg` }, { scaleX: grow }, { scaleY: grow * sample(at, tracks.scaleY) }] };
   });
+  const place = {
+    left: (x - (parentBox?.[0] ?? 0)) * units.x,
+    top: (y - (parentBox?.[1] ?? 0)) * units.y,
+    width: width * units.x,
+    height: height * units.y,
+    transformOrigin: [(part.pivot[0] - x) * units.x, (part.pivot[1] - y) * units.y, 0] as [number, number, number],
+  };
   return (
-    <Animated.View style={[StyleSheet.absoluteFill, { transformOrigin: [part.pivot[0] * units.x, part.pivot[1] * units.y, 0] }, style]}>
-      <SvgXml xml={xml} width={box.width} height={box.height} />
+    <Animated.View style={[styles.part, place, style]}>
+      {source ? <Image source={source} style={styles.fill} contentFit="fill" /> : null}
       {props.children}
     </Animated.View>
   );
 }
 
-const styles = StyleSheet.create({ actor: { position: 'absolute', left: 0, top: 0 } });
+const styles = StyleSheet.create({ actor: { position: 'absolute', left: 0, top: 0 }, part: { position: 'absolute', overflow: 'visible' }, fill: { width: '100%', height: '100%' } });

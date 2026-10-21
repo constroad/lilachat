@@ -33,28 +33,36 @@ const SOUND_FILES: Record<WinkSound, number> = {
   whistle: require('../../assets/sonidos/wink-whistle.mp3'),
   crash: require('../../assets/sonidos/wink-crash.mp3'),
 };
-const players = new Map<WinkSound, AudioPlayer>();
+/** The players playing now. Each one is released when it ends: 26 sounds kept alive were 26 media players in memory (José, 21/10: the app felt slow). */
+const playing = new Set<AudioPlayer>();
+
+function release(player: AudioPlayer): void {
+  playing.delete(player);
+  try {
+    player.release();
+  } catch (error) {
+    reportarError('releaseWinkSound', error);
+  }
+}
 
 /** Never throws: a sound that fails cannot break the chat. */
 export function playWinkSound(sound: WinkSound): void {
   try {
-    const player = players.get(sound) ?? createAudioPlayer(SOUND_FILES[sound]);
-    players.set(sound, player);
+    const player = createAudioPlayer(SOUND_FILES[sound]);
+    playing.add(player);
     player.volume = WINK_VOLUME;
-    void player.seekTo(0);
+    const done = player.addListener('playbackStatusUpdate', (status) => {
+      if (!status.didJustFinish) return;
+      done.remove();
+      release(player);
+    });
     player.play();
   } catch (error) {
     reportarError('playWinkSound', error);
   }
 }
 
-/** The music of a wink stops with it. */
+/** The music of a wink stops with it, and its players go. */
 export function stopWinkSounds(): void {
-  players.forEach((player) => {
-    try {
-      player.pause();
-    } catch (error) {
-      reportarError('stopWinkSounds', error);
-    }
-  });
+  [...playing].forEach(release);
 }

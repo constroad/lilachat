@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NUDGE_SHAKE, funArrivedInRow, funMessageToPlay, funNoticeText, isWinkId, shouldPlayFun, WINKS, winkById, winkCues, winkParticles, winkRowSound } from './winks.js';
+import { NUDGE_SHAKE, funArrivedInRow, funMessageToPlay, funNoticeText, isWinkId, shouldPlayFun, WINKS, winkById, winkCardLines, winkCues, winkParticles, winkRowSound } from './winks.js';
 
 describe('the wink catalog', () => {
   it('characters, construction ones and the first emoji ones, each with a name and its length', () => {
@@ -91,11 +91,21 @@ describe('funMessageToPlay', () => {
     { seq: 5, kind: 'zumbido', senderId: 'jose' },
   ];
 
-  it('the newest after what was seen: a wink I sent also plays for me, my own nudge does not shake me', () => {
-    expect(funMessageToPlay(rows, me, 0)).toEqual({ seq: 4, kind: 'guino', wink: 'party', mine: true });
-    expect(funMessageToPlay(rows, me, 4)).toBeNull();
+  /** José, 21/10: «el zumbido lo envío pero yo no veo la vibración»: mine also shakes me when it goes. */
+  it('the newest after what was seen: what I send also plays for me when it goes, the nudge too', () => {
+    expect(funMessageToPlay(rows, me, 0)).toEqual({ seq: 5, kind: 'zumbido', mine: true });
+    expect(funMessageToPlay(rows.slice(0, 4), me, 0)).toEqual({ seq: 4, kind: 'guino', wink: 'party', mine: true });
+    expect(funMessageToPlay(rows, me, 5)).toBeNull();
     expect(funMessageToPlay(rows.slice(0, 3), me, 1)).toEqual({ seq: 3, kind: 'guino', wink: 'hearts', mine: false });
     expect(funMessageToPlay(rows.slice(0, 2), me, 1)).toEqual({ seq: 2, kind: 'zumbido', mine: false });
+  });
+
+  /** José, 21/10: «envío un guiño, salgo y vuelvo a entrar, y se reproduce otra vez». Mine plays when it goes, not when I come back. */
+  it('when the chat opens, a wink of MINE is not played again: only one someone sent me', () => {
+    expect(funMessageToPlay(rows.slice(0, 4), me, 2, { mineToo: false })).toEqual({ seq: 3, kind: 'guino', wink: 'hearts', mine: false });
+    expect(funMessageToPlay([rows[3]!], me, 0, { mineToo: false })).toBeNull();
+    expect(funMessageToPlay([rows[3]!], me, 0, { mineToo: true })).toEqual({ seq: 4, kind: 'guino', wink: 'party', mine: true });
+    expect(funMessageToPlay([rows[4]!], me, 0, { mineToo: false })).toBeNull();
   });
 
   it('a wink this version does not know is not played', () => {
@@ -110,8 +120,8 @@ describe('shouldPlayFun', () => {
     expect(shouldPlayFun({ muted: false, reducedMotion: true, place: 'chat' })).toEqual({ animate: true, sound: true, vibrate: true });
     expect(shouldPlayFun({ muted: false, reducedMotion: false, place: 'chat' })).toEqual({ animate: true, sound: true, vibrate: true });
   });
-  it('«Ver otra vez» was asked for: it plays whole, with its sound, even in a muted chat', () => {
-    expect(shouldPlayFun({ muted: true, reducedMotion: true, place: 'replay' })).toEqual({ animate: true, sound: true, vibrate: false });
+  it('«Ver otra vez» was asked for: it plays whole, with its sound and its buzz, even in a muted chat', () => {
+    expect(shouldPlayFun({ muted: true, reducedMotion: true, place: 'replay' })).toEqual({ animate: true, sound: true, vibrate: true });
   });
   it('a row of the chat list stays still and quiet when muted, and still with reduced motion', () => {
     expect(shouldPlayFun({ muted: true, reducedMotion: false, place: 'row' })).toEqual({ animate: false, sound: false, vibrate: false });
@@ -126,6 +136,17 @@ describe('funNoticeText', () => {
     expect(funNoticeText({ kind: 'guino', wink: 'piggy', mine: true })).toBe('Mandaste un guiño · Chancho fiestero');
     expect(funNoticeText({ kind: 'guino', wink: 'hearts', mine: false })).toBe('Te mandaron un guiño · Corazones');
     expect(funNoticeText({ kind: 'guino', wink: 'chanchito', mine: false, author: 'Ana' })).toBe('Ana te mandó un guiño');
+  });
+});
+
+describe('winkCardLines', () => {
+  /** José, 21/10: the wink line should show a thumbnail of which wink it was; the card has the who and the which apart. */
+  it('who on the first line; the wink and the time on the second', () => {
+    expect(winkCardLines({ wink: 'panda', mine: false, author: 'Ana', time: '10:44 a. m.' })).toEqual({ who: 'Ana te mandó un guiño', detail: 'Panda abrazón · 10:44 a. m.' });
+    expect(winkCardLines({ wink: 'hearts', mine: true })).toEqual({ who: 'Mandaste un guiño', detail: 'Corazones' });
+  });
+  it('a wink this version does not know: only who, and the time if there is one', () => {
+    expect(winkCardLines({ wink: 'chanchito', mine: false, time: '9:00 a. m.' })).toEqual({ who: 'Te mandaron un guiño', detail: '9:00 a. m.' });
   });
 });
 

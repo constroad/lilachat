@@ -112,6 +112,15 @@ function namesOf(parts, body) {
 }
 
 const round = (value) => Math.round(value * 10) / 10;
+/** getBBox leaves the stroke out: a margin so the outline is not cut when a part is drawn on its own. */
+const STROKE_MARGIN = 4;
+/** A part's own box in viewBox units, with the stroke margin and inside the drawing (the app draws each part as an image of this size). */
+function paddedBox(box, viewBox) {
+  const [, , width, height] = viewBox.split(/\s+/).map(Number);
+  const x = Math.max(0, box.x - STROKE_MARGIN);
+  const y = Math.max(0, box.y - STROKE_MARGIN);
+  return [round(x), round(y), round(Math.min(width, box.x + box.width + STROKE_MARGIN) - x), round(Math.min(height, box.y + box.height + STROKE_MARGIN) - y)];
+}
 
 const browser = await chromium.launch({ executablePath: args.chrome, headless: true, args: ['--disable-features=AudioServiceOutOfProcess'] });
 const characters = [];
@@ -147,7 +156,7 @@ for (const character of characters) {
       const name = names[index];
       const [x, y] = fromBehind && name === 'tail' ? [center(part.box).x, part.box.y + part.box.height] : pivotOf(name, part.box, body);
       const markup = part.transform ? `<g transform="${part.transform}">${part.markup}</g>` : part.markup;
-      return { part: name, pivot: [round(x), round(y)], markup, ...(part.parent ? { parent: names[character.parts.findIndex((other) => other.part === part.parent)] ?? part.parent } : {}) };
+      return { part: name, pivot: [round(x), round(y)], box: paddedBox(part.box, character.viewBox), markup, ...(part.parent ? { parent: names[character.parts.findIndex((other) => other.part === part.parent)] ?? part.parent } : {}) };
     }),
   };
   console.log('character', character.id, character.parts.map((part) => (part.parent ? `${part.parent}>${part.part}` : part.part)).join(','));
@@ -156,7 +165,7 @@ for (const character of characters) {
 const propArt = {};
 for (const prop of props) {
   const middle = center(prop.box);
-  propArt[prop.id] = { viewBox: prop.viewBox, defs: prop.defs, parts: [{ part: 'body', pivot: [round(middle.x), round(middle.y)], markup: prop.markup }] };
+  propArt[prop.id] = { viewBox: prop.viewBox, defs: prop.defs, parts: [{ part: 'body', pivot: [round(middle.x), round(middle.y)], box: paddedBox(prop.box, prop.viewBox), markup: prop.markup }] };
   console.log('prop', prop.id);
 }
 
@@ -169,7 +178,8 @@ const header = `/**
  */
 import type { RigPart } from './winkTimeline.js';
 
-export type WinkArtPart = { part: RigPart; pivot: readonly [number, number]; markup: string; parent?: RigPart };
+/** \`box\`: the part's own [x, y, width, height] in viewBox units, stroke included (the app draws each part as an image of it). */
+export type WinkArtPart = { part: RigPart; pivot: readonly [number, number]; box: readonly [number, number, number, number]; markup: string; parent?: RigPart };
 export type WinkArt = { viewBox: string; defs: string; parts: readonly WinkArtPart[] };
 export type WinkArtId = ${union(Object.keys(art))};
 export type WinkPropId = ${union(Object.keys(propArt))};

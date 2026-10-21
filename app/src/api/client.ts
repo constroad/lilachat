@@ -6,7 +6,7 @@
  * .env de dev sale apuntando al emulador y falla con wifi andando — el script
  * de release lo fija y lo verifica dentro del binario).
  */
-import type { DestacadoEnLista, ResumenDeHiloEnCliente, VistaDelFijado, VistaPreviaDeEnlace } from '@lilachat/shared';
+import type { DestacadoEnLista, NotificationLevel, ResumenDeHiloEnCliente, VistaDelFijado, VistaPreviaDeEnlace } from '@lilachat/shared';
 import type { ServerMessage } from '../chat/socketClient';
 import { unSoloPedido } from './pedidoUnico';
 
@@ -208,7 +208,7 @@ export type FijadoEnLista = {
 };
 
 /** Lo que cada uno ajusta para sí en un chat (FL9 suma archivar y no leído). */
-export type AjustesDeChat = { muted?: boolean; pinned?: boolean; archived?: boolean; markedUnread?: boolean };
+export type AjustesDeChat = { muted?: boolean; pinned?: boolean; archived?: boolean; markedUnread?: boolean; avisos?: NotificationLevel };
 
 async function get<T>(route: string, token: string, fetchImpl: FetchLike = fetch): Promise<ApiResult<T>> {
   try {

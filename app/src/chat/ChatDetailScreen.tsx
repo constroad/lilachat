@@ -15,6 +15,7 @@ import {
   clasificarMedias,
   formatPhoneDisplay,
   type AccionDeMiembro,
+  type NotificationLevel,
 } from '@lilachat/shared';
 import { EditarNombreDeGrupo } from './EditarNombreDeGrupo';
 import { elegirFotoDeGrupo, subirFotoDeGrupo } from './fotoDeGrupo';
@@ -58,6 +59,8 @@ type Detalle = {
   encrypted: boolean;
   /** MI silenciado de este chat (FL8: antes el interruptor arrancaba siempre apagado). */
   muted?: boolean;
+  /** E3b: todo / menciones / nada; a server without it leaves only `muted`. */
+  avisos?: NotificationLevel;
   members: Miembro[];
 };
 
@@ -116,7 +119,7 @@ export function ChatDetailScreen({
   const colores = useColores();
   const margenes = useMargenes();
   const [estado, setEstado] = useState<Estado>({ fase: 'cargando' });
-  const [silenciado, setSilenciado] = useState(false);
+  const [level, setLevel] = useState<NotificationLevel>('todo');
 
   const [accionando, setAccionando] = useState(false);
   /** La hoja para elegir a quién sumar. */
@@ -186,7 +189,7 @@ export function ChatDetailScreen({
       }
       const detalle = (await respuesta.json()) as Detalle;
       setEstado({ fase: 'listo', detalle });
-      setSilenciado(detalle.muted === true);
+      setLevel(detalle.avisos ?? (detalle.muted === true ? 'menciones' : 'todo'));
     } catch {
       // **El error se DICE.** Una pantalla que se queda en blanco al fallar la
       // red es indistinguible de una pantalla rota.
@@ -476,14 +479,15 @@ export function ChatDetailScreen({
             <AjustesDelChat
               esGrupo={esGrupo}
               cifrado={detalle!.encrypted}
-              silenciado={silenciado}
-              onSilenciar={(valor) => {
+              level={level}
+              onLevel={(next) => {
                 // Se guarda de verdad (FL8): antes era solo un estado local.
-                // Si el server no lo toma, el interruptor vuelve y se dice.
-                setSilenciado(valor);
-                void cambiarAjustesDeChat(chatId, credential.jwt, { muted: valor }).then((ok) => {
+                // If the server rejects it, it goes back and says so.
+                const before = level;
+                setLevel(next);
+                void cambiarAjustesDeChat(chatId, credential.jwt, { avisos: next }).then((ok) => {
                   if (ok) return;
-                  setSilenciado(!valor);
+                  setLevel(before);
                   setAviso('No se pudo cambiar. Revisa la conexión.');
                 });
               }}

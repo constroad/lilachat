@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { View } from 'react-native';
 import { Interruptor } from '../ui/Interruptor';
-import { BellOff, Lock, LogOut } from 'lucide-react-native';
+import { Bell, BellOff, Lock, LogOut } from 'lucide-react-native';
+import { NOTIFICATION_LEVEL_TEXT, type NotificationLevel } from '@lilachat/shared';
+import { NotificationLevelSheet } from './NotificationLevelSheet';
 import { FilaDeAjuste, GrupoDeAjustes } from '../ui/FilaDeAjuste';
 import { Rotulo } from '../ui/Rotulo';
 
@@ -15,29 +18,36 @@ import { Rotulo } from '../ui/Rotulo';
 export function AjustesDelChat({
   esGrupo,
   cifrado,
-  silenciado,
-  onSilenciar,
+  level,
+  onLevel,
   accionando,
   onSalir,
 }: {
   esGrupo: boolean;
   cifrado: boolean;
-  silenciado: boolean;
-  onSilenciar: (valor: boolean) => void;
+  /** E3b: a group chooses everything / only mentions / nothing; a 1:1 keeps the switch. */
+  level: NotificationLevel;
+  onLevel: (level: NotificationLevel) => void;
   accionando: boolean;
   onSalir: () => Promise<void> | void;
 }) {
+  const [choosing, setChoosing] = useState(false);
+  const silenced = level !== 'todo';
   return (
     <>
       <Rotulo sangrado>Ajustes del chat</Rotulo>
       <View className="gap-3 px-4">
         <GrupoDeAjustes>
-          <FilaDeAjuste
-            icono={BellOff}
-            titulo="Silenciar notificaciones"
-            detalle={silenciado ? 'No te avisamos de este chat' : 'Te avisamos de cada mensaje'}
-            derecha={<Interruptor testID="sw-silenciar" value={silenciado} onValueChange={onSilenciar} />}
-          />
+          {esGrupo ? (
+            <FilaDeAjuste testID="btn-avisos" icono={silenced ? BellOff : Bell} titulo="Avisos" detalle={NOTIFICATION_LEVEL_TEXT[level].title} onPress={() => setChoosing(true)} />
+          ) : (
+            <FilaDeAjuste
+              icono={BellOff}
+              titulo="Silenciar notificaciones"
+              detalle={silenced ? 'No te avisamos de este chat' : 'Te avisamos de cada mensaje'}
+              derecha={<Interruptor testID="sw-silenciar" value={silenced} onValueChange={(value) => onLevel(value ? 'menciones' : 'todo')} />}
+            />
+          )}
           {/* El cifrado se DICE como es, no como nos gustaría. Solo los chats
               secretos son de punta a punta; en los demás el servidor guarda
               el texto, y decir otra cosa acá sería mentir sobre privacidad. */}
@@ -69,6 +79,15 @@ export function AjustesDelChat({
           </GrupoDeAjustes>
         ) : null}
       </View>
+      <NotificationLevelSheet
+        visible={choosing}
+        level={level}
+        onChoose={(next) => {
+          setChoosing(false);
+          onLevel(next);
+        }}
+        onClose={() => setChoosing(false)}
+      />
     </>
   );
 }

@@ -1,7 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
 import { completarMencion, consultaDeMencion, rangosDeMenciones, type ConsultaDeMencion, type MencionElegida, type MencionEnMensaje } from '@lilachat/shared';
+import { mentionOptions } from '@lilachat/shared';
 
 export type MiembroMencionable = { id: string; nombre: string; foto?: string };
+/** A suggestion: a member, or a group mention with a `hint` that says what it does (E3b). */
+export type MentionSuggestion = MiembroMencionable & { hint?: string };
 
 /** Cuántas sugerencias se muestran a la vez: más tapan la conversación. */
 const MAX_SUGERENCIAS = 5;
@@ -27,7 +30,8 @@ export function useMenciones(miembros: readonly MiembroMencionable[] | undefined
   );
 
   const buscada = consulta ? sinTildes(consulta.consulta) : '';
-  const sugerencias = consulta && miembros ? miembros.filter((m) => sinTildes(m.nombre).includes(buscada)).slice(0, MAX_SUGERENCIAS) : [];
+  const options: readonly MentionSuggestion[] | undefined = mentionOptions(miembros);
+  const sugerencias = consulta && options ? options.filter((m) => sinTildes(m.nombre).includes(buscada)).slice(0, MAX_SUGERENCIAS) : [];
 
   /** Cambia el «@an» por «@Ana » y devuelve el texto y el cursor nuevos. */
   const elegir = (texto: string, miembro: MiembroMencionable) => {

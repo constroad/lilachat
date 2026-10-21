@@ -68,3 +68,41 @@ Las capturas viven SOLO en la máquina (`design/stitch/`, en `.gitignore` desde 
 | `s1-web-stickers.png` | S1 · Web: panel de stickers sobre la barra y diálogo «Crear sticker» (`screens/5901b731b3a742c3b2aeb64930f6d31d`) |
 | `s1-pack-lila.png` | S1 · Hoja de 24 stickers del paquete por defecto «Lila» (SVG; `web/scripts/extract-sticker-pack.mjs` los pasa a WebP) (`screens/10f511ccc1aa4b34ad04df756730e310`) |
 | `c1-app-cumpleanos.png` | C1 · App: aviso de cumpleaños a pantalla completa con confeti, tarjeta con el avatar, reacciones, «Saludar en el grupo» y «Crear tarjeta con IA» (`screens/cd0ecbeba4524e54b2bd8ba2886d7b9b`; sin el logo inventado arriba a la izquierda) |
+| `e-01-bienvenida-app.png` | E · Bienvenida «¿Cómo vas a usar Lilachat?» · Móvil (`screens/6a425c590a304d02a5a3dc705d56ee9a`) |
+| `e-01-bienvenida-web.png` | E · Bienvenida «¿Cómo vas a usar Lilachat?» · Web (`screens/a45e8dfce3484f88b0b8409beeb8db9a`) |
+| `e-02-unirse-codigo-app.png` | E · Unirse con código · Móvil (`screens/f7bf09fdac744807a56be471033b8f95`) |
+| `e-02-unirse-codigo-web.png` | E · Unirse con código · Web (`screens/0ac16ae02e6040809f7537c8f1cc4a1f`) |
+| `e-03-solicitud-enviada-app.png` | E · Solicitud enviada · Móvil (`screens/9707b5e54e994f4d97b40db3f26130f4`) |
+| `e-04-crear-espacio-app.png` | E · Crear un espacio · Móvil (`screens/9d69217b74894b2897018766ab2657bf`) |
+| `e-04-crear-espacio-web.png` | E · Crear un espacio · Web (`screens/bab427886acc4eac8b92573323924bc4`) |
+| `e-05-invitar-app.png` | E · Invitar a CONSTROAD · Móvil (`screens/771f88d6a3304603b861b252c2846611`) |
+| `e-05-invitar-web.png` | E · Invitar a CONSTROAD · Web (`screens/7938e70e13c14fb5aab518d1cfec0d04`) |
+| `e-06-selector-espacios-app.png` | E · Selector de espacios · Móvil (`screens/341653bedea7403aa782682cdde8a161`) |
+| `e-06-selector-espacios-web.png` | E · Selector de espacios · Web (`screens/dfe7533b7d8f4074af2f3fceb03f445a`) |
+| `e-07-lista-espacio-app.png` | E · Chats de CONSTROAD · Móvil (`screens/89e6b7fc38434468b8ab380baf74cf4b`) |
+| `e-07-lista-espacio-web.png` | E · Chats de CONSTROAD · Web (`screens/d5673489750d444cb176986035614790`) |
+| `e-08-directorio-app.png` | E · Directorio · Móvil (`screens/f8b1346bba0a41ae9b781b99e22c155b`) |
+| `e-08-directorio-web.png` | E · Directorio · Web (`screens/37a791be1ef3410ba54d1322d4277fb7`) |
+| `e-09-perfil-miembro-app.png` | E · Perfil de Ana Torres · Móvil (`screens/2ffb110425804f86a473d91b42db15fe`) |
+| `e-10-miembros-roles-app.png` | E · Miembros y roles · Móvil (`screens/09b8be38c0d6492697b6930a4a309d2e`) |
+| `e-10-miembros-roles-web.png` | E · Miembros y roles · Web (`screens/7a1031a7b01c47fc96da1b0c1fa68adb`) |
+| `e-11-solicitudes-app.png` | E · Solicitudes pendientes · Móvil (`screens/c7b839c55c7949228034852113e44496`) |
+| `e-12-ajustes-espacio-app.png` | E · Ajustes del espacio · Móvil (`screens/d94246238e3a4bd49b4603b56c93919d`) |
+| `e-12-ajustes-espacio-web.png` | E · Ajustes del espacio · Web (`screens/4b094f7c909b4b52831f5bb034c9da44`) |
+| `e-13-te-agregaron-app.png` | E · Te agregaron a CONSTROAD · Móvil (`screens/61d2dddd66e84b9d9830cb449359b628`) |
+| `e-14-acceso-desactivado-app.png` | E · Ya no tienes acceso · Móvil (`screens/24ebb5a44489425b934d7bdea785289a`) |
+| `e-15-explorar-canales-app.png` | E · Explorar canales · Móvil (`screens/49c368cb9f054c408ee97d9b95b89954`) |
+| `e-15-explorar-canales-web.png` | E · Explorar canales · Web (`screens/055c63f94b804ac198bf2c80641a3670`) |
+| `e-16-crear-canal-app.png` | E · Crear canal · Móvil (`screens/8f8b61141e8a4cc0a19ee5713a2bebaf`) |
+| `e-16-crear-canal-web.png` | E · Crear canal · Web (`screens/02b877cfe33e434c993f4c7df6711acf`) |
+| `e-17-menciones-sugerencias-app.png` | E · Sugerencias de menciones · Móvil (`screens/fdf6cf5227a1466fa26842166833a958`) |
+| `e-17-menciones-sugerencias-web.png` | E · Sugerencias de menciones · Web (`screens/1e2a3337492a4bff8cb09803a181b2b6`) |
+| `e-18-avisos-chat-app.png` | E · Avisos del chat · Móvil (`screens/e5cb7a00232f4b23a8beba17b6f1f809`) |
+| `e-18-avisos-chat-web.png` | E · Avisos del chat · Web (`screens/6c3e256a312e403cbc28dff63bb50663`) |
+| `e-19-menciones-actividad-app.png` | E · Menciones · Móvil (`screens/6cf0ba4d5f6f480eb911e346b6b3f25c`) |
+| `e-19-menciones-actividad-web.png` | E · Menciones · Web (`screens/784305a5b3d5472a88c717d34506390c`) |
+| `e-20-comandos-barra-app.png` | E · Comandos con barra · Móvil (`screens/a91ef765b4d74976b43be7a5938cc7f1`) |
+| `e-20-comandos-barra-web.png` | E · Comandos con barra · Web (`screens/7fd0d49ecbc84cd4bf0c8f7cecdd55e5`) |
+| `e-21-mensaje-bot-botones-app.png` | E · Mensaje de un bot con botones · Móvil (`screens/dc5a38111de74dc8943e45f661d31ed7`) |
+| `e-21-mensaje-bot-botones-web.png` | E · Mensaje de un bot con botones · Web (`screens/33a4177e861c4c8e9b7ff2f9d32b5725`) |
+| `e-22-integraciones-web.png` | E · Integraciones del espacio · Web (`screens/4d06702ddbb8468c956a169385e1f402`) |

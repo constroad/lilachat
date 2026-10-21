@@ -4892,6 +4892,47 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 68. El audio con la pantalla bloqueada y responder con sticker (20/10/2026, 0.1.115)
+
+José (20/10): «un audio se corta cuando la pantalla se bloquea» y «no puedo
+responder con sticker desde el principal o desde el hilo».
+
+- **Audio:** `expo-audio` pausa todos los reproductores y grabadores al pasar
+  a segundo plano, y bloquear la pantalla cuenta. Ahora el modo de audio pide
+  seguir (`audioMode.ts`, con test): al reproducir, `shouldPlayInBackground`
+  y `doNotMix` (pausa la música de otra app, como WhatsApp); al grabar,
+  además `allowsBackgroundRecording`. Un audio de 150 s o más muestra los
+  controles en la pantalla de bloqueo: sin ellos Android lo corta a los ~3
+  minutos. El plugin pide `enableBackgroundRecording` (servicio
+  `AudioRecordingService` y `FOREGROUND_SERVICE_MICROPHONE` en el
+  manifiesto, regenerado con `expo prebuild`).
+- **E2E del audio** (emulador, nota de 30 s subida como QA Ana con un tono
+  sintético): se tocó reproducir, a los 2 s se bloqueó la pantalla, y siguió
+  sonando hasta el final con la pantalla apagada (`dumpsys audio`:
+  `started` hasta los 28 s; `AudioTrack` entregó 30,0 s). **La grabación con
+  la pantalla bloqueada no se probó:** el micrófono del emulador captaría
+  audio ambiente.
+- **Responder con sticker:** el server ya aceptaba `replyToSeq`, pero el panel
+  mandaba el sticker sin él. Ahora la barra le dice al panel a qué mensaje
+  se responde (app: `ComposerHandle.replyingTo/replyDone`; web:
+  `replyingTo` hasta `StickerChat.replyToSeq`), el sticker sale como
+  respuesta y la franja se cierra. La burbuja del sticker muestra la cita
+  arriba, como WhatsApp (app y web).
+- **En el hilo** el botón de stickers está desde la 0.1.113 (§65.2); dentro de
+  un hilo no hay respuesta a un mensaje puntual, como en Slack.
+- **E2E:** desde la web (QA Ana) se respondió con sticker al «Buenos días
+  equipo» de Beto y desde la app (deslizar + sticker) también: en la base,
+  los dos stickers quedaron con `replyToSeq: 2`, la franja se cerró y la
+  cita se ve arriba del sticker en las dos.
+- **Contra el diseño (`e-17`, `e-18`):** `@aquí` lleva un rayo y `@todos` dice
+  a cuántos avisa («Avisa a los 3 del grupo»); la hoja y el diálogo de
+  avisos llevan un ícono por opción, tarjetas y la pastilla «Activo». No se
+  dibujó «Silenciar por 8 horas»: el server no tiene silencio por tiempo
+  (queda pendiente; no se muestra un interruptor sin backend).
+- **Entorno de QA:** el server de QA arma las URLs de los archivos con
+  `QA_HOST`; con `127.0.0.1` el emulador no baja ni fotos ni audios. Para el
+  emulador va `QA_HOST=10.0.2.2`.
+
 ## 67. E3b: @todos, @aquí y los avisos de cada grupo (20/10/2026)
 
 Cierra E3 (§47). Como Slack: `@todos` (= @channel) y `@aquí` (= @here) en los
@@ -6885,6 +6926,36 @@ tacha con la versión que lo cierra.
     nada en el server. Falta «Nuevo chat» con la agenda completa del
     teléfono (hoy la web nombra solo los números que ya muestra).
     **Decisión de José (20/10): la (b).** Sin guardar la agenda en el server.
+21. **Un canal como el expediente de una obra** (José, 20/10: «¿para qué
+    sirven los canales, cuál es la diferencia con un grupo? ¿Puedo manejar una
+    obra por etapas: checklist, cotización, órdenes de compra y servicio,
+    ejecución, pagos, valorizaciones, informes, levantamiento de
+    observaciones? ¿Y automatizaciones?»).
+    - **Grupo vs canal:** un grupo es una conversación entre personas
+      elegidas, en lo personal o en un espacio. Un canal es la conversación de
+      un TEMA dentro de un espacio: público (cualquiera del espacio lo
+      encuentra y entra) o privado, con descripción y fijados, y quien entra
+      después ve todo el historial. La gente cambia; el canal queda.
+    - **Canal de obra (E2+):** pestañas en el canal, como Slack (Canvas y
+      Lists): «Chat · Checklist · Archivos · Pendientes». El checklist por
+      etapas (cotización → orden de compra/servicio → ejecución →
+      valorizaciones → pagos → informes → observaciones), con responsable,
+      fecha y estado por ítem; los archivos agrupados por etapa.
+    - **Lo financiero vive en el Portal**, no se duplica: la cotización, la
+      orden, la valorización y el pago se ven en el canal como tarjetas con
+      botones (E4: «Ver detalle», «Aprobar», «Confirmar recepción»), y lo que
+      se toca vuelve al Portal.
+    - **Automatizaciones (E4+, «Flujos»):** disparador (un evento del Portal,
+      un botón, una fecha, una palabra) → acción (publicar en un canal, crear
+      un ítem del checklist, avisar a alguien, pedir una aprobación). Ej.:
+      aprobada la cotización → crear la orden y avisar en #compras; el 25 de
+      cada mes → recordar la valorización; pago registrado en el Portal →
+      tarjeta en el canal.
+22. **Un audio se corta cuando la pantalla se bloquea** (José, 20/10).
+    Causa: `expo-audio` pausa todos los reproductores y grabadores cuando la
+    actividad pasa a segundo plano (bloquear la pantalla cuenta), salvo que
+    el modo de audio pida `shouldPlayInBackground` / `allowsBackgroundRecording`;
+    la app no lo pedía. **Arreglado (§68).**
 
 ### Guiños y zumbido (análisis, 20/10)
 

@@ -4892,6 +4892,157 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 83. Formato Slack en grupos, el audio que arranca al primer toque, avisos de tareas y la versión nueva al volver (21/10/2026, 0.1.123)
+
+**Formato Slack** (diseños `s-01-grupo-formato-slack` y `s-02-hilo-abierto`).
+- `shared/flatLayout.ts` (4 tests):
+  - `usesFlatLayout`: los grupos y canales de un espacio de empresa van
+    siempre como lista; un grupo personal, solo si la persona lo pide; un 1:1
+    y «Tú» siempre con burbujas.
+  - `memberBadge`: la pastilla junto al nombre (cargo del espacio, «Dueño»,
+    «Admin», más «(Tú)»). No se muestra si repite el nombre.
+- **App:**
+  - `FlatMessageRow`: avatar de 40, nombre (el mío en el acento), pastilla,
+    hora y check, y debajo el texto sin burbuja, con la letra del chat. Los
+    mensajes seguidos (5 min) van sin encabezado.
+  - Dibuja la media (`MessageMedia`, que salió de `MessageRow` para no
+    duplicar), las tarjetas (`CardBody`, que salió de `TarjetaDelChat`) y los
+    stickers (con su freno de 8 s).
+  - Reacciones, barra y chip de hilo se alinean tras el avatar (`indent`).
+    Los avisos, guiños y zumbidos siguen con su línea propia.
+  - El hilo en ese formato: la raíz como fila grande con su pastilla y
+    «N RESPUESTAS» con una línea; las respuestas, como filas.
+  - Ajustes › Chats › «Grupos como lista» (apagado por defecto), con un store
+    de preferencias sin provider (`ui/prefStore.ts`) que ahora usa también la
+    letra del chat.
+- **Web:** la misma fila (`FlatMessage` en `BurbujaDeMensaje`), con las
+  acciones al pasar el mouse arriba a la derecha y la hora del agrupado al
+  pasar el mouse. El panel del hilo la hereda por el contexto. El interruptor
+  vive en el panel de Ajustes; `ChatSummary` suma `workspaceId` y `channel`.
+- **Lo que falta del modo empresa:** los espacios y canales en la app y la web
+  (E1 y E2 del cliente, con sus diseños e1-* y e2-*), y la lista por
+  secciones (`s-03`). Hasta entonces el formato se ve con el interruptor.
+
+**El audio** (pendiente 34).
+- Causa del «segundo toque»: el primer toque crea el reproductor y le pide
+  `play()` antes de que cargue, y Android lo ignora. Ahora espera `isLoaded`
+  (`firstPlay`); mientras carga, el botón muestra la ruedita.
+- La barra se toca o se arrastra para ir a un punto, también antes del primer
+  play (arranca desde ahí). El tiempo sigue al dedo.
+- `shared/voiceNote.ts` (3 tests): velocidad, arrastre y primer play, los
+  mismos para app y web. La app dejó sus copias.
+- **Web:** antes solo tenía play/pausa. Ahora tiene arrastre, flechas del
+  teclado, 1× · 1,5× · 2×, el tiempo corriendo y una sola nota a la vez
+  (3 tests).
+- **Falta**: seguir escuchando al salir del chat con una barra arriba. Espera
+  diseño.
+
+**Avisos de tareas** (pendiente 35).
+- `taskDoneNotices` en shared (4 tests):
+  - Quien creó el checklist se entera de cada marca, y cada responsable de
+    las suyas. Quien marcó, de nada.
+  - Si el checklist queda completo, se avisa eso a quien lo creó y a todos los
+    responsables.
+- `checklistNotices.ts` espera un minuto por persona y checklist: tres marcas
+  seguidas son un aviso, y marcar y desmarcar por error no avisa nada. El
+  timer no retiene el proceso.
+- `notifyTasksDone` manda como las reacciones: a quien está fuera de línea y
+  no silenció el chat. Tocarlo abre el chat en la tarjeta (test del server).
+
+**La versión nueva al volver** (pendiente 32).
+- App: la consulta del arranque corre también al volver a la app, a lo sumo
+  cada 30 min (`shouldRecheckVersion`, 4 tests).
+- Web: al volver a la pestaña compara el bundle publicado en `index.html` con
+  el cargado (`newVersion.ts`, 4 tests). Si cambió, muestra «Hay una versión
+  nueva de Lilachat · Recargar» arriba de la lista. Sin polling.
+- **Falta** la pantalla que bloquea bajo la versión mínima. Espera diseño.
+
+**Análisis del 33:** §82.
+
+**Índices** de `checklists` creados en producción con el OK de José:
+`chatId_1_createdAt_-1` e `items.assignee_1`.
+
+**E2E:**
+- App (emulador contra el server de QA):
+  - «Grupos como lista» en «QA Hilos»: filas planas, «Admin (Tú)», barra
+    alineada.
+  - El hilo con su raíz y «1 RESPUESTA».
+  - El 1:1 sigue con burbujas.
+  - Nota de voz: arranca con el primer toque (sesión de medios en PLAYING).
+    Se borró para todos después.
+  - El interruptor quedó como estaba.
+- Web (QA Ana): burbujas por defecto; con el interruptor, autores «Tú,
+  QA Beto, J zamora» con «Admin». Sin banda de versión al cargar. Sin errores.
+  La web vinculada se desvinculó (verificado en 0).
+
+## 82. Análisis: que el Portal y otros sistemas escriban en Lilachat (pendiente 33, 21/10/2026)
+
+José (21/10): «analizar un MCP de Lilachat para que otros puedan crear
+checklists y enviar mensajes, como lo que hoy hace el Portal cuando miden
+líquidos, hacen consumos, firman asistencia, inician producción o entran y
+salen despachos». Es análisis: no hay código todavía.
+
+**Lo que ya está decidido (§73) y se reusa tal cual:**
+- La identidad del sistema vive en Lilachat, como bot o app del espacio, con
+  una llave `lc_…` (solo se guarda el hash y `last4`), scopes, límite de tasa
+  e `Idempotency-Key`.
+- Los avisos de una app a un canal van por **webhook entrante**
+  (`POST /api/hooks/:hookId/:token`, §73.3), sin agentes en el medio. Las
+  acciones que crean cosas en el Portal pasan por agentes (Lila).
+- José no quiere llaves emitidas por el Portal: las emite el admin del espacio
+  en Integraciones (e4-23) y José las carga en Torre para el Portal.
+
+**Qué avisos del Portal irían a qué canal** (cada uno nace apagado, con
+«Probar envío», como pide `web-app-blueprint` §5):
+
+| Evento del Portal | Canal sugerido | Tarjeta |
+| --- | --- | --- |
+| Medición de líquidos (tanques) | `#planta` | nivel por tanque, alerta si baja del mínimo |
+| Consumo registrado | `#planta` | material, cantidad, quién |
+| Asistencia firmada (entrada, salida) | `#asistencia` | resumen del día, no una tarjeta por persona |
+| Inicio de producción | `#planta-asfalto` | diseño, m³ previstos |
+| Despacho entra o sale | `#despachos` | unidad, pedido, guía; se reemplaza (`PATCH`) al llegar |
+
+**Lo que falta en Lilachat:**
+1. **Checklist por API:** `POST /api/bots/checklists` con `{ channel | chatId,
+   title, items: [{ text, assignee?: phone, dueAt? }], pin? }`, que crea el
+   mismo checklist de §80 y §81. El responsable va por teléfono porque el
+   Portal no conoce los ids de Lilachat; se resuelve contra los miembros del
+   espacio y, si no está, la tarea queda sin responsable y se avisa en la
+   respuesta. También va por webhook entrante (`type: 'checklist'`). Por
+   ejemplo, el checklist de inicio de producción sale solo al programarla.
+2. **Avisos resumidos:** la asistencia de 40 personas no puede ser 40
+   mensajes. La tarjeta del día se reemplaza con cada firma (`PATCH` de
+   §73.2), igual que el despacho que cambia de estado.
+3. **MCP:** un servidor MCP que no tiene lógica propia, montado sobre la misma
+   API con la llave del bot.
+   - Herramientas: `send_message`, `create_checklist`, `list_channels`,
+     `read_recent` (solo los canales donde está el bot) y `update_card`.
+   - Transporte HTTP en `/mcp` del mismo server (Bearer `lc_…`), así agentes,
+     Claude o cualquier cliente MCP lo usan sin otro despliegue.
+   - Sirve para que un agente escriba o lea en un canal; la integración del
+     Portal no lo necesita (el webhook alcanza).
+4. **Depende del modo empresa del lado del cliente (E1 y E2 en la app y la
+   web):** sin espacios ni canales visibles no hay dónde publicar. Los
+   diseños existen (e1-*, e2-*, e4-22, e4-23).
+
+**Fases propuestas:**
+
+| Fase | Qué | Dónde |
+| --- | --- | --- |
+| B1 | Integraciones (e4-23): crear un webhook entrante por canal, token visible una vez, revocar; tarjeta de app (e4-22) | Lilachat |
+| B2 | Checklist por API y por webhook; reemplazar una tarjeta | Lilachat |
+| B3 | Servidor MCP sobre la API (llave del bot) | Lilachat |
+| B4 | Los 5 avisos del Portal a sus canales, apagados por defecto, con «Probar envío» y el WhatsApp en paralelo hasta que José decida | Portal (su propia sesión) |
+
+**Riesgos:**
+- Un webhook es una URL con secreto: se guarda en Torre, nunca en el repo,
+  y se revoca desde Integraciones.
+- El volumen de asistencia y despachos: tarjetas que se reemplazan y no
+  mensajes nuevos, y un límite por token.
+- Los datos personales (teléfonos en la asistencia) solo van a canales
+  privados.
+
 ## 81. Checklist con responsables y fecha, «Mis tareas», letra del chat y stickers animados (21/10/2026, 0.1.122)
 
 **Checklist, segunda vuelta** (pendiente 30; diseños `k-03`, `k-04`, `k-05`).
@@ -7855,8 +8006,13 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     cierro la app y vuelvo a ingresar sí aparece»). Causa: `useActualizacionesDeLaApp`
     consulta `min-version` UNA vez, en el `useEffect` del arranque; volver desde
     segundo plano no repregunta. Cómo debería ser:
+    - **Hecho en la 0.1.123 (§83)**, en la app y en la web; falta la pantalla de bloqueo (espera diseño).
     - Repreguntar al volver a primer plano (`AppState` → `active`), con un tope
       de una consulta cada 30 min para no sumar requests en cada vistazo.
+    - **Lo mismo en la web** (José, 21/10): una pestaña abierta días sigue con
+      el bundle viejo; al volver a la pestaña se compara la versión publicada
+      con la cargada y se ofrece recargar (y recarga sola si no hay nada
+      escrito sin mandar).
     - Repreguntar al reconectar el socket, y que el server avise por socket
       `app.version` al publicar (la consulta deja de depender del azar).
     - **Actualización obligatoria** (para más adelante): el motor ya distingue
@@ -7866,7 +8022,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
       de la app sola se salta con una versión vieja), y que la web no quede
       afuera (recarga dura ante versión nueva, como Portal). La mínima la sube
       José al publicar; nunca automática.
-33. **MCP / API de Lilachat para que otros sistemas escriban** (José, 21/10):
+33. **MCP / API de Lilachat para que otros sistemas escriban** — **análisis en §82 (21/10).** (José, 21/10):
     que Portal y las demás apps creen checklists y manden mensajes a un chat
     o grupo, como hoy Portal avisa por WhatsApp al medir líquidos, registrar
     consumos, firmar asistencia, iniciar producción o cuando un despacho entra
@@ -7874,13 +8030,13 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     Portal), mensajes con tarjeta propia (no texto suelto), checklist por API,
     límites por llave, y un MCP encima de esa misma API. Va con el modo empresa
     (E4: bots, comandos y webhooks entrantes, backlog del §E).
-34. **El audio se siente torpe** (José, 21/10): recién arranca al segundo toque
+34. ~~**El audio se siente torpe**~~ **Hecho en la 0.1.123 (§83)**, salvo la barra de audio arriba al salir del chat, que espera diseño. (José, 21/10): recién arranca al segundo toque
     y no se puede adelantar ni retroceder. Como WhatsApp: un toque reproduce,
     la barra de la onda se arrastra para buscar (y se toca para saltar), la
     velocidad 1× · 1,5× · 2×, y el audio sigue sonando al salir del chat con
     una barra arriba. Revisar por qué el primer toque solo carga (precargar
     al aparecer en pantalla, sin bajar todos los audios del chat).
-35. **¿Avisar cuando alguien completa una tarea del checklist?** (José, 21/10).
+35. ~~**¿Avisar cuando alguien completa una tarea del checklist?**~~ **Hecho en la 0.1.123 (§83).** (José, 21/10).
     Propuesta: no a todo el chat (sería ruido en un grupo de obra). Sí a quien
     creó el checklist y a quien era responsable de esa tarea, si no es quien
     la marcó; varios ticks seguidos en un minuto van en un solo aviso
@@ -7908,3 +8064,11 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
       by GIPHY» que exige su licencia y su filtro de contenido en `pg-13`.
       Falta la **llave de GIPHY**: la saca José en developers.giphy.com y la
       carga en Torre; sin llave la pestaña no aparece.
+
+> **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
+> a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el
+> reproductor del 34, las tarjetas en cola del 36 y GIF/GIPHY del 37 (y la
+> revisión de k-04/k-05). Mientras tanto se avanza con lo que ya tiene diseño:
+> el modo empresa estilo Slack (`s-01`…`s-04`), y lo que no necesita pantalla
+> (repreguntar la versión en app y web, avisos de tareas del 35).
+

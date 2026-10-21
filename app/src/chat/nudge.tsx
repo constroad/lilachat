@@ -179,8 +179,8 @@ export function NudgeLine(props: { seq: number; mine: boolean; author?: string; 
 const WINK_THUMB = 64;
 
 /**
- * A wink in the chat as a card with its THUMBNAIL (José, 21/10: «debería haber
- * una miniatura para ver visualmente cuál fue»): the character (or the emoji)
+ * A wink in the chat as a card with its THUMBNAIL (José, 21/10: a thumbnail to
+ * see which wink it was): the character (or the emoji)
  * on the left, who sent it and which wink on the right, and «Ver otra vez».
  */
 export function WinkLine(props: { seq: number; wink?: string; mine: boolean; author?: string; at?: string }) {

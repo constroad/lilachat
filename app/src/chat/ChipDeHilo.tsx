@@ -6,7 +6,7 @@ import { useColores } from '../ui/tema';
 import { AVATAR_DE_AUTOR } from './burbuja';
 
 /** The chip's avatars (dp) and how much they overlap (José, 21/10: the threads showed, but too small). */
-const AVATAR_DEL_CHIP = 28;
+const CHIP_AVATAR = 28;
 const MONTADO = -8;
 /** El `gap-2` entre el avatar del autor y su burbuja (dp): el chip arranca donde la burbuja. */
 const SEPARACION_DEL_AVATAR = 8;
@@ -45,7 +45,7 @@ export function ChipDeHilo(props: {
         <View className="flex-row">
           {(props.hilo.autores ?? []).map((autor, indice) => (
             <View key={autor} style={indice > 0 ? { marginLeft: MONTADO } : undefined}>
-              <Avatar nombre={props.nombres.get(autor) ?? '?'} foto={props.fotos.get(autor)} tamano={AVATAR_DEL_CHIP} />
+              <Avatar nombre={props.nombres.get(autor) ?? '?'} foto={props.fotos.get(autor)} tamano={CHIP_AVATAR} />
             </View>
           ))}
         </View>

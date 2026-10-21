@@ -175,8 +175,8 @@ export type FunToPlay = { seq: number; kind: 'zumbido'; mine: boolean } | { seq:
  * The nudge or wink to play: the newest after `afterSeq`. When the chat opens,
  * `afterSeq` is what was already read, so the one that came while it was closed
  * plays once (spec: «la animación corre una sola vez al abrirlo»). A wink or
- * nudge I send plays for me when it goes (`mineToo`; José, 21/10: «yo no
- * veo la vibración»), not again when I open the chat later.
+ * nudge I send plays for me when it goes (`mineToo`; José, 21/10: he did not
+ * feel his own nudge), not again when I open the chat later.
  */
 export function funMessageToPlay(messages: readonly { seq: number; kind?: string; senderId: string; wink?: string }[], me: string, afterSeq: number, options: { mineToo: boolean } = { mineToo: true }): FunToPlay | null {
   let newest: FunToPlay | null = null;

@@ -5,6 +5,7 @@ import mongoose, { Types } from 'mongoose';
 import request from 'supertest';
 import { buildApp } from './app.js';
 import { InvitationModel, UserModel } from './models.js';
+import { ChatModel } from './chatModels.js';
 import { WorkspaceMemberModel, WorkspaceModel } from './workspaceModels.js';
 import { claimPhoneInvites } from './workspaces.js';
 import { signSession } from './sessions.js';
@@ -65,6 +66,14 @@ describe('creating and joining a space', () => {
     const open = await request(app).post('/api/workspaces').set('Authorization', jwt('carla')).send({ name: 'Inframaq', joinPolicy: 'open' }).expect(201);
     const joined = await request(app).post('/api/workspaces/join').set('Authorization', jwt('ana')).send({ code: open.body.workspace.joinCode }).expect(200);
     expect(joined.body.status).toBe('active');
+  });
+
+  /** «Cancelar solicitud» (design `e1-03-solicitud-enviada`): a pending request can be withdrawn. */
+  it('a pending request is withdrawn by leaving', async () => {
+    const space = await createSpace();
+    await request(app).post('/api/workspaces/join').set('Authorization', jwt('ana')).send({ code: space.joinCode }).expect(200);
+    await request(app).post(`/api/workspaces/${space.id}/leave`).set('Authorization', jwt('ana')).expect(204);
+    expect(await WorkspaceMemberModel.countDocuments({ workspaceId: space.id, userId: users.ana })).toBe(0);
   });
 
   it('my spaces list both, with my role and status', async () => {
@@ -152,6 +161,15 @@ describe('chats inside a space', () => {
   }
   const listOf = async (who: keyof typeof users, workspace?: string) =>
     (await request(app).get(`/api/chats${workspace ? `?workspace=${workspace}` : ''}`).set('Authorization', jwt(who)).expect(200)).body.chats as { id: string; name?: string }[];
+
+  /** The space switcher (design `e1-06-selector-espacios`): «Construcción · 48 miembros» and a badge of chats with something new. */
+  it('my spaces say how many active members they have and how many of my chats there have something new', async () => {
+    const { space } = await spaceWithAnaAndBeto();
+    const created = await request(app).post('/api/chats').set('Authorization', jwt('jose')).send({ kind: 'group', name: 'Obra Miraflores', memberIds: [String(users.ana), String(users.beto)], workspaceId: space.id }).expect(201);
+    await ChatModel.updateOne({ _id: created.body.chatId }, { $set: { lastSeq: 3 } });
+    const mine = (await request(app).get('/api/workspaces').set('Authorization', jwt('ana')).expect(200)).body.workspaces;
+    expect(mine).toEqual([expect.objectContaining({ id: space.id, members: 3, unreadChats: 1 })]);
+  });
 
   it('a group of the space shows in the space, not in the personal list', async () => {
     const { space } = await spaceWithAnaAndBeto();

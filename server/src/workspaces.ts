@@ -12,6 +12,7 @@ import {
   type WorkspaceRole,
 } from '@lilachat/shared';
 import { InvitationModel, UserModel } from './models.js';
+import { ChatModel, ReceiptModel } from './chatModels.js';
 import { WorkspaceMemberModel, WorkspaceModel, type Workspace, type WorkspaceMember } from './workspaceModels.js';
 import { leaveWorkspaceChats, restoreToWorkspaceChats, suspendFromWorkspaceChats } from './workspaceChats.js';
 
@@ -98,12 +99,33 @@ export async function joinByCode(userId: Types.ObjectId, code: unknown): Promise
 
 export async function myWorkspaces(userId: Types.ObjectId) {
   const memberships = await WorkspaceMemberModel.find({ userId, status: { $in: ['active', 'pending', 'deactivated'] } }).select('workspaceId role status').lean();
-  const workspaces = await WorkspaceModel.find({ _id: { $in: memberships.map((m) => m.workspaceId) } }).lean<Workspace[]>();
+  const ids = memberships.map((m) => m.workspaceId);
+  const [workspaces, counts, unread] = await Promise.all([WorkspaceModel.find({ _id: { $in: ids } }).lean<Workspace[]>(), activeMembersOf(ids), unreadChatsOf(userId, ids)]);
   const byId = new Map(workspaces.map((w) => [String(w._id), w]));
   return memberships.flatMap((m) => {
     const workspace = byId.get(String(m.workspaceId));
-    return workspace ? [toClientWorkspace(workspace, m)] : [];
+    const key = String(m.workspaceId);
+    return workspace ? [{ ...toClientWorkspace(workspace, m), members: counts.get(key) ?? 0, unreadChats: m.status === 'active' ? (unread.get(key) ?? 0) : 0 }] : [];
   });
+}
+
+/** «48 miembros» on the space switcher (design `e1-06`): the active ones, in one aggregation for all my spaces. */
+async function activeMembersOf(workspaceIds: Types.ObjectId[]): Promise<Map<string, number>> {
+  const rows = await WorkspaceMemberModel.aggregate<{ _id: Types.ObjectId; count: number }>([{ $match: { workspaceId: { $in: workspaceIds }, status: 'active' } }, { $group: { _id: '$workspaceId', count: { $sum: 1 } } }]);
+  return new Map(rows.map((row) => [String(row._id), row.count]));
+}
+
+/** The switcher's badge: how many of my chats in each space have something I have not read (like WhatsApp counts chats, not messages). */
+async function unreadChatsOf(userId: Types.ObjectId, workspaceIds: Types.ObjectId[]): Promise<Map<string, number>> {
+  const chats = await ChatModel.find({ workspaceId: { $in: workspaceIds }, 'members.userId': userId, lastSeq: { $gt: 0 } }).select('workspaceId lastSeq').lean();
+  if (chats.length === 0) return new Map();
+  const receipts = await ReceiptModel.find({ userId, chatId: { $in: chats.map((chat) => chat._id) } }).select('chatId readSeq').lean();
+  const readSeq = new Map(receipts.map((receipt) => [String(receipt.chatId), receipt.readSeq]));
+  const unread = new Map<string, number>();
+  for (const chat of chats) {
+    if (chat.lastSeq > (readSeq.get(String(chat._id)) ?? 0)) unread.set(String(chat.workspaceId), (unread.get(String(chat.workspaceId)) ?? 0) + 1);
+  }
+  return unread;
 }
 
 /** The person's ACTIVE membership in the space, or a 404 that says nothing about the space. */
@@ -193,6 +215,9 @@ export async function updateWorkspace(workspaceId: string, actorId: Types.Object
 }
 
 export async function leaveWorkspace(workspaceId: string, userId: Types.ObjectId): Promise<void> {
+  // A request still waiting for approval is withdrawn («Cancelar solicitud», design `e1-03`): it never had chats.
+  const pending = await WorkspaceMemberModel.findOneAndDelete({ workspaceId: asId(workspaceId), userId, status: 'pending' }).lean();
+  if (pending) return;
   const member = await actorIn(workspaceId, userId);
   if (member.role === 'owner') throw new WorkspaceError(409, 'Eres el dueño: pásale el espacio a otra persona antes de salir.');
   await WorkspaceMemberModel.deleteOne({ _id: member._id });

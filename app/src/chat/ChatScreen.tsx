@@ -341,7 +341,7 @@ export function ChatScreen({
     encrypted: Boolean(encrypted),
     esGrupo: esGrupoChat,
     nombres: nombresDelGrupo,
-    fotos: fotosDelGrupo,
+    fotos: fotosDelGrupo, roles: grupo.roles,
     leidoHasta,
     entregadoHasta,
     divisorSeq,
@@ -537,7 +537,7 @@ export function ChatScreen({
         yo={credential.userId} jwt={credential.jwt}
         esGrupo={esGrupoChat}
         nombres={nombresDelGrupo}
-        fotos={fotosDelGrupo}
+        fotos={fotosDelGrupo} roles={grupo.roles}
         respuestas={hilos.respuestas}
         pendientes={hilos.pendientesDelHilo}
         leidoHasta={leidoHasta}

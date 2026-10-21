@@ -5,10 +5,12 @@ import { Modal } from '../ui/Modal';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useScrollConTeclado } from './useScrollConTeclado';
 import { ArrowLeft, Check, ClipboardCheck, Send, Smile, Square, SquareCheck, X } from 'lucide-react-native';
-import { checklistMembers, deleteBeforeCursor, formatClock, miReaccion, primerEnlace, puedeEditar, puedeReaccionar, resolveDeliveryState, type DeliveryState } from '@lilachat/shared';
+import { checklistMembers, deleteBeforeCursor, formatClock, memberBadge, usesFlatLayout, miReaccion, primerEnlace, puedeEditar, puedeReaccionar, resolveDeliveryState, type DeliveryState } from '@lilachat/shared';
 import { ThreadPicker } from './ThreadPicker';
 import { ChecklistEnElChat } from './ChecklistEnElChat';
 import { CreateChecklistScreen } from '../agenda/CreateChecklistScreen';
+import { FLAT_INDENT, FlatMessageRow } from './FlatMessageRow';
+import { useGroupsAsList } from '../ui/groupsAsList';
 import { Avatar } from '../ui/Avatar';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
@@ -46,6 +48,8 @@ export function HiloScreen(props: {
   esGrupo: boolean;
   nombres: ReadonlyMap<string, string>;
   fotos: ReadonlyMap<string, string>;
+  /** Each member's role: the pill next to the name in the Slack format (design `s-02`). */
+  roles: ReadonlyMap<string, string>;
   respuestas: readonly ChatMessage[];
   pendientes: readonly PendingMessage[];
   leidoHasta: number;
@@ -86,6 +90,9 @@ export function HiloScreen(props: {
   const reacciones = useReaccionesEnPantalla({ mensajes: props.respuestas, reaccionar: props.reaccionar, yo: props.yo, nombres: props.nombres, fotos: props.fotos, alReaccionar: () => setBarraEn(null) });
   const filas: Respuesta[] = [...props.respuestas, ...props.pendientes];
   const nombreDe = (id: string) => (id === props.yo ? 'Tú' : (props.nombres.get(id) ?? 'Alguien'));
+  // The thread follows its chat: as a list in the Slack format (design `s-02`).
+  const flat = usesFlatLayout({ kind: props.esGrupo ? 'group' : 'direct' }, { groupsAsList: useGroupsAsList() });
+  const badgeOf = (id: string) => memberBadge({ role: props.roles.get(id), isMe: id === props.yo });
 
   const startEditing = (seq: number) => {
     const reply = props.respuestas.find((one) => one.seq === seq);
@@ -151,10 +158,42 @@ export function HiloScreen(props: {
             keyExtractor={(fila) => fila.clientKey}
             contentContainerStyle={{ padding: 12, gap: 8 }}
             onContentSizeChange={() => lista.current?.scrollToEnd({ animated: false })}
-            ListHeaderComponent={<CabeceraDelHilo raiz={props.raiz} nombre={nombreDe(String(props.raiz.senderId))} foto={props.fotos.get(String(props.raiz.senderId))} cuantas={props.respuestas.length} />}
-            renderItem={({ item }) => {
+            ListHeaderComponent={flat ? (
+              <FlatThreadRoot root={props.raiz} name={props.nombres.get(String(props.raiz.senderId)) ?? nombreDe(String(props.raiz.senderId))} photo={props.fotos.get(String(props.raiz.senderId))} badge={badgeOf(String(props.raiz.senderId))} count={props.respuestas.length} myUserId={props.yo} names={props.nombres} />
+            ) : (
+              <CabeceraDelHilo raiz={props.raiz} nombre={nombreDe(String(props.raiz.senderId))} foto={props.fotos.get(String(props.raiz.senderId))} cuantas={props.respuestas.length} />
+            )}
+            renderItem={({ item, index }) => {
               const mia = esPendiente(item) || String(item.senderId) === props.yo;
               const confirmada = esPendiente(item) ? null : item;
+              if (flat) {
+                const senderId = esPendiente(item) ? props.yo : String(item.senderId);
+                const toggleBar = confirmada && puedeReaccionar({ seq: confirmada.seq, deletedAt: confirmada.deletedAt, kind: confirmada.kind }) ? () => setBarraEn((antes) => (antes === confirmada.seq ? null : confirmada.seq)) : undefined;
+                return (
+                  <View>
+                    {confirmada && barraEn === confirmada.seq ? (
+                      <BarraDeReacciones seq={confirmada.seq} mia={mia} conAvatar={false} indent={FLAT_INDENT} miEmoji={miReaccion(confirmada.reacciones, props.yo)} onElegir={reacciones.elegir} onMas={reacciones.masEmojis} onEditar={canEdit(confirmada) ? startEditing : undefined} />
+                    ) : null}
+                    <FlatMessageRow
+                      item={item}
+                      previous={filas[index - 1]}
+                      myUserId={props.yo}
+                      jwt={props.jwt}
+                      linkPreview
+                      names={props.nombres}
+                      everyName={props.nombres}
+                      delivery={resolveDeliveryState({ seq: confirmada ? confirmada.seq : null, otherReadSeq: props.leidoHasta, otherDeliveredSeq: props.entregadoHasta })}
+                      authorName={props.nombres.get(senderId)}
+                      authorPhoto={props.fotos.get(senderId)}
+                      badge={badgeOf(senderId)}
+                      onSelect={toggleBar}
+                    />
+                    {confirmada?.reacciones?.length && !confirmada.deletedAt ? (
+                      <PastillaDeReacciones id={`hilo-${confirmada.seq}`} reacciones={confirmada.reacciones} yo={props.yo} mia={mia} conAvatar={false} indent={FLAT_INDENT} onTocar={() => reacciones.verReacciones(confirmada.seq)} />
+                    ) : null}
+                  </View>
+                );
+              }
               return (
                 <View>
                   {confirmada && barraEn === confirmada.seq ? (
@@ -249,6 +288,37 @@ export function HiloScreen(props: {
         />
       ) : null}
     </Modal>
+  );
+}
+
+/**
+ * The root of a thread in the Slack format (design `s-02-hilo-abierto`): the
+ * message in a flat row with its role, and «N RESPUESTAS» with a line below.
+ */
+function FlatThreadRoot(props: { root: ChatMessage; name: string; photo?: string; badge: string | null; count: number; myUserId: string; names: ReadonlyMap<string, string> }) {
+  const { root } = props;
+  return (
+    <View className="-mx-3 mb-1">
+      <View testID="raiz-del-hilo" className="flex-row gap-3 border-b border-outline/15 bg-surface px-3 pb-3 pt-1">
+        <Avatar nombre={props.name} foto={props.photo} tamano={40} />
+        <View className="min-w-0 flex-1">
+          <View className="flex-row flex-wrap items-center gap-x-2">
+            <Text className="text-[15px] font-bold text-on-surface">{props.name}</Text>
+            {props.badge ? (
+              <View className="rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5">
+                <Text className="text-[11px] font-bold uppercase tracking-wide text-primary">{props.badge}</Text>
+              </View>
+            ) : null}
+            <Text className="ml-auto text-[12px] text-on-surface-variant">{formatClock(root.at)}</Text>
+          </View>
+          <Text className="mt-1 text-[15px] leading-[22px] text-on-surface">{root.deletedAt ? 'Se eliminó este mensaje' : root.body ? <TextoConEnlaces texto={root.body} /> : root.media ? 'Archivo' : ''}</Text>
+        </View>
+      </View>
+      <View className="flex-row items-center gap-3 px-3 pt-3">
+        <Text className="text-[12px] font-bold uppercase tracking-wider text-on-surface-variant">{props.count === 1 ? '1 respuesta' : `${props.count} respuestas`}</Text>
+        <View className="h-px flex-1 bg-outline/15" />
+      </View>
+    </View>
   );
 }
 

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ResultadoDelChequeo } from './actualizacion';
 import { buscarActualizacion, versionCodeActual } from './versionApi';
-import { decidirAvisoDeActualizacion, type AvisoDeActualizacion } from './avisoDeActualizacion';
+import { decidirAvisoDeActualizacion, shouldRecheckVersion, type AvisoDeActualizacion } from './avisoDeActualizacion';
+import { useAlVolver } from '../ui/useAlVolver';
 import { abrirActualizacion } from './abrirTienda';
 import { useActualizador, type InfoActualizacion } from './useActualizador';
 import { infoParaActualizar } from './actualizacionInfo';
@@ -27,20 +28,28 @@ export function useActualizacionesDeLaApp() {
   const [viendoNovedades, setViendoNovedades] = useState(false);
 
   /**
-   * UNA sola consulta al arrancar, que sirve para las dos cosas: el enlace de
-   * la invitación y el aviso de versión nueva. Atado al botón «buscar», la
-   * invitación salía sin el enlace directo (visto en el emulador, 27/08/2026).
+   * ONE query serves both: the invitation link and the new-version notice
+   * (tied to the «buscar» button, the invitation went out without the direct
+   * link; seen on the emulator, 27/08/2026). It runs at start and when coming
+   * back to the app (backlog 32, José 21/10: it only noticed on a cold start),
+   * at most every 30 min.
    */
-  useEffect(() => {
-    void (async () => {
-      const [{ downloadUrl, ultima, minima, version, sha256, size, releaseId, novedades: nuevas }, descartada] =
-        await Promise.all([buscarActualizacion(), leerActualizacionDescartada()]);
-      setNovedades(nuevas);
-      setEnlaceApp(downloadUrl);
-      setInfoApp({ downloadUrl, releaseId, sha256, size });
-      setAviso(decidirAvisoDeActualizacion({ actual: versionCodeActual(), ultima, minima, version, descartada }));
-    })();
+  const lastCheck = useRef<number | null>(null);
+  const checkPublished = useCallback(async () => {
+    lastCheck.current = Date.now();
+    const [{ downloadUrl, ultima, minima, version, sha256, size, releaseId, novedades: nuevas }, descartada] =
+      await Promise.all([buscarActualizacion(), leerActualizacionDescartada()]);
+    setNovedades(nuevas);
+    setEnlaceApp(downloadUrl);
+    setInfoApp({ downloadUrl, releaseId, sha256, size });
+    setAviso(decidirAvisoDeActualizacion({ actual: versionCodeActual(), ultima, minima, version, descartada }));
   }, []);
+  useEffect(() => {
+    void checkPublished();
+  }, [checkPublished]);
+  useAlVolver(true, () => {
+    if (shouldRecheckVersion(lastCheck.current, Date.now())) void checkPublished();
+  });
 
   /**
    * El botón de Ajustes: busca la versión publicada y, si hay una más nueva, la

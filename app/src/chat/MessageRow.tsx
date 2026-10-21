@@ -1,8 +1,7 @@
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { memo } from 'react';
 import * as Haptics from 'expo-haptics';
-import { Image } from 'expo-image';
-import { CircleAlert, Play } from 'lucide-react-native';
+import { CircleAlert } from 'lucide-react-native';
 import { AVATAR_DE_AUTOR, colorDeAutor, dondeVaLaHora, mostrarAutor, radiosDeBurbuja } from './burbuja';
 import { DeslizarParaResponder } from './DeslizarParaResponder';
 import { HighlightedNotice } from './HighlightedNotice';
@@ -10,12 +9,7 @@ import { LineaDeLlamada } from './LineaDeLlamada';
 import { CitaDeRespuesta } from './CitaDeRespuesta';
 import { TextoConHora } from './TextoConHora';
 import { MetaDeMensaje } from './MetaDeMensaje';
-import { TarjetaDeArchivo } from './TarjetaDeArchivo';
 import { VistaPreviaDeEnlace } from './VistaPreviaDeEnlace';
-import { NotaDeVoz } from './NotaDeVoz';
-import { etiquetaDeSubida } from './progresoDeSubida';
-import { AnilloDeSubida } from './AnilloDeSubida';
-import { copiaLocalDe } from './colaDeArchivos';
 import {
   TEXTO_ELIMINADO,
   esAvisoDestacado,
@@ -29,23 +23,19 @@ import { anchoDeBurbujaConFoto, miniaturaDe, type Citado } from './filasDelChat'
 import {
   formatClock,
   groupsWithPrevious,
-  tamanoDeBurbuja,
   type DeliveryState,
 } from '@lilachat/shared';
 
 export { MetaDeMensaje } from './MetaDeMensaje';
 
-/** La foto o el video con su forma real (FL9); sin dimensiones, el cuadrado. */
-const estiloDeFoto = (media: { width?: number; height?: number }) => {
-  const { ancho, alto } = tamanoDeBurbuja(media);
-  return { width: ancho, height: alto };
-};
-import type { ChatMessage, PendingMessage } from './useChat';
+import type { ChatMessage } from './useChat';
 import { useColores } from '../ui/tema';
 import { TarjetaDelChat } from './TarjetaDelChat';
 import { NudgeLine, WinkLine } from './nudge';
 import { StickerMessage } from './stickers/StickerMessage';
 import { Avatar } from '../ui/Avatar';
+import { MessageMedia } from './MessageMedia';
+import { isFileMime, isPending, type Row } from './rowKinds';
 
 /**
  * Una fila de la conversación, según el diseño «Chat Detail» de Stitch.
@@ -57,22 +47,7 @@ import { Avatar } from '../ui/Avatar';
  * emisor (solo el último del bloque lleva la cola).
  */
 
-export type Row = ChatMessage | PendingMessage;
-
-/**
- * ¿Es un archivo y no algo que se vea? Foto y video se muestran; un PDF, un
- * Excel o un zip se abren con otra app y en el chat van como tarjeta.
- */
-export const esArchivo = (mime?: string): boolean => {
-  const tipo = mime ?? '';
-  return tipo !== '' && !tipo.startsWith('image/') && !tipo.startsWith('video/');
-};
-
-/** Una nota de voz: se escucha acá mismo, no se abre con nada. */
-export const esVoz = (mime?: string): boolean => (mime ?? '').startsWith('audio/');
-
-export const isPending = (row: Row): row is PendingMessage =>
-  'pending' in row && row.pending === true;
+export { isPending, type Row } from './rowKinds';
 
 function FilaDeMensaje({
   item,
@@ -218,7 +193,6 @@ function FilaDeMensaje({
   const fallo = isPending(item) ? item.fallo : undefined;
   const editado = !isPending(item) && Boolean(item.editedAt) && !item.deletedAt;
   const meta = { hora, mia: mine, entrega: delivery, id: idDeFila, fallido: Boolean(fallo), editado, destacado };
-  const subida = etiquetaDeSubida({ razon: isPending(item) ? (item.progreso ?? 0) : 0, fallido: Boolean(fallo) });
   const lugarDeLaHora = dondeVaLaHora({
     conTexto: Boolean(item.body),
     eliminado: !isPending(item) && Boolean(item.deletedAt),
@@ -305,90 +279,8 @@ function FilaDeMensaje({
             />
           ) : null}
 
-          {!isPending(item) && item.media && esVoz(item.media.mime) ? (
-            <NotaDeVoz
-              id={`${item.chatId}:${item.seq}`}
-              url={item.media.url ?? ''}
-              durationMs={item.media.durationMs}
-              onda={item.media.onda}
-              mia={mine}
-            />
-          ) : null}
+          <MessageMedia item={item} mine={mine} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} />
 
-          {/* Un ARCHIVO no es una foto: es una tarjeta con su nombre. */}
-          {!isPending(item) && item.media && esArchivo(item.media.mime) && !esVoz(item.media.mime) ? (
-            <TarjetaDeArchivo
-              seq={item.seq}
-              media={item.media}
-              mia={mine}
-              onPress={() => !isPending(item) && (enSeleccion ? onSeleccionar?.(item.seq) : onVerImagen?.(item.seq))}
-            />
-          ) : null}
-
-          {!isPending(item) && item.media && miniaturaDe(item.media) && !esArchivo(item.media.mime) ? (
-            <Pressable
-              testID={`media-${item.seq}`}
-              onPress={() => !isPending(item) && (enSeleccion ? onSeleccionar?.(item.seq) : onVerImagen?.(item.seq))}
-            >
-              <Image
-                recyclingKey={item.clientKey}
-                // Lo que acabo de mandar sigue con su copia local (no se baja de nuevo).
-                source={{ uri: copiaLocalDe(item.clientKey) ?? miniaturaDe(item.media) }}
-                style={estiloDeFoto(item.media)}
-                contentFit="cover"
-                transition={120}
-              />
-              {/* El PLAY sobre la miniatura. Un video y una foto se veían
-                  exactamente igual —la miniatura es un cuadro del video— así
-                  que no había forma de saber que eso se podía reproducir. */}
-              {(item.media.mime ?? '').startsWith('video/') ? (
-                <View
-                  testID={`play-${item.seq}`}
-                  className="absolute inset-0 items-center justify-center"
-                >
-                  <View className="h-14 w-14 items-center justify-center rounded-full bg-black/55">
-                    <Play size={26} color="#ffffff" fill="#ffffff" />
-                  </View>
-                </View>
-              ) : null}
-            </Pressable>
-          ) : null}
-
-          {/* La foto que todavia sube: se ve YA, con un velo y su vueltita
-              encima. El check aparece recien cuando el server la confirma, que
-              es exactamente lo que hace WhatsApp. */}
-          {isPending(item) && item.mediaUri && esArchivo(item.mediaMime) ? (
-            // Un archivo en vuelo tampoco se previsualiza: se veía un cuadro
-            // vacío del color de la burbuja con un porcentaje encima.
-            <View
-              testID={`archivo-pendiente-${item.clientKey}`}
-              className="min-w-[200px] flex-row items-center gap-3 px-3 py-2.5"
-            >
-              <View className="h-10 w-10 items-center justify-center rounded-lg bg-white/20">
-                {subida.girando ? <ActivityIndicator color={colores['on-burbuja-propia']} /> : <CircleAlert size={20} color={colores.error} />}
-              </View>
-              <View className="min-w-0 flex-1">
-                <Text className="text-[14px] font-semibold text-on-burbuja-propia" numberOfLines={2}>
-                  {item.mediaNombre ?? 'Archivo'}
-                </Text>
-                <Text className={`text-[11px] ${subida.girando ? 'text-on-burbuja-propia-suave' : 'text-error'}`}>
-                  {subida.texto}
-                </Text>
-              </View>
-            </View>
-          ) : null}
-
-          {isPending(item) && item.mediaUri && !esArchivo(item.mediaMime) ? (
-            <View testID={`media-pendiente-${item.clientKey}`}>
-              <Image
-                recyclingKey={item.mediaUri}
-                source={{ uri: item.mediaUri }}
-                style={estiloDeFoto({ width: item.mediaAncho, height: item.mediaAlto })}
-                contentFit="cover"
-              />
-              <AnilloDeSubida razon={item.progreso ?? 0} fallido={!subida.girando} textoDelFallo={subida.texto} />
-            </View>
-          ) : null}
           {!isPending(item) && item.deletedAt ? (
             /**
              * La lápida. NO es un hueco: si el mensaje desapareciera sin rastro,
@@ -443,8 +335,8 @@ function FilaDeMensaje({
 
 /** Una foto o un video que se ve en la burbuja: la hora va ENCIMA de la imagen. */
 function esFotoVisible(item: Row): boolean {
-  if (isPending(item)) return Boolean(item.mediaUri) && !esArchivo(item.mediaMime);
-  return Boolean(item.media && miniaturaDe(item.media)) && !esArchivo(item.media?.mime) && !item.deletedAt;
+  if (isPending(item)) return Boolean(item.mediaUri) && !isFileMime(item.mediaMime);
+  return Boolean(item.media && miniaturaDe(item.media)) && !isFileMime(item.media?.mime) && !item.deletedAt;
 }
 
 /** El chip centrado que separa los días («Hoy», «Ayer», «2 ago»). */
@@ -455,7 +347,7 @@ function esFotoVisible(item: Row): boolean {
  * desactivaría en silencio.
  */
 /** Tapping a quote: a thread reference opens the thread; a reply goes to the quoted message. */
-function quoteAction(quote: Citado | null | undefined, replyToSeq: number | undefined, openThread?: (seq: number) => void, goToQuote?: (seq: number) => void): (() => void) | undefined {
+export function quoteAction(quote: Citado | null | undefined, replyToSeq: number | undefined, openThread?: (seq: number) => void, goToQuote?: (seq: number) => void): (() => void) | undefined {
   if (quote?.enHilo && openThread) return () => openThread(quote.enHilo!);
   if (replyToSeq && goToQuote) return () => goToQuote(replyToSeq);
   return undefined;

@@ -28,13 +28,15 @@ export function ChipDeHilo(props: {
   onAbrir: (seq: number) => void;
   /** Under a highlighted notice, in the middle (21/10). */
   centered?: boolean;
+  /** Under a flat row (Slack format): on the left, after the avatar. */
+  indent?: number;
 }) {
   const colores = useColores();
   const texto = textoDelChipDeHilo(props.hilo);
   if (!texto) return null;
   const [cantidad, ...resto] = texto.split(' · ');
   return (
-    <View className={`-mt-0.5 flex-row ${props.centered ? 'justify-center' : props.mia ? 'justify-end' : ''}`} style={props.conAvatar && !props.centered ? { paddingLeft: AVATAR_DE_AUTOR + SEPARACION_DEL_AVATAR } : undefined}>
+    <View className={`${props.indent !== undefined ? 'mt-1' : '-mt-0.5'} flex-row ${props.centered ? 'justify-center' : props.mia && props.indent === undefined ? 'justify-end' : ''}`} style={props.indent !== undefined ? { paddingLeft: props.indent } : props.conAvatar && !props.centered ? { paddingLeft: AVATAR_DE_AUTOR + SEPARACION_DEL_AVATAR } : undefined}>
       <Pressable
         testID={`chip-hilo-${props.seq}`}
         accessibilityRole="button"

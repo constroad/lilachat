@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus, type AudioPlayer } from 'expo-audio';
 import { Pause, Play } from 'lucide-react-native';
-import { duracionDeVoz } from '@lilachat/shared';
-import { segundosDelToque, siguienteVelocidad, soltarElAudio, tomarElAudio } from './notaDeVozMotor';
+import { duracionDeVoz, firstPlay, nextPlaybackRate, scrubFraction } from '@lilachat/shared';
+import { soltarElAudio, tomarElAudio } from './notaDeVozMotor';
 import { useColores } from '../ui/tema';
 import { reportarError } from '../ui/reportarError';
 import { playbackAudioMode } from './audioMode';
@@ -43,7 +43,9 @@ type PropsDeNota = {
 export function NotaDeVoz(props: PropsDeNota) {
   const [activa, setActiva] = useState(false);
   const [velocidad, setVelocidad] = useState(1);
-  if (activa) return <NotaDeVozActiva {...props} velocidadInicial={velocidad} />;
+  /** Touching the bar before the first play starts there (backlog 34). */
+  const [startShare, setStartShare] = useState<number | null>(null);
+  if (activa) return <NotaDeVozActiva {...props} velocidadInicial={velocidad} startShare={startShare} />;
   return (
     <VistaDeNota
       mia={props.mia}
@@ -53,13 +55,18 @@ export function NotaDeVoz(props: PropsDeNota) {
       avance={0}
       velocidad={velocidad}
       onPlay={() => setActiva(true)}
-      onVelocidad={() => setVelocidad(siguienteVelocidad(velocidad))}
+      onVelocidad={() => setVelocidad(nextPlaybackRate(velocidad))}
+      durationS={(props.durationMs ?? 0) / 1000}
+      onSeek={(share) => {
+        setStartShare(share);
+        setActiva(true);
+      }}
     />
   );
 }
 
 /** Ya tocada: el reproductor vive y arranca solo, porque es la respuesta al toque. */
-function NotaDeVozActiva({ id, url, durationMs, onda, mia, velocidadInicial }: PropsDeNota & { velocidadInicial: number }) {
+function NotaDeVozActiva({ id, url, durationMs, onda, mia, velocidadInicial, startShare }: PropsDeNota & { velocidadInicial: number; startShare: number | null }) {
   const player = useAudioPlayer(url);
   const estado = useAudioPlayerStatus(player);
   const [velocidad, setVelocidad] = useState(velocidadInicial);
@@ -91,14 +98,16 @@ function NotaDeVozActiva({ id, url, durationMs, onda, mia, velocidadInicial }: P
     playInBackground(player, duracion);
   };
 
-  // El toque que la activó ya pidió reproducir: arranca una sola vez al montar.
+  // The tap that activated it asked to play: once the audio is loaded (Android ignores an earlier play), from where it was touched.
   useEffect(() => {
-    if (arrancada.current) return;
+    const decision = firstPlay({ loaded: estado.isLoaded, started: arrancada.current, startShare, duration: duracion });
+    if (!decision.play) return;
     arrancada.current = true;
+    if (decision.seekTo > 0) void player.seekTo(decision.seekTo);
     tomarElAudio(id, () => player.pause());
     player.setPlaybackRate(velocidad);
-    playInBackground(player, (durationMs ?? 0) / 1000);
-  }, [id, player, velocidad, durationMs]);
+    playInBackground(player, duracion);
+  }, [estado.isLoaded, id, player, velocidad, duracion, startShare]);
 
   return (
     <VistaDeNota
@@ -110,11 +119,13 @@ function NotaDeVozActiva({ id, url, durationMs, onda, mia, velocidadInicial }: P
       velocidad={velocidad}
       onPlay={reproducir}
       onVelocidad={() => {
-        const nueva = siguienteVelocidad(velocidad);
+        const nueva = nextPlaybackRate(velocidad);
         setVelocidad(nueva);
         player.setPlaybackRate(nueva);
       }}
-      onSaltar={(x, ancho) => player.seekTo(segundosDelToque({ x, ancho, duracion }))}
+      loading={!estado.isLoaded}
+      durationS={duracion}
+      onSeek={(share) => void player.seekTo(share * duracion)}
     />
   );
 }
@@ -129,13 +140,21 @@ function VistaDeNota(props: {
   velocidad: number;
   onPlay: () => void;
   onVelocidad: () => void;
-  /** Sin reproductor todavía no hay a dónde saltar. */
-  onSaltar?: (x: number, ancho: number) => void;
+  /** Tap or drag along the bar: jump to that share of the audio (backlog 34). */
+  onSeek: (share: number) => void;
+  /** Its length, to show the time under the finger while dragging. */
+  durationS: number;
+  /** The audio is still loading after the tap: a spinner, not a dead button. */
+  loading?: boolean;
 }) {
-  const { mia, onda, sonando, avance, velocidad } = props;
+  const { mia, onda, sonando, velocidad } = props;
   const colores = useColores();
   const tinta = mia ? colores['on-burbuja-propia'] : colores.primary;
   const [anchoBarra, setAnchoBarra] = useState(0);
+  /** While the finger is on the bar, the bar and the time follow it; letting go jumps there. */
+  const [dragShare, setDragShare] = useState<number | null>(null);
+  const avance = dragShare ?? props.avance;
+  const ms = dragShare !== null ? dragShare * props.durationS * 1000 : props.ms;
 
   return (
     <View testID="nota-de-voz" className="min-w-[210px] flex-row items-center gap-3 px-3 py-2.5">
@@ -146,16 +165,27 @@ function VistaDeNota(props: {
         hitSlop={2}
         className={`h-10 w-10 items-center justify-center rounded-full ${mia ? 'bg-white/20' : 'bg-primary/10'}`}
       >
-        {sonando ? <Pause size={18} color={tinta} /> : <Play size={18} color={tinta} fill={tinta} />}
+        {props.loading ? <ActivityIndicator size="small" color={tinta} /> : sonando ? <Pause size={18} color={tinta} /> : <Play size={18} color={tinta} fill={tinta} />}
       </Pressable>
       <View className="min-w-0 flex-1">
-        {/* Tocar la barra salta a ese punto; el área es más alta que la línea. */}
-        <Pressable
+        {/* Tap or drag along the bar, like WhatsApp: the area is taller than the line. */}
+        <View
           testID="barra-voz"
           accessibilityLabel="Ir a un punto de la nota"
+          accessibilityRole="adjustable"
           onLayout={(evento) => setAnchoBarra(evento.nativeEvent.layout.width)}
           hitSlop={{ top: 10, bottom: 10 }}
-          onPress={(evento) => props.onSaltar?.(evento.nativeEvent.locationX, anchoBarra)}
+          onStartShouldSetResponder={() => true}
+          onMoveShouldSetResponder={() => true}
+          // The chat's swipe-to-reply must not steal a drag along the bar.
+          onResponderTerminationRequest={() => false}
+          onResponderGrant={(evento) => setDragShare(scrubFraction(evento.nativeEvent.locationX, anchoBarra))}
+          onResponderMove={(evento) => setDragShare(scrubFraction(evento.nativeEvent.locationX, anchoBarra))}
+          onResponderRelease={(evento) => {
+            props.onSeek(scrubFraction(evento.nativeEvent.locationX, anchoBarra));
+            setDragShare(null);
+          }}
+          onResponderTerminate={() => setDragShare(null)}
           className="h-6 justify-center"
         >
           {onda?.length ? (
@@ -177,8 +207,8 @@ function VistaDeNota(props: {
               <View className={`h-1 rounded-full ${mia ? 'bg-on-burbuja-propia' : 'bg-primary'}`} style={{ width: `${Math.min(100, avance * 100)}%` }} />
             </View>
           )}
-        </Pressable>
-        <Text className={`text-[11px] ${mia ? 'text-on-burbuja-propia-suave' : 'text-on-surface-variant'}`}>{duracionDeVoz(props.ms)}</Text>
+        </View>
+        <Text className={`text-[11px] ${mia ? 'text-on-burbuja-propia-suave' : 'text-on-surface-variant'}`}>{duracionDeVoz(ms)}</Text>
       </View>
       <Pressable
         testID="btn-velocidad-voz"

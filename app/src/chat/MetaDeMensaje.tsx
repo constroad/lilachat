@@ -20,6 +20,7 @@ export function MetaDeMensaje({
   fallido = false,
   editado = false,
   destacado = false,
+  flat = false,
 }: {
   hora: string;
   mia: boolean;
@@ -32,15 +33,17 @@ export function MetaDeMensaje({
   editado?: boolean;
   /** Lo destaqué (20/10): la estrella chica antes de la hora, como WhatsApp. */
   destacado?: boolean;
+  /** In a flat row (Slack format) there is no purple bubble behind: the screen's colors. */
+  flat?: boolean;
 }) {
   const colores = useColores();
   // Sobre la propia (violeta sólido, FL13) la hora y los íconos van claros.
-  const tono = sobreFoto ? 'white' : mia ? colores['on-burbuja-propia-suave'] : colores['on-surface-variant'];
-  const leido = mia ? colores['check-leido-propio'] : colores['check-leido'];
+  const tono = sobreFoto ? 'white' : mia && !flat ? colores['on-burbuja-propia-suave'] : colores['on-surface-variant'];
+  const leido = mia && !flat ? colores['check-leido-propio'] : colores['check-leido'];
   return (
     <View className="flex-row items-center gap-1">
       {destacado ? <Star testID={`destacado-${id}`} size={TAMANO_CHECK - 3} color={tono} fill={tono} /> : null}
-      <Text className="text-[11px]" style={{ color: tono }} testID={`hora-${id}`}>
+      <Text className={flat ? 'text-[12px]' : 'text-[11px]'} style={{ color: tono }} testID={`hora-${id}`}>
         {editado ? `${ETIQUETA_EDITADO} ` : ''}
         {hora}
       </Text>

@@ -30,6 +30,7 @@ export function useGrupo(
   mencionables: (yo: string) => MiembroMencionable[];
   /** ¿Soy admin? Para lo que solo ellos crean (el recordatorio del grupo, 19/10). */
   soyAdmin: (yo: string) => boolean;
+  roles: ReadonlyMap<string, 'admin' | 'member'>;
 } {
   const agenda = useSyncExternalStore(suscribirAgenda, agendaPorTelefono, agendaPorTelefono);
   const [miembros, setMiembros] = useState<MiembroConNombre[]>(() => cache.get(chatId) ?? []);
@@ -82,5 +83,7 @@ export function useGrupo(
   const lista = useMemo(() => [...nombres].map(([id, nombre]) => ({ id, nombre, foto: fotos.get(id) })), [nombres, fotos]);
   const mencionables = useCallback((yo: string) => lista.filter((uno) => uno.id !== yo), [lista]);
   const soyAdmin = useCallback((yo: string) => miembros.some((uno) => uno.id === yo && uno.role === 'admin'), [miembros]);
-  return { nombres, fotos, soyMiembro, mencionables, soyAdmin };
+  /** Each member's role, for the pill next to their name in the Slack format (design `s-01`). */
+  const roles = useMemo(() => new Map(miembros.map((member) => [member.id, member.role ?? 'member'] as const)), [miembros]);
+  return { nombres, fotos, soyMiembro, mencionables, soyAdmin, roles };
 }

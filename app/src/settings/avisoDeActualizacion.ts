@@ -54,3 +54,12 @@ export function decidirAvisoDeActualizacion(params: {
 
   return { tipo: 'sugerida', version };
 }
+
+/** How often coming back to the app asks for a new version (backlog 32): often enough to notice a release, not on every glance. */
+export const VERSION_RECHECK_MS = 30 * 60_000;
+
+/** Whether coming back to the app should ask again; a clock set back by hand asks instead of waiting forever. */
+export function shouldRecheckVersion(lastCheckMs: number | null, nowMs: number): boolean {
+  if (lastCheckMs === null || lastCheckMs > nowMs) return true;
+  return nowMs - lastCheckMs >= VERSION_RECHECK_MS;
+}

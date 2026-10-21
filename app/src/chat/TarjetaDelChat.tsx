@@ -47,10 +47,6 @@ export function TarjetaDelChat(props: {
   const colores = useColores();
   const autor = mia ? undefined : props.autor;
   const colorAutor = colores[`autor-${colorDeAutor(String(item.senderId))}` as keyof typeof colores] as string;
-  const elegir = () => {
-    void Haptics.selectionAsync();
-    props.onSeleccionar?.(item.seq);
-  };
   return (
     <DeslizarParaResponder habilitado={!props.enSeleccion && Boolean(props.onResponder)} onResponder={() => props.onResponder?.(item.seq, item.body ?? 'Tarjeta', mia)}>
     <View className={`-mx-3 px-3 pt-3 ${mia ? 'items-end' : 'items-start'} ${props.seleccionado ? 'bg-primary/15' : ''}`} testID={`tarjeta-${item.ref!.tipo}-${item.seq}`}>
@@ -63,19 +59,7 @@ export function TarjetaDelChat(props: {
               {autor.nombre}
             </Text>
           ) : null}
-          <Pressable testID={`mantener-tarjeta-${item.seq}`} onLongPress={elegir} delayLongPress={350} className="w-full">
-            {item.ref!.tipo === 'encuesta' ? (
-              <EncuestaEnElChat pollId={item.ref!.id} jwt={props.jwt} yo={props.yo} />
-            ) : item.ref!.tipo === 'checklist' ? (
-              <ChecklistEnElChat checklistId={item.ref!.id} jwt={props.jwt} yo={props.yo} nameOf={(userId) => props.everyName?.get(userId) ?? 'Alguien'} members={checklistMembers(props.everyName, props.yo)} />
-            ) : item.ref!.tipo === 'recordatorio' ? (
-              <RecordatorioEnElChat reminderId={item.ref!.id} jwt={props.jwt} onLongPress={elegir} />
-            ) : (
-              <EventoEnElChat eventId={item.ref!.id} jwt={props.jwt} />
-            )}
-            {/* Con mensajes elegidos, el toque elige: no vota, no confirma, no edita. */}
-            {props.enSeleccion ? <Pressable testID={`elegir-tarjeta-${item.seq}`} onPress={() => props.onSeleccionar?.(item.seq)} className="absolute inset-0" /> : null}
-          </Pressable>
+          <CardBody item={item} jwt={props.jwt} yo={props.yo} everyName={props.everyName} selecting={props.enSeleccion} onSelect={props.onSeleccionar} />
         </View>
       </View>
       {/* Con reacciones, aire bajo la hora: la pastilla sube sobre lo de arriba y la tapaba. */}
@@ -86,3 +70,31 @@ export function TarjetaDelChat(props: {
     </DeslizarParaResponder>
   );
 }
+
+/**
+ * What a card shows (a poll, checklist, reminder or event), with its long
+ * press to select; with messages selected, a tap selects instead of voting or
+ * ticking. Shared by the bubble layout and the flat row (Slack format).
+ */
+export function CardBody(props: { item: ChatMessage; jwt: string; yo: string; everyName?: ReadonlyMap<string, string>; selecting?: boolean; onSelect?: (seq: number) => void }) {
+  const { item } = props;
+  const select = () => {
+    void Haptics.selectionAsync();
+    props.onSelect?.(item.seq);
+  };
+  return (
+    <Pressable testID={`mantener-tarjeta-${item.seq}`} onLongPress={select} delayLongPress={350} className="w-full">
+      {item.ref!.tipo === 'encuesta' ? (
+        <EncuestaEnElChat pollId={item.ref!.id} jwt={props.jwt} yo={props.yo} />
+      ) : item.ref!.tipo === 'checklist' ? (
+        <ChecklistEnElChat checklistId={item.ref!.id} jwt={props.jwt} yo={props.yo} nameOf={(userId) => props.everyName?.get(userId) ?? 'Alguien'} members={checklistMembers(props.everyName, props.yo)} />
+      ) : item.ref!.tipo === 'recordatorio' ? (
+        <RecordatorioEnElChat reminderId={item.ref!.id} jwt={props.jwt} onLongPress={select} />
+      ) : (
+        <EventoEnElChat eventId={item.ref!.id} jwt={props.jwt} />
+      )}
+      {props.selecting ? <Pressable testID={`elegir-tarjeta-${item.seq}`} onPress={() => props.onSelect?.(item.seq)} className="absolute inset-0" /> : null}
+    </Pressable>
+  );
+}
+

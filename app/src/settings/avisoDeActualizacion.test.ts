@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decidirAvisoDeActualizacion } from './avisoDeActualizacion';
+import { VERSION_RECHECK_MS, decidirAvisoDeActualizacion, shouldRecheckVersion } from './avisoDeActualizacion';
 
 const base = { actual: 37, ultima: 37, minima: 0, version: '0.1.36', descartada: null };
 
@@ -79,3 +79,21 @@ describe('decidirAvisoDeActualizacion', () => {
     });
   });
 });
+
+/** Backlog 32 (José, 21/10): the notice only showed after a cold start; coming back to the app asks again, at most every 30 min. */
+describe('shouldRecheckVersion', () => {
+  const now = Date.UTC(2026, 9, 21, 15, 0);
+  it('never checked: ask', () => {
+    expect(shouldRecheckVersion(null, now)).toBe(true);
+  });
+  it('checked a moment ago: do not ask again on every glance', () => {
+    expect(shouldRecheckVersion(now - 5 * 60_000, now)).toBe(false);
+  });
+  it('the interval passed: ask', () => {
+    expect(shouldRecheckVersion(now - VERSION_RECHECK_MS, now)).toBe(true);
+  });
+  it('a clock that went back (time changed by hand) asks instead of waiting forever', () => {
+    expect(shouldRecheckVersion(now + 60 * 60_000, now)).toBe(true);
+  });
+});
+

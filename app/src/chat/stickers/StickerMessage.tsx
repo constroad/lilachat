@@ -39,13 +39,7 @@ export function StickerMessage(props: {
 }) {
   const { item, mine } = props;
   const animated = useAnimatedStop(item.media?.url);
-  const keep = async (asFavorite: boolean) => ToastAndroid.show(await keepReceivedSticker(props.jwt, item.chatId, item.seq, asFavorite), ToastAndroid.SHORT);
-  const showOptions = () =>
-    Alert.alert('Sticker', undefined, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Agregar a favoritos', onPress: () => void keep(true) },
-      ...(mine ? [] : [{ text: 'Guardar en Mis stickers', onPress: () => void keep(false) }]),
-    ]);
+  const showOptions = () => showStickerOptions(props.jwt, item, mine);
   return (
     <DeslizarParaResponder habilitado={!props.selecting && Boolean(props.onReply)} onResponder={() => props.onReply?.(item.seq, 'Sticker', mine)}>
       <View testID={`sticker-${item.seq}`} className={`-mx-3 flex-row items-end gap-2 px-3 pt-3 ${mine ? 'justify-end' : ''} ${props.selected ? 'bg-primary/15' : ''}`}>
@@ -72,12 +66,22 @@ export function StickerMessage(props: {
   );
 }
 
+/** A tap on a sticker in the chat: keep it as a favorite, or someone else's in «Mis stickers». */
+export function showStickerOptions(jwt: string, item: ChatMessage, mine: boolean): void {
+  const keep = async (asFavorite: boolean) => ToastAndroid.show(await keepReceivedSticker(jwt, item.chatId, item.seq, asFavorite), ToastAndroid.SHORT);
+  Alert.alert('Sticker', undefined, [
+    { text: 'Cancelar', style: 'cancel' },
+    { text: 'Agregar a favoritos', onPress: () => void keep(true) },
+    ...(mine ? [] : [{ text: 'Guardar en Mis stickers', onPress: () => void keep(false) }]),
+  ]);
+}
+
 /**
  * An animated sticker (backlog 31) plays for a while and stops, like WhatsApp:
  * a chat full of loops that never end is noise and costs battery. A tap on a
  * stopped one plays it again.
  */
-function useAnimatedStop(url: string | undefined) {
+export function useAnimatedStop(url: string | undefined) {
   const ref = useRef<Image>(null);
   const [stopped, setStopped] = useState(false);
   const [round, setRound] = useState(0);

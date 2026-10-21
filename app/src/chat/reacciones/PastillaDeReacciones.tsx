@@ -11,14 +11,14 @@ const EMOJIS_VISIBLES = 3;
  * Las reacciones montadas sobre el borde inferior de la burbuja (20/10; diseño
  * `f1-app-reacciones`): «👍 2 · ❤️ 1». Tocarla abre quién reaccionó.
  */
-export function PastillaDeReacciones(props: { id: string; reacciones: readonly Reaccion[] | undefined; yo: string; mia: boolean; conAvatar: boolean; onTocar: () => void; /** Under a highlighted notice, in the middle (21/10). */ centered?: boolean }) {
+export function PastillaDeReacciones(props: { id: string; reacciones: readonly Reaccion[] | undefined; yo: string; mia: boolean; conAvatar: boolean; onTocar: () => void; /** Under a highlighted notice, in the middle (21/10). */ centered?: boolean; /** In a flat row (Slack format): on the left, after the avatar, below the text. */ indent?: number }) {
   const grupos = resumenDeReacciones(props.reacciones, props.yo);
   if (grupos.length === 0) return null;
   const total = grupos.reduce((suma, grupo) => suma + grupo.cuantos, 0);
   const visibles = grupos.slice(0, EMOJIS_VISIBLES);
   const etiqueta = grupos.map((grupo) => `${grupo.emoji} ${grupo.cuantos}`).join(', ');
   return (
-    <View className={`-mt-2.5 mb-1 flex-row ${props.centered ? 'justify-center' : props.mia ? 'justify-end pr-2.5' : ''}`} style={props.centered ? undefined : { paddingLeft: props.mia ? 0 : (props.conAvatar ? AVATAR_DE_AUTOR : 0) + SANGRIA }}>
+    <View className={`${props.indent !== undefined ? 'mb-1 mt-1' : '-mt-2.5 mb-1'} flex-row ${props.centered ? 'justify-center' : props.mia && props.indent === undefined ? 'justify-end pr-2.5' : ''}`} style={props.centered ? undefined : { paddingLeft: props.indent ?? (props.mia ? 0 : (props.conAvatar ? AVATAR_DE_AUTOR : 0) + SANGRIA) }}>
       <Pressable
         testID={`pastilla-reacciones-${props.id}`}
         accessibilityRole="button"

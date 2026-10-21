@@ -1,11 +1,14 @@
 import { useCallback, type ComponentProps } from 'react';
-import { formatDayLabel, miReaccion, canOpenThread, puedeReaccionar, resolveDeliveryState, startsNewDay } from '@lilachat/shared';
+import { formatDayLabel, memberBadge, miReaccion, canOpenThread, puedeReaccionar, resolveDeliveryState, startsNewDay, usesFlatLayout } from '@lilachat/shared';
 import { DivisorNoLeidos } from './useDivisorNoLeidos';
 import { DaySeparator, isPending, MessageRow, type Row } from './MessageRow';
 import { ChipDeHilo } from './ChipDeHilo';
 import { BarraDeReacciones } from './reacciones/BarraDeReacciones';
 import { PastillaDeReacciones } from './reacciones/PastillaDeReacciones';
 import type { ChatMessage } from './useChat';
+import { FLAT_INDENT, FlatMessageRow } from './FlatMessageRow';
+import { drawsAsFlatRow } from './rowKinds';
+import { useGroupsAsList } from '../ui/groupsAsList';
 
 type PropsDeFila = ComponentProps<typeof MessageRow>;
 
@@ -22,6 +25,8 @@ export function useDibujarFila(p: {
   esGrupo: boolean;
   nombres: ReadonlyMap<string, string>;
   fotos: ReadonlyMap<string, string>;
+  /** Each member's role: the pill next to the name in the Slack format. */
+  roles: ReadonlyMap<string, string>;
   leidoHasta: number;
   entregadoHasta: number;
   divisorSeq: number | null;
@@ -46,7 +51,9 @@ export function useDibujarFila(p: {
   /** Los que destaqué (20/10), para la estrella de cada burbuja. */
   destacados: ReadonlySet<number>;
 }) {
-  const { rows, yo, jwt, encrypted, esGrupo, nombres, fotos, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir } = p;
+  const { rows, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir } = p;
+  // Groups as flat rows, like Slack (design `s-01`): always in a company space, on request in a personal group.
+  const flat = usesFlatLayout({ kind: esGrupo ? 'group' : 'direct' }, { groupsAsList: useGroupsAsList() });
   const { citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas } = p;
   const { onReaccionar, onMasEmojis, onVerReacciones, destacados } = p;
   return useCallback(
@@ -62,11 +69,39 @@ export function useDibujarFila(p: {
       const withThread = withBar && !isPending(item) && canOpenThread({ seq: item.seq, kind: item.kind, system: item.system, hiloDe: item.hiloDe, deletedAt: item.deletedAt, cifrado: encrypted });
       // A highlighted notice sits in the middle: so do its bar, reactions and thread chip (21/10).
       const centered = !isPending(item) && item.kind === 'system';
+      const flatRow = flat && drawsAsFlatRow(item);
+      const indent = flatRow ? FLAT_INDENT : undefined;
+      const senderId = isPending(item) ? yo : String(item.senderId);
       return (
         <>
           {startsNewDay(at, previousAt) ? <DaySeparator label={formatDayLabel(at)} /> : null}
           {!isPending(item) && item.seq === divisorSeq ? <DivisorNoLeidos cantidad={noLeidosAlAbrir} /> : null}
-          {withBar ? <BarraDeReacciones seq={item.seq} mia={mia} conAvatar={false} centered={centered} miEmoji={miReaccion(item.reacciones, yo)} onElegir={onReaccionar} onMas={onMasEmojis} onHilo={withThread ? (seq) => { onSeleccionar?.(seq); onAbrirHilo(seq); } : undefined} /> : null}
+          {withBar ? <BarraDeReacciones seq={item.seq} mia={mia} conAvatar={false} centered={centered} indent={indent} miEmoji={miReaccion(item.reacciones, yo)} onElegir={onReaccionar} onMas={onMasEmojis} onHilo={withThread ? (seq) => { onSeleccionar?.(seq); onAbrirHilo(seq); } : undefined} /> : null}
+          {flatRow ? (
+            <FlatMessageRow
+              item={item}
+              previous={previous}
+              myUserId={yo}
+              jwt={jwt}
+              linkPreview={!encrypted}
+              names={nombres}
+              everyName={nombres}
+              delivery={mia ? resolveDeliveryState({ seq: isPending(item) ? null : item.seq, otherReadSeq: leidoHasta, otherDeliveredSeq: entregadoHasta }) : undefined}
+              authorName={nombres.get(senderId)}
+              authorPhoto={fotos.get(senderId)}
+              badge={memberBadge({ role: roles.get(senderId), isMe: mia })}
+              quoted={isPending(item) ? null : (citados.get(item.seq) ?? null)}
+              selected={!isPending(item) && (elegidos.has(item.seq) || item.seq === resaltado || item.seq === seqBuscado)}
+              selecting={enSeleccion}
+              starred={!isPending(item) && destacados.has(item.seq)}
+              onOpenMedia={onVerImagen}
+              onSelect={onSeleccionar}
+              onReply={onResponder}
+              onFailed={onFallido}
+              onGoToQuote={onTocarCita}
+              onOpenThread={onAbrirHilo}
+            />
+          ) : (
           <MessageRow
             item={item}
             previous={previous}
@@ -91,8 +126,9 @@ export function useDibujarFila(p: {
             onAbrirHilo={onAbrirHilo}
             destacado={!isPending(item) && destacados.has(item.seq)}
           />
+          )}
           {!isPending(item) && item.reacciones?.length && !item.deletedAt ? (
-            <PastillaDeReacciones id={String(item.seq)} reacciones={item.reacciones} yo={yo} mia={mia} conAvatar={conAvatar} centered={centered} onTocar={() => onVerReacciones(item.seq)} />
+            <PastillaDeReacciones id={String(item.seq)} reacciones={item.reacciones} yo={yo} mia={mia} conAvatar={conAvatar} centered={centered} indent={indent} onTocar={() => onVerReacciones(item.seq)} />
           ) : null}
           {!isPending(item) && item.hilo && item.hilo.respuestas > 0 && !item.deletedAt ? (
             <ChipDeHilo
@@ -101,6 +137,7 @@ export function useDibujarFila(p: {
               mia={mia}
               conAvatar={conAvatar}
               centered={centered}
+              indent={indent}
               nombres={nombres}
               fotos={fotos}
               nuevas={hiloConNuevas(item.seq, item.hilo)}
@@ -110,6 +147,6 @@ export function useDibujarFila(p: {
         </>
       );
     },
-    [rows, yo, jwt, encrypted, esGrupo, nombres, fotos, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir, citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas, onReaccionar, onMasEmojis, onVerReacciones, destacados]
+    [rows, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, flat, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir, citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas, onReaccionar, onMasEmojis, onVerReacciones, destacados]
   );
 }

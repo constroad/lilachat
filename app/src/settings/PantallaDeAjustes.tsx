@@ -10,6 +10,7 @@ import { FilaDeAjuste, GrupoDeAjustes } from '../ui/FilaDeAjuste';
 import { Rotulo } from '../ui/Rotulo';
 import { AparienciaAjuste } from './AparienciaAjuste';
 import { ChatFontSetting } from './ChatFontSetting';
+import { GroupsAsListSetting } from './GroupsAsListSetting';
 import { AutoRespuestaAjuste } from './AutoRespuestaAjuste';
 import { BuscarActualizacionesAjuste } from './BuscarActualizacionesAjuste';
 import { DispositivosVinculadosAjuste } from './DispositivosVinculadosAjuste';
@@ -92,6 +93,7 @@ export function PantallaDeAjustes(props: {
         <Rotulo>Chats</Rotulo>
         <GrupoDeAjustes>
           {/* La estrella personal (20/10), como WhatsApp: todos los que destaqué, de todos los chats. */}
+          <GroupsAsListSetting />
           <FilaDeAjuste testID="btn-destacados" icono={Star} titulo="Mensajes destacados" detalle="Los que guardaste con la estrella · solo tú los ves" onPress={() => setVerDestacados(true)} />
           <RespaldoAjuste credential={credential} />
           <AutoRespuestaAjuste jwt={credential.jwt} />

@@ -16,3 +16,16 @@ export function resolveVisiblePanel(params: {
   if (params.width >= BREAKPOINT_TWO_PANELS) return 'both';
   return params.selectedChatId ? 'conversation' : 'list';
 }
+
+/** The chat list's width, dragged by its handle (José, 21/10), in px. */
+export const LIST_MIN_WIDTH = 280;
+export const LIST_MAX_WIDTH = 560;
+export const LIST_DEFAULT_WIDTH = 380;
+/** The conversation never gets narrower than this. */
+export const CONVERSATION_MIN_WIDTH = 420;
+
+export function clampListWidth(width: number, windowWidth: number): number {
+  if (!Number.isFinite(width)) return LIST_DEFAULT_WIDTH;
+  const max = Math.max(LIST_MIN_WIDTH, Math.min(LIST_MAX_WIDTH, windowWidth - CONVERSATION_MIN_WIDTH));
+  return Math.round(Math.min(max, Math.max(LIST_MIN_WIDTH, width)));
+}

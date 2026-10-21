@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Lock, RotateCw } from 'lucide-react';
 import { urlDeVinculacion } from '@lilachat/shared';
 import type { Credential } from '../api';
+import { Logo } from '../ui/Logo';
 import { caminoDelQr } from './caminoDelQr';
 import { useVinculacionPorQr, type EstadoDelQr } from './useVinculacionPorQr';
 
@@ -27,7 +28,7 @@ export function PantallaDeVincular({ onReady, onUsarTelefono }: { onReady: (cred
       <div className="w-full max-w-[960px] overflow-hidden rounded-2xl border border-outline/15 bg-surface md:grid md:grid-cols-[3fr_2fr]">
         <section className="flex flex-col p-8 md:p-12">
           <div className="flex items-center gap-3">
-            <img src="/icons/icon-192.png" alt="" className="h-10 w-10 rounded-xl" />
+            <Logo size={40} />
             <span className="text-lg font-bold">Lilachat</span>
           </div>
           <h1 className="mt-8 text-2xl font-bold tracking-tight md:text-[28px]">Usa Lilachat en tu computadora</h1>

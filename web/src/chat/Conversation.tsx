@@ -1,5 +1,7 @@
 import { useFunPlayback } from './nudge';
-import { useState, type ReactNode } from 'react';
+import { NotificationsBanner } from '../notify/NotificationsBanner';
+import { ConversacionContext } from './contextoDeLaConversacion';
+import { useContext, useState, type ReactNode } from 'react';
 import { ArrowLeft, Phone, Search, Video } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import type { AgendaReminder, MencionEnMensaje, WinkId } from '@lilachat/shared';
@@ -90,6 +92,7 @@ export function Conversation(props: {
       ) : null}
       {fun.overlay}
       <CabeceraDeLaConversacion chat={chat} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} />
+      <BannerWithSession />
       {props.franja}
       {props.mensajes === null ? (
         <EsqueletoDeMensajes />
@@ -184,4 +187,10 @@ function EsqueletoDeMensajes() {
       ))}
     </div>
   );
+}
+
+/** The notifications banner needs the session's token, which lives in the conversation's context. */
+function BannerWithSession() {
+  const context = useContext(ConversacionContext);
+  return context ? <NotificationsBanner jwt={context.jwt} /> : null;
 }

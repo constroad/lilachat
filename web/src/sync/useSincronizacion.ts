@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, type MutableRefObject } from 'react';
+import { showBrowserNoticeIfHidden } from '../notify/browserNotice';
 import type { Socket } from 'socket.io-client';
 import { api } from '../api';
 import { crearUltimaGana } from './ultimaGana';
@@ -85,6 +86,7 @@ export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401
         if (base) void aplicarEntrante(base, mensaje);
         enLaFila(mensaje.chatId, (chats) => aplicarMensajeALista(chats, mensaje, yo, visibleAbierto()));
         void sonarSiCorresponde(base, mensaje, yo, abiertoRef.current);
+        void showBrowserNoticeIfHidden(base, mensaje, yo);
       },
       onReceipt: (acuse: AcuseEnVivo & { chatId: string }) => enLaFila(acuse.chatId, (chats) => aplicarAcuseALista(chats, acuse, yo, cursores.current)),
       onBorrado: (dato: { chatId: string; seq: number }) => {

@@ -84,7 +84,7 @@ export function ListaDeMensajes(props: Props) {
         onKeyDown={anotarGesto}
         onPointerDown={anotarGesto}
         data-testid="lista-mensajes"
-        className="h-full overflow-y-auto px-4 py-4"
+        className="chat-fondo h-full overflow-y-auto px-4 py-4"
       >
         {!props.hayAnteriores && filas.length > 0 ? (
           <p className="pb-2 text-center text-[11px] text-on-surface-variant">Este es el principio de la conversación</p>

@@ -20,3 +20,11 @@
   25%, 75% { transform: scale(1.03); }
 }
 .wink-pop { animation: wink-pop 480ms ease-in-out; }
+
+/* The conversation's background, like the app's (`FondoDelChat`): a dot pattern
+   barely visible over the chat tone (José, 21/10: «la web va lisa»). */
+.chat-fondo {
+  background-color: rgb(var(--c-chat-bg));
+  background-image: radial-gradient(rgb(var(--c-primary) / 0.09) 1.2px, transparent 1.5px);
+  background-size: 22px 22px;
+}

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ListTodo, MessageSquarePlus, MoreVertical, NotebookPen, Search, Settings, SquarePen, Star, Users } from 'lucide-react';
+import { ListTodo, MessageSquarePlus, MoreVertical, NotebookPen, PanelLeftClose, Search, Settings, SquarePen, Star, Users } from 'lucide-react';
 import type { FiltroDeChats } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
+import { Logo } from '../ui/Logo';
 import { FilaDeChat } from './FilaDeChat';
 import { FiltrosDeLaLista } from './FiltrosDeLaLista';
 import { armarLista } from './listaDeChats';
@@ -35,6 +36,8 @@ export function ChatList({
   onNewBorrador,
   onAccion,
   yo,
+  width,
+  onCollapse,
 }: {
   chats: ChatSummary[];
   selectedChatId: string | null;
@@ -53,6 +56,10 @@ export function ChatList({
   onAccion: (chat: ChatSummary, accion: AccionDelChat) => void;
   /** Mi id: los avisos de la vista previa en segunda persona («Fijaste…»). */
   yo?: string;
+  /** Its width when the parent lets you drag it (two panels); without it, the usual widths. */
+  width?: number;
+  /** Folds the list into a rail (José, 21/10). */
+  onCollapse?: () => void;
 }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [filtro, setFiltro] = useState<FiltroDeChats>('todos');
@@ -93,16 +100,20 @@ export function ChatList({
   return (
     <aside
       data-testid="panel-lista"
-      className="flex h-full w-full flex-col border-r border-outline/15 bg-surface md:w-[340px] md:shrink-0 lg:w-[400px]"
+      className={`flex h-full w-full flex-col bg-surface ${width ? 'shrink-0' : 'border-r border-outline/15 md:w-[340px] md:shrink-0 lg:w-[400px]'}`}
+      style={width ? { width } : undefined}
     >
       <header className="flex items-center gap-2 px-4 py-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-on-primary">
-          <span className="text-base font-bold">L</span>
-        </div>
-        <h1 className="flex-1 text-lg font-bold tracking-tight">Lilachat</h1>
+        <Logo size={30} />
+        <h1 className="flex-1 text-lg font-extrabold tracking-tight">Lilachat</h1>
         <button type="button" data-testid="btn-lapiz-nuevo-chat" aria-label="Nuevo chat" title="Nuevo chat" onClick={onNewChat} className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant hover:bg-background">
           <SquarePen size={18} />
         </button>
+        {onCollapse ? (
+          <button type="button" data-testid="btn-plegar-lista" aria-label="Plegar la lista" title="Plegar la lista" onClick={onCollapse} className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant hover:bg-background">
+            <PanelLeftClose size={18} />
+          </button>
+        ) : null}
         <div className="relative" ref={menuRef}>
           <button
             type="button"

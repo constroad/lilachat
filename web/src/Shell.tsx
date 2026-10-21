@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ChatRail } from './chat/ChatRail';
+import { ListResizeHandle } from './chat/ListResizeHandle';
+import { readThemeChoice, saveThemeChoice, type ThemeChoice } from './ui/tema';
 import { Bell, BellOff, Download, LogOut, RefreshCw, WifiOff } from 'lucide-react';
 import { useSinConexion } from './pwa/conexion';
 import { useInstalarApp } from './pwa/instalar';
@@ -17,7 +20,7 @@ import { ordenarParaLaLista } from './chat/listaDeChats';
 import { chatsSinLeer, tituloDeLaPestana } from './chat/tituloDeLaPestana';
 import type { ChatMessage, ChatSummary } from './chat/types';
 import { useChatDeLaUrl } from './chat/useChatDeLaUrl';
-import { resolveVisiblePanel } from './layout';
+import { clampListWidth, LIST_DEFAULT_WIDTH, resolveVisiblePanel } from './layout';
 import { useBaseLocal, useChatsLocales, useMensajesEnPantalla } from './local/useBaseLocal';
 import { disablePush, enablePush, pushState } from './push';
 import { puedeAbrirSocket } from './sesionLista';
@@ -138,6 +141,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
 
   const selected = chats.find((chat) => chat.id === selectedId) ?? null;
   const panel = resolveVisiblePanel({ width, selectedChatId: selectedId });
+  const listLayout = useListLayout(width);
   const alCrear = (chatId: string) => {
     setCreando(null);
     abrirChat(chatId);
@@ -147,7 +151,10 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
   return (
     <div className="relative flex h-full">
       <AvisosDeLaWeb sinConexion={sinConexion} hayVersionNueva={hayVersionNueva} />
-      {panel === 'conversation' ? null : (
+      {panel === 'conversation' ? null : panel === 'both' && listLayout.collapsed ? (
+        <ChatRail chats={chats ?? []} selectedChatId={selectedId} onSelect={(chat) => abrirChat(chat.id)} onExpand={() => listLayout.setCollapsed(false)} />
+      ) : (
+        <>
         <ChatList
           chats={chats}
           selectedChatId={selectedId}
@@ -164,7 +171,11 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
           onNewBorrador={() => setCreando({ tipo: 'borrador' })}
           yo={yo}
           onAccion={(chat, accion) => void accionesSobreChats.aplicar(chat, accion)}
+          width={panel === 'both' ? listLayout.width : undefined}
+          onCollapse={panel === 'both' ? () => listLayout.setCollapsed(true) : undefined}
         />
+        {panel === 'both' ? <ListResizeHandle width={listLayout.width} onResize={listLayout.setWidth} onReset={listLayout.reset} /> : null}
+        </>
       )}
 
       {panel === 'list' ? null : selected ? (
@@ -229,7 +240,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
       {creando?.tipo === 'recordatorio' ? <CrearRecordatorio jwt={credential.jwt} chat={creando.chat} editando={creando.editando} onClose={() => setCreando(null)} onGuardado={() => setCreando(null)} /> : null}
 
       {aviso === 'ajustes' ? <PanelDeAjustes jwt={credential.jwt} onAviso={setAviso} onSalir={logout} onCerrar={() => setAviso('')} instalacion={instalacion} /> : aviso ? (
-        <p data-testid="aviso" role="status" className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-on-surface px-4 py-2 text-sm text-white">
+        <p data-testid="aviso" role="status" className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-on-surface px-4 py-2 text-sm text-surface">
           {aviso}
         </p>
       ) : null}
@@ -243,7 +254,7 @@ function AvisosDeLaWeb({ sinConexion, hayVersionNueva }: { sinConexion: boolean;
   return (
     <div className="pointer-events-none absolute inset-x-0 top-2 z-30 flex flex-col items-center gap-2 px-4">
       {sinConexion ? (
-        <p role="status" data-testid="aviso-sin-conexion" className="pointer-events-auto flex items-center gap-2 rounded-full bg-on-surface px-4 py-2 text-[13px] text-white shadow-lg">
+        <p role="status" data-testid="aviso-sin-conexion" className="pointer-events-auto flex items-center gap-2 rounded-full bg-on-surface px-4 py-2 text-[13px] text-surface shadow-lg">
           <WifiOff size={15} /> Sin conexión. Lo que escribas se enviará al volver.
         </p>
       ) : null}
@@ -279,7 +290,8 @@ function PanelDeAjustes(props: {
     if (!resultado.ok) onAviso(resultado.message ?? 'No se pudieron activar.');
   };
   return (
-    <div data-testid="panel-ajustes" className="absolute bottom-16 left-4 z-10 w-64 rounded-xl border border-outline/15 bg-surface p-2 shadow-lg">
+    <div data-testid="panel-ajustes" className="absolute bottom-16 left-4 z-10 w-72 rounded-xl border border-outline/15 bg-surface p-2 shadow-lg">
+      <AppearanceChoice />
       <button type="button" data-testid="btn-notificaciones" onClick={() => void alternar()} className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-left text-sm hover:bg-background">
         {push === 'encendido' ? <BellOff size={16} /> : <Bell size={16} />}
         <span className="min-w-0 flex-1">{push === 'encendido' ? 'Desactivar notificaciones' : 'Activar notificaciones'}</span>
@@ -344,4 +356,72 @@ function useHistorialDelChat(chatId: string | null) {
   }, []);
 
   return useMemo(() => ({ limite, hayAnteriores, cargar, alAbrir: setHayAnteriores }), [limite, hayAnteriores, cargar]);
+}
+
+/** «Apariencia: Claro · Oscuro · Sistema» (design `n-01-web-oscuro-lista`; José, 21/10). */
+function AppearanceChoice() {
+  const [choice, setChoice] = useState<ThemeChoice>(readThemeChoice);
+  const options: { value: ThemeChoice; label: string }[] = [
+    { value: 'light', label: 'Claro' },
+    { value: 'dark', label: 'Oscuro' },
+    { value: 'system', label: 'Sistema' },
+  ];
+  return (
+    <div className="mb-1 border-b border-outline/15 px-2 pb-3 pt-1">
+      <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.15em] text-on-surface-variant">Apariencia</p>
+      <div role="radiogroup" aria-label="Apariencia" className="grid grid-cols-3 gap-1 rounded-lg border border-outline/15 p-1">
+        {options.map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={choice === value}
+            data-testid={`tema-${value}`}
+            onClick={() => {
+              setChoice(value);
+              saveThemeChoice(value);
+            }}
+            className={`min-h-[36px] rounded-md text-[13px] font-semibold ${choice === value ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-background'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const LIST_WIDTH_KEY = 'lilachat.anchoLista';
+const LIST_FOLDED_KEY = 'lilachat.listaPlegada';
+
+/** A per-browser convenience: it can fail (private mode) and the defaults stay. */
+function readStored(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function store(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Not remembered in this browser: it still works until the page closes.
+  }
+}
+
+/** The chat list's width (dragged) and whether it is folded, remembered in this browser (José, 21/10). */
+function useListLayout(windowWidth: number) {
+  const [width, setStoredWidth] = useState(() => Number(readStored(LIST_WIDTH_KEY) ?? LIST_DEFAULT_WIDTH));
+  const [collapsed, setStoredCollapsed] = useState(() => readStored(LIST_FOLDED_KEY) === '1');
+  const setWidth = useCallback((next: number) => {
+    setStoredWidth(next);
+    store(LIST_WIDTH_KEY, String(Math.round(next)));
+  }, []);
+  const setCollapsed = useCallback((next: boolean) => {
+    setStoredCollapsed(next);
+    store(LIST_FOLDED_KEY, next ? '1' : '0');
+  }, []);
+  const reset = useCallback(() => setWidth(LIST_DEFAULT_WIDTH), [setWidth]);
+  return { width: clampListWidth(width, windowWidth), collapsed, setWidth, setCollapsed, reset };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BREAKPOINT_TWO_PANELS, resolveVisiblePanel } from './layout';
+import { BREAKPOINT_TWO_PANELS, clampListWidth, CONVERSATION_MIN_WIDTH, LIST_DEFAULT_WIDTH, LIST_MAX_WIDTH, LIST_MIN_WIDTH, resolveVisiblePanel } from './layout';
 
 /**
  * Los dos paneles del diseño web, y qué pasa cuando no caben.
@@ -32,5 +32,20 @@ describe('resolveVisiblePanel', () => {
     expect(resolveVisiblePanel({ width: BREAKPOINT_TWO_PANELS - 1, selectedChatId: null })).toBe(
       'list'
     );
+  });
+});
+
+/** José, 21/10: the chat list is dragged wider or narrower, and folds away. */
+describe('clampListWidth', () => {
+  it('stays between its minimum and maximum', () => {
+    expect(clampListWidth(100, 1600)).toBe(LIST_MIN_WIDTH);
+    expect(clampListWidth(900, 1600)).toBe(LIST_MAX_WIDTH);
+    expect(clampListWidth(420, 1600)).toBe(420);
+  });
+  it('always leaves room for the conversation', () => {
+    expect(clampListWidth(560, 900)).toBe(900 - CONVERSATION_MIN_WIDTH);
+  });
+  it('a broken saved value falls back to the default', () => {
+    expect(clampListWidth(Number.NaN, 1600)).toBe(LIST_DEFAULT_WIDTH);
   });
 });

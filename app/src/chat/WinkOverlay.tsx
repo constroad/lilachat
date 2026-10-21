@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, ReduceMotion, interpolate, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { WINK_SKETCHES, winkParticles, type SketchWinkId, type Wink, type WinkParticle } from '@lilachat/shared';
 import { WinkSketch } from './WinkSketch';
 
@@ -8,6 +8,8 @@ const HERO_SIZE = 120;
 const HERO_FADE_MS = 400;
 const WIGGLE_DEG = 10;
 const WIGGLE_STEP_MS = 140;
+/** A wink is content: the phone's «remove animations» must not end it at once (`shouldPlayFun`). */
+const ALWAYS = ReduceMotion.Never;
 
 /**
  * A wink playing over the whole screen (José, 21/10, like MSN): its sketch (a
@@ -47,7 +49,7 @@ export function WinkOverlay(props: { play: { seq: number; wink: Wink } | null; o
 function FlyingGlyph({ particle, width, height }: { particle: WinkParticle; width: number; height: number }) {
   const progress = useSharedValue(0);
   useEffect(() => {
-    progress.value = withDelay(particle.delayMs, withTiming(1, { duration: particle.durationMs, easing: Easing.out(Easing.quad) }));
+    progress.value = withDelay(particle.delayMs, withTiming(1, { duration: particle.durationMs, easing: Easing.out(Easing.quad), reduceMotion: ALWAYS }), ALWAYS);
   }, [particle, progress]);
   const style = useAnimatedStyle(() => {
     const value = progress.value;
@@ -71,14 +73,15 @@ function EmojiHero({ glyph, durationMs, width, height }: { glyph: string; durati
   const opacity = useSharedValue(1);
   useEffect(() => {
     // A soft pop: with low damping the spring overshot to almost twice the size and the hero pulsed huge.
-    scale.value = withSequence(withSpring(1.15, { damping: 12 }), withSpring(1, { damping: 14 }));
+    scale.value = withSequence(ALWAYS, withSpring(1.15, { damping: 12, reduceMotion: ALWAYS }), withSpring(1, { damping: 14, reduceMotion: ALWAYS }));
     turn.value = withSequence(
-      withTiming(-WIGGLE_DEG, { duration: WIGGLE_STEP_MS }),
-      withTiming(WIGGLE_DEG, { duration: WIGGLE_STEP_MS }),
-      withTiming(-WIGGLE_DEG, { duration: WIGGLE_STEP_MS }),
-      withTiming(0, { duration: WIGGLE_STEP_MS })
+      ALWAYS,
+      withTiming(-WIGGLE_DEG, { duration: WIGGLE_STEP_MS, reduceMotion: ALWAYS }),
+      withTiming(WIGGLE_DEG, { duration: WIGGLE_STEP_MS, reduceMotion: ALWAYS }),
+      withTiming(-WIGGLE_DEG, { duration: WIGGLE_STEP_MS, reduceMotion: ALWAYS }),
+      withTiming(0, { duration: WIGGLE_STEP_MS, reduceMotion: ALWAYS })
     );
-    opacity.value = withDelay(durationMs - HERO_FADE_MS, withTiming(0, { duration: HERO_FADE_MS }));
+    opacity.value = withDelay(durationMs - HERO_FADE_MS, withTiming(0, { duration: HERO_FADE_MS, reduceMotion: ALWAYS }), ALWAYS);
   }, [durationMs, scale, turn, opacity]);
   const style = useAnimatedStyle(() => ({
     opacity: opacity.value,

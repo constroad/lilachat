@@ -104,14 +104,19 @@ describe('funMessageToPlay', () => {
 });
 
 describe('shouldPlayFun', () => {
-  it('a muted chat does not move, sound or vibrate', () => {
-    expect(shouldPlayFun({ muted: true, reducedMotion: false })).toEqual({ animate: false, sound: false, vibrate: false });
+  /** José, 21/10: Wilson never saw the winks, not even with «Ver otra vez» (a muted chat or the phone's «remove animations» skipped them). */
+  it('in the open chat it always plays: muting only silences it, and the phone’s «remove animations» does not hide it', () => {
+    expect(shouldPlayFun({ muted: true, reducedMotion: false, place: 'chat' })).toEqual({ animate: true, sound: false, vibrate: false });
+    expect(shouldPlayFun({ muted: false, reducedMotion: true, place: 'chat' })).toEqual({ animate: true, sound: true, vibrate: true });
+    expect(shouldPlayFun({ muted: false, reducedMotion: false, place: 'chat' })).toEqual({ animate: true, sound: true, vibrate: true });
   });
-  it('with reduced motion: no animation, but it still sounds and vibrates', () => {
-    expect(shouldPlayFun({ muted: false, reducedMotion: true })).toEqual({ animate: false, sound: true, vibrate: true });
+  it('«Ver otra vez» was asked for: it plays whole, with its sound, even in a muted chat', () => {
+    expect(shouldPlayFun({ muted: true, reducedMotion: true, place: 'replay' })).toEqual({ animate: true, sound: true, vibrate: false });
   });
-  it('otherwise everything', () => {
-    expect(shouldPlayFun({ muted: false, reducedMotion: false })).toEqual({ animate: true, sound: true, vibrate: true });
+  it('a row of the chat list stays still and quiet when muted, and still with reduced motion', () => {
+    expect(shouldPlayFun({ muted: true, reducedMotion: false, place: 'row' })).toEqual({ animate: false, sound: false, vibrate: false });
+    expect(shouldPlayFun({ muted: false, reducedMotion: true, place: 'row' })).toEqual({ animate: false, sound: true, vibrate: true });
+    expect(shouldPlayFun({ muted: false, reducedMotion: false, place: 'row' })).toEqual({ animate: true, sound: true, vibrate: true });
   });
 });
 

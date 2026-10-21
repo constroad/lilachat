@@ -6,7 +6,7 @@ import { getSocket } from './socketClient';
 import { chatsEnMemoria, suscribirChatsEnMemoria } from './chatsGuardados';
 import { playWinkCues, shakeScreen, startWink } from './FunScreen';
 import { closeEmojiPanel } from './emojiPanel';
-import { NUDGE_SHAKE, formatClock, funArrivedInRow, funMessageToPlay, funNoticeText, highestSeq, shouldPlayFun, winkById, type FunToPlay, type WinkId } from '@lilachat/shared';
+import { NUDGE_SHAKE, formatClock, funArrivedInRow, funMessageToPlay, funNoticeText, highestSeq, shouldPlayFun, winkById, type FunPlace, type FunToPlay, type WinkId } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 
 const SEND_TIMEOUT_MS = 8000;
@@ -68,7 +68,7 @@ export function useFunInRow(chat: { id: string; muted?: boolean; lastMessage: { 
     const arrived = open ? null : funArrivedInRow(lastSeq.current, lastMessage, me);
     lastSeq.current = lastMessage?.seq ?? lastSeq.current ?? 0;
     if (!arrived) return;
-    const how = shouldPlayFun({ muted: chat.muted === true, reducedMotion });
+    const how = shouldPlayFun({ muted: chat.muted === true, reducedMotion, place: 'row' });
     if (how.vibrate) Vibration.vibrate(arrived === 'zumbido' ? NUDGE_VIBRATION : WINK_VIBRATION);
     if (!how.animate) return;
     if (arrived === 'zumbido') shakeRow(offset);
@@ -81,16 +81,19 @@ export function useFunInRow(chat: { id: string; muted?: boolean; lastMessage: { 
  * Plays nudges and winks of the open chat: the one that came while it was
  * closed plays once on opening (`afterSeq` = what I had read), and each new one
  * when it arrives. A nudge shakes the WHOLE screen, a wink plays over it
- * (`FunScreen`). A muted chat stays still and quiet; with reduced motion it
- * only sounds and vibrates (`shouldPlayFun`).
+ * (`FunScreen`). In the open chat it always plays, a muted one only without
+ * sound; «Ver otra vez» plays it whole (`shouldPlayFun`). What I had read is
+ * taken once, when the chat opens: the list marks it read right away, and
+ * reading it later made the wink count as already seen.
  */
 export function useFunPlayback(params: { messages: readonly { seq: number; kind?: string; senderId: string; wink?: string }[]; me: string; chatId: string; afterSeq: number }): void {
   const muted = useChatMuted(params.chatId);
   const reducedMotion = useReducedMotion();
   const seen = useRef<number | null>(null);
+  const readAtOpen = useRef(params.afterSeq).current;
   const play = useCallback(
-    (fun: FunToPlay) => {
-      const how = shouldPlayFun({ muted, reducedMotion });
+    (fun: FunToPlay, place: FunPlace) => {
+      const how = shouldPlayFun({ muted, reducedMotion, place });
       if (fun.kind === 'zumbido') {
         if (how.vibrate) Vibration.vibrate(NUDGE_VIBRATION);
         if (how.animate) shakeScreen();
@@ -104,16 +107,16 @@ export function useFunPlayback(params: { messages: readonly { seq: number; kind?
     },
     [muted, reducedMotion]
   );
-  const { messages, me, afterSeq } = params;
+  const { messages, me } = params;
   useEffect(() => {
     if (messages.length === 0) return;
-    seen.current ??= afterSeq;
+    seen.current ??= readAtOpen;
     const fun = funMessageToPlay(messages, me, seen.current);
     seen.current = Math.max(seen.current, highestSeq(messages));
-    if (fun) play(fun);
-  }, [messages, me, afterSeq, play]);
+    if (fun) play(fun, 'chat');
+  }, [messages, me, readAtOpen, play]);
   useEffect(() => {
-    const listener: ReplayListener = (seq, wink) => play({ seq, kind: 'guino', wink, mine: true });
+    const listener: ReplayListener = (seq, wink) => play({ seq, kind: 'guino', wink, mine: true }, 'replay');
     replayListeners.add(listener);
     return () => {
       replayListeners.delete(listener);

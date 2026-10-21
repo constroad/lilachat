@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Heart, Vibrate } from 'lucide-react';
-import { formatClock, funArrivedInRow, funMessageToPlay, funNoticeText, highestSeq, shouldPlayFun, winkById, winkRowSound, type FunToPlay, type Wink, type WinkId } from '@lilachat/shared';
+import { formatClock, funArrivedInRow, funMessageToPlay, funNoticeText, highestSeq, shouldPlayFun, winkById, winkRowSound, type FunPlace, type FunToPlay, type Wink, type WinkId } from '@lilachat/shared';
 import { WinkOverlay } from './WinkOverlay';
 import { playWinkCues, playWinkSound, shakeWholeScreen, stopWinkSounds } from './winkSounds';
 
@@ -40,17 +40,21 @@ const prefersReducedMotion = () => Boolean(window.matchMedia?.('(prefers-reduced
 /**
  * Plays nudges and winks in the open chat (backlog 3, José 21/10): the one that
  * came while it was closed plays once when it opens (`afterSeq` = what I had
- * read), and each new one on arrival. A muted chat stays still and quiet; with
- * «reduce motion» it only sounds.
+ * read, taken once when the chat opens), and each new one on arrival. In the
+ * open chat it always plays, a muted one only without sound; «Ver otra vez»
+ * plays it whole (`shouldPlayFun`).
  */
 export function useFunPlayback(params: { messages: readonly { seq: number; kind?: string; senderId: string; wink?: string }[] | null; me: string; chatId: string; muted: boolean; afterSeq: number }): { overlay: ReactNode } {
   const [playing, setPlaying] = useState<{ seq: number; wink: Wink } | null>(null);
   const seen = useRef<{ chatId: string; seq: number } | null>(null);
   const cancelCues = useRef<() => void>(() => undefined);
   const { messages, me, chatId, muted, afterSeq } = params;
+  // What I had read when THIS chat opened: marking it read later must not make its wink count as seen.
+  const readAtOpen = useRef({ chatId, seq: afterSeq });
+  if (readAtOpen.current.chatId !== chatId) readAtOpen.current = { chatId, seq: afterSeq };
   const play = useCallback(
-    (fun: FunToPlay) => {
-      const how = shouldPlayFun({ muted, reducedMotion: prefersReducedMotion() });
+    (fun: FunToPlay, place: FunPlace) => {
+      const how = shouldPlayFun({ muted, reducedMotion: prefersReducedMotion(), place });
       if (fun.kind === 'zumbido') {
         if (how.sound) buzz();
         if (how.animate) shakeWholeScreen();
@@ -68,13 +72,13 @@ export function useFunPlayback(params: { messages: readonly { seq: number; kind?
   );
   useEffect(() => {
     if (!messages || messages.length === 0) return;
-    if (seen.current?.chatId !== chatId) seen.current = { chatId, seq: afterSeq };
+    if (seen.current?.chatId !== chatId) seen.current = { chatId, seq: readAtOpen.current.seq };
     const fun = funMessageToPlay(messages, me, seen.current.seq);
     seen.current.seq = Math.max(seen.current.seq, highestSeq(messages));
-    if (fun) play(fun);
-  }, [messages, me, chatId, afterSeq, play]);
+    if (fun) play(fun, 'chat');
+  }, [messages, me, chatId, play]);
   useEffect(() => {
-    const listener: ReplayListener = (seq, wink) => play({ seq, kind: 'guino', wink, mine: true });
+    const listener: ReplayListener = (seq, wink) => play({ seq, kind: 'guino', wink, mine: true }, 'replay');
     replayListeners.add(listener);
     return () => {
       replayListeners.delete(listener);
@@ -108,7 +112,7 @@ export function useFunInRow(chat: { muted?: boolean; lastMessage: { seq: number;
     const arrived = open || !me ? null : funArrivedInRow(lastSeq.current, lastMessage, me);
     lastSeq.current = lastMessage?.seq ?? lastSeq.current ?? 0;
     if (!arrived) return;
-    const how = shouldPlayFun({ muted: muted === true, reducedMotion: prefersReducedMotion() });
+    const how = shouldPlayFun({ muted: muted === true, reducedMotion: prefersReducedMotion(), place: 'row' });
     if (how.sound) {
       if (arrived === 'zumbido') buzz();
       else playWinkSound(winkRowSound(winkById(lastMessage?.wink)));

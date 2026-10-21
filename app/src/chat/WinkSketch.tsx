@@ -1,6 +1,6 @@
 import { useEffect, useMemo, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
+import Animated, { Easing, ReduceMotion, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import { SvgXml } from 'react-native-svg';
 import { WINK_ART, WINK_PROPS, actorBox, actorTracks, isStillTrack, partTracks, type Ease, type PartKey, type Sketch, type SketchActor, type Track, type WinkArt, type WinkArtPart } from '@lilachat/shared';
 
@@ -43,7 +43,8 @@ export function WinkSketch({ sketch, screen }: { sketch: Sketch; screen: Screen 
   const progress = useSharedValue(0);
   useEffect(() => {
     progress.value = 0;
-    progress.value = withTiming(1, { duration: sketch.durationMs, easing: Easing.linear });
+    // Reanimated would end it at once with the phone's «remove animations» on (Samsung's battery saver): a wink is content, it plays.
+    progress.value = withTiming(1, { duration: sketch.durationMs, easing: Easing.linear, reduceMotion: ReduceMotion.Never });
   }, [sketch, progress]);
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>

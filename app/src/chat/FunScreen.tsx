@@ -1,5 +1,5 @@
 import { useSyncExternalStore, type ReactNode } from 'react';
-import Animated, { makeMutable, useAnimatedStyle, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { ReduceMotion, makeMutable, useAnimatedStyle, withSequence, withTiming } from 'react-native-reanimated';
 import { NUDGE_SHAKE, SCREEN_EFFECTS, winkCues, type ScreenEffect, type Wink } from '@lilachat/shared';
 import { WinkOverlay } from './WinkOverlay';
 import { playWinkSound, stopWinkSounds } from './winkSounds';
@@ -16,9 +16,10 @@ const squeezeX = makeMutable(1);
 
 export function shakeScreen(effect: ScreenEffect | 'nudge' = 'nudge'): void {
   const shake = effect === 'nudge' ? { ...NUDGE_SHAKE, property: 'x' as const } : SCREEN_EFFECTS[effect];
-  const steps = [...shake.path, 0].map((step) => withTiming(shake.property === 'x' ? step * shake.amplitude : 1 - step * shake.amplitude, { duration: shake.stepMs }));
-  if (shake.property === 'x') shakeX.value = withSequence(...steps);
-  else squeezeX.value = withSequence(...steps);
+  // Never cut short by the phone's «remove animations»: the shake IS the nudge (`shouldPlayFun`).
+  const steps = [...shake.path, 0].map((step) => withTiming(shake.property === 'x' ? step * shake.amplitude : 1 - step * shake.amplitude, { duration: shake.stepMs, reduceMotion: ReduceMotion.Never }));
+  if (shake.property === 'x') shakeX.value = withSequence(ReduceMotion.Never, ...steps);
+  else squeezeX.value = withSequence(ReduceMotion.Never, ...steps);
 }
 
 type Playing = { seq: number; wink: Wink } | null;

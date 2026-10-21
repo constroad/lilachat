@@ -188,8 +188,20 @@ export function funMessageToPlay(messages: readonly { seq: number; kind?: string
   return newest;
 }
 
-/** A muted chat stays still and quiet; reduced motion drops only the animation. */
-export function shouldPlayFun(params: { muted: boolean; reducedMotion: boolean }): { animate: boolean; sound: boolean; vibrate: boolean } {
+/** Where a nudge or wink plays: in the open chat, on a row of the chat list, or again from «Ver otra vez». */
+export type FunPlace = 'chat' | 'row' | 'replay';
+
+/**
+ * Whether it moves, sounds and vibrates. In the open chat it is what you are
+ * looking at, so it always plays (José, 21/10: Wilson never saw them — a muted
+ * chat or the phone's «remove animations», which Samsung's battery saver turns
+ * on, skipped them): muting only silences it. «Ver otra vez» was asked for, so
+ * it plays whole with its sound. A row of the list stays quiet when muted and
+ * still with reduced motion.
+ */
+export function shouldPlayFun(params: { muted: boolean; reducedMotion: boolean; place: FunPlace }): { animate: boolean; sound: boolean; vibrate: boolean } {
+  if (params.place === 'replay') return { animate: true, sound: true, vibrate: false };
+  if (params.place === 'chat') return { animate: true, sound: !params.muted, vibrate: !params.muted };
   if (params.muted) return { animate: false, sound: false, vibrate: false };
   return { animate: !params.reducedMotion, sound: true, vibrate: true };
 }

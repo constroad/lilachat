@@ -137,6 +137,8 @@ export function ConversacionConAcciones(
     [yo, props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editarRecordatorio, destacados.seqs, onStickerAction]
   );
 
+  // Nudges and winks: in a 1:1 (not the chat with yourself), or a group whose admin allows them (José, 21/10).
+  const funAllowed = chat.kind === 'direct' ? !chat.propio : chat.kind === 'group' && chat.funAllowed === true;
   return (
     <ConversacionContext.Provider value={contexto}>
       <Conversation
@@ -148,7 +150,8 @@ export function ConversacionConAcciones(
         contexto={acciones.contexto}
         onCancelarContexto={acciones.cancelarContexto}
         replyingTo={acciones.replyingTo}
-        onNudge={chat.kind === 'direct' && !chat.propio ? () => void sync.sendNudge(chat.id).then((result) => result.ok || onAviso(result.motivo)) : undefined}
+        onNudge={funAllowed ? () => void sync.sendNudge(chat.id).then((result) => result.ok || onAviso(result.motivo)) : undefined}
+        onWink={funAllowed ? (wink) => void sync.sendWink(chat.id, wink).then((result) => result.ok || onAviso(result.motivo)) : undefined}
         mencionables={mencionables}
         jwtParaEnlaces={chat.encrypted ? undefined : props.jwt}
         onElegirArchivos={setArchivos}

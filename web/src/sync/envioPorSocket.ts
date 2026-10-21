@@ -1,5 +1,5 @@
 import type { Socket } from 'socket.io-client';
-import type { OutboxItem, SendOutcome } from '@lilachat/shared';
+import type { OutboxItem, SendOutcome, WinkId } from '@lilachat/shared';
 import type { LoteDeSincronizacion } from './sincronizar';
 
 /** Más que esto sin acuse es «sin respuesta»: se reintenta con la misma clave. */
@@ -79,10 +79,14 @@ export async function accionPorSocket(
 }
 
 /** The MSN nudge (backlog 3): straight to the server, not queued (it means something only now). */
-export async function sendNudgeBySocket(socket: Socket | null, chatId: string): Promise<ResultadoDeAccion> {
-  if (!socket?.connected) return { ok: false, motivo: 'Sin conexión: el zumbido no salió.' };
+export const sendNudgeBySocket = (socket: Socket | null, chatId: string) => sendFunBySocket(socket, chatId, { kind: 'zumbido' }, 'el zumbido');
+/** A wink (José, 21/10), the same way. */
+export const sendWinkBySocket = (socket: Socket | null, chatId: string, wink: WinkId) => sendFunBySocket(socket, chatId, { kind: 'guino', wink }, 'el guiño');
+
+async function sendFunBySocket(socket: Socket | null, chatId: string, payload: { kind: 'zumbido' } | { kind: 'guino'; wink: WinkId }, what: string): Promise<ResultadoDeAccion> {
+  if (!socket?.connected) return { ok: false, motivo: `Sin conexión: ${what} no salió.` };
   try {
-    return resultadoDeAccion(await socket.timeout(ESPERA_DEL_ACUSE_MS).emitWithAck('msg.send', { chatId, clientKey: crypto.randomUUID(), kind: 'zumbido' }));
+    return resultadoDeAccion(await socket.timeout(ESPERA_DEL_ACUSE_MS).emitWithAck('msg.send', { chatId, clientKey: crypto.randomUUID(), ...payload }));
   } catch {
     return resultadoDeAccion(undefined);
   }

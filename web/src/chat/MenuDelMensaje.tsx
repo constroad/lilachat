@@ -1,7 +1,7 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Bookmark, ChevronDown, Copy, CornerUpLeft, Forward, Heart, Info, MessagesSquare, Pencil, Pin, PinOff, Star, StarOff, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { accionesDeMensaje, puedeEditar } from '@lilachat/shared';
+import { accionesDeMensaje, actsAsMessage, puedeEditar } from '@lilachat/shared';
 import { useConversacion, type AccionSobreMensaje } from './contextoDeLaConversacion';
 import type { StickerAction } from './contextoDeLaConversacion';
 import type { MensajeEnPantalla } from './types';
@@ -79,7 +79,7 @@ export function MenuDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; m
           {isSticker ? stickerItem('keep', <Bookmark size={16} />, 'Guardar en Mis stickers') : null}
           {isSticker ? stickerItem('favorite', <Heart size={16} />, 'Agregar a favoritos') : null}
           {acciones.reenviar ? item('reenviar', <Forward size={16} />, 'Reenviar') : null}
-          {acciones.destacar === 'destacar' && mensaje.kind !== 'system' ? item('destacar', <Star size={16} />, 'Destacar') : null}
+          {acciones.destacar === 'destacar' && actsAsMessage(mensaje) ? item('destacar', <Star size={16} />, 'Destacar') : null}
           {acciones.destacar === 'quitar' ? item('quitarDestacado', <StarOff size={16} />, 'Quitar destacado') : null}
           {acciones.fijar === 'fijar' ? item('fijar', <Pin size={16} />, 'Fijar') : null}
           {acciones.fijar === 'desfijar' ? item('desfijar', <PinOff size={16} />, 'Desfijar') : null}

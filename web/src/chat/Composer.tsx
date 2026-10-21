@@ -1,15 +1,17 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { insertarEnTexto, type MencionEnMensaje } from '@lilachat/shared';
+import type { WinkId } from '@lilachat/shared';
 
 /** Se baja recién al abrir el panel (W2): pesa, y la mayoría no lo abre. */
 const EmojiStickerPanel = lazy(() => import('./stickers/EmojiStickerPanel'));
 import { SugerenciasDeMencion, type Mencionable } from './SugerenciasDeMencion';
 import { useMencionesDelCampo } from './useMencionesDelCampo';
 import { VistaPreviaAlEscribir } from './VistaPreviaAlEscribir';
-import { Bell, CalendarPlus, CornerUpLeft, ListPlus, Mic, Paperclip, Pencil, Plus, Send, Smile, X, Vibrate } from 'lucide-react';
+import { CornerUpLeft, Mic, Pencil, Plus, Send, Smile, X } from 'lucide-react';
 import { BarraDeGrabacion } from './BarraDeGrabacion';
 import { useGrabadoraDeVoz, type NotaDeVozGrabada } from './useGrabadoraDeVoz';
 import type { StickerChat } from './stickers/EmojiStickerPanel';
+import { AttachMenu } from './AttachMenu';
 
 /**
  * La barra de escritura del diseño: «+» suelto a la izquierda, el campo con
@@ -27,6 +29,8 @@ export function Composer({
   onCreateEvent,
   onCreatePoll,
   onNudge,
+  onWink,
+  recipient,
   onCreateReminder,
   onElegirArchivos,
   contexto,
@@ -52,8 +56,11 @@ export function Composer({
   onSend: (text: string, menciones?: MencionEnMensaje[]) => void;
   onCreateEvent: () => void;
   onCreatePoll: () => void;
-  /** The MSN nudge (backlog 3), only in a 1:1. */
+  /** The MSN nudge and winks (backlog 3): in a 1:1, or in a group whose admin allows them. */
   onNudge?: () => void;
+  onWink?: (wink: WinkId) => void;
+  /** Who the winks go to: «Una animación a pantalla completa para Ana». */
+  recipient?: string;
   /** W3c: solo cuando se puede (en un grupo, sus admins; nunca en un secreto). */
   onCreateReminder?: () => void;
   /** Las fotos o archivos elegidos (o pegados). Quien recibe esto muestra la vista previa y sube. */
@@ -162,7 +169,7 @@ export function Composer({
       {conEmojis ? (
         <div data-testid="panel-emojis" className="mb-2" onKeyDown={(evento) => evento.key === 'Escape' && setConEmojis(false)}>
           <Suspense fallback={<div className="h-[360px] animate-pulse rounded-lg bg-background" />}>
-            <EmojiStickerPanel onPickEmoji={ponerEmoji} chat={stickers} />
+            <EmojiStickerPanel onPickEmoji={ponerEmoji} chat={stickers} winks={onWink ? { recipient: recipient ?? 'el chat', onNudge, onSend: (wink) => { onWink(wink); setConEmojis(false); } } : undefined} />
           </Suspense>
         </div>
       ) : null}
@@ -193,75 +200,13 @@ export function Composer({
           </button>
 
           {menuAbierto ? (
-            <div
-              data-testid="menu-adjuntar"
-              className="absolute bottom-12 left-0 z-20 w-52 rounded-xl border border-outline/15 bg-surface p-1.5 shadow-lg"
-            >
-              <button
-                type="button"
-                data-testid="btn-archivo-chat"
-                onClick={() => {
-                  setMenuAbierto(false);
-                  archivoRef.current?.click();
-                }}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-background"
-              >
-                <Paperclip size={16} className="shrink-0 text-on-surface-variant" />
-                Foto o archivo
-              </button>
-              <button
-                type="button"
-                data-testid="btn-evento-chat"
-                onClick={() => {
-                  setMenuAbierto(false);
-                  onCreateEvent();
-                }}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-background"
-              >
-                <CalendarPlus size={16} className="shrink-0 text-on-surface-variant" />
-                Evento
-              </button>
-              <button
-                type="button"
-                data-testid="btn-encuesta-chat"
-                onClick={() => {
-                  setMenuAbierto(false);
-                  onCreatePoll();
-                }}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-background"
-              >
-                <ListPlus size={16} className="shrink-0 text-on-surface-variant" />
-                Encuesta
-              </button>
-              {onCreateReminder ? (
-                <button
-                  type="button"
-                  data-testid="btn-recordatorio-chat"
-                  onClick={() => {
-                    setMenuAbierto(false);
-                    onCreateReminder();
-                  }}
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-background"
-                >
-                  <Bell size={16} className="shrink-0 text-on-surface-variant" />
-                  Recordatorio
-                </button>
-              ) : null}
-              {onNudge ? (
-                <button
-                  type="button"
-                  data-testid="btn-zumbido-chat"
-                  onClick={() => {
-                    setMenuAbierto(false);
-                    onNudge();
-                  }}
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-background"
-                >
-                  <Vibrate size={16} className="shrink-0 text-on-surface-variant" />
-                  Zumbido
-                </button>
-              ) : null}
-            </div>
+            <AttachMenu
+              onClose={() => setMenuAbierto(false)}
+              onPickFile={() => archivoRef.current?.click()}
+              onCreateEvent={onCreateEvent}
+              onCreatePoll={onCreatePoll}
+              onCreateReminder={onCreateReminder}
+            />
           ) : null}
         </div>
 

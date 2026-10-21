@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { Smile, Sticker } from 'lucide-react';
+import { Smile, Sparkles, Sticker } from 'lucide-react';
+import type { WinkId } from '@lilachat/shared';
+import { WinkPanel } from '../WinkPanel';
 import PanelDeEmojis from '../PanelDeEmojis';
 import { StickerPanel } from './StickerPanel';
 import { CreateStickerWeb } from './CreateStickerWeb';
 import { useStickers } from './useStickers';
 import type { StickerThread } from './stickersApi';
 
-type Tab = 'emoji' | 'stickers';
+type PanelTab = 'emoji' | 'stickers' | 'winks';
 /** `thread`: from a thread (20/10) the sticker goes to it; `onSent` lets the thread close its picker. */
 export type StickerChat = { jwt: string; me: string; chatId: string; chatName: string; thread?: StickerThread; onSent?: () => void; replyToSeq?: number };
 
@@ -15,11 +17,12 @@ export type StickerChat = { jwt: string; me: string; chatId: string; chatName: s
  * Stickers tabs, like the app and WhatsApp Web. Without `chat` (a secret chat)
  * only Emoji is left. Loaded when opened (`lazy` in the Composer).
  */
-export default function EmojiStickerPanel({ onPickEmoji, chat }: { onPickEmoji: (emoji: string) => void; chat?: StickerChat }) {
-  const [tab, setTab] = useState<Tab>('emoji');
-  const tabs: { key: Tab; label: string; Icon: typeof Smile }[] = [
+export default function EmojiStickerPanel({ onPickEmoji, chat, winks }: { onPickEmoji: (emoji: string) => void; chat?: StickerChat; winks?: { recipient: string; onSend: (wink: WinkId) => void; onNudge?: () => void } }) {
+  const [tab, setTab] = useState<PanelTab>('emoji');
+  const tabs: { key: PanelTab; label: string; Icon: typeof Smile }[] = [
     { key: 'emoji', label: 'Emoji', Icon: Smile },
     ...(chat ? [{ key: 'stickers' as const, label: 'Stickers', Icon: Sticker }] : []),
+    ...(winks ? [{ key: 'winks' as const, label: 'Guiños', Icon: Sparkles }] : []),
   ];
   return (
     <div className="rounded-xl border border-outline/15 bg-surface p-2">
@@ -32,7 +35,7 @@ export default function EmojiStickerPanel({ onPickEmoji, chat }: { onPickEmoji: 
           ))}
         </div>
       ) : null}
-      {tab === 'stickers' && chat ? <Stickers chat={chat} /> : <PanelDeEmojis onElegir={onPickEmoji} />}
+      {tab === 'stickers' && chat ? <Stickers chat={chat} /> : tab === 'winks' && winks ? <WinkPanel recipient={winks.recipient} onSend={winks.onSend} onNudge={winks.onNudge} /> : <PanelDeEmojis onElegir={onPickEmoji} />}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import type { ChatSummary, MensajeEnPantalla } from '../types';
 import { ArchivosDelChat } from './ArchivosDelChat';
 import { IdentidadDelChat } from './IdentidadDelChat';
 import { DescripcionDelChat } from './DescripcionDelChat';
+import { GroupFunRow } from './GroupFunRow';
 import { armarInfo } from './infoDelChat';
 import { NotificationLevelDialog } from './NotificationLevelDialog';
 import { ParticipantesDelChat } from './ParticipantesDelChat';
@@ -68,6 +69,7 @@ export function PanelDeInfo(props: {
             <span className="text-sm text-on-surface-variant">{NOTIFICATION_LEVEL_TEXT[level].title}</span>
           </button>
         ) : null}
+        {chat.kind === 'group' ? <GroupFunRow chatId={chat.id} jwt={props.jwt} allowed={Boolean(chat.funAllowed ?? detalle?.funAllowed)} isAdmin={Boolean(detalle?.soyAdmin)} onAviso={props.onAviso} /> : null}
         {choosingLevel ? (
           <NotificationLevelDialog
             level={level}

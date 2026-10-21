@@ -2,6 +2,7 @@ import { BellOff, Pin } from 'lucide-react';
 import { DELIVERY_GLYPH, formatChatTimestamp, resolveChatPreview, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { MenuDeChat } from './MenuDeChat';
+import { useFunInRow } from './nudge';
 import type { AccionDelChat } from './menuDelChat';
 import type { ChatSummary } from './types';
 
@@ -13,9 +14,10 @@ import type { ChatSummary } from './types';
 export function FilaDeChat(props: { chat: ChatSummary; yo?: string; seleccionado: boolean; onSelect: () => void; onAccion: (chat: ChatSummary, accion: AccionDelChat) => void }) {
   const { chat } = props;
   const aviso = props.yo ? textoDelAviso(chat, props.yo) : '';
+  const fun = useFunInRow(chat, props.yo, props.seleccionado);
   const preview = resolveChatPreview({ typing: Boolean(chat.typingName), lastBody: aviso || chat.lastMessage?.body, lastKind: aviso ? 'text' : chat.lastMessage?.kind, eliminado: Boolean(chat.lastMessage?.deletedAt), enHilo: chat.lastMessage?.hiloDe !== undefined });
   return (
-    <div className="group relative">
+    <div className={`group relative ${fun}`}>
       <button
         type="button"
         data-testid={`chat-${chat.id}`}

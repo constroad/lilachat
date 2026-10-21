@@ -20,11 +20,12 @@ function draw(message: MensajeEnPantalla, mine: boolean) {
 describe('nudge line', () => {
   it('says who sent it, or that I did', () => {
     draw(nudge('w'), false);
-    expect(screen.getByTestId('linea-zumbido').textContent).toBe('Wilson te mandó un zumbido');
+    // The time goes after the sentence (design `m-04-lineas-del-chat`).
+    expect(screen.getByTestId('linea-zumbido').textContent).toMatch(/^Wilson te mandó un zumbido\d/);
   });
 
   it('mine', () => {
     draw(nudge('yo'), true);
-    expect(screen.getByTestId('linea-zumbido').textContent).toBe('Mandaste un zumbido');
+    expect(screen.getByTestId('linea-zumbido').textContent).toMatch(/^Mandaste un zumbido\d/);
   });
 });

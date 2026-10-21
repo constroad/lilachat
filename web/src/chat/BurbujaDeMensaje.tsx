@@ -12,7 +12,7 @@ import { BotonDeHilo } from './BotonDeHilo';
 import { PastillaDeReacciones } from './reacciones/PastillaDeReacciones';
 import { TextoDelMensaje } from './TextoDelMensaje';
 import { TarjetaDelMensaje } from './tarjetas/TarjetaDelMensaje';
-import { NudgeLine } from './nudge';
+import { NudgeLine, WinkLine } from './nudge';
 import { StickerMessage } from './stickers/StickerMessage';
 import { ConversacionContext, useConversacion } from './contextoDeLaConversacion';
 import type { ChatSummary, MensajeEnPantalla } from './types';
@@ -40,8 +40,11 @@ type Props = {
  */
 export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
   const { mensaje, mio, agrupado, ultimoDelGrupo } = props;
+  // The reminder that rang or an event coming up: answered like a message (José, 21/10).
+  if (mensaje.kind === 'system' && esAvisoDestacado(mensaje.system?.evento)) return <HighlightedNotice message={mensaje} />;
   if (mensaje.kind === 'system') return <LineaDeSistema mensaje={mensaje} />;
-  if (mensaje.kind === 'zumbido') return <NudgeFromContext mine={mio} senderId={mensaje.senderId} />;
+  if (mensaje.kind === 'zumbido') return <NudgeFromContext mine={mio} senderId={mensaje.senderId} at={mensaje.at} />;
+  if (mensaje.kind === 'guino') return <WinkFromContext seq={mensaje.seq} wink={mensaje.wink} mine={mio} senderId={mensaje.senderId} at={mensaje.at} />;
   return (
     <div data-testid={`mensaje-${mensaje.clientKey}`} className={`group flex items-start gap-1 ${agrupado ? 'mt-1' : 'mt-3'} ${mio ? 'flex-row-reverse' : ''}`}>
       <div className={`flex max-w-[68%] min-w-0 flex-col ${mio ? 'items-end' : 'items-start'}`}>
@@ -84,9 +87,15 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
 });
 
 /** The nudge line with the author's name as this person knows them. */
-function NudgeFromContext({ mine, senderId }: { mine: boolean; senderId: string }) {
+function NudgeFromContext({ mine, senderId, at }: { mine: boolean; senderId: string; at: string }) {
   const { nombres } = useConversacion();
-  return <NudgeLine mine={mine} author={nombres.get(senderId)} />;
+  return <NudgeLine mine={mine} author={nombres.get(senderId)} at={at} />;
+}
+
+/** The wink line, the same way (José, 21/10). */
+function WinkFromContext({ seq, wink, mine, senderId, at }: { seq: number; wink?: string; mine: boolean; senderId: string; at: string }) {
+  const { nombres } = useConversacion();
+  return <WinkLine seq={seq} wink={wink} mine={mine} author={nombres.get(senderId)} at={at} />;
 }
 
 function NombreDelAutor({ senderId }: { senderId: string }) {
@@ -213,36 +222,54 @@ function FalloDelEnvio({ mensaje, onReintentar, onDescartar }: Pick<Props, 'mens
  * (decía «902049935 fijó un mensaje»).
  */
 function LineaDeSistema({ mensaje }: { mensaje: MensajeEnPantalla }) {
-  const contexto = useContext(ConversacionContext);
-  const aviso = mensaje.system;
-  const nombre = (id: string | undefined, persona?: { phone?: string; name?: string }) =>
-    (id ? contexto?.nombres.get(id) : undefined) ?? persona?.name ?? persona?.phone;
-  const texto =
-    aviso && contexto
-      ? textoDeAviso({
-          quien: nombre(mensaje.senderId, aviso.quien) ?? 'Alguien',
-          esMio: mensaje.senderId === contexto.yo,
-          evento: aviso.evento,
-          aQuien: nombre(aviso.targetId, aviso.aQuien),
-          aMi: aviso.targetId === contexto.yo,
-          valor: aviso.valor,
-        }) || mensaje.body
-      : mensaje.body;
-  if (!texto) return null;
-  // El recordatorio que sonó o el evento que se acerca (20/10): tarjeta con su ícono.
-  if (esAvisoDestacado(aviso?.evento)) {
-    const Icono = aviso?.evento === 'evento-pronto' ? CalendarDays : BellRing;
-    return (
-      <div data-testid={`aviso-destacado-${mensaje.seq}`} className="my-3 flex justify-center">
-        <span className="flex max-w-[80%] items-center gap-3 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-2.5">
-          <Icono size={18} className="shrink-0 text-primary" />
-          <span className="text-sm font-semibold">{texto.replace(/^(⏰|📅)\s*/u, '')}</span>
-          <span className="text-[11px] text-on-surface-variant">{formatClock(mensaje.at)}</span>
+  const text = useNoticeText(mensaje);
+  if (!text) return null;
+  return <p className="my-3 text-center text-[12px] text-on-surface-variant">{text}</p>;
+}
+
+/** The notice's sentence with the names this person knows; the server's `body` if it cannot be built. */
+function useNoticeText(message: MensajeEnPantalla): string | undefined {
+  const context = useContext(ConversacionContext);
+  const notice = message.system;
+  if (!notice || !context) return message.body;
+  const nameOf = (id: string | undefined, person?: { phone?: string; name?: string }) => (id ? context.nombres.get(id) : undefined) ?? person?.name ?? person?.phone;
+  return (
+    textoDeAviso({
+      quien: nameOf(message.senderId, notice.quien) ?? 'Alguien',
+      esMio: message.senderId === context.yo,
+      evento: notice.evento,
+      aQuien: nameOf(notice.targetId, notice.aQuien),
+      aMi: notice.targetId === context.yo,
+      valor: notice.valor,
+    }) || message.body
+  );
+}
+
+/**
+ * The reminder that rang or the event coming up (20/10), a card in the middle
+ * with the hover actions of any message (21/10): react, reply in a thread and
+ * the menu (reply, copy, pin, star). Nobody wrote it, so it is never «mine».
+ */
+function HighlightedNotice({ message }: { message: MensajeEnPantalla }) {
+  const text = useNoticeText(message);
+  if (!text) return null;
+  const Icon = message.system?.evento === 'evento-pronto' ? CalendarDays : BellRing;
+  return (
+    <div data-testid={`aviso-destacado-${message.seq}`} className="group my-3 flex items-center justify-center gap-1">
+      <div className="flex max-w-[80%] min-w-0 flex-col items-center">
+        <span className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-2.5">
+          <Icon size={18} className="shrink-0 text-primary" />
+          <span className="text-sm font-semibold">{text.replace(/^(⏰|📅)\s*/u, '')}</span>
+          <span className="text-[11px] text-on-surface-variant">{formatClock(message.at)}</span>
         </span>
+        {message.reacciones?.length ? <PastillaDeReacciones mensaje={message} mio={false} /> : null}
+        {message.hilo && message.hilo.respuestas > 0 ? <ChipDeLaRaiz seq={message.seq} hilo={message.hilo} /> : null}
       </div>
-    );
-  }
-  return <p className="my-3 text-center text-[12px] text-on-surface-variant">{texto}</p>;
+      <BotonDeReaccionar mensaje={message} mio={false} />
+      <BotonDeHilo mensaje={message} />
+      <MenuDelMensaje mensaje={message} mio={false} />
+    </div>
+  );
 }
 
 /** E3: el chip del hilo, solo donde se puede abrir (en el panel del hilo no se repite). */

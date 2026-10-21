@@ -1,8 +1,8 @@
-import { useNudgeShake } from './nudge';
+import { useFunPlayback } from './nudge';
 import { useState, type ReactNode } from 'react';
 import { ArrowLeft, Phone, Search, Video } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
-import type { AgendaReminder, MencionEnMensaje } from '@lilachat/shared';
+import type { AgendaReminder, MencionEnMensaje, WinkId } from '@lilachat/shared';
 import { Composer, type ContextoDelComposer } from './Composer';
 import type { Mencionable } from './SugerenciasDeMencion';
 import type { NotaDeVozGrabada } from './useGrabadoraDeVoz';
@@ -39,6 +39,7 @@ export function Conversation(props: {
   replyingTo?: number;
   /** The MSN nudge (backlog 3), only in a 1:1. */
   onNudge?: () => void;
+  onWink?: (wink: WinkId) => void;
   showBack: boolean;
   hayAnteriores: boolean;
   onCargarAnteriores: () => void;
@@ -62,11 +63,11 @@ export function Conversation(props: {
 }) {
   const { chat } = props;
   const [soltando, setSoltando] = useState(false);
-  const shaking = useNudgeShake(props.mensajes, props.yo);
+  const fun = useFunPlayback({ messages: props.mensajes, me: props.yo, chatId: chat.id, muted: Boolean(chat.muted), afterSeq: chat.lastSeq - chat.unread });
   return (
     <section
       data-testid="panel-conversacion"
-      className={`relative flex h-full min-w-0 flex-1 flex-col ${shaking ? 'nudge-shake' : ''}`}
+      className="relative flex h-full min-w-0 flex-1 flex-col"
       onDragOver={(evento) => {
         if (!evento.dataTransfer.types.includes('Files')) return;
         evento.preventDefault();
@@ -87,6 +88,7 @@ export function Conversation(props: {
           Suelta para enviar
         </div>
       ) : null}
+      {fun.overlay}
       <CabeceraDeLaConversacion chat={chat} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} />
       {props.franja}
       {props.mensajes === null ? (
@@ -121,6 +123,8 @@ export function Conversation(props: {
         onCreatePoll={props.onCreatePoll}
         onCreateReminder={props.onCreateReminder}
         onNudge={props.onNudge}
+        onWink={props.onWink}
+        recipient={chat.name ?? chat.phone}
         onElegirArchivos={props.onElegirArchivos}
         contexto={props.contexto}
         onCancelarContexto={props.onCancelarContexto}

@@ -14,10 +14,9 @@
 }
 
 /* The MSN nudge (backlog 3): the open chat shakes for 600 ms. */
-@keyframes nudge-shake {
-  0%, 100% { transform: translateX(0); }
-  12%, 37%, 62% { transform: translateX(-12px); }
-  25%, 50%, 75% { transform: translateX(12px); }
-  87% { transform: translateX(-4px); }
+/* A wink in the chat list: the row pops twice. */
+@keyframes wink-pop {
+  0%, 50%, 100% { transform: scale(1); }
+  25%, 75% { transform: scale(1.03); }
 }
-.nudge-shake { animation: nudge-shake 600ms ease-in-out; }
+.wink-pop { animation: wink-pop 480ms ease-in-out; }

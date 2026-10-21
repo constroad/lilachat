@@ -1,5 +1,5 @@
 import { MessagesSquare } from 'lucide-react';
-import { puedeAbrirHilo } from '@lilachat/shared';
+import { canOpenThread } from '@lilachat/shared';
 import { useConversacion } from './contextoDeLaConversacion';
 import type { MensajeEnPantalla } from './types';
 
@@ -10,7 +10,7 @@ import type { MensajeEnPantalla } from './types';
 export function BotonDeHilo({ mensaje }: { mensaje: MensajeEnPantalla }) {
   const { chat, onAbrirHilo } = useConversacion();
   if (!onAbrirHilo || mensaje.estado) return null;
-  if (!puedeAbrirHilo({ seq: mensaje.seq, kind: mensaje.kind, hiloDe: mensaje.hiloDe, deletedAt: mensaje.deletedAt, cifrado: chat.encrypted })) return null;
+  if (!canOpenThread({ seq: mensaje.seq, kind: mensaje.kind, system: mensaje.system, hiloDe: mensaje.hiloDe, deletedAt: mensaje.deletedAt, cifrado: chat.encrypted })) return null;
   return (
     <button
       type="button"

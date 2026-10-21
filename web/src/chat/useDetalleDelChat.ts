@@ -15,6 +15,8 @@ export type DetalleDelChat = {
   nombre?: string;
   /** La descripción del grupo o del borrador (20/10). */
   descripcion?: string;
+  /** Nudges and winks in a group, switched on by an admin (21/10). */
+  funAllowed?: boolean;
 };
 
 export type Respuesta = {
@@ -23,6 +25,7 @@ export type Respuesta = {
   avatarUrl?: string;
   name?: string;
   descripcion?: string;
+  funAllowed?: boolean;
   members: { id: string; name: string | null; phone: string | null; avatarUrl?: string; role?: 'admin' | 'member'; esYo?: boolean }[];
 };
 
@@ -50,6 +53,7 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
     foto: respuesta.avatarUrl,
     nombre: respuesta.name,
     descripcion: respuesta.descripcion,
+    funAllowed: respuesta.funAllowed === true,
   };
 }
 

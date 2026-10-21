@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { MencionEnMensaje } from '@lilachat/shared';
+import type { MencionEnMensaje, WinkId } from '@lilachat/shared';
 import type { ResultadoDeAccion } from '../sync/envioPorSocket';
 import type { AccionSobreMensaje } from './contextoDeLaConversacion';
 import type { ContextoDelComposer } from './Composer';
@@ -16,6 +16,8 @@ export type AccionesDeSync = {
   avisarEscribiendo: (chatId: string) => void;
   /** The MSN nudge (backlog 3). */
   sendNudge: (chatId: string) => Promise<ResultadoDeAccion>;
+  /** A wink (José, 21/10). */
+  sendWink: (chatId: string, wink: WinkId) => Promise<ResultadoDeAccion>;
 };
 
 /**

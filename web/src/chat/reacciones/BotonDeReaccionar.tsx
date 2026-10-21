@@ -1,7 +1,7 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Plus, SmilePlus } from 'lucide-react';
 import { lazy, Suspense, useState } from 'react';
-import { EMOJIS_RAPIDOS, miReaccion } from '@lilachat/shared';
+import { actsAsMessage, EMOJIS_RAPIDOS, miReaccion } from '@lilachat/shared';
 import { useConversacion } from '../contextoDeLaConversacion';
 import type { MensajeEnPantalla } from '../types';
 
@@ -16,7 +16,7 @@ const PanelDeEmojis = lazy(() => import('../PanelDeEmojis'));
 export function BotonDeReaccionar({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio: boolean }) {
   const { yo, onReaccionar } = useConversacion();
   const [todos, setTodos] = useState(false);
-  if (!onReaccionar || mensaje.estado || mensaje.deletedAt || mensaje.kind === 'system') return null;
+  if (!onReaccionar || mensaje.estado || mensaje.deletedAt || !actsAsMessage(mensaje)) return null;
   const mia = miReaccion(mensaje.reacciones, yo);
   const elegir = (emoji: string) => onReaccionar(mensaje.seq, emoji === mia ? null : emoji);
   return (

@@ -7,9 +7,10 @@ import { descartarEnvio, drenarCola, encolarEnvio, reintentarEnvio } from '../lo
 import { aplicarBorrado, aplicarEdicion, aplicarEntrante, aplicarReacciones, aplicarResumenDeHilo, guardarChats, guardarPagina } from '../local/mensajesLocales';
 import type { ChatMessage, ChatSummary } from '../chat/types';
 import { accionPorSocket, enviarPorSocket, pedirSincronizacion, type ResultadoDeAccion } from './envioPorSocket';
-import { sendNudgeBySocket } from './envioPorSocket';
+import { sendNudgeBySocket, sendWinkBySocket } from './envioPorSocket';
 import { ocultar } from '../local/ocultos';
 import { aplicarAcuseALista, aplicarBorradoALista, aplicarEdicionALista, aplicarMensajeALista, aplicarReaccion, debeAvisarEscribiendo, type AcuseEnVivo, type CursoresEnVivo, type MencionEnMensaje, type Reaccion } from '@lilachat/shared';
+import type { WinkId } from '@lilachat/shared';
 import { cambiarFila } from '../local/listaLocal';
 import { sincronizar } from './sincronizar';
 import { anotarEnvio } from '../chat/reenviar/frecuenciasDeEnvio';
@@ -156,6 +157,8 @@ function useAccionesDelChat(params: {
 
   /** The MSN nudge (backlog 3). */
   const sendNudge = useCallback((chatId: string) => sendNudgeBySocket(socket.current, chatId), [socket]);
+  /** A wink (José, 21/10). */
+  const sendWink = useCallback((chatId: string, wink: WinkId) => sendWinkBySocket(socket.current, chatId, wink), [socket]);
 
   /** Reenviar un texto a varios chats: uno por chat, cada uno con su clave. */
   const reenviar = useCallback(
@@ -222,6 +225,7 @@ function useAccionesDelChat(params: {
     traerPagina,
     enviarTexto,
     sendNudge,
+    sendWink,
     reenviar,
     editar,
     reaccionar,

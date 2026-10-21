@@ -35,12 +35,16 @@ export type ChatSummary = {
     /** Borrado para todos (19/10): la vista previa lo dice. */
     deletedAt?: string;
     /** E3: fue una respuesta en un hilo. */
+    /** A wink's id: the list plays its sound (José, 21/10). */
+    wink?: string;
     hiloDe?: number;
   } | null;
   othersReadSeq: number;
   othersDeliveredSeq: number;
   encrypted?: boolean;
   avatarUrl?: string;
+  /** Nudges and winks switched on by an admin of the group (José, 21/10). */
+  funAllowed?: boolean;
   muted?: boolean;
   /** E3b: todo / menciones / nada (from the server; older data only has `muted`). */
   avisos?: NotificationLevel;
@@ -66,6 +70,8 @@ export type ChatMessage = {
   clientKey: string;
   kind: string;
   body?: string;
+  /** A wink's id (kind `guino`, José 21/10). */
+  wink?: string;
   /** El sobre de un chat secreto: llega EN VEZ de `body`. La web no lo abre. */
   envelope?: { v: number; nonce: string; ciphertext: string };
   ref?: RefDeMensaje;

@@ -8,6 +8,7 @@ import { CreateSpaceDialog } from './CreateSpaceDialog';
 import { SpacesRail } from './SpacesRail';
 import { SpaceChatList } from './SpaceChatList';
 import { ChannelsDialog } from './ChannelsDialog';
+import { InviteToSpaceDialog } from './InviteToSpaceDialog';
 import { spaceChats } from './spacesApi';
 
 /**
@@ -189,5 +190,25 @@ describe('ChannelsDialog', () => {
     expect(screen.getByTestId('canales-private')).toHaveTextContent('Privados (1)');
     await userEvent.click(screen.getByTestId('unirme-compras'));
     await waitFor(() => expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'c3', joined: true })));
+  });
+});
+
+describe('InviteToSpaceDialog', () => {
+  it('email is the first way to send the code (a company invites by email), then WhatsApp', () => {
+    render(<InviteToSpaceDialog space={space()} jwt="t" inviterName="José Zamora" onClose={() => undefined} />);
+    const email = screen.getByTestId('btn-correo-codigo');
+    const whatsapp = screen.getByTestId('btn-whatsapp-codigo');
+    expect(email.compareDocumentPosition(whatsapp) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const link = email.getAttribute('href') ?? '';
+    expect(link.startsWith('mailto:?subject=')).toBe(true);
+    const params = new URLSearchParams(link.slice('mailto:?'.length));
+    expect(params.get('subject')).toBe('Invitación al espacio de QA Obra en Lilachat');
+    expect(params.get('body')).toContain('José Zamora te invita');
+    expect(params.get('body')).toContain('QAOB-7K3P');
+  });
+  it('without the code (only admins have it), neither email nor WhatsApp shows', () => {
+    render(<InviteToSpaceDialog space={space({ joinCode: undefined, role: 'member' })} jwt="t" onClose={() => undefined} />);
+    expect(screen.queryByTestId('btn-correo-codigo')).toBeNull();
+    expect(screen.queryByTestId('btn-whatsapp-codigo')).toBeNull();
   });
 });

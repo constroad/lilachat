@@ -119,7 +119,7 @@ export function useSpacesWeb(params: { jwt: string; me: { name?: string | null; 
           onClose={() => setDialog(null)}
         />
       ) : null}
-      {invitee ? <InviteToSpaceDialog space={invitee} jwt={jwt} onClose={() => { setInviting(null); setDialog(null); }} /> : null}
+      {invitee ? <InviteToSpaceDialog space={invitee} jwt={jwt} inviterName={params.me.name ?? undefined} onClose={() => { setInviting(null); setDialog(null); }} /> : null}
       {dialog === 'channels' && current ? <ChannelsDialog space={current} jwt={jwt} onOpenChannel={openChannel} onClose={() => setDialog(null)} /> : null}
     </>
   );

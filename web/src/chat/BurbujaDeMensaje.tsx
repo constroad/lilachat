@@ -43,7 +43,7 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
   // The reminder that rang or an event coming up: answered like a message (José, 21/10).
   if (mensaje.kind === 'system' && esAvisoDestacado(mensaje.system?.evento)) return <HighlightedNotice message={mensaje} />;
   if (mensaje.kind === 'system') return <LineaDeSistema mensaje={mensaje} />;
-  if (mensaje.kind === 'zumbido') return <NudgeFromContext mine={mio} senderId={mensaje.senderId} at={mensaje.at} />;
+  if (mensaje.kind === 'zumbido') return <NudgeFromContext seq={mensaje.seq} mine={mio} senderId={mensaje.senderId} at={mensaje.at} />;
   if (mensaje.kind === 'guino') return <WinkFromContext seq={mensaje.seq} wink={mensaje.wink} mine={mio} senderId={mensaje.senderId} at={mensaje.at} />;
   return (
     <div data-testid={`mensaje-${mensaje.clientKey}`} className={`group flex items-start gap-1 ${agrupado ? 'mt-1' : 'mt-3'} ${mio ? 'flex-row-reverse' : ''}`}>
@@ -87,9 +87,9 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
 });
 
 /** The nudge line with the author's name as this person knows them. */
-function NudgeFromContext({ mine, senderId, at }: { mine: boolean; senderId: string; at: string }) {
+function NudgeFromContext({ seq, mine, senderId, at }: { seq: number; mine: boolean; senderId: string; at: string }) {
   const { nombres } = useConversacion();
-  return <NudgeLine mine={mine} author={nombres.get(senderId)} at={at} />;
+  return <NudgeLine seq={seq} mine={mine} author={nombres.get(senderId)} at={at} />;
 }
 
 /** The wink line, the same way (José, 21/10). */

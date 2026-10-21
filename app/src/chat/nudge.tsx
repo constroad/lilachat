@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { Pressable, Text, Vibration, View } from 'react-native';
 import { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming, type SharedValue } from 'react-native-reanimated';
-import { Heart, Vibrate } from 'lucide-react-native';
+import { Heart, Play, Vibrate } from 'lucide-react-native';
+import { WinkCharacter } from './WinkCharacter';
 import { getSocket } from './socketClient';
 import { chatsEnMemoria, suscribirChatsEnMemoria } from './chatsGuardados';
-import { playWinkCues, shakeScreen, startWink } from './FunScreen';
+import { playWinkCues, shakeScreen, startWink, stopFun } from './FunScreen';
 import { closeEmojiPanel } from './emojiPanel';
-import { NUDGE_SHAKE, formatClock, funArrivedInRow, funMessageToPlay, funNoticeText, highestSeq, shouldPlayFun, winkById, type FunPlace, type FunToPlay, type WinkId } from '@lilachat/shared';
+import { NUDGE_SHAKE, formatClock, funArrivedInRow, funMessageToPlay, highestSeq, shouldPlayFun, winkById, winkCardLines, type FunPlace, type FunToPlay, type WinkId } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 
 const SEND_TIMEOUT_MS = 8000;
@@ -37,10 +38,14 @@ export const sendNudge = (chatId: string) => sendFun(chatId, { kind: 'zumbido' }
 export const sendWink = (chatId: string, wink: WinkId) => sendFun(chatId, { kind: 'guino', wink }, 'El guiño');
 
 /** «Ver otra vez» in a wink's line asks the open chat to play it again. */
-type ReplayListener = (seq: number, wink: WinkId) => void;
+type ReplayListener = (fun: FunToPlay) => void;
 const replayListeners = new Set<ReplayListener>();
 export function replayWink(seq: number, wink: WinkId): void {
-  replayListeners.forEach((listener) => listener(seq, wink));
+  replayListeners.forEach((listener) => listener({ seq, kind: 'guino', wink, mine: true }));
+}
+/** «Ver otra vez» on a nudge (José, 21/10: «no hay forma de reproducir el zumbido» without sending another). */
+export function replayNudge(seq: number): void {
+  replayListeners.forEach((listener) => listener({ seq, kind: 'zumbido', mine: true }));
 }
 
 /** Whether I muted this chat, live from the chat list. */
@@ -110,18 +115,22 @@ export function useFunPlayback(params: { messages: readonly { seq: number; kind?
   const { messages, me } = params;
   useEffect(() => {
     if (messages.length === 0) return;
+    // The first look at the chat plays only what someone sent me; mine plays when it goes, live.
+    const opening = seen.current === null;
     seen.current ??= readAtOpen;
-    const fun = funMessageToPlay(messages, me, seen.current);
+    const fun = funMessageToPlay(messages, me, seen.current, { mineToo: !opening });
     seen.current = Math.max(seen.current, highestSeq(messages));
     if (fun) play(fun, 'chat');
   }, [messages, me, readAtOpen, play]);
   useEffect(() => {
-    const listener: ReplayListener = (seq, wink) => play({ seq, kind: 'guino', wink, mine: true }, 'replay');
+    const listener: ReplayListener = (fun) => play(fun, 'replay');
     replayListeners.add(listener);
     return () => {
       replayListeners.delete(listener);
     };
   }, [play]);
+  // Leaving the chat ends what plays (José, 21/10: «incluso fuera del chat se reproduce»).
+  useEffect(() => stopFun, []);
 }
 
 /**
@@ -150,7 +159,7 @@ export function useFunActions(params: { chatId: string; isGroup: boolean; isDraf
 }
 
 /** «Ana te mandó un zumbido» / «Mandaste un zumbido», centered like the group notices. */
-export function NudgeLine(props: { mine: boolean; author?: string; at?: string }) {
+export function NudgeLine(props: { seq: number; mine: boolean; author?: string; at?: string }) {
   const palette = useColores();
   return (
     <View testID="linea-zumbido" className="my-1.5 max-w-[88%] flex-row flex-wrap items-center justify-center gap-x-2 gap-y-0.5 self-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5">
@@ -159,26 +168,40 @@ export function NudgeLine(props: { mine: boolean; author?: string; at?: string }
       </View>
       <Text className="text-[13px] font-semibold text-on-surface">{props.mine ? 'Mandaste un zumbido' : `${props.author || 'Te'} ${props.author ? 'te mandó' : 'mandaron'} un zumbido`}</Text>
       {props.at ? <Text className="text-[11px] text-on-surface-variant">{formatClock(props.at)}</Text> : null}
+      <Pressable testID={`ver-zumbido-${props.seq}`} hitSlop={12} onPress={() => replayNudge(props.seq)} className="min-h-[28px] justify-center">
+        <Text className="text-[13px] font-bold text-primary underline">Ver otra vez</Text>
+      </Pressable>
     </View>
   );
 }
 
-/** «Ana te mandó un guiño · Corazones · Ver otra vez» (José, 21/10). */
+/** The wink's thumbnail in its card (dp); a character (240 × 320) fits by its height, a prop (square) by its side. */
+const WINK_THUMB = 64;
+
+/**
+ * A wink in the chat as a card with its THUMBNAIL (José, 21/10: «debería haber
+ * una miniatura para ver visualmente cuál fue»): the character (or the emoji)
+ * on the left, who sent it and which wink on the right, and «Ver otra vez».
+ */
 export function WinkLine(props: { seq: number; wink?: string; mine: boolean; author?: string; at?: string }) {
   const palette = useColores();
   const known = winkById(props.wink);
+  const lines = winkCardLines({ wink: props.wink, mine: props.mine, author: props.author, time: props.at ? formatClock(props.at) : undefined });
   return (
-    <View testID={`linea-guino-${props.seq}`} className="my-1.5 max-w-[88%] flex-row flex-wrap items-center justify-center gap-x-2 gap-y-0.5 self-center rounded-2xl border border-primary/20 bg-primary/10 px-3 py-1.5">
-      <View className="h-6 w-6 items-center justify-center rounded-full bg-primary">
-        <Heart size={13} color={palette['on-primary']} />
+    <View testID={`linea-guino-${props.seq}`} className="my-2 w-[300px] max-w-[88%] flex-row items-center gap-3 self-center rounded-2xl border border-primary/20 bg-surface p-2.5">
+      <View className="items-center justify-center overflow-hidden rounded-xl bg-primary/10" style={{ width: WINK_THUMB, height: WINK_THUMB }}>
+        {known?.kind === 'character' ? <WinkCharacter wink={known} size={known.tile ? WINK_THUMB - 12 : WINK_THUMB * 0.62} /> : known ? <Text style={{ fontSize: 30 }}>{known.hero}</Text> : <Heart size={22} color={palette.primary} />}
       </View>
-      <Text className="flex-shrink text-[13px] font-semibold text-on-surface">{funNoticeText({ kind: 'guino', wink: props.wink, mine: props.mine, author: props.author })}</Text>
-      {props.at ? <Text className="text-[11px] text-on-surface-variant">{formatClock(props.at)}</Text> : null}
-      {known ? (
-        <Pressable testID={`ver-guino-${props.seq}`} hitSlop={12} onPress={() => replayWink(props.seq, known.id)} className="min-h-[28px] justify-center">
-          <Text className="text-[13px] font-bold text-primary underline">Ver otra vez</Text>
-        </Pressable>
-      ) : null}
+      <View className="flex-1 gap-0.5">
+        <Text className="text-[14px] font-semibold text-on-surface">{lines.who}</Text>
+        {lines.detail ? <Text className="text-[12px] text-on-surface-variant">{lines.detail}</Text> : null}
+        {known ? (
+          <Pressable testID={`ver-guino-${props.seq}`} hitSlop={10} onPress={() => replayWink(props.seq, known.id)} className="mt-1 h-8 flex-row items-center gap-1.5 self-start rounded-full border border-outline/20 px-3">
+            <Play size={13} color={palette.primary} />
+            <Text className="text-[13px] font-semibold text-primary">Ver otra vez</Text>
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }

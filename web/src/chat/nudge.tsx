@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Heart, Vibrate } from 'lucide-react';
-import { formatClock, funArrivedInRow, funMessageToPlay, funNoticeText, highestSeq, shouldPlayFun, winkById, winkRowSound, type FunPlace, type FunToPlay, type Wink, type WinkId } from '@lilachat/shared';
+import { Heart, Play, Vibrate } from 'lucide-react';
+import { formatClock, funArrivedInRow, funMessageToPlay, highestSeq, shouldPlayFun, winkById, winkCardLines, winkRowSound, type FunPlace, type FunToPlay, type Wink, type WinkId } from '@lilachat/shared';
 import { WinkOverlay } from './WinkOverlay';
+import { WinkCharacter } from './WinkCharacter';
 import { playWinkCues, playWinkSound, shakeWholeScreen, stopWinkSounds } from './winkSounds';
 
 /** A wink in the chat list pops its row (`.wink-pop`). */
@@ -29,10 +30,14 @@ function buzz(): void {
 }
 
 /** «Ver otra vez» in a wink's line asks the open chat to play it again. */
-type ReplayListener = (seq: number, wink: WinkId) => void;
+type ReplayListener = (fun: FunToPlay) => void;
 const replayListeners = new Set<ReplayListener>();
 export function replayWink(seq: number, wink: WinkId): void {
-  replayListeners.forEach((listener) => listener(seq, wink));
+  replayListeners.forEach((listener) => listener({ seq, kind: 'guino', wink, mine: true }));
+}
+/** «Ver otra vez» on a nudge (José, 21/10: «no hay forma de reproducir el zumbido» without sending another). */
+export function replayNudge(seq: number): void {
+  replayListeners.forEach((listener) => listener({ seq, kind: 'zumbido', mine: true }));
 }
 
 const prefersReducedMotion = () => Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
@@ -72,13 +77,16 @@ export function useFunPlayback(params: { messages: readonly { seq: number; kind?
   );
   useEffect(() => {
     if (!messages || messages.length === 0) return;
-    if (seen.current?.chatId !== chatId) seen.current = { chatId, seq: readAtOpen.current.seq };
-    const fun = funMessageToPlay(messages, me, seen.current.seq);
-    seen.current.seq = Math.max(seen.current.seq, highestSeq(messages));
+    // The first look at the chat plays only what someone sent me; mine plays when it goes, live.
+    const opening = seen.current?.chatId !== chatId;
+    const current = opening || !seen.current ? { chatId, seq: readAtOpen.current.seq } : seen.current;
+    seen.current = current;
+    const fun = funMessageToPlay(messages, me, current.seq, { mineToo: !opening });
+    current.seq = Math.max(current.seq, highestSeq(messages));
     if (fun) play(fun, 'chat');
   }, [messages, me, chatId, play]);
   useEffect(() => {
-    const listener: ReplayListener = (seq, wink) => play({ seq, kind: 'guino', wink, mine: true }, 'replay');
+    const listener: ReplayListener = (fun) => play(fun, 'replay');
     replayListeners.add(listener);
     return () => {
       replayListeners.delete(listener);
@@ -130,33 +138,46 @@ export function useFunInRow(chat: { muted?: boolean; lastMessage: { seq: number;
 }
 
 /** «Ana te mandó un zumbido» / «Mandaste un zumbido», centered like the group notices. */
-export function NudgeLine({ mine, author, at }: { mine: boolean; author?: string; at?: string }) {
+export function NudgeLine({ seq, mine, author, at }: { seq: number; mine: boolean; author?: string; at?: string }) {
   return (
     <div data-testid="linea-zumbido" className="my-1.5 flex justify-center">
       <span className="inline-flex max-w-[88%] flex-wrap items-center justify-center gap-x-2 gap-y-0.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[13px] font-semibold">
         <span className="grid h-6 w-6 place-items-center rounded-full bg-primary text-on-primary"><Vibrate size={13} /></span>
         {mine ? 'Mandaste un zumbido' : author ? `${author} te mandó un zumbido` : 'Te mandaron un zumbido'}
         {at ? <span className="text-[11px] font-normal text-on-surface-variant">{formatClock(at)}</span> : null}
+        <button type="button" data-testid={`ver-zumbido-${seq}`} onClick={() => replayNudge(seq)} className="font-bold text-primary underline">
+          Ver otra vez
+        </button>
       </span>
     </div>
   );
 }
 
-/** «Ana te mandó un guiño · Corazones · Ver otra vez» (José, 21/10). */
+/**
+ * A wink in the chat as a card with its THUMBNAIL (José, 21/10: «debería haber
+ * una miniatura para ver visualmente cuál fue»): the character (or the emoji)
+ * on the left, who sent it and which wink on the right, and «Ver otra vez».
+ */
 export function WinkLine({ seq, wink, mine, author, at }: { seq: number; wink?: string; mine: boolean; author?: string; at?: string }) {
   const known = winkById(wink);
+  const lines = winkCardLines({ wink, mine, author, time: at ? formatClock(at) : undefined });
   return (
-    <div data-testid={`linea-guino-${seq}`} className="my-1.5 flex justify-center">
-      <span className="inline-flex max-w-[88%] flex-wrap items-center justify-center gap-x-2 gap-y-0.5 rounded-2xl border border-primary/20 bg-primary/10 px-3 py-1 text-[13px] font-semibold">
-        <span className="grid h-6 w-6 place-items-center rounded-full bg-primary text-on-primary"><Heart size={13} /></span>
-        {funNoticeText({ kind: 'guino', wink, mine, author })}
-        {at ? <span className="text-[11px] font-normal text-on-surface-variant">{formatClock(at)}</span> : null}
-        {known ? (
-          <button type="button" data-testid={`ver-guino-${seq}`} onClick={() => replayWink(seq, known.id)} className="font-bold text-primary underline">
-            Ver otra vez
-          </button>
-        ) : null}
-      </span>
+    <div data-testid={`linea-guino-${seq}`} className="my-2 flex justify-center">
+      <div className="flex w-[300px] max-w-[88%] items-center gap-3 rounded-2xl border border-primary/20 bg-surface p-2.5">
+        <span className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary/10">
+          {known?.kind === 'character' ? <WinkCharacter wink={known} size={known.tile ? 50 : 40} /> : known ? <span className="text-[30px] leading-none">{known.hero}</span> : <Heart size={22} className="text-primary" />}
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="text-[14px] font-semibold">{lines.who}</span>
+          {lines.detail ? <span className="text-[12px] text-on-surface-variant">{lines.detail}</span> : null}
+          {known ? (
+            <button type="button" data-testid={`ver-guino-${seq}`} onClick={() => replayWink(seq, known.id)} className="mt-1 inline-flex h-8 items-center gap-1.5 self-start rounded-full border border-outline/20 px-3 text-[13px] font-semibold text-primary hover:bg-background">
+              <Play size={13} />
+              Ver otra vez
+            </button>
+          ) : null}
+        </span>
+      </div>
     </div>
   );
 }

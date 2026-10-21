@@ -153,7 +153,7 @@ function FilaDeMensaje({
     return <AvisoDelGrupo item={item} myUserId={myUserId} />;
   }
   // The MSN nudge (backlog 3): a line, not a bubble.
-  if (!isPending(item) && item.kind === 'zumbido') return <NudgeLine mine={item.senderId === myUserId} author={nombreAutor} at={item.at} />;
+  if (!isPending(item) && item.kind === 'zumbido') return <NudgeLine seq={item.seq} mine={item.senderId === myUserId} author={nombreAutor} at={item.at} />;
   if (!isPending(item) && item.kind === 'guino') return <WinkLine seq={item.seq} wink={item.wink} mine={item.senderId === myUserId} author={nombreAutor} at={item.at} />;
   // La encuesta o el evento publicados en el chat (18/10): una tarjeta para
   // votar o confirmar, no una burbuja de texto.

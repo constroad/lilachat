@@ -5,9 +5,9 @@ import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
 import { AVATAR_DE_AUTOR } from './burbuja';
 
-/** Los avatares del chip (dp) y cuánto se montan entre sí. */
-const AVATAR_DEL_CHIP = 20;
-const MONTADO = -6;
+/** The chip's avatars (dp) and how much they overlap (José, 21/10: the threads showed, but too small). */
+const AVATAR_DEL_CHIP = 28;
+const MONTADO = -8;
 /** El `gap-2` entre el avatar del autor y su burbuja (dp): el chip arranca donde la burbuja. */
 const SEPARACION_DEL_AVATAR = 8;
 
@@ -40,7 +40,7 @@ export function ChipDeHilo(props: {
         accessibilityRole="button"
         accessibilityLabel={`${texto}. Abrir el hilo`}
         onPress={() => props.onAbrir(props.seq)}
-        className="min-h-[36px] max-w-[88%] flex-row items-center gap-2 rounded-b-xl border border-t-0 border-outline/10 bg-surface px-3"
+        className="min-h-[48px] max-w-[88%] flex-row items-center gap-2.5 rounded-b-2xl border border-t-0 border-outline/15 bg-surface px-3.5"
       >
         <View className="flex-row">
           {(props.hilo.autores ?? []).map((autor, indice) => (
@@ -49,10 +49,10 @@ export function ChipDeHilo(props: {
             </View>
           ))}
         </View>
-        <Text className="text-[13px] font-semibold text-primary">{cantidad}</Text>
-        {resto.length > 0 ? <Text className="text-[12px] text-on-surface-variant">· {resto.join(' · ')}</Text> : null}
-        {props.nuevas ? <View testID={`hilo-nuevas-${props.seq}`} className="h-2 w-2 rounded-full bg-primary" /> : null}
-        <ChevronRight size={16} color={colores['on-surface-variant']} />
+        <Text className="text-[15px] font-bold text-primary">{cantidad}</Text>
+        {resto.length > 0 ? <Text className="flex-shrink text-[13px] text-on-surface-variant">· {resto.join(' · ')}</Text> : null}
+        {props.nuevas ? <View testID={`hilo-nuevas-${props.seq}`} className="h-2.5 w-2.5 rounded-full bg-primary" /> : null}
+        <ChevronRight size={18} color={colores['on-surface-variant']} />
       </Pressable>
     </View>
   );

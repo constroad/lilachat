@@ -28,9 +28,10 @@ import { verifySession } from './sessions.js';
 import { esDispositivoVinculado } from '@lilachat/shared';
 import { vinculadoVigente } from './dispositivosVinculados.js';
 import { HiloInvalidoError } from './hilos.js';
+import { registerAgendaRelay } from './agendaRelay.js';
 import { avisarCambioDeChat, avisarEntregadoAlConectar, avisarMensajeNuevo, fijarServidorDelReparto, leerLoPropio, publicarAviso, publicarMensaje } from './reparto.js';
 
-export { avisarCambioDeChat, avisarCambioDeVinculos, avisarMensajeNuevo, desconectarDispositivo, publicarAviso, publicarMensaje } from './reparto.js';
+export { avisarCambioDeChat, avisarCambioDeVinculos, avisarHilo, avisarMensajeNuevo, desconectarDispositivo, publicarAviso, publicarMensaje } from './reparto.js';
 
 /**
  * El tiempo real (spec §6.1). Socket.IO sobre WS: a esta escala el protocolo
@@ -124,6 +125,7 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
     const me = String(userId);
     void socket.join(userRoom(me));
     if (socket.deviceId) void socket.join(deviceRoom(socket.deviceId));
+    registerAgendaRelay(io, socket, me, userRoom(me));
 
     // Presencia: el alta es SINCRÓNICA, antes de cualquier `await`. Si se
     // contaba después de leer los contactos, un corte inmediato (salir rápido

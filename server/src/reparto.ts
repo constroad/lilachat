@@ -47,6 +47,11 @@ export function fijarServidorDelReparto(io: SocketServer): void {
  * programados. Antes la media no mandaba push y los programados y las
  * auto-respuestas no se emitían: se veían recién al reabrir el chat.
  */
+/** A thread changed (a reply arrived outside the socket, like a sticker): its new summary to every member. */
+export function avisarHilo(chatId: string, raiz: number, hilo: unknown, members: string[]): void {
+  for (const member of members) ioVivo?.to(userRoom(member)).emit('msg.hilo', { chatId, raiz, hilo });
+}
+
 export async function publicarMensaje(
   message: Message,
   conocidos?: string[],

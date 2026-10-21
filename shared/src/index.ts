@@ -63,6 +63,7 @@ export * from './destacados.js';
 export * from './stickers.js';
 export * from './stickerEditor.js';
 export * from './stickerMask.js';
+export * from './agendaRelay.js';
 export * from './encuestas.js';
 export * from './eventos.js';
 export * from './recordatorios.js';

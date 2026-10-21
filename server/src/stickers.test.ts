@@ -98,6 +98,23 @@ describe('sending a sticker', () => {
     expect(await StickerModel.countDocuments({})).toBe(0);
   });
 
+  it('goes into a thread (José, 20/10), counts on the root and can also go to the chat', async () => {
+    const { sendMessage } = await import('./chatService.js');
+    const root = await sendMessage({ chatId: String(chatId), senderId: ana, clientKey: 'root', body: '¿Vamos?' });
+    const send = (clientKey: string, extra: Record<string, unknown>) =>
+      request(app).post(`/api/chats/${chatId}/stickers`).set(withJwt(me)).set('Host', 'lilachat.example').send({ stickerId: 'pack:lila-1/thumbs-up', clientKey, hiloDe: root.message.seq, ...extra });
+
+    const inThread = await send('k-thread', {});
+    const alsoInChat = await send('k-thread-chat', { enElChat: true });
+
+    expect(inThread.status).toBe(201);
+    expect(inThread.body.message).toMatchObject({ kind: 'sticker', hiloDe: root.message.seq });
+    expect(inThread.body.message.enElChat).toBeFalsy();
+    expect(alsoInChat.body.message).toMatchObject({ hiloDe: root.message.seq, enElChat: true });
+    const stored = await MessageModel.findOne({ chatId, seq: root.message.seq }).lean();
+    expect(stored?.hilo?.respuestas).toBe(2);
+  });
+
   it('an unknown pack sticker or a forged host is refused', async () => {
     expect((await request(app).post(`/api/chats/${chatId}/stickers`).set(withJwt(me)).send({ stickerId: 'pack:lila-1/nope', clientKey: 'k5' })).status).toBe(404);
     expect((await request(app).post(`/api/chats/${chatId}/stickers`).set(withJwt(me)).set('Host', 'evil.com/x?').send({ stickerId: 'pack:lila-1/dog-ready', clientKey: 'k6' })).status).toBe(400);

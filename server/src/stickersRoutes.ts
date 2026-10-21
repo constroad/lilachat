@@ -8,7 +8,7 @@ import { pedidoSeguro } from './cookieDeDispositivo.js';
 import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
 import { toClientMessage } from './messageView.js';
 import { asyncRoute, requireSession } from './requireSession.js';
-import { publicarMensaje } from './socket.js';
+import { avisarHilo, publicarMensaje } from './socket.js';
 import { StickerModel, type Sticker } from './stickerModel.js';
 
 /** A static sticker is light (WhatsApp: ~100 KB); room left for a lossless WebP. */
@@ -144,8 +144,13 @@ export function buildStickersRouter(uploader: MediaUploader = buildLilaUploader(
     if (!media) return res.status(404).json({ message: 'Ese sticker no existe.' });
     if (media === 'bad-host') return res.status(400).json({ message: 'No se pudo mandar el sticker.' });
     if (!clientKey) return res.status(400).json({ message: 'Falta la clave del envío.' });
-    const sent = await sendMessage({ chatId: String(chatId), senderId: me, clientKey, kind: 'sticker', media, ...(Number.isInteger(req.body?.replyToSeq) ? { replyToSeq: req.body.replyToSeq } : {}) });
-    if (!sent.duplicate) await publicarMensaje(sent.message, sent.members);
+    // In a thread too (José, 20/10: «I can't send a sticker in a thread»), with «also send to the chat».
+    const thread = Number.isInteger(req.body?.hiloDe) ? { hiloDe: req.body.hiloDe as number, enElChat: req.body?.enElChat === true } : {};
+    const sent = await sendMessage({ chatId: String(chatId), senderId: me, clientKey, kind: 'sticker', media, ...(Number.isInteger(req.body?.replyToSeq) ? { replyToSeq: req.body.replyToSeq } : {}), ...thread });
+    if (!sent.duplicate) {
+      const members = await publicarMensaje(sent.message, sent.members);
+      if (sent.hilo && sent.message.hiloDe !== undefined) avisarHilo(String(chatId), sent.message.hiloDe, sent.hilo, members);
+    }
     res.status(201).json({ message: toClientMessage(sent.message), duplicate: sent.duplicate });
   }));
 

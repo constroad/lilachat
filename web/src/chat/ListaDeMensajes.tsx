@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronDown } from 'lucide-react';
 import { formatDayLabel } from '@lilachat/shared';
@@ -6,6 +6,7 @@ import { BurbujaDeMensaje } from './BurbujaDeMensaje';
 import { seqParaAcusar } from './acuseDeLeido';
 import { estaCercaDelFinal, filasDeLaConversacion, sigueEnElFinal } from './filasDeLaConversacion';
 import type { ChatSummary, MensajeEnPantalla } from './types';
+import { ConversacionContext } from './contextoDeLaConversacion';
 
 type Props = {
   chat: ChatSummary;
@@ -37,6 +38,7 @@ const UMBRAL_DE_ANTERIORES_PX = 400;
  */
 export function ListaDeMensajes(props: Props) {
   const { mensajes, yo, chat } = props;
+  const flat = useContext(ConversacionContext)?.flat ?? false;
   const contenedor = useRef<HTMLDivElement>(null);
   const pegado = useRef(true);
   /** Cuándo fue el último gesto de la persona sobre la lista (rueda, toque, tecla). */
@@ -109,6 +111,7 @@ export function ListaDeMensajes(props: Props) {
                   ultimoDelGrupo={fila.ultimoDelGrupo}
                   conAutor={chat.kind === 'group' && !fila.agrupado && fila.mensaje.senderId !== yo}
                   chat={chat}
+                  flat={flat}
                   onReintentar={props.onReintentar}
                   onDescartar={props.onDescartar}
                 />

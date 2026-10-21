@@ -14,6 +14,9 @@ import type { MencionEnMensaje, NotificationLevel, OutboxItem, Reaccion, Resumen
 export type ChatSummary = {
   id: string;
   kind: 'direct' | 'group' | 'notas';
+  /** A chat of a company space, and a channel there (E1/E2): always in the Slack format. */
+  workspaceId?: string;
+  channel?: { visibility: string };
   /** El chat contigo («Tú · Envíate un mensaje», 20/10). */
   propio?: boolean;
   name?: string;

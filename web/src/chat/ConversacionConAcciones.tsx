@@ -31,6 +31,8 @@ import { useDestacadosWeb } from './destacados/useDestacadosWeb';
 import { TarjetaDeDestacados } from './destacados/TarjetaDeDestacados';
 import { useStickers } from './stickers/useStickers';
 import type { StickerAction } from './contextoDeLaConversacion';
+import { memberBadge, usesFlatLayout } from '@lilachat/shared';
+import { useGroupsAsList } from '../ui/groupsAsList';
 
 type PropsDeConversacion = ComponentProps<typeof Conversation>;
 
@@ -133,9 +135,12 @@ export function ConversacionConAcciones(
   );
   // El recordatorio del chat (W3c): lo crean y editan quienes pueden fijar (en un grupo, sus admins), nunca en un secreto.
   const editarRecordatorio = !chat.encrypted && puedeFijar ? props.onEditReminder : undefined;
+  // Groups as flat rows, like Slack (design `s-01`): always in a company space, on request in a personal group.
+  const flat = usesFlatLayout(chat, { groupsAsList: useGroupsAsList() });
+  const badgeOf = useCallback((senderId: string) => memberBadge({ role: detalle?.miembros.get(senderId)?.rol, isMe: senderId === yo }), [detalle, yo]);
   const contexto = useMemo<ContextoDeLaConversacion>(
-    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar, onEditarRecordatorio: editarRecordatorio, destacados: destacados.seqs, onStickerAction: chat.encrypted ? undefined : onStickerAction }),
-    [yo, props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editarRecordatorio, destacados.seqs, onStickerAction]
+    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar, onEditarRecordatorio: editarRecordatorio, destacados: destacados.seqs, onStickerAction: chat.encrypted ? undefined : onStickerAction, flat, badgeOf }),
+    [yo, props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editarRecordatorio, destacados.seqs, onStickerAction, flat, badgeOf]
   );
 
   // Nudges and winks: in a 1:1 (not the chat with yourself), or a group whose admin allows them (José, 21/10).

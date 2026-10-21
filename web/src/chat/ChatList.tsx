@@ -9,6 +9,7 @@ import { FiltrosDeLaLista } from './FiltrosDeLaLista';
 import { armarLista } from './listaDeChats';
 import type { AccionDelChat } from './menuDelChat';
 import type { ChatSummary } from './types';
+import { NewVersionBand } from '../ui/NewVersionBand';
 
 /**
  * El panel izquierdo del diseño web (W3a: `w3-web-lista.png`).
@@ -158,6 +159,8 @@ export function ChatList({
           ) : null}
         </div>
       </header>
+
+      <NewVersionBand />
 
       <div className="px-3 pb-2">
         <div className="flex items-center gap-2 rounded-full bg-background px-3 py-2">

@@ -21,6 +21,10 @@ export type ContextoDeLaConversacion = {
   nombres: ReadonlyMap<string, string>;
   /** Inside the thread panel: replies there do not show «Respondió en un hilo». */
   inThread?: boolean;
+  /** The Slack format (design `s-01`): flat rows with name, role and time instead of bubbles. */
+  flat?: boolean;
+  /** The pill next to a name in that format: «Admin», «Tú»… */
+  badgeOf?: (senderId: string) => string | null;
   /** Member photos for the thread chip and root (backlog 18: only initials showed). */
   photos?: ReadonlyMap<string, string>;
   /** El mensaje citado por `replyToSeq`, si está cargado. */

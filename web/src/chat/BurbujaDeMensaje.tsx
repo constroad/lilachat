@@ -17,6 +17,7 @@ import { NudgeLine, WinkLine } from './nudge';
 import { StickerMessage } from './stickers/StickerMessage';
 import { ConversacionContext, useConversacion } from './contextoDeLaConversacion';
 import type { ChatSummary, MensajeEnPantalla } from './types';
+import { Avatar } from '../ui/Avatar';
 
 /** Las clases de color de autor, escritas enteras para que Tailwind las genere. */
 const COLOR_DE_AUTOR = ['', 'text-autor-1', 'text-autor-2', 'text-autor-3', 'text-autor-4', 'text-autor-5', 'text-autor-6'];
@@ -33,6 +34,8 @@ type Props = {
   chat: Pick<ChatSummary, 'othersReadSeq' | 'othersDeliveredSeq'>;
   onReintentar: (clientKey: string) => void;
   onDescartar: (clientKey: string) => void;
+  /** The Slack format (design `s-01`): a flat row instead of the bubble. */
+  flat?: boolean;
 };
 
 /**
@@ -47,6 +50,7 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
   if (mensaje.kind === 'system') return <LineaDeSistema mensaje={mensaje} />;
   if (mensaje.kind === 'zumbido') return <NudgeFromContext seq={mensaje.seq} mine={mio} senderId={mensaje.senderId} at={mensaje.at} />;
   if (mensaje.kind === 'guino') return <WinkFromContext seq={mensaje.seq} wink={mensaje.wink} mine={mio} senderId={mensaje.senderId} at={mensaje.at} />;
+  if (props.flat) return <FlatMessage {...props} />;
   return (
     <div data-testid={`mensaje-${mensaje.clientKey}`} className={`group flex items-start gap-1 ${agrupado ? 'mt-1' : 'mt-3'} ${mio ? 'flex-row-reverse' : ''}`}>
       <div className={`flex max-w-[68%] min-w-0 flex-col ${mio ? 'items-end' : 'items-start'}`}>
@@ -87,6 +91,60 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
     </div>
   );
 });
+
+/**
+ * A message as a flat row, like Slack (José, 21/10; design
+ * `s-01-grupo-formato-slack`): the avatar, then the name, its role and the
+ * time, and the text without a bubble. Mine go on the left too, with my name in
+ * the accent; messages in a row from the same person go under it. The same
+ * actions as the bubble on hover.
+ */
+function FlatMessage(props: Props) {
+  const { mensaje, agrupado } = props;
+  const { nombres, photos, yo, badgeOf } = useConversacion();
+  const mine = mensaje.senderId === yo;
+  const name = nombres.get(mensaje.senderId) ?? (mine ? 'Tú' : 'Alguien');
+  // «Tú» next to «Tú» says nothing: the pill only when it adds something.
+  const fullBadge = badgeOf?.(mensaje.senderId) ?? null;
+  const badge = fullBadge === name ? null : fullBadge;
+  return (
+    <div data-testid={`mensaje-${mensaje.clientKey}`} className={`group relative flex items-start gap-3 rounded-lg px-1 hover:bg-background/60 ${agrupado ? 'mt-0.5' : 'mt-3'}`}>
+      {agrupado ? (
+        <span className="w-9 shrink-0 pt-1 text-right text-[10px] text-on-surface-variant opacity-0 group-hover:opacity-100">{formatClock(mensaje.at)}</span>
+      ) : (
+        <Avatar name={name} foto={photos?.get(mensaje.senderId)} size={36} />
+      )}
+      <div className="min-w-0 flex-1">
+        {agrupado ? null : (
+          <p className="flex flex-wrap items-baseline gap-x-2">
+            <span data-testid={`autor-${mensaje.clientKey}`} className={`truncate text-[15px] font-bold ${mine ? 'text-primary' : ''}`}>{name}</span>
+            {badge ? <span className={`rounded-md px-1.5 py-px text-[11px] font-semibold ${mine ? 'bg-primary/10 text-primary' : 'bg-background text-on-surface-variant'}`}>{badge}</span> : null}
+            <PieDelMensaje mensaje={mensaje} mio={mine} chat={props.chat} inline />
+          </p>
+        )}
+        {mensaje.ref && !mensaje.deletedAt ? (
+          <div className="max-w-sm"><TarjetaDelMensaje mensaje={mensaje} mio={false} conAutor={false} /></div>
+        ) : mensaje.kind === 'sticker' && mensaje.media?.url && !mensaje.deletedAt ? (
+          <StickerMessage message={mensaje} url={mensaje.media.url} author={null} quote={mensaje.replyToSeq ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={false} /> : null} />
+        ) : (
+          <div className={`max-w-2xl text-[length:var(--chat-font,14px)] leading-[var(--chat-line,20px)] ${mensaje.estado === 'fallido' ? 'opacity-70' : ''}`}>
+            {mensaje.hiloDe !== undefined && mensaje.enElChat && !mensaje.deletedAt ? <ThreadQuote root={mensaje.hiloDe} mine={false} /> : null}
+            {mensaje.replyToSeq && !mensaje.deletedAt ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={false} /> : null}
+            <ContenidoDelMensaje mensaje={mensaje} mio={false} />
+          </div>
+        )}
+        {mensaje.reacciones?.length ? <PastillaDeReacciones mensaje={mensaje} mio={false} /> : null}
+        {mensaje.hilo && mensaje.hilo.respuestas > 0 && !mensaje.deletedAt ? <ChipDeLaRaiz seq={mensaje.seq} hilo={mensaje.hilo} /> : null}
+        {mensaje.estado === 'fallido' ? <FalloDelEnvio mensaje={mensaje} onReintentar={props.onReintentar} onDescartar={props.onDescartar} /> : null}
+      </div>
+      <div className="absolute -top-3 right-2 hidden items-center gap-0.5 rounded-lg border border-outline/15 bg-surface px-0.5 shadow-sm group-focus-within:flex group-hover:flex">
+        <BotonDeReaccionar mensaje={mensaje} mio={false} />
+        <BotonDeHilo mensaje={mensaje} />
+        <MenuDelMensaje mensaje={mensaje} mio={mine} />
+      </div>
+    </div>
+  );
+}
 
 /** The nudge line with the author's name as this person knows them. */
 function NudgeFromContext({ seq, mine, senderId, at }: { seq: number; mine: boolean; senderId: string; at: string }) {
@@ -179,7 +237,7 @@ function ContenidoDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio
   );
 }
 
-function PieDelMensaje({ mensaje, mio, chat }: { mensaje: MensajeEnPantalla; mio: boolean; chat: Props['chat'] }) {
+function PieDelMensaje({ mensaje, mio, chat, inline = false }: { mensaje: MensajeEnPantalla; mio: boolean; chat: Props['chat']; /** Next to the name in a flat row, not under the bubble. */ inline?: boolean }) {
   const destacado = useContext(ConversacionContext)?.destacados?.has(mensaje.seq) ?? false;
   const estado = resolveDeliveryState({
     seq: mensaje.estado === 'enviando' ? null : mensaje.seq,
@@ -187,7 +245,7 @@ function PieDelMensaje({ mensaje, mio, chat }: { mensaje: MensajeEnPantalla; mio
     otherDeliveredSeq: chat.othersDeliveredSeq,
   });
   return (
-    <p className="mt-1 text-[11px] text-on-surface-variant">
+    <span className={`${inline ? 'text-[12px]' : 'mt-1 block text-[11px]'} text-on-surface-variant`}>
       {/* Lo destaqué (20/10): la estrella antes de la hora, como WhatsApp. */}
       {destacado ? <span data-testid={`destacado-${mensaje.clientKey}`} className="mr-1 text-primary">★</span> : null}
       {mensaje.editedAt && !mensaje.deletedAt ? 'Editado · ' : ''}
@@ -197,7 +255,7 @@ function PieDelMensaje({ mensaje, mio, chat }: { mensaje: MensajeEnPantalla; mio
           {DELIVERY_GLYPH[estado]}
         </span>
       ) : null}
-    </p>
+    </span>
   );
 }
 

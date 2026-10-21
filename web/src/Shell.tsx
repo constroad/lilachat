@@ -29,6 +29,7 @@ import { useAccionesSobreChats } from './sync/accionesSobreChats';
 import { TAMANO_DE_PAGINA, useSincronizacion } from './sync/useSincronizacion';
 import { useSocket } from './useSocket';
 import { ChatFontChoice } from './ui/ChatFontChoice';
+import { GroupsAsListChoice } from './ui/GroupsAsListChoice';
 import { chatNameWithAgenda } from './contacts/phoneAgenda';
 import { useAgendaRelay } from './contacts/useAgendaRelay';
 
@@ -308,6 +309,7 @@ function PanelDeAjustes(props: {
     <div data-testid="panel-ajustes" className="absolute bottom-16 left-4 z-10 w-72 rounded-xl border border-outline/15 bg-surface p-2 shadow-lg">
       <AppearanceChoice />
       <ChatFontChoice />
+      <GroupsAsListChoice />
       <button type="button" data-testid="btn-notificaciones" onClick={() => void alternar()} className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-left text-sm hover:bg-background">
         {push === 'encendido' ? <BellOff size={16} /> : <Bell size={16} />}
         <span className="min-w-0 flex-1">{push === 'encendido' ? 'Desactivar notificaciones' : 'Activar notificaciones'}</span>

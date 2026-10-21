@@ -144,6 +144,7 @@ export function PanelDeHilo(props: {
               ultimoDelGrupo
               conAutor={props.chat.kind === 'group' && !mio && anterior?.senderId !== mensaje.senderId}
               chat={props.chat}
+              flat={threadContext.flat}
               onReintentar={props.onReintentar}
               onDescartar={props.onDescartar}
             />

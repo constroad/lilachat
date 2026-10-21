@@ -21,6 +21,8 @@ import { VistaPreviaAlEscribir } from './VistaPreviaAlEscribir';
 
 /** Cuánto se espera tras la última tecla para guardar el borrador. */
 const ESPERA_PARA_GUARDAR_MS = 500;
+/** «Responder» from the message menu: the field takes the focus once the menu has closed (a closing modal swallows the keyboard on Android). */
+const REPLY_FOCUS_DELAY_MS = 250;
 /** Solo un texto con algo así lleva tarjeta: sin esto, cada tecla redibujaría la barra. */
 const PARECE_UN_LINK = /https?:\/\/|www\./i;
 
@@ -194,6 +196,13 @@ export const Composer = memo(function Composer(props: {
 
   const latestReply = useRef({ seq: props.respondiendoA?.seq, cancel: props.onCancelarRespuesta });
   latestReply.current = { seq: props.respondiendoA?.seq, cancel: props.onCancelarRespuesta };
+  // Like WhatsApp (José, 21/10): «Responder» opens the keyboard with the cursor in the field, ready to type.
+  const replyingSeq = props.respondiendoA?.seq;
+  useEffect(() => {
+    if (replyingSeq === undefined) return;
+    const focus = setTimeout(() => inputRef.current?.focus(), REPLY_FOCUS_DELAY_MS);
+    return () => clearTimeout(focus);
+  }, [replyingSeq]);
   useImperativeHandle(
     props.ref,
     () => ({

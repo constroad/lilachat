@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterChannels, railSpaces, SPACE_RUBROS, spaceInitials, spaceInviteMessage, spaceSections, spaceSubtitle } from './spaceSections.js';
+import { filterChannels, railSpaces, SPACE_RUBROS, spaceInitials, spaceInviteEmail, spaceInviteMailto, spaceInviteMessage, spaceSections, spaceSubtitle } from './spaceSections.js';
 
 /** The chats of a company space by sections, like Slack (designs `s-03-lista-con-secciones` and `e1-07-chats-del-espacio`). */
 describe('spaceSections', () => {
@@ -92,5 +92,43 @@ describe('railSpaces', () => {
     expect(railSpaces([])).toEqual([]);
     expect(railSpaces(null)).toEqual([]);
     expect(railSpaces([space('d', 'deactivated')])).toEqual([]);
+  });
+});
+
+/**
+ * The invitation by email, the first option (José, 21/10: «es empresarial, debe
+ * ser por email y luego por WhatsApp»). It goes from the inviter's own mail
+ * app: where to get Lilachat (phone or computer), that one enters with the
+ * phone number, and the code.
+ */
+describe('spaceInviteEmail', () => {
+  it('a subject with the space, and a body with who invites, the steps and the code', () => {
+    const email = spaceInviteEmail({ spaceName: 'CONSTROAD', code: 'CONS-7K3P', inviterName: 'José Zamora' });
+    expect(email.subject).toBe('Invitación al espacio de CONSTROAD en Lilachat');
+    expect(email.body).toContain('José Zamora te invita al espacio de CONSTROAD en Lilachat');
+    expect(email.body).toContain('https://lilastore.constroad.com/app/lilachat');
+    expect(email.body).toContain('https://lilachat.constroad.com');
+    expect(email.body).toContain('Entra con tu número de celular');
+    expect(email.body).toContain('«Unirme con un código» y escribe: CONS-7K3P');
+    expect(email.body).toContain('Tus chats personales no se comparten con la empresa.');
+  });
+  it('without the inviter\'s name it still reads well', () => {
+    expect(spaceInviteEmail({ spaceName: 'Inframaq', code: 'INFR-2B9Q' }).body).toMatch(/^Hola:\n\nTe invitamos al espacio de Inframaq en Lilachat/);
+  });
+  it('the mail link opens the mail app with the subject and the body, line breaks included', () => {
+    const link = spaceInviteMailto({ spaceName: 'CONSTROAD', code: 'CONS-7K3P' });
+    expect(link.startsWith('mailto:?subject=')).toBe(true);
+    const params = new URLSearchParams(link.slice('mailto:?'.length));
+    expect(params.get('subject')).toBe('Invitación al espacio de CONSTROAD en Lilachat');
+    expect(params.get('body')).toContain('escribe: CONS-7K3P');
+    // `+` is not a space in a mailto: spaces travel as %20 and line breaks as %0A.
+    expect(link).not.toContain('+');
+    expect(link).toContain('%0A');
+  });
+});
+
+describe('spaceInviteMessage, where to get the app', () => {
+  it('says where to download Lilachat for whoever does not have it', () => {
+    expect(spaceInviteMessage({ spaceName: 'CONSTROAD', code: 'CONS-7K3P' })).toContain('https://lilastore.constroad.com/app/lilachat');
   });
 });

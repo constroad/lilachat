@@ -1,3 +1,5 @@
+import { ENLACE_DE_DESCARGA } from './invitacion.js';
+
 /**
  * The chats of a company space by sections, like Slack (designs `s-03` and
  * `e1-07`): channels, groups and direct messages. Channels go by name
@@ -31,9 +33,45 @@ export function spaceInitials(name: string): string {
   return letters.toUpperCase();
 }
 
-/** The invitation to a space sent by WhatsApp (design `e1-05-invitar`): which space, how to get in, and the code. */
+/** Lilachat on a computer: the invitation offers it next to the phone app. */
+export const LILACHAT_WEB_URL = 'https://lilachat.constroad.com';
+const joinStep = (code: string) => `Toca el nombre de arriba en Chats › «Unirme con un código» y escribe: ${code}`;
+
+/** The invitation to a space sent by WhatsApp (design `e1-05-invitar`): which space, where to get the app, how to get in, and the code. */
 export function spaceInviteMessage(params: { spaceName: string; code: string }): string {
-  return `Te invito al espacio de ${params.spaceName} en Lilachat. Entra con tu número, toca el nombre de arriba en Chats › «Unirme con un código» y escribe: ${params.code}`;
+  return `Te invito al espacio de ${params.spaceName} en Lilachat. Descárgala en ${ENLACE_DE_DESCARGA} y entra con tu número. ${joinStep(params.code)}`;
+}
+
+/**
+ * The invitation by email, the first option for a company (José, 21/10): it
+ * goes from the inviter's own mail app, with who invites, where to get
+ * Lilachat on the phone or the computer, that one enters with the phone
+ * number, and the code.
+ */
+export function spaceInviteEmail(params: { spaceName: string; code: string; inviterName?: string }): { subject: string; body: string } {
+  const who = params.inviterName?.trim();
+  return {
+    subject: `Invitación al espacio de ${params.spaceName} en Lilachat`,
+    body: [
+      'Hola:',
+      '',
+      `${who ? `${who} te invita` : 'Te invitamos'} al espacio de ${params.spaceName} en Lilachat, donde coordinamos el trabajo del equipo.`,
+      '',
+      'Para unirte:',
+      `1. Descarga Lilachat en tu celular: ${ENLACE_DE_DESCARGA}`,
+      `   o úsalo en la computadora: ${LILACHAT_WEB_URL}`,
+      '2. Entra con tu número de celular.',
+      `3. ${joinStep(params.code)}`,
+      '',
+      'Tus chats personales no se comparten con la empresa.',
+    ].join('\n'),
+  };
+}
+
+/** The same invitation as a `mailto:` link: the mail app opens with the subject and the body, and the person picks the recipients. */
+export function spaceInviteMailto(params: { spaceName: string; code: string; inviterName?: string }): string {
+  const email = spaceInviteEmail(params);
+  return `mailto:?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.body)}`;
 }
 
 export type ChannelFilter = 'all' | 'public' | 'private';

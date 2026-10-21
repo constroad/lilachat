@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, Share, Text, TextInput, ToastAndroid, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { ArrowLeft, Copy, Share2 } from 'lucide-react-native';
-import { spaceInviteMessage, type ClientWorkspace } from '@lilachat/shared';
+import { ArrowLeft, Copy, Mail, Share2 } from 'lucide-react-native';
+import { spaceInviteEmail, spaceInviteMailto, spaceInviteMessage, type ClientWorkspace } from '@lilachat/shared';
 import { Modal } from '../ui/Modal';
 import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
@@ -14,12 +14,13 @@ import { addToSpace } from './spacesApi';
 const PHONE_DIGITS = 9;
 
 /**
- * «Invitar personas» (E1; design `e1-05-invitar`): the space's code to copy
- * or send by WhatsApp, and adding someone by number — in at once if they
- * already use Lilachat, otherwise invited until they sign up with it. Only
- * those who can invite see the code.
+ * «Invitar personas» (E1; design `e1-05-invitar`): the space's code sent by
+ * email first — a company invites by email (José, 21/10) — then by WhatsApp
+ * or copied, and adding someone by number — in at once if they already use
+ * Lilachat, otherwise invited until they sign up with it. Only those who can
+ * invite see the code.
  */
-export function InviteToSpaceScreen(props: { space: ClientWorkspace | null; jwt: string; onClose: () => void }) {
+export function InviteToSpaceScreen(props: { space: ClientWorkspace | null; jwt: string; inviterName?: string; onClose: () => void }) {
   const colors = useColores();
   const margins = useMargenes();
   const { space } = props;
@@ -40,6 +41,16 @@ export function InviteToSpaceScreen(props: { space: ClientWorkspace | null; jwt:
     if (!space.joinCode) return;
     await Clipboard.setStringAsync(space.joinCode);
     ToastAndroid.show('Código copiado', ToastAndroid.SHORT);
+  };
+  const sendByEmail = async () => {
+    if (!space.joinCode) return;
+    const invitation = { spaceName: space.name, code: space.joinCode, inviterName: props.inviterName };
+    const opened = await Linking.openURL(spaceInviteMailto(invitation)).then(() => true, () => false);
+    // No mail app: the share sheet still lets it go by Gmail, Outlook or anything else.
+    if (!opened) {
+      const email = spaceInviteEmail(invitation);
+      await Share.share({ message: email.body, title: email.subject });
+    }
   };
   const sendByWhatsApp = async () => {
     const opened = await Linking.openURL(`whatsapp://send?text=${encodeURIComponent(message)}`).then(() => true, () => false);
@@ -67,7 +78,7 @@ export function InviteToSpaceScreen(props: { space: ClientWorkspace | null; jwt:
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: margins.pie + 24 }} keyboardShouldPersistTaps="handled">
           <Text className="text-[12px] font-bold uppercase tracking-widest text-on-surface-variant">{space.name}</Text>
           <Text className="mt-1 text-[26px] font-bold text-on-surface">Invitar personas</Text>
-          <Text className="mt-1 text-[15px] text-on-surface-variant">Comparte el acceso al espacio para sumar a tu equipo.</Text>
+          <Text className="mt-1 text-[15px] text-on-surface-variant">Envía el código por correo o WhatsApp, o agrega a tu equipo por su número.</Text>
           {space.joinCode ? (
             <View testID="tarjeta-codigo-espacio" className="mt-5 overflow-hidden rounded-2xl border border-outline/15 bg-surface">
               <View className="h-[3px] bg-primary" />
@@ -77,14 +88,18 @@ export function InviteToSpaceScreen(props: { space: ClientWorkspace | null; jwt:
                   <Text className="rounded-full border border-en-linea/40 bg-en-linea/10 px-2 py-0.5 text-[11px] font-bold text-en-linea">ACTIVO</Text>
                 </View>
                 <Text testID="codigo-espacio" selectable className="my-4 text-center font-mono text-[34px] font-bold tracking-[6px] text-on-surface">{space.joinCode}</Text>
-                <View className="flex-row gap-3">
-                  <Pressable testID="btn-copiar-codigo" onPress={() => void copy()} className="min-h-[48px] flex-1 flex-row items-center justify-center gap-2 rounded-xl border border-outline/20">
-                    <Copy size={18} color={colors.primary} />
-                    <Text className="text-[15px] font-semibold text-on-surface">Copiar</Text>
-                  </Pressable>
+                <Pressable testID="btn-correo-codigo" onPress={() => void sendByEmail()} className="min-h-[52px] flex-row items-center justify-center gap-2 rounded-xl bg-primary">
+                  <Mail size={18} color={colors['on-primary']} />
+                  <Text className="text-[16px] font-bold text-on-primary">Enviar por correo</Text>
+                </Pressable>
+                <View className="mt-3 flex-row gap-3">
                   <Pressable testID="btn-whatsapp-codigo" onPress={() => void sendByWhatsApp()} className="min-h-[48px] flex-1 flex-row items-center justify-center gap-2 rounded-xl border border-outline/20">
                     <Share2 size={18} color={colors['en-linea']} />
                     <Text className="text-[15px] font-semibold text-on-surface">WhatsApp</Text>
+                  </Pressable>
+                  <Pressable testID="btn-copiar-codigo" onPress={() => void copy()} className="min-h-[48px] flex-1 flex-row items-center justify-center gap-2 rounded-xl border border-outline/20">
+                    <Copy size={18} color={colors.primary} />
+                    <Text className="text-[15px] font-semibold text-on-surface">Copiar</Text>
                   </Pressable>
                 </View>
               </View>

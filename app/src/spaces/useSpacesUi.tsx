@@ -99,7 +99,7 @@ export function useSpacesUi(params: { jwt: string; me: { name: string; phone: st
         }}
         onClose={() => setSheet(null)}
       />
-      {inviting || sheet === 'invite' ? <InviteToSpaceScreen space={inviting ?? current} jwt={jwt} onClose={() => { setInviting(null); setSheet(null); }} /> : null}
+      {inviting || sheet === 'invite' ? <InviteToSpaceScreen space={inviting ?? current} jwt={jwt} inviterName={params.me.name || undefined} onClose={() => { setInviting(null); setSheet(null); }} /> : null}
       {sheet === 'channels' ? <ChannelsScreen space={current} jwt={jwt} onOpenChannel={openChannel} onClose={() => setSheet(null)} /> : null}
     </>
   );

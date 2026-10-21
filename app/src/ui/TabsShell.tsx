@@ -215,7 +215,7 @@ export function TabsShell({
     const alLlegar = async (mensaje: {
       chatId: string;
       senderId: string;
-      kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'poll' | 'event' | 'sticker';
+      kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'poll' | 'event' | 'checklist' | 'sticker';
       body?: string;
       envelope?: unknown;
     }) => {

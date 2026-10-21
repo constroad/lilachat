@@ -3,7 +3,7 @@ import { FlatList, Linking, Pressable, ScrollView, Text, useWindowDimensions, Vi
 import { Modal } from '../ui/Modal';
 import { Image } from 'expo-image';
 import * as MediaLibrary from 'expo-media-library/legacy';
-import { ArrowLeft, BarChart3, Bell, CalendarDays, FileText, Image as ImageIcon, LayoutGrid, Send, type LucideIcon } from 'lucide-react-native';
+import { ArrowLeft, BarChart3, Bell, CalendarDays, ClipboardCheck, FileText, Image as ImageIcon, LayoutGrid, Send, type LucideIcon } from 'lucide-react-native';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { reportarError } from '../ui/reportarError';
@@ -20,7 +20,8 @@ const SEND_BUTTON_ROOM = 88;
 const STRIP_SIDE = 72;
 const STRIP_COUNT = 12;
 const SHEET_PADDING = 20;
-const OPTION_COLUMNS = 3;
+/** A 4-column grid (design `m-01`): «Organizar» has four with the checklist (21/10). */
+const OPTION_COLUMNS = 4;
 type Access = 'unknown' | MediaAccess;
 type Asset = GalleryItem & { id: string; duration: number };
 
@@ -60,6 +61,8 @@ export function AttachSheet(props: {
   onPickFile: () => void;
   onCreateEvent: () => void;
   onCreatePoll: () => void;
+  /** A checklist like Telegram's (backlog 8); not in a secret chat. */
+  onCreateChecklist?: () => void;
   /** The reminder that lives in the chat: in a group, its admins (19/10); in a 1:1 or a draft, anyone (20/10). */
   onCreateReminder?: () => void;
   etiquetaDelRecordatorio?: string;
@@ -115,6 +118,7 @@ export function AttachSheet(props: {
       options: [
         { key: 'event', label: 'Evento', Icon: CalendarDays, action: props.onCreateEvent, testID: 'attach-evento' },
         { key: 'poll', label: 'Encuesta', Icon: BarChart3, action: props.onCreatePoll, testID: 'attach-encuesta' },
+        ...(props.onCreateChecklist ? [{ key: 'checklist', label: 'Checklist', Icon: ClipboardCheck, action: props.onCreateChecklist, testID: 'attach-checklist' }] : []),
         ...(props.onCreateReminder ? [{ key: 'reminder', label: props.etiquetaDelRecordatorio ?? 'Recordatorio', Icon: Bell, action: props.onCreateReminder, testID: 'attach-recordatorio' }] : []),
       ],
     },
@@ -179,7 +183,7 @@ export function AttachSheet(props: {
                       <View className="h-14 w-14 items-center justify-center rounded-full border border-outline/15 bg-primary/10">
                         <Icon size={22} color={colors.primary} />
                       </View>
-                      <Text numberOfLines={1} className="mt-1.5 text-[13px] font-medium text-on-surface">{label}</Text>
+                      <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} className="mt-1.5 text-[13px] font-medium text-on-surface">{label}</Text>
                     </Pressable>
                   ))}
                 </View>

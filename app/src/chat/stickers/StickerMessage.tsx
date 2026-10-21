@@ -15,7 +15,8 @@ const SIDE = 160;
 
 /**
  * A sticker in the chat (José, 20/10; design `s1-app-panel-stickers`): no
- * bubble, the time in a pill on top. Swipe to reply and long-press to select
+ * bubble, the time in a small pill UNDER it, like WhatsApp (José, 21/10: on top
+ * it covered the sticker). Swipe to reply and long-press to select
  * (reactions, thread) like any message; a tap offers to keep it in «Mis
  * stickers» or as a favorite.
  */
@@ -60,10 +61,10 @@ export function StickerMessage(props: {
             delayLongPress={350}
           >
             <Image source={{ uri: item.media?.url }} style={{ width: SIDE, height: SIDE }} contentFit="contain" recyclingKey={item.clientKey} transition={120} />
-            <View className="absolute bottom-1 right-1 rounded-full bg-black/35 px-1.5 py-0.5">
-              <MetaDeMensaje hora={formatClock(item.at)} mia={mine} entrega={props.delivery} id={String(item.seq)} sobreFoto destacado={props.starred} />
-            </View>
           </Pressable>
+          <View className={`mt-0.5 rounded-full bg-black/35 px-1.5 py-0.5 ${mine ? 'self-end' : 'self-start'}`}>
+            <MetaDeMensaje hora={formatClock(item.at)} mia={mine} entrega={props.delivery} id={String(item.seq)} sobreFoto destacado={props.starred} />
+          </View>
         </View>
       </View>
     </DeslizarParaResponder>

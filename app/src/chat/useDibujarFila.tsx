@@ -75,6 +75,7 @@ export function useDibujarFila(p: {
             jwt={jwt}
             conVistaPrevia={!encrypted}
             nombres={esGrupo ? nombres : undefined}
+            everyName={nombres}
             entrega={mia ? resolveDeliveryState({ seq: isPending(item) ? null : item.seq, otherReadSeq: leidoHasta, otherDeliveredSeq: entregadoHasta }) : undefined}
             esGrupo={esGrupo}
             nombreAutor={isPending(item) ? undefined : nombres.get(String(item.senderId))}

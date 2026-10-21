@@ -68,7 +68,7 @@ export async function avisarMensaje(params: {
   chatName: string;
   senderName: string | null;
   esGrupo: boolean;
-  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'poll' | 'event' | 'sticker';
+  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'poll' | 'event' | 'checklist' | 'sticker';
   body: string;
   cifrado?: boolean;
 }): Promise<void> {

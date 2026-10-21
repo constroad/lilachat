@@ -2,10 +2,11 @@ import type { Credential } from '../auth/credentialStore';
 import { CreateEventScreen } from '../agenda/CreateEventScreen';
 import { CreatePollScreen } from '../agenda/CreatePollScreen';
 import { CreateReminderScreen } from '../agenda/CreateReminderScreen';
+import { CreateChecklistScreen } from '../agenda/CreateChecklistScreen';
 import type { AgendaReminder } from '../agenda/agendaApi';
 
 /** Qué se abre: crear algo, o editar un recordatorio del grupo (19/10). */
-export type QueSeCrea = 'event' | 'poll' | 'reminder' | { recordatorio: AgendaReminder } | null;
+export type QueSeCrea = 'event' | 'poll' | 'reminder' | 'checklist' | { recordatorio: AgendaReminder } | null;
 
 /**
  * Crear un evento o una encuesta desde la conversación (salió de
@@ -26,6 +27,8 @@ export function CrearDesdeElChat(props: {
   if (props.creando === 'reminder') {
     return <CreateReminderScreen visible credential={props.credential} grupo={props.chat} onClose={props.onCerrar} onCreated={props.onCerrar} />;
   }
+  // A checklist belongs to this chat (backlog 8).
+  if (props.creando === 'checklist') return <CreateChecklistScreen visible credential={props.credential} chat={props.chat} onClose={props.onCerrar} />;
   const Pantalla = props.creando === 'event' ? CreateEventScreen : CreatePollScreen;
   return (
     <Pantalla visible credential={props.credential} fixedChat={props.chat} onClose={props.onCerrar} onCreated={props.onCerrar} />

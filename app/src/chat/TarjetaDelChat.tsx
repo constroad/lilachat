@@ -5,6 +5,7 @@ import type { ChatMessage } from './useChat';
 import { EncuestaEnElChat } from './EncuestaEnElChat';
 import { EventoEnElChat } from './EventoEnElChat';
 import { RecordatorioEnElChat } from './RecordatorioEnElChat';
+import { ChecklistEnElChat } from './ChecklistEnElChat';
 import { AVATAR_DE_AUTOR, colorDeAutor } from './burbuja';
 import { DeslizarParaResponder } from './DeslizarParaResponder';
 import { Avatar } from '../ui/Avatar';
@@ -35,6 +36,8 @@ export function TarjetaDelChat(props: {
   yo: string;
   /** Solo en grupos: quién la publicó. */
   autor?: { nombre: string; foto?: string };
+  /** Everyone's name: who ticked each task of a checklist. */
+  everyName?: ReadonlyMap<string, string>;
   onSeleccionar?: (seq: number) => void;
   enSeleccion?: boolean;
   seleccionado?: boolean;
@@ -63,6 +66,8 @@ export function TarjetaDelChat(props: {
           <Pressable testID={`mantener-tarjeta-${item.seq}`} onLongPress={elegir} delayLongPress={350} className="w-full">
             {item.ref!.tipo === 'encuesta' ? (
               <EncuestaEnElChat pollId={item.ref!.id} jwt={props.jwt} yo={props.yo} />
+            ) : item.ref!.tipo === 'checklist' ? (
+              <ChecklistEnElChat checklistId={item.ref!.id} jwt={props.jwt} yo={props.yo} nameOf={(userId) => props.everyName?.get(userId) ?? 'Alguien'} />
             ) : item.ref!.tipo === 'recordatorio' ? (
               <RecordatorioEnElChat reminderId={item.ref!.id} jwt={props.jwt} onLongPress={elegir} />
             ) : (

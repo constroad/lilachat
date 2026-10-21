@@ -82,6 +82,7 @@ function FilaDeMensaje({
   jwt,
   conVistaPrevia = false,
   nombres,
+  everyName,
   entrega,
   esGrupo = false,
   nombreAutor,
@@ -107,6 +108,8 @@ function FilaDeMensaje({
   conVistaPrevia?: boolean;
   /** Los nombres del grupo, para dibujar cada @mención con el tuyo (18/10). */
   nombres?: ReadonlyMap<string, string>;
+  /** Everyone's name, also in a 1:1: a checklist says who ticked each task. */
+  everyName?: ReadonlyMap<string, string>;
   /**
    * El check, ya resuelto y SOLO en las propias (FL12, §49 #3). Antes llegaban
    * los cursores a todas las filas: cada acuse cambiaba una prop en todas y el
@@ -165,6 +168,7 @@ function FilaDeMensaje({
         jwt={jwt}
         yo={myUserId}
         autor={esGrupo ? { nombre: nombreAutor ?? '', foto: fotoAutor } : undefined}
+        everyName={everyName}
         onSeleccionar={onSeleccionar}
         enSeleccion={enSeleccion}
         seleccionado={seleccionado}

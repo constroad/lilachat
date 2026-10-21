@@ -6,6 +6,7 @@ import type { FlashListRef } from '@shopify/flash-list';
 import { ChatBottom } from './ChatBottom';
 import { etiquetaDeRecordatorioEnElChat, type MencionEnMensaje } from '@lilachat/shared';
 import { useFunActions } from './nudge';
+import { useCallBack } from './useCallBack';
 import { AttachSheet } from './AttachSheet';
 import { CrearDesdeElChat, type QueSeCrea } from './CrearDesdeElChat';
 import { AccionesDeTarjetaContext } from './accionesDeTarjeta';
@@ -207,10 +208,10 @@ export function ChatScreen({
   /** Me sacaron del grupo (FL9d): se lee, pero ya no se escribe. */
   const fueraDelGrupo = esGrupoChat && grupo.soyMiembro === false;
   const soyAdminDelGrupo = esGrupoChat && grupo.soyAdmin(credential.userId);
-  // Un admin edita el recordatorio del grupo tocando su tarjeta (José, 19/10).
-  // Editar el recordatorio del chat: en un grupo, sus admins; en un 1:1 o un borrador, cualquiera (20/10).
+  // Editar el recordatorio del chat tocando su tarjeta: en un grupo, sus admins; en un 1:1 o un borrador, cualquiera (19-20/10).
   const puedeEditarRecordatorios = !esGrupoChat || soyAdminDelGrupo;
-  const accionesDeTarjeta = useMemo(() => ({ editarRecordatorio: puedeEditarRecordatorios ? (recordatorio: AgendaReminder) => setCreando({ recordatorio }) : undefined }), [puedeEditarRecordatorios]);
+  const callBack = useCallBack({ chatId, name: nombreVisible, callName: chatName, jwt: credential.jwt, enabled: Boolean(otherUserId), llamar });
+  const accionesDeTarjeta = useMemo(() => ({ editarRecordatorio: puedeEditarRecordatorios ? (recordatorio: AgendaReminder) => setCreando({ recordatorio }) : undefined, callBack: callBack.actions }), [puedeEditarRecordatorios, callBack.actions]);
   // Fuera del grupo no se listan miembros: ya no es «QA Ana, Vos».
   const subtitulo = fueraDelGrupo ? '' : esBorrador ? 'Solo tú lo ves' : subtituloDelChat({
     esGrupo: esGrupoChat,
@@ -447,7 +448,6 @@ export function ChatScreen({
         chat={{ id: chatId, name: chatName, kind: esBorrador ? 'notas' : esGrupoChat ? 'group' : 'direct' }}
         onCerrar={() => setCreando(null)}
       />
-
       <ProgramarMensajeModal
         visible={programados.visible}
         texto={programados.texto}
@@ -495,7 +495,7 @@ export function ChatScreen({
         <Text className="px-4 pb-1 text-sm text-error" testID="error-media">
           {mediaError}
         </Text>
-      ) : null}
+      ) : null}{callBack.overlay}
 
       <ProgramadosDelChat pendientes={programados.pendientes} onCancelar={programados.cancelar} />
 
@@ -554,7 +554,7 @@ export function ChatScreen({
         onPickMedia={pickMedia}
         onPickGallery={() => void pickFromGallery()}
         onCreateEvent={() => setCreando('event')}
-        onCreatePoll={() => setCreando('poll')}
+        onCreatePoll={() => setCreando('poll')} onCreateChecklist={encrypted ? undefined : () => setCreando('checklist')}
         // 20/10: también en un 1:1 y en un borrador; en un grupo, sus admins. No en un chat secreto.
         onCreateReminder={!encrypted && (!esGrupoChat || soyAdminDelGrupo) ? () => setCreando('reminder') : undefined}
         etiquetaDelRecordatorio={etiquetaDeRecordatorioEnElChat(esBorrador ? 'notas' : esGrupoChat ? 'group' : 'direct')}

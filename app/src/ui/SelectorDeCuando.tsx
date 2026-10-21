@@ -6,7 +6,7 @@ import { combinarFecha, opcionesRapidas } from '@lilachat/shared';
 import { useColores } from './tema';
 
 const DIA = new Intl.DateTimeFormat('es-PE', { weekday: 'short', day: 'numeric', month: 'short' });
-const HORA = new Intl.DateTimeFormat('es-PE', { hour: 'numeric', minute: '2-digit', hour12: true });
+const HORA = new Intl.DateTimeFormat('es-PE', { hour: 'numeric', minute: '2-digit', hourCycle: 'h12' });
 
 /**
  * Elegir día y hora EXACTOS (17/10/2026), para avisos, eventos y mensajes

@@ -158,11 +158,18 @@ export function useFunActions(params: { chatId: string; isGroup: boolean; isDraf
   );
 }
 
-/** «Ana te mandó un zumbido» / «Mandaste un zumbido», centered like the group notices. */
+/**
+ * Nudges and winks sit on the side of who sent them, like messages (José, 21/10:
+ * centered, «no se sabe quién los mandó»): mine on the right in the bubble's
+ * tint, theirs on the left.
+ */
+const sideOf = (mine: boolean) => (mine ? 'self-end bg-primary/10' : 'self-start bg-surface');
+
+/** «Ana te mandó un zumbido» / «Mandaste un zumbido». */
 export function NudgeLine(props: { seq: number; mine: boolean; author?: string; at?: string }) {
   const palette = useColores();
   return (
-    <View testID="linea-zumbido" className="my-1.5 max-w-[88%] flex-row flex-wrap items-center justify-center gap-x-2 gap-y-0.5 self-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5">
+    <View testID="linea-zumbido" className={`my-1.5 max-w-[88%] flex-row flex-wrap items-center gap-x-2 gap-y-0.5 rounded-2xl border border-primary/20 px-3 py-1.5 ${sideOf(props.mine)}`}>
       <View className="h-6 w-6 items-center justify-center rounded-full bg-primary">
         <Vibrate size={13} color={palette['on-primary']} />
       </View>
@@ -188,7 +195,7 @@ export function WinkLine(props: { seq: number; wink?: string; mine: boolean; aut
   const known = winkById(props.wink);
   const lines = winkCardLines({ wink: props.wink, mine: props.mine, author: props.author, time: props.at ? formatClock(props.at) : undefined });
   return (
-    <View testID={`linea-guino-${props.seq}`} className="my-2 w-[300px] max-w-[88%] flex-row items-center gap-3 self-center rounded-2xl border border-primary/20 bg-surface p-2.5">
+    <View testID={`linea-guino-${props.seq}`} className={`my-2 w-[300px] max-w-[88%] flex-row items-center gap-3 rounded-2xl border border-primary/20 p-2.5 ${sideOf(props.mine)}`}>
       <View className="items-center justify-center overflow-hidden rounded-xl bg-primary/10" style={{ width: WINK_THUMB, height: WINK_THUMB }}>
         {known?.kind === 'character' ? <WinkCharacter wink={known} size={known.tile ? WINK_THUMB - 12 : WINK_THUMB * 0.62} /> : known ? <Text style={{ fontSize: 30 }}>{known.hero}</Text> : <Heart size={22} color={palette.primary} />}
       </View>

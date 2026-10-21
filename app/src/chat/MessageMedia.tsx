@@ -50,7 +50,7 @@ export function MessageMedia({ item, mine, selecting, onSelect, onOpen, flat = f
         >
           <Image
             recyclingKey={item.clientKey}
-            // Lo que acabo de mandar sigue con su copia local (no se baja de nuevo).
+            // What I just sent keeps its local copy (it is not downloaded again).
             source={{ uri: copiaLocalDe(item.clientKey) ?? miniaturaDe(item.media) }}
             style={photoStyle(item.media)}
             contentFit="cover"
@@ -76,8 +76,8 @@ export function MessageMedia({ item, mine, selecting, onSelect, onOpen, flat = f
           encima. El check aparece recien cuando el server la confirma, que
           es exactamente lo que hace WhatsApp. */}
       {isPending(item) && item.mediaUri && isFileMime(item.mediaMime) ? (
-        // Un archivo en vuelo tampoco se previsualiza: se veía un cuadro
-        // vacío del color de la burbuja con un porcentaje encima.
+        // A file in flight is not previewed either: it showed an empty square
+        // in the bubble's color with a percentage on top.
         <View
           testID={`archivo-pendiente-${item.clientKey}`}
           className="min-w-[200px] flex-row items-center gap-3 px-3 py-2.5"

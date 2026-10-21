@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ResultadoDelChequeo } from './actualizacion';
 import { buscarActualizacion, versionCodeActual } from './versionApi';
-import { decidirAvisoDeActualizacion, shouldRecheckVersion, type AvisoDeActualizacion } from './avisoDeActualizacion';
+import { decidirAvisoDeActualizacion, shouldRecheckVersion } from './avisoDeActualizacion';
+import type { AvisoDeActualizacion } from './avisoDeActualizacion';
 import { useAlVolver } from '../ui/useAlVolver';
 import { abrirActualizacion } from './abrirTienda';
 import { useActualizador, type InfoActualizacion } from './useActualizador';

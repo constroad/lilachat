@@ -9,8 +9,8 @@ const ONDA_PLANA = Array.from({ length: 40 }, () => 20);
 let playing: HTMLAudioElement | null = null;
 
 /**
- * A voice note in the bubble, like WhatsApp (W2; backlog 34, José 21/10: «se
- * siente torpe y no se puede adelantar ni retroceder»): one tap plays, the
+ * A voice note in the bubble, like WhatsApp (W2; backlog 34, José 21/10: it
+ * felt clumsy and could not be moved forward or back): one tap plays, the
  * waveform fills as it goes and can be clicked or dragged to jump (also
  * before playing), the time runs while it plays, the speed goes 1× · 1,5× ·
  * 2×, and only one note sounds at a time.

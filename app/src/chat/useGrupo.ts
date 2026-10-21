@@ -84,6 +84,6 @@ export function useGrupo(
   const mencionables = useCallback((yo: string) => lista.filter((uno) => uno.id !== yo), [lista]);
   const soyAdmin = useCallback((yo: string) => miembros.some((uno) => uno.id === yo && uno.role === 'admin'), [miembros]);
   /** Each member's role, for the pill next to their name in the Slack format (design `s-01`). */
-  const roles = useMemo(() => new Map(miembros.map((member) => [member.id, member.role ?? 'member'] as const)), [miembros]);
-  return { nombres, fotos, soyMiembro, mencionables, soyAdmin, roles };
+  const roleById = useMemo(() => new Map(miembros.map((member) => [member.id, member.role ?? 'member'] as const)), [miembros]);
+  return { nombres, fotos, soyMiembro, mencionables, soyAdmin, roles: roleById };
 }

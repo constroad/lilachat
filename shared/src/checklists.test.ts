@@ -147,8 +147,8 @@ describe('checklistSummaryLine', () => {
 });
 
 /**
- * Backlog 35 (José, 21/10: «cuando alguien complete un item, ¿debería llegar
- * una notificación?»): not to the whole chat; to whoever made the checklist
+ * Backlog 35 (José, 21/10: should completing a task send a notice?): not to
+ * the whole chat; to whoever made the checklist
  * and to the assignee of each task, never to who ticked it; several ticks in
  * a row go as one notice, and a completed checklist says so.
  */

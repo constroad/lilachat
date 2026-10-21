@@ -45,7 +45,7 @@ export function NotaDeVoz(props: PropsDeNota) {
   const [velocidad, setVelocidad] = useState(1);
   /** Touching the bar before the first play starts there (backlog 34). */
   const [startShare, setStartShare] = useState<number | null>(null);
-  if (activa) return <NotaDeVozActiva {...props} velocidadInicial={velocidad} startShare={startShare} />;
+  if (activa) return <ActiveVoiceNote {...props} velocidadInicial={velocidad} startShare={startShare} />;
   return (
     <VistaDeNota
       mia={props.mia}
@@ -66,7 +66,7 @@ export function NotaDeVoz(props: PropsDeNota) {
 }
 
 /** Ya tocada: el reproductor vive y arranca solo, porque es la respuesta al toque. */
-function NotaDeVozActiva({ id, url, durationMs, onda, mia, velocidadInicial, startShare }: PropsDeNota & { velocidadInicial: number; startShare: number | null }) {
+function ActiveVoiceNote({ id, url, durationMs, onda, mia, velocidadInicial, startShare }: PropsDeNota & { velocidadInicial: number; startShare: number | null }) {
   const player = useAudioPlayer(url);
   const estado = useAudioPlayerStatus(player);
   const [velocidad, setVelocidad] = useState(velocidadInicial);
@@ -119,9 +119,9 @@ function NotaDeVozActiva({ id, url, durationMs, onda, mia, velocidadInicial, sta
       velocidad={velocidad}
       onPlay={reproducir}
       onVelocidad={() => {
-        const nueva = nextPlaybackRate(velocidad);
-        setVelocidad(nueva);
-        player.setPlaybackRate(nueva);
+        const next = nextPlaybackRate(velocidad);
+        setVelocidad(next);
+        player.setPlaybackRate(next);
       }}
       loading={!estado.isLoaded}
       durationS={duracion}

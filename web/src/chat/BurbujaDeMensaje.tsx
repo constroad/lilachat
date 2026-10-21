@@ -82,7 +82,7 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
         {mensaje.estado === 'fallido' ? (
           <FalloDelEnvio mensaje={mensaje} onReintentar={props.onReintentar} onDescartar={props.onDescartar} />
         ) : ultimoDelGrupo && !mensaje.ref ? (
-          <PieDelMensaje mensaje={mensaje} mio={mio} chat={props.chat} />
+          <MessageFooter mensaje={mensaje} mio={mio} chat={props.chat} />
         ) : null}
       </div>
       <BotonDeReaccionar mensaje={mensaje} mio={mio} />
@@ -119,7 +119,7 @@ function FlatMessage(props: Props) {
           <p className="flex flex-wrap items-baseline gap-x-2">
             <span data-testid={`autor-${mensaje.clientKey}`} className={`truncate text-[15px] font-bold ${mine ? 'text-primary' : ''}`}>{name}</span>
             {badge ? <span className={`rounded-md px-1.5 py-px text-[11px] font-semibold ${mine ? 'bg-primary/10 text-primary' : 'bg-background text-on-surface-variant'}`}>{badge}</span> : null}
-            <PieDelMensaje mensaje={mensaje} mio={mine} chat={props.chat} inline />
+            <MessageFooter mensaje={mensaje} mio={mine} chat={props.chat} inline />
           </p>
         )}
         {mensaje.ref && !mensaje.deletedAt ? (
@@ -237,7 +237,7 @@ function ContenidoDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio
   );
 }
 
-function PieDelMensaje({ mensaje, mio, chat, inline = false }: { mensaje: MensajeEnPantalla; mio: boolean; chat: Props['chat']; /** Next to the name in a flat row, not under the bubble. */ inline?: boolean }) {
+function MessageFooter({ mensaje, mio, chat, inline = false }: { mensaje: MensajeEnPantalla; mio: boolean; chat: Props['chat']; /** Next to the name in a flat row, not under the bubble. */ inline?: boolean }) {
   const destacado = useContext(ConversacionContext)?.destacados?.has(mensaje.seq) ?? false;
   const estado = resolveDeliveryState({
     seq: mensaje.estado === 'enviando' ? null : mensaje.seq,

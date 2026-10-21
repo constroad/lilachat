@@ -286,6 +286,8 @@ const messageSchema = new Schema<Message>(
 // El orden de la conversación, y la garantía de que no haya dos con el mismo
 // número aunque dos escrituras corran a la vez.
 messageSchema.index({ chatId: 1, seq: 1 }, { unique: true });
+/** «Medios» (`mediaLibraryRoutes.ts`): a chat's photos, videos, documents or links, newest first. Created by hand in the vault with José's OK. */
+messageSchema.index({ chatId: 1, kind: 1, at: -1 });
 // La idempotencia, en la BASE y no solo en el código: es la última línea de
 // defensa contra el reintento de la cola offline. Lleva `senderId` porque dos
 // personas pueden generar la misma clave sin saberlo.

@@ -7,6 +7,7 @@ import { buildHttpAuthClient, type AuthClient } from './authClient.js';
 import { buildAuthRouter } from './authRoutes.js';
 import { buildChatRouter } from './chatRoutes.js';
 import { buildMediaRouter } from './mediaRoutes.js';
+import { buildMediaLibraryRouter } from './mediaLibraryRoutes.js';
 import { buildEventRouter } from './eventRoutes.js';
 import { buildPendientesRouter } from './pendientesRoutes.js';
 import { buildPushRouter } from './pushRoutes.js';
@@ -94,6 +95,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/chats', buildReenvioRouter());
   app.use('/api/chats', buildHilosRouter());
   app.use('/api/chats', buildChatRouter(deps.mediaUploader));
+  app.use('/api/media', buildMediaLibraryRouter());
   app.use('/api/media', buildMediaRouter(deps.mediaUploader));
   app.use('/api/agenda', buildRecordatoriosDeGrupoRouter(deps.mediaUploader));
   app.use('/api/agenda', buildPendientesRouter());

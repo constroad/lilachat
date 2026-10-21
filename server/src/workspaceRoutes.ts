@@ -10,6 +10,7 @@ import {
   listMembers,
   myWorkspaces,
   previewByCode,
+  rejectRequest,
   updateMember,
   updateWorkspace,
   WorkspaceError,
@@ -53,6 +54,10 @@ export function buildWorkspaceRouter(): Router {
   }));
   router.get('/:id/members', handled(async (req, res) => res.json({ members: await listMembers(req.params.id!, me(req), req.query.status) })));
   router.post('/:id/members', handled(async (req, res) => res.status(201).json({ member: await addByPhone(req.params.id!, me(req), req.body ?? {}) })));
+  router.delete('/:id/members/:memberId', handled(async (req, res) => {
+    await rejectRequest(req.params.id!, me(req), req.params.memberId!);
+    res.status(204).end();
+  }));
   router.patch('/:id/members/:memberId', handled(async (req, res) => res.json({ member: await updateMember(req.params.id!, me(req), req.params.memberId!, req.body ?? {}) })));
   router.get('/:id/channels', handled(async (req, res) => res.json({ channels: await listChannels(req.params.id!, me(req)) })));
   router.post('/:id/channels', handled(async (req, res) => res.status(201).json({ channel: await createChannel(req.params.id!, me(req), req.body ?? {}) })));

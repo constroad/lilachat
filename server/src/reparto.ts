@@ -171,6 +171,11 @@ export function desconectarDispositivo(deviceId: string): void {
   ioVivo?.in(deviceRoom(deviceId)).disconnectSockets(true);
 }
 
+/** Their company spaces changed (a request, approved, added, deactivated): the client reads them again. */
+export function avisarCambioDeEspacios(userIds: readonly string[]): void {
+  for (const userId of userIds) ioVivo?.to(userRoom(userId)).emit('workspaces.changed', {});
+}
+
 /** Se vinculó o se cerró una web: el teléfono relee su lista. */
 export function avisarCambioDeVinculos(userId: string): void {
   ioVivo?.to(userRoom(userId)).emit('vinculos.changed', {});

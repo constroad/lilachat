@@ -15,6 +15,9 @@ import { InvitationModel, UserModel } from './models.js';
 import { ChatModel, ReceiptModel } from './chatModels.js';
 import { WorkspaceMemberModel, WorkspaceModel, type Workspace, type WorkspaceMember } from './workspaceModels.js';
 import { leaveWorkspaceChats, restoreToWorkspaceChats, suspendFromWorkspaceChats } from './workspaceChats.js';
+import { membershipExtras } from './workspaceInfo.js';
+import { toAbsoluteMediaUrl } from './mediaClient.js';
+import { noticeSpacesChanged } from './workspaceNotices.js';
 
 /** A refusal with its HTTP status; the routes turn it into the response. */
 export class WorkspaceError extends Error {
@@ -94,18 +97,20 @@ export async function joinByCode(userId: Types.ObjectId, code: unknown): Promise
   if (existing) return { workspaceId: String(workspace._id), status: existing.status };
   const status = statusAfterJoin(workspace.joinPolicy);
   await WorkspaceMemberModel.create({ workspaceId: workspace._id, userId, phone: user.phone, role: 'member', status, ...(status === 'active' ? { joinedAt: new Date() } : {}) });
+  // A request waits: its admins see «Solicitudes» at once.
+  if (status === 'pending') noticeSpacesChanged(await adminIdsOf(workspace._id));
   return { workspaceId: String(workspace._id), status };
 }
 
 export async function myWorkspaces(userId: Types.ObjectId) {
-  const memberships = await WorkspaceMemberModel.find({ userId, status: { $in: ['active', 'pending', 'deactivated'] } }).select('workspaceId role status').lean();
+  const memberships = await WorkspaceMemberModel.find({ userId, status: { $in: ['active', 'pending', 'deactivated'] } }).select('workspaceId role status addedBy').lean();
   const ids = memberships.map((m) => m.workspaceId);
-  const [workspaces, counts, unread] = await Promise.all([WorkspaceModel.find({ _id: { $in: ids } }).lean<Workspace[]>(), activeMembersOf(ids), unreadChatsOf(userId, ids)]);
+  const [workspaces, counts, unread, extras] = await Promise.all([WorkspaceModel.find({ _id: { $in: ids } }).lean<Workspace[]>(), activeMembersOf(ids), unreadChatsOf(userId, ids), membershipExtras(userId, memberships)]);
   const byId = new Map(workspaces.map((w) => [String(w._id), w]));
   return memberships.flatMap((m) => {
     const workspace = byId.get(String(m.workspaceId));
     const key = String(m.workspaceId);
-    return workspace ? [{ ...toClientWorkspace(workspace, m), members: counts.get(key) ?? 0, unreadChats: m.status === 'active' ? (unread.get(key) ?? 0) : 0 }] : [];
+    return workspace ? [{ ...toClientWorkspace(workspace, m), members: counts.get(key) ?? 0, unreadChats: m.status === 'active' ? (unread.get(key) ?? 0) : 0, ...extras.get(key) }] : [];
   });
 }
 
@@ -128,6 +133,11 @@ async function unreadChatsOf(userId: Types.ObjectId, workspaceIds: Types.ObjectI
   return unread;
 }
 
+async function adminIdsOf(workspaceId: Types.ObjectId): Promise<Types.ObjectId[]> {
+  const admins = await WorkspaceMemberModel.find({ workspaceId, status: 'active', role: { $in: ['owner', 'admin'] } }).select('userId').lean();
+  return admins.flatMap((admin) => (admin.userId ? [admin.userId] : []));
+}
+
 /** The person's ACTIVE membership in the space, or a 404 that says nothing about the space. */
 export async function actorIn(workspaceId: string, userId: Types.ObjectId): Promise<WorkspaceMember> {
   const member = await WorkspaceMemberModel.findOne({ workspaceId: asId(workspaceId), userId, status: 'active' }).lean<WorkspaceMember | null>();
@@ -140,7 +150,8 @@ async function toClientMembers(members: WorkspaceMember[]) {
   const byId = new Map(users.map((u) => [String(u._id), u]));
   return members.map((m) => {
     const user = m.userId ? byId.get(String(m.userId)) : undefined;
-    return { id: String(m._id), userId: m.userId ? String(m.userId) : undefined, name: user?.name, avatarUrl: user?.avatarUrl, phone: m.phone, role: m.role, status: m.status, title: m.title, area: m.area };
+    // The photo is kept relative and served absolute, like every media (`messageView.ts`).
+    return { id: String(m._id), userId: m.userId ? String(m.userId) : undefined, name: user?.name, avatarUrl: user?.avatarUrl ? toAbsoluteMediaUrl(user.avatarUrl) : undefined, phone: m.phone, role: m.role, status: m.status, title: m.title, area: m.area, joinedAt: m.joinedAt, requestedAt: m.createdAt };
   });
 }
 
@@ -166,6 +177,7 @@ export async function addByPhone(workspaceId: string, actorId: Types.ObjectId, i
   ).lean<WorkspaceMember>();
   // Without an account they could not sign up: the space invites them to Lilachat too.
   if (!user) await InvitationModel.updateOne({ phone }, { $setOnInsert: { phone, status: 'invited' } }, { upsert: true });
+  else noticeSpacesChanged([user._id]);
   return (await toClientMembers([member]))[0]!;
 }
 
@@ -193,7 +205,19 @@ export async function updateMember(workspaceId: string, actorId: Types.ObjectId,
   if (!updated) throw new WorkspaceError(404, 'Esa persona no está en el espacio.');
   if (target.userId && set.status === 'deactivated') await suspendFromWorkspaceChats(actor.workspaceId, target.userId);
   if (target.userId && set.status === 'active' && target.status === 'deactivated') await restoreToWorkspaceChats(actor.workspaceId, target.userId);
+  noticeSpacesChanged([target.userId]);
   return (await toClientMembers([updated]))[0]!;
+}
+
+/** «Rechazar» a request (design `e1-11`): it was never in, so it goes away instead of landing in «Desactivados». */
+export async function rejectRequest(workspaceId: string, actorId: Types.ObjectId, memberId: string): Promise<void> {
+  const actor = await actorIn(workspaceId, actorId);
+  if (!canManageMembers(actor.role)) throw new WorkspaceError(403, ONLY_ADMINS);
+  const target = await WorkspaceMemberModel.findOne({ _id: asId(memberId), workspaceId: actor.workspaceId }).select('status userId').lean();
+  if (!target) throw new WorkspaceError(404, 'Esa persona no está en el espacio.');
+  if (target.status !== 'pending') throw new WorkspaceError(409, 'Solo se rechaza una solicitud; a un miembro se le desactiva.');
+  await WorkspaceMemberModel.deleteOne({ _id: target._id, status: 'pending' });
+  noticeSpacesChanged([target.userId]);
 }
 
 export async function updateWorkspace(workspaceId: string, actorId: Types.ObjectId, change: { name?: unknown; rubro?: unknown; joinPolicy?: unknown; newCode?: unknown }) {

@@ -4892,6 +4892,122 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 85. Modo empresa completo, el riel como WhatsApp Web con Medios, invitar por correo y «Responder» con teclado (21/10/2026, 0.1.125)
+
+**Pantallas de empresa** (diseños `e1-08`…`e1-14`), en la app y en la web.
+- Arriba de la lista del espacio va «Espacio de trabajo»:
+  - Directorio de equipo, para todos.
+  - Miembros y roles, Solicitudes (con cuántas esperan) y Ajustes del
+    espacio, para quien lo administra.
+- **Directorio** (`e1-08`): búsqueda por nombre, cargo, área o teléfono, chips
+  por área con su cuenta, «EN LÍNEA» y un botón para escribir. Con el «+» de
+  MENSAJES DIRECTOS es el selector del 1:1 dentro del espacio.
+- **Perfil** (`e1-09`): rol, área y cargo, «Mensaje», teléfono para copiar,
+  «Se unió» y los canales en común (salen de los chats del espacio). Llamar
+  y video siguen dentro del chat.
+- **Miembros y roles** (`e1-10`): Activos · Pendientes · Desactivados con su
+  cuenta.
+  - El ⋮ ofrece solo lo que el rol permite (`memberActions`, las mismas reglas
+    del server): hacer admin, volver a miembro, cambiar a invitado,
+    desactivar (con confirmación) y reactivar.
+- **Solicitudes** (`e1-11`): tarjeta con cuándo entró con el código, el área
+  (Obra · Planta · Flota · Admin.) y el cargo, y «Rechazar» o «Aprobar».
+  Rechazar borra la solicitud (`DELETE /api/workspaces/:id/members/:memberId`,
+  solo pendientes) y no la manda a Desactivados.
+- **Ajustes** (`e1-12`): nombre, rubro, aprobación y «Cambiar código» (el
+  anterior deja de funcionar). Subir el logo espera dónde guardarlo.
+- **«Te agregaron»** (`e1-13`): una vez por espacio al que otra persona me
+  agregó.
+  - Lo vistos se guardan en el dispositivo (`lilachat.pref.seenSpaces` en la
+    app, `lilachat.espacios-vistos` en la web).
+  - La primera lista solo siembra lo visto, así que actualizar no saluda los
+    espacios que ya estaban.
+- **«Ya no tienes acceso»** (`e1-14`): si me desactivan en el espacio abierto,
+  vuelvo a Personal con esa pantalla, sus admins y «Hablar con un admin», que
+  abre un 1:1 personal.
+- **Grupo nuevo dentro del espacio**: el «+» de GRUPOS, con nombre y personas
+  del espacio.
+
+**Server.**
+- `GET /api/workspaces` suma lo que piden esas pantallas (`workspaceInfo.ts`):
+  - `pendingRequests`, para quien aprueba.
+  - `addedBy`, quién me agregó.
+  - `admins`, solo si me desactivaron.
+- Los miembros traen `joinedAt`, `requestedAt` y la foto absoluta.
+- **Aviso en vivo `workspaces.changed`** (`workspaceNotices.ts`, emitido por el
+  socket): les llega a los admins cuando hay una solicitud nueva, y a la
+  persona cuando la aprueban, la agregan, la rechazan, la desactivan o le
+  cambian el rol. App y web releen sus espacios. Así «Solicitudes 1», «te
+  agregaron» y «sin acceso» aparecen sin recargar. La app también relee al
+  volver y al tirar la lista hacia abajo.
+- Shared: `workspaceMembers.ts` (13 tests) con `roleLabel`, `memberActions`,
+  `changeForAction`, `directoryAreas`, `filterMembers`, `SPACE_AREAS`,
+  `requestedAgo`, `joinedLabel` y `newlyAddedSpaces`, y el tipo
+  `ClientWorkspaceMember`.
+
+**Riel de la web como WhatsApp Web** (pendiente 38; `rail/AppRail.tsx`).
+- Arriba: Chats, Pendientes y encuestas, y Destacados.
+- Al medio: Personal y cada espacio, o «+» si todavía no hay ninguno.
+- Abajo: Medios, Ajustes y mi perfil.
+- Se muestra siempre que se ve la lista. El pie de la lista con mi nombre y el
+  engranaje sale: el riel ya los tiene.
+- Al cambiar de espacio se cierra el chat abierto. En el celular el chat del
+  espacio anterior tapaba la lista.
+- Las listas encogen junto al riel a 390 px (`min-w-0`).
+- Llamadas entra al riel cuando haya un historial de llamadas que mostrar.
+
+**Medios** (`GET /api/media/library?type=photos|videos|files|links&workspace=&before=`).
+- Fotos, videos, documentos (una nota de voz no cuenta) y enlaces: el primer
+  enlace de cada mensaje, con `primerEnlace`.
+- De los chats personales o de un espacio, nunca un chat secreto ni uno
+  borrado. Del más nuevo al más viejo, de a 60.
+- Por mes en las pantallas (`mediaMonthSections`: «Este mes», «Septiembre»…).
+  Un toque abre el chat en ese mensaje.
+- Web: el botón del riel. App: Ajustes › Medios, del espacio abierto o
+  personal.
+- Índice declarado `{chatId, kind, at}`, que se crea a mano en la bóveda con
+  el OK de José. Sin él la consulta funciona, pero lee los mensajes por
+  `chatId`.
+
+**Invitar por correo primero** (José, 21/10).
+- «Enviar por correo» es el botón principal; después van WhatsApp y Copiar.
+- Usa `mailto:` desde el correo de quien invita, con asunto y cuerpo de
+  `spaceInviteEmail`.
+- El correo enviado por el server queda para cuando constroad-auth tenga un
+  texto que diga que se entra con el número e incluya el código (§84).
+
+**«Responder» abre el teclado** (José, 21/10, como WhatsApp): en la app la
+barra toma el foco 250 ms después de que se cierra el menú del mensaje. La web
+ya lo hacía.
+
+**El control segmentado** de la app no parte una etiqueta en dos renglones
+(«Documentos» con la letra grande): una línea, con la letra un poco más chica
+si hace falta.
+
+**E2E.**
+- Web, en Chrome sin ventana, como QA Ana con QA Beto por API, a 1280 y
+  390 px:
+  - el riel y Medios;
+  - crear un espacio, la solicitud de Beto aprobada con área y cargo, y Beto
+    hecho admin;
+  - un 1:1 desde el directorio con un enlace que sale en Medios del espacio;
+  - un grupo y los ajustes;
+  - «te agregaron» y «sin acceso».
+  Sin errores en la página ni scroll lateral.
+- App en el emulador, con la cuenta de José en espacios de prueba:
+  - «Responder» con el teclado arriba;
+  - la solicitud que aparece en vivo, aprobada con área y cargo, y el rol de
+    admin;
+  - directorio, perfil y «Mensaje»; el grupo nuevo y los ajustes;
+  - Medios con el enlace, que abre el chat en el mensaje;
+  - «te agregaron» y «sin acceso» en vivo.
+- Limpieza verificada en cero.
+
+**Lo que queda del modo empresa.** Subir el logo, Hilos y Menciones, la
+sección APPS, el cargo del espacio en la pastilla del chat y Llamadas en el
+riel. La deuda de la §84 sigue: archivar dentro de un espacio no esconde el
+chat de esa lista.
+
 ## 84. Espacios de empresa y canales en la app y en la web, y los arreglos del zumbido y los stickers (21/10/2026, 0.1.124)
 
 **Server** (`server/src/workspaces.ts`, 19 tests).
@@ -8170,7 +8286,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
       Falta la **llave de GIPHY**: la saca José en developers.giphy.com y la
       carga en Torre; sin llave la pestaña no aparece.
 
-38. **Riel lateral como WhatsApp Web, y el botón de medios** (José, 21/10,
+38. ✅ (§85, 0.1.125; falta Llamadas) **Riel lateral como WhatsApp Web, y el botón de medios** (José, 21/10,
     con captura de WhatsApp Web; no necesita Stitch). WhatsApp Web tiene a la
     izquierda un riel de íconos que agrupa Chats, Llamadas, Estados, Canales y
     Comunidades, y abajo Medios, Ajustes y el perfil. Propuesta:

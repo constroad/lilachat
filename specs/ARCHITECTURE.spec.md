@@ -4892,6 +4892,70 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 80. Checklist como Telegram, devolver la llamada perdida, guiños al lado de quien los mandó y la web (21/10/2026, 0.1.121)
+
+**Checklist** (pendiente 8; diseños `k-01-checklist-en-el-chat` y
+`k-02-crear-checklist`).
+- **Modelo:** `ChecklistModel` (`server/src/checklistModel.ts`): título y
+  tareas con `id` propio, quién la agregó, `doneBy` y `doneAt`, más
+  `othersCanMark` y `othersCanAdd`. Índice `{chatId, createdAt}`.
+- **Rutas** (`checklistRoutes.ts`, 5 tests), bajo `/api/agenda/checklists`:
+  crear, leer, marcar o desmarcar una tarea, agregar una tarea y borrar.
+  - Cualquier miembro de un chat no secreto lo crea y su tarjeta sale al chat
+    («Checklist: …», `kind: 'checklist'`, `ref.tipo: 'checklist'`).
+  - Quien lo creó marca, agrega y borra siempre; los demás, solo si lo
+    permite.
+  - Marcar toca solo esa tarea, con el estado que tenía como guardia: si dos
+    marcan a la vez, el segundo recibe 409 y la tarjeta se recarga.
+  - Cada cambio avisa `ref.changed` y las tarjetas se actualizan en vivo.
+- **Reglas puras** (`shared/src/checklists.ts`, 9 tests): validación (hasta 30
+  tareas de 200 letras, sin repetidas), permisos, marcar y progreso. La lista
+  de chats muestra su ícono y el título; el aviso dice «Checklist: …».
+- **App:**
+  - «Checklist» en el clip (Organizar). La grilla pasó a 4 columnas: con 3,
+    «Recordatorio» quedaba cortado.
+  - Pantalla «Nuevo checklist» y tarjeta en el chat, con progreso, quién marcó
+    cada tarea y cuándo, y «Agregar tarea». El check sale al instante y vuelve
+    atrás si el server lo rechaza.
+- **Web:** la misma tarjeta (`tarjetas/ChecklistEnElChat`) y «Checklist» en
+  el menú «+».
+- **Ya funciona sobre la tarjeta:** reaccionar, responder en hilo y deslizar
+  para responder, igual que una encuesta.
+- **E2E:**
+  - App: creado en el chat QA Ana; marqué una tarea en el emulador y QA Ana
+    otra por API. Se vio en vivo («Tú · 1:06», «QA Ana · 1:07», 2 de 3).
+  - Web: QA Ana marcó la tercera (3 de 3).
+- **Lo que falta** (pendiente 30).
+
+**Devolver la llamada perdida** (pendiente 23).
+- En la línea «Llamada perdida» del 1:1 van «Llamar» y «Recordarme». Recordarme
+  ofrece En 15 min · En 1 hora · Esta tarde · Esta noche · Mañana
+  (`callBackOptions`).
+- Crea un recordatorio PERSONAL: sin `chatId`, el otro no lo ve en el chat. Lleva
+  `callBack {chatId, video}`; al sonar, el aviso abre ese chat.
+- El server solo lo acepta desde un 1:1 propio.
+- En la web solo va «Recordarme devolverla», porque la web no llama.
+- E2E con una llamada perdida real en el emulador. El recordatorio quedó con
+  `chatId: null` y el `callBack` del chat; ya está borrado (0 quedaron).
+
+**Guiños y zumbidos al lado de quien los mandó:** los míos a la derecha en
+lila, los del otro a la izquierda en blanco, como los mensajes. App y web.
+
+**La hora del sticker** va debajo, como WhatsApp. Encima tapaba el sticker; la
+web ya la tenía abajo.
+
+**Web:**
+- El logo lleva al inicio.
+- Botón claro/oscuro a la vista (`ThemeToggle`, `toggledTheme` con test).
+  Ajustes › Apariencia sigue ofreciendo «Sistema».
+- La hora salía «0:37 p. m.»: `hour12: true` deja que algunos navegadores usen
+  el reloj de 0 a 11. Ahora es `hourCycle: 'h12'` en `formatClock` y en los
+  otros formateadores.
+
+**Nota de E2E:** en el build de desarrollo, una «r» doble tecleada fuera de un
+campo recarga la app (el atajo «R R» de React Native). Con el teclado de
+hardware del emulador pasó con «reservada». No existe en el APK publicado.
+
 ## 79. Guiños fluidos en Android, miniaturas, hilos grandes y el zumbido para quien lo manda (21/10/2026, 0.1.120)
 
 José, 21/10, probando la 0.1.119 en su teléfono:
@@ -7464,7 +7528,7 @@ tacha con la versión que lo cierra.
    (páginas como imágenes, sin dependencias) y existe `react-native-pdf`
    (MIT); la web usa el visor del navegador o pdf.js con rangos (como el visor
    de Lab Vial). Hoy un PDF se abre con otra app.
-8. **Checklist en los chats, como Telegram**: lista con tareas que cualquiera
+8. ~~**Checklist en los chats, como Telegram**~~ **Hecho (§80, 0.1.121); lo que sigue en el 30.**: lista con tareas que cualquiera
    del chat (o solo quien la creó, según se configure) puede marcar; cada ítem
    dice quién lo marcó; se agregan ítems después; se ve como tarjeta y se
    actualiza en vivo (`ref.changed`). App y web.
@@ -7627,7 +7691,7 @@ tacha con la versión que lo cierra.
     actividad pasa a segundo plano (bloquear la pantalla cuenta), salvo que
     el modo de audio pida `shouldPlayInBackground` / `allowsBackgroundRecording`;
     la app no lo pedía. **Arreglado (§68).**
-23. **Recordatorio para devolver una llamada perdida** (José, 21/10).
+23. ~~**Recordatorio para devolver una llamada perdida**~~ **Hecho (§80, 0.1.121).** (José, 21/10).
     Desde la línea «Llamada perdida» (en el chat y en la pestaña de llamadas)
     y desde el aviso de la llamada perdida: «Recordarme devolverla» abre el
     mismo selector de recordatorio (en 15 min · 1 h · esta tarde · mañana ·
@@ -7654,6 +7718,14 @@ tacha con la versión que lo cierra.
     zumbido pasa al panel del botón de emoji, junto a Emoji · Stickers ·
     Guiños. Así la galería gana espacio. En la web, igual en el menú «+».
     **Hecho (§74, 21/10).**
+
+30. **Checklist, segunda vuelta** (José, 21/10: «agregar responsables y un ETA; el checklist se podría perder en los mensajes»):
+    - por tarea, un responsable opcional (un miembro del chat) y «para cuándo»; vencida, «Atrasada» en rojo;
+    - al crearlo, «Fijar en el chat» encendido por defecto: queda en la franja de fijados;
+    - en Info del chat, una sección «Checklists» con el progreso de cada uno;
+    - en Pendientes, «Mis tareas»: lo asignado a mí en todos los chats, primero lo vencido;
+    - crear un checklist dentro de un hilo.
+31. **Stickers animados** (José, 21/10, para la siguiente ronda): stickers con movimiento (WebP animado o Lottie), en el panel y en el chat, sin pesar en la memoria del teléfono.
 
 ### Guiños y zumbido (análisis, 20/10)
 

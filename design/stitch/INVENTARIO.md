@@ -123,4 +123,6 @@ Las capturas viven SOLO en la máquina (`design/stitch/`, en `.gitignore` desde 
 | s-02-hilo-abierto | Hilo abierto en formato Slack | móvil, tablet, escritorio | Pendiente de aprobación |
 | s-03-lista-con-secciones | Lista de chats por secciones (Canales · Grupos · Mensajes directos · Apps) | móvil, tablet, escritorio | Pendiente de aprobación |
 | s-04-directo-guino-e-hilo | Chat directo con burbujas, tarjeta del guiño con miniatura y resumen de hilo grande | móvil, tablet, escritorio | Referencia de la tarjeta del guiño y el chip de hilo (21/10) |
+| k-01-checklist-en-el-chat | Tarjeta de checklist en el chat (progreso, quién marcó, «Agregar tarea») | móvil, escritorio | Fuente de la tarjeta (§80). Sin las notas por tarea ni el aviso de CONSTROAD (inventados) |
+| k-02-crear-checklist | Crear checklist (título, tareas, ajustes) | móvil, escritorio | Fuente de «Nuevo checklist» (§80). Sin «Reordenar» |
 | w-a … w-e | Primera versión de personajes, chibi e infantil | escritorio | NO vale: rechazada por infantil (§74) |

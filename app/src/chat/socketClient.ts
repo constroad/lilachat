@@ -1,4 +1,5 @@
-import { type MencionEnMensaje, type MessageRef, type ResumenDeHiloEnCliente, type Reaccion, avisarTarjeta, refrescarTodas } from '@lilachat/shared';
+import type { MencionEnMensaje, MessageRef, ResumenDeHiloEnCliente, Reaccion } from '@lilachat/shared';
+import { avisarTarjeta, refrescarTodas } from '@lilachat/shared';
 import { io, type Socket } from 'socket.io-client';
 import { pausaDelSocket, queHacerConElSocket, type PausaDelSocket } from './servicioDeConexion';
 import { registrarPerf } from '../diagnostico/diagnostico';

@@ -2,6 +2,8 @@ import { useCallback, type MutableRefObject } from 'react';
 import type { Socket } from 'socket.io-client';
 import { api, type ApiResult } from '../api';
 import { cambiosDeAjustes, type AccionDelChat } from '../chat/menuDelChat';
+import { levelChanges } from '../chat/menuDelChat';
+import type { NotificationLevel } from '@lilachat/shared';
 import type { ChatSummary } from '../chat/types';
 import type { BaseLocal } from '../local/baseLocal';
 import { ajustarChatLocal, quitarChatLocal, type AjusteLocal } from '../local/chatsLocales';
@@ -40,22 +42,42 @@ export function useAccionesSobreChats(params: {
     [jwt, renovarSesion]
   );
 
+  /** Local first, then the server; if it refuses, the row goes back and the reason is told. */
+  const applySettings = useCallback(
+    async (chat: ChatSummary, onScreen: AjusteLocal, sent: object): Promise<boolean> => {
+      if (!base) return false;
+      invalidarCargas();
+      const previous = await ajustarChatLocal(base, chat.id, onScreen);
+      const response = await pedir(`/chats/${chat.id}/ajustes`, { method: 'PATCH', body: sent });
+      if (!response.ok) {
+        if (previous) await ajustarChatLocal(base, chat.id, previous);
+        onAviso(response.message);
+        return false;
+      }
+      return true;
+    },
+    [base, pedir, invalidarCargas, onAviso]
+  );
+
   const ajustar = useCallback(
     async (chat: ChatSummary, accion: AccionDelChat) => {
       const cambios = cambiosDeAjustes(accion);
-      if (!base || !cambios) return;
+      if (!cambios) return;
       const local: AjusteLocal = accion === 'leido' ? { ...cambios, unread: 0 } : cambios;
-      invalidarCargas();
-      const antes = await ajustarChatLocal(base, chat.id, local);
-      const respuesta = await pedir(`/chats/${chat.id}/ajustes`, { method: 'PATCH', body: cambios });
-      if (!respuesta.ok) {
-        if (antes) await ajustarChatLocal(base, chat.id, antes);
-        return onAviso(respuesta.message);
-      }
+      if (!(await applySettings(chat, local, cambios))) return;
       if (accion === 'leido' && chat.lastSeq > 0) socket.current?.emit('read.set', { chatId: chat.id, seq: chat.lastSeq });
       void cargarChats();
     },
-    [base, pedir, socket, cargarChats, invalidarCargas, onAviso]
+    [applySettings, socket, cargarChats]
+  );
+
+  /** E3b: everything / only mentions / nothing for a group, from «Info.». */
+  const setLevel = useCallback(
+    async (chat: ChatSummary, level: NotificationLevel) => {
+      const changes = levelChanges(level);
+      if (await applySettings(chat, changes, changes)) void cargarChats();
+    },
+    [applySettings, cargarChats]
   );
 
   const eliminar = useCallback(
@@ -89,5 +111,5 @@ export function useAccionesSobreChats(params: {
     [ajustar, eliminar, salir]
   );
 
-  return { aplicar };
+  return { aplicar, setLevel };
 }

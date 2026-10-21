@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { completarMencion, consultaDeMencion, rangosDeMenciones, type ConsultaDeMencion, type MencionElegida, type MencionEnMensaje } from '@lilachat/shared';
-import { filtrarMencionables, type Mencionable } from './SugerenciasDeMencion';
+import { mentionOptions } from '@lilachat/shared';
+import { filtrarMencionables, type Mencionable, type MentionSuggestion } from './SugerenciasDeMencion';
 
 /**
  * Las @menciones del campo de escribir (W2), con el motor de la app
@@ -11,7 +12,10 @@ export function useMencionesDelCampo(miembros: readonly Mencionable[] | undefine
   const [consulta, setConsulta] = useState<ConsultaDeMencion | null>(null);
   const [activa, setActiva] = useState(0);
   const elegidas = useRef<MencionElegida[]>([]);
-  const opciones = consulta && miembros?.length ? filtrarMencionables(miembros, consulta.consulta) : [];
+  // E3b: in a group (members given) the group mentions come first.
+  const withGroup: readonly MentionSuggestion[] | undefined = mentionOptions(miembros);
+  // The filter keeps the same objects, so the hint of a group mention survives.
+  const opciones = (consulta && withGroup ? filtrarMencionables(withGroup, consulta.consulta) : []) as MentionSuggestion[];
 
   const alCambiar = (texto: string, cursor: number) => {
     setConsulta(miembros?.length ? consultaDeMencion(texto, cursor) : null);

@@ -1,4 +1,5 @@
-import { Bell, LogOut, Trash2, X } from 'lucide-react';
+import { Bell, BellOff, LogOut, Trash2, X } from 'lucide-react';
+import { NOTIFICATION_LEVEL_TEXT, type NotificationLevel } from '@lilachat/shared';
 import { useState, type ReactNode } from 'react';
 import type { BaseLocal } from '../../local/baseLocal';
 import { ConfirmarAccionDeChat } from '../MenuDeChat';
@@ -9,6 +10,7 @@ import { ArchivosDelChat } from './ArchivosDelChat';
 import { IdentidadDelChat } from './IdentidadDelChat';
 import { DescripcionDelChat } from './DescripcionDelChat';
 import { armarInfo } from './infoDelChat';
+import { NotificationLevelDialog } from './NotificationLevelDialog';
 import { ParticipantesDelChat } from './ParticipantesDelChat';
 import { useEditarChat } from './useEditarChat';
 
@@ -27,6 +29,8 @@ export function PanelDeInfo(props: {
   onAviso: (texto: string) => void;
   onCambio: () => void;
   onAccionDeChat: (chat: ChatSummary, accion: AccionDelChat) => void;
+  /** E3b: a group's notification level. */
+  onLevel: (chat: ChatSummary, level: NotificationLevel) => void;
   onVerFoto: (mensaje: MensajeEnPantalla) => void;
   /** Tarjetas que arma la conversación (20/10: los fijados), antes de los archivos. */
   tarjetas?: ReactNode;
@@ -36,6 +40,8 @@ export function PanelDeInfo(props: {
   const editar = useEditarChat({ chatId: chat.id, jwt: props.jwt, onCambio: props.onCambio, onAviso: props.onAviso });
   const [confirmando, setConfirmando] = useState<AccionDelChat | null>(null);
   const silenciado = Boolean(chat.muted ?? detalle?.silenciado);
+  const level: NotificationLevel = chat.avisos ?? (silenciado ? 'menciones' : 'todo');
+  const [choosingLevel, setChoosingLevel] = useState(false);
   return (
     <aside data-testid="panel-info" className="fixed inset-0 z-30 flex flex-col bg-background lg:static lg:z-auto lg:w-[400px] lg:shrink-0 lg:border-l lg:border-outline/15">
       <header className="flex items-center gap-3 border-b border-outline/15 bg-surface px-3 py-3">
@@ -55,7 +61,24 @@ export function PanelDeInfo(props: {
           onCambiarFoto={(archivo) => void editar.cambiarFoto(archivo)}
         />
         {chat.kind !== 'direct' ? <DescripcionDelChat descripcion={detalle?.descripcion} editable={info.puedeEditar} onGuardar={editar.describir} /> : null}
-        {chat.kind === 'notas' ? null : (
+        {chat.kind === 'group' ? (
+          <button type="button" data-testid="btn-avisos" onClick={() => setChoosingLevel(true)} className="mt-2 flex min-h-[56px] w-full items-center gap-4 bg-surface px-6 text-left hover:bg-background">
+            {level === 'todo' ? <Bell size={18} className="text-on-surface-variant" /> : <BellOff size={18} className="text-on-surface-variant" />}
+            <span className="flex-1 text-[15px]">Avisos</span>
+            <span className="text-sm text-on-surface-variant">{NOTIFICATION_LEVEL_TEXT[level].title}</span>
+          </button>
+        ) : null}
+        {choosingLevel ? (
+          <NotificationLevelDialog
+            level={level}
+            onChoose={(next) => {
+              setChoosingLevel(false);
+              props.onLevel(chat, next);
+            }}
+            onClose={() => setChoosingLevel(false)}
+          />
+        ) : null}
+        {chat.kind !== 'direct' ? null : (
           <label className="mt-2 flex min-h-[56px] cursor-pointer items-center gap-4 bg-surface px-6">
             <Bell size={18} className="text-on-surface-variant" />
             <span className="flex-1 text-[15px]">Silenciar notificaciones</span>

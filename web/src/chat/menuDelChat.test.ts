@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cambiosDeAjustes, opcionesDelMenuDeChat } from './menuDelChat';
+import { cambiosDeAjustes, levelChanges, opcionesDelMenuDeChat } from './menuDelChat';
 import type { ChatSummary } from './types';
 
 const chat = (extra: Partial<ChatSummary> = {}): ChatSummary => ({
@@ -53,5 +53,14 @@ describe('cambiosDeAjustes', () => {
   it('salir y eliminar no son ajustes', () => {
     expect(cambiosDeAjustes('salir')).toBeNull();
     expect(cambiosDeAjustes('eliminar')).toBeNull();
+  });
+});
+
+/** E3b (20/10): a level goes as `avisos` and as `muted`, so the list stays in step. */
+describe('notification level changes', () => {
+  it('each level sends avisos and muted', () => {
+    expect(levelChanges('todo')).toEqual({ avisos: 'todo', muted: false });
+    expect(levelChanges('menciones')).toEqual({ avisos: 'menciones', muted: true });
+    expect(levelChanges('nada')).toEqual({ avisos: 'nada', muted: true });
   });
 });

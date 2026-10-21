@@ -179,6 +179,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
           onAviso={setAviso}
           onRecargarChats={() => void sync.cargarChats()}
           onAccionDeChat={(chat, accion) => void accionesSobreChats.aplicar(chat, accion)}
+          onLevel={(chat, level) => void accionesSobreChats.setLevel(chat, level)}
           typingName={selected.typingName ?? null}
           onBack={() => abrirChat(null)}
           showBack={panel === 'conversation'}

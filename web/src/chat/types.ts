@@ -1,4 +1,4 @@
-import type { MencionEnMensaje, OutboxItem, Reaccion, ResumenDeHiloEnCliente, VistaDelFijado } from '@lilachat/shared';
+import type { MencionEnMensaje, NotificationLevel, OutboxItem, Reaccion, ResumenDeHiloEnCliente, VistaDelFijado } from '@lilachat/shared';
 
 /**
  * Las formas que devuelve el server, copiadas de `server/src/listaDeChats.ts`
@@ -42,6 +42,8 @@ export type ChatSummary = {
   encrypted?: boolean;
   avatarUrl?: string;
   muted?: boolean;
+  /** E3b: todo / menciones / nada (from the server; older data only has `muted`). */
+  avisos?: NotificationLevel;
   pinned?: boolean;
   archived?: boolean;
   markedUnread?: boolean;

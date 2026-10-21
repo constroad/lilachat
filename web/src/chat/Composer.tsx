@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { insertarEnTexto, type MencionEnMensaje } from '@lilachat/shared';
 
 /** Se baja recién al abrir el panel (W2): pesa, y la mayoría no lo abre. */
@@ -70,16 +70,22 @@ export function Composer({
   const menciones = useMencionesDelCampo(mencionables);
   const voz = useGrabadoraDeVoz();
   const [conEmojis, setConEmojis] = useState(false);
+  /** Where the caret goes once the new text is on screen. A frame later (rAF) raced fast typing after a mention (E2E, 20/10). */
+  const pendingCaret = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const caret = pendingCaret.current;
+    if (caret === null) return;
+    pendingCaret.current = null;
+    campoRef.current?.focus();
+    campoRef.current?.setSelectionRange(caret, caret);
+  }, [text]);
   /** El emoji va donde está el cursor (o reemplaza lo seleccionado), como en la app. */
   const ponerEmoji = (emoji: string) => {
     const campo = campoRef.current;
     const seleccion = campo ? { start: campo.selectionStart, end: campo.selectionEnd } : null;
     const resultado = insertarEnTexto(text, seleccion, emoji);
+    pendingCaret.current = resultado.cursor;
     setText(resultado.texto);
-    requestAnimationFrame(() => {
-      campoRef.current?.focus();
-      campoRef.current?.setSelectionRange(resultado.cursor, resultado.cursor);
-    });
   };
   const terminarNota = async (cancelar: boolean) => {
     const nota = await voz.terminar(cancelar);
@@ -89,8 +95,8 @@ export function Composer({
   const elegirMencion = (uno: Mencionable) => {
     const completado = menciones.elegir(text, uno);
     if (!completado) return;
+    pendingCaret.current = completado.cursor;
     setText(completado.texto);
-    requestAnimationFrame(() => campoRef.current?.setSelectionRange(completado.cursor, completado.cursor));
   };
 
   // Responder o editar enfoca el campo; editar además trae el texto a editar.

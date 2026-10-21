@@ -1,4 +1,5 @@
 import { accionesDeSeleccion } from '@lilachat/shared';
+import type { NotificationLevel } from '@lilachat/shared';
 import type { ChatSummary } from './types';
 
 /**
@@ -73,3 +74,7 @@ export function cambiosDeAjustes(accion: AccionDelChat): CambiosDeAjustes | null
       return null;
   }
 }
+
+/** E3b: a group's level is sent as-is and also as `muted`, so the list (and older screens) stay in step. */
+export type LevelChanges = { avisos: NotificationLevel; muted: boolean };
+export const levelChanges = (level: NotificationLevel): LevelChanges => ({ avisos: level, muted: level !== 'todo' });

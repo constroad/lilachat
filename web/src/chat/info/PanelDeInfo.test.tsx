@@ -20,8 +20,9 @@ afterEach(() => vi.unstubAllGlobals());
 function dibujar(yoSoyAdmin: boolean) {
   const onAccionDeChat = vi.fn();
   const onCambio = vi.fn();
-  render(<PanelDeInfo chat={chat} detalle={detalle(yoSoyAdmin)} yo="yo" jwt="jwt" base={null} onCerrar={vi.fn()} onAviso={vi.fn()} onCambio={onCambio} onAccionDeChat={onAccionDeChat} onVerFoto={vi.fn()} />);
-  return { onAccionDeChat, onCambio };
+  const onLevel = vi.fn();
+  render(<PanelDeInfo chat={chat} detalle={detalle(yoSoyAdmin)} yo="yo" jwt="jwt" base={null} onCerrar={vi.fn()} onAviso={vi.fn()} onCambio={onCambio} onAccionDeChat={onAccionDeChat} onLevel={onLevel} onVerFoto={vi.fn()} />);
+  return { onAccionDeChat, onCambio, onLevel };
 }
 
 describe('PanelDeInfo (W3b)', () => {
@@ -40,10 +41,13 @@ describe('PanelDeInfo (W3b)', () => {
     expect(screen.getByTestId('menu-participante-ana')).toBeInTheDocument();
   });
 
-  it('silenciar usa la misma acción que la lista', async () => {
-    const { onAccionDeChat } = dibujar(false);
-    await userEvent.click(screen.getByTestId('interruptor-silenciar'));
-    expect(onAccionDeChat).toHaveBeenCalledWith(chat, 'silenciar');
+  it('a group chooses its notification level (E3b)', async () => {
+    const { onLevel } = dibujar(false);
+    expect(screen.queryByTestId('interruptor-silenciar')).toBeNull();
+    expect(screen.getByTestId('btn-avisos').textContent).toContain('Todos los mensajes');
+    await userEvent.click(screen.getByTestId('btn-avisos'));
+    await userEvent.click(screen.getByTestId('avisos-menciones'));
+    expect(onLevel).toHaveBeenCalledWith(chat, 'menciones');
   });
 
   it('renombrar manda el nombre nuevo y relee', async () => {

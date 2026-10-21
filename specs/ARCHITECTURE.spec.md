@@ -4892,6 +4892,145 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 67. E3b: @todos, @aquí y los avisos de cada grupo (20/10/2026)
+
+Cierra E3 (§47). Como Slack: `@todos` (= @channel) y `@aquí` (= @here) en los
+grupos, y en cada grupo «Todos los mensajes / Solo menciones / Nada».
+
+- **Menciones de grupo** (`shared/menciones.ts`): viajan como una mención con
+  `userId` `todos` o `aqui` sobre el texto exacto «@todos» / «@aquí». El
+  server las acepta **solo en grupos** (`validarMenciones(…, {groupMentions})`);
+  en un 1:1 se descartan. `mentionedUserIds` dice a quién llegan: la persona,
+  todos los miembros o los que están en línea.
+- **Sugerencias:** al escribir «@» en un grupo salen primero `@todos` y
+  `@aquí` con un megáfono y lo que hace cada una, después las personas (app y
+  web, `mentionOptions`). En la burbuja se ven resaltadas como cualquier
+  mención.
+- **Niveles** (`notificationLevel`): se guardan como el `muted` de siempre
+  (silenciado = solo menciones, como WhatsApp) más `avisos: 'nada'` en el
+  miembro. Así una app vieja sigue leyendo el chat como silenciado, y
+  reactivar desde cualquier cliente borra el «nada». `PATCH
+  /chats/:id/ajustes` acepta `{avisos}`; la lista y el detalle lo devuelven.
+- **Push:** suena si el nivel es «todo», o «solo menciones» y te alcanzó una
+  mención (por nombre, `@todos`, o `@aquí` estando en línea). «Nada» no suena
+  ni con menciones (el teléfono nativo igual recibe el push silencioso para el
+  acuse de entrega). En un hilo, `@todos` hace interesados a todos. Las
+  reacciones solo avisan con «todo». Las llamadas suenan siempre.
+- **UI:** en un grupo, la fila «Avisos» del detalle (app) o de «Info.» (web)
+  abre «Avisos de este grupo» con las tres opciones; en un 1:1 queda el
+  interruptor de silenciar.
+- **Arreglado de paso (web):** el cursor después de elegir una mención (o un
+  emoji) se ponía en el cuadro siguiente con `requestAnimationFrame`; si se
+  escribía enseguida, el texto quedaba desordenado («@todos  7 en la obraa
+  las»). Ahora se pone en un `useLayoutEffect` apenas el texto nuevo está en
+  pantalla.
+- **Tests:** shared (menciones de grupo, alcance, niveles, opciones), server
+  `chatNotifications.test.ts` (quién oye cada mensaje con los tres niveles,
+  `@todos` descartado en un 1:1, el PATCH y la compatibilidad con `muted`),
+  web (diálogo, acción `avisos-*`, sugerencias).
+- **E2E** (server de QA, web como QA Ana, emulador como la cuenta QA): «@»
+  muestra `@todos` y `@aquí` arriba de las personas en los dos; se mandó
+  «@todos a las 7 en la obra» desde la web y «@aquí revisen la planta» desde
+  la app, y en la base quedaron con su mención; Ana eligió «Solo menciones» y
+  «Nada» en la web y la cuenta QA «Solo menciones» en la app (base: `muted` y
+  `avisos` como se esperaba). El push real no se probó: el server de QA no
+  tiene credencial de FCM; lo cubren los tests de `notifyOffline`.
+- **Queda:** la pestaña «Menciones» (actividad) del inventario §66.4 #19.
+
+## 66. Espacios: cuenta personal y espacios de empresa (E1, diseño, 20/10/2026)
+
+José (20/10): «Lilachat se podrá usar como cuenta individual y como empresa.
+Slack permite ello, ¿no? Como workspace o empresa te pide ingresar un código o
+algo así, y la cuenta individual la vas creando tú. Verifica si faltan
+pantallas y dile a Stitch que las haga».
+
+### 66.1 Cómo lo hacen otros
+
+- **Slack:** la identidad es el correo. Cada workspace es un espacio aparte,
+  con su perfil. Se entra por invitación (correo o enlace que vence), por
+  dominio de correo aprobado (`@empresa.com`), o buscando «tus workspaces» con
+  el correo. **No usa código.** Una persona está en varios y cambia desde la
+  barra lateral.
+- **Microsoft Teams:** sí permite unirse a un equipo **con un código**.
+- **WhatsApp:** no tiene espacios; WhatsApp Business es otra cuenta.
+
+### 66.2 La propuesta para Lilachat
+
+- **Una sola cuenta por persona**, la de hoy (teléfono + código). Lo
+  personal sigue igual: chats con tu agenda.
+- **Un espacio de empresa se SUMA a la cuenta, no la reemplaza.** Una persona
+  puede estar en varios espacios y en lo personal a la vez.
+- **Entrar a un espacio**, tres caminos:
+  1. **Código o enlace** (como Teams): `CONS-7K3P` o
+     `lilachat.constroad.com/e/CONS-7K3P`. El admin decide si se entra
+     directo o con aprobación.
+  2. **El admin agrega por teléfono:** al entrar a la app aparece «Te
+     agregaron a CONSTROAD». Es el camino natural para el personal de obra,
+     que no tiene correo de empresa.
+  3. **Dominio de correo aprobado** (como Slack): queda para después.
+- **Crear un espacio:** cualquiera con cuenta. Nombre, logo y rubro; queda
+  como dueño y recibe su código para invitar.
+- **Cambiar de espacio:** en la app, un selector arriba de la lista de chats
+  («Personal» siempre primero, con no leídos por espacio); en la web, un riel
+  de logos a la izquierda, como Slack.
+- **Qué separa un espacio:** chats, grupos, canales (E2), directorio y
+  avisos. Un chat es de un espacio o de lo personal. El 1:1 con alguien
+  dentro de CONSTROAD es distinto del 1:1 personal con esa persona (como
+  Slack).
+- **Perfil por espacio:** nombre, cargo, área y foto (por defecto, la
+  personal).
+- **Roles:** dueño, admin, miembro e invitado (solo ve los canales a los que
+  lo agregan).
+- **Desactivar a alguien** corta su acceso a ese espacio en todos sus equipos
+  al instante; su cuenta personal sigue. Sus mensajes quedan: la empresa es
+  dueña de lo que pasa en su espacio (D1 en (a)).
+- **La empresa no ve nada de lo personal**: ni chats, ni agenda, ni contactos.
+
+### 66.3 Server (borrador; los índices nuevos van con el OK de José)
+
+- `workspaces {name, slug, logoUrl, rubro, ownerId, joinCode, joinPolicy:
+  'open' | 'approval', createdAt}`; únicos `slug` y `joinCode`.
+- `workspaceMembers {workspaceId, userId, role, status: 'active' | 'pending' |
+  'deactivated', displayName, title, area, avatarUrl, joinedAt}`; único
+  `{workspaceId, userId}` y `{userId, status}`.
+- `chats.workspaceId` opcional, con índice `{workspaceId, …}`.
+- El JWT no cambia: el espacio va en cada pedido y el server verifica la
+  membresía activa en cada request y al unirse a las salas del socket.
+
+### 66.4 Pantallas: qué hay y qué falta
+
+Ninguna pantalla de Stitch cubre espacios, canales, menciones ni bots. Las
+que sirven tal cual: `otp`, `registro`, `invitar-amigos`, `permisos-admin`
+(roles de un grupo) y `nuevo-grupo-*`. Faltan, con el prefijo `e-`:
+
+| # | Pantalla | App | Web |
+| --- | --- | --- | --- |
+| 1 | Bienvenida: «¿Cómo vas a usar Lilachat?» (personal · unirme a mi empresa · crear un espacio) | ✓ | ✓ |
+| 2 | Unirse con código o enlace, con la vista previa del espacio | ✓ | ✓ |
+| 3 | Solicitud enviada, esperando aprobación | ✓ | |
+| 4 | Crear un espacio (nombre, logo, rubro) | ✓ | ✓ |
+| 5 | Invitar: código, enlace, compartir y agregar por teléfono | ✓ | ✓ |
+| 6 | Selector de espacios (hoja en la app, riel en la web) | ✓ | ✓ |
+| 7 | Lista dentro de un espacio: Canales y Mensajes directos | ✓ | ✓ |
+| 8 | Directorio con búsqueda y áreas | ✓ | ✓ |
+| 9 | Perfil de un miembro (cargo, área, mensaje, llamar) | ✓ | |
+| 10 | Miembros y roles (cambiar rol, desactivar) | ✓ | ✓ |
+| 11 | Solicitudes pendientes (aprobar o rechazar) | ✓ | |
+| 12 | Ajustes del espacio (nombre, logo, código, política, salir) | ✓ | ✓ |
+| 13 | «Te agregaron a CONSTROAD» al entrar | ✓ | |
+| 14 | Acceso desactivado: lo que ve quien ya no está | ✓ | |
+| 15 | E2 · Explorar canales y unirse | ✓ | ✓ |
+| 16 | E2 · Crear canal (nombre, descripción, público o privado) | ✓ | ✓ |
+| 17 | E3b · Sugerencias de @ con @todos y @aquí | ✓ | ✓ |
+| 18 | E3b · Avisos del chat: todo, solo menciones o nada | ✓ | ✓ |
+| 19 | E3b · Menciones y actividad (lo que te nombró) | ✓ | ✓ |
+| 20 | E4 · Comandos `/` con autocompletado | ✓ | ✓ |
+| 21 | E4 · Mensaje de un bot con botones y lista | ✓ | ✓ |
+| 22 | E4 · Integraciones: webhooks entrantes del espacio | | ✓ |
+
+Se piden a Stitch en el proyecto «Omni Messaging Platform» con la paleta
+Vivid Pulse; los ids quedan en `design/stitch/INVENTARIO.md`.
+
 ## 65. La página blanca de la web, hilos completos y contactos en la web (20/10/2026, 0.1.113)
 
 José (20/10): «en un hilo no puedo enviar sticker; no puedo editar mi
@@ -4919,7 +5058,7 @@ web».
 
 - **Sticker en un hilo** (app y web): botón de emojis en la barra del hilo.
   El sticker se manda con `hiloDe` y `enElChat`; el server avisa el resumen
-  nuevo del hilo (`avisarHilo`, `msg.hilo`). Test en `stickers.test.ts`.
+  nuevo del hilo (`notifyThread`, `msg.hilo`). Test en `stickers.test.ts`.
 - **Editar en un hilo:** «Editar» en el menú del mensaje propio pone el
   texto en la barra del HILO (no en la del chat), con «Editando tu mensaje»
   y el check. Mientras se edita no se guarda borrador.
@@ -4928,7 +5067,7 @@ web».
   cada envío; lo más probable es que estuviera marcada en el primero. Para
   que se entienda, la respuesta que llega al chat ahora dice **«Respondió en
   un hilo»** con el mensaje original, como Slack, y tocarla abre el hilo
-  (`Citado.enHilo` en la app, `CitaDelHilo` en la web; dentro del hilo no se
+  (`Citado.enHilo` en la app, `ThreadQuote` en la web; dentro del hilo no se
   repite).
 
 ### 65.3 Contactos en la web: el teléfono los pasa (opción «b»)
@@ -6426,7 +6565,7 @@ Fases propuestas, por impacto:
 | --- | --- | --- |
 | E1 | **Espacio por empresa y directorio**: miembros sin depender de la agenda, roles dueño/admin/miembro/invitado, desactivar a alguien corta sus equipos | ⬜ |
 | E2 | **Canales** públicos y privados por tema, con descripción y fijados; unirse sin invitación | ⬜ |
-| E3 | **Hilos y menciones** (@persona, @canal, @aquí); avisos configurables: todo o solo menciones | 🟡 E3a hilos hecho (§57); E3b menciones y avisos ⬜ |
+| E3 | **Hilos y menciones** (@persona, @canal, @aquí); avisos configurables: todo o solo menciones | ✅ E3a hilos (§57); E3b `@todos`, `@aquí` y avisos por grupo (§67). Falta la pestaña «Menciones» |
 | E4 | **Integraciones**: webhooks entrantes (el Portal publica en un canal), comandos con `/`, Lila como bot y **mensajes con botones** como WhatsApp Business (respuestas rápidas, listas, «Ver detalle»); solo los bots los mandan, tocar uno responde y le avisa al bot | ⬜ |
 | E5 | **Búsqueda** en todo el historial con filtros, retención, exportación y auditoría | ⬜ |
 

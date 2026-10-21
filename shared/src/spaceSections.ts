@@ -1,9 +1,8 @@
 /**
- * The chats of a company space by sections, like Slack (designs
- * `s-03-lista-con-secciones` and `e1-07-chats-del-espacio`): Canales, Grupos
- * and Mensajes directos. Channels go by name (#general first), the rest by
- * their last activity. Every section shows, even empty: channels keep their
- * «Agregar canal». PURE.
+ * The chats of a company space by sections, like Slack (designs `s-03` and
+ * `e1-07`): channels, groups and direct messages. Channels go by name
+ * (#general first), the rest by their last activity. Every section shows,
+ * even empty: channels keep their «Agregar canal». PURE.
  */
 export type SpaceSectionKey = 'channels' | 'groups' | 'directs';
 type SpaceChat = { kind: 'direct' | 'group' | 'notas'; name?: string; channel?: { visibility: string } | null; lastAt?: string };

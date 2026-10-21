@@ -147,7 +147,7 @@ export function Conversation(props: {
 function CabeceraDeLaConversacion(props: { chat: ChatSummary; typingName: string | null; showBack: boolean; onBack: () => void; onAbrirInfo?: () => void }) {
   const { chat, typingName } = props;
   // A channel of a space reads as Slack's: «#planta-web».
-  const nombre = chat.channel ? `#${chat.name ?? ''}` : (chat.name ?? chat.phone ?? 'Conversación');
+  const title = chat.channel ? `#${chat.name ?? ''}` : (chat.name ?? chat.phone ?? 'Conversación');
   return (
     <header className="flex items-center gap-3 border-b border-outline/15 bg-primary/5 px-4 py-3">
       {props.showBack ? (
@@ -156,10 +156,10 @@ function CabeceraDeLaConversacion(props: { chat: ChatSummary; typingName: string
         </button>
       ) : null}
       {/* Nombre y foto abren «Info.» (W3b), como en WhatsApp Web. */}
-      <button type="button" data-testid="btn-info-del-chat" aria-label={`Info. de ${nombre}`} onClick={props.onAbrirInfo} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left">
-      <Avatar name={nombre} kind={chat.kind} online={chat.online} foto={chat.avatarUrl} />
+      <button type="button" data-testid="btn-info-del-chat" aria-label={`Info. de ${title}`} onClick={props.onAbrirInfo} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left">
+      <Avatar name={title} kind={chat.kind} online={chat.online} foto={chat.avatarUrl} />
       <div className="min-w-0 flex-1">
-        <h2 className="truncate text-base font-bold">{nombre}</h2>
+        <h2 className="truncate text-base font-bold">{title}</h2>
         {/* La línea de estado no desaparece cuando nadie escribe: si el alto
             cambiara, la cabecera saltaría con cada tecla del otro. */}
         <p data-testid="estado-chat" className={`truncate text-[13px] ${typingName ? 'text-primary' : 'text-on-surface-variant'}`}>

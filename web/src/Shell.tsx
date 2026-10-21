@@ -135,7 +135,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
   // archivado abierto sigue siendo el chat de la derecha.
   const agendaPhones = useMemo(() => (chatsGuardados ?? []).map((chat) => chat.phone), [chatsGuardados]);
   const agenda = useAgendaRelay({ base, socket: socket.socket, connected: socket.connected, phones: agendaPhones });
-  const conPresencia = useCallback(
+  const withPresence = useCallback(
     (chat: ChatSummary): ChatSummary => ({
       ...chatNameWithAgenda(chat, agenda),
       online: chat.memberIds.some((miembro) => miembro !== yo && socket.online.has(miembro)),
@@ -143,9 +143,9 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
     }),
     [socket.online, socket.typingByChat, yo, agenda]
   );
-  const chats = useMemo<ChatSummary[]>(() => (chatsGuardados ?? []).map(conPresencia), [chatsGuardados, conPresencia]);
+  const chats = useMemo<ChatSummary[]>(() => (chatsGuardados ?? []).map(withPresence), [chatsGuardados, withPresence]);
   const espacios = useSpacesWeb({ jwt: credential.jwt, me: { name: credential.name, phone: credential.phone }, personalUnread: chatsSinLeer(chats), selectedChatId: selectedId, onOpenChat: abrirChat });
-  const chatsDelEspacio = useMemo(() => espacios.chats?.map(conPresencia) ?? null, [espacios.chats, conPresencia]);
+  const spaceChatsShown = useMemo(() => espacios.chats?.map(withPresence) ?? null, [espacios.chats, withPresence]);
   const personales = useMemo(() => new Set(chats.map((chat) => chat.id)), [chats]);
   eventoDeEspacio.current = (chatId) => !personales.has(chatId) && espacios.onChatEvent();
   const chatsParaReenviar = useMemo(() => ordenarParaLaLista(chats), [chats]);
@@ -162,7 +162,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
 
 
   const enEspacio = espacios.chatById(selectedId);
-  const selected = chats.find((chat) => chat.id === selectedId) ?? (enEspacio ? conPresencia(enEspacio) : null);
+  const selected = chats.find((chat) => chat.id === selectedId) ?? (enEspacio ? withPresence(enEspacio) : null);
   const panel = resolveVisiblePanel({ width, selectedChatId: selectedId });
   const listLayout = useListLayout(width);
   const alCrear = (chatId: string) => {
@@ -178,13 +178,13 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
         <SpacesRail spaces={espacios.spaces} currentId={espacios.current?.id ?? null} me={{ name: credential.name, phone: credential.phone }} personalUnread={chatsSinLeer(chats)} onPick={espacios.enter} onAdd={espacios.openSwitcher} />
       ) : null}
       {panel === 'conversation' ? null : panel === 'both' && listLayout.collapsed ? (
-        <ChatRail chats={espacios.current ? (chatsDelEspacio ?? []) : chats} selectedChatId={selectedId} onSelect={(chat) => abrirChat(chat.id)} onExpand={() => listLayout.setCollapsed(false)} />
+        <ChatRail chats={espacios.current ? (spaceChatsShown ?? []) : chats} selectedChatId={selectedId} onSelect={(chat) => abrirChat(chat.id)} onExpand={() => listLayout.setCollapsed(false)} />
       ) : (
         <>
         {espacios.current ? (
           <SpaceChatList
             space={espacios.current}
-            chats={chatsDelEspacio}
+            chats={spaceChatsShown}
             failed={espacios.failed}
             onRetry={espacios.reloadChats}
             yo={yo}

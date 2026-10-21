@@ -124,6 +124,18 @@ function actualizacion(set: object, unset: string[]): Record<string, object> {
   return operaciones;
 }
 
+/**
+ * The call a «Recordarme devolverla» points to: a 1:1 chat the person is in.
+ * Nothing asked: none; anything else (someone else's chat, a group, a bad id): refused.
+ */
+async function callBackOf(raw: unknown, userId: Types.ObjectId): Promise<{ chatId: Types.ObjectId; video: boolean } | null | 'refused'> {
+  if (!raw || typeof raw !== 'object') return null;
+  const { chatId, video } = raw as { chatId?: unknown; video?: unknown };
+  if (typeof chatId !== 'string' || !Types.ObjectId.isValid(chatId)) return 'refused';
+  const chat = await ChatModel.exists({ _id: chatId, kind: 'direct', 'members.userId': userId });
+  return chat ? { chatId: new Types.ObjectId(chatId), video: video === true } : 'refused';
+}
+
 export function buildEventRouter(): Router {
   const router = Router();
   router.use(requireSession);
@@ -341,6 +353,10 @@ export function buildEventRouter(): Router {
       if (esGrupo && rol !== 'admin') return res.status(403).json({ message: 'Solo los admins del grupo crean recordatorios.' });
     }
 
+    // «Recordarme devolverla» (backlog 23): personal, only from a 1:1 chat of mine.
+    const callBack = await callBackOf(req.body?.callBack, req.session!.userId);
+    if (callBack === 'refused') return res.status(403).json({ message: 'No tienes acceso a esa conversación.' });
+
     // El de un chat vive en el chat como tarjeta (grupo desde el 19/10; 1:1 y
     // borrador desde el 20/10). Con imagen, la app crea sin publicar y publica
     // al final (`/reminders/:id/publicar`): si no, la tarjeta sale sin la imagen.
@@ -353,6 +369,7 @@ export function buildEventRouter(): Router {
       startsAt,
       recurrence: ['once', 'daily', 'weekly'].includes(recurrence) ? recurrence : 'once',
       publicadoEn: publicarAhora ? new Date() : null,
+      ...(callBack ? { callBack } : {}),
     });
     // El del grupo se publica en el chat como tarjeta, como la encuesta.
     if (publicarAhora && chatId) {

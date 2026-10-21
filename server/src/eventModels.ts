@@ -48,6 +48,12 @@ export interface Reminder {
   recurrence: Recurrence;
   active: boolean;
   remindedAt?: Date | null;
+  /**
+   * «Recordarme devolverla» on a missed call (backlog 23, José 21/10): a PERSONAL
+   * reminder (no `chatId`, the other person does not see it) that, when it
+   * rings, opens the chat of that call.
+   */
+  callBack?: { chatId: Types.ObjectId; video: boolean };
 }
 
 export interface Poll {
@@ -106,6 +112,7 @@ const reminderSchema = new Schema<Reminder>(
     recurrence: { type: String, enum: ['once', 'daily', 'weekly'], default: 'once' },
     active: { type: Boolean, default: true },
     remindedAt: { type: Date, default: null },
+    callBack: { type: { chatId: { type: Schema.Types.ObjectId, ref: 'Chat', required: true }, video: { type: Boolean, default: false } }, _id: false, default: undefined },
   },
   { timestamps: true }
 );

@@ -7,7 +7,7 @@ import { chatMemberIds } from './chatService.js';
  * `ref.changed` a TODOS los miembros del chat, y la tarjeta se vuelve a pedir.
  * Antes se pedía solo al montarse: un voto o un borrado se veía al reabrir.
  */
-export type CambioDeTarjeta = { chatId: string; tipo: 'encuesta' | 'evento' | 'recordatorio'; id: string };
+export type CambioDeTarjeta = { chatId: string; tipo: 'encuesta' | 'evento' | 'recordatorio' | 'checklist'; id: string };
 
 /** Cómo se reparte por el socket; lo cablea `socket.ts`. */
 let emitir: ((userId: string, cambio: CambioDeTarjeta) => void) | null = null;

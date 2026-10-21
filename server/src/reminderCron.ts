@@ -140,7 +140,8 @@ export async function runReminderTick(now: Date = new Date()): Promise<{ events:
       chat ? chat.members.map((m) => String(m.userId)) : [String(reminder.userId)],
       chat?.kind === 'group' ? `${chat.name ?? 'Grupo'} · ${reminder.title}` : reminder.title,
       reminder.note || 'Recordatorio',
-      { chatId: String(reminder.chatId ?? ''), seq: 0 }
+      // A call-back reminder is personal and opens the chat of that call (backlog 23).
+      { chatId: String(reminder.chatId ?? reminder.callBack?.chatId ?? ''), seq: 0 }
     );
     // El de un chat también queda escrito en el chat (José, 20/10).
     if (chat) await avisarSinTumbar({ chatId: String(chat._id), quien: reminder.userId, evento: 'recordatorio-suena', valor: reminder.title });

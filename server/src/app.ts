@@ -29,6 +29,7 @@ import { buildVincularRouters, type OpcionesDeVinculacion } from './vincularRout
 import { buildFijadosRouter } from './fijadosRoutes.js';
 import { buildDestacadosRouter } from './destacadosRoutes.js';
 import { buildFunRouter } from './funRoutes.js';
+import { buildChecklistRouter } from './checklistRoutes.js';
 import { buildStickersRouter } from './stickersRoutes.js';
 import { buildReenvioRouter } from './reenvioRoutes.js';
 import { buildHilosRouter } from './hilosRoutes.js';
@@ -97,6 +98,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/agenda', buildRecordatoriosDeGrupoRouter(deps.mediaUploader));
   app.use('/api/agenda', buildPendientesRouter());
   app.use('/api/agenda', buildEventRouter());
+  app.use('/api/agenda', buildChecklistRouter());
   app.use('/api/push', buildPushRouter());
   app.use('/api/backup', buildBackupRouter());
   app.use('/api/assistant', buildAssistantRouter());

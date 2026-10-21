@@ -12,7 +12,7 @@ import { publicarMensaje } from './socket.js';
  * El `clientKey` sale del id: si el pedido se reintenta, el mensaje no se
  * duplica (el duplicado ya se repartió cuando se creó).
  */
-const KIND_DE_TARJETA = { encuesta: 'poll', evento: 'event', recordatorio: 'reminder' } as const;
+const KIND_DE_TARJETA = { encuesta: 'poll', evento: 'event', recordatorio: 'reminder', checklist: 'checklist' } as const;
 
 export async function publicarEnElChat(params: {
   chatId: string;

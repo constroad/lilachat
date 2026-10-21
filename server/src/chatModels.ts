@@ -81,7 +81,7 @@ export interface Message {
   seq: number;
   senderId: Types.ObjectId;
   clientKey: string;
-  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'event' | 'poll' | 'reminder' | 'system' | 'sticker' | 'zumbido' | 'guino';
+  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'event' | 'poll' | 'reminder' | 'checklist' | 'system' | 'sticker' | 'zumbido' | 'guino';
   body?: string;
   /** A wink's id from the shared catalog (`WINKS`), with kind `guino`. */
   wink?: string;
@@ -227,13 +227,13 @@ const messageSchema = new Schema<Message>(
     clientKey: { type: String, required: true },
     kind: {
       type: String,
-      enum: ['text', 'image', 'video', 'audio', 'file', 'event', 'poll', 'reminder', 'system', 'sticker', 'zumbido', 'guino'],
+      enum: ['text', 'image', 'video', 'audio', 'file', 'event', 'poll', 'reminder', 'checklist', 'system', 'sticker', 'zumbido', 'guino'],
       default: 'text',
     },
     body: { type: String },
     wink: { type: String },
     ref: {
-      type: new Schema({ tipo: { type: String, enum: ['encuesta', 'evento', 'recordatorio'], required: true }, id: { type: String, required: true } }, { _id: false }),
+      type: new Schema({ tipo: { type: String, enum: ['encuesta', 'evento', 'recordatorio', 'checklist'], required: true }, id: { type: String, required: true } }, { _id: false }),
     },
     envelope: {
       v: { type: Number },

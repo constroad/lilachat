@@ -258,3 +258,37 @@ describe('el recordatorio que suena queda en el chat', () => {
     expect(await MessageModel.countDocuments({ kind: 'system' })).toBe(0);
   });
 });
+
+/**
+ * Backlog 23 (José, 21/10): «Recordarme devolverla» on a missed call. It is
+ * PERSONAL: the other person must not see «Devolver la llamada a Ana» in the
+ * chat. It rings only for whoever asked, and tapping it opens that chat.
+ */
+describe('remind me to call back', () => {
+  const direct = async () => (await ChatModel.create({ kind: 'direct', members: [{ userId: admin }, { userId: miembro }], lastSeq: 0 }))._id;
+  const callBack = (quien: Types.ObjectId, chatId: Types.ObjectId | string) =>
+    request(app).post('/api/agenda/reminders').set(conJwt(quien)).send({ title: 'Devolver la llamada a Ana', startsAt: '2026-10-20T15:00:00.000Z', callBack: { chatId: String(chatId), video: true } });
+
+  it('is personal: nothing in the chat, it rings only for me and opens that chat', async () => {
+    const chatId = await direct();
+    const r = await callBack(admin, chatId);
+
+    expect(r.status).toBe(201);
+    expect(await MessageModel.countDocuments({ chatId })).toBe(0);
+    expect(await ReminderModel.findById(r.body.id).lean()).toMatchObject({ callBack: { chatId, video: true } });
+    expect((await ReminderModel.findById(r.body.id).lean())?.chatId).toBeUndefined();
+    await runReminderTick(new Date('2026-10-20T15:00:10.000Z'));
+    expect(enviados).toHaveLength(1);
+    expect(enviados[0]!.tokens).toEqual(['tok-admin']);
+    expect(enviados[0]!.title).toBe('Devolver la llamada a Ana');
+    expect(enviados[0]!.data.chatId).toBe(String(chatId));
+  });
+
+  it('only from a 1:1 chat I am in: someone else’s chat, a group or a wrong id is refused', async () => {
+    const chatId = await direct();
+    expect((await callBack(ajeno, chatId)).status).toBe(403);
+    expect((await callBack(admin, grupoId)).status).toBe(403);
+    expect((await callBack(admin, 'no-es-un-id')).status).toBe(403);
+    expect(await ReminderModel.countDocuments({})).toBe(0);
+  });
+});

@@ -4,7 +4,9 @@ import { startTestMongo } from './testMongo.js';
 import mongoose, { Types } from 'mongoose';
 import request from 'supertest';
 import { buildApp } from './app.js';
-import { UserModel } from './models.js';
+import { DeviceModel, UserModel } from './models.js';
+import { setPushSender } from './pushService.js';
+import { configureTaskNotices } from './checklistNotices.js';
 import { ChatModel, MessageModel } from './chatModels.js';
 import { ChecklistModel } from './checklistModel.js';
 import { configurarAvisoDeTarjeta, type CambioDeTarjeta } from './avisoDeTarjeta.js';
@@ -198,4 +200,24 @@ describe('checklist, second round', () => {
     expect((await request(app).get(`/api/agenda/checklists?chatId=${chatId}`).set(jwtOf(beto))).body.checklists[0].cardSeq).toBe(card!.seq);
     expect((await ChecklistModel.findById(body.id).lean())?.cardSeq).toBe(card!.seq);
   });
+
+  /** Backlog 35: two ticks in a row are one notice, to whoever made it; who ticked hears nothing. */
+  it('ticks are told once, a moment later, to the author (offline), and not to who ticked', async () => {
+    const sent: { tokens: string[]; title: string; body: string }[] = [];
+    setPushSender({ send: async (message) => void sent.push(message), sendDatos: async () => undefined });
+    configureTaskNotices({ waitMs: 30 });
+    await DeviceModel.deleteMany({});
+    await DeviceModel.create([{ deviceId: 'da', userId: ana, platform: 'android', pushToken: 'tok-ana' }, { deviceId: 'db', userId: beto, platform: 'android', pushToken: 'tok-beto' }]);
+    const { body } = await create(ana);
+    const [first, second] = await itemsOf(body.id);
+    // The card itself already notified Beto; only the ticks count from here.
+    sent.length = 0;
+    await request(app).post(`/api/agenda/checklists/${body.id}/items/${first!.id}/toggle`).set(jwtOf(beto));
+    await request(app).post(`/api/agenda/checklists/${body.id}/items/${second!.id}/toggle`).set(jwtOf(beto));
+    expect(sent).toHaveLength(0);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({ tokens: ['tok-ana'], body: 'Beto completó «Vaciado de losa» (2 de 2 listas)' });
+  });
 });
+

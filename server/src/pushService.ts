@@ -314,3 +314,33 @@ export async function avisarReaccion(params: { chatId: string; seq: number; auto
     console.error('[push] aviso de reacción falló:', error instanceof Error ? error.message : error);
   }
 }
+
+/**
+ * Tasks ticked in a checklist (backlog 35): each notice to its recipient, if
+ * they are offline and have not muted the chat, like a reaction. Tapping it
+ * opens the chat on the checklist's card.
+ */
+export async function notifyTasksDone(params: { chatId: string; seq: number | undefined; title: string; notices: readonly { to: string; body: string }[] }): Promise<void> {
+  const offline = params.notices.filter((notice) => !isOnline(notice.to));
+  if (offline.length === 0) return;
+  try {
+    const recipients = offline.map((notice) => notice.to);
+    const [levels, devices] = await Promise.all([
+      notificationLevelsOf(params.chatId, recipients),
+      DeviceModel.find({ userId: { $in: recipients }, pushToken: { $exists: true, $ne: '' } }).select('pushToken platform userId').lean(),
+    ]);
+    // seq 0 opens the chat at its end (a checklist from before it kept its card).
+    const data = { chatId: params.chatId, seq: params.seq ?? 0 };
+    await Promise.all(
+      offline
+        .filter((notice) => (levels.get(notice.to) ?? 'todo') === 'todo')
+        .map(async (notice) => {
+          const targets = splitPushTargets(devices.filter((device) => String(device.userId) === notice.to));
+          const text = { title: params.title, body: notice.body };
+          await Promise.all([targets.fcm.length > 0 ? sender.send({ tokens: targets.fcm, ...text, data }) : undefined, sendWebPush(targets.web, { ...text, data })]);
+        })
+    );
+  } catch (error) {
+    console.error('[push] aviso de tareas falló:', error instanceof Error ? error.message : error);
+  }
+}

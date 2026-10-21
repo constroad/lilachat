@@ -55,7 +55,7 @@ const checklistSchema = new Schema<Checklist>(
   { timestamps: true }
 );
 checklistSchema.index({ chatId: 1, createdAt: -1 });
-// «Mis tareas»: the tasks assigned to someone (created in production only with José's OK: the vault does not auto-index).
+// «Mis tareas»: the tasks assigned to someone. Both indexes created in production with José's OK (21/10; the vault does not auto-index).
 checklistSchema.index({ 'items.assignee': 1 });
 
 export const ChecklistModel: Model<Checklist> = (mongoose.models.Checklist as Model<Checklist>) ?? mongoose.model<Checklist>('Checklist', checklistSchema);

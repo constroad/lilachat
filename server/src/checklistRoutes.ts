@@ -10,6 +10,7 @@ import { avisarCambioDeTarjeta } from './avisoDeTarjeta.js';
 import { fijarMensaje } from './mensajesFijados.js';
 import { deleteMessage } from './chatService.js';
 import { avisarCambioDeChat, notifyDeleted } from './reparto.js';
+import { noteTaskToggle } from './checklistNotices.js';
 
 /** A task's own id: 6 random bytes, enough inside one checklist of up to 30. */
 const newItemId = () => randomBytes(6).toString('hex');
@@ -198,6 +199,7 @@ export function buildChecklistRouter(): Router {
     if (!updated) return res.status(409).json({ message: 'Alguien la marcó al mismo tiempo. Mira cómo quedó.' });
     res.json({ checklist: view(updated) });
     announce(updated);
+    noteTaskToggle(String(updated._id), String(userId), item.id, Boolean(item.doneBy));
   }));
 
   router.post('/checklists/:id/items', asyncRoute(async (req, res) => {

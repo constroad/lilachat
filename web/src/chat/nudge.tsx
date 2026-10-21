@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Heart, Play, Vibrate } from 'lucide-react';
-import { formatClock, funArrivedInRow, funMessageToPlay, highestSeq, shouldPlayFun, winkById, winkCardLines, winkRowSound, type FunPlace, type FunToPlay, type Wink, type WinkId } from '@lilachat/shared';
+import { FUN_LIVE_MS, formatClock, funArrivedInRow, funMessageToPlay, highestSeq, shouldPlayFun, winkById, winkCardLines, winkRowSound, type FunPlace, type FunToPlay, type Wink, type WinkId } from '@lilachat/shared';
 import { WinkOverlay } from './WinkOverlay';
 import { WinkCharacter } from './WinkCharacter';
 import { playWinkCues, playWinkSound, shakeWholeScreen, stopWinkSounds } from './winkSounds';
@@ -49,7 +49,7 @@ const prefersReducedMotion = () => Boolean(window.matchMedia?.('(prefers-reduced
  * open chat it always plays, a muted one only without sound; «Ver otra vez»
  * plays it whole (`shouldPlayFun`).
  */
-export function useFunPlayback(params: { messages: readonly { seq: number; kind?: string; senderId: string; wink?: string }[] | null; me: string; chatId: string; muted: boolean; afterSeq: number }): { overlay: ReactNode } {
+export function useFunPlayback(params: { messages: readonly { seq: number; kind?: string; senderId: string; wink?: string; at?: string }[] | null; me: string; chatId: string; muted: boolean; afterSeq: number }): { overlay: ReactNode } {
   const [playing, setPlaying] = useState<{ seq: number; wink: Wink } | null>(null);
   const seen = useRef<{ chatId: string; seq: number } | null>(null);
   const cancelCues = useRef<() => void>(() => undefined);
@@ -81,7 +81,8 @@ export function useFunPlayback(params: { messages: readonly { seq: number; kind?
     const opening = seen.current?.chatId !== chatId;
     const current = opening || !seen.current ? { chatId, seq: readAtOpen.current.seq } : seen.current;
     seen.current = current;
-    const fun = funMessageToPlay(messages, me, current.seq, { mineToo: !opening });
+    // Mine plays live only if it was just sent: the history that arrives after opening is not live.
+    const fun = funMessageToPlay(messages, me, current.seq, { mineToo: !opening, mineSince: Date.now() - FUN_LIVE_MS });
     current.seq = Math.max(current.seq, highestSeq(messages));
     if (fun) play(fun, 'chat');
   }, [messages, me, chatId, play]);

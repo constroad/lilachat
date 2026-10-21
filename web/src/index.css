@@ -28,3 +28,14 @@
   background-image: radial-gradient(rgb(var(--c-primary) / 0.09) 1.2px, transparent 1.5px);
   background-size: 22px 22px;
 }
+
+/* The emoji picker on our tokens (José, 21/10: in dark mode it was a white box).
+   More specific than the library's own theme classes, which it injects later. */
+html .EmojiPickerReact.EmojiPickerReact {
+  --epr-bg-color: rgb(var(--c-surface));
+  --epr-category-label-bg-color: rgb(var(--c-surface));
+  --epr-text-color: rgb(var(--c-on-surface));
+  --epr-search-input-bg-color: rgb(var(--c-background));
+  --epr-hover-bg-color: rgb(var(--c-primary) / 0.12);
+  --epr-picker-border-color: transparent;
+}

@@ -1,4 +1,4 @@
-import EmojiPicker, { Categories, EmojiStyle, SuggestionMode } from 'emoji-picker-react';
+import EmojiPicker, { Categories, EmojiStyle, SuggestionMode, Theme } from 'emoji-picker-react';
 
 /** Las categorías en español, como el panel de la app. */
 const CATEGORIAS = [
@@ -21,6 +21,8 @@ const CATEGORIAS = [
 export default function PanelDeEmojis({ onElegir }: { onElegir: (emoji: string) => void }) {
   return (
     <EmojiPicker
+      // The page's own theme (the `dark` class), not the system's: in dark mode it was a white box (José, 21/10).
+      theme={document.documentElement.classList.contains('dark') ? Theme.DARK : Theme.LIGHT}
       emojiStyle={EmojiStyle.NATIVE}
       categories={CATEGORIAS}
       searchPlaceholder="Buscar emoji"

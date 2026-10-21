@@ -7,8 +7,8 @@ import { StickerPanel } from './StickerPanel';
 import { CreateStickerWeb } from './CreateStickerWeb';
 import { useStickers } from './useStickers';
 import type { StickerThread } from './stickersApi';
+import { lastPanelTab, type PanelTab } from '@lilachat/shared';
 
-type PanelTab = 'emoji' | 'stickers' | 'winks';
 /** `thread`: from a thread (20/10) the sticker goes to it; `onSent` lets the thread close its picker. */
 export type StickerChat = { jwt: string; me: string; chatId: string; chatName: string; thread?: StickerThread; onSent?: () => void; replyToSeq?: number };
 
@@ -18,12 +18,17 @@ export type StickerChat = { jwt: string; me: string; chatId: string; chatName: s
  * only Emoji is left. Loaded when opened (`lazy` in the Composer).
  */
 export default function EmojiStickerPanel({ onPickEmoji, chat, winks }: { onPickEmoji: (emoji: string) => void; chat?: StickerChat; winks?: { recipient: string; onSend: (wink: WinkId) => void; onNudge?: () => void } }) {
-  const [tab, setTab] = useState<PanelTab>('emoji');
   const tabs: { key: PanelTab; label: string; Icon: typeof Smile }[] = [
     { key: 'emoji', label: 'Emoji', Icon: Smile },
     ...(chat ? [{ key: 'stickers' as const, label: 'Stickers', Icon: Sticker }] : []),
     ...(winks ? [{ key: 'winks' as const, label: 'Guiños', Icon: Sparkles }] : []),
   ];
+  // It opens on the tab used last (José, 21/10), if this chat offers it.
+  const [tab, setTabState] = useState<PanelTab>(() => lastPanelTab(readStoredTab(), tabs.map((one) => one.key)));
+  const setTab = (next: PanelTab) => {
+    setTabState(next);
+    storeTab(next);
+  };
   return (
     <div className="rounded-xl border border-outline/15 bg-surface p-2">
       {tabs.length > 1 ? (
@@ -59,3 +64,22 @@ function Stickers({ chat }: { chat: StickerChat }) {
     </>
   );
 }
+
+const PANEL_TAB_KEY = 'lilachat.panel.pestana';
+
+function readStoredTab(): string | null {
+  try {
+    return window.localStorage.getItem(PANEL_TAB_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storeTab(tab: PanelTab): void {
+  try {
+    window.localStorage.setItem(PANEL_TAB_KEY, tab);
+  } catch (error) {
+    console.warn('[panel] no se pudo recordar la pestaña:', error instanceof Error ? error.message : error);
+  }
+}
+

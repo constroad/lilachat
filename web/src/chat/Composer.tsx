@@ -171,7 +171,8 @@ export function Composer({
       {conEmojis ? (
         <div data-testid="panel-emojis" className="mb-2" onKeyDown={(evento) => evento.key === 'Escape' && setConEmojis(false)}>
           <Suspense fallback={<div className="h-[360px] animate-pulse rounded-lg bg-background" />}>
-            <EmojiStickerPanel onPickEmoji={ponerEmoji} chat={stickers} winks={onWink ? { recipient: recipient ?? 'el chat', onNudge, onSend: (wink) => { onWink(wink); setConEmojis(false); } } : undefined} />
+            {/* Sending a sticker closes the panel, like WhatsApp (José, 21/10). */}
+            <EmojiStickerPanel onPickEmoji={ponerEmoji} chat={stickers ? { ...stickers, onSent: () => { stickers.onSent?.(); setConEmojis(false); } } : undefined} winks={onWink ? { recipient: recipient ?? 'el chat', onNudge, onSend: (wink) => { onWink(wink); setConEmojis(false); } } : undefined} />
           </Suspense>
         </div>
       ) : null}

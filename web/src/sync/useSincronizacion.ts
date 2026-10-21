@@ -3,7 +3,7 @@ import { showBrowserNoticeIfHidden } from '../notify/browserNotice';
 import type { Socket } from 'socket.io-client';
 import { api } from '../api';
 import { crearUltimaGana } from './ultimaGana';
-import type { BaseLocal } from '../local/baseLocal';
+import { ignoreClosedBase, type BaseLocal } from '../local/baseLocal';
 import { descartarEnvio, drenarCola, encolarEnvio, reintentarEnvio } from '../local/colaDeEnvio';
 import { aplicarBorrado, aplicarEdicion, aplicarEntrante, aplicarReacciones, aplicarResumenDeHilo, guardarChats, guardarPagina } from '../local/mensajesLocales';
 import type { ChatMessage, ChatSummary } from '../chat/types';
@@ -52,7 +52,7 @@ export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401
       if (respuesta.status === 401) await manejar401();
       return;
     }
-    if (cargas.vigente(turno)) await guardarChats(base, respuesta.data.chats);
+    if (cargas.vigente(turno)) await guardarChats(base, respuesta.data.chats).catch(ignoreClosedBase);
   }, [base, jwt, manejar401, cargas]);
 
   const recargarPronto = useRecargaAgrupada(cargarChats);
@@ -68,7 +68,7 @@ export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401
       await sincronizar({ base, pedir: (cursores) => pedirSincronizacion(socket.current, cursores) });
       await drenar();
       await cargarChats();
-    })();
+    })().catch(ignoreClosedBase);
   }, [conectado, base, socket, drenar, cargarChats]);
 
   const abiertoRef = useRef(chatAbierto);

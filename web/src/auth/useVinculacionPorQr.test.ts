@@ -46,7 +46,8 @@ describe('useVinculacionPorQr', () => {
   it('rota el token solo mientras la pestaña está al frente', async () => {
     const { servicio } = servicioFalso();
     const { result } = renderHook(() => useVinculacionPorQr({ onReady: vi.fn(), mantener: true, servicio }));
-    await waitFor(() => expect(result.current.estado).toMatchObject({ fase: 'mostrando', token: 'token-2' }));
+    // Rotated at least once: under load (the gates run every suite at once) it can already be on the third token.
+    await waitFor(() => expect(result.current.estado).toMatchObject({ fase: 'mostrando', token: expect.stringMatching(/^token-([2-9]|\d{2,})$/) }));
 
     act(() => ponerVisibilidad('hidden'));
     const rotacionesAlOcultar = vi.mocked(servicio.rotar).mock.calls.length;

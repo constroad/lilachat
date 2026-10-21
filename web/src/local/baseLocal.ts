@@ -58,6 +58,12 @@ export function baseDe(userId: string): BaseLocal {
  * Cerrar sesión: la base se borra entera. El historial no se hereda en un
  * navegador, y lo próximo que pase puede ser que otra persona abra la pestaña.
  */
+/** A write still on its way when logging out closed the base: it has nowhere to go, and that is not an error. */
+export function ignoreClosedBase(error: unknown): void {
+  if (error instanceof Error && error.name === Dexie.errnames.DatabaseClosed) return;
+  throw error;
+}
+
 export async function borrarBaseDe(userId: string): Promise<void> {
   const nombre = nombreDeLaBase(userId);
   abiertas.get(nombre)?.close();

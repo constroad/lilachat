@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { addRecentSticker, packLibrary, STICKER_PACKS, type LibrarySticker } from '@lilachat/shared';
-import { keepFromMessage, keepFromPack, listStickers, removeSticker, sendSticker, setFavorite, uploadSticker, type StickerThread } from './stickersApi';
+import { keepFromMessage, keepFromPack, listStickers, removeSticker, sendSticker, setFavorite, uploadSticker, type StickerTarget } from './stickersApi';
 
 /**
  * «Mis stickers» on the web: ONE copy for the panel and the message menu (a
@@ -73,8 +73,8 @@ export function useStickers(jwt: string, owner: string) {
     if (jwt && store.library === null) void reload(jwt, owner);
   }, [jwt, owner]);
 
-  const send = useCallback(async (chatId: string, sticker: LibrarySticker, thread?: StickerThread) => {
-    const response = await sendSticker(jwt, chatId, sticker.id, `st-${sticker.id}-${Date.now().toString(36)}`, thread);
+  const send = useCallback(async (chatId: string, sticker: LibrarySticker, target?: StickerTarget) => {
+    const response = await sendSticker(jwt, chatId, sticker.id, `st-${sticker.id}-${Date.now().toString(36)}`, target);
     if (!response.ok) {
       update({ error: response.message });
       return false;

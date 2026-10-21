@@ -84,6 +84,8 @@ export function useAccionesSobreMensajes(params: {
   return {
     onAccion,
     contexto,
+    /** The message being replied to: a sticker sent now quotes it too. */
+    replyingTo: editando ? undefined : respondiendo?.seq,
     cancelarContexto: () => {
       setRespondiendo(null);
       setEditando(null);

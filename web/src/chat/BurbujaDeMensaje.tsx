@@ -47,7 +47,12 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
         {mensaje.ref && !mensaje.deletedAt ? (
           <TarjetaDelMensaje mensaje={mensaje} mio={mio} conAutor={props.conAutor} />
         ) : mensaje.kind === 'sticker' && mensaje.media?.url && !mensaje.deletedAt ? (
-          <StickerMessage message={mensaje} url={mensaje.media.url} author={props.conAutor ? <NombreDelAutor senderId={mensaje.senderId} /> : null} />
+          <StickerMessage
+            message={mensaje}
+            url={mensaje.media.url}
+            author={props.conAutor ? <NombreDelAutor senderId={mensaje.senderId} /> : null}
+            quote={mensaje.hiloDe !== undefined && mensaje.enElChat ? <ThreadQuote root={mensaje.hiloDe} mine={false} /> : mensaje.replyToSeq ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={false} /> : null}
+          />
         ) : (
         <div
           className={`rounded-xl px-3 py-2 text-sm ${

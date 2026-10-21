@@ -1,4 +1,5 @@
-import { Megaphone } from 'lucide-react';
+import { Megaphone, Zap } from 'lucide-react';
+import { MENTION_HERE } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 
 export type Mencionable = { id: string; nombre: string; foto?: string };
@@ -34,13 +35,13 @@ export function SugerenciasDeMencion(props: { opciones: MentionSuggestion[]; act
           >
             {uno.hint ? (
               <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-                <Megaphone size={14} />
+                {uno.id === MENTION_HERE ? <Zap size={14} /> : <Megaphone size={14} />}
               </span>
             ) : (
               <Avatar name={uno.nombre} foto={uno.foto} size={28} />
             )}
             <span className="min-w-0">
-              <span className="block truncate">{uno.hint ? `@${uno.nombre}` : uno.nombre}</span>
+              <span className={`block truncate ${uno.hint ? 'font-semibold text-primary' : ''}`}>{uno.hint ? `@${uno.nombre}` : uno.nombre}</span>
               {uno.hint ? <span className="block truncate text-[12px] text-on-surface-variant">{uno.hint}</span> : null}
             </span>
           </button>

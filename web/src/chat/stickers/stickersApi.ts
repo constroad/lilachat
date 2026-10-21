@@ -11,8 +11,11 @@ export const keepFromPack = (jwt: string, stickerId: string, favorite: boolean) 
 /** In a thread (20/10): the root, and whether it also goes to the chat. */
 export type StickerThread = { hiloDe: number; enElChat: boolean };
 
-export const sendSticker = (jwt: string, chatId: string, stickerId: string, clientKey: string, thread?: StickerThread) =>
-  api<{ duplicate: boolean }>(`/chats/${chatId}/stickers`, { jwt, body: { stickerId, clientKey, ...thread } });
+/** Where a sticker goes: a thread, and/or as a reply to a message (José, 20/10: «no puedo responder con sticker»). */
+export type StickerTarget = Partial<StickerThread> & { replyToSeq?: number };
+
+export const sendSticker = (jwt: string, chatId: string, stickerId: string, clientKey: string, target?: StickerTarget) =>
+  api<{ duplicate: boolean }>(`/chats/${chatId}/stickers`, { jwt, body: { stickerId, clientKey, ...target } });
 
 /** Uploads the sticker the editor built and keeps it in «Mis stickers». */
 export async function uploadSticker(jwt: string, file: Blob): Promise<ApiResult<{ sticker: LibrarySticker }>> {

@@ -34,6 +34,8 @@ export function Conversation(props: {
   /** Respondiendo o editando (W2): la franja sobre el campo. */
   contexto?: ContextoDelComposer | null;
   onCancelarContexto?: () => void;
+  /** The message being replied to: a sticker also quotes it, then the strip closes. */
+  replyingTo?: number;
   showBack: boolean;
   hayAnteriores: boolean;
   onCargarAnteriores: () => void;
@@ -121,7 +123,7 @@ export function Conversation(props: {
         jwtParaEnlaces={props.jwtParaEnlaces}
         onNotaDeVoz={props.onNotaDeVoz}
         onEscribiendo={props.onEscribiendo}
-        stickers={props.jwtParaEnlaces ? { jwt: props.jwtParaEnlaces, me: props.yo, chatId: chat.id, chatName: chat.name ?? chat.phone ?? '' } : undefined}
+        stickers={props.jwtParaEnlaces ? { jwt: props.jwtParaEnlaces, me: props.yo, chatId: chat.id, chatName: chat.name ?? chat.phone ?? '', replyToSeq: props.replyingTo, onSent: props.replyingTo ? props.onCancelarContexto : undefined } : undefined}
       />
       )}
     </section>

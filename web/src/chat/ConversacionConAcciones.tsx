@@ -147,6 +147,7 @@ export function ConversacionConAcciones(
         onEscribiendo={() => sync.avisarEscribiendo(chat.id)}
         contexto={acciones.contexto}
         onCancelarContexto={acciones.cancelarContexto}
+        replyingTo={acciones.replyingTo}
         mencionables={mencionables}
         jwtParaEnlaces={chat.encrypted ? undefined : props.jwt}
         onElegirArchivos={setArchivos}

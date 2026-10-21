@@ -37,3 +37,18 @@ describe('a thread reply also sent to the chat', () => {
     expect(screen.queryByTestId('cita-hilo-151')).toBeNull();
   });
 });
+
+/** José, 20/10: «no puedo responder con sticker» — the sticker shows what it answers above it. */
+describe('a sticker sent as a reply', () => {
+  it('shows the quoted message above the sticker', () => {
+    const sticker = { chatId: 'c1', seq: 161, senderId: 'yo', clientKey: 'st', kind: 'sticker', replyToSeq: 151, media: { url: 'https://x/s.webp' }, at: new Date().toISOString() } as MensajeEnPantalla;
+    const context: ContextoDeLaConversacion = { yo: 'yo', jwt: '', chat, detalle: null, nombres: new Map([['w', 'Wilson']]), citado: (seq) => (seq === 151 ? root : undefined), onAccion: vi.fn(), onVerFoto: vi.fn(), puedeFijar: false, fijados: new Set() };
+    render(
+      <ConversacionContext.Provider value={context}>
+        <BurbujaDeMensaje mensaje={sticker} mio agrupado={false} ultimoDelGrupo conAutor={false} chat={chat} onReintentar={vi.fn()} onDescartar={vi.fn()} />
+      </ConversacionContext.Provider>
+    );
+    expect(screen.getByTestId('cita-151').textContent).toContain('¿Vamos el jueves?');
+    expect(screen.getByTestId('sticker-st')).toBeTruthy();
+  });
+});

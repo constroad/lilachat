@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
-import { ChevronDown, ChevronRight, Hash, Lock, Plus, Search, UserPlus } from 'lucide-react-native';
-import { formatChatTimestamp, nombreDeContacto, spaceSections, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
+import { ChevronDown, ChevronRight, Hash, Inbox, Lock, Plus, Search, Settings2, UserCog, UserPlus, Users } from 'lucide-react-native';
+import { canManageMembers, formatChatTimestamp, membersLabel, nombreDeContacto, spaceSections, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 import { FilaDeChat } from '../chat/FilaDeChat';
 import { getSocket } from '../chat/socketClient';
@@ -20,7 +20,9 @@ const RELOAD_DELAY_MS = 600;
  * with its arrow. Every chat here opens in the Slack format. The design's
  * Hilos and Menciones chips come with the mentions tab.
  */
-export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; myUserId: string; active: boolean; openChatId: string | null; onOpenChat: (chat: ChatSummary) => void; onChannels: () => void; onInvite: () => void }) {
+export type WorkspaceLink = 'directory' | 'members' | 'requests' | 'settings';
+
+export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; myUserId: string; active: boolean; openChatId: string | null; reloadKey?: number; onOpenChat: (chat: ChatSummary) => void; onChannels: () => void; onInvite: () => void; onWorkspace: (link: WorkspaceLink) => void; onNewDirect: () => void; onNewGroup: () => void; onChats?: (chats: ChatSummary[]) => void; onRefresh?: () => void }) {
   const colors = useColores();
   const { space, jwt } = props;
   const [chats, setChats] = useState<ChatSummary[] | null>(null);
@@ -38,9 +40,12 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
     } else setFailed(true);
   }, [jwt, space.id]);
   useEffect(() => {
-    setChats(null);
     void load();
-  }, [load]);
+  }, [load, props.reloadKey]);
+  const { onChats } = props;
+  useEffect(() => {
+    if (chats) onChats?.(chats);
+  }, [chats, onChats]);
   useAlVolver(props.active, () => void load());
   // A message in one of these chats moves it up: the list asks again, once for a burst.
   useEffect(() => {
@@ -73,11 +78,12 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
   const noop = useCallback(() => undefined, []);
 
   return (
-    <ScrollView testID="lista-del-espacio" contentContainerStyle={{ paddingBottom: 96 }} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load().finally(() => setRefreshing(false)); }} />}>
+    <ScrollView testID="lista-del-espacio" contentContainerStyle={{ paddingBottom: 96 }} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); props.onRefresh?.(); void load().finally(() => setRefreshing(false)); }} />}>
       <View className="mx-4 mb-2 min-h-[48px] flex-row items-center gap-2 rounded-xl border border-outline/20 bg-surface px-3">
         <Search size={18} color={colors['on-surface-variant']} />
         <TextInput testID="buscar-en-espacio" value={query} onChangeText={setQuery} placeholder={`Buscar en ${space.name}`} placeholderTextColor={colors['on-surface-variant']} className="flex-1 text-[15px] text-on-surface" />
       </View>
+      <WorkspaceLinks space={space} onOpen={props.onWorkspace} />
       {failed && chats === null ? (
         <Pressable onPress={() => void load()} className="mx-4 mt-3 rounded-xl bg-error/10 px-4 py-3"><Text className="text-[13px] text-error">No se pudo cargar el espacio. Toca para reintentar.</Text></Pressable>
       ) : null}
@@ -97,6 +103,11 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
             <View key={section.key} testID={`seccion-${section.key}`} className="border-t border-outline/10 pt-1">
               <Pressable testID={`plegar-${section.key}`} onPress={() => toggle(section.key)} className="min-h-[44px] flex-row items-center px-4">
                 <Text className="flex-1 text-[12px] font-bold uppercase tracking-widest text-on-surface-variant">{section.title}</Text>
+                {section.key === 'channels' ? null : (
+                  <Pressable testID={`nuevo-${section.key}`} onPress={section.key === 'groups' ? props.onNewGroup : props.onNewDirect} accessibilityLabel={section.key === 'groups' ? 'Nuevo grupo' : 'Nuevo mensaje directo'} hitSlop={8} className="mr-2 h-9 w-9 items-center justify-center">
+                    <Plus size={18} color={colors['on-surface-variant']} />
+                  </Pressable>
+                )}
                 {folded.has(section.key) ? <ChevronRight size={18} color={colors['on-surface-variant']} /> : <ChevronDown size={18} color={colors['on-surface-variant']} />}
               </Pressable>
               {folded.has(section.key)
@@ -137,5 +148,34 @@ function ChannelRow(props: { chat: ChatSummary; open: boolean; onOpen: () => voi
         <Text className="text-[13px] text-on-surface-variant">{formatChatTimestamp(chat.lastMessage.at)}</Text>
       ) : null}
     </Pressable>
+  );
+}
+
+/**
+ * «Espacio de trabajo» on top of the list (the desktop designs `e1-05` and
+ * `e1-06`): the directory for everyone; members and roles, requests (with how
+ * many wait) and the settings for those who manage the space.
+ */
+function WorkspaceLinks(props: { space: ClientWorkspace; onOpen: (link: WorkspaceLink) => void }) {
+  const colors = useColores();
+  const admin = canManageMembers(props.space.role);
+  const pending = props.space.pendingRequests ?? 0;
+  const row = (link: WorkspaceLink, Icon: typeof Users, label: string, trailing?: string, highlight?: boolean) => (
+    <Pressable key={link} testID={`espacio-${link}`} onPress={() => props.onOpen(link)} className="min-h-[44px] flex-row items-center gap-3 px-4">
+      <Icon size={18} color={highlight ? colors.primary : colors['on-surface-variant']} />
+      <Text className={`flex-1 text-[15px] ${highlight ? 'font-bold text-on-surface' : 'text-on-surface'}`}>{label}</Text>
+      {trailing ? (
+        <Text className={highlight ? 'h-6 min-w-[24px] rounded-full bg-primary px-1.5 text-center text-[12px] font-bold leading-6 text-on-primary' : 'text-[13px] text-on-surface-variant'}>{trailing}</Text>
+      ) : null}
+    </Pressable>
+  );
+  return (
+    <View testID="seccion-espacio-de-trabajo" className="mb-1">
+      <Text className="px-4 pb-1 pt-1 text-[12px] font-bold uppercase tracking-widest text-on-surface-variant">Espacio de trabajo</Text>
+      {row('directory', Users, 'Directorio de equipo', membersLabel(props.space.members))}
+      {admin ? row('members', UserCog, 'Miembros y roles') : null}
+      {admin && pending > 0 ? row('requests', Inbox, 'Solicitudes', String(pending), true) : null}
+      {admin ? row('settings', Settings2, 'Ajustes del espacio') : null}
+    </View>
   );
 }

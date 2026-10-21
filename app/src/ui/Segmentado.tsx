@@ -38,7 +38,8 @@ export function Segmentado<K extends string>(props: {
             className={`min-h-[44px] flex-1 flex-row items-center justify-center gap-1.5 rounded-xl ${activo ? 'bg-primary/[0.14]' : ''}`}
           >
             {Icono ? <Icono size={16} color={tinta} /> : null}
-            <Text className={`text-[14px] ${activo ? 'font-semibold text-primary' : 'font-medium text-on-surface-variant'}`}>
+            {/* One line always: four options with the big chat font («Documentos») wrapped in two (21/10). */}
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} className={`shrink text-[14px] ${activo ? 'font-semibold text-primary' : 'font-medium text-on-surface-variant'}`}>
               {etiqueta}
             </Text>
             {cuenta ? <Text className={`text-[12px] ${activo ? 'text-primary' : 'text-on-surface-variant'}`}>{cuenta}</Text> : null}

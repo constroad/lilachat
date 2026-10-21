@@ -1,4 +1,4 @@
-import type { ClientChannel, ClientWorkspace, JoinPolicy, WorkspaceMemberStatus, WorkspacePreview } from '@lilachat/shared';
+import type { ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
 import { BASE_URL, type ChatSummary } from '../api/client';
 import { jsonCall } from '../api/jsonCall';
 
@@ -23,3 +23,24 @@ export async function spaceChats(jwt: string, spaceId: string) {
 }
 /** Leave a space, or withdraw a request still waiting («Cancelar solicitud», design `e1-03`). */
 export const leaveSpace = (jwt: string, spaceId: string) => jsonCall<Record<string, never>>(url(`/${spaceId}/leave`), jwt, post({}));
+
+/** The people of a space (designs `e1-08`, `e1-10`, `e1-11`): active for everyone; pending and deactivated for admins. */
+export const spaceMembers = (jwt: string, spaceId: string, status: 'active' | 'pending' | 'deactivated' = 'active') =>
+  jsonCall<{ members: ClientWorkspaceMember[] }>(url(`/${spaceId}/members?status=${status}`), jwt);
+/** Approve (with area and title), change the role, deactivate or reactivate. */
+export const changeMember = (jwt: string, spaceId: string, memberId: string, change: { status?: 'active' | 'deactivated'; role?: WorkspaceRole; title?: string; area?: string }) =>
+  jsonCall<{ member: ClientWorkspaceMember }>(url(`/${spaceId}/members/${memberId}`), jwt, { method: 'PATCH', body: JSON.stringify(change) });
+/** «Rechazar» a request: it goes away (design `e1-11`). */
+export const rejectRequest = (jwt: string, spaceId: string, memberId: string) => jsonCall<Record<string, never>>(url(`/${spaceId}/members/${memberId}`), jwt, { method: 'DELETE' });
+/** «Ajustes del espacio» (design `e1-12`): name, trade, approval, and a new code. */
+export const updateSpace = (jwt: string, spaceId: string, change: { name?: string; rubro?: string; joinPolicy?: JoinPolicy; newCode?: boolean }) =>
+  jsonCall<{ workspace: ClientWorkspace }>(url(`/${spaceId}`), jwt, { method: 'PATCH', body: JSON.stringify(change) });
+/** A 1:1 or a group INSIDE the space, among its active members (the server checks it). */
+export const createSpaceChat = (jwt: string, spaceId: string, body: { kind: 'direct' | 'group'; memberIds: string[]; name?: string }) =>
+  jsonCall<{ chatId: string }>(`${BASE_URL}/api/chats`, jwt, post({ ...body, workspaceId: spaceId }));
+
+/** «Medios» (pending 38): photos, videos, documents or links of the personal chats, or of a space. */
+export function mediaLibrary(jwt: string, params: { type: MediaLibraryType; spaceId?: string | null; before?: string }) {
+  const query = new URLSearchParams({ type: params.type, ...(params.spaceId ? { workspace: params.spaceId } : {}), ...(params.before ? { before: params.before } : {}) });
+  return jsonCall<{ items: MediaLibraryItem[]; hasMore: boolean }>(`${BASE_URL}/api/media/library?${query}`, jwt);
+}

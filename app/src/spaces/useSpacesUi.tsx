@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChevronDown } from 'lucide-react-native';
-import { spaceSubtitle, type ClientChannel, type ClientWorkspace } from '@lilachat/shared';
+import { newlyAddedSpaces, spaceSubtitle, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
+import { createChat } from '../contacts/contactsApi';
+import { getSocket } from '../chat/socketClient';
+import { useAlVolver } from '../ui/useAlVolver';
 import { Logo } from '../ui/Logo';
 import { useColores } from '../ui/tema';
 import { setCurrentSpaceId, useCurrentSpaceId, useMySpaces } from './currentSpace';
@@ -11,43 +14,79 @@ import { JoinSpaceScreen } from './JoinSpaceScreen';
 import { CreateSpaceScreen } from './CreateSpaceScreen';
 import { InviteToSpaceScreen } from './InviteToSpaceScreen';
 import { ChannelsScreen } from './ChannelsScreen';
+import { DirectoryScreen } from './DirectoryScreen';
+import { MemberProfileScreen } from './MemberProfileScreen';
+import { MembersScreen } from './MembersScreen';
+import { SpaceSettingsScreen } from './SpaceSettingsScreen';
+import { NewSpaceGroupScreen } from './NewSpaceGroupScreen';
+import { AddedToSpaceScreen } from './AddedToSpaceScreen';
+import { AccessRemovedScreen } from './AccessRemovedScreen';
+import { markSpacesSeen, useSeenSpaces } from './seenSpaces';
+import { memberName } from './memberUi';
+import { createSpaceChat } from './spacesApi';
+import type { WorkspaceLink } from './SpaceChatsScreen';
 
-type Sheet = 'switcher' | 'join' | 'create' | 'invite' | 'channels' | null;
+type Sheet = 'switcher' | 'join' | 'create' | 'invite' | 'channels' | 'directory' | 'members' | 'requests' | 'settings' | 'newDirect' | 'newGroup' | null;
 
-/** A channel just joined or created, as the conversation opens it (the list fills the rest when it reloads). */
-export const chatOfChannel = (channel: ClientChannel, spaceId: string): ChatSummary => ({
-  id: channel.id,
-  kind: 'group',
-  name: channel.name,
-  memberIds: [],
+/** A chat of the space as the conversation opens it until the list brings it. */
+const spaceChat = (chat: Pick<ChatSummary, 'id' | 'kind' | 'name' | 'phone' | 'memberIds' | 'channel'>, spaceId: string): ChatSummary => ({
   lastSeq: 0,
   unread: 0,
   othersReadSeq: 0,
   othersDeliveredSeq: 0,
   lastMessage: null,
   workspaceId: spaceId,
-  channel: { visibility: channel.visibility },
+  ...chat,
 });
+
+/** A channel just joined or created, as the conversation opens it (the list fills the rest when it reloads). */
+export const chatOfChannel = (channel: ClientChannel, spaceId: string): ChatSummary => spaceChat({ id: channel.id, kind: 'group', name: channel.name, memberIds: [], channel: { visibility: channel.visibility } }, spaceId);
 
 /**
  * The company spaces in the Chats tab (E1/E2): the header's title opens «Cambiar
  * de espacio» (design `e1-06`), and from there joining (e1-02/03), creating
- * (e1-04) and inviting (e1-05); the space's channels (e2-15/16). The space open
- * is remembered; one left or where access was removed falls back to personal.
+ * (e1-04) and inviting (e1-05); the space's channels (e2-15/16), its directory
+ * and profiles (e1-08/09), members, roles and requests (e1-10/11), settings
+ * (e1-12), a 1:1 or a group inside it, «te agregaron» (e1-13) once per space
+ * someone else added me to, and «ya no tienes acceso» (e1-14). The space open
+ * is remembered; one left falls back to personal.
  */
-export function useSpacesUi(params: { jwt: string; me: { name: string; phone: string }; personalUnread: number; onOpenChat: (chat: ChatSummary) => void }) {
-  const { jwt, onOpenChat } = params;
+export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name: string; phone: string }; personalUnread: number; onOpenChat: (chat: ChatSummary) => void }) {
+  const { jwt, myUserId, onOpenChat } = params;
   const colors = useColores();
   const currentId = useCurrentSpaceId();
   const { spaces, reload } = useMySpaces(jwt);
+  const seen = useSeenSpaces();
   const [sheet, setSheet] = useState<Sheet>(null);
   const [inviting, setInviting] = useState<ClientWorkspace | null>(null);
+  const [profile, setProfile] = useState<ClientWorkspaceMember | null>(null);
+  const [removed, setRemoved] = useState<ClientWorkspace | null>(null);
+  const [listChats, setListChats] = useState<ChatSummary[]>([]);
+  const [reloadKey, setReloadKey] = useState(0);
   const current = spaces?.find((space) => space.id === currentId && space.status === 'active') ?? null;
 
-  // A space I left, or where access was removed: back to personal.
+  // A space I left, or where access was removed: back to personal, saying why when it was removed.
   useEffect(() => {
-    if (spaces && currentId && !current) setCurrentSpaceId(null);
+    if (!spaces || !currentId || current) return;
+    const lost = spaces.find((space) => space.id === currentId && space.status === 'deactivated');
+    if (lost) setRemoved(lost);
+    setCurrentSpaceId(null);
   }, [spaces, currentId, current]);
+  // A request, approved, added or deactivated somewhere else: read them again, also on coming back to the app.
+  useEffect(() => {
+    const socket = getSocket();
+    const onChanged = () => void reload();
+    socket?.on('workspaces.changed', onChanged);
+    return () => {
+      socket?.off('workspaces.changed', onChanged);
+    };
+  }, [reload]);
+  useAlVolver(true, () => void reload());
+  // The first list after installing seeds what was already seen: only spaces added from now on are greeted.
+  useEffect(() => {
+    if (spaces && seen === null) markSpacesSeen(spaces.map((space) => space.id));
+  }, [spaces, seen]);
+  const welcome = spaces && seen ? (newlyAddedSpaces(spaces, seen)[0] ?? null) : null;
 
   const enter = useCallback(async (spaceId: string | null) => {
     setSheet(null);
@@ -59,6 +98,23 @@ export function useSpacesUi(params: { jwt: string; me: { name: string; phone: st
     setSheet(null);
     if (current) onOpenChat(chatOfChannel(channel, current.id));
   }, [current, onOpenChat]);
+  const writeTo = useCallback(async (member: ClientWorkspaceMember) => {
+    if (!current || !member.userId) return;
+    const response = await createSpaceChat(jwt, current.id, { kind: 'direct', memberIds: [member.userId] });
+    if (!response.ok) return;
+    setSheet(null);
+    setProfile(null);
+    setReloadKey((key) => key + 1);
+    onOpenChat(spaceChat({ id: response.data.chatId, kind: 'direct', name: memberName(member), phone: member.phone, memberIds: [myUserId, member.userId] }, current.id));
+  }, [current, jwt, myUserId, onOpenChat]);
+  const talkToAdmin = useCallback(async (admin: { userId: string; name?: string; phone: string }) => {
+    const response = await createChat(jwt, { kind: 'direct', memberIds: [admin.userId] });
+    setRemoved(null);
+    if (response.ok) onOpenChat({ id: response.data.chatId, kind: 'direct', name: admin.name, phone: admin.phone, memberIds: [myUserId, admin.userId], lastSeq: 0, unread: 0, othersReadSeq: 0, othersDeliveredSeq: 0, lastMessage: null });
+  }, [jwt, myUserId, onOpenChat]);
+  const openWorkspace = useCallback((link: WorkspaceLink) => setSheet(link), []);
+  const openNewDirect = useCallback(() => setSheet('newDirect'), []);
+  const openNewGroup = useCallback(() => setSheet('newGroup'), []);
 
   const title: ReactNode = (
     <Pressable testID="titulo-espacio" accessibilityLabel="Cambiar de espacio" onPress={() => setSheet('switcher')} className="min-h-[44px] flex-1 flex-row items-center gap-2.5">
@@ -73,20 +129,10 @@ export function useSpacesUi(params: { jwt: string; me: { name: string; phone: st
     </Pressable>
   );
 
+  const commonChannels = profile?.userId ? listChats.filter((chat) => chat.channel && chat.memberIds.includes(profile.userId!)).map((chat) => chat.name ?? '') : [];
   const layer: ReactNode = (
     <>
-      <SpaceSwitcherSheet
-        visible={sheet === 'switcher'}
-        spaces={spaces}
-        currentId={current?.id ?? null}
-        me={params.me}
-        personalUnread={params.personalUnread}
-        onPick={(spaceId) => void enter(spaceId)}
-        onJoin={() => setSheet('join')}
-        onCreate={() => setSheet('create')}
-        onClose={() => setSheet(null)}
-        onOpen={() => void reload()}
-      />
+      <SpaceSwitcherSheet visible={sheet === 'switcher'} spaces={spaces} currentId={current?.id ?? null} me={params.me} personalUnread={params.personalUnread} onPick={(spaceId) => void enter(spaceId)} onJoin={() => setSheet('join')} onCreate={() => setSheet('create')} onClose={() => setSheet(null)} onOpen={() => void reload()} />
       <JoinSpaceScreen visible={sheet === 'join'} jwt={jwt} onJoined={(spaceId) => void enter(spaceId)} onClose={() => { setSheet(null); void reload(); }} />
       <CreateSpaceScreen
         visible={sheet === 'create'}
@@ -101,8 +147,36 @@ export function useSpacesUi(params: { jwt: string; me: { name: string; phone: st
       />
       {inviting || sheet === 'invite' ? <InviteToSpaceScreen space={inviting ?? current} jwt={jwt} inviterName={params.me.name || undefined} onClose={() => { setInviting(null); setSheet(null); }} /> : null}
       {sheet === 'channels' ? <ChannelsScreen space={current} jwt={jwt} onOpenChannel={openChannel} onClose={() => setSheet(null)} /> : null}
+      {current && (sheet === 'directory' || sheet === 'newDirect') ? (
+        <DirectoryScreen space={current} jwt={jwt} myUserId={myUserId} picking={sheet === 'newDirect'} onOpenMember={setProfile} onMessage={(member) => void writeTo(member)} onInvite={current.joinCode ? () => setSheet('invite') : undefined} onClose={() => setSheet(null)} />
+      ) : null}
+      {current && profile ? <MemberProfileScreen space={current} member={profile} isMe={profile.userId === myUserId} commonChannels={commonChannels} onMessage={() => void writeTo(profile)} onClose={() => setProfile(null)} /> : null}
+      {current && (sheet === 'members' || sheet === 'requests') ? (
+        <MembersScreen space={current} jwt={jwt} myUserId={myUserId} initialTab={sheet === 'requests' ? 'pending' : 'active'} onInvite={() => setSheet('invite')} onChanged={() => void reload()} onClose={() => setSheet(null)} />
+      ) : null}
+      {current && sheet === 'settings' ? <SpaceSettingsScreen space={current} jwt={jwt} onSaved={() => void reload()} onClose={() => setSheet(null)} /> : null}
+      {current && sheet === 'newGroup' ? (
+        <NewSpaceGroupScreen space={current} jwt={jwt} myUserId={myUserId} onCreated={(chat) => { setSheet(null); setReloadKey((key) => key + 1); onOpenChat(spaceChat({ ...chat, kind: 'group' }, current.id)); }} onClose={() => setSheet(null)} />
+      ) : null}
+      {welcome && !sheet ? (
+        <AddedToSpaceScreen
+          space={welcome}
+          jwt={jwt}
+          onEnter={() => { markSpacesSeen([welcome.id]); void enter(welcome.id); }}
+          onDirectory={() => { markSpacesSeen([welcome.id]); void enter(welcome.id).then(() => setSheet('directory')); }}
+          onLater={() => markSpacesSeen([welcome.id])}
+        />
+      ) : null}
+      {removed ? <AccessRemovedScreen space={removed} onPersonal={() => setRemoved(null)} onTalkTo={(admin) => void talkToAdmin(admin)} /> : null}
     </>
   );
 
-  return { current, title, layer, openChannels: () => setSheet('channels'), openInvite: () => setSheet('invite') };
+  return {
+    current,
+    title,
+    layer,
+    openChannels: () => setSheet('channels'),
+    openInvite: () => setSheet('invite'),
+    listProps: { reloadKey, onWorkspace: openWorkspace, onNewDirect: openNewDirect, onNewGroup: openNewGroup, onChats: setListChats, onRefresh: reload },
+  };
 }

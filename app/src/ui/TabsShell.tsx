@@ -105,7 +105,7 @@ export function TabsShell({
   const [creating, setCreating] = useState<'poll' | null>(null);
   const [chats, setChats] = useState<ChatSummary[]>([]);
   // The company spaces (E1/E2): the Chats title switches between personal and each space.
-  const espacios = useSpacesUi({ jwt: credential.jwt, me: { name: perfilPropio.name?.trim() || 'Tú', phone: credential.phone }, personalUnread: chats.filter((chat) => chat.unread > 0).length, onOpenChat });
+  const espacios = useSpacesUi({ jwt: credential.jwt, myUserId: credential.userId, me: { name: perfilPropio.name?.trim() || 'Tú', phone: credential.phone }, personalUnread: chats.filter((chat) => chat.unread > 0).length, onOpenChat });
   /** Mis grupos, para la agenda: un evento con la misma gente va al que ya existe (FL10). */
   const grupos = useMemo(
     () => chats.filter((chat) => chat.kind === 'group' && chat.memberIds.includes(credential.userId)).map((chat) => ({ id: chat.id, memberIds: chat.memberIds })),
@@ -361,7 +361,7 @@ export function TabsShell({
           />
           <ErrorBoundary pantalla="lista">
           {espacios.current ? (
-            <SpaceChatsScreen key={espacios.current.id} space={espacios.current} jwt={credential.jwt} myUserId={credential.userId} active={tab === 'chats'} openChatId={chatAbierto} onOpenChat={onOpenChat} onChannels={espacios.openChannels} onInvite={espacios.openInvite} />
+            <SpaceChatsScreen key={espacios.current.id} space={espacios.current} jwt={credential.jwt} myUserId={credential.userId} active={tab === 'chats'} openChatId={chatAbierto} onOpenChat={onOpenChat} onChannels={espacios.openChannels} onInvite={espacios.openInvite} {...espacios.listProps} />
           ) : (
           <ChatListScreen
             credential={credential}
@@ -415,6 +415,7 @@ export function TabsShell({
             onRespaldoDelServidor={() => setShowBackup(true)}
             onLogout={onLogout}
             onAbrirDestacado={(chatId, seq) => void buscarChat(chatId, credential.jwt).then((chat) => chat && onOpenChat(chat, seq))}
+            media={{ spaceId: espacios.current?.id ?? null, spaceName: espacios.current?.name, onOpen: (item) => void buscarChat(item.chatId, credential.jwt, espacios.current?.id).then((chat) => chat && onOpenChat(chat, item.seq)) }}
           />
           </ErrorBoundary>
           </View>

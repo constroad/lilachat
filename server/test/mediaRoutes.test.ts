@@ -1,4 +1,5 @@
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
+import { startTestMongo } from '../src/testMongo.js';
 import mongoose, { Types } from 'mongoose';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -51,7 +52,7 @@ beforeAll(async () => {
   // Declarado acá y no heredado del entorno: un test que depende de una
   // variable ambiente pasa en una máquina y falla en otra.
   process.env.LILA_PUBLIC_URL = 'https://lila.constroad.com';
-  mongo = await MongoMemoryServer.create();
+  mongo = await startTestMongo();
   await mongoose.connect(mongo.getUri('lilachat_media_test'));
 });
 

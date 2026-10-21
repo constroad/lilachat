@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
+import { startTestMongo } from './testMongo.js';
 import mongoose, { Types } from 'mongoose';
 import { VENTANA_DE_EDICION_MS } from '@lilachat/shared';
 import { ChatModel, MessageModel } from './chatModels.js';
@@ -15,7 +16,7 @@ let ana: Types.ObjectId;
 let chatId: string;
 
 beforeAll(async () => {
-  mongo = await MongoMemoryServer.create();
+  mongo = await startTestMongo();
   await mongoose.connect(mongo.getUri());
 });
 

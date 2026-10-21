@@ -1,6 +1,7 @@
 import { createServer, type Server } from 'node:http';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
+import { startTestMongo } from '../src/testMongo.js';
 import mongoose, { Types } from 'mongoose';
 import { io as connect, type Socket } from 'socket.io-client';
 import request from 'supertest';
@@ -49,7 +50,7 @@ const esperar = (socket: Socket, evento: string, ms = 2500): Promise<unknown | n
   });
 
 beforeAll(async () => {
-  mongo = await MongoMemoryServer.create();
+  mongo = await startTestMongo();
   await mongoose.connect(mongo.getUri('lilachat_calls_test'));
 
   httpServer = createServer(buildApp());

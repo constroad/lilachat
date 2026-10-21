@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
+import { startTestMongo } from './testMongo.js';
 import mongoose, { Types } from 'mongoose';
 import request from 'supertest';
 import { buildApp } from './app.js';
@@ -23,7 +24,7 @@ const app = buildApp();
 const crear = (cuerpo: object) => request(app).post('/api/chats').set('Authorization', `Bearer ${jwt}`).send(cuerpo);
 
 beforeAll(async () => {
-  mongo = await MongoMemoryServer.create();
+  mongo = await startTestMongo();
   await mongoose.connect(mongo.getUri('lilachat_borradores_test'));
 });
 

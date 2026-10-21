@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
+import { startTestMongo } from './testMongo.js';
 import mongoose, { Types } from 'mongoose';
 import { UserModel } from './models.js';
 import { ChatModel } from './chatModels.js';
@@ -16,7 +17,7 @@ let me: Types.ObjectId;
 let ana: Types.ObjectId;
 
 beforeAll(async () => {
-  mongo = await MongoMemoryServer.create();
+  mongo = await startTestMongo();
   await mongoose.connect(mongo.getUri());
 });
 
@@ -94,6 +95,8 @@ describe('the group switch for nudges and winks (PATCH /api/chats/:id/fun)', () 
     const byMember = await request(app).patch(`/api/chats/${group._id}/fun`).set(as(ana)).send({ allowed: true });
     expect(byMember.status).toBe(403);
     const byAdmin = await request(app).patch(`/api/chats/${group._id}/fun`).set(as(me)).send({ allowed: true });
+    // The status and the text in the message: a 21/10 run once got an empty body here and nothing said why.
+    expect(byAdmin.status, `response ${byAdmin.status}: ${byAdmin.text}`).toBe(200);
     expect(byAdmin.body).toEqual({ ok: true, funAllowed: true });
     expect((await ChatModel.findById(group._id).lean())?.funAllowed).toBe(true);
     const detail = await request(app).get(`/api/chats/${group._id}/detail`).set(as(ana));

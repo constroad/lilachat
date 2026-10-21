@@ -1,4 +1,5 @@
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
+import { startTestMongo } from '../src/testMongo.js';
 import mongoose, { Types } from 'mongoose';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -23,7 +24,7 @@ let token: string;
 let ajenoToken: string;
 
 beforeAll(async () => {
-  mongo = await MongoMemoryServer.create();
+  mongo = await startTestMongo();
   await mongoose.connect(mongo.getUri('lilachat_publicar_test'));
 });
 

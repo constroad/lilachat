@@ -1,5 +1,6 @@
 import { createServer, type Server as HttpServer } from 'node:http';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
+import { startTestMongo } from '../src/testMongo.js';
 import mongoose, { Types } from 'mongoose';
 import request from 'supertest';
 import { io as createClient, type Socket as ClientSocket } from 'socket.io-client';
@@ -57,7 +58,7 @@ async function vincular(opciones: { mantener?: boolean } = {}) {
 }
 
 beforeAll(async () => {
-  mongo = await MongoMemoryServer.create();
+  mongo = await startTestMongo();
   await mongoose.connect(mongo.getUri('lilachat_vincular_test'));
 });
 

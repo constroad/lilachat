@@ -1,4 +1,5 @@
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
+import { startTestMongo } from '../src/testMongo.js';
 import mongoose, { Types } from 'mongoose';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ChatModel, MessageModel } from '../src/chatModels.js';
@@ -17,7 +18,7 @@ const escribir = (quien: Types.ObjectId, body: string, extra: { hiloDe?: number 
   sendMessage({ chatId: grupo, senderId: quien, clientKey: `k-${++n}`, body, ...extra });
 
 beforeAll(async () => {
-  mongo = await MongoMemoryServer.create();
+  mongo = await startTestMongo();
   await mongoose.connect(mongo.getUri('lilachat_reacciones'));
 });
 

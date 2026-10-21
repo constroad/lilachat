@@ -2,7 +2,8 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
+import { startTestMongo } from './testMongo.js';
 import mongoose, { Types } from 'mongoose';
 import request from 'supertest';
 import { huellaDeBytes } from '@lilachat/shared';
@@ -31,7 +32,7 @@ const TELEFONO = '51902049935';
 const app = buildApp();
 
 beforeAll(async () => {
-  mongo = await MongoMemoryServer.create();
+  mongo = await startTestMongo();
   await mongoose.connect(mongo.getUri());
 });
 

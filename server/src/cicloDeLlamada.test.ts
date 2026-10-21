@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
+import { startTestMongo } from './testMongo.js';
 import mongoose, { Types } from 'mongoose';
 import { alContestar, alOfrecer, alTerminar, configurarCiclo, rechazarDesdeAviso } from './cicloDeLlamada.js';
 import { __reiniciarLlamadas, firmarRechazo, sigueSonando } from './llamadas.js';
@@ -24,7 +25,7 @@ let pendiente: (() => Promise<void>) | null = null;
 let reloj = 1_000_000;
 
 beforeAll(async () => {
-  mongo = await MongoMemoryServer.create();
+  mongo = await startTestMongo();
   await mongoose.connect(mongo.getUri());
 });
 

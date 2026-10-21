@@ -1,4 +1,5 @@
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
+import { startTestMongo } from '../src/testMongo.js';
 import mongoose, { Types } from 'mongoose';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -24,7 +25,7 @@ const foto = { mediaId: 'image-1.jpg', url: '/files/x/image-1.jpg', thumbUrl: '/
 
 beforeAll(async () => {
   process.env.LILA_PUBLIC_URL = 'https://lila.constroad.com';
-  mongo = await MongoMemoryServer.create();
+  mongo = await startTestMongo();
   await mongoose.connect(mongo.getUri('lilachat_reenvio'));
 });
 

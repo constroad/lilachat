@@ -1,4 +1,5 @@
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
+import { startTestMongo } from '../src/testMongo.js';
 import mongoose, { Types } from 'mongoose';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -29,7 +30,7 @@ const escribir = async (chatId: string, quien: Types.ObjectId, body: string) =>
   (await sendMessage({ chatId, senderId: quien, clientKey: new Types.ObjectId().toHexString(), body })).message.seq;
 
 beforeAll(async () => {
-  mongo = await MongoMemoryServer.create();
+  mongo = await startTestMongo();
   await mongoose.connect(mongo.getUri('lilachat_fijados'));
 });
 

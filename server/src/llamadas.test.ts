@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
+import { startTestMongo } from './testMongo.js';
 import mongoose, { Types } from 'mongoose';
 import { CALL_TIMEOUT_MS, CAPACIDAD_LLAMADA_NATIVA } from '@lilachat/shared';
 import {
@@ -181,7 +182,7 @@ describe('avisarLlamada', () => {
   const datos: PushDeDatos[] = [];
 
   beforeAll(async () => {
-    mongo = await MongoMemoryServer.create();
+    mongo = await startTestMongo();
     await mongoose.connect(mongo.getUri());
   });
 

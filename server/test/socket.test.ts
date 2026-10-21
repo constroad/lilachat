@@ -1,5 +1,6 @@
 import { createServer, type Server as HttpServer } from 'node:http';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
+import { startTestMongo } from '../src/testMongo.js';
 import mongoose, { Types } from 'mongoose';
 import { io as createClient, type Socket as ClientSocket } from 'socket.io-client';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -39,7 +40,7 @@ const connect = (token: string): Promise<ClientSocket> =>
   });
 
 beforeAll(async () => {
-  mongo = await MongoMemoryServer.create();
+  mongo = await startTestMongo();
   await mongoose.connect(mongo.getUri('lilachat_socket_test'));
   httpServer = createServer(buildApp());
   attachSocket(httpServer);

@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
+import { startTestMongo } from './testMongo.js';
 import mongoose, { Types } from 'mongoose';
 import { maybeAnswerMention, resetAssistantUser } from './assistantReply.js';
 import { setAssistantClient } from './assistantService.js';
@@ -26,7 +27,7 @@ const clienteFalso = (respuesta = 'Dijeron que el domingo a la una.') => ({
 });
 
 beforeAll(async () => {
-  mongo = await MongoMemoryServer.create();
+  mongo = await startTestMongo();
   await mongoose.connect(mongo.getUri('lilachat_mention_test'));
 });
 

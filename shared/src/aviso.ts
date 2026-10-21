@@ -31,7 +31,7 @@ export function armarAviso(params: {
   chatName: string;
   senderName: string | null;
   esGrupo: boolean;
-  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'poll' | 'event' | 'reminder' | 'sticker';
+  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'poll' | 'event' | 'reminder' | 'sticker' | 'zumbido';
   body: string;
   cifrado?: boolean;
 }): Aviso {
@@ -49,6 +49,8 @@ export function armarAviso(params: {
       ? params.body
       : params.kind === 'sticker'
         ? 'Sticker'
+        : params.kind === 'zumbido'
+        ? 'Te mandó un zumbido'
         : params.kind === 'image'
         ? '📷 Foto'
         : params.kind === 'video'

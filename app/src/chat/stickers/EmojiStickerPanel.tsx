@@ -1,6 +1,10 @@
 import { useCallback, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Delete, Smile, Sticker } from 'lucide-react-native';
+import { Delete, Smile, Sparkles, Sticker } from 'lucide-react-native';
+import type { WinkId } from '@lilachat/shared';
+import { WinkPanel } from '../WinkPanel';
+
+type Tab = 'emoji' | 'stickers' | 'winks';
 import { PanelDeEmojis } from '../PanelDeEmojis';
 import { useColores } from '../../ui/tema';
 import { reportarError } from '../../ui/reportarError';
@@ -10,7 +14,6 @@ import { CreateSticker } from './CreateSticker';
 import { useStickers } from './useStickers';
 import type { StickerThread } from './stickersApi';
 
-type Tab = 'emoji' | 'stickers';
 
 let modelRequested = false;
 /** Opening «Stickers» already asks for the cutout model: by the time a photo is picked it is usually there. */
@@ -37,9 +40,13 @@ export function EmojiStickerPanel(props: {
   onStickerSent?: () => void;
   /** The message being replied to when the sticker is tapped: it quotes it (20/10). */
   replyTo?: () => number | undefined;
+  /** Winks (José, 21/10): the «Guiños» tab, where nudges and winks are allowed; the nudge lives on top of it. */
+  onWink?: (wink: WinkId) => void;
+  onNudge?: () => void;
 }) {
   const colors = useColores();
   const [tab, setTab] = useState<Tab>('emoji');
+  const { onWink } = props;
   const [creating, setCreating] = useState(false);
   /** A new editor each time (its layers and brushes do not leak into the next sticker); it stays mounted to slide out. */
   const [editorSession, setEditorSession] = useState(0);
@@ -48,6 +55,7 @@ export function EmojiStickerPanel(props: {
   const tabs: { key: Tab; label: string; Icon: typeof Smile }[] = [
     { key: 'emoji', label: 'Emoji', Icon: Smile },
     ...(props.withStickers ? [{ key: 'stickers' as const, label: 'Stickers', Icon: Sticker }] : []),
+    ...(onWink ? [{ key: 'winks' as const, label: 'Guiños', Icon: Sparkles }] : []),
   ];
   return (
     <View style={{ flex: 1 }}>
@@ -75,6 +83,8 @@ export function EmojiStickerPanel(props: {
       </View>
       {tab === 'emoji' ? (
         <PanelDeEmojis onElegir={props.onPickEmoji} />
+      ) : tab === 'winks' && onWink ? (
+        <WinkPanel recipient={props.chatName} onSend={onWink} onNudge={props.onNudge} />
       ) : (
         <View style={{ flex: 1 }}>
           <StickerPanel stickers={stickers} onSend={(sticker) => void stickers.send(props.chatId, sticker, { ...props.thread, replyToSeq: props.replyTo?.() }).then((sent) => sent && props.onStickerSent?.())} onCreate={() => { setEditorSession((before) => before + 1); setCreating(true); }} />

@@ -61,7 +61,8 @@ export function SeleccionDeMensaje(params: {
   const acciones = accionesDeVarios(
     mensajes.map((uno) =>
       accionesDeMensaje({
-        mio: uno.senderId === params.yo,
+        // The server writes the notices: nobody can delete them for all or see their info.
+        mio: uno.senderId === params.yo && uno.kind !== 'system',
         eliminado: Boolean(uno.deletedAt),
         conTexto: Boolean(uno.body?.trim()),
         esMedia: Boolean(uno.media),

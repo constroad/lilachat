@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { BarChart3, Bell, BellOff, CalendarDays, Camera, Check, CheckCheck, FileText, Lock, Mic, NotebookPen, Pin, Sticker, Video, type LucideIcon } from 'lucide-react-native';
 import {
   formatChatTimestamp,
@@ -13,6 +14,7 @@ import {
 import type { ChatSummary } from '../api/client';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { precargarChat } from './mensajesGuardados';
+import { useFunInRow } from './nudge';
 import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
 
@@ -50,10 +52,14 @@ export const FilaDeChat = memo(function FilaDeChat(props: {
   /** Estables (useCallback en la lista): si no, el `memo` no sirve de nada. */
   onTocar: (chat: ChatSummary) => void;
   onMantener: (chatId: string) => void;
+  /** This chat is open on screen: it plays its own nudges, the row does not. */
+  open?: boolean;
 }) {
   const colores = useColores();
   const { chat } = props;
+  const funStyle = useFunInRow(chat, props.miUserId, props.open === true);
   return (
+    <Animated.View style={funStyle}>
     <Pressable
       testID={`chat-${chat.id}`}
       // En modo selección el toque marca/desmarca; fuera de él, abre.
@@ -227,6 +233,7 @@ export const FilaDeChat = memo(function FilaDeChat(props: {
         </View>
       </View>
     </Pressable>
+    </Animated.View>
   );
 });
 

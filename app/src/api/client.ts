@@ -168,6 +168,8 @@ export type ChatSummary = {
     /** Borrado para todos (19/10): la vista previa lo dice y no lleva checks. */
     deletedAt?: string;
     /** E3: fue una respuesta en un hilo. */
+    /** A wink's id: the list plays its sound (José, 21/10). */
+    wink?: string;
     hiloDe?: number;
     /** El aviso de grupo, para resolver el nombre con la agenda del teléfono. */
     system?: {
@@ -187,6 +189,8 @@ export type ChatSummary = {
   /** La foto del grupo, absoluta. Sin foto se dibuja la inicial. */
   avatarUrl?: string;
   /** Silenciado por mí: la fila lo marca y no me llega push. */
+  /** Nudges and winks switched on by an admin of the group (José, 21/10). */
+  funAllowed?: boolean;
   muted?: boolean;
   /** Fijado por mí: va arriba en la lista. */
   pinned?: boolean;

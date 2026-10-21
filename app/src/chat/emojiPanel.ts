@@ -100,3 +100,4 @@ const subscribe = (listener: Listener) => {
   };
 };
 export const useEmojiPanelOpen = () => useSyncExternalStore(subscribe, () => open, () => open);
+

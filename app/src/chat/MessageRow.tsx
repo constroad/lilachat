@@ -2,9 +2,10 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { memo } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
-import { BellRing, CalendarDays, CircleAlert, Play } from 'lucide-react-native';
+import { CircleAlert, Play } from 'lucide-react-native';
 import { AVATAR_DE_AUTOR, colorDeAutor, dondeVaLaHora, mostrarAutor, radiosDeBurbuja } from './burbuja';
 import { DeslizarParaResponder } from './DeslizarParaResponder';
+import { HighlightedNotice } from './HighlightedNotice';
 import { LineaDeLlamada } from './LineaDeLlamada';
 import { CitaDeRespuesta } from './CitaDeRespuesta';
 import { TextoConHora } from './TextoConHora';
@@ -42,7 +43,7 @@ const estiloDeFoto = (media: { width?: number; height?: number }) => {
 import type { ChatMessage, PendingMessage } from './useChat';
 import { useColores } from '../ui/tema';
 import { TarjetaDelChat } from './TarjetaDelChat';
-import { NudgeLine } from './nudge';
+import { NudgeLine, WinkLine } from './nudge';
 import { StickerMessage } from './stickers/StickerMessage';
 import { Avatar } from '../ui/Avatar';
 
@@ -144,11 +145,16 @@ function FilaDeMensaje({
   // Los avisos del grupo no son burbujas de nadie: van centrados, chiquitos y
   // sin cola. Se resuelve ANTES que todo lo demás porque nada de lo de abajo
   // —agrupado, checks, avatar— aplica.
+  // The reminder that rang or an event coming up: answered like a message (José, 21/10).
+  if (!isPending(item) && item.kind === 'system' && esAvisoDestacado(item.system?.evento)) {
+    return <HighlightedNotice item={item} text={noticeText(item, myUserId)} mine={item.senderId === myUserId} selecting={Boolean(enSeleccion)} selected={Boolean(seleccionado)} onSelect={onSeleccionar} onReply={onResponder} />;
+  }
   if (!isPending(item) && item.kind === 'system') {
     return <AvisoDelGrupo item={item} myUserId={myUserId} />;
   }
   // The MSN nudge (backlog 3): a line, not a bubble.
-  if (!isPending(item) && item.kind === 'zumbido') return <NudgeLine mine={item.senderId === myUserId} author={nombreAutor} />;
+  if (!isPending(item) && item.kind === 'zumbido') return <NudgeLine mine={item.senderId === myUserId} author={nombreAutor} at={item.at} />;
+  if (!isPending(item) && item.kind === 'guino') return <WinkLine seq={item.seq} wink={item.wink} mine={item.senderId === myUserId} author={nombreAutor} at={item.at} />;
   // La encuesta o el evento publicados en el chat (18/10): una tarjeta para
   // votar o confirmar, no una burbuja de texto.
   if (!isPending(item) && item.ref && jwt) {
@@ -475,35 +481,36 @@ export function DaySeparator({ label }: { label: string }) {
  * que la ausencia del aviso.
  */
 function AvisoDelGrupo({ item, myUserId }: { item: ChatMessage; myUserId: string }) {
-  const agenda = agendaPorTelefono();
-  const aviso = item.system;
-  if (aviso?.evento === 'llamada') return <LineaDeLlamada item={item} myUserId={myUserId} />;
-
-  const nombreDe = (persona?: { phone?: string; name?: string }) =>
-    persona
-      ? nombreDeContacto({ delServidor: persona.name ?? null, telefono: persona.phone ?? null, agenda })
-      : '';
-
-  const texto = aviso
-    ? textoDeAviso({
-        quien: nombreDe(aviso.quien) || 'Alguien',
-        esMio: item.senderId === myUserId,
-        evento: aviso.evento,
-        aQuien: nombreDe(aviso.aQuien) || undefined,
-        aMi: aviso.targetId === myUserId,
-        valor: aviso.valor,
-      }) || item.body || ''
-    : (item.body ?? '');
-
-  if (!texto) return null;
-  if (esAvisoDestacado(aviso?.evento)) return <AvisoDestacado item={item} texto={texto} />;
-
+  if (item.system?.evento === 'llamada') return <LineaDeLlamada item={item} myUserId={myUserId} />;
+  const text = noticeText(item, myUserId);
+  if (!text) return null;
   return (
     <View className="items-center py-1.5" testID={`aviso-${item.seq}`}>
       <Text className="rounded-full bg-surface-variant/60 px-3 py-1 text-center text-[11px] text-on-surface-variant">
-        {texto}
+        {text}
       </Text>
     </View>
+  );
+}
+
+/** The notice's sentence, with the names from YOUR contacts; the server's `body` if it cannot be built. */
+function noticeText(item: ChatMessage, myUserId: string): string {
+  const notice = item.system;
+  if (!notice) return item.body ?? '';
+  const contacts = agendaPorTelefono();
+  const nameOf = (person?: { phone?: string; name?: string }) =>
+    person ? nombreDeContacto({ delServidor: person.name ?? null, telefono: person.phone ?? null, agenda: contacts }) : '';
+  return (
+    textoDeAviso({
+      quien: nameOf(notice.quien) || 'Alguien',
+      esMio: item.senderId === myUserId,
+      evento: notice.evento,
+      aQuien: nameOf(notice.aQuien) || undefined,
+      aMi: notice.targetId === myUserId,
+      valor: notice.valor,
+    }) ||
+    item.body ||
+    ''
   );
 }
 
@@ -522,23 +529,4 @@ export function previewDeMensaje(item: Row): string {
   if (mime.startsWith('audio/')) return '🎤 Nota de voz';
   if (item.media) return '📎 ' + (item.media.fileName ? nombreLimpio(item.media.fileName) : 'Archivo');
   return 'Mensaje';
-}
-
-/**
- * El recordatorio que sonó o el evento que se acerca (José, 20/10: «¿no
- * debería aparecer también en el chat?»): una tarjeta con su ícono, no una
- * línea gris más. El emoji del texto lo reemplaza el ícono.
- */
-function AvisoDestacado({ item, texto }: { item: ChatMessage; texto: string }) {
-  const colores = useColores();
-  const Icono = item.system?.evento === 'evento-pronto' ? CalendarDays : BellRing;
-  return (
-    <View className="items-center py-2" testID={`aviso-destacado-${item.seq}`}>
-      <View className="max-w-[88%] flex-row items-center gap-3 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-2.5">
-        <Icono size={18} color={colores.primary} />
-        <Text className="flex-shrink text-[14px] font-semibold text-on-surface">{texto.replace(/^(⏰|📅)\s*/u, '')}</Text>
-        <Text className="text-[11px] text-on-surface-variant">{formatClock(item.at)}</Text>
-      </View>
-    </View>
-  );
 }

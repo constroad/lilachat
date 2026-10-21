@@ -1,5 +1,5 @@
 import { useCallback, type ComponentProps } from 'react';
-import { formatDayLabel, miReaccion, puedeAbrirHilo, puedeReaccionar, resolveDeliveryState, startsNewDay } from '@lilachat/shared';
+import { formatDayLabel, miReaccion, canOpenThread, puedeReaccionar, resolveDeliveryState, startsNewDay } from '@lilachat/shared';
 import { DivisorNoLeidos } from './useDivisorNoLeidos';
 import { DaySeparator, isPending, MessageRow, type Row } from './MessageRow';
 import { ChipDeHilo } from './ChipDeHilo';
@@ -57,14 +57,16 @@ export function useDibujarFila(p: {
       const previousAt = previous ? (isPending(previous) ? previous.queuedAt : previous.at) : undefined;
       const mia = isPending(item) || item.senderId === yo;
       const conAvatar = esGrupo && !mia;
-      const conBarra = !isPending(item) && elegidos.size === 1 && elegidos.has(item.seq) && puedeReaccionar({ seq: item.seq, deletedAt: item.deletedAt, kind: item.kind, cifrado: encrypted });
+      const withBar = !isPending(item) && elegidos.size === 1 && elegidos.has(item.seq) && puedeReaccionar({ seq: item.seq, deletedAt: item.deletedAt, kind: item.kind, system: item.system, cifrado: encrypted });
       // «Responder en hilo» bajo los emojis: suelta la selección y abre el hilo.
-      const conHilo = conBarra && !isPending(item) && puedeAbrirHilo({ seq: item.seq, kind: item.kind, hiloDe: item.hiloDe, deletedAt: item.deletedAt, cifrado: encrypted });
+      const withThread = withBar && !isPending(item) && canOpenThread({ seq: item.seq, kind: item.kind, system: item.system, hiloDe: item.hiloDe, deletedAt: item.deletedAt, cifrado: encrypted });
+      // A highlighted notice sits in the middle: so do its bar, reactions and thread chip (21/10).
+      const centered = !isPending(item) && item.kind === 'system';
       return (
         <>
           {startsNewDay(at, previousAt) ? <DaySeparator label={formatDayLabel(at)} /> : null}
           {!isPending(item) && item.seq === divisorSeq ? <DivisorNoLeidos cantidad={noLeidosAlAbrir} /> : null}
-          {conBarra ? <BarraDeReacciones seq={item.seq} mia={mia} conAvatar={false} miEmoji={miReaccion(item.reacciones, yo)} onElegir={onReaccionar} onMas={onMasEmojis} onHilo={conHilo ? (seq) => { onSeleccionar?.(seq); onAbrirHilo(seq); } : undefined} /> : null}
+          {withBar ? <BarraDeReacciones seq={item.seq} mia={mia} conAvatar={false} centered={centered} miEmoji={miReaccion(item.reacciones, yo)} onElegir={onReaccionar} onMas={onMasEmojis} onHilo={withThread ? (seq) => { onSeleccionar?.(seq); onAbrirHilo(seq); } : undefined} /> : null}
           <MessageRow
             item={item}
             previous={previous}
@@ -89,7 +91,7 @@ export function useDibujarFila(p: {
             destacado={!isPending(item) && destacados.has(item.seq)}
           />
           {!isPending(item) && item.reacciones?.length && !item.deletedAt ? (
-            <PastillaDeReacciones id={String(item.seq)} reacciones={item.reacciones} yo={yo} mia={mia} conAvatar={conAvatar} onTocar={() => onVerReacciones(item.seq)} />
+            <PastillaDeReacciones id={String(item.seq)} reacciones={item.reacciones} yo={yo} mia={mia} conAvatar={conAvatar} centered={centered} onTocar={() => onVerReacciones(item.seq)} />
           ) : null}
           {!isPending(item) && item.hilo && item.hilo.respuestas > 0 && !item.deletedAt ? (
             <ChipDeHilo
@@ -97,6 +99,7 @@ export function useDibujarFila(p: {
               hilo={item.hilo}
               mia={mia}
               conAvatar={conAvatar}
+              centered={centered}
               nombres={nombres}
               fotos={fotos}
               nuevas={hiloConNuevas(item.seq, item.hilo)}

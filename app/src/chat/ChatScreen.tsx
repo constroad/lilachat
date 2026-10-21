@@ -5,7 +5,7 @@ import { ProgramadosDelChat } from './ProgramadosDelChat';
 import type { FlashListRef } from '@shopify/flash-list';
 import { ChatBottom } from './ChatBottom';
 import { etiquetaDeRecordatorioEnElChat, type MencionEnMensaje } from '@lilachat/shared';
-import { sendNudge } from './nudge';
+import { useFunActions } from './nudge';
 import { AttachSheet } from './AttachSheet';
 import { CrearDesdeElChat, type QueSeCrea } from './CrearDesdeElChat';
 import { AccionesDeTarjetaContext } from './accionesDeTarjeta';
@@ -192,6 +192,7 @@ export function ChatScreen({
    * varios conectados sería ruido permanente.
    */
   const esGrupoChat = !esBorrador && (otherUserId === null || otherUserId === undefined);
+  const fun = useFunActions({ chatId, isGroup: esGrupoChat, isDraft: esBorrador, onError: setMediaError });
   const otroEscribe = otherUserId ? escribiendo.has(otherUserId) : escribiendo.size > 0;
   const otroEnLinea = otherUserId ? enLinea.has(otherUserId) : false;
   const ultimaVez = useUltimaVez(otherUserId);
@@ -478,7 +479,7 @@ export function ChatScreen({
           listaRef={listaRef}
           rows={rows}
           mensajes={messages}
-          yo={credential.userId}
+          yo={credential.userId} chatId={chatId} readSeqAtOpen={readSeq ?? 0}
           dibujarFila={dibujarFila}
           onListo={alAbrir}
           onCargarAnteriores={() => void cargarAnteriores()}
@@ -489,7 +490,7 @@ export function ChatScreen({
         />
       </AccionesDeTarjetaContext.Provider>
 
-      <ChatBottom coveredMargin={sinSubir} composerRef={composerRef} chat={{ jwt: credential.jwt, id: chatId, name: nombreVisible, withStickers: !encrypted }}>
+      <ChatBottom coveredMargin={sinSubir} composerRef={composerRef} chat={{ jwt: credential.jwt, id: chatId, name: nombreVisible, withStickers: !encrypted, onWink: fun.onWink, onNudge: fun.onNudge }}>
       {mediaError ? (
         <Text className="px-4 pb-1 text-sm text-error" testID="error-media">
           {mediaError}
@@ -549,9 +550,8 @@ export function ChatScreen({
       {reacciones.hojas}
 
       <AttachSheet
-        visible={attachOpen}
-        onClose={() => setAttachOpen(false)}
-        onPickMedia={pickMedia} onNudge={esGrupoChat || esBorrador ? undefined : () => void sendNudge(chatId).then((r) => r.ok || setMediaError(r.reason))}
+        visible={attachOpen} onClose={() => setAttachOpen(false)}
+        onPickMedia={pickMedia}
         onPickGallery={() => void pickFromGallery()}
         onCreateEvent={() => setCreando('event')}
         onCreatePoll={() => setCreando('poll')}

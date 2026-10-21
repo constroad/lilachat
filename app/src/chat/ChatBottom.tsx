@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode, type RefObject } from 'react';
 import Animated, { runOnJS, useAnimatedStyle } from 'react-native-reanimated';
 import { useKeyboardHandler, useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
+import type { WinkId } from '@lilachat/shared';
 import type { ComposerHandle } from './Composer';
 import { EmojiStickerPanel } from './stickers/EmojiStickerPanel';
 import { closeEmojiPanel, isEmojiPanelOpen, panelHeight, panelShown, rememberKeyboard, resetEmojiPanel, useEmojiPanelOpen } from './emojiPanel';
@@ -35,7 +36,7 @@ export function ChatBottom(props: {
   /** What the bar's bottom margin lets the keyboard cover (`sinSubir`). */
   coveredMargin: number;
   composerRef: RefObject<ComposerHandle | null>;
-  chat: { jwt: string; id: string; name: string; withStickers: boolean };
+  chat: { jwt: string; id: string; name: string; withStickers: boolean; onWink?: (wink: WinkId) => void; onNudge?: () => void };
   children: ReactNode;
 }) {
   const margins = useMargenes();
@@ -83,6 +84,8 @@ export function ChatBottom(props: {
             onBackspace={() => props.composerRef.current?.backspace()}
             replyTo={() => props.composerRef.current?.replyingTo()}
             onStickerSent={() => props.composerRef.current?.replyDone()}
+            onWink={props.chat.onWink}
+            onNudge={props.chat.onNudge}
           />
         </Animated.View>
       ) : null}

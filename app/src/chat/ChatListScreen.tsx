@@ -544,6 +544,7 @@ export function ChatListScreen({
               borrador={borradores.get(chat.id)}
               onTocar={alTocarFila}
               onMantener={alternarSeleccion}
+              open={chat.id === chatAbierto}
             />
           )}
           refreshControl={

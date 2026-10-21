@@ -32,6 +32,7 @@ import { ParticipantesDelGrupo, type Miembro } from './ParticipantesDelGrupo';
 import { VisorDeFoto } from '../ui/VisorDeFoto';
 import { RecordatoriosDelGrupo } from './RecordatoriosDelGrupo';
 import { EditarDescripcion, TarjetaDeDescripcion } from './descripcion/DescripcionDelGrupo';
+import { GroupFunCard } from './GroupFunCard';
 import { SeccionCompartido } from './CompartidoEnElChat';
 import { useMargenes } from '../ui/useMargenes';
 import type { ServerMessage } from './socketClient';
@@ -61,6 +62,8 @@ type Detalle = {
   muted?: boolean;
   /** E3b: todo / menciones / nada; a server without it leaves only `muted`. */
   avisos?: NotificationLevel;
+  /** Nudges and winks in a group, switched on by an admin (21/10). */
+  funAllowed?: boolean;
   members: Miembro[];
 };
 
@@ -435,6 +438,7 @@ export function ChatDetailScreen({
             </View>
 
             {esGrupo || esBorrador ? <TarjetaDeDescripcion descripcion={detalle!.descripcion} editable={puedoEditarInfo} onEditar={() => setEditandoDescripcion(true)} /> : null}
+            {esGrupo ? <GroupFunCard chatId={chatId} jwt={credential.jwt} allowed={detalle!.funAllowed === true} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} /> : null}
             {tarjetas}
 
             <SeccionCompartido

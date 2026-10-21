@@ -13,7 +13,7 @@ import { useFinalDeLaConversacion } from './useFinalDeLaConversacion';
 import { useColores } from '../ui/tema';
 import type { OpeningPlace } from './useDivisorNoLeidos';
 import { MAX_HIDDEN_MS, RevealWhenSettled, SETTLE_MS } from './revealWhenSettled';
-import { useNudgeShake } from './nudge';
+import { useFunPlayback } from './nudge';
 
 /** The emoji panel's room under the conversation (`emojiPanel`). */
 const EMOJI_PANEL_ROOM = { held: roomHeld, lift: contentLift };
@@ -73,8 +73,11 @@ export function ListaDeMensajes(props: {
   listaRef: RefObject<FlashListRef<Row> | null>;
   rows: Row[];
   /** Para contar los que llegaron mientras se leía arriba. */
-  mensajes: readonly { seq: number; senderId: string; kind?: string }[];
+  mensajes: readonly { seq: number; senderId: string; kind?: string; wink?: string }[];
   yo: string;
+  /** Nudges and winks: whose chat it is and what I had read when it opened (`useFunPlayback`). */
+  chatId: string;
+  readSeqAtOpen: number;
   dibujarFila: (info: { item: Row; index: number }) => ReactElement;
   /** Al terminar de montar: el momento exacto en que la lista ya midió. */
   onListo: () => OpeningPlace;
@@ -107,9 +110,9 @@ export function ListaDeMensajes(props: {
   const scrollDelChat = useScrollConTeclado(sinSubir);
   const { revealed, onLoad, onSize } = useRevealWhenPlaced(rows.length > 0, props.onListo, releaseFromEnd);
   const liftStyle = useBottomLiftStyle(sinSubir);
-  const shakeStyle = useNudgeShake(props.mensajes, props.yo);
+  useFunPlayback({ messages: props.mensajes, me: props.yo, chatId: props.chatId, afterSeq: props.readSeqAtOpen });
   return (
-    <Animated.View style={[{ flex: 1 }, shakeStyle]}>
+    <Animated.View style={{ flex: 1 }}>
       <FondoDelChat />
       <View className="flex-1" style={{ opacity: revealed ? 1 : 0 }}>
       <BottomRoom.Provider value={EMOJI_PANEL_ROOM}>

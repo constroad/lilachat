@@ -21,6 +21,8 @@ export type ServerMessage = {
   clientKey: string;
   kind: string;
   body?: string;
+  /** A wink's id (kind `guino`, José 21/10). */
+  wink?: string;
   /** El sobre cifrado, en chats secretos (F9). Llega en vez de `body`. */
   envelope?: { v: 1; nonce: string; ciphertext: string };
   /** La encuesta o el evento que publica este mensaje (18/10): se dibuja como tarjeta. */

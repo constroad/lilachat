@@ -5,6 +5,7 @@ import { ActivityIndicator, AppState, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { FunScreen } from './src/chat/FunScreen';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { ErrorBoundary } from './src/ui/ErrorBoundary';
 import './global.css';
@@ -104,7 +105,9 @@ export default function App() {
         {/* Envuelve TODO: un error de render dejaba la pantalla en blanco sin
             explicación para nadie, ni siquiera para nosotros. */}
         <ErrorBoundary pantalla="app">
-          <Contenido />
+          <FunScreen>
+            <Contenido />
+          </FunScreen>
         </ErrorBoundary>
       </ProveedorTema>
     </SafeAreaProvider>

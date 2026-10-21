@@ -230,7 +230,9 @@ export function buildPushText(params: {
               ? 'Sticker'
               : params.kind === 'zumbido'
                 ? 'Te mandó un zumbido'
-                : '');
+                : params.kind === 'guino'
+                  ? 'Te mandó un guiño'
+                  : '');
   return {
     // En un grupo importan los dos: de qué grupo y quién habló.
     title: params.chatName ? `${params.chatName} · ${params.senderName}` : params.senderName,

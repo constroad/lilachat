@@ -42,6 +42,8 @@ export type ChatSummary = {
     system?: Message['system'];
     deletedAt?: Date;
     hiloDe?: number;
+    /** A wink's id: the list plays its sound (José, 21/10). */
+    wink?: string;
   } | null;
   /** Hasta qué `seq` leyeron los DEMÁS: de acá salen los checks del diseño. */
   othersReadSeq: number;
@@ -54,6 +56,8 @@ export type ChatSummary = {
   propio?: boolean;
   /** E2: a channel of the space (its `name` is the slug). */
   channel?: { visibility: 'public' | 'private' };
+  /** Nudges and winks switched on by an admin of the group (José, 21/10). */
+  funAllowed?: boolean;
   /** Silenciado por MÍ: la lista lo marca y no me llega push de acá. */
   muted?: boolean;
   /** E3b: «todo», «menciones» or «nada» (from muted + avisos). */
@@ -160,6 +164,7 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
       })(),
       ...(chat.propio ? { propio: true } : {}),
       ...(chat.channel ? { channel: { visibility: chat.channel.visibility } } : {}),
+      ...(chat.funAllowed ? { funAllowed: true } : {}),
       muted: yo?.muted === true,
       avisos: notificationLevel(yo ?? {}),
       pinned: yo?.pinned === true,
@@ -189,6 +194,7 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
             ...(last.deletedAt ? { deletedAt: last.deletedAt } : {}),
             // E3: el último fue una respuesta en un hilo (la vista previa lo dice).
             ...(last.hiloDe ? { hiloDe: last.hiloDe } : {}),
+            ...(last.wink ? { wink: last.wink } : {}),
           }
         : null,
       othersReadSeq: acuseDelGrupo({ otros: acusan, porMiembro: acuses?.read ?? new Map() }),

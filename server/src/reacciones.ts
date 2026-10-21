@@ -1,6 +1,6 @@
 import { Types } from 'mongoose';
 import { esEmojiDeReaccion } from '@lilachat/shared';
-import { ChatModel, MessageModel, type Message } from './chatModels.js';
+import { ACTS_AS_MESSAGE_FILTER, ChatModel, MessageModel, type Message } from './chatModels.js';
 
 export type ReaccionGuardada = { userId: string; emoji: string; en: Date };
 export type ResultadoDeReaccion =
@@ -29,7 +29,7 @@ export async function reaccionar(params: { chatId: string; seq: number; userId: 
   const sinLaMia = { $filter: { input: { $ifNull: ['$reacciones', []] }, cond: { $ne: ['$$this.userId', params.userId] } } };
   const nueva = params.emoji ? [{ userId: params.userId, emoji: params.emoji, en: new Date() }] : [];
   const actualizado = await MessageModel.findOneAndUpdate(
-    { chatId, seq: params.seq, deletedAt: { $exists: false }, kind: { $ne: 'system' } },
+    { chatId, seq: params.seq, deletedAt: { $exists: false }, ...ACTS_AS_MESSAGE_FILTER },
     [{ $set: { reacciones: { $concatArrays: [sinLaMia, nueva] } } }],
     { new: true, updatePipeline: true, projection: { reacciones: 1, senderId: 1, body: 1 } }
   ).lean<Pick<Message, 'reacciones' | 'senderId' | 'body'> | null>();

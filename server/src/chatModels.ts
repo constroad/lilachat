@@ -1,5 +1,6 @@
-import mongoose, { Schema, type Model, type Types } from 'mongoose';
+import mongoose, { Schema, type Model, type QueryFilter, type Types } from 'mongoose';
 import type { RefDeMensaje } from '@lilachat/shared';
+import { HIGHLIGHTED_NOTICE_EVENTS } from '@lilachat/shared';
 
 /**
  * Chats, mensajes y acuses (spec §7).
@@ -65,6 +66,8 @@ export interface Chat {
    * una promesa que no puede sostener.
    */
   encrypted?: boolean;
+  /** Nudges and winks in a group, switched on by an admin (José, 21/10). In a 1:1 they always go. */
+  funAllowed?: boolean;
   /** Mensajes fijados arriba del chat (19/10): hasta 3, cada uno con su vencimiento. */
   fijados?: { seq: number; por: Types.ObjectId; en: Date; hasta: Date }[];
 }
@@ -78,8 +81,10 @@ export interface Message {
   seq: number;
   senderId: Types.ObjectId;
   clientKey: string;
-  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'event' | 'poll' | 'reminder' | 'system' | 'sticker' | 'zumbido';
+  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'event' | 'poll' | 'reminder' | 'system' | 'sticker' | 'zumbido' | 'guino';
   body?: string;
+  /** A wink's id from the shared catalog (`WINKS`), with kind `guino`. */
+  wink?: string;
   /**
    * La encuesta o el evento que este mensaje publica en el chat (José, 18/10).
    * El mensaje lleva solo la referencia: los votos y las confirmaciones cambian
@@ -180,6 +185,7 @@ const chatSchema = new Schema<Chat>(
     avatarUrl: { type: String },
     descripcion: { type: String },
     propio: { type: Boolean },
+    funAllowed: { type: Boolean },
     workspaceId: { type: Schema.Types.ObjectId },
     channel: { visibility: { type: String, enum: ['public', 'private'] } },
     suspendedMembers: {
@@ -221,10 +227,11 @@ const messageSchema = new Schema<Message>(
     clientKey: { type: String, required: true },
     kind: {
       type: String,
-      enum: ['text', 'image', 'video', 'audio', 'file', 'event', 'poll', 'reminder', 'system', 'sticker', 'zumbido'],
+      enum: ['text', 'image', 'video', 'audio', 'file', 'event', 'poll', 'reminder', 'system', 'sticker', 'zumbido', 'guino'],
       default: 'text',
     },
     body: { type: String },
+    wink: { type: String },
     ref: {
       type: new Schema({ tipo: { type: String, enum: ['encuesta', 'evento', 'recordatorio'], required: true }, id: { type: String, required: true } }, { _id: false }),
     },
@@ -301,3 +308,10 @@ export const MessageModel: Model<Message> =
   (mongoose.models.Message as Model<Message>) ?? mongoose.model<Message>('Message', messageSchema);
 export const ReceiptModel: Model<Receipt> =
   (mongoose.models.Receipt as Model<Receipt>) ?? mongoose.model<Receipt>('Receipt', receiptSchema);
+
+/**
+ * What people can react to, reply, thread, pin or star (José, 21/10): any
+ * message and the highlighted notices (a reminder that rang, an event coming
+ * up), never the grey notices. Same rule as `actsAsMessage` in shared.
+ */
+export const ACTS_AS_MESSAGE_FILTER: QueryFilter<Message> = { $or: [{ kind: { $ne: 'system' } }, { 'system.evento': { $in: [...HIGHLIGHTED_NOTICE_EVENTS] } }] };

@@ -84,6 +84,8 @@ export async function sendMessage(params: {
   /** E3: respuesta en el hilo de este `seq` (`hilos.ts`). */
   hiloDe?: number;
   enElChat?: boolean;
+  /** The wink of a `guino` message (`ensureFunAllowed` validated it). */
+  wink?: string;
 }): Promise<SendResult> {
   const chatId = toObjectId(params.chatId);
   if (!chatId) throw new ForbiddenChatError();
@@ -108,8 +110,8 @@ export async function sendMessage(params: {
   // hacía). Vale para todas las puertas: socket, archivos, auto-respuesta,
   // @lila y programados.
   const chat = await ChatModel.findOneAndUpdate(
-    // A nudge carries no content, so it also goes in a secret chat (backlog 3).
-    { _id: chatId, 'members.userId': params.senderId, ...(params.envelope || params.kind === 'zumbido' ? {} : { encrypted: { $ne: true } }) },
+    // A nudge or a wink carries no content, so it also goes in a secret chat (backlog 3).
+    { _id: chatId, 'members.userId': params.senderId, ...(params.envelope || isFunKind(params.kind) ? {} : { encrypted: { $ne: true } }) },
     { $inc: { lastSeq: 1 } },
     { returnDocument: 'after', projection: { lastSeq: 1, kind: 1, 'members.userId': 1 } }
   ).lean<{ lastSeq: number; kind?: string; members: { userId: Types.ObjectId }[] } | null>();
@@ -137,7 +139,9 @@ export async function sendMessage(params: {
         ? { envelope: params.envelope }
         : params.kind === 'zumbido'
           ? {}
-          : { body: params.body }),
+          : params.kind === 'guino'
+            ? { wink: params.wink }
+            : { body: params.body }),
       media: params.media,
       ref: params.ref,
       replyToSeq: params.replyToSeq,
@@ -475,4 +479,9 @@ export async function buscarMensajes(
     senderId: String(mensaje.senderId),
     createdAt: mensaje.createdAt?.toISOString() ?? '',
   }));
+}
+
+/** A nudge or a wink: no content of its own. */
+function isFunKind(kind: Message['kind'] | undefined): boolean {
+  return kind === 'zumbido' || kind === 'guino';
 }

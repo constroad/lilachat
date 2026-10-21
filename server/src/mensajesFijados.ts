@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { agregarFijado, fijadosVigentes, puedeFijarEnElChat, venceDelFijado } from '@lilachat/shared';
+import { actsAsMessage, agregarFijado, fijadosVigentes, puedeFijarEnElChat, venceDelFijado } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Chat } from './chatModels.js';
 
 /**
@@ -49,9 +49,9 @@ export async function fijarMensaje(params: { chatId: string; quien: Types.Object
   if (!hasta || !Number.isInteger(params.seq)) return { ok: false, status: 400, motivo: 'Elige 24 horas, 7 días, 30 días o sin vencimiento.' };
   const decision = await permiso(params.chatId, params.quien);
   if (!decision.ok) return decision;
-  const mensaje = await MessageModel.findOne({ chatId: decision.chat._id, seq: params.seq }).select('deletedAt kind').lean();
-  if (!mensaje) return { ok: false, status: 404, motivo: 'No encontramos ese mensaje.' };
-  if (mensaje.deletedAt || mensaje.kind === 'system') return { ok: false, status: 400, motivo: 'Ese mensaje no se puede fijar.' };
+  const target = await MessageModel.findOne({ chatId: decision.chat._id, seq: params.seq }).select('deletedAt kind system').lean();
+  if (!target) return { ok: false, status: 404, motivo: 'No encontramos ese mensaje.' };
+  if (target.deletedAt || !actsAsMessage(target)) return { ok: false, status: 400, motivo: 'Ese mensaje no se puede fijar.' };
 
   const nuevo = { seq: params.seq, por: String(params.quien), en: new Date(ahora).toISOString(), hasta };
   const lista = agregarFijado((decision.chat.fijados ?? []).map(aMotor), nuevo, ahora);

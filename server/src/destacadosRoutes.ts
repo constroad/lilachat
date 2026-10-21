@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Types } from 'mongoose';
-import { ChatModel, MessageModel } from './chatModels.js';
+import { ACTS_AS_MESSAGE_FILTER, ChatModel, MessageModel } from './chatModels.js';
 import { DestacadoModel } from './destacadoModel.js';
 import { chatVisible, infoDeChats, personasPorId } from './contextoDeChats.js';
 import { asyncRoute, requireSession } from './requireSession.js';
@@ -36,8 +36,8 @@ export function buildDestacadosRouter(): Router {
     const chat = chatId ? await ChatModel.findOne({ _id: chatId, 'members.userId': yo }).select('encrypted').lean() : null;
     if (!chat) return res.status(404).json({ message: 'Ese chat no existe.' });
     if (chat.encrypted) return res.status(400).json({ message: 'En un chat secreto todavía no se destaca.' });
-    const valido = Number.isInteger(seq) && (await MessageModel.exists({ chatId, seq, kind: { $ne: 'system' }, deletedAt: { $exists: false } }));
-    if (!valido) return res.status(400).json({ message: 'Ese mensaje no se puede destacar.' });
+    const allowed = Number.isInteger(seq) && (await MessageModel.exists({ chatId, seq, ...ACTS_AS_MESSAGE_FILTER, deletedAt: { $exists: false } }));
+    if (!allowed) return res.status(400).json({ message: 'Ese mensaje no se puede destacar.' });
     await DestacadoModel.updateOne({ userId: yo, chatId, seq }, { $setOnInsert: { en: new Date() } }, { upsert: true });
     res.status(204).end();
   }));

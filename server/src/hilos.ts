@@ -1,4 +1,5 @@
 import { Types } from 'mongoose';
+import { actsAsMessage } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Message, type ResumenDeHilo } from './chatModels.js';
 
 /** Cuántas respuestas trae de una vez el hilo abierto. */
@@ -23,8 +24,8 @@ export class HiloInvalidoError extends Error {
 export async function validarRaiz(chatId: Types.ObjectId, raiz: number, conSobre: boolean): Promise<void> {
   if (conSobre) throw new HiloInvalidoError('En un chat secreto todavía no hay hilos.');
   if (!Number.isInteger(raiz) || raiz <= 0) throw new HiloInvalidoError();
-  const mensaje = await MessageModel.findOne({ chatId, seq: raiz }).select('kind deletedAt hiloDe envelope').lean<Pick<Message, 'kind' | 'deletedAt' | 'hiloDe' | 'envelope'> | null>();
-  if (!mensaje || mensaje.deletedAt || mensaje.hiloDe || mensaje.kind === 'system' || mensaje.envelope) throw new HiloInvalidoError();
+  const root = await MessageModel.findOne({ chatId, seq: raiz }).select('kind system deletedAt hiloDe envelope').lean<Pick<Message, 'kind' | 'system' | 'deletedAt' | 'hiloDe' | 'envelope'> | null>();
+  if (!root || root.deletedAt || root.hiloDe || !actsAsMessage(root) || root.envelope) throw new HiloInvalidoError();
 }
 
 /** Una respuesta más: cuenta, hora y autores recientes (sin repetir, el último al final). */

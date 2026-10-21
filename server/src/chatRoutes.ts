@@ -291,7 +291,7 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
       id: String(chat._id),
       kind: chat.kind,
       name: chat.name,
-      descripcion: chat.descripcion,
+      descripcion: chat.descripcion, funAllowed: chat.funAllowed === true,
       encrypted: chat.encrypted === true,
       // MI silenciado (es por persona): el interruptor del detalle lo muestra
       // como está, en vez de arrancar siempre apagado.

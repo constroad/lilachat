@@ -28,6 +28,7 @@ import { montarServiceWorker } from './serviceWorker.js';
 import { buildVincularRouters, type OpcionesDeVinculacion } from './vincularRoutes.js';
 import { buildFijadosRouter } from './fijadosRoutes.js';
 import { buildDestacadosRouter } from './destacadosRoutes.js';
+import { buildFunRouter } from './funRoutes.js';
 import { buildStickersRouter } from './stickersRoutes.js';
 import { buildReenvioRouter } from './reenvioRoutes.js';
 import { buildHilosRouter } from './hilosRoutes.js';
@@ -86,6 +87,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/vinculos', vincular.telefono);
   app.use('/api/auth', buildAuthRouter(deps.authClient ?? buildHttpAuthClient()));
   app.use('/api', buildDestacadosRouter());
+  app.use('/api', buildFunRouter());
   app.use('/api', buildStickersRouter(deps.mediaUploader));
   app.use('/api/chats', buildFijadosRouter());
   app.use('/api/chats', buildReenvioRouter());

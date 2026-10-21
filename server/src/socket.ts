@@ -1,4 +1,4 @@
-import { ensureNudgeAllowed, NudgeError } from './zumbido.js';
+import { ensureFunAllowed, NudgeError } from './zumbido.js';
 import type { Server as HttpServer } from 'node:http';
 import { Types } from 'mongoose';
 import { Server as SocketServer, type Socket } from 'socket.io';
@@ -185,7 +185,7 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
     socket.on('msg.send', async (frame: unknown, ack?: (response: unknown) => void) => {
       const payload = (frame ?? {}) as Record<string, unknown>;
       try {
-        if (payload.kind === 'zumbido') await ensureNudgeAllowed(String(payload.chatId ?? ''), userId);
+        if (payload.kind === 'zumbido' || payload.kind === 'guino') await ensureFunAllowed(String(payload.chatId ?? ''), userId, payload.kind, Date.now(), payload.wink);
         const result = await sendMessage({
           chatId: String(payload.chatId ?? ''),
           senderId: userId,
@@ -199,6 +199,7 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
           replyToSeq: typeof payload.replyToSeq === 'number' ? payload.replyToSeq : undefined,
           menciones: payload.menciones,
           ...(typeof payload.hiloDe === 'number' ? { hiloDe: payload.hiloDe, enElChat: payload.enElChat === true } : {}),
+          ...(payload.kind === 'guino' && typeof payload.wink === 'string' ? { wink: payload.wink } : {}),
         });
 
         // Lo propio, leído antes de que nadie vea el mensaje (`leerLoPropio`).

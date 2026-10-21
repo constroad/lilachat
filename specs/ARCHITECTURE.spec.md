@@ -4892,6 +4892,97 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 81. Checklist con responsables y fecha, «Mis tareas», letra del chat y stickers animados (21/10/2026, 0.1.122)
+
+**Checklist, segunda vuelta** (pendiente 30; diseños `k-03`, `k-04`, `k-05`).
+- **Modelo:** cada tarea suma `assignee` (un miembro del chat) y `dueAt`; el
+  checklist guarda `cardSeq`, el seq de su tarjeta. Índices declarados
+  `{chatId, createdAt}` e `{'items.assignee'}`: en producción se crean solo
+  con el OK de José (la bóveda no crea índices sola).
+- **Rutas nuevas** (`checklistRoutes.ts`, 14 tests):
+  - `PATCH /checklists/:id/items/:itemId`: texto, responsable (tiene que ser
+    del chat) y fecha. `DELETE …/items/:itemId` deja al menos una tarea.
+    Editar sigue a «los demás pueden agregar».
+  - `PATCH /checklists/:id`: título y permisos; solo quien lo creó. Cambia
+    también el texto de su tarjeta («Checklist: …»).
+  - `DELETE /checklists/:id`: borra también su tarjeta para todos, como un
+    mensaje eliminado (sale de los fijados y el hilo se descuenta).
+  - `GET /checklists?chatId=`: progreso y atrasadas por checklist, para la
+    info del chat. `GET /checklists/mine`: mis tareas pendientes.
+  - Crear fija la tarjeta 30 días por defecto (`pin: false` para no). Con
+    `hiloDe` va dentro de un hilo y no se fija.
+  - Los checklists de la 0.1.121 no tenían `cardSeq`: se busca su tarjeta
+    una vez, en una sola consulta, y queda guardado.
+- **Reglas puras** (`shared/src/checklists.ts`, 18 tests): estado de la fecha
+  (atrasada, hoy, próxima, sin fecha), «Hoy 3:00 p. m.» y «Atrasada · ayer»,
+  las fechas rápidas, «Mis tareas» agrupadas, el chip activo de la hoja,
+  «Ana T.», los miembros con «Tú» primero y la línea de la info.
+- **Tarjeta (app y web):**
+  - Debajo de cada tarea pendiente: el responsable con su avatar y la fecha
+    como pastilla. Atrasada va en el tono de error, hoy en el acento y lo
+    demás en gris; no hay token ocre.
+  - **Dos blancos táctiles:** solo el círculo marca y el texto abre la hoja.
+    José, 21/10: «está inestable el editar con el marcar». Antes la fila
+    entera marcaba y el mantener presionado editaba, y competía con el
+    mantener de la tarjeta.
+  - Hoja «Editar tarea»: texto, responsable, «Para cuándo» (Hoy · Mañana ·
+    días · Elegir fecha · Sin fecha), «Guardar cambios» y «Quitar la tarea».
+    Es un borrador hasta guardar; en la web es un diálogo en portal.
+  - «⋯» solo para quien lo creó: «Editar checklist» (título y permisos) y
+    «Eliminar el checklist», con confirmación.
+- **Info del chat:** tarjeta «Checklists» con progreso y atrasadas; tocar uno
+  va a su tarjeta. En la app salió `ChatInfoCards` de `ChatScreen`, que estaba
+  en 600 líneas.
+- **«Mis tareas»:**
+  - App: segmento en Pendientes, «Agenda · Mis tareas» con contador. La línea
+    que aprobó José el 20/10 no cambió.
+  - Web: tercera pestaña del panel.
+  - Se marca desde ahí, y tocar abre el chat en el checklist.
+- **Hilos:** el botón de checklist en la cabecera del hilo (app y web) crea
+  uno dentro del hilo, y su tarjeta vive en las respuestas.
+
+**Letra del chat** (pendiente 1; diseño `f-01`).
+- `shared/chatFont.ts`: Pequeña 13/18, Mediana 15/21 (la de siempre), Grande
+  17/24.
+- App: `ui/chatFont.ts`, un store sin provider en AsyncStorage. Lo leen
+  `TextoConHora` (chat e hilo) y la barra de escribir, un punto más grande.
+  El ajuste está en Ajustes, con su vista previa.
+- Web: variables `--chat-font` y `--chat-line` en `<html>`, un px menos
+  (Mediana = 14, la de siempre). Burbuja y barra; el ajuste va en el panel de
+  Ajustes.
+
+**Stickers animados** (pendiente 31).
+- Pack «En movimiento», `lila-mov`: 15 personajes de los guiños con sus bailes
+  (`shared/animatedStickers.ts`, `danceAt`). Un baile ya empieza y termina en
+  reposo, así que el bucle no salta.
+- `web/scripts/render-animated-stickers.mts` dibuja cada cuadro en Chrome y
+  `img2webp` los une: WebP animado de 512×512 a 12 fps, cada uno de 167 a
+  358 KB (tope de WhatsApp: 500 KB), 3,6 MB el pack.
+- Es un pack más del catálogo: el server lo acepta como los demás y el panel
+  lo muestra.
+- En el chat se reproduce 8 s y se detiene, como WhatsApp; un toque lo repite.
+  App: `stopAnimating` de expo-image. Web: el cuadro se copia a un canvas
+  encima. Una imagen rota no se congela.
+
+**E2E** (emulador con la cuenta de José contra el server de QA, chat «QA
+Ana»; web headless como QA Ana).
+- App:
+  - Desmarcar, asignarme «Hoy», ver «Tú · Hoy 6:00 p. m.».
+  - «Mis tareas» con la tarea; tocarla abre el chat.
+  - La info muestra «Checklists 2 de 3» y salta.
+  - Checklist en un hilo de «QA Hilos»: crear, editar el título, eliminar.
+    La tarjeta huérfana se limpió a cero.
+  - Letra Grande en la vista previa y la barra.
+  - Panda animado: se mueve, se detiene a los 8 s y se repite con un toque.
+- Web:
+  - Sin «⋯» para quien no lo creó.
+  - El diálogo asignó «Tú · Mañana 9:00».
+  - La info muestra «Checklists 1 de 3» y «Mis tareas» las agrupa en
+    Próximas.
+  - La burbuja pasa de 14 a 16 px.
+  - El formulario del hilo no ofrece «Fijar».
+- Limpieza: 2 webs de QA Ana desvinculadas (verificado en 0).
+
 ## 80. Checklist como Telegram, devolver la llamada perdida, guiños al lado de quien los mandó y la web (21/10/2026, 0.1.121)
 
 **Checklist** (pendiente 8; diseños `k-01-checklist-en-el-chat` y
@@ -7481,7 +7572,7 @@ teléfono real). Lo que falló o quedó raro:
 Lo que José pidió dejar anotado para después. Se agrega acá, al final, y se
 tacha con la versión que lo cierra.
 
-1. **Configurar la fuente del chat.** Como WhatsApp (Ajustes › Chats › Tamaño
+1. ~~**Configurar la fuente del chat.**~~ **Hecho (§81, 0.1.122).** Como WhatsApp (Ajustes › Chats › Tamaño
    de la fuente: Pequeña · Mediana · Grande): un multiplicador que leen la
    burbuja, la cita, la tarjeta de enlace y la barra (app, por contexto; web,
    con una variable CSS), encima del tamaño de letra del sistema, que se sigue
@@ -7719,13 +7810,13 @@ tacha con la versión que lo cierra.
     Guiños. Así la galería gana espacio. En la web, igual en el menú «+».
     **Hecho (§74, 21/10).**
 
-30. **Checklist, segunda vuelta** (José, 21/10: «agregar responsables y un ETA; el checklist se podría perder en los mensajes»):
+30. ~~**Checklist, segunda vuelta**~~ **Hecho (§81, 0.1.122).** (José, 21/10: «agregar responsables y un ETA; el checklist se podría perder en los mensajes»):
     - por tarea, un responsable opcional (un miembro del chat) y «para cuándo»; vencida, «Atrasada» en rojo;
     - al crearlo, «Fijar en el chat» encendido por defecto: queda en la franja de fijados;
     - en Info del chat, una sección «Checklists» con el progreso de cada uno;
     - en Pendientes, «Mis tareas»: lo asignado a mí en todos los chats, primero lo vencido;
     - crear un checklist dentro de un hilo.
-31. **Stickers animados** (José, 21/10, para la siguiente ronda): stickers con movimiento (WebP animado o Lottie), en el panel y en el chat, sin pesar en la memoria del teléfono.
+31. ~~**Stickers animados**~~ **Hecho (§81, 0.1.122).** (José, 21/10, para la siguiente ronda): stickers con movimiento (WebP animado o Lottie), en el panel y en el chat, sin pesar en la memoria del teléfono.
 
 ### Guiños y zumbido (análisis, 20/10)
 
@@ -7759,3 +7850,61 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
   chat silenciado no anima ni suena; el sonido respeta el modo silencio.
 - **Costo:** sin servicios pagos. El trabajo grande son las animaciones
   propias (6–8 para arrancar) y sus sonidos.
+32. **El aviso de versión nueva solo sale al abrir la app en frío** (José, 21/10:
+    «actualizo los chats pero no me aparece que hay una nueva versión; cuando
+    cierro la app y vuelvo a ingresar sí aparece»). Causa: `useActualizacionesDeLaApp`
+    consulta `min-version` UNA vez, en el `useEffect` del arranque; volver desde
+    segundo plano no repregunta. Cómo debería ser:
+    - Repreguntar al volver a primer plano (`AppState` → `active`), con un tope
+      de una consulta cada 30 min para no sumar requests en cada vistazo.
+    - Repreguntar al reconectar el socket, y que el server avise por socket
+      `app.version` al publicar (la consulta deja de depender del azar).
+    - **Actualización obligatoria** (para más adelante): el motor ya distingue
+      `obligatoria` cuando la versión instalada es menor que `minima`. Falta la
+      pantalla que BLOQUEA (sin chats, solo «Actualizar» y las novedades),
+      que el server rechace con 426 a los clientes bajo la mínima (el bloqueo
+      de la app sola se salta con una versión vieja), y que la web no quede
+      afuera (recarga dura ante versión nueva, como Portal). La mínima la sube
+      José al publicar; nunca automática.
+33. **MCP / API de Lilachat para que otros sistemas escriban** (José, 21/10):
+    que Portal y las demás apps creen checklists y manden mensajes a un chat
+    o grupo, como hoy Portal avisa por WhatsApp al medir líquidos, registrar
+    consumos, firmar asistencia, iniciar producción o cuando un despacho entra
+    o sale. Analizar: un bot por espacio con su llave (de Torre, no emitida por
+    Portal), mensajes con tarjeta propia (no texto suelto), checklist por API,
+    límites por llave, y un MCP encima de esa misma API. Va con el modo empresa
+    (E4: bots, comandos y webhooks entrantes, backlog del §E).
+34. **El audio se siente torpe** (José, 21/10): recién arranca al segundo toque
+    y no se puede adelantar ni retroceder. Como WhatsApp: un toque reproduce,
+    la barra de la onda se arrastra para buscar (y se toca para saltar), la
+    velocidad 1× · 1,5× · 2×, y el audio sigue sonando al salir del chat con
+    una barra arriba. Revisar por qué el primer toque solo carga (precargar
+    al aparecer en pantalla, sin bajar todos los audios del chat).
+35. **¿Avisar cuando alguien completa una tarea del checklist?** (José, 21/10).
+    Propuesta: no a todo el chat (sería ruido en un grupo de obra). Sí a quien
+    creó el checklist y a quien era responsable de esa tarea, si no es quien
+    la marcó; varios ticks seguidos en un minuto van en un solo aviso
+    («Beto marcó 3 tareas de Vaciado de losa»); respeta el silencio del chat;
+    y un aviso aparte cuando el checklist queda completo. Más adelante: aviso
+    al responsable cuando su tarea vence («Atrasada»).
+36. **Tarjetas en cola con acciones, como los chips de Claude** (José, 21/10):
+    varias tarjetas apiladas encima de la barra de escribir (lo pendiente
+    para mí en ese chat: una tarea vencida, una encuesta sin votar, un evento
+    sin responder, un recordatorio que sonó), que se atienden de una en una
+    con su acción (Marcar, Votar, Voy / No voy, Posponer) y se descartan.
+    Analizar: de dónde salen (derivadas de lo pendiente, no un buzón nuevo),
+    cuántas a la vez, y el mismo carril para los bots del ítem 33.
+37. **GIF y GIPHY, y stickers animados propios** (José, 21/10: «debo poder
+    subir un gif, es momento de agregar la sección de GIPHY, y crear yo mismo
+    mis stickers animados»). Para la 0.1.123:
+    - **Sticker animado propio**: subir un GIF o un video corto (≤ 6 s) y
+      recortarlo a 512×512; el server lo convierte a WebP animado con
+      `sharp` (`animated: true`, ya es dependencia) con el mismo tope de
+      500 KB del pack; queda en «Mis stickers» como cualquier otro.
+    - **GIF como mensaje** (no sticker): se manda tal cual, se reproduce en
+      bucle corto y se detiene como los stickers (8 s, toque para repetir).
+    - **Pestaña GIF con GIPHY**: búsqueda y tendencias por un proxy del server
+      (la llave nunca va a la app ni a la web), con la atribución «Powered
+      by GIPHY» que exige su licencia y su filtro de contenido en `pg-13`.
+      Falta la **llave de GIPHY**: la saca José en developers.giphy.com y la
+      carga en Torre; sin llave la pestaña no aparece.

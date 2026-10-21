@@ -19,7 +19,9 @@ export async function publicarEnElChat(params: {
   autor: Types.ObjectId;
   ref: MessageRef;
   texto: string;
-}): Promise<void> {
+  /** Inside a thread (backlog 30: a checklist in a thread). */
+  hiloDe?: number;
+}): Promise<number> {
   const resultado = await sendMessage({
     chatId: params.chatId,
     senderId: params.autor,
@@ -27,6 +29,8 @@ export async function publicarEnElChat(params: {
     kind: KIND_DE_TARJETA[params.ref.tipo],
     body: params.texto,
     ref: params.ref,
+    ...(params.hiloDe !== undefined ? { hiloDe: params.hiloDe } : {}),
   });
   if (!resultado.duplicate) await publicarMensaje(resultado.message, resultado.members);
+  return resultado.message.seq;
 }

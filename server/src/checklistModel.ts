@@ -12,6 +12,9 @@ export interface ChecklistTask {
   addedBy: Types.ObjectId;
   doneBy: Types.ObjectId | null;
   doneAt: Date | null;
+  /** Who does it and for when (backlog 30). */
+  assignee?: Types.ObjectId | null;
+  dueAt?: Date | null;
 }
 
 export interface Checklist {
@@ -22,6 +25,8 @@ export interface Checklist {
   items: ChecklistTask[];
   othersCanMark: boolean;
   othersCanAdd: boolean;
+  /** The seq of its card in the chat: the chat info and «Mis tareas» jump to it. */
+  cardSeq?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,14 +43,19 @@ const checklistSchema = new Schema<Checklist>(
         addedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
         doneBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
         doneAt: { type: Date, default: null },
+        assignee: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+        dueAt: { type: Date, default: null },
         _id: false,
       },
     ],
     othersCanMark: { type: Boolean, default: true },
     othersCanAdd: { type: Boolean, default: true },
+    cardSeq: { type: Number },
   },
   { timestamps: true }
 );
 checklistSchema.index({ chatId: 1, createdAt: -1 });
+// «Mis tareas»: the tasks assigned to someone (created in production only with José's OK: the vault does not auto-index).
+checklistSchema.index({ 'items.assignee': 1 });
 
 export const ChecklistModel: Model<Checklist> = (mongoose.models.Checklist as Model<Checklist>) ?? mongoose.model<Checklist>('Checklist', checklistSchema);

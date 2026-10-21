@@ -47,6 +47,14 @@ export function fijarServidorDelReparto(io: SocketServer): void {
  * programados. Antes la media no mandaba push y los programados y las
  * auto-respuestas no se emitían: se veían recién al reabrir el chat.
  */
+/** A message deleted outside the socket (a checklist's card): every member swaps it for the tombstone, and its thread recounts. */
+export function notifyDeleted(chatId: string, seq: number, members: string[], thread?: { rootSeq: number; summary: unknown }): void {
+  for (const member of members) {
+    ioVivo?.to(userRoom(member)).emit('msg.deleted', { chatId, seq });
+    if (thread) ioVivo?.to(userRoom(member)).emit('msg.hilo', { chatId, raiz: thread.rootSeq, hilo: thread.summary });
+  }
+}
+
 /** A thread changed (a reply arrived outside the socket, like a sticker): its new summary to every member. */
 export function notifyThread(chatId: string, rootSeq: number, summary: unknown, members: string[]): void {
   for (const member of members) ioVivo?.to(userRoom(member)).emit('msg.hilo', { chatId, raiz: rootSeq, hilo: summary });

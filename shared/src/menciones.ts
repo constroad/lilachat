@@ -23,11 +23,14 @@ export const GROUP_MENTION_OPTIONS = [
 
 export const isGroupMentionId = (userId: string): boolean => userId === MENTION_ALL || userId === MENTION_HERE;
 
-export type GroupMentionOption = (typeof GROUP_MENTION_OPTIONS)[number];
+export type GroupMentionOption = { id: string; nombre: string; hint: string };
 
 /** A group's mention list: the two group mentions first, then the people. Without members (a 1:1) there is nothing to mention. */
 export function mentionOptions<T extends { id: string; nombre: string }>(members: readonly T[] | undefined): (T | GroupMentionOption)[] | undefined {
-  return members?.length ? [...GROUP_MENTION_OPTIONS, ...members] : undefined;
+  if (!members?.length) return undefined;
+  // Like the design (`e-17`): the group mention for all says how many it reaches (the others plus me).
+  const all = { ...GROUP_MENTION_OPTIONS[0], hint: `Avisa a los ${members.length + 1} del grupo` };
+  return [all, GROUP_MENTION_OPTIONS[1], ...members];
 }
 
 /** The people a message's mentions reach: the person named, everyone (MENTION_ALL) or whoever is online (MENTION_HERE). */

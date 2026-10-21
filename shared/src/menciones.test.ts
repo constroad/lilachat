@@ -113,6 +113,7 @@ describe('notification level', () => {
 describe('mention options', () => {
   it('a group offers @todos and @aquí before the people; a 1:1 offers nothing', () => {
     expect(mentionOptions([{ id: 'ana', nombre: 'Ana' }])?.map((option) => option.nombre)).toEqual(['todos', 'aquí', 'Ana']);
+    expect(mentionOptions([{ id: 'ana', nombre: 'Ana' }, { id: 'beto', nombre: 'Beto' }])?.[0]).toMatchObject({ hint: 'Avisa a los 3 del grupo' });
     expect(mentionOptions([])).toBeUndefined();
     expect(mentionOptions(undefined)).toBeUndefined();
   });

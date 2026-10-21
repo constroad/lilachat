@@ -3,11 +3,11 @@ import { FlatList, Linking, Pressable, Text, useWindowDimensions, View } from 'r
 import { Modal } from '../ui/Modal';
 import { Image } from 'expo-image';
 import * as MediaLibrary from 'expo-media-library/legacy';
-import { BarChart3, Bell, CalendarDays, FileText, Image as ImageIcon, Send } from 'lucide-react-native';
+import { BarChart3, Bell, CalendarDays, FileText, Image as ImageIcon, Send, Vibrate } from 'lucide-react-native';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { reportarError } from '../ui/reportarError';
-import { toggleSelection, toPickedPhoto, type GalleryItem } from './attachSelection';
+import { mediaAccessFrom, toggleSelection, toPickedPhoto, type GalleryItem, type MediaAccess } from './attachSelection';
 import type { FotoElegida } from './envioDeFotos';
 
 /** How many recent photos and videos the sheet lists (like WhatsApp's first screen). */
@@ -16,7 +16,7 @@ const COLUMNS = 4;
 const GAP = 3;
 /** Room under the grid so the «Enviar» button never covers the last row. */
 const SEND_BUTTON_ROOM = 88;
-type Access = 'unknown' | 'granted' | 'ask' | 'denied';
+type Access = 'unknown' | MediaAccess;
 type Asset = GalleryItem & { id: string; duration: number };
 
 const formatDuration = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, '0')}`;
@@ -24,10 +24,11 @@ const formatDuration = (seconds: number) => `${Math.floor(seconds / 60)}:${Strin
 async function loadRecentMedia(): Promise<{ access: Access; assets: Asset[] }> {
   try {
     const permission = await MediaLibrary.getPermissionsAsync(false, ['photo', 'video']);
-    if (!permission.granted) return { access: permission.canAskAgain ? 'ask' : 'denied', assets: [] };
+    const access = mediaAccessFrom(permission);
+    if (access === 'ask' || access === 'denied') return { access, assets: [] };
     const page = await MediaLibrary.getAssetsAsync({ first: RECENT_MEDIA, mediaType: [MediaLibrary.MediaType.photo, MediaLibrary.MediaType.video], sortBy: [[MediaLibrary.SortBy.creationTime, false]] });
     const assets = page.assets.map((asset) => ({ id: asset.id, uri: asset.uri, filename: asset.filename, width: asset.width, height: asset.height, duration: asset.duration, mediaType: asset.mediaType === MediaLibrary.MediaType.video ? ('video' as const) : ('photo' as const) }));
-    return { access: 'granted', assets };
+    return { access, assets };
   } catch (error) {
     reportarError('AttachSheet.loadRecentMedia', error);
     return { access: 'denied', assets: [] };
@@ -53,6 +54,8 @@ export function AttachSheet(props: {
   /** The reminder that lives in the chat: in a group, its admins (19/10); in a 1:1 or a draft, anyone (20/10). */
   onCreateReminder?: () => void;
   etiquetaDelRecordatorio?: string;
+  /** The MSN nudge (backlog 3): only in a 1:1. */
+  onNudge?: () => void;
 }) {
   const colors = useColores();
   const margins = useMargenes();
@@ -78,7 +81,8 @@ export function AttachSheet(props: {
 
   const askAccess = async () => {
     const answer = await MediaLibrary.requestPermissionsAsync(false, ['photo', 'video']);
-    if (!answer.granted) return setAccess(answer.canAskAgain ? 'ask' : 'denied');
+    const after = mediaAccessFrom(answer);
+    if (after === 'ask' || after === 'denied') return setAccess(after);
     const result = await loadRecentMedia();
     setAccess(result.access);
     setAssets(result.assets);
@@ -95,6 +99,7 @@ export function AttachSheet(props: {
     { key: 'event', label: 'Evento', Icon: CalendarDays, action: props.onCreateEvent, testID: 'attach-evento' },
     { key: 'poll', label: 'Encuesta', Icon: BarChart3, action: props.onCreatePoll, testID: 'attach-encuesta' },
     ...(props.onCreateReminder ? [{ key: 'reminder', label: props.etiquetaDelRecordatorio ?? 'Recordatorio', Icon: Bell, action: props.onCreateReminder, testID: 'attach-recordatorio' }] : []),
+    ...(props.onNudge ? [{ key: 'nudge', label: 'Zumbido', Icon: Vibrate, action: props.onNudge, testID: 'attach-zumbido' }] : []),
   ];
 
   return (
@@ -112,7 +117,15 @@ export function AttachSheet(props: {
             </Pressable>
           ))}
         </View>
-        {access === 'granted' ? (
+        {access === 'limited' ? (
+          <View testID="attach-acceso-limitado" className="mx-3 mb-2 flex-row items-center gap-3 rounded-xl border border-outline/15 px-3 py-2.5">
+            <Text className="min-w-0 flex-1 text-[13px] text-on-surface">Solo ves las fotos que elegiste al dar el permiso.</Text>
+            <Pressable testID="attach-ver-todas" onPress={() => void askAccess()} className="h-10 items-center justify-center rounded-full bg-primary px-4">
+              <Text className="text-[13px] font-semibold text-on-primary">Ver todas</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        {access === 'granted' || access === 'limited' ? (
           <FlatList
             testID="attach-galeria-reciente"
             data={assets}
@@ -120,7 +133,7 @@ export function AttachSheet(props: {
             keyExtractor={(asset) => asset.id}
             columnWrapperStyle={{ gap: GAP }}
             contentContainerStyle={{ gap: GAP, paddingBottom: selected.length ? SEND_BUTTON_ROOM : 0 }}
-            ListEmptyComponent={<Text className="px-5 py-6 text-center text-[13px] text-on-surface-variant">No hay fotos ni videos en el teléfono.</Text>}
+            ListEmptyComponent={<Text className="px-5 py-6 text-center text-[13px] text-on-surface-variant">{access === 'limited' ? 'Todavía no elegiste ninguna foto.' : 'No hay fotos ni videos en el teléfono.'}</Text>}
             renderItem={({ item }) => {
               const order = selected.indexOf(item.id);
               return (

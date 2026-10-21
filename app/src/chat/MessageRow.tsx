@@ -42,6 +42,7 @@ const estiloDeFoto = (media: { width?: number; height?: number }) => {
 import type { ChatMessage, PendingMessage } from './useChat';
 import { useColores } from '../ui/tema';
 import { TarjetaDelChat } from './TarjetaDelChat';
+import { NudgeLine } from './nudge';
 import { StickerMessage } from './stickers/StickerMessage';
 import { Avatar } from '../ui/Avatar';
 
@@ -146,6 +147,8 @@ function FilaDeMensaje({
   if (!isPending(item) && item.kind === 'system') {
     return <AvisoDelGrupo item={item} myUserId={myUserId} />;
   }
+  // The MSN nudge (backlog 3): a line, not a bubble.
+  if (!isPending(item) && item.kind === 'zumbido') return <NudgeLine mine={item.senderId === myUserId} author={nombreAutor} />;
   // La encuesta o el evento publicados en el chat (18/10): una tarjeta para
   // votar o confirmar, no una burbuja de texto.
   if (!isPending(item) && item.ref && jwt) {

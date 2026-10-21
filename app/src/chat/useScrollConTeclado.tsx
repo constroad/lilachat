@@ -1,4 +1,4 @@
-import { createContext, forwardRef, useCallback, useContext, useEffect, useMemo, useState, type ComponentRef, type ForwardedRef } from 'react';
+import { createContext, forwardRef, useCallback, useContext, useEffect, useMemo, useRef, useState, type ComponentRef, type ForwardedRef } from 'react';
 import { Keyboard, type LayoutChangeEvent, type ScrollViewProps } from 'react-native';
 import { KeyboardChatScrollView } from 'react-native-keyboard-controller';
 import Reanimated, { makeMutable, scrollTo, useAnimatedReaction, useAnimatedRef, useScrollViewOffset, useSharedValue, type SharedValue } from 'react-native-reanimated';
@@ -54,6 +54,10 @@ function useFollowLift(lift: SharedValue<number>, forwarded: ForwardedRef<Scroll
  * de la lista; la barra, en un `KeyboardStickyView` con el mismo valor.
  */
 export function useScrollConTeclado(sinSubir: number) {
+  // Read through a ref: the margin resolves a moment after mounting (16 → 24 dp) and a new component
+  // type remounted the scroll under the list, which then jumped (José, 21/10: «el salto al abrir»).
+  const latestOffset = useRef(sinSubir);
+  latestOffset.current = sinSubir;
   return useMemo(
     () =>
       forwardRef<ComponentRef<typeof KeyboardChatScrollView>, ScrollViewProps>(function ScrollConTeclado(props, ref) {
@@ -72,9 +76,9 @@ export function useScrollConTeclado(sinSubir: number) {
         };
         // «persistent»: a keyboard that goes away keeps the reading position (at the end it follows down),
         // and a keyboard that comes or goes behind the emoji panel moves nothing (20/10).
-        return <KeyboardChatScrollView {...props} onLayout={alMedir} freeze={medido ? covered : true} offset={sinSubir} keyboardLiftBehavior="persistent" blankSpace={room.held} ref={setRef} />;
+        return <KeyboardChatScrollView {...props} onLayout={alMedir} freeze={medido ? covered : true} offset={latestOffset.current} keyboardLiftBehavior="persistent" blankSpace={room.held} ref={setRef} />;
       }),
-    [sinSubir]
+    []
   );
 }
 

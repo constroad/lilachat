@@ -41,3 +41,11 @@ export function mediaTypeOf(filename: string, kind: GalleryItem['mediaType']): s
 export function toPickedPhoto(item: GalleryItem): FotoElegida {
   return { uri: item.uri, fileName: item.filename, mimeType: mediaTypeOf(item.filename, item.mediaType), width: item.width, height: item.height };
 }
+
+/** What the clip can show (José, 20/10): Android 14 «limited access» only lists the photos the person picked. */
+export type MediaAccess = 'granted' | 'limited' | 'ask' | 'denied';
+
+export function mediaAccessFrom(permission: { granted: boolean; canAskAgain: boolean; accessPrivileges?: string }): MediaAccess {
+  if (permission.granted) return permission.accessPrivileges === 'limited' ? 'limited' : 'granted';
+  return permission.canAskAgain ? 'ask' : 'denied';
+}

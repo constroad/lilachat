@@ -5,6 +5,7 @@ import { ProgramadosDelChat } from './ProgramadosDelChat';
 import type { FlashListRef } from '@shopify/flash-list';
 import { ChatBottom } from './ChatBottom';
 import { etiquetaDeRecordatorioEnElChat, type MencionEnMensaje } from '@lilachat/shared';
+import { sendNudge } from './nudge';
 import { AttachSheet } from './AttachSheet';
 import { CrearDesdeElChat, type QueSeCrea } from './CrearDesdeElChat';
 import { AccionesDeTarjetaContext } from './accionesDeTarjeta';
@@ -287,7 +288,6 @@ export function ChatScreen({
     }
   );
 
-
   /** Las citas, una vez por cambio de mensajes (antes un `find` por fila y por render). */
   const citados = useMemo(
     () =>
@@ -512,7 +512,7 @@ export function ChatScreen({
           onEditar={respuesta.guardarEdicion}
           subiendo={false}
           margenPie={margenes.pie}
-          onAdjuntar={alAdjuntar}
+          onAdjuntar={alAdjuntar} onPasteImage={(photo) => pickMedia([photo])}
           onCamara={alCamara}
           onEscribiendo={avisarEscribiendo}
           jwt={credential.jwt}
@@ -551,7 +551,7 @@ export function ChatScreen({
       <AttachSheet
         visible={attachOpen}
         onClose={() => setAttachOpen(false)}
-        onPickMedia={pickMedia}
+        onPickMedia={pickMedia} onNudge={esGrupoChat || esBorrador ? undefined : () => void sendNudge(chatId).then((r) => r.ok || setMediaError(r.reason))}
         onPickGallery={() => void pickFromGallery()}
         onCreateEvent={() => setCreando('event')}
         onCreatePoll={() => setCreando('poll')}

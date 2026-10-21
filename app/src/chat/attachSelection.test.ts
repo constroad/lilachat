@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mediaTypeOf, toggleSelection, toPickedPhoto } from './attachSelection';
+import { mediaTypeOf, toggleSelection, toPickedPhoto, mediaAccessFrom } from './attachSelection';
 import { MAXIMO_DE_FOTOS } from './envioDeFotos';
 
 /** The gallery under the clip (José, 20/10: «WhatsApp and Telegram show my gallery right away»). */
@@ -27,5 +27,19 @@ describe('a gallery item to send', () => {
     expect(mediaTypeOf('photo.heic', 'photo')).toBe('image/heic');
     expect(mediaTypeOf('noext', 'photo')).toBe('image/jpeg');
     expect(mediaTypeOf('noext', 'video')).toBe('video/mp4');
+  });
+});
+
+/** José, 20/10: «toco el clip y no están las imágenes y videos, y sí le di acceso» (Android 14 limited access). */
+describe('mediaAccessFrom', () => {
+  it('full access shows the gallery; limited access says so', () => {
+    expect(mediaAccessFrom({ granted: true, canAskAgain: true, accessPrivileges: 'all' })).toBe('granted');
+    expect(mediaAccessFrom({ granted: true, canAskAgain: true, accessPrivileges: 'limited' })).toBe('limited');
+    expect(mediaAccessFrom({ granted: true, canAskAgain: true })).toBe('granted');
+  });
+
+  it('without access: ask again while Android allows it, otherwise the settings', () => {
+    expect(mediaAccessFrom({ granted: false, canAskAgain: true })).toBe('ask');
+    expect(mediaAccessFrom({ granted: false, canAskAgain: false })).toBe('denied');
   });
 });

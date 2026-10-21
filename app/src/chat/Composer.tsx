@@ -7,6 +7,9 @@ import { deleteBeforeCursor } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { precalentarPermisoDeVoz, useGrabadorDeVoz, type NotaGrabada } from './useGrabadorDeVoz';
 import { guardarBorrador, leerBorrador } from './borradores';
+import { useClipboardImage } from './useClipboardImage';
+import { PasteImageChip } from './PasteImageChip';
+import type { FotoElegida } from './envioDeFotos';
 import { BotonDeVoz } from './BotonDeVoz';
 import { formaDelTexto, type FormaDelTexto } from './campoDeTexto';
 import type { DecisionDeVoz, mientrasSostiene } from './gestoDeVoz';
@@ -73,6 +76,8 @@ export const Composer = memo(function Composer(props: {
   miembros?: MiembroMencionable[];
   /** Long-press en enviar: programarlo para más tarde (F11). */
   onProgramar: (texto: string) => void;
+  /** The copied image, pasted from the chip over the bar (21/10): it goes to the usual photo preview. */
+  onPasteImage?: (photo: FotoElegida) => void;
   onNotaDeVoz: (nota: NotaGrabada) => Promise<void>;
   /**
    * Chat secreto (auditoría 17/10/2026). `bloqueado`: la clave todavía no está
@@ -89,6 +94,8 @@ export const Composer = memo(function Composer(props: {
    * guarda su FORMA, que cambia al cruzar vacío ↔ con texto.
    */
   const inputRef = useRef<TextInput>(null);
+  const [focused, setFocused] = useState(false);
+  const clipboard = useClipboardImage(focused, !props.modoSecreto && Boolean(props.onPasteImage));
   const textoRef = useRef('');
   const [forma, setForma] = useState<FormaDelTexto>(() => formaDelTexto(''));
   /**
@@ -308,6 +315,8 @@ export const Composer = memo(function Composer(props: {
         // el campo se remonta con el texto: que siga con el foco.
         autoFocus={editandoAhora || inicial.enfocar === true}
         testID="input-mensaje"
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         // 46 + el borde = 48: la misma altura que el micrófono (FL13). Con 44
         // el multilínea de Android crecía y quedaban desalineados.
         className="max-h-28 min-h-[46px] min-w-0 flex-1 py-3 pr-3 text-base text-on-surface"
@@ -356,6 +365,14 @@ export const Composer = memo(function Composer(props: {
 
   return (
     <>
+      {clipboard.offer && props.onPasteImage ? (
+        <PasteImageChip
+          onDismiss={clipboard.dismiss}
+          onPaste={() => {
+            void clipboard.paste().then((photo) => photo && props.onPasteImage?.(photo));
+          }}
+        />
+      ) : null}
       <SugerenciasDeMencion
         sugerencias={menciones.sugerencias}
         onElegir={(miembro) => {

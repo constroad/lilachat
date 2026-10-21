@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactElement, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactElement, type RefObject } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { BottomRoom, useScrollConTeclado } from './useScrollConTeclado';
@@ -12,31 +12,56 @@ import { FondoDelChat } from './FondoDelChat';
 import { useFinalDeLaConversacion } from './useFinalDeLaConversacion';
 import { useColores } from '../ui/tema';
 import type { OpeningPlace } from './useDivisorNoLeidos';
+import { MAX_HIDDEN_MS, RevealWhenSettled, SETTLE_MS } from './revealWhenSettled';
+import { useNudgeShake } from './nudge';
 
 /** The emoji panel's room under the conversation (`emojiPanel`). */
 const EMOJI_PANEL_ROOM = { held: roomHeld, lift: contentLift };
-/** Upper bound for keeping the list hidden while it places itself: it never stays blank longer. */
-const MAX_HIDDEN_MS = 350;
-
 /**
- * The list is shown once it is placed (José, 20/10: on entering, it painted at
- * an older position and then jumped to the end). It waits for its own first
- * layout (`onLoad`, then two frames), never for the network, and at most
- * `MAX_HIDDEN_MS`.
+ * The list is shown once it is placed (José, 20/10 and 21/10: on entering it
+ * painted, then jumped). It waits for its first layout AND for its content
+ * height to stop changing (FlashList measures the rows above in a few frames:
+ * 1761 → 3157 px), places itself again with the final sizes, and only then
+ * shows. Never for the network, and at most `MAX_HIDDEN_MS`.
  */
 function useRevealWhenPlaced(hasRows: boolean, onPlaced: () => OpeningPlace, onAway: () => void) {
   const [revealed, setRevealed] = useState(!hasRows);
+  const settle = useRef(new RevealWhenSettled(Date.now()));
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const place = useRef(() => undefined as void);
+  place.current = () => {
+    if (onPlaced() === 'away') onAway();
+  };
+  const tryReveal = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    if (settle.current.check(Date.now()) === 'wait') {
+      timer.current = setTimeout(tryReveal, SETTLE_MS);
+      return;
+    }
+    place.current();
+    requestAnimationFrame(() => requestAnimationFrame(() => setRevealed(true)));
+  }, []);
   useEffect(() => {
     if (!hasRows) return setRevealed(true);
     setRevealed(false);
-    const fallback = setTimeout(() => setRevealed(true), MAX_HIDDEN_MS);
-    return () => clearTimeout(fallback);
-  }, [hasRows]);
+    settle.current = new RevealWhenSettled(Date.now());
+    const cap = setTimeout(tryReveal, MAX_HIDDEN_MS);
+    return () => {
+      clearTimeout(cap);
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [hasRows, tryReveal]);
   const onLoad = () => {
-    if (onPlaced() === 'away') onAway();
-    requestAnimationFrame(() => requestAnimationFrame(() => setRevealed(true)));
+    place.current();
+    settle.current.load(Date.now());
+    tryReveal();
   };
-  return { revealed, onLoad };
+  const onSize = (height: number) => {
+    if (revealed) return;
+    settle.current.size(height, Date.now());
+    tryReveal();
+  };
+  return { revealed, onLoad, onSize };
 }
 
 /**
@@ -48,7 +73,7 @@ export function ListaDeMensajes(props: {
   listaRef: RefObject<FlashListRef<Row> | null>;
   rows: Row[];
   /** Para contar los que llegaron mientras se leía arriba. */
-  mensajes: readonly { seq: number; senderId: string }[];
+  mensajes: readonly { seq: number; senderId: string; kind?: string }[];
   yo: string;
   dibujarFila: (info: { item: Row; index: number }) => ReactElement;
   /** Al terminar de montar: el momento exacto en que la lista ya midió. */
@@ -80,10 +105,11 @@ export function ListaDeMensajes(props: {
   // El scroll sigue al teclado como Telegram (ver `useScrollConTeclado`).
   const { sinSubir } = props;
   const scrollDelChat = useScrollConTeclado(sinSubir);
-  const { revealed, onLoad } = useRevealWhenPlaced(rows.length > 0, props.onListo, releaseFromEnd);
+  const { revealed, onLoad, onSize } = useRevealWhenPlaced(rows.length > 0, props.onListo, releaseFromEnd);
   const liftStyle = useBottomLiftStyle(sinSubir);
+  const shakeStyle = useNudgeShake(props.mensajes, props.yo);
   return (
-    <View className="flex-1">
+    <Animated.View style={[{ flex: 1 }, shakeStyle]}>
       <FondoDelChat />
       <View className="flex-1" style={{ opacity: revealed ? 1 : 0 }}>
       <BottomRoom.Provider value={EMOJI_PANEL_ROOM}>
@@ -122,7 +148,10 @@ export function ListaDeMensajes(props: {
         onScrollEndDrag={alTerminarArrastre}
         onMomentumScrollBegin={alEmpezarArrastre}
         onMomentumScrollEnd={alTerminarArrastre}
-        onContentSizeChange={alCambiarTamaño}
+        onContentSizeChange={(width, height) => {
+          onSize(height);
+          alCambiarTamaño(width, height);
+        }}
         scrollEventThrottle={100}
         ListHeaderComponent={
           props.cargandoAnteriores ? (
@@ -166,6 +195,6 @@ export function ListaDeMensajes(props: {
         </Pressable>
         </Animated.View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }

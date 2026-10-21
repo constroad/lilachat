@@ -96,8 +96,8 @@ describe('railSpaces', () => {
 });
 
 /**
- * The invitation by email, the first option (José, 21/10: «es empresarial, debe
- * ser por email y luego por WhatsApp»). It goes from the inviter's own mail
+ * The invitation by email, the first option (José, 21/10: a company invites
+ * by email first, then by WhatsApp). It goes from the inviter's own mail
  * app: where to get Lilachat (phone or computer), that one enters with the
  * phone number, and the code.
  */

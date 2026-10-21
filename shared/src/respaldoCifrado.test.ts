@@ -81,7 +81,9 @@ describe('armarRespaldo / abrirRespaldo', () => {
 
   it('un respaldo manipulado devuelve null', () => {
     const respaldo = armarRespaldo('la clave es 4821', contenido, KDF_DE_PRUEBA);
-    const tocado = { ...respaldo, sobre: { ...respaldo.sobre, ciphertext: `A${respaldo.sobre.ciphertext.slice(1)}` } };
+    // Always a DIFFERENT first character: with a fixed «A», one backup in 64 already started with it and stayed untouched (flaky, 21/10).
+    const firstChar = respaldo.sobre.ciphertext[0] === 'A' ? 'B' : 'A';
+    const tocado = { ...respaldo, sobre: { ...respaldo.sobre, ciphertext: `${firstChar}${respaldo.sobre.ciphertext.slice(1)}` } };
 
     expect(abrirRespaldo('la clave es 4821', tocado, KDF_DE_PRUEBA)).toBeNull();
   });

@@ -44,3 +44,9 @@ export function mediaLibrary(jwt: string, params: { type: MediaLibraryType; spac
   const query = new URLSearchParams({ type: params.type, ...(params.spaceId ? { workspace: params.spaceId } : {}), ...(params.before ? { before: params.before } : {}) });
   return jsonCall<{ items: MediaLibraryItem[]; hasMore: boolean }>(`${BASE_URL}/api/media/library?${query}`, jwt);
 }
+
+/** A chat of the space by its id, to open it from outside its list (a link in «Medios»). */
+export async function findSpaceChat(jwt: string, spaceId: string, chatId: string): Promise<ChatSummary | null> {
+  const response = await spaceChats(jwt, spaceId);
+  return response.ok ? (response.data.chats.find((chat) => chat.id === chatId) ?? null) : null;
+}

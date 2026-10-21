@@ -172,7 +172,7 @@ export function desconectarDispositivo(deviceId: string): void {
 }
 
 /** Their company spaces changed (a request, approved, added, deactivated): the client reads them again. */
-export function avisarCambioDeEspacios(userIds: readonly string[]): void {
+export function emitSpacesChanged(userIds: readonly string[]): void {
   for (const userId of userIds) ioVivo?.to(userRoom(userId)).emit('workspaces.changed', {});
 }
 

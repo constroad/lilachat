@@ -12,8 +12,8 @@ function RailButton(props: { testId: string; label: string; Icon: LucideIcon; ac
 }
 
 /**
- * The rail of the web, like WhatsApp Web's (pending 38, José 21/10: «tiene
- * un panel en el lado izquierdo para agrupar mensajes, llamadas…»): Chats,
+ * The rail of the web, like WhatsApp Web's (pending 38, José 21/10: a panel
+ * on the left that groups messages, calls and the rest): Chats,
  * Pendientes y encuestas and Destacados on top; the company spaces in the
  * middle (personal and each space, or «+» while there are none); Medios,
  * Ajustes and me at the bottom. Calls get their place when there is a call

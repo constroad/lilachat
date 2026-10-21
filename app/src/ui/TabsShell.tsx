@@ -9,6 +9,7 @@ import { avisarMensaje, prepararAvisos } from '../chat/avisoLocal';
 import { iniciarServicio } from '../../modules/servicio-socket/src';
 import { ChatListScreen } from '../chat/ChatListScreen';
 import { SpaceChatsScreen } from '../spaces/SpaceChatsScreen';
+import { findSpaceChat } from '../spaces/spacesApi';
 import { useSpacesUi } from '../spaces/useSpacesUi';
 import { CreatePollScreen } from '../agenda/CreatePollScreen';
 import { AgendaScreen } from '../agenda/AgendaScreen';
@@ -415,7 +416,7 @@ export function TabsShell({
             onRespaldoDelServidor={() => setShowBackup(true)}
             onLogout={onLogout}
             onAbrirDestacado={(chatId, seq) => void buscarChat(chatId, credential.jwt).then((chat) => chat && onOpenChat(chat, seq))}
-            media={{ spaceId: espacios.current?.id ?? null, spaceName: espacios.current?.name, onOpen: (item) => void buscarChat(item.chatId, credential.jwt, espacios.current?.id).then((chat) => chat && onOpenChat(chat, item.seq)) }}
+            media={{ spaceId: espacios.current?.id ?? null, spaceName: espacios.current?.name, onOpen: (item) => void (espacios.current ? findSpaceChat(credential.jwt, espacios.current.id, item.chatId) : buscarChat(item.chatId, credential.jwt)).then((chat) => chat && onOpenChat(chat, item.seq)) }}
           />
           </ErrorBoundary>
           </View>

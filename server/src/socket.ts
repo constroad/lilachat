@@ -31,7 +31,7 @@ import { esDispositivoVinculado } from '@lilachat/shared';
 import { vinculadoVigente } from './dispositivosVinculados.js';
 import { HiloInvalidoError } from './hilos.js';
 import { registerAgendaRelay } from './agendaRelay.js';
-import { avisarCambioDeChat, avisarCambioDeEspacios, avisarEntregadoAlConectar, avisarMensajeNuevo, fijarServidorDelReparto, leerLoPropio, publicarAviso, publicarMensaje } from './reparto.js';
+import { avisarCambioDeChat, emitSpacesChanged, avisarEntregadoAlConectar, avisarMensajeNuevo, fijarServidorDelReparto, leerLoPropio, publicarAviso, publicarMensaje } from './reparto.js';
 
 export { avisarCambioDeChat, avisarCambioDeVinculos, avisarMensajeNuevo, desconectarDispositivo, notifyThread, publicarAviso, publicarMensaje } from './reparto.js';
 
@@ -99,7 +99,7 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
   fijarServidorDelReparto(io);
   configurarEntrega((userId, frame) => void io.to(userRoom(userId)).emit('receipt', frame));
   configurarAvisoDeTarjeta((userId, cambio) => void io.to(userRoom(userId)).emit('ref.changed', cambio));
-  configureWorkspaceNotices(avisarCambioDeEspacios);
+  configureWorkspaceNotices(emitSpacesChanged);
   configurarCiclo({
     emitirA: (userId, evento, frame) => void io.to(userRoom(userId)).emit(evento, frame),
     publicar: (mensaje, members) => publicarMensaje(mensaje, members, { soloSiAlDia: true }),

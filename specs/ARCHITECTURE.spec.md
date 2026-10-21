@@ -4892,6 +4892,284 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 73. E4: contrato con agentes (Lila y Dali) — BORRADOR (21/10/2026)
+
+Acordado con la sesión «Agentes Lila y Dali» (repo `constroad/agentes`), que
+informa estas decisiones de José (a confirmar con él en esta sesión):
+(1) la identidad del bot vive en Lilachat, como participante del espacio con
+sus permisos; agentes guarda la llave de esa instalación como un «sender» con
+canal `lilachat`. (2) Lo que crea cosas en el Portal (pedidos, despachos,
+gastos) pasa por agentes: Lilachat manda el comando, el botón o el formulario
+como evento firmado, Lila lo ejecuta con su acceso al Portal y responde.
+Lilachat no tiene credenciales del Portal. Excepción: los avisos de una app a
+un canal (Portal → #flota) van directo por webhook entrante.
+
+Piezas que se copian de agentes (puras): formato de llave, hash y `last4`
+(`core/integrations/keys.ts`); validación y scopes
+(`core/integrations/service.ts`); código de 60 s de un solo uso con canje
+atómico (`core/connect/stores.ts`).
+
+### 73.1 Instalación (tipo «Add to Slack»)
+- Un admin del espacio toca «Conectar Lila» en Integraciones (e4-23) → lo
+  lleva a agentes, que vuelve a `https://lilachat.constroad.com/integraciones/vuelta`
+  (URL exacta registrada) con `code` (60 s, un uso) y `state`.
+- `POST /api/integrations/exchange` (servidor a servidor) `{ code, client:
+  'agentes', clientSecret }` → `{ installationId, workspaceId, botUserId,
+  key, scopes, signingSecret, eventsUrl }`. La llave: `lc_<espacio>_<aleatorio>`,
+  se guarda solo el hash + `last4`; hasta 3 vivas; rotar deja la anterior 24 h;
+  revocar o desconectar las mata. El bot queda como miembro del espacio
+  (rol `guest` del bot: solo entra a los canales donde lo agregan o lo nombran).
+- Scopes: `messages:write`, `channels:read`, `commands:write`, `events:read`.
+
+### 73.2 Publicar como el bot
+`POST /api/bots/messages` · `Authorization: Bearer lc_…` · `Idempotency-Key: <uuid>`
+```json
+{ "chatId": "…", "channel": "flota", "text": "Unidad 2 salió de planta",
+  "menciones": [{ "userId": "…", "desde": 0, "largo": 5 }],
+  "card": { "kicker": "DESPACHO · PED-2026-0418", "title": "Unidad 2 salió de planta",
+            "status": { "label": "EN RUTA", "tone": "pizarra" },
+            "fields": [{ "label": "Placa", "value": "BBE 942" }] },
+  "buttons": [{ "id": "ver-vale", "label": "Ver vale", "style": "secondary", "url": "https://…" },
+              { "id": "confirmar", "label": "Confirmar recepción", "style": "primary", "value": "PED-2026-0418" }],
+  "quickReplies": [{ "id": "si", "label": "Sí, llegó" }],
+  "replyToSeq": 120, "hiloDe": 118, "enElChat": false }
+```
+→ `201 { chatId, seq }`. `chatId` o `channel` (slug del espacio de la
+instalación). Errores: 401 llave, 403 scope o el bot no está en ese chat, 404
+chat fuera del espacio, 409 misma `Idempotency-Key`, 429 límite.
+Reemplazar una tarjeta (p. ej. «Confirmado por Ana»):
+`PATCH /api/bots/messages/:chatId/:seq` con el mismo cuerpo.
+
+### 73.3 Webhook entrante (app → canal, sin agentes)
+`POST /api/hooks/:hookId/:token` `{ text, card?, buttons? }` → publica como la
+app (pastilla APP) en el canal configurado. Se crea en Integraciones; el
+token se muestra una vez y se puede revocar.
+
+### 73.4 Eventos salientes firmados (Lilachat → agentes)
+`POST <eventsUrl>` con cabeceras `X-Lilachat-Event-Id: <uuid>`,
+`X-Lilachat-Timestamp: <unix s>`, `X-Lilachat-Signature: v1=<hex(HMAC-SHA256(signingSecret, timestamp + "." + body))>`.
+El receptor rechaza más de 5 min de diferencia y repite por `Event-Id`.
+Lilachat reintenta con backoff si no recibe 2xx (5 intentos) y espera la
+respuesta 3 s: lo lento se responde aparte por `POST /api/bots/messages` o
+por `responseUrl` (un uso, 15 min).
+- `message.mention` `{ workspaceId, chatId, seq, from: { userId, name, phone }, text, menciones }`
+- `message.direct` (mensaje al chat 1:1 con el bot), mismo cuerpo.
+- `command` `{ workspaceId, chatId, command: "pedido", args: "Municipalidad de Lima 24 m³ jueves", from, responseUrl }`
+- `button.click` `{ workspaceId, chatId, seq, buttonId, value, from, responseUrl }`
+- `form.submit` `{ workspaceId, chatId, formId, values: { cliente, obra, m3, … }, from, responseUrl }`
+
+### 73.5 Comandos y formularios (las acciones del Portal en el chat)
+Agentes registra sus comandos al instalar:
+`PUT /api/bots/commands` `[{ "command": "pedido", "description": "crear un pedido de mezcla",
+"form": { "id": "pedido", "title": "Nuevo pedido", "fields": [ { "id": "cliente", "label": "Cliente", "type": "select", "source": "clientes" }, { "id": "m3", "label": "Cantidad", "type": "number", "unit": "m³" }, { "id": "fecha", "type": "date" }, { "id": "hora", "type": "time" } ] } }]`.
+Lilachat dibuja la hoja (pantallas e4-25 a e4-29) con esos campos; las
+opciones de un `select` las pide al bot con `options.request` →
+`{ options: [{ id, label }] }`. Al enviar, `form.submit`; Lila crea en el
+Portal (`POST /api/order`, `/api/dispatch`, `/api/expense`…) y responde con la
+tarjeta (e4-22).
+
+## 72. E1 en el server: espacios, miembros y chats del espacio (21/10/2026)
+
+El modelo aprobado en §66 (José, 21/10: «sí»), del lado del server. La UI (app
+y web) sigue con las pantallas v2 (§69).
+
+- **Modelos** (`workspaceModels.ts`): `workspaces` (nombre, rubro, logo,
+  dueño, código, política de ingreso) y `workspacemembers` (espacio, usuario,
+  teléfono, rol, estado `active | pending | invited | deactivated`, cargo,
+  área). Agregar por teléfono funciona sin cuenta: queda `invited`, se crea la
+  invitación de Lilachat y al entrar con el código (`authRoutes` →
+  `claimPhoneInvites`) queda activo.
+- **Reglas** (`shared/workspaces.ts`, con test): código `CONS-7K3P` (cuatro
+  letras del nombre + cuatro sin 0/O/1/I/L; se acepta escrito con espacios,
+  en minúsculas o el enlace entero); solo el dueño nombra admins; nadie cambia
+  ni desactiva al dueño; un admin desactiva miembros e invitados, no admins;
+  con aprobación el ingreso queda pendiente.
+- **Rutas** `/api/workspaces`: crear, mis espacios, vista previa por código y
+  unirse (con límite de 10 intentos por minuto para que no se adivinen
+  códigos), miembros (el directorio para los activos; pendientes y
+  desactivados solo para admins), agregar por teléfono, cambiar rol, aprobar,
+  desactivar, ajustes (nombre, rubro, política, código nuevo) y salir (el
+  dueño no puede salir sin pasarlo).
+- **Chats del espacio** (`workspaceChats.ts`): `chats.workspaceId`.
+  `GET /api/chats` sin parámetro devuelve solo lo personal (como hasta hoy);
+  `?workspace=<id>` los del espacio, solo para activos. Crear un chat en un
+  espacio exige que todos sean activos; el 1:1 del espacio es distinto del
+  personal. **Desactivar** mueve a la persona de `members` a
+  `suspendedMembers` en cada chat del espacio, así todos los controles de
+  pertenencia que ya existían la dejan afuera al instante; reactivar la
+  devuelve con su rol. Salir la saca de los chats del espacio.
+- **Índices** creados en la bóveda (aprobados por José): `workspaces.joinCode`
+  único; `workspacemembers` `{workspaceId, phone}` único, `{userId, status}`,
+  `{phone, status}`, `{workspaceId, status}`; `chats.workspaceId`. **Ojo:**
+  el «dry-run» que los iba a mostrar los creó, porque `db.ts` conectaba sin
+  `autoIndex: false` (las colecciones estaban vacías). Corregido: la app y
+  sus scripts conectan con `{ autoIndex: false, autoCreate: false }`.
+- **Canales (E2, server):** un canal es un grupo del espacio con
+  `channel: { visibility }` y su nombre en minúsculas con guiones
+  (`normalizeChannelName`: «Obra Surco» → `obra-surco`). Por ser grupo, ya
+  tienen menciones, admins y avisos; un cliente viejo lo ve como grupo.
+  `/api/workspaces/:id/channels`: crear (nombre repetido en el espacio → 409),
+  explorar (los públicos más mis privados, con cantidad de miembros y si ya
+  estoy) y unirse a un público (a un privado no). La lista del espacio trae
+  `channel` para dibujar el «#».
+- **Tests:** shared 10 (reglas, código y nombre de canal), server 17 (`workspaces.test.ts`:
+  crear, vista previa, unirse, aprobar, agregar por teléfono y reclamar al
+  entrar, roles, desactivar, ajustes, salir, chats del espacio, 1:1 aparte,
+  desactivar y reactivar en los chats, canales).
+
+## 71. El zumbido de Messenger (21/10/2026)
+
+Backlog 3 (José, 21/10: «¿qué más hay? ¿lo de Messenger?»). Primero el
+zumbido; los guiños necesitan animaciones propias (las de MSN son de
+Microsoft).
+
+- **Mensaje `zumbido`** sin contenido (`zumbido.ts`): solo en chats 1:1 por
+  ahora (en grupos sería spam hasta que exista el permiso del admin), uno cada
+  10 s por persona y chat (se controla ANTES de `sendMessage`, que gasta un
+  `seq`); también en chats secretos, porque no lleva contenido. El aviso dice
+  «Te mandó un zumbido» y la lista «Zumbido».
+- **App:** «Zumbido» en el clip (solo 1:1). Con el chat abierto, la lista se
+  sacude ±12 dp unos 600 ms y vibra; lo que ya estaba al abrir no sacude
+  (`nudgeToShake`, en shared con test). En el historial, la línea «Ana te
+  mandó un zumbido» / «Mandaste un zumbido».
+- **Web:** «Zumbido» en el «+» (solo 1:1). El panel se sacude (keyframe CSS) y
+  suena un zumbido corto con Web Audio; con «reducir movimiento» solo suena.
+- **E2E** (server de QA, emulador, web y un socket de prueba): el zumbido de
+  Ana llegó en vivo al emulador con la línea y la lista se movió en
+  horizontal (−28 a +26 px, ~0,75 s, medido cuadro a cuadro); el segundo
+  dentro de 10 s mostró «Espera unos segundos para mandar otro zumbido.»; el
+  de la app sacudió el panel de la web de Ana. **Defecto encontrado:** con
+  `className` de NativeWind en la vista animada, el estilo animado no se
+  aplicaba; ahora va como `style`.
+- **Queda:** un chat silenciado todavía sacude y vibra (la pantalla del chat
+  no conoce el silenciado); el permiso del admin para grupos; los guiños.
+
+## 70. El clip con acceso limitado, pegar la imagen copiada y el salto al abrir (21/10/2026, 0.1.116)
+
+José (21/10, con captura): «toco el clip y no están las imágenes y videos, y
+sí le di acceso»; «tomo un screenshot, voy a WhatsApp y me sugiere pegar la
+imagen; aquí no pasa»; «otra vez estoy viendo el salto al abrir los chats».
+
+- **Clip:** la captura mostraba una sola imagen. Era el **acceso limitado**
+  de Android 14 («seleccionar fotos»): la app solo ve lo elegido y lo trataba
+  como acceso completo, sin decir nada. Ahora (`mediaAccessFrom`, con test)
+  muestra lo elegido y un aviso «Solo ves las fotos que elegiste» con «Ver
+  todas», que vuelve a pedir el permiso (Android ofrece «Permitir todo»).
+  E2E: con el permiso limitado se ve el aviso; tras «Permitir todo», la
+  grilla se llenó (20 visibles) y el aviso se fue.
+- **Pegar la imagen copiada:** el campo de React Native no recibe imágenes
+  del teclado (le falta `commitContent`), por eso Gboard no la sugiere. La
+  barra la ofrece sola: mientras se escribe y hay una imagen copiada, un chip
+  «Pegar la imagen copiada» (con × para descartarlo hasta la próxima copia).
+  Solo `hasImageAsync` corre solo (no dispara el aviso de Android); la imagen
+  se lee al tocar y entra a la vista previa de fotos de siempre, con
+  comentario y HD. No en chats secretos. E2E: «Copiar imagen» en Chrome del
+  emulador → el chip apareció → la vista previa abrió con esa imagen.
+- **El salto al abrir:** medido cuadro a cuadro (30 fps) con mensajes que
+  llegan con el chat cerrado: la lista aparecía en el divisor y al cuadro
+  siguiente saltaba unos 20 mensajes arriba y bajaba animada. **Causa:** se
+  mostraba tras su primer layout, pero FlashList seguía midiendo las filas de
+  arriba (el alto pasaba de 1761 a 2891–3157 px, en parte por el propio
+  `scrollToIndex` al divisor) y la corrección se veía. Además, el tope de
+  350 ms la mostraba sin ubicar si el layout tardaba (teléfono lento o chat
+  con fotos), y el margen inferior (16 → 24 dp al montar) recreaba el
+  componente de scroll. **Arreglo:** `RevealWhenSettled` (con test): se
+  muestra cuando el alto se queda quieto 120 ms, se vuelve a ubicar con las
+  medidas finales justo antes, tope 900 ms; el scroll lee el margen por un
+  ref y ya no se recrea. E2E: con mensajes nuevos abre en «3 mensajes no
+  leídos» y queda quieta; sin nuevos, abre al final, quieta. En la build de
+  desarrollo el blanco dura lo que tarda el primer layout (~0,8 s); en la de
+  release es menor.
+
+## 69. Pantallas de Lilachat Empresa: cuáles valen (21/10/2026)
+
+José (21/10): «¿no teníamos skills y lecciones para evitar que 15 de las 21
+pantallas salieran mal? Si corriges lo que Stitch inventó, ¿para qué tienes
+las skills? Crea nuevas e identifica en el spec cuáles valen, cuáles no y
+para qué se usan».
+
+**Qué pasó con la tanda v1 (`e-*`, 20/10):** se escribieron los prompts a
+mano en vez de seguir la skill `stitch-design`. Sin su plantilla (DIRECCIÓN
++ SHELL + CONTENIDO + PIE), sin tablet, y sin `render.py` para sacar la
+captura móvil desde el HTML a 390 px. Resultado: 15 de 21 móviles en un
+lienzo de escritorio, correos y una versión «v2.4» inventados, e integraciones
+sin móvil.
+
+**La tanda v2 (`e1-` … `e4-`) sigue la skill al pie de la letra:** el
+generador por JSON-RPC de Lab Vial copiado a `lilachat/.stitch-work/` (fuera
+de git), `base.py` con la plantilla, los datos de ejemplo y un PIE que prohíbe
+correos, versiones, usuarios con arroba y leyendas; `screens.py` con el
+contenido de cada pantalla (no se borra); los **tres dispositivos**
+(escritorio = web, tablet = app en tablet, móvil = app); y `render.py` (el de
+Trama, con el iframe de 390 px) para las capturas `.fold.png` y completas.
+Las capturas quedan en `design/stitch/v2/` (locales) y en `INVENTARIO.md`.
+
+### 69.1 Valen (v2): qué se implementa con cada una
+
+| Pantalla | Título | Fase | Para qué |
+| --- | --- | --- | --- |
+| `e1-01-bienvenida` | Cómo vas a usar Lilachat | E1 | Primera pantalla tras el código: elegir personal / unirse / crear |
+| `e1-02-unirse-codigo` | Unirme a mi empresa | E1 | Código o enlace + vista previa del espacio |
+| `e1-03-solicitud-enviada` | Solicitud enviada | E1 | Espera de aprobación |
+| `e1-04-crear-espacio` | Crear un espacio | E1 | Alta del espacio (dueño) |
+| `e1-05-invitar` | Invitar a CONSTROAD | E1 | Código, enlace y agregar por teléfono |
+| `e1-06-selector-espacios` | Tus espacios | E1 | Cambiar de espacio (hoja en la app, menú en la web) |
+| `e1-07-chats-del-espacio` | Chats de CONSTROAD | E1 | Lista del espacio: canales, directos, apps |
+| `e1-08-directorio` | Directorio | E1 | Directorio sin depender de la agenda |
+| `e1-09-perfil-miembro` | Perfil de Ana Torres | E1 | Perfil de un miembro |
+| `e1-10-miembros-roles` | Miembros y roles | E1 | Admin: roles y desactivar |
+| `e1-11-solicitudes` | Solicitudes para entrar | E1 | Admin: aprobar o rechazar |
+| `e1-12-ajustes-espacio` | Ajustes del espacio | E1 | Admin: nombre, logo, código, zona de peligro |
+| `e1-13-te-agregaron` | Te agregaron a CONSTROAD | E1 | Aviso al entrar cuando te agregan |
+| `e1-14-acceso-desactivado` | Ya no tienes acceso | E1 | Lo que ve quien fue desactivado |
+| `e2-15-explorar-canales` | Canales de CONSTROAD | E2 | Explorar y unirse a canales |
+| `e2-16-crear-canal` | Crear canal | E2 | Crear canal (público/privado, de obra) |
+| `e2-17-canal-de-obra` | Canal de obra con checklist | E2+ | Canal de obra: pestañas y checklist por etapas (backlog 21) |
+| `e2-18-item-checklist` | Ítem del checklist | E2+ | Detalle de un ítem del checklist |
+| `e3-20-menciones` | Menciones | E3b | Pestaña «Menciones» |
+| `e4-21-comandos` | Comandos con barra | E4 | Comandos con «/» |
+| `e4-22-tarjeta-constroad` | Tarjeta de Constroad con botones | E4 | Tarjeta del Portal con botones |
+| `e4-23-integraciones` | Integraciones del espacio | E4 | Admin: integraciones (ahora también en celular) |
+| `e4-24-acciones-constroad` | Acciones de Constroad | E4 | Hoja «¿Qué quieres hacer?» desde el «+» |
+| `e4-25-crear-pedido` | Crear pedido | E4 | Crear pedido (POST /api/order; sin precio) |
+| `e4-26-crear-cotizacion` | Crear cotización | E4 | Crear cotización (POST /api/quotes) |
+| `e4-27-despachar` | Despachar a un pedido | E4 | Despachar a un pedido (POST /api/dispatch + salida) |
+| `e4-28-subir-gasto` | Subir gasto | E4 | Subir gasto con comprobante (POST /api/expense) |
+| `e4-29-combustible` | Registrar combustible | E4 | Combustible de una unidad (POST /api/fleet/fuel-logs) |
+| `e4-30-consultar-unidad` | Consultar una unidad | E4 | Consultar una unidad (Lila) |
+| `e4-31-informe-del-dia` | Informe del día | E4 | Informe del día (Lila) |
+
+### 69.2 No valen (v1, `e-01` … `e-22`)
+
+Quedan en el proyecto de Stitch porque Stitch no borra, pero **no se usan**:
+las reemplaza la v2. Excepciones: `e-17-menciones-sugerencias` y
+`e-18-avisos-chat` sirvieron de criterio de aceptación de E3b (§67) y lo
+implementado ya las sigue; la próxima referencia de esas dos es la v2. Las
+de §66.4 #17 y #18 no se regeneran (ya están hechas).
+
+### 69.3 Lo que se aprendió del Portal para las acciones (E4)
+
+Leído del código y de los as-is del Portal y de lila-app (21/10):
+- **Pedido** (`POST /api/order`, permiso `orders:manage`): fecha de
+  programación, m³, diseño de mezcla (`tipoMAC` es el id del diseño), cliente,
+  obra, hora, sede. **No tiene precio**: sale de la cotización. Rechaza un
+  segundo pedido del mismo cliente el mismo día (409 con el duplicado) y el
+  desborde de la planta.
+- **Cotización** (`POST /api/quotes`): cliente, fecha, ítems, subtotal, IGV,
+  total; el número lo asigna el server.
+- **Despacho** (`POST /api/dispatch`, `dispatch:manage`): unidad, cantidad,
+  pedido, guía; la salida es un `PUT` aparte y es la que dispara los avisos
+  y el vale.
+- **Gasto** (`POST /api/expense`): monto, descripción, obra o pedido,
+  pagado / por pagar (reembolsar); acepta un dispositivo interno; la foto del
+  comprobante se sube aparte al Drive.
+- **Combustible** (`POST /api/fleet/fuel-logs`): placa, odómetro, galones.
+  Los «consumos» de la planta (conciliación de tanques) no se cargan por chat.
+- **Lila hoy no consulta el Portal**: el catálogo de consultas (`unidad`,
+  `chofer`, `ETA`…) está propuesto en `Portal/specs/AGENT-OPERATIONS.spec.md`
+  §6.1. Para crear desde el chat hace falta un camino interno del Portal con
+  la identidad y los permisos de la persona: es trabajo del repo del Portal.
+
 ## 68. El audio con la pantalla bloqueada y responder con sticker (20/10/2026, 0.1.115)
 
 José (20/10): «un audio se corta cuando la pantalla se bloquea» y «no puedo
@@ -6759,7 +7037,7 @@ tacha con la versión que lo cierra.
    mensaje `sticker` (sin burbuja, con reacciones), se pueden tocar para
    guardar el de otro y tienen favoritos. Antes de elegir una librería de
    recorte se revisa la licencia (sin AGPL ni de pago sin preguntar).
-3. **Guiños y zumbido, como el Messenger de antes.** Análisis abajo.
+3. **Guiños y zumbido, como el Messenger de antes.** Análisis abajo. **Zumbido hecho (§71)**; faltan los guiños.
 
 4. **Bug web: cerrar un hilo deja la pantalla en blanco** (José, 20/10). Crear
    un hilo y tocar la X del panel: toda la web queda en blanco hasta

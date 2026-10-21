@@ -13,3 +13,6 @@ web/public/mediapipe/
 # Solo se versiona el inventario de texto que citan los specs.
 design/stitch/*
 !design/stitch/INVENTARIO.md
+
+# Generador de Stitch (skill stitch-design): prompts, capturas y HTML locales, nunca al repo.
+.stitch-work/

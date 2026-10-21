@@ -4,8 +4,10 @@ import { tallyPoll, type AgendaPoll, type AgendaReminder } from '@lilachat/share
 import { api } from '../api';
 import { Overlay } from '../ui/Overlay';
 import { LineaDePendientes } from './LineaDePendientes';
+import { MisTareas } from './MisTareas';
 
-type Pestana = 'pendientes' | 'encuestas';
+type Pestana = 'pendientes' | 'tareas' | 'encuestas';
+const TAB_LABEL: Record<Pestana, string> = { pendientes: 'Pendientes', tareas: 'Mis tareas', encuestas: 'Encuestas' };
 
 /**
  * «Pendientes» en la web (José aprobó el 20/10; antes «Agenda»): la línea de
@@ -20,6 +22,8 @@ export function AgendaOverlay({
   onCreatePoll,
   onCreateReminder,
   onEditarRecordatorio,
+  chatNameOf,
+  onOpenTask,
 }: {
   jwt: string;
   myUserId: string;
@@ -28,6 +32,9 @@ export function AgendaOverlay({
   onCreatePoll: () => void;
   onCreateReminder: () => void;
   onEditarRecordatorio: (recordatorio: AgendaReminder) => void;
+  /** «Mis tareas» (backlog 30): the chat's name as the list shows it, and opening it on the checklist. */
+  chatNameOf: (chatId: string) => string;
+  onOpenTask: (chatId: string, seq?: number) => void;
 }) {
   const [pestana, setPestana] = useState<Pestana>('pendientes');
   const crear = [
@@ -46,13 +53,13 @@ export function AgendaOverlay({
         ))}
       </div>
       <div role="tablist" className="mb-3 flex gap-4 border-b border-outline/15">
-        {(['pendientes', 'encuestas'] as const).map((clave) => (
+        {(['pendientes', 'tareas', 'encuestas'] as const).map((clave) => (
           <button key={clave} type="button" role="tab" aria-selected={pestana === clave} data-testid={`pestana-${clave}`} onClick={() => setPestana(clave)} className={`min-h-[40px] border-b-2 text-sm ${pestana === clave ? 'border-primary font-semibold text-primary' : 'border-transparent text-on-surface-variant'}`}>
-            {clave === 'pendientes' ? 'Pendientes' : 'Encuestas'}
+            {TAB_LABEL[clave]}
           </button>
         ))}
       </div>
-      {pestana === 'pendientes' ? <LineaDePendientes jwt={jwt} onEditarRecordatorio={onEditarRecordatorio} /> : <EncuestasAbiertas jwt={jwt} myUserId={myUserId} />}
+      {pestana === 'pendientes' ? <LineaDePendientes jwt={jwt} onEditarRecordatorio={onEditarRecordatorio} /> : pestana === 'tareas' ? <MisTareas jwt={jwt} me={myUserId} chatNameOf={chatNameOf} onOpen={onOpenTask} /> : <EncuestasAbiertas jwt={jwt} myUserId={myUserId} />}
     </Overlay>
   );
 }

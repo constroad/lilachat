@@ -241,7 +241,7 @@ export function Composer({
             if (event.key === 'Escape' && contexto) cancelarContexto();
           }}
           placeholder="Escribe un mensaje..."
-          className="block min-h-[40px] max-h-32 w-full resize-none rounded-lg border border-outline/25 bg-background px-3 py-2.5 text-sm leading-5 outline-none placeholder:text-on-surface-variant focus:border-primary"
+          className="block min-h-[40px] max-h-32 w-full resize-none rounded-lg border border-outline/25 bg-background px-3 py-2.5 text-[length:var(--chat-font,14px)] leading-[var(--chat-line,20px)] outline-none placeholder:text-on-surface-variant focus:border-primary"
         />
         </div>
 

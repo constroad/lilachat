@@ -62,7 +62,7 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
           />
         ) : (
         <div
-          className={`rounded-xl px-3 py-2 text-sm ${
+          className={`rounded-xl px-3 py-2 text-[length:var(--chat-font,14px)] leading-[var(--chat-line,20px)] ${
             mio ? 'bg-primary text-on-primary' : 'border border-outline/15 bg-surface text-on-surface'
           } ${mensaje.estado === 'fallido' ? 'opacity-70' : ''}`}
         >

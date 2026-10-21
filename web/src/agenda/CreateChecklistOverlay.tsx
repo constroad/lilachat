@@ -9,12 +9,14 @@ const FIELD = 'h-11 w-full rounded-xl border border-outline/25 bg-background px-
 /**
  * A new checklist in the open chat, on the web (backlog 8, José 21/10; design
  * `k-02-crear-checklist`): title, tasks and whether the others tick and add.
+ * Pinned by default (backlog 30); from a thread (`threadOf`) it stays there, unpinned.
  */
-export function CreateChecklistOverlay({ jwt, chatId, onClose }: { jwt: string; chatId: string; onClose: () => void }) {
+export function CreateChecklistOverlay({ jwt, chatId, threadOf, onClose }: { jwt: string; chatId: string; threadOf?: number; onClose: () => void }) {
   const [title, setTitle] = useState('');
   const [items, setItems] = useState(['', '', '']);
   const [othersCanMark, setOthersCanMark] = useState(true);
   const [othersCanAdd, setOthersCanAdd] = useState(true);
+  const [pin, setPin] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -23,7 +25,7 @@ export function CreateChecklistOverlay({ jwt, chatId, onClose }: { jwt: string; 
     const valid = validateChecklist({ title, items });
     if (!valid.ok) return setError(valid.message);
     setSaving(true);
-    const result = await api<{ id: string }>('/agenda/checklists', { jwt, body: { chatId, title: valid.title, items: valid.items, othersCanMark, othersCanAdd } });
+    const result = await api<{ id: string }>('/agenda/checklists', { jwt, body: { chatId, title: valid.title, items: valid.items, othersCanMark, othersCanAdd, ...(threadOf === undefined ? { pin } : { hiloDe: threadOf }) } });
     setSaving(false);
     if (!result.ok) return setError(result.message ?? 'No se pudo enviar el checklist.');
     onClose();
@@ -79,6 +81,12 @@ export function CreateChecklistOverlay({ jwt, chatId, onClose }: { jwt: string; 
           <input type="checkbox" checked={othersCanAdd} onChange={(event) => setOthersCanAdd(event.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" />
           <span><span className="block text-sm font-semibold">Los demás pueden agregar tareas</span><span className="block text-[12px] text-on-surface-variant">Para sumar lo que falte sobre la marcha</span></span>
         </label>
+        {threadOf === undefined ? (
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-outline/15 p-3">
+            <input type="checkbox" data-testid="checklist-fijar" checked={pin} onChange={(event) => setPin(event.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" />
+            <span><span className="block text-sm font-semibold">Fijar en el chat</span><span className="block text-[12px] text-on-surface-variant">Queda arriba de la conversación, a un clic</span></span>
+          </label>
+        ) : null}
       </fieldset>
     </Overlay>
   );

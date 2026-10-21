@@ -1,11 +1,12 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { Check, SendHorizontal, Smile, X } from 'lucide-react';
+import { Check, ClipboardCheck, SendHorizontal, Smile, X } from 'lucide-react';
 import { formatClock } from '@lilachat/shared';
 import { ConversacionContext, useConversacion, type ContextoDeLaConversacion } from '../contextoDeLaConversacion';
 import type { StickerChat } from '../stickers/EmojiStickerPanel';
 import { Avatar } from '../../ui/Avatar';
 import { BurbujaDeMensaje } from '../BurbujaDeMensaje';
 import { TextoDelMensaje } from '../TextoDelMensaje';
+import { CreateChecklistOverlay } from '../../agenda/CreateChecklistOverlay';
 import type { ChatSummary, MensajeEnPantalla } from '../types';
 
 const EmojiStickerPanel = lazy(() => import('../stickers/EmojiStickerPanel'));
@@ -41,6 +42,8 @@ export function PanelDeHilo(props: {
   const [editing, setEditing] = useState<MensajeEnPantalla | null>(null);
   const [picking, setPicking] = useState(false);
   const [notice, setNotice] = useState('');
+  /** A checklist inside the thread (backlog 30): its card stays among the replies. */
+  const [creatingChecklist, setCreatingChecklist] = useState(false);
   const fin = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   // The bubbles here: «Editar» edits in THIS input, and they do not repeat «Respondió en un hilo».
@@ -102,6 +105,11 @@ export function PanelDeHilo(props: {
           <h2 className="text-base font-semibold">Hilo</h2>
           <p className="truncate text-[12px] text-on-surface-variant">{props.chat.name ?? props.chat.phone ?? 'Conversación'}</p>
         </div>
+        {props.chat.encrypted ? null : (
+          <button type="button" data-testid="btn-checklist-hilo" aria-label="Crear un checklist en el hilo" title="Checklist en el hilo" onClick={() => setCreatingChecklist(true)} className="grid h-11 w-11 place-items-center rounded-full text-on-surface-variant hover:bg-background">
+            <ClipboardCheck size={19} />
+          </button>
+        )}
         <button type="button" data-testid="btn-cerrar-hilo" aria-label="Cerrar el hilo" onClick={props.onCerrar} className="grid h-11 w-11 place-items-center rounded-full text-on-surface-variant hover:bg-background">
           <X size={20} />
         </button>
@@ -143,6 +151,7 @@ export function PanelDeHilo(props: {
         })}
         </ConversacionContext.Provider>
         <div ref={fin} />
+        {creatingChecklist ? <CreateChecklistOverlay jwt={parent.jwt} chatId={props.chat.id} threadOf={props.raiz.seq} onClose={() => setCreatingChecklist(false)} /> : null}
       </div>
       <footer className="relative border-t border-outline/15 bg-surface px-3 pb-3 pt-2">
         {picking ? (

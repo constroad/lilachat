@@ -6,6 +6,7 @@ import { fijadosVigentes, puedeFijarEnElChat } from '@lilachat/shared';
 import { DialogoFijar } from './DialogoFijar';
 import { FranjaDeFijados } from './FranjaDeFijados';
 import { ListaDeFijados, TarjetaDeFijados } from './fijados/ListaDeFijados';
+import { ChecklistsCard } from './tarjetas/ChecklistsCard';
 import { useFijarEnLaWeb } from './useFijarEnLaWeb';
 import type { AccionSobreMensaje } from './contextoDeLaConversacion';
 import { EnviarArchivos } from './EnviarArchivos';
@@ -213,7 +214,7 @@ export function ConversacionConAcciones(
           onAccionDeChat={props.onAccionDeChat}
           onLevel={props.onLevel}
           onVerFoto={onVerFoto}
-          tarjetas={<><TarjetaDeFijados fijados={fijados} nombreDe={nombreDe} textoLocal={textoLocal} onVerTodos={() => setVerFijados(true)} />{chat.encrypted ? null : <TarjetaDeDestacados chatId={chat.id} jwt={props.jwt} yo={yo} cuantos={destacados.seqs.size} onIr={(seq) => setSalto({ seq, vez: Date.now() })} />}</>}
+          tarjetas={<>{chat.encrypted ? null : <ChecklistsCard chatId={chat.id} jwt={props.jwt} onOpen={(seq) => setSalto({ seq, vez: Date.now() })} />}<TarjetaDeFijados fijados={fijados} nombreDe={nombreDe} textoLocal={textoLocal} onVerTodos={() => setVerFijados(true)} />{chat.encrypted ? null : <TarjetaDeDestacados chatId={chat.id} jwt={props.jwt} yo={yo} cuantos={destacados.seqs.size} onIr={(seq) => setSalto({ seq, vez: Date.now() })} />}</>}
         />
         </PanelBoundary>
       ) : null}

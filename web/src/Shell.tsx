@@ -28,6 +28,7 @@ import { puedeAbrirSocket } from './sesionLista';
 import { useAccionesSobreChats } from './sync/accionesSobreChats';
 import { TAMANO_DE_PAGINA, useSincronizacion } from './sync/useSincronizacion';
 import { useSocket } from './useSocket';
+import { ChatFontChoice } from './ui/ChatFontChoice';
 import { chatNameWithAgenda } from './contacts/phoneAgenda';
 import { useAgendaRelay } from './contacts/useAgendaRelay';
 
@@ -226,6 +227,15 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
           onEditarRecordatorio={(recordatorio) =>
             setCreando({ tipo: 'recordatorio', chat: recordatorio.chatId ? { id: recordatorio.chatId, name: recordatorio.chat?.name ?? recordatorio.chat?.phone, kind: recordatorio.chat?.kind ?? 'group' } : null, editando: recordatorio })
           }
+          chatNameOf={(chatId) => {
+            const chat = chats.find((one) => one.id === chatId);
+            return chat?.name ?? chat?.phone ?? 'Conversación';
+          }}
+          onOpenTask={(chatId, seq) => {
+            setCreando(null);
+            abrirChat(chatId);
+            if (seq) setIrA({ chatId, seq, vez: Date.now() });
+          }}
         />
       ) : null}
       {creando?.tipo === 'evento' ? <CreateEventOverlay jwt={credential.jwt} chat={creando.chat} onClose={() => setCreando(null)} onCreated={alCrear} /> : null}
@@ -297,6 +307,7 @@ function PanelDeAjustes(props: {
   return (
     <div data-testid="panel-ajustes" className="absolute bottom-16 left-4 z-10 w-72 rounded-xl border border-outline/15 bg-surface p-2 shadow-lg">
       <AppearanceChoice />
+      <ChatFontChoice />
       <button type="button" data-testid="btn-notificaciones" onClick={() => void alternar()} className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-left text-sm hover:bg-background">
         {push === 'encendido' ? <BellOff size={16} /> : <Bell size={16} />}
         <span className="min-w-0 flex-1">{push === 'encendido' ? 'Desactivar notificaciones' : 'Activar notificaciones'}</span>

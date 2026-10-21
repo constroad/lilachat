@@ -61,3 +61,43 @@ describe('a sticker in the web conversation', () => {
     expect(screen.queryByTestId('accion-sticker-keep')).toBeNull();
   });
 });
+
+/** Backlog 31: an animated sticker plays for a while and stops on a still frame; a click plays it again. */
+describe('an animated sticker on the web', () => {
+  const animated = () => sticker({ media: { url: 'https://lilachat.test/stickers/lila-mov/panda-hug.webp', mime: 'image/webp', width: 512, height: 512 } as MensajeEnPantalla['media'] });
+  const loaded = (image: HTMLElement, width: number) => {
+    Object.defineProperty(image, 'complete', { configurable: true, value: true });
+    Object.defineProperty(image, 'naturalWidth', { configurable: true, value: width });
+  };
+
+  it('after 8 s a still frame covers it, and a click plays it again', async () => {
+    vi.useFakeTimers();
+    const drawImage = vi.fn();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+    mount(animated());
+    const image = screen.getByTestId('sticker-k5');
+    loaded(image, 512);
+    await vi.advanceTimersByTimeAsync(8000);
+    expect(drawImage).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('sticker-k5').className).toContain('invisible');
+    screen.getByRole('button', { name: 'Reproducir el sticker' }).click();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(screen.getByTestId('sticker-k5').className).not.toContain('invisible');
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('an image that did not load (broken) is not frozen: no error, it stays as it is', async () => {
+    vi.useFakeTimers();
+    const drawImage = vi.fn(() => { throw new Error('broken'); });
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+    mount(animated());
+    loaded(screen.getByTestId('sticker-k5'), 0);
+    await vi.advanceTimersByTimeAsync(8000);
+    expect(drawImage).not.toHaveBeenCalled();
+    expect(screen.getByTestId('sticker-k5').className).not.toContain('invisible');
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+});
+

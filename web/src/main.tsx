@@ -5,6 +5,7 @@ import { AppBoundary } from './ui/ErrorBoundary';
 import './index.css';
 import { prepararSonidos } from './sonidos/sonidoDeMensaje';
 import { applyTheme, followSystemTheme, readThemeChoice } from './ui/tema';
+import { applyChatFont, readChatFont } from './ui/chatFont';
 
 // El navegador deja sonar recién después del primer gesto (20/10).
 prepararSonidos();
@@ -12,6 +13,8 @@ prepararSonidos();
 // The theme: already applied before paint by `tema-inicial.js`; from here it follows the system when it switches.
 applyTheme(readThemeChoice());
 followSystemTheme();
+// The chat's font size this browser chose (backlog 1).
+applyChatFont(readChatFont());
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

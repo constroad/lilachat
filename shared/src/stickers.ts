@@ -1,3 +1,5 @@
+import { ANIMATED_PACK_ID, ANIMATED_STICKERS } from './animatedStickers.js';
+
 /**
  * Stickers (José, 20/10: «I upload a photo, the background goes away, I add
  * text and make a sticker, like WhatsApp»). Pure logic shared by app, web and
@@ -24,7 +26,8 @@ export const STICKER_SIZE = 512;
 export const PACK_STICKER_PREFIX = 'pack:';
 
 export type PackSticker = { slug: string; label: string };
-export type StickerPack = { id: string; title: string; stickers: PackSticker[] };
+/** `animated`: its files are animated WebP (backlog 31). */
+export type StickerPack = { id: string; title: string; stickers: PackSticker[]; animated?: boolean };
 
 /**
  * The default pack (design `s1-app-panel-stickers` shows a full panel from day
@@ -63,6 +66,12 @@ export const STICKER_PACKS: StickerPack[] = [
       { slug: 'crane', label: 'Grúa' },
       { slug: 'helmet', label: 'Casco' },
     ],
+  },
+  {
+    id: ANIMATED_PACK_ID,
+    title: 'En movimiento',
+    animated: true,
+    stickers: ANIMATED_STICKERS.map(({ slug, label }) => ({ slug, label })),
   },
 ];
 

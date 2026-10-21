@@ -84,3 +84,5 @@ export * from './winkArt.js';
 export * from './winkTimeline.js';
 export * from './winkSketches.js';
 export * from './checklists.js';
+export * from './chatFont.js';
+export * from './animatedStickers.js';

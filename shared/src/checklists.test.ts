@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHECKLIST_LIMITS, checklistPermissions, checklistProgress, checklistTextInChat, toggleChecklistItem, validateChecklist, validateChecklistItem } from './checklists.js';
+import { CHECKLIST_LIMITS, activeDueChoice, checklistMembers, checklistSummaryLine, checklistOverdue, checklistPermissions, checklistProgress, checklistTextInChat, myTasks, shortPersonName, taskDueLabel, taskDueOptions, taskDueState, toggleChecklistItem, validateChecklist, validateChecklistItem } from './checklists.js';
 
 /** José, 21/10: «agrega el checklist al estilo de Telegram» (backlog 8). */
 describe('validateChecklist', () => {
@@ -57,5 +57,91 @@ describe('checklistProgress and its text in the chat', () => {
   });
   it('what the notification and the chat list read', () => {
     expect(checklistTextInChat('  Vaciado de losa ')).toBe('Checklist: Vaciado de losa');
+  });
+});
+
+/** Backlog 30 (José, 21/10): assignees and an ETA per task, to see whether it is on time. */
+describe('task due dates', () => {
+  const now = new Date(2026, 9, 21, 10, 0);
+  it('the state: done, overdue, due today, upcoming, or none', () => {
+    expect(taskDueState({ dueAt: null, doneBy: null }, now)).toBe('none');
+    expect(taskDueState({ dueAt: new Date(2026, 9, 21, 9, 0).toISOString(), doneBy: null }, now)).toBe('overdue');
+    expect(taskDueState({ dueAt: new Date(2026, 9, 21, 15, 0).toISOString(), doneBy: null }, now)).toBe('today');
+    expect(taskDueState({ dueAt: new Date(2026, 9, 23, 7, 0).toISOString(), doneBy: null }, now)).toBe('upcoming');
+    expect(taskDueState({ dueAt: new Date(2026, 9, 20, 9, 0).toISOString(), doneBy: 'luis' }, now)).toBe('done');
+  });
+  it('the label says when, and how late in days', () => {
+    expect(taskDueLabel(new Date(2026, 9, 21, 15, 0).toISOString(), now)).toMatch(/^Hoy 3:00/);
+    expect(taskDueLabel(new Date(2026, 9, 22, 9, 0).toISOString(), now)).toMatch(/^Mañana 9:00/);
+    expect(taskDueLabel(new Date(2026, 9, 21, 9, 0).toISOString(), now)).toBe('Atrasada · hoy');
+    expect(taskDueLabel(new Date(2026, 9, 20, 9, 0).toISOString(), now)).toBe('Atrasada · ayer');
+    expect(taskDueLabel(new Date(2026, 9, 18, 9, 0).toISOString(), now)).toBe('Atrasada · 3 días');
+    expect(taskDueLabel(new Date(2026, 9, 23, 7, 0).toISOString(), now)).toMatch(/^vie\.? 7:00/i);
+  });
+  it('quick choices: today (only with time left), tomorrow, and the coming days', () => {
+    const options = taskDueOptions(now);
+    expect(options.map((option) => option.id)).toEqual(['today', 'tomorrow', 'in2', 'in3']);
+    expect(options[0]!.date).toEqual(new Date(2026, 9, 21, 18, 0));
+    expect(options[1]!.date).toEqual(new Date(2026, 9, 22, 9, 0));
+    expect(taskDueOptions(new Date(2026, 9, 21, 17, 30)).map((option) => option.id)).toEqual(['tomorrow', 'in2', 'in3']);
+  });
+  it('a checklist counts its overdue tasks', () => {
+    expect(checklistOverdue([{ dueAt: new Date(2026, 9, 20).toISOString(), doneBy: null }, { dueAt: new Date(2026, 9, 20).toISOString(), doneBy: 'a' }, { dueAt: null, doneBy: null }], now)).toBe(1);
+  });
+});
+
+describe('myTasks', () => {
+  const now = new Date(2026, 9, 21, 10, 0);
+  const task = (id: string, assignee: string | null, dueAt: Date | null, doneBy: string | null = null) => ({ id, text: id, assignee, dueAt: dueAt ? dueAt.toISOString() : null, doneBy, doneAt: null });
+  const checklists = [
+    { _id: 'k1', title: 'Losa', chatId: 'c1', items: [task('a', 'me', new Date(2026, 9, 20)), task('b', 'me', new Date(2026, 9, 21, 15)), task('c', 'ana', null), task('d', 'me', null, 'me')] },
+    { _id: 'k2', title: 'Flota', chatId: 'c2', items: [task('e', 'me', new Date(2026, 9, 25)), task('f', 'me', null)] },
+  ];
+  it('only what is mine and pending, grouped overdue · today · upcoming · no date, the soonest first', () => {
+    const groups = myTasks(checklists, 'me', now);
+    expect(groups.map((group) => [group.state, group.tasks.map((one) => one.item.id)])).toEqual([
+      ['overdue', ['a']],
+      ['today', ['b']],
+      ['upcoming', ['e']],
+      ['none', ['f']],
+    ]);
+    expect(groups[0]!.tasks[0]).toMatchObject({ checklistId: 'k1', checklistTitle: 'Losa', chatId: 'c1' });
+  });
+});
+
+/** The task sheet (design `k-03-checklist-responsables`): which «para cuándo» chip is lit, and the names under the avatars. */
+describe('task sheet', () => {
+  const now = new Date(2026, 9, 21, 10, 0);
+  const options = taskDueOptions(now);
+  it('lights the quick chip whose date it is, «Elegir fecha» for another date, and «Sin fecha» for none', () => {
+    expect(activeDueChoice(new Date(2026, 9, 22, 9, 0).toISOString(), options)).toBe('tomorrow');
+    expect(activeDueChoice(new Date(2026, 9, 21, 18, 0).toISOString(), options)).toBe('today');
+    expect(activeDueChoice(new Date(2026, 9, 30, 18, 0).toISOString(), options)).toBe('custom');
+    expect(activeDueChoice(null, options)).toBe('none');
+    expect(activeDueChoice(undefined, options)).toBe('none');
+  });
+  it('first name and the initial of the last one; a lone name or a phone stays whole', () => {
+    expect(shortPersonName('Ana Torres')).toBe('Ana T.');
+    expect(shortPersonName('  Luis   Huamán Paz ')).toBe('Luis H.');
+    expect(shortPersonName('Wilson')).toBe('Wilson');
+    expect(shortPersonName('+51 960 397 018')).toBe('+51 960 397 018');
+    expect(shortPersonName('')).toBe('');
+  });
+});
+
+describe('checklistMembers', () => {
+  it('me first as «Tú», then the others by name; no map, no one', () => {
+    const names = new Map([['u2', 'Luis Huamán'], ['me', 'José Zamora'], ['u3', 'Ana Torres']]);
+    expect(checklistMembers(names, 'me')).toEqual([{ id: 'me', name: 'Tú' }, { id: 'u3', name: 'Ana Torres' }, { id: 'u2', name: 'Luis Huamán' }]);
+    expect(checklistMembers(undefined, 'me')).toEqual([]);
+  });
+});
+
+/** The chat info's «Checklists» (design `k-05-checklists-del-chat`): progress and what is late. */
+describe('checklistSummaryLine', () => {
+  it('«3 de 6 listas · 1 atrasada», plural, and complete', () => {
+    expect(checklistSummaryLine({ done: 3, total: 6, overdue: 1 })).toEqual({ progress: '3 de 6 listas', late: '1 atrasada', complete: false });
+    expect(checklistSummaryLine({ done: 0, total: 8, overdue: 2 })).toEqual({ progress: '0 de 8 listas', late: '2 atrasadas', complete: false });
+    expect(checklistSummaryLine({ done: 5, total: 5, overdue: 0 })).toEqual({ progress: '5 de 5 listas', late: null, complete: true });
   });
 });

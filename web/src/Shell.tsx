@@ -24,6 +24,8 @@ import { puedeAbrirSocket } from './sesionLista';
 import { useAccionesSobreChats } from './sync/accionesSobreChats';
 import { TAMANO_DE_PAGINA, useSincronizacion } from './sync/useSincronizacion';
 import { useSocket } from './useSocket';
+import { chatNameWithAgenda } from './contacts/phoneAgenda';
+import { useAgendaRelay } from './contacts/useAgendaRelay';
 
 /** Cuánto dura un aviso corto en pantalla. */
 const DURACION_DEL_AVISO_MS = 3000;
@@ -110,14 +112,16 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
 
   // TODOS los chats, archivados incluidos: la lista arma lo visible (W3a) y un
   // archivado abierto sigue siendo el chat de la derecha.
+  const agendaPhones = useMemo(() => (chatsGuardados ?? []).map((chat) => chat.phone), [chatsGuardados]);
+  const agenda = useAgendaRelay({ base, socket: socket.socket, connected: socket.connected, phones: agendaPhones });
   const chats = useMemo<ChatSummary[]>(
     () =>
       (chatsGuardados ?? []).map((chat) => ({
-        ...chat,
+        ...chatNameWithAgenda(chat, agenda),
         online: chat.memberIds.some((miembro) => miembro !== yo && socket.online.has(miembro)),
         typingName: socket.typingByChat.get(chat.id) ?? null,
       })),
-    [chatsGuardados, socket.online, socket.typingByChat, yo]
+    [chatsGuardados, socket.online, socket.typingByChat, yo, agenda]
   );
   const chatsParaReenviar = useMemo(() => ordenarParaLaLista(chats), [chats]);
   const accionesSobreChats = useAccionesSobreChats({

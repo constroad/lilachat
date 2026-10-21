@@ -56,6 +56,7 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
         >
           {props.conAutor ? <NombreDelAutor senderId={mensaje.senderId} /> : null}
           {/* Borrado: solo la lápida, sin la cita (como WhatsApp). */}
+          {mensaje.hiloDe !== undefined && mensaje.enElChat && !mensaje.deletedAt ? <CitaDelHilo root={mensaje.hiloDe} mio={mio} /> : null}
           {mensaje.replyToSeq && !mensaje.deletedAt ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={mio} /> : null}
           <ContenidoDelMensaje mensaje={mensaje} mio={mio} />
         </div>
@@ -78,6 +79,25 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
 function NombreDelAutor({ senderId }: { senderId: string }) {
   const { nombres } = useConversacion();
   return <p className={`mb-0.5 truncate text-[13px] font-semibold ${COLOR_DE_AUTOR[colorDeAutor(senderId)]}`}>{nombres.get(senderId) ?? 'Alguien'}</p>;
+}
+
+/**
+ * A thread reply also sent to the chat says so, like Slack (José, 20/10: «it
+ * reaches the chat without saying which was the original message»): the root,
+ * and a click opens the thread. Inside the thread panel it does not show.
+ */
+function CitaDelHilo({ root, mio }: { root: number; mio: boolean }) {
+  const { citado, nombres, onAbrirHilo, inThread } = useConversacion();
+  if (inThread) return null;
+  const original = citado(root);
+  const texto = original?.deletedAt ? 'Se eliminó este mensaje' : original?.body ?? (original?.media ? 'Archivo' : 'Mensaje anterior');
+  return (
+    <button type="button" data-testid={`cita-hilo-${root}`} onClick={() => onAbrirHilo?.(root)} className={`mb-1 block w-full rounded-lg border-l-4 px-2 py-1 text-left text-[13px] ${mio ? 'border-on-primary/60 bg-black/10' : 'border-primary bg-background'}`}>
+      <span className="block text-[11px] opacity-80">Respondió en un hilo</span>
+      {original ? <span className={`block font-semibold ${mio ? '' : COLOR_DE_AUTOR[colorDeAutor(original.senderId)]}`}>{nombres.get(original.senderId) ?? 'Alguien'}</span> : null}
+      <span className="line-clamp-2 block opacity-90">{texto}</span>
+    </button>
+  );
 }
 
 /** La cita de una respuesta: quién y qué, recortado. Si no está cargado, lo dice. */

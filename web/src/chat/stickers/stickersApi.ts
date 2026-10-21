@@ -8,8 +8,11 @@ export const removeSticker = (jwt: string, id: string) => api<undefined>(`/stick
 export const keepFromMessage = (jwt: string, chatId: string, seq: number) => api<{ sticker: LibrarySticker }>('/stickers/from-message', { jwt, body: { chatId, seq } });
 export const keepFromPack = (jwt: string, stickerId: string, favorite: boolean) => api<{ sticker: LibrarySticker }>('/stickers/from-pack', { jwt, body: { stickerId, favorite } });
 /** One of mine or a pack one: the server reuses the file; the `clientKey` avoids a duplicate on retry. */
-export const sendSticker = (jwt: string, chatId: string, stickerId: string, clientKey: string) =>
-  api<{ duplicate: boolean }>(`/chats/${chatId}/stickers`, { jwt, body: { stickerId, clientKey } });
+/** In a thread (20/10): the root, and whether it also goes to the chat. */
+export type StickerThread = { hiloDe: number; enElChat: boolean };
+
+export const sendSticker = (jwt: string, chatId: string, stickerId: string, clientKey: string, thread?: StickerThread) =>
+  api<{ duplicate: boolean }>(`/chats/${chatId}/stickers`, { jwt, body: { stickerId, clientKey, ...thread } });
 
 /** Uploads the sticker the editor built and keeps it in «Mis stickers». */
 export async function uploadSticker(jwt: string, file: Blob): Promise<ApiResult<{ sticker: LibrarySticker }>> {

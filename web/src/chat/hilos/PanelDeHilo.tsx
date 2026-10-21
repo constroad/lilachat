@@ -1,10 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
-import { SendHorizontal, X } from 'lucide-react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Check, SendHorizontal, Smile, X } from 'lucide-react';
 import { formatClock } from '@lilachat/shared';
+import { ConversacionContext, useConversacion, type AccionSobreMensaje, type ContextoDeLaConversacion } from '../contextoDeLaConversacion';
+import type { StickerChat } from '../stickers/EmojiStickerPanel';
 import { Avatar } from '../../ui/Avatar';
 import { BurbujaDeMensaje } from '../BurbujaDeMensaje';
 import { TextoDelMensaje } from '../TextoDelMensaje';
 import type { ChatSummary, MensajeEnPantalla } from '../types';
+
+const EmojiStickerPanel = lazy(() => import('../stickers/EmojiStickerPanel'));
 
 /** Lo escrito y no mandado en cada hilo, mientras la pestaña está abierta. */
 const borradores = new Map<string, string>();
@@ -25,21 +29,63 @@ export function PanelDeHilo(props: {
   onEnviar: (texto: string, enElChat: boolean) => void;
   onReintentar: (clientKey: string) => void;
   onDescartar: (clientKey: string) => void;
+  /** Edit an own reply here (José, 20/10: «in a thread I can't edit my message»). */
+  onEditar: (seq: number, texto: string) => Promise<{ ok: boolean; motivo?: string }>;
+  /** Emojis and stickers in the thread (20/10); without it (a secret chat), emojis only. */
+  stickers?: Omit<StickerChat, 'thread' | 'onSent'>;
   onCerrar: () => void;
 }) {
   const clave = `${props.chat.id}:${props.raiz.seq}`;
   const [texto, setTexto] = useState(() => borradores.get(clave) ?? '');
   const [enElChat, setEnElChat] = useState(false);
+  const [editing, setEditing] = useState<MensajeEnPantalla | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [notice, setNotice] = useState('');
   const fin = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLTextAreaElement>(null);
+  // The bubbles here: «Editar» edits in THIS input, and they do not repeat «Respondió en un hilo».
+  const parent = useConversacion();
+  const threadContext = useMemo<ContextoDeLaConversacion>(
+    () => ({
+      ...parent,
+      inThread: true,
+      onAccion: (mensaje: MensajeEnPantalla, accion: AccionSobreMensaje) => {
+        if (accion !== 'editar') return parent.onAccion(mensaje, accion);
+        setEditing(mensaje);
+        setTexto(mensaje.body ?? '');
+        setNotice('');
+        input.current?.focus();
+      },
+    }),
+    [parent]
+  );
   useEffect(() => {
     setTexto(borradores.get(clave) ?? '');
     setEnElChat(false);
+    setEditing(null);
+    setPicking(false);
   }, [clave]);
-  useEffect(() => fin.current?.scrollIntoView?.({ block: 'end' }), [props.respuestas.length]);
+  // Braces on purpose: recent Chrome returns a Promise from scrollIntoView, and a returned value is taken as the cleanup.
+  useEffect(() => {
+    fin.current?.scrollIntoView?.({ block: 'end' });
+  }, [props.respuestas.length]);
   const nombreDe = (id: string) => (id === props.yo ? 'Tú' : (props.nombres.get(id) ?? 'Alguien'));
   const cuantas = props.respuestas.filter((uno) => !uno.estado).length;
 
+  const stopEditing = () => {
+    setEditing(null);
+    setTexto(borradores.get(clave) ?? '');
+  };
+  const saveEdit = async (original: MensajeEnPantalla) => {
+    const limpio = texto.trim();
+    if (!limpio || limpio === original.body) return stopEditing();
+    const result = await props.onEditar(original.seq, limpio);
+    if (!result.ok) return setNotice(result.motivo ?? 'No se pudo editar.');
+    stopEditing();
+  };
+
   const enviar = () => {
+    if (editing) return void saveEdit(editing);
     const limpio = texto.trim();
     if (!limpio) return;
     props.onEnviar(limpio, enElChat);
@@ -77,6 +123,7 @@ export function PanelDeHilo(props: {
           {cuantas === 1 ? '1 respuesta' : `${cuantas} respuestas`}
           <span className="h-px flex-1 bg-outline/15" />
         </div>
+        <ConversacionContext.Provider value={threadContext}>
         {props.respuestas.map((mensaje, indice) => {
           const anterior = props.respuestas[indice - 1];
           const mio = mensaje.senderId === props.yo;
@@ -94,17 +141,44 @@ export function PanelDeHilo(props: {
             />
           );
         })}
+        </ConversacionContext.Provider>
         <div ref={fin} />
       </div>
-      <footer className="border-t border-outline/15 bg-surface px-3 pb-3 pt-2">
+      <footer className="relative border-t border-outline/15 bg-surface px-3 pb-3 pt-2">
+        {picking ? (
+          <div data-testid="selector-hilo" className="absolute bottom-full left-2 right-2 mb-2">
+            <Suspense fallback={<div className="h-[360px] animate-pulse rounded-lg bg-background" />}>
+              <EmojiStickerPanel
+                onPickEmoji={(emoji) => {
+                  setTexto((before) => before + emoji);
+                  setPicking(false);
+                  input.current?.focus();
+                }}
+                chat={props.stickers ? { ...props.stickers, thread: { hiloDe: props.raiz.seq, enElChat }, onSent: () => { setPicking(false); setEnElChat(false); } } : undefined}
+              />
+            </Suspense>
+          </div>
+        ) : null}
+        {editing ? (
+          <div data-testid="barra-edicion-hilo" className="mb-2 flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-1.5 text-[13px] font-semibold text-primary">
+            <span className="min-w-0 flex-1 truncate">Editando tu mensaje</span>
+            <button type="button" data-testid="btn-cancelar-edicion-hilo" aria-label="Cancelar la edición" onClick={stopEditing} className="grid h-7 w-7 place-items-center rounded-full hover:bg-background"><X size={15} /></button>
+          </div>
+        ) : null}
+        {notice ? <p role="alert" data-testid="aviso-hilo" className="mb-1 text-[12px] text-error">{notice}</p> : null}
         <div className="flex items-end gap-2">
+          <button type="button" data-testid="btn-emojis-hilo" aria-label="Emojis y stickers" aria-expanded={picking} onClick={() => setPicking((before) => !before)} className="grid h-11 w-10 shrink-0 place-items-center rounded-xl text-on-surface-variant hover:bg-background">
+            <Smile size={20} />
+          </button>
           <textarea
+            ref={input}
             data-testid="input-hilo"
             value={texto}
             rows={1}
             onChange={(evento) => {
               setTexto(evento.target.value);
-              borradores.set(clave, evento.target.value);
+              // While editing, the draft of a new reply is kept as it was (it comes back after saving).
+              if (!editing) borradores.set(clave, evento.target.value);
             }}
             onKeyDown={(evento) => {
               if (evento.key === 'Enter' && !evento.shiftKey) {
@@ -115,8 +189,8 @@ export function PanelDeHilo(props: {
             placeholder="Responder en el hilo…"
             className="max-h-32 min-h-[44px] flex-1 resize-none rounded-xl border border-outline/25 bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
           />
-          <button type="button" data-testid="btn-enviar-hilo" aria-label="Enviar al hilo" onClick={enviar} className="grid h-11 w-11 place-items-center rounded-xl bg-primary text-on-primary">
-            <SendHorizontal size={18} />
+          <button type="button" data-testid="btn-enviar-hilo" aria-label={editing ? 'Guardar la edición' : 'Enviar al hilo'} onClick={enviar} className="grid h-11 w-11 place-items-center rounded-xl bg-primary text-on-primary">
+            {editing ? <Check size={18} /> : <SendHorizontal size={18} />}
           </button>
         </div>
         <label className="mt-2 flex min-h-[32px] cursor-pointer items-center gap-2 text-[13px] text-on-surface-variant">

@@ -38,7 +38,9 @@ export function useHilosWeb(params: { chatId: string; jwt: string; base: BaseLoc
   const [abierto, setAbierto] = useState<number | null>(null);
   const [remotas, setRemotas] = useState<ChatMessage[]>([]);
   const [, setVersion] = useState(0);
-  useEffect(() => setAbierto(null), [chatId]);
+  useEffect(() => {
+    setAbierto(null);
+  }, [chatId]);
 
   useEffect(() => {
     if (!base || !jwt) return;

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { api } from '../api';
+import { agendaNameFor, getAgendaNames, requestAgendaNames, subscribeAgendaNames } from '../contacts/phoneAgenda';
 import type { BaseLocal } from '../local/baseLocal';
 
 /** Un miembro como lo pinta la web: el nombre ya resuelto. */
@@ -54,6 +55,18 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
 
 const claveGuardada = (chatId: string) => `detalle:${chatId}`;
 
+/** Members show the name saved in the phone (20/10, option «b»), like the app. */
+export function detailWithAgenda(detalle: DetalleDelChat, agenda: ReadonlyMap<string, string>): DetalleDelChat {
+  let changed = false;
+  const miembros = new Map<string, MiembroDelChat>();
+  for (const [id, miembro] of detalle.miembros) {
+    const saved = miembro.esYo ? undefined : agendaNameFor(miembro.telefono, agenda);
+    changed ||= Boolean(saved && saved !== miembro.nombre);
+    miembros.set(id, saved ? { ...miembro, nombre: saved } : miembro);
+  }
+  return changed ? { ...detalle, miembros } : detalle;
+}
+
 /**
  * Los miembros del chat abierto (W2): de acá salen el nombre y el color del
  * autor en los grupos, las menciones y la «Info». Se guardan en la base local
@@ -83,5 +96,9 @@ export function useDetalleDelChat(chatId: string | null, jwt: string, base: Base
     };
   }, [chatId, jwt, base, version]);
 
-  return detalle;
+  const agenda = useSyncExternalStore(subscribeAgendaNames, getAgendaNames, getAgendaNames);
+  useEffect(() => {
+    if (detalle) requestAgendaNames([...detalle.miembros.values()].filter((uno) => !uno.esYo).map((uno) => uno.telefono));
+  }, [detalle]);
+  return useMemo(() => (detalle ? detailWithAgenda(detalle, agenda) : null), [detalle, agenda]);
 }

@@ -92,7 +92,9 @@ export function CreateStickerWeb(props: Props) {
   const selected = state.layers.find((layer) => layer.id === state.selection);
 
   // The gallery opens by itself: the click on «Crear» still counts as a gesture.
-  useEffect(() => fileRef.current?.click(), []);
+  useEffect(() => {
+    fileRef.current?.click();
+  }, []);
   useEffect(() => {
     const canvas = canvasRef.current;
     const context = canvas?.getContext('2d');

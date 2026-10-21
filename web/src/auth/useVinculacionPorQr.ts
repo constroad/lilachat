@@ -48,7 +48,9 @@ export function useVinculacionPorQr(params: { onReady: (credential: Credential) 
     setEstado({ fase: 'mostrando', token: inicio.vinculacion.token, rotarCadaMs: inicio.vinculacion.rotarCadaMs });
   }, [servicio]);
 
-  useEffect(() => void generar(), [generar]);
+  useEffect(() => {
+    void generar();
+  }, [generar]);
 
   /** Vencido, rechazado o entrando: sin vinculación no rota ni espera nada más. */
   const terminar = useCallback((final: EstadoDelQr) => {

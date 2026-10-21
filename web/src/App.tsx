@@ -17,7 +17,9 @@ export function App() {
   const sesion = useSesion();
   // Desde la primera visita, también sin sesión (W4): así la app ya queda guardada.
   const [hayVersionNueva, setHayVersionNueva] = useState(false);
-  useEffect(() => registrarServiceWorker(() => setHayVersionNueva(true)), []);
+  useEffect(() => {
+    registrarServiceWorker(() => setHayVersionNueva(true));
+  }, []);
   // El QR de vincular abierto con la cámara del teléfono (W5): no es una sesión, es una indicación.
   if (window.location.pathname.startsWith('/v/')) return <CodigoParaLaApp />;
   if (!sesion.credential) return <AccessScreens onReady={sesion.entrar} />;

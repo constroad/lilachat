@@ -61,7 +61,9 @@ export function ConversacionConAcciones(
   const [versionDelDetalle, setVersionDelDetalle] = useState(0);
   const detalle = useDetalleDelChat(chat.id, props.jwt, props.base, `${versionDelDetalle}|${chat.memberIds.join(',')}|${chat.name ?? ''}|${chat.avatarUrl ?? ''}`);
   const [infoAbierta, setInfoAbierta] = useState(false);
-  useEffect(() => setInfoAbierta(false), [chat.id]);
+  useEffect(() => {
+    setInfoAbierta(false);
+  }, [chat.id]);
   const nombres = useMemo(() => {
     const mapa = new Map<string, string>();
     for (const miembro of detalle?.miembros.values() ?? []) mapa.set(miembro.id, miembro.nombre);
@@ -180,6 +182,8 @@ export function ConversacionConAcciones(
           onEnviar={(texto, enElChat) => void sync.enviarTexto(chat.id, texto, { hiloDe: hilos.raiz!.seq, ...(enElChat ? { enElChat: true } : {}) })}
           onReintentar={props.onReintentar}
           onDescartar={props.onDescartar}
+          onEditar={(seq, texto) => sync.editar(chat.id, seq, texto)}
+          stickers={chat.encrypted ? undefined : { jwt: props.jwt, me: yo, chatId: chat.id, chatName: chat.name ?? chat.phone ?? '' }}
           onCerrar={hilos.cerrar}
         />
         </PanelBoundary>
@@ -248,7 +252,9 @@ export function ConversacionConAcciones(
  */
 function useConArchivosPendientes(mensajes: MensajeEnPantalla[] | null, chatId: string, yo: string, jwt: string, base: BaseLocal | null): MensajeEnPantalla[] | null {
   const pendientes = usePendientesDeArchivos(colaDeArchivosWeb, chatId);
-  useEffect(() => usarJwtParaSubir(jwt), [jwt]);
+  useEffect(() => {
+    usarJwtParaSubir(jwt);
+  }, [jwt]);
   useEffect(() => {
     colaDeArchivosWeb.configurar({ alConfirmar: (mensaje) => base && void aplicarEntrante(base, mensaje) });
   }, [base]);

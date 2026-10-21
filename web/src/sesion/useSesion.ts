@@ -74,7 +74,9 @@ export function useSesion() {
   }, [logout]);
 
   // La caché vieja de localStorage (historial en claro) ya no se usa: se va.
-  useEffect(() => olvidarCache(), []);
+  useEffect(() => {
+    olvidarCache();
+  }, []);
 
   useEffect(() => {
     // Recién entrado con el código ya hay JWT y cookie: renovar sería un pedido de más.

@@ -4,9 +4,11 @@ import PanelDeEmojis from '../PanelDeEmojis';
 import { StickerPanel } from './StickerPanel';
 import { CreateStickerWeb } from './CreateStickerWeb';
 import { useStickers } from './useStickers';
+import type { StickerThread } from './stickersApi';
 
 type Tab = 'emoji' | 'stickers';
-export type StickerChat = { jwt: string; me: string; chatId: string; chatName: string };
+/** `thread`: from a thread (20/10) the sticker goes to it; `onSent` lets the thread close its picker. */
+export type StickerChat = { jwt: string; me: string; chatId: string; chatName: string; thread?: StickerThread; onSent?: () => void };
 
 /**
  * The emoji button panel on the web (design `s1-web-stickers`): Emoji ·
@@ -45,12 +47,12 @@ function Stickers({ chat }: { chat: StickerChat }) {
         recents={stickers.recents}
         packs={stickers.packs}
         error={stickers.error}
-        onSend={(sticker) => void stickers.send(chat.chatId, sticker)}
+        onSend={(sticker) => void stickers.send(chat.chatId, sticker, chat.thread).then((sent) => sent && chat.onSent?.())}
         onCreate={() => setCreating(true)}
         onToggleFavorite={(sticker) => void stickers.toggleFavorite(sticker)}
         onRemove={(sticker) => void stickers.remove(sticker)}
       />
-      {creating ? <CreateStickerWeb chatName={chat.chatName} onClose={() => setCreating(false)} onSave={stickers.save} onSend={(sticker) => stickers.send(chat.chatId, sticker)} onRemove={stickers.remove} /> : null}
+      {creating ? <CreateStickerWeb chatName={chat.chatName} onClose={() => setCreating(false)} onSave={stickers.save} onSend={(sticker) => stickers.send(chat.chatId, sticker, chat.thread)} onRemove={stickers.remove} /> : null}
     </>
   );
 }

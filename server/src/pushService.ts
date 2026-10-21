@@ -8,7 +8,7 @@ import { isOnline } from './presence.js';
 import { buildPushSender, buildPushText, type PushSender } from './pushSender.js';
 import { splitPushTargets } from './pushTargets.js';
 import { sendWebPush } from './webPushSender.js';
-import { CALL_TIMEOUT_MS, CAPACIDAD_LLAMADA_NATIVA, CAPACIDAD_MENSAJE_NATIVO, textoDelAvisoDeReaccion } from '@lilachat/shared';
+import { CALL_TIMEOUT_MS, CAPACIDAD_LLAMADA_NATIVA, CAPACIDAD_MENSAJE_NATIVO, mentionedUserIds, notificationLevel, ringsFor, textoDelAvisoDeReaccion, type NotificationLevel } from '@lilachat/shared';
 import { firmarEntrega } from './entregaPorAviso.js';
 import { firmarRechazo } from './llamadas.js';
 
@@ -33,7 +33,7 @@ export function setPushSender(next: PushSender): void {
 async function soloInteresadosDelHilo(message: Message, candidatos: string[]): Promise<string[]> {
   if (!message.hiloDe || message.enElChat || candidatos.length === 0) return candidatos;
   const interesados = await interesadosEnElHilo(message.chatId, message.hiloDe);
-  for (const mencion of message.menciones ?? []) interesados.add(mencion.userId);
+  for (const userId of mentionedUserIds(message.menciones, candidatos, isOnline)) interesados.add(userId);
   return candidatos.filter((candidato) => interesados.has(candidato));
 }
 
@@ -53,8 +53,8 @@ export async function notifyOffline(params: {
   // Quien SILENCIÓ este chat no recibe una notificación que suene: es el punto
   // de silenciarlo. Pero si su teléfono sabe acusar la entrega (FL8.2), igual
   // le va un push SILENCIOSO: silenciado no es «no le llegó».
-  const [silenciados, dispositivos, sender_, chat] = await Promise.all([
-    chatsSilenciadosDeChat(String(params.message.chatId), candidatos),
+  const [levels, dispositivos, sender_, chat] = await Promise.all([
+    notificationLevelsOf(String(params.message.chatId), candidatos),
     DeviceModel.find({ userId: { $in: candidatos }, pushToken: { $exists: true, $ne: '' } })
       .select('pushToken platform userId capacidades')
       .lean(),
@@ -62,8 +62,10 @@ export async function notifyOffline(params: {
     ChatModel.findById(params.message.chatId).select('kind name encrypted').lean(),
   ]);
   if (dispositivos.length === 0) return;
-  // A quien MENCIONAN le suena aunque haya silenciado el chat, como WhatsApp.
-  for (const mencion of params.message.menciones ?? []) silenciados.delete(mencion.userId);
+  // A mention rings even in a silenced chat, as in WhatsApp, unless the level
+  // is «nothing» (E3b). The group mention for all reaches everyone; the one for here, whoever is online.
+  const mentioned = mentionedUserIds(params.message.menciones, candidatos, isOnline);
+  const silenciados = new Set([...levels].filter(([userId, level]) => !ringsFor(level, mentioned.has(userId))).map(([userId]) => userId));
 
   const autor = sender_?.name ?? sender_?.phone ?? 'Alguien';
   const nombreDelGrupo = chat?.kind === 'group' ? chat.name : undefined;
@@ -163,16 +165,13 @@ function mensajeSoloDatos(params: {
  * De un chat, cuáles de estos usuarios lo tienen SILENCIADO. Para no mandarles
  * push. Una sola lectura del chat: los flags viven en su subdoc de miembros.
  */
-async function chatsSilenciadosDeChat(chatId: string, userIds: string[]): Promise<Set<string>> {
-  const chat = await ChatModel.findById(chatId).select('members.userId members.muted').lean();
-  if (!chat) return new Set();
-  const set = new Set<string>();
-  for (const member of chat.members) {
-    if (member.muted === true && userIds.includes(String(member.userId))) {
-      set.add(String(member.userId));
-    }
+async function notificationLevelsOf(chatId: string, userIds: string[]): Promise<Map<string, NotificationLevel>> {
+  const chat = await ChatModel.findById(chatId).select('members.userId members.muted members.avisos').lean();
+  const levels = new Map<string, NotificationLevel>();
+  for (const member of chat?.members ?? []) {
+    if (userIds.includes(String(member.userId))) levels.set(String(member.userId), notificationLevel(member));
   }
-  return set;
+  return levels;
 }
 
 /**
@@ -299,13 +298,13 @@ export async function avisarFinDeLlamada(params: { chatId: string; from: string;
 export async function avisarReaccion(params: { chatId: string; seq: number; autor: string; quien: string; emoji: string; cuerpo?: string }): Promise<void> {
   if (params.autor === params.quien || isOnline(params.autor)) return;
   try {
-    const [silenciados, dispositivos, quien, chat] = await Promise.all([
-      chatsSilenciadosDeChat(params.chatId, [params.autor]),
+    const [levels, dispositivos, quien, chat] = await Promise.all([
+      notificationLevelsOf(params.chatId, [params.autor]),
       DeviceModel.find({ userId: params.autor, pushToken: { $exists: true, $ne: '' } }).select('pushToken platform userId').lean(),
       UserModel.findById(params.quien).select('name phone').lean(),
       ChatModel.findById(params.chatId).select('kind name').lean(),
     ]);
-    if (silenciados.has(params.autor) || dispositivos.length === 0) return;
+    if ((levels.get(params.autor) ?? 'todo') !== 'todo' || dispositivos.length === 0) return;
     const nombre = quien?.name ?? quien?.phone ?? 'Alguien';
     const text = { title: chat?.kind === 'group' && chat.name ? `${chat.name} · ${nombre}` : nombre, body: textoDelAvisoDeReaccion(params.emoji, params.cuerpo) };
     const data = { chatId: params.chatId, seq: params.seq };

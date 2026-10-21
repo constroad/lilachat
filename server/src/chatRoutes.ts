@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Types } from 'mongoose';
-import { CAPACIDADES_DE_PUSH, normalizarNombreDeGrupo, textoDeAviso } from '@lilachat/shared';
+import { CAPACIDADES_DE_PUSH, normalizarNombreDeGrupo, NOTIFICATION_LEVELS, notificationLevel, textoDeAviso } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import { DeviceModel, UserModel } from './models.js';
 import {
@@ -280,6 +280,7 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
       // MI silenciado (es por persona): el interruptor del detalle lo muestra
       // como está, en vez de arrancar siempre apagado.
       muted: chat.members.some((m) => String(m.userId) === String(userId) && m.muted === true),
+      avisos: notificationLevel(chat.members.find((m) => String(m.userId) === String(userId)) ?? {}),
       avatarUrl: foto ? toAbsoluteMediaUrl(foto) : undefined,
       members: chat.members.map((m) => {
         const persona = porId.get(String(m.userId));
@@ -313,6 +314,7 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
       pinned: soloBooleano(body.pinned),
       archived: soloBooleano(body.archived),
       markedUnread: soloBooleano(body.markedUnread),
+      avisos: NOTIFICATION_LEVELS.find((level) => level === body.avisos),
     });
     if (!r.ok) return res.status(400).json({ message: r.motivo });
     // Mis otros dispositivos (la web vinculada, W3a) reflejan el cambio.

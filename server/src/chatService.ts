@@ -4,7 +4,7 @@ import {
   puedeEliminar,
   busquedaValida,
   escaparRegex,
-  validarMenciones,
+  validateMentions,
 } from '@lilachat/shared';
 import { UserModel } from './models.js';
 import { ChatModel, MessageModel, ReceiptModel, type Chat, type Message, type ResumenDeHilo } from './chatModels.js';
@@ -110,8 +110,8 @@ export async function sendMessage(params: {
   const chat = await ChatModel.findOneAndUpdate(
     { _id: chatId, 'members.userId': params.senderId, ...(params.envelope ? {} : { encrypted: { $ne: true } }) },
     { $inc: { lastSeq: 1 } },
-    { returnDocument: 'after', projection: { lastSeq: 1, 'members.userId': 1 } }
-  ).lean<{ lastSeq: number; members: { userId: Types.ObjectId }[] } | null>();
+    { returnDocument: 'after', projection: { lastSeq: 1, kind: 1, 'members.userId': 1 } }
+  ).lean<{ lastSeq: number; kind?: string; members: { userId: Types.ObjectId }[] } | null>();
   if (!chat) {
     const esMiembroDeUnSecreto =
       !params.envelope && (await ChatModel.exists({ _id: chatId, 'members.userId': params.senderId, encrypted: true }));
@@ -119,7 +119,7 @@ export async function sendMessage(params: {
   }
   const members = chat.members.map((member) => String(member.userId));
   // Solo sobre texto en claro: en un chat secreto el server no ve el texto.
-  const menciones = params.envelope ? [] : validarMenciones(params.body ?? '', params.menciones, members);
+  const menciones = params.envelope ? [] : validateMentions(params.body ?? '', params.menciones, members, { groupMentions: chat.kind === 'group' });
 
   try {
     const created = await MessageModel.create({

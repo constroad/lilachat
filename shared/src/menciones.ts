@@ -10,6 +10,65 @@ export type TramoConMenciones = { tipo: 'texto'; texto: string } | { tipo: 'menc
 /** Más que esto en un mensaje es ruido (o abuso del aviso que dispara cada una). */
 export const MAX_MENCIONES = 20;
 
+/** E3b (20/10): group mentions travel as a mention with these ids instead of a person. */
+export const MENTION_ALL = 'todos';
+export const MENTION_HERE = 'aqui';
+const GROUP_MENTION_TEXTS: Record<string, readonly string[]> = { [MENTION_ALL]: ['@todos'], [MENTION_HERE]: ['@aquí', '@aqui'] };
+
+/** What the composer offers first in a group, like Slack's @channel and @here. */
+export const GROUP_MENTION_OPTIONS = [
+  { id: MENTION_ALL, nombre: 'todos', hint: 'Avisa a todos del grupo' },
+  { id: MENTION_HERE, nombre: 'aquí', hint: 'Avisa a los que están en línea' },
+] as const;
+
+export const isGroupMentionId = (userId: string): boolean => userId === MENTION_ALL || userId === MENTION_HERE;
+
+export type GroupMentionOption = (typeof GROUP_MENTION_OPTIONS)[number];
+
+/** A group's mention list: the two group mentions first, then the people. Without members (a 1:1) there is nothing to mention. */
+export function mentionOptions<T extends { id: string; nombre: string }>(members: readonly T[] | undefined): (T | GroupMentionOption)[] | undefined {
+  return members?.length ? [...GROUP_MENTION_OPTIONS, ...members] : undefined;
+}
+
+/** The people a message's mentions reach: the person named, everyone (MENTION_ALL) or whoever is online (MENTION_HERE). */
+export function mentionedUserIds(mentions: readonly MencionEnMensaje[] | undefined, members: readonly string[], isOnline: (userId: string) => boolean): Set<string> {
+  const reached = new Set<string>();
+  for (const mention of mentions ?? []) {
+    if (mention.userId === MENTION_ALL) for (const member of members) reached.add(member);
+    else if (mention.userId === MENTION_HERE) for (const member of members.filter(isOnline)) reached.add(member);
+    else reached.add(mention.userId);
+  }
+  return reached;
+}
+
+/**
+ * Per-chat notifications (E3b), like Slack: everything, only mentions, or
+ * nothing. Stored as the old `muted` (silenced = only mentions, as WhatsApp
+ * does) plus `avisos: 'nada'` when not even mentions should ring, so older
+ * clients still read a silenced chat as silenced.
+ */
+export type NotificationLevel = 'todo' | 'menciones' | 'nada';
+export const NOTIFICATION_LEVELS: readonly NotificationLevel[] = ['todo', 'menciones', 'nada'];
+
+/** How each level is told to the person, the same in the app and the web. */
+export const NOTIFICATION_LEVEL_TEXT: Record<NotificationLevel, { title: string; detail: string }> = {
+  todo: { title: 'Todos los mensajes', detail: 'Te avisamos de cada mensaje' },
+  menciones: { title: 'Solo menciones', detail: 'Cuando te nombran, @todos o @aquí' },
+  nada: { title: 'Nada', detail: 'Ni siquiera cuando te nombran' },
+};
+
+export function notificationLevel(member: { muted?: boolean; avisos?: string | null }): NotificationLevel {
+  if (member.muted !== true) return 'todo';
+  return member.avisos === 'nada' ? 'nada' : 'menciones';
+}
+
+export function settingsForLevel(level: NotificationLevel): { muted: boolean; avisos: 'nada' | null } {
+  return { muted: level !== 'todo', avisos: level === 'nada' ? 'nada' : null };
+}
+
+/** Whether a message makes a sound for someone at this level. */
+export const ringsFor = (level: NotificationLevel, mentioned: boolean): boolean => level === 'todo' || (level === 'menciones' && mentioned);
+
 const esEntero = (valor: unknown): valor is number => typeof valor === 'number' && Number.isInteger(valor);
 
 /**
@@ -33,6 +92,13 @@ export function validarMenciones(texto: string, crudas: unknown, miembros: reado
     if (aceptadas.length === MAX_MENCIONES) break;
   }
   return aceptadas;
+}
+
+/** Like `validarMenciones`, plus the group mentions in a group, only over their exact text (E3b). */
+export function validateMentions(text: string, raw: unknown, members: readonly string[], options: { groupMentions?: boolean } = {}): MencionEnMensaje[] {
+  const allowed = options.groupMentions === true ? [...members, MENTION_ALL, MENTION_HERE] : members;
+  const exactText = (mention: MencionEnMensaje) => GROUP_MENTION_TEXTS[mention.userId]?.includes(text.slice(mention.desde, mention.desde + mention.largo).toLowerCase()) === true;
+  return validarMenciones(text, raw, allowed).filter((mention) => !isGroupMentionId(mention.userId) || exactText(mention));
 }
 
 /**

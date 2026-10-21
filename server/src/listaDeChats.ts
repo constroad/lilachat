@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { acuseDelGrupo, TELEFONO_DE_LILA, unreadCount } from '@lilachat/shared';
+import { acuseDelGrupo, notificationLevel, TELEFONO_DE_LILA, unreadCount, type NotificationLevel } from '@lilachat/shared';
 import { UserModel } from './models.js';
 import { ChatModel, MessageModel, ReceiptModel, type Message } from './chatModels.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
@@ -54,6 +54,8 @@ export type ChatSummary = {
   propio?: boolean;
   /** Silenciado por MÍ: la lista lo marca y no me llega push de acá. */
   muted?: boolean;
+  /** E3b: «todo», «menciones» or «nada» (from muted + avisos). */
+  avisos?: NotificationLevel;
   /** Fijado por MÍ: va arriba en mi lista. */
   pinned?: boolean;
   /** Archivado por MÍ (FL9). */
@@ -155,6 +157,7 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
       })(),
       ...(chat.propio ? { propio: true } : {}),
       muted: yo?.muted === true,
+      avisos: notificationLevel(yo ?? {}),
       pinned: yo?.pinned === true,
       archived: yo?.archived === true,
       markedUnread: yo?.markedUnread === true,

@@ -7,6 +7,8 @@ import {
   puedeCambiarRol,
   puedeEditarInfo,
   puedeSacar,
+  settingsForLevel,
+  type NotificationLevel,
 } from '@lilachat/shared';
 import { UserModel } from './models.js';
 import { ChatModel, ReceiptModel, type Chat } from './chatModels.js';
@@ -82,17 +84,24 @@ export async function cambiarAjustesDeChat(params: {
   pinned?: boolean;
   archived?: boolean;
   markedUnread?: boolean;
+  /** E3b: «todo», «menciones» or «nada»; it is written as `muted` + `avisos`. */
+  avisos?: NotificationLevel;
 }): Promise<{ ok: true } | { ok: false; motivo: string }> {
-  const cambios: Record<string, boolean> = {};
+  const cambios: Record<string, boolean | string> = {};
   for (const campo of AJUSTES_DE_MIEMBRO) {
     const valor = params[campo];
     if (typeof valor === 'boolean') cambios[`members.$.${campo}`] = valor;
   }
+  const level = params.avisos ? settingsForLevel(params.avisos) : null;
+  if (level) cambios['members.$.muted'] = level.muted;
+  if (level?.avisos) cambios['members.$.avisos'] = level.avisos;
   if (Object.keys(cambios).length === 0) return { ok: false, motivo: 'No hay nada que cambiar.' };
+  // Unmuting (from any client) or choosing a level without «nada» clears it.
+  const clearNothing = (level && !level.avisos) || params.muted === false;
 
   const r = await ChatModel.updateOne(
     { _id: params.chatId, 'members.userId': params.quien },
-    { $set: cambios }
+    { $set: cambios, ...(clearNothing ? { $unset: { 'members.$.avisos': 1 } } : {}) }
   );
   if (r.matchedCount === 0) return { ok: false, motivo: 'No estás en esa conversación.' };
   return { ok: true };

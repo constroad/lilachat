@@ -20,6 +20,8 @@ export interface ChatMember {
   joinedAt?: Date;
   /** Silenciado por ESTE miembro: no recibe push de este chat. */
   muted?: boolean;
+  /** E3b: with `muted`, «nada» means not even mentions ring (`notificationLevel`). */
+  avisos?: 'nada';
   /** Fijado por ESTE miembro: va arriba de su lista. */
   pinned?: boolean;
   /** Archivado por ESTE miembro (FL9): vive en su «Archivados». */
@@ -178,6 +180,7 @@ const chatSchema = new Schema<Chat>(
         role: { type: String, enum: ['admin', 'member'], default: 'member' },
         joinedAt: { type: Date, default: Date.now },
         muted: { type: Boolean },
+        avisos: { type: String, enum: ['nada'] },
         pinned: { type: Boolean },
         archived: { type: Boolean },
         markedUnread: { type: Boolean },

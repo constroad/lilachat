@@ -13,7 +13,7 @@ import { signSession } from './sessions.js';
 let mongo: MongoMemoryServer;
 let me: Types.ObjectId;
 let ana: Types.ObjectId;
-let personalChat: Types.ObjectId;
+let directChat: Types.ObjectId;
 let secret: Types.ObjectId;
 let spaceChat: Types.ObjectId;
 let foreign: Types.ObjectId;
@@ -40,19 +40,19 @@ beforeEach(async () => {
   spaceId = new Types.ObjectId();
   await WorkspaceModel.create({ _id: spaceId, name: 'QA Obra', ownerId: me, joinCode: 'QAOB-7K3P' });
   await WorkspaceMemberModel.create({ workspaceId: spaceId, userId: me, phone: '902049935', role: 'owner', status: 'active' });
-  personalChat = (await ChatModel.create({ kind: 'direct', members, lastSeq: 9 }))._id;
+  directChat = (await ChatModel.create({ kind: 'direct', members, lastSeq: 9 }))._id;
   secret = (await ChatModel.create({ kind: 'direct', members, encrypted: true, lastSeq: 1 }))._id;
   spaceChat = (await ChatModel.create({ kind: 'group', name: 'planta', workspaceId: spaceId, members, lastSeq: 1 }))._id;
   foreign = (await ChatModel.create({ kind: 'group', name: 'Ajeno', members: [{ userId: ana, role: 'admin' as const }], lastSeq: 1 }))._id;
   await MessageModel.insertMany([
-    message(personalChat, 'image', '2026-10-20T10:00:00Z', { media: { mediaId: 'm1', url: '/files/a.jpg', thumbUrl: '/files/a-t.jpg', mime: 'image/jpeg' } }),
-    message(personalChat, 'image', '2026-10-21T10:00:00Z', { media: { mediaId: 'm2', url: '/files/b.jpg', mime: 'image/jpeg' } }),
-    message(personalChat, 'image', '2026-10-21T11:00:00Z', { media: { mediaId: 'm3', url: '/files/c.jpg' }, deletedAt: new Date() }),
-    message(personalChat, 'video', '2026-10-19T10:00:00Z', { media: { mediaId: 'v1', url: '/files/v.mp4', mime: 'video/mp4' } }),
-    message(personalChat, 'file', '2026-10-18T10:00:00Z', { media: { mediaId: 'f1', url: '/files/f.pdf', mime: 'application/pdf', fileName: 'Informe.pdf', sizeBytes: 2048 } }),
-    message(personalChat, 'audio', '2026-10-18T11:00:00Z', { media: { mediaId: 'a1', url: '/files/n.m4a', mime: 'audio/mp4' } }),
-    message(personalChat, 'text', '2026-10-17T10:00:00Z', { body: 'Mira esto https://constroad.com/obra y avisa' }),
-    message(personalChat, 'text', '2026-10-17T11:00:00Z', { body: 'sin enlace' }),
+    message(directChat, 'image', '2026-10-20T10:00:00Z', { media: { mediaId: 'm1', url: '/files/a.jpg', thumbUrl: '/files/a-t.jpg', mime: 'image/jpeg' } }),
+    message(directChat, 'image', '2026-10-21T10:00:00Z', { media: { mediaId: 'm2', url: '/files/b.jpg', mime: 'image/jpeg' } }),
+    message(directChat, 'image', '2026-10-21T11:00:00Z', { media: { mediaId: 'm3', url: '/files/c.jpg' }, deletedAt: new Date() }),
+    message(directChat, 'video', '2026-10-19T10:00:00Z', { media: { mediaId: 'v1', url: '/files/v.mp4', mime: 'video/mp4' } }),
+    message(directChat, 'file', '2026-10-18T10:00:00Z', { media: { mediaId: 'f1', url: '/files/f.pdf', mime: 'application/pdf', fileName: 'Informe.pdf', sizeBytes: 2048 } }),
+    message(directChat, 'audio', '2026-10-18T11:00:00Z', { media: { mediaId: 'a1', url: '/files/n.m4a', mime: 'audio/mp4' } }),
+    message(directChat, 'text', '2026-10-17T10:00:00Z', { body: 'Mira esto https://constroad.com/obra y avisa' }),
+    message(directChat, 'text', '2026-10-17T11:00:00Z', { body: 'sin enlace' }),
     message(secret, 'image', '2026-10-21T12:00:00Z', { envelope: { v: 1, nonce: 'n', ciphertext: 'c' } }),
     message(spaceChat, 'image', '2026-10-21T13:00:00Z', { media: { mediaId: 's1', url: '/files/s.jpg' } }),
     message(foreign, 'image', '2026-10-21T14:00:00Z', { media: { mediaId: 'x1', url: '/files/x.jpg' } }),
@@ -65,7 +65,7 @@ describe('GET /api/media/library', () => {
   it('my personal photos, newest first, with absolute URLs and the chat they came from; never a deleted one, a secret chat or a chat I am not in', async () => {
     const { items } = await library('type=photos');
     expect(items.map((item) => (item.media as { url: string }).url.split('/').pop())).toEqual(['b.jpg', 'a.jpg']);
-    expect(items[0]).toMatchObject({ chatId: String(personalChat), kind: 'image', chat: { kind: 'direct', phone: '987654321' } });
+    expect(items[0]).toMatchObject({ chatId: String(directChat), kind: 'image', chat: { kind: 'direct', phone: '987654321' } });
     // Served through `toClientMessage`, which makes it absolute where LILA_PUBLIC_URL is set.
     expect(String((items[0]!.media as { url: string }).url)).toMatch(/\/files\/b\.jpg$/);
   });

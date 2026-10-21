@@ -81,6 +81,8 @@ export function ChatBottom(props: {
             withStickers={props.chat.withStickers}
             onPickEmoji={(emoji) => props.composerRef.current?.insertEmoji(emoji)}
             onBackspace={() => props.composerRef.current?.backspace()}
+            replyTo={() => props.composerRef.current?.replyingTo()}
+            onStickerSent={() => props.composerRef.current?.replyDone()}
           />
         </Animated.View>
       ) : null}

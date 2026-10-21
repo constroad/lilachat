@@ -1,5 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
-import { Megaphone } from 'lucide-react-native';
+import { Megaphone, Zap } from 'lucide-react-native';
+import { MENTION_HERE } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { Avatar } from '../ui/Avatar';
 import type { MentionSuggestion } from './useMenciones';
@@ -26,13 +27,13 @@ export function SugerenciasDeMencion(props: { sugerencias: readonly MentionSugge
         >
           {miembro.hint ? (
             <View className="items-center justify-center rounded-full bg-primary/10" style={{ width: AVATAR_DE_SUGERENCIA, height: AVATAR_DE_SUGERENCIA }}>
-              <Megaphone size={16} color={palette.primary} />
+              {miembro.id === MENTION_HERE ? <Zap size={16} color={palette.primary} /> : <Megaphone size={16} color={palette.primary} />}
             </View>
           ) : (
             <Avatar nombre={miembro.nombre} foto={miembro.foto} tamano={AVATAR_DE_SUGERENCIA} />
           )}
           <View className="min-w-0 flex-1">
-            <Text className="text-[15px] font-semibold text-on-surface" numberOfLines={1}>
+            <Text className={`text-[15px] font-semibold ${miembro.hint ? 'text-primary' : 'text-on-surface'}`} numberOfLines={1}>
               {miembro.hint ? `@${miembro.nombre}` : miembro.nombre}
             </Text>
             {miembro.hint ? (

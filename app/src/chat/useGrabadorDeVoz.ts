@@ -11,6 +11,7 @@ import {
 import * as FileSystem from 'expo-file-system/legacy';
 import { esVozUsable, ondaDesdeMuestras } from '@lilachat/shared';
 import { opcionesNativasDeGrabacion } from './opcionesDeGrabacion';
+import { recordingAudioMode } from './audioMode';
 
 /** Con la medición del nivel encendida: de ahí sale la onda (FL9). Fija: el hook la compara. */
 const OPCIONES_DE_GRABACION = { ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true };
@@ -114,7 +115,8 @@ export function useGrabadorDeVoz() {
     try {
       // Sin esto Android graba en silencio: el modo por defecto no habilita la
       // captura y el archivo sale vacío.
-      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      // And with the screen locked it keeps recording (20/10).
+      await setAudioModeAsync(recordingAudioMode(true));
       const grabador = obtenerGrabador();
       await grabador.prepareToRecordAsync();
       muestras.current = [];
@@ -146,7 +148,7 @@ export function useGrabadorDeVoz() {
       // Volver a dejar el audio como estaba: con `allowsRecording` puesto, en
       // Android el altavoz queda en modo llamada y el próximo audio se escucha
       // bajito y por el auricular.
-      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+      await setAudioModeAsync(recordingAudioMode(false));
     } catch {
       return null;
     }

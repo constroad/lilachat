@@ -1,10 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus, type AudioPlayer } from 'expo-audio';
 import { Pause, Play } from 'lucide-react-native';
 import { duracionDeVoz } from '@lilachat/shared';
 import { segundosDelToque, siguienteVelocidad, soltarElAudio, tomarElAudio } from './notaDeVozMotor';
 import { useColores } from '../ui/tema';
+import { reportarError } from '../ui/reportarError';
+import { playbackAudioMode } from './audioMode';
+
+/** Longer than this, Android stops background audio after ~3 min unless it shows lock-screen controls. */
+const LOCK_SCREEN_FROM_S = 150;
+
+/** Plays with the screen locked (20/10); a long audio also gets lock-screen controls so Android does not cut it. */
+function playInBackground(player: AudioPlayer, durationS: number): void {
+  void setAudioModeAsync(playbackAudioMode()).catch((error) => reportarError('nota.audioMode', error));
+  if (durationS >= LOCK_SCREEN_FROM_S) player.setActiveForLockScreen(true, { title: 'Nota de voz' });
+  player.play();
+}
 
 type PropsDeNota = {
   id: string;
@@ -54,6 +66,10 @@ function NotaDeVozActiva({ id, url, durationMs, onda, mia, velocidadInicial }: P
   const arrancada = useRef(false);
 
   useEffect(() => () => soltarElAudio(id), [id]);
+  // A finished long audio takes its lock-screen controls away.
+  useEffect(() => {
+    if (estado.didJustFinish && estado.duration >= LOCK_SCREEN_FROM_S) player.clearLockScreenControls();
+  }, [estado.didJustFinish, estado.duration, player]);
 
   const sonando = estado.playing;
   // En reposo se muestra la duración REAL que se grabó (guardada al subir): el
@@ -72,7 +88,7 @@ function NotaDeVozActiva({ id, url, durationMs, onda, mia, velocidadInicial }: P
     if (estado.didJustFinish || estado.currentTime >= estado.duration) player.seekTo(0);
     tomarElAudio(id, () => player.pause());
     player.setPlaybackRate(velocidad);
-    player.play();
+    playInBackground(player, duracion);
   };
 
   // El toque que la activó ya pidió reproducir: arranca una sola vez al montar.
@@ -81,8 +97,8 @@ function NotaDeVozActiva({ id, url, durationMs, onda, mia, velocidadInicial }: P
     arrancada.current = true;
     tomarElAudio(id, () => player.pause());
     player.setPlaybackRate(velocidad);
-    player.play();
-  }, [id, player, velocidad]);
+    playInBackground(player, (durationMs ?? 0) / 1000);
+  }, [id, player, velocidad, durationMs]);
 
   return (
     <VistaDeNota

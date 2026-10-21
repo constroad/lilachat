@@ -164,12 +164,14 @@ function FilaDeMensaje({
     );
   }
 
-  // A sticker (20/10): no bubble, the time on top.
+  // A sticker (20/10): no bubble, the time on top; as a reply, the quote above it.
   if (!isPending(item) && item.kind === 'sticker' && item.media?.url && !item.deletedAt && jwt) {
     const isMine = item.senderId === myUserId;
+    const quotePress = enSeleccion ? () => onSeleccionar?.(item.seq) : quoteAction(citado, item.replyToSeq, onAbrirHilo, onTocarCita);
     return (
       <StickerMessage item={item} mine={isMine} jwt={jwt} delivery={entrega ?? 'sent'} starred={destacado} author={esGrupo && !isMine ? { name: nombreAutor ?? '', photo: fotoAutor } : undefined}
-        onSelect={onSeleccionar} selecting={enSeleccion} selected={Boolean(seleccionado)} onReply={onResponder} />
+        onSelect={onSeleccionar} selecting={enSeleccion} selected={Boolean(seleccionado)} onReply={onResponder}
+        quote={citado ? <CitaDeRespuesta citado={citado} enBurbujaPropia={false} testID={`cita-${item.seq}`} onPress={quotePress} /> : undefined} />
     );
   }
 
@@ -285,11 +287,7 @@ function FilaDeMensaje({
                   ? undefined
                   : enSeleccion
                     ? () => onSeleccionar?.(item.seq)
-                    : citado.enHilo && onAbrirHilo
-                      ? () => onAbrirHilo(citado.enHilo!)
-                      : item.replyToSeq && onTocarCita
-                      ? () => onTocarCita(item.replyToSeq!)
-                      : undefined
+                    : quoteAction(citado, item.replyToSeq, onAbrirHilo, onTocarCita)
               }
             />
           ) : null}
@@ -443,6 +441,13 @@ function esFotoVisible(item: Row): boolean {
  * `seq`, callbacks con `useCallback`); un objeto armado en cada render la
  * desactivaría en silencio.
  */
+/** Tapping a quote: a thread reference opens the thread; a reply goes to the quoted message. */
+function quoteAction(quote: Citado | null | undefined, replyToSeq: number | undefined, openThread?: (seq: number) => void, goToQuote?: (seq: number) => void): (() => void) | undefined {
+  if (quote?.enHilo && openThread) return () => openThread(quote.enHilo!);
+  if (replyToSeq && goToQuote) return () => goToQuote(replyToSeq);
+  return undefined;
+}
+
 export const MessageRow = memo(FilaDeMensaje);
 
 export function DaySeparator({ label }: { label: string }) {

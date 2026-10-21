@@ -24,7 +24,15 @@ export type Respondiendo = { seq: number; texto: string; mio: boolean };
 
 /** Lo que la pantalla le puede pedir al composer sin conocer su borrador. */
 /** `insertEmoji` and `backspace` come from the emoji panel, which lives under the bar (`ChatBottom`). */
-export type ComposerHandle = { limpiar: () => void; insertEmoji: (emoji: string) => void; backspace: () => void };
+export type ComposerHandle = {
+  limpiar: () => void;
+  insertEmoji: (emoji: string) => void;
+  backspace: () => void;
+  /** The message being replied to, for a sticker from the panel (20/10). */
+  replyingTo: () => number | undefined;
+  /** A sticker answered it: the reply strip closes. */
+  replyDone: () => void;
+};
 
 /**
  * La barra de escribir, APARTE de la pantalla (FL2, spec §45).
@@ -174,7 +182,19 @@ export const Composer = memo(function Composer(props: {
     precalentarPermisoDeVoz();
   }, []);
 
-  useImperativeHandle(props.ref, () => ({ limpiar: limpiarCampo, insertEmoji: (emoji: string) => typeFromPanel.current.insert(emoji), backspace: () => typeFromPanel.current.back() }), []);
+  const latestReply = useRef({ seq: props.respondiendoA?.seq, cancel: props.onCancelarRespuesta });
+  latestReply.current = { seq: props.respondiendoA?.seq, cancel: props.onCancelarRespuesta };
+  useImperativeHandle(
+    props.ref,
+    () => ({
+      limpiar: limpiarCampo,
+      insertEmoji: (emoji: string) => typeFromPanel.current.insert(emoji),
+      backspace: () => typeFromPanel.current.back(),
+      replyingTo: () => latestReply.current.seq,
+      replyDone: () => latestReply.current.cancel(),
+    }),
+    []
+  );
 
   // Al empezar a editar, el texto del mensaje va al campo; al terminar o
   // cancelar vuelve el borrador del chat, como WhatsApp. Lo mismo al abrir.

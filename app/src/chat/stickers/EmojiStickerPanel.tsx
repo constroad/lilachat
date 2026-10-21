@@ -35,6 +35,8 @@ export function EmojiStickerPanel(props: {
   /** From a thread (20/10): the stickers go to it; `onStickerSent` lets the thread close its sheet. */
   thread?: StickerThread;
   onStickerSent?: () => void;
+  /** The message being replied to when the sticker is tapped: it quotes it (20/10). */
+  replyTo?: () => number | undefined;
 }) {
   const colors = useColores();
   const [tab, setTab] = useState<Tab>('emoji');
@@ -75,10 +77,10 @@ export function EmojiStickerPanel(props: {
         <PanelDeEmojis onElegir={props.onPickEmoji} />
       ) : (
         <View style={{ flex: 1 }}>
-          <StickerPanel stickers={stickers} onSend={(sticker) => void stickers.send(props.chatId, sticker, props.thread).then((sent) => sent && props.onStickerSent?.())} onCreate={() => { setEditorSession((before) => before + 1); setCreating(true); }} />
+          <StickerPanel stickers={stickers} onSend={(sticker) => void stickers.send(props.chatId, sticker, { ...props.thread, replyToSeq: props.replyTo?.() }).then((sent) => sent && props.onStickerSent?.())} onCreate={() => { setEditorSession((before) => before + 1); setCreating(true); }} />
         </View>
       )}
-      <CreateSticker key={editorSession} visible={creating} chatName={props.chatName} onClose={closeEditor} onSave={stickers.save} onSend={(sticker) => stickers.send(props.chatId, sticker, props.thread)} />
+      <CreateSticker key={editorSession} visible={creating} chatName={props.chatName} onClose={closeEditor} onSave={stickers.save} onSend={(sticker) => stickers.send(props.chatId, sticker, { ...props.thread, replyToSeq: props.replyTo?.() })} />
     </View>
   );
 }

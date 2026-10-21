@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Alert, Pressable, Text, ToastAndroid, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -18,6 +19,9 @@ const SIDE = 160;
  * (reactions, thread) like any message; a tap offers to keep it in «Mis
  * stickers» or as a favorite.
  */
+/** How much wider than the sticker its quote may be. */
+const QUOTE_EXTRA_WIDTH = 60;
+
 export function StickerMessage(props: {
   item: ChatMessage;
   mine: boolean;
@@ -29,6 +33,8 @@ export function StickerMessage(props: {
   selecting: boolean;
   selected: boolean;
   onReply?: (seq: number, previewText: string, mine: boolean) => void;
+  /** A sticker sent as a reply shows what it answers above it, as WhatsApp does (20/10). */
+  quote?: ReactNode;
 }) {
   const { item, mine } = props;
   const keep = async (asFavorite: boolean) => ToastAndroid.show(await keepReceivedSticker(props.jwt, item.chatId, item.seq, asFavorite), ToastAndroid.SHORT);
@@ -44,6 +50,7 @@ export function StickerMessage(props: {
         {props.author ? <Avatar nombre={props.author.name} foto={props.author.photo} tamano={AVATAR_DE_AUTOR} /> : null}
         <View>
           {props.author?.name ? <Text className="mb-0.5 px-1 text-[13px] font-semibold text-on-surface-variant" numberOfLines={1}>{props.author.name}</Text> : null}
+          {props.quote ? <View className="mb-1 rounded-xl border border-outline/15 bg-surface px-2 pb-1 pt-2" style={{ maxWidth: SIDE + QUOTE_EXTRA_WIDTH }}>{props.quote}</View> : null}
           <Pressable
             onPress={() => (props.selecting ? props.onSelect?.(item.seq) : showOptions())}
             onLongPress={() => {

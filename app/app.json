@@ -2,7 +2,7 @@
   "expo": {
     "name": "Lilachat",
     "slug": "lilachat",
-    "version": "0.1.114",
+    "version": "0.1.115",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -18,7 +18,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.lilachat.app",
-      "versionCode": 115,
+      "versionCode": 116,
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.POST_NOTIFICATIONS",
@@ -44,7 +44,12 @@
       ],
       "expo-sharing",
       "expo-video",
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "enableBackgroundRecording": true
+        }
+      ],
       "@config-plugins/react-native-webrtc",
       [
         "expo-build-properties",

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ListTodo, MessageSquarePlus, MoreVertical, NotebookPen, PanelLeftClose, Search, Settings, SquarePen, Star, Users } from 'lucide-react';
+import { ChevronDown, ListTodo, MessageSquarePlus, MoreVertical, NotebookPen, PanelLeftClose, Search, Settings, SquarePen, Star, Users } from 'lucide-react';
 import type { FiltroDeChats } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { Logo } from '../ui/Logo';
@@ -41,6 +41,7 @@ export function ChatList({
   width,
   onCollapse,
   onHome,
+  onSpaces,
 }: {
   chats: ChatSummary[];
   selectedChatId: string | null;
@@ -65,6 +66,8 @@ export function ChatList({
   onCollapse?: () => void;
   /** The logo: back to the list with no chat open. */
   onHome?: () => void;
+  /** «Cambiar de espacio» (E1, design `e1-06`): the arrow next to the name, like the app's header. */
+  onSpaces?: () => void;
 }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [filtro, setFiltro] = useState<FiltroDeChats>('todos');
@@ -110,10 +113,15 @@ export function ChatList({
     >
       <header className="flex items-center gap-2 px-4 py-3">
         {/* The logo goes home: the chat list with nothing open, like WhatsApp Web (José, 21/10). */}
-        <a href="/" data-testid="logo-inicio" aria-label="Ir al inicio" onClick={(event) => { if (!onHome) return; event.preventDefault(); onHome(); }} className="flex flex-1 items-center gap-2 rounded-lg">
+        <a href="/" data-testid="logo-inicio" aria-label="Ir al inicio" onClick={(event) => { if (!onHome) return; event.preventDefault(); onHome(); }} className={`flex items-center gap-2 rounded-lg ${onSpaces ? '' : 'flex-1'}`}>
           <Logo size={30} />
           <h1 className="text-lg font-extrabold tracking-tight">Lilachat</h1>
         </a>
+        {onSpaces ? (
+          <button type="button" data-testid="btn-espacios" aria-label="Cambiar de espacio" title="Cambiar de espacio" onClick={onSpaces} className="-ml-2 mr-auto grid h-9 w-9 place-items-center rounded-full text-on-surface-variant hover:bg-background">
+            <ChevronDown size={18} />
+          </button>
+        ) : null}
         <ThemeToggle />
         <button type="button" data-testid="btn-lapiz-nuevo-chat" aria-label="Nuevo chat" title="Nuevo chat" onClick={onNewChat} className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant hover:bg-background">
           <SquarePen size={18} />

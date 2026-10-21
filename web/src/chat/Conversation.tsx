@@ -146,7 +146,8 @@ export function Conversation(props: {
 
 function CabeceraDeLaConversacion(props: { chat: ChatSummary; typingName: string | null; showBack: boolean; onBack: () => void; onAbrirInfo?: () => void }) {
   const { chat, typingName } = props;
-  const nombre = chat.name ?? chat.phone ?? 'Conversación';
+  // A channel of a space reads as Slack's: «#planta-web».
+  const nombre = chat.channel ? `#${chat.name ?? ''}` : (chat.name ?? chat.phone ?? 'Conversación');
   return (
     <header className="flex items-center gap-3 border-b border-outline/15 bg-primary/5 px-4 py-3">
       {props.showBack ? (

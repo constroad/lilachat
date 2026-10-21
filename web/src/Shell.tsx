@@ -32,6 +32,9 @@ import { ChatFontChoice } from './ui/ChatFontChoice';
 import { GroupsAsListChoice } from './ui/GroupsAsListChoice';
 import { chatNameWithAgenda } from './contacts/phoneAgenda';
 import { useAgendaRelay } from './contacts/useAgendaRelay';
+import { SpacesRail } from './spaces/SpacesRail';
+import { SpaceChatList } from './spaces/SpaceChatList';
+import { useSpacesWeb } from './spaces/useSpacesWeb';
 
 /** Cuánto dura un aviso corto en pantalla. */
 const DURACION_DEL_AVISO_MS = 3000;
@@ -80,17 +83,28 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
   }, [aviso]);
 
   const eventos = useRef<Partial<ReturnType<typeof useSincronizacion>['eventos']>>({});
+  /** A chat outside the personal list moved: the open space and the rail ask again. */
+  const eventoDeEspacio = useRef<(chatId: string) => void>(() => undefined);
   const socket = useSocket({
     jwt: credential.jwt,
     // Sin JWT (abrió sin red) no hay socket; con JWT, espera a que la sesión esté resuelta.
     userId: puedeAbrirSocket({ userId: credential.jwt ? yo : null, tieneSecreto: true, refrescoResuelto }) ? yo : null,
-    onMessage: (mensaje: ChatMessage) => eventos.current.onMessage?.(mensaje),
-    onReceipt: (acuse) => eventos.current.onReceipt?.(acuse),
+    onMessage: (mensaje: ChatMessage) => {
+      eventos.current.onMessage?.(mensaje);
+      eventoDeEspacio.current(mensaje.chatId);
+    },
+    onReceipt: (acuse) => {
+      eventos.current.onReceipt?.(acuse);
+      eventoDeEspacio.current(acuse.chatId);
+    },
     onBorrado: (dato) => eventos.current.onBorrado?.(dato),
     onEditado: (dato) => eventos.current.onEditado?.(dato),
     onHilo: (dato) => eventos.current.onHilo?.(dato),
     onReacciones: (dato) => eventos.current.onReacciones?.(dato),
-    onCambioDeChat: () => eventos.current.onCambioDeChat?.(),
+    onCambioDeChat: (dato) => {
+      eventos.current.onCambioDeChat?.();
+      eventoDeEspacio.current(dato.chatId);
+    },
     onSinAutorizacion: manejar401,
   });
   const sync = useSincronizacion({ base, yo, jwt: credential.jwt, socket: socket.socket, conectado: socket.connected, manejar401, chatAbierto: selectedId });
@@ -121,15 +135,19 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
   // archivado abierto sigue siendo el chat de la derecha.
   const agendaPhones = useMemo(() => (chatsGuardados ?? []).map((chat) => chat.phone), [chatsGuardados]);
   const agenda = useAgendaRelay({ base, socket: socket.socket, connected: socket.connected, phones: agendaPhones });
-  const chats = useMemo<ChatSummary[]>(
-    () =>
-      (chatsGuardados ?? []).map((chat) => ({
-        ...chatNameWithAgenda(chat, agenda),
-        online: chat.memberIds.some((miembro) => miembro !== yo && socket.online.has(miembro)),
-        typingName: socket.typingByChat.get(chat.id) ?? null,
-      })),
-    [chatsGuardados, socket.online, socket.typingByChat, yo, agenda]
+  const conPresencia = useCallback(
+    (chat: ChatSummary): ChatSummary => ({
+      ...chatNameWithAgenda(chat, agenda),
+      online: chat.memberIds.some((miembro) => miembro !== yo && socket.online.has(miembro)),
+      typingName: socket.typingByChat.get(chat.id) ?? null,
+    }),
+    [socket.online, socket.typingByChat, yo, agenda]
   );
+  const chats = useMemo<ChatSummary[]>(() => (chatsGuardados ?? []).map(conPresencia), [chatsGuardados, conPresencia]);
+  const espacios = useSpacesWeb({ jwt: credential.jwt, me: { name: credential.name, phone: credential.phone }, personalUnread: chatsSinLeer(chats), selectedChatId: selectedId, onOpenChat: abrirChat });
+  const chatsDelEspacio = useMemo(() => espacios.chats?.map(conPresencia) ?? null, [espacios.chats, conPresencia]);
+  const personales = useMemo(() => new Set(chats.map((chat) => chat.id)), [chats]);
+  eventoDeEspacio.current = (chatId) => !personales.has(chatId) && espacios.onChatEvent();
   const chatsParaReenviar = useMemo(() => ordenarParaLaLista(chats), [chats]);
   const accionesSobreChats = useAccionesSobreChats({
     base,
@@ -143,7 +161,8 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
   });
 
 
-  const selected = chats.find((chat) => chat.id === selectedId) ?? null;
+  const enEspacio = espacios.chatById(selectedId);
+  const selected = chats.find((chat) => chat.id === selectedId) ?? (enEspacio ? conPresencia(enEspacio) : null);
   const panel = resolveVisiblePanel({ width, selectedChatId: selectedId });
   const listLayout = useListLayout(width);
   const alCrear = (chatId: string) => {
@@ -155,10 +174,32 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
   return (
     <div className="relative flex h-full">
       <AvisosDeLaWeb sinConexion={sinConexion} hayVersionNueva={hayVersionNueva} />
+      {panel !== 'conversation' && espacios.hasRail ? (
+        <SpacesRail spaces={espacios.spaces} currentId={espacios.current?.id ?? null} me={{ name: credential.name, phone: credential.phone }} personalUnread={chatsSinLeer(chats)} onPick={espacios.enter} onAdd={espacios.openSwitcher} />
+      ) : null}
       {panel === 'conversation' ? null : panel === 'both' && listLayout.collapsed ? (
-        <ChatRail chats={chats ?? []} selectedChatId={selectedId} onSelect={(chat) => abrirChat(chat.id)} onExpand={() => listLayout.setCollapsed(false)} />
+        <ChatRail chats={espacios.current ? (chatsDelEspacio ?? []) : chats} selectedChatId={selectedId} onSelect={(chat) => abrirChat(chat.id)} onExpand={() => listLayout.setCollapsed(false)} />
       ) : (
         <>
+        {espacios.current ? (
+          <SpaceChatList
+            space={espacios.current}
+            chats={chatsDelEspacio}
+            failed={espacios.failed}
+            onRetry={espacios.reloadChats}
+            yo={yo}
+            me={{ name: credential.name, phone: credential.phone }}
+            selectedChatId={selectedId}
+            onOpenChat={(chat) => abrirChat(chat.id)}
+            onAccion={(chat, accion) => void accionesSobreChats.aplicar(chat, accion).then(espacios.reloadChats)}
+            onSwitch={espacios.openSwitcher}
+            onChannels={espacios.openChannels}
+            onInvite={espacios.openInvite}
+            onSettings={() => setAviso(aviso ? '' : 'ajustes')}
+            width={panel === 'both' ? listLayout.width : undefined}
+            onCollapse={panel === 'both' ? () => listLayout.setCollapsed(true) : undefined}
+          />
+        ) : (
         <ChatList
           chats={chats}
           selectedChatId={selectedId}
@@ -178,7 +219,9 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
           onAccion={(chat, accion) => void accionesSobreChats.aplicar(chat, accion)}
           width={panel === 'both' ? listLayout.width : undefined}
           onCollapse={panel === 'both' ? () => listLayout.setCollapsed(true) : undefined}
+          onSpaces={espacios.openSwitcher}
         />
+        )}
         {panel === 'both' ? <ListResizeHandle width={listLayout.width} onResize={listLayout.setWidth} onReset={listLayout.reset} /> : null}
         </>
       )}
@@ -215,6 +258,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
         <EmptyState name={credential.name} onNewChat={() => setCreando({ tipo: 'chat', kind: 'direct' })} onAgenda={() => setCreando({ tipo: 'agenda' })} />
       )}
 
+      {espacios.layer}
       {creando?.tipo === 'borrador' ? <NuevoBorrador jwt={credential.jwt} onClose={() => setCreando(null)} onCreated={alCrear} /> : null}
       {creando?.tipo === 'chat' ? <NewChatOverlay jwt={credential.jwt} kind={creando.kind} onClose={() => setCreando(null)} onCreated={alCrear} /> : null}
       {creando?.tipo === 'agenda' ? (

@@ -27,6 +27,7 @@ const PALETTE = {
   error: 'error',
   'on-primary': 'onPrimary',
   'chat-bg': 'chatBackground',
+  'en-linea': 'online',
   'autor-1': 'author1',
   'autor-2': 'author2',
   'autor-3': 'author3',

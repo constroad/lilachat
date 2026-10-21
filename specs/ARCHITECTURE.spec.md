@@ -4892,6 +4892,78 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 65. La página blanca de la web, hilos completos y contactos en la web (20/10/2026, 0.1.113)
+
+José (20/10): «en un hilo no puedo enviar sticker; no puedo editar mi
+mensaje; con "También enviar al chat" se enviaron mensajes de más y no se ve
+como Slack, que dice cuál era el mensaje original», la traza de la página
+blanca (`TypeError: n is not a function`) y «sigue con los contactos en la
+web».
+
+### 65.1 La página blanca: `scrollIntoView` devuelve una promesa
+
+- **Causa** (encontrada en el Chrome de José, recorriendo los efectos de
+  React): `PanelDeHilo` tenía `useEffect(() => fin.current?.scrollIntoView(…))`.
+  El Chrome reciente devuelve una **promesa** desde `scrollIntoView`, React
+  la guarda como función de limpieza y al cerrar el hilo la llama:
+  «destroy is not a function» y la app entera se cae. TypeScript no lo ve
+  (`lib.dom` dice `void`) y el Chrome de pruebas, más viejo, no lo
+  reproducía.
+- **Arreglo:** llaves en el cuerpo del efecto. Test que simula la promesa.
+- **Candado:** `effectsReturnCleanup.test.ts` (web y app) recorre el AST de
+  todo `src` y falla si un `useEffect`/`useLayoutEffect` tiene cuerpo de
+  expresión, salvo un identificador, una función o un `suscribir…`. Se
+  pasaron a bloque los 11 que había.
+
+### 65.2 Hilos: sticker, editar y la referencia en el chat
+
+- **Sticker en un hilo** (app y web): botón de emojis en la barra del hilo.
+  El sticker se manda con `hiloDe` y `enElChat`; el server avisa el resumen
+  nuevo del hilo (`avisarHilo`, `msg.hilo`). Test en `stickers.test.ts`.
+- **Editar en un hilo:** «Editar» en el menú del mensaje propio pone el
+  texto en la barra del HILO (no en la del chat), con «Editando tu mensaje»
+  y el check. Mientras se edita no se guarda borrador.
+- **«También enviar al chat»:** en la base, de los tres mensajes del hilo de
+  José se marcaron dos (158 y 160). El código desmarca la casilla después de
+  cada envío; lo más probable es que estuviera marcada en el primero. Para
+  que se entienda, la respuesta que llega al chat ahora dice **«Respondió en
+  un hilo»** con el mensaje original, como Slack, y tocarla abre el hilo
+  (`Citado.enHilo` en la app, `CitaDelHilo` en la web; dentro del hilo no se
+  repite).
+
+### 65.3 Contactos en la web: el teléfono los pasa (opción «b»)
+
+José eligió la (b) del backlog 20: como WhatsApp Web, el teléfono le pasa los
+nombres a la web mientras los dos están conectados. **El server no guarda
+nada.**
+
+- **Recorrido:** la web vinculada emite `agenda.pedir {phones}` → el server
+  (`agendaRelay.ts`) lo manda SOLO a los teléfonos del mismo usuario
+  (`agenda.pedido {requestId, phones}`) → el teléfono responde con su agenda
+  (`agenda.respuesta`) → el server lo entrega solo al socket que pidió
+  (`agenda.nombres`). La solicitud vive 30 s en memoria.
+- **Candados del server:** un teléfono no puede pedir, una web no puede
+  responder, y otro usuario no puede responder una solicitud ajena. Los
+  números se normalizan (500 por pedido como mucho) y la respuesta solo
+  trae los números pedidos, con nombres de 80 caracteres como mucho
+  (`shared/agendaRelay`, con test).
+- **La web** (`contacts/phoneAgenda.ts`, `useAgendaRelay.ts`) pide en cada
+  conexión los números de los chats 1:1 y de los miembros del chat abierto.
+  Guarda los nombres en la base local del usuario, que se borra al cerrar
+  sesión. Gana la agenda, como en la app: lista, cabecera, autor en los
+  grupos y la cita del hilo. Los grupos y «Tú» conservan su nombre. Con el
+  teléfono apagado no llega nada y quedan los nombres guardados.
+- **E2E** (server de QA, emulador con el contacto «Ana Agenda QA» para el
+  900000801 y la web vinculada a la cuenta QA): la web pidió, el emulador
+  respondió y la lista, la cabecera, el autor en «QA Hilos» y la cita del
+  hilo dicen «Ana Agenda QA». «QA Beto», que no está en la agenda, quedó
+  con su nombre. Después se borraron las vinculaciones de prueba (José
+  volvió a 22 dispositivos) y el contacto del emulador.
+
+### 65.4 Verificación
+
+- Tests: shared 882, server 618, app 453 y web 285.
+
 ## 64. Recorte con borrador y restaurar, el panel de emojis como el teclado (20/10/2026, 0.1.112)
 
 José (20/10, con capturas de WhatsApp y Lilachat): «nuestra versión es la más
@@ -6670,6 +6742,9 @@ tacha con la versión que lo cierra.
     el socket mientras ambos estén conectados, sin guardarlos en el server
     (la web no tendría nombres si el teléfono está apagado). WhatsApp Web
     hace lo segundo, sobre su protocolo de dispositivos vinculados.
+    **Hecho con la (b) (20/10, §65.3):** relay por el socket, sin guardar
+    nada en el server. Falta «Nuevo chat» con la agenda completa del
+    teléfono (hoy la web nombra solo los números que ya muestra).
     **Decisión de José (20/10): la (b).** Sin guardar la agenda en el server.
 
 ### Guiños y zumbido (análisis, 20/10)

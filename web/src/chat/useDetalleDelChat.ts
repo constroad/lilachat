@@ -56,15 +56,15 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
 const claveGuardada = (chatId: string) => `detalle:${chatId}`;
 
 /** Members show the name saved in the phone (20/10, option «b»), like the app. */
-export function detailWithAgenda(detalle: DetalleDelChat, agenda: ReadonlyMap<string, string>): DetalleDelChat {
+export function detailWithAgenda(detail: DetalleDelChat, agenda: ReadonlyMap<string, string>): DetalleDelChat {
   let changed = false;
-  const miembros = new Map<string, MiembroDelChat>();
-  for (const [id, miembro] of detalle.miembros) {
-    const saved = miembro.esYo ? undefined : agendaNameFor(miembro.telefono, agenda);
-    changed ||= Boolean(saved && saved !== miembro.nombre);
-    miembros.set(id, saved ? { ...miembro, nombre: saved } : miembro);
+  const members = new Map<string, MiembroDelChat>();
+  for (const [id, member] of detail.miembros) {
+    const saved = member.esYo ? undefined : agendaNameFor(member.telefono, agenda);
+    changed ||= Boolean(saved && saved !== member.nombre);
+    members.set(id, saved ? { ...member, nombre: saved } : member);
   }
-  return changed ? { ...detalle, miembros } : detalle;
+  return changed ? { ...detail, miembros: members } : detail;
 }
 
 /**

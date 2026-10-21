@@ -36,7 +36,7 @@ export function registerAgendaRelay(io: SocketServer, socket: Socket & { deviceI
     const request = pending.get(String(payload?.requestId ?? ''));
     if (!request || request.userId !== userId) return;
     pending.delete(String(payload?.requestId));
-    const nombres = cleanNamesReply(payload?.nombres, request.phones);
-    io.to(request.socketId).emit('agenda.nombres', { nombres });
+    const names = cleanNamesReply(payload?.nombres, request.phones);
+    io.to(request.socketId).emit('agenda.nombres', { nombres: names });
   });
 }

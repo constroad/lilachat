@@ -23,7 +23,7 @@ describe('PanelDeHilo', () => {
 
   it('closes without crashing when scrollIntoView returns a Promise (recent Chrome)', () => {
     Element.prototype.scrollIntoView = vi.fn(() => Promise.resolve()) as unknown as typeof Element.prototype.scrollIntoView;
-    const props = { chat, raiz, yo: 'yo', nombres: new Map([['w', 'Wilson']]), onEnviar: vi.fn(), onReintentar: vi.fn(), onDescartar: vi.fn(), onEditar: vi.fn(), onCerrar: vi.fn() };
+    const props = { chat, raiz, yo: 'yo', nombres: new Map([['w', 'Wilson']]), onEnviar: vi.fn(), onReintentar: vi.fn(), onDescartar: vi.fn(), onEdit: vi.fn(), onCerrar: vi.fn() };
     const inConversation = (respuestas: MensajeEnPantalla[]) => (
       <ConversacionContext.Provider value={conversation}>
         <PanelDeHilo {...props} respuestas={respuestas} />
@@ -40,11 +40,11 @@ describe('PanelDeHilo', () => {
   it('«Editar» on my reply edits it in the thread input, not in the chat (José, 20/10)', async () => {
     Element.prototype.scrollIntoView = vi.fn();
     const mine = { ...respuesta, at: new Date().toISOString() };
-    const onEditar = vi.fn(async () => ({ ok: true }));
+    const editMessage = vi.fn(async () => ({ ok: true }));
     const chatEdit = vi.fn();
     render(
       <ConversacionContext.Provider value={{ ...conversation, onAccion: chatEdit }}>
-        <PanelDeHilo chat={chat} raiz={raiz} respuestas={[mine]} yo="yo" nombres={new Map()} onEnviar={vi.fn()} onReintentar={vi.fn()} onDescartar={vi.fn()} onEditar={onEditar} onCerrar={vi.fn()} />
+        <PanelDeHilo chat={chat} raiz={raiz} respuestas={[mine]} yo="yo" nombres={new Map()} onEnviar={vi.fn()} onReintentar={vi.fn()} onDescartar={vi.fn()} onEdit={editMessage} onCerrar={vi.fn()} />
       </ConversacionContext.Provider>
     );
 
@@ -56,7 +56,7 @@ describe('PanelDeHilo', () => {
     await userEvent.type(input, 'Te respondo mañana');
     await userEvent.click(screen.getByTestId('btn-enviar-hilo'));
 
-    expect(onEditar).toHaveBeenCalledWith(2, 'Te respondo mañana');
+    expect(editMessage).toHaveBeenCalledWith(2, 'Te respondo mañana');
     // Saved: the input goes back to the (empty) draft, not the edited text.
     expect(screen.getByTestId('input-hilo')).toHaveValue('');
     expect(chatEdit).not.toHaveBeenCalled();

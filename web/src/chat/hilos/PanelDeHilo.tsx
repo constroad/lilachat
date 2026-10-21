@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Check, SendHorizontal, Smile, X } from 'lucide-react';
 import { formatClock } from '@lilachat/shared';
-import { ConversacionContext, useConversacion, type AccionSobreMensaje, type ContextoDeLaConversacion } from '../contextoDeLaConversacion';
+import { ConversacionContext, useConversacion, type ContextoDeLaConversacion } from '../contextoDeLaConversacion';
 import type { StickerChat } from '../stickers/EmojiStickerPanel';
 import { Avatar } from '../../ui/Avatar';
 import { BurbujaDeMensaje } from '../BurbujaDeMensaje';
@@ -30,7 +30,7 @@ export function PanelDeHilo(props: {
   onReintentar: (clientKey: string) => void;
   onDescartar: (clientKey: string) => void;
   /** Edit an own reply here (José, 20/10: «in a thread I can't edit my message»). */
-  onEditar: (seq: number, texto: string) => Promise<{ ok: boolean; motivo?: string }>;
+  onEdit: (seq: number, text: string) => Promise<{ ok: boolean; motivo?: string }>;
   /** Emojis and stickers in the thread (20/10); without it (a secret chat), emojis only. */
   stickers?: Omit<StickerChat, 'thread' | 'onSent'>;
   onCerrar: () => void;
@@ -49,7 +49,7 @@ export function PanelDeHilo(props: {
     () => ({
       ...parent,
       inThread: true,
-      onAccion: (mensaje: MensajeEnPantalla, accion: AccionSobreMensaje) => {
+      onAccion: (mensaje: MensajeEnPantalla, accion: Parameters<ContextoDeLaConversacion['onAccion']>[1]) => {
         if (accion !== 'editar') return parent.onAccion(mensaje, accion);
         setEditing(mensaje);
         setTexto(mensaje.body ?? '');
@@ -79,7 +79,7 @@ export function PanelDeHilo(props: {
   const saveEdit = async (original: MensajeEnPantalla) => {
     const limpio = texto.trim();
     if (!limpio || limpio === original.body) return stopEditing();
-    const result = await props.onEditar(original.seq, limpio);
+    const result = await props.onEdit(original.seq, limpio);
     if (!result.ok) return setNotice(result.motivo ?? 'No se pudo editar.');
     stopEditing();
   };

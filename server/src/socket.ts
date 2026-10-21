@@ -31,7 +31,7 @@ import { HiloInvalidoError } from './hilos.js';
 import { registerAgendaRelay } from './agendaRelay.js';
 import { avisarCambioDeChat, avisarEntregadoAlConectar, avisarMensajeNuevo, fijarServidorDelReparto, leerLoPropio, publicarAviso, publicarMensaje } from './reparto.js';
 
-export { avisarCambioDeChat, avisarCambioDeVinculos, avisarHilo, avisarMensajeNuevo, desconectarDispositivo, publicarAviso, publicarMensaje } from './reparto.js';
+export { avisarCambioDeChat, avisarCambioDeVinculos, avisarMensajeNuevo, desconectarDispositivo, notifyThread, publicarAviso, publicarMensaje } from './reparto.js';
 
 /**
  * El tiempo real (spec §6.1). Socket.IO sobre WS: a esta escala el protocolo

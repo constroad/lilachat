@@ -8,7 +8,7 @@ import { pedidoSeguro } from './cookieDeDispositivo.js';
 import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
 import { toClientMessage } from './messageView.js';
 import { asyncRoute, requireSession } from './requireSession.js';
-import { avisarHilo, publicarMensaje } from './socket.js';
+import { notifyThread, publicarMensaje } from './socket.js';
 import { StickerModel, type Sticker } from './stickerModel.js';
 
 /** A static sticker is light (WhatsApp: ~100 KB); room left for a lossless WebP. */
@@ -149,7 +149,7 @@ export function buildStickersRouter(uploader: MediaUploader = buildLilaUploader(
     const sent = await sendMessage({ chatId: String(chatId), senderId: me, clientKey, kind: 'sticker', media, ...(Number.isInteger(req.body?.replyToSeq) ? { replyToSeq: req.body.replyToSeq } : {}), ...thread });
     if (!sent.duplicate) {
       const members = await publicarMensaje(sent.message, sent.members);
-      if (sent.hilo && sent.message.hiloDe !== undefined) avisarHilo(String(chatId), sent.message.hiloDe, sent.hilo, members);
+      if (sent.hilo && sent.message.hiloDe !== undefined) notifyThread(String(chatId), sent.message.hiloDe, sent.hilo, members);
     }
     res.status(201).json({ message: toClientMessage(sent.message), duplicate: sent.duplicate });
   }));

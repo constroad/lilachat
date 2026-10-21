@@ -182,7 +182,7 @@ export function ConversacionConAcciones(
           onEnviar={(texto, enElChat) => void sync.enviarTexto(chat.id, texto, { hiloDe: hilos.raiz!.seq, ...(enElChat ? { enElChat: true } : {}) })}
           onReintentar={props.onReintentar}
           onDescartar={props.onDescartar}
-          onEditar={(seq, texto) => sync.editar(chat.id, seq, texto)}
+          onEdit={(seq, text) => sync.editar(chat.id, seq, text)}
           stickers={chat.encrypted ? undefined : { jwt: props.jwt, me: yo, chatId: chat.id, chatName: chat.name ?? chat.phone ?? '' }}
           onCerrar={hilos.cerrar}
         />

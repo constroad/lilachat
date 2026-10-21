@@ -7,7 +7,7 @@ import { getSocket } from './socketClient';
 import { chatsEnMemoria, suscribirChatsEnMemoria } from './chatsGuardados';
 import { playWinkCues, shakeScreen, startWink, stopFun } from './FunScreen';
 import { closeEmojiPanel } from './emojiPanel';
-import { NUDGE_SHAKE, formatClock, funArrivedInRow, funMessageToPlay, highestSeq, shouldPlayFun, winkById, winkCardLines, type FunPlace, type FunToPlay, type WinkId } from '@lilachat/shared';
+import { FUN_LIVE_MS, NUDGE_SHAKE, formatClock, funArrivedInRow, funMessageToPlay, highestSeq, shouldPlayFun, winkById, winkCardLines, type FunPlace, type FunToPlay, type WinkId } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 
 const SEND_TIMEOUT_MS = 8000;
@@ -91,7 +91,7 @@ export function useFunInRow(chat: { id: string; muted?: boolean; lastMessage: { 
  * taken once, when the chat opens: the list marks it read right away, and
  * reading it later made the wink count as already seen.
  */
-export function useFunPlayback(params: { messages: readonly { seq: number; kind?: string; senderId: string; wink?: string }[]; me: string; chatId: string; afterSeq: number }): void {
+export function useFunPlayback(params: { messages: readonly { seq: number; kind?: string; senderId: string; wink?: string; at?: string }[]; me: string; chatId: string; afterSeq: number }): void {
   const muted = useChatMuted(params.chatId);
   const reducedMotion = useReducedMotion();
   const seen = useRef<number | null>(null);
@@ -118,7 +118,8 @@ export function useFunPlayback(params: { messages: readonly { seq: number; kind?
     // The first look at the chat plays only what someone sent me; mine plays when it goes, live.
     const opening = seen.current === null;
     seen.current ??= readAtOpen;
-    const fun = funMessageToPlay(messages, me, seen.current, { mineToo: !opening });
+    // Mine plays live only if it was just sent: the history that arrives after opening is not live.
+    const fun = funMessageToPlay(messages, me, seen.current, { mineToo: !opening, mineSince: Date.now() - FUN_LIVE_MS });
     seen.current = Math.max(seen.current, highestSeq(messages));
     if (fun) play(fun, 'chat');
   }, [messages, me, readAtOpen, play]);

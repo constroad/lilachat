@@ -1,18 +1,32 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addRecentSticker, packLibrary, STICKER_PACKS, type LibrarySticker } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { keepFromMessage, keepFromPack, listStickers, removeSticker, sendSticker, setFavorite, uploadSticker, type StickerTarget } from './stickersApi';
 
 const RECENTS_KEY = 'lilachat.stickers.recientes';
-/** The session library: the panel opens and closes often, no need to ask every time. */
+/**
+ * The session library: the panel opens and closes often, no need to ask every
+ * time. A store the panel subscribes to: keeping a sticker from a message
+ * (outside the panel) shows up in it at once (José, 21/10: a favorite only
+ * appeared the second time, because the open panel kept its own copy).
+ */
 let cachedLibrary: LibrarySticker[] | null = null;
+const libraryListeners = new Set<() => void>();
+const setCachedLibrary = (list: LibrarySticker[]) => {
+  cachedLibrary = list;
+  libraryListeners.forEach((listener) => listener());
+};
+const subscribeLibrary = (listener: () => void) => {
+  libraryListeners.add(listener);
+  return () => libraryListeners.delete(listener);
+};
 /** The default packs, with urls on this server (they never change during a session). */
 const PACK_STICKERS = packLibrary(BASE_URL);
 export const STICKER_PACK_SECTIONS = STICKER_PACKS.map((pack) => ({ id: pack.id, title: pack.title, stickers: PACK_STICKERS.filter((one) => one.id.startsWith(`pack:${pack.id}/`)) }));
 
 const keepInCache = (sticker: LibrarySticker) => {
-  if (cachedLibrary) cachedLibrary = [sticker, ...cachedLibrary.filter((one) => one.id !== sticker.id)];
+  if (cachedLibrary) setCachedLibrary([sticker, ...cachedLibrary.filter((one) => one.id !== sticker.id)]);
 };
 
 /**
@@ -47,15 +61,14 @@ async function readRecents(): Promise<string[]> {
  * on the device, like WhatsApp; the library lives on the server (app and web see it).
  */
 export function useStickers(jwt: string) {
-  const [library, setLibrary] = useState<LibrarySticker[] | null>(cachedLibrary);
+  const library = useSyncExternalStore(subscribeLibrary, () => cachedLibrary);
   const [recents, setRecents] = useState<string[]>([]);
   const [error, setError] = useState('');
 
   const reload = useCallback(async () => {
     const response = await listStickers(jwt);
     if (!response.ok) return setError(response.reason);
-    cachedLibrary = response.data.stickers;
-    setLibrary(cachedLibrary);
+    setCachedLibrary(response.data.stickers);
     setError('');
   }, [jwt]);
 
@@ -72,10 +85,7 @@ export function useStickers(jwt: string) {
     });
   }, []);
 
-  const replace = (list: LibrarySticker[]) => {
-    cachedLibrary = list;
-    setLibrary(list);
-  };
+  const replace = setCachedLibrary;
   const withSticker = (sticker: LibrarySticker) => [sticker, ...(cachedLibrary ?? []).filter((one) => one.id !== sticker.id)];
 
   const send = async (chatId: string, sticker: LibrarySticker, target?: StickerTarget) => {

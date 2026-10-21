@@ -1,10 +1,10 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Delete, Smile, Sparkles, Sticker } from 'lucide-react-native';
-import type { WinkId } from '@lilachat/shared';
+import { lastPanelTab, type PanelTab, type WinkId } from '@lilachat/shared';
+import { storePanelTab, useStoredPanelTab } from '../../ui/panelTabPref';
 import { WinkPanel } from '../WinkPanel';
 
-type Tab = 'emoji' | 'stickers' | 'winks';
 import { PanelDeEmojis } from '../PanelDeEmojis';
 import { useColores } from '../../ui/tema';
 import { reportarError } from '../../ui/reportarError';
@@ -45,18 +45,24 @@ export function EmojiStickerPanel(props: {
   onNudge?: () => void;
 }) {
   const colors = useColores();
-  const [tab, setTab] = useState<Tab>('emoji');
   const { onWink } = props;
   const [creating, setCreating] = useState(false);
   /** A new editor each time (its layers and brushes do not leak into the next sticker); it stays mounted to slide out. */
   const [editorSession, setEditorSession] = useState(0);
   const stickers = useStickers(props.jwt);
   const closeEditor = useCallback(() => setCreating(false), []);
-  const tabs: { key: Tab; label: string; Icon: typeof Smile }[] = [
+  const tabs: { key: PanelTab; label: string; Icon: typeof Smile }[] = [
     { key: 'emoji', label: 'Emoji', Icon: Smile },
     ...(props.withStickers ? [{ key: 'stickers' as const, label: 'Stickers', Icon: Sticker }] : []),
     ...(onWink ? [{ key: 'winks' as const, label: 'Guiños', Icon: Sparkles }] : []),
   ];
+  // It opens on the tab used last (José, 21/10), if this chat offers it.
+  const tab = lastPanelTab(useStoredPanelTab(), tabs.map((one) => one.key));
+  const setTab = storePanelTab;
+  // Opening straight on «Stickers» asks for the cutout model too.
+  useEffect(() => {
+    if (tab === 'stickers') prefetchCutoutModel();
+  }, [tab]);
   return (
     <View style={{ flex: 1 }}>
       <View className="flex-row items-center border-b border-outline/10">

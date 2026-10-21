@@ -60,7 +60,7 @@ export type ChatSummary = {
 /** Un fijado como lo manda la lista (`server/src/mensajesFijados.ts`). */
 export type FijadoEnLista = { seq: number; por: string; en: string; hasta: string; vista: VistaDelFijado };
 
-export type RefDeMensaje = { tipo: 'encuesta' | 'evento' | 'recordatorio'; id: string };
+export type RefDeMensaje = { tipo: 'encuesta' | 'evento' | 'recordatorio' | 'checklist'; id: string };
 
 export type ChatMessage = {
   _id?: string;

@@ -52,6 +52,7 @@ export function Conversation(props: {
   onCreatePoll: () => void;
   /** W3c: el recordatorio del chat. Sin esto (sin permiso o secreto), el «+» no lo ofrece. */
   onCreateReminder?: () => void;
+  onCreateChecklist?: () => void;
   /** Editar uno desde su tarjeta (W3c). */
   onEditReminder?: (recordatorio: AgendaReminder) => void;
   onElegirArchivos: (files: File[]) => void;
@@ -125,6 +126,7 @@ export function Conversation(props: {
         onCreateEvent={props.onCreateEvent}
         onCreatePoll={props.onCreatePoll}
         onCreateReminder={props.onCreateReminder}
+        onCreateChecklist={props.onCreateChecklist}
         onNudge={props.onNudge}
         onWink={props.onWink}
         recipient={chat.name ?? chat.phone}

@@ -4,6 +4,7 @@ import type { MensajeEnPantalla } from '../types';
 import { EncuestaEnElChat } from './EncuestaEnElChat';
 import { EventoEnElChat } from './EventoEnElChat';
 import { RecordatorioEnElChat } from './RecordatorioEnElChat';
+import { ChecklistEnElChat } from './ChecklistEnElChat';
 
 /** Las clases de color de autor, escritas enteras para que Tailwind las genere. */
 const COLOR_DE_AUTOR = ['', 'text-autor-1', 'text-autor-2', 'text-autor-3', 'text-autor-4', 'text-autor-5', 'text-autor-6'];
@@ -22,7 +23,7 @@ export function TarjetaDelMensaje({ mensaje, mio, conAutor }: { mensaje: Mensaje
         {conAutor && !mio ? <p className={`min-w-0 flex-1 truncate text-[13px] font-semibold ${COLOR_DE_AUTOR[colorDeAutor(mensaje.senderId)]}`}>{nombres.get(mensaje.senderId) ?? 'Alguien'}</p> : <span className="flex-1" />}
         <span className="text-[11px] text-on-surface-variant">{formatClock(mensaje.at)}{mio ? ' · Tú' : ''}</span>
       </div>
-      {ref.tipo === 'encuesta' ? <EncuestaEnElChat id={ref.id} /> : ref.tipo === 'evento' ? <EventoEnElChat id={ref.id} /> : <RecordatorioEnElChat id={ref.id} />}
+      {ref.tipo === 'encuesta' ? <EncuestaEnElChat id={ref.id} /> : ref.tipo === 'evento' ? <EventoEnElChat id={ref.id} /> : ref.tipo === 'checklist' ? <ChecklistEnElChat id={ref.id} /> : <RecordatorioEnElChat id={ref.id} />}
     </div>
   );
 }

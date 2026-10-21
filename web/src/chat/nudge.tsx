@@ -137,11 +137,11 @@ export function useFunInRow(chat: { muted?: boolean; lastMessage: { seq: number;
   return effect;
 }
 
-/** «Ana te mandó un zumbido» / «Mandaste un zumbido», centered like the group notices. */
+/** «Ana te mandó un zumbido» / «Mandaste un zumbido», on the side of who sent it, like messages (José, 21/10). */
 export function NudgeLine({ seq, mine, author, at }: { seq: number; mine: boolean; author?: string; at?: string }) {
   return (
-    <div data-testid="linea-zumbido" className="my-1.5 flex justify-center">
-      <span className="inline-flex max-w-[88%] flex-wrap items-center justify-center gap-x-2 gap-y-0.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[13px] font-semibold">
+    <div data-testid="linea-zumbido" className={`my-1.5 flex ${mine ? 'justify-end' : 'justify-start'}`}>
+      <span className={`inline-flex max-w-[88%] flex-wrap items-center gap-x-2 gap-y-0.5 rounded-2xl border border-primary/20 px-3 py-1 text-[13px] font-semibold ${mine ? 'bg-primary/10' : 'bg-surface'}`}>
         <span className="grid h-6 w-6 place-items-center rounded-full bg-primary text-on-primary"><Vibrate size={13} /></span>
         {mine ? 'Mandaste un zumbido' : author ? `${author} te mandó un zumbido` : 'Te mandaron un zumbido'}
         {at ? <span className="text-[11px] font-normal text-on-surface-variant">{formatClock(at)}</span> : null}
@@ -162,8 +162,8 @@ export function WinkLine({ seq, wink, mine, author, at }: { seq: number; wink?: 
   const known = winkById(wink);
   const lines = winkCardLines({ wink, mine, author, time: at ? formatClock(at) : undefined });
   return (
-    <div data-testid={`linea-guino-${seq}`} className="my-2 flex justify-center">
-      <div className="flex w-[300px] max-w-[88%] items-center gap-3 rounded-2xl border border-primary/20 bg-surface p-2.5">
+    <div data-testid={`linea-guino-${seq}`} className={`my-2 flex ${mine ? 'justify-end' : 'justify-start'}`}>
+      <div className={`flex w-[300px] max-w-[88%] items-center gap-3 rounded-2xl border border-primary/20 p-2.5 ${mine ? 'bg-primary/10' : 'bg-surface'}`}>
         <span className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary/10">
           {known?.kind === 'character' ? <WinkCharacter wink={known} size={known.tile ? 50 : 40} /> : known ? <span className="text-[30px] leading-none">{known.hero}</span> : <Heart size={22} className="text-primary" />}
         </span>

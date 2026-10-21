@@ -3,7 +3,7 @@ import type { BaseLocal } from '../local/baseLocal';
 import type { ChatMessage } from '../chat/types';
 
 type NoticeKind = Parameters<typeof armarAviso>[0]['kind'];
-const NOTICE_KINDS = new Set<string>(['text', 'image', 'video', 'audio', 'file', 'poll', 'event', 'reminder', 'sticker', 'zumbido', 'guino']);
+const NOTICE_KINDS = new Set<string>(['text', 'image', 'video', 'audio', 'file', 'poll', 'event', 'reminder', 'checklist', 'sticker', 'zumbido', 'guino']);
 const ICON = '/icons/icon-192.png';
 
 /**

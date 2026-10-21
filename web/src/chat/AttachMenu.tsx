@@ -1,4 +1,4 @@
-import { BarChart3, Bell, CalendarPlus, Paperclip, type LucideIcon } from 'lucide-react';
+import { BarChart3, Bell, CalendarPlus, ClipboardCheck, Paperclip, type LucideIcon } from 'lucide-react';
 
 type Option = { key: string; label: string; hint: string; Icon: LucideIcon; testId: string; action: () => void };
 
@@ -13,6 +13,7 @@ export function AttachMenu(props: {
   onPickFile: () => void;
   onCreateEvent: () => void;
   onCreatePoll: () => void;
+  onCreateChecklist?: () => void;
   onCreateReminder?: () => void;
 }) {
   const sections: { title: string; options: Option[] }[] = [
@@ -22,6 +23,7 @@ export function AttachMenu(props: {
       options: [
         { key: 'event', label: 'Evento', hint: 'Una reunión o una visita con fecha', Icon: CalendarPlus, testId: 'btn-evento-chat', action: props.onCreateEvent },
         { key: 'poll', label: 'Encuesta', hint: 'Pregúntale al chat y vean los votos', Icon: BarChart3, testId: 'btn-encuesta-chat', action: props.onCreatePoll },
+        ...(props.onCreateChecklist ? [{ key: 'checklist', label: 'Checklist', hint: 'Tareas que el chat va marcando', Icon: ClipboardCheck, testId: 'btn-checklist-chat', action: props.onCreateChecklist }] : []),
         ...(props.onCreateReminder ? [{ key: 'reminder', label: 'Recordatorio', hint: 'Un aviso que suena en este chat', Icon: Bell, testId: 'btn-recordatorio-chat', action: props.onCreateReminder }] : []),
       ],
     },

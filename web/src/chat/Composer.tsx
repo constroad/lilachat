@@ -32,6 +32,7 @@ export function Composer({
   onWink,
   recipient,
   onCreateReminder,
+  onCreateChecklist,
   onElegirArchivos,
   contexto,
   onCancelarContexto,
@@ -63,6 +64,7 @@ export function Composer({
   recipient?: string;
   /** W3c: solo cuando se puede (en un grupo, sus admins; nunca en un secreto). */
   onCreateReminder?: () => void;
+  onCreateChecklist?: () => void;
   /** Las fotos o archivos elegidos (o pegados). Quien recibe esto muestra la vista previa y sube. */
   onElegirArchivos: (files: File[]) => void;
 }) {
@@ -206,6 +208,7 @@ export function Composer({
               onCreateEvent={onCreateEvent}
               onCreatePoll={onCreatePoll}
               onCreateReminder={onCreateReminder}
+              onCreateChecklist={onCreateChecklist}
             />
           ) : null}
         </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isDark, readThemeChoice, THEME_KEY } from './tema';
+import { isDark, readThemeChoice, THEME_KEY, toggledTheme } from './tema';
 
 describe('the theme', () => {
   it('«Sistema» follows the operating system; the others are fixed', () => {
@@ -16,3 +16,14 @@ describe('the theme', () => {
     expect(readThemeChoice({ getItem: () => { throw new Error('blocked'); } })).toBe('system');
   });
 });
+
+/** José, 21/10: «no hay botón para cambiar el theme dark o light» (it was only in Ajustes). */
+describe('the light/dark button', () => {
+  it('switches to the opposite of what is on screen, also from «Sistema»', () => {
+    expect(toggledTheme('light', false)).toBe('dark');
+    expect(toggledTheme('dark', false)).toBe('light');
+    expect(toggledTheme('system', true)).toBe('light');
+    expect(toggledTheme('system', false)).toBe('dark');
+  });
+});
+

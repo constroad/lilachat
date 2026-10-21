@@ -3,6 +3,7 @@ import { ListTodo, MessageSquarePlus, MoreVertical, NotebookPen, PanelLeftClose,
 import type { FiltroDeChats } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { Logo } from '../ui/Logo';
+import { ThemeToggle } from '../ui/ThemeToggle';
 import { FilaDeChat } from './FilaDeChat';
 import { FiltrosDeLaLista } from './FiltrosDeLaLista';
 import { armarLista } from './listaDeChats';
@@ -38,6 +39,7 @@ export function ChatList({
   yo,
   width,
   onCollapse,
+  onHome,
 }: {
   chats: ChatSummary[];
   selectedChatId: string | null;
@@ -60,6 +62,8 @@ export function ChatList({
   width?: number;
   /** Folds the list into a rail (José, 21/10). */
   onCollapse?: () => void;
+  /** The logo: back to the list with no chat open. */
+  onHome?: () => void;
 }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [filtro, setFiltro] = useState<FiltroDeChats>('todos');
@@ -104,8 +108,12 @@ export function ChatList({
       style={width ? { width } : undefined}
     >
       <header className="flex items-center gap-2 px-4 py-3">
-        <Logo size={30} />
-        <h1 className="flex-1 text-lg font-extrabold tracking-tight">Lilachat</h1>
+        {/* The logo goes home: the chat list with nothing open, like WhatsApp Web (José, 21/10). */}
+        <a href="/" data-testid="logo-inicio" aria-label="Ir al inicio" onClick={(event) => { if (!onHome) return; event.preventDefault(); onHome(); }} className="flex flex-1 items-center gap-2 rounded-lg">
+          <Logo size={30} />
+          <h1 className="text-lg font-extrabold tracking-tight">Lilachat</h1>
+        </a>
+        <ThemeToggle />
         <button type="button" data-testid="btn-lapiz-nuevo-chat" aria-label="Nuevo chat" title="Nuevo chat" onClick={onNewChat} className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant hover:bg-background">
           <SquarePen size={18} />
         </button>

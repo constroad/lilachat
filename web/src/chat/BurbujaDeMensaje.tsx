@@ -1,3 +1,4 @@
+import { LineaDeLlamada } from './LineaDeLlamada';
 import { memo, useContext } from 'react';
 import { AlertCircle, BellRing, CalendarDays, FileText, Lock } from 'lucide-react';
 import { colorDeAutor, DELIVERY_GLYPH, esAvisoDestacado, formatClock, primerEnlace, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
@@ -42,6 +43,7 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
   const { mensaje, mio, agrupado, ultimoDelGrupo } = props;
   // The reminder that rang or an event coming up: answered like a message (José, 21/10).
   if (mensaje.kind === 'system' && esAvisoDestacado(mensaje.system?.evento)) return <HighlightedNotice message={mensaje} />;
+  if (mensaje.kind === 'system' && mensaje.system?.evento === 'llamada') return <LineaDeLlamada mensaje={mensaje} />;
   if (mensaje.kind === 'system') return <LineaDeSistema mensaje={mensaje} />;
   if (mensaje.kind === 'zumbido') return <NudgeFromContext seq={mensaje.seq} mine={mio} senderId={mensaje.senderId} at={mensaje.at} />;
   if (mensaje.kind === 'guino') return <WinkFromContext seq={mensaje.seq} wink={mensaje.wink} mine={mio} senderId={mensaje.senderId} at={mensaje.at} />;

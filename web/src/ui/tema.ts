@@ -24,6 +24,14 @@ export function isDark(choice: ThemeChoice, systemDark: boolean): boolean {
   return choice === 'dark' || (choice === 'system' && systemDark);
 }
 
+/** The header button: the opposite of what is on screen, whatever the choice was (also «Sistema»). */
+export function toggledTheme(choice: ThemeChoice, systemDark: boolean): 'light' | 'dark' {
+  return isDark(choice, systemDark) ? 'light' : 'dark';
+}
+
+/** Whether the system asks for dark right now. */
+export const systemPrefersDark = (): boolean => Boolean(systemQuery()?.matches);
+
 const systemQuery = () => window.matchMedia?.('(prefers-color-scheme: dark)');
 
 export function applyTheme(choice: ThemeChoice): void {

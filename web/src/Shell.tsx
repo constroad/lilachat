@@ -1,3 +1,4 @@
+import { CrearChecklist } from './agenda/CrearChecklist';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChatRail } from './chat/ChatRail';
 import { ListResizeHandle } from './chat/ListResizeHandle';
@@ -41,6 +42,7 @@ type Creando =
   | { tipo: 'destacados' }
   | { tipo: 'evento'; chat: ChatDestino | null }
   | { tipo: 'encuesta'; chat: ChatDestino | null }
+  | { tipo: 'checklist'; chatId: string }
   | { tipo: 'recordatorio'; chat: { id: string; name?: string | null; kind: 'direct' | 'group' | 'notas' } | null; editando?: AgendaReminder };
 
 type Props = {
@@ -161,6 +163,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
           query={query}
           onQueryChange={setQuery}
           onSelect={(chat) => abrirChat(chat.id)}
+          onHome={() => abrirChat(null)}
           me={{ name: credential.name, phone: credential.phone }}
           onSettings={() => setAviso(aviso ? '' : 'ajustes')}
           loading={chatsGuardados === null}
@@ -202,6 +205,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
           irA={irA?.chatId === selected.id ? irA : null}
           onCreateEvent={() => setCreando({ tipo: 'evento', chat: { id: selected.id, name: selected.name } })}
           onCreatePoll={() => setCreando({ tipo: 'encuesta', chat: { id: selected.id, name: selected.name } })}
+          onCreateChecklist={selected.encrypted ? undefined : () => setCreando({ tipo: 'checklist', chatId: selected.id })}
           onCreateReminder={() => setCreando({ tipo: 'recordatorio', chat: { id: selected.id, name: selected.propio ? 'Tú' : selected.name, kind: selected.kind } })}
           onEditReminder={(recordatorio) => setCreando({ tipo: 'recordatorio', chat: { id: selected.id, name: selected.name, kind: selected.kind }, editando: recordatorio })}
         />
@@ -226,6 +230,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
       ) : null}
       {creando?.tipo === 'evento' ? <CreateEventOverlay jwt={credential.jwt} chat={creando.chat} onClose={() => setCreando(null)} onCreated={alCrear} /> : null}
       {creando?.tipo === 'encuesta' ? <CreatePollOverlay jwt={credential.jwt} chat={creando.chat} onClose={() => setCreando(null)} onCreated={alCrear} /> : null}
+      {creando?.tipo === 'checklist' ? <CrearChecklist jwt={credential.jwt} chatId={creando.chatId} onClose={() => setCreando(null)} /> : null}
       {creando?.tipo === 'destacados' ? (
         <ListaDeDestacados
           jwt={credential.jwt}

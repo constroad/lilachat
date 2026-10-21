@@ -7,8 +7,8 @@ type Screen = { width: number; height: number };
 const artOf = (actor: SketchActor): WinkArt => ('character' in actor.art ? WINK_ART[actor.art.character] : WINK_PROPS[actor.art.prop]);
 
 /**
- * A wink sketch over the whole window (José, 21/10: «se trata de que sean
- * graciosos»): every actor (a character or a prop) follows the shared
+ * A wink sketch over the whole window (José, 21/10: winks are meant to be
+ * funny): every actor (a character or a prop) follows the shared
  * timeline (`WINK_SKETCHES`), sampled into keyframes, and its parts turn
  * around their joints; the eyes and the mouth ride on the head.
  */

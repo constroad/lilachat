@@ -1,4 +1,4 @@
-import { armarAviso, type Aviso } from '@lilachat/shared';
+import { armarAviso } from '@lilachat/shared';
 import type { BaseLocal } from '../local/baseLocal';
 import type { ChatMessage } from '../chat/types';
 
@@ -19,7 +19,7 @@ export function shouldShowBrowserNotice(params: { senderId: string; me: string; 
 }
 
 /** The same words as the push (`armarAviso`): the chat as title; nudges and winks said plainly; a secret chat hides the text. */
-export function browserNoticeText(chat: { name?: string; phone?: string; kind?: string; encrypted?: boolean }, message: { kind: string; body?: string }): Aviso {
+export function browserNoticeText(chat: { name?: string; phone?: string; kind?: string; encrypted?: boolean }, message: { kind: string; body?: string }): ReturnType<typeof armarAviso> {
   return armarAviso({
     chatName: chat.name ?? chat.phone ?? 'Lilachat',
     senderName: null,

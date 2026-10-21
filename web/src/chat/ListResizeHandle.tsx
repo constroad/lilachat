@@ -5,8 +5,8 @@ const KEY_STEP = 16;
 
 /**
  * The edge between the chat list and the conversation (design
- * `n-01-web-oscuro-lista`; José, 21/10: «debería ser draggable la lista de
- * chats»): drag it, use the arrow keys, or double-click to go back to the
+ * `n-01-web-oscuro-lista`; José, 21/10: the chat list should be draggable):
+ * drag it, use the arrow keys, or double-click to go back to the
  * usual width. The parent clamps and remembers the width.
  */
 export function ListResizeHandle(props: { width: number; onResize: (width: number) => void; onReset: () => void }) {

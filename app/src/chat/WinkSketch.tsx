@@ -32,8 +32,8 @@ const svgOf = (art: WinkArt, markup: string, stretch: boolean) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${art.viewBox}"${stretch ? ' preserveAspectRatio="none"' : ''}>${art.defs ? `<defs>${art.defs}</defs>` : ''}${markup}</svg>`;
 
 /**
- * A wink sketch over the whole screen (José, 21/10: «se trata de que sean
- * graciosos, no de que todos bailen»): every actor (a character or a prop)
+ * A wink sketch over the whole screen (José, 21/10: winks are meant to be
+ * funny, not everybody dancing): every actor (a character or a prop)
  * follows the shared timeline (`WINK_SKETCHES`) from ONE progress value, each
  * property interpolated on the UI thread; its parts turn around their joints
  * and the eyes and the mouth ride on the head. A part the sketch never moves

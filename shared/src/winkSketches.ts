@@ -3,9 +3,9 @@ import { danceTrack, mergeTracks, type ActorArt, type ActorKey, type PartKey, ty
 import type { CharacterWinkId, SiteWinkId } from './winks.js';
 
 /**
- * The wink sketches (José, 21/10: «estos se trata de que sean graciosos, no de
- * que todos bailen… el que abraza debe abrazar… el chanchito gordito moviendo y
- * enseñando el rabo»). Each one is a short gag with a setup and a punchline,
+ * The wink sketches (José, 21/10: they are meant to be funny, not everybody
+ * dancing; the hugger must hug; the pig chubby, wiggling and showing its
+ * tail). Each one is a short gag with a setup and a punchline,
  * like MSN's: the party pig turns around and wiggles its tail, the water
  * balloon bursts on the glass, the foreman knocks until the screen cracks, the
  * panda really hugs the screen. Only the cone dances. Adult humor: nothing
@@ -156,7 +156,7 @@ function balloon(): Sketch {
   };
 }
 
-/** The galán winks twice for real and throws you his rose. */
+/** The charmer winks twice for real and throws you his rose. */
 function sweetheart(): Sketch {
   const durationMs = STANDARD_MS;
   const keys: ActorKey[] = [{ at: 0, x: OFF_LEFT, y: FLOOR_Y, scale: SIZE }, { at: 0.18, x: 0.45, ease: 'out' }, { at: 0.86, x: 0.45 }, { at: 1, x: OFF_RIGHT, ease: 'in' }, ...sway('rotate', 0, 0.18, durationMs, 4, 320, 0), { at: 0.62, rotate: 0 }, { at: 0.66, rotate: 8 }, { at: 0.74, rotate: 0 }];

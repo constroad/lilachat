@@ -1,10 +1,10 @@
 /**
- * Vivid Pulse para la web, claro y oscuro (José, 21/10: la web no tenía modo
- * oscuro). Los hex NO viven acá: salen de `shared/tokens.json`, generado desde
- * `shared/src/tokens.ts` (la única fuente, igual que en la app). Cada color es
- * una variable CSS en `rgb(… / alpha)`: `.dark` en `<html>` cambia la paleta y
- * las opacidades (`bg-primary/10`) siguen andando.
- * Tras tocar los tokens: `npm run emit-tokens` en la raíz.
+ * Vivid Pulse for the web, light and dark (José, 21/10: the web had no dark
+ * mode). No hex lives here: they come from `shared/tokens.json`, generated from
+ * `shared/src/tokens.ts` (the only source, like the app). Each color is a CSS
+ * variable in `rgb(… / alpha)`: `.dark` on `<html>` switches the palette and
+ * the opacities (`bg-primary/10`) keep working.
+ * After changing the tokens: `npm run emit-tokens` at the root.
  */
 import { createRequire } from 'node:module';
 import plugin from 'tailwindcss/plugin';

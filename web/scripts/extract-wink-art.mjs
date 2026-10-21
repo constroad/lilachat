@@ -29,7 +29,7 @@ function readSheet() {
   const DEFAULTS = { fill: '#000000', stroke: 'none', 'stroke-width': '1', 'stroke-linecap': 'butt', 'stroke-linejoin': 'miter', opacity: '1', 'fill-opacity': '1', 'stroke-opacity': '1', 'fill-rule': 'nonzero' };
   const TEXT_PROPS = ['font-family', 'font-size', 'font-weight', 'text-anchor', 'letter-spacing'];
   const SHAPES = 'path, circle, ellipse, rect, line, polyline, polygon, text';
-  /** Something held in a hand that a sketch lets go of (the galán throws his rose). */
+  /** Something held in a hand that a sketch lets go of (the charmer throws his rose). */
   const HELD = ['rosa-galan'];
   const hex = (value) => {
     const rgb = value.match(/^rgba?\((\d+), (\d+), (\d+)(?:, ([\d.]+))?\)$/);

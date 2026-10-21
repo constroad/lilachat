@@ -80,6 +80,27 @@ export type ClientWorkspace = {
   joinCode?: string;
   members: number;
   unreadChats: number;
+  /** For those who approve: requests waiting (design `e1-11`). */
+  pendingRequests?: number;
+  /** Someone else added me (design `e1-13`, «José Zamora te agregó a CONSTROAD»). */
+  addedBy?: { name?: string; phone: string };
+  /** Without access: who to talk to (design `e1-14`). */
+  admins?: { userId: string; name?: string; phone: string }[];
+};
+
+/** A person of a space as `GET /api/workspaces/:id/members` returns it. */
+export type ClientWorkspaceMember = {
+  id: string;
+  userId?: string;
+  name?: string;
+  avatarUrl?: string;
+  phone: string;
+  role: WorkspaceRole;
+  status: WorkspaceMemberStatus;
+  title?: string;
+  area?: string;
+  joinedAt?: string;
+  requestedAt?: string;
 };
 
 /** What a code shows before joining (`GET /api/workspaces/preview/:code`). */

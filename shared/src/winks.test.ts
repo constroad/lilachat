@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NUDGE_SHAKE, funArrivedInRow, funMessageToPlay, funNoticeText, isWinkId, shouldPlayFun, WINKS, winkById, winkCardLines, winkCues, winkParticles, winkRowSound } from './winks.js';
+import { NUDGE_SHAKE, funArrivedInRow, funMessageToPlay, FUN_LIVE_MS, funNoticeText, isWinkId, shouldPlayFun, WINKS, winkById, winkCardLines, winkCues, winkParticles, winkRowSound } from './winks.js';
 
 describe('the wink catalog', () => {
   it('characters, construction ones and the first emoji ones, each with a name and its length', () => {
@@ -106,6 +106,21 @@ describe('funMessageToPlay', () => {
     expect(funMessageToPlay([rows[3]!], me, 0, { mineToo: false })).toBeNull();
     expect(funMessageToPlay([rows[3]!], me, 0, { mineToo: true })).toEqual({ seq: 4, kind: 'guino', wink: 'party', mine: true });
     expect(funMessageToPlay([rows[4]!], me, 0, { mineToo: false })).toBeNull();
+  });
+
+  /**
+   * José, 21/10 (web): «cada vez que ingreso al chat zumba». The chat first
+   * draws what it had stored and then the rest of the history arrives; that
+   * second batch is not «live». Mine only plays live when it was just sent.
+   */
+  it('an old nudge of mine that arrives with the history does not play; one I just sent does', () => {
+    const now = Date.parse('2026-10-21T15:00:00Z');
+    const old = { seq: 7, kind: 'zumbido', senderId: 'jose', at: '2026-10-21T12:40:00Z' };
+    const fresh = { seq: 8, kind: 'zumbido', senderId: 'jose', at: '2026-10-21T14:59:58Z' };
+    expect(funMessageToPlay([old], me, 0, { mineToo: true, mineSince: now - FUN_LIVE_MS })).toBeNull();
+    expect(funMessageToPlay([old, fresh], me, 0, { mineToo: true, mineSince: now - FUN_LIVE_MS })).toEqual({ seq: 8, kind: 'zumbido', mine: true });
+    // Someone else's that I had not read still plays once, however old.
+    expect(funMessageToPlay([{ seq: 9, kind: 'zumbido', senderId: 'ana', at: '2026-10-21T09:00:00Z' }], me, 0, { mineToo: true, mineSince: now - FUN_LIVE_MS })).toEqual({ seq: 9, kind: 'zumbido', mine: false });
   });
 
   it('a wink this version does not know is not played', () => {

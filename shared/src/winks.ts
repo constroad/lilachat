@@ -171,20 +171,28 @@ export function winkParticles(wink: Wink, seed: number): WinkParticle[] {
 
 export type FunToPlay = { seq: number; kind: 'zumbido'; mine: boolean } | { seq: number; kind: 'guino'; wink: WinkId; mine: boolean };
 
+/** How recent a nudge or wink of mine must be to count as «just sent» (it comes back through the socket in a second or two; the margin covers a clock a little off). */
+export const FUN_LIVE_MS = 30_000;
+
 /**
  * The nudge or wink to play: the newest after `afterSeq`. When the chat opens,
  * `afterSeq` is what was already read, so the one that came while it was closed
  * plays once (spec: «la animación corre una sola vez al abrirlo»). A wink or
  * nudge I send plays for me when it goes (`mineToo`; José, 21/10: he did not
- * feel his own nudge), not again when I open the chat later.
+ * feel his own nudge), not again when I open the chat later. With `mineSince`,
+ * mine only counts if it was sent after that moment: the history that arrives
+ * after the chat opened is not «live» (José, 21/10: every time he went into
+ * the chat, his old nudge buzzed again).
  */
-export function funMessageToPlay(messages: readonly { seq: number; kind?: string; senderId: string; wink?: string }[], me: string, afterSeq: number, options: { mineToo: boolean } = { mineToo: true }): FunToPlay | null {
+export function funMessageToPlay(messages: readonly { seq: number; kind?: string; senderId: string; wink?: string; at?: string }[], me: string, afterSeq: number, options: { mineToo: boolean; mineSince?: number } = { mineToo: true }): FunToPlay | null {
   let newest: FunToPlay | null = null;
   for (const message of messages) {
     if (message.seq <= afterSeq || (newest && message.seq < newest.seq)) continue;
     const mine = message.senderId === me;
-    if (message.kind === 'zumbido' && (!mine || options.mineToo)) newest = { seq: message.seq, kind: 'zumbido', mine };
-    if (message.kind === 'guino' && isWinkId(message.wink) && (!mine || options.mineToo)) newest = { seq: message.seq, kind: 'guino', wink: message.wink, mine };
+    const fresh = options.mineSince === undefined || (message.at !== undefined && Date.parse(message.at) >= options.mineSince);
+    const counts = !mine || (options.mineToo && fresh);
+    if (message.kind === 'zumbido' && counts) newest = { seq: message.seq, kind: 'zumbido', mine };
+    if (message.kind === 'guino' && isWinkId(message.wink) && counts) newest = { seq: message.seq, kind: 'guino', wink: message.wink, mine };
   }
   return newest;
 }

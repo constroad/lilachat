@@ -14,7 +14,9 @@ import mongoose from 'mongoose';
 export async function connectDb(): Promise<void> {
   const url = process.env.MONGO_URL || '';
   if (!url) throw new Error('MONGO_URL es obligatorio (bóveda, base lilachat_db)');
-  await mongoose.connect(url);
+  // No index or collection is created on its own (memory `boveda-no-autoindex`): they go by hand, with a plan.
+  // On 21/10 a dry-run that imported the models created the E1 indexes because this was missing.
+  await mongoose.connect(url, { autoIndex: false, autoCreate: false });
   // Sin `new URL(url)`: las URIs de Mongo multi-host (host1,host2,…) no son
   // URLs válidas para WHATWG y el throw acá mató al seed DESPUÉS de conectar.
   console.log('[lilachat] mongo conectado');

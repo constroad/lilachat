@@ -86,7 +86,7 @@ export function buildContactRouter(): Router {
       UserModel.find({ phone: { $in: numeros }, _id: { $ne: me } })
         .select('name phone')
         .lean(),
-      ChatModel.find({ kind: 'direct', 'members.userId': me }).select('members').lean(),
+      ChatModel.find({ kind: 'direct', 'members.userId': me, workspaceId: { $exists: false } }).select('members').lean(),
     ]);
 
     const chatCon = new Map<string, string>();

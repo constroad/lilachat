@@ -48,7 +48,13 @@ export interface Chat {
   descripcion?: string;
   /** El chat contigo («Tú · Envíate un mensaje», 20/10): un borrador único por persona. */
   propio?: boolean;
+  /** E1: the company space it belongs to; without it, it is personal. */
+  workspaceId?: Types.ObjectId;
+  /** E2: a group of a space that is a CHANNEL (`name` is its slug); public ones are found and joined without an invitation. */
+  channel?: { visibility: 'public' | 'private' };
   members: ChatMember[];
+  /** E1: people deactivated in the space, out of `members` until reactivated (`workspaceChats`). */
+  suspendedMembers?: Pick<ChatMember, 'userId' | 'role' | 'joinedAt'>[];
   /** Último `seq` asignado. Es el contador que `$inc` mueve. */
   lastSeq: number;
   /**
@@ -72,7 +78,7 @@ export interface Message {
   seq: number;
   senderId: Types.ObjectId;
   clientKey: string;
-  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'event' | 'poll' | 'reminder' | 'system' | 'sticker';
+  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'event' | 'poll' | 'reminder' | 'system' | 'sticker' | 'zumbido';
   body?: string;
   /**
    * La encuesta o el evento que este mensaje publica en el chat (José, 18/10).
@@ -174,6 +180,12 @@ const chatSchema = new Schema<Chat>(
     avatarUrl: { type: String },
     descripcion: { type: String },
     propio: { type: Boolean },
+    workspaceId: { type: Schema.Types.ObjectId },
+    channel: { visibility: { type: String, enum: ['public', 'private'] } },
+    suspendedMembers: {
+      type: [{ userId: { type: Schema.Types.ObjectId, required: true }, role: { type: String, enum: ['admin', 'member'] }, joinedAt: { type: Date }, _id: false }],
+      default: undefined,
+    },
     members: [
       {
         userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
@@ -199,6 +211,7 @@ const chatSchema = new Schema<Chat>(
 // «Mis chats» es LA consulta de la app: se hace una vez por arranque y por
 // reconexión, así que va indexada por miembro.
 chatSchema.index({ 'members.userId': 1 });
+chatSchema.index({ workspaceId: 1 }, { sparse: true });
 
 const messageSchema = new Schema<Message>(
   {
@@ -208,7 +221,7 @@ const messageSchema = new Schema<Message>(
     clientKey: { type: String, required: true },
     kind: {
       type: String,
-      enum: ['text', 'image', 'video', 'audio', 'file', 'event', 'poll', 'reminder', 'system', 'sticker'],
+      enum: ['text', 'image', 'video', 'audio', 'file', 'event', 'poll', 'reminder', 'system', 'sticker', 'zumbido'],
       default: 'text',
     },
     body: { type: String },

@@ -13,6 +13,7 @@ import { buildPushRouter } from './pushRoutes.js';
 import { buildBackupRouter } from './backupRoutes.js';
 import { buildAssistantRouter } from './assistantRoutes.js';
 import { buildCrashRouter } from './crashRoutes.js';
+import { buildWorkspaceRouter } from './workspaceRoutes.js';
 import { buildContactRouter } from './contactRoutes.js';
 import { buildKeyRouter } from './keyRoutes.js';
 import { buildCallRouter } from './callRoutes.js';
@@ -100,6 +101,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   // Sin sesión: una app que revienta al arrancar no llegó a tener una.
   app.use('/api/crash', buildCrashRouter());
   app.use('/api/contacts', buildContactRouter());
+  app.use('/api/workspaces', buildWorkspaceRouter());
   app.use('/api/keys', buildKeyRouter());
   app.use('/api/calls', buildCallRouter());
   app.use('/api/me', buildMeRouter(deps.mediaUploader));

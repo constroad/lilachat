@@ -228,7 +228,9 @@ export function buildPushText(params: {
             ? '🎤 Nota de voz'
             : params.kind === 'sticker'
               ? 'Sticker'
-              : '');
+              : params.kind === 'zumbido'
+                ? 'Te mandó un zumbido'
+                : '');
   return {
     // En un grupo importan los dos: de qué grupo y quién habló.
     title: params.chatName ? `${params.chatName} · ${params.senderName}` : params.senderName,

@@ -1,3 +1,4 @@
+import { allActiveIn } from './workspaceChats.js';
 import { Router } from 'express';
 import { Types } from 'mongoose';
 import { CAPACIDADES_DE_PUSH, normalizarNombreDeGrupo, NOTIFICATION_LEVELS, notificationLevel, textoDeAviso } from '@lilachat/shared';
@@ -96,7 +97,12 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
   router.use(requireSession);
 
   router.get('/', async (req, res) => {
-    res.json({ chats: await listChats(req.session!.userId) });
+    // E1: `?workspace=<id>` lists that space's chats, only for an ACTIVE member.
+    const workspace = typeof req.query.workspace === 'string' ? req.query.workspace : undefined;
+    if (!workspace) return res.json({ chats: await listChats(req.session!.userId) });
+    const workspaceId = Types.ObjectId.isValid(workspace) ? new Types.ObjectId(workspace) : null;
+    if (!workspaceId || !(await allActiveIn(workspaceId, [new Types.ObjectId(req.session!.userId)]))) return res.status(404).json({ message: 'Ese espacio no existe o no estás en él.' });
+    res.json({ chats: await listChats(req.session!.userId, workspaceId) });
   });
 
   // Buscar texto en las conversaciones del usuario. Va ANTES de `/:chatId/...`
@@ -197,6 +203,13 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
       return res.status(400).json({ message: 'Elige con quién quieres hablar.' });
     }
 
+    // E1: a chat of a company space, only among its ACTIVE members.
+    const rawWorkspace = typeof req.body?.workspaceId === 'string' ? req.body.workspaceId : undefined;
+    const workspaceId = rawWorkspace && Types.ObjectId.isValid(rawWorkspace) ? new Types.ObjectId(rawWorkspace) : undefined;
+    if (rawWorkspace && (!workspaceId || !(await allActiveIn(workspaceId, [...unique.values()])))) {
+      return res.status(403).json({ message: 'Solo personas activas del espacio pueden estar en sus chats.' });
+    }
+
     // UN GRUPO SIN NOMBRE NO ES USABLE: la lista lo mostraría sin título y no
     // habría forma de distinguirlo de los demás.
     if (kind === 'group' && !name) {
@@ -217,6 +230,8 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
         kind: 'direct',
         'members.userId': { $all: ids },
         members: { $size: ids.length },
+        // The 1:1 in a space is not the personal one with the same person (E1).
+        workspaceId: workspaceId ?? { $exists: false },
       })
         .select('_id')
         .lean();
@@ -229,6 +244,7 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
       // cifra y a veces no da una promesa que nadie puede sostener (F9).
       encrypted: req.body?.encrypted === true,
       name: name || undefined,
+      ...(workspaceId ? { workspaceId } : {}),
       members: [...unique.values()].map((userId) => ({
         userId,
         role: String(userId) === String(me) ? 'admin' : 'member',

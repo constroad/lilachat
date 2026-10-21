@@ -1,3 +1,4 @@
+import { ensureNudgeAllowed, NudgeError } from './zumbido.js';
 import type { Server as HttpServer } from 'node:http';
 import { Types } from 'mongoose';
 import { Server as SocketServer, type Socket } from 'socket.io';
@@ -184,6 +185,7 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
     socket.on('msg.send', async (frame: unknown, ack?: (response: unknown) => void) => {
       const payload = (frame ?? {}) as Record<string, unknown>;
       try {
+        if (payload.kind === 'zumbido') await ensureNudgeAllowed(String(payload.chatId ?? ''), userId);
         const result = await sendMessage({
           chatId: String(payload.chatId ?? ''),
           senderId: userId,
@@ -241,7 +243,7 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
         }
       } catch (error) {
         // Una raíz de hilo inválida también es permanente (E3): la cola la descarta con su motivo.
-        if (error instanceof HiloInvalidoError) return ack?.({ ok: false, status: 400, message: error.message, motivo: error.message });
+        if (error instanceof HiloInvalidoError || error instanceof NudgeError) return ack?.({ ok: false, status: 400, message: error.message, motivo: error.message });
         const forbidden = error instanceof ForbiddenChatError;
         // 403 es PERMANENTE para la cola del cliente: descarta con motivo en
         // vez de reintentar para siempre (anti-wedge del outbox).

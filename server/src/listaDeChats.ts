@@ -52,6 +52,8 @@ export type ChatSummary = {
   avatarUrl?: string;
   /** El chat contigo («Tú», 20/10). */
   propio?: boolean;
+  /** E2: a channel of the space (its `name` is the slug). */
+  channel?: { visibility: 'public' | 'private' };
   /** Silenciado por MÍ: la lista lo marca y no me llega push de acá. */
   muted?: boolean;
   /** E3b: «todo», «menciones» or «nada» (from muted + avisos). */
@@ -66,8 +68,9 @@ export type ChatSummary = {
   fijados?: FijadoEnLista[];
 };
 
-export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> {
-  const chats = await ChatModel.find({ 'members.userId': userId }).lean();
+/** `workspaceId`: the chats of that company space; without it, the personal ones (E1). */
+export async function listChats(userId: Types.ObjectId, workspaceId?: Types.ObjectId): Promise<ChatSummary[]> {
+  const chats = await ChatModel.find({ 'members.userId': userId, workspaceId: workspaceId ?? { $exists: false } }).lean();
   if (chats.length === 0) return [];
 
   const chatIds = chats.map((chat) => chat._id);
@@ -156,6 +159,7 @@ export async function listChats(userId: Types.ObjectId): Promise<ChatSummary[]> 
         return foto ? toAbsoluteMediaUrl(foto) : undefined;
       })(),
       ...(chat.propio ? { propio: true } : {}),
+      ...(chat.channel ? { channel: { visibility: chat.channel.visibility } } : {}),
       muted: yo?.muted === true,
       avisos: notificationLevel(yo ?? {}),
       pinned: yo?.pinned === true,

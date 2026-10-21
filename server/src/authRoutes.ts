@@ -9,6 +9,7 @@ import {
   resolveOtpTarget,
   resolveVerifyTargets,
 } from './invitationGate.js';
+import { claimPhoneInvites } from './workspaces.js';
 import { DeviceModel, InvitationModel, UserModel } from './models.js';
 import { signSession } from './sessions.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
@@ -138,6 +139,8 @@ export function buildAuthRouter(authClient: AuthClient): Router {
       },
       { returnDocument: 'after', upsert: true }
     );
+    // Spaces that added this phone before it had an account (E1): it joins them now.
+    await claimPhoneInvites(user._id, phone).catch((error) => console.error('[workspaces] no se pudieron reclamar invitaciones:', error instanceof Error ? error.message : error));
     await DeviceModel.findOneAndUpdate(
       { deviceId },
       { deviceId, userId: user._id, lastSeenAt: new Date() },

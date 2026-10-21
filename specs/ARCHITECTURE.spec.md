@@ -4892,7 +4892,64 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
-## 77. Guiños con remate, no bailes: los sketches (21/10/2026, sin publicar)
+## 78. El guiño que Wilson no veía, el hueco bajo el sticker y los avisos como WhatsApp (21/10/2026, 0.1.119)
+
+José, 21/10, con la 0.1.117:
+- a Wilson no le salía a pantalla completa el guiño que José le mandaba, ni con
+  «Ver otra vez»;
+- el sticker mandado desde el panel dejaba un hueco abajo;
+- los avisos de WhatsApp tienen «Responder» y se agrupan; los de Lilachat no.
+
+**El guiño (app y web).**
+- La base estaba bien: los dos guiños de ese chat se guardaron con su `wink`,
+  el server los reenvía completos (`messageView`) y el teléfono los guarda
+  enteros.
+- En el emulador, con el chat abierto, llega y se ve (el PARE).
+- **Causa 1: «Quitar animaciones».** Lo activan el ahorro de batería de Samsung
+  y el ajuste de accesibilidad.
+  - `shouldPlayFun` saltaba la animación.
+  - Reanimated, por su cuenta (`ReduceMotion.System`), termina al instante
+    cualquier `withTiming`.
+  - Reproducido en el emulador con las tres escalas de animación en 0: «Ver
+    otra vez» no mostraba nada; con el arreglo, el panda sale entero.
+- **Causa 2: el chat silenciado.** No se reproducía nada, ni con «Ver otra
+  vez».
+- **Regla nueva** (`shouldPlayFun({ place })`, 3 tests):
+  - en el chat abierto, siempre se ve; silenciado, solo sin sonido;
+  - «Ver otra vez» se reproduce entero, con sonido;
+  - en una fila de la lista, silenciado sigue quieto y con «menos movimiento»
+    no se mueve.
+- **Animaciones:** las del guiño y el zumbido van con `ReduceMotion.Never`.
+- **Lo leído al abrir** se toma UNA vez (`readAtOpen`). El panel ancho recibe
+  el chat vivo y, si los mensajes tardaban en cargar, la marca de leído ya
+  había avanzado y el guiño contaba como visto.
+
+**El hueco bajo el sticker** (`useFinalDeLaConversacion`).
+- Al abrir, el panel reserva espacio debajo de la lista (`blankSpace`). Al
+  cerrarlo, la lista bajaba sola solo si no había llegado nada mientras estaba
+  abierto.
+- Con el sticker recién mandado quedaba arriba, con el hueco del panel.
+  Reproducido en el emulador (sticker + «atrás»).
+- Ahora, al cerrarse el panel estando al final, la lista baja al final después
+  de la animación (`PANEL_MOVE_MS`).
+
+**Avisos.**
+- Los equipos de José y Wilson tienen `mensaje-nativo`. El push llega
+  solo-datos y el aviso nativo (`AvisoDeMensaje`) ya trae «Responder» y
+  «Marcar como leído».
+- Lo que no tenía: con la app ADELANTE (otro chat o la lista), la app dejaba en
+  la bandeja un aviso de `expo-notifications`, sin acciones ni grupo.
+- Ahora, como WhatsApp, con la app adelante solo suena el tono de notificación
+  del teléfono (o vibra en modo vibrador) y no queda nada en la bandeja
+  (`playInAppAlert`). Un build viejo sin la función sigue con el aviso de antes.
+- Los avisos nativos se agrupan (`setGroup`) bajo un resumen «N mensajes de M
+  chats», con una línea por chat. No suena (`GROUP_ALERT_CHILDREN`) y se va con
+  el último chat.
+- **Sin verificar en el teléfono:** el push y el resumen no se pueden probar
+  contra el server QA, que no manda push. Se verifica con la versión
+  publicada.
+
+## 77. Guiños con remate, no bailes: los sketches (21/10/2026, 0.1.118)
 
 José, 21/10: «¿todos los personajes bailan? ¿Dónde está el globo que te
 enviaban? El que abraza debe abrazar; se trata de que sean graciosos, no de que
@@ -4975,7 +5032,7 @@ archivos en 336 KB, menos que los 5 WAV de antes (458 KB).
   igual que en la web: el sacudón de pantalla y el decodificador MP3 sonando.
   Sin errores de JS.
 
-## 76. La web: logo, modo oscuro, fondo de puntos, lista que se arrastra y avisos del sistema (21/10/2026, sin publicar)
+## 76. La web: logo, modo oscuro, fondo de puntos, lista que se arrastra y avisos del sistema (21/10/2026, en la web desde el push del 21/10)
 
 Cierra los pendientes 24–28 (José, 21/10). Diseños `n-01-web-oscuro-lista` y
 `n-02-web-lista-plegada`.
@@ -5026,7 +5083,7 @@ sobre `--c-chat-bg`, igual que `FondoDelChat` de la app.
 - Banda visible con el permiso en `default`.
 - El dispositivo vinculado por el E2E se borró al terminar.
 
-## 75. El recordatorio que suena se responde como un mensaje (21/10/2026, sin publicar)
+## 75. El recordatorio que suena se responde como un mensaje (21/10/2026, 0.1.117)
 
 José, 21/10: en el chat con Wilson le apareció el recordatorio, pero no podía
 reaccionar, responder ni mandar un sticker.
@@ -5064,7 +5121,7 @@ mensaje, más los avisos destacados). El server filtra con
 - Deslizar abre «Respondiendo · ⏰ Recordatorio: Pagar la luz», y el sticker salió citándolo.
 - En la web: los tres botones, ❤️ (queda «👍 1 · ❤️ 1»), el menú sin Info y la cita al responder.
 
-## 74. Guiños y el zumbido completo (21/10/2026, sin publicar)
+## 74. Guiños y el zumbido completo (21/10/2026, 0.1.117)
 
 José, 21/10: «sigue con lo que falta de los pendientes de messenger, los
 guiños, las animaciones y todo lo que te puse para ese feature».

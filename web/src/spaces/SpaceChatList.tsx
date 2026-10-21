@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Copy, Hash, Lock, PanelLeftClose, Plus, Search, Settings, UserPlus } from 'lucide-react';
-import { formatChatTimestamp, spaceSections, spaceSubtitle, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
+import { ChevronDown, ChevronRight, Copy, Hash, Inbox, Lock, PanelLeftClose, Plus, Search, Settings, Settings2, UserCog, UserPlus, Users, type LucideIcon } from 'lucide-react';
+import { canManageMembers, formatChatTimestamp, membersLabel, spaceSections, spaceSubtitle, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { FilaDeChat } from '../chat/FilaDeChat';
 import { copiarTexto } from '../chat/copiarTexto';
 import type { AccionDelChat } from '../chat/menuDelChat';
 import type { ChatSummary } from '../chat/types';
 import { SpaceLogo } from './SpaceLogo';
+
+export type WorkspaceLink = 'directory' | 'members' | 'requests' | 'settings';
 
 type Props = {
   space: ClientWorkspace;
@@ -22,7 +24,11 @@ type Props = {
   onSwitch: () => void;
   onChannels: () => void;
   onInvite: () => void;
-  onSettings: () => void;
+  onWorkspace: (link: WorkspaceLink) => void;
+  onNewDirect: () => void;
+  onNewGroup: () => void;
+  /** The foot with me and «Ajustes»: only without the rail. */
+  onSettings?: () => void;
   width?: number;
   onCollapse?: () => void;
 };
@@ -55,7 +61,7 @@ export function SpaceChatList(props: Props) {
   };
 
   return (
-    <aside data-testid="panel-espacio" className={`flex h-full w-full flex-col bg-surface ${props.width ? 'shrink-0' : 'border-r border-outline/15 md:w-[340px] md:shrink-0 lg:w-[400px]'}`} style={props.width ? { width: props.width } : undefined}>
+    <aside data-testid="panel-espacio" className={`flex h-full w-full min-w-0 flex-col bg-surface ${props.width ? 'shrink-0' : 'border-r border-outline/15 md:w-[340px] md:shrink-0 lg:w-[400px]'}`} style={props.width ? { width: props.width } : undefined}>
       <header className="flex items-center gap-2 px-4 py-3">
         <button type="button" data-testid="titulo-espacio" aria-label="Cambiar de espacio" onClick={props.onSwitch} className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left">
           <SpaceLogo space={space} size={36} />
@@ -80,6 +86,7 @@ export function SpaceChatList(props: Props) {
         </label>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto pb-2">
+        <WorkspaceLinks space={space} onOpen={props.onWorkspace} />
         {props.failed && chats === null ? (
           <button type="button" onClick={props.onRetry} className="mx-3 mt-2 w-[calc(100%-24px)] rounded-xl bg-error/10 px-4 py-3 text-left text-[13px] text-error">No se pudo cargar el espacio. Toca para reintentar.</button>
         ) : null}
@@ -103,9 +110,7 @@ export function SpaceChatList(props: Props) {
                     <span className="flex-1 text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{section.title}</span>
                     <span className="text-[11px] text-on-surface-variant">{section.chats.length}</span>
                   </button>
-                  {section.key === 'channels' ? (
-                    <button type="button" aria-label="Agregar canal" title="Agregar canal" onClick={props.onChannels} className="grid h-8 w-8 place-items-center rounded-full text-on-surface-variant hover:bg-background"><Plus size={16} /></button>
-                  ) : null}
+                  <button type="button" data-testid={`nuevo-${section.key}`} aria-label={NEW_IN_SECTION[section.key]} title={NEW_IN_SECTION[section.key]} onClick={section.key === 'channels' ? props.onChannels : section.key === 'groups' ? props.onNewGroup : props.onNewDirect} className="grid h-8 w-8 place-items-center rounded-full text-on-surface-variant hover:bg-background"><Plus size={16} /></button>
                 </div>
                 {folded.has(section.key)
                   ? null
@@ -130,12 +135,42 @@ export function SpaceChatList(props: Props) {
           <button type="button" data-testid="copiar-codigo-del-espacio" onClick={() => void copyCode()} className="ml-auto flex h-9 items-center gap-1.5 rounded-lg px-2 text-[13px] font-semibold text-primary hover:bg-background"><Copy size={14} /> {copied ? 'Copiado' : 'Copiar'}</button>
         </div>
       ) : null}
+      {props.onSettings ? (
       <footer className="flex items-center gap-3 border-t border-outline/15 bg-primary/5 px-4 py-3">
         <Avatar name={props.me.name ?? props.me.phone} size={36} />
         <p className="min-w-0 flex-1 truncate text-sm font-semibold">{props.me.name ?? props.me.phone}</p>
         <button type="button" aria-label="Ajustes" onClick={props.onSettings} className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant hover:bg-surface"><Settings size={18} /></button>
       </footer>
+      ) : null}
     </aside>
+  );
+}
+
+const NEW_IN_SECTION: Record<SpaceSectionKey, string> = { channels: 'Agregar canal', groups: 'Nuevo grupo', directs: 'Nuevo mensaje directo' };
+
+/**
+ * «Espacio de trabajo» on top of the list (desktop designs `e1-05`, `e1-06`):
+ * the directory for everyone; members and roles, requests (with how many
+ * wait) and the settings for those who manage the space.
+ */
+function WorkspaceLinks(props: { space: ClientWorkspace; onOpen: (link: WorkspaceLink) => void }) {
+  const admin = canManageMembers(props.space.role);
+  const pending = props.space.pendingRequests ?? 0;
+  const row = (link: WorkspaceLink, Icon: LucideIcon, label: string, trailing?: string, highlight?: boolean) => (
+    <button key={link} type="button" data-testid={`espacio-${link}`} onClick={() => props.onOpen(link)} className="flex h-10 w-full items-center gap-2.5 px-4 text-left text-sm hover:bg-background">
+      <Icon size={16} className={highlight ? 'text-primary' : 'text-on-surface-variant'} />
+      <span className={`min-w-0 flex-1 truncate ${highlight ? 'font-bold' : ''}`}>{label}</span>
+      {trailing ? <span className={highlight ? 'grid h-5 min-w-[20px] place-items-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-on-primary' : 'text-[11px] text-on-surface-variant'}>{trailing}</span> : null}
+    </button>
+  );
+  return (
+    <section data-testid="seccion-espacio-de-trabajo" className="pb-1">
+      <p className="px-4 pb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Espacio de trabajo</p>
+      {row('directory', Users, 'Directorio de equipo', membersLabel(props.space.members))}
+      {admin ? row('members', UserCog, 'Miembros y roles') : null}
+      {admin && pending > 0 ? row('requests', Inbox, 'Solicitudes', String(pending), true) : null}
+      {admin ? row('settings', Settings2, 'Ajustes del espacio') : null}
+    </section>
   );
 }
 

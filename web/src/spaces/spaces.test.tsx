@@ -133,7 +133,7 @@ describe('SpaceChatList', () => {
   const chat = (id: string, extra: Partial<ChatSummary>): ChatSummary => ({ id, kind: 'group', memberIds: [], lastSeq: 1, unread: 0, othersReadSeq: 0, othersDeliveredSeq: 0, lastMessage: null, ...extra }) as ChatSummary;
 
   const list = (chats: ChatSummary[] | null, extra: Partial<Parameters<typeof SpaceChatList>[0]> = {}) => (
-    <SpaceChatList space={space()} chats={chats} failed={false} onRetry={() => undefined} yo="u1" me={{ name: 'José', phone: '902049935' }} selectedChatId={null} onOpenChat={() => undefined} onAccion={() => undefined} onSwitch={() => undefined} onChannels={() => undefined} onInvite={() => undefined} onSettings={() => undefined} {...extra} />
+    <SpaceChatList space={space()} chats={chats} failed={false} onRetry={() => undefined} yo="u1" me={{ name: 'José', phone: '902049935' }} selectedChatId={null} onOpenChat={() => undefined} onAccion={() => undefined} onSwitch={() => undefined} onChannels={() => undefined} onInvite={() => undefined} onWorkspace={() => undefined} onNewDirect={() => undefined} onNewGroup={() => undefined} onSettings={() => undefined} {...extra} />
   );
 
   it('channels, groups and direct messages in sections, folded with the arrow, with the code to copy at the foot', async () => {

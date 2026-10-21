@@ -16,11 +16,13 @@ function Badge({ count }: { count: number }) {
  * «+» to join or create one. Only with a space: the personal account alone
  * keeps looking like WhatsApp Web.
  */
-export function SpacesRail(props: { spaces: readonly ClientWorkspace[] | null; currentId: string | null; me: { name?: string | null; phone: string }; personalUnread: number; onPick: (spaceId: string | null) => void; onAdd: () => void }) {
+export function SpacesRail(props: { spaces: readonly ClientWorkspace[] | null; currentId: string | null; me: { name?: string | null; phone: string }; personalUnread: number; onPick: (spaceId: string | null) => void; onAdd: () => void; embedded?: boolean }) {
   const spaces = railSpaces(props.spaces);
   const item = (active: boolean) => `relative grid h-12 w-12 place-items-center rounded-xl transition-shadow ${active ? 'ring-2 ring-primary ring-offset-2 ring-offset-surface' : 'hover:ring-2 hover:ring-outline/30'}`;
+  // Inside the app's rail (pending 38) it is its middle part; alone, a rail of its own.
+  const Wrapper = props.embedded ? 'div' : 'nav';
   return (
-    <nav data-testid="riel-de-espacios" aria-label="Espacios" className="flex h-full w-[72px] shrink-0 flex-col items-center gap-3 border-r border-outline/15 bg-background py-3">
+    <Wrapper data-testid="riel-de-espacios" aria-label="Espacios" className={props.embedded ? 'flex min-h-0 flex-1 flex-col items-center gap-3 overflow-y-auto py-1' : 'flex h-full w-[72px] shrink-0 flex-col items-center gap-3 border-r border-outline/15 bg-background py-3'}>
       <button type="button" data-testid="riel-personal" title="Personal" aria-current={props.currentId === null} aria-label={props.personalUnread ? `Personal, ${props.personalUnread} sin leer` : 'Personal'} onClick={() => props.onPick(null)} className={`${item(props.currentId === null)} rounded-full bg-primary/10 text-sm font-bold text-primary`}>
         {spaceInitials(props.me.name || props.me.phone)}
         <Badge count={props.personalUnread} />
@@ -45,6 +47,6 @@ export function SpacesRail(props: { spaces: readonly ClientWorkspace[] | null; c
           </button>
         </li>
       </ul>
-    </nav>
+    </Wrapper>
   );
 }

@@ -1,4 +1,4 @@
-import type { ClientChannel, ClientWorkspace, JoinPolicy, WorkspaceMemberStatus, WorkspacePreview } from '@lilachat/shared';
+import type { ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
 import { api } from '../api';
 import type { ChatSummary } from '../chat/types';
 
@@ -21,6 +21,21 @@ export const joinChannel = (jwt: string, spaceId: string, chatId: string) => api
 export async function spaceChats(jwt: string, spaceId: string) {
   const response = await api<{ chats: ChatSummary[] }>(`/chats?workspace=${spaceId}`, { jwt });
   return response.ok ? { ...response, data: { chats: response.data.chats.map((chat) => ({ ...chat, workspaceId: spaceId })) } } : response;
+}
+
+/** The people of a space (designs `e1-08`, `e1-10`, `e1-11`): active for everyone; pending and deactivated for admins. */
+export const spaceMembers = (jwt: string, spaceId: string, status: 'active' | 'pending' | 'deactivated' = 'active') => api<{ members: ClientWorkspaceMember[] }>(path(`/${spaceId}/members?status=${status}`), { jwt });
+export const changeMember = (jwt: string, spaceId: string, memberId: string, change: { status?: 'active' | 'deactivated'; role?: WorkspaceRole; title?: string; area?: string }) =>
+  api<{ member: ClientWorkspaceMember }>(path(`/${spaceId}/members/${memberId}`), { jwt, method: 'PATCH', body: change });
+export const rejectRequest = (jwt: string, spaceId: string, memberId: string) => api<Record<string, never>>(path(`/${spaceId}/members/${memberId}`), { jwt, method: 'DELETE' });
+export const updateSpace = (jwt: string, spaceId: string, change: { name?: string; rubro?: string; joinPolicy?: JoinPolicy; newCode?: boolean }) => api<{ workspace: ClientWorkspace }>(path(`/${spaceId}`), { jwt, method: 'PATCH', body: change });
+/** A 1:1 or a group INSIDE the space, among its active members (the server checks it). */
+export const createSpaceChat = (jwt: string, spaceId: string, body: { kind: 'direct' | 'group'; memberIds: string[]; name?: string }) => api<{ chatId: string }>('/chats', { jwt, body: { ...body, workspaceId: spaceId } });
+
+/** «Medios» (pending 38): photos, videos, documents or links of the personal chats, or of a space. */
+export function mediaLibrary(jwt: string, params: { type: MediaLibraryType; spaceId?: string | null; before?: string }) {
+  const query = new URLSearchParams({ type: params.type, ...(params.spaceId ? { workspace: params.spaceId } : {}), ...(params.before ? { before: params.before } : {}) });
+  return api<{ items: MediaLibraryItem[]; hasMore: boolean }>(`/media/library?${query}`, { jwt });
 }
 
 /** A channel just joined or created, as the conversation opens it until the list reloads. */

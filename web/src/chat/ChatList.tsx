@@ -48,8 +48,9 @@ export function ChatList({
   query: string;
   onQueryChange: (next: string) => void;
   onSelect: (chat: ChatSummary) => void;
-  me: { name?: string | null; phone: string };
-  onSettings: () => void;
+  /** The foot with me and «Ajustes»: only without the rail, which carries both (pending 38). */
+  me?: { name?: string | null; phone: string };
+  onSettings?: () => void;
   loading: boolean;
   onNewChat: () => void;
   onNewGroup: () => void;
@@ -108,7 +109,7 @@ export function ChatList({
   return (
     <aside
       data-testid="panel-lista"
-      className={`flex h-full w-full flex-col bg-surface ${width ? 'shrink-0' : 'border-r border-outline/15 md:w-[340px] md:shrink-0 lg:w-[400px]'}`}
+      className={`flex h-full w-full min-w-0 flex-col bg-surface ${width ? 'shrink-0' : 'border-r border-outline/15 md:w-[340px] md:shrink-0 lg:w-[400px]'}`}
       style={width ? { width } : undefined}
     >
       <header className="flex items-center gap-2 px-4 py-3">
@@ -209,6 +210,7 @@ export function ChatList({
         )}
       </div>
 
+      {me && onSettings ? (
       <footer className="flex items-center gap-3 border-t border-outline/15 bg-primary/5 px-4 py-3">
         <Avatar name={me.name ?? me.phone} size={36} />
         <div className="min-w-0 flex-1">
@@ -225,6 +227,7 @@ export function ChatList({
           <Settings size={18} />
         </button>
       </footer>
+      ) : null}
     </aside>
   );
 }

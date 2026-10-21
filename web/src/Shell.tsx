@@ -32,7 +32,8 @@ import { ChatFontChoice } from './ui/ChatFontChoice';
 import { GroupsAsListChoice } from './ui/GroupsAsListChoice';
 import { chatNameWithAgenda } from './contacts/phoneAgenda';
 import { useAgendaRelay } from './contacts/useAgendaRelay';
-import { SpacesRail } from './spaces/SpacesRail';
+import { AppRail } from './rail/AppRail';
+import { MediaDialog } from './media/MediaDialog';
 import { SpaceChatList } from './spaces/SpaceChatList';
 import { useSpacesWeb } from './spaces/useSpacesWeb';
 
@@ -45,6 +46,7 @@ type Creando =
   | { tipo: 'borrador' }
   | { tipo: 'agenda' }
   | { tipo: 'destacados' }
+  | { tipo: 'medios' }
   | { tipo: 'evento'; chat: ChatDestino | null }
   | { tipo: 'encuesta'; chat: ChatDestino | null }
   | { tipo: 'checklist'; chatId: string }
@@ -85,6 +87,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
   const eventos = useRef<Partial<ReturnType<typeof useSincronizacion>['eventos']>>({});
   /** A chat outside the personal list moved: the open space and the rail ask again. */
   const eventoDeEspacio = useRef<(chatId: string) => void>(() => undefined);
+  const espaciosCambiaron = useRef<() => void>(() => undefined);
   const socket = useSocket({
     jwt: credential.jwt,
     // Sin JWT (abrió sin red) no hay socket; con JWT, espera a que la sesión esté resuelta.
@@ -105,6 +108,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
       eventos.current.onCambioDeChat?.();
       eventoDeEspacio.current(dato.chatId);
     },
+    onSpacesChanged: () => espaciosCambiaron.current(),
     onSinAutorizacion: manejar401,
   });
   const sync = useSincronizacion({ base, yo, jwt: credential.jwt, socket: socket.socket, conectado: socket.connected, manejar401, chatAbierto: selectedId });
@@ -144,10 +148,34 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
     [socket.online, socket.typingByChat, yo, agenda]
   );
   const chats = useMemo<ChatSummary[]>(() => (chatsGuardados ?? []).map(withPresence), [chatsGuardados, withPresence]);
-  const espacios = useSpacesWeb({ jwt: credential.jwt, me: { name: credential.name, phone: credential.phone }, personalUnread: chatsSinLeer(chats), selectedChatId: selectedId, onOpenChat: abrirChat });
+  const espacios = useSpacesWeb({
+    jwt: credential.jwt,
+    myUserId: yo,
+    me: { name: credential.name, phone: credential.phone },
+    personalUnread: chatsSinLeer(chats),
+    online: socket.online,
+    selectedChatId: selectedId,
+    onOpenChat: abrirChat,
+    onPersonalChat: (chatId) => {
+      abrirChat(chatId);
+      void sync.cargarChats();
+    },
+  });
+  // Another space (or personal) shows other chats: the one open belonged to the previous one, and on a
+  // phone it would keep the list hidden behind an empty conversation. Not on the first load (a /c/ link).
+  const spaceShown = useRef<string | null | undefined>(undefined);
+  const currentSpaceId = espacios.current?.id ?? null;
+  useEffect(() => {
+    if (espacios.spaces === null) return;
+    if (spaceShown.current !== undefined && spaceShown.current !== currentSpaceId) abrirChat(null);
+    spaceShown.current = currentSpaceId;
+    // Only when the space changes; `abrirChat` is stable for the page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [espacios.spaces, currentSpaceId]);
   const spaceChatsShown = useMemo(() => espacios.chats?.map(withPresence) ?? null, [espacios.chats, withPresence]);
   const personales = useMemo(() => new Set(chats.map((chat) => chat.id)), [chats]);
   eventoDeEspacio.current = (chatId) => !personales.has(chatId) && espacios.onChatEvent();
+  espaciosCambiaron.current = espacios.reloadSpaces;
   const chatsParaReenviar = useMemo(() => ordenarParaLaLista(chats), [chats]);
   const accionesSobreChats = useAccionesSobreChats({
     base,
@@ -174,8 +202,23 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
   return (
     <div className="relative flex h-full">
       <AvisosDeLaWeb sinConexion={sinConexion} hayVersionNueva={hayVersionNueva} />
-      {panel !== 'conversation' && espacios.hasRail ? (
-        <SpacesRail spaces={espacios.spaces} currentId={espacios.current?.id ?? null} me={{ name: credential.name, phone: credential.phone }} personalUnread={chatsSinLeer(chats)} onPick={espacios.enter} onAdd={espacios.openSwitcher} />
+      {panel !== 'conversation' ? (
+        <AppRail
+          spaces={espacios.spaces}
+          currentSpaceId={espacios.current?.id ?? null}
+          me={{ name: credential.name, phone: credential.phone }}
+          personalUnread={chatsSinLeer(chats)}
+          onChats={() => {
+            setCreando(null);
+            listLayout.setCollapsed(false);
+          }}
+          onAgenda={() => setCreando({ tipo: 'agenda' })}
+          onStarred={() => setCreando({ tipo: 'destacados' })}
+          onMedia={() => setCreando({ tipo: 'medios' })}
+          onSettings={() => setAviso(aviso === 'ajustes' ? '' : 'ajustes')}
+          onPickSpace={espacios.enter}
+          onAddSpace={espacios.openSwitcher}
+        />
       ) : null}
       {panel === 'conversation' ? null : panel === 'both' && listLayout.collapsed ? (
         <ChatRail chats={espacios.current ? (spaceChatsShown ?? []) : chats} selectedChatId={selectedId} onSelect={(chat) => abrirChat(chat.id)} onExpand={() => listLayout.setCollapsed(false)} />
@@ -195,7 +238,9 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
             onSwitch={espacios.openSwitcher}
             onChannels={espacios.openChannels}
             onInvite={espacios.openInvite}
-            onSettings={() => setAviso(aviso ? '' : 'ajustes')}
+            onWorkspace={espacios.openWorkspace}
+            onNewDirect={espacios.openNewDirect}
+            onNewGroup={espacios.openNewGroup}
             width={panel === 'both' ? listLayout.width : undefined}
             onCollapse={panel === 'both' ? () => listLayout.setCollapsed(true) : undefined}
           />
@@ -207,8 +252,6 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
           onQueryChange={setQuery}
           onSelect={(chat) => abrirChat(chat.id)}
           onHome={() => abrirChat(null)}
-          me={{ name: credential.name, phone: credential.phone }}
-          onSettings={() => setAviso(aviso ? '' : 'ajustes')}
           loading={chatsGuardados === null}
           onNewChat={() => setCreando({ tipo: 'chat', kind: 'direct' })}
           onNewGroup={() => setCreando({ tipo: 'chat', kind: 'group' })}
@@ -259,6 +302,20 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
       )}
 
       {espacios.layer}
+      {creando?.tipo === 'medios' ? (
+        <MediaDialog
+          jwt={credential.jwt}
+          spaceId={espacios.current?.id ?? null}
+          spaceName={espacios.current?.name}
+          chatName={(item) => chatNameWithAgenda({ ...item.chat }, agenda).name ?? item.chat.phone ?? 'Conversación'}
+          onOpen={(item) => {
+            setCreando(null);
+            abrirChat(item.chatId);
+            setIrA({ chatId: item.chatId, seq: item.seq, vez: Date.now() });
+          }}
+          onClose={() => setCreando(null)}
+        />
+      ) : null}
       {creando?.tipo === 'borrador' ? <NuevoBorrador jwt={credential.jwt} onClose={() => setCreando(null)} onCreated={alCrear} /> : null}
       {creando?.tipo === 'chat' ? <NewChatOverlay jwt={credential.jwt} kind={creando.kind} onClose={() => setCreando(null)} onCreated={alCrear} /> : null}
       {creando?.tipo === 'agenda' ? (

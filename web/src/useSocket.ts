@@ -69,6 +69,8 @@ export function useSocket(params: {
   onEditado?: (data: { chatId: string; seq: number; body: string; editedAt: string }) => void;
   /** Algo del chat cambió en otro dispositivo (nombre, foto, archivado…). */
   onCambioDeChat?: (data: { chatId: string }) => void;
+  /** My company spaces changed (a request, approved, added, deactivated): read them again. */
+  onSpacesChanged?: () => void;
   /**
    * El server no quiere este socket: lo cortó él (el teléfono cerró la sesión
    * de esta web, W5) o rechazó el token al reconectar. Se renueva la sesión:
@@ -159,6 +161,7 @@ export function useSocket(params: {
       handlers.current.onEditado?.(data)
     );
     socket.on('chat.changed', (data: { chatId: string }) => handlers.current.onCambioDeChat?.(data));
+    socket.on('workspaces.changed', () => handlers.current.onSpacesChanged?.());
     // E3: el resumen nuevo de una raíz («4 respuestas · última 10:42»).
     socket.on('msg.hilo', (data: { chatId: string; raiz: number; hilo: NonNullable<ChatMessage['hilo']> }) => handlers.current.onHilo?.(data));
     socket.on('msg.reacciones', (data: { chatId: string; seq: number; reacciones: Reaccion[] }) => handlers.current.onReacciones?.(data));

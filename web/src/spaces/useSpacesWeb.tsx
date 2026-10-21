@@ -1,20 +1,18 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { railSpaces, type ClientChannel, type ClientWorkspace } from '@lilachat/shared';
+import { newlyAddedSpaces, railSpaces, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember } from '@lilachat/shared';
+import { api } from '../api';
 import type { ChatSummary } from '../chat/types';
 import { setCurrentSpaceId, useCurrentSpaceId, useMySpaces } from './currentSpace';
-import { chatOfChannel, spaceChats } from './spacesApi';
-import { SpaceSwitcher } from './SpaceSwitcher';
-import { JoinSpaceDialog } from './JoinSpaceDialog';
-import { CreateSpaceDialog } from './CreateSpaceDialog';
-import { InviteToSpaceDialog } from './InviteToSpaceDialog';
-import { ChannelsDialog } from './ChannelsDialog';
+import { chatOfChannel, createSpaceChat, spaceChats } from './spacesApi';
+import { markSpacesSeen, readSeenSpaces } from './seenSpaces';
+import { memberName } from './memberWeb';
+import { SpacesLayer, type SpaceDialog } from './SpacesLayer';
+import type { WorkspaceLink } from './SpaceChatList';
 
 /** Several messages in a row reload the space's list once. */
 const RELOAD_DELAY_MS = 600;
 /** The rail's unread counts ask again a little later: one burst, one request. */
 const RAIL_RELOAD_DELAY_MS = 2000;
-
-type Dialog = 'switcher' | 'join' | 'create' | 'invite' | 'channels' | null;
 
 /** One reload for a burst of calls. */
 function useDebounced(run: () => void, delayMs: number) {
@@ -30,29 +28,45 @@ function useDebounced(run: () => void, delayMs: number) {
   }, [delayMs]);
 }
 
+/** A chat of the space as the conversation opens it until the list brings it. */
+const openedChat = (chat: Pick<ChatSummary, 'id' | 'kind' | 'name' | 'phone' | 'memberIds'>, spaceId: string): ChatSummary => ({ lastSeq: 0, unread: 0, othersReadSeq: 0, othersDeliveredSeq: 0, lastMessage: null, workspaceId: spaceId, ...chat });
+
 /**
  * The company spaces on the web (E1/E2): which one is open (remembered in
- * this browser), its chats, and the switcher, join, create, invite and
- * channels dialogs. A space left or whose access was removed falls back to
- * personal. Socket events of chats outside the personal list reload the
- * space's list and the rail's counts.
+ * this browser), its chats, and its dialogs (`SpacesLayer`): switcher, join,
+ * create, invite, channels, directory and profiles, members and requests,
+ * settings, a 1:1 or a group inside, «te agregaron» and «ya no tienes acceso».
+ * Socket events of chats outside the personal list reload the space's list
+ * and the rail's counts.
  */
-export function useSpacesWeb(params: { jwt: string; me: { name?: string | null; phone: string }; personalUnread: number; selectedChatId: string | null; onOpenChat: (chatId: string) => void }) {
-  const { jwt, onOpenChat } = params;
+export function useSpacesWeb(params: { jwt: string; myUserId: string; me: { name?: string | null; phone: string }; personalUnread: number; online: ReadonlySet<string>; selectedChatId: string | null; onOpenChat: (chatId: string) => void; onPersonalChat: (chatId: string) => void }) {
+  const { jwt, myUserId, onOpenChat, onPersonalChat } = params;
   const currentId = useCurrentSpaceId();
   const { spaces, reload } = useMySpaces(jwt);
-  const [dialog, setDialog] = useState<Dialog>(null);
+  const [dialog, setDialog] = useState<SpaceDialog>(null);
   const [inviting, setInviting] = useState<ClientWorkspace | null>(null);
+  const [profile, setProfile] = useState<ClientWorkspaceMember | null>(null);
+  const [removed, setRemoved] = useState<ClientWorkspace | null>(null);
+  const [seen, setSeen] = useState<string[] | null>(readSeenSpaces);
   const [chats, setChats] = useState<ChatSummary[] | null>(null);
   const [failed, setFailed] = useState(false);
-  /** A channel just joined or created, until the list brings it. */
+  /** A chat just joined or created, until the list brings it. */
   const [justOpened, setJustOpened] = useState<ChatSummary | null>(null);
   const current = spaces?.find((space) => space.id === currentId && space.status === 'active') ?? null;
   const spaceId = current?.id ?? null;
 
+  // A space I left, or where access was removed: back to personal, saying why when it was removed.
   useEffect(() => {
-    if (spaces && currentId && !current) setCurrentSpaceId(null);
+    if (!spaces || !currentId || current) return;
+    const lost = spaces.find((space) => space.id === currentId && space.status === 'deactivated');
+    if (lost) setRemoved(lost);
+    setCurrentSpaceId(null);
   }, [spaces, currentId, current]);
+  // The first list in this browser seeds what was already seen: only spaces added from now on are greeted.
+  useEffect(() => {
+    if (spaces && seen === null) setSeen(markSpacesSeen(spaces.map((space) => space.id)));
+  }, [spaces, seen]);
+  const welcome = spaces && seen ? (newlyAddedSpaces(spaces, seen)[0] ?? null) : null;
 
   const shownSpace = useRef(spaceId);
   shownSpace.current = spaceId;
@@ -91,37 +105,67 @@ export function useSpacesWeb(params: { jwt: string; me: { name?: string | null; 
     if (next) await reload();
     setCurrentSpaceId(next);
   }, [reload]);
-  const openChannel = useCallback((channel: ClientChannel) => {
+  const open = useCallback((chat: ChatSummary) => {
     setDialog(null);
-    if (!spaceId) return;
-    setJustOpened(chatOfChannel(channel, spaceId));
-    onOpenChat(channel.id);
+    setProfile(null);
+    setJustOpened(chat);
+    onOpenChat(chat.id);
     void loadChats();
-  }, [spaceId, onOpenChat, loadChats]);
+  }, [onOpenChat, loadChats]);
+  const openChannel = useCallback((channel: ClientChannel) => spaceId && open(chatOfChannel(channel, spaceId)), [spaceId, open]);
+  const writeTo = useCallback(async (member: ClientWorkspaceMember) => {
+    if (!spaceId || !member.userId) return;
+    const response = await createSpaceChat(jwt, spaceId, { kind: 'direct', memberIds: [member.userId] });
+    if (response.ok) open(openedChat({ id: response.data.chatId, kind: 'direct', name: memberName(member), phone: member.phone, memberIds: [myUserId, member.userId] }, spaceId));
+  }, [spaceId, jwt, myUserId, open]);
+  const talkTo = useCallback(async (admin: { userId: string }) => {
+    setRemoved(null);
+    const response = await api<{ chatId: string }>('/chats', { jwt, body: { kind: 'direct', memberIds: [admin.userId] } });
+    if (response.ok) onPersonalChat(response.data.chatId);
+  }, [jwt, onPersonalChat]);
   const chatById = useCallback((chatId: string | null) => (chatId ? (chats?.find((chat) => chat.id === chatId) ?? (justOpened?.id === chatId ? justOpened : null)) : null), [chats, justOpened]);
 
-  const invitee = inviting ?? (dialog === 'invite' ? current : null);
   const layer: ReactNode = (
-    <>
-      {dialog === 'switcher' ? (
-        <SpaceSwitcher spaces={spaces} currentId={spaceId} me={params.me} personalUnread={params.personalUnread} onPick={(next) => void enter(next)} onJoin={() => setDialog('join')} onCreate={() => setDialog('create')} onClose={() => setDialog(null)} onOpen={() => void reload()} />
-      ) : null}
-      {dialog === 'join' ? <JoinSpaceDialog jwt={jwt} onJoined={(next) => void enter(next)} onClose={() => { setDialog(null); void reload(); }} /> : null}
-      {dialog === 'create' ? (
-        <CreateSpaceDialog
-          jwt={jwt}
-          onJoinInstead={() => setDialog('join')}
-          onCreated={(space) => {
-            void enter(space.id);
-            // Just created: inviting the team is the next thing to do.
-            setInviting(space);
-          }}
-          onClose={() => setDialog(null)}
-        />
-      ) : null}
-      {invitee ? <InviteToSpaceDialog space={invitee} jwt={jwt} inviterName={params.me.name ?? undefined} onClose={() => { setInviting(null); setDialog(null); }} /> : null}
-      {dialog === 'channels' && current ? <ChannelsDialog space={current} jwt={jwt} onOpenChannel={openChannel} onClose={() => setDialog(null)} /> : null}
-    </>
+    <SpacesLayer
+      jwt={jwt}
+      myUserId={myUserId}
+      me={params.me}
+      personalUnread={params.personalUnread}
+      online={params.online}
+      spaces={spaces}
+      current={current}
+      dialog={dialog}
+      invitee={inviting ?? (dialog === 'invite' ? current : null)}
+      profile={profile}
+      welcome={welcome}
+      removed={removed}
+      spaceChats={chats ?? []}
+      on={{
+        dialog: setDialog,
+        enter: (next) => void enter(next),
+        reload: () => void reload(),
+        created: (space) => {
+          void enter(space.id);
+          // Just created: inviting the team is the next thing to do.
+          setInviting(space);
+        },
+        closeInvite: () => {
+          setInviting(null);
+          setDialog(null);
+        },
+        channel: openChannel,
+        profile: setProfile,
+        writeTo: (member) => void writeTo(member),
+        groupCreated: (chat) => spaceId && open(openedChat({ ...chat, kind: 'group' }, spaceId)),
+        welcomeSeen: (then) => {
+          if (!welcome) return;
+          setSeen(markSpacesSeen([welcome.id]));
+          if (then) void enter(welcome.id).then(() => then === 'directory' && setDialog('directory'));
+        },
+        removedSeen: () => setRemoved(null),
+        talkTo: (admin) => void talkTo(admin),
+      }}
+    />
   );
 
   return {
@@ -131,12 +175,16 @@ export function useSpacesWeb(params: { jwt: string; me: { name?: string | null; 
     chats,
     failed,
     reloadChats: () => void loadChats(),
+    reloadSpaces: () => void reload(),
     chatById,
     onChatEvent,
     enter: (next: string | null) => void enter(next),
     openSwitcher: () => setDialog('switcher'),
     openChannels: () => setDialog('channels'),
     openInvite: () => setDialog('invite'),
+    openWorkspace: (link: WorkspaceLink) => setDialog(link),
+    openNewDirect: () => setDialog('newDirect'),
+    openNewGroup: () => setDialog('newGroup'),
     layer,
   };
 }

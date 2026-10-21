@@ -10,7 +10,7 @@ import { useColores } from '../ui/tema';
 const SAMPLE_GROWTH = 3;
 
 /**
- * Ajustes › Tamaño de la letra (backlog 1, José 20/10; design
+ * The chat's font size in Settings (backlog 1, José 20/10; design
  * `f-01-tamano-de-letra`): three sizes side by side, each with its «Aa», and
  * a preview of two bubbles at the chosen size.
  */

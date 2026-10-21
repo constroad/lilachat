@@ -10,9 +10,9 @@ import { useMargenes } from '../ui/useMargenes';
 export type ChecklistEdit = { title: string; othersCanMark: boolean; othersCanAdd: boolean };
 
 /**
- * The checklist's own options, for whoever made it (José, 21/10: «¿cómo edito
- * un checklist? ¿cómo lo elimino?»): its title, who ticks and adds, and
- * deleting it, confirmed first because it cannot be undone.
+ * The checklist's own options, for whoever made it (José, 21/10: how to edit
+ * or delete a checklist): its title, who ticks and adds, and deleting it,
+ * confirmed first because it cannot be undone.
  */
 export function ChecklistOptionsSheet(props: { checklist: AgendaChecklist | null; onSave: (edit: ChecklistEdit) => void; onDelete: () => void; onClose: () => void }) {
   const colors = useColores();

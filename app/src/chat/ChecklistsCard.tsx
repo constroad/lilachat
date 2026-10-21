@@ -9,9 +9,9 @@ import { useColores } from '../ui/tema';
 const VISIBLE = 3;
 
 /**
- * «Checklists» in the chat info (backlog 30, José 21/10: «el checklist se
- * podría perder en los mensajes»; design `k-05-checklists-del-chat`): each
- * with its progress and what is late; a tap jumps to its card in the chat.
+ * The chat info's checklists (backlog 30, José 21/10: a checklist could get
+ * lost among the messages; design `k-05-checklists-del-chat`): each with its
+ * progress and what is late; a tap jumps to its card in the chat.
  */
 export function ChecklistsCard(props: { chatId: string; jwt: string; onOpen: (seq: number) => void }) {
   const colors = useColores();

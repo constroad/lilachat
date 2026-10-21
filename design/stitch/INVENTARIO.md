@@ -117,4 +117,6 @@ Las capturas viven SOLO en la máquina (`design/stitch/`, en `.gitignore` desde 
 | m-04-lineas-del-chat | Las líneas de guiño y zumbido con hora | móvil, tablet, escritorio | Vale (se parte en dos renglones si no cabe) |
 | m-05-ajustes-diversion | La tarjeta «Diversión» del grupo | móvil, tablet, escritorio | Vale (sin «Quién puede mandarlos»: no tiene backend) |
 | x-a … x-e | Hojas de personajes adultos para animar (15) | escritorio | Fuente de `shared/winkArt.ts` |
+| y-a | Chancho de frente y de espaldas, galán y café, con cara articulada | escritorio | Fuente de `shared/winkArt.ts` (gana sobre x-*; §77) |
+| y-b, y-c | Utilería de los sketches (16 piezas: globo, salpicón, grietas, PARE, ¡GOL!…) | escritorio | Fuente de `WINK_PROPS` (§77) |
 | w-a … w-e | Primera versión de personajes, chibi e infantil | escritorio | NO vale: rechazada por infantil (§74) |

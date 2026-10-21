@@ -4892,6 +4892,140 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 77. Guiños con remate, no bailes: los sketches (21/10/2026, sin publicar)
+
+José, 21/10: «¿todos los personajes bailan? ¿Dónde está el globo que te
+enviaban? El que abraza debe abrazar; se trata de que sean graciosos, no de que
+todos bailen. El chanchito, gordito, moviendo y enseñando el rabo». Reemplaza
+el «cómo se mueven» de §74: cada guiño es ahora un **sketch** con planteo y
+remate, como los de MSN. Solo el cono baila.
+
+**Los 16 sketches** (`shared/winkSketches.ts`, 6–7 s):
+
+| Guiño | El chiste |
+| --- | --- |
+| Chancho fiestero | Entra, guiña, se da vuelta y mueve el poto con el rabito enroscado (que crece), vuelve y tira un beso (corazón a la cámara) |
+| Globo de agua (nuevo) | Vuela hacia la pantalla, revienta contra el vidrio (sacudón) y el agua escurre |
+| Corazón galán | Guiña dos veces de verdad (un ojo) y te tira la rosa, que vuela girando hacia la cámara |
+| Panda abrazón | Camina hasta la pantalla y la abraza: cierra los brazos y la aprieta tres veces (la pantalla se encoge) |
+| Maestro de obra | Se acerca al vidrio y golpea tres veces con el puño; al tercero se raja y él sale corriendo |
+| Oso hincha | Aplaude, salta y explota un «¡GOL!» con confeti |
+| Gato de fiesta | Sopla la corneta (la cabeza se infla, la pantalla tiembla) y sale el cañón de confeti; salta |
+| Perro carcajada | Se ríe tanto que se cae y rueda pataleando |
+| Café de lunes | Bosteza, se duerme (Zzz), suena el despertador, salta del susto y sale corriendo |
+| Ladrillo fisicoculturista | Tres poses; en la última se infla enorme y la pantalla retumba; besa su bíceps |
+| Cono cumbiero | El único que baila: pasos de cumbia y doble giro |
+| Rodillo chévere | Cruza la pantalla dejando una franja de asfalto que humea |
+| Volquete fanfarrón | Toca la bocina, se inclina y descarga un cerro de arena abajo |
+| Excavadora rockera | Headbanging con la guitarra y la estrella contra el piso; vuelan los pedazos |
+| Asfaltador acalorado | Suda, humea y se derrite en un charco; vuelve a pararse |
+| Señalero estricto | Pita el silbato y la paleta de PARE llena toda la pantalla |
+
+Los emojis quedan como estaban.
+
+**Arte.** Hojas nuevas de Stitch: `y-a` (chancho de frente y de espaldas,
+galán y café con cara articulada) y `y-b`/`y-c` (16 piezas de utilería). El
+extractor (`web/scripts/extract-wink-art.mjs`) ahora:
+- saca los ojos y la boca como partes con `parent: 'head'` (se mueven con la
+  cabeza y además solas: guiño, bostezo);
+- separa la rosa de la mano del galán (`held`, la suelta al tirarla);
+- dibuja el rabo del chancho de espaldas encima del cuerpo (Stitch lo dibujó
+  debajo);
+- escribe solo los estilos que no son los de por defecto. Antes leía estilos de
+  un clon suelto (vacíos); ahora los lee de la página.
+- Resultado: `WINK_ART` (16 personajes) y `WINK_PROPS` (16 piezas), 148 KB.
+
+**El motor (`shared/winkTimeline.ts`, puro, con tests).**
+- Actores (personaje o pieza) con claves en el tiempo (0–1): posición en
+  fracciones de la pantalla, `scale` en unidades de escenario, `sx`/`sy`
+  (negativo = espejo; de 1 a −1 es darse vuelta), giro y opacidad.
+- **Cada propiedad es su propia pista.** Si una clave que solo gira detuviera
+  la caminata, los sketches no se podrían componer.
+- La curva de cada clave dice cómo se LLEGA a ella («out» frena, «in» acelera).
+- Unidad de escenario: el ancho, pero no más de ¾ del alto ni 560 px (en un
+  celular parado manda el ancho; en un escritorio ancho, el alto).
+- `fit: 'width'`: la pieza ocupa todo el ancho (la franja de asfalto).
+- Efectos de pantalla compartidos (`SCREEN_EFFECTS`): golpe, choque, retumbo y
+  apretón.
+
+**Renderizadores.**
+- **App** (`WinkSketch.tsx`): UN valor de progreso; cada propiedad se
+  interpola en el hilo de UI con la misma curva (worklet `sample`). Una capa
+  SVG por parte; la cara va dentro de la cabeza. Lo que el sketch no mueve
+  queda quieto.
+- **Web** (`WinkSketch.tsx` + `sketchFrames.ts`): la misma línea de tiempo
+  muestreada cada 20 ms en keyframes de Web Animations.
+- **Sonidos y efectos** (`winkCues`): se programan en su momento. Un guiño
+  nuevo cancela lo pendiente del anterior, y la música se corta al terminar.
+  En la lista de chats solo suena un «ting» (`winkRowSound`).
+
+**Sonido.** 21 efectos nuevos sintetizados por nosotros: ting, boing, beso,
+whoosh, salpicón, gota, golpe, vidrio, golpe sordo, apretón, hinchada,
+corneta, risa, bostezo, ronquido, despertador, motor, chisporroteo, silbato,
+guitarra rota y un riff de rock. Todos los sonidos de guiño pasaron a MP3: 26
+archivos en 336 KB, menos que los 5 WAV de antes (458 KB).
+
+**E2E.**
+- **Web** (Chrome headless contra el server QA, «Vista previa»): los 16
+  congelados en 9 momentos cada uno y revisados cuadro por cuadro. Se
+  corrigieron el «¡GOL!» que tapaba al oso, el gato y el ladrillo flojos, el
+  humo gigante del asfalto, la guitarra sobre la cara y el tamaño en
+  escritorio.
+- **App** (emulador, chat QA Ana): chancho y globo grabados en video. Se ven
+  igual que en la web: el sacudón de pantalla y el decodificador MP3 sonando.
+  Sin errores de JS.
+
+## 76. La web: logo, modo oscuro, fondo de puntos, lista que se arrastra y avisos del sistema (21/10/2026, sin publicar)
+
+Cierra los pendientes 24–28 (José, 21/10). Diseños `n-01-web-oscuro-lista` y
+`n-02-web-lista-plegada`.
+
+**Logo** (`ui/Logo.tsx`): el mismo logotipo de la APK (`LOGO` de shared) en la
+cabecera de la lista, en el riel plegado y en «Vincular». Cambia de tinta con el tema
+(observa la clase `dark` del `<html>`).
+
+**Modo oscuro** (`ui/tema.ts`, 2 tests)
+- La paleta de Tailwind son variables: `rgb(var(--c-NOMBRE) / <alpha-value>)`,
+  definidas en `:root` (claro) y `html.dark` (oscuro) con `addBase`.
+- `darkMode: 'class'` y `safelist: ['dark']`. Sin el safelist, Tailwind purga
+  `html.dark` (nadie escribe esa clase en el código) y la paleta oscura no
+  llega al CSS.
+- Ajustes › Apariencia: Claro · Oscuro · Sistema, guardado por equipo
+  (`lilachat.tema`). «Sistema» sigue a `prefers-color-scheme` en vivo.
+- Sin parpadeo blanco: `public/tema-inicial.js` pone la clase antes de pintar.
+  Es un archivo y no un script en línea porque la CSP es `script-src 'self'`.
+
+**Fondo de puntos**: clase `chat-fondo` (`index.css`), un `radial-gradient`
+sobre `--c-chat-bg`, igual que `FondoDelChat` de la app.
+
+**Lista que se arrastra y se pliega** (`layout.ts`, `useListLayout`,
+`ListResizeHandle`, `ChatRail`)
+- El borde se arrastra (puntero con captura, sin seleccionar texto), se mueve
+  con las flechas (16 px) y vuelve a 380 px con doble clic.
+- `clampListWidth`: entre 280 y 560 px, y la conversación nunca baja de
+  420 px. Ancho y plegado se guardan por equipo (`lilachat.anchoLista`,
+  `lilachat.listaPlegada`).
+- Plegada queda un riel de 72 px con el logo, los avatares de los chats (con
+  su punto de no leídos) y «Desplegar» abajo.
+
+**Avisos del sistema** (`notify/browserNotice.ts`, `notify/notificationsOffer.ts`)
+- El server solo manda push a los equipos sin socket vivo. Una pestaña oculta
+  tiene socket, así que no le llegaba nada: ahora `useSincronizacion` muestra
+  el aviso local (`registration.showNotification`) si la pestaña está oculta,
+  el mensaje es de otro y el chat no está silenciado. El texto sale de
+  `armarAviso`, el mismo de la app. Tocarlo abre `/c/<chatId>`.
+- Banda «Activa las notificaciones…» arriba del chat solo con el permiso en
+  `default`. «Ahora no» la esconde 14 días.
+
+**E2E** (Chrome headless contra el server QA, QA Ana)
+- Logo, puntos y modo oscuro (`rgb(15, 23, 42)` de fondo) presentes.
+- Plegar → riel; desplegar → lista. Flechas: 380 → 412, guardado. Arrastre del
+  mouse: 380 → 436 siguiendo al puntero.
+- Pestaña oculta + zumbido de J zamora: aviso «J zamora · Te mandó un
+  zumbido».
+- Banda visible con el permiso en `default`.
+- El dispositivo vinculado por el E2E se borró al terminar.
+
 ## 75. El recordatorio que suena se responde como un mensaje (21/10/2026, sin publicar)
 
 José, 21/10: en el chat con Wilson le apareció el recordatorio, pero no podía
@@ -4969,7 +5103,7 @@ y skill `stitch-design` §5-bis).**
    - Asfaltador acalorado;
    - Señalero estricto.
 
-**Cómo se mueven (`shared/winkDances.ts`).** Son marionetas: cada parte gira
+**Cómo se mueven (`shared/winkDances.ts`; reemplazado por los sketches de §77, las danzas quedan como recurso).** Son marionetas: cada parte gira
 sobre su articulación (hombro, cadera, cuello, cola).
 - **Diez coreografías:** disco, cumbia, aplauso, salto, abrazo, risa, saludo,
   fisicoculturista, rockero y cansado.
@@ -4982,8 +5116,8 @@ sobre su articulación (hombro, cadera, cuello, cola).
   capa.
 - **Web:** un `<g>` por parte, con `transform-box: view-box` y Web Animations.
 
-**Sonido.** Archivos propios, sintetizados y sin licencias, en
-`app/assets/sonidos/wink-*.wav` (copiados a `web/public/sonidos`):
+**Sonido** (en MP3 desde §77). Archivos propios, sintetizados y sin licencias, en
+`app/assets/sonidos/wink-*` (copiados a `web/public/sonidos`):
 - un groove de funk (bombo, caja, hi-hat, bajo y acorde; 112 BPM, 6,6 s) para
   los que bailan;
 - campana, pop, aplausos y bocina para el resto.
@@ -7393,17 +7527,17 @@ tacha con la versión que lo cierra.
     elegir) y crea un recordatorio en ese chat con el texto «Devolver la
     llamada a X». Al sonar, la tarjeta trae «Llamar» directo. Reusa el
     modelo de recordatorios del chat (no uno nuevo).
-24. **La web no tiene el logo de la app** (José, 21/10): ni en la cabecera
+24. ~~**La web no tiene el logo de la app**~~ **Hecho (§76, 21/10).** (José, 21/10): ni en la cabecera
     de la lista ni en la pantalla de vincular. Va el mismo logotipo de la APK.
-25. **La web no tiene modo oscuro** (José, 21/10): tokens claros y oscuros
+25. ~~**La web no tiene modo oscuro**~~ **Hecho (§76, 21/10).** (José, 21/10): tokens claros y oscuros
     como la app, con el selector «Claro · Oscuro · Sistema» de Ajustes.
-26. **El fondo del chat en la web** (José, 21/10): el de la APK tiene puntos
+26. ~~**El fondo del chat en la web**~~ **Hecho (§76, 21/10).** (José, 21/10): el de la APK tiene puntos
     (`FondoDelChat`); la web va lisa. Mismo patrón, con tokens.
-27. **La lista de chats de la web se arrastra y se colapsa** (José, 21/10):
+27. ~~**La lista de chats de la web se arrastra y se colapsa**~~ **Hecho (§76, 21/10).** (José, 21/10):
     el borde entre la lista y el chat se arrastra para dar más espacio al chat
     (ancho recordado por dispositivo) y la lista se puede esconder (colapsar)
     con un botón, como un panel de Slack.
-28. **Notificación del sistema en la web** (pregunta de José, 21/10): con la
+28. ~~**Notificación del sistema en la web**~~ **Hecho (§76, 21/10).** (pregunta de José, 21/10): con la
     pestaña oculta no hay aviso de Chrome; hoy solo suena si hubo un clic
     previo en la página. Como WhatsApp Web: pedir permiso de notificaciones y
     avisar mensajes, zumbidos y guiños.

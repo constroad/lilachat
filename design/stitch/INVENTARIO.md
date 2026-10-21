@@ -106,3 +106,15 @@ Las capturas viven SOLO en la máquina (`design/stitch/`, en `.gitignore` desde 
 | `e-21-mensaje-bot-botones-app.png` | E · Mensaje de un bot con botones · Móvil (`screens/dc5a38111de74dc8943e45f661d31ed7`) |
 | `e-21-mensaje-bot-botones-web.png` | E · Mensaje de un bot con botones · Web (`screens/33a4177e861c4c8e9b7ff2f9d32b5725`) |
 | `e-22-integraciones-web.png` | E · Integraciones del espacio · Web (`screens/4d06702ddbb8468c956a169385e1f402`) |
+
+## Messenger: clip, guiños y personajes (21/10/2026)
+
+| Slug | Qué es | Dispositivos | Uso |
+| --- | --- | --- | --- |
+| m-01-clip-ordenado | El clip en secciones y la fila de fotos recientes | móvil, tablet, escritorio | Vale (sin «Contacto», sin título, sin «Divertido»: §74) |
+| m-02-guinos-panel | La pestaña «Guiños» del panel de emojis | móvil, tablet, escritorio | Vale (tarjetas con el personaje, no íconos de línea) |
+| m-03-guino-recibido | El guiño a pantalla completa | móvil, tablet, escritorio | Referencia de la composición |
+| m-04-lineas-del-chat | Las líneas de guiño y zumbido con hora | móvil, tablet, escritorio | Vale (se parte en dos renglones si no cabe) |
+| m-05-ajustes-diversion | La tarjeta «Diversión» del grupo | móvil, tablet, escritorio | Vale (sin «Quién puede mandarlos»: no tiene backend) |
+| x-a … x-e | Hojas de personajes adultos para animar (15) | escritorio | Fuente de `shared/winkArt.ts` |
+| w-a … w-e | Primera versión de personajes, chibi e infantil | escritorio | NO vale: rechazada por infantil (§74) |

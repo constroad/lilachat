@@ -4892,6 +4892,158 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 75. El recordatorio que suena se responde como un mensaje (21/10/2026, sin publicar)
+
+José, 21/10: en el chat con Wilson le apareció el recordatorio, pero no podía
+reaccionar, responder ni mandar un sticker.
+
+**Causa.** Cuando un recordatorio suena (o se acerca un evento), el cron
+escribe en el chat un aviso del sistema (`kind: 'system'`, evento
+`recordatorio-suena` / `evento-pronto`). Todos los candados trataban cualquier
+aviso como «línea gris»:
+- el server: `reacciones.ts`, `hilos.validarRaiz`, `mensajesFijados` y `destacadosRoutes`;
+- shared: `puedeReaccionar` y `puedeAbrirHilo`;
+- la app: el aviso destacado era una `View` sin gestos;
+- la web: era una tarjeta sin botones.
+
+La tarjeta del recordatorio *creado* (`ref.tipo === 'recordatorio'`) ya se
+había arreglado el 20/10. Esta es la otra, la del recordatorio que *sonó*.
+
+**Arreglo.** La regla vive en un solo lugar: `shared/actsAsMessage` (cualquier
+mensaje, más los avisos destacados). El server filtra con
+`ACTS_AS_MESSAGE_FILTER` y los clientes usan `puedeReaccionar` y
+`canOpenThread` (antes `puedeAbrirHilo`). Así queda cada superficie:
+- **App (`HighlightedNotice`):** se desliza para responder (también con
+  sticker) y se mantiene presionada para elegirla (reacciones, hilo, fijar,
+  destacar). La barra de reacciones, las reacciones y el chip del hilo van
+  centrados.
+- **Web:** la tarjeta lleva los botones de cualquier mensaje al pasar el mouse
+  (reaccionar, hilo, menú).
+- **Lo que no se puede:** «Info» y «Eliminar para todos». Al aviso lo escribió
+  el server, no una persona.
+- **Las líneas grises** («Ana cambió la foto») siguen sin acciones, como en
+  WhatsApp.
+
+**E2E (emulador + web headless, QA Hilos):**
+- Mantener presionado selecciona el recordatorio y abre la barra con «Responder en hilo».
+- 👍 quedó guardado: sigue ahí al reabrir el chat.
+- Deslizar abre «Respondiendo · ⏰ Recordatorio: Pagar la luz», y el sticker salió citándolo.
+- En la web: los tres botones, ❤️ (queda «👍 1 · ❤️ 1»), el menú sin Info y la cita al responder.
+
+## 74. Guiños y el zumbido completo (21/10/2026, sin publicar)
+
+José, 21/10: «sigue con lo que falta de los pendientes de messenger, los
+guiños, las animaciones y todo lo que te puse para ese feature».
+
+**Guiños.** Un mensaje `kind: 'guino'` con `wink: <id>` del catálogo
+compartido (`shared/winks.ts`). No lleva contenido, así que también va en
+chats secretos. El panel los muestra en tres grupos:
+- **Personajes (9)** y **Obra y pistas (6):** personajes propios de cuerpo
+  entero (`kind: 'character'`). Los dibujó Stitch como hojas de assets
+  (`x-a`…`x-e`), y se extraen con `web/scripts/extract-wink-art.mjs` a
+  `shared/winkArt.ts`: el markup de cada parte, con colores en línea, más su
+  articulación.
+- **Emojis (8):** los primeros guiños, con emoji grande, rebote y meneo
+  (`kind: 'emoji'`; José: «deja los emojis que tenías antes, están bien»).
+
+**Lo que costó llegar al tono (lección, memoria `product-art-tone-matches-audience`
+y skill `stitch-design` §5-bis).**
+1. Emoji girando → «no son personajes, no se mueven».
+2. Mascotas chibi con mejillas, moños y melodía de xilófono → «todo es muy
+   infantil, esto no es una app de niños; el de Messenger era más gracioso y su
+   baile duraba más».
+3. Final: humor adulto estilo Flash de los 2000, con gags de oficio:
+   - Chancho fiestero con gafas y cadena;
+   - Maestro de obra bigotón;
+   - Café de lunes;
+   - Corazón galán;
+   - Oso hincha;
+   - Gato de fiesta;
+   - Perro carcajada;
+   - Panda abrazón;
+   - Ladrillo fisicoculturista;
+   - Cono cumbiero;
+   - Rodillo chévere;
+   - Volquete fanfarrón;
+   - Excavadora rockera;
+   - Asfaltador acalorado;
+   - Señalero estricto.
+
+**Cómo se mueven (`shared/winkDances.ts`).** Son marionetas: cada parte gira
+sobre su articulación (hombro, cadera, cuello, cola).
+- **Diez coreografías:** disco, cumbia, aplauso, salto, abrazo, risa, saludo,
+  fisicoculturista, rockero y cansado.
+- **Son desfases desde la pose dibujada**, que arrancan y terminan en 0: la
+  pose de Stitch ES el gag, así que se baila alrededor de ella.
+- **Duración:** un guiño de personaje dura 6,5 s y el bucle se repite hasta
+  llenarlo.
+- **App:** una capa SVG por parte (react-native-svg + Reanimated, con
+  `transformOrigin` en la articulación). Quieto, en las tarjetas, es una sola
+  capa.
+- **Web:** un `<g>` por parte, con `transform-box: view-box` y Web Animations.
+
+**Sonido.** Archivos propios, sintetizados y sin licencias, en
+`app/assets/sonidos/wink-*.wav` (copiados a `web/public/sonidos`):
+- un groove de funk (bombo, caja, hi-hat, bajo y acorde; 112 BPM, 6,6 s) para
+  los que bailan;
+- campana, pop, aplausos y bocina para el resto.
+
+La melodía infantil se quitó.
+
+**A pantalla completa y cuándo se reproduce.**
+- Va encima de TODO, sin tomar toques: en la app con `FunScreen` en la raíz;
+  en la web con un overlay `fixed`.
+- **Partículas:** con semilla del `seq` (`winkParticles`), así se ven igual en
+  la app y en la web, para quien manda y para quien recibe.
+- **Al llegar** con el chat abierto, y **al abrir el chat**: el último que
+  llegó sin leer suena una sola vez (`funMessageToPlay`).
+- **El que mando** también se reproduce en mi pantalla.
+- **«Ver otra vez»** lo repite.
+
+**Zumbido.**
+- **Movimiento:** solo en el eje X, unos 2 s en pasos de 65 ms
+  (`NUDGE_SHAKE`, igual en la app y la web). Antes era tan rápido que parecía
+  un salto del scroll.
+- **App:** con el chat abierto tiembla la pantalla entera. En la lista de
+  chats tiembla la fila (también solo en X) y el celular vibra unos 2 s.
+- **Web:** cualquier zumbido mueve toda la ventana, aunque haya otro chat
+  abierto, y suena un buzz.
+
+**Silencio y accesibilidad (`shouldPlayFun`).**
+- Un chat silenciado no se mueve, no suena y no vibra.
+- Con «reducir movimiento» no hay animación, pero sí sonido y vibración.
+
+**Grupos.** En un 1:1 los zumbidos y guiños siempre van. En un grupo, solo si
+un admin los enciende:
+- `Chat.funAllowed`, que llega en la lista y en el detalle;
+- `PATCH /api/chats/:id/fun` (`setGroupFun`, solo admins);
+- `ensureFunAllowed` lo aplica en el socket, con un límite de uno cada 10 s
+  por tipo, persona y chat;
+- en la app es la tarjeta «Diversión» de la info del grupo, y en la web la
+  fila «Zumbidos y guiños».
+
+**Dónde se eligen (José, 21/10).** En el panel del botón de emoji, pestaña
+«Guiños»: arriba va el Zumbido y debajo los tres grupos. Al tocar uno, sale
+la vista previa y el botón «Enviar».
+
+El clip (y el «+» de la web) ya no tiene título ni sección Divertido; quedan
+Compartir, Organizar y la fila de fotos recientes con «Ver todas»
+(`m-01-clip-ordenado`).
+
+**Diseño en Stitch (pipeline de la skill):**
+- `m-01`…`m-05`: el clip, el panel de guiños, el guiño a pantalla completa, las líneas del chat y la tarjeta «Diversión»;
+- `x-a`…`x-e`: las hojas de personajes adultos (las `w-*` infantiles quedaron descartadas).
+
+**Verificado (21/10):**
+- **Emulador:**
+  - el clip nuevo y el panel con sus grupos;
+  - el Chancho fiestero bailando 6,5 s, con audio;
+  - el guiño mandado y el recibido a pantalla completa;
+  - el zumbido en la fila (solo X) y en el chat (toda la pantalla, solo X);
+  - el que llegó sin leer suena al abrir.
+- **Web headless:** el menú, el panel por grupos y el Chancho a pantalla
+  completa.
+
 ## 73. E4: contrato con agentes (Lila y Dali) — BORRADOR (21/10/2026)
 
 Acordado con la sesión «Agentes Lila y Dali» (repo `constroad/agentes`), que
@@ -7234,6 +7386,33 @@ tacha con la versión que lo cierra.
     actividad pasa a segundo plano (bloquear la pantalla cuenta), salvo que
     el modo de audio pida `shouldPlayInBackground` / `allowsBackgroundRecording`;
     la app no lo pedía. **Arreglado (§68).**
+23. **Recordatorio para devolver una llamada perdida** (José, 21/10).
+    Desde la línea «Llamada perdida» (en el chat y en la pestaña de llamadas)
+    y desde el aviso de la llamada perdida: «Recordarme devolverla» abre el
+    mismo selector de recordatorio (en 15 min · 1 h · esta tarde · mañana ·
+    elegir) y crea un recordatorio en ese chat con el texto «Devolver la
+    llamada a X». Al sonar, la tarjeta trae «Llamar» directo. Reusa el
+    modelo de recordatorios del chat (no uno nuevo).
+24. **La web no tiene el logo de la app** (José, 21/10): ni en la cabecera
+    de la lista ni en la pantalla de vincular. Va el mismo logotipo de la APK.
+25. **La web no tiene modo oscuro** (José, 21/10): tokens claros y oscuros
+    como la app, con el selector «Claro · Oscuro · Sistema» de Ajustes.
+26. **El fondo del chat en la web** (José, 21/10): el de la APK tiene puntos
+    (`FondoDelChat`); la web va lisa. Mismo patrón, con tokens.
+27. **La lista de chats de la web se arrastra y se colapsa** (José, 21/10):
+    el borde entre la lista y el chat se arrastra para dar más espacio al chat
+    (ancho recordado por dispositivo) y la lista se puede esconder (colapsar)
+    con un botón, como un panel de Slack.
+28. **Notificación del sistema en la web** (pregunta de José, 21/10): con la
+    pestaña oculta no hay aviso de Chrome; hoy solo suena si hubo un clic
+    previo en la página. Como WhatsApp Web: pedir permiso de notificaciones y
+    avisar mensajes, zumbidos y guiños.
+29. **El clip sin título y sin «Divertido»** (José, 21/10, después de
+    Messenger): el panel de acciones rápidas no lleva «¿Qué deseas enviar
+    a…?» (ya se está en el chat) y la sección Divertido sale de ahí: el
+    zumbido pasa al panel del botón de emoji, junto a Emoji · Stickers ·
+    Guiños. Así la galería gana espacio. En la web, igual en el menú «+».
+    **Hecho (§74, 21/10).**
 
 ### Guiños y zumbido (análisis, 20/10)
 

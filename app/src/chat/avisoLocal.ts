@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { armarAviso, CANAL_MENSAJES } from '@lilachat/shared';
 import { reportarError } from '../ui/reportarError';
+import { llamadaNativa } from '../../modules/llamada-entrante/src';
 import { cuerpoDelAviso, idDeAvisoDeChat, sumarLineaAlAviso, tituloDelAviso } from './avisosPorChat';
 
 /** Lo que ya muestra el aviso de cada chat: el nuevo lo reemplaza y lo suma (FL11). */
@@ -76,6 +77,13 @@ export async function avisarMensaje(params: {
   // que pidió José, como WhatsApp— sin tapar la conversación con una burbuja.
   // Que suene o zumbe según el modo del teléfono lo decide Android por el canal:
   // tono en normal, vibración en modo vibrador, nada en silencio.
+  // With the app in front, like WhatsApp: the phone's notification sound (or a buzz in vibrate mode)
+  // and nothing in the tray (José, 21/10: the tray filled with notices without «Responder»). The
+  // tray keeps the push's native notices, which have it and are bundled. Older builds: the notice.
+  if (llamadaNativa.canPlayInAppAlert()) {
+    llamadaNativa.playInAppAlert();
+    return;
+  }
   try {
     const aviso = armarAviso(params);
     // UNO por chat, como WhatsApp (FL11): el mismo identificador reemplaza al

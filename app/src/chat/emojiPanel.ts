@@ -22,6 +22,8 @@ import { Easing, makeMutable, withTiming } from 'react-native-reanimated';
  * One conversation at a time: module state.
  */
 const MOVE_MS = 250;
+/** How long the panel takes to slide in or out (the list waits for it). */
+export const PANEL_MOVE_MS = MOVE_MS;
 const EASING = Easing.out(Easing.cubic);
 /** Until a keyboard has been seen, the panel is this tall (dp). */
 const DEFAULT_PANEL_HEIGHT = 340;

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { Keyboard, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import type { FlashListRef } from '@shopify/flash-list';
 import { PosicionEnLaLista } from './finalDeLaConversacion';
+import { PANEL_MOVE_MS, useEmojiPanelOpen } from './emojiPanel';
 
 /**
  * Dónde está la conversación respecto de su final (FL2/FL3).
@@ -15,6 +16,9 @@ import { PosicionEnLaLista } from './finalDeLaConversacion';
  * - Cuánto falta para el final lo decide `PosicionEnLaLista`: el alto del
  *   contenido sale de la medición, no del evento de scroll (que llega atrasado).
  */
+/** After the panel's slide, one beat for the list to take its room off. */
+const PANEL_SETTLE_MS = 50;
+
 export function useFinalDeLaConversacion<T>(
   listaRef: RefObject<FlashListRef<T> | null>,
   mensajes: readonly { seq: number; senderId: string }[],
@@ -66,6 +70,18 @@ export function useFinalDeLaConversacion<T>(
     });
     return () => sub.remove();
   }, [listaRef]);
+
+  // The emoji panel closed: its room is gone and, at the end, the end comes down with it. With a
+  // message added while it was open (José, 21/10: a sticker), the list stayed up with a gap below.
+  const panelOpen = useEmojiPanelOpen();
+  const panelWasOpen = useRef(panelOpen);
+  useEffect(() => {
+    const closed = panelWasOpen.current && !panelOpen;
+    panelWasOpen.current = panelOpen;
+    if (!closed || !cercaDelFinal.current) return;
+    const follow = setTimeout(() => listaRef.current?.scrollToEnd({ animated: true }), PANEL_MOVE_MS + PANEL_SETTLE_MS);
+    return () => clearTimeout(follow);
+  }, [panelOpen, listaRef]);
 
   /** Placed away from the end by the program (the unread divider): do not follow the end until the person gets there. */
   const releaseFromEnd = useCallback(() => {

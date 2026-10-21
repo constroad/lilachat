@@ -25,6 +25,7 @@ type LlamadaNativa = {
   soltarBloqueo(): void;
   chatPendiente(): string | null;
   limpiarChat(chatId: string): void;
+  playInAppAlert?(): void;
   puedePantallaCompleta(): boolean;
   abrirAjustesPantallaCompleta(): void;
   enCurso(chatId: string, nombre: string, video: boolean, desdeMs: number): void;
@@ -57,6 +58,10 @@ export const llamadaNativa = {
   chatPendiente: (): string | null => seguro(() => nativo?.chatPendiente() ?? null, null),
   /** Al abrir un chat: se va su aviso nativo. */
   limpiarChat: (chatId: string): void => seguro(() => nativo?.limpiarChat(chatId), undefined),
+  /** Whether this build plays the in-app alert itself (older ones post a notice instead). */
+  canPlayInAppAlert: (): boolean => typeof nativo?.playInAppAlert === 'function',
+  /** A message with the app in front: the phone's notification sound (or a buzz in vibrate mode), nothing in the tray. */
+  playInAppAlert: (): void => seguro(() => nativo?.playInAppAlert?.(), undefined),
   puedePantallaCompleta: (): boolean => seguro(() => nativo?.puedePantallaCompleta() ?? true, true),
   abrirAjustesPantallaCompleta: (): void => seguro(() => nativo?.abrirAjustesPantallaCompleta(), undefined),
   /**

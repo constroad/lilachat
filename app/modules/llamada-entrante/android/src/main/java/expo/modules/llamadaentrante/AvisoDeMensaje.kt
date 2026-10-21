@@ -6,7 +6,12 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
+import android.media.RingtoneManager
 import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.Person
@@ -74,6 +79,30 @@ object AvisoDeMensaje {
 
   fun idDe(chatId: String): Int = 0x2B00 xor chatId.hashCode()
 
+  /** All chats' notices go in one bundle, like WhatsApp (José, 21/10), under a summary. */
+  private const val GROUP = "lilachat.mensajes"
+  private const val SUMMARY_ID = 0x2AFF
+
+  /**
+   * A message arriving with the app in front, like WhatsApp: only its sound, or
+   * a buzz in vibrate mode, and nothing in the tray (José, 21/10: the tray
+   * filled with notices without «Responder»). The tray keeps the push's notices,
+   * which have it and are bundled.
+   */
+  fun playInAppAlert(context: Context) {
+    val audio = context.getSystemService(AudioManager::class.java) ?: return
+    when (audio.ringerMode) {
+      AudioManager.RINGER_MODE_NORMAL -> RingtoneManager.getRingtone(context, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))?.play()
+      AudioManager.RINGER_MODE_VIBRATE -> buzz(context)
+      else -> Unit
+    }
+  }
+
+  private fun buzz(context: Context) {
+    val vibrator = if (Build.VERSION.SDK_INT >= 31) context.getSystemService(VibratorManager::class.java)?.defaultVibrator else @Suppress("DEPRECATION") context.getSystemService(Vibrator::class.java)
+    vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 250, 250, 250), -1))
+  }
+
   /**
    * Corre en el hilo de trabajo del servicio de FCM, así que el HTTP va directo.
    * Primero se acusa (es lo que pone el doble check); dibujar es lo segundo.
@@ -118,16 +147,60 @@ object AvisoDeMensaje {
       .setAutoCancel(true)
       .setNumber(lineas.size)
       .setContentIntent(abrirChat(contexto, mensaje.chatId))
+      .setGroup(GROUP)
       // «Responder» y «Marcar como leído», como WhatsApp (FL11). Sin token
       // (server viejo o chat secreto) no se ofrecen.
       .apply { mensaje.respuesta?.let { token -> acciones(contexto, mensaje.chatId, token).forEach { addAction(it) } } }
       .build()
     try {
       NotificationManagerCompat.from(contexto).notify(idDe(mensaje.chatId), aviso)
+      updateSummary(contexto)
     } catch (_: SecurityException) {
       // Sin permiso de notificaciones: el mensaje igual está, se ve al abrir.
     }
   }
+
+  /**
+   * The bundle's summary: «5 mensajes de 3 chats» with a line per chat. Android
+   * shows it only with two chats or more; with none left it goes away. It never
+   * sounds (each chat's notice already did).
+   */
+  private fun updateSummary(context: Context) {
+    val manager = context.getSystemService(NotificationManager::class.java) ?: return
+    val chats = manager.activeNotifications.filter { it.notification.group == GROUP && it.id != SUMMARY_ID }
+    if (chats.isEmpty()) {
+      manager.cancel(SUMMARY_ID)
+      return
+    }
+    val messages = chats.sumOf { it.notification.number.coerceAtLeast(1) }
+    val text = "${plural(messages, "mensaje", "mensajes")} de ${plural(chats.size, "chat", "chats")}"
+    val inbox = NotificationCompat.InboxStyle().setSummaryText(text)
+    for (chat in chats) {
+      val extras = chat.notification.extras
+      inbox.addLine("${extras.getCharSequence(NotificationCompat.EXTRA_TITLE) ?: ""}: ${extras.getCharSequence(NotificationCompat.EXTRA_TEXT) ?: ""}")
+    }
+    val open = context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
+      PendingIntent.getActivity(context, SUMMARY_ID, it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+    }
+    val summary = NotificationCompat.Builder(context, CANAL)
+      .setSmallIcon(AvisoDeLlamada.iconoChico(context))
+      .setContentTitle("Lilachat")
+      .setContentText(text)
+      .setStyle(inbox)
+      .setGroup(GROUP)
+      .setGroupSummary(true)
+      .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
+      .setAutoCancel(true)
+      .setContentIntent(open)
+      .build()
+    try {
+      NotificationManagerCompat.from(context).notify(SUMMARY_ID, summary)
+    } catch (_: SecurityException) {
+      // Without permission there is nothing to show.
+    }
+  }
+
+  private fun plural(count: Int, one: String, many: String) = if (count == 1) "1 $one" else "$count $many"
 
   private fun acciones(contexto: Context, chatId: String, token: String): List<NotificationCompat.Action> {
     fun intento(accion: String) = Intent(contexto, ReceptorDeMensaje::class.java)
@@ -182,6 +255,7 @@ object AvisoDeMensaje {
   fun limpiar(contexto: Context, chatId: String) {
     NotificationManagerCompat.from(contexto).cancel(idDe(chatId))
     contexto.getSharedPreferences(ARCHIVO, Context.MODE_PRIVATE).edit().remove(chatId).apply()
+    updateSummary(contexto)
   }
 
   private data class Linea(val seq: Int, val autor: String, val cuerpo: String, val at: Long)

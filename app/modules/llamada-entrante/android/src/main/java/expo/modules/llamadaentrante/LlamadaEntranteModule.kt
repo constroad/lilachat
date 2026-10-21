@@ -46,6 +46,8 @@ class LlamadaEntranteModule : Module() {
     // FL8.2: el aviso de mensaje tocado, y limpiar el de un chat al abrirlo.
     Function("chatPendiente") { Puente.tomarChatPendiente() }
     Function("limpiarChat") { chatId: String -> AvisoDeMensaje.limpiar(contexto, chatId) }
+    // A message with the app in front: its sound only, nothing in the tray (José, 21/10).
+    Function("playInAppAlert") { AvisoDeMensaje.playInAppAlert(contexto) }
     Function("puedePantallaCompleta") {
       if (Build.VERSION.SDK_INT < 34) true
       else contexto.getSystemService(NotificationManager::class.java)?.canUseFullScreenIntent() ?: false

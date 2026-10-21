@@ -150,6 +150,9 @@ export type ChatSummary = {
   /** `notas`: un borrador, un chat solo contigo y con nombre (19/10). */
   kind: 'direct' | 'group' | 'notas';
   name?: string;
+  /** A chat of a company space, and a channel there (E1/E2): it opens in the Slack format. */
+  workspaceId?: string;
+  channel?: { visibility: 'public' | 'private' };
   /** El chat contigo («Tú · Envíate un mensaje», 20/10). */
   propio?: boolean;
   /** El teléfono del OTRO, solo en 1:1: con él se busca su nombre en tu agenda. */

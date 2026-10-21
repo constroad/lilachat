@@ -27,6 +27,8 @@ export function useDibujarFila(p: {
   fotos: ReadonlyMap<string, string>;
   /** Each member's role: the pill next to the name in the Slack format. */
   roles: ReadonlyMap<string, string>;
+  /** A chat of a company space: always the Slack format. */
+  workspaceId?: string;
   leidoHasta: number;
   entregadoHasta: number;
   divisorSeq: number | null;
@@ -53,7 +55,7 @@ export function useDibujarFila(p: {
 }) {
   const { rows, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir } = p;
   // Groups as flat rows, like Slack (design `s-01`): always in a company space, on request in a personal group.
-  const flat = usesFlatLayout({ kind: esGrupo ? 'group' : 'direct' }, { groupsAsList: useGroupsAsList() });
+  const flat = usesFlatLayout({ kind: esGrupo ? 'group' : 'direct', workspaceId: p.workspaceId }, { groupsAsList: useGroupsAsList() });
   const { citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas } = p;
   const { onReaccionar, onMasEmojis, onVerReacciones, destacados } = p;
   return useCallback(

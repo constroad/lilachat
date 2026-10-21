@@ -1,5 +1,6 @@
 import type { AgendaReminder } from '@lilachat/shared';
 import { subirFotoRedonda, type FotoElegida } from '../chat/fotoDeGrupo';
+import { jsonCall } from '../api/jsonCall';
 
 /**
  * Cliente de la agenda (eventos, recordatorios, encuestas). Comparte forma con
@@ -7,41 +8,13 @@ import { subirFotoRedonda, type FotoElegida } from '../chat/fotoDeGrupo';
  * meterlos en el cliente del chat lo volvería un cajón de sastre.
  */
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
-const TIMEOUT_MS = 15_000;
 
 /** `status` (19/10): un 404 dice «ya no existe», que no es lo mismo que «sin red». */
 export type AgendaResult<T> = { ok: true; data: T } | { ok: false; message?: string; status?: number };
 
 export type { AgendaEvent, AgendaPoll, AgendaReminder, PendientesDeAgenda } from '@lilachat/shared';
 
-async function call<T>(
-  route: string,
-  jwt: string,
-  init: RequestInit = {}
-): Promise<AgendaResult<T>> {
-  try {
-    const response = await fetch(`${BASE_URL}/api/agenda${route}`, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${jwt}`,
-        ...(init.headers ?? {}),
-      },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-    const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-    if (!response.ok) {
-      return {
-        ok: false,
-        message: typeof payload.message === 'string' ? payload.message : undefined,
-        status: response.status,
-      };
-    }
-    return { ok: true, data: payload as T };
-  } catch {
-    return { ok: false, message: 'Sin conexión. Inténtalo de nuevo.' };
-  }
-}
+const call = <T>(route: string, jwt: string, init: RequestInit = {}): Promise<AgendaResult<T>> => jsonCall<T>(`${BASE_URL}/api/agenda${route}`, jwt, init);
 
 export const agendaGet = <T>(route: string, jwt: string) => call<T>(route, jwt);
 

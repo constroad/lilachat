@@ -91,11 +91,13 @@ export function BottomNav({
  * FL6; en las demás, el nombre de la pestaña (auditoría §48: las cuatro decían
  * «Lilachat» y nada ubicaba dónde estabas). Sin línea abajo: el diseño no la tiene.
  */
-export function AppHeader({ tab, children }: { tab: Tab; children?: React.ReactNode }) {
+export function AppHeader({ tab, children, chatsTitle }: { tab: Tab; children?: React.ReactNode; /** The Chats title with its space switcher (E1), instead of the bare logo. */ chatsTitle?: React.ReactNode }) {
   const margenes = useMargenes();
   return (
     <View className="min-h-[56px] flex-row items-center gap-2 bg-background px-4 pb-2" style={{ paddingTop: margenes.cabecera }}>
-      {tab === 'chats' ? (
+      {tab === 'chats' && chatsTitle ? (
+        chatsTitle
+      ) : tab === 'chats' ? (
         <>
           <Logo tamano={32} />
           <Text className="flex-1 text-[22px] font-bold text-primary">Lilachat</Text>

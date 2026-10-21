@@ -214,6 +214,8 @@ function PantallaDeChat({
       // Mismo criterio que la lista: gana el nombre de TU agenda. Sin esto la
       // cabecera decía «960397018» aunque la lista ya dijera «Wilson».
       chatName={
+        // A channel of a space reads «# obra-miraflores», like Slack (design `s-01`).
+        chat.channel && chat.name ? `# ${chat.name}` :
         nombreDeContacto({ delServidor: chat.name, telefono: chat.phone, agenda: agendaPorTelefono() }) ||
         'Conversación'
       }
@@ -234,6 +236,7 @@ function PantallaDeChat({
       // llamar llamaba a un miembro cualquiera.
       otherUserId={chat.kind === 'direct' ? (chat.memberIds.find((id) => id !== credential.userId) ?? null) : null}
       esBorrador={chat.kind === 'notas'}
+      workspaceId={chat.workspaceId}
       onBack={onBack}
     />
     </ErrorBoundary>

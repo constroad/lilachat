@@ -30,5 +30,7 @@ export type PropsDelChat = {
   otherUserId?: string | null;
   /** Un chat solo contigo (`notas`, 19/10): ni grupo ni 1:1. */
   esBorrador?: boolean;
+  /** A chat of a company space (E1): its groups and channels always read in the Slack format. */
+  workspaceId?: string;
   onBack: () => void;
 };

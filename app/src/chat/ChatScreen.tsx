@@ -81,7 +81,7 @@ export function ChatScreen({
   irASeq,
   encrypted,
   otherUserId,
-  esBorrador = false,
+  esBorrador = false, workspaceId,
   onBack,
 }: PropsDelChat) {
   const colores = useColores();
@@ -341,7 +341,7 @@ export function ChatScreen({
     encrypted: Boolean(encrypted),
     esGrupo: esGrupoChat,
     nombres: nombresDelGrupo,
-    fotos: fotosDelGrupo, roles: grupo.roles,
+    fotos: fotosDelGrupo, roles: grupo.roles, workspaceId,
     leidoHasta,
     entregadoHasta,
     divisorSeq,
@@ -537,7 +537,7 @@ export function ChatScreen({
         yo={credential.userId} jwt={credential.jwt}
         esGrupo={esGrupoChat}
         nombres={nombresDelGrupo}
-        fotos={fotosDelGrupo} roles={grupo.roles}
+        fotos={fotosDelGrupo} roles={grupo.roles} workspaceId={workspaceId}
         respuestas={hilos.respuestas}
         pendientes={hilos.pendientesDelHilo}
         leidoHasta={leidoHasta}

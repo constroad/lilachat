@@ -50,6 +50,8 @@ export function HiloScreen(props: {
   fotos: ReadonlyMap<string, string>;
   /** Each member's role: the pill next to the name in the Slack format (design `s-02`). */
   roles: ReadonlyMap<string, string>;
+  /** A chat of a company space: always the Slack format. */
+  workspaceId?: string;
   respuestas: readonly ChatMessage[];
   pendientes: readonly PendingMessage[];
   leidoHasta: number;
@@ -91,7 +93,7 @@ export function HiloScreen(props: {
   const filas: Respuesta[] = [...props.respuestas, ...props.pendientes];
   const nombreDe = (id: string) => (id === props.yo ? 'Tú' : (props.nombres.get(id) ?? 'Alguien'));
   // The thread follows its chat: as a list in the Slack format (design `s-02`).
-  const flat = usesFlatLayout({ kind: props.esGrupo ? 'group' : 'direct' }, { groupsAsList: useGroupsAsList() });
+  const flat = usesFlatLayout({ kind: props.esGrupo ? 'group' : 'direct', workspaceId: props.workspaceId }, { groupsAsList: useGroupsAsList() });
   const badgeOf = (id: string) => memberBadge({ role: props.roles.get(id), isMe: id === props.yo });
 
   const startEditing = (seq: number) => {

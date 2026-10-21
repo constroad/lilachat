@@ -8,6 +8,8 @@ import { connectSocket } from '../chat/socketClient';
 import { avisarMensaje, prepararAvisos } from '../chat/avisoLocal';
 import { iniciarServicio } from '../../modules/servicio-socket/src';
 import { ChatListScreen } from '../chat/ChatListScreen';
+import { SpaceChatsScreen } from '../spaces/SpaceChatsScreen';
+import { useSpacesUi } from '../spaces/useSpacesUi';
 import { CreatePollScreen } from '../agenda/CreatePollScreen';
 import { AgendaScreen } from '../agenda/AgendaScreen';
 import { PollsScreen } from '../agenda/PollsScreen';
@@ -102,6 +104,8 @@ export function TabsShell({
   }, [pestanaPedida]);
   const [creating, setCreating] = useState<'poll' | null>(null);
   const [chats, setChats] = useState<ChatSummary[]>([]);
+  // The company spaces (E1/E2): the Chats title switches between personal and each space.
+  const espacios = useSpacesUi({ jwt: credential.jwt, me: { name: perfilPropio.name?.trim() || 'Tú', phone: credential.phone }, personalUnread: chats.filter((chat) => chat.unread > 0).length, onOpenChat });
   /** Mis grupos, para la agenda: un evento con la misma gente va al que ya existe (FL10). */
   const grupos = useMemo(
     () => chats.filter((chat) => chat.kind === 'group' && chat.memberIds.includes(credential.userId)).map((chat) => ({ id: chat.id, memberIds: chat.memberIds })),
@@ -291,7 +295,7 @@ export function TabsShell({
 
   return (
     <View className="flex-1 bg-background" style={{ paddingLeft: insets.left, paddingRight: insets.right }}>
-      <AppHeader tab={tab}>
+      <AppHeader tab={tab} chatsTitle={espacios.title}>
         {tab === 'chats' ? (
           <>
             {/* La cámara apagada que había acá se fue (FL3): un botón que no
@@ -356,12 +360,16 @@ export function TabsShell({
             onDescartar={actualizaciones.descartarAviso}
           />
           <ErrorBoundary pantalla="lista">
+          {espacios.current ? (
+            <SpaceChatsScreen key={espacios.current.id} space={espacios.current} jwt={credential.jwt} myUserId={credential.userId} active={tab === 'chats'} openChatId={chatAbierto} onOpenChat={onOpenChat} onChannels={espacios.openChannels} onInvite={espacios.openInvite} />
+          ) : (
           <ChatListScreen
             credential={credential}
             chatAbierto={chatAbierto}
             onOpenChat={onOpenChat}
             onNewChat={() => setNewChat(true)}
           />
+          )}
           </ErrorBoundary>
           </View>
           {dosPaneles ? <View className="flex-1">{tab === 'chats' && panelDeChat ? panelDeChat : <SinChatElegido />}</View> : null}
@@ -417,6 +425,7 @@ export function TabsShell({
       {amplia ? null : <BottomNav active={tab} onChange={setTab} cuentas={cuentasDeLaBarra} />}
 
       {/* El lápiz de la lista, que no hacía nada. */}
+      {espacios.layer}
       <NewChatScreen
         visible={newChat}
         credential={credential}

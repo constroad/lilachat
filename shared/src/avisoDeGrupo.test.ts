@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { esAvisoDestacado, textoDeAviso } from './avisoDeGrupo.js';
+import { actsAsMessage, esAvisoDestacado, HIGHLIGHTED_NOTICE_EVENTS, textoDeAviso } from './avisoDeGrupo.js';
 
 describe('textoDeAviso', () => {
   const wilson = { quien: 'Wilson', esMio: false };
@@ -155,5 +155,23 @@ describe('esAvisoDestacado', () => {
     expect(esAvisoDestacado('evento-pronto')).toBe(true);
     expect(esAvisoDestacado('nombre')).toBe(false);
     expect(esAvisoDestacado(undefined)).toBe(false);
+  });
+});
+
+/** José, 21/10: «aparece el recordatorio pero no puedo reaccionar o responder o enviar sticker». */
+describe('actsAsMessage', () => {
+  it('a message, and a reminder that rings or an event coming up', () => {
+    expect(actsAsMessage({ kind: 'text' })).toBe(true);
+    expect(actsAsMessage({})).toBe(true);
+    expect(actsAsMessage({ kind: 'system', system: { evento: 'recordatorio-suena' } })).toBe(true);
+    expect(actsAsMessage({ kind: 'system', system: { evento: 'evento-pronto' } })).toBe(true);
+  });
+  it('not the grey notices of the group', () => {
+    expect(actsAsMessage({ kind: 'system', system: { evento: 'nombre' } })).toBe(false);
+    expect(actsAsMessage({ kind: 'system' })).toBe(false);
+    expect(actsAsMessage({ kind: 'system', system: null })).toBe(false);
+  });
+  it('the highlighted events are the same list the server filters by', () => {
+    expect([...HIGHLIGHTED_NOTICE_EVENTS].every((evento) => esAvisoDestacado(evento))).toBe(true);
   });
 });

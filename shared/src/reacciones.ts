@@ -4,6 +4,8 @@
  * misma la quita—, barra de seis y «+» para el resto. PURO: lo usan el server,
  * la app y la web.
  */
+import { actsAsMessage } from './avisoDeGrupo.js';
+
 export const EMOJIS_RAPIDOS = ['👍', '❤️', '😂', '😮', '😢', '🙏'] as const;
 
 /** Un emoji de reacción no pasa de esto (los compuestos, como una familia, son largos). */
@@ -45,8 +47,8 @@ export function miReaccion(reacciones: readonly Reaccion[] | undefined, yo: stri
 }
 
 /** A qué se reacciona: confirmado, vivo, no un aviso y fuera de un chat secreto (todavía). */
-export function puedeReaccionar(mensaje: { seq: number | null; deletedAt?: string | null; kind?: string; cifrado?: boolean }): boolean {
-  return mensaje.seq !== null && !mensaje.deletedAt && mensaje.kind !== 'system' && !mensaje.cifrado;
+export function puedeReaccionar(mensaje: { seq: number | null; deletedAt?: string | null; kind?: string; system?: { evento?: string } | null; cifrado?: boolean }): boolean {
+  return mensaje.seq !== null && !mensaje.deletedAt && actsAsMessage(mensaje) && !mensaje.cifrado;
 }
 
 const LARGO_DEL_EXTRACTO = 40;

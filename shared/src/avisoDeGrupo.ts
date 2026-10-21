@@ -113,3 +113,15 @@ export function textoDeAviso(params: {
 export function esAvisoDestacado(evento: string | undefined): evento is 'recordatorio-suena' | 'evento-pronto' {
   return evento === 'recordatorio-suena' || evento === 'evento-pronto';
 }
+
+/** The highlighted notices, for the server's queries (same list as `esAvisoDestacado`). */
+export const HIGHLIGHTED_NOTICE_EVENTS = ['recordatorio-suena', 'evento-pronto'] as const;
+
+/**
+ * Whether people can react, reply or open a thread on it (José, 21/10: the
+ * reminder showed up and he could not react or reply): any message, and the
+ * highlighted notices; the grey notices of the group, no.
+ */
+export function actsAsMessage(message: { kind?: string; system?: { evento?: string } | null }): boolean {
+  return message.kind !== 'system' || esAvisoDestacado(message.system?.evento);
+}

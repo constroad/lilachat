@@ -1,3 +1,4 @@
+import { actsAsMessage } from './avisoDeGrupo.js';
 import { formatClock } from './chatDisplay.js';
 
 /**
@@ -18,8 +19,8 @@ export function visibleEnElChat(mensaje: { hiloDe?: number; enElChat?: boolean }
  * server en `validarRaiz`). Una tarjeta de recordatorio, evento o encuesta
  * también (José, 20/10).
  */
-export function puedeAbrirHilo(mensaje: { seq: number | null; kind?: string; hiloDe?: number; deletedAt?: string | null; cifrado?: boolean }): boolean {
-  return mensaje.seq !== null && mensaje.kind !== 'system' && mensaje.hiloDe === undefined && !mensaje.deletedAt && !mensaje.cifrado;
+export function canOpenThread(message: { seq: number | null; kind?: string; system?: { evento?: string } | null; hiloDe?: number; deletedAt?: string | null; cifrado?: boolean }): boolean {
+  return message.seq !== null && actsAsMessage(message) && message.hiloDe === undefined && !message.deletedAt && !message.cifrado;
 }
 
 /** «1 respuesta · 11:05» o «4 respuestas · última 10:42». Sin respuestas, nada. */

@@ -30,6 +30,8 @@ export type MensajeEnVivo = {
   system?: unknown;
   /** E3: es una respuesta de hilo (la vista previa lo dice). */
   hiloDe?: number;
+  /** A wink's id (José, 21/10). */
+  wink?: string;
 };
 
 /**
@@ -69,6 +71,7 @@ export function aplicarMensajeALista<C extends ResumenEnVivo>(
       at: mensaje.at,
       system: mensaje.system,
       ...(mensaje.hiloDe !== undefined ? { hiloDe: mensaje.hiloDe } : {}),
+      ...(mensaje.wink ? { wink: mensaje.wink } : {}),
     },
   } as C;
   return chats.map((chat, i) => (i === indice ? actualizado : chat));

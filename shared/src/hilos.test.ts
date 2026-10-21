@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aplicarResumenDeHilo, hayRespuestasNuevas, puedeAbrirHilo, respuestasDelHilo, textoDelChipDeHilo, visibleEnElChat } from './hilos.js';
+import { aplicarResumenDeHilo, hayRespuestasNuevas, canOpenThread, respuestasDelHilo, textoDelChipDeHilo, visibleEnElChat } from './hilos.js';
 
 /** E3 (20/10): hilos. */
 describe('visibleEnElChat', () => {
@@ -47,22 +47,27 @@ describe('respuestasDelHilo y aplicarResumenDeHilo', () => {
 });
 
 /** José, 20/10: «al tocar un mensaje aparecen solo emojis; ahí también la manera de crear hilos», y en un recordatorio. */
-describe('puedeAbrirHilo', () => {
+describe('canOpenThread', () => {
   const vivo = { seq: 12, kind: 'text' };
 
   it('un mensaje o una tarjeta (recordatorio, evento, encuesta) confirmados abren hilo', () => {
-    expect(puedeAbrirHilo(vivo)).toBe(true);
-    expect(puedeAbrirHilo({ seq: 30, kind: 'text', ref: { tipo: 'recordatorio' } })).toBe(true);
+    expect(canOpenThread(vivo)).toBe(true);
+    expect(canOpenThread({ seq: 30, kind: 'text', ref: { tipo: 'recordatorio' } })).toBe(true);
   });
 
   it('no hay hilos de hilos, ni de avisos, ni de lo borrado', () => {
-    expect(puedeAbrirHilo({ ...vivo, hiloDe: 4 })).toBe(false);
-    expect(puedeAbrirHilo({ ...vivo, kind: 'system' })).toBe(false);
-    expect(puedeAbrirHilo({ ...vivo, deletedAt: '2026-10-20T10:00:00Z' })).toBe(false);
+    expect(canOpenThread({ ...vivo, hiloDe: 4 })).toBe(false);
+    expect(canOpenThread({ ...vivo, kind: 'system' })).toBe(false);
+    expect(canOpenThread({ ...vivo, deletedAt: '2026-10-20T10:00:00Z' })).toBe(false);
+  });
+
+  it('the reminder that rang and the event coming up do open one (21/10)', () => {
+    expect(canOpenThread({ ...vivo, kind: 'system', system: { evento: 'recordatorio-suena' } })).toBe(true);
+    expect(canOpenThread({ ...vivo, kind: 'system', system: { evento: 'evento-pronto' } })).toBe(true);
   });
 
   it('ni en un chat secreto, ni de lo que todavía no llegó al server', () => {
-    expect(puedeAbrirHilo({ ...vivo, cifrado: true })).toBe(false);
-    expect(puedeAbrirHilo({ ...vivo, seq: null })).toBe(false);
+    expect(canOpenThread({ ...vivo, cifrado: true })).toBe(false);
+    expect(canOpenThread({ ...vivo, seq: null })).toBe(false);
   });
 });

@@ -74,6 +74,10 @@ describe('puedeReaccionar', () => {
     expect(puedeReaccionar({ seq: 3, kind: 'system' })).toBe(false);
     expect(puedeReaccionar({ seq: 3, cifrado: true })).toBe(false);
   });
+  it('yes to the reminder that rang in the chat (21/10), not to a grey notice', () => {
+    expect(puedeReaccionar({ seq: 3, kind: 'system', system: { evento: 'recordatorio-suena' } })).toBe(true);
+    expect(puedeReaccionar({ seq: 3, kind: 'system', system: { evento: 'salio' } })).toBe(false);
+  });
 });
 
 describe('textoDelAvisoDeReaccion', () => {

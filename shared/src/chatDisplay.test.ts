@@ -330,5 +330,6 @@ describe('vista previa de encuesta y evento', () => {
 describe('nudge preview', () => {
   it('the list says «Zumbido»', () => {
     expect(resolveChatPreview({ typing: false, lastKind: 'zumbido' })).toEqual({ text: 'Zumbido', style: 'normal' });
+    expect(resolveChatPreview({ typing: false, lastKind: 'guino' })).toEqual({ text: 'Guiño', style: 'normal' });
   });
 });

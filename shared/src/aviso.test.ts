@@ -85,5 +85,6 @@ describe('armarAviso', () => {
 describe('nudge notice', () => {
   it('says who nudged', () => {
     expect(armarAviso({ chatName: 'Ana', senderName: 'Ana', esGrupo: false, kind: 'zumbido', body: '' }).cuerpo).toBe('Te mandó un zumbido');
+    expect(armarAviso({ chatName: 'Ana', senderName: 'Ana', esGrupo: false, kind: 'guino', body: '' }).cuerpo).toBe('Te mandó un guiño');
   });
 });

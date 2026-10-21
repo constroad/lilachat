@@ -209,6 +209,7 @@ export function resolveChatPreview(params: {
   if (params.lastBody) return { text: params.enHilo ? `En un hilo: ${params.lastBody}` : params.lastBody, style: 'normal' };
   // The MSN nudge (backlog 3): no content, just what happened.
   if (params.lastKind === 'zumbido') return { text: 'Zumbido', style: 'normal' };
+  if (params.lastKind === 'guino') return { text: 'Guiño', style: 'normal' };
   if (params.lastKind && params.lastKind !== 'text') {
     // El tipo va aparte (FL3): la app dibuja un ícono vectorial como WhatsApp;
     // con el emoji pegado al texto se veía distinto en cada teléfono.

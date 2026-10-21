@@ -5,13 +5,13 @@
  * pedir. Al reconectar se refrescan todas: lo que pasó con el socket pausado
  * (app en el fondo) no se pierde.
  */
-export type TipoDeTarjeta = 'encuesta' | 'evento' | 'recordatorio' | 'checklist';
+export type CardType = 'encuesta' | 'evento' | 'recordatorio' | 'checklist';
 
-const TIPOS: ReadonlySet<string> = new Set<TipoDeTarjeta>(['encuesta', 'evento', 'recordatorio', 'checklist']);
+const CARD_TYPES: ReadonlySet<string> = new Set<CardType>(['encuesta', 'evento', 'recordatorio', 'checklist']);
 const oyentes = new Map<string, Set<() => void>>();
-const clave = (tipo: TipoDeTarjeta, id: string) => `${tipo}:${id}`;
+const clave = (tipo: CardType, id: string) => `${tipo}:${id}`;
 
-export function suscribirTarjeta(tipo: TipoDeTarjeta, id: string, refrescar: () => void): () => void {
+export function suscribirTarjeta(tipo: CardType, id: string, refrescar: () => void): () => void {
   const llave = clave(tipo, id);
   const conjunto = oyentes.get(llave) ?? new Set();
   conjunto.add(refrescar);
@@ -25,8 +25,8 @@ export function suscribirTarjeta(tipo: TipoDeTarjeta, id: string, refrescar: () 
 /** El aviso del server, tal como llega por el socket. */
 export function avisarTarjeta(frame: unknown): void {
   const { tipo, id } = (frame ?? {}) as { tipo?: unknown; id?: unknown };
-  if (typeof tipo !== 'string' || !TIPOS.has(tipo) || typeof id !== 'string') return;
-  for (const refrescar of oyentes.get(clave(tipo as TipoDeTarjeta, id)) ?? []) refrescar();
+  if (typeof tipo !== 'string' || !CARD_TYPES.has(tipo) || typeof id !== 'string') return;
+  for (const refrescar of oyentes.get(clave(tipo as CardType, id)) ?? []) refrescar();
 }
 
 export function refrescarTodas(): void {

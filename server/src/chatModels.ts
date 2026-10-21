@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Model, type QueryFilter, type Types } from 'mongoose';
-import type { RefDeMensaje } from '@lilachat/shared';
+import type { MessageRef } from '@lilachat/shared';
 import { HIGHLIGHTED_NOTICE_EVENTS } from '@lilachat/shared';
 
 /**
@@ -90,7 +90,7 @@ export interface Message {
    * El mensaje lleva solo la referencia: los votos y las confirmaciones cambian
    * y se leen de la encuesta o del evento, no se copian acá.
    */
-  ref?: RefDeMensaje;
+  ref?: MessageRef;
   /**
    * El sobre cifrado, en los chats secretos. Cuando está, `body` NO está: son
    * excluyentes, y guardar los dos anularía el cifrado en la práctica.

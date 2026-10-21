@@ -8,8 +8,8 @@ import { useColores } from '../ui/tema';
 /**
  * La línea que deja una llamada en el chat (FL8.1), como en WhatsApp: ícono,
  * «Llamada perdida» / «Llamada sin respuesta» / «Llamada de voz · 02:13» y la
- * hora. La perdida (para quien no contestó) va en rojo: es la que hay que ver,
- * con «Llamar» y «Recordarme» debajo (backlog 23, José 21/10).
+ * hora. La perdida (para quien no contestó) va en rojo: es la que hay que ver.
+ * Missed: «Llamar» and «Recordarme» under it (backlog 23, José 21/10).
  */
 export function LineaDeLlamada({ item, myUserId }: { item: ChatMessage; myUserId: string }) {
   const colores = useColores();

@@ -1,4 +1,4 @@
-import { CrearChecklist } from './agenda/CrearChecklist';
+import { CreateChecklistOverlay } from './agenda/CreateChecklistOverlay';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChatRail } from './chat/ChatRail';
 import { ListResizeHandle } from './chat/ListResizeHandle';
@@ -230,7 +230,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
       ) : null}
       {creando?.tipo === 'evento' ? <CreateEventOverlay jwt={credential.jwt} chat={creando.chat} onClose={() => setCreando(null)} onCreated={alCrear} /> : null}
       {creando?.tipo === 'encuesta' ? <CreatePollOverlay jwt={credential.jwt} chat={creando.chat} onClose={() => setCreando(null)} onCreated={alCrear} /> : null}
-      {creando?.tipo === 'checklist' ? <CrearChecklist jwt={credential.jwt} chatId={creando.chatId} onClose={() => setCreando(null)} /> : null}
+      {creando?.tipo === 'checklist' ? <CreateChecklistOverlay jwt={credential.jwt} chatId={creando.chatId} onClose={() => setCreando(null)} /> : null}
       {creando?.tipo === 'destacados' ? (
         <ListaDeDestacados
           jwt={credential.jwt}

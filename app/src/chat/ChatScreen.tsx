@@ -208,7 +208,7 @@ export function ChatScreen({
   /** Me sacaron del grupo (FL9d): se lee, pero ya no se escribe. */
   const fueraDelGrupo = esGrupoChat && grupo.soyMiembro === false;
   const soyAdminDelGrupo = esGrupoChat && grupo.soyAdmin(credential.userId);
-  // Editar el recordatorio del chat tocando su tarjeta: en un grupo, sus admins; en un 1:1 o un borrador, cualquiera (19-20/10).
+  // Editing the chat's reminder by tapping its card: in a group, its admins; in a 1:1 or a draft, anyone (19-20/10).
   const puedeEditarRecordatorios = !esGrupoChat || soyAdminDelGrupo;
   const callBack = useCallBack({ chatId, name: nombreVisible, callName: chatName, jwt: credential.jwt, enabled: Boolean(otherUserId), llamar });
   const accionesDeTarjeta = useMemo(() => ({ editarRecordatorio: puedeEditarRecordatorios ? (recordatorio: AgendaReminder) => setCreando({ recordatorio }) : undefined, callBack: callBack.actions }), [puedeEditarRecordatorios, callBack.actions]);

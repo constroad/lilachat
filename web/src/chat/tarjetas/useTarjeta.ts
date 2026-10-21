@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { suscribirTarjeta, type TipoDeTarjeta } from '@lilachat/shared';
+import { suscribirTarjeta, type CardType } from '@lilachat/shared';
 import { api } from '../../api';
 
 /**
@@ -14,7 +14,7 @@ const vistas = new Map<string, unknown>();
  * 20/10): se pide al montar, `404` = ya no está (sin reintentar para siempre)
  * y se vuelve a pedir cuando el server avisa `ref.changed`.
  */
-export function useTarjeta<T>(params: { tipo: TipoDeTarjeta; id: string; ruta: string; campo: string; jwt: string }) {
+export function useTarjeta<T>(params: { tipo: CardType; id: string; ruta: string; campo: string; jwt: string }) {
   const { tipo, id, ruta, campo, jwt } = params;
   const llave = `${tipo}:${id}`;
   const [valor, setValor] = useState<T | null | undefined>(() => vistas.get(llave) as T | null | undefined);

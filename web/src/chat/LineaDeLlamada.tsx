@@ -18,11 +18,11 @@ export function LineaDeLlamada({ mensaje }: { mensaje: MensajeEnPantalla }) {
   const [open, setOpen] = useState(false);
   const [notice, setNotice] = useState('');
   const mine = mensaje.senderId === yo;
-  const valor = mensaje.system?.valor;
-  const record = leerValorDeLlamada(valor);
-  const text = textoDeLlamada({ valor, esMio: mine });
+  const callValue = mensaje.system?.valor;
+  const record = leerValorDeLlamada(callValue);
+  const text = textoDeLlamada({ valor: callValue, esMio: mine });
   if (!record || !text) return null;
-  const missed = isMissedCallForMe({ valor, esMio: mine });
+  const missed = isMissedCallForMe({ valor: callValue, esMio: mine });
   const Icon = missed ? PhoneMissed : record.video ? Video : Phone;
   const canRemind = missed && chat.kind === 'direct';
   const remind = async (date: Date) => {

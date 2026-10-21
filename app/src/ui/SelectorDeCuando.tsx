@@ -6,7 +6,7 @@ import { combinarFecha, opcionesRapidas } from '@lilachat/shared';
 import { useColores } from './tema';
 
 const DIA = new Intl.DateTimeFormat('es-PE', { weekday: 'short', day: 'numeric', month: 'short' });
-const HORA = new Intl.DateTimeFormat('es-PE', { hour: 'numeric', minute: '2-digit', hourCycle: 'h12' });
+const TIME = new Intl.DateTimeFormat('es-PE', { hour: 'numeric', minute: '2-digit', hourCycle: 'h12' });
 
 /**
  * Elegir día y hora EXACTOS (17/10/2026), para avisos, eventos y mensajes
@@ -77,7 +77,7 @@ export function SelectorDeCuando({
           testID={`${prefijo}-hora`}
           icono={<Clock size={18} color={colores.primary} />}
           rotulo="Hora"
-          valor={HORA.format(valor)}
+          valor={TIME.format(valor)}
           onPress={() => setPicker('time')}
         />
       </View>

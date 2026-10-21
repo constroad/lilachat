@@ -1,5 +1,5 @@
 import type { Types } from 'mongoose';
-import type { RefDeMensaje } from '@lilachat/shared';
+import type { MessageRef } from '@lilachat/shared';
 import { sendMessage } from './chatService.js';
 import { publicarMensaje } from './socket.js';
 
@@ -17,7 +17,7 @@ const KIND_DE_TARJETA = { encuesta: 'poll', evento: 'event', recordatorio: 'remi
 export async function publicarEnElChat(params: {
   chatId: string;
   autor: Types.ObjectId;
-  ref: RefDeMensaje;
+  ref: MessageRef;
   texto: string;
 }): Promise<void> {
   const resultado = await sendMessage({

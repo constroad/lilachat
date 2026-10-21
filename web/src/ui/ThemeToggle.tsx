@@ -14,8 +14,8 @@ function useDarkNow(): boolean {
 }
 
 /**
- * Light or dark in one click, in the list's header (José, 21/10: «no hay el
- * botón para cambiar el theme»; it was only in Ajustes › Apariencia, which
+ * Light or dark in one click, in the list's header (José, 21/10: there was no
+ * theme button; it was only in Ajustes › Apariencia, which
  * keeps «Sistema»). It shows what it switches to.
  */
 export function ThemeToggle() {

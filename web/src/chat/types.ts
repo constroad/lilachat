@@ -60,7 +60,7 @@ export type ChatSummary = {
 /** Un fijado como lo manda la lista (`server/src/mensajesFijados.ts`). */
 export type FijadoEnLista = { seq: number; por: string; en: string; hasta: string; vista: VistaDelFijado };
 
-export type RefDeMensaje = { tipo: 'encuesta' | 'evento' | 'recordatorio' | 'checklist'; id: string };
+export type MessageRef = { tipo: 'encuesta' | 'evento' | 'recordatorio' | 'checklist'; id: string };
 
 export type ChatMessage = {
   _id?: string;
@@ -74,7 +74,7 @@ export type ChatMessage = {
   wink?: string;
   /** El sobre de un chat secreto: llega EN VEZ de `body`. La web no lo abre. */
   envelope?: { v: number; nonce: string; ciphertext: string };
-  ref?: RefDeMensaje;
+  ref?: MessageRef;
   menciones?: MencionEnMensaje[];
   /** E3: respuesta en el hilo de este `seq`; `enElChat` = también en el chat. */
   hiloDe?: number;

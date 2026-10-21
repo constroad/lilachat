@@ -10,7 +10,7 @@ const FIELD = 'h-11 w-full rounded-xl border border-outline/25 bg-background px-
  * A new checklist in the open chat, on the web (backlog 8, José 21/10; design
  * `k-02-crear-checklist`): title, tasks and whether the others tick and add.
  */
-export function CrearChecklist({ jwt, chatId, onClose }: { jwt: string; chatId: string; onClose: () => void }) {
+export function CreateChecklistOverlay({ jwt, chatId, onClose }: { jwt: string; chatId: string; onClose: () => void }) {
   const [title, setTitle] = useState('');
   const [items, setItems] = useState(['', '', '']);
   const [othersCanMark, setOthersCanMark] = useState(true);

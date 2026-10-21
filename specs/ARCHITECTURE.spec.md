@@ -4971,6 +4971,22 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
 - Limpieza verificada en cero (espacios, miembros, chats, mensajes, acuses y
   dispositivos web de QA).
 
+**Invitar por correo primero** (José, 21/10: «es empresarial, debe ser por
+email y luego por WhatsApp»).
+- «Enviar por correo» es el botón principal en la app y en la web; debajo van
+  WhatsApp y Copiar.
+- Sale desde el correo de quien invita (`mailto:`): Gmail, Outlook o el que
+  tenga, con asunto y cuerpo armados (`spaceInviteEmail`): quién invita, dónde
+  bajar Lilachat (teléfono o computadora), que se entra con el número y el
+  código. En la app, sin app de correo, se abre el menú de compartir.
+- El mensaje de WhatsApp ahora también dice dónde bajar la app.
+- **Por qué no un correo enviado por el server:** constroad-auth ya tiene
+  `POST /v1/invitaciones`, pero su texto dice «entrá con este mismo correo»
+  (Lilachat entra con el número), está en voseo y no lleva el código. Además,
+  la llave de Lilachat tendría que declarar el origen pelado en Torre para que
+  el botón lleve a `/e/<código>`. Queda como siguiente paso, con cambios en
+  constroad-auth.
+
 **Lo que falta del modo empresa.**
 - Pantallas `e1-08`…`e1-14`: directorio, perfil del miembro, miembros y
   roles, solicitudes, ajustes, agregado y desactivado.
@@ -7825,9 +7841,9 @@ tacha con la versión que lo cierra.
    mensaje `sticker` (sin burbuja, con reacciones), se pueden tocar para
    guardar el de otro y tienen favoritos. Antes de elegir una librería de
    recorte se revisa la licencia (sin AGPL ni de pago sin preguntar).
-3. **Guiños y zumbido, como el Messenger de antes.** Análisis abajo. **Zumbido hecho (§71)**; faltan los guiños.
+3. ✅ **Guiños y zumbido, como el Messenger de antes.** Zumbido en §71; guiños en §74 y §77–§79 (0.1.117–0.1.120).
 
-4. **Bug web: cerrar un hilo deja la pantalla en blanco** (José, 20/10). Crear
+4. ✅ (commit 552c8c4) **Bug web: cerrar un hilo deja la pantalla en blanco** (José, 20/10). Crear
    un hilo y tocar la X del panel: toda la web queda en blanco hasta
    recargar. Reproducir en su Chrome con la sesión viva y mirar la consola
    (un error de React sin `ErrorBoundary` tumba todo el árbol).
@@ -7840,7 +7856,7 @@ tacha con la versión que lo cierra.
    entera («Algo falló al mostrar Lilachat.» + Recargar, nunca en blanco). El
    error queda en la consola como `[lilachat] el hilo failed to render`: si
    vuelve a pasar, ese texto dice la causa.
-5. **Bug web: la lista, el chat y su detalle muestran el número y no el
+5. ✅ (agenda del teléfono en la web, `useAgendaRelay`) **Bug web: la lista, el chat y su detalle muestran el número y no el
    nombre del contacto** (José, 20/10: «pésima experiencia»). La web no tiene
    la agenda del teléfono: usar los contactos que la app ya sincroniza con el
    server (`/api/contacts`) para nombrar, como hace la app con
@@ -8017,7 +8033,7 @@ tacha con la versión que lo cierra.
       aprobada la cotización → crear la orden y avisar en #compras; el 25 de
       cada mes → recordar la valorización; pago registrado en el Portal →
       tarjeta en el canal.
-22. **Un audio se corta cuando la pantalla se bloquea** (José, 20/10).
+22. ✅ (§68, 0.1.115) **Un audio se corta cuando la pantalla se bloquea** (José, 20/10).
     Causa: `expo-audio` pausa todos los reproductores y grabadores cuando la
     actividad pasa a segundo plano (bloquear la pantalla cuenta), salvo que
     el modo de audio pida `shouldPlayInBackground` / `allowsBackgroundRecording`;
@@ -8043,7 +8059,7 @@ tacha con la versión que lo cierra.
     pestaña oculta no hay aviso de Chrome; hoy solo suena si hubo un clic
     previo en la página. Como WhatsApp Web: pedir permiso de notificaciones y
     avisar mensajes, zumbidos y guiños.
-29. **El clip sin título y sin «Divertido»** (José, 21/10, después de
+29. ✅ (§74, 0.1.117) **El clip sin título y sin «Divertido»** (José, 21/10, después de
     Messenger): el panel de acciones rápidas no lleva «¿Qué deseas enviar
     a…?» (ya se está en el chat) y la sección Divertido sale de ahí: el
     zumbido pasa al panel del botón de emoji, junto a Emoji · Stickers ·

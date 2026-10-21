@@ -4,6 +4,7 @@ import type { MencionEnMensaje } from '@lilachat/shared';
 import { TextoDelMensaje } from './TextoDelMensaje';
 import { ETIQUETA_EDITADO, MetaDeMensaje } from './MetaDeMensaje';
 import { useColores } from '../ui/tema';
+import { useChatFont } from '../ui/chatFont';
 
 /** El relleno invisible al final del texto: reserva el lugar de la hora. */
 const NBSP = '\u00A0';
@@ -29,11 +30,12 @@ export function TextoConHora(props: {
   meta: ComponentProps<typeof MetaDeMensaje>;
 }) {
   const colores = useColores();
+  const font = useChatFont();
   const { meta } = props;
   const mia = meta.mia;
   return (
     <View className="px-3 pb-1.5 pt-1.5">
-      <Text className={`text-[15px] leading-[21px] ${mia ? 'text-on-burbuja-propia' : 'text-on-burbuja-ajena'}`}>
+      <Text className={mia ? 'text-on-burbuja-propia' : 'text-on-burbuja-ajena'} style={{ fontSize: font.size, lineHeight: font.line }}>
         <TextoDelMensaje texto={props.texto} menciones={props.menciones} nombres={props.nombres} yo={props.yo} enBurbujaPropia={mia} id={props.id} />
         {/* El relleno es la MISMA hora, al mismo tamaño e invisible: reserva
             exactamente su ancho. Del color de la burbuja y no `transparent`: en

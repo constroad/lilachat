@@ -3,7 +3,6 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Circle, CirclePlus, Send, X } from 'lucide-react-native';
 import { CHECKLIST_LIMITS, validateChecklist } from '@lilachat/shared';
 import { Modal } from '../ui/Modal';
-import type { Credential } from '../auth/credentialStore';
 import { agendaPost } from './agendaApi';
 import { FilledField, PrimaryAction, SectionLabel, ToggleRow } from './createUi';
 import { useMargenes } from '../ui/useMargenes';
@@ -12,15 +11,18 @@ import { useColores } from '../ui/tema';
 /**
  * A new checklist in the chat, like Telegram's (backlog 8, José 21/10; design
  * `k-02-crear-checklist`): title, tasks and whether the others tick and add.
- * Always from a chat: a checklist belongs to the people who work on it.
+ * Always from a chat: a checklist belongs to the people who work on it. It
+ * goes pinned by default so it is not lost in the messages (backlog 30); from
+ * a thread (`threadOf`) it stays in the thread and is not pinned.
  */
-export function CreateChecklistScreen(props: { visible: boolean; credential: Credential; chat: { id: string; name: string }; onClose: () => void }) {
+export function CreateChecklistScreen(props: { visible: boolean; jwt: string; chat: { id: string; name: string }; threadOf?: number; onClose: () => void }) {
   const colors = useColores();
   const margins = useMargenes();
   const [title, setTitle] = useState('');
   const [items, setItems] = useState(['', '', '']);
   const [othersCanMark, setOthersCanMark] = useState(true);
   const [othersCanAdd, setOthersCanAdd] = useState(true);
+  const [pin, setPin] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const written = Boolean(title.trim() || items.some((item) => item.trim()));
@@ -30,7 +32,7 @@ export function CreateChecklistScreen(props: { visible: boolean; credential: Cre
     const valid = validateChecklist({ title, items });
     if (!valid.ok) return setError(valid.message);
     setSaving(true);
-    const result = await agendaPost('/checklists', props.credential.jwt, { chatId: props.chat.id, title: valid.title, items: valid.items, othersCanMark, othersCanAdd });
+    const result = await agendaPost('/checklists', props.jwt, { chatId: props.chat.id, title: valid.title, items: valid.items, othersCanMark, othersCanAdd, ...(props.threadOf === undefined ? { pin } : { hiloDe: props.threadOf }) });
     setSaving(false);
     if (!result.ok) return setError(result.message ?? 'No se pudo enviar el checklist.');
     setTitle('');
@@ -75,6 +77,7 @@ export function CreateChecklistScreen(props: { visible: boolean; credential: Cre
           <SectionLabel>Ajustes</SectionLabel>
           <ToggleRow testID="switch-marcar" label="Los demás pueden marcar tareas" hint="Si lo apagas, solo tú las marcas" value={othersCanMark} onChange={setOthersCanMark} />
           <ToggleRow testID="switch-agregar" label="Los demás pueden agregar tareas" hint="Para sumar lo que falte sobre la marcha" value={othersCanAdd} onChange={setOthersCanAdd} />
+          {props.threadOf === undefined ? <ToggleRow testID="switch-fijar" label="Fijar en el chat" hint="Queda arriba de la conversación, a un toque" value={pin} onChange={setPin} /> : null}
           {error ? <Text className="mt-3 text-sm text-error" testID="error-checklist">{error}</Text> : null}
         </ScrollView>
         <View className="px-4 pt-2" style={{ paddingBottom: margins.pie }}>

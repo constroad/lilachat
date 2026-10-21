@@ -5,6 +5,7 @@ import { Camera, Keyboard as Teclado, Paperclip, Send, Smile, X } from 'lucide-r
 import { duracionDeVoz, insertarEnTexto, type MencionEnMensaje, type Seleccion } from '@lilachat/shared';
 import { deleteBeforeCursor } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
+import { useChatFont } from '../ui/chatFont';
 import { precalentarPermisoDeVoz, useGrabadorDeVoz, type NotaGrabada } from './useGrabadorDeVoz';
 import { guardarBorrador, leerBorrador } from './borradores';
 import { useClipboardImage } from './useClipboardImage';
@@ -87,6 +88,8 @@ export const Composer = memo(function Composer(props: {
   modoSecreto?: 'bloqueado' | 'solo-texto';
 }) {
   const colores = useColores();
+  // The bar is one point above the bubble (16 at Mediana, as it was).
+  const font = useChatFont();
   /**
    * El campo NO es controlado (FL12, §49 #15): con `value` cada tecla iba y
    * volvía entre JS y el nativo y redibujaba la barra, y con el hilo JS ocupado
@@ -319,7 +322,8 @@ export const Composer = memo(function Composer(props: {
         onBlur={() => setFocused(false)}
         // 46 + el borde = 48: la misma altura que el micrófono (FL13). Con 44
         // el multilínea de Android crecía y quedaban desalineados.
-        className="max-h-28 min-h-[46px] min-w-0 flex-1 py-3 pr-3 text-base text-on-surface"
+        className="max-h-28 min-h-[46px] min-w-0 flex-1 py-3 pr-3 text-on-surface"
+        style={{ fontSize: font.size + 1 }}
         // «Mensaje», como WhatsApp: con el emoji adentro, «Escribe un mensaje» se partía en dos líneas.
         placeholder="Mensaje"
         placeholderTextColor={colores.outline}

@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { formatClock } from '@lilachat/shared';
+import { checklistMembers, formatClock } from '@lilachat/shared';
 import type { ChatMessage } from './useChat';
 import { EncuestaEnElChat } from './EncuestaEnElChat';
 import { EventoEnElChat } from './EventoEnElChat';
@@ -67,7 +67,7 @@ export function TarjetaDelChat(props: {
             {item.ref!.tipo === 'encuesta' ? (
               <EncuestaEnElChat pollId={item.ref!.id} jwt={props.jwt} yo={props.yo} />
             ) : item.ref!.tipo === 'checklist' ? (
-              <ChecklistEnElChat checklistId={item.ref!.id} jwt={props.jwt} yo={props.yo} nameOf={(userId) => props.everyName?.get(userId) ?? 'Alguien'} />
+              <ChecklistEnElChat checklistId={item.ref!.id} jwt={props.jwt} yo={props.yo} nameOf={(userId) => props.everyName?.get(userId) ?? 'Alguien'} members={checklistMembers(props.everyName, props.yo)} />
             ) : item.ref!.tipo === 'recordatorio' ? (
               <RecordatorioEnElChat reminderId={item.ref!.id} jwt={props.jwt} onLongPress={elegir} />
             ) : (

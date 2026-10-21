@@ -379,7 +379,17 @@ export function TabsShell({
             {/* Eventos y avisos en una sola pestaña: el botón de crear ofrece
                 los dos tipos en vez de adivinar por el filtro activo. */}
             <ErrorBoundary pantalla="agenda">
-              <AgendaScreen credential={credential} activa={tab === 'agenda'} grupos={grupos} onCambio={() => void refrescarPendientes()} />
+              <AgendaScreen
+                credential={credential}
+                activa={tab === 'agenda'}
+                grupos={grupos}
+                onCambio={() => void refrescarPendientes()}
+                chatNameOf={(chatId) => {
+                  const chat = chatsRef.current.find((one) => one.id === chatId);
+                  return (chat && nombreDeContacto({ delServidor: chat.name, telefono: chat.phone, agenda: agendaPorTelefono() })) || 'Conversación';
+                }}
+                onOpenTask={(chatId, seq) => void buscarChat(chatId, credential.jwt).then((chat) => chat && onOpenChat(chat, seq))}
+              />
             </ErrorBoundary>
           </View>
         ) : null}

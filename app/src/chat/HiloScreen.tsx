@@ -4,9 +4,11 @@ import { Image } from 'expo-image';
 import { Modal } from '../ui/Modal';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useScrollConTeclado } from './useScrollConTeclado';
-import { ArrowLeft, Check, Send, Smile, Square, SquareCheck, X } from 'lucide-react-native';
-import { deleteBeforeCursor, formatClock, miReaccion, primerEnlace, puedeEditar, puedeReaccionar, resolveDeliveryState, type DeliveryState } from '@lilachat/shared';
+import { ArrowLeft, Check, ClipboardCheck, Send, Smile, Square, SquareCheck, X } from 'lucide-react-native';
+import { checklistMembers, deleteBeforeCursor, formatClock, miReaccion, primerEnlace, puedeEditar, puedeReaccionar, resolveDeliveryState, type DeliveryState } from '@lilachat/shared';
 import { ThreadPicker } from './ThreadPicker';
+import { ChecklistEnElChat } from './ChecklistEnElChat';
+import { CreateChecklistScreen } from '../agenda/CreateChecklistScreen';
 import { Avatar } from '../ui/Avatar';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
@@ -68,6 +70,8 @@ export function HiloScreen(props: {
   const [editing, setEditing] = useState<{ seq: number; original: string } | null>(null);
   const [picking, setPicking] = useState(false);
   const [notice, setNotice] = useState('');
+  /** A checklist inside the thread (backlog 30): its card stays among the replies. */
+  const [creatingChecklist, setCreatingChecklist] = useState(false);
   const input = useRef<TextInput>(null);
   useEffect(() => {
     setTexto(borradores.get(clave) ?? '');
@@ -76,6 +80,7 @@ export function HiloScreen(props: {
     setEditing(null);
     setPicking(false);
     setNotice('');
+    setCreatingChecklist(false);
   }, [clave]);
   // Las hojas viven DENTRO del modal del hilo: las del chat quedarían detrás.
   const reacciones = useReaccionesEnPantalla({ mensajes: props.respuestas, reaccionar: props.reaccionar, yo: props.yo, nombres: props.nombres, fotos: props.fotos, alReaccionar: () => setBarraEn(null) });
@@ -134,6 +139,9 @@ export function HiloScreen(props: {
               {props.chatName}
             </Text>
           </View>
+          <Pressable testID="btn-checklist-hilo" accessibilityLabel="Crear un checklist en el hilo" onPress={() => { Keyboard.dismiss(); setCreatingChecklist(true); }} className="h-11 w-11 items-center justify-center">
+            <ClipboardCheck size={21} color={colores['on-surface-variant']} />
+          </Pressable>
         </View>
         {props.raiz ? (
           <FlatList
@@ -213,6 +221,12 @@ export function HiloScreen(props: {
       </View>
       {reacciones.hojas}
       {props.raiz ? (
+        <CreateChecklistScreen visible={creatingChecklist} jwt={props.jwt} chat={{ id: props.chatId, name: props.chatName }} threadOf={props.raiz.seq} onClose={() => {
+          setCreatingChecklist(false);
+          setTimeout(() => lista.current?.scrollToEnd({ animated: true }), 300);
+        }} />
+      ) : null}
+      {props.raiz ? (
         <ThreadPicker
           visible={picking}
           jwt={props.jwt}
@@ -275,6 +289,16 @@ function BurbujaDelHilo(props: { mensaje: Respuesta; mia: boolean; autor: string
   const colorAutor = !pendiente ? (colores[`autor-${colorDeAutor(String(mensaje.senderId))}` as keyof typeof colores] as string) : undefined;
   const enlace = !pendiente && !eliminado && mensaje.body ? primerEnlace(mensaje.body) : null;
   const meta = { hora, mia, entrega: pendiente ? ('pending' as const) : props.entrega, id: mensaje.clientKey, fallido: pendiente && Boolean(mensaje.fallo), editado: !pendiente && Boolean(mensaje.editedAt) && !eliminado };
+  // A checklist made in the thread: its live card, as in the chat.
+  if (!pendiente && !eliminado && mensaje.ref?.tipo === 'checklist') {
+    return (
+      <Pressable testID={`respuesta-${mensaje.clientKey}`} onLongPress={props.onLongPress} delayLongPress={350} className={`w-[92%] ${mia ? 'self-end' : 'self-start'}`}>
+        {!mia && props.conAutor ? <Text className="pb-0.5 text-[13px] font-semibold" style={{ color: colorAutor }}>{props.autor}</Text> : null}
+        <ChecklistEnElChat checklistId={mensaje.ref.id} jwt={props.jwt} yo={props.yo} nameOf={(userId) => props.nombres.get(userId) ?? 'Alguien'} members={checklistMembers(props.nombres, props.yo)} />
+        <Text className={`pt-0.5 text-[11px] text-on-surface-variant ${mia ? 'self-end' : ''}`}>{hora}</Text>
+      </Pressable>
+    );
+  }
   // A sticker reply (20/10): no bubble, like in the chat.
   if (!pendiente && !eliminado && mensaje.kind === 'sticker' && mensaje.media?.url) {
     return (

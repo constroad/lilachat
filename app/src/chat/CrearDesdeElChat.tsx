@@ -28,7 +28,7 @@ export function CrearDesdeElChat(props: {
     return <CreateReminderScreen visible credential={props.credential} grupo={props.chat} onClose={props.onCerrar} onCreated={props.onCerrar} />;
   }
   // A checklist belongs to this chat (backlog 8).
-  if (props.creando === 'checklist') return <CreateChecklistScreen visible credential={props.credential} chat={props.chat} onClose={props.onCerrar} />;
+  if (props.creando === 'checklist') return <CreateChecklistScreen visible jwt={props.credential.jwt} chat={props.chat} onClose={props.onCerrar} />;
   const Pantalla = props.creando === 'event' ? CreateEventScreen : CreatePollScreen;
   return (
     <Pantalla visible credential={props.credential} fixedChat={props.chat} onClose={props.onCerrar} onCreated={props.onCerrar} />

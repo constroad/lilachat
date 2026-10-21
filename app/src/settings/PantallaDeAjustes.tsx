@@ -9,6 +9,7 @@ import { AvisoDePantallaCompleta } from '../ui/AvisoDePantallaCompleta';
 import { FilaDeAjuste, GrupoDeAjustes } from '../ui/FilaDeAjuste';
 import { Rotulo } from '../ui/Rotulo';
 import { AparienciaAjuste } from './AparienciaAjuste';
+import { ChatFontSetting } from './ChatFontSetting';
 import { AutoRespuestaAjuste } from './AutoRespuestaAjuste';
 import { BuscarActualizacionesAjuste } from './BuscarActualizacionesAjuste';
 import { DispositivosVinculadosAjuste } from './DispositivosVinculadosAjuste';
@@ -58,6 +59,8 @@ export function PantallaDeAjustes(props: {
         <PerfilAjuste credential={credential} />
 
         <AparienciaAjuste />
+
+        <ChatFontSetting />
 
         <Rotulo>Notificaciones</Rotulo>
         {/* Solo aparece si Android las negó: es un aviso, no un ajuste más. */}

@@ -50,13 +50,12 @@ import { useAlAbrirElChat } from './useAlAbrirElChat';
 import { useIrAMensaje } from './useIrAMensaje';
 import { useFijarMensajes } from './useFijarMensajes';
 import { useDestacadosDelChat } from './destacados/useDestacadosDelChat';
-import { TarjetaDeDestacados } from './destacados/TarjetaDeDestacados';
 import { useAcuseVivo } from './acuseVivo';
 import { useHilosEnElChat } from './useHilosEnElChat';
 import { HiloScreen } from './HiloScreen';
 import type { PropsDelChat } from './propsDelChat';
 import { useReaccionesEnPantalla } from './reacciones/useReaccionesEnPantalla';
-import { TarjetaDeFijados } from './fijados/TarjetaDeFijados';
+import { ChatInfoCards } from './ChatInfoCards';
 import { CamaraDelChat } from './camara/CamaraDelChat';
 
 /** El pie del composer con el teclado abierto (dp). */
@@ -591,7 +590,7 @@ export function ChatScreen({
           setVerDetalle(false);
           busqueda.abrir();
         }}
-        tarjetas={<><TarjetaDeFijados fijados={fijar.fijados} textoDe={fijar.textoDe} nombreDe={nombreDe} onVerTodos={() => { setVerDetalle(false); fijar.verTodos(); }} />{encrypted ? null : <TarjetaDeDestacados chatId={chatId} jwt={credential.jwt} yo={credential.userId} cuantos={destacados.seqs.size} onIr={(seq) => { setVerDetalle(false); alTocarCita(seq); }} />}</>}
+        tarjetas={<ChatInfoCards chatId={chatId} jwt={credential.jwt} yo={credential.userId} encrypted={Boolean(encrypted)} pinned={{ fijados: fijar.fijados, textoDe: fijar.textoDe, onVerTodos: () => { setVerDetalle(false); fijar.verTodos(); } }} nameOf={nombreDe} starredCount={destacados.seqs.size} onGoTo={(seq) => { setVerDetalle(false); alTocarCita(seq); }} />}
       />
       ) : null}
     </View>

@@ -1,15 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { Pressable, Text, Vibration, View } from 'react-native';
 import { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming, type SharedValue } from 'react-native-reanimated';
-import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { Heart, Vibrate } from 'lucide-react-native';
 import { getSocket } from './socketClient';
 import { chatsEnMemoria, suscribirChatsEnMemoria } from './chatsGuardados';
-import { shakeScreen, startWink } from './FunScreen';
+import { playWinkCues, shakeScreen, startWink } from './FunScreen';
 import { closeEmojiPanel } from './emojiPanel';
-import { NUDGE_SHAKE, formatClock, funArrivedInRow, funMessageToPlay, funNoticeText, highestSeq, shouldPlayFun, winkById, type FunToPlay, type WinkId, type WinkSound } from '@lilachat/shared';
+import { NUDGE_SHAKE, formatClock, funArrivedInRow, funMessageToPlay, funNoticeText, highestSeq, shouldPlayFun, winkById, type FunToPlay, type WinkId } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
-import { reportarError } from '../ui/reportarError';
 
 const SEND_TIMEOUT_MS = 8000;
 /** A row of the chat list shakes softer than the whole screen (`NUDGE_SHAKE` is for the screen). */
@@ -20,29 +18,6 @@ const NUDGE_VIBRATION = [0, 230, 100, 230, 100, 230, 100, 230, 100, 230, 100, 23
 const POP_SCALE = 1.03;
 const POP_STEP_MS = 120;
 const WINK_VIBRATION = [0, 60, 60, 60];
-const WINK_VOLUME = 0.7;
-
-const SOUND_FILES: Record<WinkSound, number> = {
-  chime: require('../../assets/sonidos/wink-chime.wav'),
-  pop: require('../../assets/sonidos/wink-pop.wav'),
-  clap: require('../../assets/sonidos/wink-clap.wav'),
-  horn: require('../../assets/sonidos/wink-horn.wav'),
-  groove: require('../../assets/sonidos/wink-groove.wav'),
-};
-const players = new Map<WinkSound, AudioPlayer>();
-
-/** Never throws: a sound that fails cannot break the chat. */
-function playWinkSound(sound: WinkSound): void {
-  try {
-    const player = players.get(sound) ?? createAudioPlayer(SOUND_FILES[sound]);
-    players.set(sound, player);
-    player.volume = WINK_VOLUME;
-    void player.seekTo(0);
-    player.play();
-  } catch (error) {
-    reportarError('playWinkSound', error);
-  }
-}
 
 /** A nudge or a wink straight to the server, with its refusal (limit, group setting) told back. */
 async function sendFun(chatId: string, payload: { kind: 'zumbido' } | { kind: 'guino'; wink: WinkId }, what: string): Promise<{ ok: true } | { ok: false; reason: string }> {
@@ -123,7 +98,7 @@ export function useFunPlayback(params: { messages: readonly { seq: number; kind?
       }
       const wink = winkById(fun.wink);
       if (!wink) return;
-      if (how.sound) playWinkSound(wink.sound);
+      playWinkCues(wink, how);
       if (how.vibrate && !fun.mine) Vibration.vibrate(WINK_VIBRATION);
       if (how.animate) startWink({ seq: fun.seq, wink });
     },

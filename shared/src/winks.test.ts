@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { NUDGE_SHAKE, funArrivedInRow, funMessageToPlay, funNoticeText, isWinkId, shouldPlayFun, WINKS, winkById, winkParticles } from './winks.js';
+import { NUDGE_SHAKE, funArrivedInRow, funMessageToPlay, funNoticeText, isWinkId, shouldPlayFun, WINKS, winkById, winkCues, winkParticles, winkRowSound } from './winks.js';
 
 describe('the wink catalog', () => {
-  it('characters, construction ones and the first emoji ones, each with a name, particles and a sound', () => {
-    expect(WINKS.filter((wink) => wink.group === 'characters')).toHaveLength(9);
+  it('characters, construction ones and the first emoji ones, each with a name and its length', () => {
+    expect(WINKS.filter((wink) => wink.group === 'characters')).toHaveLength(10);
     expect(WINKS.filter((wink) => wink.group === 'site')).toHaveLength(6);
     expect(WINKS.filter((wink) => wink.group === 'emoji')).toHaveLength(8);
     for (const wink of WINKS) {
       expect(wink.name.length).toBeGreaterThan(0);
-      expect(wink.kind === 'character' ? wink.dance.length : wink.hero.length).toBeGreaterThan(0);
-      expect(wink.particles.length).toBeGreaterThan(0);
+      if (wink.kind === 'emoji') expect(wink.hero.length).toBeGreaterThan(0);
+      if (wink.particlesAt) expect(wink.particles.length, wink.id).toBeGreaterThan(0);
       expect(wink.durationMs).toBeGreaterThanOrEqual(1500);
       expect(wink.durationMs).toBeLessThanOrEqual(wink.kind === 'character' ? 7000 : 4000);
       if (wink.kind === 'character') expect(wink.durationMs, wink.id).toBeGreaterThanOrEqual(6000);
@@ -22,14 +22,38 @@ describe('the wink catalog', () => {
     expect(isWinkId('chanchito')).toBe(false);
     expect(isWinkId(undefined)).toBe(false);
     expect(winkById('party')?.name).toBe('Fiesta');
-    expect(winkById('piggy')).toMatchObject({ name: 'Chancho fiestero', kind: 'character', dance: 'disco', sound: 'groove' });
+    expect(winkById('piggy')).toMatchObject({ name: 'Chancho fiestero', kind: 'character', durationMs: 7000 });
+    expect(winkById('balloon')).toMatchObject({ name: 'Globo de agua', kind: 'character', tile: 'balloon' });
     expect(winkById('hearts')).toMatchObject({ name: 'Corazones', kind: 'emoji', hero: '❤️' });
     expect(winkById('nope')).toBeUndefined();
   });
 });
 
+describe('winkCues', () => {
+  it('an emoji wink plays its sound at once; a sketch plays its cues at their moment', () => {
+    expect(winkCues(winkById('hearts')!)).toEqual([{ atMs: 0, sound: 'chime' }]);
+    const worker = winkCues(winkById('worker')!);
+    expect(worker.filter((cue) => cue.sound === 'knock')).toHaveLength(2);
+    expect(worker.find((cue) => cue.sound === 'glass')).toMatchObject({ atMs: 3900, screen: 'crash' });
+  });
+});
+
+describe('winkRowSound', () => {
+  it('a row of the list only dings: an emoji wink plays its own sound, a sketch a «ting», an unknown one a pop', () => {
+    expect(winkRowSound(winkById('hearts'))).toBe('chime');
+    expect(winkRowSound(winkById('piggy'))).toBe('ting');
+    expect(winkRowSound(undefined)).toBe('pop');
+  });
+});
+
 describe('winkParticles', () => {
   const hearts = winkById('hearts')!;
+
+  it('only inside their window, and none for a sketch without one', () => {
+    const balloon = winkById('balloon')!;
+    for (const particle of winkParticles(balloon, 3)) expect(particle.delayMs).toBeGreaterThanOrEqual(0.31 * balloon.durationMs - 1);
+    expect(winkParticles(winkById('worker')!, 3)).toEqual([]);
+  });
 
   it('is the same on every device for the same message (seeded by its seq)', () => {
     expect(winkParticles(hearts, 42)).toEqual(winkParticles(hearts, 42));

@@ -1,55 +1,69 @@
-import type { WinkDance } from './winkDances.js';
+import type { WinkPropId } from './winkArt.js';
+import { WINK_SKETCHES } from './winkSketches.js';
+import type { ScreenEffect } from './winkTimeline.js';
 
 /**
  * Winks, like MSN Messenger's (backlog 3, José 21/10): a full-screen animation
  * with sound that goes with a message of kind `guino`. Microsoft's are not
- * ours, so these are our own: a full-body character (drawn in Stitch, its parts
- * in `winkArt`) that dances with its whole body (`winkDances`), with a few
- * particles around it seeded by the message, so the app and the web, sender
- * and receiver, see the same. PURE: the app, the web and the server use it.
+ * ours, so these are our own: a short sketch with a punchline (José, 21/10:
+ * «se trata de que sean graciosos, no de que todos bailen»), played by
+ * full-body characters and props drawn in Stitch (`winkArt`) following a
+ * shared timeline (`winkSketches`), with a few particles seeded by the message,
+ * so the app and the web, sender and receiver, see the same. PURE: the app,
+ * the web and the server use it.
  */
-export type CharacterWinkId = 'piggy' | 'worker' | 'cuppa' | 'sweetheart' | 'bear' | 'kitty' | 'puppy' | 'panda' | 'brick';
+export type CharacterWinkId = 'piggy' | 'balloon' | 'worker' | 'cuppa' | 'sweetheart' | 'bear' | 'kitty' | 'puppy' | 'panda' | 'brick';
 export type SiteWinkId = 'cone' | 'roller' | 'dumptruck' | 'excavator' | 'paver' | 'flagger';
 export type EmojiWinkId = 'hearts' | 'applause' | 'party' | 'laugh' | 'hug' | 'hardhat' | 'coffee' | 'done';
 export type WinkId = CharacterWinkId | SiteWinkId | EmojiWinkId;
 /** How the particles move: up from the bottom, out from the center, or down from the top. */
 export type WinkMotion = 'rise' | 'burst' | 'rain';
-/** One of the sounds both clients carry (app: bundled files; web: the same files). */
-export type WinkSound = 'chime' | 'pop' | 'clap' | 'horn' | 'groove';
+/**
+ * The sounds both clients carry (app: bundled files; web: the same files),
+ * synthesized by us: the music beds (groove, rock) and the sketches' effects.
+ */
+export type WinkSound =
+  | 'chime' | 'pop' | 'clap' | 'horn' | 'groove' | 'rock'
+  | 'ting' | 'boing' | 'smooch' | 'whoosh' | 'splash' | 'drip' | 'knock' | 'glass' | 'thump' | 'squeeze'
+  | 'cheer' | 'partyhorn' | 'laugh' | 'yawn' | 'snore' | 'alarm' | 'rumble' | 'sizzle' | 'whistle' | 'crash';
+export const WINK_SOUNDS: readonly WinkSound[] = ['chime', 'pop', 'clap', 'horn', 'groove', 'rock', 'ting', 'boing', 'smooch', 'whoosh', 'splash', 'drip', 'knock', 'glass', 'thump', 'squeeze', 'cheer', 'partyhorn', 'laugh', 'yawn', 'snore', 'alarm', 'rumble', 'sizzle', 'whistle', 'crash'];
 /** The «Guiños» panel shows them in these three groups. */
 export type WinkGroup = 'characters' | 'site' | 'emoji';
 
-type WinkBase = { id: WinkId; name: string; group: WinkGroup; particles: readonly string[]; motion: WinkMotion; durationMs: number; sound: WinkSound };
-/** A full-body character drawn in Stitch (`winkArt`) that dances with its whole body (`winkDances`). */
-export type CharacterWink = WinkBase & { kind: 'character'; dance: WinkDance };
+/** `particlesAt`: the share of the wink the particles fly in (none without it). */
+type WinkBase = { id: WinkId; name: string; group: WinkGroup; particles: readonly string[]; motion: WinkMotion; durationMs: number; particlesAt?: readonly [number, number] };
+/** A sketch (`WINK_SKETCHES`); its tile in the panel is the character, or `tile` for a wink without one (the water balloon). */
+export type CharacterWink = WinkBase & { kind: 'character'; tile?: WinkPropId };
 /** The first winks (José, 21/10: «deja los emojis que tenías antes, están bien»): a big emoji that pops and wiggles. */
-export type EmojiWink = WinkBase & { kind: 'emoji'; hero: string };
+export type EmojiWink = WinkBase & { kind: 'emoji'; hero: string; sound: WinkSound };
 export type Wink = CharacterWink | EmojiWink;
 
-/** A character wink lasts long enough for its dance to land a joke (José, 21/10: «duraba un poco más su baile»). */
-const CHARACTER_MS = 6500;
-
-const character = (id: CharacterWinkId | SiteWinkId, name: string, group: WinkGroup, dance: WinkDance, sound: WinkSound, particles: readonly string[], motion: WinkMotion, durationMs = 3000): CharacterWink => ({ id, name, group, kind: 'character', dance, sound, particles, motion, durationMs });
-const emoji = (id: EmojiWinkId, name: string, hero: string, particles: readonly string[], motion: WinkMotion, durationMs: number, sound: WinkSound): EmojiWink => ({ id, name, group: 'emoji', kind: 'emoji', hero, particles, motion, durationMs, sound });
+const character = (id: CharacterWinkId | SiteWinkId, name: string, group: WinkGroup, particles: readonly string[], motion: WinkMotion, tile?: WinkPropId): CharacterWink => {
+  const sketch = WINK_SKETCHES[id];
+  return { id, name, group, kind: 'character', particles, motion, durationMs: sketch.durationMs, ...(sketch.particlesAt ? { particlesAt: sketch.particlesAt } : {}), ...(tile ? { tile } : {}) };
+};
+const emoji = (id: EmojiWinkId, name: string, hero: string, particles: readonly string[], motion: WinkMotion, durationMs: number, sound: WinkSound): EmojiWink => ({ id, name, group: 'emoji', kind: 'emoji', hero, particles, motion, durationMs, sound, particlesAt: [0, 1] });
 
 export const WINKS: readonly Wink[] = [
-  // Our own party pig (José, 21/10: «¿no podemos sacar el chanchito bailando?»), adult humor, not a kids' mascot.
-  character('piggy', 'Chancho fiestero', 'characters', 'disco', 'groove', ['🎵', '🎶', '✨'], 'rise', CHARACTER_MS),
-  character('worker', 'Maestro de obra', 'characters', 'cumbia', 'groove', ['🎵', '✨'], 'rise', CHARACTER_MS),
-  character('sweetheart', 'Corazón galán', 'characters', 'hug', 'chime', ['❤️', '💕', '🌹'], 'rise', CHARACTER_MS),
-  character('bear', 'Oso hincha', 'characters', 'clap', 'clap', ['⚽', '✨'], 'burst', CHARACTER_MS),
-  character('kitty', 'Gato de fiesta', 'characters', 'disco', 'groove', ['🎊', '🎉', '✨'], 'rain', CHARACTER_MS),
-  character('puppy', 'Perro carcajada', 'characters', 'laugh', 'pop', ['😂', '🤣'], 'burst', CHARACTER_MS),
-  character('panda', 'Panda abrazón', 'characters', 'hug', 'chime', ['💛', '💕'], 'rise', CHARACTER_MS),
-  character('cuppa', 'Café de lunes', 'characters', 'tired', 'pop', ['☕', '💤'], 'rise', CHARACTER_MS),
-  character('brick', 'Ladrillo fisicoculturista', 'characters', 'flex', 'groove', ['💪', '✨'], 'burst', CHARACTER_MS),
+  // Our own party pig (José, 21/10: «gordito moviendo y enseñando el rabo»), adult humor, not a kids' mascot.
+  character('piggy', 'Chancho fiestero', 'characters', ['🎵', '🎶', '✨'], 'rise'),
+  // MSN's best one, our way (José, 21/10: «¿dónde está el globo que te enviaban?»).
+  character('balloon', 'Globo de agua', 'characters', ['💦', '💧'], 'burst', 'balloon'),
+  character('sweetheart', 'Corazón galán', 'characters', ['❤️', '💕', '🌹'], 'rise'),
+  character('panda', 'Panda abrazón', 'characters', ['💛', '💕'], 'rise'),
+  character('worker', 'Maestro de obra', 'characters', [], 'burst'),
+  character('bear', 'Oso hincha', 'characters', ['🎊', '🎉', '✨'], 'rain'),
+  character('kitty', 'Gato de fiesta', 'characters', ['🎊', '🎉', '✨', '🥳'], 'burst'),
+  character('puppy', 'Perro carcajada', 'characters', ['😂', '🤣'], 'burst'),
+  character('cuppa', 'Café de lunes', 'characters', [], 'rise'),
+  character('brick', 'Ladrillo fisicoculturista', 'characters', ['✨', '💪', '⭐'], 'burst'),
   // Construction, roads and asphalt (José, 21/10: «agrega conceptos de obra, pistas y asfalto»).
-  character('cone', 'Cono cumbiero', 'site', 'cumbia', 'groove', ['🚧', '🎵'], 'rise', CHARACTER_MS),
-  character('roller', 'Rodillo chévere', 'site', 'disco', 'groove', ['💨', '✨'], 'burst', CHARACTER_MS),
-  character('dumptruck', 'Volquete fanfarrón', 'site', 'flex', 'horn', ['🪨', '✨'], 'rain', CHARACTER_MS),
-  character('excavator', 'Excavadora rockera', 'site', 'rock', 'groove', ['🤘', '🪨'], 'rain', CHARACTER_MS),
-  character('paver', 'Asfaltador acalorado', 'site', 'tired', 'pop', ['🔥', '💦'], 'rise', CHARACTER_MS),
-  character('flagger', 'Señalero estricto', 'site', 'wave', 'horn', ['🚧', '✋'], 'burst', CHARACTER_MS),
+  character('cone', 'Cono cumbiero', 'site', ['🎵', '🎶'], 'rise'),
+  character('roller', 'Rodillo chévere', 'site', ['💨', '✨'], 'rise'),
+  character('dumptruck', 'Volquete fanfarrón', 'site', ['💨'], 'burst'),
+  character('excavator', 'Excavadora rockera', 'site', ['🤘', '⚡'], 'burst'),
+  character('paver', 'Asfaltador acalorado', 'site', ['💨', '🔥'], 'rise'),
+  character('flagger', 'Señalero estricto', 'site', [], 'burst'),
   emoji('hearts', 'Corazones', '❤️', ['❤️', '💜', '💕', '💖'], 'rise', 2800, 'chime'),
   emoji('applause', 'Aplausos', '👏', ['👏', '✨', '🙌'], 'burst', 2400, 'clap'),
   emoji('party', 'Fiesta', '🎉', ['🎊', '🎉', '✨', '🥳'], 'rain', 3000, 'pop'),
@@ -59,6 +73,19 @@ export const WINKS: readonly Wink[] = [
   emoji('coffee', 'Café', '☕', ['☕', '🥐', '✨'], 'rise', 2600, 'pop'),
   emoji('done', '¡Listo!', '✅', ['✅', '💪', '⭐'], 'burst', 2400, 'chime'),
 ];
+
+/** What a wink sounds like and does to the screen, moment by moment (ms): an emoji wink, its sound; a sketch, its cues. */
+export function winkCues(wink: Wink): { atMs: number; sound?: WinkSound; screen?: ScreenEffect }[] {
+  if (wink.kind === 'emoji') return [{ atMs: 0, sound: wink.sound }];
+  const sketch = WINK_SKETCHES[wink.id as CharacterWinkId | SiteWinkId];
+  return sketch.cues.map((cue) => ({ atMs: Math.round(cue.at * sketch.durationMs), ...(cue.sound ? { sound: cue.sound } : {}), ...(cue.screen ? { screen: cue.screen } : {}) }));
+}
+
+/** The short sound of a wink landing in a row of the chat list: an emoji wink, its own; a sketch, a «ting» (its music is for the full screen). */
+export function winkRowSound(wink: Wink | undefined): WinkSound {
+  if (!wink) return 'pop';
+  return wink.kind === 'emoji' ? wink.sound : 'ting';
+}
 
 const WINK_IDS = new Set<string>(WINKS.map((wink) => wink.id));
 
@@ -123,10 +150,13 @@ function path(motion: WinkMotion, random: () => number): Pick<WinkParticle, 'fro
  * the receiver, on the app or the web, see exactly the same.
  */
 export function winkParticles(wink: Wink, seed: number): WinkParticle[] {
+  if (!wink.particlesAt || wink.particles.length === 0) return [];
   const random = seededRandom(seed);
+  const startMs = wink.particlesAt[0] * wink.durationMs;
+  const endMs = wink.particlesAt[1] * wink.durationMs;
   return Array.from({ length: PARTICLE_COUNT }, () => {
-    const delayMs = Math.round(random() * wink.durationMs * DELAY_SHARE);
-    const room = wink.durationMs - delayMs;
+    const delayMs = Math.round(startMs + random() * (endMs - startMs) * DELAY_SHARE);
+    const room = endMs - delayMs;
     const durationMs = Math.round(room * (MIN_TRAVEL_SHARE + random() * (1 - MIN_TRAVEL_SHARE)));
     return {
       glyph: wink.particles[Math.floor(random() * wink.particles.length)]!,

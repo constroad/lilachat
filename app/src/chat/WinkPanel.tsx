@@ -81,7 +81,7 @@ function WinkTile(props: { wink: Wink; width: number; active: boolean; onPick: (
   return (
     <Pressable testID={`guino-${wink.id}`} onPress={props.onPick} style={{ width: props.width }} className={`items-center rounded-2xl bg-surface px-2 py-3 ${props.active ? 'border-2 border-primary' : 'border border-outline/15'}`}>
       <View className="h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-primary/10">
-        {wink.kind === 'character' ? <WinkCharacter wink={wink} size={TILE_CHARACTER} animate={false} /> : <Text style={{ fontSize: 30 }}>{wink.hero}</Text>}
+        {wink.kind === 'character' ? <WinkCharacter wink={wink} size={TILE_CHARACTER} /> : <Text style={{ fontSize: 30 }}>{wink.hero}</Text>}
       </View>
       <Text className="mt-2 min-h-[34px] text-center text-[13px] font-semibold leading-[17px] text-on-surface" numberOfLines={2}>
         {wink.name}

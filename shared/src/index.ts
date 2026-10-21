@@ -81,3 +81,5 @@ export * from './reenvio.js';
 export * from './winks.js';
 export * from './winkDances.js';
 export * from './winkArt.js';
+export * from './winkTimeline.js';
+export * from './winkSketches.js';

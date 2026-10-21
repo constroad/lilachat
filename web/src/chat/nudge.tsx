@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Heart, Vibrate } from 'lucide-react';
-import { NUDGE_SHAKE, formatClock, funArrivedInRow, funMessageToPlay, funNoticeText, highestSeq, shouldPlayFun, winkById, type FunToPlay, type Wink, type WinkId, type WinkSound } from '@lilachat/shared';
+import { formatClock, funArrivedInRow, funMessageToPlay, funNoticeText, highestSeq, shouldPlayFun, winkById, winkRowSound, type FunToPlay, type Wink, type WinkId } from '@lilachat/shared';
 import { WinkOverlay } from './WinkOverlay';
+import { playWinkCues, playWinkSound, shakeWholeScreen, stopWinkSounds } from './winkSounds';
 
 /** A wink in the chat list pops its row (`.wink-pop`). */
 const POP_MS = 480;
 const BUZZ_HZ = 140;
 const BUZZ_S = 0.35;
-const WINK_VOLUME = 0.7;
 
 /** A short low buzz with Web Audio: no file to download. */
 function buzz(): void {
@@ -28,13 +28,6 @@ function buzz(): void {
   }
 }
 
-/** The wink's sound: the same files as the app (`public/sonidos`). Blocked autoplay just stays quiet. */
-function playWinkSound(sound: WinkSound): void {
-  const audio = new Audio(`${import.meta.env.BASE_URL}sonidos/wink-${sound}.wav`);
-  audio.volume = WINK_VOLUME;
-  void audio.play().catch(() => undefined);
-}
-
 /** «Ver otra vez» in a wink's line asks the open chat to play it again. */
 type ReplayListener = (seq: number, wink: WinkId) => void;
 const replayListeners = new Set<ReplayListener>();
@@ -45,19 +38,6 @@ export function replayWink(seq: number, wink: WinkId): void {
 const prefersReducedMotion = () => Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
 
 /**
- * The nudge shakes the WHOLE window sideways, wide enough to read as a shake
- * like MSN (José, 21/10: «se mezcla como si fuera un error de scroll»). The
- * same path as the app (`NUDGE_SHAKE`).
- */
-function shakeWholeScreen(): void {
-  const root = document.getElementById('root');
-  root?.animate?.(
-    NUDGE_SHAKE.path.map((x) => ({ transform: `translateX(${x * NUDGE_SHAKE.amplitude}px)` })),
-    { duration: NUDGE_SHAKE.path.length * NUDGE_SHAKE.stepMs, easing: 'linear' }
-  );
-}
-
-/**
  * Plays nudges and winks in the open chat (backlog 3, José 21/10): the one that
  * came while it was closed plays once when it opens (`afterSeq` = what I had
  * read), and each new one on arrival. A muted chat stays still and quiet; with
@@ -66,6 +46,7 @@ function shakeWholeScreen(): void {
 export function useFunPlayback(params: { messages: readonly { seq: number; kind?: string; senderId: string; wink?: string }[] | null; me: string; chatId: string; muted: boolean; afterSeq: number }): { overlay: ReactNode } {
   const [playing, setPlaying] = useState<{ seq: number; wink: Wink } | null>(null);
   const seen = useRef<{ chatId: string; seq: number } | null>(null);
+  const cancelCues = useRef<() => void>(() => undefined);
   const { messages, me, chatId, muted, afterSeq } = params;
   const play = useCallback(
     (fun: FunToPlay) => {
@@ -77,7 +58,10 @@ export function useFunPlayback(params: { messages: readonly { seq: number; kind?
       }
       const wink = winkById(fun.wink);
       if (!wink) return;
-      if (how.sound) playWinkSound(wink.sound);
+      // A new wink replaces the one playing: its pending sounds and its music stop.
+      cancelCues.current();
+      stopWinkSounds();
+      cancelCues.current = playWinkCues(wink, how);
       if (how.animate) setPlaying({ seq: fun.seq, wink });
     },
     [muted]
@@ -96,7 +80,17 @@ export function useFunPlayback(params: { messages: readonly { seq: number; kind?
       replayListeners.delete(listener);
     };
   }, [play]);
-  const stop = useCallback(() => setPlaying(null), []);
+  useEffect(
+    () => () => {
+      cancelCues.current();
+      stopWinkSounds();
+    },
+    []
+  );
+  const stop = useCallback(() => {
+    setPlaying(null);
+    stopWinkSounds();
+  }, []);
   return { overlay: <WinkOverlay play={playing} onDone={stop} /> };
 }
 
@@ -117,7 +111,7 @@ export function useFunInRow(chat: { muted?: boolean; lastMessage: { seq: number;
     const how = shouldPlayFun({ muted: muted === true, reducedMotion: prefersReducedMotion() });
     if (how.sound) {
       if (arrived === 'zumbido') buzz();
-      else playWinkSound(winkById(lastMessage?.wink)?.sound ?? 'pop');
+      else playWinkSound(winkRowSound(winkById(lastMessage?.wink)));
     }
     if (!how.animate) return;
     if (arrived === 'zumbido') shakeWholeScreen();

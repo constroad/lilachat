@@ -65,7 +65,7 @@ function WinkTile({ wink, active, onPick, onSend }: { wink: Wink; active: boolea
     <div className={`flex flex-col items-center rounded-2xl bg-surface px-2 py-3 ${active ? 'border-2 border-primary' : 'border border-outline/15'}`}>
       <button type="button" data-testid={`guino-${wink.id}`} onClick={onPick} className="flex w-full flex-col items-center">
         <span className="grid h-16 w-16 place-items-center overflow-hidden rounded-full bg-primary/10">
-          {wink.kind === 'character' ? <WinkCharacter wink={wink} size={46} animate={false} /> : <span className="text-[30px] leading-none">{wink.hero}</span>}
+          {wink.kind === 'character' ? <WinkCharacter wink={wink} size={46} /> : <span className="text-[30px] leading-none">{wink.hero}</span>}
         </span>
         <span className="mt-2 line-clamp-2 min-h-[34px] text-center text-[13px] font-semibold leading-[17px]">{wink.name}</span>
       </button>

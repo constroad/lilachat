@@ -1,21 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { DANCES, loopsFor, type PartMotion } from './winkDances.js';
-import { WINKS } from './winks.js';
 
 const tracks = (motion: PartMotion) => [motion.rotate, motion.x, motion.y].filter((values): values is readonly number[] => values !== undefined);
 
-/** José, 21/10: «personajes de cuerpo entero que tengan movimiento de cuerpo, no simplemente girarlo». */
+/** José, 21/10: «personajes de cuerpo entero que tengan movimiento de cuerpo, no simplemente girarlo». The sketches use them in windows. */
 describe('the dances of the wink characters', () => {
-  it('every wink dances with its body: at least arms or legs move, not only the whole', () => {
-    for (const wink of WINKS) {
-      if (wink.kind !== 'character') continue;
-      const dance = DANCES[wink.dance];
-      expect(dance, wink.id).toBeDefined();
-      const limbs = (['arm-left', 'arm-right', 'leg-left', 'leg-right'] as const).filter((part) => dance.parts[part]);
-      expect(limbs.length, wink.id).toBeGreaterThanOrEqual(2);
-    }
-  });
-
   it('every track loops without a jump: it ends where it starts', () => {
     for (const [name, dance] of Object.entries(DANCES)) {
       expect(dance.loopMs, name).toBeGreaterThan(0);

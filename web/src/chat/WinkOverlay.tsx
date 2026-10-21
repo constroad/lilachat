@@ -1,18 +1,17 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { winkParticles, type CharacterWink, type Wink, type WinkParticle } from '@lilachat/shared';
-import { WinkCharacter } from './WinkCharacter';
+import { WINK_SKETCHES, winkParticles, type SketchWinkId, type Wink, type WinkParticle } from '@lilachat/shared';
+import { WinkSketch } from './WinkSketch';
 
-/** The character's width on screen (px). */
-const HERO_PX = 260;
 /** The first emoji winks (José, 21/10: «deja los emojis, están bien»). */
 const EMOJI_PX = 120;
 const HERO_FADE_MS = 400;
 
 /**
  * A wink playing over the WHOLE window (José, 21/10, like MSN: «ocupa toda la
- * pantalla»): the character dances in the middle and the particles follow the
- * same seeded choreography as the app (Web Animations API). It never takes
- * clicks (`pointer-events: none`): the chat stays usable.
+ * pantalla»): its sketch (a gag with a punchline) or one of the first emoji
+ * winks, and the particles following the same seeded choreography as the app
+ * (Web Animations API). It never takes clicks (`pointer-events: none`): the
+ * chat stays usable.
  */
 export function WinkOverlay({ play, onDone }: { play: { seq: number; wink: Wink } | null; onDone: () => void }) {
   useEffect(() => {
@@ -27,7 +26,7 @@ export function WinkOverlay({ play, onDone }: { play: { seq: number; wink: Wink 
       {particles.map((particle, index) => (
         <FlyingGlyph key={`${play.seq}-${index}`} particle={particle} />
       ))}
-      {play.wink.kind === 'character' ? <Hero key={play.seq} wink={play.wink} durationMs={play.wink.durationMs} /> : <EmojiHero key={play.seq} glyph={play.wink.hero} durationMs={play.wink.durationMs} />}
+      {play.wink.kind === 'character' ? <WinkSketch key={play.seq} sketch={WINK_SKETCHES[play.wink.id as SketchWinkId]} /> : <EmojiHero key={play.seq} glyph={play.wink.hero} durationMs={play.wink.durationMs} />}
     </div>
   );
 }
@@ -55,32 +54,6 @@ function FlyingGlyph({ particle }: { particle: WinkParticle }) {
     <span ref={ref} className="absolute left-0 top-0 select-none leading-none" style={{ fontSize: particle.size }}>
       {particle.glyph}
     </span>
-  );
-}
-
-/** The character in the middle: it pops in, dances its whole body and fades at the end. */
-function Hero({ wink, durationMs }: { wink: CharacterWink; durationMs: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const element = ref.current;
-    if (!element || typeof element.animate !== 'function') return;
-    const fadeFrom = (durationMs - HERO_FADE_MS) / durationMs;
-    const animation = element.animate(
-      [
-        { transform: 'translate(-50%, -50%) scale(0.3)', opacity: 0 },
-        { transform: 'translate(-50%, -50%) scale(1.08)', opacity: 1, offset: 0.08 },
-        { transform: 'translate(-50%, -50%) scale(1)', opacity: 1, offset: 0.14 },
-        { transform: 'translate(-50%, -50%) scale(1)', opacity: 1, offset: fadeFrom },
-        { transform: 'translate(-50%, -50%) scale(1)', opacity: 0 },
-      ],
-      { duration: durationMs, easing: 'ease-out', fill: 'both' }
-    );
-    return () => animation.cancel();
-  }, [durationMs]);
-  return (
-    <div ref={ref} className="absolute left-1/2 top-1/2">
-      <WinkCharacter wink={wink} size={HERO_PX} animate durationMs={durationMs} />
-    </div>
   );
 }
 

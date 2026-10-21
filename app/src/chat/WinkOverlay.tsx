@@ -1,21 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
-import { winkParticles, type CharacterWink, type Wink, type WinkParticle } from '@lilachat/shared';
-import { WinkCharacter } from './WinkCharacter';
+import { WINK_SKETCHES, winkParticles, type SketchWinkId, type Wink, type WinkParticle } from '@lilachat/shared';
+import { WinkSketch } from './WinkSketch';
 
 const HERO_SIZE = 120;
 const HERO_FADE_MS = 400;
 const WIGGLE_DEG = 10;
 const WIGGLE_STEP_MS = 140;
-/** A character takes this share of the screen width, up to a size (dp). */
-const CHARACTER_SHARE = 0.68;
-const CHARACTER_MAX = 300;
-const CHARACTER_RATIO = 320 / 240;
 
 /**
- * A wink playing over the whole screen (José, 21/10, like MSN): a full-body
- * character dancing in the middle, or one of the first emoji winks, and the
+ * A wink playing over the whole screen (José, 21/10, like MSN): its sketch (a
+ * gag with a punchline, `WinkSketch`) or one of the first emoji winks, and the
  * particles following the shared choreography. It never takes touches
  * (`pointerEvents="none"`): the chat stays usable under it.
  */
@@ -38,7 +34,7 @@ export function WinkOverlay(props: { play: { seq: number; wink: Wink } | null; o
             <FlyingGlyph key={`${play.seq}-${index}`} particle={particle} width={size.width} height={size.height} />
           ))}
           {play.wink.kind === 'character' ? (
-            <CharacterHero key={play.seq} wink={play.wink} width={size.width} height={size.height} />
+            <WinkSketch key={play.seq} sketch={WINK_SKETCHES[play.wink.id as SketchWinkId]} screen={size} />
           ) : (
             <EmojiHero key={play.seq} glyph={play.wink.hero} durationMs={play.wink.durationMs} width={size.width} height={size.height} />
           )}
@@ -89,26 +85,6 @@ function EmojiHero({ glyph, durationMs, width, height }: { glyph: string; durati
     transform: [{ translateX: width / 2 - HERO_SIZE / 2 }, { translateY: height / 2 - HERO_SIZE / 2 }, { scale: scale.value }, { rotate: `${turn.value}deg` }],
   }));
   return <Animated.Text style={[styles.glyph, styles.hero, style]}>{glyph}</Animated.Text>;
-}
-
-/** A full-body character dancing in the middle: it pops in and fades at the end. */
-function CharacterHero({ wink, width, height }: { wink: CharacterWink; width: number; height: number }) {
-  const size = Math.min(width * CHARACTER_SHARE, CHARACTER_MAX);
-  const scale = useSharedValue(0.3);
-  const opacity = useSharedValue(0);
-  useEffect(() => {
-    scale.value = withSequence(withSpring(1.06, { damping: 12 }), withSpring(1, { damping: 14 }));
-    opacity.value = withSequence(withTiming(1, { duration: 160 }), withDelay(wink.durationMs - HERO_FADE_MS - 160, withTiming(0, { duration: HERO_FADE_MS })));
-  }, [wink.durationMs, scale, opacity]);
-  const style = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateX: width / 2 - size / 2 }, { translateY: height / 2 - (size * CHARACTER_RATIO) / 2 }, { scale: scale.value }],
-  }));
-  return (
-    <Animated.View style={[styles.glyph, style]}>
-      <WinkCharacter wink={wink} size={size} animate />
-    </Animated.View>
-  );
 }
 
 const styles = StyleSheet.create({

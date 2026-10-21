@@ -14,6 +14,8 @@ export type AccionesDeSync = {
   eliminarParaMi: (chatId: string, seq: number) => Promise<void>;
   reenviar: (chatIds: string[], body: string) => Promise<void>;
   avisarEscribiendo: (chatId: string) => void;
+  /** The MSN nudge (backlog 3). */
+  sendNudge: (chatId: string) => Promise<ResultadoDeAccion>;
 };
 
 /**

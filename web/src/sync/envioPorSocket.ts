@@ -77,3 +77,13 @@ export async function accionPorSocket(
     return resultadoDeAccion(undefined);
   }
 }
+
+/** The MSN nudge (backlog 3): straight to the server, not queued (it means something only now). */
+export async function sendNudgeBySocket(socket: Socket | null, chatId: string): Promise<ResultadoDeAccion> {
+  if (!socket?.connected) return { ok: false, motivo: 'Sin conexión: el zumbido no salió.' };
+  try {
+    return resultadoDeAccion(await socket.timeout(ESPERA_DEL_ACUSE_MS).emitWithAck('msg.send', { chatId, clientKey: crypto.randomUUID(), kind: 'zumbido' }));
+  } catch {
+    return resultadoDeAccion(undefined);
+  }
+}

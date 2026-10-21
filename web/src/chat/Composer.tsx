@@ -6,7 +6,7 @@ const EmojiStickerPanel = lazy(() => import('./stickers/EmojiStickerPanel'));
 import { SugerenciasDeMencion, type Mencionable } from './SugerenciasDeMencion';
 import { useMencionesDelCampo } from './useMencionesDelCampo';
 import { VistaPreviaAlEscribir } from './VistaPreviaAlEscribir';
-import { Bell, CalendarPlus, CornerUpLeft, ListPlus, Mic, Paperclip, Pencil, Plus, Send, Smile, X } from 'lucide-react';
+import { Bell, CalendarPlus, CornerUpLeft, ListPlus, Mic, Paperclip, Pencil, Plus, Send, Smile, X, Vibrate } from 'lucide-react';
 import { BarraDeGrabacion } from './BarraDeGrabacion';
 import { useGrabadoraDeVoz, type NotaDeVozGrabada } from './useGrabadoraDeVoz';
 import type { StickerChat } from './stickers/EmojiStickerPanel';
@@ -26,6 +26,7 @@ export function Composer({
   onSend,
   onCreateEvent,
   onCreatePoll,
+  onNudge,
   onCreateReminder,
   onElegirArchivos,
   contexto,
@@ -51,6 +52,8 @@ export function Composer({
   onSend: (text: string, menciones?: MencionEnMensaje[]) => void;
   onCreateEvent: () => void;
   onCreatePoll: () => void;
+  /** The MSN nudge (backlog 3), only in a 1:1. */
+  onNudge?: () => void;
   /** W3c: solo cuando se puede (en un grupo, sus admins; nunca en un secreto). */
   onCreateReminder?: () => void;
   /** Las fotos o archivos elegidos (o pegados). Quien recibe esto muestra la vista previa y sube. */
@@ -242,6 +245,20 @@ export function Composer({
                 >
                   <Bell size={16} className="shrink-0 text-on-surface-variant" />
                   Recordatorio
+                </button>
+              ) : null}
+              {onNudge ? (
+                <button
+                  type="button"
+                  data-testid="btn-zumbido-chat"
+                  onClick={() => {
+                    setMenuAbierto(false);
+                    onNudge();
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-background"
+                >
+                  <Vibrate size={16} className="shrink-0 text-on-surface-variant" />
+                  Zumbido
                 </button>
               ) : null}
             </div>

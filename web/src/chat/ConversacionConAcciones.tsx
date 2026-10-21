@@ -148,6 +148,7 @@ export function ConversacionConAcciones(
         contexto={acciones.contexto}
         onCancelarContexto={acciones.cancelarContexto}
         replyingTo={acciones.replyingTo}
+        onNudge={chat.kind === 'direct' && !chat.propio ? () => void sync.sendNudge(chat.id).then((result) => result.ok || onAviso(result.motivo)) : undefined}
         mencionables={mencionables}
         jwtParaEnlaces={chat.encrypted ? undefined : props.jwt}
         onElegirArchivos={setArchivos}

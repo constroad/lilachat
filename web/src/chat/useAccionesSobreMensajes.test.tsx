@@ -13,7 +13,7 @@ function preparar() {
     eliminarParaTodos: vi.fn(async () => ({ ok: true as const })),
     eliminarParaMi: vi.fn(async () => undefined),
     reenviar: vi.fn(async () => undefined),
-    avisarEscribiendo: vi.fn(),
+    avisarEscribiendo: vi.fn(), sendNudge: vi.fn(async () => ({ ok: true as const })),
   };
   const avisos: string[] = [];
   const hook = renderHook(({ chatId }) => useAccionesSobreMensajes({ chatId, sync, nombres: new Map([['u2', 'Ana']]), onAviso: (t) => avisos.push(t) }), { initialProps: { chatId: 'c1' as string | null } });

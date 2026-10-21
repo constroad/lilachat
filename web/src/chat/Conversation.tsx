@@ -1,3 +1,4 @@
+import { useNudgeShake } from './nudge';
 import { useState, type ReactNode } from 'react';
 import { ArrowLeft, Phone, Search, Video } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
@@ -36,6 +37,8 @@ export function Conversation(props: {
   onCancelarContexto?: () => void;
   /** The message being replied to: a sticker also quotes it, then the strip closes. */
   replyingTo?: number;
+  /** The MSN nudge (backlog 3), only in a 1:1. */
+  onNudge?: () => void;
   showBack: boolean;
   hayAnteriores: boolean;
   onCargarAnteriores: () => void;
@@ -59,10 +62,11 @@ export function Conversation(props: {
 }) {
   const { chat } = props;
   const [soltando, setSoltando] = useState(false);
+  const shaking = useNudgeShake(props.mensajes, props.yo);
   return (
     <section
       data-testid="panel-conversacion"
-      className="relative flex h-full min-w-0 flex-1 flex-col"
+      className={`relative flex h-full min-w-0 flex-1 flex-col ${shaking ? 'nudge-shake' : ''}`}
       onDragOver={(evento) => {
         if (!evento.dataTransfer.types.includes('Files')) return;
         evento.preventDefault();
@@ -116,6 +120,7 @@ export function Conversation(props: {
         onCreateEvent={props.onCreateEvent}
         onCreatePoll={props.onCreatePoll}
         onCreateReminder={props.onCreateReminder}
+        onNudge={props.onNudge}
         onElegirArchivos={props.onElegirArchivos}
         contexto={props.contexto}
         onCancelarContexto={props.onCancelarContexto}

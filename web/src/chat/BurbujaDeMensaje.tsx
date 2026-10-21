@@ -12,6 +12,7 @@ import { BotonDeHilo } from './BotonDeHilo';
 import { PastillaDeReacciones } from './reacciones/PastillaDeReacciones';
 import { TextoDelMensaje } from './TextoDelMensaje';
 import { TarjetaDelMensaje } from './tarjetas/TarjetaDelMensaje';
+import { NudgeLine } from './nudge';
 import { StickerMessage } from './stickers/StickerMessage';
 import { ConversacionContext, useConversacion } from './contextoDeLaConversacion';
 import type { ChatSummary, MensajeEnPantalla } from './types';
@@ -40,6 +41,7 @@ type Props = {
 export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
   const { mensaje, mio, agrupado, ultimoDelGrupo } = props;
   if (mensaje.kind === 'system') return <LineaDeSistema mensaje={mensaje} />;
+  if (mensaje.kind === 'zumbido') return <NudgeFromContext mine={mio} senderId={mensaje.senderId} />;
   return (
     <div data-testid={`mensaje-${mensaje.clientKey}`} className={`group flex items-start gap-1 ${agrupado ? 'mt-1' : 'mt-3'} ${mio ? 'flex-row-reverse' : ''}`}>
       <div className={`flex max-w-[68%] min-w-0 flex-col ${mio ? 'items-end' : 'items-start'}`}>
@@ -80,6 +82,12 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
     </div>
   );
 });
+
+/** The nudge line with the author's name as this person knows them. */
+function NudgeFromContext({ mine, senderId }: { mine: boolean; senderId: string }) {
+  const { nombres } = useConversacion();
+  return <NudgeLine mine={mine} author={nombres.get(senderId)} />;
+}
 
 function NombreDelAutor({ senderId }: { senderId: string }) {
   const { nombres } = useConversacion();

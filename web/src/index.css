@@ -12,3 +12,12 @@
     @apply bg-background font-sans text-on-surface antialiased;
   }
 }
+
+/* The MSN nudge (backlog 3): the open chat shakes for 600 ms. */
+@keyframes nudge-shake {
+  0%, 100% { transform: translateX(0); }
+  12%, 37%, 62% { transform: translateX(-12px); }
+  25%, 50%, 75% { transform: translateX(12px); }
+  87% { transform: translateX(-4px); }
+}
+.nudge-shake { animation: nudge-shake 600ms ease-in-out; }

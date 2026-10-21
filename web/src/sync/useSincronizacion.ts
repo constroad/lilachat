@@ -7,6 +7,7 @@ import { descartarEnvio, drenarCola, encolarEnvio, reintentarEnvio } from '../lo
 import { aplicarBorrado, aplicarEdicion, aplicarEntrante, aplicarReacciones, aplicarResumenDeHilo, guardarChats, guardarPagina } from '../local/mensajesLocales';
 import type { ChatMessage, ChatSummary } from '../chat/types';
 import { accionPorSocket, enviarPorSocket, pedirSincronizacion, type ResultadoDeAccion } from './envioPorSocket';
+import { sendNudgeBySocket } from './envioPorSocket';
 import { ocultar } from '../local/ocultos';
 import { aplicarAcuseALista, aplicarBorradoALista, aplicarEdicionALista, aplicarMensajeALista, aplicarReaccion, debeAvisarEscribiendo, type AcuseEnVivo, type CursoresEnVivo, type MencionEnMensaje, type Reaccion } from '@lilachat/shared';
 import { cambiarFila } from '../local/listaLocal';
@@ -153,6 +154,9 @@ function useAccionesDelChat(params: {
     [base, drenar]
   );
 
+  /** The MSN nudge (backlog 3). */
+  const sendNudge = useCallback((chatId: string) => sendNudgeBySocket(socket.current, chatId), [socket]);
+
   /** Reenviar un texto a varios chats: uno por chat, cada uno con su clave. */
   const reenviar = useCallback(
     async (chatIds: string[], body: string) => {
@@ -217,6 +221,7 @@ function useAccionesDelChat(params: {
     abrirChat,
     traerPagina,
     enviarTexto,
+    sendNudge,
     reenviar,
     editar,
     reaccionar,

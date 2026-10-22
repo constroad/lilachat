@@ -67,6 +67,9 @@ export function Conversation(props: {
   /** Ir a un mensaje (desde la franja). */
   salto?: { seq: number; vez: number } | null;
   onNoEsta?: () => void;
+  /** A window around an old message (pending 44); `viewId` remounts the list when it opens or closes. */
+  ventana?: { hasNewer: boolean; onCargarSiguientes: () => void; onIrAlUltimo: () => void };
+  viewId?: number;
   /** Abrir «Info.» del chat (W3b) al tocar su nombre o su foto. */
   onAbrirInfo?: () => void;
 }) {
@@ -108,7 +111,7 @@ export function Conversation(props: {
         <p className="min-h-0 flex-1 pt-10 text-center text-sm text-on-surface-variant">Todavía no hay mensajes. Escribe el primero.</p>
       ) : (
         <ListaDeMensajes
-          key={chat.id}
+          key={`${chat.id}-${props.viewId ?? 0}`}
           chat={chat}
           mensajes={props.mensajes}
           yo={props.yo}
@@ -120,6 +123,7 @@ export function Conversation(props: {
           onLeido={props.onLeido}
           salto={props.salto}
           onNoEsta={props.onNoEsta}
+          ventana={props.ventana}
         />
       )}
       {chat.encrypted ? (

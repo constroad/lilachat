@@ -23,6 +23,8 @@ type Props = {
   salto?: { seq: number; vez: number } | null;
   /** El mensaje pedido no está cargado. */
   onNoEsta?: () => void;
+  /** A window around an old message (pending 44): it pages down too, and «Ir al último» leaves it. */
+  ventana?: { hasNewer: boolean; onCargarSiguientes: () => void; onIrAlUltimo: () => void };
 };
 
 /** Cuánto queda resaltado el mensaje al que se saltó. */
@@ -40,13 +42,14 @@ export function ListaDeMensajes(props: Props) {
   const { mensajes, yo, chat } = props;
   const flat = useContext(ConversacionContext)?.flat ?? false;
   const contenedor = useRef<HTMLDivElement>(null);
-  const pegado = useRef(true);
+  // In a window the list does not follow the end: its end is not the conversation's.
+  const pegado = useRef(!props.ventana);
   /** Cuándo fue el último gesto de la persona sobre la lista (rueda, toque, tecla). */
   const ultimoGesto = useRef(0);
   const anotarGesto = () => {
     ultimoGesto.current = Date.now();
   };
-  const [lejos, setLejos] = useState(false);
+  const [lejos, setLejos] = useState(Boolean(props.ventana));
   const filas = useMemo(() => filasDeLaConversacion(mensajes), [mensajes]);
 
   const virtualizador = useVirtualizer({
@@ -77,12 +80,22 @@ export function ListaDeMensajes(props: Props) {
   useAcuseDeLeido({ mensajes, pegado, lejos, onLeido: props.onLeido });
   const resaltado = useSaltoAMensaje({ salto: props.salto, filas, pegado, setLejos, scrollToIndex: (indice) => virtualizador.scrollToIndex(indice, { align: 'center' }), onNoEsta: props.onNoEsta });
 
+  // A short window (many deleted messages) cannot be scrolled to its bottom: it asks for the next page by itself.
+  const { ventana } = props;
+  const altoTotal = virtualizador.getTotalSize();
+  useEffect(() => {
+    const elemento = contenedor.current;
+    if (ventana?.hasNewer && elemento && elemento.scrollHeight - elemento.clientHeight < UMBRAL_DE_ANTERIORES_PX) ventana.onCargarSiguientes();
+  }, [ventana, altoTotal]);
+
   const alScrollear = () => {
     const elemento = contenedor.current;
     if (!elemento) return;
-    pegado.current = sigueEnElFinal({ cerca: estaCercaDelFinal(elemento), pegadoAntes: pegado.current, msDesdeElGesto: Date.now() - ultimoGesto.current });
+    const cerca = estaCercaDelFinal(elemento);
+    pegado.current = props.ventana ? false : sigueEnElFinal({ cerca, pegadoAntes: pegado.current, msDesdeElGesto: Date.now() - ultimoGesto.current });
     setLejos(!pegado.current);
     if (elemento.scrollTop < UMBRAL_DE_ANTERIORES_PX && props.hayAnteriores) props.onCargarAnteriores();
+    if (props.ventana?.hasNewer && cerca) props.ventana.onCargarSiguientes();
   };
 
   return (
@@ -131,7 +144,7 @@ export function ListaDeMensajes(props: Props) {
         {props.escribiendo ? <Escribiendo /> : null}
       </div>
       {lejos ? (
-        <button type="button" data-testid="btn-bajar" aria-label={newBelow ? `Ir al último mensaje, ${newBelow} sin leer` : 'Ir al último mensaje'} onClick={bajar} className="absolute bottom-3 right-4 grid h-10 w-10 place-items-center rounded-full border border-outline/15 bg-surface text-on-surface-variant shadow-md hover:bg-background">
+        <button type="button" data-testid="btn-bajar" aria-label={newBelow ? `Ir al último mensaje, ${newBelow} sin leer` : 'Ir al último mensaje'} onClick={props.ventana ? props.ventana.onIrAlUltimo : bajar} className="absolute bottom-3 right-4 grid h-10 w-10 place-items-center rounded-full border border-outline/15 bg-surface text-on-surface-variant shadow-md hover:bg-background">
           {newBelow > 0 ? <span data-testid="nuevos-abajo" className="absolute -right-1 -top-1 grid h-5 min-w-[20px] place-items-center rounded-full bg-primary px-1 text-[11px] font-bold text-on-primary">{newBelow > 99 ? '99+' : newBelow}</span> : null}
           <ChevronDown size={20} />
         </button>

@@ -38,6 +38,8 @@ import { useGroupsAsList } from '../ui/groupsAsList';
 import { useCalls } from '../calls/CallProvider';
 import { ChatQueue } from './queue/ChatQueue';
 import { gifAsPendingMessage, useGifsInFlight } from './gifs/gifsInFlight';
+import { useMessageWindow } from './useMessageWindow';
+import { windowOnScreen } from './windowOnScreen';
 
 type PropsDeConversacion = ComponentProps<typeof Conversation>;
 
@@ -47,7 +49,7 @@ type PropsDeConversacion = ComponentProps<typeof Conversation>;
  * de los miembros para autores y menciones. Así `Shell` no crece.
  */
 export function ConversacionConAcciones(
-  props: Omit<PropsDeConversacion, 'contexto' | 'onCancelarContexto' | 'onSend' | 'mencionables' | 'jwtParaEnlaces' | 'onElegirArchivos' | 'onNotaDeVoz' | 'onEscribiendo' | 'franja' | 'queue' | 'salto' | 'onNoEsta'> & {
+  props: Omit<PropsDeConversacion, 'contexto' | 'onCancelarContexto' | 'onSend' | 'mencionables' | 'jwtParaEnlaces' | 'onElegirArchivos' | 'onNotaDeVoz' | 'onEscribiendo' | 'franja' | 'queue' | 'salto' | 'onNoEsta' | 'ventana' | 'viewId'> & {
     jwt: string;
     base: BaseLocal | null;
     sync: AccionesDeSync;
@@ -109,6 +111,13 @@ export function ConversacionConAcciones(
   const seqsFijados = useMemo(() => new Set(fijados.map((uno) => uno.seq)), [fijados]);
   const fijar = useFijarEnLaWeb({ chatId: chat.id, jwt: props.jwt, onAviso, onCambio: props.onRecargarChats });
   const [salto, setSalto] = useState<{ seq: number; vez: number } | null>(null);
+  // An old message opens with its context (pending 44) instead of «sube para cargarlo».
+  const ventana = useMessageWindow(props.jwt, chat.id);
+  // Leaving the window also forgets the jump: the remounted list would look for it again and reopen it.
+  const cerrarVentana = useCallback(() => {
+    setSalto(null);
+    ventana.close();
+  }, [ventana]);
   useEffect(() => {
     if (props.irA) setSalto(props.irA);
   }, [props.irA]);
@@ -176,10 +185,18 @@ export function ConversacionConAcciones(
         jwtParaEnlaces={chat.encrypted ? undefined : props.jwt}
         onElegirArchivos={setArchivos}
         onNotaDeVoz={(nota) => void colaDeArchivosWeb.encolar(chat.id, nota.file, { durationMs: nota.ms, onda: nota.onda, hd: true })}
-        mensajes={hilos.visibles}
+        mensajes={ventana.window ? windowOnScreen(ventana.window, hilos.visibles ?? []) : hilos.visibles}
+        hayAnteriores={ventana.window ? ventana.window.hasOlder : props.hayAnteriores}
+        onCargarAnteriores={ventana.window ? () => void ventana.loadOlder() : props.onCargarAnteriores}
+        ventana={ventana.window ? { hasNewer: ventana.window.hasNewer, onCargarSiguientes: () => void ventana.loadNewer(), onIrAlUltimo: cerrarVentana } : undefined}
+        viewId={ventana.viewId}
         onReintentar={(clave) => (colaDeArchivosWeb.tiene(clave) ? void colaDeArchivosWeb.reintentar(clave) : props.onReintentar(clave))}
         onDescartar={(clave) => (colaDeArchivosWeb.tiene(clave) ? colaDeArchivosWeb.descartar(clave) : props.onDescartar(clave))}
-        onSend={(texto, menciones) => void acciones.enviar(texto, menciones)}
+        onSend={(texto, menciones) => {
+          // Writing goes back to the end, like WhatsApp.
+          cerrarVentana();
+          void acciones.enviar(texto, menciones);
+        }}
         franja={
           <FranjaDeFijados
             fijados={fijados}
@@ -193,7 +210,14 @@ export function ConversacionConAcciones(
         }
         queue={chat.kind === 'notas' ? null : <ChatQueue jwt={props.jwt} chatId={chat.id} onOpen={(seq) => setSalto({ seq, vez: Date.now() })} />}
         salto={salto}
-        onNoEsta={() => onAviso('Ese mensaje está más arriba: sube para cargarlo.')}
+        onNoEsta={() => {
+          if (!salto || chat.encrypted) return onAviso('Ese mensaje está más arriba: sube para cargarlo.');
+          void ventana.jumpTo(salto.seq).then((outcome) => {
+            if (outcome.status === 'thread') abrirHilo(outcome.root);
+            else if (outcome.status === 'missing') onAviso('Ese mensaje ya no está en el chat.');
+            else if (outcome.status === 'error') onAviso('No se pudo abrir ese mensaje. Revisa tu conexión.');
+          });
+        }}
         onAbrirInfo={() => {
           hilos.cerrar();
           setInfoAbierta(true);

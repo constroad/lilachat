@@ -12,3 +12,9 @@ export function chatDeLaRuta(pathname: string, search: string): string | null {
 }
 
 export const rutaDelChat = (chatId: string | null): string => (chatId ? `/c/${chatId}` : '/');
+
+/** Opens a chat from anywhere (pending 9: «Enviar mensaje» on a shared contact): the URL changes and `useChatDeLaUrl` follows it. */
+export function openChatFromAnywhere(chatId: string): void {
+  history.pushState(null, '', rutaDelChat(chatId));
+  window.dispatchEvent(new PopStateEvent('popstate'));
+}

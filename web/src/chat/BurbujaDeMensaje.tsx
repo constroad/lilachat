@@ -15,6 +15,7 @@ import { BotonDeReaccionar } from './reacciones/BotonDeReaccionar';
 import { BotonDeHilo } from './BotonDeHilo';
 import { PastillaDeReacciones } from './reacciones/PastillaDeReacciones';
 import { TextoDelMensaje } from './TextoDelMensaje';
+import { ContactCardWeb } from './ContactCardWeb';
 import { TarjetaDelMensaje } from './tarjetas/TarjetaDelMensaje';
 import { NudgeLine, WinkLine } from './nudge';
 import { StickerMessage } from './stickers/StickerMessage';
@@ -255,7 +256,12 @@ function ContenidoDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio
         </a>
       ) : null}
       {vista ? <TarjetaDeEnlace vista={vista} mio={mio} /> : null}
-      {mensaje.body ? <TextoDelMensaje clave={mensaje.clientKey} texto={mensaje.body} menciones={mensaje.menciones} nombres={nombres} yo={yo} mio={mio} /> : null}
+      {mensaje.kind === 'contact' && mensaje.contact && !mensaje.deletedAt ? (
+        // A shared contact (pending 9): the card; its `body` is only the summary for the list and the search.
+        <ContactCardWeb contact={mensaje.contact} mio={mio} jwt={jwt} yo={yo} />
+      ) : mensaje.body ? (
+        <TextoDelMensaje clave={mensaje.clientKey} texto={mensaje.body} menciones={mensaje.menciones} nombres={nombres} yo={yo} mio={mio} />
+      ) : null}
     </>
   );
 }

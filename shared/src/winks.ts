@@ -184,10 +184,11 @@ export const FUN_LIVE_MS = 30_000;
  * after the chat opened is not «live» (José, 21/10: every time he went into
  * the chat, his old nudge buzzed again).
  */
-export function funMessageToPlay(messages: readonly { seq: number; kind?: string; senderId: string; wink?: string; at?: string }[], me: string, afterSeq: number, options: { mineToo: boolean; mineSince?: number } = { mineToo: true }): FunToPlay | null {
+export function funMessageToPlay(messages: readonly { seq: number; kind?: string; senderId: string; wink?: string; at?: string; deletedAt?: string }[], me: string, afterSeq: number, options: { mineToo: boolean; mineSince?: number } = { mineToo: true }): FunToPlay | null {
   let newest: FunToPlay | null = null;
   for (const message of messages) {
-    if (message.seq <= afterSeq || (newest && message.seq < newest.seq)) continue;
+    // Deleted for everyone before it was seen: it never plays (22/10).
+    if (message.seq <= afterSeq || message.deletedAt || (newest && message.seq < newest.seq)) continue;
     const mine = message.senderId === me;
     const fresh = options.mineSince === undefined || (message.at !== undefined && Date.parse(message.at) >= options.mineSince);
     const counts = !mine || (options.mineToo && fresh);

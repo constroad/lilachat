@@ -82,6 +82,15 @@ describe('winkParticles', () => {
 });
 
 describe('funMessageToPlay', () => {
+  it('a wink deleted for everyone before I saw it does not play (22/10)', () => {
+    // Arrange
+    const deleted = [{ seq: 7, kind: 'guino', senderId: 'ana', wink: 'panda', deletedAt: '2026-10-22T19:12:00.000Z' }];
+    // Act
+    const fun = funMessageToPlay(deleted, 'jose', 0);
+    // Assert
+    expect(fun).toBeNull();
+  });
+
   const me = 'jose';
   const rows = [
     { seq: 1, kind: 'text', senderId: 'ana' },

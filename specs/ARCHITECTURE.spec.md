@@ -4909,6 +4909,108 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 106. 426 a las versiones viejas, correo opcional, guiños que se reinician, Llamadas en la web y el aviso de Chrome (22/10/2026, 0.1.144)
+
+Cierra los pendientes 32 (lo que faltaba), 38 (Llamadas), 51 y 52. Deja el
+análisis del 50.
+
+**El server rechaza las versiones bajo la mínima (32).** `minimumVersion.ts`
+(server, 10 tests):
+- lee la mínima que José fija en LilaStore (`min-version`) y la guarda 10
+  minutos;
+- si LilaStore no responde, queda la última mínima conocida; si nunca hubo
+  una, no rechaza a nadie;
+- a un pedido con `x-lilachat-build` bajo la mínima le contesta **426**
+  `update_required` con la mínima;
+- en el socket hace lo mismo: `build` en el auth y `update_required`;
+- `/api/crash` queda abierto, para que una versión vieja rota igual avise.
+
+Solo se juzga a quien dice su build. Se probó adivinar las apps viejas por su
+user agent `okhttp`, y se descartó: la app nueva también tiene caminos sin la
+cabecera (descargas de medios y de respaldos), y la adivinanza dejaría afuera
+a un teléfono al día. Desde la 0.1.144 la app dice su build en `jsonCall`, en
+`client.ts` y en el socket (`appBuild.ts`, 5 tests). Ante un 426 o
+`update_required`, la app consulta LilaStore en el momento y sale la pantalla
+de bloqueo (§97) sin esperar sus 30 minutos.
+
+E2E con el server de QA y la mínima en un archivo:
+- curl con build 145 y mínima 999: 426 con el mensaje;
+- curl sin cabecera: 200;
+- `/api/crash` con build 1: 204;
+- la app del emulador mandó su build en cada pedido (en desarrollo reporta el
+  de Metro, 119) y con la mínima en 9999 el server la rechazó.
+
+**El correo es opcional (51).** José, 22/10: invitó a Lila a una cuenta
+individual y, después de verificar su número, la app le exigió el correo.
+- `profileMissing` pide nombre y cumpleaños; el número ya lo probó el código.
+- «Completa tu perfil» (app y web) muestra «Tu correo (opcional)» con «Lo
+  necesitas solo para activar la copia de seguridad».
+- La app tiene `EmailVerifyField`, extraído del perfil. Lo usa «Copia de
+  seguridad»: sin correo verificado, primero pide verificarlo y después deja
+  crear la clave.
+- El server rechaza el PRIMER respaldo sin correo verificado (403
+  `correo_sin_verificar`). Quien ya tenía respaldos sigue respaldando, para
+  que nada que funcionaba se corte.
+- El panel de superadmin cuenta «perfil completo» con nombre y cumpleaños.
+
+E2E web: QA Ana sin cumpleaños ni correo vio el formulario con «(opcional)»,
+«Continuar» se habilitó solo con día y mes, y entró a la lista. En el
+emulador, una cuenta con correo verificado sigue entrando directo a crear la
+clave. No se probó en el teléfono la cuenta sin correo: haría falta una cuenta
+de prueba sin correo en el emulador. Lo cubren los tests de server y web.
+
+**Guiños que se reinician (52).** José, 22/10: al probar varios stickers de
+emoji (los guiños) rápido, dejaban de animarse. Causa: las vistas previas usan
+siempre la misma semilla y «Ver otra vez» reusa el `seq` del mensaje, y el
+overlay tenía como `key` ese `seq`. React dejaba montados los componentes
+viejos, y sus animaciones, que arrancan al montarse, no volvían a correr. Ahora
+cada inicio tiene su `run` y la clave es `seq:run` (`winkPlay.ts`, 3 tests).
+
+E2E en el emulador: se tocaron tres guiños seguidos (0,4 s entre toques) y el
+último se animó entero. Al tocar el mismo otra vez, arrancó de nuevo: las
+capturas a 0,6 y 0,7 s del toque muestran la misma etapa. Los cuadros
+(p50 57 ms, 60 % con saltos) son de un build de desarrollo con JS de debug, y
+no sirven como medida: el APK de release no se puede instalar sobre el build
+de desarrollo sin borrar la sesión del emulador.
+
+**Llamadas en el riel de la web (38).**
+- Server: `GET /api/calls/history` arma el historial con las líneas de llamada
+  de mis chats. Usa el índice `{chatId, kind, at}`, que se verificó en la base,
+  con 90 días y 60 filas como tope. Cada fila trae el título del chat (grupo o
+  la otra persona) y su teléfono (4 tests).
+- Shared: `callDirection` y `callHistoryLabel` (3 tests).
+- Web: `CallsDialog` (6 tests) muestra la flecha, «Videollamada perdida» en
+  rojo, la hora y el botón para llamar de vuelta con el mismo tipo. Una fila
+  abre su chat. Prefiere el nombre de la lista (agenda) y cae al del server
+  mientras la lista no llegó, como en una web recién vinculada.
+- Recuerda la última respuesta de la sesión: reabrir pinta en el momento y
+  refresca detrás.
+
+Medido en el server de QA (por el túnel a la base):
+- el endpoint tarda 0,35 s en serie;
+- 20 en paralelo: 1,2 s de promedio, contra 1,6 s de `GET /api/chats`;
+- abrir Llamadas la primera vez: 1,3 a 2,5 s con el server recién arrancado;
+- reabrirla: **18 ms**.
+
+**El aviso de Chrome al bajar el APK (50), análisis.** Chrome muestra «Es
+posible que el archivo sea dañino» para todo APK que se baja de una web, con
+o sin firma. No se puede quitar desde el server. Lo que hay:
+- las actualizaciones nunca pasan por el navegador: la app baja el APK y abre
+  el instalador de Android, que no muestra ese aviso;
+- la página de LilaStore ya explica los avisos, pero detrás de un enlace.
+  Quedó como tarea para la sesión de LilaStore: la explicación a la vista
+  junto al botón, el texto exacto del diálogo y abrir LilaStore si ya está
+  instalada;
+- la única forma de que desaparezca del todo es Google Play. Esa decisión es
+  de José.
+
+**Otros.** `qaDebug` borrado. `prefetchSpace` usa `requestIdleCallback`.
+
+Limpieza de QA:
+- se desvincularon las sesiones web de QA Ana;
+- se restauró su perfil (sin cumpleaños ni correo, como estaba);
+- ningún dato nuevo en chats de José.
+
 ## 105. Checks, emojis, «bajar» con número, GIF al instante, pantalla completa y la nota de voz (22/10/2026, 0.1.143)
 
 Cierra los pendientes 39, 40, 41, 43, 46 y 49 de José (22/10).
@@ -9323,7 +9425,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
   chat silenciado no anima ni suena; el sonido respeta el modo silencio.
 - **Costo:** sin servicios pagos. El trabajo grande son las animaciones
   propias (6–8 para arrancar) y sus sonidos.
-32. **El aviso de versión nueva solo sale al abrir la app en frío** (José, 21/10:
+32. ~~**El aviso de versión nueva solo sale al abrir la app en frío**~~ **Hecho; el 426 en §106, 0.1.144.** (José, 21/10:
     «actualizo los chats pero no me aparece que hay una nueva versión; cuando
     cierro la app y vuelvo a ingresar sí aparece»). Causa: `useActualizacionesDeLaApp`
     consulta `min-version` UNA vez, en el `useEffect` del arranque; volver desde
@@ -9387,7 +9489,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
       Falta la **llave de GIPHY**: la saca José en developers.giphy.com y la
       carga en Torre; sin llave la pestaña no aparece.
 
-38. ✅ (§85, 0.1.125; falta Llamadas) **Riel lateral como WhatsApp Web, y el botón de medios** (José, 21/10,
+38. ✅ (§85, 0.1.125; Llamadas en §106, 0.1.144) **Riel lateral como WhatsApp Web, y el botón de medios** (José, 21/10,
     con captura de WhatsApp Web; no necesita Stitch). WhatsApp Web tiene a la
     izquierda un riel de íconos que agrupa Chats, Llamadas, Estados, Canales y
     Comunidades, y abajo Medios, Ajustes y el perfil. Propuesta:
@@ -9452,7 +9554,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
 49. ~~**Cerrar la notificación de una nota de voz no la detiene**~~ **Hecho (§105, 0.1.143),** falta probarlo en el teléfono de José. (José, 22/10):
     se cierra la tarjeta de la notificación y el audio sigue. Cerrarla (o
     tocar pausa/X ahí) tiene que parar el audio, como cualquier reproductor.
-50. **Chrome dice «Es posible que el archivo sea dañino» al bajar el APK**
+50. **Chrome dice «Es posible que el archivo sea dañino» al bajar el APK** — **analizado en §106**: no se puede quitar desde el server; tarea para LilaStore y decisión de Google Play para José.
     (José, 22/10, captura bajando `lilachat-0.1.142-143.apk` desde
     lilastore.constroad.com: «obviamente así ni yo lo descargo»). Chrome lo
     muestra para todo APK que se baja de una web, sin importar la firma.
@@ -9461,13 +9563,13 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     actualizar por la app de LilaStore, y en la página de descarga explicar
     el aviso antes de que salga. Ver qué hace hoy el botón «Actualizar» de la
     app.
-51. **El correo no debería ser obligatorio si ya validó su número** (José,
+51. ~~**El correo no debería ser obligatorio si ya validó su número**~~ **Hecho (§106, 0.1.144).** (José,
     22/10: invitó a Lila a una cuenta individual; verificó su número y
     después la app le exigió verificar el correo). Con el número validado,
     el correo en «Completa tu perfil» es opcional. Se exige el correo
     verificado solo al activar respaldos y copias de seguridad.
-52. **Los stickers de emoji animados dejan de animarse al probar varios
-    rápido** (José, 22/10). Medir el panel y la burbuja con varios seguidos:
+52. ~~**Los stickers de emoji animados dejan de animarse al probar varios
+    rápido**~~ **Hecho (§106, 0.1.144).** (José, 22/10). Medir el panel y la burbuja con varios seguidos:
     cuántas animaciones vivas hay, si se sueltan y si el hilo JS se traba.
     José pide **medir la performance en cada iteración**: lo del GIF y esto
     se escaparon por no medir.

@@ -1,19 +1,16 @@
-import { randomBytes } from 'node:crypto';
 import { Router, type Response } from 'express';
 import { Types } from 'mongoose';
 import { canToggleTask, checklistOverdue, checklistPermissions, checklistTextInChat, toggleChecklistItem, validateChecklist, validateChecklistItem, validateChecklistTitle, type AgendaChecklist } from '@lilachat/shared';
 import { ChatModel, MessageModel } from './chatModels.js';
 import { ChecklistModel, type Checklist } from './checklistModel.js';
 import { asyncRoute, requireSession } from './requireSession.js';
-import { publicarEnElChat } from './publicarEnElChat.js';
 import { avisarCambioDeTarjeta } from './avisoDeTarjeta.js';
-import { fijarMensaje } from './mensajesFijados.js';
 import { deleteMessage } from './chatService.js';
 import { avisarCambioDeChat, notifyDeleted } from './reparto.js';
 import { noteTaskToggle } from './checklistNotices.js';
+import { createChecklistInChat, newItemId } from './checklistService.js';
 
 /** A task's own id: 6 random bytes, enough inside one checklist of up to 30. */
-const newItemId = () => randomBytes(6).toString('hex');
 
 /** The checklist as the card reads it (ids as strings). */
 function view(checklist: Checklist): AgendaChecklist {
@@ -44,8 +41,6 @@ async function checklistOfMember(id: unknown, userId: Types.ObjectId, res: Respo
 /** How many checklists the chat info and «Mis tareas» bring. */
 const LIST_LIMIT = 50;
 const MINE_LIMIT = 100;
-/** A checklist's pin lasts 30 days: long enough for a job, and it goes by itself. */
-const PIN_DURATION = '30d';
 
 /** The checklist if I may edit its tasks (who made it, or anyone if «los demás pueden agregar»); otherwise answers and null. */
 async function editableChecklist(id: unknown, userId: Types.ObjectId, res: Response): Promise<Checklist | null> {
@@ -79,11 +74,6 @@ async function taskChanges(body: Record<string, unknown>, checklist: Checklist, 
   return changes;
 }
 
-/** Pins the card; a refusal (a member who is not an admin of the group) leaves it unpinned without failing. */
-async function pinCard(chatId: string, userId: Types.ObjectId, seq: number): Promise<void> {
-  const pinned = await fijarMensaje({ chatId, quien: userId, seq, duracion: PIN_DURATION });
-  if (pinned.ok) for (const member of pinned.miembros) avisarCambioDeChat(member, chatId);
-}
 
 /**
  * Checklists made before 0.1.122 did not keep the seq of their card: it is
@@ -130,25 +120,17 @@ export function buildChecklistRouter(): Router {
     if (chat.encrypted) return res.status(403).json({ message: 'En un chat secreto todavía no se pueden crear checklists: no viajarían cifrados.' });
     const valid = validateChecklist({ title: String(req.body?.title ?? ''), items: Array.isArray(req.body?.items) ? req.body.items.map(String) : [] });
     if (!valid.ok) return res.status(400).json({ message: valid.message });
-    const checklist = await ChecklistModel.create({
-      chatId,
+    const created = await createChecklistInChat({
+      chatId: String(chatId),
       createdBy: userId,
       title: valid.title,
-      items: valid.items.map((text) => ({ id: newItemId(), text, addedBy: userId, doneBy: null, doneAt: null })),
+      items: valid.items.map((text) => ({ text })),
       othersCanMark: req.body?.othersCanMark !== false,
       othersCanAdd: req.body?.othersCanAdd !== false,
+      hiloDe: Number.isInteger(req.body?.hiloDe) ? Number(req.body.hiloDe) : undefined,
+      pin: req.body?.pin !== false,
     });
-    const hiloDe = Number.isInteger(req.body?.hiloDe) ? Number(req.body.hiloDe) : undefined;
-    try {
-      const cardSeq = await publicarEnElChat({ chatId: String(chatId), autor: userId, ref: { tipo: 'checklist', id: String(checklist._id) }, texto: checklistTextInChat(valid.title), hiloDe });
-      await ChecklistModel.updateOne({ _id: checklist._id }, { $set: { cardSeq } });
-      // Pinned by default so it is never lost in the messages (backlog 30). In a group only admins pin: otherwise it just stays unpinned.
-      if (req.body?.pin !== false && hiloDe === undefined) await pinCard(String(chatId), userId, cardSeq);
-    } catch (error) {
-      // The checklist exists; a card that fails to go out is logged, it does not undo it.
-      console.error('[checklist] no se pudo publicar en el chat:', error instanceof Error ? error.message : error);
-    }
-    res.status(201).json({ id: String(checklist._id) });
+    res.status(201).json({ id: created.id });
   }));
 
   /** «Mis tareas» (backlog 30): the checklists of my chats with a task assigned to me; the app groups them (`myTasks`). */

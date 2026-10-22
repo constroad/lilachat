@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Delete, Smile, Sparkles, Sticker } from 'lucide-react-native';
+import { Delete, ImagePlay, Smile, Sparkles, Sticker } from 'lucide-react-native';
 import { lastPanelTab, type PanelTab, type WinkId } from '@lilachat/shared';
 import { storePanelTab, useStoredPanelTab } from '../../ui/panelTabPref';
 import { WinkPanel } from '../WinkPanel';
+import { GifPanel } from '../gifs/GifPanel';
+import { useGifsAvailable } from '../gifs/gifsApi';
 
 import { PanelDeEmojis } from '../PanelDeEmojis';
 import { useColores } from '../../ui/tema';
@@ -50,10 +52,13 @@ export function EmojiStickerPanel(props: {
   /** A new editor each time (its layers and brushes do not leak into the next sticker); it stays mounted to slide out. */
   const [editorSession, setEditorSession] = useState(0);
   const stickers = useStickers(props.jwt);
+  // GIPHY only when the server has its key (backlog 37); never in a secret chat.
+  const gifs = useGifsAvailable(props.jwt) && props.withStickers;
   const closeEditor = useCallback(() => setCreating(false), []);
   const tabs: { key: PanelTab; label: string; Icon: typeof Smile }[] = [
     { key: 'emoji', label: 'Emoji', Icon: Smile },
     ...(props.withStickers ? [{ key: 'stickers' as const, label: 'Stickers', Icon: Sticker }] : []),
+    ...(gifs ? [{ key: 'gifs' as const, label: 'GIF', Icon: ImagePlay }] : []),
     ...(onWink ? [{ key: 'winks' as const, label: 'Guiños', Icon: Sparkles }] : []),
   ];
   // It opens on the tab used last (José, 21/10), if this chat offers it.
@@ -89,6 +94,8 @@ export function EmojiStickerPanel(props: {
       </View>
       {tab === 'emoji' ? (
         <PanelDeEmojis onElegir={props.onPickEmoji} />
+      ) : tab === 'gifs' ? (
+        <GifPanel jwt={props.jwt} chatId={props.chatId} />
       ) : tab === 'winks' && onWink ? (
         <WinkPanel recipient={props.chatName} onSend={onWink} onNudge={props.onNudge} />
       ) : (

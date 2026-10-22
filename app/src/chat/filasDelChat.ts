@@ -1,4 +1,5 @@
 import { formatClock, tamanoDeBurbuja } from '@lilachat/shared';
+import { isAnimatedImage } from '@lilachat/shared';
 import type { ArchivoEnCola } from './colaDeArchivosMotor';
 
 /**
@@ -133,6 +134,8 @@ type MensajeConMedia = {
  * el video y no una imagen.
  */
 export function miniaturaDe(media: { thumbUrl?: string; url?: string; mime?: string }): string | undefined {
+  // A GIF shows the file itself: its thumbnail is a still frame (backlog 37).
+  if (isAnimatedImage(media.mime) && media.url) return media.url;
   if (media.thumbUrl) return media.thumbUrl;
   return (media.mime ?? '').startsWith('image/') ? media.url : undefined;
 }

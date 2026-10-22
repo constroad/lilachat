@@ -81,11 +81,12 @@ export function showStickerOptions(jwt: string, item: ChatMessage, mine: boolean
  * a chat full of loops that never end is noise and costs battery. A tap on a
  * stopped one plays it again.
  */
-export function useAnimatedStop(url: string | undefined) {
+export function useAnimatedStop(url: string | undefined, isGif = false) {
   const ref = useRef<Image>(null);
   const [stopped, setStopped] = useState(false);
   const [round, setRound] = useState(0);
-  const animated = isAnimatedSticker(url);
+  // A GIF in a bubble stops the same way (backlog 37).
+  const animated = isGif || isAnimatedSticker(url);
   useEffect(() => {
     if (!animated) return;
     const timer = setTimeout(() => {

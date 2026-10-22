@@ -34,7 +34,7 @@ export function changeForAction(action: MemberAction): { role?: WorkspaceRole; s
   return { status: action === 'deactivate' ? 'deactivated' : 'active' };
 }
 
-type Searchable = { name?: string; title?: string; area?: string; phone: string };
+type Searchable = { name?: string; title?: string; area?: string; phone?: string };
 const folded = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, '');
 
 /** «Todas» and each area with how many are in it, the biggest first (e1-08). */
@@ -48,7 +48,7 @@ export function directoryAreas(members: readonly Searchable[]): { area: string |
 /** Search by name, title, area or phone (accents and spaces ignored), then the chosen area. */
 export function filterMembers<T extends Searchable>(members: readonly T[], params: { query: string; area: string | null }): T[] {
   const query = folded(params.query);
-  return members.filter((member) => (!params.area || member.area === params.area) && (!query || folded(`${member.name ?? ''}${member.title ?? ''}${member.area ?? ''}${member.phone}`).includes(query)));
+  return members.filter((member) => (!params.area || member.area === params.area) && (!query || folded(`${member.name ?? ''}${member.title ?? ''}${member.area ?? ''}${member.phone ?? ''}`).includes(query)));
 }
 
 const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];

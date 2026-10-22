@@ -125,6 +125,13 @@ describe('spaceInviteEmail', () => {
     expect(link).not.toContain('+');
     expect(link).toContain('%0A');
   });
+  it('invited by email (José, 22/10): addressed to that email, and verifying it in the profile is the way in; the code stays as a fallback', () => {
+    const email = spaceInviteEmail({ spaceName: 'CONSTROAD', code: 'CONS-7K3P', to: 'luis@empresa.pe' });
+    expect(email.body).toContain('En «Completa tu perfil», verifica este correo (luis@empresa.pe) y entras solo al espacio.');
+    expect(email.body).toContain('escribe: CONS-7K3P');
+    const link = spaceInviteMailto({ spaceName: 'CONSTROAD', code: 'CONS-7K3P', to: 'luis@empresa.pe' });
+    expect(link.startsWith('mailto:luis%40empresa.pe?subject=')).toBe(true);
+  });
 });
 
 describe('spaceInviteMessage, where to get the app', () => {

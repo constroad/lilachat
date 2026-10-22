@@ -30,7 +30,9 @@ export type EventoDeGrupo =
   /** Fijó un mensaje arriba del chat (19/10). */
   | 'fijo'
   /** Someone I invited created their account (José, 21/10, like Telegram). */
-  | 'se-unio';
+  | 'se-unio'
+  /** Someone became active in a company space: its #general hears it (José, 22/10, like Slack). */
+  | 'se-unio-espacio';
 
 export function textoDeAviso(params: {
   /** Quién lo hizo, con el nombre ya resuelto. */
@@ -102,6 +104,9 @@ export function textoDeAviso(params: {
 
     case 'se-unio':
       return esMio ? 'Te uniste a Lilachat' : `${quien} se unió a Lilachat`;
+
+    case 'se-unio-espacio':
+      return esMio ? 'Te uniste al espacio' : `${quien} se unió al espacio`;
 
     // La línea que deja una llamada (FL8.1): la frase depende de quién mira.
     case 'llamada':

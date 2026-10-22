@@ -94,7 +94,9 @@ export type ClientWorkspaceMember = {
   userId?: string;
   name?: string;
   avatarUrl?: string;
-  phone: string;
+  /** Missing on an email invitation (22/10): that one carries `email` until the person verifies it. */
+  phone?: string;
+  email?: string;
   role: WorkspaceRole;
   status: WorkspaceMemberStatus;
   title?: string;

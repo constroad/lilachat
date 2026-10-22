@@ -48,8 +48,11 @@ export function spaceInviteMessage(params: { spaceName: string; code: string }):
  * Lilachat on the phone or the computer, that one enters with the phone
  * number, and the code.
  */
-export function spaceInviteEmail(params: { spaceName: string; code: string; inviterName?: string }): { subject: string; body: string } {
+export function spaceInviteEmail(params: { spaceName: string; code: string; inviterName?: string; /** Invited by email (22/10): verifying it in the profile lets them in. */ to?: string }): { subject: string; body: string } {
   const who = params.inviterName?.trim();
+  const steps = params.to
+    ? [`3. En «Completa tu perfil», verifica este correo (${params.to}) y entras solo al espacio.`, `   Si ya lo verificaste con otro correo: ${joinStep(params.code)}`]
+    : [`3. ${joinStep(params.code)}`];
   return {
     subject: `Invitación al espacio de ${params.spaceName} en Lilachat`,
     body: [
@@ -61,7 +64,7 @@ export function spaceInviteEmail(params: { spaceName: string; code: string; invi
       `1. Descarga Lilachat en tu celular: ${ENLACE_DE_DESCARGA}`,
       `   o úsalo en la computadora: ${LILACHAT_WEB_URL}`,
       '2. Entra con tu número de celular.',
-      `3. ${joinStep(params.code)}`,
+      ...steps,
       '',
       'Tus chats personales no se comparten con la empresa.',
     ].join('\n'),
@@ -69,9 +72,9 @@ export function spaceInviteEmail(params: { spaceName: string; code: string; invi
 }
 
 /** The same invitation as a `mailto:` link: the mail app opens with the subject and the body, and the person picks the recipients. */
-export function spaceInviteMailto(params: { spaceName: string; code: string; inviterName?: string }): string {
+export function spaceInviteMailto(params: { spaceName: string; code: string; inviterName?: string; to?: string }): string {
   const email = spaceInviteEmail(params);
-  return `mailto:?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.body)}`;
+  return `mailto:${params.to ? encodeURIComponent(params.to) : ''}?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.body)}`;
 }
 
 export type ChannelFilter = 'all' | 'public' | 'private';

@@ -182,6 +182,11 @@ describe('joined Lilachat', () => {
     expect(textoDeAviso({ quien: 'Aracely', esMio: false, evento: 'se-unio' })).toBe('Aracely se unió a Lilachat');
     expect(textoDeAviso({ quien: 'Aracely', esMio: true, evento: 'se-unio' })).toBe('Te uniste a Lilachat');
   });
+
+  it("a company space's #general (José, 22/10): «se unió al espacio», like Slack", () => {
+    expect(textoDeAviso({ quien: 'Luis', esMio: false, evento: 'se-unio-espacio' })).toBe('Luis se unió al espacio');
+    expect(textoDeAviso({ quien: 'Luis', esMio: true, evento: 'se-unio-espacio' })).toBe('Te uniste al espacio');
+  });
 });
 
 describe('already greeted', () => {

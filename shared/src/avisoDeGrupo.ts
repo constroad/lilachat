@@ -28,7 +28,9 @@ export type EventoDeGrupo =
   /** Promoción automática al irse el último admin: no la decidió nadie. */
   | 'admin-auto'
   /** Fijó un mensaje arriba del chat (19/10). */
-  | 'fijo';
+  | 'fijo'
+  /** Someone I invited created their account (José, 21/10, like Telegram). */
+  | 'se-unio';
 
 export function textoDeAviso(params: {
   /** Quién lo hizo, con el nombre ya resuelto. */
@@ -98,6 +100,9 @@ export function textoDeAviso(params: {
     case 'fijo':
       return esMio ? 'Fijaste un mensaje' : `${quien} fijó un mensaje`;
 
+    case 'se-unio':
+      return esMio ? 'Te uniste a Lilachat' : `${quien} se unió a Lilachat`;
+
     // La línea que deja una llamada (FL8.1): la frase depende de quién mira.
     case 'llamada':
       return textoDeLlamada({ valor, esMio });
@@ -124,4 +129,9 @@ export const HIGHLIGHTED_NOTICE_EVENTS = ['recordatorio-suena', 'evento-pronto']
  */
 export function actsAsMessage(message: { kind?: string; system?: { evento?: string } | null }): boolean {
   return message.kind !== 'system' || esAvisoDestacado(message.system?.evento);
+}
+
+/** «Saludar 👋» goes away once I wrote anything after the «se unió» notice (José, 21/10). */
+export function alreadyGreeted(messages: readonly { seq?: number; senderId?: string; pending?: boolean }[], noticeSeq: number, me: string): boolean {
+  return messages.some((message) => message.senderId === me && (message.pending === true || (message.seq ?? 0) > noticeSeq));
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actsAsMessage, esAvisoDestacado, HIGHLIGHTED_NOTICE_EVENTS, textoDeAviso } from './avisoDeGrupo.js';
+import { actsAsMessage, esAvisoDestacado, HIGHLIGHTED_NOTICE_EVENTS, textoDeAviso, alreadyGreeted } from './avisoDeGrupo.js';
 
 describe('textoDeAviso', () => {
   const wilson = { quien: 'Wilson', esMio: false };
@@ -173,5 +173,22 @@ describe('actsAsMessage', () => {
   });
   it('the highlighted events are the same list the server filters by', () => {
     expect([...HIGHLIGHTED_NOTICE_EVENTS].every((evento) => esAvisoDestacado(evento))).toBe(true);
+  });
+});
+
+/** José, 21/10: like Telegram, «Aracely se unió a Lilachat» in the 1:1 with whoever invited her. */
+describe('joined Lilachat', () => {
+  it('to whoever invited her, with her name; to her, in the second person', () => {
+    expect(textoDeAviso({ quien: 'Aracely', esMio: false, evento: 'se-unio' })).toBe('Aracely se unió a Lilachat');
+    expect(textoDeAviso({ quien: 'Aracely', esMio: true, evento: 'se-unio' })).toBe('Te uniste a Lilachat');
+  });
+});
+
+describe('already greeted', () => {
+  it('any message of mine after the notice, even one still going out', () => {
+    expect(alreadyGreeted([{ seq: 4, senderId: 'ana' }], 4, 'yo')).toBe(false);
+    expect(alreadyGreeted([{ seq: 3, senderId: 'yo' }], 4, 'yo')).toBe(false);
+    expect(alreadyGreeted([{ seq: 5, senderId: 'yo' }], 4, 'yo')).toBe(true);
+    expect(alreadyGreeted([{ senderId: 'yo', pending: true }], 4, 'yo')).toBe(true);
   });
 });

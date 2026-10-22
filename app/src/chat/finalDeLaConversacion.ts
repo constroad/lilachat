@@ -22,20 +22,24 @@ export class PosicionEnLaLista {
   private contenidoMedido: number | null = null;
   private pegado = true;
   private tocando = false;
+  /** The program placed it away (the unread divider): only a finger, «bajar» or sending sticks it again (22/10). */
+  private soltada = false;
 
   /** Devuelve si está pegada al final: es lo que esconde el botón «bajar». */
   alScrollear(medidas: MedidasDeScroll): boolean {
     this.offset = medidas.offset;
     this.alto = medidas.alto;
     const cerca = this.cerca(this.contenidoMedido ?? medidas.contenido);
-    // Un scroll que no viene del dedo puede PEGAR (llegó abajo), nunca despegar.
-    if (this.tocando || cerca) this.pegado = cerca;
+    // A scroll not made by the finger can STICK (it reached the bottom), never unstick;
+    // unless the program placed it away (22/10): then only the finger sticks it again.
+    if (this.tocando || (cerca && !this.soltada)) this.pegado = cerca;
     return this.pegado;
   }
 
   /** El dedo empieza a mover la lista (arrastre o el envión que le sigue). */
   alEmpezarArrastre(): void {
     this.tocando = true;
+    this.soltada = false;
   }
 
   /** Terminó el arrastre o el envión: donde quedó decide si sigue pegada. */
@@ -58,7 +62,7 @@ export class PosicionEnLaLista {
     this.contenidoMedido = contenido;
     if (anterior === null) return undefined;
     if (this.pegado && !this.tocando && contenido > anterior) return 'seguir';
-    if (this.alto > 0 && this.cerca(contenido)) {
+    if (!this.soltada && this.alto > 0 && this.cerca(contenido)) {
       this.pegado = true;
       return 'cerca';
     }
@@ -68,6 +72,13 @@ export class PosicionEnLaLista {
   /** The program placed the list away from the end (the unread divider, a searched message): stop following it. */
   releaseFromEnd(): void {
     this.pegado = false;
+    this.soltada = true;
+  }
+
+  /** «Bajar» or something of mine sent: back to the end, and following it again. */
+  stickToEnd(): void {
+    this.pegado = true;
+    this.soltada = false;
   }
 
   private cerca(contenido: number): boolean {

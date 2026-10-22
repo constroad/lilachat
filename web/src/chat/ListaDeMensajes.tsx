@@ -1,7 +1,7 @@
 import { useContext, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronDown } from 'lucide-react';
-import { followsMyNewRow, formatDayLabel } from '@lilachat/shared';
+import { followsMyNewRow, formatDayLabel, unreadBelow } from '@lilachat/shared';
 import { BurbujaDeMensaje } from './BurbujaDeMensaje';
 import { seqParaAcusar } from './acuseDeLeido';
 import { estaCercaDelFinal, filasDeLaConversacion, sigueEnElFinal } from './filasDeLaConversacion';
@@ -63,6 +63,13 @@ export function ListaDeMensajes(props: Props) {
   }, []);
 
   useConservarAlCargarAnteriores(contenedor, filas[0]?.mensaje.clientKey, virtualizador.getTotalSize());
+  // What arrived while reading further up (José, 22/10): the «bajar» button says how many, like WhatsApp.
+  const [awaySince, setAwaySince] = useState<number | null>(null);
+  useEffect(() => {
+    if (lejos && awaySince === null) setAwaySince(mensajes.reduce((max, uno) => (uno.estado ? max : Math.max(max, uno.seq)), 0));
+    if (!lejos && awaySince !== null) setAwaySince(null);
+  }, [lejos, awaySince, mensajes]);
+  const newBelow = lejos && awaySince !== null ? unreadBelow(mensajes, yo, awaySince) : 0;
   const lastMessage = mensajes.at(-1);
   const lastMineKey = !lastMessage ? undefined : lastMessage.senderId === yo ? lastMessage.clientKey || `seq-${lastMessage.seq}` : null;
   useFollowTheEnd({ pegado, bajar, alto: virtualizador.getTotalSize(), cantidad: filas.length, chatId: chat.id, lastMineKey });
@@ -124,7 +131,8 @@ export function ListaDeMensajes(props: Props) {
         {props.escribiendo ? <Escribiendo /> : null}
       </div>
       {lejos ? (
-        <button type="button" data-testid="btn-bajar" aria-label="Ir al último mensaje" onClick={bajar} className="absolute bottom-3 right-4 grid h-10 w-10 place-items-center rounded-full border border-outline/15 bg-surface text-on-surface-variant shadow-md hover:bg-background">
+        <button type="button" data-testid="btn-bajar" aria-label={newBelow ? `Ir al último mensaje, ${newBelow} sin leer` : 'Ir al último mensaje'} onClick={bajar} className="absolute bottom-3 right-4 grid h-10 w-10 place-items-center rounded-full border border-outline/15 bg-surface text-on-surface-variant shadow-md hover:bg-background">
+          {newBelow > 0 ? <span data-testid="nuevos-abajo" className="absolute -right-1 -top-1 grid h-5 min-w-[20px] place-items-center rounded-full bg-primary px-1 text-[11px] font-bold text-on-primary">{newBelow > 99 ? '99+' : newBelow}</span> : null}
           <ChevronDown size={20} />
         </button>
       ) : null}

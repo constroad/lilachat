@@ -21,7 +21,7 @@ export function useDivisorNoLeidos(params: {
   /** Hasta dónde había leído al abrir (del server); sin él, se cuenta desde el final. */
   leidoHasta?: number;
   listaRef: RefObject<FlashListRef<Row> | null>;
-}): { divisorSeq: number | null; noLeidos: number; irAlInicio: () => OpeningPlace } {
+}): { divisorSeq: number | null; noLeidos: number; irAlInicio: () => OpeningPlace; placedLate: number } {
   const noLeidosAlAbrir = useRef(params.noLeidos).current;
   const leidoAlAbrir = useRef(params.leidoHasta).current;
   const [divisorSeq, setDivisorSeq] = useState<number | null>(null);
@@ -36,16 +36,29 @@ export function useDivisorNoLeidos(params: {
     if (filas.length === 0) return null;
     if (noLeidosAlAbrir > 0 && typeof leidoAlAbrir === 'number') {
       const divisor = divisorDesdeLeido(filas, params.yo, leidoAlAbrir);
-      calculado.current = divisor?.seq ?? null;
-      setCantidad(divisor?.cantidad ?? 0);
+      // The unread were not on the phone yet (José, 22/10: it opened at the end): wait for them, do not freeze «none».
+      if (!divisor) return null;
+      calculado.current = divisor.seq;
+      setCantidad(divisor.cantidad);
     } else calculado.current = seqDelDivisor(filas, params.yo, noLeidosAlAbrir);
     return calculado.current;
   }, [params.yo, noLeidosAlAbrir, leidoAlAbrir]);
 
+  /** The first placement went to the end because the unread had not arrived: when they do, the list goes there once. */
+  const placedAtEndWaiting = useRef(false);
+  const [placedLate, setPlacedLate] = useState(0);
   const hayFilas = params.rows.length > 0;
   useEffect(() => {
-    if (hayFilas) setDivisorSeq(calcular());
-  }, [hayFilas, calcular]);
+    if (!hayFilas || calculado.current !== undefined) return;
+    const seq = calcular();
+    setDivisorSeq(seq);
+    if (seq === null || !placedAtEndWaiting.current) return;
+    placedAtEndWaiting.current = false;
+    const indice = rowsRef.current.findIndex((fila) => !isPending(fila) && fila.seq === seq);
+    if (indice < 0) return;
+    params.listaRef.current?.scrollToIndex({ index: indice, animated: false, viewPosition: 0.15 });
+    setPlacedLate((count) => count + 1);
+  }, [hayFilas, params.rows.length, calcular, params.listaRef]);
 
   /** Al primer pintado: al divisor si hay no leídos; si no, al final. */
   const irAlInicio = useCallback(() => {
@@ -56,10 +69,11 @@ export function useDivisorNoLeidos(params: {
       return 'away';
     }
     params.listaRef.current?.scrollToEnd({ animated: false });
+    placedAtEndWaiting.current = calculado.current === undefined && noLeidosAlAbrir > 0;
     return 'end';
-  }, [calcular, params.listaRef]);
+  }, [calcular, params.listaRef, noLeidosAlAbrir]);
 
-  return { divisorSeq, noLeidos: cantidad, irAlInicio };
+  return { divisorSeq, noLeidos: cantidad, irAlInicio, placedLate };
 }
 
 export function DivisorNoLeidos({ cantidad }: { cantidad: number }) {

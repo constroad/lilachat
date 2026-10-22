@@ -248,7 +248,7 @@ export function ChatScreen({
     [messages, ocultos, archivosEnCola, hilos.delChat, hilos.pendientesDelChat]
   );
 
-  const { divisorSeq, noLeidos: noLeidosAlAbrir, irAlInicio } = useDivisorNoLeidos({
+  const { divisorSeq, noLeidos: noLeidosAlAbrir, irAlInicio, placedLate } = useDivisorNoLeidos({
     rows,
     yo: credential.userId,
     noLeidos: unread,
@@ -476,7 +476,7 @@ export function ChatScreen({
           mensajes={messages}
           yo={credential.userId} chatId={chatId} readSeqAtOpen={readSeq ?? 0}
           dibujarFila={dibujarFila}
-          onListo={alAbrir}
+          onListo={alAbrir} placedAwayLate={placedLate}
           onCargarAnteriores={() => void cargarAnteriores()}
           cargandoAnteriores={cargandoAnteriores}
           hayAnteriores={hayAnteriores}

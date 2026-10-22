@@ -82,6 +82,8 @@ export function ListaDeMensajes(props: {
   dibujarFila: (info: { item: Row; index: number }) => ReactElement;
   /** Al terminar de montar: el momento exacto en que la lista ya midió. */
   onListo: () => OpeningPlace;
+  /** Grows when the list went to the first unread after opening (they arrived late, 22/10): it stops following the end. */
+  placedAwayLate?: number;
   onCargarAnteriores: () => void;
   cargandoAnteriores: boolean;
   hayAnteriores: boolean;
@@ -94,11 +96,12 @@ export function ListaDeMensajes(props: {
   const { listaRef, rows } = props;
   const lastRow = rows.at(-1);
   const lastMineKey = !lastRow ? undefined : isPending(lastRow) || String(lastRow.senderId) === props.yo ? claveDeFila(lastRow) : null;
-  const { alScrollear, alEmpezarArrastre, alTerminarArrastre, alCambiarTamaño, abajoLejos, nuevosAbajo, releaseFromEnd } = useFinalDeLaConversacion(
+  const { alScrollear, alEmpezarArrastre, alTerminarArrastre, alCambiarTamaño, abajoLejos, nuevosAbajo, releaseFromEnd, goToEnd } = useFinalDeLaConversacion(
     listaRef,
     props.mensajes,
     props.yo,
-    lastMineKey
+    lastMineKey,
+    props.readSeqAtOpen
   );
   const estuvoArriba = useRef(false);
   const { onLlegoAlFinal } = props;
@@ -113,6 +116,9 @@ export function ListaDeMensajes(props: {
   const { sinSubir } = props;
   const scrollDelChat = useScrollConTeclado(sinSubir);
   const { revealed, onLoad, onSize } = useRevealWhenPlaced(rows.length > 0, props.onListo, releaseFromEnd);
+  useEffect(() => {
+    if (props.placedAwayLate) releaseFromEnd();
+  }, [props.placedAwayLate, releaseFromEnd]);
   const liftStyle = useBottomLiftStyle(sinSubir);
   useFunPlayback({ messages: props.mensajes, me: props.yo, chatId: props.chatId, afterSeq: props.readSeqAtOpen });
   return (
@@ -187,7 +193,7 @@ export function ListaDeMensajes(props: {
         <Pressable
           testID="btn-bajar"
           accessibilityLabel="Ir al último mensaje"
-          onPress={() => listaRef.current?.scrollToEnd({ animated: true })}
+          onPress={goToEnd}
           hitSlop={2}
           className="h-10 w-10 items-center justify-center rounded-full bg-surface shadow-md"
         >

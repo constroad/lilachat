@@ -111,6 +111,23 @@ describe('PosicionEnLaLista.releaseFromEnd', () => {
     expect(position.alCambiarTamaño(3200)).toBeUndefined();
   });
 
+  it('the list settling after that placement reports «near the end» without a finger (22/10, 25 unread): it does not stick again', () => {
+    const position = new PosicionEnLaLista();
+    position.alCambiarTamaño(3000);
+    position.releaseFromEnd();
+    // startRenderingFromBottom: the list's own events say it is at the bottom while it settles.
+    expect(position.alScrollear({ offset: 3000 - ALTO, alto: ALTO, contenido: 3000 })).toBe(false);
+    expect(position.alCambiarTamaño(3100)).toBeUndefined();
+  });
+
+  it('«bajar» or sending something sticks it to the end again', () => {
+    const position = new PosicionEnLaLista();
+    position.alCambiarTamaño(3000);
+    position.releaseFromEnd();
+    position.stickToEnd();
+    expect(position.alCambiarTamaño(3200)).toBe('seguir');
+  });
+
   it('if the person later reaches the end, it sticks again', () => {
     const position = new PosicionEnLaLista();
     position.alCambiarTamaño(3000);

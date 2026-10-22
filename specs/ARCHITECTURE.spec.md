@@ -4892,6 +4892,80 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 87. Menciones y actividad, logo del espacio, cargo en la pastilla y archivados del espacio (21/10/2026, 0.1.127)
+
+Cierra lo que quedaba del modo empresa salvo la sección APPS y Llamadas en el
+riel (§85).
+
+**Menciones y actividad** (diseño `e-19`), en la app y en la web.
+- `GET /api/activity?type=mentions|threads|reactions&workspace=&counts=1`
+  devuelve las tarjetas y `unread: { mentions, threads }`:
+  - Menciones: mensajes de otros que me nombran, o con @todos o @aquí.
+  - Hilos: los que tienen respuestas donde escribí la raíz o respondí.
+  - Reacciones: mis mensajes con reacciones de otros.
+  - Nuevo = `seq` mayor que lo que leí. Un hilo es nuevo si su última
+    respuesta es posterior a lo leído y no es mía.
+- Server: 5 tests. Shared `activity.ts` (4 tests): pestañas, si me nombra,
+  reacciones de otros y secciones por día en hora de Lima (Hoy, Ayer, Esta
+  semana, Anteriores).
+- La lista del espacio tiene los chips «Hilos» y «Menciones» con su cuenta.
+  Abren «Menciones y actividad»: pestañas, tarjeta con autor, chat o #canal,
+  el texto con sus menciones y «Responder en el chat», que abre el mensaje.
+- App: `ActivityScreen`. Web: `ActivityDialog`; al cerrarlo se recargan las
+  cuentas.
+
+**Logo del espacio.**
+- `POST /api/workspaces/:id/logo` y `DELETE`: solo admin o dueño. Se guarda
+  como foto redonda en `espacio-<id>` y se sirve con URL absoluta.
+- Se ve en la cabecera, el riel, la vista previa por código y la invitación.
+- App: Ajustes del espacio → elegir foto (`elegirFotoRedonda`). Web: un
+  campo de archivo en Ajustes, con «Restablecer».
+
+**El cargo en la pastilla.** En un chat de espacio, `chatDetail` trae el
+`title` y el `spaceRole` de cada miembro. La pastilla muestra el cargo; sin
+cargo, el rol del espacio (Dueño, Admin); `memberBadge`.
+
+**Archivados del espacio.**
+- Un chat archivado sale de las secciones y queda en «Archivados (n)», como
+  en la lista personal (`splitArchived`, test).
+- App: mantener presionado un grupo o un 1:1 del espacio abre la misma barra
+  de la lista personal. Permite archivar, fijar, silenciar, marcar leído y
+  salir. La selección salió a un hook compartido (`useChatSelection`), y
+  atrás la suelta. Los canales no se seleccionan.
+- Web: el menú de la fila, como en la lista personal.
+
+**Contadores al día en la app.** Desde la 0.1.124 la lista del espacio no
+bajaba la cuenta al leer un chat. Ahora escucha `receipt` de mis lecturas en
+sus chats y recarga una vez; también cuando leo desde la web.
+
+**Lo que destapó el E2E.**
+- En la app, la tarjeta de actividad perdía el texto después de la mención:
+  los tramos iban en un `View` y no en un `Text`. Saltaba un aviso de LogBox.
+- QA: el subidor falso firma los medios con `http://10.0.2.2` (el emulador).
+  La CSP de la web solo admite imágenes `https:` o del mismo origen, así que el
+  E2E web reescribe esas URLs a 127.0.0.1. En producción van por https.
+- El Chrome headless del E2E moría al crear un subproceso. Se arregló con
+  `--disable-features=AudioServiceOutOfProcess`.
+
+**E2E.**
+- Web headless, con QA Ana y QA Beto. Beto menciona a Ana por socket en
+  #planta.
+  - Chip «Menciones 1» → tarjeta «@Tú … #planta» → abre el canal.
+  - Pastillas «Dueño» y «Residente de obra (Tú)».
+  - Archivar desde el menú → «Archivados (1)» → aparece al abrirlo.
+  - El logo subido se ve en el riel.
+- Emulador, cuenta de José:
+  - «QA Beto te agregó» llega en vivo.
+  - Chip «Menciones 1» → tarjeta → el grupo, con la pastilla «Gerente
+    general».
+  - La cuenta del 1:1 sube con un mensaje y baja al leerlo.
+  - Mantener → barra → archivar → «Archivados (1)». Atrás suelta la
+    selección.
+- Datos de QA borrados y verificados en cero.
+
+**Deuda.** Cambiar el logo o el nombre no avisa en vivo a los miembros: lo
+ven al volver a la app o al recargar.
+
 ## 86. Audio y video al primer toque, y la tarea asignada la marca su responsable (21/10/2026, para la 0.1.126)
 
 José (21/10): «al pulsar el audio, en Lilachat carga y luego reproduce; en
@@ -5044,7 +5118,7 @@ si hace falta.
 **Lo que queda del modo empresa.** Subir el logo, Hilos y Menciones, la
 sección APPS, el cargo del espacio en la pastilla del chat y Llamadas en el
 riel. La deuda de la §84 sigue: archivar dentro de un espacio no esconde el
-chat de esa lista.
+chat de esa lista. (Resuelto en la §87, salvo APPS y Llamadas.)
 
 ## 84. Espacios de empresa y canales en la app y en la web, y los arreglos del zumbido y los stickers (21/10/2026, 0.1.124)
 

@@ -4892,6 +4892,28 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 100. Web: el chat abierto por URL quedaba vacío al recargar (22/10/2026, web)
+
+Visto en el E2E de §98: recargar sobre `/c/<chat>` (o vincular y entrar por
+el enlace) mostraba «Todavía no hay mensajes» y no cargaba nunca. Con clic
+sí cargaba.
+
+**Causa.** El JWT de la web vive en memoria: al recargar, el Shell monta con
+el token vacío mientras `POST /api/auth/session` lo renueva. El efecto que
+abre el chat (última página + acuse) dependía solo de `selectedId`: corría
+una vez sin token, `traerPagina` no preguntaba nada (sin token no se pide) y
+no volvía a correr. Un chat que este navegador no tenía guardado quedaba
+vacío. Medido: tras recargar, ningún `GET /api/chats/<id>/messages`.
+
+**Arreglo.** `useOpenChatWhenReady` (web, 3 tests) abre el chat cuando cambia
+y también cuando llega el token. Una vez por selección: un token renovado
+no lo vuelve a abrir.
+
+**E2E** (servidor de QA, QA Ana recién vinculada): recargó sobre QA Hilos y
+llegó `GET …/messages` medio segundo después de la sesión, con 18 filas. Por
+clics (QA Beto → QA Hilos → atrás) hubo un pedido por cada chat, sin
+repetir. Perfil restaurado y dispositivo desvinculado.
+
 ## 99. GIF en el chat y la pestaña GIPHY (22/10/2026, 0.1.138)
 
 Backlog 37 (José, 21/10: «debo poder subir un gif, es momento de agregar la

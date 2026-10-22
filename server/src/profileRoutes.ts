@@ -9,10 +9,11 @@ import { UserModel, type User } from './models.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 
 /**
- * The profile Lilachat requires (José, 21/10; backlog 17): name, birthday and a
- * verified email, besides the phone the sign-up code proved. The app and the
- * web ask for what `missing` says on a screen that cannot be skipped. The
- * email is proved like the phone: a code from constroad-auth to that address.
+ * The profile Lilachat requires (José, 21/10; backlog 17): name and birthday,
+ * besides the phone the sign-up code proved. The app and the web ask for what
+ * `missing` says on a screen that cannot be skipped. The email is optional
+ * since 22/10 (backlog 51) and needed only for the backup; it is proved like
+ * the phone: a code from constroad-auth to that address.
  * Mounted on `/api/me`, next to the older `PUT /perfil` (the name in Ajustes).
  */
 const EMAIL_CODES_PER_MINUTE = 5;
@@ -32,7 +33,7 @@ function profileView(user: ProfileUser) {
     emailVerified,
     birthday: user.birthday ?? null,
     birthdayVisible: user.birthdayVisible !== false,
-    missing: profileMissing({ name: user.name, birthday: user.birthday, emailVerified }),
+    missing: profileMissing({ name: user.name, birthday: user.birthday }),
   };
 }
 

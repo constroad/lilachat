@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import type { MyProfile } from '@lilachat/shared';
 import { CompleteProfileScreen } from './CompleteProfileScreen';
 
-const base: MyProfile = { name: 'Ana', phone: '987654321', avatarUrl: null, email: null, emailVerified: false, birthday: null, birthdayVisible: true, missing: ['birthday', 'email'] };
+const base: MyProfile = { name: 'Ana', phone: '987654321', avatarUrl: null, email: null, emailVerified: false, birthday: null, birthdayVisible: true, missing: ['birthday'] };
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
 afterEach(() => {
@@ -36,6 +36,18 @@ describe('complete profile (web)', () => {
     await waitFor(() => expect(onDone).toHaveBeenCalled());
     expect(calls.find((call) => call.url.endsWith('/email/code'))?.body).toEqual({ email: 'ana@example.com' });
     expect(calls.find((call) => call.url.endsWith('/me/profile'))?.body).toEqual({ name: 'Ana', birthday: { day: 29, month: 8 }, birthdayVisible: true });
+  });
+
+  /** Backlog 51 (José, 22/10): the phone already proved who it is; the email is optional. */
+  it('lets the person in with name and birthday only, without an email', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(json(200, { profile: { ...base, birthday: { day: 29, month: 8 }, missing: [] } }));
+    const onDone = vi.fn();
+    render(<CompleteProfileScreen jwt="jwt" profile={base} onDone={onDone} />);
+    fireEvent.change(screen.getByTestId('perfil-dia'), { target: { value: '29' } });
+    fireEvent.change(screen.getByTestId('perfil-mes'), { target: { value: '8' } });
+    expect((screen.getByTestId('perfil-continuar') as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByTestId('perfil-continuar'));
+    await waitFor(() => expect(onDone).toHaveBeenCalled());
   });
 
   it('an impossible birthday says what to fix right away, and «Continuar» stays off', async () => {

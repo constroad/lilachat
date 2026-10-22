@@ -43,12 +43,18 @@ function topeDeRespaldo(): number {
   return Number.isFinite(delEntorno) && delEntorno > 0 ? delEntorno : TOPE_DE_RESPALDO_BYTES;
 }
 
-type Sesion = { userId: Types.ObjectId; telefono: string };
+type Sesion = { userId: Types.ObjectId; telefono: string; emailVerified: boolean };
 
 async function sesionConTelefono(req: Request): Promise<Sesion | null> {
   const userId = req.session!.userId;
-  const user = await UserModel.findById(userId).select('phone').lean<{ phone?: string } | null>();
-  return user?.phone ? { userId, telefono: user.phone } : null;
+  const user = await UserModel.findById(userId).select('phone email emailVerifiedAt').lean<{ phone?: string; email?: string; emailVerifiedAt?: Date } | null>();
+  return user?.phone ? { userId, telefono: user.phone, emailVerified: Boolean(user.email && user.emailVerifiedAt) } : null;
+}
+
+/** Turning the backup on asks for a verified email (backlog 51); whoever already had backups keeps going. */
+async function backupBlockedByEmail(session: Sesion): Promise<boolean> {
+  if (session.emailVerified) return false;
+  return !(await RespaldoModel.exists({ userId: session.userId }));
 }
 
 export function buildRespaldoRouter(): Router {
@@ -114,6 +120,10 @@ async function recibirRespaldo(req: Request, res: Response): Promise<void> {
   const sesion = await sesionConTelefono(req);
   if (!sesion) {
     res.status(401).json({ message: 'Tu sesión venció. Vuelve a entrar.' });
+    return;
+  }
+  if (await backupBlockedByEmail(sesion)) {
+    res.status(403).json({ motivo: 'correo_sin_verificar', message: 'Verifica tu correo para activar la copia de seguridad.' });
     return;
   }
 

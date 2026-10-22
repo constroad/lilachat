@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import { ShieldCheck } from 'lucide-react-native';
-import { haceCuanto, passphraseValida } from '@lilachat/shared';
+import { backupNeedsEmail, haceCuanto, passphraseValida } from '@lilachat/shared';
 import { estadoDeRespaldos, type EstadoDeRespaldos } from '../api/client';
 import type { Credential } from '../auth/credentialStore';
 import { leerChatsGuardados } from '../chat/chatsGuardados';
@@ -20,6 +20,8 @@ import { FilaDeAjuste } from '../ui/FilaDeAjuste';
 import { PantallaEnModal } from '../ui/PantallaEnModal';
 import { useEsOperador } from './useEsOperador';
 import { RestaurarRespaldo } from './RestaurarRespaldo';
+import { getProfile } from '../api/profileApi';
+import { EmailVerifyField } from '../onboarding/EmailVerifyField';
 
 /**
  * Ajuste «Copia de seguridad» (F12.1; antes «Respaldo en la mini», que solo
@@ -43,6 +45,16 @@ export function RespaldoAjuste({ credential }: { credential: Credential }) {
   const [restaurando, setRestaurando] = useState(false);
   const [abierto, setAbierto] = useState(false);
   const esOperador = useEsOperador(credential.jwt);
+  /** Turning the backup on asks for a verified email (backlog 51); `null` while it is read. */
+  const [myEmail, setMyEmail] = useState<{ email: string | null; emailVerified: boolean } | null>(null);
+  useEffect(() => {
+    if (!abierto) return;
+    void getProfile(credential.jwt).then((answer) => {
+      if (answer.ok) setMyEmail({ email: answer.data.profile.email, emailVerified: answer.data.profile.emailVerified });
+    });
+  }, [abierto, credential.jwt]);
+  // Like the server: whoever already had backups keeps going without it.
+  const emailFirst = !hayPassphrase && myEmail !== null && backupNeedsEmail(myEmail) && !enMini?.ultimo;
 
   const recargar = useCallback(async () => {
     const [passphrase, guardado] = await Promise.all([leerPassphrase(), leerEstadoDeRespaldo()]);
@@ -112,7 +124,13 @@ export function RespaldoAjuste({ credential }: { credential: Credential }) {
           </View>
         ) : null}
 
-        {!hayPassphrase || creando ? (
+        {emailFirst && myEmail ? (
+          <View className="mt-4 gap-2" testID="respaldo-pide-correo">
+            <Text className="text-[15px] font-semibold text-on-surface">Primero, verifica tu correo</Text>
+            <Text className="text-sm text-on-surface-variant">La copia de seguridad necesita un correo verificado: es por donde te ubicamos para recuperar tus chats.</Text>
+            <EmailVerifyField jwt={credential.jwt} email={myEmail.email} verified={false} hint="Te enviaremos un código para verificarlo." onVerified={(email) => setMyEmail({ email, emailVerified: true })} />
+          </View>
+        ) : !hayPassphrase || creando ? (
           <CrearPassphrase
             onListo={async () => {
               setCreando(false);

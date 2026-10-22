@@ -38,13 +38,13 @@ beforeEach(async () => {
 describe('my profile', () => {
   it('says what is missing', async () => {
     const profile = (await request(app).get('/api/me/profile').set(auth()).expect(200)).body.profile;
-    expect(profile).toMatchObject({ name: 'Ana', phone: '987654321', emailVerified: false, missing: ['birthday', 'email'] });
+    expect(profile).toMatchObject({ name: 'Ana', phone: '987654321', emailVerified: false, missing: ['birthday'] });
   });
 
   it('saves the birthday and who sees it; a day the month does not have is refused', async () => {
     await request(app).put('/api/me/profile').set(auth()).send({ birthday: { day: 31, month: 4 } }).expect(400);
     const saved = (await request(app).put('/api/me/profile').set(auth()).send({ birthday: { day: 29, month: 8, year: 1990 }, birthdayVisible: false }).expect(200)).body.profile;
-    expect(saved).toMatchObject({ birthday: { day: 29, month: 8, year: 1990 }, birthdayVisible: false, missing: ['email'] });
+    expect(saved).toMatchObject({ birthday: { day: 29, month: 8, year: 1990 }, birthdayVisible: false, missing: [] });
   });
 
   it('the email: a code to it, and verifying it saves it lowercased', async () => {
@@ -70,9 +70,10 @@ describe('my profile', () => {
     expect((await UserModel.findById(ana).lean())!.email).toBe('ana@example.com');
   });
 
-  it('with the three, nothing is missing', async () => {
+  /** Backlog 51 (José, 22/10): the phone already proved who it is; the email is optional. */
+  it('with name and birthday nothing is missing, without an email', async () => {
     await request(app).put('/api/me/profile').set(auth()).send({ birthday: { day: 29, month: 8 } }).expect(200);
-    await request(app).post('/api/me/email/verify').set(auth()).send({ email: 'ana@example.com', code: '123456' }).expect(200);
-    expect((await request(app).get('/api/me/profile').set(auth()).expect(200)).body.profile.missing).toEqual([]);
+    const profile = (await request(app).get('/api/me/profile').set(auth()).expect(200)).body.profile;
+    expect(profile).toMatchObject({ emailVerified: false, missing: [] });
   });
 });

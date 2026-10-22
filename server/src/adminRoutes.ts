@@ -37,7 +37,7 @@ async function peopleTotals(now: number): Promise<AdminUsersTotals> {
     UserModel.countDocuments(PEOPLE),
     UserModel.countDocuments({ ...PEOPLE, createdAt: { $gte: new Date(now - WEEK_MS) } }),
     UserModel.countDocuments({ ...PEOPLE, lastSeenAt: { $gte: new Date(now - DAY_MS) } }),
-    UserModel.countDocuments({ ...PEOPLE, name: { $nin: [null, ''] }, 'birthday.month': { $exists: true }, email: { $exists: true }, emailVerifiedAt: { $exists: true } }),
+    UserModel.countDocuments({ ...PEOPLE, name: { $nin: [null, ''] }, 'birthday.month': { $exists: true } }),
   ]);
   return { people, newThisWeek, activeToday, profileComplete };
 }
@@ -74,7 +74,7 @@ function adminUser(user: SourceUser, extra: Pick<AdminUser, 'devices' | 'spaces'
     avatarUrl: user.avatarUrl ? toAbsoluteMediaUrl(user.avatarUrl) : null,
     email: user.email ?? null,
     emailVerified,
-    profileComplete: Boolean(user.name && user.birthday?.month && emailVerified),
+    profileComplete: Boolean(user.name && user.birthday?.month),
     joinedAt: user.createdAt.toISOString(),
     lastSeenAt: user.lastSeenAt ? user.lastSeenAt.toISOString() : null,
     ...extra,

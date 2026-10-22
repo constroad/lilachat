@@ -3,7 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { profileCompleteKey, type MyProfile } from '@lilachat/shared';
 import { useProfileGate } from './useProfileGate';
 
-const incomplete: MyProfile = { name: 'Ana', phone: '987654321', avatarUrl: null, email: null, emailVerified: false, birthday: null, birthdayVisible: true, missing: ['birthday', 'email'] };
+const incomplete: MyProfile = { name: 'Ana', phone: '987654321', avatarUrl: null, email: null, emailVerified: false, birthday: null, birthdayVisible: true, missing: ['birthday'] };
 const answer = (profile: MyProfile) => vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ profile }), { status: 200 }));
 const mount = (params: { jwt: string | null; sessionSettled?: boolean }) => renderHook(() => useProfileGate({ jwt: params.jwt, userId: 'u1', sessionSettled: params.sessionSettled ?? true }));
 

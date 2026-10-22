@@ -46,7 +46,7 @@ beforeEach(async () => {
   process.env.RESPALDOS_RAIZ = raiz;
   await writeFile(path.join(raiz, MARCA_DEL_DISCO), '');
   await Promise.all([UserModel.deleteMany({}), RespaldoModel.deleteMany({})]);
-  const user = await UserModel.create({ phone: TELEFONO, name: 'José' });
+  const user = await UserModel.create({ phone: TELEFONO, name: 'José', email: 'jose@example.com', emailVerifiedAt: new Date() });
   userId = user._id;
   jwt = signSession({ userId: String(userId), deviceId: 'dev-1', email: TELEFONO });
 });
@@ -69,6 +69,23 @@ const subir = (nombre: string, cuerpo: Buffer, huella = huellaDeBytes(cuerpo)) =
 describe('PUT /api/respaldos', () => {
   it('sin sesión, 401', async () => {
     await request(app).put('/api/respaldos').send(bytesDe('x')).expect(401);
+  });
+
+  /** Backlog 51 (José, 22/10): the email is optional, except to turn on the backup. */
+  it('the first backup without a verified email is refused with its reason, and nothing is stored', async () => {
+    await UserModel.updateOne({ _id: userId }, { $unset: { email: 1, emailVerifiedAt: 1 } });
+
+    const response = await subir('r.lcb', bytesDe('primero')).expect(403);
+
+    expect(response.body).toMatchObject({ motivo: 'correo_sin_verificar', message: 'Verifica tu correo para activar la copia de seguridad.' });
+    await expect(RespaldoModel.countDocuments({ userId })).resolves.toBe(0);
+  });
+
+  it('someone who already had backups keeps backing up without a verified email (nothing that worked stops)', async () => {
+    await subir('r1.lcb', bytesDe('antes')).expect(201);
+    await UserModel.updateOne({ _id: userId }, { $unset: { email: 1, emailVerifiedAt: 1 } });
+
+    await subir('r2.lcb', bytesDe('despues')).expect(201);
   });
 
   it('guarda el respaldo en la carpeta del TELÉFONO de la sesión y lo indexa', async () => {

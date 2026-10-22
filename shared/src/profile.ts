@@ -1,11 +1,13 @@
 /**
- * What a Lilachat profile must have (José, 21/10; backlog 17): a name, a
- * birthday (the year is optional) and a verified email, besides the phone the
- * code already proved. PURE: the server validates with this and the app and
- * the web ask for what `profileMissing` says.
+ * What a Lilachat profile must have (José, 21/10; backlog 17): a name and a
+ * birthday (the year is optional), besides the phone the code already proved.
+ * The email is optional (José, 22/10; backlog 51: someone who proved their
+ * number should not be forced to prove an email too); it is required only to
+ * turn on the backup (`backupNeedsEmail`). PURE: the server validates with
+ * this and the app and the web ask for what `profileMissing` says.
  */
 export type Birthday = { day: number; month: number; year?: number };
-export type ProfileField = 'name' | 'birthday' | 'email';
+export type ProfileField = 'name' | 'birthday';
 
 const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const OLDEST_YEAR = 1900;
@@ -33,13 +35,12 @@ export function normalizeEmail(raw: unknown): string {
   return email.length <= EMAIL_MAX && EMAIL.test(email) ? email : '';
 }
 
-export function profileMissing(profile: { name?: string | null; birthday?: Birthday | null; emailVerified?: boolean }): ProfileField[] {
-  return [
-    ...(profile.name?.trim() ? [] : ['name' as const]),
-    ...(profile.birthday ? [] : ['birthday' as const]),
-    ...(profile.emailVerified ? [] : ['email' as const]),
-  ];
+export function profileMissing(profile: { name?: string | null; birthday?: Birthday | null }): ProfileField[] {
+  return [...(profile.name?.trim() ? [] : ['name' as const]), ...(profile.birthday ? [] : ['birthday' as const])];
 }
+
+/** The backup is the one thing that asks for a verified email: it is where the account is reached to get its copy back. */
+export const backupNeedsEmail = (profile: { emailVerified: boolean }): boolean => !profile.emailVerified;
 
 /** «29 de agosto». */
 export const birthdayLabel = (birthday: Pick<Birthday, 'day' | 'month'>): string => `${birthday.day} de ${MONTHS[birthday.month - 1]}`;
@@ -69,8 +70,8 @@ export function birthdayFieldError(fields: { day: string; month: string; year: s
   return birthday.ok ? null : birthday.message;
 }
 
-/** «Continuar» needs a name, a valid birthday and the email proved. */
-export const canFinishProfile = (state: { name: string; birthdayOk: boolean; emailVerified: boolean }): boolean => Boolean(state.name.trim()) && state.birthdayOk && state.emailVerified;
+/** «Continuar» needs a name and a valid birthday; the email is optional (backlog 51). */
+export const canFinishProfile = (state: { name: string; birthdayOk: boolean }): boolean => Boolean(state.name.trim()) && state.birthdayOk;
 
 /**
  * Whether «Completa tu perfil» covers the app (22/10). The check used to run

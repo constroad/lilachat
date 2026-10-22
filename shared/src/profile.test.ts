@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { birthdayFieldError, birthdayFromFields, birthdayLabel, canFinishProfile, profileGateAfter, profileGateNow, profileCompleteKey, normalizeEmail, profileMissing, validateBirthday } from './profile.js';
+import { backupNeedsEmail, birthdayFieldError, birthdayFromFields, birthdayLabel, canFinishProfile, profileGateAfter, profileGateNow, profileCompleteKey, normalizeEmail, profileMissing, validateBirthday } from './profile.js';
 
 const NOW = new Date('2026-10-21T15:00:00Z');
 
-/** José, 21/10: name, birthday and a verified email are mandatory to sign up (backlog 17). */
+/** José, 21/10: name and birthday are mandatory to sign up (backlog 17); 22/10: the email is optional, the phone already proved who it is (backlog 51). */
 describe('profile', () => {
   it('a birthday with or without its year', () => {
     expect(validateBirthday({ day: 29, month: 8 }, NOW)).toEqual({ ok: true, birthday: { day: 29, month: 8 } });
@@ -28,10 +28,9 @@ describe('profile', () => {
   });
 
   it('what is missing, in the order the screen asks for it', () => {
-    expect(profileMissing({})).toEqual(['name', 'birthday', 'email']);
-    expect(profileMissing({ name: 'José', birthday: { day: 29, month: 8 }, emailVerified: false })).toEqual(['email']);
-    expect(profileMissing({ name: ' ', birthday: { day: 29, month: 8 }, emailVerified: true })).toEqual(['name']);
-    expect(profileMissing({ name: 'José', birthday: { day: 29, month: 8 }, emailVerified: true })).toEqual([]);
+    expect(profileMissing({})).toEqual(['name', 'birthday']);
+    expect(profileMissing({ name: ' ', birthday: { day: 29, month: 8 } })).toEqual(['name']);
+    expect(profileMissing({ name: 'José', birthday: { day: 29, month: 8 } })).toEqual([]);
   });
 
   it('the birthday as people say it', () => {
@@ -53,16 +52,20 @@ describe('complete profile screen', () => {
   });
 
   it('finishing needs a name, a valid birthday and the email proved', () => {
-    expect(canFinishProfile({ name: 'Ana', birthdayOk: true, emailVerified: true })).toBe(true);
-    expect(canFinishProfile({ name: '  ', birthdayOk: true, emailVerified: true })).toBe(false);
-    expect(canFinishProfile({ name: 'Ana', birthdayOk: false, emailVerified: true })).toBe(false);
-    expect(canFinishProfile({ name: 'Ana', birthdayOk: true, emailVerified: false })).toBe(false);
+    expect(canFinishProfile({ name: 'Ana', birthdayOk: true })).toBe(true);
+    expect(canFinishProfile({ name: '  ', birthdayOk: true })).toBe(false);
+    expect(canFinishProfile({ name: 'Ana', birthdayOk: false })).toBe(false);
+  });
+
+  it('a backup needs a verified email: it is how the account gets back its copy (backlog 51)', () => {
+    expect(backupNeedsEmail({ emailVerified: false })).toBe(true);
+    expect(backupNeedsEmail({ emailVerified: true })).toBe(false);
   });
 });
 
 /** 22/10: the gate showed the chats for an instant and then the form; whoever completed it waited for nothing. */
 describe('profile gate', () => {
-  const profile = { name: 'Ana', phone: '987654321', avatarUrl: null, email: null, emailVerified: false, birthday: null, birthdayVisible: true, missing: ['birthday' as const, 'email' as const] };
+  const profile = { name: 'Ana', phone: '987654321', avatarUrl: null, email: null, emailVerified: false, birthday: null, birthdayVisible: true, missing: ['birthday' as const] };
 
   it('before the answer: someone this device saw complete opens at once; anyone else waits, unless offline or past the limit', () => {
     const before = { answer: null, knownComplete: false, offline: false, gaveUp: false };

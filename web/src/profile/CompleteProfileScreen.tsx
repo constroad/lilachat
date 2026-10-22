@@ -9,8 +9,9 @@ const pad = (value?: number) => (value ? String(value) : '');
 
 /**
  * «Completa tu perfil» on the web, like the app's (José, 21/10; backlog 17):
- * name, birthday and a verified email are required to use Lilachat, and this
- * page cannot be skipped. The email is proved with a code to that address.
+ * name and birthday are required to use Lilachat, and this page cannot be
+ * skipped. The email is optional (22/10, backlog 51) and proved with a code to
+ * that address; only the phone's backup asks for it.
  */
 export function CompleteProfileScreen(props: { jwt: string; profile: MyProfile; onDone: (profile: MyProfile) => void }) {
   const { jwt, profile } = props;
@@ -27,7 +28,7 @@ export function CompleteProfileScreen(props: { jwt: string; profile: MyProfile; 
   const [error, setError] = useState<{ field: 'email' | 'save'; text: string } | null>(null);
   const birthday = birthdayFromFields({ day, month, year });
   const birthdayHint = birthdayFieldError({ day, month, year });
-  const ready = canFinishProfile({ name, birthdayOk: birthday.ok, emailVerified });
+  const ready = canFinishProfile({ name, birthdayOk: birthday.ok });
 
   const sendCode = async () => {
     const clean = normalizeEmail(email);
@@ -56,11 +57,11 @@ export function CompleteProfileScreen(props: { jwt: string; profile: MyProfile; 
       setBusy(null);
       return setError({ field: 'save', text: saved.message });
     }
-    // What the server says is missing decides: the email may have been proved from another device meanwhile.
+    // What the server says is missing decides: another device may have completed it meanwhile.
     const latest = saved.data.profile.missing.length ? await getProfile(jwt) : saved;
     setBusy(null);
     if (latest.ok && latest.data.profile.missing.length === 0) props.onDone(latest.data.profile);
-    else setError({ field: 'save', text: 'Falta completar algo: revisa el correo.' });
+    else setError({ field: 'save', text: 'Falta completar algo: revisa tu nombre y tu cumpleaños.' });
   };
 
   return (
@@ -68,7 +69,7 @@ export function CompleteProfileScreen(props: { jwt: string; profile: MyProfile; 
       <form data-testid="pantalla-completa-perfil" onSubmit={(event) => (event.preventDefault(), void finish())} className="w-full max-w-md rounded-2xl border border-outline/15 bg-surface p-6 shadow-sm">
         <img src="/icons/icon-192.png" alt="" className="h-12 w-12 rounded-xl" />
         <h1 className="mt-4 text-xl font-bold tracking-tight">Completa tu perfil</h1>
-        <p className="mt-1 text-[14px] text-on-surface-variant">Para usar Lilachat necesitamos tu nombre, tu cumpleaños y tu correo.</p>
+        <p className="mt-1 text-[14px] text-on-surface-variant">Para usar Lilachat necesitamos tu nombre y tu cumpleaños.</p>
 
         <Label>Tu nombre</Label>
         <input data-testid="perfil-nombre" className={`${FIELD} w-full`} placeholder="Nombre y apellido" autoComplete="name" maxLength={60} value={name} onChange={(event) => setName(event.target.value)} />
@@ -85,7 +86,7 @@ export function CompleteProfileScreen(props: { jwt: string; profile: MyProfile; 
           Que mis chats vean mi cumpleaños
         </label>
 
-        <Label>Tu correo</Label>
+        <Label>Tu correo (opcional)</Label>
         {emailVerified ? (
           <div data-testid="perfil-correo-ok" className="flex h-11 items-center gap-2 rounded-xl border border-en-linea/30 bg-en-linea/10 px-3">
             <CheckCircle2 size={18} className="text-en-linea" />
@@ -104,7 +105,7 @@ export function CompleteProfileScreen(props: { jwt: string; profile: MyProfile; 
                 <button type="button" data-testid="perfil-verificar" disabled={code.length < 6 || busy !== null} onClick={() => void verify()} className="h-11 shrink-0 rounded-xl bg-primary px-4 text-sm font-semibold text-on-primary disabled:opacity-50">{busy === 'verify' ? 'Verificando…' : 'Verificar'}</button>
               </div>
             ) : null}
-            <p className="mt-2 text-[13px] text-on-surface-variant">{codeSent ? 'Te enviamos un código a ese correo.' : 'Te enviaremos un código para verificarlo.'}</p>
+            <p className="mt-2 text-[13px] text-on-surface-variant">{codeSent ? 'Te enviamos un código a ese correo.' : 'Lo necesitas solo para activar la copia de seguridad del teléfono.'}</p>
           </>
         )}
         {error?.field === 'email' ? <p role="alert" className="mt-2 text-[13px] text-error">{error.text}</p> : null}

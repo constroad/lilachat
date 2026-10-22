@@ -1,70 +1,42 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { Pause, Play } from 'lucide-react';
 import { duracionDeVoz, nextPlaybackRate, scrubFraction } from '@lilachat/shared';
+import { playVoiceNote, seekVoiceNote, setVoiceNoteRate, toggleVoiceNote, useNowPlaying } from './voicePlayer';
 
 /** Las barras que se dibujan si el mensaje no trae onda (una nota vieja). */
 const ONDA_PLANA = Array.from({ length: 40 }, () => 20);
-
-/** One note plays at a time: the one that starts pauses the one that was playing. */
-let playing: HTMLAudioElement | null = null;
 
 /**
  * A voice note in the bubble, like WhatsApp (W2; backlog 34, José 21/10: it
  * felt clumsy and could not be moved forward or back): one tap plays, the
  * waveform fills as it goes and can be clicked or dragged to jump (also
  * before playing), the time runs while it plays, the speed goes 1× · 1,5× ·
- * 2×, and only one note sounds at a time.
+ * 2×, and only one note sounds at a time. The player is the session's
+ * (`voicePlayer.ts`): opening another chat does not cut it.
  */
-export function NotaDeVoz(props: { url: string; durationMs?: number; onda?: number[]; mio: boolean }) {
-  const audio = useRef<HTMLAudioElement | null>(null);
+export function NotaDeVoz(props: { id: string; chatId: string; authorName: string; url: string; durationMs?: number; onda?: number[]; mio: boolean }) {
   const bar = useRef<HTMLDivElement>(null);
-  const [sounding, setSounding] = useState(false);
-  const [share, setShare] = useState(0);
-  const [rate, setRate] = useState(1);
+  const [idleRate, setIdleRate] = useState(1);
   const [dragShare, setDragShare] = useState<number | null>(null);
-  useEffect(() => () => audio.current?.pause(), []);
-
-  /** The audio is created on the first use; its own events say what it is doing. */
-  const ensureAudio = () => {
-    if (audio.current) return audio.current;
-    const created = new Audio(props.url);
-    created.playbackRate = rate;
-    created.addEventListener('timeupdate', () => setShare(created.duration ? created.currentTime / created.duration : 0));
-    created.addEventListener('play', () => setSounding(true));
-    created.addEventListener('pause', () => setSounding(false));
-    created.addEventListener('ended', () => {
-      setSounding(false);
-      setShare(0);
-    });
-    audio.current = created;
-    return created;
-  };
-  // Fetched ahead while it is on screen (José, 21/10: «carga y luego reproduce»): a tap plays at once.
+  const now = useNowPlaying();
+  const mine = now?.id === props.id ? now : null;
+  // Fetched ahead while it is on screen (José, 21/10: «carga y luego reproduce»): the session's player then reads it from the cache.
   // The message list is virtualized, so only the notes in sight download.
   useEffect(() => {
-    ensureAudio().preload = 'auto';
-    // Once per note: the audio lives in a ref.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const durationS = () => (audio.current?.duration && Number.isFinite(audio.current.duration) ? audio.current.duration : (props.durationMs ?? 0) / 1000);
-
-  const play = () => {
-    const current = ensureAudio();
-    if (playing && playing !== current) playing.pause();
-    playing = current;
-    void current.play().catch(() => setSounding(false));
-  };
-  const toggle = () => (sounding ? audio.current?.pause() : play());
+    new Audio(props.url).preload = 'auto';
+  }, [props.url]);
+  const durationS = () => (mine && mine.durationS > 0 ? mine.durationS : (props.durationMs ?? 0) / 1000);
+  const sounding = Boolean(mine?.playing);
+  const share = mine && durationS() > 0 ? Math.min(1, mine.currentS / durationS()) : 0;
+  const rate = mine?.rate ?? idleRate;
+  const start = (startShare: number | null) => playVoiceNote({ id: props.id, chatId: props.chatId, url: props.url, authorName: props.authorName, durationS: (props.durationMs ?? 0) / 1000, rate, startShare });
+  const toggle = () => (mine ? toggleVoiceNote() : start(null));
 
   const shareAt = (event: PointerEvent<HTMLDivElement>) => {
     const box = bar.current?.getBoundingClientRect();
     return box ? scrubFraction(event.clientX - box.left, box.width) : 0;
   };
-  const seek = (target: number) => {
-    const current = ensureAudio();
-    current.currentTime = target * durationS();
-    setShare(target);
-  };
+  const seek = (target: number) => (mine ? seekVoiceNote(target) : start(target));
 
   const shown = dragShare ?? share;
   const ms = dragShare !== null || sounding || share > 0 ? shown * durationS() * 1000 : props.durationMs;
@@ -110,11 +82,7 @@ export function NotaDeVoz(props: { url: string; durationMs?: number; onda?: numb
         type="button"
         data-testid="velocidad-voz"
         aria-label={`Velocidad ${rate}×`}
-        onClick={() => {
-          const next = nextPlaybackRate(rate);
-          setRate(next);
-          if (audio.current) audio.current.playbackRate = next;
-        }}
+        onClick={() => (mine ? setVoiceNoteRate(nextPlaybackRate(rate)) : setIdleRate(nextPlaybackRate(rate)))}
         className={`shrink-0 rounded-full px-2 py-1 text-[12px] font-bold tabular-nums ${props.mio ? 'bg-on-primary/20' : 'bg-primary/10 text-primary'}`}
       >
         {`${String(rate).replace('.', ',')}×`}

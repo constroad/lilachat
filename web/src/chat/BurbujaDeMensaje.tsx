@@ -215,7 +215,7 @@ function ContenidoDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio
   if (mensaje.card) return <BotCardView card={mensaje.card} chatId={chat.id} seq={mensaje.seq} jwt={jwt} />;
   const media = mensaje.media;
   if (media?.url && media.mime?.startsWith('audio/')) {
-    return <NotaDeVoz url={media.url} durationMs={media.durationMs} onda={media.onda} mio={mio} />;
+    return <NotaDeVoz id={`${chat.id}:${mensaje.seq}`} chatId={chat.id} authorName={mio ? 'Tú' : (nombres.get(mensaje.senderId) ?? chat.name ?? 'Nota de voz')} url={media.url} durationMs={media.durationMs} onda={media.onda} mio={mio} />;
   }
   const esImagen = Boolean(media?.url && (media.mime?.startsWith('image/') || media.thumbUrl));
   return (

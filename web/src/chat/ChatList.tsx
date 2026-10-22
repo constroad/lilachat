@@ -10,6 +10,7 @@ import { armarLista } from './listaDeChats';
 import type { AccionDelChat } from './menuDelChat';
 import type { ChatSummary } from './types';
 import { NewVersionBand } from '../ui/NewVersionBand';
+import { NowPlayingBar } from './NowPlayingBar';
 
 /**
  * El panel izquierdo del diseño web (W3a: `w3-web-lista.png`).
@@ -169,6 +170,14 @@ export function ChatList({
         </div>
       </header>
 
+      {/* A voice note that keeps playing in another chat (backlog 34). */}
+      <NowPlayingBar
+        openChatId={selectedChatId}
+        onOpen={(chatId) => {
+          const chat = chats.find((one) => one.id === chatId);
+          if (chat) onSelect(chat);
+        }}
+      />
       <NewVersionBand />
 
       <div className="px-3 pb-2">

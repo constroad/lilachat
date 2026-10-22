@@ -4909,6 +4909,68 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 102. Ingreso, «se unió» en los espacios e invitar por correo (22/10/2026, 0.1.140)
+
+José, 22/10, antes de que su empresa y su familia instalen. Preguntó cómo se
+verifica cada alta, si llega «se unió» a los espacios, y si la cuenta
+individual debía exigir número y correo. Decidió: una cuenta por persona,
+`#general` automático, y correo como respaldo (SMS se estudia después).
+
+**Cómo es hoy la identidad (leído del código).**
+- Toda cuenta entra por su número (`/api/auth/otp/*`): es la identidad y es
+  única. No hay cuenta solo con correo.
+- El correo es obligatorio: «Completa tu perfil» lo pide y lo verifica con un
+  código (§93). La cuenta individual ya es número más correo verificado.
+- El código llega por WhatsApp. «¿No te llegó? Envíalo a mi correo» lo manda al
+  correo verificado (§5, arreglado hoy en 1a1b8a2: antes iba también al
+  correo de la invitación o a uno sin verificar).
+- Si WhatsApp cae, entra quien tiene correo verificado. Solo un alta nueva de
+  ese día queda esperando. SMS exige un proveedor que cobra por mensaje y un
+  cambio en constroad-auth: pendiente de estudio.
+
+**`#general` automático** (`workspaceGeneral.ts`, 6 tests).
+- Todo espacio nace con `#general` (canal público, `Workspace.generalChatId`)
+  y su dueño adentro. Un espacio anterior lo recibe la primera vez que se
+  listan sus canales, con todos los activos y sin avisos. Si ya existía un
+  canal «general», se adopta.
+- Quien pasa a activo entra a `#general` y el espacio lo oye una vez:
+  «Ana se unió al espacio» (`se-unio-espacio`, texto en
+  `shared/avisoDeGrupo.ts`). Pasa al unirse a un espacio abierto, al ser
+  aprobado, al agregarlo por número con cuenta, y al reclamar una invitación
+  por número o por correo. Reactivar no avisa de nuevo. Sin nombre no hay
+  aviso: «Alguien se unió» no dice nada.
+- Para el recién llegado, su propio aviso ya viene leído.
+
+**Invitar por correo, una cuenta por persona** (`workspaceEmailInvites.ts`,
+4 tests).
+- `POST /api/workspaces/:id/invites {email}` (solo admins). Si una cuenta ya
+  tiene ese correo VERIFICADO, entra al toque. Si no, queda la invitación
+  (`WorkspaceEmailInvite`).
+- Al verificar ese correo en el perfil (`/api/me/email/verify`), cada espacio
+  que lo invitó lo admite y entra a `#general`. Un correo sin verificar no
+  admite a nadie. A alguien desactivado no lo vuelve a meter un correo (409).
+- `DELETE /api/workspaces/:id/invites/:inviteId` retira la invitación. Los
+  correos que esperan salen en `?status=invited`, junto a los números.
+- App y web: «Invitar por correo» va primero en «Invitar personas». Abre la app
+  de correo de quien invita, dirigida a ese correo, con el paso «verifica este
+  correo en Completa tu perfil» y el código de respaldo. «Miembros y roles»
+  suma la pestaña «Invitados», con «Retirar» para los correos.
+
+**E2E web** (servidor de QA): QA Ana creó «QA Empresa 140», invitó a
+beto@qa.lilachat.test (fila «INVITADO», listado en Invitados). QA Beto
+completó su perfil con ese correo, el espacio apareció en su riel, y el
+`#general` de Ana mostró «QA Beto se unió al espacio». Limpieza: espacio,
+miembros, chat y avisos borrados (0/0/0); perfiles de QA restaurados.
+En el emulador no se probó la pantalla de la app. Para hacerlo, la cuenta de
+José tendría que ser admin de un espacio de QA, y eso se ve en su teléfono
+real.
+
+**Índices.** `messages {chatId:1,'ref.id':1}` se creó en la bóveda con el OK de
+José. `workspaceemailinvites {workspaceId:1,email:1}` (único) y `{email:1}`
+están declarados y esperan su OK (sin ellos funciona; el único evita dos filas
+en una carrera).
+
+
 ## 101. Cinco arreglos de José: chip de hilo, actualización, visor, fotos y llamada (22/10/2026, 0.1.139)
 
 José, 22/10, con tres capturas.
@@ -5137,9 +5199,9 @@ que esperaban diseño (backlog 32 y 36); 34 y 37 van aparte.
 - Descartar se recuerda en el equipo; la llave lleva la fecha, así que una
   tarea movida a otro día vuelve.
 - App `ChatQueue` + `useChatQueue`; web `chat/queue/*` (3 tests).
-- Deuda: la búsqueda de la tarjeta de cada ítem recorre los mensajes del
-  chat (igual que `withCardSeq` de los checklists). Un índice
-  `{chatId, 'ref.id'}` lo resolvería; necesita el OK de José.
+- La búsqueda de la tarjeta de cada ítem (y `withCardSeq` de los
+  checklists) usa el índice `{chatId, 'ref.id'}`, creado en la bóveda el
+  22/10 con el OK de José.
 
 **E2E.**
 - Web (QA Ana; QA Beto sembró por la API una tarea atrasada, un evento y una

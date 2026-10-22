@@ -1,4 +1,5 @@
 import { CreateChecklistOverlay } from './agenda/CreateChecklistOverlay';
+import { WEB_BUILD, webVersionLabel } from './ui/webVersion';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChatRail } from './chat/ChatRail';
 import { ListResizeHandle } from './chat/ListResizeHandle';
@@ -431,6 +432,7 @@ function PanelDeAjustes(props: {
         <LogOut size={16} />
         Cerrar sesión
       </button>
+      <p data-testid="version-web" className="border-t border-outline/10 px-3 pb-1 pt-2 text-[11px] text-on-surface-variant">{webVersionLabel(WEB_BUILD)}</p>
     </div>
   );
 }

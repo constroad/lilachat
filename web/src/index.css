@@ -39,3 +39,8 @@ html .EmojiPickerReact.EmojiPickerReact {
   --epr-hover-bg-color: rgb(var(--c-primary) / 0.12);
   --epr-picker-border-color: transparent;
 }
+
+/* The spaces rail scrolls with no visible bar (José, 21/10): a classic scrollbar ate the rail's
+   width and cut the icons and their selection ring on the left. */
+.rail-scroll { scrollbar-width: none; }
+.rail-scroll::-webkit-scrollbar { display: none; }

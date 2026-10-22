@@ -49,7 +49,7 @@ const prefersReducedMotion = () => Boolean(window.matchMedia?.('(prefers-reduced
  * open chat it always plays, a muted one only without sound; «Ver otra vez»
  * plays it whole (`shouldPlayFun`).
  */
-export function useFunPlayback(params: { messages: readonly { seq: number; kind?: string; senderId: string; wink?: string; at?: string }[] | null; me: string; chatId: string; muted: boolean; afterSeq: number }): { overlay: ReactNode } {
+export function useFunPlayback(params: { messages: readonly { chatId?: string; seq: number; kind?: string; senderId: string; wink?: string; at?: string }[] | null; me: string; chatId: string; muted: boolean; afterSeq: number }): { overlay: ReactNode } {
   const [playing, setPlaying] = useState<{ seq: number; wink: Wink } | null>(null);
   const seen = useRef<{ chatId: string; seq: number } | null>(null);
   const cancelCues = useRef<() => void>(() => undefined);
@@ -76,7 +76,9 @@ export function useFunPlayback(params: { messages: readonly { seq: number; kind?
     [muted]
   );
   useEffect(() => {
-    if (!messages || messages.length === 0) return;
+    // Switching chats, the previous chat's messages stay for a render: measured against this chat's
+    // cursor, their wink played here (José, 21/10: Wilson's pig in «Developers Lila»).
+    if (!messages || messages.length === 0 || messages.some((message) => message.chatId !== undefined && message.chatId !== chatId)) return;
     // The first look at the chat plays only what someone sent me; mine plays when it goes, live.
     const opening = seen.current?.chatId !== chatId;
     const current = opening || !seen.current ? { chatId, seq: readAtOpen.current.seq } : seen.current;

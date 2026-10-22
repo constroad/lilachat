@@ -1,3 +1,5 @@
+import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -7,8 +9,36 @@ import react from '@vitejs/plugin-react';
  * no hay CORS ni cookies de terceros que resolver — que es exactamente cómo va
  * a correr en producción, donde Express sirve el bundle.
  */
+/**
+ * The version the web shows in Ajustes (José, 21/10): the product's version
+ * (the app's `app.json`), the commit and when it was built.
+ */
+function webBuild(): { version: string; commit: string; builtAt: string } {
+  return { version: productVersion(), commit: shortCommit(), builtAt: new Date().toISOString() };
+}
+
+/** The build never fails over it: a release tree without `app/` says «dev». */
+function productVersion(): string {
+  try {
+    const appJson = JSON.parse(readFileSync(new URL('../app/app.json', import.meta.url), 'utf8')) as { expo?: { version?: string } };
+    return appJson.expo?.version ?? 'dev';
+  } catch {
+    return 'dev';
+  }
+}
+
+/** Without git (a release made with `git archive`) the label goes without the commit. */
+function shortCommit(): string {
+  try {
+    return execSync('git rev-parse --short HEAD', { cwd: fileURLToPath(new URL('.', import.meta.url)), stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+  } catch {
+    return '';
+  }
+}
+
 export default defineConfig({
   plugins: [react()],
+  define: { __WEB_VERSION__: JSON.stringify(webBuild()) },
   resolve: {
     alias: {
       // Al FUENTE, no al `dist`.

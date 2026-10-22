@@ -12,8 +12,8 @@ const emit = (event: string, frame: object) => void currentSocket()?.emit(event,
 const isAbort = (failure: unknown) => errorName(failure) === 'AbortError';
 
 /**
- * Calls on the web (José, 21/10: «¿por qué no podemos hacer y responder
- * llamadas en la web?»), with the SAME signaling as the app: `call.offer`,
+ * Calls on the web (José, 21/10: why can't the web make and answer calls?),
+ * with the SAME signaling as the app: `call.offer`,
  * `call.answer`, `call.ice`, `call.end`, `call.reject` through the session's
  * socket. The server is only the mailman; audio and video go between the two,
  * or through the TURN. The state comes from `shared/call.ts`; whether the

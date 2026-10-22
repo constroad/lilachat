@@ -30,6 +30,9 @@ function contextoDeAudio(): AudioContext | null {
   return contexto;
 }
 
+/** The page's one audio context, also for the call tones (`calls/callTones.ts`). */
+export const sharedAudioContext = (): AudioContext | null => contextoDeAudio();
+
 /** Al primer gesto, el contexto queda listo (si no, el navegador lo bloquea). */
 export function prepararSonidos(): void {
   const despertar = () => void contextoDeAudio()?.resume().catch(() => undefined);

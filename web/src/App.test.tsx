@@ -18,6 +18,8 @@ import { App } from './App';
  */
 const socketFalso = {
   on: vi.fn(),
+  // The calls unsubscribe on unmount (`useWebCall.ts`), like any real socket allows.
+  off: vi.fn(),
   close: vi.fn(),
   emit: vi.fn(),
   connect: vi.fn(),

@@ -14,7 +14,7 @@ import { AgendaOverlay } from './agenda/AgendaOverlay';
 import { CreateEventOverlay, CreatePollOverlay, NewChatOverlay, type ChatDestino } from './agenda/CreatePanels';
 import { CrearRecordatorio } from './agenda/CrearRecordatorio';
 import { ListaDeDestacados } from './chat/destacados/ListaDeDestacados';
-import type { AgendaReminder } from '@lilachat/shared';
+import { callerName, type AgendaReminder } from '@lilachat/shared';
 import { ChatList } from './chat/ChatList';
 import { ConversacionConAcciones } from './chat/ConversacionConAcciones';
 import { EmptyState } from './chat/EmptyState';
@@ -38,6 +38,8 @@ import { AppRail } from './rail/AppRail';
 import { MediaDialog } from './media/MediaDialog';
 import { SpaceChatList } from './spaces/SpaceChatList';
 import { useSuperadmin } from './admin/adminApi';
+import { CallProvider } from './calls/CallProvider';
+import type { IncomingOffer } from './calls/useWebCall';
 import { useSpacesWeb } from './spaces/useSpacesWeb';
 
 /** Cuánto dura un aviso corto en pantalla. */
@@ -182,6 +184,8 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [espacios.spaces, currentSpaceId]);
   const spaceChatsShown = useMemo(() => espacios.chats?.map(withPresence) ?? null, [espacios.chats, withPresence]);
+  // Who calls: the chat as the list names it (the agenda's name), else what the offer brings.
+  const callerOf = useCallback((offer: IncomingOffer) => callerName({ chatName: [...chats, ...(spaceChatsShown ?? [])].find((chat) => chat.id === offer.chatId)?.name, fromName: offer.fromName, fromPhone: offer.fromPhone }), [chats, spaceChatsShown]);
   const personales = useMemo(() => new Set(chats.map((chat) => chat.id)), [chats]);
   eventoDeEspacio.current = (chatId) => !personales.has(chatId) && espacios.onChatEvent();
   espaciosCambiaron.current = espacios.reloadSpaces;
@@ -209,6 +213,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
   };
 
   return (
+    <CallProvider jwt={credential.jwt} connected={socket.connected} nameOf={callerOf}>
     <div className="relative flex h-full">
       <AvisosDeLaWeb sinConexion={sinConexion} hayVersionNueva={hayVersionNueva} />
       {panel !== 'conversation' ? (
@@ -373,6 +378,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
         </p>
       ) : null}
     </div>
+    </CallProvider>
   );
 }
 

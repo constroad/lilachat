@@ -16,9 +16,9 @@ import type { ChatSummary, MensajeEnPantalla } from './types';
 /**
  * El panel derecho: cabecera, mensajes y composer.
  *
- * UNA sola cabecera. Los iconos de videollamada, llamada y buscar son producto
- * pero todavía no hacen nada en la web (W6 y W7): se ven atenuados y se
- * esconden en pantalla angosta, donde el ancho lo necesita el nombre.
+ * ONE header. Video call and call work in a 1:1 with a person (José, 21/10);
+ * search is still to come: dimmed, and hidden on a narrow screen, where the
+ * name needs the width.
  *
  * Los mensajes salen de la base local (W1): `null` es que todavía se está
  * leyendo el disco, no la red.
@@ -44,6 +44,8 @@ export function Conversation(props: {
   /** The MSN nudge (backlog 3), only in a 1:1. */
   onNudge?: () => void;
   onWink?: (wink: WinkId) => void;
+  /** A 1:1 with a person: voice or video call (José, 21/10). Without it the buttons stay hidden. */
+  onCall?: (video: boolean) => void;
   showBack: boolean;
   hayAnteriores: boolean;
   onCargarAnteriores: () => void;
@@ -95,7 +97,7 @@ export function Conversation(props: {
         </div>
       ) : null}
       {fun.overlay}
-      <CabeceraDeLaConversacion chat={chat} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} lastSeen={lastSeen} />
+      <CabeceraDeLaConversacion chat={chat} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} lastSeen={lastSeen} onCall={props.onCall} />
       <BannerWithSession />
       {props.franja}
       {props.mensajes === null ? (
@@ -147,7 +149,7 @@ export function Conversation(props: {
   );
 }
 
-function CabeceraDeLaConversacion(props: { chat: ChatSummary; typingName: string | null; showBack: boolean; onBack: () => void; onAbrirInfo?: () => void; /** The other's «últ. vez» in a 1:1, like the app. */ lastSeen?: string }) {
+function CabeceraDeLaConversacion(props: { chat: ChatSummary; typingName: string | null; showBack: boolean; onBack: () => void; onAbrirInfo?: () => void; /** The other's «últ. vez» in a 1:1, like the app. */ lastSeen?: string; onCall?: (video: boolean) => void }) {
   const { chat, typingName } = props;
   // A channel of a space reads as Slack's: «#planta-web».
   const title = chat.channel ? `#${chat.name ?? ''}` : (chat.name ?? chat.phone ?? 'Conversación');
@@ -170,13 +172,17 @@ function CabeceraDeLaConversacion(props: { chat: ChatSummary; typingName: string
         </p>
       </div>
       </button>
+      {props.onCall ? (
+        <div className="flex items-center gap-1 text-on-surface-variant">
+          <button type="button" data-testid="btn-videollamada" aria-label="Videollamada" title="Videollamada" onClick={() => props.onCall?.(true)} className="grid h-11 w-11 place-items-center rounded-full hover:bg-surface">
+            <Video size={18} />
+          </button>
+          <button type="button" data-testid="btn-llamada" aria-label="Llamada" title="Llamada" onClick={() => props.onCall?.(false)} className="grid h-11 w-11 place-items-center rounded-full hover:bg-surface">
+            <Phone size={18} />
+          </button>
+        </div>
+      ) : null}
       <div className="hidden items-center gap-1 text-on-surface-variant/40 sm:flex">
-        <span className="grid h-9 w-9 place-items-center" title="Videollamada (próximamente)">
-          <Video size={18} />
-        </span>
-        <span className="grid h-9 w-9 place-items-center" title="Llamada (próximamente)">
-          <Phone size={18} />
-        </span>
         <span className="grid h-9 w-9 place-items-center" title="Buscar (próximamente)">
           <Search size={18} />
         </span>

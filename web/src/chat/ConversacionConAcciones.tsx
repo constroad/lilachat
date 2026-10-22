@@ -35,6 +35,7 @@ import { useStickers } from './stickers/useStickers';
 import type { StickerAction } from './contextoDeLaConversacion';
 import { memberBadge, usesFlatLayout } from '@lilachat/shared';
 import { useGroupsAsList } from '../ui/groupsAsList';
+import { useCalls } from '../calls/CallProvider';
 
 type PropsDeConversacion = ComponentProps<typeof Conversation>;
 
@@ -120,6 +121,7 @@ export function ConversacionConAcciones(
     [hilos.abrir]
   );
   const { keepReceived } = useStickers(props.jwt, yo);
+  const calls = useCalls();
   const onStickerAction = useCallback(
     (mensaje: MensajeEnPantalla, action: StickerAction) => void keepReceived(chat.id, mensaje.seq, action === 'favorite').then(onAviso),
     [keepReceived, chat.id, onAviso]
@@ -150,6 +152,9 @@ export function ConversacionConAcciones(
 
   // Nudges and winks: in a 1:1 (not the chat with yourself), or a group whose admin allows them (José, 21/10).
   const funAllowed = chat.kind === 'direct' ? !chat.propio : chat.kind === 'group' && chat.funAllowed === true;
+  // Calls: a 1:1 with a person, never with yourself or an installed app (a bot does not answer).
+  const otherId = chat.kind === 'direct' && !chat.propio ? chat.memberIds.find((id) => id !== yo) : undefined;
+  const canCall = Boolean(otherId) && detalle?.pills.get(otherId ?? '')?.role !== 'app';
   return (
     <ConversacionContext.Provider value={contexto}>
       <Conversation
@@ -162,6 +167,7 @@ export function ConversacionConAcciones(
         onCancelarContexto={acciones.cancelarContexto}
         replyingTo={acciones.replyingTo}
         onNudge={funAllowed ? () => void sync.sendNudge(chat.id).then((result) => result.ok || onAviso(result.motivo)) : undefined}
+        onCall={canCall ? (video) => calls.call(chat.id, chat.name ?? chat.phone ?? 'Llamada', video) : undefined}
         onWink={funAllowed ? (wink) => void sync.sendWink(chat.id, wink).then((result) => result.ok || onAviso(result.motivo)) : undefined}
         mencionables={mencionables}
         jwtParaEnlaces={chat.encrypted ? undefined : props.jwt}

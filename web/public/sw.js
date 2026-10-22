@@ -85,12 +85,14 @@ self.addEventListener('push', (evento) => {
 
 self.addEventListener('notificationclick', (evento) => {
   evento.notification.close();
+  // An incoming call only brings the tab forward: navigating would reload it and drop the call.
+  const isCall = evento.notification.data?.call === true;
   const chatId = evento.notification.data?.chatId;
   const url = chatId ? `/c/${chatId}` : '/';
   evento.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((ventanas) => {
       const abierta = ventanas.find((ventana) => ventana.url.startsWith(self.location.origin));
-      if (abierta) return abierta.focus().then(() => abierta.navigate(url));
+      if (abierta) return isCall ? abierta.focus() : abierta.focus().then(() => abierta.navigate(url));
       return self.clients.openWindow(url);
     })
   );

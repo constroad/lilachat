@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { ArrowLeft, Hash, Lock, Plus, Search } from 'lucide-react-native';
 import { filterChannels, membersLabel, type ChannelFilter, type ClientChannel, type ClientWorkspace } from '@lilachat/shared';
@@ -7,7 +7,8 @@ import { useColores } from '../ui/tema';
 import { useMargenes } from '../ui/useMargenes';
 import { SpaceLogo } from './SpaceSwitcherSheet';
 import { CreateChannelSheet } from './CreateChannelSheet';
-import { joinChannel, spaceChannels } from './spacesApi';
+import { joinChannel } from './spacesApi';
+import { channelsCache, fetchChannels, useCached } from './spaceCache';
 
 const TABS: { key: ChannelFilter; label: string }[] = [
   { key: 'all', label: 'Todos' },
@@ -26,24 +27,18 @@ export function ChannelsScreen(props: { space: ClientWorkspace | null; jwt: stri
   const colors = useColores();
   const margins = useMargenes();
   const { space, jwt } = props;
-  const [channels, setChannels] = useState<ClientChannel[] | null>(null);
   const [query, setQuery] = useState('');
   const [tab, setTab] = useState<ChannelFilter>('all');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
 
-  const load = useCallback(async () => {
-    if (!space) return;
-    const response = await spaceChannels(jwt, space.id);
-    if (response.ok) setChannels(response.data.channels);
-    else setError(response.message ?? 'No se pudieron cargar los canales.');
-  }, [jwt, space]);
+  // The space's channels paint at once from what was seen and refresh behind (22/10).
+  const listed = useCached(channelsCache, space ? `${space.id}:channels` : null, fetchChannels(jwt, space?.id ?? ''));
+  const channels = listed.value ?? null;
   useEffect(() => {
-    setChannels(null);
     setQuery('');
     setTab('all');
-    void load();
-  }, [load]);
+  }, [space?.id]);
 
   if (!space) return null;
   const shown = filterChannels(channels ?? [], { query, visibility: tab });
@@ -88,7 +83,7 @@ export function ChannelsScreen(props: { space: ClientWorkspace | null; jwt: stri
               </Pressable>
             ))}
           </View>
-          {error ? <Text className="mt-3 text-[13px] text-error">{error}</Text> : null}
+          {error || (!channels && listed.error) ? <Text className="mt-3 text-[13px] text-error">{error || listed.error}</Text> : null}
           {channels === null ? [0, 1, 2].map((index) => <View key={index} className="mt-3 h-20 rounded-2xl bg-surface-variant" />) : null}
           {channels !== null && shown.channels.length === 0 ? <Text className="mt-6 text-center text-[14px] text-on-surface-variant">{query ? 'Ningún canal coincide con la búsqueda.' : 'Todavía no hay canales: crea el primero.'}</Text> : null}
           {shown.channels.map((channel) => (
@@ -120,7 +115,7 @@ export function ChannelsScreen(props: { space: ClientWorkspace | null; jwt: stri
           space={space}
           onCreated={(channel) => {
             setCreating(false);
-            void load();
+            listed.refresh();
             props.onOpenChannel(channel);
           }}
           onClose={() => setCreating(false)}

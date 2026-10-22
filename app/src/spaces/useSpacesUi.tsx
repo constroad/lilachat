@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChevronDown } from 'lucide-react-native';
 import { newlyAddedSpaces, spaceSubtitle, type ActivityItem, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember } from '@lilachat/shared';
@@ -9,6 +9,7 @@ import { useAlVolver } from '../ui/useAlVolver';
 import { Logo } from '../ui/Logo';
 import { useColores } from '../ui/tema';
 import { setCurrentSpaceId, useCurrentSpaceId, useMySpaces } from './currentSpace';
+import { forgetSpace, prefetchSpace } from './spaceCache';
 import { SpaceLogo, SpaceSwitcherSheet } from './SpaceSwitcherSheet';
 import { JoinSpaceScreen } from './JoinSpaceScreen';
 import { CreateSpaceScreen } from './CreateSpaceScreen';
@@ -74,6 +75,18 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
     if (lost) setRemoved(lost);
     setCurrentSpaceId(null);
   }, [spaces, currentId, current]);
+  // Entering a space: its directory, mentions and channels are on their way before anyone taps (22/10).
+  useEffect(() => {
+    if (current?.id) prefetchSpace(jwt, current.id);
+  }, [jwt, current?.id]);
+  // A space I am no longer active in leaves nothing behind: not its directory, not its channels.
+  const activeIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!spaces) return;
+    const now = new Set(spaces.filter((space) => space.status === 'active').map((space) => space.id));
+    for (const id of activeIds.current) if (!now.has(id)) forgetSpace(id);
+    activeIds.current = now;
+  }, [spaces]);
   // A request, approved, added or deactivated somewhere else: read them again, also on coming back to the app.
   useEffect(() => {
     const socket = getSocket();

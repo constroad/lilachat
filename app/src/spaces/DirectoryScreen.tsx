@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { ArrowLeft, MessageCircle, Search, UserPlus, Users } from 'lucide-react-native';
 import { directoryAreas, filterMembers, formatPhoneDisplay, membersLabel, type ClientWorkspace, type ClientWorkspaceMember } from '@lilachat/shared';
@@ -8,7 +8,7 @@ import { useMargenes } from '../ui/useMargenes';
 import { useOnlineIds } from '../chat/presenceStore';
 import { SpaceLogo } from './SpaceSwitcherSheet';
 import { MemberAvatar, memberLine, memberName, OnlinePill } from './memberUi';
-import { spaceMembers } from './spacesApi';
+import { fetchMembers, membersCache, useCached } from './spaceCache';
 
 /**
  * «Directorio» of a space (design `e1-08-directorio`): its active people,
@@ -20,14 +20,12 @@ export function DirectoryScreen(props: { space: ClientWorkspace; jwt: string; my
   const colors = useColores();
   const margins = useMargenes();
   const online = useOnlineIds();
-  const [members, setMembers] = useState<ClientWorkspaceMember[] | null>(null);
-  const [error, setError] = useState('');
+  // What this space's directory already showed paints at once and refreshes behind (22/10).
+  const directory = useCached(membersCache, `${props.space.id}:members`, fetchMembers(props.jwt, props.space.id));
+  const members = directory.value ?? null;
+  const error = members ? '' : (directory.error ?? '');
   const [query, setQuery] = useState('');
   const [area, setArea] = useState<string | null>(null);
-
-  useEffect(() => {
-    void spaceMembers(props.jwt, props.space.id).then((response) => (response.ok ? setMembers(response.data.members) : setError(response.message ?? 'No se pudo cargar el directorio.')));
-  }, [props.jwt, props.space.id]);
   const people = useMemo(() => (members ?? []).filter((member) => !props.picking || member.userId !== props.myUserId), [members, props.picking, props.myUserId]);
   const chips = useMemo(() => directoryAreas(people), [people]);
   const shown = filterMembers(people, { query, area });

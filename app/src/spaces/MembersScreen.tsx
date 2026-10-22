@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { ArrowLeft, MoreVertical, Search, UserPlus, X } from 'lucide-react-native';
 import { changeForAction, filterMembers, formatPhoneDisplay, memberActions, type ClientWorkspace, type ClientWorkspaceMember, type MemberAction } from '@lilachat/shared';
@@ -12,6 +12,7 @@ import { MemberAvatar, memberLine, memberName, OnlinePill, RolePill } from './me
 import { MemberActionsSheet } from './MemberActionsSheet';
 import { RequestCard } from './RequestCard';
 import { changeMember, rejectRequest, revokeSpaceInvite, spaceMembers } from './spacesApi';
+import { dataOf, memberListsCache, useCached } from './spaceCache';
 
 export type MembersTab = 'active' | 'pending' | 'invited' | 'deactivated';
 type Lists = Record<MembersTab, ClientWorkspaceMember[]>;
@@ -21,7 +22,7 @@ type Lists = Record<MembersTab, ClientWorkspaceMember[]>;
  * Pendientes · Desactivados with their counts; each active or deactivated
  * person with their role and a ⋮ to change it, deactivate or reactivate; the
  * pending ones as request cards to approve with an area and title (design
- * `e1-11-solicitudes`). Every change asks the lists again.
+ * `e1-11-solicitudes`). Every change asks the lists again; opening it paints the lists it saw last.
  */
 export function MembersScreen(props: { space: ClientWorkspace; jwt: string; myUserId: string; initialTab: MembersTab; onInvite: () => void; onChanged: () => void; onClose: () => void }) {
   const colors = useColores();
@@ -29,20 +30,18 @@ export function MembersScreen(props: { space: ClientWorkspace; jwt: string; myUs
   const online = useOnlineIds();
   const { space, jwt } = props;
   const [tab, setTab] = useState<MembersTab>(props.initialTab);
-  const [lists, setLists] = useState<Lists | null>(null);
   const [query, setQuery] = useState('');
   const [acting, setActing] = useState<ClientWorkspaceMember | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-
-  const load = useCallback(async () => {
+  const [actionError, setError] = useState('');
+  // The four lists paint at once from what was seen and refresh behind (22/10).
+  const cached = useCached(memberListsCache, `${space.id}:member-lists`, async (): Promise<Lists> => {
     const [active, pending, invited, deactivated] = await Promise.all((['active', 'pending', 'invited', 'deactivated'] as const).map((status) => spaceMembers(jwt, space.id, status)));
-    if (active?.ok && pending?.ok && invited?.ok && deactivated?.ok) setLists({ active: active.data.members, pending: pending.data.members, invited: invited.data.members, deactivated: deactivated.data.members });
-    else setError('No se pudieron cargar los miembros.');
-  }, [jwt, space.id]);
-  useEffect(() => {
-    void load();
-  }, [load]);
+    const fallback = 'No se pudieron cargar los miembros.';
+    return { active: dataOf(active, fallback).members, pending: dataOf(pending, fallback).members, invited: dataOf(invited, fallback).members, deactivated: dataOf(deactivated, fallback).members };
+  });
+  const lists = cached.value ?? null;
+  const error = actionError || (lists ? '' : (cached.error ?? ''));
 
   const after = async (work: Promise<{ ok: boolean; message?: string }>) => {
     setBusy(true);
@@ -51,7 +50,7 @@ export function MembersScreen(props: { space: ClientWorkspace; jwt: string; myUs
     if (!response.ok) return setError(response.message ?? 'No se pudo guardar.');
     setError('');
     props.onChanged();
-    await load();
+    cached.refresh();
   };
   const runAction = (member: ClientWorkspaceMember, action: MemberAction) => {
     setActing(null);

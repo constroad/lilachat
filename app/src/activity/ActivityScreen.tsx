@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { ArrowRight, CornerUpLeft, MessagesSquare } from 'lucide-react-native';
 import { ACTIVITY_TABS, activityDaySections, formatChatTimestamp, formatPhoneDisplay, type ActivityItem, type ActivityType, type ClientWorkspace } from '@lilachat/shared';
@@ -7,7 +7,7 @@ import { Segmentado } from '../ui/Segmentado';
 import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
 import { TextoDelMensaje } from '../chat/TextoDelMensaje';
-import { spaceActivity } from '../spaces/spacesApi';
+import { activityCache, fetchActivity, useCached } from '../spaces/spaceCache';
 
 const EMPTY: Record<ActivityType, string> = { mentions: 'Nadie te mencionó todavía.', threads: 'Todavía no estás en ningún hilo.', reactions: 'Todavía nadie reaccionó a tus mensajes.' };
 const nameOf = (person: { name?: string; phone?: string }) => person.name?.trim() || (person.phone ? formatPhoneDisplay(person.phone) : 'Alguien');
@@ -21,25 +21,14 @@ const chatLabel = (item: ActivityItem) => (item.chat.channel ? `#${item.chat.nam
 export function ActivityScreen(props: { visible: boolean; space: ClientWorkspace; jwt: string; myUserId: string; initialTab: ActivityType; onOpen: (item: ActivityItem) => void; onClose: () => void }) {
   const colors = useColores();
   const [tab, setTab] = useState<ActivityType>(props.initialTab);
-  const [items, setItems] = useState<ActivityItem[] | null>(null);
-  const [unread, setUnread] = useState({ mentions: 0, threads: 0 });
-  const [error, setError] = useState('');
-
   useEffect(() => {
     if (props.visible) setTab(props.initialTab);
   }, [props.visible, props.initialTab]);
-  const load = useCallback(async () => {
-    const response = await spaceActivity(props.jwt, props.space.id, { type: tab });
-    if (!response.ok) return setError(response.message ?? 'No se pudo cargar la actividad.');
-    setError('');
-    setItems(response.data.items);
-    setUnread(response.data.unread);
-  }, [props.jwt, props.space.id, tab]);
-  useEffect(() => {
-    if (!props.visible) return;
-    setItems(null);
-    void load();
-  }, [props.visible, load]);
+  // Each tab keeps what it showed: Menciones → Hilos → Menciones no longer goes grey three times (22/10).
+  const page = useCached(activityCache, `${props.space.id}:activity:${tab}`, fetchActivity(props.jwt, props.space.id, tab), props.visible);
+  const items: ActivityItem[] | null = page.value?.items ?? null;
+  const unread = page.value?.unread ?? { mentions: 0, threads: 0 };
+  const error = items ? '' : (page.error ?? '');
 
   const counts: Partial<Record<ActivityType, number>> = { mentions: unread.mentions, threads: unread.threads };
   return (

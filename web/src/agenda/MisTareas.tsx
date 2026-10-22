@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ClipboardCheck } from 'lucide-react';
-import { myTasks, taskDueLabel, type AgendaChecklist, type MyTask, type MyTaskGroup } from '@lilachat/shared';
+import { myTasks, taskCountLabel, taskDueLabel, type AgendaChecklist, type MyTask, type MyTaskGroup } from '@lilachat/shared';
 import { api } from '../api';
 
 const GROUP_TITLE: Record<MyTaskGroup['state'], string> = { overdue: 'Atrasadas', today: 'Hoy', upcoming: 'Próximas', none: 'Sin fecha' };
-const PILL: Record<MyTaskGroup['state'], string> = { overdue: 'bg-error/10 font-bold text-error', today: 'bg-primary/10 font-semibold text-primary', upcoming: 'bg-background text-on-surface-variant', none: '' };
+/** Each group's tone in the design (`k-04-mis-tareas`): late in red, today in amber, the rest neutral. */
+const TONE: Record<MyTaskGroup['state'], { label: string; ring: string; pill: string }> = {
+  overdue: { label: 'text-error', ring: 'border-error', pill: 'border-error/30 bg-error/10 text-error' },
+  today: { label: 'text-warning', ring: 'border-warning', pill: 'border-warning/30 bg-warning/10 text-warning' },
+  upcoming: { label: 'text-on-surface-variant', ring: 'border-outline/40', pill: 'border-outline/30 bg-background text-on-surface-variant' },
+  none: { label: 'text-on-surface-variant', ring: 'border-outline/40', pill: '' },
+};
 
 /**
  * «Mis tareas» on the web, like the app (backlog 30; design `k-04-mis-tareas`):
@@ -47,17 +53,20 @@ export function MisTareas(props: { jwt: string; me: string; chatNameOf: (chatId:
     <div data-testid="mis-tareas">
       {groups.map((group) => (
         <section key={group.state} data-testid={`tareas-${group.state}`}>
-          <p className={`mb-2 mt-3 text-[11px] font-bold uppercase tracking-wider ${group.state === 'overdue' ? 'text-error' : 'text-primary'}`}>{`${GROUP_TITLE[group.state]} · ${group.tasks.length}`}</p>
+          <p className={`mb-2 mt-4 flex items-center justify-between text-[12px] ${TONE[group.state].label}`}>
+            <span className="font-bold uppercase tracking-wider">{GROUP_TITLE[group.state]}</span>
+            <span className="font-semibold">{taskCountLabel(group.tasks.length)}</span>
+          </p>
           {group.tasks.map((task) => {
             const seq = checklists.find((checklist) => checklist._id === task.checklistId)?.cardSeq;
             return (
               <div key={`${task.checklistId}-${task.item.id}`} className="mb-2 flex min-h-[60px] items-center gap-3 rounded-xl border border-outline/15 bg-surface px-3 py-2">
-                <button type="button" data-testid={`marcar-tarea-${task.item.id}`} aria-label={`Marcar «${task.item.text}» como hecha`} disabled={ticking !== null} onClick={() => void tick(task)} className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${ticking === task.item.id ? 'bg-primary' : 'border-2 border-outline/40 hover:border-primary'}`} />
+                <button type="button" data-testid={`marcar-tarea-${task.item.id}`} aria-label={`Marcar «${task.item.text}» como hecha`} disabled={ticking !== null} onClick={() => void tick(task)} className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${ticking === task.item.id ? 'bg-primary' : `border-2 ${TONE[group.state].ring} hover:border-primary`}`} />
                 <button type="button" data-testid={`mi-tarea-${task.item.id}`} onClick={() => props.onOpen(task.chatId, seq)} className="min-w-0 flex-1 text-left">
-                  <span className="block text-sm font-semibold">{task.item.text}</span>
+                  <span className="block truncate text-sm font-semibold">{task.item.text}</span>
                   <span className="block truncate text-[12px] text-on-surface-variant">{`${task.checklistTitle} · ${props.chatNameOf(task.chatId)}`}</span>
                 </button>
-                {task.item.dueAt ? <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11px] ${PILL[group.state]}`}>{taskDueLabel(task.item.dueAt, new Date())}</span> : null}
+                {task.item.dueAt ? <span className={`shrink-0 rounded-md border px-2 py-1 text-[11px] font-bold uppercase ${TONE[group.state].pill}`}>{taskDueLabel(task.item.dueAt, new Date())}</span> : null}
               </div>
             );
           })}

@@ -20,7 +20,7 @@ import { useSesion } from './sesion/useSesion';
 export function App() {
   const sesion = useSesion();
   // Name, birthday and a verified email are required (backlog 17): a session without them completes them first.
-  const profileGate = useProfileGate(sesion.credential?.jwt || null);
+  const profileGate = useProfileGate({ jwt: sesion.credential?.jwt || null, userId: sesion.credential?.userId ?? null, sessionSettled: sesion.refrescoResuelto });
   // Desde la primera visita, también sin sesión (W4): así la app ya queda guardada.
   const [hayVersionNueva, setHayVersionNueva] = useState(false);
   useEffect(() => {
@@ -29,6 +29,8 @@ export function App() {
   // El QR de vincular abierto con la cámara del teléfono (W5): no es una sesión, es una indicación.
   if (window.location.pathname.startsWith('/v/')) return <CodigoParaLaApp />;
   if (!sesion.credential) return <AccessScreens onReady={sesion.entrar} />;
+  // Waiting for the profile answer: nothing, rather than the chats for an instant and then the form.
+  if (profileGate.checking) return null;
   if (profileGate.incomplete) return <CompleteProfileScreen jwt={sesion.credential.jwt} profile={profileGate.incomplete} onDone={profileGate.done} />;
   // Installing an app (agentes' Lila) in a space: after signing in it comes back to this same address.
   if (window.location.pathname === '/instalar-app') {

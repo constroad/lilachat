@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ChevronRight, ClipboardCheck } from 'lucide-react';
-import { checklistSummaryLine, type ChecklistSummary } from '@lilachat/shared';
+import { ChevronRight, SquareCheckBig } from 'lucide-react';
+import { checklistSummaryLine, checklistsBadge, type ChecklistSummary } from '@lilachat/shared';
 import { api } from '../../api';
 
 /** How many the card shows before «Ver los N checklists». */
@@ -33,22 +33,27 @@ export function ChecklistsCard(props: { chatId: string; jwt: string; onOpen: (se
   return (
     <section data-testid="tarjeta-checklists" className="mx-4 mt-3 overflow-hidden rounded-xl bg-surface">
       <div className="h-[3px] bg-primary" />
-      <p className="flex items-center gap-2 px-4 pb-2 pt-3 text-sm font-semibold">
-        <ClipboardCheck size={16} className="text-primary" />
-        Checklists
-        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[12px] text-primary">{checklists.length}</span>
-      </p>
+      {/* Kicker, title and how many are open (design `k-05-checklists-del-chat`). */}
+      <div className="flex items-center gap-3 px-4 pb-3 pt-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Control operativo</p>
+          <p className="mt-0.5 text-[15px] font-bold">Checklists del chat</p>
+        </div>
+        <span data-testid="checklists-activos" className="shrink-0 rounded-md border border-outline/30 bg-background px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">{checklistsBadge(checklists)}</span>
+      </div>
       {shown.map((checklist) => {
         const line = checklistSummaryLine(checklist);
         const { cardSeq } = checklist;
         return (
           <button key={checklist._id} type="button" data-testid={`checklist-del-chat-${checklist._id}`} disabled={!cardSeq} onClick={() => cardSeq && props.onOpen(cardSeq)} className="flex min-h-[60px] w-full items-center gap-3 border-t border-outline/10 px-4 py-2.5 text-left hover:bg-background disabled:cursor-default">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><ClipboardCheck size={17} /></span>
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><SquareCheckBig size={17} /></span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold">{checklist.title}</span>
+              <span className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold">{checklist.title}</span>
+                {line.complete ? <span className="shrink-0 rounded-md border border-en-linea/30 bg-en-linea/10 px-2 py-0.5 text-[11px] font-bold uppercase text-en-linea">Completo</span> : null}
+              </span>
               <span className="my-1 block h-1 overflow-hidden rounded-full bg-primary/10"><span className="block h-full rounded-full bg-primary" style={{ width: `${checklist.total ? (checklist.done / checklist.total) * 100 : 0}%` }} /></span>
               <span className="block text-[12px] text-on-surface-variant">
-                {line.complete ? 'Completo · ' : ''}
                 {line.progress}
                 {line.late ? <span className="font-semibold text-error">{` · ${line.late}`}</span> : null}
               </span>

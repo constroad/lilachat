@@ -421,7 +421,7 @@ export function ChatScreen({
           conectado={connected}
           subtitulo={subtitulo}
           otroEscribe={otroEscribe}
-          puedeLlamar={Boolean(otherUserId)}
+          puedeLlamar={Boolean(otherUserId) && grupo.roles.get(otherUserId ?? '')?.role !== 'app'}
           onVolver={onBack}
           onAbrirDetalle={() => setVerDetalle(true)}
           onLlamar={(conVideo) => llamar(chatId, chatName, conVideo)}

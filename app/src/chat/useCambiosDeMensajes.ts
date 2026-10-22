@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 import { aplicarReaccion, type Reaccion } from '@lilachat/shared';
-import { marcarBorradoGuardado, marcarEditadoGuardado, marcarReaccionesGuardadas } from './mensajesGuardados';
-import { getSocket } from './socketClient';
+import { marcarBorradoGuardado, marcarReaccionesGuardadas, saveEditedMessage } from './mensajesGuardados';
+import { getSocket, type ServerMessage } from './socketClient';
 import type { ChatMessage } from './useChat';
 
 type Fijar = Dispatch<SetStateAction<ChatMessage[]>>;
@@ -37,10 +37,11 @@ export function useCambiosDeMensajes(params: { chatId: string; token: string; yo
       );
       void marcarBorradoGuardado(chatId, frame.seq);
     };
-    const onEdited = (frame: { chatId: string; seq: number; body: string; editedAt: string }) => {
+    // A bot closing its card (PATCH) comes the same way: the new card, and no «editado».
+    const onEdited = (frame: { chatId: string; seq: number; body: string; editedAt?: string; card?: ServerMessage['card'] }) => {
       if (!vivo || frame.chatId !== chatId) return;
-      setMessages((actuales) => actuales.map((m) => (m.seq === frame.seq ? { ...m, body: frame.body, editedAt: frame.editedAt } : m)));
-      void marcarEditadoGuardado(chatId, frame.seq, frame.body, frame.editedAt);
+      setMessages((actuales) => actuales.map((m) => (m.seq === frame.seq ? { ...m, body: frame.body, ...(frame.editedAt ? { editedAt: frame.editedAt } : {}), ...(frame.card ? { card: frame.card } : {}) } : m)));
+      void saveEditedMessage(chatId, frame.seq, frame);
     };
     const onReacciones = (frame: { chatId: string; seq: number; reacciones: Reaccion[] }) => {
       if (vivo && frame.chatId === chatId && Array.isArray(frame.reacciones)) ponerReacciones(setMessages, chatId, frame.seq, frame.reacciones);

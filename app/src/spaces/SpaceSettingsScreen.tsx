@@ -9,6 +9,7 @@ import { useMargenes } from '../ui/useMargenes';
 import { SpaceLogo } from './SpaceSwitcherSheet';
 import { removeSpaceLogo, updateSpace, uploadSpaceLogo } from './spacesApi';
 import { elegirFotoRedonda } from '../chat/fotoDeGrupo';
+import { IntegrationsSection } from './IntegrationsSection';
 
 const NAME_MAX = 60;
 
@@ -129,6 +130,7 @@ export function SpaceSettingsScreen(props: { space: ClientWorkspace; jwt: string
               <Interruptor testID="ajustes-aprobar" value={approval} onValueChange={setApproval} />
             </View>
           </View>
+          <IntegrationsSection jwt={props.jwt} spaceId={space.id} />
         </ScrollView>
       </View>
     </Modal>

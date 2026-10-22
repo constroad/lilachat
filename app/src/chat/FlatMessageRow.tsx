@@ -11,6 +11,7 @@ import { DeslizarParaResponder } from './DeslizarParaResponder';
 import { CitaDeRespuesta } from './CitaDeRespuesta';
 import { MetaDeMensaje } from './MetaDeMensaje';
 import { MessageMedia } from './MessageMedia';
+import { BotCardView } from './BotCardView';
 import { TextoDelMensaje } from './TextoDelMensaje';
 import { VistaPreviaDeEnlace } from './VistaPreviaDeEnlace';
 import { previewDeMensaje, quoteAction } from './MessageRow';
@@ -120,6 +121,8 @@ function FlatRow(props: {
           )}
           {card || sticker ? null : deleted ? (
             <Text testID={`eliminado-${id}`} className="text-[15px] italic text-on-surface-variant">{TEXTO_ELIMINADO}</Text>
+          ) : !isPending(item) && item.card && props.jwt ? (
+            <BotCardView card={item.card} chatId={item.chatId} seq={item.seq} jwt={props.jwt} />
           ) : item.body ? (
             <>
               {props.linkPreview && props.jwt && !isPending(item) && !item.media && primerEnlace(item.body) ? <VistaPreviaDeEnlace url={primerEnlace(item.body)!} jwt={props.jwt} mia={false} /> : null}

@@ -35,6 +35,7 @@ import { NudgeLine, WinkLine } from './nudge';
 import { StickerMessage } from './stickers/StickerMessage';
 import { Avatar } from '../ui/Avatar';
 import { MessageMedia } from './MessageMedia';
+import { BotCardView } from './BotCardView';
 import { isFileMime, isPending, type Row } from './rowKinds';
 
 /**
@@ -193,8 +194,10 @@ function FilaDeMensaje({
   const fallo = isPending(item) ? item.fallo : undefined;
   const editado = !isPending(item) && Boolean(item.editedAt) && !item.deletedAt;
   const meta = { hora, mia: mine, entrega: delivery, id: idDeFila, fallido: Boolean(fallo), editado, destacado };
+  // A bot's card: drawn whole, with the time on its own line (its `body` is only the summary).
+  const botCard = !isPending(item) && jwt ? item.card : undefined;
   const lugarDeLaHora = dondeVaLaHora({
-    conTexto: Boolean(item.body),
+    conTexto: Boolean(item.body) && !botCard,
     eliminado: !isPending(item) && Boolean(item.deletedAt),
     fotoVisible: esFotoVisible(item),
   });
@@ -294,6 +297,8 @@ function FilaDeMensaje({
             >
               {TEXTO_ELIMINADO}
             </Text>
+          ) : botCard && jwt && !isPending(item) ? (
+            <BotCardView card={botCard} chatId={item.chatId} seq={item.seq} jwt={jwt} />
           ) : item.body ? (
             <>
             {conVistaPrevia && jwt && !isPending(item) && !item.media && primerEnlace(item.body) ? (

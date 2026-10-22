@@ -1,3 +1,4 @@
+import type { BotCard } from '@lilachat/shared';
 import type { MencionEnMensaje, MessageRef, ResumenDeHiloEnCliente, Reaccion } from '@lilachat/shared';
 import { avisarTarjeta, refrescarTodas } from '@lilachat/shared';
 import { io, type Socket } from 'socket.io-client';
@@ -25,6 +26,8 @@ export type ServerMessage = {
   body?: string;
   /** A wink's id (kind `guino`, José 21/10). */
   wink?: string;
+  /** A bot's card (`specs/BOTS-API.spec.md` §b): `body` carries its summary. */
+  card?: BotCard;
   /** El sobre cifrado, en chats secretos (F9). Llega en vez de `body`. */
   envelope?: { v: 1; nonce: string; ciphertext: string };
   /** La encuesta o el evento que publica este mensaje (18/10): se dibuja como tarjeta. */

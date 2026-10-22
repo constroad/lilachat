@@ -1,4 +1,4 @@
-import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
+import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, SpaceApp, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
 import { BASE_URL, type ChatSummary } from '../api/client';
 import { jsonCall } from '../api/jsonCall';
 import { subirFotoRedonda } from '../chat/fotoDeGrupo';
@@ -68,3 +68,6 @@ export async function uploadSpaceLogo(jwt: string, spaceId: string, photo: Picke
   return { ok: true, workspace: sent.payload.workspace as ClientWorkspace };
 }
 export const removeSpaceLogo = (jwt: string, spaceId: string) => jsonCall<{ workspace: ClientWorkspace }>(url(`/${spaceId}/logo`), jwt, { method: 'DELETE' });
+/** Integraciones (`specs/BOTS-API.spec.md`): the space's installed apps, and uninstalling one. */
+export const spaceApps = (jwt: string, spaceId: string) => jsonCall<{ apps: SpaceApp[] }>(url(`/${spaceId}/apps`), jwt);
+export const uninstallApp = (jwt: string, spaceId: string, installationId: string) => jsonCall<Record<string, never>>(url(`/${spaceId}/apps/${installationId}`), jwt, { method: 'DELETE' });

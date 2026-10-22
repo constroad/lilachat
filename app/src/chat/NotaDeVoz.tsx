@@ -7,6 +7,7 @@ import { soltarElAudio, tomarElAudio } from './notaDeVozMotor';
 import { useColores } from '../ui/tema';
 import { reportarError } from '../ui/reportarError';
 import { playbackAudioMode } from './audioMode';
+import { useVoiceNoteSource } from './voiceNoteCache';
 
 /** Longer than this, Android stops background audio after ~3 min unless it shows lock-screen controls. */
 const LOCK_SCREEN_FROM_S = 150;
@@ -36,16 +37,22 @@ type PropsDeNota = {
  * con diez notas visibles eran diez reproductores y diez descargas peleando
  * con las fotos. Hasta que se toca, es solo la onda y la duración guardadas.
  *
+ * **El archivo sí se baja antes** (José, 21/10: «carga y luego reproduce; en
+ * WhatsApp reproduce al toque»): una nota a la vista se descarga al teléfono
+ * en segundo plano (`voiceNoteCache.ts`), y el play la lee del disco.
+ *
  * **No arranca solo.** Un audio que empieza a sonar al aparecer en pantalla es
  * lo peor que puede hacer una app de mensajería: suena en la mesa, en la
  * reunión, o encima de otro audio.
  */
 export function NotaDeVoz(props: PropsDeNota) {
-  const [activa, setActiva] = useState(false);
+  /** What plays, fixed at the touch: a download finishing mid-play must not restart it. */
+  const [activa, setActiva] = useState<string | null>(null);
   const [velocidad, setVelocidad] = useState(1);
   /** Touching the bar before the first play starts there (backlog 34). */
   const [startShare, setStartShare] = useState<number | null>(null);
-  if (activa) return <ActiveVoiceNote {...props} velocidadInicial={velocidad} startShare={startShare} />;
+  const source = useVoiceNoteSource(props.url) ?? props.url;
+  if (activa) return <ActiveVoiceNote {...props} url={activa} velocidadInicial={velocidad} startShare={startShare} />;
   return (
     <VistaDeNota
       mia={props.mia}
@@ -54,12 +61,12 @@ export function NotaDeVoz(props: PropsDeNota) {
       ms={props.durationMs ?? 0}
       avance={0}
       velocidad={velocidad}
-      onPlay={() => setActiva(true)}
+      onPlay={() => setActiva(source)}
       onVelocidad={() => setVelocidad(nextPlaybackRate(velocidad))}
       durationS={(props.durationMs ?? 0) / 1000}
       onSeek={(share) => {
         setStartShare(share);
-        setActiva(true);
+        setActiva(source);
       }}
     />
   );

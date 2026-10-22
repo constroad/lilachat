@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View, useWindowDimensions, type ViewToken } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View, type ViewToken, useWindowDimensions } from 'react-native';
 import { Modal } from '../ui/Modal';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -9,6 +9,10 @@ import { useMargenes } from '../ui/useMargenes';
 import { nombreLimpio } from './archivoDescargado';
 import { PaginaDelVisor } from './PaginaDelVisor';
 import { indiceDeFoto } from './visor';
+import { useEvent } from 'expo';
+
+/** Seconds buffered before a video starts: Android waits two by default, and that reads as «it loads, then it plays». */
+const VIDEO_START_BUFFER_S = 0.5;
 
 /**
  * El visor a pantalla completa.
@@ -76,14 +80,25 @@ const esArchivoSuelto = (mime?: string): boolean => {
  *
  * **Arranca solo.** Uno toca un video para verlo, no para encontrarse otro
  * botón de play; los controles quedan a mano para pausar.
+ *
+ * **Y arranca pronto** (José, 21/10: «carga y luego reproduce; WhatsApp
+ * reproduce al toque»): empieza con medio segundo de búfer y no con los dos
+ * que espera Android, y mientras tanto se ve la portada con un indicador, no
+ * una pantalla negra.
  */
-function Reproductor({ url }: { url: string }) {
+function Reproductor({ url, poster }: { url: string; poster?: string }) {
   const player = useVideoPlayer(url, (reproductor) => {
     reproductor.loop = false;
+    reproductor.bufferOptions = { ...reproductor.bufferOptions, minBufferForPlayback: VIDEO_START_BUFFER_S };
     reproductor.play();
   });
+  const { status } = useEvent(player, 'statusChange', { status: player.status });
+  const loading = status === 'loading' || status === 'idle';
 
   return (
+    <View style={{ flex: 1 }}>
+    {loading && poster ? <Image source={{ uri: poster }} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }} contentFit="contain" /> : null}
+    {loading ? <View pointerEvents="none" className="absolute inset-0 items-center justify-center"><ActivityIndicator size="large" color="#ffffff" /></View> : null}
     <VideoView
       testID="visor-video"
       style={{ flex: 1 }}
@@ -95,6 +110,7 @@ function Reproductor({ url }: { url: string }) {
       allowsPictureInPicture={false}
       contentFit="contain"
     />
+    </View>
   );
 }
 
@@ -311,7 +327,7 @@ function Pagina(props: {
     return (
       <View style={{ width: ancho, height: alto }} className="justify-center">
         {props.activa ? (
-          <Reproductor key={foto.url} url={foto.url} />
+          <Reproductor key={foto.url} url={foto.url} poster={foto.miniatura} />
         ) : (
           <View className="flex-1 items-center justify-center">
             {foto.miniatura ? <Image source={{ uri: foto.miniatura }} style={{ position: 'absolute', width: ancho, height: alto }} contentFit="contain" /> : null}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { QUEUE_DISMISSED_KEY, postponeOneDay, suscribirTarjeta, visibleQueue, withDismissed, type QueueItem } from '@lilachat/shared';
 import { api, type ApiResult } from '../../api';
+import { forgetPendingKey, setPendingOfChat } from './pendingInChats';
 
 export type QueueAction = 'done' | 'postpone' | 'yes' | 'no';
 
@@ -44,7 +45,10 @@ export function useChatQueue(jwt: string, chatId: string) {
   const [busy, setBusy] = useState(false);
   const load = useCallback(async () => {
     const response = await api<{ items: QueueItem[] }>(`/agenda/queue?chatId=${chatId}`, { jwt });
-    if (response.ok) setItems(response.data.items);
+    if (!response.ok) return;
+    setItems(response.data.items);
+    // The list's marker follows what this chat's queue just read (22/10).
+    setPendingOfChat(chatId, response.data.items.map((item) => item.key));
   }, [chatId, jwt]);
   useEffect(() => {
     setItems([]);
@@ -62,6 +66,7 @@ export function useChatQueue(jwt: string, chatId: string) {
     setDismissed((before) => {
       const next = withDismissed(before, item.key);
       saveDismissed(next);
+      forgetPendingKey(item.key);
       return next;
     });
   }, []);
@@ -72,6 +77,7 @@ export function useChatQueue(jwt: string, chatId: string) {
     if (response && !response.ok) return response.message;
     // Done: it goes now, without waiting for the server's answer.
     setItems((before) => before.filter((one) => one.key !== item.key));
+    forgetPendingKey(item.key);
     void load();
     return null;
   }, [jwt, load]);

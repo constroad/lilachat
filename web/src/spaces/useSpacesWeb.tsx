@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { newlyAddedSpaces, railSpaces, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember } from '@lilachat/shared';
+import { aplicarMensajeALista, marcarLeido, newlyAddedSpaces, railSpaces, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember } from '@lilachat/shared';
 import { api } from '../api';
-import type { ChatSummary } from '../chat/types';
-import { setCurrentSpaceId, useCurrentSpaceId, useMySpaces } from './currentSpace';
+import type { ChatMessage, ChatSummary } from '../chat/types';
+import { forgetMySpaces, setCurrentSpaceId, useCurrentSpaceId, useMySpaces } from './currentSpace';
 import { chatOfChannel, createSpaceChat, spaceActivity, spaceChats } from './spacesApi';
 import { markSpacesSeen, readSeenSpaces } from './seenSpaces';
-import { forgetAllSpaces, forgetSpace, prefetchSpace, setSpaceCacheDisk } from './spaceCache';
+import { fetchSpaceChats, forgetAllSpaces, forgetSpace, isSpaceChat, membersChanged, prefetchSpace, setSpaceCacheDisk, spaceChatsCache, useCached } from './spaceCache';
 import type { BaseLocal } from '../local/baseLocal';
 import { memberName } from './memberWeb';
 import { SpacesLayer, type SpaceDialog } from './SpacesLayer';
 import type { WorkspaceLink } from './SpaceChatList';
+
+/** What a socket event of a space chat says (22/10). */
+export type SpaceChatEvent = { type: 'message'; chatId: string; message: ChatMessage } | { type: 'receipt'; chatId: string; userId?: string } | { type: 'changed'; chatId: string };
+const NO_ACTIVITY = { mentions: 0, threads: 0 };
 
 /** Several messages in a row reload the space's list once. */
 const RELOAD_DELAY_MS = 600;
@@ -44,17 +48,14 @@ const openedChat = (chat: Pick<ChatSummary, 'id' | 'kind' | 'name' | 'phone' | '
 export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The session's local base: the spaces' screens keep what they saw there (22/10). */ base?: BaseLocal | null; me: { name?: string | null; phone: string }; personalUnread: number; online: ReadonlySet<string>; selectedChatId: string | null; onOpenChat: (chatId: string) => void; onOpenMessage: (chatId: string, seq: number) => void; onPersonalChat: (chatId: string) => void }) {
   const { jwt, myUserId, onOpenChat, onPersonalChat } = params;
   const currentId = useCurrentSpaceId();
-  const { spaces, reload } = useMySpaces(jwt);
+  const { spaces, reload } = useMySpaces(jwt, myUserId);
   const [dialog, setDialog] = useState<SpaceDialog>(null);
   const [inviting, setInviting] = useState<ClientWorkspace | null>(null);
   const [profile, setProfile] = useState<ClientWorkspaceMember | null>(null);
   const [removed, setRemoved] = useState<ClientWorkspace | null>(null);
   const [seen, setSeen] = useState<string[] | null>(readSeenSpaces);
-  const [chats, setChats] = useState<ChatSummary[] | null>(null);
-  const [failed, setFailed] = useState(false);
   /** A chat just joined or created, until the list brings it. */
   const [justOpened, setJustOpened] = useState<ChatSummary | null>(null);
-  const [activity, setActivity] = useState({ mentions: 0, threads: 0 });
   const [activityTab, setActivityTab] = useState<ActivityType | null>(null);
   const current = spaces?.find((space) => space.id === currentId && space.status === 'active') ?? null;
   const spaceId = current?.id ?? null;
@@ -72,6 +73,7 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
     return () => {
       setSpaceCacheDisk(null);
       forgetAllSpaces();
+      forgetMySpaces();
     };
   }, [params.base]);
   // Entering a space: its directory, mentions and channels are on their way before anyone clicks.
@@ -92,50 +94,55 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
   }, [spaces, seen]);
   const welcome = spaces && seen ? (newlyAddedSpaces(spaces, seen)[0] ?? null) : null;
 
-  const shownSpace = useRef(spaceId);
-  shownSpace.current = spaceId;
-  const loadChats = useCallback(async () => {
-    if (!spaceId) return;
-    const [response, counts] = await Promise.all([spaceChats(jwt, spaceId), spaceActivity(jwt, spaceId, { countsOnly: true })]);
-    // Switched spaces while it was on its way: that list is not this space's.
-    if (shownSpace.current !== spaceId) return;
-    if (counts.ok) setActivity(counts.data.unread);
-    if (response.ok) {
-      setChats(response.data.chats);
-      setFailed(false);
-    } else setFailed(true);
-  }, [jwt, spaceId]);
-  useEffect(() => {
-    setChats(null);
-    setFailed(false);
-    void loadChats();
-  }, [loadChats]);
+  // The space's list (and its chips) paints at once from what was seen and refreshes behind (22/10).
+  const page = useCached(spaceChatsCache, spaceId ? `${spaceId}:chats` : null, fetchSpaceChats(jwt, spaceId ?? ''));
+  const chats = page.value?.chats ?? null;
+  const activity = page.value?.activity ?? NO_ACTIVITY;
+  const failed = !page.value && Boolean(page.error);
+  const loadChats = page.refresh;
 
-  const reloadChatsSoon = useDebounced(() => void loadChats(), RELOAD_DELAY_MS);
+  const reloadChatsSoon = useDebounced(() => loadChats(), RELOAD_DELAY_MS);
   const reloadRailSoon = useDebounced(() => void reload(), RAIL_RELOAD_DELAY_MS);
-  /** A socket event of a chat that is not in the personal list. */
-  const onChatEvent = useCallback(() => {
-    if (spaceId) reloadChatsSoon();
-    reloadRailSoon();
-  }, [spaceId, reloadChatsSoon, reloadRailSoon]);
+  /**
+   * A socket event of a chat outside the personal list (22/10: applied in place,
+   * no longer a reload of the list, the chips and the rail per event). A message
+   * in this space's list changes its row; one of another space moves the rail's
+   * count; an unknown chat or a changed one is asked for.
+   */
+  const onChatEvent = useCallback((event: SpaceChatEvent) => {
+    const key = spaceId ? `${spaceId}:chats` : null;
+    const inList = Boolean(key && spaceChatsCache.get(key).value?.chats.some((chat) => chat.id === event.chatId));
+    if (!inList) {
+      if (spaceId && !isSpaceChat(event.chatId)) reloadChatsSoon();
+      reloadRailSoon();
+      return;
+    }
+    if (event.type === 'changed') return reloadChatsSoon();
+    spaceChatsCache.patch(key!, (current) => {
+      const changed = event.type === 'message' ? aplicarMensajeALista(current.chats, event.message, myUserId, params.selectedChatId) : event.userId === myUserId ? marcarLeido(current.chats, event.chatId) : current.chats;
+      return changed && changed !== current.chats ? { ...current, chats: changed } : current;
+    });
+    // A mention or a thread may have arrived: the chips are read with the next quiet refresh.
+    if (event.type === 'message' && (event.message.hiloDe !== undefined || event.message.body?.includes('@'))) reloadChatsSoon();
+  }, [spaceId, myUserId, params.selectedChatId, reloadChatsSoon, reloadRailSoon]);
   // Opening a chat of the space reads it: its count goes away on the next load.
   const selectedInSpace = Boolean(params.selectedChatId && chats?.some((chat) => chat.id === params.selectedChatId));
   useEffect(() => {
-    if (selectedInSpace) onChatEvent();
-  }, [params.selectedChatId, selectedInSpace, onChatEvent]);
+    if (selectedInSpace && spaceId && params.selectedChatId) spaceChatsCache.patch(`${spaceId}:chats`, (current) => ({ ...current, chats: marcarLeido(current.chats, params.selectedChatId!) }));
+  }, [params.selectedChatId, selectedInSpace, spaceId]);
 
   const enter = useCallback(async (next: string | null) => {
     setDialog(null);
-    // The list first: a space just created or joined is not in the old one, and the fallback would send it back to personal.
-    if (next) await reload();
+    // A space just created or joined is not in the old list (the fallback would send it back to personal); a known one switches at once.
+    if (next && !spaces?.some((space) => space.id === next)) await reload();
     setCurrentSpaceId(next);
-  }, [reload]);
+  }, [reload, spaces]);
   const open = useCallback((chat: ChatSummary) => {
     setDialog(null);
     setProfile(null);
     setJustOpened(chat);
     onOpenChat(chat.id);
-    void loadChats();
+    loadChats();
   }, [onOpenChat, loadChats]);
   const openChannel = useCallback((channel: ClientChannel) => spaceId && open(chatOfChannel(channel, spaceId)), [spaceId, open]);
   const writeTo = useCallback(async (member: ClientWorkspaceMember) => {
@@ -193,7 +200,7 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
         activity: (tab) => {
           setActivityTab(tab);
           // Closing it: what was read there changes the chips' counts.
-          if (!tab) void loadChats();
+          if (!tab) loadChats();
         },
         activityItem: (item) => {
           setActivityTab(null);
@@ -209,7 +216,7 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
     hasRail: railSpaces(spaces).length > 0,
     chats,
     failed,
-    reloadChats: () => void loadChats(),
+    reloadChats: loadChats,
     reloadSpaces: () => void reload(),
     chatById,
     onChatEvent,

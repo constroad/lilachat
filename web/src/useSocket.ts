@@ -74,6 +74,10 @@ export function useSocket(params: {
   onCambioDeChat?: (data: { chatId: string }) => void;
   /** My company spaces changed (a request, approved, added, deactivated): read them again. */
   onSpacesChanged?: () => void;
+  /** A card (poll, event, reminder) changed (22/10): the list's pending markers read again. */
+  onCardChanged?: () => void;
+  /** A space's people changed (22/10): its directories refresh. */
+  onMembersChanged?: (data: { workspaceId: string }) => void;
   /**
    * El server no quiere este socket: lo cortó él (el teléfono cerró la sesión
    * de esta web, W5) o rechazó el token al reconectar. Se renueva la sesión:
@@ -133,7 +137,10 @@ export function useSocket(params: {
       refrescarTodas();
     });
     // Una encuesta, un evento o un recordatorio del chat cambió: su tarjeta se vuelve a pedir (W3c).
-    socket.on('ref.changed', avisarTarjeta);
+    socket.on('ref.changed', (cambio: Parameters<typeof avisarTarjeta>[0]) => {
+      avisarTarjeta(cambio);
+      handlers.current.onCardChanged?.();
+    });
     // Un corte del SERVER no se reintenta solo (socket.io lo deja así): sin
     // esto, una web revocada se quedaba mostrando los chats con «Sin conexión».
     // Con sesión renovada se reconecta con el token NUEVO: si React ya lo
@@ -166,6 +173,7 @@ export function useSocket(params: {
     );
     socket.on('chat.changed', (data: { chatId: string }) => handlers.current.onCambioDeChat?.(data));
     socket.on('workspaces.changed', () => handlers.current.onSpacesChanged?.());
+    socket.on('workspace.members.changed', (data: { workspaceId: string }) => handlers.current.onMembersChanged?.(data));
     // E3: el resumen nuevo de una raíz («4 respuestas · última 10:42»).
     socket.on('msg.hilo', (data: { chatId: string; raiz: number; hilo: NonNullable<ChatMessage['hilo']> }) => handlers.current.onHilo?.(data));
     socket.on('msg.reacciones', (data: { chatId: string; seq: number; reacciones: Reaccion[] }) => handlers.current.onReacciones?.(data));

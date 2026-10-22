@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import { createSessionCache, type ActivityItem, type ActivityType, type CacheEntry, type ClientChannel, type ClientWorkspaceMember, type SessionCache } from '@lilachat/shared';
 import type { ApiResult } from '../api';
+import type { ChatSummary } from '../chat/types';
 import type { BaseLocal } from '../local/baseLocal';
-import { spaceActivity, spaceChannels, spaceMembers } from './spacesApi';
+import { spaceActivity, spaceChannels, spaceChats, spaceMembers } from './spacesApi';
 
 /**
  * What a company space's screens already saw, painted at once and refreshed
@@ -18,6 +19,8 @@ const SAVE_DELAY_MS = 800;
 
 export type ActivityPage = { items: ActivityItem[]; unread: { mentions: number; threads: number } };
 export type MemberLists = Record<'active' | 'pending' | 'invited' | 'deactivated', ClientWorkspaceMember[]>;
+/** A space's list and its «Hilos» / «Menciones» chips, which come with it (22/10). */
+export type SpaceChatsPage = { chats: ChatSummary[]; activity: { mentions: number; threads: number } };
 
 let disk: BaseLocal | null = null;
 /** The signed-in person's local base (`Shell`): without it the cache lives only in memory. */
@@ -40,7 +43,20 @@ export const membersCache = cacheOf<ClientWorkspaceMember[]>();
 export const memberListsCache = cacheOf<MemberLists>();
 export const activityCache = cacheOf<ActivityPage>();
 export const channelsCache = cacheOf<ClientChannel[]>();
-const ALL: SessionCache<unknown>[] = [membersCache, memberListsCache, activityCache, channelsCache] as SessionCache<unknown>[];
+export const spaceChatsCache = cacheOf<SpaceChatsPage>();
+const ALL: SessionCache<unknown>[] = [membersCache, memberListsCache, activityCache, channelsCache, spaceChatsCache] as SessionCache<unknown>[];
+
+/**
+ * The chats of my spaces that this browser has seen: an event of one of them is
+ * not a «new conversation» for the personal list, which used to reload itself
+ * for every message of a channel (22/10).
+ */
+const spaceChatIds = new Set<string>();
+export const isSpaceChat = (chatId: string): boolean => spaceChatIds.has(chatId);
+const rememberSpaceChats = (page: SpaceChatsPage) => {
+  for (const chat of page.chats) spaceChatIds.add(chat.id);
+  return page;
+};
 
 /** A refusal becomes an error the cache keeps apart from what it shows. */
 export function dataOf<T>(response: ApiResult<T>): T {
@@ -51,6 +67,17 @@ export function dataOf<T>(response: ApiResult<T>): T {
 export const fetchMembers = (jwt: string, spaceId: string) => async () => dataOf(await spaceMembers(jwt, spaceId)).members;
 export const fetchChannels = (jwt: string, spaceId: string) => async () => dataOf(await spaceChannels(jwt, spaceId)).channels;
 export const fetchActivity = (jwt: string, spaceId: string, type: ActivityType) => async () => dataOf(await spaceActivity(jwt, spaceId, { type }));
+export const fetchSpaceChats = (jwt: string, spaceId: string) => async (): Promise<SpaceChatsPage> => {
+  const page = dataOf(await spaceChats(jwt, spaceId));
+  // A server before 22/10 sends the chips' counts apart.
+  const activity = page.activity ?? dataOf(await spaceActivity(jwt, spaceId, { countsOnly: true })).unread;
+  return rememberSpaceChats({ chats: page.chats, activity });
+};
+/** Someone joined, left or changed in the space: its directories refresh where they are open (`workspace.members.changed`). */
+export function membersChanged(spaceId: string): void {
+  membersCache.expire(`${spaceId}:members`);
+  memberListsCache.expire(`${spaceId}:member-lists`);
+}
 
 const fromDisk = new Set<string>();
 async function hydrateFromDisk<T>(cache: SessionCache<T>, key: string): Promise<void> {
@@ -58,7 +85,9 @@ async function hydrateFromDisk<T>(cache: SessionCache<T>, key: string): Promise<
   fromDisk.add(key);
   const row = await disk.meta.get(`${DISK_PREFIX}${key}`).catch(() => undefined);
   const saved = row?.valor as { value?: T; fetchedAt?: number } | undefined;
-  if (saved?.value !== undefined && typeof saved.fetchedAt === 'number') cache.hydrate(key, saved.value, saved.fetchedAt);
+  if (saved?.value === undefined || typeof saved.fetchedAt !== 'number') return;
+  cache.hydrate(key, saved.value, saved.fetchedAt);
+  if (key.endsWith(':chats')) rememberSpaceChats(saved.value as SpaceChatsPage);
 }
 
 const NONE: CacheEntry<never> = Object.freeze({ loading: false });
@@ -73,6 +102,10 @@ export function useCached<T>(cache: SessionCache<T>, key: string | null, fetcher
     if (!key || !active) return;
     void hydrateFromDisk(cache, key).then(() => cache.revalidate(key, () => latest.current()));
   }, [cache, key, active]);
+  // Expired while open (members changed, 22/10): refreshed now, keeping what is shown.
+  useEffect(() => {
+    if (key && active && entry.fetchedAt === 0) void cache.revalidate(key, () => latest.current());
+  }, [cache, key, active, entry.fetchedAt]);
   const refresh = useCallback(() => {
     if (key) void cache.revalidate(key, () => latest.current(), { force: true });
   }, [cache, key]);
@@ -101,4 +134,5 @@ export function forgetSpace(spaceId: string): void {
 export function forgetAllSpaces(): void {
   for (const cache of ALL) cache.clear();
   fromDisk.clear();
+  spaceChatIds.clear();
 }

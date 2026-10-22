@@ -35,8 +35,9 @@ export function MembersDialog(props: { space: ClientWorkspace; jwt: string; myUs
   const [actionError, setError] = useState('');
   // The four lists paint at once from what was seen and refresh behind (22/10).
   const cached = useCached(memberListsCache, `${space.id}:member-lists`, async (): Promise<Record<MembersTab, ClientWorkspaceMember[]>> => {
-    const [active, pending, invited, deactivated] = await Promise.all([spaceMembers(jwt, space.id, 'active'), spaceMembers(jwt, space.id, 'pending'), spaceMembers(jwt, space.id, 'invited'), spaceMembers(jwt, space.id, 'deactivated')]);
-    return { active: dataOf(active).members, pending: dataOf(pending).members, invited: dataOf(invited).members, deactivated: dataOf(deactivated).members };
+    // One request for the four lists (22/10), split here by status.
+    const everyone = dataOf(await spaceMembers(jwt, space.id, 'all')).members;
+    return { active: everyone.filter((one) => one.status === 'active'), pending: everyone.filter((one) => one.status === 'pending'), invited: everyone.filter((one) => one.status === 'invited'), deactivated: everyone.filter((one) => one.status === 'deactivated') };
   });
   const lists = cached.value ?? null;
   const error = actionError || (lists ? '' : (cached.error ?? ''));

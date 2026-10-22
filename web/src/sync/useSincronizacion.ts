@@ -17,6 +17,7 @@ import { cambiarFila } from '../local/listaLocal';
 import { sincronizar } from './sincronizar';
 import { anotarEnvio } from '../chat/reenviar/frecuenciasDeEnvio';
 import { debeSonarEnLaWeb, sonarMensaje } from '../sonidos/sonidoDeMensaje';
+import { isSpaceChat } from '../spaces/spaceCache';
 
 /** Una página del historial: lo que entra en pantalla y algo más. */
 export const TAMANO_DE_PAGINA = 50;
@@ -80,7 +81,8 @@ export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401
     // La fila cambia acá, con las reglas de shared (auditoría 19/10: antes cada
     // evento pedía la lista entera). Un chat que no está sí la pide.
     const enLaFila = (chatId: string, cambiar: Parameters<typeof cambiarFila>[2]) =>
-      base && void cambiarFila(base, chatId, cambiar).then((estaba) => !estaba && recargarPronto());
+      // A chat of a space is not a new conversation of the personal list (22/10: it reloaded for every channel message).
+      base && void cambiarFila(base, chatId, cambiar).then((estaba) => !estaba && !isSpaceChat(chatId) && recargarPronto());
     const visibleAbierto = () => (document.visibilityState === 'visible' ? abiertoRef.current : null);
     return {
       onMessage: (mensaje: ChatMessage) => {

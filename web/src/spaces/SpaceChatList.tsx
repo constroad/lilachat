@@ -7,6 +7,7 @@ import { copiarTexto } from '../chat/copiarTexto';
 import type { AccionDelChat } from '../chat/menuDelChat';
 import type { ChatSummary } from '../chat/types';
 import { SpaceLogo } from './SpaceLogo';
+import { PendingMarker } from '../chat/queue/PendingMarker';
 
 export type WorkspaceLink = 'directory' | 'members' | 'requests' | 'settings';
 
@@ -211,6 +212,7 @@ function ChannelRow(props: { chat: ChatSummary; open: boolean; onOpen: () => voi
     <button type="button" data-testid={`canal-fila-${chat.id}`} aria-current={props.open} onClick={props.onOpen} className={`flex h-10 w-full items-center gap-2.5 px-4 text-left ${props.open ? 'bg-primary/10 text-primary' : 'hover:bg-background'}`}>
       <Icon size={16} className={unread || props.open ? 'text-primary' : 'text-on-surface-variant'} />
       <span className={`min-w-0 flex-1 truncate text-sm ${unread ? 'font-bold' : ''}`}>{chat.name}</span>
+      <PendingMarker chatId={chat.id} />
       {unread ? (
         <span className="grid h-5 min-w-[20px] place-items-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-on-primary">{chat.unread}</span>
       ) : chat.lastMessage ? (

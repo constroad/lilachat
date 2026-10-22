@@ -42,6 +42,9 @@ import { useSuperadmin } from './admin/adminApi';
 import { CallProvider } from './calls/CallProvider';
 import type { IncomingOffer } from './calls/useWebCall';
 import { useSpacesWeb } from './spaces/useSpacesWeb';
+import { forgetPendingInChats, refreshPendingInChats } from './chat/queue/pendingInChats';
+import { membersChanged } from './spaces/spaceCache';
+import type { SpaceChatEvent } from './spaces/useSpacesWeb';
 
 /** Cuánto dura un aviso corto en pantalla. */
 const DURACION_DEL_AVISO_MS = 3000;
@@ -92,7 +95,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
 
   const eventos = useRef<Partial<ReturnType<typeof useSincronizacion>['eventos']>>({});
   /** A chat outside the personal list moved: the open space and the rail ask again. */
-  const eventoDeEspacio = useRef<(chatId: string) => void>(() => undefined);
+  const eventoDeEspacio = useRef<(event: SpaceChatEvent) => void>(() => undefined);
   const espaciosCambiaron = useRef<() => void>(() => undefined);
   const socket = useSocket({
     jwt: credential.jwt,
@@ -100,23 +103,45 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
     userId: puedeAbrirSocket({ userId: credential.jwt ? yo : null, tieneSecreto: true, refrescoResuelto }) ? yo : null,
     onMessage: (mensaje: ChatMessage) => {
       eventos.current.onMessage?.(mensaje);
-      eventoDeEspacio.current(mensaje.chatId);
+      eventoDeEspacio.current({ type: 'message', chatId: mensaje.chatId, message: mensaje });
+      // A new poll, event or task can wait for me: the list's markers read again (22/10).
+      if (mensaje.kind === 'poll' || mensaje.kind === 'event' || mensaje.kind === 'checklist') void refreshPendingInChats(credential.jwt);
     },
     onReceipt: (acuse) => {
       eventos.current.onReceipt?.(acuse);
-      eventoDeEspacio.current(acuse.chatId);
+      eventoDeEspacio.current({ type: 'receipt', chatId: acuse.chatId, userId: acuse.userId });
     },
-    onBorrado: (dato) => eventos.current.onBorrado?.(dato),
+    onBorrado: (dato) => {
+      eventos.current.onBorrado?.(dato);
+      // A deleted card may have been something waiting for me (22/10).
+      void refreshPendingInChats(credential.jwt);
+    },
     onEditado: (dato) => eventos.current.onEditado?.(dato),
     onHilo: (dato) => eventos.current.onHilo?.(dato),
     onReacciones: (dato) => eventos.current.onReacciones?.(dato),
     onCambioDeChat: (dato) => {
       eventos.current.onCambioDeChat?.();
-      eventoDeEspacio.current(dato.chatId);
+      eventoDeEspacio.current({ type: 'changed', chatId: dato.chatId });
     },
     onSpacesChanged: () => espaciosCambiaron.current(),
+    onMembersChanged: (dato) => membersChanged(dato.workspaceId),
+    onCardChanged: () => void refreshPendingInChats(credential.jwt),
     onSinAutorizacion: manejar401,
   });
+  // The list's «something waits for you» markers (José, 22/10): on start, on closing a chat, on coming back to the tab.
+  useEffect(() => {
+    void refreshPendingInChats(credential.jwt);
+  }, [credential.jwt, selectedId]);
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refreshPendingInChats(credential.jwt);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      forgetPendingInChats();
+    };
+  }, [credential.jwt]);
   const sync = useSincronizacion({ base, yo, jwt: credential.jwt, socket: socket.socket, conectado: socket.connected, manejar401, chatAbierto: selectedId });
   eventos.current = sync.eventos;
 
@@ -185,7 +210,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
   // Who calls: the chat as the list names it (the agenda's name), else what the offer brings.
   const callerOf = useCallback((offer: IncomingOffer) => callerName({ chatName: [...chats, ...(spaceChatsShown ?? [])].find((chat) => chat.id === offer.chatId)?.name, fromName: offer.fromName, fromPhone: offer.fromPhone }), [chats, spaceChatsShown]);
   const personales = useMemo(() => new Set(chats.map((chat) => chat.id)), [chats]);
-  eventoDeEspacio.current = (chatId) => !personales.has(chatId) && espacios.onChatEvent();
+  eventoDeEspacio.current = (event) => !personales.has(event.chatId) && espacios.onChatEvent(event);
   espaciosCambiaron.current = espacios.reloadSpaces;
   const chatsParaReenviar = useMemo(() => ordenarParaLaLista(chats), [chats]);
   const accionesSobreChats = useAccionesSobreChats({

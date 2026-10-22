@@ -3,6 +3,7 @@ import { DELIVERY_GLYPH, formatChatTimestamp, resolveChatPreview, resolveDeliver
 import { Avatar } from '../ui/Avatar';
 import { MenuDeChat } from './MenuDeChat';
 import { useFunInRow } from './nudge';
+import { PendingMarker } from './queue/PendingMarker';
 import type { AccionDelChat } from './menuDelChat';
 import type { ChatSummary } from './types';
 
@@ -42,6 +43,7 @@ export function FilaDeChat(props: { chat: ChatSummary; yo?: string; seleccionado
             <ChecksDeLaFila chat={chat} yo={props.yo} visible={preview.style === 'normal'} />
             <span className={`min-w-0 flex-1 truncate text-[13px] ${preview.style === 'typing' ? 'italic text-primary' : preview.style === 'eliminado' ? 'italic text-on-surface-variant' : 'text-on-surface-variant'}`}>{preview.text}</span>
             {chat.muted ? <BellOff data-testid={`silenciado-${chat.id}`} size={14} className="shrink-0 text-on-surface-variant" /> : null}
+            <PendingMarker chatId={chat.id} />
             <MarcaDeSinLeer chat={chat} />
           </span>
         </span>

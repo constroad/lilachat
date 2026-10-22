@@ -19,12 +19,12 @@ export const joinChannel = (jwt: string, spaceId: string, chatId: string) => api
 
 /** The chats of a space; each one carries its space, so it opens in the Slack format. */
 export async function spaceChats(jwt: string, spaceId: string) {
-  const response = await api<{ chats: ChatSummary[] }>(`/chats?workspace=${spaceId}`, { jwt });
-  return response.ok ? { ...response, data: { chats: response.data.chats.map((chat) => ({ ...chat, workspaceId: spaceId })) } } : response;
+  const response = await api<{ chats: ChatSummary[]; activity?: { mentions: number; threads: number } }>(`/chats?workspace=${spaceId}`, { jwt });
+  return response.ok ? { ...response, data: { chats: response.data.chats.map((chat) => ({ ...chat, workspaceId: spaceId })), activity: response.data.activity } } : response;
 }
 
 /** The people of a space (designs `e1-08`, `e1-10`, `e1-11`): active for everyone; pending and deactivated for admins. */
-export const spaceMembers = (jwt: string, spaceId: string, status: 'active' | 'pending' | 'invited' | 'deactivated' = 'active') => api<{ members: ClientWorkspaceMember[] }>(path(`/${spaceId}/members?status=${status}`), { jwt });
+export const spaceMembers = (jwt: string, spaceId: string, status: 'active' | 'pending' | 'invited' | 'deactivated' | 'all' = 'active') => api<{ members: ClientWorkspaceMember[] }>(path(`/${spaceId}/members?status=${status}`), { jwt });
 export const changeMember = (jwt: string, spaceId: string, memberId: string, change: { status?: 'active' | 'deactivated'; role?: WorkspaceRole; title?: string; area?: string }) =>
   api<{ member: ClientWorkspaceMember }>(path(`/${spaceId}/members/${memberId}`), { jwt, method: 'PATCH', body: change });
 export const rejectRequest = (jwt: string, spaceId: string, memberId: string) => api<Record<string, never>>(path(`/${spaceId}/members/${memberId}`), { jwt, method: 'DELETE' });

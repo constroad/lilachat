@@ -9,6 +9,7 @@
 import type { DestacadoEnLista, NotificationLevel, ResumenDeHiloEnCliente, VistaDelFijado, VistaPreviaDeEnlace } from '@lilachat/shared';
 import type { ServerMessage } from '../chat/socketClient';
 import { unSoloPedido } from './pedidoUnico';
+import { buildHeader, reportStatus } from './appBuild';
 
 export const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
 const TIMEOUT_MS = 15_000;
@@ -27,12 +28,13 @@ async function post<T>(
   try {
     const response = await fetchImpl(`${BASE_URL}${route}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...buildHeader() },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
     if (!response.ok) {
+      reportStatus(response.status);
       return {
         ok: false,
         status: response.status,
@@ -57,6 +59,7 @@ async function authed<T>(
       method,
       headers: {
         Authorization: `Bearer ${token}`,
+        ...buildHeader(),
         ...(body ? { 'Content-Type': 'application/json' } : {}),
       },
       body: body ? JSON.stringify(body) : undefined,
@@ -64,6 +67,7 @@ async function authed<T>(
     });
     const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
     if (!response.ok) {
+      reportStatus(response.status);
       return {
         ok: false,
         status: response.status,
@@ -220,11 +224,12 @@ export type AjustesDeChat = { muted?: boolean; pinned?: boolean; archived?: bool
 async function get<T>(route: string, token: string, fetchImpl: FetchLike = fetch): Promise<ApiResult<T>> {
   try {
     const response = await fetchImpl(`${BASE_URL}${route}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}`, ...buildHeader() },
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
     if (!response.ok) {
+      reportStatus(response.status);
       return {
         ok: false,
         status: response.status,
@@ -277,7 +282,7 @@ export async function cambiarAjustesDeChat(
   try {
     const res = await fetch(`${BASE_URL}/api/chats/${chatId}/ajustes`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...buildHeader() },
       body: JSON.stringify(cambios),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
@@ -312,7 +317,7 @@ export async function leaveChat(chatId: string, token: string): Promise<boolean>
   try {
     const res = await fetch(`${BASE_URL}/api/chats/${chatId}/leave`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}`, ...buildHeader() },
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     return res.ok;
@@ -332,7 +337,7 @@ export async function olvidarPushDeEsteTelefono(token: string): Promise<boolean>
   try {
     const res = await fetch(`${BASE_URL}/api/push/subscribe`, {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}`, ...buildHeader() },
       signal: AbortSignal.timeout(5_000),
     });
     return res.ok;

@@ -33,6 +33,7 @@ import { esDispositivoVinculado } from '@lilachat/shared';
 import { vinculadoVigente } from './dispositivosVinculados.js';
 import { HiloInvalidoError } from './hilos.js';
 import { registerAgendaRelay } from './agendaRelay.js';
+import { BUILD_HEADER, appBelowMinimum, type MinimumSource } from './minimumVersion.js';
 import { avisarCambioDeChat, emitMembersChanged, emitSpacesChanged, avisarEntregadoAlConectar, avisarMensajeNuevo, fijarServidorDelReparto, leerLoPropio, publicarAviso, publicarMensaje } from './reparto.js';
 
 export { avisarCambioDeChat, avisarCambioDeVinculos, avisarMensajeNuevo, desconectarDispositivo, notifyThread, publicarAviso, publicarMensaje } from './reparto.js';
@@ -81,7 +82,8 @@ async function contactIdsOf(userId: Types.ObjectId): Promise<string[]> {
 const PING_INTERVALO_MS = 15_000;
 const PING_ESPERA_MS = 10_000;
 
-export function attachSocket(httpServer: HttpServer): SocketServer {
+/** `minimumBuild`: an app below it does not connect (`update_required`, backlog 32). */
+export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: MinimumSource } = {}): SocketServer {
   const io = new SocketServer(httpServer, {
     // El cliente es nuestra app y nuestra web; no hay terceros embebiéndonos.
     cors: { origin: false },
@@ -112,6 +114,12 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
   });
 
   io.use((socket: AuthedSocket, next) => {
+    if (options.minimumBuild) {
+      options.minimumBuild.refresh();
+      const { auth, headers } = socket.handshake;
+      const build = auth?.build === undefined ? headers[BUILD_HEADER] : String(auth.build);
+      if (appBelowMinimum({ build }, options.minimumBuild.current())) return next(new Error('update_required'));
+    }
     const token = String(socket.handshake.auth?.token ?? '');
     const claims = token ? verifySession(token) : null;
     if (!claims) return next(new Error('unauthorized'));

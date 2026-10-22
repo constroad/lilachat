@@ -43,6 +43,7 @@ import { buildBotRouter, buildOAuthRouter } from './bots/botRoutes.js';
 import { buildBotUserRouter } from './bots/botUserRoutes.js';
 import { buildFileViewRouter } from './fileViewRoutes.js';
 import { notifyEdited } from './reparto.js';
+import { requireMinimumBuild, type MinimumSource } from './minimumVersion.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -77,6 +78,8 @@ export type AppDeps = {
   vinculacion?: OpcionesDeVinculacion;
   /** GIPHY's key and, in tests, fake requests (`gifRoutes.ts`). */
   giphy?: { apiKey?: string; fetchers?: GiphyFetchers };
+  /** The minimum app build (LilaStore): below it, 426 (`minimumVersion.ts`). Without it, nothing is checked. */
+  minimumBuild?: MinimumSource;
 };
 
 /**
@@ -93,6 +96,8 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.get('/api/health', (_req, res) => {
     res.status(200).json({ status: 'ok', service: 'lilachat-server', version });
   });
+
+  if (deps.minimumBuild) app.use('/api', requireMinimumBuild(deps.minimumBuild));
 
   // Vincular por QR (W5): antes que `/api/auth`, que no conoce estas rutas.
   const vincular = buildVincularRouters(deps.vinculacion);

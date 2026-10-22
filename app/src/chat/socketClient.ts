@@ -6,6 +6,7 @@ import { pausaDelSocket, queHacerConElSocket, type PausaDelSocket } from './serv
 import { registrarPerf } from '../diagnostico/diagnostico';
 import { answerAgendaRequest } from '../contacts/webAgendaRelay';
 import { listenPresence } from './presenceStore';
+import { BUILD_HEADER, UPDATE_REQUIRED_STATUS, buildHeader, reportStatus } from '../api/appBuild';
 
 /**
  * El socket de la app. Un ÚNICO socket para toda la sesión: abrir uno por
@@ -98,24 +99,34 @@ export function alConectar(listener: () => void): () => void {
   return () => alConectarListeners.delete(listener);
 }
 
+/** The socket says its build too: `build` in its auth, read by the server's handshake check. */
+function socketBuild(): { build?: string } {
+  const header = buildHeader();
+  return header[BUILD_HEADER] ? { build: header[BUILD_HEADER] } : {};
+}
+
 export function connectSocket(token: string): Socket {
   const decision = queHacerConElSocket(socket);
   if (socket && decision !== 'crear') {
     // El arranque entra con el JWT guardado y el refresh trae uno nuevo: el
     // socket se queda, y su próxima conexión usa el token vigente.
-    socket.auth = { token };
+    socket.auth = { token, ...socketBuild() };
     // Pausado: se reconecta el MISMO, con todos sus oyentes (FL8). Antes se
     // reemplazaba y las llamadas de la sesión quedaban escuchando el viejo.
     if (decision === 'reconectar') socket.connect();
     return socket;
   }
   socket = io(BASE_URL, {
-    auth: { token },
+    auth: { token, ...socketBuild() },
     transports: ['websocket'],
     // Sin techo de reintentos: el teléfono puede estar horas sin señal y tiene
     // que reconectar solo cuando vuelva.
     reconnection: true,
     reconnectionDelayMax: 30_000,
+  });
+  // Below LilaStore's minimum the server refuses the socket (backlog 32): the update hook checks at once.
+  socket.on('connect_error', (error: Error) => {
+    if (error.message === 'update_required') reportStatus(UPDATE_REQUIRED_STATUS);
   });
   socket.on('connect', () => {
     for (const listener of alConectarListeners) listener();

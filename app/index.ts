@@ -6,6 +6,8 @@ import {
   instalarEnvioAutomatico,
 } from './src/diagnostico/diagnostico';
 
+import { setAppBuild } from './src/api/appBuild';
+import { versionCodeActual } from './src/settings/versionApi';
 import App from './App';
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);
@@ -16,6 +18,8 @@ import App from './App';
 instalarCapturaGlobal();
 instalarDetectorDeTrabas();
 instalarEnvioAutomatico();
+// Every request says its build: below LilaStore's minimum the server answers 426 (backlog 32).
+setAppBuild(versionCodeActual());
 
 // El panel de emojis (`rn-emoji-keyboard`) usa `InteractionManager`, que RN
 // deprecó: funciona igual y el aviso solo tapa la barra de escribir en desarrollo.

@@ -12,6 +12,7 @@ import { startReminderCron } from './reminderCron.js';
 import { startBackupCron } from './backupCron.js';
 import { alertarServidor } from './alertaTelegram.js';
 import { sellarConsola } from './registro.js';
+import { lilaStoreMinimum } from './minimumVersion.js';
 
 /**
  * Arranque. El guard de «¿me ejecutaron directamente?» compara rutas REALES:
@@ -80,11 +81,13 @@ export function startServer(): void {
     }
   }
   const port = resolvePort();
-  const app = buildApp();
+  // One minimum for HTTP and the socket: an app below it gets 426 (backlog 32).
+  const minimumBuild = lilaStoreMinimum();
+  const app = buildApp({ minimumBuild });
   // El socket se cuelga del MISMO servidor HTTP: un proceso, un puerto, una
   // entrada en Torre (spec §12.1).
   const httpServer = createServer(app);
-  attachSocket(httpServer);
+  attachSocket(httpServer, { minimumBuild });
   // Escuchar ANTES de conectar la base: el health contesta desde el arranque y
   // un Mongo lento no deja al proceso mudo (patrón de lila).
   httpServer.listen(port, () => {

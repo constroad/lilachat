@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ResultadoDelChequeo } from './actualizacion';
 import { buscarActualizacion, versionCodeActual } from './versionApi';
+import { subscribeUpdateRequired } from '../api/appBuild';
 import { decidirAvisoDeActualizacion, shouldRecheckVersion } from './avisoDeActualizacion';
 import type { AvisoDeActualizacion } from './avisoDeActualizacion';
 import { useAlVolver } from '../ui/useAlVolver';
@@ -51,6 +52,8 @@ export function useActualizacionesDeLaApp() {
   useAlVolver(true, () => {
     if (shouldRecheckVersion(lastCheck.current, Date.now())) void checkPublished();
   });
+  // The server said 426 (below the minimum): checked now, so the lock screen comes without waiting.
+  useEffect(() => subscribeUpdateRequired(() => void checkPublished()), [checkPublished]);
 
   /**
    * El botón de Ajustes: busca la versión publicada y, si hay una más nueva, la

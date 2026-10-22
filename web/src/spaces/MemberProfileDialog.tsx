@@ -36,7 +36,7 @@ export function MemberProfileDialog(props: { space: ClientWorkspace; member: Cli
         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Datos</p>
         <p className="mb-2 font-bold">Información laboral</p>
         {row(Smartphone, 'Teléfono', formatPhoneDisplay(member.phone), (
-          <button type="button" data-testid="perfil-copiar-telefono" aria-label="Copiar teléfono" title={copied ? 'Copiado' : 'Copiar'} onClick={() => void copiarTexto(member.phone).then(setCopied)} className="grid h-9 w-9 place-items-center rounded-full text-primary hover:bg-primary/10"><Copy size={16} /></button>
+          <button type="button" data-testid="perfil-copiar-telefono" aria-label="Copiar teléfono" title={copied ? 'Copiado' : 'Copiar'} onClick={() => void copiarTexto(member.phone ?? "").then(setCopied)} className="grid h-9 w-9 place-items-center rounded-full text-primary hover:bg-primary/10"><Copy size={16} /></button>
         ))}
         {member.joinedAt ? row(Calendar, 'Se unió', joinedLabel(member.joinedAt)) : null}
         {member.area ? row(Briefcase, 'Área', member.area) : null}

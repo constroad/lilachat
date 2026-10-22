@@ -53,6 +53,7 @@ describe('MembersDialog (e1-10, e1-11)', () => {
   it('counts per tab; the ⋮ offers what the owner may do and sends the change', async () => {
     answer('status=active', { members: people });
     answer('status=pending', { members: [member('luis', { name: 'Luis Huamán', status: 'pending', phone: '954321098', requestedAt: new Date().toISOString() })] });
+    answer('status=invited', { members: [] });
     answer('status=deactivated', { members: [] });
     answer('/members/beto', { member: { ...people[2], role: 'admin' } }, 200, 'PATCH');
     render(<MembersDialog space={space()} jwt="t" myUserId="u-me" online={new Set()} initialTab="active" onInvite={() => undefined} onChanged={() => undefined} onClose={() => undefined} />);
@@ -69,6 +70,7 @@ describe('MembersDialog (e1-10, e1-11)', () => {
   it('a request is approved with its area and title, or rejected', async () => {
     answer('status=active', { members: people });
     answer('status=pending', { members: [member('luis', { name: 'Luis Huamán', status: 'pending', phone: '954321098', requestedAt: new Date(Date.now() - 5 * 60_000).toISOString() })] });
+    answer('status=invited', { members: [] });
     answer('status=deactivated', { members: [] });
     answer('/members/luis', { member: { ...people[1], id: 'luis', status: 'active' } }, 200, 'PATCH');
     answer('/members/luis', {}, 204, 'DELETE');
@@ -81,6 +83,20 @@ describe('MembersDialog (e1-10, e1-11)', () => {
     await waitFor(() => expect(calls.find((call) => call.method === 'PATCH')?.body).toEqual({ status: 'active', area: 'Flota', title: 'Chofer de volquete' }));
     await userEvent.click(within(await screen.findByTestId('solicitud-954321098')).getByTestId('solicitud-rechazar'));
     await waitFor(() => expect(calls.some((call) => call.method === 'DELETE' && call.url.includes('/members/luis'))).toBe(true));
+  });
+
+  it('«Invitados» lists the emails waiting (22/10): they show as invited by email and can only be withdrawn', async () => {
+    answer('status=active', { members: people });
+    answer('status=pending', { members: [] });
+    answer('status=invited', { members: [{ id: 'inv1', email: 'luis@empresa.pe', role: 'member', status: 'invited' }] });
+    answer('status=deactivated', { members: [] });
+    answer('/invites/inv1', null, 204, 'DELETE');
+    render(<MembersDialog space={space()} jwt="t" myUserId="u-me" online={new Set()} initialTab="active" onInvite={() => undefined} onChanged={() => undefined} onClose={() => undefined} />);
+    await userEvent.click(await screen.findByTestId('tab-invitados'));
+    expect(screen.getByTestId('fila-miembro-luis@empresa.pe')).toHaveTextContent('Invitado por correo');
+    expect(screen.queryByTestId('acciones-undefined')).toBeNull();
+    await userEvent.click(screen.getByTestId('retirar-luis@empresa.pe'));
+    await waitFor(() => expect(calls.some((call) => call.method === 'DELETE' && call.url.includes('/invites/inv1'))).toBe(true));
   });
 });
 

@@ -24,10 +24,14 @@ export async function spaceChats(jwt: string, spaceId: string) {
 }
 
 /** The people of a space (designs `e1-08`, `e1-10`, `e1-11`): active for everyone; pending and deactivated for admins. */
-export const spaceMembers = (jwt: string, spaceId: string, status: 'active' | 'pending' | 'deactivated' = 'active') => api<{ members: ClientWorkspaceMember[] }>(path(`/${spaceId}/members?status=${status}`), { jwt });
+export const spaceMembers = (jwt: string, spaceId: string, status: 'active' | 'pending' | 'invited' | 'deactivated' = 'active') => api<{ members: ClientWorkspaceMember[] }>(path(`/${spaceId}/members?status=${status}`), { jwt });
 export const changeMember = (jwt: string, spaceId: string, memberId: string, change: { status?: 'active' | 'deactivated'; role?: WorkspaceRole; title?: string; area?: string }) =>
   api<{ member: ClientWorkspaceMember }>(path(`/${spaceId}/members/${memberId}`), { jwt, method: 'PATCH', body: change });
 export const rejectRequest = (jwt: string, spaceId: string, memberId: string) => api<Record<string, never>>(path(`/${spaceId}/members/${memberId}`), { jwt, method: 'DELETE' });
+/** A company invites by email (22/10): `active` if a verified account owns it, otherwise `invited` until that email is verified. */
+export const inviteToSpaceByEmail = (jwt: string, spaceId: string, email: string) => api<{ id: string; email: string; status: 'active' | 'invited' }>(path(`/${spaceId}/invites`), { jwt, body: { email } });
+/** Withdraws an email invitation (22/10). */
+export const revokeSpaceInvite = (jwt: string, spaceId: string, inviteId: string) => api<Record<string, never>>(path(`/${spaceId}/invites/${inviteId}`), { jwt, method: 'DELETE' });
 export const updateSpace = (jwt: string, spaceId: string, change: { name?: string; rubro?: string; joinPolicy?: JoinPolicy; newCode?: boolean }) => api<{ workspace: ClientWorkspace }>(path(`/${spaceId}`), { jwt, method: 'PATCH', body: change });
 /** A 1:1 or a group INSIDE the space, among its active members (the server checks it). */
 export const createSpaceChat = (jwt: string, spaceId: string, body: { kind: 'direct' | 'group'; memberIds: string[]; name?: string }) => api<{ chatId: string }>('/chats', { jwt, body: { ...body, workspaceId: spaceId } });

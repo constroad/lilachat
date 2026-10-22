@@ -194,21 +194,18 @@ describe('ChannelsDialog', () => {
 });
 
 describe('InviteToSpaceDialog', () => {
-  it('email is the first way to send the code (a company invites by email), then WhatsApp', () => {
+  it('inviting by email comes first (a company invites by email, 22/10), then the code by WhatsApp; a bad email is caught here', async () => {
     render(<InviteToSpaceDialog space={space()} jwt="t" inviterName="José Zamora" onClose={() => undefined} />);
-    const email = screen.getByTestId('btn-correo-codigo');
+    const email = screen.getByTestId('input-correo-espacio');
     const whatsapp = screen.getByTestId('btn-whatsapp-codigo');
     expect(email.compareDocumentPosition(whatsapp) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    const link = email.getAttribute('href') ?? '';
-    expect(link.startsWith('mailto:?subject=')).toBe(true);
-    const params = new URLSearchParams(link.slice('mailto:?'.length));
-    expect(params.get('subject')).toBe('Invitación al espacio de QA Obra en Lilachat');
-    expect(params.get('body')).toContain('José Zamora te invita');
-    expect(params.get('body')).toContain('QAOB-7K3P');
+    await userEvent.type(email, 'no-es-correo');
+    await userEvent.click(screen.getByTestId('btn-invitar-correo'));
+    expect(await screen.findByText('Escribe un correo válido.')).toBeTruthy();
   });
   it('without the code (only admins have it), neither email nor WhatsApp shows', () => {
     render(<InviteToSpaceDialog space={space({ joinCode: undefined, role: 'member' })} jwt="t" onClose={() => undefined} />);
-    expect(screen.queryByTestId('btn-correo-codigo')).toBeNull();
+    expect(screen.queryByTestId('input-correo-espacio')).toBeNull();
     expect(screen.queryByTestId('btn-whatsapp-codigo')).toBeNull();
   });
 });

@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useDismiss } from '../ui/useDismiss';
-import { MoreVertical, Search, UserPlus } from 'lucide-react';
+import { MoreVertical, Search, UserPlus, X } from 'lucide-react';
 import { changeForAction, filterMembers, formatPhoneDisplay, memberActions, type ClientWorkspace, type ClientWorkspaceMember, type MemberAction } from '@lilachat/shared';
 import { FieldError, Overlay } from '../ui/Overlay';
 import { MemberAvatar, memberLine, memberName, OnlinePill, RolePill } from './memberWeb';
 import { RequestCard } from './RequestCard';
-import { changeMember, rejectRequest, spaceMembers } from './spacesApi';
+import { changeMember, rejectRequest, revokeSpaceInvite, spaceMembers } from './spacesApi';
 
-export type MembersTab = 'active' | 'pending' | 'deactivated';
+export type MembersTab = 'active' | 'pending' | 'invited' | 'deactivated';
 const TABS: { key: MembersTab; label: string; testId: string }[] = [
   { key: 'active', label: 'Activos', testId: 'tab-activos' },
   { key: 'pending', label: 'Pendientes', testId: 'tab-pendientes' },
+  { key: 'invited', label: 'Invitados', testId: 'tab-invitados' },
   { key: 'deactivated', label: 'Desactivados', testId: 'tab-desactivados' },
 ];
 const ACTION_LABELS: Record<MemberAction, string> = { 'make-admin': 'Hacer admin', 'make-member': 'Cambiar a miembro', 'make-guest': 'Cambiar a invitado', deactivate: 'Desactivar', reactivate: 'Reactivar' };
@@ -34,8 +35,8 @@ export function MembersDialog(props: { space: ClientWorkspace; jwt: string; myUs
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
-    const [active, pending, deactivated] = await Promise.all((['active', 'pending', 'deactivated'] as const).map((status) => spaceMembers(jwt, space.id, status)));
-    if (active?.ok && pending?.ok && deactivated?.ok) setLists({ active: active.data.members, pending: pending.data.members, deactivated: deactivated.data.members });
+    const [active, pending, invited, deactivated] = await Promise.all((['active', 'pending', 'invited', 'deactivated'] as const).map((status) => spaceMembers(jwt, space.id, status)));
+    if (active?.ok && pending?.ok && invited?.ok && deactivated?.ok) setLists({ active: active.data.members, pending: pending.data.members, invited: invited.data.members, deactivated: deactivated.data.members });
     else setError('No se pudieron cargar los miembros.');
   }, [jwt, space.id]);
   useEffect(() => {
@@ -84,21 +85,26 @@ export function MembersDialog(props: { space: ClientWorkspace; jwt: string; myUs
       )}
       <FieldError>{error}</FieldError>
       {lists === null && !error ? [0, 1, 2].map((index) => <div key={index} className="mt-3 h-16 animate-pulse rounded-xl bg-background" />) : null}
-      {lists !== null && shown.length === 0 ? <p className="mt-6 text-center text-sm text-on-surface-variant">{tab === 'pending' ? 'No hay solicitudes por aprobar.' : tab === 'deactivated' ? 'Nadie está desactivado.' : 'Nadie coincide con la búsqueda.'}</p> : null}
+      {lists !== null && shown.length === 0 ? <p className="mt-6 text-center text-sm text-on-surface-variant">{tab === 'pending' ? 'No hay solicitudes por aprobar.' : tab === 'deactivated' ? 'Nadie está desactivado.' : tab === 'invited' ? 'No hay invitaciones esperando.' : 'Nadie coincide con la búsqueda.'}</p> : null}
       {tab === 'pending'
         ? shown.map((request) => <RequestCard key={request.id} request={request} spaceName={space.name} code={space.joinCode} busy={busy} onApprove={(area, title) => void after(changeMember(jwt, space.id, request.id, { status: 'active', area, title }))} onReject={() => void after(rejectRequest(jwt, space.id, request.id))} />)
         : shown.map((member) => {
-            const actions = me && member.userId !== props.myUserId ? memberActions({ actor: me.role, target: member }) : [];
+            // An email invitation (22/10) is not a member yet: it can only be withdrawn.
+            const byEmail = !member.phone && Boolean(member.email);
+            const actions = me && !byEmail && member.userId !== props.myUserId ? memberActions({ actor: me.role, target: member }) : [];
             const isOnline = Boolean(member.userId && props.online.has(member.userId));
             return (
-              <div key={member.id} data-testid={`fila-miembro-${member.phone}`} className="relative mt-3 flex items-center gap-3 rounded-xl border border-outline/15 p-3">
+              <div key={member.id} data-testid={`fila-miembro-${member.phone ?? member.email}`} className="relative mt-3 flex items-center gap-3 rounded-xl border border-outline/15 p-3">
                 <MemberAvatar member={member} size={44} online={isOnline} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-bold">{memberName(member)}{member.userId === props.myUserId ? ' (Tú)' : ''}</p>
                   {memberLine(member) ? <p className="truncate text-[13px] text-on-surface-variant">{memberLine(member)}</p> : null}
-                  <p className="font-mono text-[13px]">{formatPhoneDisplay(member.phone)}</p>
+                  <p className="font-mono text-[13px]">{byEmail ? 'Invitado por correo' : formatPhoneDisplay(member.phone)}</p>
                 </div>
                 <div className="flex flex-col items-end gap-1"><RolePill role={member.role} />{isOnline ? <OnlinePill /> : null}</div>
+                {byEmail ? (
+                  <button type="button" data-testid={`retirar-${member.email}`} aria-label={`Retirar la invitación de ${member.email}`} title="Retirar invitación" onClick={() => void after(revokeSpaceInvite(jwt, space.id, member.id))} className="grid h-10 w-10 place-items-center rounded-lg text-on-surface-variant hover:bg-background"><X size={18} /></button>
+                ) : null}
                 {actions.length ? (
                   <button type="button" data-testid={`acciones-${member.phone}`} aria-label={`Cambiar rol o acceso de ${memberName(member)}`} aria-expanded={menuFor === member.id} onClick={() => setMenuFor(menuFor === member.id ? null : member.id)} className="grid h-10 w-8 place-items-center rounded-lg text-on-surface-variant hover:bg-background"><MoreVertical size={18} /></button>
                 ) : null}

@@ -2,7 +2,7 @@ import { formatPhoneDisplay, roleLabel, type ClientWorkspaceMember, type Workspa
 import { Avatar } from '../ui/Avatar';
 
 /** A person of the space by their name, or by their number while they have none. */
-export const memberName = (member: Pick<ClientWorkspaceMember, 'name' | 'phone'>): string => member.name?.trim() || formatPhoneDisplay(member.phone);
+export const memberName = (member: Pick<ClientWorkspaceMember, 'name' | 'phone' | 'email'>): string => member.name?.trim() || member.email || formatPhoneDisplay(member.phone);
 
 /** «Residente de obra · Obra», or nothing. */
 export const memberLine = (member: Pick<ClientWorkspaceMember, 'title' | 'area'>): string => [member.title, member.area].filter(Boolean).join(' · ');

@@ -36,6 +36,7 @@ import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { BuscadorDelChat } from './BuscadorDelChat';
 import { useBuscarEnChat } from './useBuscarEnChat';
+import { useChatHeaderMenu, type DetailSection } from './useChatHeaderMenu';
 import { citadosPorSeq, filaDeArchivoEnCola, fotosDelChat, pendientesEnOrden, sinPendientesConfirmados } from './filasDelChat';
 import { useGrupo } from './useGrupo';
 import { FueraDelGrupo } from './FueraDelGrupo';
@@ -146,11 +147,8 @@ export function ChatScreen({
   const destacados = useDestacadosDelChat({ chatId, jwt: credential.jwt, secreto: Boolean(encrypted) });
   const { ocultos, ocultar } = useOcultos(chatId);
   const [verDetalle, setVerDetalle] = useState(false);
-  /**
-   * El detalle se monta la PRIMERA vez que se abre y queda (FL12, §49 #13):
-   * cerrado igual clasificaba las medias del chat en cada mensaje nuevo, y la
-   * mayoría de las veces nadie lo abre. Quedarse montado conserva la animación.
-   */
+  const [detailSection, setDetailSection] = useState<DetailSection | null>(null);
+  // The detail mounts the FIRST time it opens and stays (FL12, §49 #13): it is rarely opened, and staying keeps the animation.
   const [detalleUsado, setDetalleUsado] = useState(false);
   if (verDetalle && !detalleUsado) setDetalleUsado(true);
   /**
@@ -272,6 +270,8 @@ export function ChatScreen({
   // Buscar dentro del chat (FL9): sobre lo que se ve —sin lo «eliminado para mí»—.
   const visiblesParaBuscar = useMemo(() => sinOcultos(messages, ocultos), [messages, ocultos]);
   const busqueda = useBuscarEnChat({ mensajes: visiblesParaBuscar, irA: irAMensaje });
+  const menuKind = esBorrador ? 'notes' : chatName.startsWith('# ') ? 'channel' : esGrupoChat ? 'group' : 'direct';
+  const headerMenu = useChatHeaderMenu({ chatId, jwt: credential.jwt, kind: menuKind, onDetail: (section) => (setDetailSection(section ?? null), setVerDetalle(true)), onSearch: busqueda.abrir, onError: setMediaError });
 
   useAtrasDelChat(
     {
@@ -425,18 +425,12 @@ export function ChatScreen({
           onVolver={onBack}
           onAbrirDetalle={() => setVerDetalle(true)}
           onLlamar={(conVideo) => llamar(chatId, chatName, conVideo)}
+          menu={headerMenu}
         />
       )}
 
       {fijar.franja}
       </View>
-      {/**
-       * El teclado (José, 20/10: «la animación de subida y bajada se siente
-       * torpe; WhatsApp es más ágil»). Con `padding` la lista se volvía a
-       * medir en CADA cuadro de la animación. `translate-with-padding` mueve
-       * la conversación como un bloque (transform, sin medir) y ajusta el
-       * tamaño una sola vez al final. Ver §59.
-       */}
       {/* Keyboard like Telegram (20/10): see `useScrollConTeclado`; the bar rides on the keyboard or the emoji panel in `ChatBottom`. */}
       <View style={{ flex: 1, zIndex: 1 }}>
       {fijar.hoja}
@@ -570,12 +564,13 @@ export function ChatScreen({
       {detalleUsado ? (
       <ChatDetailScreen
         visible={verDetalle}
+        openAt={detailSection}
         chatId={chatId}
         chatName={nombreVisible}
         credential={credential}
         mensajes={messages}
         onInfoCambiada={(info) => setInfoPropia((antes) => ({ ...antes, ...info }))}
-        onCerrar={() => setVerDetalle(false)}
+        onCerrar={() => (setVerDetalle(false), setDetailSection(null))}
         onSalio={() => {
           setVerDetalle(false);
           // Y afuera del chat: ya no es suyo.

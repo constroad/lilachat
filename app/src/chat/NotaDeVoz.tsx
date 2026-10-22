@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus, type AudioPlayer } from 'expo-audio';
-import { Pause, Play } from 'lucide-react-native';
-import { duracionDeVoz, firstPlay, nextPlaybackRate, scrubFraction } from '@lilachat/shared';
+import { firstPlay, nextPlaybackRate } from '@lilachat/shared';
 import { soltarElAudio, tomarElAudio } from './notaDeVozMotor';
-import { useColores } from '../ui/tema';
 import { reportarError } from '../ui/reportarError';
 import { playbackAudioMode } from './audioMode';
 import { useVoiceNoteSource } from './voiceNoteCache';
+import { VoiceNoteView as VistaDeNota } from './VoiceNoteView';
 
 /** Longer than this, Android stops background audio after ~3 min unless it shows lock-screen controls. */
 const LOCK_SCREEN_FROM_S = 150;
@@ -26,6 +24,8 @@ type PropsDeNota = {
   onda?: number[];
   /** En la propia (violeta sólido, FL13) todo va en el color del texto. */
   mia?: boolean;
+  /** Who recorded it: their photo with the microphone, like WhatsApp (José, 21/10). */
+  author?: { name: string; photo?: string };
 };
 
 /**
@@ -57,6 +57,7 @@ export function NotaDeVoz(props: PropsDeNota) {
     <VistaDeNota
       mia={props.mia}
       onda={props.onda}
+      author={props.author}
       sonando={false}
       ms={props.durationMs ?? 0}
       avance={0}
@@ -73,7 +74,7 @@ export function NotaDeVoz(props: PropsDeNota) {
 }
 
 /** Ya tocada: el reproductor vive y arranca solo, porque es la respuesta al toque. */
-function ActiveVoiceNote({ id, url, durationMs, onda, mia, velocidadInicial, startShare }: PropsDeNota & { velocidadInicial: number; startShare: number | null }) {
+function ActiveVoiceNote({ id, url, durationMs, onda, mia, author, velocidadInicial, startShare }: PropsDeNota & { velocidadInicial: number; startShare: number | null }) {
   const player = useAudioPlayer(url);
   const estado = useAudioPlayerStatus(player);
   const [velocidad, setVelocidad] = useState(velocidadInicial);
@@ -120,6 +121,7 @@ function ActiveVoiceNote({ id, url, durationMs, onda, mia, velocidadInicial, sta
     <VistaDeNota
       mia={mia}
       onda={onda}
+      author={author}
       sonando={sonando}
       ms={ms}
       avance={avance}
@@ -134,99 +136,5 @@ function ActiveVoiceNote({ id, url, durationMs, onda, mia, velocidadInicial, sta
       durationS={duracion}
       onSeek={(share) => void player.seekTo(share * duracion)}
     />
-  );
-}
-
-/** Lo que se ve, igual con o sin reproductor. */
-function VistaDeNota(props: {
-  mia?: boolean;
-  onda?: number[];
-  sonando: boolean;
-  ms: number;
-  avance: number;
-  velocidad: number;
-  onPlay: () => void;
-  onVelocidad: () => void;
-  /** Tap or drag along the bar: jump to that share of the audio (backlog 34). */
-  onSeek: (share: number) => void;
-  /** Its length, to show the time under the finger while dragging. */
-  durationS: number;
-  /** The audio is still loading after the tap: a spinner, not a dead button. */
-  loading?: boolean;
-}) {
-  const { mia, onda, sonando, velocidad } = props;
-  const colores = useColores();
-  const tinta = mia ? colores['on-burbuja-propia'] : colores.primary;
-  const [anchoBarra, setAnchoBarra] = useState(0);
-  /** While the finger is on the bar, the bar and the time follow it; letting go jumps there. */
-  const [dragShare, setDragShare] = useState<number | null>(null);
-  const avance = dragShare ?? props.avance;
-  const ms = dragShare !== null ? dragShare * props.durationS * 1000 : props.ms;
-
-  return (
-    <View testID="nota-de-voz" className="min-w-[210px] flex-row items-center gap-3 px-3 py-2.5">
-      <Pressable
-        testID={sonando ? 'btn-pausar-voz' : 'btn-reproducir-voz'}
-        accessibilityLabel={sonando ? 'Pausar' : 'Reproducir'}
-        onPress={props.onPlay}
-        hitSlop={2}
-        className={`h-10 w-10 items-center justify-center rounded-full ${mia ? 'bg-white/20' : 'bg-primary/10'}`}
-      >
-        {props.loading ? <ActivityIndicator size="small" color={tinta} /> : sonando ? <Pause size={18} color={tinta} /> : <Play size={18} color={tinta} fill={tinta} />}
-      </Pressable>
-      <View className="min-w-0 flex-1">
-        {/* Tap or drag along the bar, like WhatsApp: the area is taller than the line. */}
-        <View
-          testID="barra-voz"
-          accessibilityLabel="Ir a un punto de la nota"
-          accessibilityRole="adjustable"
-          onLayout={(evento) => setAnchoBarra(evento.nativeEvent.layout.width)}
-          hitSlop={{ top: 10, bottom: 10 }}
-          onStartShouldSetResponder={() => true}
-          onMoveShouldSetResponder={() => true}
-          // The chat's swipe-to-reply must not steal a drag along the bar.
-          onResponderTerminationRequest={() => false}
-          onResponderGrant={(evento) => setDragShare(scrubFraction(evento.nativeEvent.locationX, anchoBarra))}
-          onResponderMove={(evento) => setDragShare(scrubFraction(evento.nativeEvent.locationX, anchoBarra))}
-          onResponderRelease={(evento) => {
-            props.onSeek(scrubFraction(evento.nativeEvent.locationX, anchoBarra));
-            setDragShare(null);
-          }}
-          onResponderTerminate={() => setDragShare(null)}
-          className="h-6 justify-center"
-        >
-          {onda?.length ? (
-            // La onda que se midió al grabar (FL9), como WhatsApp: se llena
-            // con el avance. Sin onda (notas viejas), la línea de siempre.
-            <View testID="onda-voz" className="h-6 flex-row items-center justify-between">
-              {onda.map((valor, indice) => (
-                <View
-                  key={indice}
-                  className={`w-[3px] rounded-full ${
-                    indice / onda.length < avance ? (mia ? 'bg-on-burbuja-propia' : 'bg-primary') : mia ? 'bg-on-burbuja-propia/40' : 'bg-primary/30'
-                  }`}
-                  style={{ height: 3 + (valor / 100) * 19 }}
-                />
-              ))}
-            </View>
-          ) : (
-            <View className={`h-1 rounded-full ${mia ? 'bg-on-burbuja-propia/25' : 'bg-primary/15'}`}>
-              <View className={`h-1 rounded-full ${mia ? 'bg-on-burbuja-propia' : 'bg-primary'}`} style={{ width: `${Math.min(100, avance * 100)}%` }} />
-            </View>
-          )}
-        </View>
-        <Text className={`text-[11px] ${mia ? 'text-on-burbuja-propia-suave' : 'text-on-surface-variant'}`}>{duracionDeVoz(ms)}</Text>
-      </View>
-      <Pressable
-        testID="btn-velocidad-voz"
-        accessibilityLabel={`Velocidad ${velocidad}×`}
-        onPress={props.onVelocidad}
-        className="h-11 min-w-[44px] items-center justify-center"
-      >
-        <Text className={`rounded-full px-2 py-1 text-[12px] font-bold ${mia ? 'bg-white/20 text-on-burbuja-propia' : 'bg-primary/10 text-primary'}`}>
-          {`${String(velocidad).replace('.', ',')}×`}
-        </Text>
-      </Pressable>
-    </View>
   );
 }

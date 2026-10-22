@@ -1,11 +1,19 @@
+import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { ArrowLeft, Lock, MoreVertical, NotebookPen, Phone, Video } from 'lucide-react-native';
+import { ArrowLeft, ChevronDown, Lock, MoreVertical, NotebookPen, Phone, Video } from 'lucide-react-native';
+import { CALL_MENU } from './chatHeaderMenu';
+import { HeaderDropdown } from './HeaderDropdown';
+import type { ChatHeaderMenu } from './useChatHeaderMenu';
 import { useMargenes } from '../ui/useMargenes';
 import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
 
 /** El avatar de la cabecera (dp): 40, como WhatsApp (antes 36). */
 const AVATAR_DE_CABECERA = 40;
+/** The call menu hangs under the camera, the ⋮ one under the ⋮ (dp from the right edge). */
+const CALL_MENU_RIGHT = 52;
+const CHAT_MENU_RIGHT = 8;
+const CALL_OPTIONS = CALL_MENU.map((option) => ({ ...option, Icon: option.id === 'voice' ? Phone : Video }));
 
 /**
  * La cabecera del chat (salió de `ChatScreen`, que pasaba de 900 líneas): la
@@ -26,9 +34,12 @@ export function EncabezadoDelChat(props: {
   onVolver: () => void;
   onAbrirDetalle: () => void;
   onLlamar: (conVideo: boolean) => void;
+  /** The ⋮'s options (José, 21/10: it opened the same as the avatar). */
+  menu: ChatHeaderMenu;
 }) {
   const colores = useColores();
   const margenes = useMargenes();
+  const [openMenu, setOpenMenu] = useState<'calls' | 'chat' | null>(null);
   const { nombre: nombreVisible, foto: fotoVisible } = props;
   // Como el diseño: FLECHA (no la palabra «Atrás»), avatar del chat junto al
   // nombre, y el menú al final.
@@ -84,40 +95,27 @@ export function EncabezadoDelChat(props: {
         ) : null}
       </View>
       </Pressable>
-      {/* Llamadas: dejan de ser inertes (F10). Solo en 1:1 — una llamada
-          grupal es otra cosa (varias conexiones a la vez) y prometerla con el
-          mismo botón sería mentir. */}
+      {/* Calls like WhatsApp (José, 21/10): the camera with its arrow opens voice or video. Only in a 1:1 (F10): a group call is another thing. */}
       {props.puedeLlamar ? (
-        <>
-          <Pressable
-            testID="btn-videollamada"
-            accessibilityLabel="Videollamada"
-            onPress={() => props.onLlamar(true)}
-            className="h-11 w-11 items-center justify-center"
-          >
-            <Video size={20} color={colores["on-surface-variant"]} />
-          </Pressable>
-          <Pressable
-            testID="btn-llamada"
-            accessibilityLabel="Llamar"
-            onPress={() => props.onLlamar(false)}
-            className="h-11 w-11 items-center justify-center"
-          >
-            <Phone size={20} color={colores["on-surface-variant"]} />
-          </Pressable>
-        </>
+        <Pressable testID="btn-llamadas" accessibilityLabel="Llamar" onPress={() => setOpenMenu('calls')} className="h-11 flex-row items-center justify-center gap-0.5 px-1.5">
+          <Video size={21} color={colores["on-surface-variant"]} />
+          <ChevronDown size={14} color={colores["on-surface-variant"]} />
+        </Pressable>
       ) : null}
-      {/* El ⋮ no hacía nada (auditoría del 16/10): un botón que no responde
-          enseña que la app no responde. Abre la info del chat. */}
       <Pressable
         testID="btn-menu-chat"
-        accessibilityLabel="Info del chat"
-        onPress={props.onAbrirDetalle}
+        accessibilityLabel="Más opciones"
+        onPress={() => {
+          props.menu.refresh();
+          setOpenMenu('chat');
+        }}
         android_ripple={{ color: colores.outline, borderless: true, radius: 22 }}
         className="h-11 w-11 items-center justify-center"
       >
         <MoreVertical size={20} color={colores["on-surface-variant"]} />
       </Pressable>
+      <HeaderDropdown testID="menu-llamadas" visible={openMenu === 'calls'} options={CALL_OPTIONS} right={CALL_MENU_RIGHT} onSelect={(id) => props.onLlamar(id === 'video')} onClose={() => setOpenMenu(null)} />
+      <HeaderDropdown testID="menu-del-chat" visible={openMenu === 'chat'} options={props.menu.options} right={CHAT_MENU_RIGHT} onSelect={props.menu.select} onClose={() => setOpenMenu(null)} />
     </View>
   );
 }

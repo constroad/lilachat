@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { Modal } from '../ui/Modal';
 import {
@@ -77,6 +77,7 @@ const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.
 
 export function ChatDetailScreen({
   visible,
+  openAt,
   chatId,
   chatName,
   credential,
@@ -90,6 +91,8 @@ export function ChatDetailScreen({
   tarjetas,
 }: {
   visible: boolean;
+  /** Opened from the chat's ⋮ (José, 21/10): at the shared media, or adding people. */
+  openAt?: 'media' | 'add-members' | null;
   chatId: string;
   chatName: string;
   credential: Credential;
@@ -203,6 +206,18 @@ export function ChatDetailScreen({
   useEffect(() => {
     if (visible) void cargar();
   }, [visible, cargar]);
+
+  // From the ⋮: «Medios» scrolls to them, again after each relayout until the person scrolls herself.
+  const scrollRef = useRef<ScrollView>(null);
+  const sharedY = useRef<number | null>(null);
+  const followShared = useRef(false);
+  const scrollToShared = () => sharedY.current !== null && scrollRef.current?.scrollTo({ y: sharedY.current, animated: true });
+  useEffect(() => {
+    followShared.current = visible && openAt === 'media';
+    if (!visible) return;
+    if (openAt === 'add-members') setAgregando(true);
+    if (openAt === 'media') scrollToShared();
+  }, [visible, openAt]);
 
   /**
    * Media, documentos y links del chat, agrupados como en WhatsApp. Sale de los
@@ -382,7 +397,7 @@ export function ChatDetailScreen({
             </Pressable>
           </View>
         ) : (
-          <ScrollView contentContainerStyle={{ paddingBottom: margenes.pie + 24 }}>
+          <ScrollView ref={scrollRef} onScrollBeginDrag={() => (followShared.current = false)} contentContainerStyle={{ paddingBottom: margenes.pie + 24 }}>
             <IdentidadDelChat
               nombre={nombreVisible}
               avatarUrl={detalle!.avatarUrl}
@@ -441,12 +456,14 @@ export function ChatDetailScreen({
             {esGrupo ? <GroupFunCard chatId={chatId} jwt={credential.jwt} allowed={detalle!.funAllowed === true} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} /> : null}
             {tarjetas}
 
-            <SeccionCompartido
-              clasificado={clasificado}
-              pestana={pestana}
-              onPestana={setPestana}
-              onVerMedia={(m) => onVerImagen?.(m.seq)}
-            />
+            <View onLayout={(event) => ((sharedY.current = event.nativeEvent.layout.y), followShared.current && scrollToShared())}>
+              <SeccionCompartido
+                clasificado={clasificado}
+                pestana={pestana}
+                onPestana={setPestana}
+                onVerMedia={(m) => onVerImagen?.(m.seq)}
+              />
+            </View>
 
             {esGrupo ? (
               <ParticipantesDelGrupo

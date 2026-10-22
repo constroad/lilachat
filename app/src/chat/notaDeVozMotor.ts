@@ -23,3 +23,14 @@ export function __soltarAudio(): void {
   actual = null;
 }
 
+
+/** Like WhatsApp (José, 21/10): while it plays, or paused midway, the speed takes the photo's place. */
+export function showsSpeed(playing: boolean, progress: number): boolean {
+  return playing || (progress > 0 && progress < 1);
+}
+
+/** Where the knob goes on the bar: it follows the progress and never sticks out at either end. */
+export function knobLeft(progress: number, width: number, knob: number): number {
+  const share = Math.min(1, Math.max(0, progress));
+  return Math.round(share * Math.max(0, width - knob));
+}

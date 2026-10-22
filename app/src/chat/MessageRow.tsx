@@ -279,7 +279,7 @@ function FilaDeMensaje({
             />
           ) : null}
 
-          <MessageMedia item={item} mine={mine} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} />
+          <MessageMedia item={item} mine={mine} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} author={{ name: mine ? 'Tú' : (nombreAutor ?? ''), photo: fotoAutor }} />
 
           {!isPending(item) && item.deletedAt ? (
             /**

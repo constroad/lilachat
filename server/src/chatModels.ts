@@ -81,7 +81,9 @@ export interface Message {
   seq: number;
   senderId: Types.ObjectId;
   clientKey: string;
-  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'event' | 'poll' | 'reminder' | 'checklist' | 'system' | 'sticker' | 'zumbido' | 'guino';
+  kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'event' | 'poll' | 'reminder' | 'checklist' | 'system' | 'sticker' | 'zumbido' | 'guino' | 'contact';
+  /** A shared contact (pending 9): `userId` when that number is on Lilachat. */
+  contact?: { name: string; phone: string; userId?: Types.ObjectId };
   body?: string;
   /** A wink's id from the shared catalog (`WINKS`), with kind `guino`. */
   wink?: string;
@@ -231,10 +233,11 @@ const messageSchema = new Schema<Message>(
     clientKey: { type: String, required: true },
     kind: {
       type: String,
-      enum: ['text', 'image', 'video', 'audio', 'file', 'event', 'poll', 'reminder', 'checklist', 'system', 'sticker', 'zumbido', 'guino'],
+      enum: ['text', 'image', 'video', 'audio', 'file', 'event', 'poll', 'reminder', 'checklist', 'system', 'sticker', 'zumbido', 'guino', 'contact'],
       default: 'text',
     },
     body: { type: String },
+    contact: { type: new Schema({ name: { type: String, required: true }, phone: { type: String, required: true }, userId: { type: Schema.Types.ObjectId } }, { _id: false }) },
     wink: { type: String },
     ref: {
       type: new Schema({ tipo: { type: String, enum: ['encuesta', 'evento', 'recordatorio', 'checklist'], required: true }, id: { type: String, required: true } }, { _id: false }),

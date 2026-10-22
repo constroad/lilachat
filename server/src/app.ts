@@ -46,6 +46,7 @@ import { notifyEdited } from './reparto.js';
 import { requireMinimumBuild, type MinimumSource } from './minimumVersion.js';
 import type { GifConverter, MediaFetcher } from './animatedStickerRoutes.js';
 import { mountAppLinks } from './appLinks.js';
+import { buildContactShareRouter } from './contactShareRoutes.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -120,6 +121,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/chats', buildFijadosRouter());
   app.use('/api/chats', buildReenvioRouter());
   app.use('/api/chats', buildHilosRouter());
+  app.use('/api/chats', buildContactShareRouter());
   app.use('/api/chats', buildChatRouter(deps.mediaUploader));
   app.use('/api/media', buildMediaLibraryRouter());
   app.use('/api/media', buildMediaRouter(deps.mediaUploader));

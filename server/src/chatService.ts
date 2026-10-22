@@ -88,6 +88,8 @@ export async function sendMessage(params: {
   enElChat?: boolean;
   /** The wink of a `guino` message (`ensureFunAllowed` validated it). */
   wink?: string;
+  /** A shared contact (pending 9, `contactShareRoutes.ts` validated it). */
+  contact?: Message['contact'];
 }): Promise<SendResult> {
   const chatId = toObjectId(params.chatId);
   if (!chatId) throw new ForbiddenChatError();
@@ -147,6 +149,7 @@ export async function sendMessage(params: {
       media: params.media,
       ref: params.ref,
       ...(params.card ? { card: params.card } : {}),
+      ...(params.contact && !params.envelope ? { contact: params.contact } : {}),
       replyToSeq: params.replyToSeq,
       ...(menciones.length > 0 ? { menciones } : {}),
       ...(params.hiloDe !== undefined ? { hiloDe: params.hiloDe, ...(params.enElChat ? { enElChat: true } : {}) } : {}),
@@ -179,22 +182,29 @@ function borradoHastaDe(chat: { members?: { userId: Types.ObjectId; borradoHasta
   return chat.members?.find((member) => String(member.userId) === String(userId))?.borradoHasta ?? 0;
 }
 
+/** A page of messages: 50 unless asked otherwise, never more than 100. */
+export const clampPageLimit = (limit?: number): number => Math.min(Math.max(limit ?? 50, 1), 100);
+
+/** The chat of a member, and the `seq` below which they emptied it «for me»: nothing at or under it reaches them. */
+export async function memberChatFloor(chatId: string, userId: Types.ObjectId): Promise<{ chatId: Types.ObjectId; floor: number }> {
+  const id = toObjectId(chatId);
+  const chat = id
+    ? await ChatModel.findOne({ _id: id, 'members.userId': userId })
+        .select('members.userId members.borradoHasta')
+        .lean<{ _id: Types.ObjectId; members: { userId: Types.ObjectId; borradoHasta?: number }[] } | null>()
+    : null;
+  if (!chat) throw new ForbiddenChatError();
+  return { chatId: chat._id, floor: borradoHastaDe(chat, userId) };
+}
+
 export async function listMessages(params: {
   chatId: string;
   userId: Types.ObjectId;
   limit?: number;
   beforeSeq?: number;
 }): Promise<Message[]> {
-  const id = toObjectId(params.chatId);
-  const chat = id
-    ? await ChatModel.findOne({ _id: id, 'members.userId': params.userId })
-        .select('members.userId members.borradoHasta')
-        .lean<{ _id: Types.ObjectId; members: { userId: Types.ObjectId; borradoHasta?: number }[] } | null>()
-    : null;
-  if (!chat) throw new ForbiddenChatError();
-  const chatId = chat._id;
-  const limit = Math.min(Math.max(params.limit ?? 50, 1), 100);
-  const desde = borradoHastaDe(chat, params.userId);
+  const { chatId, floor: desde } = await memberChatFloor(params.chatId, params.userId);
+  const limit = clampPageLimit(params.limit);
 
   // Se pide DESCENDENTE (la página más reciente) y se devuelve ascendente: es
   // el orden en que se lee una conversación.

@@ -38,6 +38,7 @@ import { requireSession } from './requireSession.js';
 import { multerDeAvatar, subirFotoRedonda } from './subirAvatar.js';
 import { infoDeMensaje } from './infoDeMensaje.js';
 import { chatDetail } from './chatDetail.js';
+import { ONE_PAGE_PARAM_ONLY, readMessagePage } from './messageWindow.js';
 
 /**
  * REST de chats: el arranque de la app (lista e historial). El tiempo real va
@@ -499,21 +500,12 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
     return res.status(200).json({ ok: true });
   });
 
+  // Pages up from the end (`beforeSeq`), a window around an old message and pages down from it (pending 44).
   router.get('/:chatId/messages', async (req, res) => {
     try {
-      const beforeSeq = Number(req.query.beforeSeq);
-      const messages = await listMessages({
-        chatId: String(req.params.chatId),
-        userId: req.session!.userId,
-        limit: Number(req.query.limit) || undefined,
-        beforeSeq: Number.isFinite(beforeSeq) && beforeSeq > 0 ? beforeSeq : undefined,
-      });
-      // `lastSeq` viaja CON la página: es el tope real del chat en este mismo
-      // instante, y con él el teléfono puede tirar lo que guardó de más. Que lo
-      // calcule el cliente sería una carrera —un mensaje llegado entre el
-      // pedido y la respuesta se borraría de la pantalla—.
-      const chat = await ChatModel.findById(req.params.chatId).select('lastSeq').lean();
-      res.json({ messages: toClientMessages(messages), lastSeq: chat?.lastSeq ?? 0 });
+      const pageOf = await readMessagePage(String(req.params.chatId), req.session!.userId, req.query);
+      if (pageOf === 'invalid') return res.status(400).json({ message: ONE_PAGE_PARAM_ONLY });
+      res.json(pageOf);
     } catch (error) {
       if (error instanceof ForbiddenChatError) {
         return res.status(403).json({ message: error.message });

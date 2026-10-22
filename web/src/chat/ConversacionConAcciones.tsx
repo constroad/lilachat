@@ -92,7 +92,7 @@ export function ConversacionConAcciones(
   const [fotoAbierta, setFotoAbierta] = useState<number | null>(null);
   // Photos, GIFs and videos; never a sticker (José, 22/10: they showed up while swiping).
   const viewerPhotos = useMemo(() => (mensajes ?? []).filter(opensInPhotoViewer), [mensajes]);
-  const onVerFoto = useCallback((mensaje: MensajeEnPantalla) => setFotoAbierta(Math.max(0, viewerPhotos.findIndex((uno) => uno.clientKey === mensaje.clientKey))), [viewerPhotos]);
+  const openPhoto = useCallback((mensaje: MensajeEnPantalla) => setFotoAbierta(Math.max(0, viewerPhotos.findIndex((uno) => uno.clientKey === mensaje.clientKey))), [viewerPhotos]);
   const [pdfAbierto, setPdfAbierto] = useState<MensajeEnPantalla | null>(null);
   const greet = useCallback(() => void sync.enviarTexto(chat.id, '👋'), [sync, chat.id]);
   const canGreet = useCallback((noticeSeq: number) => !alreadyGreeted((mensajes ?? []).map((one) => ({ seq: one.seq, senderId: one.senderId, pending: Boolean(one.estado) })), noticeSeq, yo), [mensajes, yo]);
@@ -148,8 +148,8 @@ export function ConversacionConAcciones(
   const flat = usesFlatLayout(chat, { groupsAsList: useGroupsAsList() });
   const badgeOf = useCallback((senderId: string) => memberBadge({ ...detalle?.pills.get(senderId), isMe: senderId === yo }), [detalle, yo]);
   const contexto = useMemo<ContextoDeLaConversacion>(
-    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto, onVerPdf: setPdfAbierto, onGreet: greet, canGreet, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar, onEditarRecordatorio: editarRecordatorio, destacados: destacados.seqs, onStickerAction: chat.encrypted ? undefined : onStickerAction, flat, badgeOf }),
-    [yo, props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto, greet, canGreet, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editarRecordatorio, destacados.seqs, onStickerAction, flat, badgeOf]
+    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto: openPhoto, onVerPdf: setPdfAbierto, onGreet: greet, canGreet, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar, onEditarRecordatorio: editarRecordatorio, destacados: destacados.seqs, onStickerAction: chat.encrypted ? undefined : onStickerAction, flat, badgeOf }),
+    [yo, props.jwt, chat, detalle, nombres, photos, citado, onAccion, openPhoto, greet, canGreet, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editarRecordatorio, destacados.seqs, onStickerAction, flat, badgeOf]
   );
 
   // Nudges and winks: in a 1:1 (not the chat with yourself), or a group whose admin allows them (José, 21/10).
@@ -232,7 +232,7 @@ export function ConversacionConAcciones(
           }}
           onAccionDeChat={props.onAccionDeChat}
           onLevel={props.onLevel}
-          onVerFoto={onVerFoto}
+          onVerFoto={openPhoto}
           tarjetas={<>{chat.encrypted ? null : <ChecklistsCard chatId={chat.id} jwt={props.jwt} onOpen={(seq) => setSalto({ seq, vez: Date.now() })} />}<TarjetaDeFijados fijados={fijados} nombreDe={nombreDe} textoLocal={textoLocal} onVerTodos={() => setVerFijados(true)} />{chat.encrypted ? null : <TarjetaDeDestacados chatId={chat.id} jwt={props.jwt} yo={yo} cuantos={destacados.seqs.size} onIr={(seq) => setSalto({ seq, vez: Date.now() })} />}</>}
         />
         </PanelBoundary>

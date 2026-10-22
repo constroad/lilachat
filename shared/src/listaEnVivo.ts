@@ -13,6 +13,8 @@ export type ResumenEnVivo = {
   lastSeq: number;
   unread: number;
   markedUnread?: boolean;
+  /** Up to where I read (from the server). The chat opens from it: a stale one replayed winks (22/10). */
+  readSeq?: number;
   othersReadSeq: number;
   othersDeliveredSeq: number;
   acuseDe?: readonly string[];
@@ -35,6 +37,10 @@ export type MensajeEnVivo = {
   /** The file, whose type names a GIF in the list (pending 53). */
   media?: { mime?: string };
 };
+
+/** My cursor moved to `seq`, only on a row that has one (an older server sends none). */
+const readUpTo = (chat: ResumenEnVivo, seq: number): { readSeq?: number } =>
+  chat.readSeq === undefined ? {} : { readSeq: Math.max(chat.readSeq, seq) };
 
 /**
  * Aplica un `msg.new` a la lista de chats, sin ir al server.
@@ -64,6 +70,7 @@ export function aplicarMensajeALista<C extends ResumenEnVivo>(
     ...actual,
     lastSeq: mensaje.seq,
     unread: yaLeido ? actual.unread : actual.unread + 1,
+    ...(mensaje.chatId === chatAbierto ? readUpTo(actual, mensaje.seq) : {}),
     lastMessage: {
       seq: mensaje.seq,
       // Un sobre cifrado no trae `body`: la vista previa queda sin texto.
@@ -88,8 +95,9 @@ export function marcarLeido<C extends ResumenEnVivo>(chats: C[], chatId: string)
   const indice = chats.findIndex((chat) => chat.id === chatId);
   const actual = chats[indice];
   // Abrir el chat también quita la marca de «no leído» (FL9; el server igual).
-  if (!actual || (actual.unread === 0 && !actual.markedUnread)) return chats;
-  return chats.map((chat, i) => (i === indice ? { ...actual, unread: 0, markedUnread: false } : chat));
+  const cursorBehind = actual?.readSeq !== undefined && actual.readSeq < actual.lastSeq;
+  if (!actual || (actual.unread === 0 && !actual.markedUnread && !cursorBehind)) return chats;
+  return chats.map((chat, i) => (i === indice ? { ...actual, unread: 0, markedUnread: false, ...readUpTo(actual, actual.lastSeq) } : chat));
 }
 
 /**
@@ -156,8 +164,9 @@ export function aplicarAcuseALista<C extends ResumenEnVivo>(chats: C[], acuse: A
 function aplicarMiAcuse<C extends ResumenEnVivo>(chats: C[], indice: number, actual: C, readSeq: unknown): C[] {
   if (typeof readSeq !== 'number') return chats;
   const unread = Math.min(actual.unread, Math.max(0, actual.lastSeq - readSeq));
-  if (unread === actual.unread && !actual.markedUnread) return chats;
-  return chats.map((chat, i) => (i === indice ? { ...actual, unread, markedUnread: false } : chat));
+  const cursorBehind = actual.readSeq !== undefined && actual.readSeq < readSeq;
+  if (unread === actual.unread && !actual.markedUnread && !cursorBehind) return chats;
+  return chats.map((chat, i) => (i === indice ? { ...actual, unread, markedUnread: false, ...readUpTo(actual, readSeq) } : chat));
 }
 
 /** Un `msg.edited` o `msg.deleted` del socket, tal como llega. */

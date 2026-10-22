@@ -128,6 +128,43 @@ describe('la lista con un chat abierto encima', () => {
 
     expect(marcarLeido(lista, CHAT)).toBe(lista);
   });
+
+  // José, 22/10: Lila's bear played every time he opened her chat. The server had him at
+  // seq 25; the row kept the readSeq of its last load, and the chat opens from the row.
+  it('marcarLeido also moves my read cursor to the last message: reopening does not replay a wink', () => {
+    // Arrange
+    const lista = [chat({ lastSeq: 25, unread: 0, readSeq: 19 })];
+
+    // Act
+    const resultado = marcarLeido(lista, CHAT);
+
+    // Assert
+    expect(resultado[0]?.readSeq).toBe(25);
+  });
+
+  it('marcarLeido leaves out the cursor of a row that never had one (an older server)', () => {
+    const resultado = marcarLeido([chat({ unread: 2 })], CHAT);
+
+    expect(resultado[0]).not.toHaveProperty('readSeq');
+  });
+
+  it('marcarLeido with the cursor already at the end returns the same list', () => {
+    const lista = [chat({ lastSeq: 25, unread: 0, readSeq: 25 })];
+
+    expect(marcarLeido(lista, CHAT)).toBe(lista);
+  });
+
+  it('a message that arrives in the open chat is read there: the cursor follows it', () => {
+    const resultado = aplicarMensajeALista([chat({ readSeq: 4 })], mensaje({ kind: 'guino', wink: 'panda' }), YO, CHAT);
+
+    expect(resultado?.[0]).toMatchObject({ lastSeq: 5, unread: 0, readSeq: 5 });
+  });
+
+  it('a message in a closed chat leaves my cursor where it was', () => {
+    const resultado = aplicarMensajeALista([chat({ readSeq: 4 })], mensaje(), YO);
+
+    expect(resultado?.[0]).toMatchObject({ unread: 1, readSeq: 4 });
+  });
 });
 
 /**
@@ -199,6 +236,12 @@ describe('aplicarAcuseALista', () => {
 
     // Assert
     expect(nuevos[0]).toMatchObject({ unread: 1, markedUnread: false, othersReadSeq: 5, othersDeliveredSeq: 5 });
+  });
+
+  it('my receipt from another device of mine also moves my read cursor', () => {
+    const nuevos = aplicarAcuseALista([mio({ unread: 2, readSeq: 5 })], { chatId: CHAT, userId: YO, readSeq: 7 }, YO, new Map());
+
+    expect(nuevos[0]).toMatchObject({ unread: 0, readSeq: 7 });
   });
 
   it('mi acuse que no baja nada devuelve la misma lista', () => {

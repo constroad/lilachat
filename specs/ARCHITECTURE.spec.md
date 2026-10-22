@@ -369,6 +369,23 @@ Verificado en vivo (20/08/2026) contra el servicio real: un pedido normal deja
 **un solo** intento (`falló por whatsapp`) y ningún correo; pidiendo el respaldo,
 el correo sale sin error. Antes del arreglo llegaban los dos sin pedir nada.
 
+**El respaldo es SOLO el correo verificado de la cuenta (22/10/2026).** El
+correo del respaldo es una llave de la cuenta: quien recibe el código entra
+como ese teléfono. Hasta el 22/10 el server usaba también el correo de la
+invitación (lo escribía quien invitaba) y el correo de una cuenta aunque nunca
+se hubiera verificado. Con eso, quien invitara un número poniendo SU correo
+podía pedir «Envíalo a mi correo» y entrar como ese número, incluso antes de
+que llegara su dueño. Además, la cuenta nueva heredaba el correo de la
+invitación. Ahora `backupEmailOf` (`invitationGate.ts`) devuelve el correo solo
+si tiene `emailVerifiedAt` (lo prueba su dueño con un código en el perfil,
+`profileRoutes.ts`). Sin correo verificado, «Envíalo a mi correo» reenvía por
+WhatsApp, con la misma respuesta. Al canjear, solo valen el teléfono y ese
+correo. Ninguna cuenta nace con correo: llega después, verificado. Como el
+perfil obliga a verificar el correo (`profileGateNow`), toda cuenta activa
+termina con respaldo. Solo el alta de una cuenta nueva depende de WhatsApp.
+Tests: `test/authRoutes.test.ts` («email fallback: only the verified email») y
+`test/invitationGate.test.ts`.
+
 Lo que constroad-auth sigue quitando del plan: OTP propio, rate limits de
 envío, hash de credenciales de device. `devices` local queda como espejo
 liviano (pushToken, plataforma, lastSeenAt).

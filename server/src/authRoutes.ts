@@ -5,6 +5,7 @@ import { esDispositivoVinculado, normalizePeruPhone } from '@lilachat/shared';
 import {
   GENERIC_OTP_RESPONSE,
   GENERIC_VERIFY_ERROR,
+  backupEmailOf,
   decideOtpRequest,
   resolveOtpTarget,
   resolveVerifyTargets,
@@ -51,11 +52,11 @@ export function buildAuthRouter(authClient: AuthClient): Router {
   /** La invitación (o el usuario ya existente) de ese teléfono, o `null`. */
   const findAdmission = async (phone: string) => {
     const [invitation, existingUser] = await Promise.all([
-      InvitationModel.findOne({ phone, status: 'invited' }).lean(),
-      UserModel.findOne({ phone }).lean(),
+      InvitationModel.findOne({ phone, status: 'invited' }).select('_id').lean(),
+      UserModel.findOne({ phone }).select('email emailVerifiedAt').lean(),
     ]);
     if (!invitation && !existingUser) return null;
-    return { email: invitation?.email ?? existingUser?.email };
+    return { email: backupEmailOf(existingUser) };
   };
 
   router.post('/otp/request', async (req, res) => {
@@ -135,7 +136,8 @@ export function buildAuthRouter(authClient: AuthClient): Router {
     const user = await UserModel.findOneAndUpdate(
       { phone },
       {
-        $setOnInsert: { phone, joinPending: true, ...(admission?.email ? { email: admission.email } : {}) },
+        // The email arrives later, proved by its owner in the profile (22/10): never the inviter's.
+        $setOnInsert: { phone, joinPending: true },
         ...(name ? { $set: { name } } : {}),
       },
       { returnDocument: 'after', upsert: true }

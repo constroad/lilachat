@@ -50,6 +50,15 @@ export function resolveVerifyTargets(params: { phone: string; email?: string }):
   return targets;
 }
 
+/**
+ * The email that backs up the login code (22/10): only the one the account's
+ * owner proved with a code (`profileRoutes.ts`). An inviter's typed email or
+ * an unverified one would hand the account to whoever owns that inbox.
+ */
+export function backupEmailOf(user: { email?: string; emailVerifiedAt?: Date } | null | undefined): string | undefined {
+  return user?.email && user.emailVerifiedAt ? user.email : undefined;
+}
+
 export type OtpDecision = 'forward' | 'pretend';
 
 /**

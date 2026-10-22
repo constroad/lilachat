@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   GENERIC_OTP_RESPONSE,
+  backupEmailOf,
   decideOtpRequest,
   normalizeEmail,
 } from '../src/invitationGate.js';
@@ -68,5 +69,17 @@ describe('decideOtpRequest — registro abierto', () => {
   /** Sin el interruptor se comporta como siempre: cerrado por omisión. */
   it('sin decir nada, queda cerrado', () => {
     expect(decideOtpRequest({ invited: false })).toBe('pretend');
+  });
+});
+
+describe('backupEmailOf (22/10)', () => {
+  it('only a verified email backs up the login code', () => {
+    expect(backupEmailOf({ email: 'tia@gmail.com', emailVerifiedAt: new Date() })).toBe('tia@gmail.com');
+  });
+
+  it('an unverified email, none or no account: no backup', () => {
+    expect(backupEmailOf({ email: 'otro@gmail.com' })).toBeUndefined();
+    expect(backupEmailOf({ emailVerifiedAt: new Date() })).toBeUndefined();
+    expect(backupEmailOf(null)).toBeUndefined();
   });
 });

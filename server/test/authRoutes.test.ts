@@ -239,6 +239,7 @@ describe('respaldo por correo', () => {
    * (o el usuario no lo ve), y ahí no hay error que dispare nada.
    */
   it('pedirlo manda el código SOLO al correo', async () => {
+    await UserModel.create({ phone: '902049935', name: 'Papá', email: 'papa@gmail.com', emailVerifiedAt: new Date() });
     const { client, calls } = fakeAuthClient();
     await request(buildApp({ authClient: client }))
       .post('/api/auth/otp/request')
@@ -286,6 +287,44 @@ describe('respaldo por correo', () => {
 
     expect(stranger.body).toEqual(invited.body);
     expect(JSON.stringify(invited.body)).not.toContain('papa@gmail.com');
+  });
+});
+
+/**
+ * 22/10: the email fallback is a key to the account, so only an email its
+ * owner proved with a code opens it. Before, it also went to the email an
+ * inviter typed and to an unverified one: whoever owned that inbox could
+ * sign in as that phone (even claim it before its owner arrived).
+ */
+describe('email fallback: only the verified email', () => {
+  const sentTo = (calls: Call[]) => calls.filter((call) => call.method === 'requestCode').map((call) => call.args[0]);
+  const triedOn = (calls: Call[]) => calls.filter((call) => call.method === 'verifyCode').map((call) => call.args[0]);
+
+  it("an invitation's email (typed by whoever invited) never gets the code: it goes by WhatsApp", async () => {
+    const { client, calls } = fakeAuthClient();
+    await request(buildApp({ authClient: client })).post('/api/auth/otp/request').send({ phone: '902049935', preferEmail: true });
+    expect(sentTo(calls)).toEqual(['51902049935']);
+  });
+
+  it("an account's unverified email neither gets the code nor validates it", async () => {
+    await UserModel.create({ phone: '902049935', name: 'Papá', email: 'otro@gmail.com' });
+    const { client, calls } = fakeAuthClient();
+    const app = buildApp({ authClient: client });
+    await request(app).post('/api/auth/otp/request').send({ phone: '902049935', preferEmail: true });
+    await request(app).post('/api/auth/otp/verify').send({ phone: '902049935', code: '123456', deviceId: 'dev-1' });
+    expect(sentTo(calls)).toEqual(['51902049935']);
+    expect(triedOn(calls)).toEqual(['51902049935']);
+  });
+
+  it('the verified email validates a code; a new account does not inherit the invitation email', async () => {
+    await UserModel.create({ phone: '911222333', name: 'Tía', email: 'tia@gmail.com', emailVerifiedAt: new Date() });
+    const rejectedOnPhone = fakeAuthClient({ verifyCode: (target) => Promise.resolve(target === 'tia@gmail.com' ? { ok: true, valor: { secreto: 's' } } : { ok: false, codigo: 'codigo_invalido' }) });
+    const app = buildApp({ authClient: rejectedOnPhone.client });
+    const verified = await request(app).post('/api/auth/otp/verify').send({ phone: '911222333', code: '123456', deviceId: 'dev-2' });
+    expect(verified.status).toBe(200);
+    const invited = await request(buildApp({ authClient: fakeAuthClient().client })).post('/api/auth/otp/verify').send({ phone: '902049935', code: '123456', deviceId: 'dev-3', name: 'Papá' });
+    expect(invited.status).toBe(200);
+    expect((await UserModel.findOne({ phone: '902049935' }).lean())?.email).toBeUndefined();
   });
 });
 

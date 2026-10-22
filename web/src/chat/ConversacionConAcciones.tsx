@@ -37,6 +37,7 @@ import { memberBadge, opensInPhotoViewer, usesFlatLayout } from '@lilachat/share
 import { useGroupsAsList } from '../ui/groupsAsList';
 import { useCalls } from '../calls/CallProvider';
 import { ChatQueue } from './queue/ChatQueue';
+import { gifAsPendingMessage, useGifsInFlight } from './gifs/gifsInFlight';
 
 type PropsDeConversacion = ComponentProps<typeof Conversation>;
 
@@ -282,6 +283,7 @@ export function ConversacionConAcciones(
  */
 function useConArchivosPendientes(mensajes: MensajeEnPantalla[] | null, chatId: string, yo: string, jwt: string, base: BaseLocal | null): MensajeEnPantalla[] | null {
   const pendientes = usePendientesDeArchivos(colaDeArchivosWeb, chatId);
+  const gifsOnTheirWay = useGifsInFlight(chatId);
   useEffect(() => {
     usarJwtParaSubir(jwt);
   }, [jwt]);
@@ -289,13 +291,13 @@ function useConArchivosPendientes(mensajes: MensajeEnPantalla[] | null, chatId: 
     colaDeArchivosWeb.configurar({ alConfirmar: (mensaje) => base && void aplicarEntrante(base, mensaje) });
   }, [base]);
   return useMemo(() => {
-    if (!mensajes || pendientes.length === 0) return mensajes;
+    if (!mensajes || (pendientes.length === 0 && gifsOnTheirWay.length === 0)) return mensajes;
     const confirmadas = new Set(mensajes.map((uno) => uno.clientKey));
-    const enCola = pendientes.filter((uno) => !confirmadas.has(uno.clientKey)).map((uno) => comoMensaje(uno, yo));
+    const enCola = [...pendientes.map((uno) => comoMensaje(uno, yo)), ...gifsOnTheirWay.map((one) => gifAsPendingMessage(one, yo))].filter((uno) => !confirmadas.has(uno.clientKey));
     const listos = mensajes.filter((uno) => !uno.estado);
     const enviando = [...mensajes.filter((uno) => uno.estado), ...enCola].sort((a, b) => a.at.localeCompare(b.at));
     return [...listos, ...enviando];
-  }, [mensajes, pendientes, yo]);
+  }, [mensajes, pendientes, gifsOnTheirWay, yo]);
 }
 
 /** Reenvía una foto o un archivo a cada chat; devuelve el motivo del primer rechazo. */

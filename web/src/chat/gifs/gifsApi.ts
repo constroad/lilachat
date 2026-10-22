@@ -6,7 +6,8 @@ import { api } from '../../api';
 export const searchGifs = (jwt: string, q: string, offset: number) => api<{ gifs: GifResult[] }>(`/gifs/search?${new URLSearchParams({ q, offset: String(offset) })}`, { jwt });
 
 /** A new key per click: the same click retried by the network is one message on the server. */
-export const sendGif = (jwt: string, chatId: string, gifId: string) => api<{ message: unknown }>('/gifs/send', { jwt, body: { chatId, gifId, clientKey: `gif-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` } });
+export const newGifKey = () => `gif-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+export const sendGif = (jwt: string, chatId: string, gifId: string, clientKey: string) => api<{ message: unknown }>('/gifs/send', { jwt, body: { chatId, gifId, clientKey } });
 
 let known: boolean | null = null;
 

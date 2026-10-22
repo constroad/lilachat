@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 import { GIF_SUGGESTIONS, type GifResult } from '@lilachat/shared';
-import { searchGifs, sendGif } from './gifsApi';
+import { newGifKey, searchGifs, sendGif } from './gifsApi';
+import { addGifInFlight, removeGifInFlight } from './gifsInFlight';
+
+/** After the server answered, the pending bubble waits this much for the real one before going. */
+const HANDOVER_MS = 5_000;
 
 const SEARCH_DEBOUNCE_MS = 400;
 const PAGE = 24;
@@ -40,8 +44,16 @@ export function GifPanel(props: { jwt: string; chatId: string }) {
   const { gifs, failed, more } = useGifSearch(props.jwt, text.trim());
   const send = async (gif: GifResult) => {
     setError(null);
-    const result = await sendGif(props.jwt, props.chatId, gif.id);
-    if (!result.ok) setError(result.message);
+    const clientKey = newGifKey();
+    // In the chat at once, as GIPHY's preview «sending» (22/10): the server takes a few seconds to store it.
+    addGifInFlight(props.chatId, clientKey, gif);
+    const result = await sendGif(props.jwt, props.chatId, gif.id, clientKey);
+    if (!result.ok) {
+      removeGifInFlight(clientKey);
+      return setError(result.message);
+    }
+    // The conversation already drops it when the real message arrives; this only tidies up.
+    window.setTimeout(() => removeGifInFlight(clientKey), HANDOVER_MS);
   };
   return (
     <div data-testid="panel-gif" className="flex h-full min-h-0 flex-col">

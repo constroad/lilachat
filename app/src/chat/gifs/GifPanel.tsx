@@ -5,10 +5,13 @@ import { Search } from 'lucide-react-native';
 import { GIF_SUGGESTIONS, type GifResult } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { searchGifs, sendGif } from './gifsApi';
+import { addGifInFlight, gifAsQueuedFile, removeGifInFlight } from './gifsInFlight';
 
 const SEARCH_DEBOUNCE_MS = 400;
 const TILE_HEIGHT = 120;
 const PAGE = 24;
+/** After the server answered, the pending bubble waits this much for the real one (the socket echo) before going. */
+const HANDOVER_MS = 1500;
 /** «Tendencias» is the empty search: GIPHY's trending. */
 const CHIPS = [{ label: 'Tendencias', q: '' }, ...GIF_SUGGESTIONS.map((label) => ({ label, q: label }))];
 
@@ -45,8 +48,16 @@ export function GifPanel(props: { jwt: string; chatId: string }) {
   const { gifs, failed, more } = useGifSearch(props.jwt, text.trim());
   const send = async (gif: GifResult) => {
     setError(null);
-    const result = await sendGif(props.jwt, props.chatId, gif.id, `gif-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-    if (!result.ok) setError(result.message ?? 'No se pudo mandar el GIF.');
+    const clientKey = `gif-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    // In the chat at once, as GIPHY's preview «sending» (22/10): the server takes a few seconds to store it.
+    addGifInFlight(props.chatId, gifAsQueuedFile(gif, props.chatId, clientKey, new Date().toISOString()));
+    const result = await sendGif(props.jwt, props.chatId, gif.id, clientKey);
+    if (!result.ok) {
+      removeGifInFlight(clientKey);
+      return setError(result.message ?? 'No se pudo mandar el GIF.');
+    }
+    // The real message arrived by the socket by now (or arrives in a moment): it takes the bubble's place.
+    setTimeout(() => removeGifInFlight(clientKey), HANDOVER_MS);
   };
   return (
     <View testID="panel-gif" style={{ flex: 1 }}>

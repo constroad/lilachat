@@ -14,9 +14,10 @@ const FIELDS = 'chatId seq senderId body menciones at hilo reacciones';
 
 type Scope = { me: Types.ObjectId; chatIds: Types.ObjectId[]; readSeq: Map<string, number> };
 
-const mentionsFilter = (scope: Scope): QueryFilter<Message> => ({ chatId: { $in: scope.chatIds }, senderId: { $ne: scope.me }, 'menciones.userId': { $in: [String(scope.me), MENTION_ALL, MENTION_HERE] }, deletedAt: { $exists: false } });
+// Each filter repeats its partial index's condition (`chatModels.ts`, 22/10): the planner only uses a partial index when the query implies it.
+const mentionsFilter = (scope: Scope): QueryFilter<Message> => ({ chatId: { $in: scope.chatIds }, menciones: { $exists: true }, senderId: { $ne: scope.me }, 'menciones.userId': { $in: [String(scope.me), MENTION_ALL, MENTION_HERE] }, deletedAt: { $exists: false } });
 const threadsFilter = (scope: Scope): QueryFilter<Message> => ({ chatId: { $in: scope.chatIds }, 'hilo.respuestas': { $gt: 0 }, deletedAt: { $exists: false }, $or: [{ senderId: scope.me }, { 'hilo.autores': String(scope.me) }] });
-const reactionsFilter = (scope: Scope): QueryFilter<Message> => ({ chatId: { $in: scope.chatIds }, senderId: scope.me, reacciones: { $elemMatch: { userId: { $ne: String(scope.me) } } }, deletedAt: { $exists: false } });
+const reactionsFilter = (scope: Scope): QueryFilter<Message> => ({ chatId: { $in: scope.chatIds }, senderId: scope.me, $and: [{ reacciones: { $exists: true } }, { reacciones: { $elemMatch: { userId: { $ne: String(scope.me) } } } }], deletedAt: { $exists: false } });
 
 const read = (scope: Scope, message: Pick<Message, 'chatId'>) => scope.readSeq.get(String(message.chatId)) ?? 0;
 const mentionUnread = (scope: Scope, message: Message) => message.seq > read(scope, message);
@@ -30,17 +31,14 @@ async function scopeOf(me: Types.ObjectId, workspaceId: Types.ObjectId | undefin
   return { me, chatIds, readSeq: new Map(receipts.map((receipt) => [String(receipt.chatId), receipt.readSeq])) };
 }
 
-async function rowsOf(scope: Scope, type: ActivityType): Promise<{ message: Message; at: Date; authorId: string; unread: boolean }[]> {
-  if (type === 'mentions') {
-    const found = await MessageModel.find(mentionsFilter(scope)).select(FIELDS).sort({ at: -1 }).limit(ACTIVITY_LIMIT).lean<Message[]>();
-    return found.map((message) => ({ message, at: message.at, authorId: String(message.senderId), unread: mentionUnread(scope, message) }));
-  }
-  if (type === 'threads') {
-    const found = await MessageModel.find(threadsFilter(scope)).select(FIELDS).sort({ 'hilo.ultimaEn': -1 }).limit(ACTIVITY_LIMIT).lean<Message[]>();
-    return found.map((message) => ({ message, at: message.hilo?.ultimaEn ?? message.at, authorId: String(message.senderId), unread: threadUnread(scope, message) }));
-  }
-  const found = await MessageModel.find(reactionsFilter(scope)).select(FIELDS).sort({ at: -1 }).limit(REACTED_SCAN).lean<Message[]>();
-  return found
+/** The mentions and threads are read once: the tab's rows and the chips' counts come from the same answer. */
+type Found = { mentioned: Message[]; inThreads: Message[] };
+
+async function rowsOf(scope: Scope, type: ActivityType, found: Found): Promise<{ message: Message; at: Date; authorId: string; unread: boolean }[]> {
+  if (type === 'mentions') return found.mentioned.map((message) => ({ message, at: message.at, authorId: String(message.senderId), unread: mentionUnread(scope, message) }));
+  if (type === 'threads') return found.inThreads.map((message) => ({ message, at: message.hilo?.ultimaEn ?? message.at, authorId: String(message.senderId), unread: threadUnread(scope, message) }));
+  const reacted = await MessageModel.find(reactionsFilter(scope)).select(FIELDS).sort({ at: -1 }).limit(REACTED_SCAN).lean<Message[]>();
+  return reacted
     .flatMap((message) => {
       const others = reactionsFromOthers((message.reacciones ?? []).map((reaction) => ({ userId: reaction.userId, emoji: reaction.emoji, en: reaction.en ? new Date(reaction.en).toISOString() : undefined })) as Reaccion[], String(scope.me));
       return others ? [{ message, at: others.latestAt ? new Date(others.latestAt) : message.at, authorId: others.latestBy, unread: false }] : [];
@@ -68,13 +66,17 @@ export function buildActivityRouter(): Router {
     const type = activityType(req.query.type);
     // The list's «Hilos» and «Menciones» chips only need the counts.
     const countsOnly = req.query.counts === '1';
-    const [rows, mentions, threads] = await Promise.all([
-      countsOnly ? Promise.resolve([]) : rowsOf(scope, type),
-      MessageModel.find(mentionsFilter(scope)).select('chatId seq').sort({ at: -1 }).limit(ACTIVITY_LIMIT).lean<Message[]>(),
-      MessageModel.find(threadsFilter(scope)).select('chatId hilo').sort({ 'hilo.ultimaEn': -1 }).limit(ACTIVITY_LIMIT).lean<Message[]>(),
+    const [mentioned, inThreads] = await Promise.all([
+      MessageModel.find(mentionsFilter(scope)).select(FIELDS).sort({ at: -1 }).limit(ACTIVITY_LIMIT).lean<Message[]>(),
+      MessageModel.find(threadsFilter(scope)).select(FIELDS).sort({ 'hilo.ultimaEn': -1 }).limit(ACTIVITY_LIMIT).lean<Message[]>(),
     ]);
-    const chats = await infoDeChats([...new Set(rows.map((row) => String(row.message.chatId)))].map((id) => new Types.ObjectId(id)), String(me));
-    const channels = new Set((await ChatModel.find({ _id: { $in: rows.map((row) => row.message.chatId) }, channel: { $exists: true } }).select('_id').lean()).map((chat) => String(chat._id)));
+    const rows = countsOnly ? [] : await rowsOf(scope, type, { mentioned, inThreads });
+    const chatIds = [...new Set(rows.map((row) => String(row.message.chatId)))].map((id) => new Types.ObjectId(id));
+    const [chats, channelRows] = await Promise.all([
+      infoDeChats(chatIds, String(me)),
+      ChatModel.find({ _id: { $in: chatIds }, channel: { $exists: true } }).select('_id').lean(),
+    ]);
+    const channels = new Set(channelRows.map((chat) => String(chat._id)));
     const people = await personasPorId([...rows.map((row) => row.authorId), ...[...chats.values()].flatMap((chat) => (chat.otroId ? [chat.otroId] : []))]);
     const items: ActivityItem[] = rows.map(({ message, at, authorId, unread }) => ({
       chatId: String(message.chatId),
@@ -88,7 +90,7 @@ export function buildActivityRouter(): Router {
       ...(message.hilo?.respuestas ? { thread: { replies: message.hilo.respuestas, ...(message.hilo.ultimaEn ? { lastAt: new Date(message.hilo.ultimaEn).toISOString() } : {}) } } : {}),
       ...(type === 'reactions' ? { reactions: (reactionsFromOthers((message.reacciones ?? []) as unknown as Reaccion[], String(me))?.groups ?? []).map(({ emoji, count }) => ({ emoji, count })) } : {}),
     }));
-    res.json({ items, unread: { mentions: mentions.filter((message) => mentionUnread(scope, message)).length, threads: threads.filter((message) => threadUnread(scope, message)).length } });
+    res.json({ items, unread: { mentions: mentioned.filter((message) => mentionUnread(scope, message)).length, threads: inThreads.filter((message) => threadUnread(scope, message)).length } });
   }));
   return router;
 }

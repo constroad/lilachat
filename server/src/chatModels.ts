@@ -294,6 +294,10 @@ messageSchema.index({ chatId: 1, seq: 1 }, { unique: true });
 messageSchema.index({ chatId: 1, kind: 1, at: -1 });
 /** A card's message by what it shows (`ref.id`): the chat queue and the checklists find their card without walking the chat. Created in the vault on 22/10 with José's OK. */
 messageSchema.index({ chatId: 1, 'ref.id': 1 });
+/** «Menciones y actividad» (`activityRoutes.ts`): partial, so they only hold messages with a mention, a thread or a reaction. Created in the vault on 22/10 with José's OK. */
+messageSchema.index({ chatId: 1, 'menciones.userId': 1, at: -1 }, { partialFilterExpression: { menciones: { $exists: true } } });
+messageSchema.index({ chatId: 1, 'hilo.ultimaEn': -1 }, { partialFilterExpression: { 'hilo.respuestas': { $gt: 0 } } });
+messageSchema.index({ chatId: 1, senderId: 1, at: -1 }, { partialFilterExpression: { reacciones: { $exists: true } } });
 // La idempotencia, en la BASE y no solo en el código: es la última línea de
 // defensa contra el reintento de la cola offline. Lleva `senderId` porque dos
 // personas pueden generar la misma clave sin saberlo.

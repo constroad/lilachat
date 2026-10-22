@@ -373,7 +373,7 @@ export function TabsShell({
           <BandaDeActualizacion
             aviso={actualizaciones.aviso}
             estado={actualizaciones.estado}
-            onActualizar={actualizaciones.pedirActualizacion}
+            onActualizar={actualizaciones.requestUpdate}
             onAbrirTienda={actualizaciones.abrirTienda}
             onDescartar={actualizaciones.descartarAviso}
           />

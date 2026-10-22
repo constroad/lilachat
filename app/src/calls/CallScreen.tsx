@@ -123,16 +123,16 @@ export function CallScreen({
               contesta sin mirar. */}
           {state.fase === 'sonando' ? (
             <View className="flex-row items-end justify-evenly">
-              <Boton testID="btn-rechazar" label="Rechazar" onPress={onHangUp} destructivo Icon={PhoneOff} />
+              <CallButton testID="btn-rechazar" label="Rechazar" onPress={onHangUp} destructivo Icon={PhoneOff} />
               {/* Contestar se DESLIZA (FL8.1): un toque sin querer no contesta. */}
               <DeslizarParaContestar onContestar={onAccept} />
             </View>
           ) : (
             <View className="flex-row items-start justify-evenly rounded-[32px] border border-on-primary/10 bg-black/25 px-2 py-6">
-              <Boton testID="btn-altavoz" label="Altavoz" onPress={onToggleSpeaker} activo={speaker} Icon={Volume2} />
-              {puedeAlternarVideo ? <Boton testID="btn-video" label="Video" onPress={onToggleVideo} activo={video} Icon={video ? Video : VideoOff} /> : null}
-              <Boton testID="btn-silenciar" label={muted ? 'Activar' : 'Silenciar'} onPress={onToggleMute} activo={muted} Icon={muted ? MicOff : Mic} />
-              <Boton testID="btn-colgar" label="Colgar" onPress={onHangUp} destructivo Icon={PhoneOff} />
+              <CallButton testID="btn-altavoz" label="Altavoz" onPress={onToggleSpeaker} activo={speaker} Icon={Volume2} />
+              {puedeAlternarVideo ? <CallButton testID="btn-video" label="Video" onPress={onToggleVideo} activo={video} Icon={video ? Video : VideoOff} /> : null}
+              <CallButton testID="btn-silenciar" label={muted ? 'Activar' : 'Silenciar'} onPress={onToggleMute} activo={muted} Icon={muted ? MicOff : Mic} />
+              <CallButton testID="btn-colgar" label="Colgar" onPress={onHangUp} destructivo Icon={PhoneOff} />
             </View>
           )}
         </View>
@@ -163,7 +163,7 @@ const estilos = StyleSheet.create({
  * the one that is on goes white with the icon in the call's color; hanging up
  * is red.
  */
-function Boton(props: { Icon: typeof Mic; label: string; onPress: () => void; destructivo?: boolean; activo?: boolean; testID: string }) {
+function CallButton(props: { Icon: typeof Mic; label: string; onPress: () => void; destructivo?: boolean; activo?: boolean; testID: string }) {
   const colores = useColores();
   const { Icon } = props;
   const fill = props.destructivo ? 'bg-red-600' : props.activo ? 'bg-on-primary' : 'bg-on-primary/15';

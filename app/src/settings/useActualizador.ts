@@ -95,10 +95,10 @@ export function useActualizador() {
   }, []);
 
   /** Tapping «Actualizar» or «Reintentar» earns a new automatic resume. */
-  const actualizarAMano = useCallback((info: InfoActualizacion) => {
+  const updateByHand = useCallback((info: InfoActualizacion) => {
     resumed.current = false;
     return actualizar(info);
   }, [actualizar]);
 
-  return { estado, actualizar: actualizarAMano, limpiar };
+  return { estado, actualizar: updateByHand, limpiar };
 }

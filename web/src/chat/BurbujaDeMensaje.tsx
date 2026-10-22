@@ -221,14 +221,14 @@ function ContenidoDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio
   }
   const esImagen = Boolean(media?.url && (media.mime?.startsWith('image/') || media.mime?.startsWith('video/') || media.thumbUrl));
   // A video lila could not make a thumbnail for (QA 22/10): a dark frame under the play, opening the viewer like the rest.
-  const videoSinMiniatura = Boolean(media?.url && !media.thumbUrl && media.mime?.startsWith('video/'));
+  const thumblessVideo = Boolean(media?.url && !media.thumbUrl && media.mime?.startsWith('video/'));
   return (
     <>
       {media?.url && isAnimatedImage(media.mime) && !mensaje.estado ? (
         <GifInBubble testId={`gif-${mensaje.clientKey}`} url={media.url} alt={mensaje.body ?? 'GIF'} width={media.width} height={media.height} onOpen={() => onVerFoto(mensaje)} />
       ) : media?.url && esImagen ? (
         <button type="button" data-testid={`foto-${mensaje.clientKey}`} onClick={() => !mensaje.estado && onVerFoto(mensaje)} className="relative block w-full">
-          {videoSinMiniatura ? (
+          {thumblessVideo ? (
             <span data-testid={`video-sin-miniatura-${mensaje.clientKey}`} className="mb-1 block max-h-64 w-full rounded-lg bg-black" style={{ aspectRatio: media.width && media.height ? `${media.width} / ${media.height}` : '16 / 9' }} />
           ) : (
             <img

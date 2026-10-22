@@ -86,7 +86,7 @@ export function useActualizacionesDeLaApp() {
     });
 
   /** The band's button: the release notes first, if any (19/10); a retry (22/10) downloads at once, the notes were already seen. */
-  const pedirActualizacion = () => (novedades.length > 0 && estado.fase !== 'error' ? setViendoNovedades(true) : actualizarDesdeBanda());
+  const requestUpdate = () => (novedades.length > 0 && estado.fase !== 'error' ? setViendoNovedades(true) : actualizarDesdeBanda());
   const descargarDesdeNovedades = () => {
     setViendoNovedades(false);
     actualizarDesdeBanda();
@@ -107,7 +107,7 @@ export function useActualizacionesDeLaApp() {
     enlaceApp,
     verificar,
     actualizarDesdeBanda,
-    pedirActualizacion,
+    requestUpdate,
     novedades,
     viendoNovedades,
     cerrarNovedades: () => setViendoNovedades(false),

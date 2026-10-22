@@ -63,9 +63,9 @@ export function ListaDeMensajes(props: Props) {
   }, []);
 
   useConservarAlCargarAnteriores(contenedor, filas[0]?.mensaje.clientKey, virtualizador.getTotalSize());
-  const ultimo = mensajes.at(-1);
-  const ultimaMia = !ultimo ? undefined : ultimo.senderId === yo ? ultimo.clientKey || `seq-${ultimo.seq}` : null;
-  useSeguirElFinal({ pegado, bajar, alto: virtualizador.getTotalSize(), cantidad: filas.length, chatId: chat.id, ultimaMia });
+  const lastMessage = mensajes.at(-1);
+  const lastMineKey = !lastMessage ? undefined : lastMessage.senderId === yo ? lastMessage.clientKey || `seq-${lastMessage.seq}` : null;
+  useFollowTheEnd({ pegado, bajar, alto: virtualizador.getTotalSize(), cantidad: filas.length, chatId: chat.id, lastMineKey });
   useSeguirAlAchicarse(contenedor, pegado, bajar);
   useAcuseDeLeido({ mensajes, pegado, lejos, onLeido: props.onLeido });
   const resaltado = useSaltoAMensaje({ salto: props.salto, filas, pegado, setLejos, scrollToIndex: (indice) => virtualizador.scrollToIndex(indice, { align: 'center' }), onNoEsta: props.onNoEsta });
@@ -153,21 +153,21 @@ function Escribiendo() {
 }
 
 /** Pegada: bajar cuando llega algo o el contenido crece (fotos, tarjetas). Al cambiar de chat, abre abajo. */
-function useSeguirElFinal(p: { pegado: React.MutableRefObject<boolean>; bajar: () => void; alto: number; cantidad: number; chatId: string; ultimaMia: string | null | undefined }) {
-  const { pegado, bajar, alto, cantidad, chatId, ultimaMia } = p;
-  const ultimaMiaVista = useRef<string | null | undefined>(undefined);
+function useFollowTheEnd(p: { pegado: React.MutableRefObject<boolean>; bajar: () => void; alto: number; cantidad: number; chatId: string; lastMineKey: string | null | undefined }) {
+  const { pegado, bajar, alto, cantidad, chatId, lastMineKey } = p;
+  const lastMineSeen = useRef<string | null | undefined>(undefined);
   useLayoutEffect(() => {
     pegado.current = true;
     bajar();
   }, [chatId, pegado, bajar]);
   // What I send is always seen (22/10), even while reading further up.
   useLayoutEffect(() => {
-    const seguir = followsMyNewRow(ultimaMiaVista.current, ultimaMia);
-    ultimaMiaVista.current = ultimaMia;
-    if (!seguir) return;
+    const follow = followsMyNewRow(lastMineSeen.current, lastMineKey);
+    lastMineSeen.current = lastMineKey;
+    if (!follow) return;
     pegado.current = true;
     bajar();
-  }, [ultimaMia, pegado, bajar]);
+  }, [lastMineKey, pegado, bajar]);
   useLayoutEffect(() => {
     if (pegado.current) bajar();
   }, [alto, cantidad, pegado, bajar]);

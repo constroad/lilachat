@@ -91,8 +91,8 @@ export function ConversacionConAcciones(
   const [archivos, setArchivos] = useState<File[] | null>(null);
   const [fotoAbierta, setFotoAbierta] = useState<number | null>(null);
   // Photos, GIFs and videos; never a sticker (José, 22/10: they showed up while swiping).
-  const fotos = useMemo(() => (mensajes ?? []).filter(opensInPhotoViewer), [mensajes]);
-  const onVerFoto = useCallback((mensaje: MensajeEnPantalla) => setFotoAbierta(Math.max(0, fotos.findIndex((uno) => uno.clientKey === mensaje.clientKey))), [fotos]);
+  const viewerPhotos = useMemo(() => (mensajes ?? []).filter(opensInPhotoViewer), [mensajes]);
+  const onVerFoto = useCallback((mensaje: MensajeEnPantalla) => setFotoAbierta(Math.max(0, viewerPhotos.findIndex((uno) => uno.clientKey === mensaje.clientKey))), [viewerPhotos]);
   const [pdfAbierto, setPdfAbierto] = useState<MensajeEnPantalla | null>(null);
   const greet = useCallback(() => void sync.enviarTexto(chat.id, '👋'), [sync, chat.id]);
   const canGreet = useCallback((noticeSeq: number) => !alreadyGreeted((mensajes ?? []).map((one) => ({ seq: one.seq, senderId: one.senderId, pending: Boolean(one.estado) })), noticeSeq, yo), [mensajes, yo]);
@@ -268,7 +268,7 @@ export function ConversacionConAcciones(
         />
       ) : null}
       {archivos ? <EnviarArchivos archivos={archivos} onCerrar={() => setArchivos(null)} onEnviar={subir} /> : null}
-      {fotoAbierta !== null ? <VisorDeFotos fotos={fotos} indice={fotoAbierta} onCambiar={setFotoAbierta} onCerrar={() => setFotoAbierta(null)} /> : null}
+      {fotoAbierta !== null ? <VisorDeFotos fotos={viewerPhotos} indice={fotoAbierta} onCambiar={setFotoAbierta} onCerrar={() => setFotoAbierta(null)} /> : null}
       {pdfAbierto?.media?.url ? <PdfViewer jwt={props.jwt} chatId={chat.id} seq={pdfAbierto.seq} fileName={pdfAbierto.media.fileName ?? 'Documento PDF'} downloadUrl={pdfAbierto.media.url} onClose={() => setPdfAbierto(null)} /> : null}
       {acciones.viendoInfo ? <DialogoInfo chatId={chat.id} mensaje={acciones.viendoInfo} jwt={props.jwt} onCerrar={acciones.cerrarInfo} /> : null}
     </ConversacionContext.Provider>

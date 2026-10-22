@@ -7,15 +7,15 @@ import { Interruptor } from '../ui/Interruptor';
 import { useColores } from '../ui/tema';
 import { useMargenes } from '../ui/useMargenes';
 import { SpaceLogo } from './SpaceSwitcherSheet';
-import { updateSpace } from './spacesApi';
+import { removeSpaceLogo, updateSpace, uploadSpaceLogo } from './spacesApi';
+import { elegirFotoRedonda } from '../chat/fotoDeGrupo';
 
 const NAME_MAX = 60;
 
 /**
  * «Ajustes del espacio» (design `e1-12-ajustes-espacio`), for admins: the
  * name, the trade, whether an admin approves who comes in, and a new code
- * (the old one stops working). The design's logo upload waits for a place to
- * keep it on the server.
+ * (the old one stops working), and its logo: an image, or its initials.
  */
 export function SpaceSettingsScreen(props: { space: ClientWorkspace; jwt: string; onSaved: (space: ClientWorkspace) => void; onClose: () => void }) {
   const colors = useColores();
@@ -25,6 +25,7 @@ export function SpaceSettingsScreen(props: { space: ClientWorkspace; jwt: string
   const [rubro, setRubro] = useState(space.rubro ?? '');
   const [approval, setApproval] = useState(space.joinPolicy === 'approval');
   const [code, setCode] = useState(space.joinCode);
+  const [logoUrl, setLogoUrl] = useState(space.logoUrl);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const clean = name.trim();
@@ -37,6 +38,25 @@ export function SpaceSettingsScreen(props: { space: ClientWorkspace; jwt: string
     if (!response.ok) return setError(response.message ?? 'No se pudo guardar.');
     setError('');
     setCode(response.data.workspace.joinCode);
+    props.onSaved(response.data.workspace);
+  };
+  const changeLogo = async () => {
+    const picked = await elegirFotoRedonda({ titulo: 'Logo del espacio', mensaje: 'Lo ven todos los del espacio.', nombrePorDefecto: 'logo.jpg' });
+    if (picked.tipo !== 'foto') return;
+    setBusy(true);
+    const sent = await uploadSpaceLogo(props.jwt, space.id, picked.foto);
+    setBusy(false);
+    if (!sent.ok) return setError(sent.message);
+    setError('');
+    setLogoUrl(sent.workspace.logoUrl);
+    props.onSaved(sent.workspace);
+  };
+  const removeLogo = async () => {
+    setBusy(true);
+    const response = await removeSpaceLogo(props.jwt, space.id);
+    setBusy(false);
+    if (!response.ok) return setError(response.message ?? 'No se pudo quitar el logo.');
+    setLogoUrl(undefined);
     props.onSaved(response.data.workspace);
   };
   const newCode = () =>
@@ -70,8 +90,15 @@ export function SpaceSettingsScreen(props: { space: ClientWorkspace; jwt: string
           <View className="mt-3 rounded-2xl border border-outline/15 bg-surface p-4">
             <Text className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Espacio</Text>
             <View className="mt-3 flex-row items-center gap-3">
-              <SpaceLogo space={{ name: clean || space.name, logoUrl: space.logoUrl }} size={56} />
-              <Text className="flex-1 text-[13px] text-on-surface-variant">El logo son las iniciales del nombre hasta que se pueda subir una imagen.</Text>
+              <SpaceLogo space={{ name: clean || space.name, logoUrl }} size={56} />
+              <View className="min-w-0 flex-1">
+                <Text className="text-[14px] font-semibold text-on-surface">Logo del espacio</Text>
+                <Text className="text-[12px] text-on-surface-variant">Una imagen cuadrada, o las iniciales del nombre.</Text>
+                <View className="mt-2 flex-row gap-2">
+                  <Pressable testID="ajustes-cambiar-logo" disabled={busy} onPress={() => void changeLogo()} className="min-h-[40px] justify-center rounded-xl border border-outline/25 px-3"><Text className="text-[14px] font-semibold text-on-surface">Cambiar logo</Text></Pressable>
+                  {logoUrl ? <Pressable testID="ajustes-quitar-logo" disabled={busy} onPress={() => void removeLogo()} className="min-h-[40px] justify-center px-2"><Text className="text-[14px] font-semibold text-on-surface-variant">Restablecer</Text></Pressable> : null}
+                </View>
+              </View>
             </View>
             <Text className="mb-1.5 mt-4 text-[14px] font-semibold text-on-surface">Nombre del espacio</Text>
             <TextInput testID="input-nombre-ajustes" value={name} onChangeText={setName} maxLength={NAME_MAX} className="min-h-[48px] rounded-xl border border-outline/25 bg-background px-3 text-[16px] text-on-surface" />

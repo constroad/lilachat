@@ -5,7 +5,7 @@ import { Modal } from '../ui/Modal';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useScrollConTeclado } from './useScrollConTeclado';
 import { ArrowLeft, Check, ClipboardCheck, Send, Smile, Square, SquareCheck, X } from 'lucide-react-native';
-import { checklistMembers, deleteBeforeCursor, formatClock, memberBadge, usesFlatLayout, miReaccion, primerEnlace, puedeEditar, puedeReaccionar, resolveDeliveryState, type DeliveryState } from '@lilachat/shared';
+import { checklistMembers, deleteBeforeCursor, formatClock, memberBadge, usesFlatLayout, miReaccion, primerEnlace, puedeEditar, puedeReaccionar, resolveDeliveryState, type DeliveryState, type MemberPill } from '@lilachat/shared';
 import { ThreadPicker } from './ThreadPicker';
 import { ChecklistEnElChat } from './ChecklistEnElChat';
 import { CreateChecklistScreen } from '../agenda/CreateChecklistScreen';
@@ -49,7 +49,7 @@ export function HiloScreen(props: {
   nombres: ReadonlyMap<string, string>;
   fotos: ReadonlyMap<string, string>;
   /** Each member's role: the pill next to the name in the Slack format (design `s-02`). */
-  roles: ReadonlyMap<string, string>;
+  roles: ReadonlyMap<string, MemberPill>;
   /** A chat of a company space: always the Slack format. */
   workspaceId?: string;
   respuestas: readonly ChatMessage[];
@@ -94,7 +94,7 @@ export function HiloScreen(props: {
   const nombreDe = (id: string) => (id === props.yo ? 'Tú' : (props.nombres.get(id) ?? 'Alguien'));
   // The thread follows its chat: as a list in the Slack format (design `s-02`).
   const flat = usesFlatLayout({ kind: props.esGrupo ? 'group' : 'direct', workspaceId: props.workspaceId }, { groupsAsList: useGroupsAsList() });
-  const badgeOf = (id: string) => memberBadge({ role: props.roles.get(id), isMe: id === props.yo });
+  const badgeOf = (id: string) => memberBadge({ ...props.roles.get(id), isMe: id === props.yo });
 
   const startEditing = (seq: number) => {
     const reply = props.respuestas.find((one) => one.seq === seq);

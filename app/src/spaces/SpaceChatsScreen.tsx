@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
-import { ChevronDown, ChevronRight, Hash, Inbox, Lock, Plus, Search, Settings2, UserCog, UserPlus, Users } from 'lucide-react-native';
-import { canManageMembers, formatChatTimestamp, membersLabel, nombreDeContacto, spaceSections, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
+import { BackHandler, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
+import { Archive, AtSign, ChevronDown, ChevronRight, Hash, Inbox, Lock, MessagesSquare, Plus, Search, Settings2, UserCog, UserPlus, Users } from 'lucide-react-native';
+import { canManageMembers, formatChatTimestamp, membersLabel, nombreDeContacto, spaceSections, splitArchived, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
+import { BarraDeSeleccionDeChats } from '../chat/BarraDeSeleccionDeChats';
 import { FilaDeChat } from '../chat/FilaDeChat';
+import { useAccionesDeSeleccion } from '../chat/useAccionesDeSeleccion';
+import { useChatSelection } from '../chat/useChatSelection';
 import { getSocket } from '../chat/socketClient';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useAlVolver } from '../ui/useAlVolver';
 import { useColores } from '../ui/tema';
-import { spaceChats } from './spacesApi';
+import { spaceActivity, spaceChats } from './spacesApi';
 
 /** Several messages in a row reload the list once. */
 const RELOAD_DELAY_MS = 600;
@@ -22,19 +25,24 @@ const RELOAD_DELAY_MS = 600;
  */
 export type WorkspaceLink = 'directory' | 'members' | 'requests' | 'settings';
 
-export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; myUserId: string; active: boolean; openChatId: string | null; reloadKey?: number; onOpenChat: (chat: ChatSummary) => void; onChannels: () => void; onInvite: () => void; onWorkspace: (link: WorkspaceLink) => void; onNewDirect: () => void; onNewGroup: () => void; onChats?: (chats: ChatSummary[]) => void; onRefresh?: () => void }) {
+export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; myUserId: string; active: boolean; openChatId: string | null; reloadKey?: number; onOpenChat: (chat: ChatSummary) => void; onChannels: () => void; onInvite: () => void; onWorkspace: (link: WorkspaceLink) => void; onNewDirect: () => void; onNewGroup: () => void; onChats?: (chats: ChatSummary[]) => void; onRefresh?: () => void; onActivity: (tab: ActivityType) => void }) {
   const colors = useColores();
-  const { space, jwt } = props;
+  const { space, jwt, myUserId, onOpenChat } = props;
   const [chats, setChats] = useState<ChatSummary[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
   const [folded, setFolded] = useState<ReadonlySet<SpaceSectionKey>>(new Set());
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** This space's chats, for the socket events that only concern them. */
+  const chatIds = useRef<ReadonlySet<string>>(new Set());
 
+  const [activity, setActivity] = useState({ mentions: 0, threads: 0 });
   const load = useCallback(async () => {
-    const response = await spaceChats(jwt, space.id);
+    const [response, counts] = await Promise.all([spaceChats(jwt, space.id), spaceActivity(jwt, space.id, { countsOnly: true })]);
+    if (counts.ok) setActivity(counts.data.unread);
     if (response.ok) {
+      chatIds.current = new Set(response.data.chats.map((chat) => chat.id));
       setChats(response.data.chats);
       setFailed(false);
     } else setFailed(true);
@@ -54,34 +62,74 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
       if (reloadTimer.current) clearTimeout(reloadTimer.current);
       reloadTimer.current = setTimeout(() => void load(), RELOAD_DELAY_MS);
     };
+    // I read one of these chats (here or on another device): its count and the chips go down.
+    const onReceipt = (frame: { chatId?: string; userId?: string }) => {
+      if (frame.userId === myUserId && frame.chatId && chatIds.current.has(frame.chatId)) onMessage();
+    };
     socket?.on('msg.new', onMessage);
     socket?.on('chat.changed', onMessage);
+    socket?.on('receipt', onReceipt);
     return () => {
       socket?.off('msg.new', onMessage);
       socket?.off('chat.changed', onMessage);
+      socket?.off('receipt', onReceipt);
       if (reloadTimer.current) clearTimeout(reloadTimer.current);
     };
-  }, [load]);
+  }, [load, myUserId]);
+
+  // Holding a group or a 1:1 selects it, like the personal list: archive, pin, mute, read, leave.
+  const selection = useChatSelection(chats);
+  const batch = useAccionesDeSeleccion({ jwt, seleccionados: selection.selectedChats, limpiarSeleccion: selection.clear, recargar: load });
+  useEffect(() => {
+    if (!selection.selecting) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      selection.clear();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [selection.selecting, selection.clear]);
 
   const agenda = agendaPorTelefono();
   const title = useCallback((chat: ChatSummary) => nombreDeContacto({ delServidor: chat.name, telefono: chat.phone, agenda }) || 'Conversación', [agenda]);
+  const [openArchived, setOpenArchived] = useState(false);
+  // An archived chat leaves the sections, like in the personal list; «Archivados» shows them.
+  const split = useMemo(() => splitArchived(chats ?? [], openArchived), [chats, openArchived]);
   const sections = useMemo(() => {
-    const visible = (chats ?? []).filter((chat) => !query.trim() || title(chat).toLowerCase().includes(query.trim().toLowerCase()));
+    const visible = split.shown.filter((chat) => !query.trim() || title(chat).toLowerCase().includes(query.trim().toLowerCase()));
     return spaceSections(visible.map((chat) => ({ ...chat, lastAt: chat.lastMessage?.at })));
-  }, [chats, query, title]);
+  }, [split, query, title]);
   const toggle = (key: SpaceSectionKey) => setFolded((before) => {
     const next = new Set(before);
     if (next.has(key)) next.delete(key);
     else next.add(key);
     return next;
   });
-  const noop = useCallback(() => undefined, []);
+  const tapRow = useCallback((chat: ChatSummary) => (selection.selecting ? selection.toggle(chat.id) : onOpenChat(chat)), [selection.selecting, selection.toggle, onOpenChat]);
 
   return (
     <ScrollView testID="lista-del-espacio" contentContainerStyle={{ paddingBottom: 96 }} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); props.onRefresh?.(); void load().finally(() => setRefreshing(false)); }} />}>
-      <View className="mx-4 mb-2 min-h-[48px] flex-row items-center gap-2 rounded-xl border border-outline/20 bg-surface px-3">
-        <Search size={18} color={colors['on-surface-variant']} />
-        <TextInput testID="buscar-en-espacio" value={query} onChangeText={setQuery} placeholder={`Buscar en ${space.name}`} placeholderTextColor={colors['on-surface-variant']} className="flex-1 text-[15px] text-on-surface" />
+      {selection.selecting ? (
+        <BarraDeSeleccionDeChats
+          cantidad={selection.selected.size}
+          acciones={selection.actions}
+          onCancelar={selection.clear}
+          onLectura={(read) => void batch.cambiarLectura(read)}
+          onFijar={(pinned) => void batch.aplicarAjuste({ pinned })}
+          onSilenciar={(muted) => void batch.aplicarAjuste({ muted })}
+          onArchivar={(archived) => void batch.aplicarAjuste({ archived })}
+          onSalir={() => void batch.salirDeGrupos()}
+          onEliminar={batch.eliminarChats}
+        />
+      ) : (
+        <View className="mx-4 mb-2 min-h-[48px] flex-row items-center gap-2 rounded-xl border border-outline/20 bg-surface px-3">
+          <Search size={18} color={colors['on-surface-variant']} />
+          <TextInput testID="buscar-en-espacio" value={query} onChangeText={setQuery} placeholder={`Buscar en ${space.name}`} placeholderTextColor={colors['on-surface-variant']} className="flex-1 text-[15px] text-on-surface" />
+        </View>
+      )}
+      {/* «Hilos» and «Menciones» (design s-03), with what is new: they open «Menciones y actividad» (e-19). */}
+      <View className="mx-4 mb-2 flex-row gap-2">
+        <ActivityChip testID="chip-hilos" Icon={MessagesSquare} label="Hilos" count={activity.threads} onPress={() => props.onActivity('threads')} />
+        <ActivityChip testID="chip-menciones" Icon={AtSign} label="Menciones" count={activity.mentions} onPress={() => props.onActivity('mentions')} />
       </View>
       <WorkspaceLinks space={space} onOpen={props.onWorkspace} />
       {failed && chats === null ? (
@@ -116,7 +164,7 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
                     section.key === 'channels' ? (
                       <ChannelRow key={chat.id} chat={chat} open={chat.id === props.openChatId} onOpen={() => props.onOpenChat(chat)} />
                     ) : (
-                      <FilaDeChat key={chat.id} chat={chat} titulo={title(chat)} miUserId={props.myUserId} marcado={false} enLinea={false} escribiendo={false} onTocar={props.onOpenChat} onMantener={noop} open={chat.id === props.openChatId} />
+                      <FilaDeChat key={chat.id} chat={chat} titulo={title(chat)} miUserId={props.myUserId} marcado={selection.selected.has(chat.id)} enLinea={false} escribiendo={false} onTocar={tapRow} onMantener={selection.toggle} open={chat.id === props.openChatId} />
                     )
                   )}
               {section.key === 'channels' && !folded.has('channels') ? (
@@ -128,6 +176,12 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
             </View>
           ))
         : null}
+      {split.archived > 0 ? (
+        <Pressable testID="espacio-archivados" onPress={() => setOpenArchived((open) => !open)} className="min-h-[48px] flex-row items-center gap-3 border-t border-outline/10 px-4">
+          <Archive size={18} color={colors['on-surface-variant']} />
+          <Text className="flex-1 text-[15px] text-on-surface-variant">{openArchived ? 'Volver a los chats del espacio' : `Archivados (${split.archived})`}</Text>
+        </Pressable>
+      ) : null}
     </ScrollView>
   );
 }
@@ -177,5 +231,16 @@ function WorkspaceLinks(props: { space: ClientWorkspace; onOpen: (link: Workspac
       {admin && pending > 0 ? row('requests', Inbox, 'Solicitudes', String(pending), true) : null}
       {admin ? row('settings', Settings2, 'Ajustes del espacio') : null}
     </View>
+  );
+}
+
+function ActivityChip(props: { testID: string; Icon: typeof AtSign; label: string; count: number; onPress: () => void }) {
+  const colors = useColores();
+  return (
+    <Pressable testID={props.testID} onPress={props.onPress} className="min-h-[44px] flex-1 flex-row items-center justify-center gap-2 rounded-xl border border-outline/20 bg-surface">
+      <props.Icon size={17} color={colors.primary} />
+      <Text className="text-[15px] font-semibold text-on-surface">{props.label}</Text>
+      {props.count > 0 ? <Text className="h-6 min-w-[24px] rounded-full bg-primary px-1.5 text-center text-[12px] font-bold leading-6 text-on-primary">{props.count}</Text> : null}
+    </Pressable>
   );
 }

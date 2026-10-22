@@ -3,6 +3,8 @@ import { agendaPorTelefono, suscribirAgenda } from '../contacts/agendaEnMemoria'
 import { getSocket } from './socketClient';
 import type { MiembroMencionable } from './useMenciones';
 import { fotosPorMiembro, membresiaPorRespuesta, nombresPorMiembro, type MiembroConNombre } from './nombresDelGrupo';
+import { pillOf } from './nombresDelGrupo';
+import type { MemberPill } from '@lilachat/shared';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
 const PLAZO_MS = 10_000;
@@ -30,7 +32,8 @@ export function useGrupo(
   mencionables: (yo: string) => MiembroMencionable[];
   /** ¿Soy admin? Para lo que solo ellos crean (el recordatorio del grupo, 19/10). */
   soyAdmin: (yo: string) => boolean;
-  roles: ReadonlyMap<string, 'admin' | 'member'>;
+  /** Each member's pill: in a space, its job title and space role (design s-01). */
+  roles: ReadonlyMap<string, MemberPill>;
 } {
   const agenda = useSyncExternalStore(suscribirAgenda, agendaPorTelefono, agendaPorTelefono);
   const [miembros, setMiembros] = useState<MiembroConNombre[]>(() => cache.get(chatId) ?? []);
@@ -84,6 +87,6 @@ export function useGrupo(
   const mencionables = useCallback((yo: string) => lista.filter((uno) => uno.id !== yo), [lista]);
   const soyAdmin = useCallback((yo: string) => miembros.some((uno) => uno.id === yo && uno.role === 'admin'), [miembros]);
   /** Each member's role, for the pill next to their name in the Slack format (design `s-01`). */
-  const roleById = useMemo(() => new Map(miembros.map((member) => [member.id, member.role ?? 'member'] as const)), [miembros]);
+  const roleById = useMemo(() => new Map<string, MemberPill>(miembros.map((member) => [member.id, pillOf(member)])), [miembros]);
   return { nombres, fotos, soyMiembro, mencionables, soyAdmin, roles: roleById };
 }

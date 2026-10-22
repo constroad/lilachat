@@ -1,6 +1,13 @@
-import { nombreDeContacto } from '@lilachat/shared';
+import { nombreDeContacto, type MemberPill } from '@lilachat/shared';
 
 export type MiembroConNombre = { id: string; name: string | null; phone: string | null; avatarUrl?: string; role?: 'admin' | 'member' };
+/** What a company space's chat adds to each member: the job title and the role there (design s-01). */
+export type SpaceMemberFields = { title?: string; spaceRole?: string };
+
+/** A member's pill: the space's job title and role when there are, else the chat's role. */
+export function pillOf(member: MiembroConNombre & SpaceMemberFields): MemberPill {
+  return { role: member.spaceRole ?? member.role ?? 'member', title: member.title };
+}
 
 /**
  * El nombre con que se muestra cada miembro de un grupo (FL3): gana TU agenda,

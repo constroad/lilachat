@@ -1,6 +1,7 @@
-import type { ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
+import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
 import { BASE_URL, type ChatSummary } from '../api/client';
 import { jsonCall } from '../api/jsonCall';
+import { subirFotoRedonda } from '../chat/fotoDeGrupo';
 
 /** The company spaces (E1) and their channels (E2), over `/api/workspaces` (§72). */
 const url = (path: string) => `${BASE_URL}/api/workspaces${path}`;
@@ -50,3 +51,20 @@ export async function findSpaceChat(jwt: string, spaceId: string, chatId: string
   const response = await spaceChats(jwt, spaceId);
   return response.ok ? (response.data.chats.find((chat) => chat.id === chatId) ?? null) : null;
 }
+
+/** «Menciones y actividad» (design e-19): one tab of a space, or only the counts for the list's chips. */
+export function spaceActivity(jwt: string, spaceId: string, params: { type?: ActivityType; countsOnly?: boolean } = {}) {
+  const query = new URLSearchParams({ workspace: spaceId, ...(params.type ? { type: params.type } : {}), ...(params.countsOnly ? { counts: '1' } : {}) });
+  return jsonCall<{ items: ActivityItem[]; unread: { mentions: number; threads: number } }>(`${BASE_URL}/api/activity?${query}`, jwt);
+}
+
+/** The space's logo (design e1-12): uploaded like a group photo; taking it away brings the initials back. */
+/** A photo picked on the phone, as the round-photo upload takes it. */
+type PickedPhoto = Parameters<typeof subirFotoRedonda>[0]['foto'];
+
+export async function uploadSpaceLogo(jwt: string, spaceId: string, photo: PickedPhoto): Promise<{ ok: true; workspace: ClientWorkspace } | { ok: false; message: string }> {
+  const sent = await subirFotoRedonda({ url: url(`/${spaceId}/logo`), jwt, foto: photo });
+  if (!sent.ok) return { ok: false, message: sent.motivo };
+  return { ok: true, workspace: sent.payload.workspace as ClientWorkspace };
+}
+export const removeSpaceLogo = (jwt: string, spaceId: string) => jsonCall<{ workspace: ClientWorkspace }>(url(`/${spaceId}/logo`), jwt, { method: 'DELETE' });

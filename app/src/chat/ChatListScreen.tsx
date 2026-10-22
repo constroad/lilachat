@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { BackHandler, Pressable, RefreshControl, Text, View } from 'react-native';
 import { MessageCircle, PenSquare } from 'lucide-react-native';
 import {
-  accionesDeSeleccion,
   contarChats,
   filtrarChats,
   nombreDeContacto,
@@ -32,6 +31,7 @@ import { CabeceraDeArchivados, FilaDeArchivados } from './Archivados';
 import { BuscadorDeChats } from './BuscadorDeChats';
 import { ResultadosDeMensajes } from './ResultadosDeMensajes';
 import { BarraDeSeleccionDeChats } from './BarraDeSeleccionDeChats';
+import { lastMessageMs, useChatSelection } from './useChatSelection';
 import { useColores } from '../ui/tema';
 import { decidirAtras } from '../ui/botonAtras';
 import { agendaPorTelefono, suscribirAgenda } from '../contacts/agendaEnMemoria';
@@ -331,91 +331,41 @@ export function ChatListScreen({
 
   const hayChats = (chats?.length ?? 0) > 0;
 
-  /**
-   * Selección múltiple, como WhatsApp: mantener presionada una fila entra al
-   * modo y a partir de ahí un toque marca/desmarca. El modo ES «hay algo
-   * seleccionado»; vaciar la selección sale del modo, sin un flag aparte.
-   */
-  const [seleccion, setSeleccion] = useState<Set<string>>(new Set());
-  const enSeleccion = seleccion.size > 0;
-
-  const alternarSeleccion = useCallback((id: string) => {
-    setSeleccion((actual) => {
-      const siguiente = new Set(actual);
-      if (siguiente.has(id)) siguiente.delete(id);
-      else siguiente.add(id);
-      return siguiente;
-    });
-  }, []);
-
-  const limpiarSeleccion = useCallback(() => setSeleccion(new Set()), []);
+  // Selecting several chats, like WhatsApp: the mode IS «something selected» (`useChatSelection`).
+  const selection = useChatSelection(chats);
 
   // Atrás deshace lo último, como WhatsApp: la selección, la búsqueda,
   // «Archivados»; recién después sale (lo decide `App`).
   useEffect(() => {
-    if (!enSeleccion && !busqueda && !verArchivados) return;
+    if (!selection.selecting && !busqueda && !verArchivados) return;
     const suscripcion = BackHandler.addEventListener('hardwareBackPress', () => {
       const accion = decidirAtras({
         pantalla: 'tabs',
         tab: 'chats',
-        haySeleccion: enSeleccion,
+        haySeleccion: selection.selecting,
         buscando: Boolean(busqueda),
         enArchivados: verArchivados,
       });
-      if (accion === 'soltar-seleccion') limpiarSeleccion();
+      if (accion === 'soltar-seleccion') selection.clear();
       else if (accion === 'limpiar-busqueda') setBusqueda('');
       else if (accion === 'cerrar-archivados') setVerArchivados(false);
       else return false;
       return true;
     });
     return () => suscripcion.remove();
-  }, [enSeleccion, busqueda, verArchivados, limpiarSeleccion]);
+  }, [selection.selecting, busqueda, verArchivados, selection.clear]);
 
   // En modo selección el toque marca/desmarca; fuera de él, abre. Mantener
   // presionado SIEMPRE entra al modo y marca esa fila.
   const alTocarFila = useCallback(
-    (chat: ChatSummary) => (enSeleccion ? alternarSeleccion(chat.id) : onOpenChat(chat)),
-    [enSeleccion, alternarSeleccion, onOpenChat]
-  );
-
-  // Un chat que desaparece de la lista (lo borré en otro teléfono) no puede
-  // quedar seleccionado y fantasma en la barra de acciones.
-  useEffect(() => {
-    if (seleccion.size === 0) return;
-    const vivos = new Set((chats ?? []).map((chat) => chat.id));
-    setSeleccion((actual) => {
-      const filtrada = new Set([...actual].filter((id) => vivos.has(id)));
-      return filtrada.size === actual.size ? actual : filtrada;
-    });
-  }, [chats, seleccion.size]);
-
-  /** Los chats seleccionados, resueltos a objeto (para la barra de acciones). */
-  const chatsSeleccionados = useMemo(
-    () => (chats ?? []).filter((chat) => seleccion.has(chat.id)),
-    [chats, seleccion]
-  );
-
-  const acciones = useMemo(
-    () =>
-      accionesDeSeleccion(
-        chatsSeleccionados.map((chat) => ({
-          id: chat.id,
-          esGrupo: chat.kind === 'group',
-          muted: chat.muted === true,
-          pinned: chat.pinned === true,
-          unread: chat.unread,
-          fechaOrden: msDe(chat.lastMessage?.at),
-          archived: chat.archived === true,
-          marcadoNoLeido: chat.markedUnread === true,
-        }))
-      ),
-    [chatsSeleccionados]
+    (chat: ChatSummary) => (selection.selecting ? selection.toggle(chat.id) : onOpenChat(chat)),
+    [selection.selecting, selection.toggle, onOpenChat]
   );
 
   const { aplicarAjuste, cambiarLectura, salirDeGrupos, eliminarChats } = useAccionesDeSeleccion({
     jwt: credential.jwt,
-    seleccionados: chatsSeleccionados,
-    limpiarSeleccion,
+    seleccionados: selection.selectedChats,
+    limpiarSeleccion: selection.clear,
     recargar: load,
   });
 
@@ -425,7 +375,7 @@ export function ChatListScreen({
    * mensaje; sin último mensaje va al fondo.
    */
   const ordenados = useMemo(
-    () => ordenarChats(visibles.map((chat) => ({ chat, pinned: chat.pinned === true, fechaOrden: msDe(chat.lastMessage?.at) }))).map((uno) => uno.chat),
+    () => ordenarChats(visibles.map((chat) => ({ chat, pinned: chat.pinned === true, fechaOrden: lastMessageMs(chat.lastMessage?.at) }))).map((uno) => uno.chat),
     [visibles]
   );
 
@@ -440,11 +390,11 @@ export function ChatListScreen({
       {/* Barra de selección múltiple: reemplaza al buscador mientras hay algo
           marcado, como el app bar de WhatsApp. Las acciones se derivan del
           conjunto (motor `accionesDeSeleccion`): una sola acción por lote. */}
-      {enSeleccion ? (
+      {selection.selecting ? (
         <BarraDeSeleccionDeChats
-          cantidad={seleccion.size}
-          acciones={acciones}
-          onCancelar={limpiarSeleccion}
+          cantidad={selection.selected.size}
+          acciones={selection.actions}
+          onCancelar={selection.clear}
           onLectura={(lectura) => void cambiarLectura(lectura)}
           onFijar={(pinned) => void aplicarAjuste({ pinned })}
           onSilenciar={(muted) => void aplicarAjuste({ muted })}
@@ -511,7 +461,7 @@ export function ChatListScreen({
               <FilaDeArchivados
                 sinLeer={archivadosSinLeer}
                 onAbrir={() => {
-                  limpiarSeleccion();
+                  selection.clear();
                   setVerArchivados(true);
                 }}
               />
@@ -538,12 +488,12 @@ export function ChatListScreen({
               titulo={title(chat)}
               miUserId={credential.userId}
               miFoto={credential.avatarUrl}
-              marcado={seleccion.has(chat.id)}
+              marcado={selection.selected.has(chat.id)}
               enLinea={puntoEnLinea(chat, credential.userId, onlineIds)}
               escribiendo={typingIn.has(chat.id)}
               borrador={borradores.get(chat.id)}
               onTocar={alTocarFila}
-              onMantener={alternarSeleccion}
+              onMantener={selection.toggle}
               open={chat.id === chatAbierto}
             />
           )}
@@ -561,7 +511,7 @@ export function ChatListScreen({
 
       {/* FAB de conversación nueva: se esconde en modo selección — ahí el pulgar
           está en la barra de acciones, no creando un chat. */}
-      {enSeleccion ? null : (
+      {selection.selecting ? null : (
       <Pressable
         testID="btn-nuevo-chat"
         onPress={onNewChat}
@@ -573,11 +523,4 @@ export function ChatListScreen({
 
     </View>
   );
-}
-
-/** La hora del último mensaje en ms, para ordenar. Sin mensaje va al fondo. */
-function msDe(at?: string): number {
-  if (!at) return 0;
-  const ms = Date.parse(at);
-  return Number.isNaN(ms) ? 0 : ms;
 }

@@ -1,5 +1,5 @@
 import { useCallback, type ComponentProps } from 'react';
-import { formatDayLabel, memberBadge, miReaccion, canOpenThread, puedeReaccionar, resolveDeliveryState, startsNewDay, usesFlatLayout } from '@lilachat/shared';
+import { formatDayLabel, memberBadge, miReaccion, canOpenThread, puedeReaccionar, resolveDeliveryState, startsNewDay, usesFlatLayout, type MemberPill } from '@lilachat/shared';
 import { DivisorNoLeidos } from './useDivisorNoLeidos';
 import { DaySeparator, isPending, MessageRow, type Row } from './MessageRow';
 import { ChipDeHilo } from './ChipDeHilo';
@@ -26,7 +26,7 @@ export function useDibujarFila(p: {
   nombres: ReadonlyMap<string, string>;
   fotos: ReadonlyMap<string, string>;
   /** Each member's role: the pill next to the name in the Slack format. */
-  roles: ReadonlyMap<string, string>;
+  roles: ReadonlyMap<string, MemberPill>;
   /** A chat of a company space: always the Slack format. */
   workspaceId?: string;
   leidoHasta: number;
@@ -91,7 +91,7 @@ export function useDibujarFila(p: {
               delivery={mia ? resolveDeliveryState({ seq: isPending(item) ? null : item.seq, otherReadSeq: leidoHasta, otherDeliveredSeq: entregadoHasta }) : undefined}
               authorName={nombres.get(senderId)}
               authorPhoto={fotos.get(senderId)}
-              badge={memberBadge({ role: roles.get(senderId), isMe: mia })}
+              badge={memberBadge({ ...roles.get(senderId), isMe: mia })}
               quoted={isPending(item) ? null : (citados.get(item.seq) ?? null)}
               selected={!isPending(item) && (elegidos.has(item.seq) || item.seq === resaltado || item.seq === seqBuscado)}
               selecting={enSeleccion}

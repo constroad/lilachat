@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChevronDown } from 'lucide-react-native';
-import { newlyAddedSpaces, spaceSubtitle, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember } from '@lilachat/shared';
+import { newlyAddedSpaces, spaceSubtitle, type ActivityItem, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 import { createChat } from '../contacts/contactsApi';
 import { getSocket } from '../chat/socketClient';
@@ -23,7 +23,8 @@ import { AddedToSpaceScreen } from './AddedToSpaceScreen';
 import { AccessRemovedScreen } from './AccessRemovedScreen';
 import { markSpacesSeen, useSeenSpaces } from './seenSpaces';
 import { memberName } from './memberUi';
-import { createSpaceChat } from './spacesApi';
+import { createSpaceChat, findSpaceChat } from './spacesApi';
+import { ActivityScreen } from '../activity/ActivityScreen';
 import type { WorkspaceLink } from './SpaceChatsScreen';
 
 type Sheet = 'switcher' | 'join' | 'create' | 'invite' | 'channels' | 'directory' | 'members' | 'requests' | 'settings' | 'newDirect' | 'newGroup' | null;
@@ -51,7 +52,7 @@ export const chatOfChannel = (channel: ClientChannel, spaceId: string): ChatSumm
  * someone else added me to, and «ya no tienes acceso» (e1-14). The space open
  * is remembered; one left falls back to personal.
  */
-export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name: string; phone: string }; personalUnread: number; onOpenChat: (chat: ChatSummary) => void }) {
+export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name: string; phone: string }; personalUnread: number; onOpenChat: (chat: ChatSummary, seq?: number) => void }) {
   const { jwt, myUserId, onOpenChat } = params;
   const colors = useColores();
   const currentId = useCurrentSpaceId();
@@ -63,6 +64,7 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
   const [removed, setRemoved] = useState<ClientWorkspace | null>(null);
   const [listChats, setListChats] = useState<ChatSummary[]>([]);
   const [reloadKey, setReloadKey] = useState(0);
+  const [activityTab, setActivityTab] = useState<ActivityType | null>(null);
   const current = spaces?.find((space) => space.id === currentId && space.status === 'active') ?? null;
 
   // A space I left, or where access was removed: back to personal, saying why when it was removed.
@@ -113,6 +115,13 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
     if (response.ok) onOpenChat({ id: response.data.chatId, kind: 'direct', name: admin.name, phone: admin.phone, memberIds: [myUserId, admin.userId], lastSeq: 0, unread: 0, othersReadSeq: 0, othersDeliveredSeq: 0, lastMessage: null });
   }, [jwt, myUserId, onOpenChat]);
   const openWorkspace = useCallback((link: WorkspaceLink) => setSheet(link), []);
+  const openActivityItem = useCallback(async (item: ActivityItem) => {
+    if (!current) return;
+    const chat = listChats.find((one) => one.id === item.chatId) ?? (await findSpaceChat(jwt, current.id, item.chatId));
+    if (!chat) return;
+    setActivityTab(null);
+    onOpenChat(chat, item.seq);
+  }, [current, listChats, jwt, onOpenChat]);
   const openNewDirect = useCallback(() => setSheet('newDirect'), []);
   const openNewGroup = useCallback(() => setSheet('newGroup'), []);
 
@@ -167,6 +176,7 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
           onLater={() => markSpacesSeen([welcome.id])}
         />
       ) : null}
+      {current ? <ActivityScreen visible={activityTab !== null} space={current} jwt={jwt} myUserId={myUserId} initialTab={activityTab ?? 'mentions'} onOpen={(item) => void openActivityItem(item)} onClose={() => { setActivityTab(null); setReloadKey((key) => key + 1); }} /> : null}
       {removed ? <AccessRemovedScreen space={removed} onPersonal={() => setRemoved(null)} onTalkTo={(admin) => void talkToAdmin(admin)} /> : null}
     </>
   );
@@ -177,6 +187,6 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
     layer,
     openChannels: () => setSheet('channels'),
     openInvite: () => setSheet('invite'),
-    listProps: { reloadKey, onWorkspace: openWorkspace, onNewDirect: openNewDirect, onNewGroup: openNewGroup, onChats: setListChats, onRefresh: reload },
+    listProps: { reloadKey, onWorkspace: openWorkspace, onNewDirect: openNewDirect, onNewGroup: openNewGroup, onChats: setListChats, onRefresh: reload, onActivity: setActivityTab },
   };
 }

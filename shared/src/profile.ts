@@ -71,3 +71,32 @@ export function birthdayFieldError(fields: { day: string; month: string; year: s
 
 /** «Continuar» needs a name, a valid birthday and the email proved. */
 export const canFinishProfile = (state: { name: string; birthdayOk: boolean; emailVerified: boolean }): boolean => Boolean(state.name.trim()) && state.birthdayOk && state.emailVerified;
+
+/**
+ * Whether «Completa tu perfil» covers the app (22/10). The check used to run
+ * after the chats showed: they flashed and the form jumped in. Now someone
+ * this device already saw complete opens at once (checked again behind), and
+ * anyone else waits for the server's answer before seeing anything.
+ */
+export type ProfileGateState = { status: 'checking' } | { status: 'open' } | { status: 'blocked'; profile: MyProfile };
+
+/** A slow server does not hold the app: after this, it opens and the answer can still block it. */
+export const PROFILE_CHECK_LIMIT_MS = 5_000;
+
+/**
+ * What covers the app right now. The server's answer, when there is one;
+ * before it, open for someone this device saw complete, for a session with
+ * no network (no token to ask with) or once the limit passed; else waiting.
+ */
+export function profileGateNow(input: { answer: ProfileGateState | null; knownComplete: boolean; offline: boolean; gaveUp: boolean }): ProfileGateState {
+  if (input.answer) return input.answer;
+  return input.knownComplete || input.offline || input.gaveUp ? { status: 'open' } : { status: 'checking' };
+}
+
+/** Only a server that says something is missing blocks; no answer, or an older server without `profile`, opens. */
+export function profileGateAfter(answer: { ok: true; profile?: MyProfile } | { ok: false }): ProfileGateState {
+  return answer.ok && answer.profile?.missing?.length ? { status: 'blocked', profile: answer.profile } : { status: 'open' };
+}
+
+/** Where the device remembers that this person completed it. */
+export const profileCompleteKey = (userId: string): string => `lilachat.profile-complete.${userId}`;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { birthdayFieldError, birthdayFromFields, birthdayLabel, canFinishProfile, normalizeEmail, profileMissing, validateBirthday } from './profile.js';
+import { birthdayFieldError, birthdayFromFields, birthdayLabel, canFinishProfile, profileGateAfter, profileGateNow, profileCompleteKey, normalizeEmail, profileMissing, validateBirthday } from './profile.js';
 
 const NOW = new Date('2026-10-21T15:00:00Z');
 
@@ -57,5 +57,33 @@ describe('complete profile screen', () => {
     expect(canFinishProfile({ name: '  ', birthdayOk: true, emailVerified: true })).toBe(false);
     expect(canFinishProfile({ name: 'Ana', birthdayOk: false, emailVerified: true })).toBe(false);
     expect(canFinishProfile({ name: 'Ana', birthdayOk: true, emailVerified: false })).toBe(false);
+  });
+});
+
+/** 22/10: the gate showed the chats for an instant and then the form; whoever completed it waited for nothing. */
+describe('profile gate', () => {
+  const profile = { name: 'Ana', phone: '987654321', avatarUrl: null, email: null, emailVerified: false, birthday: null, birthdayVisible: true, missing: ['birthday' as const, 'email' as const] };
+
+  it('before the answer: someone this device saw complete opens at once; anyone else waits, unless offline or past the limit', () => {
+    const before = { answer: null, knownComplete: false, offline: false, gaveUp: false };
+    expect(profileGateNow(before)).toEqual({ status: 'checking' });
+    expect(profileGateNow({ ...before, knownComplete: true })).toEqual({ status: 'open' });
+    expect(profileGateNow({ ...before, offline: true })).toEqual({ status: 'open' });
+    expect(profileGateNow({ ...before, gaveUp: true })).toEqual({ status: 'open' });
+  });
+
+  it('the answer wins over what the device remembered', () => {
+    expect(profileGateNow({ answer: { status: 'blocked', profile }, knownComplete: true, offline: false, gaveUp: true })).toEqual({ status: 'blocked', profile });
+  });
+
+  it('the answer decides; without one (no network, an older server) nothing is blocked', () => {
+    expect(profileGateAfter({ ok: true, profile })).toEqual({ status: 'blocked', profile });
+    expect(profileGateAfter({ ok: true, profile: { ...profile, missing: [] } })).toEqual({ status: 'open' });
+    expect(profileGateAfter({ ok: true })).toEqual({ status: 'open' });
+    expect(profileGateAfter({ ok: false })).toEqual({ status: 'open' });
+  });
+
+  it('remembered per person, not per device', () => {
+    expect(profileCompleteKey('u1')).not.toBe(profileCompleteKey('u2'));
   });
 });

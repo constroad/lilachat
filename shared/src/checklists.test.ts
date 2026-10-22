@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHECKLIST_LIMITS, activeDueChoice, checklistMembers, checklistSummaryLine, taskDoneNotices, checklistOverdue, checklistPermissions, checklistProgress, checklistTextInChat, myTasks, shortPersonName, taskDueLabel, taskDueOptions, taskDueState, toggleChecklistItem, validateChecklist, validateChecklistItem, canToggleTask } from './checklists.js';
+import { CHECKLIST_LIMITS, activeDueChoice, checklistsBadge, taskCountLabel, checklistMembers, checklistSummaryLine, taskDoneNotices, checklistOverdue, checklistPermissions, checklistProgress, checklistTextInChat, myTasks, shortPersonName, taskDueLabel, taskDueOptions, taskDueState, toggleChecklistItem, validateChecklist, validateChecklistItem, canToggleTask } from './checklists.js';
 
 /** José, 21/10: «agrega el checklist al estilo de Telegram» (backlog 8). */
 describe('validateChecklist', () => {
@@ -75,8 +75,10 @@ describe('task due dates', () => {
     expect(taskDueLabel(new Date(2026, 9, 22, 9, 0).toISOString(), now)).toMatch(/^Mañana 9:00/);
     expect(taskDueLabel(new Date(2026, 9, 21, 9, 0).toISOString(), now)).toBe('Atrasada · hoy');
     expect(taskDueLabel(new Date(2026, 9, 20, 9, 0).toISOString(), now)).toBe('Atrasada · ayer');
-    expect(taskDueLabel(new Date(2026, 9, 18, 9, 0).toISOString(), now)).toBe('Atrasada · 3 días');
-    expect(taskDueLabel(new Date(2026, 9, 23, 7, 0).toISOString(), now)).toMatch(/^vie\.? 7:00/i);
+    // Older than yesterday, the date (design `k-04-mis-tareas`: «ATRASADA · 23 OCT»).
+    expect(taskDueLabel(new Date(2026, 9, 18, 9, 0).toISOString(), now)).toBe('Atrasada · 18 oct');
+    // The weekday without its period, like the design: «JUE 7:00 A. M.».
+    expect(taskDueLabel(new Date(2026, 9, 23, 7, 0).toISOString(), now)).toMatch(/^vie 7:00/i);
   });
   it('quick choices: today (only with time left), tomorrow, and the coming days', () => {
     const options = taskDueOptions(now);
@@ -193,5 +195,17 @@ describe('canToggleTask', () => {
     expect(canToggleTask({ ...base, me: 'beto', assignee: null })).toBe(true);
     expect(canToggleTask({ ...base, othersCanMark: false, me: 'beto' })).toBe(false);
     expect(canToggleTask({ ...base, othersCanMark: false, me: 'jose' })).toBe(true);
+  });
+});
+
+describe('k-04 and k-05 labels (designs of 22/10)', () => {
+  it('a group says how many tasks it has', () => {
+    expect(taskCountLabel(1)).toBe('1 tarea');
+    expect(taskCountLabel(3)).toBe('3 tareas');
+  });
+  it('the chat info card says how many checklists are still open, or that all are complete', () => {
+    expect(checklistsBadge([{ done: 3, total: 6 }, { done: 6, total: 6 }, { done: 0, total: 2 }])).toBe('2 activos');
+    expect(checklistsBadge([{ done: 0, total: 1 }])).toBe('1 activo');
+    expect(checklistsBadge([{ done: 2, total: 2 }])).toBe('Completos');
   });
 });

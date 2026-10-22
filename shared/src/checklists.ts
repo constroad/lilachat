@@ -102,6 +102,9 @@ const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(),
 const daysBetween = (from: Date, to: Date) => Math.round((startOfDay(to).getTime() - startOfDay(from).getTime()) / DAY_MS);
 const CLOCK = new Intl.DateTimeFormat('es-PE', { hour: 'numeric', minute: '2-digit', hourCycle: 'h12' });
 const WEEKDAY = new Intl.DateTimeFormat('es-PE', { weekday: 'short' });
+const DAY_AND_MONTH = new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short' });
+/** «vie.» → «vie», «oct.» → «oct»: the design (`k-04-mis-tareas`) writes them without the period. */
+const withoutPeriods = (text: string) => text.replace(/\./g, '');
 
 /** Where a task stands against its date, in the phone's local time. */
 export function taskDueState(item: { dueAt?: string | null; doneBy: string | null }, now: Date): TaskDueState {
@@ -112,18 +115,28 @@ export function taskDueState(item: { dueAt?: string | null; doneBy: string | nul
   return daysBetween(now, due) === 0 ? 'today' : 'upcoming';
 }
 
-/** «Hoy 3:00 p. m.», «Mañana 9:00 a. m.», «vie. 7:00 a. m.», or how late: «Atrasada · ayer». */
+/** «Hoy 3:00 p. m.», «Mañana 9:00 a. m.», «vie 7:00 a. m.», or how late: «Atrasada · ayer», «Atrasada · 18 oct». */
 export function taskDueLabel(dueAt: string, now: Date): string {
   const due = new Date(dueAt);
   const days = daysBetween(now, due);
   if (due.getTime() < now.getTime()) {
     const late = -days;
-    return `Atrasada · ${late <= 0 ? 'hoy' : late === 1 ? 'ayer' : `${late} días`}`;
+    return `Atrasada · ${late <= 0 ? 'hoy' : late === 1 ? 'ayer' : withoutPeriods(DAY_AND_MONTH.format(due))}`;
   }
   const time = CLOCK.format(due);
   if (days === 0) return `Hoy ${time}`;
   if (days === 1) return `Mañana ${time}`;
-  return `${WEEKDAY.format(due)} ${time}`;
+  return `${withoutPeriods(WEEKDAY.format(due))} ${time}`;
+}
+
+/** «1 tarea», «3 tareas»: the count beside each group of «Mis tareas». */
+export const taskCountLabel = (count: number): string => `${count} ${count === 1 ? 'tarea' : 'tareas'}`;
+
+/** The chat info card's pill (`k-05-checklists-del-chat`): how many are still open, or «Completos». */
+export function checklistsBadge(checklists: readonly { done: number; total: number }[]): string {
+  const open = checklists.filter((checklist) => checklist.total === 0 || checklist.done < checklist.total).length;
+  if (open === 0) return 'Completos';
+  return `${open} ${open === 1 ? 'activo' : 'activos'}`;
 }
 
 export type TaskDueOption = { id: 'today' | 'tomorrow' | 'in2' | 'in3'; label: string; date: Date };

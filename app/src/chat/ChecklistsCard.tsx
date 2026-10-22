@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { ChevronRight, ClipboardCheck } from 'lucide-react-native';
-import { checklistSummaryLine, type ChecklistSummary } from '@lilachat/shared';
+import { ChevronRight, SquareCheckBig } from 'lucide-react-native';
+import { checklistSummaryLine, checklistsBadge, type ChecklistSummary } from '@lilachat/shared';
 import { agendaGet } from '../agenda/agendaApi';
 import { useColores } from '../ui/tema';
 
@@ -36,11 +36,14 @@ export function ChecklistsCard(props: { chatId: string; jwt: string; onOpen: (se
   return (
     <View testID="tarjeta-checklists" className="mx-4 mt-4 overflow-hidden rounded-xl border border-outline/10 bg-surface">
       <View className="h-[3px] bg-primary" />
-      <View className="flex-row items-center gap-2 px-4 pb-2 pt-3">
-        <ClipboardCheck size={16} color={colors.primary} />
-        <Text className="text-[15px] font-semibold text-on-surface">Checklists</Text>
-        <View className="rounded-full bg-primary/10 px-2 py-0.5">
-          <Text className="text-[12px] font-semibold text-primary">{checklists.length}</Text>
+      {/* Kicker, title and how many are open (design `k-05-checklists-del-chat`). */}
+      <View className="flex-row items-center gap-3 px-4 pb-3 pt-3">
+        <View className="min-w-0 flex-1">
+          <Text className="text-[11px] font-bold uppercase tracking-widest text-primary">Control operativo</Text>
+          <Text className="mt-0.5 text-[16px] font-bold text-on-surface">Checklists del chat</Text>
+        </View>
+        <View testID="checklists-activos" className="rounded-md border border-outline/30 bg-surface-variant px-2 py-1">
+          <Text className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">{checklistsBadge(checklists)}</Text>
         </View>
       </View>
       {shown.map((checklist) => {
@@ -49,15 +52,21 @@ export function ChecklistsCard(props: { chatId: string; jwt: string; onOpen: (se
         return (
           <Pressable key={checklist._id} testID={`checklist-del-chat-${checklist._id}`} disabled={!cardSeq} onPress={() => cardSeq && props.onOpen(cardSeq)} className="min-h-[64px] flex-row items-center gap-3 border-t border-outline/10 px-4 py-2.5">
             <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-              <ClipboardCheck size={19} color={colors.primary} />
+              <SquareCheckBig size={19} color={colors.primary} />
             </View>
             <View className="min-w-0 flex-1">
-              <Text numberOfLines={1} className="text-[15px] font-semibold text-on-surface">{checklist.title}</Text>
+              <View className="flex-row items-center gap-2">
+                <Text numberOfLines={1} className="min-w-0 flex-1 text-[15px] font-semibold text-on-surface">{checklist.title}</Text>
+                {line.complete ? (
+                  <View className="rounded-md border border-en-linea/30 bg-en-linea/10 px-2 py-0.5">
+                    <Text className="text-[11px] font-bold uppercase text-en-linea">Completo</Text>
+                  </View>
+                ) : null}
+              </View>
               <View className="my-1 h-1 overflow-hidden rounded-full bg-primary/10">
                 <View className="h-full rounded-full bg-primary" style={{ width: `${checklist.total ? (checklist.done / checklist.total) * 100 : 0}%` }} />
               </View>
               <Text className="text-[12px] text-on-surface-variant">
-                {line.complete ? 'Completo · ' : ''}
                 {line.progress}
                 {line.late ? <Text className="font-semibold text-error">{` · ${line.late}`}</Text> : null}
               </Text>

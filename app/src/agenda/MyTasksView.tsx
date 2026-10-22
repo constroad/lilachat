@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { Check, ClipboardCheck, RotateCw } from 'lucide-react-native';
-import { myTasks, taskDueLabel, type AgendaChecklist, type MyTask, type MyTaskGroup } from '@lilachat/shared';
+import { myTasks, taskCountLabel, taskDueLabel, type AgendaChecklist, type MyTask, type MyTaskGroup } from '@lilachat/shared';
 import { agendaGet, agendaPost } from './agendaApi';
 import { useColores } from '../ui/tema';
 
 const GROUP_TITLE: Record<MyTaskGroup['state'], string> = { overdue: 'Atrasadas', today: 'Hoy', upcoming: 'Próximas', none: 'Sin fecha' };
-const PILL: Record<MyTaskGroup['state'], string> = { overdue: 'bg-error/10 text-error font-bold', today: 'bg-primary/10 text-primary font-semibold', upcoming: 'bg-surface-variant text-on-surface-variant', none: '' };
+/** Each group's tone in the design (`k-04-mis-tareas`): late in red, today in amber, the rest neutral. */
+const TONE: Record<MyTaskGroup['state'], { label: string; ring: string; pill: string; pillText: string }> = {
+  overdue: { label: 'text-error', ring: 'border-error', pill: 'border-error/30 bg-error/10', pillText: 'text-error' },
+  today: { label: 'text-warning', ring: 'border-warning', pill: 'border-warning/30 bg-warning/10', pillText: 'text-warning' },
+  upcoming: { label: 'text-on-surface-variant', ring: 'border-outline/40', pill: 'border-outline/30 bg-surface-variant', pillText: 'text-on-surface-variant' },
+  none: { label: 'text-on-surface-variant', ring: 'border-outline/40', pill: '', pillText: '' },
+};
 
 /** «Mis tareas» (backlog 30): what was assigned to me in my chats' checklists; `count` feeds the segment's badge. */
 export function useMyTasks(jwt: string, reload: number) {
@@ -74,19 +80,26 @@ export function MyTasksView(props: { jwt: string; me: string; tasks: ReturnType<
     <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 96 }} refreshControl={refresh} testID="mis-tareas">
       {groups.map((group) => (
         <View key={group.state} testID={`tareas-${group.state}`}>
-          <Text className={`mb-2 mt-3 text-[11px] font-bold uppercase tracking-wider ${group.state === 'overdue' ? 'text-error' : 'text-primary'}`}>{`${GROUP_TITLE[group.state]} · ${group.tasks.length}`}</Text>
+          <View className="mb-2 mt-4 flex-row items-center justify-between">
+            <Text className={`text-[12px] font-bold uppercase tracking-wider ${TONE[group.state].label}`}>{GROUP_TITLE[group.state]}</Text>
+            <Text className={`text-[12px] font-semibold ${TONE[group.state].label}`}>{taskCountLabel(group.tasks.length)}</Text>
+          </View>
           {group.tasks.map((task) => {
             const seq = seqOf(task.checklistId);
             return (
               <Pressable key={`${task.checklistId}-${task.item.id}`} testID={`mi-tarea-${task.item.id}`} onPress={() => props.onOpen(task.chatId, seq)} className="mb-2 min-h-[64px] flex-row items-center gap-3 rounded-xl border border-outline/10 bg-surface px-3 py-2.5">
-                <Pressable testID={`marcar-tarea-${task.item.id}`} accessibilityRole="checkbox" accessibilityState={{ checked: ticking === task.item.id }} accessibilityLabel={`Marcar «${task.item.text}» como hecha`} hitSlop={10} disabled={ticking !== null} onPress={() => void tick(task)} className={`h-6 w-6 items-center justify-center rounded-full ${ticking === task.item.id ? 'bg-primary' : 'border-2 border-outline/40'}`}>
+                <Pressable testID={`marcar-tarea-${task.item.id}`} accessibilityRole="checkbox" accessibilityState={{ checked: ticking === task.item.id }} accessibilityLabel={`Marcar «${task.item.text}» como hecha`} hitSlop={10} disabled={ticking !== null} onPress={() => void tick(task)} className={`h-6 w-6 items-center justify-center rounded-full ${ticking === task.item.id ? 'bg-primary' : `border-2 ${TONE[group.state].ring}`}`}>
                   {ticking === task.item.id ? <Check size={14} color={colors['on-primary']} strokeWidth={3} /> : null}
                 </Pressable>
                 <View className="min-w-0 flex-1">
-                  <Text numberOfLines={2} className="text-[15px] font-semibold text-on-surface">{task.item.text}</Text>
+                  <Text numberOfLines={1} className="text-[15px] font-semibold text-on-surface">{task.item.text}</Text>
                   <Text numberOfLines={1} className="mt-0.5 text-[12px] text-on-surface-variant">{`${task.checklistTitle} · ${props.chatNameOf(task.chatId)}`}</Text>
                 </View>
-                {task.item.dueAt ? <Text className={`overflow-hidden rounded-md px-1.5 py-0.5 text-[11px] ${PILL[group.state]}`}>{taskDueLabel(task.item.dueAt, new Date())}</Text> : null}
+                {task.item.dueAt ? (
+                  <View className={`rounded-md border px-2 py-1 ${TONE[group.state].pill}`}>
+                    <Text className={`text-[11px] font-bold uppercase ${TONE[group.state].pillText}`}>{taskDueLabel(task.item.dueAt, new Date())}</Text>
+                  </View>
+                ) : null}
               </Pressable>
             );
           })}

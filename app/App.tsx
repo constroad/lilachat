@@ -138,7 +138,7 @@ function Contenido() {
    */
   const haySesion = boot.phase === 'home';
   // Name, birthday and a verified email are required (backlog 17): a session without them completes them first.
-  const profileGate = useProfileGate(boot.phase === 'home' ? boot.credential.jwt : null);
+  const profileGate = useProfileGate(boot.phase === 'home' ? boot.credential.jwt : null, boot.phase === 'home' ? boot.credential.userId : null);
   /**
    * El chat que está arriba del stack (FL1). Antes era una fase del arranque;
    * con navegación nativa la lista sigue montada debajo y esto lo dice el
@@ -392,7 +392,8 @@ function Contenido() {
           desaparecen contra la barra. Es lo único del chrome del sistema que no
           se resuelve con una clase de Tailwind. */}
       <StatusBar style={oscuro ? 'light' : 'dark'} />
-      {boot.phase === 'loading' ? (
+      {/* Also while the profile answer is pending: not the chats for an instant and then the form (22/10). */}
+      {boot.phase === 'loading' || (boot.phase === 'home' && profileGate.checking) ? (
         <View className="flex-1 items-center justify-center" testID="pantalla-cargando">
           <ActivityIndicator color={colores.primary} size="large" />
         </View>

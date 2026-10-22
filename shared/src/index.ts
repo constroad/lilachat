@@ -94,3 +94,4 @@ export * from './mediaLibrary.js';
 export * from './workspaceMembers.js';
 export * from './activity.js';
 export * from './bots.js';
+export * from './profile.js';

@@ -1,0 +1,73 @@
+/**
+ * What a Lilachat profile must have (José, 21/10; backlog 17): a name, a
+ * birthday (the year is optional) and a verified email, besides the phone the
+ * code already proved. PURE: the server validates with this and the app and
+ * the web ask for what `profileMissing` says.
+ */
+export type Birthday = { day: number; month: number; year?: number };
+export type ProfileField = 'name' | 'birthday' | 'email';
+
+const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const OLDEST_YEAR = 1900;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const EMAIL_MAX = 120;
+
+const isLeap = (year: number) => (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+/** Without a year, February 29 is allowed: it exists in some years. */
+const daysIn = (month: number, year?: number) => (month === 2 ? (year === undefined || isLeap(year) ? 29 : 28) : [4, 6, 9, 11].includes(month) ? 30 : 31);
+
+export function validateBirthday(raw: unknown, now: Date = new Date()): { ok: true; birthday: Birthday } | { ok: false; message: string } {
+  const value = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const day = Number(value.day);
+  const month = Number(value.month);
+  const year = value.year === undefined || value.year === null || value.year === '' ? undefined : Number(value.year);
+  if (!Number.isInteger(month) || month < 1 || month > 12) return { ok: false, message: 'Elige el mes de tu cumpleaños.' };
+  if (year !== undefined && (!Number.isInteger(year) || year < OLDEST_YEAR || year > now.getFullYear())) return { ok: false, message: 'Ese año no parece correcto.' };
+  if (!Number.isInteger(day) || day < 1 || day > daysIn(month, year)) return { ok: false, message: 'Ese día no existe en ese mes.' };
+  return { ok: true, birthday: { day, month, ...(year !== undefined ? { year } : {}) } };
+}
+
+/** Trimmed and lowercased; '' when it does not look like an email. */
+export function normalizeEmail(raw: unknown): string {
+  const email = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
+  return email.length <= EMAIL_MAX && EMAIL.test(email) ? email : '';
+}
+
+export function profileMissing(profile: { name?: string | null; birthday?: Birthday | null; emailVerified?: boolean }): ProfileField[] {
+  return [
+    ...(profile.name?.trim() ? [] : ['name' as const]),
+    ...(profile.birthday ? [] : ['birthday' as const]),
+    ...(profile.emailVerified ? [] : ['email' as const]),
+  ];
+}
+
+/** «29 de agosto». */
+export const birthdayLabel = (birthday: Pick<Birthday, 'day' | 'month'>): string => `${birthday.day} de ${MONTHS[birthday.month - 1]}`;
+
+/** My profile as `GET /api/me/profile` returns it. */
+export type MyProfile = {
+  name: string | null;
+  phone: string;
+  avatarUrl: string | null;
+  email: string | null;
+  emailVerified: boolean;
+  birthday: Birthday | null;
+  birthdayVisible: boolean;
+  missing: ProfileField[];
+};
+
+/** «Completa tu perfil»'s three birthday boxes, as typed (the year may stay empty). */
+export function birthdayFromFields(fields: { day: string; month: string; year: string }, now: Date = new Date()): { ok: true; birthday: Birthday } | { ok: false; message: string } {
+  if (!fields.day.trim() || !fields.month.trim()) return { ok: false, message: 'Escribe el día y el mes de tu cumpleaños.' };
+  return validateBirthday({ day: Number(fields.day), month: Number(fields.month), ...(fields.year.trim() ? { year: Number(fields.year) } : {}) }, now);
+}
+
+/** The error to show under the birthday: only once day and month are typed, never for boxes still empty. */
+export function birthdayFieldError(fields: { day: string; month: string; year: string }, now: Date = new Date()): string | null {
+  if (!fields.day.trim() || !fields.month.trim()) return null;
+  const birthday = birthdayFromFields(fields, now);
+  return birthday.ok ? null : birthday.message;
+}
+
+/** «Continuar» needs a name, a valid birthday and the email proved. */
+export const canFinishProfile = (state: { name: string; birthdayOk: boolean; emailVerified: boolean }): boolean => Boolean(state.name.trim()) && state.birthdayOk && state.emailVerified;

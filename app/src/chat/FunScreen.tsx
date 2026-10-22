@@ -22,8 +22,10 @@ export function shakeScreen(effect: ScreenEffect | 'nudge' = 'nudge'): void {
   else squeezeX.value = withSequence(ReduceMotion.Never, ...steps);
 }
 
-type Playing = { seq: number; wink: Wink } | null;
+type Playing = { seq: number; wink: Wink; run: number } | null;
 let playing: Playing = null;
+/** Each start is a new run, so the overlay remounts even for the same seed (`winkPlay.ts`). */
+let runs = 0;
 let pendingCues: ReturnType<typeof setTimeout>[] = [];
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach((listener) => listener());
@@ -51,7 +53,8 @@ export function playWinkCues(wink: Wink, how: { sound: boolean; animate: boolean
 }
 
 export function startWink(next: { seq: number; wink: Wink }): void {
-  playing = next;
+  runs += 1;
+  playing = { ...next, run: runs };
   notify();
 }
 

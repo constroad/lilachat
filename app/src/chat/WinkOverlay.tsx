@@ -3,6 +3,7 @@ import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Animated, { Easing, ReduceMotion, interpolate, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { WINK_SKETCHES, winkParticles, type SketchWinkId, type Wink, type WinkParticle } from '@lilachat/shared';
 import { WinkSketch } from './WinkSketch';
+import { winkPlayKey } from './winkPlay';
 
 const HERO_SIZE = 120;
 const HERO_FADE_MS = 400;
@@ -17,7 +18,7 @@ const ALWAYS = ReduceMotion.Never;
  * particles following the shared choreography. It never takes touches
  * (`pointerEvents="none"`): the chat stays usable under it.
  */
-export function WinkOverlay(props: { play: { seq: number; wink: Wink } | null; onDone: () => void }) {
+export function WinkOverlay(props: { play: { seq: number; wink: Wink; run: number } | null; onDone: () => void }) {
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
   const { play, onDone } = props;
   useEffect(() => {
@@ -27,18 +28,19 @@ export function WinkOverlay(props: { play: { seq: number; wink: Wink } | null; o
   }, [play, onDone]);
   const particles = useMemo(() => (play ? winkParticles(play.wink, play.seq) : []), [play]);
   if (!play) return null;
+  const playKey = winkPlayKey(play);
   const measure = (event: LayoutChangeEvent) => setSize({ width: event.nativeEvent.layout.width, height: event.nativeEvent.layout.height });
   return (
     <View testID={`guino-en-pantalla-${play.wink.id}`} pointerEvents="none" style={StyleSheet.absoluteFill} onLayout={measure}>
       {size ? (
         <>
           {particles.map((particle, index) => (
-            <FlyingGlyph key={`${play.seq}-${index}`} particle={particle} width={size.width} height={size.height} />
+            <FlyingGlyph key={`${playKey}-${index}`} particle={particle} width={size.width} height={size.height} />
           ))}
           {play.wink.kind === 'character' ? (
-            <WinkSketch key={play.seq} sketch={WINK_SKETCHES[play.wink.id as SketchWinkId]} screen={size} />
+            <WinkSketch key={playKey} sketch={WINK_SKETCHES[play.wink.id as SketchWinkId]} screen={size} />
           ) : (
-            <EmojiHero key={play.seq} glyph={play.wink.hero} durationMs={play.wink.durationMs} width={size.width} height={size.height} />
+            <EmojiHero key={playKey} glyph={play.wink.hero} durationMs={play.wink.durationMs} width={size.width} height={size.height} />
           )}
         </>
       ) : null}

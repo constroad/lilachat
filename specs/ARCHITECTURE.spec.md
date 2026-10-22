@@ -4909,6 +4909,124 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 109. Listas de chats propias, llamada programada y enlace de llamada, mini reproductor y contactos del teléfono en la web, y lo borrado que seguía dibujado (22/10/2026, 0.1.147)
+
+Cierra los pendientes 45, 42 (en chats de dos), 14 y 20. José pidió un
+mínimo de cuatro pendientes por versión.
+
+**Listas de chats propias (45).** José, 22/10: «Familia», «Amigos», como
+las carpetas de Telegram y las listas de WhatsApp.
+- Viven en el perfil (`User.chatLists`: nombre y chats, en mi orden). No
+  hay colección nueva ni índice nuevo.
+- `GET/POST /api/chat-lists`, `PATCH/DELETE /api/chat-lists/:id` y
+  `PUT /api/chat-lists/order`. Solo entran chats míos. Hasta 20 listas y
+  500 chats por lista.
+- Un nombre vacío, repetido o igual a un chip fijo se rechaza con su motivo
+  (`chatListNameError`).
+- Cada cambio emite `chatLists.changed` a mis otros dispositivos.
+  Tests: server 9, shared 15.
+- App: un chip por lista después de «Borradores», «+» para crear y toque
+  largo para editar o eliminar. En la selección de chats, «Agregar a lista»
+  muestra cada lista con todos, algunos o ninguno de los chats elegidos.
+- Web: los mismos chips, «+», el lápiz con una lista abierta, clic derecho
+  y «Agregar a lista» en el menú de cada chat. Tests: 5.
+- Medido en la web contra el servidor de QA: crear una lista y ver su chip,
+  1,3 s. Un cambio hecho en otro dispositivo llegó en vivo en 0,8 s.
+
+**Llamada programada y enlace de llamada (42).** José, 22/10, «como
+WhatsApp». Las llamadas de Lilachat son de dos personas, así que las dos
+opciones salen en chats 1 a 1. Las llamadas grupales quedan como
+pendiente 56.
+- **Programar llamada:** en el menú de la cámara, en la app y en la web. Es
+  un evento con `call: { video }`, solo en chats de dos (400 en un grupo).
+  Su línea dice «Llamada programada: …», avisa a los dos 5 minutos antes, y
+  la tarjeta ofrece «Unirse a la llamada» desde 10 minutos antes hasta una
+  hora después (`callJoinState`). La tarjeta se actualiza justo cuando eso
+  cambia (`msUntilJoinChange`), sin un temporizador fijo.
+- **Crear enlace de llamada:** `POST /api/chats/:id/call-link` devuelve
+  `https://lilachat.constroad.com/llamada/<chat>-<v|a>-<firma>`.
+  - Va firmado con HMAC y no se guarda en ningún lado.
+  - Solo lo abren los miembros del chat (403 con el motivo). Un enlace
+    alterado da 404.
+  - App: hoja de compartir de Android. Web: copiar.
+- **Abrir el enlace:** en el teléfono lo abre la app (App Links,
+  `pathPrefix /llamada`) y pregunta «¿Llamar a …?», voz o video. En la web
+  el enlace espera al ingreso, abre el chat y pregunta lo mismo.
+- Tests: server 8, shared 10, app 1, web 2.
+- Bug encontrado en el E2E: en una pestaña nueva, el pedido salía con la
+  sesión guardada antes de renovarse. Recibía un 401 y el enlace se perdía.
+  Ahora un 401 conserva el enlace hasta que llega la sesión renovada.
+- Error mío al escribirlo: el router del enlace se montaba en `/api` con
+  `router.use(requireSession)`. Así habría pedido sesión a toda ruta de
+  `/api` montada después. Quedó con la sesión en cada ruta.
+- Medido contra el servidor de QA (el túnel a la base pesa): programar y
+  ver la tarjeta en la web, 3,9 s. En el emulador, abrir el enlace y ver
+  «¿Llamar a QA Ana?», unos 2,7 s, contando las capturas del E2E.
+
+**Mini reproductor en la web (14).** El visor de PDF y el de videos ya
+existían. Faltaba el mini reproductor:
+- «Mini reproductor» en el visor de un video. El video sigue en una
+  ventanita abajo a la derecha, también al cerrar el visor o cambiar de
+  chat.
+- «Flotar» lo pasa al Picture-in-Picture del navegador, que lo mantiene
+  encima aunque cambies de pestaña.
+- Bug del E2E: tapaba el botón de enviar. Ahora va por encima del campo de
+  mensaje.
+- Tests: 6. Abre en 41 ms.
+
+**«Nuevo chat» en la web con la agenda del teléfono (20).** Es la opción
+(b) de José: nada se guarda en el servidor.
+- La web pide la agenda completa (`agenda.pedirTodo`) y solo los teléfonos
+  de esa persona la reciben. El teléfono responde (`agenda.respuestaTodo`)
+  con hasta 2000 contactos. El servidor los limpia y se los pasa solo a esa
+  web.
+- La web pregunta a `/api/contacts/match` quién está en Lilachat y los
+  muestra con el nombre de la agenda.
+- Sin el teléfono conectado dice «Abre Lilachat en tu teléfono para ver
+  aquí sus contactos».
+- Tests: shared 3, server 2, app 2, web 5.
+- E2E con un teléfono de QA Ana simulado: «Beto de la agenda» apareció a los
+  61 ms, y un número sin cuenta no apareció.
+
+**Lo borrado que seguía dibujado (bug, 22/10).**
+- En el E2E, los guiños de QA Ana borrados para todos seguían como tarjetas
+  con «Ver otra vez» en la app. Las tarjetas de eventos borradas también
+  seguían.
+- En la web pasaba lo mismo con guiños y zumbidos.
+- Ahora un guiño, un zumbido o una tarjeta borrados se leen «Se eliminó
+  este mensaje» (`drawsAsFunLine`, `drawsAsCard`; 3 tests en la app y 1 en
+  la web).
+- Además, un guiño borrado antes de verlo ya no se reproduce
+  (`funMessageToPlay`, 1 test).
+
+**La búsqueda dentro del chat no saltaba (bug de la app, encontrado en el
+E2E).** Marcaba «1 de 1» o «2 de 2» y la lista seguía abajo. Con la flecha
+y el teclado cerrado sí saltaba.
+- Medido con registros temporales: la fila estaba (índice 29 de 47) y el
+  salto se pedía.
+- Al abrir el teclado del buscador, Android reporta un «arrastre» sin dedo.
+  `PosicionEnLaLista` lo tomaba como el dedo y volvía a pegarse al final.
+  Al medirse las filas del salto, «lo de abajo creció» y bajaba
+  (`scrollToEnd`), deshaciendo el salto. El salto animado agregaba su propio
+  «arrastre» mientras todavía estaba abajo.
+- Arreglo:
+  - el salto suelta la lista del final justo antes de moverse
+    (`releaseFromEnd`, que existía para esto y nadie llamaba);
+  - salta sin animación, como la búsqueda de WhatsApp;
+  - mientras buscas o hay un mensaje resaltado, la lista no baja sola;
+  - una coincidencia que no está dibujada abre su ventana (44).
+- E2E: «Prueba» saltó al mensaje 51 resaltado, con el teclado abierto.
+  Sirve también para tocar una cita y para abrir desde un aviso.
+
+**Notas**
+- Limpieza de QA en cero:
+  - listas: ninguna en las cuentas de José, QA Ana y QA Beto;
+  - eventos de hoy: ninguno;
+  - las tarjetas borradas por el camino de la app;
+  - webs de QA Ana desvinculadas y su perfil restaurado.
+- José aprobó borrar el checklist de QA del 21/10 («Vaciado de losa QA»).
+  Se borró desde su cuenta en el emulador, con su tarjeta.
+
 ## 108. Abrir un mensaje viejo con su contexto, compartir un contacto, el guiño que se repetía y el permiso de pantalla completa (22/10/2026, 0.1.146)
 
 Cierra los pendientes 44, 9 y 54. Suma la parte 2 del 46.
@@ -9422,10 +9540,10 @@ tacha con la versión que lo cierra.
     lista global «chats que más pesan» para limpiar, más «archivos de más de
     5 MB» y «reenviados muchas veces». En el teléfono es la copia local; en la
     web, la caché del navegador.
-14. **Visor de videos y PDF en la web** (hoy solo hay visor de fotos) y **mini
+14. ~~**Visor de videos y PDF en la web** (hoy solo hay visor de fotos) y **mini
     reproductor** para videos: viable con el Picture-in-Picture del navegador
     (`requestPictureInPicture` sobre el `<video>`), que sigue flotando aunque
-    se cambie de pestaña.
+    se cambie de pestaña.~~ **Hecho (§109, 0.1.147).**
 15. **Estado que maneja la persona**: En línea · Ausente · Ocupado ·
     Invisible (se ve desconectado aunque esté usando la app), más quién ve mi
     «última vez». Hoy la presencia es automática (socket vivo o no).
@@ -9531,6 +9649,7 @@ tacha con la versión que lo cierra.
     **Hecho con la (b) (20/10, §65.3):** relay por el socket, sin guardar
     nada en el server. Falta «Nuevo chat» con la agenda completa del
     teléfono (hoy la web nombra solo los números que ya muestra).
+    **«Nuevo chat» con la agenda completa: hecho (§109, 0.1.147).**
     **Decisión de José (20/10): la (b).** Sin guardar la agenda en el server.
 21. **Un canal como el expediente de una obra** (José, 20/10: «¿para qué
     sirven los canales, cuál es la diferencia con un grupo? ¿Puedo manejar una
@@ -9725,7 +9844,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
 41. ~~**El botón de «bajar» no dice cuántos mensajes sin leer hay**~~ **Hecho (§105, 0.1.143).** (José,
     22/10). Al entrar a un chat con mensajes nuevos, el botón flotante lleva
     el número, como WhatsApp, y baja al primero sin leer.
-42. **Programar una llamada y generar un enlace de llamada, como WhatsApp**
+42. ~~**Programar una llamada y generar un enlace de llamada, como WhatsApp**~~ **Hecho en chats de dos (§109, 0.1.147); en grupos espera al 56.**
     (José, 22/10). En el menú de llamada y videollamada del chat: «Programar
     llamada» (un evento con hora, aviso a los invitados y botón para unirse) y
     «Crear enlace de llamada» (un enlace que abre la llamada de ese chat o
@@ -9739,7 +9858,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     un checklist, un recordatorio o una foto). Plan con archivo:línea en
     `scratchpad/plan-jump-to-message.md` (server `around=<seq>`, ventana
     separada de lo último, «Ir al último»): unos 5 días.
-45. **Listas de chats propias («Familia», «Amigos»), como las carpetas de
+45. ~~**Listas de chats propias («Familia», «Amigos»), como las carpetas de~~ **Hecho (§109, 0.1.147).**
     Telegram y las listas de WhatsApp** (José, 22/10). Chips después de
     Todos · No leídos · Grupos · Borradores; un chat puede estar en varias;
     se sincronizan entre el teléfono y la web.
@@ -9797,6 +9916,10 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
 55. **LilaStore también debe instalar con sesión** (de §108). Que declare
     `USE_FULL_SCREEN_INTENT` concedido al actualizar una app que lo pide.
     Es el repo de LilaStore; se derivó a su sesión.
+56. **Llamadas grupales** (de §109: el 42 en grupos las necesita). Hoy una
+    llamada es de dos (WebRTC punto a punto). Para un grupo hace falta malla
+    para pocos (hasta 4) o un servidor de medios para más, la grilla de
+    videos y quién entra y sale. Después: programar y enlace en grupos.
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

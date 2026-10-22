@@ -25,6 +25,7 @@ import { usePerfilPropio } from '../settings/perfilPropio';
 import { useEsOperador } from '../settings/useEsOperador';
 import { useActualizacionesDeLaApp } from '../settings/useActualizacionesDeLaApp';
 import { AppHeader, BottomNav, type Tab } from './BottomNav';
+import { tabAfterModeChange } from './bottomTabs';
 import { useMargenes } from './useMargenes';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -107,6 +108,17 @@ export function TabsShell({
   const [chats, setChats] = useState<ChatSummary[]>([]);
   // The company spaces (E1/E2): the Chats title switches between personal and each space.
   const espacios = useSpacesUi({ jwt: credential.jwt, myUserId: credential.userId, me: { name: perfilPropio.name?.trim() || 'Tú', phone: credential.phone }, personalUnread: chats.filter((chat) => chat.unread > 0).length, onOpenChat });
+  const inSpace = Boolean(espacios.current);
+  // Entering or leaving a space changes the bar: a tab the new one does not have goes back to Chats.
+  useEffect(() => {
+    setTab((current) => tabAfterModeChange(current, inSpace));
+  }, [inSpace]);
+  /** In a space, Directorio and Menciones open their screens over the list (design `e-07`); the bar stays on Chats. */
+  const onTab = (next: Tab) => {
+    if (next === 'directory') espacios.listProps.onWorkspace('directory');
+    else if (next === 'mentions') espacios.listProps.onActivity('mentions');
+    else setTab(next);
+  };
   /** Mis grupos, para la agenda: un evento con la misma gente va al que ya existe (FL10). */
   const grupos = useMemo(
     () => chats.filter((chat) => chat.kind === 'group' && chat.memberIds.includes(credential.userId)).map((chat) => ({ id: chat.id, memberIds: chat.memberIds })),
@@ -346,7 +358,7 @@ export function TabsShell({
           cambio. Al crear algo, la lista vuelve a pedir por la prop `recarga`,
           sin remontarse ni volver al esqueleto. */}
       <View className={amplia ? 'flex-1 flex-row' : 'flex-1'}>
-      {amplia ? <BottomNav vertical active={tab} onChange={setTab} cuentas={cuentasDeLaBarra} /> : null}
+      {amplia ? <BottomNav vertical active={tab} onChange={onTab} cuentas={cuentasDeLaBarra} inSpace={inSpace} /> : null}
       <View className="flex-1">
         {visitadas.has('chats') ? (
           <View style={[panel('chats'), dosPaneles ? { flexDirection: 'row' } : centrado]}>
@@ -424,7 +436,7 @@ export function TabsShell({
       </View>
       </View>
 
-      {amplia ? null : <BottomNav active={tab} onChange={setTab} cuentas={cuentasDeLaBarra} />}
+      {amplia ? null : <BottomNav active={tab} onChange={onTab} cuentas={cuentasDeLaBarra} inSpace={inSpace} />}
 
       {/* El lápiz de la lista, que no hacía nada. */}
       {espacios.layer}

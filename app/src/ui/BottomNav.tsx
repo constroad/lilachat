@@ -1,5 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
-import { BarChart3, ListTodo, MessageCircle, Settings } from 'lucide-react-native';
+import { AtSign, BarChart3, ListTodo, MessageCircle, Settings, Users } from 'lucide-react-native';
+import { tabsFor, type Tab } from './bottomTabs';
 import { useMargenes } from './useMargenes';
 import { useColores } from './tema';
 import { Logo } from './Logo';
@@ -17,14 +18,17 @@ import { Logo } from './Logo';
  * Dos generaciones del mismo diseño conviven en el proyecto y hay que mirar
  * CUÁL corresponde a lo que se está construyendo.
  */
-export type Tab = 'chats' | 'agenda' | 'encuestas' | 'ajustes';
+export type { Tab } from './bottomTabs';
 
-const TABS: { key: Tab; label: string; Icon: typeof MessageCircle }[] = [
-  { key: 'chats', label: 'Chats', Icon: MessageCircle },
-  { key: 'agenda', label: 'Pendientes', Icon: ListTodo },
-  { key: 'encuestas', label: 'Encuestas', Icon: BarChart3 },
-  { key: 'ajustes', label: 'Ajustes', Icon: Settings },
-];
+/** Each tab's label and icon; which ones the bar shows comes from `tabsFor` (personal or a company space). */
+const TAB_INFO: Record<Tab, { label: string; Icon: typeof MessageCircle }> = {
+  chats: { label: 'Chats', Icon: MessageCircle },
+  agenda: { label: 'Pendientes', Icon: ListTodo },
+  encuestas: { label: 'Encuestas', Icon: BarChart3 },
+  ajustes: { label: 'Ajustes', Icon: Settings },
+  directory: { label: 'Directorio', Icon: Users },
+  mentions: { label: 'Menciones', Icon: AtSign },
+};
 
 /** Más que esto se lee «99+»: el número exacto ya no informa. */
 const TOPE_DEL_CONTADOR = 99;
@@ -34,6 +38,7 @@ export function BottomNav({
   onChange,
   vertical = false,
   cuentas,
+  inSpace = false,
 }: {
   active: Tab;
   onChange: (tab: Tab) => void;
@@ -41,6 +46,8 @@ export function BottomNav({
   cuentas?: Partial<Record<Tab, number>>;
   /** Riel a la izquierda (FL10): girado o en tablet, la altura no alcanza para la barra abajo. */
   vertical?: boolean;
+  /** In a company space the bar is Chats · Directorio · Menciones · Ajustes (design `e-07`). */
+  inSpace?: boolean;
 }) {
   const colores = useColores();
   const margenes = useMargenes();
@@ -50,7 +57,8 @@ export function BottomNav({
       className={vertical ? 'w-20 gap-1 border-r border-outline/10 bg-surface pt-3' : 'flex-row border-t border-outline/10 bg-surface pt-2'}
       style={{ paddingBottom: margenes.pie }}
     >
-      {TABS.map(({ key, label, Icon }) => {
+      {tabsFor(inSpace).map((key) => {
+        const { label, Icon } = TAB_INFO[key];
         const selected = key === active;
         return (
           <Pressable
@@ -104,7 +112,7 @@ export function AppHeader({ tab, children, chatsTitle }: { tab: Tab; children?: 
         </>
       ) : (
         <Text testID="titulo-pestana" accessibilityRole="header" className="flex-1 text-[22px] font-bold text-on-surface">
-          {TABS.find((pestana) => pestana.key === tab)?.label}
+          {TAB_INFO[tab].label}
         </Text>
       )}
       {children}

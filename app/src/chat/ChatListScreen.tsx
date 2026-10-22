@@ -35,6 +35,7 @@ import { lastMessageMs, useChatSelection } from './useChatSelection';
 import { useColores } from '../ui/tema';
 import { decidirAtras } from '../ui/botonAtras';
 import { agendaPorTelefono, suscribirAgenda } from '../contacts/agendaEnMemoria';
+import { isSpaceChat } from '../spaces/spaceCache';
 
 /**
  * La lista de chats (diseño Stitch «Lilachat: Chats»).
@@ -196,7 +197,8 @@ export function ChatListScreen({
         ? aplicarMensajeALista(actual, mensaje, credential.userId, chatAbiertoRef.current)
         : null;
       if (!parchada) {
-        void load();
+        // A chat of a space is not a new conversation of this list (22/10: it reloaded per channel message).
+        if (!isSpaceChat(mensaje.chatId)) void load();
         return;
       }
       if (parchada === actual) return;

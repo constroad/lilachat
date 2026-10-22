@@ -14,6 +14,7 @@ import {
 import type { ChatSummary } from '../api/client';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { precargarChat } from './mensajesGuardados';
+import { usePendingInChat } from './pendingInChats';
 import { useFunInRow } from './nudge';
 import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
@@ -208,6 +209,7 @@ export const FilaDeChat = memo(function FilaDeChat(props: {
               </View>
             );
           })()}
+          <PendingMarker chatId={chat.id} />
           {chat.unread === 0 && chat.markedUnread ? (
             // Marcado a mano como no leído (FL9): el punto sin número de WhatsApp.
             <View
@@ -266,5 +268,22 @@ function avisoDelUltimo(chat: ChatSummary, miUserId: string): string | null {
       aMi: aviso.targetId === miUserId,
       valor: aviso.valor,
     }) || null
+  );
+}
+
+/**
+ * Something waits for me in this chat (José, 22/10): a late task, a poll to
+ * vote, an event to answer, a reminder that rang. The list says so before
+ * opening it; inside, the cards over the writing bar handle it.
+ */
+export function PendingMarker(props: { chatId: string }) {
+  const colors = useColores();
+  const count = usePendingInChat(props.chatId);
+  if (count === 0) return null;
+  return (
+    <View testID={`pendiente-${props.chatId}`} accessibilityLabel={`${count} ${count === 1 ? 'pendiente' : 'pendientes'} en este chat`} className="h-5 shrink-0 flex-row items-center gap-0.5 rounded-full border border-primary/40 bg-primary/10 px-1.5">
+      <ClipboardCheck size={12} color={colors.primary} />
+      <Text className="text-[11px] font-bold text-primary">{count}</Text>
+    </View>
   );
 }

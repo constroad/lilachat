@@ -10,6 +10,8 @@ import { iniciarServicio } from '../../modules/servicio-socket/src';
 import { ChatListScreen } from '../chat/ChatListScreen';
 import { SpaceChatsScreen } from '../spaces/SpaceChatsScreen';
 import { findSpaceChat } from '../spaces/spacesApi';
+import { refreshPendingInChats } from '../chat/pendingInChats';
+import { isSpaceChat } from '../spaces/spaceCache';
 import { useSpacesUi } from '../spaces/useSpacesUi';
 import { CreatePollScreen } from '../agenda/CreatePollScreen';
 import { AgendaScreen } from '../agenda/AgendaScreen';
@@ -103,6 +105,11 @@ export function TabsShell({
   }, [tab, refrescarPendientes]);
   const enFoco = useIsFocused();
   useAlVolver(enFoco, () => void refrescarPendientes());
+  // The list's «something waits for you» markers (José, 22/10): on start, on coming back, and on closing a chat.
+  useEffect(() => {
+    void refreshPendingInChats(credential.jwt);
+  }, [credential.jwt, chatAbierto]);
+  useAlVolver(true, () => void refreshPendingInChats(credential.jwt));
   const cuentasDeLaBarra = { agenda: pendientes.eventos, encuestas: pendientes.encuestas };
   useEffect(() => {
     if (pestanaPedida) setTab(pestanaPedida.tab);
@@ -110,18 +117,30 @@ export function TabsShell({
   const [creating, setCreating] = useState<'poll' | null>(null);
   const [chats, setChats] = useState<ChatSummary[]>([]);
   // The company spaces (E1/E2): the Chats title switches between personal and each space.
-  const espacios = useSpacesUi({ jwt: credential.jwt, myUserId: credential.userId, me: { name: perfilPropio.name?.trim() || 'Tú', phone: credential.phone }, personalUnread: chats.filter((chat) => chat.unread > 0).length, onOpenChat });
+  // A chat opened from Directorio or Menciones (tabs since 22/10) shows in Chats, where the open chat lives on a tablet.
+  const openFromSpace = useCallback((chat: ChatSummary, seq?: number) => {
+    setTab('chats');
+    onOpenChat(chat, seq);
+  }, [onOpenChat]);
+  const espacios = useSpacesUi({ jwt: credential.jwt, myUserId: credential.userId, me: { name: perfilPropio.name?.trim() || 'Tú', phone: credential.phone }, personalUnread: chats.filter((chat) => chat.unread > 0).length, onOpenChat: openFromSpace });
   const inSpace = Boolean(espacios.current);
+  /**
+   * The title's «elsewhere» counter stays live (José, 22/10): a message from someone else in a
+   * personal chat I am not reading counts it; one in a chat of a space reads the spaces again.
+   */
+  const countElsewhere = useRef((_message: { chatId: string; senderId: string }) => undefined as void);
+  countElsewhere.current = (message) => {
+    if (String(message.senderId) === credential.userId) return;
+    if (!chatsRef.current.some((chat) => chat.id === message.chatId)) return espacios.reloadSoon();
+    if (message.chatId === chatAbierto) return;
+    setChats((before) => before.map((chat) => (chat.id === message.chatId ? { ...chat, unread: chat.unread + 1 } : chat)));
+  };
   // Entering or leaving a space changes the bar: a tab the new one does not have goes back to Chats.
   useEffect(() => {
     setTab((current) => tabAfterModeChange(current, inSpace));
   }, [inSpace]);
-  /** In a space, Directorio and Menciones open their screens over the list (design `e-07`); the bar stays on Chats. */
-  const onTab = (next: Tab) => {
-    if (next === 'directory') espacios.listProps.onWorkspace('directory');
-    else if (next === 'mentions') espacios.listProps.onActivity('mentions');
-    else setTab(next);
-  };
+  /** In a space, Directorio and Menciones are tabs of their own (22/10, like Slack): mounted once, no window that slides in. */
+  const onTab = (next: Tab) => setTab(next);
   /** Mis grupos, para la agenda: un evento con la misma gente va al que ya existe (FL10). */
   const grupos = useMemo(
     () => chats.filter((chat) => chat.kind === 'group' && chat.memberIds.includes(credential.userId)).map((chat) => ({ id: chat.id, memberIds: chat.memberIds })),
@@ -257,7 +276,8 @@ export function TabsShell({
        * justo cuando el nombre más importa — no sabés quién te escribió.
        */
       let chat = chatsRef.current.find((uno) => uno.id === mensaje.chatId);
-      if (!chat) {
+      // A chat of a space is not a new personal conversation (22/10: it reloaded the personal list per channel message).
+      if (!chat && !isSpaceChat(mensaje.chatId)) {
         await loadChats();
         chat = chatsRef.current.find((uno) => uno.id === mensaje.chatId);
       }
@@ -284,12 +304,20 @@ export function TabsShell({
     const onNew = (mensaje: Parameters<typeof alLlegar>[0]) => {
       // Una encuesta o un evento nuevos en algún chat: cambian los contadores.
       if (mensaje.kind === 'poll' || mensaje.kind === 'event') void refrescarPendientes();
+      if (mensaje.kind === 'poll' || mensaje.kind === 'event' || mensaje.kind === 'checklist') void refreshPendingInChats(credential.jwt);
       void alLlegar(mensaje);
+      countElsewhere.current(mensaje);
     };
+    // A card deleted, voted, answered or closed (22/10): the list's markers read again.
+    const onCardChange = () => void refreshPendingInChats(credential.jwt);
     socket.on('msg.new', onNew);
+    socket.on('msg.deleted', onCardChange);
+    socket.on('ref.changed', onCardChange);
     return () => {
       // Con el handler: a secas borraba los listeners de App y de la lista.
       socket.off('msg.new', onNew);
+      socket.off('msg.deleted', onCardChange);
+      socket.off('ref.changed', onCardChange);
     };
   }, [credential.jwt, credential.userId, loadChats, refrescarPendientes]);
 
@@ -393,6 +421,8 @@ export function TabsShell({
           {dosPaneles ? <View className="flex-1">{tab === 'chats' && panelDeChat ? panelDeChat : <SinChatElegido />}</View> : null}
           </View>
         ) : null}
+        {inSpace && visitadas.has('directory') ? <View style={[panel('directory'), centrado]}>{espacios.directoryTab}</View> : null}
+        {inSpace && visitadas.has('mentions') ? <View style={[panel('mentions'), centrado]}>{espacios.mentionsTab(tab === 'mentions')}</View> : null}
         {visitadas.has('encuestas') ? (
           <View style={[panel('encuestas'), centrado]}>
             <ErrorBoundary pantalla="encuestas">

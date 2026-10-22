@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { ArrowRight, CornerUpLeft, MessagesSquare } from 'lucide-react-native';
 import { ACTIVITY_TABS, activityDaySections, formatChatTimestamp, formatPhoneDisplay, type ActivityItem, type ActivityType, type ClientWorkspace } from '@lilachat/shared';
@@ -18,7 +18,7 @@ const chatLabel = (item: ActivityItem) => (item.chat.channel ? `#${item.chat.nam
  * Menciones · Hilos · Reacciones with what is new, by day; each card says who,
  * where and when, the message with its mentions, and opens the chat there.
  */
-export function ActivityScreen(props: { visible: boolean; space: ClientWorkspace; jwt: string; myUserId: string; initialTab: ActivityType; onOpen: (item: ActivityItem) => void; onClose: () => void }) {
+export function ActivityScreen(props: { /** As a tab of the bar (22/10): no window that slides in. */ embedded?: boolean; visible: boolean; space: ClientWorkspace; jwt: string; myUserId: string; initialTab: ActivityType; onOpen: (item: ActivityItem) => void; onClose: () => void }) {
   const colors = useColores();
   const [tab, setTab] = useState<ActivityType>(props.initialTab);
   useEffect(() => {
@@ -31,8 +31,9 @@ export function ActivityScreen(props: { visible: boolean; space: ClientWorkspace
   const error = items ? '' : (page.error ?? '');
 
   const counts: Partial<Record<ActivityType, number>> = { mentions: unread.mentions, threads: unread.threads };
+  const Frame = props.embedded ? TabFrame : PantallaEnModal;
   return (
-    <PantallaEnModal visible={props.visible} titulo="Menciones y actividad" onCerrar={props.onClose} testIDCerrar="actividad-volver">
+    <Frame visible={props.visible} titulo="Menciones y actividad" onCerrar={props.onClose} testIDCerrar="actividad-volver">
       <View className="px-4 pb-2">
         <Segmentado<ActivityType> opciones={ACTIVITY_TABS.map((option) => ({ key: option.type, etiqueta: option.label, testID: `actividad-${option.type}`, cuenta: counts[option.type] }))} valor={tab} onCambiar={setTab} />
       </View>
@@ -80,6 +81,15 @@ export function ActivityScreen(props: { visible: boolean; space: ClientWorkspace
           </View>
         ))}
       </ScrollView>
-    </PantallaEnModal>
+    </Frame>
+  );
+}
+
+/** The same screen as a tab of the bar: the bar's header already says «Menciones», so no title, no back arrow, no window. */
+function TabFrame(props: { children: ReactNode }) {
+  return (
+    <View testID="pantalla-actividad" className="flex-1 bg-background pt-1">
+      {props.children}
+    </View>
   );
 }

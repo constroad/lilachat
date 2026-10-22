@@ -28,6 +28,8 @@ import { conCredencialNueva, entraSinEsperar } from './src/auth/arranque';
 import { connectSocket, disconnectSocket, pauseSocket, resumeSocket } from './src/chat/socketClient';
 import { leerChatsGuardados, olvidarChats } from './src/chat/chatsGuardados';
 import { forgetAllSpaces } from './src/spaces/spaceCache';
+import { forgetMySpaces } from './src/spaces/currentSpace';
+import { forgetPendingInChats } from './src/chat/pendingInChats';
 import { avisarMensaje } from './src/chat/avisoLocal';
 import { sonarPorMensaje } from './src/chat/sonarPorMensaje';
 import { guardarMensajes, olvidarMensajes } from './src/chat/mensajesGuardados';
@@ -370,6 +372,8 @@ function Contenido() {
         clearCredential(),
         olvidarChats(),
         forgetAllSpaces(),
+        forgetMySpaces(),
+        Promise.resolve(forgetPendingInChats()),
         olvidarMensajes(),
         olvidarBorradores(),
         olvidarPassphrase(),
@@ -440,6 +444,8 @@ function Contenido() {
             void olvidarArchivos();
             void olvidarChats();
             void forgetAllSpaces();
+            void forgetMySpaces();
+            forgetPendingInChats();
             void olvidarMensajes();
             void olvidarBorradores();
             void olvidarPassphrase();

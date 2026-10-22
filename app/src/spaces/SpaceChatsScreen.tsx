@@ -1,20 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { Archive, AtSign, ChevronDown, ChevronRight, Hash, Inbox, Lock, MessagesSquare, Plus, Search, Settings2, UserCog, UserPlus, Users } from 'lucide-react-native';
-import { canManageMembers, formatChatTimestamp, membersLabel, nombreDeContacto, spaceSections, splitArchived, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
+import { aplicarMensajeALista, canManageMembers, formatChatTimestamp, marcarLeido, membersLabel, nombreDeContacto, spaceSections, splitArchived, type ActivityType, type ClientWorkspace, type MensajeEnVivo, type SpaceSectionKey } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 import { BarraDeSeleccionDeChats } from '../chat/BarraDeSeleccionDeChats';
-import { FilaDeChat } from '../chat/FilaDeChat';
+import { FilaDeChat, PendingMarker } from '../chat/FilaDeChat';
 import { useAccionesDeSeleccion } from '../chat/useAccionesDeSeleccion';
 import { useChatSelection } from '../chat/useChatSelection';
 import { getSocket } from '../chat/socketClient';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useAlVolver } from '../ui/useAlVolver';
 import { useColores } from '../ui/tema';
-import { spaceActivity, spaceChats } from './spacesApi';
+import { fetchSpaceChats, isSpaceChat, spaceChatsCache, useCached } from './spaceCache';
+import { chatsEnMemoria } from '../chat/chatsGuardados';
 
 /** Several messages in a row reload the list once. */
 const RELOAD_DELAY_MS = 600;
+const NO_ACTIVITY = { mentions: 0, threads: 0 };
+/** A chat of the personal list: its events are not this space's. */
+const isPersonalChat = (chatId: string) => Boolean(chatsEnMemoria()?.some((chat) => chat.id === chatId));
 
 /**
  * The chats of a company space by sections, like Slack (E1/E2; design
@@ -28,54 +32,74 @@ export type WorkspaceLink = 'directory' | 'members' | 'requests' | 'settings';
 export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; myUserId: string; active: boolean; openChatId: string | null; reloadKey?: number; onOpenChat: (chat: ChatSummary) => void; onChannels: () => void; onInvite: () => void; onWorkspace: (link: WorkspaceLink) => void; onNewDirect: () => void; onNewGroup: () => void; onChats?: (chats: ChatSummary[]) => void; onRefresh?: () => void; onActivity: (tab: ActivityType) => void }) {
   const colors = useColores();
   const { space, jwt, myUserId, onOpenChat } = props;
-  const [chats, setChats] = useState<ChatSummary[] | null>(null);
-  const [failed, setFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
   const [folded, setFolded] = useState<ReadonlySet<SpaceSectionKey>>(new Set());
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** This space's chats, for the socket events that only concern them. */
-  const chatIds = useRef<ReadonlySet<string>>(new Set());
-
-  const [activity, setActivity] = useState({ mentions: 0, threads: 0 });
+  // The space's list (and its chips) paints at once from what was seen and refreshes behind (22/10).
+  const key = `${space.id}:chats`;
+  const page = useCached(spaceChatsCache, key, fetchSpaceChats(jwt, space.id));
+  const chats = page.value?.chats ?? null;
+  const activity = page.value?.activity ?? NO_ACTIVITY;
+  const failed = !page.value && Boolean(page.error);
+  const { refresh } = page;
   const load = useCallback(async () => {
-    const [response, counts] = await Promise.all([spaceChats(jwt, space.id), spaceActivity(jwt, space.id, { countsOnly: true })]);
-    if (counts.ok) setActivity(counts.data.unread);
-    if (response.ok) {
-      chatIds.current = new Set(response.data.chats.map((chat) => chat.id));
-      setChats(response.data.chats);
-      setFailed(false);
-    } else setFailed(true);
-  }, [jwt, space.id]);
+    await spaceChatsCache.revalidate(key, fetchSpaceChats(jwt, space.id), { force: true });
+  }, [key, jwt, space.id]);
   useEffect(() => {
-    void load();
-  }, [load, props.reloadKey]);
+    if (props.reloadKey) refresh();
+  }, [props.reloadKey, refresh]);
   const { onChats } = props;
   useEffect(() => {
     if (chats) onChats?.(chats);
   }, [chats, onChats]);
-  useAlVolver(props.active, () => void load());
-  // A message in one of these chats moves it up: the list asks again, once for a burst.
+  useAlVolver(props.active, () => refresh());
+  /**
+   * Socket events applied in place (22/10): a message in one of these chats
+   * changes its row, reading one lowers its count; only an unknown chat, a
+   * changed one or a possible mention or thread asks the server, once per burst.
+   * Before, ANY message, also of personal chats, reloaded the list and the chips.
+   */
+  const openChat = useRef(props.openChatId);
+  openChat.current = props.openChatId;
   useEffect(() => {
     const socket = getSocket();
-    const onMessage = () => {
+    const reloadSoon = () => {
       if (reloadTimer.current) clearTimeout(reloadTimer.current);
       reloadTimer.current = setTimeout(() => void load(), RELOAD_DELAY_MS);
     };
-    // I read one of these chats (here or on another device): its count and the chips go down.
+    const inList = (chatId?: string) => Boolean(chatId && spaceChatsCache.get(key).value?.chats.some((chat) => chat.id === chatId));
+    const patchChats = (change: (current: ChatSummary[]) => ChatSummary[] | null) =>
+      spaceChatsCache.patch(key, (current) => {
+        const next = change(current.chats);
+        return next && next !== current.chats ? { ...current, chats: next } : current;
+      });
+    const onMessage = (message: MensajeEnVivo) => {
+      if (!inList(message.chatId)) {
+        // A new chat of this space (not a personal one, not another space's) is asked for.
+        if (!isSpaceChat(message.chatId) && !isPersonalChat(message.chatId)) reloadSoon();
+        return;
+      }
+      patchChats((current) => aplicarMensajeALista(current, message, myUserId, openChat.current));
+      if (message.hiloDe !== undefined || message.body?.includes('@')) reloadSoon();
+    };
+    const onChanged = (frame: { chatId?: string }) => {
+      if (!frame.chatId || inList(frame.chatId) || !isPersonalChat(frame.chatId)) reloadSoon();
+    };
+    // I read one of these chats (here or on another device): its count goes down.
     const onReceipt = (frame: { chatId?: string; userId?: string }) => {
-      if (frame.userId === myUserId && frame.chatId && chatIds.current.has(frame.chatId)) onMessage();
+      if (frame.userId === myUserId && frame.chatId && inList(frame.chatId)) patchChats((current) => marcarLeido(current, frame.chatId!));
     };
     socket?.on('msg.new', onMessage);
-    socket?.on('chat.changed', onMessage);
+    socket?.on('chat.changed', onChanged);
     socket?.on('receipt', onReceipt);
     return () => {
       socket?.off('msg.new', onMessage);
-      socket?.off('chat.changed', onMessage);
+      socket?.off('chat.changed', onChanged);
       socket?.off('receipt', onReceipt);
       if (reloadTimer.current) clearTimeout(reloadTimer.current);
     };
-  }, [load, myUserId]);
+  }, [key, load, myUserId]);
 
   // Holding a group or a 1:1 selects it, like the personal list: archive, pin, mute, read, leave.
   const selection = useChatSelection(chats);
@@ -196,6 +220,7 @@ function ChannelRow(props: { chat: ChatSummary; open: boolean; onOpen: () => voi
     <Pressable testID={`canal-fila-${chat.id}`} onPress={props.onOpen} android_ripple={{ color: colors.outline }} className={`min-h-[48px] flex-row items-center gap-3 px-4 ${props.open ? 'bg-surface' : ''}`}>
       <Icon size={18} color={unread ? colors.primary : colors['on-surface-variant']} />
       <Text numberOfLines={1} className={`flex-1 text-[16px] ${unread ? 'font-bold text-on-surface' : 'text-on-surface'}`}>{chat.name}</Text>
+      <PendingMarker chatId={chat.id} />
       {unread ? (
         <View className="h-6 min-w-[24px] items-center justify-center rounded-full bg-primary px-1.5"><Text className="text-[12px] font-bold text-on-primary">{chat.unread}</Text></View>
       ) : chat.lastMessage ? (

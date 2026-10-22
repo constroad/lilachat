@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QUEUE_DISMISSED_KEY, postponeOneDay, suscribirTarjeta, visibleQueue, withDismissed, type QueueItem } from '@lilachat/shared';
 import { agendaGet, agendaPatch, agendaPost } from '../agenda/agendaApi';
+import { forgetPendingKey, setPendingOfChat } from './pendingInChats';
 
 export type QueueAction = 'done' | 'postpone' | 'yes' | 'no';
 
@@ -20,7 +21,10 @@ export function useChatQueue(jwt: string, chatId: string) {
   const [busy, setBusy] = useState(false);
   const load = useCallback(async () => {
     const response = await agendaGet<{ items: QueueItem[] }>(`/queue?chatId=${chatId}`, jwt);
-    if (response.ok) setItems(response.data.items);
+    if (!response.ok) return;
+    setItems(response.data.items);
+    // The list's marker follows what this chat's queue just read (22/10).
+    setPendingOfChat(chatId, response.data.items.map((item) => item.key));
   }, [chatId, jwt]);
   useEffect(() => {
     setItems([]);
@@ -43,6 +47,7 @@ export function useChatQueue(jwt: string, chatId: string) {
   const dismiss = useCallback((item: QueueItem) => {
     setDismissed((before) => {
       const next = withDismissed(before, item.key);
+      forgetPendingKey(item.key);
       void AsyncStorage.setItem(QUEUE_DISMISSED_KEY, JSON.stringify(next)).catch(() => undefined);
       return next;
     });
@@ -58,6 +63,7 @@ export function useChatQueue(jwt: string, chatId: string) {
     if (response && !response.ok) return response.message ?? 'No se pudo.';
     // Done: it goes now, without waiting for the server's answer.
     setItems((before) => before.filter((one) => one.key !== item.key));
+    forgetPendingKey(item.key);
     void load();
     return null;
   }, [jwt, load]);

@@ -3,7 +3,8 @@ import { InteractionManager } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createSessionCache, type ActivityItem, type ActivityType, type CacheEntry, type ClientChannel, type ClientWorkspaceMember, type SessionCache } from '@lilachat/shared';
 import type { JsonResult } from '../api/jsonCall';
-import { spaceActivity, spaceChannels, spaceMembers } from './spacesApi';
+import type { ChatSummary } from '../api/client';
+import { spaceActivity, spaceChannels, spaceChats, spaceMembers } from './spacesApi';
 
 /**
  * What a company space's screens already saw, painted at once and refreshed
@@ -19,6 +20,8 @@ const SAVE_DELAY_MS = 800;
 
 export type ActivityPage = { items: ActivityItem[]; unread: { mentions: number; threads: number } };
 export type MemberLists = Record<'active' | 'pending' | 'invited' | 'deactivated', ClientWorkspaceMember[]>;
+/** A space's list and its «Hilos» / «Menciones» chips, which come with it (22/10). */
+export type SpaceChatsPage = { chats: ChatSummary[]; activity: { mentions: number; threads: number } };
 
 const saveTimers = new Map<string, ReturnType<typeof setTimeout>>();
 function saveLater(key: string, value: unknown, fetchedAt: number): void {
@@ -35,7 +38,20 @@ export const membersCache = cacheOf<ClientWorkspaceMember[]>();
 export const memberListsCache = cacheOf<MemberLists>();
 export const activityCache = cacheOf<ActivityPage>();
 export const channelsCache = cacheOf<ClientChannel[]>();
-const ALL: SessionCache<unknown>[] = [membersCache, memberListsCache, activityCache, channelsCache] as SessionCache<unknown>[];
+export const spaceChatsCache = cacheOf<SpaceChatsPage>();
+const ALL: SessionCache<unknown>[] = [membersCache, memberListsCache, activityCache, channelsCache, spaceChatsCache] as SessionCache<unknown>[];
+
+/**
+ * The chats of my spaces this phone has seen: an event of one of them is not a
+ * «new conversation» for the personal list, which used to reload itself for
+ * every message of a channel (22/10).
+ */
+const spaceChatIds = new Set<string>();
+export const isSpaceChat = (chatId: string): boolean => spaceChatIds.has(chatId);
+const rememberSpaceChats = (page: SpaceChatsPage) => {
+  for (const chat of page.chats) spaceChatIds.add(chat.id);
+  return page;
+};
 
 /** A refusal becomes an error the cache keeps apart from what it shows. */
 export function dataOf<T>(response: JsonResult<T>, fallback: string): T {
@@ -46,6 +62,17 @@ export function dataOf<T>(response: JsonResult<T>, fallback: string): T {
 export const fetchMembers = (jwt: string, spaceId: string) => async () => dataOf(await spaceMembers(jwt, spaceId), 'No se pudo cargar el directorio.').members;
 export const fetchChannels = (jwt: string, spaceId: string) => async () => dataOf(await spaceChannels(jwt, spaceId), 'No se pudieron cargar los canales.').channels;
 export const fetchActivity = (jwt: string, spaceId: string, type: ActivityType) => async () => dataOf(await spaceActivity(jwt, spaceId, { type }), 'No se pudo cargar la actividad.');
+export const fetchSpaceChats = (jwt: string, spaceId: string) => async (): Promise<SpaceChatsPage> => {
+  const page = dataOf(await spaceChats(jwt, spaceId), 'No se pudo cargar el espacio.');
+  // A server before 22/10 sends the chips' counts apart.
+  const activity = page.activity ?? dataOf(await spaceActivity(jwt, spaceId, { countsOnly: true }), 'No se pudo cargar la actividad.').unread;
+  return rememberSpaceChats({ chats: page.chats, activity });
+};
+/** Someone joined, left or changed in the space: its directories refresh where they are open (`workspace.members.changed`). */
+export function membersChanged(spaceId: string): void {
+  membersCache.expire(`${spaceId}:members`);
+  memberListsCache.expire(`${spaceId}:member-lists`);
+}
 
 const fromDisk = new Set<string>();
 async function hydrateFromDisk<T>(cache: SessionCache<T>, key: string): Promise<void> {
@@ -56,6 +83,7 @@ async function hydrateFromDisk<T>(cache: SessionCache<T>, key: string): Promise<
   try {
     const saved = JSON.parse(raw) as { value: T; fetchedAt: number };
     cache.hydrate(key, saved.value, saved.fetchedAt);
+    if (key.endsWith(':chats')) rememberSpaceChats(saved.value as SpaceChatsPage);
   } catch {
     // A broken copy on disk is just not used: the server answers anyway.
     AsyncStorage.removeItem(`${DISK_PREFIX}${key}`).catch(() => undefined);
@@ -74,6 +102,10 @@ export function useCached<T>(cache: SessionCache<T>, key: string | null, fetcher
     if (!key || !active) return;
     void hydrateFromDisk(cache, key).then(() => cache.revalidate(key, () => latest.current()));
   }, [cache, key, active]);
+  // Expired while open (members changed, 22/10): refreshed now, keeping what is shown.
+  useEffect(() => {
+    if (key && active && entry.fetchedAt === 0) void cache.revalidate(key, () => latest.current());
+  }, [cache, key, active, entry.fetchedAt]);
   const refresh = useCallback(() => {
     if (key) void cache.revalidate(key, () => latest.current(), { force: true });
   }, [cache, key]);
@@ -105,5 +137,6 @@ export function forgetSpace(spaceId: string): void {
 export async function forgetAllSpaces(): Promise<void> {
   for (const cache of ALL) cache.clear();
   fromDisk.clear();
+  spaceChatIds.clear();
   await removeFromDisk('');
 }

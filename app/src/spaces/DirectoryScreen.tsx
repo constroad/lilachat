@@ -16,7 +16,7 @@ import { fetchMembers, membersCache, useCached } from './spaceCache';
  * write to them in the space. As a picker («Nuevo mensaje directo») a tap
  * writes at once.
  */
-export function DirectoryScreen(props: { space: ClientWorkspace; jwt: string; myUserId: string; picking?: boolean; onOpenMember: (member: ClientWorkspaceMember) => void; onMessage: (member: ClientWorkspaceMember) => void; onInvite?: () => void; onClose: () => void }) {
+export function DirectoryScreen(props: { space: ClientWorkspace; jwt: string; myUserId: string; picking?: boolean; /** As a tab of the bar (22/10): no window that slides in, no back arrow. */ embedded?: boolean; onOpenMember: (member: ClientWorkspaceMember) => void; onMessage: (member: ClientWorkspaceMember) => void; onInvite?: () => void; onClose: () => void }) {
   const colors = useColores();
   const margins = useMargenes();
   const online = useOnlineIds();
@@ -30,17 +30,19 @@ export function DirectoryScreen(props: { space: ClientWorkspace; jwt: string; my
   const chips = useMemo(() => directoryAreas(people), [people]);
   const shown = filterMembers(people, { query, area });
 
-  return (
-    <Modal visible animationType="slide" onRequestClose={props.onClose}>
-      <View testID="pantalla-directorio" className="flex-1 bg-background" style={{ paddingTop: margins.cabecera }}>
-        <View className="flex-row items-center gap-2 border-b border-outline/10 px-3 pb-2">
-          <Pressable testID="directorio-volver" onPress={props.onClose} accessibilityLabel="Volver" className="h-11 w-11 items-center justify-center">
-            <ArrowLeft size={22} color={colors['on-surface']} />
-          </Pressable>
+  const body = (
+      <View testID="pantalla-directorio" className="flex-1 bg-background" style={{ paddingTop: props.embedded ? 4 : margins.cabecera }}>
+        <View className={`flex-row items-center gap-2 border-b border-outline/10 pb-2 ${props.embedded ? 'px-4' : 'px-3'}`}>
+          {props.embedded ? null : (
+            <Pressable testID="directorio-volver" onPress={props.onClose} accessibilityLabel="Volver" className="h-11 w-11 items-center justify-center">
+              <ArrowLeft size={22} color={colors['on-surface']} />
+            </Pressable>
+          )}
           <SpaceLogo space={props.space} size={34} />
           <View className="min-w-0 flex-1">
             <Text numberOfLines={1} className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">{props.space.name}</Text>
-            <Text className="text-[18px] font-bold text-on-surface">{props.picking ? 'Nuevo mensaje directo' : 'Directorio'}</Text>
+            {/* As a tab, the bar's header already says «Directorio»: here go the space's people. */}
+            <Text className="text-[18px] font-bold text-on-surface">{props.picking ? 'Nuevo mensaje directo' : props.embedded ? membersLabel(props.space.members) : 'Directorio'}</Text>
           </View>
           {props.onInvite ? (
             <Pressable testID="directorio-invitar" onPress={props.onInvite} className="min-h-[44px] flex-row items-center gap-1.5 rounded-xl border border-outline/20 px-3">
@@ -104,6 +106,11 @@ export function DirectoryScreen(props: { space: ClientWorkspace; jwt: string; my
           )}
         </ScrollView>
       </View>
+  );
+  if (props.embedded) return body;
+  return (
+    <Modal visible animationType="slide" onRequestClose={props.onClose}>
+      {body}
     </Modal>
   );
 }

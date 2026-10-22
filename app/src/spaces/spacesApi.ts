@@ -21,14 +21,14 @@ export const joinChannel = (jwt: string, spaceId: string, chatId: string) => jso
 
 /** The chats of a space; each one carries its space, so it opens in the Slack format. */
 export async function spaceChats(jwt: string, spaceId: string) {
-  const result = await jsonCall<{ chats: ChatSummary[] }>(`${BASE_URL}/api/chats?workspace=${spaceId}`, jwt);
-  return result.ok ? { ...result, data: { chats: result.data.chats.map((chat) => ({ ...chat, workspaceId: spaceId })) } } : result;
+  const result = await jsonCall<{ chats: ChatSummary[]; activity?: { mentions: number; threads: number } }>(`${BASE_URL}/api/chats?workspace=${spaceId}`, jwt);
+  return result.ok ? { ...result, data: { chats: result.data.chats.map((chat) => ({ ...chat, workspaceId: spaceId })), activity: result.data.activity } } : result;
 }
 /** Leave a space, or withdraw a request still waiting («Cancelar solicitud», design `e1-03`). */
 export const leaveSpace = (jwt: string, spaceId: string) => jsonCall<Record<string, never>>(url(`/${spaceId}/leave`), jwt, post({}));
 
 /** The people of a space (designs `e1-08`, `e1-10`, `e1-11`): active for everyone; pending and deactivated for admins. */
-export const spaceMembers = (jwt: string, spaceId: string, status: 'active' | 'pending' | 'invited' | 'deactivated' = 'active') =>
+export const spaceMembers = (jwt: string, spaceId: string, status: 'active' | 'pending' | 'invited' | 'deactivated' | 'all' = 'active') =>
   jsonCall<{ members: ClientWorkspaceMember[] }>(url(`/${spaceId}/members?status=${status}`), jwt);
 /** Approve (with area and title), change the role, deactivate or reactivate. */
 export const changeMember = (jwt: string, spaceId: string, memberId: string, change: { status?: 'active' | 'deactivated'; role?: WorkspaceRole; title?: string; area?: string }) =>

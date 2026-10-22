@@ -36,9 +36,9 @@ export function MembersScreen(props: { space: ClientWorkspace; jwt: string; myUs
   const [actionError, setError] = useState('');
   // The four lists paint at once from what was seen and refresh behind (22/10).
   const cached = useCached(memberListsCache, `${space.id}:member-lists`, async (): Promise<Lists> => {
-    const [active, pending, invited, deactivated] = await Promise.all((['active', 'pending', 'invited', 'deactivated'] as const).map((status) => spaceMembers(jwt, space.id, status)));
-    const fallback = 'No se pudieron cargar los miembros.';
-    return { active: dataOf(active, fallback).members, pending: dataOf(pending, fallback).members, invited: dataOf(invited, fallback).members, deactivated: dataOf(deactivated, fallback).members };
+    // One request for the four lists (22/10), split here by status.
+    const everyone = dataOf(await spaceMembers(jwt, space.id, 'all'), 'No se pudieron cargar los miembros.').members;
+    return { active: everyone.filter((one) => one.status === 'active'), pending: everyone.filter((one) => one.status === 'pending'), invited: everyone.filter((one) => one.status === 'invited'), deactivated: everyone.filter((one) => one.status === 'deactivated') };
   });
   const lists = cached.value ?? null;
   const error = actionError || (lists ? '' : (cached.error ?? ''));

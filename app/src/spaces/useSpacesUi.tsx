@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChevronDown } from 'lucide-react-native';
-import { newlyAddedSpaces, spaceSubtitle, type ActivityItem, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember } from '@lilachat/shared';
+import { newlyAddedSpaces, spaceSubtitle, unreadElsewhere, type ActivityItem, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 import { createChat } from '../contacts/contactsApi';
 import { getSocket } from '../chat/socketClient';
@@ -9,7 +9,7 @@ import { useAlVolver } from '../ui/useAlVolver';
 import { Logo } from '../ui/Logo';
 import { useColores } from '../ui/tema';
 import { setCurrentSpaceId, useCurrentSpaceId, useMySpaces } from './currentSpace';
-import { forgetSpace, prefetchSpace } from './spaceCache';
+import { forgetSpace, membersChanged, prefetchSpace } from './spaceCache';
 import { SpaceLogo, SpaceSwitcherSheet } from './SpaceSwitcherSheet';
 import { JoinSpaceScreen } from './JoinSpaceScreen';
 import { CreateSpaceScreen } from './CreateSpaceScreen';
@@ -44,6 +44,9 @@ const spaceChat = (chat: Pick<ChatSummary, 'id' | 'kind' | 'name' | 'phone' | 'm
 /** A channel just joined or created, as the conversation opens it (the list fills the rest when it reloads). */
 export const chatOfChannel = (channel: ClientChannel, spaceId: string): ChatSummary => spaceChat({ id: channel.id, kind: 'group', name: channel.name, memberIds: [], channel: { visibility: channel.visibility } }, spaceId);
 
+/** Several messages in a row read the spaces' counters once. */
+const ELSEWHERE_RELOAD_MS = 1500;
+
 /**
  * The company spaces in the Chats tab (E1/E2): the header's title opens «Cambiar
  * de espacio» (design `e1-06`), and from there joining (e1-02/03), creating
@@ -57,7 +60,7 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
   const { jwt, myUserId, onOpenChat } = params;
   const colors = useColores();
   const currentId = useCurrentSpaceId();
-  const { spaces, reload } = useMySpaces(jwt);
+  const { spaces, reload } = useMySpaces(jwt, myUserId);
   const seen = useSeenSpaces();
   const [sheet, setSheet] = useState<Sheet>(null);
   const [inviting, setInviting] = useState<ClientWorkspace | null>(null);
@@ -91,9 +94,13 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
   useEffect(() => {
     const socket = getSocket();
     const onChanged = () => void reload();
+    // A space's people changed (22/10): its directories refresh where they are open.
+    const onMembers = (frame: { workspaceId?: string }) => frame.workspaceId && membersChanged(frame.workspaceId);
     socket?.on('workspaces.changed', onChanged);
+    socket?.on('workspace.members.changed', onMembers);
     return () => {
       socket?.off('workspaces.changed', onChanged);
+      socket?.off('workspace.members.changed', onMembers);
     };
   }, [reload]);
   useAlVolver(true, () => void reload());
@@ -105,10 +112,10 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
 
   const enter = useCallback(async (spaceId: string | null) => {
     setSheet(null);
-    // The list first: a space just created or joined is not in the old one, and the fallback above would send it back to personal.
-    if (spaceId) await reload();
+    // A space just created or joined is not in the old list (the fallback above would send it back to personal); a known one switches at once.
+    if (spaceId && !spaces?.some((space) => space.id === spaceId)) await reload();
     setCurrentSpaceId(spaceId);
-  }, [reload]);
+  }, [reload, spaces]);
   const openChannel = useCallback((channel: ClientChannel) => {
     setSheet(null);
     if (current) onOpenChat(chatOfChannel(channel, current.id));
@@ -138,6 +145,16 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
   const openNewDirect = useCallback(() => setSheet('newDirect'), []);
   const openNewGroup = useCallback(() => setSheet('newGroup'), []);
 
+  // A message in personal or in another space is not missed (José, 22/10): the title carries how many chats wait elsewhere.
+  const elsewhere = unreadElsewhere({ spaces, currentId: current?.id ?? null, personalUnread: params.personalUnread });
+  const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reloadSoon = useCallback(() => {
+    if (reloadTimer.current) clearTimeout(reloadTimer.current);
+    reloadTimer.current = setTimeout(() => void reload(), ELSEWHERE_RELOAD_MS);
+  }, [reload]);
+  useEffect(() => () => {
+    if (reloadTimer.current) clearTimeout(reloadTimer.current);
+  }, []);
   const title: ReactNode = (
     <Pressable testID="titulo-espacio" accessibilityLabel="Cambiar de espacio" onPress={() => setSheet('switcher')} className="min-h-[44px] flex-1 flex-row items-center gap-2.5">
       {current ? <SpaceLogo space={current} size={36} /> : <Logo tamano={32} />}
@@ -145,6 +162,11 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
         <View className="flex-row items-center gap-1">
           <Text numberOfLines={1} className={`text-[22px] font-bold ${current ? 'text-on-surface' : 'text-primary'}`}>{current ? current.name : 'Lilachat'}</Text>
           <ChevronDown size={18} color={colors['on-surface-variant']} />
+          {elsewhere > 0 ? (
+            <View testID="badge-otros-espacios" accessibilityLabel={`${elsewhere} ${elsewhere === 1 ? 'chat' : 'chats'} con algo nuevo en otro espacio`} className="ml-0.5 h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5">
+              <Text className="text-[11px] font-bold text-on-primary">{elsewhere > 99 ? '99+' : elsewhere}</Text>
+            </View>
+          ) : null}
         </View>
         {current ? <Text className="-mt-0.5 text-[12px] text-on-surface-variant">{spaceSubtitle(current, { membersFirst: true })}</Text> : null}
       </View>
@@ -194,12 +216,19 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
     </>
   );
 
+  // Directorio and Menciones as tabs of the bar (22/10): mounted once and hidden, like Chats; no window that slides in.
+  const directoryTab: ReactNode = current ? <DirectoryScreen embedded space={current} jwt={jwt} myUserId={myUserId} onOpenMember={setProfile} onMessage={(member) => void writeTo(member)} onInvite={current.joinCode ? () => setSheet('invite') : undefined} onClose={() => undefined} /> : null;
+  const mentionsTab = (active: boolean): ReactNode => (current ? <ActivityScreen embedded visible={active} space={current} jwt={jwt} myUserId={myUserId} initialTab="mentions" onOpen={(item) => void openActivityItem(item)} onClose={() => undefined} /> : null);
   return {
     current,
     title,
     layer,
+    directoryTab,
+    mentionsTab,
     openChannels: () => setSheet('channels'),
     openInvite: () => setSheet('invite'),
+    /** A message arrived in a chat outside the personal list: the spaces' counters are read again, once per burst. */
+    reloadSoon,
     listProps: { reloadKey, onWorkspace: openWorkspace, onNewDirect: openNewDirect, onNewGroup: openNewGroup, onChats: setListChats, onRefresh: reload, onActivity: setActivityTab },
   };
 }

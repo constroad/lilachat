@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterChannels, railSpaces, splitArchived, SPACE_RUBROS, spaceInitials, spaceInviteEmail, spaceInviteMailto, spaceInviteMessage, spaceSections, spaceSubtitle } from './spaceSections.js';
+import { filterChannels, railSpaces, unreadElsewhere, splitArchived, SPACE_RUBROS, spaceInitials, spaceInviteEmail, spaceInviteMailto, spaceInviteMessage, spaceSections, spaceSubtitle } from './spaceSections.js';
 
 /** The chats of a company space by sections, like Slack (designs `s-03-lista-con-secciones` and `e1-07-chats-del-espacio`). */
 describe('spaceSections', () => {
@@ -148,5 +148,23 @@ describe('splitArchived', () => {
   });
   it('opening «Archivados» shows only them', () => {
     expect(splitArchived([{ id: 'a', archived: true }, { id: 'b' }], true)).toEqual({ shown: [{ id: 'a', archived: true }], archived: 1 });
+  });
+});
+
+/** José, 22/10: «si hay mensajes en espacios o cuentas individuales, ¿aparece que hay mensaje?» — the header says so. */
+describe('unreadElsewhere', () => {
+  const spaces = [
+    { id: 'w1', status: 'active' as const, unreadChats: 2 },
+    { id: 'w2', status: 'active' as const, unreadChats: 1 },
+    { id: 'w3', status: 'pending' as const, unreadChats: 5 },
+  ];
+  it('in personal: the chats with something new in every space I am active in', () => {
+    expect(unreadElsewhere({ spaces, currentId: null, personalUnread: 4 })).toBe(3);
+  });
+  it('inside a space: personal plus the other spaces, never the one I am looking at', () => {
+    expect(unreadElsewhere({ spaces, currentId: 'w1', personalUnread: 4 })).toBe(5);
+  });
+  it('nothing loaded yet is zero', () => {
+    expect(unreadElsewhere({ spaces: null, currentId: null, personalUnread: 0 })).toBe(0);
   });
 });

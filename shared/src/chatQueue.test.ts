@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { postponeOneDay, queueDetail, queueKicker, visibleQueue, type QueueItem } from './chatQueue.js';
+import { pendingCount, postponeOneDay, queueDetail, queueKicker, visibleQueue, type QueueItem } from './chatQueue.js';
 
 const now = new Date(2026, 9, 22, 10, 0);
 const task: QueueItem = { kind: 'task', key: 'task:c1:i1:2026-10-21T23:00:00.000Z', title: 'Acero inspeccionado en losa', context: 'Vaciado de losa', at: new Date(2026, 9, 21, 18, 0).toISOString(), checklistId: 'c1', itemId: 'i1', canPostpone: true };
@@ -43,5 +43,16 @@ describe('dismissed cards', () => {
     const full = Array.from({ length: QUEUE_DISMISSED_LIMIT }, (_, index) => `k${index}`);
     expect(withDismissed(full, 'new')).toHaveLength(QUEUE_DISMISSED_LIMIT);
     expect(withDismissed(full, 'new').at(-1)).toBe('new');
+  });
+});
+
+/** José, 22/10: the chat list marks a chat with something waiting for me. */
+describe('pendingCount', () => {
+  it('what is pending in the chat minus what I dismissed on this device', () => {
+    expect(pendingCount(['task:a', 'poll:b', 'event:c'], new Set(['poll:b']))).toBe(2);
+  });
+  it('nothing known or everything dismissed is zero', () => {
+    expect(pendingCount(undefined, new Set())).toBe(0);
+    expect(pendingCount(['poll:b'], new Set(['poll:b']))).toBe(0);
   });
 });

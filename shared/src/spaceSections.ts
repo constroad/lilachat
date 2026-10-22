@@ -112,3 +112,14 @@ export function splitArchived<T extends { archived?: boolean }>(chats: readonly 
   const archived = chats.filter((chat) => chat.archived === true);
   return { shown: openArchived ? archived : chats.filter((chat) => chat.archived !== true), archived: archived.length };
 }
+
+/**
+ * Chats with something new OUTSIDE what I am looking at (José, 22/10): in
+ * personal, every space I am active in; inside a space, personal plus the
+ * other spaces. The header shows it so a message elsewhere is not missed.
+ */
+export function unreadElsewhere(params: { spaces: readonly { id: string; status: string; unreadChats?: number }[] | null; currentId: string | null; personalUnread: number }): number {
+  const spaces = (params.spaces ?? []).filter((space) => space.status === 'active' && space.id !== params.currentId);
+  const inSpaces = spaces.reduce((total, space) => total + (space.unreadChats ?? 0), 0);
+  return inSpaces + (params.currentId ? params.personalUnread : 0);
+}

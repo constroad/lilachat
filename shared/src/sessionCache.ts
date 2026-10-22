@@ -20,6 +20,8 @@ export type SessionCache<T> = {
   revalidate(key: string, fetcher: () => Promise<T>, options?: { force?: boolean }): Promise<CacheEntry<T>>;
   hydrate(key: string, value: T, fetchedAt: number): void;
   patch(key: string, change: (value: T) => T): void;
+  /** Keeps what is shown but marks it stale: a screen that has it open refreshes it. */
+  expire(prefix: string): void;
   drop(prefix: string): void;
   clear(): void;
 };
@@ -95,6 +97,9 @@ export function createSessionCache<T>(options: Options<T>): SessionCache<T> {
       const value = change(current.value);
       if (value === current.value) return;
       set(key, { ...current, value });
+    },
+    expire(prefix) {
+      for (const [key, entry] of [...entries]) if (key.startsWith(prefix) && entry.fetchedAt !== undefined) set(key, { ...entry, fetchedAt: 0 });
     },
     drop(prefix) {
       for (const key of [...new Set([...entries.keys(), ...inFlight.keys()])]) {

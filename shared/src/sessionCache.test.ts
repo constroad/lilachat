@@ -122,4 +122,17 @@ describe('session cache', () => {
     await cache.revalidate('k', async () => 'v');
     expect(onSave).toHaveBeenCalledWith('k', 'v', expect.any(Number));
   });
+
+  it('expiring keeps what is shown but makes it stale, so an open screen refreshes it (members changed, 22/10)', async () => {
+    const cache = createSessionCache<string>({ maxAgeMs: 30_000 });
+    await cache.revalidate('w1:members', async () => 'Ana');
+    await cache.revalidate('w2:members', async () => 'Beto');
+    const listener = vi.fn();
+    cache.subscribe('w1:members', listener);
+    cache.expire('w1:');
+    expect(cache.get('w1:members').value).toBe('Ana');
+    expect(cache.isStale('w1:members')).toBe(true);
+    expect(cache.isStale('w2:members')).toBe(false);
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
 });

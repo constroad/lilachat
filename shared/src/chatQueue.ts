@@ -54,3 +54,8 @@ export function postponeOneDay(dueAt: string, now: Date): string {
 export function withDismissed(keys: readonly string[], key: string): string[] {
   return [...keys.filter((one) => one !== key), key].slice(-QUEUE_DISMISSED_LIMIT);
 }
+
+/** The chat list's marker (José, 22/10): what is pending in a chat minus what was dismissed on this device. */
+export function pendingCount(keys: readonly string[] | undefined, dismissed: ReadonlySet<string>): number {
+  return (keys ?? []).filter((key) => !dismissed.has(key)).length;
+}

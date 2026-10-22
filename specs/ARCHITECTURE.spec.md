@@ -4892,6 +4892,56 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 93. «Completa tu perfil»: nombre, cumpleaños y correo verificado (22/10/2026, 0.1.133)
+
+José (21/10): «debe ser obligatorio nombre y fecha de cumple y un email con su
+número de teléfono válidos». Es la parte de alta del backlog 17.
+
+**Qué se pide** (`shared/src/profile.ts`, 8 tests).
+- Nombre, día y mes del cumpleaños, y un correo probado con código. El año
+  es opcional. El teléfono ya lo prueba el alta.
+- `profileMissing` dice qué falta; el server lo manda en `missing`.
+- `validateBirthday`: mes 1–12, año 1900–hoy, 29/02 vale sin año.
+- `birthdayFieldError` explica el error bajo las cajas («31/4» no existe).
+  Antes el botón quedaba apagado sin decir por qué.
+- «Que mis chats vean mi cumpleaños» viene encendido; apagado, nadie la ve.
+
+**Server** (`server/src/profileRoutes.ts`, en `/api/me`, 6 tests).
+- `GET /profile` y `PUT /profile` (nombre, cumpleaños, visible).
+  `PUT /profile` también dispara `announceJoin` (§92).
+- `POST /email/code`: código de constroad-auth al correo. 5 por minuto.
+  409 si el correo ya está verificado en otra cuenta.
+- `POST /email/verify`: con el código, el correo es tuyo. Una cuenta vieja
+  que lo tenía sin verificar lo suelta. Una carrera choca con el índice
+  único `email` (ya existía, `sparse`): 409, no 500.
+- Campos nuevos en `users`: `birthday {day, month, year?}`,
+  `birthdayVisible`, `emailVerifiedAt`. Sin índices nuevos.
+
+**App y web.**
+- `useProfileGate` lee `GET /profile` al entrar. Si `missing` no está vacío,
+  la pantalla tapa todo y no se puede saltar.
+- Cuenta nueva: llega después del código. Cuenta vieja: la próxima vez que
+  abre.
+- Al terminar, el server vuelve a decidir: si falta algo, lo dice.
+- Web: el gate va antes de `/instalar-app` y del Shell. Mismos `testID`.
+
+**E2E.**
+- Web (QA Ana, servidor de QA): gate visible, «31/4» explicado, «Continuar»
+  apagado hasta verificar, código malo rechazado, `000000` aceptado. Entró.
+  Al recargar, sin gate.
+- Emulador (cuenta de José): gate con su nombre y su correo sin verificar.
+  Cumpleaños 29/8, correo de QA, código, «Continuar» → lista de chats. Al
+  relanzar, sin gate.
+- El servidor de QA acepta `000000` solo para `@qa.lilachat.test`, sin
+  mandar correo. Los demás correos van a constroad-auth real.
+- Perfiles de José y Ana restaurados a lo de antes (correo de José sin
+  verificar, sin cumpleaños). Dispositivo web de QA desvinculado.
+
+**Efecto en producción.** Todas las cuentas actuales verán el gate al
+actualizar: ninguna tiene cumpleaños ni correo verificado. Es lo pedido.
+
+**Pendiente del backlog 17:** el aviso de cumpleaños en los chats.
+
 ## 92. «Se unió a Lilachat», como Telegram (21/10/2026, 0.1.132)
 
 José (21/10): «si alguien de mis contactos que invité descargó la app y creó
@@ -8413,7 +8463,7 @@ tacha con la versión que lo cierra.
     algo como Zernio se usan las APIs oficiales.
 
 17. **Recordatorio de cumpleaños en grupos y chats (opcional)** (José, 20/10).
-    - **Alta:** nombre y fecha de cumpleaños pasan a ser OBLIGATORIOS al
+    - ~~**Alta:**~~ **Hecho (§93, 0.1.133)**, con correo verificado. Nombre y fecha de cumpleaños pasan a ser OBLIGATORIOS al
       registrarse (hoy el nombre es opcional y la fecha no existe). Quien ya
       tiene cuenta los completa la próxima vez que abre la app (pantalla de
       «Completa tu perfil»), sin poder saltarla. El año es opcional al

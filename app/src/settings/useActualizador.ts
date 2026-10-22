@@ -67,7 +67,8 @@ export function useActualizador() {
 
     setEstado({ fase: 'instalando' });
     try {
-      await handToInstaller(resultado.uri);
+      const outcome = await handToInstaller(resultado.uri);
+      if (!outcome.ok) return setEstado({ fase: 'error', mensaje: outcome.message });
     } catch {
       // Que no se abra el instalador es raro pero posible: se avisa, no se cuelga.
       setEstado({ fase: 'error', mensaje: 'No se pudo abrir el instalador.' });

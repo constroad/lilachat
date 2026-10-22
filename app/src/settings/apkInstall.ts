@@ -4,6 +4,8 @@ import { getContentUriAsync } from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { decideInstall, installMessage, type InstallVerdict } from './installDecision';
 import { registrarError } from '../diagnostico/diagnostico';
+import { sessionInstaller } from '../../modules/instalador-apk/src';
+import { needsSystemInstaller, sessionOutcome, type InstallOutcome } from './installSession';
 
 /** Cuánto del mensaje de error se muestra (el resto va al diagnóstico). */
 const MOTIVO_MAX = 80;
@@ -113,13 +115,34 @@ async function sha256Of(archivo: File): Promise<string | null> {
 }
 
 /**
+ * Installs the verified APK. First through Lilachat's own session
+ * (`modules/instalador-apk`), which keeps full-screen calls on across the
+ * update (José, 22/10: they came back off after every update). If the session
+ * cannot start, or Lilachat may not install apps yet, it goes to the system
+ * installer as before.
+ */
+export async function handToInstaller(uri: string): Promise<InstallOutcome> {
+  if (sessionInstaller.available()) {
+    try {
+      const result = await sessionInstaller.install(uri);
+      if (result.status === 'failed') void registrarError(new Error(`install ${result.code}: ${result.message ?? ''}`), 'actualizar-sesion');
+      if (!needsSystemInstaller(result)) return sessionOutcome(result);
+    } catch (fallo) {
+      void registrarError(fallo, 'actualizar-sesion');
+    }
+  }
+  await handToSystemInstaller(uri);
+  return { ok: true };
+}
+
+/**
  * Se lo pasa al instalador del sistema.
  *
  * Va por `content://` y no por `file://`: desde Android 7 pasar un `file://`
  * entre apps lanza `FileUriExposedException`. El `FileProvider` lo aporta
  * `expo-file-system`.
  */
-export async function handToInstaller(uri: string): Promise<boolean> {
+async function handToSystemInstaller(uri: string): Promise<boolean> {
   const contentUri = await getContentUriAsync(uri);
   const resultado = await IntentLauncher.startActivityAsync(
     'android.intent.action.INSTALL_PACKAGE',

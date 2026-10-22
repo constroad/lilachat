@@ -3,13 +3,29 @@ import { Pressable, Text, View } from 'react-native';
 import { PhoneIncoming } from 'lucide-react-native';
 import { llamadaNativa } from '../../modules/llamada-entrante/src';
 import { versionActual } from '../settings/versionApi';
-import { askedForVersion, markAsked, shouldAskFullScreen } from './fullScreenPrompt';
+import { registrarError } from '../diagnostico/diagnostico';
+import { sessionInstaller } from '../../modules/instalador-apk/src';
+import { askedForVersion, fullScreenLostOnUpdate, lastFullScreenSeen, markAsked, saveFullScreenSeen, shouldAskFullScreen, type FullScreenSeen } from './fullScreenPrompt';
 import { Modal } from './Modal';
 import { useMargenes } from './useMargenes';
 import { useColores } from './tema';
 
 /** After the first paint and the system's own prompts (notifications), not on top of them. */
 const ASK_AFTER_MS = 1_500;
+
+/**
+ * An update that switched full-screen calls off goes to the diagnostics with
+ * who installed it (José, 22/10): it tells whether the session installer
+ * (`modules/instalador-apk`) keeps them on, on his Samsung and elsewhere.
+ */
+async function reportLostOnUpdate(now: FullScreenSeen): Promise<void> {
+  if (!now.version) return;
+  const before = await lastFullScreenSeen();
+  if (fullScreenLostOnUpdate(before, now)) {
+    void registrarError(new Error(`full-screen calls off after update ${before?.version} -> ${now.version}, installed by ${sessionInstaller.installedBy() ?? 'unknown'}`), 'pantalla-completa');
+  }
+  await saveFullScreenSeen(now);
+}
 
 /**
  * Once per version, while Android denies full-screen calls: what changes if
@@ -24,8 +40,10 @@ export function FullScreenCallsPrompt() {
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(() => {
+      const allowed = llamadaNativa.puedePantallaCompleta();
+      void reportLostOnUpdate({ version, allowed });
       void askedForVersion().then((asked) => {
-        if (!cancelled && shouldAskFullScreen({ allowed: llamadaNativa.puedePantallaCompleta(), version, askedForVersion: asked })) setVisible(true);
+        if (!cancelled && shouldAskFullScreen({ allowed, version, askedForVersion: asked })) setVisible(true);
       });
     }, ASK_AFTER_MS);
     return () => {

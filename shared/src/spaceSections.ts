@@ -103,3 +103,9 @@ export function spaceSubtitle(space: { rubro?: string; members: number }, option
 export function railSpaces<T extends { status: string }>(spaces: readonly T[] | null): T[] {
   return (spaces ?? []).filter((space) => space.status === 'active' || space.status === 'pending');
 }
+
+/** The chats of a space without the archived ones, or only those when «Archivados» is open; and how many are archived. */
+export function splitArchived<T extends { archived?: boolean }>(chats: readonly T[], openArchived: boolean): { shown: T[]; archived: number } {
+  const archived = chats.filter((chat) => chat.archived === true);
+  return { shown: openArchived ? archived : chats.filter((chat) => chat.archived !== true), archived: archived.length };
+}

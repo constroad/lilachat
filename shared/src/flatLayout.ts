@@ -15,6 +15,9 @@ export function usesFlatLayout(chat: FlatLayoutChat, prefs: { groupsAsList: bool
 
 const ROLE_LABEL: Record<string, string> = { owner: 'Dueño', admin: 'Admin' };
 
+/** What a member's pill is made of: the role (in a space, the space's) and the job title in the space. */
+export type MemberPill = { role?: string | null; title?: string | null };
+
 /** The pill next to a name: the job title from the space, or the role; mine says «Tú» too. */
 export function memberBadge(params: { title?: string | null; role?: string | null; isMe: boolean }): string | null {
   const label = params.title?.trim() || (params.role ? ROLE_LABEL[params.role] : undefined);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterChannels, railSpaces, SPACE_RUBROS, spaceInitials, spaceInviteEmail, spaceInviteMailto, spaceInviteMessage, spaceSections, spaceSubtitle } from './spaceSections.js';
+import { filterChannels, railSpaces, splitArchived, SPACE_RUBROS, spaceInitials, spaceInviteEmail, spaceInviteMailto, spaceInviteMessage, spaceSections, spaceSubtitle } from './spaceSections.js';
 
 /** The chats of a company space by sections, like Slack (designs `s-03-lista-con-secciones` and `e1-07-chats-del-espacio`). */
 describe('spaceSections', () => {
@@ -130,5 +130,16 @@ describe('spaceInviteEmail', () => {
 describe('spaceInviteMessage, where to get the app', () => {
   it('says where to download Lilachat for whoever does not have it', () => {
     expect(spaceInviteMessage({ spaceName: 'CONSTROAD', code: 'CONS-7K3P' })).toContain('https://lilastore.constroad.com/app/lilachat');
+  });
+});
+
+/** Archiving a chat of a space hides it from the space's list (debt of §84), like the personal list. */
+describe('splitArchived', () => {
+  it('the archived ones apart, with how many; the rest in the sections', () => {
+    const chats = [{ id: 'a', archived: true }, { id: 'b' }, { id: 'c', archived: false }];
+    expect(splitArchived(chats, false)).toEqual({ shown: [{ id: 'b' }, { id: 'c', archived: false }], archived: 1 });
+  });
+  it('opening «Archivados» shows only them', () => {
+    expect(splitArchived([{ id: 'a', archived: true }, { id: 'b' }], true)).toEqual({ shown: [{ id: 'a', archived: true }], archived: 1 });
   });
 });

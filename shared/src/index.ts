@@ -92,3 +92,4 @@ export * from './panelTab.js';
 export * from './spaceSections.js';
 export * from './mediaLibrary.js';
 export * from './workspaceMembers.js';
+export * from './activity.js';

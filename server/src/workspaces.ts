@@ -52,7 +52,7 @@ export function toClientWorkspace(workspace: Workspace, member: Pick<WorkspaceMe
     id: String(workspace._id),
     name: workspace.name,
     rubro: workspace.rubro,
-    logoUrl: workspace.logoUrl,
+    logoUrl: workspace.logoUrl ? toAbsoluteMediaUrl(workspace.logoUrl) : undefined,
     joinPolicy: workspace.joinPolicy,
     role: member.role,
     status: member.status,
@@ -81,7 +81,7 @@ async function workspaceByCode(code: unknown): Promise<Workspace> {
 export async function previewByCode(code: unknown) {
   const workspace = await workspaceByCode(code);
   const members = await WorkspaceMemberModel.countDocuments({ workspaceId: workspace._id, status: 'active' });
-  return { id: String(workspace._id), name: workspace.name, rubro: workspace.rubro, logoUrl: workspace.logoUrl, members, joinPolicy: workspace.joinPolicy };
+  return { id: String(workspace._id), name: workspace.name, rubro: workspace.rubro, logoUrl: workspace.logoUrl ? toAbsoluteMediaUrl(workspace.logoUrl) : undefined, members, joinPolicy: workspace.joinPolicy };
 }
 
 export async function joinByCode(userId: Types.ObjectId, code: unknown): Promise<{ workspaceId: string; status: WorkspaceMemberStatus }> {
@@ -234,6 +234,21 @@ export async function updateWorkspace(workspaceId: string, actorId: Types.Object
   if (policy) set.joinPolicy = policy;
   if (change.newCode === true) set.joinCode = await uniqueCode(name ?? current.name);
   const updated = await WorkspaceModel.findOneAndUpdate({ _id: current._id }, { $set: set }, { returnDocument: 'after' }).lean<Workspace>();
+  if (!updated) throw new WorkspaceError(404, NOT_FOUND);
+  return toClientWorkspace(updated, actor);
+}
+
+/** Only those who manage the space change its logo: checked BEFORE uploading the image. */
+export async function logoEditor(workspaceId: string, actorId: Types.ObjectId): Promise<WorkspaceMember> {
+  const actor = await actorIn(workspaceId, actorId);
+  if (!canManageMembers(actor.role)) throw new WorkspaceError(403, ONLY_ADMINS);
+  return actor;
+}
+
+/** Sets the logo (a relative URL) or takes it away (`null`): the initials come back. */
+export async function setWorkspaceLogo(workspaceId: string, actorId: Types.ObjectId, url: string | null) {
+  const actor = await logoEditor(workspaceId, actorId);
+  const updated = await WorkspaceModel.findOneAndUpdate({ _id: actor.workspaceId }, url ? { $set: { logoUrl: url } } : { $unset: { logoUrl: 1 } }, { returnDocument: 'after' }).lean<Workspace>();
   if (!updated) throw new WorkspaceError(404, NOT_FOUND);
   return toClientWorkspace(updated, actor);
 }

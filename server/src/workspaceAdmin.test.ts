@@ -10,7 +10,7 @@ import { signSession } from './sessions.js';
 
 /** The enterprise screens (designs `e1-08`…`e1-14`): directory, members and roles, requests, settings, «te agregaron» and «ya no tienes acceso». */
 let mongo: MongoMemoryServer;
-const app = buildApp();
+const app = buildApp({ mediaUploader: { async upload(p) { return { ok: true, media: { url: `/files/${p.chatId}/${p.fileName}`, storageName: 'logo-1', sizeBytes: p.bytes.length } as never }; } } });
 const users: Record<'jose' | 'ana' | 'beto', Types.ObjectId> = {} as never;
 const jwt = (who: keyof typeof users) => `Bearer ${signSession({ userId: String(users[who]), deviceId: `d-${who}`, email: `${who}@qa.local` })}`;
 
@@ -114,5 +114,40 @@ describe('live notice «workspaces.changed»', () => {
     await request(app).post(`/api/workspaces/${space.id}/members`).set('Authorization', jwt('jose')).send({ phone: '976543210' }).expect(201);
     expect(told.at(-1)).toEqual([String(users.beto)]);
     configureWorkspaceNotices(() => undefined);
+  });
+});
+
+describe('the space logo (e1-12)', () => {
+  it('an admin uploads it and everyone sees it in their spaces; a member cannot; taking it away goes back to the initials', async () => {
+    const space = await createSpace();
+    await request(app).post('/api/workspaces/join').set('Authorization', jwt('ana')).send({ code: space.joinCode });
+    await WorkspaceMemberModel.updateOne({ userId: users.ana }, { $set: { status: 'active' } });
+    const png = Buffer.from('89504e470d0a1a0a', 'hex');
+    expect((await request(app).post(`/api/workspaces/${space.id}/logo`).set('Authorization', jwt('ana')).attach('file', png, { filename: 'logo.png', contentType: 'image/png' })).status).toBe(403);
+    const uploaded = await request(app).post(`/api/workspaces/${space.id}/logo`).set('Authorization', jwt('jose')).attach('file', png, { filename: 'logo.png', contentType: 'image/png' });
+    expect(uploaded.status).toBe(200);
+    expect(uploaded.body.workspace.logoUrl).toMatch(/\/files\/espacio-[a-f0-9]{24}\/logo\.png$/);
+    expect((await mySpaces('ana'))[0]!.logoUrl).toBe(uploaded.body.workspace.logoUrl);
+    const removed = await request(app).delete(`/api/workspaces/${space.id}/logo`).set('Authorization', jwt('jose')).expect(200);
+    expect(removed.body.workspace.logoUrl).toBeUndefined();
+  });
+
+  it('a file that is not an image is refused', async () => {
+    const space = await createSpace();
+    const sent = await request(app).post(`/api/workspaces/${space.id}/logo`).set('Authorization', jwt('jose')).attach('file', Buffer.from('%PDF-1.4'), { filename: 'x.pdf', contentType: 'application/pdf' });
+    expect(sent.status).toBe(400);
+  });
+});
+
+describe('the pill in a space chat (design s-01)', () => {
+  it('the chat detail carries each member\'s job title and role in the space', async () => {
+    const space = await createSpace();
+    const added = await request(app).post(`/api/workspaces/${space.id}/members`).set('Authorization', jwt('jose')).send({ phone: '987654321', title: 'Residente de obra', area: 'Obra' }).expect(201);
+    expect(added.body.member.title).toBe('Residente de obra');
+    const chat = await request(app).post('/api/chats').set('Authorization', jwt('jose')).send({ kind: 'group', name: 'Obra', memberIds: [String(users.ana)], workspaceId: space.id }).expect(201);
+    const detail = await request(app).get(`/api/chats/${chat.body.chatId}/detail`).set('Authorization', jwt('ana')).expect(200);
+    const byId = new Map(detail.body.members.map((member: { id: string }) => [member.id, member]));
+    expect(byId.get(String(users.ana))).toMatchObject({ title: 'Residente de obra', spaceRole: 'member' });
+    expect(byId.get(String(users.jose))).toMatchObject({ spaceRole: 'owner' });
   });
 });

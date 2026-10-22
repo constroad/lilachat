@@ -29,6 +29,7 @@ import { montarServiceWorker } from './serviceWorker.js';
 import { buildVincularRouters, type OpcionesDeVinculacion } from './vincularRoutes.js';
 import { buildFijadosRouter } from './fijadosRoutes.js';
 import { buildDestacadosRouter } from './destacadosRoutes.js';
+import { buildActivityRouter } from './activityRoutes.js';
 import { buildFunRouter } from './funRoutes.js';
 import { buildChecklistRouter } from './checklistRoutes.js';
 import { buildStickersRouter } from './stickersRoutes.js';
@@ -89,6 +90,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/vinculos', vincular.telefono);
   app.use('/api/auth', buildAuthRouter(deps.authClient ?? buildHttpAuthClient()));
   app.use('/api', buildDestacadosRouter());
+  app.use('/api', buildActivityRouter());
   app.use('/api', buildFunRouter());
   app.use('/api', buildStickersRouter(deps.mediaUploader));
   app.use('/api/chats', buildFijadosRouter());
@@ -107,7 +109,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   // Sin sesión: una app que revienta al arrancar no llegó a tener una.
   app.use('/api/crash', buildCrashRouter());
   app.use('/api/contacts', buildContactRouter());
-  app.use('/api/workspaces', buildWorkspaceRouter());
+  app.use('/api/workspaces', buildWorkspaceRouter(deps.mediaUploader));
   app.use('/api/keys', buildKeyRouter());
   app.use('/api/calls', buildCallRouter());
   app.use('/api/me', buildMeRouter(deps.mediaUploader));

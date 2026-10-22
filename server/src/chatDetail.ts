@@ -3,6 +3,7 @@ import { notificationLevel } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import { UserModel } from './models.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
+import { WorkspaceMemberModel } from './workspaceModels.js';
 
 /**
  * El detalle de una conversación: quiénes están y con qué rol (`GET
@@ -28,6 +29,9 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId) {
     .select('name phone avatarUrl')
     .lean<{ _id: unknown; name?: string; phone: string; avatarUrl?: string }[]>();
   const porId = new Map(personas.map((persona) => [String(persona._id), persona]));
+  // In a company space the pill says the job title and the space role (design s-01), not the chat's.
+  const enElEspacio = chat.workspaceId ? await WorkspaceMemberModel.find({ workspaceId: chat.workspaceId, userId: { $in: ids } }).select('userId title role').lean() : [];
+  const cargos = new Map(enElEspacio.map((member) => [String(member.userId), member]));
   // En un 1:1 la foto ES la del perfil del otro (FL9), igual que en la lista.
   const otro = chat.kind === 'direct' ? personas.find((persona) => String(persona._id) !== String(userId)) : undefined;
   const foto = chat.avatarUrl ?? otro?.avatarUrl;
@@ -53,6 +57,7 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId) {
         avatarUrl: persona?.avatarUrl ? toAbsoluteMediaUrl(persona.avatarUrl) : undefined,
         role: m.role ?? 'member',
         esYo: String(m.userId) === String(userId),
+        ...(cargos.has(String(m.userId)) ? { spaceRole: cargos.get(String(m.userId))!.role, ...(cargos.get(String(m.userId))!.title ? { title: cargos.get(String(m.userId))!.title } : {}) } : {}),
       };
     }),
   };

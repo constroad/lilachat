@@ -9,13 +9,17 @@ import {
   leaveWorkspace,
   listMembers,
   myWorkspaces,
+  logoEditor,
   previewByCode,
   rejectRequest,
+  setWorkspaceLogo,
   updateMember,
   updateWorkspace,
   WorkspaceError,
 } from './workspaces.js';
 import { createChannel, joinChannel, listChannels } from './workspaceChannels.js';
+import { buildLilaUploader, type MediaUploader } from './mediaClient.js';
+import { multerDeAvatar, subirFotoRedonda } from './subirAvatar.js';
 
 /** Tries of a code per person and minute: enough to fix a typo, not to guess codes. */
 const CODE_TRIES_PER_MINUTE = 10;
@@ -36,7 +40,7 @@ function handled(handler: (req: Request, res: Response) => Promise<unknown>) {
 }
 
 /** Company spaces (E1, spec §66), mounted on `/api/workspaces`. */
-export function buildWorkspaceRouter(): Router {
+export function buildWorkspaceRouter(uploader: MediaUploader = buildLilaUploader()): Router {
   const router = Router();
   const codeTries = crearLimiteDeIntentos({ maximo: CODE_TRIES_PER_MINUTE, ventanaMs: ONE_MINUTE_MS });
   const limited = (req: Request, res: Response, next: NextFunction) =>
@@ -47,6 +51,14 @@ export function buildWorkspaceRouter(): Router {
   router.post('/', handled(async (req, res) => res.status(201).json({ workspace: await createWorkspace(me(req), req.body ?? {}) })));
   router.get('/preview/:code', limited, handled(async (req, res) => res.json(await previewByCode(req.params.code))));
   router.post('/join', limited, handled(async (req, res) => res.json(await joinByCode(me(req), req.body?.code))));
+  // The logo (design e1-12): an image, kept relative like every media and served absolute.
+  router.post('/:id/logo', multerDeAvatar.single('file'), handled(async (req, res) => {
+    await logoEditor(req.params.id!, me(req));
+    const upload = await subirFotoRedonda({ uploader, file: req.file, carpeta: `espacio-${req.params.id}`, nombrePorDefecto: 'logo.png', siNoEsImagen: 'El logo tiene que ser una imagen.' });
+    if (!upload.ok) return res.status(upload.status).json({ message: upload.message });
+    res.json({ workspace: await setWorkspaceLogo(req.params.id!, me(req), upload.url) });
+  }));
+  router.delete('/:id/logo', handled(async (req, res) => res.json({ workspace: await setWorkspaceLogo(req.params.id!, me(req), null) })));
   router.patch('/:id', handled(async (req, res) => res.json({ workspace: await updateWorkspace(req.params.id!, me(req), req.body ?? {}) })));
   router.post('/:id/leave', handled(async (req, res) => {
     await leaveWorkspace(req.params.id!, me(req));

@@ -255,7 +255,7 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
     res.status(201).json({ chatId: String(chat._id) });
   });
 
-  /** El detalle de una conversación: quiénes están y con qué rol (`chatDetail.ts`). */
+  /** A conversation's detail: who is in it and with what role (`chatDetail.ts`). */
   router.get('/:chatId/detail', async (req, res) => {
     const detail = await chatDetail(String(req.params.chatId), new Types.ObjectId(req.session!.userId));
     if (!detail) return res.status(404).json({ message: 'No encontramos esa conversación.' });

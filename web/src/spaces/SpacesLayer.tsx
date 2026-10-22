@@ -1,4 +1,5 @@
-import type { ClientChannel, ClientWorkspace, ClientWorkspaceMember } from '@lilachat/shared';
+import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember } from '@lilachat/shared';
+import { ActivityDialog } from '../activity/ActivityDialog';
 import type { ChatSummary } from '../chat/types';
 import { SpaceSwitcher } from './SpaceSwitcher';
 import { JoinSpaceDialog } from './JoinSpaceDialog';
@@ -30,6 +31,7 @@ export function SpacesLayer(props: {
   profile: ClientWorkspaceMember | null;
   welcome: ClientWorkspace | null;
   removed: ClientWorkspace | null;
+  activityTab: ActivityType | null;
   spaceChats: ChatSummary[];
   on: {
     dialog: (next: SpaceDialog) => void;
@@ -44,6 +46,8 @@ export function SpacesLayer(props: {
     welcomeSeen: (then?: 'enter' | 'directory') => void;
     removedSeen: () => void;
     talkTo: (admin: Admin) => void;
+    activity: (tab: ActivityType | null) => void;
+    activityItem: (item: ActivityItem) => void;
   };
 }) {
   const { jwt, current, dialog, on } = props;
@@ -68,6 +72,7 @@ export function SpacesLayer(props: {
       {current && dialog === 'settings' ? <SpaceSettingsDialog space={current} jwt={jwt} onSaved={on.reload} onClose={close} /> : null}
       {current && dialog === 'newGroup' ? <NewSpaceGroupDialog space={current} jwt={jwt} myUserId={props.myUserId} onCreated={on.groupCreated} onClose={close} /> : null}
       {props.welcome && !dialog ? <AddedToSpaceDialog space={props.welcome} jwt={jwt} onEnter={() => on.welcomeSeen('enter')} onDirectory={() => on.welcomeSeen('directory')} onLater={() => on.welcomeSeen()} /> : null}
+      {current && props.activityTab ? <ActivityDialog spaceId={current.id} spaceName={current.name} jwt={jwt} myUserId={props.myUserId} initialTab={props.activityTab} onOpen={on.activityItem} onClose={() => on.activity(null)} /> : null}
       {props.removed ? <AccessRemovedDialog space={props.removed} onPersonal={on.removedSeen} onTalkTo={on.talkTo} /> : null}
     </>
   );

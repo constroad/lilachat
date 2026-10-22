@@ -3,14 +3,14 @@ import { Check, KeyRound } from 'lucide-react';
 import { membersLabel, SPACE_RUBROS, type ClientWorkspace } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../ui/Overlay';
 import { SpaceLogo } from './SpaceLogo';
-import { updateSpace } from './spacesApi';
+import { removeSpaceLogo, updateSpace, uploadSpaceLogo } from './spacesApi';
 
 const NAME_MAX = 60;
 
 /**
  * «Ajustes del espacio» (design `e1-12-ajustes-espacio`), for admins: the
  * name, the trade, whether an admin approves who comes in, and a new code
- * (the old one stops working). The logo upload waits for a place on the server.
+ * (the old one stops working), and its logo: an image, or its initials.
  */
 export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string; onSaved: (space: ClientWorkspace) => void; onClose: () => void }) {
   const { space } = props;
@@ -18,6 +18,7 @@ export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string
   const [rubro, setRubro] = useState(space.rubro ?? '');
   const [approval, setApproval] = useState(space.joinPolicy === 'approval');
   const [code, setCode] = useState(space.joinCode);
+  const [logoUrl, setLogoUrl] = useState(space.logoUrl);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const clean = name.trim();
@@ -30,6 +31,22 @@ export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string
     if (!response.ok) return setError(response.message);
     setError('');
     setCode(response.data.workspace.joinCode);
+    props.onSaved(response.data.workspace);
+  };
+  const changeLogo = async (file: File | undefined) => {
+    if (!file) return;
+    setBusy(true);
+    const sent = await uploadSpaceLogo(props.jwt, space.id, file);
+    setBusy(false);
+    if (!sent.ok) return setError(sent.message);
+    setError('');
+    setLogoUrl(sent.workspace.logoUrl);
+    props.onSaved(sent.workspace);
+  };
+  const removeLogo = async () => {
+    const response = await removeSpaceLogo(props.jwt, space.id);
+    if (!response.ok) return setError(response.message);
+    setLogoUrl(undefined);
     props.onSaved(response.data.workspace);
   };
   const newCode = () => {
@@ -46,8 +63,18 @@ export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string
       <FieldError>{error}</FieldError>
       <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Espacio</p>
       <div className="mt-2 flex items-center gap-3">
-        <SpaceLogo space={{ name: clean || space.name, logoUrl: space.logoUrl }} size={52} />
-        <p className="text-[13px] leading-5 text-on-surface-variant">El logo son las iniciales del nombre hasta que se pueda subir una imagen.</p>
+        <SpaceLogo space={{ name: clean || space.name, logoUrl }} size={52} />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">Logo del espacio</p>
+          <p className="text-[12px] text-on-surface-variant">Una imagen cuadrada, o las iniciales del nombre.</p>
+          <div className="mt-2 flex items-center gap-2">
+            <label className={`flex h-9 cursor-pointer items-center rounded-lg border border-outline/25 px-3 text-sm font-semibold hover:bg-background ${busy ? 'pointer-events-none opacity-50' : ''}`}>
+              Cambiar logo
+              <input data-testid="ajustes-logo-archivo" type="file" accept="image/*" className="sr-only" onChange={(event) => void changeLogo(event.target.files?.[0])} />
+            </label>
+            {logoUrl ? <button type="button" data-testid="ajustes-quitar-logo" onClick={() => void removeLogo()} className="h-9 px-2 text-sm font-semibold text-on-surface-variant">Restablecer</button> : null}
+          </div>
+        </div>
       </div>
       <label htmlFor="nombre-ajustes" className="mb-1.5 mt-4 block text-sm font-semibold">Nombre del espacio</label>
       <input id="nombre-ajustes" data-testid="input-nombre-ajustes" value={name} maxLength={NAME_MAX} onChange={(event) => setName(event.target.value)} className="h-11 w-full rounded-xl border border-outline/25 bg-background px-3 text-sm outline-none focus:border-primary" />

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { newlyAddedSpaces, railSpaces, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember } from '@lilachat/shared';
+import { newlyAddedSpaces, railSpaces, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember } from '@lilachat/shared';
 import { api } from '../api';
 import type { ChatSummary } from '../chat/types';
 import { setCurrentSpaceId, useCurrentSpaceId, useMySpaces } from './currentSpace';
-import { chatOfChannel, createSpaceChat, spaceChats } from './spacesApi';
+import { chatOfChannel, createSpaceChat, spaceActivity, spaceChats } from './spacesApi';
 import { markSpacesSeen, readSeenSpaces } from './seenSpaces';
 import { memberName } from './memberWeb';
 import { SpacesLayer, type SpaceDialog } from './SpacesLayer';
@@ -39,7 +39,7 @@ const openedChat = (chat: Pick<ChatSummary, 'id' | 'kind' | 'name' | 'phone' | '
  * Socket events of chats outside the personal list reload the space's list
  * and the rail's counts.
  */
-export function useSpacesWeb(params: { jwt: string; myUserId: string; me: { name?: string | null; phone: string }; personalUnread: number; online: ReadonlySet<string>; selectedChatId: string | null; onOpenChat: (chatId: string) => void; onPersonalChat: (chatId: string) => void }) {
+export function useSpacesWeb(params: { jwt: string; myUserId: string; me: { name?: string | null; phone: string }; personalUnread: number; online: ReadonlySet<string>; selectedChatId: string | null; onOpenChat: (chatId: string) => void; onOpenMessage: (chatId: string, seq: number) => void; onPersonalChat: (chatId: string) => void }) {
   const { jwt, myUserId, onOpenChat, onPersonalChat } = params;
   const currentId = useCurrentSpaceId();
   const { spaces, reload } = useMySpaces(jwt);
@@ -52,6 +52,8 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; me: { name
   const [failed, setFailed] = useState(false);
   /** A chat just joined or created, until the list brings it. */
   const [justOpened, setJustOpened] = useState<ChatSummary | null>(null);
+  const [activity, setActivity] = useState({ mentions: 0, threads: 0 });
+  const [activityTab, setActivityTab] = useState<ActivityType | null>(null);
   const current = spaces?.find((space) => space.id === currentId && space.status === 'active') ?? null;
   const spaceId = current?.id ?? null;
 
@@ -72,9 +74,10 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; me: { name
   shownSpace.current = spaceId;
   const loadChats = useCallback(async () => {
     if (!spaceId) return;
-    const response = await spaceChats(jwt, spaceId);
+    const [response, counts] = await Promise.all([spaceChats(jwt, spaceId), spaceActivity(jwt, spaceId, { countsOnly: true })]);
     // Switched spaces while it was on its way: that list is not this space's.
     if (shownSpace.current !== spaceId) return;
+    if (counts.ok) setActivity(counts.data.unread);
     if (response.ok) {
       setChats(response.data.chats);
       setFailed(false);
@@ -139,6 +142,7 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; me: { name
       profile={profile}
       welcome={welcome}
       removed={removed}
+      activityTab={activityTab}
       spaceChats={chats ?? []}
       on={{
         dialog: setDialog,
@@ -164,6 +168,15 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; me: { name
         },
         removedSeen: () => setRemoved(null),
         talkTo: (admin) => void talkTo(admin),
+        activity: (tab) => {
+          setActivityTab(tab);
+          // Closing it: what was read there changes the chips' counts.
+          if (!tab) void loadChats();
+        },
+        activityItem: (item) => {
+          setActivityTab(null);
+          params.onOpenMessage(item.chatId, item.seq);
+        },
       }}
     />
   );
@@ -185,6 +198,8 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; me: { name
     openWorkspace: (link: WorkspaceLink) => setDialog(link),
     openNewDirect: () => setDialog('newDirect'),
     openNewGroup: () => setDialog('newGroup'),
+    activity,
+    openActivity: setActivityTab,
     layer,
   };
 }

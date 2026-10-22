@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Copy, Hash, Inbox, Lock, PanelLeftClose, Plus, Search, Settings, Settings2, UserCog, UserPlus, Users, type LucideIcon } from 'lucide-react';
-import { canManageMembers, formatChatTimestamp, membersLabel, spaceSections, spaceSubtitle, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
+import { Archive, AtSign, ChevronDown, ChevronRight, Copy, Hash, Inbox, Lock, MessagesSquare, PanelLeftClose, Plus, Search, Settings, Settings2, UserCog, UserPlus, Users, type LucideIcon } from 'lucide-react';
+import { canManageMembers, formatChatTimestamp, membersLabel, spaceSections, spaceSubtitle, splitArchived, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { FilaDeChat } from '../chat/FilaDeChat';
 import { copiarTexto } from '../chat/copiarTexto';
@@ -27,6 +27,9 @@ type Props = {
   onWorkspace: (link: WorkspaceLink) => void;
   onNewDirect: () => void;
   onNewGroup: () => void;
+  /** New mentions and threads, and «Menciones y actividad» (design e-19). */
+  activity?: { mentions: number; threads: number };
+  onActivity?: (tab: ActivityType) => void;
   /** The foot with me and «Ajustes»: only without the rail. */
   onSettings?: () => void;
   width?: number;
@@ -45,11 +48,14 @@ export function SpaceChatList(props: Props) {
   const [query, setQuery] = useState('');
   const [folded, setFolded] = useState<ReadonlySet<SpaceSectionKey>>(new Set());
   const [copied, setCopied] = useState(false);
+  const [openArchived, setOpenArchived] = useState(false);
+  // An archived chat leaves the sections, like in the personal list; «Archivados» shows them.
+  const split = useMemo(() => splitArchived(chats ?? [], openArchived), [chats, openArchived]);
   const sections = useMemo(() => {
     const text = query.trim().toLowerCase();
-    const visible = (chats ?? []).filter((chat) => !text || (chat.name ?? chat.phone ?? '').toLowerCase().includes(text));
+    const visible = split.shown.filter((chat) => !text || (chat.name ?? chat.phone ?? '').toLowerCase().includes(text));
     return spaceSections(visible.map((chat) => ({ ...chat, lastAt: chat.lastMessage?.at })));
-  }, [chats, query]);
+  }, [split, query]);
   const toggle = (key: SpaceSectionKey) => setFolded((before) => {
     const next = new Set(before);
     if (next.has(key)) next.delete(key);
@@ -85,6 +91,12 @@ export function SpaceChatList(props: Props) {
           <input data-testid="buscar-en-espacio" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Buscar en ${space.name}`} className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-on-surface-variant" />
         </label>
       </div>
+      {props.onActivity ? (
+        <div className="flex gap-2 px-3 pb-2">
+          <ActivityChip testId="chip-hilos" Icon={MessagesSquare} label="Hilos" count={props.activity?.threads ?? 0} onClick={() => props.onActivity?.('threads')} />
+          <ActivityChip testId="chip-menciones" Icon={AtSign} label="Menciones" count={props.activity?.mentions ?? 0} onClick={() => props.onActivity?.('mentions')} />
+        </div>
+      ) : null}
       <div className="min-h-0 flex-1 overflow-y-auto pb-2">
         <WorkspaceLinks space={space} onOpen={props.onWorkspace} />
         {props.failed && chats === null ? (
@@ -127,6 +139,12 @@ export function SpaceChatList(props: Props) {
               </section>
             ))
           : null}
+        {split.archived > 0 ? (
+          <button type="button" data-testid="espacio-archivados" onClick={() => setOpenArchived((open) => !open)} className="flex h-10 w-full items-center gap-2.5 border-t border-outline/10 px-4 text-left text-sm text-on-surface-variant hover:bg-background">
+            <Archive size={16} />
+            {openArchived ? 'Volver a los chats del espacio' : `Archivados (${split.archived})`}
+          </button>
+        ) : null}
       </div>
       {space.joinCode ? (
         <div className="flex items-center gap-2 border-t border-outline/15 px-4 py-2">
@@ -143,6 +161,16 @@ export function SpaceChatList(props: Props) {
       </footer>
       ) : null}
     </aside>
+  );
+}
+
+function ActivityChip(props: { testId: string; Icon: LucideIcon; label: string; count: number; onClick: () => void }) {
+  return (
+    <button type="button" data-testid={props.testId} onClick={props.onClick} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-outline/20 text-sm font-semibold hover:bg-background">
+      <props.Icon size={15} className="text-primary" />
+      {props.label}
+      {props.count > 0 ? <span className="grid h-5 min-w-[20px] place-items-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-on-primary">{props.count}</span> : null}
+    </button>
   );
 }
 

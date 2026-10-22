@@ -156,6 +156,10 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
     online: socket.online,
     selectedChatId: selectedId,
     onOpenChat: abrirChat,
+    onOpenMessage: (chatId, seq) => {
+      abrirChat(chatId);
+      setIrA({ chatId, seq, vez: Date.now() });
+    },
     onPersonalChat: (chatId) => {
       abrirChat(chatId);
       void sync.cargarChats();
@@ -241,6 +245,8 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
             onWorkspace={espacios.openWorkspace}
             onNewDirect={espacios.openNewDirect}
             onNewGroup={espacios.openNewGroup}
+            activity={espacios.activity}
+            onActivity={espacios.openActivity}
             width={panel === 'both' ? listLayout.width : undefined}
             onCollapse={panel === 'both' ? () => listLayout.setCollapsed(true) : undefined}
           />

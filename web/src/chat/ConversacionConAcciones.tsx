@@ -137,7 +137,7 @@ export function ConversacionConAcciones(
   const editarRecordatorio = !chat.encrypted && puedeFijar ? props.onEditReminder : undefined;
   // Groups as flat rows, like Slack (design `s-01`): always in a company space, on request in a personal group.
   const flat = usesFlatLayout(chat, { groupsAsList: useGroupsAsList() });
-  const badgeOf = useCallback((senderId: string) => memberBadge({ role: detalle?.miembros.get(senderId)?.rol, isMe: senderId === yo }), [detalle, yo]);
+  const badgeOf = useCallback((senderId: string) => memberBadge({ ...detalle?.pills.get(senderId), isMe: senderId === yo }), [detalle, yo]);
   const contexto = useMemo<ContextoDeLaConversacion>(
     () => ({ yo, jwt: props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar, onEditarRecordatorio: editarRecordatorio, destacados: destacados.seqs, onStickerAction: chat.encrypted ? undefined : onStickerAction, flat, badgeOf }),
     [yo, props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editarRecordatorio, destacados.seqs, onStickerAction, flat, badgeOf]

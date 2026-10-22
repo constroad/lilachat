@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { api } from '../api';
 import { agendaNameFor, getAgendaNames, requestAgendaNames, subscribeAgendaNames } from '../contacts/phoneAgenda';
+import type { MemberPill } from '@lilachat/shared';
 import type { BaseLocal } from '../local/baseLocal';
 
 /** Un miembro como lo pinta la web: el nombre ya resuelto. */
 export type MiembroDelChat = { id: string; nombre: string; foto?: string; telefono?: string; rol: 'admin' | 'member'; esYo: boolean };
 export type DetalleDelChat = {
   miembros: Map<string, MiembroDelChat>;
+  /** Each member's pill: in a company space, the job title and the role there (design s-01). */
+  pills: Map<string, MemberPill>;
   soyAdmin: boolean;
   secreto: boolean;
   /** Para el panel de info (W3b): MI silenciado, la foto y el nombre propio del chat. */
@@ -26,7 +29,7 @@ export type Respuesta = {
   name?: string;
   descripcion?: string;
   funAllowed?: boolean;
-  members: { id: string; name: string | null; phone: string | null; avatarUrl?: string; role?: 'admin' | 'member'; esYo?: boolean }[];
+  members: { id: string; name: string | null; phone: string | null; avatarUrl?: string; role?: 'admin' | 'member'; esYo?: boolean; title?: string; spaceRole?: string }[];
 };
 
 /** Lo último que se vio de cada chat: cambiar de chat y volver no espera a la red. */
@@ -34,7 +37,9 @@ const vistos = new Map<string, DetalleDelChat>();
 
 export function aDetalle(respuesta: Respuesta): DetalleDelChat {
   const miembros = new Map<string, MiembroDelChat>();
+  const pills = new Map<string, MemberPill>();
   for (const uno of respuesta.members) {
+    pills.set(uno.id, { role: uno.spaceRole ?? uno.role ?? 'member', title: uno.title });
     miembros.set(uno.id, {
       id: uno.id,
       // «Tú» como en la app; sin nombre, el teléfono; sin nada, «Alguien».
@@ -47,6 +52,7 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
   }
   return {
     miembros,
+    pills,
     soyAdmin: respuesta.members.some((uno) => uno.esYo && uno.role === 'admin'),
     secreto: respuesta.encrypted === true,
     silenciado: respuesta.muted === true,

@@ -154,6 +154,7 @@ Lilachat hace `POST webhook_url` con:
 | --- | --- |
 | `X-Lilachat-Event` | `message.created` · `button.click` · `checklist.item.toggled` · `app.uninstalled` |
 | `X-Lilachat-Delivery` | uuid; **el mismo en los reintentos** (para deduplicar) |
+| `X-Lilachat-Installation` | el `installation_id`: con él se busca el `signing_secret` antes de leer el cuerpo |
 | `X-Lilachat-Timestamp` | milisegundos |
 | `X-Lilachat-Signature` | `v1=<hex de HMAC-SHA256(signing_secret, "<timestamp>.<cuerpo crudo>")>` |
 
@@ -195,6 +196,12 @@ Cuerpo:
 
 El bot entra solo a todos los canales públicos al instalarse, y a cada canal
 público nuevo. A uno privado entra si lo agregan.
+
+## Estado (21/10/2026)
+
+- Servidor: a–e implementado (`server/src/bots/`, 19 tests de punta a punta con un webhook HTTP real; el fake con 4 de paridad).
+- Falta: la pantalla de consentimiento (`/instalar-app` en la web), la tarjeta con botones en la app y la web, la marca «App» y la pantalla Integraciones.
+- Producción: registrar «Lila» (`scripts/bot-app-register.ts`) y crear los índices (`scripts/bot-indexes.ts`), con el OK de José. El `client_secret` sale a un archivo privado; José lo carga en Torre.
 
 ## e) Fake para la CI de agentes
 

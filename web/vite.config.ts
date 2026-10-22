@@ -1,5 +1,6 @@
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -27,12 +28,17 @@ function productVersion(): string {
   }
 }
 
-/** Without git (a release made with `git archive`) the label goes without the commit. */
+/**
+ * The short commit. Torre builds from `git archive` (no `.git`) in a release
+ * folder named `20261021-210455-a236fc2`: its suffix is the commit. Neither
+ * one, the label goes without it.
+ */
 function shortCommit(): string {
+  const repoDir = fileURLToPath(new URL('..', import.meta.url));
   try {
-    return execSync('git rev-parse --short HEAD', { cwd: fileURLToPath(new URL('.', import.meta.url)), stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+    return execSync('git rev-parse --short HEAD', { cwd: repoDir, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
   } catch {
-    return '';
+    return /^\d{8}-\d{6}-([0-9a-f]{7,})$/.exec(basename(repoDir.replace(/\/$/, '')))?.[1] ?? '';
   }
 }
 

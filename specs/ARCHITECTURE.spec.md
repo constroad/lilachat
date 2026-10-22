@@ -4929,9 +4929,10 @@ la app, el modo empresa seguía con la barra del modo personal.
   en claro ni en oscuro.
 
 **La versión de la web.** Al compilar, Vite escribe `__WEB_VERSION__`: la
-versión del producto (`app/app.json`), el commit corto y la hora del build. Si
-falta git o la carpeta `app`, la etiqueta sale sin ese dato y el build no
-falla. Ajustes la muestra al pie: «Lilachat web 0.1.128 · 6914ede · 21/10
+versión del producto (`app/app.json`), el commit corto y la hora del build.
+Torre compila desde `git archive`, sin `.git`: el commit sale del nombre de la
+carpeta de la release (`20261021-210455-a236fc2`). Si no hay de dónde sacar un
+dato, la etiqueta sale sin él y el build no falla. Ajustes la muestra al pie: «Lilachat web 0.1.128 · 6914ede · 21/10
 20:55» (`webVersionLabel`, 2 tests).
 
 **La barra del modo empresa (app).**

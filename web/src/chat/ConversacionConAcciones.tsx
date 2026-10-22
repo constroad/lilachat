@@ -123,11 +123,11 @@ export function ConversacionConAcciones(
     },
     [hilos.abrir]
   );
-  const { keepReceived } = useStickers(props.jwt, yo);
+  const { keepReceived, saveGif } = useStickers(props.jwt, yo);
   const calls = useCalls();
   const onStickerAction = useCallback(
-    (mensaje: MensajeEnPantalla, action: StickerAction) => void keepReceived(chat.id, mensaje.seq, action === 'favorite').then(onAviso),
-    [keepReceived, chat.id, onAviso]
+    (mensaje: MensajeEnPantalla, action: StickerAction) => void (action === 'gif' ? saveGif({ chatId: chat.id, seq: mensaje.seq }) : keepReceived(chat.id, mensaje.seq, action === 'favorite')).then(onAviso),
+    [keepReceived, saveGif, chat.id, onAviso]
   );
   const onAccion = useCallback(
     (mensaje: MensajeEnPantalla, accion: AccionSobreMensaje) => {
@@ -269,7 +269,7 @@ export function ConversacionConAcciones(
         />
       ) : null}
       {archivos ? <EnviarArchivos archivos={archivos} onCerrar={() => setArchivos(null)} onEnviar={subir} /> : null}
-      {fotoAbierta !== null ? <VisorDeFotos fotos={viewerPhotos} indice={fotoAbierta} onCambiar={setFotoAbierta} onCerrar={() => setFotoAbierta(null)} /> : null}
+      {fotoAbierta !== null ? <VisorDeFotos fotos={viewerPhotos} indice={fotoAbierta} onCambiar={setFotoAbierta} onCerrar={() => setFotoAbierta(null)} onMakeSticker={chat.encrypted ? undefined : (foto) => void saveGif({ chatId: chat.id, seq: foto.seq }).then(onAviso)} /> : null}
       {pdfAbierto?.media?.url ? <PdfViewer jwt={props.jwt} chatId={chat.id} seq={pdfAbierto.seq} fileName={pdfAbierto.media.fileName ?? 'Documento PDF'} downloadUrl={pdfAbierto.media.url} onClose={() => setPdfAbierto(null)} /> : null}
       {acciones.viendoInfo ? <DialogoInfo chatId={chat.id} mensaje={acciones.viendoInfo} jwt={props.jwt} onCerrar={acciones.cerrarInfo} /> : null}
     </ConversacionContext.Provider>

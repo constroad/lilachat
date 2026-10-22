@@ -42,6 +42,8 @@ export type ChatSummary = {
     /** A wink's id: the list plays its sound (José, 21/10). */
     wink?: string;
     hiloDe?: number;
+    /** The file's type: a GIF says «GIF», not «Foto» (pending 53). */
+    mime?: string;
   } | null;
   othersReadSeq: number;
   othersDeliveredSeq: number;
@@ -100,6 +102,8 @@ export type ChatMessage = {
     width?: number;
     height?: number;
     onda?: number[];
+    /** An animated sticker of my own (pending 37). */
+    animated?: boolean;
   };
   /** Un aviso del server (W3/19-10): la frase se arma acá, con los nombres de quien mira. */
   system?: { evento: string; valor?: string; targetId?: string; quien?: { phone?: string; name?: string }; aQuien?: { phone?: string; name?: string } };

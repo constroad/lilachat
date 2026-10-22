@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Clock3, FolderHeart, Star, WandSparkles, X } from 'lucide-react';
+import { Clock3, FolderHeart, ImagePlay, Star, WandSparkles, X } from 'lucide-react';
 import { stickerSections, type LibrarySticker, type StickerSection, type StickerSectionKey } from '@lilachat/shared';
 
 type Filter = 'all' | 'recent' | 'favorites' | 'mine';
@@ -18,6 +18,8 @@ type Props = {
   error: string;
   onSend: (sticker: LibrarySticker) => void;
   onCreate: () => void;
+  /** A GIF of the computer becomes an animated sticker (pending 37). */
+  onGifPicked?: (gif: File) => void;
   onToggleFavorite: (sticker: LibrarySticker) => void;
   onRemove: (sticker: LibrarySticker) => void;
 };
@@ -61,6 +63,7 @@ export function StickerPanel(props: Props) {
               </div>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2">
                 {index === 0 ? <CreateTile onCreate={props.onCreate} /> : null}
+                {index === 0 && props.onGifPicked ? <GifTile onPicked={props.onGifPicked} /> : null}
                 {shown(section).map((sticker) => <Cell key={`${section.key}-${sticker.id}`} sectionKey={section.key} sticker={sticker} {...props} />)}
               </div>
               {section.key === 'mine' && section.stickers.length === 0 ? (
@@ -81,6 +84,27 @@ function CreateTile({ onCreate }: { onCreate: () => void }) {
       <span className="grid h-9 w-9 place-items-center rounded-full bg-primary text-on-primary"><WandSparkles size={18} /></span>
       <span className="mt-1 text-[12px] font-semibold">Crear</span>
     </button>
+  );
+}
+
+/** «GIF»: a GIF of the computer becomes an animated sticker; the server cuts it to 6 s and 500 KB. */
+function GifTile({ onPicked }: { onPicked: (gif: File) => void }) {
+  return (
+    <label data-testid="btn-sticker-desde-gif" className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-primary/50 bg-primary/5 text-primary">
+      <span className="grid h-9 w-9 place-items-center rounded-full bg-primary text-on-primary"><ImagePlay size={18} /></span>
+      <span className="mt-1 text-[12px] font-semibold">Desde un GIF</span>
+      <input
+        type="file"
+        accept="image/gif"
+        data-testid="input-sticker-gif"
+        className="sr-only"
+        onChange={(event) => {
+          const gif = event.target.files?.[0];
+          event.target.value = '';
+          if (gif) onPicked(gif);
+        }}
+      />
+    </label>
   );
 }
 

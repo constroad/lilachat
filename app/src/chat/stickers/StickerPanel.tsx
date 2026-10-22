@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Clock3, FolderHeart, Star, WandSparkles } from 'lucide-react-native';
+import { Clock3, FolderHeart, ImagePlay, Star, WandSparkles } from 'lucide-react-native';
 import { stickerSections, type LibrarySticker, type StickerSection } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import type { StickersState } from './useStickers';
@@ -22,7 +22,7 @@ const FILTERS: { key: Exclude<Filter, 'all'>; label: string; Icon: typeof Clock3
  * like WhatsApp: Recientes, Favoritos, Mis stickers, the default pack, and
  * «Crear» first. A tap sends; a long press offers favorite or removal.
  */
-export function StickerPanel(props: { stickers: StickersState; onSend: (sticker: LibrarySticker) => void; onCreate: () => void }) {
+export function StickerPanel(props: { stickers: StickersState; onSend: (sticker: LibrarySticker) => void; onCreate: () => void; /** «Desde un GIF» (pending 37): a GIF of the gallery becomes an animated sticker. */ onFromGif?: () => void }) {
   const colors = useColores();
   const { width } = useWindowDimensions();
   const [filter, setFilter] = useState<Filter>('all');
@@ -73,6 +73,12 @@ export function StickerPanel(props: { stickers: StickersState; onSend: (sticker:
                   <Pressable testID="btn-crear-sticker" onPress={props.onCreate} className="items-center justify-center rounded-2xl border-2 border-dashed border-primary/50 bg-primary/5" style={{ width: side, height: side }}>
                     <View className="h-9 w-9 items-center justify-center rounded-full bg-primary"><WandSparkles size={18} color="white" /></View>
                     <Text className="mt-1 text-[12px] font-semibold text-primary">Crear</Text>
+                  </Pressable>
+                ) : null}
+                {index === 0 && props.onFromGif ? (
+                  <Pressable testID="btn-sticker-desde-gif" onPress={props.onFromGif} className="items-center justify-center rounded-2xl border-2 border-dashed border-primary/50 bg-primary/5" style={{ width: side, height: side }}>
+                    <View className="h-9 w-9 items-center justify-center rounded-full bg-primary"><ImagePlay size={18} color="white" /></View>
+                    <Text className="mt-1 text-center text-[12px] font-semibold text-primary">Desde un GIF</Text>
                   </Pressable>
                 ) : null}
                 {shown(section).map((sticker) => (

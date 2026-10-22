@@ -6,6 +6,8 @@ export const listStickers = (jwt: string) => api<{ stickers: LibrarySticker[] }>
 export const setFavorite = (jwt: string, id: string, favorite: boolean) => api<{ sticker: LibrarySticker }>(`/stickers/${id}`, { jwt, method: 'PATCH', body: { favorite } });
 export const removeSticker = (jwt: string, id: string) => api<undefined>(`/stickers/${id}`, { jwt, method: 'DELETE' });
 export const keepFromMessage = (jwt: string, chatId: string, seq: number) => api<{ sticker: LibrarySticker }>('/stickers/from-message', { jwt, body: { chatId, seq } });
+/** A GIF already in a chat (GIPHY's or someone's) becomes my animated sticker (pending 37, José 22/10). */
+export const stickerFromGif = (jwt: string, chatId: string, seq: number) => api<{ sticker: LibrarySticker }>('/stickers/from-gif', { jwt, body: { chatId, seq } });
 export const keepFromPack = (jwt: string, stickerId: string, favorite: boolean) => api<{ sticker: LibrarySticker }>('/stickers/from-pack', { jwt, body: { stickerId, favorite } });
 /** One of mine or a pack one: the server reuses the file; the `clientKey` avoids a duplicate on retry. */
 /** In a thread (20/10): the root, and whether it also goes to the chat. */
@@ -23,8 +25,19 @@ export async function uploadSticker(jwt: string, file: Blob): Promise<ApiResult<
   form.append('width', String(STICKER_SIZE));
   form.append('height', String(STICKER_SIZE));
   form.append('file', new File([file], file.type === 'image/png' ? 'sticker.png' : 'sticker.webp', { type: file.type }));
+  return postStickerForm(jwt, '/api/stickers', form);
+}
+
+/** A GIF of the computer becomes my animated sticker: the server cuts it to 6 s, 512×512 and 500 KB. */
+export function uploadGifSticker(jwt: string, gif: File): Promise<ApiResult<{ sticker: LibrarySticker }>> {
+  const form = new FormData();
+  form.append('file', gif);
+  return postStickerForm(jwt, '/api/stickers/animated', form);
+}
+
+async function postStickerForm(jwt: string, path: string, form: FormData): Promise<ApiResult<{ sticker: LibrarySticker }>> {
   try {
-    const response = await fetch('/api/stickers', { method: 'POST', headers: { Authorization: `Bearer ${jwt}` }, body: form });
+    const response = await fetch(path, { method: 'POST', headers: { Authorization: `Bearer ${jwt}` }, body: form });
     const payload = (await response.json().catch(() => ({}))) as { message?: string; sticker?: LibrarySticker };
     if (!response.ok || !payload.sticker) return { ok: false, status: response.status, message: payload.message ?? 'No se pudo guardar el sticker.' };
     return { ok: true, data: { sticker: payload.sticker } };

@@ -19,6 +19,7 @@ import { isPending, type Row } from './rowKinds';
 import type { Citado } from './filasDelChat';
 import { CardBody } from './TarjetaDelChat';
 import { showStickerOptions, useAnimatedStop } from './stickers/StickerMessage';
+import { showGifOptions } from './gifs/gifOptions';
 
 /** The avatar of a flat row and the gap to its text (design `s-01`): the reactions and the thread chip line up after them. */
 export const FLAT_AVATAR = 40;
@@ -77,7 +78,7 @@ function FlatRow(props: {
   const meta = { hora: formatClock(atOf(item)), mia: mine, entrega: props.delivery ?? (isPending(item) ? ('pending' as const) : ('sent' as const)), id, fallido: Boolean(failed), editado: !isPending(item) && Boolean(item.editedAt) && !deleted, destacado: Boolean(props.starred), flat: true };
   const card = !isPending(item) && item.ref && props.jwt ? item : null;
   const sticker = !isPending(item) && item.kind === 'sticker' && item.media?.url && !deleted && props.jwt ? item : null;
-  const animated = useAnimatedStop(sticker?.media?.url);
+  const animated = useAnimatedStop(sticker?.media?.url, false, sticker?.media?.animated === true);
   const press = isPending(item) ? (failed ? () => props.onFailed?.(item.clientKey, failed) : undefined) : props.selecting ? () => props.onSelect?.(item.seq) : undefined;
 
   return (
@@ -117,7 +118,7 @@ function FlatRow(props: {
               <Image ref={animated.ref} source={{ uri: sticker.media!.url }} style={{ width: FLAT_STICKER, height: FLAT_STICKER }} contentFit="contain" recyclingKey={sticker.clientKey} />
             </Pressable>
           ) : (
-            <MessageMedia item={item} mine={false} flat selecting={props.selecting} onSelect={props.onSelect} onOpen={props.onOpenMedia} />
+            <MessageMedia item={item} mine={false} flat selecting={props.selecting} onSelect={props.onSelect} onOpen={props.onOpenMedia} onGifTap={props.jwt && !isPending(item) ? (seq) => showGifOptions({ jwt: props.jwt!, chatId: item.chatId, seq, onOpen: () => props.onOpenMedia?.(seq) }) : undefined} />
           )}
           {card || sticker ? null : deleted ? (
             <Text testID={`eliminado-${id}`} className="text-[15px] italic text-on-surface-variant">{TEXTO_ELIMINADO}</Text>

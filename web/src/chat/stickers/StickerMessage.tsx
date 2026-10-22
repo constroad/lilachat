@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ANIMATED_STICKER_PLAY_MS, isAnimatedSticker } from '@lilachat/shared';
+import { ANIMATED_STICKER_PLAY_MS, stickerIsAnimated } from '@lilachat/shared';
 import type { MensajeEnPantalla } from '../types';
 
 /** Side of a sticker in the conversation, like the app (160) and WhatsApp Web. */
@@ -16,7 +16,7 @@ export function StickerMessage({ message, url, author, quote }: { message: Mensa
       {author}
       {/* A sticker sent as a reply shows what it answers above it, as WhatsApp does (20/10). */}
       {quote ? <div className="mb-1 max-w-[260px] rounded-xl border border-outline/15 bg-surface p-1.5 text-on-surface empty:hidden">{quote}</div> : null}
-      {isAnimatedSticker(url) ? (
+      {stickerIsAnimated({ url, animated: message.media?.animated }) ? (
         <AnimatedSticker testId={`sticker-${message.clientKey}`} url={url} />
       ) : (
         <img data-testid={`sticker-${message.clientKey}`} src={url} alt="Sticker" loading="lazy" width={SIDE_IN_CHAT} height={SIDE_IN_CHAT} className="object-contain drop-shadow-sm" style={{ width: SIDE_IN_CHAT, height: SIDE_IN_CHAT }} />

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addRecentSticker, packLibrary, STICKER_PACKS, type LibrarySticker } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
-import { keepFromMessage, keepFromPack, listStickers, removeSticker, sendSticker, setFavorite, uploadSticker, type StickerTarget } from './stickersApi';
+import { keepFromMessage, keepFromPack, listStickers, removeSticker, sendSticker, setFavorite, stickerFromGif, uploadGifSticker, uploadSticker, type StickerTarget } from './stickersApi';
 
 const RECENTS_KEY = 'lilachat.stickers.recientes';
 /**
@@ -34,6 +34,14 @@ const keepInCache = (sticker: LibrarySticker) => {
  * asked). Outside the hook so each sticker in the list does not load the
  * library; the panel picks the change up from the session cache.
  */
+/** A GIF of the gallery, or one already in a chat, becomes my animated sticker (pending 37). Returns what to tell the person. */
+export async function saveGifSticker(jwt: string, source: { uri: string } | { chatId: string; seq: number }): Promise<string> {
+  const saved = 'uri' in source ? await uploadGifSticker(jwt, source) : await stickerFromGif(jwt, source.chatId, source.seq);
+  if (!saved.ok) return saved.reason;
+  keepInCache(saved.data);
+  return 'Sticker animado guardado en Mis stickers';
+}
+
 export async function keepReceivedSticker(jwt: string, chatId: string, seq: number, asFavorite: boolean): Promise<string> {
   const kept = await keepFromMessage(jwt, chatId, seq);
   if (!kept.ok) return kept.reason;

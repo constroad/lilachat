@@ -19,7 +19,7 @@ import { useColores } from '../ui/tema';
  * `MessageRow` so the bubble and the flat row (Slack format, design `s-01`)
  * draw the same thing.
  */
-export function MessageMedia({ item, mine, selecting, onSelect, onOpen, flat = false, author }: { item: Row; mine: boolean; selecting?: boolean; onSelect?: (seq: number) => void; onOpen?: (seq: number) => void; /** No bubble behind it (Slack format): an upload in flight is drawn on the screen's colors. */ flat?: boolean; /** Who sent it: a voice note shows their photo, like WhatsApp. */ author?: { name: string; photo?: string } }) {
+export function MessageMedia({ item, mine, selecting, onSelect, onOpen, onGifTap, flat = false, author }: { item: Row; mine: boolean; selecting?: boolean; onSelect?: (seq: number) => void; onOpen?: (seq: number) => void; /** A tap on a GIF: its floating options (pending 37, José 22/10). */ onGifTap?: (seq: number) => void; /** No bubble behind it (Slack format): an upload in flight is drawn on the screen's colors. */ flat?: boolean; /** Who sent it: a voice note shows their photo, like WhatsApp. */ author?: { name: string; photo?: string } }) {
   const colores = useColores();
   const fallo = isPending(item) ? item.fallo : undefined;
   const subida = etiquetaDeSubida({ razon: isPending(item) ? (item.progreso ?? 0) : 0, fallido: Boolean(fallo) });
@@ -62,6 +62,11 @@ export function MessageMedia({ item, mine, selecting, onSelect, onOpen, flat = f
           delayLongPress={350}
           onPress={() => {
             if (isPending(item)) return;
+            // A GIF plays again and offers to become my sticker (José, 22/10), on the same tap.
+            if (gif && !selecting && onGifTap) {
+              if (gifStop.stopped) gifStop.replay();
+              return onGifTap(item.seq);
+            }
             if (gifStop.stopped && !selecting) return gifStop.replay();
             if (selecting) onSelect?.(item.seq);
             else onOpen?.(item.seq);

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { addRecentSticker, packLibrary, STICKER_PACKS, type LibrarySticker } from '@lilachat/shared';
-import { keepFromMessage, keepFromPack, listStickers, removeSticker, sendSticker, setFavorite, uploadSticker, type StickerTarget } from './stickersApi';
+import { keepFromMessage, keepFromPack, listStickers, removeSticker, sendSticker, setFavorite, stickerFromGif, uploadGifSticker, uploadSticker, type StickerTarget } from './stickersApi';
 
 /**
  * «Mis stickers» on the web: ONE copy for the panel and the message menu (a
@@ -91,6 +91,17 @@ export function useStickers(jwt: string, owner: string) {
     return response;
   }, [jwt]);
 
+  /** A GIF of the computer, or one already in a chat, becomes my animated sticker (pending 37). Returns what to tell the person. */
+  const saveGif = useCallback(async (source: File | { chatId: string; seq: number }): Promise<string> => {
+    const response = source instanceof File ? await uploadGifSticker(jwt, source) : await stickerFromGif(jwt, source.chatId, source.seq);
+    if (!response.ok) {
+      update({ error: response.message });
+      return response.message;
+    }
+    update({ library: withSticker(response.data.sticker), error: '' });
+    return 'Sticker animado guardado en Mis stickers';
+  }, [jwt]);
+
   /** A pack sticker becomes a favorite through a library entry; a library one just toggles. */
   const toggleFavorite = useCallback(async (sticker: LibrarySticker) => {
     const response = sticker.id.startsWith('pack:') ? await keepFromPack(jwt, sticker.id, true) : await setFavorite(jwt, sticker.id, !sticker.favorite);
@@ -118,5 +129,5 @@ export function useStickers(jwt: string, owner: string) {
     return 'Agregado a favoritos';
   }, [jwt]);
 
-  return { ...current, packs: STICKER_PACK_SECTIONS, reload: () => reload(jwt, owner), send, save, toggleFavorite, remove, keepReceived };
+  return { ...current, packs: STICKER_PACK_SECTIONS, reload: () => reload(jwt, owner), send, save, saveGif, toggleFavorite, remove, keepReceived };
 }

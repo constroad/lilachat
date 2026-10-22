@@ -562,6 +562,7 @@ export function ChatScreen({
         onCambiar={setViendoSeq}
         onEliminar={eliminar}
         onError={setMediaError}
+        gifSticker={encrypted ? undefined : { jwt: credential.jwt, chatId }}
       />
 
       {detalleUsado ? (

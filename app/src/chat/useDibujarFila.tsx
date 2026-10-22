@@ -1,6 +1,6 @@
 import { useCallback, type ComponentProps } from 'react';
 import { alreadyGreeted } from '@lilachat/shared';
-import { formatDayLabel, memberBadge, miReaccion, canOpenThread, puedeReaccionar, resolveDeliveryState, startsNewDay, usesFlatLayout, type MemberPill } from '@lilachat/shared';
+import { formatDayLabel, isAnimatedImage, memberBadge, miReaccion, canOpenThread, puedeReaccionar, resolveDeliveryState, startsNewDay, usesFlatLayout, type MemberPill } from '@lilachat/shared';
 import { DivisorNoLeidos } from './useDivisorNoLeidos';
 import { DaySeparator, isPending, MessageRow, type Row } from './MessageRow';
 import { ChipDeHilo } from './ChipDeHilo';
@@ -10,6 +10,7 @@ import type { ChatMessage } from './useChat';
 import { FLAT_INDENT, FlatMessageRow } from './FlatMessageRow';
 import { drawsAsFlatRow } from './rowKinds';
 import { useGroupsAsList } from '../ui/groupsAsList';
+import { convertGifToSticker } from './gifs/gifOptions';
 
 type PropsDeFila = ComponentProps<typeof MessageRow>;
 
@@ -73,6 +74,8 @@ export function useDibujarFila(p: {
       const withBar = !isPending(item) && elegidos.size === 1 && elegidos.has(item.seq) && puedeReaccionar({ seq: item.seq, deletedAt: item.deletedAt, kind: item.kind, system: item.system, cifrado: encrypted });
       // «Responder en hilo» bajo los emojis: suelta la selección y abre el hilo.
       const withThread = withBar && !isPending(item) && canOpenThread({ seq: item.seq, kind: item.kind, system: item.system, hiloDe: item.hiloDe, deletedAt: item.deletedAt, cifrado: encrypted });
+      // A GIF (José, 22/10): «Convertir en sticker animado» under the emojis; not in a secret chat, where it is encrypted.
+      const withGifSticker = withBar && !encrypted && !isPending(item) && !item.deletedAt && isAnimatedImage(item.media?.mime);
       // A highlighted notice sits in the middle: so do its bar, reactions and thread chip (21/10).
       const centered = !isPending(item) && item.kind === 'system';
       const flatRow = flat && drawsAsFlatRow(item);
@@ -82,7 +85,7 @@ export function useDibujarFila(p: {
         <>
           {startsNewDay(at, previousAt) ? <DaySeparator label={formatDayLabel(at)} /> : null}
           {!isPending(item) && item.seq === divisorSeq ? <DivisorNoLeidos cantidad={noLeidosAlAbrir} /> : null}
-          {withBar ? <BarraDeReacciones seq={item.seq} mia={mia} conAvatar={false} centered={centered} indent={indent} miEmoji={miReaccion(item.reacciones, yo)} onElegir={onReaccionar} onMas={onMasEmojis} onHilo={withThread ? (seq) => { onSeleccionar?.(seq); onAbrirHilo(seq); } : undefined} /> : null}
+          {withBar ? <BarraDeReacciones seq={item.seq} mia={mia} conAvatar={false} centered={centered} indent={indent} miEmoji={miReaccion(item.reacciones, yo)} onElegir={onReaccionar} onMas={onMasEmojis} onHilo={withThread ? (seq) => { onSeleccionar?.(seq); onAbrirHilo(seq); } : undefined} onGifSticker={withGifSticker ? (seq) => { onSeleccionar?.(seq); void convertGifToSticker(jwt, item.chatId, seq); } : undefined} /> : null}
           {flatRow ? (
             <FlatMessageRow
               item={item}

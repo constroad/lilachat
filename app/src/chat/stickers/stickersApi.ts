@@ -28,6 +28,11 @@ export const listStickers = (jwt: string) => call<{ stickers: LibrarySticker[] }
 export const setFavorite = (jwt: string, id: string, favorite: boolean) => call<{ sticker: LibrarySticker }>(`/stickers/${id}`, jwt, { method: 'PATCH', body: { favorite } });
 export const removeSticker = (jwt: string, id: string) => call<Record<string, never>>(`/stickers/${id}`, jwt, { method: 'DELETE' });
 export const keepFromMessage = (jwt: string, chatId: string, seq: number) => call<{ sticker: LibrarySticker }>('/stickers/from-message', jwt, { body: { chatId, seq } });
+/** A GIF already in a chat (GIPHY's or someone's) becomes my animated sticker (pending 37, José 22/10). */
+export async function stickerFromGif(jwt: string, chatId: string, seq: number): Promise<ApiOutcome<LibrarySticker>> {
+  const made = await call<{ sticker: LibrarySticker }>('/stickers/from-gif', jwt, { body: { chatId, seq } });
+  return made.ok ? { ok: true, data: made.data.sticker } : made;
+}
 export const keepFromPack = (jwt: string, stickerId: string, favorite: boolean) => call<{ sticker: LibrarySticker }>('/stickers/from-pack', jwt, { body: { stickerId, favorite } });
 /** One of mine or a pack one: the server reuses the file; the `clientKey` avoids a duplicate on retry. */
 /** In a thread (20/10): the root, and whether it also goes to the chat. */
@@ -45,7 +50,18 @@ export async function uploadSticker(jwt: string, file: { uri: string; width: num
   form.append('width', String(file.width));
   form.append('height', String(file.height));
   form.append('file', { uri: file.uri, name: 'sticker.webp', type: 'image/webp' } as unknown as Blob);
-  const response = await subirPorXhr({ url: `${BASE_URL}/api/stickers`, token: jwt, form, timeoutMs: UPLOAD_TIMEOUT_MS });
+  return postStickerForm(jwt, '/api/stickers', form);
+}
+
+/** A GIF of the gallery becomes my animated sticker: the server cuts it to 6 s, 512×512 and 500 KB. */
+export function uploadGifSticker(jwt: string, gif: { uri: string }): Promise<ApiOutcome<LibrarySticker>> {
+  const form = new FormData();
+  form.append('file', { uri: gif.uri, name: 'sticker.gif', type: 'image/gif' } as unknown as Blob);
+  return postStickerForm(jwt, '/api/stickers/animated', form);
+}
+
+async function postStickerForm(jwt: string, path: string, form: FormData): Promise<ApiOutcome<LibrarySticker>> {
+  const response = await subirPorXhr({ url: `${BASE_URL}${path}`, token: jwt, form, timeoutMs: UPLOAD_TIMEOUT_MS });
   if (response.tipo === 'fallo') return { ok: false, reason: response.motivo };
   if (response.status < 200 || response.status >= 300) {
     const message = response.payload.message;

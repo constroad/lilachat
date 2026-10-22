@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, ToastAndroid, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Delete, ImagePlay, Smile, Sparkles, Sticker } from 'lucide-react-native';
 import { lastPanelTab, type PanelTab, type WinkId } from '@lilachat/shared';
 import { storePanelTab, useStoredPanelTab } from '../../ui/panelTabPref';
@@ -13,7 +14,7 @@ import { reportarError } from '../../ui/reportarError';
 import { subjectCutout } from '../../../modules/subject-cutout/src';
 import { StickerPanel } from './StickerPanel';
 import { CreateSticker } from './CreateSticker';
-import { useStickers } from './useStickers';
+import { saveGifSticker, useStickers } from './useStickers';
 import type { StickerThread } from './stickersApi';
 
 
@@ -55,6 +56,15 @@ export function EmojiStickerPanel(props: {
   // GIPHY only when the server has its key (backlog 37); never in a secret chat.
   const gifs = useGifsAvailable(props.jwt) && props.withStickers;
   const closeEditor = useCallback(() => setCreating(false), []);
+  /** «Desde un GIF»: one from the gallery, untouched (no crop: it would flatten the animation). */
+  const fromGif = useCallback(async () => {
+    const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1, allowsEditing: false });
+    const gif = picked.canceled ? null : picked.assets[0];
+    if (!gif) return;
+    if (gif.mimeType !== 'image/gif') return ToastAndroid.show('Elige un GIF de tu galería.', ToastAndroid.SHORT);
+    ToastAndroid.show('Convirtiendo en sticker…', ToastAndroid.SHORT);
+    ToastAndroid.show(await saveGifSticker(props.jwt, { uri: gif.uri }), ToastAndroid.SHORT);
+  }, [props.jwt]);
   const tabs: { key: PanelTab; label: string; Icon: typeof Smile }[] = [
     { key: 'emoji', label: 'Emoji', Icon: Smile },
     ...(props.withStickers ? [{ key: 'stickers' as const, label: 'Stickers', Icon: Sticker }] : []),
@@ -100,7 +110,7 @@ export function EmojiStickerPanel(props: {
         <WinkPanel recipient={props.chatName} onSend={onWink} onNudge={props.onNudge} />
       ) : (
         <View style={{ flex: 1 }}>
-          <StickerPanel stickers={stickers} onSend={(sticker) => void stickers.send(props.chatId, sticker, { ...props.thread, replyToSeq: props.replyTo?.() }).then((sent) => sent && props.onStickerSent?.())} onCreate={() => { setEditorSession((before) => before + 1); setCreating(true); }} />
+          <StickerPanel stickers={stickers} onSend={(sticker) => void stickers.send(props.chatId, sticker, { ...props.thread, replyToSeq: props.replyTo?.() }).then((sent) => sent && props.onStickerSent?.())} onCreate={() => { setEditorSession((before) => before + 1); setCreating(true); }} onFromGif={() => void fromGif()} />
         </View>
       )}
       <CreateSticker key={editorSession} visible={creating} chatName={props.chatName} onClose={closeEditor} onSave={stickers.save} onSend={(sticker) => stickers.send(props.chatId, sticker, { ...props.thread, replyToSeq: props.replyTo?.() })} />

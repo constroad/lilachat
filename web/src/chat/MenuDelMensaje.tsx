@@ -1,5 +1,5 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { Bookmark, ChevronDown, Copy, CornerUpLeft, Forward, Heart, Info, MessagesSquare, Pencil, Pin, PinOff, Star, StarOff, Trash2 } from 'lucide-react';
+import { Bookmark, ChevronDown, Copy, CornerUpLeft, Forward, Heart, Info, MessagesSquare, Pencil, Pin, PinOff, Star, StarOff, Sticker, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { accionesDeMensaje, actsAsMessage, puedeEditar } from '@lilachat/shared';
 import { useConversacion, type AccionSobreMensaje } from './contextoDeLaConversacion';
@@ -30,6 +30,8 @@ export function MenuDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; m
   });
   // A received (or own) sticker can be kept in «Mis stickers» or as a favorite (20/10), like the app.
   const isSticker = mensaje.kind === 'sticker' && Boolean(mensaje.media?.url) && !mensaje.deletedAt && Boolean(onStickerAction);
+  // A GIF of the chat, mine or someone's, becomes my animated sticker (José, 22/10).
+  const isGif = mensaje.media?.mime === 'image/gif' && !mensaje.deletedAt && Boolean(onStickerAction);
   const stickerItem = (action: StickerAction, icon: ReactNode, label: string) => (
     <DropdownMenu.Item
       data-testid={`accion-sticker-${action}`}
@@ -78,6 +80,7 @@ export function MenuDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; m
           {acciones.copiar ? item('copiar', <Copy size={16} />, 'Copiar') : null}
           {isSticker ? stickerItem('keep', <Bookmark size={16} />, 'Guardar en Mis stickers') : null}
           {isSticker ? stickerItem('favorite', <Heart size={16} />, 'Agregar a favoritos') : null}
+          {isGif ? stickerItem('gif', <Sticker size={16} />, 'Convertir en sticker animado') : null}
           {acciones.reenviar ? item('reenviar', <Forward size={16} />, 'Reenviar') : null}
           {acciones.destacar === 'destacar' && actsAsMessage(mensaje) ? item('destacar', <Star size={16} />, 'Destacar') : null}
           {acciones.destacar === 'quitar' ? item('quitarDestacado', <StarOff size={16} />, 'Quitar destacado') : null}

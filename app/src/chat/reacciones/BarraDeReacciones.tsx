@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
-import { MessagesSquare, Pencil, Plus } from 'lucide-react-native';
+import { MessagesSquare, Pencil, Plus, Sticker } from 'lucide-react-native';
 import { EMOJIS_RAPIDOS } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { AVATAR_DE_AUTOR } from '../burbuja';
@@ -17,11 +17,11 @@ const SEPARACION_DEL_AVATAR = 8;
  * mensaje aparecen solo emojis; ahí también la manera de crear hilos»). En la
  * barra de arriba era un ícono sin nombre y no se encontraba.
  */
-export function BarraDeReacciones(props: { seq: number; mia: boolean; conAvatar: boolean; miEmoji: string | null; onElegir: (seq: number, emoji: string | null) => void; onMas: (seq: number) => void; onHilo?: (seq: number) => void; onEditar?: (seq: number) => void; /** Over a highlighted notice, in the middle (21/10). */ centered?: boolean; /** Over a flat row (Slack format): on the left, after the avatar. */ indent?: number }) {
+export function BarraDeReacciones(props: { seq: number; mia: boolean; conAvatar: boolean; miEmoji: string | null; onElegir: (seq: number, emoji: string | null) => void; onMas: (seq: number) => void; onHilo?: (seq: number) => void; onEditar?: (seq: number) => void; /** A GIF (pending 37, José 22/10): «Convertir en sticker animado». */ onGifSticker?: (seq: number) => void; /** Over a highlighted notice, in the middle (21/10). */ centered?: boolean; /** Over a flat row (Slack format): on the left, after the avatar. */ indent?: number }) {
   const colores = useColores();
   return (
     <View className={`mb-1 mt-1 flex-row ${props.centered ? 'justify-center' : props.mia && props.indent === undefined ? 'justify-end' : ''}`} style={props.indent !== undefined ? { paddingLeft: props.indent } : props.conAvatar && !props.centered ? { paddingLeft: AVATAR_DE_AUTOR + SEPARACION_DEL_AVATAR } : undefined}>
-      <View testID={`barra-reacciones-${props.seq}`} className={`overflow-hidden border border-outline/10 bg-surface shadow-sm ${props.onHilo || props.onEditar ? 'rounded-3xl' : 'rounded-full'}`} style={{ elevation: 4 }}>
+      <View testID={`barra-reacciones-${props.seq}`} className={`overflow-hidden border border-outline/10 bg-surface shadow-sm ${props.onHilo || props.onEditar || props.onGifSticker ? 'rounded-3xl' : 'rounded-full'}`} style={{ elevation: 4 }}>
       <View className="flex-row items-center gap-0.5 px-1.5 py-1">
         {EMOJIS_RAPIDOS.map((emoji) => {
           const elegido = props.miEmoji === emoji;
@@ -50,6 +50,12 @@ export function BarraDeReacciones(props: { seq: number; mia: boolean; conAvatar:
         </Pressable>
       ) : null}
       {/* Editing inside a thread (José, 20/10: «I can't edit my message in a thread»). */}
+      {props.onGifSticker ? (
+        <Pressable testID="reaccion-gif-a-sticker" accessibilityRole="button" onPress={() => props.onGifSticker?.(props.seq)} className="min-h-[44px] flex-row items-center gap-2.5 border-t border-outline/10 px-4">
+          <Sticker size={18} color={colores.primary} />
+          <Text className="text-[14px] font-medium text-on-surface">Convertir en sticker animado</Text>
+        </Pressable>
+      ) : null}
       {props.onEditar ? (
         <Pressable testID="reaccion-editar" accessibilityRole="button" onPress={() => props.onEditar?.(props.seq)} className="min-h-[44px] flex-row items-center gap-2.5 border-t border-outline/10 px-4">
           <Pencil size={18} color={colores.primary} />

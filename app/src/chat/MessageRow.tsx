@@ -38,6 +38,7 @@ import { MessageMedia } from './MessageMedia';
 import { BotCardView } from './BotCardView';
 import { isFileMime, isPending, type Row } from './rowKinds';
 import { rememberBubbleWidth } from './bubbleWidths';
+import { showGifOptions } from './gifs/gifOptions';
 
 /**
  * Una fila de la conversación, según el diseño «Chat Detail» de Stitch.
@@ -288,7 +289,7 @@ function FilaDeMensaje({
             />
           ) : null}
 
-          <MessageMedia item={item} mine={mine} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} author={{ name: mine ? 'Tú' : (nombreAutor ?? ''), photo: fotoAutor }} />
+          <MessageMedia item={item} mine={mine} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} onGifTap={jwt && !isPending(item) ? (seq) => showGifOptions({ jwt, chatId: item.chatId, seq, onOpen: () => onVerImagen?.(seq) }) : undefined} author={{ name: mine ? 'Tú' : (nombreAutor ?? ''), photo: fotoAutor }} />
 
           {!isPending(item) && item.deletedAt ? (
             /**

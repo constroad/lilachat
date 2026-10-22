@@ -68,4 +68,13 @@ describe('StickerPanel (web)', () => {
     expect(screen.getByTestId('favorito-pack:lila-1-pack:lila-1/cat')).toBeInTheDocument();
     expect(screen.queryByTestId('quitar-pack:lila-1-pack:lila-1/cat')).toBeNull();
   });
+
+  /** Pending 37 (José, 22/10): «Desde un GIF» next to «Crear». */
+  it('«Desde un GIF» hands the chosen GIF over', () => {
+    const onGifPicked = vi.fn();
+    render(<StickerPanel library={[]} recents={[]} packs={[pack]} error="" onSend={vi.fn()} onCreate={vi.fn()} onToggleFavorite={vi.fn()} onRemove={vi.fn()} onGifPicked={onGifPicked} />);
+    const gif = new File(['GIF89a'], 'risa.gif', { type: 'image/gif' });
+    fireEvent.change(screen.getByTestId('input-sticker-gif'), { target: { files: [gif] } });
+    expect(onGifPicked).toHaveBeenCalledWith(gif);
+  });
 });

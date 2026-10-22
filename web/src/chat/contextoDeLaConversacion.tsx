@@ -6,7 +6,8 @@ import type { ChatSummary, MensajeEnPantalla } from './types';
 /** Lo que se puede pedir sobre un mensaje desde su menú (W2). */
 export type AccionSobreMensaje = 'responder' | 'hilo' | 'copiar' | 'reenviar' | 'editar' | 'info' | 'eliminar' | 'fijar' | 'desfijar' | 'destacar' | 'quitarDestacado';
 /** What the menu of a sticker offers (20/10): keep it in «Mis stickers» or as a favorite. */
-export type StickerAction = 'keep' | 'favorite';
+/** `gif`: a GIF of the chat becomes my animated sticker (pending 37, José 22/10). */
+export type StickerAction = 'keep' | 'favorite' | 'gif';
 
 /**
  * Lo que las burbujas necesitan del chat abierto, sin pasarlo por cada nivel

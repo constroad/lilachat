@@ -1,6 +1,7 @@
 import { useState, type ComponentProps } from 'react';
 import { abrirConOtraApp, compartirFoto, guardarEnGaleria } from './guardarYCompartir';
 import { VisorDeImagen } from './VisorDeImagen';
+import { saveGifSticker } from './stickers/useStickers';
 
 type Foto = NonNullable<ComponentProps<typeof VisorDeImagen>['foto']>;
 
@@ -15,7 +16,10 @@ export function VisorDelChat(props: {
   onCambiar: (seq: number | null) => void;
   onEliminar: (seq: number) => Promise<{ ok: boolean; motivo?: string }>;
   onError: (texto: string) => void;
+  /** Where a GIF can become my animated sticker (pending 37); absent in a secret chat. */
+  gifSticker?: { jwt: string; chatId: string };
 }) {
+  const { gifSticker } = props;
   /** El resultado de descargar/compartir, que se pinta DENTRO del visor. */
   const [avisoVisor, setAvisoVisor] = useState('');
   return (
@@ -45,6 +49,11 @@ export function VisorDelChat(props: {
       const r = await props.onEliminar(f.seq);
       if (!r.ok) props.onError(r.motivo ?? 'No se pudo eliminar.');
     }}
+    onMakeSticker={gifSticker ? async (f) => {
+      setAvisoVisor('Convirtiendo en sticker…');
+      setAvisoVisor(await saveGifSticker(gifSticker.jwt, { chatId: gifSticker.chatId, seq: f.seq }));
+      setTimeout(() => setAvisoVisor(''), 3000);
+    } : undefined}
     onAbrirArchivo={async (f) => {
       setAvisoVisor('Abriendo…');
       const r = await abrirConOtraApp({

@@ -62,6 +62,7 @@ function Stickers({ chat }: { chat: StickerChat }) {
         error={stickers.error}
         onSend={(sticker) => void stickers.send(chat.chatId, sticker, { ...chat.thread, replyToSeq: chat.replyToSeq }).then((sent) => sent && chat.onSent?.())}
         onCreate={() => setCreating(true)}
+        onGifPicked={(gif) => void stickers.saveGif(gif)}
         onToggleFavorite={(sticker) => void stickers.toggleFavorite(sticker)}
         onRemove={(sticker) => void stickers.remove(sticker)}
       />

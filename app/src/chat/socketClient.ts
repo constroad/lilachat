@@ -50,6 +50,8 @@ export type ServerMessage = {
     height?: number;
     /** La onda de una nota de voz (FL9); sin ella, la línea de siempre. */
     onda?: number[];
+    /** An animated sticker of my own (pending 37). */
+    animated?: boolean;
     /** Duración de una nota de voz en ms. */
     durationMs?: number;
   };

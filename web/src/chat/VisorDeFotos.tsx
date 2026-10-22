@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Download, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Sticker, X } from 'lucide-react';
 import { formatClock, formatDayLabel } from '@lilachat/shared';
 import type { MensajeEnPantalla } from './types';
 
@@ -8,7 +8,7 @@ import type { MensajeEnPantalla } from './types';
  * las del teclado) para pasar a la anterior o la siguiente, Escape para salir y
  * un botón para bajarla. Antes la foto se abría en otra pestaña.
  */
-export function VisorDeFotos(props: { fotos: MensajeEnPantalla[]; indice: number; onCambiar: (indice: number) => void; onCerrar: () => void }) {
+export function VisorDeFotos(props: { fotos: MensajeEnPantalla[]; indice: number; onCambiar: (indice: number) => void; onCerrar: () => void; /** A GIF of the chat becomes my animated sticker (pending 37); absent in a secret chat. */ onMakeSticker?: (foto: MensajeEnPantalla) => void }) {
   const { fotos, indice, onCambiar, onCerrar } = props;
   const foto = fotos[indice];
   useEffect(() => {
@@ -26,6 +26,12 @@ export function VisorDeFotos(props: { fotos: MensajeEnPantalla[]; indice: number
     <div data-testid="visor-fotos" role="dialog" aria-label="Foto" className="fixed inset-0 z-40 flex flex-col bg-black/95">
       <header className="flex items-center gap-2 px-4 py-3 text-white">
         <p className="min-w-0 flex-1 truncate text-sm">{`${formatDayLabel(foto.at)}, ${formatClock(foto.at)}`}</p>
+        {props.onMakeSticker && foto.media.mime === 'image/gif' ? (
+          <button type="button" data-testid="visor-gif-a-sticker" onClick={() => props.onMakeSticker?.(foto)} className="flex h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold text-white hover:bg-white/10">
+            <Sticker size={18} />
+            Convertir en sticker animado
+          </button>
+        ) : null}
         <a href={foto.media.url} download target="_blank" rel="noopener noreferrer" aria-label="Descargar" className={boton}>
           <Download size={20} />
         </a>

@@ -4,7 +4,7 @@ import { Modal } from '../ui/Modal';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { FlatList, GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Download, FileText, Play, Share2, Trash2, X } from 'lucide-react-native';
+import { Download, FileText, Play, Share2, Sticker, Trash2, X } from 'lucide-react-native';
 import { useMargenes } from '../ui/useMargenes';
 import { nombreLimpio } from './archivoDescargado';
 import { copiaLocalDe } from './colaDeArchivos';
@@ -125,6 +125,7 @@ export function VisorDeImagen({
   onCompartir,
   onEliminar,
   onAbrirArchivo,
+  onMakeSticker,
   aviso,
 }: {
   foto: FotoDelVisor | null;
@@ -137,6 +138,8 @@ export function VisorDeImagen({
   onEliminar?: (foto: FotoDelVisor) => void;
   /** Abrir un PDF —o lo que sea— con la app del teléfono que sepa hacerlo. */
   onAbrirArchivo?: (foto: FotoDelVisor) => void;
+  /** A GIF of the chat becomes my animated sticker (pending 37); absent in a secret chat. */
+  onMakeSticker?: (foto: FotoDelVisor) => void;
   /**
    * El resultado de descargar o compartir, mostrado ACÁ: un modal a pantalla
    * completa tapa cualquier aviso de la pantalla de abajo.
@@ -231,6 +234,11 @@ export function VisorDeImagen({
                 {lista.length > 1 ? `${indice + 1} de ${lista.length} · ${foto.cuando}` : foto.cuando}
               </Text>
             </View>
+            {onMakeSticker && foto.mime === 'image/gif' ? (
+              <Pressable testID="btn-gif-a-sticker" accessibilityLabel="Convertir en sticker animado" onPress={() => onMakeSticker(foto)} className="h-11 w-11 shrink-0 items-center justify-center">
+                <Sticker size={21} color="#ffffff" />
+              </Pressable>
+            ) : null}
             {onDescargar ? (
               <Pressable testID="btn-descargar-foto" accessibilityLabel="Descargar" onPress={() => onDescargar(foto)} className="h-11 w-11 shrink-0 items-center justify-center">
                 <Download size={21} color="#ffffff" />

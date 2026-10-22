@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Alert, Pressable, Text, ToastAndroid, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
-import { ANIMATED_STICKER_PLAY_MS, formatClock, isAnimatedSticker, type DeliveryState } from '@lilachat/shared';
+import { ANIMATED_STICKER_PLAY_MS, formatClock, stickerIsAnimated, type DeliveryState } from '@lilachat/shared';
 import type { ChatMessage } from '../useChat';
 import { Avatar } from '../../ui/Avatar';
 import { AVATAR_DE_AUTOR } from '../burbuja';
@@ -38,7 +38,7 @@ export function StickerMessage(props: {
   quote?: ReactNode;
 }) {
   const { item, mine } = props;
-  const animated = useAnimatedStop(item.media?.url);
+  const animated = useAnimatedStop(item.media?.url, false, item.media?.animated === true);
   const showOptions = () => showStickerOptions(props.jwt, item, mine);
   return (
     <DeslizarParaResponder habilitado={!props.selecting && Boolean(props.onReply)} onResponder={() => props.onReply?.(item.seq, 'Sticker', mine)}>
@@ -81,12 +81,12 @@ export function showStickerOptions(jwt: string, item: ChatMessage, mine: boolean
  * a chat full of loops that never end is noise and costs battery. A tap on a
  * stopped one plays it again.
  */
-export function useAnimatedStop(url: string | undefined, isGif = false) {
+export function useAnimatedStop(url: string | undefined, isGif = false, ownAnimated = false) {
   const ref = useRef<Image>(null);
   const [stopped, setStopped] = useState(false);
   const [round, setRound] = useState(0);
   // A GIF in a bubble stops the same way (backlog 37).
-  const animated = isGif || isAnimatedSticker(url);
+  const animated = isGif || stickerIsAnimated({ url, animated: ownAnimated });
   useEffect(() => {
     if (!animated) return;
     const timer = setTimeout(() => {

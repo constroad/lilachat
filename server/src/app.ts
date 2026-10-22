@@ -22,6 +22,7 @@ import { buildMeRouter } from './meRoutes.js';
 import { buildProfileRouter } from './profileRoutes.js';
 import { buildAdminRouter } from './adminRoutes.js';
 import { buildQueueRouter } from './queueRoutes.js';
+import { buildGifRouter, type GiphyFetchers } from './gifRoutes.js';
 import { buildRespaldoRouter } from './respaldoRoutes.js';
 import type { MediaUploader } from './mediaClient.js';
 import { buildVistaPreviaRouter, type TraerVistaPrevia } from './vistaPreviaRoutes.js';
@@ -74,6 +75,8 @@ export type AppDeps = {
   mediaUploader?: MediaUploader;
   traerVistaPrevia?: TraerVistaPrevia;
   vinculacion?: OpcionesDeVinculacion;
+  /** GIPHY's key and, in tests, fake requests (`gifRoutes.ts`). */
+  giphy?: { apiKey?: string; fetchers?: GiphyFetchers };
 };
 
 /**
@@ -111,6 +114,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/chats', buildChatRouter(deps.mediaUploader));
   app.use('/api/media', buildMediaLibraryRouter());
   app.use('/api/media', buildMediaRouter(deps.mediaUploader));
+  app.use('/api/gifs', buildGifRouter({ apiKey: deps.giphy?.apiKey ?? process.env.GIPHY_API_KEY, fetchers: deps.giphy?.fetchers, uploader: deps.mediaUploader }));
   app.use('/api/agenda', buildRecordatoriosDeGrupoRouter(deps.mediaUploader));
   app.use('/api/agenda', buildPendientesRouter());
   app.use('/api/agenda', buildQueueRouter());

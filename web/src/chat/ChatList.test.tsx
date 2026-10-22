@@ -37,6 +37,7 @@ const base = {
   onAgenda: () => undefined,
   onNewBorrador: () => undefined,
   onAccion: () => undefined,
+  jwt: 'jwt-de-prueba',
 };
 
 describe('ChatList', () => {

@@ -7,6 +7,7 @@ import { ThemeToggle } from '../ui/ThemeToggle';
 import { FilaDeChat } from './FilaDeChat';
 import { FiltrosDeLaLista } from './FiltrosDeLaLista';
 import { armarLista } from './listaDeChats';
+import { useChatListsPanel } from './chatLists/useChatListsPanel';
 import type { AccionDelChat } from './menuDelChat';
 import type { ChatSummary } from './types';
 import { NewVersionBand } from '../ui/NewVersionBand';
@@ -43,6 +44,7 @@ export function ChatList({
   onCollapse,
   onHome,
   onSpaces,
+  jwt,
 }: {
   chats: ChatSummary[];
   selectedChatId: string | null;
@@ -70,11 +72,15 @@ export function ChatList({
   onHome?: () => void;
   /** «Cambiar de espacio» (E1, design `e1-06`): the arrow next to the name, like the app's header. */
   onSpaces?: () => void;
+  /** The session, for my lists of chats (pending 45). */
+  jwt: string;
 }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [filtro, setFiltro] = useState<FiltroDeChats>('todos');
   const [verArchivados, setVerArchivados] = useState(false);
-  const lista = useMemo(() => armarLista({ chats, filtro, texto: query, verArchivados }), [chats, filtro, query, verArchivados]);
+  const listas = useChatListsPanel({ jwt, chats, filter: filtro, onFilter: setFiltro });
+  const lista = useMemo(() => armarLista({ chats, filtro, texto: query, verArchivados, lista: listas.activeChatIds }), [chats, filtro, query, verArchivados, listas.activeChatIds]);
+  const alAccion = (chat: ChatSummary, accion: AccionDelChat) => (accion === 'lista' ? listas.openAddTo(chat) : onAccion(chat, accion));
   // Se archivó el último: «Archivados» vacío no tiene salida útil, se vuelve a la principal.
   useEffect(() => {
     if (verArchivados && lista.archivados.total === 0) setVerArchivados(false);
@@ -193,7 +199,8 @@ export function ChatList({
         </div>
       </div>
 
-      <FiltrosDeLaLista lista={lista} filtro={filtro} onFiltro={setFiltro} verArchivados={verArchivados} onArchivados={setVerArchivados} />
+      <FiltrosDeLaLista lista={lista} filtro={filtro} onFiltro={setFiltro} verArchivados={verArchivados} onArchivados={setVerArchivados} listas={listas.lists} onNuevaLista={listas.openNew} onEditarLista={listas.openEdit} />
+      {listas.dialogs}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {loading ? (
@@ -214,7 +221,7 @@ export function ChatList({
           <ListaVacia query={query} filtro={filtro} verArchivados={verArchivados} hayChats={chats.length > 0} onNewChat={onNewChat} />
         ) : (
           lista.visibles.map((chat) => (
-            <FilaDeChat key={chat.id} chat={chat} yo={yo} seleccionado={chat.id === selectedChatId} onSelect={() => onSelect(chat)} onAccion={onAccion} />
+            <FilaDeChat key={chat.id} chat={chat} yo={yo} seleccionado={chat.id === selectedChatId} onSelect={() => onSelect(chat)} onAccion={alAccion} />
           ))
         )}
       </div>
@@ -255,7 +262,7 @@ function ListaVacia(props: { query: string; filtro: FiltroDeChats; verArchivados
     : props.verArchivados
       ? 'No hay chats archivados.'
       : props.hayChats
-        ? VACIO_DEL_FILTRO[props.filtro]
+        ? (VACIO_DEL_FILTRO[props.filtro] ?? 'Esta lista no tiene chats. Agrégalos desde el menú de cada chat o con el lápiz.')
         : VACIO_DEL_FILTRO.todos;
   return (
     <div className="px-6 pt-8 text-center">

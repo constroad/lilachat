@@ -72,3 +72,14 @@ describe('armarLista (W3)', () => {
     expect(lista.visibles.map((chat) => chat.id)).toEqual(['Viejo']);
   });
 });
+
+describe('armarLista with a list of my own (pending 45)', () => {
+  it('a list chip shows only the chats of that list, in the usual order', () => {
+    // Arrange
+    const chats = [chat('a', '2026-10-18T10:00:00.000Z'), chat('b', '2026-10-19T10:00:00.000Z'), chat('c', '2026-10-20T10:00:00.000Z')];
+    // Act
+    const built = armarLista({ chats, filtro: 'lista:family', texto: '', verArchivados: false, lista: new Set(['a', 'c']) });
+    // Assert
+    expect(built.visibles.map((one) => one.id)).toEqual(['c', 'a']);
+  });
+});

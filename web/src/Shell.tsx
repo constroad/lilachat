@@ -296,7 +296,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
           onAgenda={() => setCreando({ tipo: 'agenda' })}
           onDestacados={() => setCreando({ tipo: 'destacados' })}
           onNewBorrador={() => setCreando({ tipo: 'borrador' })}
-          yo={yo}
+          yo={yo} jwt={credential.jwt}
           onAccion={(chat, accion) => void accionesSobreChats.aplicar(chat, accion)}
           width={panel === 'both' ? listLayout.width : undefined}
           onCollapse={panel === 'both' ? () => listLayout.setCollapsed(true) : undefined}

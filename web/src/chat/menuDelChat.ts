@@ -7,7 +7,7 @@ import type { ChatSummary } from './types';
  * decide el MISMO motor que la selección múltiple de la app
  * (`accionesDeSeleccion`), aplicado a un solo chat.
  */
-export type AccionDelChat = 'archivar' | 'desarchivar' | 'silenciar' | 'reactivar' | 'fijar' | 'desfijar' | 'leido' | 'no-leido' | 'salir' | 'eliminar';
+export type AccionDelChat = 'archivar' | 'desarchivar' | 'silenciar' | 'reactivar' | 'fijar' | 'desfijar' | 'lista' | 'leido' | 'no-leido' | 'salir' | 'eliminar';
 export type OpcionDelMenu = { accion: AccionDelChat; etiqueta: string; peligro?: boolean };
 export type CambiosDeAjustes = { archived?: boolean; muted?: boolean; pinned?: boolean; markedUnread?: boolean };
 
@@ -18,6 +18,7 @@ const ETIQUETAS: Record<AccionDelChat, string> = {
   reactivar: 'Activar notificaciones',
   fijar: 'Fijar chat',
   desfijar: 'Desfijar chat',
+  lista: 'Agregar a lista',
   leido: 'Marcar como leído',
   'no-leido': 'Marcar como no leído',
   salir: 'Salir del grupo',
@@ -42,6 +43,8 @@ export function opcionesDelMenuDeChat(chat: ChatSummary): OpcionDelMenu[] {
     // Un borrador es solo tuyo: nunca suena, no hay qué silenciar.
     chat.kind === 'notas' ? null : posibles.silenciar,
     posibles.fijar,
+    // Lists of my own (pending 45): the list itself opens the picker, it is not a setting.
+    'lista',
     posibles.lectura,
     posibles.salir ? 'salir' : null,
     posibles.eliminar ? 'eliminar' : null,

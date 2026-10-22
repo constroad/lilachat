@@ -1,5 +1,5 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { Archive, ArchiveRestore, Bell, BellOff, ChevronDown, LogOut, MessageCircle, MessageSquareDot, Pin, PinOff, Trash2, type LucideIcon } from 'lucide-react';
+import { Archive, ArchiveRestore, Bell, BellOff, ChevronDown, ListPlus, LogOut, MessageCircle, MessageSquareDot, Pin, PinOff, Trash2, type LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Overlay } from '../ui/Overlay';
 import { opcionesDelMenuDeChat, type AccionDelChat } from './menuDelChat';
@@ -17,6 +17,7 @@ const ICONOS: Record<AccionDelChat, LucideIcon> = {
   reactivar: Bell,
   fijar: Pin,
   desfijar: PinOff,
+  lista: ListPlus,
   leido: MessageCircle,
   'no-leido': MessageSquareDot,
   salir: LogOut,

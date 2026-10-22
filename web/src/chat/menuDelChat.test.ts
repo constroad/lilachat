@@ -20,21 +20,21 @@ const acciones = (unChat: ChatSummary) => opcionesDelMenuDeChat(unChat).map((opc
 describe('opcionesDelMenuDeChat', () => {
   it('un 1:1 al día: archivar, silenciar, fijar, no leído y eliminar (en rojo, al final)', () => {
     const opciones = opcionesDelMenuDeChat(chat());
-    expect(opciones.map((opcion) => opcion.accion)).toEqual(['archivar', 'silenciar', 'fijar', 'no-leido', 'eliminar']);
+    expect(opciones.map((opcion) => opcion.accion)).toEqual(['archivar', 'silenciar', 'fijar', 'lista', 'no-leido', 'eliminar']);
     expect(opciones.at(-1)).toMatchObject({ etiqueta: 'Eliminar chat', peligro: true });
   });
 
   it('cada opción dice lo contrario cuando ya está hecho', () => {
-    expect(acciones(chat({ archived: true, muted: true, unread: 3 }))).toEqual(['desarchivar', 'reactivar', 'leido', 'eliminar']);
-    expect(acciones(chat({ pinned: true, markedUnread: true }))).toEqual(['archivar', 'silenciar', 'desfijar', 'leido', 'eliminar']);
+    expect(acciones(chat({ archived: true, muted: true, unread: 3 }))).toEqual(['desarchivar', 'reactivar', 'lista', 'leido', 'eliminar']);
+    expect(acciones(chat({ pinned: true, markedUnread: true }))).toEqual(['archivar', 'silenciar', 'desfijar', 'lista', 'leido', 'eliminar']);
   });
 
   it('un grupo se deja, no se elimina', () => {
-    expect(acciones(chat({ kind: 'group' }))).toEqual(['archivar', 'silenciar', 'fijar', 'no-leido', 'salir']);
+    expect(acciones(chat({ kind: 'group' }))).toEqual(['archivar', 'silenciar', 'fijar', 'lista', 'no-leido', 'salir']);
   });
 
   it('un borrador no suena: no tiene «silenciar»', () => {
-    expect(acciones(chat({ kind: 'notas' }))).toEqual(['archivar', 'fijar', 'no-leido', 'eliminar']);
+    expect(acciones(chat({ kind: 'notas' }))).toEqual(['archivar', 'fijar', 'lista', 'no-leido', 'eliminar']);
   });
 });
 

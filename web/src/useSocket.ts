@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import type { Reaccion } from '@lilachat/shared';
+import { announceChatListsChanged } from './chat/chatLists/chatListsEvents';
 
 /**
  * El socket vive FUERA del componente.
@@ -173,6 +174,7 @@ export function useSocket(params: {
     );
     socket.on('chat.changed', (data: { chatId: string }) => handlers.current.onCambioDeChat?.(data));
     socket.on('workspaces.changed', () => handlers.current.onSpacesChanged?.());
+    socket.on('chatLists.changed', announceChatListsChanged);
     socket.on('workspace.members.changed', (data: { workspaceId: string }) => handlers.current.onMembersChanged?.(data));
     // E3: el resumen nuevo de una raíz («4 respuestas · última 10:42»).
     socket.on('msg.hilo', (data: { chatId: string; raiz: number; hilo: NonNullable<ChatMessage['hilo']> }) => handlers.current.onHilo?.(data));

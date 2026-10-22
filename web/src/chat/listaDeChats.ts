@@ -28,6 +28,7 @@ export type ListaArmada = {
 
 const filtrable = (chat: ChatSummary) => ({
   chat,
+  id: chat.id,
   titulo: chat.name ?? chat.phone ?? '',
   ultimo: chat.lastMessage?.body,
   esGrupo: chat.kind === 'group',
@@ -43,7 +44,7 @@ const filtrable = (chat: ChatSummary) => ({
  * Las cuentas de los chips son de la principal, sin la búsqueda: dicen cuántos
  * hay, no cuántos coinciden.
  */
-export function armarLista(params: { chats: readonly ChatSummary[]; filtro: FiltroDeChats; texto: string; verArchivados: boolean }): ListaArmada {
+export function armarLista(params: { chats: readonly ChatSummary[]; filtro: FiltroDeChats; texto: string; verArchivados: boolean; lista?: ReadonlySet<string> }): ListaArmada {
   const { principales, archivados } = separarArchivados(params.chats.map(filtrable));
   const ordenar = (filas: typeof principales) => {
     const porId = new Map(filas.map((fila) => [fila.chat.id, fila]));
@@ -51,7 +52,7 @@ export function armarLista(params: { chats: readonly ChatSummary[]; filtro: Filt
     return orden.map((chat) => porId.get(chat.id)!);
   };
   const fuente = params.verArchivados ? archivados : principales;
-  const filtradas = filtrarChats({ chats: ordenar(fuente), filtro: params.verArchivados ? 'todos' : params.filtro, texto: params.texto });
+  const filtradas = filtrarChats({ chats: ordenar(fuente), filtro: params.verArchivados ? 'todos' : params.filtro, texto: params.texto, lista: params.lista });
   return {
     visibles: filtradas.map((fila) => fila.chat),
     cuentas: contarChats(principales),

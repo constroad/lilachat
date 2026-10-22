@@ -17,7 +17,7 @@ import { WorkspaceMemberModel, WorkspaceModel, type Workspace, type WorkspaceMem
 import { leaveWorkspaceChats, restoreToWorkspaceChats, suspendFromWorkspaceChats } from './workspaceChats.js';
 import { membershipExtras } from './workspaceInfo.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
-import { noticeSpacesChanged } from './workspaceNotices.js';
+import { noticeMembersChanged, noticeSpacesChanged } from './workspaceNotices.js';
 import { ensureGeneralChannel, welcomeToGeneral } from './workspaceGeneral.js';
 
 /** A refusal with its HTTP status; the routes turn it into the response. */
@@ -161,9 +161,10 @@ async function toClientMembers(members: WorkspaceMember[]) {
 
 export async function listMembers(workspaceId: string, userId: Types.ObjectId, status: unknown) {
   const actor = await actorIn(workspaceId, userId);
-  const wanted: WorkspaceMemberStatus = status === 'pending' || status === 'invited' || status === 'deactivated' ? status : 'active';
-  if (wanted !== 'active' && !canManageMembers(actor.role)) throw new WorkspaceError(403, ONLY_ADMINS);
-  const members = await WorkspaceMemberModel.find({ workspaceId: actor.workspaceId, status: wanted }).sort({ createdAt: 1 }).lean<WorkspaceMember[]>();
+  // `all` (22/10): «Miembros y roles» gets its four lists in one request instead of four.
+  const wanted: WorkspaceMemberStatus[] = status === 'all' ? ['active', 'pending', 'invited', 'deactivated'] : [status === 'pending' || status === 'invited' || status === 'deactivated' ? status : 'active'];
+  if (wanted.some((one) => one !== 'active') && !canManageMembers(actor.role)) throw new WorkspaceError(403, ONLY_ADMINS);
+  const members = await WorkspaceMemberModel.find({ workspaceId: actor.workspaceId, status: { $in: wanted } }).sort({ createdAt: 1 }).lean<WorkspaceMember[]>();
   return toClientMembers(members);
 }
 
@@ -216,6 +217,7 @@ export async function updateMember(workspaceId: string, actorId: Types.ObjectId,
   // Approved (or an invitation taken): into #general; a reactivation already got its chats back above.
   if (target.userId && set.status === 'active' && (target.status === 'pending' || target.status === 'invited')) await welcomeToGeneral(actor.workspaceId, target.userId);
   noticeSpacesChanged([target.userId]);
+  void noticeMembersChanged(actor.workspaceId).catch(() => undefined);
   return (await toClientMembers([updated]))[0]!;
 }
 
@@ -271,6 +273,7 @@ export async function leaveWorkspace(workspaceId: string, userId: Types.ObjectId
   if (member.role === 'owner') throw new WorkspaceError(409, 'Eres el dueño: pásale el espacio a otra persona antes de salir.');
   await WorkspaceMemberModel.deleteOne({ _id: member._id });
   await leaveWorkspaceChats(member.workspaceId, userId);
+  void noticeMembersChanged(member.workspaceId).catch(() => undefined);
 }
 
 /** A phone added to spaces before it had an account joins them when it signs up. */

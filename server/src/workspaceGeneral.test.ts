@@ -109,6 +109,16 @@ describe('#general (José, 22/10)', () => {
     expect(await joinNotices(space.id)).toEqual([]);
   });
 
+  it('a space from before #general gets it when its chat list opens (CONSTROAD, 22/10), not only from «Canales»', async () => {
+    const space = await createSpace();
+    await ChatModel.deleteMany({ workspaceId: space.id });
+    await WorkspaceModel.updateOne({ _id: space.id }, { $unset: { generalChatId: 1 } });
+    const list = await request(app).get(`/api/chats?workspace=${space.id}`).set('Authorization', jwt('jose')).expect(200);
+    expect(list.body.chats.map((chat: { name: string }) => chat.name)).toEqual(['general']);
+    // The chips' counts come with the list (22/10).
+    expect(list.body.activity).toEqual({ mentions: 0, threads: 0 });
+  });
+
   it('reactivating someone does not announce them again', async () => {
     const space = await createSpace();
     const ana = (await request(app).post(`/api/workspaces/${space.id}/members`).set('Authorization', jwt('jose')).send({ phone: '987654321' }).expect(201)).body.member;
@@ -163,5 +173,16 @@ describe('inviting by email (José, 22/10: one account per person)', () => {
     await request(app).delete(`/api/workspaces/${space.id}/invites/${sent.id}`).set('Authorization', jwt('jose')).expect(204);
     await request(app).post('/api/me/email/verify').set('Authorization', jwt('luis')).send({ email: 'luis@empresa.pe', code: '123456' }).expect(200);
     expect(await memberOf(space.id, 'luis')).toBeNull();
+  });
+});
+
+describe('one request instead of four (22/10)', () => {
+  it('«Miembros y roles» gets every status at once, with the emails waiting; a member cannot ask for them', async () => {
+    const space = await createSpace('open');
+    await request(app).post('/api/workspaces/join').set('Authorization', jwt('ana')).send({ code: space.joinCode }).expect(200);
+    await request(app).post(`/api/workspaces/${space.id}/invites`).set('Authorization', jwt('jose')).send({ email: 'luis@empresa.pe' }).expect(201);
+    const all = await request(app).get(`/api/workspaces/${space.id}/members?status=all`).set('Authorization', jwt('jose')).expect(200);
+    expect(all.body.members.map((member: { status: string; email?: string; name?: string }) => member.email ?? member.name).sort()).toEqual(['Ana Torres', 'José Zamora', 'luis@empresa.pe']);
+    await request(app).get(`/api/workspaces/${space.id}/members?status=all`).set('Authorization', jwt('ana')).expect(403);
   });
 });

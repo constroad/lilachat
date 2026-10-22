@@ -1,4 +1,6 @@
 import { allActiveIn } from './workspaceChats.js';
+import { ensureGeneralChannel } from './workspaceGeneral.js';
+import { activityCounts } from './activityRoutes.js';
 import { Router } from 'express';
 import { Types } from 'mongoose';
 import { CAPACIDADES_DE_PUSH, normalizarNombreDeGrupo, NOTIFICATION_LEVELS, notificationLevel, textoDeAviso } from '@lilachat/shared';
@@ -103,7 +105,11 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
     if (!workspace) return res.json({ chats: await listChats(req.session!.userId) });
     const workspaceId = Types.ObjectId.isValid(workspace) ? new Types.ObjectId(workspace) : null;
     if (!workspaceId || !(await allActiveIn(workspaceId, [new Types.ObjectId(req.session!.userId)]))) return res.status(404).json({ message: 'Ese espacio no existe o no estás en él.' });
-    res.json({ chats: await listChats(req.session!.userId, workspaceId) });
+    // The space's #general (22/10) exists before its list is drawn, also for a space born before it.
+    await ensureGeneralChannel(workspaceId);
+    // The «Hilos» and «Menciones» chips come with the list: one request, not two (22/10).
+    const [chats, activity] = await Promise.all([listChats(req.session!.userId, workspaceId), activityCounts(new Types.ObjectId(req.session!.userId), workspaceId)]);
+    res.json({ chats, activity });
   });
 
   // Buscar texto en las conversaciones del usuario. Va ANTES de `/:chatId/...`

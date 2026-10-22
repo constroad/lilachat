@@ -87,3 +87,20 @@ describe('GET /api/agenda/queue', () => {
     expect(items).toEqual([expect.objectContaining({ kind: 'task', title: 'Revisar', canPostpone: true })]);
   });
 });
+
+/** José, 22/10: the cards were great, but the chat list did not say a chat had something waiting. */
+describe('GET /api/agenda/queue/keys', () => {
+  it('the pending keys of each of my chats, the same ones its queue shows; chats I am not in stay out', async () => {
+    const other = (await ChatModel.create({ kind: 'direct', members: [{ userId: me, role: 'member' }, { userId: ana, role: 'member' }], lastSeq: 1 }))._id;
+    const foreign = (await ChatModel.create({ kind: 'direct', members: [{ userId: ana, role: 'member' }], lastSeq: 1 }))._id;
+    await ChecklistModel.create({ chatId: chat, createdBy: ana, title: 'Losa', othersCanMark: true, othersCanAdd: false, items: [task('Acero', { assignee: me, dueAt: ago(16) })] });
+    await PollModel.create({ chatId: other, question: '¿Almuerzo?', options: [{ text: 'Sí', votes: [] }], allowMultiple: false, anonymous: false, createdBy: ana });
+    await PollModel.create({ chatId: foreign, question: 'Ajena', options: [{ text: 'Sí', votes: [] }], allowMultiple: false, anonymous: false, createdBy: ana });
+
+    const { pending } = (await request(app).get('/api/agenda/queue/keys').set(auth(me)).expect(200)).body;
+    const queueKeys = async (chatId: Types.ObjectId) => (await request(app).get('/api/agenda/queue').query({ chatId: String(chatId) }).set(auth(me)).expect(200)).body.items.map((item: { key: string }) => item.key);
+    expect(pending).toEqual({ [String(chat)]: await queueKeys(chat), [String(other)]: await queueKeys(other) });
+    expect(pending[String(chat)]).toHaveLength(1);
+    await request(app).get('/api/agenda/queue/keys').expect(401);
+  });
+});

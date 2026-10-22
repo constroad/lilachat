@@ -47,6 +47,16 @@ async function rowsOf(scope: Scope, type: ActivityType, found: Found): Promise<{
     .slice(0, ACTIVITY_LIMIT);
 }
 
+/** New mentions and threads of one space, for its list's chips (22/10: they come with the list, not as a second request). */
+export async function activityCounts(me: Types.ObjectId, workspaceId: Types.ObjectId): Promise<{ mentions: number; threads: number }> {
+  const scope = await scopeOf(me, workspaceId);
+  const [mentioned, inThreads] = await Promise.all([
+    MessageModel.find(mentionsFilter(scope)).select('chatId seq').sort({ at: -1 }).limit(ACTIVITY_LIMIT).lean<Message[]>(),
+    MessageModel.find(threadsFilter(scope)).select('chatId hilo').sort({ 'hilo.ultimaEn': -1 }).limit(ACTIVITY_LIMIT).lean<Message[]>(),
+  ]);
+  return { mentions: mentioned.filter((message) => mentionUnread(scope, message)).length, threads: inThreads.filter((message) => threadUnread(scope, message)).length };
+}
+
 /**
  * «Menciones y actividad» (design `e-19-menciones-actividad`): the mentions of
  * me (by name or by a group mention), the threads I am in and the reactions of

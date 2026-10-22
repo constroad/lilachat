@@ -68,7 +68,7 @@ export function buildWorkspaceRouter(uploader: MediaUploader = buildLilaUploader
   router.get('/:id/members', handled(async (req, res) => {
     const members = await listMembers(req.params.id!, me(req), req.query.status);
     // The emails waiting (22/10) sit next to the phones in «Invitados»; `listMembers` already checked the admin.
-    const emails = req.query.status === 'invited' ? await emailInvitesOf(new Types.ObjectId(req.params.id!)) : [];
+    const emails = req.query.status === 'invited' || req.query.status === 'all' ? await emailInvitesOf(new Types.ObjectId(req.params.id!)) : [];
     res.json({ members: [...members, ...emails] });
   }));
   router.post('/:id/invites', handled(async (req, res) => res.status(201).json(await inviteByEmail(req.params.id!, me(req), req.body ?? {}))));

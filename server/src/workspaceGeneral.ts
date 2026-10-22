@@ -5,6 +5,7 @@ import { escribirAviso } from './chatService.js';
 import { UserModel } from './models.js';
 import { avisarCambioDeChat, publicarMensaje } from './reparto.js';
 import { WorkspaceMemberModel, WorkspaceModel } from './workspaceModels.js';
+import { noticeMembersChanged } from './workspaceNotices.js';
 
 /**
  * #general of a company space (José, 22/10, like Slack): every active member is
@@ -55,6 +56,8 @@ export async function welcomeToGeneral(workspaceId: Types.ObjectId, userId: Type
   if (!chatId) return;
   const added = await ChatModel.updateOne({ _id: chatId, 'members.userId': { $ne: userId } }, { $push: { members: { userId, role: 'member', joinedAt: new Date() } } });
   avisarCambioDeChat(String(userId), String(chatId));
+  // Every way of becoming active ends here: the space's directories refresh once.
+  void noticeMembersChanged(workspaceId).catch(() => undefined);
   const user = await UserModel.findById(userId).select('name phone').lean();
   if (added.modifiedCount === 0 || !user?.name) return;
   const notice = await escribirAviso({ chatId: String(chatId), quien: userId, evento: 'se-unio-espacio', body: `${user.name} se unió al espacio`, quien2: { name: user.name, phone: user.phone } });

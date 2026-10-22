@@ -181,6 +181,11 @@ export function emitSpacesChanged(userIds: readonly string[]): void {
   for (const userId of userIds) ioVivo?.to(userRoom(userId)).emit('workspaces.changed', {});
 }
 
+/** A space's people changed (22/10): its active members refresh the directory and «Miembros y roles». */
+export function emitMembersChanged(userIds: readonly string[], workspaceId: string): void {
+  for (const userId of userIds) ioVivo?.to(userRoom(userId)).emit('workspace.members.changed', { workspaceId });
+}
+
 /** Se vinculó o se cerró una web: el teléfono relee su lista. */
 export function avisarCambioDeVinculos(userId: string): void {
   ioVivo?.to(userRoom(userId)).emit('vinculos.changed', {});

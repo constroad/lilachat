@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 import { ChevronDown } from 'lucide-react-native';
-import { newlyAddedSpaces, spaceSubtitle, unreadElsewhere, type ActivityItem, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember } from '@lilachat/shared';
+import { joinCodeFromLink, newlyAddedSpaces, spaceSubtitle, unreadElsewhere, type ActivityItem, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 import { createChat } from '../contacts/contactsApi';
 import { getSocket } from '../chat/socketClient';
@@ -63,6 +63,19 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
   const { spaces, reload } = useMySpaces(jwt, myUserId);
   const seen = useSeenSpaces();
   const [sheet, setSheet] = useState<Sheet>(null);
+  /** A space's join link (pending 47): Android opens the app on it, and «Unirme» opens with its code. */
+  const [joinCode, setJoinCode] = useState<string | null>(null);
+  useEffect(() => {
+    const openLink = (url: string | null) => {
+      const code = joinCodeFromLink(url);
+      if (!code) return;
+      setJoinCode(code);
+      setSheet('join');
+    };
+    void Linking.getInitialURL().then(openLink);
+    const subscription = Linking.addEventListener('url', (event) => openLink(event.url));
+    return () => subscription.remove();
+  }, []);
   const [inviting, setInviting] = useState<ClientWorkspace | null>(null);
   const [profile, setProfile] = useState<ClientWorkspaceMember | null>(null);
   const [removed, setRemoved] = useState<ClientWorkspace | null>(null);
@@ -177,7 +190,7 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
   const layer: ReactNode = (
     <>
       <SpaceSwitcherSheet visible={sheet === 'switcher'} spaces={spaces} currentId={current?.id ?? null} me={params.me} personalUnread={params.personalUnread} onPick={(spaceId) => void enter(spaceId)} onJoin={() => setSheet('join')} onCreate={() => setSheet('create')} onClose={() => setSheet(null)} onOpen={() => void reload()} />
-      <JoinSpaceScreen visible={sheet === 'join'} jwt={jwt} onJoined={(spaceId) => void enter(spaceId)} onClose={() => { setSheet(null); void reload(); }} />
+      <JoinSpaceScreen visible={sheet === 'join'} jwt={jwt} initialCode={joinCode} onJoined={(spaceId) => void enter(spaceId)} onClose={() => { setSheet(null); setJoinCode(null); void reload(); }} />
       <CreateSpaceScreen
         visible={sheet === 'create'}
         jwt={jwt}

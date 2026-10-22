@@ -14,8 +14,8 @@ const PREVIEW_DELAY_MS = 350;
  * before joining; an open space lets in at once, otherwise the request waits
  * for an admin and can be withdrawn. Personal chats are never shared.
  */
-export function JoinSpaceDialog(props: { jwt: string; onJoined: (spaceId: string) => void; onClose: () => void }) {
-  const [text, setText] = useState('');
+export function JoinSpaceDialog(props: { jwt: string; onJoined: (spaceId: string) => void; onClose: () => void; /** From a join link (pending 47): already written. */ initialCode?: string }) {
+  const [text, setText] = useState(props.initialCode ?? '');
   const [preview, setPreview] = useState<WorkspacePreview | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);

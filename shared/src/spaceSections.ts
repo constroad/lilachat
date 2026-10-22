@@ -1,4 +1,5 @@
 import { ENLACE_DE_DESCARGA } from './invitacion.js';
+import { normalizeJoinCode } from './workspaces.js';
 
 /**
  * The chats of a company space by sections, like Slack (designs `s-03` and
@@ -38,8 +39,23 @@ export const LILACHAT_WEB_URL = 'https://lilachat.constroad.com';
 const joinStep = (code: string) => `Toca el nombre de arriba en Chats › «Unirme con un código» y escribe: ${code}`;
 
 /** The invitation to a space sent by WhatsApp (design `e1-05-invitar`): which space, where to get the app, how to get in, and the code. */
+const JOIN_LINK = /^https:\/\/lilachat\.constroad\.com\/unirse\/([^/?#]+)/i;
+
+/**
+ * The invitation's own link (pending 47, José 22/10: like WhatsApp or
+ * YouTube, it should open the app when it is installed). Android opens the app
+ * on it (App Links, `assetlinks.json`); without the app, the web joins too.
+ */
+export const spaceJoinLink = (code: string): string => `${LILACHAT_WEB_URL}/unirse/${encodeURIComponent(code)}`;
+
+/** The code of a join link, or `null` for any other address. A regex, not `URL`: React Native's is incomplete. */
+export function joinCodeFromLink(url: string | null | undefined): string | null {
+  const match = JOIN_LINK.exec(url ?? '');
+  return match ? normalizeJoinCode(decodeURIComponent(match[1]!)) : null;
+}
+
 export function spaceInviteMessage(params: { spaceName: string; code: string }): string {
-  return `Te invito al espacio de ${params.spaceName} en Lilachat. Descárgala en ${ENLACE_DE_DESCARGA} y entra con tu número. ${joinStep(params.code)}`;
+  return `Te invito al espacio de ${params.spaceName} en Lilachat. Entra con este enlace: ${spaceJoinLink(params.code)}\n\nSi todavía no tienes Lilachat, descárgala en ${ENLACE_DE_DESCARGA} y entra con tu número. ${joinStep(params.code)}`;
 }
 
 /**

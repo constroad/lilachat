@@ -10,6 +10,7 @@ import type { BaseLocal } from '../local/baseLocal';
 import { memberName } from './memberWeb';
 import { SpacesLayer, type SpaceDialog } from './SpacesLayer';
 import type { WorkspaceLink } from './SpaceChatList';
+import { peekPendingJoin, takePendingJoin } from './pendingJoin';
 
 /** What a socket event of a space chat says (22/10). */
 export type SpaceChatEvent = { type: 'message'; chatId: string; message: ChatMessage } | { type: 'receipt'; chatId: string; userId?: string } | { type: 'changed'; chatId: string };
@@ -50,6 +51,14 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
   const currentId = useCurrentSpaceId();
   const { spaces, reload } = useMySpaces(jwt, myUserId);
   const [dialog, setDialog] = useState<SpaceDialog>(null);
+  /** A join link opened on the web (pending 47): «Unirme» opens with its code, once. */
+  // Read pure, removed in the effect: StrictMode runs an initializer twice and a «take» there would lose it.
+  const [joinCode] = useState(peekPendingJoin);
+  useEffect(() => {
+    if (!joinCode) return;
+    takePendingJoin();
+    setDialog('join');
+  }, [joinCode]);
   const [inviting, setInviting] = useState<ClientWorkspace | null>(null);
   const [profile, setProfile] = useState<ClientWorkspaceMember | null>(null);
   const [removed, setRemoved] = useState<ClientWorkspace | null>(null);
@@ -167,6 +176,7 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
       spaces={spaces}
       current={current}
       dialog={dialog}
+      joinCode={joinCode}
       invitee={inviting ?? (dialog === 'invite' ? current : null)}
       profile={profile}
       welcome={welcome}

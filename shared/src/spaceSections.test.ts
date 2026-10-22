@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterChannels, railSpaces, unreadElsewhere, splitArchived, SPACE_RUBROS, spaceInitials, spaceInviteEmail, spaceInviteMailto, spaceInviteMessage, spaceSections, spaceSubtitle } from './spaceSections.js';
+import { filterChannels, railSpaces, unreadElsewhere, splitArchived, SPACE_RUBROS, spaceInitials, spaceInviteEmail, spaceInviteMailto, spaceInviteMessage, spaceJoinLink, joinCodeFromLink, spaceSections, spaceSubtitle } from './spaceSections.js';
 
 /** The chats of a company space by sections, like Slack (designs `s-03-lista-con-secciones` and `e1-07-chats-del-espacio`). */
 describe('spaceSections', () => {
@@ -44,6 +44,28 @@ describe('spaceInviteMessage', () => {
     expect(text).toContain('CONSTROAD');
     expect(text).toContain('CONS-7K3P');
     expect(text).toContain('Unirme con un código');
+  });
+
+  /** Pending 47 (José, 22/10): the link opens the app if it is installed. */
+  it('carries the space’s own link first', () => {
+    const text = spaceInviteMessage({ spaceName: 'CONSTROAD', code: 'CONS-7K3P' });
+    expect(text).toContain('https://lilachat.constroad.com/unirse/CONS-7K3P');
+    expect(text.indexOf('/unirse/')).toBeLessThan(text.indexOf('lilastore'));
+  });
+});
+
+describe('join links', () => {
+  it('the link of a code and the code of a link', () => {
+    expect(spaceJoinLink('CONS-7K3P')).toBe('https://lilachat.constroad.com/unirse/CONS-7K3P');
+    expect(joinCodeFromLink('https://lilachat.constroad.com/unirse/CONS-7K3P')).toBe('CONS-7K3P');
+    expect(joinCodeFromLink('https://lilachat.constroad.com/unirse/cons7k3p?utm=wa')).toBe('CONS-7K3P');
+  });
+
+  it('any other address, or a broken code, is not a join link', () => {
+    expect(joinCodeFromLink('https://evil.test/unirse/CONS-7K3P')).toBeNull();
+    expect(joinCodeFromLink('https://lilachat.constroad.com/c/abc')).toBeNull();
+    expect(joinCodeFromLink('https://lilachat.constroad.com/unirse/xx')).toBeNull();
+    expect(joinCodeFromLink(null)).toBeNull();
   });
 });
 

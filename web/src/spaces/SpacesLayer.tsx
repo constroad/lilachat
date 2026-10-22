@@ -27,6 +27,8 @@ export function SpacesLayer(props: {
   spaces: ClientWorkspace[] | null;
   current: ClientWorkspace | null;
   dialog: SpaceDialog;
+  /** The code of a join link opened on the web (pending 47). */
+  joinCode: string | null;
   invitee: ClientWorkspace | null;
   profile: ClientWorkspaceMember | null;
   welcome: ClientWorkspace | null;
@@ -56,7 +58,7 @@ export function SpacesLayer(props: {
   return (
     <>
       {dialog === 'switcher' ? <SpaceSwitcher spaces={props.spaces} currentId={current?.id ?? null} me={props.me} personalUnread={props.personalUnread} onPick={on.enter} onJoin={() => on.dialog('join')} onCreate={() => on.dialog('create')} onClose={close} onOpen={on.reload} /> : null}
-      {dialog === 'join' ? <JoinSpaceDialog jwt={jwt} onJoined={on.enter} onClose={() => { close(); on.reload(); }} /> : null}
+      {dialog === 'join' ? <JoinSpaceDialog jwt={jwt} initialCode={props.joinCode ?? undefined} onJoined={on.enter} onClose={() => { close(); on.reload(); }} /> : null}
       {dialog === 'create' ? <CreateSpaceDialog jwt={jwt} onJoinInstead={() => on.dialog('join')} onCreated={on.created} onClose={close} /> : null}
       {props.invitee ? <InviteToSpaceDialog space={props.invitee} jwt={jwt} inviterName={props.me.name ?? undefined} onClose={on.closeInvite} /> : null}
       {current && dialog === 'channels' ? <ChannelsDialog space={current} jwt={jwt} onOpenChannel={on.channel} onClose={close} /> : null}

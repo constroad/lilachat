@@ -6,6 +6,7 @@ import './index.css';
 import { prepararSonidos } from './sonidos/sonidoDeMensaje';
 import { applyTheme, followSystemTheme, readThemeChoice } from './ui/tema';
 import { applyChatFont, readChatFont } from './ui/chatFont';
+import { catchJoinLink } from './spaces/pendingJoin';
 
 // El navegador deja sonar recién después del primer gesto (20/10).
 prepararSonidos();
@@ -15,6 +16,8 @@ applyTheme(readThemeChoice());
 followSystemTheme();
 // The chat's font size this browser chose (backlog 1).
 applyChatFont(readChatFont());
+// A space's join link (pending 47): its code waits through the sign-in.
+catchJoinLink();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

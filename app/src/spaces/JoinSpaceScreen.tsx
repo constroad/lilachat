@@ -17,7 +17,7 @@ const PREVIEW_DELAY_MS = 350;
  * before joining; an open space lets in at once, otherwise the request waits
  * for an admin and can be withdrawn. Personal chats are never shared.
  */
-export function JoinSpaceScreen(props: { visible: boolean; jwt: string; onJoined: (spaceId: string) => void; onClose: () => void }) {
+export function JoinSpaceScreen(props: { visible: boolean; jwt: string; onJoined: (spaceId: string) => void; onClose: () => void; /** From a join link (pending 47): already written. */ initialCode?: string | null }) {
   const colors = useColores();
   const margins = useMargenes();
   const [text, setText] = useState('');
@@ -27,13 +27,14 @@ export function JoinSpaceScreen(props: { visible: boolean; jwt: string; onJoined
   const [requested, setRequested] = useState<{ space: WorkspacePreview; at: string } | null>(null);
   const code = normalizeJoinCode(text);
 
+  // Mounted behind the screen: each opening starts clean, with the link's code when it came from one.
   useEffect(() => {
     if (!props.visible) return;
-    setText('');
+    setText(props.initialCode ?? '');
     setPreview(null);
     setError('');
     setRequested(null);
-  }, [props.visible]);
+  }, [props.visible, props.initialCode]);
 
   useEffect(() => {
     setPreview(null);

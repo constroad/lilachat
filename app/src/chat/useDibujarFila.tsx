@@ -1,4 +1,5 @@
 import { useCallback, type ComponentProps } from 'react';
+import { alreadyGreeted } from '@lilachat/shared';
 import { formatDayLabel, memberBadge, miReaccion, canOpenThread, puedeReaccionar, resolveDeliveryState, startsNewDay, usesFlatLayout, type MemberPill } from '@lilachat/shared';
 import { DivisorNoLeidos } from './useDivisorNoLeidos';
 import { DaySeparator, isPending, MessageRow, type Row } from './MessageRow';
@@ -52,12 +53,15 @@ export function useDibujarFila(p: {
   onVerReacciones: (seq: number) => void;
   /** Los que destaqué (20/10), para la estrella de cada burbuja. */
   destacados: ReadonlySet<number>;
+  /** «Saludar 👋» on «X se unió a Lilachat» (José, 21/10). */
+  onGreet?: () => void;
 }) {
   const { rows, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir } = p;
   // Groups as flat rows, like Slack (design `s-01`): always in a company space, on request in a personal group.
   const flat = usesFlatLayout({ kind: esGrupo ? 'group' : 'direct', workspaceId: p.workspaceId }, { groupsAsList: useGroupsAsList() });
   const { citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas } = p;
   const { onReaccionar, onMasEmojis, onVerReacciones, destacados } = p;
+  const { onGreet } = p;
   return useCallback(
     ({ item, index }: { item: Row; index: number }) => {
       const previous = rows[index - 1];
@@ -117,6 +121,7 @@ export function useDibujarFila(p: {
             esGrupo={esGrupo}
             nombreAutor={isPending(item) ? undefined : nombres.get(String(item.senderId))}
             fotoAutor={isPending(item) ? undefined : fotos.get(String(item.senderId))}
+            onGreet={!isPending(item) && item.system?.evento === 'se-unio' && !alreadyGreeted(rows.map((row) => (isPending(row) ? { senderId: yo, pending: true } : row)), item.seq, yo) ? onGreet : undefined}
             onVerImagen={onVerImagen}
             onSeleccionar={onSeleccionar}
             enSeleccion={enSeleccion}
@@ -149,6 +154,6 @@ export function useDibujarFila(p: {
         </>
       );
     },
-    [rows, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, flat, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir, citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas, onReaccionar, onMasEmojis, onVerReacciones, destacados]
+    [rows, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, flat, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir, citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas, onReaccionar, onMasEmojis, onVerReacciones, destacados, onGreet]
   );
 }

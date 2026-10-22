@@ -63,6 +63,7 @@ function FilaDeMensaje({
   esGrupo = false,
   nombreAutor,
   fotoAutor,
+  onGreet,
   onVerImagen,
   onSeleccionar,
   onResponder,
@@ -98,6 +99,8 @@ function FilaDeMensaje({
   nombreAutor?: string;
   /** Su foto de perfil, si tiene (FL13d). */
   fotoAutor?: string;
+  /** «Saludar 👋» on «X se unió a Lilachat». */
+  onGreet?: () => void;
   /** Abre el visor a pantalla completa. */
   /** Abre el visor en esta foto (por su `seq`: la URL no la identifica). */
   onVerImagen?: (seq: number) => void;
@@ -129,7 +132,7 @@ function FilaDeMensaje({
     return <HighlightedNotice item={item} text={noticeText(item, myUserId)} mine={item.senderId === myUserId} selecting={Boolean(enSeleccion)} selected={Boolean(seleccionado)} onSelect={onSeleccionar} onReply={onResponder} />;
   }
   if (!isPending(item) && item.kind === 'system') {
-    return <AvisoDelGrupo item={item} myUserId={myUserId} />;
+    return <GroupNotice item={item} myUserId={myUserId} onGreet={onGreet} />;
   }
   // The MSN nudge (backlog 3): a line, not a bubble.
   if (!isPending(item) && item.kind === 'zumbido') return <NudgeLine seq={item.seq} mine={item.senderId === myUserId} author={nombreAutor} at={item.at} />;
@@ -381,15 +384,22 @@ export function DaySeparator({ label }: { label: string }) {
  * hay, no se dibuja nada: un renglón vacío en medio de la conversación es peor
  * que la ausencia del aviso.
  */
-function AvisoDelGrupo({ item, myUserId }: { item: ChatMessage; myUserId: string }) {
+function GroupNotice({ item, myUserId, onGreet }: { item: ChatMessage; myUserId: string; onGreet?: () => void }) {
   if (item.system?.evento === 'llamada') return <LineaDeLlamada item={item} myUserId={myUserId} />;
   const text = noticeText(item, myUserId);
   if (!text) return null;
+  // «Aracely se unió a Lilachat»: who invited her can greet her with one tap, like Telegram (José, 21/10).
+  const greet = item.system?.evento === 'se-unio' && item.senderId !== myUserId && onGreet;
   return (
-    <View className="items-center py-1.5" testID={`aviso-${item.seq}`}>
+    <View className="items-center gap-2 py-1.5" testID={`aviso-${item.seq}`}>
       <Text className="rounded-full bg-surface-variant/60 px-3 py-1 text-center text-[11px] text-on-surface-variant">
         {text}
       </Text>
+      {greet ? (
+        <Pressable testID="saludar-al-unirse" onPress={onGreet} className="min-h-[40px] flex-row items-center justify-center rounded-full bg-primary px-5">
+          <Text className="text-[14px] font-semibold text-on-primary">Saludar 👋</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

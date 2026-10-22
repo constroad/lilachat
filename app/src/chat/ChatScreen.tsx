@@ -334,6 +334,7 @@ export function ChatScreen({
 
   const reacciones = useReaccionesEnPantalla({ mensajes: messages, reaccionar, yo: credential.userId, nombres: nombresDeReacciones, fotos: fotosDelGrupo, alReaccionar: seleccion.soltar });
   // Una fila, estable mientras no cambien mensajes ni acuses: un mensaje nuevo dibuja SU burbuja (FL2).
+  const saludar = useCallback(() => void alEnviar('👋'), [alEnviar]);
   const dibujarFila = useDibujarFila({
     rows,
     yo: credential.userId,
@@ -361,7 +362,7 @@ export function ChatScreen({
     onReaccionar: reacciones.elegir,
     onMasEmojis: reacciones.masEmojis,
     onVerReacciones: reacciones.verReacciones,
-    destacados: destacados.seqs,
+    destacados: destacados.seqs, onGreet: saludar,
   });
 
   // Lo que la barra sube MENOS que el teclado: su margen de navegación queda tapado (20/10, sin salto de layout).

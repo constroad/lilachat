@@ -4892,6 +4892,54 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 96. «Mis tareas» y «Checklists del chat» como sus diseños, y el perfil sin parpadeo (22/10/2026, 0.1.135)
+
+Stitch terminó `k-04-mis-tareas` y `k-05-checklists-del-chat` (estaban en
+cuota desde el 21/10). Se compararon con la app y la web.
+
+**k-04, Mis tareas** (app `MyTasksView`, web `MisTareas`).
+- Cada grupo: el nombre a la izquierda y «N tareas» a la derecha
+  (`taskCountLabel`, test).
+- Tono por grupo: atrasadas en rojo, hoy en ámbar (`warning`), el resto
+  neutro. Lo toman el rótulo, el círculo para marcar y la pastilla.
+- La pastilla de la fecha: mayúsculas, negrita y borde al 30 %.
+- Título en una línea.
+- `taskDueLabel`: atrasada de antes de ayer dice la fecha («Atrasada · 18
+  oct», antes «3 días»); el día de la semana va sin punto («sáb 7:00»).
+
+**k-05, Checklists del chat** (app y web `ChecklistsCard`).
+- Rótulo «Control operativo» y título «Checklists del chat».
+- A la derecha, «N activos» o «Completos» (`checklistsBadge`, test).
+- El completo lleva la pastilla «Completo» junto al título, en verde.
+- Ícono de casilla marcada.
+- Del diseño no se copió la etiqueta «OBRA #4»: Stitch la inventó, no es
+  un dato.
+- Las otras tarjetas de la info (Fijados, Media) siguen sin rótulo. El
+  diseño se lo pone; queda para cuando se revisen esas tarjetas.
+
+**Perfil sin parpadeo** (defecto de 0.1.133, visto en este E2E).
+- La consulta del perfil llegaba después de pintar los chats: la lista se
+  veía un instante y saltaba el formulario.
+- Ahora decide `profileGateNow` (`shared/profile.ts`, test):
+  - Quien el equipo ya vio completo abre al instante; se revisa detrás.
+  - Quien no, espera la respuesta: la web no muestra nada y la app, la
+    pantalla de carga.
+  - Sin red o pasados 5 s, abre como siempre.
+- Se recuerda por persona (`profileCompleteKey`), en `localStorage` o
+  `AsyncStorage`. Hook web con 4 tests.
+
+**E2E web** (servidor de QA, QA Ana; semilla por la API, el camino del
+cliente).
+- Primer paint tras vincular: el formulario, con la lista sin montar.
+- Mis tareas: «Atrasadas · 2 tareas» con «ATRASADA · 18 OCT» y «ATRASADA ·
+  AYER»; «Hoy» en ámbar; «Próximas» con «SÁB 7:00 A. M.».
+- Tarjeta: «1 ACTIVO»; «Llegada de maquinaria» con «COMPLETO»; «2 de 6
+  listas · 2 atrasadas».
+- Los dos checklists se borraron por la API. Sus tarjetas, del chat QA.
+  Perfil y dispositivo restaurados.
+- La app no se probó en el emulador: haría falta asignarle tareas a la
+  cuenta real de José. Usa las mismas reglas, con sus tests.
+
 ## 95. Llamadas en la web: hacer y contestar (22/10/2026, 0.1.134)
 
 José (21/10): «¿por qué no podemos hacer y responder llamadas en la web?».

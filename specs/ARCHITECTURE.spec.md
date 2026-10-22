@@ -4892,6 +4892,50 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 98. La nota de voz sigue sonando fuera del chat, con una barra arriba (22/10/2026, 0.1.137)
+
+Backlog 34 (José, 21/10: «el audio sigue sonando al salir del chat con una
+barra arriba»; diseño `a-02-audio-en-curso`).
+
+**Causa.** El reproductor vivía en la burbuja (`useAudioPlayer` en la app,
+un `<audio>` por burbuja en la web). Salir del chat la desmontaba y el audio
+se cortaba.
+
+**Ahora hay UN reproductor de sesión**, fuera de React.
+- App `chat/voicePlayer.ts`: `createAudioPlayer` de `expo-audio`, estado en
+  un store (`useSyncExternalStore`). El primer play espera a que cargue
+  (`firstPlay`), con el modo de fondo y los controles de pantalla
+  bloqueada para notas largas, como antes.
+- Web `chat/voicePlayer.ts`: un solo `<audio>`; cada burbuja sigue bajando
+  su nota por adelantado.
+- La burbuja muestra el estado del reproductor si la nota es la suya; si no,
+  su reposo. Se identifica por `chatId:seq`.
+- Motor compartido `shared/src/nowPlaying.ts` (2 tests): cuándo se ve la
+  barra (fuera del chat de la nota, mientras haya una nota en la sesión,
+  sonando o en pausa), «Nota de voz · 0:24 de 1:12» y el avance.
+- Al terminar, la nota vuelve al principio y la barra se va, como WhatsApp.
+
+**La barra** (`NowPlayingBar`, app arriba de la lista; web en la lista).
+- Muestra el avatar y el nombre de quien la grabó, el tiempo, la velocidad
+  (1× · 1,5× · 2×), pausa y la X.
+- Debajo, una línea de avance.
+- Tocarla abre el chat de la nota; la X la detiene.
+- No incluye el «Sonando» en la fila del chat que muestra el diseño:
+  queda para después.
+
+**E2E.**
+- App (emulador, nota de 40 s de QA Beto en QA Hilos): sonó, salí a la lista
+  y la barra mostró 0:21 → 0:25 corriendo. 1,5× y pausa desde la barra;
+  tocarla volvió al chat con la burbuja en pausa en 0:04 y 1,5×. La X la
+  quitó. Al terminar sola, la barra se fue.
+- Web (QA Ana): sonó en QA Hilos, abrí QA Beto y la barra corrió 0:04 →
+  0:07. Pausa, volver al chat (la barra se esconde ahí) y la X.
+- Notas de QA borradas para todos por el socket (el camino de la app).
+- Hallazgo aparte (tarea abierta): en la web, abrir un chat por URL justo
+  después de vincular deja la conversación vacía; con clic carga.
+
+**Tests:** web 5 de la nota + 1 de la barra, shared 2; app 483 en verde.
+
 ## 97. Pantalla de bloqueo por versión mínima y tarjetas en cola sobre la barra (22/10/2026, 0.1.136)
 
 Stitch terminó la ronda R136. Este lote cierra dos de los cuatro pendientes
@@ -8877,7 +8921,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     Portal), mensajes con tarjeta propia (no texto suelto), checklist por API,
     límites por llave, y un MCP encima de esa misma API. Va con el modo empresa
     (E4: bots, comandos y webhooks entrantes, backlog del §E).
-34. ~~**El audio se siente torpe**~~ **Hecho en la 0.1.123 (§83)**, salvo la barra de audio arriba al salir del chat, que espera diseño. (José, 21/10): recién arranca al segundo toque
+34. ~~**El audio se siente torpe**~~ **Hecho en la 0.1.123 (§83)**; la barra de audio arriba al salir del chat, **hecha en la 0.1.137 (§98)**. (José, 21/10): recién arranca al segundo toque
     y no se puede adelantar ni retroceder. Como WhatsApp: un toque reproduce,
     la barra de la onda se arrastra para buscar (y se toca para saltar), la
     velocidad 1× · 1,5× · 2×, y el audio sigue sonando al salir del chat con

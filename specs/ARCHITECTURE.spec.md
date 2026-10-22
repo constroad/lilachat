@@ -4892,6 +4892,55 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 94. Panel de superadmin: los usuarios de Lilachat (22/10/2026, web)
+
+José (21/10): «yo, el creador superadmin, en la versión web debería tener un
+panel para ver qué usuarios hay en Lilachat, cuándo se unieron, etc. Info
+básica, nada de leer mensajes».
+
+**Quién lo ve** (`server/src/operators.ts`).
+- `isSuperadmin`: el creador (902049935, constante en código) y los
+  teléfonos de `LILACHAT_OPERADORES`.
+- El creador es un dato del producto, no configuración: no hace falta nada
+  en Torre (constroad-code-quality §3-bis).
+- El respaldo a mano sigue igual: solo `LILACHAT_OPERADORES` (`isOperator`,
+  movido desde `backupRoutes.ts` sin cambiar la regla).
+
+**Server** (`server/src/adminRoutes.ts`, en `/api/admin`, 5 tests).
+- Todo exige sesión; quien no es superadmin recibe 403.
+- `GET /api/admin` → `{superadmin: true}`. La web lo pregunta al abrir
+  Ajustes la primera vez.
+- `GET /api/admin/users?q=&page=` → páginas de 50, de la más nueva a la más
+  vieja. Solo personas: sin bots (`app`) ni Lila.
+- Por persona: nombre, teléfono, foto, correo y si está verificado, perfil
+  completo, cuándo se unió, última vez, dispositivos por plataforma,
+  espacios activos y quién la invitó.
+- Cifras: personas, nuevas esta semana, activas hoy, perfil completo.
+- Búsqueda por nombre, correo o un trozo del teléfono, escapada.
+- **Nunca** lee chats, mensajes ni agendas: solo `users`, `devices`,
+  `workspacemembers` e `invitations`.
+- Tres rondas a la base por página; sin índices nuevos (la colección es
+  chica). ~0,9 s desde la Mac por el túnel a la bóveda.
+
+**Web** (`web/src/admin/*`, 4 tests; motor en `shared/src/adminUsers.ts`,
+6 tests).
+- Ajustes › «Usuarios de Lilachat», solo para el superadmin → `/admin`.
+- Kicker, título, franja de cifras, buscador con 300 ms de espera, tabla
+  desde `md` y tarjetas con rótulo en el celular. Pie «Mostrando 1–4 de 4»
+  con anterior y siguiente.
+- La búsqueda y la página viven en la dirección (`?q=&page=`).
+- Cargando = esqueleto; error ≠ vacío, con «Reintentar»; 403 lo dice.
+
+**E2E web** (servidor de QA, QA Ana operadora solo en ese proceso).
+- Ajustes mostró el botón; el panel listó 4 personas con sus cifras.
+- «beto» dejó 1 fila y `?q=beto`; al recargar, la búsqueda siguió.
+- A 390 px, tarjetas sin desborde horizontal. «Volver» llevó a los chats.
+- Beto (no operador): `GET /api/admin` = 403.
+- Perfil de Ana restaurado y dispositivo web desvinculado.
+
+**Notas.** Producción tiene hoy 4 personas. José figura con 21 dispositivos
+Android: cada reinstalación de QA registra uno nuevo. Es dato real.
+
 ## 93. «Completa tu perfil»: nombre, cumpleaños y correo verificado (22/10/2026, 0.1.133)
 
 José (21/10): «debe ser obligatorio nombre y fecha de cumple y un email con su

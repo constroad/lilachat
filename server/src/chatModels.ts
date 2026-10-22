@@ -107,6 +107,8 @@ export interface Message {
     /** La onda de una nota de voz (FL9): barras de 0 a 100. */
     onda?: number[];
     mime?: string;
+    /** An animated sticker of my own (pending 37): it plays a while and stops, like the pack's. */
+    animated?: boolean;
     /**
      * El nombre ORIGINAL del archivo y su tamaño.
      *
@@ -264,6 +266,7 @@ const messageSchema = new Schema<Message>(
       height: Number,
       onda: { type: [Number], default: undefined },
       mime: String,
+      animated: Boolean,
           fileName: String,
       sizeBytes: Number,
       durationMs: Number,

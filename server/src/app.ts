@@ -44,6 +44,8 @@ import { buildBotUserRouter } from './bots/botUserRoutes.js';
 import { buildFileViewRouter } from './fileViewRoutes.js';
 import { notifyEdited } from './reparto.js';
 import { requireMinimumBuild, type MinimumSource } from './minimumVersion.js';
+import type { GifConverter, MediaFetcher } from './animatedStickerRoutes.js';
+import { mountAppLinks } from './appLinks.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -80,6 +82,8 @@ export type AppDeps = {
   giphy?: { apiKey?: string; fetchers?: GiphyFetchers };
   /** The minimum app build (LilaStore): below it, 426 (`minimumVersion.ts`). Without it, nothing is checked. */
   minimumBuild?: MinimumSource;
+  /** In tests: the GIF converter and the media reader of the animated stickers (`animatedStickerRoutes.ts`). */
+  animatedStickers?: { convert?: GifConverter; fetchMedia?: MediaFetcher };
 };
 
 /**
@@ -111,7 +115,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api', buildDestacadosRouter());
   app.use('/api', buildActivityRouter());
   app.use('/api', buildFunRouter());
-  app.use('/api', buildStickersRouter(deps.mediaUploader));
+  app.use('/api', buildStickersRouter(deps.mediaUploader, deps.animatedStickers));
   app.use('/api/chats', buildFileViewRouter());
   app.use('/api/chats', buildFijadosRouter());
   app.use('/api/chats', buildReenvioRouter());
@@ -139,6 +143,9 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/respaldos', buildRespaldoRouter());
   app.use('/api/admin', buildAdminRouter());
   app.use('/api/enlaces', buildVistaPreviaRouter(deps.traerVistaPrevia ?? traerVistaPrevia));
+
+  // The join links open the app when it is installed (pending 47): Android reads this before the web.
+  mountAppLinks(app);
 
   // ─── La web (F6) ─────────────────────────────────────────────────────────
   //

@@ -66,3 +66,8 @@ export const ANIMATED_STICKER_PLAY_MS = 8000;
 export function isAnimatedSticker(url: string | null | undefined): boolean {
   return Boolean(url) && url!.includes(`/stickers/${ANIMATED_PACK_ID}/`);
 }
+
+/** The animated pack's, or one of my own made from a GIF (pending 37: its media says `animated`). */
+export function stickerIsAnimated(media: { url?: string | null; animated?: boolean } | null | undefined): boolean {
+  return media?.animated === true || isAnimatedSticker(media?.url);
+}

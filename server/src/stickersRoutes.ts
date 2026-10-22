@@ -9,7 +9,10 @@ import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './med
 import { toClientMessage } from './messageView.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import { notifyThread, publicarMensaje } from './socket.js';
-import { StickerModel, type Sticker } from './stickerModel.js';
+import { StickerModel } from './stickerModel.js';
+import { toClientSticker } from './stickerView.js';
+import { animatedStickerRoutes, fetchStoredMedia, type GifConverter, type MediaFetcher } from './animatedStickerRoutes.js';
+import { gifToAnimatedSticker } from './animatedSticker.js';
 
 /** A static sticker is light (WhatsApp: ~100 KB); room left for a lossless WebP. */
 const MAX_STICKER_BYTES = 512 * 1024;
@@ -19,9 +22,6 @@ const VALID_HOST = /^[a-z0-9.-]+(:\d+)?$/i;
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_STICKER_BYTES + 1 } });
 const asObjectId = (value: unknown) => (Types.ObjectId.isValid(String(value)) ? new Types.ObjectId(String(value)) : null);
 
-function toClientSticker(sticker: Pick<Sticker, '_id' | 'url' | 'mime' | 'width' | 'height' | 'favorite' | 'createdAt'>) {
-  return { id: String(sticker._id), url: toAbsoluteMediaUrl(sticker.url), mime: sticker.mime, width: sticker.width, height: sticker.height, favorite: sticker.favorite, at: sticker.createdAt };
-}
 
 /** Multer cuts an oversized file with an error: answer 413, not 500. */
 const receiveFile = (req: Request, res: Response, next: NextFunction) =>
@@ -39,7 +39,7 @@ function packMedia(req: Request, id: string) {
   return { mediaId: id, url, mime: 'image/webp', width: STICKER_SIZE, height: STICKER_SIZE };
 }
 
-type StickerMedia = { mediaId: string; url: string; mime: string; width: number; height: number };
+type StickerMedia = { mediaId: string; url: string; mime: string; width: number; height: number; animated?: boolean };
 type UserId = Types.ObjectId | string;
 
 /** What a send refers to: one of my stickers or a pack one. */
@@ -48,14 +48,14 @@ async function mediaToSend(req: Request, me: UserId): Promise<StickerMedia | 'ba
   if (findPackSticker(id)) return packMedia(req, id);
   const objectId = asObjectId(id);
   const sticker = objectId ? await StickerModel.findOne({ _id: objectId, userId: me }).lean() : null;
-  return sticker ? { mediaId: sticker.mediaId, url: sticker.url, mime: sticker.mime, width: sticker.width, height: sticker.height } : null;
+  return sticker ? { mediaId: sticker.mediaId, url: sticker.url, mime: sticker.mime, width: sticker.width, height: sticker.height, ...(sticker.animated ? { animated: true } : {}) } : null;
 }
 
 /** Keep a sticker in «Mis stickers» once per file (a received one, or a pack one). */
 const keepSticker = (me: UserId, media: StickerMedia, favorite = false) =>
   StickerModel.findOneAndUpdate(
     { userId: me, mediaId: media.mediaId },
-    { $setOnInsert: { url: media.url, mime: media.mime, width: media.width, height: media.height }, ...(favorite ? { $set: { favorite: true } } : {}) },
+    { $setOnInsert: { url: media.url, mime: media.mime, width: media.width, height: media.height, ...(media.animated ? { animated: true } : {}) }, ...(favorite ? { $set: { favorite: true } } : {}) },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   ).lean();
 
@@ -106,8 +106,8 @@ function keepRoutes(router: Router) {
     if (!chatId || !(await ChatModel.exists({ _id: chatId, 'members.userId': me }))) return res.status(404).json({ message: 'Ese chat no existe.' });
     const message = await MessageModel.findOne({ chatId, seq: Number(req.body?.seq), kind: 'sticker', deletedAt: { $exists: false } }).select('media').lean();
     if (!message?.media?.url || !message.media.mediaId) return res.status(400).json({ message: 'Ese mensaje no es un sticker.' });
-    const { mediaId, url, mime, width, height } = message.media;
-    const sticker = await keepSticker(me, { mediaId, url, mime: mime ?? 'image/webp', width: width ?? STICKER_SIZE, height: height ?? STICKER_SIZE });
+    const { mediaId, url, mime, width, height, animated } = message.media;
+    const sticker = await keepSticker(me, { mediaId, url, mime: mime ?? 'image/webp', width: width ?? STICKER_SIZE, height: height ?? STICKER_SIZE, ...(animated ? { animated: true } : {}) });
     res.status(201).json({ sticker: toClientSticker(sticker!) });
   }));
 
@@ -127,10 +127,11 @@ function keepRoutes(router: Router) {
  * here live «Mis stickers», the default pack and the send, which reuses the
  * file instead of uploading it again. Session per route: mounted on `/api`.
  */
-export function buildStickersRouter(uploader: MediaUploader = buildLilaUploader()): Router {
+export function buildStickersRouter(uploader: MediaUploader = buildLilaUploader(), animated: { convert?: GifConverter; fetchMedia?: MediaFetcher } = {}): Router {
   const router = Router();
   libraryRoutes(router, uploader);
   keepRoutes(router);
+  animatedStickerRoutes(router, { uploader, convert: animated.convert ?? gifToAnimatedSticker, fetchMedia: animated.fetchMedia ?? fetchStoredMedia });
 
   /** A `sticker` message with the SAME file; a retry (same `clientKey`) does not duplicate. */
   router.post('/chats/:chatId/stickers', requireSession, asyncRoute(async (req, res) => {

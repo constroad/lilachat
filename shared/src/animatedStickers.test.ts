@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DANCES } from './winkDances.js';
 import { WINK_ART } from './winkArt.js';
-import { ANIMATED_STICKERS, ANIMATED_STICKER_FPS, animatedStickerFrames, danceAt, isAnimatedSticker } from './animatedStickers.js';
+import { ANIMATED_STICKERS, ANIMATED_STICKER_FPS, animatedStickerFrames, danceAt, isAnimatedSticker, stickerIsAnimated } from './animatedStickers.js';
 import { STICKER_PACKS, findPackSticker } from './stickers.js';
 
 /** Backlog 31 (José, 21/10): stickers with movement, from the same characters and dances as the winks. */
@@ -55,5 +55,15 @@ describe('isAnimatedSticker', () => {
     expect(isAnimatedSticker('https://lilachat.constroad.com/stickers/lila-1/ok.webp')).toBe(false);
     expect(isAnimatedSticker('https://lilachat.constroad.com/media/abc.webp')).toBe(false);
     expect(isAnimatedSticker(undefined)).toBe(false);
+  });
+});
+
+/** Pending 37 (José, 21/10 and 22/10): my own animated stickers stop too. */
+describe('stickerIsAnimated', () => {
+  it('the pack by its address, mine by its flag; a still one is not', () => {
+    expect(stickerIsAnimated({ url: 'https://lilachat.constroad.com/stickers/lila-mov/panda-hug.webp' })).toBe(true);
+    expect(stickerIsAnimated({ url: 'https://storage.test/image-2026.webp', animated: true })).toBe(true);
+    expect(stickerIsAnimated({ url: 'https://storage.test/image-2026.webp' })).toBe(false);
+    expect(stickerIsAnimated(undefined)).toBe(false);
   });
 });

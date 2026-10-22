@@ -14,6 +14,8 @@ export type LibrarySticker = {
   height: number;
   favorite: boolean;
   at: string;
+  /** Made from a GIF (pending 37): an animated WebP that plays a while and stops, like the pack's. */
+  animated?: boolean;
 };
 
 export type StickerSectionKey = 'recent' | 'favorites' | 'mine' | `pack:${string}`;

@@ -24,6 +24,7 @@ export type ClientMessage = Omit<Message, 'media'> & {
     width?: number;
     height?: number;
     onda?: number[];
+    animated?: boolean;
   };
 };
 

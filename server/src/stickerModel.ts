@@ -16,6 +16,8 @@ export interface Sticker {
   width: number;
   height: number;
   favorite: boolean;
+  /** Made from a GIF (pending 37): an animated WebP. */
+  animated?: boolean;
   createdAt: Date;
 }
 
@@ -28,6 +30,7 @@ const stickerSchema = new Schema<Sticker>(
     width: { type: Number, required: true },
     height: { type: Number, required: true },
     favorite: { type: Boolean, default: false },
+    animated: { type: Boolean },
   },
   { versionKey: false, timestamps: { createdAt: true, updatedAt: false } }
 );

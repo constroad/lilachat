@@ -81,10 +81,9 @@ const esArchivoSuelto = (mime?: string): boolean => {
  * **Arranca solo.** Uno toca un video para verlo, no para encontrarse otro
  * botón de play; los controles quedan a mano para pausar.
  *
- * **Y arranca pronto** (José, 21/10: «carga y luego reproduce; WhatsApp
- * reproduce al toque»): empieza con medio segundo de búfer y no con los dos
- * que espera Android, y mientras tanto se ve la portada con un indicador, no
- * una pantalla negra.
+ * **And it starts soon** (José, 21/10: it loaded and then played, WhatsApp
+ * plays at once): half a second of buffer instead of the two Android waits
+ * for, and meanwhile the cover with a spinner, not a black screen.
  */
 function Reproductor({ url, poster }: { url: string; poster?: string }) {
   const player = useVideoPlayer(url, (reproductor) => {

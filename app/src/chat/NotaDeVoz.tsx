@@ -37,9 +37,9 @@ type PropsDeNota = {
  * con diez notas visibles eran diez reproductores y diez descargas peleando
  * con las fotos. Hasta que se toca, es solo la onda y la duración guardadas.
  *
- * **El archivo sí se baja antes** (José, 21/10: «carga y luego reproduce; en
- * WhatsApp reproduce al toque»): una nota a la vista se descarga al teléfono
- * en segundo plano (`voiceNoteCache.ts`), y el play la lee del disco.
+ * **The file IS downloaded ahead** (José, 21/10: it loaded and then played,
+ * WhatsApp plays at once): a note in sight is fetched to the phone in the
+ * background (`voiceNoteCache.ts`), and play reads it from the disk.
  *
  * **No arranca solo.** Un audio que empieza a sonar al aparecer en pantalla es
  * lo peor que puede hacer una app de mensajería: suena en la mesa, en la

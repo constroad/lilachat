@@ -1,9 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View } from 'react-native';
+import type { ComponentProps } from 'react';
 import { EmojiKeyboard, es, useRecentPicksPersistence, type EmojiType } from 'rn-emoji-keyboard';
 import { useColores } from '../ui/tema';
 
 const CLAVE_DE_RECIENTES = 'lilachat.emojis.recientes';
+const CATEGORY_ORDER: NonNullable<ComponentProps<typeof EmojiKeyboard>['categoryOrder']> = ['recently_used', 'smileys_emotion', 'people_body', 'animals_nature', 'food_drink', 'travel_places', 'activities', 'objects', 'symbols', 'flags'];
 
 /** Los recientes sobreviven al cerrar la app, como en WhatsApp. No son secretos: AsyncStorage alcanza. */
 async function leerRecientes() {
@@ -32,10 +34,13 @@ export function PanelDeEmojis({ onElegir }: { onElegir: (emoji: string) => void 
         onEmojiSelected={(emoji: EmojiType) => onElegir(emoji.emoji)}
         translation={es}
         enableRecentlyUsed
+        // The library puts «recently used» LAST; WhatsApp opens on them (José, 22/10).
+        categoryOrder={CATEGORY_ORDER}
         enableSearchBar
         categoryPosition="top"
         disableSafeArea
-        emojiSize={28}
+        // Its columns are width / (2 × size): 28 gave 6 per row, «muy separado»; 22 gives 8, like WhatsApp.
+        emojiSize={22}
         styles={{ container: { borderRadius: 0, shadowOpacity: 0, elevation: 0 } }}
         theme={{
           container: colores.surface,

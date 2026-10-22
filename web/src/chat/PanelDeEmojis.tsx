@@ -1,4 +1,8 @@
+import type { CSSProperties } from 'react';
 import EmojiPicker, { Categories, EmojiStyle, SuggestionMode, Theme } from 'emoji-picker-react';
+
+/** The picker's own spacing variables, smaller: more emojis per row. */
+const TIGHT = { '--epr-emoji-size': '24px', '--epr-emoji-padding': '4px', '--epr-category-label-height': '28px' } as CSSProperties;
 
 /** Las categorías en español, como el panel de la app. */
 const CATEGORIAS = [
@@ -32,6 +36,8 @@ export default function PanelDeEmojis({ onElegir }: { onElegir: (emoji: string) 
       lazyLoadEmojis
       width="100%"
       height={360}
+      // Tighter, like WhatsApp (José, 22/10: «el panel de la lista está muy separado»).
+      style={TIGHT}
       onEmojiClick={(dato) => onElegir(dato.emoji)}
     />
   );

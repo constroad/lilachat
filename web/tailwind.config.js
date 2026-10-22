@@ -28,6 +28,8 @@ const PALETTE = {
   'on-primary': 'onPrimary',
   'chat-bg': 'chatBackground',
   'en-linea': 'online',
+  // Read checks (José, 22/10: in dark mode «read» looked like «delivered»): the app's blue, light and dark.
+  'check-leido': 'readTick',
   warning: 'warning',
   'autor-1': 'author1',
   'autor-2': 'author2',

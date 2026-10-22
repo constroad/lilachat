@@ -1,5 +1,5 @@
-import { BellOff, Pin } from 'lucide-react';
-import { DELIVERY_GLYPH, formatChatTimestamp, resolveChatPreview, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
+import { BellOff, Check, CheckCheck, Clock, Pin } from 'lucide-react';
+import { formatChatTimestamp, resolveChatPreview, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { MenuDeChat } from './MenuDeChat';
 import { useFunInRow } from './nudge';
@@ -95,9 +95,11 @@ function ChecksDeLaFila({ chat, yo, visible }: { chat: ChatSummary; yo?: string;
   const ultimo = chat.lastMessage;
   if (!visible || !yo || !ultimo || ultimo.senderId !== yo || ultimo.kind === 'system' || ultimo.deletedAt) return null;
   const estado = resolveDeliveryState({ seq: ultimo.seq, otherReadSeq: chat.othersReadSeq, otherDeliveredSeq: chat.othersDeliveredSeq });
+  // The app's icons and its read blue (José, 22/10: in dark mode read and delivered looked the same).
+  const Icon = estado === 'pending' ? Clock : estado === 'sent' ? Check : CheckCheck;
   return (
-    <span data-testid={`checks-fila-${estado}`} className={`shrink-0 text-[12px] ${estado === 'read' ? 'text-primary' : 'text-on-surface-variant'}`}>
-      {DELIVERY_GLYPH[estado]}
+    <span data-testid={`checks-fila-${estado}`} className={`inline-flex shrink-0 ${estado === 'read' ? 'text-check-leido' : 'text-on-surface-variant'}`}>
+      <Icon size={15} strokeWidth={2.4} />
     </span>
   );
 }

@@ -1,7 +1,7 @@
 import { LineaDeLlamada } from './LineaDeLlamada';
 import { memo, useContext } from 'react';
-import { AlertCircle, BellRing, CalendarDays, FileText, Lock, Play } from 'lucide-react';
-import { colorDeAutor, DELIVERY_GLYPH, esAvisoDestacado, formatClock, primerEnlace, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
+import { AlertCircle, BellRing, CalendarDays, Check, CheckCheck, Clock, FileText, Lock, Play } from 'lucide-react';
+import { colorDeAutor, esAvisoDestacado, type DeliveryState, formatClock, primerEnlace, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
 import { isAnimatedImage } from '@lilachat/shared';
 import { GifInBubble } from './gifs/GifInBubble';
 import { TarjetaDeEnlace } from './TarjetaDeEnlace';
@@ -273,11 +273,19 @@ function MessageFooter({ mensaje, mio, chat, inline = false }: { mensaje: Mensaj
       {destacado ? <span data-testid={`destacado-${mensaje.clientKey}`} className="mr-1 text-primary">★</span> : null}
       {mensaje.editedAt && !mensaje.deletedAt ? 'Editado · ' : ''}
       {formatClock(mensaje.at)}
-      {mio ? (
-        <span data-testid={`entrega-${estado}`} className={`ml-1 ${estado === 'read' ? 'text-primary' : ''}`}>
-          {DELIVERY_GLYPH[estado]}
-        </span>
-      ) : null}
+      {/* The app's icons, right next to the time (José, 22/10: the «✓✓» text sat apart, and read was not visible in dark mode). */}
+      {mio ? <DeliveryIcon estado={estado} /> : null}
+    </span>
+  );
+}
+
+const DELIVERY_LABEL: Record<DeliveryState, string> = { pending: 'Enviando', sent: 'Enviado', delivered: 'Entregado', read: 'Leído' };
+
+function DeliveryIcon({ estado }: { estado: DeliveryState }) {
+  const Icon = estado === 'pending' ? Clock : estado === 'sent' ? Check : CheckCheck;
+  return (
+    <span data-testid={`entrega-${estado}`} role="img" aria-label={DELIVERY_LABEL[estado]} title={DELIVERY_LABEL[estado]} className={`ml-0.5 inline-flex align-[-2px] ${estado === 'read' ? 'text-check-leido' : ''}`}>
+      <Icon size={14} strokeWidth={2.4} />
     </span>
   );
 }

@@ -12,6 +12,8 @@ export const previewSpace = (jwt: string, code: string) => jsonCall<WorkspacePre
 export const joinSpace = (jwt: string, code: string) => jsonCall<{ workspaceId: string; status: WorkspaceMemberStatus }>(url('/join'), jwt, post({ code }));
 export const createSpace = (jwt: string, input: { name: string; rubro?: string; joinPolicy: JoinPolicy }) => jsonCall<{ workspace: ClientWorkspace }>(url(''), jwt, post(input));
 export const addToSpace = (jwt: string, spaceId: string, phone: string) => jsonCall<{ member: { id: string; status: WorkspaceMemberStatus } }>(url(`/${spaceId}/members`), jwt, post({ phone }));
+/** A company invites by email (22/10): `active` if a verified account owns it, otherwise `invited` until that email is verified. */
+export const inviteToSpaceByEmail = (jwt: string, spaceId: string, email: string) => jsonCall<{ id: string; email: string; status: 'active' | 'invited' }>(url(`/${spaceId}/invites`), jwt, post({ email }));
 
 export const spaceChannels = (jwt: string, spaceId: string) => jsonCall<{ channels: ClientChannel[] }>(url(`/${spaceId}/channels`), jwt);
 export const createChannel = (jwt: string, spaceId: string, input: { name: string; descripcion?: string; visibility: 'public' | 'private' }) => jsonCall<{ channel: ClientChannel }>(url(`/${spaceId}/channels`), jwt, post(input));
@@ -26,13 +28,15 @@ export async function spaceChats(jwt: string, spaceId: string) {
 export const leaveSpace = (jwt: string, spaceId: string) => jsonCall<Record<string, never>>(url(`/${spaceId}/leave`), jwt, post({}));
 
 /** The people of a space (designs `e1-08`, `e1-10`, `e1-11`): active for everyone; pending and deactivated for admins. */
-export const spaceMembers = (jwt: string, spaceId: string, status: 'active' | 'pending' | 'deactivated' = 'active') =>
+export const spaceMembers = (jwt: string, spaceId: string, status: 'active' | 'pending' | 'invited' | 'deactivated' = 'active') =>
   jsonCall<{ members: ClientWorkspaceMember[] }>(url(`/${spaceId}/members?status=${status}`), jwt);
 /** Approve (with area and title), change the role, deactivate or reactivate. */
 export const changeMember = (jwt: string, spaceId: string, memberId: string, change: { status?: 'active' | 'deactivated'; role?: WorkspaceRole; title?: string; area?: string }) =>
   jsonCall<{ member: ClientWorkspaceMember }>(url(`/${spaceId}/members/${memberId}`), jwt, { method: 'PATCH', body: JSON.stringify(change) });
 /** «Rechazar» a request: it goes away (design `e1-11`). */
 export const rejectRequest = (jwt: string, spaceId: string, memberId: string) => jsonCall<Record<string, never>>(url(`/${spaceId}/members/${memberId}`), jwt, { method: 'DELETE' });
+/** Withdraws an email invitation (22/10). */
+export const revokeSpaceInvite = (jwt: string, spaceId: string, inviteId: string) => jsonCall<Record<string, never>>(url(`/${spaceId}/invites/${inviteId}`), jwt, { method: 'DELETE' });
 /** «Ajustes del espacio» (design `e1-12`): name, trade, approval, and a new code. */
 export const updateSpace = (jwt: string, spaceId: string, change: { name?: string; rubro?: string; joinPolicy?: JoinPolicy; newCode?: boolean }) =>
   jsonCall<{ workspace: ClientWorkspace }>(url(`/${spaceId}`), jwt, { method: 'PATCH', body: JSON.stringify(change) });

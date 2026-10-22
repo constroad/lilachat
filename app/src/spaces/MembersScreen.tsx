@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { ArrowLeft, MoreVertical, Search, UserPlus } from 'lucide-react-native';
+import { ArrowLeft, MoreVertical, Search, UserPlus, X } from 'lucide-react-native';
 import { changeForAction, filterMembers, formatPhoneDisplay, memberActions, type ClientWorkspace, type ClientWorkspaceMember, type MemberAction } from '@lilachat/shared';
 import { Modal } from '../ui/Modal';
 import { Segmentado } from '../ui/Segmentado';
@@ -11,9 +11,9 @@ import { SpaceLogo } from './SpaceSwitcherSheet';
 import { MemberAvatar, memberLine, memberName, OnlinePill, RolePill } from './memberUi';
 import { MemberActionsSheet } from './MemberActionsSheet';
 import { RequestCard } from './RequestCard';
-import { changeMember, rejectRequest, spaceMembers } from './spacesApi';
+import { changeMember, rejectRequest, revokeSpaceInvite, spaceMembers } from './spacesApi';
 
-export type MembersTab = 'active' | 'pending' | 'deactivated';
+export type MembersTab = 'active' | 'pending' | 'invited' | 'deactivated';
 type Lists = Record<MembersTab, ClientWorkspaceMember[]>;
 
 /**
@@ -36,8 +36,8 @@ export function MembersScreen(props: { space: ClientWorkspace; jwt: string; myUs
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
-    const [active, pending, deactivated] = await Promise.all((['active', 'pending', 'deactivated'] as const).map((status) => spaceMembers(jwt, space.id, status)));
-    if (active?.ok && pending?.ok && deactivated?.ok) setLists({ active: active.data.members, pending: pending.data.members, deactivated: deactivated.data.members });
+    const [active, pending, invited, deactivated] = await Promise.all((['active', 'pending', 'invited', 'deactivated'] as const).map((status) => spaceMembers(jwt, space.id, status)));
+    if (active?.ok && pending?.ok && invited?.ok && deactivated?.ok) setLists({ active: active.data.members, pending: pending.data.members, invited: invited.data.members, deactivated: deactivated.data.members });
     else setError('No se pudieron cargar los miembros.');
   }, [jwt, space.id]);
   useEffect(() => {
@@ -86,6 +86,7 @@ export function MembersScreen(props: { space: ClientWorkspace; jwt: string; myUs
             opciones={[
               { key: 'active', etiqueta: 'Activos', testID: 'tab-activos', cuenta: lists?.active.length },
               { key: 'pending', etiqueta: 'Pendientes', testID: 'tab-pendientes', cuenta: lists?.pending.length },
+              { key: 'invited', etiqueta: 'Invitados', testID: 'tab-invitados', cuenta: lists?.invited.length },
               { key: 'deactivated', etiqueta: 'Desactivados', testID: 'tab-desactivados', cuenta: lists?.deactivated.length },
             ]}
             valor={tab}
@@ -101,7 +102,7 @@ export function MembersScreen(props: { space: ClientWorkspace; jwt: string; myUs
           )}
           {error ? <Text testID="error-miembros" className="mt-3 text-[13px] text-error">{error}</Text> : null}
           {lists === null && !error ? [0, 1, 2].map((index) => <View key={index} className="mt-3 h-20 rounded-2xl bg-surface-variant" />) : null}
-          {lists !== null && shown.length === 0 ? <Text className="mt-6 text-center text-[14px] text-on-surface-variant">{tab === 'pending' ? 'No hay solicitudes por aprobar.' : tab === 'deactivated' ? 'Nadie está desactivado.' : 'Nadie coincide con la búsqueda.'}</Text> : null}
+          {lists !== null && shown.length === 0 ? <Text className="mt-6 text-center text-[14px] text-on-surface-variant">{tab === 'pending' ? 'No hay solicitudes por aprobar.' : tab === 'deactivated' ? 'Nadie está desactivado.' : tab === 'invited' ? 'No hay invitaciones esperando.' : 'Nadie coincide con la búsqueda.'}</Text> : null}
           {tab === 'pending'
             ? shown.map((request) => (
                 <RequestCard
@@ -115,20 +116,27 @@ export function MembersScreen(props: { space: ClientWorkspace; jwt: string; myUs
                 />
               ))
             : shown.map((member) => {
-                const actions = me && member.userId !== props.myUserId ? memberActions({ actor: me.role, target: member }) : [];
+                // An email invitation (22/10) is not a member yet: it can only be withdrawn.
+                const byEmail = !member.phone && Boolean(member.email);
+                const actions = me && !byEmail && member.userId !== props.myUserId ? memberActions({ actor: me.role, target: member }) : [];
                 const isOnline = Boolean(member.userId && online.has(member.userId));
                 return (
-                  <View key={member.id} testID={`fila-miembro-${member.phone}`} className="mt-3 flex-row items-center gap-3 rounded-2xl border border-outline/15 bg-surface p-3">
+                  <View key={member.id} testID={`fila-miembro-${member.phone ?? member.email}`} className="mt-3 flex-row items-center gap-3 rounded-2xl border border-outline/15 bg-surface p-3">
                     <MemberAvatar member={member} size={48} online={isOnline} />
                     <View className="min-w-0 flex-1">
                       <Text numberOfLines={1} className="text-[16px] font-bold text-on-surface">{memberName(member)}{member.userId === props.myUserId ? ' (Tú)' : ''}</Text>
                       {memberLine(member) ? <Text numberOfLines={1} className="text-[13px] text-on-surface-variant">{memberLine(member)}</Text> : null}
-                      <Text className="font-mono text-[13px] text-on-surface">{formatPhoneDisplay(member.phone)}</Text>
+                      <Text className="font-mono text-[13px] text-on-surface">{byEmail ? 'Invitado por correo' : formatPhoneDisplay(member.phone)}</Text>
                     </View>
                     <View className="items-end gap-1.5">
                       <RolePill role={member.role} />
                       {isOnline ? <OnlinePill /> : null}
                     </View>
+                    {byEmail ? (
+                      <Pressable testID={`retirar-${member.email}`} onPress={() => void after(revokeSpaceInvite(jwt, space.id, member.id))} accessibilityLabel={`Retirar la invitación de ${member.email}`} className="h-11 w-11 items-center justify-center">
+                        <X size={20} color={colors['on-surface-variant']} />
+                      </Pressable>
+                    ) : null}
                     {actions.length ? (
                       <Pressable testID={`acciones-${member.phone}`} onPress={() => setActing(member)} accessibilityLabel={`Cambiar rol o acceso de ${memberName(member)}`} className="h-11 w-9 items-center justify-center">
                         <MoreVertical size={20} color={colors['on-surface-variant']} />

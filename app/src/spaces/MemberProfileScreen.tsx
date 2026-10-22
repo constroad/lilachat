@@ -23,7 +23,7 @@ export function MemberProfileScreen(props: { space: ClientWorkspace; member: Cli
   const { member } = props;
   const isOnline = Boolean(member.userId && online.has(member.userId));
   const copyPhone = async () => {
-    await Clipboard.setStringAsync(member.phone);
+    await Clipboard.setStringAsync(member.phone ?? "");
     ToastAndroid.show('Teléfono copiado', ToastAndroid.SHORT);
   };
   const row = (Icon: typeof Smartphone, label: string, value: string, action?: ReactNode) => (

@@ -8,17 +8,18 @@ import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
 import { useMargenes } from '../ui/useMargenes';
 import { SpaceLogo } from './SpaceSwitcherSheet';
-import { addToSpace } from './spacesApi';
+import { addToSpace, inviteToSpaceByEmail } from './spacesApi';
 
 /** A Peruvian mobile, as the server keeps it: nine digits. */
 const PHONE_DIGITS = 9;
 
 /**
- * «Invitar personas» (E1; design `e1-05-invitar`): the space's code sent by
- * email first — a company invites by email (José, 21/10) — then by WhatsApp
- * or copied, and adding someone by number — in at once if they already use
- * Lilachat, otherwise invited until they sign up with it. Only those who can
- * invite see the code.
+ * «Invitar personas» (E1; design `e1-05-invitar`). A company invites by email
+ * first (José, 21/10 and 22/10): the server keeps the invitation and the
+ * person joins on their own when they verify that email in their profile (one
+ * account per person, the phone); the mail goes from the inviter's own mail
+ * app. Then the code by WhatsApp or copied, and adding someone by number. Only
+ * those who can invite see these.
  */
 export function InviteToSpaceScreen(props: { space: ClientWorkspace | null; jwt: string; inviterName?: string; onClose: () => void }) {
   const colors = useColores();
@@ -27,12 +28,18 @@ export function InviteToSpaceScreen(props: { space: ClientWorkspace | null; jwt:
   const [phone, setPhone] = useState('');
   const [added, setAdded] = useState<{ phone: string; status: string }[]>([]);
   const [error, setError] = useState('');
+  const [email, setEmail] = useState('');
+  const [emailed, setEmailed] = useState<{ email: string; status: string }[]>([]);
+  const [emailError, setEmailError] = useState('');
   const digits = phone.replace(/\D/g, '');
 
   useEffect(() => {
     setPhone('');
     setAdded([]);
     setError('');
+    setEmail('');
+    setEmailed([]);
+    setEmailError('');
   }, [space?.id]);
 
   if (!space) return null;
@@ -42,9 +49,9 @@ export function InviteToSpaceScreen(props: { space: ClientWorkspace | null; jwt:
     await Clipboard.setStringAsync(space.joinCode);
     ToastAndroid.show('Código copiado', ToastAndroid.SHORT);
   };
-  const sendByEmail = async () => {
+  const sendByEmail = async (to: string) => {
     if (!space.joinCode) return;
-    const invitation = { spaceName: space.name, code: space.joinCode, inviterName: props.inviterName };
+    const invitation = { spaceName: space.name, code: space.joinCode, inviterName: props.inviterName, to };
     const opened = await Linking.openURL(spaceInviteMailto(invitation)).then(() => true, () => false);
     // No mail app: the share sheet still lets it go by Gmail, Outlook or anything else.
     if (!opened) {
@@ -55,6 +62,17 @@ export function InviteToSpaceScreen(props: { space: ClientWorkspace | null; jwt:
   const sendByWhatsApp = async () => {
     const opened = await Linking.openURL(`whatsapp://send?text=${encodeURIComponent(message)}`).then(() => true, () => false);
     if (!opened) await Share.share({ message, title: `Invitar a ${space.name}` });
+  };
+  const inviteByEmail = async () => {
+    const wanted = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(wanted)) return setEmailError('Escribe un correo válido.');
+    const response = await inviteToSpaceByEmail(props.jwt, space.id, wanted);
+    if (!response.ok) return setEmailError(response.message ?? 'No se pudo invitar.');
+    setEmailed((before) => [{ email: response.data.email, status: response.data.status }, ...before.filter((one) => one.email !== response.data.email)]);
+    setEmail('');
+    setEmailError('');
+    // Already a member: no mail needed. Otherwise the mail goes from their own app, addressed to that email.
+    if (response.data.status === 'invited') await sendByEmail(response.data.email);
   };
   const add = async () => {
     if (digits.length !== PHONE_DIGITS) return setError('Escribe los 9 dígitos del celular.');
@@ -78,21 +96,40 @@ export function InviteToSpaceScreen(props: { space: ClientWorkspace | null; jwt:
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: margins.pie + 24 }} keyboardShouldPersistTaps="handled">
           <Text className="text-[12px] font-bold uppercase tracking-widest text-on-surface-variant">{space.name}</Text>
           <Text className="mt-1 text-[26px] font-bold text-on-surface">Invitar personas</Text>
-          <Text className="mt-1 text-[15px] text-on-surface-variant">Envía el código por correo o WhatsApp, o agrega a tu equipo por su número.</Text>
+          <Text className="mt-1 text-[15px] text-on-surface-variant">Invita por correo, envía el código por WhatsApp o agrega a tu equipo por su número.</Text>
           {space.joinCode ? (
-            <View testID="tarjeta-codigo-espacio" className="mt-5 overflow-hidden rounded-2xl border border-outline/15 bg-surface">
+            <View testID="tarjeta-invitar-correo" className="mt-5 overflow-hidden rounded-2xl border border-outline/15 bg-surface">
               <View className="h-[3px] bg-primary" />
+              <View className="p-4">
+                <Text className="text-[12px] font-bold uppercase tracking-widest text-on-surface-variant">Invitar por correo</Text>
+                <Text className="mt-1 text-[14px] text-on-surface-variant">Entra solo al espacio cuando verifique ese correo en su perfil de Lilachat.</Text>
+                <View className="mt-3 flex-row gap-3">
+                  <TextInput testID="input-correo-espacio" value={email} onChangeText={(value) => { setEmail(value); setEmailError(''); }} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} placeholder="nombre@empresa.pe" placeholderTextColor={colors['on-surface-variant']} className="min-h-[52px] flex-1 rounded-xl border border-outline/25 px-3 text-[16px] text-on-surface" />
+                  <Pressable testID="btn-invitar-correo" onPress={() => void inviteByEmail()} className="min-h-[52px] flex-row items-center justify-center gap-2 rounded-xl bg-primary px-4">
+                    <Mail size={18} color={colors['on-primary']} />
+                    <Text className="text-[16px] font-bold text-on-primary">Invitar</Text>
+                  </Pressable>
+                </View>
+                {emailError ? <Text testID="error-invitar-correo" className="mt-2 text-[13px] text-error">{emailError}</Text> : null}
+                {emailed.map((one) => (
+                  <View key={one.email} testID={`invitado-correo-${one.email}`} className="mt-3 min-h-[48px] flex-row items-center gap-3 border-t border-outline/10 pt-2">
+                    <Mail size={18} color={colors['on-surface-variant']} />
+                    <Text numberOfLines={1} className="flex-1 text-[15px] text-on-surface">{one.email}</Text>
+                    <Text className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${one.status === 'active' ? 'border-en-linea/40 bg-en-linea/10 text-en-linea' : 'border-primary/30 bg-primary/10 text-primary'}`}>{one.status === 'active' ? 'AGREGADO' : 'INVITADO'}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+          {space.joinCode ? (
+            <View testID="tarjeta-codigo-espacio" className="mt-4 overflow-hidden rounded-2xl border border-outline/15 bg-surface">
               <View className="p-4">
                 <View className="flex-row items-center justify-between">
                   <Text className="text-[12px] font-bold uppercase tracking-widest text-on-surface-variant">Código del espacio</Text>
                   <Text className="rounded-full border border-en-linea/40 bg-en-linea/10 px-2 py-0.5 text-[11px] font-bold text-en-linea">ACTIVO</Text>
                 </View>
                 <Text testID="codigo-espacio" selectable className="my-4 text-center font-mono text-[34px] font-bold tracking-[6px] text-on-surface">{space.joinCode}</Text>
-                <Pressable testID="btn-correo-codigo" onPress={() => void sendByEmail()} className="min-h-[52px] flex-row items-center justify-center gap-2 rounded-xl bg-primary">
-                  <Mail size={18} color={colors['on-primary']} />
-                  <Text className="text-[16px] font-bold text-on-primary">Enviar por correo</Text>
-                </Pressable>
-                <View className="mt-3 flex-row gap-3">
+                <View className="flex-row gap-3">
                   <Pressable testID="btn-whatsapp-codigo" onPress={() => void sendByWhatsApp()} className="min-h-[48px] flex-1 flex-row items-center justify-center gap-2 rounded-xl border border-outline/20">
                     <Share2 size={18} color={colors['en-linea']} />
                     <Text className="text-[15px] font-semibold text-on-surface">WhatsApp</Text>

@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Smile, Sparkles, Sticker } from 'lucide-react';
+import { ImagePlay, Smile, Sparkles, Sticker } from 'lucide-react';
 import type { WinkId } from '@lilachat/shared';
 import { WinkPanel } from '../WinkPanel';
+import { GifPanel } from '../gifs/GifPanel';
+import { useGifsAvailable } from '../gifs/gifsApi';
 import PanelDeEmojis from '../PanelDeEmojis';
 import { StickerPanel } from './StickerPanel';
 import { CreateStickerWeb } from './CreateStickerWeb';
@@ -18,9 +20,12 @@ export type StickerChat = { jwt: string; me: string; chatId: string; chatName: s
  * only Emoji is left. Loaded when opened (`lazy` in the Composer).
  */
 export default function EmojiStickerPanel({ onPickEmoji, chat, winks }: { onPickEmoji: (emoji: string) => void; chat?: StickerChat; winks?: { recipient: string; onSend: (wink: WinkId) => void; onNudge?: () => void } }) {
+  // GIPHY only when the server has its key (backlog 37); never in a secret chat (no `chat`).
+  const gifs = useGifsAvailable(chat?.jwt) && Boolean(chat);
   const tabs: { key: PanelTab; label: string; Icon: typeof Smile }[] = [
     { key: 'emoji', label: 'Emoji', Icon: Smile },
     ...(chat ? [{ key: 'stickers' as const, label: 'Stickers', Icon: Sticker }] : []),
+    ...(gifs ? [{ key: 'gifs' as const, label: 'GIF', Icon: ImagePlay }] : []),
     ...(winks ? [{ key: 'winks' as const, label: 'Guiños', Icon: Sparkles }] : []),
   ];
   // It opens on the tab used last (José, 21/10), if this chat offers it.
@@ -40,7 +45,7 @@ export default function EmojiStickerPanel({ onPickEmoji, chat, winks }: { onPick
           ))}
         </div>
       ) : null}
-      {tab === 'stickers' && chat ? <Stickers chat={chat} /> : tab === 'winks' && winks ? <WinkPanel recipient={winks.recipient} onSend={winks.onSend} onNudge={winks.onNudge} /> : <PanelDeEmojis onElegir={onPickEmoji} />}
+      {tab === 'stickers' && chat ? <Stickers chat={chat} /> : tab === 'gifs' && chat ? <div className="h-80"><GifPanel jwt={chat.jwt} chatId={chat.chatId} /></div> : tab === 'winks' && winks ? <WinkPanel recipient={winks.recipient} onSend={winks.onSend} onNudge={winks.onNudge} /> : <PanelDeEmojis onElegir={onPickEmoji} />}
     </div>
   );
 }

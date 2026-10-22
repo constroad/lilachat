@@ -2,6 +2,8 @@ import { LineaDeLlamada } from './LineaDeLlamada';
 import { memo, useContext } from 'react';
 import { AlertCircle, BellRing, CalendarDays, FileText, Lock, Play } from 'lucide-react';
 import { colorDeAutor, DELIVERY_GLYPH, esAvisoDestacado, formatClock, primerEnlace, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
+import { isAnimatedImage } from '@lilachat/shared';
+import { GifInBubble } from './gifs/GifInBubble';
 import { TarjetaDeEnlace } from './TarjetaDeEnlace';
 import { NotaDeVoz } from './NotaDeVoz';
 import { useVistaPrevia } from './useVistaPrevia';
@@ -220,7 +222,9 @@ function ContenidoDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio
   const esImagen = Boolean(media?.url && (media.mime?.startsWith('image/') || media.thumbUrl));
   return (
     <>
-      {media?.url && esImagen ? (
+      {media?.url && isAnimatedImage(media.mime) && !mensaje.estado ? (
+        <GifInBubble testId={`gif-${mensaje.clientKey}`} url={media.url} alt={mensaje.body ?? 'GIF'} width={media.width} height={media.height} onOpen={() => onVerFoto(mensaje)} />
+      ) : media?.url && esImagen ? (
         <button type="button" data-testid={`foto-${mensaje.clientKey}`} onClick={() => !mensaje.estado && onVerFoto(mensaje)} className="relative block w-full">
           <img
             src={media.thumbUrl || media.url}

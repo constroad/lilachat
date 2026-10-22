@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { armarLista, ordenarParaLaLista } from './listaDeChats';
+import { buildChatList, ordenarParaLaLista } from './listaDeChats';
 import type { ChatSummary } from './types';
 
 const chat = (id: string, at: string | null, extra: Partial<ChatSummary> = {}): ChatSummary => ({
@@ -31,7 +31,7 @@ describe('ordenarParaLaLista', () => {
   });
 });
 
-describe('armarLista (W3)', () => {
+describe('buildChatList (W3)', () => {
   const base = (id: string, extra: Partial<ChatSummary> = {}): ChatSummary => ({
     id,
     kind: 'direct',
@@ -53,32 +53,32 @@ describe('armarLista (W3)', () => {
   ];
 
   it('la principal: sin archivados, fijados arriba, y las cuentas de cada chip', () => {
-    const lista = armarLista({ chats, filtro: 'todos', texto: '', verArchivados: false });
-    expect(lista.visibles.map((chat) => chat.id)[0]).toBe('Familia');
-    expect(lista.visibles.map((chat) => chat.id)).not.toContain('Viejo');
-    expect(lista.cuentas).toEqual({ 'no-leidos': 2, grupos: 1, borradores: 1 });
-    expect(lista.archivados).toEqual({ total: 1, sinLeer: 1 });
+    const listed = buildChatList({ chats, filtro: 'todos', texto: '', verArchivados: false });
+    expect(listed.visibles.map((chat) => chat.id)[0]).toBe('Familia');
+    expect(listed.visibles.map((chat) => chat.id)).not.toContain('Viejo');
+    expect(listed.cuentas).toEqual({ 'no-leidos': 2, grupos: 1, borradores: 1 });
+    expect(listed.archivados).toEqual({ total: 1, sinLeer: 1 });
   });
 
   it('los chips filtran y la búsqueda ignora tildes y mira el último mensaje', () => {
-    expect(armarLista({ chats, filtro: 'no-leidos', texto: '', verArchivados: false }).visibles.map((chat) => chat.id)).toEqual(['Ana', 'José']);
-    expect(armarLista({ chats, filtro: 'borradores', texto: '', verArchivados: false }).visibles.map((chat) => chat.id)).toEqual(['Ideas']);
-    expect(armarLista({ chats, filtro: 'todos', texto: 'jose', verArchivados: false }).visibles.map((chat) => chat.id)).toEqual(['José']);
-    expect(armarLista({ chats, filtro: 'todos', texto: 'desde ana', verArchivados: false }).visibles.map((chat) => chat.id)).toEqual(['Ana']);
+    expect(buildChatList({ chats, filtro: 'no-leidos', texto: '', verArchivados: false }).visibles.map((chat) => chat.id)).toEqual(['Ana', 'José']);
+    expect(buildChatList({ chats, filtro: 'borradores', texto: '', verArchivados: false }).visibles.map((chat) => chat.id)).toEqual(['Ideas']);
+    expect(buildChatList({ chats, filtro: 'todos', texto: 'jose', verArchivados: false }).visibles.map((chat) => chat.id)).toEqual(['José']);
+    expect(buildChatList({ chats, filtro: 'todos', texto: 'desde ana', verArchivados: false }).visibles.map((chat) => chat.id)).toEqual(['Ana']);
   });
 
   it('«Archivados» muestra solo esos, sin chips', () => {
-    const lista = armarLista({ chats, filtro: 'grupos', texto: '', verArchivados: true });
-    expect(lista.visibles.map((chat) => chat.id)).toEqual(['Viejo']);
+    const listed = buildChatList({ chats, filtro: 'grupos', texto: '', verArchivados: true });
+    expect(listed.visibles.map((chat) => chat.id)).toEqual(['Viejo']);
   });
 });
 
-describe('armarLista with a list of my own (pending 45)', () => {
+describe('buildChatList with a list of my own (pending 45)', () => {
   it('a list chip shows only the chats of that list, in the usual order', () => {
     // Arrange
     const chats = [chat('a', '2026-10-18T10:00:00.000Z'), chat('b', '2026-10-19T10:00:00.000Z'), chat('c', '2026-10-20T10:00:00.000Z')];
     // Act
-    const built = armarLista({ chats, filtro: 'lista:family', texto: '', verArchivados: false, lista: new Set(['a', 'c']) });
+    const built = buildChatList({ chats, filtro: 'lista:family', texto: '', verArchivados: false, lista: new Set(['a', 'c']) });
     // Assert
     expect(built.visibles.map((one) => one.id)).toEqual(['c', 'a']);
   });

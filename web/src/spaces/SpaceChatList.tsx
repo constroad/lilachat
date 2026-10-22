@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react';
 import { Archive, AtSign, ChevronDown, ChevronRight, Copy, Hash, Inbox, Lock, MessagesSquare, PanelLeftClose, Plus, Search, Settings, Settings2, UserCog, UserPlus, Users, type LucideIcon } from 'lucide-react';
 import { canManageMembers, formatChatTimestamp, membersLabel, spaceSections, spaceSubtitle, splitArchived, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
-import { FilaDeChat } from '../chat/FilaDeChat';
+import { ChatRow } from '../chat/FilaDeChat';
 import { copiarTexto } from '../chat/copiarTexto';
-import type { AccionDelChat } from '../chat/menuDelChat';
+import type { ChatAction } from '../chat/menuDelChat';
 import type { ChatSummary } from '../chat/types';
 import { SpaceLogo } from './SpaceLogo';
 import { PendingMarker } from '../chat/queue/PendingMarker';
@@ -21,7 +21,7 @@ type Props = {
   me: { name?: string | null; phone: string };
   selectedChatId: string | null;
   onOpenChat: (chat: ChatSummary) => void;
-  onAccion: (chat: ChatSummary, accion: AccionDelChat) => void;
+  onAccion: (chat: ChatSummary, accion: ChatAction) => void;
   onSwitch: () => void;
   onChannels: () => void;
   onInvite: () => void;
@@ -131,7 +131,7 @@ export function SpaceChatList(props: Props) {
                       section.key === 'channels' ? (
                         <ChannelRow key={chat.id} chat={chat} open={chat.id === props.selectedChatId} onOpen={() => props.onOpenChat(chat)} />
                       ) : (
-                        <FilaDeChat key={chat.id} chat={chat} yo={props.yo} seleccionado={chat.id === props.selectedChatId} onSelect={() => props.onOpenChat(chat)} onAccion={props.onAccion} />
+                        <ChatRow key={chat.id} chat={chat} yo={props.yo} seleccionado={chat.id === props.selectedChatId} onSelect={() => props.onOpenChat(chat)} onAccion={props.onAccion} />
                       )
                     )}
                 {section.key === 'channels' && !folded.has('channels') ? (

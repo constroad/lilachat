@@ -7,11 +7,11 @@ import type { ChatSummary } from './types';
  * decide el MISMO motor que la selección múltiple de la app
  * (`accionesDeSeleccion`), aplicado a un solo chat.
  */
-export type AccionDelChat = 'archivar' | 'desarchivar' | 'silenciar' | 'reactivar' | 'fijar' | 'desfijar' | 'lista' | 'leido' | 'no-leido' | 'salir' | 'eliminar';
-export type OpcionDelMenu = { accion: AccionDelChat; etiqueta: string; peligro?: boolean };
+export type ChatAction = 'archivar' | 'desarchivar' | 'silenciar' | 'reactivar' | 'fijar' | 'desfijar' | 'lista' | 'leido' | 'no-leido' | 'salir' | 'eliminar';
+export type ChatMenuOption = { accion: ChatAction; etiqueta: string; peligro?: boolean };
 export type CambiosDeAjustes = { archived?: boolean; muted?: boolean; pinned?: boolean; markedUnread?: boolean };
 
-const ETIQUETAS: Record<AccionDelChat, string> = {
+const ETIQUETAS: Record<ChatAction, string> = {
   archivar: 'Archivar chat',
   desarchivar: 'Desarchivar chat',
   silenciar: 'Silenciar notificaciones',
@@ -25,7 +25,7 @@ const ETIQUETAS: Record<AccionDelChat, string> = {
   eliminar: 'Eliminar chat',
 };
 
-export function opcionesDelMenuDeChat(chat: ChatSummary): OpcionDelMenu[] {
+export function chatMenuOptions(chat: ChatSummary): ChatMenuOption[] {
   const posibles = accionesDeSeleccion([
     {
       id: chat.id,
@@ -38,7 +38,7 @@ export function opcionesDelMenuDeChat(chat: ChatSummary): OpcionDelMenu[] {
       marcadoNoLeido: chat.markedUnread,
     },
   ]);
-  const acciones: (AccionDelChat | null)[] = [
+  const acciones: (ChatAction | null)[] = [
     posibles.archivar,
     // Un borrador es solo tuyo: nunca suena, no hay qué silenciar.
     chat.kind === 'notas' ? null : posibles.silenciar,
@@ -50,12 +50,12 @@ export function opcionesDelMenuDeChat(chat: ChatSummary): OpcionDelMenu[] {
     posibles.eliminar ? 'eliminar' : null,
   ];
   return acciones
-    .filter((accion): accion is AccionDelChat => accion !== null)
+    .filter((accion): accion is ChatAction => accion !== null)
     .map((accion) => ({ accion, etiqueta: ETIQUETAS[accion], ...(accion === 'salir' || accion === 'eliminar' ? { peligro: true } : {}) }));
 }
 
 /** Lo que manda `PATCH /chats/:id/ajustes`; `null` para lo que no es un ajuste. Archivar desfija, como WhatsApp. */
-export function cambiosDeAjustes(accion: AccionDelChat): CambiosDeAjustes | null {
+export function cambiosDeAjustes(accion: ChatAction): CambiosDeAjustes | null {
   switch (accion) {
     case 'archivar':
       return { archived: true, pinned: false };

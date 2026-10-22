@@ -141,7 +141,8 @@ function FilaDeMensaje({
   if (drawsAsFunLine(item) && !isPending(item) && item.kind === 'zumbido') return <NudgeLine seq={item.seq} mine={item.senderId === myUserId} author={nombreAutor} at={item.at} />;
   if (drawsAsFunLine(item) && !isPending(item) && item.kind === 'guino') return <WinkLine seq={item.seq} wink={item.wink} mine={item.senderId === myUserId} author={nombreAutor} at={item.at} />;
   // La encuesta o el evento publicados en el chat (18/10): una tarjeta para
-  // votar o confirmar, no una burbuja de texto. Borrado para todos, es un mensaje borrado.
+  // votar o confirmar, no una burbuja de texto.
+  // Deleted for everyone, it is a deleted message (22/10).
   if (drawsAsCard(item) && !isPending(item) && jwt) {
     return (
       <TarjetaDelChat

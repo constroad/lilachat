@@ -2,7 +2,7 @@ import type { NotificationLevel } from '@lilachat/shared';
 import { alreadyGreeted } from '@lilachat/shared';
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { PanelDeInfo } from './info/PanelDeInfo';
-import type { AccionDelChat } from './menuDelChat';
+import type { ChatAction } from './menuDelChat';
 import { fijadosVigentes, puedeFijarEnElChat } from '@lilachat/shared';
 import { DialogoFijar } from './DialogoFijar';
 import { FranjaDeFijados } from './FranjaDeFijados';
@@ -59,7 +59,7 @@ export function ConversacionConAcciones(
     /** Los fijados viajan con la lista: tras fijar o desfijar se relee. */
     onRecargarChats: () => void;
     /** Silenciar, salir o eliminar desde «Info.» (W3b): las mismas acciones de la lista. */
-    onAccionDeChat: (chat: ChatSummary, accion: AccionDelChat) => void;
+    onAccionDeChat: (chat: ChatSummary, accion: ChatAction) => void;
     /** E3b: a group's notification level, from «Info.». */
     onLevel: (chat: ChatSummary, level: NotificationLevel) => void;
     /** Ir a un mensaje pedido desde afuera (un destacado de la lista global, 20/10). */

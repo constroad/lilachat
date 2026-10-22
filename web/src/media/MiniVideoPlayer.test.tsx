@@ -12,13 +12,13 @@ describe('the mini player (pending 14)', () => {
 
   it('from the viewer, a video goes to the mini player and the viewer closes', () => {
     // Arrange
-    const onCerrar = vi.fn();
-    render(<PhotoViewer fotos={[video]} indice={0} onCambiar={() => undefined} onCerrar={onCerrar} />);
+    const onClose = vi.fn();
+    render(<PhotoViewer fotos={[video]} indice={0} onCambiar={() => undefined} onCerrar={onClose} />);
     // Act
     fireEvent.click(screen.getByTestId('visor-mini-reproductor'));
     // Assert
     expect(miniPlayerVideo()).toMatchObject({ url: 'https://x/v.mp4', poster: 'https://x/t.jpg', title: 'La obra' });
-    expect(onCerrar).toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
   });
 
   it('a photo has no mini player button', () => {

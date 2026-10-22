@@ -4,11 +4,11 @@ import type { FiltroDeChats } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { Logo } from '../ui/Logo';
 import { ThemeToggle } from '../ui/ThemeToggle';
-import { FilaDeChat } from './FilaDeChat';
+import { ChatRow } from './FilaDeChat';
 import { FiltrosDeLaLista } from './FiltrosDeLaLista';
-import { armarLista } from './listaDeChats';
+import { buildChatList } from './listaDeChats';
 import { useChatListsPanel } from './chatLists/useChatListsPanel';
-import type { AccionDelChat } from './menuDelChat';
+import type { ChatAction } from './menuDelChat';
 import type { ChatSummary } from './types';
 import { NewVersionBand } from '../ui/NewVersionBand';
 import { NowPlayingBar } from './NowPlayingBar';
@@ -17,7 +17,7 @@ import { NowPlayingBar } from './NowPlayingBar';
  * El panel izquierdo del diseño web (W3a: `w3-web-lista.png`).
  *
  * Recibe TODOS los chats y arma lo visible acá: la principal o «Archivados»,
- * el chip activo y el buscador (`armarLista`, con los motores de la app).
+ * the active chip and the search, with the app's engines (`buildChatList`).
  *
  * Composición, de arriba abajo: cabecera con la marca y el menú, buscador de
  * ancho completo, la lista, y AL PIE una banda fija con mi propio perfil y el
@@ -61,7 +61,7 @@ export function ChatList({
   /** Los mensajes que destaqué, de todos los chats (20/10). */
   onDestacados?: () => void;
   onNewBorrador: () => void;
-  onAccion: (chat: ChatSummary, accion: AccionDelChat) => void;
+  onAccion: (chat: ChatSummary, accion: ChatAction) => void;
   /** Mi id: los avisos de la vista previa en segunda persona («Fijaste…»). */
   yo?: string;
   /** Its width when the parent lets you drag it (two panels); without it, the usual widths. */
@@ -78,13 +78,13 @@ export function ChatList({
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [filtro, setFiltro] = useState<FiltroDeChats>('todos');
   const [verArchivados, setVerArchivados] = useState(false);
-  const listas = useChatListsPanel({ jwt, chats, filter: filtro, onFilter: setFiltro });
-  const lista = useMemo(() => armarLista({ chats, filtro, texto: query, verArchivados, lista: listas.activeChatIds }), [chats, filtro, query, verArchivados, listas.activeChatIds]);
-  const alAccion = (chat: ChatSummary, accion: AccionDelChat) => (accion === 'lista' ? listas.openAddTo(chat) : onAccion(chat, accion));
+  const myLists = useChatListsPanel({ jwt, chats, filter: filtro, onFilter: setFiltro });
+  const shown = useMemo(() => buildChatList({ chats, filtro, texto: query, verArchivados, lista: myLists.activeChatIds }), [chats, filtro, query, verArchivados, myLists.activeChatIds]);
+  const onRowAction = (chat: ChatSummary, accion: ChatAction) => (accion === 'lista' ? myLists.openAddTo(chat) : onAccion(chat, accion));
   // Se archivó el último: «Archivados» vacío no tiene salida útil, se vuelve a la principal.
   useEffect(() => {
-    if (verArchivados && lista.archivados.total === 0) setVerArchivados(false);
-  }, [verArchivados, lista.archivados.total]);
+    if (verArchivados && shown.archivados.total === 0) setVerArchivados(false);
+  }, [verArchivados, shown.archivados.total]);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Un menú que solo se cierra con su propio botón queda abierto encima de la
@@ -199,8 +199,8 @@ export function ChatList({
         </div>
       </div>
 
-      <FiltrosDeLaLista lista={lista} filtro={filtro} onFiltro={setFiltro} verArchivados={verArchivados} onArchivados={setVerArchivados} listas={listas.lists} onNuevaLista={listas.openNew} onEditarLista={listas.openEdit} />
-      {listas.dialogs}
+      <FiltrosDeLaLista lista={shown} filtro={filtro} onFiltro={setFiltro} verArchivados={verArchivados} onArchivados={setVerArchivados} listas={myLists.lists} onNuevaLista={myLists.openNew} onEditarLista={myLists.openEdit} />
+      {myLists.dialogs}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {loading ? (
@@ -217,11 +217,11 @@ export function ChatList({
               </div>
             ))}
           </div>
-        ) : lista.visibles.length === 0 ? (
+        ) : shown.visibles.length === 0 ? (
           <ListaVacia query={query} filtro={filtro} verArchivados={verArchivados} hayChats={chats.length > 0} onNewChat={onNewChat} />
         ) : (
-          lista.visibles.map((chat) => (
-            <FilaDeChat key={chat.id} chat={chat} yo={yo} seleccionado={chat.id === selectedChatId} onSelect={() => onSelect(chat)} onAccion={alAccion} />
+          shown.visibles.map((chat) => (
+            <ChatRow key={chat.id} chat={chat} yo={yo} seleccionado={chat.id === selectedChatId} onSelect={() => onSelect(chat)} onAccion={onRowAction} />
           ))
         )}
       </div>

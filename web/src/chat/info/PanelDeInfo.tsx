@@ -2,8 +2,8 @@ import { Bell, BellOff, LogOut, Trash2, X } from 'lucide-react';
 import { NOTIFICATION_LEVEL_TEXT, type NotificationLevel } from '@lilachat/shared';
 import { useState, type ReactNode } from 'react';
 import type { BaseLocal } from '../../local/baseLocal';
-import { ConfirmarAccionDeChat } from '../MenuDeChat';
-import type { AccionDelChat } from '../menuDelChat';
+import { ConfirmChatAction } from '../MenuDeChat';
+import type { ChatAction } from '../menuDelChat';
 import type { DetalleDelChat } from '../useDetalleDelChat';
 import type { ChatSummary, MensajeEnPantalla } from '../types';
 import { ArchivosDelChat } from './ArchivosDelChat';
@@ -29,7 +29,7 @@ export function PanelDeInfo(props: {
   onCerrar: () => void;
   onAviso: (texto: string) => void;
   onCambio: () => void;
-  onAccionDeChat: (chat: ChatSummary, accion: AccionDelChat) => void;
+  onAccionDeChat: (chat: ChatSummary, accion: ChatAction) => void;
   /** E3b: a group's notification level. */
   onLevel: (chat: ChatSummary, level: NotificationLevel) => void;
   onVerFoto: (mensaje: MensajeEnPantalla) => void;
@@ -39,7 +39,7 @@ export function PanelDeInfo(props: {
   const { chat, detalle } = props;
   const info = armarInfo({ chat, detalle, yo: props.yo });
   const editar = useEditarChat({ chatId: chat.id, jwt: props.jwt, onCambio: props.onCambio, onAviso: props.onAviso });
-  const [confirmando, setConfirmando] = useState<AccionDelChat | null>(null);
+  const [confirmando, setConfirmando] = useState<ChatAction | null>(null);
   const silenciado = Boolean(chat.muted ?? detalle?.silenciado);
   const level: NotificationLevel = chat.avisos ?? (silenciado ? 'menciones' : 'todo');
   const [choosingLevel, setChoosingLevel] = useState(false);
@@ -120,7 +120,7 @@ export function PanelDeInfo(props: {
         </section>
       </div>
       {confirmando ? (
-        <ConfirmarAccionDeChat
+        <ConfirmChatAction
           chat={chat}
           accion={confirmando}
           onCerrar={() => setConfirmando(null)}

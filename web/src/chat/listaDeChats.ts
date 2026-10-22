@@ -44,7 +44,7 @@ const filtrable = (chat: ChatSummary) => ({
  * Las cuentas de los chips son de la principal, sin la búsqueda: dicen cuántos
  * hay, no cuántos coinciden.
  */
-export function armarLista(params: { chats: readonly ChatSummary[]; filtro: FiltroDeChats; texto: string; verArchivados: boolean; lista?: ReadonlySet<string> }): ListaArmada {
+export function buildChatList(params: { chats: readonly ChatSummary[]; filtro: FiltroDeChats; texto: string; verArchivados: boolean; lista?: ReadonlySet<string> }): ListaArmada {
   const { principales, archivados } = separarArchivados(params.chats.map(filtrable));
   const ordenar = (filas: typeof principales) => {
     const porId = new Map(filas.map((fila) => [fila.chat.id, fila]));

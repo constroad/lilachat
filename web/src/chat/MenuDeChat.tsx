@@ -2,7 +2,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Archive, ArchiveRestore, Bell, BellOff, ChevronDown, ListPlus, LogOut, MessageCircle, MessageSquareDot, Pin, PinOff, Trash2, type LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Overlay } from '../ui/Overlay';
-import { opcionesDelMenuDeChat, type AccionDelChat } from './menuDelChat';
+import { chatMenuOptions, type ChatAction } from './menuDelChat';
 import type { ChatSummary } from './types';
 
 /**
@@ -10,7 +10,7 @@ import type { ChatSummary } from './types';
  * aparece al pasar el mouse o con el foco, como en los mensajes. Eliminar y
  * salir se confirman: no se deshacen.
  */
-const ICONOS: Record<AccionDelChat, LucideIcon> = {
+const ICONOS: Record<ChatAction, LucideIcon> = {
   archivar: Archive,
   desarchivar: ArchiveRestore,
   silenciar: BellOff,
@@ -24,9 +24,9 @@ const ICONOS: Record<AccionDelChat, LucideIcon> = {
   eliminar: Trash2,
 };
 
-export function MenuDeChat({ chat, onAccion }: { chat: ChatSummary; onAccion: (chat: ChatSummary, accion: AccionDelChat) => void }) {
-  const [confirmando, setConfirmando] = useState<AccionDelChat | null>(null);
-  const opciones = opcionesDelMenuDeChat(chat);
+export function MenuDeChat({ chat, onAccion }: { chat: ChatSummary; onAccion: (chat: ChatSummary, accion: ChatAction) => void }) {
+  const [confirmando, setConfirmando] = useState<ChatAction | null>(null);
+  const options = chatMenuOptions(chat);
   return (
     <>
       <DropdownMenu.Root modal={false}>
@@ -47,18 +47,18 @@ export function MenuDeChat({ chat, onAccion }: { chat: ChatSummary; onAccion: (c
             onCloseAutoFocus={(evento) => evento.preventDefault()}
             className="z-40 min-w-[230px] rounded-xl border border-outline/15 bg-surface p-1 shadow-lg"
           >
-            {opciones.map((opcion) => {
-              const Icono = ICONOS[opcion.accion];
+            {options.map((option) => {
+              const Icono = ICONOS[option.accion];
               return (
-                <div key={opcion.accion}>
-                  {opcion.peligro ? <DropdownMenu.Separator className="my-1 h-px bg-outline/15" /> : null}
+                <div key={option.accion}>
+                  {option.peligro ? <DropdownMenu.Separator className="my-1 h-px bg-outline/15" /> : null}
                   <DropdownMenu.Item
-                    data-testid={`accion-chat-${opcion.accion}`}
-                    onSelect={() => (opcion.peligro ? setConfirmando(opcion.accion) : onAccion(chat, opcion.accion))}
-                    className={`flex min-h-[40px] cursor-pointer select-none items-center gap-3 rounded-lg px-3 text-sm outline-none data-[highlighted]:bg-background ${opcion.peligro ? 'text-error' : ''}`}
+                    data-testid={`accion-chat-${option.accion}`}
+                    onSelect={() => (option.peligro ? setConfirmando(option.accion) : onAccion(chat, option.accion))}
+                    className={`flex min-h-[40px] cursor-pointer select-none items-center gap-3 rounded-lg px-3 text-sm outline-none data-[highlighted]:bg-background ${option.peligro ? 'text-error' : ''}`}
                   >
                     <Icono size={16} className="shrink-0" />
-                    {opcion.etiqueta}
+                    {option.etiqueta}
                   </DropdownMenu.Item>
                 </div>
               );
@@ -67,7 +67,7 @@ export function MenuDeChat({ chat, onAccion }: { chat: ChatSummary; onAccion: (c
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
       {confirmando ? (
-        <ConfirmarAccionDeChat
+        <ConfirmChatAction
           chat={chat}
           accion={confirmando}
           onConfirmar={() => {
@@ -82,7 +82,7 @@ export function MenuDeChat({ chat, onAccion }: { chat: ChatSummary; onAccion: (c
 }
 
 /** Lo que no se deshace, dicho antes: qué pasa y qué no. */
-export function ConfirmarAccionDeChat(props: { chat: ChatSummary; accion: AccionDelChat; onConfirmar: () => void; onCerrar: () => void }) {
+export function ConfirmChatAction(props: { chat: ChatSummary; accion: ChatAction; onConfirmar: () => void; onCerrar: () => void }) {
   const nombre = props.chat.name ?? props.chat.phone ?? 'esta conversación';
   const salir = props.accion === 'salir';
   const borrador = props.chat.kind === 'notas';

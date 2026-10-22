@@ -29,8 +29,8 @@ export function drawsAsFlatRow(row: Row): boolean {
 
 /**
  * A nudge or a wink draws as its own line, and a poll or event as its card,
- * only while it exists: deleted for everyone it reads «Se eliminó este
- * mensaje» like any message (22/10: QA Ana's deleted winks kept their cards).
+ * only while it exists: deleted for everyone it reads as a deleted message,
+ * like any other (22/10: QA Ana's deleted winks kept their cards).
  */
 export const drawsAsFunLine = (row: Row): boolean => !isPending(row) && !row.deletedAt && (row.kind === 'zumbido' || row.kind === 'guino');
 

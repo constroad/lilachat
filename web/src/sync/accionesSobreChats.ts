@@ -1,7 +1,7 @@
 import { useCallback, type MutableRefObject } from 'react';
 import type { Socket } from 'socket.io-client';
 import { api, type ApiResult } from '../api';
-import { cambiosDeAjustes, type AccionDelChat } from '../chat/menuDelChat';
+import { cambiosDeAjustes, type ChatAction } from '../chat/menuDelChat';
 import { levelChanges } from '../chat/menuDelChat';
 import type { NotificationLevel } from '@lilachat/shared';
 import type { ChatSummary } from '../chat/types';
@@ -60,7 +60,7 @@ export function useAccionesSobreChats(params: {
   );
 
   const ajustar = useCallback(
-    async (chat: ChatSummary, accion: AccionDelChat) => {
+    async (chat: ChatSummary, accion: ChatAction) => {
       const cambios = cambiosDeAjustes(accion);
       if (!cambios) return;
       const local: AjusteLocal = accion === 'leido' ? { ...cambios, unread: 0 } : cambios;
@@ -103,7 +103,7 @@ export function useAccionesSobreChats(params: {
   );
 
   const aplicar = useCallback(
-    async (chat: ChatSummary, accion: AccionDelChat) => {
+    async (chat: ChatSummary, accion: ChatAction) => {
       if (accion === 'eliminar') return eliminar(chat);
       if (accion === 'salir') return salir(chat);
       return ajustar(chat, accion);

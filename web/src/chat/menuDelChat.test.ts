@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cambiosDeAjustes, levelChanges, opcionesDelMenuDeChat } from './menuDelChat';
+import { cambiosDeAjustes, levelChanges, chatMenuOptions } from './menuDelChat';
 import type { ChatSummary } from './types';
 
 const chat = (extra: Partial<ChatSummary> = {}): ChatSummary => ({
@@ -15,26 +15,26 @@ const chat = (extra: Partial<ChatSummary> = {}): ChatSummary => ({
   ...extra,
 });
 
-const acciones = (unChat: ChatSummary) => opcionesDelMenuDeChat(unChat).map((opcion) => opcion.accion);
+const actions = (one: ChatSummary) => chatMenuOptions(one).map((option) => option.accion);
 
-describe('opcionesDelMenuDeChat', () => {
+describe('chatMenuOptions', () => {
   it('un 1:1 al día: archivar, silenciar, fijar, no leído y eliminar (en rojo, al final)', () => {
-    const opciones = opcionesDelMenuDeChat(chat());
-    expect(opciones.map((opcion) => opcion.accion)).toEqual(['archivar', 'silenciar', 'fijar', 'lista', 'no-leido', 'eliminar']);
-    expect(opciones.at(-1)).toMatchObject({ etiqueta: 'Eliminar chat', peligro: true });
+    const options = chatMenuOptions(chat());
+    expect(options.map((option) => option.accion)).toEqual(['archivar', 'silenciar', 'fijar', 'lista', 'no-leido', 'eliminar']);
+    expect(options.at(-1)).toMatchObject({ etiqueta: 'Eliminar chat', peligro: true });
   });
 
   it('cada opción dice lo contrario cuando ya está hecho', () => {
-    expect(acciones(chat({ archived: true, muted: true, unread: 3 }))).toEqual(['desarchivar', 'reactivar', 'lista', 'leido', 'eliminar']);
-    expect(acciones(chat({ pinned: true, markedUnread: true }))).toEqual(['archivar', 'silenciar', 'desfijar', 'lista', 'leido', 'eliminar']);
+    expect(actions(chat({ archived: true, muted: true, unread: 3 }))).toEqual(['desarchivar', 'reactivar', 'lista', 'leido', 'eliminar']);
+    expect(actions(chat({ pinned: true, markedUnread: true }))).toEqual(['archivar', 'silenciar', 'desfijar', 'lista', 'leido', 'eliminar']);
   });
 
   it('un grupo se deja, no se elimina', () => {
-    expect(acciones(chat({ kind: 'group' }))).toEqual(['archivar', 'silenciar', 'fijar', 'lista', 'no-leido', 'salir']);
+    expect(actions(chat({ kind: 'group' }))).toEqual(['archivar', 'silenciar', 'fijar', 'lista', 'no-leido', 'salir']);
   });
 
   it('un borrador no suena: no tiene «silenciar»', () => {
-    expect(acciones(chat({ kind: 'notas' }))).toEqual(['archivar', 'fijar', 'lista', 'no-leido', 'eliminar']);
+    expect(actions(chat({ kind: 'notas' }))).toEqual(['archivar', 'fijar', 'lista', 'no-leido', 'eliminar']);
   });
 });
 

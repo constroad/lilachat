@@ -4,7 +4,7 @@ import { Avatar } from '../ui/Avatar';
 import { MenuDeChat } from './MenuDeChat';
 import { useFunInRow } from './nudge';
 import { PendingMarker } from './queue/PendingMarker';
-import type { AccionDelChat } from './menuDelChat';
+import type { ChatAction } from './menuDelChat';
 import type { ChatSummary } from './types';
 
 /**
@@ -12,7 +12,7 @@ import type { ChatSummary } from './types';
  * silenciado y lo sin leer. La flecha del menú va APARTE del botón de la fila
  * (un botón dentro de otro no es HTML válido y el lector de pantalla lo lee mal).
  */
-export function FilaDeChat(props: { chat: ChatSummary; yo?: string; seleccionado: boolean; onSelect: () => void; onAccion: (chat: ChatSummary, accion: AccionDelChat) => void }) {
+export function ChatRow(props: { chat: ChatSummary; yo?: string; seleccionado: boolean; onSelect: () => void; onAccion: (chat: ChatSummary, accion: ChatAction) => void }) {
   const { chat } = props;
   const aviso = props.yo ? textoDelAviso(chat, props.yo) : '';
   const fun = useFunInRow(chat, props.yo, props.seleccionado);

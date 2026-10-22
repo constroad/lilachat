@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { obtenerIceServers } from './turnCredentials.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import { rechazarDesdeAviso } from './cicloDeLlamada.js';
+import { callHistoryOf } from './callHistory.js';
 
 /**
  * Los servidores ICE que necesita WebRTC para conectar (F10).
@@ -31,6 +32,14 @@ export function buildCallRouter(): Router {
   );
 
   router.use(requireSession);
+
+  /** «Llamadas» in the web's rail (pending 38): my chats' call lines, newest first. */
+  router.get(
+    '/history',
+    asyncRoute(async (req, res) => {
+      res.json({ calls: await callHistoryOf(req.session!.userId) });
+    })
+  );
 
   router.get(
     '/ice',

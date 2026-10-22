@@ -40,6 +40,7 @@ import { MediaDialog } from './media/MediaDialog';
 import { SpaceChatList } from './spaces/SpaceChatList';
 import { useSuperadmin } from './admin/adminApi';
 import { CallProvider } from './calls/CallProvider';
+import { CallsHistory } from './calls/CallsDialog';
 import type { IncomingOffer } from './calls/useWebCall';
 import { useSpacesWeb } from './spaces/useSpacesWeb';
 import { forgetPendingInChats, refreshPendingInChats } from './chat/queue/pendingInChats';
@@ -52,10 +53,7 @@ const DURACION_DEL_AVISO_MS = 3000;
 type Creando =
   | null
   | { tipo: 'chat'; kind: 'direct' | 'group' }
-  | { tipo: 'borrador' }
-  | { tipo: 'agenda' }
-  | { tipo: 'destacados' }
-  | { tipo: 'medios' }
+  | { tipo: 'borrador' | 'agenda' | 'destacados' | 'medios' | 'llamadas' }
   | { tipo: 'evento'; chat: ChatDestino | null }
   | { tipo: 'encuesta'; chat: ChatDestino | null }
   | { tipo: 'checklist'; chatId: string }
@@ -250,6 +248,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
             listLayout.setCollapsed(false);
           }}
           onAgenda={() => setCreando({ tipo: 'agenda' })}
+          onCalls={() => setCreando({ tipo: 'llamadas' })}
           onStarred={() => setCreando({ tipo: 'destacados' })}
           onMedia={() => setCreando({ tipo: 'medios' })}
           onSettings={() => setAviso(aviso === 'ajustes' ? '' : 'ajustes')}
@@ -355,6 +354,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
           onClose={() => setCreando(null)}
         />
       ) : null}
+      {creando?.tipo === 'llamadas' ? <CallsHistory jwt={credential.jwt} chats={[...chats, ...(spaceChatsShown ?? [])]} onOpen={(chatId) => (setCreando(null), abrirChat(chatId))} onClose={() => setCreando(null)} /> : null}
       {creando?.tipo === 'borrador' ? <NuevoBorrador jwt={credential.jwt} onClose={() => setCreando(null)} onCreated={alCrear} /> : null}
       {creando?.tipo === 'chat' ? <NewChatOverlay jwt={credential.jwt} kind={creando.kind} onClose={() => setCreando(null)} onCreated={alCrear} /> : null}
       {creando?.tipo === 'agenda' ? (

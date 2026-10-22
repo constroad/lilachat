@@ -23,6 +23,7 @@ export * from './accionesDeMiembro.js';
 export * from './infoDeGrupo.js';
 export * from './avisoDeGrupo.js';
 export * from './registroDeLlamada.js';
+export * from './callHistory.js';
 export * from './editarMensaje.js';
 export * from './filtrosDeChats.js';
 export * from './conciliarMensajes.js';

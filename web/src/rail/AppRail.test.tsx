@@ -5,14 +5,14 @@ import type { ClientWorkspace } from '@lilachat/shared';
 import { AppRail } from './AppRail';
 
 /** The rail of the web, like WhatsApp Web's (pending 38, José 21/10). */
-const handlers = () => ({ onChats: vi.fn(), onAgenda: vi.fn(), onStarred: vi.fn(), onMedia: vi.fn(), onSettings: vi.fn(), onPickSpace: vi.fn(), onAddSpace: vi.fn() });
+const handlers = () => ({ onChats: vi.fn(), onCalls: vi.fn(), onAgenda: vi.fn(), onStarred: vi.fn(), onMedia: vi.fn(), onSettings: vi.fn(), onPickSpace: vi.fn(), onAddSpace: vi.fn() });
 const space: ClientWorkspace = { id: 'w1', name: 'QA Obra', joinPolicy: 'approval', role: 'owner', status: 'active', members: 3, unreadChats: 2 };
 
 describe('AppRail', () => {
-  it('Chats, Pendientes and Destacados on top; Medios, Ajustes and me at the bottom', async () => {
+  it('Chats, Llamadas, Pendientes and Destacados on top; Medios, Ajustes and me at the bottom', async () => {
     const on = handlers();
     render(<AppRail spaces={[]} currentSpaceId={null} me={{ name: 'José', phone: '902049935' }} personalUnread={0} {...on} />);
-    for (const [testId, handler] of [['riel-chats', on.onChats], ['riel-pendientes', on.onAgenda], ['riel-destacados', on.onStarred], ['riel-medios', on.onMedia], ['btn-ajustes', on.onSettings]] as const) {
+    for (const [testId, handler] of [['riel-chats', on.onChats], ['riel-llamadas', on.onCalls], ['riel-pendientes', on.onAgenda], ['riel-destacados', on.onStarred], ['riel-medios', on.onMedia], ['btn-ajustes', on.onSettings]] as const) {
       await userEvent.click(screen.getByTestId(testId));
       expect(handler).toHaveBeenCalled();
     }

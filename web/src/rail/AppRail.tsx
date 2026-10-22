@@ -1,4 +1,4 @@
-import { Images, ListTodo, MessageCircle, Plus, Settings, Star, type LucideIcon } from 'lucide-react';
+import { Images, ListTodo, MessageCircle, Phone, Plus, Settings, Star, type LucideIcon } from 'lucide-react';
 import { railSpaces, type ClientWorkspace } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { SpacesRail } from '../spaces/SpacesRail';
@@ -16,8 +16,7 @@ function RailButton(props: { testId: string; label: string; Icon: LucideIcon; ac
  * on the left that groups messages, calls and the rest): Chats,
  * Pendientes y encuestas and Destacados on top; the company spaces in the
  * middle (personal and each space, or «+» while there are none); Medios,
- * Ajustes and me at the bottom. Calls get their place when there is a call
- * history to show.
+ * Ajustes and me at the bottom. Llamadas (22/10) is the call history.
  */
 export function AppRail(props: {
   spaces: readonly ClientWorkspace[] | null;
@@ -25,6 +24,7 @@ export function AppRail(props: {
   me: { name?: string | null; phone: string };
   personalUnread: number;
   onChats: () => void;
+  onCalls: () => void;
   onAgenda: () => void;
   onStarred: () => void;
   onMedia: () => void;
@@ -36,6 +36,7 @@ export function AppRail(props: {
   return (
     <nav data-testid="riel" aria-label="Lilachat" className="flex h-full w-[72px] shrink-0 flex-col items-center gap-1.5 border-r border-outline/15 bg-background py-3">
       <RailButton testId="riel-chats" label="Chats" Icon={MessageCircle} active onClick={props.onChats} />
+      <RailButton testId="riel-llamadas" label="Llamadas" Icon={Phone} onClick={props.onCalls} />
       <RailButton testId="riel-pendientes" label="Pendientes y encuestas" Icon={ListTodo} onClick={props.onAgenda} />
       <RailButton testId="riel-destacados" label="Mensajes destacados" Icon={Star} onClick={props.onStarred} />
       <div className="my-1.5 h-px w-8 bg-outline/20" />

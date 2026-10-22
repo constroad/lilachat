@@ -47,3 +47,34 @@ export function namesFromAgenda(phones: readonly string[], agenda: ReadonlyMap<s
   }
   return names;
 }
+
+/** A contact of the phone's address book, as «Nuevo chat» on the web shows it. */
+export type AgendaContact = { phone: string; name: string };
+
+/** The whole address book (pending 20) goes to the match: never more than it takes in one query. */
+export const FULL_AGENDA_MAX = 2000;
+
+/** What the phone sends for «Nuevo chat» on the web: every number with its name, by name. */
+export function fullAgendaFrom(agenda: ReadonlyMap<string, string>): AgendaContact[] {
+  return [...agenda]
+    .flatMap(([phone, name]) => (name.trim() ? [{ phone, name: name.trim() }] : []))
+    .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+    .slice(0, FULL_AGENDA_MAX);
+}
+
+/** The phone's whole address book on its way through the server: real numbers with a name, once each. */
+export function cleanFullAgendaReply(input: unknown): AgendaContact[] {
+  if (!Array.isArray(input)) return [];
+  const seen = new Set<string>();
+  const contacts: AgendaContact[] = [];
+  for (const entry of input) {
+    const record = entry && typeof entry === 'object' ? (entry as { phone?: unknown; name?: unknown }) : {};
+    const phone = normalizePeruPhone(record.phone);
+    const name = typeof record.name === 'string' ? record.name.trim().slice(0, MAX_NAME_LENGTH) : '';
+    if (!phone || !name || seen.has(phone)) continue;
+    seen.add(phone);
+    contacts.push({ phone, name });
+    if (contacts.length >= FULL_AGENDA_MAX) break;
+  }
+  return contacts;
+}

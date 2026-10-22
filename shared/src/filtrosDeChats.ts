@@ -10,10 +10,14 @@
  * chat como favorito ni fijarlo; poner el chip para que no filtre nada sería
  * repetir el error de la lupa apagada. Cuando exista la marca, existe el chip.
  */
-/** `borradores` (19/10): los chats contigo mismo, con nombre. */
-export type FiltroDeChats = 'todos' | 'no-leidos' | 'grupos' | 'borradores';
+import { listIdOf } from './chatLists.js';
+
+/** `borradores` (19/10): los chats contigo mismo, con nombre. `lista:<id>`: a list of my own (pending 45). */
+export type FiltroDeChats = 'todos' | 'no-leidos' | 'grupos' | 'borradores' | `lista:${string}`;
 
 export type ChatFiltrable = {
+  /** Needed only to filter by a list of my own. */
+  id?: string;
   /** El nombre YA resuelto contra la agenda: el que la persona ve y busca. */
   titulo: string;
   /** Lo último que se dijo, para poder buscar «el chat donde hablamos de X». */
@@ -47,6 +51,8 @@ export function filtrarChats<T extends ChatFiltrable>(params: {
   chats: T[];
   filtro: FiltroDeChats;
   texto: string;
+  /** The chats of the list the chip filters by; missing (a list that is gone) shows none. */
+  lista?: ReadonlySet<string>;
 }): T[] {
   const aguja = clave(params.texto.trim());
 
@@ -58,6 +64,7 @@ export function filtrarChats<T extends ChatFiltrable>(params: {
     if (params.filtro === 'no-leidos' && !estaSinLeer(chat)) return false;
     if (params.filtro === 'grupos' && !chat.esGrupo) return false;
     if (params.filtro === 'borradores' && !chat.esBorrador) return false;
+    if (listIdOf(params.filtro) !== null && !(chat.id && params.lista?.has(chat.id))) return false;
     if (!aguja) return true;
     return clave(`${chat.titulo} ${chat.ultimo ?? ''}`).includes(aguja);
   });

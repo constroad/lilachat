@@ -26,6 +26,8 @@ export * from './registroDeLlamada.js';
 export * from './callHistory.js';
 export * from './editarMensaje.js';
 export * from './filtrosDeChats.js';
+export * from './chatLists.js';
+export * from './scheduledCall.js';
 export * from './conciliarMensajes.js';
 export * from './notaDeVoz.js';
 export * from './mediasDelChat.js';

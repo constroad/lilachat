@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AGENDA_MAX_PHONES, cleanNamesReply, cleanPhonesRequest, namesFromAgenda } from './agendaRelay.js';
+import { AGENDA_MAX_PHONES, FULL_AGENDA_MAX, cleanFullAgendaReply, cleanNamesReply, cleanPhonesRequest, fullAgendaFrom, namesFromAgenda } from './agendaRelay.js';
 
 /** Contacts on the web through the phone (José, 20/10, option «b»): nothing stored on the server. */
 describe('agenda relay', () => {
@@ -23,5 +23,26 @@ describe('agenda relay', () => {
   it('the phone answers with the names it has, nothing for the unknown', () => {
     const agenda = new Map([['960397018', 'Wilson'], ['902049935', 'Mamá']]);
     expect(namesFromAgenda(['960397018', '911111111'], agenda)).toEqual({ '960397018': 'Wilson' });
+  });
+});
+
+describe('the whole address book for «Nuevo chat» on the web (pending 20)', () => {
+  it('the phone sends every number with its name, by name', () => {
+    // Arrange
+    const agenda = new Map([['987654321', 'Wilson'], ['912345678', 'Ana']]);
+    // Act
+    const sent = fullAgendaFrom(agenda);
+    // Assert
+    expect(sent).toEqual([{ phone: '912345678', name: 'Ana' }, { phone: '987654321', name: 'Wilson' }]);
+  });
+
+  it('the server keeps only real numbers with a name, once each, up to the most the match takes', () => {
+    const cleaned = cleanFullAgendaReply([{ phone: '+51 987 654 321', name: ' Wilson ' }, { phone: '987654321', name: 'Repetido' }, { phone: 'abc', name: 'X' }, { phone: '912345678', name: '' }, 'junk']);
+    expect(cleaned).toEqual([{ phone: '987654321', name: 'Wilson' }]);
+    expect(cleanFullAgendaReply(Array.from({ length: FULL_AGENDA_MAX + 5 }, (_, index) => ({ phone: `9${String(index).padStart(8, '0')}`, name: `N${index}` })))).toHaveLength(FULL_AGENDA_MAX);
+  });
+
+  it('anything that is not a list is nothing', () => {
+    expect(cleanFullAgendaReply({ phone: '987654321' })).toEqual([]);
   });
 });

@@ -29,6 +29,8 @@ export type AgendaEvent = {
   personas?: Personas;
   guestsCanInvite?: boolean;
   puedoInvitar?: boolean;
+  /** A scheduled call (pending 42): its card offers «Unirse». */
+  call?: { video: boolean };
 };
 
 export type AgendaReminder = {

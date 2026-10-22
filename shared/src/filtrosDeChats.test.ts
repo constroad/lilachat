@@ -18,6 +18,24 @@ const chats = [
 const titulos = (lista: ChatFiltrable[]) => lista.map((uno) => uno.titulo);
 
 describe('filtrarChats', () => {
+  it('a list of my own shows only its chats (pending 45)', () => {
+    // Arrange
+    const withIds = chats.map((one, index) => ({ ...one, id: `c${index}` }));
+    // Act
+    const shown = filtrarChats({ chats: withIds, filtro: 'lista:family', texto: '', lista: new Set(['c0', 'c3']) });
+    // Assert
+    expect(titulos(shown)).toEqual(['Wilson', 'Mis lokillos']);
+  });
+
+  it('a list chip whose list is gone shows nothing, not everything', () => {
+    expect(filtrarChats({ chats, filtro: 'lista:gone', texto: '' })).toEqual([]);
+  });
+
+  it('a list and the search work together', () => {
+    const withIds = chats.map((one, index) => ({ ...one, id: `c${index}` }));
+    expect(titulos(filtrarChats({ chats: withIds, filtro: 'lista:family', texto: 'lok', lista: new Set(['c0', 'c3']) }))).toEqual(['Mis lokillos']);
+  });
+
   it('sin filtro ni búsqueda devuelve todo', () => {
     expect(filtrarChats({ chats, filtro: 'todos', texto: '' })).toHaveLength(4);
   });

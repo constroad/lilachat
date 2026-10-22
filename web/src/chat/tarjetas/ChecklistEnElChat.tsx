@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, ClipboardCheck, EllipsisVertical, Pencil, Plus } from 'lucide-react';
-import { CHECKLIST_LIMITS, checklistMembers, checklistPermissions, checklistProgress, formatClock, taskDueLabel, taskDueState, toggleChecklistItem, validateChecklistItem, type AgendaChecklist, type ChecklistItem } from '@lilachat/shared';
+import { CHECKLIST_LIMITS, canToggleTask, checklistMembers, checklistPermissions, checklistProgress, formatClock, taskDueLabel, taskDueState, toggleChecklistItem, validateChecklistItem, type AgendaChecklist, type ChecklistItem } from '@lilachat/shared';
 import { api } from '../../api';
 import { useConversacion } from '../contextoDeLaConversacion';
 import { useTarjeta } from './useTarjeta';
@@ -34,7 +34,7 @@ export function ChecklistEnElChat({ id }: { id: string }) {
     );
   }
 
-  const { canMark, canAdd } = checklistPermissions({ me: yo, createdBy: checklist.createdBy, othersCanMark: checklist.othersCanMark, othersCanAdd: checklist.othersCanAdd });
+  const { canAdd } = checklistPermissions({ me: yo, createdBy: checklist.createdBy, othersCanMark: checklist.othersCanMark, othersCanAdd: checklist.othersCanAdd });
   const progress = checklistProgress(checklist.items);
   const toggle = async (itemId: string) => {
     const optimistic = toggleChecklistItem(checklist.items, itemId, yo, new Date());
@@ -113,10 +113,13 @@ export function ChecklistEnElChat({ id }: { id: string }) {
         <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }} />
       </div>
       <ul>
-        {checklist.items.map((item, index) => (
+        {checklist.items.map((item, index) => {
+          // An assigned task is ticked by its person or the author (José, 21/10).
+          const canTick = canToggleTask({ me: yo, createdBy: checklist.createdBy, othersCanMark: checklist.othersCanMark, assignee: item.assignee });
+          return (
           <li key={item.id} className={`group flex items-center ${index > 0 ? 'border-t border-outline/10' : ''}`}>
             {/* Two targets (José, 21/10: «está inestable el editar con el marcar»): the circle ticks, the text edits. */}
-            <button type="button" data-testid={`checklist-marcar-${index}`} role="checkbox" aria-checked={Boolean(item.doneBy)} aria-label={item.text} disabled={!canMark} onClick={() => void toggle(item.id)} className="-ml-2 grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-background disabled:cursor-default">
+            <button type="button" data-testid={`checklist-marcar-${index}`} role="checkbox" aria-checked={Boolean(item.doneBy)} aria-label={item.text} disabled={!canTick} title={canTick || !item.assignee ? undefined : `Es de ${nameOf(item.assignee)}: solo esa persona o quien creó el checklist la marca.`} onClick={() => void toggle(item.id)} className="-ml-2 grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-background disabled:cursor-default disabled:opacity-40">
               <span className={`grid h-5 w-5 place-items-center rounded-full ${item.doneBy ? 'bg-primary text-on-primary' : 'border-2 border-outline/40'}`}>{item.doneBy ? <Check size={12} strokeWidth={3} /> : null}</span>
             </button>
             <button type="button" data-testid={`checklist-tarea-${index}`} disabled={!canAdd} onClick={() => setEditing(item)} title={canAdd ? 'Editar la tarea' : undefined} className="min-w-0 flex-1 py-2 text-left disabled:cursor-default">
@@ -133,7 +136,8 @@ export function ChecklistEnElChat({ id }: { id: string }) {
               </button>
             ) : null}
           </li>
-        ))}
+          );
+        })}
       </ul>
       {canAdd && checklist.items.length < CHECKLIST_LIMITS.items ? (
         adding === null ? (

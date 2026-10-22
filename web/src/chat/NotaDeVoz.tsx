@@ -39,6 +39,13 @@ export function NotaDeVoz(props: { url: string; durationMs?: number; onda?: numb
     audio.current = created;
     return created;
   };
+  // Fetched ahead while it is on screen (José, 21/10: «carga y luego reproduce»): a tap plays at once.
+  // The message list is virtualized, so only the notes in sight download.
+  useEffect(() => {
+    ensureAudio().preload = 'auto';
+    // Once per note: the audio lives in a ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const durationS = () => (audio.current?.duration && Number.isFinite(audio.current.duration) ? audio.current.duration : (props.durationMs ?? 0) / 1000);
 
   const play = () => {

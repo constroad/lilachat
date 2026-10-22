@@ -9,6 +9,7 @@ class FakeAudio {
   duration = 20;
   playbackRate = 1;
   paused = true;
+  preload = '';
   listeners = new Map<string, () => void>();
   constructor(public src: string) {
     FakeAudio.all.push(this);
@@ -41,6 +42,13 @@ afterEach(() => vi.unstubAllGlobals());
 
 /** Backlog 34 (José, 21/10): like WhatsApp — one tap plays, the bar seeks, 1× · 1,5× · 2×, one at a time. */
 describe('a voice note on the web', () => {
+  it('the note is fetched ahead as soon as it shows, so a tap plays at once (José, 21/10)', () => {
+    render(<NotaDeVoz url="https://x/n.m4a" durationMs={4000} mio={false} />);
+    expect(FakeAudio.all).toHaveLength(1);
+    expect(FakeAudio.all[0]!.preload).toBe('auto');
+    expect(FakeAudio.all[0]!.paused).toBe(true);
+  });
+
   it('one tap plays; the speed goes 1× → 1,5× and the audio follows it', async () => {
     render(<NotaDeVoz url="/a.m4a" durationMs={20_000} mio={false} />);
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Reproducir' })));

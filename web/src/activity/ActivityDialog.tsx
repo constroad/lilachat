@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ArrowRight, CornerUpLeft, MessagesSquare } from 'lucide-react';
 import { ACTIVITY_TABS, activityDaySections, formatChatTimestamp, formatPhoneDisplay, type ActivityItem, type ActivityType } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { FieldError, Overlay } from '../ui/Overlay';
 import { TextoDelMensaje } from '../chat/TextoDelMensaje';
-import { spaceActivity } from '../spaces/spacesApi';
+import { activityCache, fetchActivity, useCached } from '../spaces/spaceCache';
 
 const EMPTY: Record<ActivityType, string> = { mentions: 'Nadie te mencionó todavía.', threads: 'Todavía no estás en ningún hilo.', reactions: 'Todavía nadie reaccionó a tus mensajes.' };
 const NO_NAMES: ReadonlyMap<string, string> = new Map();
@@ -19,20 +19,11 @@ const keyOf = (item: ActivityItem) => `${item.chatId}-${item.seq}`;
  */
 export function ActivityDialog(props: { spaceId: string; spaceName: string; jwt: string; myUserId: string; initialTab: ActivityType; onOpen: (item: ActivityItem) => void; onClose: () => void }) {
   const [tab, setTab] = useState<ActivityType>(props.initialTab);
-  const [items, setItems] = useState<ActivityItem[] | null>(null);
-  const [unread, setUnread] = useState({ mentions: 0, threads: 0 });
-  const [error, setError] = useState('');
-  const load = useCallback(async () => {
-    const response = await spaceActivity(props.jwt, props.spaceId, { type: tab });
-    if (!response.ok) return setError(response.message);
-    setError('');
-    setItems(response.data.items);
-    setUnread(response.data.unread);
-  }, [props.jwt, props.spaceId, tab]);
-  useEffect(() => {
-    setItems(null);
-    void load();
-  }, [load]);
+  // Each tab keeps what it showed: Menciones → Hilos → Menciones no longer goes grey three times (22/10).
+  const page = useCached(activityCache, `${props.spaceId}:activity:${tab}`, fetchActivity(props.jwt, props.spaceId, tab));
+  const items: ActivityItem[] | null = page.value?.items ?? null;
+  const unread = page.value?.unread ?? { mentions: 0, threads: 0 };
+  const error = items ? '' : (page.error ?? '');
   const counts: Partial<Record<ActivityType, number>> = { mentions: unread.mentions, threads: unread.threads };
 
   return (

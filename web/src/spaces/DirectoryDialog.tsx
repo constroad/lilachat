@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { MessageCircle, Search, UserPlus, Users } from 'lucide-react';
 import { directoryAreas, filterMembers, formatPhoneDisplay, membersLabel, type ClientWorkspace, type ClientWorkspaceMember } from '@lilachat/shared';
 import { Overlay } from '../ui/Overlay';
 import { MemberAvatar, memberLine, memberName, OnlinePill } from './memberWeb';
-import { spaceMembers } from './spacesApi';
+import { fetchMembers, membersCache, useCached } from './spaceCache';
 
 /**
  * «Directorio» of a space (design `e1-08-directorio`): its active people,
@@ -12,13 +12,12 @@ import { spaceMembers } from './spacesApi';
  * writes at once.
  */
 export function DirectoryDialog(props: { space: ClientWorkspace; jwt: string; myUserId: string; online: ReadonlySet<string>; picking?: boolean; onOpenMember: (member: ClientWorkspaceMember) => void; onMessage: (member: ClientWorkspaceMember) => void; onInvite?: () => void; onClose: () => void }) {
-  const [members, setMembers] = useState<ClientWorkspaceMember[] | null>(null);
-  const [error, setError] = useState('');
+  // What this space's directory already showed paints at once and refreshes behind (22/10).
+  const directory = useCached(membersCache, `${props.space.id}:members`, fetchMembers(props.jwt, props.space.id));
+  const members = directory.value ?? null;
+  const error = members ? '' : (directory.error ?? '');
   const [query, setQuery] = useState('');
   const [area, setArea] = useState<string | null>(null);
-  useEffect(() => {
-    void spaceMembers(props.jwt, props.space.id).then((response) => (response.ok ? setMembers(response.data.members) : setError(response.message)));
-  }, [props.jwt, props.space.id]);
   const people = useMemo(() => (members ?? []).filter((member) => !props.picking || member.userId !== props.myUserId), [members, props.picking, props.myUserId]);
   const chips = useMemo(() => directoryAreas(people), [people]);
   const shown = filterMembers(people, { query, area });

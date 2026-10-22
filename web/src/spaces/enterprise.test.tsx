@@ -49,6 +49,18 @@ describe('DirectoryDialog (e1-08)', () => {
   });
 });
 
+describe('the space screens paint what they already saw (José, 22/10)', () => {
+  it('reopening the directory shows the people at once, with no skeleton, while it refreshes behind', async () => {
+    answer('/workspaces/w1/members?status=active', { members: people });
+    const first = render(<DirectoryDialog space={space()} jwt="t" myUserId="u-me" online={new Set()} onOpenMember={() => undefined} onMessage={() => undefined} onClose={() => undefined} />);
+    expect(await screen.findByTestId('miembro-987654321')).toBeTruthy();
+    first.unmount();
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => undefined)));
+    render(<DirectoryDialog space={space()} jwt="t" myUserId="u-me" online={new Set()} onOpenMember={() => undefined} onMessage={() => undefined} onClose={() => undefined} />);
+    expect(screen.getByTestId('miembro-987654321')).toBeTruthy();
+  });
+});
+
 describe('MembersDialog (e1-10, e1-11)', () => {
   it('counts per tab; the ⋮ offers what the owner may do and sends the change', async () => {
     answer('status=active', { members: people });

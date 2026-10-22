@@ -155,6 +155,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
   const espacios = useSpacesWeb({
     jwt: credential.jwt,
     myUserId: yo,
+    base,
     me: { name: credential.name, phone: credential.phone },
     personalUnread: chatsSinLeer(chats),
     online: socket.online,

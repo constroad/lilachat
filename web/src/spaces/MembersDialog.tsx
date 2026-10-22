@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useDismiss } from '../ui/useDismiss';
 import { MoreVertical, Search, UserPlus, X } from 'lucide-react';
 import { changeForAction, filterMembers, formatPhoneDisplay, memberActions, type ClientWorkspace, type ClientWorkspaceMember, type MemberAction } from '@lilachat/shared';
@@ -6,6 +6,7 @@ import { FieldError, Overlay } from '../ui/Overlay';
 import { MemberAvatar, memberLine, memberName, OnlinePill, RolePill } from './memberWeb';
 import { RequestCard } from './RequestCard';
 import { changeMember, rejectRequest, revokeSpaceInvite, spaceMembers } from './spacesApi';
+import { dataOf, memberListsCache, useCached } from './spaceCache';
 
 export type MembersTab = 'active' | 'pending' | 'invited' | 'deactivated';
 const TABS: { key: MembersTab; label: string; testId: string }[] = [
@@ -25,23 +26,20 @@ const ACTION_LABELS: Record<MemberAction, string> = { 'make-admin': 'Hacer admin
 export function MembersDialog(props: { space: ClientWorkspace; jwt: string; myUserId: string; online: ReadonlySet<string>; initialTab: MembersTab; onInvite: () => void; onChanged: () => void; onClose: () => void }) {
   const { space, jwt } = props;
   const [tab, setTab] = useState<MembersTab>(props.initialTab);
-  const [lists, setLists] = useState<Record<MembersTab, ClientWorkspaceMember[]> | null>(null);
   const [query, setQuery] = useState('');
   const [menuFor, setMenuFor] = useState<string | null>(null);
   // The ⋮ menu of a member closes with a click beside it or Escape (José, 21/10).
   const memberMenu = useRef<HTMLDivElement>(null);
   useDismiss(menuFor !== null, memberMenu, () => setMenuFor(null), { ignore: '[data-testid^="acciones-"]' });
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-
-  const load = useCallback(async () => {
-    const [active, pending, invited, deactivated] = await Promise.all((['active', 'pending', 'invited', 'deactivated'] as const).map((status) => spaceMembers(jwt, space.id, status)));
-    if (active?.ok && pending?.ok && invited?.ok && deactivated?.ok) setLists({ active: active.data.members, pending: pending.data.members, invited: invited.data.members, deactivated: deactivated.data.members });
-    else setError('No se pudieron cargar los miembros.');
-  }, [jwt, space.id]);
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const [actionError, setError] = useState('');
+  // The four lists paint at once from what was seen and refresh behind (22/10).
+  const cached = useCached(memberListsCache, `${space.id}:member-lists`, async (): Promise<Record<MembersTab, ClientWorkspaceMember[]>> => {
+    const [active, pending, invited, deactivated] = await Promise.all([spaceMembers(jwt, space.id, 'active'), spaceMembers(jwt, space.id, 'pending'), spaceMembers(jwt, space.id, 'invited'), spaceMembers(jwt, space.id, 'deactivated')]);
+    return { active: dataOf(active).members, pending: dataOf(pending).members, invited: dataOf(invited).members, deactivated: dataOf(deactivated).members };
+  });
+  const lists = cached.value ?? null;
+  const error = actionError || (lists ? '' : (cached.error ?? ''));
   const after = async (work: Promise<{ ok: boolean; message?: string }>) => {
     setBusy(true);
     const response = await work;
@@ -49,7 +47,7 @@ export function MembersDialog(props: { space: ClientWorkspace; jwt: string; myUs
     if (!response.ok) return setError(response.message ?? 'No se pudo guardar.');
     setError('');
     props.onChanged();
-    await load();
+    cached.refresh();
   };
   const runAction = (member: ClientWorkspaceMember, action: MemberAction) => {
     setMenuFor(null);

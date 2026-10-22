@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Hash, Lock, Plus, Search } from 'lucide-react';
 import { filterChannels, membersLabel, type ChannelFilter, type ClientChannel, type ClientWorkspace } from '@lilachat/shared';
 import { FieldError, Overlay } from '../ui/Overlay';
 import { CreateChannelDialog } from './CreateChannelDialog';
-import { joinChannel, spaceChannels } from './spacesApi';
+import { joinChannel } from './spacesApi';
+import { channelsCache, fetchChannels, useCached } from './spaceCache';
 
 const TABS: { key: ChannelFilter; label: string }[] = [
   { key: 'all', label: 'Todos' },
@@ -20,20 +21,14 @@ const TABS: { key: ChannelFilter; label: string }[] = [
  */
 export function ChannelsDialog(props: { space: ClientWorkspace; jwt: string; onOpenChannel: (channel: ClientChannel) => void; onClose: () => void }) {
   const { space, jwt } = props;
-  const [channels, setChannels] = useState<ClientChannel[] | null>(null);
+  // The space's channels paint at once from what was seen and refresh behind (22/10).
+  const listed = useCached(channelsCache, `${space.id}:channels`, fetchChannels(jwt, space.id));
+  const channels = listed.value ?? null;
   const [query, setQuery] = useState('');
   const [tab, setTab] = useState<ChannelFilter>('all');
   const [creating, setCreating] = useState(false);
-  const [error, setError] = useState('');
-
-  const load = useCallback(async () => {
-    const response = await spaceChannels(jwt, space.id);
-    if (response.ok) setChannels(response.data.channels);
-    else setError(response.message);
-  }, [jwt, space.id]);
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const [joinError, setError] = useState('');
+  const error = joinError || (channels ? '' : (listed.error ?? ''));
 
   if (creating) return <CreateChannelDialog jwt={jwt} space={space} onCreated={props.onOpenChannel} onClose={() => setCreating(false)} />;
   const shown = filterChannels(channels ?? [], { query, visibility: tab });

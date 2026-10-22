@@ -5,6 +5,8 @@ import type { ChatSummary } from '../chat/types';
 import { setCurrentSpaceId, useCurrentSpaceId, useMySpaces } from './currentSpace';
 import { chatOfChannel, createSpaceChat, spaceActivity, spaceChats } from './spacesApi';
 import { markSpacesSeen, readSeenSpaces } from './seenSpaces';
+import { forgetAllSpaces, forgetSpace, prefetchSpace, setSpaceCacheDisk } from './spaceCache';
+import type { BaseLocal } from '../local/baseLocal';
 import { memberName } from './memberWeb';
 import { SpacesLayer, type SpaceDialog } from './SpacesLayer';
 import type { WorkspaceLink } from './SpaceChatList';
@@ -39,7 +41,7 @@ const openedChat = (chat: Pick<ChatSummary, 'id' | 'kind' | 'name' | 'phone' | '
  * Socket events of chats outside the personal list reload the space's list
  * and the rail's counts.
  */
-export function useSpacesWeb(params: { jwt: string; myUserId: string; me: { name?: string | null; phone: string }; personalUnread: number; online: ReadonlySet<string>; selectedChatId: string | null; onOpenChat: (chatId: string) => void; onOpenMessage: (chatId: string, seq: number) => void; onPersonalChat: (chatId: string) => void }) {
+export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The session's local base: the spaces' screens keep what they saw there (22/10). */ base?: BaseLocal | null; me: { name?: string | null; phone: string }; personalUnread: number; online: ReadonlySet<string>; selectedChatId: string | null; onOpenChat: (chatId: string) => void; onOpenMessage: (chatId: string, seq: number) => void; onPersonalChat: (chatId: string) => void }) {
   const { jwt, myUserId, onOpenChat, onPersonalChat } = params;
   const currentId = useCurrentSpaceId();
   const { spaces, reload } = useMySpaces(jwt);
@@ -64,6 +66,26 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; me: { name
     if (lost) setRemoved(lost);
     setCurrentSpaceId(null);
   }, [spaces, currentId, current]);
+  // The spaces' screens keep what they saw in this person's base; another person starts empty (22/10).
+  useEffect(() => {
+    setSpaceCacheDisk(params.base ?? null);
+    return () => {
+      setSpaceCacheDisk(null);
+      forgetAllSpaces();
+    };
+  }, [params.base]);
+  // Entering a space: its directory, mentions and channels are on their way before anyone clicks.
+  useEffect(() => {
+    if (spaceId) prefetchSpace(jwt, spaceId);
+  }, [jwt, spaceId]);
+  // A space I am no longer active in leaves nothing behind: not its directory, not its channels.
+  const activeIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!spaces) return;
+    const now = new Set(spaces.filter((space) => space.status === 'active').map((space) => space.id));
+    for (const id of activeIds.current) if (!now.has(id)) forgetSpace(id);
+    activeIds.current = now;
+  }, [spaces]);
   // The first list in this browser seeds what was already seen: only spaces added from now on are greeted.
   useEffect(() => {
     if (spaces && seen === null) setSeen(markSpacesSeen(spaces.map((space) => space.id)));

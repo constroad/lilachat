@@ -50,7 +50,9 @@ export function AdminUsersScreen({ jwt }: { jwt: string }) {
   const [text, setText] = useState(query.q);
   const [attempt, setAttempt] = useState(0);
   const load = useAdminUsers(jwt, query, attempt);
-  useEffect(() => writeAddress(query), [query]);
+  useEffect(() => {
+    writeAddress(query);
+  }, [query]);
   useEffect(() => {
     if (text.trim() === query.q) return;
     const timer = window.setTimeout(() => setQuery({ q: text.trim(), page: 1 }), SEARCH_DEBOUNCE_MS);

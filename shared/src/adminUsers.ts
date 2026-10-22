@@ -1,10 +1,10 @@
 import { formatClock, formatDayLabel } from './chatDisplay.js';
 
 /**
- * The superadmin's users panel (José, 21/10: «ver qué usuarios hay en
- * Lilachat, cuándo se unieron, info básica, nada de leer mensajes»). What
- * `GET /api/admin/users` returns: people only (no bots, no Lila), and no
- * chat, message or contact of anyone.
+ * The superadmin's users panel (José, 21/10: who is in Lilachat, when they
+ * joined, basic information, never reading messages). `GET /api/admin/users`
+ * returns people only, without bots or the built-in assistant, and nothing
+ * from anyone's messages or contacts.
  */
 export type AdminUser = {
   id: string;

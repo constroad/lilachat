@@ -4892,6 +4892,45 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 86. Audio y video al primer toque, y la tarea asignada la marca su responsable (21/10/2026, para la 0.1.126)
+
+José (21/10): «al pulsar el audio, en Lilachat carga y luego reproduce; en
+WhatsApp reproduce automáticamente, lo mismo con el video. Las tareas
+asignadas a alguien solo esa persona puede marcarlas, y el admin (owner)
+también».
+
+**Notas de voz, como la descarga automática de WhatsApp.**
+- Una nota a la vista se descarga al teléfono en segundo plano
+  (`app/src/chat/voiceNoteCache.ts`): de a dos, en `cache/voz`, con un nombre
+  seguro y un hash corto de su ruta (`voiceNoteName.ts`, 4 tests).
+- El play usa el archivo local; el reproductor sigue naciendo al primer toque
+  y nunca arranca solo. La fuente se fija al tocar: si la descarga termina
+  mientras suena, no se reinicia.
+- Por qué tardaba: un `m4a` grabado tiene el índice (`moov`) al final. Sin el
+  archivo completo, el reproductor pide rangos y espera.
+- Emulador: la nota visible quedó en `cache/voz` sola. A los 0,3 s del toque
+  ya sonaba, sin indicador de carga.
+- Web: la nota en pantalla se precarga (`preload = 'auto'`). La lista es
+  virtual, así que solo bajan las que se ven.
+
+**Video.** El visor arranca con medio segundo de búfer (`minBufferForPlayback:
+0,5`; Android esperaba 2 s), y mientras carga se ve la portada con un
+indicador en vez de una pantalla negra. Los videos ya llegaban con el índice
+al principio y el servidor responde rangos (206).
+
+**Checklist: una tarea asignada la marca su responsable o quien creó el
+checklist.**
+- `canToggleTask` (shared, 3 tests): el responsable la marca aunque el
+  checklist diga «solo yo marco». Una tarea sin responsable sigue la regla del
+  checklist.
+- Server: 403 «Esta tarea tiene responsable: solo esa persona o quien creó el
+  checklist la marca» (test).
+- App: el círculo de una tarea ajena se ve tenue, y al tocarlo avisa «Es de QA
+  Ana: solo esa persona o quien creó el checklist la marca». Web: deshabilitado,
+  con el mismo texto en el título.
+- Los admins del grupo que no crearon el checklist no la marcan: «el admin
+  (owner)» se tomó como quien creó el checklist.
+
 ## 85. Modo empresa completo, el riel como WhatsApp Web con Medios, invitar por correo y «Responder» con teclado (21/10/2026, 0.1.125)
 
 **Pantallas de empresa** (diseños `e1-08`…`e1-14`), en la app y en la web.

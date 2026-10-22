@@ -44,6 +44,8 @@ export type ChatSummary = {
     hiloDe?: number;
     /** A wink's id: the list plays its sound (José, 21/10). */
     wink?: string;
+    /** The file's type: a GIF says «GIF» in the list, not «Foto» (pending 53). */
+    mime?: string;
   } | null;
   /** Hasta qué `seq` leyeron los DEMÁS: de acá salen los checks del diseño. */
   othersReadSeq: number;
@@ -195,6 +197,7 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
             // E3: el último fue una respuesta en un hilo (la vista previa lo dice).
             ...(last.hiloDe ? { hiloDe: last.hiloDe } : {}),
             ...(last.wink ? { wink: last.wink } : {}),
+            ...(last.media?.mime ? { mime: last.media.mime } : {}),
           }
         : null,
       othersReadSeq: acuseDelGrupo({ otros: acusan, porMiembro: acuses?.read ?? new Map() }),

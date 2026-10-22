@@ -196,6 +196,8 @@ export function resolveChatPreview(params: {
   eliminado?: boolean;
   /** E3: el último fue una respuesta en un hilo. */
   enHilo?: boolean;
+  /** The last message's file type: a GIF says «GIF», not «Foto» (pending 53). */
+  lastMime?: string;
 }): ChatPreview {
   if (params.typing) return { text: 'Escribiendo…', style: 'typing' };
   // En una sola línea: un salto cortaría la vista previa en la primera.
@@ -225,7 +227,7 @@ export function resolveChatPreview(params: {
           : params.lastKind === 'audio'
             ? 'voz'
             : 'archivo';
-    return { text: ETIQUETA_DE_MEDIA[media], style: 'normal', media };
+    return { text: media === 'foto' && params.lastMime === 'image/gif' ? 'GIF' : ETIQUETA_DE_MEDIA[media], style: 'normal', media };
   }
   return { text: 'Sin mensajes todavía', style: 'normal' };
 }

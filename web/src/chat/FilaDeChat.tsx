@@ -16,7 +16,7 @@ export function FilaDeChat(props: { chat: ChatSummary; yo?: string; seleccionado
   const { chat } = props;
   const aviso = props.yo ? textoDelAviso(chat, props.yo) : '';
   const fun = useFunInRow(chat, props.yo, props.seleccionado);
-  const preview = resolveChatPreview({ typing: Boolean(chat.typingName), lastBody: aviso || chat.lastMessage?.body, lastKind: aviso ? 'text' : chat.lastMessage?.kind, eliminado: Boolean(chat.lastMessage?.deletedAt), enHilo: chat.lastMessage?.hiloDe !== undefined });
+  const preview = resolveChatPreview({ typing: Boolean(chat.typingName), lastBody: aviso || chat.lastMessage?.body, lastKind: aviso ? 'text' : chat.lastMessage?.kind, lastMime: chat.lastMessage?.mime, eliminado: Boolean(chat.lastMessage?.deletedAt), enHilo: chat.lastMessage?.hiloDe !== undefined });
   return (
     <div className={`group relative ${fun}`}>
       <button

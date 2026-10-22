@@ -178,6 +178,8 @@ export type ChatSummary = {
     /** A wink's id: the list plays its sound (José, 21/10). */
     wink?: string;
     hiloDe?: number;
+    /** The file's type: a GIF says «GIF», not «Foto» (pending 53). */
+    mime?: string;
     /** El aviso de grupo, para resolver el nombre con la agenda del teléfono. */
     system?: {
       evento: string;

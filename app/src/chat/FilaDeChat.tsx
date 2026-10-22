@@ -162,6 +162,7 @@ export const FilaDeChat = memo(function FilaDeChat(props: {
                   // se puede, queda el texto del server.
                   lastBody: avisoDelUltimo(chat, props.miUserId) ?? chat.lastMessage?.body,
                   lastKind: chat.lastMessage?.kind,
+                  lastMime: chat.lastMessage?.mime,
                   eliminado: Boolean(chat.lastMessage?.deletedAt),
                   enHilo: chat.lastMessage?.hiloDe !== undefined,
                 });

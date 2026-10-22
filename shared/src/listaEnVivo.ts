@@ -32,6 +32,8 @@ export type MensajeEnVivo = {
   hiloDe?: number;
   /** A wink's id (José, 21/10). */
   wink?: string;
+  /** The file, whose type names a GIF in the list (pending 53). */
+  media?: { mime?: string };
 };
 
 /**
@@ -72,6 +74,7 @@ export function aplicarMensajeALista<C extends ResumenEnVivo>(
       system: mensaje.system,
       ...(mensaje.hiloDe !== undefined ? { hiloDe: mensaje.hiloDe } : {}),
       ...(mensaje.wink ? { wink: mensaje.wink } : {}),
+      ...(mensaje.media?.mime ? { mime: mensaje.media.mime } : {}),
     },
   } as C;
   return chats.map((chat, i) => (i === indice ? actualizado : chat));

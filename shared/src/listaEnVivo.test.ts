@@ -47,6 +47,12 @@ describe('aplicarMensajeALista', () => {
     });
   });
 
+  /** Pending 53 (22/10): a GIF arriving live says «GIF» in the row, not «Foto». */
+  it('a GIF that arrives carries its type to the row', () => {
+    const resultado = aplicarMensajeALista([chat()], { ...mensaje({ kind: 'image', body: undefined }), media: { mime: 'image/gif' } }, YO);
+    expect(resultado?.[0]?.lastMessage).toMatchObject({ kind: 'image', mime: 'image/gif' });
+  });
+
   it('lo mío mueve la vista previa pero NO suma no leídos', () => {
     const resultado = aplicarMensajeALista([chat()], mensaje({ senderId: YO }), YO);
 

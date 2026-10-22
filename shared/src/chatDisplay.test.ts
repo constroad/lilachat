@@ -149,6 +149,12 @@ describe('formatChatTimestamp', () => {
 });
 
 describe('resolveChatPreview', () => {
+  /** Pending 53 (22/10): a GIF in the list said «Foto». */
+  it('a GIF says «GIF» with the photo icon; a photo still says «Foto»', () => {
+    expect(resolveChatPreview({ typing: false, lastKind: 'image', lastMime: 'image/gif' })).toEqual({ text: 'GIF', style: 'normal', media: 'foto' });
+    expect(resolveChatPreview({ typing: false, lastKind: 'image', lastMime: 'image/jpeg' })).toEqual({ text: 'Foto', style: 'normal', media: 'foto' });
+  });
+
   /** El socket emite `typing` desde F2 y la lista no lo mostraba. */
   it('escribiendo gana sobre el último mensaje, y va en cursiva de acento', () => {
     expect(resolveChatPreview({ typing: true, lastBody: 'hola' })).toEqual({

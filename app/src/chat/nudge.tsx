@@ -3,6 +3,7 @@ import { Pressable, Text, Vibration, View } from 'react-native';
 import { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming, type SharedValue } from 'react-native-reanimated';
 import { Heart, Play, Vibrate } from 'lucide-react-native';
 import { WinkCharacter } from './WinkCharacter';
+import { funSeenFloor, rememberFunSeen } from './funSeen';
 import { getSocket } from './socketClient';
 import { chatsEnMemoria, suscribirChatsEnMemoria } from './chatsGuardados';
 import { playWinkCues, shakeScreen, startWink, stopFun } from './FunScreen';
@@ -95,7 +96,7 @@ export function useFunPlayback(params: { messages: readonly { seq: number; kind?
   const muted = useChatMuted(params.chatId);
   const reducedMotion = useReducedMotion();
   const seen = useRef<number | null>(null);
-  const readAtOpen = useRef(params.afterSeq).current;
+  const readAtOpen = useRef(funSeenFloor(params.chatId, params.afterSeq)).current;
   const play = useCallback(
     (fun: FunToPlay, place: FunPlace) => {
       const how = shouldPlayFun({ muted, reducedMotion, place });
@@ -112,7 +113,7 @@ export function useFunPlayback(params: { messages: readonly { seq: number; kind?
     },
     [muted, reducedMotion]
   );
-  const { messages, me } = params;
+  const { messages, me, chatId } = params;
   useEffect(() => {
     if (messages.length === 0) return;
     // The first look at the chat plays only what someone sent me; mine plays when it goes, live.
@@ -121,8 +122,9 @@ export function useFunPlayback(params: { messages: readonly { seq: number; kind?
     // Mine plays live only if it was just sent: the history that arrives after opening is not live.
     const fun = funMessageToPlay(messages, me, seen.current, { mineToo: !opening, mineSince: Date.now() - FUN_LIVE_MS });
     seen.current = Math.max(seen.current, highestSeq(messages));
+    rememberFunSeen(chatId, seen.current);
     if (fun) play(fun, 'chat');
-  }, [messages, me, readAtOpen, play]);
+  }, [messages, me, chatId, readAtOpen, play]);
   useEffect(() => {
     const listener: ReplayListener = (fun) => play(fun, 'replay');
     replayListeners.add(listener);

@@ -93,9 +93,9 @@ describe('#general (José, 22/10)', () => {
     const space = await createSpace();
     await request(app).post(`/api/workspaces/${space.id}/members`).set('Authorization', jwt('jose')).send({ phone: '987654321' }).expect(201);
     await request(app).post(`/api/workspaces/${space.id}/members`).set('Authorization', jwt('jose')).send({ phone: '911222333' }).expect(201);
-    const nuevo = await UserModel.create({ phone: '911222333', name: 'Rosa Quispe' });
-    await claimPhoneInvites(nuevo._id, '911222333');
-    expect(await inGeneral(space.id)).toEqual([String(users.jose), String(users.ana), String(nuevo._id)].sort());
+    const newcomer = await UserModel.create({ phone: '911222333', name: 'Rosa Quispe' });
+    await claimPhoneInvites(newcomer._id, '911222333');
+    expect(await inGeneral(space.id)).toEqual([String(users.jose), String(users.ana), String(newcomer._id)].sort());
     expect(await joinNotices(space.id)).toEqual(['Ana Torres se unió al espacio', 'Rosa Quispe se unió al espacio']);
   });
 

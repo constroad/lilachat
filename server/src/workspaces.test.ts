@@ -223,11 +223,11 @@ describe('channels (E2)', () => {
 
   it('exploring shows public channels and my private ones; anyone joins a public one, nobody joins a private one', async () => {
     const space = await spaceWithAna();
-    const avisos = (await request(app).post(`/api/workspaces/${space.id}/channels`).set('Authorization', jwt('jose')).send({ name: 'avisos', visibility: 'public' }).expect(201)).body.channel;
+    const notices = (await request(app).post(`/api/workspaces/${space.id}/channels`).set('Authorization', jwt('jose')).send({ name: 'avisos', visibility: 'public' }).expect(201)).body.channel;
     const boss = (await request(app).post(`/api/workspaces/${space.id}/channels`).set('Authorization', jwt('jose')).send({ name: 'gerencia', visibility: 'private' }).expect(201)).body.channel;
     const seen = await request(app).get(`/api/workspaces/${space.id}/channels`).set('Authorization', jwt('beto')).expect(200);
     expect(seen.body.channels.map((c: { name: string; joined: boolean }) => [c.name, c.joined])).toEqual([['avisos', false], ['general', true]]);
-    await request(app).post(`/api/workspaces/${space.id}/channels/${avisos.id}/join`).set('Authorization', jwt('beto')).expect(200);
+    await request(app).post(`/api/workspaces/${space.id}/channels/${notices.id}/join`).set('Authorization', jwt('beto')).expect(200);
     await request(app).post(`/api/workspaces/${space.id}/channels/${boss.id}/join`).set('Authorization', jwt('beto')).expect(404);
     const after = await request(app).get(`/api/workspaces/${space.id}/channels`).set('Authorization', jwt('beto')).expect(200);
     expect(after.body.channels[0]).toMatchObject({ name: 'avisos', joined: true, members: 2 });

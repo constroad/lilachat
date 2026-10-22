@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AccessScreens } from './auth/AccessScreens';
 import { CodigoParaLaApp } from './auth/CodigoParaLaApp';
+import { InstallAppScreen } from './apps/InstallAppScreen';
 import { registrarServiceWorker } from './pwa/serviceWorker';
 import { Shell } from './Shell';
 import { useSesion } from './sesion/useSesion';
@@ -23,6 +24,10 @@ export function App() {
   // El QR de vincular abierto con la cámara del teléfono (W5): no es una sesión, es una indicación.
   if (window.location.pathname.startsWith('/v/')) return <CodigoParaLaApp />;
   if (!sesion.credential) return <AccessScreens onReady={sesion.entrar} />;
+  // Installing an app (agentes' Lila) in a space: after signing in it comes back to this same address.
+  if (window.location.pathname === '/instalar-app') {
+    return sesion.credential.jwt ? <InstallAppScreen jwt={sesion.credential.jwt} search={window.location.search} onRedirect={(url) => window.location.assign(url)} /> : null;
+  }
   return (
     <Shell
       credential={sesion.credential}

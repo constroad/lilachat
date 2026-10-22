@@ -8,6 +8,7 @@ import { useVistaPrevia } from './useVistaPrevia';
 import { AnilloDeSubida } from './AnilloDeSubida';
 import { ChipDeHilo } from './hilos/ChipDeHilo';
 import { MenuDelMensaje } from './MenuDelMensaje';
+import { BotCardView } from './BotCardView';
 import { BotonDeReaccionar } from './reacciones/BotonDeReaccionar';
 import { BotonDeHilo } from './BotonDeHilo';
 import { PastillaDeReacciones } from './reacciones/PastillaDeReacciones';
@@ -210,6 +211,8 @@ function ContenidoDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio
       </p>
     );
   }
+  // A bot's card (Lila): its summary in `body` is for the list and notices; here the card itself.
+  if (mensaje.card) return <BotCardView card={mensaje.card} chatId={chat.id} seq={mensaje.seq} jwt={jwt} />;
   const media = mensaje.media;
   if (media?.url && media.mime?.startsWith('audio/')) {
     return <NotaDeVoz url={media.url} durationMs={media.durationMs} onda={media.onda} mio={mio} />;

@@ -71,9 +71,9 @@ export async function aplicarBorrado(
 /** Edición: el texto nuevo y la marca «Editado». */
 export async function aplicarEdicion(
   base: BaseLocal,
-  { chatId, seq, body, editedAt }: { chatId: string; seq: number; body: string; editedAt: string }
+  { chatId, seq, body, editedAt, card }: { chatId: string; seq: number; body: string; editedAt?: string; card?: ChatMessage['card'] }
 ): Promise<void> {
-  await base.mensajes.where('[chatId+seq]').equals([chatId, seq]).modify({ body, editedAt });
+  await base.mensajes.where('[chatId+seq]').equals([chatId, seq]).modify({ body, ...(editedAt ? { editedAt } : {}), ...(card ? { card } : {}) });
 }
 
 /** Los últimos `limite` mensajes de un chat, del más viejo al más nuevo. */

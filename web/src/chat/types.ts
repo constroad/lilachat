@@ -1,3 +1,4 @@
+import type { BotCard } from '@lilachat/shared';
 import type { MencionEnMensaje, NotificationLevel, OutboxItem, Reaccion, ResumenDeHiloEnCliente, VistaDelFijado } from '@lilachat/shared';
 
 /**
@@ -75,6 +76,8 @@ export type ChatMessage = {
   body?: string;
   /** A wink's id (kind `guino`, José 21/10). */
   wink?: string;
+  /** A bot's card (`specs/BOTS-API.spec.md` §b): `body` carries its summary. */
+  card?: BotCard;
   /** El sobre de un chat secreto: llega EN VEZ de `body`. La web no lo abre. */
   envelope?: { v: number; nonce: string; ciphertext: string };
   ref?: MessageRef;

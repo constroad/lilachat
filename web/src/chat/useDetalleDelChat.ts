@@ -29,7 +29,7 @@ export type Respuesta = {
   name?: string;
   descripcion?: string;
   funAllowed?: boolean;
-  members: { id: string; name: string | null; phone: string | null; avatarUrl?: string; role?: 'admin' | 'member'; esYo?: boolean; title?: string; spaceRole?: string }[];
+  members: { id: string; name: string | null; phone: string | null; avatarUrl?: string; role?: 'admin' | 'member'; esYo?: boolean; title?: string; spaceRole?: string; app?: boolean }[];
 };
 
 /** Lo último que se vio de cada chat: cambiar de chat y volver no espera a la red. */
@@ -39,7 +39,7 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
   const miembros = new Map<string, MiembroDelChat>();
   const pills = new Map<string, MemberPill>();
   for (const uno of respuesta.members) {
-    pills.set(uno.id, { role: uno.spaceRole ?? uno.role ?? 'member', title: uno.title });
+    pills.set(uno.id, { role: uno.app ? 'app' : (uno.spaceRole ?? uno.role ?? 'member'), title: uno.title });
     miembros.set(uno.id, {
       id: uno.id,
       // «Tú» como en la app; sin nombre, el teléfono; sin nada, «Alguien».

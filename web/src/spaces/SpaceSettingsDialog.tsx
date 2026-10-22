@@ -4,6 +4,7 @@ import { membersLabel, SPACE_RUBROS, type ClientWorkspace } from '@lilachat/shar
 import { FieldError, Overlay, PrimaryButton } from '../ui/Overlay';
 import { SpaceLogo } from './SpaceLogo';
 import { removeSpaceLogo, updateSpace, uploadSpaceLogo } from './spacesApi';
+import { IntegrationsSection } from './IntegrationsSection';
 
 const NAME_MAX = 60;
 
@@ -94,6 +95,7 @@ export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string
         <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Aprobar a quien entre con el código</span><span className="block text-[12px] leading-4 text-on-surface-variant">Recibirás una solicitud cada vez que alguien nuevo use el código, antes de ver los canales.</span></span>
         <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${approval ? 'bg-primary' : 'bg-outline/40'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-surface shadow transition-transform ${approval ? 'translate-x-[22px]' : 'translate-x-0.5'}`} /></span>
       </button>
+      <IntegrationsSection jwt={props.jwt} spaceId={space.id} />
     </Overlay>
   );
 }

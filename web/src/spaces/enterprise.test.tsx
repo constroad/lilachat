@@ -94,9 +94,11 @@ describe('SpaceSettingsDialog (e1-12)', () => {
     await userEvent.selectOptions(screen.getByTestId('select-rubro-ajustes'), 'Maquinaria');
     await userEvent.click(screen.getByTestId('ajustes-aprobar'));
     await userEvent.click(screen.getByTestId('ajustes-espacio-guardar'));
-    await waitFor(() => expect(calls[0]?.body).toEqual({ name: 'QA Obra Norte', rubro: 'Maquinaria', joinPolicy: 'open' }));
+    // Integraciones also asks for the space's apps when it opens: the saves are found by method, not by position.
+    const patches = () => calls.filter((call) => call.method === 'PATCH');
+    await waitFor(() => expect(patches()[0]?.body).toEqual({ name: 'QA Obra Norte', rubro: 'Maquinaria', joinPolicy: 'open' }));
     await userEvent.click(screen.getByTestId('ajustes-cambiar-codigo'));
-    await waitFor(() => expect(calls[1]?.body).toEqual({ newCode: true }));
+    await waitFor(() => expect(patches()[1]?.body).toEqual({ newCode: true }));
     expect(await screen.findByTestId('codigo-ajustes')).toHaveTextContent('QAOB-NEW1');
   });
 });

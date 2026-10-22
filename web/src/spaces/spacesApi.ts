@@ -1,4 +1,4 @@
-import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
+import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, SpaceApp, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
 import { api } from '../api';
 import type { ChatSummary } from '../chat/types';
 
@@ -72,3 +72,6 @@ export const chatOfChannel = (channel: ClientChannel, spaceId: string): ChatSumm
   workspaceId: spaceId,
   channel: { visibility: channel.visibility },
 });
+/** Integraciones (`specs/BOTS-API.spec.md`): the space's installed apps, and uninstalling one. */
+export const spaceApps = (jwt: string, spaceId: string) => api<{ apps: SpaceApp[] }>(`/workspaces/${spaceId}/apps`, { jwt });
+export const uninstallApp = (jwt: string, spaceId: string, installationId: string) => api<Record<string, never>>(`/workspaces/${spaceId}/apps/${installationId}`, { jwt, method: 'DELETE' });

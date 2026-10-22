@@ -4892,6 +4892,53 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 92. «Se unió a Lilachat», como Telegram (21/10/2026, 0.1.132)
+
+José (21/10): «si alguien de mis contactos que invité descargó la app y creó
+su cuenta, debería llegarme una alerta: se unió a Lilachat, salúdala, así como
+lo hace Telegram».
+
+**A quién.** A quien invitó ese número (`invitations.invitedBy`, que guarda el
+botón «Invitar»). El servidor no guarda las agendas, por diseño (§contactos),
+así que no puede avisar a todos los que tienen el número, como Telegram.
+
+**Cuándo** (`server/src/joinNotice.ts`, 4 tests contra la ruta real del alta).
+- Al crear la cuenta, `otp/verify` marca `joinPending` solo en el insert. Las
+  cuentas viejas nunca avisan, ni al entrar en un teléfono nuevo.
+- Se avisa cuando la cuenta ya tiene nombre: en el mismo alta, o al ponérselo
+  después (`PUT /api/me/perfil`). «Alguien se unió» no dice nada.
+- Una sola vez: quien borra la marca es quien avisa.
+
+**Cómo.**
+- Un aviso de sistema `se-unio` de la persona nueva, en el 1:1 con quien la
+  invitó (se crea si no había). Va por el camino de todo mensaje: en vivo o
+  por push.
+- Quien invitó lee «Aracely se unió a Lilachat»; ella lee «Te uniste a
+  Lilachat» (`textoDeAviso`, test). La lista lo muestra igual.
+- Debajo, «Saludar 👋» manda «👋». Desaparece cuando ya escribiste algo
+  después del aviso (`alreadyGreeted`, test), en la app y en la web.
+
+**E2E en el emulador** (cuenta de José).
+- No se puede crear una cuenta real nueva por OTP en QA: solo se usa el
+  902049935. El insert del alta lo cubren los tests con la ruta real y un
+  constroad-auth falso.
+- En vivo: «QA Nueva» (900000803), marcada como recién creada e invitada por
+  José, se puso el nombre por `PUT /api/me/perfil`. El chat apareció en la
+  lista con «QA Nueva se unió a Lilachat» y 1 sin leer.
+- «Saludar 👋» mandó «👋» y el botón desapareció.
+- La primera vez no entró en vivo: el servidor de QA se había reiniciado y el
+  socket de la app todavía no se reconectaba. Con el socket conectado, entró
+  sin refrescar.
+- QA Nueva, su chat, su invitación y el mensaje de prueba de Beto se borraron
+  y quedaron en cero.
+
+**Pendiente** (pedido de José, 21/10):
+- Alta con nombre, fecha de cumpleaños y correo verificado obligatorios, y
+  «Completa tu perfil» para quien ya tiene cuenta (backlog 17).
+- Panel de superadmin en la web: usuarios, cuándo se unieron e información
+  básica, sin mensajes.
+- Llamadas en la web.
+
 ## 91. La parte visible de la API de bots (21/10/2026, 0.1.131)
 
 Contrato en `specs/BOTS-API.spec.md`. El servidor salió en 787f4e3.

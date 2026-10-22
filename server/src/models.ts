@@ -38,6 +38,8 @@ export interface User {
   lastSeenAt?: Date;
   /** A bot of an installed app (`bots/`): a member with a name, never a person who logs in; its `phone` is an internal key. */
   app?: { appId: Types.ObjectId; installationId: Types.ObjectId; workspaceId: Types.ObjectId };
+  /** Created now and not yet announced to who invited them (`joinNotice.ts`): set only on insert. */
+  joinPending?: boolean;
 }
 
 export interface Device {
@@ -80,6 +82,7 @@ const userSchema = new Schema<User>(
     avatarMediaId: { type: String },
     avatarUrl: { type: String },
     lastSeenAt: { type: Date },
+    joinPending: { type: Boolean },
     app: {
       appId: { type: Schema.Types.ObjectId },
       installationId: { type: Schema.Types.ObjectId },

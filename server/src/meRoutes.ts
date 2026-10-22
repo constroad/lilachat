@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { validarNombreDePerfil } from '@lilachat/shared';
 import { requireSession } from './requireSession.js';
 import { UserModel } from './models.js';
+import { announceJoin } from './joinNotice.js';
 import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
 import { multerDeAvatar, subirFotoRedonda } from './subirAvatar.js';
 
@@ -29,6 +30,8 @@ export function buildMeRouter(uploader: MediaUploader = buildLilaUploader()): Ro
       .select('name phone avatarUrl')
       .lean();
     if (!user) return res.status(404).json({ message: 'No encontramos tu usuario.' });
+    // A new account that signed up without a name announces itself now (`joinNotice.ts`).
+    void announceJoin(req.session!.userId).catch((error) => console.error('[se-unio] no se pudo avisar:', error instanceof Error ? error.message : error));
     return res.json({ perfil: perfilPublico(user) });
   });
 

@@ -10,6 +10,7 @@ import {
   resolveVerifyTargets,
 } from './invitationGate.js';
 import { claimPhoneInvites } from './workspaces.js';
+import { announceJoin } from './joinNotice.js';
 import { DeviceModel, InvitationModel, UserModel } from './models.js';
 import { signSession } from './sessions.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
@@ -134,11 +135,13 @@ export function buildAuthRouter(authClient: AuthClient): Router {
     const user = await UserModel.findOneAndUpdate(
       { phone },
       {
-        $setOnInsert: { phone, ...(admission?.email ? { email: admission.email } : {}) },
+        $setOnInsert: { phone, joinPending: true, ...(admission?.email ? { email: admission.email } : {}) },
         ...(name ? { $set: { name } } : {}),
       },
       { returnDocument: 'after', upsert: true }
     );
+    // Who invited this phone hears «se unió a Lilachat» (only a new account with a name; `joinNotice.ts`).
+    void announceJoin(user._id).catch((error) => console.error('[se-unio] no se pudo avisar:', error instanceof Error ? error.message : error));
     // Spaces that added this phone before it had an account (E1): it joins them now.
     await claimPhoneInvites(user._id, phone).catch((error) => console.error('[workspaces] no se pudieron reclamar invitaciones:', error instanceof Error ? error.message : error));
     await DeviceModel.findOneAndUpdate(

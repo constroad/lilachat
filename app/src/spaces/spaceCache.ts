@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
-import { InteractionManager } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createSessionCache, type ActivityItem, type ActivityType, type CacheEntry, type ClientChannel, type ClientWorkspaceMember, type SessionCache } from '@lilachat/shared';
 import type { JsonResult } from '../api/jsonCall';
@@ -114,7 +113,8 @@ export function useCached<T>(cache: SessionCache<T>, key: string | null, fetcher
 
 /** Entering a space: its directory, mentions and channels are asked for once the screen is drawn. */
 export function prefetchSpace(jwt: string, spaceId: string): void {
-  InteractionManager.runAfterInteractions(() => {
+  // `requestIdleCallback`, not `InteractionManager`: RN deprecated it and it warned on every entry.
+  requestIdleCallback(() => {
     void hydrateFromDisk(membersCache, `${spaceId}:members`).then(() => membersCache.revalidate(`${spaceId}:members`, fetchMembers(jwt, spaceId)));
     void hydrateFromDisk(activityCache, `${spaceId}:activity:mentions`).then(() => activityCache.revalidate(`${spaceId}:activity:mentions`, fetchActivity(jwt, spaceId, 'mentions')));
     void hydrateFromDisk(channelsCache, `${spaceId}:channels`).then(() => channelsCache.revalidate(`${spaceId}:channels`, fetchChannels(jwt, spaceId)));

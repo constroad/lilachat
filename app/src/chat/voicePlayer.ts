@@ -4,6 +4,7 @@ import { firstPlay, type NowPlaying } from '@lilachat/shared';
 import { soltarElAudio, tomarElAudio } from './notaDeVozMotor';
 import { playbackAudioMode } from './audioMode';
 import { reportarError } from '../ui/reportarError';
+import { releasePlayer } from './releasePlayer';
 
 /** Longer than this, Android stops background audio after ~3 min unless it shows lock-screen controls. */
 const LOCK_SCREEN_FROM_S = 150;
@@ -87,12 +88,7 @@ export function setVoiceNoteRate(rate: number): void {
 export function stopVoiceNote(): void {
   if (session) {
     session.stop();
-    try {
-      session.player.clearLockScreenControls();
-      session.player.remove();
-    } catch (error) {
-      reportarError('nota.soltar', error);
-    }
+    releasePlayer(session.player, (error) => reportarError('nota.soltar', error));
   }
   if (current) soltarElAudio(current.id);
   session = null;

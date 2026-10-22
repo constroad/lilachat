@@ -15,6 +15,7 @@ import { ProveedorDeLlamadas } from '../calls/ProveedorDeLlamadas';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { iniciarCronometro } from '../diagnostico/diagnostico';
 import { TabsShell } from './TabsShell';
+import { FullScreenCallsPrompt } from './FullScreenCallsPrompt';
 import { useColores, useTema } from './tema';
 import { chatAbiertoDe, chatQueSeVe } from './rutas';
 import { useAbrirDesdeAviso } from './useAbrirDesdeAviso';
@@ -191,6 +192,7 @@ export function NavegacionDeSesion(props: {
         </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
+    <FullScreenCallsPrompt />
     </ProveedorDeLlamadas>
   );
 }

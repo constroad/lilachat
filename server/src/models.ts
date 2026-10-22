@@ -40,6 +40,11 @@ export interface User {
   app?: { appId: Types.ObjectId; installationId: Types.ObjectId; workspaceId: Types.ObjectId };
   /** Created now and not yet announced to who invited them (`joinNotice.ts`): set only on insert. */
   joinPending?: boolean;
+  /** Required to sign up (backlog 17): the year is optional; `birthdayVisible` false hides it from the chats. */
+  birthday?: { day: number; month: number; year?: number };
+  birthdayVisible?: boolean;
+  /** When the email was proved with a code (`profileRoutes.ts`); an unverified one does not count. */
+  emailVerifiedAt?: Date;
 }
 
 export interface Device {
@@ -83,6 +88,9 @@ const userSchema = new Schema<User>(
     avatarUrl: { type: String },
     lastSeenAt: { type: Date },
     joinPending: { type: Boolean },
+    birthday: { day: Number, month: Number, year: Number },
+    birthdayVisible: { type: Boolean },
+    emailVerifiedAt: { type: Date },
     app: {
       appId: { type: Schema.Types.ObjectId },
       installationId: { type: Schema.Types.ObjectId },

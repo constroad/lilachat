@@ -6,9 +6,9 @@ const MAX_NOTES = 5;
 
 /**
  * What the screen that blocks a version under the minimum says (backlog 32;
- * design `u-01-actualizacion-obligatoria`). Pure. It says «ya no se puede
- * usar», the band's words: the server does not reject old versions yet, so
- * «ya no se conecta» would not be true.
+ * design `u-01-actualizacion-obligatoria`). Pure. It uses the band's words
+ * (the version can no longer be used), not the design's (it no longer
+ * connects): the server does not reject old versions yet.
  */
 export function updateLockContent(params: { installed: string; latest: string; novedades: Novedad[]; size: number }): { body: string; notesTitle: string; notes: string[]; source: string } {
   const installed = params.installed ? ` (${params.installed})` : '';

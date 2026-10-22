@@ -219,20 +219,26 @@ function ContenidoDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio
   if (media?.url && media.mime?.startsWith('audio/')) {
     return <NotaDeVoz id={`${chat.id}:${mensaje.seq}`} chatId={chat.id} authorName={mio ? 'Tú' : (nombres.get(mensaje.senderId) ?? chat.name ?? 'Nota de voz')} url={media.url} durationMs={media.durationMs} onda={media.onda} mio={mio} />;
   }
-  const esImagen = Boolean(media?.url && (media.mime?.startsWith('image/') || media.thumbUrl));
+  const esImagen = Boolean(media?.url && (media.mime?.startsWith('image/') || media.mime?.startsWith('video/') || media.thumbUrl));
+  // A video lila could not make a thumbnail for (QA 22/10): a dark frame under the play, opening the viewer like the rest.
+  const videoSinMiniatura = Boolean(media?.url && !media.thumbUrl && media.mime?.startsWith('video/'));
   return (
     <>
       {media?.url && isAnimatedImage(media.mime) && !mensaje.estado ? (
         <GifInBubble testId={`gif-${mensaje.clientKey}`} url={media.url} alt={mensaje.body ?? 'GIF'} width={media.width} height={media.height} onOpen={() => onVerFoto(mensaje)} />
       ) : media?.url && esImagen ? (
         <button type="button" data-testid={`foto-${mensaje.clientKey}`} onClick={() => !mensaje.estado && onVerFoto(mensaje)} className="relative block w-full">
-          <img
-            src={media.thumbUrl || media.url}
-            alt={mensaje.body ?? 'Foto'}
-            loading="lazy"
-            className="mb-1 max-h-64 w-full rounded-lg object-cover"
-            style={media.width && media.height ? { aspectRatio: `${media.width} / ${media.height}` } : undefined}
-          />
+          {videoSinMiniatura ? (
+            <span data-testid={`video-sin-miniatura-${mensaje.clientKey}`} className="mb-1 block max-h-64 w-full rounded-lg bg-black" style={{ aspectRatio: media.width && media.height ? `${media.width} / ${media.height}` : '16 / 9' }} />
+          ) : (
+            <img
+              src={media.thumbUrl || media.url}
+              alt={mensaje.body ?? 'Foto'}
+              loading="lazy"
+              className="mb-1 max-h-64 w-full rounded-lg object-cover"
+              style={media.width && media.height ? { aspectRatio: `${media.width} / ${media.height}` } : undefined}
+            />
+          )}
           {mensaje.estado === 'enviando' ? <AnilloDeSubida razon={mensaje.progreso} /> : null}
           {/* A video looked like a photo (José, 21/10): the play over its frame, like the app. */}
           {media.mime?.startsWith('video/') && mensaje.estado !== 'enviando' ? (

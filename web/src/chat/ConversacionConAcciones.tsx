@@ -33,7 +33,7 @@ import { useDestacadosWeb } from './destacados/useDestacadosWeb';
 import { TarjetaDeDestacados } from './destacados/TarjetaDeDestacados';
 import { useStickers } from './stickers/useStickers';
 import type { StickerAction } from './contextoDeLaConversacion';
-import { memberBadge, usesFlatLayout } from '@lilachat/shared';
+import { memberBadge, opensInPhotoViewer, usesFlatLayout } from '@lilachat/shared';
 import { useGroupsAsList } from '../ui/groupsAsList';
 import { useCalls } from '../calls/CallProvider';
 import { ChatQueue } from './queue/ChatQueue';
@@ -90,7 +90,8 @@ export function ConversacionConAcciones(
   );
   const [archivos, setArchivos] = useState<File[] | null>(null);
   const [fotoAbierta, setFotoAbierta] = useState<number | null>(null);
-  const fotos = useMemo(() => (mensajes ?? []).filter((uno) => !uno.deletedAt && uno.media?.url && (uno.media.mime?.startsWith('image/') || uno.media.thumbUrl)), [mensajes]);
+  // Photos, GIFs and videos; never a sticker (José, 22/10: they showed up while swiping).
+  const fotos = useMemo(() => (mensajes ?? []).filter(opensInPhotoViewer), [mensajes]);
   const onVerFoto = useCallback((mensaje: MensajeEnPantalla) => setFotoAbierta(Math.max(0, fotos.findIndex((uno) => uno.clientKey === mensaje.clientKey))), [fotos]);
   const [pdfAbierto, setPdfAbierto] = useState<MensajeEnPantalla | null>(null);
   const greet = useCallback(() => void sync.enviarTexto(chat.id, '👋'), [sync, chat.id]);

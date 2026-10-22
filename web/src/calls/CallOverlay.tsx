@@ -29,12 +29,16 @@ function useStreamRef(stream: MediaStream | null) {
   }, [stream]);
 }
 
+/** A round button with its label under it, like WhatsApp's call (José, 22/10); the one that is on goes filled. */
 function RoundButton(props: { testId: string; label: string; tone: 'answer' | 'end' | 'plain'; pressed?: boolean; onClick: () => void; children: ReactNode }) {
   const tones = { answer: 'bg-en-linea text-background', end: 'bg-error text-background', plain: props.pressed ? 'bg-on-surface text-background' : 'bg-surface-variant text-on-surface' };
   return (
-    <button type="button" data-testid={props.testId} aria-label={props.label} title={props.label} aria-pressed={props.pressed} onClick={props.onClick} className={`grid h-14 w-14 place-items-center rounded-full transition-transform active:scale-95 ${tones[props.tone]}`}>
-      {props.children}
-    </button>
+    <span className="flex w-20 flex-col items-center gap-1.5">
+      <button type="button" data-testid={props.testId} aria-label={props.label} title={props.label} aria-pressed={props.pressed} onClick={props.onClick} className={`grid h-14 w-14 place-items-center rounded-full transition-transform active:scale-95 ${tones[props.tone]}`}>
+        {props.children}
+      </button>
+      <span className="text-[12px] text-on-surface-variant">{props.label}</span>
+    </span>
   );
 }
 
@@ -43,7 +47,7 @@ function RoundButton(props: { testId: string; label: string; tone: 'answer' | 'e
  * how it goes, the video when there is one, and the controls. Esc does not
  * hang up: a call is not closed by accident.
  */
-export function CallOverlay({ call }: { call: WebCall }) {
+export function CallOverlay({ call, peerPhoto }: { call: WebCall; /** The chat's photo, for the middle of the window. */ peerPhoto?: string }) {
   const { state, session, media, muted, cameraOn, localStream, remoteStream, error } = call;
   const active = state?.fase === 'activa';
   const now = useNow(active);
@@ -62,12 +66,13 @@ export function CallOverlay({ call }: { call: WebCall }) {
             <video ref={localVideo} autoPlay playsInline muted data-testid="video-propio" className={`absolute bottom-28 right-4 h-28 w-20 rounded-lg border border-outline/20 bg-on-surface object-cover [transform:scaleX(-1)] ${cameraOn ? '' : 'invisible'}`} />
           </>
         ) : null}
-        <div className={`relative mt-16 flex flex-col items-center gap-3 px-6 text-center ${showVideo ? 'rounded-xl bg-surface/80 py-3' : ''}`}>
-          {showVideo ? null : <Avatar name={session.peerName} size={112} />}
+        {/* WhatsApp's order (José, 22/10): who and how it goes on top, the face in the middle, the controls in a panel at the bottom. */}
+        <div className={`relative mt-8 flex flex-col items-center gap-1 px-6 text-center ${showVideo ? 'rounded-xl bg-surface/80 px-4 py-2' : ''}`}>
           <h2 className="max-w-full truncate text-2xl font-bold">{session.peerName}</h2>
           <p data-testid="leyenda-llamada" role="status" className={`text-sm ${error ? 'text-error' : 'text-on-surface-variant'} tabular-nums`}>{caption}</p>
         </div>
-        <div className="relative mt-auto mb-8 flex items-center gap-5">
+        <div className="relative grid flex-1 place-items-center">{showVideo ? null : <Avatar name={session.peerName} foto={peerPhoto} size={144} />}</div>
+        <div className={`relative mx-4 mb-6 flex items-start justify-evenly gap-2 self-stretch rounded-3xl border border-outline/15 px-4 py-4 ${showVideo ? 'bg-surface/85' : 'bg-background'}`}>
           {state.fase === 'sonando' ? (
             <>
               <RoundButton testId="btn-rechazar-llamada" label="Rechazar" tone="end" onClick={call.hangUp}><PhoneOff size={24} /></RoundButton>
@@ -75,10 +80,10 @@ export function CallOverlay({ call }: { call: WebCall }) {
             </>
           ) : state.fase === 'terminada' ? null : (
             <>
-              <RoundButton testId="btn-silenciar" label={muted ? 'Activar micrófono' : 'Silenciar'} tone="plain" pressed={muted} onClick={call.toggleMute}>{muted ? <MicOff size={22} /> : <Mic size={22} />}</RoundButton>
               {session.videoCall && localStream?.getVideoTracks().length ? (
-                <RoundButton testId="btn-camara" label={cameraOn ? 'Apagar cámara' : 'Encender cámara'} tone="plain" pressed={!cameraOn} onClick={call.toggleCamera}>{cameraOn ? <Video size={22} /> : <VideoOff size={22} />}</RoundButton>
+                <RoundButton testId="btn-camara" label={cameraOn ? 'Cámara' : 'Sin cámara'} tone="plain" pressed={!cameraOn} onClick={call.toggleCamera}>{cameraOn ? <Video size={22} /> : <VideoOff size={22} />}</RoundButton>
               ) : null}
+              <RoundButton testId="btn-silenciar" label={muted ? 'Activar' : 'Silenciar'} tone="plain" pressed={muted} onClick={call.toggleMute}>{muted ? <MicOff size={22} /> : <Mic size={22} />}</RoundButton>
               <RoundButton testId="btn-colgar" label="Colgar" tone="end" onClick={call.hangUp}><PhoneOff size={24} /></RoundButton>
             </>
           )}

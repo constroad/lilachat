@@ -58,7 +58,7 @@ function useIncomingCallNotice(ringing: boolean, chatId: string | null, title: s
  * `ProveedorDeLlamadas`): it listens from the moment there is a session, and
  * the chat comes from the offer.
  */
-export function CallProvider(props: { jwt: string; connected: boolean; nameOf: (offer: IncomingOffer) => string; children: ReactNode }) {
+export function CallProvider(props: { jwt: string; connected: boolean; nameOf: (offer: IncomingOffer) => string; photoOf?: (chatId: string) => string | undefined; children: ReactNode }) {
   const webCall = useWebCall({ jwt: props.jwt, connected: props.connected, nameOf: props.nameOf });
   const { state, session, error, close, call } = webCall;
   useCallTones(state);
@@ -76,7 +76,7 @@ export function CallProvider(props: { jwt: string; connected: boolean; nameOf: (
   return (
     <CallsContext.Provider value={value}>
       {props.children}
-      {state && session ? <CallOverlay call={webCall} /> : null}
+      {state && session ? <CallOverlay call={webCall} peerPhoto={props.photoOf?.(session.chatId)} /> : null}
     </CallsContext.Provider>
   );
 }

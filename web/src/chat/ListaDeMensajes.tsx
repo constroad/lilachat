@@ -1,7 +1,7 @@
 import { useContext, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronDown } from 'lucide-react';
-import { formatDayLabel } from '@lilachat/shared';
+import { followsMyNewRow, formatDayLabel } from '@lilachat/shared';
 import { BurbujaDeMensaje } from './BurbujaDeMensaje';
 import { seqParaAcusar } from './acuseDeLeido';
 import { estaCercaDelFinal, filasDeLaConversacion, sigueEnElFinal } from './filasDeLaConversacion';
@@ -63,7 +63,9 @@ export function ListaDeMensajes(props: Props) {
   }, []);
 
   useConservarAlCargarAnteriores(contenedor, filas[0]?.mensaje.clientKey, virtualizador.getTotalSize());
-  useSeguirElFinal({ pegado, bajar, alto: virtualizador.getTotalSize(), cantidad: filas.length, chatId: chat.id });
+  const ultimo = mensajes.at(-1);
+  const ultimaMia = !ultimo ? undefined : ultimo.senderId === yo ? ultimo.clientKey || `seq-${ultimo.seq}` : null;
+  useSeguirElFinal({ pegado, bajar, alto: virtualizador.getTotalSize(), cantidad: filas.length, chatId: chat.id, ultimaMia });
   useSeguirAlAchicarse(contenedor, pegado, bajar);
   useAcuseDeLeido({ mensajes, pegado, lejos, onLeido: props.onLeido });
   const resaltado = useSaltoAMensaje({ salto: props.salto, filas, pegado, setLejos, scrollToIndex: (indice) => virtualizador.scrollToIndex(indice, { align: 'center' }), onNoEsta: props.onNoEsta });
@@ -151,12 +153,21 @@ function Escribiendo() {
 }
 
 /** Pegada: bajar cuando llega algo o el contenido crece (fotos, tarjetas). Al cambiar de chat, abre abajo. */
-function useSeguirElFinal(p: { pegado: React.MutableRefObject<boolean>; bajar: () => void; alto: number; cantidad: number; chatId: string }) {
-  const { pegado, bajar, alto, cantidad, chatId } = p;
+function useSeguirElFinal(p: { pegado: React.MutableRefObject<boolean>; bajar: () => void; alto: number; cantidad: number; chatId: string; ultimaMia: string | null | undefined }) {
+  const { pegado, bajar, alto, cantidad, chatId, ultimaMia } = p;
+  const ultimaMiaVista = useRef<string | null | undefined>(undefined);
   useLayoutEffect(() => {
     pegado.current = true;
     bajar();
   }, [chatId, pegado, bajar]);
+  // What I send is always seen (22/10), even while reading further up.
+  useLayoutEffect(() => {
+    const seguir = followsMyNewRow(ultimaMiaVista.current, ultimaMia);
+    ultimaMiaVista.current = ultimaMia;
+    if (!seguir) return;
+    pegado.current = true;
+    bajar();
+  }, [ultimaMia, pegado, bajar]);
   useLayoutEffect(() => {
     if (pegado.current) bajar();
   }, [alto, cantidad, pegado, bajar]);

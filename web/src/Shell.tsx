@@ -210,7 +210,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
   };
 
   return (
-    <CallProvider jwt={credential.jwt} connected={socket.connected} nameOf={callerOf}>
+    <CallProvider jwt={credential.jwt} connected={socket.connected} nameOf={callerOf} photoOf={(chatId) => [...chats, ...(spaceChatsShown ?? [])].find((chat) => chat.id === chatId)?.avatarUrl}>
     <div className="relative flex h-full">
       <AvisosDeLaWeb sinConexion={sinConexion} hayVersionNueva={hayVersionNueva} />
       {panel !== 'conversation' ? (

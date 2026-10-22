@@ -25,6 +25,7 @@ const DISTANCIA_DE_DESVANECIDO = 600;
  */
 export function PaginaDelVisor({
   url,
+  placeholder,
   activa,
   ancho,
   alto,
@@ -33,6 +34,8 @@ export function PaginaDelVisor({
   onToque,
 }: {
   url: string;
+  /** What the bubble already showed (in cache): it fills the screen while the full photo arrives, instead of black (José, 21/10). */
+  placeholder?: string;
   /** Es la que se está viendo: al dejar de serlo vuelve al tamaño real. */
   activa: boolean;
   ancho: number;
@@ -144,7 +147,7 @@ export function PaginaDelVisor({
       <Animated.View style={[{ width: ancho, height: alto }, estilo]} testID="visor-pagina">
         {/* `contain` y no `cover`: recortar una foto de obra puede dejar afuera
             justo el dato que se fue a mirar. */}
-        <Image source={{ uri: url }} style={{ width: ancho, height: alto }} contentFit="contain" transition={120} />
+        <Image source={{ uri: url }} placeholder={placeholder ? { uri: placeholder } : undefined} placeholderContentFit="contain" style={{ width: ancho, height: alto }} contentFit="contain" transition={0} cachePolicy="memory-disk" />
       </Animated.View>
     </GestureDetector>
   );

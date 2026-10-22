@@ -77,8 +77,9 @@ export function EncabezadoDelChat(props: {
         {/* El estado de conexión se DICE: un mensaje que no sale sin
             explicación es lo que hace desconfiar de una app de mensajería. */}
         {!props.conectado ? (
-          <Text className="text-xs text-on-surface-variant" testID="estado-conexion">
-            Sin conexión · se enviará cuando vuelva
+          // One line, like WhatsApp (José, 21/10): what does not go out yet keeps its clock in the bubble.
+          <Text className="text-xs text-on-surface-variant" testID="estado-conexion" numberOfLines={1}>
+            Conectando…
           </Text>
         ) : props.subtitulo ? (
           <Text

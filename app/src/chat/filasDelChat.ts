@@ -109,6 +109,8 @@ export function citadosPorSeq<M extends FilaMinima>(
 
 type MensajeConMedia = {
   seq: number;
+  /** To open what I just sent from its copy on the phone, at once. */
+  clientKey?: string;
   senderId: string;
   at: string;
   deletedAt?: string;
@@ -152,6 +154,7 @@ export function fotosDelChat(
         nombre: media.fileName,
         cuandoReal: new Date(mensaje.at),
         seq: mensaje.seq,
+        ...(mensaje.clientKey ? { clientKey: mensaje.clientKey } : {}),
         mia,
         // En un grupo, quién la mandó; antes decía el nombre del GRUPO.
         autor: mia ? 'Tú' : (deUnGrupo ?? contexto.nombreDelChat),

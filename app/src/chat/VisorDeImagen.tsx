@@ -7,6 +7,7 @@ import { FlatList, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Download, FileText, Play, Share2, Trash2, X } from 'lucide-react-native';
 import { useMargenes } from '../ui/useMargenes';
 import { nombreLimpio } from './archivoDescargado';
+import { copiaLocalDe } from './colaDeArchivos';
 import { PaginaDelVisor } from './PaginaDelVisor';
 import { indiceDeFoto } from './visor';
 import { useEvent } from 'expo';
@@ -54,6 +55,8 @@ export type FotoDelVisor = {
   nombre?: string;
   /** La miniatura: para la tira y como portada de un video que no se está viendo. */
   miniatura?: string;
+  /** What I sent opens from its copy on the phone (`copiaLocalDe`). */
+  clientKey?: string;
 };
 
 /**
@@ -340,7 +343,9 @@ function Pagina(props: {
   }
   return (
     <PaginaDelVisor
-      url={foto.url}
+      // What I just sent opens from its copy on the phone (no download); the rest starts on the bubble's thumbnail.
+      url={(foto.clientKey && copiaLocalDe(foto.clientKey)) || foto.url}
+      placeholder={foto.miniatura}
       activa={props.activa}
       ancho={ancho}
       alto={alto}

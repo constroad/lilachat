@@ -20,21 +20,30 @@ export function useIrAMensaje(params: {
   irAlInicio: () => OpeningPlace;
   /** Not on screen: the window around it (pending 44), or why not (it never moves silently). */
   onNoEsta: (texto: string, seq: number) => void;
+  /**
+   * Before scrolling: the list stops following the end. Android reports a
+   * «drag» when the search keyboard opens, with no finger, and the list stuck
+   * to the end again and undid the jump (E2E, 22/10).
+   */
+  releaseFromEnd?: () => void;
 }) {
-  const { rows, listaRef, irASeq, irAlInicio, onNoEsta } = params;
+  const { rows, listaRef, irASeq, irAlInicio, onNoEsta, releaseFromEnd } = params;
   const [resaltado, setResaltado] = useState<number | null>(null);
 
   const irAMensaje = useCallback(
     (seq: number): boolean => {
       const indice = rows.findIndex((fila) => !isPending(fila) && fila.seq === seq);
       if (indice < 0) return false;
-      listaRef.current?.scrollToIndex({ index: indice, animated: true, viewPosition: 0.4 });
+      releaseFromEnd?.();
+      // At once, not animated: the animation reported its own «drag» while still at the end, and the list
+      // stuck to it again (E2E, 22/10). An instant jump leaves the end in one step, like WhatsApp's search.
+      listaRef.current?.scrollToIndex({ index: indice, animated: false, viewPosition: 0.4 });
       // Segundo pase: con alturas variables, si esa zona todavía no se midió el
       // primero cae corto o no se mueve (visto en el E2E con el chat recién abierto).
       setTimeout(() => listaRef.current?.scrollToIndex({ index: indice, animated: false, viewPosition: 0.4 }), SEGUNDO_PASE_MS);
       return true;
     },
-    [rows, listaRef]
+    [rows, listaRef, releaseFromEnd]
   );
 
   const saltarA = useCallback(

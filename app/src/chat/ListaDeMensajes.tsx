@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactElement, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactElement, type RefObject, type MutableRefObject } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { BottomRoom, useScrollConTeclado } from './useScrollConTeclado';
@@ -94,6 +94,10 @@ export function ListaDeMensajes(props: {
   sinSubir: number;
   /** A window around an old message (pending 44): its own view, paged down too; «bajar» leaves it. */
   ventana?: { viewId: number; inWindow: boolean; onCargarSiguientes: () => void; onIrAlUltimo: () => void };
+  /** Searching or a message highlighted: nothing pulls the list to the end (a jump was undone, E2E 22/10). */
+  holdPosition?: boolean;
+  /** Filled with this list's «stop following the end», for a jump to call before it scrolls. */
+  releaseRef?: MutableRefObject<() => void>;
 }) {
   const colores = useColores();
   const { listaRef, rows } = props;
@@ -120,9 +124,12 @@ export function ListaDeMensajes(props: {
   const scrollDelChat = useScrollConTeclado(sinSubir);
   const { revealed, onLoad, onSize } = useRevealWhenPlaced(rows.length > 0, props.onListo, releaseFromEnd, props.ventana?.viewId);
   const inWindow = props.ventana?.inWindow === true;
+  // A placement away from the end, a search or a highlighted message: the list stops following the
+  // end. Without it, the row measured while jumping «grew the end» and pulled it back (E2E, 22/10).
   useEffect(() => {
-    if (props.placedAwayLate) releaseFromEnd();
-  }, [props.placedAwayLate, releaseFromEnd]);
+    if (props.placedAwayLate || props.holdPosition) releaseFromEnd();
+  }, [props.placedAwayLate, props.holdPosition, releaseFromEnd]);
+  if (props.releaseRef) props.releaseRef.current = releaseFromEnd;
   const liftStyle = useBottomLiftStyle(sinSubir);
   useFunPlayback({ messages: props.mensajes, me: props.yo, chatId: props.chatId, afterSeq: props.readSeqAtOpen });
   return (
@@ -162,7 +169,7 @@ export function ListaDeMensajes(props: {
         // `autoscrollToBottomThreshold`: si se está cerca del final (20 % de la
         // pantalla), lo que llega o se manda baja la lista solo, como
         // WhatsApp. Leyendo arriba, no mueve nada.
-        maintainVisibleContentPosition={inWindow ? { startRenderingFromBottom: false } : { startRenderingFromBottom: true, autoscrollToBottomThreshold: 0.2 }}
+        maintainVisibleContentPosition={inWindow ? { startRenderingFromBottom: false } : { startRenderingFromBottom: true, ...(props.holdPosition ? {} : { autoscrollToBottomThreshold: 0.2 }) }}
         onScroll={alScrollear}
         onScrollBeginDrag={alEmpezarArrastre}
         onScrollEndDrag={alTerminarArrastre}

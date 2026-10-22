@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { AccessScreens } from './auth/AccessScreens';
 import { CodigoParaLaApp } from './auth/CodigoParaLaApp';
 import { InstallAppScreen } from './apps/InstallAppScreen';
+import { CompleteProfileScreen } from './profile/CompleteProfileScreen';
+import { useProfileGate } from './profile/useProfileGate';
 import { registrarServiceWorker } from './pwa/serviceWorker';
 import { Shell } from './Shell';
 import { useSesion } from './sesion/useSesion';
@@ -16,6 +18,8 @@ import { useSesion } from './sesion/useSesion';
  */
 export function App() {
   const sesion = useSesion();
+  // Name, birthday and a verified email are required (backlog 17): a session without them completes them first.
+  const profileGate = useProfileGate(sesion.credential?.jwt || null);
   // Desde la primera visita, también sin sesión (W4): así la app ya queda guardada.
   const [hayVersionNueva, setHayVersionNueva] = useState(false);
   useEffect(() => {
@@ -24,6 +28,7 @@ export function App() {
   // El QR de vincular abierto con la cámara del teléfono (W5): no es una sesión, es una indicación.
   if (window.location.pathname.startsWith('/v/')) return <CodigoParaLaApp />;
   if (!sesion.credential) return <AccessScreens onReady={sesion.entrar} />;
+  if (profileGate.incomplete) return <CompleteProfileScreen jwt={sesion.credential.jwt} profile={profileGate.incomplete} onDone={profileGate.done} />;
   // Installing an app (agentes' Lila) in a space: after signing in it comes back to this same address.
   if (window.location.pathname === '/instalar-app') {
     return sesion.credential.jwt ? <InstallAppScreen jwt={sesion.credential.jwt} search={window.location.search} onRedirect={(url) => window.location.assign(url)} /> : null;

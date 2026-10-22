@@ -18,6 +18,7 @@ import {
   WorkspaceError,
 } from './workspaces.js';
 import { createChannel, joinChannel, listChannels } from './workspaceChannels.js';
+import { emailInvitesOf, inviteByEmail, revokeEmailInvite } from './workspaceEmailInvites.js';
 import { buildLilaUploader, type MediaUploader } from './mediaClient.js';
 import { multerDeAvatar, subirFotoRedonda } from './subirAvatar.js';
 
@@ -64,7 +65,17 @@ export function buildWorkspaceRouter(uploader: MediaUploader = buildLilaUploader
     await leaveWorkspace(req.params.id!, me(req));
     res.status(204).end();
   }));
-  router.get('/:id/members', handled(async (req, res) => res.json({ members: await listMembers(req.params.id!, me(req), req.query.status) })));
+  router.get('/:id/members', handled(async (req, res) => {
+    const members = await listMembers(req.params.id!, me(req), req.query.status);
+    // The emails waiting (22/10) sit next to the phones in «Invitados»; `listMembers` already checked the admin.
+    const emails = req.query.status === 'invited' ? await emailInvitesOf(new Types.ObjectId(req.params.id!)) : [];
+    res.json({ members: [...members, ...emails] });
+  }));
+  router.post('/:id/invites', handled(async (req, res) => res.status(201).json(await inviteByEmail(req.params.id!, me(req), req.body ?? {}))));
+  router.delete('/:id/invites/:inviteId', handled(async (req, res) => {
+    await revokeEmailInvite(req.params.id!, me(req), req.params.inviteId!);
+    res.status(204).end();
+  }));
   router.post('/:id/members', handled(async (req, res) => res.status(201).json({ member: await addByPhone(req.params.id!, me(req), req.body ?? {}) })));
   router.delete('/:id/members/:memberId', handled(async (req, res) => {
     await rejectRequest(req.params.id!, me(req), req.params.memberId!);

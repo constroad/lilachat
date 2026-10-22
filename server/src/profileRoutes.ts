@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { normalizeEmail, profileMissing, validarNombreDePerfil, validateBirthday, type Birthday } from '@lilachat/shared';
 import type { AuthClient } from './authClient.js';
 import { announceJoin } from './joinNotice.js';
+import { claimEmailInvites } from './workspaceEmailInvites.js';
 import { crearLimiteDeIntentos } from './limiteDeIntentos.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { UserModel, type User } from './models.js';
@@ -99,6 +100,8 @@ export function buildProfileRouter(authClient: AuthClient): Router {
       .catch((error: { code?: number }) => (error?.code === DUPLICATE_KEY ? 'taken' as const : Promise.reject(error)));
     if (user === 'taken') return void res.status(409).json({ message: 'Ese correo ya está en otra cuenta de Lilachat.' });
     if (!user) return void res.status(404).json({ message: 'No encontramos tu usuario.' });
+    // Spaces that invited this email (22/10) admit the person now.
+    await claimEmailInvites(user._id, email).catch((error) => console.error('[workspaces] no se pudieron reclamar invitaciones por correo:', error instanceof Error ? error.message : error));
     res.json({ profile: profileView(user) });
   }));
   return router;

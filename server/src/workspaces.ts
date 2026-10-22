@@ -18,6 +18,7 @@ import { leaveWorkspaceChats, restoreToWorkspaceChats, suspendFromWorkspaceChats
 import { membershipExtras } from './workspaceInfo.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { noticeSpacesChanged } from './workspaceNotices.js';
+import { ensureGeneralChannel, welcomeToGeneral } from './workspaceGeneral.js';
 
 /** A refusal with its HTTP status; the routes turn it into the response. */
 export class WorkspaceError extends Error {
@@ -29,9 +30,9 @@ export class WorkspaceError extends Error {
 const CODE_ATTEMPTS = 5;
 const NAME_MAX = 60;
 const NOT_FOUND = 'Ese espacio no existe o no estás en él.';
-const ONLY_ADMINS = 'Solo un admin del espacio puede hacer eso.';
+export const ONLY_ADMINS = 'Solo un admin del espacio puede hacer eso.';
 
-const cleanText = (value: unknown, max: number): string | undefined => (typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : undefined);
+export const cleanText = (value: unknown, max: number): string | undefined => (typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : undefined);
 const isRole = (value: unknown): value is WorkspaceRole => value === 'owner' || value === 'admin' || value === 'member' || value === 'guest';
 const asPolicy = (value: unknown): JoinPolicy | undefined => (value === 'open' || value === 'approval' ? value : undefined);
 const asId = (value: string): Types.ObjectId => {
@@ -68,6 +69,7 @@ export async function createWorkspace(ownerId: Types.ObjectId, input: { name?: u
   if (!owner) throw new WorkspaceError(404, 'No encontramos tu cuenta.');
   const workspace = await WorkspaceModel.create({ name, rubro: cleanText(input.rubro, 40), ownerId, joinCode: await uniqueCode(name), joinPolicy: asPolicy(input.joinPolicy) ?? 'approval' });
   const member = await WorkspaceMemberModel.create({ workspaceId: workspace._id, userId: ownerId, phone: owner.phone, role: 'owner', status: 'active', joinedAt: new Date() });
+  await ensureGeneralChannel(workspace._id);
   return toClientWorkspace(workspace.toObject(), member);
 }
 
@@ -92,6 +94,7 @@ export async function joinByCode(userId: Types.ObjectId, code: unknown): Promise
   if (existing?.status === 'deactivated') throw new WorkspaceError(403, 'Un admin desactivó tu acceso a este espacio.');
   if (existing?.status === 'invited') {
     await WorkspaceMemberModel.updateOne({ _id: existing._id }, { $set: { userId, status: 'active', joinedAt: new Date() } });
+    await welcomeToGeneral(workspace._id, userId);
     return { workspaceId: String(workspace._id), status: 'active' };
   }
   if (existing) return { workspaceId: String(workspace._id), status: existing.status };
@@ -99,6 +102,7 @@ export async function joinByCode(userId: Types.ObjectId, code: unknown): Promise
   await WorkspaceMemberModel.create({ workspaceId: workspace._id, userId, phone: user.phone, role: 'member', status, ...(status === 'active' ? { joinedAt: new Date() } : {}) });
   // A request waits: its admins see «Solicitudes» at once.
   if (status === 'pending') noticeSpacesChanged(await adminIdsOf(workspace._id));
+  else await welcomeToGeneral(workspace._id, userId);
   return { workspaceId: String(workspace._id), status };
 }
 
@@ -177,7 +181,11 @@ export async function addByPhone(workspaceId: string, actorId: Types.ObjectId, i
   ).lean<WorkspaceMember>();
   // Without an account they could not sign up: the space invites them to Lilachat too.
   if (!user) await InvitationModel.updateOne({ phone }, { $setOnInsert: { phone, status: 'invited' } }, { upsert: true });
-  else noticeSpacesChanged([user._id]);
+  else {
+    // Idempotent: someone already in #general is not announced again, and a deactivated one stays out.
+    if (member.status === 'active') await welcomeToGeneral(actor.workspaceId, user._id);
+    noticeSpacesChanged([user._id]);
+  }
   return (await toClientMembers([member]))[0]!;
 }
 
@@ -205,6 +213,8 @@ export async function updateMember(workspaceId: string, actorId: Types.ObjectId,
   if (!updated) throw new WorkspaceError(404, 'Esa persona no está en el espacio.');
   if (target.userId && set.status === 'deactivated') await suspendFromWorkspaceChats(actor.workspaceId, target.userId);
   if (target.userId && set.status === 'active' && target.status === 'deactivated') await restoreToWorkspaceChats(actor.workspaceId, target.userId);
+  // Approved (or an invitation taken): into #general; a reactivation already got its chats back above.
+  if (target.userId && set.status === 'active' && (target.status === 'pending' || target.status === 'invited')) await welcomeToGeneral(actor.workspaceId, target.userId);
   noticeSpacesChanged([target.userId]);
   return (await toClientMembers([updated]))[0]!;
 }
@@ -265,6 +275,8 @@ export async function leaveWorkspace(workspaceId: string, userId: Types.ObjectId
 
 /** A phone added to spaces before it had an account joins them when it signs up. */
 export async function claimPhoneInvites(userId: Types.ObjectId, phone: string): Promise<number> {
+  const invited = await WorkspaceMemberModel.find({ phone, status: 'invited' }).select('workspaceId').lean();
   const result = await WorkspaceMemberModel.updateMany({ phone, status: 'invited' }, { $set: { userId, status: 'active', joinedAt: new Date() } });
+  for (const member of invited) await welcomeToGeneral(member.workspaceId, userId);
   return result.modifiedCount;
 }

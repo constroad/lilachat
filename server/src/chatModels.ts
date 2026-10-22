@@ -292,6 +292,8 @@ const messageSchema = new Schema<Message>(
 messageSchema.index({ chatId: 1, seq: 1 }, { unique: true });
 /** «Medios» (`mediaLibraryRoutes.ts`): a chat's photos, videos, documents or links, newest first. Created in the vault on 21/10 with José's OK. */
 messageSchema.index({ chatId: 1, kind: 1, at: -1 });
+/** A card's message by what it shows (`ref.id`): the chat queue and the checklists find their card without walking the chat. Created in the vault on 22/10 with José's OK. */
+messageSchema.index({ chatId: 1, 'ref.id': 1 });
 // La idempotencia, en la BASE y no solo en el código: es la última línea de
 // defensa contra el reintento de la cola offline. Lleva `senderId` porque dos
 // personas pueden generar la misma clave sin saberlo.

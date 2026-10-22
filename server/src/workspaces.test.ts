@@ -168,13 +168,14 @@ describe('chats inside a space', () => {
     const created = await request(app).post('/api/chats').set('Authorization', jwt('jose')).send({ kind: 'group', name: 'Obra Miraflores', memberIds: [String(users.ana), String(users.beto)], workspaceId: space.id }).expect(201);
     await ChatModel.updateOne({ _id: created.body.chatId }, { $set: { lastSeq: 3 } });
     const mine = (await request(app).get('/api/workspaces').set('Authorization', jwt('ana')).expect(200)).body.workspaces;
-    expect(mine).toEqual([expect.objectContaining({ id: space.id, members: 3, unreadChats: 1 })]);
+    // The group, and #general: Beto arrived after Ana (22/10). Ana's own arrival is not news to her.
+    expect(mine).toEqual([expect.objectContaining({ id: space.id, members: 3, unreadChats: 2 })]);
   });
 
   it('a group of the space shows in the space, not in the personal list', async () => {
     const { space } = await spaceWithAnaAndBeto();
     const created = await request(app).post('/api/chats').set('Authorization', jwt('jose')).send({ kind: 'group', name: 'Obra Miraflores', memberIds: [String(users.ana), String(users.beto)], workspaceId: space.id }).expect(201);
-    expect((await listOf('ana', space.id)).map((c) => c.id)).toEqual([created.body.chatId]);
+    expect((await listOf('ana', space.id)).map((c) => c.name).sort()).toEqual(['Obra Miraflores', 'general']);
     expect(await listOf('ana')).toEqual([]);
   });
 
@@ -217,19 +218,19 @@ describe('channels (E2)', () => {
     const created = await request(app).post(`/api/workspaces/${space.id}/channels`).set('Authorization', jwt('ana')).send({ name: 'Obra Surco', descripcion: 'Coordinación diaria', visibility: 'public' }).expect(201);
     expect(created.body.channel).toMatchObject({ name: 'obra-surco', visibility: 'public', joined: true, members: 1 });
     const list = await request(app).get(`/api/chats?workspace=${space.id}`).set('Authorization', jwt('ana')).expect(200);
-    expect(list.body.chats[0]).toMatchObject({ name: 'obra-surco', kind: 'group', channel: { visibility: 'public' } });
+    expect(list.body.chats.find((chat: { name: string }) => chat.name === 'obra-surco')).toMatchObject({ kind: 'group', channel: { visibility: 'public' } });
   });
 
   it('exploring shows public channels and my private ones; anyone joins a public one, nobody joins a private one', async () => {
     const space = await spaceWithAna();
-    const general = (await request(app).post(`/api/workspaces/${space.id}/channels`).set('Authorization', jwt('jose')).send({ name: 'general', visibility: 'public' }).expect(201)).body.channel;
+    const avisos = (await request(app).post(`/api/workspaces/${space.id}/channels`).set('Authorization', jwt('jose')).send({ name: 'avisos', visibility: 'public' }).expect(201)).body.channel;
     const boss = (await request(app).post(`/api/workspaces/${space.id}/channels`).set('Authorization', jwt('jose')).send({ name: 'gerencia', visibility: 'private' }).expect(201)).body.channel;
     const seen = await request(app).get(`/api/workspaces/${space.id}/channels`).set('Authorization', jwt('beto')).expect(200);
-    expect(seen.body.channels.map((c: { name: string; joined: boolean }) => [c.name, c.joined])).toEqual([['general', false]]);
-    await request(app).post(`/api/workspaces/${space.id}/channels/${general.id}/join`).set('Authorization', jwt('beto')).expect(200);
+    expect(seen.body.channels.map((c: { name: string; joined: boolean }) => [c.name, c.joined])).toEqual([['avisos', false], ['general', true]]);
+    await request(app).post(`/api/workspaces/${space.id}/channels/${avisos.id}/join`).set('Authorization', jwt('beto')).expect(200);
     await request(app).post(`/api/workspaces/${space.id}/channels/${boss.id}/join`).set('Authorization', jwt('beto')).expect(404);
     const after = await request(app).get(`/api/workspaces/${space.id}/channels`).set('Authorization', jwt('beto')).expect(200);
-    expect(after.body.channels[0]).toMatchObject({ name: 'general', joined: true, members: 2 });
+    expect(after.body.channels[0]).toMatchObject({ name: 'avisos', joined: true, members: 2 });
   });
 
   it('the same channel name twice in a space is refused; outsiders see nothing', async () => {

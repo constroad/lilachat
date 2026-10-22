@@ -3,6 +3,7 @@ import { addBotsToPublicChannel } from './bots/botInstall.js';
 import { normalizeChannelName, normalizarDescripcion, type ChannelVisibility } from '@lilachat/shared';
 import { ChatModel, type Chat } from './chatModels.js';
 import { actorIn, WorkspaceError } from './workspaces.js';
+import { ensureGeneralChannel } from './workspaceGeneral.js';
 
 /**
  * Channels of a company space (E2, spec §47): a group with `channel` set.
@@ -47,6 +48,8 @@ export async function createChannel(workspaceId: string, userId: Types.ObjectId,
 /** Public channels of the space plus the private ones I am in. */
 export async function listChannels(workspaceId: string, userId: Types.ObjectId) {
   const actor = await actorIn(workspaceId, userId);
+  // A space from before #general (22/10) gets it here, with everyone already active.
+  await ensureGeneralChannel(actor.workspaceId);
   const chats = await ChatModel.find({
     workspaceId: actor.workspaceId,
     'channel.visibility': { $exists: true },

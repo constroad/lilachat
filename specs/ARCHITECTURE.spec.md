@@ -4909,6 +4909,113 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 108. Abrir un mensaje viejo con su contexto, compartir un contacto, el guiño que se repetía y el permiso de pantalla completa (22/10/2026, 0.1.146)
+
+Cierra los pendientes 44, 9 y 54. Suma la parte 2 del 46.
+
+**Mensaje viejo con su contexto (44).** José, 22/10: «Ese mensaje está más
+arriba: sube para cargarlo», al abrir un checklist, un recordatorio o una foto.
+Ahora pasa lo mismo que en WhatsApp Web y Telegram: el chat salta al mensaje,
+con los de antes y los de después.
+- Server: `GET /chats/:id/messages` acepta `around=<seq>` (una ventana
+  alrededor) y `afterSeq` (la página siguiente), además de `beforeSeq`.
+  Se usa uno solo por pedido; con más de uno responde 400 con
+  «Usa solo uno: beforeSeq, afterSeq o around.». `readMessagePage` respeta el
+  piso de cada miembro (`memberChatFloor`) y el tope de página
+  (`clampPageLimit`). Tests: 9.
+- Shared: `windowFromPage`, `nextWindowPage`, `extendWindow`, `joinsLive`,
+  `mergeIntoLive` y `newSinceWindow` arman la ventana, aparte de lo último.
+  Cuando la ventana alcanza el final, se une a lo vivo. Tests: 9.
+- App: `useChatWindow` + `messageWindowRows`. El chat salta al mensaje, carga
+  más al bajar y muestra «Ir al último». Si mando un mensaje, la ventana se
+  cierra y vuelvo al final.
+- Web: `useMessageWindow` + `windowOnScreen`. Una ventana corta pide la
+  página siguiente sola. «Ir al último» y enviar cierran la ventana sin
+  volver a abrirla.
+- Medido: en la web, 0,8 s de server + 0,5 s de pintado. En el emulador, con
+  el build de desarrollo y el túnel de QA, 2,5 a 3 s.
+
+**Compartir un contacto (9).** En el clip, «Contacto» elige uno de la agenda.
+Si tiene varios números, se elige uno (`pickNumber`, con test).
+- `POST /chats/:id/contacts` guarda el mensaje `kind: 'contact'` con nombre y
+  teléfono. Si ese número es de alguien en Lilachat, el server lo dice
+  (`userId`). En un chat secreto no se puede: el mensaje saldría sin sellar.
+  Tests: 4.
+- La tarjeta muestra el nombre, el número, «Enviar mensaje» (si está en
+  Lilachat) y «Agregar». La lista dice «Contacto: Nombre»
+  (`sharedContactBody`, 5 tests).
+- E2E: QA Ana y José se mandaron contactos entre la web y el emulador. El
+  número se pasa como `+51…`: sin el prefijo, el formulario de Android lo
+  formateaba como de EE. UU.
+
+**El guiño que se repetía (54).** José, 22/10, con 0.1.145: «Lila me envió un
+globo de agua y cada vez que ingreso al chat se reproduce». Después pasó igual
+con el oso.
+- La base estaba bien: José había leído hasta el 25 y el oso era el 24.
+- El error estaba en la app. El chat se abre con el `readSeq` de la fila de
+  la lista. La lista ponía en 0 los no leídos, pero nunca subía ese
+  `readSeq`: se quedaba con el de la última carga. Cada vez que José volvía a
+  entrar, el guiño contaba como nuevo.
+- Arreglo en la causa (shared, `listaEnVivo`): `marcarLeido`, mi acuse desde
+  otro dispositivo y un mensaje que llega al chat abierto ahora suben el
+  `readSeq` de la fila. Tests: 6.
+- Segunda defensa (app, `funSeen`, 4 tests): cada chat recuerda en la sesión
+  el último guiño o zumbido que ya alcanzó. Cubre una lista que se vuelve a
+  montar (la ventana del 44 la monta de nuevo) y cualquier otra fuente vieja.
+  «Ver otra vez» no pasa por ahí.
+- E2E en el emulador, con el chat de QA Ana silenciado para que no saltara
+  en el teléfono de José:
+  - QA Ana mandó un oso con José en la lista. Al abrir el chat se vio una
+    vez; al volver a entrar, no;
+  - QA Ana mandó un globo con el chat abierto. Se vio en vivo; al salir y
+    volver a entrar, no.
+  - Los dos guiños se borraron para todos y se quitó el silencio.
+
+**Pantalla completa después de actualizar (46, parte 2).** José, 22/10: «¿por
+qué se pierde el permiso que le doy? ¿No se puede evitar?».
+- Lo que dice Android (AOSP 14, código leído): una actualización NO toca el
+  permiso. Al activarlo en Ajustes, Android lo marca como elegido por la
+  persona (`FLAG_PERMISSION_USER_SET`). Que se apague en el Samsung de José es
+  cosa de One UI, no de la app.
+- Lo único que puede hacer un instalador: en su sesión, declarar cómo queda
+  `USE_FULL_SCREEN_INTENT`. Desde Android 14, `setPermissionState` lo permite
+  a cualquier instalador, sin un permiso especial.
+- Hasta 0.1.145, la app le pasaba el APK al instalador del sistema
+  (`INSTALL_PACKAGE`), que no declara nada.
+- Ahora la app se actualiza con su propia sesión (módulo `instalador-apk`):
+  - con el permiso activo, la sesión lo declara concedido;
+  - con el permiso apagado, no lo fuerza: queda lo que diga el teléfono;
+  - Android sigue pidiendo confirmación (`USER_ACTION_REQUIRED`);
+  - un APK que no es de Lilachat falla antes de reemplazar nada
+    (`setAppPackageName`).
+- Si la app todavía no tiene permiso para instalar apps, usa el instalador
+  del sistema. Visto en el emulador: la sesión se cancela al volver de
+  Ajustes, y el instalador del sistema sigue solo.
+- Los fallos se explican en español (`sessionOutcome`, 7 tests): sin
+  espacio, versión incompatible, archivo dañado.
+- Medición: si una actualización apaga el permiso, el diagnóstico lo anota
+  con quién instaló (`fullScreenLostOnUpdate`, 4 tests). Así se sabrá si One
+  UI respeta lo que declara la sesión.
+- E2E en el emulador (API 35):
+  - con la sesión: apagué el permiso a mano antes de tocar «Update». Después
+    de instalar quedó en `allow` y la app lo vio activo. El instalador quedó
+    como `com.lilachat.app`;
+  - control con `adb install -r`, sin sesión: el permiso siguió apagado.
+- Límite honesto: la actualización A 0.1.146 todavía la hace la versión
+  vieja, y en el Samsung puede apagarse una vez más. Desde 0.1.146, las
+  actualizaciones hechas desde la app van por la sesión. Las que se hagan
+  desde LilaStore siguen por el instalador del sistema; eso es trabajo del
+  repo de LilaStore.
+
+**Notas**
+- En el E2E del guiño se abrió por error el chat real «Lokillos»: al llegar
+  el guiño de QA, la fila de QA Ana subió y el toque cayó en otra. Solo se
+  abrió; no se envió nada. Desde ahí, cada toque se ubica por el texto de la
+  fila justo antes de tocar.
+- Queda un checklist de QA de ayer, «Vaciado de losa QA», en el chat de QA
+  Ana con José (seq 37). Ese chat tiene historia de varios días, también de
+  José. No se borró sin preguntar.
+
 ## 107. Stickers animados propios desde un GIF y el enlace de invitación que abre la app (22/10/2026, 0.1.145)
 
 Cierra los pendientes 37 (lo que faltaba: el sticker animado propio) y 47.
@@ -9296,8 +9403,8 @@ tacha con la versión que lo cierra.
    del chat (o solo quien la creó, según se configure) puede marcar; cada ítem
    dice quién lo marcó; se agregan ítems después; se ve como tarjeta y se
    actualiza en vivo (`ref.changed`). App y web.
-9. **Compartir un contacto** en el chat (como WhatsApp): tarjeta con nombre y
-   teléfono, «Enviar mensaje» si está en Lilachat y «Agregar a contactos».
+9. ~~**Compartir un contacto** en el chat (como WhatsApp): tarjeta con nombre y
+   teléfono, «Enviar mensaje» si está en Lilachat y «Agregar a contactos».~~ **Hecho (§108, 0.1.146).**
 10. ~~**Sacar «Cámara» del menú del clip**~~ (hecho en §63.3): ya hay botón de cámara en la barra;
     en el clip sobra y además aparece primero.
 11. **Compartir ubicación y ubicación en tiempo real** (15 min / 1 h / 8 h),
@@ -9627,7 +9734,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     de GIPHY y lo sube a lila antes de responder. El GIF tiene que aparecer
     al instante en el chat (con la vista previa de GIPHY, «enviando») mientras
     el server lo guarda.
-44. **Abrir un mensaje viejo con su contexto, como WhatsApp Web y Telegram**
+44. ~~**Abrir un mensaje viejo con su contexto, como WhatsApp Web y Telegram**~~ **Hecho (§108, 0.1.146).**
     (José, 22/10: «Ese mensaje está más arriba: sube para cargarlo», al abrir
     un checklist, un recordatorio o una foto). Plan con archivo:línea en
     `scratchpad/plan-jump-to-message.md` (server `around=<seq>`, ventana
@@ -9645,6 +9752,9 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     activa: con el teléfono bloqueado la llamada entra como notificación
     normal (suena, pero no se ve a pantalla completa). Pedirlo una sola vez y
     explicarlo bien.
+    **Parte 2 (§108, 0.1.146):** José, 22/10: «¿no se puede evitar perder el
+    permiso?». La app se actualiza con su propia sesión, que declara el
+    permiso concedido. Si One UI lo apaga igual, el diagnóstico lo anota.
 47. ~~**El enlace de invitación a un espacio debería abrir la app si ya está
     instalada**~~ **Hecho (§107, 0.1.145).** Como WhatsApp o YouTube (José, 22/10, captura: hoy la
     invitación por WhatsApp lleva a lilastore.constroad.com y a escribir el
@@ -9681,6 +9791,12 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     La fila solo conoce `lastKind: 'image'`. Que el server mande el tipo del
     archivo del último mensaje (`lastMime`) y la lista diga «GIF», como
     WhatsApp.
+54. ~~**El guiño se repite cada vez que entro al chat**~~ **Hecho (§108,
+    0.1.146).** (José, 22/10, con 0.1.145: el globo y el oso de Lila). La fila
+    de la lista no subía mi `readSeq` al leer.
+55. **LilaStore también debe instalar con sesión** (de §108). Que declare
+    `USE_FULL_SCREEN_INTENT` concedido al actualizar una app que lo pide.
+    Es el repo de LilaStore; se derivó a su sesión.
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

@@ -28,4 +28,16 @@ describe('nudge line', () => {
     draw(nudge('yo'), true);
     expect(screen.getByTestId('linea-zumbido').textContent).toMatch(/^Mandaste un zumbido\d/);
   });
+
+  it('deleted for everyone, a nudge or a wink reads as a deleted message (22/10)', () => {
+    // Arrange
+    const deletedAt = new Date().toISOString();
+    // Act
+    draw({ ...nudge('w'), deletedAt }, false);
+    draw({ ...nudge('w'), clientKey: 'g-w', kind: 'guino', wink: 'panda', deletedAt } as MensajeEnPantalla, false);
+    // Assert
+    expect(screen.queryByTestId('linea-zumbido')).toBeNull();
+    expect(screen.queryByTestId(/^linea-guino/)).toBeNull();
+    expect(screen.getAllByText('Se eliminó este mensaje')).toHaveLength(2);
+  });
 });

@@ -52,8 +52,9 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
   if (mensaje.kind === 'system' && esAvisoDestacado(mensaje.system?.evento)) return <HighlightedNotice message={mensaje} />;
   if (mensaje.kind === 'system' && mensaje.system?.evento === 'llamada') return <LineaDeLlamada mensaje={mensaje} />;
   if (mensaje.kind === 'system') return <LineaDeSistema mensaje={mensaje} />;
-  if (mensaje.kind === 'zumbido') return <NudgeFromContext seq={mensaje.seq} mine={mio} senderId={mensaje.senderId} at={mensaje.at} />;
-  if (mensaje.kind === 'guino') return <WinkFromContext seq={mensaje.seq} wink={mensaje.wink} mine={mio} senderId={mensaje.senderId} at={mensaje.at} />;
+  // Deleted for everyone, a nudge or a wink is a deleted message, not its line (22/10).
+  if (mensaje.kind === 'zumbido' && !mensaje.deletedAt) return <NudgeFromContext seq={mensaje.seq} mine={mio} senderId={mensaje.senderId} at={mensaje.at} />;
+  if (mensaje.kind === 'guino' && !mensaje.deletedAt) return <WinkFromContext seq={mensaje.seq} wink={mensaje.wink} mine={mio} senderId={mensaje.senderId} at={mensaje.at} />;
   if (props.flat) return <FlatMessage {...props} />;
   return (
     <div data-testid={`mensaje-${mensaje.clientKey}`} className={`group flex items-start gap-1 ${agrupado ? 'mt-1' : 'mt-3'} ${mio ? 'flex-row-reverse' : ''}`}>

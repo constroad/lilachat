@@ -97,3 +97,4 @@ export * from './bots.js';
 export * from './profile.js';
 export * from './adminUsers.js';
 export * from './callMedia.js';
+export * from './chatQueue.js';

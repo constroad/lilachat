@@ -99,6 +99,8 @@ export function useActualizacionesDeLaApp() {
 
   return {
     aviso,
+    /** The published APK's size, for the lock screen's «Se descarga desde LilaStore · 35 MB». */
+    size: infoApp.size,
     estado,
     chequeo,
     verificando,

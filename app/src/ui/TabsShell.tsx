@@ -20,6 +20,8 @@ import { publishPublicKey } from '../crypto/deviceKeys';
 import { BackupScreen } from '../settings/BackupScreen';
 import { BandaDeActualizacion } from '../settings/BandaDeActualizacion';
 import { NovedadesDeLaVersion } from '../settings/NovedadesDeLaVersion';
+import { UpdateLockScreen } from '../settings/UpdateLockScreen';
+import { versionActual } from '../settings/versionApi';
 import { PantallaDeAjustes } from '../settings/PantallaDeAjustes';
 import { usePerfilPropio } from '../settings/perfilPropio';
 import { useEsOperador } from '../settings/useEsOperador';
@@ -470,6 +472,18 @@ export function TabsShell({
         visible={invitando}
         credential={credential}
         onClose={() => setInvitando(false)}
+      />
+
+      {/* Under the minimum version nothing else can be used (backlog 32). */}
+      <UpdateLockScreen
+        visible={actualizaciones.aviso.tipo === 'obligatoria'}
+        installed={versionActual()}
+        latest={actualizaciones.aviso.tipo === 'ninguno' ? '' : actualizaciones.aviso.version}
+        novedades={actualizaciones.novedades}
+        size={actualizaciones.size}
+        state={actualizaciones.estado}
+        onUpdate={actualizaciones.actualizarDesdeBanda}
+        onOpenStore={actualizaciones.abrirTienda}
       />
 
       <NovedadesDeLaVersion

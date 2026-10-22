@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { ProgramarMensajeModal } from './ProgramarMensajeModal';
 import { ProgramadosDelChat } from './ProgramadosDelChat';
+import { ChatQueue } from './ChatQueue';
 import type { FlashListRef } from '@shopify/flash-list';
 import { ChatBottom } from './ChatBottom';
 import { etiquetaDeRecordatorioEnElChat, type MencionEnMensaje } from '@lilachat/shared';
@@ -492,6 +493,7 @@ export function ChatScreen({
       ) : null}{callBack.overlay}
 
       <ProgramadosDelChat pendientes={programados.pendientes} onCancelar={programados.cancelar} />
+      {esBorrador ? null : <ChatQueue jwt={credential.jwt} chatId={chatId} onOpen={(seq) => saltarA(seq, 'Esa tarjeta está más arriba: sube para cargarla.')} />}
 
       {/* La barra de escribir: su composición (la píldora con emoji, clip y cámara; UN botón afuera) se explica en `Composer`. */}
       {fueraDelGrupo ? (

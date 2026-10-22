@@ -4909,6 +4909,79 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 104. Modo empresa sin «cargando», parte 2; pendientes en la lista; mensajes en otro espacio (22/10/2026, 0.1.142)
+
+José, 22/10:
+- «el espacio de constroad no tiene el canal de general»;
+- «si hay mensajes en espacios o cuentas individuales, ¿aparece que hay mensaje?»;
+- «en la lista de chats no se muestra un indicador de que hay algo que tengo
+  que ver en ese chat»;
+- terminar lo que quedaba de la auditoría de velocidad.
+
+**`#general` en espacios anteriores.** Solo se creaba al listar los canales, y
+Constroad nunca los listó (Inframaq sí lo tenía). Ahora también se crea al
+abrir la lista del espacio (`GET /api/chats?workspace=`), que es lo primero
+que se ve. E2E en el emulador: al entrar a Constroad apareció `#general`.
+
+**Mensajes en otro lado.** `unreadElsewhere` (shared, 3 tests) cuenta los
+chats con algo nuevo fuera de lo que miro. En personal, cuenta todos mis
+espacios activos; dentro de un espacio, cuenta personal más los otros
+espacios. App: el título de la lista lleva ese número (`badge-otros-espacios`;
+la web ya tenía el riel). Se mantiene en vivo de dos formas:
+- un mensaje de otra persona en un chat personal que no estoy leyendo suma a
+  la lista personal en memoria;
+- uno de un chat de espacio relee los espacios, una vez por ráfaga (1,5 s).
+
+E2E: dentro de Constroad, el título mostró «1» por la encuesta de QA Ana en
+personal.
+
+**Pendientes en la lista.**
+- `GET /api/agenda/queue/keys` devuelve las llaves de lo que me espera en cada
+  uno de mis chats: tareas atrasadas, encuestas sin votar, eventos sin
+  responder y recordatorios que sonaron hoy. Son las mismas llaves que la cola
+  de cada chat; la cola se reescribió para leer varios chats en una consulta
+  por tipo.
+- `pendingCount` (shared) les resta lo descartado en el equipo.
+- App y web dibujan una marca con ícono y cantidad (`pendiente-<chatId>`) en
+  la fila del chat y en la de cada canal.
+- Se lee al arrancar, al cerrar un chat y al volver a la app o pestaña. También
+  cuando llega una encuesta, evento o tarea, cuando se borra un mensaje y
+  cuando cambia una tarjeta.
+- La cola del chat corrige su chat. Actuar sobre una tarjeta o descartarla la
+  saca al instante.
+
+E2E web y emulador: la encuesta de QA puso «📋 1» en la fila al momento. Se
+encontró que borrar la tarjeta no la quitaba y se corrigió con `msg.deleted`
+y `ref.changed`.
+
+**Velocidad, parte 2** (cierra la auditoría):
+- **App: Directorio y Menciones son pestañas montadas** (como Chats), ya no
+  una ventana que entra deslizándose. Abrir un chat desde ahí pasa a Chats.
+  E2E: con datos a los 0,35 s del toque.
+- **La lista de cada espacio vive en la caché** (`<spaceId>:chats`, con sus
+  chips). Al volver a un espacio pinta lo guardado sin esqueleto.
+- **Los eventos del socket se aplican en el lugar** con `listaEnVivo`. Solo
+  piden al server un chat desconocido o cambiado, o una posible mención o hilo.
+  La lista personal y `TabsShell` ya no se recargan por los mensajes de un
+  canal (`isSpaceChat`). E2E web: un mensaje de QA Beto en `#general` cambió
+  la fila («general 2») con 0 pedidos a la lista; antes eran hasta 4.
+- **Los chips vienen con la lista:** `GET /api/chats?workspace=` incluye
+  `activity` (un pedido y no dos).
+- **La lista de espacios se guarda por persona** (web `localStorage`, app
+  AsyncStorage), y la sesión que cierra la borra. Entrar a un espacio ya
+  conocido no espera a `GET /api/workspaces`.
+- **«Miembros y roles» hace un solo pedido** (`?status=all`, con los correos
+  invitados), en vez de cuatro.
+- **Evento `workspace.members.changed`** a los activos del espacio cuando
+  alguien entra, sale, es aprobado o desactivado, o cambia de rol, cargo o
+  área. El directorio y «Miembros y roles» abiertos se refrescan solos (motor:
+  `expire`, 9 tests). E2E web: QA Beto salió y la pestaña pasó sola a
+  «Activos 1».
+
+Limpieza de QA: espacio (0/0/0) y encuestas borradas. La tarjeta en el chat
+de José con QA Ana se borró para todos, y se restauraron los perfiles.
+
+
 ## 103. Modo empresa sin «cargando», parte 1 (22/10/2026, 0.1.141)
 
 José, 22/10: «en el modo slack cuando ingreso a directorio, menciones etc sale

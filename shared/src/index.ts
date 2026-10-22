@@ -95,3 +95,4 @@ export * from './workspaceMembers.js';
 export * from './activity.js';
 export * from './bots.js';
 export * from './profile.js';
+export * from './adminUsers.js';

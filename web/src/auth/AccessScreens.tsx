@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ENLACE_DE_DESCARGA } from '@lilachat/shared';
 import { peekPendingJoin } from '../spaces/pendingJoin';
+import { peekPendingCallLink } from '../calls/pendingCallLink';
 import type { Credential } from '../api';
 import { IngresoPorTelefono } from './IngresoPorTelefono';
 import { PantallaDeVincular } from './PantallaDeVincular';
@@ -17,9 +18,15 @@ const abrePorQr = (): boolean => typeof window.matchMedia === 'function' && wind
 export function AccessScreens({ onReady }: { onReady: (credential: Credential) => void }) {
   const [porQr, setPorQr] = useState(abrePorQr);
   const [invited] = useState(() => peekPendingJoin() !== null);
+  const [calledIn] = useState(() => peekPendingCallLink() !== null);
   return (
     <>
       {invited ? <JoinLinkBanner /> : null}
+      {calledIn ? (
+        <p data-testid="aviso-enlace-de-llamada" className="mx-auto mt-4 w-[calc(100%-32px)] max-w-md rounded-2xl border border-primary/30 bg-primary/5 p-4 text-sm">
+          <span className="font-semibold">Te enviaron un enlace de llamada.</span> Entra con tu número y se abrirá la llamada.
+        </p>
+      ) : null}
       {porQr ? <PantallaDeVincular onReady={onReady} onUsarTelefono={() => setPorQr(false)} /> : <IngresoPorTelefono onReady={onReady} onUsarQr={() => setPorQr(true)} />}
     </>
   );

@@ -28,6 +28,7 @@ import { DialogoReenviar, TU_NUEVO } from './reenviar/DialogoReenviar';
 import { useAccionesSobreMensajes, type AccionesDeSync } from './useAccionesSobreMensajes';
 import { useDetalleDelChat } from './useDetalleDelChat';
 import type { ChatSummary } from './types';
+import { CallExtrasMenu } from './scheduledCall/CallExtrasMenu';
 import type { BaseLocal } from '../local/baseLocal';
 import { useDestacadosWeb } from './destacados/useDestacadosWeb';
 import { TarjetaDeDestacados } from './destacados/TarjetaDeDestacados';
@@ -180,6 +181,7 @@ export function ConversacionConAcciones(
         replyingTo={acciones.replyingTo}
         onNudge={funAllowed ? () => void sync.sendNudge(chat.id).then((result) => result.ok || onAviso(result.motivo)) : undefined}
         onCall={canCall ? (video) => calls.call(chat.id, chat.name ?? chat.phone ?? 'Llamada', video) : undefined}
+        callExtras={canCall ? <CallExtrasMenu jwt={props.jwt} chat={{ id: chat.id, name: chat.name ?? chat.phone ?? 'Conversación' }} /> : undefined}
         onWink={funAllowed ? (wink) => void sync.sendWink(chat.id, wink).then((result) => result.ok || onAviso(result.motivo)) : undefined}
         mencionables={mencionables}
         jwtParaEnlaces={chat.encrypted ? undefined : props.jwt}

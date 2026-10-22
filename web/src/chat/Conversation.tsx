@@ -46,6 +46,8 @@ export function Conversation(props: {
   onWink?: (wink: WinkId) => void;
   /** A 1:1 with a person: voice or video call (José, 21/10). Without it the buttons stay hidden. */
   onCall?: (video: boolean) => void;
+  /** The arrow with «Programar llamada» and «Crear enlace de llamada» (pending 42). */
+  callExtras?: ReactNode;
   showBack: boolean;
   hayAnteriores: boolean;
   onCargarAnteriores: () => void;
@@ -102,7 +104,7 @@ export function Conversation(props: {
         </div>
       ) : null}
       {fun.overlay}
-      <CabeceraDeLaConversacion chat={chat} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} lastSeen={lastSeen} onCall={props.onCall} />
+      <CabeceraDeLaConversacion chat={chat} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} lastSeen={lastSeen} onCall={props.onCall} callExtras={props.callExtras} />
       <BannerWithSession />
       {props.franja}
       {props.mensajes === null ? (
@@ -158,7 +160,7 @@ export function Conversation(props: {
   );
 }
 
-function CabeceraDeLaConversacion(props: { chat: ChatSummary; typingName: string | null; showBack: boolean; onBack: () => void; onAbrirInfo?: () => void; /** The other's «últ. vez» in a 1:1, like the app. */ lastSeen?: string; onCall?: (video: boolean) => void }) {
+function CabeceraDeLaConversacion(props: { chat: ChatSummary; typingName: string | null; showBack: boolean; onBack: () => void; onAbrirInfo?: () => void; /** The other's «últ. vez» in a 1:1, like the app. */ lastSeen?: string; onCall?: (video: boolean) => void; callExtras?: ReactNode }) {
   const { chat, typingName } = props;
   // A channel of a space reads as Slack's: «#planta-web».
   const title = chat.channel ? `#${chat.name ?? ''}` : (chat.name ?? chat.phone ?? 'Conversación');
@@ -189,6 +191,7 @@ function CabeceraDeLaConversacion(props: { chat: ChatSummary; typingName: string
           <button type="button" data-testid="btn-llamada" aria-label="Llamada" title="Llamada" onClick={() => props.onCall?.(false)} className="grid h-11 w-11 place-items-center rounded-full hover:bg-surface">
             <Phone size={18} />
           </button>
+          {props.callExtras}
         </div>
       ) : null}
       <div className="hidden items-center gap-1 text-on-surface-variant/40 sm:flex">

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
 import type { CallState } from '@lilachat/shared';
 import { CallOverlay } from './CallOverlay';
+import { CallLinkFollower } from './CallLinkFollower';
 import { startCallTone } from './callTones';
 import { useWebCall, type IncomingOffer } from './useWebCall';
 
@@ -76,6 +77,8 @@ export function CallProvider(props: { jwt: string; connected: boolean; nameOf: (
   return (
     <CallsContext.Provider value={value}>
       {props.children}
+      {/* A call link that opened the web (pending 42) waits for the session, here. */}
+      <CallLinkFollower jwt={props.jwt} onCall={value.call} />
       {state && session ? <CallOverlay call={webCall} peerPhoto={props.photoOf?.(session.chatId)} /> : null}
     </CallsContext.Provider>
   );

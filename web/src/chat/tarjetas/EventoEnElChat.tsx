@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { CalendarDays, MapPin } from 'lucide-react';
+import { CalendarDays, MapPin, Phone, Video } from 'lucide-react';
 import { cuandoDelEvento, resumenDeRsvp, type AgendaEvent, type Rsvp } from '@lilachat/shared';
 import { api } from '../../api';
 import { useConversacion } from '../contextoDeLaConversacion';
 import { useTarjeta } from './useTarjeta';
 import { TarjetaCargando, TarjetaConFallo, TarjetaQueNoEsta } from './EstadosDeTarjeta';
+import { ScheduledCallJoin } from '../scheduledCall/ScheduledCallJoin';
 
 const RESPUESTAS: { valor: Rsvp; etiqueta: string }[] = [
   { valor: 'yes', etiqueta: 'Voy' },
@@ -44,7 +45,7 @@ export function EventoEnElChat({ id }: { id: string }) {
   return (
     <div data-testid={`evento-en-chat-${id}`}>
       <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-primary">
-        <CalendarDays size={14} /> Evento
+        {evento.call ? (evento.call.video ? <Video size={14} /> : <Phone size={14} />) : <CalendarDays size={14} />} {evento.call ? 'Llamada programada' : 'Evento'}
       </p>
       <div className="mt-2 flex items-start gap-3">
         <div className="grid w-12 shrink-0 place-items-center rounded-lg border border-outline/15 bg-surface py-1 leading-none">
@@ -61,6 +62,7 @@ export function EventoEnElChat({ id }: { id: string }) {
           ) : null}
         </div>
       </div>
+      {evento.call ? <ScheduledCallJoin event={evento} video={evento.call.video} /> : null}
       {evento.mio ? null : (
         <div className="mt-3 grid grid-cols-3 gap-1 rounded-lg border border-outline/15 bg-surface p-1">
           {RESPUESTAS.map((opcion) => (

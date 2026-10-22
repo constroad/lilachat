@@ -4909,6 +4909,65 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 101. Cinco arreglos de José: chip de hilo, actualización, visor, fotos y llamada (22/10/2026, 0.1.139)
+
+José, 22/10, con tres capturas.
+
+**1. «3 respuestas» desalineado con la burbuja.** El chip medía su propio
+contenido y quedaba más angosto que una burbuja larga. Ahora la burbuja
+anota su ancho (`bubbleWidths.ts`, por `chatId:seq`, solo si tiene hilo) y
+el chip usa ese ancho como mínimo. No aplica a filas sangradas ni
+centradas.
+
+**2. «No se pudo descargar la actualización (Call to function
+'FileSystem.downloadFileAsync' has been rejected)» al bloquearse la
+pantalla.** Android corta la red de una app en segundo plano.
+- La pantalla queda encendida mientras baja el APK (`expo-keep-awake`).
+- Una descarga cortada mientras la app estaba afuera sigue sola, una vez:
+  `afterCutDownload` (`updateRetry.ts`, 3 tests) decide `resume-now` si el
+  corte llega con la app ya al frente (el E2E mostró que el error suele
+  llegar DESPUÉS de volver), `resume-on-return` si llega afuera, `none` si
+  no fue un corte o ya se reintentó.
+- El texto técnico ya no sale en pantalla: «La descarga se cortó al
+  bloquearse la pantalla. Sigue sola al volver.» o «No se pudo descargar la
+  actualización. Toca «Reintentar».».
+- El botón dice «Reintentar» y baja directo (antes reabría «Novedades»).
+  «Abrir LilaStore» queda como enlace debajo. Igual en la pantalla de
+  actualización obligatoria.
+- E2E en el emulador: bajando al 11 %, salir de la app, red cortada 80 s,
+  volver: arrancó sola (0 % → 19 % → 50 %), terminó, verificó el sha256 y
+  abrió el instalador (cancelado: es un build de desarrollo).
+
+**3. El visor de fotos mostraba los stickers al deslizar** (app y web).
+`opensInPhotoViewer` (shared, 2 tests) es la regla única: fotos, GIF y
+videos sí; stickers, borrados y archivos no. Un video sin miniatura también
+entra (ver 6).
+
+**4. Tras mandar varias fotos, la lista quedaba arriba.** `followsMyNewRow`
+(shared, 2 tests): una fila nueva MÍA al final (foto en cola, sticker, GIF,
+nota de voz) lleva la lista al final, esté donde esté. Abrir el chat no
+cuenta. App (`useFinalDeLaConversacion`) y web (`ListaDeMensajes`). E2E web:
+subido 2074 px, mandar 2 fotos → 1 px del final; en el emulador, la lista
+bajó a los videos en cola.
+
+**5. Llamada como WhatsApp** (app y web): nombre y tiempo arriba, la cara (la
+foto del chat, o las iniciales) al centro, y abajo un panel redondeado con
+botones etiquetados: Altavoz, Video, Silenciar, Colgar (el activo, blanco).
+Entrante: Rechazar y «Desliza para contestar». La web pasa la foto por
+`photoOf`. E2E: web Ana ↔ Beto (entrante, conectada, silenciada) y web Ana →
+emulador (entrante, deslizar, conectada, colgó Ana).
+
+**6. Hallado en el E2E: un video sin miniatura no se dibujaba.** En la app la
+burbuja quedaba en la hora sola (`miniaturaDe` no devolvía nada). En la web
+salía como enlace de archivo. Pasa cuando lila no puede sacar la miniatura
+(el uploader de QA nunca la saca). Ahora es un cuadro negro con el play
+(`isThumblessVideo`, 1 test) que abre el visor.
+
+**Deuda vista:** borrar un mensaje conserva su campo `system`, así que una
+línea de llamada borrada se sigue dibujando. Solo afecta la limpieza de QA,
+porque una persona no puede borrar líneas de llamada.
+
+
 ## 100. Web: el chat abierto por URL quedaba vacío al recargar (22/10/2026, web)
 
 Visto en el E2E de §98: recargar sobre `/c/<chat>` (o vincular y entrar por

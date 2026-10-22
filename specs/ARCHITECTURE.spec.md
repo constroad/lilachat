@@ -4909,6 +4909,104 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 107. Stickers animados propios desde un GIF y el enlace de invitación que abre la app (22/10/2026, 0.1.145)
+
+Cierra los pendientes 37 (lo que faltaba: el sticker animado propio) y 47.
+
+**Sticker animado propio (37).** José, 21/10: «crear yo mismo mis stickers
+animados»; y 22/10: «al tocar ese gif debe haber una opción para convertirlo
+en sticker animado propio, sea un gif que enviamos por giphy o un gif de mi
+galería».
+
+Server:
+- `gifToAnimatedSticker` (`sharp` 0.35.5, que NO estaba instalado aunque el
+  spec decía que sí) convierte el GIF a WebP animado de 512×512, centrado con
+  márgenes transparentes;
+- lo corta a los 6 s (`framesWithin`: un cuadro sin demora cuenta 100 ms, como
+  lo dibujan los navegadores) y prueba calidades de 75 a 30 hasta que pese
+  500 KB o menos;
+- `POST /api/stickers/animated` recibe un GIF de hasta 8 MB;
+- `POST /api/stickers/from-gif {chatId, seq}` convierte un GIF de un chat mío.
+  Lee el archivo que el server guardó para ese mensaje, nunca una URL que mande
+  el cliente. En un chat secreto no se puede, porque el GIF va cifrado;
+- el sticker queda en «Mis stickers» con `animated: true`, y el mensaje que lo
+  manda lleva la misma marca en el medio. Así se detiene a los 8 s como los del
+  pack (`stickerIsAnimated`), aunque su URL no sea la del pack.
+
+App y web. José aclaró el 22/10 que la opción tiene que salir al tocar el
+mensaje del GIF en el chat, no escondida en el visor:
+- **app, al tocar un GIF** del chat (mío o de otro, de GIPHY o de la galería)
+  sale una ventana flotante con «Convertir en sticker animado», «Ver en
+  grande» y «Cancelar». Si estaba quieto, el mismo toque lo vuelve a mover
+  (`showGifOptions`, 3 tests);
+- **app, toque largo:** la tarjeta flotante de las reacciones suma
+  «Convertir en sticker animado» debajo de «Responder en hilo». No aparece en
+  chats secretos;
+- **web:** el menú del mensaje de un GIF tiene «Convertir en sticker animado»
+  (2 tests), y el visor del GIF también;
+- el resultado llega en un solo aviso. Un «Convirtiendo…» previo hacía que
+  Android lo encolara y la respuesta llegaba 2 s después;
+- el panel de stickers tiene «Desde un GIF», junto a «Crear». En la app el
+  GIF se elige de la galería sin recorte, porque recortarlo lo aplanaría.
+
+Tests: server 14 (con GIF reales generados con `sharp`: 3 cuadros salen 3; 80
+cuadros de 100 ms salen 60; algo que no es imagen se rechaza sin romper);
+rutas 6; web 6; app 2; shared 1.
+
+Medido:
+- la conversión del GIF de QA (200×150, 24 cuadros, 58 KB) tarda unos 270 ms
+  y sale de 131 KB;
+- en la web, GIF del chat → sticker: el aviso llega a los 1,3 s del clic;
+- en la web, GIF de la computadora → sticker: 0,8 s;
+- en el emulador, desde la tarjeta flotante: el aviso llega a ~2 s;
+- en el emulador, desde la galería: ~2,5 s, con la subida incluida.
+
+E2E en el emulador (cuenta de José, en QA Hilos):
+- tocar el GIF mostró la ventana flotante y «Convertir» lo guardó;
+- el toque largo mostró la fila en la tarjeta y también lo guardó;
+- «Desde un GIF» con un GIF puesto en la galería del emulador lo guardó;
+- un sticker propio mandado al chat se movió y quedó quieto después de 8 s.
+
+Para el E2E, el server de QA reescribe `10.0.2.2` (la Mac vista desde el
+emulador) a `127.0.0.1` al leer el archivo. En producción el archivo está en
+el almacenamiento de lila.
+
+**El enlace de invitación abre la app (47).** José, 22/10: «si ya tiene la
+app instalada, ¿no sería mejor que haya una forma de abrir la app?».
+- La invitación lleva primero `lilachat.constroad.com/unirse/<código>`, y
+  después el código y la descarga, como antes (`spaceJoinLink`).
+- Android abre la app con ese enlace (App Links): `intentFilters` con
+  `autoVerify` en `app.json`, y el server sirve
+  `/.well-known/assetlinks.json` con el paquete y la huella SHA-256 de la llave
+  de release. La huella se comparó con la del APK publicado (`apksigner`).
+- La app lee el enlace al abrir (`Linking.getInitialURL`) y mientras está
+  abierta (`url`), y abre «Unirme a un espacio» con el código ya escrito.
+- En la web, `/unirse/<código>` guarda el código en la pestaña y limpia la
+  dirección. Sin sesión, avisa «Te invitaron a un espacio» con la descarga.
+  Después de entrar, abre «Unirme» con el código.
+
+E2E web: sin sesión salió el aviso y la dirección quedó en `/`. Después de
+vincular como QA Ana, se abrió «Unirme» con `QAQA-2345`.
+
+En el emulador, con un build de desarrollo que ya trae el filtro, el enlace
+abrió la app en frío directo en «Unirme» con `QAQA-2345` ya escrito. Con la
+app abierta, otro enlace cambió el código a `QAQB-6789`. La verificación real
+de Android (`autoVerify`) necesita el `assetlinks.json` en producción y el APK
+firmado con la llave de release: se confirma con José en su teléfono.
+
+**Un GIF en la lista decía «Foto» (53).** La fila ahora dice «GIF»:
+- el server manda `mime` en `lastMessage`;
+- la lista en vivo lo copia del mensaje que llega;
+- `resolveChatPreview` lo usa (shared, 2 tests).
+
+**Notas.**
+- Un GIF quieto en la burbuja se vuelve a mover al tocarlo. Antes, abrir el
+  visor pedía un segundo toque en menos de 8 s; ahora el toque abre la
+  ventana flotante, y desde ahí se llega a «Ver en grande».
+- Limpieza de QA: los GIF y el sticker se borraron para todos desde la app,
+  los stickers de prueba se borraron por id (los de la cuenta de José, los de
+  QA Ana por la API) y el GIF salió de la galería del emulador.
+
 ## 106. 426 a las versiones viejas, correo opcional, guiños que se reinician, Llamadas en la web y el aviso de Chrome (22/10/2026, 0.1.144)
 
 Cierra los pendientes 32 (lo que faltaba), 38 (Llamadas), 51 y 52. Deja el
@@ -9474,13 +9572,19 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     con su acción (Marcar, Votar, Voy / No voy, Posponer) y se descartan.
     Analizar: de dónde salen (derivadas de lo pendiente, no un buzón nuevo),
     cuántas a la vez, y el mismo carril para los bots del ítem 33.
-37. **GIF y GIPHY, y stickers animados propios** — **GIF y GIPHY hechos en la 0.1.138 (§99)**; falta el sticker animado propio (José, 21/10: «debo poder
+37. ~~**GIF y GIPHY, y stickers animados propios**~~ — **GIF y GIPHY hechos en la 0.1.138 (§99); el sticker animado propio en §107, 0.1.145** (José, 21/10: «debo poder
     subir un gif, es momento de agregar la sección de GIPHY, y crear yo mismo
     mis stickers animados»). Para la 0.1.123:
     - **Sticker animado propio**: subir un GIF o un video corto (≤ 6 s) y
       recortarlo a 512×512; el server lo convierte a WebP animado con
-      `sharp` (`animated: true`, ya es dependencia) con el mismo tope de
-      500 KB del pack; queda en «Mis stickers» como cualquier otro.
+      `sharp` (`animated: true`; ojo: el 22/10 se vio que NO era dependencia
+      del server) con el mismo tope de 500 KB del pack; queda en «Mis
+      stickers» como cualquier otro.
+    - **Desde un GIF del chat** (José, 22/10): al tocar un GIF de la
+      conversación, sea de GIPHY o de la galería, la opción «Convertir en
+      sticker animado» lo guarda en «Mis stickers». El server lo convierte
+      desde el archivo que ya guardó para ese mensaje, nunca desde una URL
+      que mande el cliente.
     - **GIF como mensaje** (no sticker): se manda tal cual, se reproduce en
       bucle corto y se detiene como los stickers (8 s, toque para repetir).
     - **Pestaña GIF con GIPHY**: búsqueda y tendencias por un proxy del server
@@ -9541,8 +9645,8 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     activa: con el teléfono bloqueado la llamada entra como notificación
     normal (suena, pero no se ve a pantalla completa). Pedirlo una sola vez y
     explicarlo bien.
-47. **El enlace de invitación a un espacio debería abrir la app si ya está
-    instalada**, como WhatsApp o YouTube (José, 22/10, captura: hoy la
+47. ~~**El enlace de invitación a un espacio debería abrir la app si ya está
+    instalada**~~ **Hecho (§107, 0.1.145).** Como WhatsApp o YouTube (José, 22/10, captura: hoy la
     invitación por WhatsApp lleva a lilastore.constroad.com y a escribir el
     código a mano). Enlace propio (`lilachat.constroad.com/unirse/<código>`)
     con App Links de Android (`assetlinks.json` + `intent-filter` con
@@ -9573,6 +9677,10 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     cuántas animaciones vivas hay, si se sueltan y si el hilo JS se traba.
     José pide **medir la performance en cada iteración**: lo del GIF y esto
     se escaparon por no medir.
+53. ~~**Un GIF en la lista de chats dice «Foto»**~~ **Hecho (§107, 0.1.145).** (visto en el E2E del 22/10).
+    La fila solo conoce `lastKind: 'image'`. Que el server mande el tipo del
+    archivo del último mensaje (`lastMime`) y la lista diga «GIF», como
+    WhatsApp.
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

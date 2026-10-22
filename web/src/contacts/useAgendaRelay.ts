@@ -1,6 +1,8 @@
 import { useEffect, useSyncExternalStore, type MutableRefObject } from 'react';
 import type { Socket } from 'socket.io-client';
+import type { AgendaContact } from '@lilachat/shared';
 import type { BaseLocal } from '../local/baseLocal';
+import { receiveFullAgenda, setFullAgendaAsker } from './fullAgenda';
 import { getAgendaNames, loadAgendaNames, mergeAgendaNames, requestAgendaNames, setAgendaAsker, subscribeAgendaNames } from './phoneAgenda';
 
 /**
@@ -27,11 +29,21 @@ export function useAgendaRelay(params: {
     const onNames = (payload: { nombres?: Record<string, string> } | undefined) => {
       if (payload?.nombres) mergeAgendaNames(base, payload.nombres);
     };
+    // The whole address book for «Nuevo chat» (pending 20): its names also fill the saved ones.
+    const onContacts = (payload: { contactos?: AgendaContact[] } | undefined) => {
+      const contacts = payload?.contactos ?? [];
+      mergeAgendaNames(base, Object.fromEntries(contacts.map((contact) => [contact.phone, contact.name])));
+      receiveFullAgenda(contacts);
+    };
     current.on('agenda.nombres', onNames);
+    current.on('agenda.contactos', onContacts);
     setAgendaAsker((list) => current.emit('agenda.pedir', { phones: list }));
+    setFullAgendaAsker(() => current.emit('agenda.pedirTodo'));
     return () => {
       current.off('agenda.nombres', onNames);
+      current.off('agenda.contactos', onContacts);
       setAgendaAsker(null);
+      setFullAgendaAsker(null);
     };
   }, [base, connected, socket]);
 

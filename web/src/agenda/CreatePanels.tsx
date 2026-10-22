@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Trash2, UserRound } from 'lucide-react';
 import {
   planTargetChat,
@@ -9,6 +9,8 @@ import {
 import { api } from '../api';
 import { ContactPicker } from '../contacts/ContactPicker';
 import { FieldError, Overlay, PrimaryButton } from '../ui/Overlay';
+import { usePhoneContacts } from '../contacts/usePhoneContacts';
+import { mergeContactGroups } from '../contacts/mergeContacts';
 
 /**
  * Todo lo que la web puede CREAR: chat, grupo, evento y encuesta.
@@ -89,7 +91,10 @@ export function NewChatOverlay({
   onClose: () => void;
   onCreated: (chatId: string) => void;
 }) {
-  const groups = useContactos(jwt, true);
+  const mine = useContactos(jwt, true);
+  // The phone's contacts on Lilachat join them (pending 20), like WhatsApp Web.
+  const phone = usePhoneContacts(jwt);
+  const groups = useMemo(() => (mine ? mergeContactGroups(mine, phone.contacts) : null), [mine, phone.contacts]);
   const { selected, toggle } = useSeleccion(kind === 'group');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
@@ -182,6 +187,8 @@ export function NewChatOverlay({
         loading={groups === null}
         multiple={kind === 'group'}
       />
+      {phone.state === 'loading' ? <p data-testid="agenda-cargando" className="mt-3 text-center text-[12px] text-on-surface-variant">Buscando los contactos de tu teléfono…</p> : null}
+      {phone.state === 'no-phone' ? <p data-testid="agenda-sin-telefono" className="mt-3 text-center text-[12px] text-on-surface-variant">Abre Lilachat en tu teléfono para ver aquí sus contactos.</p> : null}
     </Overlay>
   );
 }

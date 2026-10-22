@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { answerAgendaRequest } from './webAgendaRelay';
+import { answerAgendaRequest, answerFullAgendaRequest } from './webAgendaRelay';
 
 vi.mock('./agendaEnMemoria', () => ({
   precargarAgenda: vi.fn(() => Promise.resolve()),
@@ -19,6 +19,24 @@ describe('answerAgendaRequest', () => {
     await answerAgendaRequest({ emit }, { phones: ['960397018'] });
     await answerAgendaRequest({ emit }, { requestId: 'r2', phones: 'x' });
     await answerAgendaRequest({ emit }, undefined);
+    expect(emit).not.toHaveBeenCalled();
+  });
+});
+
+/** «Nuevo chat» on the web with the whole address book (pending 20). */
+describe('answerFullAgendaRequest', () => {
+  it('sends every number with its name, by name', async () => {
+    // Arrange
+    const emit = vi.fn();
+    // Act
+    await answerFullAgendaRequest({ emit }, { requestId: 'r3' });
+    // Assert
+    expect(emit).toHaveBeenCalledWith('agenda.respuestaTodo', { requestId: 'r3', contactos: [{ phone: '902049935', name: 'Mamá' }, { phone: '960397018', name: 'Wilson' }] });
+  });
+
+  it('ignores a request without id', async () => {
+    const emit = vi.fn();
+    await answerFullAgendaRequest({ emit }, {});
     expect(emit).not.toHaveBeenCalled();
   });
 });

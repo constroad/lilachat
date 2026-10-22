@@ -4,7 +4,7 @@ import { avisarTarjeta, refrescarTodas } from '@lilachat/shared';
 import { io, type Socket } from 'socket.io-client';
 import { pausaDelSocket, queHacerConElSocket, type PausaDelSocket } from './servicioDeConexion';
 import { registrarPerf } from '../diagnostico/diagnostico';
-import { answerAgendaRequest } from '../contacts/webAgendaRelay';
+import { answerAgendaRequest, answerFullAgendaRequest } from '../contacts/webAgendaRelay';
 import { listenPresence } from './presenceStore';
 import { BUILD_HEADER, UPDATE_REQUIRED_STATUS, buildHeader, reportStatus } from '../api/appBuild';
 
@@ -143,6 +143,7 @@ export function connectSocket(token: string): Socket {
   // The linked web asks this phone for contact names (20/10, option «b»).
   const current = socket;
   current.on('agenda.pedido', (request: { requestId?: unknown; phones?: unknown }) => void answerAgendaRequest(current, request));
+  current.on('agenda.pedidoTodo', (request: { requestId?: unknown }) => void answerFullAgendaRequest(current, request));
   return socket;
 }
 

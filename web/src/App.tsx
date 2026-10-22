@@ -7,6 +7,7 @@ import { CompleteProfileScreen } from './profile/CompleteProfileScreen';
 import { useProfileGate } from './profile/useProfileGate';
 import { registrarServiceWorker } from './pwa/serviceWorker';
 import { Shell } from './Shell';
+import { MiniVideoPlayer } from './media/MiniVideoPlayer';
 import { useSesion } from './sesion/useSesion';
 
 /**
@@ -39,12 +40,16 @@ export function App() {
   // The superadmin's users panel; the server decides who sees it (`adminRoutes.ts`).
   if (window.location.pathname === '/admin') return sesion.credential.jwt ? <AdminUsersScreen jwt={sesion.credential.jwt} /> : null;
   return (
-    <Shell
-      credential={sesion.credential}
-      refrescoResuelto={sesion.refrescoResuelto}
-      logout={sesion.logout}
-      manejar401={sesion.manejar401}
-      hayVersionNueva={hayVersionNueva}
-    />
+    <>
+      <Shell
+        credential={sesion.credential}
+        refrescoResuelto={sesion.refrescoResuelto}
+        logout={sesion.logout}
+        manejar401={sesion.manejar401}
+        hayVersionNueva={hayVersionNueva}
+      />
+      {/* Outside the Shell: a video in the mini player outlives the chat it came from (pending 14). */}
+      <MiniVideoPlayer />
+    </>
   );
 }

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Download, Sticker, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, Download, PictureInPicture2, Sticker, X } from 'lucide-react';
 import { formatClock, formatDayLabel } from '@lilachat/shared';
 import type { MensajeEnPantalla } from './types';
+import { openMiniPlayer } from '../media/miniPlayer';
 
 /**
  * Las fotos del chat a pantalla completa (W2), como WhatsApp Web: flechas (y
@@ -11,6 +12,7 @@ import type { MensajeEnPantalla } from './types';
 export function PhotoViewer(props: { fotos: MensajeEnPantalla[]; indice: number; onCambiar: (indice: number) => void; onCerrar: () => void; /** A GIF of the chat becomes my animated sticker (pending 37); absent in a secret chat. */ onMakeSticker?: (foto: MensajeEnPantalla) => void }) {
   const { fotos, indice, onCambiar, onCerrar } = props;
   const foto = fotos[indice];
+  const video = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const alTeclear = (evento: KeyboardEvent) => {
       if (evento.key === 'Escape') onCerrar();
@@ -32,6 +34,22 @@ export function PhotoViewer(props: { fotos: MensajeEnPantalla[]; indice: number;
             Convertir en sticker animado
           </button>
         ) : null}
+        {foto.media.mime?.startsWith('video/') ? (
+          // The mini player (pending 14): it keeps playing from here after the viewer closes.
+          <button
+            type="button"
+            data-testid="visor-mini-reproductor"
+            aria-label="Mini reproductor"
+            title="Mini reproductor"
+            onClick={() => {
+              openMiniPlayer({ url: foto.media!.url!, poster: foto.media!.thumbUrl, startAt: video.current?.currentTime ?? 0, title: foto.body || 'Video' });
+              onCerrar();
+            }}
+            className={boton}
+          >
+            <PictureInPicture2 size={20} />
+          </button>
+        ) : null}
         <a href={foto.media.url} download target="_blank" rel="noopener noreferrer" aria-label="Descargar" className={boton}>
           <Download size={20} />
         </a>
@@ -48,7 +66,7 @@ export function PhotoViewer(props: { fotos: MensajeEnPantalla[]; indice: number;
         <div className="absolute inset-y-0 left-14 right-14 bottom-6">
           {foto.media.mime?.startsWith('video/') ? (
             // Videos too (José, 21/10: the viewer drew them as a broken image).
-            <video key={foto.clientKey} data-testid="visor-video" src={foto.media.url} poster={foto.media.thumbUrl} controls autoPlay className="h-full w-full object-contain" />
+            <video ref={video} key={foto.clientKey} data-testid="visor-video" src={foto.media.url} poster={foto.media.thumbUrl} controls autoPlay className="h-full w-full object-contain" />
           ) : (
             <FullPhoto key={foto.clientKey} url={foto.media.url} thumb={foto.media.thumbUrl} alt={foto.body ?? 'Foto'} />
           )}

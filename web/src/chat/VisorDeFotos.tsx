@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, Download, X } from 'lucide-react';
 import { formatClock, formatDayLabel } from '@lilachat/shared';
 import type { MensajeEnPantalla } from './types';
@@ -39,7 +39,14 @@ export function VisorDeFotos(props: { fotos: MensajeEnPantalla[]; indice: number
             <ChevronLeft size={26} />
           </button>
         ) : null}
-        <img src={foto.media.url} alt={foto.body ?? 'Foto'} className="max-h-full max-w-full object-contain" />
+        <div className="absolute inset-y-0 left-14 right-14 bottom-6">
+          {foto.media.mime?.startsWith('video/') ? (
+            // Videos too (José, 21/10: the viewer drew them as a broken image).
+            <video key={foto.clientKey} data-testid="visor-video" src={foto.media.url} poster={foto.media.thumbUrl} controls autoPlay className="h-full w-full object-contain" />
+          ) : (
+            <FullPhoto key={foto.clientKey} url={foto.media.url} thumb={foto.media.thumbUrl} alt={foto.body ?? 'Foto'} />
+          )}
+        </div>
         {indice < fotos.length - 1 ? (
           <button type="button" aria-label="Foto siguiente" onClick={() => onCambiar(indice + 1)} className={`${boton} absolute right-2`}>
             <ChevronRight size={26} />
@@ -48,5 +55,21 @@ export function VisorDeFotos(props: { fotos: MensajeEnPantalla[]; indice: number
       </div>
       {foto.body ? <p className="px-6 pb-6 text-center text-sm text-white">{foto.body}</p> : null}
     </div>
+  );
+}
+
+/**
+ * The photo starts on the bubble's thumbnail (already in the cache) and the
+ * full one fades in over it when it arrives (José, 21/10: it showed black for
+ * a moment; WhatsApp is almost instant). Both `contain` on the same box, so
+ * they cover each other exactly.
+ */
+function FullPhoto(props: { url: string; thumb?: string; alt: string }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <>
+      {props.thumb && !loaded ? <img src={props.thumb} alt="" aria-hidden className="absolute inset-0 h-full w-full object-contain" /> : null}
+      <img data-testid="visor-foto" src={props.url} alt={props.alt} onLoad={() => setLoaded(true)} className={`absolute inset-0 h-full w-full object-contain transition-opacity duration-150 ${loaded || !props.thumb ? 'opacity-100' : 'opacity-0'}`} />
+    </>
   );
 }

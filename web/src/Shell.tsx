@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChatRail } from './chat/ChatRail';
 import { ListResizeHandle } from './chat/ListResizeHandle';
 import { readThemeChoice, saveThemeChoice, type ThemeChoice } from './ui/tema';
-import { Bell, BellOff, Download, LogOut, RefreshCw, WifiOff } from 'lucide-react';
+import { Bell, BellOff, Download, LogOut, RefreshCw, WifiOff, X } from 'lucide-react';
+import { useDismiss } from './ui/useDismiss';
 import { useSinConexion } from './pwa/conexion';
 import { useInstalarApp } from './pwa/instalar';
 import { activarVersionNueva } from './pwa/serviceWorker';
@@ -404,6 +405,9 @@ function PanelDeAjustes(props: {
 }) {
   const { jwt, onAviso, onSalir, onCerrar, instalacion } = props;
   const [push, setPush] = useState(pushState);
+  // It had no way out but its own button (José, 21/10): a click outside, Escape or the X close it.
+  const panel = useRef<HTMLDivElement>(null);
+  useDismiss(true, panel, onCerrar, { ignore: '[data-testid="btn-ajustes"], [data-testid="riel-perfil"]' });
   const alternar = async () => {
     if (push === 'encendido') {
       await disablePush(jwt);
@@ -414,7 +418,10 @@ function PanelDeAjustes(props: {
     if (!resultado.ok) onAviso(resultado.message ?? 'No se pudieron activar.');
   };
   return (
-    <div data-testid="panel-ajustes" className="absolute bottom-16 left-4 z-10 w-72 rounded-xl border border-outline/15 bg-surface p-2 shadow-lg">
+    <div ref={panel} data-testid="panel-ajustes" className="absolute bottom-16 left-4 z-10 w-72 rounded-xl border border-outline/15 bg-surface p-2 shadow-lg">
+      <button type="button" data-testid="cerrar-ajustes" aria-label="Cerrar ajustes" title="Cerrar" onClick={onCerrar} className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full text-on-surface-variant hover:bg-background">
+        <X size={16} />
+      </button>
       <AppearanceChoice />
       <ChatFontChoice />
       <GroupsAsListChoice />

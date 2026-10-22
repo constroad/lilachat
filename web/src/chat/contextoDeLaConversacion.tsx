@@ -32,6 +32,8 @@ export type ContextoDeLaConversacion = {
   onAccion: (mensaje: MensajeEnPantalla, accion: AccionSobreMensaje) => void;
   /** Abrir una foto en el visor del chat. */
   onVerFoto: (mensaje: MensajeEnPantalla) => void;
+  /** A PDF opens in the web's own viewer (José, 21/10). */
+  onVerPdf?: (mensaje: MensajeEnPantalla) => void;
   /** Fijar mensajes (19/10): en un grupo, solo los admins. */
   puedeFijar: boolean;
   fijados: ReadonlySet<number>;

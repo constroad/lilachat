@@ -21,6 +21,9 @@ function obtenerSocket(opciones: OpcionesDeSocket): Socket {
   return socketVivo;
 }
 
+/** The session's socket, for a request that is not a state of the hook (the «últ. vez» of a 1:1). */
+export const currentSocket = (): Socket | null => socketVivo;
+
 /**
  * Se suelta, no se cierra: solo cuando NADIE lo usa se apaga de verdad. Y se
  * hace en el siguiente tick, porque un remonte inmediato de React volvería a

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useDismiss } from '../ui/useDismiss';
 import { MoreVertical, Search, UserPlus } from 'lucide-react';
 import { changeForAction, filterMembers, formatPhoneDisplay, memberActions, type ClientWorkspace, type ClientWorkspaceMember, type MemberAction } from '@lilachat/shared';
 import { FieldError, Overlay } from '../ui/Overlay';
@@ -26,6 +27,9 @@ export function MembersDialog(props: { space: ClientWorkspace; jwt: string; myUs
   const [lists, setLists] = useState<Record<MembersTab, ClientWorkspaceMember[]> | null>(null);
   const [query, setQuery] = useState('');
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  // The ⋮ menu of a member closes with a click beside it or Escape (José, 21/10).
+  const memberMenu = useRef<HTMLDivElement>(null);
+  useDismiss(menuFor !== null, memberMenu, () => setMenuFor(null), { ignore: '[data-testid^="acciones-"]' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -99,7 +103,7 @@ export function MembersDialog(props: { space: ClientWorkspace; jwt: string; myUs
                   <button type="button" data-testid={`acciones-${member.phone}`} aria-label={`Cambiar rol o acceso de ${memberName(member)}`} aria-expanded={menuFor === member.id} onClick={() => setMenuFor(menuFor === member.id ? null : member.id)} className="grid h-10 w-8 place-items-center rounded-lg text-on-surface-variant hover:bg-background"><MoreVertical size={18} /></button>
                 ) : null}
                 {menuFor === member.id ? (
-                  <div data-testid="menu-acciones-miembro" role="menu" className="absolute right-3 top-14 z-10 w-56 rounded-xl border border-outline/15 bg-surface p-1.5 shadow-lg">
+                  <div ref={memberMenu} data-testid="menu-acciones-miembro" role="menu" className="absolute right-3 top-14 z-10 w-56 rounded-xl border border-outline/15 bg-surface p-1.5 shadow-lg">
                     <p className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Cambiar rol o acceso</p>
                     {actions.map((action) => (
                       <button key={action} type="button" role="menuitem" onClick={() => runAction(member, action)} className={`flex w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-background ${action === 'deactivate' ? 'text-error' : ''}`}>{ACTION_LABELS[action]}</button>

@@ -12,6 +12,7 @@ import { BarraDeGrabacion } from './BarraDeGrabacion';
 import { useGrabadoraDeVoz, type NotaDeVozGrabada } from './useGrabadoraDeVoz';
 import type { StickerChat } from './stickers/EmojiStickerPanel';
 import { AttachMenu } from './AttachMenu';
+import { useDismiss } from '../ui/useDismiss';
 
 /**
  * La barra de escritura del diseño: «+» suelto a la izquierda, el campo con
@@ -82,6 +83,9 @@ export function Composer({
   const menciones = useMencionesDelCampo(mencionables);
   const voz = useGrabadoraDeVoz();
   const [conEmojis, setConEmojis] = useState(false);
+  // A click on the messages or Escape closes it; typing in the field keeps it open, like WhatsApp Web (José, 21/10).
+  const emojiPanel = useRef<HTMLDivElement>(null);
+  useDismiss(conEmojis, emojiPanel, () => setConEmojis(false), { ignore: '[data-testid="btn-emojis"], [data-testid="input-mensaje"]' });
   /** Where the caret goes once the new text is on screen. A frame later (rAF) raced fast typing after a mention (E2E, 20/10). */
   const pendingCaret = useRef<number | null>(null);
   useLayoutEffect(() => {
@@ -169,7 +173,7 @@ export function Composer({
       />
 
       {conEmojis ? (
-        <div data-testid="panel-emojis" className="mb-2" onKeyDown={(evento) => evento.key === 'Escape' && setConEmojis(false)}>
+        <div ref={emojiPanel} data-testid="panel-emojis" className="mb-2">
           <Suspense fallback={<div className="h-[360px] animate-pulse rounded-lg bg-background" />}>
             {/* Sending a sticker closes the panel, like WhatsApp (José, 21/10). */}
             <EmojiStickerPanel onPickEmoji={ponerEmoji} chat={stickers ? { ...stickers, onSent: () => { stickers.onSent?.(); setConEmojis(false); } } : undefined} winks={onWink ? { recipient: recipient ?? 'el chat', onNudge, onSend: (wink) => { onWink(wink); setConEmojis(false); } } : undefined} />
@@ -249,12 +253,12 @@ export function Composer({
         <button
           type="button"
           data-testid="btn-emojis"
-          aria-label="Emojis"
+          aria-label={conEmojis ? 'Cerrar los emojis' : 'Emojis'}
           aria-expanded={conEmojis}
           onClick={() => setConEmojis((abierto) => !abierto)}
           className={`grid h-10 w-10 shrink-0 place-items-center rounded-full hover:bg-background ${conEmojis ? 'text-primary' : 'text-on-surface-variant'}`}
         >
-          <Smile size={20} />
+          {conEmojis ? <X size={20} /> : <Smile size={20} />}
         </button>
 
         {conMicrofono ? (

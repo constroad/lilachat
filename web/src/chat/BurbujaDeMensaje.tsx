@@ -1,6 +1,6 @@
 import { LineaDeLlamada } from './LineaDeLlamada';
 import { memo, useContext } from 'react';
-import { AlertCircle, BellRing, CalendarDays, FileText, Lock } from 'lucide-react';
+import { AlertCircle, BellRing, CalendarDays, FileText, Lock, Play } from 'lucide-react';
 import { colorDeAutor, DELIVERY_GLYPH, esAvisoDestacado, formatClock, primerEnlace, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
 import { TarjetaDeEnlace } from './TarjetaDeEnlace';
 import { NotaDeVoz } from './NotaDeVoz';
@@ -137,7 +137,9 @@ function FlatMessage(props: Props) {
         {mensaje.hilo && mensaje.hilo.respuestas > 0 && !mensaje.deletedAt ? <ChipDeLaRaiz seq={mensaje.seq} hilo={mensaje.hilo} /> : null}
         {mensaje.estado === 'fallido' ? <FalloDelEnvio mensaje={mensaje} onReintentar={props.onReintentar} onDescartar={props.onDescartar} /> : null}
       </div>
-      <div className="absolute -top-3 right-2 hidden items-center gap-0.5 rounded-lg border border-outline/15 bg-surface px-0.5 shadow-sm group-focus-within:flex group-hover:flex">
+      {/* Hidden with opacity, never `display: none` (José, 21/10): the menus hang from these buttons; when the mouse went into a menu
+          the bar vanished, the menu lost its anchor and jumped to the top left, in a loop. While one is open the bar stays. */}
+      <div className="pointer-events-none absolute -top-3 right-2 flex items-center gap-0.5 rounded-lg border border-outline/15 bg-surface px-0.5 opacity-0 shadow-sm group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-[[data-state=open]]:pointer-events-auto has-[[data-state=open]]:opacity-100">
         <BotonDeReaccionar mensaje={mensaje} mio={false} />
         <BotonDeHilo mensaje={mensaje} />
         <MenuDelMensaje mensaje={mensaje} mio={mine} />
@@ -196,7 +198,7 @@ function CitaDelMensaje({ seq, mio }: { seq: number; mio: boolean }) {
 }
 
 function ContenidoDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio: boolean }) {
-  const { nombres, yo, jwt, chat, onVerFoto } = useConversacion();
+  const { nombres, yo, jwt, chat, onVerFoto, onVerPdf } = useConversacion();
   // La tarjeta del primer enlace; los chats secretos no la piden.
   const vista = useVistaPrevia(chat.encrypted || mensaje.media ? null : primerEnlace(mensaje.body), jwt);
   if (mensaje.deletedAt) return <p className="italic opacity-80">Se eliminó este mensaje</p>;
@@ -225,6 +227,14 @@ function ContenidoDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio
             style={media.width && media.height ? { aspectRatio: `${media.width} / ${media.height}` } : undefined}
           />
           {mensaje.estado === 'enviando' ? <AnilloDeSubida razon={mensaje.progreso} /> : null}
+          {/* A video looked like a photo (José, 21/10): the play over its frame, like the app. */}
+          {media.mime?.startsWith('video/') && mensaje.estado !== 'enviando' ? (
+            <span className="absolute inset-0 mb-1 grid place-items-center"><span className="grid h-12 w-12 place-items-center rounded-full bg-black/50 text-white"><Play size={22} fill="currentColor" /></span></span>
+          ) : null}
+        </button>
+      ) : media?.url && media.mime === 'application/pdf' && onVerPdf && !mensaje.estado ? (
+        <button type="button" data-testid={`pdf-${mensaje.clientKey}`} onClick={() => onVerPdf(mensaje)} className="mb-1 flex items-center gap-2 text-left underline-offset-2 hover:underline">
+          <FileText size={18} /> <span className="truncate">{media.fileName ?? 'Documento PDF'}</span>
         </button>
       ) : media?.url ? (
         <a href={media.url} target="_blank" rel="noreferrer" className="mb-1 flex items-center gap-2 underline-offset-2 hover:underline">

@@ -21,6 +21,7 @@ import { buildCallRouter } from './callRoutes.js';
 import { buildMeRouter } from './meRoutes.js';
 import { buildProfileRouter } from './profileRoutes.js';
 import { buildAdminRouter } from './adminRoutes.js';
+import { buildQueueRouter } from './queueRoutes.js';
 import { buildRespaldoRouter } from './respaldoRoutes.js';
 import type { MediaUploader } from './mediaClient.js';
 import { buildVistaPreviaRouter, type TraerVistaPrevia } from './vistaPreviaRoutes.js';
@@ -112,6 +113,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/media', buildMediaRouter(deps.mediaUploader));
   app.use('/api/agenda', buildRecordatoriosDeGrupoRouter(deps.mediaUploader));
   app.use('/api/agenda', buildPendientesRouter());
+  app.use('/api/agenda', buildQueueRouter());
   app.use('/api/agenda', buildEventRouter());
   app.use('/api/agenda', buildChecklistRouter());
   app.use('/api/push', buildPushRouter());

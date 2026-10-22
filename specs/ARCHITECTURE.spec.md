@@ -4892,6 +4892,59 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 91. La parte visible de la API de bots (21/10/2026, 0.1.131)
+
+Contrato en `specs/BOTS-API.spec.md`. El servidor salió en 787f4e3.
+
+**Instalar** (`web/src/apps/InstallAppScreen.tsx`, 4 tests).
+- `/instalar-app` es una página de la web. Quien no tiene sesión pasa por el
+  ingreso (QR o código) y vuelve a la misma dirección.
+- Muestra la app, lo que podrá hacer, lo que no («No lee los demás mensajes
+  ni los chats personales») y los espacios donde la persona es dueña o admin.
+- «Instalar» y «Cancelar» vuelven a la dirección registrada de la app. Un
+  enlace con una dirección que la app no registró solo muestra el error y no
+  manda a nadie a ninguna parte.
+
+**La tarjeta** (`BotCardView`, web con 4 tests y app).
+- Kicker, título, estado como pastilla, campos, enlace y hasta tres botones.
+  El estado usa el token nuevo `warning` (ámbar, claro y oscuro).
+- Un toque llega al bot como `button.click`, y el botón dice «Enviado ✓». El
+  bot cierra la tarjeta con PATCH, y `msg.edited` trae la tarjeta nueva, sin
+  la marca «editado». La app y la web la reemplazan en pantalla y en lo
+  guardado.
+- En la burbuja, la hora de una tarjeta va en su renglón; su `body` es solo
+  el resumen para la lista y los avisos.
+
+**El bot en el chat.**
+- `chatDetail` marca `app: true` y oculta su teléfono interno. La pastilla
+  dice «App» (`memberBadge`, test).
+- En un 1:1 con un bot no hay llamadas.
+- En un chat con un bot instalado no contesta el `@lila` interno: contesta la
+  app.
+
+**Integraciones** (Ajustes del espacio, web y app). Muestra las apps
+instaladas, quién las instaló y cuándo, el aviso si el último evento no llegó
+(`appInstalledLine`, `appDeliveryWarning`; tests) y «Desinstalar», confirmado
+antes.
+
+**E2E de punta a punta.** Se usó una app de QA temporal («Lila QA») con un
+agentes falso local en :4099.
+- Web, con QA Ana: entró a `/instalar-app` sin sesión, se vinculó, siguió en
+  la pantalla de consentimiento e instaló.
+  - El agentes falso recibió el código con su `state` y canjeó el token.
+  - La tarjeta llegó al canal con la marca «App». «Confirmar» produjo un
+    `button.click` firmado (valor `pending-77`, teléfono de Ana).
+  - El bot la cerró y la web la mostró «Confirmado por QA Ana» sin botones,
+    en vivo.
+  - «@Lila QA hola» llegó como `message.created` con `mentions_bot: true`.
+  - Integraciones mostró la app; al desinstalarla llegó `app.uninstalled` y el
+    token pasó a 401.
+- Emulador, cuenta de José: la tarjeta en el 1:1 con el bot se dibujó entera.
+  «Confirmar» llegó al agentes falso con el teléfono de José y quedó «Enviado
+  ✓». La cabecera no ofrece llamar.
+- Todo lo de QA se borró y quedó verificado en cero: el espacio, la app, las
+  instalaciones, los códigos, las entregas y el usuario bot.
+
 ## 90. Menú en bucle en los canales, ventanas que no cerraban, «últ. vez», visor sin negro, video y PDF en la web (21/10/2026, 0.1.130)
 
 **El menú y las reacciones en bucle (web, urgente).**

@@ -199,9 +199,18 @@ público nuevo. A uno privado entra si lo agregan.
 
 ## Estado (21/10/2026)
 
-- Servidor: a–e implementado (`server/src/bots/`, 19 tests de punta a punta con un webhook HTTP real; el fake con 4 de paridad).
-- Falta: la pantalla de consentimiento (`/instalar-app` en la web), la tarjeta con botones en la app y la web, la marca «App» y la pantalla Integraciones.
-- Producción: registrar «Lila» (`scripts/bot-app-register.ts`) y crear los índices (`scripts/bot-indexes.ts`), con el OK de José. El `client_secret` sale a un archivo privado; José lo carga en Torre.
+- Servidor: a–e (`server/src/bots/`). Hay 19 tests de punta a punta con un
+  webhook HTTP real, y el fake tiene 4 de paridad.
+- Interfaz (0.1.131):
+  - la pantalla de consentimiento `/instalar-app` en la web (también para
+    quien entra sin sesión);
+  - la tarjeta con botones en la app y la web;
+  - el cierre de la tarjeta en vivo (`msg.edited` trae la tarjeta);
+  - la marca «App» junto al nombre del bot, y sin llamadas en su 1:1;
+  - Integraciones en Ajustes del espacio, con la última falla de entrega y
+    «Desinstalar».
+- Producción: «Lila» registrada (`lca_lnkjg6KXzr_GBiF-YG3V`) y sus índices
+  creados. Falta que José cargue el `client_secret` en Torre.
 
 ## e) Fake para la CI de agentes
 

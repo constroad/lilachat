@@ -24,6 +24,7 @@ describe('cabecerasDeSeguridad', () => {
     expect(csp).toContain("script-src 'self'");
     expect(csp).not.toContain("'unsafe-eval'");
     expect(csp).toContain("object-src 'none'");
+    expect(csp).toContain("frame-src 'self' blob:");
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain('wss://lilachat.constroad.com');
   });

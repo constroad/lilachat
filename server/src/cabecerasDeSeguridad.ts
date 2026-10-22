@@ -30,6 +30,8 @@ export function politicaDeContenido(host: string): string {
     "worker-src 'self'",
     "manifest-src 'self'",
     "object-src 'none'",
+    // The PDF viewer (José, 21/10) shows the file from memory (`blob:`) in a frame of the page itself.
+    "frame-src 'self' blob:",
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",

@@ -37,6 +37,7 @@ import { buildReenvioRouter } from './reenvioRoutes.js';
 import { buildHilosRouter } from './hilosRoutes.js';
 import { buildBotRouter, buildOAuthRouter } from './bots/botRoutes.js';
 import { buildBotUserRouter } from './bots/botUserRoutes.js';
+import { buildFileViewRouter } from './fileViewRoutes.js';
 import { notifyEdited } from './reparto.js';
 
 const require = createRequire(import.meta.url);
@@ -100,6 +101,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api', buildActivityRouter());
   app.use('/api', buildFunRouter());
   app.use('/api', buildStickersRouter(deps.mediaUploader));
+  app.use('/api/chats', buildFileViewRouter());
   app.use('/api/chats', buildFijadosRouter());
   app.use('/api/chats', buildReenvioRouter());
   app.use('/api/chats', buildHilosRouter());

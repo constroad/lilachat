@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHECKLIST_LIMITS, activeDueChoice, checklistMembers, checklistSummaryLine, taskDoneNotices, checklistOverdue, checklistPermissions, checklistProgress, checklistTextInChat, myTasks, shortPersonName, taskDueLabel, taskDueOptions, taskDueState, toggleChecklistItem, validateChecklist, validateChecklistItem } from './checklists.js';
+import { CHECKLIST_LIMITS, activeDueChoice, checklistMembers, checklistSummaryLine, taskDoneNotices, checklistOverdue, checklistPermissions, checklistProgress, checklistTextInChat, myTasks, shortPersonName, taskDueLabel, taskDueOptions, taskDueState, toggleChecklistItem, validateChecklist, validateChecklistItem, canToggleTask } from './checklists.js';
 
 /** José, 21/10: «agrega el checklist al estilo de Telegram» (backlog 8). */
 describe('validateChecklist', () => {
@@ -177,3 +177,21 @@ describe('taskDoneNotices', () => {
   });
 });
 
+
+/** Who ticks a task (José, 21/10): an assigned one, only its person or whoever created the checklist. */
+describe('canToggleTask', () => {
+  const base = { me: 'ana', createdBy: 'jose', othersCanMark: true };
+  it('a task assigned to someone: only that person or the checklist creator', () => {
+    expect(canToggleTask({ ...base, me: 'ana', assignee: 'ana' })).toBe(true);
+    expect(canToggleTask({ ...base, me: 'beto', assignee: 'ana' })).toBe(false);
+    expect(canToggleTask({ ...base, me: 'jose', assignee: 'ana' })).toBe(true);
+  });
+  it('the person assigned ticks it even when the checklist is «solo yo marco»', () => {
+    expect(canToggleTask({ ...base, othersCanMark: false, me: 'ana', assignee: 'ana' })).toBe(true);
+  });
+  it('a task without anyone: as the checklist allows', () => {
+    expect(canToggleTask({ ...base, me: 'beto', assignee: null })).toBe(true);
+    expect(canToggleTask({ ...base, othersCanMark: false, me: 'beto' })).toBe(false);
+    expect(canToggleTask({ ...base, othersCanMark: false, me: 'jose' })).toBe(true);
+  });
+});

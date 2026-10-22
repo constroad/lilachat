@@ -62,6 +62,17 @@ export function checklistPermissions(params: { me: string; createdBy: string; ot
   return { canMark: author || params.othersCanMark, canAdd: author || params.othersCanAdd };
 }
 
+/**
+ * Who ticks a task (José, 21/10): an assigned task, only its person or whoever
+ * created the checklist — the person assigned even when the checklist says
+ * «solo yo marco»; a task without anyone, as the checklist allows.
+ */
+export function canToggleTask(params: { me: string; createdBy: string; othersCanMark: boolean; assignee?: string | null }): boolean {
+  if (params.me === params.createdBy) return true;
+  if (params.assignee) return params.me === params.assignee;
+  return params.othersCanMark;
+}
+
 /** Ticks a pending task (with who and when) or unticks a done one. */
 export function toggleChecklistItem(items: readonly ChecklistItem[], itemId: string, userId: string, now: Date): { ok: true; done: boolean; items: ChecklistItem[] } | { ok: false; message: string } {
   const target = items.find((item) => item.id === itemId);

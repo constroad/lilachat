@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { Router, type Response } from 'express';
 import { Types } from 'mongoose';
-import { checklistOverdue, checklistPermissions, checklistTextInChat, toggleChecklistItem, validateChecklist, validateChecklistItem, validateChecklistTitle, type AgendaChecklist } from '@lilachat/shared';
+import { canToggleTask, checklistOverdue, checklistPermissions, checklistTextInChat, toggleChecklistItem, validateChecklist, validateChecklistItem, validateChecklistTitle, type AgendaChecklist } from '@lilachat/shared';
 import { ChatModel, MessageModel } from './chatModels.js';
 import { ChecklistModel, type Checklist } from './checklistModel.js';
 import { asyncRoute, requireSession } from './requireSession.js';
@@ -183,8 +183,10 @@ export function buildChecklistRouter(): Router {
     const userId = req.session!.userId;
     const checklist = await checklistOfMember(req.params.id, userId, res);
     if (!checklist) return;
-    if (!checklistPermissions({ me: String(userId), createdBy: String(checklist.createdBy), othersCanMark: checklist.othersCanMark, othersCanAdd: checklist.othersCanAdd }).canMark) {
-      return res.status(403).json({ message: 'Solo quien lo creó marca las tareas.' });
+    const task = checklist.items.find((one) => one.id === String(req.params.itemId));
+    const assignee = task?.assignee ? String(task.assignee) : null;
+    if (task && !canToggleTask({ me: String(userId), createdBy: String(checklist.createdBy), othersCanMark: checklist.othersCanMark, assignee })) {
+      return res.status(403).json({ message: assignee ? 'Esta tarea tiene responsable: solo esa persona o quien creó el checklist la marca.' : 'Solo quien lo creó marca las tareas.' });
     }
     const toggled = toggleChecklistItem(view(checklist).items, String(req.params.itemId), String(userId), new Date());
     if (!toggled.ok) return res.status(404).json({ message: toggled.message });

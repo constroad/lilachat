@@ -95,6 +95,19 @@ describe('using it', () => {
     expect((await request(app).post(`/api/agenda/checklists/${body.id}/items`).set(jwtOf(ana)).send({ text: 'vibradora' })).body.message).toBe('Esa tarea ya está.');
   });
 
+  it('an assigned task: only its person or the author ticks it, even when others may not (José, 21/10)', async () => {
+    await ChatModel.updateOne({ _id: chatId }, { $set: { kind: 'group', name: 'Obra' }, $push: { members: { userId: ajeno } } });
+    const { body } = await create(ana, { othersCanMark: false });
+    const { body: read } = await request(app).get(`/api/agenda/checklists/${body.id}`).set(jwtOf(beto));
+    const itemId = read.checklist.items[0].id as string;
+    await request(app).patch(`/api/agenda/checklists/${body.id}/items/${itemId}`).set(jwtOf(ana)).send({ assignee: String(beto) }).expect(200);
+    const refused = await request(app).post(`/api/agenda/checklists/${body.id}/items/${itemId}/toggle`).set(jwtOf(ajeno));
+    expect(refused.status).toBe(403);
+    expect(refused.body.message).toBe('Esta tarea tiene responsable: solo esa persona o quien creó el checklist la marca.');
+    expect((await request(app).post(`/api/agenda/checklists/${body.id}/items/${itemId}/toggle`).set(jwtOf(beto))).status).toBe(200);
+    expect((await request(app).post(`/api/agenda/checklists/${body.id}/items/${itemId}/toggle`).set(jwtOf(ana))).body.checklist.items[0]).toMatchObject({ doneBy: null });
+  });
+
   it('only the author deletes it, and its card says it is gone', async () => {
     const { body } = await create(ana);
     expect((await request(app).delete(`/api/agenda/checklists/${body.id}`).set(jwtOf(beto))).status).toBe(403);

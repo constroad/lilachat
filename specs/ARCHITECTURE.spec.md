@@ -4892,6 +4892,68 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 99. GIF en el chat y la pestaña GIPHY (22/10/2026, 0.1.138)
+
+Backlog 37 (José, 21/10: «debo poder subir un gif, es momento de agregar la
+sección de GIPHY»; diseño `g-01-panel-gif-giphy`).
+
+**Subir un GIF** ya conservaba la animación: ni la app ni la web lo
+recomprimen (`planDeCompresion`) y el server pasa los bytes tal cual. Lo que
+faltaba era verlo moverse.
+- La burbuja mostraba la miniatura (un cuadro quieto). Ahora un `image/gif`
+  usa el archivo: `isAnimatedImage` en `shared/src/gifs.ts`;
+  `miniaturaDe` en la app; `GifInBubble` en la web.
+- Se mueve 8 s y se detiene, como los stickers animados (`useAnimatedStop`
+  en la app; en la web, el cuadro se copia a un canvas). Lleva la marca
+  «GIF»; detenido, «▶ GIF».
+- Tocarlo detenido lo repite; moviéndose, abre el visor.
+
+**GIPHY por el server** (`server/src/gifRoutes.ts`, 4 tests).
+- La llave `GIPHY_API_KEY` la carga José en Torre. Nunca va a la app ni a
+  la web.
+- Sin llave, `GET /api/gifs` dice `{available:false}` y la pestaña no
+  aparece.
+- `GET /api/gifs/search?q=&offset=`: tendencias sin palabras, búsqueda con
+  palabras. Filtro `pg-13`, en español, de a 24. Las tendencias quedan 5
+  min en memoria.
+- `POST /api/gifs/send {chatId, gifId, clientKey}`: pide el GIF por su id,
+  baja el de 200 px (solo de hosts de GIPHY por https, hasta 4 MB), lo
+  guarda en los medios de Lilachat y lo publica como imagen `image/gif`.
+  Idempotente por `clientKey`.
+- Motor `shared/src/gifs.ts` (3 tests): mapeo de resultados, host
+  permitido, tamaño.
+
+**Pestaña «GIF»** en el panel de emojis (app y web).
+- Buscador, chips «Tendencias · Gracias · Listo · Jajaja · Buen trabajo ·
+  En camino», grilla de 2 columnas y «Powered by GIPHY».
+- Se carga más al llegar al final. Tocar uno lo manda.
+- Nunca en un chat secreto.
+
+**Defecto previo corregido en la app.** Mantener presionada una foto o un
+GIF no hacía nada: la imagen se quedaba con el toque y la pulsación larga
+de la fila nunca llegaba. Ahora selecciona el mensaje, como el texto.
+
+**E2E** (servidor de QA con GIPHY simulado solo en su HTTP; la subida y el
+mensaje son reales).
+- Web (QA Ana): pestaña con 4 resultados y «Powered by GIPHY», chip,
+  envío. El GIF se movió, a los 9 s quedó «▶ GIF» y el clic lo repitió.
+- App (emulador): el GIF de QA Beto se detuvo con «▶ GIF» y al tocarlo
+  volvió a moverse (dos capturas distintas). La pestaña con chips y grilla
+  quedó igual al diseño; mandé uno y llegó.
+- Las vistas previas del emulador quedan grises: el GIPHY simulado usa URLs
+  de GIPHY y el emulador no tiene DNS de internet. Con la llave real cargan.
+- Limpieza: el GIF de José, borrado desde la app («Eliminar para todos»);
+  el de Beto, por el socket; el de la web, del chat QA. Perfiles
+  restaurados.
+
+**Pendiente.**
+- Sticker animado propio (`g-02-sticker-animado`): convertir GIF o video a
+  WebP animado de 512 px pide un codificador en el server (`sharp` para GIF,
+  `ffmpeg` para video). Es una dependencia nativa nueva para el deploy de
+  Torre: va con el OK de José.
+- La lista dice «Foto» para un GIF: el último mensaje de la lista no trae el
+  tipo de archivo.
+
 ## 98. La nota de voz sigue sonando fuera del chat, con una barra arriba (22/10/2026, 0.1.137)
 
 Backlog 34 (José, 21/10: «el audio sigue sonando al salir del chat con una
@@ -8941,7 +9003,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     con su acción (Marcar, Votar, Voy / No voy, Posponer) y se descartan.
     Analizar: de dónde salen (derivadas de lo pendiente, no un buzón nuevo),
     cuántas a la vez, y el mismo carril para los bots del ítem 33.
-37. **GIF y GIPHY, y stickers animados propios** (José, 21/10: «debo poder
+37. **GIF y GIPHY, y stickers animados propios** — **GIF y GIPHY hechos en la 0.1.138 (§99)**; falta el sticker animado propio (José, 21/10: «debo poder
     subir un gif, es momento de agregar la sección de GIPHY, y crear yo mismo
     mis stickers animados»). Para la 0.1.123:
     - **Sticker animado propio**: subir un GIF o un video corto (≤ 6 s) y

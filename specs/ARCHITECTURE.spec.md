@@ -4892,6 +4892,52 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 89. La cabecera del chat y la nota de voz como WhatsApp (21/10/2026, 0.1.129)
+
+José (21/10, con capturas de WhatsApp): el ⋮ del chat abría lo mismo que
+tocar el avatar; WhatsApp tiene ahí un menú con opciones. Las llamadas van en
+una cámara con su flecha, no en dos botones sueltos. Pidió copiar la nota de
+voz de WhatsApp sin pasar por Stitch, y avisó que al arrastrar para avanzar o
+retroceder se abría «Responder».
+
+**El ⋮ (app).**
+- Abre un menú que cae de la cabecera (`HeaderDropdown`), solo con lo que la
+  app hace (`chatMenuOptions`, 6 tests):
+  - Grupo o canal: Agregar miembros, Info del grupo o del canal, Medios del
+    grupo o del canal, Buscar, y Silenciar o Activar notificaciones.
+  - 1:1: Ver contacto, Medios, enlaces y docs, Buscar, y Silenciar o Activar.
+  - Notas propias: Info, Medios y Buscar.
+- «Medios» abre el detalle en «Compartido en el chat»; «Agregar miembros», en
+  la hoja de agregar.
+- Silenciar = avisos «nada», activar = «todo», los niveles del detalle. Se
+  pregunta el nivel al abrir el menú, no al abrir cada chat.
+
+**Las llamadas.** En un 1:1 la cabecera tiene la cámara con ▾, que abre
+«Llamada de voz» y «Videollamada». Sale el botón de teléfono suelto. En un
+grupo no hay llamadas (F10).
+
+**La nota de voz** (`VoiceNoteView`).
+- A la izquierda va la foto de quien la grabó con el micrófono. Mientras suena,
+  o pausada a la mitad, la velocidad toma su lugar (`showsSpeed`).
+- Después, el play grande, la onda con su bolita (`knobLeft`; con un borde del
+  color de la burbuja para que se despegue de las barras) y la duración
+  debajo.
+- En el formato Slack la fila ya muestra la foto: ahí va solo el micrófono.
+- **El arrastre abría «Responder».** La barra usaba el sistema de respuesta de
+  React Native, y deslizar para responder es un `Gesture.Pan` nativo, que
+  siempre le gana. Ahora la barra es un gesto nativo que arranca a los 3 dp,
+  antes que los 12 dp de «Responder», y lo toma primero.
+
+**E2E en el emulador** (cuenta de José, nota de voz de QA Beto subida por
+`/api/media`).
+- Arrastrar adelante saltó a 0:06 y empezó a sonar, con «1×» en lugar de la
+  foto. Arrastrar atrás fue a 0:03. «Responder» no se abrió nunca.
+- El ⋮ del grupo mostró las cinco opciones. «Medios del grupo» abrió el
+  detalle en Compartido. Silenciar cambió la opción a «Activar
+  notificaciones», y activar la devolvió.
+- En el 1:1, la cámara ▾ abrió voz y video (se cerró sin llamar).
+- La nota de QA se borró con «Eliminar para todos» de Beto.
+
 ## 88. El guiño de otro chat, el riel cortado, la versión de la web y la barra del modo empresa (21/10/2026, 0.1.128)
 
 José (21/10): en la web, abrir «Developers Lila» mostraba el chanchito una y

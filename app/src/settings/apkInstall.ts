@@ -31,7 +31,7 @@ const CARPETA = 'apks';
 
 export type DownloadOutcome =
   | { ok: true; uri: string }
-  | { ok: false; message: string; verdict?: InstallVerdict };
+  | { ok: false; message: string; verdict?: InstallVerdict; /** The download itself was cut (not the verification). */ cut?: boolean };
 
 export async function downloadAndVerify(opciones: {
   /** URL pública de la release vigente (la `downloadUrl` de `min-version`). */
@@ -67,7 +67,7 @@ export async function downloadAndVerify(opciones: {
     // escondía un 404 o un 410 y no dejaba rastro (16/10/2026).
     void registrarError(fallo, 'actualizar-descarga');
     const motivo = fallo instanceof Error && fallo.message ? ` (${fallo.message.slice(0, MOTIVO_MAX)})` : '';
-    return { ok: false, message: `No se pudo descargar la actualización${motivo}.` };
+    return { ok: false, message: `No se pudo descargar la actualización${motivo}.`, cut: true };
   }
 
   const veredicto = decideInstall({

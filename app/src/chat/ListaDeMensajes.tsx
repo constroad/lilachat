@@ -8,6 +8,7 @@ import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { ChevronDown } from 'lucide-react-native';
 import type { Row } from './MessageRow';
 import { claveDeFila, tipoDeFila } from './filasDelChat';
+import { isPending } from './rowKinds';
 import { FondoDelChat } from './FondoDelChat';
 import { useFinalDeLaConversacion } from './useFinalDeLaConversacion';
 import { useColores } from '../ui/tema';
@@ -91,10 +92,13 @@ export function ListaDeMensajes(props: {
 }) {
   const colores = useColores();
   const { listaRef, rows } = props;
+  const lastRow = rows.at(-1);
+  const lastMineKey = !lastRow ? undefined : isPending(lastRow) || String(lastRow.senderId) === props.yo ? claveDeFila(lastRow) : null;
   const { alScrollear, alEmpezarArrastre, alTerminarArrastre, alCambiarTamaño, abajoLejos, nuevosAbajo, releaseFromEnd } = useFinalDeLaConversacion(
     listaRef,
     props.mensajes,
-    props.yo
+    props.yo,
+    lastMineKey
   );
   const estuvoArriba = useRef(false);
   const { onLlegoAlFinal } = props;

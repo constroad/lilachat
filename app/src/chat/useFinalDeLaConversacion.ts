@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { Keyboard, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import type { FlashListRef } from '@shopify/flash-list';
+import { followsMyNewRow } from '@lilachat/shared';
 import { PosicionEnLaLista } from './finalDeLaConversacion';
 import { PANEL_MOVE_MS, useEmojiPanelOpen } from './emojiPanel';
 
@@ -18,11 +19,15 @@ import { PANEL_MOVE_MS, useEmojiPanelOpen } from './emojiPanel';
  */
 /** After the panel's slide, one beat for the list to take its room off. */
 const PANEL_SETTLE_MS = 50;
+/** A new row of mine: one beat for the list to lay it out before going down (photos come from a closing sheet). */
+const FOLLOW_MINE_MS = 120;
 
 export function useFinalDeLaConversacion<T>(
   listaRef: RefObject<FlashListRef<T> | null>,
   mensajes: readonly { seq: number; senderId: string }[],
-  yo: string
+  yo: string,
+  /** The key of the last row when it is mine (`null` if it is not; `undefined` while the list is empty). */
+  lastMineKey?: string | null
 ) {
   const cercaDelFinal = useRef(true);
   const [posicion] = useState(() => new PosicionEnLaLista());
@@ -82,6 +87,18 @@ export function useFinalDeLaConversacion<T>(
     const follow = setTimeout(() => listaRef.current?.scrollToEnd({ animated: true }), PANEL_MOVE_MS + PANEL_SETTLE_MS);
     return () => clearTimeout(follow);
   }, [panelOpen, listaRef]);
+
+  // What I send is always seen (22/10): a new last row of mine takes the list down, wherever it was.
+  const lastMine = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (lastMineKey === undefined) return;
+    const follow = followsMyNewRow(lastMine.current, lastMineKey);
+    lastMine.current = lastMineKey;
+    if (!follow) return;
+    fijarCerca(true);
+    const timer = setTimeout(() => listaRef.current?.scrollToEnd({ animated: true }), FOLLOW_MINE_MS);
+    return () => clearTimeout(timer);
+  }, [lastMineKey, listaRef, fijarCerca]);
 
   /** Placed away from the end by the program (the unread divider): do not follow the end until the person gets there. */
   const releaseFromEnd = useCallback(() => {

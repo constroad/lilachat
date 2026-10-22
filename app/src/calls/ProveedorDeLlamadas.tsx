@@ -71,6 +71,7 @@ export function ProveedorDeLlamadas({ jwt, children }: { jwt: string; children: 
           state={llamada.state}
           medios={llamada.medios}
           peerName={llamada.peerName}
+          peerPhoto={chatsEnMemoria()?.find((uno) => uno.id === llamada.chatId)?.avatarUrl}
           video={llamada.video}
           puedeAlternarVideo={llamada.conVideoDesdeElInicio}
           muted={llamada.muted}

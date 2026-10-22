@@ -140,6 +140,7 @@ export function useDibujarFila(p: {
           {!isPending(item) && item.hilo && item.hilo.respuestas > 0 && !item.deletedAt ? (
             <ChipDeHilo
               seq={item.seq}
+              bubbleKey={`${item.chatId}:${item.seq}`}
               hilo={item.hilo}
               mia={mia}
               conAvatar={conAvatar}

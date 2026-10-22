@@ -37,6 +37,7 @@ import { Avatar } from '../ui/Avatar';
 import { MessageMedia } from './MessageMedia';
 import { BotCardView } from './BotCardView';
 import { isFileMime, isPending, type Row } from './rowKinds';
+import { rememberBubbleWidth } from './bubbleWidths';
 
 /**
  * Una fila de la conversación, según el diseño «Chat Detail» de Stitch.
@@ -248,6 +249,8 @@ function FilaDeMensaje({
             onSeleccionar?.(item.seq);
           }}
           delayLongPress={350}
+          // A bubble with a thread tells its width: the chip under it takes it (22/10).
+          onLayout={!isPending(item) && item.hilo?.respuestas ? (event) => rememberBubbleWidth(`${item.chatId}:${item.seq}`, event.nativeEvent.layout.width) : undefined}
           testID={!isPending(item) ? `burbuja-${item.seq}` : undefined}
           className={`overflow-hidden ${mine ? 'bg-burbuja-propia' : 'bg-burbuja-ajena'}`}
           style={{

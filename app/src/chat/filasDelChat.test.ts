@@ -86,6 +86,12 @@ describe('citadosPorSeq', () => {
  * eliminados ni lo que no tiene miniatura (eso se abre con otra app).
  */
 describe('fotosDelChat', () => {
+  it('a sticker is not swiped through in the viewer (José, 22/10)', () => {
+    const sticker = { seq: 3, senderId: 'a', at: '2026-10-22T10:00:00.000Z', kind: 'sticker', media: { url: 'https://x/s.webp', mime: 'image/webp' } };
+    const photo = { seq: 4, senderId: 'a', at: '2026-10-22T10:00:00.000Z', kind: 'image', media: { url: 'https://x/4.jpg', mime: 'image/jpeg' } };
+    expect(fotosDelChat([sticker, photo], { yo: 'b', esGrupo: false, nombres: new Map(), nombreDelChat: 'Ana' }).map((foto) => foto.seq)).toEqual([4]);
+  });
+
   const YO = '665f1a2b3c4d5e6f70818293';
   const ANA = '665f1a2b3c4d5e6f70818294';
   const at = '2026-10-17T15:04:00.000Z';
@@ -239,5 +245,15 @@ describe('pendientesEnOrden', () => {
     const a = [{ clientKey: 'a', queuedAt: '2026-10-19T20:00:00.000Z' }];
     const b = [{ clientKey: 'b', queuedAt: '2026-10-19T20:00:00.000Z' }];
     expect(pendientesEnOrden(a, b).map((uno) => uno.clientKey)).toEqual(['a', 'b']);
+  });
+});
+
+describe('isThumblessVideo (QA 22/10)', () => {
+  it('a video without a thumbnail is drawn (a dark frame), not left out', async () => {
+    const { isThumblessVideo } = await import('./filasDelChat');
+    expect(isThumblessVideo({ url: '/v.mp4', mime: 'video/mp4' })).toBe(true);
+    expect(isThumblessVideo({ url: '/v.mp4', mime: 'video/mp4', thumbUrl: '/t.jpg' })).toBe(false);
+    expect(isThumblessVideo({ url: '/a.jpg', mime: 'image/jpeg' })).toBe(false);
+    expect(isThumblessVideo({ mime: 'video/mp4' })).toBe(false);
   });
 });

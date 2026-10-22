@@ -1,5 +1,5 @@
 import { formatClock, tamanoDeBurbuja } from '@lilachat/shared';
-import { isAnimatedImage } from '@lilachat/shared';
+import { isAnimatedImage, opensInPhotoViewer } from '@lilachat/shared';
 import type { ArchivoEnCola } from './colaDeArchivosMotor';
 
 /**
@@ -115,6 +115,8 @@ type MensajeConMedia = {
   senderId: string;
   at: string;
   deletedAt?: string;
+  /** A sticker is an image too, and does not go in the viewer (22/10). */
+  kind?: string;
   media?: { url?: string; thumbUrl?: string; mime?: string; fileName?: string };
 };
 
@@ -140,6 +142,11 @@ export function miniaturaDe(media: { thumbUrl?: string; url?: string; mime?: str
   return (media.mime ?? '').startsWith('image/') ? media.url : undefined;
 }
 
+/** A video lila could not make a thumbnail for: drawn as a dark frame with its play, never as nothing (QA 22/10). */
+export function isThumblessVideo(media: { thumbUrl?: string; url?: string; mime?: string }): boolean {
+  return Boolean(media.url && !media.thumbUrl && (media.mime ?? '').startsWith('video/'));
+}
+
 export function fotosDelChat(
   mensajes: readonly MensajeConMedia[],
   contexto: { yo: string; esGrupo: boolean; nombres: ReadonlyMap<string, string>; nombreDelChat: string }
@@ -147,7 +154,7 @@ export function fotosDelChat(
   return mensajes.flatMap((mensaje) => {
     const media = mensaje.media;
     const miniatura = media ? miniaturaDe(media) : undefined;
-    if (!media || !miniatura || mensaje.deletedAt) return [];
+    if (!media || !miniatura || !opensInPhotoViewer(mensaje)) return [];
     const mia = mensaje.senderId === contexto.yo;
     const deUnGrupo = contexto.esGrupo ? contexto.nombres.get(String(mensaje.senderId)) : undefined;
     return [

@@ -85,8 +85,8 @@ export function useActualizacionesDeLaApp() {
       return actualizar(info);
     });
 
-  /** «Actualizar» de la banda: primero las novedades, si las hay (19/10). */
-  const pedirActualizacion = () => (novedades.length > 0 ? setViendoNovedades(true) : actualizarDesdeBanda());
+  /** The band's button: the release notes first, if any (19/10); a retry (22/10) downloads at once, the notes were already seen. */
+  const pedirActualizacion = () => (novedades.length > 0 && estado.fase !== 'error' ? setViendoNovedades(true) : actualizarDesdeBanda());
   const descargarDesdeNovedades = () => {
     setViendoNovedades(false);
     actualizarDesdeBanda();

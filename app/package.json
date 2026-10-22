@@ -29,6 +29,7 @@
     "expo-image-manipulator": "~57.0.21",
     "expo-image-picker": "~57.0.12",
     "expo-intent-launcher": "~57.0.1",
+    "expo-keep-awake": "~57.0.2",
     "expo-local-authentication": "~57.0.3",
     "expo-media-library": "~57.0.4",
     "expo-network": "~57.0.2",

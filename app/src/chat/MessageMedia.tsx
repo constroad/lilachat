@@ -9,7 +9,7 @@ import { NotaDeVoz } from './NotaDeVoz';
 import { etiquetaDeSubida } from './progresoDeSubida';
 import { AnilloDeSubida } from './AnilloDeSubida';
 import { copiaLocalDe } from './colaDeArchivos';
-import { miniaturaDe } from './filasDelChat';
+import { isThumblessVideo, miniaturaDe } from './filasDelChat';
 import { isFileMime, isPending, isVoiceMime, photoStyle, type Row } from './rowKinds';
 import { useColores } from '../ui/tema';
 
@@ -50,7 +50,7 @@ export function MessageMedia({ item, mine, selecting, onSelect, onOpen, flat = f
         />
       ) : null}
 
-      {!isPending(item) && item.media && miniaturaDe(item.media) && !isFileMime(item.media.mime) ? (
+      {!isPending(item) && item.media && (miniaturaDe(item.media) || isThumblessVideo(item.media)) && !isFileMime(item.media.mime) ? (
         <Pressable
           testID={`media-${item.seq}`}
           // The photo took the touch and the row's long press never arrived: a photo or a GIF could not be selected.
@@ -67,15 +67,20 @@ export function MessageMedia({ item, mine, selecting, onSelect, onOpen, flat = f
             else onOpen?.(item.seq);
           }}
         >
-          <Image
-            ref={gif ? gifStop.ref : undefined}
-            recyclingKey={item.clientKey}
-            // What I just sent keeps its local copy (it is not downloaded again).
-            source={{ uri: copiaLocalDe(item.clientKey) ?? miniaturaDe(item.media) }}
-            style={photoStyle(item.media)}
-            contentFit="cover"
-            transition={120}
-          />
+          {miniaturaDe(item.media) ? (
+            <Image
+              ref={gif ? gifStop.ref : undefined}
+              recyclingKey={item.clientKey}
+              // What I just sent keeps its local copy (it is not downloaded again).
+              source={{ uri: copiaLocalDe(item.clientKey) ?? miniaturaDe(item.media) }}
+              style={photoStyle(item.media)}
+              contentFit="cover"
+              transition={120}
+            />
+          ) : (
+            // A video whose thumbnail could not be made (QA 22/10: the bubble shrank to its time): a dark frame under the play.
+            <View testID={`video-sin-miniatura-${item.seq}`} style={photoStyle(item.media)} className="bg-black" />
+          )}
           {/* El PLAY sobre la miniatura. Un video y una foto se veían
               exactamente igual —la miniatura es un cuadro del video— así
               que no había forma de saber que eso se podía reproducir. */}

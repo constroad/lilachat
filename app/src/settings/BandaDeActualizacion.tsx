@@ -69,6 +69,12 @@ export function BandaDeActualizacion({
           >
             {subtitulo}
           </Text>
+          {/* A failed download is retried here; LilaStore stays as the way out (22/10). */}
+          {estado.fase === 'error' ? (
+            <Pressable testID="btn-actualizar-lilastore" onPress={onAbrirTienda} hitSlop={8}>
+              <Text className="mt-0.5 text-[12px] font-semibold text-primary">Abrir LilaStore</Text>
+            </Pressable>
+          ) : null}
         </View>
 
         {ocupado ? (
@@ -76,11 +82,11 @@ export function BandaDeActualizacion({
         ) : (
           <Pressable
             testID="btn-actualizar-ahora"
-            onPress={estado.fase === 'error' ? onAbrirTienda : onActualizar}
+            onPress={onActualizar}
             className="min-h-[44px] items-center justify-center rounded-full bg-primary px-4"
           >
             <Text className="text-[13px] font-bold text-on-primary">
-              {estado.fase === 'error' ? 'LilaStore' : 'Actualizar'}
+              {estado.fase === 'error' ? 'Reintentar' : 'Actualizar'}
             </Text>
           </Pressable>
         )}

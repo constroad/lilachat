@@ -4,6 +4,7 @@ import { textoDelChipDeHilo, type ResumenDeHiloEnCliente } from '@lilachat/share
 import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
 import { AVATAR_DE_AUTOR } from './burbuja';
+import { useBubbleWidth } from './bubbleWidths';
 
 /** The chip's avatars (dp) and how much they overlap (José, 21/10: the threads showed, but too small). */
 const CHIP_AVATAR = 28;
@@ -18,6 +19,8 @@ const SEPARACION_DEL_AVATAR = 8;
  */
 export function ChipDeHilo(props: {
   seq: number;
+  /** `chatId:seq`: the bubble's width under that key (`bubbleWidths.ts`). */
+  bubbleKey: string;
   hilo: ResumenDeHiloEnCliente;
   mia: boolean;
   /** En un grupo, lo ajeno lleva el avatar del autor: el chip se alinea con la burbuja. */
@@ -32,6 +35,7 @@ export function ChipDeHilo(props: {
   indent?: number;
 }) {
   const colores = useColores();
+  const bubbleWidth = useBubbleWidth(props.bubbleKey);
   const texto = textoDelChipDeHilo(props.hilo);
   if (!texto) return null;
   const [cantidad, ...resto] = texto.split(' · ');
@@ -42,7 +46,9 @@ export function ChipDeHilo(props: {
         accessibilityRole="button"
         accessibilityLabel={`${texto}. Abrir el hilo`}
         onPress={() => props.onAbrir(props.seq)}
-        className="min-h-[48px] max-w-[88%] flex-row items-center gap-2.5 rounded-b-2xl border border-t-0 border-outline/15 bg-surface px-3.5"
+        className="min-h-[48px] max-w-[80%] flex-row items-center gap-2.5 rounded-b-2xl border border-t-0 border-outline/15 bg-surface px-3.5"
+        // As wide as its bubble, so the edges meet; the same 80 % limit as the bubble.
+        style={bubbleWidth && props.indent === undefined && !props.centered ? { minWidth: bubbleWidth } : undefined}
       >
         <View className="flex-row">
           {(props.hilo.autores ?? []).map((autor, indice) => (

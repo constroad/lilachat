@@ -29,7 +29,7 @@ export function UpdateLockScreen(props: {
   const content = updateLockContent({ installed: props.installed, latest: props.latest, novedades: props.novedades, size: props.size });
   const busy = props.state.fase === 'descargando' || props.state.fase === 'instalando';
   const failed = props.state.fase === 'error';
-  const label = props.state.fase === 'descargando' ? `Descargando… ${Math.round(props.state.progreso * 100)}%` : props.state.fase === 'instalando' ? 'Abriendo el instalador…' : failed ? 'Abrir LilaStore' : 'Actualizar';
+  const label = props.state.fase === 'descargando' ? `Descargando… ${Math.round(props.state.progreso * 100)}%` : props.state.fase === 'instalando' ? 'Abriendo el instalador…' : failed ? 'Reintentar' : 'Actualizar';
   return (
     <Modal visible={props.visible} animationType="fade" statusBarTranslucent onRequestClose={() => undefined}>
       <View testID="pantalla-actualizacion-obligatoria" className="flex-1 bg-background" style={{ paddingTop: margins.cabecera + 16, paddingBottom: margins.pie + 16 }}>
@@ -65,11 +65,17 @@ export function UpdateLockScreen(props: {
         </ScrollView>
         <View className="px-5 pt-3">
           {props.state.fase === 'error' ? <Text className="mb-2 text-center text-[13px] text-error">{props.state.mensaje}</Text> : null}
-          <Pressable testID="btn-actualizar-obligatoria" disabled={busy} onPress={failed ? props.onOpenStore : props.onUpdate} className={`h-14 flex-row items-center justify-center gap-2 rounded-xl ${busy ? 'bg-primary/60' : 'bg-primary'}`}>
+          <Pressable testID="btn-actualizar-obligatoria" disabled={busy} onPress={props.onUpdate} className={`h-14 flex-row items-center justify-center gap-2 rounded-xl ${busy ? 'bg-primary/60' : 'bg-primary'}`}>
             {busy ? <ActivityIndicator color={colors['on-primary']} /> : <Download size={20} color={colors['on-primary']} />}
             <Text className="text-base font-bold text-on-primary">{label}</Text>
           </Pressable>
-          <Text className="mt-2 text-center text-[12px] text-on-surface-variant">{content.source}</Text>
+          {failed ? (
+            <Pressable testID="btn-obligatoria-lilastore" onPress={props.onOpenStore} className="mt-2 min-h-[36px] items-center justify-center">
+              <Text className="text-[13px] font-semibold text-primary">Abrir LilaStore</Text>
+            </Pressable>
+          ) : (
+            <Text className="mt-2 text-center text-[12px] text-on-surface-variant">{content.source}</Text>
+          )}
         </View>
       </View>
     </Modal>

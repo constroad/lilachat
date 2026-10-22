@@ -1,4 +1,6 @@
 // PRIMERO: enchufa `crypto.getRandomValues` en Hermes, antes de que algo cifre.
+import { CompleteProfileScreen } from './src/onboarding/CompleteProfileScreen';
+import { useProfileGate } from './src/onboarding/useProfileGate';
 import './src/crypto/polyfill';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, View } from 'react-native';
@@ -135,6 +137,8 @@ function Contenido() {
    * morir antes de que el servicio arranque.
    */
   const haySesion = boot.phase === 'home';
+  // Name, birthday and a verified email are required (backlog 17): a session without them completes them first.
+  const profileGate = useProfileGate(boot.phase === 'home' ? boot.credential.jwt : null);
   /**
    * El chat que está arriba del stack (FL1). Antes era una fase del arranque;
    * con navegación nativa la lista sigue montada debajo y esto lo dice el
@@ -404,6 +408,10 @@ function Contenido() {
             onBack={() => setBoot({ phase: 'email' })}
             onDone={(credential) => setBoot({ phase: 'home', credential })}
           />
+        </View>
+      ) : boot.phase === 'home' && profileGate.incomplete ? (
+        <View style={FORMULARIO_CENTRADO}>
+          <CompleteProfileScreen credential={boot.credential} profile={profileGate.incomplete} onDone={profileGate.done} />
         </View>
       ) : boot.phase === 'home' ? (
         <>

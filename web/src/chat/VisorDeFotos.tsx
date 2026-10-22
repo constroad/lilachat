@@ -8,7 +8,7 @@ import type { MensajeEnPantalla } from './types';
  * las del teclado) para pasar a la anterior o la siguiente, Escape para salir y
  * un botón para bajarla. Antes la foto se abría en otra pestaña.
  */
-export function VisorDeFotos(props: { fotos: MensajeEnPantalla[]; indice: number; onCambiar: (indice: number) => void; onCerrar: () => void; /** A GIF of the chat becomes my animated sticker (pending 37); absent in a secret chat. */ onMakeSticker?: (foto: MensajeEnPantalla) => void }) {
+export function PhotoViewer(props: { fotos: MensajeEnPantalla[]; indice: number; onCambiar: (indice: number) => void; onCerrar: () => void; /** A GIF of the chat becomes my animated sticker (pending 37); absent in a secret chat. */ onMakeSticker?: (foto: MensajeEnPantalla) => void }) {
   const { fotos, indice, onCambiar, onCerrar } = props;
   const foto = fotos[indice];
   useEffect(() => {

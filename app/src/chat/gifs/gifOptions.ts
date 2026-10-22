@@ -8,9 +8,8 @@ export async function convertGifToSticker(jwt: string, chatId: string, seq: numb
 }
 
 /**
- * A tap on a GIF of the chat, mine or someone's (José, 22/10: «si toco ese
- * mensaje debería aparecerme la opción flotante para convertir ese gif en
- * sticker»): the floating options, like a sticker's.
+ * A tap on a GIF of the chat, mine or someone's (José, 22/10: the option has
+ * to show up right on the message, floating): its options, like a sticker's.
  */
 export function showGifOptions(params: { jwt: string; chatId: string; seq: number; onOpen: () => void }): void {
   Alert.alert('GIF', undefined, [

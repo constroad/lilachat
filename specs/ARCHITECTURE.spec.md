@@ -5004,9 +5004,8 @@ checklist.**
   Un toque abre el chat en ese mensaje.
 - Web: el botón del riel. App: Ajustes › Medios, del espacio abierto o
   personal.
-- Índice declarado `{chatId, kind, at}`, que se crea a mano en la bóveda con
-  el OK de José. Sin él la consulta funciona, pero lee los mensajes por
-  `chatId`.
+- Índice `{chatId, kind, at}`, creado a mano en la bóveda el 21/10 con el OK de
+  José (la bóveda no crea índices sola).
 
 **Invitar por correo primero** (José, 21/10).
 - «Enviar por correo» es el botón principal; después van WhatsApp y Copiar.

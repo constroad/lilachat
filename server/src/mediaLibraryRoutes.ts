@@ -53,9 +53,8 @@ async function toItems(messages: Message[], me: string): Promise<MediaLibraryIte
  * all my chats — the personal ones, or those of one space (`?workspace=`), so
  * the company never mixes with the personal. Newest first, paged by date.
  *
- * Without an index on `{chatId, kind, at}` this reads the messages of my chats
- * by `chatId`; it is declared in `chatModels.ts` and created by hand in the
- * vault with José's OK.
+ * Read through the index `{chatId, kind, at}`, declared in `chatModels.ts` and
+ * created in the vault on 21/10 with José's OK (the vault has no autoIndex).
  */
 export function buildMediaLibraryRouter(): Router {
   const router = Router();

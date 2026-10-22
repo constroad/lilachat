@@ -4892,6 +4892,62 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 95. Llamadas en la web: hacer y contestar (22/10/2026, 0.1.134)
+
+José (21/10): «¿por qué no podemos hacer y responder llamadas en la web?».
+
+**La misma señalización que la app.** `call.offer`, `call.answer`,
+`call.ice`, `call.end` y `call.reject` por el socket de la sesión. El server
+no cambió: ya reenviaba a todas las salas del usuario, la web solo no
+escuchaba. Contestar en la web apaga el teléfono (`contestada-en-otro`) y al
+revés. TURN de Cloudflare con la credencial corta de `GET /api/calls/ice`.
+
+**Motor compartido** (`shared/src/callMedia.ts`, 9 tests). Lo puro que
+estaba en la app pasó a `shared` con nombres en inglés: `mediaState`,
+`waitBeforeGivingUp`, `callCaption`, `ringStart` y `callerName`. La app
+delega (`estadoDeMedios.ts`, `llamadaNativa.ts`); sus 37 tests siguen
+verdes. Nuevo: «Ocupado en otra llamada» como leyenda.
+
+**Web** (`web/src/calls/*`).
+- `callPeer.ts`: el `RTCPeerConnection`, los candidatos en cola hasta la
+  descripción remota, y el ICE con tope de 6 s (como la app; después, STUN).
+- `useWebCall.ts` (7 tests con un peer y un socket falsos): la llamada es de
+  la sesión, suena sobre cualquier chat. Ocupado responde `call.reject`.
+  Los candidatos que llegan antes del peer se guardan. Colgar mientras el
+  navegador pide el micrófono lo suelta, no lo deja prendido.
+- Sin cámara, una videollamada sigue con la voz y recibe el video del otro
+  (`recvonly`), como WhatsApp Web. Sin micrófono, dice qué hacer y avisa al
+  otro.
+- `CallOverlay.tsx` (3 tests): avatar, nombre, leyenda con reloj; video del
+  otro de fondo y el propio en miniatura; silenciar, cámara y colgar.
+- `CallProvider.tsx`: tono de timbre y «tuu… tuu» con Web Audio; aviso del
+  sistema si la pestaña está oculta (su clic solo trae la pestaña: `sw.js`
+  ya no recarga, recargar cortaba la llamada).
+- Botones de llamada y video en la cabecera, solo en un 1:1 con persona
+  (no contigo, no con una app).
+
+**Bug encontrado en el E2E.** El video del teléfono llegaba mientras sonaba
+y el `<video>` se monta al contestar: con un efecto sobre `[stream]` nunca
+recibía el `srcObject` y se veía negro. Ahora es un callback ref (test).
+
+**E2E** (servidor de QA, Chrome headless con micrófono falso).
+- Web↔web (QA Ana y QA Beto): voz conectada en los dos (reloj, pista de
+  audio remota), silenciar, colgar y la línea «Llamada de voz · 00:03».
+  Videollamada sin cámaras: conecta con la voz, sin botón de cámara.
+  Rechazar: «Llamada terminada» y «Llamada sin respuesta».
+- Web → app (emulador, cuenta de José): sonó a pantalla completa, se
+  contestó deslizando, reloj en los dos, la web colgó.
+- App → web por video: la web contestó sin cámara y vio la cámara del
+  emulador (360×640). El teléfono colgó y la web cerró.
+- El Chrome headless de macOS no expone cámara, ni falsa: el video
+  web → web se probó solo del lado app.
+- Push del servidor de QA apagado: el teléfono real de José no sonó.
+- Limpieza: líneas de llamada nuevas borradas de los dos chats QA (sin
+  reusar `seq`: el emulador las tiene en caché), recibos restaurados,
+  perfiles de José, Ana y Beto restaurados, dispositivos web desvinculados.
+
+**Pendiente.** Llamadas de grupo (ni la app las tiene). Compartir pantalla.
+
 ## 94. Panel de superadmin: los usuarios de Lilachat (22/10/2026, web)
 
 José (21/10): «yo, el creador superadmin, en la versión web debería tener un

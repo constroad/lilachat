@@ -1,4 +1,4 @@
-import { formatCallDuration, type CallState } from '@lilachat/shared';
+import { callCaption, mediaState, waitBeforeGivingUp, type CallState } from '@lilachat/shared';
 
 /**
  * Si el audio está pasando, aparte de si la llamada fue contestada (FL8).
@@ -12,11 +12,8 @@ import { formatCallDuration, type CallState } from '@lilachat/shared';
 export type EstadoDeMedios = 'conectando' | 'conectada' | 'reconectando' | 'fallo';
 
 export function estadoDeMedios(ice: string, yaConecto: boolean): EstadoDeMedios {
-  if (ice === 'connected' || ice === 'completed') return 'conectada';
-  if (ice === 'failed') return 'fallo';
-  // `closed` lo produce quien cuelga; no es una novedad de la red.
-  if (ice === 'closed') return yaConecto ? 'conectada' : 'conectando';
-  return yaConecto ? 'reconectando' : 'conectando';
+  // The engine lives in shared since the web makes calls too (`callMedia.ts`).
+  return mediaState(ice, yaConecto);
 }
 
 /**
@@ -27,7 +24,7 @@ export function estadoDeMedios(ice: string, yaConecto: boolean): EstadoDeMedios 
 export const ESPERA_DE_CONEXION_MS = 30_000;
 
 export function esperaAntesDeRendirse(medios: EstadoDeMedios): number | null {
-  return medios === 'conectando' || medios === 'reconectando' ? ESPERA_DE_CONEXION_MS : null;
+  return waitBeforeGivingUp(medios);
 }
 
 /** La línea bajo el nombre en la pantalla de llamada. */
@@ -37,11 +34,5 @@ export function leyendaDeLlamada(params: {
   video: boolean;
   ahora: number;
 }): string {
-  const { state, medios } = params;
-  if (state.fase === 'llamando') return 'Llamando…';
-  if (state.fase === 'sonando') return params.video ? 'Videollamada entrante' : 'Llamada entrante';
-  if (state.fase === 'terminada') return state.motivo === 'desconectada' ? 'No se pudo conectar' : 'Llamada terminada';
-  if (medios === 'conectando') return 'Conectando…';
-  if (medios === 'reconectando') return 'Reconectando…';
-  return formatCallDuration(state, params.ahora);
+  return callCaption({ state: params.state, media: params.medios, video: params.video, now: params.ahora });
 }

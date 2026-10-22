@@ -1,4 +1,4 @@
-import { CALL_TIMEOUT_MS, type CallState } from '@lilachat/shared';
+import { ringStart, type CallState } from '@lilachat/shared';
 import type { AccionDeAviso } from '../../modules/llamada-entrante/src';
 
 /**
@@ -70,7 +70,5 @@ export function decidirDeslizamiento(params: { dy: number; vy: number }): 'conte
  * 30 s: el server ya la daría por perdida mientras se contesta.
  */
 export function inicioDelTimbre(quedaMs: number | undefined, ahora: number): number {
-  if (typeof quedaMs !== 'number' || !Number.isFinite(quedaMs)) return ahora;
-  const queda = Math.min(CALL_TIMEOUT_MS, Math.max(0, quedaMs));
-  return ahora - (CALL_TIMEOUT_MS - queda);
+  return ringStart(quedaMs, ahora);
 }

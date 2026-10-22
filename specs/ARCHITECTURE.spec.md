@@ -4892,6 +4892,58 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 88. El guiño de otro chat, el riel cortado, la versión de la web y la barra del modo empresa (21/10/2026, 0.1.128)
+
+José (21/10): en la web, abrir «Developers Lila» mostraba el chanchito una y
+otra vez, aunque ese chat no tiene guiños. Además, los íconos del riel se
+veían cortados, en claro y en oscuro, y la web no decía qué versión corre. En
+la app, el modo empresa seguía con la barra del modo personal.
+
+**El guiño de otro chat (web).**
+- Al cambiar de chat, la lista de mensajes del chat anterior queda un render
+  más. `useFunPlayback` la medía contra el cursor del chat nuevo. El 1:1 con
+  Wilson tiene su chanchito en el seq 227 y «Developers Lila» va por el 73: 227
+  > 73, y sonaba. Pasaba cada vez que salía de ese chat a uno con menos
+  mensajes.
+- No era el arreglo de la §84, que cubría solo el guiño propio viejo.
+- Ahora el hook descarta los mensajes que no son del chat abierto
+  (`funPlayback.test.tsx`, rojo antes del arreglo).
+- E2E con QA Ana, que abre su 1:1 con José (guiños en 41–42) y «QA Hilos»
+  (seq 12). Ida y vuelta tres veces: nada suena. Con el bundle sin el arreglo,
+  la misma prueba hizo sonar el guiño del 1:1 en «QA Hilos» dos veces.
+- La app no tiene el problema: cada chat es una pantalla nueva.
+
+**El riel de espacios (web).**
+- El bloque del medio tenía `overflow-y-auto`, que también recorta en
+  horizontal, y se encogía al ancho del ícono (48 px). El anillo de selección y
+  los contadores, que sobresalen, quedaban cortados. Una barra de scroll
+  clásica le comía además ancho.
+- Ahora los dos bloques ocupan los 72 px del riel y el scroll no muestra barra
+  (`.rail-scroll`).
+- `rounded-xl` vale 24 px en los tokens: el botón de 48 px era un círculo con
+  un logo cuadrado adentro, y el anillo redondo cortaba las esquinas. El botón
+  usa ahora el radio del logo (12 px); el personal sigue redondo.
+- El borde del anillo y de los contadores es del color del riel
+  (`background`), en claro y en oscuro.
+- E2E a 1000×560 con cuatro espacios: ningún ícono queda cortado a los lados,
+  en claro ni en oscuro.
+
+**La versión de la web.** Al compilar, Vite escribe `__WEB_VERSION__`: la
+versión del producto (`app/app.json`), el commit corto y la hora del build. Si
+falta git o la carpeta `app`, la etiqueta sale sin ese dato y el build no
+falla. Ajustes la muestra al pie: «Lilachat web 0.1.128 · 6914ede · 21/10
+20:55» (`webVersionLabel`, 2 tests).
+
+**La barra del modo empresa (app).**
+- Personal: Chats · Pendientes · Encuestas · Ajustes. En un espacio, según el
+  diseño `e-07`: Chats · Directorio · Menciones · Ajustes. Son cuatro y no
+  cinco, como dibuja `e-19`, porque la quinta se corta.
+- Directorio y Menciones abren sus pantallas sobre la lista.
+- Al entrar o salir de un espacio, una pestaña que la barra nueva no tiene
+  vuelve a Chats (`bottomTabs.ts`, 4 tests).
+- Emulador: entrar al espacio cambia la barra; Directorio y Menciones abren;
+  volver a Personal la devuelve.
+
 ## 87. Menciones y actividad, logo del espacio, cargo en la pastilla y archivados del espacio (21/10/2026, 0.1.127)
 
 Cierra lo que quedaba del modo empresa salvo la sección APPS y Llamadas en el

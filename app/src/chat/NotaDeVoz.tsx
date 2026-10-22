@@ -40,7 +40,7 @@ export function NotaDeVoz(props: PropsDeNota) {
   // The player is the session's (`voicePlayer.ts`, backlog 34): leaving the chat does not cut it.
   const start = (startShare: number | null) => playVoiceNote({ id: props.id, url: source, authorName: props.author?.name ?? 'Nota de voz', authorPhoto: props.author?.photo, durationS, rate: velocidad, startShare });
   if (now?.id === props.id) {
-    // En reposo se muestra la duración REAL que se grabó: el `m4a` remoto reporta mal su duración hasta cargar entero.
+    // At rest it shows the REAL recorded length: a remote `m4a` reports a wrong duration until fully loaded.
     const duracion = now.durationS > 0 ? now.durationS : durationS;
     return (
       <VistaDeNota

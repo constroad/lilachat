@@ -100,3 +100,5 @@ export * from './callMedia.js';
 export * from './chatQueue.js';
 export * from './nowPlaying.js';
 export * from './gifs.js';
+export * from './photoViewer.js';
+export * from './followMine.js';

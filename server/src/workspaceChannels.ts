@@ -1,4 +1,5 @@
 import { Types } from 'mongoose';
+import { addBotsToPublicChannel } from './bots/botInstall.js';
 import { normalizeChannelName, normalizarDescripcion, type ChannelVisibility } from '@lilachat/shared';
 import { ChatModel, type Chat } from './chatModels.js';
 import { actorIn, WorkspaceError } from './workspaces.js';
@@ -39,6 +40,7 @@ export async function createChannel(workspaceId: string, userId: Types.ObjectId,
     members: [{ userId, role: 'admin' }],
     lastSeq: 0,
   });
+  if (chat.channel?.visibility === 'public') await addBotsToPublicChannel(actor.workspaceId, chat._id);
   return toClientChannel(chat.toObject(), userId);
 }
 

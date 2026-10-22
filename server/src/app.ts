@@ -35,6 +35,9 @@ import { buildChecklistRouter } from './checklistRoutes.js';
 import { buildStickersRouter } from './stickersRoutes.js';
 import { buildReenvioRouter } from './reenvioRoutes.js';
 import { buildHilosRouter } from './hilosRoutes.js';
+import { buildBotRouter, buildOAuthRouter } from './bots/botRoutes.js';
+import { buildBotUserRouter } from './bots/botUserRoutes.js';
+import { notifyEdited } from './reparto.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -89,6 +92,10 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/auth/vincular', vincular.web);
   app.use('/api/vinculos', vincular.telefono);
   app.use('/api/auth', buildAuthRouter(deps.authClient ?? buildHttpAuthClient()));
+  // The bots API (`specs/BOTS-API.spec.md`): its own doors, before the chat routers.
+  app.use('/api/oauth', buildOAuthRouter());
+  app.use('/api/bots', buildBotRouter(notifyEdited));
+  app.use('/api', buildBotUserRouter());
   app.use('/api', buildDestacadosRouter());
   app.use('/api', buildActivityRouter());
   app.use('/api', buildFunRouter());

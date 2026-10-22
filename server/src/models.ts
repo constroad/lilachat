@@ -36,6 +36,8 @@ export interface User {
   autoReply?: { enabled: boolean; text: string };
   /** «últ. vez» (FL10): cuándo se cerró su último socket. */
   lastSeenAt?: Date;
+  /** A bot of an installed app (`bots/`): a member with a name, never a person who logs in; its `phone` is an internal key. */
+  app?: { appId: Types.ObjectId; installationId: Types.ObjectId; workspaceId: Types.ObjectId };
 }
 
 export interface Device {
@@ -78,6 +80,11 @@ const userSchema = new Schema<User>(
     avatarMediaId: { type: String },
     avatarUrl: { type: String },
     lastSeenAt: { type: Date },
+    app: {
+      appId: { type: Schema.Types.ObjectId },
+      installationId: { type: Schema.Types.ObjectId },
+      workspaceId: { type: Schema.Types.ObjectId },
+    },
     autoReply: {
       enabled: { type: Boolean, default: false },
       text: { type: String, default: '' },

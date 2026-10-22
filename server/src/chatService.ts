@@ -76,6 +76,8 @@ export async function sendMessage(params: {
   media?: Message['media'];
   /** La encuesta o el evento que este mensaje publica (`publicarEnElChat`). */
   ref?: Message['ref'];
+  /** A bot's card (`bots/botMessages.ts`). */
+  card?: Message['card'];
   replyToSeq?: number;
   /** Las @menciones que mandó el cliente: se guardan solo las que valen. */
   menciones?: unknown;
@@ -144,6 +146,7 @@ export async function sendMessage(params: {
             : { body: params.body }),
       media: params.media,
       ref: params.ref,
+      ...(params.card ? { card: params.card } : {}),
       replyToSeq: params.replyToSeq,
       ...(menciones.length > 0 ? { menciones } : {}),
       ...(params.hiloDe !== undefined ? { hiloDe: params.hiloDe, ...(params.enElChat ? { enElChat: true } : {}) } : {}),

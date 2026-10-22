@@ -1,4 +1,6 @@
 import { ensureFunAllowed, NudgeError } from './zumbido.js';
+import { botsAmong } from './bots/botRegistry.js';
+import { botsHearMessage } from './bots/botTriggers.js';
 import type { Server as HttpServer } from 'node:http';
 import { Types } from 'mongoose';
 import { Server as SocketServer, type Socket } from 'socket.io';
@@ -235,14 +237,18 @@ export function attachSocket(httpServer: HttpServer): SocketServer {
         // guardado y repartido, así que si el modelo tarda o falla la
         // conversación siguió igual. Un duplicado no la vuelve a invocar.
         if (!result.duplicate) {
-          void maybeAnswerMention({
-            chatId: result.message.chatId,
-            askedBy: userId,
-            body: result.message.body,
-            // Por el MISMO camino que todo mensaje (auditoría 19/10): socket,
-            // entregado a los conectados y push a los demás.
-            onReply: async (reply) => void (await publicarMensaje(reply)),
-          }).catch((error) => console.error('[lila] mención falló:', error?.message ?? error));
+          void (async () => {
+            // With an installed app in the chat (agentes' Lila), the app answers: the built-in @lila stays quiet.
+            if ((await botsAmong(members)).length > 0) return void (await botsHearMessage(result.message, members));
+            await maybeAnswerMention({
+              chatId: result.message.chatId,
+              askedBy: userId,
+              body: result.message.body,
+              // By the SAME path as every message (audit 19/10): socket,
+              // delivered to the connected ones and push to the rest.
+              onReply: async (reply) => void (await publicarMensaje(reply)),
+            });
+          })().catch((error) => console.error('[lila] mención falló:', error?.message ?? error));
         }
       } catch (error) {
         // Una raíz de hilo inválida también es permanente (E3): la cola la descarta con su motivo.

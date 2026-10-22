@@ -5,6 +5,7 @@ import { realpathSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { buildApp } from './app.js';
 import { resolvePort } from './config.js';
+import { resumeBotDeliveries } from './bots/botEvents.js';
 import { connectDb } from './db.js';
 import { attachSocket } from './socket.js';
 import { startReminderCron } from './reminderCron.js';
@@ -95,6 +96,8 @@ export function startServer(): void {
     .then(() => {
       startReminderCron();
       startBackupCron();
+      // The bots' events left pending at the last shutdown get their retry timers back.
+      void resumeBotDeliveries().catch((error) => console.error('[bots] no se pudieron retomar los eventos:', error instanceof Error ? error.message : error));
     })
     .catch((error) => {
     console.error('[lilachat] mongo no conectó:', error instanceof Error ? error.message : error);

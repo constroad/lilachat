@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Model, type QueryFilter, type Types } from 'mongoose';
-import type { MessageRef } from '@lilachat/shared';
+import type { BotCard, MessageRef } from '@lilachat/shared';
 import { HIGHLIGHTED_NOTICE_EVENTS } from '@lilachat/shared';
 
 /**
@@ -91,6 +91,8 @@ export interface Message {
    * y se leen de la encuesta o del evento, no se copian acá.
    */
   ref?: MessageRef;
+  /** A bot's card (`specs/BOTS-API.spec.md` §b): `body` carries its summary for the list, notices and search. */
+  card?: BotCard;
   /**
    * El sobre cifrado, en los chats secretos. Cuando está, `body` NO está: son
    * excluyentes, y guardar los dos anularía el cifrado en la práctica.
@@ -235,6 +237,8 @@ const messageSchema = new Schema<Message>(
     ref: {
       type: new Schema({ tipo: { type: String, enum: ['encuesta', 'evento', 'recordatorio', 'checklist'], required: true }, id: { type: String, required: true } }, { _id: false }),
     },
+    // Validated by `validateBotCard` (shared) before it gets here.
+    card: { type: Schema.Types.Mixed },
     envelope: {
       v: { type: Number },
       nonce: { type: String },

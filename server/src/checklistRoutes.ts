@@ -1,4 +1,5 @@
 import { Router, type Response } from 'express';
+import { botHearsChecklist } from './bots/botTriggers.js';
 import { Types } from 'mongoose';
 import { canToggleTask, checklistOverdue, checklistPermissions, checklistTextInChat, toggleChecklistItem, validateChecklist, validateChecklistItem, validateChecklistTitle, type AgendaChecklist } from '@lilachat/shared';
 import { ChatModel, MessageModel } from './chatModels.js';
@@ -184,6 +185,10 @@ export function buildChecklistRouter(): Router {
     res.json({ checklist: view(updated) });
     announce(updated);
     noteTaskToggle(String(updated._id), String(userId), item.id, Boolean(item.doneBy));
+    // A bot's checklist (`bots/`): the bot hears which task changed and who did it.
+    void botHearsChecklist({ checklist: updated, item: { id: item.id, text: before.text, done: Boolean(item.doneBy), assignee: before.assignee ?? null }, userId }).catch((error) =>
+      console.error('[bots] no se pudo avisar la tarea:', error instanceof Error ? error.message : error)
+    );
   }));
 
   router.post('/checklists/:id/items', asyncRoute(async (req, res) => {

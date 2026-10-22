@@ -29,6 +29,11 @@ const deviceRoom = (deviceId: string) => `device:${deviceId}`;
  */
 let ioVivo: SocketServer | null = null;
 
+/** A message changed outside the socket (a bot replaced its card): the members see it change, without push. */
+export function notifyEdited(members: readonly string[], edited: Record<string, unknown>): void {
+  for (const member of members) ioVivo?.to(userRoom(member)).emit('msg.edited', edited);
+}
+
 /** `attachSocket` deja acá el servidor: desde ese momento el reparto emite. */
 export function fijarServidorDelReparto(io: SocketServer): void {
   ioVivo = io;

@@ -27,8 +27,8 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId) {
   if (!chat) return null;
   const ids = chat.members.map((m) => m.userId);
   const people = await UserModel.find({ _id: { $in: ids } })
-    .select('name phone avatarUrl')
-    .lean<{ _id: unknown; name?: string; phone: string; avatarUrl?: string }[]>();
+    .select('name phone avatarUrl app')
+    .lean<{ _id: unknown; name?: string; phone: string; avatarUrl?: string; app?: unknown }[]>();
   const personById = new Map(people.map((person) => [String(person._id), person]));
   // In a company space the pill says the job title and the space role (design s-01), not the chat's.
   const spaceMembers = chat.workspaceId ? await WorkspaceMemberModel.find({ workspaceId: chat.workspaceId, userId: { $in: ids } }).select('userId title role').lean() : [];
@@ -54,7 +54,9 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId) {
       return {
         id: String(m.userId),
         name: person?.name ?? null,
-        phone: person?.phone ?? null,
+        // An installed app (Lila) has no phone to show: its `phone` is an internal key. Its pill says «App».
+        phone: person?.app ? null : (person?.phone ?? null),
+        ...(person?.app ? { app: true } : {}),
         // Each person's photo (FL13d): the detail and the group's bubbles.
         avatarUrl: person?.avatarUrl ? toAbsoluteMediaUrl(person.avatarUrl) : undefined,
         role: m.role ?? 'member',

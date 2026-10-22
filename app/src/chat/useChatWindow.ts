@@ -13,9 +13,8 @@ import type { OpeningPlace } from './useDivisorNoLeidos';
 const PAGE = 50;
 
 /**
- * An old message opened with its context (pending 44, José 22/10: «Ese mensaje
- * está más arriba: sube para cargarlo» when opening a checklist, a reminder or
- * a photo). Like WhatsApp: a window around it from the server, paged up and
+ * An old message opened with its context (pending 44, José 22/10: opening a
+ * checklist, a reminder or a photo only said to scroll up and load it). Like WhatsApp: a window around it from the server, paged up and
  * down, apart from the live end, which never gets a stretch glued to it. What
  * shows on screen (rows and messages) comes from here; `viewId` remounts the
  * list so it places itself on the message. Sending something goes back to the end.

@@ -114,7 +114,7 @@ export function ConversacionConAcciones(
   // An old message opens with its context (pending 44) instead of «sube para cargarlo».
   const ventana = useMessageWindow(props.jwt, chat.id);
   // Leaving the window also forgets the jump: the remounted list would look for it again and reopen it.
-  const cerrarVentana = useCallback(() => {
+  const closeWindow = useCallback(() => {
     setSalto(null);
     ventana.close();
   }, [ventana]);
@@ -188,13 +188,13 @@ export function ConversacionConAcciones(
         mensajes={ventana.window ? windowOnScreen(ventana.window, hilos.visibles ?? []) : hilos.visibles}
         hayAnteriores={ventana.window ? ventana.window.hasOlder : props.hayAnteriores}
         onCargarAnteriores={ventana.window ? () => void ventana.loadOlder() : props.onCargarAnteriores}
-        ventana={ventana.window ? { hasNewer: ventana.window.hasNewer, onCargarSiguientes: () => void ventana.loadNewer(), onIrAlUltimo: cerrarVentana } : undefined}
+        ventana={ventana.window ? { hasNewer: ventana.window.hasNewer, onCargarSiguientes: () => void ventana.loadNewer(), onIrAlUltimo: closeWindow } : undefined}
         viewId={ventana.viewId}
         onReintentar={(clave) => (colaDeArchivosWeb.tiene(clave) ? void colaDeArchivosWeb.reintentar(clave) : props.onReintentar(clave))}
         onDescartar={(clave) => (colaDeArchivosWeb.tiene(clave) ? colaDeArchivosWeb.descartar(clave) : props.onDescartar(clave))}
         onSend={(texto, menciones) => {
           // Writing goes back to the end, like WhatsApp.
-          cerrarVentana();
+          closeWindow();
           void acciones.enviar(texto, menciones);
         }}
         franja={

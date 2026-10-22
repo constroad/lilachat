@@ -233,8 +233,8 @@ export function ChatScreen({
   const ventana = useChatWindow({ jwt: credential.jwt, chatId, encrypted: Boolean(encrypted), messages, hilos, ocultos, archivosEnCola, listaRef, onNoEsta: setMediaError, onThread: hilos.abrir });
   const rows = ventana.rows;
 
-  /** Las fotos del chat para el visor: el archivo completo y el autor resuelto. */
-  const fotos = useMemo(
+  /** The chat's photos for the viewer: the full file and the resolved author. */
+  const chatPhotos = useMemo(
     () => fotosDelChat(ventana.messages, { yo: credential.userId, esGrupo: esGrupoChat, nombres: nombresDelGrupo, nombreDelChat: chatName }),
     [ventana.messages, credential.userId, esGrupoChat, nombresDelGrupo, chatName]
   );
@@ -297,8 +297,8 @@ export function ChatScreen({
   const leidoHasta = Math.max(othersReadSeq, othersRead);
   const entregadoHasta = Math.max(othersDeliveredSeq, othersDelivered);
   // En refs: `alVerImagen` tiene que ser estable (las burbujas son `memo`).
-  const fotosRef = useRef(fotos);
-  fotosRef.current = fotos;
+  const chatPhotosRef = useRef(chatPhotos);
+  chatPhotosRef.current = chatPhotos;
   const mensajesRef = useRef(messages);
   mensajesRef.current = messages;
   /**
@@ -308,7 +308,7 @@ export function ChatScreen({
    * abre directo con la app del teléfono que sepa hacerlo.
    */
   const alVerImagen = useCallback((seq: number) => {
-    if (fotosRef.current.some((foto) => foto.seq === seq)) return setViendoSeq(seq);
+    if (chatPhotosRef.current.some((foto) => foto.seq === seq)) return setViendoSeq(seq);
     const mensaje = mensajesRef.current.find((m) => m.seq === seq);
     if (!mensaje?.media?.url) return;
     void abrirConOtraApp({
@@ -548,7 +548,7 @@ export function ChatScreen({
         onPickFile={() => void pickFile()} onShareContact={encrypted ? undefined : () => void shareContactFromClip()}
       />
       <VisorDelChat
-        fotos={fotos}
+        fotos={chatPhotos}
         viendoSeq={viendoSeq}
         onCambiar={setViendoSeq}
         onEliminar={eliminar}

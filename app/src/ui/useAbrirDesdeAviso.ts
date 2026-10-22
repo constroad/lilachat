@@ -59,7 +59,7 @@ export function useAbrirDesdeAviso(params: {
     const enFrio = llamadaNativa.chatPendiente();
     if (enFrio) void abrirPorId(enFrio);
     // «Enviar mensaje» on a shared contact (pending 9): the same way as a notification.
-    const pedidos = subscribeOpenChatRequests((chatId) => void abrirPorId(chatId));
+    const stopRequests = subscribeOpenChatRequests((chatId) => void abrirPorId(chatId));
     const toques = llamadaNativa.alTocar((aviso) => {
       if (aviso.accion === 'chat') void abrirPorId(aviso.chatId);
     });
@@ -67,7 +67,7 @@ export function useAbrirDesdeAviso(params: {
       vivo = false;
       suscripcion.remove();
       toques.remove();
-      pedidos();
+      stopRequests();
     };
   }, [params.jwt]);
 }

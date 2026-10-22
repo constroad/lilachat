@@ -4,8 +4,8 @@ import { clampPageLimit, listMessages, memberChatFloor } from './chatService.js'
 import { toClientMessages } from './messageView.js';
 
 /**
- * Pages of a conversation (pending 44, José 22/10: «Ese mensaje está más
- * arriba: sube para cargarlo»). Besides `beforeSeq` (scrolling up from the
+ * Pages of a conversation (pending 44, José 22/10: an old message only said
+ * to scroll up and load it). Besides `beforeSeq` (scrolling up from the
  * end), a window `around` an old message and the pages `afterSeq` (scrolling
  * down from it), like WhatsApp Web. Each side asks for one more than it shows:
  * that one says whether there is more, with no count.

@@ -36,6 +36,8 @@ export * from './invitacion.js';
 export * from './emparejarAgenda.js';
 export * from './cacheCifrada.js';
 export * from './almacenDeMensajes.js';
+export * from './messageWindow.js';
+export * from './sharedContact.js';
 export * from './respaldoCifrado.js';
 export * from './respaldoPorTrozos.js';
 export * from './lotes.js';

@@ -20,6 +20,7 @@ import { buildKeyRouter } from './keyRoutes.js';
 import { buildCallRouter } from './callRoutes.js';
 import { buildMeRouter } from './meRoutes.js';
 import { buildProfileRouter } from './profileRoutes.js';
+import { buildAdminRouter } from './adminRoutes.js';
 import { buildRespaldoRouter } from './respaldoRoutes.js';
 import type { MediaUploader } from './mediaClient.js';
 import { buildVistaPreviaRouter, type TraerVistaPrevia } from './vistaPreviaRoutes.js';
@@ -125,6 +126,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/me', buildProfileRouter(deps.authClient ?? buildHttpAuthClient()));
   app.use('/api/me', buildMeRouter(deps.mediaUploader));
   app.use('/api/respaldos', buildRespaldoRouter());
+  app.use('/api/admin', buildAdminRouter());
   app.use('/api/enlaces', buildVistaPreviaRouter(deps.traerVistaPrevia ?? traerVistaPrevia));
 
   // ─── La web (F6) ─────────────────────────────────────────────────────────

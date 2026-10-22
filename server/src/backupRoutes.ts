@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import { Types } from 'mongoose';
-import { formatBytes, normalizePeruPhone } from '@lilachat/shared';
+import { formatBytes } from '@lilachat/shared';
 import { backupStatus, runBackup } from './backupRunner.js';
 import { ChatModel, MessageModel } from './chatModels.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import { UserModel } from './models.js';
+import { isOperator } from './operators.js';
 
 /**
  * Respaldo y export (F7).
@@ -38,24 +39,6 @@ export function contentDisposition(name: string): string {
   )}`;
 }
 
-/**
- * ¿Esta persona puede disparar un respaldo a mano? «Respaldar ahora» lanza un
- * `mongodump` de la base ENTERA, así que es tarea de operador (auditoría
- * §46.3: cualquiera con sesión podía hacerlo). Los operadores son los
- * teléfonos de `LILACHAT_OPERADORES`; sin la variable, nadie — el cron de cada
- * noche sigue respaldando igual.
- */
-async function esOperador(userId: Types.ObjectId): Promise<boolean> {
-  const operadores = (process.env.LILACHAT_OPERADORES ?? '')
-    .split(',')
-    .map((telefono) => normalizePeruPhone(telefono))
-    .filter(Boolean);
-  if (operadores.length === 0) return false;
-  const user = await UserModel.findById(userId).select('phone').lean();
-  const telefono = normalizePeruPhone(user?.phone);
-  return telefono !== '' && operadores.includes(telefono);
-}
-
 export function buildBackupRouter(): Router {
   const router = Router();
 
@@ -65,7 +48,7 @@ export function buildBackupRouter(): Router {
     res.json({
       ...estado,
       totalLabel: formatBytes(estado.totalBytes),
-      puedeRespaldar: await esOperador(req.session!.userId),
+      puedeRespaldar: await isOperator(req.session!.userId),
     });
   }));
 
@@ -77,7 +60,7 @@ export function buildBackupRouter(): Router {
    * segundo recibe 409, que la pantalla lee como «ya está corriendo».
    */
   router.post('/run', requireSession, asyncRoute(async (req, res) => {
-    if (!(await esOperador(req.session!.userId))) {
+    if (!(await isOperator(req.session!.userId))) {
       res.status(403).json({ message: 'Solo un operador puede respaldar a mano. El respaldo de cada noche sigue corriendo.' });
       return;
     }

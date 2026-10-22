@@ -21,6 +21,7 @@ import { BackupScreen } from '../settings/BackupScreen';
 import { BandaDeActualizacion } from '../settings/BandaDeActualizacion';
 import { NovedadesDeLaVersion } from '../settings/NovedadesDeLaVersion';
 import { UpdateLockScreen } from '../settings/UpdateLockScreen';
+import { NowPlayingBar } from '../chat/NowPlayingBar';
 import { versionActual } from '../settings/versionApi';
 import { PantallaDeAjustes } from '../settings/PantallaDeAjustes';
 import { usePerfilPropio } from '../settings/perfilPropio';
@@ -367,6 +368,8 @@ export function TabsShell({
           <View style={dosPaneles ? { width: ANCHO_DE_LISTA } : { flex: 1 }} className={dosPaneles ? 'border-r border-outline/10' : undefined}>
           {/* La banda va arriba de la lista y SOLO en Chats: es la pantalla de
               entrada, y repetirla en las cuatro pestañas la convierte en ruido. */}
+          {/* A voice note that keeps playing outside its chat (backlog 34). */}
+          <NowPlayingBar openChatId={chatAbierto} onOpen={(chatId) => { const chat = chats.find((one) => one.id === chatId); if (chat) onOpenChat(chat); }} />
           <BandaDeActualizacion
             aviso={actualizaciones.aviso}
             estado={actualizaciones.estado}

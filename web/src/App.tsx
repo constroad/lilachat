@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { AdminUsersScreen } from './admin/AdminUsersScreen';
 import { AccessScreens } from './auth/AccessScreens';
 import { CodigoParaLaApp } from './auth/CodigoParaLaApp';
 import { InstallAppScreen } from './apps/InstallAppScreen';
@@ -33,6 +34,8 @@ export function App() {
   if (window.location.pathname === '/instalar-app') {
     return sesion.credential.jwt ? <InstallAppScreen jwt={sesion.credential.jwt} search={window.location.search} onRedirect={(url) => window.location.assign(url)} /> : null;
   }
+  // The superadmin's users panel; the server decides who sees it (`adminRoutes.ts`).
+  if (window.location.pathname === '/admin') return sesion.credential.jwt ? <AdminUsersScreen jwt={sesion.credential.jwt} /> : null;
   return (
     <Shell
       credential={sesion.credential}

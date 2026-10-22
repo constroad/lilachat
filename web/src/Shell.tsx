@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChatRail } from './chat/ChatRail';
 import { ListResizeHandle } from './chat/ListResizeHandle';
 import { readThemeChoice, saveThemeChoice, type ThemeChoice } from './ui/tema';
-import { Bell, BellOff, Download, LogOut, RefreshCw, WifiOff, X } from 'lucide-react';
+import { Bell, BellOff, Download, LogOut, RefreshCw, UsersRound, WifiOff, X } from 'lucide-react';
 import { useDismiss } from './ui/useDismiss';
 import { useSinConexion } from './pwa/conexion';
 import { useInstalarApp } from './pwa/instalar';
@@ -37,6 +37,7 @@ import { useAgendaRelay } from './contacts/useAgendaRelay';
 import { AppRail } from './rail/AppRail';
 import { MediaDialog } from './media/MediaDialog';
 import { SpaceChatList } from './spaces/SpaceChatList';
+import { useSuperadmin } from './admin/adminApi';
 import { useSpacesWeb } from './spaces/useSpacesWeb';
 
 /** Cuánto dura un aviso corto en pantalla. */
@@ -120,6 +121,8 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
   const sinConexion = useSinConexion(socket.connected, true);
   // El navegador ofrece instalar UNA vez al cargar: se escucha desde acá, no desde el panel.
   const instalacion = useInstalarApp();
+  // The creator's users panel (José, 21/10): asked the first time Ajustes opens.
+  const superadmin = useSuperadmin(credential.jwt, aviso === 'ajustes');
   useTituloConPendientes(chatsGuardados);
 
   useEffect(() => {
@@ -364,7 +367,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
       ) : null}
       {creando?.tipo === 'recordatorio' ? <CrearRecordatorio jwt={credential.jwt} chat={creando.chat} editando={creando.editando} onClose={() => setCreando(null)} onGuardado={() => setCreando(null)} /> : null}
 
-      {aviso === 'ajustes' ? <PanelDeAjustes jwt={credential.jwt} onAviso={setAviso} onSalir={logout} onCerrar={() => setAviso('')} instalacion={instalacion} /> : aviso ? (
+      {aviso === 'ajustes' ? <PanelDeAjustes jwt={credential.jwt} onAviso={setAviso} onSalir={logout} onCerrar={() => setAviso('')} instalacion={instalacion} superadmin={superadmin} /> : aviso ? (
         <p data-testid="aviso" role="status" className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-on-surface px-4 py-2 text-sm text-surface">
           {aviso}
         </p>
@@ -402,8 +405,9 @@ function PanelDeAjustes(props: {
   onSalir: () => void;
   onCerrar: () => void;
   instalacion: ReturnType<typeof useInstalarApp>;
+  superadmin: boolean;
 }) {
-  const { jwt, onAviso, onSalir, onCerrar, instalacion } = props;
+  const { jwt, onAviso, onSalir, onCerrar, instalacion, superadmin } = props;
   const [push, setPush] = useState(pushState);
   // It had no way out but its own button (José, 21/10): a click outside, Escape or the X close it.
   const panel = useRef<HTMLDivElement>(null);
@@ -434,6 +438,12 @@ function PanelDeAjustes(props: {
           <Download size={16} />
           Instalar Lilachat en esta computadora
         </button>
+      ) : null}
+      {superadmin ? (
+        <a href="/admin" data-testid="btn-usuarios-lilachat" className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-left text-sm hover:bg-background">
+          <UsersRound size={16} />
+          Usuarios de Lilachat
+        </a>
       ) : null}
       <button type="button" data-testid="btn-salir" onClick={onSalir} className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-left text-sm text-error hover:bg-error/5">
         <LogOut size={16} />

@@ -23,6 +23,7 @@ import { ordenarParaLaLista } from './chat/listaDeChats';
 import { chatsSinLeer, tituloDeLaPestana } from './chat/tituloDeLaPestana';
 import type { ChatMessage, ChatSummary } from './chat/types';
 import { useChatDeLaUrl } from './chat/useChatDeLaUrl';
+import { useOpenChatWhenReady } from './chat/useOpenChatWhenReady';
 import { clampListWidth, LIST_DEFAULT_WIDTH, resolveVisiblePanel } from './layout';
 import { useBaseLocal, useChatsLocales, useMensajesEnPantalla } from './local/useBaseLocal';
 import { disablePush, enablePush, pushState } from './push';
@@ -127,12 +128,8 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
   const superadmin = useSuperadmin(credential.jwt, aviso === 'ajustes');
   useTituloConPendientes(chatsGuardados);
 
-  useEffect(() => {
-    if (!selectedId) return;
-    void sync.abrirChat(selectedId).then((pagina) => historial.alAbrir(pagina?.hayMas ?? true));
-    // Al cambiar de chat, no en cada render: `abrirChat` cambia con el token.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId]);
+  // When the chat changes, and once the token is there (a reload on `/c/<chat>` mounts before it comes back).
+  useOpenChatWhenReady({ chatId: selectedId, ready: Boolean(credential.jwt), open: (chatId) => void sync.abrirChat(chatId).then((pagina) => historial.alAbrir(pagina?.hayMas ?? true)) });
 
   const cargarAnteriores = useCallback(() => {
     const primero = mensajes?.find((uno) => !uno.estado)?.seq;

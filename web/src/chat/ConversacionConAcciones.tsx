@@ -36,6 +36,7 @@ import type { StickerAction } from './contextoDeLaConversacion';
 import { memberBadge, usesFlatLayout } from '@lilachat/shared';
 import { useGroupsAsList } from '../ui/groupsAsList';
 import { useCalls } from '../calls/CallProvider';
+import { ChatQueue } from './queue/ChatQueue';
 
 type PropsDeConversacion = ComponentProps<typeof Conversation>;
 
@@ -45,7 +46,7 @@ type PropsDeConversacion = ComponentProps<typeof Conversation>;
  * de los miembros para autores y menciones. Así `Shell` no crece.
  */
 export function ConversacionConAcciones(
-  props: Omit<PropsDeConversacion, 'contexto' | 'onCancelarContexto' | 'onSend' | 'mencionables' | 'jwtParaEnlaces' | 'onElegirArchivos' | 'onNotaDeVoz' | 'onEscribiendo' | 'franja' | 'salto' | 'onNoEsta'> & {
+  props: Omit<PropsDeConversacion, 'contexto' | 'onCancelarContexto' | 'onSend' | 'mencionables' | 'jwtParaEnlaces' | 'onElegirArchivos' | 'onNotaDeVoz' | 'onEscribiendo' | 'franja' | 'queue' | 'salto' | 'onNoEsta'> & {
     jwt: string;
     base: BaseLocal | null;
     sync: AccionesDeSync;
@@ -188,6 +189,7 @@ export function ConversacionConAcciones(
             onVerTodos={() => setVerFijados(true)}
           />
         }
+        queue={chat.kind === 'notas' ? null : <ChatQueue jwt={props.jwt} chatId={chat.id} onOpen={(seq) => setSalto({ seq, vez: Date.now() })} />}
         salto={salto}
         onNoEsta={() => onAviso('Ese mensaje está más arriba: sube para cargarlo.')}
         onAbrirInfo={() => {

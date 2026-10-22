@@ -62,6 +62,8 @@ export function Conversation(props: {
   onElegirArchivos: (files: File[]) => void;
   /** La franja del mensaje fijado (19/10), bajo la cabecera. */
   franja?: ReactNode;
+  /** The cards queued over the writing bar (backlog 36). */
+  queue?: ReactNode;
   /** Ir a un mensaje (desde la franja). */
   salto?: { seq: number; vez: number } | null;
   onNoEsta?: () => void;
@@ -126,6 +128,8 @@ export function Conversation(props: {
           Este chat secreto se lee y se escribe en tu teléfono.
         </p>
       ) : (
+      <>
+      {props.queue}
       <Composer
         onSend={props.onSend}
         onCreateEvent={props.onCreateEvent}
@@ -144,6 +148,7 @@ export function Conversation(props: {
         onEscribiendo={props.onEscribiendo}
         stickers={props.jwtParaEnlaces ? { jwt: props.jwtParaEnlaces, me: props.yo, chatId: chat.id, chatName: chat.name ?? chat.phone ?? '', replyToSeq: props.replyingTo, onSent: props.replyingTo ? props.onCancelarContexto : undefined } : undefined}
       />
+      </>
       )}
     </section>
   );

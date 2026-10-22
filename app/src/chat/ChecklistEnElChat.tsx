@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View, ToastAndroid } from 'react-native';
 import { Check, ClipboardCheck, EllipsisVertical, Plus } from 'lucide-react-native';
-import { CHECKLIST_LIMITS, checklistPermissions, checklistProgress, formatClock, toggleChecklistItem, validateChecklistItem, type AgendaChecklist, type ChecklistItem } from '@lilachat/shared';
+import { CHECKLIST_LIMITS, canToggleTask, checklistPermissions, checklistProgress, formatClock, toggleChecklistItem, validateChecklistItem, type AgendaChecklist, type ChecklistItem } from '@lilachat/shared';
 import { agendaDelete, agendaGet, agendaPatch, agendaPost } from '../agenda/agendaApi';
 import { useTarjetaViva } from './useTarjetaViva';
 import { useColores } from '../ui/tema';
@@ -57,7 +57,7 @@ export function ChecklistEnElChat(props: { checklistId: string; jwt: string; yo:
     );
   }
 
-  const { canMark, canAdd } = checklistPermissions({ me: props.yo, createdBy: checklist.createdBy, othersCanMark: checklist.othersCanMark, othersCanAdd: checklist.othersCanAdd });
+  const { canAdd } = checklistPermissions({ me: props.yo, createdBy: checklist.createdBy, othersCanMark: checklist.othersCanMark, othersCanAdd: checklist.othersCanAdd });
   const progress = checklistProgress(checklist.items);
   const toggle = async (itemId: string) => {
     const optimistic = toggleChecklistItem(checklist.items, itemId, props.yo, new Date());
@@ -139,12 +139,17 @@ export function ChecklistEnElChat(props: { checklistId: string; jwt: string; yo:
       <View className="mb-1 mt-2.5 h-1.5 overflow-hidden rounded-full bg-primary/10">
         <View className="h-full rounded-full bg-primary" style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }} />
       </View>
-      {checklist.items.map((item, index) => (
+      {checklist.items.map((item, index) => {
+        // An assigned task is ticked by its person or the author (José, 21/10); the others hear why.
+        const canTick = canToggleTask({ me: props.yo, createdBy: checklist.createdBy, othersCanMark: checklist.othersCanMark, assignee: item.assignee });
+        const owner = item.assignee ? props.nameOf(item.assignee) : '';
+        const tick = () => (canTick ? void toggle(item.id) : ToastAndroid.show(`Es de ${owner}: solo esa persona o quien creó el checklist la marca.`, ToastAndroid.SHORT));
+        return (
         // Two targets, never one with two gestures (José, 21/10: «está inestable el editar con el marcar»):
         // only the circle ticks; the text opens the task to edit. No long press here: the card's own selects the message.
         <View key={item.id} testID={`checklist-tarea-${index}`} className={`min-h-[48px] flex-row items-center ${index > 0 ? 'border-t border-outline/10' : ''}`}>
-          <Pressable testID={`checklist-marcar-${index}`} disabled={!canMark} onPress={() => void toggle(item.id)} accessibilityRole="checkbox" accessibilityState={{ checked: Boolean(item.doneBy), disabled: !canMark }} accessibilityLabel={item.text} className="-ml-2.5 h-12 w-12 items-center justify-center">
-            <View className={`h-6 w-6 items-center justify-center rounded-full ${item.doneBy ? 'bg-primary' : 'border-2 border-outline/40'}`}>
+          <Pressable testID={`checklist-marcar-${index}`} disabled={!canTick && !item.assignee} onPress={tick} accessibilityRole="checkbox" accessibilityState={{ checked: Boolean(item.doneBy), disabled: !canTick }} accessibilityLabel={item.text} className="-ml-2.5 h-12 w-12 items-center justify-center">
+            <View className={`h-6 w-6 items-center justify-center rounded-full ${item.doneBy ? 'bg-primary' : 'border-2 border-outline/40'} ${canTick ? '' : 'opacity-40'}`}>
               {item.doneBy ? <Check size={14} color={colors['on-primary']} strokeWidth={3} /> : null}
             </View>
           </Pressable>
@@ -157,7 +162,8 @@ export function ChecklistEnElChat(props: { checklistId: string; jwt: string; yo:
             )}
           </Pressable>
         </View>
-      ))}
+        );
+      })}
       {canAdd && checklist.items.length < CHECKLIST_LIMITS.items ? (
         adding === null ? (
           <Pressable testID="checklist-agregar" onPress={() => setAdding('')} className="min-h-[44px] flex-row items-center gap-2 border-t border-outline/10">

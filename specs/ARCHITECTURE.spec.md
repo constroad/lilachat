@@ -4892,6 +4892,62 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 97. Pantalla de bloqueo por versión mínima y tarjetas en cola sobre la barra (22/10/2026, 0.1.136)
+
+Stitch terminó la ronda R136. Este lote cierra dos de los cuatro pendientes
+que esperaban diseño (backlog 32 y 36); 34 y 37 van aparte.
+
+**32, actualización obligatoria** (diseño `u-01-actualizacion-obligatoria`).
+- `UpdateLockScreen` (app): un `Modal` que tapa todo, también un chat abierto.
+  Atrás no lo cierra.
+- Logo, ícono, rótulo «Actualización necesaria», «Actualiza Lilachat para
+  seguir», las versiones, la tarjeta de novedades de la más nueva (hasta 5
+  líneas) y «Actualizar».
+- «Actualizar» baja e instala dentro de la app, con el progreso. Si falla:
+  «Abrir LilaStore». Debajo, «Se descarga desde LilaStore · 35 MB».
+- El texto dice «ya no se puede usar», no «ya no se conecta»: el server
+  todavía no rechaza versiones viejas (426 sigue pendiente).
+- `updateLockContent` (puro, 3 tests).
+- La mínima la pone José en LilaStore; hoy está en 0, así que no bloquea.
+- E2E: con la mínima forzada en una copia local (sin commitear, revertida),
+  el emulador mostró la pantalla igual al diseño, y atrás no la cerró.
+
+**36, tarjetas en cola** (diseño `q-01-tarjetas-en-cola`).
+- Derivadas de lo pendiente, no un buzón (`GET /api/agenda/queue?chatId=`,
+  `server/src/queueRoutes.ts`, 3 tests):
+  - mis tareas atrasadas;
+  - eventos sin responder;
+  - encuestas sin votar;
+  - recordatorios de una vez que sonaron hoy.
+- Las encuestas y eventos propios no entran. Cada ítem trae el `seq` de su
+  tarjeta en el chat.
+- Motor en `shared/src/chatQueue.ts` (5 tests): orden (tareas, eventos,
+  encuestas, recordatorios), rótulos, «venció ayer 6:00 p. m.», «Posponer
+  1 día» (mañana a la misma hora) y descartes.
+- Una tarjeta adelante, las siguientes asoman detrás, «1 de N» y la X.
+  - Tarea: «Marcar hecha» y, si se puede editar, «Posponer 1 día».
+  - Evento: «Voy» / «No voy».
+  - Encuesta: «Votar» abre su tarjeta en el chat.
+  - Recordatorio: «Ver en el chat» y «Listo».
+- Se refresca sola si la tarjeta del chat cambia (`suscribirTarjeta`).
+- Descartar se recuerda en el equipo; la llave lleva la fecha, así que una
+  tarea movida a otro día vuelve.
+- App `ChatQueue` + `useChatQueue`; web `chat/queue/*` (3 tests).
+- Deuda: la búsqueda de la tarjeta de cada ítem recorre los mensajes del
+  chat (igual que `withCardSeq` de los checklists). Un índice
+  `{chatId, 'ref.id'}` lo resolvería; necesita el OK de José.
+
+**E2E.**
+- Web (QA Ana; QA Beto sembró por la API una tarea atrasada, un evento y una
+  encuesta): «Tarea atrasada · 1 de 3», «Marcar hecha» pasó al evento, «Voy»
+  a la encuesta. La X la descartó y al recargar no volvió.
+- App (emulador, cuenta de José; tarea y evento sembrados en la base sin
+  tarjetas, para no dejar mensajes en su cuenta): igual al diseño. «Marcar
+  hecha» y «No voy» llegaron a la base. La cola quedó vacía.
+- Limpieza: lo sembrado por la API se borró por la API y lo de la base, por
+  marcador. Chats y perfiles restaurados; el chat de José sin mensajes
+  nuevos.
+
 ## 96. «Mis tareas» y «Checklists del chat» como sus diseños, y el perfil sin parpadeo (22/10/2026, 0.1.135)
 
 Stitch terminó `k-04-mis-tareas` y `k-05-checklists-del-chat` (estaban en
@@ -8797,7 +8853,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     cierro la app y vuelvo a ingresar sí aparece»). Causa: `useActualizacionesDeLaApp`
     consulta `min-version` UNA vez, en el `useEffect` del arranque; volver desde
     segundo plano no repregunta. Cómo debería ser:
-    - **Hecho en la 0.1.123 (§83)**, en la app y en la web; falta la pantalla de bloqueo (espera diseño).
+    - **Hecho en la 0.1.123 (§83)**, en la app y en la web. **Pantalla de bloqueo hecha en la 0.1.136 (§97)**; falta que el server rechace con 426.
     - Repreguntar al volver a primer plano (`AppState` → `active`), con un tope
       de una consulta cada 30 min para no sumar requests en cada vistazo.
     - **Lo mismo en la web** (José, 21/10): una pestaña abierta días sigue con
@@ -8834,7 +8890,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     («Beto marcó 3 tareas de Vaciado de losa»); respeta el silencio del chat;
     y un aviso aparte cuando el checklist queda completo. Más adelante: aviso
     al responsable cuando su tarea vence («Atrasada»).
-36. **Tarjetas en cola con acciones, como los chips de Claude** (José, 21/10):
+36. ~~**Tarjetas en cola con acciones, como los chips de Claude**~~ **Hecho en la 0.1.136 (§97).** (José, 21/10):
     varias tarjetas apiladas encima de la barra de escribir (lo pendiente
     para mí en ese chat: una tarea vencida, una encuesta sin votar, un evento
     sin responder, un recordatorio que sonó), que se atienden de una en una

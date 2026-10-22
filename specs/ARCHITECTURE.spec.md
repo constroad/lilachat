@@ -4892,6 +4892,62 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 90. Menú en bucle en los canales, ventanas que no cerraban, «últ. vez», visor sin negro, video y PDF en la web (21/10/2026, 0.1.130)
+
+**El menú y las reacciones en bucle (web, urgente).**
+- Pasaba en un canal del espacio, en el chat y en los hilos: el menú del
+  mensaje y las reacciones aparecían y desaparecían arriba a la izquierda.
+- Causa: en el formato de canal la barra de acciones se ocultaba con `display:
+  none` cuando el mouse dejaba la fila. Los menús cuelgan de esos botones y se
+  dibujan fuera de la fila. Al entrar al menú la barra desaparecía y el menú
+  perdía su ancla: saltaba a (0, 0), el mouse volvía a la fila, reaparecía, y
+  así en bucle. En las burbujas no pasaba porque los botones solo se vuelven
+  transparentes.
+- Ahora la barra se oculta con opacidad y queda visible mientras hay un menú
+  abierto (`has-[[data-state=open]]`).
+- E2E: el menú quedó en la misma posición tras 1,5 s con el mouse encima;
+  «Responder» abrió la respuesta y la reacción se aplicó.
+- No se pudo correr la prueba contra el bundle viejo: el Chrome de pruebas
+  murió con SIGSEGV en el primer clic, tres veces.
+
+**Ventanas que no se cerraban (web).** `useDismiss` (4 tests) cierra con un
+clic afuera o con Escape. Ignora el botón que abre la ventana y los diálogos
+que ella misma abrió, pero no el diálogo donde vive.
+- Ajustes: además tiene una X.
+- Panel de emojis: escribir en el campo lo deja abierto, como WhatsApp Web, y
+  el botón se vuelve X.
+- El ⋮ de cada miembro en Miembros y roles.
+- Los diálogos (`Overlay`) y el visor ya cerraban.
+
+**«últ. vez» en los 1:1 de la web.** `useLastSeen` pide `presence.ultimaVez`
+por el socket, como la app, al abrir el chat y al reconectar. En vivo la trae
+`presence`.
+
+**El visor sin negro.**
+- App: la foto arranca sobre la miniatura que la burbuja ya tiene en caché
+  (`placeholder` de expo-image, sin transición). Lo que yo mandé abre desde su
+  copia en el teléfono.
+- Web: la miniatura debajo, y la foto entera aparece encima al cargar.
+- Emulador: la foto se vio en el primer cuadro después de la animación de
+  apertura.
+
+**Video y PDF en la web.**
+- El visor dibujaba los videos como una imagen rota. Ahora tienen
+  reproductor, y en la burbuja el play sobre su cuadro.
+- PDF: lila-app no deja incrustar sus archivos desde otro sitio
+  (`frame-ancestors` y `X-Frame-Options`), y ese repo no se toca.
+  - `GET /api/chats/:chatId/files/:seq` verifica que la persona sea miembro y
+    entrega el PDF (test).
+  - La web lo muestra desde memoria (`blob:`) en un diálogo, con «Descargar».
+  - La CSP suma `frame-src 'self' blob:`.
+
+**Sin conexión (app).** La cabecera decía «Sin conexión · se enviará cuando
+vuelva» en dos líneas. Ahora dice «Conectando…» en una, como WhatsApp; lo que
+no salió sigue con su reloj en la burbuja.
+
+**Pendiente.** Las llamadas en la web (WebRTC en el navegador, con la misma
+señalización y TURN que la app) son un lote propio.
+
 ## 89. La cabecera del chat y la nota de voz como WhatsApp (21/10/2026, 0.1.129)
 
 José (21/10, con capturas de WhatsApp): el ⋮ del chat abría lo mismo que

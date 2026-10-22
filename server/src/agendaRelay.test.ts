@@ -103,3 +103,39 @@ describe('agenda relay', () => {
     expect(await names).toBe('nothing');
   });
 });
+
+/** «Nuevo chat» on the web with the phone's whole address book (pending 20): passed along, never stored. */
+describe('agenda relay, the whole address book', () => {
+  it('the web asks for all, only that user\'s phone answers, cleaned, to the web that asked', async () => {
+    // Arrange
+    const phone = await join('carla', 'phone-c');
+    const web = await join('carla', 'vinculado-web-c');
+    const stranger = await join('dario', 'phone-d');
+    const asked = next<{ requestId: string }>(phone, 'agenda.pedidoTodo');
+    const strangerAsked = next(stranger, 'agenda.pedidoTodo');
+    // Act
+    web.emit('agenda.pedirTodo');
+    const request = await asked;
+    const answered = next<{ contactos: unknown[] }>(web, 'agenda.contactos');
+    phone.emit('agenda.respuestaTodo', { requestId: (request as { requestId: string }).requestId, contactos: [{ phone: '987654321', name: 'Wilson' }, { phone: 'nope', name: 'X' }] });
+    // Assert
+    expect(await strangerAsked).toBe('nothing');
+    expect(await answered).toEqual({ contactos: [{ phone: '987654321', name: 'Wilson' }] });
+  });
+
+  it('a phone cannot ask for the address book, and another user cannot answer', async () => {
+    const phone = await join('elena', 'phone-e');
+    const otherPhone = await join('elena', 'phone-e2');
+    const web = await join('elena', 'vinculado-web-e');
+    const intruder = await join('fito', 'phone-f');
+    const notAsked = next(otherPhone, 'agenda.pedidoTodo');
+    phone.emit('agenda.pedirTodo');
+    expect(await notAsked).toBe('nothing');
+    const asked = next<{ requestId: string }>(phone, 'agenda.pedidoTodo');
+    web.emit('agenda.pedirTodo');
+    const request = (await asked) as { requestId: string };
+    const answered = next(web, 'agenda.contactos');
+    intruder.emit('agenda.respuestaTodo', { requestId: request.requestId, contactos: [{ phone: '987654321', name: 'Falso' }] });
+    expect(await answered).toBe('nothing');
+  });
+});

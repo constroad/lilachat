@@ -34,6 +34,8 @@ export interface User {
   /** Auto-respuesta de ausente (F11): cuando estás sin socket, el server
    *  contesta solo con este texto a los chats 1:1. */
   autoReply?: { enabled: boolean; text: string };
+  /** Lists of chats of my own, in my order (pending 45). */
+  chatLists?: { _id: Types.ObjectId; name: string; chatIds: string[] }[];
   /** «últ. vez» (FL10): cuándo se cerró su último socket. */
   lastSeenAt?: Date;
   /** A bot of an installed app (`bots/`): a member with a name, never a person who logs in; its `phone` is an internal key. */
@@ -100,6 +102,7 @@ const userSchema = new Schema<User>(
       enabled: { type: Boolean, default: false },
       text: { type: String, default: '' },
     },
+    chatLists: { type: [{ name: { type: String, required: true }, chatIds: { type: [String], default: [] } }], default: undefined },
   },
   { timestamps: true }
 );

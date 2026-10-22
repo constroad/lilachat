@@ -190,3 +190,8 @@ export function emitMembersChanged(userIds: readonly string[], workspaceId: stri
 export function avisarCambioDeVinculos(userId: string): void {
   ioVivo?.to(userRoom(userId)).emit('vinculos.changed', {});
 }
+
+/** My lists of chats changed (pending 45): my other devices read them again. */
+export function emitChatListsChanged(userId: string): void {
+  ioVivo?.to(userRoom(userId)).emit('chatLists.changed', {});
+}

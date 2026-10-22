@@ -31,6 +31,8 @@ export interface ChatEvent {
   /** Sello del aviso ya emitido: sin él, el cron solapado repite el aviso. */
   remindedAt?: Date | null;
   guestsCanInvite: boolean;
+  /** A scheduled call (pending 42): only in a 1:1 chat. */
+  call?: { video: boolean };
 }
 
 export interface Reminder {
@@ -88,6 +90,7 @@ const eventSchema = new Schema<ChatEvent>(
     remindGuests: { type: Boolean, default: true },
     remindedAt: { type: Date, default: null },
     guestsCanInvite: { type: Boolean, default: false },
+    call: { type: new Schema({ video: { type: Boolean, default: false } }, { _id: false }), default: undefined },
   },
   { timestamps: true }
 );

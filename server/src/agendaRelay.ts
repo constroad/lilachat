@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type { Server as SocketServer, Socket } from 'socket.io';
-import { cleanNamesReply, cleanPhonesRequest, esDispositivoVinculado } from '@lilachat/shared';
+import { cleanFullAgendaReply, cleanNamesReply, cleanPhonesRequest, esDispositivoVinculado } from '@lilachat/shared';
 
 /** A request waits this long for the phone; after that the answer has nowhere to go. */
 const REQUEST_TTL_MS = 30_000;
 
-type Pending = { socketId: string; userId: string; phones: Set<string> };
+type Pending = { socketId: string; userId: string; phones: Set<string>; /** The whole address book (pending 20). */ full?: boolean };
 const pending = new Map<string, Pending>();
 
 /**
@@ -29,6 +29,26 @@ export function registerAgendaRelay(io: SocketServer, socket: Socket & { deviceI
       const phone = io.sockets.sockets.get(id) as (Socket & { deviceId?: string }) | undefined;
       if (phone?.deviceId && !esDispositivoVinculado(phone.deviceId)) phone.emit('agenda.pedido', { requestId, phones });
     }
+  });
+
+  // The whole address book for «Nuevo chat» (pending 20): asked by a linked web, answered by that user's phone.
+  socket.on('agenda.pedirTodo', () => {
+    if (!isWeb) return;
+    const requestId = randomUUID();
+    pending.set(requestId, { socketId: socket.id, userId, phones: new Set(), full: true });
+    setTimeout(() => pending.delete(requestId), REQUEST_TTL_MS).unref?.();
+    for (const id of io.sockets.adapter.rooms.get(userRoom) ?? []) {
+      const phone = io.sockets.sockets.get(id) as (Socket & { deviceId?: string }) | undefined;
+      if (phone?.deviceId && !esDispositivoVinculado(phone.deviceId)) phone.emit('agenda.pedidoTodo', { requestId });
+    }
+  });
+
+  socket.on('agenda.respuestaTodo', (payload: { requestId?: unknown; contactos?: unknown } | undefined) => {
+    if (isWeb) return;
+    const request = pending.get(String(payload?.requestId ?? ''));
+    if (!request?.full || request.userId !== userId) return;
+    pending.delete(String(payload?.requestId));
+    io.to(request.socketId).emit('agenda.contactos', { contactos: cleanFullAgendaReply(payload?.contactos) });
   });
 
   socket.on('agenda.respuesta', (payload: { requestId?: unknown; nombres?: unknown } | undefined) => {

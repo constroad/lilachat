@@ -5,6 +5,7 @@ import {
   cambiosDeEvento,
   cambiosDeRecordatorio,
   textoDeEncuestaEnElChat,
+  scheduledCallText,
   textoDeEventoEnElChat,
   textoDeRecordatorioEnElChat,
   validatePoll,
@@ -21,6 +22,7 @@ import { asyncRoute, requireSession } from './requireSession.js';
 import { publicarEnElChat } from './publicarEnElChat.js';
 import { permisoSobreRecordatorio, rolEnElChat } from './recordatoriosDeGrupo.js';
 import { avisarCambioDeTarjeta } from './avisoDeTarjeta.js';
+import { ONLY_DIRECT_CALLS } from './callLinks.js';
 
 /**
  * Eventos, recordatorios y encuestas (F5).
@@ -229,7 +231,10 @@ export function buildEventRouter(): Router {
 
       // Los invitados salen de los MIEMBROS del chat, no de una lista que
       // manda el cliente: así nadie invita a alguien ajeno a la conversación.
-      const chat = await ChatModel.findById(chatId).select('members.userId').lean();
+      const chat = await ChatModel.findById(chatId).select('kind members.userId').lean();
+      // A scheduled call (pending 42): calls exist only between two people.
+      const call = req.body?.call ? { video: req.body.call.video === true } : undefined;
+      if (call && chat?.kind !== 'direct') return res.status(400).json({ message: ONLY_DIRECT_CALLS });
       const event = await EventModel.create({
         chatId,
         title,
@@ -247,9 +252,10 @@ export function buildEventRouter(): Router {
         // El interruptor «Avisar 1 hora antes»: antes se mandaba y se ignoraba.
         remindGuests: req.body?.remindGuests !== false,
         guestsCanInvite: req.body?.guestsCanInvite === true,
+        ...(call ? { call } : {}),
       });
       // Al chat, como WhatsApp (18/10): si no, nadie se entera del evento.
-      await publicarSinTumbar({ chatId: String(chatId), autor: req.session!.userId, ref: { tipo: 'evento', id: String(event._id) }, texto: textoDeEventoEnElChat(title) });
+      await publicarSinTumbar({ chatId: String(chatId), autor: req.session!.userId, ref: { tipo: 'evento', id: String(event._id) }, texto: call ? scheduledCallText(title) : textoDeEventoEnElChat(title) });
       res.status(201).json({ id: String(event._id) });
     } catch (error) {
       if (error instanceof ForbiddenChatError || error instanceof ChatSecretoError) {

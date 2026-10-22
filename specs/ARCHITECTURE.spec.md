@@ -4909,6 +4909,85 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 105. Checks, emojis, «bajar» con número, GIF al instante, pantalla completa y la nota de voz (22/10/2026, 0.1.143)
+
+Cierra los pendientes 39, 40, 41, 43, 46 y 49 de José (22/10).
+
+**Checks en la web (39).** Antes eran un glifo de texto lejos de la hora y,
+en modo oscuro, el azul de leído casi no se distinguía. Ahora:
+- `DeliveryIcon` dibuja reloj, ✓ o ✓✓ de 14 px pegados a la hora, con
+  `aria-label` («Enviando», «Entregado», «Leído»);
+- en la lista de chats van de 15 px;
+- el leído usa el token `check-leido` (`readTick`), que contrasta en claro y
+  en oscuro. No usa hex.
+
+**Panel de emojis (40).** Abre en «Recientemente usado», primera pestaña, en
+app y web. La grilla es más compacta: en la app emojis de 22 y 8 columnas; en
+la web 24 px, con menos relleno y rótulos más bajos.
+
+**«Bajar» con número (41).** `downButtonCount` y `unreadBelow` (shared, 7
+tests) deciden el número:
+- al entrar, los no leídos de otros desde lo que había leído;
+- después de llegar al final una vez, los que llegaron mientras estaba
+  arriba.
+
+App y web lo muestran en el botón (`nuevos-abajo`). En la app, «bajar» vuelve
+a pegar la lista al final (`goToEnd`).
+
+E2E en el emulador: con 25 sin leer, el chat abrió en el divisor «25 mensajes
+no leídos» con «bajar 25», y «bajar» llegó al final. Antes abría abajo una de
+cada tres veces. La causa eran los eventos de scroll con que la lista se
+acomoda, que la volvían a pegar al final después de `releaseFromEnd`. Ahora
+`PosicionEnLaLista` tiene `soltada`: cuando el programa la deja lejos, solo
+el dedo, «bajar» o un mensaje mío la vuelven a pegar (2 tests). Si los no
+leídos llegan después del primer pintado, el divisor ya no queda congelado en
+«ninguno»: espera a que lleguen, ubica la lista ahí una vez (`placedLate`) y
+la suelta del final.
+
+**GIF al instante (43).** El server baja el GIF de GIPHY y lo sube antes de
+responder, y eso tarda segundos. Ahora la burbuja sale en el momento con la
+vista previa de GIPHY y el reloj, y el mensaje real la reemplaza en el mismo
+lugar:
+- app: `gifsInFlight` la pone en la cola del chat (`useArchivosDelChat`) y
+  se quita 1,5 s después de confirmarse;
+- web: el mismo motor la suma a `enCola` hasta que llega la confirmación;
+- si el envío falla, la burbuja se va.
+
+Medido con el server de QA demorando 2,5 s la bajada:
+- web: la burbuja aparece a los 150 ms del clic;
+- emulador: la burbuja con reloj aparece mientras el server todavía guardaba
+  el GIF, y después se confirma en su lugar.
+
+**Pantalla completa después de actualizar (46).** En el emulador el permiso
+sobrevive a `adb install -r`, así que el reinicio parece cosa del teléfono
+(Samsung). Por eso la app avisa una vez por versión, solo si está negado:
+- `shouldAskFullScreen` (5 tests) decide si avisar;
+- `FullScreenCallsPrompt` es la hoja que explica qué pasa si lo deja apagado
+  (la llamada suena, pero llega como una notificación más y con el teléfono
+  bloqueado no se abre la pantalla para contestar);
+- «Activar» abre el ajuste exacto de Android;
+- «Ahora no» no vuelve a avisar hasta la próxima versión.
+
+E2E en el emulador con `appops … deny`: la hoja salió al abrir y «Activar»
+abrió «Full-screen notifications». Al reabrir con el permiso todavía negado
+no volvió a salir.
+
+**La nota de voz que no paraba (49).** Soltar el reproductor era «quitar los
+controles y liberar», sin pausar, y un error en el primer paso salteaba el
+resto. `releasePlayer` (3 tests) pausa, quita los controles y libera, cada
+paso por separado: si uno falla, los demás igual corren. Cubierto con tests
+de unidad; falta que José lo pruebe en su teléfono con una nota de más de
+2:30, que es cuando hay controles en el bloqueo.
+
+**Otros.**
+- `prefetchSpace` usa `requestIdleCallback`: `InteractionManager` está
+  deprecado y avisaba en cada entrada a un espacio.
+
+Limpieza de QA:
+- el GIF de prueba se borró para todos desde la app;
+- las ráfagas de mensajes de QA se borraron por el camino de la app;
+- se restauraron el chat Ana–Beto y los perfiles.
+
 ## 104. Modo empresa sin «cargando», parte 2; pendientes en la lista; mensajes en otro espacio (22/10/2026, 0.1.142)
 
 José, 22/10:
@@ -9321,6 +9400,77 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
       Después, Ajustes y mi perfil.
     - El riel se muestra siempre en escritorio (ya no solo con espacios). En
       el celular, las mismas secciones van en la barra de abajo.
+
+39. ~~**Web: los checks están muy separados y en modo oscuro no se distingue
+    el azul**~~ **Hecho (§105, 0.1.143).** (José, 22/10, captura del chat con Wilson). El «✓✓» de leído y
+    el de entregado se ven casi iguales en oscuro, y van lejos de la hora.
+    Juntarlos a la hora como WhatsApp y darle al leído un color que contraste
+    en los dos modos (token propio, no hex).
+40. ~~**Panel de emojis: la lista muy separada y sin «Recientes» primero**~~ **Hecho (§105, 0.1.143).**
+    (José, 22/10). WhatsApp abre en los usados últimamente. Recientes por
+    equipo, arriba y como primera pestaña, y una grilla más compacta.
+41. ~~**El botón de «bajar» no dice cuántos mensajes sin leer hay**~~ **Hecho (§105, 0.1.143).** (José,
+    22/10). Al entrar a un chat con mensajes nuevos, el botón flotante lleva
+    el número, como WhatsApp, y baja al primero sin leer.
+42. **Programar una llamada y generar un enlace de llamada, como WhatsApp**
+    (José, 22/10). En el menú de llamada y videollamada del chat: «Programar
+    llamada» (un evento con hora, aviso a los invitados y botón para unirse) y
+    «Crear enlace de llamada» (un enlace que abre la llamada de ese chat o
+    grupo; en la web también sin la app).
+43. ~~**Enviar un GIF tarda unos segundos**~~ **Hecho (§105, 0.1.143).** (José, 22/10). El server baja el GIF
+    de GIPHY y lo sube a lila antes de responder. El GIF tiene que aparecer
+    al instante en el chat (con la vista previa de GIPHY, «enviando») mientras
+    el server lo guarda.
+44. **Abrir un mensaje viejo con su contexto, como WhatsApp Web y Telegram**
+    (José, 22/10: «Ese mensaje está más arriba: sube para cargarlo», al abrir
+    un checklist, un recordatorio o una foto). Plan con archivo:línea en
+    `scratchpad/plan-jump-to-message.md` (server `around=<seq>`, ventana
+    separada de lo último, «Ir al último»): unos 5 días.
+45. **Listas de chats propias («Familia», «Amigos»), como las carpetas de
+    Telegram y las listas de WhatsApp** (José, 22/10). Chips después de
+    Todos · No leídos · Grupos · Borradores; un chat puede estar en varias;
+    se sincronizan entre el teléfono y la web.
+
+46. ~~**Cada actualización apaga «Llamadas a pantalla completa»**~~ **Hecho (§105, 0.1.143):** aviso una vez por versión. (José, 22/10,
+    captura de Ajustes: «Android las tiene apagadas… Toca para
+    permitirlas»). Es molesto volver a activarlo después de cada versión.
+    Averiguar si es Android (el permiso `USE_FULL_SCREEN_INTENT` que se
+    reinicia al reinstalar con el instalador del paquete) o la app. Si no se
+    activa: con el teléfono bloqueado la llamada entra como notificación
+    normal (suena, pero no se ve a pantalla completa). Pedirlo una sola vez y
+    explicarlo bien.
+47. **El enlace de invitación a un espacio debería abrir la app si ya está
+    instalada**, como WhatsApp o YouTube (José, 22/10, captura: hoy la
+    invitación por WhatsApp lleva a lilastore.constroad.com y a escribir el
+    código a mano). Enlace propio (`lilachat.constroad.com/unirse/<código>`)
+    con App Links de Android (`assetlinks.json` + `intent-filter` con
+    `autoVerify`): con la app abre la pantalla de unirse con el código ya
+    puesto; sin la app, la web (que también une) y el botón de descarga.
+48. **La página de descarga de Lilachat con capturas** de lo que la app tiene:
+    chats, stickers, guiños, llamadas, espacios, hilos, encuestas (José,
+    22/10). Va en LilaStore (las capturas de la ficha de la app).
+49. ~~**Cerrar la notificación de una nota de voz no la detiene**~~ **Hecho (§105, 0.1.143),** falta probarlo en el teléfono de José. (José, 22/10):
+    se cierra la tarjeta de la notificación y el audio sigue. Cerrarla (o
+    tocar pausa/X ahí) tiene que parar el audio, como cualquier reproductor.
+50. **Chrome dice «Es posible que el archivo sea dañino» al bajar el APK**
+    (José, 22/10, captura bajando `lilachat-0.1.142-143.apk` desde
+    lilastore.constroad.com: «obviamente así ni yo lo descargo»). Chrome lo
+    muestra para todo APK que se baja de una web, sin importar la firma.
+    Analizar cómo evitarlo: actualizar desde dentro de la app (Lilachat baja
+    el APK y abre el instalador de Android, que no muestra esa alerta),
+    actualizar por la app de LilaStore, y en la página de descarga explicar
+    el aviso antes de que salga. Ver qué hace hoy el botón «Actualizar» de la
+    app.
+51. **El correo no debería ser obligatorio si ya validó su número** (José,
+    22/10: invitó a Lila a una cuenta individual; verificó su número y
+    después la app le exigió verificar el correo). Con el número validado,
+    el correo en «Completa tu perfil» es opcional. Se exige el correo
+    verificado solo al activar respaldos y copias de seguridad.
+52. **Los stickers de emoji animados dejan de animarse al probar varios
+    rápido** (José, 22/10). Medir el panel y la burbuja con varios seguidos:
+    cuántas animaciones vivas hay, si se sueltan y si el hilo JS se traba.
+    José pide **medir la performance en cada iteración**: lo del GIF y esto
+    se escaparon por no medir.
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

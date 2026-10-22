@@ -38,7 +38,7 @@ import { useColores } from '../ui/tema';
 import { BuscadorDelChat } from './BuscadorDelChat';
 import { useBuscarEnChat } from './useBuscarEnChat';
 import { useChatHeaderMenu, type DetailSection } from './useChatHeaderMenu';
-import { citadosPorSeq, filaDeArchivoEnCola, fotosDelChat, pendientesEnOrden, sinPendientesConfirmados } from './filasDelChat';
+import { citadosPorSeq, fotosDelChat } from './filasDelChat';
 import { useGrupo } from './useGrupo';
 import { FueraDelGrupo } from './FueraDelGrupo';
 import { subtituloDelChat } from './cabeceraDelChat';
@@ -59,6 +59,8 @@ import type { PropsDelChat } from './propsDelChat';
 import { useReaccionesEnPantalla } from './reacciones/useReaccionesEnPantalla';
 import { ChatInfoCards } from './ChatInfoCards';
 import { CamaraDelChat } from './camara/CamaraDelChat';
+import { useChatWindow } from './useChatWindow';
+import { useShareContact } from './contactCard/useShareContact';
 
 /** El pie del composer con el teclado abierto (dp). */
 const MARGEN_CON_TECLADO = 8;
@@ -221,31 +223,20 @@ export function ChatScreen({
   });
   const fotoVisible = infoPropia.avatarUrl ?? chatAvatarUrl;
 
-  /** Las fotos del chat para el visor: el archivo completo y el autor resuelto. */
-  const fotos = useMemo(
-    () => fotosDelChat(messages, { yo: credential.userId, esGrupo: esGrupoChat, nombres: nombresDelGrupo, nombreDelChat: chatName }),
-    [messages, credential.userId, esGrupoChat, nombresDelGrupo, chatName]
-  );
-
   /**
    * La lista, para poder mandarla al final: con MENOS contenido que pantalla
    * el ancla al fondo dejaba la última fila debajo de la barra de escribir.
    */
   const listaRef = useRef<FlashListRef<Row> | null>(null);
+  // The rows on screen: the live end, or a window around an old message (pending 44).
+  const shareContactFromClip = useShareContact({ jwt: credential.jwt, chatId, onError: setMediaError });
+  const ventana = useChatWindow({ jwt: credential.jwt, chatId, encrypted: Boolean(encrypted), messages, hilos, ocultos, archivosEnCola, listaRef, onNoEsta: setMediaError, onThread: hilos.abrir });
+  const rows = ventana.rows;
 
-  // Memoizadas: cada render (una tecla, un «escribiendo») redibujaba todas las burbujas (FL2).
-  const rows: Row[] = useMemo(
-    () => [
-      // «Eliminar para mí» (FL9): ocultos en este teléfono.
-      ...sinOcultos(hilos.delChat, ocultos),
-      // Lo pendiente, en el orden en que se mandó. El eco puede llegar antes que
-      // el ack: sin el filtro la burbuja salía doble (los archivos comparten `clientKey`).
-      ...pendientesEnOrden(
-        sinPendientesConfirmados(hilos.pendientesDelChat, messages),
-        sinPendientesConfirmados(archivosEnCola.map(({ archivo, progreso }) => filaDeArchivoEnCola(archivo, progreso)), messages)
-      ),
-    ],
-    [messages, ocultos, archivosEnCola, hilos.delChat, hilos.pendientesDelChat]
+  /** Las fotos del chat para el visor: el archivo completo y el autor resuelto. */
+  const fotos = useMemo(
+    () => fotosDelChat(ventana.messages, { yo: credential.userId, esGrupo: esGrupoChat, nombres: nombresDelGrupo, nombreDelChat: chatName }),
+    [ventana.messages, credential.userId, esGrupoChat, nombresDelGrupo, chatName]
   );
 
   const { divisorSeq, noLeidos: noLeidosAlAbrir, irAlInicio, placedLate } = useDivisorNoLeidos({
@@ -256,7 +247,7 @@ export function ChatScreen({
     listaRef,
   });
 
-  const { irAMensaje, alTocarCita, alAbrir, saltarA, resaltado } = useIrAMensaje({ rows, listaRef, irASeq, irAlInicio, onNoEsta: setMediaError });
+  const { irAMensaje, alTocarCita, alAbrir, saltarA, resaltado } = useIrAMensaje({ rows, listaRef, irASeq, irAlInicio, onNoEsta: ventana.alNoEstar });
   const fijar = useFijarMensajes({
     chatId,
     jwt: credential.jwt,
@@ -294,11 +285,11 @@ export function ChatScreen({
   const citados = useMemo(
     () =>
       citadosPorSeq(
-        messages,
+        ventana.messages,
         { yo: credential.userId, esGrupo: esGrupoChat, nombreDelOtro: nombreVisible, nombres: nombresDelGrupo },
         previewDeMensaje
       ),
-    [messages, credential.userId, esGrupoChat, nombreVisible, nombresDelGrupo]
+    [ventana.messages, credential.userId, esGrupoChat, nombreVisible, nombresDelGrupo]
   );
   // «Ponme al día» con sentido: 10 o más mensajes ajenos de verdad (José, 18/10).
   const paraPonerAlDia = useMemo(() => cuantosParaPonerAlDia(messages, unread, credential.userId), [messages, unread, credential.userId]);
@@ -333,7 +324,7 @@ export function ChatScreen({
   const { alResponder } = respuesta;
   const alFallido = useMensajeFallido(archivosEnCola);
 
-  const reacciones = useReaccionesEnPantalla({ mensajes: messages, reaccionar, yo: credential.userId, nombres: nombresDeReacciones, fotos: fotosDelGrupo, alReaccionar: seleccion.soltar });
+  const reacciones = useReaccionesEnPantalla({ mensajes: ventana.messages, reaccionar, yo: credential.userId, nombres: nombresDeReacciones, fotos: fotosDelGrupo, alReaccionar: seleccion.soltar });
   // Una fila, estable mientras no cambien mensajes ni acuses: un mensaje nuevo dibuja SU burbuja (FL2).
   const saludar = useCallback(() => void alEnviar('👋'), [alEnviar]);
   const dibujarFila = useDibujarFila({
@@ -476,10 +467,10 @@ export function ChatScreen({
           mensajes={messages}
           yo={credential.userId} chatId={chatId} readSeqAtOpen={readSeq ?? 0}
           dibujarFila={dibujarFila}
-          onListo={alAbrir} placedAwayLate={placedLate}
-          onCargarAnteriores={() => void cargarAnteriores()}
+          onListo={ventana.placement(alAbrir, (seq) => saltarA(seq, ''))} placedAwayLate={placedLate} ventana={ventana.list}
+          onCargarAnteriores={ventana.inWindow ? ventana.loadOlder : () => void cargarAnteriores()}
           cargandoAnteriores={cargandoAnteriores}
-          hayAnteriores={hayAnteriores}
+          hayAnteriores={ventana.inWindow ? ventana.hasOlder : hayAnteriores}
           onLlegoAlFinal={() => setLeyoHastaElFinal(true)}
           sinSubir={sinSubir}
         />
@@ -554,7 +545,7 @@ export function ChatScreen({
         // 20/10: también en un 1:1 y en un borrador; en un grupo, sus admins. No en un chat secreto.
         onCreateReminder={!encrypted && (!esGrupoChat || soyAdminDelGrupo) ? () => setCreando('reminder') : undefined}
         etiquetaDelRecordatorio={etiquetaDeRecordatorioEnElChat(esBorrador ? 'notas' : esGrupoChat ? 'group' : 'direct')}
-        onPickFile={() => void pickFile()}
+        onPickFile={() => void pickFile()} onShareContact={encrypted ? undefined : () => void shareContactFromClip()}
       />
       <VisorDelChat
         fotos={fotos}

@@ -18,8 +18,8 @@ export function useIrAMensaje(params: {
   listaRef: MutableRefObject<FlashListRef<Row> | null>;
   irASeq?: number;
   irAlInicio: () => OpeningPlace;
-  /** Si el mensaje no está cargado, se dice por qué (no se mueve en silencio). */
-  onNoEsta: (texto: string) => void;
+  /** Not on screen: the window around it (pending 44), or why not (it never moves silently). */
+  onNoEsta: (texto: string, seq: number) => void;
 }) {
   const { rows, listaRef, irASeq, irAlInicio, onNoEsta } = params;
   const [resaltado, setResaltado] = useState<number | null>(null);
@@ -39,7 +39,7 @@ export function useIrAMensaje(params: {
 
   const saltarA = useCallback(
     (seq: number, siNoEsta: string) => {
-      if (!irAMensaje(seq)) return onNoEsta(siNoEsta);
+      if (!irAMensaje(seq)) return onNoEsta(siNoEsta, seq);
       setResaltado(seq);
       setTimeout(() => setResaltado((actual) => (actual === seq ? null : actual)), RESALTADO_MS);
     },

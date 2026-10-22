@@ -39,6 +39,7 @@ import { BotCardView } from './BotCardView';
 import { isFileMime, isPending, type Row } from './rowKinds';
 import { rememberBubbleWidth } from './bubbleWidths';
 import { showGifOptions } from './gifs/gifOptions';
+import { ContactCard } from './contactCard/ContactCard';
 
 /**
  * Una fila de la conversación, según el diseño «Chat Detail» de Stitch.
@@ -201,8 +202,10 @@ function FilaDeMensaje({
   const meta = { hora, mia: mine, entrega: delivery, id: idDeFila, fallido: Boolean(fallo), editado, destacado };
   // A bot's card: drawn whole, with the time on its own line (its `body` is only the summary).
   const botCard = !isPending(item) && jwt ? item.card : undefined;
+  // A shared contact (pending 9): drawn as a card, its `body` is only the summary; the time on its own line.
+  const contacto = !isPending(item) && item.kind === 'contact' && !item.deletedAt && jwt ? item.contact : undefined;
   const lugarDeLaHora = dondeVaLaHora({
-    conTexto: Boolean(item.body) && !botCard,
+    conTexto: Boolean(item.body) && !botCard && !contacto,
     eliminado: !isPending(item) && Boolean(item.deletedAt),
     fotoVisible: esFotoVisible(item),
   });
@@ -306,6 +309,8 @@ function FilaDeMensaje({
             </Text>
           ) : botCard && jwt && !isPending(item) ? (
             <BotCardView card={botCard} chatId={item.chatId} seq={item.seq} jwt={jwt} />
+          ) : contacto && jwt ? (
+            <ContactCard contact={contacto} mine={mine} jwt={jwt} myUserId={myUserId} />
           ) : item.body ? (
             <>
             {conVistaPrevia && jwt && !isPending(item) && !item.media && primerEnlace(item.body) ? (

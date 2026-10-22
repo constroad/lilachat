@@ -4,6 +4,7 @@ import type { ChatSummary } from '../api/client';
 import { buscarChat } from './buscarChat';
 import { destinoDeAviso } from './destinoDeAviso';
 import { llamadaNativa } from '../../modules/llamada-entrante/src';
+import { subscribeOpenChatRequests } from './openChatRequest';
 
 /**
  * Tocar una notificación abre lo que avisa (FL8; auditoría 17/10/2026: el
@@ -57,6 +58,8 @@ export function useAbrirDesdeAviso(params: {
     };
     const enFrio = llamadaNativa.chatPendiente();
     if (enFrio) void abrirPorId(enFrio);
+    // «Enviar mensaje» on a shared contact (pending 9): the same way as a notification.
+    const pedidos = subscribeOpenChatRequests((chatId) => void abrirPorId(chatId));
     const toques = llamadaNativa.alTocar((aviso) => {
       if (aviso.accion === 'chat') void abrirPorId(aviso.chatId);
     });
@@ -64,6 +67,7 @@ export function useAbrirDesdeAviso(params: {
       vivo = false;
       suscripcion.remove();
       toques.remove();
+      pedidos();
     };
   }, [params.jwt]);
 }

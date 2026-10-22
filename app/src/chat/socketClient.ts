@@ -27,6 +27,8 @@ export type ServerMessage = {
   body?: string;
   /** A wink's id (kind `guino`, José 21/10). */
   wink?: string;
+  /** A shared contact (kind `contact`, pending 9): `userId` when that number is on Lilachat. */
+  contact?: { name: string; phone: string; userId?: string };
   /** A bot's card (`specs/BOTS-API.spec.md` §b): `body` carries its summary. */
   card?: BotCard;
   /** El sobre cifrado, en chats secretos (F9). Llega en vez de `body`. */

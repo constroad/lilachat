@@ -3,7 +3,7 @@ import { FlatList, Linking, Pressable, ScrollView, Text, useWindowDimensions, Vi
 import { Modal } from '../ui/Modal';
 import { Image } from 'expo-image';
 import * as MediaLibrary from 'expo-media-library/legacy';
-import { ArrowLeft, BarChart3, Bell, CalendarDays, ClipboardCheck, FileText, Image as ImageIcon, LayoutGrid, Send, type LucideIcon } from 'lucide-react-native';
+import { ArrowLeft, BarChart3, Bell, CalendarDays, ClipboardCheck, FileText, Image as ImageIcon, LayoutGrid, type LucideIcon, Send, UserRound } from 'lucide-react-native';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { reportarError } from '../ui/reportarError';
@@ -59,6 +59,8 @@ export function AttachSheet(props: {
   onPickGallery: () => void;
   onPickMedia: (photos: FotoElegida[]) => void;
   onPickFile: () => void;
+  /** A contact of the phone book (pending 9); not in a secret chat. */
+  onShareContact?: () => void;
   onCreateEvent: () => void;
   onCreatePoll: () => void;
   /** A checklist like Telegram's (backlog 8); not in a secret chat. */
@@ -111,6 +113,7 @@ export function AttachSheet(props: {
       options: [
         { key: 'gallery', label: 'Galería', Icon: ImageIcon, action: props.onPickGallery, testID: 'attach-galeria' },
         { key: 'file', label: 'Documento', Icon: FileText, action: props.onPickFile, testID: 'attach-archivo' },
+        ...(props.onShareContact ? [{ key: 'contact', label: 'Contacto', Icon: UserRound, action: props.onShareContact, testID: 'attach-contacto' }] : []),
       ],
     },
     {

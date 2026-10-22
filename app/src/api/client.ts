@@ -83,6 +83,10 @@ async function authed<T>(
 /** El perfil propio (FL9): la foto viene ABSOLUTA, o `null` sin foto. */
 export type PerfilPropio = { name: string | null; phone: string; avatarUrl: string | null };
 
+/** Shares a contact in the chat (pending 9); the `clientKey` keeps a retry from duplicating it. */
+export const shareContact = (token: string, chatId: string, contact: { name: string; phone: string; clientKey: string; replyToSeq?: number }) =>
+  authed<{ duplicate: boolean }>('POST', `/api/chats/${chatId}/contacts`, token, contact);
+
 export const guardarNombreDePerfil = (name: string, token: string) =>
   authed<{ perfil: PerfilPropio }>('PUT', '/api/me/perfil', token, { name });
 
@@ -355,6 +359,10 @@ export async function olvidarPushDeEsteTelefono(token: string): Promise<boolean>
  * para el histórico viejo, que el sync no arrastra a propósito: traer años de
  * mensajes al abrir un chat es justo lo que hace que una app se sienta pesada.
  */
+/** A window around an old message, or a page down from one (pending 44): `around`, `afterSeq` or `beforeSeq`. */
+export const messageWindowPage = (params: { chatId: string; query: string; limit: number }, token: string, fetchImpl?: FetchLike) =>
+  get<{ messages: unknown[]; lastSeq?: number; hasOlder?: boolean; hasNewer?: boolean }>(`/api/chats/${params.chatId}/messages?${params.query}&limit=${params.limit}`, token, fetchImpl);
+
 export const listOlderMessages = (
   params: { chatId: string; beforeSeq?: number; limit: number },
   token: string,

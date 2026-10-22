@@ -25,7 +25,7 @@ const EMOJI_PANEL_ROOM = { held: roomHeld, lift: contentLift };
  * 1761 → 3157 px), places itself again with the final sizes, and only then
  * shows. Never for the network, and at most `MAX_HIDDEN_MS`.
  */
-function useRevealWhenPlaced(hasRows: boolean, onPlaced: () => OpeningPlace, onAway: () => void) {
+function useRevealWhenPlaced(hasRows: boolean, onPlaced: () => OpeningPlace, onAway: () => void, viewId = 0) {
   const [revealed, setRevealed] = useState(!hasRows);
   const settle = useRef(new RevealWhenSettled(Date.now()));
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -51,7 +51,8 @@ function useRevealWhenPlaced(hasRows: boolean, onPlaced: () => OpeningPlace, onA
       clearTimeout(cap);
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [hasRows, tryReveal]);
+    // A new view (a window opened or closed, pending 44) hides and places itself again.
+  }, [hasRows, tryReveal, viewId]);
   const onLoad = () => {
     place.current();
     settle.current.load(Date.now());
@@ -91,6 +92,8 @@ export function ListaDeMensajes(props: {
   onLlegoAlFinal?: () => void;
   /** Lo que la barra de escribir sube MENOS que el teclado (su margen de la barra de navegación). */
   sinSubir: number;
+  /** A window around an old message (pending 44): its own view, paged down too; «bajar» leaves it. */
+  ventana?: { viewId: number; inWindow: boolean; onCargarSiguientes: () => void; onIrAlUltimo: () => void };
 }) {
   const colores = useColores();
   const { listaRef, rows } = props;
@@ -115,7 +118,8 @@ export function ListaDeMensajes(props: {
   // El scroll sigue al teclado como Telegram (ver `useScrollConTeclado`).
   const { sinSubir } = props;
   const scrollDelChat = useScrollConTeclado(sinSubir);
-  const { revealed, onLoad, onSize } = useRevealWhenPlaced(rows.length > 0, props.onListo, releaseFromEnd);
+  const { revealed, onLoad, onSize } = useRevealWhenPlaced(rows.length > 0, props.onListo, releaseFromEnd, props.ventana?.viewId);
+  const inWindow = props.ventana?.inWindow === true;
   useEffect(() => {
     if (props.placedAwayLate) releaseFromEnd();
   }, [props.placedAwayLate, releaseFromEnd]);
@@ -134,7 +138,7 @@ export function ListaDeMensajes(props: {
          * posición se pisaban y 2 de cada 3 aperturas quedaban ARRIBA de todo.
          * Montada ya con filas —como al reabrir desde la memoria— abre abajo.
          */
-        key={rows.length > 0 ? 'con-filas' : 'vacia'}
+        key={`${rows.length > 0 ? 'con-filas' : 'vacia'}-${props.ventana?.viewId ?? 0}`}
         ref={listaRef}
         renderScrollComponent={scrollDelChat}
         data={rows}
@@ -152,10 +156,13 @@ export function ListaDeMensajes(props: {
         // hueco visible mientras viajan.
         onStartReached={props.onCargarAnteriores}
         onStartReachedThreshold={0.5}
+        // In a window (pending 44) it pages down too, toward the end of the conversation.
+        onEndReached={inWindow ? props.ventana?.onCargarSiguientes : undefined}
+        onEndReachedThreshold={0.5}
         // `autoscrollToBottomThreshold`: si se está cerca del final (20 % de la
         // pantalla), lo que llega o se manda baja la lista solo, como
         // WhatsApp. Leyendo arriba, no mueve nada.
-        maintainVisibleContentPosition={{ startRenderingFromBottom: true, autoscrollToBottomThreshold: 0.2 }}
+        maintainVisibleContentPosition={inWindow ? { startRenderingFromBottom: false } : { startRenderingFromBottom: true, autoscrollToBottomThreshold: 0.2 }}
         onScroll={alScrollear}
         onScrollBeginDrag={alEmpezarArrastre}
         onScrollEndDrag={alTerminarArrastre}
@@ -186,14 +193,14 @@ export function ListaDeMensajes(props: {
       />
       </BottomRoom.Provider>
       </View>
-      {abajoLejos ? (
+      {abajoLejos || inWindow ? (
         // «Bajar al final» con los que llegaron mientras se leía arriba, como
         // WhatsApp. Aparece solo lejos del final: abajo no hace falta. Sube con el teclado.
         <Animated.View style={liftStyle} className="absolute bottom-3 right-3">
         <Pressable
           testID="btn-bajar"
           accessibilityLabel="Ir al último mensaje"
-          onPress={goToEnd}
+          onPress={inWindow ? props.ventana?.onIrAlUltimo : goToEnd}
           hitSlop={2}
           className="h-10 w-10 items-center justify-center rounded-full bg-surface shadow-md"
         >

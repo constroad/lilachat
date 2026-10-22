@@ -13,7 +13,7 @@ export function usesFlatLayout(chat: FlatLayoutChat, prefs: { groupsAsList: bool
   return Boolean(chat.workspaceId || chat.channel) || prefs.groupsAsList;
 }
 
-const ROLE_LABEL: Record<string, string> = { owner: 'Dueño', admin: 'Admin' };
+const ROLE_LABEL: Record<string, string> = { owner: 'Dueño', admin: 'Admin', app: 'App' };
 
 /** What a member's pill is made of: the role (in a space, the space's) and the job title in the space. */
 export type MemberPill = { role?: string | null; title?: string | null };

@@ -51,6 +51,7 @@ export const NOMBRES_DE_COLOR = {
   'autor-5': 'author5',
   'autor-6': 'author6',
   'en-linea': 'online',
+  warning: 'warning',
   'avatar-1': 'avatar1',
   'avatar-2': 'avatar2',
   'avatar-3': 'avatar3',

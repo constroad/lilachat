@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { botCardSummary, validateBotCard, validateBotPost } from './bots.js';
+import { appDeliveryWarning, appInstalledLine, botCardSummary, validateBotCard, validateBotPost } from './bots.js';
 
 const card = {
   kicker: 'PORTAL · PEDIDOS',
@@ -82,5 +82,18 @@ describe('bot card', () => {
 
   it('the summary the list, notices and search read', () => {
     expect(botCardSummary(card)).toBe('¿Confirmas el pedido 1024? · Por confirmar');
+  });
+});
+
+describe('Integraciones lines', () => {
+  it('who installed it and when, in Lima', () => {
+    expect(appInstalledLine({ installedBy: 'José', installedAt: '2026-10-21T15:00:00Z' })).toMatch(/^Instalada por José · 21 oct/);
+    expect(appInstalledLine({ installedBy: null, installedAt: '2026-10-21T15:00:00Z' })).toMatch(/^Instalada el 21 oct/);
+  });
+
+  it('a failed last event is said; a good one or none, not', () => {
+    expect(appDeliveryWarning({ lastDelivery: { at: 'x', ok: false, error: 'HTTP 500' } })).toBe('El último aviso a la app falló (HTTP 500). Se reintenta solo.');
+    expect(appDeliveryWarning({ lastDelivery: { at: 'x', ok: true } })).toBeNull();
+    expect(appDeliveryWarning({})).toBeNull();
   });
 });

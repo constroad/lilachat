@@ -22,6 +22,10 @@ describe('usesFlatLayout', () => {
 });
 
 describe('memberBadge', () => {
+  it('an installed app (Lila) says App', () => {
+    expect(memberBadge({ role: 'app', isMe: false })).toBe('App');
+  });
+
   it('the job title from the space first, then the role; «Tú» on mine', () => {
     expect(memberBadge({ title: 'Residente de obra', role: 'member', isMe: false })).toBe('Residente de obra');
     expect(memberBadge({ role: 'owner', isMe: true })).toBe('Dueño (Tú)');

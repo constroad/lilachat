@@ -62,6 +62,8 @@ export const vividPulse = {
       author6: '#0e7490',
       /** El punto de «en línea» de la lista: verde, como toda mensajería. */
       online: '#16a34a',
+      /** «Por confirmar» on a bot's card (the status tones): amber, readable on white. */
+      warning: '#b45309',
       /** Los fondos de los avatares sin foto (FL13): un tono por persona, como el diseño. */
       avatar1: '#ece4fd',
       avatar2: '#f6e3f4',
@@ -134,6 +136,7 @@ export const vividPulse = {
       author5: '#c4b5fd',
       author6: '#67e8f9',
       online: '#4ade80',
+      warning: '#fcd34d',
       avatar1: '#2e2752',
       avatar2: '#3a2546',
       avatar3: '#232c4f',

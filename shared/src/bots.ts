@@ -135,3 +135,18 @@ export function validateBotPost(raw: unknown): { ok: true; post: BotPost } | Bot
 
 /** What the chat list, the notification and the search read of a card. */
 export const botCardSummary = (card: Pick<BotCard, 'title' | 'status'>): string => [card.title, card.status?.label].filter(Boolean).join(' · ');
+
+/** An app installed in a space, as Integraciones lists it (`GET /api/workspaces/:id/apps`). */
+export type SpaceApp = { id: string; name: string; avatarUrl?: string; installedBy: string | null; installedAt: string; lastDelivery?: { at: string; ok: boolean; error?: string } };
+
+/** «Instalada por José · 21 oct.»: who installed it and when. */
+export function appInstalledLine(app: Pick<SpaceApp, 'installedBy' | 'installedAt'>): string {
+  const day = new Date(app.installedAt).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', timeZone: 'America/Lima' });
+  return app.installedBy ? `Instalada por ${app.installedBy} · ${day}` : `Instalada el ${day}`;
+}
+
+/** If the last event did not reach the app, say it: an app that stopped hearing is the first thing to check. */
+export function appDeliveryWarning(app: Pick<SpaceApp, 'lastDelivery'>): string | null {
+  if (!app.lastDelivery || app.lastDelivery.ok) return null;
+  return `El último aviso a la app falló${app.lastDelivery.error ? ` (${app.lastDelivery.error})` : ''}. Se reintenta solo.`;
+}

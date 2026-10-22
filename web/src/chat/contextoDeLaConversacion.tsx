@@ -34,6 +34,9 @@ export type ContextoDeLaConversacion = {
   onVerFoto: (mensaje: MensajeEnPantalla) => void;
   /** A PDF opens in the web's own viewer (José, 21/10). */
   onVerPdf?: (mensaje: MensajeEnPantalla) => void;
+  /** «Saludar 👋» on «X se unió a Lilachat» (José, 21/10), until I write something after it. */
+  onGreet?: () => void;
+  canGreet?: (noticeSeq: number) => boolean;
   /** Fijar mensajes (19/10): en un grupo, solo los admins. */
   puedeFijar: boolean;
   fijados: ReadonlySet<number>;

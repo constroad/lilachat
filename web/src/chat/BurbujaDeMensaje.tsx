@@ -296,8 +296,16 @@ function FalloDelEnvio({ mensaje, onReintentar, onDescartar }: Pick<Props, 'mens
  */
 function LineaDeSistema({ mensaje }: { mensaje: MensajeEnPantalla }) {
   const text = useNoticeText(mensaje);
+  const context = useContext(ConversacionContext);
   if (!text) return null;
-  return <p className="my-3 text-center text-[12px] text-on-surface-variant">{text}</p>;
+  // «Aracely se unió a Lilachat»: who invited her greets her with one click, like Telegram (José, 21/10).
+  const greet = mensaje.system?.evento === 'se-unio' && mensaje.senderId !== context?.yo && context?.canGreet?.(mensaje.seq) ? context.onGreet : undefined;
+  return (
+    <div className="my-3 flex flex-col items-center gap-2">
+      <p className="text-center text-[12px] text-on-surface-variant">{text}</p>
+      {greet ? <button type="button" data-testid="saludar-al-unirse" onClick={greet} className="h-9 rounded-full bg-primary px-5 text-sm font-semibold text-on-primary">Saludar 👋</button> : null}
+    </div>
+  );
 }
 
 /** The notice's sentence with the names this person knows; the server's `body` if it cannot be built. */

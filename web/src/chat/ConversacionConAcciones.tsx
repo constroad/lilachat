@@ -1,4 +1,5 @@
 import type { NotificationLevel } from '@lilachat/shared';
+import { alreadyGreeted } from '@lilachat/shared';
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { PanelDeInfo } from './info/PanelDeInfo';
 import type { AccionDelChat } from './menuDelChat';
@@ -90,6 +91,8 @@ export function ConversacionConAcciones(
   const fotos = useMemo(() => (mensajes ?? []).filter((uno) => !uno.deletedAt && uno.media?.url && (uno.media.mime?.startsWith('image/') || uno.media.thumbUrl)), [mensajes]);
   const onVerFoto = useCallback((mensaje: MensajeEnPantalla) => setFotoAbierta(Math.max(0, fotos.findIndex((uno) => uno.clientKey === mensaje.clientKey))), [fotos]);
   const [pdfAbierto, setPdfAbierto] = useState<MensajeEnPantalla | null>(null);
+  const greet = useCallback(() => void sync.enviarTexto(chat.id, '👋'), [sync, chat.id]);
+  const canGreet = useCallback((noticeSeq: number) => !alreadyGreeted((mensajes ?? []).map((one) => ({ seq: one.seq, senderId: one.senderId, pending: Boolean(one.estado) })), noticeSeq, yo), [mensajes, yo]);
   /** A la cola (auditoría 19/10): cada burbuja aparece ya y sube por detrás; el pie va en el primero. */
   const subir = (lista: File[], pie: string, hd: boolean) => {
     setArchivos(null);
@@ -141,8 +144,8 @@ export function ConversacionConAcciones(
   const flat = usesFlatLayout(chat, { groupsAsList: useGroupsAsList() });
   const badgeOf = useCallback((senderId: string) => memberBadge({ ...detalle?.pills.get(senderId), isMe: senderId === yo }), [detalle, yo]);
   const contexto = useMemo<ContextoDeLaConversacion>(
-    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto, onVerPdf: setPdfAbierto, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar, onEditarRecordatorio: editarRecordatorio, destacados: destacados.seqs, onStickerAction: chat.encrypted ? undefined : onStickerAction, flat, badgeOf }),
-    [yo, props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editarRecordatorio, destacados.seqs, onStickerAction, flat, badgeOf]
+    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto, onVerPdf: setPdfAbierto, onGreet: greet, canGreet, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar, onEditarRecordatorio: editarRecordatorio, destacados: destacados.seqs, onStickerAction: chat.encrypted ? undefined : onStickerAction, flat, badgeOf }),
+    [yo, props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto, greet, canGreet, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editarRecordatorio, destacados.seqs, onStickerAction, flat, badgeOf]
   );
 
   // Nudges and winks: in a 1:1 (not the chat with yourself), or a group whose admin allows them (José, 21/10).

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { Archive, AtSign, ChevronDown, ChevronRight, Hash, Inbox, Lock, MessagesSquare, Plus, Search, Settings2, UserCog, UserPlus, Users } from 'lucide-react-native';
-import { aplicarMensajeALista, canManageMembers, formatChatTimestamp, marcarLeido, membersLabel, nombreDeContacto, spaceSections, splitArchived, type ActivityType, type ClientWorkspace, type MensajeEnVivo, type SpaceSectionKey } from '@lilachat/shared';
+import { aplicarMensajeALista, canManageMembers, formatChatTimestamp, marcarLeido, membersLabel, nombreDeContacto, spaceSections, splitArchived, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
+import type { MensajeEnVivo as LiveMessage } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 import { BarraDeSeleccionDeChats } from '../chat/BarraDeSeleccionDeChats';
 import { FilaDeChat, PendingMarker } from '../chat/FilaDeChat';
@@ -18,7 +19,7 @@ import { chatsEnMemoria } from '../chat/chatsGuardados';
 const RELOAD_DELAY_MS = 600;
 const NO_ACTIVITY = { mentions: 0, threads: 0 };
 /** A chat of the personal list: its events are not this space's. */
-const isPersonalChat = (chatId: string) => Boolean(chatsEnMemoria()?.some((chat) => chat.id === chatId));
+const isInMyChatList = (chatId: string) => Boolean(chatsEnMemoria()?.some((chat) => chat.id === chatId));
 
 /**
  * The chats of a company space by sections, like Slack (E1/E2; design
@@ -74,17 +75,17 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
         const next = change(current.chats);
         return next && next !== current.chats ? { ...current, chats: next } : current;
       });
-    const onMessage = (message: MensajeEnVivo) => {
+    const onMessage = (message: LiveMessage) => {
       if (!inList(message.chatId)) {
         // A new chat of this space (not a personal one, not another space's) is asked for.
-        if (!isSpaceChat(message.chatId) && !isPersonalChat(message.chatId)) reloadSoon();
+        if (!isSpaceChat(message.chatId) && !isInMyChatList(message.chatId)) reloadSoon();
         return;
       }
       patchChats((current) => aplicarMensajeALista(current, message, myUserId, openChat.current));
       if (message.hiloDe !== undefined || message.body?.includes('@')) reloadSoon();
     };
     const onChanged = (frame: { chatId?: string }) => {
-      if (!frame.chatId || inList(frame.chatId) || !isPersonalChat(frame.chatId)) reloadSoon();
+      if (!frame.chatId || inList(frame.chatId) || !isInMyChatList(frame.chatId)) reloadSoon();
     };
     // I read one of these chats (here or on another device): its count goes down.
     const onReceipt = (frame: { chatId?: string; userId?: string }) => {

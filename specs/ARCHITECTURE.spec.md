@@ -4909,6 +4909,63 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 103. Modo empresa sin «cargando», parte 1 (22/10/2026, 0.1.141)
+
+José, 22/10: «en el modo slack cuando ingreso a directorio, menciones etc sale
+cargando… en Slack es todo muy fluido». La auditoría (solo lectura, con
+archivo:línea) encontró la causa de fondo: el modo empresa no heredó lo que ya
+tenía la lista personal (pintar de memoria y disco). Cada pantalla guardaba
+sus datos en su propio estado y los tiraba al abrir: esqueleto, pedido al
+server (160–720 ms medidos) y recién ahí pintaba.
+
+**Motor compartido** `shared/sessionCache.ts` (8 tests): pinta lo que tiene y
+revalida por detrás. Se suma a un pedido en vuelo en vez de repetirlo, gana la
+última respuesta, y un error conserva lo mostrado y se informa aparte (se
+limpia con el siguiente éxito). Lo del disco nunca pisa algo más fresco, y un
+`patch` sin cambios no re-renderiza. Vale 30 s fresco. Claves
+`<spaceId>:<qué>`.
+
+**App** (`app/src/spaces/spaceCache.ts`, AsyncStorage) **y web**
+(`web/src/spaces/spaceCache.ts`, tabla `meta` de la base local). Directorio,
+Menciones (cada pestaña con lo suyo), Canales y Miembros y roles leen de ahí.
+Al entrar a un espacio se precargan su directorio, menciones y canales. Un
+espacio en el que ya no estoy activo se borra de memoria y disco. El cierre de
+sesión borra todo (app: `forgetAllSpaces` junto a `olvidarChats`; web: la base
+se borra entera y la memoria se vacía al desmontar).
+
+**Server.** `/api/activity` lee menciones e hilos una sola vez: las filas de la
+pestaña y los conteos de los chips salen de la misma respuesta (antes la misma
+consulta corría dos veces). Las búsquedas de chats y canales corren en
+paralelo. Tres índices PARCIALES en la bóveda con el OK de José: menciones
+`{chatId, 'menciones.userId', at}`, hilos `{chatId, 'hilo.ultimaEn'}` y
+reacciones `{chatId, senderId, at}`. Solo guardan los mensajes con mención,
+hilo o reacción (5, 12 y 18 hoy). Cada filtro repite la condición del índice,
+porque si no el planificador no lo usa. Medido: la consulta de menciones pasó
+de examinar 73 documentos a 1.
+
+**E2E web** (servidor de QA, QA Ana en «QA Empresa 141» con QA Beto):
+- Al entrar se precargaron directorio y canales.
+- Directorio, primera y segunda vez: 2 personas a los 60 ms y ningún esqueleto.
+- Menciones → Hilos → Menciones: sin esqueleto.
+- Tras recargar, el directorio vino del disco.
+- En toda la corrida hubo 2 pedidos, no uno por apertura.
+- Espacio borrado (0/0/0).
+
+En el emulador no se probó: la cuenta de José tendría que estar en un espacio
+de QA.
+
+**Lo que sigue (auditoría, en orden):**
+- App: Directorio y Menciones como pestañas montadas, no Modal; se va la
+  animación de entrada.
+- Guardar en disco la lista de espacios y la de chats de cada uno, y entrar a
+  un espacio conocido sin esperar a `GET /api/workspaces` (son los esqueletos
+  de la lista que se ven tras recargar).
+- Aplicar los eventos del socket a la lista con `listaEnVivo` (hoy un mensaje
+  de canal dispara hasta 4 pedidos en la web).
+- Miembros con `?status=all` (1 pedido y no 4).
+- Un evento de socket para los cambios de miembros.
+
+
 ## 102. Ingreso, «se unió» en los espacios e invitar por correo (22/10/2026, 0.1.140)
 
 José, 22/10, antes de que su empresa y su familia instalen. Preguntó cómo se

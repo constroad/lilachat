@@ -98,3 +98,4 @@ export * from './profile.js';
 export * from './adminUsers.js';
 export * from './callMedia.js';
 export * from './chatQueue.js';
+export * from './nowPlaying.js';

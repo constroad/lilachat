@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
-import { Archive, ArchiveRestore, Bell, BellOff, CheckCheck, LogOut, MessageSquareDot, Pin, PinOff, Trash2, X } from 'lucide-react-native';
+import { Archive, ArchiveRestore, Bell, BellOff, CheckCheck, ListPlus, LogOut, MessageSquareDot, Pin, PinOff, Trash2, X } from 'lucide-react-native';
 import type { AccionesDeSeleccion } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 
@@ -19,6 +19,8 @@ export function BarraDeSeleccionDeChats(props: {
   onSalir: () => void;
   /** «Eliminar chat» para mí (FL9d), solo con chats 1:1. */
   onEliminar: () => void;
+  /** Lists of my own (pending 45): the chosen chats go into one. */
+  onAgregarALista?: () => void;
 }) {
   const colores = useColores();
   const { acciones } = props;
@@ -56,6 +58,11 @@ export function BarraDeSeleccionDeChats(props: {
           onPress={() => props.onSilenciar(acciones.silenciar === 'silenciar')}
         >
           {acciones.silenciar === 'silenciar' ? <BellOff size={22} color={icono} /> : <Bell size={22} color={icono} />}
+        </Accion>
+      ) : null}
+      {props.onAgregarALista ? (
+        <Accion testID="accion-agregar-a-lista" etiqueta="Agregar a lista" onPress={props.onAgregarALista}>
+          <ListPlus size={22} color={icono} />
         </Accion>
       ) : null}
       {acciones.archivar ? (

@@ -16,6 +16,7 @@ import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { iniciarCronometro } from '../diagnostico/diagnostico';
 import { TabsShell } from './TabsShell';
 import { FullScreenCallsPrompt } from './FullScreenCallsPrompt';
+import { CallLinkOpener } from '../chat/scheduledCall/CallLinkOpener';
 import { useColores, useTema } from './tema';
 import { chatAbiertoDe, chatQueSeVe } from './rutas';
 import { useAbrirDesdeAviso } from './useAbrirDesdeAviso';
@@ -193,6 +194,7 @@ export function NavegacionDeSesion(props: {
       </Stack.Navigator>
     </NavigationContainer>
     <FullScreenCallsPrompt />
+    <CallLinkOpener jwt={props.credential.jwt} />
     </ProveedorDeLlamadas>
   );
 }

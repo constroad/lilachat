@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { ArrowLeft, ChevronDown, Lock, MoreVertical, NotebookPen, Phone, Video } from 'lucide-react-native';
+import { ArrowLeft, CalendarClock, ChevronDown, Link, Lock, MoreVertical, NotebookPen, Phone, Video } from 'lucide-react-native';
 import { CALL_MENU } from './chatHeaderMenu';
 import { HeaderDropdown } from './HeaderDropdown';
 import type { ChatHeaderMenu } from './useChatHeaderMenu';
@@ -13,7 +13,8 @@ const AVATAR_DE_CABECERA = 40;
 /** The call menu hangs under the camera, the ⋮ one under the ⋮ (dp from the right edge). */
 const CALL_MENU_RIGHT = 52;
 const CHAT_MENU_RIGHT = 8;
-const CALL_OPTIONS = CALL_MENU.map((option) => ({ ...option, Icon: option.id === 'voice' ? Phone : Video }));
+const CALL_ICONS = { voice: Phone, video: Video, schedule: CalendarClock, link: Link } as const;
+const CALL_OPTIONS = CALL_MENU.map((option) => ({ ...option, Icon: CALL_ICONS[option.id] }));
 
 /**
  * La cabecera del chat (salió de `ChatScreen`, que pasaba de 900 líneas): la
@@ -34,6 +35,9 @@ export function EncabezadoDelChat(props: {
   onVolver: () => void;
   onAbrirDetalle: () => void;
   onLlamar: (conVideo: boolean) => void;
+  /** Pending 42: a scheduled call and a call link, from the same menu. */
+  onProgramarLlamada?: () => void;
+  onEnlaceDeLlamada?: () => void;
   /** The ⋮'s options (José, 21/10: it opened the same as the avatar). */
   menu: ChatHeaderMenu;
 }) {
@@ -115,7 +119,7 @@ export function EncabezadoDelChat(props: {
       >
         <MoreVertical size={20} color={colores["on-surface-variant"]} />
       </Pressable>
-      <HeaderDropdown testID="menu-llamadas" visible={openMenu === 'calls'} options={CALL_OPTIONS} right={CALL_MENU_RIGHT} onSelect={(id) => props.onLlamar(id === 'video')} onClose={() => setOpenMenu(null)} />
+      <HeaderDropdown testID="menu-llamadas" visible={openMenu === 'calls'} options={CALL_OPTIONS} right={CALL_MENU_RIGHT} onSelect={(id) => (id === 'schedule' ? props.onProgramarLlamada?.() : id === 'link' ? props.onEnlaceDeLlamada?.() : props.onLlamar(id === 'video'))} onClose={() => setOpenMenu(null)} />
       <HeaderDropdown testID="menu-del-chat" visible={openMenu === 'chat'} options={props.menu.options} right={CHAT_MENU_RIGHT} onSelect={props.menu.select} onClose={() => setOpenMenu(null)} />
     </View>
   );

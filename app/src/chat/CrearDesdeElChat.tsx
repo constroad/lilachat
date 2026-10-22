@@ -4,9 +4,10 @@ import { CreatePollScreen } from '../agenda/CreatePollScreen';
 import { CreateReminderScreen } from '../agenda/CreateReminderScreen';
 import { CreateChecklistScreen } from '../agenda/CreateChecklistScreen';
 import type { AgendaReminder } from '../agenda/agendaApi';
+import { ScheduleCallScreen } from './scheduledCall/ScheduleCallScreen';
 
 /** Qué se abre: crear algo, o editar un recordatorio del grupo (19/10). */
-export type QueSeCrea = 'event' | 'poll' | 'reminder' | 'checklist' | { recordatorio: AgendaReminder } | null;
+export type QueSeCrea = 'event' | 'poll' | 'reminder' | 'checklist' | 'scheduled-call' | { recordatorio: AgendaReminder } | null;
 
 /**
  * Crear un evento o una encuesta desde la conversación (salió de
@@ -27,6 +28,8 @@ export function CrearDesdeElChat(props: {
   if (props.creando === 'reminder') {
     return <CreateReminderScreen visible credential={props.credential} grupo={props.chat} onClose={props.onCerrar} onCreated={props.onCerrar} />;
   }
+  // A scheduled call (pending 42): only from a 1:1's call menu.
+  if (props.creando === 'scheduled-call') return <ScheduleCallScreen visible jwt={props.credential.jwt} chat={props.chat} onClose={props.onCerrar} />;
   // A checklist belongs to this chat (backlog 8).
   if (props.creando === 'checklist') return <CreateChecklistScreen visible jwt={props.credential.jwt} chat={props.chat} onClose={props.onCerrar} />;
   const Pantalla = props.creando === 'event' ? CreateEventScreen : CreatePollScreen;

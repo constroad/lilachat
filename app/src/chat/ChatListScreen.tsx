@@ -4,6 +4,7 @@ import { MessageCircle, PenSquare } from 'lucide-react-native';
 import {
   contarChats,
   filtrarChats,
+  listIdOf,
   nombreDeContacto,
   ordenarChats,
   separarArchivados,
@@ -31,6 +32,7 @@ import { CabeceraDeArchivados, FilaDeArchivados } from './Archivados';
 import { BuscadorDeChats } from './BuscadorDeChats';
 import { ResultadosDeMensajes } from './ResultadosDeMensajes';
 import { BarraDeSeleccionDeChats } from './BarraDeSeleccionDeChats';
+import { useChatListsUi } from './chatLists/useChatListsUi';
 import { lastMessageMs, useChatSelection } from './useChatSelection';
 import { useColores } from '../ui/tema';
 import { decidirAtras } from '../ui/botonAtras';
@@ -266,6 +268,11 @@ export function ChatListScreen({
   /** Mirando «Archivados» (FL9) en vez de la lista principal. */
   const [verArchivados, setVerArchivados] = useState(false);
 
+  // Selecting several chats, like WhatsApp: the mode IS «something selected» (`useChatSelection`).
+  const selection = useChatSelection(chats);
+  const chatsForLists = useMemo(() => (chats ?? []).map((chat) => ({ id: chat.id, title: title(chat), photo: chat.avatarUrl })), [chats, agenda]);
+  const listas = useChatListsUi({ jwt: credential.jwt, userId: credential.userId, chats: chatsForLists, selectedIds: [...selection.selected], filter: filtro, onFilter: setFiltro, onSelectionDone: selection.clear });
+
   /**
    * Búsqueda DENTRO de las conversaciones (aparte del filtro de la lista). Se
    * consulta al server con un debounce: pegarle en cada tecla sería un pedido
@@ -301,6 +308,7 @@ export function ChatListScreen({
       separarArchivados(
         (chats ?? []).map((chat) => ({
           chat,
+          id: chat.id,
           titulo: '',
           esGrupo: chat.kind === 'group',
           esBorrador: chat.kind === 'notas',
@@ -318,10 +326,11 @@ export function ChatListScreen({
       chats: base.map((uno) => ({ ...uno, titulo: title(uno.chat), ultimo: uno.chat.lastMessage?.body })),
       filtro: verArchivados ? 'todos' : filtro,
       texto: busqueda,
+      lista: listas.activeChatIds,
     }).map((uno) => uno.chat);
     // `agenda` está en las dependencias porque `title` la usa: sin ella, la
     // lista se quedaría con los nombres viejos al llegar la agenda.
-  }, [principales, archivados, verArchivados, agenda, filtro, busqueda]);
+  }, [principales, archivados, verArchivados, agenda, filtro, busqueda, listas.activeChatIds]);
 
   const cuentas = useMemo(() => contarChats(principales), [principales]);
   const archivadosSinLeer = useMemo(() => contarChats(archivados)['no-leidos'], [archivados]);
@@ -332,9 +341,6 @@ export function ChatListScreen({
   }, [verArchivados, archivados.length]);
 
   const hayChats = (chats?.length ?? 0) > 0;
-
-  // Selecting several chats, like WhatsApp: the mode IS «something selected» (`useChatSelection`).
-  const selection = useChatSelection(chats);
 
   // Atrás deshace lo último, como WhatsApp: la selección, la búsqueda,
   // «Archivados»; recién después sale (lo decide `App`).
@@ -403,11 +409,12 @@ export function ChatListScreen({
           onArchivar={(archived) => void aplicarAjuste({ archived })}
           onSalir={() => void salirDeGrupos()}
           onEliminar={eliminarChats}
+          onAgregarALista={listas.openAddTo}
         />
       ) : verArchivados ? (
         <CabeceraDeArchivados onVolver={() => setVerArchivados(false)} />
       ) : hayChats ? (
-        <BuscadorDeChats busqueda={busqueda} onBuscar={setBusqueda} filtro={filtro} onFiltrar={setFiltro} cuentas={cuentas} />
+        <BuscadorDeChats busqueda={busqueda} onBuscar={setBusqueda} filtro={filtro} onFiltrar={setFiltro} cuentas={cuentas} listas={listas.lists} onNuevaLista={listas.openNew} onEditarLista={listas.openEdit} />
       ) : null}
 
       {chats === null ? (
@@ -452,6 +459,8 @@ export function ChatListScreen({
                     ? 'Todos tus chats están en Archivados.'
                     : filtro === 'no-leidos'
                     ? 'No te queda nada sin leer.'
+                    : listIdOf(filtro)
+                    ? 'Esta lista no tiene chats. Mantén presionado su nombre para agregarlos.'
                     : 'Todavía no tienes grupos.'}
               </Text>
             </View>
@@ -522,7 +531,7 @@ export function ChatListScreen({
         <PenSquare size={22} color={colores["on-primary"]} />
       </Pressable>
       )}
-
+      {listas.sheets}
     </View>
   );
 }

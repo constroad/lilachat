@@ -2,7 +2,7 @@
   "expo": {
     "name": "Lilachat",
     "slug": "lilachat",
-    "version": "0.1.146",
+    "version": "0.1.147",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -18,7 +18,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.lilachat.app",
-      "versionCode": 147,
+      "versionCode": 148,
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.POST_NOTIFICATIONS",
@@ -36,6 +36,11 @@
               "scheme": "https",
               "host": "lilachat.constroad.com",
               "pathPrefix": "/unirse"
+            },
+            {
+              "scheme": "https",
+              "host": "lilachat.constroad.com",
+              "pathPrefix": "/llamada"
             }
           ],
           "category": [

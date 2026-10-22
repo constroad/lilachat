@@ -6,7 +6,7 @@
 export type ChatMenuKind = 'group' | 'channel' | 'direct' | 'notes';
 export type ChatMenuId = 'add-members' | 'info' | 'media' | 'search' | 'mute' | 'unmute';
 export type ChatMenuOption = { id: ChatMenuId; label: string };
-export type CallMenuId = 'voice' | 'video';
+export type CallMenuId = 'voice' | 'video' | 'schedule' | 'link';
 
 const INFO_LABEL: Record<ChatMenuKind, string> = { group: 'Info del grupo', channel: 'Info del canal', direct: 'Ver contacto', notes: 'Info' };
 const MEDIA_LABEL: Record<ChatMenuKind, string> = { group: 'Medios del grupo', channel: 'Medios del canal', direct: 'Medios, enlaces y docs', notes: 'Medios, enlaces y docs' };
@@ -26,4 +26,7 @@ export function chatMenuOptions(params: { kind: ChatMenuKind; muted: boolean }):
 export const CALL_MENU: readonly { id: CallMenuId; label: string }[] = [
   { id: 'voice', label: 'Llamada de voz' },
   { id: 'video', label: 'Videollamada' },
+  // Pending 42 (José, 22/10), like WhatsApp.
+  { id: 'schedule', label: 'Programar llamada' },
+  { id: 'link', label: 'Crear enlace de llamada' },
 ];

@@ -61,6 +61,7 @@ import { ChatInfoCards } from './ChatInfoCards';
 import { CamaraDelChat } from './camara/CamaraDelChat';
 import { useChatWindow } from './useChatWindow';
 import { useShareContact } from './contactCard/useShareContact';
+import { offerCallLink } from './scheduledCall/callLinks';
 
 /** El pie del composer con el teclado abierto (dp). */
 const MARGEN_CON_TECLADO = 8;
@@ -247,7 +248,8 @@ export function ChatScreen({
     listaRef,
   });
 
-  const { irAMensaje, alTocarCita, alAbrir, saltarA, resaltado } = useIrAMensaje({ rows, listaRef, irASeq, irAlInicio, onNoEsta: ventana.alNoEstar });
+  const releaseRef = useRef<() => void>(() => undefined);
+  const { alTocarCita, alAbrir, saltarA, resaltado } = useIrAMensaje({ rows, listaRef, irASeq, irAlInicio, onNoEsta: ventana.alNoEstar, releaseFromEnd: () => releaseRef.current() });
   const fijar = useFijarMensajes({
     chatId,
     jwt: credential.jwt,
@@ -261,7 +263,8 @@ export function ChatScreen({
 
   // Buscar dentro del chat (FL9): sobre lo que se ve —sin lo «eliminado para mí»—.
   const visiblesParaBuscar = useMemo(() => sinOcultos(messages, ocultos), [messages, ocultos]);
-  const busqueda = useBuscarEnChat({ mensajes: visiblesParaBuscar, irA: irAMensaje });
+  // A match above the drawn rows opens its window (pending 44): scrolling alone did nothing (E2E, 22/10).
+  const busqueda = useBuscarEnChat({ mensajes: visiblesParaBuscar, irA: (seq) => saltarA(seq, 'No se pudo abrir ese mensaje.') });
   const menuKind = esBorrador ? 'notes' : chatName.startsWith('# ') ? 'channel' : esGrupoChat ? 'group' : 'direct';
   const headerMenu = useChatHeaderMenu({ chatId, jwt: credential.jwt, kind: menuKind, onDetail: (section) => (setDetailSection(section ?? null), setVerDetalle(true)), onSearch: busqueda.abrir, onError: setMediaError });
 
@@ -418,6 +421,7 @@ export function ChatScreen({
           onVolver={onBack}
           onAbrirDetalle={() => setVerDetalle(true)}
           onLlamar={(conVideo) => llamar(chatId, chatName, conVideo)}
+          onProgramarLlamada={() => setCreando('scheduled-call')} onEnlaceDeLlamada={() => offerCallLink({ jwt: credential.jwt, chatId, chatName: nombreVisible })}
           menu={headerMenu}
         />
       )}
@@ -465,7 +469,7 @@ export function ChatScreen({
           listaRef={listaRef}
           rows={rows}
           mensajes={messages}
-          yo={credential.userId} chatId={chatId} readSeqAtOpen={readSeq ?? 0}
+          yo={credential.userId} chatId={chatId} readSeqAtOpen={readSeq ?? 0} holdPosition={busqueda.activo || resaltado !== null} releaseRef={releaseRef}
           dibujarFila={dibujarFila}
           onListo={ventana.placement(alAbrir, (seq) => saltarA(seq, ''))} placedAwayLate={placedLate} ventana={ventana.list}
           onCargarAnteriores={ventana.inWindow ? ventana.loadOlder : () => void cargarAnteriores()}

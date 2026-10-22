@@ -24,7 +24,7 @@ describe('chat header menu', () => {
     expect(chatMenuOptions({ kind: 'notes', muted: false }).map((option) => option.id)).toEqual(['info', 'media', 'search']);
   });
 
-  it('the call menu: voice and video, like the camera with its arrow in WhatsApp', () => {
-    expect(CALL_MENU.map((option) => option.label)).toEqual(['Llamada de voz', 'Videollamada']);
+  it('the call menu: voice, video, scheduling and a link, like the camera with its arrow in WhatsApp (pending 42)', () => {
+    expect(CALL_MENU.map((option) => option.label)).toEqual(['Llamada de voz', 'Videollamada', 'Programar llamada', 'Crear enlace de llamada']);
   });
 });

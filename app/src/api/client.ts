@@ -6,7 +6,7 @@
  * .env de dev sale apuntando al emulador y falla con wifi andando — el script
  * de release lo fija y lo verifica dentro del binario).
  */
-import type { DestacadoEnLista, NotificationLevel, ResumenDeHiloEnCliente, VistaDelFijado, VistaPreviaDeEnlace } from '@lilachat/shared';
+import type { ChatList, DestacadoEnLista, NotificationLevel, ResumenDeHiloEnCliente, VistaDelFijado, VistaPreviaDeEnlace } from '@lilachat/shared';
 import type { ServerMessage } from '../chat/socketClient';
 import { unSoloPedido } from './pedidoUnico';
 import { buildHeader, reportStatus } from './appBuild';
@@ -49,7 +49,7 @@ async function post<T>(
 
 /** POST/DELETE autenticado, con o sin cuerpo. Comparte forma con `get`/`post`. */
 async function authed<T>(
-  method: 'POST' | 'PUT' | 'DELETE',
+  method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   route: string,
   token: string,
   body?: Record<string, unknown>
@@ -83,15 +83,31 @@ async function authed<T>(
 /** El perfil propio (FL9): la foto viene ABSOLUTA, o `null` sin foto. */
 export type PerfilPropio = { name: string | null; phone: string; avatarUrl: string | null };
 
-/** Shares a contact in the chat (pending 9); the `clientKey` keeps a retry from duplicating it. */
-export const shareContact = (token: string, chatId: string, contact: { name: string; phone: string; clientKey: string; replyToSeq?: number }) =>
-  authed<{ duplicate: boolean }>('POST', `/api/chats/${chatId}/contacts`, token, contact);
-
 export const guardarNombreDePerfil = (name: string, token: string) =>
   authed<{ perfil: PerfilPropio }>('PUT', '/api/me/perfil', token, { name });
 
 export const quitarFotoDePerfil = (token: string) =>
   authed<{ perfil: PerfilPropio }>('DELETE', '/api/me/perfil/foto', token);
+
+/** Shares a contact in the chat (pending 9); the `clientKey` keeps a retry from duplicating it. */
+export const shareContact = (token: string, chatId: string, contact: { name: string; phone: string; clientKey: string; replyToSeq?: number }) =>
+  authed<{ duplicate: boolean }>('POST', `/api/chats/${chatId}/contacts`, token, contact);
+
+/** My lists of chats (pending 45): the same ones the web shows. */
+export const listChatLists = (token: string) => get<{ lists: ChatList[] }>('/api/chat-lists', token);
+
+export const createChatList = (token: string, name: string, chatIds: string[]) =>
+  authed<{ list: ChatList }>('POST', '/api/chat-lists', token, { name, chatIds });
+
+export const updateChatList = (token: string, listId: string, change: { name?: string; add?: string[]; remove?: string[] }) =>
+  authed<{ list: ChatList }>('PATCH', `/api/chat-lists/${listId}`, token, change);
+
+export const deleteChatList = (token: string, listId: string) => authed<{ ok: true }>('DELETE', `/api/chat-lists/${listId}`, token);
+
+/** A call link of a 1:1 chat (pending 42), and what one opens: its chat, kind and the other person's name. */
+export const createCallLink = (token: string, chatId: string, video: boolean) => authed<{ url: string }>('POST', `/api/chats/${chatId}/call-link`, token, { video });
+
+export const openCallLink = (token: string, linkToken: string) => get<{ chatId: string; video: boolean; name: string | null }>(`/api/call-links/${encodeURIComponent(linkToken)}`, token);
 
 export type Programado = { id: string; chatId: string; body: string; sendAt: string };
 

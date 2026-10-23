@@ -18,6 +18,7 @@ import { precargarChat } from './mensajesGuardados';
 import { usePendingInChat } from './pendingInChats';
 import { useFunInRow } from './nudge';
 import { Avatar } from '../ui/Avatar';
+import { AppBadge, AppLogo } from '../spaces/apps/AppLogo';
 import { winkTileSource } from './winkTiles';
 import { useColores } from '../ui/tema';
 
@@ -58,6 +59,8 @@ export const FilaDeChat = memo(function FilaDeChat(props: {
   onMantener: (chatId: string) => void;
   /** This chat is open on screen: it plays its own nudges, the row does not. */
   open?: boolean;
+  /** A 1:1 with an app (design e-23): its square logo and the «APP» mark. */
+  app?: { avatarUrl?: string };
 }) {
   const colores = useColores();
   const { chat } = props;
@@ -80,13 +83,17 @@ export const FilaDeChat = memo(function FilaDeChat(props: {
       className={`min-h-[68px] flex-row items-center gap-3 px-4 py-2 ${props.marcado ? 'bg-primary/10' : ''}`}
     >
       <View style={{ width: LIST_AVATAR_SIZE, height: LIST_AVATAR_SIZE }} className="shrink-0">
-        <Avatar
-          nombre={props.titulo}
-          foto={chat.propio ? (props.miFoto ?? undefined) : chat.avatarUrl}
-          tamano={LIST_AVATAR_SIZE}
-          // Un borrador se distingue de una persona y de un grupo; el chat contigo lleva tu foto.
-          icono={chat.kind === 'notas' && !chat.propio ? <NotebookPen size={22} color={colores.primary} /> : undefined}
-        />
+        {props.app ? (
+          <AppLogo avatarUrl={props.app.avatarUrl ?? chat.avatarUrl} size={LIST_AVATAR_SIZE} />
+        ) : (
+          <Avatar
+            nombre={props.titulo}
+            foto={chat.propio ? (props.miFoto ?? undefined) : chat.avatarUrl}
+            tamano={LIST_AVATAR_SIZE}
+            // Un borrador se distingue de una persona y de un grupo; el chat contigo lleva tu foto.
+            icono={chat.kind === 'notas' && !chat.propio ? <NotebookPen size={22} color={colores.primary} /> : undefined}
+          />
+        )}
         {/* El tilde de selección tapa el avatar cuando la fila está
             marcada: es el feedback de «este entra en la acción». */}
         {props.marcado ? (
@@ -112,9 +119,11 @@ export const FilaDeChat = memo(function FilaDeChat(props: {
           {/* Candado pegado al nombre: quién es y cómo se le habla se
               leen de una sola mirada. */}
           {chat.encrypted ? <Lock size={13} color={colores.primary} /> : null}
-          <Text className="min-w-0 flex-1 text-base font-semibold text-on-surface" numberOfLines={1}>
+          <Text className={`min-w-0 text-base font-semibold text-on-surface ${props.app ? 'shrink' : 'flex-1'}`} numberOfLines={1}>
             {props.titulo}
           </Text>
+          {props.app ? <AppBadge /> : null}
+          {props.app ? <View className="flex-1" /> : null}
           {/* Hora RELATIVA como el diseño (reloj hoy, «Ayer», el día,
               la fecha), y en ACENTO cuando hay sin leer: en el diseño la
               de Sofía —3 sin leer— es violeta y la de Carlos, gris. */}

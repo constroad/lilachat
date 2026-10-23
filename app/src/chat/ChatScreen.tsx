@@ -90,7 +90,7 @@ export function ChatScreen({
   irASeq,
   encrypted,
   otherUserId,
-  esBorrador = false, workspaceId,
+  esBorrador = false, workspaceId, appId,
   onBack,
 }: PropsDelChat) {
   const colores = useColores();
@@ -425,7 +425,7 @@ export function ChatScreen({
           subtitulo={subtitulo}
           otroEscribe={otroEscribe}
           puedeLlamar={Boolean(otherUserId) && grupo.roles.get(otherUserId ?? '')?.role !== 'app'}
-          onVolver={onBack}
+          onVolver={onBack} app={appId ? { appId, spaceId: workspaceId, jwt: credential.jwt } : undefined}
           onAbrirDetalle={() => setVerDetalle(true)}
           onLlamar={(conVideo) => llamar(chatId, chatName, conVideo)}
           onProgramarLlamada={() => setCreando('scheduled-call')} onEnlaceDeLlamada={() => offerCallLink({ jwt: credential.jwt, chatId, chatName: nombreVisible })}

@@ -67,3 +67,9 @@ export function useMySpaces(jwt: string, userId?: string): { spaces: ClientWorks
   }, [reload, userId]);
   return { spaces: current, reload };
 }
+
+/** A space's name from the spaces already read (the head of a 1:1 with an app says where it lives). */
+export function useSpaceName(spaceId: string | undefined): string {
+  const current = useSyncExternalStore(subscribe, () => spaces);
+  return current?.find((space) => space.id === spaceId)?.name ?? '';
+}

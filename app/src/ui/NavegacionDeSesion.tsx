@@ -245,7 +245,7 @@ function PantallaDeChat({
       // llamar llamaba a un miembro cualquiera.
       otherUserId={chat.kind === 'direct' ? (chat.memberIds.find((id) => id !== credential.userId) ?? null) : null}
       esBorrador={chat.kind === 'notas'}
-      workspaceId={chat.workspaceId}
+      workspaceId={chat.workspaceId} appId={chat.appId}
       onBack={onBack}
     />
     </ErrorBoundary>

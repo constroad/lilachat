@@ -14,6 +14,8 @@ import { useAlVolver } from '../ui/useAlVolver';
 import { useColores } from '../ui/tema';
 import { fetchSpaceChats, isSpaceChat, spaceChatsCache, useCached } from './spaceCache';
 import { chatsEnMemoria } from '../chat/chatsGuardados';
+import { AppsSection } from './apps/AppsSection';
+import type { SpaceApps } from './apps/useSpaceApps';
 
 /** Several messages in a row reload the list once. */
 const RELOAD_DELAY_MS = 600;
@@ -30,7 +32,7 @@ const isInMyChatList = (chatId: string) => Boolean(chatsEnMemoria()?.some((chat)
  */
 export type WorkspaceLink = 'directory' | 'members' | 'requests' | 'settings';
 
-export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; myUserId: string; active: boolean; openChatId: string | null; reloadKey?: number; onOpenChat: (chat: ChatSummary) => void; onChannels: () => void; onInvite: () => void; onWorkspace: (link: WorkspaceLink) => void; onNewDirect: () => void; onNewGroup: () => void; onChats?: (chats: ChatSummary[]) => void; onRefresh?: () => void; onActivity: (tab: ActivityType) => void }) {
+export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; myUserId: string; active: boolean; openChatId: string | null; reloadKey?: number; onOpenChat: (chat: ChatSummary) => void; onChannels: () => void; onInvite: () => void; onWorkspace: (link: WorkspaceLink) => void; onNewDirect: () => void; onNewGroup: () => void; onChats?: (chats: ChatSummary[]) => void; onRefresh?: () => void; onActivity: (tab: ActivityType) => void; apps?: SpaceApps; onExploreApps?: () => void }) {
   const colors = useColores();
   const { space, jwt, myUserId, onOpenChat } = props;
   const [refreshing, setRefreshing] = useState(false);
@@ -130,6 +132,20 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
     return next;
   });
   const tapRow = useCallback((chat: ChatSummary) => (selection.selecting ? selection.toggle(chat.id) : onOpenChat(chat)), [selection.selecting, selection.toggle, onOpenChat]);
+  // «Apps» (design e-23) also under the welcome: someone just added, in no channel yet, already has the space's apps.
+  const appsSection = (appChats: ChatSummary[]) =>
+    props.apps ? (
+      <AppsSection
+        key="apps"
+        chats={appChats}
+        apps={props.apps}
+        folded={folded.has('apps')}
+        openChatId={props.openChatId}
+        onToggle={() => toggle('apps')}
+        onExplore={() => props.onExploreApps?.()}
+        renderChat={(chat, app) => <FilaDeChat key={chat.id} chat={chat} titulo={app?.name ?? title(chat)} miUserId={props.myUserId} marcado={selection.selected.has(chat.id)} enLinea={false} escribiendo={false} onTocar={tapRow} onMantener={selection.toggle} open={chat.id === props.openChatId} app={{ avatarUrl: app?.avatarUrl }} />}
+      />
+    ) : null;
 
   return (
     <ScrollView testID="lista-del-espacio" contentContainerStyle={{ paddingBottom: 96 }} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); props.onRefresh?.(); void load().finally(() => setRefreshing(false)); }} />}>
@@ -171,8 +187,11 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
           </View>
         </View>
       ) : null}
+      {chats !== null && chats.length === 0 && !query ? appsSection([]) : null}
       {chats !== null && (chats.length > 0 || query)
-        ? sections.map((section) => (
+        ? sections.map((section) => section.key === 'apps' ? (
+            appsSection(section.chats)
+          ) : (
             <View key={section.key} testID={`seccion-${section.key}`} className="border-t border-outline/10 pt-1">
               <Pressable testID={`plegar-${section.key}`} onPress={() => toggle(section.key)} className="min-h-[44px] flex-row items-center px-4">
                 <Text className="flex-1 text-[12px] font-bold uppercase tracking-widest text-on-surface-variant">{section.title}</Text>

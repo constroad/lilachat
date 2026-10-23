@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { ChevronDown } from 'lucide-react-native';
-import { joinCodeFromLink, newlyAddedSpaces, spaceSubtitle, unreadElsewhere, type ActivityItem, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember } from '@lilachat/shared';
+import { joinCodeFromLink, newlyAddedSpaces, spaceSubtitle, unreadElsewhere, type ActivityItem, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember, type DirectoryApp } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 import { createChat } from '../contacts/contactsApi';
 import { getSocket } from '../chat/socketClient';
@@ -27,8 +27,10 @@ import { memberName } from './memberUi';
 import { createSpaceChat, findSpaceChat } from './spacesApi';
 import { ActivityScreen } from '../activity/ActivityScreen';
 import type { WorkspaceLink } from './SpaceChatsScreen';
+import { AppDirectoryScreen } from './apps/AppDirectoryScreen';
+import { useSpaceApps } from './apps/useSpaceApps';
 
-type Sheet = 'switcher' | 'join' | 'create' | 'invite' | 'channels' | 'directory' | 'members' | 'requests' | 'settings' | 'newDirect' | 'newGroup' | null;
+type Sheet = 'switcher' | 'join' | 'create' | 'invite' | 'channels' | 'directory' | 'members' | 'requests' | 'settings' | 'newDirect' | 'newGroup' | 'apps' | null;
 
 /** A chat of the space as the conversation opens it until the list brings it. */
 const spaceChat = (chat: Pick<ChatSummary, 'id' | 'kind' | 'name' | 'phone' | 'memberIds' | 'channel'>, spaceId: string): ChatSummary => ({
@@ -155,6 +157,13 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
     setActivityTab(null);
     onOpenChat(chat, item.seq);
   }, [current, listChats, jwt, onOpenChat]);
+  // The 1:1 with an app (design e-26): opened from «Apps» or the directory; the list brings it with its first message.
+  const openAppChat = useCallback((app: DirectoryApp, chat: { chatId: string; botUserId: string }) => {
+    if (!current) return;
+    setSheet(null);
+    onOpenChat({ ...spaceChat({ id: chat.chatId, kind: 'direct', name: app.name, memberIds: [myUserId, chat.botUserId] }, current.id), appId: app.appId, avatarUrl: app.avatarUrl });
+  }, [current, myUserId, onOpenChat]);
+  const apps = useSpaceApps({ jwt, spaceId: current?.id ?? null, active: true, onChat: openAppChat });
   const openNewDirect = useCallback(() => setSheet('newDirect'), []);
   const openNewGroup = useCallback(() => setSheet('newGroup'), []);
 
@@ -211,6 +220,7 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
       {current && (sheet === 'members' || sheet === 'requests') ? (
         <MembersScreen space={current} jwt={jwt} myUserId={myUserId} initialTab={sheet === 'requests' ? 'pending' : 'active'} onInvite={() => setSheet('invite')} onChanged={() => void reload()} onClose={() => setSheet(null)} />
       ) : null}
+      {current && sheet === 'apps' ? <AppDirectoryScreen space={current} apps={apps} onClose={() => setSheet(null)} /> : null}
       {current && sheet === 'settings' ? <SpaceSettingsScreen space={current} jwt={jwt} onSaved={() => void reload()} onClose={() => setSheet(null)} /> : null}
       {current && sheet === 'newGroup' ? (
         <NewSpaceGroupScreen space={current} jwt={jwt} myUserId={myUserId} onCreated={(chat) => { setSheet(null); setReloadKey((key) => key + 1); onOpenChat(spaceChat({ ...chat, kind: 'group' }, current.id)); }} onClose={() => setSheet(null)} />
@@ -242,6 +252,6 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
     openInvite: () => setSheet('invite'),
     /** A message arrived in a chat outside the personal list: the spaces' counters are read again, once per burst. */
     reloadSoon,
-    listProps: { reloadKey, onWorkspace: openWorkspace, onNewDirect: openNewDirect, onNewGroup: openNewGroup, onChats: setListChats, onRefresh: reload, onActivity: setActivityTab },
+    listProps: { reloadKey, onWorkspace: openWorkspace, onNewDirect: openNewDirect, onNewGroup: openNewGroup, onChats: setListChats, onRefresh: reload, onActivity: setActivityTab, apps, onExploreApps: () => setSheet('apps') },
   };
 }

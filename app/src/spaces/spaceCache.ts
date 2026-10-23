@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createSessionCache, type ActivityItem, type ActivityType, type CacheEntry, type ClientChannel, type ClientWorkspaceMember, type SessionCache } from '@lilachat/shared';
+import { createSessionCache, type ActivityItem, type ActivityType, type CacheEntry, type ClientChannel, type ClientWorkspaceMember, type SessionCache, type SpaceAppDirectory } from '@lilachat/shared';
 import type { JsonResult } from '../api/jsonCall';
 import type { ChatSummary } from '../api/client';
-import { spaceActivity, spaceChannels, spaceChats, spaceMembers } from './spacesApi';
+import { appDirectory, spaceActivity, spaceChannels, spaceChats, spaceMembers } from './spacesApi';
 
 /**
  * What a company space's screens already saw, painted at once and refreshed
@@ -38,7 +38,9 @@ export const memberListsCache = cacheOf<MemberLists>();
 export const activityCache = cacheOf<ActivityPage>();
 export const channelsCache = cacheOf<ClientChannel[]>();
 export const spaceChatsCache = cacheOf<SpaceChatsPage>();
-const ALL: SessionCache<unknown>[] = [membersCache, memberListsCache, activityCache, channelsCache, spaceChatsCache] as SessionCache<unknown>[];
+/** The space's apps (R158, design e-24): the list's «Apps», the directory and the head of a 1:1 with an app read the same copy. */
+export const appDirectoryCache = cacheOf<SpaceAppDirectory>();
+const ALL: SessionCache<unknown>[] = [membersCache, memberListsCache, activityCache, channelsCache, spaceChatsCache, appDirectoryCache] as SessionCache<unknown>[];
 
 /**
  * The chats of my spaces this phone has seen: an event of one of them is not a
@@ -67,6 +69,8 @@ export const fetchSpaceChats = (jwt: string, spaceId: string) => async (): Promi
   const activity = page.activity ?? dataOf(await spaceActivity(jwt, spaceId, { countsOnly: true }), 'No se pudo cargar la actividad.').unread;
   return rememberSpaceChats({ chats: page.chats, activity });
 };
+export const appDirectoryKey = (spaceId: string) => `${spaceId}:apps`;
+export const fetchAppDirectory = (jwt: string, spaceId: string) => async () => dataOf(await appDirectory(jwt, spaceId), 'No se pudieron cargar las apps.');
 /** Someone joined, left or changed in the space: its directories refresh where they are open (`workspace.members.changed`). */
 export function membersChanged(spaceId: string): void {
   membersCache.expire(`${spaceId}:members`);

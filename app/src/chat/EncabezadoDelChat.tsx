@@ -7,6 +7,7 @@ import type { ChatHeaderMenu } from './useChatHeaderMenu';
 import { useMargenes } from '../ui/useMargenes';
 import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
+import { AppChatHeader, useAppOfChat } from '../spaces/apps/AppChatHeader';
 
 /** El avatar de la cabecera (dp): 40, como WhatsApp (antes 36). */
 const AVATAR_DE_CABECERA = 40;
@@ -40,11 +41,15 @@ export function EncabezadoDelChat(props: {
   onEnlaceDeLlamada?: () => void;
   /** The ⋮'s options (José, 21/10: it opened the same as the avatar). */
   menu: ChatHeaderMenu;
+  /** A 1:1 with an app: its own head (design e-26) once the space's directory knows it. */
+  app?: { appId: string; spaceId?: string; jwt: string };
 }) {
   const colores = useColores();
   const margenes = useMargenes();
   const [openMenu, setOpenMenu] = useState<'calls' | 'chat' | null>(null);
+  const directoryApp = useAppOfChat(props.app ?? { jwt: '' });
   const { nombre: nombreVisible, foto: fotoVisible } = props;
+  if (directoryApp) return <AppChatHeader app={directoryApp} spaceId={props.app?.spaceId} connected={props.conectado} menu={props.menu} onBack={props.onVolver} />;
   // Como el diseño: FLECHA (no la palabra «Atrás»), avatar del chat junto al
   // nombre, y el menú al final.
   return (

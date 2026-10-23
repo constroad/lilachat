@@ -197,6 +197,8 @@ export type ChatSummary = {
   name?: string;
   /** A chat of a company space, and a channel there (E1/E2): it opens in the Slack format. */
   workspaceId?: string;
+  /** A 1:1 with an app's bot (design e-23): it goes to «Apps», not to the direct messages. */
+  appId?: string;
   channel?: { visibility: 'public' | 'private' };
   /** El chat contigo («Tú · Envíate un mensaje», 20/10). */
   propio?: boolean;

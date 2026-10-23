@@ -32,5 +32,7 @@ export type PropsDelChat = {
   esBorrador?: boolean;
   /** A chat of a company space (E1): its groups and channels always read in the Slack format. */
   workspaceId?: string;
+  /** A 1:1 with an app (design e-26): the head is the app's. */
+  appId?: string;
   onBack: () => void;
 };

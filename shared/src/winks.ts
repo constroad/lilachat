@@ -13,7 +13,7 @@ import type { ScreenEffect } from './winkTimeline.js';
  * so the app and the web, sender and receiver, see the same. PURE: the app,
  * the web and the server use it.
  */
-export type CharacterWinkId = 'piggy' | 'balloon' | 'worker' | 'cuppa' | 'sweetheart' | 'bear' | 'kitty' | 'puppy' | 'panda' | 'brick' | 'rainy' | HalloweenWinkId | ChristmasWinkId | LaterSeasonsWinkId;
+export type CharacterWinkId = 'piggy' | 'balloon' | 'worker' | 'cuppa' | 'sweetheart' | 'bear' | 'kitty' | 'puppy' | 'panda' | 'brick' | 'rainy' | 'rocker' | HalloweenWinkId | ChristmasWinkId | LaterSeasonsWinkId;
 /** Pending 73: the Halloween ones (sheet `r151-halloween`). */
 export type HalloweenWinkId = 'pumpkin' | 'vampire' | 'mummy' | 'witch' | 'ghost';
 /** Pending 73: the Christmas ones (sheet `r152-navidad`). */
@@ -66,6 +66,8 @@ export const WINKS: readonly Wink[] = [
   character('brick', 'Ladrillo fisicoculturista', 'characters', ['✨', '💪', '⭐'], 'burst'),
   // Pending 60 (José, 22/10): a sad dog the rain picks on, drawn in Stitch (`r149-perrito-lluvia`).
   character('rainy', 'Perrito bajo la lluvia', 'characters', ['💧', '💦'], 'rain', 'dog-sad'),
+  // Pending 77 (José, 23/10): the angry rocker from Messenger, always offered.
+  character('rocker', 'Rockero furioso', 'characters', [], 'burst', 'angry-rocker'),
   // Halloween (pending 73): offered from October 1 to November 2.
   { ...character('pumpkin', 'Calabaza obrera', 'season', ['🍬', '🍭'], 'burst', 'pumpkin-guy'), season: 'halloween' },
   { ...character('vampire', 'Jefe vampiro', 'season', ['🦇'], 'burst', 'vampire-boss'), season: 'halloween' },

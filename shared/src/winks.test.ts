@@ -3,7 +3,7 @@ import { NUDGE_SHAKE, funArrivedInRow, funMessageToPlay, FUN_LIVE_MS, funNoticeT
 
 describe('the wink catalog', () => {
   it('characters, construction ones and the first emoji ones, each with a name and its length', () => {
-    expect(WINKS.filter((wink) => wink.group === 'characters')).toHaveLength(11);
+    expect(WINKS.filter((wink) => wink.group === 'characters')).toHaveLength(12);
     expect(WINKS.filter((wink) => wink.group === 'site')).toHaveLength(6);
     expect(WINKS.filter((wink) => wink.group === 'emoji')).toHaveLength(8);
     for (const wink of WINKS) {

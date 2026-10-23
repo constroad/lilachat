@@ -653,6 +653,20 @@ export const WINK_IMAGES: Record<string, WinkImages> = {
       'arm-right': require('../../assets/guinos/pisco-toast-arm-right.webp'),
     },
   },
+  'angry-rocker': {
+    tile: require('../../assets/guinos/angry-rocker-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/angry-rocker-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/angry-rocker-leg-right.webp'),
+      'body': require('../../assets/guinos/angry-rocker-body.webp'),
+      'head': require('../../assets/guinos/angry-rocker-head.webp'),
+      'eye-left': require('../../assets/guinos/angry-rocker-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/angry-rocker-eye-right.webp'),
+      'mouth': require('../../assets/guinos/angry-rocker-mouth.webp'),
+      'arm-left': require('../../assets/guinos/angry-rocker-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/angry-rocker-arm-right.webp'),
+    },
+  },
   'balloon': {
     tile: require('../../assets/guinos/balloon-tile.webp'),
     parts: {
@@ -999,6 +1013,24 @@ export const WINK_IMAGES: Record<string, WinkImages> = {
     tile: require('../../assets/guinos/rosette-tile.webp'),
     parts: {
       'body': require('../../assets/guinos/rosette-body.webp'),
+    },
+  },
+  'amplifier': {
+    tile: require('../../assets/guinos/amplifier-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/amplifier-body.webp'),
+    },
+  },
+  'guitar-strings': {
+    tile: require('../../assets/guinos/guitar-strings-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/guitar-strings-body.webp'),
+    },
+  },
+  'anger-cloud': {
+    tile: require('../../assets/guinos/anger-cloud-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/anger-cloud-body.webp'),
     },
   },
 };

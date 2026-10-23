@@ -41,9 +41,9 @@ export type MapTile = { url: string; left: number; top: number };
 /** The OpenStreetMap tiles that cover a box with the point in its middle, where the pin goes and how big the accuracy circle is (px). */
 export function mapTilesFor(location: SharedLocation, box: { width: number; height: number }, zoom = 16): { tiles: MapTile[]; pin: { left: number; top: number }; accuracyRadius: number } {
   const world = TILE * 2 ** zoom;
-  const sin = Math.sin((location.lat * Math.PI) / 180);
+  const sine = Math.sin((location.lat * Math.PI) / 180);
   const pointX = ((location.lng + 180) / 360) * world;
-  const pointY = (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * world;
+  const pointY = (0.5 - Math.log((1 + sine) / (1 - sine)) / (4 * Math.PI)) * world;
   const left = Math.round(pointX - box.width / 2);
   const top = Math.round(pointY - box.height / 2);
   const tiles: MapTile[] = [];

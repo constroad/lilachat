@@ -8,7 +8,8 @@ import { isOnline } from './presence.js';
 import { buildPushSender, buildPushText, type PushSender } from './pushSender.js';
 import { splitPushTargets } from './pushTargets.js';
 import { sendWebPush } from './webPushSender.js';
-import { CALL_TIMEOUT_MS, CAPACIDAD_LLAMADA_NATIVA, CAPACIDAD_MENSAJE_NATIVO, mentionedUserIds, notificationLevel, ringsFor, textoDelAvisoDeReaccion, type NotificationLevel } from '@lilachat/shared';
+import { CALL_TIMEOUT_MS, CAPACIDAD_LLAMADA_NATIVA, CAPACIDAD_MENSAJE_NATIVO, listThumbPath, mentionedUserIds, notificationLevel, ringsFor, textoDelAvisoDeReaccion, winkTileUrl, type NotificationLevel } from '@lilachat/shared';
+import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { firmarEntrega } from './entregaPorAviso.js';
 import { firmarRechazo } from './llamadas.js';
 
@@ -111,6 +112,13 @@ type DispositivoDePush = { pushToken?: string; platform?: string; userId: unknow
 const dibujaElMensaje = (dispositivo: DispositivoDePush) =>
   dispositivo.platform !== 'web' && Boolean(dispositivo.capacidades?.includes(CAPACIDAD_MENSAJE_NATIVO));
 
+/** The notice's thumbnail (pending 57): a sticker, photo or GIF's small image, or a wink's tile; never in a secret chat. */
+export function pushImageOf(message: Pick<Message, 'kind' | 'deletedAt' | 'media' | 'wink'>, secret: boolean): string {
+  if (secret) return '';
+  const thumb = listThumbPath(message);
+  return thumb ? toAbsoluteMediaUrl(thumb) : (winkTileUrl(message.wink) ?? '');
+}
+
 /** Lo que vive un push de mensaje en cola: lo mismo que su token de entrega. */
 const VIDA_DEL_MENSAJE_S = 7 * 24 * 3600;
 
@@ -156,6 +164,7 @@ function mensajeSoloDatos(params: {
         entrega: firmarEntrega({ chatId, userId, seq: params.message.seq }),
         // «Responder» y «Marcar como leído» desde el aviso (FL11).
         respuesta: params.secreto ? '' : firmarRespuesta({ chatId, userId }),
+        imagen: pushImageOf(params.message, params.secreto),
       },
     })
   );

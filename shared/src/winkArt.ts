@@ -9,8 +9,8 @@ import type { RigPart } from './winkTimeline.js';
 /** `box`: the part's own [x, y, width, height] in viewBox units, stroke included (the app draws each part as an image of it). */
 export type WinkArtPart = { part: RigPart; pivot: readonly [number, number]; box: readonly [number, number, number, number]; markup: string; parent?: RigPart };
 export type WinkArt = { viewBox: string; defs: string; parts: readonly WinkArtPart[] };
-export type WinkArtId = 'piggy' | 'worker' | 'cuppa' | 'sweetheart' | 'bear' | 'kitty' | 'puppy' | 'panda' | 'brick' | 'cone' | 'roller' | 'dumptruck' | 'excavator' | 'paver' | 'flagger' | 'piggy-back';
-export type WinkPropId = 'balloon' | 'splash' | 'drip' | 'cracks' | 'fist' | 'rose' | 'heart' | 'zzz' | 'guitar' | 'guitar-piece' | 'sand' | 'stop' | 'asphalt' | 'goal' | 'alarm' | 'sweat';
+export type WinkArtId = 'piggy' | 'worker' | 'cuppa' | 'sweetheart' | 'bear' | 'kitty' | 'puppy' | 'panda' | 'brick' | 'cone' | 'roller' | 'dumptruck' | 'excavator' | 'paver' | 'flagger' | 'piggy-back' | 'dog-sad' | 'dog-sad-back';
+export type WinkPropId = 'balloon' | 'splash' | 'drip' | 'cracks' | 'fist' | 'rose' | 'heart' | 'zzz' | 'guitar' | 'guitar-piece' | 'sand' | 'stop' | 'asphalt' | 'goal' | 'alarm' | 'sweat' | 'rain-cloud' | 'rain-drops' | 'tear-stream' | 'puddle' | 'umbrella-broken' | 'sun-peek';
 
 export const WINK_ART: Record<WinkArtId, WinkArt> = {
   "piggy": {
@@ -1731,6 +1731,244 @@ export const WINK_ART: Record<WinkArtId, WinkArt> = {
         "markup": "<circle cx=\"120\" cy=\"222\" r=\"5\" fill=\"#db2777\"></circle> <path d=\"M120 220 C110 215 106 200 118 194 C132 188 140 206 128 214 C120 218 116 210 122 206 C126 203 130 207 127 210\" fill=\"none\" stroke=\"#db2777\" stroke-width=\"5\" stroke-linecap=\"round\"></path> <path d=\"M120 220 C110 215 106 200 118 194 C132 188 140 206 128 214 C120 218 116 210 122 206 C126 203 130 207 127 210\" fill=\"none\" stroke=\"#1e1b4b\" stroke-width=\"2\" stroke-linecap=\"round\"></path>"
       }
     ]
+  },
+  "dog-sad": {
+    "viewBox": "0 0 240 320",
+    "defs": "",
+    "parts": [
+      {
+        "part": "leg-left",
+        "pivot": [
+          81.1,
+          243.4
+        ],
+        "box": [
+          59.4,
+          234,
+          43.4,
+          76
+        ],
+        "markup": "<path d=\"M 88 238 L 82 284 L 66 288 C 62 288 62 296 70 296 L 94 296 C 98 296 100 290 98 284 L 98 240 Z\" fill=\"#8c5828\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 85 245 L 82 284 L 72 288\" stroke=\"#683d16\" stroke-width=\"2\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 72 298 Q 70 304 72 306 Q 74 304 72 298 Z\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>"
+      },
+      {
+        "part": "leg-right",
+        "pivot": [
+          154.9,
+          243.4
+        ],
+        "box": [
+          133.2,
+          234,
+          43.4,
+          76
+        ],
+        "markup": "<path d=\"M 148 238 L 154 284 L 170 288 C 174 288 174 296 166 296 L 142 296 C 138 296 136 290 138 284 L 138 240 Z\" fill=\"#a46932\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 144 278 L 164 278 L 162 288 L 142 288 Z\" fill=\"#d49b60\"></path> <path d=\"M 164 298 Q 166 304 164 306 Q 162 304 164 298 Z\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>"
+      },
+      {
+        "part": "tail",
+        "pivot": [
+          124,
+          263
+        ],
+        "box": [
+          91.4,
+          228,
+          36.6,
+          70
+        ],
+        "markup": "<path d=\"M 112 232 C 108 260 92 276 96 284 C 98 288 104 286 104 280 C 104 266 122 248 124 232 Z\" fill=\"#683d16\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 96 286 Q 96 292 98 294 Q 100 292 98 286 Z\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>"
+      },
+      {
+        "part": "body",
+        "pivot": [
+          118,
+          244.5
+        ],
+        "box": [
+          74,
+          137,
+          88,
+          111.5
+        ],
+        "markup": "<path d=\"M 92 144 C 82 170 80 205 84 240 C 98 246 138 246 152 240 C 156 205 154 170 144 144 C 134 140 102 140 92 144 Z\" fill=\"#a46932\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 102 166 C 96 186 98 220 102 236 C 114 240 126 240 134 236 C 138 220 140 186 134 166 C 124 162 112 162 102 166 Z\" fill=\"#d49b60\" stroke=\"#8c5828\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <path d=\"M 90 188 Q 98 194 92 200\" stroke=\"#18181b\" stroke-width=\"2.5\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 88 206 Q 96 212 90 218\" stroke=\"#18181b\" stroke-width=\"2.5\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 146 188 Q 138 194 144 200\" stroke=\"#18181b\" stroke-width=\"2.5\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 148 206 Q 140 212 146 218\" stroke=\"#18181b\" stroke-width=\"2.5\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 82 220 L 78 226 L 84 226\" stroke=\"#18181b\" stroke-width=\"2.5\" fill=\"none\" stroke-linejoin=\"round\"></path> <path d=\"M 154 220 L 158 226 L 152 226\" stroke=\"#18181b\" stroke-width=\"2.5\" fill=\"none\" stroke-linejoin=\"round\"></path>"
+      },
+      {
+        "part": "head",
+        "pivot": [
+          118,
+          194.3
+        ],
+        "box": [
+          27.6,
+          70,
+          180.8,
+          138.7
+        ],
+        "markup": "<path d=\"M 78 86 C 68 110 74 138 88 152 C 102 160 134 160 148 152 C 162 138 168 110 158 86 C 146 72 90 72 78 86 Z\" fill=\"#a46932\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 78 88 C 72 104 74 126 84 134 C 98 136 106 124 104 102 C 102 84 90 80 78 88 Z\" fill=\"#e5c398\" stroke=\"#8c5828\" stroke-width=\"2\"></path> <path d=\"M 112 74 L 110 88 L 118 78 L 122 90 L 128 76\" fill=\"#8c5828\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <g data-ear=\"left\"> <path d=\"M 76 86 C 52 92 42 124 46 154 C 48 164 58 166 64 156 C 72 142 76 114 80 102 Z\" fill=\"#683d16\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 50 162 Q 48 170 52 172 Q 54 170 52 162 Z\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> </g> <g data-ear=\"right\"> <path d=\"M 160 86 C 184 92 194 124 190 154 C 188 164 178 166 172 156 C 164 142 160 114 156 102 Z\" fill=\"#8c5828\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 186 162 Q 188 170 184 172 Q 182 170 184 162 Z\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> </g> <path d=\"M 108 116 C 112 112 124 112 128 116 C 132 122 126 128 118 128 C 110 128 104 122 108 116 Z\" fill=\"#18181b\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 112 116 Q 118 118 124 116\" stroke=\"#ffffff\" stroke-width=\"1.5\" stroke-linecap=\"round\" fill=\"none\"></path> <path d=\"M 106 90 Q 118 96 130 90\" stroke=\"#18181b\" stroke-width=\"2.5\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 110 96 Q 118 100 126 96\" stroke=\"#18181b\" stroke-width=\"2\" fill=\"none\" stroke-linecap=\"round\"></path>"
+      },
+      {
+        "part": "eye-left",
+        "pivot": [
+          118,
+          149.4
+        ],
+        "box": [
+          27.6,
+          90,
+          180.8,
+          118.7
+        ],
+        "markup": "<path d=\"M 84 104 L 98 112 L 86 118\" stroke=\"#18181b\" stroke-width=\"3.5\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 80 110 L 98 112\" stroke=\"#18181b\" stroke-width=\"3\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 152 104 L 138 112 L 150 118\" stroke=\"#18181b\" stroke-width=\"3.5\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 156 110 L 138 112\" stroke=\"#18181b\" stroke-width=\"3\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 86 94 L 102 102\" stroke=\"#18181b\" stroke-width=\"3.5\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 150 94 L 134 102\" stroke=\"#18181b\" stroke-width=\"3.5\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 94 112 C 70 112 40 144 32 192 C 30 206 36 210 40 196 C 48 164 74 130 96 120 Z\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 142 112 C 166 112 196 144 204 192 C 206 206 200 210 196 196 C 188 164 162 130 140 120 Z\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 80 122 C 60 136 44 166 40 186\" stroke=\"#ffffff\" stroke-width=\"2\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 156 122 C 176 136 192 166 196 186\" stroke=\"#ffffff\" stroke-width=\"2\" fill=\"none\" stroke-linecap=\"round\"></path>",
+        "parent": "head"
+      },
+      {
+        "part": "mouth",
+        "pivot": [
+          118,
+          150.8
+        ],
+        "box": [
+          91.7,
+          121.5,
+          52.6,
+          58.5
+        ],
+        "markup": "<path d=\"M 96 130 C 96 124 140 124 140 130 C 142 152 134 162 118 162 C 102 162 94 152 96 130 Z\" fill=\"#450a0a\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 106 148 C 110 138 126 138 130 148 C 132 158 104 158 106 148 Z\" fill=\"#f43f5e\" stroke=\"#18181b\" stroke-width=\"2\"></path> <polygon points=\"102,130 106,136 110,130\" fill=\"#ffffff\" stroke=\"#18181b\" stroke-width=\"1.5\"></polygon> <path d=\"M 118 160 L 118 174 Q 120 178 122 174 L 122 160\" fill=\"#bae6fd\" stroke=\"#0284c7\"></path>",
+        "parent": "head"
+      },
+      {
+        "part": "arm-left",
+        "pivot": [
+          79,
+          160.4
+        ],
+        "box": [
+          23.7,
+          148,
+          68.3,
+          78
+        ],
+        "markup": "<path d=\"M 88 152 C 66 160 44 176 34 200 C 30 208 38 214 44 208 C 54 190 70 178 86 170 Z\" fill=\"#a46932\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 34 200 C 26 202 26 210 32 212 C 36 214 40 210 44 208\" fill=\"#d49b60\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 48 214 Q 48 220 50 222 Q 52 220 50 214 Z\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>"
+      },
+      {
+        "part": "arm-right",
+        "pivot": [
+          157,
+          160.4
+        ],
+        "box": [
+          144,
+          148,
+          68.3,
+          78
+        ],
+        "markup": "<path d=\"M 148 152 C 170 160 192 176 202 200 C 206 208 198 214 192 208 C 182 190 166 178 150 170 Z\" fill=\"#a46932\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 202 200 C 210 202 210 210 204 212 C 200 214 196 210 192 208\" fill=\"#d49b60\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 188 214 Q 188 220 186 222 Q 184 220 186 214 Z\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>"
+      }
+    ]
+  },
+  "dog-sad-back": {
+    "viewBox": "0 0 240 320",
+    "defs": "",
+    "parts": [
+      {
+        "part": "leg-right",
+        "pivot": [
+          154.9,
+          243.4
+        ],
+        "box": [
+          133.2,
+          234,
+          43.4,
+          76
+        ],
+        "markup": "<path d=\"M 148 238 L 154 284 L 170 288 C 174 288 174 296 166 296 L 142 296 C 138 296 136 290 138 284 L 138 240 Z\" fill=\"#8c5828\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <ellipse cx=\"152\" cy=\"286\" rx=\"6\" ry=\"4\" fill=\"#683d16\"></ellipse> <path d=\"M 166 298 Q 168 304 166 306 Q 164 304 166 298 Z\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>"
+      },
+      {
+        "part": "leg-left",
+        "pivot": [
+          81.1,
+          243.4
+        ],
+        "box": [
+          59.4,
+          234,
+          43.4,
+          76
+        ],
+        "markup": "<path d=\"M 88 238 L 82 284 L 66 288 C 62 288 62 296 70 296 L 94 296 C 98 296 100 290 98 284 L 98 240 Z\" fill=\"#a46932\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <ellipse cx=\"84\" cy=\"286\" rx=\"6\" ry=\"4\" fill=\"#8c5828\"></ellipse> <path d=\"M 70 298 Q 68 304 70 306 Q 72 304 70 298 Z\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>"
+      },
+      {
+        "part": "body",
+        "pivot": [
+          118,
+          246.5
+        ],
+        "box": [
+          75.5,
+          135,
+          85,
+          115.5
+        ],
+        "markup": "<path d=\"M 88 142 C 78 170 78 206 82 242 C 96 248 140 248 154 242 C 158 206 158 170 148 142 C 136 138 100 138 88 142 Z\" fill=\"#a46932\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 98 152 C 102 162 104 174 100 184\" stroke=\"#683d16\" stroke-width=\"2.5\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 138 152 C 134 162 132 174 136 184\" stroke=\"#683d16\" stroke-width=\"2.5\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 118 154 L 118 226\" stroke=\"#8c5828\" stroke-width=\"2\" stroke-dasharray=\"3 4\" stroke-linecap=\"round\"></path> <path d=\"M 86 160 C 94 168 96 186 90 196 C 82 192 80 174 86 160 Z\" fill=\"#683d16\"></path> <path d=\"M 114 180 L 118 190 L 122 180\" stroke=\"#18181b\" stroke-width=\"2\" fill=\"none\" stroke-linejoin=\"round\"></path> <path d=\"M 108 210 L 112 220 L 116 210\" stroke=\"#18181b\" stroke-width=\"2\" fill=\"none\" stroke-linejoin=\"round\"></path>"
+      },
+      {
+        "part": "head",
+        "pivot": [
+          118,
+          164.1
+        ],
+        "box": [
+          43.1,
+          69.5,
+          149.7,
+          106.5
+        ],
+        "markup": "<path d=\"M 80 84 C 70 108 76 134 90 146 C 104 154 132 154 146 146 C 160 134 166 108 156 84 C 144 70 92 70 80 84 Z\" fill=\"#a46932\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 110 74 L 114 88 L 118 78 L 122 90 L 126 76\" fill=\"#683d16\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <g data-ear=\"left\"> <path d=\"M 78 86 C 54 94 44 126 48 154 C 50 164 60 166 66 156 C 74 142 78 114 82 102 Z\" fill=\"#683d16\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 52 162 Q 50 170 54 172 Q 56 170 54 162 Z\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> </g> <g data-ear=\"right\"> <path d=\"M 158 86 C 182 94 192 126 188 154 C 186 164 176 166 170 156 C 162 142 158 114 154 102 Z\" fill=\"#8c5828\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 166 108 C 172 122 176 138 174 150\" stroke=\"#d49b60\" stroke-width=\"3\" stroke-linecap=\"round\" fill=\"none\"></path> <path d=\"M 184 162 Q 186 170 182 172 Q 180 170 182 162 Z\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> </g> <path d=\"M 96 138 Q 118 144 140 138\" stroke=\"#18181b\" stroke-width=\"2.5\" fill=\"none\" stroke-linecap=\"round\"></path>"
+      },
+      {
+        "part": "arm-left",
+        "pivot": [
+          86.9,
+          161.1
+        ],
+        "box": [
+          42.9,
+          148,
+          55.1,
+          84
+        ],
+        "markup": "<path d=\"M 88 152 C 72 162 56 180 48 206 C 44 214 52 220 58 214 C 68 196 82 180 94 170 Z\" fill=\"#a46932\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <circle cx=\"52\" cy=\"212\" r=\"4\" fill=\"#d49b60\"></circle> <path d=\"M 48 220 Q 48 226 50 228 Q 52 226 50 220 Z\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>"
+      },
+      {
+        "part": "arm-right",
+        "pivot": [
+          149.1,
+          161.1
+        ],
+        "box": [
+          138,
+          148,
+          55.1,
+          84
+        ],
+        "markup": "<path d=\"M 148 152 C 164 162 180 180 188 206 C 192 214 184 220 178 214 C 168 196 154 180 142 170 Z\" fill=\"#8c5828\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <circle cx=\"184\" cy=\"212\" r=\"4\" fill=\"#d49b60\"></circle> <path d=\"M 188 220 Q 188 226 186 228 Q 184 226 186 220 Z\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>"
+      },
+      {
+        "part": "tail",
+        "pivot": [
+          116,
+          300
+        ],
+        "box": [
+          104,
+          224,
+          24,
+          80
+        ],
+        "markup": "<path d=\"M 124 228 C 122 254 116 278 114 290 C 112 294 108 292 108 286 C 110 270 114 246 116 228 Z\" fill=\"#683d16\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 112 292 Q 112 298 114 300 Q 116 298 114 292 Z\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>"
+      }
+    ]
   }
 };
 
@@ -2052,6 +2290,126 @@ export const WINK_PROPS: Record<WinkPropId, WinkArt> = {
           177
         ],
         "markup": "<ellipse cx=\"106\" cy=\"180\" rx=\"34\" ry=\"7\" fill=\"#cbd5e1\" opacity=\"0.6\"></ellipse> <path d=\"M 104 22 C 104 22 168 106 168 144 C 168 174 138 184 106 184 C 74 184 44 174 44 144 C 44 106 104 22 104 22 Z\" fill=\"#0284c7\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M 100 18 C 100 18 160 102 160 140 C 160 168 132 178 100 178 C 68 178 40 168 40 140 C 40 102 100 18 100 18 Z\" fill=\"#38bdf8\" stroke=\"#1e1b4b\" stroke-width=\"3\" stroke-linejoin=\"round\"></path> <path d=\"M 80 50 C 66 84 56 112 56 138 C 56 156 68 166 76 168 C 68 162 64 150 64 136 C 64 114 74 86 86 54 Z\" fill=\"#f0f9ff\"></path> <ellipse cx=\"128\" cy=\"148\" rx=\"7\" ry=\"12\" transform=\"rotate(25 128 148)\" fill=\"#f0f9ff\"></ellipse> <ellipse cx=\"172\" cy=\"94\" rx=\"5\" ry=\"9\" transform=\"rotate(35 172 94)\" fill=\"#38bdf8\" stroke=\"#1e1b4b\" stroke-width=\"2\"></ellipse> <ellipse cx=\"32\" cy=\"116\" rx=\"4\" ry=\"7\" transform=\"rotate(-30 32 116)\" fill=\"#38bdf8\" stroke=\"#1e1b4b\" stroke-width=\"2\"></ellipse>"
+      }
+    ]
+  },
+  "rain-cloud": {
+    "viewBox": "0 0 120 70",
+    "defs": "",
+    "parts": [
+      {
+        "part": "body",
+        "pivot": [
+          61.7,
+          28
+        ],
+        "box": [
+          6.7,
+          0.9,
+          109.8,
+          54.1
+        ],
+        "markup": "<path d=\"M 24 50 C 14 50 8 42 12 32 C 10 20 22 10 36 12 C 44 4 60 2 72 10 C 84 4 100 8 104 22 C 114 26 116 42 106 50 Z\" fill=\"#475569\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 18 48 C 30 52 90 52 102 48 C 96 42 90 44 76 42 C 60 40 48 44 32 42 Z\" fill=\"#334155\"></path> <path d=\"M 44 26 L 52 30\" stroke=\"#0f172a\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M 68 26 L 60 30\" stroke=\"#0f172a\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M 42 22 L 52 26\" stroke=\"#0f172a\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M 70 22 L 60 26\" stroke=\"#0f172a\" stroke-width=\"2.5\" stroke-linecap=\"round\"></path> <path d=\"M 48 38 Q 56 46 64 36\" stroke=\"#0f172a\" stroke-width=\"2.5\" fill=\"none\" stroke-linecap=\"round\"></path> <polygon points=\"58,38 61,43 64,37\" fill=\"#ffffff\" stroke=\"#0f172a\" stroke-width=\"1.5\"></polygon>"
+      }
+    ]
+  },
+  "rain-drops": {
+    "viewBox": "0 0 100 70",
+    "defs": "",
+    "parts": [
+      {
+        "part": "body",
+        "pivot": [
+          50,
+          35
+        ],
+        "box": [
+          12,
+          4,
+          76,
+          62
+        ],
+        "markup": "<g fill=\"#0284c7\" class=\"ink-stroke-sm\"> <path d=\"M 22 8 Q 18 20 22 22 Q 26 20 22 8 Z\" fill=\"#0284c7\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 18 40 Q 14 52 18 54 Q 22 52 18 40 Z\" fill=\"#0284c7\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 50 20 Q 46 32 50 34 Q 54 32 50 20 Z\" fill=\"#0284c7\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 46 48 Q 42 60 46 62 Q 50 60 46 48 Z\" fill=\"#0284c7\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 78 12 Q 74 24 78 26 Q 82 24 78 12 Z\" fill=\"#0284c7\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 82 42 Q 78 54 82 56 Q 86 54 82 42 Z\" fill=\"#0284c7\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> </g> <circle cx=\"21\" cy=\"19\" r=\"1.5\" fill=\"#bae6fd\"></circle> <circle cx=\"49\" cy=\"31\" r=\"1.5\" fill=\"#bae6fd\"></circle> <circle cx=\"77\" cy=\"23\" r=\"1.5\" fill=\"#bae6fd\"></circle>"
+      }
+    ]
+  },
+  "tear-stream": {
+    "viewBox": "0 0 110 70",
+    "defs": "",
+    "parts": [
+      {
+        "part": "body",
+        "pivot": [
+          59.5,
+          33.3
+        ],
+        "box": [
+          8,
+          5.5,
+          102,
+          55.5
+        ],
+        "markup": "<path d=\"M 12 18 C 30 6 70 8 96 46 C 98 52 94 56 88 52 C 68 28 36 24 16 32 Z\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 28 20 C 46 14 70 18 84 38\" stroke=\"#ffffff\" stroke-width=\"2.5\" fill=\"none\" stroke-linecap=\"round\"></path> <circle cx=\"98\" cy=\"32\" r=\"3.5\" fill=\"#0284c7\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></circle> <circle cx=\"78\" cy=\"12\" r=\"2.5\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></circle> <circle cx=\"104\" cy=\"54\" r=\"3\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></circle>"
+      }
+    ]
+  },
+  "puddle": {
+    "viewBox": "0 0 120 70",
+    "defs": "",
+    "parts": [
+      {
+        "part": "body",
+        "pivot": [
+          60,
+          42
+        ],
+        "box": [
+          4,
+          20,
+          112,
+          44
+        ],
+        "markup": "<ellipse cx=\"60\" cy=\"42\" rx=\"52\" ry=\"18\" fill=\"#38bdf8\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></ellipse> <ellipse cx=\"58\" cy=\"40\" rx=\"42\" ry=\"12\" fill=\"#0284c7\"></ellipse> <ellipse cx=\"56\" cy=\"38\" rx=\"28\" ry=\"7\" fill=\"#bae6fd\"></ellipse> <path d=\"M 38 42 Q 56 50 78 42\" stroke=\"#ffffff\" stroke-width=\"2\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 86 36 Q 96 42 102 38\" stroke=\"#ffffff\" stroke-width=\"1.5\" fill=\"none\" stroke-linecap=\"round\"></path>"
+      }
+    ]
+  },
+  "umbrella-broken": {
+    "viewBox": "0 0 110 70",
+    "defs": "",
+    "parts": [
+      {
+        "part": "body",
+        "pivot": [
+          56,
+          34.8
+        ],
+        "box": [
+          4,
+          2,
+          104,
+          65.6
+        ],
+        "markup": "<path d=\"M 55 12 L 55 58 C 55 64 47 66 45 60\" stroke=\"#18181b\" stroke-width=\"3\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 12 18 Q 32 32 55 38 Q 78 32 98 18 Q 80 12 55 10 Q 30 12 12 18 Z\" fill=\"#1e293b\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path> <path d=\"M 12 18 L 8 8\" stroke=\"#18181b\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <path d=\"M 34 22 L 30 6\" stroke=\"#18181b\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <path d=\"M 76 22 L 80 6\" stroke=\"#18181b\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <path d=\"M 98 18 L 104 8\" stroke=\"#18181b\" stroke-width=\"2\" stroke-linecap=\"round\"></path> <ellipse cx=\"55\" cy=\"24\" rx=\"20\" ry=\"6\" fill=\"#38bdf8\"></ellipse>"
+      }
+    ]
+  },
+  "sun-peek": {
+    "viewBox": "0 0 110 70",
+    "defs": "",
+    "parts": [
+      {
+        "part": "body",
+        "pivot": [
+          55,
+          38
+        ],
+        "box": [
+          12,
+          2,
+          86,
+          68
+        ],
+        "markup": "<path d=\"M 55 6 L 55 14 M 28 16 L 34 22 M 16 38 L 24 38 M 82 16 L 76 22 M 94 38 L 86 38\" stroke=\"#ea580c\" stroke-width=\"3\" stroke-linecap=\"round\"></path> <circle cx=\"55\" cy=\"44\" r=\"26\" fill=\"#facc15\" stroke=\"#18181b\" stroke-width=\"3.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></circle> <path d=\"M 36 50 C 44 62 66 62 74 50 Z\" fill=\"#eab308\"></path> <ellipse cx=\"46\" cy=\"38\" rx=\"4\" ry=\"5\" fill=\"#ffffff\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></ellipse> <circle cx=\"44\" cy=\"39\" r=\"2\" fill=\"#18181b\"></circle> <ellipse cx=\"64\" cy=\"38\" rx=\"4\" ry=\"5\" fill=\"#ffffff\" stroke=\"#18181b\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></ellipse> <circle cx=\"62\" cy=\"39\" r=\"2\" fill=\"#18181b\"></circle> <path d=\"M 42 30 Q 48 26 52 32\" stroke=\"#18181b\" stroke-width=\"2\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 60 32 Q 66 28 72 32\" stroke=\"#18181b\" stroke-width=\"2\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 48 50 Q 56 56 64 48\" stroke=\"#18181b\" stroke-width=\"2.5\" fill=\"none\" stroke-linecap=\"round\"></path> <path d=\"M 52 52 Q 54 58 58 58 Q 62 58 60 52 Z\" fill=\"#ef4444\" stroke=\"#18181b\" stroke-width=\"1.5\"></path>"
       }
     ]
   }

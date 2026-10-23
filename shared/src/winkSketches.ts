@@ -1,5 +1,6 @@
 import { DANCES } from './winkDances.js';
-import { danceTrack, mergeTracks, type ActorArt, type ActorKey, type PartKey, type RigPart, type Sketch, type SketchActor } from './winkTimeline.js';
+import { danceTrack, type ActorKey, type Sketch } from './winkTimeline.js';
+import { appearAt, beats, character, FLOOR_Y, OFF_LEFT, OFF_RIGHT, pump, popIn, prop, rig, SIZE, STANDARD_MS, sway, turn, walk, wiggle, wink } from './winkSketchKit.js';
 import type { CharacterWinkId, SiteWinkId } from './winks.js';
 
 /**
@@ -12,84 +13,6 @@ import type { CharacterWinkId, SiteWinkId } from './winks.js';
  * cute or childish (`stitch-design` §5-bis). PURE.
  */
 export type SketchWinkId = CharacterWinkId | SiteWinkId;
-
-type Rig = Partial<Record<RigPart, PartKey[]>>;
-
-const STANDARD_MS = 6500;
-/** Where a character stands and how big it is (stage units). */
-const FLOOR_Y = 0.6;
-const SIZE = 0.62;
-/** Off the screen to the left and to the right (the actor's center). */
-const OFF_LEFT = -0.45;
-const OFF_RIGHT = 1.45;
-/** The share of a wink an eye stays shut for a wink. */
-const WINK_HOLD = 0.03;
-
-/** Several moments of a rig, part by part, in time order. */
-function rig(...pieces: Rig[]): Rig {
-  const merged: Rig = {};
-  for (const piece of pieces) {
-    for (const [part, keys] of Object.entries(piece) as [RigPart, PartKey[]][]) merged[part] = mergeTracks(merged[part] ?? [], keys);
-  }
-  return merged;
-}
-
-const character = (id: SketchWinkId | 'piggy-back', keys: ActorKey[], parts: Rig = {}): SketchActor => ({ art: { character: id } as ActorArt, keys, parts });
-const prop = (id: Extract<ActorArt, { prop: unknown }>['prop'], keys: ActorKey[], extra: Partial<SketchActor> = {}): SketchActor => ({ art: { prop: id }, keys, ...extra });
-
-/** Moments every `stepMs` between two shares of the wink (the beats of a walk, a wiggle, a knock). */
-function beats(from: number, to: number, durationMs: number, stepMs: number): number[] {
-  const step = stepMs / durationMs;
-  const moments: number[] = [];
-  for (let at = from + step; at < to - step / 2; at += step) moments.push(at);
-  return moments;
-}
-
-/** A part swinging around 0 between two moments (a wiggle, a headbang, kicking legs); `phase` −1 starts the other way. */
-function wiggle(part: RigPart, from: number, to: number, durationMs: number, amplitude: number, stepMs: number, phase = 1): Rig {
-  const swings = beats(from, to, durationMs, stepMs).map((at, index) => ({ at, rotate: (index % 2 === 0 ? amplitude : -amplitude) * phase }));
-  return { [part]: [{ at: from, rotate: 0 }, ...swings, { at: to, rotate: 0 }] };
-}
-
-/** A part going to a value and back on every beat (clapping, pumping a fist, nodding). */
-function pump(part: RigPart, from: number, to: number, durationMs: number, value: number, stepMs: number): Rig {
-  const pulses = beats(from, to, durationMs, stepMs).map((at, index) => ({ at, rotate: index % 2 === 0 ? value : 0 }));
-  return { [part]: [{ at: from, rotate: 0 }, ...pulses, { at: to, rotate: 0 }] };
-}
-
-/** Walking: the legs swing in turns and the arms against them. */
-function walk(from: number, to: number, durationMs: number, stepMs = 280, swing = 16): Rig {
-  return rig(
-    wiggle('leg-left', from, to, durationMs, swing, stepMs),
-    wiggle('leg-right', from, to, durationMs, swing, stepMs, -1),
-    wiggle('arm-left', from, to, durationMs, swing * 0.5, stepMs, -1),
-    wiggle('arm-right', from, to, durationMs, swing * 0.5, stepMs)
-  );
-}
-
-/** One eye shuts and opens: a real wink. */
-function wink(eye: 'eye-left' | 'eye-right', at: number, hold = WINK_HOLD): Rig {
-  return { [eye]: [{ at: at - 0.02, scaleY: 1 }, { at, scaleY: 0.08 }, { at: at + hold, scaleY: 0.08 }, { at: at + hold + 0.02, scaleY: 1 }] };
-}
-
-/** A property of the actor going back and forth around `base` (a bob, a sway, a body that shakes laughing). */
-function sway(property: 'x' | 'y' | 'rotate' | 'sy' | 'sx', from: number, to: number, durationMs: number, amplitude: number, stepMs: number, base: number): ActorKey[] {
-  return [{ at: from, [property]: base }, ...beats(from, to, durationMs, stepMs).map((at, index) => ({ at, [property]: base + (index % 2 === 0 ? amplitude : -amplitude) })), { at: to, [property]: base }];
-}
-
-/** A turn on the spot: the one leaving squashes to nothing, the other opens up from it. */
-function turn(at: number, share: number): { leaving: ActorKey[]; arriving: ActorKey[] } {
-  const middle = at + share / 2;
-  return {
-    leaving: [{ at, sx: 1 }, { at: middle, sx: 0.02 }, { at: middle, opacity: 1 }, { at: middle, opacity: 0 }],
-    arriving: [{ at, sx: 0.02 }, { at: middle, sx: 0.02 }, { at: middle, opacity: 0 }, { at: middle, opacity: 1 }, { at: at + share, sx: 1 }],
-  };
-}
-
-/** Appears at a moment (instantly) and is hidden before it. */
-const appearAt = (at: number): ActorKey[] => [{ at: 0, opacity: 0 }, { at, opacity: 0 }, { at, opacity: 1 }];
-/** Pops in at the start and fades at the end. */
-const popIn = (scale = SIZE): ActorKey[] => [{ at: 0, scale: 0.15, opacity: 0, y: FLOOR_Y }, { at: 0.05, scale, opacity: 1, ease: 'out' }, { at: 0.92, opacity: 1 }, { at: 1, opacity: 0 }];
 
 /** The party pig: winks, turns around, wiggles its round butt and curly tail, turns back and blows a kiss. */
 function piggy(): Sketch {
@@ -552,7 +475,75 @@ function flagger(): Sketch {
   };
 }
 
+/**
+ * The dog under the rain (pending 60, José 22/10): a little cloud rains only on
+ * him; he sobs, runs and the cloud catches up; his umbrella flips in the wind;
+ * he cries a puddle and, as he walks away from behind, the sun peeks out to
+ * mock him. Telenovela drama, adult humor.
+ */
+function rainy(): Sketch {
+  const durationMs = 7000;
+  const dogX: ActorKey[] = [
+    { at: 0, x: OFF_LEFT, y: FLOOR_Y, scale: SIZE, rotate: 4 },
+    { at: 0.2, x: 0.42, ease: 'out' },
+    { at: 0.4, x: 0.42 },
+    { at: 0.47, x: 0.7, ease: 'out' },
+    { at: 0.82, x: 0.7 },
+  ];
+  const sob = sway('y', 0.22, 0.4, durationMs, -0.012, 160, FLOOR_Y);
+  const front = character('dog-sad', [...dogX, ...sob, { at: 0.82, opacity: 1 }, { at: 0.84, opacity: 0 }], rig(
+    walk(0, 0.2, durationMs, 260, 14),
+    walk(0.4, 0.47, durationMs, 90, 30),
+    { head: [{ at: 0.2, rotate: 0 }, ...beats(0.22, 0.4, durationMs, 160).map((at, index) => ({ at, rotate: index % 2 === 0 ? -6 : 3 })), { at: 0.4, rotate: 0 }, { at: 0.62, rotate: 0 }, { at: 0.66, rotate: -10 }, { at: 0.8, rotate: -10 }] },
+    { mouth: [{ at: 0.22, scaleY: 1 }, ...beats(0.22, 0.4, durationMs, 160).map((at, index) => ({ at, scaleY: index % 2 === 0 ? 1.5 : 0.9 })), { at: 0.66, scaleY: 1.7, scale: 1.2 }, { at: 0.8, scaleY: 1.7 }] },
+    { 'arm-right': [{ at: 0.5, rotate: 0 }, { at: 0.54, rotate: -120 }, { at: 0.64, rotate: -120 }, { at: 0.68, rotate: 0 }] },
+    { 'arm-left': [{ at: 0.64, rotate: 0 }, { at: 0.68, rotate: 60 }, { at: 0.8, rotate: 60 }] }
+  ));
+  const flip = turn(0.82, 0.04);
+  const back = character('dog-sad-back', [{ at: 0, x: 0.7, y: FLOOR_Y, scale: SIZE, opacity: 0 }, ...flip.arriving, { at: 0.86, x: 0.7 }, { at: 0.98, x: OFF_RIGHT, ease: 'in' }], walk(0.86, 0.98, durationMs, 130, 24));
+  // The cloud follows him a beat late, and it rains only under it.
+  const cloudKeys: ActorKey[] = [
+    { at: 0, x: OFF_LEFT, y: 0.22, scale: 0.42, opacity: 1 },
+    { at: 0.24, x: 0.44, ease: 'out' },
+    ...sway('y', 0.24, 0.42, durationMs, 0.01, 300, 0.22),
+    { at: 0.44, x: 0.44 },
+    { at: 0.52, x: 0.7, ease: 'smooth' },
+    { at: 0.84, x: 0.7, scale: 0.42, opacity: 1 },
+    { at: 0.9, scale: 0.7, opacity: 0, ease: 'out' },
+  ];
+  const cloud = prop('rain-cloud', cloudKeys);
+  const rain = prop('rain-drops', [
+    { at: 0, x: OFF_LEFT, y: 0.4, scale: 0.36, opacity: 0.9 },
+    { at: 0.24, x: 0.44, ease: 'out' },
+    ...beats(0, 0.84, durationMs, 120).map((at, index) => ({ at, y: index % 2 === 0 ? 0.42 : 0.4 })),
+    { at: 0.44, x: 0.44 },
+    { at: 0.52, x: 0.7 },
+    { at: 0.84, opacity: 0.9 },
+    { at: 0.87, opacity: 0 },
+  ]);
+  const umbrella = prop('umbrella-broken', [
+    ...appearAt(0.54),
+    { at: 0.54, x: 0.72, y: 0.36, scale: 0.08, rotate: 180 },
+    { at: 0.57, scale: 0.4, ease: 'out' },
+    { at: 0.6, rotate: 180 },
+    // The wind turns it inside out.
+    { at: 0.62, rotate: 0, sy: 1.2 },
+    ...sway('rotate', 0.62, 0.68, durationMs, 12, 70, 0),
+    { at: 0.68, x: 0.72, y: 0.36 },
+    { at: 0.76, x: 1.4, y: 0.1, rotate: 200, ease: 'in' },
+  ]);
+  const puddle = prop('puddle', [...appearAt(0.66), { at: 0.66, x: 0.7, y: 0.86, scale: 0.1 }, { at: 0.82, scale: 0.75, ease: 'out' }, { at: 0.9, opacity: 1 }, { at: 1, opacity: 0 }]);
+  const sun = prop('sun-peek', [...appearAt(0.86), { at: 0.86, x: 0.86, y: -0.1, scale: 0.3 }, { at: 0.9, y: 0.16, ease: 'out' }, ...sway('rotate', 0.9, 0.97, durationMs, 10, 120, 0), { at: 0.97, opacity: 1 }, { at: 1, opacity: 0 }]);
+  return {
+    durationMs,
+    actors: [puddle, cloud, rain, front, back, umbrella, sun],
+    cues: [{ at: 0.02, sound: 'drip' }, { at: 0.12, sound: 'drip' }, { at: 0.24, sound: 'drip' }, { at: 0.34, sound: 'drip' }, { at: 0.41, sound: 'whoosh' }, { at: 0.55, sound: 'whoosh' }, { at: 0.62, sound: 'boing', screen: 'knock' }, { at: 0.7, sound: 'splash' }, { at: 0.88, sound: 'laugh' }],
+    particlesAt: [0.02, 0.82],
+  };
+}
+
 export const WINK_SKETCHES: Record<SketchWinkId, Sketch> = {
+  rainy: rainy(),
   piggy: piggy(),
   balloon: balloon(),
   sweetheart: sweetheart(),

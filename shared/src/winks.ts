@@ -1,4 +1,4 @@
-import type { WinkPropId } from './winkArt.js';
+import { WINK_PROPS, type WinkArtId, type WinkPropId } from './winkArt.js';
 import { WINK_SKETCHES } from './winkSketches.js';
 import type { ScreenEffect } from './winkTimeline.js';
 
@@ -12,7 +12,7 @@ import type { ScreenEffect } from './winkTimeline.js';
  * so the app and the web, sender and receiver, see the same. PURE: the app,
  * the web and the server use it.
  */
-export type CharacterWinkId = 'piggy' | 'balloon' | 'worker' | 'cuppa' | 'sweetheart' | 'bear' | 'kitty' | 'puppy' | 'panda' | 'brick';
+export type CharacterWinkId = 'piggy' | 'balloon' | 'worker' | 'cuppa' | 'sweetheart' | 'bear' | 'kitty' | 'puppy' | 'panda' | 'brick' | 'rainy';
 export type SiteWinkId = 'cone' | 'roller' | 'dumptruck' | 'excavator' | 'paver' | 'flagger';
 export type EmojiWinkId = 'hearts' | 'applause' | 'party' | 'laugh' | 'hug' | 'hardhat' | 'coffee' | 'done';
 export type WinkId = CharacterWinkId | SiteWinkId | EmojiWinkId;
@@ -32,13 +32,13 @@ export type WinkGroup = 'characters' | 'site' | 'emoji';
 
 /** `particlesAt`: the share of the wink the particles fly in (none without it). */
 type WinkBase = { id: WinkId; name: string; group: WinkGroup; particles: readonly string[]; motion: WinkMotion; durationMs: number; particlesAt?: readonly [number, number] };
-/** A sketch (`WINK_SKETCHES`); its tile in the panel is the character, or `tile` for a wink without one (the water balloon). */
-export type CharacterWink = WinkBase & { kind: 'character'; tile?: WinkPropId };
+/** A sketch (`WINK_SKETCHES`); its tile in the panel is the character, or `tile` for a wink without one (the water balloon) or whose id is not its art's (the dog under the rain). */
+export type CharacterWink = WinkBase & { kind: 'character'; tile?: WinkPropId | WinkArtId };
 /** The first winks (José, 21/10: «deja los emojis que tenías antes, están bien»): a big emoji that pops and wiggles. */
 export type EmojiWink = WinkBase & { kind: 'emoji'; hero: string; sound: WinkSound };
 export type Wink = CharacterWink | EmojiWink;
 
-const character = (id: CharacterWinkId | SiteWinkId, name: string, group: WinkGroup, particles: readonly string[], motion: WinkMotion, tile?: WinkPropId): CharacterWink => {
+const character = (id: CharacterWinkId | SiteWinkId, name: string, group: WinkGroup, particles: readonly string[], motion: WinkMotion, tile?: WinkPropId | WinkArtId): CharacterWink => {
   const sketch = WINK_SKETCHES[id];
   return { id, name, group, kind: 'character', particles, motion, durationMs: sketch.durationMs, ...(sketch.particlesAt ? { particlesAt: sketch.particlesAt } : {}), ...(tile ? { tile } : {}) };
 };
@@ -57,6 +57,8 @@ export const WINKS: readonly Wink[] = [
   character('puppy', 'Perro carcajada', 'characters', ['😂', '🤣'], 'burst'),
   character('cuppa', 'Café de lunes', 'characters', [], 'rise'),
   character('brick', 'Ladrillo fisicoculturista', 'characters', ['✨', '💪', '⭐'], 'burst'),
+  // Pending 60 (José, 22/10): a sad dog the rain picks on, drawn in Stitch (`r149-perrito-lluvia`).
+  character('rainy', 'Perrito bajo la lluvia', 'characters', ['💧', '💦'], 'rain', 'dog-sad'),
   // Construction, roads and asphalt (José, 21/10: «agrega conceptos de obra, pistas y asfalto»).
   character('cone', 'Cono cumbiero', 'site', ['🎵', '🎶'], 'rise'),
   character('roller', 'Rodillo chévere', 'site', ['💨', '✨'], 'rise'),
@@ -91,6 +93,11 @@ const WINK_IDS = new Set<string>(WINKS.map((wink) => wink.id));
 
 export function isWinkId(value: unknown): value is WinkId {
   return typeof value === 'string' && WINK_IDS.has(value);
+}
+
+/** A wink drawn by a prop (the water balloon), not by a character: its tile is drawn bigger. */
+export function winkTileIsProp(wink: CharacterWink): boolean {
+  return Boolean(wink.tile && wink.tile in WINK_PROPS);
 }
 
 export function winkById(id: string | undefined): Wink | undefined {

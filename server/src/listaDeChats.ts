@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { acuseDelGrupo, notificationLevel, TELEFONO_DE_LILA, unreadCount, type NotificationLevel } from '@lilachat/shared';
+import { acuseDelGrupo, listThumbPath, notificationLevel, TELEFONO_DE_LILA, unreadCount, type NotificationLevel } from '@lilachat/shared';
 import { UserModel } from './models.js';
 import { ChatModel, MessageModel, ReceiptModel, type Message } from './chatModels.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
@@ -46,6 +46,8 @@ export type ChatSummary = {
     wink?: string;
     /** The file's type: a GIF says «GIF» in the list, not «Foto» (pending 53). */
     mime?: string;
+    /** The small image beside the preview: a sticker, photo, GIF or video frame (pending 57). Absolute. */
+    thumb?: string;
   } | null;
   /** Hasta qué `seq` leyeron los DEMÁS: de acá salen los checks del diseño. */
   othersReadSeq: number;
@@ -76,6 +78,12 @@ export type ChatSummary = {
 };
 
 /** `workspaceId`: the chats of that company space; without it, the personal ones (E1). */
+/** Pending 57: the preview's small image, never in a secret chat (its media is not the list's to show). */
+function thumbFor(last: Message, secret: boolean): { thumb?: string } {
+  const path = secret ? undefined : listThumbPath(last);
+  return path ? { thumb: toAbsoluteMediaUrl(path) } : {};
+}
+
 export async function listChats(userId: Types.ObjectId, workspaceId?: Types.ObjectId): Promise<ChatSummary[]> {
   const chats = await ChatModel.find({ 'members.userId': userId, workspaceId: workspaceId ?? { $exists: false } }).lean();
   if (chats.length === 0) return [];
@@ -200,6 +208,7 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
             ...(last.hiloDe ? { hiloDe: last.hiloDe } : {}),
             ...(last.wink ? { wink: last.wink } : {}),
             ...(last.media?.mime ? { mime: last.media.mime } : {}),
+            ...thumbFor(last, chat.encrypted === true),
           }
         : null,
       othersReadSeq: acuseDelGrupo({ otros: acusan, porMiembro: acuses?.read ?? new Map() }),

@@ -109,5 +109,7 @@ export * from './chatQueue.js';
 export * from './nowPlaying.js';
 export * from './gifs.js';
 export * from './photoViewer.js';
+export * from './hiddenNotice.js';
 export * from './followMine.js';
 export * from './sessionCache.js';
+export * from './messageThumbs.js';

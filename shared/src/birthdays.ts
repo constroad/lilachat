@@ -30,13 +30,14 @@ export function ageOn(birthday: Birthday, dayKey: string): number | undefined {
   return birthday.year ? partsOf(dayKey).year - birthday.year : undefined;
 }
 
-type NoticeRow = { seq?: number; at?: string; senderId?: string; system?: { evento?: string; valor?: string } };
+type NoticeRow = { seq?: number; at?: string; senderId?: string; deletedAt?: string | null; system?: { evento?: string; valor?: string } };
 
 /** The birthday card to show on opening a chat: today's notice of someone else, not seen yet. */
 export function birthdayCardFor(rows: readonly NoticeRow[], params: { me: string; todayKey: string; seen: (seq: number) => boolean }): { seq: number; who: string; age?: number } | null {
   for (let index = rows.length - 1; index >= 0; index--) {
     const row = rows[index]!;
-    if (row.system?.evento !== 'cumpleanos' || typeof row.seq !== 'number' || !row.at || !row.senderId) continue;
+    // A deleted notice is gone for everyone: no card (22/10, QA's deleted notice reached José's phone).
+    if (row.system?.evento !== 'cumpleanos' || row.deletedAt || typeof row.seq !== 'number' || !row.at || !row.senderId) continue;
     if (limaDayKey(new Date(row.at)) !== params.todayKey || row.senderId === params.me || params.seen(row.seq)) continue;
     const age = Number(row.system.valor);
     return { seq: row.seq, who: row.senderId, ...(Number.isInteger(age) && age > 0 ? { age } : {}) };

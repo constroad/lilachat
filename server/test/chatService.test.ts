@@ -279,6 +279,22 @@ describe('pullSince — el delta del cursor', () => {
 });
 
 describe('listChats y no leídos', () => {
+  /** Pending 57 (José, 22/10): a sticker in the list shows its small image, not only the word. */
+  it('the last sticker brings its thumbnail; a secret chat never does', async () => {
+    // Arrange
+    const previousBase = process.env.LILA_PUBLIC_URL;
+    process.env.LILA_PUBLIC_URL = 'https://lila.example';
+    await sendMessage({ chatId, senderId: maria, clientKey: 's1', kind: 'sticker', media: { url: '/files/s.webp', mime: 'image/webp' } } as Parameters<typeof sendMessage>[0]);
+    // Act
+    const [summary] = await listChats(jose);
+    await ChatModel.updateOne({ _id: chatId }, { $set: { encrypted: true } });
+    const [secret] = await listChats(jose);
+    process.env.LILA_PUBLIC_URL = previousBase;
+    // Assert
+    expect(summary?.lastMessage?.thumb).toBe('https://lila.example/files/s.webp');
+    expect(secret?.lastMessage?.thumb).toBeUndefined();
+  });
+
   it('el no leído sale de la resta lastSeq − readSeq', async () => {
     await sendMessage({ chatId, senderId: maria, clientKey: 'a', body: 'hola' });
     await sendMessage({ chatId, senderId: maria, clientKey: 'b', body: 'ahí?' });

@@ -12,11 +12,12 @@ describe('the wink characters and props', () => {
   it('every character wink has its drawing (or its prop tile), with both arms, both legs, a body and a head, each with its joint inside the drawing', () => {
     for (const wink of WINKS) {
       if (wink.kind !== 'character') continue;
-      if (wink.tile) {
-        expect(WINK_PROPS[wink.tile], wink.id).toBeDefined();
+      // A prop tile (the water balloon) has no body; an art tile (the dog under the rain) is checked like any character.
+      if (wink.tile && wink.tile in WINK_PROPS) {
+        expect(WINK_PROPS[wink.tile as keyof typeof WINK_PROPS], wink.id).toBeDefined();
         continue;
       }
-      const art = WINK_ART[wink.id as keyof typeof WINK_ART];
+      const art = WINK_ART[(wink.tile ?? wink.id) as keyof typeof WINK_ART];
       expect(art, wink.id).toBeDefined();
       const names = art.parts.map((part) => part.part);
       for (const needed of ['arm-left', 'arm-right', 'leg-left', 'leg-right', 'body', 'head'] as const) expect(names, `${wink.id} ${needed}`).toContain(needed);

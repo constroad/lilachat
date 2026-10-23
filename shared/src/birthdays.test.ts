@@ -31,4 +31,12 @@ describe('birthdays in chats (pending 17)', () => {
     expect(birthdayCardFor([notice], { me: 'jose', todayKey: '2026-10-23', seen: () => false })).toBeNull();
     expect(birthdayCardFor([notice], { me: 'jose', todayKey: '2026-10-22', seen: () => true })).toBeNull();
   });
+
+  it('a notice deleted for everyone shows no card', () => {
+    // Arrange
+    const now = new Date('2026-10-22T20:00:00Z');
+    const rows = [{ seq: 9, at: now.toISOString(), senderId: 'ana', deletedAt: '2026-10-22T20:10:00Z', system: { evento: 'cumpleanos', valor: '36' } }];
+    // Act / Assert
+    expect(birthdayCardFor(rows, { me: 'jose', todayKey: limaDayKey(now), seen: () => false })).toBeNull();
+  });
 });

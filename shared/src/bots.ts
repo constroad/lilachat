@@ -1,5 +1,6 @@
 import { normalizePeruPhone } from './phone.js';
 import { validateChecklist } from './checklists.js';
+import { BLOCK_LIMITS, validateBotBlocks, type BotBlock } from './botBlocks.js';
 
 /**
  * What a bot (Lila, through agentes) sends to `POST /api/bots/messages`
@@ -18,6 +19,10 @@ export type BotCard = {
   fields: { label: string; value: string }[];
   link?: { label: string; url: string };
   actions?: CardAction[];
+  /** The kit (§118.4): what the card draws, its detail for the sheet, and when its data was taken. */
+  blocks?: BotBlock[];
+  detail?: { title: string; blocks: BotBlock[] };
+  updatedAt?: string;
 };
 export type BotChecklist = { title: string; othersCanMark: boolean; items: { text: string; assigneePhone?: string; dueAt?: string }[] };
 export type BotTarget = { channelId: string } | { userPhone: string } | { userId: string };
@@ -68,17 +73,26 @@ export function validateBotCard(raw: unknown): { ok: true; card: BotCard } | { o
   const actions = validateActions(card.actions);
   if (!actions.ok) return actions;
   const kicker = line(card.kicker, BOT_LIMITS.kicker);
-  return {
-    ok: true,
-    card: {
-      ...(kicker ? { kicker } : {}),
-      title,
-      ...(statusLabel ? { status: { label: statusLabel, tone: (status.tone as CardTone | undefined) ?? 'neutral' } } : {}),
-      fields,
-      ...(url ? { link: { label: line(link.label, BOT_LIMITS.linkLabel) || 'Abrir', url } } : {}),
-      ...(actions.actions.length ? { actions: actions.actions } : {}),
-    },
+  const blocks = validateBotBlocks(card.blocks, BLOCK_LIMITS.cardBlocks);
+  if (!blocks.ok) return blocks;
+  const rawDetail = record(card.detail);
+  const detailBlocks = validateBotBlocks(rawDetail.blocks, BLOCK_LIMITS.detailBlocks);
+  if (!detailBlocks.ok) return detailBlocks;
+  const updatedAt = typeof card.updated_at === 'string' && !Number.isNaN(Date.parse(card.updated_at)) ? new Date(card.updated_at).toISOString() : undefined;
+  const kept: BotCard = {
+    ...(kicker ? { kicker } : {}),
+    title,
+    ...(statusLabel ? { status: { label: statusLabel, tone: (status.tone as CardTone | undefined) ?? 'neutral' } } : {}),
+    fields,
+    ...(url ? { link: { label: line(link.label, BOT_LIMITS.linkLabel) || 'Abrir', url } } : {}),
+    ...(actions.actions.length ? { actions: actions.actions } : {}),
+    ...(blocks.blocks.length ? { blocks: blocks.blocks } : {}),
+    ...(detailBlocks.blocks.length ? { detail: { title: line(rawDetail.title, BOT_LIMITS.title) || title, blocks: detailBlocks.blocks } } : {}),
+    ...(updatedAt ? { updatedAt } : {}),
   };
+  // A card is a glance, not a report: a heavy one goes as a link (§118.2).
+  if (JSON.stringify(kept).length > BLOCK_LIMITS.cardBytes) return { ok: false, message: `La tarjeta pesa más de ${BLOCK_LIMITS.cardBytes / 1000} KB: manda el reporte como enlace.` };
+  return { ok: true, card: kept };
 }
 
 function validateBotChecklist(raw: unknown): { ok: true; checklist: BotChecklist } | BotPostError {
@@ -135,6 +149,9 @@ export function validateBotPost(raw: unknown): { ok: true; post: BotPost } | Bot
 
 /** What the chat list, the notification and the search read of a card. */
 export const botCardSummary = (card: Pick<BotCard, 'title' | 'status'>): string => [card.title, card.status?.label].filter(Boolean).join(' · ');
+
+/** An app an admin can install from Integraciones (`GET /api/workspaces/:id/available-apps`), its address already pointing at the space. */
+export type AvailableApp = { id: string; name: string; avatarUrl?: string; installUrl: string; installed: boolean };
 
 /** An app installed in a space, as Integraciones lists it (`GET /api/workspaces/:id/apps`). */
 export type SpaceApp = { id: string; name: string; avatarUrl?: string; installedBy: string | null; installedAt: string; lastDelivery?: { at: string; ok: boolean; error?: string } };

@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
-import { ExternalLink } from 'lucide-react-native';
-import type { BotCard, CardActionStyle, CardTone } from '@lilachat/shared';
+import { ChevronRight, ExternalLink } from 'lucide-react-native';
+import { formatClock, type BotCard, type CardActionStyle, type CardTone } from '@lilachat/shared';
 import { BASE_URL } from '../api/client';
 import { useColores } from '../ui/tema';
+import { BotBlocksView } from './botBlocks/BotBlocksView';
+import { BotCardDetail } from './botBlocks/BotCardDetail';
 
 /** The status pill's tone (design `e-21`): background faint, border at 30 %, text strong. */
 const TONE: Record<CardTone, { pill: string; text: string }> = {
@@ -30,6 +32,8 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
   const colors = useColores();
   const [sent, setSent] = useState<{ id: string; state: 'sending' | 'sent' } | null>(null);
   const [error, setError] = useState('');
+  // The kit (§118.4): the detail opens in a sheet with the data that came with the message.
+  const [detailOpen, setDetailOpen] = useState(false);
   const tap = async (actionId: string) => {
     setSent({ id: actionId, state: 'sending' });
     setError('');
@@ -40,9 +44,14 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
     setError(data.message ?? 'No se pudo enviar. Revisa tu conexión.');
   };
   return (
-    <View testID="tarjeta-bot" className="m-1 overflow-hidden rounded-xl border border-outline/15 bg-surface" style={{ minWidth: 240, maxWidth: 300 }}>
+    <View testID="tarjeta-bot" className="m-1 overflow-hidden rounded-xl border border-outline/15 bg-surface" style={{ minWidth: 240, maxWidth: card.blocks ? 320 : 300, width: card.blocks ? 320 : undefined }}>
       <View className="gap-2 px-3.5 py-3">
-        {card.kicker ? <Text className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{card.kicker}</Text> : null}
+        {card.kicker || card.updatedAt ? (
+          <View className="flex-row items-center gap-2">
+            {card.kicker ? <Text numberOfLines={1} className="min-w-0 flex-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{card.kicker}</Text> : <View className="flex-1" />}
+            {card.updatedAt ? <Text testID="tarjeta-actualizada" className="text-[10px] text-on-surface-variant">Actualizado {formatClock(card.updatedAt)}</Text> : null}
+          </View>
+        ) : null}
         <View className="flex-row items-start gap-2">
           <Text className="min-w-0 flex-1 text-[15px] font-bold leading-5 text-on-surface">{card.title}</Text>
           {card.status ? (
@@ -61,6 +70,13 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
             ))}
           </View>
         ) : null}
+        {card.blocks ? <BotBlocksView blocks={card.blocks} /> : null}
+        {card.detail ? (
+          <Pressable testID="tarjeta-ver-detalle" onPress={() => setDetailOpen(true)} className="min-h-[36px] flex-row items-center gap-1 self-start rounded-full border border-outline/20 px-3">
+            <Text className="text-[13px] font-semibold text-on-surface">Ver detalle</Text>
+            <ChevronRight size={14} color={colors['on-surface-variant']} />
+          </Pressable>
+        ) : null}
         {card.link ? (
           <Pressable testID="tarjeta-enlace" onPress={() => void Linking.openURL(card.link!.url)} hitSlop={6} className="flex-row items-center gap-1 self-start">
             <Text className="text-[13px] font-semibold text-primary">{card.link.label}</Text>
@@ -78,6 +94,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
         </View>
       ) : null}
       {error ? <Text className="border-t border-outline/10 px-3.5 py-2 text-[12px] text-error">{error}</Text> : null}
+      <BotCardDetail card={card} visible={detailOpen} onClose={() => setDetailOpen(false)} />
     </View>
   );
 }

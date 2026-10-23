@@ -29,7 +29,7 @@ beforeEach(async () => {
   await Promise.all([UserModel.deleteMany({}), ChatModel.deleteMany({})]);
   const [first, second] = await UserModel.create([{ phone: '900000021', name: 'Ana' }, { phone: '900000022', name: 'Beto' }]);
   ana = first!._id;
-  const created = await ChatModel.create([0, 1, 2].map(() => ({ kind: 'direct', members: [{ userId: ana }, { userId: second!._id }], lastSeq: 0 })));
+  const created = await Promise.all([0, 1, 2].map(() => ChatModel.create({ kind: 'direct', members: [{ userId: ana }, { userId: second!._id }], lastSeq: 0 })));
   chats = created.map((chat) => String(chat._id));
 });
 

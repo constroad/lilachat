@@ -4927,10 +4927,12 @@ Pendientes 82 (código), 83, 74 y 84 (diagnóstico).
   su marca `.lilachat-medios` se crean A MANO (`npm run medios:init -w
   server`), nunca al arrancar; **mientras no exista la marca, todo sigue
   subiendo a lila**, así que desplegar no rompe nada.
-  **Activarlo en producción es decisión de José** y lleva dos pasos en la
-  mini: sumar `CHAT_STORAGE_ROOT` a los respaldos de restic (hoy no lo
-  cubren) y correr `medios:init` en `~/deploys/chat/current`. Después: copiar
-  lo viejo desde lila con dry-run, y recién ahí sacar `LILA_*` del `.env`.
+  **Activarlo en producción es decisión de José:** un solo paso en la mini,
+  `npm run medios:init -w server` en `~/deploys/chat/current`. El respaldo ya
+  está: `backup-media.sh` descubre toda carpeta hermana de `companies/` desde
+  el 09/10 y el log del 23/10 00:30 ya incluye `chat/` (verificado por
+  lila-2). Después: copiar lo viejo desde lila con dry-run, y recién ahí sacar
+  `LILA_*` del `.env`.
 - **Intentos de respaldo (83).** Cada intento de respaldo del teléfono queda
   contado por día y motivo (`backupattempts`: guardado, ya_existe,
   disco_ausente, disco_colgado, correo_sin_verificar, demasiado_grande,

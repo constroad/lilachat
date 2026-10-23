@@ -105,10 +105,16 @@ function sideOf(part, box, body) {
   return center(box).x < body.x ? `${kind}-left` : `${kind}-right`;
 }
 
-/** An eye alone (a head in profile) keeps its name. */
+/**
+ * An eye alone (a head in profile) keeps its name. When both limbs of a kind
+ * land on the same side (the cupid's right arm holds an arrow that reaches
+ * across his body), the sheet's own names are kept for that kind.
+ */
 function namesOf(parts, body) {
   const eyes = parts.filter((part) => part.part.startsWith('eye-'));
-  return parts.map((part) => (part.part.startsWith('eye-') && eyes.length < 2 ? part.part : sideOf(part.part, part.box, body)));
+  const named = parts.map((part) => (part.part.startsWith('eye-') && eyes.length < 2 ? part.part : sideOf(part.part, part.box, body)));
+  const clashing = new Set(named.filter((name, index) => named.indexOf(name) !== index && /^(arm|leg|eye)-/.test(name)).map((name) => name.split('-')[0]));
+  return named.map((name, index) => (clashing.has(name.split('-')[0]) && /^(arm|leg|eye)-/.test(name) ? parts[index].part : name));
 }
 
 const round = (value) => Math.round(value * 10) / 10;

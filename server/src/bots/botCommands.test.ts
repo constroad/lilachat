@@ -179,8 +179,8 @@ describe('invoking', () => {
     await invoke(channel, { app_id: appId, command: 'tanques', text: '' }).expect(404);
     const outsider = (await UserModel.create({ phone: '911111111', name: 'Otro' }))._id;
     await invoke(channel, { app_id: appId, command: 'clima', text: '' }, asUser(() => outsider)).expect(404);
-    const personal = (await ChatModel.create({ kind: 'direct', members: [{ userId: jose, role: 'member' }, { userId: ana, role: 'member' }], lastSeq: 0 }))._id;
-    await invoke(personal, { app_id: appId, command: 'clima', text: '' }).expect(404);
+    const outsideSpace = (await ChatModel.create({ kind: 'direct', members: [{ userId: jose, role: 'member' }, { userId: ana, role: 'member' }], lastSeq: 0 }))._id;
+    await invoke(outsideSpace, { app_id: appId, command: 'clima', text: '' }).expect(404);
   });
 });
 

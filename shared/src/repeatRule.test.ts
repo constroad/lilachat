@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { anchorRepeatRule, describeRepeat, nextRepeat, parseRepeatRule, repeatLabel } from './repeatRule.js';
 import { whenItRings } from './recordatorios.js';
+import { formatEventWhen } from './events.js';
 
 /** Lima is UTC−5 all year: 9:00 in Lima is 14:00 UTC. */
 const lima = (y: number, m: number, d: number, h = 9, min = 0) => new Date(Date.UTC(y, m - 1, d, h + 5, min));
@@ -108,8 +109,7 @@ describe('repeatLabel and whenItRings', () => {
     const now = lima(2026, 10, 20, 10);
     // Act
     const line = whenItRings({ startsAt: lima(2026, 10, 20).toISOString(), recurrence: 'weekly', repeat: { weekdays: [2, 4] }, active: true }, now);
-    // Assert
-    expect(line.startsWith('Mar y jue · ')).toBe(true);
-    expect(line).toContain('9:00');
+    // Assert: the next one is Thursday 22 at 9:00 in Lima, written in the device's own time (CI runs in UTC)
+    expect(line).toBe(`Mar y jue · ${formatEventWhen(lima(2026, 10, 22), now)}`);
   });
 });

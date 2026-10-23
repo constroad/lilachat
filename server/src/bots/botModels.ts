@@ -21,6 +21,9 @@ export type BotApp = {
   installUrl?: string;
   /** Its slash commands (§c-bis), the same in every space it is installed in; `PUT /api/bots/commands` replaces them. */
   commands?: BotCommand[];
+  /** Made by a developer app through its manifest (§0-bis): only that app sees or changes it, by its own `key`. */
+  ownerAppId?: Types.ObjectId;
+  key?: string;
   createdAt: Date;
 };
 
@@ -89,6 +92,8 @@ const appSchema = new Schema<BotApp>(
     webhookUrl: { type: String, required: true },
     installUrl: { type: String },
     commands: { type: [{ command: String, description: String, usageHint: String, _id: false }], default: undefined },
+    ownerAppId: { type: Schema.Types.ObjectId },
+    key: { type: String },
   },
   { timestamps: true }
 );

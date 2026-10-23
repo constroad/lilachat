@@ -97,6 +97,25 @@ describe('the bots fake', () => {
     expect((await call('/__fake/command-responses')).body.responses).toHaveLength(5);
   });
 
+  it('apps by manifest like the server: create once, install with their own secret, rotate, list, delete', async () => {
+    const asDeveloper = { Authorization: `Basic ${Buffer.from('lca_test:lcx_test').toString('base64')}`, 'Content-Type': 'application/json' };
+    const body = { key: 'inframaq', name: 'Inframaq', redirect_uri: REDIRECT, webhook_url: 'http://127.0.0.1:1/events', commands: [{ command: 'clima', description: 'Clima' }] };
+    expect((await call('/api/bots/apps', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).status).toBe(401);
+    const created = await call('/api/bots/apps', { method: 'POST', headers: asDeveloper, body: JSON.stringify(body) });
+    expect(created.status).toBe(201);
+    expect(String(created.body.client_secret)).toMatch(/^lcx_/);
+    expect((await call('/api/bots/apps', { method: 'POST', headers: asDeveloper, body: JSON.stringify({ ...body, name: 'Inframaq Planta' }) })).body).toEqual({ client_id: created.body.client_id });
+    const authorize = await fetch(`${base()}/instalar-app?client_id=${created.body.client_id}&redirect_uri=${encodeURIComponent(REDIRECT)}&state=state-0123456789abcdef&code_challenge=${CHALLENGE}&code_challenge_method=S256`, { redirect: 'manual' });
+    const code = new URL(authorize.headers.get('location')!).searchParams.get('code');
+    const exchange = (secret: unknown) => call('/api/oauth/token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ grant_type: 'authorization_code', code, redirect_uri: REDIRECT, client_id: created.body.client_id, client_secret: secret, code_verifier: VERIFIER }) });
+    expect((await exchange(created.body.client_secret)).status).toBe(200);
+    const rotated = await call(`/api/bots/apps/${created.body.client_id}/secret`, { method: 'POST', headers: asDeveloper });
+    expect(rotated.body.client_secret).not.toBe(created.body.client_secret);
+    expect((await call('/api/bots/apps', { headers: asDeveloper })).body.apps).toEqual([expect.objectContaining({ client_id: created.body.client_id, name: 'Inframaq Planta' })]);
+    expect((await fetch(`${base()}/api/bots/apps/${created.body.client_id}`, { method: 'DELETE', headers: asDeveloper })).status).toBe(204);
+    expect((await call(`/api/bots/apps/${created.body.client_id}/secret`, { method: 'POST', headers: asDeveloper })).status).toBe(404);
+  });
+
   it('revoking kills the token', async () => {
     const { token } = await install();
     expect((await call('/api/oauth/revoke', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })).status).toBe(200);

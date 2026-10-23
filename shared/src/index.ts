@@ -122,3 +122,4 @@ export * from './storage.js';
 export * from './releaseNotes.js';
 export * from './botBlocks.js';
 export * from './botCommands.js';
+export * from './botManifest.js';

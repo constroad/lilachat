@@ -4963,9 +4963,15 @@ Portal, todas efímeras.
   la grilla de tanques, la falla bien avisada (dato de prueba mal armado), la
   diferida por socket y el scroll a la última. Se borró todo (app, espacio,
   usos, equipo vinculado y el cumpleaños de prueba): la base quedó en cero.
-- **Falta (José):** registrar «Inframaq» y «Portal» en producción (el
-  registro automático quedó bloqueado por permisos) y cargar sus secretos en
-  Torre. Los formularios de los comandos (§73.5) vienen después.
+- **Apps por manifiesto (BOTS-API §0-bis).** José no quiere una llave en
+  Torre por app («como Slack con Bitbucket»): agentes crea el bot de cada
+  producto con la credencial de Lila (`POST /api/bots/apps`, idempotente
+  por `key`) y recibe el secreto en la respuesta, de servidor a servidor.
+  También rota, lista y borra (avisando `app.uninstalled` a cada espacio).
+  La desarrolladora es una constante del código. Agentes ya lo implementó
+  (e87fef1, 9faea26): Inframaq y Portal nacen solos la primera vez que
+  alguien los instala. Nadie registra nada a mano.
+- **Después:** los formularios de los comandos (§73.5).
 
 ## 120. Kit de tarjetas, robot de las apps, «Instalar» en Integraciones y el consentimiento como Slack (23/10/2026, 0.1.156)
 

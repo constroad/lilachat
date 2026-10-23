@@ -84,7 +84,7 @@ export function createFake(options = {}) {
   };
   let state;
   const reset = () => {
-    state = { codes: new Map(), installation: null, messages: [], deliveries: [], minute: { start: Date.now(), used: 0 }, seq: 0, joined: new Set(config.channels.filter((c) => c.visibility === 'public').map((c) => c.id)), commands: [], runs: new Map(), commandResponses: [] };
+    state = { codes: new Map(), installation: null, messages: [], deliveries: [], minute: { start: Date.now(), used: 0 }, seq: 0, joined: new Set(config.channels.filter((c) => c.visibility === 'public').map((c) => c.id)), commands: [], runs: new Map(), commandResponses: [], apps: new Map() };
   };
   reset();
 
@@ -169,7 +169,9 @@ export function createFake(options = {}) {
 
   function exchange(body) {
     if (body.grant_type !== 'authorization_code') return [400, { error: 'unsupported_grant_type', error_description: 'Solo authorization_code.' }];
-    if (body.client_id !== config.clientId || body.client_secret !== config.clientSecret) return [401, { error: 'invalid_client', error_description: 'client_id o client_secret no coinciden.' }];
+    const created = state.apps.get(body.client_id);
+    const known = (body.client_id === config.clientId && body.client_secret === config.clientSecret) || (created && created.secret === body.client_secret);
+    if (!known) return [401, { error: 'invalid_client', error_description: 'client_id o client_secret no coinciden.' }];
     const grant = state.codes.get(body.code);
     state.codes.delete(body.code);
     if (!grant || grant.expiresAt < Date.now()) return [400, { error: 'invalid_grant', error_description: 'El código no existe, venció o ya se usó.' }];
@@ -181,14 +183,16 @@ export function createFake(options = {}) {
 
   function authorizeRedirect(url) {
     const query = url.searchParams;
-    if (query.get('client_id') !== config.clientId || query.get('redirect_uri') !== config.redirectUri) return [400, { error: 'invalid_request', error_description: 'App o dirección de vuelta no registradas.' }];
-    const back = new URL(config.redirectUri);
+    const created = state.apps.get(query.get('client_id'));
+    const redirectUri = created ? created.redirect_uri : config.redirectUri;
+    if ((query.get('client_id') !== config.clientId && !created) || query.get('redirect_uri') !== redirectUri) return [400, { error: 'invalid_request', error_description: 'App o dirección de vuelta no registradas.' }];
+    const back = new URL(redirectUri);
     back.searchParams.set('state', query.get('state') ?? '');
     if (query.get('deny') === '1') back.searchParams.set('error', 'access_denied');
     else {
       if (query.get('code_challenge_method') !== 'S256' || !query.get('code_challenge')) return [400, { error: 'invalid_request', error_description: 'Se necesita PKCE con S256.' }];
       const code = secret('lco_');
-      state.codes.set(code, { challenge: query.get('code_challenge'), redirectUri: config.redirectUri, expiresAt: Date.now() + 10 * 60_000 });
+      state.codes.set(code, { challenge: query.get('code_challenge'), redirectUri, expiresAt: Date.now() + 10 * 60_000 });
       back.searchParams.set('code', code);
     }
     return [302, back.toString()];
@@ -254,6 +258,38 @@ export function createFake(options = {}) {
     return [200, { response_type: record(commandId, body, true) }];
   }
 
+  // Apps by manifest (§0-bis): the fake's own client is the developer app.
+  const isDeveloper = (req) => {
+    const header = String(req.headers.authorization ?? '');
+    const [id, secretPart] = Buffer.from(header.startsWith('Basic ') ? header.slice(6) : '', 'base64').toString('utf8').split(':');
+    return id === config.clientId && secretPart === config.clientSecret;
+  };
+  const publicApp = (clientId, app) => ({ client_id: clientId, key: app.key, name: app.name, redirect_uri: app.redirect_uri, webhook_url: app.webhook_url, ...(app.install_url ? { install_url: app.install_url } : {}), commands: app.commands ?? [], installations: 0 });
+  function upsertApp(body) {
+    if (typeof body.key !== 'string' || !/^[a-z][a-z0-9-]{1,31}$/.test(body.key)) return [400, { error: 'invalid_request', message: '«key» va en minúsculas, de 2 a 32.' }];
+    if (typeof body.name !== 'string' || !body.name.trim() || body.name.trim().length > 40) return [400, { error: 'invalid_request', message: 'Falta «name»: el nombre de la app, hasta 40.' }];
+    if (typeof body.redirect_uri !== 'string' || typeof body.webhook_url !== 'string') return [400, { error: 'invalid_request', message: '«redirect_uri» y «webhook_url» van con https.' }];
+    const fields = { key: body.key, name: body.name.trim(), redirect_uri: body.redirect_uri, webhook_url: body.webhook_url, install_url: body.install_url, ...(Array.isArray(body.commands) ? { commands: body.commands } : {}) };
+    const existing = [...state.apps.entries()].find(([, app]) => app.key === body.key);
+    if (existing) return Object.assign(existing[1], fields), [200, { client_id: existing[0] }];
+    if (state.apps.size >= 20) return [400, { error: 'too_many_apps', message: 'Una desarrolladora crea hasta 20 apps.' }];
+    const clientId = secret('lca_').slice(0, 24);
+    const clientSecret = secret('lcx_');
+    state.apps.set(clientId, { ...fields, secret: clientSecret });
+    return [201, { client_id: clientId, client_secret: clientSecret }];
+  }
+  async function routeApps(req, path) {
+    if (!isDeveloper(req)) return [401, { error: 'invalid_client', message: 'client_id o client_secret no coinciden.' }];
+    if (req.method === 'GET' && path === '/api/bots/apps') return [200, { apps: [...state.apps.entries()].map(([id, app]) => publicApp(id, app)) }];
+    if (req.method === 'POST' && path === '/api/bots/apps') return upsertApp(await readBody(req));
+    const [, clientId, action] = path.match(/^\/api\/bots\/apps\/([^/]+)(?:\/(secret))?$/) ?? [];
+    const app = clientId ? state.apps.get(clientId) : null;
+    if (!app) return [404, { error: 'app_not_found', message: 'Esa app no existe o no es tuya.' }];
+    if (req.method === 'POST' && action === 'secret') return (app.secret = secret('lcx_')), [200, { client_secret: app.secret }];
+    if (req.method === 'DELETE' && !action) return state.apps.delete(clientId), [204, {}];
+    return [404, { error: 'not_found' }];
+  }
+
   const allowMessage = () => {
     if (Date.now() - state.minute.start > 60_000) state.minute = { start: Date.now(), used: 0 };
     state.minute.used += 1;
@@ -275,6 +311,7 @@ export function createFake(options = {}) {
     if (req.method === 'GET' && path === '/__fake/command-responses') return [200, { responses: state.commandResponses }];
     if (req.method === 'GET' && path === '/__fake/deliveries') return [200, { deliveries: state.deliveries.map(({ signingSecret: _hidden, ...rest }) => rest) }];
     if (!path.startsWith('/api/')) return [404, { error: 'not_found' }];
+    if (path === '/api/bots/apps' || path.startsWith('/api/bots/apps/')) return routeApps(req, path);
     const bot = botOf(req);
     if (!bot) return [401, { error: 'invalid_token', message: 'El token del bot no vale o fue revocado.' }];
     if (req.method === 'POST' && path === '/api/oauth/revoke') return (state.installation = null), [200, { ok: true }];
@@ -306,6 +343,7 @@ export function createFake(options = {}) {
     const url = new URL(req.url ?? '/', 'http://fake');
     route(req, url).then(([status, payload, headers]) => {
       if (status === 302) return void res.writeHead(302, { Location: payload }).end();
+      if (status === 204) return void res.writeHead(204).end();
       res.writeHead(status, { 'Content-Type': 'application/json', ...(headers ?? {}) }).end(JSON.stringify(payload));
     }, (error) => res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'fake_failed', message: String(error) })));
   });

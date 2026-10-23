@@ -1,0 +1,50 @@
+import { describe, expect, it } from 'vitest';
+import { MANIFEST_LIMITS, validateAppManifest } from './botManifest.js';
+
+const manifest = {
+  key: 'inframaq',
+  name: '  Inframaq ',
+  avatar_url: 'https://agentes.constroad.com/logos/inframaq.png',
+  redirect_uri: 'https://agentes.constroad.com/canales/lilachat/vuelta',
+  webhook_url: 'https://agentes.constroad.com/v1/channels/lilachat/events',
+  install_url: 'https://agentes.constroad.com/canales/lilachat/instalar?app=inframaq',
+  commands: [{ command: 'clima', description: 'Clima de la planta', usage_hint: '[mañana]' }],
+};
+
+/** The app manifest a developer app (agentes) sends to `POST /api/bots/apps` (`specs/BOTS-API.spec.md` §0-bis). */
+describe('app manifest', () => {
+  it('keeps every field in the server shape, trimmed', () => {
+    expect(validateAppManifest(manifest)).toEqual({
+      ok: true,
+      manifest: {
+        key: 'inframaq',
+        name: 'Inframaq',
+        avatarUrl: 'https://agentes.constroad.com/logos/inframaq.png',
+        redirectUri: 'https://agentes.constroad.com/canales/lilachat/vuelta',
+        webhookUrl: 'https://agentes.constroad.com/v1/channels/lilachat/events',
+        installUrl: 'https://agentes.constroad.com/canales/lilachat/instalar?app=inframaq',
+        commands: [{ command: 'clima', description: 'Clima de la planta', usageHint: '[mañana]' }],
+      },
+    });
+  });
+
+  it('avatar, install address and commands are optional; without commands they are not touched', () => {
+    const result = validateAppManifest({ key: 'portal', name: 'Portal', redirect_uri: manifest.redirect_uri, webhook_url: manifest.webhook_url });
+    expect(result).toEqual({ ok: true, manifest: { key: 'portal', name: 'Portal', redirectUri: manifest.redirect_uri, webhookUrl: manifest.webhook_url } });
+  });
+
+  it('refuses a bad key, a missing name and addresses without https', () => {
+    for (const key of ['Inframaq', 'i', '1app', 'mi app', `a${'b'.repeat(MANIFEST_LIMITS.key)}`]) expect(validateAppManifest({ ...manifest, key }).ok, key).toBe(false);
+    expect(validateAppManifest({ ...manifest, name: ' ' })).toEqual({ ok: false, message: 'Falta «name»: el nombre de la app, hasta 40.' });
+    expect(validateAppManifest({ ...manifest, webhook_url: 'http://agentes.constroad.com/x' }).ok).toBe(false);
+    expect(validateAppManifest({ ...manifest, avatar_url: 'ftp://x' }).ok).toBe(false);
+  });
+
+  it('a local http address is fine for an agentes in development', () => {
+    expect(validateAppManifest({ ...manifest, webhook_url: 'http://127.0.0.1:4099/events' }).ok).toBe(true);
+  });
+
+  it('bad commands are refused with the same message as PUT /api/bots/commands', () => {
+    expect(validateAppManifest({ ...manifest, commands: [{ command: '/Clima', description: 'x' }] }).ok).toBe(false);
+  });
+});

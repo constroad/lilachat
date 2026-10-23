@@ -1,14 +1,15 @@
 import express, { Router, type NextFunction, type Request, type Response } from 'express';
-import { toInternationalPhone, validateBotCard, validateBotCommands, validateBotPost } from '@lilachat/shared';
+import { toInternationalPhone, validateAppManifest, validateBotCard, validateBotCommands, validateBotPost } from '@lilachat/shared';
 import { ChatModel, type Chat } from '../chatModels.js';
 import { crearLimiteDeIntentos } from '../limiteDeIntentos.js';
 import { UserModel } from '../models.js';
 import { asyncRoute, requireSession } from '../requireSession.js';
 import { WorkspaceMemberModel, WorkspaceModel } from '../workspaceModels.js';
+import { deleteOwnedApp, developerFrom, listOwnedApps, rotateAppSecret, upsertApp } from './botApps.js';
 import { commandsOfApp, commandsToWire, registerCommands, respondToCommand } from './botCommands.js';
 import { installationByToken, revokeInstallation } from './botInstall.js';
 import { postBotMessage, updateBotMessage } from './botMessages.js';
-import type { BotInstallation } from './botModels.js';
+import type { BotApp, BotInstallation } from './botModels.js';
 import { appForConsent, authorize, exchangeCode } from './oauthService.js';
 
 /**
@@ -20,12 +21,14 @@ import { appForConsent, authorize, exchangeCode } from './oauthService.js';
 declare module 'express-serve-static-core' {
   interface Request {
     bot?: BotInstallation;
+    developer?: BotApp;
   }
 }
 
 const ONE_MINUTE_MS = 60_000;
 const MESSAGES_PER_MINUTE = 60;
 const TOKEN_TRIES_PER_MINUTE = 20;
+const FAILED_DEVELOPER_TRIES_PER_MINUTE = 10;
 
 const bearer = (req: Request) => {
   const header = String(req.headers.authorization ?? '');
@@ -112,6 +115,45 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
     const outcome = await respondToCommand(req.bot!, String(req.params.id), req.body);
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.json(outcome);
+  }));
+  return router;
+}
+
+/**
+ * `/api/bots/apps` (§0-bis): a developer app (agentes) creates, updates,
+ * lists, rotates and deletes ITS apps with Basic client credentials. Mounted
+ * before `/api/bots`, whose doors want a bot token instead.
+ */
+export function buildBotAppsRouter(): Router {
+  const router = Router();
+  const tries = crearLimiteDeIntentos({ maximo: FAILED_DEVELOPER_TRIES_PER_MINUTE, ventanaMs: ONE_MINUTE_MS });
+  router.use(asyncRoute(async (req, res, next) => {
+    const developer = await developerFrom(req.headers.authorization);
+    if ('error' in developer) {
+      // Only failed credentials count: agentes re-sends every manifest at boot, a guesser does not get far.
+      if (!tries.permitir(req.ip ?? 'sin-ip')) return void res.status(429).set('Retry-After', '60').json({ error: 'rate_limited', message: 'Demasiados intentos. Espera un minuto.' });
+      return void res.status(developer.status).json({ error: developer.error, message: developer.message });
+    }
+    req.developer = developer;
+    next();
+  }));
+  router.get('/', asyncRoute(async (req, res) => res.json({ apps: await listOwnedApps(req.developer!) })));
+  router.post('/', asyncRoute(async (req, res) => {
+    const valid = validateAppManifest(req.body);
+    if (!valid.ok) return void res.status(400).json({ error: 'invalid_request', message: valid.message });
+    const outcome = await upsertApp(req.developer!, valid.manifest);
+    if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+    res.status(outcome.status).json(outcome.body);
+  }));
+  router.post('/:clientId/secret', asyncRoute(async (req, res) => {
+    const outcome = await rotateAppSecret(req.developer!, String(req.params.clientId));
+    if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+    res.json(outcome);
+  }));
+  router.delete('/:clientId', asyncRoute(async (req, res) => {
+    const outcome = await deleteOwnedApp(req.developer!, String(req.params.clientId));
+    if (outcome !== true) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+    res.status(204).end();
   }));
   return router;
 }

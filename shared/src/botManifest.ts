@@ -1,0 +1,49 @@
+import { validateBotCommands, type BotCommand } from './botCommands.js';
+
+/**
+ * The manifest a developer app (agentes, with its one Lilachat credential)
+ * sends to create or update one of its apps (`specs/BOTS-API.spec.md`
+ * §0-bis), like Slack's app manifests: the per-app credentials come back in
+ * the response, server to server, so no secret per app goes through a person
+ * or Torre (José, 23/10: «como Slack con Bitbucket»). PURE.
+ */
+export type AppManifest = {
+  key: string;
+  name: string;
+  avatarUrl?: string;
+  redirectUri: string;
+  webhookUrl: string;
+  installUrl?: string;
+  commands?: BotCommand[];
+};
+
+export const MANIFEST_LIMITS = { key: 32, name: 40, url: 500, appsPerDeveloper: 20 };
+const KEY = /^[a-z][a-z0-9-]+$/;
+const record = (value: unknown): Record<string, unknown> => (value && typeof value === 'object' ? (value as Record<string, unknown>) : {});
+
+/** https; http only for an agentes running on this machine. */
+function address(value: unknown): string | null {
+  if (typeof value !== 'string' || value.length > MANIFEST_LIMITS.url) return null;
+  return /^https:\/\/[^\s]+$/.test(value) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/[^\s]*$/.test(value) ? value : null;
+}
+
+export function validateAppManifest(raw: unknown): { ok: true; manifest: AppManifest } | { ok: false; message: string } {
+  const body = record(raw);
+  const key = typeof body.key === 'string' ? body.key : '';
+  if (!KEY.test(key) || key.length > MANIFEST_LIMITS.key) return { ok: false, message: `«key» va en minúsculas, de 2 a ${MANIFEST_LIMITS.key} (a-z, 0-9 o -), empezando con una letra.` };
+  const name = typeof body.name === 'string' ? body.name.replace(/\s+/g, ' ').trim() : '';
+  if (!name || name.length > MANIFEST_LIMITS.name) return { ok: false, message: `Falta «name»: el nombre de la app, hasta ${MANIFEST_LIMITS.name}.` };
+  const redirectUri = address(body.redirect_uri);
+  const webhookUrl = address(body.webhook_url);
+  if (!redirectUri || !webhookUrl) return { ok: false, message: '«redirect_uri» y «webhook_url» van con https.' };
+  const avatarUrl = body.avatar_url === undefined ? undefined : address(body.avatar_url);
+  const installUrl = body.install_url === undefined ? undefined : address(body.install_url);
+  if (avatarUrl === null || installUrl === null) return { ok: false, message: '«avatar_url» e «install_url» van con https.' };
+  let commands: BotCommand[] | undefined;
+  if (body.commands !== undefined) {
+    const checked = validateBotCommands({ commands: body.commands });
+    if (!checked.ok) return checked;
+    commands = checked.commands;
+  }
+  return { ok: true, manifest: { key, name, ...(avatarUrl ? { avatarUrl } : {}), redirectUri, webhookUrl, ...(installUrl ? { installUrl } : {}), ...(commands ? { commands } : {}) } };
+}

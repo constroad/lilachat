@@ -29,6 +29,53 @@ queda con:
 | `redirect_uris` | `https://agentes.constroad.com/lilachat/callback` | coincidencia EXACTA |
 | `webhook_url` | `https://agentes.constroad.com/lilachat/events` | adonde llegan los eventos |
 
+## 0-bis) Apps por manifiesto (0.1.157, como Slack)
+
+José, 23/10: las apps de agentes son agnósticas, sin una llave en Torre por
+cada una («como Slack con Bitbucket»). Agentes guarda UNA credencial de
+Lilachat (la de Lila) y con ella crea el bot de cada producto. El secreto de
+cada bot viaja en la respuesta, de servidor a servidor, y agentes lo guarda
+sellado en su base: ninguna persona lo ve ni lo copia.
+
+**Quién puede.** Las apps «desarrolladoras» son una constante del código
+(`DEVELOPER_APP_CLIENT_IDS` en `server/src/bots/botApps.ts`; hoy, solo
+Lila). Sumar otra es un cambio revisado, no un dato en la base. Auth:
+`Authorization: Basic base64(client_id:client_secret)`. Una credencial mala
+da 401 `invalid_client`; una app que no es desarrolladora, 403
+`not_a_developer`. Diez credenciales malas por minuto desde una IP dan 429.
+
+- `POST /api/bots/apps` con el manifiesto:
+
+  ```json
+  { "key": "inframaq", "name": "Inframaq", "avatar_url": "https://…",
+    "redirect_uri": "https://agentes.constroad.com/canales/lilachat/vuelta",
+    "webhook_url": "https://agentes.constroad.com/v1/channels/lilachat/events",
+    "install_url": "https://agentes.constroad.com/canales/lilachat/instalar?app=inframaq",
+    "commands": [ { "command": "clima", "description": "…", "usage_hint": "[mañana]" } ] }
+  ```
+
+  - Validaciones: `key` con `^[a-z][a-z0-9-]{1,31}$`; `name` hasta 40;
+    las URL con https y hasta 500 (http solo a localhost, para desarrollo).
+    `avatar_url`, `install_url` y `commands` son opcionales; sin
+    `commands` no se tocan.
+  - Idempotente por (desarrolladora, `key`): la primera vez, 201 `{
+    client_id, client_secret }`; después, 200 `{ client_id }` con los
+    campos al día y sin secreto.
+  - Hasta 20 apps por desarrolladora (400 `too_many_apps`).
+- `POST /api/bots/apps/{client_id}/secret` → `{ client_secret }`. Rota: el
+  viejo deja de servir para el canje de OAuth. Las instalaciones y sus
+  tokens siguen vivos.
+- `GET /api/bots/apps` → `{ apps: [ { client_id, key, name, avatar_url?,
+  redirect_uri, webhook_url, install_url?, commands, installations } ] }`,
+  sin secretos.
+- `DELETE /api/bots/apps/{client_id}` → 204. Antes avisa `app.uninstalled`
+  (`by: null`) a cada instalación, como desinstalar desde Integraciones;
+  después revoca todo y borra la app.
+- Una app de otra desarrolladora da 404, nunca 403.
+- Toda app con `install_url` sale en «Para instalar» de Integraciones de
+  cualquier espacio (como en Slack). El instalador de agentes corta si el
+  espacio no corresponde a una empresa suya.
+
 ## a) Instalación: OAuth 2.0 con código y PKCE
 
 1. Agentes manda al administrador del espacio a:
@@ -291,6 +338,9 @@ dependencias. Implementa el mismo contrato en memoria:
 - Control para las pruebas:
   - `POST /__fake/emit { type, data }` firma y manda un evento al
     `WEBHOOK_URL`, con los mismos reintentos.
+  - `/api/bots/apps` (POST, GET, `/secret`, DELETE) con Basic del cliente
+    del fake, que hace de desarrolladora; las apps creadas se instalan con
+    `/instalar-app` y su propio secreto.
   - `POST /__fake/command { command, text, user?, channel? }` hace de
     persona: manda `command.invoked`, espera 3 s y devuelve `{ command_id,
     outcome }`. `GET /__fake/command-responses` lista lo que la app respondió

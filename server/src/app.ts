@@ -42,7 +42,7 @@ import { buildChecklistRouter } from './checklistRoutes.js';
 import { buildStickersRouter } from './stickersRoutes.js';
 import { buildReenvioRouter } from './reenvioRoutes.js';
 import { buildHilosRouter } from './hilosRoutes.js';
-import { buildBotRouter, buildOAuthRouter } from './bots/botRoutes.js';
+import { buildBotAppsRouter, buildBotRouter, buildOAuthRouter } from './bots/botRoutes.js';
 import { buildBotUserRouter } from './bots/botUserRoutes.js';
 import { buildFileViewRouter } from './fileViewRoutes.js';
 import { notifyEdited } from './reparto.js';
@@ -118,6 +118,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/auth', buildAuthRouter(deps.authClient ?? buildHttpAuthClient()));
   // The bots API (`specs/BOTS-API.spec.md`): its own doors, before the chat routers.
   app.use('/api/oauth', buildOAuthRouter());
+  app.use('/api/bots/apps', buildBotAppsRouter());
   app.use('/api/bots', buildBotRouter(notifyEdited));
   app.use('/api', buildBotUserRouter());
   app.use('/api', buildDestacadosRouter());

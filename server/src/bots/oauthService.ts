@@ -61,7 +61,7 @@ export async function authorize(userId: Types.ObjectId, body: Record<string, unk
   return { redirect: withQuery(redirectUri, { code, state }) };
 }
 
-async function authenticatedClient(clientId: unknown, clientSecret: unknown): Promise<BotApp | null> {
+export async function authenticatedClient(clientId: unknown, clientSecret: unknown): Promise<BotApp | null> {
   const app = typeof clientId === 'string' ? await BotAppModel.findOne({ clientId }).lean<BotApp | null>() : null;
   if (!app || typeof clientSecret !== 'string') return null;
   return sameHash(sha256(clientSecret), app.clientSecretHash) ? app : null;

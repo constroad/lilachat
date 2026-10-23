@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
+import { VIDEO_EMBED_ORIGINS } from '@lilachat/shared';
 
 /**
  * Las cabeceras de seguridad de la web (W0, 19/10).
@@ -30,8 +31,9 @@ export function politicaDeContenido(host: string): string {
     "worker-src 'self'",
     "manifest-src 'self'",
     "object-src 'none'",
-    // The PDF viewer (José, 21/10) shows the file from memory (`blob:`) in a frame of the page itself.
-    "frame-src 'self' blob:",
+    // The PDF viewer (José, 21/10) shows the file from memory (`blob:`) in a frame of the page itself,
+    // and a YouTube, TikTok, Instagram or Facebook video plays in that site's own player (pending 6).
+    `frame-src 'self' blob: ${VIDEO_EMBED_ORIGINS.join(' ')}`,
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",

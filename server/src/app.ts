@@ -50,6 +50,8 @@ import { requireMinimumBuild, type MinimumSource } from './minimumVersion.js';
 import type { GifConverter, MediaFetcher } from './animatedStickerRoutes.js';
 import { mountAppLinks } from './appLinks.js';
 import { buildContactShareRouter } from './contactShareRoutes.js';
+import { buildLocationShareRouter } from './locationShareRoutes.js';
+import { buildStorageRouter } from './storageRoutes.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -125,6 +127,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/chats', buildReenvioRouter());
   app.use('/api/chats', buildHilosRouter());
   app.use('/api/chats', buildContactShareRouter());
+  app.use('/api/chats', buildLocationShareRouter());
   app.use('/api/chats', buildChatRouter(deps.mediaUploader));
   app.use('/api/media', buildMediaLibraryRouter());
   app.use('/api/media', buildMediaRouter(deps.mediaUploader));
@@ -145,6 +148,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/calls', buildCallRouter());
   app.use('/api/me', buildProfileRouter(deps.authClient ?? buildHttpAuthClient()));
   app.use('/api/me', buildMeRouter(deps.mediaUploader));
+  app.use('/api/me', buildStorageRouter());
   app.use('/api/chat-lists', buildChatListsRouter());
   app.use('/api', buildCallLinksRouter());
   app.use('/api', buildBirthdaysRouter());

@@ -90,6 +90,8 @@ export async function sendMessage(params: {
   wink?: string;
   /** A shared contact (pending 9, `contactShareRoutes.ts` validated it). */
   contact?: Message['contact'];
+  /** A shared location (pending 11, `locationShareRoutes.ts` validated it). */
+  location?: Message['location'];
 }): Promise<SendResult> {
   const chatId = toObjectId(params.chatId);
   if (!chatId) throw new ForbiddenChatError();
@@ -150,6 +152,7 @@ export async function sendMessage(params: {
       ref: params.ref,
       ...(params.card ? { card: params.card } : {}),
       ...(params.contact && !params.envelope ? { contact: params.contact } : {}),
+      ...(params.location && !params.envelope ? { location: params.location } : {}),
       replyToSeq: params.replyToSeq,
       ...(menciones.length > 0 ? { menciones } : {}),
       ...(params.hiloDe !== undefined ? { hiloDe: params.hiloDe, ...(params.enElChat ? { enElChat: true } : {}) } : {}),

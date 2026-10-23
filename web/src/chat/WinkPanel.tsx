@@ -1,25 +1,22 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Play, Send, Vibrate } from 'lucide-react';
-import { WINKS, type Wink, type WinkGroup, type WinkId } from '@lilachat/shared';
+import { winkPanelGroups, type Wink, type WinkId } from '@lilachat/shared';
 import { replayWink } from './nudge';
 import { WinkCharacter } from './WinkCharacter';
 
 /** The local preview has no message yet: any fixed seed. */
 const PREVIEW_SEED = 0;
-const GROUPS: { group: WinkGroup; title: string }[] = [
-  { group: 'characters', title: 'Personajes' },
-  { group: 'site', title: 'Obra y pistas' },
-  { group: 'emoji', title: 'Emojis' },
-];
 
 /**
  * The «Guiños» tab of the emoji panel (design `m-02-guinos-panel`, desktop):
  * clicking a wink previews it over the window and shows «Enviar» under its
  * name. Three groups (José, 21/10): the full-body characters, the
- * construction ones and the first emoji winks.
+ * construction ones and the first emoji winks; in season its winks go
+ * first (pending 73).
  */
 export function WinkPanel({ recipient, onSend, onNudge }: { recipient: string; onSend: (wink: WinkId) => void; onNudge?: () => void }) {
   const [selected, setSelected] = useState<WinkId | null>(null);
+  const groups = useMemo(() => winkPanelGroups(new Date()), []);
   const pick = (wink: WinkId) => {
     setSelected(wink);
     replayWink(PREVIEW_SEED, wink);
@@ -46,11 +43,11 @@ export function WinkPanel({ recipient, onSend, onNudge }: { recipient: string; o
           </span>
         </button>
       ) : null}
-      {GROUPS.map(({ group, title }) => (
-        <div key={group} className="mb-4">
+      {groups.map(({ key, title, winks }) => (
+        <div key={key} data-testid={`grupo-guinos-${key}`} className="mb-4">
           <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.15em] text-on-surface-variant">{title}</p>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-            {WINKS.filter((wink) => wink.group === group).map((wink) => (
+            {winks.map((wink) => (
               <WinkTile key={wink.id} wink={wink} active={wink.id === selected} onPick={() => pick(wink.id)} onSend={() => onSend(wink.id)} />
             ))}
           </div>

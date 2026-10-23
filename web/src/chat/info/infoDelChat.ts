@@ -1,4 +1,5 @@
 import { accionesDeMiembro, puedeAgregar, puedeEditarInfo, type AccionDeMiembro } from '@lilachat/shared';
+import { groupSubtitle } from '@lilachat/shared';
 import type { DetalleDelChat, MiembroDelChat } from '../useDetalleDelChat';
 import type { ChatSummary } from '../types';
 
@@ -32,10 +33,10 @@ export function armarInfo(params: { chat: ChatSummary; detalle: DetalleDelChat |
   const lista = [...(detalle?.miembros.values() ?? [])];
   const reglas = lista.map((uno) => ({ userId: uno.id, role: uno.rol }));
   const otro = lista.find((uno) => !uno.esYo);
-  const subtitulo = esGrupo ? `Grupo · ${lista.length} participantes` : chat.kind === 'notas' ? 'Solo tú lo ves' : otro?.telefono ?? chat.phone ?? '';
+  const subtitle = esGrupo ? groupSubtitle(lista.length) : chat.kind === 'notas' ? 'Solo tú lo ves' : otro?.telefono ?? chat.phone ?? '';
   return {
     titulo: TITULOS[chat.kind],
-    subtitulo,
+    subtitulo: subtitle,
     puedeEditar: Boolean(detalle) && puedeEditarInfo({ quien: yo, miembros: reglas, esGrupo: chat.kind !== 'direct' }).ok,
     puedeAgregar: esGrupo && Boolean(detalle) && puedeAgregar({ quien: yo, miembros: reglas, aQuien: ALGUIEN_NUEVO, esGrupo }).ok,
     miembros: esGrupo

@@ -6,7 +6,7 @@ import { Cake } from 'lucide-react';
  * birthday the chat says so at 8:00 and everyone sees the card once. A group's
  * admins decide; in a 1:1, either of the two. The server checks it too.
  */
-export function BirthdaysRow(props: { chatId: string; jwt: string; on: boolean; canChange: boolean; onAviso: (text: string) => void }) {
+export function BirthdaysRow(props: { chatId: string; jwt: string; on: boolean; canChange: boolean; isGroup?: boolean; onAviso: (text: string) => void }) {
   const [on, setOn] = useState(props.on);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
@@ -34,7 +34,7 @@ export function BirthdaysRow(props: { chatId: string; jwt: string; on: boolean; 
       <Cake size={18} className="shrink-0 text-on-surface-variant" />
       <span className="min-w-0 flex-1">
         <span className="block text-[15px]">Avisar los cumpleaños</span>
-        <span className="block text-[12px] text-on-surface-variant">{props.canChange ? 'El día de cada uno, el chat lo dice a las 8:00.' : 'Solo los admins pueden cambiarlo.'}</span>
+        <span className="block text-[12px] text-on-surface-variant">{props.canChange ? (props.isGroup ? 'El día de cada uno, el chat lo dice a las 8:00. Un día antes, avisa a los admins.' : 'El día de cada uno, el chat lo dice a las 8:00.') : 'Solo los admins pueden cambiarlo.'}</span>
       </span>
       <input type="checkbox" role="switch" data-testid="interruptor-cumpleanos" checked={on} disabled={!props.canChange || saving} onChange={() => void change(!on)} className="h-5 w-5 accent-primary" />
     </label>

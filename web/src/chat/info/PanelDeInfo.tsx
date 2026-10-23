@@ -1,5 +1,6 @@
 import { Bell, BellOff, LogOut, Trash2, X } from 'lucide-react';
 import { NOTIFICATION_LEVEL_TEXT, type NotificationLevel } from '@lilachat/shared';
+import { chatDetailTabs, initialChatDetailTab, type ChatDetailTab } from '@lilachat/shared';
 import { useState, type ReactNode } from 'react';
 import type { BaseLocal } from '../../local/baseLocal';
 import { ConfirmChatAction } from '../MenuDeChat';
@@ -7,6 +8,7 @@ import type { ChatAction } from '../menuDelChat';
 import type { DetalleDelChat } from '../useDetalleDelChat';
 import type { ChatSummary, MensajeEnPantalla } from '../types';
 import { ArchivosDelChat } from './ArchivosDelChat';
+import { DetailTabBar } from './DetailTabBar';
 import { IdentidadDelChat } from './IdentidadDelChat';
 import { DescripcionDelChat } from './DescripcionDelChat';
 import { GroupFunRow } from './GroupFunRow';
@@ -19,7 +21,8 @@ import { useEditarChat } from './useEditarChat';
 /**
  * «Info. del grupo / del contacto / del borrador» (W3b, diseño
  * `w3-web-info-grupo.png`): tercera columna de 400 px desde 1024 px; en
- * pantallas más angostas, encima de la conversación.
+ * pantallas más angostas, encima de la conversación. Since pending 69 the
+ * detail is grouped in tabs like WhatsApp: Miembros · Media · Ajustes.
  */
 export function PanelDeInfo(props: {
   chat: ChatSummary;
@@ -44,6 +47,7 @@ export function PanelDeInfo(props: {
   const silenciado = Boolean(chat.muted ?? detalle?.silenciado);
   const level: NotificationLevel = chat.avisos ?? (silenciado ? 'menciones' : 'todo');
   const [choosingLevel, setChoosingLevel] = useState(false);
+  const [tab, setTab] = useState<ChatDetailTab>(() => initialChatDetailTab(chat.kind));
   return (
     <aside data-testid="panel-info" className="fixed inset-0 z-30 flex flex-col bg-background lg:static lg:z-auto lg:w-[400px] lg:shrink-0 lg:border-l lg:border-outline/15">
       <header className="flex items-center gap-3 border-b border-outline/15 bg-surface px-3 py-3">
@@ -63,15 +67,28 @@ export function PanelDeInfo(props: {
           onCambiarFoto={(archivo) => void editar.cambiarFoto(archivo)}
         />
         {chat.kind !== 'direct' ? <DescripcionDelChat descripcion={detalle?.descripcion} editable={info.puedeEditar} onGuardar={editar.describir} /> : null}
-        {chat.kind === 'group' ? (
+        {props.tarjetas}
+        <DetailTabBar tabs={chatDetailTabs(chat.kind)} active={tab} onChange={setTab} />
+        {tab === 'members' && info.miembros.length ? (
+          <ParticipantesDelChat
+            jwt={props.jwt}
+            miembros={info.miembros}
+            puedeAgregar={info.puedeAgregar}
+            onAgregar={(userId) => void editar.agregar(userId)}
+            onCambiarRol={(userId, role) => void editar.cambiarRol(userId, role)}
+            onSacar={(userId) => void editar.sacar(userId)}
+          />
+        ) : null}
+        {tab === 'media' ? <ArchivosDelChat base={props.base} chatId={chat.id} onVerFoto={props.onVerFoto} /> : null}
+        {tab === 'settings' && chat.kind === 'group' ? (
           <button type="button" data-testid="btn-avisos" onClick={() => setChoosingLevel(true)} className="mt-2 flex min-h-[56px] w-full items-center gap-4 bg-surface px-6 text-left hover:bg-background">
             {level === 'todo' ? <Bell size={18} className="text-on-surface-variant" /> : <BellOff size={18} className="text-on-surface-variant" />}
             <span className="flex-1 text-[15px]">Avisos</span>
             <span className="text-sm text-on-surface-variant">{NOTIFICATION_LEVEL_TEXT[level].title}</span>
           </button>
         ) : null}
-        {chat.kind === 'group' ? <GroupFunRow chatId={chat.id} jwt={props.jwt} allowed={Boolean(chat.funAllowed ?? detalle?.funAllowed)} isAdmin={Boolean(detalle?.soyAdmin)} onAviso={props.onAviso} /> : null}
-        {chat.kind === 'group' || chat.kind === 'direct' ? <BirthdaysRow chatId={chat.id} jwt={props.jwt} on={Boolean(chat.birthdaysOn ?? detalle?.birthdaysOn)} canChange={chat.kind === 'direct' || Boolean(detalle?.soyAdmin)} onAviso={props.onAviso} /> : null}
+        {tab === 'settings' && chat.kind === 'group' ? <GroupFunRow chatId={chat.id} jwt={props.jwt} allowed={Boolean(chat.funAllowed ?? detalle?.funAllowed)} isAdmin={Boolean(detalle?.soyAdmin)} onAviso={props.onAviso} /> : null}
+        {tab === 'settings' && (chat.kind === 'group' || chat.kind === 'direct') ? <BirthdaysRow chatId={chat.id} jwt={props.jwt} on={Boolean(chat.birthdaysOn ?? detalle?.birthdaysOn)} canChange={chat.kind === 'direct' || Boolean(detalle?.soyAdmin)} isGroup={chat.kind === 'group'} onAviso={props.onAviso} /> : null}
         {choosingLevel ? (
           <NotificationLevelDialog
             level={level}
@@ -82,7 +99,7 @@ export function PanelDeInfo(props: {
             onClose={() => setChoosingLevel(false)}
           />
         ) : null}
-        {chat.kind !== 'direct' ? null : (
+        {tab !== 'settings' || chat.kind !== 'direct' ? null : (
           <label className="mt-2 flex min-h-[56px] cursor-pointer items-center gap-4 bg-surface px-6">
             <Bell size={18} className="text-on-surface-variant" />
             <span className="flex-1 text-[15px]">Silenciar notificaciones</span>
@@ -96,18 +113,7 @@ export function PanelDeInfo(props: {
             />
           </label>
         )}
-        {props.tarjetas}
-        <ArchivosDelChat base={props.base} chatId={chat.id} onVerFoto={props.onVerFoto} />
-        {info.miembros.length ? (
-          <ParticipantesDelChat
-            jwt={props.jwt}
-            miembros={info.miembros}
-            puedeAgregar={info.puedeAgregar}
-            onAgregar={(userId) => void editar.agregar(userId)}
-            onCambiarRol={(userId, role) => void editar.cambiarRol(userId, role)}
-            onSacar={(userId) => void editar.sacar(userId)}
-          />
-        ) : null}
+        {tab !== 'settings' ? null : (
         <section className="mt-2 bg-surface py-2">
           {info.puedeSalir ? (
             <button type="button" data-testid="btn-salir-del-grupo" onClick={() => setConfirmando('salir')} className="flex min-h-[52px] w-full items-center gap-4 px-6 text-left text-[15px] text-error hover:bg-background">
@@ -120,6 +126,7 @@ export function PanelDeInfo(props: {
             </button>
           ) : null}
         </section>
+        )}
       </div>
       {confirmando ? (
         <ConfirmChatAction

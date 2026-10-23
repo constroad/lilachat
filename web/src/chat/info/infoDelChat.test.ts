@@ -17,7 +17,7 @@ describe('armarInfo', () => {
   it('grupo: título, cuántos son, y yo primero, después admins y el resto por nombre', () => {
     const info = armarInfo({ chat: chat('group'), detalle: grupo, yo: 'yo' });
     expect(info.titulo).toBe('Info. del grupo');
-    expect(info.subtitulo).toBe('Grupo · 4 participantes');
+    expect(info.subtitulo).toBe('Grupo · 4 miembros');
     expect(info.miembros.map((uno) => uno.nombre)).toEqual(['Tú', 'Mamá', 'Ana', 'Beto']);
     expect(info.puedeSalir).toBe(true);
     expect(info.puedeEliminar).toBe(false);

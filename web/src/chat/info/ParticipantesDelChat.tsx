@@ -2,6 +2,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { ChevronDown, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import type { AccionDeMiembro } from '@lilachat/shared';
+import { membersHeading } from '@lilachat/shared';
 import { useContactos } from '../../agenda/CreatePanels';
 import { ContactPicker } from '../../contacts/ContactPicker';
 import { Avatar } from '../../ui/Avatar';
@@ -27,15 +28,16 @@ export function ParticipantesDelChat(props: {
   };
   return (
     <section data-testid="participantes" className="mt-2 bg-surface py-2">
-      <h4 className="px-6 py-2 text-sm text-on-surface-variant">{props.miembros.length} participantes</h4>
       {props.puedeAgregar ? (
         <button type="button" data-testid="btn-agregar-participante" onClick={() => setAgregando(true)} className="flex min-h-[56px] w-full items-center gap-4 px-6 text-left hover:bg-background">
-          <span className="grid h-10 w-10 place-items-center rounded-full bg-primary text-on-primary">
+          <span className="grid h-10 w-10 place-items-center rounded-full bg-primary/10 text-primary">
             <UserPlus size={18} />
           </span>
-          <span className="text-[15px]">Añadir participante</span>
+          <span className="text-[15px] font-semibold text-primary">Agregar miembros</span>
         </button>
       ) : null}
+      {/* Pending 69 (design `r151-detalle-grupo`): «Agregar miembros» first, then how many they are. */}
+      <h4 className="px-6 pb-1 pt-3 text-[11px] font-bold uppercase tracking-[0.15em] text-on-surface-variant">{membersHeading(props.miembros.length)}</h4>
       {props.miembros.map((miembro) => (
         <div key={miembro.id} data-testid={`participante-${miembro.id}`} className="group flex min-h-[60px] items-center gap-4 px-6 hover:bg-background">
           <Avatar name={miembro.nombre} foto={miembro.foto} size={40} />
@@ -43,7 +45,7 @@ export function ParticipantesDelChat(props: {
             <span className="block truncate text-[15px]">{miembro.nombre}</span>
             {miembro.telefono && !miembro.esYo ? <span className="block text-xs text-on-surface-variant">{miembro.telefono}</span> : null}
           </span>
-          {miembro.rol === 'admin' ? <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">Admin</span> : null}
+          {miembro.rol === 'admin' ? <span className="shrink-0 rounded-full border border-primary/30 bg-primary/[0.08] px-2.5 py-0.5 text-[11px] font-semibold text-primary">Admin del grupo</span> : null}
           {miembro.acciones.length ? (
             <DropdownMenu.Root modal={false}>
               <DropdownMenu.Trigger asChild>

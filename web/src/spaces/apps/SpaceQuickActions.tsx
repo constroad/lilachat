@@ -11,8 +11,8 @@ import { useAppAnswers } from '../../chat/commands/useAppAnswers';
 import { AppLogo } from './AppLogo';
 
 /**
- * The space's ⚡ (R160, design e-30; José, 23/10: «¿no debe estar disponible a
- * nivel de espacio?»): the actions of every installed app, without entering a
+ * The space's ⚡ (R160, design e-30; José, 23/10: it belongs to the space,
+ * not only to a channel): the actions of every installed app, without entering a
  * channel, like Slack's global shortcuts. What is registered lands in the
  * channel the admin picked for its topic; the answer only I see shows here.
  */

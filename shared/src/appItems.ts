@@ -1,7 +1,6 @@
 /**
  * Where each command and action of an app works in a space (R160; José,
- * 23/10: «solo algunos comandos vamos a querer que estén como globales, no
- * todos»). The space's admin decides, per item: whether it is in the space's
+ * 23/10: only some commands are meant to be global). The space's admin decides, per item: whether it is in the space's
  * ⚡ (global) and in which channels. PURE: the server enforces it, the app and
  * the web draw the switches with it.
  */

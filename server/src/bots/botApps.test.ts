@@ -105,15 +105,15 @@ describe('the manifest', () => {
 
   it('the «+» actions follow the manifest with the app avatar; a manifest without them removes them (agentes, 23/10)', async () => {
     // Arrange
-    const marca = { key: 'marcar_asistencia', name: 'Marcar asistencia', description: 'Ingreso, refrigerio o salida con tu foto y ubicación' };
-    const { body } = await request(app).post('/api/bots/apps').set(asLila).send({ ...manifest(), avatar_url: 'https://agentes.example.com/inframaq.png', shortcuts: [marca] }).expect(201);
+    const attendance = { key: 'marcar_asistencia', name: 'Marcar asistencia', description: 'Ingreso, refrigerio o salida con tu foto y ubicación' };
+    const { body } = await request(app).post('/api/bots/apps').set(asLila).send({ ...manifest(), avatar_url: 'https://agentes.example.com/inframaq.png', shortcuts: [attendance] }).expect(201);
     await installWith(body.client_id, body.client_secret);
     const groups = () => request(app).get(`/api/workspaces/${spaceId}/commands`).set(asJose).expect(200).then((res) => res.body.groups);
     // Act
     const offered = await groups();
     await request(app).post('/api/bots/apps').set(asLila).send({ ...manifest(), commands: [] }).expect(200);
     // Assert
-    expect(offered).toEqual([expect.objectContaining({ appName: 'Inframaq', avatarUrl: 'https://agentes.example.com/inframaq.png', shortcuts: [marca] })]);
+    expect(offered).toEqual([expect.objectContaining({ appName: 'Inframaq', avatarUrl: 'https://agentes.example.com/inframaq.png', shortcuts: [attendance] })]);
     expect(await groups()).toEqual([]);
   });
 

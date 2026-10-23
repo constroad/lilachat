@@ -8,8 +8,8 @@ const modeOf = (channels: ItemChannels): Mode => (Array.isArray(channels) ? 'som
 const sameChannels = (a: ItemChannels, b: ItemChannels) => JSON.stringify(Array.isArray(a) ? [...a].sort() : a) === JSON.stringify(Array.isArray(b) ? [...b].sort() : b);
 
 /**
- * «Comandos y acciones» (R160; José, 23/10: «solo algunos van a ser
- * globales»): for each command and action of the app, whether it is in the
+ * The commands and actions of an app (R160; José, 23/10: only some are
+ * global): for each command and action of the app, whether it is in the
  * space's ⚡ and in which channels. The admin changes it; the server applies it
  * to everyone at once. The rest see where each one works.
  */

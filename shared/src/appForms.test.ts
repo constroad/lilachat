@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { formFields, validateFormSpec, validateFormValues, type FormField } from './appForms.js';
 
 /** Inframaq's real `registrar_marca` (agentes, 23/10), as the app sends it. */
-const marca = {
+const attendanceForm = {
   id: 'registrar_marca',
   title: 'Marcar asistencia',
   submit_label: 'Marcar',
@@ -22,7 +22,7 @@ const marca = {
 describe('an app form (R160, like Slack\'s modals; agentes builds it from the tool\'s inputSchema)', () => {
   it('reads the spec and turns the schema into fields, in order, with labels, help and what is required', () => {
     // Arrange
-    const valid = validateFormSpec(marca);
+    const valid = validateFormSpec(attendanceForm);
     // Act
     const fields = valid.ok ? formFields(valid.form) : [];
     // Assert
@@ -46,18 +46,18 @@ describe('an app form (R160, like Slack\'s modals; agentes builds it from the to
   });
 
   it('refuses a spec that cannot be drawn, saying why', () => {
-    expect(validateFormSpec({ ...marca, id: '' }).ok).toBe(false);
-    expect(validateFormSpec({ ...marca, title: '' }).ok).toBe(false);
-    expect(validateFormSpec({ ...marca, schema: { type: 'array' } }).ok).toBe(false);
-    const unknown = validateFormSpec({ ...marca, schema: { type: 'object', properties: { x: { type: 'string', 'x-input': 'firma' } } } });
+    expect(validateFormSpec({ ...attendanceForm, id: '' }).ok).toBe(false);
+    expect(validateFormSpec({ ...attendanceForm, title: '' }).ok).toBe(false);
+    expect(validateFormSpec({ ...attendanceForm, schema: { type: 'array' } }).ok).toBe(false);
+    const unknown = validateFormSpec({ ...attendanceForm, schema: { type: 'object', properties: { x: { type: 'string', 'x-input': 'firma' } } } });
     expect(unknown.ok ? '' : unknown.message).toMatch(/x/);
-    const tooMany = validateFormSpec({ ...marca, schema: { type: 'object', properties: Object.fromEntries(Array.from({ length: 21 }, (_, i) => [`f${i}`, { type: 'string' }])) } });
+    const tooMany = validateFormSpec({ ...attendanceForm, schema: { type: 'object', properties: Object.fromEntries(Array.from({ length: 21 }, (_, i) => [`f${i}`, { type: 'string' }])) } });
     expect(tooMany.ok).toBe(false);
   });
 });
 
 describe('the values a person sends', () => {
-  const spec = validateFormSpec(marca);
+  const spec = validateFormSpec(attendanceForm);
   const fields = spec.ok ? formFields(spec.form) : [];
   const good = { accion: 'ingreso', ubicacion: { lat: -11.98, lng: -76.95, precision: 6 }, foto: 'file:f1' };
 

@@ -5,9 +5,9 @@ import { BotAppModel, BotInstallationModel, type BotInstallation } from './botMo
 import { channelsOf } from './botTopics.js';
 
 /**
- * «Comandos y acciones» of an installed app (R160; José, 23/10: «solo algunos
- * van a ser globales; habilitar o deshabilitar desde Lilachat, en canales y de
- * forma global»). The admin decides per item; `botCommands.ts` filters what is
+ * The commands and actions of an installed app (R160; José, 23/10: only some
+ * are global, switched on and off from Lilachat, per channel and for the
+ * whole space). The admin decides per item; `botCommands.ts` filters what is
  * offered and refuses what is not enabled at that place.
  */
 type Installation = Pick<BotInstallation, '_id' | 'appId' | 'workspaceId'>;

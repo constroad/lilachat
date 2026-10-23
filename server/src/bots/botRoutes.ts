@@ -116,7 +116,7 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
     if (!valid.ok) return void res.status(400).json({ error: 'invalid_request', message: valid.message });
     res.json({ commands: commandsToWire(await registerCommands(req.bot!, valid.commands)) });
   }));
-  // Notice topics (§c-quater): read where each lands; a partial map moves some (agentes' migration and `/avisos aquí`).
+  // Notice topics (§c-quater): read where each lands; a partial map moves some (agentes' one-time migration and its «here» command).
   const topicsToWire = (routes: Awaited<ReturnType<typeof topicRoutesOf>>) => routes.topics.map((topic) => ({ key: topic.key, name: topic.name, channel: topic.channel }));
   router.get('/topics', asyncRoute(async (req, res) => res.json({ topics: topicsToWire(await topicRoutesOf(req.bot!)) })));
   router.put('/topics', asyncRoute(async (req, res) => {

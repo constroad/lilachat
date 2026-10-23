@@ -41,7 +41,7 @@ const asUser = (userId: () => Types.ObjectId) => ({ get Authorization() { return
 const asAna = asUser(() => ana);
 const asJose = asUser(() => jose);
 const json = (body: unknown) => (_event: Event, res: ServerResponse) => res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(body));
-const marca = {
+const attendanceForm = {
   id: 'registrar_marca',
   title: 'Marcar asistencia',
   submit_label: 'Marcar',
@@ -108,7 +108,7 @@ beforeEach(async () => {
 
 const appId = async () => String((await BotAppModel.findOne({ clientId: 'lca_inframaq' }).lean())!._id);
 async function openForm(): Promise<string> {
-  answer = json({ response_type: 'form', form: marca });
+  answer = json({ response_type: 'form', form: attendanceForm });
   const outcome = await request(app).post(`/api/chats/${channel}/commands`).set(asAna).send({ app_id: await appId(), command: 'asistencia', text: '' }).expect(200);
   expect(outcome.body).toMatchObject({ outcome: 'form', response: { responseType: 'form', form: { id: 'registrar_marca', title: 'Marcar asistencia' } } });
   return outcome.body.commandId;
@@ -182,7 +182,7 @@ describe('an app answers a command with a form', () => {
   it('an action of the «+» opens the same form: the app hears shortcut.invoked with who and where', async () => {
     // Arrange
     await BotAppModel.updateOne({ clientId: 'lca_inframaq' }, { $set: { shortcuts: [{ key: 'marcar_asistencia', name: 'Marcar asistencia' }] } });
-    answer = json({ response_type: 'form', form: marca });
+    answer = json({ response_type: 'form', form: attendanceForm });
     received.length = 0;
     // Act
     const opened = await request(app).post(`/api/chats/${channel}/shortcuts`).set(asAna).send({ app_id: await appId(), shortcut: 'marcar_asistencia' }).expect(200);
@@ -198,7 +198,7 @@ describe('an app answers a command with a form', () => {
     await BotAppModel.updateOne({ clientId: 'lca_inframaq' }, { $set: { shortcuts: [{ key: 'marcar_asistencia', name: 'Marcar asistencia' }] } });
     const notices: { userId: string; notice: CommandNotice }[] = [];
     configureCommands({ notify: (userId, notice) => notices.push({ userId, notice }) });
-    answer = json({ response_type: 'form', form: marca });
+    answer = json({ response_type: 'form', form: attendanceForm });
     const space = `/api/workspaces/${spaceId}`;
     // Act
     const opened = await request(app).post(`${space}/shortcuts`).set(asAna).send({ app_id: await appId(), shortcut: 'marcar_asistencia' }).expect(200);

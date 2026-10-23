@@ -1,6 +1,6 @@
 /**
- * Notice topics (R160, design e-31; José, 23/10: «¿cómo indicamos a qué
- * canal deben llegar las asistencias?»). The app declares its topics in the
+ * Notice topics (R160, design e-31; José, 23/10: how do we say which channel
+ * the attendance notices go to?). The app declares its topics in the
  * manifest; the space's admin picks a channel for each inside Lilachat, and
  * the app posts by topic. Lilachat keeps the routing: no channel ids in agentes.
  */

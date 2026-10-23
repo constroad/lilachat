@@ -17,8 +17,8 @@ const SHEET_MAX_WIDTH = 560;
 const MAX_SCREEN_SHARE = 0.85;
 
 /**
- * The space's ⚡ (R160, design e-30; José, 23/10: «¿no debe estar disponible a
- * nivel de espacio?»): the actions and global commands of every installed app,
+ * The space's ⚡ (R160, design e-30; José, 23/10: it belongs to the space,
+ * not only to a channel): the actions and global commands of every installed app,
  * without entering a channel, like Slack's global shortcuts. The answer only I
  * see shows in the sheet; a late one reopens it.
  */

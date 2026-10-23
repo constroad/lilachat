@@ -3,8 +3,9 @@ import type { ChatList } from './chatLists.js';
 /**
  * The chat list in folding sections, like Slack's sidebar (pending 62, José
  * 23/10; design `r154-secciones`). Each list of my own is a section in its
- * order; a chat goes in the first one that has it, and the rest go in «Sin
- * sección» at the end. A folded section shows how many chats are unread. PURE.
+ * order; a chat goes in the first one that has it, and the rest go in the
+ * no-section group at the end. A folded section shows how many chats are
+ * unread. PURE.
  */
 export const NO_SECTION_KEY = 'sin-seccion';
 const NO_SECTION_TITLE = 'Sin sección';

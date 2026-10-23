@@ -10661,6 +10661,16 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     - Los respaldos (F12) pasan a cubrir la raíz nueva.
     - Al terminar, `LILA_SERVER_URL` y `LILA_APP_JWT_SECRET` salen del `.env`
       de Lilachat: queda fuera de la rotación de ese secreto que hará José.
+    - Dónde escribe (lila-2, 23/10, skill `deploy-mini` §7.16): hoy
+      `CHAT_STORAGE_ROOT` apunta al disco interno. Un USB en macOS no monta
+      hasta que alguien inicia sesión: tras cada reinicio todo lo que viva
+      ahí responde 507 y el chat se ve roto. Propuesta por capas (decide
+      José): lo reciente en el interno y lo viejo al externo con retención.
+      Si se usa el externo: montaje por marca en la raíz más sonda de
+      escritura real (montado | ausente | colgado), el `mkdir` de la raíz a
+      mano y nunca al arrancar, lecturas y escrituras con 507/503 y
+      `Retry-After` (nunca 404 ni 415), y el cliente respeta `Retry-After`.
+      Referencia viva: `lilafotos/server/src/disco.ts`.
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

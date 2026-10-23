@@ -6,6 +6,8 @@ import type { ComposerHandle } from './Composer';
 import { EmojiStickerPanel } from './stickers/EmojiStickerPanel';
 import { closeEmojiPanel, isEmojiPanelOpen, panelHeight, panelShown, rememberKeyboard, resetEmojiPanel, useEmojiPanelOpen } from './emojiPanel';
 import { useMargenes } from '../ui/useMargenes';
+import { useOverlayLevel } from '../ui/Modal';
+import { coveredAbove } from '../ui/overlays';
 
 /** After entering a chat, when the hidden emoji panel is built (the chat is already on screen). */
 const PREMOUNT_MS = 1200;
@@ -54,8 +56,11 @@ export function ChatBottom(props: {
   const height = panelHeight();
   const panelStyle = useAnimatedStyle(() => ({ transform: [{ translateY: height - panelShown.value }] }), [height]);
 
+  const level = useOverlayLevel();
   // A keyboard that finished rising: its height is the panel's from now on, and it takes the panel's place.
+  // Not a keyboard of a screen on top (the full-screen GIF search, pending 59): coming back, the panel is still there.
   const keyboardUp = (keyboard: number) => {
+    if (coveredAbove(level)) return;
     rememberKeyboard(keyboard, coveredMargin);
     if (isEmojiPanelOpen()) closeEmojiPanel(true);
   };

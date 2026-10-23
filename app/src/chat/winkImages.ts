@@ -204,6 +204,32 @@ export const WINK_IMAGES: Record<string, WinkImages> = {
       'tail': require('../../assets/guinos/piggy-back-tail.webp'),
     },
   },
+  'dog-sad': {
+    tile: require('../../assets/guinos/dog-sad-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/dog-sad-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/dog-sad-leg-right.webp'),
+      'tail': require('../../assets/guinos/dog-sad-tail.webp'),
+      'body': require('../../assets/guinos/dog-sad-body.webp'),
+      'head': require('../../assets/guinos/dog-sad-head.webp'),
+      'eye-left': require('../../assets/guinos/dog-sad-eye-left.webp'),
+      'mouth': require('../../assets/guinos/dog-sad-mouth.webp'),
+      'arm-left': require('../../assets/guinos/dog-sad-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/dog-sad-arm-right.webp'),
+    },
+  },
+  'dog-sad-back': {
+    tile: require('../../assets/guinos/dog-sad-back-tile.webp'),
+    parts: {
+      'leg-right': require('../../assets/guinos/dog-sad-back-leg-right.webp'),
+      'leg-left': require('../../assets/guinos/dog-sad-back-leg-left.webp'),
+      'body': require('../../assets/guinos/dog-sad-back-body.webp'),
+      'head': require('../../assets/guinos/dog-sad-back-head.webp'),
+      'arm-left': require('../../assets/guinos/dog-sad-back-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/dog-sad-back-arm-right.webp'),
+      'tail': require('../../assets/guinos/dog-sad-back-tail.webp'),
+    },
+  },
   'balloon': {
     tile: require('../../assets/guinos/balloon-tile.webp'),
     parts: {
@@ -298,6 +324,42 @@ export const WINK_IMAGES: Record<string, WinkImages> = {
     tile: require('../../assets/guinos/sweat-tile.webp'),
     parts: {
       'body': require('../../assets/guinos/sweat-body.webp'),
+    },
+  },
+  'rain-cloud': {
+    tile: require('../../assets/guinos/rain-cloud-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/rain-cloud-body.webp'),
+    },
+  },
+  'rain-drops': {
+    tile: require('../../assets/guinos/rain-drops-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/rain-drops-body.webp'),
+    },
+  },
+  'tear-stream': {
+    tile: require('../../assets/guinos/tear-stream-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/tear-stream-body.webp'),
+    },
+  },
+  'puddle': {
+    tile: require('../../assets/guinos/puddle-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/puddle-body.webp'),
+    },
+  },
+  'umbrella-broken': {
+    tile: require('../../assets/guinos/umbrella-broken-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/umbrella-broken-body.webp'),
+    },
+  },
+  'sun-peek': {
+    tile: require('../../assets/guinos/sun-peek-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/sun-peek-body.webp'),
     },
   },
 };

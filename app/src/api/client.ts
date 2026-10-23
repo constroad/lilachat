@@ -207,6 +207,8 @@ export type ChatSummary = {
     hiloDe?: number;
     /** The file's type: a GIF says «GIF», not «Foto» (pending 53). */
     mime?: string;
+    /** The small image beside the preview: sticker, photo, GIF or video frame (pending 57). */
+    thumb?: string;
     /** El aviso de grupo, para resolver el nombre con la agenda del teléfono. */
     system?: {
       evento: string;

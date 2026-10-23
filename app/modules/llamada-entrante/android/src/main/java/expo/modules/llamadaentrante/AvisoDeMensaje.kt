@@ -36,7 +36,9 @@ data class MensajeRecibido(
   /** Token corto para confirmar la entrega sin el JWT. */
   val entrega: String?,
   /** Token para «Responder» y «Marcar como leído» (FL11); vacío en un chat secreto. */
-  val respuesta: String? = null
+  val respuesta: String? = null,
+  /** The sticker, photo, GIF or wink thumbnail (pending 57); empty without one. */
+  val image: String = ""
 ) {
   companion object {
     fun desdePush(data: Map<String, String>): MensajeRecibido? {
@@ -50,7 +52,8 @@ data class MensajeRecibido(
         cuerpo = data["cuerpo"] ?: "",
         silencioso = data["silencioso"] == "1",
         entrega = data["entrega"]?.takeIf { it.isNotBlank() },
-        respuesta = data["respuesta"]?.takeIf { it.isNotBlank() }
+        respuesta = data["respuesta"]?.takeIf { it.isNotBlank() },
+        image = data["imagen"] ?: ""
       )
     }
   }
@@ -133,11 +136,17 @@ object AvisoDeMensaje {
       estilo.conversationTitle = mensaje.chat
       estilo.isGroupConversation = true
     }
-    for (linea in lineas) {
-      estilo.addMessage(linea.cuerpo, linea.at, Person.Builder().setName(linea.autor).build())
+    // The sticker, photo, GIF or wink inside the newest message, like WhatsApp (pending 57); without it the notice still goes.
+    val thumbnail = mensaje.image.takeIf { it.isNotBlank() }?.let { NoticeThumbnail.load(it) }
+    val imageUri = thumbnail?.let { NoticeThumbnail.share(contexto, it, "${mensaje.chatId}-${mensaje.seq}") }
+    lineas.forEachIndexed { index, linea ->
+      val message = NotificationCompat.MessagingStyle.Message(linea.cuerpo, linea.at, Person.Builder().setName(linea.autor).build())
+      if (index == lineas.lastIndex && imageUri != null) message.setData("image/png", imageUri)
+      estilo.addMessage(message)
     }
     val aviso = NotificationCompat.Builder(contexto, CANAL)
       .setSmallIcon(AvisoDeLlamada.iconoChico(contexto))
+      .apply { AvisoDeLlamada.brandColor(contexto)?.let { setColor(it) } }
       .setContentTitle(mensaje.chat.ifBlank { mensaje.autor })
       .setContentText(mensaje.cuerpo)
       .setStyle(estilo)
@@ -184,6 +193,7 @@ object AvisoDeMensaje {
     }
     val summary = NotificationCompat.Builder(context, CANAL)
       .setSmallIcon(AvisoDeLlamada.iconoChico(context))
+      .apply { AvisoDeLlamada.brandColor(context)?.let { setColor(it) } }
       .setContentTitle("Lilachat")
       .setContentText(text)
       .setStyle(inbox)
@@ -237,6 +247,7 @@ object AvisoDeMensaje {
     crearCanal(contexto)
     val aviso = NotificationCompat.Builder(contexto, CANAL)
       .setSmallIcon(AvisoDeLlamada.iconoChico(contexto))
+      .apply { AvisoDeLlamada.brandColor(contexto)?.let { setColor(it) } }
       .setContentTitle("No se envió tu respuesta")
       .setContentText("Toca para abrir el chat y reintentar")
       .setCategory(NotificationCompat.CATEGORY_MESSAGE)

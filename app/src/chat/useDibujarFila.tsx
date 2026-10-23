@@ -1,5 +1,5 @@
 import { useCallback, useMemo, type ComponentProps } from 'react';
-import { albumLayout, alreadyGreeted } from '@lilachat/shared';
+import { albumLayout, alreadyGreeted, isHiddenNotice } from '@lilachat/shared';
 import { formatDayLabel, isAnimatedImage, memberBadge, miReaccion, canOpenThread, puedeReaccionar, resolveDeliveryState, startsNewDay, usesFlatLayout, type MemberPill } from '@lilachat/shared';
 import { DivisorNoLeidos } from './useDivisorNoLeidos';
 import { DaySeparator, isPending, MessageRow, type Row } from './MessageRow';
@@ -73,7 +73,8 @@ export function useDibujarFila(p: {
     ({ item, index }: { item: Row; index: number }) => {
       // The flat (Slack) rows keep each photo apart.
       const albumRole = isPending(item) || flat ? undefined : albums.roles.get(item.seq);
-      if (albumRole?.role === 'member') return <></>;
+      // The rest of an album is in its first card; a notice deleted for everyone is not drawn.
+      if (albumRole?.role === 'member' || (!isPending(item) && isHiddenNotice(item))) return <></>;
       const album = albumRole?.role === 'head' ? albumRole.seqs.map((seq) => albums.bySeq.get(seq)).filter((one): one is ChatMessage => Boolean(one)) : undefined;
       const previous = rows[index - 1];
       const next = rows[index + 1];

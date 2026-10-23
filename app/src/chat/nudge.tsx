@@ -8,7 +8,7 @@ import { getSocket } from './socketClient';
 import { chatsEnMemoria, suscribirChatsEnMemoria } from './chatsGuardados';
 import { playWinkCues, shakeScreen, startWink, stopFun } from './FunScreen';
 import { closeEmojiPanel } from './emojiPanel';
-import { FUN_LIVE_MS, NUDGE_SHAKE, formatClock, funArrivedInRow, funMessageToPlay, highestSeq, shouldPlayFun, winkById, winkCardLines, type FunPlace, type FunToPlay, type WinkId } from '@lilachat/shared';
+import { FUN_LIVE_MS, NUDGE_SHAKE, formatClock, funArrivedInRow, funMessageToPlay, highestSeq, shouldPlayFun, winkById, winkCardLines, winkTileIsProp, type FunPlace, type FunToPlay, type WinkId } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 
 const SEND_TIMEOUT_MS = 8000;
@@ -200,7 +200,7 @@ export function WinkLine(props: { seq: number; wink?: string; mine: boolean; aut
   return (
     <View testID={`linea-guino-${props.seq}`} className={`my-2 w-[300px] max-w-[88%] flex-row items-center gap-3 rounded-2xl border border-primary/20 p-2.5 ${sideOf(props.mine)}`}>
       <View className="items-center justify-center overflow-hidden rounded-xl bg-primary/10" style={{ width: WINK_THUMB, height: WINK_THUMB }}>
-        {known?.kind === 'character' ? <WinkCharacter wink={known} size={known.tile ? WINK_THUMB - 12 : WINK_THUMB * 0.62} /> : known ? <Text style={{ fontSize: 30 }}>{known.hero}</Text> : <Heart size={22} color={palette.primary} />}
+        {known?.kind === 'character' ? <WinkCharacter wink={known} size={winkTileIsProp(known) ? WINK_THUMB - 12 : WINK_THUMB * 0.62} /> : known ? <Text style={{ fontSize: 30 }}>{known.hero}</Text> : <Heart size={22} color={palette.primary} />}
       </View>
       <View className="flex-1 gap-0.5">
         <Text className="text-[14px] font-semibold text-on-surface">{lines.who}</Text>

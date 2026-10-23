@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import Animated from 'react-native-reanimated';
 import { BarChart3, Bell, BellOff, CalendarDays, Camera, Check, CheckCheck, ClipboardCheck, FileText, Lock, Mic, NotebookPen, Pin, Sticker, Video, type LucideIcon } from 'lucide-react-native';
 import {
@@ -17,6 +18,7 @@ import { precargarChat } from './mensajesGuardados';
 import { usePendingInChat } from './pendingInChats';
 import { useFunInRow } from './nudge';
 import { Avatar } from '../ui/Avatar';
+import { winkTileSource } from './winkTiles';
 import { useColores } from '../ui/tema';
 
 /** El avatar de la lista (dp): 52, como WhatsApp (antes 48). */
@@ -181,6 +183,10 @@ export const FilaDeChat = memo(function FilaDeChat(props: {
                 })
               : null;
             const IconoDeMedia = preview.media ? ICONO_DE_MEDIA[preview.media] : null;
+            // A sticker, photo, GIF or wink shows its small image, like Telegram (pending 57).
+            const last = chat.lastMessage;
+            const thumb = preview.style === 'normal' && !chat.encrypted && last ? (last.thumb ? { uri: last.thumb } : winkTileSource(last.wink)) : undefined;
+            const wholeImage = last?.kind === 'sticker' || Boolean(last?.wink);
             return (
               <View className="min-w-0 flex-1 flex-row items-center gap-1">
                 {entrega ? (
@@ -194,7 +200,11 @@ export const FilaDeChat = memo(function FilaDeChat(props: {
                     />
                   )
                 ) : null}
-                {IconoDeMedia ? <IconoDeMedia size={15} color={colores['on-surface-variant']} /> : null}
+                {thumb ? (
+                  <Image testID={`miniatura-lista-${chat.id}`} source={thumb} recyclingKey={`${chat.id}-${last?.seq}`} contentFit={wholeImage ? 'contain' : 'cover'} style={{ width: 22, height: 22, borderRadius: 4 }} />
+                ) : IconoDeMedia ? (
+                  <IconoDeMedia size={15} color={colores['on-surface-variant']} />
+                ) : null}
                 <Text
                   className={`min-w-0 flex-1 text-sm ${
                     preview.style === 'typing' ? 'italic text-primary' : preview.style === 'eliminado' ? 'italic text-on-surface-variant' : 'text-on-surface-variant'

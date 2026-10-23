@@ -146,6 +146,12 @@ object AvisoDeLlamada {
     )
   }
 
+  /** The brand color the small icon is tinted with (`notification_icon_color`, from the expo-notifications plugin). */
+  fun brandColor(context: Context): Int? {
+    val id = context.resources.getIdentifier("notification_icon_color", "color", context.packageName)
+    return if (id != 0) androidx.core.content.ContextCompat.getColor(context, id) else null
+  }
+
   /** El ícono de notificación si la app tiene uno; si no, el de la app. */
   fun iconoChico(contexto: Context): Int {
     val propio = contexto.resources.getIdentifier("notification_icon", "drawable", contexto.packageName)

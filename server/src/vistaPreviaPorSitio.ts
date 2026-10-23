@@ -11,10 +11,31 @@ export const AGENTE_PROPIO = 'Mozilla/5.0 (compatible; LilachatBot/1.0; +https:/
 export const AGENTE_DE_FACEBOOK = 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)';
 
 const SITIOS_DE_META = ['instagram.com', 'facebook.com', 'fb.watch', 'tiktok.com'];
+/**
+ * Google Maps le da a un robot cualquiera la página genérica «Google Maps»
+ * (el mapa de Lima por la IP); al de las vistas previas, el punto con sus
+ * coordenadas o el lugar con su foto, como en WhatsApp (pendiente 80).
+ */
+const SITIOS_DE_MAPAS = ['google.com', 'maps.app.goo.gl', 'goo.gl'];
 const esDe = (host: string, dominio: string) => host === dominio || host.endsWith(`.${dominio}`);
 
 export function agenteParaHost(host: string): string {
-  return SITIOS_DE_META.some((dominio) => esDe(host.toLowerCase(), dominio)) ? AGENTE_DE_FACEBOOK : AGENTE_PROPIO;
+  return [...SITIOS_DE_META, ...SITIOS_DE_MAPAS].some((dominio) => esDe(host.toLowerCase(), dominio)) ? AGENTE_DE_FACEBOOK : AGENTE_PROPIO;
+}
+
+/** La frase de propaganda que Google Maps pone en la página de un punto: no dice nada del punto. */
+const TEXTO_GENERICO_DE_MAPAS = /^(Busca negocios locales|Find local businesses)/i;
+
+/**
+ * Un enlace de Google Maps como en WhatsApp: el punto con sus coordenadas y su
+ * mapa, o el lugar con su foto; sin la propaganda, y el sitio dice «Google
+ * Maps» (Google repite el título en `og:site_name`).
+ */
+export function vistaDeMapas(vista: VistaPreviaDeEnlace, host: string): VistaPreviaDeEnlace {
+  if (!SITIOS_DE_MAPAS.some((dominio) => esDe(host.toLowerCase(), dominio))) return vista;
+  const { descripcion, ...resto } = vista;
+  const propia = descripcion && !TEXTO_GENERICO_DE_MAPAS.test(descripcion) ? { descripcion } : {};
+  return { ...resto, ...propia, sitio: 'Google Maps' };
 }
 
 const VIDEO_DE_YOUTUBE = /^\/(watch|shorts\/[\w-]+|live\/[\w-]+)/;

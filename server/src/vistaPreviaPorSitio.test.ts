@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { agenteParaHost, AGENTE_DE_FACEBOOK, urlDeOembed, vistaDeOembed } from './vistaPreviaPorSitio.js';
+import { agenteParaHost, AGENTE_DE_FACEBOOK, urlDeOembed, vistaDeMapas, vistaDeOembed } from './vistaPreviaPorSitio.js';
 
 /**
  * José, 20/10: «WhatsApp muestra el link y la miniatura de Instagram y
@@ -43,5 +43,20 @@ describe('agenteParaHost', () => {
     for (const host of ['www.instagram.com', 'instagram.com', 'www.facebook.com', 'm.facebook.com', 'fb.watch', 'www.tiktok.com', 'vm.tiktok.com']) expect(agenteParaHost(host)).toBe(AGENTE_DE_FACEBOOK);
     expect(agenteParaHost('constroad.com')).toMatch(/LilachatBot/);
     expect(agenteParaHost('notinstagram.com')).toMatch(/LilachatBot/);
+  });
+
+  it('Google Maps also gets it: to our robot it gives the generic «Google Maps» page, not the point or the place (pending 80)', () => {
+    for (const host of ['www.google.com', 'maps.google.com', 'maps.app.goo.gl', 'goo.gl']) expect(agenteParaHost(host)).toBe(AGENTE_DE_FACEBOOK);
+    expect(agenteParaHost('notgoogle.com')).toMatch(/LilachatBot/);
+  });
+});
+
+describe('vistaDeMapas (pending 80)', () => {
+  it('a Google Maps point loses the generic sales line, in Spanish or English, and its site says «Google Maps»; a place keeps its own line; other sites are untouched', () => {
+    const point = { url: 'https://maps.app.goo.gl/x', sitio: '11°49\'45.8"S 76°37\'39.1"W', titulo: '11°49\'45.8"S 76°37\'39.1"W', descripcion: 'Busca negocios locales, consulta mapas y consigue información sobre rutas en Google Maps.', imagen: 'https://maps.google.com/maps/api/staticmap?center=1' };
+    expect(vistaDeMapas(point, 'www.google.com')).toEqual({ url: point.url, sitio: 'Google Maps', titulo: point.titulo, imagen: point.imagen });
+    expect(vistaDeMapas({ ...point, descripcion: 'Find local businesses, view maps and get driving directions in Google Maps.' }, 'maps.google.com').descripcion).toBeUndefined();
+    expect(vistaDeMapas({ ...point, descripcion: '15555' }, 'www.google.com').descripcion).toBe('15555');
+    expect(vistaDeMapas(point, 'example.com')).toBe(point);
   });
 });

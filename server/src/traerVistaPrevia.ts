@@ -3,7 +3,7 @@ import http, { type IncomingMessage } from 'node:http';
 import https from 'node:https';
 import type { VistaPreviaDeEnlace } from '@lilachat/shared';
 import { esDireccionPrivada, leerMetadatos, urlPublica } from './vistaPrevia.js';
-import { agenteParaHost, urlDeOembed, vistaDeOembed } from './vistaPreviaPorSitio.js';
+import { agenteParaHost, urlDeOembed, vistaDeMapas, vistaDeOembed } from './vistaPreviaPorSitio.js';
 
 /** Lo que se espera a una página antes de rendirse. */
 const PLAZO_MS = 5_000;
@@ -85,7 +85,7 @@ export async function traerVistaPrevia(cruda: string): Promise<VistaPreviaDeEnla
     const respuesta = await pedir(url);
     if (respuesta.html !== undefined) {
       const vista = leerMetadatos(respuesta.html, url.toString());
-      return vista ? { ...vista, url: cruda } : null;
+      return vista ? vistaDeMapas({ ...vista, url: cruda }, url.hostname) : null;
     }
     if (!respuesta.destino) return null;
     url = urlPublica(new URL(respuesta.destino, url).toString());

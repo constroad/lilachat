@@ -52,8 +52,8 @@ describe('/api/chat-lists', () => {
     await create({ name: 'Familia' }).expect(201);
     const repeated = await create({ name: 'familia' }).expect(400);
     const empty = await create({ name: '' }).expect(400);
-    expect(repeated.body.message).toBe('Ya tienes una sección con ese nombre.');
-    expect(empty.body.message).toBe('Escribe un nombre para la sección.');
+    expect(repeated.body.message).toBe('Ya tienes una lista con ese nombre.');
+    expect(empty.body.message).toBe('Escribe un nombre para la lista.');
   });
 
   it('renames, adds and removes chats', async () => {
@@ -86,7 +86,7 @@ describe('/api/chat-lists', () => {
   it('stops at 20 lists', async () => {
     await UserModel.updateOne({ _id: me }, { $set: { chatLists: Array.from({ length: 20 }, (_, index) => ({ name: `L${index}`, chatIds: [] })) } });
     const { body } = await create({ name: 'Una más' }).expect(400);
-    expect(body.message).toBe('Puedes tener hasta 20 secciones.');
+    expect(body.message).toBe('Puedes tener hasta 20 listas.');
   });
 
   it('without a session there is nothing', async () => {

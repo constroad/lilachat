@@ -29,7 +29,7 @@ beforeEach(async () => {
   await Promise.all([UserModel.deleteMany({}), ChatModel.deleteMany({})]);
   const [first, second] = await UserModel.create([{ phone: '900000021', name: 'Ana' }, { phone: '900000022', name: 'Beto' }]);
   ana = first!._id;
-  const created = await Promise.all([0, 1, 2].map(() => ChatModel.create({ kind: 'direct', members: [{ userId: ana }, { userId: second!._id }], lastSeq: 0 })));
+  const created = await ChatModel.create([0, 1, 2].map(() => ({ kind: 'direct', members: [{ userId: ana }, { userId: second!._id }], lastSeq: 0 })));
   chats = created.map((chat) => String(chat._id));
 });
 
@@ -37,13 +37,13 @@ const createList = (name: string, chatIds: string[]) => request(app).post('/api/
 
 describe('a chat lives in one section (pending 62)', () => {
   it('adding a chat to a section takes it out of the one it was in, and the answer brings every section', async () => {
-    const site = (await createList('Obra', [chats[0]!, chats[1]!])).body.list;
+    const obra = (await createList('Obra', [chats[0]!, chats[1]!])).body.list;
     const familia = (await createList('Familia', [])).body.list;
     const moved = await request(app).patch(`/api/chat-lists/${familia.id}`).set(jwtOf(ana)).send({ add: [chats[0]] });
     expect(moved.status).toBe(200);
     expect(moved.body.lists.map((list: { name: string; chatIds: string[] }) => [list.name, list.chatIds])).toEqual([['Obra', [chats[1]]], ['Familia', [chats[0]]]]);
     const saved = (await request(app).get('/api/chat-lists').set(jwtOf(ana))).body.lists;
-    expect(saved.find((list: { id: string }) => list.id === site.id).chatIds).toEqual([chats[1]]);
+    expect(saved.find((list: { id: string }) => list.id === obra.id).chatIds).toEqual([chats[1]]);
   });
 
   it('a new section with chats takes them from the others too', async () => {

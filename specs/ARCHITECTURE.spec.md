@@ -3377,7 +3377,7 @@ mismo commit** (fecha, commit, versión del APK). ✅ hecho y verificado ·
 | F12.0–2 | Historial en el teléfono, respaldo cifrado, restaurar | 🟡 16/10 `943d293` | alta del disco en la mini (runbook); pendientes §44.4 |
 | F12.3 | Cifrado por defecto + media cifrada | ⬜ | **bloqueada por D1** |
 | F12.4 | Multi-dispositivo/web con sobre por dispositivo | ⬜ | después de F12.3 |
-| F13 | Mongo de emergencia en la mini | ⬜ | **revisar**: con la base ya EN la mini (bóveda, 17/10) el plan original pierde sentido; redefinir como respaldo verificado de bóveda |
+| F13 | Mongo de emergencia en la mini | ⬜ | **redefinido (§117.6, 23/10)**: con la base ya EN la mini, un standby en la misma máquina no protege; pasa a ser respaldo verificado (F12 + restauración de prueba semanal) |
 | F14 | Legado Digital (antes «F12» en §13) | ⬜ | — |
 | P1 | Deploy en Torre (`lilachat.constroad.com`) | ✅ 25/08 | — (push a main despliega el server solo, ~90 s) |
 | P2 | APK en LilaStore | ✅ | — |
@@ -4908,6 +4908,171 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
 - Al responder rápido con `adb`, el pie de la foto se cortó a mitad: se tocó
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
+
+## 117. Análisis del 23/10: alertas vía agentes, API/MCP, «Zernio propio», IA con la suscripción y el Mongo de emergencia
+
+Pedido de José del 23/10 (pendientes 75, 33, 16, IA y 67). Fuentes: la
+sesión de Portal (registro de avisos y su corrección del mismo día), lila-2
+(modelo local, disco y avisos de lila), la sesión de agentes (contrato de
+bots), el código de Lilachat y los precios vigentes de la API.
+
+### 117.1 Alertas a Lilachat vía agentes (75)
+
+**Qué manda hoy Portal** (registro `src/constants/whatsappAlerts.ts`, 20
+avisos; tipos de grupo en `companyGroupKinds.ts`). Con avisos vivos quedan 9
+temas: caja (`cashFlow`), personal (`employees`), recepción de material,
+laboratorio, consumo de líquidos, planta, mantenimiento, portería
+(`visitorAccess`) y admin. `fleet` y `construction` siguen declarados pero
+nadie los alimenta: esos rubros salieron de Portal el 22/10 (commit
+`65e53109`) a `constroad/timon` y `constroad/constructora`. Lo de asfalto que
+dice «fleet» (`transports`, `drivers`, el cubicaje con Globofast) sigue vivo.
+**Fuera del registro** viven la llegada del despacho, la asistencia, los
+consumos, las órdenes de compra, las visitas y el OTP: hay que pasarlos al
+registro antes de mudarlos, o se pierden en la migración.
+
+Lo que pidió José, mapeado: clima → trabajo agendado de agentes (hoy lo hace
+lila); firma de trabajadores → asistencia; consumos → consumo de líquidos y
+consumos; llegada de material → recepción; despacho → llegada del despacho.
+
+**Qué más conviene mandar:** despacho que no se cerró a tiempo; resumen
+diario de planta (producción y consumo); resultado de laboratorio fuera de
+norma; mantenimiento vencido; visitante en portería; vencimiento de crédito
+de un cliente, sin montos en el grupo (el monto va por enlace). Los eventos
+de flota van desde Timón, no desde Portal.
+
+**Diseño:** Portal → agentes (evento con `companyId`, `topic` y una llave
+idempotente estable) → agentes → Lilachat por la API de bots (`POST
+/api/bots/messages`: tarjeta, tarjeta con botones o checklist con
+responsable) al canal que el admin eligió en la consola de agentes para esa
+empresa y ese tema (`GET /api/bots/channels`). WhatsApp queda como un canal
+más de agentes, no como dependencia. Reglas que vienen de lo aprendido en
+lila: agrupar el ruido de eventos crudos en un resumen; verificar el canal
+por su nombre antes de fijarlo; montos solo por enlace; idempotencia; 429 con
+`Retry-After`; «hoy» en hora de Lima. Para no mandar dos veces durante la
+transición, agentes lee la misma configuración de Portal
+(`alertsConfig.ts`, que por defecto ENVÍA salvo `enabled:false`) y cada aviso
+sale por WhatsApp o por Lilachat según lo que elija la empresa, nunca por los
+dos sin querer.
+
+**Lado Lilachat:** la base ya está (API de bots v1 del §73: instalación OAuth
+con PKCE, `/me`, `/channels`, `/members`, `POST` y `PATCH /messages`,
+acciones de tarjeta). Falta: un tipo de tarjeta «resumen» para el agrupado y
+el límite por llave visible en la consola.
+
+### 117.2 API y MCP (33)
+
+La API v1 cubre todo lo que necesitan las alertas del 117.1 si quien llama es
+agentes con la llave de su instalación. El MCP (B3 del §82) sigue pendiente:
+un servidor MCP SIN lógica propia, montado sobre la misma API y la misma
+llave, para que Claude u otro cliente MCP publique en un canal. No se copia
+nada de lila-app: el contrato es el de Lilachat.
+
+### 117.3 «Zernio propio» y costo mensual (16)
+
+Zernio (precio oficial vigente): 2 cuentas conectadas gratis, de la 3 a la 10
+a US$6 cada una, de la 11 a la 100 a US$3 y de la 101 a la 2.000 a US$1; X
+se cobra aparte por llamada. Ejemplos con 3 redes por empresa: 10 empresas
+(30 cuentas) ≈ US$108/mes; 20 empresas (60 cuentas) ≈ US$198/mes; 70
+empresas (210 cuentas) ≈ US$428/mes.
+
+Hacerlo propio = integrar directo las APIs oficiales: Meta Graph (Instagram
+y Facebook, revisión de la app y verificación del negocio), TikTok Content
+Posting (sin auditoría solo publica en privado), YouTube Data (cuota diaria
+que alcanza para pocas subidas por día sin pedir más) y LinkedIn (permiso de
+la plataforma). El costo de API es casi cero; lo caro es el tiempo: varias
+semanas de desarrollo más las aprobaciones de cada plataforma, que no
+dependen de nosotros, y el mantenimiento cuando cambian sus APIs.
+**Recomendación:** empezar con Zernio detrás de una interfaz propia
+(`SocialPublisher`) para no atarse; pasar red por red a la API oficial cuando
+el volumen lo justifique. Zernio es un servicio pago: lo aprueba José.
+
+### 117.4 Publicidad hecha por Claude Code como «cowork» (16)
+
+La idea de José: Lilachat Empresa guarda la solicitud («publicidad del
+producto X»), un trabajo agendado la toma, Claude (Opus, con las skills de
+video) arma el texto, la imagen o el video, la empresa lo aprueba en el chat
+y se publica por el 117.3. La parte de producción ya existe en la sesión
+«Fabrica» (videos con Kling: 7 tomas habladas por US$1,67, dato de esa
+sesión). Precios de la API vigentes por millón de tokens: Opus 5.5 US$4 de
+entrada y US$20 de salida; Sonnet 5.5 US$2 y US$10; Haiku 5.5 US$0,10 y
+US$0,50.
+
+**Suscripción de José vs. API:** para el trabajo de José y de ConstRoad
+(piezas propias, un piloto) Claude Code con su suscripción es el uso normal.
+Para un servicio desatendido que produce piezas para OTRAS empresas, lo que
+corresponde es una llave de API con los términos comerciales: la suscripción
+es de uso personal y además tiene ventanas de uso que la vuelven poco
+confiable como cola de producción. Para el «cron que lee la base» la API ya
+trae agentes agendados (Managed Agents con despliegues agendados), sin
+máquina propia. **Pendiente:** el chat que José escribió ayer desde el
+celular no está entre las sesiones visibles desde acá; si José comparte su
+conclusión, se suma.
+
+### 117.5 IA de Lilachat: Haiku, Qwen local y la suscripción
+
+Hoy: Qwen2.5-1.5B local en la mini (node-llama-cpp, contexto 2048, gratis) y
+Claude Haiku 5.5 de respaldo desde el 09/10 (US$0,10/0,50 por millón). Para
+el asistente de los chats de usuarios conviene seguir así: Qwen para lo
+corto y barato, Haiku cuando hace falta calidad. La suscripción de José no
+sirve para atender a los usuarios de Lilachat por lo mismo del 117.4; sí para
+el trabajo interno (revisar pedidos, preparar piezas) como «cowork».
+
+### 117.6 Mongo de emergencia (F13) y disco (67)
+
+F13 nació cuando la base estaba en Atlas: un mongod pasivo en la mini. Desde
+el 17/10 la base vive EN la mini (bóveda), así que un standby en la misma
+máquina no protege de nada. Se redefine como **respaldo verificado**: los
+respaldos de F12 (restic al disco CONSTROAD-BACKUP) más una restauración de
+prueba semanal en una base temporal, con conteo de colecciones. Hoy F12 no
+corre: `GET /api/respaldos/estado` dice disco «ausente» y ninguna copia,
+porque el runbook (`docs/RESPALDOS-RUNBOOK.md`: contraseña de restic,
+`disco:init`, agentes) nunca se ejecutó; necesita a José por el secreto.
+Disco (lila-2, 23/10): la mini tiene 218 GB libres y CONSTROAD-BACKUP 912 GB;
+no hace falta purgar.
+
+## 116. Secciones como Slack, el recordatorio se abre, «Rockero furioso» y novedades (23/10/2026, 0.1.154)
+
+Cierra los pendientes 62, 76, 77 y 66.
+
+- **Secciones (62, diseño `r154-secciones`).** Las listas propias dejan de
+  ser chips: en «Todos» cada una es una sección plegable como en Slack
+  (cabecera con flecha, nombre en mayúsculas y cuántos chats tiene; plegada,
+  la pastilla de no leídos en el acento) y lo que no está en ninguna va en
+  «Sin sección» al final. Con un filtro, una búsqueda o en «Archivados» la
+  lista sale plana. Mantener presionada la cabecera (en la web, el lápiz o
+  clic derecho) edita la sección. Lo plegado se recuerda por cuenta en el
+  teléfono y en el navegador. Un chat vive en UNA sección: agregarlo a otra
+  lo saca de donde estaba (el server responde con todas las secciones y el
+  editor avisa «En «Obra»» / «Sale de «Obra»»). «Sin sección» no puede ser
+  nombre de una lista. Motor puro `chatSectionRows` en shared.
+- **El recordatorio se abre (76).** El aviso «Recordatorio: …» que deja el
+  cron guarda a qué recordatorio apunta (`ref`) y al tocarlo abre el
+  recordatorio con su imagen, la nota con enlaces tocables y la tarjeta del
+  primero (un YouTube se reproduce dentro de la app; atrás vuelve al
+  recordatorio). La tarjeta del recordatorio en el chat también lo abre, con
+  «Editar». La pantalla completa de la alarma suma «Ver recordatorio». En la
+  web el aviso abre el mismo detalle (en un portal al `body`: dentro de la
+  fila virtualizada el modal salía recortado).
+- **«Rockero furioso» (77, hoja `r154-rockero`).** Entra tocando, se le corta
+  una cuerda, se enoja, levanta la guitarra, la rompe contra el piso (vuelan
+  tres pedazos) y patea el amplificador. En los guiños de siempre.
+- **Novedades (66).** Al abrir una versión nueva, una ventana dice qué trae,
+  una sola vez («Entendido»). El catálogo vive en shared (`RELEASE_NOTES`) y
+  es el mismo texto que se publica en LilaStore. La primera vez que se ve
+  solo muestra la versión actual.
+- **Medido:** «Rockero furioso» en el emulador 1,7 % de cuadros lentos (p90
+  25 ms); en la web 0 % de cuadros de más de 50 ms. Crear una sección en la
+  web tarda unos 2 s hasta cerrar el editor; abrir el recordatorio desde su
+  aviso, menos de 1 s.
+- **E2E:** en la web como QA Ana: novedades una vez; dos secciones, el chat
+  que pasa de una a otra, plegar, recargar y seguir plegada, «No leídos»
+  plano; el aviso abre el recordatorio con el YouTube; el rockero de vista
+  previa. En el emulador con la cuenta de José: su sección «Familia» sale
+  sola, plegar y relanzar, el editor por toque largo (sin guardar), el aviso
+  y la tarjeta abren el recordatorio, la alarma con «Ver recordatorio», el
+  rockero y las novedades de la 0.1.154. Todo lo de QA se borró por la ruta
+  normal (el aviso, con el aviso en vivo al teléfono); en la base quedó en
+  cero y la «Familia» de José intacta.
 
 ## 115. Guiños de Año Nuevo, San Valentín, Día de la Madre y Fiestas Patrias (23/10/2026, 0.1.153)
 
@@ -9963,7 +10128,7 @@ tacha con la versión que lo cierra.
 15. ~~**Estado que maneja la persona**~~ **Hecho (§110, 0.1.148).** En línea · Ausente · Ocupado ·
     Invisible (se ve desconectado aunque esté usando la app), más quién ve mi
     «última vez». Hoy la presencia es automática (socket vivo o no).
-16. **Lilachat Empresa: catálogo, bot de publicidad y redes sociales**, como
+16. **Lilachat Empresa: catálogo, bot de publicidad y redes sociales** — **«Zernio propio», costo y cowork en §117.3–117.4 (23/10)**, como
     WhatsApp Business: catálogo de productos con foto, precio y stock que se
     comparte en el chat; respuestas rápidas, mensajes de bienvenida y de
     ausencia, etiquetas de clientes; un bot (Lila) que redacta y diseña la
@@ -10186,7 +10351,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
       de la app sola se salta con una versión vieja), y que la web no quede
       afuera (recarga dura ante versión nueva, como Portal). La mínima la sube
       José al publicar; nunca automática.
-33. **MCP / API de Lilachat para que otros sistemas escriban** — **análisis en §82 (21/10).** (José, 21/10):
+33. **MCP / API de Lilachat para que otros sistemas escriban** — **análisis en §82 (21/10) y §117.2 (23/10).** (José, 21/10):
     que Portal y las demás apps creen checklists y manden mensajes a un chat
     o grupo, como hoy Portal avisa por WhatsApp al medir líquidos, registrar
     consumos, firmar asistencia, iniciar producción o cuando un despacho entra
@@ -10364,13 +10529,14 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
 61. ~~**Web: dos botones de recargar y ningún aviso de que actualiza.**~~ **Hecho (§111, 0.1.149).** Hay uno en
     la lista de chats y otro en la cabecera: queda uno solo. Mientras
     sincroniza no se ve nada; falta un indicador (barra fina o «Actualizando…»).
-62. **Listas de chats como las secciones de Slack (acordeón)** (José, 22/10:
+62. ~~**Listas de chats como las secciones de Slack (acordeón)**~~ **Hecho (§116, 0.1.154).** (José, 22/10:
     quería agrupaciones como las secciones de canales de Slack, no chips).
     Propuesta: secciones plegables en la lista principal. Cada encabezado
     lleva el nombre y, plegado, los no leídos. Un chat va en una sola sección,
     «Sin sección» queda al final y las secciones se reordenan. Los chips quedan
     solo como filtros rápidos (No leídos, Grupos). Las listas del 45 pasan a ser
-    secciones, con el mismo dato (`User.chatLists`). Espera el OK de José.
+    secciones, con el mismo dato (`User.chatLists`). **OK de José (23/10): va en
+    la próxima versión.**
 63. ~~**Recordatorio a pantalla completa con el teléfono bloqueado**~~ **Hecho (§112, 0.1.150),** como Google
     Calendar: al vencer, enciende la pantalla y lo muestra en grande (el mismo
     permiso de pantalla completa de las llamadas), con «Listo» y «Posponer».
@@ -10383,7 +10549,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     mes (28 o 29 en febrero, 30 o 31 en el resto; es «el día anterior al 1 del
     mes siguiente») y cada N días, semanas o meses. Motor puro con tests de
     años bisiestos y meses de 30 y 31.
-66. **Novedades al actualizar**, como el «What's new» de WhatsApp Web: una
+66. ~~**Novedades al actualizar**~~ **Hecho (§116, 0.1.154).** como el «What's new» de WhatsApp Web: una
     ventana con 3 o 4 novedades de la versión, una sola vez, en la web y en la
     app. *(Sale de la primera captura del 22/10; confirmar con José.)*
 67. **Lo pendiente que vivía solo en el tablero de fases (§45) o en notas
@@ -10422,6 +10588,79 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     Nuevo (fin de diciembre y enero), San Valentín (febrero), Fiestas Patrias
     (julio) y Día de la Madre (mayo). Fuera de su época no se ofrecen; los ya
     recibidos se siguen viendo. Empezar por Halloween (estamos en octubre).
+
+74. **Videos subidos al chat con la pantalla apagada** (José, 23/10). Un
+    video que no es un enlace (archivo propio) debe poder seguir sonando con
+    la pantalla bloqueada o en otra app, como una nota de voz: `expo-video`
+    lo permite (audio en segundo plano y control en el aviso). Los de YouTube
+    no: sus términos lo prohíben fuera de YouTube Premium.
+75. **Alertas de las apps en el modo Slack, vía «agentes»** — **análisis en §117.1 (23/10).** (José, 23/10).
+    Hoy lila manda por WhatsApp: clima, firma de trabajadores, registro de
+    consumos, llegada de material y despacho de un carro. Analizar qué más
+    conviene y diseñar que el producto nuevo «agentes» (lila + dali) las
+    mande a Lilachat como medio robusto, estable y escalable, SIN depender de
+    WhatsApp y sin copiar código de lila-app. Consultado a lila-2 y a la
+    sesión de agentes; se lee el as-is de Portal. Va con el 33.
+76. ~~**El recordatorio se abre desde su burbuja y sus enlaces se tocan**~~ **Hecho (§116, 0.1.154).**
+    (José, 23/10): al llegar un recordatorio y abrirlo, el chat muestra la
+    burbuja; tocarla debe abrir el recordatorio (nota, imagen y enlaces
+    tocables, YouTube incluido), no obligar a ir a Recordatorios, abrir el
+    formulario y copiar el enlace. La pantalla completa del recordatorio
+    también lleva «Ver recordatorio».
+77. ~~**Guiño «Rockero furioso»: rompe su guitarra**~~ **Hecho (§116, 0.1.154).** (José, 23/10, como el de
+    Messenger), en los guiños que se ven siempre.
+78. **Guiños y efectos en las llamadas y videollamadas** (José, 23/10), como
+    los efectos de WhatsApp, para que la llamada sea más divertida.
+79. **Decisiones de José del 23/10:**
+    - 19 (emojis propios): sí, con sus índices; medir la performance en cada
+      iteración.
+    - 16: evaluar un «Zernio propio» y, si demora, cuánto costaría por mes;
+      evaluar que Claude Code (Opus, con skills de video y publicidad) haga
+      la publicidad como un «cowork» con un cron que lee las solicitudes que
+      manda Lilachat Empresa.
+    - IA: hoy hay Claude Haiku y un modelo Qwen gratis (lila-2); evaluar usar
+      la suscripción de José con el mismo esquema de cowork.
+    - 33: la API y el MCP deben cubrir las alertas de Portal del 75.
+    - 66 (novedades al actualizar): sí. 48 (capturas): sí. 50 (Google Play):
+      queda pendiente.
+    - 67: disco de la mini, lila-2 revisa y propone una purga que José
+      aprueba; revisar el Mongo de emergencia (F13).
+80. **Un enlace de Google Maps se ve como en WhatsApp** (José, 23/10, para
+    después; captura de su chat con Aracely). Un `maps.app.goo.gl` hoy sale
+    como enlace suelto o tarjeta pobre. WhatsApp muestra: si es un punto, el
+    mapa con las coordenadas como título («11°49'45.8"S 76°37'39.1"W»); si es
+    un lugar, sus fotos en cuadrícula y el nombre («San Jerónimo de Surco»);
+    debajo, el sitio. Tocarla abre Google Maps. Va en la vista previa del
+    server: seguir la redirección del enlace corto, leer el `og:` de la página
+    de Maps y, para un punto, armar la imagen del mapa. Mismo lugar que el 11
+    (ubicación): conviene que se vean igual.
+81. **El álbum en cuadrícula como WhatsApp, no en carrusel** (pregunta de
+    José, 23/10; recomendación, falta su OK). En la burbuja: 2 fotos lado a
+    lado, 3 = una grande y dos chicas, 4 o más = 2×2 con «+N» en la cuarta. El
+    carrusel se queda en el visor a pantalla completa. Por qué: se ven hasta
+    4 fotos sin deslizar (en el carrusel la 2.ª en adelante pasan
+    desapercibidas); deslizar para responder funciona en todo el álbum, sin la
+    excepción de «solo en la primera foto» del 70; y la burbuja tiene alto fijo.
+82. **Lilachat sin lila-app: almacenamiento de medios propio** (decisión de
+    José del 23/10, traída por la sesión lila-2: «ese producto es nuevo, no
+    tiene por qué usar nada de lila (posteriormente se va a integrar a
+    agentes)»). Verificado: `server/src/mediaClient.ts` sube cada foto, video
+    y adjunto a `POST {LILA_SERVER_URL}/api/drive/files` con un JWT firmado
+    con `LILA_APP_JWT_SECRET`, y los archivos quedan en el árbol de lila
+    (`constroad-storage/companies/…`). `CHAT_STORAGE_ROOT` está provisionada
+    en el `.env` desplegado y vacía desde agosto. Plan (release propia, R155):
+    - Subida, miniatura, vista de 1600 px y servido con rangos (206) en el
+      server de Lilachat, sobre `CHAT_STORAGE_ROOT`. Antes de diseñarlo, leer
+      cómo lo resolvió lilafotos (originales, miniaturas y 1600 px sin
+      re-codificar en cada pedido).
+    - Paridad con lo que hoy da lila: multipart, miniatura, URL absoluta y
+      `streamUrl` (contrato en el comentario de `mediaClient.ts`).
+    - Lo ya subido: copiar los archivos del árbol de lila a la raíz propia y
+      reescribir las URLs de los mensajes con un script con dry-run, conteo
+      antes y después, y sin borrar nada de lila hasta que José lo apruebe.
+    - Los respaldos (F12) pasan a cubrir la raíz nueva.
+    - Al terminar, `LILA_SERVER_URL` y `LILA_APP_JWT_SECRET` salen del `.env`
+      de Lilachat: queda fuera de la rotación de ese secreto que hará José.
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { Types } from 'mongoose';
-import { ageOn, limaDayKey, limaHour } from '@lilachat/shared';
+import { ageOn, birthdayHeadsUpText, limaDayKey, limaHour, limaTomorrowKey } from '@lilachat/shared';
+import { pushTo } from './reminderCron.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import { ChatModel } from './chatModels.js';
 import { UserModel } from './models.js';
@@ -62,11 +63,39 @@ export async function announceBirthdays(now: Date): Promise<void> {
   }
 }
 
+/**
+ * The day before a member's birthday, from 8:00 in Lima, the group's admins
+ * (not the birthday person) get a heads-up to prepare something (pending 72,
+ * José 22/10). Only groups with birthdays on; once per member and day.
+ */
+export async function warnAdminsOfTomorrow(now: Date): Promise<void> {
+  if (limaHour(now) < ANNOUNCE_FROM_HOUR) return;
+  const tomorrow = limaTomorrowKey(now);
+  const [, month, day] = tomorrow.split('-').map(Number);
+  const people = await UserModel.find({ 'birthday.day': day, 'birthday.month': month }).select('name birthday').lean();
+  for (const person of people) {
+    const userId = String(person._id);
+    const groups = await ChatModel.find({ kind: 'group', birthdaysOn: true, 'members.userId': person._id }).select('name members').lean();
+    const age = person.birthday ? ageOn({ day: person.birthday.day, month: person.birthday.month, year: person.birthday.year }, tomorrow) : undefined;
+    for (const group of groups) {
+      const admins = group.members.filter((member) => member.role === 'admin' && String(member.userId) !== userId).map((member) => String(member.userId));
+      if (admins.length === 0) continue;
+      const claimed = await ChatModel.updateOne({ _id: group._id, [`birthdayHeadsUps.${userId}`]: { $ne: tomorrow } }, { $set: { [`birthdayHeadsUps.${userId}`]: tomorrow } });
+      if (claimed.modifiedCount === 0) continue;
+      await pushTo(admins, group.name ?? 'Grupo', birthdayHeadsUpText(person.name ?? 'un miembro', age), { chatId: String(group._id), seq: 0 }).catch((error) => console.error('[cumpleaños] aviso a admins:', error instanceof Error ? error.message : error));
+    }
+  }
+}
+
 let timer: ReturnType<typeof setInterval> | null = null;
 
 export function startBirthdayCron(): void {
   if (timer) return;
-  const tick = () => void announceBirthdays(new Date()).catch((error) => console.error('[cron] cumpleaños:', error instanceof Error ? error.message : error));
+  const tick = () => {
+    const now = new Date();
+    void announceBirthdays(now).catch((error) => console.error('[cron] cumpleaños:', error instanceof Error ? error.message : error));
+    void warnAdminsOfTomorrow(now).catch((error) => console.error('[cron] cumpleaños de mañana:', error instanceof Error ? error.message : error));
+  };
   timer = setInterval(tick, CHECK_EVERY_MS);
   tick();
 }

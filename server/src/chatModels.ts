@@ -71,6 +71,8 @@ export interface Chat {
   /** Birthdays on in this chat (pending 17), and the day each member's was announced. */
   birthdaysOn?: boolean;
   birthdayNotices?: Record<string, string>;
+  /** The day each member's birthday was told to the admins the day before (pending 72). */
+  birthdayHeadsUps?: Record<string, string>;
   /** Mensajes fijados arriba del chat (19/10): hasta 3, cada uno con su vencimiento. */
   fijados?: { seq: number; por: Types.ObjectId; en: Date; hasta: Date }[];
 }
@@ -199,6 +201,7 @@ const chatSchema = new Schema<Chat>(
     funAllowed: { type: Boolean },
     birthdaysOn: { type: Boolean },
     birthdayNotices: { type: Map, of: String, default: undefined },
+    birthdayHeadsUps: { type: Map, of: String, default: undefined },
     workspaceId: { type: Schema.Types.ObjectId },
     channel: { visibility: { type: String, enum: ['public', 'private'] } },
     suspendedMembers: {

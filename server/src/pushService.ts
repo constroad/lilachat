@@ -59,8 +59,8 @@ export async function notifyOffline(params: {
     DeviceModel.find({ userId: { $in: candidatos }, pushToken: { $exists: true, $ne: '' } })
       .select('pushToken platform userId capacidades')
       .lean(),
-    UserModel.findById(params.senderId).select('name phone').lean(),
-    ChatModel.findById(params.message.chatId).select('kind name encrypted').lean(),
+    UserModel.findById(params.senderId).select('name phone avatarUrl').lean(),
+    ChatModel.findById(params.message.chatId).select('kind name encrypted avatarUrl').lean(),
   ]);
   if (dispositivos.length === 0) return;
   // A mention rings even in a silenced chat, as in WhatsApp, unless the level
@@ -97,7 +97,7 @@ export async function notifyOffline(params: {
     await Promise.all([
       destinos.fcm.length > 0 ? sender.send({ tokens: destinos.fcm, ...text, data }) : undefined,
       sendWebPush(destinos.web, { ...text, data }),
-      ...mensajeSoloDatos({ message: params.message, nativos, silenciados, autor, telefono: sender_?.phone ?? '', chat: nombreDelGrupo ?? '', secreto: chat?.encrypted === true, text }),
+      ...mensajeSoloDatos({ message: params.message, nativos, silenciados, autor, telefono: sender_?.phone ?? '', chat: nombreDelGrupo ?? '', secreto: chat?.encrypted === true, text, photo: sender_?.avatarUrl, chatPhoto: chat?.kind === 'group' ? chat.avatarUrl : undefined }),
     ]);
   } catch (error) {
     // Un push que no sale no puede tumbar el envío: el mensaje YA está
@@ -138,6 +138,9 @@ function mensajeSoloDatos(params: {
   /** Chat secreto: sin «Responder» (la respuesta saldría sin cifrar). */
   secreto: boolean;
   text: { title: string; body: string };
+  /** The author's and the group's photos, relative (pending 68): the notice shows them, like WhatsApp. */
+  photo?: string;
+  chatPhoto?: string;
 }): Promise<void>[] {
   if (!sender.sendDatos || params.nativos.length === 0) return [];
   const chatId = String(params.message.chatId);
@@ -165,6 +168,8 @@ function mensajeSoloDatos(params: {
         // «Responder» y «Marcar como leído» desde el aviso (FL11).
         respuesta: params.secreto ? '' : firmarRespuesta({ chatId, userId }),
         imagen: pushImageOf(params.message, params.secreto),
+        foto: params.photo ? toAbsoluteMediaUrl(params.photo) : '',
+        fotoChat: params.chatPhoto ? toAbsoluteMediaUrl(params.chatPhoto) : '',
       },
     })
   );

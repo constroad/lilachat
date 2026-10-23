@@ -7,7 +7,9 @@ import { buildApp } from '../src/app.js';
 import { ChatModel, MessageModel } from '../src/chatModels.js';
 import { UserModel } from '../src/models.js';
 import { signSession } from '../src/sessions.js';
-import { announceBirthdays } from '../src/birthdays.js';
+import { announceBirthdays, warnAdminsOfTomorrow } from '../src/birthdays.js';
+import { setReminderPushSender } from '../src/reminderCron.js';
+import type { PushMessage } from '../src/pushSender.js';
 
 /** Pending 17 (José, 20/10): birthdays in chats, on by chat, announced once a day. */
 const app = buildApp({});
@@ -73,6 +75,29 @@ describe('announceBirthdays', () => {
     await announceBirthdays(new Date('2026-10-22T12:00:00.000Z'));
     expect(await MessageModel.countDocuments({})).toBe(0);
     await announceBirthdays(morning);
+    expect(await MessageModel.countDocuments({})).toBe(0);
+  });
+});
+
+describe('warnAdminsOfTomorrow (pending 72)', () => {
+  it('the day before, only the group admins hear it, once', async () => {
+    // Arrange: Carla and Beto turn a year on the 22nd; it is the 21st at 9:00 in Lima
+    const pushes: PushMessage[] = [];
+    setReminderPushSender({ send: async (message) => void pushes.push(message) });
+    await ChatModel.updateMany({}, { $set: { birthdaysOn: true } });
+    await mongoose.connection.collection('devices').insertMany([
+      { deviceId: 'd-admin', userId: admin, pushToken: 'tok-admin' },
+      { deviceId: 'd-beto', userId: beto, pushToken: 'tok-beto' },
+    ]);
+    const dayBefore = new Date('2026-10-21T14:00:00.000Z');
+    // Act
+    await warnAdminsOfTomorrow(dayBefore);
+    await warnAdminsOfTomorrow(dayBefore);
+    // Assert: one push per birthday person in the group, to the admin only
+    expect(pushes.map((push) => [push.tokens, push.title, push.body])).toEqual(
+      expect.arrayContaining([[['tok-admin'], 'Obra', 'Mañana cumple Carla · 29 años'], [['tok-admin'], 'Obra', 'Mañana cumple Beto']])
+    );
+    expect(pushes).toHaveLength(2);
     expect(await MessageModel.countDocuments({})).toBe(0);
   });
 });

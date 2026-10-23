@@ -40,7 +40,7 @@ export function setReminderPushSender(next: PushSender): void {
  * abierta o «Conexión permanente» encendida no llegaba nunca. La app lo
  * muestra con banner por el `tipo`.
  */
-async function pushTo(userIds: string[], title: string, body: string, data: { chatId: string; seq: number }) {
+export async function pushTo(userIds: string[], title: string, body: string, data: { chatId: string; seq: number }) {
   if (userIds.length === 0) return;
   const devices = await DeviceModel.find({
     userId: { $in: userIds },

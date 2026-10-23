@@ -112,6 +112,10 @@ Las capturas viven SOLO en la máquina (`design/stitch/`, en `.gitignore` desde 
 | `e-24-directorio-apps-app.png` | E · Directorio de apps · Móvil (`screens/ed9d38750b2646979dd686be1a4dd73a`) |
 | `e-25-detalle-app-app.png` | E · Detalle de una app · Móvil (`screens/66549cc541904fa49fb1d44eb8b5603b`) |
 | `e-26-chat-con-app-app.png` | E · Chat con una app · Móvil (`screens/8507ef98ced045649ea153a7a79eb6b0`) |
+| `e-28-marcar-asistencia-app.png` | E · Marcar asistencia · Móvil (`screens/a83dabcff0544a7c951d1c776f2b03cb`). Al implementar: cuatro acciones (Ingreso, Refrigerio, Retorno, Salida, como `registrar_marca`), sin «Dentro de la planta» ni el rol (Lilachat no los conoce): solo la precisión del GPS |
+| `e-29-acciones-de-apps-app.png` | E · Menú + con acciones de las apps · Móvil (`screens/d9a8092c05564858b4a0ceef1bb65867`). Las acciones salen de los `shortcuts` del manifiesto de cada app instalada |
+| `e-30-acciones-del-espacio-app.png` | E · ⚡ Acciones rápidas del espacio · Móvil (`screens/5ac3d8a3ac624c67865a224c785b594d`). Sin la pastilla «Ingreso 07:12» ni el punto violeta del ⚡ (Lilachat no tiene ese dato) |
+| `e-31-avisos-por-tema-app.png` | E · ¿Dónde llega cada aviso? (detalle de la app) · Móvil (`screens/438a63e7ee2045ddae7ede87ab6c766b`). Los temas salen de `notice_topics` del manifiesto |
 
 ## Messenger: clip, guiños y personajes (21/10/2026)
 

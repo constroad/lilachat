@@ -4909,6 +4909,66 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 124. Marcar asistencia desde el espacio: ⚡, formularios, avisos por tema y qué se habilita dónde (23/10/2026, 0.1.160)
+
+Pedidos de José del 23/10: «los empleados firmen asistencia, refrigerio y
+salida»; «¿no debe estar disponible a nivel de espacio? ¿quién dispara ese
+panel?»; «¿cómo indicamos a qué canal deben llegar las asistencias?»; «solo
+algunos comandos van a ser globales: habilitar o deshabilitar desde Lilachat,
+en canales y de forma global». Contrato cerrado con agentes (BOTS-API §c-ter,
+§c-quater y §c-quinquies). Diseños e-28, e-29, e-30 y e-31.
+
+- **Formularios de las apps (e-28).** Una app responde a un comando o a una
+  acción con `response_type: "form"` y un JSON Schema (`x-input: photo |
+  location | textarea`, `x-unit`, `x-labels`). Web: diálogo; app: hoja con el
+  botón de 72 pt («Marcar ingreso»: el `submit_label` más la opción elegida).
+  Hora y persona arriba cuando lleva ubicación o foto; «Se registra con tu
+  ubicación y tu foto» abajo. La foto sube al elegirla (`POST
+  …/commands/:id/files`) y la app la baja con una URL firmada de 15 minutos en
+  un host fijo. Lo que falta se dice campo por campo antes de enviar; los
+  errores de la app vuelven igual (422). `shareable: false` esconde «Enviar al
+  canal».
+- **⚡ del espacio (e-30).** En la cabecera del espacio, web y app: las
+  acciones de las apps y los comandos globales, sin entrar a un canal, como
+  los atajos globales de Slack. El uso queda en el espacio
+  (`BotCommandRun.workspaceId` sin `chatId`); el evento sale con `channel:
+  null` y la respuesta tardía llega por socket con `workspaceId`. En el «+» de
+  un canal siguen las acciones de ese canal (e-29), con su canal.
+- **Avisos por tema (e-31).** El manifiesto declara `notice_topics`; el admin
+  elige un canal por tema en el detalle de la app («¿Dónde llega cada
+  aviso?»), web y app; la app publica con `topic`. Sin tocar, #general; «Sin
+  canal» = no se publica (409 `topic_without_channel`). «Probar envío» manda
+  una línea por canal. Agentes migra lo que tenía con un `PUT /api/bots/topics`
+  parcial.
+- **Comandos y acciones habilitados por lugar.** Por cada ítem: «En el ⚡» y
+  canales (todos, algunos, ninguno). Sin tocar, una acción va al ⚡ y un
+  comando no; los dos en todos los canales. El server filtra lo que ofrece
+  (`?chat=` / `?place=space`) y rechaza lo apagado (404 `not_enabled_here`);
+  el 1:1 con la app ofrece todo. Al guardar, `workspace.apps.changed` y el ⚡ se
+  actualiza solo (visto en el emulador).
+- **Tarjeta ASISTENCIA · HOY (r155).** Con el kit: título «Ingresos: 12 de
+  15», `progress` sin rótulo (solo el % y la barra), caras con «+7», «Último»
+  y la alerta. Un `text` en tono `warn` o `error` ahora es una caja tintada,
+  como el «3 faltan» del diseño. Una por día, reemplazada con PATCH.
+
+**E2E.** Web (Chrome headless, QA Ana): ⚡, formulario con GPS y foto
+(«Elige una opción. / Falta la foto.» antes de enviar), `form.submitted` con
+la foto bajada (200), «Ingreso marcado» sin «Enviar al canal», /clima hecho
+global, Asistencia → #planta, «Probar envío» y la tarjeta en #planta. APK en
+el emulador (cuenta de José, de paso en el espacio QA): ⚡, permiso de
+ubicación, GPS ±5 m, selfie de la cámara (29 KB), «Ingreso registrado», el
+selector de canal, los interruptores y el ⚡ que cambia solo; el clip del canal
+sin la acción cuando está en «Ninguno» y con ella en «Todos». Limpieza
+verificada en cero.
+
+**Rendimiento (server QA en tsx, sin build):** el formulario abre en 1,3 s
+(acción → server → app → form) y se responde en 1,8 s con la foto ya subida.
+Se mira de nuevo en producción con el agentes real.
+
+**Riesgo visto una vez:** un SIGSEGV de Fabric (`MountingCoordinator`) en el
+primer arranque con el bundle en frío y el aviso «te agregó» encima; no se
+repitió en los arranques siguientes ni con la misma pantalla. Queda anotado.
+
 ## 123. Apps por espacio, «Enviar al canal», álbum en cuadrícula y Google Maps (23/10/2026, 0.1.159)
 
 Pedidos de José del 23/10 (directos y a través de la sesión de agentes).
@@ -11333,7 +11393,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     para el registro de material. Lo hace agentes con lo que ya hay (PATCH +
     `thread_of`); si hace falta, Lilachat suma una clave de agrupación
     (`group_key`) que resuelva la tarjeta del día por sí sola.
-89. **Formularios de las apps** (José, 23/10: marcar asistencia ingreso,
+89. ~~**Formularios de las apps**~~ — hecho en 0.1.160 (§124). (José, 23/10: marcar asistencia ingreso,
     refrigerio y salida; ingreso de material; medida de tanques, desde el
     espacio). Como los modales de Slack: el formulario sale del `inputSchema`
     de la herramienta de escritura del producto (tipos, `x-unit`,
@@ -11345,6 +11405,13 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     15 minutos en `https://lilachat.constroad.com/api/bots/files/<token>`. R160.
 91. **«Quitar del canal» para una app** (José, 23/10): hoy solo se saca como a
     un miembro cualquiera; el bot entra a todo canal público nuevo. R160.
+92. **Crear un canal no refresca la lista** (José, 23/10): al crearlo, la
+    lista del espacio no lo muestra hasta refrescar a mano. La lista tiene que
+    sumarlo al toque (web y APK).
+93. **Editar la configuración de un canal** (José, 23/10): un canal creado
+    público no se puede pasar a privado; no hay dónde editar nombre,
+    visibilidad ni descripción de un canal. Falta la pantalla de ajustes del
+    canal para sus admins (web y APK).
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

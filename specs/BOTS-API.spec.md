@@ -290,8 +290,7 @@ cualquier instalación de la app. Reemplaza la lista entera (idempotente;
   opcional, hasta 60 (se muestra como «Ejemplo de uso»).
 - Responde `{ commands: [...] }`; una lista mal formada, 400
   `invalid_request`.
-- Más adelante se suma `form` opcional (§73.5 del spec general) sin romper
-  esto.
+- La respuesta puede ser un formulario (§c-ter).
 
 **Invocación.** Al enviar «/clima lurin», Lilachat manda `command.invoked`
 firmado como los demás eventos:
@@ -337,6 +336,78 @@ cuerpo, con el Bearer de la misma instalación:
   response?, message? }`. Hasta 20 comandos por minuto por persona.
 - Los usos viven en `botcommandruns` (se leen por `_id`; los vencidos se
   borran en cada uso nuevo, sin índice propio).
+
+## c-ter) Formularios, acciones del «+» y el ⚡ (0.1.160)
+
+Cerrado con agentes el 23/10/2026. Diseños e-28 (formulario), e-29 (el «+»
+de un canal) y e-30 (el ⚡ del espacio).
+
+**Formulario.** Cualquier respuesta (a un comando, a una acción o a
+`/respond`) puede ser `{ "response_type": "form", "form": { "id", "title",
+"submit_label"?, "schema" } }`. `schema` es un JSON Schema de objeto: `enum`
+(con `x-labels`) es una opción, hasta 4 lado a lado; `x-input: photo` una
+foto; `x-input: location` la ubicación `{ lat, lng, precision }`; `x-unit` la
+unidad de un número; `maxLength > 120` o `x-input: textarea` varias líneas;
+`format: date | date-time` una fecha. Hasta 20 campos.
+- La foto sube a Lilachat al elegirla. La app recibe una URL firmada
+  `https://lilachat.constroad.com/api/bots/files/<payload>.<firma>`, válida 15
+  minutos (después 410).
+- Enviar es la confirmación de la persona. Llega `form.submitted { form_id,
+  command_id, values, channel, user }`. La app responde como a un comando, o
+  con `{ "errors": { "campo": "…", "_": "…" } }` y el formulario queda abierto
+  con esos errores.
+- `shareable: false` en cualquier respuesta: nadie la manda al canal (409 si
+  se intenta).
+
+**Acciones.** El manifiesto declara `shortcuts: [{ key, name, description? }]`
+(hasta 10; nombre ≤ 40, descripción ≤ 80). Un manifiesto sin ellas las borra.
+Al tocar una llega `shortcut.invoked { shortcut, command_id, channel, user }`
+y se responde igual que a un comando (casi siempre con su formulario).
+- Desde el «+» de un canal: `channel` es ese canal.
+- Desde el ⚡ de la cabecera del espacio: `channel: null`, como los atajos
+  globales de Slack. Una respuesta `in_channel` sin canal se muestra solo a
+  quien la pidió.
+
+**Del lado de Lilachat.** `POST /api/chats/:chatId/shortcuts` y `POST
+/api/workspaces/:id/shortcuts` (`{ app_id, shortcut }`); un comando global
+desde el ⚡ va por `POST /api/workspaces/:id/commands`. La foto y el envío:
+`…/commands/:commandId/files` y `…/commands/:commandId/form`, con el mismo
+prefijo. La respuesta tardía de un uso del ⚡ llega por socket con
+`workspaceId` en vez de `chatId`.
+
+## c-quater) Temas de aviso: el admin elige el canal (0.1.160)
+
+- El manifiesto declara `notice_topics: [{ key, name, description?, icon? }]`
+  (hasta 10). `icon`: `attendance | tank | material | truck | weather | cash |
+  document | alert`; otro valor se ignora y se dibuja una campana.
+- El admin elige un canal por tema en el detalle de la app, «¿Dónde llega cada
+  aviso?» (e-31). Un tema sin tocar va a #general (o al canal público más
+  viejo). «Sin canal» = no se publica. Un canal privado elegido suma la app
+  como miembro.
+- La app publica con `"topic": "asistencia"` en vez de `channel_id`. Si el
+  tema está sin canal: 409 `topic_without_channel` (no es una falla, no se
+  reintenta). Un tema que el manifiesto no declara: 404 `topic_not_found`.
+  Los hilos y los PATCH siguen con el `channel_id` y el mensaje que devolvió
+  la publicación.
+- `GET /api/bots/topics` → `{ topics: [{ key, name, channel: { id, name } |
+  null }] }`. `PUT /api/bots/topics { "asistencia": "<id>" | null, … }` es
+  parcial: lo que no se manda queda como estaba.
+- Personas: `GET/PUT /api/workspaces/:id/apps/:appId/topics` (cambiar, solo
+  admins) y `POST …/topics/test` («Probar envío»: una línea por canal).
+
+## c-quinquies) Qué comando o acción funciona dónde (0.1.160)
+
+José, 23/10: «solo algunos van a ser globales». Por cada comando y acción de
+una app instalada, el admin decide `{ global, channels }`: si sale en el ⚡ y
+en qué canales funciona (`"all"`, `"none"` o una lista). Sin tocar, una acción
+es global y un comando no; los dos funcionan en todos los canales.
+- `GET /api/workspaces/:id/commands?chat=<id>` y `?place=space` devuelven
+  solo lo habilitado en ese lugar (sin parámetro, todo: clientes viejos).
+- Invocar algo apagado en ese lugar: 404 `not_enabled_here`. El 1:1 con la
+  app ofrece todo.
+- `GET/PUT /api/workspaces/:id/apps/:appId/items { items: { "command:clima":
+  { global, channels } } }`, parcial; cambiar es de admins. Al guardar se
+  avisa `workspace.apps.changed` y las listas se releen.
 
 ## d) Lectura
 

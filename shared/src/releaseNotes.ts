@@ -10,6 +10,15 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.160',
+    items: [
+      'El ⚡ en la cabecera de tu espacio: marca asistencia y usa las acciones de las apps sin entrar a un canal.',
+      'Las apps te piden lo que necesitan en un formulario: tu ubicación, una selfie y la acción, y te dicen qué falta.',
+      'El admin elige a qué canal llega cada aviso de una app, como la asistencia o los tanques, y lo prueba.',
+      'El admin decide qué comandos y acciones salen en el ⚡ y en qué canales funcionan.',
+    ],
+  },
+  {
     version: '0.1.159',
     items: [
       'Lo que una app te responde a un comando ahora se puede «Enviar al canal», con «usó /clima» arriba.',

@@ -59,7 +59,8 @@ function Block({ block }: { block: BotBlock }) {
       return (
         <View testID="bloque-progreso">
           <View className="flex-row items-baseline justify-between">
-            <Text className="text-[15px] font-semibold text-on-surface">{block.label}: <Text className="text-primary">{block.value}</Text> de {block.max}</Text>
+            {/* Without a label the card's title is the headline (design r155): only the share is left above the bar. */}
+            {block.label ? <Text className="text-[15px] font-semibold text-on-surface">{block.label}: <Text className="text-primary">{block.value}</Text> de {block.max}</Text> : <View />}
             <Text className="text-[12px] text-on-surface-variant">{Math.round((block.value / block.max) * 100)} %</Text>
           </View>
           <View className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-variant">
@@ -70,7 +71,8 @@ function Block({ block }: { block: BotBlock }) {
     case 'tank':
       return <BlockTank items={block.items} />;
     case 'text':
-      return <Text testID="bloque-texto" className={`text-[13px] ${block.tone === 'neutral' ? 'text-on-surface-variant' : TONE_CLASS[block.tone].text}`}>{block.text}</Text>;
+      // A warning or an error is a tinted box (design r155: «3 faltan: …»); the rest, a plain line.
+      return <Text testID="bloque-texto" className={`text-[13px] ${block.tone === 'neutral' ? 'text-on-surface-variant' : TONE_CLASS[block.tone].text} ${block.tone === 'warn' || block.tone === 'error' ? `overflow-hidden rounded-lg border px-2.5 py-1.5 ${TONE_CLASS[block.tone].soft}` : ''}`}>{block.text}</Text>;
     case 'rows':
       return <Rows rows={block.rows} />;
     case 'people':

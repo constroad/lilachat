@@ -515,7 +515,7 @@ export function ChatScreen({
           onAdjuntar={alAdjuntar} onPasteImage={(photo) => pickMedia([photo])}
           onCamara={alCamara} onEscribiendo={avisarEscribiendo}
           jwt={credential.jwt} conVistaPrevia={!encrypted}
-          miembros={mencionables} commands={encrypted ? undefined : commands}
+          miembros={mencionables} commands={encrypted ? undefined : commands} myName={credential.name ?? undefined}
           onEnviar={alEnviar}
           onProgramar={programados.abrir}
           onNotaDeVoz={alNotaDeVoz}
@@ -551,7 +551,7 @@ export function ChatScreen({
         onPickMedia={pickMedia}
         onPickGallery={() => void pickFromGallery()}
         onCreateEvent={() => setCreando('event')}
-        onCreatePoll={() => setCreando('poll')} onCreateChecklist={encrypted ? undefined : () => setCreando('checklist')}
+        onCreatePoll={() => setCreando('poll')} onCreateChecklist={encrypted ? undefined : () => setCreando('checklist')} commands={encrypted ? undefined : commands}
         // 20/10: también en un 1:1 y en un borrador; en un grupo, sus admins. No en un chat secreto.
         onCreateReminder={!encrypted && (!esGrupoChat || soyAdminDelGrupo) ? () => setCreando('reminder') : undefined}
         etiquetaDelRecordatorio={etiquetaDeRecordatorioEnElChat(esBorrador ? 'notas' : esGrupoChat ? 'group' : 'direct')}

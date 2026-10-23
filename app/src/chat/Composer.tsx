@@ -21,6 +21,7 @@ import { VistaPreviaAlEscribir } from './VistaPreviaAlEscribir';
 import type { ChatCommands } from './commands/useChatCommands';
 import { CommandPanel } from './commands/CommandPanel';
 import { EphemeralAnswers } from './commands/EphemeralAnswers';
+import { AppFormSheet } from './commands/AppFormSheet';
 
 /** Cuánto se espera tras la última tecla para guardar el borrador. */
 const ESPERA_PARA_GUARDAR_MS = 500;
@@ -82,6 +83,8 @@ export const Composer = memo(function Composer(props: {
   miembros?: MiembroMencionable[];
   /** The «/» of a space's chat (§c-bis): the apps' commands and what they answered only to me. */
   commands?: ChatCommands;
+  /** On an app's form, who is registering (design e-28). */
+  myName?: string;
   /** Long-press en enviar: programarlo para más tarde (F11). */
   onProgramar: (texto: string) => void;
   /** The copied image, pasted from the chip over the bar (21/10): it goes to the usual photo preview. */
@@ -400,7 +403,10 @@ export const Composer = memo(function Composer(props: {
           }}
         />
       ) : null}
-      {props.commands ? <EphemeralAnswers answers={props.commands.answers} onDismiss={props.commands.dismiss} onShare={props.commands.share} chatId={props.chatId} jwt={props.jwt ?? ''} /> : null}
+      {props.commands ? <EphemeralAnswers answers={props.commands.answers} onDismiss={props.commands.dismiss} onShare={props.commands.share} onOpenForm={props.commands.appAnswers.showForm} chatId={props.chatId} jwt={props.jwt ?? ''} /> : null}
+      {props.commands?.appAnswers.openForm ? (
+        <AppFormSheet key={props.commands.appAnswers.openForm.commandId} answer={props.commands.appAnswers.openForm} personName={props.myName} onSubmit={(values) => props.commands!.appAnswers.submitForm(props.commands!.appAnswers.openForm!, values)} onUpload={(photo) => props.commands!.appAnswers.uploadPhoto(props.commands!.appAnswers.openForm!.commandId, photo)} onClose={() => props.commands!.appAnswers.showForm(null)} />
+      ) : null}
       {props.commands ? (
         <CommandPanel
           groups={props.commands.suggestions}

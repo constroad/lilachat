@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
-import { Send, X } from 'lucide-react-native';
+import { ClipboardList, Send, X } from 'lucide-react-native';
 import type { EphemeralAnswer } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { useColores } from '../../ui/tema';
@@ -16,20 +16,20 @@ const MAX_SCREEN_SHARE = 0.45;
  * has no actions to tap: there is no message behind it. In a channel,
  * «Enviar al canal» has the app post it there (José, 23/10).
  */
-export function EphemeralAnswers(props: { answers: readonly EphemeralAnswer[]; onDismiss: (commandId: string) => void; onShare?: (commandId: string) => Promise<string | null>; chatId: string; jwt: string }) {
+export function EphemeralAnswers(props: { answers: readonly EphemeralAnswer[]; onDismiss: (commandId: string) => void; onShare?: (commandId: string) => Promise<string | null>; onOpenForm?: (commandId: string) => void; chatId: string; jwt: string; /** Inside a sheet (the ⚡): it grows with its content instead of capping at the screen. */ embedded?: boolean }) {
   const colors = useColores();
   const { height } = useWindowDimensions();
   const scroll = useRef<ScrollView>(null);
   if (props.answers.length === 0) return null;
   return (
-    <ScrollView testID="respuestas-efimeras" style={{ maxHeight: height * MAX_SCREEN_SHARE, flexGrow: 0 }} contentContainerStyle={{ gap: 8 }} className="border-t border-outline/10 bg-surface px-3 py-2" keyboardShouldPersistTaps="handled" ref={scroll} onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: true })}>
+    <ScrollView testID="respuestas-efimeras" style={props.embedded ? { flexGrow: 0 } : { maxHeight: height * MAX_SCREEN_SHARE, flexGrow: 0 }} contentContainerStyle={{ gap: 8 }} className="border-t border-outline/10 bg-surface px-3 py-2" keyboardShouldPersistTaps="handled" ref={scroll} onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: true })}>
       {props.answers.map((answer) => (
         <View key={answer.commandId} testID={`efimera-${answer.state}`} className="rounded-2xl border border-outline/15 bg-background px-3 pb-2.5 pt-2">
           <View className="flex-row items-center gap-2">
             <Avatar nombre={answer.appName} tamano={APP_AVATAR} bot />
             <Text className="text-[14px] font-semibold text-on-surface" numberOfLines={1}>{answer.appName}</Text>
             <Text className="min-w-0 flex-1 text-[12px] text-on-surface-variant" numberOfLines={1}>
-              {answer.command ? `/${answer.command} · ` : ''}Solo tú ves esto
+              {answer.action ? `${answer.action} · ` : answer.command ? `/${answer.command} · ` : ''}Solo tú ves esto
             </Text>
             <Pressable testID="btn-descartar-efimera" accessibilityLabel="Descartar" onPress={() => props.onDismiss(answer.commandId)} hitSlop={8} className="h-8 w-8 items-center justify-center">
               <X size={16} color={colors['on-surface-variant']} />
@@ -42,6 +42,12 @@ export function EphemeralAnswers(props: { answers: readonly EphemeralAnswer[]; o
             </View>
           ) : null}
           {answer.state === 'failed' ? <Text className="mt-1 text-[14px] text-error">{answer.message}</Text> : null}
+          {answer.state === 'form' && props.onOpenForm ? (
+            <Pressable testID="btn-abrir-formulario" onPress={() => props.onOpenForm!(answer.commandId)} className="mt-2 min-h-[40px] flex-row items-center gap-1.5 self-start rounded-xl border border-outline/25 px-3">
+              <ClipboardList size={15} color={colors.primary} />
+              <Text className="text-[14px] font-semibold text-primary">{`Abrir «${answer.response?.form?.title ?? 'formulario'}»`}</Text>
+            </Pressable>
+          ) : null}
           {answer.response?.text ? (
             <Text selectable className="mt-1 text-[15px] text-on-surface">
               {answer.response.text}
@@ -52,7 +58,8 @@ export function EphemeralAnswers(props: { answers: readonly EphemeralAnswer[]; o
               <BotCardView card={{ ...answer.response.card, actions: [] }} chatId={props.chatId} seq={0} jwt={props.jwt} />
             </View>
           ) : null}
-          {props.onShare && answer.state === 'answered' ? <ShareAnswer onShare={() => props.onShare!(answer.commandId)} /> : null}
+          {/* shareable:false (R160): a debt or a salary is only for whoever asked. */}
+          {props.onShare && answer.state === 'answered' && answer.response?.shareable !== false ? <ShareAnswer onShare={() => props.onShare!(answer.commandId)} /> : null}
         </View>
       ))}
     </ScrollView>

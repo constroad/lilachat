@@ -48,7 +48,7 @@ function CommandRow(props: { command: BotCommand }) {
  * «Mensaje» or «Instalar en <espacio>». The ⋮ uninstalls, for admins. The
  * same screen is the «Información» of a 1:1 with the app (e-26).
  */
-export function AppDetailScreen(props: { app: DirectoryApp; spaceName: string; canInstall: boolean; uninstalling?: boolean; onClose: () => void; onMessage?: () => void; onInstall: () => void; onUninstall?: () => void }) {
+export function AppDetailScreen(props: { app: DirectoryApp; spaceName: string; canInstall: boolean; uninstalling?: boolean; onClose: () => void; onMessage?: () => void; onInstall: () => void; onUninstall?: () => void; /** «Comandos y acciones» and «Avisos» (R160), once installed. */ settings?: ReactNode }) {
   const colors = useColores();
   const margins = useMargenes();
   const { app } = props;
@@ -118,6 +118,7 @@ export function AppDetailScreen(props: { app: DirectoryApp; spaceName: string; c
                 <Text className="text-[13px] text-on-surface-variant">Escríbelos en cualquier chat del espacio donde esté la app.</Text>
               </Section>
             ) : null}
+            {installation ? props.settings : null}
             <Section Icon={Lock} title="Permisos">
               <Text className="mb-1 text-[13px] font-semibold text-en-linea">Puede</Text>
               {APP_PERMISSIONS.can.map((line) => <PermissionLine key={line} allowed text={line} />)}

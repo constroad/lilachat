@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { AppItemsSection, NoticeTopicsSection } from './AppSettingsSections';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { ArrowLeft, Lock, Search } from 'lucide-react-native';
 import { directoryChips, filterDirectory, type ClientWorkspace, type DirectoryApp, type DirectoryFilter } from '@lilachat/shared';
@@ -18,7 +19,7 @@ const ROW_LOGO_SIZE = 48;
  * its detail (e-25). Installing opens the app's page in the browser; coming
  * back reads the directory again.
  */
-export function AppDirectoryScreen(props: { space: ClientWorkspace; apps: SpaceApps; initialAppId?: string | null; onClose: () => void }) {
+export function AppDirectoryScreen(props: { space: ClientWorkspace; apps: SpaceApps; jwt: string; initialAppId?: string | null; onClose: () => void }) {
   const colors = useColores();
   const margins = useMargenes();
   const { apps, space } = props;
@@ -94,6 +95,7 @@ export function AppDirectoryScreen(props: { space: ClientWorkspace; apps: SpaceA
           }}
           onInstall={() => apps.install(chosen)}
           onUninstall={admin ? () => apps.uninstall(chosen) : undefined}
+          settings={<><AppItemsSection jwt={props.jwt} spaceId={space.id} appId={chosen.appId} /><NoticeTopicsSection jwt={props.jwt} spaceId={space.id} appId={chosen.appId} appName={chosen.name} /></>}
         />
       ) : null}
     </Modal>

@@ -1,4 +1,4 @@
-import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, SpaceApp, AvailableApp, SpaceAppDirectory, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
+import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, SpaceApp, AvailableApp, SpaceAppDirectory, TopicRoute, AppItemRow, ItemChannels, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
 import { BASE_URL, type ChatSummary } from '../api/client';
 import { jsonCall } from '../api/jsonCall';
 import { subirFotoRedonda } from '../chat/fotoDeGrupo';
@@ -79,3 +79,14 @@ export const availableApps = (jwt: string, spaceId: string) => jsonCall<{ apps: 
 export const appDirectory = (jwt: string, spaceId: string) => jsonCall<SpaceAppDirectory>(url(`/${spaceId}/app-directory`), jwt);
 export const openAppChat = (jwt: string, spaceId: string, appId: string) => jsonCall<{ chatId: string; botUserId: string }>(url(`/${spaceId}/apps/${appId}/chat`), jwt, post({}));
 export const uninstallApp = (jwt: string, spaceId: string, installationId: string) => jsonCall<Record<string, never>>(url(`/${spaceId}/apps/${installationId}`), jwt, { method: 'DELETE' });
+
+/** «¿Dónde llega cada aviso?» (R160): the app's topics with their channel, and the space's channels to pick from. */
+export type AppTopics = { topics: TopicRoute[]; channels: { id: string; name: string; private: boolean }[]; canEdit: boolean };
+export const appTopics = (jwt: string, spaceId: string, appId: string) => jsonCall<AppTopics>(url(`/${spaceId}/apps/${appId}/topics`), jwt);
+export const saveAppTopics = (jwt: string, spaceId: string, appId: string, channels: Record<string, string | null>) => jsonCall<AppTopics>(url(`/${spaceId}/apps/${appId}/topics`), jwt, { method: 'PUT', body: JSON.stringify({ channels }) });
+export const testAppTopics = (jwt: string, spaceId: string, appId: string) => jsonCall<{ channels: number }>(url(`/${spaceId}/apps/${appId}/topics/test`), jwt, post({}));
+
+/** «Comandos y acciones» (R160): where each command and action of the app works. */
+export type AppItems = { items: AppItemRow[]; channels: { id: string; name: string; private: boolean }[]; canEdit: boolean };
+export const appItems = (jwt: string, spaceId: string, appId: string) => jsonCall<AppItems>(url(`/${spaceId}/apps/${appId}/items`), jwt);
+export const saveAppItems = (jwt: string, spaceId: string, appId: string, items: Record<string, { global: boolean; channels: ItemChannels }>) => jsonCall<AppItems>(url(`/${spaceId}/apps/${appId}/items`), jwt, { method: 'PUT', body: JSON.stringify({ items }) });

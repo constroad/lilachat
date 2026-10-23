@@ -29,6 +29,8 @@ export type BotApp = {
   features?: string[];
   developer?: string;
   category?: AppCategory;
+  /** The spaces that may install it, set from agentes' console (§0-ter); absent = everywhere. */
+  availableIn?: Types.ObjectId[];
   createdAt: Date;
 };
 
@@ -40,6 +42,8 @@ export type BotCommandRun = {
   userId: Types.ObjectId;
   command: string;
   responses: number;
+  /** The last answer only the asker saw: «Enviar al canal» posts it (José, 23/10). */
+  answer?: { text?: string; card?: unknown };
   expiresAt: Date;
   createdAt: Date;
 };
@@ -103,6 +107,7 @@ const appSchema = new Schema<BotApp>(
     features: { type: [String], default: undefined },
     developer: { type: String },
     category: { type: String },
+    availableIn: { type: [Schema.Types.ObjectId], default: undefined },
   },
   { timestamps: true }
 );
@@ -157,6 +162,7 @@ const commandRunSchema = new Schema<BotCommandRun>(
     userId: { type: Schema.Types.ObjectId, required: true },
     command: { type: String, required: true },
     responses: { type: Number, default: 0 },
+    answer: { type: Schema.Types.Mixed },
     expiresAt: { type: Date, required: true },
   },
   { timestamps: { createdAt: true, updatedAt: false } }

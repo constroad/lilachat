@@ -161,6 +161,8 @@ export type AvailableApp = { id: string; name: string; avatarUrl?: string; insta
  */
 export type DirectoryApp = {
   appId: string;
+  /** Public: agentes' return address after installing names the app by it. */
+  clientId: string;
   name: string;
   avatarUrl?: string;
   description?: string;

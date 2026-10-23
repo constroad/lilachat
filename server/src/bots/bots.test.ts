@@ -268,7 +268,7 @@ describe('the bot hears signed events (§c)', () => {
   it('the directory offers the apps to install, with where to go and this space, and says which is already in (agentes, 23/10)', async () => {
     await BotAppModel.updateOne({ clientId: 'lca_lila' }, { $set: { installUrl: 'https://agentes.example.com/canales/lilachat/instalar' } });
     const before = (await request(app).get(`/api/workspaces/${spaceId}/available-apps`).set(asJose).expect(200)).body.apps;
-    expect(before).toEqual([{ id: expect.any(String), name: 'Lila', installUrl: `https://agentes.example.com/canales/lilachat/instalar?space=${spaceId}`, installed: false }]);
+    expect(before).toEqual([{ id: expect.any(String), name: 'Lila', installUrl: `https://agentes.example.com/canales/lilachat/instalar?space=${spaceId}&login_hint=902049935`, installed: false }]);
     await request(app).get(`/api/workspaces/${spaceId}/available-apps`).set(asAna).expect(403);
     await install();
     expect((await request(app).get(`/api/workspaces/${spaceId}/available-apps`).set(asJose).expect(200)).body.apps[0]).toMatchObject({ installed: true });
@@ -281,10 +281,10 @@ describe('the bot hears signed events (§c)', () => {
     const asMember = (await request(app).get(`/api/workspaces/${spaceId}/app-directory`).set(asAna).expect(200)).body;
     expect(asMember.canInstall).toBe(false);
     expect(asMember.apps.map((one: { name: string }) => one.name)).toEqual(['Lila', 'Portal']);
-    expect(asMember.apps[0]).toEqual({ appId: String(lila!._id), name: 'Lila', features: [], commands: [], installation: { installationId: expect.any(String), botUserId, installedBy: 'José', installedAt: expect.any(String), channels: 1, directs: 0 } });
-    expect(asMember.apps[1]).toEqual({ appId: expect.any(String), name: 'Portal', description: 'Pedidos, despachos y caja', features: ['Crea pedidos'], developer: 'Agentes ConstRoad', category: 'operacion', commands: [] });
+    expect(asMember.apps[0]).toEqual({ appId: String(lila!._id), clientId: 'lca_lila', name: 'Lila', features: [], commands: [], installation: { installationId: expect.any(String), botUserId, installedBy: 'José', installedAt: expect.any(String), channels: 1, directs: 0 } });
+    expect(asMember.apps[1]).toEqual({ appId: expect.any(String), clientId: expect.any(String), name: 'Portal', description: 'Pedidos, despachos y caja', features: ['Crea pedidos'], developer: 'Agentes ConstRoad', category: 'operacion', commands: [] });
     const asOwner = (await request(app).get(`/api/workspaces/${spaceId}/app-directory`).set(asJose).expect(200)).body;
-    expect(asOwner.apps[1].installUrl).toBe(`https://agentes.example.com/instalar?app=portal&space=${spaceId}`);
+    expect(asOwner.apps[1].installUrl).toBe(`https://agentes.example.com/instalar?app=portal&space=${spaceId}&login_hint=902049935`);
     await request(app).get(`/api/workspaces/${spaceId}/app-directory`).set(asUser(() => beto)).expect(404);
   });
 

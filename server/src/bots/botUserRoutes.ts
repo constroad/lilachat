@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { Types } from 'mongoose';
-import { canManageMembers, toInternationalPhone } from '@lilachat/shared';
+import { canManageMembers, normalizePeruPhone, toInternationalPhone } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Message } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { crearLimiteDeIntentos } from '../limiteDeIntentos.js';
 import { asyncRoute, requireSession } from '../requireSession.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
-import { commandGroupsOf, invokeCommand } from './botCommands.js';
+import { commandGroupsOf, invokeCommand, shareCommandAnswer } from './botCommands.js';
 import { revokeInstallation } from './botInstall.js';
 import { directWith } from './botMessages.js';
 import { availableAppsIn, directoryOf } from './botDirectory.js';
@@ -44,6 +44,12 @@ async function appsOf(workspaceId: string) {
   }));
 }
 
+/** Who installs, as agentes' sign-in expects it: the local 9-digit phone (it fills the field and accepts no other account). */
+async function loginHintOf(userId: Types.ObjectId): Promise<string | undefined> {
+  const user = await UserModel.findById(userId).select('phone').lean();
+  return normalizePeruPhone(user?.phone) || undefined;
+}
+
 export function buildBotUserRouter(): Router {
   const router = Router();
   const commandTries = crearLimiteDeIntentos({ maximo: COMMANDS_PER_MINUTE, ventanaMs: ONE_MINUTE_MS });
@@ -57,6 +63,11 @@ export function buildBotUserRouter(): Router {
     const userId = req.session!.userId;
     if (!commandTries.permitir(String(userId))) return void res.status(429).set('Retry-After', '60').json({ message: 'Más de 20 comandos por minuto. Espera un momento.' });
     const outcome = await invokeCommand(userId, req.params.chatId!, { appId: req.body?.app_id, command: req.body?.command, text: req.body?.text });
+    if ('error' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
+    res.json(outcome);
+  }));
+  router.post('/chats/:chatId/commands/:commandId/share', requireSession, asyncRoute(async (req, res) => {
+    const outcome = await shareCommandAnswer(req.session!.userId, req.params.chatId!, req.params.commandId!);
     if ('error' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
     res.json(outcome);
   }));
@@ -81,7 +92,7 @@ export function buildBotUserRouter(): Router {
   router.get('/workspaces/:id/available-apps', requireSession, asyncRoute(async (req, res) => {
     const spaceId = req.params.id!;
     if (!(await adminOf(spaceId, req.session!.userId))) return void res.status(403).json({ message: 'Solo el dueño o un admin instala apps.' });
-    res.json({ apps: await availableAppsIn(spaceId) });
+    res.json({ apps: await availableAppsIn(spaceId, await loginHintOf(req.session!.userId)) });
   }));
   // The «Apps» section of the space (José, 23/10: «¿dónde está la sección apps?»): installed for everyone, to add for admins.
   router.get('/workspaces/:id/app-directory', requireSession, asyncRoute(async (req, res) => {
@@ -89,7 +100,7 @@ export function buildBotUserRouter(): Router {
     const member = isId(spaceId) ? await WorkspaceMemberModel.findOne({ workspaceId: spaceId, userId: req.session!.userId, status: 'active' }).select('role').lean() : null;
     if (!member) return void res.status(404).json({ message: 'Ese espacio no existe.' });
     const canInstall = canManageMembers(member.role);
-    res.json({ apps: await directoryOf(spaceId, canInstall), canInstall });
+    res.json({ apps: await directoryOf(spaceId, canInstall, canInstall ? await loginHintOf(req.session!.userId) : undefined), canInstall });
   }));
   router.post('/workspaces/:id/apps/:appId/chat', requireSession, asyncRoute(async (req, res) => {
     const userId = req.session!.userId;

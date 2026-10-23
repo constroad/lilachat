@@ -59,7 +59,19 @@ export function validateAppManifest(raw: unknown): { ok: true; manifest: AppMani
   return { ok: true, manifest: { key, name, ...(avatarUrl ? { avatarUrl } : {}), redirectUri, webhookUrl, ...(installUrl ? { installUrl } : {}), ...(commands ? { commands } : {}), ...about } };
 }
 
-const oneLine = (value: unknown, max: number): string => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, max) : '');
+const ELLIPSIS = '…';
+
+/** Too long: cut at the last whole word that fits with «…» (no dangling comma); a text without spaces is cut hard. */
+function cutAtWord(text: string, max: number): string {
+  if (text.length <= max) return text;
+  // One character more than fits, to know whether the cut falls right on a space.
+  const room = text.slice(0, max - ELLIPSIS.length + 1);
+  const lastSpace = room.lastIndexOf(' ');
+  const head = lastSpace > 0 ? room.slice(0, lastSpace) : text.slice(0, max - ELLIPSIS.length);
+  return `${head.replace(/[\s,;:.\-–—]+$/, '')}${ELLIPSIS}`;
+}
+
+const oneLine = (value: unknown, max: number): string => (typeof value === 'string' ? cutAtWord(value.replace(/\s+/g, ' ').trim(), max) : '');
 
 /** The directory's texts are optional and never refuse a manifest: what is too long is cut, what is unknown is dropped. */
 function aboutFields(body: Record<string, unknown>): Pick<AppManifest, 'description' | 'features' | 'developer' | 'category'> {

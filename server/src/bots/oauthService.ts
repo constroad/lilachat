@@ -1,6 +1,7 @@
 import { Types } from 'mongoose';
 import { canManageMembers } from '@lilachat/shared';
 import { WorkspaceMemberModel, WorkspaceModel } from '../workspaceModels.js';
+import { isAvailableIn } from './botAvailability.js';
 import { installApp } from './botInstall.js';
 import { BotAppModel, OAuthCodeModel, type BotApp } from './botModels.js';
 import { newSecret, pkceMatches, sameHash, sha256 } from './botSecrets.js';
@@ -24,10 +25,10 @@ async function registeredApp(clientId: unknown, redirectUri: unknown): Promise<B
   return app;
 }
 
-/** The spaces where this person can install an app: theirs or where they are admin. */
-async function spacesToInstallIn(userId: Types.ObjectId): Promise<{ id: string; name: string; logoUrl?: string }[]> {
+/** The spaces where this person can install this app: theirs or where they are admin, and where the app is available (§0-ter). */
+async function spacesToInstallIn(userId: Types.ObjectId, app: Pick<BotApp, 'availableIn'>): Promise<{ id: string; name: string; logoUrl?: string }[]> {
   const memberships = await WorkspaceMemberModel.find({ userId, status: 'active' }).select('workspaceId role').lean();
-  const allowed = memberships.filter((member) => canManageMembers(member.role)).map((member) => member.workspaceId);
+  const allowed = memberships.filter((member) => canManageMembers(member.role) && isAvailableIn(app, member.workspaceId)).map((member) => member.workspaceId);
   const spaces = await WorkspaceModel.find({ _id: { $in: allowed } }).select('name logoUrl').sort({ name: 1 }).lean();
   return spaces.map((space) => ({ id: String(space._id), name: space.name, ...(space.logoUrl ? { logoUrl: space.logoUrl } : {}) }));
 }
@@ -35,7 +36,7 @@ async function spacesToInstallIn(userId: Types.ObjectId): Promise<{ id: string; 
 export async function appForConsent(userId: Types.ObjectId, query: { client_id?: unknown; redirect_uri?: unknown }) {
   const app = await registeredApp(query.client_id, query.redirect_uri);
   if ('error' in app) return app;
-  return { app: { name: app.name, ...(app.avatarUrl ? { avatarUrl: app.avatarUrl } : {}) }, spaces: await spacesToInstallIn(userId) };
+  return { app: { name: app.name, ...(app.avatarUrl ? { avatarUrl: app.avatarUrl } : {}) }, spaces: await spacesToInstallIn(userId, app) };
 }
 
 const withQuery = (base: string, params: Record<string, string>) => {
@@ -56,6 +57,7 @@ export async function authorize(userId: Types.ObjectId, body: Record<string, unk
   const spaceId = typeof body.space_id === 'string' && Types.ObjectId.isValid(body.space_id) ? new Types.ObjectId(body.space_id) : null;
   const member = spaceId ? await WorkspaceMemberModel.findOne({ workspaceId: spaceId, userId, status: 'active' }).select('role').lean() : null;
   if (!spaceId || !member || !canManageMembers(member.role)) return oauthError(403, 'access_denied', 'Solo el dueño o un admin del espacio instala apps.');
+  if (!isAvailableIn(app, spaceId)) return oauthError(403, 'app_not_available', 'Esta app no está disponible para este espacio.');
   const code = newSecret('lco_');
   await OAuthCodeModel.create({ codeHash: sha256(code), appId: app._id, workspaceId: spaceId, userId, redirectUri, codeChallenge: challenge, expiresAt: new Date(Date.now() + CODE_TTL_MS) });
   return { redirect: withQuery(redirectUri, { code, state }) };

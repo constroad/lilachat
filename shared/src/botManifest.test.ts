@@ -54,6 +54,19 @@ describe('app manifest', () => {
     expect(unknown.ok && unknown.manifest.description).toHaveLength(MANIFEST_LIMITS.description);
   });
 
+  it('a long text is cut at a whole word, without a dangling comma, and ends in «…» within the limit', () => {
+    // Arrange
+    const portal = 'Portal en Lilachat: listar pedidos, ver un pedido, buscar clientes, listar despachos, asistencia del día, estado de los tanques y crear pedidos';
+    // Act
+    const result = validateAppManifest({ ...manifest, description: portal, developer: 'Agentes ConstRoad, el equipo de producto que hace las apps de la empresa' });
+    // Assert
+    const description = result.ok ? (result.manifest.description ?? '') : '';
+    expect(description.length).toBeLessThanOrEqual(MANIFEST_LIMITS.description);
+    expect(description).toBe('Portal en Lilachat: listar pedidos, ver un pedido, buscar clientes, listar despachos, asistencia del día, estado de los…');
+    expect(result.ok && result.manifest.developer).toBe('Agentes ConstRoad, el equipo de producto que hace las apps…');
+    expect(result.ok && result.manifest.developer!.length).toBeLessThanOrEqual(MANIFEST_LIMITS.developer);
+  });
+
   it('bad commands are refused with the same message as PUT /api/bots/commands', () => {
     expect(validateAppManifest({ ...manifest, commands: [{ command: '/Clima', description: 'x' }] }).ok).toBe(false);
   });

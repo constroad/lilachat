@@ -5,7 +5,8 @@ import { crearLimiteDeIntentos } from '../limiteDeIntentos.js';
 import { UserModel } from '../models.js';
 import { asyncRoute, requireSession } from '../requireSession.js';
 import { WorkspaceMemberModel, WorkspaceModel } from '../workspaceModels.js';
-import { deleteOwnedApp, developerFrom, listOwnedApps, rotateAppSecret, upsertApp } from './botApps.js';
+import { deleteOwnedApp, developerFrom, listOwnedApps, rotateAppSecret, upsertApp, type AppsError } from './botApps.js';
+import { availabilityOf, setAvailability, spacesRunBy, type AppRef } from './botAvailability.js';
 import { commandsOfApp, commandsToWire, registerCommands, respondToCommand } from './botCommands.js';
 import { installationByToken, revokeInstallation } from './botInstall.js';
 import { postBotMessage, updateBotMessage } from './botMessages.js';
@@ -127,20 +128,38 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
  * lists, rotates and deletes ITS apps with Basic client credentials. Mounted
  * before `/api/bots`, whose doors want a bot token instead.
  */
+/** A developer app's credential (§0-bis); only failed credentials count: agentes re-sends every manifest at boot, a guesser does not get far. */
+const failedDeveloperTries = crearLimiteDeIntentos({ maximo: FAILED_DEVELOPER_TRIES_PER_MINUTE, ventanaMs: ONE_MINUTE_MS });
+const requireDeveloper = asyncRoute(async (req, res, next) => {
+  const developer = await developerFrom(req.headers.authorization);
+  if ('error' in developer) {
+    if (!failedDeveloperTries.permitir(req.ip ?? 'sin-ip')) return void res.status(429).set('Retry-After', '60').json({ error: 'rate_limited', message: 'Demasiados intentos. Espera un minuto.' });
+    return void res.status(developer.status).json({ error: developer.error, message: developer.message });
+  }
+  req.developer = developer;
+  next();
+});
+const sendApps = <T extends object>(res: Response, outcome: T | AppsError) =>
+  'error' in outcome ? res.status(outcome.status).json({ error: outcome.error, message: outcome.message }) : res.json(outcome);
+
+/** `GET /api/bots/spaces?admin=` (§0-ter): the spaces the person signed in to agentes' console runs. */
+export function buildBotSpacesRouter(): Router {
+  const router = Router();
+  router.use(requireDeveloper);
+  router.get('/', asyncRoute(async (req, res) => void sendApps(res, await spacesRunBy(req.developer!, String(req.query.admin ?? '')))));
+  return router;
+}
+
 export function buildBotAppsRouter(): Router {
   const router = Router();
-  const tries = crearLimiteDeIntentos({ maximo: FAILED_DEVELOPER_TRIES_PER_MINUTE, ventanaMs: ONE_MINUTE_MS });
-  router.use(asyncRoute(async (req, res, next) => {
-    const developer = await developerFrom(req.headers.authorization);
-    if ('error' in developer) {
-      // Only failed credentials count: agentes re-sends every manifest at boot, a guesser does not get far.
-      if (!tries.permitir(req.ip ?? 'sin-ip')) return void res.status(429).set('Retry-After', '60').json({ error: 'rate_limited', message: 'Demasiados intentos. Espera un minuto.' });
-      return void res.status(developer.status).json({ error: developer.error, message: developer.message });
-    }
-    req.developer = developer;
-    next();
-  }));
+  router.use(requireDeveloper);
   router.get('/', asyncRoute(async (req, res) => res.json({ apps: await listOwnedApps(req.developer!) })));
+  // Which spaces may install it (§0-ter), by product key or by client id.
+  const refOf = (req: Request): AppRef => (req.params.key ? { key: String(req.params.key) } : { clientId: String(req.params.clientId) });
+  for (const path of ['/by-key/:key/availability', '/:clientId/availability']) {
+    router.get(path, asyncRoute(async (req, res) => void sendApps(res, await availabilityOf(req.developer!, refOf(req)))));
+    router.put(path, asyncRoute(async (req, res) => void sendApps(res, await setAvailability(req.developer!, refOf(req), req.body))));
+  }
   router.post('/', asyncRoute(async (req, res) => {
     const valid = validateAppManifest(req.body);
     if (!valid.ok) return void res.status(400).json({ error: 'invalid_request', message: valid.message });

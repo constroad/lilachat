@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
-import type { ChatList } from '@lilachat/shared';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { listIdOf, type ChatList, type FiltroDeChats } from '@lilachat/shared';
 import type { ChatSummary } from '../types';
 import { useChatListsWeb } from './useChatListsWeb';
 import { ChatListDialog } from './ChatListDialog';
@@ -11,13 +11,25 @@ const titleOf = (chat: ChatSummary) => chat.name ?? chat.phone ?? 'Conversación
 
 /**
  * Lists of my own in the web's chat panel (pending 45), kept out of
- * `ChatList`: the lists (sections since R154, pending 62), the editor and
- * «Mover a sección» from a chat's menu.
+ * `ChatList`: the chips' lists, the chats a list chip shows, the editor and
+ * «Agregar a lista» from a chat's menu.
  */
-export function useChatListsPanel(params: { jwt: string; chats: readonly ChatSummary[] }) {
+export function useChatListsPanel(params: { jwt: string; chats: readonly ChatSummary[]; filter: FiltroDeChats; onFilter: (filter: FiltroDeChats) => void }) {
   const { lists, create, update, remove } = useChatListsWeb(params.jwt);
   const [editing, setEditing] = useState<Editing>(null);
   const [addingTo, setAddingTo] = useState<ChatSummary | null>(null);
+  const { filter, onFilter } = params;
+
+  const activeListId = listIdOf(filter);
+  const activeChatIds = useMemo(() => {
+    const active = lists.find((list) => list.id === activeListId);
+    return active ? new Set(active.chatIds) : undefined;
+  }, [lists, activeListId]);
+
+  // The list on the chip was deleted (here or on the phone): back to «Todos».
+  useEffect(() => {
+    if (activeListId && lists.length > 0 && !lists.some((list) => list.id === activeListId)) onFilter('todos');
+  }, [activeListId, lists, onFilter]);
 
   const openEdit = useCallback((listId: string) => {
     const list = lists.find((one) => one.id === listId);
@@ -59,6 +71,7 @@ export function useChatListsPanel(params: { jwt: string; chats: readonly ChatSum
 
   return {
     lists,
+    activeChatIds,
     openNew: () => setEditing({ list: null, initialChatIds: [] }),
     openEdit,
     openAddTo: setAddingTo,

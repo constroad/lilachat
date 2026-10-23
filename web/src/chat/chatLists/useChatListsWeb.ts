@@ -32,17 +32,16 @@ export function useChatListsWeb(jwt: string) {
   }, [reload]);
 
   const create = useCallback(async (name: string, chatIds: string[]): Promise<ListOutcome> => {
-    const response = await api<{ list: ChatList; lists?: ChatList[] }>('/chat-lists', { jwt, body: { name, chatIds } });
+    const response = await api<{ list: ChatList }>('/chat-lists', { jwt, body: { name, chatIds } });
     if (!response.ok) return { ok: false, message: response.message };
-    // A chat lives in one section (pending 62): the answer brings every section as it was left.
-    keep(response.data.lists ?? [...lists, response.data.list]);
+    keep([...lists, response.data.list]);
     return { ok: true, list: response.data.list };
   }, [jwt, keep, lists]);
 
   const update = useCallback(async (listId: string, change: { name?: string; add?: string[]; remove?: string[] }): Promise<ListOutcome> => {
-    const response = await api<{ list: ChatList; lists?: ChatList[] }>(`/chat-lists/${listId}`, { jwt, method: 'PATCH', body: change });
+    const response = await api<{ list: ChatList }>(`/chat-lists/${listId}`, { jwt, method: 'PATCH', body: change });
     if (!response.ok) return { ok: false, message: response.message };
-    keep(response.data.lists ?? lists.map((list) => (list.id === listId ? response.data.list : list)));
+    keep(lists.map((list) => (list.id === listId ? response.data.list : list)));
     return { ok: true, list: response.data.list };
   }, [jwt, keep, lists]);
 

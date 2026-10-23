@@ -61,7 +61,7 @@ export function BarraDeSeleccionDeChats(props: {
         </Accion>
       ) : null}
       {props.onAgregarALista ? (
-        <Accion testID="accion-agregar-a-lista" etiqueta="Mover a sección" onPress={props.onAgregarALista}>
+        <Accion testID="accion-agregar-a-lista" etiqueta="Agregar a lista" onPress={props.onAgregarALista}>
           <ListPlus size={22} color={icono} />
         </Accion>
       ) : null}

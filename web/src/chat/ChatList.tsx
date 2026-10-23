@@ -8,8 +8,6 @@ import { ChatRow } from './FilaDeChat';
 import { FiltrosDeLaLista } from './FiltrosDeLaLista';
 import { buildChatList } from './listaDeChats';
 import { useChatListsPanel } from './chatLists/useChatListsPanel';
-import { useChatSectionsWeb } from './chatLists/useChatSectionsWeb';
-import { SectionHeader } from './chatLists/SectionHeader';
 import type { ChatAction } from './menuDelChat';
 import type { ChatSummary } from './types';
 import { NewVersionBand } from '../ui/NewVersionBand';
@@ -80,10 +78,8 @@ export function ChatList({
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [filtro, setFiltro] = useState<FiltroDeChats>('todos');
   const [verArchivados, setVerArchivados] = useState(false);
-  const myLists = useChatListsPanel({ jwt, chats });
-  const shown = useMemo(() => buildChatList({ chats, filtro, texto: query, verArchivados }), [chats, filtro, query, verArchivados]);
-  // Slack's sections (pending 62): my lists fold the «Todos» list; a filter or a search shows it flat.
-  const sections = useChatSectionsWeb({ userId: yo ?? '', chats: shown.visibles, lists: myLists.lists, enabled: filtro === 'todos' && !query.trim() && !verArchivados });
+  const myLists = useChatListsPanel({ jwt, chats, filter: filtro, onFilter: setFiltro });
+  const shown = useMemo(() => buildChatList({ chats, filtro, texto: query, verArchivados, lista: myLists.activeChatIds }), [chats, filtro, query, verArchivados, myLists.activeChatIds]);
   const onRowAction = (chat: ChatSummary, accion: ChatAction) => (accion === 'lista' ? myLists.openAddTo(chat) : onAccion(chat, accion));
   // Se archivó el último: «Archivados» vacío no tiene salida útil, se vuelve a la principal.
   useEffect(() => {
@@ -203,7 +199,7 @@ export function ChatList({
         </div>
       </div>
 
-      <FiltrosDeLaLista lista={shown} filtro={filtro} onFiltro={setFiltro} verArchivados={verArchivados} onArchivados={setVerArchivados} onNuevaLista={myLists.openNew} />
+      <FiltrosDeLaLista lista={shown} filtro={filtro} onFiltro={setFiltro} verArchivados={verArchivados} onArchivados={setVerArchivados} listas={myLists.lists} onNuevaLista={myLists.openNew} onEditarLista={myLists.openEdit} />
       {myLists.dialogs}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -224,13 +220,9 @@ export function ChatList({
         ) : shown.visibles.length === 0 ? (
           <ListaVacia query={query} filtro={filtro} verArchivados={verArchivados} hayChats={chats.length > 0} onNewChat={onNewChat} />
         ) : (
-          sections.rows.map((row) =>
-            row.type === 'section' ? (
-              <SectionHeader key={row.key} row={row} onToggle={sections.toggle} onEdit={myLists.openEdit} />
-            ) : (
-              <ChatRow key={row.key} chat={row.chat} yo={yo} seleccionado={row.chat.id === selectedChatId} onSelect={() => onSelect(row.chat)} onAccion={onRowAction} />
-            )
-          )
+          shown.visibles.map((chat) => (
+            <ChatRow key={chat.id} chat={chat} yo={yo} seleccionado={chat.id === selectedChatId} onSelect={() => onSelect(chat)} onAccion={onRowAction} />
+          ))
         )}
       </div>
 

@@ -55,15 +55,14 @@ export function useChatLists(params: { jwt: string; userId: string }) {
   const create = useCallback(async (name: string, chatIds: string[]): Promise<ListOutcome> => {
     const response = await createChatList(jwt, name, chatIds);
     if (!response.ok) return failure(response);
-    // A chat lives in one section (pending 62): the answer brings every section as it was left.
-    keep(response.data.lists ?? [...lists, response.data.list]);
+    keep([...lists, response.data.list]);
     return { ok: true, list: response.data.list };
   }, [jwt, keep, lists]);
 
   const update = useCallback(async (listId: string, change: { name?: string; add?: string[]; remove?: string[] }): Promise<ListOutcome> => {
     const response = await updateChatList(jwt, listId, change);
     if (!response.ok) return failure(response);
-    keep(response.data.lists ?? lists.map((list) => (list.id === listId ? response.data.list : list)));
+    keep(lists.map((list) => (list.id === listId ? response.data.list : list)));
     return { ok: true, list: response.data.list };
   }, [jwt, keep, lists]);
 

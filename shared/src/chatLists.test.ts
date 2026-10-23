@@ -13,7 +13,7 @@ describe('chatListNameError', () => {
   });
 
   it('an empty name asks for one', () => {
-    expect(chatListNameError('   ', [])).toBe('Escribe un nombre para la sección.');
+    expect(chatListNameError('   ', [])).toBe('Escribe un nombre para la lista.');
   });
 
   it('a name longer than 24 letters is refused', () => {
@@ -21,8 +21,8 @@ describe('chatListNameError', () => {
   });
 
   it('the same name as another list, in any case or accent, is refused', () => {
-    expect(chatListNameError('familia', [family])).toBe('Ya tienes una sección con ese nombre.');
-    expect(chatListNameError('AMIGÓS', [friends])).toBe('Ya tienes una sección con ese nombre.');
+    expect(chatListNameError('familia', [family])).toBe('Ya tienes una lista con ese nombre.');
+    expect(chatListNameError('AMIGÓS', [friends])).toBe('Ya tienes una lista con ese nombre.');
   });
 
   it('renaming a list to its own name is fine', () => {
@@ -32,8 +32,6 @@ describe('chatListNameError', () => {
   it('the names of the fixed chips are taken', () => {
     expect(chatListNameError('No leidos', [])).toBe('Ese nombre ya es un filtro de la lista.');
     expect(chatListNameError('borradores', [])).toBe('Ese nombre ya es un filtro de la lista.');
-    // Pending 62: «Sin sección» is where the chats without one go.
-    expect(chatListNameError('Sin seccion', [])).toBe('Ese nombre ya es un filtro de la lista.');
   });
 });
 

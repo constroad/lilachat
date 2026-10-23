@@ -5,13 +5,12 @@ import { Overlay } from '../../ui/Overlay';
 /**
  * «Agregar a lista» from a chat's menu (pending 45): each list with a tick
  * when the chat is in it; tapping puts it in or takes it out. «Nueva lista»
- * starts one with this chat. Since R154 the lists are sections (pending 62):
- * putting the chat in one takes it out of the one it was in.
+ * starts one with this chat.
  */
 export function AddToListDialog(props: { chatId: string; chatTitle: string; lists: readonly ChatList[]; onToggle: (list: ChatList, putIn: boolean) => void; onNewList: () => void; onClose: () => void }) {
   return (
-    <Overlay title={`Mover «${props.chatTitle}» a una sección`} onClose={props.onClose}>
-      {props.lists.length === 0 ? <p className="mb-2 text-sm text-on-surface-variant">Todavía no tienes secciones.</p> : null}
+    <Overlay title={`Agregar «${props.chatTitle}» a una lista`} onClose={props.onClose}>
+      {props.lists.length === 0 ? <p className="mb-2 text-sm text-on-surface-variant">Todavía no tienes listas.</p> : null}
       {props.lists.map((list) => {
         const inside = list.chatIds.includes(props.chatId);
         return (
@@ -23,7 +22,7 @@ export function AddToListDialog(props: { chatId: string; chatTitle: string; list
         );
       })}
       <button type="button" data-testid="btn-nueva-lista-desde-chat" onClick={props.onNewList} className="mt-1 flex min-h-[48px] w-full items-center gap-3 rounded-lg px-1 text-left text-sm font-semibold text-primary hover:bg-primary/5">
-        <Plus size={18} /> Nueva sección
+        <Plus size={18} /> Nueva lista
       </button>
     </Overlay>
   );

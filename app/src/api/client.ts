@@ -108,10 +108,10 @@ export const shareLocation = (token: string, chatId: string, location: { lat: nu
 export const listChatLists = (token: string) => get<{ lists: ChatList[] }>('/api/chat-lists', token);
 
 export const createChatList = (token: string, name: string, chatIds: string[]) =>
-  authed<{ list: ChatList; lists?: ChatList[] }>('POST', '/api/chat-lists', token, { name, chatIds });
+  authed<{ list: ChatList }>('POST', '/api/chat-lists', token, { name, chatIds });
 
 export const updateChatList = (token: string, listId: string, change: { name?: string; add?: string[]; remove?: string[] }) =>
-  authed<{ list: ChatList; lists?: ChatList[] }>('PATCH', `/api/chat-lists/${listId}`, token, change);
+  authed<{ list: ChatList }>('PATCH', `/api/chat-lists/${listId}`, token, change);
 
 export const deleteChatList = (token: string, listId: string) => authed<{ ok: true }>('DELETE', `/api/chat-lists/${listId}`, token);
 

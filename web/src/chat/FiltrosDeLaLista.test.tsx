@@ -3,23 +3,31 @@ import { describe, expect, it, vi } from 'vitest';
 import { FiltrosDeLaLista } from './FiltrosDeLaLista';
 
 const built = { visibles: [], cuentas: { 'no-leidos': 0, grupos: 0, borradores: 0 }, archivados: { total: 0, sinLeer: 0 } };
+const family = { id: 'l1', name: 'Familia', chatIds: ['c1'] };
 
-describe('FiltrosDeLaLista with sections like Slack (pending 62)', () => {
-  it('only the four fixed chips; the lists are sections of the list, not chips', () => {
+describe('FiltrosDeLaLista with lists of my own (pending 45)', () => {
+  it('each list is a chip after the fixed ones; tapping it filters by it', () => {
     // Arrange
     const onFiltro = vi.fn();
-    render(<FiltrosDeLaLista lista={built} filtro="todos" onFiltro={onFiltro} verArchivados={false} onArchivados={() => undefined} onNuevaLista={() => undefined} />);
+    render(<FiltrosDeLaLista lista={built} filtro="todos" onFiltro={onFiltro} verArchivados={false} onArchivados={() => undefined} listas={[family]} onNuevaLista={() => undefined} onEditarLista={() => undefined} />);
     // Act
-    fireEvent.click(screen.getByText('Grupos'));
+    fireEvent.click(screen.getByText('Familia'));
     // Assert
-    expect(onFiltro).toHaveBeenCalledWith('grupos');
-    expect(screen.getAllByRole('button', { pressed: false }).map((chip) => chip.textContent)).toEqual(['No leídos', 'Grupos', 'Borradores']);
+    expect(onFiltro).toHaveBeenCalledWith('lista:l1');
+    expect(screen.getByTestId('filtro-nueva-lista')).toBeInTheDocument();
   });
 
-  it('the plus starts a new section', () => {
-    const onNew = vi.fn();
-    render(<FiltrosDeLaLista lista={built} filtro="todos" onFiltro={() => undefined} verArchivados={false} onArchivados={() => undefined} onNuevaLista={onNew} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Nueva sección' }));
-    expect(onNew).toHaveBeenCalledTimes(1);
+  it('the pencil appears with a list open and edits that one; right click too', () => {
+    const onEditList = vi.fn();
+    render(<FiltrosDeLaLista lista={built} filtro="lista:l1" onFiltro={() => undefined} verArchivados={false} onArchivados={() => undefined} listas={[family]} onEditarLista={onEditList} />);
+    fireEvent.click(screen.getByTestId('btn-editar-lista'));
+    fireEvent.contextMenu(screen.getByText('Familia'));
+    expect(onEditList).toHaveBeenNthCalledWith(1, 'l1');
+    expect(onEditList).toHaveBeenNthCalledWith(2, 'l1');
+  });
+
+  it('with a fixed chip open there is no pencil', () => {
+    render(<FiltrosDeLaLista lista={built} filtro="grupos" onFiltro={() => undefined} verArchivados={false} onArchivados={() => undefined} listas={[family]} onEditarLista={() => undefined} />);
+    expect(screen.queryByTestId('btn-editar-lista')).toBeNull();
   });
 });

@@ -9,6 +9,7 @@ import { Avatar } from '../ui/Avatar';
 import type { AgendaReminder, MencionEnMensaje, WinkId } from '@lilachat/shared';
 import { formatUltimaVez, presenceLine, type PresenceStatus } from '@lilachat/shared';
 import { Composer, type ContextoDelComposer } from './Composer';
+import { useChatCommands } from './commands/useChatCommands';
 import type { Mencionable } from './SugerenciasDeMencion';
 import type { NotaDeVozGrabada } from './useGrabadoraDeVoz';
 import { ListaDeMensajes } from './ListaDeMensajes';
@@ -82,6 +83,7 @@ export function Conversation(props: {
   const lastSeen = useLastSeen(otherId);
   const otherStatus = usePresenceStatus(otherId);
   const fun = useFunPlayback({ messages: props.mensajes, me: props.yo, chatId: chat.id, muted: Boolean(chat.muted), afterSeq: chat.lastSeq - chat.unread });
+  const commands = useChatCommands({ jwt: props.jwtParaEnlaces, chatId: chat.id, workspaceId: chat.workspaceId });
   return (
     <section
       data-testid="panel-conversacion"
@@ -155,6 +157,7 @@ export function Conversation(props: {
         jwtParaEnlaces={props.jwtParaEnlaces}
         onNotaDeVoz={props.onNotaDeVoz}
         onEscribiendo={props.onEscribiendo}
+        commands={commands.enabled ? commands : undefined}
         stickers={props.jwtParaEnlaces ? { jwt: props.jwtParaEnlaces, me: props.yo, chatId: chat.id, chatName: chat.name ?? chat.phone ?? '', replyToSeq: props.replyingTo, onSent: props.replyingTo ? props.onCancelarContexto : undefined } : undefined}
       />
       </>

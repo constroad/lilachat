@@ -14,6 +14,9 @@ import type { StickerChat } from './stickers/EmojiStickerPanel';
 import { AttachMenu } from './AttachMenu';
 import { useDismiss } from '../ui/useDismiss';
 import { subscribeComposerInserts } from './composerInsert';
+import type { ChatCommands } from './commands/useChatCommands';
+import { CommandPanel } from './commands/CommandPanel';
+import { EphemeralAnswers } from './commands/EphemeralAnswers';
 
 /**
  * La barra de escritura del diseño: «+» suelto a la izquierda, el campo con
@@ -43,7 +46,10 @@ export function Composer({
   onNotaDeVoz,
   onEscribiendo,
   stickers,
+  commands,
 }: {
+  /** The «/» of a space's chat (§c-bis): the apps' commands and what they answered only to me. */
+  commands?: ChatCommands;
   /** For the Stickers tab (20/10); without it (secret chat), emojis only. */
   stickers?: StickerChat;
   contexto?: ContextoDelComposer | null;
@@ -149,10 +155,23 @@ export function Composer({
     };
   }, [menuAbierto]);
 
+  const pickCommand = (command: string) => {
+    const written = `/${command} `;
+    pendingCaret.current = written.length;
+    setText(written);
+    commands?.onType(written);
+  };
+
   const submit = () => {
     const value = text.trim();
     if (!value) return;
     setText('');
+    if (commands?.isCommand(value)) {
+      void commands.run(value).then((ok) => {
+        if (!ok) setText(value);
+      });
+      return;
+    }
     const rangos = menciones.mencionesDe(value);
     menciones.limpiar();
     onSend(value, rangos.length ? rangos : undefined);
@@ -161,6 +180,8 @@ export function Composer({
   return (
     <div className="border-t border-outline/15 bg-surface px-4 py-3">
       {contexto ? <FranjaDeContexto contexto={contexto} onCancelar={cancelarContexto} /> : null}
+      {commands ? <EphemeralAnswers answers={commands.answers} onDismiss={commands.dismiss} chatId={commands.chatId} jwt={commands.jwt} /> : null}
+      {commands ? <CommandPanel groups={commands.suggestions} active={commands.activeCommand} onPick={pickCommand} /> : null}
       {jwtParaEnlaces && contexto?.tipo !== 'edicion' ? <VistaPreviaAlEscribir texto={text} jwt={jwtParaEnlaces} /> : null}
       <input
         ref={archivoRef}
@@ -233,6 +254,7 @@ export function Composer({
           onChange={(event) => {
             setText(event.target.value);
             if (event.target.value) onEscribiendo?.();
+            commands?.onType(event.target.value);
             menciones.alCambiar(event.target.value, event.target.selectionStart ?? event.target.value.length);
           }}
           onPaste={(event) => {
@@ -243,6 +265,7 @@ export function Composer({
             onElegirArchivos(pegados);
           }}
           onKeyDown={(event) => {
+            if (commands?.onKey(event, pickCommand)) return;
             if (menciones.alTeclear(event, elegirMencion)) return;
             if (event.key === 'Enter' && !event.shiftKey) {
               event.preventDefault();

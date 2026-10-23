@@ -373,6 +373,286 @@ export const WINK_IMAGES: Record<string, WinkImages> = {
       'arm-right': require('../../assets/guinos/secret-santa-arm-right.webp'),
     },
   },
+  'countdown-boss': {
+    tile: require('../../assets/guinos/countdown-boss-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/countdown-boss-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/countdown-boss-leg-right.webp'),
+      'body': require('../../assets/guinos/countdown-boss-body.webp'),
+      'head': require('../../assets/guinos/countdown-boss-head.webp'),
+      'eye-left': require('../../assets/guinos/countdown-boss-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/countdown-boss-eye-right.webp'),
+      'mouth': require('../../assets/guinos/countdown-boss-mouth.webp'),
+      'arm-left': require('../../assets/guinos/countdown-boss-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/countdown-boss-arm-right.webp'),
+    },
+  },
+  'grape-guy': {
+    tile: require('../../assets/guinos/grape-guy-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/grape-guy-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/grape-guy-leg-right.webp'),
+      'body': require('../../assets/guinos/grape-guy-body.webp'),
+      'head': require('../../assets/guinos/grape-guy-head.webp'),
+      'eye-left': require('../../assets/guinos/grape-guy-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/grape-guy-eye-right.webp'),
+      'mouth': require('../../assets/guinos/grape-guy-mouth.webp'),
+      'arm-left': require('../../assets/guinos/grape-guy-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/grape-guy-arm-right.webp'),
+    },
+  },
+  'suitcase-runner': {
+    tile: require('../../assets/guinos/suitcase-runner-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/suitcase-runner-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/suitcase-runner-leg-right.webp'),
+      'body': require('../../assets/guinos/suitcase-runner-body.webp'),
+      'head': require('../../assets/guinos/suitcase-runner-head.webp'),
+      'eye-left': require('../../assets/guinos/suitcase-runner-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/suitcase-runner-eye-right.webp'),
+      'mouth': require('../../assets/guinos/suitcase-runner-mouth.webp'),
+      'arm-left': require('../../assets/guinos/suitcase-runner-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/suitcase-runner-arm-right.webp'),
+    },
+  },
+  'yellow-lucky': {
+    tile: require('../../assets/guinos/yellow-lucky-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/yellow-lucky-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/yellow-lucky-leg-right.webp'),
+      'body': require('../../assets/guinos/yellow-lucky-body.webp'),
+      'head': require('../../assets/guinos/yellow-lucky-head.webp'),
+      'eye-left': require('../../assets/guinos/yellow-lucky-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/yellow-lucky-eye-right.webp'),
+      'mouth': require('../../assets/guinos/yellow-lucky-mouth.webp'),
+      'arm-left': require('../../assets/guinos/yellow-lucky-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/yellow-lucky-arm-right.webp'),
+    },
+  },
+  'toast-engineer': {
+    tile: require('../../assets/guinos/toast-engineer-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/toast-engineer-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/toast-engineer-leg-right.webp'),
+      'body': require('../../assets/guinos/toast-engineer-body.webp'),
+      'head': require('../../assets/guinos/toast-engineer-head.webp'),
+      'eye-left': require('../../assets/guinos/toast-engineer-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/toast-engineer-eye-right.webp'),
+      'mouth': require('../../assets/guinos/toast-engineer-mouth.webp'),
+      'arm-left': require('../../assets/guinos/toast-engineer-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/toast-engineer-arm-right.webp'),
+    },
+  },
+  'cupid-intern': {
+    tile: require('../../assets/guinos/cupid-intern-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/cupid-intern-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/cupid-intern-leg-right.webp'),
+      'body': require('../../assets/guinos/cupid-intern-body.webp'),
+      'head': require('../../assets/guinos/cupid-intern-head.webp'),
+      'eye-left': require('../../assets/guinos/cupid-intern-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/cupid-intern-eye-right.webp'),
+      'mouth': require('../../assets/guinos/cupid-intern-mouth.webp'),
+      'arm-left': require('../../assets/guinos/cupid-intern-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/cupid-intern-arm-right.webp'),
+    },
+  },
+  'roses-courier': {
+    tile: require('../../assets/guinos/roses-courier-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/roses-courier-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/roses-courier-leg-right.webp'),
+      'body': require('../../assets/guinos/roses-courier-body.webp'),
+      'head': require('../../assets/guinos/roses-courier-head.webp'),
+      'eye-left': require('../../assets/guinos/roses-courier-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/roses-courier-eye-right.webp'),
+      'mouth': require('../../assets/guinos/roses-courier-mouth.webp'),
+      'arm-left': require('../../assets/guinos/roses-courier-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/roses-courier-arm-right.webp'),
+    },
+  },
+  'serenader': {
+    tile: require('../../assets/guinos/serenader-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/serenader-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/serenader-leg-right.webp'),
+      'body': require('../../assets/guinos/serenader-body.webp'),
+      'head': require('../../assets/guinos/serenader-head.webp'),
+      'eye-left': require('../../assets/guinos/serenader-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/serenader-eye-right.webp'),
+      'mouth': require('../../assets/guinos/serenader-mouth.webp'),
+      'arm-left': require('../../assets/guinos/serenader-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/serenader-arm-right.webp'),
+    },
+  },
+  'stood-up': {
+    tile: require('../../assets/guinos/stood-up-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/stood-up-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/stood-up-leg-right.webp'),
+      'body': require('../../assets/guinos/stood-up-body.webp'),
+      'head': require('../../assets/guinos/stood-up-head.webp'),
+      'eye-left': require('../../assets/guinos/stood-up-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/stood-up-eye-right.webp'),
+      'mouth': require('../../assets/guinos/stood-up-mouth.webp'),
+      'arm-left': require('../../assets/guinos/stood-up-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/stood-up-arm-right.webp'),
+    },
+  },
+  'heartbroken': {
+    tile: require('../../assets/guinos/heartbroken-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/heartbroken-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/heartbroken-leg-right.webp'),
+      'body': require('../../assets/guinos/heartbroken-body.webp'),
+      'head': require('../../assets/guinos/heartbroken-head.webp'),
+      'eye-left': require('../../assets/guinos/heartbroken-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/heartbroken-eye-right.webp'),
+      'mouth': require('../../assets/guinos/heartbroken-mouth.webp'),
+      'arm-left': require('../../assets/guinos/heartbroken-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/heartbroken-arm-right.webp'),
+    },
+  },
+  'multitask-mom': {
+    tile: require('../../assets/guinos/multitask-mom-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/multitask-mom-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/multitask-mom-leg-right.webp'),
+      'body': require('../../assets/guinos/multitask-mom-body.webp'),
+      'head': require('../../assets/guinos/multitask-mom-head.webp'),
+      'eye-left': require('../../assets/guinos/multitask-mom-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/multitask-mom-eye-right.webp'),
+      'mouth': require('../../assets/guinos/multitask-mom-mouth.webp'),
+      'arm-left': require('../../assets/guinos/multitask-mom-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/multitask-mom-arm-right.webp'),
+    },
+  },
+  'grandma-cook': {
+    tile: require('../../assets/guinos/grandma-cook-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/grandma-cook-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/grandma-cook-leg-right.webp'),
+      'body': require('../../assets/guinos/grandma-cook-body.webp'),
+      'head': require('../../assets/guinos/grandma-cook-head.webp'),
+      'eye-left': require('../../assets/guinos/grandma-cook-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/grandma-cook-eye-right.webp'),
+      'mouth': require('../../assets/guinos/grandma-cook-mouth.webp'),
+      'arm-left': require('../../assets/guinos/grandma-cook-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/grandma-cook-arm-right.webp'),
+    },
+  },
+  'late-son': {
+    tile: require('../../assets/guinos/late-son-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/late-son-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/late-son-leg-right.webp'),
+      'body': require('../../assets/guinos/late-son-body.webp'),
+      'head': require('../../assets/guinos/late-son-head.webp'),
+      'eye-left': require('../../assets/guinos/late-son-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/late-son-eye-right.webp'),
+      'mouth': require('../../assets/guinos/late-son-mouth.webp'),
+      'arm-left': require('../../assets/guinos/late-son-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/late-son-arm-right.webp'),
+    },
+  },
+  'engineer-mom': {
+    tile: require('../../assets/guinos/engineer-mom-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/engineer-mom-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/engineer-mom-leg-right.webp'),
+      'body': require('../../assets/guinos/engineer-mom-body.webp'),
+      'head': require('../../assets/guinos/engineer-mom-head.webp'),
+      'eye-left': require('../../assets/guinos/engineer-mom-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/engineer-mom-eye-right.webp'),
+      'mouth': require('../../assets/guinos/engineer-mom-mouth.webp'),
+      'arm-left': require('../../assets/guinos/engineer-mom-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/engineer-mom-arm-right.webp'),
+    },
+  },
+  'voice-note-mom': {
+    tile: require('../../assets/guinos/voice-note-mom-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/voice-note-mom-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/voice-note-mom-leg-right.webp'),
+      'body': require('../../assets/guinos/voice-note-mom-body.webp'),
+      'head': require('../../assets/guinos/voice-note-mom-head.webp'),
+      'eye-left': require('../../assets/guinos/voice-note-mom-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/voice-note-mom-eye-right.webp'),
+      'mouth': require('../../assets/guinos/voice-note-mom-mouth.webp'),
+      'arm-left': require('../../assets/guinos/voice-note-mom-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/voice-note-mom-arm-right.webp'),
+    },
+  },
+  'flag-worker': {
+    tile: require('../../assets/guinos/flag-worker-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/flag-worker-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/flag-worker-leg-right.webp'),
+      'body': require('../../assets/guinos/flag-worker-body.webp'),
+      'head': require('../../assets/guinos/flag-worker-head.webp'),
+      'mouth': require('../../assets/guinos/flag-worker-mouth.webp'),
+      'eye-left': require('../../assets/guinos/flag-worker-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/flag-worker-eye-right.webp'),
+      'arm-left': require('../../assets/guinos/flag-worker-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/flag-worker-arm-right.webp'),
+    },
+  },
+  'marinera-dancer': {
+    tile: require('../../assets/guinos/marinera-dancer-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/marinera-dancer-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/marinera-dancer-leg-right.webp'),
+      'body': require('../../assets/guinos/marinera-dancer-body.webp'),
+      'head': require('../../assets/guinos/marinera-dancer-head.webp'),
+      'mouth': require('../../assets/guinos/marinera-dancer-mouth.webp'),
+      'eye-left': require('../../assets/guinos/marinera-dancer-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/marinera-dancer-eye-right.webp'),
+      'arm-left': require('../../assets/guinos/marinera-dancer-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/marinera-dancer-arm-right.webp'),
+    },
+  },
+  'anticucho-chef': {
+    tile: require('../../assets/guinos/anticucho-chef-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/anticucho-chef-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/anticucho-chef-leg-right.webp'),
+      'body': require('../../assets/guinos/anticucho-chef-body.webp'),
+      'head': require('../../assets/guinos/anticucho-chef-head.webp'),
+      'mouth': require('../../assets/guinos/anticucho-chef-mouth.webp'),
+      'eye-left': require('../../assets/guinos/anticucho-chef-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/anticucho-chef-eye-right.webp'),
+      'arm-left': require('../../assets/guinos/anticucho-chef-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/anticucho-chef-arm-right.webp'),
+    },
+  },
+  'parade-marcher': {
+    tile: require('../../assets/guinos/parade-marcher-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/parade-marcher-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/parade-marcher-leg-right.webp'),
+      'body': require('../../assets/guinos/parade-marcher-body.webp'),
+      'head': require('../../assets/guinos/parade-marcher-head.webp'),
+      'mouth': require('../../assets/guinos/parade-marcher-mouth.webp'),
+      'eye-left': require('../../assets/guinos/parade-marcher-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/parade-marcher-eye-right.webp'),
+      'arm-left': require('../../assets/guinos/parade-marcher-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/parade-marcher-arm-right.webp'),
+    },
+  },
+  'pisco-toast': {
+    tile: require('../../assets/guinos/pisco-toast-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/pisco-toast-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/pisco-toast-leg-right.webp'),
+      'body': require('../../assets/guinos/pisco-toast-body.webp'),
+      'head': require('../../assets/guinos/pisco-toast-head.webp'),
+      'mouth': require('../../assets/guinos/pisco-toast-mouth.webp'),
+      'eye-left': require('../../assets/guinos/pisco-toast-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/pisco-toast-eye-right.webp'),
+      'arm-left': require('../../assets/guinos/pisco-toast-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/pisco-toast-arm-right.webp'),
+    },
+  },
   'balloon': {
     tile: require('../../assets/guinos/balloon-tile.webp'),
     parts: {
@@ -575,6 +855,150 @@ export const WINK_IMAGES: Record<string, WinkImages> = {
     tile: require('../../assets/guinos/star-tile.webp'),
     parts: {
       'body': require('../../assets/guinos/star-body.webp'),
+    },
+  },
+  'firework': {
+    tile: require('../../assets/guinos/firework-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/firework-body.webp'),
+    },
+  },
+  'champagne-bottle': {
+    tile: require('../../assets/guinos/champagne-bottle-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/champagne-bottle-body.webp'),
+    },
+  },
+  'grapes': {
+    tile: require('../../assets/guinos/grapes-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/grapes-body.webp'),
+    },
+  },
+  'clock': {
+    tile: require('../../assets/guinos/clock-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/clock-body.webp'),
+    },
+  },
+  'suitcase': {
+    tile: require('../../assets/guinos/suitcase-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/suitcase-body.webp'),
+    },
+  },
+  'party-hat': {
+    tile: require('../../assets/guinos/party-hat-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/party-hat-body.webp'),
+    },
+  },
+  'rose-bouquet': {
+    tile: require('../../assets/guinos/rose-bouquet-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/rose-bouquet-body.webp'),
+    },
+  },
+  'heart-balloon': {
+    tile: require('../../assets/guinos/heart-balloon-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/heart-balloon-body.webp'),
+    },
+  },
+  'chocolate-box': {
+    tile: require('../../assets/guinos/chocolate-box-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/chocolate-box-body.webp'),
+    },
+  },
+  'love-letter': {
+    tile: require('../../assets/guinos/love-letter-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/love-letter-body.webp'),
+    },
+  },
+  'heart-arrow': {
+    tile: require('../../assets/guinos/heart-arrow-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/heart-arrow-body.webp'),
+    },
+  },
+  'broken-heart': {
+    tile: require('../../assets/guinos/broken-heart-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/broken-heart-body.webp'),
+    },
+  },
+  'flower-bouquet': {
+    tile: require('../../assets/guinos/flower-bouquet-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/flower-bouquet-body.webp'),
+    },
+  },
+  'cake': {
+    tile: require('../../assets/guinos/cake-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/cake-body.webp'),
+    },
+  },
+  'coffee-mug': {
+    tile: require('../../assets/guinos/coffee-mug-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/coffee-mug-body.webp'),
+    },
+  },
+  'smartphone': {
+    tile: require('../../assets/guinos/smartphone-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/smartphone-body.webp'),
+    },
+  },
+  'ladle': {
+    tile: require('../../assets/guinos/ladle-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/ladle-body.webp'),
+    },
+  },
+  'heart-card': {
+    tile: require('../../assets/guinos/heart-card-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/heart-card-body.webp'),
+    },
+  },
+  'peru-flag': {
+    tile: require('../../assets/guinos/peru-flag-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/peru-flag-body.webp'),
+    },
+  },
+  'handkerchief': {
+    tile: require('../../assets/guinos/handkerchief-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/handkerchief-body.webp'),
+    },
+  },
+  'grill': {
+    tile: require('../../assets/guinos/grill-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/grill-body.webp'),
+    },
+  },
+  'pisco-glass': {
+    tile: require('../../assets/guinos/pisco-glass-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/pisco-glass-body.webp'),
+    },
+  },
+  'drum': {
+    tile: require('../../assets/guinos/drum-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/drum-body.webp'),
+    },
+  },
+  'rosette': {
+    tile: require('../../assets/guinos/rosette-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/rosette-body.webp'),
     },
   },
 };

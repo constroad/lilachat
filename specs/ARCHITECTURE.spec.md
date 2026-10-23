@@ -4909,6 +4909,54 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 122. Apps como Slack: análisis y diseño (23/10/2026, R158 en curso)
+
+José, 23/10, con capturas de Slack: «¿dónde está la sección apps en el modo
+Slack?» y «analiza primero cómo debería funcionar y no presentes esas cosas
+feas; pídele a Stitch que te lo brinde». Una primera versión sin diseño (una
+caja «Agregar apps» bajo la sección) se descartó sin publicarse.
+
+**Cómo funciona en Slack (lo que se copia).**
+- **Sección «Apps» de la barra:** las apps con las que hablas, como filas
+  de mensaje directo (logo, nombre, negrita y contador si hay algo nuevo).
+  La cabecera tiene «Explorar apps» y «+».
+- **Directorio «Apps»:** buscador por nombre o categoría y lista con logo,
+  nombre, una línea de descripción, y «Instalada» o «Agregar». Al elegir
+  una, un panel de detalle muestra:
+  - logo, nombre, marca APP, «de <desarrollador>» y la descripción;
+  - «Activa en N canales y M mensajes directos»;
+  - el botón «Mensaje» y un menú con Ajustes y Desinstalar;
+  - la descripción larga, los comandos y los permisos.
+- **El 1:1 con la app:** pestañas Mensajes / Información; sin llamadas; los
+  comandos de la app a mano sobre la barra.
+
+**En Lilachat (diseños `e-23` a `e-26`, móvil y web).**
+- `e-23` Sección «Apps» al final de la lista del espacio, con el mismo
+  estilo de los mensajes directos. El 1:1 con una app sale de «Mensajes
+  directos» y va acá. Una app instalada con la que todavía no hablaste
+  también sale. La cabecera lleva «Explorar apps» (cuadrícula) y «+».
+- `e-24` Directorio: en la web, lista con chips (Todas · Instaladas ·
+  categorías) y el detalle al lado; en el móvil, pantalla completa.
+  «Instalar» lo ve solo un admin y lleva al `install_url` de agentes con
+  `?space=`. Un miembro ve «Las apps las instala un admin del espacio».
+- `e-25` Detalle: Qué hace, Comandos, Permisos, «Instalada por X · fecha»;
+  botón fijo «Instalar en <espacio>» o «Mensaje».
+- `e-26` 1:1 con la app: logo, «APP», «de Agentes ConstRoad», pestañas
+  Mensajes / Información; los comandos reales de la app como chips sobre
+  la barra.
+- Se quita lo que Stitch inventó: «Sincronizado con…», «Conexión activa»,
+  la tarjeta de «Agentes ConstRoad» y comandos que la app no registró.
+
+**Datos que faltan (los manda agentes en el manifiesto, §0-bis):**
+- `description`: una línea, hasta 120 caracteres;
+- `features`: «Qué hace», hasta 6 frases;
+- `developer`: «Agentes ConstRoad»;
+- `category`: operación · personas · finanzas · laboratorio · otra.
+Lilachat calcula «Activa en N canales y M mensajes directos» (chats del
+espacio donde está el bot) y «Instalada por X · fecha». Ya en el server
+(sin publicar): `GET /api/workspaces/:id/app-directory` y
+`POST /api/workspaces/:id/apps/:appId/chat` (el 1:1 con el bot).
+
 ## 121. Comandos «/» de las apps, como Slack (23/10/2026, 0.1.157)
 
 Lo que agentes necesitaba para consultar desde el chat (José, 23/10: «no
@@ -11145,6 +11193,29 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     los vouchers y solo pida confirmar, con cola y trabajo en paralelo.
 86. ~~**El «1» de Personal sin no leídos en la lista**~~ **Hecho (§121, 0.1.157).**
     (José, 23/10, con captura): la copia de chats de `TabsShell` solo sumaba.
+87. **Pedido conversacional: la app entiende el anuncio de producción** (José,
+    23/10, con captura del grupo «INFRAMAQ admin»). Alguien escribe libre
+    «tenemos producción en INFRAMAQ sábado 24-10, 03:00, 480 m³, cliente…».
+    La app responde EN UN HILO: «Entiendo que habrá producción, ¿creo el
+    pedido y aviso a la planta?». Si confirma, manda la vista previa del
+    pedido y sus despachos; si la acepta, lo crea. Si nadie responde, una
+    tarjeta recordatorio pregunta si se crea y si se avisa a la planta. Bordes:
+    si después editan la hora o los m³, o lo cancelan, la app escucha, entiende
+    y sugiere la acción (actualizar, cancelar el pedido, re-avisar a la
+    planta). El cerebro es de agentes. A Lilachat le toca:
+    (a) que la app reciba los mensajes de los canales donde está, sin
+    mención, con un permiso propio que se acepta al instalar (como el
+    `channels:history` de Slack);
+    (b) los eventos `message.edited` y `message.deleted` de lo que la app
+    escuchó;
+    (c) responder en hilo, que ya existe (`thread_of`).
+88. **Un aviso por día y el resto en hilo** (José, 23/10, con captura de
+    «Inframaq Planta»: una tarjeta por cada medida de tanque llena el chat).
+    La primera medida del día crea la tarjeta del día; las siguientes la
+    actualizan en su lugar (PATCH) y van como respuestas en su hilo. Lo mismo
+    para el registro de material. Lo hace agentes con lo que ya hay (PATCH +
+    `thread_of`); si hace falta, Lilachat suma una clave de agrupación
+    (`group_key`) que resuelva la tarjeta del día por sí sola.
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

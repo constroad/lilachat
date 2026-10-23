@@ -106,6 +106,12 @@ Las capturas viven SOLO en la máquina (`design/stitch/`, en `.gitignore` desde 
 | `e-21-mensaje-bot-botones-app.png` | E · Mensaje de un bot con botones · Móvil (`screens/dc5a38111de74dc8943e45f661d31ed7`) |
 | `e-21-mensaje-bot-botones-web.png` | E · Mensaje de un bot con botones · Web (`screens/33a4177e861c4c8e9b7ff2f9d32b5725`) |
 | `e-22-integraciones-web.png` | E · Integraciones del espacio · Web (`screens/4d06702ddbb8468c956a169385e1f402`) |
+| `e-23-apps-seccion-web.png` | E · Sección Apps y chat con una app · Web (`screens/b7767dc703644d8ca87cb5e6c355b191`). Sin «Sincronizado con…» ni comandos inventados (23/10) |
+| `e-23-apps-seccion-app.png` | E · Sección Apps del espacio · Móvil (`screens/0bab2adedaaf4697b550f3de3d16ea4f`) |
+| `e-24-directorio-apps-web.png` | E · Directorio de apps · Web (`screens/21cf2cb8eefc445fab3578480559b687`). Sin la tarjeta «Agentes ConstRoad» ni «Conexión activa» |
+| `e-24-directorio-apps-app.png` | E · Directorio de apps · Móvil (`screens/ed9d38750b2646979dd686be1a4dd73a`) |
+| `e-25-detalle-app-app.png` | E · Detalle de una app · Móvil (`screens/66549cc541904fa49fb1d44eb8b5603b`) |
+| `e-26-chat-con-app-app.png` | E · Chat con una app · Móvil (`screens/8507ef98ced045649ea153a7a79eb6b0`) |
 
 ## Messenger: clip, guiños y personajes (21/10/2026)
 

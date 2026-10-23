@@ -24,13 +24,15 @@ describe('app manifest', () => {
         webhookUrl: 'https://agentes.constroad.com/v1/channels/lilachat/events',
         installUrl: 'https://agentes.constroad.com/canales/lilachat/instalar?app=inframaq',
         commands: [{ command: 'clima', description: 'Clima de la planta', usageHint: '[mañana]' }],
+        shortcuts: [],
+        noticeTopics: [],
       },
     });
   });
 
   it('avatar, install address and commands are optional; without commands they are not touched', () => {
     const result = validateAppManifest({ key: 'portal', name: 'Portal', redirect_uri: manifest.redirect_uri, webhook_url: manifest.webhook_url });
-    expect(result).toEqual({ ok: true, manifest: { key: 'portal', name: 'Portal', redirectUri: manifest.redirect_uri, webhookUrl: manifest.webhook_url } });
+    expect(result).toEqual({ ok: true, manifest: { key: 'portal', name: 'Portal', redirectUri: manifest.redirect_uri, webhookUrl: manifest.webhook_url, shortcuts: [], noticeTopics: [] } });
   });
 
   it('refuses a bad key, a missing name and addresses without https', () => {
@@ -65,6 +67,22 @@ describe('app manifest', () => {
     expect(description).toBe('Portal en Lilachat: listar pedidos, ver un pedido, buscar clientes, listar despachos, asistencia del día, estado de los…');
     expect(result.ok && result.manifest.developer).toBe('Agentes ConstRoad, el equipo de producto que hace las apps…');
     expect(result.ok && result.manifest.developer!.length).toBeLessThanOrEqual(MANIFEST_LIMITS.developer);
+  });
+
+  it('shortcuts for the «+» menu: cut to 40 and 80, up to 10; none (or no key) means none, so a retired tool takes its shortcut away', () => {
+    // Arrange
+    const long = { key: 'marcar_asistencia', name: 'Marcar asistencia de ingreso, refrigerio, retorno y salida del personal', description: 'Ingreso, refrigerio, retorno o salida, con tu ubicación y una selfie, desde cualquier canal del espacio' };
+    // Act
+    const withShortcut = validateAppManifest({ ...manifest, shortcuts: [long] });
+    const without = validateAppManifest(manifest);
+    // Assert
+    const shortcut = withShortcut.ok ? withShortcut.manifest.shortcuts[0]! : null;
+    expect(shortcut?.key).toBe('marcar_asistencia');
+    expect(shortcut!.name.length).toBeLessThanOrEqual(40);
+    expect(shortcut!.description!.length).toBeLessThanOrEqual(80);
+    expect(without.ok && without.manifest.shortcuts).toEqual([]);
+    expect(validateAppManifest({ ...manifest, shortcuts: [{ key: 'Mal Key', name: 'x' }] }).ok).toBe(false);
+    expect(validateAppManifest({ ...manifest, shortcuts: Array.from({ length: 11 }, (_, i) => ({ key: `a${i}`, name: `A${i}` })) }).ok).toBe(false);
   });
 
   it('bad commands are refused with the same message as PUT /api/bots/commands', () => {

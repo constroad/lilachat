@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { answerOfOutcome, COMMAND_LIMITS, commandOf, matchCommands, replaceAnswer, sharedByLine, parseSlashInput, slashQuery, validateBotCommands, validateCommandResponse, withAnswer, withNotice, type CommandGroup } from './botCommands.js';
+import { answerOfOutcome, COMMAND_LIMITS, commandOf, matchCommands, replaceAnswer, sharedByLine, validateFormReply, parseSlashInput, slashQuery, validateBotCommands, validateCommandResponse, withAnswer, withNotice, type CommandGroup } from './botCommands.js';
 
 /** The slash commands contract, `specs/BOTS-API.spec.md` §c. */
 describe('command registry', () => {
@@ -143,5 +143,28 @@ describe('replaceAnswer (the «working…» card while the command leaves)', () 
   });
   it('a placeholder already dismissed: the answer still arrives at the end', () => {
     expect(replaceAnswer([other], 'sending-1', { ...sending, commandId: 'c9' }).map((one) => one.commandId)).toEqual(['c0', 'c9']);
+  });
+});
+
+describe('answers that open a form or must not be shared (R160)', () => {
+  const form = { id: 'registrar_marca', title: 'Marcar asistencia', schema: { type: 'object', properties: { accion: { type: 'string', enum: ['ingreso', 'salida'] } }, required: ['accion'] } };
+  it('response_type form carries the checked form; a broken one is refused', () => {
+    const valid = validateCommandResponse({ response_type: 'form', form });
+    expect(valid.ok && valid.response).toMatchObject({ responseType: 'form', form: { id: 'registrar_marca', title: 'Marcar asistencia' } });
+    expect(validateCommandResponse({ response_type: 'form', form: { ...form, title: '' } }).ok).toBe(false);
+    expect(answerOfOutcome({ commandId: 'c1', appId: 'a1', appName: 'Inframaq', outcome: 'form', response: valid.ok ? valid.response : undefined }, 'asistencia')).toMatchObject({ state: 'form' });
+  });
+
+  it('shareable false is kept, and only false', () => {
+    const hidden = validateCommandResponse({ text: 'Deuda: S/ 12 400', shareable: false });
+    expect(hidden.ok && hidden.response.shareable).toBe(false);
+    const normal = validateCommandResponse({ text: 'ok', shareable: true });
+    expect(normal.ok && 'shareable' in normal.response).toBe(false);
+  });
+
+  it('a form reply is either errors per field or a normal answer', () => {
+    expect(validateFormReply({ errors: { accion: 'Ya marcaste ingreso hoy. Lo que sigue es: refrigerio.', _: '  ' } })).toEqual({ ok: true, errors: { accion: 'Ya marcaste ingreso hoy. Lo que sigue es: refrigerio.' } });
+    expect(validateFormReply({ text: 'Ingreso marcado 07:12' })).toMatchObject({ ok: true, response: { responseType: 'ephemeral', text: 'Ingreso marcado 07:12' } });
+    expect(validateFormReply({}).ok).toBe(false);
   });
 });

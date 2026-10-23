@@ -1,3 +1,4 @@
+import { validateFormSpec, type AppForm } from './appForms.js';
 import { validateBotCard, type BotCard } from './bots.js';
 
 /**
@@ -9,9 +10,13 @@ import { validateBotCard, type BotCard } from './bots.js';
  * The wire is snake_case; what comes out is camelCase.
  */
 export type BotCommand = { command: string; description: string; usageHint?: string };
-export type CommandGroup = { appId: string; appName: string; commands: BotCommand[] };
-export type CommandResponseType = 'ephemeral' | 'in_channel';
-export type CommandResponse = { responseType: CommandResponseType; text?: string; card?: BotCard };
+/** An action of the composer's «+» (R160, design e-29): tapping it is like a command without typing it. */
+export type AppShortcut = { key: string; name: string; description?: string };
+export type CommandGroup = { appId: string; appName: string; commands: BotCommand[]; avatarUrl?: string; shortcuts?: AppShortcut[] };
+/** `form` (R160): the answer is a form only the asker sees; sending it is their confirmation. */
+export type CommandResponseType = 'ephemeral' | 'in_channel' | 'form';
+/** `shareable: false` (agentes, 23/10: debts, payments, payroll): no «Enviar al canal». */
+export type CommandResponse = { responseType: CommandResponseType; text?: string; card?: BotCard; form?: AppForm; shareable?: false };
 
 export const COMMAND_LIMITS = { commands: 25, name: 32, description: 100, usageHint: 60, text: 4000, input: 2000 };
 const COMMAND_NAME = /^[a-z][a-z0-9_-]+$/;
@@ -49,6 +54,10 @@ export function validateBotCommands(raw: unknown): { ok: true; commands: BotComm
 /** What the app answers to `command.invoked`, in the webhook body or later through `/respond`. */
 export function validateCommandResponse(raw: unknown): { ok: true; response: CommandResponse } | { ok: false; message: string } {
   const body = record(raw);
+  if (body.response_type === 'form') {
+    const form = validateFormSpec(body.form);
+    return form.ok ? { ok: true, response: { responseType: 'form', form: form.form } } : form;
+  }
   const responseType: CommandResponseType = body.response_type === 'in_channel' ? 'in_channel' : 'ephemeral';
   const text = typeof body.text === 'string' ? body.text.trim().slice(0, COMMAND_LIMITS.text) : '';
   let card: BotCard | undefined;
@@ -58,7 +67,20 @@ export function validateCommandResponse(raw: unknown): { ok: true; response: Com
     card = checked.card;
   }
   if (!text && !card) return { ok: false, message: 'La respuesta lleva «text» o «card».' };
-  return { ok: true, response: { responseType, ...(text ? { text } : {}), ...(card ? { card } : {}) } };
+  return { ok: true, response: { responseType, ...(text ? { text } : {}), ...(card ? { card } : {}), ...(body.shareable === false ? { shareable: false as const } : {}) } };
+}
+
+/**
+ * What the app answers to `form.submitted`: a normal answer (the form closes)
+ * or `{ errors }`, a message per field and `"_"` for the whole form (it stays
+ * open with them, agentes 23/10).
+ */
+export function validateFormReply(raw: unknown): { ok: true; errors: Record<string, string> } | { ok: true; response: CommandResponse } | { ok: false; message: string } {
+  const errors = record(record(raw).errors);
+  const messages = Object.fromEntries(Object.entries(errors).flatMap(([field, message]) => (typeof message === 'string' && message.trim() ? [[field, line(message, COMMAND_LIMITS.description * 2)]] : [])));
+  if (Object.keys(messages).length) return { ok: true, errors: messages };
+  const valid = validateCommandResponse(raw);
+  return valid.ok ? { ok: true, response: valid.response } : valid;
 }
 
 /** «/clima lurin» → the command and the rest of the line; anything else is a normal message. */
@@ -103,13 +125,18 @@ export type CommandOutcome = {
   commandId: string;
   appId: string;
   appName: string;
-  outcome: 'ephemeral' | 'posted' | 'pending' | 'failed';
+  outcome: 'ephemeral' | 'posted' | 'pending' | 'failed' | 'form';
   response?: CommandResponse;
   message?: string;
 };
 
 /** A late answer that only the asker sees, over the socket (`command.response`). */
-export type CommandNotice = { chatId: string; commandId: string; appId: string; appName: string; response: CommandResponse };
+/** `workspaceId` instead of `chatId`: it was used from the space's ⚡, outside any chat (José, 23/10). */
+export type CommandNotice = { chatId?: string; workspaceId?: string; commandId: string; appId: string; appName: string; response: CommandResponse };
+/** Where a command or an action was used: a chat of the space, or the space itself (its ⚡). */
+export type CommandScope = { chatId: string } | { workspaceId: string };
+/** The API path of a scope: `/api/chats/<id>` or `/api/workspaces/<id>`. */
+export const commandScopePath = (scope: CommandScope): string => ('chatId' in scope ? `/api/chats/${scope.chatId}` : `/api/workspaces/${scope.workspaceId}`);
 
 /**
  * The answers only the asker sees, on top of the composer (never stored).
@@ -120,7 +147,10 @@ export type EphemeralAnswer = {
   commandId: string;
   appName: string;
   command: string;
-  state: 'pending' | 'answered' | 'failed';
+  /** The name of the action of the ⚡ or the «+» it came from (R160), shown instead of «/command». */
+  action?: string;
+  /** `form`: the app asked for a form (`response.form`), drawn as a sheet or a dialog. */
+  state: 'pending' | 'answered' | 'failed' | 'form';
   response?: CommandResponse;
   message?: string;
 };
@@ -130,6 +160,7 @@ export function answerOfOutcome(outcome: CommandOutcome, command: string): Ephem
   if (outcome.outcome === 'posted') return null;
   const base = { commandId: outcome.commandId, appName: outcome.appName, command };
   if (outcome.outcome === 'ephemeral' && outcome.response) return { ...base, state: 'answered', response: outcome.response };
+  if (outcome.outcome === 'form' && outcome.response?.form) return { ...base, state: 'form', response: outcome.response };
   if (outcome.outcome === 'failed') return { ...base, state: 'failed', message: outcome.message ?? `${outcome.appName} no pudo responder.` };
   return { ...base, state: 'pending' };
 }
@@ -155,5 +186,5 @@ export function replaceAnswer(list: readonly EphemeralAnswer[], placeholderId: s
 /** A notice from the socket: it answers its pending command, or arrives on its own if that one was dismissed. */
 export function withNotice(list: readonly EphemeralAnswer[], notice: CommandNotice): EphemeralAnswer[] {
   const known = list.find((entry) => entry.commandId === notice.commandId);
-  return withAnswer(list, { commandId: notice.commandId, appName: notice.appName, command: known?.command ?? '', state: 'answered', response: notice.response });
+  return withAnswer(list, { commandId: notice.commandId, appName: notice.appName, command: known?.command ?? '', ...(known?.action ? { action: known.action } : {}), state: notice.response.form ? 'form' : 'answered', response: notice.response });
 }

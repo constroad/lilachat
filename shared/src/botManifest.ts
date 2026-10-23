@@ -1,4 +1,5 @@
-import { validateBotCommands, type BotCommand } from './botCommands.js';
+import { validateBotCommands, type AppShortcut, type BotCommand } from './botCommands.js';
+import { isNoticeIcon, NOTICE_TOPIC_LIMITS, TOPIC_KEY, type NoticeTopic } from './noticeTopics.js';
 
 /**
  * The manifest a developer app (agentes, with its one Lilachat credential)
@@ -25,9 +26,13 @@ export type AppManifest = {
   webhookUrl: string;
   installUrl?: string;
   commands?: BotCommand[];
+  /** The actions of the composer's «+» (R160, design e-29); always a list: without it the app has none (agentes, 23/10). */
+  shortcuts: AppShortcut[];
+  /** Where its notices may land, picked per topic by the space's admin (R160, design e-31); always a list. */
+  noticeTopics: NoticeTopic[];
 };
 
-export const MANIFEST_LIMITS = { key: 32, name: 40, url: 500, appsPerDeveloper: 20, description: 120, features: 6, feature: 140, developer: 60 };
+export const MANIFEST_LIMITS = { key: 32, name: 40, url: 500, appsPerDeveloper: 20, description: 120, features: 6, feature: 140, developer: 60, shortcuts: 10, shortcutName: 40, shortcutDescription: 80 };
 const KEY = /^[a-z][a-z0-9-]+$/;
 const record = (value: unknown): Record<string, unknown> => (value && typeof value === 'object' ? (value as Record<string, unknown>) : {});
 
@@ -56,7 +61,11 @@ export function validateAppManifest(raw: unknown): { ok: true; manifest: AppMani
     if (!checked.ok) return checked;
     commands = checked.commands;
   }
-  return { ok: true, manifest: { key, name, ...(avatarUrl ? { avatarUrl } : {}), redirectUri, webhookUrl, ...(installUrl ? { installUrl } : {}), ...(commands ? { commands } : {}), ...about } };
+  const shortcuts = validateShortcuts(body.shortcuts);
+  if (!Array.isArray(shortcuts)) return shortcuts;
+  const noticeTopics = validateNoticeTopics(body.notice_topics);
+  if (!Array.isArray(noticeTopics)) return noticeTopics;
+  return { ok: true, manifest: { key, name, ...(avatarUrl ? { avatarUrl } : {}), redirectUri, webhookUrl, ...(installUrl ? { installUrl } : {}), ...(commands ? { commands } : {}), ...about, shortcuts, noticeTopics } };
 }
 
 const ELLIPSIS = '…';
@@ -80,4 +89,36 @@ function aboutFields(body: Record<string, unknown>): Pick<AppManifest, 'descript
   const features = (Array.isArray(body.features) ? body.features : []).map((feature) => oneLine(feature, MANIFEST_LIMITS.feature)).filter(Boolean).slice(0, MANIFEST_LIMITS.features);
   const category = APP_CATEGORIES.includes(body.category as AppCategory) ? (body.category as AppCategory) : undefined;
   return { ...(description ? { description } : {}), ...(features.length ? { features } : {}), ...(developer ? { developer } : {}), ...(category ? { category } : {}) };
+}
+
+/** The manifest's `shortcuts`: names and descriptions cut like the directory's texts; a bad key or too many refuse it. */
+function validateShortcuts(raw: unknown): AppShortcut[] | { ok: false; message: string } {
+  const list = Array.isArray(raw) ? raw : [];
+  if (list.length > MANIFEST_LIMITS.shortcuts) return { ok: false, message: `Una app declara hasta ${MANIFEST_LIMITS.shortcuts} atajos.` };
+  const shortcuts: AppShortcut[] = [];
+  for (const entry of list) {
+    const item = record(entry);
+    const shortcutKey = typeof item.key === 'string' ? item.key : '';
+    const shortcutName = oneLine(item.name, MANIFEST_LIMITS.shortcutName);
+    if (!/^[a-z][a-z0-9_-]+$/.test(shortcutKey) || shortcutKey.length > MANIFEST_LIMITS.key || !shortcutName) return { ok: false, message: `El atajo «${shortcutKey}» necesita una «key» en minúsculas (a-z, 0-9, _ o -) y un «name».` };
+    const description = oneLine(item.description, MANIFEST_LIMITS.shortcutDescription);
+    shortcuts.push({ key: shortcutKey, name: shortcutName, ...(description ? { description } : {}) });
+  }
+  return shortcuts;
+}
+
+/** The manifest's `notice_topics`: an unknown icon is dropped (a bell is drawn); a bad or repeated key refuses it. */
+function validateNoticeTopics(raw: unknown): NoticeTopic[] | { ok: false; message: string } {
+  const list = Array.isArray(raw) ? raw : [];
+  if (list.length > NOTICE_TOPIC_LIMITS.topics) return { ok: false, message: `Una app declara hasta ${NOTICE_TOPIC_LIMITS.topics} temas de aviso.` };
+  const topics: NoticeTopic[] = [];
+  for (const entry of list) {
+    const item = record(entry);
+    const key = typeof item.key === 'string' ? item.key : '';
+    const name = oneLine(item.name, NOTICE_TOPIC_LIMITS.name);
+    if (!TOPIC_KEY.test(key) || key.length > NOTICE_TOPIC_LIMITS.key || !name || topics.some((topic) => topic.key === key)) return { ok: false, message: `El tema «${key}» necesita una «key» única en minúsculas (a-z, 0-9, _ o -) y un «name».` };
+    const description = oneLine(item.description, NOTICE_TOPIC_LIMITS.description);
+    topics.push({ key, name, ...(description ? { description } : {}), ...(isNoticeIcon(item.icon) ? { icon: item.icon } : {}) });
+  }
+  return topics;
 }

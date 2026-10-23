@@ -1,4 +1,5 @@
 import { normalizePeruPhone } from './phone.js';
+import { TOPIC_KEY } from './noticeTopics.js';
 import { validateChecklist } from './checklists.js';
 import { BLOCK_LIMITS, validateBotBlocks, type BotBlock } from './botBlocks.js';
 import type { BotCommand } from './botCommands.js';
@@ -27,7 +28,8 @@ export type BotCard = {
   updatedAt?: string;
 };
 export type BotChecklist = { title: string; othersCanMark: boolean; items: { text: string; assigneePhone?: string; dueAt?: string }[] };
-export type BotTarget = { channelId: string } | { userPhone: string } | { userId: string };
+/** `topic` (R160): the channel the space's admin picked for that topic of the app. */
+export type BotTarget = { channelId: string } | { topic: string } | { userPhone: string } | { userId: string };
 export type BotPost = { target: BotTarget; text?: string; card?: BotCard; checklist?: BotChecklist; threadOf?: number; idempotencyKey: string };
 export type BotPostError = { ok: false; error: 'invalid_request'; message: string };
 
@@ -117,9 +119,11 @@ function validateBotChecklist(raw: unknown): { ok: true; checklist: BotChecklist
 
 function validateTarget(body: Record<string, unknown>): { ok: true; target: BotTarget } | BotPostError {
   const channelId = typeof body.channel_id === 'string' && body.channel_id ? body.channel_id : undefined;
+  const topic = body.topic === undefined ? undefined : String(body.topic);
   const user = body.user === undefined ? undefined : record(body.user);
-  if (Boolean(channelId) === Boolean(user)) return refuse('Indica un destino: channel_id o user, uno solo.');
+  if ([channelId, topic, user].filter((one) => one !== undefined).length !== 1) return refuse('Indica un destino: channel_id, topic o user, uno solo.');
   if (channelId) return { ok: true, target: { channelId } };
+  if (topic !== undefined) return TOPIC_KEY.test(topic) ? { ok: true, target: { topic } } : refuse('topic va en minúsculas (a-z, 0-9, _ o -), como en el manifiesto.');
   if (typeof user!.id === 'string' && user!.id) return { ok: true, target: { userId: user!.id } };
   const phone = normalizePeruPhone(user!.phone);
   return phone ? { ok: true, target: { userPhone: phone } } : refuse('user lleva { id } o { phone } con un celular de Perú.');

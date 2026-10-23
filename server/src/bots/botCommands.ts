@@ -2,7 +2,7 @@ import { Types } from 'mongoose';
 import { COMMAND_LIMITS, validateCommandResponse, type BotCommand, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse } from '@lilachat/shared';
 import { ChatModel, type Chat } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
-import { callBotWebhook } from './botEvents.js';
+import { callBotWebhook, recordLastDelivery, type WebhookReply } from './botEvents.js';
 import { postBotMessage } from './botMessages.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel, type BotCommandRun, type BotInstallation } from './botModels.js';
 import { channelOf, personOf } from './botTriggers.js';
@@ -66,6 +66,27 @@ async function deliverResponse(installation: BotInstallation, run: Pick<BotComma
   return { ...base, outcome: 'ephemeral', response: { ...response, responseType: 'ephemeral' } };
 }
 
+/**
+ * What the body of the webhook means for the asker, with Integraciones' health written once: a
+ * timeout or an empty 200 is pending (not a failure), an error or a body that cannot be shown fails.
+ */
+function judgeReply(reply: WebhookReply, command: string, installationId: Types.ObjectId, base: Base): CommandOutcome | { accepted: CommandResponse } {
+  if (reply.error === 'timeout') return { ...base, outcome: 'pending' };
+  const failed = (error: string): CommandOutcome => {
+    recordLastDelivery(installationId, { ok: false, error });
+    return { ...base, outcome: 'failed', message: `${base.appName} no pudo responder.` };
+  };
+  if (reply.status === null || reply.status >= 400) return failed(reply.error ?? 'Sin respuesta');
+  if (reply.body === null) {
+    recordLastDelivery(installationId, { ok: true });
+    return { ...base, outcome: 'pending' };
+  }
+  const valid = validateCommandResponse(reply.body);
+  if (!valid.ok) return failed(`Respuesta de /${command} inválida: ${reply.body === undefined ? 'no es JSON' : valid.message}`);
+  recordLastDelivery(installationId, { ok: true });
+  return { accepted: valid.response };
+}
+
 export async function invokeCommand(userId: Types.ObjectId, chatId: string, input: { appId: unknown; command: unknown; text: unknown }): Promise<CommandOutcome | CommandError> {
   const command = typeof input.command === 'string' ? input.command : '';
   if (!isId(chatId) || !isId(input.appId)) return fail(404, 'command_not_found', `No hay un comando /${command} en este espacio.`);
@@ -83,14 +104,9 @@ export async function invokeCommand(userId: Types.ObjectId, chatId: string, inpu
   const data = { command_id: String(run._id), command, text, channel: channelOf(chat), user };
   const reply = await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, 'command.invoked', data, answerTimeoutMs);
   const base: Base = { commandId: String(run._id), appId: String(app._id), appName: app.name };
-  if (reply.error === 'timeout' || (reply.status !== null && reply.status < 400 && reply.body === null)) return { ...base, outcome: 'pending' };
-  const valid = reply.status !== null && reply.status < 400 ? validateCommandResponse(reply.body) : null;
-  if (!valid?.ok) {
-    // A 2xx with a body that cannot be shown: Integraciones says why, so the app's developer sees it.
-    if (valid) void BotInstallationModel.updateOne({ _id: installation._id }, { $set: { lastDelivery: { at: new Date(), ok: false, error: `Respuesta de /${command} inválida: ${valid.message}`.slice(0, 200) } } }).catch((error: unknown) => console.error('[bots] no se pudo guardar la falla del comando:', error instanceof Error ? error.message : error));
-    return { ...base, outcome: 'failed', message: `${app.name} no pudo responder.` };
-  }
-  const [outcome] = await Promise.all([deliverResponse(installation, { ...run.toObject(), responses: 1 }, chat, valid.response, base), BotCommandRunModel.updateOne({ _id: run._id }, { $inc: { responses: 1 } })]);
+  const judged = judgeReply(reply, command, installation._id, base);
+  if (!('accepted' in judged)) return judged;
+  const [outcome] = await Promise.all([deliverResponse(installation, { ...run.toObject(), responses: 1 }, chat, judged.accepted, base), BotCommandRunModel.updateOne({ _id: run._id }, { $inc: { responses: 1 } })]);
   return outcome;
 }
 

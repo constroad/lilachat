@@ -113,12 +113,15 @@ export async function callBotWebhook(installation: Pick<BotInstallation, '_id' |
     reply = { status: response.status, body: parsed, ...(response.ok ? {} : { error: `HTTP ${response.status}` }) };
   } catch (error) {
     const slow = error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError');
-    // Slow is the deferred answer, not a broken app: Integraciones keeps its health.
+    // Slow is the deferred answer, not a broken app.
     if (slow) return { status: null, body: null, error: 'timeout' };
     reply = { status: null, body: null, error: (error instanceof Error ? error.message : String(error)).slice(0, ERROR_MAX) };
   }
-  const ok = reply.status !== null && reply.status < 400;
-  // Integraciones' health, not awaited: the person is waiting for the answer, not for this.
-  void BotInstallationModel.updateOne({ _id: installation._id }, { $set: { lastDelivery: { at: new Date(), ok, ...(ok || !reply.error ? {} : { error: reply.error }) } } }).catch((error: unknown) => console.error('[bots] no se pudo guardar la última entrega:', error instanceof Error ? error.message : error));
   return reply;
+}
+
+/** Integraciones' health after a call, written ONCE with the final verdict and not awaited: the person waits for the answer, not for this. */
+export function recordLastDelivery(installationId: Types.ObjectId, verdict: { ok: true } | { ok: false; error: string }): void {
+  const lastDelivery = { at: new Date(), ok: verdict.ok, ...(verdict.ok ? {} : { error: verdict.error.slice(0, ERROR_MAX) }) };
+  void BotInstallationModel.updateOne({ _id: installationId }, { $set: { lastDelivery } }).catch((error: unknown) => console.error('[bots] no se pudo guardar la última entrega:', error instanceof Error ? error.message : error));
 }

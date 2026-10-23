@@ -173,6 +173,8 @@ describe('invoking', () => {
     const { appId } = await installWithCommands();
     answer = json(500, { oops: true });
     expect((await invoke(channel, { app_id: appId, command: 'clima', text: '' }).expect(200)).body).toMatchObject({ outcome: 'failed', message: 'Inframaq no pudo responder.' });
+    // The health is written without awaiting: wait for this one before the next, or they land in any order.
+    await waitUntil(async () => (await BotInstallationModel.findOne({}).lean())?.lastDelivery?.error === 'HTTP 500');
     answer = json(200, { card: { title: 'Tanques', blocks: [{ type: 'tank', items: [{ label: 'sin nombre', level: 0.5 }] }] } });
     expect((await invoke(channel, { app_id: appId, command: 'clima', text: '' }).expect(200)).body.outcome).toBe('failed');
     await waitUntil(async () => Boolean((await BotInstallationModel.findOne({}).lean())?.lastDelivery?.error?.includes('inválida')));

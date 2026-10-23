@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Types } from 'mongoose';
-import { canManageMembers, toInternationalPhone, type AvailableApp, type InstalledApp } from '@lilachat/shared';
+import { canManageMembers, toInternationalPhone } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Message } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { crearLimiteDeIntentos } from '../limiteDeIntentos.js';
@@ -9,6 +9,7 @@ import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { commandGroupsOf, invokeCommand } from './botCommands.js';
 import { revokeInstallation } from './botInstall.js';
 import { directWith } from './botMessages.js';
+import { availableAppsIn, directoryOf } from './botDirectory.js';
 import { sendBotEvent } from './botEvents.js';
 import { BotAppModel, BotInstallationModel } from './botModels.js';
 import { botHearsAction } from './botTriggers.js';
@@ -41,31 +42,6 @@ async function appsOf(workspaceId: string) {
     installedAt: one.createdAt,
     ...(one.lastDelivery ? { lastDelivery: one.lastDelivery } : {}),
   }));
-}
-
-async function availableAppsIn(spaceId: string): Promise<AvailableApp[]> {
-  const [apps, installed] = await Promise.all([
-    BotAppModel.find({ installUrl: { $exists: true, $ne: '' } }).select('name avatarUrl installUrl').sort({ name: 1 }).lean(),
-    BotInstallationModel.find({ workspaceId: spaceId, revokedAt: { $exists: false } }).select('appId').lean(),
-  ]);
-  const inside = new Set(installed.map((one) => String(one.appId)));
-  return apps.map((one) => {
-    const url = new URL(one.installUrl!);
-    url.searchParams.set('space', spaceId);
-    return { id: String(one._id), name: one.name, ...(one.avatarUrl ? { avatarUrl: one.avatarUrl } : {}), installUrl: url.toString(), installed: inside.has(String(one._id)) };
-  });
-}
-
-async function installedAppsIn(spaceId: string): Promise<InstalledApp[]> {
-  const installations = await BotInstallationModel.find({ workspaceId: spaceId, revokedAt: { $exists: false } }).select('appId botUserId').lean();
-  const apps = new Map((await BotAppModel.find({ _id: { $in: installations.map((one) => one.appId) } }).select('name avatarUrl').lean()).map((app) => [String(app._id), app]));
-  return installations
-    .filter((one) => apps.has(String(one.appId)))
-    .map((one) => {
-      const app = apps.get(String(one.appId))!;
-      return { appId: String(one.appId), name: app.name, ...(app.avatarUrl ? { avatarUrl: app.avatarUrl } : {}), botUserId: String(one.botUserId) };
-    })
-    .sort((a, b) => a.name.localeCompare(b.name, 'es'));
 }
 
 export function buildBotUserRouter(): Router {
@@ -113,8 +89,7 @@ export function buildBotUserRouter(): Router {
     const member = isId(spaceId) ? await WorkspaceMemberModel.findOne({ workspaceId: spaceId, userId: req.session!.userId, status: 'active' }).select('role').lean() : null;
     if (!member) return void res.status(404).json({ message: 'Ese espacio no existe.' });
     const canInstall = canManageMembers(member.role);
-    const [installed, available] = await Promise.all([installedAppsIn(spaceId), canInstall ? availableAppsIn(spaceId) : Promise.resolve([])]);
-    res.json({ installed, available: available.filter((app) => !app.installed), canInstall });
+    res.json({ apps: await directoryOf(spaceId, canInstall), canInstall });
   }));
   router.post('/workspaces/:id/apps/:appId/chat', requireSession, asyncRoute(async (req, res) => {
     const userId = req.session!.userId;

@@ -274,15 +274,17 @@ describe('the bot hears signed events (§c)', () => {
     expect((await request(app).get(`/api/workspaces/${spaceId}/available-apps`).set(asJose).expect(200)).body.apps[0]).toMatchObject({ installed: true });
   });
 
-  it('the «Apps» section: what is installed for every member, what to add only for admins (José, 23/10)', async () => {
-    await BotAppModel.create({ clientId: 'lca_portal', clientSecretHash: sha256(SECRET), name: 'Portal', redirectUris: [REDIRECT], webhookUrl: hookUrl, installUrl: 'https://agentes.example.com/instalar?app=portal' });
+  it('the directory (design e-24): installed first with who and where; the install address only for admins (José, 23/10)', async () => {
+    await BotAppModel.create({ clientId: 'lca_portal', clientSecretHash: sha256(SECRET), name: 'Portal', redirectUris: [REDIRECT], webhookUrl: hookUrl, installUrl: 'https://agentes.example.com/instalar?app=portal', description: 'Pedidos, despachos y caja', features: ['Crea pedidos'], developer: 'Agentes ConstRoad', category: 'operacion' });
     const { botUserId } = await install();
     const lila = await BotAppModel.findOne({ clientId: 'lca_lila' }).lean();
     const asMember = (await request(app).get(`/api/workspaces/${spaceId}/app-directory`).set(asAna).expect(200)).body;
-    expect(asMember).toEqual({ installed: [{ appId: String(lila!._id), name: 'Lila', botUserId }], available: [], canInstall: false });
+    expect(asMember.canInstall).toBe(false);
+    expect(asMember.apps.map((one: { name: string }) => one.name)).toEqual(['Lila', 'Portal']);
+    expect(asMember.apps[0]).toEqual({ appId: String(lila!._id), name: 'Lila', features: [], commands: [], installation: { installationId: expect.any(String), botUserId, installedBy: 'José', installedAt: expect.any(String), channels: 1, directs: 0 } });
+    expect(asMember.apps[1]).toEqual({ appId: expect.any(String), name: 'Portal', description: 'Pedidos, despachos y caja', features: ['Crea pedidos'], developer: 'Agentes ConstRoad', category: 'operacion', commands: [] });
     const asOwner = (await request(app).get(`/api/workspaces/${spaceId}/app-directory`).set(asJose).expect(200)).body;
-    expect(asOwner.canInstall).toBe(true);
-    expect(asOwner.available).toEqual([expect.objectContaining({ name: 'Portal', installUrl: `https://agentes.example.com/instalar?app=portal&space=${spaceId}`, installed: false })]);
+    expect(asOwner.apps[1].installUrl).toBe(`https://agentes.example.com/instalar?app=portal&space=${spaceId}`);
     await request(app).get(`/api/workspaces/${spaceId}/app-directory`).set(asUser(() => beto)).expect(404);
   });
 

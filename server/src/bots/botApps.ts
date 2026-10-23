@@ -43,6 +43,10 @@ const manifestFields = (manifest: AppManifest) => ({
   ...(manifest.avatarUrl ? { avatarUrl: manifest.avatarUrl } : {}),
   ...(manifest.installUrl ? { installUrl: manifest.installUrl } : {}),
   ...(manifest.commands ? { commands: manifest.commands } : {}),
+  ...(manifest.description ? { description: manifest.description } : {}),
+  ...(manifest.features ? { features: manifest.features } : {}),
+  ...(manifest.developer ? { developer: manifest.developer } : {}),
+  ...(manifest.category ? { category: manifest.category } : {}),
 });
 
 /** Idempotent by (developer, key): 201 with the secret the first time, 200 without it afterwards. */

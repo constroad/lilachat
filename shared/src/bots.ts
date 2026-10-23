@@ -1,6 +1,8 @@
 import { normalizePeruPhone } from './phone.js';
 import { validateChecklist } from './checklists.js';
 import { BLOCK_LIMITS, validateBotBlocks, type BotBlock } from './botBlocks.js';
+import type { BotCommand } from './botCommands.js';
+import type { AppCategory } from './botManifest.js';
 
 /**
  * What a bot (Lila, through agentes) sends to `POST /api/bots/messages`
@@ -152,9 +154,24 @@ export const botCardSummary = (card: Pick<BotCard, 'title' | 'status'>): string 
 
 /** An app an admin can install from Integraciones (`GET /api/workspaces/:id/available-apps`), its address already pointing at the space. */
 export type AvailableApp = { id: string; name: string; avatarUrl?: string; installUrl: string; installed: boolean };
-/** The «Apps» section of a space (like Slack's): what is installed, for everyone; what can be added, for its admins. */
-export type InstalledApp = { appId: string; name: string; avatarUrl?: string; botUserId: string };
-export type SpaceAppDirectory = { installed: InstalledApp[]; available: AvailableApp[]; canInstall: boolean };
+/**
+ * An app in a space's directory (design e-24, like Slack's): what it is, and,
+ * when installed, who installed it, where it is active and its bot. The install
+ * address goes only to admins and only while it is not installed.
+ */
+export type DirectoryApp = {
+  appId: string;
+  name: string;
+  avatarUrl?: string;
+  description?: string;
+  features: string[];
+  developer?: string;
+  category?: AppCategory;
+  commands: BotCommand[];
+  installUrl?: string;
+  installation?: { installationId: string; botUserId: string; installedBy: string | null; installedAt: string; channels: number; directs: number };
+};
+export type SpaceAppDirectory = { apps: DirectoryApp[]; canInstall: boolean };
 
 /** An app installed in a space, as Integraciones lists it (`GET /api/workspaces/:id/apps`). */
 export type SpaceApp = { id: string; name: string; avatarUrl?: string; installedBy: string | null; installedAt: string; lastDelivery?: { at: string; ok: boolean; error?: string } };

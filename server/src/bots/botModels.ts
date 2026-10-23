@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Model, type Types } from 'mongoose';
-import type { BotCommand } from '@lilachat/shared';
+import type { AppCategory, BotCommand } from '@lilachat/shared';
 
 /**
  * The bots API (`specs/BOTS-API.spec.md`). An app (Lila, through agentes) is
@@ -24,6 +24,11 @@ export type BotApp = {
   /** Made by a developer app through its manifest (§0-bis): only that app sees or changes it, by its own `key`. */
   ownerAppId?: Types.ObjectId;
   key?: string;
+  /** The directory's texts (design e-24), from the manifest. */
+  description?: string;
+  features?: string[];
+  developer?: string;
+  category?: AppCategory;
   createdAt: Date;
 };
 
@@ -94,6 +99,10 @@ const appSchema = new Schema<BotApp>(
     commands: { type: [{ command: String, description: String, usageHint: String, _id: false }], default: undefined },
     ownerAppId: { type: Schema.Types.ObjectId },
     key: { type: String },
+    description: { type: String },
+    features: { type: [String], default: undefined },
+    developer: { type: String },
+    category: { type: String },
   },
   { timestamps: true }
 );

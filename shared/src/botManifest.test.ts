@@ -44,6 +44,16 @@ describe('app manifest', () => {
     expect(validateAppManifest({ ...manifest, webhook_url: 'http://127.0.0.1:4099/events' }).ok).toBe(true);
   });
 
+  it('the directory texts: a line, up to six features, who made it and a known category; long texts are cut, never refused', () => {
+    const result = validateAppManifest({ ...manifest, description: '  Clima, asistencias y tanques de la planta ', developer: 'Agentes ConstRoad', category: 'operacion', features: ['El clima de la planta', '', 'x'.repeat(300), 'a', 'b', 'c', 'd', 'e'] });
+    expect(result.ok && result.manifest).toMatchObject({ description: 'Clima, asistencias y tanques de la planta', developer: 'Agentes ConstRoad', category: 'operacion' });
+    expect(result.ok && result.manifest.features).toHaveLength(MANIFEST_LIMITS.features);
+    expect(result.ok && result.manifest.features?.[1]).toHaveLength(MANIFEST_LIMITS.feature);
+    const unknown = validateAppManifest({ ...manifest, category: 'juegos', description: 'd'.repeat(500) });
+    expect(unknown.ok && unknown.manifest.category).toBeUndefined();
+    expect(unknown.ok && unknown.manifest.description).toHaveLength(MANIFEST_LIMITS.description);
+  });
+
   it('bad commands are refused with the same message as PUT /api/bots/commands', () => {
     expect(validateAppManifest({ ...manifest, commands: [{ command: '/Clima', description: 'x' }] }).ok).toBe(false);
   });

@@ -3,7 +3,7 @@ import { filterChannels, railSpaces, unreadElsewhere, splitArchived, SPACE_RUBRO
 
 /** The chats of a company space by sections, like Slack (designs `s-03-lista-con-secciones` and `e1-07-chats-del-espacio`). */
 describe('spaceSections', () => {
-  const chat = (id: string, kind: 'direct' | 'group', at: string, extra: { name?: string; channel?: { visibility: 'public' | 'private' } } = {}) => ({ id, kind, lastAt: at, ...extra });
+  const chat = (id: string, kind: 'direct' | 'group', at: string, extra: { name?: string; channel?: { visibility: 'public' | 'private' }; appId?: string } = {}) => ({ id, kind, lastAt: at, ...extra });
   const chats = [
     chat('d1', 'direct', '2026-10-21T10:44:00Z', { name: 'Ana Torres' }),
     chat('c-flota', 'group', '2026-10-20T09:00:00Z', { name: 'flota', channel: { visibility: 'public' } }),
@@ -12,13 +12,16 @@ describe('spaceSections', () => {
     chat('g2', 'group', '2026-10-21T10:48:00Z', { name: 'Compras de obra' }),
     chat('c-admin', 'group', '2026-10-12T09:00:00Z', { name: 'administracion', channel: { visibility: 'private' } }),
     chat('d2', 'direct', '2026-10-21T08:00:00Z', { name: 'Luis' }),
+    chat('a-portal', 'direct', '2026-10-21T11:00:00Z', { name: 'Portal', appId: 'app-portal' }),
+    chat('a-pulso', 'direct', '2026-10-21T07:00:00Z', { name: 'Pulso', appId: 'app-pulso' }),
   ];
-  it('channels by name with #general first; groups and direct messages by their last activity', () => {
+  it('channels by name with #general first; groups, direct messages and apps by their last activity; an app 1:1 is not a direct message', () => {
     const sections = spaceSections(chats);
     expect(sections.map((section) => [section.key, section.chats.map((one) => one.id)])).toEqual([
       ['channels', ['c-general', 'c-admin', 'c-flota']],
       ['groups', ['g2', 'g1']],
       ['directs', ['d1', 'd2']],
+      ['apps', ['a-portal', 'a-pulso']],
     ]);
   });
   it('a section always shows, even empty (channels keep «Agregar canal»)', () => {
@@ -26,6 +29,7 @@ describe('spaceSections', () => {
       ['channels', 'Canales', 0],
       ['groups', 'Grupos', 0],
       ['directs', 'Mensajes directos', 0],
+      ['apps', 'Apps', 0],
     ]);
   });
 });

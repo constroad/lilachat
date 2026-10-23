@@ -26,6 +26,8 @@ export type ChatSummary = {
    * tenía uno.
    */
   phone?: string;
+  /** A 1:1 with an app's bot: which app (design e-23, the «Apps» section). */
+  appId?: string;
   memberIds: string[];
   /** Los otros miembros cuyo acuse cuenta para mis checks (sin mí ni Lila). */
   acuseDe: string[];
@@ -113,7 +115,7 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
       { $sort: { chatId: -1, seq: -1 } },
       { $group: { _id: '$chatId', ultimo: { $first: '$$ROOT' } } },
     ]),
-    UserModel.find({ _id: { $in: otrosIds } }).select('name phone avatarUrl').lean(),
+    UserModel.find({ _id: { $in: otrosIds } }).select('name phone avatarUrl app.appId').lean(),
     // Los fijados (19/10) en el mismo viaje: casi ningún chat tiene, y sin fijados no consulta.
     fijadosParaLaLista(chats, userId),
   ]);
@@ -122,6 +124,8 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
   const personas = new Map(otros.map((user) => [String(user._id), user.name ?? user.phone]));
   const telefonos = new Map(otros.map((user) => [String(user._id), user.phone]));
   const fotos = new Map(otros.map((user) => [String(user._id), user.avatarUrl]));
+  // The 1:1 with an app's bot goes to the space's «Apps» section, not to its direct messages (design e-23).
+  const apps = new Map(otros.flatMap((user) => (user.app?.appId ? [[String(user._id), String(user.app.appId)] as const] : [])));
 
   const receipts = allReceipts.filter((receipt) => String(receipt.userId) === String(userId));
   const readByChat = new Map(receipts.map((receipt) => [String(receipt.chatId), receipt.readSeq]));
@@ -161,6 +165,7 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
       kind: chat.kind,
       // En un 1:1, el nombre ES el del otro.
       name: chat.name ?? (chat.kind === 'direct' ? personas.get(otroId) : undefined),
+      ...(chat.kind === 'direct' && apps.has(otroId) ? { appId: apps.get(otroId) } : {}),
       // Solo en 1:1: en un grupo no hay «el otro», y mandar la lista de
       // teléfonos de todos los miembros sí sería filtrar algo nuevo.
       phone: chat.kind === 'direct' ? telefonos.get(otroId) : undefined,

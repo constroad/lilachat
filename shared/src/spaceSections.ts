@@ -3,12 +3,12 @@ import { normalizeJoinCode } from './workspaces.js';
 
 /**
  * The chats of a company space by sections, like Slack (designs `s-03` and
- * `e1-07`): channels, groups and direct messages. Channels go by name
+ * `e1-07`): channels, groups, direct messages and apps (`e-23`). Channels go by name
  * (#general first), the rest by their last activity. Every section shows,
  * even empty: channels keep their «Agregar canal». PURE.
  */
-export type SpaceSectionKey = 'channels' | 'groups' | 'directs';
-type SpaceChat = { kind: 'direct' | 'group' | 'notas'; name?: string; channel?: { visibility: string } | null; lastAt?: string };
+export type SpaceSectionKey = 'channels' | 'groups' | 'directs' | 'apps';
+type SpaceChat = { kind: 'direct' | 'group' | 'notas'; name?: string; channel?: { visibility: string } | null; lastAt?: string; appId?: string };
 export type SpaceSection<T> = { key: SpaceSectionKey; title: string; chats: T[] };
 
 const byRecent = (a: SpaceChat, b: SpaceChat) => (b.lastAt ?? '').localeCompare(a.lastAt ?? '');
@@ -22,7 +22,9 @@ export function spaceSections<T extends SpaceChat>(chats: readonly T[]): SpaceSe
   return [
     { key: 'channels', title: 'Canales', chats: chats.filter((chat) => chat.channel).sort(byChannelName) },
     { key: 'groups', title: 'Grupos', chats: chats.filter((chat) => chat.kind === 'group' && !chat.channel).sort(byRecent) },
-    { key: 'directs', title: 'Mensajes directos', chats: chats.filter((chat) => chat.kind === 'direct').sort(byRecent) },
+    { key: 'directs', title: 'Mensajes directos', chats: chats.filter((chat) => chat.kind === 'direct' && !chat.appId).sort(byRecent) },
+    // The 1:1s with apps, like Slack's «Apps» (design e-23): the list adds the installed apps not talked to yet.
+    { key: 'apps', title: 'Apps', chats: chats.filter((chat) => chat.kind === 'direct' && chat.appId).sort(byRecent) },
   ];
 }
 

@@ -3,8 +3,8 @@ import path from 'node:path';
 import { Disco } from './disco.js';
 
 /**
- * Lilachat's own media disk (pending 82, José 23/10: «ese producto es nuevo,
- * no tiene por qué usar nada de lila»). The root is `CHAT_STORAGE_ROOT`, the
+ * Lilachat's own media disk (pending 82, José 23/10: a new product uses
+ * nothing of lila). The root is `CHAT_STORAGE_ROOT`, the
  * marker is created once by hand (`npm run medios:init -w server`) and never
  * at boot: without the disk, a `mkdir` at boot would write on the startup disk
  * and the files would vanish from sight when the volume mounts on top

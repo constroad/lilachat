@@ -16,6 +16,8 @@ export function PantallaEnModal(props: {
   titulo: string;
   onCerrar: () => void;
   testIDCerrar?: string;
+  /** Stays at the bottom, outside the scroll (pending 13: «Eliminar para mí» of the picked files). */
+  footer?: ReactNode;
   children: ReactNode;
 }) {
   const colores = useColores();
@@ -45,6 +47,7 @@ export function PantallaEnModal(props: {
           >
             {props.children}
           </ScrollView>
+          {props.footer ? <View className="px-4 pt-2" style={{ paddingBottom: margenes.pie + 12 }}>{props.footer}</View> : null}
         </KeyboardAvoidingView>
       </View>
     </Modal>

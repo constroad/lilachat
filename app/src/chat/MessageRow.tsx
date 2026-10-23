@@ -41,6 +41,7 @@ import { drawsAsCard, drawsAsFunLine, isFileMime, isPending, type Row } from './
 import { rememberBubbleWidth } from './bubbleWidths';
 import { showGifOptions } from './gifs/gifOptions';
 import { ContactCard } from './contactCard/ContactCard';
+import { LocationCard } from './location/LocationCard';
 
 /**
  * Una fila de la conversación, según el diseño «Chat Detail» de Stitch.
@@ -211,8 +212,10 @@ function FilaDeMensaje({
   const botCard = !isPending(item) && jwt ? item.card : undefined;
   // A shared contact (pending 9): drawn as a card, its `body` is only the summary; the time on its own line.
   const contacto = !isPending(item) && item.kind === 'contact' && !item.deletedAt && jwt ? item.contact : undefined;
+  // A shared location (pending 11): the map card; its `body` is only «Ubicación».
+  const sharedLocation = !isPending(item) && item.kind === 'location' && !item.deletedAt ? item.location : undefined;
   const lugarDeLaHora = dondeVaLaHora({
-    conTexto: Boolean(item.body) && !botCard && !contacto,
+    conTexto: Boolean(item.body) && !botCard && !contacto && !sharedLocation,
     eliminado: !isPending(item) && Boolean(item.deletedAt),
     fotoVisible: esFotoVisible(item),
   });
@@ -320,6 +323,8 @@ function FilaDeMensaje({
             <BotCardView card={botCard} chatId={item.chatId} seq={item.seq} jwt={jwt} />
           ) : contacto && jwt ? (
             <ContactCard contact={contacto} mine={mine} jwt={jwt} myUserId={myUserId} />
+          ) : sharedLocation ? (
+            <LocationCard location={sharedLocation} mine={mine} />
           ) : item.body ? (
             <>
             {conVistaPrevia && jwt && !isPending(item) && !item.media && primerEnlace(item.body) ? (

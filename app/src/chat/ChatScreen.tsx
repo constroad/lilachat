@@ -62,7 +62,7 @@ import { useReaccionesEnPantalla } from './reacciones/useReaccionesEnPantalla';
 import { ChatInfoCards } from './ChatInfoCards';
 import { CamaraDelChat } from './camara/CamaraDelChat';
 import { useChatWindow } from './useChatWindow';
-import { useShareContact } from './contactCard/useShareContact';
+import { useClipSharing } from './useClipSharing';
 import { offerCallLink } from './scheduledCall/callLinks';
 import { BirthdayCard } from './birthdays/BirthdayCard';
 
@@ -234,10 +234,9 @@ export function ChatScreen({
    */
   const listaRef = useRef<FlashListRef<Row> | null>(null);
   // The rows on screen: the live end, or a window around an old message (pending 44).
-  const shareContactFromClip = useShareContact({ jwt: credential.jwt, chatId, onError: setMediaError });
+  const clipSharing = useClipSharing({ jwt: credential.jwt, chatId, encrypted: Boolean(encrypted), onError: setMediaError });
   const ventana = useChatWindow({ jwt: credential.jwt, chatId, encrypted: Boolean(encrypted), messages, hilos, ocultos, archivosEnCola, listaRef, onNoEsta: setMediaError, onThread: hilos.abrir });
   const rows = ventana.rows;
-
   /** The chat's photos for the viewer: the full file and the resolved author. */
   const chatPhotos = useMemo(
     () => fotosDelChat(ventana.messages, { yo: credential.userId, esGrupo: esGrupoChat, nombres: nombresDelGrupo, nombreDelChat: chatName }),
@@ -556,8 +555,9 @@ export function ChatScreen({
         // 20/10: también en un 1:1 y en un borrador; en un grupo, sus admins. No en un chat secreto.
         onCreateReminder={!encrypted && (!esGrupoChat || soyAdminDelGrupo) ? () => setCreando('reminder') : undefined}
         etiquetaDelRecordatorio={etiquetaDeRecordatorioEnElChat(esBorrador ? 'notas' : esGrupoChat ? 'group' : 'direct')}
-        onPickFile={() => void pickFile()} onShareContact={encrypted ? undefined : () => void shareContactFromClip()}
+        onPickFile={() => void pickFile()} onShareContact={clipSharing.onShareContact} onShareLocation={clipSharing.onShareLocation}
       />
+      {clipSharing.sheet}
       <VisorDelChat
         fotos={chatPhotos}
         viendoSeq={viendoSeq}

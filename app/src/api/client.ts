@@ -7,6 +7,7 @@
  * de release lo fija y lo verifica dentro del binario).
  */
 import type { ChatList, DestacadoEnLista, PresenceMode, NotificationLevel, ResumenDeHiloEnCliente, VistaDelFijado, VistaPreviaDeEnlace } from '@lilachat/shared';
+import type { BigFile, StorageReport } from '@lilachat/shared';
 import type { ServerMessage } from '../chat/socketClient';
 import { unSoloPedido } from './pedidoUnico';
 import { buildHeader, reportStatus } from './appBuild';
@@ -92,6 +93,16 @@ export const quitarFotoDePerfil = (token: string) =>
 /** Shares a contact in the chat (pending 9); the `clientKey` keeps a retry from duplicating it. */
 export const shareContact = (token: string, chatId: string, contact: { name: string; phone: string; clientKey: string; replyToSeq?: number }) =>
   authed<{ duplicate: boolean }>('POST', `/api/chats/${chatId}/contacts`, token, contact);
+
+/** «Almacenamiento» (pending 13): what each of my chats weighs and the files over 5 MB. */
+export const getStorageReport = (token: string) => get<StorageReport>('/api/me/storage', token);
+
+/** Every file of one chat, biggest first. */
+export const getChatStorageFiles = (token: string, chatId: string) => get<{ files: BigFile[] }>(`/api/me/storage/chats/${chatId}/files`, token);
+
+/** Shares where I am in the chat (pending 11); the `clientKey` keeps a retry from duplicating it. */
+export const shareLocation = (token: string, chatId: string, location: { lat: number; lng: number; accuracy?: number; clientKey: string }) =>
+  authed<{ duplicate: boolean }>('POST', `/api/chats/${chatId}/locations`, token, location);
 
 /** My lists of chats (pending 45): the same ones the web shows. */
 export const listChatLists = (token: string) => get<{ lists: ChatList[] }>('/api/chat-lists', token);

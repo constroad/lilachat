@@ -69,6 +69,13 @@ function pump(): void {
   }
 }
 
+/** After «Liberar» deleted the folder (pending 13): what was known on the disk is gone, the notes play from the network again. */
+export function forgetDownloadedVoiceNotes(): void {
+  local.clear();
+  checked.clear();
+  announce();
+}
+
 export function prefetchVoiceNote(url: string | undefined): void {
   if (!url || url.startsWith('file:') || queued.has(url) || knownLocal(url)) return;
   queued.add(url);

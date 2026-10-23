@@ -41,3 +41,12 @@ export function useOcultos(chatId: string): { ocultos: ReadonlySet<number>; ocul
 
   return { ocultos, ocultar };
 }
+
+/** «Eliminar para mí» of many messages of one chat at once (pending 13, from «Almacenamiento»). */
+export async function hideForMe(chatId: string, seqs: readonly number[]): Promise<void> {
+  const saved = await AsyncStorage.getItem(clave(chatId)).catch(() => null);
+  const parsed = saved ? (JSON.parse(saved) as unknown) : [];
+  const hidden = new Set(Array.isArray(parsed) ? parsed.filter((seq): seq is number => typeof seq === 'number') : []);
+  for (const seq of seqs) hidden.add(seq);
+  await AsyncStorage.setItem(clave(chatId), JSON.stringify([...hidden]));
+}

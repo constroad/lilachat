@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Alert, ScrollView } from 'react-native';
 import { Interruptor } from '../ui/Interruptor';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { BellRing, CloudUpload, Images, LogOut, Star, UserPlus } from 'lucide-react-native';
+import { BellRing, CloudUpload, HardDrive, Images, LogOut, Star, UserPlus } from 'lucide-react-native';
+import { StorageScreen } from './storage/StorageScreen';
 import type { Credential } from '../auth/credentialStore';
 import { DiagnosticoAjuste } from '../diagnostico/DiagnosticoAjuste';
 import { AvisoDePantallaCompleta } from '../ui/AvisoDePantallaCompleta';
@@ -52,11 +53,13 @@ export function PantallaDeAjustes(props: {
   const { credential, actualizaciones } = props;
   const [verDestacados, setVerDestacados] = useState(false);
   const [verMedios, setVerMedios] = useState(false);
+  const [showStorage, setShowStorage] = useState(false);
   return (
     // `padding` también en Android: el texto de la auto-respuesta quedaba
     // tapado por el teclado (mismo motivo que en ChatScreen).
     <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       <MediaScreen visible={verMedios} jwt={credential.jwt} spaceId={props.media.spaceId} spaceName={props.media.spaceName} onOpen={(item) => { setVerMedios(false); props.media.onOpen(item); }} onClose={() => setVerMedios(false)} />
+      <StorageScreen visible={showStorage} jwt={credential.jwt} onClose={() => setShowStorage(false)} />
       <ListaDeDestacados visible={verDestacados} jwt={credential.jwt} yo={credential.userId} onIr={(destacado) => props.onAbrirDestacado(destacado.chatId, destacado.seq)} onCerrar={() => setVerDestacados(false)} />
       <ScrollView
         className="flex-1"
@@ -105,6 +108,7 @@ export function PantallaDeAjustes(props: {
           {/* La estrella personal (20/10), como WhatsApp: todos los que destaqué, de todos los chats. */}
           <GroupsAsListSetting />
           <FilaDeAjuste testID="btn-medios" icono={Images} titulo="Medios" detalle="Fotos, videos, documentos y enlaces de tus chats" onPress={() => setVerMedios(true)} />
+          <FilaDeAjuste testID="btn-almacenamiento" icono={HardDrive} titulo="Almacenamiento" detalle="Cuánto ocupa Lilachat y qué liberar" onPress={() => setShowStorage(true)} />
           <FilaDeAjuste testID="btn-destacados" icono={Star} titulo="Mensajes destacados" detalle="Los que guardaste con la estrella · solo tú los ves" onPress={() => setVerDestacados(true)} />
           <RespaldoAjuste credential={credential} />
           <AutoRespuestaAjuste jwt={credential.jwt} />

@@ -302,6 +302,77 @@ export const WINK_IMAGES: Record<string, WinkImages> = {
       'mouth': require('../../assets/guinos/ghost-intern-mouth.webp'),
     },
   },
+  'santa-foreman': {
+    tile: require('../../assets/guinos/santa-foreman-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/santa-foreman-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/santa-foreman-leg-right.webp'),
+      'body': require('../../assets/guinos/santa-foreman-body.webp'),
+      'head': require('../../assets/guinos/santa-foreman-head.webp'),
+      'eye-left': require('../../assets/guinos/santa-foreman-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/santa-foreman-eye-right.webp'),
+      'mouth': require('../../assets/guinos/santa-foreman-mouth.webp'),
+      'arm-left': require('../../assets/guinos/santa-foreman-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/santa-foreman-arm-right.webp'),
+    },
+  },
+  'elf-intern': {
+    tile: require('../../assets/guinos/elf-intern-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/elf-intern-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/elf-intern-leg-right.webp'),
+      'body': require('../../assets/guinos/elf-intern-body.webp'),
+      'head': require('../../assets/guinos/elf-intern-head.webp'),
+      'eye-left': require('../../assets/guinos/elf-intern-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/elf-intern-eye-right.webp'),
+      'mouth': require('../../assets/guinos/elf-intern-mouth.webp'),
+      'arm-left': require('../../assets/guinos/elf-intern-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/elf-intern-arm-right.webp'),
+    },
+  },
+  'reindeer-driver': {
+    tile: require('../../assets/guinos/reindeer-driver-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/reindeer-driver-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/reindeer-driver-leg-right.webp'),
+      'tail': require('../../assets/guinos/reindeer-driver-tail.webp'),
+      'body': require('../../assets/guinos/reindeer-driver-body.webp'),
+      'head': require('../../assets/guinos/reindeer-driver-head.webp'),
+      'eye-left': require('../../assets/guinos/reindeer-driver-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/reindeer-driver-eye-right.webp'),
+      'mouth': require('../../assets/guinos/reindeer-driver-mouth.webp'),
+      'arm-left': require('../../assets/guinos/reindeer-driver-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/reindeer-driver-arm-right.webp'),
+    },
+  },
+  'snowman-guard': {
+    tile: require('../../assets/guinos/snowman-guard-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/snowman-guard-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/snowman-guard-leg-right.webp'),
+      'body': require('../../assets/guinos/snowman-guard-body.webp'),
+      'head': require('../../assets/guinos/snowman-guard-head.webp'),
+      'eye-left': require('../../assets/guinos/snowman-guard-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/snowman-guard-eye-right.webp'),
+      'mouth': require('../../assets/guinos/snowman-guard-mouth.webp'),
+      'arm-left': require('../../assets/guinos/snowman-guard-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/snowman-guard-arm-right.webp'),
+    },
+  },
+  'secret-santa': {
+    tile: require('../../assets/guinos/secret-santa-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/secret-santa-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/secret-santa-leg-right.webp'),
+      'body': require('../../assets/guinos/secret-santa-body.webp'),
+      'head': require('../../assets/guinos/secret-santa-head.webp'),
+      'eye-left': require('../../assets/guinos/secret-santa-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/secret-santa-eye-right.webp'),
+      'mouth': require('../../assets/guinos/secret-santa-mouth.webp'),
+      'arm-left': require('../../assets/guinos/secret-santa-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/secret-santa-arm-right.webp'),
+    },
+  },
   'balloon': {
     tile: require('../../assets/guinos/balloon-tile.webp'),
     parts: {
@@ -468,6 +539,42 @@ export const WINK_IMAGES: Record<string, WinkImages> = {
     tile: require('../../assets/guinos/tombstone-tile.webp'),
     parts: {
       'body': require('../../assets/guinos/tombstone-body.webp'),
+    },
+  },
+  'gift': {
+    tile: require('../../assets/guinos/gift-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/gift-body.webp'),
+    },
+  },
+  'christmas-tree': {
+    tile: require('../../assets/guinos/christmas-tree-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/christmas-tree-body.webp'),
+    },
+  },
+  'panettone': {
+    tile: require('../../assets/guinos/panettone-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/panettone-body.webp'),
+    },
+  },
+  'chocolate-cup': {
+    tile: require('../../assets/guinos/chocolate-cup-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/chocolate-cup-body.webp'),
+    },
+  },
+  'sleigh': {
+    tile: require('../../assets/guinos/sleigh-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/sleigh-body.webp'),
+    },
+  },
+  'star': {
+    tile: require('../../assets/guinos/star-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/star-body.webp'),
     },
   },
 };

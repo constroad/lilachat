@@ -3,6 +3,8 @@ import { Linking, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Play } from 'lucide-react-native';
 import { esMiniaturaCompacta } from '@lilachat/shared';
+import { videoEmbedFor, type VideoEmbed } from '@lilachat/shared';
+import { VideoEmbedPlayer } from './VideoEmbedPlayer';
 import { useVistaPrevia } from './useVistaPrevia';
 
 /** La foto de la tarjeta: el formato de `og:image` (1.91:1), con tope de alto. */
@@ -25,6 +27,8 @@ export function VistaPreviaDeEnlace({ url, jwt, mia }: { url: string; jwt: strin
   const [cuadrada, setCuadrada] = useState(false);
   // Una imagen que no carga (un `og:image` roto) no deja un hueco: la tarjeta sigue sin ella (20/10).
   const [sinImagen, setSinImagen] = useState(false);
+  // Pending 6: a YouTube, TikTok, Instagram or Facebook video plays here, without leaving the app.
+  const [playing, setPlaying] = useState<VideoEmbed | null>(null);
 
   // While it travels, the card's place is reserved (most links have a wide image): born at 0 dp it pushed the chat when it arrived (20/10).
   if (vista === undefined) return <ReservedCard mine={mia} />;
@@ -41,7 +45,11 @@ export function VistaPreviaDeEnlace({ url, jwt, mia }: { url: string; jwt: strin
   return (
     <Pressable
       testID="vista-previa-enlace"
-      onPress={() => void Linking.openURL(vista.url)}
+      onPress={() => {
+        const video = videoEmbedFor(vista.url);
+        if (video) setPlaying(video);
+        else void Linking.openURL(vista.url);
+      }}
       className={`m-1 mb-0 overflow-hidden rounded-lg ${mia ? 'bg-black/15' : 'bg-primary/[0.06]'}`}
       style={{ width: ANCHO_DE_LA_TARJETA }}
     >
@@ -82,6 +90,7 @@ export function VistaPreviaDeEnlace({ url, jwt, mia }: { url: string; jwt: strin
         </Text>
       </View>
       </View>
+      {playing ? <VideoEmbedPlayer video={playing} link={vista.url} onClose={() => setPlaying(null)} /> : null}
     </Pressable>
   );
 }

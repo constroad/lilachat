@@ -4909,6 +4909,82 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 113. Avatares en los avisos, aviso a los admins el día antes del cumpleaños, guiños de Halloween y el detalle del chat con pestañas (22/10/2026, 0.1.151)
+
+Cierra los pendientes 68, 69 y 72, y el primer tramo del 73 (Halloween).
+
+**Avatares en los avisos (68).**
+- El push de datos de un mensaje trae `foto` (quien escribió) y `fotoChat`
+  (el grupo o el contacto), en URL absoluta (`pushService`).
+- Nativo (`AvisoDeMensaje.kt`): cada `Person` del `MessagingStyle` lleva su
+  foto recortada en círculo (`NoticeThumbnail.circle`), guardada por línea.
+  El chat se publica como atajo de conversación (`chat-<id>`) con su foto:
+  así Android dibuja la foto grande y el ícono de la app chiquito encima,
+  como WhatsApp.
+- E2E: push real solo al emulador; el aviso mostró la foto del grupo con el
+  ícono de Lilachat y la foto de quien escribió.
+
+**Aviso a los admins el día antes (72).**
+- `warnAdminsOfTomorrow` (server, en el tick de cumpleaños): a las 8:00 de
+  Lima, en cada grupo con los cumpleaños encendidos, avisa a los admins
+  (menos al del cumpleaños): «Mañana cumple Carla · 29 años»
+  (`birthdayHeadsUpText`, shared).
+- Una sola vez por persona y año: se reclama `birthdayHeadsUps.<userId>` en
+  el chat antes de mandar.
+- Tests: shared (`limaTomorrowKey`, el texto con y sin edad) y server (solo a
+  los admins, nunca al del cumpleaños, y no se repite).
+- La tarjeta de cumpleaños del detalle lo dice («Un día antes, avisa a los
+  admins») y ya no habla de «quien deja ver su fecha» (§112, 71).
+
+**Guiños de Halloween (73).** Hoja de Stitch `r151-halloween`, con tono
+adulto.
+- Cinco sketches de 6,5–7 s (`winkSketchesHalloween.ts`): «Calabaza obrera»
+  (se saca la cabeza, reparte dulces y la cabeza le gira sola), «Jefe vampiro»
+  (sale del ataúd, «firma aquí», murciélagos, se va hecho murciélago), «Momia
+  de obra» (camina tiesa, se tropieza con su venda y bosteza en la lápida),
+  «Bruja contadora» (revuelve el caldero, lee la calculadora y la tira
+  adentro) y «Fantasma practicante» (llega cansado, su «¡bu!» llena la
+  pantalla y se va avergonzado por la pared).
+- Temporadas (`winkSeasons.ts`, en hora de Lima): Halloween 1/10–2/11,
+  Navidad 1–26/12, Año Nuevo 27/12–7/1, San Valentín 1–15/2, Día de la Madre
+  1–15/5 y Fiestas Patrias 15–31/7. `winkPanelGroups(now)` pone primero el
+  grupo de la temporada; fuera de ella esos guiños no se ofrecen, pero los
+  recibidos se siguen viendo.
+- Arte: 5 personajes y 6 piezas (murciélago, balde de dulces, caldero, ataúd,
+  telaraña y lápida), en WebP para la app y miniaturas para la web.
+- Medido en el emulador (build de desarrollo), al recibirlos: 8,4 % de
+  cuadros lentos y p90 de 34 ms la calabaza (6,9 % repetida), 1,7 % y 17 ms el
+  vampiro, 2,3 % y 21 ms la momia, 4,6 % y 28 ms la bruja, 2,8 % y 22 ms el
+  fantasma. Más livianos que el perrito (11,6 %) y el panda (11,9 %).
+- E2E: Ana mandó los cinco al chat con José; en el emulador sonaron y se
+  vieron completos (video cuadro a cuadro del vampiro y la calabaza). En la
+  web el panel trae «Halloween» primero con 5, y el vampiro y la bruja se
+  reprodujeron.
+- Arreglado en el E2E: el balde de la calabaza quedaba debajo de la barra de
+  escribir.
+- Falta el resto de las temporadas (5 guiños cada una), con su hoja de Stitch.
+
+**Detalle del chat con pestañas (69).** Diseño `r151-detalle-grupo`.
+- Arriba: foto, nombre y «Grupo · 5 miembros», las acciones y la
+  descripción; los destacados siguen debajo. Después, pestañas **Miembros ·
+  Media · Ajustes** (`chatDetailTabs`, shared). Un 1:1 y un borrador no
+  tienen Miembros.
+- Miembros: «Agregar miembros» primero, «3 miembros» y la pastilla «Admin del
+  grupo»; en la app, el teléfono debajo del nombre.
+- Media: lo compartido (media, documentos y links). Ajustes: zumbidos y
+  guiños, cumpleaños, recordatorios del grupo, avisos, cifrado y salir.
+- Abre en la primera pestaña, o en la que pidió el ⋮ («Medios del grupo» →
+  Media; «Agregar miembros» → Miembros). Una recarga después de editar no
+  cambia de pestaña.
+- «Invitar con enlace» del diseño no se puso: esa función no existe.
+- Tests: shared 5 y web 2 nuevos.
+- E2E: grupo y 1:1 en el emulador, y «Medios del grupo» desde el ⋮. En la web
+  como Ana: las tres pestañas, la pastilla y los ajustes.
+
+**Limpieza de QA.** Los cinco guiños de Ana se borraron por la ruta normal; el
+cumpleaños temporal de Ana se sacó dos veces; la web se desvinculó. El GIF,
+el sticker y el guiño de las 21:11 en el chat de QA con José son de José.
+
 ## 112. Repeticiones de recordatorios y vista previa del enlace, recordatorio a pantalla completa, álbum a 3/4 con el gesto de responder y sin la casilla de cumpleaños (22/10/2026, 0.1.150)
 
 Cierra los pendientes 65, 63, 70 y 71; el 64 ya funcionaba y se verificó.
@@ -10195,10 +10271,10 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
       `disco_ausente` hasta que José lo monte (`docs/RESPALDOS-RUNBOOK.md`).
     - F13 (Mongo de emergencia): redefinir, porque la base ya vive en la mini
       (bóveda) desde el 17/10.
-68. **Avatares en los avisos, como WhatsApp** (José, 22/10, captura). El aviso
+68. ~~**Avatares en los avisos, como WhatsApp**~~ **Hecho (§113, 0.1.151).** (José, 22/10, captura). El aviso
     lleva la foto del grupo (o del contacto) con el ícono de la app chiquito
     encima, y cada mensaje la foto de quien lo escribió, no la inicial.
-69. **El detalle del chat agrupado como WhatsApp** (captura de «Flujo caja»):
+69. ~~**El detalle del chat agrupado como WhatsApp**~~ **Hecho (§113, 0.1.151).** (captura de «Flujo caja»):
     foto grande, nombre y «Grupo · 5 miembros», la descripción, una fila de
     acciones (Llamar, Compartir, Buscar…) y debajo pestañas **Miembros ·
     Media · Ajustes**; en Miembros, «Agregar miembros» primero y cada uno con
@@ -10211,10 +10287,10 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
 71. ~~**Sin la casilla «Que mis chats vean mi cumpleaños» al completar el
     perfil**~~ **Hecho (§112, 0.1.150).** (José, 22/10): si alguien la desmarca, el aviso que activa el
     admin del grupo no le llega. Los cumpleaños los decide el chat.
-72. **Aviso a los admins un día antes del cumpleaños de un miembro** (José,
+72. ~~**Aviso a los admins un día antes del cumpleaños de un miembro**~~ **Hecho (§113, 0.1.151).** (José,
     22/10): el día anterior, a los admins del grupo (no a todos), para que
     preparen algo.
-73. **Guiños de temporada** (José, 22/10): según la época del año aparecen en
+73. **Guiños de temporada** (José, 22/10; **Halloween hecho, §113**): según la época del año aparecen en
     la lista, mínimo 5 por temporada, diseñados en Stitch con el tono adulto
     de siempre. Temporadas: Halloween (octubre), Navidad (diciembre), Año
     Nuevo (fin de diciembre y enero), San Valentín (febrero), Fiestas Patrias

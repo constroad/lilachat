@@ -232,10 +232,10 @@ describe('aplicarAcuseALista', () => {
     const chats = [mio({ unread: 1, lastSeq: 7 })];
 
     // Act: I read it, here or on the web (seq 8)
-    const nuevos = aplicarAcuseALista(chats, { chatId: CHAT, userId: YO, readSeq: 8 }, YO, new Map());
+    const updated = aplicarAcuseALista(chats, { chatId: CHAT, userId: YO, readSeq: 8 }, YO, new Map());
 
     // Assert
-    expect(nuevos[0]?.unread).toBe(0);
+    expect(updated[0]?.unread).toBe(0);
   });
 
   it('mi propio acuse (otro dispositivo mío) no dice nada del otro, pero baja MIS no leídos', () => {

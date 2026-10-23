@@ -9,6 +9,7 @@ import type { ChatSummary } from '../chat/types';
 import { SpaceLogo } from './SpaceLogo';
 import { PendingMarker } from '../chat/queue/PendingMarker';
 import { AppsSection } from './apps/AppsSection';
+import { SpaceQuickActions } from './apps/SpaceQuickActions';
 import type { SpaceApps } from './apps/useSpaceApps';
 
 export type WorkspaceLink = 'directory' | 'members' | 'requests' | 'settings';
@@ -39,6 +40,8 @@ type Props = {
   onCollapse?: () => void;
   /** «Apps» (design e-23) and its directory. */
   apps?: SpaceApps;
+  /** The ⚡ of the header (design e-30) asks the space's apps for their actions. */
+  jwt?: string;
 };
 
 /**
@@ -81,6 +84,7 @@ export function SpaceChatList(props: Props) {
             <span className="block truncate text-[12px] text-on-surface-variant">{spaceSubtitle(space, { membersFirst: true })}</span>
           </span>
         </button>
+        {props.jwt ? <SpaceQuickActions jwt={props.jwt} spaceId={space.id} spaceName={space.name} /> : null}
         <button type="button" data-testid="btn-invitar-espacio" aria-label="Invitar personas" title="Invitar personas" onClick={props.onInvite} className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant hover:bg-background">
           <UserPlus size={18} />
         </button>

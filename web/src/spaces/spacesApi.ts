@@ -1,4 +1,4 @@
-import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, SpaceApp, AvailableApp, SpaceAppDirectory, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
+import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, SpaceApp, AvailableApp, SpaceAppDirectory, TopicRoute, AppItemRow, ItemChannels, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
 import { api } from '../api';
 import type { ChatSummary } from '../chat/types';
 
@@ -83,3 +83,14 @@ export const availableApps = (jwt: string, spaceId: string) => api<{ apps: Avail
 export const appDirectory = (jwt: string, spaceId: string) => api<SpaceAppDirectory>(`/workspaces/${spaceId}/app-directory`, { jwt });
 export const openAppChat = (jwt: string, spaceId: string, appId: string) => api<{ chatId: string; botUserId: string }>(`/workspaces/${spaceId}/apps/${appId}/chat`, { jwt, method: 'POST', body: {} });
 export const uninstallApp = (jwt: string, spaceId: string, installationId: string) => api<Record<string, never>>(`/workspaces/${spaceId}/apps/${installationId}`, { jwt, method: 'DELETE' });
+
+/** «¿Dónde llega cada aviso?» (R160): the app's topics with their channel, and the space's channels to pick from. */
+export type AppTopics = { topics: TopicRoute[]; channels: { id: string; name: string; private: boolean }[]; canEdit: boolean };
+export const appTopics = (jwt: string, spaceId: string, appId: string) => api<AppTopics>(`/workspaces/${spaceId}/apps/${appId}/topics`, { jwt });
+export const saveAppTopics = (jwt: string, spaceId: string, appId: string, channels: Record<string, string | null>) => api<AppTopics>(`/workspaces/${spaceId}/apps/${appId}/topics`, { jwt, method: 'PUT', body: { channels } });
+export const testAppTopics = (jwt: string, spaceId: string, appId: string) => api<{ channels: number }>(`/workspaces/${spaceId}/apps/${appId}/topics/test`, { jwt, method: 'POST', body: {} });
+
+/** «Comandos y acciones» (R160): where each command and action of the app works. */
+export type AppItems = { items: AppItemRow[]; channels: { id: string; name: string; private: boolean }[]; canEdit: boolean };
+export const appItems = (jwt: string, spaceId: string, appId: string) => api<AppItems>(`/workspaces/${spaceId}/apps/${appId}/items`, { jwt });
+export const saveAppItems = (jwt: string, spaceId: string, appId: string, items: Record<string, { global: boolean; channels: ItemChannels }>) => api<AppItems>(`/workspaces/${spaceId}/apps/${appId}/items`, { jwt, method: 'PUT', body: { items } });

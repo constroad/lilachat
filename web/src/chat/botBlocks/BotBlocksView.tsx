@@ -48,7 +48,8 @@ function Block({ block }: { block: BotBlock }) {
       const percent = Math.round((block.value / block.max) * 100);
       return (
         <div data-testid="bloque-progreso">
-          <div className="flex items-baseline justify-between"><span className="text-[15px] font-semibold">{block.label}: <span className="text-primary">{block.value}</span> de {block.max}</span><span className="text-[12px] text-on-surface-variant">{percent} %</span></div>
+          {/* Without a label the card's title is the headline (design r155): only the share is left above the bar. */}
+          <div className="flex items-baseline justify-between">{block.label ? <span className="text-[15px] font-semibold">{block.label}: <span className="text-primary">{block.value}</span> de {block.max}</span> : <span />}<span className="text-[12px] text-on-surface-variant">{percent} %</span></div>
           <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-variant"><div className={`h-full rounded-full ${TONE[block.tone === 'neutral' ? 'info' : block.tone].bar}`} style={{ width: `${percent}%` }} /></div>
         </div>
       );
@@ -56,7 +57,8 @@ function Block({ block }: { block: BotBlock }) {
     case 'tank':
       return <BlockTank items={block.items} />;
     case 'text':
-      return <p data-testid="bloque-texto" className={`text-[13px] ${block.tone === 'neutral' ? 'text-on-surface-variant' : TONE[block.tone].text}`}>{block.text}</p>;
+      // A warning or an error is a tinted box (design r155: «3 faltan: …»); the rest, a plain line.
+      return <p data-testid="bloque-texto" className={`text-[13px] ${block.tone === 'neutral' ? 'text-on-surface-variant' : TONE[block.tone].text} ${block.tone === 'warn' || block.tone === 'error' ? `rounded-lg border px-2.5 py-1.5 ${TONE[block.tone].soft}` : ''}`}>{block.text}</p>;
     case 'rows':
       return <Rows rows={block.rows} />;
     case 'people':

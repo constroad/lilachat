@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Send, X } from 'lucide-react';
+import { ClipboardList, Send, X } from 'lucide-react';
 import type { EphemeralAnswer } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { BotCardView } from '../BotCardView';
@@ -9,7 +9,7 @@ import { BotCardView } from '../BotCardView';
  * you»: never stored, gone on reload. A card here has no actions: there is no
  * message behind it. In a channel, «Enviar al canal» has the app post it there.
  */
-export function EphemeralAnswers(props: { answers: readonly EphemeralAnswer[]; onDismiss: (commandId: string) => void; onShare?: (commandId: string) => Promise<string | null>; chatId: string; jwt: string }) {
+export function EphemeralAnswers(props: { answers: readonly EphemeralAnswer[]; onDismiss: (commandId: string) => void; onShare?: (commandId: string) => Promise<string | null>; onOpenForm?: (commandId: string) => void; chatId: string; jwt: string }) {
   if (props.answers.length === 0) return null;
   return (
     <div data-testid="respuestas-efimeras" className="mb-2 flex max-h-[45vh] flex-col gap-2 overflow-y-auto">
@@ -19,7 +19,7 @@ export function EphemeralAnswers(props: { answers: readonly EphemeralAnswer[]; o
             <Avatar name={answer.appName} size={22} bot />
             <p className="text-[14px] font-semibold text-on-surface">{answer.appName}</p>
             <p className="min-w-0 flex-1 truncate text-[12px] text-on-surface-variant">
-              {answer.command ? `/${answer.command} · ` : ''}Solo tú ves esto
+              {answer.action ? `${answer.action} · ` : answer.command ? `/${answer.command} · ` : ''}Solo tú ves esto
             </p>
             <button type="button" data-testid="btn-descartar-efimera" aria-label="Descartar" onClick={() => props.onDismiss(answer.commandId)} className="grid h-8 w-8 place-items-center rounded-full text-on-surface-variant hover:bg-surface">
               <X size={16} />
@@ -34,13 +34,19 @@ export function EphemeralAnswers(props: { answers: readonly EphemeralAnswer[]; o
             </p>
           ) : null}
           {answer.state === 'failed' ? <p role="alert" className="mt-1 text-[14px] text-error">{answer.message}</p> : null}
+          {answer.state === 'form' && props.onOpenForm ? (
+            <button type="button" data-testid="btn-abrir-formulario" onClick={() => props.onOpenForm!(answer.commandId)} className="mt-2 flex h-9 items-center gap-1.5 rounded-lg border border-outline/25 px-3 text-[13px] font-semibold text-primary hover:bg-primary/5">
+              <ClipboardList size={14} /> Abrir «{answer.response?.form?.title}»
+            </button>
+          ) : null}
           {answer.response?.text ? <p className="mt-1 whitespace-pre-wrap text-[14px] text-on-surface">{answer.response.text}</p> : null}
           {answer.response?.card ? (
             <div className="mt-2">
               <BotCardView card={{ ...answer.response.card, actions: [] }} chatId={props.chatId} seq={0} jwt={props.jwt} />
             </div>
           ) : null}
-          {props.onShare && answer.state === 'answered' ? <ShareAnswer onShare={() => props.onShare!(answer.commandId)} /> : null}
+          {/* shareable:false (R160): a debt or a salary is only for whoever asked. */}
+          {props.onShare && answer.state === 'answered' && answer.response?.shareable !== false ? <ShareAnswer onShare={() => props.onShare!(answer.commandId)} /> : null}
         </div>
       ))}
     </div>

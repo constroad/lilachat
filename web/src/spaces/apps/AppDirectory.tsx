@@ -3,6 +3,8 @@ import { ArrowLeft, MessageSquare, Search } from 'lucide-react';
 import { directoryChips, filterDirectory, type ClientWorkspace, type DirectoryFilter } from '@lilachat/shared';
 import { AppBadge, AppLogo } from './AppLogo';
 import { AppDetail } from './AppDetail';
+import { NoticeTopicsSection } from './NoticeTopicsSection';
+import { AppItemsSection } from './AppItemsSection';
 import type { SpaceApps } from './useSpaceApps';
 
 /**
@@ -72,7 +74,7 @@ export function AppDirectory(props: { space: ClientWorkspace; apps: SpaceApps })
         <section data-testid="directorio-detalle" className={`min-h-0 flex-1 overflow-y-auto p-4 md:block md:p-8 ${chosen ? 'block' : 'hidden'}`}>
           {detailed ? (
             <div className="mx-auto max-w-3xl">
-              <AppDetail app={detailed} spaceName={space.name} onMessage={() => apps.message(detailed)} onInstall={() => apps.install(detailed)} onUninstall={admin ? () => apps.uninstall(detailed) : undefined} uninstalling={apps.uninstallingId === detailed.appId} />
+              <AppDetail app={detailed} spaceName={space.name} onMessage={() => apps.message(detailed)} onInstall={() => apps.install(detailed)} onUninstall={admin ? () => apps.uninstall(detailed) : undefined} uninstalling={apps.uninstallingId === detailed.appId} notices={apps.spaceId ? <><AppItemsSection jwt={apps.jwt} spaceId={apps.spaceId} appId={detailed.appId} /><NoticeTopicsSection jwt={apps.jwt} spaceId={apps.spaceId} appId={detailed.appId} appName={detailed.name} /></> : null} />
             </div>
           ) : (
             <p className="mt-24 text-center text-[14px] text-on-surface-variant">Elige una app para ver qué hace.</p>

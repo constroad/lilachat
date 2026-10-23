@@ -1,4 +1,6 @@
-import { BarChart3, Bell, CalendarPlus, ClipboardCheck, Paperclip, type LucideIcon } from 'lucide-react';
+import { BarChart3, Bell, CalendarPlus, ChevronRight, ClipboardCheck, Paperclip, Zap, type LucideIcon } from 'lucide-react';
+import type { ShortcutRow } from '@lilachat/shared';
+import { AppLogo } from '../spaces/apps/AppLogo';
 
 type Option = { key: string; label: string; hint: string; Icon: LucideIcon; testId: string; action: () => void };
 
@@ -15,6 +17,9 @@ export function AttachMenu(props: {
   onCreatePoll: () => void;
   onCreateChecklist?: () => void;
   onCreateReminder?: () => void;
+  /** «Acciones de las apps» (R160, design e-29): the `shortcuts` of each app installed in the space. */
+  actions?: readonly ShortcutRow[];
+  onAction?: (row: ShortcutRow) => void;
 }) {
   const sections: { title: string; options: Option[] }[] = [
     { title: 'Compartir', options: [{ key: 'file', label: 'Foto o archivo', hint: 'Fotos, videos o documentos', Icon: Paperclip, testId: 'btn-archivo-chat', action: props.onPickFile }] },
@@ -56,6 +61,21 @@ export function AttachMenu(props: {
           ))}
         </div>
       ))}
+      {props.actions?.length && props.onAction ? (
+        <div data-testid="acciones-de-apps" className="max-h-64 overflow-y-auto border-t border-outline/15 px-2 py-2">
+          <p className="flex items-center gap-1.5 px-2 pb-1 pt-1 text-[11px] font-bold uppercase tracking-[0.15em] text-on-surface-variant"><Zap size={13} className="text-warning" fill="currentColor" /> Acciones de las apps</p>
+          {props.actions.map((row) => (
+            <button key={`${row.appId}:${row.key}`} type="button" data-testid={`accion-${row.key}`} onClick={() => { props.onClose(); props.onAction!(row); }} className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-background">
+              <AppLogo avatarUrl={row.avatarUrl} size={36} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-on-surface">{row.name}</span>
+                <span className="block truncate text-[12px] text-on-surface-variant">{row.appName}</span>
+              </span>
+              <ChevronRight size={16} className="shrink-0 text-on-surface-variant" />
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

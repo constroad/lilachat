@@ -20,6 +20,9 @@ const stubCommands = (overrides: Partial<ChatCommands> = {}): ChatCommands => ({
   runIfCommand: vi.fn(async () => 'not-command' as const),
   answers: [],
   dismiss: vi.fn(),
+  appAnswers: { answers: [], track: vi.fn(), runAction: vi.fn(), uploadPhoto: vi.fn(), submitForm: vi.fn(), dismiss: vi.fn(), removeAnswer: vi.fn(), openForm: null, showForm: vi.fn() },
+  actions: [],
+  loadActions: vi.fn(async () => null),
   share: undefined,
   jwt: 'jwt',
   chatId: 'c1',
@@ -126,5 +129,32 @@ describe('Composer with commands', () => {
     // Assert
     expect(screen.getByTestId('input-mensaje')).toHaveValue('/tanques ');
     expect(commands.onType).toHaveBeenCalledWith('/tanques ');
+  });
+});
+
+describe('the apps\' actions in the «+» (R160, design e-29)', () => {
+  it('opening the menu asks for them once; tapping one runs it', async () => {
+    // Arrange
+    const row = { kind: 'shortcut' as const, appId: 'a1', appName: 'Inframaq', key: 'marcar_asistencia', name: 'Marcar asistencia' };
+    const commands = stubCommands({ actions: [row] });
+    composer(commands);
+    // Act
+    fireEvent.click(screen.getByTestId('btn-mas'));
+    fireEvent.click(screen.getByTestId('accion-marcar_asistencia'));
+    // Assert
+    expect(commands.loadActions).toHaveBeenCalledTimes(1);
+    expect(commands.appAnswers.runAction).toHaveBeenCalledWith(row);
+    expect(screen.queryByTestId('menu-adjuntar')).toBeNull();
+  });
+
+  it('an answer marked shareable:false has no «Enviar al canal»; a pending form can be reopened', () => {
+    const onOpenForm = vi.fn();
+    const privateAnswer: EphemeralAnswer = { commandId: 'c9', appName: 'Portal', command: 'deudas', state: 'answered', response: { responseType: 'ephemeral', text: 'Debes S/ 120', shareable: false } };
+    const form: EphemeralAnswer = { commandId: 'c8', appName: 'Inframaq', command: '', action: 'Marcar asistencia', state: 'form', response: { responseType: 'form', form: { id: 'registrar_marca', title: 'Marcar asistencia', schema: { type: 'object', properties: {} } } } };
+    render(<EphemeralAnswers answers={[privateAnswer, form]} onDismiss={() => undefined} onShare={vi.fn()} onOpenForm={onOpenForm} chatId="c1" jwt="jwt" />);
+    fireEvent.click(screen.getByTestId('btn-abrir-formulario'));
+    expect(screen.queryByTestId('btn-enviar-al-canal')).toBeNull();
+    expect(screen.getByText('Marcar asistencia · Solo tú ves esto')).toBeInTheDocument();
+    expect(onOpenForm).toHaveBeenCalledWith('c8');
   });
 });

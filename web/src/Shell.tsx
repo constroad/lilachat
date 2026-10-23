@@ -277,7 +277,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
             onWorkspace={espacios.openWorkspace}
             onNewDirect={espacios.openNewDirect}
             onNewGroup={espacios.openNewGroup}
-            activity={espacios.activity} apps={espacios.apps}
+            activity={espacios.activity} apps={espacios.apps} jwt={credential.jwt}
             onActivity={espacios.openActivity}
             width={panel === 'both' ? listLayout.width : undefined}
             onCollapse={panel === 'both' ? () => listLayout.setCollapsed(true) : undefined}

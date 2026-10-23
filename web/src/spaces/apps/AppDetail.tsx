@@ -34,7 +34,7 @@ function CommandRow(props: { command: string; usageHint?: string; description: s
  * «Mensaje» or «Instalar», what it does, its commands, its permissions and who
  * installed it. The same block is the «Información» tab of its 1:1.
  */
-export function AppDetail(props: { app: DirectoryApp; spaceName: string; onMessage?: () => void; onInstall: () => void; onUninstall?: () => void; uninstalling?: boolean }) {
+export function AppDetail(props: { app: DirectoryApp; spaceName: string; onMessage?: () => void; onInstall: () => void; onUninstall?: () => void; uninstalling?: boolean; /** «Avisos» (R160), only once installed. */ notices?: React.ReactNode }) {
   const { app } = props;
   const [menu, setMenu] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -98,6 +98,7 @@ export function AppDetail(props: { app: DirectoryApp; spaceName: string; onMessa
           <p className="mt-2 text-[12px] text-on-surface-variant">Escríbelos en cualquier chat del espacio donde esté la app.</p>
         </Section>
       ) : null}
+      {app.installation ? props.notices : null}
       <Section Icon={Lock} title="Permisos">
         <div className="grid gap-4 sm:grid-cols-2">
           <ul className="space-y-1.5"><li className="text-[12px] font-semibold text-en-linea">Puede</li>{APP_PERMISSIONS.can.map((line) => <li key={line} className="flex gap-2 text-[13px]"><Check size={15} className="mt-0.5 shrink-0 text-en-linea" />{line}</li>)}</ul>

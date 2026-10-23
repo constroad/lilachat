@@ -17,6 +17,8 @@ import { subscribeComposerInserts } from './composerInsert';
 import type { ChatCommands } from './commands/useChatCommands';
 import { CommandPanel } from './commands/CommandPanel';
 import { EphemeralAnswers } from './commands/EphemeralAnswers';
+import { AppFormDialog } from './commands/AppFormDialog';
+import { loadPerfil } from '../api';
 
 /**
  * La barra de escritura del diseño: «+» suelto a la izquierda, el campo con
@@ -179,7 +181,17 @@ export function Composer({
   return (
     <div className="border-t border-outline/15 bg-surface px-4 py-3">
       {contexto ? <FranjaDeContexto contexto={contexto} onCancelar={cancelarContexto} /> : null}
-      {commands ? <EphemeralAnswers answers={commands.answers} onDismiss={commands.dismiss} onShare={commands.share} chatId={commands.chatId} jwt={commands.jwt} /> : null}
+      {commands ? <EphemeralAnswers answers={commands.answers} onDismiss={commands.dismiss} onShare={commands.share} onOpenForm={commands.appAnswers.showForm} chatId={commands.chatId} jwt={commands.jwt} /> : null}
+      {commands?.appAnswers.openForm ? (
+        <AppFormDialog
+          key={commands.appAnswers.openForm.commandId}
+          answer={commands.appAnswers.openForm}
+          personName={loadPerfil()?.name}
+          onSubmit={(values) => commands.appAnswers.submitForm(commands.appAnswers.openForm!, values)}
+          onUpload={(file) => commands.appAnswers.uploadPhoto(commands.appAnswers.openForm!.commandId, file)}
+          onClose={() => commands.appAnswers.showForm(null)}
+        />
+      ) : null}
       {commands ? <CommandPanel groups={commands.suggestions} active={commands.activeCommand} onPick={pickCommand} /> : null}
       {jwtParaEnlaces && contexto?.tipo !== 'edicion' ? <VistaPreviaAlEscribir texto={text} jwt={jwtParaEnlaces} /> : null}
       <input
@@ -225,7 +237,11 @@ export function Composer({
             data-testid="btn-mas"
             aria-label="Crear"
             aria-expanded={menuAbierto}
-            onClick={() => setMenuAbierto((abierto) => !abierto)}
+            onClick={() => {
+              // The apps' actions are asked once, the first time the menu opens.
+              if (!menuAbierto) void commands?.loadActions();
+              setMenuAbierto((abierto) => !abierto);
+            }}
             className="grid h-10 w-10 place-items-center rounded-full text-on-surface-variant hover:bg-background"
           >
             <Plus size={20} />
@@ -239,6 +255,8 @@ export function Composer({
               onCreatePoll={onCreatePoll}
               onCreateReminder={onCreateReminder}
               onCreateChecklist={onCreateChecklist}
+              actions={commands?.actions}
+              onAction={commands ? (row) => void commands.appAnswers.runAction(row) : undefined}
             />
           ) : null}
         </div>

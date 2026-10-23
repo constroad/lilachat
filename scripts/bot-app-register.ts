@@ -7,6 +7,10 @@
  *   npx tsx --env-file=.env scripts/bot-app-register.ts --name Lila \
  *     --redirect-uri https://agentes.constroad.com/canales/lilachat/vuelta \
  *     --webhook-url https://agentes.constroad.com/v1/channels/lilachat/events
+ *
+ * Only where «Instalar» goes, without rotating the secret:
+ *   npx tsx --env-file=.env scripts/bot-app-register.ts --name Lila \
+ *     --install-url https://agentes.constroad.com/canales/lilachat/instalar
  */
 import { writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -27,6 +31,15 @@ async function main(): Promise<void> {
   const name = arg('name');
   const redirectUri = arg('redirect-uri');
   const webhookUrl = arg('webhook-url');
+  const installUrl = arg('install-url');
+  // Only the install address (agentes, 23/10): it does NOT rotate the secret already loaded in Torre.
+  if (name && installUrl && !redirectUri && !webhookUrl) {
+    if (!validUrl(installUrl)) throw new Error('--install-url va con https.');
+    await connectDb();
+    const result = await BotAppModel.updateOne({ name }, { $set: { installUrl } });
+    console.log(result.matchedCount ? `${name}: «Instalar» lleva a ${installUrl}` : `No hay una app «${name}» registrada.`);
+    process.exit(result.matchedCount ? 0 : 1);
+  }
   if (!name || !validUrl(redirectUri) || !validUrl(webhookUrl)) throw new Error('Faltan --name, --redirect-uri y --webhook-url (https).');
   await connectDb();
   const clientSecret = newSecret('lcx_');

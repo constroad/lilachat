@@ -21,12 +21,25 @@ describe('install app screen', () => {
     });
     const go = vi.fn();
     render(<InstallAppScreen jwt="jwt" search={QUERY} onRedirect={go} />);
-    expect(await screen.findByText('Lila quiere unirse a tu espacio')).toBeTruthy();
+    expect(await screen.findByText('Lila quiere unirse a un espacio')).toBeTruthy();
     expect(screen.getByText(/mencionan o le escriben/)).toBeTruthy();
     fireEvent.click(screen.getByTestId('espacio-s2'));
     fireEvent.click(screen.getByTestId('instalar-app'));
     await waitFor(() => expect(go).toHaveBeenCalledWith('https://agentes.example.com/vuelta?code=c&state=s'));
     expect(calls.at(-1)!.body).toMatchObject({ client_id: 'lca_lila', state: 'state-0123456789abcdef', code_challenge: 'abc', code_challenge_method: 'S256', space_id: 's2', decision: 'approve' });
+  });
+
+  it('coming from Integraciones of a space (?space=), that space is already chosen and the button names it (design r156-instalar-consentimiento)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => json(200, { app: { name: 'Lila' }, spaces: [{ id: 's1', name: 'Constroad' }, { id: 's2', name: 'Inframaq' }] }));
+    render(<InstallAppScreen jwt="jwt" search={`${QUERY}&space=s2`} onRedirect={vi.fn()} />);
+    // Like Slack (José, 23/10): installing from a space does not ask for a space; it says where, with «Cambiar».
+    expect((await screen.findByTestId('espacio-elegido')).textContent).toContain('Inframaq');
+    expect(screen.queryByTestId('espacio-s1')).toBeNull();
+    expect(screen.getByTestId('instalar-app').textContent).toBe('Instalar en Inframaq');
+    fireEvent.click(screen.getByTestId('cambiar-espacio'));
+    expect(screen.getByTestId('espacio-s2').getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText('Lila no podrá')).toBeTruthy();
+    expect(screen.getByText(/Integraciones/)).toBeTruthy();
   });
 
   it('cancelling also goes back, saying it was denied', async () => {

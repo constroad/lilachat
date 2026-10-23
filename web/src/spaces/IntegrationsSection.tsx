@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, Bot } from 'lucide-react';
 import { appDeliveryWarning, appInstalledLine, type SpaceApp } from '@lilachat/shared';
 import { spaceApps, uninstallApp } from './spacesApi';
+import { AvailableApps } from './AvailableApps';
 
 /**
  * Integraciones in the space's settings (`specs/BOTS-API.spec.md`): the
  * installed apps (Lila), who installed them, whether their last event arrived,
- * and «Desinstalar» (the app hears it and its token dies). Installing starts
- * on the app's own page (agentes), not here.
+ * and «Desinstalar» (the app hears it and its token dies). «Instalar» lists
+ * the apps with an install page (agentes, 23/10).
  */
 export function IntegrationsSection(props: { jwt: string; spaceId: string }) {
   const [apps, setApps] = useState<SpaceApp[] | null>(null);
@@ -30,7 +31,7 @@ export function IntegrationsSection(props: { jwt: string; spaceId: string }) {
       <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Integraciones</p>
       {apps === null && !failed ? <div className="mt-2 h-14 animate-pulse rounded-xl bg-background" /> : null}
       {failed ? <p role="alert" className="mt-2 text-[13px] text-error">No se pudieron cargar las apps. Vuelve a abrir los ajustes.</p> : null}
-      {apps && apps.length === 0 ? <p className="mt-2 rounded-xl bg-background px-3 py-3 text-[13px] text-on-surface-variant">No hay apps instaladas. Una app, como Lila, se instala desde su propia página.</p> : null}
+      {apps && apps.length === 0 ? <p className="mt-2 rounded-xl bg-background px-3 py-3 text-[13px] text-on-surface-variant">No hay apps instaladas.</p> : null}
       <div className="mt-2 space-y-2">
         {apps?.map((app) => (
           <div key={app.id} data-testid={`app-${app.id}`} className="rounded-xl border border-outline/15 p-3">
@@ -55,6 +56,7 @@ export function IntegrationsSection(props: { jwt: string; spaceId: string }) {
           </div>
         ))}
       </div>
+      <AvailableApps jwt={props.jwt} spaceId={props.spaceId} />
     </section>
   );
 }

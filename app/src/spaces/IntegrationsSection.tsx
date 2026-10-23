@@ -4,6 +4,7 @@ import { AlertTriangle, Bot } from 'lucide-react-native';
 import { appDeliveryWarning, appInstalledLine, type SpaceApp } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { spaceApps, uninstallApp } from './spacesApi';
+import { AvailableApps } from './AvailableApps';
 
 /**
  * Integraciones in the space's settings, like the web's (`specs/BOTS-API.spec.md`):
@@ -32,7 +33,7 @@ export function IntegrationsSection(props: { jwt: string; spaceId: string }) {
       <Text className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Integraciones</Text>
       {apps === null && !failed ? <View className="mt-3 h-14 rounded-xl bg-background" /> : null}
       {failed ? <Text className="mt-3 text-[13px] text-error">No se pudieron cargar las apps. Vuelve a abrir los ajustes.</Text> : null}
-      {apps && apps.length === 0 ? <Text className="mt-3 text-[14px] text-on-surface-variant">No hay apps instaladas. Una app, como Lila, se instala desde su propia página.</Text> : null}
+      {apps && apps.length === 0 ? <Text className="mt-3 text-[14px] text-on-surface-variant">No hay apps instaladas.</Text> : null}
       {apps?.map((app) => (
         <View key={app.id} testID={`app-${app.id}`} className="mt-3 border-t border-outline/10 pt-3">
           <View className="flex-row items-center gap-3">
@@ -56,6 +57,7 @@ export function IntegrationsSection(props: { jwt: string; spaceId: string }) {
           ) : null}
         </View>
       ))}
+      <AvailableApps jwt={props.jwt} spaceId={props.spaceId} />
     </View>
   );
 }

@@ -16,6 +16,8 @@ export type BotApp = {
   avatarUrl?: string;
   redirectUris: string[];
   webhookUrl: string;
+  /** Where Integraciones' «Instalar» sends an admin (agentes picks the company first, 23/10); `?space=<id>` is added. */
+  installUrl?: string;
   createdAt: Date;
 };
 
@@ -70,6 +72,7 @@ const appSchema = new Schema<BotApp>(
     avatarUrl: { type: String },
     redirectUris: { type: [String], required: true },
     webhookUrl: { type: String, required: true },
+    installUrl: { type: String },
   },
   { timestamps: true }
 );

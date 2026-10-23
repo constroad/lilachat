@@ -265,6 +265,15 @@ describe('the bot hears signed events (§c)', () => {
     expect((await ChatModel.findById(channel).lean())!.members.map((member) => String(member.userId))).not.toContain(botUserId);
   });
 
+  it('the directory offers the apps to install, with where to go and this space, and says which is already in (agentes, 23/10)', async () => {
+    await BotAppModel.updateOne({ clientId: 'lca_lila' }, { $set: { installUrl: 'https://agentes.example.com/canales/lilachat/instalar' } });
+    const before = (await request(app).get(`/api/workspaces/${spaceId}/available-apps`).set(asJose).expect(200)).body.apps;
+    expect(before).toEqual([{ id: expect.any(String), name: 'Lila', installUrl: `https://agentes.example.com/canales/lilachat/instalar?space=${spaceId}`, installed: false }]);
+    await request(app).get(`/api/workspaces/${spaceId}/available-apps`).set(asAna).expect(403);
+    await install();
+    expect((await request(app).get(`/api/workspaces/${spaceId}/available-apps`).set(asJose).expect(200)).body.apps[0]).toMatchObject({ installed: true });
+  });
+
   it('revoking from agentes: the token dies, no event', async () => {
     const { token } = await install();
     await request(app).post('/api/oauth/revoke').set(asBot(token)).expect(200);

@@ -57,6 +57,23 @@ export function buildBotUserRouter(): Router {
     if (!(await adminOf(req.params.id!, req.session!.userId))) return void res.status(403).json({ message: 'Solo el dueño o un admin ve las integraciones.' });
     res.json({ apps: await appsOf(req.params.id!) });
   }));
+  // The directory (agentes, 23/10): the apps an admin can install from here, already pointing at this space.
+  router.get('/workspaces/:id/available-apps', requireSession, asyncRoute(async (req, res) => {
+    const spaceId = req.params.id!;
+    if (!(await adminOf(spaceId, req.session!.userId))) return void res.status(403).json({ message: 'Solo el dueño o un admin instala apps.' });
+    const [apps, installed] = await Promise.all([
+      BotAppModel.find({ installUrl: { $exists: true, $ne: '' } }).select('name avatarUrl installUrl').lean(),
+      BotInstallationModel.find({ workspaceId: spaceId, revokedAt: { $exists: false } }).select('appId').lean(),
+    ]);
+    const inside = new Set(installed.map((one) => String(one.appId)));
+    res.json({
+      apps: apps.map((one) => {
+        const url = new URL(one.installUrl!);
+        url.searchParams.set('space', spaceId);
+        return { id: String(one._id), name: one.name, ...(one.avatarUrl ? { avatarUrl: one.avatarUrl } : {}), installUrl: url.toString(), installed: inside.has(String(one._id)) };
+      }),
+    });
+  }));
   router.delete('/workspaces/:id/apps/:installationId', requireSession, asyncRoute(async (req, res) => {
     const userId = req.session!.userId;
     if (!(await adminOf(req.params.id!, userId))) return void res.status(403).json({ message: 'Solo el dueño o un admin desinstala apps.' });

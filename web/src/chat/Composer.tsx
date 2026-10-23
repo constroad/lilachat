@@ -166,21 +166,20 @@ export function Composer({
     const value = text.trim();
     if (!value) return;
     setText('');
-    if (commands?.isCommand(value)) {
-      void commands.run(value).then((ok) => {
-        if (!ok) setText(value);
-      });
-      return;
-    }
     const rangos = menciones.mencionesDe(value);
     menciones.limpiar();
-    onSend(value, rangos.length ? rangos : undefined);
+    const sendAsText = () => onSend(value, rangos.length ? rangos : undefined);
+    if (!commands) return sendAsText();
+    void commands.runIfCommand(value).then((outcome) => {
+      if (outcome === 'not-command') sendAsText();
+      else if (!outcome) setText(value);
+    });
   };
 
   return (
     <div className="border-t border-outline/15 bg-surface px-4 py-3">
       {contexto ? <FranjaDeContexto contexto={contexto} onCancelar={cancelarContexto} /> : null}
-      {commands ? <EphemeralAnswers answers={commands.answers} onDismiss={commands.dismiss} chatId={commands.chatId} jwt={commands.jwt} /> : null}
+      {commands ? <EphemeralAnswers answers={commands.answers} onDismiss={commands.dismiss} onShare={commands.share} chatId={commands.chatId} jwt={commands.jwt} /> : null}
       {commands ? <CommandPanel groups={commands.suggestions} active={commands.activeCommand} onPick={pickCommand} /> : null}
       {jwtParaEnlaces && contexto?.tipo !== 'edicion' ? <VistaPreviaAlEscribir texto={text} jwt={jwtParaEnlaces} /> : null}
       <input
@@ -273,7 +272,7 @@ export function Composer({
             }
             if (event.key === 'Escape' && contexto) cancelarContexto();
           }}
-          placeholder="Escribe un mensaje..."
+          placeholder={commands?.enabled ? "Escribe un mensaje o / para comandos" : "Escribe un mensaje..."}
           className="block min-h-[40px] max-h-32 w-full resize-none rounded-lg border border-outline/25 bg-background px-3 py-2.5 text-[length:var(--chat-font,14px)] leading-[var(--chat-line,20px)] outline-none placeholder:text-on-surface-variant focus:border-primary"
         />
         </div>

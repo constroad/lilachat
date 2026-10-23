@@ -6,3 +6,6 @@ export const spaceCommands = (jwt: string, spaceId: string) => api<{ groups: Com
 
 export const runCommand = (jwt: string, chatId: string, input: { appId: string; command: string; text: string }) =>
   api<CommandOutcome>(`/chats/${chatId}/commands`, { jwt, body: { app_id: input.appId, command: input.command, text: input.text } });
+
+/** «Enviar al canal»: the app posts in the channel the answer only I saw. */
+export const shareCommandAnswer = (jwt: string, chatId: string, commandId: string) => api<{ seq: number }>(`/chats/${chatId}/commands/${commandId}/share`, { jwt, body: {} });

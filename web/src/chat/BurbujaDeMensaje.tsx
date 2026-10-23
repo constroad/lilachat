@@ -5,7 +5,7 @@ import { AlertCircle, BellRing, CalendarDays, Check, CheckCheck, ChevronRight, C
 import { Overlay } from '../ui/Overlay';
 import { RecordatorioEnElChat } from './tarjetas/RecordatorioEnElChat';
 import { colorDeAutor, esAvisoDestacado, type DeliveryState, formatClock, primerEnlace, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
-import { isAnimatedImage, isHiddenNotice } from '@lilachat/shared';
+import { isAnimatedImage, isHiddenNotice, sharedByLine } from '@lilachat/shared';
 import { GifInBubble } from './gifs/GifInBubble';
 import { TarjetaDeEnlace } from './TarjetaDeEnlace';
 import { NotaDeVoz } from './NotaDeVoz';
@@ -26,7 +26,7 @@ import { StickerMessage } from './stickers/StickerMessage';
 import { ConversacionContext, useConversacion } from './contextoDeLaConversacion';
 import type { ChatSummary, MensajeEnPantalla } from './types';
 import { Avatar } from '../ui/Avatar';
-import { AlbumCarouselWeb } from './AlbumCarouselWeb';
+import { AlbumGridWeb } from './AlbumGridWeb';
 
 /** Las clases de color de autor, escritas enteras para que Tailwind las genere. */
 const COLOR_DE_AUTOR = ['', 'text-autor-1', 'text-autor-2', 'text-autor-3', 'text-autor-4', 'text-autor-5', 'text-autor-6'];
@@ -225,7 +225,8 @@ function MessageContent({ mensaje, mio, album }: { mensaje: MensajeEnPantalla; m
     );
   }
   // A bot's card (Lila): its summary in `body` is for the list and notices; here the card itself.
-  if (mensaje.card) return <BotCardView card={mensaje.card} chatId={chat.id} seq={mensaje.seq} jwt={jwt} />;
+  const shared = mensaje.sharedBy ? <p data-testid={`compartido-por-${mensaje.seq}`} className="mb-1 text-[12px] text-on-surface-variant">{sharedByLine(mensaje.sharedBy)}</p> : null;
+  if (mensaje.card) return <>{shared}<BotCardView card={mensaje.card} chatId={chat.id} seq={mensaje.seq} jwt={jwt} /></>;
   const media = mensaje.media;
   if (media?.url && media.mime?.startsWith('audio/')) {
     return <NotaDeVoz id={`${chat.id}:${mensaje.seq}`} chatId={chat.id} authorName={mio ? 'Tú' : (nombres.get(mensaje.senderId) ?? chat.name ?? 'Nota de voz')} url={media.url} durationMs={media.durationMs} onda={media.onda} mio={mio} />;
@@ -235,8 +236,9 @@ function MessageContent({ mensaje, mio, album }: { mensaje: MensajeEnPantalla; m
   const thumblessVideo = Boolean(media?.url && !media.thumbUrl && media.mime?.startsWith('video/'));
   return (
     <>
+      {shared}
       {album ? (
-        <AlbumCarouselWeb items={album} onOpen={onVerFoto} />
+        <AlbumGridWeb items={album} onOpen={onVerFoto} />
       ) : media?.url && isAnimatedImage(media.mime) && !mensaje.estado ? (
         <GifInBubble testId={`gif-${mensaje.clientKey}`} url={media.url} alt={mensaje.body ?? 'GIF'} width={media.width} height={media.height} onOpen={() => onVerFoto(mensaje)} />
       ) : media?.url && esImagen ? (

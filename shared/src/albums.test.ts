@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { albumLayout, isAlbumId, newAlbumId } from './albums.js';
+import { albumGrid, albumLayout, isAlbumId, newAlbumId } from './albums.js';
 
 const photo = (seq: number, album?: string, extra: Record<string, unknown> = {}) => ({ seq, senderId: 'ana', kind: 'image', media: { album }, ...extra });
 
@@ -45,5 +45,31 @@ describe('album ids', () => {
     expect(isAlbumId('a b')).toBe(false);
     expect(isAlbumId('x'.repeat(41))).toBe(false);
     expect(isAlbumId(undefined)).toBe(false);
+  });
+});
+
+describe('the album as a grid, like WhatsApp (pending 81, José 23/10)', () => {
+  it('two side by side, three as one big and two small, four as a 2×2', () => {
+    expect(albumGrid(2)).toEqual([
+      { index: 0, x: 0, y: 0, w: 0.5, h: 1 },
+      { index: 1, x: 0.5, y: 0, w: 0.5, h: 1 },
+    ]);
+    expect(albumGrid(3)).toEqual([
+      { index: 0, x: 0, y: 0, w: 1, h: 0.5 },
+      { index: 1, x: 0, y: 0.5, w: 0.5, h: 0.5 },
+      { index: 2, x: 0.5, y: 0.5, w: 0.5, h: 0.5 },
+    ]);
+    expect(albumGrid(4).map((tile) => [tile.x, tile.y, tile.more])).toEqual([[0, 0, undefined], [0.5, 0, undefined], [0, 0.5, undefined], [0.5, 0.5, undefined]]);
+  });
+
+  it('five or more show four, and the fourth says how many more', () => {
+    expect(albumGrid(9)).toHaveLength(4);
+    expect(albumGrid(9)[3]).toEqual({ index: 3, x: 0.5, y: 0.5, w: 0.5, h: 0.5, more: 5 });
+    expect(albumGrid(5)[3]!.more).toBe(1);
+  });
+
+  it('less than two is not an album', () => {
+    expect(albumGrid(1)).toEqual([]);
+    expect(albumGrid(0)).toEqual([]);
   });
 });

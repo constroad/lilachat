@@ -1,6 +1,7 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Linking } from 'react-native';
 import type { DirectoryApp, SpaceAppDirectory } from '@lilachat/shared';
+import { getSocket } from '../../chat/socketClient';
 import { useAlVolver } from '../../ui/useAlVolver';
 import { appDirectoryCache, appDirectoryKey, fetchAppDirectory, useCached } from '../spaceCache';
 import { openAppChat, uninstallApp } from '../spacesApi';
@@ -9,6 +10,8 @@ export type SpaceApps = {
   directory: SpaceAppDirectory | null;
   failed: boolean;
   refresh: () => void;
+  /** Asks again now, past the cache, and gives what came (back from installing: the copy on the phone is from before). */
+  reload: () => Promise<SpaceAppDirectory | null>;
   message: (app: DirectoryApp) => void;
   install: (app: DirectoryApp) => void;
   uninstall: (app: DirectoryApp) => void;
@@ -31,6 +34,22 @@ export function useSpaceApps(params: { jwt: string; spaceId: string | null; acti
   const [uninstallingId, setUninstallingId] = useState<string | null>(null);
   const { refresh } = entry;
   useAlVolver(params.active, refresh);
+  // Installed, uninstalled or a new manifest (23/10): the directory and the head of a 1:1 read it again.
+  useEffect(() => {
+    const socket = getSocket();
+    const onAppsChanged = (frame: { workspaceId?: string }) => {
+      if (frame.workspaceId === spaceId) refresh();
+    };
+    socket?.on('workspace.apps.changed', onAppsChanged);
+    return () => {
+      socket?.off('workspace.apps.changed', onAppsChanged);
+    };
+  }, [spaceId, refresh]);
+  const reload = useCallback(async () => {
+    if (!spaceId) return null;
+    await appDirectoryCache.revalidate(appDirectoryKey(spaceId), fetchAppDirectory(jwt, spaceId), { force: true });
+    return appDirectoryCache.get(appDirectoryKey(spaceId)).value ?? null;
+  }, [jwt, spaceId]);
 
   const message = useCallback(
     (app: DirectoryApp) => {
@@ -56,5 +75,5 @@ export function useSpaceApps(params: { jwt: string; spaceId: string | null; acti
     },
     [jwt, spaceId]
   );
-  return { directory: entry.value ?? null, failed: !entry.value && Boolean(entry.error), refresh, message, install, uninstall, openedChats: opened.spaceId === spaceId ? opened.chats : {}, uninstallingId };
+  return { directory: entry.value ?? null, failed: !entry.value && Boolean(entry.error), refresh, reload, message, install, uninstall, openedChats: opened.spaceId === spaceId ? opened.chats : {}, uninstallingId };
 }

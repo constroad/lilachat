@@ -17,10 +17,10 @@ const stubCommands = (overrides: Partial<ChatCommands> = {}): ChatCommands => ({
   activeCommand: null,
   onType: vi.fn(),
   onKey: vi.fn(() => false),
-  isCommand: vi.fn(() => false),
-  run: vi.fn(async () => true),
+  runIfCommand: vi.fn(async () => 'not-command' as const),
   answers: [],
   dismiss: vi.fn(),
+  share: undefined,
   jwt: 'jwt',
   chatId: 'c1',
   ...overrides,
@@ -69,6 +69,19 @@ describe('EphemeralAnswers', () => {
     expect(screen.getByText('Tanque 1: 81 %')).toBeInTheDocument();
     expect(screen.getAllByText(/Solo tú ves esto/)).toHaveLength(3);
     expect(onDismiss).toHaveBeenCalledWith('c3');
+    expect(screen.queryByTestId('btn-enviar-al-canal')).toBeNull();
+  });
+
+  it('in a channel an answer can be sent there; if it cannot, the card says why', async () => {
+    // Arrange
+    const onShare = vi.fn(async () => 'La app no está en este canal.');
+    render(<EphemeralAnswers answers={answers} onDismiss={() => undefined} onShare={onShare} chatId="c1" jwt="jwt" />);
+    // Act
+    fireEvent.click(screen.getByTestId('btn-enviar-al-canal'));
+    // Assert
+    expect(screen.getAllByTestId('btn-enviar-al-canal')).toHaveLength(1);
+    expect(onShare).toHaveBeenCalledWith('c3');
+    expect(await screen.findByText('La app no está en este canal.')).toBeInTheDocument();
   });
 });
 
@@ -76,23 +89,32 @@ describe('Composer with commands', () => {
   it('a known command goes to the app, not to the chat', async () => {
     // Arrange
     const onSend = vi.fn();
-    const commands = stubCommands({ isCommand: vi.fn(() => true) });
+    const commands = stubCommands({ runIfCommand: vi.fn(async () => true) });
     composer(commands, onSend);
     // Act
     fireEvent.change(screen.getByTestId('input-mensaje'), { target: { value: '/clima mañana' } });
     fireEvent.keyDown(screen.getByTestId('input-mensaje'), { key: 'Enter' });
+    await Promise.resolve();
     // Assert
     expect(commands.onType).toHaveBeenCalledWith('/clima mañana');
-    expect(commands.run).toHaveBeenCalledWith('/clima mañana');
+    expect(commands.runIfCommand).toHaveBeenCalledWith('/clima mañana');
     expect(onSend).not.toHaveBeenCalled();
   });
 
-  it('an unknown slash is a normal message', () => {
+  it('in a space chat the field says that «/» brings the commands; elsewhere it does not', () => {
+    const { unmount } = composer(stubCommands());
+    expect(screen.getByTestId('input-mensaje')).toHaveAttribute('placeholder', 'Escribe un mensaje o / para comandos');
+    unmount();
+    composer(stubCommands({ enabled: false }));
+    expect(screen.getByTestId('input-mensaje')).toHaveAttribute('placeholder', 'Escribe un mensaje...');
+  });
+
+  it('an unknown slash is a normal message, once the space\'s commands are known', async () => {
     const onSend = vi.fn();
     composer(stubCommands(), onSend);
     fireEvent.change(screen.getByTestId('input-mensaje'), { target: { value: '/no-existe' } });
     fireEvent.keyDown(screen.getByTestId('input-mensaje'), { key: 'Enter' });
-    expect(onSend).toHaveBeenCalledWith('/no-existe', undefined);
+    await vi.waitFor(() => expect(onSend).toHaveBeenCalledWith('/no-existe', undefined));
   });
 
   it('picking a suggestion writes «/command » and keeps the field', () => {

@@ -154,7 +154,7 @@ export function ChatScreen({
   const seleccion = useSeleccionDeMensajes(messages);
   const destacados = useDestacadosDelChat({ chatId, jwt: credential.jwt, secreto: Boolean(encrypted) });
   const { ocultos, ocultar } = useOcultos(chatId);
-  const commands = useChatCommands({ jwt: credential.jwt, chatId, workspaceId });
+  const commands = useChatCommands({ jwt: credential.jwt, chatId, workspaceId, shareable: !esBorrador && !otherUserId });
   const [verDetalle, setVerDetalle] = useState(false);
   const [detailSection, setDetailSection] = useState<DetailSection | null>(null);
   // The detail mounts the FIRST time it opens and stays (FL12, §49 #13): it is rarely opened, and staying keeps the animation.

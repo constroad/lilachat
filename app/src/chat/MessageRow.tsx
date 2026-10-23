@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
-import { memo, useState } from 'react';
+import { memo } from 'react';
 import * as Haptics from 'expo-haptics';
 import { CircleAlert } from 'lucide-react-native';
 import { AVATAR_DE_AUTOR, colorDeAutor, dondeVaLaHora, mostrarAutor, radiosDeBurbuja } from './burbuja';
@@ -15,6 +15,7 @@ import {
   esAvisoDestacado,
   nombreDeContacto,
   primerEnlace,
+  sharedByLine,
   textoDeAviso,
 } from '@lilachat/shared';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
@@ -35,7 +36,7 @@ import { NudgeLine, WinkLine } from './nudge';
 import { StickerMessage } from './stickers/StickerMessage';
 import { Avatar } from '../ui/Avatar';
 import { MessageMedia } from './MessageMedia';
-import { AlbumCarousel } from './AlbumCarousel';
+import { AlbumGrid } from './AlbumGrid';
 import { BotCardView } from './BotCardView';
 import { drawsAsCard, drawsAsFunLine, isFileMime, isPending, type Row } from './rowKinds';
 import { rememberBubbleWidth } from './bubbleWidths';
@@ -132,7 +133,6 @@ function FilaDeMensaje({
 }) {
   const colores = useColores();
   // Which photo of an album is showing: on the first one, swiping right replies (pending 70).
-  const [albumPage, setAlbumPage] = useState(0);
 
   // Los avisos del grupo no son burbujas de nadie: van centrados, chiquitos y
   // sin cola. Se resuelve ANTES que todo lo demás porque nada de lo de abajo
@@ -225,7 +225,7 @@ function FilaDeMensaje({
   return (
     <DeslizarParaResponder
       // An album's sideways swipes move its photos; on the first photo (nothing before it) swiping right replies (José, 22/10, pending 70).
-      habilitado={!isPending(item) && !enSeleccion && (!album || albumPage === 0)}
+      habilitado={!isPending(item) && !enSeleccion}
       onResponder={() => !isPending(item) && onResponder?.(item.seq, preview, mine)}
     >
     <View
@@ -304,8 +304,11 @@ function FilaDeMensaje({
             />
           ) : null}
 
-          {album ? <AlbumCarousel items={album} onPage={setAlbumPage} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} /> : <MessageMedia item={item} mine={mine} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} onGifTap={jwt && !isPending(item) ? (seq) => showGifOptions({ jwt, chatId: item.chatId, seq, onOpen: () => onVerImagen?.(seq) }) : undefined} author={{ name: mine ? 'Tú' : (nombreAutor ?? ''), photo: fotoAutor }} />}
+          {album ? <AlbumGrid items={album} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} /> : <MessageMedia item={item} mine={mine} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} onGifTap={jwt && !isPending(item) ? (seq) => showGifOptions({ jwt, chatId: item.chatId, seq, onOpen: () => onVerImagen?.(seq) }) : undefined} author={{ name: mine ? 'Tú' : (nombreAutor ?? ''), photo: fotoAutor }} />}
 
+          {!isPending(item) && item.sharedBy && !item.deletedAt ? (
+            <Text testID={`compartido-por-${item.seq}`} className="px-3 pt-1 text-[12px] text-on-surface-variant">{sharedByLine(item.sharedBy)}</Text>
+          ) : null}
           {!isPending(item) && item.deletedAt ? (
             /**
              * La lápida. NO es un hueco: si el mensaje desapareciera sin rastro,

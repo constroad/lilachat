@@ -11,6 +11,7 @@ import { memberName } from './memberWeb';
 import { SpacesLayer, type SpaceDialog } from './SpacesLayer';
 import type { WorkspaceLink } from './SpaceChatList';
 import { peekPendingJoin, takePendingJoin } from './pendingJoin';
+import { peekPendingAppReturn, takePendingAppReturn } from './apps/pendingAppReturn';
 import { useSpaceApps } from './apps/useSpaceApps';
 import { AppDirectory } from './apps/AppDirectory';
 
@@ -163,6 +164,22 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
   }, [spaceId, jwt, myUserId, open]);
   const openAppChat = useCallback((app: DirectoryApp, chat: { chatId: string; botUserId: string }) => spaceId && open({ ...openedChat({ id: chat.chatId, kind: 'direct', name: app.name, memberIds: [myUserId, chat.botUserId] }, spaceId), appId: app.appId }), [spaceId, myUserId, open]);
   const apps = useSpaceApps({ jwt, spaceId, onChat: openAppChat });
+  // Back from agentes after installing (José, 23/10): that space, then the app's detail once its directory is read.
+  const [appReturn, setAppReturn] = useState(peekPendingAppReturn);
+  useEffect(() => {
+    if (!appReturn || !spaces) return;
+    if (!spaces.some((space) => space.id === appReturn.spaceId && space.status === 'active')) {
+      takePendingAppReturn();
+      setAppReturn(null);
+    } else if (currentId !== appReturn.spaceId) setCurrentSpaceId(appReturn.spaceId);
+  }, [appReturn, spaces, currentId]);
+  const { directory, openDirectory } = apps;
+  useEffect(() => {
+    if (!appReturn || spaceId !== appReturn.spaceId || !directory) return;
+    takePendingAppReturn();
+    setAppReturn(null);
+    openDirectory(directory.apps.find((app) => app.clientId === appReturn.clientId)?.appId);
+  }, [appReturn, spaceId, directory, openDirectory]);
   const talkTo = useCallback(async (admin: { userId: string }) => {
     setRemoved(null);
     const response = await api<{ chatId: string }>('/chats', { jwt, body: { kind: 'direct', memberIds: [admin.userId] } });

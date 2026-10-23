@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { ChevronDown } from 'lucide-react-native';
-import { joinCodeFromLink, newlyAddedSpaces, spaceSubtitle, unreadElsewhere, type ActivityItem, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember, type DirectoryApp } from '@lilachat/shared';
+import { appReturnFromLink, joinCodeFromLink, newlyAddedSpaces, spaceSubtitle, unreadElsewhere, type ActivityItem, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember, type DirectoryApp } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 import { createChat } from '../contacts/contactsApi';
 import { getSocket } from '../chat/socketClient';
@@ -67,8 +67,15 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
   const [sheet, setSheet] = useState<Sheet>(null);
   /** A space's join link (pending 47): Android opens the app on it, and «Unirme» opens with its code. */
   const [joinCode, setJoinCode] = useState<string | null>(null);
+  const [appReturn, setAppReturn] = useState<{ spaceId: string; clientId: string } | null>(null);
+  const [appsInitialId, setAppsInitialId] = useState<string | null>(null);
+  /** While the return opens its app, the «te agregaron» screen waits: two windows at once and the second never showed (emulator, 23/10). */
+  const [returning, setReturning] = useState(false);
   useEffect(() => {
     const openLink = (url: string | null) => {
+      // Back from agentes after installing an app (José, 23/10): that space, on the app's detail.
+      const back = appReturnFromLink(url);
+      if (back) return void setAppReturn(back);
       const code = joinCodeFromLink(url);
       if (!code) return;
       setJoinCode(code);
@@ -164,6 +171,24 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
     onOpenChat({ ...spaceChat({ id: chat.chatId, kind: 'direct', name: app.name, memberIds: [myUserId, chat.botUserId] }, current.id), appId: app.appId, avatarUrl: app.avatarUrl });
   }, [current, myUserId, onOpenChat]);
   const apps = useSpaceApps({ jwt, spaceId: current?.id ?? null, active: true, onChat: openAppChat });
+  useEffect(() => {
+    if (!appReturn || !spaces) return;
+    if (!spaces.some((space) => space.id === appReturn.spaceId && space.status === 'active')) return void setAppReturn(null);
+    if (currentId !== appReturn.spaceId) setCurrentSpaceId(appReturn.spaceId);
+  }, [appReturn, spaces, currentId]);
+  const { reload: reloadApps } = apps;
+  useEffect(() => {
+    if (!appReturn || current?.id !== appReturn.spaceId) return;
+    const wanted = appReturn;
+    setAppReturn(null);
+    setReturning(true);
+    void reloadApps()
+      .then((directory) => {
+        setAppsInitialId(directory?.apps.find((app) => app.clientId === wanted.clientId)?.appId ?? null);
+        setSheet('apps');
+      })
+      .finally(() => setReturning(false));
+  }, [appReturn, current?.id, reloadApps]);
   const openNewDirect = useCallback(() => setSheet('newDirect'), []);
   const openNewGroup = useCallback(() => setSheet('newGroup'), []);
 
@@ -220,12 +245,12 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
       {current && (sheet === 'members' || sheet === 'requests') ? (
         <MembersScreen space={current} jwt={jwt} myUserId={myUserId} initialTab={sheet === 'requests' ? 'pending' : 'active'} onInvite={() => setSheet('invite')} onChanged={() => void reload()} onClose={() => setSheet(null)} />
       ) : null}
-      {current && sheet === 'apps' ? <AppDirectoryScreen space={current} apps={apps} onClose={() => setSheet(null)} /> : null}
+      {current && sheet === 'apps' ? <AppDirectoryScreen space={current} apps={apps} initialAppId={appsInitialId} onClose={() => { setSheet(null); setAppsInitialId(null); }} /> : null}
       {current && sheet === 'settings' ? <SpaceSettingsScreen space={current} jwt={jwt} onSaved={() => void reload()} onClose={() => setSheet(null)} /> : null}
       {current && sheet === 'newGroup' ? (
         <NewSpaceGroupScreen space={current} jwt={jwt} myUserId={myUserId} onCreated={(chat) => { setSheet(null); setReloadKey((key) => key + 1); onOpenChat(spaceChat({ ...chat, kind: 'group' }, current.id)); }} onClose={() => setSheet(null)} />
       ) : null}
-      {welcome && !sheet ? (
+      {welcome && !sheet && !appReturn && !returning ? (
         <AddedToSpaceScreen
           space={welcome}
           jwt={jwt}

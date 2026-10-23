@@ -90,6 +90,8 @@ export type ChatMessage = {
   location?: { lat: number; lng: number; accuracy?: number };
   /** A bot's card (`specs/BOTS-API.spec.md` §b): `body` carries its summary. */
   card?: BotCard;
+  /** An app's answer sent to the channel by who asked: «José usó /clima» on top. */
+  sharedBy?: { name: string; command: string };
   /** El sobre de un chat secreto: llega EN VEZ de `body`. La web no lo abre. */
   envelope?: { v: number; nonce: string; ciphertext: string };
   ref?: MessageRef;

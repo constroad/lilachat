@@ -45,3 +45,29 @@ export function albumLayout(rows: readonly AlbumCandidate[]): Map<number, AlbumR
   close();
   return layout;
 }
+
+/** A tile of the album's square, in fractions of its side; the last one may carry «+N». */
+export type AlbumTile = { index: number; x: number; y: number; w: number; h: number; more?: number };
+
+/** The bubble shows at most a 2×2; the rest are in the viewer behind «+N». */
+const GRID_SHOWN = 4;
+const HALF = 0.5;
+
+/**
+ * The album in the bubble as a grid, like WhatsApp (pending 81, José 23/10):
+ * 2 side by side, 3 as one big on top and two small, 4 or more as a 2×2 with
+ * «+N» on the fourth. The carousel stays in the full-screen viewer.
+ */
+export function albumGrid(count: number): AlbumTile[] {
+  if (count < 2) return [];
+  if (count === 2) return [0, 1].map((index) => ({ index, x: index * HALF, y: 0, w: HALF, h: 1 }));
+  if (count === 3) return [{ index: 0, x: 0, y: 0, w: 1, h: HALF }, { index: 1, x: 0, y: HALF, w: HALF, h: HALF }, { index: 2, x: HALF, y: HALF, w: HALF, h: HALF }];
+  return [0, 1, 2, 3].map((index) => ({
+    index,
+    x: (index % 2) * HALF,
+    y: Math.floor(index / 2) * HALF,
+    w: HALF,
+    h: HALF,
+    ...(index === GRID_SHOWN - 1 && count > GRID_SHOWN ? { more: count - GRID_SHOWN } : {}),
+  }));
+}

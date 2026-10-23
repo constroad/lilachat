@@ -92,7 +92,7 @@ export function Conversation(props: {
   const lastSeen = useLastSeen(otherId);
   const otherStatus = usePresenceStatus(otherId);
   const fun = useFunPlayback({ messages: props.mensajes, me: props.yo, chatId: chat.id, muted: Boolean(chat.muted), afterSeq: chat.lastSeq - chat.unread });
-  const commands = useChatCommands({ jwt: props.jwtParaEnlaces, chatId: chat.id, workspaceId: chat.workspaceId });
+  const commands = useChatCommands({ jwt: props.jwtParaEnlaces, chatId: chat.id, workspaceId: chat.workspaceId, shareable: chat.kind === 'group' });
   return (
     <section
       data-testid="panel-conversacion"

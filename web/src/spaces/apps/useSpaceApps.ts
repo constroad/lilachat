@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DirectoryApp, SpaceAppDirectory } from '@lilachat/shared';
+import { currentSocket } from '../../useSocket';
 import { appDirectory, openAppChat, uninstallApp } from '../spacesApi';
 
 /** Coming back from agentes' tab reads the directory again, but not more often than this. */
@@ -45,6 +46,17 @@ export function useSpaceApps(params: { jwt: string; spaceId: string | null; onCh
     setOpenedChats({});
     void refresh();
   }, [refresh]);
+  // Installed, uninstalled or a new manifest (23/10): read again now.
+  useEffect(() => {
+    const socket = currentSocket();
+    const onAppsChanged = (frame: { workspaceId?: string }) => {
+      if (frame.workspaceId === spaceId) void refresh();
+    };
+    socket?.on('workspace.apps.changed', onAppsChanged);
+    return () => {
+      socket?.off('workspace.apps.changed', onAppsChanged);
+    };
+  }, [spaceId, refresh]);
   useEffect(() => {
     const onFocus = () => {
       if (Date.now() - lastRead.current > FOCUS_REFRESH_MS) void refresh();

@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { CircleAlert } from 'lucide-react-native';
-import { TEXTO_ELIMINADO, formatClock, groupsWithPrevious, primerEnlace, type DeliveryState } from '@lilachat/shared';
+import { TEXTO_ELIMINADO, formatClock, groupsWithPrevious, primerEnlace, sharedByLine, type DeliveryState } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
 import { useChatFont } from '../ui/chatFont';
@@ -110,6 +110,7 @@ function FlatRow(props: {
               <MetaDeMensaje {...meta} />
             </View>
           )}
+          {!isPending(item) && item.sharedBy && !deleted ? <Text testID={`compartido-por-${item.seq}`} className="text-[12px] text-on-surface-variant">{sharedByLine(item.sharedBy)}</Text> : null}
           {props.quoted ? <CitaDeRespuesta citado={props.quoted} enBurbujaPropia={false} testID={`cita-${id}`} onPress={isPending(item) ? undefined : props.selecting ? () => props.onSelect?.(item.seq) : quoteAction(props.quoted, item.replyToSeq, props.onOpenThread, props.onGoToQuote)} /> : null}
           {card ? (
             <View style={{ maxWidth: FLAT_CARD }}>

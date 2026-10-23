@@ -7,6 +7,7 @@ import { prepararSonidos } from './sonidos/sonidoDeMensaje';
 import { applyTheme, followSystemTheme, readThemeChoice } from './ui/tema';
 import { applyChatFont, readChatFont } from './ui/chatFont';
 import { catchJoinLink } from './spaces/pendingJoin';
+import { catchAppReturn } from './spaces/apps/pendingAppReturn';
 import { catchCallLink } from './calls/pendingCallLink';
 
 // El navegador deja sonar recién después del primer gesto (20/10).
@@ -20,6 +21,8 @@ applyChatFont(readChatFont());
 // A space's join link (pending 47): its code waits through the sign-in.
 catchJoinLink();
 catchCallLink();
+// Back from agentes after installing an app: that space opens on the app.
+catchAppReturn();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

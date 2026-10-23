@@ -298,17 +298,19 @@ export const Composer = memo(function Composer(props: {
       });
       return;
     }
-    if (props.commands?.isCommand(texto)) {
-      void props.commands.run(texto).then((ok) => {
-        if (!ok) ponerTexto(texto);
-      });
-      return;
-    }
     const rangos = menciones.rangos();
     menciones.limpiar();
-    void props.onEnviar(texto, props.respondiendoA?.seq, rangos).then((ok) => {
-      // Si no salió, el texto vuelve al campo: perderlo sería peor que el aviso.
-      if (!ok) ponerTexto(texto);
+    const respondiendoA = props.respondiendoA?.seq;
+    const sendAsText = () =>
+      void props.onEnviar(texto, respondiendoA, rangos).then((ok) => {
+        // Si no salió, el texto vuelve al campo: perderlo sería peor que el aviso.
+        if (!ok) ponerTexto(texto);
+      });
+    if (!props.commands) return sendAsText();
+    // A «/» line waits for the space's commands before deciding (23/10: a fast «/clima» went to the channel as text).
+    void props.commands.runIfCommand(texto).then((outcome) => {
+      if (outcome === 'not-command') sendAsText();
+      else if (!outcome) ponerTexto(texto);
     });
   };
 
@@ -398,7 +400,7 @@ export const Composer = memo(function Composer(props: {
           }}
         />
       ) : null}
-      {props.commands ? <EphemeralAnswers answers={props.commands.answers} onDismiss={props.commands.dismiss} chatId={props.chatId} jwt={props.jwt ?? ''} /> : null}
+      {props.commands ? <EphemeralAnswers answers={props.commands.answers} onDismiss={props.commands.dismiss} onShare={props.commands.share} chatId={props.chatId} jwt={props.jwt ?? ''} /> : null}
       {props.commands ? (
         <CommandPanel
           groups={props.commands.suggestions}

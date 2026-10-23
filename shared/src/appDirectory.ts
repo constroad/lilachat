@@ -1,5 +1,6 @@
 import { APP_CATEGORIES, APP_CATEGORY_LABEL, type AppCategory } from './botManifest.js';
 import type { DirectoryApp } from './bots.js';
+import { LILACHAT_WEB_URL } from './spaceSections.js';
 
 /**
  * The apps directory of a space (design e-24, like Slack's): the chips, the
@@ -53,4 +54,19 @@ export function appInstalledByLine(installation: Pick<Installation, 'installedBy
   const day = new Date(new Date(installation.installedAt).getTime() + LIMA_OFFSET_MS);
   const date = `${day.getUTCDate()} ${MONTHS[day.getUTCMonth()]}`;
   return installation.installedBy ? `Instalada por ${installation.installedBy} · ${date}` : `Instalada el ${date}`;
+}
+
+/**
+ * Where agentes sends the person back after installing (José, 23/10, like
+ * Slack and Bitbucket: the web only signs in and authorizes). Android opens
+ * the app on it (App Link); the web opens the same space and app.
+ */
+export const appReturnLink = (spaceId: string, clientId: string): string => `${LILACHAT_WEB_URL}/s/${spaceId}/apps/${encodeURIComponent(clientId)}`;
+
+/** A regex, not `URL`: React Native's is incomplete. A full address must be Lilachat's; a bare path is the web's own. */
+const RETURN_LINK = /^(?:https:\/\/lilachat\.constroad\.com)?\/s\/([0-9a-f]{24})\/apps\/([A-Za-z0-9_-]{4,64})(?:[/?#]|$)/i;
+
+export function appReturnFromLink(url: string | null | undefined): { spaceId: string; clientId: string } | null {
+  const match = RETURN_LINK.exec(url ?? '');
+  return match ? { spaceId: match[1]!.toLowerCase(), clientId: match[2]! } : null;
 }

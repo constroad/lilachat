@@ -9,8 +9,8 @@ import { AppLogo } from './AppLogo';
 import type { SpaceApps } from './useSpaceApps';
 
 const installation = { installationId: 'i1', botUserId: 'bot1', installedBy: 'José Zamora', installedAt: '2026-10-23T15:00:00Z', channels: 3, directs: 12 };
-const inframaq: DirectoryApp = { appId: 'a1', name: 'Inframaq', description: 'Clima, asistencias y tanques de la planta', features: ['El clima de la planta'], developer: 'Agentes ConstRoad', category: 'operacion', commands: [{ command: 'clima', description: 'Clima de hoy', usageHint: '[mañana]' }], installation };
-const pulso: DirectoryApp = { appId: 'a2', name: 'Pulso', description: 'Asistencia del personal', features: [], category: 'personas', commands: [], installUrl: 'https://agentes.example.com/install?app=pulso&space=s1' };
+const inframaq: DirectoryApp = { appId: 'a1', clientId: 'lca_inframaq', name: 'Inframaq', description: 'Clima, asistencias y tanques de la planta', features: ['El clima de la planta'], developer: 'Agentes ConstRoad', category: 'operacion', commands: [{ command: 'clima', description: 'Clima de hoy', usageHint: '[mañana]' }], installation };
+const pulso: DirectoryApp = { appId: 'a2', clientId: 'lca_pulso', name: 'Pulso', description: 'Asistencia del personal', features: [], category: 'personas', commands: [], installUrl: 'https://agentes.example.com/install?app=pulso&space=s1' };
 const space = { id: 's1', name: 'INFRAMAQ' } as ClientWorkspace;
 
 const appsOf = (overrides: Partial<SpaceApps> = {}): SpaceApps => ({

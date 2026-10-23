@@ -4916,8 +4916,9 @@ Pedido de José del 23/10, con capturas de WhatsApp: «mejorarlo brutalmente
 ensucie y que sea fácil de acceder al detalle». El objetivo declarado:
 automatizar lo más posible, liberar tareas de las personas y dejar WhatsApp
 para estos avisos. Diseños: `r155-avisos-canal`, `r155-clima-detalle`,
-`r155-caja-comandos`, `r155-gastos-cola`, `r155-asistencia-tanque` y
-`r155-tanques-detalle` (Stitch, 23/10).
+`r155-caja-comandos`, `r155-gastos-cola`, `r155-asistencia-tanque`,
+`r155-tanques-detalle`, `r155-gasto-vista-previa`, `r155-cotizacion`,
+`r155-comandos-por-agente` y `r155-web-planta` (escritorio) (Stitch, 23/10).
 
 ### 118.1 Lo que pasa hoy (capturas de José)
 
@@ -5068,6 +5069,28 @@ para server, app y web:
   `/despachos`, `/pedidos`, `/eta`, `/agregados`) y la mención `@Lila`, ya
   previstos en el §73.5; la lista sale del §118.3-bis.
 - Avatar de bot: robot sobrio en el círculo del acento (§118.2, punto 8).
+- **El compositor dice que hay comandos:** en un canal con apps, el texto de
+  ayuda es «Mensaje a # planta · escribe / para comandos», como Claude Code.
+  Al escribir «/» se abre la lista **agrupada por agente** (Lila, Inframaq,
+  Lab Vial… los que el espacio tenga conectados), cada grupo con su avatar y
+  un buscador arriba (`r155-comandos-por-agente`).
+- **Acceso rápido a los agentes (opinión, pedida por José):** NO un segundo
+  botón flotante al lado del lápiz. El lápiz crea conversaciones; un segundo
+  botón flotante compite con él, tapa la lista y en el teléfono son dos
+  círculos iguales que se confunden. Mejor dos lugares que ya existen: (1) un
+  botón de rayo «Atajos» en el compositor, que abre la misma lista de
+  comandos por agente sin tener que saber que existe la barra; y (2) una
+  sección **AGENTES** en la lista de canales del espacio (en la web, la barra
+  lateral; en el teléfono, la lista del espacio), con cada agente conectado:
+  tocarlo abre su conversación con sus comandos y lo último que hizo.
+- **Web:** tres paneles (`r155-web-planta`): barra lateral con canales,
+  agentes y directos; el canal al centro; y el detalle de la tarjeta en un
+  panel a la derecha en vez de la hoja del teléfono. De esa captura sobran
+  todas las leyendas inventadas: «Site #4 Planta», «Telemetría operativa»,
+  «Exportar telemetría», «Desplegar Bot Lila», «Estación meteorológica…»,
+  «Aviso técnico de tolva», «Vía sensor ultrasónico + sonda manual»,
+  «Telemetría OK», «43 frentes» y los textos en inglés («New Log Entry»,
+  «Alerta 24H»).
 - **Tarjeta de cola:** una tarjeta con filas que cambian de estado por
   `PATCH` (a lo sumo una edición por segundo).
 - Los botones viajan como evento firmado a agentes (§73.4). Lilachat no
@@ -5098,6 +5121,18 @@ proyecto o servicio y partida, y adjunte el archivo.
    borrador o «Confirmar los 3 listos»; «Editar» abre un formulario corto ya
    lleno. Confirma quien tenga el permiso de caja en Portal (agentes lo
    respeta).
+4-bis. **La vista previa es obligatoria, no los checks** (José, 23/10:
+   «tienes que darle un preview de qué hiciste, no solo los items en
+   check»). Tocar un borrador abre «Así va a quedar en Portal»
+   (`r155-gasto-vista-previa`): el comprobante con lo leído resaltado (monto,
+   destinatario, operación) y «Ver original»; el registro tal como se va a
+   crear, campo por campo, cada uno con su ORIGEN (ojo = leído del
+   comprobante; globo = sacado del mensaje de Aracely) y lo sugerido en
+   ámbar para confirmar; y las comprobaciones hechas («No hay otro gasto con
+   la operación 00730671», «El monto del texto coincide con el comprobante»,
+   «La partida existe en ese servicio»). Se pasa de uno a otro (1 de 4) y se
+   confirma desde ahí. «Confirmar los 3 listos» sin abrir ninguno queda solo
+   para quien ya revisó la vista previa de cada uno.
 5. Al confirmar, agentes crea el movimiento en Portal con el comprobante y
    el borrador se convierte en la tarjeta compacta «Egreso · Pagado» con «1
    comprobante» y «Ver en Portal». El resumen del día se actualiza solo.
@@ -5116,12 +5151,31 @@ la sesión de Portal).
 operación; el archivo original se guarda con su huella; los montos se ven
 solo en canales con permiso de caja; Portal registra quién confirmó.
 
-### 118.6 La misma pieza para lo demás
+### 118.6 La misma pieza para lo demás: pedidos, servicios, cotizaciones y órdenes de compra
 
-El patrón «la IA arma el borrador, una persona confirma» sirve para: consumo
-por foto del medidor o del vale; llegada de material por foto de la guía (lee
-número y m³); despacho; y checklists y recordatorios que se crean solos desde
-un aviso («Sábado no apto» → recordatorio a la cuadrilla).
+El patrón es siempre el mismo: **la IA arma el borrador, muestra la vista
+previa de lo que va a crear y una persona confirma**. Sirve para:
+
+- **Cotización** (`r155-cotizacion`): «/cotizar 40 m³ de asfalto en caliente
+  para Comercial Surco, entrega el viernes 30, puesto en obra». Agentes busca
+  el cliente en Portal, toma los precios de la lista vigente, arma los ítems
+  (mezcla, transporte), el IGV y el total, genera el PDF con el membrete y lo
+  muestra; lo que falta lo dice en ámbar («el cliente no tenía la dirección de
+  obra»). «Confirmar y enviar al cliente» la crea en Portal y manda el PDF.
+- **Orden de compra:** «/orden-compra 2 cilindros de petróleo a Primax para la
+  planta». Proveedor y precio del último pedido, la vista previa de la orden y
+  su PDF, y confirmar la crea y la envía.
+- **Pedido o servicio:** igual que la cotización, con la vista previa del
+  pedido (cliente, obra, mezcla, m³, fecha y hora, planta) antes de crearlo.
+  Es lo que agentes ya tiene por MCP contra Portal (`createOrder`), con
+  confirmación de la misma persona.
+- **Consumo** por foto del medidor o del vale, y **llegada de material** por
+  foto de la guía (número y m³), con la misma vista previa.
+- Checklists y recordatorios que nacen de un aviso («Sábado no apto» →
+  recordatorio a la cuadrilla).
+
+Lo que escribe en Portal lo hace siempre agentes con la sesión y los permisos
+de quien confirma; Lilachat solo muestra la vista previa y devuelve el «sí».
 
 ### 118.7 Fases
 

@@ -116,3 +116,6 @@ export * from './messageThumbs.js';
 export * from './repeatRule.js';
 export * from './winkSeasons.js';
 export * from './chatDetailTabs.js';
+export * from './videoEmbed.js';
+export * from './sharedLocation.js';
+export * from './storage.js';

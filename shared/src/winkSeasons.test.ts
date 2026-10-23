@@ -27,4 +27,14 @@ describe('seasonal winks (pending 73)', () => {
     expect(march.map((group) => group.title)).toEqual(['Personajes', 'Obra y pistas', 'Emojis']);
     expect(march.flatMap((group) => group.winks).some((wink) => wink.season)).toBe(false);
   });
+
+  it('in December Christmas goes first, and Halloween is no longer offered', () => {
+    // Act
+    const december = winkPanelGroups(lima(2026, 12, 10));
+    const offered = december.flatMap((group) => group.winks);
+    // Assert
+    expect(december[0]?.title).toBe('Navidad');
+    expect(december[0]?.winks.map((wink) => wink.id)).toEqual(['santa', 'elf', 'reindeer', 'snowman', 'secret-santa']);
+    expect(offered.some((wink) => wink.season === 'halloween')).toBe(false);
+  });
 });

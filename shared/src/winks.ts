@@ -13,9 +13,11 @@ import type { ScreenEffect } from './winkTimeline.js';
  * so the app and the web, sender and receiver, see the same. PURE: the app,
  * the web and the server use it.
  */
-export type CharacterWinkId = 'piggy' | 'balloon' | 'worker' | 'cuppa' | 'sweetheart' | 'bear' | 'kitty' | 'puppy' | 'panda' | 'brick' | 'rainy' | HalloweenWinkId;
+export type CharacterWinkId = 'piggy' | 'balloon' | 'worker' | 'cuppa' | 'sweetheart' | 'bear' | 'kitty' | 'puppy' | 'panda' | 'brick' | 'rainy' | HalloweenWinkId | ChristmasWinkId;
 /** Pending 73: the Halloween ones (sheet `r151-halloween`). */
 export type HalloweenWinkId = 'pumpkin' | 'vampire' | 'mummy' | 'witch' | 'ghost';
+/** Pending 73: the Christmas ones (sheet `r152-navidad`). */
+export type ChristmasWinkId = 'santa' | 'elf' | 'reindeer' | 'snowman' | 'secret-santa';
 export type SiteWinkId = 'cone' | 'roller' | 'dumptruck' | 'excavator' | 'paver' | 'flagger';
 export type EmojiWinkId = 'hearts' | 'applause' | 'party' | 'laugh' | 'hug' | 'hardhat' | 'coffee' | 'done';
 export type WinkId = CharacterWinkId | SiteWinkId | EmojiWinkId;
@@ -68,6 +70,12 @@ export const WINKS: readonly Wink[] = [
   { ...character('mummy', 'Momia de obra', 'season', [], 'rise', 'mummy-worker'), season: 'halloween' },
   { ...character('witch', 'Bruja contadora', 'season', ['✨', '💚'], 'rise', 'witch-accountant'), season: 'halloween' },
   { ...character('ghost', 'Fantasma practicante', 'season', ['👻'], 'rise', 'ghost-intern'), season: 'halloween' },
+  // Christmas (pending 73): offered from December 1 to 26.
+  { ...character('santa', 'Papá Noel capataz', 'season', ['⭐'], 'rise', 'santa-foreman'), season: 'christmas' },
+  { ...character('elf', 'Elfo practicante', 'season', ['🎁'], 'rise', 'elf-intern'), season: 'christmas' },
+  { ...character('reindeer', 'Reno chofer', 'season', ['💨'], 'burst', 'reindeer-driver'), season: 'christmas' },
+  { ...character('snowman', 'Vigilante de nieve', 'season', ['💧'], 'rise', 'snowman-guard'), season: 'christmas' },
+  { ...character('secret-santa', 'Amigo secreto', 'season', ['🎉'], 'burst', 'secret-santa'), season: 'christmas' },
   // Construction, roads and asphalt (José, 21/10: «agrega conceptos de obra, pistas y asfalto»).
   character('cone', 'Cono cumbiero', 'site', ['🎵', '🎶'], 'rise'),
   character('roller', 'Rodillo chévere', 'site', ['💨', '✨'], 'rise'),

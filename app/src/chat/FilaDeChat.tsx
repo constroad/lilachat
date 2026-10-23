@@ -90,7 +90,7 @@ export const FilaDeChat = memo(function FilaDeChat(props: {
             nombre={props.titulo}
             foto={chat.propio ? (props.miFoto ?? undefined) : chat.avatarUrl}
             tamano={LIST_AVATAR_SIZE}
-            // Un borrador se distingue de una persona y de un grupo; el chat contigo lleva tu foto.
+            // A draft looks unlike a person or a group; the chat with yourself carries your photo.
             icono={chat.kind === 'notas' && !chat.propio ? <NotebookPen size={22} color={colores.primary} /> : undefined}
           />
         )}

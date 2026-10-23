@@ -10,6 +10,14 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.156',
+    items: [
+      'Los avisos de las apps se dibujan: tanques, gráficos y cifras, con su detalle a un toque.',
+      'Las apps llevan su robot, para no confundirlas con una persona.',
+      'Ajustes del espacio → Integraciones: instala apps como Lila desde ahí.',
+    ],
+  },
+  {
     version: '0.1.155',
     items: ['Un video que te mandaron sigue sonando con la pantalla apagada o en otra app, con su control en el aviso.'],
   },

@@ -4909,6 +4909,45 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 120. Kit de tarjetas, robot de las apps, «Instalar» en Integraciones y el consentimiento como Slack (23/10/2026, 0.1.156)
+
+Lo que necesita el piloto de agentes en Inframaq (José, 23/10: «primero
+intégralo tú»). Agentes puso su canal en producción el mismo día (365ee9a:
+instalador, vuelta, webhook y salida por tema).
+
+- **Kit de tarjetas (§118.4).** La tarjeta de bot suma `blocks` (hasta 8),
+  `detail` (hasta 12, se abre en una hoja) y `updated_at` («Actualizado
+  HH:MM»), con un tope de 16 KB. Bloques: `metric`, `chips`, `chart`
+  (`bar-h`, `bar-v`, `line` con umbral), `progress`, `tank` (uno grande o la
+  grilla de varios), `text`, `rows` (con mini barra), `people` y
+  `attachments` (solo https, se abre adentro). Un tipo desconocido se ignora
+  para que agentes pueda adelantarse. Motor puro en `shared/botBlocks.ts`
+  (validación y geometría compartida); dibujo nativo con `react-native-svg`
+  en la app y SVG en la web, con los colores del tema. Editar en su lugar ya
+  existía (PATCH).
+- **Robot de las apps.** Un mensaje de una app instalada lleva el avatar de
+  robot sobrio en el círculo del acento (app y web), además de la pastilla
+  «App».
+- **«Instalar» en Integraciones.** La app registrada tiene `installUrl`; el
+  admin del espacio ve «Para instalar» con cada app disponible y su botón,
+  que abre la página de la app con `?space=<id>` (`GET
+  /api/workspaces/:id/available-apps`). El script de registro pone esa
+  dirección sin rotar el secreto (`--install-url`).
+- **Consentimiento (`r156-instalar-consentimiento`).** Los dos logos, qué
+  podrá y qué no podrá, «Instalar en <espacio>» y cómo desinstalar. Viniendo
+  de un espacio no pregunta por el espacio (José: «se supone que lo estoy
+  instalando en un espacio, ¿no es así en Slack?»): dice «Se instala en
+  Inframaq» con un «Cambiar» discreto; la lista sale solo si se entra sin
+  espacio.
+- **E2E (QA):** dos tarjetas con el kit (líquidos y clima) en el chat QA
+  Ana–José. En el emulador: el tanque con su mínimo, las barras con «Bajo» en
+  rojo, «Actualizado» y la hoja con la grilla de tanques, la línea de la
+  semana y las medidas de hoy. En la web: las dos tarjetas y el detalle del
+  clima con las barras por día y los distritos. Se borraron por la ruta
+  normal; la base quedó en cero.
+- **Pasa a la R157:** los comandos con «/» agrupados por app (§73.5): Lilachat
+  los dibuja cuando agentes los registre.
+
 ## 119. Medios propios sin lila, intentos de respaldo contados y video con la pantalla apagada (23/10/2026, 0.1.155)
 
 Pendientes 82 (código), 83, 74 y 84 (diagnóstico).
@@ -5339,7 +5378,10 @@ corresponde es una llave de API con los términos comerciales: la suscripción
 es de uso personal y además tiene ventanas de uso que la vuelven poco
 confiable como cola de producción. Para el «cron que lee la base» la API ya
 trae agentes agendados (Managed Agents con despliegues agendados), sin
-máquina propia. **Pendiente:** el chat que José escribió ayer desde el
+máquina propia. **Verificado contra los documentos de Anthropic por la
+sesión heyLila (23/10, `heyLila/specs/HEYLILA.spec.md` §1-bis, con citas):**
+la suscripción no sirve de backend de un servicio; ese es el único lugar donde
+vive esta conclusión. **Pendiente:** el chat que José escribió ayer desde el
 celular no está entre las sesiones visibles desde acá; si José comparte su
 conclusión, se suma.
 

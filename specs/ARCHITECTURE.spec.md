@@ -4909,6 +4909,65 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 112. Repeticiones de recordatorios y vista previa del enlace, recordatorio a pantalla completa, álbum a 3/4 con el gesto de responder y sin la casilla de cumpleaños (22/10/2026, 0.1.150)
+
+Cierra los pendientes 65, 63, 70 y 71; el 64 ya funcionaba y se verificó.
+
+**Repeticiones (65).** Diseño `r150-repetir`.
+- `repeatRule` (shared, puro, en hora de Lima): días de la semana elegidos
+  (martes y jueves), mensual el mismo día o el último (28, 29, 30 o 31: es «el
+  día antes del 1 del mes siguiente») y cada N días, semanas o meses.
+  `Recurrence` suma `monthly`.
+- **La regla guarda el día pedido** (`day`). Después de sonar, el cron mueve
+  `startsAt` a la próxima vez: sin el día, un «31 de cada mes» habría quedado
+  en «28» para siempre después de febrero (`anchorRepeatRule`).
+- Server: `Reminder.repeat`, alta y edición, y el cron (`decidirRecordatorio`
+  y `nextOccurrence`) con la regla. La línea de la tarjeta es `whenItRings` y
+  la etiqueta corta, `repeatLabel` («Mar y jue», «Fin de mes», «Cada 2 días»).
+- App (`RepeatPicker`) y web (`RepeatPickerWeb`): segmentado de 4, días
+  «L M M J V S D», las opciones mensuales, «Cada N» y el resumen («Se repite
+  los martes y jueves a las 9:00 a. m.»). Nunca queda una semana sin días.
+- Tests: shared 11 (bisiestos, meses de 30 y 31, el día que sobrevive al
+  cron), server 3 y web 3.
+- E2E web: crear martes y jueves (guardado en 817 ms, la fila dice «Mar y jue
+  · 27 oct»), pasarlo a último día del mes y borrarlo. App: el selector, sin
+  guardar en la cuenta de José.
+
+**Vista previa del enlace en el formulario (65).** Un enlace en la nota del
+recordatorio (app y web) o en la descripción del evento (app) muestra la
+tarjeta del chat (`VistaPreviaAlEscribir`) con su X. E2E: YouTube en la web y
+en el emulador.
+
+**Recordatorio a pantalla completa (63).**
+- El teléfono que lo declara (`REMINDER_NATIVE_CAPABILITY`) recibe el
+  recordatorio como push de datos; los demás, el aviso de siempre.
+- Nativo (`ReminderAlarm.kt`): aviso con `fullScreenIntent` (el mismo permiso
+  de las llamadas) que enciende la pantalla y abre la app sobre el bloqueo,
+  con «Listo» y «Posponer 10 min». Posponer no pasa por el server: el teléfono
+  lo vuelve a mostrar con `AlarmManager` (exacto si el teléfono lo permite).
+- App: `ReminderAlarmHost` lo muestra en grande (hora, título, nota y los dos
+  botones) y suelta el bloqueo al terminar.
+- E2E: push real solo al emulador, con la pantalla apagada: se encendió y
+  mostró «Tomar la pastilla». «Posponer» dejó la alarma programada para 10
+  minutos después.
+
+**Aviso desplegable (64).** El aviso ya juntaba los mensajes del chat (hasta
+7) y al desplegarse se ven todos, con la imagen del último. Probado con dos
+pushes seguidos. Falta probarlo en el Samsung de José.
+
+**Álbum (70).** Cuadrado a 3/4 del ancho, como WhatsApp (antes tomaba el ancho
+de la foto). En la primera foto, deslizar a la derecha responde (no hay foto
+anterior); en las demás, cambia de foto. E2E: 811 px de ancho en el emulador;
+deslizar en la primera abrió «responder»; en la segunda volvió a la primera.
+
+**Cumpleaños sin casilla (71).** «Que mis chats vean mi cumpleaños» salió del
+perfil (app y web), y el aviso ya no mira esa preferencia vieja: lo decide el
+chat.
+
+**Limpieza de QA.** El recordatorio y el álbum de Ana se borraron por la ruta
+normal; el cumpleaños temporal de Ana se sacó; se desvinculó la web; se forzó
+el cierre de la app del emulador para cancelar la alarma de prueba.
+
 ## 111. Ícono y miniaturas en los avisos y la lista, panel de emojis con íconos y búsqueda de GIF a pantalla completa, el perrito bajo la lluvia, una sola banda de versión en la web y los avisos borrados (22/10/2026, 0.1.149)
 
 Cierra los pendientes 57, 59, 60 y 61, y dos bugs del E2E.
@@ -10110,13 +10169,13 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     «Sin sección» queda al final y las secciones se reordenan. Los chips quedan
     solo como filtros rápidos (No leídos, Grupos). Las listas del 45 pasan a ser
     secciones, con el mismo dato (`User.chatLists`). Espera el OK de José.
-63. **Recordatorio a pantalla completa con el teléfono bloqueado**, como Google
+63. ~~**Recordatorio a pantalla completa con el teléfono bloqueado**~~ **Hecho (§112, 0.1.150),** como Google
     Calendar: al vencer, enciende la pantalla y lo muestra en grande (el mismo
     permiso de pantalla completa de las llamadas), con «Listo» y «Posponer».
-64. **Notificación que se despliega con varios mensajes**, como WhatsApp: al
+64. ~~**Notificación que se despliega con varios mensajes**~~ **Ya funcionaba; verificado en §112 (falta probarlo en el Samsung de José).** Como WhatsApp: al
     deslizar hacia abajo se ven los últimos mensajes del chat (estilo de
     conversación de Android), no solo el último.
-65. **Eventos y recordatorios: vista previa del enlace y repeticiones.** En el
+65. ~~**Eventos y recordatorios: vista previa del enlace y repeticiones.**~~ **Hecho (§112, 0.1.150).** En el
     formulario, un enlace (un video) muestra su vista previa. Repetir: los días
     de la semana elegidos (solo martes y jueves, solo lunes), el último día del
     mes (28 o 29 en febrero, 30 o 31 en el resto; es «el día anterior al 1 del
@@ -10136,6 +10195,31 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
       `disco_ausente` hasta que José lo monte (`docs/RESPALDOS-RUNBOOK.md`).
     - F13 (Mongo de emergencia): redefinir, porque la base ya vive en la mini
       (bóveda) desde el 17/10.
+68. **Avatares en los avisos, como WhatsApp** (José, 22/10, captura). El aviso
+    lleva la foto del grupo (o del contacto) con el ícono de la app chiquito
+    encima, y cada mensaje la foto de quien lo escribió, no la inicial.
+69. **El detalle del chat agrupado como WhatsApp** (captura de «Flujo caja»):
+    foto grande, nombre y «Grupo · 5 miembros», la descripción, una fila de
+    acciones (Llamar, Compartir, Buscar…) y debajo pestañas **Miembros ·
+    Media · Ajustes**; en Miembros, «Agregar miembros» primero y cada uno con
+    su etiqueta («Admin del grupo»).
+70. ~~**El álbum más chico y con el gesto de responder**~~ **Hecho (§112, 0.1.150).** (José, 22/10). En
+    WhatsApp el álbum ocupa 3/4 del ancho; el nuestro es más grande. Y se debe
+    poder responder deslizando: hoy solo con el toque largo y la barra de
+    arriba. Propuesta: deslizar a la derecha en la PRIMERA foto responde (no
+    hay foto anterior); en las demás, cambia de foto.
+71. ~~**Sin la casilla «Que mis chats vean mi cumpleaños» al completar el
+    perfil**~~ **Hecho (§112, 0.1.150).** (José, 22/10): si alguien la desmarca, el aviso que activa el
+    admin del grupo no le llega. Los cumpleaños los decide el chat.
+72. **Aviso a los admins un día antes del cumpleaños de un miembro** (José,
+    22/10): el día anterior, a los admins del grupo (no a todos), para que
+    preparen algo.
+73. **Guiños de temporada** (José, 22/10): según la época del año aparecen en
+    la lista, mínimo 5 por temporada, diseñados en Stitch con el tono adulto
+    de siempre. Temporadas: Halloween (octubre), Navidad (diciembre), Año
+    Nuevo (fin de diciembre y enero), San Valentín (febrero), Fiestas Patrias
+    (julio) y Día de la Madre (mayo). Fuera de su época no se ofrecen; los ya
+    recibidos se siguen viendo. Empezar por Halloween (estamos en octubre).
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

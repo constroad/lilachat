@@ -13,11 +13,13 @@ import type { ScreenEffect } from './winkTimeline.js';
  * so the app and the web, sender and receiver, see the same. PURE: the app,
  * the web and the server use it.
  */
-export type CharacterWinkId = 'piggy' | 'balloon' | 'worker' | 'cuppa' | 'sweetheart' | 'bear' | 'kitty' | 'puppy' | 'panda' | 'brick' | 'rainy' | HalloweenWinkId | ChristmasWinkId;
+export type CharacterWinkId = 'piggy' | 'balloon' | 'worker' | 'cuppa' | 'sweetheart' | 'bear' | 'kitty' | 'puppy' | 'panda' | 'brick' | 'rainy' | HalloweenWinkId | ChristmasWinkId | LaterSeasonsWinkId;
 /** Pending 73: the Halloween ones (sheet `r151-halloween`). */
 export type HalloweenWinkId = 'pumpkin' | 'vampire' | 'mummy' | 'witch' | 'ghost';
 /** Pending 73: the Christmas ones (sheet `r152-navidad`). */
 export type ChristmasWinkId = 'santa' | 'elf' | 'reindeer' | 'snowman' | 'secret-santa';
+/** Pending 73: New Year, Valentine, Mother's Day and Fiestas Patrias (sheets `r153-*`). */
+export type LaterSeasonsWinkId = 'countdown' | 'grapes' | 'suitcase' | 'yellow' | 'toast' | 'cupid' | 'roses' | 'serenade' | 'stood-up' | 'heartbroken' | 'multitask-mom' | 'grandma' | 'late-son' | 'engineer-mom' | 'voice-note' | 'flag' | 'marinera' | 'anticucho' | 'parade' | 'pisco';
 export type SiteWinkId = 'cone' | 'roller' | 'dumptruck' | 'excavator' | 'paver' | 'flagger';
 export type EmojiWinkId = 'hearts' | 'applause' | 'party' | 'laugh' | 'hug' | 'hardhat' | 'coffee' | 'done';
 export type WinkId = CharacterWinkId | SiteWinkId | EmojiWinkId;
@@ -76,6 +78,30 @@ export const WINKS: readonly Wink[] = [
   { ...character('reindeer', 'Reno chofer', 'season', ['💨'], 'burst', 'reindeer-driver'), season: 'christmas' },
   { ...character('snowman', 'Vigilante de nieve', 'season', ['💧'], 'rise', 'snowman-guard'), season: 'christmas' },
   { ...character('secret-santa', 'Amigo secreto', 'season', ['🎉'], 'burst', 'secret-santa'), season: 'christmas' },
+  // New Year (pending 73): December 27 to January 7.
+  { ...character('countdown', 'Cuenta regresiva', 'season', [], 'burst', 'countdown-boss'), season: 'newyear' },
+  { ...character('grapes', 'Las doce uvas', 'season', [], 'rise', 'grape-guy'), season: 'newyear' },
+  { ...character('suitcase', 'La maleta', 'season', [], 'rise', 'suitcase-runner'), season: 'newyear' },
+  { ...character('yellow', 'Todo amarillo', 'season', [], 'rise', 'yellow-lucky'), season: 'newyear' },
+  { ...character('toast', 'El brindis', 'season', [], 'burst', 'toast-engineer'), season: 'newyear' },
+  // Valentine (pending 73): February 1 to 15.
+  { ...character('cupid', 'Cupido practicante', 'season', ['💘'], 'rise', 'cupid-intern'), season: 'valentine' },
+  { ...character('roses', 'Delivery de rosas', 'season', [], 'rise', 'roses-courier'), season: 'valentine' },
+  { ...character('serenade', 'Serenata', 'season', [], 'rise', 'serenader'), season: 'valentine' },
+  { ...character('stood-up', 'Plantón', 'season', [], 'rise', 'stood-up'), season: 'valentine' },
+  { ...character('heartbroken', 'Corazón roto', 'season', [], 'rise', 'heartbroken'), season: 'valentine' },
+  // Mother's Day (pending 73): May 1 to 15.
+  { ...character('multitask-mom', 'Mamá multitarea', 'season', [], 'rise', 'multitask-mom'), season: 'mothers' },
+  { ...character('grandma', '¿Ya comiste?', 'season', [], 'rise', 'grandma-cook'), season: 'mothers' },
+  { ...character('late-son', 'Llegó tarde', 'season', ['🌸'], 'rise', 'late-son'), season: 'mothers' },
+  { ...character('engineer-mom', 'Mamá ingeniera', 'season', [], 'rise', 'engineer-mom'), season: 'mothers' },
+  { ...character('voice-note', 'El audio de mamá', 'season', [], 'rise', 'voice-note-mom'), season: 'mothers' },
+  // Fiestas Patrias (pending 73): July 15 to 31.
+  { ...character('flag', '¡Viva el Perú!', 'season', [], 'burst', 'flag-worker'), season: 'patrias' },
+  { ...character('marinera', 'Marinera', 'season', [], 'rise', 'marinera-dancer'), season: 'patrias' },
+  { ...character('anticucho', 'Anticuchos', 'season', [], 'rise', 'anticucho-chef'), season: 'patrias' },
+  { ...character('parade', 'Paso de desfile', 'season', [], 'rise', 'parade-marcher'), season: 'patrias' },
+  { ...character('pisco', 'Salud con pisco', 'season', [], 'rise', 'pisco-toast'), season: 'patrias' },
   // Construction, roads and asphalt (José, 21/10: «agrega conceptos de obra, pistas y asfalto»).
   character('cone', 'Cono cumbiero', 'site', ['🎵', '🎶'], 'rise'),
   character('roller', 'Rodillo chévere', 'site', ['💨', '✨'], 'rise'),

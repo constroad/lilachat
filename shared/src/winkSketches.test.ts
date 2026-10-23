@@ -47,6 +47,15 @@ describe('the wink sketches', () => {
     }
   });
 
+  it('every actor is seen at some moment (R153: an opacity only on the last key hid the suitcase wink whole)', () => {
+    for (const [id, sketch] of Object.entries(WINK_SKETCHES)) {
+      sketch.actors.forEach((actor, index) => {
+        const seen = Array.from({ length: 101 }, (_, step) => step / 100).some((at) => !unseenAt(actor, at));
+        expect(seen, `${id} actor ${index}`).toBe(true);
+      });
+    }
+  });
+
   it('nothing pops in or out: every actor starts and ends unseen (faded, tiny or off the screen)', () => {
     for (const [id, sketch] of sketches) {
       sketch.actors.forEach((actor, index) => {

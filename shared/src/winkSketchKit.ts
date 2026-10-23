@@ -84,3 +84,27 @@ export const appearAt = (at: number): ActorKey[] => [{ at: 0, opacity: 0 }, { at
 /** Pops in at the start and fades at the end. */
 export const popIn = (scale = SIZE): ActorKey[] => [{ at: 0, scale: 0.15, opacity: 0, y: FLOOR_Y }, { at: 0.05, scale, opacity: 1, ease: 'out' }, { at: 0.92, opacity: 1 }, { at: 1, opacity: 0 }];
 
+
+/** The mouth opening and closing on every beat: talking, singing, laughing, eating. */
+export function talk(from: number, to: number, durationMs: number, stepMs = 120, open = 1.8): Rig {
+  const pulses = beats(from, to, durationMs, stepMs).map((at, index) => ({ at, scaleY: index % 2 === 0 ? open : 1 }));
+  return { mouth: [{ at: from, scaleY: 1 }, ...pulses, { at: to, scaleY: 1 }] };
+}
+
+/** A prop that pops in at `at` (from nothing to `scale`) and stays until `until`, then fades. */
+export const popAt = (at: number, x: number, y: number, scale: number, until = 0.92): ActorKey[] => [
+  ...appearAt(at),
+  { at, x, y, scale: scale * 0.1 },
+  { at: Math.min(at + 0.04, until), scale, ease: 'out' },
+  { at: until, opacity: 1 },
+  { at: Math.min(until + 0.04, 1), opacity: 0 },
+];
+
+/** A prop that bursts out and fades within `share` of the wink (a firework, a splash of light). */
+export const burst = (at: number, x: number, y: number, scale: number, share = 0.12): ActorKey[] => [
+  ...appearAt(at),
+  { at, x, y, scale: scale * 0.1 },
+  { at: at + share * 0.4, scale, ease: 'out' },
+  { at: at + share * 0.6, opacity: 1 },
+  { at: at + share, opacity: 0, scale: scale * 1.15 },
+];

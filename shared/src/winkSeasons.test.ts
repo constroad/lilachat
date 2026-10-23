@@ -37,4 +37,21 @@ describe('seasonal winks (pending 73)', () => {
     expect(december[0]?.winks.map((wink) => wink.id)).toEqual(['santa', 'elf', 'reindeer', 'snowman', 'secret-santa']);
     expect(offered.some((wink) => wink.season === 'halloween')).toBe(false);
   });
+
+  it('each of the other seasons opens with its own five winks', () => {
+    // Arrange
+    const expected: [Date, string, string[]][] = [
+      [lima(2026, 12, 31), 'Año Nuevo', ['countdown', 'grapes', 'suitcase', 'yellow', 'toast']],
+      [lima(2027, 2, 10), 'San Valentín', ['cupid', 'roses', 'serenade', 'stood-up', 'heartbroken']],
+      [lima(2027, 5, 9), 'Día de la Madre', ['multitask-mom', 'grandma', 'late-son', 'engineer-mom', 'voice-note']],
+      [lima(2027, 7, 28), 'Fiestas Patrias', ['flag', 'marinera', 'anticucho', 'parade', 'pisco']],
+    ];
+    for (const [moment, title, ids] of expected) {
+      // Act
+      const [first] = winkPanelGroups(moment);
+      // Assert
+      expect(first?.title).toBe(title);
+      expect(first?.winks.map((wink) => wink.id)).toEqual(ids);
+    }
+  });
 });

@@ -1,5 +1,5 @@
 import type { ActorKey, Sketch } from './winkTimeline.js';
-import { appearAt, beats, character, FLOOR_Y, OFF_LEFT, OFF_RIGHT, prop, pump, rig, SIZE, sway, walk, wiggle, wink } from './winkSketchKit.js';
+import { appearAt, beats, character, FLOOR_Y, OFF_LEFT, OFF_RIGHT, prop, rig, SIZE, sway, talk, walk, wiggle, wink } from './winkSketchKit.js';
 
 /**
  * The Christmas winks (pending 73; Stitch sheet `r152-navidad`): site and
@@ -22,7 +22,7 @@ export function santaForeman(): Sketch {
     { head: [{ at: 0.2, rotate: 0 }, ...beats(0.2, 0.34, durationMs, 160).map((at, index) => ({ at, rotate: index % 2 === 0 ? 8 : 2 })), { at: 0.36, rotate: 0 }] },
     { 'arm-right': [{ at: 0.36, rotate: 0 }, { at: 0.4, rotate: -140, ease: 'out' }, { at: 0.5, rotate: -140 }, { at: 0.54, rotate: 0 }] },
     ...(['eye-left', 'eye-right'] as const).map((eye) => ({ [eye]: [{ at: 0.66, scaleY: 1 }, { at: 0.68, scaleY: 0.2 }, { at: 0.76, scaleY: 0.2 }, { at: 0.78, scaleY: 1 }] })),
-    pump('mouth', 0.78, 0.88, durationMs, 1.8, 110),
+    talk(0.78, 0.88, durationMs, 110),
     walk(0.88, 0.99, durationMs, 130, 22)
   ));
   const tree = prop('christmas-tree', [...appearAt(0.02), { at: 0.02, x: 0.16, y: 0.62, scale: 0.5 }, { at: 0.9, opacity: 1 }, { at: 0.96, opacity: 0 }]);
@@ -78,7 +78,7 @@ export function reindeerDriver(): Sketch {
     { 'arm-right': [{ at: 0.08, rotate: 0 }, ...beats(0.08, 0.26, durationMs, 140).map((at, index) => ({ at, rotate: index % 2 === 0 ? -40 : -20 })), { at: 0.3, rotate: 0 }] },
     ...(['eye-left', 'eye-right'] as const).map((eye) => ({ [eye]: [{ at: 0.32, scale: 1 }, { at: 0.34, scale: 1.6 }, { at: 0.44, scale: 1.6 }, { at: 0.48, scale: 1 }] })),
     wink('eye-left', 0.62),
-    pump('mouth', 0.5, 0.6, durationMs, 1.6, 120)
+    talk(0.5, 0.6, durationMs, 120)
   ));
   // The sleigh goes in front of him: he rides in it.
   const sleigh = prop('sleigh', ride.map((key) => ({ ...key, y: 0.74, scale: 0.62 })));
@@ -101,7 +101,7 @@ export function snowmanGuard(): Sketch {
     { at: 0.88, opacity: 0 },
   ], rig(
     { 'arm-right': [{ at: 0.14, rotate: 0 }, { at: 0.18, rotate: -120, ease: 'out' }, ...beats(0.18, 0.36, durationMs, 150).map((at, index) => ({ at, rotate: index % 2 === 0 ? -130 : -110 })), { at: 0.4, rotate: 0 }] },
-    pump('mouth', 0.18, 0.36, durationMs, 1.5, 150),
+    talk(0.18, 0.36, durationMs, 150),
     wiggle('head', 0.4, 0.52, durationMs, 5, 200),
     wiggle('arm-left', 0.52, 0.78, durationMs, 20, 160)
   ));

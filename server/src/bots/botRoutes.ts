@@ -10,6 +10,7 @@ import { availabilityOf, setAvailability, spacesRunBy, type AppRef } from './bot
 import { commandsOfApp, commandsToWire, registerCommands, respondToCommand } from './botCommands.js';
 import { installationByToken, revokeInstallation } from './botInstall.js';
 import { postBotMessage, updateBotMessage } from './botMessages.js';
+import { setTopicChannels, topicRoutesOf } from './botTopics.js';
 import type { BotApp, BotInstallation } from './botModels.js';
 import { appForConsent, authorize, exchangeCode } from './oauthService.js';
 
@@ -114,6 +115,14 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
     const valid = validateBotCommands(req.body);
     if (!valid.ok) return void res.status(400).json({ error: 'invalid_request', message: valid.message });
     res.json({ commands: commandsToWire(await registerCommands(req.bot!, valid.commands)) });
+  }));
+  // Notice topics (§c-quater): read where each lands; a partial map moves some (agentes' migration and `/avisos aquí`).
+  const topicsToWire = (routes: Awaited<ReturnType<typeof topicRoutesOf>>) => routes.topics.map((topic) => ({ key: topic.key, name: topic.name, channel: topic.channel }));
+  router.get('/topics', asyncRoute(async (req, res) => res.json({ topics: topicsToWire(await topicRoutesOf(req.bot!)) })));
+  router.put('/topics', asyncRoute(async (req, res) => {
+    const outcome = await setTopicChannels(req.bot!, req.body);
+    if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+    res.json({ topics: topicsToWire(outcome) });
   }));
   router.post('/commands/:id/respond', asyncRoute(async (req, res) => {
     const outcome = await respondToCommand(req.bot!, String(req.params.id), req.body);

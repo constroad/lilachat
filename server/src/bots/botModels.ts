@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Model, type Types } from 'mongoose';
-import type { AppCategory, BotCommand } from '@lilachat/shared';
+import type { AppCategory, AppForm, AppShortcut, BotCommand, NoticeTopic, StoredItemSettings } from '@lilachat/shared';
 
 /**
  * The bots API (`specs/BOTS-API.spec.md`). An app (Lila, through agentes) is
@@ -21,6 +21,10 @@ export type BotApp = {
   installUrl?: string;
   /** Its slash commands (§c-bis), the same in every space it is installed in; `PUT /api/bots/commands` replaces them. */
   commands?: BotCommand[];
+  /** The actions of the composer's «+» (R160); the manifest replaces them every time, an empty list removes them. */
+  shortcuts?: AppShortcut[];
+  /** Its notice topics (R160): the space's admin picks a channel for each (`botTopics.ts`). */
+  noticeTopics?: NoticeTopic[];
   /** Made by a developer app through its manifest (§0-bis): only that app sees or changes it, by its own `key`. */
   ownerAppId?: Types.ObjectId;
   key?: string;
@@ -38,12 +42,16 @@ export type BotApp = {
 export type BotCommandRun = {
   _id: Types.ObjectId;
   installationId: Types.ObjectId;
-  chatId: Types.ObjectId;
+  /** Absent when it was used from the space's ⚡, outside any chat. */
+  chatId?: Types.ObjectId;
+  workspaceId?: Types.ObjectId;
   userId: Types.ObjectId;
   command: string;
   responses: number;
   /** The last answer only the asker saw: «Enviar al canal» posts it (José, 23/10). */
-  answer?: { text?: string; card?: unknown };
+  answer?: { text?: string; card?: unknown; shareable?: false };
+  /** The form the app asked for (R160): what was sent is checked against THIS, never against what the phone says. */
+  form?: AppForm;
   expiresAt: Date;
   createdAt: Date;
 };
@@ -61,6 +69,10 @@ export type BotInstallation = {
   /** The latest idempotency keys and what they published: the same key does not publish twice. */
   recentKeys: { key: string; messageId: string; chatId: string; seq: number }[];
   lastDelivery?: { at: Date; ok: boolean; error?: string };
+  /** The channel the admin picked for each notice topic; null = «Sin canal»; absent = #general (`botTopics.ts`). */
+  topicChannels?: Record<string, string | null>;
+  /** Where each command and action works, as the admin left it (`appItems.ts` in shared); absent = the default. */
+  itemSettings?: StoredItemSettings;
   createdAt: Date;
 };
 
@@ -101,6 +113,8 @@ const appSchema = new Schema<BotApp>(
     webhookUrl: { type: String, required: true },
     installUrl: { type: String },
     commands: { type: [{ command: String, description: String, usageHint: String, _id: false }], default: undefined },
+    shortcuts: { type: [{ key: String, name: String, description: String, _id: false }], default: undefined },
+    noticeTopics: { type: [{ key: String, name: String, description: String, icon: String, _id: false }], default: undefined },
     ownerAppId: { type: Schema.Types.ObjectId },
     key: { type: String },
     description: { type: String },
@@ -123,6 +137,8 @@ const installationSchema = new Schema<BotInstallation>(
     revokedAt: { type: Date },
     recentKeys: { type: [{ key: String, messageId: String, chatId: String, seq: Number, _id: false }], default: [] },
     lastDelivery: { at: Date, ok: Boolean, error: String },
+    topicChannels: { type: Schema.Types.Mixed },
+    itemSettings: { type: Schema.Types.Mixed },
   },
   { timestamps: true }
 );
@@ -158,11 +174,13 @@ deliverySchema.index({ status: 1, nextAttemptAt: 1 });
 const commandRunSchema = new Schema<BotCommandRun>(
   {
     installationId: { type: Schema.Types.ObjectId, required: true },
-    chatId: { type: Schema.Types.ObjectId, required: true },
+    chatId: { type: Schema.Types.ObjectId },
+    workspaceId: { type: Schema.Types.ObjectId },
     userId: { type: Schema.Types.ObjectId, required: true },
     command: { type: String, required: true },
     responses: { type: Number, default: 0 },
     answer: { type: Schema.Types.Mixed },
+    form: { type: Schema.Types.Mixed },
     expiresAt: { type: Date, required: true },
   },
   { timestamps: { createdAt: true, updatedAt: false } }

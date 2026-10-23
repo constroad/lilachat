@@ -1,14 +1,18 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { Types } from 'mongoose';
-import { canManageMembers, normalizePeruPhone, toInternationalPhone } from '@lilachat/shared';
+import { canManageMembers, normalizePeruPhone, toInternationalPhone, type CommandScope } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Message } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { crearLimiteDeIntentos } from '../limiteDeIntentos.js';
 import { asyncRoute, requireSession } from '../requireSession.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
-import { commandGroupsOf, invokeCommand, shareCommandAnswer } from './botCommands.js';
+import { commandGroupsOf, invokeCommand, invokeShortcut, shareCommandAnswer } from './botCommands.js';
+import { FORM_PHOTO_MAX_BYTES, readSignedFile, storeFormPhoto, submitForm } from './botForms.js';
 import { revokeInstallation } from './botInstall.js';
-import { directWith } from './botMessages.js';
+import { directWith, postBotMessage } from './botMessages.js';
+import { setTopicChannels, topicRoutesOf } from './botTopics.js';
+import { itemRowsOf, setItemSettings } from './botItems.js';
 import { availableAppsIn, directoryOf } from './botDirectory.js';
 import { sendBotEvent } from './botEvents.js';
 import { BotAppModel, BotInstallationModel } from './botModels.js';
@@ -54,15 +58,40 @@ export function buildBotUserRouter(): Router {
   const router = Router();
   const commandTries = crearLimiteDeIntentos({ maximo: COMMANDS_PER_MINUTE, ventanaMs: ONE_MINUTE_MS });
   // The composer's «/» (§c-bis): asked once per space when the line starts with a slash, never polled.
+  // `?chat=<id>` for a chat's «/» and «+», `?place=space` for the ⚡: only what the admin enabled there (R160).
   router.get('/workspaces/:id/commands', requireSession, asyncRoute(async (req, res) => {
-    const groups = await commandGroupsOf(req.params.id!, req.session!.userId);
+    const place = req.query.place === 'space' ? 'space' : typeof req.query.chat === 'string' ? { chatId: req.query.chat } : undefined;
+    const groups = await commandGroupsOf(req.params.id!, req.session!.userId, place);
     if (!groups) return void res.status(404).json({ message: 'Ese espacio no existe.' });
     res.json({ groups });
   }));
-  router.post('/chats/:chatId/commands', requireSession, asyncRoute(async (req, res) => {
+  // A chat's «/» and «+», or the space's ⚡ (José, 23/10): the same handlers, told apart by the path.
+  const scopeOf = (req: { params: Record<string, string | undefined> }): CommandScope => (req.params.chatId ? { chatId: req.params.chatId } : { workspaceId: req.params.id! });
+  router.post(['/chats/:chatId/commands', '/workspaces/:id/commands'], requireSession, asyncRoute(async (req, res) => {
     const userId = req.session!.userId;
     if (!commandTries.permitir(String(userId))) return void res.status(429).set('Retry-After', '60').json({ message: 'Más de 20 comandos por minuto. Espera un momento.' });
-    const outcome = await invokeCommand(userId, req.params.chatId!, { appId: req.body?.app_id, command: req.body?.command, text: req.body?.text });
+    const outcome = await invokeCommand(userId, scopeOf(req), { appId: req.body?.app_id, command: req.body?.command, text: req.body?.text });
+    if ('error' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
+    res.json(outcome);
+  }));
+  router.post(['/chats/:chatId/shortcuts', '/workspaces/:id/shortcuts'], requireSession, asyncRoute(async (req, res) => {
+    const userId = req.session!.userId;
+    if (!commandTries.permitir(String(userId))) return void res.status(429).set('Retry-After', '60').json({ message: 'Más de 20 acciones por minuto. Espera un momento.' });
+    const outcome = await invokeShortcut(userId, scopeOf(req), { appId: req.body?.app_id, shortcut: req.body?.shortcut });
+    if ('error' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
+    res.json(outcome);
+  }));
+  // App forms (R160): the photo first, then the form; sending it is the person's confirmation.
+  const photo = multer({ storage: multer.memoryStorage(), limits: { fileSize: FORM_PHOTO_MAX_BYTES } });
+  router.post(['/chats/:chatId/commands/:commandId/files', '/workspaces/:id/commands/:commandId/files'], requireSession, photo.single('file'), asyncRoute(async (req, res) => {
+    if (!req.file) return void res.status(400).json({ message: 'Falta la foto.' });
+    const outcome = await storeFormPhoto(req.session!.userId, scopeOf(req), req.params.commandId!, req.file);
+    if ('error' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
+    res.status(201).json(outcome);
+  }));
+  router.post(['/chats/:chatId/commands/:commandId/form', '/workspaces/:id/commands/:commandId/form'], requireSession, asyncRoute(async (req, res) => {
+    const outcome = await submitForm(req.session!.userId, scopeOf(req), req.params.commandId!, req.body?.values);
+    if ('errors' in outcome) return void res.status(422).json({ errors: outcome.errors });
     if ('error' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
     res.json(outcome);
   }));
@@ -110,6 +139,51 @@ export function buildBotUserRouter(): Router {
     if (!installation) return void res.status(404).json({ message: 'Esa app no está instalada en el espacio.' });
     res.json({ chatId: String(await directWith(installation, userId)), botUserId: String(installation.botUserId) });
   }));
+  // «¿Dónde llega cada aviso?» (R160, design e-31): every member sees it, only an admin changes it or tries it.
+  const installedApp = (spaceId: string, appId: unknown) => (isId(spaceId) && isId(appId) ? BotInstallationModel.findOne({ workspaceId: spaceId, appId, revokedAt: { $exists: false } }).lean() : null);
+  router.get('/workspaces/:id/apps/:appId/topics', requireSession, asyncRoute(async (req, res) => {
+    const spaceId = req.params.id!;
+    const member = isId(spaceId) ? await WorkspaceMemberModel.findOne({ workspaceId: spaceId, userId: req.session!.userId, status: 'active' }).select('role').lean() : null;
+    const installation = member ? await installedApp(spaceId, req.params.appId) : null;
+    if (!member || !installation) return void res.status(404).json({ message: 'Esa app no está instalada en el espacio.' });
+    res.json({ ...(await topicRoutesOf(installation)), canEdit: canManageMembers(member.role) });
+  }));
+  router.put('/workspaces/:id/apps/:appId/topics', requireSession, asyncRoute(async (req, res) => {
+    if (!(await adminOf(req.params.id!, req.session!.userId))) return void res.status(403).json({ message: 'Solo el dueño o un admin elige dónde llegan los avisos.' });
+    const installation = await installedApp(req.params.id!, req.params.appId);
+    if (!installation) return void res.status(404).json({ message: 'Esa app no está instalada en el espacio.' });
+    const outcome = await setTopicChannels(installation, req.body?.channels);
+    if ('error' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
+    res.json({ ...outcome, canEdit: true });
+  }));
+  // «Comandos y acciones» (R160): every member sees where each works; only an admin changes it.
+  router.get('/workspaces/:id/apps/:appId/items', requireSession, asyncRoute(async (req, res) => {
+    const spaceId = req.params.id!;
+    const member = isId(spaceId) ? await WorkspaceMemberModel.findOne({ workspaceId: spaceId, userId: req.session!.userId, status: 'active' }).select('role').lean() : null;
+    const installation = member ? await installedApp(spaceId, req.params.appId) : null;
+    if (!member || !installation) return void res.status(404).json({ message: 'Esa app no está instalada en el espacio.' });
+    res.json({ ...(await itemRowsOf(installation)), canEdit: canManageMembers(member.role) });
+  }));
+  router.put('/workspaces/:id/apps/:appId/items', requireSession, asyncRoute(async (req, res) => {
+    if (!(await adminOf(req.params.id!, req.session!.userId))) return void res.status(403).json({ message: 'Solo el dueño o un admin habilita comandos y acciones.' });
+    const installation = await installedApp(req.params.id!, req.params.appId);
+    if (!installation) return void res.status(404).json({ message: 'Esa app no está instalada en el espacio.' });
+    const outcome = await setItemSettings(installation, req.body?.items);
+    if ('message' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
+    res.json({ ...outcome, canEdit: true });
+  }));
+  // «Probar envío»: one line per channel, from the app, saying which topics land there.
+  router.post('/workspaces/:id/apps/:appId/topics/test', requireSession, asyncRoute(async (req, res) => {
+    if (!(await adminOf(req.params.id!, req.session!.userId))) return void res.status(403).json({ message: 'Solo el dueño o un admin prueba los avisos.' });
+    const installation = await installedApp(req.params.id!, req.params.appId);
+    if (!installation) return void res.status(404).json({ message: 'Esa app no está instalada en el espacio.' });
+    const { topics } = await topicRoutesOf(installation);
+    const byChannel = new Map<string, string[]>();
+    for (const topic of topics) if (topic.channel) byChannel.set(topic.channel.id, [...(byChannel.get(topic.channel.id) ?? []), topic.name]);
+    const stamp = Date.now();
+    const sent = await Promise.all([...byChannel].map(([channelId, names]) => postBotMessage(installation, { target: { channelId }, text: `Prueba de avisos: aquí llegan ${names.join(', ')}.`, idempotencyKey: `topics-test:${stamp}:${channelId}` })));
+    res.json({ channels: sent.filter((one) => !('error' in one)).length });
+  }));
   router.delete('/workspaces/:id/apps/:installationId', requireSession, asyncRoute(async (req, res) => {
     const userId = req.session!.userId;
     if (!(await adminOf(req.params.id!, userId))) return void res.status(403).json({ message: 'Solo el dueño o un admin desinstala apps.' });
@@ -119,6 +193,17 @@ export function buildBotUserRouter(): Router {
     await sendBotEvent(installation, 'app.uninstalled', { by: { id: String(userId), name: by?.name ?? null, phone: by ? toInternationalPhone(by.phone) || null : null } });
     await revokeInstallation(installation);
     res.status(204).end();
+  }));
+  return router;
+}
+
+/** `GET /api/bots/files/<token>` (R160): a form's photo for the app, by its signed address; no session, the signature is the key. */
+export function buildBotFilesRouter(): Router {
+  const router = Router();
+  router.get('/:token', asyncRoute(async (req, res) => {
+    const file = await readSignedFile(String(req.params.token));
+    if ('status' in file) return void res.status(file.status).json({ message: file.status === 410 ? 'La dirección venció.' : 'No existe.' });
+    res.set('Content-Type', file.mime).set('Cache-Control', 'private, no-store').send(file.bytes);
   }));
   return router;
 }

@@ -128,7 +128,7 @@ describe('registering commands', () => {
   it('a member sees the space apps with commands; someone outside the space sees nothing', async () => {
     const { appId } = await installWithCommands();
     const groups = await request(app).get(`/api/workspaces/${spaceId}/commands`).set(asAna).expect(200);
-    expect(groups.body.groups).toEqual([{ appId, appName: 'Inframaq', commands: [{ command: 'clima', description: 'Clima de hoy en la planta', usageHint: '[distrito]' }] }]);
+    expect(groups.body.groups).toEqual([{ appId, appName: 'Inframaq', commands: [{ command: 'clima', description: 'Clima de hoy en la planta', usageHint: '[distrito]' }], shortcuts: [] }]);
     const stranger = (await UserModel.create({ phone: '911111111', name: 'Otro' }))._id;
     await request(app).get(`/api/workspaces/${spaceId}/commands`).set(asUser(() => stranger)).expect(404);
   });

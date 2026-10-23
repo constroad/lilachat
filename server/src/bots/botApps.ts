@@ -44,6 +44,8 @@ const manifestFields = (manifest: AppManifest) => ({
   ...(manifest.avatarUrl ? { avatarUrl: manifest.avatarUrl } : {}),
   ...(manifest.installUrl ? { installUrl: manifest.installUrl } : {}),
   ...(manifest.commands ? { commands: manifest.commands } : {}),
+  shortcuts: manifest.shortcuts,
+  noticeTopics: manifest.noticeTopics,
   ...(manifest.description ? { description: manifest.description } : {}),
   ...(manifest.features ? { features: manifest.features } : {}),
   ...(manifest.developer ? { developer: manifest.developer } : {}),
@@ -76,7 +78,7 @@ export async function rotateAppSecret(developer: BotApp, clientId: string): Prom
 }
 
 export async function listOwnedApps(developer: BotApp) {
-  const apps = await BotAppModel.find({ ownerAppId: developer._id }).select('clientId key name avatarUrl redirectUris webhookUrl installUrl commands').sort({ key: 1 }).lean<BotApp[]>();
+  const apps = await BotAppModel.find({ ownerAppId: developer._id }).select('clientId key name avatarUrl redirectUris webhookUrl installUrl commands shortcuts').sort({ key: 1 }).lean<BotApp[]>();
   const installed = await BotInstallationModel.aggregate<{ _id: unknown; count: number }>([{ $match: { appId: { $in: apps.map((app) => app._id) }, revokedAt: { $exists: false } } }, { $group: { _id: '$appId', count: { $sum: 1 } } }]);
   const counts = new Map(installed.map((one) => [String(one._id), one.count]));
   return apps.map((app) => ({
@@ -88,6 +90,7 @@ export async function listOwnedApps(developer: BotApp) {
     webhook_url: app.webhookUrl,
     ...(app.installUrl ? { install_url: app.installUrl } : {}),
     commands: commandsToWire(app.commands ?? []),
+    shortcuts: app.shortcuts ?? [],
     installations: counts.get(String(app._id)) ?? 0,
   }));
 }

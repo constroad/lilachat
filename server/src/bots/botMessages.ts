@@ -6,6 +6,7 @@ import { createChecklistInChat } from '../checklistService.js';
 import { publicarMensaje } from '../reparto.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { BotInstallationModel, type BotInstallation } from './botModels.js';
+import { channelOfPostedTopic } from './botTopics.js';
 
 /**
  * What a bot publishes (`specs/BOTS-API.spec.md` §b): to a channel or group of
@@ -13,7 +14,7 @@ import { BotInstallationModel, type BotInstallation } from './botModels.js';
  * goes out by the same path as a person's: stored, sent to the members, push
  * to the ones offline.
  */
-export type BotApiError = { status: 400 | 403 | 404; error: string; message: string; phone?: string };
+export type BotApiError = { status: 400 | 403 | 404 | 409; error: string; message: string; phone?: string };
 export type PostedMessage = { id: string; chat_id: string; seq: number };
 type Installation = Pick<BotInstallation, '_id' | 'workspaceId' | 'botUserId' | 'recentKeys'>;
 
@@ -50,6 +51,10 @@ async function chatOfChannel(installation: Installation, channelId: string): Pro
 
 async function resolveChat(installation: Installation, target: BotPost['target']): Promise<Types.ObjectId | BotApiError> {
   if ('channelId' in target) return chatOfChannel(installation, target.channelId);
+  if ('topic' in target) {
+    const channelId = await channelOfPostedTopic(installation, target.topic);
+    return typeof channelId === 'string' ? chatOfChannel(installation, channelId) : channelId;
+  }
   const userId = await activeMemberId(installation.workspaceId, 'userPhone' in target ? { phone: target.userPhone } : { userId: target.userId });
   if (!userId) return fail(404, 'user_not_found', 'Esa persona no es miembro activo del espacio.');
   return directWith(installation, userId);

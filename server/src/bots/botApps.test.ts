@@ -103,6 +103,20 @@ describe('the manifest', () => {
     expect(groups).toEqual([expect.objectContaining({ appName: 'Inframaq', commands: [{ command: 'clima', description: 'Clima de la planta' }] })]);
   });
 
+  it('the «+» actions follow the manifest with the app avatar; a manifest without them removes them (agentes, 23/10)', async () => {
+    // Arrange
+    const marca = { key: 'marcar_asistencia', name: 'Marcar asistencia', description: 'Ingreso, refrigerio o salida con tu foto y ubicación' };
+    const { body } = await request(app).post('/api/bots/apps').set(asLila).send({ ...manifest(), avatar_url: 'https://agentes.example.com/inframaq.png', shortcuts: [marca] }).expect(201);
+    await installWith(body.client_id, body.client_secret);
+    const groups = () => request(app).get(`/api/workspaces/${spaceId}/commands`).set(asJose).expect(200).then((res) => res.body.groups);
+    // Act
+    const offered = await groups();
+    await request(app).post('/api/bots/apps').set(asLila).send({ ...manifest(), commands: [] }).expect(200);
+    // Assert
+    expect(offered).toEqual([expect.objectContaining({ appName: 'Inframaq', avatarUrl: 'https://agentes.example.com/inframaq.png', shortcuts: [marca] })]);
+    expect(await groups()).toEqual([]);
+  });
+
   it('a re-sent manifest tells the members of every space with the app, so their «/» list is not stale (José, 23/10)', async () => {
     // Arrange
     const { body } = await request(app).post('/api/bots/apps').set(asLila).send(manifest()).expect(201);
@@ -135,7 +149,7 @@ describe('the manifest', () => {
     await installWith(body.client_id, body.client_secret);
     await request(app).post('/api/bots/apps').set(asOther).send({ ...manifest(), key: 'portal', name: 'Portal' }).expect(201);
     const listed = (await request(app).get('/api/bots/apps').set(asLila).expect(200)).body.apps;
-    expect(listed).toEqual([{ client_id: body.client_id, key: 'inframaq', name: 'Inframaq', redirect_uri: REDIRECT, webhook_url: hookUrl, install_url: manifest().install_url, commands: [{ command: 'clima', description: 'Clima de la planta' }], installations: 1 }]);
+    expect(listed).toEqual([{ client_id: body.client_id, key: 'inframaq', name: 'Inframaq', redirect_uri: REDIRECT, webhook_url: hookUrl, install_url: manifest().install_url, commands: [{ command: 'clima', description: 'Clima de la planta' }], shortcuts: [], installations: 1 }]);
     expect(JSON.stringify(listed)).not.toContain('lcx_');
   });
 

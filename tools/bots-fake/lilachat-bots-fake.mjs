@@ -14,7 +14,14 @@
  * WEBHOOK_URL (with the real retries); GET /__fake/messages lists what the bot
  * published; GET /__fake/deliveries the events and their attempts; POST
  * /__fake/reset starts over. Optional: SPACE_NAME, CHANNELS and MEMBERS (JSON),
- * RETRY_DELAYS_MS ("10000,60000,300000,1800000").
+ * RETRY_DELAYS_MS ("10000,60000,300000,1800000"), NOTICE_TOPICS (JSON, the
+ * topics of the fake's own app; a manifest app brings its own).
+ *
+ * R160 (§c-ter, §c-quater): `/__fake/emit` with `shortcut.invoked` or
+ * `form.submitted` waits for the answer in the body (3 s), like
+ * `/__fake/command`, and returns `{ command_id, outcome, response?, errors? }`.
+ * In `form.submitted`, a value "@photo" becomes a signed photo URL that answers
+ * 200 image/jpeg for 15 minutes.
  */
 import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
@@ -31,6 +38,12 @@ const DEFAULT_MEMBERS = [
 ];
 const MESSAGES_PER_MINUTE = 60;
 const ACTION_ID = /^[a-z0-9_-]{1,40}$/;
+const TOPIC_KEY = /^[a-z][a-z0-9_-]*$/;
+const OBJECT_KEY = /^[a-z][a-z0-9_-]+$/;
+const SIGNED_TTL_MS = 15 * 60_000;
+const ANSWER_TIMEOUT_MS = 3_000;
+/** A real 1×1 JPEG: what a form's photo downloads as. */
+const PHOTO = Buffer.from('/9j/4AAQSkZJRgABAQAASABIAAD/4QBMRXhpZgAATU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAAaADAAQAAAABAAAAAQAAAAD/7QA4UGhvdG9zaG9wIDMuMAA4QklNBAQAAAAAAAA4QklNBCUAAAAAABDUHYzZjwCyBOmACZjs+EJ+/8AAEQgAAQABAwEiAAIRAQMRAf/EAB8AAAEFAQEBAQEBAAAAAAAAAAABAgMEBQYHCAkKC//EALUQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+v/EAB8BAAMBAQEBAQEBAQEAAAAAAAABAgMEBQYHCAkKC//EALURAAIBAgQEAwQHBQQEAAECdwABAgMRBAUhMQYSQVEHYXETIjKBCBRCkaGxwQkjM1LwFWJy0QoWJDThJfEXGBkaJicoKSo1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoKDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uLj5OXm5+jp6vLz9PX29/j5+v/bAEMAAgICAgICAwICAwUDAwMFBgUFBQUGCAYGBgYGCAoICAgICAgKCgoKCgoKCgwMDAwMDA4ODg4ODw8PDw8PDw8PD//bAEMBAgICBAQEBwQEBxALCQsQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEP/dAAQAAf/aAAwDAQACEQMRAD8A/fyiiigD/9k=', 'base64');
 
 const secret = (prefix) => `${prefix}${randomBytes(32).toString('base64url')}`;
 const sign = (signingSecret, timestamp, body) => `v1=${createHmac('sha256', signingSecret).update(`${timestamp}.${body}`).digest('hex')}`;
@@ -81,10 +94,12 @@ export function createFake(options = {}) {
     channels: options.channels ?? (process.env.CHANNELS ? JSON.parse(process.env.CHANNELS) : DEFAULT_CHANNELS),
     members: options.members ?? (process.env.MEMBERS ? JSON.parse(process.env.MEMBERS) : DEFAULT_MEMBERS),
     retryDelaysMs: options.retryDelaysMs ?? (process.env.RETRY_DELAYS_MS ? process.env.RETRY_DELAYS_MS.split(',').map(Number) : [10_000, 60_000, 300_000, 1_800_000]),
+    noticeTopics: options.noticeTopics ?? (process.env.NOTICE_TOPICS ? JSON.parse(process.env.NOTICE_TOPICS) : []),
   };
+  const fileKey = randomBytes(32);
   let state;
   const reset = () => {
-    state = { codes: new Map(), installation: null, messages: [], deliveries: [], minute: { start: Date.now(), used: 0 }, seq: 0, joined: new Set(config.channels.filter((c) => c.visibility === 'public').map((c) => c.id)), commands: [], runs: new Map(), commandResponses: [], apps: new Map() };
+    state = { codes: new Map(), installation: null, messages: [], deliveries: [], minute: { start: Date.now(), used: 0 }, seq: 0, joined: new Set(config.channels.filter((c) => c.visibility === 'public').map((c) => c.id)), commands: [], runs: new Map(), commandResponses: [], apps: new Map(), installedClientId: null, topicChannels: {}, files: new Map() };
   };
   reset();
 
@@ -132,9 +147,16 @@ export function createFake(options = {}) {
   }
 
   function postMessage(body) {
-    const channelId = typeof body.channel_id === 'string' && body.channel_id ? body.channel_id : null;
+    let channelId = typeof body.channel_id === 'string' && body.channel_id ? body.channel_id : null;
+    const topic = body.topic === undefined ? null : String(body.topic);
     const user = body.user && typeof body.user === 'object' ? body.user : null;
-    if (Boolean(channelId) === Boolean(user)) return [400, { error: 'invalid_request', message: 'Indica un destino: channel_id o user, uno solo.' }];
+    if ([channelId, topic, user].filter((one) => one !== null).length !== 1) return [400, { error: 'invalid_request', message: 'Indica un destino: channel_id, topic o user, uno solo.' }];
+    if (topic !== null) {
+      if (!TOPIC_KEY.test(topic)) return [400, { error: 'invalid_request', message: 'topic va en minúsculas (a-z, 0-9, _ o -), como en el manifiesto.' }];
+      const routed = channelOfTopic(topic);
+      if (Array.isArray(routed)) return routed;
+      channelId = routed;
+    }
     const key = typeof body.idempotency_key === 'string' ? body.idempotency_key.trim() : '';
     if (!key || key.length > 120) return [400, { error: 'invalid_request', message: 'idempotency_key es obligatorio, hasta 120.' }];
     const known = state.messages.find((message) => message.idempotency_key === key);
@@ -167,6 +189,55 @@ export function createFake(options = {}) {
     return [201, { message: { id: message.id, chat_id: message.chat_id, seq: message.seq } }];
   }
 
+  // Notice topics (§c-quater): the installed app's, a topic never touched goes to #general, null is «Sin canal».
+  const topicsOfApp = () => state.apps.get(state.installedClientId)?.notice_topics ?? config.noticeTopics;
+  const defaultChannel = () => config.channels.find((one) => one.visibility === 'public' && one.name === 'general') ?? config.channels.find((one) => one.visibility === 'public') ?? null;
+  const routeOf = (key) => {
+    const chosen = state.topicChannels[key];
+    if (chosen === null) return null;
+    return config.channels.find((one) => one.id === chosen) ?? defaultChannel();
+  };
+  function channelOfTopic(key) {
+    const topic = topicsOfApp().find((one) => one.key === key);
+    if (!topic) return [404, { error: 'topic_not_found', message: `La app no declaró el tema «${key}» en su manifiesto.` }];
+    const channel = routeOf(key);
+    if (!channel) return [409, { error: 'topic_without_channel', message: `El tema «${topic.name}» no tiene canal: el admin lo dejó sin canal.` }];
+    if (channel.visibility !== 'public') state.joined.add(channel.id);
+    return channel.id;
+  }
+  const topicsToWire = () => ({ topics: topicsOfApp().map((topic) => {
+    const channel = routeOf(topic.key);
+    return { key: topic.key, name: topic.name, channel: channel ? { id: channel.id, name: channel.name } : null };
+  }) });
+  function setTopics(body) {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return [400, { error: 'invalid_request', message: 'Manda un objeto { tema: id_del_canal | null }.' }];
+    const known = topicsOfApp().map((topic) => topic.key);
+    for (const [key, value] of Object.entries(body)) {
+      if (!known.includes(key)) return [400, { error: 'invalid_request', message: `La app no tiene el tema «${key}».` }];
+      if (value !== null && typeof value !== 'string') return [400, { error: 'invalid_request', message: `El canal de «${key}» va como id o null.` }];
+      if (value !== null && !config.channels.some((one) => one.id === value)) return [404, { error: 'channel_not_found', message: 'Ese canal no existe en el espacio.' }];
+    }
+    Object.assign(state.topicChannels, body);
+    return [200, topicsToWire()];
+  }
+
+  // A form's photo (§c-ter): a signed address on the fake's own host, 15 minutes.
+  const signatureOf = (payload) => createHmac('sha256', fileKey).update(payload).digest('base64url');
+  function signedPhotoUrl(baseUrl) {
+    const fileId = `file_${randomBytes(6).toString('hex')}`;
+    state.files.set(fileId, PHOTO);
+    const payload = Buffer.from(`${fileId}:${Date.now() + SIGNED_TTL_MS}`).toString('base64url');
+    return `${baseUrl}/api/bots/files/${payload}.${signatureOf(payload)}`;
+  }
+  function readPhoto(token) {
+    const [payload = '', signature = ''] = token.split('.');
+    if (signature !== signatureOf(payload)) return [404, { message: 'No existe.' }];
+    const [fileId, expires] = Buffer.from(payload, 'base64url').toString('utf8').split(':');
+    if (Number(expires) < Date.now()) return [410, { message: 'La dirección venció.' }];
+    const bytes = state.files.get(fileId);
+    return bytes ? [200, bytes, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, no-store' }] : [404, { message: 'No existe.' }];
+  }
+
   function exchange(body) {
     if (body.grant_type !== 'authorization_code') return [400, { error: 'unsupported_grant_type', error_description: 'Solo authorization_code.' }];
     const created = state.apps.get(body.client_id);
@@ -178,6 +249,7 @@ export function createFake(options = {}) {
     if (grant.redirectUri !== body.redirect_uri) return [400, { error: 'invalid_grant', error_description: 'La dirección de vuelta no es la del código.' }];
     if (createHash('sha256').update(String(body.code_verifier ?? '')).digest('base64url') !== grant.challenge) return [400, { error: 'invalid_grant', error_description: 'El code_verifier no coincide.' }];
     const token = install();
+    state.installedClientId = body.client_id;
     return [200, { access_token: token, token_type: 'Bearer', installation_id: state.installation.id, space: { id: state.installation.spaceId, name: config.spaceName }, bot_user_id: state.installation.botUserId, signing_secret: state.installation.signingSecret }];
   }
 
@@ -223,29 +295,65 @@ export function createFake(options = {}) {
     return responseType;
   };
 
-  async function invokeCommand(body) {
+  /** One signed event whose answer is read from the body within 3 s, as the server does with commands. */
+  async function callForAnswer(type, data) {
     const installation = state.installation;
-    if (!installation) return [409, { error: 'not_installed', message: 'Instala la app primero.' }];
-    if (!state.commands.some((one) => one.command === body.command)) return [404, { error: 'command_not_found', message: `No hay un comando /${body.command}.` }];
-    const commandId = `cmd_${randomBytes(6).toString('hex')}`;
-    state.runs.set(commandId, { responses: 0, expiresAt: Date.now() + 15 * 60_000 });
-    const member = config.members[0];
-    const data = { command_id: commandId, command: body.command, text: String(body.text ?? ''), channel: body.channel ?? { id: config.channels[0]?.id, kind: 'channel', name: config.channels[0]?.name }, user: body.user ?? { id: member?.id, name: member?.name, phone: member?.phone ?? null } };
     const id = randomUUID();
-    const raw = JSON.stringify({ event_id: id, type: 'command.invoked', installation_id: installation.id, space_id: installation.spaceId, created_at: new Date().toISOString(), data });
+    const raw = JSON.stringify({ event_id: id, type, installation_id: installation.id, space_id: installation.spaceId, created_at: new Date().toISOString(), data });
     const timestamp = Date.now();
     try {
-      const response = await fetch(config.webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Lilachat-Event': 'command.invoked', 'X-Lilachat-Delivery': id, 'X-Lilachat-Installation': installation.id, 'X-Lilachat-Timestamp': String(timestamp), 'X-Lilachat-Signature': sign(installation.signingSecret, timestamp, raw) }, body: raw, signal: AbortSignal.timeout(3_000) });
+      const response = await fetch(config.webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Lilachat-Event': type, 'X-Lilachat-Delivery': id, 'X-Lilachat-Installation': installation.id, 'X-Lilachat-Timestamp': String(timestamp), 'X-Lilachat-Signature': sign(installation.signingSecret, timestamp, raw) }, body: raw, signal: AbortSignal.timeout(ANSWER_TIMEOUT_MS) });
       const text = await response.text();
-      if (!response.ok) return [200, { command_id: commandId, outcome: 'failed' }];
-      if (!text.trim()) return [200, { command_id: commandId, outcome: 'pending' }];
-      const answer = JSON.parse(text);
-      if (!validResponse(answer)) return [200, { command_id: commandId, outcome: 'failed' }];
-      state.runs.get(commandId).responses += 1;
-      return [200, { command_id: commandId, outcome: record(commandId, answer, false) === 'in_channel' ? 'posted' : 'ephemeral' }];
+      if (!response.ok) return { outcome: 'failed' };
+      if (!text.trim()) return { outcome: 'pending' };
+      return { answer: JSON.parse(text) };
     } catch {
-      return [200, { command_id: commandId, outcome: 'pending' }];
+      return { outcome: 'pending' };
     }
+  }
+  const memberData = (user) => user ?? { id: config.members[0]?.id, name: config.members[0]?.name, phone: config.members[0]?.phone ?? null };
+  const newRun = () => {
+    const commandId = `cmd_${randomBytes(6).toString('hex')}`;
+    state.runs.set(commandId, { responses: 0, expiresAt: Date.now() + 15 * 60_000 });
+    return commandId;
+  };
+  /** What an answer in the body means: a form stays open with its run; errors keep it open; the rest like a command. */
+  function judge(commandId, answer) {
+    if (answer && Array.isArray(answer) === false && answer.errors && typeof answer.errors === 'object') return [200, { command_id: commandId, outcome: 'errors', errors: answer.errors }];
+    if (answer?.response_type === 'form') {
+      if (!answer.form || typeof answer.form.id !== 'string' || typeof answer.form.title !== 'string' || answer.form.schema?.type !== 'object') return [200, { command_id: commandId, outcome: 'failed' }];
+      state.runs.get(commandId).form = answer.form;
+      return [200, { command_id: commandId, outcome: 'form', response: answer }];
+    }
+    if (!validResponse(answer)) return [200, { command_id: commandId, outcome: 'failed' }];
+    state.runs.get(commandId).responses += 1;
+    return [200, { command_id: commandId, outcome: record(commandId, answer, false) === 'in_channel' ? 'posted' : 'ephemeral', response: answer }];
+  }
+
+  async function invokeCommand(body) {
+    if (!state.installation) return [409, { error: 'not_installed', message: 'Instala la app primero.' }];
+    if (!state.commands.some((one) => one.command === body.command)) return [404, { error: 'command_not_found', message: `No hay un comando /${body.command}.` }];
+    const commandId = newRun();
+    const data = { command_id: commandId, command: body.command, text: String(body.text ?? ''), channel: body.channel ?? { id: config.channels[0]?.id, kind: 'channel', name: config.channels[0]?.name }, user: memberData(body.user) };
+    const reply = await callForAnswer('command.invoked', data);
+    return reply.answer === undefined ? [200, { command_id: commandId, outcome: reply.outcome }] : judge(commandId, reply.answer);
+  }
+
+  /** `shortcut.invoked` from the space's ⚡ (`channel: null` unless one is given) or a channel's «+». */
+  async function invokeShortcut(data) {
+    const commandId = newRun();
+    const event = { shortcut: String(data.shortcut ?? ''), command_id: commandId, channel: data.channel === undefined ? null : data.channel, user: memberData(data.user) };
+    const reply = await callForAnswer('shortcut.invoked', event);
+    return reply.answer === undefined ? [200, { command_id: commandId, outcome: reply.outcome }] : judge(commandId, reply.answer);
+  }
+
+  /** `form.submitted` for a run that asked for a form (or a fresh one); "@photo" values become signed photo URLs. */
+  async function submitForm(data, baseUrl) {
+    const commandId = typeof data.command_id === 'string' && state.runs.has(data.command_id) ? data.command_id : newRun();
+    const values = Object.fromEntries(Object.entries(data.values ?? {}).map(([name, value]) => [name, value === '@photo' ? signedPhotoUrl(baseUrl) : value]));
+    const event = { form_id: String(data.form_id ?? state.runs.get(commandId).form?.id ?? ''), command_id: commandId, values, channel: data.channel === undefined ? null : data.channel, user: memberData(data.user) };
+    const reply = await callForAnswer('form.submitted', event);
+    return reply.answer === undefined ? [200, { command_id: commandId, outcome: reply.outcome, values }] : judge(commandId, reply.answer).map((part, index) => (index === 1 ? { ...part, values } : part));
   }
 
   function respondToCommand(commandId, body) {
@@ -264,12 +372,26 @@ export function createFake(options = {}) {
     const [id, secretPart] = Buffer.from(header.startsWith('Basic ') ? header.slice(6) : '', 'base64').toString('utf8').split(':');
     return id === config.clientId && secretPart === config.clientSecret;
   };
-  const publicApp = (clientId, app) => ({ client_id: clientId, key: app.key, name: app.name, redirect_uri: app.redirect_uri, webhook_url: app.webhook_url, ...(app.install_url ? { install_url: app.install_url } : {}), commands: app.commands ?? [], installations: 0 });
+  const publicApp = (clientId, app) => ({ client_id: clientId, key: app.key, name: app.name, redirect_uri: app.redirect_uri, webhook_url: app.webhook_url, ...(app.install_url ? { install_url: app.install_url } : {}), commands: app.commands ?? [], shortcuts: app.shortcuts, installations: 0 });
+  /** `shortcuts` and `notice_topics` (R160): always a list, a manifest without them removes them. */
+  function manifestList(raw, max, what) {
+    const list = Array.isArray(raw) ? raw : [];
+    if (list.length > max) return `Una app declara hasta ${max} ${what}.`;
+    const seen = new Set();
+    for (const entry of list) {
+      if (typeof entry?.key !== 'string' || !OBJECT_KEY.test(entry.key) || seen.has(entry.key) || typeof entry.name !== 'string' || !entry.name.trim()) return `«${entry?.key ?? ''}» necesita una «key» única en minúsculas y un «name».`;
+      seen.add(entry.key);
+    }
+    return list.map((entry) => ({ key: entry.key, name: entry.name.trim().slice(0, 40), ...(typeof entry.description === 'string' && entry.description.trim() ? { description: entry.description.trim().slice(0, 80) } : {}), ...(typeof entry.icon === 'string' ? { icon: entry.icon } : {}) }));
+  }
   function upsertApp(body) {
     if (typeof body.key !== 'string' || !/^[a-z][a-z0-9-]{1,31}$/.test(body.key)) return [400, { error: 'invalid_request', message: '«key» va en minúsculas, de 2 a 32.' }];
     if (typeof body.name !== 'string' || !body.name.trim() || body.name.trim().length > 40) return [400, { error: 'invalid_request', message: 'Falta «name»: el nombre de la app, hasta 40.' }];
     if (typeof body.redirect_uri !== 'string' || typeof body.webhook_url !== 'string') return [400, { error: 'invalid_request', message: '«redirect_uri» y «webhook_url» van con https.' }];
-    const fields = { key: body.key, name: body.name.trim(), redirect_uri: body.redirect_uri, webhook_url: body.webhook_url, install_url: body.install_url, ...(Array.isArray(body.commands) ? { commands: body.commands } : {}) };
+    const shortcuts = manifestList(body.shortcuts, 10, 'atajos');
+    const noticeTopics = manifestList(body.notice_topics, 10, 'temas de aviso');
+    if (typeof shortcuts === 'string' || typeof noticeTopics === 'string') return [400, { error: 'invalid_request', message: typeof shortcuts === 'string' ? shortcuts : noticeTopics }];
+    const fields = { key: body.key, name: body.name.trim(), redirect_uri: body.redirect_uri, webhook_url: body.webhook_url, install_url: body.install_url, ...(Array.isArray(body.commands) ? { commands: body.commands } : {}), shortcuts, notice_topics: noticeTopics.map(({ icon, ...topic }) => ({ ...topic, ...(['attendance', 'tank', 'material', 'truck', 'weather', 'cash', 'document', 'alert'].includes(icon) ? { icon } : {}) })) };
     const existing = [...state.apps.entries()].find(([, app]) => app.key === body.key);
     if (existing) return Object.assign(existing[1], fields), [200, { client_id: existing[0] }];
     if (state.apps.size >= 20) return [400, { error: 'too_many_apps', message: 'Una desarrolladora crea hasta 20 apps.' }];
@@ -303,6 +425,10 @@ export function createFake(options = {}) {
     if (req.method === 'POST' && path === '/__fake/reset') return reset(), [200, { ok: true }];
     if (req.method === 'POST' && path === '/__fake/emit') {
       const body = await readBody(req);
+      if (body.type === 'shortcut.invoked' || body.type === 'form.submitted') {
+        if (!state.installation) return [409, { error: 'not_installed', message: 'Instala la app primero.' }];
+        return body.type === 'shortcut.invoked' ? invokeShortcut(body.data ?? {}) : submitForm(body.data ?? {}, `http://${req.headers.host}`);
+      }
       const id = emit(body.type, body.data);
       return id ? [202, { delivery_id: id }] : [409, { error: 'not_installed', message: 'Instala la app primero.' }];
     }
@@ -311,6 +437,8 @@ export function createFake(options = {}) {
     if (req.method === 'GET' && path === '/__fake/command-responses') return [200, { responses: state.commandResponses }];
     if (req.method === 'GET' && path === '/__fake/deliveries') return [200, { deliveries: state.deliveries.map(({ signingSecret: _hidden, ...rest }) => rest) }];
     if (!path.startsWith('/api/')) return [404, { error: 'not_found' }];
+    const photo = path.match(/^\/api\/bots\/files\/([^/]+)$/);
+    if (req.method === 'GET' && photo) return readPhoto(photo[1]);
     if (path === '/api/bots/apps' || path.startsWith('/api/bots/apps/')) return routeApps(req, path);
     const bot = botOf(req);
     if (!bot) return [401, { error: 'invalid_token', message: 'El token del bot no vale o fue revocado.' }];
@@ -320,6 +448,8 @@ export function createFake(options = {}) {
     if (req.method === 'GET' && path === '/api/bots/members') return [200, { members: config.members }];
     if (req.method === 'GET' && path === '/api/bots/commands') return [200, { commands: state.commands }];
     if (req.method === 'PUT' && path === '/api/bots/commands') return registerCommands(await readBody(req));
+    if (req.method === 'GET' && path === '/api/bots/topics') return [200, topicsToWire()];
+    if (req.method === 'PUT' && path === '/api/bots/topics') return setTopics(await readBody(req));
     const responded = path.match(/^\/api\/bots\/commands\/([^/]+)\/respond$/);
     if (req.method === 'POST' && responded) return respondToCommand(responded[1], await readBody(req));
     if (req.method === 'POST' && path === '/api/bots/messages') return allowMessage() ? postMessage(await readBody(req)) : [429, { error: 'rate_limited', message: 'Más de 60 mensajes por minuto.' }, { 'Retry-After': '60' }];
@@ -344,6 +474,7 @@ export function createFake(options = {}) {
     route(req, url).then(([status, payload, headers]) => {
       if (status === 302) return void res.writeHead(302, { Location: payload }).end();
       if (status === 204) return void res.writeHead(204).end();
+      if (Buffer.isBuffer(payload)) return void res.writeHead(status, headers ?? {}).end(payload);
       res.writeHead(status, { 'Content-Type': 'application/json', ...(headers ?? {}) }).end(JSON.stringify(payload));
     }, (error) => res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'fake_failed', message: String(error) })));
   });

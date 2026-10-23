@@ -11,6 +11,8 @@ const CHALLENGE = createHash('sha256').update(VERIFIER).digest('base64url');
 let fake: RunningFake;
 let hook: Server;
 const received: { headers: Record<string, string | string[] | undefined>; body: string }[] = [];
+/** What the fake agentes answers in the body (R160 forms); empty by default. */
+let answer: (type: string) => unknown = () => null;
 const base = () => `http://127.0.0.1:${fake.port}`;
 const call = async (path: string, init: RequestInit = {}) => {
   const response = await fetch(`${base()}${path}`, init);
@@ -23,7 +25,9 @@ beforeAll(async () => {
     req.on('data', (chunk) => (body += chunk));
     req.on('end', () => {
       received.push({ headers: req.headers, body });
-      res.end();
+      const reply = answer(String(req.headers['x-lilachat-event']));
+      if (reply === null) return void res.end();
+      res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(reply));
     });
   });
   await new Promise<void>((resolve) => hook.listen(0, '127.0.0.1', resolve));
@@ -36,6 +40,7 @@ afterAll(async () => {
 beforeEach(() => {
   fake.reset();
   received.length = 0;
+  answer = () => null;
 });
 
 async function install(): Promise<{ token: string; signing: string; installationId: string }> {
@@ -120,5 +125,38 @@ describe('the bots fake', () => {
     const { token } = await install();
     expect((await call('/api/oauth/revoke', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })).status).toBe(200);
     expect((await call('/api/bots/me', { headers: { Authorization: `Bearer ${token}` } })).status).toBe(401);
+  });
+
+  it('R160 like the server: topics by manifest, #general by default, null is 409; ⚡ and form answers in the body; the photo downloads', async () => {
+    // Arrange: an app by manifest with its topics and actions, installed with its own secret.
+    const developer = { Authorization: `Basic ${Buffer.from('lca_test:lcx_test').toString('base64')}`, 'Content-Type': 'application/json' };
+    const created = await call('/api/bots/apps', { method: 'POST', headers: developer, body: JSON.stringify({ key: 'inframaq', name: 'Inframaq', redirect_uri: REDIRECT, webhook_url: 'http://127.0.0.1:1/events', shortcuts: [{ key: 'marcar_asistencia', name: 'Marcar asistencia' }], notice_topics: [{ key: 'asistencia', name: 'Asistencia', icon: 'attendance' }, { key: 'caja', name: 'Caja', icon: 'piggy' }] }) });
+    const authorize = await fetch(`${base()}/instalar-app?client_id=${created.body.client_id}&redirect_uri=${encodeURIComponent(REDIRECT)}&state=state-0123456789abcdef&code_challenge=${CHALLENGE}&code_challenge_method=S256`, { redirect: 'manual' });
+    const code = new URL(authorize.headers.get('location')!).searchParams.get('code');
+    const token = (await call('/api/oauth/token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ grant_type: 'authorization_code', code, redirect_uri: REDIRECT, client_id: created.body.client_id, client_secret: created.body.client_secret, code_verifier: VERIFIER }) })).body.access_token;
+    const asBot = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+    const post = (body: unknown) => call('/api/bots/messages', { method: 'POST', headers: asBot, body: JSON.stringify(body) });
+    // Act + Assert: topics.
+    expect((await call('/api/bots/topics', { headers: asBot })).body.topics).toEqual([{ key: 'asistencia', name: 'Asistencia', channel: { id: 'ch_general', name: 'general' } }, { key: 'caja', name: 'Caja', channel: { id: 'ch_general', name: 'general' } }]);
+    expect((await call('/api/bots/topics', { method: 'PUT', headers: asBot, body: JSON.stringify({ asistencia: 'ch_planta', caja: null }) })).status).toBe(200);
+    expect((await post({ topic: 'asistencia', text: 'Ingreso', idempotency_key: 't1' })).body).toMatchObject({ message: { chat_id: 'ch_planta' } });
+    expect((await post({ topic: 'caja', text: 'S/ 10', idempotency_key: 't2' })).body.error).toBe('topic_without_channel');
+    expect((await post({ topic: 'planilla', text: 'x', idempotency_key: 't3' })).status).toBe(404);
+    expect((await call('/api/bots/topics', { method: 'PUT', headers: asBot, body: JSON.stringify({ planilla: 'ch_planta' }) })).status).toBe(400);
+    // The ⚡: the action answers with a form, in the body.
+    const form = { id: 'registrar_marca', title: 'Marcar asistencia', schema: { type: 'object', properties: { foto: { type: 'string', 'x-input': 'photo' } } } };
+    answer = (type) => (type === 'shortcut.invoked' ? { response_type: 'form', form } : { response_type: 'ephemeral', text: 'Ingreso marcado', shareable: false });
+    const opened = await call('/__fake/emit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'shortcut.invoked', data: { shortcut: 'marcar_asistencia' } }) });
+    expect(opened.body).toMatchObject({ outcome: 'form', response: { form: { id: 'registrar_marca' } } });
+    expect(JSON.parse(received.at(-1)!.body).data).toMatchObject({ shortcut: 'marcar_asistencia', command_id: opened.body.command_id, channel: null });
+    // The form: "@photo" becomes a signed URL that downloads as a JPEG.
+    const sent = await call('/__fake/emit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'form.submitted', data: { command_id: opened.body.command_id, values: { foto: '@photo' } } }) });
+    expect(sent.body).toMatchObject({ outcome: 'ephemeral', response: { text: 'Ingreso marcado', shareable: false } });
+    const photoUrl = String((JSON.parse(received.at(-1)!.body).data.values as Record<string, unknown>).foto);
+    const photo = await fetch(photoUrl);
+    expect([photo.status, photo.headers.get('content-type')]).toEqual([200, 'image/jpeg']);
+    expect((await fetch(`${photoUrl}x`)).status).toBe(404);
+    answer = () => ({ errors: { foto: 'La foto está borrosa.' } });
+    expect((await call('/__fake/emit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'form.submitted', data: { command_id: opened.body.command_id, values: { foto: '@photo' } } }) })).body).toMatchObject({ outcome: 'errors', errors: { foto: 'La foto está borrosa.' } });
   });
 });

@@ -10,6 +10,15 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.158',
+    items: [
+      'En cada espacio, la sección «Apps» reúne tus chats con apps y las que ya están instaladas, como en Slack.',
+      'El directorio de apps: búscalas, fíltralas por categoría y mira qué hace cada una, sus comandos y sus permisos.',
+      'Un admin instala una app desde su detalle, y la desinstala desde el menú ⋮.',
+      'El chat con una app muestra quién la hizo y su información, sin botón de llamada.',
+    ],
+  },
+  {
     version: '0.1.157',
     items: [
       'Escribe «/» en un chat de tu empresa y aparecen los comandos de cada app, como /clima o /tanques.',

@@ -58,6 +58,13 @@ da 401 `invalid_client`; una app que no es desarrolladora, 403
     las URL con https y hasta 500 (http solo a localhost, para desarrollo).
     `avatar_url`, `install_url` y `commands` son opcionales; sin
     `commands` no se tocan.
+  - Para el directorio de apps del espacio (0.1.158, §122 de
+    ARCHITECTURE): `description` (una línea, hasta 120), `features` («Qué
+    hace», hasta 6 frases de hasta 140), `developer` (hasta 60, p. ej.
+    «Agentes ConstRoad») y `category` (`operacion` · `personas` ·
+    `finanzas` · `laboratorio` · `otra`). Todos opcionales. Lo que se pasa
+    de largo se recorta y una categoría desconocida se ignora: nunca
+    rechazan el manifiesto.
   - Idempotente por (desarrolladora, `key`): la primera vez, 201 `{
     client_id, client_secret }`; después, 200 `{ client_id }` con los
     campos al día y sin secreto.

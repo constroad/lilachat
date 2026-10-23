@@ -4909,7 +4909,7 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
-## 122. Apps como Slack: análisis y diseño (23/10/2026, R158 en curso)
+## 122. Apps como Slack (23/10/2026, 0.1.158)
 
 José, 23/10, con capturas de Slack: «¿dónde está la sección apps en el modo
 Slack?» y «analiza primero cómo debería funcionar y no presentes esas cosas
@@ -4953,9 +4953,56 @@ caja «Agregar apps» bajo la sección) se descartó sin publicarse.
 - `developer`: «Agentes ConstRoad»;
 - `category`: operación · personas · finanzas · laboratorio · otra.
 Lilachat calcula «Activa en N canales y M mensajes directos» (chats del
-espacio donde está el bot) y «Instalada por X · fecha». Ya en el server
-(sin publicar): `GET /api/workspaces/:id/app-directory` y
-`POST /api/workspaces/:id/apps/:appId/chat` (el 1:1 con el bot).
+espacio donde está el bot) y «Instalada por X · fecha».
+
+**Implementado (0.1.158).**
+- Server: `GET /api/workspaces/:id/app-directory` → `{ apps, canInstall }`
+  (`bots/botDirectory.ts`): instaladas primero, con actividad e
+  «instalada por»; el `install_url` con `?space=` va solo a admins y solo
+  si no está instalada. `POST /api/workspaces/:id/apps/:appId/chat` abre el
+  1:1 con el bot. El manifiesto (§0-bis) guarda `description`, `features`,
+  `developer` y `category`; lo que se pasa de largo se recorta, no se
+  rechaza. La lista del espacio manda `appId` en los 1:1 con bots: van a
+  «Apps» y no a «Mensajes directos» (`shared/spaceSections.ts`).
+- Compartido (`shared/appDirectory.ts`, con test): chips, búsqueda sin
+  acentos, «Activa en…», «Instalada por… · 23 oct» (hora de Lima), las
+  instaladas sin 1:1 y los textos de Permisos. Web y app usan lo mismo.
+- Web (`web/src/spaces/apps/`): sección «Apps» en la barra; directorio a
+  pantalla completa con lista y detalle (en un teléfono abre en la lista y
+  el detalle la reemplaza); 1:1 con cabecera de app, pestañas Mensajes ·
+  Información y los comandos como chips sobre la barra; «Desinstalando…»
+  mientras el server responde; un logo que no carga cae al robot.
+- App (`app/src/spaces/apps/`): sección «Apps» en la lista del espacio
+  (también bajo la bienvenida, cuando todavía no hay chats); directorio
+  (`e-24`) y detalle (`e-25`) como pantallas completas; «Instalar» abre el
+  navegador y al volver a la app el directorio se relee; cabecera del 1:1
+  (`e-26`) con ⓘ y pestañas. El directorio se guarda en la caché del
+  espacio (`appDirectoryCache`): la lista, el directorio y la cabecera del
+  chat leen la misma copia y pintan al instante. Sin polling.
+- Desviaciones del diseño, a propósito: la cabecera del 1:1 conserva el ⋮
+  del chat (buscar, silenciar: una app ruidosa se silencia); el campo
+  sigue diciendo «Mensaje», porque «Mensaje o / para comandos» se partía
+  en dos líneas al lado del clip y la cámara; no hay tarjeta «Agentes
+  ConstRoad» ni la leyenda «Te llevamos a Agentes» (la página de
+  instalación es de cada app: dice «Se abre la página de la app para
+  conectar tu empresa»).
+
+**Medido (23/10, QA local contra la base de producción).**
+- Directorio: 1 lectura de instalaciones y, en paralelo, apps, quién
+  instaló y 2 conteos por app instalada. Sin índice nuevo: los conteos
+  van por `{ workspaceId }` de los chats.
+- Desinstalar: DELETE 204 en 1,75 s y relectura en 0,86 s desde la Mac
+  (en la mini, junto a la base, menos). Antes la vista quedaba en
+  «Instalada» ese rato, sin aviso; ahora dice «Desinstalando…».
+- Web: `index` 1 076 KB sin cambio de orden de magnitud (la carpeta
+  `apps/` son ~480 líneas). App: ninguna dependencia nueva.
+
+**E2E.** Web (escritorio 1280 y teléfono 390) y emulador (vertical y
+apaisado): sección, directorio, chips, búsqueda vacía, detalle de una
+instalada y de una no instalada, URL de instalación con el espacio,
+«Mensaje» abre el 1:1, cabecera y pestañas, chip de comando escribe
+«/clima », desinstalar con confirmación. Datos QA borrados y contados en
+cero (app, instalación, entregas, usuario bot, espacio, miembros, chats).
 
 ## 121. Comandos «/» de las apps, como Slack (23/10/2026, 0.1.157)
 

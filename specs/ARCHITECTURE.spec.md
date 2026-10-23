@@ -4909,6 +4909,76 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 123. Apps por espacio, «Enviar al canal», álbum en cuadrícula y Google Maps (23/10/2026, 0.1.159)
+
+Pedidos de José del 23/10 (directos y a través de la sesión de agentes).
+
+- **Disponibilidad de apps por espacio, desde la consola de agentes** (§0-ter
+  de BOTS-API). `GET /api/bots/spaces?admin=` (correo verificado o celular)
+  devuelve los espacios que esa persona administra, con su rol y las apps de
+  la desarrolladora instaladas. `PUT/GET /api/bots/apps/by-key/{key}/availability`
+  (o por `client_id`) fija `{ everywhere: true }` o `{ spaces: [...] }`. Una app
+  no disponible no sale en el directorio ni en Integraciones, salvo que ya
+  esté instalada; su OAuth responde 403 `app_not_available` y el
+  consentimiento solo ofrece espacios disponibles.
+- **«Enviar al canal»** (José: «me sale la tarjeta para mí pero no hay opción
+  de enviar al canal»). El server guarda la última respuesta efímera de cada
+  comando. `POST /api/chats/:chatId/commands/:commandId/share` hace que la app
+  la publique en el canal o grupo, una sola vez (idempotente). El mensaje
+  lleva `sharedBy` y se dibuja con «José usó /clima» arriba, en web, en app y
+  en el formato Slack de los canales. Solo quien preguntó, solo en canal o
+  grupo, dentro de los 15 minutos.
+- **Feedback al mandar un comando** (José: «no hay feedback de loading»). La
+  tarjeta «QA Clima está trabajando…» aparece en el acto, con puntos animados
+  (web) o indicador (app), y se reemplaza en su lugar por la respuesta
+  (`replaceAnswer`).
+- **Bug encontrado en el E2E:** «/clima» + Enter antes de que llegara la lista
+  de comandos salía al canal como texto. Ahora el envío espera la lista
+  (`runIfCommand`, una sola petición en vuelo) y recién decide.
+- **La lista «/» y el directorio no quedan viejos** (José vio /tanques ya
+  retirado). `workspace.apps.changed` por socket a los miembros del espacio
+  cuando cambia un manifiesto, los comandos, o se instala o desinstala una
+  app; web y app releen.
+- **Volver a Lilachat después de instalar** (José: la web solo para entrar y
+  autorizar, como Slack y Bitbucket). Agentes redirige a
+  `https://lilachat.constroad.com/s/{space}/apps/{client_id}`. En Android es un
+  App Link (`pathPrefix /s/`) y en la web una ruta que sobrevive al ingreso;
+  las dos entran al espacio, releen el directorio sin caché y abren el detalle
+  de la app. La bienvenida «te agregaron» espera: dos ventanas a la vez y la
+  segunda no se mostraba (emulador). `DirectoryApp` suma `clientId` (público).
+  La dirección de instalación suma `login_hint` con el celular de quien
+  instala.
+- **Álbum en cuadrícula (81, aprobado por José):** 2 lado a lado, 3 = una
+  grande y dos chicas, 4 o más = 2×2 con «+N» (`albumGrid`, con test). El
+  carrusel queda en el visor; deslizar para responder vale en todo el álbum.
+- **Google Maps como en WhatsApp (80):** Google le daba a nuestro robot la
+  página genérica («Google Maps», el mapa de Lima por la IP). Con el agente de
+  las vistas previas da el punto (coordenadas de título y mapa estático) o el
+  lugar (nombre y foto). Se quita la frase de propaganda y el sitio dice
+  «Google Maps».
+- **Fichas de apps:** un texto largo del manifiesto se corta en palabra entera
+  y termina en «…».
+- **Web:** el campo de un chat de espacio dice «Escribe un mensaje o / para
+  comandos». En la app sigue «Mensaje»: con el clip y la cámara se partía en
+  dos líneas.
+- **Equipos huérfanos (84):** borrados con OK de José; eran 5, de 4 usuarios
+  que ya no existían, y quedaron en 0.
+
+**Medido (23/10, QA local contra la base de producción).**
+- Publicar al canal desde el clic: 1,8 s.
+- Vista previa de Maps: 2,3 s la primera vez; después sale de la caché en
+  memoria.
+- Imagen del mapa estático: 200×200, 3,7 KB.
+- La vuelta tras instalar abre el detalle en frío y en caliente.
+
+**E2E.**
+- **Web:** álbum real de 6 fotos (2×2 con «+2») y visor; vista previa de Maps;
+  vuelta tras instalar antes de ingresar; /clima, «Enviar al canal» y «QA Ana
+  usó /clima».
+- **Emulador:** vuelta tras instalar en frío y en caliente; «QA Clima está
+  trabajando…»; «Enviar al canal» y «J zamora usó /clima»; álbum 2×2 con «+2».
+- Datos QA borrados y contados en cero.
+
 ## 122. Apps como Slack (23/10/2026, 0.1.158)
 
 José, 23/10, con capturas de Slack: «¿dónde está la sección apps en el modo
@@ -11176,7 +11246,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
       queda pendiente.
     - 67: disco de la mini, lila-2 revisa y propone una purga que José
       aprueba; revisar el Mongo de emergencia (F13).
-80. **Un enlace de Google Maps se ve como en WhatsApp** (José, 23/10, para
+80. ~~**Un enlace de Google Maps se ve como en WhatsApp**~~ **Hecho (§123, 0.1.159).** (José, 23/10, para
     después; captura de su chat con Aracely). Un `maps.app.goo.gl` hoy sale
     como enlace suelto o tarjeta pobre. WhatsApp muestra: si es un punto, el
     mapa con las coordenadas como título («11°49'45.8"S 76°37'39.1"W»); si es
@@ -11185,7 +11255,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     server: seguir la redirección del enlace corto, leer el `og:` de la página
     de Maps y, para un punto, armar la imagen del mapa. Mismo lugar que el 11
     (ubicación): conviene que se vean igual.
-81. **El álbum en cuadrícula como WhatsApp, no en carrusel** (pregunta de
+81. ~~**El álbum en cuadrícula como WhatsApp, no en carrusel**~~ **Hecho (§123, 0.1.159), aprobado por José.** (pregunta de
     José, 23/10; recomendación, falta su OK). En la burbuja: 2 fotos lado a
     lado, 3 = una grande y dos chicas, 4 o más = 2×2 con «+N» en la cuarta. El
     carrusel se queda en el visor a pantalla completa. Por qué: se ven hasta
@@ -11229,7 +11299,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     507 responde antes de escribir nada. Un contador por motivo
     (`disco_ausente`, `huella_no_coincide`, y `sin_passphrase` reportado por
     el teléfono) lo distingue en un minuto. Va con la R155.
-84. **Un equipo apunta a un usuario que ya no existe** — **diagnóstico en §119: 5 equipos de QA de agosto; borrarlos espera el OK de José.** (lila-2, 23/10): hay 7
+84. ~~**Un equipo apunta a un usuario que ya no existe**~~ **Hecho: con OK de José se borraron los 5 equipos (23/10, §123).** (lila-2, 23/10): hay 7
     `userId` distintos en `devices` para 6 usuarios. Revisar si borrar una
     cuenta deja sus equipos vivos y qué flujo resuelve el usuario desde el
     equipo.
@@ -11263,6 +11333,18 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     para el registro de material. Lo hace agentes con lo que ya hay (PATCH +
     `thread_of`); si hace falta, Lilachat suma una clave de agrupación
     (`group_key`) que resuelva la tarjeta del día por sí sola.
+89. **Formularios de las apps** (José, 23/10: marcar asistencia ingreso,
+    refrigerio y salida; ingreso de material; medida de tanques, desde el
+    espacio). Como los modales de Slack: el formulario sale del `inputSchema`
+    de la herramienta de escritura del producto (tipos, `x-unit`,
+    `x-input: photo | location`); el envío es la confirmación de la persona
+    (`form.submitted` → la herramienta con `confirmed_by`). Agentes pasa los
+    nombres y campos reales antes de construir. Diseño en Stitch primero. R160.
+90. **Adjuntos hacia la app** (vouchers, recibos, facturas, boletas):
+    `message.created` con `files: [{ url, mime, name, size }]`, URL firmada de
+    15 minutos en `https://lilachat.constroad.com/api/bots/files/<token>`. R160.
+91. **«Quitar del canal» para una app** (José, 23/10): hoy solo se saca como a
+    un miembro cualquiera; el bot entra a todo canal público nuevo. R160.
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

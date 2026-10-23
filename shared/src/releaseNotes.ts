@@ -10,6 +10,15 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.159',
+    items: [
+      'Lo que una app te responde a un comando ahora se puede «Enviar al canal», con «usó /clima» arriba.',
+      'Al mandar un comando ves al instante que la app está trabajando.',
+      'Los álbumes se ven en cuadrícula, como en WhatsApp, y un enlace de Google Maps muestra el punto o el lugar.',
+      'Después de instalar una app vuelves a tu espacio, con la app abierta.',
+    ],
+  },
+  {
     version: '0.1.158',
     items: [
       'En cada espacio, la sección «Apps» reúne tus chats con apps y las que ya están instaladas, como en Slack.',

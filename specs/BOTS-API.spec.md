@@ -80,8 +80,38 @@ da 401 `invalid_client`; una app que no es desarrolladora, 403
   después revoca todo y borra la app.
 - Una app de otra desarrolladora da 404, nunca 403.
 - Toda app con `install_url` sale en «Para instalar» de Integraciones de
-  cualquier espacio (como en Slack). El instalador de agentes corta si el
-  espacio no corresponde a una empresa suya.
+  cualquier espacio (como en Slack), salvo que agentes la limite (§0-ter). El
+  instalador de agentes corta si el espacio no corresponde a una empresa suya.
+
+## 0-ter) En qué espacios se puede instalar cada app (0.1.159)
+
+José, 23/10: desde la consola de agentes quiere decidir, espacio por espacio,
+qué apps se pueden instalar. Por ejemplo, en INFRAMAQ, Inframaq y Pulso, y
+Portal no. Las dos rutas usan la credencial de desarrolladora de §0-bis.
+
+- `GET /api/bots/spaces?admin=<correo o celular>` → `{ spaces: [{ id, name,
+  members, role: "owner" | "admin", installed: ["<key>"…] }] }`.
+  - Los espacios donde esa cuenta es dueña o admin. Agentes manda la cuenta
+    con la que entró a su consola, nunca otra.
+  - El correo cuenta solo si la persona lo verificó en Lilachat. El celular
+    acepta cualquier forma (`902049935`, `51902049935`, `+51 902 049 935`).
+  - Una cuenta que no existe da `{ spaces: [] }`. Algo que no es correo ni
+    celular da 400 `invalid_request`.
+  - `installed` lista solo las apps de ESA desarrolladora, por `key`.
+- `GET` y `PUT` en `/api/bots/apps/by-key/{key}/availability` (o
+  `/api/bots/apps/{client_id}/availability`):
+  - `{ "everywhere": true }` (lo que tiene toda app que nunca recibió una
+    lista) o `{ "spaces": ["<id>", …] }`, hasta 500. Una lista vacía = en
+    ningún espacio.
+  - Un id que no existe da 400 `unknown_space`; un cuerpo sin esas formas,
+    400 `invalid_request`; la app de otra desarrolladora, 404
+    `app_not_found`.
+  - Efecto: el directorio del espacio (§122 de ARCHITECTURE) y «Para
+    instalar» de Integraciones no muestran la app donde no está disponible,
+    salvo que YA esté instalada ahí: sacarla de la lista no la desinstala.
+    La página de consentimiento solo ofrece los espacios disponibles, y
+    `POST /api/oauth/authorize` en otro espacio responde 403
+    `app_not_available`.
 
 ## a) Instalación: OAuth 2.0 con código y PKCE
 

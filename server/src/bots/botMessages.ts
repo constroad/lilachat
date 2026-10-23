@@ -28,7 +28,8 @@ async function activeMemberId(workspaceId: Types.ObjectId, by: { phone: string }
   return member?.userId ?? null;
 }
 
-async function directWith(installation: Installation, userId: Types.ObjectId): Promise<Types.ObjectId> {
+/** The 1:1 of a member with the app's bot, created the first time (by the bot posting, or the person opening it from «Apps»). */
+export async function directWith(installation: Pick<BotInstallation, 'workspaceId' | 'botUserId'>, userId: Types.ObjectId): Promise<Types.ObjectId> {
   const members = [installation.botUserId, userId];
   const existing = await ChatModel.findOne({ kind: 'direct', workspaceId: installation.workspaceId, 'members.userId': { $all: members }, members: { $size: 2 } }).select('_id').lean();
   if (existing) return existing._id;

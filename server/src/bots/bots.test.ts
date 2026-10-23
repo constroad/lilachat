@@ -274,6 +274,32 @@ describe('the bot hears signed events (§c)', () => {
     expect((await request(app).get(`/api/workspaces/${spaceId}/available-apps`).set(asJose).expect(200)).body.apps[0]).toMatchObject({ installed: true });
   });
 
+  it('the «Apps» section: what is installed for every member, what to add only for admins (José, 23/10)', async () => {
+    await BotAppModel.create({ clientId: 'lca_portal', clientSecretHash: sha256(SECRET), name: 'Portal', redirectUris: [REDIRECT], webhookUrl: hookUrl, installUrl: 'https://agentes.example.com/instalar?app=portal' });
+    const { botUserId } = await install();
+    const lila = await BotAppModel.findOne({ clientId: 'lca_lila' }).lean();
+    const asMember = (await request(app).get(`/api/workspaces/${spaceId}/app-directory`).set(asAna).expect(200)).body;
+    expect(asMember).toEqual({ installed: [{ appId: String(lila!._id), name: 'Lila', botUserId }], available: [], canInstall: false });
+    const asOwner = (await request(app).get(`/api/workspaces/${spaceId}/app-directory`).set(asJose).expect(200)).body;
+    expect(asOwner.canInstall).toBe(true);
+    expect(asOwner.available).toEqual([expect.objectContaining({ name: 'Portal', installUrl: `https://agentes.example.com/instalar?app=portal&space=${spaceId}`, installed: false })]);
+    await request(app).get(`/api/workspaces/${spaceId}/app-directory`).set(asUser(() => beto)).expect(404);
+  });
+
+  it('opening an app from «Apps» gives the same 1:1 with its bot every time; an app not installed is 404', async () => {
+    const { botUserId } = await install();
+    const lila = await BotAppModel.findOne({ clientId: 'lca_lila' }).lean();
+    const first = (await request(app).post(`/api/workspaces/${spaceId}/apps/${lila!._id}/chat`).set(asAna).expect(200)).body;
+    const again = (await request(app).post(`/api/workspaces/${spaceId}/apps/${lila!._id}/chat`).set(asAna).expect(200)).body;
+    expect(again).toEqual(first);
+    expect(first.botUserId).toBe(botUserId);
+    const chat = await ChatModel.findById(first.chatId).lean();
+    expect(chat).toMatchObject({ kind: 'direct', workspaceId: spaceId });
+    expect(chat!.members.map((member) => String(member.userId)).sort()).toEqual([String(ana), botUserId].sort());
+    await request(app).post(`/api/workspaces/${spaceId}/apps/${new Types.ObjectId()}/chat`).set(asAna).expect(404);
+    await request(app).post(`/api/workspaces/${spaceId}/apps/${lila!._id}/chat`).set(asUser(() => beto)).expect(404);
+  });
+
   it('revoking from agentes: the token dies, no event', async () => {
     const { token } = await install();
     await request(app).post('/api/oauth/revoke').set(asBot(token)).expect(200);

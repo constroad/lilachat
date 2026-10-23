@@ -52,8 +52,11 @@ export function buildOAuthRouter(): Router {
   router.get('/app', requireSession, asyncRoute(async (req, res) => send(res, await appForConsent(req.session!.userId, req.query))));
   router.post('/authorize', requireSession, asyncRoute(async (req, res) => send(res, await authorize(req.session!.userId, req.body ?? {}))));
   router.post('/token', express.urlencoded({ extended: false }), asyncRoute(async (req, res) => {
-    if (!tokenTries.permitir(req.ip ?? 'sin-ip')) return void res.status(429).json({ error: 'rate_limited', error_description: 'Demasiados intentos. Espera un minuto.' });
-    send(res, await exchangeCode(req.body ?? {}));
+    const outcome = await exchangeCode(req.body ?? {});
+    // Only failed exchanges count: a guesser gets nowhere, and installing in many spaces is not punished.
+    const failedExchange = 'error' in outcome;
+    if (failedExchange && !tokenTries.permitir(req.ip ?? 'sin-ip')) return void res.status(429).json({ error: 'rate_limited', error_description: 'Demasiados intentos. Espera un minuto.' });
+    send(res, outcome);
   }));
   router.post('/revoke', asyncRoute(requireBot), asyncRoute(async (req, res) => {
     await revokeInstallation(req.bot!);

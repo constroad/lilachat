@@ -152,6 +152,9 @@ export const botCardSummary = (card: Pick<BotCard, 'title' | 'status'>): string 
 
 /** An app an admin can install from Integraciones (`GET /api/workspaces/:id/available-apps`), its address already pointing at the space. */
 export type AvailableApp = { id: string; name: string; avatarUrl?: string; installUrl: string; installed: boolean };
+/** The «Apps» section of a space (like Slack's): what is installed, for everyone; what can be added, for its admins. */
+export type InstalledApp = { appId: string; name: string; avatarUrl?: string; botUserId: string };
+export type SpaceAppDirectory = { installed: InstalledApp[]; available: AvailableApp[]; canInstall: boolean };
 
 /** An app installed in a space, as Integraciones lists it (`GET /api/workspaces/:id/apps`). */
 export type SpaceApp = { id: string; name: string; avatarUrl?: string; installedBy: string | null; installedAt: string; lastDelivery?: { at: string; ok: boolean; error?: string } };

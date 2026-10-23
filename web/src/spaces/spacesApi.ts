@@ -1,4 +1,4 @@
-import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, SpaceApp, AvailableApp, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
+import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, SpaceApp, AvailableApp, SpaceAppDirectory, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
 import { api } from '../api';
 import type { ChatSummary } from '../chat/types';
 
@@ -79,4 +79,7 @@ export const chatOfChannel = (channel: ClientChannel, spaceId: string): ChatSumm
 /** Integraciones (`specs/BOTS-API.spec.md`): the space's installed apps, and uninstalling one. */
 export const spaceApps = (jwt: string, spaceId: string) => api<{ apps: SpaceApp[] }>(`/workspaces/${spaceId}/apps`, { jwt });
 export const availableApps = (jwt: string, spaceId: string) => api<{ apps: AvailableApp[] }>(`/workspaces/${spaceId}/available-apps`, { jwt });
+/** The «Apps» section (23/10): installed for everyone, to add for admins; and the 1:1 with an app's bot. */
+export const appDirectory = (jwt: string, spaceId: string) => api<SpaceAppDirectory>(`/workspaces/${spaceId}/app-directory`, { jwt });
+export const openAppChat = (jwt: string, spaceId: string, appId: string) => api<{ chatId: string; botUserId: string }>(`/workspaces/${spaceId}/apps/${appId}/chat`, { jwt, method: 'POST', body: {} });
 export const uninstallApp = (jwt: string, spaceId: string, installationId: string) => api<Record<string, never>>(`/workspaces/${spaceId}/apps/${installationId}`, { jwt, method: 'DELETE' });

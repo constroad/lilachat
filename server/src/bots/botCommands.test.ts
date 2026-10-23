@@ -215,3 +215,50 @@ describe('answering later', () => {
     expect((await respond({ text: 'no es mío' }, otherToken).expect(404)).body.error).toBe('command_not_found');
   });
 });
+
+describe('sharing an answer only I saw (José, 23/10: «no hay opción de enviar al canal»)', () => {
+  const share = (chatId: Types.ObjectId, commandId: string, as = asAna) => request(app).post(`/api/chats/${chatId}/commands/${commandId}/share`).set(as).send({});
+
+  it('the app posts it in the channel, saying who shared it; a second tap does not post it twice', async () => {
+    // Arrange
+    const { appId } = await installWithCommands();
+    answer = json(200, { text: 'Lurín: 24 °C, sin lluvia' });
+    const { commandId } = (await invoke(channel, { app_id: appId, command: 'clima', text: 'lurin' }).expect(200)).body;
+    // Act
+    const first = await share(channel, commandId).expect(200);
+    const again = await share(channel, commandId).expect(200);
+    // Assert
+    expect(again.body.seq).toBe(first.body.seq);
+    const posted = await MessageModel.find({ chatId: channel }).lean();
+    expect(posted).toHaveLength(1);
+    expect(posted[0]!.body).toBe('Lurín: 24 °C, sin lluvia');
+    expect(posted[0]!.sharedBy).toMatchObject({ name: 'Ana', command: 'clima' });
+    expect(String(posted[0]!.senderId)).not.toBe(String(ana));
+  });
+
+  it('a card goes as it came, with the line of who shared it; a late answer can be shared too', async () => {
+    const { appId, token } = await installWithCommands();
+    answer = (res) => res.end();
+    const { commandId } = (await invoke(channel, { app_id: appId, command: 'clima', text: '' }).expect(200)).body;
+    await request(app).post(`/api/bots/commands/${commandId}/respond`).set(asBot(token)).send({ card: { title: 'Clima de mañana', status: { label: 'Lluvia', tone: 'warn' } } }).expect(200);
+    await share(channel, commandId).expect(200);
+    const posted = await MessageModel.findOne({ chatId: channel }).lean();
+    expect(posted?.card?.title).toBe('Clima de mañana');
+    expect(posted?.sharedBy).toMatchObject({ name: 'Ana', command: 'clima' });
+  });
+
+  it('only who asked, only in a channel or group, only within the 15 minutes, and only with an answer', async () => {
+    const { appId } = await installWithCommands();
+    answer = json(200, { text: 'Lurín: 24 °C' });
+    const { commandId } = (await invoke(channel, { app_id: appId, command: 'clima', text: '' }).expect(200)).body;
+    await share(channel, commandId, asJose).expect(404);
+    const inDirect = (await invoke(humansDirect, { app_id: appId, command: 'clima', text: '' }).expect(200)).body.commandId;
+    expect((await share(humansDirect, inDirect).expect(409)).body.message).toMatch(/canal/);
+    answer = (res) => res.end();
+    const pending = (await invoke(channel, { app_id: appId, command: 'clima', text: '' }).expect(200)).body.commandId;
+    await share(channel, pending).expect(409);
+    await BotCommandRunModel.updateOne({ _id: commandId }, { $set: { expiresAt: new Date(Date.now() - 1000) } });
+    await share(channel, commandId).expect(410);
+    expect(await MessageModel.countDocuments({ chatId: channel })).toBe(0);
+  });
+});

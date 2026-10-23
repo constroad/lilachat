@@ -4,6 +4,7 @@ import { ChatModel, type Chat } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { callBotWebhook, recordLastDelivery, type WebhookReply } from './botEvents.js';
 import { postBotMessage } from './botMessages.js';
+import { announceAppChanged, announceLater } from './botAnnounce.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel, type BotCommandRun, type BotInstallation } from './botModels.js';
 import { channelOf, personOf } from './botTriggers.js';
 
@@ -36,6 +37,7 @@ export const commandsToWire = (commands: readonly BotCommand[]) =>
 
 export async function registerCommands(installation: Pick<BotInstallation, 'appId'>, commands: BotCommand[]): Promise<BotCommand[]> {
   await BotAppModel.updateOne({ _id: installation.appId }, { $set: { commands } });
+  announceLater(announceAppChanged(installation.appId));
   return commands;
 }
 
@@ -63,6 +65,8 @@ async function deliverResponse(installation: BotInstallation, run: Pick<BotComma
     const posted = await postBotMessage(installation, { target, ...(response.text ? { text: response.text } : {}), ...(response.card ? { card: response.card } : {}), idempotencyKey: `cmd:${run._id}:${run.responses}` });
     if (!('error' in posted)) return { ...base, outcome: 'posted' };
   }
+  // Kept for «Enviar al canal»: only the asker saw it.
+  await BotCommandRunModel.updateOne({ _id: run._id }, { $set: { answer: { ...(response.text ? { text: response.text } : {}), ...(response.card ? { card: response.card } : {}) } } });
   return { ...base, outcome: 'ephemeral', response: { ...response, responseType: 'ephemeral' } };
 }
 
@@ -131,4 +135,29 @@ export async function respondToCommand(installation: BotInstallation, commandId:
   const outcome = await deliverResponse(installation, run, chat, valid.response, base);
   if (outcome.outcome === 'ephemeral') notifyAsker(String(run.userId), { chatId: String(chat._id), commandId, appId: base.appId, appName: base.appName, response: outcome.response! });
   return { response_type: outcome.outcome === 'posted' ? 'in_channel' : 'ephemeral' };
+}
+
+/**
+ * «Enviar al canal» (José, 23/10): the answer only the asker saw goes to the
+ * channel as the app's message, with «José usó /clima» on top. Once: a second tap
+ * gets the same message back.
+ */
+export async function shareCommandAnswer(userId: Types.ObjectId, chatId: string, commandId: string): Promise<{ seq: number } | CommandError> {
+  if (!isId(chatId) || !isId(commandId)) return fail(404, 'command_not_found', 'Ese comando no existe.');
+  const run = await BotCommandRunModel.findOne({ _id: commandId, chatId, userId }).lean();
+  if (!run) return fail(404, 'command_not_found', 'Ese comando no existe o no es tuyo.');
+  if (run.expiresAt.getTime() <= Date.now()) return fail(410, 'command_expired', 'Pasaron más de 15 minutos: vuelve a usar el comando.');
+  if (!run.answer) return fail(409, 'nothing_to_share', 'La app todavía no respondió.');
+  const [chat, installation, person] = await Promise.all([
+    ChatModel.findById(chatId).select('_id kind name channel workspaceId members.userId').lean<ChatOfCommand | null>(),
+    BotInstallationModel.findOne({ _id: run.installationId, revokedAt: { $exists: false } }).lean(),
+    personOf(userId),
+  ]);
+  if (!chat || chat.kind !== 'group') return fail(409, 'not_shareable', 'Solo se comparte en un canal o un grupo.');
+  if (!installation) return fail(410, 'app_uninstalled', 'La app ya no está instalada en este espacio.');
+  const card = run.answer.card as BotPost['card'] | undefined;
+  const sharedBy = { userId, name: person.name ?? 'Alguien', command: run.command };
+  const posted = await postBotMessage(installation, { target: { channelId: String(chat._id) }, ...(run.answer.text ? { text: run.answer.text } : {}), ...(card ? { card } : {}), idempotencyKey: `share:${run._id}` }, sharedBy);
+  if ('error' in posted) return fail(409, 'not_shareable', 'La app no está en este canal.');
+  return { seq: posted.message.seq };
 }

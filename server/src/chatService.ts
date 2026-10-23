@@ -78,6 +78,8 @@ export async function sendMessage(params: {
   ref?: Message['ref'];
   /** A bot's card (`bots/botMessages.ts`). */
   card?: Message['card'];
+  /** Who sent an app's answer to the channel (`shareCommandAnswer`). */
+  sharedBy?: Message['sharedBy'];
   replyToSeq?: number;
   /** Las @menciones que mandó el cliente: se guardan solo las que valen. */
   menciones?: unknown;
@@ -151,6 +153,7 @@ export async function sendMessage(params: {
       media: params.media,
       ref: params.ref,
       ...(params.card ? { card: params.card } : {}),
+      ...(params.sharedBy ? { sharedBy: params.sharedBy } : {}),
       ...(params.contact && !params.envelope ? { contact: params.contact } : {}),
       ...(params.location && !params.envelope ? { location: params.location } : {}),
       replyToSeq: params.replyToSeq,

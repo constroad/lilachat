@@ -3,6 +3,7 @@ import { ChatModel } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { BotInstallationModel, type BotApp, type BotInstallation } from './botModels.js';
 import { forgetBots } from './botRegistry.js';
+import { announceLater, announceSpaceApps } from './botAnnounce.js';
 import { newSecret, sha256 } from './botSecrets.js';
 
 /**
@@ -57,6 +58,7 @@ export async function installApp(params: { app: BotApp; workspaceId: Types.Objec
   ).lean<BotInstallation>();
   await joinPublicChannels(params.workspaceId, botUserId);
   forgetBots();
+  announceLater(announceSpaceApps(params.workspaceId));
   return { installation: installation!, token, signingSecret };
 }
 
@@ -69,6 +71,7 @@ export async function revokeInstallation(installation: Pick<BotInstallation, '_i
   await BotInstallationModel.updateOne({ _id: installation._id }, { $set: { revokedAt: new Date() } });
   await ChatModel.updateMany({ workspaceId: installation.workspaceId, kind: 'group', 'members.userId': installation.botUserId }, { $pull: { members: { userId: installation.botUserId } } });
   forgetBots();
+  announceLater(announceSpaceApps(installation.workspaceId));
 }
 
 /** The installation behind a bot token, if it is still alive. */

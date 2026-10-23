@@ -65,7 +65,7 @@ async function assigneesOf(installation: Installation, checklist: NonNullable<Bo
   return byPhone;
 }
 
-async function publishText(installation: Installation, chatId: Types.ObjectId, post: BotPost): Promise<Message> {
+async function publishText(installation: Installation, chatId: Types.ObjectId, post: BotPost, sharedBy?: Message['sharedBy']): Promise<Message> {
   const result = await sendMessage({
     chatId: String(chatId),
     senderId: installation.botUserId,
@@ -73,6 +73,7 @@ async function publishText(installation: Installation, chatId: Types.ObjectId, p
     kind: 'text',
     body: post.text ?? botCardSummary(post.card!),
     ...(post.card ? { card: post.card } : {}),
+    ...(sharedBy ? { sharedBy } : {}),
     ...(post.threadOf ? { hiloDe: post.threadOf } : {}),
   });
   if (!result.duplicate) await publicarMensaje(result.message, result.members);
@@ -94,7 +95,8 @@ async function publishChecklist(installation: Installation, chatId: Types.Object
   return created.cardSeq ? MessageModel.findOne({ chatId, seq: created.cardSeq }).lean<Message | null>() : null;
 }
 
-export async function postBotMessage(installation: Installation, post: BotPost): Promise<{ status: 200 | 201; message: PostedMessage } | BotApiError> {
+/** `sharedBy` is Lilachat's own: an answer to a command sent to the channel by who asked; never from the public API. */
+export async function postBotMessage(installation: Installation, post: BotPost, sharedBy?: Message['sharedBy']): Promise<{ status: 200 | 201; message: PostedMessage } | BotApiError> {
   const known = installation.recentKeys.find((entry) => entry.key === post.idempotencyKey);
   if (known) return { status: 200, message: { id: known.messageId, chat_id: known.chatId, seq: known.seq } };
   const chatId = await resolveChat(installation, post.target);
@@ -102,7 +104,7 @@ export async function postBotMessage(installation: Installation, post: BotPost):
   const assignees = post.checklist ? await assigneesOf(installation, post.checklist) : new Map<string, Types.ObjectId>();
   if (!(assignees instanceof Map)) return assignees;
   let last: Message | null = null;
-  if (post.text || post.card) last = await publishText(installation, chatId, post);
+  if (post.text || post.card) last = await publishText(installation, chatId, post, sharedBy);
   if (post.checklist) last = (await publishChecklist(installation, chatId, post, assignees)) ?? last;
   if (!last) return fail(400, 'invalid_request', 'No se pudo publicar.');
   const entry = { key: post.idempotencyKey, messageId: String(last._id), chatId: String(last.chatId), seq: last.seq };

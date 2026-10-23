@@ -13,6 +13,7 @@ import { WorkspaceMemberModel, WorkspaceModel } from '../workspaceModels.js';
 import { signSession } from '../sessions.js';
 import { BotAppModel, BotInstallationModel, OAuthCodeModel } from './botModels.js';
 import { configureDevelopers } from './botApps.js';
+import { configureAppsAnnounce } from './botAnnounce.js';
 import { forgetBots } from './botRegistry.js';
 import { sha256 } from './botSecrets.js';
 
@@ -100,6 +101,23 @@ describe('the manifest', () => {
     expect(token.body.access_token).toMatch(/^lcb_/);
     const groups = (await request(app).get(`/api/workspaces/${spaceId}/commands`).set(asJose).expect(200)).body.groups;
     expect(groups).toEqual([expect.objectContaining({ appName: 'Inframaq', commands: [{ command: 'clima', description: 'Clima de la planta' }] })]);
+  });
+
+  it('a re-sent manifest tells the members of every space with the app, so their «/» list is not stale (José, 23/10)', async () => {
+    // Arrange
+    const { body } = await request(app).post('/api/bots/apps').set(asLila).send(manifest()).expect(201);
+    await installWith(body.client_id, body.client_secret);
+    // The install tells them too, on its own time: let it pass first.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const told: { userIds: readonly string[]; workspaceId: string }[] = [];
+    configureAppsAnnounce((userIds, workspaceId) => told.push({ userIds, workspaceId }));
+    // Act
+    await request(app).post('/api/bots/apps').set(asLila).send({ ...manifest(), commands: [] }).expect(200);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    // Assert
+    expect(told).toEqual([{ userIds: [String(jose)], workspaceId: String(spaceId) }]);
+    expect((await request(app).get(`/api/workspaces/${spaceId}/commands`).set(asJose).expect(200)).body.groups).toEqual([]);
+    configureAppsAnnounce(() => undefined);
   });
 
   it('rotating gives a new secret and the old one stops working; the installation lives on', async () => {

@@ -1,5 +1,6 @@
 import { MANIFEST_LIMITS, type AppManifest } from '@lilachat/shared';
 import { callBotWebhook } from './botEvents.js';
+import { announceAppChanged, announceLater } from './botAnnounce.js';
 import { revokeInstallation } from './botInstall.js';
 import { commandsToWire } from './botCommands.js';
 import { BotAppModel, BotInstallationModel, type BotApp } from './botModels.js';
@@ -54,6 +55,7 @@ export async function upsertApp(developer: BotApp, manifest: AppManifest): Promi
   const existing = await BotAppModel.findOne({ ownerAppId: developer._id, key: manifest.key }).select('clientId').lean();
   if (existing) {
     await BotAppModel.updateOne({ _id: existing._id }, { $set: manifestFields(manifest) });
+    announceLater(announceAppChanged(existing._id));
     return { status: 200, body: { client_id: existing.clientId } };
   }
   if ((await BotAppModel.countDocuments({ ownerAppId: developer._id })) >= MANIFEST_LIMITS.appsPerDeveloper) return fail(400, 'too_many_apps', `Una desarrolladora crea hasta ${MANIFEST_LIMITS.appsPerDeveloper} apps.`);

@@ -69,6 +69,16 @@ export function parseSlashInput(input: string): { command: string; text: string 
   return { command: name.toLowerCase(), text: (rest ?? '').trim() };
 }
 
+/** On top of an app's answer that who asked sent to the channel (José, 23/10), like Slack's «usó /giphy». */
+export const sharedByLine = (sharedBy: { name: string; command: string }): string => `${sharedBy.name} usó /${sharedBy.command}`;
+
+/** The app whose command this line is, with what goes after it; null when no app of the space has it. */
+export function commandOf(groups: readonly CommandGroup[], input: string): { appId: string; command: string; text: string } | null {
+  const parsed = parseSlashInput(input);
+  const group = parsed ? groups.find((one) => one.commands.some((entry) => entry.command === parsed.command)) : undefined;
+  return parsed && group ? { appId: group.appId, ...parsed } : null;
+}
+
 /** While the name is being typed («/cl»), the part to suggest for; null once there is a space or no slash. */
 export function slashQuery(input: string): string | null {
   const match = /^\/([a-zA-Z0-9_-]*)$/.exec(input);
@@ -127,6 +137,19 @@ export function answerOfOutcome(outcome: CommandOutcome, command: string): Ephem
 export function withAnswer(list: readonly EphemeralAnswer[], answer: EphemeralAnswer): EphemeralAnswer[] {
   const rest = list.filter((entry) => entry.commandId !== answer.commandId);
   return [...rest, answer].slice(-EPHEMERAL_KEPT);
+}
+
+/**
+ * The card shown the moment a command leaves (José, 23/10: no feedback while
+ * the app thinks), swapped in place for what the server said; null (posted in
+ * the channel) just takes it away.
+ */
+export function replaceAnswer(list: readonly EphemeralAnswer[], placeholderId: string, answer: EphemeralAnswer | null): EphemeralAnswer[] {
+  const index = list.findIndex((entry) => entry.commandId === placeholderId);
+  if (index < 0) return answer ? withAnswer(list, answer) : [...list];
+  const rest = list.filter((entry, at) => at !== index && entry.commandId !== answer?.commandId);
+  if (!answer) return rest;
+  return [...rest.slice(0, index), answer, ...rest.slice(index)].slice(-EPHEMERAL_KEPT);
 }
 
 /** A notice from the socket: it answers its pending command, or arrives on its own if that one was dismissed. */

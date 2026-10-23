@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { answerOfOutcome, COMMAND_LIMITS, matchCommands, parseSlashInput, slashQuery, validateBotCommands, validateCommandResponse, withAnswer, withNotice, type CommandGroup } from './botCommands.js';
+import { answerOfOutcome, COMMAND_LIMITS, commandOf, matchCommands, replaceAnswer, sharedByLine, parseSlashInput, slashQuery, validateBotCommands, validateCommandResponse, withAnswer, withNotice, type CommandGroup } from './botCommands.js';
 
 /** The slash commands contract, `specs/BOTS-API.spec.md` §c. */
 describe('command registry', () => {
@@ -114,5 +114,34 @@ describe('ephemeral answers', () => {
 
   it('a notice for a dismissed command still shows up, without its name', () => {
     expect(withNotice([], { chatId: 'x', commandId: 'c9', appId: 'a1', appName: 'Inframaq', response: { responseType: 'ephemeral', text: 'tarde' } })[0]).toMatchObject({ commandId: 'c9', command: '', state: 'answered' });
+  });
+});
+
+describe('commandOf', () => {
+  const groups: CommandGroup[] = [{ appId: 'a1', appName: 'Inframaq', commands: [{ command: 'clima', description: 'Clima' }] }];
+  it('the app whose command the line is, with its text; a slash nobody has, or plain text, is not a command', () => {
+    expect(commandOf(groups, '/Clima lurín')).toEqual({ appId: 'a1', command: 'clima', text: 'lurín' });
+    expect(commandOf(groups, '/otra cosa')).toBeNull();
+    expect(commandOf(groups, 'hola /clima')).toBeNull();
+    expect(commandOf([], '/clima')).toBeNull();
+  });
+});
+
+describe('sharedByLine', () => {
+  it('who sent the answer and with which command', () => {
+    expect(sharedByLine({ name: 'José Zamora', command: 'clima' })).toBe('José Zamora usó /clima');
+  });
+});
+
+describe('replaceAnswer (the «working…» card while the command leaves)', () => {
+  const sending = { commandId: 'sending-1', appName: 'Inframaq', command: 'clima', state: 'pending' as const };
+  const other = { commandId: 'c0', appName: 'Portal', command: 'asistencia', state: 'answered' as const, response: { responseType: 'ephemeral' as const, text: 'ok' } };
+  it('the server\'s answer takes the placeholder\'s place; a post in the channel just removes it', () => {
+    const answered = { commandId: 'c9', appName: 'Inframaq', command: 'clima', state: 'answered' as const, response: { responseType: 'ephemeral' as const, text: '24 °C' } };
+    expect(replaceAnswer([sending, other], 'sending-1', answered).map((one) => one.commandId)).toEqual(['c9', 'c0']);
+    expect(replaceAnswer([sending, other], 'sending-1', null).map((one) => one.commandId)).toEqual(['c0']);
+  });
+  it('a placeholder already dismissed: the answer still arrives at the end', () => {
+    expect(replaceAnswer([other], 'sending-1', { ...sending, commandId: 'c9' }).map((one) => one.commandId)).toEqual(['c0', 'c9']);
   });
 });

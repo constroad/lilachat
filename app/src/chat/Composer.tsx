@@ -303,7 +303,7 @@ export const Composer = memo(function Composer(props: {
     const respondiendoA = props.respondiendoA?.seq;
     const sendAsText = () =>
       void props.onEnviar(texto, respondiendoA, rangos).then((ok) => {
-        // Si no salió, el texto vuelve al campo: perderlo sería peor que el aviso.
+        // Not sent: the text goes back to the field; losing it would be worse than the notice.
         if (!ok) ponerTexto(texto);
       });
     if (!props.commands) return sendAsText();

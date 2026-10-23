@@ -16,7 +16,7 @@ export type Availability = { everywhere: true } | { spaces: string[] };
 
 /** A list longer than this is not a product decision, it is a mistake. */
 const MAX_LISTED_SPACES = 500;
-const ADMIN_ROLES = ['owner', 'admin'] as const;
+const SPACE_MANAGERS = ['owner', 'admin'] as const;
 const fail = (status: AppsError['status'], error: string, message: string): AppsError => ({ status, error, message });
 
 export const isAvailableIn = (app: Pick<BotApp, 'availableIn'>, spaceId: string | Types.ObjectId): boolean =>
@@ -36,7 +36,7 @@ export async function spacesRunBy(developer: BotApp, admin: string) {
   const person = await personBy(admin);
   if (person && 'error' in person) return person;
   if (!person) return { spaces: [] };
-  const memberships = await WorkspaceMemberModel.find({ userId: person, status: 'active', role: { $in: ADMIN_ROLES } }).select('workspaceId role').lean();
+  const memberships = await WorkspaceMemberModel.find({ userId: person, status: 'active', role: { $in: SPACE_MANAGERS } }).select('workspaceId role').lean();
   const ids = memberships.map((member) => member.workspaceId);
   const [spaces, counts, owned] = await Promise.all([
     WorkspaceModel.find({ _id: { $in: ids } }).select('name').sort({ name: 1 }).lean(),

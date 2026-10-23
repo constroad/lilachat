@@ -12,9 +12,9 @@ export const AGENTE_DE_FACEBOOK = 'facebookexternalhit/1.1 (+http://www.facebook
 
 const SITIOS_DE_META = ['instagram.com', 'facebook.com', 'fb.watch', 'tiktok.com'];
 /**
- * Google Maps le da a un robot cualquiera la página genérica «Google Maps»
- * (el mapa de Lima por la IP); al de las vistas previas, el punto con sus
- * coordenadas o el lugar con su foto, como en WhatsApp (pendiente 80).
+ * Google Maps gives any robot the generic «Google Maps» page (Lima's map, by
+ * the IP); the preview robot gets the point with its coordinates or the place
+ * with its photo, like WhatsApp (pending 80).
  */
 const SITIOS_DE_MAPAS = ['google.com', 'maps.app.goo.gl', 'goo.gl'];
 const esDe = (host: string, dominio: string) => host === dominio || host.endsWith(`.${dominio}`);
@@ -23,18 +23,18 @@ export function agenteParaHost(host: string): string {
   return [...SITIOS_DE_META, ...SITIOS_DE_MAPAS].some((dominio) => esDe(host.toLowerCase(), dominio)) ? AGENTE_DE_FACEBOOK : AGENTE_PROPIO;
 }
 
-/** La frase de propaganda que Google Maps pone en la página de un punto: no dice nada del punto. */
-const TEXTO_GENERICO_DE_MAPAS = /^(Busca negocios locales|Find local businesses)/i;
+/** The sales line Google Maps puts on a point's page: it says nothing about the point. */
+const MAPS_SALES_LINE = /^(Busca negocios locales|Find local businesses)/i;
 
 /**
- * Un enlace de Google Maps como en WhatsApp: el punto con sus coordenadas y su
- * mapa, o el lugar con su foto; sin la propaganda, y el sitio dice «Google
- * Maps» (Google repite el título en `og:site_name`).
+ * A Google Maps link like WhatsApp's: the point with its coordinates and map,
+ * or the place with its photo; without the sales line, and the site says
+ * «Google Maps» (Google repeats the title in `og:site_name`).
  */
 export function vistaDeMapas(vista: VistaPreviaDeEnlace, host: string): VistaPreviaDeEnlace {
   if (!SITIOS_DE_MAPAS.some((dominio) => esDe(host.toLowerCase(), dominio))) return vista;
   const { descripcion, ...resto } = vista;
-  const propia = descripcion && !TEXTO_GENERICO_DE_MAPAS.test(descripcion) ? { descripcion } : {};
+  const propia = descripcion && !MAPS_SALES_LINE.test(descripcion) ? { descripcion } : {};
   return { ...resto, ...propia, sitio: 'Google Maps' };
 }
 

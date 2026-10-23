@@ -4,6 +4,7 @@ import {
   cuandoDelEvento,
   estadoDelEvento,
   ETIQUETA_DE_REPETICION,
+  repeatLabel,
   formatEventWhen,
   lineaDePendientes,
   origenDelRecordatorio,
@@ -137,7 +138,7 @@ function FilaDeRecordatorio(props: { recordatorio: AgendaReminder; cuando: Date;
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><Bell size={17} /></span>
       <button type="button" onClick={props.onEditar} className="min-w-0 flex-1 text-left">
         <span className="block truncate text-sm font-semibold">{recordatorio.title}</span>
-        <span className="block text-[12px] text-on-surface-variant">{props.vencido ? `Sonó ${formatEventWhen(props.cuando).toLowerCase()}` : `${repetido ? `${ETIQUETA_DE_REPETICION[recordatorio.recurrence]} · ` : ''}${formatEventWhen(props.cuando)}`}</span>
+        <span className="block text-[12px] text-on-surface-variant">{props.vencido ? `Sonó ${formatEventWhen(props.cuando).toLowerCase()}` : `${repetido ? `${repeatLabel(recordatorio.recurrence, recordatorio.repeat, ETIQUETA_DE_REPETICION[recordatorio.recurrence])} · ` : ''}${formatEventWhen(props.cuando)}`}</span>
         <span className="block text-[11px] text-on-surface-variant">{origenDelRecordatorio({ chat: recordatorio.chat, agenda: SIN_AGENDA })}</span>
       </button>
       {props.vencido ? (

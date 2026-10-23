@@ -35,7 +35,7 @@ describe('complete profile (web)', () => {
     fireEvent.click(screen.getByTestId('perfil-continuar'));
     await waitFor(() => expect(onDone).toHaveBeenCalled());
     expect(calls.find((call) => call.url.endsWith('/email/code'))?.body).toEqual({ email: 'ana@example.com' });
-    expect(calls.find((call) => call.url.endsWith('/me/profile'))?.body).toEqual({ name: 'Ana', birthday: { day: 29, month: 8 }, birthdayVisible: true });
+    expect(calls.find((call) => call.url.endsWith('/me/profile'))?.body).toEqual({ name: 'Ana', birthday: { day: 29, month: 8 } });
   });
 
   /** Backlog 51 (José, 22/10): the phone already proved who it is; the email is optional. */

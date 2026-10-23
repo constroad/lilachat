@@ -1,5 +1,5 @@
 import { Bell, Pencil } from 'lucide-react';
-import { cuandoSuena, primerEnlace, type AgendaReminder } from '@lilachat/shared';
+import { whenItRings, primerEnlace, type AgendaReminder } from '@lilachat/shared';
 import { useConversacion } from '../contextoDeLaConversacion';
 import { TarjetaDeEnlace } from '../TarjetaDeEnlace';
 import { TextoDelMensaje } from '../TextoDelMensaje';
@@ -29,7 +29,7 @@ export function RecordatorioEnElChat({ id }: { id: string }) {
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Recordatorio</p>
           <p className="text-[15px] font-semibold">{recordatorio.title}</p>
-          <p className="text-[12px] text-on-surface-variant">{cuandoSuena(recordatorio)}</p>
+          <p className="text-[12px] text-on-surface-variant">{whenItRings(recordatorio)}</p>
         </div>
         {onEditarRecordatorio ? (
           <button type="button" data-testid={`editar-recordatorio-${id}`} aria-label="Editar el recordatorio" title="Editar" onClick={() => onEditarRecordatorio(recordatorio)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-on-surface-variant hover:bg-background hover:text-primary">

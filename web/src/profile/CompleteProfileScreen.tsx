@@ -19,7 +19,6 @@ export function CompleteProfileScreen(props: { jwt: string; profile: MyProfile; 
   const [day, setDay] = useState(pad(profile.birthday?.day));
   const [month, setMonth] = useState(pad(profile.birthday?.month));
   const [year, setYear] = useState(pad(profile.birthday?.year));
-  const [visible, setVisible] = useState(profile.birthdayVisible);
   const [email, setEmail] = useState(profile.email ?? '');
   const [emailVerified, setEmailVerified] = useState(profile.emailVerified);
   const [codeSent, setCodeSent] = useState(false);
@@ -52,7 +51,7 @@ export function CompleteProfileScreen(props: { jwt: string; profile: MyProfile; 
     if (!birthday.ok) return;
     setBusy('save');
     setError(null);
-    const saved = await saveProfile(jwt, { name: name.trim(), birthday: birthday.birthday, birthdayVisible: visible });
+    const saved = await saveProfile(jwt, { name: name.trim(), birthday: birthday.birthday });
     if (!saved.ok) {
       setBusy(null);
       return setError({ field: 'save', text: saved.message });
@@ -81,10 +80,6 @@ export function CompleteProfileScreen(props: { jwt: string; profile: MyProfile; 
           <input data-testid="perfil-anio" className={`${FIELD} min-w-0 flex-1 text-center`} placeholder="Año (opcional)" inputMode="numeric" maxLength={4} value={year} onChange={(event) => setYear(event.target.value)} />
         </div>
         {birthdayHint ? <p data-testid="perfil-error-cumple" role="alert" className="mt-2 text-[13px] text-error">{birthdayHint}</p> : null}
-        <label className="mt-3 flex cursor-pointer items-center gap-3 text-[14px]">
-          <input data-testid="perfil-visible" type="checkbox" checked={visible} onChange={(event) => setVisible(event.target.checked)} className="h-4 w-4 accent-primary" />
-          Que mis chats vean mi cumpleaños
-        </label>
 
         <Label>Tu correo (opcional)</Label>
         {emailVerified ? (

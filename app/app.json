@@ -2,7 +2,7 @@
   "expo": {
     "name": "Lilachat",
     "slug": "lilachat",
-    "version": "0.1.156",
+    "version": "0.1.157",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",

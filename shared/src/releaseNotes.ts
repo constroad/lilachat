@@ -10,6 +10,14 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.157',
+    items: [
+      'Escribe «/» en un chat de tu empresa y aparecen los comandos de cada app, como /clima o /tanques.',
+      'Lo que una app te responde a un comando lo ves solo tú, con su tarjeta, hasta que lo descartes.',
+      'Si la app tarda, ves «está trabajando…» y la respuesta llega sola.',
+    ],
+  },
+  {
     version: '0.1.156',
     items: [
       'Los avisos de las apps se dibujan: tanques, gráficos y cifras, con su detalle a un toque.',

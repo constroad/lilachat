@@ -4909,6 +4909,55 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 121. Comandos «/» de las apps, como Slack (23/10/2026, 0.1.157)
+
+Lo que agentes necesitaba para consultar desde el chat (José, 23/10: «no
+podrían ir avanzando las demás capacidades de Inframaq o Portal»). Contrato
+cerrado con agentes el mismo día: `specs/BOTS-API.spec.md` §c-bis. Agentes ya
+lo implementó (06cd929): `/clima`, `/asistencia` y `/tanques` para Inframaq y
+Portal, todas efímeras.
+
+- **Comandos por app (§c-bis).** La app registra su lista con `PUT
+  /api/bots/commands` (hasta 25; nombre, descripción, ejemplo). Al enviar
+  «/clima lurin», la app recibe `command.invoked` firmado, UNA vez y sin
+  reintentos, y contesta en el cuerpo en 3 s o después por
+  `/respond` (15 min, hasta 5 veces). `in_channel` publica en el chat;
+  `ephemeral` solo lo ve quien lo pidió y no se guarda. Los usos viven en
+  `botcommandruns`, leídos por `_id` (sin índice nuevo). El fake de agentes
+  tiene lo mismo (`/__fake/command`, `/__fake/command-responses`).
+- **Panel «Comandos rápidos» (diseño `e-20-comandos-barra-app/web`).** Al
+  escribir «/» en un chat de un espacio, el compositor pide una vez los
+  comandos del espacio (`GET /api/workspaces/:id/commands`, nunca en bucle) y
+  los muestra agrupados por app, con el robot y el ejemplo de uso del activo.
+  Tocar uno escribe «/comando ». En la web: ↑↓, Tab o Enter completan y Esc
+  cierra. Un «/» que no es de ninguna app sale como mensaje normal; en los
+  chats personales y secretos no hay comandos.
+- **«Solo tú ves esto».** Sobre la barra, con el robot y el nombre de la app:
+  la tarjeta del kit (sin acciones: no hay mensaje detrás), «<App> está
+  trabajando…» mientras espera, la respuesta tardía que llega por socket
+  (`command.response`) y la reemplaza, y «Descartar». Quedan las 3 últimas y
+  ocupan como mucho el 45 % de la pantalla, con scroll a la última. Motor
+  puro en `shared/botCommands.ts` (`answerOfOutcome`, `withAnswer`,
+  `withNotice`).
+- **Integraciones dice por qué falló.** Una respuesta 2xx que no se puede
+  mostrar queda como última falla con su motivo («Respuesta de /tanques
+  inválida: El tanque necesita nombre.»): así lo ve quien programa la app. Un
+  timeout no cuenta como falla.
+- **Medido.** El comando hasta ver la tarjeta: 2,8 s → 1,3 s desde la Mac
+  contra la base remota, al paralelizar las lecturas y no esperar las
+  escrituras de diagnóstico (en la mini, junto a la base, son milisegundos).
+  Panel en el emulador: p90 17 ms, 1,4 % de cuadros lentos.
+- **E2E (QA):** espacio «QA Comandos» de QA Ana con la app «QA Clima» y un
+  agentes falso local. Web: panel por app, ↓ y Tab, Enter que completa, la
+  efímera con métrica y barras, «está trabajando…» y la tardía, la de canal y
+  descartar. Emulador con la cuenta de José en #general: panel, /tanques con
+  la grilla de tanques, la falla bien avisada (dato de prueba mal armado), la
+  diferida por socket y el scroll a la última. Se borró todo (app, espacio,
+  usos, equipo vinculado y el cumpleaños de prueba): la base quedó en cero.
+- **Falta (José):** registrar «Inframaq» y «Portal» en producción (el
+  registro automático quedó bloqueado por permisos) y cargar sus secretos en
+  Torre. Los formularios de los comandos (§73.5) vienen después.
+
 ## 120. Kit de tarjetas, robot de las apps, «Instalar» en Integraciones y el consentimiento como Slack (23/10/2026, 0.1.156)
 
 Lo que necesita el piloto de agentes en Inframaq (José, 23/10: «primero

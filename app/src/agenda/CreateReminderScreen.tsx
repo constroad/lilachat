@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { Modal } from '../ui/Modal';
 import { Bell, Send, Trash2, X } from 'lucide-react-native';
-import { type Recurrence, aQuienSuena, crearRecordatorio, editarRecordatorio, valorInicial } from '@lilachat/shared';
+import { type Recurrence, type RepeatRule, anchorRepeatRule, aQuienSuena, primerEnlace, crearRecordatorio, editarRecordatorio, valorInicial } from '@lilachat/shared';
+import { RepeatPicker } from './RepeatPicker';
+import { VistaPreviaAlEscribir } from '../chat/VistaPreviaAlEscribir';
 import type { Credential } from '../auth/credentialStore';
 import { agendaDelete, agendaPatch, agendaPost, publicarRecordatorio, quitarImagenDeRecordatorio, subirImagenDeRecordatorio, type AgendaReminder } from './agendaApi';
 import { ImagenDeRecordatorio } from './ImagenDeRecordatorio';
@@ -24,11 +26,6 @@ import { useColores } from '../ui/tema';
  * eliminar, y el cuándo es día y hora exactos (`SelectorDeCuando`) en vez de
  * cuatro atajos relativos.
  */
-const RECURRENCIAS: { valor: Recurrence; etiqueta: string }[] = [
-  { valor: 'once', etiqueta: 'Una vez' },
-  { valor: 'daily', etiqueta: 'Diario' },
-  { valor: 'weekly', etiqueta: 'Semanal' },
-];
 
 export function CreateReminderScreen({
   visible,
@@ -59,6 +56,10 @@ export function CreateReminderScreen({
   const [note, setNote] = useState(editando?.note ?? '');
   const [cuando, setCuando] = useState(() => valorInicial(editando?.startsAt, new Date()));
   const [recurrence, setRecurrence] = useState<Recurrence>(editando?.recurrence ?? 'once');
+  // Pending 65: which weekdays, the month's day or last day, every N.
+  const [repeat, setRepeat] = useState<RepeatRule | undefined>(editando?.repeat);
+  // Once never repeats; an empty rule clears the stored one when editing.
+  const repeatToSend = recurrence === 'once' ? {} : (anchorRepeatRule(recurrence, repeat, cuando) ?? {});
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [imagen, setImagen] = useState<FotoElegida | null>(null);
@@ -87,7 +88,7 @@ export function CreateReminderScreen({
       { conImagen: Boolean(imagen), delGrupo: Boolean(grupo) },
       {
         crear: async ({ publicar }) => {
-          const r = await agendaPost<{ id?: string }>('/reminders', credential.jwt, { ...cuerpo, note: cuerpo.note || undefined, chatId: grupo?.id, publicar });
+          const r = await agendaPost<{ id?: string }>('/reminders', credential.jwt, { ...cuerpo, repeat: repeatToSend, note: cuerpo.note || undefined, chatId: grupo?.id, publicar });
           return r.ok && r.data.id ? { ok: true, id: r.data.id } : { ok: false, motivo: (!r.ok && r.message) || 'No se pudo guardar.' };
         },
         subirImagen: (id) => subirImagenDeRecordatorio(id, credential.jwt, imagen!),
@@ -101,7 +102,7 @@ export function CreateReminderScreen({
       { imagen: imagen ? 'nueva' : quitarImagen && editando?.imageUrl ? 'quitar' : 'igual' },
       {
         guardar: async () => {
-          const r = await agendaPatch<{ id?: string }>(`/reminders/${id}`, credential.jwt, cuerpo);
+          const r = await agendaPatch<{ id?: string }>(`/reminders/${id}`, credential.jwt, { ...cuerpo, repeat: repeatToSend });
           return r.ok ? { ok: true } : { ok: false, motivo: r.message ?? 'No se pudo guardar.' };
         },
         subirImagen: () => subirImagenDeRecordatorio(id, credential.jwt, imagen!),
@@ -179,6 +180,12 @@ export function CreateReminderScreen({
           <View className="mt-2">
             <FilledField testID="input-nota" placeholder={grupo ? 'Descripción (opcional)' : 'Nota (opcional)'} value={note} onChangeText={setNote} />
           </View>
+          {primerEnlace(note) ? (
+            // The link's preview, like the chat's (pending 65a, design `r150-repetir`).
+            <View testID="vista-previa-formulario" className="mt-2 overflow-hidden rounded-xl border border-outline/15">
+              <VistaPreviaAlEscribir texto={note} jwt={credential.jwt} />
+            </View>
+          ) : null}
           {grupo ? (
             <View className="mt-2">
               <ImagenDeRecordatorio
@@ -200,22 +207,15 @@ export function CreateReminderScreen({
           />
 
           <SectionLabel>Repetir</SectionLabel>
-          <View className="flex-row gap-2">
-            {RECURRENCIAS.map((opcion) => (
-              <Pressable
-                key={opcion.valor}
-                testID={`recurrencia-${opcion.valor}`}
-                onPress={() => setRecurrence(opcion.valor)}
-                className={`min-h-[44px] flex-1 items-center justify-center rounded-xl ${
-                  recurrence === opcion.valor ? 'bg-primary' : 'bg-primary/[0.07]'
-                }`}
-              >
-                <Text className={`text-[13px] font-semibold ${recurrence === opcion.valor ? 'text-on-primary' : 'text-on-surface'}`}>
-                  {opcion.etiqueta}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          <RepeatPicker
+            recurrence={recurrence}
+            rule={repeat}
+            startsAt={cuando}
+            onChange={(next, rule) => {
+              setRecurrence(next);
+              setRepeat(rule);
+            }}
+          />
 
           {error ? (
             <Text className="mt-3 text-sm text-error" testID="error-crear">

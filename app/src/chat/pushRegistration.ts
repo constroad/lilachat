@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { marcarPreguntado, queHacerConElPermiso, yaSePregunto } from '../ui/permisos';
-import { CAPACIDAD_LLAMADA_NATIVA, CAPACIDAD_MENSAJE_NATIVO } from '@lilachat/shared';
+import { CAPACIDAD_LLAMADA_NATIVA, REMINDER_NATIVE_CAPABILITY, CAPACIDAD_MENSAJE_NATIVO } from '@lilachat/shared';
 import { llamadaNativa } from '../../modules/llamada-entrante/src';
 
 /**
@@ -58,7 +58,7 @@ export async function registerPushToken(jwt: string): Promise<'ok' | 'denied' | 
       // FL8.2: también los mensajes, para acusar la entrega con la app cerrada.
       body: JSON.stringify({
         pushToken,
-        capacidades: llamadaNativa.disponible() ? [CAPACIDAD_LLAMADA_NATIVA, CAPACIDAD_MENSAJE_NATIVO] : [],
+        capacidades: llamadaNativa.disponible() ? [CAPACIDAD_LLAMADA_NATIVA, CAPACIDAD_MENSAJE_NATIVO, ...(llamadaNativa.canRingReminders() ? [REMINDER_NATIVE_CAPABILITY] : [])] : [],
       }),
       signal: AbortSignal.timeout(10_000),
     });

@@ -4,7 +4,6 @@ import { birthdayFieldError, birthdayFromFields, canFinishProfile, type MyProfil
 import { getProfile, saveProfile } from '../api/profileApi';
 import type { Credential } from '../auth/credentialStore';
 import { aplicarPerfil } from '../settings/perfilPropio';
-import { Interruptor } from '../ui/Interruptor';
 import { Logo } from '../ui/Logo';
 import { useColores } from '../ui/tema';
 import { useMargenes } from '../ui/useMargenes';
@@ -29,7 +28,6 @@ export function CompleteProfileScreen(props: { credential: Credential; profile: 
   const [day, setDay] = useState(pad(profile.birthday?.day));
   const [month, setMonth] = useState(pad(profile.birthday?.month));
   const [year, setYear] = useState(pad(profile.birthday?.year));
-  const [visible, setVisible] = useState(profile.birthdayVisible);
   const [busy, setBusy] = useState<'save' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const birthday = birthdayFromFields({ day, month, year });
@@ -41,7 +39,7 @@ export function CompleteProfileScreen(props: { credential: Credential; profile: 
     if (!birthday.ok) return;
     setBusy('save');
     setError(null);
-    const saved = await saveProfile(credential.jwt, { name: name.trim(), birthday: birthday.birthday, birthdayVisible: visible });
+    const saved = await saveProfile(credential.jwt, { name: name.trim(), birthday: birthday.birthday });
     const fresh = saved.ok ? saved.data.profile : null;
     if (!fresh) {
       setBusy(null);
@@ -74,10 +72,6 @@ export function CompleteProfileScreen(props: { credential: Credential; profile: 
           <TextInput testID="perfil-anio" className={`${FIELD} min-w-0 flex-1 text-center`} placeholder="Año (opcional)" placeholderTextColor={colors.outline} keyboardType="number-pad" maxLength={4} value={year} onChangeText={setYear} />
         </View>
         {birthdayHint ? <Text testID="perfil-error-cumple" className="mt-2 text-sm text-error">{birthdayHint}</Text> : null}
-        <View className="mt-3 flex-row items-center gap-3">
-          <Text className="min-w-0 flex-1 text-[14px] text-on-surface">Que mis chats vean mi cumpleaños</Text>
-          <Interruptor testID="perfil-visible" value={visible} onValueChange={setVisible} />
-        </View>
 
         <Label>Tu correo (opcional)</Label>
         <EmailVerifyField jwt={credential.jwt} email={profile.email} verified={profile.emailVerified} hint="Lo necesitas solo para activar la copia de seguridad." />

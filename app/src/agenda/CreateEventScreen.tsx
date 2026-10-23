@@ -3,7 +3,8 @@ import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { Modal } from '../ui/Modal';
 import { Bell, Clock, MapPin, Send, Sparkles, Trash2, UserPlus, X } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
-import { planTargetChat, type Contact, terminaPorDefecto, valorInicial } from '@lilachat/shared';
+import { planTargetChat, primerEnlace, type Contact, terminaPorDefecto, valorInicial } from '@lilachat/shared';
+import { VistaPreviaAlEscribir } from '../chat/VistaPreviaAlEscribir';
 import { agendaDelete, agendaPatch, agendaPost, type AgendaEvent } from './agendaApi';
 import { ContactPicker } from '../contacts/ContactPicker';
 import { createChat } from '../contacts/contactsApi';
@@ -242,6 +243,12 @@ export function CreateEventScreen({
               multiline
             />
           </View>
+          {primerEnlace(description) ? (
+            // The link's preview, like the chat's (pending 65a).
+            <View testID="vista-previa-formulario" className="mt-2 overflow-hidden rounded-xl border border-outline/15">
+              <VistaPreviaAlEscribir texto={description} jwt={credential.jwt} />
+            </View>
+          ) : null}
 
           <SectionLabel>Cuándo y dónde</SectionLabel>
           <SelectorDeCuando

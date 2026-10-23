@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { FlatList, Pressable, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { FlatList, Pressable, Text, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { Play } from 'lucide-react-native';
 import { miniaturaDe } from './filasDelChat';
 import type { ChatMessage } from './useChat';
-import { photoStyle } from './rowKinds';
+
+/** The album's share of the screen width (pending 70). */
+const ALBUM_SHARE = 0.75;
 
 /**
  * Several photos or videos sent together, as one card that slides sideways
@@ -13,14 +15,19 @@ import { photoStyle } from './rowKinds';
  * below, and a tap opens the viewer on that photo. The caption of the first
  * goes under the card like any photo; another page's caption shows on it.
  */
-export function AlbumCarousel(props: { items: readonly ChatMessage[]; selecting?: boolean; onSelect?: (seq: number) => void; onOpen?: (seq: number) => void }) {
+export function AlbumCarousel(props: { items: readonly ChatMessage[]; selecting?: boolean; onSelect?: (seq: number) => void; onOpen?: (seq: number) => void; onPage?: (page: number) => void }) {
   const { items } = props;
   const head = items[0]!;
-  const frame = photoStyle(head.media ?? {});
+  // A square three quarters of the screen wide, like WhatsApp's album (José, 22/10: it was too big).
+  const side = Math.round(useWindowDimensions().width * ALBUM_SHARE);
+  const frame = { width: side, height: side };
   const [page, setPage] = useState(0);
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const next = Math.round(event.nativeEvent.contentOffset.x / frame.width);
-    if (next !== page) setPage(Math.max(0, Math.min(items.length - 1, next)));
+    if (next === page) return;
+    const shown = Math.max(0, Math.min(items.length - 1, next));
+    setPage(shown);
+    props.onPage?.(shown);
   };
   const caption = page > 0 ? items[page]?.body : undefined;
 

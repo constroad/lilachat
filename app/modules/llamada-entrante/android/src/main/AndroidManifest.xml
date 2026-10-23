@@ -26,6 +26,10 @@
     <receiver
       android:name=".ReceptorDeMensaje"
       android:exported="false" />
+    <!-- Pending 63: «Listo», «Posponer 10 min» and the snoozed reminder coming back. -->
+    <receiver
+      android:name=".ReminderAlarmReceiver"
+      android:exported="false" />
     <service
       android:name=".ServicioDeLlamada"
       android:exported="false"

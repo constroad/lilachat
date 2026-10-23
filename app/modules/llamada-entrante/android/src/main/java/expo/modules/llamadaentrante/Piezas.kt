@@ -29,6 +29,8 @@ class ServicioDeAvisos : ExpoFirebaseMessagingService() {
       "llamada-fin" -> data["chatId"]?.let { AvisoDeLlamada.quitar(this, it) }
       // FL8.2: el mensaje se acusa (doble check) y se dibuja desde acá.
       "mensaje" -> MensajeRecibido.desdePush(data)?.let { AvisoDeMensaje.recibir(this, it, appAdelante()) }
+      // Pending 63: a reminder rings full screen, even locked.
+      "recordatorio" -> ReminderAlarmData.fromPush(data)?.let { ReminderAlarm.show(this, it) }
       else -> super.onMessageReceived(remoteMessage)
     }
   }
@@ -137,6 +139,20 @@ object Puente {
     val actual = chatPendiente ?: return null
     chatPendiente = null
     return if (System.currentTimeMillis() - actual.second <= VIGENCIA_MS) actual.first else null
+  }
+
+  /** A reminder's full screen opened the app (pending 63): kept until JS takes it. */
+  @Volatile private var reminderPending: Pair<ReminderAlarmData, Long>? = null
+
+  fun emitReminder(alarm: ReminderAlarmData) {
+    reminderPending = Pair(alarm, System.currentTimeMillis())
+    oyente?.invoke(alarm.id, "recordatorio")
+  }
+
+  fun takeReminder(): ReminderAlarmData? {
+    val current = reminderPending ?: return null
+    reminderPending = null
+    return if (System.currentTimeMillis() - current.second <= VIGENCIA_MS) current.first else null
   }
 
   fun tomarPendiente(): Pair<String, String>? {

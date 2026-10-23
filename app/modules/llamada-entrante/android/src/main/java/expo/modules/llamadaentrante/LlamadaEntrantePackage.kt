@@ -39,6 +39,14 @@ class OyenteDeActividad : ReactActivityLifecycleListener {
    * suena la app— y JS se entera del chat y de lo que se tocó.
    */
   private fun atender(activity: Activity, intent: Intent?) {
+    // A reminder's full screen (pending 63): on top of the lock, and JS shows it big.
+    ReminderAlarmData.fromIntent(intent)?.let { alarm ->
+      intent?.removeExtra(ReminderAlarm.EXTRA_ID)
+      Bloqueo.mostrar(activity)
+      ReminderAlarm.dismiss(activity, alarm.id)
+      Puente.emitReminder(alarm)
+      return
+    }
     // Un aviso de MENSAJE: abre ese chat, sin nada de bloqueo (FL8.2).
     intent?.getStringExtra(AvisoDeMensaje.EXTRA_CHAT_MENSAJE)?.let { chatId ->
       intent.removeExtra(AvisoDeMensaje.EXTRA_CHAT_MENSAJE)

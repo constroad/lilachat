@@ -3,7 +3,7 @@ import { Alert, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Bell, Trash2 } from 'lucide-react-native';
 import { agendaDelete, recordatoriosDelGrupo, type AgendaReminder } from '../agenda/agendaApi';
-import { cuandoSuena, suscribirTarjeta } from '@lilachat/shared';
+import { whenItRings, suscribirTarjeta } from '@lilachat/shared';
 import { CreateReminderScreen } from '../agenda/CreateReminderScreen';
 import type { Credential } from '../auth/credentialStore';
 import { Rotulo } from '../ui/Rotulo';
@@ -66,7 +66,7 @@ export function RecordatoriosDelGrupo(props: { chatId: string; nombreDelGrupo: s
                 {recordatorio.title}
               </Text>
               <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>
-                {cuandoSuena(recordatorio)}
+                {whenItRings(recordatorio)}
               </Text>
             </View>
             {props.soyAdmin ? (

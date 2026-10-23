@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Bell } from 'lucide-react-native';
 import { agendaGet, type AgendaReminder } from '../agenda/agendaApi';
-import { cuandoSuena, primerEnlace } from '@lilachat/shared';
+import { whenItRings, primerEnlace } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { useTarjetaViva } from './useTarjetaViva';
 import { useAccionesDeTarjeta } from './accionesDeTarjeta';
@@ -76,7 +76,7 @@ export function RecordatorioEnElChat({ reminderId, jwt, onLongPress }: { reminde
           <View className="min-w-0 flex-1 gap-0.5">
             <Text className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Recordatorio</Text>
             <Text className="text-[15px] font-semibold text-on-surface">{recordatorio.title}</Text>
-            <Text className="text-[13px] text-on-surface-variant">{cuandoSuena(recordatorio)}</Text>
+            <Text className="text-[13px] text-on-surface-variant">{whenItRings(recordatorio)}</Text>
           </View>
         </View>
         {recordatorio.note ? (

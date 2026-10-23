@@ -4,6 +4,7 @@ import { ETIQUETA_DE_REPETICION, cuandoDelEvento, estadoDelEvento, formatEventWh
 import type { AgendaEvent, AgendaReminder } from './agendaApi';
 import { Interruptor } from '../ui/Interruptor';
 import { useColores } from '../ui/tema';
+import { repeatLabel } from '@lilachat/shared';
 
 const DIA = new Intl.DateTimeFormat('es-PE', { weekday: 'short' });
 /** La pastilla del estado: caja y texto por tono, con los colores del tema. */
@@ -60,7 +61,7 @@ export function FilaDeRecordatorio(props: { recordatorio: AgendaReminder; cuando
       <View className="min-w-0 flex-1">
         <Text className="text-[15px] font-semibold text-on-surface" numberOfLines={1}>{recordatorio.title}</Text>
         <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>
-          {props.vencido ? `Sonó ${formatEventWhen(props.cuando).toLowerCase()}` : `${repetido ? `${ETIQUETA_DE_REPETICION[recordatorio.recurrence]} · ` : ''}${formatEventWhen(props.cuando)}`}
+          {props.vencido ? `Sonó ${formatEventWhen(props.cuando).toLowerCase()}` : `${repetido ? `${repeatLabel(recordatorio.recurrence, recordatorio.repeat, ETIQUETA_DE_REPETICION[recordatorio.recurrence])} · ` : ''}${formatEventWhen(props.cuando)}`}
         </Text>
         <Text className="text-[11px] text-on-surface-variant" numberOfLines={1}>{origenDelRecordatorio({ chat: recordatorio.chat, agenda: props.agenda })}</Text>
       </View>

@@ -12,6 +12,10 @@ import { requireOptionalNativeModule } from 'expo';
  * notificación «Llamada en curso» (FL11). Lo demás es de la llamada entrante.
  */
 export type AccionDeAviso = { chatId: string; accion: 'abrir' | 'contestar' | 'rechazar' | 'chat' | 'colgar' };
+/** What a notice tap tells JS, now with a reminder's full screen (pending 63). */
+export type NoticeAction = AccionDeAviso | { chatId: string; accion: 'recordatorio' };
+/** A reminder that rang full screen (pending 63). */
+export type ReminderAlarm = { id: string; title: string; note: string; chat: string; chatId: string };
 
 type Suscripcion = { remove(): void };
 
@@ -23,6 +27,8 @@ type LlamadaNativa = {
   detenerTono(): void;
   accionPendiente(): AccionDeAviso | null;
   soltarBloqueo(): void;
+  reminderPending?(): ReminderAlarm | null;
+  snoozeReminder?(alarm: ReminderAlarm): void;
   chatPendiente(): string | null;
   limpiarChat(chatId: string): void;
   playInAppAlert?(): void;
@@ -30,7 +36,7 @@ type LlamadaNativa = {
   abrirAjustesPantallaCompleta(): void;
   enCurso(chatId: string, nombre: string, video: boolean, desdeMs: number): void;
   finDeEnCurso(): void;
-  addListener(evento: 'onAccion', oyente: (accion: AccionDeAviso) => void): Suscripcion;
+  addListener(evento: 'onAccion', oyente: (accion: NoticeAction) => void): Suscripcion;
 };
 
 const nativo = requireOptionalNativeModule<LlamadaNativa>('LlamadaEntrante');
@@ -54,6 +60,12 @@ export const llamadaNativa = {
   detenerTono: (): void => seguro(() => nativo?.detenerTono(), undefined),
   accionPendiente: (): AccionDeAviso | null => seguro(() => nativo?.accionPendiente() ?? null, null),
   soltarBloqueo: (): void => seguro(() => nativo?.soltarBloqueo(), undefined),
+  /** The reminder whose full screen opened the app (pending 63); null in a build without it. */
+  reminderPending: (): ReminderAlarm | null => seguro(() => nativo?.reminderPending?.() ?? null, null),
+  /** «Posponer 10 min» from the app's screen: the phone shows it again by itself. */
+  snoozeReminder: (alarm: ReminderAlarm): void => seguro(() => nativo?.snoozeReminder?.(alarm), undefined),
+  /** Whether this build draws reminders full screen (it declares so to the server). */
+  canRingReminders: (): boolean => typeof nativo?.reminderPending === 'function',
   /** El chat del aviso de mensaje con el que se abrió la app (FL8.2). */
   chatPendiente: (): string | null => seguro(() => nativo?.chatPendiente() ?? null, null),
   /** Al abrir un chat: se va su aviso nativo. */
@@ -72,5 +84,8 @@ export const llamadaNativa = {
     seguro(() => nativo?.enCurso(chatId, nombre, video, desdeMs), undefined),
   finDeEnCurso: (): void => seguro(() => nativo?.finDeEnCurso(), undefined),
   alTocar: (oyente: (accion: AccionDeAviso) => void): Suscripcion =>
-    seguro(() => nativo?.addListener('onAccion', oyente), undefined) ?? { remove: () => undefined },
+    seguro(() => nativo?.addListener('onAccion', (accion) => accion.accion !== 'recordatorio' && oyente(accion)), undefined) ?? { remove: () => undefined },
+  /** A reminder's full screen opened the app while it was alive (pending 63). */
+  onReminder: (listener: () => void): Suscripcion =>
+    seguro(() => nativo?.addListener('onAccion', (action) => action.accion === 'recordatorio' && listener()), undefined) ?? { remove: () => undefined },
 };

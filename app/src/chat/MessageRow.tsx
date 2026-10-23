@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { CircleAlert } from 'lucide-react-native';
 import { AVATAR_DE_AUTOR, colorDeAutor, dondeVaLaHora, mostrarAutor, radiosDeBurbuja } from './burbuja';
@@ -130,6 +130,8 @@ function FilaDeMensaje({
   album?: readonly ChatMessage[];
 }) {
   const colores = useColores();
+  // Which photo of an album is showing: on the first one, swiping right replies (pending 70).
+  const [albumPage, setAlbumPage] = useState(0);
 
   // Los avisos del grupo no son burbujas de nadie: van centrados, chiquitos y
   // sin cola. Se resuelve ANTES que todo lo demás porque nada de lo de abajo
@@ -219,8 +221,8 @@ function FilaDeMensaje({
 
   return (
     <DeslizarParaResponder
-      // An album's sideways swipes move its photos, never reply (José, 22/10): reply from the long-press menu.
-      habilitado={!isPending(item) && !enSeleccion && !album}
+      // An album's sideways swipes move its photos; on the first photo (nothing before it) swiping right replies (José, 22/10, pending 70).
+      habilitado={!isPending(item) && !enSeleccion && (!album || albumPage === 0)}
       onResponder={() => !isPending(item) && onResponder?.(item.seq, preview, mine)}
     >
     <View
@@ -269,7 +271,8 @@ function FilaDeMensaje({
             borderBottomLeftRadius: radios.abajoIzq,
             borderBottomRightRadius: radios.abajoDer,
             // Con foto, el pie se ajusta a su ancho (FL11): no queda hueco a la derecha.
-            ...(esFotoVisible(item) ? { maxWidth: anchoDeBurbujaConFoto(isPending(item) ? { width: item.mediaAncho, height: item.mediaAlto } : (item.media ?? {})) } : {}),
+            // An album sets its own width (3/4 of the screen, pending 70); a photo, the photo's.
+            ...(!album && esFotoVisible(item) ? { maxWidth: anchoDeBurbujaConFoto(isPending(item) ? { width: item.mediaAncho, height: item.mediaAlto } : (item.media ?? {})) } : {}),
           }}
         >
           {conAutor && nombreAutor ? (
@@ -298,7 +301,7 @@ function FilaDeMensaje({
             />
           ) : null}
 
-          {album ? <AlbumCarousel items={album} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} /> : <MessageMedia item={item} mine={mine} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} onGifTap={jwt && !isPending(item) ? (seq) => showGifOptions({ jwt, chatId: item.chatId, seq, onOpen: () => onVerImagen?.(seq) }) : undefined} author={{ name: mine ? 'Tú' : (nombreAutor ?? ''), photo: fotoAutor }} />}
+          {album ? <AlbumCarousel items={album} onPage={setAlbumPage} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} /> : <MessageMedia item={item} mine={mine} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} onGifTap={jwt && !isPending(item) ? (seq) => showGifOptions({ jwt, chatId: item.chatId, seq, onOpen: () => onVerImagen?.(seq) }) : undefined} author={{ name: mine ? 'Tú' : (nombreAutor ?? ''), photo: fotoAutor }} />}
 
           {!isPending(item) && item.deletedAt ? (
             /**

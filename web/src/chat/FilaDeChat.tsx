@@ -1,5 +1,5 @@
 import { BellOff, Check, CheckCheck, Clock, Pin } from 'lucide-react';
-import { formatChatTimestamp, resolveChatPreview, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
+import { formatChatTimestamp, resolveChatPreview, resolveDeliveryState, textoDeAviso, winkTileUrl } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { MenuDeChat } from './MenuDeChat';
 import { useFunInRow } from './nudge';
@@ -41,6 +41,7 @@ export function ChatRow(props: { chat: ChatSummary; yo?: string; seleccionado: b
           </span>
           <span className="mt-0.5 flex items-center gap-2">
             <ChecksDeLaFila chat={chat} yo={props.yo} visible={preview.style === 'normal'} />
+            <ListThumb chat={chat} visible={preview.style === 'normal'} />
             <span className={`min-w-0 flex-1 truncate text-[13px] ${preview.style === 'typing' ? 'italic text-primary' : preview.style === 'eliminado' ? 'italic text-on-surface-variant' : 'text-on-surface-variant'}`}>{preview.text}</span>
             {chat.muted ? <BellOff data-testid={`silenciado-${chat.id}`} size={14} className="shrink-0 text-on-surface-variant" /> : null}
             <PendingMarker chatId={chat.id} />
@@ -102,4 +103,13 @@ function ChecksDeLaFila({ chat, yo, visible }: { chat: ChatSummary; yo?: string;
       <Icon size={15} strokeWidth={2.4} />
     </span>
   );
+}
+
+/** A sticker, photo, GIF or wink shows its small image beside the preview, like Telegram (pending 57). */
+function ListThumb({ chat, visible }: { chat: ChatSummary; visible: boolean }) {
+  const last = chat.lastMessage;
+  const src = visible && !chat.encrypted && last ? (last.thumb ?? winkTileUrl(last.wink, '')) : undefined;
+  if (!src) return null;
+  const whole = last?.kind === 'sticker' || Boolean(last?.wink);
+  return <img data-testid={`miniatura-lista-${chat.id}`} src={src} alt="" loading="lazy" className={`h-5 w-5 shrink-0 rounded ${whole ? 'object-contain' : 'object-cover'}`} />;
 }

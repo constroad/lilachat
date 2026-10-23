@@ -16,7 +16,7 @@ export type StickerChat = { jwt: string; me: string; chatId: string; chatName: s
 
 /**
  * The emoji button panel on the web (design `s1-web-stickers`): Emoji ·
- * Stickers tabs, like the app and WhatsApp Web. Without `chat` (a secret chat)
+ * Stickers · GIF · Guiños tabs (icons only), like the app and WhatsApp Web. Without `chat` (a secret chat)
  * only Emoji is left. Loaded when opened (`lazy` in the Composer).
  */
 export default function EmojiStickerPanel({ onPickEmoji, chat, winks }: { onPickEmoji: (emoji: string) => void; chat?: StickerChat; winks?: { recipient: string; onSend: (wink: WinkId) => void; onNudge?: () => void } }) {
@@ -37,10 +37,11 @@ export default function EmojiStickerPanel({ onPickEmoji, chat, winks }: { onPick
   return (
     <div className="rounded-xl border border-outline/15 bg-surface p-2">
       {tabs.length > 1 ? (
-        <div role="tablist" className="mb-2 flex gap-4 border-b border-outline/10 px-1">
+        // Icons only, in one capsule, like the app and WhatsApp (pending 59); the name stays as tooltip and for readers.
+        <div role="tablist" className="mb-2 flex h-10 overflow-hidden rounded-full border border-outline/20">
           {tabs.map(({ key, label, Icon }) => (
-            <button key={key} type="button" role="tab" data-testid={`pestana-panel-${key}`} aria-selected={tab === key} onClick={() => setTab(key)} className={`flex min-h-[40px] items-center gap-1.5 border-b-2 text-sm ${tab === key ? 'border-primary font-semibold text-primary' : 'border-transparent text-on-surface-variant'}`}>
-              <Icon size={16} /> {label}
+            <button key={key} type="button" role="tab" title={label} aria-label={label} data-testid={`pestana-panel-${key}`} aria-selected={tab === key} onClick={() => setTab(key)} className={`flex flex-1 items-center justify-center ${tab === key ? 'bg-primary/15 text-primary' : 'text-on-surface-variant hover:bg-background'}`}>
+              {key === 'gifs' ? <span className="rounded border-[1.5px] border-current px-1 text-[10px] font-extrabold tracking-wider">GIF</span> : <Icon size={18} />}
             </button>
           ))}
         </div>

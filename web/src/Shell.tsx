@@ -4,11 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChatRail } from './chat/ChatRail';
 import { ListResizeHandle } from './chat/ListResizeHandle';
 import { readThemeChoice, saveThemeChoice, type ThemeChoice } from './ui/tema';
-import { Bell, BellOff, Download, LogOut, RefreshCw, UsersRound, WifiOff, X } from 'lucide-react';
+import { Bell, BellOff, Download, LogOut, UsersRound, WifiOff, X } from 'lucide-react';
 import { useDismiss } from './ui/useDismiss';
 import { useSinConexion } from './pwa/conexion';
 import { useInstalarApp } from './pwa/instalar';
-import { activarVersionNueva } from './pwa/serviceWorker';
 import type { Credential } from './api';
 import { AgendaOverlay } from './agenda/AgendaOverlay';
 import { CreateEventOverlay, CreatePollOverlay, NewChatOverlay, type ChatDestino } from './agenda/CreatePanels';
@@ -64,14 +63,13 @@ type Props = {
   logout: () => void;
   manejar401: () => Promise<string | null>;
   /** El service worker tiene una versión nueva esperando (W4). */
-  hayVersionNueva: boolean;
 };
 
 /**
  * El shell de dos paneles (F6 → W1). Todo lo que se ve sale de la base local;
  * `useSincronizacion` la mantiene al día con la red y el socket.
  */
-export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVersionNueva }: Props) {
+export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Props) {
   const yo = credential.userId;
   const base = useBaseLocal(yo);
   const chatsGuardados = useChatsLocales(base);
@@ -235,7 +233,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
   return (
     <CallProvider jwt={credential.jwt} connected={socket.connected} nameOf={callerOf} photoOf={(chatId) => [...chats, ...(spaceChatsShown ?? [])].find((chat) => chat.id === chatId)?.avatarUrl}>
     <div className="relative flex h-full">
-      <AvisosDeLaWeb sinConexion={sinConexion} hayVersionNueva={hayVersionNueva} />
+      <WebNotices sinConexion={sinConexion} />
       {panel !== 'conversation' ? (
         <AppRail
           spaces={espacios.spaces}
@@ -404,22 +402,14 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401, hayVer
   );
 }
 
-/** «Sin conexión» y «Hay una versión nueva», arriba al centro (W4). */
-function AvisosDeLaWeb({ sinConexion, hayVersionNueva }: { sinConexion: boolean; hayVersionNueva: boolean }) {
-  if (!sinConexion && !hayVersionNueva) return null;
+/** «Sin conexión», arriba al centro (W4). The new version has its one band in the list (pending 61). */
+function WebNotices({ sinConexion }: { sinConexion: boolean }) {
+  if (!sinConexion) return null;
   return (
     <div className="pointer-events-none absolute inset-x-0 top-2 z-30 flex flex-col items-center gap-2 px-4">
       {sinConexion ? (
         <p role="status" data-testid="aviso-sin-conexion" className="pointer-events-auto flex items-center gap-2 rounded-full bg-on-surface px-4 py-2 text-[13px] text-surface shadow-lg">
           <WifiOff size={15} /> Sin conexión. Lo que escribas se enviará al volver.
-        </p>
-      ) : null}
-      {hayVersionNueva ? (
-        <p role="status" data-testid="aviso-version-nueva" className="pointer-events-auto flex items-center gap-3 rounded-full border border-outline/15 bg-surface py-1.5 pl-4 pr-1.5 text-[13px] shadow-lg">
-          Hay una versión nueva de Lilachat
-          <button type="button" data-testid="btn-recargar-version" onClick={activarVersionNueva} className="flex min-h-[36px] items-center gap-1.5 rounded-full bg-primary px-3 font-semibold text-on-primary">
-            <RefreshCw size={14} /> Recargar
-          </button>
         </p>
       ) : null}
     </div>

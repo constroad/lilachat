@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Heart, Play, Vibrate } from 'lucide-react';
-import { FUN_LIVE_MS, formatClock, funArrivedInRow, funMessageToPlay, highestSeq, shouldPlayFun, winkById, winkCardLines, winkRowSound, type FunPlace, type FunToPlay, type Wink, type WinkId } from '@lilachat/shared';
+import { FUN_LIVE_MS, formatClock, funArrivedInRow, funMessageToPlay, highestSeq, shouldPlayFun, winkById, winkCardLines, winkRowSound, winkTileIsProp, type FunPlace, type FunToPlay, type Wink, type WinkId } from '@lilachat/shared';
 import { WinkOverlay } from './WinkOverlay';
 import { WinkCharacter } from './WinkCharacter';
 import { playWinkCues, playWinkSound, shakeWholeScreen, stopWinkSounds } from './winkSounds';
@@ -168,7 +168,7 @@ export function WinkLine({ seq, wink, mine, author, at }: { seq: number; wink?: 
     <div data-testid={`linea-guino-${seq}`} className={`my-2 flex ${mine ? 'justify-end' : 'justify-start'}`}>
       <div className={`flex w-[300px] max-w-[88%] items-center gap-3 rounded-2xl border border-primary/20 p-2.5 ${mine ? 'bg-primary/10' : 'bg-surface'}`}>
         <span className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary/10">
-          {known?.kind === 'character' ? <WinkCharacter wink={known} size={known.tile ? 50 : 40} /> : known ? <span className="text-[30px] leading-none">{known.hero}</span> : <Heart size={22} className="text-primary" />}
+          {known?.kind === 'character' ? <WinkCharacter wink={known} size={winkTileIsProp(known) ? 50 : 40} /> : known ? <span className="text-[30px] leading-none">{known.hero}</span> : <Heart size={22} className="text-primary" />}
         </span>
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="text-[14px] font-semibold">{lines.who}</span>

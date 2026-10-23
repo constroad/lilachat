@@ -1,8 +1,9 @@
-import { WINK_ART, WINK_PROPS, type CharacterWink, type WinkArt } from '@lilachat/shared';
+import { WINK_ART, WINK_PROPS, winkTileIsProp, type CharacterWink, type WinkArt, type WinkPropId } from '@lilachat/shared';
 
-/** The art of a sketch's tile: its character, or its prop for a wink without one (the water balloon). */
+/** The art of a sketch's tile: its character (or another one, the dog under the rain), or its prop for a wink without one (the water balloon). */
 export function tileArt(wink: CharacterWink): WinkArt | undefined {
-  return wink.tile ? WINK_PROPS[wink.tile] : WINK_ART[wink.id as keyof typeof WINK_ART];
+  if (winkTileIsProp(wink)) return WINK_PROPS[wink.tile as WinkPropId];
+  return WINK_ART[(wink.tile ?? wink.id) as keyof typeof WINK_ART];
 }
 
 /**

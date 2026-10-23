@@ -20,7 +20,7 @@ type Props = {
   chatName: string;
   isGroup: boolean;
   me: string;
-  messages: readonly { seq: number; at: string; senderId: string; system?: { evento?: string; valor?: string } }[];
+  messages: readonly { seq: number; at: string; senderId: string; deletedAt?: string | null; system?: { evento?: string; valor?: string } }[];
   names: ReadonlyMap<string, string>;
   photos: ReadonlyMap<string, string>;
   onReact: (emoji: string) => void;

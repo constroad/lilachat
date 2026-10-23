@@ -21,8 +21,9 @@ import { useEditarChat } from './useEditarChat';
 /**
  * «Info. del grupo / del contacto / del borrador» (W3b, diseño
  * `w3-web-info-grupo.png`): tercera columna de 400 px desde 1024 px; en
- * pantallas más angostas, encima de la conversación. Since pending 69 the
- * detail is grouped in tabs like WhatsApp: Miembros · Media · Ajustes.
+ * pantallas más angostas, encima de la conversación.
+ *
+ * Pending 69: grouped in tabs like WhatsApp (Miembros · Media · Ajustes).
  */
 export function PanelDeInfo(props: {
   chat: ChatSummary;

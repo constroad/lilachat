@@ -17,11 +17,11 @@ const detalle = (yoSoyAdmin: boolean) =>
 
 afterEach(() => vi.unstubAllGlobals());
 
-function dibujar(yoSoyAdmin: boolean, shown: ChatSummary = chat) {
+function dibujar(yoSoyAdmin: boolean) {
   const onAccionDeChat = vi.fn();
   const onCambio = vi.fn();
   const onLevel = vi.fn();
-  render(<PanelDeInfo chat={shown} detalle={detalle(yoSoyAdmin)} yo="yo" jwt="jwt" base={null} onCerrar={vi.fn()} onAviso={vi.fn()} onCambio={onCambio} onAccionDeChat={onAccionDeChat} onLevel={onLevel} onVerFoto={vi.fn()} />);
+  render(<PanelDeInfo chat={chat} detalle={detalle(yoSoyAdmin)} yo="yo" jwt="jwt" base={null} onCerrar={vi.fn()} onAviso={vi.fn()} onCambio={onCambio} onAccionDeChat={onAccionDeChat} onLevel={onLevel} onVerFoto={vi.fn()} />);
   return { onAccionDeChat, onCambio, onLevel };
 }
 
@@ -52,7 +52,8 @@ describe('PanelDeInfo (W3b)', () => {
   });
 
   it('a 1:1 has no Miembros tab and opens on Media', () => {
-    dibujar(false, { ...chat, kind: 'direct', name: 'Mamá', memberIds: ['yo', 'mama'] });
+    const direct: ChatSummary = { ...chat, kind: 'direct', name: 'Mamá', memberIds: ['yo', 'mama'] };
+    render(<PanelDeInfo chat={direct} detalle={detalle(false)} yo="yo" jwt="jwt" base={null} onCerrar={vi.fn()} onAviso={vi.fn()} onCambio={vi.fn()} onAccionDeChat={vi.fn()} onLevel={vi.fn()} onVerFoto={vi.fn()} />);
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Media', 'Ajustes']);
     expect(screen.getByTestId('pestana-detalle-media')).toHaveAttribute('aria-selected', 'true');
   });

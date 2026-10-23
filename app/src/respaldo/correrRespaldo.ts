@@ -5,7 +5,8 @@ import {
   type ContenidoDeRespaldo,
   type ResultadoDeSubida,
 } from '@lilachat/shared';
-import type { ChatSummary } from '../api/client';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { reportBackupAttempt, type ChatSummary } from '../api/client';
 import { hidratarTodo } from '../chat/hidratador';
 import { leerTodosLosMensajes, resumenDelAlmacen } from '../chat/mensajesGuardados';
 import { conservarSolo, escribirRespaldo, listarRespaldos } from './archivosDeRespaldo';
@@ -15,6 +16,7 @@ import { leerLibro } from './libroDeRespaldos';
 import { leerPassphrase } from './passphraseDeRespaldo';
 import { decidirCorrida, huellaDelAlmacen, motivoParaNoEmpezar, nombreDeRespaldo } from './planDeRespaldo';
 import { puertoDeRespaldo } from './puertoDeRespaldo';
+import { reportMissingKeyOncePerDay } from './missingKeyReport';
 
 /**
  * Una corrida de respaldo (F12.1): completar el almacén → ¿hay algo nuevo? →
@@ -44,6 +46,8 @@ export async function correrRespaldo(params: {
   try {
     const passphrase = await leerPassphrase();
     if (!passphrase) {
+      // Pending 83: without this the server cannot tell «no key yet» from «the disk was not there».
+      void reportMissingKeyOncePerDay({ storage: AsyncStorage, report: () => reportBackupAttempt(params.jwt, 'sin_passphrase') });
       return { estado: await guardarEstadoDeRespaldo({ ultimaCorridaEn: inicio, decision: 'sin_passphrase', fallo: null }), subida: null };
     }
 

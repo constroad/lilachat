@@ -14,6 +14,7 @@ import {
   rutaDeRespaldo,
 } from './respaldoDisco.js';
 import { asyncRoute, requireSession } from './requireSession.js';
+import { mountBackupAttemptRoutes, recordBackupAttempt } from './backupAttempts.js';
 
 /**
  * Los respaldos de conversaciones que suben los teléfonos (F12.1). El server
@@ -94,6 +95,8 @@ export function buildRespaldoRouter(): Router {
     })
   );
 
+  // Before `/:nombre`, or «intentos» would be read as a backup's name (pending 83).
+  mountBackupAttemptRoutes(router);
   router.get('/:nombre', asyncRoute(bajarRespaldo));
 
   return router;
@@ -123,6 +126,7 @@ async function recibirRespaldo(req: Request, res: Response): Promise<void> {
     return;
   }
   if (await backupBlockedByEmail(sesion)) {
+    await recordBackupAttempt(sesion.userId, 'correo_sin_verificar');
     res.status(403).json({ motivo: 'correo_sin_verificar', message: 'Verifica tu correo para activar la copia de seguridad.' });
     return;
   }
@@ -132,12 +136,14 @@ async function recibirRespaldo(req: Request, res: Response): Promise<void> {
   const disco = discoDeRespaldos();
   const estado = await disco.estado();
   if (estado !== 'montado') {
+    await recordBackupAttempt(sesion.userId, estado === 'ausente' ? 'disco_ausente' : 'disco_colgado');
     res.status(507).json({ motivo: estado === 'ausente' ? 'disco_ausente' : 'disco_colgado' });
     return;
   }
 
   const maxBytes = topeDeRespaldo();
   if (Number(req.headers['content-length'] ?? 0) > maxBytes) {
+    await recordBackupAttempt(sesion.userId, 'demasiado_grande');
     res.status(413).json({ motivo: 'demasiado_grande' });
     return;
   }
@@ -146,11 +152,13 @@ async function recibirRespaldo(req: Request, res: Response): Promise<void> {
     recibido = await disco.recibir(req, { maxBytes });
   } catch (error) {
     if (!(error instanceof DemasiadoGrande)) throw error;
+    await recordBackupAttempt(sesion.userId, 'demasiado_grande');
     res.status(413).json({ motivo: 'demasiado_grande' });
     return;
   }
   if (recibido.bytes === 0) {
     await disco.descartar(recibido.temporal);
+    await recordBackupAttempt(sesion.userId, 'vacio');
     res.status(400).json({ motivo: 'vacio' });
     return;
   }
@@ -159,6 +167,7 @@ async function recibirRespaldo(req: Request, res: Response): Promise<void> {
   const decision = decidirRecepcion({ huellaDeclarada, huellaCalculada: recibido.huella, yaExiste });
   if (decision !== 'guardar') {
     await disco.descartar(recibido.temporal);
+    await recordBackupAttempt(sesion.userId, decision === 'huella_no_coincide' ? decision : 'ya_existe');
     if (decision === 'huella_no_coincide') res.status(422).json({ motivo: decision });
     else res.status(200).json({ resultado: 'ya_existe', huella: recibido.huella, bytes: recibido.bytes });
     return;
@@ -184,6 +193,7 @@ async function recibirRespaldo(req: Request, res: Response): Promise<void> {
   }
 
   await conservarLosUltimos(sesion);
+  await recordBackupAttempt(sesion.userId, 'guardado');
   res.status(201).json({ resultado: 'guardado', nombre, huella: recibido.huella, bytes: recibido.bytes });
 }
 

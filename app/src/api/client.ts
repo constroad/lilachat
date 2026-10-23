@@ -166,6 +166,9 @@ export const estadoDeRespaldos = (token: string) => get<EstadoDeRespaldos>('/api
 export const ultimoRespaldo = (token: string) =>
   get<{ respaldo: EstadoDeRespaldos['ultimo'] }>('/api/respaldos/ultimo', token);
 
+/** Pending 83: the phone tells the server why it did not back up (only «no key yet» for now). */
+export const reportBackupAttempt = (token: string, reason: 'sin_passphrase') => authed<Record<string, never>>('POST', '/api/respaldos/intento', token, { motivo: reason });
+
 /** Antes de subir: qué huellas le faltan al server, para no gastar datos en lo que ya está. */
 export const huellasDeRespaldoQueFaltan = (token: string, huellas: string[]) =>
   authed<{ faltan: string[]; invalidas: string[] }>('POST', '/api/respaldos/huellas', token, { huellas });

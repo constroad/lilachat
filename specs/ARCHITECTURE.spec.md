@@ -4909,6 +4909,50 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 115. Guiños de Año Nuevo, San Valentín, Día de la Madre y Fiestas Patrias (23/10/2026, 0.1.153)
+
+Cierra el pendiente 73: cinco guiños por temporada, en las seis temporadas.
+Hojas de Stitch `r153-anio-nuevo`, `r153-san-valentin`,
+`r153-dia-de-la-madre` y `r153-fiestas-patrias`, con el tono adulto de siempre.
+
+- **Año Nuevo** (27/12–7/1): «Cuenta regresiva» (el capataz cuenta, el reloj
+  da las doce y salta entre fuegos artificiales), «Las doce uvas» (contra el
+  reloj, y se las traga todas de una), «La maleta» (tres vueltas a la
+  manzana, la última apenas), «Todo amarillo» (baila con estrellas y le cae
+  el gorro de fiesta) y «El brindis» (la botella revienta y la espuma llena
+  la pantalla).
+- **San Valentín** (1–15/2): «Cupido practicante» (falla, la flecha da la
+  vuelta y le pega a él), «Delivery de rosas» (entrega el ramo y espera que
+  le paguen), «Serenata» (le tiran un balde de agua y sigue cantando),
+  «Plantón» (mira el reloj y se va feliz comiéndose los bombones) y
+  «Corazón roto» (drama, lágrimas y una caja de bombones lo arregla).
+- **Día de la Madre** (1–15/5): «Mamá multitarea», «¿Ya comiste?» (la torta
+  crece con cada «¿más?» hasta llenar la pantalla), «Llegó tarde» (el hijo
+  con las flores escondidas), «Mamá ingeniera» (aprueba el plano con un
+  sello que sacude la pantalla) y «El audio de mamá» (habla y el reloj da
+  vueltas).
+- **Fiestas Patrias** (15–31/7): «¡Viva el Perú!» (bandera, escarapelas y
+  fuegos artificiales), «Marinera» (con pañuelo y aplausos), «Anticuchos»
+  (el ají lo hace salir corriendo), «Paso de desfile» (marcha al tambor,
+  saluda y se va) y «Salud con pisco» (choca vasos, se marea y se va
+  tambaleando).
+- Los 20 personajes y sus 24 piezas salen de las hojas con el extractor de
+  siempre, que ahora respeta los nombres de la hoja cuando los dos brazos
+  caen del mismo lado (al cupido, la flecha le cruzaba el cuerpo y el brazo
+  derecho salía como un segundo izquierdo).
+- Kit: `talk` abre la boca de verdad (antes `pump` la giraba y la risa de
+  Papá Noel no se veía), `popAt` y `burst` para piezas que aparecen o
+  estallan. Los sketches de temporada viven en `winkSketchesSeasonal.ts`.
+- Test nuevo: todo actor se ve en algún momento. Lo destapó «La maleta»: con
+  la opacidad solo en la última clave, el corredor y su maleta estuvieron en
+  0 todo el guiño.
+- Medido en el emulador al recibirlos: entre 1,5 y 3,4 % de cuadros lentos y
+  p90 de 17–24 ms; «Cupido practicante» (7,1 %, 32 ms) y «Llegó tarde»
+  (6,2 %, 36 ms) son los dos con partículas de emoji.
+- E2E: Ana mandó los 20 al chat con José; en el emulador se vieron
+  completos (video cuadro a cuadro de cada uno) y en la web se reprodujeron
+  «Salud con pisco» y «Marinera». Se borraron por la ruta normal.
+
 ## 114. Guiños de Navidad, videos dentro de la app, compartir la ubicación y administrar el almacenamiento (22/10/2026, 0.1.152)
 
 Cierra los pendientes 6, 13 y la ubicación fija del 11, y la Navidad del 73.
@@ -10372,7 +10416,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
 72. ~~**Aviso a los admins un día antes del cumpleaños de un miembro**~~ **Hecho (§113, 0.1.151).** (José,
     22/10): el día anterior, a los admins del grupo (no a todos), para que
     preparen algo.
-73. **Guiños de temporada** (José, 22/10; **Halloween hecho, §113; Navidad, §114**): según la época del año aparecen en
+73. ~~**Guiños de temporada**~~ **Hecho (§113–§115, 0.1.151–0.1.153): las seis temporadas, 5 guiños cada una.** (José, 22/10): según la época del año aparecen en
     la lista, mínimo 5 por temporada, diseñados en Stitch con el tono adulto
     de siempre. Temporadas: Halloween (octubre), Navidad (diciembre), Año
     Nuevo (fin de diciembre y enero), San Valentín (febrero), Fiestas Patrias

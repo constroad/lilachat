@@ -25,6 +25,7 @@ import { useDisposicion } from './useDisposicion';
 import { ConMargenesLaterales, SinMargenArriba } from './PanelDeChat';
 import type { Tab } from './BottomNav';
 import { ReminderAlarmHost } from '../agenda/ReminderAlarmHost';
+import { WhatsNewHost } from '../settings/WhatsNewHost';
 
 type RutasDeSesion = {
   Inicio: undefined;
@@ -144,7 +145,8 @@ export function NavegacionDeSesion(props: {
     // Las llamadas envuelven toda la sesión: suenan en cualquier pantalla (FL8).
     <ProveedorDeLlamadas jwt={props.credential.jwt}>
     {/* Pending 63: a reminder that rang full screen, over any screen. */}
-    <ReminderAlarmHost />
+    <ReminderAlarmHost jwt={props.credential.jwt} />
+    <WhatsNewHost />
     <NavigationContainer ref={navegacion} theme={tema} onStateChange={alCambiar}>
       <Stack.Navigator
         screenOptions={{

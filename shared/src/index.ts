@@ -119,3 +119,5 @@ export * from './chatDetailTabs.js';
 export * from './videoEmbed.js';
 export * from './sharedLocation.js';
 export * from './storage.js';
+export * from './releaseNotes.js';
+export * from './chatSections.js';

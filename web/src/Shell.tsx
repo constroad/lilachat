@@ -32,6 +32,7 @@ import { TAMANO_DE_PAGINA, useSincronizacion } from './sync/useSincronizacion';
 import { useSocket } from './useSocket';
 import { ChatFontChoice, GroupsAsListChoice, PresenceChoice } from './ui/settingsChoices';
 import { StorageChoice } from './storage/StorageChoice';
+import { WhatsNewDialog } from './ui/WhatsNewDialog';
 import { chatNameWithAgenda } from './contacts/phoneAgenda';
 import { useAgendaRelay } from './contacts/useAgendaRelay';
 import { AppRail } from './rail/AppRail';
@@ -235,6 +236,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
     <CallProvider jwt={credential.jwt} connected={socket.connected} nameOf={callerOf} photoOf={(chatId) => [...chats, ...(spaceChatsShown ?? [])].find((chat) => chat.id === chatId)?.avatarUrl}>
     <div className="relative flex h-full">
       <WebNotices sinConexion={sinConexion} />
+      <WhatsNewDialog />
       {panel !== 'conversation' ? (
         <AppRail
           spaces={espacios.spaces}

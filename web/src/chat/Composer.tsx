@@ -13,6 +13,7 @@ import { useGrabadoraDeVoz, type NotaDeVozGrabada } from './useGrabadoraDeVoz';
 import type { StickerChat } from './stickers/EmojiStickerPanel';
 import { AttachMenu } from './AttachMenu';
 import { useDismiss } from '../ui/useDismiss';
+import { subscribeComposerInserts } from './composerInsert';
 
 /**
  * La barra de escritura del diseño: «+» suelto a la izquierda, el campo con
@@ -103,6 +104,10 @@ export function Composer({
     pendingCaret.current = resultado.cursor;
     setText(resultado.texto);
   };
+  // The birthday card's «Saludar» (pending 17) writes here.
+  const insertRef = useRef(ponerEmoji);
+  insertRef.current = ponerEmoji;
+  useEffect(() => subscribeComposerInserts((inserted) => insertRef.current(inserted)), []);
   const terminarNota = async (cancelar: boolean) => {
     const nota = await voz.terminar(cancelar);
     if (nota) onNotaDeVoz?.(nota);

@@ -22,6 +22,7 @@ import { StickerMessage } from './stickers/StickerMessage';
 import { ConversacionContext, useConversacion } from './contextoDeLaConversacion';
 import type { ChatSummary, MensajeEnPantalla } from './types';
 import { Avatar } from '../ui/Avatar';
+import { AlbumCarouselWeb } from './AlbumCarouselWeb';
 
 /** Las clases de color de autor, escritas enteras para que Tailwind las genere. */
 const COLOR_DE_AUTOR = ['', 'text-autor-1', 'text-autor-2', 'text-autor-3', 'text-autor-4', 'text-autor-5', 'text-autor-6'];
@@ -40,6 +41,8 @@ type Props = {
   onDescartar: (clientKey: string) => void;
   /** The Slack format (design `s-01`): a flat row instead of the bubble. */
   flat?: boolean;
+  /** The first photo of an album (pending 12): it draws the card with all of them. */
+  album?: readonly MensajeEnPantalla[];
 };
 
 /**
@@ -79,7 +82,7 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
           {/* Borrado: solo la lápida, sin la cita (como WhatsApp). */}
           {mensaje.hiloDe !== undefined && mensaje.enElChat && !mensaje.deletedAt ? <ThreadQuote root={mensaje.hiloDe} mine={mio} /> : null}
           {mensaje.replyToSeq && !mensaje.deletedAt ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={mio} /> : null}
-          <ContenidoDelMensaje mensaje={mensaje} mio={mio} />
+          <MessageContent mensaje={mensaje} mio={mio} album={props.album} />
         </div>
         )}
         {mensaje.reacciones?.length ? <PastillaDeReacciones mensaje={mensaje} mio={mio} /> : null}
@@ -135,7 +138,7 @@ function FlatMessage(props: Props) {
           <div className={`max-w-2xl text-[length:var(--chat-font,14px)] leading-[var(--chat-line,20px)] ${mensaje.estado === 'fallido' ? 'opacity-70' : ''}`}>
             {mensaje.hiloDe !== undefined && mensaje.enElChat && !mensaje.deletedAt ? <ThreadQuote root={mensaje.hiloDe} mine={false} /> : null}
             {mensaje.replyToSeq && !mensaje.deletedAt ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={false} /> : null}
-            <ContenidoDelMensaje mensaje={mensaje} mio={false} />
+            <MessageContent mensaje={mensaje} mio={false} />
           </div>
         )}
         {mensaje.reacciones?.length ? <PastillaDeReacciones mensaje={mensaje} mio={false} /> : null}
@@ -202,7 +205,7 @@ function CitaDelMensaje({ seq, mio }: { seq: number; mio: boolean }) {
   );
 }
 
-function ContenidoDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio: boolean }) {
+function MessageContent({ mensaje, mio, album }: { mensaje: MensajeEnPantalla; mio: boolean; album?: readonly MensajeEnPantalla[] }) {
   const { nombres, yo, jwt, chat, onVerFoto, onVerPdf } = useConversacion();
   // La tarjeta del primer enlace; los chats secretos no la piden.
   const vista = useVistaPrevia(chat.encrypted || mensaje.media ? null : primerEnlace(mensaje.body), jwt);
@@ -226,7 +229,9 @@ function ContenidoDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio
   const thumblessVideo = Boolean(media?.url && !media.thumbUrl && media.mime?.startsWith('video/'));
   return (
     <>
-      {media?.url && isAnimatedImage(media.mime) && !mensaje.estado ? (
+      {album ? (
+        <AlbumCarouselWeb items={album} onOpen={onVerFoto} />
+      ) : media?.url && isAnimatedImage(media.mime) && !mensaje.estado ? (
         <GifInBubble testId={`gif-${mensaje.clientKey}`} url={media.url} alt={mensaje.body ?? 'GIF'} width={media.width} height={media.height} onOpen={() => onVerFoto(mensaje)} />
       ) : media?.url && esImagen ? (
         <button type="button" data-testid={`foto-${mensaje.clientKey}`} onClick={() => !mensaje.estado && onVerFoto(mensaje)} className="relative block w-full">

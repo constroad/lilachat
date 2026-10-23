@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import type { Reaccion } from '@lilachat/shared';
 import { announceChatListsChanged } from './chat/chatLists/chatListsEvents';
+import { receivePresence, receivePresenceSnapshot } from './presence/presenceStatus';
 
 /**
  * El socket vive FUERA del componente.
@@ -190,6 +191,9 @@ export function useSocket(params: {
     socket.on('presence.snapshot', (data: { online?: string[] }) =>
       setState((prev) => ({ ...prev, online: new Set(data?.online ?? []) }))
     );
+    // «Ausente» / «Ocupado» (pending 15) ride on the same frames, in their own store.
+    socket.on('presence.snapshot', receivePresenceSnapshot);
+    socket.on('presence', receivePresence);
 
     // UN solo evento con un booleano, no dos eventos distintos.
     socket.on('presence', (data: { userId: string; online: boolean }) =>

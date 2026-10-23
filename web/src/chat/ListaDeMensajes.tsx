@@ -1,7 +1,7 @@
 import { useContext, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronDown } from 'lucide-react';
-import { followsMyNewRow, formatDayLabel, unreadBelow } from '@lilachat/shared';
+import { albumLayout, followsMyNewRow, formatDayLabel, unreadBelow } from '@lilachat/shared';
 import { BurbujaDeMensaje } from './BurbujaDeMensaje';
 import { seqParaAcusar } from './acuseDeLeido';
 import { estaCercaDelFinal, filasDeLaConversacion, sigueEnElFinal } from './filasDeLaConversacion';
@@ -51,6 +51,8 @@ export function ListaDeMensajes(props: Props) {
   };
   const [lejos, setLejos] = useState(Boolean(props.ventana));
   const filas = useMemo(() => filasDeLaConversacion(mensajes), [mensajes]);
+  // Photos sent together (pending 12): the first draws the album, the others nothing.
+  const albums = useMemo(() => ({ roles: albumLayout(mensajes), bySeq: new Map(mensajes.map((message) => [message.seq, message])) }), [mensajes]);
 
   const virtualizador = useVirtualizer({
     count: filas.length,
@@ -116,6 +118,7 @@ export function ListaDeMensajes(props: Props) {
         <div className="relative w-full" style={{ height: virtualizador.getTotalSize() }}>
           {virtualizador.getVirtualItems().map((item) => {
             const fila = filas[item.index]!;
+            const albumRole = flat ? undefined : albums.roles.get(fila.mensaje.seq);
             return (
               <div
                 key={item.key}
@@ -125,8 +128,8 @@ export function ListaDeMensajes(props: Props) {
                 className="absolute left-0 top-0 w-full rounded-lg transition-colors duration-500 data-[resaltado]:bg-primary/10"
                 style={{ transform: `translateY(${item.start}px)` }}
               >
-                {fila.nuevoDia ? <ChipDeDia at={fila.mensaje.at} /> : null}
-                <BurbujaDeMensaje
+                {fila.nuevoDia && albumRole?.role !== 'member' ? <ChipDeDia at={fila.mensaje.at} /> : null}
+                {albumRole?.role === 'member' ? null : <BurbujaDeMensaje
                   mensaje={fila.mensaje}
                   mio={fila.mensaje.senderId === yo}
                   agrupado={fila.agrupado}
@@ -136,7 +139,8 @@ export function ListaDeMensajes(props: Props) {
                   flat={flat}
                   onReintentar={props.onReintentar}
                   onDescartar={props.onDescartar}
-                />
+                  album={albumRole?.role === 'head' ? albumRole.seqs.map((seq) => albums.bySeq.get(seq)).filter((one): one is MensajeEnPantalla => Boolean(one)) : undefined}
+                />}
               </div>
             );
           })}

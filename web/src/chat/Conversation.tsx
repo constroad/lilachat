@@ -1,12 +1,13 @@
 import { useFunPlayback } from './nudge';
 import { useLastSeen } from './useLastSeen';
+import { usePresenceStatus } from '../presence/presenceStatus';
 import { NotificationsBanner } from '../notify/NotificationsBanner';
 import { ConversacionContext } from './contextoDeLaConversacion';
 import { useContext, useState, type ReactNode } from 'react';
 import { ArrowLeft, Phone, Search, Video } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import type { AgendaReminder, MencionEnMensaje, WinkId } from '@lilachat/shared';
-import { formatUltimaVez } from '@lilachat/shared';
+import { formatUltimaVez, presenceLine, type PresenceStatus } from '@lilachat/shared';
 import { Composer, type ContextoDelComposer } from './Composer';
 import type { Mencionable } from './SugerenciasDeMencion';
 import type { NotaDeVozGrabada } from './useGrabadoraDeVoz';
@@ -77,7 +78,9 @@ export function Conversation(props: {
 }) {
   const { chat } = props;
   const [soltando, setSoltando] = useState(false);
-  const lastSeen = useLastSeen(chat.kind === 'direct' ? (chat.memberIds.find((id) => id !== props.yo) ?? null) : null);
+  const otherId = chat.kind === 'direct' ? (chat.memberIds.find((id) => id !== props.yo) ?? null) : null;
+  const lastSeen = useLastSeen(otherId);
+  const otherStatus = usePresenceStatus(otherId);
   const fun = useFunPlayback({ messages: props.mensajes, me: props.yo, chatId: chat.id, muted: Boolean(chat.muted), afterSeq: chat.lastSeq - chat.unread });
   return (
     <section
@@ -104,7 +107,7 @@ export function Conversation(props: {
         </div>
       ) : null}
       {fun.overlay}
-      <CabeceraDeLaConversacion chat={chat} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} lastSeen={lastSeen} onCall={props.onCall} callExtras={props.callExtras} />
+      <CabeceraDeLaConversacion chat={chat} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} lastSeen={lastSeen} status={otherStatus} onCall={props.onCall} callExtras={props.callExtras} />
       <BannerWithSession />
       {props.franja}
       {props.mensajes === null ? (
@@ -160,7 +163,7 @@ export function Conversation(props: {
   );
 }
 
-function CabeceraDeLaConversacion(props: { chat: ChatSummary; typingName: string | null; showBack: boolean; onBack: () => void; onAbrirInfo?: () => void; /** The other's «últ. vez» in a 1:1, like the app. */ lastSeen?: string; onCall?: (video: boolean) => void; callExtras?: ReactNode }) {
+function CabeceraDeLaConversacion(props: { chat: ChatSummary; typingName: string | null; showBack: boolean; onBack: () => void; onAbrirInfo?: () => void; /** The other's «últ. vez» in a 1:1, like the app. */ lastSeen?: string; /** «Ausente» or «Ocupado» (pending 15). */ status?: PresenceStatus; onCall?: (video: boolean) => void; callExtras?: ReactNode }) {
   const { chat, typingName } = props;
   // A channel of a space reads as Slack's: «#planta-web».
   const title = chat.channel ? `#${chat.name ?? ''}` : (chat.name ?? chat.phone ?? 'Conversación');
@@ -179,7 +182,7 @@ function CabeceraDeLaConversacion(props: { chat: ChatSummary; typingName: string
         {/* La línea de estado no desaparece cuando nadie escribe: si el alto
             cambiara, la cabecera saltaría con cada tecla del otro. */}
         <p data-testid="estado-chat" className={`truncate text-[13px] ${typingName ? 'text-primary' : 'text-on-surface-variant'}`}>
-          {typingName ? (chat.kind === 'group' ? `${typingName} está escribiendo…` : 'Escribiendo…') : chat.kind === 'notas' ? 'Solo tú lo ves' : chat.online ? 'En línea' : props.lastSeen ? formatUltimaVez(props.lastSeen) : ' '}
+          {typingName ? (chat.kind === 'group' ? `${typingName} está escribiendo…` : 'Escribiendo…') : chat.kind === 'notas' ? 'Solo tú lo ves' : chat.online ? presenceLine({ online: true, status: props.status }) : props.lastSeen ? formatUltimaVez(props.lastSeen) : ' '}
         </p>
       </div>
       </button>

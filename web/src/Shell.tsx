@@ -31,8 +31,7 @@ import { puedeAbrirSocket } from './sesionLista';
 import { useAccionesSobreChats } from './sync/accionesSobreChats';
 import { TAMANO_DE_PAGINA, useSincronizacion } from './sync/useSincronizacion';
 import { useSocket } from './useSocket';
-import { ChatFontChoice } from './ui/ChatFontChoice';
-import { GroupsAsListChoice } from './ui/GroupsAsListChoice';
+import { ChatFontChoice, GroupsAsListChoice, PresenceChoice } from './ui/settingsChoices';
 import { chatNameWithAgenda } from './contacts/phoneAgenda';
 import { useAgendaRelay } from './contacts/useAgendaRelay';
 import { AppRail } from './rail/AppRail';
@@ -455,6 +454,7 @@ function PanelDeAjustes(props: {
       <button type="button" data-testid="cerrar-ajustes" aria-label="Cerrar ajustes" title="Cerrar" onClick={onCerrar} className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full text-on-surface-variant hover:bg-background">
         <X size={16} />
       </button>
+      <PresenceChoice jwt={jwt} />
       <AppearanceChoice />
       <ChatFontChoice />
       <GroupsAsListChoice />

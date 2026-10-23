@@ -41,6 +41,7 @@ function cuerpoDe(datos: DatosDeSubida & { mime: string }): FormData {
   if (datos.durationMs) cuerpo.append('durationMs', String(datos.durationMs));
   // Separada por comas: es lo que lee el server (`ondaValida`), igual que la app.
   if (datos.onda?.length) cuerpo.append('onda', datos.onda.join(','));
+  if (datos.albumId) cuerpo.append('albumId', datos.albumId);
   cuerpo.append('file', new File([datos.archivo], datos.nombre, { type: datos.mime }));
   return cuerpo;
 }

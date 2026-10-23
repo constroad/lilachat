@@ -10,6 +10,7 @@ import { ArchivosDelChat } from './ArchivosDelChat';
 import { IdentidadDelChat } from './IdentidadDelChat';
 import { DescripcionDelChat } from './DescripcionDelChat';
 import { GroupFunRow } from './GroupFunRow';
+import { BirthdaysRow } from './BirthdaysRow';
 import { armarInfo } from './infoDelChat';
 import { NotificationLevelDialog } from './NotificationLevelDialog';
 import { ParticipantesDelChat } from './ParticipantesDelChat';
@@ -70,6 +71,7 @@ export function PanelDeInfo(props: {
           </button>
         ) : null}
         {chat.kind === 'group' ? <GroupFunRow chatId={chat.id} jwt={props.jwt} allowed={Boolean(chat.funAllowed ?? detalle?.funAllowed)} isAdmin={Boolean(detalle?.soyAdmin)} onAviso={props.onAviso} /> : null}
+        {chat.kind === 'group' || chat.kind === 'direct' ? <BirthdaysRow chatId={chat.id} jwt={props.jwt} on={Boolean(chat.birthdaysOn ?? detalle?.birthdaysOn)} canChange={chat.kind === 'direct' || Boolean(detalle?.soyAdmin)} onAviso={props.onAviso} /> : null}
         {choosingLevel ? (
           <NotificationLevelDialog
             level={level}

@@ -20,6 +20,8 @@ export type DetalleDelChat = {
   descripcion?: string;
   /** Nudges and winks in a group, switched on by an admin (21/10). */
   funAllowed?: boolean;
+  /** Birthdays on in this chat (pending 17). */
+  birthdaysOn?: boolean;
 };
 
 export type Respuesta = {
@@ -29,6 +31,7 @@ export type Respuesta = {
   name?: string;
   descripcion?: string;
   funAllowed?: boolean;
+  birthdaysOn?: boolean;
   members: { id: string; name: string | null; phone: string | null; avatarUrl?: string; role?: 'admin' | 'member'; esYo?: boolean; title?: string; spaceRole?: string; app?: boolean }[];
 };
 
@@ -60,6 +63,7 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
     nombre: respuesta.name,
     descripcion: respuesta.descripcion,
     funAllowed: respuesta.funAllowed === true,
+    birthdaysOn: respuesta.birthdaysOn === true,
   };
 }
 

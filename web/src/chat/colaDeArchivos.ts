@@ -24,6 +24,8 @@ export type ArchivoPendiente = {
   height?: number;
   durationMs?: number;
   onda?: number[];
+  /** Sent together with other photos (pending 12): a retry keeps it in its album. */
+  albumId?: string;
   queuedAt: string;
   preparando: boolean;
   progreso?: number;
@@ -31,6 +33,7 @@ export type ArchivoPendiente = {
 };
 
 export type DatosDeSubida = Pick<ArchivoPendiente, 'archivo' | 'nombre' | 'chatId' | 'clientKey' | 'caption' | 'width' | 'height' | 'durationMs' | 'onda'> & {
+  albumId?: ArchivoPendiente['albumId'];
   onProgreso: (razon: number) => void;
 };
 export type ResultadoDeSubida = { ok: true; mensaje?: ChatMessage } | { ok: false; message: string; reintentable: boolean };
@@ -44,7 +47,7 @@ export type DependenciasDeLaCola = {
   ahora: () => string;
 };
 
-export type OpcionesDeEnvio = { caption?: string; hd?: boolean; durationMs?: number; onda?: number[] };
+export type OpcionesDeEnvio = { caption?: string; hd?: boolean; durationMs?: number; onda?: number[]; albumId?: string };
 
 export function crearColaDeArchivos(deps: DependenciasDeLaCola) {
   let cola: ArchivoPendiente[] = [];

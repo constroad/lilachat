@@ -51,6 +51,8 @@ export type ChatSummary = {
   avatarUrl?: string;
   /** Nudges and winks switched on by an admin of the group (José, 21/10). */
   funAllowed?: boolean;
+  /** Birthdays on in this chat (pending 17). */
+  birthdaysOn?: boolean;
   muted?: boolean;
   /** E3b: todo / menciones / nada (from the server; older data only has `muted`). */
   avisos?: NotificationLevel;
@@ -106,6 +108,8 @@ export type ChatMessage = {
     onda?: number[];
     /** An animated sticker of my own (pending 37). */
     animated?: boolean;
+    /** Sent together with other photos (pending 12): drawn as one card. */
+    album?: string;
   };
   /** Un aviso del server (W3/19-10): la frase se arma acá, con los nombres de quien mira. */
   system?: { evento: string; valor?: string; targetId?: string; quien?: { phone?: string; name?: string }; aQuien?: { phone?: string; name?: string } };

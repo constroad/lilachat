@@ -1,5 +1,5 @@
 import type { NotificationLevel } from '@lilachat/shared';
-import { alreadyGreeted } from '@lilachat/shared';
+import { alreadyGreeted, newAlbumId } from '@lilachat/shared';
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { PanelDeInfo } from './info/PanelDeInfo';
 import type { ChatAction } from './menuDelChat';
@@ -41,6 +41,8 @@ import { ChatQueue } from './queue/ChatQueue';
 import { gifAsPendingMessage, useGifsInFlight } from './gifs/gifsInFlight';
 import { useMessageWindow } from './useMessageWindow';
 import { windowOnScreen } from './windowOnScreen';
+import { BirthdayCardWeb } from './birthdays/BirthdayCardWeb';
+import { insertIntoComposer } from './composerInsert';
 
 type PropsDeConversacion = ComponentProps<typeof Conversation>;
 
@@ -103,7 +105,9 @@ export function ConversacionConAcciones(
   /** A la cola (auditoría 19/10): cada burbuja aparece ya y sube por detrás; el pie va en el primero. */
   const subir = (lista: File[], pie: string, hd: boolean) => {
     setArchivos(null);
-    lista.forEach((archivo, indice) => void colaDeArchivosWeb.encolar(chat.id, archivo, { caption: indice === 0 && pie ? pie : undefined, hd }));
+    // Two or more photos or videos together go as one album (pending 12).
+    const albumId = lista.filter((archivo) => /^(image|video)\//.test(archivo.type)).length >= 2 ? newAlbumId() : undefined;
+    lista.forEach((archivo, indice) => void colaDeArchivosWeb.encolar(chat.id, archivo, { caption: indice === 0 && pie ? pie : undefined, hd, albumId: /^(image|video)\//.test(archivo.type) ? albumId : undefined }));
   };
   const citado = useCallback((seq: number) => mensajes?.find((uno) => uno.seq === seq), [mensajes]);
   // Fijar mensajes (19/10): en un grupo, solo los admins.
@@ -297,6 +301,7 @@ export function ConversacionConAcciones(
       {archivos ? <EnviarArchivos archivos={archivos} onCerrar={() => setArchivos(null)} onEnviar={subir} /> : null}
       {fotoAbierta !== null ? <PhotoViewer fotos={viewerPhotos} indice={fotoAbierta} onCambiar={setFotoAbierta} onCerrar={() => setFotoAbierta(null)} onMakeSticker={chat.encrypted ? undefined : (foto) => void saveGif({ chatId: chat.id, seq: foto.seq }).then(onAviso)} /> : null}
       {pdfAbierto?.media?.url ? <PdfViewer jwt={props.jwt} chatId={chat.id} seq={pdfAbierto.seq} fileName={pdfAbierto.media.fileName ?? 'Documento PDF'} downloadUrl={pdfAbierto.media.url} onClose={() => setPdfAbierto(null)} /> : null}
+      {chat.encrypted ? null : <BirthdayCardWeb chatId={chat.id} chatName={chat.name ?? ''} isGroup={chat.kind === 'group'} me={yo} messages={mensajes ?? []} names={nombres} photos={photos} onReact={(emoji) => void sync.enviarTexto(chat.id, emoji)} onGreet={insertIntoComposer} />}
       {acciones.viendoInfo ? <DialogoInfo chatId={chat.id} mensaje={acciones.viendoInfo} jwt={props.jwt} onCerrar={acciones.cerrarInfo} /> : null}
     </ConversacionContext.Provider>
   );

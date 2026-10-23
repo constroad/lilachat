@@ -4909,6 +4909,88 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 114. Guiños de Navidad, videos dentro de la app, compartir la ubicación y administrar el almacenamiento (22/10/2026, 0.1.152)
+
+Cierra los pendientes 6, 13 y la ubicación fija del 11, y la Navidad del 73.
+El 20 ya estaba hecho desde la §109 y se marcó.
+
+**Guiños de Navidad (73).** Hoja de Stitch `r152-navidad`, con tono adulto y
+diciembre de Lima (verano).
+- Cinco sketches de 6,5–7 s (`winkSketchesChristmas.ts`): «Papá Noel
+  capataz» (revisa la lista, manda bajar los regalos y el último le cae en el
+  casco: ve estrellas y se ríe), «Elfo practicante» (la torre de regalos se
+  tambalea y se cae; se rinde con un chocolate), «Reno chofer» (llega en el
+  trineo tocando la bocina, frena en seco y se va volando), «Vigilante de
+  nieve» (le pita al sol y se derrite en un charco) y «Amigo secreto» (abre
+  el regalo: un panetón, otro, y otro más).
+- Arte: 5 personajes y 6 piezas (regalo, arbolito, panetón, chocolate,
+  trineo y estrella). Salen del 1 al 26 de diciembre; en octubre no se
+  ofrecen, pero un guiño recibido se ve igual.
+- Medido en el emulador al recibirlos: 3,1 % de cuadros lentos y p90 de
+  22 ms Papá Noel, 1,1 % y 17 ms el elfo, 3,4 % y 21 ms el reno, 1,7 % y
+  22 ms el vigilante, 1,9 % y 17 ms el amigo secreto.
+- Arreglado en el E2E: el confeti de emojis del amigo secreto lo llevaba a
+  12,8 % y 53 ms (se quitó); la torre del elfo le tapaba la cara.
+
+**Videos dentro de la app (6).**
+- `videoEmbedFor` (shared, puro): YouTube (enlaces, cortos, Shorts, en vivo y
+  el `t=`), TikTok, Instagram (post, reel) y Facebook (video, reel), cada uno
+  con el reproductor del sitio (YouTube sin cookies). Lo que no reconoce se
+  abre en el navegador como antes.
+- App: la tarjeta del enlace abre `VideoEmbedPlayer`, un WebView
+  (`react-native-webview`, MIT, con su regla `-keep` para R8) que solo tiene
+  el reproductor y lleva el origen de Lilachat como referente (YouTube lo
+  exige). Todo enlace que sale del reproductor se abre en el navegador.
+- Web: `VideoEmbedOverlay` encima del chat, con Escape y «Abrir en …». La
+  CSP de la web suma en `frame-src` solo esos cuatro orígenes
+  (`VIDEO_EMBED_ORIGINS`): sin eso el iframe salía negro.
+- E2E: YouTube y TikTok reproducen dentro de la app; «Watch now» de TikTok
+  abrió Chrome. En la web, YouTube cargado y reproduciendo (4 s, sin pausa)
+  en la misma pestaña.
+- Falta el mini reproductor flotante (PiP de Android).
+
+**Compartir la ubicación (11, la fija).** Diseño `r152-ubicacion`.
+- `sharedLocation` (shared, puro): valida el punto, redondea a ~10 cm, la
+  precisión en metros («Precisión 12 m»), el enlace universal al mapa y las
+  teselas de OpenStreetMap que rodean al punto (`mapTilesFor`).
+- Server: tipo de mensaje `location` y `POST /api/chats/:id/locations` (no
+  en chats secretos). El `body` es «Ubicación».
+- App: «Ubicación» en el clip abre una hoja con el mapa, la precisión y
+  «Enviar ubicación». Permiso solo «mientras se usa la app»
+  (`expo-location`, sin segundo plano). Tarjeta con el mapa y «Abrir en el
+  mapa» (abre Google Maps).
+- Web: muestra la tarjeta (WhatsApp Web tampoco envía ubicaciones).
+- Sin servicio pago: las teselas son de OpenStreetMap con su atribución, y
+  la app se identifica en el `User-Agent` como pide su política.
+- E2E: enviada desde el emulador (Plaza San Martín, precisión 5 m), vista en
+  la web de Ana y borrada para todos. Se quitó el permiso de ubicación del
+  emulador al terminar.
+- Falta la ubicación en tiempo real.
+
+**Administrar el almacenamiento (13).** Diseño `r152-almacenamiento`.
+- App, Ajustes → «Almacenamiento»: cuánto ocupa Lilachat y el libre del
+  teléfono, y por grupo con «Liberar»: fotos y videos vistos, notas de voz
+  descargadas, documentos abiertos y archivos temporales. Los mensajes
+  guardados solo se muestran.
+- Medido en el emulador: los temporales (actualizaciones descargadas y copias
+  del selector de fotos) pesaban 134 MB de 172 MB; «Liberar» los dejó en 38 MB.
+- `GET /api/me/storage`: los chats donde más se compartió (fotos, videos,
+  audios y documentos) y los archivos de más de 5 MB; y
+  `/storage/chats/:id/files`, los de un chat. Respeta lo borrado y lo vaciado
+  «para mí».
+- La lista de archivos permite elegir varios o todos y «Eliminar para mí»
+  (se ocultan en ese teléfono, como en el chat).
+- Web: en Ajustes, cuánto guarda el navegador y «Borrar la copia de este
+  navegador» (recarga y los chats vuelven del servidor).
+- E2E: en el emulador, ocultar dos PDF de Ana y liberar los temporales; en la
+  web, ver el tamaño, borrar la copia y recargar.
+- Falta «Reenviados muchas veces»: los mensajes no guardan cuántas veces se
+  reenviaron.
+
+**Limpieza de QA.** Lo que mandó Ana (guiños, enlaces y PDF) se borró por la
+ruta normal; la ubicación de José, con «Eliminar para todos» en el emulador.
+El cumpleaños temporal de Ana se sacó en cada E2E web y la web se desvinculó.
+
 ## 113. Avatares en los avisos, aviso a los admins el día antes del cumpleaños, guiños de Halloween y el detalle del chat con pestañas (22/10/2026, 0.1.151)
 
 Cierra los pendientes 68, 69 y 72, y el primer tramo del 73 (Halloween).
@@ -9793,7 +9875,7 @@ tacha con la versión que lo cierra.
    la agenda del teléfono: usar los contactos que la app ya sincroniza con el
    server (`/api/contacts`) para nombrar, como hace la app con
    `nombreDeContacto`. Probar en su Chrome real, no solo en el navegador de QA.
-6. **Ver videos de YouTube, Instagram, Facebook y TikTok dentro de Lilachat**,
+6. ~~**Ver videos de YouTube, Instagram, Facebook y TikTok dentro de Lilachat**~~ **Hecho (§114, 0.1.152), sin el mini reproductor flotante.**
    sin salir, con **mini reproductor flotante** que siga al salir de la app o
    con la pantalla bloqueada. Viable con límites: YouTube permite su
    reproductor embebido (IFrame API; en Android, WebView), pero sus términos
@@ -9815,7 +9897,7 @@ tacha con la versión que lo cierra.
    teléfono, «Enviar mensaje» si está en Lilachat y «Agregar a contactos».~~ **Hecho (§108, 0.1.146).**
 10. ~~**Sacar «Cámara» del menú del clip**~~ (hecho en §63.3): ya hay botón de cámara en la barra;
     en el clip sobra y además aparece primero.
-11. **Compartir ubicación y ubicación en tiempo real** (15 min / 1 h / 8 h),
+11. **Compartir ubicación y ubicación en tiempo real** (**la fija, hecha en §114**; falta la de tiempo real) (15 min / 1 h / 8 h),
     que se siga actualizando con la pantalla bloqueada: servicio en primer
     plano de tipo `location` en Android con el permiso de ubicación «siempre»
     (o «mientras se usa» + servicio visible), envío por socket con pausa si no
@@ -9825,7 +9907,7 @@ tacha con la versión que lo cierra.
 12. ~~**Varias fotos o videos en carrusel, como Instagram**~~ **Hecho (§110, 0.1.148).** un envío de varias
     fotos/videos se agrupa en una sola tarjeta (álbum) que se desliza de
     lado, con el contador «2/5»; tocar abre el visor en esa foto. App y web.
-13. **Administrar el almacenamiento**, como WhatsApp: por chat (cuánto pesa
+13. ~~**Administrar el almacenamiento**~~ **Hecho (§114, 0.1.152), sin «reenviados muchas veces».** Como WhatsApp: por chat (cuánto pesa
     cada uno, fotos, videos, documentos y audios, con borrar en lote) y la
     lista global «chats que más pesan» para limpiar, más «archivos de más de
     5 MB» y «reenviados muchas veces». En el teléfono es la copia local; en la
@@ -9914,7 +9996,7 @@ tacha con la versión que lo cierra.
     - Server: colección de emojis por dueño (grupo o empresa) con índice
       `{dueño, nombre}` único; los archivos van al almacenamiento como la
       media. App y web: el GIF se anima en el panel y en la reacción.
-20. **Contactos en la web, como WhatsApp Web** (José, 20/10: «¿por qué no
+20. ~~**Contactos en la web, como WhatsApp Web**~~ **Hecho (§109, 0.1.147).** (José, 20/10: «¿por qué no
     los listas como WhatsApp o Telegram?»). Amplía el 5. WhatsApp Web no lee
     una agenda propia: muestra la del TELÉFONO, que la app sube a sus
     servidores. Lilachat hace lo mismo a medias: la app ya sincroniza la
@@ -10290,7 +10372,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
 72. ~~**Aviso a los admins un día antes del cumpleaños de un miembro**~~ **Hecho (§113, 0.1.151).** (José,
     22/10): el día anterior, a los admins del grupo (no a todos), para que
     preparen algo.
-73. **Guiños de temporada** (José, 22/10; **Halloween hecho, §113**): según la época del año aparecen en
+73. **Guiños de temporada** (José, 22/10; **Halloween hecho, §113; Navidad, §114**): según la época del año aparecen en
     la lista, mínimo 5 por temporada, diseñados en Stitch con el tono adulto
     de siempre. Temporadas: Halloween (octubre), Navidad (diciembre), Año
     Nuevo (fin de diciembre y enero), San Valentín (febrero), Fiestas Patrias

@@ -5023,10 +5023,16 @@ F13 nació cuando la base estaba en Atlas: un mongod pasivo en la mini. Desde
 el 17/10 la base vive EN la mini (bóveda), así que un standby en la misma
 máquina no protege de nada. Se redefine como **respaldo verificado**: los
 respaldos de F12 (restic al disco CONSTROAD-BACKUP) más una restauración de
-prueba semanal en una base temporal, con conteo de colecciones. Hoy F12 no
-corre: `GET /api/respaldos/estado` dice disco «ausente» y ninguna copia,
-porque el runbook (`docs/RESPALDOS-RUNBOOK.md`: contraseña de restic,
-`disco:init`, agentes) nunca se ejecutó; necesita a José por el secreto.
+prueba semanal en una base temporal, con conteo de colecciones. Hasta hoy F12 no
+corría: el runbook (`docs/RESPALDOS-RUNBOOK.md`) nunca se había ejecutado y
+cada subida del teléfono recibía 507. lila-2 lo corrió el 23/10 a las 07:22
+con la ruta corregida (`current`, no el espejo `repo`): la raíz y su marca
+existen, los dos agentes de launchd están cargados (copia diaria 02:00,
+verificación los domingos 04:00) y la primera copia de restic tomó solo la
+marca. Cero archivos de teléfono todavía: la tarea de fondo sube con wifi y
+cargando, y solo si la persona creó su clave de respaldo; un 507 deja el
+respaldo pendiente, no quemado. Los volcados de la base nunca fallaron (31
+en `~/backups/lilachat/`).
 Disco (lila-2, 23/10): la mini tiene 218 GB libres y CONSTROAD-BACKUP 912 GB;
 no hace falta purgar.
 
@@ -10671,6 +10677,17 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
       mano y nunca al arrancar, lecturas y escrituras con 507/503 y
       `Retry-After` (nunca 404 ni 415), y el cliente respeta `Retry-After`.
       Referencia viva: `lilafotos/server/src/disco.ts`.
+83. **Contar los intentos de respaldo, no solo los éxitos** (lila-2, 23/10).
+    La colección `respaldos` está en cero: nunca entró un respaldo de nadie.
+    Con 31 equipos (5 activos en la semana) y ~800 mensajes por semana, no se
+    puede saber si es «nadie creó su clave» o «todos recibían 507», porque el
+    507 responde antes de escribir nada. Un contador por motivo
+    (`disco_ausente`, `huella_no_coincide`, y `sin_passphrase` reportado por
+    el teléfono) lo distingue en un minuto. Va con la R155.
+84. **Un equipo apunta a un usuario que ya no existe** (lila-2, 23/10): hay 7
+    `userId` distintos en `devices` para 6 usuarios. Revisar si borrar una
+    cuenta deja sus equipos vivos y qué flujo resuelve el usuario desde el
+    equipo.
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

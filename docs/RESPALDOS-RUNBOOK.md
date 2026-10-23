@@ -30,12 +30,14 @@ mkdir -p ~/.config/constroad-backup && openssl rand -base64 32 > ~/.config/const
 
 ⚠️ copiar esa clave al gestor de contraseñas AHORA.
 
+> `~/deploys/chat/repo` es el espejo *bare* de Torre, sin árbol de trabajo: los comandos van en `current` (lo corrigió lila-2 al correr el alta el 23/10).
+
 ```bash
-cd ~/deploys/chat/repo && RESPALDOS_RAIZ=/Volumes/CONSTROAD-BACKUP/lilachat-datos npm run disco:init -w server
+cd ~/deploys/chat/current && RESPALDOS_RAIZ=/Volumes/CONSTROAD-BACKUP/lilachat-datos npm run disco:init -w server
 ```
 
 ```bash
-cd ~/deploys/chat/repo && bash scripts/instalar-agentes.sh
+cd ~/deploys/chat/current && bash scripts/instalar-agentes.sh
 ```
 
 ```bash

@@ -6,7 +6,9 @@
  * corre cada minuto, solo se puede observar esperando.
  */
 
-export type Recurrence = 'once' | 'daily' | 'weekly';
+import { nextRepeat, type RepeatRule } from './repeatRule.js';
+
+export type Recurrence = 'once' | 'daily' | 'weekly' | 'monthly';
 
 /**
  * La PRÓXIMA vez que toca, estrictamente después de `from`.
@@ -18,18 +20,10 @@ export function nextOccurrence(params: {
   startsAt: Date;
   recurrence: Recurrence;
   from: Date;
+  /** Weekdays, the month's last day, every N (pending 65). */
+  rule?: RepeatRule;
 }): Date | null {
-  const start = params.startsAt.getTime();
-  const from = params.from.getTime();
-
-  if (params.recurrence === 'once') return start > from ? new Date(start) : null;
-
-  const period = params.recurrence === 'daily' ? 86_400_000 : 7 * 86_400_000;
-  if (start > from) return new Date(start);
-  // Se salta de un golpe a la ocurrencia que viene: iterar sumando períodos
-  // desde una fecha de hace meses son miles de vueltas por recordatorio.
-  const periodsElapsed = Math.floor((from - start) / period) + 1;
-  return new Date(start + periodsElapsed * period);
+  return nextRepeat(params);
 }
 
 /**
@@ -111,11 +105,13 @@ export function decidirRecordatorio(params: {
   remindedAt: Date | null | undefined;
   now: Date;
   lookbackMinutes?: number;
+  /** Weekdays, the month's last day, every N (pending 65). */
+  rule?: RepeatRule;
 }): DecisionDeRecordatorio {
   const ventana = (params.lookbackMinutes ?? 60) * 60_000;
   const atraso = params.now.getTime() - params.startsAt.getTime();
   if (atraso > ventana) {
-    return { accion: 'reprogramar', proxima: nextOccurrence({ startsAt: params.startsAt, recurrence: params.recurrence, from: params.now }) };
+    return { accion: 'reprogramar', proxima: nextOccurrence({ startsAt: params.startsAt, recurrence: params.recurrence, rule: params.rule, from: params.now }) };
   }
   if (params.remindedAt || atraso < 0) return { accion: 'esperar' };
   return { accion: 'avisar' };

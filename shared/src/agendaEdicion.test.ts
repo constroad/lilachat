@@ -40,7 +40,17 @@ describe('cambiosDeRecordatorio', () => {
   it('título vacío, fecha inválida o repetición desconocida: error en palabras', () => {
     expect(cambiosDeRecordatorio({ title: '  ' }, actual)).toEqual({ ok: false, message: 'Escribe de qué es el recordatorio.' });
     expect(cambiosDeRecordatorio({ startsAt: 'mañana' }, actual)).toEqual({ ok: false, message: 'Elige cuándo.' });
-    expect(cambiosDeRecordatorio({ recurrence: 'monthly' }, actual)).toEqual({ ok: false, message: 'Repetición inválida.' });
+    expect(cambiosDeRecordatorio({ recurrence: 'yearly' }, actual)).toEqual({ ok: false, message: 'Repetición inválida.' });
+  });
+
+  /** Pending 65: monthly, and the rule that says which weekdays or the month's last day. */
+  it('accepts monthly and a repeat rule; an empty rule is cleared', () => {
+    // Act
+    const monthly = cambiosDeRecordatorio({ recurrence: 'monthly', repeat: { monthDay: 'last' } }, actual);
+    const cleared = cambiosDeRecordatorio({ repeat: {} }, actual);
+    // Assert
+    expect(monthly).toEqual({ ok: true, set: { recurrence: 'monthly', repeat: { monthDay: 'last' } }, unset: [] });
+    expect(cleared).toEqual({ ok: true, set: {}, unset: ['repeat'] });
   });
 
   it('ignora campos que no son editables (dueño, chat, sello del cron)', () => {

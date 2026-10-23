@@ -63,12 +63,13 @@ describe('announceBirthdays', () => {
     // Assert
     const notices = await MessageModel.find({ 'system.evento': 'cumpleanos' }).lean();
     expect(notices.map((notice) => [String(notice.chatId), String(notice.senderId), notice.body])).toEqual(
-      expect.arrayContaining([[String(group), String(carla), '🎂 Hoy cumple Carla · 29 años'], [String(direct), String(carla), '🎂 Hoy cumple Carla · 29 años']])
+      expect.arrayContaining([[String(group), String(carla), '🎂 Hoy cumple Carla · 29 años'], [String(direct), String(carla), '🎂 Hoy cumple Carla · 29 años'], [String(group), String(beto), '🎂 Hoy cumple Beto']])
     );
-    expect(notices).toHaveLength(2);
+    // Beto's old «hidden» choice no longer blocks it: the chat decides (pending 71).
+    expect(notices).toHaveLength(4);
   });
 
-  it('nothing before 8:00, nothing in chats without them, nothing for a hidden birthday', async () => {
+  it('nothing before 8:00, nothing in chats without them', async () => {
     await announceBirthdays(new Date('2026-10-22T12:00:00.000Z'));
     expect(await MessageModel.countDocuments({})).toBe(0);
     await announceBirthdays(morning);

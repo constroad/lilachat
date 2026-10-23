@@ -224,6 +224,54 @@ describe('nota del recordatorio', () => {
   });
 });
 
+describe('reminders that repeat on some days (pending 65)', () => {
+  it('stores the weekdays and anchors a monthly «same day» to its day', async () => {
+    // Arrange: the 31st of a month, 9:00 in Lima
+    const startsAt = new Date(Date.UTC(2027, 0, 31, 14, 0));
+    // Act
+    const weekly = await request(app()).post('/api/agenda/reminders').set('Authorization', `Bearer ${token}`).send({ title: 'Gimnasio', startsAt: startsAt.toISOString(), recurrence: 'weekly', repeat: { weekdays: [4, 2] } });
+    const monthly = await request(app()).post('/api/agenda/reminders').set('Authorization', `Bearer ${token}`).send({ title: 'Alquiler', startsAt: startsAt.toISOString(), recurrence: 'monthly', repeat: { monthDay: 'same' } });
+    // Assert
+    expect(weekly.status).toBe(201);
+    expect((await ReminderModel.findById(weekly.body.id).lean())?.repeat).toEqual({ weekdays: [2, 4] });
+    expect((await ReminderModel.findById(monthly.body.id).lean())?.repeat).toEqual({ monthDay: 'same', day: 31 });
+  });
+
+  it('after ringing, a Tuesday-and-Thursday reminder moves to the next of those days', async () => {
+    // Arrange: rang a second ago; Lima weekday of «now» decides the next one
+    const startsAt = new Date(Date.now() - 1000);
+    const reminder = await ReminderModel.create({ userId: jose, title: 'Gimnasio', startsAt, recurrence: 'weekly', repeat: { weekdays: [2, 4] } });
+    // Act
+    await runReminderTick();
+    // Assert
+    const after = await ReminderModel.findById(reminder._id).lean();
+    const limaWeekday = new Date(after!.startsAt.getTime() - 5 * 3_600_000).getUTCDay();
+    expect([2, 4]).toContain(limaWeekday);
+    expect(after!.startsAt.getTime()).toBeGreaterThan(Date.now());
+    expect(after!.startsAt.getTime() - startsAt.getTime()).toBeLessThanOrEqual(6 * 86_400_000);
+  });
+});
+
+describe('a reminder rings full screen on phones that can (pending 63)', () => {
+  it('a phone that declared it gets a data push; an older one, the usual notice', async () => {
+    // Arrange
+    const dataPushes: { tokens: string[]; data: Record<string, string> }[] = [];
+    setReminderPushSender({ send: async (message) => void pushes.push(message), sendDatos: async (message) => void dataPushes.push(message) });
+    await ReminderModel.create({ userId: jose, title: 'Tomar la pastilla', note: 'Con agua', startsAt: new Date(Date.now() - 1000) });
+    await mongoose.connection.collection('devices').insertMany([
+      { deviceId: 'd-full-screen', userId: jose, pushToken: 'tok-nuevo', capacidades: ['llamada-nativa', 'mensaje-nativo', 'recordatorio-nativo'] },
+      { deviceId: 'd-plain-notice', userId: jose, pushToken: 'tok-viejo', capacidades: ['llamada-nativa', 'mensaje-nativo'] },
+    ]);
+    // Act
+    await runReminderTick();
+    // Assert
+    expect(dataPushes).toHaveLength(1);
+    expect(dataPushes[0]).toMatchObject({ tokens: ['tok-nuevo'], data: { tipo: 'recordatorio', titulo: 'Tomar la pastilla', nota: 'Con agua' } });
+    expect(pushes).toHaveLength(1);
+    expect(pushes[0]?.tokens).toEqual(['tok-viejo']);
+  });
+});
+
 describe('cron de recordatorios', () => {
   it('avisa del evento al llegar su antelación, y UNA sola vez', async () => {
     await EventModel.create({

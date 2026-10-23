@@ -1,4 +1,4 @@
-import { decidirRecordatorio, nextOccurrence, shouldRemind } from '@lilachat/shared';
+import { decidirRecordatorio, nextOccurrence, REMINDER_NATIVE_CAPABILITY, shouldRemind } from '@lilachat/shared';
 import { EventModel, ReminderModel } from './eventModels.js';
 import { DeviceModel } from './models.js';
 import { ChatModel } from './chatModels.js';
@@ -53,6 +53,35 @@ async function pushTo(userIds: string[], title: string, body: string, data: { ch
   // mismo teléfono puede figurar en dos devices después de reinstalar.
   const tokens = [...new Set(devices.map((device) => device.pushToken!))];
   await sender.send({ tokens, title, body, data: { ...data, tipo: 'agenda' } });
+}
+
+/** A reminder's data push lives this long: one that rings ten minutes late is already no use (pending 63). */
+const REMINDER_PUSH_TTL_S = 600;
+
+/**
+ * A reminder rings on every phone of the person, like `pushTo`, but a phone
+ * that draws it full screen (pending 63, `REMINDER_NATIVE_CAPABILITY`) gets it
+ * as data with what its big screen shows; the rest get the usual notice.
+ */
+async function ringReminder(params: { userIds: string[]; title: string; note?: string; chat?: string; reminderId: string; data: { chatId: string; seq: number } }) {
+  if (params.userIds.length === 0) return;
+  const devices = await DeviceModel.find({ userId: { $in: params.userIds }, pushToken: { $exists: true, $ne: '' } })
+    .select('pushToken capacidades')
+    .lean();
+  if (devices.length === 0) return;
+  const native = sender.sendDatos ? new Set(devices.filter((device) => device.capacidades?.includes(REMINDER_NATIVE_CAPABILITY)).map((device) => device.pushToken!)) : new Set<string>();
+  const plain = [...new Set(devices.map((device) => device.pushToken!))].filter((token) => !native.has(token));
+  if (native.size) {
+    await sender.sendDatos!({
+      tokens: [...native],
+      ttlSegundos: REMINDER_PUSH_TTL_S,
+      data: { tipo: 'recordatorio', recordatorioId: params.reminderId, titulo: params.title, nota: params.note ?? '', chat: params.chat ?? '', chatId: params.data.chatId },
+    });
+  }
+  if (plain.length) {
+    const title = params.chat ? `${params.chat} · ${params.title}` : params.title;
+    await sender.send({ tokens: plain, title, body: params.note || 'Recordatorio', data: { ...params.data, tipo: 'agenda' } });
+  }
 }
 
 export async function runReminderTick(now: Date = new Date()): Promise<{ events: number; reminders: number }> {
@@ -114,6 +143,7 @@ export async function runReminderTick(now: Date = new Date()): Promise<{ events:
     const decision = decidirRecordatorio({
       startsAt: reminder.startsAt,
       recurrence: reminder.recurrence,
+      rule: reminder.repeat,
       remindedAt: reminder.remindedAt,
       now,
     });
@@ -136,20 +166,22 @@ export async function runReminderTick(now: Date = new Date()): Promise<{ events:
     // El de un CHAT le suena a todos sus miembros (grupo 19/10; 1:1 y borrador
     // 20/10); el del grupo lleva su nombre.
     const chat = reminder.chatId ? await ChatModel.findById(reminder.chatId).select('kind name members.userId').lean() : null;
-    await pushTo(
-      chat ? chat.members.map((m) => String(m.userId)) : [String(reminder.userId)],
-      chat?.kind === 'group' ? `${chat.name ?? 'Grupo'} · ${reminder.title}` : reminder.title,
-      reminder.note || 'Recordatorio',
+    await ringReminder({
+      userIds: chat ? chat.members.map((m) => String(m.userId)) : [String(reminder.userId)],
+      title: reminder.title,
+      note: reminder.note,
+      chat: chat?.kind === 'group' ? (chat.name ?? 'Grupo') : undefined,
+      reminderId: String(reminder._id),
       // A call-back reminder is personal and opens the chat of that call (backlog 23).
-      { chatId: String(reminder.chatId ?? reminder.callBack?.chatId ?? ''), seq: 0 }
-    );
+      data: { chatId: String(reminder.chatId ?? reminder.callBack?.chatId ?? ''), seq: 0 },
+    });
     // El de un chat también queda escrito en el chat (José, 20/10).
     if (chat) await avisarSinTumbar({ chatId: String(chat._id), quien: reminder.userId, evento: 'recordatorio-suena', valor: reminder.title });
     reminders += 1;
 
     // Recurrente: se REPROGRAMA y se limpia el sello. Sin esto, un «cada día»
     // sonaría una sola vez en su vida.
-    const next = nextOccurrence({ startsAt: reminder.startsAt, recurrence: reminder.recurrence, from: now });
+    const next = nextOccurrence({ startsAt: reminder.startsAt, recurrence: reminder.recurrence, rule: reminder.repeat, from: now });
     await ReminderModel.updateOne(
       { _id: reminder._id },
       next

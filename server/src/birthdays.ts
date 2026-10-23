@@ -48,7 +48,8 @@ export async function announceBirthdays(now: Date): Promise<void> {
   if (limaHour(now) < ANNOUNCE_FROM_HOUR) return;
   const dayKey = limaDayKey(now);
   const [, month, day] = dayKey.split('-').map(Number);
-  const people = await UserModel.find({ 'birthday.day': day, 'birthday.month': month, birthdayVisible: { $ne: false } }).select('birthday').lean();
+  // The chat decides, not the person (José, 22/10, pending 71): an old «hidden» choice no longer blocks the notice.
+  const people = await UserModel.find({ 'birthday.day': day, 'birthday.month': month }).select('birthday').lean();
   for (const person of people) {
     const userId = String(person._id);
     const chats = await ChatModel.find({ 'members.userId': person._id, birthdaysOn: true }).select('_id').lean();

@@ -24,6 +24,10 @@ export const CAPACIDAD_LLAMADA_NATIVA = 'llamada-nativa';
  */
 export const CAPACIDAD_MENSAJE_NATIVO = 'mensaje-nativo';
 export const CAPACIDADES_DE_PUSH: readonly string[] = [CAPACIDAD_LLAMADA_NATIVA, CAPACIDAD_MENSAJE_NATIVO];
+/** A phone that draws a reminder full screen (pending 63): it gets the reminder as a data push. */
+export const REMINDER_NATIVE_CAPABILITY = 'recordatorio-nativo';
+/** Every capability a phone may declare when it registers its push token. */
+export const PUSH_CAPABILITIES: readonly string[] = [...CAPACIDADES_DE_PUSH, REMINDER_NATIVE_CAPABILITY];
 
 export type CallState =
   | { fase: 'llamando'; desde: number; entrante: false }

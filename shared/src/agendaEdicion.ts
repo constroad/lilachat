@@ -1,4 +1,5 @@
 import type { Recurrence } from './events.js';
+import { parseRepeatRule } from './repeatRule.js';
 
 /**
  * Qué se puede editar de un recordatorio o un evento, y cómo (17/10/2026).
@@ -28,7 +29,7 @@ type Evento = {
   remindGuests: boolean;
 };
 
-const RECURRENCIAS: readonly string[] = ['once', 'daily', 'weekly'];
+const RECURRENCES: readonly string[] = ['once', 'daily', 'weekly', 'monthly'];
 
 const comoObjeto = (cuerpo: unknown): Record<string, unknown> =>
   cuerpo && typeof cuerpo === 'object' && !Array.isArray(cuerpo) ? (cuerpo as Record<string, unknown>) : {};
@@ -58,8 +59,14 @@ export function cambiosDeRecordatorio(cuerpo: unknown, actual: { startsAt: Date 
   }
   opcional<Recordatorio>(datos, 'note', set, unset);
   if ('recurrence' in datos) {
-    if (!RECURRENCIAS.includes(String(datos.recurrence))) return { ok: false, message: 'Repetición inválida.' };
+    if (!RECURRENCES.includes(String(datos.recurrence))) return { ok: false, message: 'Repetición inválida.' };
     set.recurrence = datos.recurrence as Recurrence;
+  }
+  // Pending 65: the repeat rule (weekdays, the month's last day, every N); an empty one is cleared.
+  if ('repeat' in datos) {
+    const rule = parseRepeatRule(datos.repeat);
+    if (rule) Object.assign(set, { repeat: rule });
+    else unset.push('repeat');
   }
   if ('startsAt' in datos) {
     const inicio = fecha(datos.startsAt);

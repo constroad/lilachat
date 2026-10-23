@@ -1,4 +1,5 @@
 import type { AttendeeSummary, Recurrence, Rsvp } from './events.js';
+import type { RepeatRule } from './repeatRule.js';
 
 /**
  * La agenda como la manda el server (`server/src/eventRoutes.ts`), una sola
@@ -40,6 +41,8 @@ export type AgendaReminder = {
   note?: string;
   startsAt: string;
   recurrence: Recurrence;
+  /** Weekdays, the month's last day, every N (pending 65). */
+  repeat?: RepeatRule;
   active: boolean;
   /** Solo en los del grupo (19/10): el chat donde vive y su imagen. */
   chatId?: string;

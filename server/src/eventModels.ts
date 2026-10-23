@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Model, type Types } from 'mongoose';
-import type { Recurrence, Rsvp } from '@lilachat/shared';
+import type { Recurrence, RepeatRule, Rsvp } from '@lilachat/shared';
 
 /**
  * Eventos, recordatorios y encuestas (F5).
@@ -48,6 +48,8 @@ export interface Reminder {
   publicadoEn?: Date | null;
   startsAt: Date;
   recurrence: Recurrence;
+  /** Weekdays, the month's last day or its day, every N (pending 65). */
+  repeat?: RepeatRule;
   active: boolean;
   remindedAt?: Date | null;
   /**
@@ -112,7 +114,8 @@ const reminderSchema = new Schema<Reminder>(
     imageMediaId: { type: String },
     publicadoEn: { type: Date, default: null },
     startsAt: { type: Date, required: true },
-    recurrence: { type: String, enum: ['once', 'daily', 'weekly'], default: 'once' },
+    recurrence: { type: String, enum: ['once', 'daily', 'weekly', 'monthly'], default: 'once' },
+    repeat: { type: { every: Number, weekdays: { type: [Number], default: undefined }, monthDay: { type: String, enum: ['same', 'last'] }, day: Number }, _id: false, default: undefined },
     active: { type: Boolean, default: true },
     remindedAt: { type: Date, default: null },
     callBack: { type: { chatId: { type: Schema.Types.ObjectId, ref: 'Chat', required: true }, video: { type: Boolean, default: false } }, _id: false, default: undefined },

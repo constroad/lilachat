@@ -1,6 +1,7 @@
 import { Router, type Response } from 'express';
 import { Types } from 'mongoose';
 import {
+  anchorRepeatRule,
   applyVote,
   cambiosDeEvento,
   cambiosDeRecordatorio,
@@ -8,8 +9,10 @@ import {
   scheduledCallText,
   textoDeEventoEnElChat,
   textoDeRecordatorioEnElChat,
+  parseRepeatRule,
   validatePoll,
   type Recurrence,
+  type RepeatRule,
 } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import { ForbiddenChatError } from './chatService.js';
@@ -136,6 +139,12 @@ async function callBackOf(raw: unknown, userId: Types.ObjectId): Promise<{ chatI
   if (typeof chatId !== 'string' || !Types.ObjectId.isValid(chatId)) return 'refused';
   const chat = await ChatModel.exists({ _id: chatId, kind: 'direct', 'members.userId': userId });
   return chat ? { chatId: new Types.ObjectId(chatId), video: video === true } : 'refused';
+}
+
+/** The stored repeat rule of a new reminder: parsed, and a monthly «same day» anchored to its day (pending 65). */
+function repeatFor(recurrence: Recurrence, raw: unknown, startsAt: Date): { repeat?: RepeatRule } {
+  const rule = anchorRepeatRule(recurrence, parseRepeatRule(raw), startsAt);
+  return rule && recurrence !== 'once' ? { repeat: rule } : {};
 }
 
 export function buildEventRouter(): Router {
@@ -373,7 +382,9 @@ export function buildEventRouter(): Router {
       title,
       note,
       startsAt,
-      recurrence: ['once', 'daily', 'weekly'].includes(recurrence) ? recurrence : 'once',
+      recurrence: ['once', 'daily', 'weekly', 'monthly'].includes(recurrence) ? recurrence : 'once',
+      // Pending 65: which weekdays, the month's last day or its day, every N.
+      ...repeatFor(recurrence, req.body?.repeat, startsAt),
       publicadoEn: publicarAhora ? new Date() : null,
       ...(callBack ? { callBack } : {}),
     });
@@ -410,6 +421,10 @@ export function buildEventRouter(): Router {
     const actual = permiso.recordatorio!;
     const cambios = cambiosDeRecordatorio(req.body, { startsAt: actual.startsAt });
     if (!cambios.ok) return res.status(400).json({ message: cambios.message });
+    // A monthly «same day» keeps the day it is set to (pending 65).
+    const finalRule = 'repeat' in cambios.set ? (cambios.set as { repeat?: RepeatRule }).repeat : actual.repeat;
+    const anchored = anchorRepeatRule(cambios.set.recurrence ?? actual.recurrence, finalRule, cambios.set.startsAt ?? actual.startsAt);
+    if (anchored && anchored !== finalRule) Object.assign(cambios.set, { repeat: anchored });
     await ReminderModel.updateOne({ _id: actual._id }, actualizacion(cambios.set, cambios.unset));
     res.json({ ok: true });
     void avisarCambioDeTarjeta({ chatId: actual.chatId, tipo: 'recordatorio', id: actual._id });

@@ -3,7 +3,7 @@ import { ensureGeneralChannel } from './workspaceGeneral.js';
 import { activityCounts } from './activityRoutes.js';
 import { Router } from 'express';
 import { Types } from 'mongoose';
-import { CAPACIDADES_DE_PUSH, normalizarNombreDeGrupo, NOTIFICATION_LEVELS, notificationLevel, textoDeAviso } from '@lilachat/shared';
+import { PUSH_CAPABILITIES, normalizarNombreDeGrupo, NOTIFICATION_LEVELS, notificationLevel, textoDeAviso } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import { DeviceModel, UserModel } from './models.js';
 import {
@@ -541,7 +541,7 @@ export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): 
     // Lo que sabe hacer con un push (FL8.1). Sin la lista es una versión vieja
     // y se borra: si quedara, le llegarían llamadas que no sabe dibujar.
     const pedidas: unknown[] = Array.isArray(req.body?.capacidades) ? req.body.capacidades : [];
-    const capacidades = CAPACIDADES_DE_PUSH.filter((capacidad) => pedidas.includes(capacidad));
+    const capacidades = PUSH_CAPABILITIES.filter((capacidad) => pedidas.includes(capacidad));
     await DeviceModel.updateOne(
       { deviceId: req.session!.deviceId },
       capacidades.length > 0

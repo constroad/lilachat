@@ -4909,6 +4909,92 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 110. Estado, álbum de fotos, cumpleaños en los chats, visor de PDF en la app y el asistente solo con /lila (22/10/2026, 0.1.148)
+
+Cierra los pendientes 15, 12, 17 (sin «Crear tarjeta con IA») y 7, más el
+bug 58. José pidió un mínimo de cuatro pendientes por versión.
+
+**Estado (15).** Diseño `r148-estado`.
+- `User.presenceMode` (`auto | away | busy | invisible`) y
+  `User.lastSeenHidden`. `GET/PUT /api/me/presence`. Un modo inválido
+  responde 400 «Elige En línea, Ausente, Ocupado o Invisible.» El cambio
+  llega a mis contactos por el socket (`presence` con `status`).
+- Invisible: no avisa ni «se conectó» ni «se fue» y no guarda la última vez;
+  los demás ven la que tenía antes. Con «Mostrar mi última vez» apagado,
+  nadie la ve.
+- App: Ajustes › Estado, a pantalla completa como el diseño (cuatro opciones
+  con su punto, Privacidad y Vista previa con el punto en el avatar). La
+  cabecera del chat dice «ausente» u «ocupado». Web: la sección Estado en
+  Ajustes, y la cabecera dice «Ausente» u «Ocupado».
+- Tests: shared (`presenceMode`), server 5, cabecera de la app y
+  `presenceStatus` de la web.
+- E2E: Ana pasó por ocupado, ausente, invisible y automático. La cabecera de
+  José en el emulador mostró «ocupado», «ausente», «últ. vez 3:20 p. m.» (la
+  de antes) y «últ. vez 7:27 p. m.». Cada PUT tardó 280–320 ms.
+
+**Álbum (12).** Diseño `r148-album`.
+- Dos o más fotos o videos enviados juntos llevan `media.album`: un id que
+  arma el cliente y el server valida (`isAlbumId`). `albumLayout` (shared)
+  agrupa las filas seguidas del mismo autor y del mismo álbum, sin borradas.
+- App: `AlbumCarousel` se desliza de lado, con «2/3» y los puntos. El pie de
+  la primera va abajo; el de otra página, encima de la foto. Un toque abre el
+  visor en esa foto.
+- **En un álbum, deslizar de lado no responde** (José, 22/10: en la última
+  foto aparecía «responder»). Se responde desde el toque largo.
+- Web: `AlbumCarouselWeb`, con flechas.
+- E2E: tres fotos de Ana. En la app, 1/3 → 3/3 → 2/3 con el pie encima, y
+  deslizar pasado el borde ya no abre la respuesta. En la web, 1/3 → 2/3 en
+  524 ms.
+
+**Cumpleaños (17).** Diseño `c1-app-cumpleanos`.
+- `Chat.birthdaysOn`: en un grupo lo cambian los admins; en un chat de dos,
+  cualquiera de los dos. `PATCH /api/chats/:id/birthdays`.
+- Desde las 8:00 de Lima (un cron cada 15 min) el chat dice «🎂 Hoy cumple
+  Carla · 29 años». Sin el año, no dice la edad. Quien oculta su cumpleaños
+  (`birthdayVisible: false`) no se anuncia. `Chat.birthdayNotices` guarda un
+  aviso por persona y día, reclamado de forma atómica: correr dos veces no
+  repite.
+- Al abrir el chat ese día, los demás ven la tarjeta, una vez por
+  dispositivo. Trae cuatro reacciones que mandan el emoji, y «Saludar» (o
+  «Saludar en el grupo»), que escribe el saludo en el campo sin mandarlo.
+  «Crear tarjeta con IA» necesita un modelo pago: espera la decisión de José.
+- App: el interruptor en el detalle del chat. Web: la fila en Info.
+- E2E: el aviso salió en los dos chats de QA. Tardó 5,3 s desde la Mac por
+  el túnel; la segunda corrida no agregó avisos. La tarjeta salió en el
+  emulador y en la web, «Saludar» escribió en el campo y la tarjeta no volvió
+  al reabrir.
+
+**Visor de PDF en la app (7).** Diseño `visor-archivos`.
+- Módulo nativo propio, `modules/pdf-pages`, con el `PdfRenderer` de Android
+  y sin dependencias. Dibuja cada página a JPEG en la cache solo cuando la
+  pantalla la pide: ancho en pasos de 200 px, tope de 1600 px y 6 MP. Al
+  cerrar, borra las páginas.
+- La pantalla muestra las páginas una debajo de otra. El zoom (100, 150, 200
+  y 300 %) conserva la página y el punto que se miraba. Trae «3 / 14» con
+  anterior y siguiente, «Compartido en el chat» con los otros PDF y «Abrir
+  con otra app». Un PDF con contraseña o dañado dice el motivo y ofrece
+  abrirlo afuera; sin red, ofrece «Reintentar».
+- Un build sin el módulo abre el PDF con otra app, como antes.
+- Medido en el emulador: listo para leer en unos 3,4 s (descarga y apertura,
+  medido con volcados de pantalla de ~1 s). Al recorrer las 14 páginas, 1,9 %
+  de cuadros lentos y p90 de 18 ms.
+- Arreglado en el E2E: al volver al 100 % después de mover la página de lado,
+  quedaba corrida. Ahora la posición lateral se reescala con el zoom.
+
+**El asistente solo con /lila (58).** Responde solo a `/lila` al principio
+del mensaje y solo en espacios de empresa (`workspaceId`). Una mención nunca
+lo llama: en «Lokillos», «@Lila» era para Lila, la persona. Si falla, dice
+«No pude responder ahora. Prueba en un rato.» y la causa va al log, nunca al
+chat. Con el OK de José, el asistente salió de «Lokillos», el único chat
+personal donde estaba. E2E: «@Lila ?» y «/lila hola» en QA Hilos quedaron sin
+respuesta.
+
+**Limpieza de QA.** Los mensajes sembrados se borraron por el camino de la
+app (Ana y Beto, «Eliminar para todos»). Los cumpleaños de Ana y Beto volvieron
+a su valor anterior, los dos chats quedaron sin cumpleaños ni avisos, el
+estado de Ana volvió a su valor por defecto y la sesión web de QA se
+desvinculó. Verificado: cero residuos.
+
 ## 109. Listas de chats propias, llamada programada y enlace de llamada, mini reproductor y contactos del teléfono en la web, y lo borrado que seguía dibujado (22/10/2026, 0.1.147)
 
 Cierra los pendientes 45, 42 (en chats de dos), 14 y 20. José pidió un
@@ -9513,7 +9599,7 @@ tacha con la versión que lo cierra.
    Facebook y TikTok permiten embeber su publicación (oEmbed / embed.js), sin
    PiP garantizado. Para videos subidos al chat (archivos propios) sí se
    puede todo: `expo-video` con PiP y audio en segundo plano.
-7. **Ver PDF dentro de la app**: viable. Android tiene `PdfRenderer` nativo
+7. ~~**Ver PDF dentro de la app**~~ **Hecho (§110, 0.1.148).** Viable. Android tiene `PdfRenderer` nativo
    (páginas como imágenes, sin dependencias) y existe `react-native-pdf`
    (MIT); la web usa el visor del navegador o pdf.js con rangos (como el visor
    de Lab Vial). Hoy un PDF se abre con otra app.
@@ -9532,7 +9618,7 @@ tacha con la versión que lo cierra.
     hay red, y en el mapa del chat (MapLibre, sin servicio pago). Ver la
     memoria de GPS en segundo plano (en una PWA no es posible; en la app sí).
 
-12. **Varias fotos o videos en carrusel, como Instagram**: un envío de varias
+12. ~~**Varias fotos o videos en carrusel, como Instagram**~~ **Hecho (§110, 0.1.148).** un envío de varias
     fotos/videos se agrupa en una sola tarjeta (álbum) que se desliza de
     lado, con el contador «2/5»; tocar abre el visor en esa foto. App y web.
 13. **Administrar el almacenamiento**, como WhatsApp: por chat (cuánto pesa
@@ -9544,7 +9630,7 @@ tacha con la versión que lo cierra.
     reproductor** para videos: viable con el Picture-in-Picture del navegador
     (`requestPictureInPicture` sobre el `<video>`), que sigue flotando aunque
     se cambie de pestaña.~~ **Hecho (§109, 0.1.147).**
-15. **Estado que maneja la persona**: En línea · Ausente · Ocupado ·
+15. ~~**Estado que maneja la persona**~~ **Hecho (§110, 0.1.148).** En línea · Ausente · Ocupado ·
     Invisible (se ve desconectado aunque esté usando la app), más quién ve mi
     «última vez». Hoy la presencia es automática (socket vivo o no).
 16. **Lilachat Empresa: catálogo, bot de publicidad y redes sociales**, como
@@ -9571,7 +9657,7 @@ tacha con la versión que lo cierra.
     (software propio o autorizado) y sería un riesgo legal. Para construir
     algo como Zernio se usan las APIs oficiales.
 
-17. **Recordatorio de cumpleaños en grupos y chats (opcional)** (José, 20/10).
+17. ~~**Recordatorio de cumpleaños en grupos y chats (opcional)**~~ **Hecho (§110, 0.1.148), salvo «Crear tarjeta con IA» (decide José: modelo pago).** (José, 20/10).
     - ~~**Alta:**~~ **Hecho (§93, 0.1.133)**, con correo verificado. Nombre y fecha de cumpleaños pasan a ser OBLIGATORIOS al
       registrarse (hoy el nombre es opcional y la fecha no existe). Quien ya
       tiene cuenta los completa la próxima vez que abre la app (pantalla de
@@ -9920,6 +10006,56 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     llamada es de dos (WebRTC punto a punto). Para un grupo hace falta malla
     para pocos (hasta 4) o un servidor de medios para más, la grilla de
     videos y quién entra y sale. Después: programar y enlace en grupos.
+57. **Ícono y miniaturas de las notificaciones** (José, 22/10, captura del
+    Samsung). El ícono chico de la notificación sale celeste y no se parece al
+    de Lilachat: falta un ícono monocromo con la silueta de la marca y su color
+    de acento. Un sticker o un guiño llega como «Sticker», sin imagen: ni en la
+    notificación (estilo con imagen grande) ni en la fila de la lista de chats
+    (miniatura, como una foto).
+58. ~~**@Lila en un grupo personal hizo responder al asistente**~~ **Hecho (§110, 0.1.148).** (José, 22/10,
+    «Lokillos»). Lila es una PERSONA de ese grupo (la cabecera muestra «Lila»
+    dos veces: ella y el asistente). Mencionarla hizo contestar al asistente, y
+    su respuesta mostró «Falta ANTHROPIC_API_KEY en el servidor». Tres reglas:
+    el asistente responde solo a `/lila`, nunca a una mención; solo en el modo
+    empresa (espacios estilo Slack), no en chats ni grupos personales; y un
+    error de configuración nunca llega al chat (va al diagnóstico; la persona
+    ve «Lila no está disponible ahora»). Revisar además por qué el asistente
+    figura como miembro de un grupo personal.
+59. **Panel de emojis como el de WhatsApp** (capturas). Pestañas solo con
+    íconos (emoji, GIF, stickers, guiños), sin texto. La búsqueda de GIF abre a
+    pantalla completa («← Buscar GIF» y las pestañas GIF / Stickers). Hoy, al
+    tocar el campo de búsqueda, sale el teclado y se cierra todo el panel.
+60. **Guiño nuevo: un perrito llorando bajo la lluvia**, del mismo estilo que
+    los demás (tono adulto, `stitch-design` §5-bis), 6–7 s y varios pasos.
+    Diseño pedido a Stitch. Con lo aprendido en §79: cada parte se
+    pre-renderiza como WebP recortado a su caja (`render-wink-images.mts`); la
+    app mueve imágenes y no dibuja SVG vivo en Android; el sonido se libera al
+    terminar; y se miden los cuadros lentos antes de publicar.
+61. **Web: dos botones de recargar y ningún aviso de que actualiza.** Hay uno en
+    la lista de chats y otro en la cabecera: queda uno solo. Mientras
+    sincroniza no se ve nada; falta un indicador (barra fina o «Actualizando…»).
+62. **Listas de chats como las secciones de Slack (acordeón)** (José, 22/10:
+    quería agrupaciones como las secciones de canales de Slack, no chips).
+    Propuesta: secciones plegables en la lista principal. Cada encabezado
+    lleva el nombre y, plegado, los no leídos. Un chat va en una sola sección,
+    «Sin sección» queda al final y las secciones se reordenan. Los chips quedan
+    solo como filtros rápidos (No leídos, Grupos). Las listas del 45 pasan a ser
+    secciones, con el mismo dato (`User.chatLists`). Espera el OK de José.
+63. **Recordatorio a pantalla completa con el teléfono bloqueado**, como Google
+    Calendar: al vencer, enciende la pantalla y lo muestra en grande (el mismo
+    permiso de pantalla completa de las llamadas), con «Listo» y «Posponer».
+64. **Notificación que se despliega con varios mensajes**, como WhatsApp: al
+    deslizar hacia abajo se ven los últimos mensajes del chat (estilo de
+    conversación de Android), no solo el último.
+65. **Eventos y recordatorios: vista previa del enlace y repeticiones.** En el
+    formulario, un enlace (un video) muestra su vista previa. Repetir: los días
+    de la semana elegidos (solo martes y jueves, solo lunes), el último día del
+    mes (28 o 29 en febrero, 30 o 31 en el resto; es «el día anterior al 1 del
+    mes siguiente») y cada N días, semanas o meses. Motor puro con tests de
+    años bisiestos y meses de 30 y 31.
+66. **Novedades al actualizar**, como el «What's new» de WhatsApp Web: una
+    ventana con 3 o 4 novedades de la versión, una sola vez, en la web y en la
+    app. *(Sale de la primera captura del 22/10; confirmar con José.)*
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

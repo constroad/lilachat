@@ -2,7 +2,7 @@
   "expo": {
     "name": "Lilachat",
     "slug": "lilachat",
-    "version": "0.1.148",
+    "version": "0.1.149",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -18,7 +18,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.lilachat.app",
-      "versionCode": 149,
+      "versionCode": 150,
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.POST_NOTIFICATIONS",
@@ -56,6 +56,13 @@
     "plugins": [
       "expo-secure-store",
       "expo-image",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#6b38d4"
+        }
+      ],
       "./plugins/withReleaseSigning",
       "./plugins/withConsultaDeLilaStore",
       [

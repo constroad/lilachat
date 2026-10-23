@@ -4909,6 +4909,75 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 111. Ícono y miniaturas en los avisos y la lista, panel de emojis con íconos y búsqueda de GIF a pantalla completa, el perrito bajo la lluvia, una sola banda de versión en la web y los avisos borrados (22/10/2026, 0.1.149)
+
+Cierra los pendientes 57, 59, 60 y 61, y dos bugs del E2E.
+
+**Ícono y miniaturas (57).**
+- Ícono chico propio: la silueta monocroma del logo
+  (`assets/notification-icon.png`, sacada del ícono adaptativo) con el color
+  de marca, por el plugin de `expo-notifications` (`notification_icon` y
+  `notification_icon_color`). Antes caía al ícono de la app a color.
+- El push de un mensaje lleva `imagen` (`pushImageOf`): la miniatura del
+  sticker, la foto, el GIF o el video, o la del guiño, que sirve la web en
+  `/guinos/<arte>-tile.webp`. Nunca en un chat secreto.
+- El aviso nativo la baja en el hilo del push (tope de 2 MB, 4 s y 256 px) y
+  la pone DENTRO del último mensaje (`MessagingStyle.Message.setData`, por el
+  FileProvider de expo-file-system). Plegado se ve a la derecha, como
+  WhatsApp; desplegado, dentro del mensaje.
+- La lista de chats trae `lastMessage.thumb` (`listThumbPath`) y la fila
+  muestra la miniatura antes del texto; el guiño usa su imagen local (app) o
+  `/guinos` (web).
+- E2E: un push real de FCM, solo al token del propio emulador (leído del
+  emulador, nunca impreso), con sticker y con guiño. En la lista salieron el
+  GIF, el guiño y la foto.
+
+**Panel de emojis (59).**
+- Las pestañas son solo íconos, en una cápsula, como WhatsApp. El nombre
+  queda para TalkBack y el lector de pantalla; el GIF es su glifo. App y web.
+- En la app, «Buscar GIF» abre a pantalla completa («← Buscar GIF», con el
+  teclado y una grilla de 3 columnas). Elegir uno lo manda y vuelve al chat;
+  «←» vuelve al panel.
+- El teclado de una pantalla abierta encima ya no cierra el panel
+  (`ChatBottom` ignora el teclado con un modal arriba: `coveredAbove`).
+- E2E: escribir en la búsqueda y volver dejó el panel abierto en GIF (con un
+  GIPHY falso en el server de QA, `QA_FAKE_GIPHY`).
+
+**Guiño «Perrito bajo la lluvia» (60).** Diseño de Stitch
+`r149-perrito-lluvia` (tono adulto, `stitch-design` §5-bis).
+- El extractor sumó la hoja `z-a` a las 8 de siempre: se verificó antes que
+  las 8 reproducen el `winkArt.ts` actual sin diferencias. Las orejas van en
+  la cabeza (el rig no tiene orejas).
+- Sketch `rainy`, 7 s: entra cabizbajo con una nube que llueve solo sobre él,
+  solloza, corre y la nube lo alcanza, el viento le da vuelta el paraguas,
+  llora un charco y, cuando se va de espaldas, el sol sale a burlarse.
+  Sonidos: gotas, viento, rebote, charco y risa.
+- Lo aprendido en §79: cada parte es un WebP recortado (30 imágenes, 217 KB);
+  la app mueve imágenes, no dibuja SVG. Los ayudantes de los sketches pasaron
+  a `winkSketchKit.ts` (el archivo iba a pasar de 600 líneas).
+- Medido en el emulador (build de desarrollo), «Ver otra vez»: 11,6 % de
+  cuadros lentos, p90 de 53 ms y 0 subidas lentas de imágenes. Es el mismo
+  costo que el panda en la misma prueba (11,9 % y 53 ms).
+- La miniatura de un guiño ahora puede ser otro arte (`tile: 'dog-sad'`); la
+  web la dibujaba solo si era una pieza (`winkTileIsProp`).
+
+**Una sola banda de versión en la web (61).** Había dos «Recargar»: la banda
+de la lista (versión publicada) y el aviso de arriba (service worker). Ahora
+es UNA banda en la lista, alimentada por las dos señales (`webUpdate`). Al
+tocar «Recargar» dice «Actualizando…», gira y no acepta un segundo toque.
+
+**Bugs encontrados en el E2E.**
+- **Un aviso del sistema borrado seguía dibujado** («🎂 Hoy cumple QA Ana»
+  después de borrarlo). Ahora no se dibuja (`isHiddenNotice`), en app y web.
+- **La tarjeta de cumpleaños salía para un aviso borrado** y llegó al teléfono
+  de José con 0.1.148 (tocó 🎂 en el chat de QA Ana). `birthdayCardFor` ignora
+  los avisos borrados.
+
+**Limpieza de QA.** Los guiños de Ana se borraron por la app. El cumpleaños
+temporal de Ana, que solo existía para entrar a la web, se sacó. La sesión web
+se desvinculó y se borraron los avisos de prueba del emulador. Verificado: cero
+residuos.
+
 ## 110. Estado, álbum de fotos, cumpleaños en los chats, visor de PDF en la app y el asistente solo con /lila (22/10/2026, 0.1.148)
 
 Cierra los pendientes 15, 12, 17 (sin «Crear tarjeta con IA») y 7, más el
@@ -10006,7 +10075,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     llamada es de dos (WebRTC punto a punto). Para un grupo hace falta malla
     para pocos (hasta 4) o un servidor de medios para más, la grilla de
     videos y quién entra y sale. Después: programar y enlace en grupos.
-57. **Ícono y miniaturas de las notificaciones** (José, 22/10, captura del
+57. ~~**Ícono y miniaturas de las notificaciones**~~ **Hecho (§111, 0.1.149).** (José, 22/10, captura del
     Samsung). El ícono chico de la notificación sale celeste y no se parece al
     de Lilachat: falta un ícono monocromo con la silueta de la marca y su color
     de acento. Un sticker o un guiño llega como «Sticker», sin imagen: ni en la
@@ -10021,17 +10090,17 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     error de configuración nunca llega al chat (va al diagnóstico; la persona
     ve «Lila no está disponible ahora»). Revisar además por qué el asistente
     figura como miembro de un grupo personal.
-59. **Panel de emojis como el de WhatsApp** (capturas). Pestañas solo con
+59. ~~**Panel de emojis como el de WhatsApp**~~ **Hecho (§111, 0.1.149).** (capturas). Pestañas solo con
     íconos (emoji, GIF, stickers, guiños), sin texto. La búsqueda de GIF abre a
     pantalla completa («← Buscar GIF» y las pestañas GIF / Stickers). Hoy, al
     tocar el campo de búsqueda, sale el teclado y se cierra todo el panel.
-60. **Guiño nuevo: un perrito llorando bajo la lluvia**, del mismo estilo que
+60. ~~**Guiño nuevo: un perrito llorando bajo la lluvia**~~ **Hecho (§111, 0.1.149),** del mismo estilo que
     los demás (tono adulto, `stitch-design` §5-bis), 6–7 s y varios pasos.
     Diseño pedido a Stitch. Con lo aprendido en §79: cada parte se
     pre-renderiza como WebP recortado a su caja (`render-wink-images.mts`); la
     app mueve imágenes y no dibuja SVG vivo en Android; el sonido se libera al
     terminar; y se miden los cuadros lentos antes de publicar.
-61. **Web: dos botones de recargar y ningún aviso de que actualiza.** Hay uno en
+61. ~~**Web: dos botones de recargar y ningún aviso de que actualiza.**~~ **Hecho (§111, 0.1.149).** Hay uno en
     la lista de chats y otro en la cabecera: queda uno solo. Mientras
     sincroniza no se ve nada; falta un indicador (barra fina o «Actualizando…»).
 62. **Listas de chats como las secciones de Slack (acordeón)** (José, 22/10:
@@ -10056,6 +10125,17 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
 66. **Novedades al actualizar**, como el «What's new» de WhatsApp Web: una
     ventana con 3 o 4 novedades de la versión, una sola vez, en la web y en la
     app. *(Sale de la primera captura del 22/10; confirmar con José.)*
+67. **Lo pendiente que vivía solo en el tablero de fases (§45) o en notas
+    sueltas**, traído acá para que la lista esté completa (revisión del 22/10,
+    a pedido de José):
+    - F12.3: la media viaja en claro incluso en los chats secretos. Cifrarla en
+      el cliente está bloqueado por la decisión D1.
+    - El logo vectorizado (SVG) y las capas del ícono adaptativo (§2.3). El
+      ícono de la notificación del 57 depende de esto.
+    - Alta del disco de respaldos en la mini: producción contesta 507
+      `disco_ausente` hasta que José lo monte (`docs/RESPALDOS-RUNBOOK.md`).
+    - F13 (Mongo de emergencia): redefinir, porque la base ya vive en la mini
+      (bóveda) desde el 17/10.
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

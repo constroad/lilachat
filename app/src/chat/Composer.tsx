@@ -18,6 +18,9 @@ import { useMenciones, type MiembroMencionable } from './useMenciones';
 import { SugerenciasDeMencion } from './SugerenciasDeMencion';
 import { closeEmojiPanel, openEmojiPanel, useEmojiPanelOpen } from './emojiPanel';
 import { VistaPreviaAlEscribir } from './VistaPreviaAlEscribir';
+import type { ChatCommands } from './commands/useChatCommands';
+import { CommandPanel } from './commands/CommandPanel';
+import { EphemeralAnswers } from './commands/EphemeralAnswers';
 
 /** Cuánto se espera tras la última tecla para guardar el borrador. */
 const ESPERA_PARA_GUARDAR_MS = 500;
@@ -77,6 +80,8 @@ export const Composer = memo(function Composer(props: {
   conVistaPrevia?: boolean;
   /** Solo en grupos: a quiénes se puede mencionar con «@» (sin mí). */
   miembros?: MiembroMencionable[];
+  /** The «/» of a space's chat (§c-bis): the apps' commands and what they answered only to me. */
+  commands?: ChatCommands;
   /** Long-press en enviar: programarlo para más tarde (F11). */
   onProgramar: (texto: string) => void;
   /** The copied image, pasted from the chip over the bar (21/10): it goes to the usual photo preview. */
@@ -293,6 +298,12 @@ export const Composer = memo(function Composer(props: {
       });
       return;
     }
+    if (props.commands?.isCommand(texto)) {
+      void props.commands.run(texto).then((ok) => {
+        if (!ok) ponerTexto(texto);
+      });
+      return;
+    }
     const rangos = menciones.rangos();
     menciones.limpiar();
     void props.onEnviar(texto, props.respondiendoA?.seq, rangos).then((ok) => {
@@ -341,6 +352,7 @@ export const Composer = memo(function Composer(props: {
           reflejar(texto);
           programarBorrador();
           setTextoConLink(PARECE_UN_LINK.test(texto) ? texto : '');
+          props.commands?.onType(texto);
           // «Escribiendo» solo al agregar texto: vaciar el campo no lo es.
           if (texto.length > 0) props.onEscribiendo();
         }}
@@ -383,6 +395,17 @@ export const Composer = memo(function Composer(props: {
           onDismiss={clipboard.dismiss}
           onPaste={() => {
             void clipboard.paste().then((photo) => photo && props.onPasteImage?.(photo));
+          }}
+        />
+      ) : null}
+      {props.commands ? <EphemeralAnswers answers={props.commands.answers} onDismiss={props.commands.dismiss} chatId={props.chatId} jwt={props.jwt ?? ''} /> : null}
+      {props.commands ? (
+        <CommandPanel
+          groups={props.commands.suggestions}
+          onPick={(command) => {
+            const text = `/${command} `;
+            escribir(text, text.length);
+            props.commands?.onType(text);
           }}
         />
       ) : null}

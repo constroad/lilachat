@@ -19,6 +19,7 @@ import { useSecretChat } from '../crypto/useSecretChat';
 import { previewDeMensaje, type Row } from './MessageRow';
 import { abrirConOtraApp } from './guardarYCompartir';
 import { Composer, type ComposerHandle } from './Composer';
+import { useChatCommands } from './commands/useChatCommands';
 import { ChatDetailScreen } from './ChatDetailScreen';
 import { useChat } from './useChat';
 import { useLlamadas } from '../calls/ProveedorDeLlamadas';
@@ -153,6 +154,7 @@ export function ChatScreen({
   const seleccion = useSeleccionDeMensajes(messages);
   const destacados = useDestacadosDelChat({ chatId, jwt: credential.jwt, secreto: Boolean(encrypted) });
   const { ocultos, ocultar } = useOcultos(chatId);
+  const commands = useChatCommands({ jwt: credential.jwt, chatId, workspaceId });
   const [verDetalle, setVerDetalle] = useState(false);
   const [detailSection, setDetailSection] = useState<DetailSection | null>(null);
   // The detail mounts the FIRST time it opens and stays (FL12, §49 #13): it is rarely opened, and staying keeps the animation.
@@ -511,11 +513,9 @@ export function ChatScreen({
           subiendo={false}
           margenPie={margenes.pie}
           onAdjuntar={alAdjuntar} onPasteImage={(photo) => pickMedia([photo])}
-          onCamara={alCamara}
-          onEscribiendo={avisarEscribiendo}
-          jwt={credential.jwt}
-          conVistaPrevia={!encrypted}
-          miembros={mencionables}
+          onCamara={alCamara} onEscribiendo={avisarEscribiendo}
+          jwt={credential.jwt} conVistaPrevia={!encrypted}
+          miembros={mencionables} commands={encrypted ? undefined : commands}
           onEnviar={alEnviar}
           onProgramar={programados.abrir}
           onNotaDeVoz={alNotaDeVoz}

@@ -15,6 +15,7 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
       'Escribe «/» en un chat de tu empresa y aparecen los comandos de cada app, como /clima o /tanques.',
       'Lo que una app te responde a un comando lo ves solo tú, con su tarjeta, hasta que lo descartes.',
       'Si la app tarda, ves «está trabajando…» y la respuesta llega sola.',
+      'El número de no leídos de «Personal» baja al leer el chat, también si lo leíste en la web.',
     ],
   },
   {

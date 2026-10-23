@@ -4943,6 +4943,15 @@ Portal, todas efímeras.
   mostrar queda como última falla con su motivo («Respuesta de /tanques
   inválida: El tanque necesita nombre.»): así lo ve quien programa la app. Un
   timeout no cuenta como falla.
+- **El «1» de Personal que no bajaba (86).** José, 23/10: el selector de
+  espacios decía 1 en Personal y la lista no tenía no leídos. `TabsShell`
+  guarda su propia copia de los chats (para el selector, los formularios y
+  el aviso): sumaba 1 al llegar un mensaje y nunca restaba. Ahora aplica mis
+  acuses (`aplicarAcuseALista`, el mismo motor que la lista; leído aquí o en
+  la web), pone en 0 el chat que abro y vuelve a leer la lista al reconectar
+  (con el freno de `debeRecargarAlConectar`), porque los acuses de un socket
+  en pausa se pierden. En el chat «Lila» de su agenda (Dalila) pasó así.
+  Verificado en el emulador: 2 → 1 al leer el chat de QA Ana.
 - **Medido.** El comando hasta ver la tarjeta: 2,8 s → 1,3 s desde la Mac
   contra la base remota, al paralelizar las lecturas y no esperar las
   escrituras de diagnóstico (en la mini, junto a la base, son milisegundos).
@@ -11128,6 +11137,8 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     con el detalle a un toque, gráficos dibujados desde los datos (no
     imágenes), archivos por referencia, y que la IA registre los gastos desde
     los vouchers y solo pida confirmar, con cola y trabajo en paralelo.
+86. ~~**El «1» de Personal sin no leídos en la lista**~~ **Hecho (§121, 0.1.157).**
+    (José, 23/10, con captura): la copia de chats de `TabsShell` solo sumaba.
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, Pressable, Text, View } from 'react-native';
-import { Bell, Clock } from 'lucide-react-native';
+import { Bell, Clock, FileText } from 'lucide-react-native';
+import { ReminderDetailScreen } from './ReminderDetailScreen';
 import { formatClock } from '@lilachat/shared';
 import { llamadaNativa, type ReminderAlarm } from '../../modules/llamada-entrante/src';
 import { Modal } from '../ui/Modal';
@@ -12,10 +13,12 @@ import { useMargenes } from '../ui/useMargenes';
  * José 22/10). The native full-screen notice opens the app with it; here it is
  * shown with «Listo» and «Posponer 10 min», and the lock is released after.
  */
-export function ReminderAlarmHost() {
+export function ReminderAlarmHost(props: { jwt: string }) {
   const colors = useColores();
   const margins = useMargenes();
   const [alarm, setAlarm] = useState<{ reminder: ReminderAlarm; at: Date } | null>(null);
+  // Pending 76: «Ver recordatorio» opens it to read the note, the image and the links.
+  const [reading, setReading] = useState<string | null>(null);
   const check = useCallback(() => {
     const pending = llamadaNativa.reminderPending();
     if (pending) setAlarm({ reminder: pending, at: new Date() });
@@ -31,7 +34,7 @@ export function ReminderAlarmHost() {
     };
   }, [check]);
 
-  if (!alarm) return null;
+  if (!alarm) return reading ? <ReminderDetailScreen reminderId={reading} jwt={props.jwt} onClose={() => setReading(null)} /> : null;
   const close = (snooze: boolean) => {
     if (snooze) llamadaNativa.snoozeReminder(alarm.reminder);
     // Never left on: anyone could browse the chats of a locked phone afterwards.
@@ -55,6 +58,12 @@ export function ReminderAlarmHost() {
           {alarm.reminder.chat ? <Text className="mt-3 text-center text-[14px] text-on-primary/70">{alarm.reminder.chat}</Text> : null}
         </View>
         <View className="w-full gap-3">
+          {alarm.reminder.id ? (
+            <Pressable testID="btn-recordatorio-ver" onPress={() => (setReading(alarm.reminder.id), close(false))} className="min-h-[48px] flex-row items-center justify-center gap-2">
+              <FileText size={18} color={colors['on-primary']} />
+              <Text className="text-[16px] font-semibold text-on-primary underline">Ver recordatorio</Text>
+            </Pressable>
+          ) : null}
           <Pressable testID="btn-recordatorio-posponer" onPress={() => close(true)} className="min-h-[56px] flex-row items-center justify-center gap-2 rounded-full border-2 border-on-primary/60">
             <Clock size={20} color={colors['on-primary']} />
             <Text className="text-[17px] font-semibold text-on-primary">Posponer 10 min</Text>

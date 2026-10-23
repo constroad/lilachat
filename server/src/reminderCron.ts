@@ -124,7 +124,7 @@ export async function runReminderTick(now: Date = new Date()): Promise<{ events:
       { chatId: String(event.chatId), seq: 0 }
     );
     // También en el chat del evento (José, 20/10), no solo en la barra del teléfono.
-    await avisarSinTumbar({ chatId: String(event.chatId), quien: event.createdBy, evento: 'evento-pronto', valor: `${event.title} · empieza en ${event.remindMinutesBefore} minutos` });
+    await avisarSinTumbar({ chatId: String(event.chatId), quien: event.createdBy, evento: 'evento-pronto', valor: `${event.title} · empieza en ${event.remindMinutesBefore} minutos`, ref: { tipo: 'evento', id: String(event._id) } });
     events += 1;
   }
 
@@ -176,7 +176,7 @@ export async function runReminderTick(now: Date = new Date()): Promise<{ events:
       data: { chatId: String(reminder.chatId ?? reminder.callBack?.chatId ?? ''), seq: 0 },
     });
     // El de un chat también queda escrito en el chat (José, 20/10).
-    if (chat) await avisarSinTumbar({ chatId: String(chat._id), quien: reminder.userId, evento: 'recordatorio-suena', valor: reminder.title });
+    if (chat) await avisarSinTumbar({ chatId: String(chat._id), quien: reminder.userId, evento: 'recordatorio-suena', valor: reminder.title, ref: { tipo: 'recordatorio', id: String(reminder._id) } });
     reminders += 1;
 
     // Recurrente: se REPROGRAMA y se limpia el sello. Sin esto, un «cada día»

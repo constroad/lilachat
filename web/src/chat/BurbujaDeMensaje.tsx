@@ -1,6 +1,9 @@
 import { LineaDeLlamada } from './LineaDeLlamada';
-import { memo, useContext } from 'react';
-import { AlertCircle, BellRing, CalendarDays, Check, CheckCheck, Clock, FileText, Lock, Play } from 'lucide-react';
+import { memo, useContext, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { AlertCircle, BellRing, CalendarDays, Check, CheckCheck, ChevronRight, Clock, FileText, Lock, Play } from 'lucide-react';
+import { Overlay } from '../ui/Overlay';
+import { RecordatorioEnElChat } from './tarjetas/RecordatorioEnElChat';
 import { colorDeAutor, esAvisoDestacado, type DeliveryState, formatClock, primerEnlace, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
 import { isAnimatedImage, isHiddenNotice } from '@lilachat/shared';
 import { GifInBubble } from './gifs/GifInBubble';
@@ -369,16 +372,29 @@ function useNoticeText(message: MensajeEnPantalla): string | undefined {
  */
 function HighlightedNotice({ message }: { message: MensajeEnPantalla }) {
   const text = useNoticeText(message);
+  // Pending 76: the reminder that rang opens to read its note and click its links.
+  const [open, setOpen] = useState(false);
   if (!text) return null;
   const Icon = message.system?.evento === 'evento-pronto' ? CalendarDays : BellRing;
+  const reminderId = message.ref?.tipo === 'recordatorio' ? message.ref.id : null;
   return (
     <div data-testid={`aviso-destacado-${message.seq}`} className="group my-3 flex items-center justify-center gap-1">
       <div className="flex max-w-[80%] min-w-0 flex-col items-center">
-        <span className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-2.5">
+        <button type="button" data-testid={`abrir-aviso-${message.seq}`} disabled={!reminderId} onClick={() => setOpen(true)} className={`flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-2.5 text-left ${reminderId ? 'hover:bg-primary/15' : 'cursor-default'}`}>
           <Icon size={18} className="shrink-0 text-primary" />
           <span className="text-sm font-semibold">{text.replace(/^(⏰|📅)\s*/u, '')}</span>
           <span className="text-[11px] text-on-surface-variant">{formatClock(message.at)}</span>
-        </span>
+          {reminderId ? <ChevronRight size={16} className="text-primary" /> : null}
+        </button>
+        {/* To the body: inside the virtualized row (a transform) the fixed overlay was clipped to the row. */}
+        {open && reminderId ? createPortal(
+          <Overlay title="Recordatorio" onClose={() => setOpen(false)}>
+            <div data-testid="detalle-recordatorio" className="rounded-xl border border-outline/15 bg-surface p-4">
+              <RecordatorioEnElChat id={reminderId} />
+            </div>
+          </Overlay>,
+          document.body
+        ) : null}
         {message.reacciones?.length ? <PastillaDeReacciones mensaje={message} mio={false} /> : null}
         {message.hilo && message.hilo.respuestas > 0 ? <ChipDeLaRaiz seq={message.seq} hilo={message.hilo} /> : null}
       </div>

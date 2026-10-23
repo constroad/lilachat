@@ -5,6 +5,7 @@ import { Router } from 'express';
 import { Types } from 'mongoose';
 import { PUSH_CAPABILITIES, normalizarNombreDeGrupo, NOTIFICATION_LEVELS, notificationLevel, textoDeAviso } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
+import type { Message } from './chatModels.js';
 import { DeviceModel, UserModel } from './models.js';
 import {
   ForbiddenChatError,
@@ -61,6 +62,8 @@ export async function avisarEnElChat(params: {
   valor?: string;
   /** Además de los miembros: el que se sacó también ve «X te sacó» (FL9d). */
   tambienA?: string[];
+  /** What the notice is about (pending 76), so a tap opens it. */
+  ref?: Message['ref'];
 }): Promise<void> {
   const [quien, aQuien] = await Promise.all([
     datosDeUsuario(params.quien),

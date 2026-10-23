@@ -397,6 +397,8 @@ export async function escribirAviso(params: {
   body: string;
   quien2?: { phone?: string; name?: string };
   aQuien2?: { phone?: string; name?: string };
+  /** What the notice is about (pending 76: the reminder that rang), so a tap opens it. */
+  ref?: Message['ref'];
 }): Promise<Message | null> {
   const chat = await ChatModel.findOneAndUpdate(
     { _id: params.chatId, encrypted: { $ne: true } },
@@ -422,6 +424,7 @@ export async function escribirAviso(params: {
       quien: params.quien2,
       aQuien: params.aQuien2,
     },
+    ...(params.ref ? { ref: params.ref } : {}),
     at: new Date(),
   });
   return creado.toObject() as Message;

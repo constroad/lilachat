@@ -1,10 +1,12 @@
 import { Pressable, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { BellRing, CalendarDays } from 'lucide-react-native';
+import { useState } from 'react';
+import { BellRing, CalendarDays, ChevronRight } from 'lucide-react-native';
 import { formatClock } from '@lilachat/shared';
 import { DeslizarParaResponder } from './DeslizarParaResponder';
 import type { ChatMessage } from './useChat';
 import { useColores } from '../ui/tema';
+import { ReminderDetailScreen } from '../agenda/ReminderDetailScreen';
 
 /** The emoji at the start of the text: the icon takes its place. */
 const LEADING_EMOJI = /^(⏰|📅)\s*/u;
@@ -25,8 +27,12 @@ export function HighlightedNotice(props: {
   selected: boolean;
   onSelect?: (seq: number) => void;
   onReply?: (seq: number, preview: string, mine: boolean) => void;
+  /** Pending 76: the reminder that rang opens to read its note and links. */
+  jwt?: string;
 }) {
   const { item } = props;
+  const reminderId = item.ref?.tipo === 'recordatorio' && props.jwt ? item.ref.id : null;
+  const [open, setOpen] = useState(false);
   const colors = useColores();
   const Icon = item.system?.evento === 'evento-pronto' ? CalendarDays : BellRing;
   const select = () => {
@@ -39,15 +45,17 @@ export function HighlightedNotice(props: {
         <Pressable
           testID={`mantener-aviso-${item.seq}`}
           onLongPress={select}
-          onPress={props.selecting ? () => props.onSelect?.(item.seq) : undefined}
+          onPress={props.selecting ? () => props.onSelect?.(item.seq) : reminderId ? () => setOpen(true) : undefined}
           delayLongPress={LONG_PRESS_MS}
           className="max-w-[88%] flex-row items-center gap-3 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-2.5"
         >
           <Icon size={18} color={colors.primary} />
           <Text className="flex-shrink text-[14px] font-semibold text-on-surface">{props.text.replace(LEADING_EMOJI, '')}</Text>
           <Text className="text-[11px] text-on-surface-variant">{formatClock(item.at)}</Text>
+          {reminderId ? <ChevronRight size={16} color={colors.primary} /> : null}
         </Pressable>
       </View>
+      {open && reminderId && props.jwt ? <ReminderDetailScreen reminderId={reminderId} jwt={props.jwt} onClose={() => setOpen(false)} /> : null}
     </DeslizarParaResponder>
   );
 }

@@ -9,6 +9,7 @@ import { useTarjetaViva } from './useTarjetaViva';
 import { useAccionesDeTarjeta } from './accionesDeTarjeta';
 import { TextoConEnlaces } from './TextoConEnlaces';
 import { VistaPreviaDeEnlace } from './VistaPreviaDeEnlace';
+import { ReminderDetailScreen } from '../agenda/ReminderDetailScreen';
 
 /** Lo último que se vio de cada recordatorio, para que la celda reciclada no parpadee. `null` = ya no está. */
 const recordatoriosVistos = new Map<string, AgendaReminder | null>();
@@ -24,6 +25,8 @@ export function RecordatorioEnElChat({ reminderId, jwt, onLongPress }: { reminde
   const [recordatorio, setRecordatorio] = useState<AgendaReminder | null | undefined>(() => recordatoriosVistos.get(reminderId));
   const [fallo, setFallo] = useState(false);
   const { editarRecordatorio } = useAccionesDeTarjeta();
+  // Pending 76: a tap opens the reminder to read it; editing is a button there, for whoever may edit.
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const cargar = useCallback(async () => {
     const respuesta = await agendaGet<{ reminder: AgendaReminder }>(`/reminders/${reminderId}`, jwt);
@@ -54,15 +57,13 @@ export function RecordatorioEnElChat({ reminderId, jwt, onLongPress }: { reminde
       <View className="h-28 rounded-xl bg-surface-variant" />
     );
   }
-  // Un admin lo edita tocándolo; para los demás, la tarjeta no responde al toque.
   return (
     <Pressable
       testID={`recordatorio-en-chat-${reminderId}`}
-      disabled={!editarRecordatorio}
-      onPress={() => editarRecordatorio?.(recordatorio)}
+      onPress={() => setDetailOpen(true)}
       onLongPress={onLongPress}
       delayLongPress={350}
-      accessibilityLabel={editarRecordatorio ? `Editar el recordatorio ${recordatorio.title}` : undefined}
+      accessibilityLabel={`Abrir el recordatorio ${recordatorio.title}`}
       className="overflow-hidden rounded-xl border border-outline/10 bg-surface"
     >
       {recordatorio.imageUrl ? (
@@ -86,6 +87,14 @@ export function RecordatorioEnElChat({ reminderId, jwt, onLongPress }: { reminde
         ) : null}
         {recordatorio.note && primerEnlace(recordatorio.note) ? <VistaPreviaDeEnlace url={primerEnlace(recordatorio.note)!} jwt={jwt} mia={false} /> : null}
       </View>
+      {detailOpen ? (
+        <ReminderDetailScreen
+          reminderId={reminderId}
+          jwt={jwt}
+          onClose={() => setDetailOpen(false)}
+          onEdit={editarRecordatorio ? (reminder) => (setDetailOpen(false), editarRecordatorio(reminder)) : undefined}
+        />
+      ) : null}
     </Pressable>
   );
 }

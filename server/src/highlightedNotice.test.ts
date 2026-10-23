@@ -10,6 +10,7 @@ import { DestacadoModel } from './destacadoModel.js';
 import { signSession } from './sessions.js';
 import { reaccionar } from './reacciones.js';
 import { HiloInvalidoError, validarRaiz } from './hilos.js';
+import { escribirAviso } from './chatService.js';
 import { fijarMensaje } from './mensajesFijados.js';
 
 /**
@@ -68,5 +69,16 @@ describe('a grey notice of the group', () => {
     await expect(validarRaiz(chatId, GREY_NOTICE_SEQ, false)).rejects.toBeInstanceOf(HiloInvalidoError);
     expect((await fijarMensaje({ chatId: String(chatId), quien: me, seq: GREY_NOTICE_SEQ, duracion: '24h' })).ok).toBe(false);
     expect((await request(app).put(`/api/chats/${chatId}/destacados/${GREY_NOTICE_SEQ}`).set(withJwt(me))).status).toBe(400);
+  });
+});
+
+describe('the reminder that rang points to its reminder (pending 76)', () => {
+  it('the notice carries the reminder, so a tap opens it with its note and links', async () => {
+    // Act
+    const notice = await escribirAviso({ chatId: String(chatId), quien: me, evento: 'recordatorio-suena', valor: 'Ver el video', body: '⏰ Recordatorio: Ver el video', ref: { tipo: 'recordatorio', id: 'rem-1' } });
+    // Assert
+    expect(notice?.ref).toEqual({ tipo: 'recordatorio', id: 'rem-1' });
+    const saved = await MessageModel.findOne({ chatId, seq: notice!.seq }).lean();
+    expect(saved?.ref).toEqual({ tipo: 'recordatorio', id: 'rem-1' });
   });
 });

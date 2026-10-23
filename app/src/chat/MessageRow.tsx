@@ -139,7 +139,7 @@ function FilaDeMensaje({
   // —agrupado, checks, avatar— aplica.
   // The reminder that rang or an event coming up: answered like a message (José, 21/10).
   if (!isPending(item) && item.kind === 'system' && esAvisoDestacado(item.system?.evento)) {
-    return <HighlightedNotice item={item} text={noticeText(item, myUserId)} mine={item.senderId === myUserId} selecting={Boolean(enSeleccion)} selected={Boolean(seleccionado)} onSelect={onSeleccionar} onReply={onResponder} />;
+    return <HighlightedNotice item={item} text={noticeText(item, myUserId)} mine={item.senderId === myUserId} selecting={Boolean(enSeleccion)} selected={Boolean(seleccionado)} onSelect={onSeleccionar} onReply={onResponder} jwt={jwt} />;
   }
   if (!isPending(item) && item.kind === 'system') {
     return <GroupNotice item={item} myUserId={myUserId} onGreet={onGreet} />;

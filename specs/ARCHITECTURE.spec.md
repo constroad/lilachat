@@ -4909,6 +4909,54 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 119. Medios propios sin lila, intentos de respaldo contados y video con la pantalla apagada (23/10/2026, 0.1.155)
+
+Pendientes 82 (código), 83, 74 y 84 (diagnóstico).
+
+- **Medios propios (82).** El server guarda las fotos, videos y archivos
+  nuevos en `CHAT_STORAGE_ROOT`, con el mismo árbol que usaba lila
+  (`apps/lilachat/<chatId>/…`, así la copia de lo viejo es un `cp` y no una
+  reescritura de rutas), la huella en el nombre (las URL son públicas como
+  eran las de lila, así que no se pueden adivinar), miniatura de 640 px con
+  sharp para fotos y con el ffmpeg de la máquina para videos (sin ffmpeg queda
+  «unsupported» y no falla) y `GET /media/<ruta>` con rangos (206), un año de
+  caché y 503 + `Retry-After` sin disco (nunca 404). `toAbsoluteMediaUrl`
+  pone nuestro host a lo nuestro y el de lila a lo viejo: los mensajes
+  anteriores siguen cargando. La vista de archivos y los stickers desde un GIF
+  leen nuestros archivos del disco en vez de pedirlos por internet. La raíz y
+  su marca `.lilachat-medios` se crean A MANO (`npm run medios:init -w
+  server`), nunca al arrancar; **mientras no exista la marca, todo sigue
+  subiendo a lila**, así que desplegar no rompe nada.
+  **Activarlo en producción es decisión de José** y lleva dos pasos en la
+  mini: sumar `CHAT_STORAGE_ROOT` a los respaldos de restic (hoy no lo
+  cubren) y correr `medios:init` en `~/deploys/chat/current`. Después: copiar
+  lo viejo desde lila con dry-run, y recién ahí sacar `LILA_*` del `.env`.
+- **Intentos de respaldo (83).** Cada intento de respaldo del teléfono queda
+  contado por día y motivo (`backupattempts`: guardado, ya_existe,
+  disco_ausente, disco_colgado, correo_sin_verificar, demasiado_grande,
+  vacio, huella_no_coincide) con cuántas personas; el teléfono reporta
+  «sin_passphrase» una vez por día (`POST /api/respaldos/intento`), y el
+  creador y los operadores leen los últimos 30 días en `GET
+  /api/respaldos/intentos`. De paso apareció una tercera hipótesis para el
+  cero de lila-2: el primer respaldo sin correo verificado se rechaza con 403.
+- **Video con la pantalla apagada (74).** Un video subido al chat sigue
+  sonando con la pantalla apagada o en otra app, con su control en el aviso
+  («Video · quien lo mandó», pausa, ±10 s); cerrar el visor lo detiene y el
+  aviso se va. `expo-video` con `supportsBackgroundPlayback` (permiso
+  `FOREGROUND_SERVICE_MEDIA_PLAYBACK`) y `staysActiveInBackground` +
+  `showNowPlayingNotification`. Los de YouTube no: sus términos lo prohíben.
+- **Equipo huérfano (84).** Son 5 equipos Android de agosto (20–28/08) de 4
+  usuarios que ya no existen, sin uso desde entonces; ninguna ruta del server
+  borra usuarios, así que vienen de una limpieza manual de QA de esa época.
+  Borrarlos es una baja en la base de producción: queda para el OK de José.
+- **E2E (QA con la raíz propia de verdad):** Ana subió una foto y un video por
+  la API; quedaron en la raíz con su miniatura (el video, con ffmpeg), se
+  sirvieron con 200, 206 y caché de un año, y la SPA no tapa `/media`. En el
+  emulador la foto se vio en el chat y en el visor; el video siguió en
+  PLAYING con la app en segundo plano y su aviso, y al cerrar el visor se
+  detuvo. Todo se borró por la ruta normal; la base quedó en cero y
+  `backupattempts` vacío.
+
 ## 118. Avisos de las apps que no ensucian el chat, y `/gastos` sin digitar (análisis del 23/10, pendiente 85)
 
 Pedido de José del 23/10, con capturas de WhatsApp: «mejorarlo brutalmente
@@ -10880,7 +10928,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     (julio) y Día de la Madre (mayo). Fuera de su época no se ofrecen; los ya
     recibidos se siguen viendo. Empezar por Halloween (estamos en octubre).
 
-74. **Videos subidos al chat con la pantalla apagada** (José, 23/10). Un
+74. ~~**Videos subidos al chat con la pantalla apagada**~~ **Hecho (§119, 0.1.155).** (José, 23/10). Un
     video que no es un enlace (archivo propio) debe poder seguir sonando con
     la pantalla bloqueada o en otra app, como una nota de voz: `expo-video`
     lo permite (audio en segundo plano y control en el aviso). Los de YouTube
@@ -10932,7 +10980,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     4 fotos sin deslizar (en el carrusel la 2.ª en adelante pasan
     desapercibidas); deslizar para responder funciona en todo el álbum, sin la
     excepción de «solo en la primera foto» del 70; y la burbuja tiene alto fijo.
-82. **Lilachat sin lila-app: almacenamiento de medios propio** (decisión de
+82. **Lilachat sin lila-app: almacenamiento de medios propio** — **código hecho (§119, 0.1.155); falta activarlo en la mini (decide José).** (decisión de
     José del 23/10, traída por la sesión lila-2: «ese producto es nuevo, no
     tiene por qué usar nada de lila (posteriormente se va a integrar a
     agentes)»). Verificado: `server/src/mediaClient.ts` sube cada foto, video
@@ -10962,14 +11010,14 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
       mano y nunca al arrancar, lecturas y escrituras con 507/503 y
       `Retry-After` (nunca 404 ni 415), y el cliente respeta `Retry-After`.
       Referencia viva: `lilafotos/server/src/disco.ts`.
-83. **Contar los intentos de respaldo, no solo los éxitos** (lila-2, 23/10).
+83. ~~**Contar los intentos de respaldo, no solo los éxitos**~~ **Hecho (§119, 0.1.155).** (lila-2, 23/10).
     La colección `respaldos` está en cero: nunca entró un respaldo de nadie.
     Con 31 equipos (5 activos en la semana) y ~800 mensajes por semana, no se
     puede saber si es «nadie creó su clave» o «todos recibían 507», porque el
     507 responde antes de escribir nada. Un contador por motivo
     (`disco_ausente`, `huella_no_coincide`, y `sin_passphrase` reportado por
     el teléfono) lo distingue en un minuto. Va con la R155.
-84. **Un equipo apunta a un usuario que ya no existe** (lila-2, 23/10): hay 7
+84. **Un equipo apunta a un usuario que ya no existe** — **diagnóstico en §119: 5 equipos de QA de agosto; borrarlos espera el OK de José.** (lila-2, 23/10): hay 7
     `userId` distintos en `devices` para 6 usuarios. Revisar si borrar una
     cuenta deja sus equipos vivos y qué flujo resuelve el usuario desde el
     equipo.

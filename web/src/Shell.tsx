@@ -277,7 +277,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
             onWorkspace={espacios.openWorkspace}
             onNewDirect={espacios.openNewDirect}
             onNewGroup={espacios.openNewGroup}
-            activity={espacios.activity}
+            activity={espacios.activity} apps={espacios.apps}
             onActivity={espacios.openActivity}
             width={panel === 'both' ? listLayout.width : undefined}
             onCollapse={panel === 'both' ? () => listLayout.setCollapsed(true) : undefined}
@@ -320,7 +320,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
           onRecargarChats={() => void sync.cargarChats()}
           onAccionDeChat={(chat, accion) => void accionesSobreChats.aplicar(chat, accion)}
           onLevel={(chat, level) => void accionesSobreChats.setLevel(chat, level)}
-          typingName={selected.typingName ?? null}
+          typingName={selected.typingName ?? null} app={selected.appId ? espacios.apps.directory?.apps.find((one) => one.appId === selected.appId) : undefined} spaceName={espacios.current?.name}
           onBack={() => abrirChat(null)}
           showBack={panel === 'conversation'}
           hayAnteriores={historial.hayAnteriores}

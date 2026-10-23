@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { aplicarMensajeALista, marcarLeido, newlyAddedSpaces, railSpaces, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember } from '@lilachat/shared';
+import { aplicarMensajeALista, marcarLeido, newlyAddedSpaces, railSpaces, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember, type DirectoryApp } from '@lilachat/shared';
 import { api } from '../api';
 import type { ChatMessage, ChatSummary } from '../chat/types';
 import { forgetMySpaces, setCurrentSpaceId, useCurrentSpaceId, useMySpaces } from './currentSpace';
@@ -11,6 +11,8 @@ import { memberName } from './memberWeb';
 import { SpacesLayer, type SpaceDialog } from './SpacesLayer';
 import type { WorkspaceLink } from './SpaceChatList';
 import { peekPendingJoin, takePendingJoin } from './pendingJoin';
+import { useSpaceApps } from './apps/useSpaceApps';
+import { AppDirectory } from './apps/AppDirectory';
 
 /** What a socket event of a space chat says (22/10). */
 export type SpaceChatEvent = { type: 'message'; chatId: string; message: ChatMessage } | { type: 'receipt'; chatId: string; userId?: string } | { type: 'changed'; chatId: string };
@@ -159,6 +161,8 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
     const response = await createSpaceChat(jwt, spaceId, { kind: 'direct', memberIds: [member.userId] });
     if (response.ok) open(openedChat({ id: response.data.chatId, kind: 'direct', name: memberName(member), phone: member.phone, memberIds: [myUserId, member.userId] }, spaceId));
   }, [spaceId, jwt, myUserId, open]);
+  const openAppChat = useCallback((app: DirectoryApp, chat: { chatId: string; botUserId: string }) => spaceId && open({ ...openedChat({ id: chat.chatId, kind: 'direct', name: app.name, memberIds: [myUserId, chat.botUserId] }, spaceId), appId: app.appId }), [spaceId, myUserId, open]);
+  const apps = useSpaceApps({ jwt, spaceId, onChat: openAppChat });
   const talkTo = useCallback(async (admin: { userId: string }) => {
     setRemoved(null);
     const response = await api<{ chatId: string }>('/chats', { jwt, body: { kind: 'direct', memberIds: [admin.userId] } });
@@ -239,6 +243,12 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
     openNewGroup: () => setDialog('newGroup'),
     activity,
     openActivity: setActivityTab,
-    layer,
+    apps,
+    layer: (
+      <>
+        {layer}
+        {current && apps.open ? <AppDirectory space={current} apps={apps} /> : null}
+      </>
+    ),
   };
 }

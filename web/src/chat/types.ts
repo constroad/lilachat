@@ -17,6 +17,8 @@ export type ChatSummary = {
   kind: 'direct' | 'group' | 'notas';
   /** A chat of a company space, and a channel there (E1/E2): always in the Slack format. */
   workspaceId?: string;
+  /** A 1:1 with an app's bot (design e-23): it goes to «Apps», not to the direct messages. */
+  appId?: string;
   channel?: { visibility: string };
   /** El chat contigo («Tú · Envíate un mensaje», 20/10). */
   propio?: boolean;

@@ -3,13 +3,15 @@ import { useLastSeen } from './useLastSeen';
 import { usePresenceStatus } from '../presence/presenceStatus';
 import { NotificationsBanner } from '../notify/NotificationsBanner';
 import { ConversacionContext } from './contextoDeLaConversacion';
-import { useContext, useState, type ReactNode } from 'react';
+import { useContext, useEffect, useState, type ReactNode } from 'react';
 import { ArrowLeft, Phone, Search, Video } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
-import type { AgendaReminder, MencionEnMensaje, WinkId } from '@lilachat/shared';
+import type { AgendaReminder, DirectoryApp, MencionEnMensaje, WinkId } from '@lilachat/shared';
 import { formatUltimaVez, presenceLine, type PresenceStatus } from '@lilachat/shared';
 import { Composer, type ContextoDelComposer } from './Composer';
 import { useChatCommands } from './commands/useChatCommands';
+import { AppCommandsBar, AppConversationHeader, type AppConversationTab } from '../spaces/apps/AppConversation';
+import { AppDetail } from '../spaces/apps/AppDetail';
 import type { Mencionable } from './SugerenciasDeMencion';
 import type { NotaDeVozGrabada } from './useGrabadoraDeVoz';
 import { ListaDeMensajes } from './ListaDeMensajes';
@@ -76,8 +78,15 @@ export function Conversation(props: {
   viewId?: number;
   /** Abrir «Info.» del chat (W3b) al tocar su nombre o su foto. */
   onAbrirInfo?: () => void;
+  /** A 1:1 with an app (designs e-23/e-26): its head, the «Información» tab and its commands. */
+  app?: DirectoryApp;
+  spaceName?: string;
 }) {
   const { chat } = props;
+  const [appTab, setAppTab] = useState<AppConversationTab>('messages');
+  useEffect(() => {
+    setAppTab('messages');
+  }, [chat.id]);
   const [soltando, setSoltando] = useState(false);
   const otherId = chat.kind === 'direct' ? (chat.memberIds.find((id) => id !== props.yo) ?? null) : null;
   const lastSeen = useLastSeen(otherId);
@@ -109,7 +118,17 @@ export function Conversation(props: {
         </div>
       ) : null}
       {fun.overlay}
-      <CabeceraDeLaConversacion chat={chat} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} lastSeen={lastSeen} status={otherStatus} onCall={props.onCall} callExtras={props.callExtras} />
+      {props.app ? (
+        <AppConversationHeader app={props.app} tab={appTab} onTab={setAppTab} showBack={props.showBack} onBack={props.onBack} />
+      ) : (
+        <CabeceraDeLaConversacion chat={chat} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} lastSeen={lastSeen} status={otherStatus} onCall={props.onCall} callExtras={props.callExtras} />
+      )}
+      {props.app && appTab === 'info' ? (
+        <div data-testid="informacion-app" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-8">
+          <div className="mx-auto max-w-3xl"><AppDetail app={props.app} spaceName={props.spaceName ?? ''} onInstall={() => undefined} /></div>
+        </div>
+      ) : (
+      <>
       <BannerWithSession />
       {props.franja}
       {props.mensajes === null ? (
@@ -141,6 +160,7 @@ export function Conversation(props: {
       ) : (
       <>
       {props.queue}
+      {props.app ? <AppCommandsBar commands={props.app.commands} /> : null}
       <Composer
         onSend={props.onSend}
         onCreateEvent={props.onCreateEvent}
@@ -160,6 +180,8 @@ export function Conversation(props: {
         commands={commands.enabled ? commands : undefined}
         stickers={props.jwtParaEnlaces ? { jwt: props.jwtParaEnlaces, me: props.yo, chatId: chat.id, chatName: chat.name ?? chat.phone ?? '', replyToSeq: props.replyingTo, onSent: props.replyingTo ? props.onCancelarContexto : undefined } : undefined}
       />
+      </>
+      )}
       </>
       )}
     </section>

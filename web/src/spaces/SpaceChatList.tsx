@@ -8,6 +8,8 @@ import type { ChatAction } from '../chat/menuDelChat';
 import type { ChatSummary } from '../chat/types';
 import { SpaceLogo } from './SpaceLogo';
 import { PendingMarker } from '../chat/queue/PendingMarker';
+import { AppsSection } from './apps/AppsSection';
+import type { SpaceApps } from './apps/useSpaceApps';
 
 export type WorkspaceLink = 'directory' | 'members' | 'requests' | 'settings';
 
@@ -35,6 +37,8 @@ type Props = {
   onSettings?: () => void;
   width?: number;
   onCollapse?: () => void;
+  /** «Apps» (design e-23) and its directory. */
+  apps?: SpaceApps;
 };
 
 /**
@@ -115,7 +119,9 @@ export function SpaceChatList(props: Props) {
           </div>
         ) : null}
         {chats !== null && (chats.length > 0 || query)
-          ? sections.map((section) => (
+          ? sections.map((section) => section.key === 'apps' ? (
+              props.apps ? <AppsSection key="apps" chats={section.chats} apps={props.apps} folded={folded.has('apps')} onToggle={() => toggle('apps')} selectedChatId={props.selectedChatId} onOpenChat={props.onOpenChat} /> : null
+            ) : (
               <section key={section.key} data-testid={`seccion-${section.key}`} className="pt-1">
                 <div className="flex items-center pr-2">
                   <button type="button" data-testid={`plegar-${section.key}`} aria-expanded={!folded.has(section.key)} onClick={() => toggle(section.key)} className="flex h-10 flex-1 items-center gap-1.5 px-4 text-left">
@@ -175,7 +181,7 @@ function ActivityChip(props: { testId: string; Icon: LucideIcon; label: string; 
   );
 }
 
-const NEW_IN_SECTION: Record<SpaceSectionKey, string> = { channels: 'Agregar canal', groups: 'Nuevo grupo', directs: 'Nuevo mensaje directo' };
+const NEW_IN_SECTION: Record<SpaceSectionKey, string> = { channels: 'Agregar canal', groups: 'Nuevo grupo', directs: 'Nuevo mensaje directo', apps: 'Agregar apps' };
 
 /**
  * «Espacio de trabajo» on top of the list (desktop designs `e1-05`, `e1-06`):

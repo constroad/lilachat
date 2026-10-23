@@ -34,6 +34,10 @@ export function GroupFunCard(props: { chatId: string; jwt: string; allowed: bool
  * birthday the chat says so at 8:00 and everyone sees the card once. In a group
  * the admins decide; in a 1:1, either of the two. Off by default.
  */
+/** Since 0.1.150 the chat decides (pending 71), and the day before the group's admins get a heads-up (pending 72). */
+const birthdaysHint = (isGroup: boolean) =>
+  isGroup ? 'El día de cada uno, el chat lo dice a las 8:00 y todos ven su tarjeta. Un día antes, avisa a los admins.' : 'El día de cada uno, el chat lo dice a las 8:00 y los dos ven su tarjeta.';
+
 export function BirthdaysCard(props: { chatId: string; jwt: string; on: boolean; isGroup: boolean; isAdmin: boolean }) {
   const canChange = !props.isGroup || props.isAdmin;
   return (
@@ -42,7 +46,7 @@ export function BirthdaysCard(props: { chatId: string; jwt: string; on: boolean;
       switchTestID="switch-cumpleanos"
       kicker="Cumpleaños"
       title="Avisar los cumpleaños"
-      hint={canChange ? 'El día de cada uno, el chat lo dice a las 8:00 y todos ven su tarjeta. Solo de quien deja ver su fecha.' : 'Solo los admins pueden cambiarlo.'}
+      hint={canChange ? birthdaysHint(props.isGroup) : 'Solo los admins pueden cambiarlo.'}
       url={`${BASE_URL}/api/chats/${props.chatId}/birthdays`}
       body={(next) => ({ on: next })}
       jwt={props.jwt}

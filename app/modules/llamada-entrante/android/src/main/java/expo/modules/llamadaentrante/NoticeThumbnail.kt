@@ -57,6 +57,18 @@ object NoticeThumbnail {
     null
   }
 
+  /** A round copy, for a person or a chat in the notice (pending 68). */
+  fun circle(source: Bitmap): Bitmap {
+    val side = minOf(source.width, source.height)
+    val output = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(output)
+    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+    canvas.drawCircle(side / 2f, side / 2f, side / 2f, paint)
+    paint.xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN)
+    canvas.drawBitmap(source, ((side - source.width) / 2f), ((side - source.height) / 2f), paint)
+    return output
+  }
+
   private fun download(url: String): ByteArray? {
     val connection = URL(url).openConnection() as HttpURLConnection
     connection.connectTimeout = TIMEOUT_MS

@@ -230,6 +230,78 @@ export const WINK_IMAGES: Record<string, WinkImages> = {
       'tail': require('../../assets/guinos/dog-sad-back-tail.webp'),
     },
   },
+  'pumpkin-guy': {
+    tile: require('../../assets/guinos/pumpkin-guy-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/pumpkin-guy-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/pumpkin-guy-leg-right.webp'),
+      'body': require('../../assets/guinos/pumpkin-guy-body.webp'),
+      'arm-left': require('../../assets/guinos/pumpkin-guy-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/pumpkin-guy-arm-right.webp'),
+      'head': require('../../assets/guinos/pumpkin-guy-head.webp'),
+      'eye-left': require('../../assets/guinos/pumpkin-guy-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/pumpkin-guy-eye-right.webp'),
+      'mouth': require('../../assets/guinos/pumpkin-guy-mouth.webp'),
+    },
+  },
+  'vampire-boss': {
+    tile: require('../../assets/guinos/vampire-boss-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/vampire-boss-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/vampire-boss-leg-right.webp'),
+      'tail': require('../../assets/guinos/vampire-boss-tail.webp'),
+      'body': require('../../assets/guinos/vampire-boss-body.webp'),
+      'arm-left': require('../../assets/guinos/vampire-boss-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/vampire-boss-arm-right.webp'),
+      'head': require('../../assets/guinos/vampire-boss-head.webp'),
+      'eye-left': require('../../assets/guinos/vampire-boss-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/vampire-boss-eye-right.webp'),
+      'mouth': require('../../assets/guinos/vampire-boss-mouth.webp'),
+    },
+  },
+  'mummy-worker': {
+    tile: require('../../assets/guinos/mummy-worker-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/mummy-worker-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/mummy-worker-leg-right.webp'),
+      'body': require('../../assets/guinos/mummy-worker-body.webp'),
+      'arm-left': require('../../assets/guinos/mummy-worker-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/mummy-worker-arm-right.webp'),
+      'head': require('../../assets/guinos/mummy-worker-head.webp'),
+      'eye-left': require('../../assets/guinos/mummy-worker-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/mummy-worker-eye-right.webp'),
+      'mouth': require('../../assets/guinos/mummy-worker-mouth.webp'),
+    },
+  },
+  'witch-accountant': {
+    tile: require('../../assets/guinos/witch-accountant-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/witch-accountant-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/witch-accountant-leg-right.webp'),
+      'body': require('../../assets/guinos/witch-accountant-body.webp'),
+      'arm-left': require('../../assets/guinos/witch-accountant-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/witch-accountant-arm-right.webp'),
+      'head': require('../../assets/guinos/witch-accountant-head.webp'),
+      'eye-left': require('../../assets/guinos/witch-accountant-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/witch-accountant-eye-right.webp'),
+      'mouth': require('../../assets/guinos/witch-accountant-mouth.webp'),
+    },
+  },
+  'ghost-intern': {
+    tile: require('../../assets/guinos/ghost-intern-tile.webp'),
+    parts: {
+      'leg-left': require('../../assets/guinos/ghost-intern-leg-left.webp'),
+      'leg-right': require('../../assets/guinos/ghost-intern-leg-right.webp'),
+      'tail': require('../../assets/guinos/ghost-intern-tail.webp'),
+      'body': require('../../assets/guinos/ghost-intern-body.webp'),
+      'arm-left': require('../../assets/guinos/ghost-intern-arm-left.webp'),
+      'arm-right': require('../../assets/guinos/ghost-intern-arm-right.webp'),
+      'head': require('../../assets/guinos/ghost-intern-head.webp'),
+      'eye-left': require('../../assets/guinos/ghost-intern-eye-left.webp'),
+      'eye-right': require('../../assets/guinos/ghost-intern-eye-right.webp'),
+      'mouth': require('../../assets/guinos/ghost-intern-mouth.webp'),
+    },
+  },
   'balloon': {
     tile: require('../../assets/guinos/balloon-tile.webp'),
     parts: {
@@ -360,6 +432,42 @@ export const WINK_IMAGES: Record<string, WinkImages> = {
     tile: require('../../assets/guinos/sun-peek-tile.webp'),
     parts: {
       'body': require('../../assets/guinos/sun-peek-body.webp'),
+    },
+  },
+  'bat': {
+    tile: require('../../assets/guinos/bat-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/bat-body.webp'),
+    },
+  },
+  'candy-bucket': {
+    tile: require('../../assets/guinos/candy-bucket-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/candy-bucket-body.webp'),
+    },
+  },
+  'cauldron': {
+    tile: require('../../assets/guinos/cauldron-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/cauldron-body.webp'),
+    },
+  },
+  'coffin': {
+    tile: require('../../assets/guinos/coffin-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/coffin-body.webp'),
+    },
+  },
+  'spider-web': {
+    tile: require('../../assets/guinos/spider-web-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/spider-web-body.webp'),
+    },
+  },
+  'tombstone': {
+    tile: require('../../assets/guinos/tombstone-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/tombstone-body.webp'),
     },
   },
 };

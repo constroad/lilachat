@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { Play, Send, Vibrate } from 'lucide-react-native';
-import { WINKS, type Wink, type WinkGroup, type WinkId } from '@lilachat/shared';
+import { winkPanelGroups, type Wink, type WinkId } from '@lilachat/shared';
 import { WinkCharacter } from './WinkCharacter';
 import { replayWink } from './nudge';
 import { useColores } from '../ui/tema';
@@ -11,11 +11,6 @@ const SIDE_PADDING = 16;
 const GAP = 8;
 /** The local preview has no message yet: any fixed seed. */
 const PREVIEW_SEED = 0;
-const GROUPS: { group: WinkGroup; title: string }[] = [
-  { group: 'characters', title: 'Personajes' },
-  { group: 'site', title: 'Obra y pistas' },
-  { group: 'emoji', title: 'Emojis' },
-];
 /** A character in its tile (dp). */
 const TILE_CHARACTER = 46;
 
@@ -23,12 +18,14 @@ const TILE_CHARACTER = 46;
  * The «Guiños» tab of the emoji panel (design `m-02-guinos-panel`): tapping a
  * wink previews it over the chat and shows «Enviar» under its name. Three
  * groups (José, 21/10): the full-body characters, the construction ones and
- * the first emoji winks. Each tile shows what the other person will see.
+ * the first emoji winks; in season its winks go first (pending 73). Each tile
+ * shows what the other person will see.
  */
 export function WinkPanel(props: { recipient: string; onSend: (wink: WinkId) => void; onNudge?: () => void }) {
   const colors = useColores();
   const { width } = useWindowDimensions();
   const [selected, setSelected] = useState<WinkId | null>(null);
+  const groups = useMemo(() => winkPanelGroups(new Date()), []);
   const tile = (width - SIDE_PADDING * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
   const pick = (wink: WinkId) => {
     setSelected(wink);
@@ -61,11 +58,11 @@ export function WinkPanel(props: { recipient: string; onSend: (wink: WinkId) => 
           </View>
         </Pressable>
       ) : null}
-      {GROUPS.map(({ group, title }) => (
-        <View key={group} className="mb-4">
+      {groups.map(({ key, title, winks }) => (
+        <View key={key} testID={`grupo-guinos-${key}`} className="mb-4">
           <Text className="mb-2 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{title}</Text>
           <View className="flex-row flex-wrap" style={{ gap: GAP }}>
-            {WINKS.filter((wink) => wink.group === group).map((wink) => (
+            {winks.map((wink) => (
               <WinkTile key={wink.id} wink={wink} width={tile} active={wink.id === selected} onPick={() => pick(wink.id)} onSend={() => props.onSend(wink.id)} />
             ))}
           </View>

@@ -1,4 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
+import { formatPhoneDisplay, membersHeading } from '@lilachat/shared';
 import { MoreVertical, UserPlus } from 'lucide-react-native';
 import { Avatar } from '../ui/Avatar';
 import { Rotulo } from '../ui/Rotulo';
@@ -41,9 +42,9 @@ export function ParticipantesDelGrupo(props: {
   const colores = useColores();
   return (
     <>
-      <Rotulo sangrado>{`Participantes · ${props.miembros.length}`}</Rotulo>
-      <View className="mx-4 overflow-hidden rounded-2xl border border-outline/10 bg-surface">
-        {props.onAnadir ? (
+      {/* Pending 69 (design `r151-detalle-grupo`): «Agregar miembros» first, on its own, then the list. */}
+      {props.onAnadir ? (
+        <View className="mx-4 mt-4 overflow-hidden rounded-2xl border border-outline/10 bg-surface">
           <Pressable
             testID="fila-anadir-participante"
             onPress={props.onAnadir}
@@ -53,18 +54,24 @@ export function ParticipantesDelGrupo(props: {
             <View className="items-center justify-center rounded-full bg-primary/10" style={{ width: AVATAR_DE_MIEMBRO, height: AVATAR_DE_MIEMBRO }}>
               <UserPlus size={20} color={colores.primary} />
             </View>
-            <Text className="text-[15px] font-semibold text-primary">Añadir participante</Text>
+            <Text className="text-[15px] font-semibold text-primary">Agregar miembros</Text>
           </Pressable>
-        ) : null}
+        </View>
+      ) : null}
+      <Rotulo sangrado>{membersHeading(props.miembros.length)}</Rotulo>
+      <View className="mx-4 overflow-hidden rounded-2xl border border-outline/10 bg-surface">
         {props.miembros.map((miembro, indice) => (
           <View key={miembro.id} testID={`miembro-${miembro.id}`} className="min-h-[64px] flex-row items-center gap-3 px-4 py-2.5">
-            {indice > 0 || props.onAnadir ? <Separador /> : null}
+            {indice > 0 ? <Separador /> : null}
             {/* Tu avatar lleva TU nombre: «Tú» salía como iniciales «TÚ». */}
             <Avatar nombre={miembro.esYo ? (miembro.name ?? '') : props.nombreDe(miembro)} foto={miembro.avatarUrl} tamano={AVATAR_DE_MIEMBRO} />
-            <Text className="min-w-0 flex-1 text-[15px] font-semibold text-on-surface">{props.nombreDe(miembro)}</Text>
+            <View className="min-w-0 flex-1">
+              <Text className="text-[15px] font-semibold text-on-surface" numberOfLines={1}>{props.nombreDe(miembro)}</Text>
+              {!miembro.esYo && miembro.phone ? <Text className="text-[13px] text-on-surface-variant" numberOfLines={1}>{formatPhoneDisplay(miembro.phone)}</Text> : null}
+            </View>
             {miembro.role === 'admin' ? (
-              <View className="shrink-0 rounded-full bg-primary/[0.14] px-2.5 py-1">
-                <Text className="text-[11px] font-semibold text-primary">Admin</Text>
+              <View className="shrink-0 rounded-full border border-primary/30 bg-primary/[0.08] px-2.5 py-1">
+                <Text className="text-[11px] font-semibold text-primary">Admin del grupo</Text>
               </View>
             ) : null}
             {/* El menú aparece solo si hay algo que hacer con esa persona. Una

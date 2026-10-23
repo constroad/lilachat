@@ -16,6 +16,9 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.Person
 import androidx.core.app.RemoteInput
+import androidx.core.content.pm.ShortcutInfoCompat
+import androidx.core.content.pm.ShortcutManagerCompat
+import androidx.core.graphics.drawable.IconCompat
 import java.util.UUID
 import kotlin.concurrent.thread
 import org.json.JSONArray
@@ -38,7 +41,10 @@ data class MensajeRecibido(
   /** Token para «Responder» y «Marcar como leído» (FL11); vacío en un chat secreto. */
   val respuesta: String? = null,
   /** The sticker, photo, GIF or wink thumbnail (pending 57); empty without one. */
-  val image: String = ""
+  val image: String = "",
+  /** The author's and the group's photos (pending 68); empty without one. */
+  val photo: String = "",
+  val chatPhoto: String = ""
 ) {
   companion object {
     fun desdePush(data: Map<String, String>): MensajeRecibido? {
@@ -53,7 +59,9 @@ data class MensajeRecibido(
         silencioso = data["silencioso"] == "1",
         entrega = data["entrega"]?.takeIf { it.isNotBlank() },
         respuesta = data["respuesta"]?.takeIf { it.isNotBlank() },
-        image = data["imagen"] ?: ""
+        image = data["imagen"] ?: "",
+        photo = data["foto"] ?: "",
+        chatPhoto = data["fotoChat"] ?: ""
       )
     }
   }
@@ -139,14 +147,19 @@ object AvisoDeMensaje {
     // The sticker, photo, GIF or wink inside the newest message, like WhatsApp (pending 57); without it the notice still goes.
     val thumbnail = mensaje.image.takeIf { it.isNotBlank() }?.let { NoticeThumbnail.load(it) }
     val imageUri = thumbnail?.let { NoticeThumbnail.share(contexto, it, "${mensaje.chatId}-${mensaje.seq}") }
+    // Pending 68: each line with its author's photo, and the chat as a conversation with its photo (the app icon rides on it).
+    val icons = HashMap<String, IconCompat?>()
+    val iconOf = { url: String -> if (url.isBlank()) null else icons.getOrPut(url) { NoticeThumbnail.load(url)?.let { IconCompat.createWithBitmap(NoticeThumbnail.circle(it)) } } }
     lineas.forEachIndexed { index, linea ->
-      val message = NotificationCompat.MessagingStyle.Message(linea.cuerpo, linea.at, Person.Builder().setName(linea.autor).build())
+      val author = Person.Builder().setName(linea.autor).apply { iconOf(linea.photo)?.let { setIcon(it) } }.build()
+      val message = NotificationCompat.MessagingStyle.Message(linea.cuerpo, linea.at, author)
       if (index == lineas.lastIndex && imageUri != null) message.setData("image/png", imageUri)
       estilo.addMessage(message)
     }
     val aviso = NotificationCompat.Builder(contexto, CANAL)
       .setSmallIcon(AvisoDeLlamada.iconoChico(contexto))
       .apply { AvisoDeLlamada.brandColor(contexto)?.let { setColor(it) } }
+      .apply { publishConversation(contexto, mensaje, iconOf(mensaje.chatPhoto.ifBlank { mensaje.photo }))?.let { setShortcutId(it) } }
       .setContentTitle(mensaje.chat.ifBlank { mensaje.autor })
       .setContentText(mensaje.cuerpo)
       .setStyle(estilo)
@@ -269,18 +282,39 @@ object AvisoDeMensaje {
     updateSummary(contexto)
   }
 
-  private data class Linea(val seq: Int, val autor: String, val cuerpo: String, val at: Long)
+  /**
+   * The chat as a conversation shortcut (pending 68): Android draws its photo in
+   * the shade with the app's icon on it, like WhatsApp. Without a photo, the
+   * notice still goes (the shortcut keeps the app's icon).
+   */
+  private fun publishConversation(context: Context, message: MensajeRecibido, icon: IconCompat?): String? = try {
+    val open = (context.packageManager.getLaunchIntentForPackage(context.packageName) ?: Intent())
+      .setAction(Intent.ACTION_VIEW)
+      .putExtra(EXTRA_CHAT_MENSAJE, message.chatId)
+    val shortcut = ShortcutInfoCompat.Builder(context, "chat-${message.chatId}")
+      .setShortLabel(message.chat.ifBlank { message.autor })
+      .setLongLived(true)
+      .setIntent(open)
+      .apply { if (icon != null) setIcon(icon) }
+      .build()
+    ShortcutManagerCompat.pushDynamicShortcut(context, shortcut)
+    shortcut.id
+  } catch (_: Exception) {
+    null
+  }
+
+  private data class Linea(val seq: Int, val autor: String, val cuerpo: String, val at: Long, val photo: String = "")
 
   /** Suma el mensaje a las líneas del chat; null si ya estaba (push repetido). */
   private fun sumarLinea(contexto: Context, mensaje: MensajeRecibido): List<Linea>? {
     val preferencias = contexto.getSharedPreferences(ARCHIVO, Context.MODE_PRIVATE)
     val guardadas = leerLineas(preferencias.getString(mensaje.chatId, null))
     if (mensaje.seq > 0 && guardadas.any { it.seq == mensaje.seq }) return null
-    val todas = (guardadas + Linea(mensaje.seq, mensaje.autor, mensaje.cuerpo, System.currentTimeMillis()))
+    val todas = (guardadas + Linea(mensaje.seq, mensaje.autor, mensaje.cuerpo, System.currentTimeMillis(), mensaje.photo))
       .takeLast(MAXIMO_DE_LINEAS)
     val json = JSONArray()
     for (linea in todas) {
-      json.put(JSONObject().put("seq", linea.seq).put("autor", linea.autor).put("cuerpo", linea.cuerpo).put("at", linea.at))
+      json.put(JSONObject().put("seq", linea.seq).put("autor", linea.autor).put("cuerpo", linea.cuerpo).put("at", linea.at).put("foto", linea.photo))
     }
     preferencias.edit().putString(mensaje.chatId, json.toString()).apply()
     return todas
@@ -292,7 +326,7 @@ object AvisoDeMensaje {
       val json = JSONArray(crudo)
       (0 until json.length()).map { indice ->
         val linea = json.getJSONObject(indice)
-        Linea(linea.optInt("seq"), linea.optString("autor"), linea.optString("cuerpo"), linea.optLong("at"))
+        Linea(linea.optInt("seq"), linea.optString("autor"), linea.optString("cuerpo"), linea.optLong("at"), linea.optString("foto"))
       }
     } catch (_: Exception) {
       emptyList()

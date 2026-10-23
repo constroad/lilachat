@@ -17,6 +17,8 @@ import {
   type AccionDeMiembro,
   type NotificationLevel,
 } from '@lilachat/shared';
+import { chatDetailTabs, groupSubtitle, initialChatDetailTab, type ChatDetailTab } from '@lilachat/shared';
+import { DetailTabBar, RoundAction } from './DetailTabBar';
 import { EditarNombreDeGrupo } from './EditarNombreDeGrupo';
 import { elegirFotoDeGrupo, subirFotoDeGrupo } from './fotoDeGrupo';
 import { IdentidadDelChat } from './IdentidadDelChat';
@@ -138,6 +140,7 @@ export function ChatDetailScreen({
   const [editandoDescripcion, setEditandoDescripcion] = useState(false);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [aviso, setAviso] = useState('');
+  const [tab, setTab] = useState<ChatDetailTab>('media');
 
   /**
    * Sumar o salir. Las dos recargan el detalle al terminar: es la lista que la
@@ -208,7 +211,7 @@ export function ChatDetailScreen({
     if (visible) void cargar();
   }, [visible, cargar]);
 
-  // From the ⋮: «Medios» scrolls to them, again after each relayout until the person scrolls herself.
+  // From the ⋮: «Medios» opens that tab and scrolls to the tabs, again after each relayout until the person scrolls herself.
   const scrollRef = useRef<ScrollView>(null);
   const sharedY = useRef<number | null>(null);
   const followShared = useRef(false);
@@ -244,6 +247,18 @@ export function ChatDetailScreen({
 
   const detalle = estado.fase === 'listo' ? estado.detalle : null;
   const esGrupo = detalle?.kind === 'group';
+  const detailKind = detalle?.kind;
+  // Pending 69: each opening starts on the first tab, or on the one the ⋮ asked for; a reload after an edit keeps the tab.
+  const tabChosenFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!visible) {
+      tabChosenFor.current = null;
+      return;
+    }
+    if (!detailKind || tabChosenFor.current === (openAt ?? '')) return;
+    tabChosenFor.current = openAt ?? '';
+    setTab(initialChatDetailTab(detailKind, openAt));
+  }, [visible, openAt, detailKind]);
   /** Un chat solo contigo (19/10): nombre y foto propios, sin participantes ni ajustes de aviso. */
   const esBorrador = detalle?.kind === 'notas';
 
@@ -406,7 +421,7 @@ export function ChatDetailScreen({
                 esBorrador
                   ? 'Solo tú lo ves'
                   : esGrupo
-                  ? `${detalle!.members.length} participantes`
+                  ? groupSubtitle(detalle!.members.length)
                   : formatPhoneDisplay(detalle!.members.find((m) => !m.esYo)?.phone ?? '')
               }
               editable={puedoEditarInfo}
@@ -421,53 +436,43 @@ export function ChatDetailScreen({
             <View className="mt-6 flex-row justify-center gap-3 px-4">
               {!esGrupo && onLlamar ? (
                 <>
-                  <AccionRedonda
-                    testID="btn-detalle-llamar"
-                    etiqueta="Llamar"
-                    onPress={() => onLlamar(false)}
-                  >
+                  <RoundAction testID="btn-detalle-llamar" label="Llamar" onPress={() => onLlamar(false)}>
                     <Phone size={20} color={colores.primary} />
-                  </AccionRedonda>
-                  <AccionRedonda
-                    testID="btn-detalle-video"
-                    etiqueta="Video"
-                    onPress={() => onLlamar(true)}
-                  >
+                  </RoundAction>
+                  <RoundAction testID="btn-detalle-video" label="Video" onPress={() => onLlamar(true)}>
                     <Video size={20} color={colores.primary} />
-                  </AccionRedonda>
+                  </RoundAction>
                 </>
               ) : null}
               {esGrupo ? (
-                <AccionRedonda
-                  testID="btn-detalle-agregar"
-                  etiqueta="Añadir"
-                  onPress={() => setAgregando(true)}
-                >
+                <RoundAction testID="btn-detalle-agregar" label="Añadir" onPress={() => setAgregando(true)}>
                   <UserPlus size={20} color={colores.primary} />
-                </AccionRedonda>
+                </RoundAction>
               ) : null}
               {onBuscar ? (
-                <AccionRedonda testID="btn-detalle-buscar" etiqueta="Buscar" onPress={onBuscar}>
+                <RoundAction testID="btn-detalle-buscar" label="Buscar" onPress={onBuscar}>
                   <Search size={20} color={colores.primary} />
-                </AccionRedonda>
+                </RoundAction>
               ) : null}
             </View>
 
             {esGrupo || esBorrador ? <TarjetaDeDescripcion descripcion={detalle!.descripcion} editable={puedoEditarInfo} onEditar={() => setEditandoDescripcion(true)} /> : null}
-            {esGrupo ? <GroupFunCard chatId={chatId} jwt={credential.jwt} allowed={detalle!.funAllowed === true} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} /> : null}
-            {detalle && !esBorrador ? <BirthdaysCard chatId={chatId} jwt={credential.jwt} on={detalle.birthdaysOn === true} isGroup={esGrupo} isAdmin={detalle.members.some((uno) => uno.esYo && uno.role === 'admin')} /> : null}
             {tarjetas}
 
             <View onLayout={(event) => ((sharedY.current = event.nativeEvent.layout.y), followShared.current && scrollToShared())}>
+              <DetailTabBar tabs={chatDetailTabs(detalle!.kind)} active={tab} onChange={setTab} />
+            </View>
+
+            {tab === 'media' ? (
               <SeccionCompartido
                 clasificado={clasificado}
                 pestana={pestana}
                 onPestana={setPestana}
                 onVerMedia={(m) => onVerImagen?.(m.seq)}
               />
-            </View>
+            ) : null}
 
-            {esGrupo ? (
+            {tab === 'members' && esGrupo ? (
               <ParticipantesDelGrupo
                 miembros={detalle!.members}
                 nombreDe={nombreDe}
@@ -477,8 +482,10 @@ export function ChatDetailScreen({
                 onAnadir={() => setAgregando(true)}
               />
             ) : null}
+            {tab === 'settings' && esGrupo ? <GroupFunCard chatId={chatId} jwt={credential.jwt} allowed={detalle!.funAllowed === true} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} /> : null}
+            {tab === 'settings' && !esBorrador ? <BirthdaysCard chatId={chatId} jwt={credential.jwt} on={detalle!.birthdaysOn === true} isGroup={esGrupo} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} /> : null}
             {/* 20/10: también en un 1:1 y en un borrador (ahí cualquiera los administra); no en un chat secreto. */}
-            {!detalle!.encrypted ? (
+            {tab === 'settings' && !detalle!.encrypted ? (
               <RecordatoriosDelGrupo
                 chatId={chatId}
                 nombreDelGrupo={nombreVisible}
@@ -498,7 +505,7 @@ export function ChatDetailScreen({
             ) : null}
 
             {/* Un borrador no tiene avisos que silenciar ni cifrado que explicar. */}
-            {esBorrador ? null : (
+            {esBorrador || tab !== 'settings' ? null : (
             <AjustesDelChat
               esGrupo={esGrupo}
               cifrado={detalle!.encrypted}
@@ -567,33 +574,3 @@ export function ChatDetailScreen({
   );
 }
 
-
-/**
- * Los botones redondos de la fila del diseño. Solo van los que HACEN algo: un
- * botón que se ve normal y no reacciona enseña que los de esta app no andan.
- */
-function AccionRedonda({
-  children,
-  etiqueta,
-  onPress,
-  testID,
-}: {
-  children: React.ReactNode;
-  etiqueta: string;
-  onPress?: () => void;
-  testID: string;
-}) {
-  return (
-    <Pressable
-      testID={testID}
-      onPress={onPress}
-      accessibilityLabel={etiqueta}
-      className="items-center"
-    >
-      <View className="h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-        {children}
-      </View>
-      <Text className="mt-1 text-[11px] text-on-surface-variant">{etiqueta}</Text>
-    </Pressable>
-  );
-}

@@ -42,7 +42,7 @@ import { useAlVolver } from './useAlVolver';
 import { usePendientesDeAgenda } from '../agenda/usePendientesDeAgenda';
 import { useIsFocused } from '@react-navigation/native';
 import { decidirAtras } from './botonAtras';
-import { nombreDeContacto } from '@lilachat/shared';
+import { aplicarAcuseALista, debeRecargarAlConectar, nombreDeContacto, type AcuseEnVivo } from '@lilachat/shared';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useColores } from './tema';
 import { buscarChat } from './buscarChat';
@@ -135,6 +135,10 @@ export function TabsShell({
     if (message.chatId === chatAbierto) return;
     setChats((before) => before.map((chat) => (chat.id === message.chatId ? { ...chat, unread: chat.unread + 1 } : chat)));
   };
+  // The chat I open is read: its count goes to zero here without waiting for the receipt.
+  useEffect(() => {
+    if (chatAbierto) setChats((before) => (before.some((chat) => chat.id === chatAbierto && (chat.unread > 0 || chat.markedUnread)) ? before.map((chat) => (chat.id === chatAbierto ? { ...chat, unread: 0, markedUnread: false } : chat)) : before));
+  }, [chatAbierto]);
   // Entering or leaving a space changes the bar: a tab the new one does not have goes back to Chats.
   useEffect(() => {
     setTab((current) => tabAfterModeChange(current, inSpace));
@@ -210,9 +214,12 @@ export function TabsShell({
   // Por ref (FL4): renovar el token no vuelve a pedir la lista.
   const jwtRef = useRef(credential.jwt);
   jwtRef.current = credential.jwt;
+  const lastLoad = useRef<number | null>(null);
   const loadChats = useCallback(async () => {
     const result = await listChats(jwtRef.current);
-    if (result.ok) setChats(result.data.chats);
+    if (!result.ok) return;
+    lastLoad.current = Date.now();
+    setChats(result.data.chats);
   }, []);
 
   /**
@@ -310,11 +317,21 @@ export function TabsShell({
     };
     // A card deleted, voted, answered or closed (22/10): the list's markers read again.
     const onCardChange = () => void refreshPendingInChats(credential.jwt);
+    // My receipt (read here or on the web) lowers this copy too: it only went up, and the spaces badge kept a «1» (José, 23/10).
+    const onReceipt = (receipt: AcuseEnVivo) => setChats((before) => aplicarAcuseALista(before, receipt, credential.userId, new Map()));
     socket.on('msg.new', onNew);
     socket.on('msg.deleted', onCardChange);
     socket.on('ref.changed', onCardChange);
+    // Back from the background the receipts of the paused socket are lost: read again, as the list does.
+    const onReconnect = () => {
+      if (debeRecargarAlConectar({ ultimaCarga: lastLoad.current, ahora: Date.now() })) void loadChats();
+    };
+    socket.on('receipt', onReceipt);
+    socket.on('connect', onReconnect);
     return () => {
       // Con el handler: a secas borraba los listeners de App y de la lista.
+      socket.off('receipt', onReceipt);
+      socket.off('connect', onReconnect);
       socket.off('msg.new', onNew);
       socket.off('msg.deleted', onCardChange);
       socket.off('ref.changed', onCardChange);

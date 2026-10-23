@@ -227,6 +227,17 @@ describe('aplicarAcuseALista', () => {
     expect(nuevos[0]).toMatchObject({ othersDeliveredSeq: 7, othersReadSeq: 7 });
   });
 
+  it('a counter that only grew on the phone (the spaces badge, José 23/10) goes back to zero with my receipt', () => {
+    // Arrange: the shell added 1 on msg.new without moving lastSeq
+    const chats = [mio({ unread: 1, lastSeq: 7 })];
+
+    // Act: I read it, here or on the web (seq 8)
+    const nuevos = aplicarAcuseALista(chats, { chatId: CHAT, userId: YO, readSeq: 8 }, YO, new Map());
+
+    // Assert
+    expect(nuevos[0]?.unread).toBe(0);
+  });
+
   it('mi propio acuse (otro dispositivo mío) no dice nada del otro, pero baja MIS no leídos', () => {
     // Arrange
     const chats = [mio({ unread: 3, markedUnread: true })];

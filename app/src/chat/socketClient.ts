@@ -6,6 +6,7 @@ import { pausaDelSocket, queHacerConElSocket, type PausaDelSocket } from './serv
 import { registrarPerf } from '../diagnostico/diagnostico';
 import { answerAgendaRequest, answerFullAgendaRequest } from '../contacts/webAgendaRelay';
 import { listenPresence } from './presenceStore';
+import { listenPresenceStatus } from './presenceStatus';
 import { BUILD_HEADER, UPDATE_REQUIRED_STATUS, buildHeader, reportStatus } from '../api/appBuild';
 
 /**
@@ -54,6 +55,8 @@ export type ServerMessage = {
     onda?: number[];
     /** An animated sticker of my own (pending 37). */
     animated?: boolean;
+    /** Sent together with other photos (pending 12): drawn as one card. */
+    album?: string;
     /** Duración de una nota de voz en ms. */
     durationMs?: number;
   };
@@ -140,6 +143,7 @@ export function connectSocket(token: string): Socket {
   // Encuestas, eventos y recordatorios del grupo en vivo (19/10).
   socket.on('ref.changed', avisarTarjeta);
   listenPresence(socket);
+  listenPresenceStatus(socket);
   // The linked web asks this phone for contact names (20/10, option «b»).
   const current = socket;
   current.on('agenda.pedido', (request: { requestId?: unknown; phones?: unknown }) => void answerAgendaRequest(current, request));

@@ -23,6 +23,8 @@ export type ArchivoEnCola = {
   height?: number;
   /** La onda de una nota de voz (FL9): barras de 0 a 100. */
   onda?: number[];
+  /** Sent together with other photos (pending 12): a retry keeps it in its album. */
+  albumId?: string;
   queuedAt: string;
   intentos: number;
   fallo?: string;

@@ -13,31 +13,72 @@ const SAVE_TIMEOUT_MS = 10_000;
  * backend: it is not drawn.
  */
 export function GroupFunCard(props: { chatId: string; jwt: string; allowed: boolean; isAdmin: boolean }) {
-  const [allowed, setAllowed] = useState(props.allowed);
+  return (
+    <ChatToggleCard
+      testID="tarjeta-diversion"
+      switchTestID="switch-diversion"
+      kicker="Diversión"
+      title="Zumbidos y guiños"
+      hint={props.isAdmin ? 'Solo los admins pueden cambiarlo. Apagado, nadie del grupo puede mandarlos.' : 'Solo los admins pueden cambiarlo.'}
+      url={`${BASE_URL}/api/chats/${props.chatId}/fun`}
+      body={(next) => ({ allowed: next })}
+      jwt={props.jwt}
+      value={props.allowed}
+      canChange={props.isAdmin}
+    />
+  );
+}
+
+/**
+ * «Cumpleaños» in the chat info (pending 17): on, the day of each member's
+ * birthday the chat says so at 8:00 and everyone sees the card once. In a group
+ * the admins decide; in a 1:1, either of the two. Off by default.
+ */
+export function BirthdaysCard(props: { chatId: string; jwt: string; on: boolean; isGroup: boolean; isAdmin: boolean }) {
+  const canChange = !props.isGroup || props.isAdmin;
+  return (
+    <ChatToggleCard
+      testID="tarjeta-cumpleanos"
+      switchTestID="switch-cumpleanos"
+      kicker="Cumpleaños"
+      title="Avisar los cumpleaños"
+      hint={canChange ? 'El día de cada uno, el chat lo dice a las 8:00 y todos ven su tarjeta. Solo de quien deja ver su fecha.' : 'Solo los admins pueden cambiarlo.'}
+      url={`${BASE_URL}/api/chats/${props.chatId}/birthdays`}
+      body={(next) => ({ on: next })}
+      jwt={props.jwt}
+      value={props.on}
+      canChange={canChange}
+    />
+  );
+}
+
+/** A chat-wide switch saved on the server, with its own reason when it is refused. */
+function ChatToggleCard(props: { testID: string; switchTestID: string; kicker: string; title: string; hint: string; url: string; body: (next: boolean) => object; jwt: string; value: boolean; canChange: boolean }) {
+  const [value, setValue] = useState(props.value);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   useEffect(() => {
-    setAllowed(props.allowed);
-  }, [props.allowed]);
+    setValue(props.value);
+  }, [props.value]);
 
   const change = async (next: boolean) => {
-    setAllowed(next);
+    setValue(next);
     setSaving(true);
     setError('');
     try {
-      const response = await fetch(`${BASE_URL}/api/chats/${props.chatId}/fun`, {
+      const response = await fetch(props.url, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.jwt}` },
-        body: JSON.stringify({ allowed: next }),
+        body: JSON.stringify(props.body(next)),
         signal: AbortSignal.timeout(SAVE_TIMEOUT_MS),
       });
       if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { message?: string } | null;
-        setAllowed(!next);
-        setError(body?.message ?? 'No se pudo cambiar.');
+        const reply = (await response.json().catch(() => null)) as { message?: string } | null;
+        setValue(!next);
+        setError(reply?.message ?? 'No se pudo cambiar.');
       }
     } catch {
-      setAllowed(!next);
+      setValue(!next);
       setError('Sin conexión. Prueba de nuevo.');
     } finally {
       setSaving(false);
@@ -45,18 +86,16 @@ export function GroupFunCard(props: { chatId: string; jwt: string; allowed: bool
   };
 
   return (
-    <View testID="tarjeta-diversion" className="mx-4 mt-4 overflow-hidden rounded-xl border border-outline/15 bg-surface">
+    <View testID={props.testID} className="mx-4 mt-4 overflow-hidden rounded-xl border border-outline/15 bg-surface">
       <View className="h-[3px] bg-primary" />
       <View className="p-4">
-        <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">Diversión</Text>
+        <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{props.kicker}</Text>
         <View className="mt-2 flex-row items-center gap-3">
           <View className="min-w-0 flex-1">
-            <Text className="text-[16px] font-bold text-on-surface">Zumbidos y guiños</Text>
-            <Text className="mt-1 text-[13px] text-on-surface-variant">
-              {props.isAdmin ? 'Solo los admins pueden cambiarlo. Apagado, nadie del grupo puede mandarlos.' : 'Solo los admins pueden cambiarlo.'}
-            </Text>
+            <Text className="text-[16px] font-bold text-on-surface">{props.title}</Text>
+            <Text className="mt-1 text-[13px] text-on-surface-variant">{props.hint}</Text>
           </View>
-          <Interruptor testID="switch-diversion" value={allowed} onValueChange={(next) => void change(next)} disabled={!props.isAdmin || saving} />
+          <Interruptor testID={props.switchTestID} value={value} onValueChange={(next) => void change(next)} disabled={!props.canChange || saving} />
         </View>
         {error ? <Text className="mt-2 text-[13px] text-error">{error}</Text> : null}
       </View>

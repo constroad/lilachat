@@ -12,6 +12,7 @@ import { AparienciaAjuste } from './AparienciaAjuste';
 import { ChatFontSetting } from './ChatFontSetting';
 import { GroupsAsListSetting } from './GroupsAsListSetting';
 import { AutoRespuestaAjuste } from './AutoRespuestaAjuste';
+import { PresenceSetting } from './presence/PresenceSetting';
 import { BuscarActualizacionesAjuste } from './BuscarActualizacionesAjuste';
 import { DispositivosVinculadosAjuste } from './DispositivosVinculadosAjuste';
 import { PerfilAjuste } from './PerfilAjuste';
@@ -64,6 +65,9 @@ export function PantallaDeAjustes(props: {
         testID="pantalla-ajustes"
       >
         <PerfilAjuste credential={credential} />
+        <GrupoDeAjustes>
+          <PresenceSetting jwt={credential.jwt} name={credential.name ?? 'Tú'} />
+        </GrupoDeAjustes>
 
         <AparienciaAjuste />
 

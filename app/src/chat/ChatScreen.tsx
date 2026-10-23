@@ -28,6 +28,7 @@ import { SeleccionDeMensaje } from './SeleccionDeMensaje';
 import { useSeleccionDeMensajes } from './useSeleccionDeMensajes';
 import { useProgramados } from './useProgramados';
 import { VisorDelChat } from './VisorDelChat';
+import { usePdfViewer } from './pdf/usePdfViewer';
 import { EncabezadoDelChat } from './EncabezadoDelChat';
 import { EnviarFotos } from './EnviarFotos';
 import { useAdjuntosDelChat } from './useAdjuntosDelChat';
@@ -42,6 +43,7 @@ import { citadosPorSeq, fotosDelChat } from './filasDelChat';
 import { useGrupo } from './useGrupo';
 import { FueraDelGrupo } from './FueraDelGrupo';
 import { subtituloDelChat } from './cabeceraDelChat';
+import { usePresenceStatus } from './presenceStatus';
 import { useDibujarFila } from './useDibujarFila';
 import { useUltimaVez } from './useUltimaVez';
 import { ListaDeMensajes } from './ListaDeMensajes';
@@ -62,6 +64,7 @@ import { CamaraDelChat } from './camara/CamaraDelChat';
 import { useChatWindow } from './useChatWindow';
 import { useShareContact } from './contactCard/useShareContact';
 import { offerCallLink } from './scheduledCall/callLinks';
+import { BirthdayCard } from './birthdays/BirthdayCard';
 
 /** El pie del composer con el teclado abierto (dp). */
 const MARGEN_CON_TECLADO = 8;
@@ -214,10 +217,11 @@ export function ChatScreen({
   const callBack = useCallBack({ chatId, name: nombreVisible, callName: chatName, jwt: credential.jwt, enabled: Boolean(otherUserId), llamar });
   const accionesDeTarjeta = useMemo(() => ({ editarRecordatorio: puedeEditarRecordatorios ? (recordatorio: AgendaReminder) => setCreando({ recordatorio }) : undefined, callBack: callBack.actions }), [puedeEditarRecordatorios, callBack.actions]);
   // Fuera del grupo no se listan miembros: ya no es «QA Ana, Vos».
+  const otherStatus = usePresenceStatus(otherUserId);
   const subtitulo = fueraDelGrupo ? '' : esBorrador ? 'Solo tú lo ves' : subtituloDelChat({
     esGrupo: esGrupoChat,
     escriben: [...escribiendo],
-    otroEnLinea,
+    otroEnLinea, otroEstado: otherStatus,
     ultimaVez,
     nombres: nombresDelGrupo,
     yo: credential.userId,
@@ -239,6 +243,7 @@ export function ChatScreen({
     () => fotosDelChat(ventana.messages, { yo: credential.userId, esGrupo: esGrupoChat, nombres: nombresDelGrupo, nombreDelChat: chatName }),
     [ventana.messages, credential.userId, esGrupoChat, nombresDelGrupo, chatName]
   );
+  const { open: openPdf, viewer: pdfViewer } = usePdfViewer(ventana.messages);
 
   const { divisorSeq, noLeidos: noLeidosAlAbrir, irAlInicio, placedLate } = useDivisorNoLeidos({
     rows,
@@ -311,6 +316,7 @@ export function ChatScreen({
    * abre directo con la app del teléfono que sepa hacerlo.
    */
   const alVerImagen = useCallback((seq: number) => {
+    if (openPdf(seq)) return;
     if (chatPhotosRef.current.some((foto) => foto.seq === seq)) return setViendoSeq(seq);
     const mensaje = mensajesRef.current.find((m) => m.seq === seq);
     if (!mensaje?.media?.url) return;
@@ -323,7 +329,7 @@ export function ChatScreen({
     }).then((r) => {
       if (!r.ok) setMediaError(r.motivo);
     });
-  }, []);
+  }, [openPdf]);
   const { alResponder } = respuesta;
   const alFallido = useMensajeFallido(archivosEnCola);
 
@@ -432,6 +438,7 @@ export function ChatScreen({
       <View style={{ flex: 1, zIndex: 1 }}>
       {fijar.hoja}
 
+      {encrypted || esBorrador ? null : <BirthdayCard chatId={chatId} chatName={chatName} isGroup={esGrupoChat} me={credential.userId} messages={messages} names={nombresDelGrupo} photos={fotosDelGrupo} onReact={(emoji) => void send(emoji)} onGreet={(text) => composerRef.current?.insertEmoji(text)} />}
       <CrearDesdeElChat
         creando={creando}
         credential={credential}
@@ -556,10 +563,10 @@ export function ChatScreen({
         viendoSeq={viendoSeq}
         onCambiar={setViendoSeq}
         onEliminar={eliminar}
-        onError={setMediaError}
+        onError={setMediaError} onOpenPdf={openPdf}
         gifSticker={encrypted ? undefined : { jwt: credential.jwt, chatId }}
       />
-
+      {pdfViewer}
       {detalleUsado ? (
       <ChatDetailScreen
         visible={verDetalle}

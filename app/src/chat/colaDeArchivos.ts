@@ -118,6 +118,7 @@ type ArchivoNuevo = {
   width?: number;
   height?: number;
   onda?: number[];
+  albumId?: string;
 };
 
 /**
@@ -220,6 +221,7 @@ export async function drenarArchivos(): Promise<void> {
         width: archivo.width,
         height: archivo.height,
         onda: archivo.onda,
+        albumId: archivo.albumId,
         onProgress: (ratio) => {
           const avisado = progreso?.clientKey === archivo.clientKey ? progreso.ratio : null;
           // Por pasos visibles (FL12): cada aviso redibuja la pantalla del chat.

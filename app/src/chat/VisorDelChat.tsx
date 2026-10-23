@@ -2,6 +2,7 @@ import { useState, type ComponentProps } from 'react';
 import { abrirConOtraApp, compartirFoto, guardarEnGaleria } from './guardarYCompartir';
 import { VisorDeImagen } from './VisorDeImagen';
 import { saveGifSticker } from './stickers/useStickers';
+import { isPdf } from './pdf/pdfSource';
 
 type Foto = NonNullable<ComponentProps<typeof VisorDeImagen>['foto']>;
 
@@ -18,6 +19,8 @@ export function VisorDelChat(props: {
   onError: (texto: string) => void;
   /** Where a GIF can become my animated sticker (pending 37); absent in a secret chat. */
   gifSticker?: { jwt: string; chatId: string };
+  /** A PDF opens in the app's viewer (pending 7); `false` = this build has none, so another app opens it. */
+  onOpenPdf?: (seq: number) => boolean;
 }) {
   const { gifSticker } = props;
   /** El resultado de descargar/compartir, que se pinta DENTRO del visor. */
@@ -55,6 +58,7 @@ export function VisorDelChat(props: {
       setTimeout(() => setAvisoVisor(''), 3000);
     } : undefined}
     onAbrirArchivo={async (f) => {
+      if (isPdf(f.mime) && props.onOpenPdf?.(f.seq)) return props.onCambiar(null);
       setAvisoVisor('Abriendo…');
       const r = await abrirConOtraApp({
         url: f.url,

@@ -5,6 +5,7 @@ import { encolarArchivo } from './colaDeArchivos';
 import { MAXIMO_DE_FOTOS, type FotoAEnviar, type FotoElegida } from './envioDeFotos';
 import type { NotaGrabada } from './useGrabadorDeVoz';
 import { reportarError } from '../ui/reportarError';
+import { newAlbumId } from '@lilachat/shared';
 
 /**
  * Lo que se adjunta en un chat (salió de `ChatScreen`): fotos de la galería o
@@ -33,6 +34,7 @@ export function useAdjuntosDelChat(params: { chatId: string; onError: (texto: st
     onda?: number[];
     /** Mandar como está, sin achicar (la foto con «HD», un documento). */
     hd?: boolean;
+    albumId?: string;
   }) => {
     params.onError('');
     try {
@@ -95,7 +97,9 @@ export function useAdjuntosDelChat(params: { chatId: string; onError: (texto: st
    */
   const alEnviarFotos = async (fotosAEnviar: FotoAEnviar[], opciones: { hd: boolean } = { hd: false }) => {
     setFotosElegidas([]);
-    await Promise.all(fotosAEnviar.map((foto) => upload({ ...foto, hd: opciones.hd })));
+    // Two or more photos or videos together go as one album (pending 12).
+    const albumId = fotosAEnviar.length >= 2 ? newAlbumId() : undefined;
+    await Promise.all(fotosAEnviar.map((foto) => upload({ ...foto, hd: opciones.hd, albumId })));
   };
 
   const pickFile = async () => {

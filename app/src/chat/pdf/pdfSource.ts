@@ -1,0 +1,39 @@
+/**
+ * Which messages open in the PDF viewer and how its failures read (pending 7).
+ * PURE.
+ */
+export type ChatPdf = { seq: number; url: string; name: string; at: string; mime: string };
+
+type MessageLike = { seq: number; at: string; deletedAt?: string | null; media?: { url?: string; mime?: string; fileName?: string } | null };
+
+export const isPdf = (mime: string | undefined): boolean => mime === 'application/pdf';
+
+/** The chat's PDFs, newest first, for the viewer and its «Compartido en el chat» strip. */
+export function chatPdfs(messages: readonly MessageLike[]): ChatPdf[] {
+  const pdfs: ChatPdf[] = [];
+  for (const message of messages) {
+    const media = message.media;
+    if (message.deletedAt || !media?.url || !isPdf(media.mime) || message.seq <= 0) continue;
+    pdfs.push({ seq: message.seq, url: media.url, name: media.fileName?.trim() || 'Documento PDF', at: message.at, mime: 'application/pdf' });
+  }
+  return pdfs.sort((a, b) => b.seq - a.seq);
+}
+
+/** The working copy: one per message, so reopening it does not download again. */
+export const pdfCacheName = (seq: number): string => `pdf-view-${seq}.pdf`;
+
+export type PdfFailure = 'protected' | 'download' | 'damaged';
+
+/** A failure as the screen says it, from the renderer's code or the download. */
+export function pdfFailureFrom(error: unknown): PdfFailure {
+  const code = typeof error === 'object' && error !== null && 'code' in error ? String((error as { code: unknown }).code) : '';
+  if (code === 'ERR_PDF_PROTECTED') return 'protected';
+  if (code === 'ERR_PDF_DOWNLOAD') return 'download';
+  return 'damaged';
+}
+
+export const PDF_FAILURE_TEXT: Record<PdfFailure, string> = {
+  protected: 'Este PDF tiene contraseña. Ábrelo con otra app para escribirla.',
+  download: 'No se pudo descargar el PDF. Revisa tu conexión y prueba de nuevo.',
+  damaged: 'No se pudo mostrar este PDF aquí. Prueba abrirlo con otra app.',
+};

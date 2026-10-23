@@ -35,6 +35,7 @@ import { NudgeLine, WinkLine } from './nudge';
 import { StickerMessage } from './stickers/StickerMessage';
 import { Avatar } from '../ui/Avatar';
 import { MessageMedia } from './MessageMedia';
+import { AlbumCarousel } from './AlbumCarousel';
 import { BotCardView } from './BotCardView';
 import { drawsAsCard, drawsAsFunLine, isFileMime, isPending, type Row } from './rowKinds';
 import { rememberBubbleWidth } from './bubbleWidths';
@@ -77,6 +78,7 @@ function FilaDeMensaje({
   onTocarCita,
   onAbrirHilo,
   destacado = false,
+  album,
 }: {
   item: Row;
   previous?: Row;
@@ -124,6 +126,8 @@ function FilaDeMensaje({
   onAbrirHilo?: (seq: number) => void;
   /** Lo destaqué (20/10): estrella junto a la hora. */
   destacado?: boolean;
+  /** The first photo of an album (pending 12): it draws the card with all of them. */
+  album?: readonly ChatMessage[];
 }) {
   const colores = useColores();
 
@@ -215,7 +219,8 @@ function FilaDeMensaje({
 
   return (
     <DeslizarParaResponder
-      habilitado={!isPending(item) && !enSeleccion}
+      // An album's sideways swipes move its photos, never reply (José, 22/10): reply from the long-press menu.
+      habilitado={!isPending(item) && !enSeleccion && !album}
       onResponder={() => !isPending(item) && onResponder?.(item.seq, preview, mine)}
     >
     <View
@@ -293,7 +298,7 @@ function FilaDeMensaje({
             />
           ) : null}
 
-          <MessageMedia item={item} mine={mine} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} onGifTap={jwt && !isPending(item) ? (seq) => showGifOptions({ jwt, chatId: item.chatId, seq, onOpen: () => onVerImagen?.(seq) }) : undefined} author={{ name: mine ? 'Tú' : (nombreAutor ?? ''), photo: fotoAutor }} />
+          {album ? <AlbumCarousel items={album} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} /> : <MessageMedia item={item} mine={mine} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} onGifTap={jwt && !isPending(item) ? (seq) => showGifOptions({ jwt, chatId: item.chatId, seq, onOpen: () => onVerImagen?.(seq) }) : undefined} author={{ name: mine ? 'Tú' : (nombreAutor ?? ''), photo: fotoAutor }} />}
 
           {!isPending(item) && item.deletedAt ? (
             /**

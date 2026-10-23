@@ -1,5 +1,5 @@
-import { useCallback, type ComponentProps } from 'react';
-import { alreadyGreeted } from '@lilachat/shared';
+import { useCallback, useMemo, type ComponentProps } from 'react';
+import { albumLayout, alreadyGreeted } from '@lilachat/shared';
 import { formatDayLabel, isAnimatedImage, memberBadge, miReaccion, canOpenThread, puedeReaccionar, resolveDeliveryState, startsNewDay, usesFlatLayout, type MemberPill } from '@lilachat/shared';
 import { DivisorNoLeidos } from './useDivisorNoLeidos';
 import { DaySeparator, isPending, MessageRow, type Row } from './MessageRow';
@@ -63,8 +63,18 @@ export function useDibujarFila(p: {
   const { citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas } = p;
   const { onReaccionar, onMasEmojis, onVerReacciones, destacados } = p;
   const { onGreet } = p;
+  // Photos sent together (pending 12): the first draws the album, the others nothing.
+  const albums = useMemo(() => {
+    const confirmed = rows.filter((row): row is ChatMessage => !isPending(row));
+    const bySeq = new Map(confirmed.map((row) => [row.seq, row]));
+    return { roles: albumLayout(confirmed), bySeq };
+  }, [rows]);
   return useCallback(
     ({ item, index }: { item: Row; index: number }) => {
+      // The flat (Slack) rows keep each photo apart.
+      const albumRole = isPending(item) || flat ? undefined : albums.roles.get(item.seq);
+      if (albumRole?.role === 'member') return <></>;
+      const album = albumRole?.role === 'head' ? albumRole.seqs.map((seq) => albums.bySeq.get(seq)).filter((one): one is ChatMessage => Boolean(one)) : undefined;
       const previous = rows[index - 1];
       const next = rows[index + 1];
       const at = isPending(item) ? item.queuedAt : item.at;
@@ -135,6 +145,7 @@ export function useDibujarFila(p: {
             onTocarCita={onTocarCita}
             onAbrirHilo={onAbrirHilo}
             destacado={!isPending(item) && destacados.has(item.seq)}
+            album={album}
           />
           )}
           {!isPending(item) && item.reacciones?.length && !item.deletedAt ? (
@@ -158,6 +169,6 @@ export function useDibujarFila(p: {
         </>
       );
     },
-    [rows, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, flat, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir, citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas, onReaccionar, onMasEmojis, onVerReacciones, destacados, onGreet]
+    [rows, albums, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, flat, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir, citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas, onReaccionar, onMasEmojis, onVerReacciones, destacados, onGreet]
   );
 }

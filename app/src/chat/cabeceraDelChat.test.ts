@@ -13,6 +13,13 @@ const nombres = new Map([
  * en un grupo dice QUIÉN escribe, y si nadie escribe, quiénes están.
  */
 describe('subtituloDelChat', () => {
+  it('online with a chosen status says it, like «ausente» or «ocupado» (pending 15)', () => {
+    // Arrange / Act / Assert
+    expect(subtituloDelChat({ esGrupo: false, escriben: [], otroEnLinea: true, otroEstado: 'busy', nombres, yo: 'yo' })).toBe('ocupado');
+    expect(subtituloDelChat({ esGrupo: false, escriben: [], otroEnLinea: true, otroEstado: 'away', nombres, yo: 'yo' })).toBe('ausente');
+    expect(subtituloDelChat({ esGrupo: false, escriben: ['w'], otroEnLinea: true, otroEstado: 'busy', nombres, yo: 'yo' })).toBe('escribiendo…');
+  });
+
   it('1:1: «escribiendo…» y «en línea», como antes', () => {
     expect(subtituloDelChat({ esGrupo: false, escriben: ['w'], otroEnLinea: false, nombres, yo: 'yo' })).toBe('escribiendo…');
     expect(subtituloDelChat({ esGrupo: false, escriben: [], otroEnLinea: true, nombres, yo: 'yo' })).toBe('en línea');

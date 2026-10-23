@@ -6,7 +6,7 @@
  * .env de dev sale apuntando al emulador y falla con wifi andando — el script
  * de release lo fija y lo verifica dentro del binario).
  */
-import type { ChatList, DestacadoEnLista, NotificationLevel, ResumenDeHiloEnCliente, VistaDelFijado, VistaPreviaDeEnlace } from '@lilachat/shared';
+import type { ChatList, DestacadoEnLista, PresenceMode, NotificationLevel, ResumenDeHiloEnCliente, VistaDelFijado, VistaPreviaDeEnlace } from '@lilachat/shared';
 import type { ServerMessage } from '../chat/socketClient';
 import { unSoloPedido } from './pedidoUnico';
 import { buildHeader, reportStatus } from './appBuild';
@@ -108,6 +108,13 @@ export const deleteChatList = (token: string, listId: string) => authed<{ ok: tr
 export const createCallLink = (token: string, chatId: string, video: boolean) => authed<{ url: string }>('POST', `/api/chats/${chatId}/call-link`, token, { video });
 
 export const openCallLink = (token: string, linkToken: string) => get<{ chatId: string; video: boolean; name: string | null }>(`/api/call-links/${encodeURIComponent(linkToken)}`, token);
+
+/** My presence and «últ. vez» (pending 15): what the others see. */
+export type PresencePrefs = { mode: PresenceMode; lastSeenHidden: boolean };
+
+export const readPresence = (token: string) => get<PresencePrefs>('/api/me/presence', token);
+
+export const savePresence = (token: string, prefs: PresencePrefs) => authed<PresencePrefs>('PUT', '/api/me/presence', token, prefs);
 
 export type Programado = { id: string; chatId: string; body: string; sendAt: string };
 

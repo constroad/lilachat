@@ -1,4 +1,4 @@
-import { formatUltimaVez } from '@lilachat/shared';
+import { formatUltimaVez, presenceLine, type PresenceStatus } from '@lilachat/shared';
 
 /**
  * El subtítulo de la cabecera de un chat (FL3). En un 1:1, «escribiendo…»,
@@ -10,6 +10,8 @@ export function subtituloDelChat(params: {
   /** Ids de los que están escribiendo ahora (sin mí). */
   escriben: readonly string[];
   otroEnLinea: boolean;
+  /** «Ausente» or «Ocupado», chosen by the other (pending 15). */
+  otroEstado?: PresenceStatus;
   nombres: ReadonlyMap<string, string>;
   yo: string;
   /** Cuándo se lo vio por última vez (ISO), si se sabe. Solo en un 1:1. */
@@ -18,7 +20,7 @@ export function subtituloDelChat(params: {
 }): string {
   if (!params.esGrupo) {
     if (params.escriben.length > 0) return 'escribiendo…';
-    if (params.otroEnLinea) return 'en línea';
+    if (params.otroEnLinea) return (presenceLine({ online: true, status: params.otroEstado }) ?? '').toLowerCase();
     return params.ultimaVez ? formatUltimaVez(params.ultimaVez, params.ahora) : '';
   }
   if (params.escriben.length > 0) {

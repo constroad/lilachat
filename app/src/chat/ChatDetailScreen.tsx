@@ -32,7 +32,7 @@ import { ParticipantesDelGrupo, type Miembro } from './ParticipantesDelGrupo';
 import { VisorDeFoto } from '../ui/VisorDeFoto';
 import { RecordatoriosDelGrupo } from './RecordatoriosDelGrupo';
 import { EditarDescripcion, TarjetaDeDescripcion } from './descripcion/DescripcionDelGrupo';
-import { GroupFunCard } from './GroupFunCard';
+import { BirthdaysCard, GroupFunCard } from './GroupFunCard';
 import { SeccionCompartido } from './CompartidoEnElChat';
 import { useMargenes } from '../ui/useMargenes';
 import type { ServerMessage } from './socketClient';
@@ -64,6 +64,7 @@ type Detalle = {
   avisos?: NotificationLevel;
   /** Nudges and winks in a group, switched on by an admin (21/10). */
   funAllowed?: boolean;
+  birthdaysOn?: boolean;
   members: Miembro[];
 };
 
@@ -454,6 +455,7 @@ export function ChatDetailScreen({
 
             {esGrupo || esBorrador ? <TarjetaDeDescripcion descripcion={detalle!.descripcion} editable={puedoEditarInfo} onEditar={() => setEditandoDescripcion(true)} /> : null}
             {esGrupo ? <GroupFunCard chatId={chatId} jwt={credential.jwt} allowed={detalle!.funAllowed === true} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} /> : null}
+            {detalle && !esBorrador ? <BirthdaysCard chatId={chatId} jwt={credential.jwt} on={detalle.birthdaysOn === true} isGroup={esGrupo} isAdmin={detalle.members.some((uno) => uno.esYo && uno.role === 'admin')} /> : null}
             {tarjetas}
 
             <View onLayout={(event) => ((sharedY.current = event.nativeEvent.layout.y), followShared.current && scrollToShared())}>

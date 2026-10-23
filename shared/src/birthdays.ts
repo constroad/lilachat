@@ -44,3 +44,11 @@ export function birthdayCardFor(rows: readonly NoticeRow[], params: { me: string
   }
   return null;
 }
+
+const DAY_MS = 86_400_000;
+
+/** Tomorrow in Lima, for the admins' heads-up (pending 72). */
+export const limaTomorrowKey = (now: Date): string => limaDayKey(new Date(now.getTime() + DAY_MS));
+
+/** What a group's admins read the day before (pending 72, José 22/10): time to prepare something. */
+export const birthdayHeadsUpText = (name: string, age?: number): string => (age ? `Mañana cumple ${name} · ${age} años` : `Mañana cumple ${name}`);

@@ -1,5 +1,6 @@
 import { DANCES } from './winkDances.js';
 import { danceTrack, type ActorKey, type Sketch } from './winkTimeline.js';
+import { ghost, mummy, pumpkin, vampire, witch } from './winkSketchesHalloween.js';
 import { appearAt, beats, character, FLOOR_Y, OFF_LEFT, OFF_RIGHT, pump, popIn, prop, rig, SIZE, STANDARD_MS, sway, turn, walk, wiggle, wink } from './winkSketchKit.js';
 import type { CharacterWinkId, SiteWinkId } from './winks.js';
 
@@ -544,6 +545,11 @@ function rainy(): Sketch {
 
 export const WINK_SKETCHES: Record<SketchWinkId, Sketch> = {
   rainy: rainy(),
+  pumpkin: pumpkin(),
+  vampire: vampire(),
+  mummy: mummy(),
+  witch: witch(),
+  ghost: ghost(),
   piggy: piggy(),
   balloon: balloon(),
   sweetheart: sweetheart(),

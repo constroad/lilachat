@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ageOn, birthdayCardFor, isBirthdayToday, limaDayKey, limaHour } from './birthdays.js';
+import { ageOn, birthdayCardFor, birthdayHeadsUpText, isBirthdayToday, limaDayKey, limaHour, limaTomorrowKey } from './birthdays.js';
 import { textoDeAviso } from './avisoDeGrupo.js';
 
 describe('birthdays in chats (pending 17)', () => {
@@ -38,5 +38,13 @@ describe('birthdays in chats (pending 17)', () => {
     const rows = [{ seq: 9, at: now.toISOString(), senderId: 'ana', deletedAt: '2026-10-22T20:10:00Z', system: { evento: 'cumpleanos', valor: '36' } }];
     // Act / Assert
     expect(birthdayCardFor(rows, { me: 'jose', todayKey: limaDayKey(now), seen: () => false })).toBeNull();
+  });
+
+  it('the heads-up for tomorrow, crossing the month in Lima', () => {
+    // Act / Assert
+    expect(limaTomorrowKey(new Date('2026-10-31T20:00:00Z'))).toBe('2026-11-01');
+    expect(limaTomorrowKey(new Date('2026-11-01T03:00:00Z'))).toBe('2026-11-01');
+    expect(birthdayHeadsUpText('Carla', 29)).toBe('Mañana cumple Carla · 29 años');
+    expect(birthdayHeadsUpText('Beto')).toBe('Mañana cumple Beto');
   });
 });

@@ -1,5 +1,6 @@
 import { WINK_PROPS, type WinkArtId, type WinkPropId } from './winkArt.js';
 import { WINK_SKETCHES } from './winkSketches.js';
+import { seasonOf, type WinkSeason } from './winkSeasons.js';
 import type { ScreenEffect } from './winkTimeline.js';
 
 /**
@@ -12,7 +13,9 @@ import type { ScreenEffect } from './winkTimeline.js';
  * so the app and the web, sender and receiver, see the same. PURE: the app,
  * the web and the server use it.
  */
-export type CharacterWinkId = 'piggy' | 'balloon' | 'worker' | 'cuppa' | 'sweetheart' | 'bear' | 'kitty' | 'puppy' | 'panda' | 'brick' | 'rainy';
+export type CharacterWinkId = 'piggy' | 'balloon' | 'worker' | 'cuppa' | 'sweetheart' | 'bear' | 'kitty' | 'puppy' | 'panda' | 'brick' | 'rainy' | HalloweenWinkId;
+/** Pending 73: the Halloween ones (sheet `r151-halloween`). */
+export type HalloweenWinkId = 'pumpkin' | 'vampire' | 'mummy' | 'witch' | 'ghost';
 export type SiteWinkId = 'cone' | 'roller' | 'dumptruck' | 'excavator' | 'paver' | 'flagger';
 export type EmojiWinkId = 'hearts' | 'applause' | 'party' | 'laugh' | 'hug' | 'hardhat' | 'coffee' | 'done';
 export type WinkId = CharacterWinkId | SiteWinkId | EmojiWinkId;
@@ -28,10 +31,10 @@ export type WinkSound =
   | 'cheer' | 'partyhorn' | 'laugh' | 'yawn' | 'snore' | 'alarm' | 'rumble' | 'sizzle' | 'whistle' | 'crash';
 export const WINK_SOUNDS: readonly WinkSound[] = ['chime', 'pop', 'clap', 'horn', 'groove', 'rock', 'ting', 'boing', 'smooch', 'whoosh', 'splash', 'drip', 'knock', 'glass', 'thump', 'squeeze', 'cheer', 'partyhorn', 'laugh', 'yawn', 'snore', 'alarm', 'rumble', 'sizzle', 'whistle', 'crash'];
 /** The «Guiños» panel shows them in these three groups. */
-export type WinkGroup = 'characters' | 'site' | 'emoji';
+export type WinkGroup = 'characters' | 'site' | 'emoji' | 'season';
 
 /** `particlesAt`: the share of the wink the particles fly in (none without it). */
-type WinkBase = { id: WinkId; name: string; group: WinkGroup; particles: readonly string[]; motion: WinkMotion; durationMs: number; particlesAt?: readonly [number, number] };
+type WinkBase = { id: WinkId; name: string; group: WinkGroup; particles: readonly string[]; motion: WinkMotion; durationMs: number; particlesAt?: readonly [number, number]; season?: WinkSeason };
 /** A sketch (`WINK_SKETCHES`); its tile in the panel is the character, or `tile` for a wink without one (the water balloon) or whose id is not its art's (the dog under the rain). */
 export type CharacterWink = WinkBase & { kind: 'character'; tile?: WinkPropId | WinkArtId };
 /** The first winks (José, 21/10: «deja los emojis que tenías antes, están bien»): a big emoji that pops and wiggles. */
@@ -59,6 +62,12 @@ export const WINKS: readonly Wink[] = [
   character('brick', 'Ladrillo fisicoculturista', 'characters', ['✨', '💪', '⭐'], 'burst'),
   // Pending 60 (José, 22/10): a sad dog the rain picks on, drawn in Stitch (`r149-perrito-lluvia`).
   character('rainy', 'Perrito bajo la lluvia', 'characters', ['💧', '💦'], 'rain', 'dog-sad'),
+  // Halloween (pending 73): offered from October 1 to November 2.
+  { ...character('pumpkin', 'Calabaza obrera', 'season', ['🍬', '🍭'], 'burst', 'pumpkin-guy'), season: 'halloween' },
+  { ...character('vampire', 'Jefe vampiro', 'season', ['🦇'], 'burst', 'vampire-boss'), season: 'halloween' },
+  { ...character('mummy', 'Momia de obra', 'season', [], 'rise', 'mummy-worker'), season: 'halloween' },
+  { ...character('witch', 'Bruja contadora', 'season', ['✨', '💚'], 'rise', 'witch-accountant'), season: 'halloween' },
+  { ...character('ghost', 'Fantasma practicante', 'season', ['👻'], 'rise', 'ghost-intern'), season: 'halloween' },
   // Construction, roads and asphalt (José, 21/10: «agrega conceptos de obra, pistas y asfalto»).
   character('cone', 'Cono cumbiero', 'site', ['🎵', '🎶'], 'rise'),
   character('roller', 'Rodillo chévere', 'site', ['💨', '✨'], 'rise'),
@@ -98,6 +107,14 @@ export function isWinkId(value: unknown): value is WinkId {
 /** A wink drawn by a prop (the water balloon), not by a character: its tile is drawn bigger. */
 export function winkTileIsProp(wink: CharacterWink): boolean {
   return Boolean(wink.tile && wink.tile in WINK_PROPS);
+}
+
+/** The panel's groups (pending 73): the season's winks first when it is on, then the usual three; out of season they are not offered. */
+export function winkPanelGroups(now: Date): { key: string; title: string; winks: Wink[] }[] {
+  const season = seasonOf(now);
+  const seasonal = season ? [{ key: season.season, title: season.title, winks: WINKS.filter((wink) => wink.season === season.season) }] : [];
+  const usual = ([['characters', 'Personajes'], ['site', 'Obra y pistas'], ['emoji', 'Emojis']] as const).map(([group, title]) => ({ key: group, title, winks: WINKS.filter((wink) => wink.group === group && !wink.season) }));
+  return [...seasonal, ...usual].filter((group) => group.winks.length > 0);
 }
 
 export function winkById(id: string | undefined): Wink | undefined {

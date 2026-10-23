@@ -78,6 +78,25 @@ describe('the bots fake', () => {
     expect(JSON.parse(event.body)).toMatchObject({ type: 'button.click', event_id: event.headers['x-lilachat-delivery'] });
   });
 
+  it('slash commands like the server: register, invoke signed, answer later up to the rules', async () => {
+    const { token, signing } = await install();
+    const asBot = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+    expect((await call('/api/bots/commands', { method: 'PUT', headers: asBot, body: JSON.stringify({ commands: [{ command: '/Clima', description: 'x' }] }) })).body.error).toBe('invalid_request');
+    expect((await call('/api/bots/commands', { method: 'PUT', headers: asBot, body: JSON.stringify({ commands: [{ command: 'clima', description: 'Clima de hoy', usage_hint: '[distrito]' }] }) })).body).toEqual({ commands: [{ command: 'clima', description: 'Clima de hoy', usage_hint: '[distrito]' }] });
+    expect((await call('/__fake/command', { method: 'POST', headers: asBot, body: JSON.stringify({ command: 'tanques' }) })).status).toBe(404);
+    const invoked = await call('/__fake/command', { method: 'POST', headers: asBot, body: JSON.stringify({ command: 'clima', text: 'lurin' }) });
+    expect(invoked.body.outcome).toBe('pending');
+    const event = received.find((one) => one.headers['x-lilachat-event'] === 'command.invoked')!;
+    expect(event.headers['x-lilachat-signature']).toBe(`v1=${createHmac('sha256', signing).update(`${event.headers['x-lilachat-timestamp']}.${event.body}`).digest('hex')}`);
+    expect(JSON.parse(event.body).data).toMatchObject({ command_id: invoked.body.command_id, command: 'clima', text: 'lurin', user: { phone: '51902049935' } });
+    const respond = (body: unknown) => call(`/api/bots/commands/${invoked.body.command_id}/respond`, { method: 'POST', headers: asBot, body: JSON.stringify(body) });
+    expect((await respond({})).status).toBe(400);
+    expect((await respond({ text: 'Lurín: 24 °C' })).body).toEqual({ response_type: 'ephemeral' });
+    for (let index = 0; index < 4; index++) await respond({ text: `vez ${index}` });
+    expect((await respond({ text: 'una más' })).body.error).toBe('too_many_responses');
+    expect((await call('/__fake/command-responses')).body.responses).toHaveLength(5);
+  });
+
   it('revoking kills the token', async () => {
     const { token } = await install();
     expect((await call('/api/oauth/revoke', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })).status).toBe(200);

@@ -3,8 +3,10 @@ import { Types } from 'mongoose';
 import { canManageMembers, toInternationalPhone } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Message } from '../chatModels.js';
 import { UserModel } from '../models.js';
+import { crearLimiteDeIntentos } from '../limiteDeIntentos.js';
 import { asyncRoute, requireSession } from '../requireSession.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
+import { commandGroupsOf, invokeCommand } from './botCommands.js';
 import { revokeInstallation } from './botInstall.js';
 import { sendBotEvent } from './botEvents.js';
 import { BotAppModel, BotInstallationModel } from './botModels.js';
@@ -17,6 +19,8 @@ import { botHearsAction } from './botTriggers.js';
  * `app.uninstalled` and its token dies).
  */
 const isId = (value: unknown): value is string => typeof value === 'string' && Types.ObjectId.isValid(value);
+const ONE_MINUTE_MS = 60_000;
+const COMMANDS_PER_MINUTE = 20;
 
 async function adminOf(workspaceId: string, userId: Types.ObjectId): Promise<boolean> {
   if (!isId(workspaceId)) return false;
@@ -40,6 +44,20 @@ async function appsOf(workspaceId: string) {
 
 export function buildBotUserRouter(): Router {
   const router = Router();
+  const commandTries = crearLimiteDeIntentos({ maximo: COMMANDS_PER_MINUTE, ventanaMs: ONE_MINUTE_MS });
+  // The composer's «/» (§c-bis): asked once per space when the line starts with a slash, never polled.
+  router.get('/workspaces/:id/commands', requireSession, asyncRoute(async (req, res) => {
+    const groups = await commandGroupsOf(req.params.id!, req.session!.userId);
+    if (!groups) return void res.status(404).json({ message: 'Ese espacio no existe.' });
+    res.json({ groups });
+  }));
+  router.post('/chats/:chatId/commands', requireSession, asyncRoute(async (req, res) => {
+    const userId = req.session!.userId;
+    if (!commandTries.permitir(String(userId))) return void res.status(429).set('Retry-After', '60').json({ message: 'Más de 20 comandos por minuto. Espera un momento.' });
+    const outcome = await invokeCommand(userId, req.params.chatId!, { appId: req.body?.app_id, command: req.body?.command, text: req.body?.text });
+    if ('error' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
+    res.json(outcome);
+  }));
   router.post('/chats/:chatId/card-actions', requireSession, asyncRoute(async (req, res) => {
     const userId = req.session!.userId;
     const chatId = req.params.chatId;

@@ -1,10 +1,11 @@
 import express, { Router, type NextFunction, type Request, type Response } from 'express';
-import { toInternationalPhone, validateBotCard, validateBotPost } from '@lilachat/shared';
+import { toInternationalPhone, validateBotCard, validateBotCommands, validateBotPost } from '@lilachat/shared';
 import { ChatModel, type Chat } from '../chatModels.js';
 import { crearLimiteDeIntentos } from '../limiteDeIntentos.js';
 import { UserModel } from '../models.js';
 import { asyncRoute, requireSession } from '../requireSession.js';
 import { WorkspaceMemberModel, WorkspaceModel } from '../workspaceModels.js';
+import { commandsOfApp, commandsToWire, registerCommands, respondToCommand } from './botCommands.js';
 import { installationByToken, revokeInstallation } from './botInstall.js';
 import { postBotMessage, updateBotMessage } from './botMessages.js';
 import type { BotInstallation } from './botModels.js';
@@ -98,6 +99,17 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
     const text = typeof body.text === 'string' && body.text.trim() ? body.text.trim() : undefined;
     if (!text && !card) return void res.status(400).json({ error: 'invalid_request', message: 'Manda text o card.' });
     const outcome = await updateBotMessage(req.bot!, String(req.params.id), { ...(text ? { text } : {}), ...(card?.ok ? { card: card.card } : {}) }, notifyEdited);
+    if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+    res.json(outcome);
+  }));
+  router.get('/commands', asyncRoute(async (req, res) => res.json({ commands: commandsToWire(await commandsOfApp(req.bot!)) })));
+  router.put('/commands', asyncRoute(async (req, res) => {
+    const valid = validateBotCommands(req.body);
+    if (!valid.ok) return void res.status(400).json({ error: 'invalid_request', message: valid.message });
+    res.json({ commands: commandsToWire(await registerCommands(req.bot!, valid.commands)) });
+  }));
+  router.post('/commands/:id/respond', asyncRoute(async (req, res) => {
+    const outcome = await respondToCommand(req.bot!, String(req.params.id), req.body);
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.json(outcome);
   }));

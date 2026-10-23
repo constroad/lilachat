@@ -11,10 +11,13 @@ import { eventSignature } from './botSecrets.js';
  * Retries are timers in this process, not a poll of the database: at boot,
  * `resumeBotDeliveries` sets the timers of what was left pending.
  */
-export type BotEventType = 'message.created' | 'button.click' | 'checklist.item.toggled' | 'app.uninstalled';
+export type BotEventType = 'message.created' | 'button.click' | 'checklist.item.toggled' | 'app.uninstalled' | 'command.invoked';
+export type WebhookReply = { status: number | null; body: unknown; error?: string };
 
 const ATTEMPT_TIMEOUT_MS = 10_000;
 const ERROR_MAX = 200;
+/** A command's answer is at most a 16 KB card plus its text: anything bigger is not read. */
+const REPLY_MAX_BYTES = 64_000;
 let retryDelaysMs: readonly number[] = [10_000, 60_000, 300_000, 1_800_000];
 
 /** Tests shorten the waits. */
@@ -22,9 +25,24 @@ export function configureBotDeliveries(options: { retryDelaysMs: readonly number
   retryDelaysMs = options.retryDelaysMs;
 }
 
+const envelope = (installation: Pick<BotInstallation, '_id' | 'workspaceId'>, deliveryId: string, type: BotEventType, data: Record<string, unknown>) =>
+  JSON.stringify({ event_id: deliveryId, type, installation_id: String(installation._id), space_id: String(installation.workspaceId), created_at: new Date().toISOString(), data });
+
+function signedHeaders(signingSecret: string, event: string, deliveryId: string, installationId: Types.ObjectId, body: string): Record<string, string> {
+  const timestamp = Date.now();
+  return {
+    'Content-Type': 'application/json',
+    'X-Lilachat-Event': event,
+    'X-Lilachat-Delivery': deliveryId,
+    'X-Lilachat-Installation': String(installationId),
+    'X-Lilachat-Timestamp': String(timestamp),
+    'X-Lilachat-Signature': eventSignature(signingSecret, timestamp, body),
+  };
+}
+
 export async function sendBotEvent(installation: Pick<BotInstallation, '_id' | 'workspaceId'>, type: BotEventType, data: Record<string, unknown>): Promise<void> {
   const deliveryId = randomUUID();
-  const body = JSON.stringify({ event_id: deliveryId, type, installation_id: String(installation._id), space_id: String(installation.workspaceId), created_at: new Date().toISOString(), data });
+  const body = envelope(installation, deliveryId, type, data);
   const delivery = await BotDeliveryModel.create({ installationId: installation._id, deliveryId, event: type, body, status: 'pending' });
   void attemptDelivery(delivery._id);
 }
@@ -45,15 +63,7 @@ async function attemptDelivery(id: Types.ObjectId): Promise<void> {
     const installation = await BotInstallationModel.findById(delivery.installationId).select('appId signingSecret').lean();
     const app = installation ? await BotAppModel.findById(installation.appId).select('webhookUrl').lean() : null;
     if (!installation || !app) return void (await BotDeliveryModel.updateOne({ _id: id }, { $set: { status: 'failed', lastError: 'Sin instalación o app' } }));
-    const timestamp = Date.now();
-    const error = await post(app.webhookUrl, {
-      'Content-Type': 'application/json',
-      'X-Lilachat-Event': delivery.event,
-      'X-Lilachat-Delivery': delivery.deliveryId,
-      'X-Lilachat-Installation': String(delivery.installationId),
-      'X-Lilachat-Timestamp': String(timestamp),
-      'X-Lilachat-Signature': eventSignature(installation.signingSecret, timestamp, delivery.body),
-    }, delivery.body);
+    const error = await post(app.webhookUrl, signedHeaders(installation.signingSecret, delivery.event, delivery.deliveryId, delivery.installationId, delivery.body), delivery.body);
     await recordAttempt(delivery, error);
   } catch (error) {
     console.error('[bots] no se pudo entregar un evento:', error instanceof Error ? error.message : error);
@@ -80,4 +90,35 @@ export async function resumeBotDeliveries(): Promise<number> {
     setTimeout(() => void attemptDelivery(delivery._id), wait).unref();
   }
   return pending.length;
+}
+
+/**
+ * A slash command (§c-bis): the event goes out ONCE and the person waits for
+ * the answer in the response body, so there is no queue and no retry. A
+ * timeout is not an error: the app may still answer through `/respond`.
+ */
+export async function callBotWebhook(installation: Pick<BotInstallation, '_id' | 'workspaceId' | 'signingSecret'> & { webhookUrl: string }, type: BotEventType, data: Record<string, unknown>, timeoutMs: number): Promise<WebhookReply> {
+  const deliveryId = randomUUID();
+  const body = envelope(installation, deliveryId, type, data);
+  let reply: WebhookReply;
+  try {
+    const response = await fetch(installation.webhookUrl, { method: 'POST', headers: signedHeaders(installation.signingSecret, type, deliveryId, installation._id, body), body, signal: AbortSignal.timeout(timeoutMs) });
+    const text = (await response.text()).slice(0, REPLY_MAX_BYTES);
+    let parsed: unknown = null;
+    try {
+      parsed = text.trim() ? JSON.parse(text) : null;
+    } catch {
+      parsed = undefined; // a body that is not JSON: the answer is broken, not missing
+    }
+    reply = { status: response.status, body: parsed, ...(response.ok ? {} : { error: `HTTP ${response.status}` }) };
+  } catch (error) {
+    const slow = error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError');
+    // Slow is the deferred answer, not a broken app: Integraciones keeps its health.
+    if (slow) return { status: null, body: null, error: 'timeout' };
+    reply = { status: null, body: null, error: (error instanceof Error ? error.message : String(error)).slice(0, ERROR_MAX) };
+  }
+  const ok = reply.status !== null && reply.status < 400;
+  // Integraciones' health, not awaited: the person is waiting for the answer, not for this.
+  void BotInstallationModel.updateOne({ _id: installation._id }, { $set: { lastDelivery: { at: new Date(), ok, ...(ok || !reply.error ? {} : { error: reply.error }) } } }).catch((error: unknown) => console.error('[bots] no se pudo guardar la última entrega:', error instanceof Error ? error.message : error));
+  return reply;
 }

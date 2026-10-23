@@ -84,7 +84,7 @@ export function createFake(options = {}) {
   };
   let state;
   const reset = () => {
-    state = { codes: new Map(), installation: null, messages: [], deliveries: [], minute: { start: Date.now(), used: 0 }, seq: 0, joined: new Set(config.channels.filter((c) => c.visibility === 'public').map((c) => c.id)) };
+    state = { codes: new Map(), installation: null, messages: [], deliveries: [], minute: { start: Date.now(), used: 0 }, seq: 0, joined: new Set(config.channels.filter((c) => c.visibility === 'public').map((c) => c.id)), commands: [], runs: new Map(), commandResponses: [] };
   };
   reset();
 
@@ -194,6 +194,66 @@ export function createFake(options = {}) {
     return [302, back.toString()];
   }
 
+  // Slash commands (§c-bis): same rules as the server, without its dependencies.
+  function registerCommands(body) {
+    if (!Array.isArray(body.commands)) return [400, { error: 'invalid_request', message: 'Falta «commands»: la lista de comandos de la app.' }];
+    if (body.commands.length > 25) return [400, { error: 'invalid_request', message: 'Una app registra hasta 25 comandos.' }];
+    const commands = [];
+    for (const entry of body.commands) {
+      const name = typeof entry?.command === 'string' ? entry.command : '';
+      if (!/^[a-z][a-z0-9_-]+$/.test(name) || name.length > 32) return [400, { error: 'invalid_request', message: `«${name}» no sirve como comando.` }];
+      const description = typeof entry.description === 'string' ? entry.description.trim().slice(0, 100) : '';
+      if (!description) return [400, { error: 'invalid_request', message: `«/${name}» necesita una descripción.` }];
+      if (commands.some((one) => one.command === name)) return [400, { error: 'invalid_request', message: `El comando «/${name}» está repetido.` }];
+      const hint = typeof entry.usage_hint === 'string' ? entry.usage_hint.trim().slice(0, 60) : '';
+      commands.push({ command: name, description, ...(hint ? { usage_hint: hint } : {}) });
+    }
+    state.commands = commands;
+    return [200, { commands }];
+  }
+
+  const validResponse = (body) => (body && (typeof body.text === 'string' && body.text.trim() ? true : body.card && !validateCard(body.card)));
+  const record = (commandId, body, late) => {
+    const responseType = body.response_type === 'in_channel' ? 'in_channel' : 'ephemeral';
+    state.commandResponses.push({ command_id: commandId, response_type: responseType, text: body.text, card: body.card, late, at: new Date().toISOString() });
+    return responseType;
+  };
+
+  async function invokeCommand(body) {
+    const installation = state.installation;
+    if (!installation) return [409, { error: 'not_installed', message: 'Instala la app primero.' }];
+    if (!state.commands.some((one) => one.command === body.command)) return [404, { error: 'command_not_found', message: `No hay un comando /${body.command}.` }];
+    const commandId = `cmd_${randomBytes(6).toString('hex')}`;
+    state.runs.set(commandId, { responses: 0, expiresAt: Date.now() + 15 * 60_000 });
+    const member = config.members[0];
+    const data = { command_id: commandId, command: body.command, text: String(body.text ?? ''), channel: body.channel ?? { id: config.channels[0]?.id, kind: 'channel', name: config.channels[0]?.name }, user: body.user ?? { id: member?.id, name: member?.name, phone: member?.phone ?? null } };
+    const id = randomUUID();
+    const raw = JSON.stringify({ event_id: id, type: 'command.invoked', installation_id: installation.id, space_id: installation.spaceId, created_at: new Date().toISOString(), data });
+    const timestamp = Date.now();
+    try {
+      const response = await fetch(config.webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Lilachat-Event': 'command.invoked', 'X-Lilachat-Delivery': id, 'X-Lilachat-Installation': installation.id, 'X-Lilachat-Timestamp': String(timestamp), 'X-Lilachat-Signature': sign(installation.signingSecret, timestamp, raw) }, body: raw, signal: AbortSignal.timeout(3_000) });
+      const text = await response.text();
+      if (!response.ok) return [200, { command_id: commandId, outcome: 'failed' }];
+      if (!text.trim()) return [200, { command_id: commandId, outcome: 'pending' }];
+      const answer = JSON.parse(text);
+      if (!validResponse(answer)) return [200, { command_id: commandId, outcome: 'failed' }];
+      state.runs.get(commandId).responses += 1;
+      return [200, { command_id: commandId, outcome: record(commandId, answer, false) === 'in_channel' ? 'posted' : 'ephemeral' }];
+    } catch {
+      return [200, { command_id: commandId, outcome: 'pending' }];
+    }
+  }
+
+  function respondToCommand(commandId, body) {
+    const run = state.runs.get(commandId);
+    if (!run) return [404, { error: 'command_not_found', message: 'Ese comando no existe o es de otra app.' }];
+    if (!validResponse(body)) return [400, { error: 'invalid_request', message: 'La respuesta lleva «text» o «card».' }];
+    if (run.expiresAt <= Date.now()) return [410, { error: 'command_expired', message: 'Pasaron más de 15 minutos: ese comando ya no se puede responder.' }];
+    if (run.responses >= 5) return [409, { error: 'too_many_responses', message: 'Un comando se responde hasta 5 veces.' }];
+    run.responses += 1;
+    return [200, { response_type: record(commandId, body, true) }];
+  }
+
   const allowMessage = () => {
     if (Date.now() - state.minute.start > 60_000) state.minute = { start: Date.now(), used: 0 };
     state.minute.used += 1;
@@ -211,6 +271,8 @@ export function createFake(options = {}) {
       return id ? [202, { delivery_id: id }] : [409, { error: 'not_installed', message: 'Instala la app primero.' }];
     }
     if (req.method === 'GET' && path === '/__fake/messages') return [200, { messages: state.messages }];
+    if (req.method === 'POST' && path === '/__fake/command') return invokeCommand(await readBody(req));
+    if (req.method === 'GET' && path === '/__fake/command-responses') return [200, { responses: state.commandResponses }];
     if (req.method === 'GET' && path === '/__fake/deliveries') return [200, { deliveries: state.deliveries.map(({ signingSecret: _hidden, ...rest }) => rest) }];
     if (!path.startsWith('/api/')) return [404, { error: 'not_found' }];
     const bot = botOf(req);
@@ -219,6 +281,10 @@ export function createFake(options = {}) {
     if (req.method === 'GET' && path === '/api/bots/me') return [200, { installation_id: bot.id, space: { id: bot.spaceId, name: config.spaceName }, bot_user_id: bot.botUserId }];
     if (req.method === 'GET' && path === '/api/bots/channels') return [200, { channels: config.channels.filter((c) => c.visibility === 'public' || state.joined.has(c.id)).map((c) => ({ ...c, is_member: state.joined.has(c.id) })) }];
     if (req.method === 'GET' && path === '/api/bots/members') return [200, { members: config.members }];
+    if (req.method === 'GET' && path === '/api/bots/commands') return [200, { commands: state.commands }];
+    if (req.method === 'PUT' && path === '/api/bots/commands') return registerCommands(await readBody(req));
+    const responded = path.match(/^\/api\/bots\/commands\/([^/]+)\/respond$/);
+    if (req.method === 'POST' && responded) return respondToCommand(responded[1], await readBody(req));
     if (req.method === 'POST' && path === '/api/bots/messages') return allowMessage() ? postMessage(await readBody(req)) : [429, { error: 'rate_limited', message: 'Más de 60 mensajes por minuto.' }, { 'Retry-After': '60' }];
     const patched = path.match(/^\/api\/bots\/messages\/([^/]+)$/);
     if (req.method === 'PATCH' && patched) {

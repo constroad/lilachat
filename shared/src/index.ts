@@ -121,3 +121,4 @@ export * from './sharedLocation.js';
 export * from './storage.js';
 export * from './releaseNotes.js';
 export * from './botBlocks.js';
+export * from './botCommands.js';

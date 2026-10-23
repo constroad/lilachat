@@ -1,4 +1,5 @@
 import mongoose, { Schema, type Model, type Types } from 'mongoose';
+import type { BotCommand } from '@lilachat/shared';
 
 /**
  * The bots API (`specs/BOTS-API.spec.md`). An app (Lila, through agentes) is
@@ -18,6 +19,20 @@ export type BotApp = {
   webhookUrl: string;
   /** Where Integraciones' «Instalar» sends an admin (agentes picks the company first, 23/10); `?space=<id>` is added. */
   installUrl?: string;
+  /** Its slash commands (§c-bis), the same in every space it is installed in; `PUT /api/bots/commands` replaces them. */
+  commands?: BotCommand[];
+  createdAt: Date;
+};
+
+/** One use of a slash command: the app may answer it later through `/respond` until it expires. */
+export type BotCommandRun = {
+  _id: Types.ObjectId;
+  installationId: Types.ObjectId;
+  chatId: Types.ObjectId;
+  userId: Types.ObjectId;
+  command: string;
+  responses: number;
+  expiresAt: Date;
   createdAt: Date;
 };
 
@@ -73,6 +88,7 @@ const appSchema = new Schema<BotApp>(
     redirectUris: { type: [String], required: true },
     webhookUrl: { type: String, required: true },
     installUrl: { type: String },
+    commands: { type: [{ command: String, description: String, usageHint: String, _id: false }], default: undefined },
   },
   { timestamps: true }
 );
@@ -119,7 +135,21 @@ const deliverySchema = new Schema<BotDelivery>(
 );
 deliverySchema.index({ status: 1, nextAttemptAt: 1 });
 
+// Read by _id only, and the expired ones are purged on each new use: no index of its own to create.
+const commandRunSchema = new Schema<BotCommandRun>(
+  {
+    installationId: { type: Schema.Types.ObjectId, required: true },
+    chatId: { type: Schema.Types.ObjectId, required: true },
+    userId: { type: Schema.Types.ObjectId, required: true },
+    command: { type: String, required: true },
+    responses: { type: Number, default: 0 },
+    expiresAt: { type: Date, required: true },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } }
+);
+
 export const BotAppModel: Model<BotApp> = (mongoose.models.BotApp as Model<BotApp>) ?? mongoose.model<BotApp>('BotApp', appSchema);
 export const BotInstallationModel: Model<BotInstallation> = (mongoose.models.BotInstallation as Model<BotInstallation>) ?? mongoose.model<BotInstallation>('BotInstallation', installationSchema);
 export const OAuthCodeModel: Model<OAuthCode> = (mongoose.models.OAuthCode as Model<OAuthCode>) ?? mongoose.model<OAuthCode>('OAuthCode', codeSchema);
 export const BotDeliveryModel: Model<BotDelivery> = (mongoose.models.BotDelivery as Model<BotDelivery>) ?? mongoose.model<BotDelivery>('BotDelivery', deliverySchema);
+export const BotCommandRunModel: Model<BotCommandRun> = (mongoose.models.BotCommandRun as Model<BotCommandRun>) ?? mongoose.model<BotCommandRun>('BotCommandRun', commandRunSchema);

@@ -12,14 +12,14 @@ import { botOfUser, botsAmong, type BotOfUser } from './botRegistry.js';
  * maps it to the Portal user. Never awaited by who acted: a slow or failing
  * webhook does not hold a message.
  */
-type Person = { id: string; name: string | null; phone: string | null };
+export type Person = { id: string; name: string | null; phone: string | null };
 
-async function personOf(userId: Types.ObjectId | string): Promise<Person> {
+export async function personOf(userId: Types.ObjectId | string): Promise<Person> {
   const user = await UserModel.findById(userId).select('name phone').lean();
   return { id: String(userId), name: user?.name ?? null, phone: user ? toInternationalPhone(user.phone) || null : null };
 }
 
-const channelOf = (chat: Pick<Chat, '_id' | 'kind' | 'name' | 'channel'>) => ({ id: String(chat._id), kind: chat.channel ? 'channel' : chat.kind, ...(chat.name ? { name: chat.name } : {}) });
+export const channelOf = (chat: Pick<Chat, '_id' | 'kind' | 'name' | 'channel'>) => ({ id: String(chat._id), kind: chat.channel ? 'channel' : chat.kind, ...(chat.name ? { name: chat.name } : {}) });
 
 /** Picked from the suggestions (`menciones`) or typed as text: «@Lila» names the bot either way. */
 function mentionsBot(message: Pick<Message, 'body' | 'menciones'>, bot: BotOfUser, botName: string): boolean {

@@ -36,6 +36,7 @@ import { HiloInvalidoError } from './hilos.js';
 import { registerAgendaRelay } from './agendaRelay.js';
 import { BUILD_HEADER, appBelowMinimum, type MinimumSource } from './minimumVersion.js';
 import { avisarCambioDeChat, emitMembersChanged, emitSpacesChanged, avisarEntregadoAlConectar, avisarMensajeNuevo, fijarServidorDelReparto, leerLoPropio, publicarAviso, publicarMensaje } from './reparto.js';
+import { configureCommands } from './bots/botCommands.js';
 
 export { avisarCambioDeChat, avisarCambioDeVinculos, avisarMensajeNuevo, desconectarDispositivo, notifyThread, publicarAviso, publicarMensaje } from './reparto.js';
 
@@ -86,6 +87,7 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
   fijarServidorDelReparto(io);
   configurarEntrega((userId, frame) => void io.to(userRoom(userId)).emit('receipt', frame));
   configurarAvisoDeTarjeta((userId, cambio) => void io.to(userRoom(userId)).emit('ref.changed', cambio));
+  configureCommands({ notify: (userId, notice) => void io.to(userRoom(userId)).emit('command.response', notice) });
   configureWorkspaceNotices(emitSpacesChanged);
   configureMembersNotices(emitMembersChanged);
   configurarCiclo({

@@ -152,7 +152,7 @@ Lilachat hace `POST webhook_url` con:
 
 | Cabecera | Valor |
 | --- | --- |
-| `X-Lilachat-Event` | `message.created` · `button.click` · `checklist.item.toggled` · `app.uninstalled` |
+| `X-Lilachat-Event` | `message.created` · `button.click` · `checklist.item.toggled` · `app.uninstalled` · `command.invoked` |
 | `X-Lilachat-Delivery` | uuid; **el mismo en los reintentos** (para deduplicar) |
 | `X-Lilachat-Installation` | el `installation_id`: con él se busca el `signing_secret` antes de leer el cuerpo |
 | `X-Lilachat-Timestamp` | milisegundos |
@@ -185,6 +185,74 @@ Cuerpo:
   `data: { checklist: { id, title, message_id }, item: { id, text, done,
   assignee_phone? }, user: { id, name, phone } }`.
 - **`app.uninstalled`**: `data: { by: { id, name, phone } }`.
+- **`command.invoked`**: alguien usó un comando «/» de la app (§c-bis). Va UNA
+  vez, sin reintentos, y se espera la respuesta en el cuerpo.
+
+## c-bis) Comandos «/» (0.1.157, como Slack)
+
+Cerrado con agentes el 23/10/2026. Cada app tiene su lista; sale en los chats
+de los espacios donde está instalada, agrupada por app.
+
+**Registro, a nivel de app.** `PUT /api/bots/commands` con el Bearer de
+cualquier instalación de la app. Reemplaza la lista entera (idempotente;
+`[]` la borra). `GET` la misma ruta para leerla.
+
+```json
+{ "commands": [ { "command": "clima", "description": "Clima de hoy en la planta", "usage_hint": "[distrito]" } ] }
+```
+
+- Hasta 25 comandos. `command` en minúsculas, sin «/» ni espacios
+  (`^[a-z][a-z0-9_-]{1,31}$`). `description` hasta 100. `usage_hint`
+  opcional, hasta 60 (se muestra como «Ejemplo de uso»).
+- Responde `{ commands: [...] }`; una lista mal formada, 400
+  `invalid_request`.
+- Más adelante se suma `form` opcional (§73.5 del spec general) sin romper
+  esto.
+
+**Invocación.** Al enviar «/clima lurin», Lilachat manda `command.invoked`
+firmado como los demás eventos:
+
+`data: { command_id, command: "clima", text: "lurin", channel: { id, kind,
+name? }, user: { id, name, phone } }`
+
+`text` es lo que va después del comando, crudo: los argumentos los parsea
+la app.
+
+**Respuesta en el cuerpo (≤ 3 s).** 200 con:
+
+```json
+{ "response_type": "ephemeral" | "in_channel", "text": "…", "card": { …el kit de tarjetas… } }
+```
+
+- `ephemeral` (lo que se asume si falta o no se reconoce): solo lo ve quien lo
+  pidió, con «Solo tú ves esto». **No se guarda**: se va al cerrar el chat. Las
+  acciones de una tarjeta efímera no se pueden tocar (no hay mensaje).
+- `in_channel`: se publica en el chat como mensaje de la app (en un canal
+  público entra sola, como siempre). En un canal privado sin la app o en un
+  1:1 entre personas, cae a efímera.
+- 200 con cuerpo vacío, o pasar de 3 s: queda «pendiente» y la persona ve
+  «<App> está trabajando…».
+- 4xx/5xx o un cuerpo que no se puede mostrar: la persona ve «<App> no pudo
+  responder». Integraciones registra la falla (un timeout no cuenta como
+  falla).
+
+**Respuesta diferida.** `POST /api/bots/commands/{command_id}/respond`, mismo
+cuerpo, con el Bearer de la misma instalación:
+
+- Hasta 5 respuestas en los 15 minutos siguientes al comando.
+- Después: 410 `command_expired`. La sexta: 409 `too_many_responses`. Un
+  comando de otra app: 404 `command_not_found`.
+- Responde `{ response_type }`. La efímera llega por socket
+  (`command.response`) solo a los equipos de quien lo pidió.
+
+**Del lado de Lilachat.**
+- `GET /api/workspaces/:id/commands` → `{ groups: [ { appId, appName,
+  commands } ] }`. Lo pide el compositor una vez por espacio, al escribir «/».
+- `POST /api/chats/:chatId/commands { app_id, command, text }` → `{ commandId,
+  appId, appName, outcome: "ephemeral" | "posted" | "pending" | "failed",
+  response?, message? }`. Hasta 20 comandos por minuto por persona.
+- Los usos viven en `botcommandruns` (se leen por `_id`; los vencidos se
+  borran en cada uso nuevo, sin índice propio).
 
 ## d) Lectura
 
@@ -223,6 +291,11 @@ dependencias. Implementa el mismo contrato en memoria:
 - Control para las pruebas:
   - `POST /__fake/emit { type, data }` firma y manda un evento al
     `WEBHOOK_URL`, con los mismos reintentos.
+  - `POST /__fake/command { command, text, user?, channel? }` hace de
+    persona: manda `command.invoked`, espera 3 s y devuelve `{ command_id,
+    outcome }`. `GET /__fake/command-responses` lista lo que la app respondió
+    (en el cuerpo o por `/respond`). `PUT`/`GET /api/bots/commands` y
+    `/respond` siguen las mismas reglas que el server.
   - `GET /__fake/messages` devuelve lo que publicó el bot.
   - `POST /__fake/reset` vuelve a empezar.
 

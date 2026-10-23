@@ -4909,6 +4909,169 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 118. Avisos de las apps que no ensucian el chat, y `/gastos` sin digitar (análisis del 23/10, pendiente 85)
+
+Pedido de José del 23/10, con capturas de WhatsApp: «mejorarlo brutalmente
+… un análisis serio y profesional … el diseño premium e impactante, que no
+ensucie y que sea fácil de acceder al detalle». El objetivo declarado:
+automatizar lo más posible, liberar tareas de las personas y dejar WhatsApp
+para estos avisos. Diseños: `r155-avisos-canal`, `r155-clima-detalle`,
+`r155-caja-comandos` y `r155-gastos-cola` (Stitch, 23/10).
+
+### 118.1 Lo que pasa hoy (capturas de José)
+
+- **Clima:** un solo mensaje de unas 30 líneas (planta, dos días y la lista
+  de distritos uno por uno). Ocupa más de una pantalla, tapa la
+  conversación y lo importante («NO APTO PARA PRODUCIR») está en la línea 5.
+- **Movimiento de caja:** 10 líneas más un enlace con un token de 64
+  caracteres a la vista. Uno por movimiento.
+- **Líquidos:** una IMAGEN del tablero de tanques (cientos de KB que cada
+  teléfono guarda) y, aparte, la misma información como lista de texto.
+- **Flujo de caja:** Aracely reenvía cada voucher y su descripción («Pago de
+  2 ayudantes x 3 días y 300 de chupetero. Servicio Consorcio El Almirante.
+  Partida única») y otra persona los vuelve a digitar en Portal: monto,
+  fecha, número de operación, proyecto o servicio, partida y el adjunto.
+
+### 118.2 Principios
+
+1. **Una tarjeta, una decisión.** Rótulo (tema y hora), un titular con el
+   veredicto, la cifra clave y a lo sumo una línea de contexto. Nunca más de
+   un tercio de pantalla; nunca una lista larga en el canal.
+2. **El detalle, a un toque y sin salir.** «Ver detalle» abre una hoja con el
+   desglose. Los datos viajan con el mensaje (se abre al instante y sin
+   señal); no es un enlace a Portal. **Hoja para los datos, hilo para la
+   gente:** si el desglose fuera un hilo, serían varios mensajes, avisos y
+   contadores de no leídos; el hilo queda para responder («¿mandamos la
+   cuadrilla igual?»). Esto contesta la duda de José entre tarjeta e hilo.
+3. **Datos, no imágenes.** El agente manda números (serie, unidad, umbrales)
+   y Lilachat dibuja el gráfico con los colores del tema: 1–2 KB en vez de
+   cientos, nada en la galería ni en la memoria del teléfono, nítido en
+   cualquier tamaño y en modo oscuro, tocar una barra muestra su valor, y
+   tiene texto alternativo. Gráficos: barras horizontales (tanques, caja por
+   proyecto), barras verticales (lluvia por día), línea (historial de un
+   tanque) y medidor.
+4. **Archivos por referencia.** Vouchers, guías y fotos se quedan en el
+   servidor; la tarjeta muestra «1 comprobante» o «3 fotos» y abre el visor
+   dentro de la app sin descargarlos (la decisión de José para gastos,
+   extendida a consumos y material). Ningún token largo a la vista.
+5. **Actualizar en vez de repetir.** Lo que cambia de estado (un despacho
+   que sale, va en ruta y llega; el resumen de caja del día) edita SU
+   tarjeta («Actualizado 17:30») en vez de mandar otra. La API ya permite
+   editar (`PATCH /api/bots/messages/:id`).
+6. **Resumen en vez de goteo, y el aviso según la gravedad.** Informativo
+   (sin notificación: «Domingo apto»), aviso (notifica: «Sábado no apto») y
+   urgente (notifica con sonido: un tanque bajo el mínimo). Lo frecuente se
+   agrupa (asistencia: «32 de 35 firmaron · 3 faltan»).
+7. **Una acción clara.** Botones que hacen algo: «Avisar a la cuadrilla»,
+   «Ver en Portal», «Confirmar». Los ejecuta agentes con los permisos de
+   quien toca.
+
+### 118.3 Cada aviso, rediseñado
+
+| Aviso | En el canal (tarjeta) | Al abrir (hoja) | Gravedad |
+| --- | --- | --- | --- |
+| Clima | Veredicto del día para planta («No apto»), «64 % lluvia · 3,3 mm», tres chips de días y «12 distritos con riesgo alto» | Barras de lluvia por día con mm y veredicto; distritos por riesgo (alto · precaución · aptos) con mini barra | aviso si hay «no apto»; si no, informativo |
+| Líquidos | Barras horizontales de los 7 tanques con su valor y el color del umbral; «1 tanque bajo el mínimo» | Historial de cada tanque (línea) | urgente si uno cruza el mínimo |
+| Movimiento de caja | «Egreso · Pagado», monto, proyecto y descripción en una línea, quién registró, «1 comprobante», «Ver en Portal» | Visor del comprobante | informativo |
+| Resumen de caja | Total del día, egresos e ingresos, barras por proyecto (se actualiza en su lugar) | Movimientos del día | informativo |
+| Consumos | Una línea: equipo, cantidad, quién | Detalle y foto si la hay | informativo |
+| Llegada de material | Una línea: material, m³, guía, «3 fotos» | Visor de fotos y guía | informativo |
+| Despacho | Una tarjeta por despacho que cambia de estado | Línea de tiempo | aviso al llegar tarde |
+| Asistencia (firmas) | Resumen: firmaron, faltan | Lista de quién falta | aviso si falta alguien a la hora |
+| Laboratorio / mantenimiento | Solo lo fuera de norma o vencido | Valores y norma | aviso |
+
+En los diseños de Stitch hay que quitar tres leyendas inventadas: «límite
+técnico de tolva (2,0 mm/día)», «Estación central» y «43 frentes». El umbral
+de lluvia para producir sale de la configuración de la empresa en agentes, no
+de un número fijo. El ícono de `/tanques` es un medidor, no un signo de dólar.
+
+### 118.4 Qué construye Lilachat (el «kit» de tarjetas)
+
+La tarjeta de bot v1 (`shared/src/bots.ts`: rótulo, título, estado, campos,
+enlace, acciones) crece con bloques, validados en shared con el mismo zod
+para server, app y web:
+
+- `metric` (valor, unidad, tono), `chips` (días o estados), `chart`
+  (`bar-h | bar-v | line | gauge`, series, unidad y umbrales con tono),
+  `attachments` (cantidad y referencia al visor), `detail` (los mismos
+  bloques más filas de tabla, que se ven en la hoja) y `updatedAt`.
+- Dibujo nativo: `react-native-svg` en la app (ya está) y SVG en la web; los
+  colores salen del tema, nunca del mensaje.
+- Tope por tarjeta (unos 16 KB) para que nadie meta un reporte entero.
+- Comandos con barra por app instalada (`/gastos`, `/clima`, `/tanques`,
+  `/despacho`), ya previstos en el §73.5.
+- **Tarjeta de cola:** una tarjeta con filas que cambian de estado por
+  `PATCH` (a lo sumo una edición por segundo).
+- Los botones viajan como evento firmado a agentes (§73.4). Lilachat no
+  tiene credenciales del Portal.
+
+### 118.5 `/gastos`: el flujo de caja sin digitar
+
+**Hoy:** reenviar el voucher + escribir la descripción + que otra persona
+abra Portal, cree el registro, digite monto, fecha y operación, elija
+proyecto o servicio y partida, y adjunte el archivo.
+
+**Propuesta** (diseño `r155-gastos-cola`):
+
+1. Aracely, en # flujo-caja, suelta los vouchers (fotos o PDF) con un
+   texto, como hoy, o escribe `/gastos` y elige las fotos. Sin formulario.
+2. Lila contesta con una **tarjeta de cola** («Registrando gastos · 4
+   comprobantes en paralelo») y procesa cada voucher por separado, en
+   paralelo, como los subagentes de Claude: lee el comprobante (monto,
+   moneda, fecha y hora, banco o Yape, número de operación, destinatario),
+   interpreta el texto contra el catálogo de esa empresa en Portal
+   (proyecto, servicio o compra, partida) y busca duplicados por número de
+   operación, monto y fecha.
+3. Cada fila pasa a «Listo para confirmar» y deja un **borrador** con todos
+   los campos; lo dudoso va marcado en ámbar («Revisa: proyecto sugerido»).
+   Si no pudo leer algo, lo pregunta en el borrador («No pude leer el
+   monto»).
+4. **Nada entra a Portal sin confirmación**: es plata. «Confirmar» por
+   borrador o «Confirmar los 3 listos»; «Editar» abre un formulario corto ya
+   lleno. Confirma quien tenga el permiso de caja en Portal (agentes lo
+   respeta).
+5. Al confirmar, agentes crea el movimiento en Portal con el comprobante y
+   el borrador se convierte en la tarjeta compacta «Egreso · Pagado» con «1
+   comprobante» y «Ver en Portal». El resumen del día se actualiza solo.
+
+**Cola:** las solicitudes de Aracely (o de quien sea) se acumulan; cada una
+con su estado; como mucho 4 a la vez; reintentos; durable (si agentes se cae,
+retoma). **Costo de IA:** leer un voucher con Haiku 5.5 son unos miles de
+tokens, una fracción de centavo de dólar; los dudosos pasan a Sonnet 5.5,
+alrededor de un centavo. Mil vouchers al mes cuestan menos que unos pocos
+dólares. **Ahorro:** si digitar un voucher toma 3–5 minutos y confirmarlo 15
+segundos, con 300 vouchers al mes son unas 19 horas de una persona por mes.
+El número real sale del conteo de movimientos de caja en Portal (se le pide a
+la sesión de Portal).
+
+**Controles:** confirmación humana siempre; duplicados por número de
+operación; el archivo original se guarda con su huella; los montos se ven
+solo en canales con permiso de caja; Portal registra quién confirmó.
+
+### 118.6 La misma pieza para lo demás
+
+El patrón «la IA arma el borrador, una persona confirma» sirve para: consumo
+por foto del medidor o del vale; llegada de material por foto de la guía (lee
+número y m³); despacho; y checklists y recordatorios que se crean solos desde
+un aviso («Sábado no apto» → recordatorio a la cuadrilla).
+
+### 118.7 Fases
+
+| Fase | Qué | Dónde |
+| --- | --- | --- |
+| A1 | Kit de tarjetas: bloques, gráfico nativo, hoja de detalle, editar en su lugar, comandos, tarjeta de cola | Lilachat |
+| A2 | Mudar clima y líquidos (sin plata: piloto), después caja, consumos y material, con el interruptor WhatsApp/Lilachat por empresa | agentes |
+| A3 | `/gastos` con borrador, confirmación y cola | agentes + Lilachat |
+| A4 | Consumos y material por foto | agentes |
+| A5 | Medir: mensajes por día en el canal, MB por teléfono al mes, minutos de voucher a Portal, % de borradores confirmados sin editar | todos |
+
+### 118.8 Lo que decide José
+
+1. ¿Los montos se ven en # flujo-caja (canal con permiso de caja)?
+2. ¿Quién confirma los gastos?
+3. ¿Arrancamos el piloto con clima y líquidos (sin plata)?
+4. ¿Cuántos vouchers por mes? (para el ahorro real)
+
 ## 117. Análisis del 23/10: alertas vía agentes, API/MCP, «Zernio propio», IA con la suscripción y el Mongo de emergencia
 
 Pedido de José del 23/10 (pendientes 75, 33, 16, IA y 67). Fuentes: la
@@ -10688,6 +10851,11 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     `userId` distintos en `devices` para 6 usuarios. Revisar si borrar una
     cuenta deja sus equipos vivos y qué flujo resuelve el usuario desde el
     equipo.
+85. **Avisos de las apps que no ensucian el chat y `/gastos` sin digitar** —
+    **análisis y diseños en §118 (23/10).** (José, 23/10): tarjetas compactas
+    con el detalle a un toque, gráficos dibujados desde los datos (no
+    imágenes), archivos por referencia, y que la IA registre los gastos desde
+    los vouchers y solo pida confirmar, con cola y trabajo en paralelo.
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

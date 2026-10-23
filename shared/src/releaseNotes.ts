@@ -10,6 +10,10 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.155',
+    items: ['Un video que te mandaron sigue sonando con la pantalla apagada o en otra app, con su control en el aviso.'],
+  },
+  {
     version: '0.1.154',
     items: [
       'Las listas de chats se pliegan como secciones, igual que en Slack.',

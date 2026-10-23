@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View, type ViewToken, u
 import { Modal } from '../ui/Modal';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { uploadedVideoSource } from './uploadedVideoSource';
 import { FlatList, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Download, FileText, Play, Share2, Sticker, Trash2, X } from 'lucide-react-native';
 import { useMargenes } from '../ui/useMargenes';
@@ -88,9 +89,12 @@ const esArchivoSuelto = (mime?: string): boolean => {
  * plays at once): half a second of buffer instead of the two Android waits
  * for, and meanwhile the cover with a spinner, not a black screen.
  */
-function Reproductor({ url, poster }: { url: string; poster?: string }) {
-  const player = useVideoPlayer(url, (reproductor) => {
+function Reproductor({ url, poster, author }: { url: string; poster?: string; author?: string }) {
+  const player = useVideoPlayer(uploadedVideoSource({ url, poster, chatTitle: author }), (reproductor) => {
     reproductor.loop = false;
+    // Pending 74: it keeps playing with the screen off or in another app, with its control in the notification; closing the viewer stops it.
+    reproductor.staysActiveInBackground = true;
+    reproductor.showNowPlayingNotification = true;
     reproductor.bufferOptions = { ...reproductor.bufferOptions, minBufferForPlayback: VIDEO_START_BUFFER_S };
     reproductor.play();
   });
@@ -337,7 +341,7 @@ function Pagina(props: {
     return (
       <View style={{ width: ancho, height: alto }} className="justify-center">
         {props.activa ? (
-          <Reproductor key={foto.url} url={foto.url} poster={foto.miniatura} />
+          <Reproductor key={foto.url} url={foto.url} poster={foto.miniatura} author={foto.autor} />
         ) : (
           <View className="flex-1 items-center justify-center">
             {foto.miniatura ? <Image source={{ uri: foto.miniatura }} style={{ position: 'absolute', width: ancho, height: alto }} contentFit="contain" /> : null}

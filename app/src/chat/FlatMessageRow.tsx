@@ -53,6 +53,8 @@ function FlatRow(props: {
   authorPhoto?: string;
   /** «Residente de obra», «Admin», «Tú»… (`memberBadge`). */
   badge: string | null;
+  /** The author is an installed app (Lila): robot avatar. */
+  authorIsApp?: boolean;
   quoted?: Citado | null;
   selected?: boolean;
   selecting?: boolean;
@@ -95,7 +97,7 @@ function FlatRow(props: {
         className={`-mx-3 flex-row px-3 ${grouped ? 'pt-0.5' : 'pt-3'} ${props.selected ? 'bg-primary/15' : ''}`}
         style={{ gap: FLAT_GAP }}
       >
-        {grouped ? <View style={{ width: FLAT_AVATAR }} /> : <Avatar nombre={name} foto={props.authorPhoto} tamano={FLAT_AVATAR} />}
+        {grouped ? <View style={{ width: FLAT_AVATAR }} /> : <Avatar nombre={name} foto={props.authorPhoto} tamano={FLAT_AVATAR} bot={props.authorIsApp} />}
         <View className="min-w-0 flex-1">
           {grouped ? null : (
             <View className="mb-0.5 flex-row flex-wrap items-center gap-x-2 gap-y-0.5">

@@ -26,6 +26,8 @@ export type ContextoDeLaConversacion = {
   flat?: boolean;
   /** The pill next to a name in that format: «Admin», «Tú»… */
   badgeOf?: (senderId: string) => string | null;
+  /** The author is an installed app (Lila): robot avatar (§118.2, point 8). */
+  isAppOf?: (senderId: string) => boolean;
   /** Member photos for the thread chip and root (backlog 18: only initials showed). */
   photos?: ReadonlyMap<string, string>;
   /** El mensaje citado por `replyToSeq`, si está cargado. */

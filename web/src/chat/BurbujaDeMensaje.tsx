@@ -115,7 +115,7 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
  */
 function FlatMessage(props: Props) {
   const { mensaje, agrupado } = props;
-  const { nombres, photos, yo, badgeOf } = useConversacion();
+  const { nombres, photos, yo, badgeOf, isAppOf } = useConversacion();
   const mine = mensaje.senderId === yo;
   const name = nombres.get(mensaje.senderId) ?? (mine ? 'Tú' : 'Alguien');
   // «Tú» next to «Tú» says nothing: the pill only when it adds something.
@@ -126,7 +126,7 @@ function FlatMessage(props: Props) {
       {agrupado ? (
         <span className="w-9 shrink-0 pt-1 text-right text-[10px] text-on-surface-variant opacity-0 group-hover:opacity-100">{formatClock(mensaje.at)}</span>
       ) : (
-        <Avatar name={name} foto={photos?.get(mensaje.senderId)} size={36} />
+        <Avatar name={name} foto={photos?.get(mensaje.senderId)} size={36} bot={isAppOf?.(mensaje.senderId)} />
       )}
       <div className="min-w-0 flex-1">
         {agrupado ? null : (

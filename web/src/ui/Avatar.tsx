@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NotebookPen, Users } from 'lucide-react';
+import { Bot, NotebookPen, Users } from 'lucide-react';
 import type { ChatSummary } from '../chat/types';
 
 /**
@@ -14,6 +14,7 @@ export function Avatar({
   size = 40,
   online,
   foto,
+  bot,
 }: {
   name?: string | null;
   kind?: ChatSummary['kind'];
@@ -21,6 +22,8 @@ export function Avatar({
   online?: boolean;
   /** La foto del chat o de la persona; sin ella, la inicial o el ícono. */
   foto?: string;
+  /** An installed app (Lila): a sober robot instead of the initial (§118.2, point 8). */
+  bot?: boolean;
 }) {
   const initial = (name ?? '?').trim().slice(0, 1).toUpperCase() || '?';
   // Una foto que no carga (enlace roto, bloqueada) cae a la inicial: un círculo vacío no dice quién es.
@@ -35,6 +38,8 @@ export function Avatar({
       >
         {conFoto ? (
           <img src={foto} alt="" className="h-full w-full rounded-full object-cover" loading="lazy" onError={() => setFallo(foto ?? null)} />
+        ) : bot ? (
+          <Bot data-testid="avatar-bot" size={size * 0.55} strokeWidth={1.75} />
         ) : kind === 'group' ? (
           <Users size={size * 0.5} />
         ) : kind === 'notas' ? (

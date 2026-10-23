@@ -110,6 +110,7 @@ export function useDibujarFila(p: {
               authorName={nombres.get(senderId)}
               authorPhoto={fotos.get(senderId)}
               badge={memberBadge({ ...roles.get(senderId), isMe: mia })}
+              authorIsApp={roles.get(senderId)?.role === 'app'}
               quoted={isPending(item) ? null : (citados.get(item.seq) ?? null)}
               selected={!isPending(item) && (elegidos.has(item.seq) || item.seq === resaltado || item.seq === seqBuscado)}
               selecting={enSeleccion}

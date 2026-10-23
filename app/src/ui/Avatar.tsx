@@ -1,7 +1,7 @@
 import { memo, type ReactNode } from 'react';
 import { Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { User } from 'lucide-react-native';
+import { User, Bot } from 'lucide-react-native';
 import { inicialesDe, tonoDeAvatar, type TonoDeAvatar } from './avatarMotor';
 import { useColores } from './tema';
 
@@ -32,6 +32,8 @@ export const Avatar = memo(function Avatar(props: {
   testID?: string;
   /** En vez de las iniciales, cuando no hay foto (un borrador, 19/10). */
   icono?: ReactNode;
+  /** An installed app (Lila): a sober robot on the accent instead of the initials (§118.2, point 8). */
+  bot?: boolean;
 }) {
   const colores = useColores();
   const iniciales = inicialesDe(props.nombre);
@@ -40,10 +42,12 @@ export const Avatar = memo(function Avatar(props: {
     <View
       testID={props.testID}
       style={[lado, { borderRadius: props.tamano / 2 }]}
-      className={`items-center justify-center overflow-hidden ${FONDO_DEL_TONO[tonoDeAvatar(props.nombre)]}`}
+      className={`items-center justify-center overflow-hidden ${props.bot ? 'bg-primary' : FONDO_DEL_TONO[tonoDeAvatar(props.nombre)]}`}
     >
       {props.foto ? (
         <Image recyclingKey={props.foto} source={{ uri: props.foto }} style={lado} contentFit="cover" />
+      ) : props.bot ? (
+        <Bot testID="avatar-bot" size={Math.round(props.tamano * 0.55)} strokeWidth={1.75} color={colores['on-primary']} />
       ) : props.icono ? (
         props.icono
       ) : iniciales ? (

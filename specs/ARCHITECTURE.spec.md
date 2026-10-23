@@ -4916,7 +4916,8 @@ Pedido de José del 23/10, con capturas de WhatsApp: «mejorarlo brutalmente
 ensucie y que sea fácil de acceder al detalle». El objetivo declarado:
 automatizar lo más posible, liberar tareas de las personas y dejar WhatsApp
 para estos avisos. Diseños: `r155-avisos-canal`, `r155-clima-detalle`,
-`r155-caja-comandos` y `r155-gastos-cola` (Stitch, 23/10).
+`r155-caja-comandos`, `r155-gastos-cola`, `r155-asistencia-tanque` y
+`r155-tanques-detalle` (Stitch, 23/10).
 
 ### 118.1 Lo que pasa hoy (capturas de José)
 
@@ -4949,7 +4950,11 @@ para estos avisos. Diseños: `r155-avisos-canal`, `r155-clima-detalle`,
    cualquier tamaño y en modo oscuro, tocar una barra muestra su valor, y
    tiene texto alternativo. Gráficos: barras horizontales (tanques, caja por
    proyecto), barras verticales (lluvia por día), línea (historial de un
-   tanque) y medidor.
+   tanque), medidor y **el tanque dibujado** (pedido de José: el cilindro con
+   su nivel en vez de la foto del tablero).
+8. **El bot se reconoce:** Lila lleva un avatar de robot sobrio (cabeza
+   geométrica de línea sobre el círculo del acento, como el ícono de Dali) y
+   la etiqueta «APP»; nunca se confunde con una persona.
 4. **Archivos por referencia.** Vouchers, guías y fotos se quedan en el
    servidor; la tarjeta muestra «1 comprobante» o «3 fotos» y abre el visor
    dentro de la app sin descargarlos (la decisión de José para gastos,
@@ -4977,13 +4982,73 @@ para estos avisos. Diseños: `r155-avisos-canal`, `r155-clima-detalle`,
 | Consumos | Una línea: equipo, cantidad, quién | Detalle y foto si la hay | informativo |
 | Llegada de material | Una línea: material, m³, guía, «3 fotos» | Visor de fotos y guía | informativo |
 | Despacho | Una tarjeta por despacho que cambia de estado | Línea de tiempo | aviso al llegar tarde |
-| Asistencia (firmas) | Resumen: firmaron, faltan | Lista de quién falta | aviso si falta alguien a la hora |
+| Ingreso del personal | UNA tarjeta del día que se actualiza: «Ingresos 12 de 15», avatares, el último que entró, quién falta; «Ubicaciones» abre el mapa dentro de la app (hoy es un enlace de Google Maps por persona) | Lista con hora y lugar de cada uno | aviso si a la hora de entrada falta alguien |
+| Refrigerio | Una línea: «14 de 15 marcaron» | Quién marcó y a qué hora | informativo |
+| Fin de jornada | Una línea: «Salieron 13 de 15 · 2 sin marcar» | Quién falta marcar | aviso si alguien no marcó salida |
+| Medida de tanque | El TANQUE DIBUJADO (cilindro con su nivel y la línea del mínimo), cm y disponible, la diferencia («−0,06 gl») y quién midió | La grilla de tanques dibujados, el historial de 7 días y las medidas de hoy | urgente si cruza el mínimo |
 | Laboratorio / mantenimiento | Solo lo fuera de norma o vencido | Valores y norma | aviso |
 
 En los diseños de Stitch hay que quitar tres leyendas inventadas: «límite
 técnico de tolva (2,0 mm/día)», «Estación central» y «43 frentes». El umbral
 de lluvia para producir sale de la configuración de la empresa en agentes, no
-de un número fijo. El ícono de `/tanques` es un medidor, no un signo de dólar.
+de un número fijo. El ícono de `/tanques` es un medidor, no un signo de dólar. En los de
+tanques también sobran «Consumo: 2,4 gl/h» y «Suministro normal», y la línea
+del mínimo del historial tiene que caer en su valor real de la escala.
+
+### 118.3-bis Lo que hoy se le PIDE a Lila, y cómo queda en Lilachat
+
+Fuente: lila-2 (código de lila-app) y la sesión de agentes (§12 de su spec),
+23/10. Hoy Lila contesta solo si la etiquetan (`@lila`), rutea por reglas y
+después por embeddings, redacta con Haiku 5.5 (Qwen local de respaldo),
+entiende fechas («ayer», «el martes pasado», «en agosto») y manda lo
+financiero o personal por privado. Tiene 23 consultas; lo que sale como
+IMAGEN o enlace hoy es justo lo que en Lilachat va dibujado:
+
+| Hoy se le pide | Hoy responde | En Lilachat |
+| --- | --- | --- |
+| Pedidos de hoy o la semana | texto | `/pedidos` → tarjeta con la lista y el detalle en hoja |
+| Resumen de despachos | **imagen** | `/despachos` → tarjeta con barras por cliente o frente |
+| m³ que van, cuánto falta (planta y campo) | texto | tarjeta con medidor de avance |
+| A qué hora salió la 3, quién maneja la 4, cuánto falta para la 2 | texto | `/eta 3` → tarjeta de la unidad con su línea de tiempo |
+| Fotos y video de una unidad, control de pista | medios | tarjeta con «N fotos» y el visor dentro |
+| Líquidos y galones | **imagen** | `/tanques` → los tanques dibujados |
+| Stock de agregados | **imagen** | `/agregados` → barras por material |
+| Llegadas de agregados, consumos, kardex | texto | tarjeta con cifra y detalle |
+| Enlace del pedido (lo crea si falta) | enlace | botón «Abrir pedido» (en agentes, de un uso o con vencimiento) |
+| Guías de la producción, informes y valorizaciones | enlaces y PDF | tarjeta de documento con el visor de PDF dentro |
+| Pedidos sin certificado | texto | lista con responsable y botón «Recordarle» |
+| Clima de un distrito o de la semana | texto | `/clima` → la tarjeta del §118.3 |
+| Datos de clientes y proveedores | texto | tarjeta de contacto (por privado si es dato personal) |
+| Historial («qué le despachamos a X») | texto | tarjeta con cifras y detalle |
+| Cómo va el checklist | texto | el checklist mismo (abajo) |
+
+Lo que NO es una consulta y es lo más valioso: **el checklist del día**. Lila
+sabe que hay despachos, pregunta en el grupo lo básico (cuadrilla, tren,
+ingenieros avisados, agua, petróleo, almuerzos; 14 ítems de planta y campo),
+detecta en la conversación qué ya se confirmó y le insiste al responsable por
+lo que falta. «El valor no es la IA, es detectar la ausencia de un hecho»
+(código de lila-app; nació del pedido de José del 07/09). En Lilachat: un
+**checklist por pedido** con responsable y hora límite (`assignee_phone`,
+`due_at`), que se marca desde el chat o solo cuando el agente lee la
+confirmación, y que avisa por lo que sigue sin marcar.
+
+También pasan a tarjetas: los **avisos a planta** que Lila arma desde el grupo
+Admin (programar, mover o cancelar un pedido; se confirma en #admin con
+botones y sale a #planta a las 17:00 del día anterior), los **votos de
+aprobación** (hoy «1»/«3» citando; mañana «Aprobar»/«Rechazar») y el aviso
+interno de Dali: **«Lead calificado · Listo para cotizar»** al canal de ventas
+con «Lo tomo» y «Ver lead». Lo que crea en Portal (pedidos, despachos,
+gastos) va por agentes con confirmación de la misma persona (MCP de Portal),
+nunca por el bot de avisos.
+
+**Qué más se puede sumar con las mismas piezas:** un resumen del día a las
+18:00 (producción, despachos, consumo y asistencia en una sola tarjeta que se
+actualiza); avisos por AUSENCIA además de los de evento («son las 3 y planta
+no confirmó la producción de las 4»); el aviso anticipado de tanque («al
+ritmo de la semana, GRUPO WILSON llega al mínimo el jueves», sale del
+historial que ya se dibuja); `/pendientes` del día por persona; y el
+recordatorio automático que nace de un aviso («Sábado no apto» → recordatorio
+a la cuadrilla).
 
 ### 118.4 Qué construye Lilachat (el «kit» de tarjetas)
 
@@ -4992,14 +5057,17 @@ enlace, acciones) crece con bloques, validados en shared con el mismo zod
 para server, app y web:
 
 - `metric` (valor, unidad, tono), `chips` (días o estados), `chart`
-  (`bar-h | bar-v | line | gauge`, series, unidad y umbrales con tono),
+  (`bar-h | bar-v | line | gauge | tank`, series, unidad y umbrales con
+  tono; `tank` es el cilindro con su nivel y la línea del mínimo),
   `attachments` (cantidad y referencia al visor), `detail` (los mismos
   bloques más filas de tabla, que se ven en la hoja) y `updatedAt`.
 - Dibujo nativo: `react-native-svg` en la app (ya está) y SVG en la web; los
   colores salen del tema, nunca del mensaje.
 - Tope por tarjeta (unos 16 KB) para que nadie meta un reporte entero.
 - Comandos con barra por app instalada (`/gastos`, `/clima`, `/tanques`,
-  `/despacho`), ya previstos en el §73.5.
+  `/despachos`, `/pedidos`, `/eta`, `/agregados`) y la mención `@Lila`, ya
+  previstos en el §73.5; la lista sale del §118.3-bis.
+- Avatar de bot: robot sobrio en el círculo del acento (§118.2, punto 8).
 - **Tarjeta de cola:** una tarjeta con filas que cambian de estado por
   `PATCH` (a lo sumo una edición por segundo).
 - Los botones viajan como evento firmado a agentes (§73.4). Lilachat no

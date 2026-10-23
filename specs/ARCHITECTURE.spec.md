@@ -4939,6 +4939,15 @@ instalador, vuelta, webhook y salida por tema).
   instalando en un espacio, ¿no es así en Slack?»): dice «Se instala en
   Inframaq» con un «Cambiar» discreto; la lista sale solo si se entra sin
   espacio.
+- **Vuelven los chips; las secciones de §116 se quitan.** José, 23/10: los
+  acordeones «ocupan mucho espacio» y sumaban aire entre chats. Las listas
+  vuelven a ser chips arriba (como en la 0.1.153), con un chat en varias
+  listas otra vez. Con una lista abierta aparece un lápiz junto a su chip
+  (`btn-editar-lista`) que abre el editor con «Eliminar lista»: el toque
+  largo no se descubría («no hay cómo borrar el que yo creé»). En la web ya
+  estaba el lápiz. La fila de la lista del teléfono baja de 76 a 68 dp
+  (avatar 50): entran 7 chats donde entraban 5 y medio. Sin cambios en los
+  datos: `User.chatLists` es el mismo.
 - **E2E (QA):** dos tarjetas con el kit (líquidos y clima) en el chat QA
   Ana–José. En el emulador: el tanque con su mínimo, las barras con «Bajo» en
   rojo, «Actualizado» y la hoja con la grilla de tanques, la línea de la
@@ -5417,7 +5426,7 @@ no hace falta purgar.
 
 Cierra los pendientes 62, 76, 77 y 66.
 
-- **Secciones (62, diseño `r154-secciones`).** Las listas propias dejan de
+- **Secciones (62, diseño `r154-secciones`). Quitadas en la 0.1.156 (§120).** Las listas propias dejan de
   ser chips: en «Todos» cada una es una sección plegable como en Slack
   (cabecera con flecha, nombre en mayúsculas y cuántos chats tiene; plegada,
   la pastilla de no leídos en el acento) y lo que no está en ninguna va en
@@ -10912,7 +10921,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
 61. ~~**Web: dos botones de recargar y ningún aviso de que actualiza.**~~ **Hecho (§111, 0.1.149).** Hay uno en
     la lista de chats y otro en la cabecera: queda uno solo. Mientras
     sincroniza no se ve nada; falta un indicador (barra fina o «Actualizando…»).
-62. ~~**Listas de chats como las secciones de Slack (acordeón)**~~ **Hecho (§116, 0.1.154).** (José, 22/10:
+62. ~~**Listas de chats como las secciones de Slack (acordeón)**~~ **Hecho (§116, 0.1.154) y quitado (§120, 0.1.156):** José lo probó y prefirió los chips arriba. (José, 22/10:
     quería agrupaciones como las secciones de canales de Slack, no chips).
     Propuesta: secciones plegables en la lista principal. Cada encabezado
     lleva el nombre y, plegado, los no leídos. Un chat va en una sola sección,

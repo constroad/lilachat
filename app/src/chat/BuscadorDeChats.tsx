@@ -1,6 +1,6 @@
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Plus, Search, X } from 'lucide-react-native';
-import { listFilter, type ChatList, type FiltroDeChats } from '@lilachat/shared';
+import { Pencil, Plus, Search, X } from 'lucide-react-native';
+import { listFilter, listIdOf, type ChatList, type FiltroDeChats } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 
 /**
@@ -108,6 +108,19 @@ export function BuscadorDeChats(props: {
           </Pressable>
         );
       })}
+      {/* With a list open, a visible way to edit or delete it (José, 23/10: «no hay cómo borrar el que yo creé o editarlo»); the long press stays. */}
+      {listIdOf(filtro) && props.onEditarLista ? (
+        <Pressable
+          testID="btn-editar-lista"
+          accessibilityRole="button"
+          accessibilityLabel="Editar o eliminar esta lista"
+          onPress={() => props.onEditarLista?.(listIdOf(filtro)!)}
+          hitSlop={{ top: 4, bottom: 4 }}
+          className="min-h-[36px] w-11 items-center justify-center rounded-full border border-transparent bg-surface-variant"
+        >
+          <Pencil size={15} color={colores['on-surface']} />
+        </Pressable>
+      ) : null}
       {props.onNuevaLista ? (
         <Pressable
           testID="filtro-nueva-lista"

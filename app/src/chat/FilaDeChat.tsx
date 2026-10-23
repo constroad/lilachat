@@ -21,8 +21,8 @@ import { Avatar } from '../ui/Avatar';
 import { winkTileSource } from './winkTiles';
 import { useColores } from '../ui/tema';
 
-/** El avatar de la lista (dp): 52, como WhatsApp (antes 48). */
-const AVATAR_DE_LISTA = 52;
+/** List avatar size (dp): 50, so the row stays compact (José, 23/10: no wasted space between chats). */
+const LIST_AVATAR_SIZE = 50;
 
 /** El ícono de la vista previa de una media (FL3): vectorial, no emoji. */
 const ICONO_DE_MEDIA: Record<MediaDePreview, LucideIcon> = {
@@ -77,13 +77,13 @@ export const FilaDeChat = memo(function FilaDeChat(props: {
       // fila parecía no haber recibido el toque.
       android_ripple={{ color: colores.outline }}
       // Sin línea entre filas, como WhatsApp: el aire las separa.
-      className={`min-h-[76px] flex-row items-center gap-3 px-4 py-2.5 ${props.marcado ? 'bg-primary/10' : ''}`}
+      className={`min-h-[68px] flex-row items-center gap-3 px-4 py-2 ${props.marcado ? 'bg-primary/10' : ''}`}
     >
-      <View style={{ width: AVATAR_DE_LISTA, height: AVATAR_DE_LISTA }} className="shrink-0">
+      <View style={{ width: LIST_AVATAR_SIZE, height: LIST_AVATAR_SIZE }} className="shrink-0">
         <Avatar
           nombre={props.titulo}
           foto={chat.propio ? (props.miFoto ?? undefined) : chat.avatarUrl}
-          tamano={AVATAR_DE_LISTA}
+          tamano={LIST_AVATAR_SIZE}
           // Un borrador se distingue de una persona y de un grupo; el chat contigo lleva tu foto.
           icono={chat.kind === 'notas' && !chat.propio ? <NotebookPen size={22} color={colores.primary} /> : undefined}
         />

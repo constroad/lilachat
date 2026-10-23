@@ -15,6 +15,7 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
       'Los avisos de las apps se dibujan: tanques, gráficos y cifras, con su detalle a un toque.',
       'Las apps llevan su robot, para no confundirlas con una persona.',
       'Ajustes del espacio → Integraciones: instala apps como Lila desde ahí.',
+      'Las listas vuelven arriba como filtros, con un lápiz para editarlas o borrarlas, y los chats ocupan menos espacio.',
     ],
   },
   {

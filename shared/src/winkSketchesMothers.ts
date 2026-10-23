@@ -2,7 +2,7 @@ import type { Sketch } from './winkTimeline.js';
 import { burst, character, FLOOR_Y, OFF_LEFT, OFF_RIGHT, popAt, prop, rig, SIZE, sway, talk, walk, wiggle, wink } from './winkSketchKit.js';
 
 /**
- * The Mother's Day winks (pending 73; Stitch sheet `r153-dia-de-la-madre`):
+ * The Mother's Day winks (pending 73; the R153 Stitch sheet for that season):
  * loving and exaggerated, never sappy. Each one a sketch with a punchline,
  * 6.5–7 s. PURE.
  */

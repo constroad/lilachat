@@ -1,5 +1,5 @@
-import { Archive, ArrowLeft, Pencil, Plus } from 'lucide-react';
-import { listFilter, listIdOf, type ChatList, type FiltroDeChats } from '@lilachat/shared';
+import { Archive, ArrowLeft, Plus } from 'lucide-react';
+import type { FiltroDeChats } from '@lilachat/shared';
 import type { ListaArmada } from './listaDeChats';
 
 /**
@@ -19,10 +19,8 @@ export function FiltrosDeLaLista(props: {
   onFiltro: (filtro: FiltroDeChats) => void;
   verArchivados: boolean;
   onArchivados: (ver: boolean) => void;
-  /** Lists of my own (pending 45): a chip each; right click or the pencil edits the one open. */
-  listas?: readonly ChatList[];
+  /** A new section (pending 62): my lists are now sections of «Todos», not chips. */
   onNuevaLista?: () => void;
-  onEditarLista?: (listId: string) => void;
 }) {
   if (props.verArchivados) {
     return (
@@ -37,7 +35,7 @@ export function FiltrosDeLaLista(props: {
   return (
     <>
       <div className="flex gap-2 overflow-x-auto px-3 pb-2 [scrollbar-width:none]">
-        {[...CHIPS, ...(props.listas ?? []).map((lista) => ({ filtro: listFilter(lista.id), etiqueta: lista.name, cuenta: undefined }))].map((chip) => {
+        {CHIPS.map((chip) => {
           const activo = props.filtro === chip.filtro;
           const cuenta = chip.cuenta ? props.lista.cuentas[chip.cuenta] : 0;
           return (
@@ -47,12 +45,6 @@ export function FiltrosDeLaLista(props: {
               data-testid={`filtro-${chip.filtro}`}
               aria-pressed={activo}
               onClick={() => props.onFiltro(chip.filtro)}
-              onContextMenu={(event) => {
-                const listId = listIdOf(chip.filtro);
-                if (!listId || !props.onEditarLista) return;
-                event.preventDefault();
-                props.onEditarLista(listId);
-              }}
               className={`flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[13px] transition-colors ${
                 activo ? 'border-primary bg-primary/10 font-semibold text-primary' : 'border-transparent bg-background text-on-surface hover:bg-primary/5'
               }`}
@@ -62,13 +54,8 @@ export function FiltrosDeLaLista(props: {
             </button>
           );
         })}
-        {listIdOf(props.filtro) && props.onEditarLista ? (
-          <button type="button" data-testid="btn-editar-lista" aria-label="Editar lista" title="Editar lista" onClick={() => props.onEditarLista?.(listIdOf(props.filtro)!)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-background text-on-surface-variant hover:bg-primary/5">
-            <Pencil size={14} />
-          </button>
-        ) : null}
         {props.onNuevaLista ? (
-          <button type="button" data-testid="filtro-nueva-lista" aria-label="Nueva lista" title="Nueva lista" onClick={props.onNuevaLista} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-background text-on-surface hover:bg-primary/5">
+          <button type="button" data-testid="filtro-nueva-lista" aria-label="Nueva sección" title="Nueva sección" onClick={props.onNuevaLista} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-background text-on-surface hover:bg-primary/5">
             <Plus size={16} />
           </button>
         ) : null}

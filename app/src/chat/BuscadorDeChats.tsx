@@ -1,6 +1,6 @@
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Plus, Search, X } from 'lucide-react-native';
-import { listFilter, type ChatList, type FiltroDeChats } from '@lilachat/shared';
+import type { FiltroDeChats } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 
 /**
@@ -13,10 +13,8 @@ export function BuscadorDeChats(props: {
   filtro: FiltroDeChats;
   onFiltrar: (filtro: FiltroDeChats) => void;
   cuentas: Record<'no-leidos' | 'grupos' | 'borradores', number>;
-  /** Lists of my own (pending 45): a chip each after the fixed ones; a long press edits it. */
-  listas?: readonly ChatList[];
+  /** A new section (pending 62): my lists are now sections of «Todos», not chips. */
   onNuevaLista?: () => void;
-  onEditarLista?: (listId: string) => void;
 }) {
   const colores = useColores();
   const { busqueda, filtro, cuentas } = props;
@@ -73,11 +71,9 @@ export function BuscadorDeChats(props: {
           { id: 'grupos', etiqueta: 'Grupos', cuenta: cuentas.grupos },
           // Los chats contigo mismo (José, 19/10).
           { id: 'borradores', etiqueta: 'Borradores', cuenta: cuentas.borradores },
-          ...(props.listas ?? []).map((lista) => ({ id: listFilter(lista.id), etiqueta: lista.name, cuenta: 0, listId: lista.id })),
-        ] satisfies { id: FiltroDeChats; etiqueta: string; cuenta: number; listId?: string }[]
+        ] satisfies { id: FiltroDeChats; etiqueta: string; cuenta: number }[]
       ).map((chip) => {
         const activo = filtro === chip.id;
-        const listId = 'listId' in chip ? chip.listId : undefined;
         return (
           <Pressable
             key={chip.id}
@@ -85,7 +81,6 @@ export function BuscadorDeChats(props: {
             accessibilityRole="button"
             accessibilityState={{ selected: activo }}
             onPress={() => props.onFiltrar(chip.id)}
-            onLongPress={listId && props.onEditarLista ? () => props.onEditarLista?.(listId) : undefined}
             hitSlop={{ top: 4, bottom: 4 }}
             className={`min-h-[36px] flex-row items-center gap-1.5 rounded-full border px-4 ${
               // Como FL6: el apagado es gris neutro y lleno, no otro lavanda
@@ -112,7 +107,7 @@ export function BuscadorDeChats(props: {
         <Pressable
           testID="filtro-nueva-lista"
           accessibilityRole="button"
-          accessibilityLabel="Nueva lista"
+          accessibilityLabel="Nueva sección"
           onPress={props.onNuevaLista}
           hitSlop={{ top: 4, bottom: 4 }}
           className="min-h-[36px] w-11 items-center justify-center rounded-full border border-transparent bg-surface-variant"

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
-import { diffListChats, listIdOf, type ChatList, type FiltroDeChats } from '@lilachat/shared';
+import { diffListChats, type ChatList } from '@lilachat/shared';
 import { useChatLists } from './useChatLists';
 import { ChatListEditor, type ListChat } from './ChatListEditor';
 import { AddToListSheet } from './AddToListSheet';
@@ -10,33 +10,19 @@ type Editing = { list: ChatList | null; initialChatIds: string[] } | null;
 
 /**
  * Everything the chat list needs for lists of my own (pending 45), kept out of
- * `ChatListScreen`: the chips' lists, the chats a list chip shows, the editor
- * and «Agregar a lista» for the chosen chats.
+ * `ChatListScreen`: the lists (sections since R154, pending 62), the editor
+ * and «Mover a sección» for the chosen chats.
  */
 export function useChatListsUi(params: {
   jwt: string;
   userId: string;
   chats: readonly ListChat[];
   selectedIds: readonly string[];
-  filter: FiltroDeChats;
-  onFilter: (filter: FiltroDeChats) => void;
   onSelectionDone: () => void;
 }) {
   const { lists, create, update, remove } = useChatLists({ jwt: params.jwt, userId: params.userId });
   const [editing, setEditing] = useState<Editing>(null);
   const [addingTo, setAddingTo] = useState<string[] | null>(null);
-  const { filter, onFilter } = params;
-
-  const activeListId = listIdOf(filter);
-  const activeChatIds = useMemo(() => {
-    const active = lists.find((list) => list.id === activeListId);
-    return active ? new Set(active.chatIds) : undefined;
-  }, [lists, activeListId]);
-
-  // The list on the chip was deleted (here or on another device): back to «Todos».
-  useEffect(() => {
-    if (activeListId && lists.length > 0 && !lists.some((list) => list.id === activeListId)) onFilter('todos');
-  }, [activeListId, lists, onFilter]);
 
   const openNew = useCallback((initialChatIds: string[] = []) => setEditing({ list: null, initialChatIds }), []);
   const openEdit = useCallback((listId: string) => {
@@ -53,7 +39,7 @@ export function useChatListsUi(params: {
   const toggleIn = async (list: ChatList, putIn: boolean) => {
     const chatIds = addingTo ?? [];
     const outcome = await update(list.id, putIn ? { add: chatIds } : { remove: chatIds });
-    if (!outcome.ok) Alert.alert('No se pudo cambiar la lista', outcome.message);
+    if (!outcome.ok) Alert.alert('No se pudo cambiar la sección', outcome.message);
   };
 
   const closeAddTo = () => {
@@ -90,7 +76,6 @@ export function useChatListsUi(params: {
 
   return {
     lists,
-    activeChatIds,
     openNew: () => openNew(),
     openEdit,
     openAddTo: () => setAddingTo([...params.selectedIds]),

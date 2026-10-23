@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Check, Search, Trash2, X } from 'lucide-react-native';
-import { CHAT_LIST_NAME_MAX, chatListNameError, type ChatList } from '@lilachat/shared';
+import { CHAT_LIST_NAME_MAX, chatListNameError, sectionOfChat, type ChatList } from '@lilachat/shared';
 import { Modal } from '../../ui/Modal';
 import { Avatar } from '../../ui/Avatar';
 import { useColores } from '../../ui/tema';
@@ -67,7 +67,7 @@ export function ChatListEditor(props: {
   };
 
   const confirmDelete = () =>
-    Alert.alert('¿Eliminar la lista?', 'Los chats no se borran: solo dejan de estar en esta lista.', [
+    Alert.alert('¿Eliminar la sección?', 'Los chats no se borran: pasan a «Sin sección».', [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Eliminar',
@@ -82,7 +82,7 @@ export function ChatListEditor(props: {
       <View testID="editor-de-lista" className="max-h-[90%] rounded-t-3xl bg-surface px-4 pt-3" style={{ paddingBottom: margins.pie + 8 }}>
         <View className="mb-2 h-1.5 w-11 self-center rounded-full bg-outline/30" />
         <View className="mb-3 flex-row items-center">
-          <Text className="flex-1 text-lg font-bold text-on-surface">{list ? 'Editar lista' : 'Nueva lista'}</Text>
+          <Text className="flex-1 text-lg font-bold text-on-surface">{list ? 'Editar sección' : 'Nueva sección'}</Text>
           <Pressable testID="btn-cerrar-editor-de-lista" accessibilityLabel="Cerrar" onPress={props.onClose} className="h-11 w-11 items-center justify-center">
             <X size={20} color={colors['on-surface-variant']} />
           </Pressable>
@@ -95,7 +95,7 @@ export function ChatListEditor(props: {
             setError('');
           }}
           maxLength={CHAT_LIST_NAME_MAX}
-          placeholder="Nombre, por ejemplo Familia"
+          placeholder="Nombre, por ejemplo Obra Huachipa"
           placeholderTextColor={colors['on-surface-variant']}
           className="min-h-[48px] rounded-xl border border-outline/30 px-4 text-[15px] text-on-surface"
         />
@@ -110,10 +110,15 @@ export function ChatListEditor(props: {
         <ScrollView className="flex-shrink" keyboardShouldPersistTaps="handled">
           {shown.map((chat) => {
             const inside = chosen.includes(chat.id);
+            // A chat lives in one section (pending 62): saving moves it from where it is.
+            const elsewhere = sectionOfChat(props.lists.filter((one) => one.id !== list?.id), chat.id);
             return (
               <Pressable key={chat.id} testID={`chat-de-lista-${chat.id}`} onPress={() => toggle(chat.id)} accessibilityRole="checkbox" accessibilityState={{ checked: inside }} className="min-h-[56px] flex-row items-center gap-3">
                 <Avatar nombre={chat.title} foto={chat.photo} tamano={40} />
-                <Text numberOfLines={1} className="flex-1 text-[15px] text-on-surface">{chat.title}</Text>
+                <View className="min-w-0 flex-1">
+                  <Text numberOfLines={1} className="text-[15px] text-on-surface">{chat.title}</Text>
+                  {elsewhere ? <Text numberOfLines={1} className="text-[12px] text-on-surface-variant">{inside ? `Sale de «${elsewhere.name}»` : `En «${elsewhere.name}»`}</Text> : null}
+                </View>
                 <View className={`h-6 w-6 items-center justify-center rounded-md border-2 ${inside ? 'border-primary bg-primary' : 'border-outline/50'}`}>
                   {inside ? <Check size={14} color={colors['on-primary']} /> : null}
                 </View>
@@ -127,7 +132,7 @@ export function ChatListEditor(props: {
         {list && props.onDelete ? (
           <Pressable testID="btn-eliminar-lista" onPress={confirmDelete} className="mt-1 min-h-[48px] flex-row items-center justify-center gap-2">
             <Trash2 size={16} color={colors.error} />
-            <Text className="text-sm font-semibold text-error">Eliminar lista</Text>
+            <Text className="text-sm font-semibold text-error">Eliminar sección</Text>
           </Pressable>
         ) : null}
       </View>

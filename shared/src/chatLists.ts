@@ -9,8 +9,8 @@ export const CHAT_LISTS_MAX = 20;
 export const CHAT_LIST_NAME_MAX = 24;
 export const CHAT_LIST_CHATS_MAX = 500;
 
-/** The fixed chips: a list cannot take their names. */
-const FIXED_CHIPS = ['todos', 'no leidos', 'grupos', 'borradores'];
+/** The fixed chips and «Sin sección» (pending 62): a list cannot take their names. */
+const FIXED_CHIPS = ['todos', 'no leidos', 'grupos', 'borradores', 'sin seccion'];
 
 const key = (text: string): string =>
   text
@@ -22,10 +22,10 @@ const key = (text: string): string =>
 /** What is wrong with a list's name, or null when it is fine. */
 export function chatListNameError(name: string, lists: readonly ChatList[], exceptId?: string): string | null {
   const trimmed = name.trim();
-  if (!trimmed) return 'Escribe un nombre para la lista.';
+  if (!trimmed) return 'Escribe un nombre para la sección.';
   if (trimmed.length > CHAT_LIST_NAME_MAX) return `El nombre puede tener hasta ${CHAT_LIST_NAME_MAX} letras.`;
   if (FIXED_CHIPS.includes(key(trimmed))) return 'Ese nombre ya es un filtro de la lista.';
-  if (lists.some((list) => list.id !== exceptId && key(list.name) === key(trimmed))) return 'Ya tienes una lista con ese nombre.';
+  if (lists.some((list) => list.id !== exceptId && key(list.name) === key(trimmed))) return 'Ya tienes una sección con ese nombre.';
   return null;
 }
 

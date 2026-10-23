@@ -4,7 +4,6 @@ import { MessageCircle, PenSquare } from 'lucide-react-native';
 import {
   contarChats,
   filtrarChats,
-  listIdOf,
   nombreDeContacto,
   ordenarChats,
   separarArchivados,
@@ -33,6 +32,8 @@ import { BuscadorDeChats } from './BuscadorDeChats';
 import { ResultadosDeMensajes } from './ResultadosDeMensajes';
 import { BarraDeSeleccionDeChats } from './BarraDeSeleccionDeChats';
 import { useChatListsUi } from './chatLists/useChatListsUi';
+import { useChatSections } from './chatLists/useChatSections';
+import { SectionHeader } from './chatLists/SectionHeader';
 import { lastMessageMs, useChatSelection } from './useChatSelection';
 import { useColores } from '../ui/tema';
 import { decidirAtras } from '../ui/botonAtras';
@@ -271,7 +272,7 @@ export function ChatListScreen({
   // Selecting several chats, like WhatsApp: the mode IS «something selected» (`useChatSelection`).
   const selection = useChatSelection(chats);
   const chatsForLists = useMemo(() => (chats ?? []).map((chat) => ({ id: chat.id, title: title(chat), photo: chat.avatarUrl })), [chats, agenda]);
-  const myLists = useChatListsUi({ jwt: credential.jwt, userId: credential.userId, chats: chatsForLists, selectedIds: [...selection.selected], filter: filtro, onFilter: setFiltro, onSelectionDone: selection.clear });
+  const myLists = useChatListsUi({ jwt: credential.jwt, userId: credential.userId, chats: chatsForLists, selectedIds: [...selection.selected], onSelectionDone: selection.clear });
 
   /**
    * Búsqueda DENTRO de las conversaciones (aparte del filtro de la lista). Se
@@ -326,11 +327,10 @@ export function ChatListScreen({
       chats: base.map((uno) => ({ ...uno, titulo: title(uno.chat), ultimo: uno.chat.lastMessage?.body })),
       filtro: verArchivados ? 'todos' : filtro,
       texto: busqueda,
-      lista: myLists.activeChatIds,
     }).map((uno) => uno.chat);
     // `agenda` está en las dependencias porque `title` la usa: sin ella, la
     // lista se quedaría con los nombres viejos al llegar la agenda.
-  }, [principales, archivados, verArchivados, agenda, filtro, busqueda, myLists.activeChatIds]);
+  }, [principales, archivados, verArchivados, agenda, filtro, busqueda]);
 
   const cuentas = useMemo(() => contarChats(principales), [principales]);
   const archivadosSinLeer = useMemo(() => contarChats(archivados)['no-leidos'], [archivados]);
@@ -386,6 +386,8 @@ export function ChatListScreen({
     () => ordenarChats(visibles.map((chat) => ({ chat, pinned: chat.pinned === true, fechaOrden: lastMessageMs(chat.lastMessage?.at) }))).map((uno) => uno.chat),
     [visibles]
   );
+  // Slack's sections (pending 62): my lists fold the «Todos» list; a filter or a search shows it flat.
+  const sections = useChatSections({ userId: credential.userId, chats: ordenados, lists: myLists.lists, enabled: filtro === 'todos' && !busqueda.trim() && !verArchivados });
 
   return (
     <View className="flex-1 bg-background" testID="pantalla-chats">
@@ -414,7 +416,7 @@ export function ChatListScreen({
       ) : verArchivados ? (
         <CabeceraDeArchivados onVolver={() => setVerArchivados(false)} />
       ) : hayChats ? (
-        <BuscadorDeChats busqueda={busqueda} onBuscar={setBusqueda} filtro={filtro} onFiltrar={setFiltro} cuentas={cuentas} listas={myLists.lists} onNuevaLista={myLists.openNew} onEditarLista={myLists.openEdit} />
+        <BuscadorDeChats busqueda={busqueda} onBuscar={setBusqueda} filtro={filtro} onFiltrar={setFiltro} cuentas={cuentas} onNuevaLista={myLists.openNew} />
       ) : null}
 
       {chats === null ? (
@@ -441,8 +443,9 @@ export function ChatListScreen({
         </View>
       ) : (
         <FlashList
-          data={ordenados}
-          keyExtractor={(chat) => chat.id}
+          data={sections.rows}
+          keyExtractor={(row) => row.key}
+          getItemType={(row) => row.type}
           // Con el teclado abierto (buscando), el toque en un resultado ABRE el
           // chat. Sin esto el primer toque solo cerraba el teclado y había que
           // tocar dos veces (visto en el E2E de FL1).
@@ -459,8 +462,6 @@ export function ChatListScreen({
                     ? 'Todos tus chats están en Archivados.'
                     : filtro === 'no-leidos'
                     ? 'No te queda nada sin leer.'
-                    : listIdOf(filtro)
-                    ? 'Esta lista no tiene chats. Mantén presionado su nombre para agregarlos.'
                     : 'Todavía no tienes grupos.'}
               </Text>
             </View>
@@ -493,19 +494,21 @@ export function ChatListScreen({
           }
           // Virtualizada: un ScrollView monta TODAS las filas de una y la
           // lista tarda en aparecer en cuanto hay unas cuantas conversaciones.
-          renderItem={({ item: chat }) => (
+          renderItem={({ item: row }) => row.type === 'section' ? (
+            <SectionHeader row={row} onToggle={sections.toggle} onEdit={myLists.openEdit} />
+          ) : (
             <FilaDeChat
-              chat={chat}
-              titulo={title(chat)}
+              chat={row.chat}
+              titulo={title(row.chat)}
               miUserId={credential.userId}
               miFoto={credential.avatarUrl}
-              marcado={selection.selected.has(chat.id)}
-              enLinea={puntoEnLinea(chat, credential.userId, onlineIds)}
-              escribiendo={typingIn.has(chat.id)}
-              borrador={borradores.get(chat.id)}
+              marcado={selection.selected.has(row.chat.id)}
+              enLinea={puntoEnLinea(row.chat, credential.userId, onlineIds)}
+              escribiendo={typingIn.has(row.chat.id)}
+              borrador={borradores.get(row.chat.id)}
               onTocar={alTocarFila}
               onMantener={selection.toggle}
-              open={chat.id === chatAbierto}
+              open={row.chat.id === chatAbierto}
             />
           )}
           refreshControl={

@@ -9,7 +9,8 @@ import { useMargenes } from '../../ui/useMargenes';
  * «Agregar a lista» for the chats chosen in the chat list (pending 45): each
  * list says whether they are all in it, some, or none. Tapping it puts them
  * all in, or takes them all out when they all were. «Nueva lista» starts one
- * with them.
+ * with them. Since R154 the lists are sections (pending 62): putting a chat in
+ * one takes it out of the one it was in.
  */
 export function AddToListSheet(props: {
   visible: boolean;
@@ -26,7 +27,7 @@ export function AddToListSheet(props: {
       <Pressable className="flex-1 bg-black/40" onPress={props.onClose} accessibilityLabel="Cerrar" />
       <View testID="hoja-agregar-a-lista" className="max-h-[75%] rounded-t-3xl bg-surface px-4 pt-3" style={{ paddingBottom: margins.pie + 8 }}>
         <View className="mb-2 h-1.5 w-11 self-center rounded-full bg-outline/30" />
-        <Text className="mb-2 text-lg font-bold text-on-surface">Agregar a lista</Text>
+        <Text className="mb-2 text-lg font-bold text-on-surface">Mover a sección</Text>
         <ScrollView className="flex-shrink">
           {props.lists.map((list) => {
             const membership = listMembership(list, props.chatIds);
@@ -45,7 +46,7 @@ export function AddToListSheet(props: {
           <View className="h-6 w-6 items-center justify-center rounded-full bg-primary/10">
             <Plus size={16} color={colors.primary} />
           </View>
-          <Text className="text-[15px] font-semibold text-primary">Nueva lista</Text>
+          <Text className="text-[15px] font-semibold text-primary">Nueva sección</Text>
         </Pressable>
       </View>
     </Modal>

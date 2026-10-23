@@ -18,7 +18,7 @@ const ETIQUETAS: Record<ChatAction, string> = {
   reactivar: 'Activar notificaciones',
   fijar: 'Fijar chat',
   desfijar: 'Desfijar chat',
-  lista: 'Agregar a lista',
+  lista: 'Mover a sección',
   leido: 'Marcar como leído',
   'no-leido': 'Marcar como no leído',
   salir: 'Salir del grupo',

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Check, Search, Trash2 } from 'lucide-react';
-import { CHAT_LIST_NAME_MAX, chatListNameError, diffListChats, type ChatList } from '@lilachat/shared';
+import { CHAT_LIST_NAME_MAX, chatListNameError, diffListChats, sectionOfChat, type ChatList } from '@lilachat/shared';
 import { FieldError, Overlay } from '../../ui/Overlay';
 import { Avatar } from '../../ui/Avatar';
 import type { ListOutcome } from './useChatListsWeb';
@@ -52,19 +52,19 @@ export function ChatListDialog(props: {
   };
 
   const remove = async () => {
-    if (!list || !window.confirm('¿Eliminar la lista? Los chats no se borran: solo dejan de estar en esta lista.')) return;
+    if (!list || !window.confirm('¿Eliminar la sección? Los chats no se borran: pasan a «Sin sección».')) return;
     finish(await props.onDelete(list.id));
   };
 
   return (
     <Overlay
-      title={list ? 'Editar lista' : 'Nueva lista'}
+      title={list ? 'Editar sección' : 'Nueva sección'}
       onClose={props.onClose}
       footer={
         <div className="flex items-center gap-2">
           {list ? (
             <button type="button" data-testid="btn-eliminar-lista" onClick={() => void remove()} className="flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-error hover:bg-error/10">
-              <Trash2 size={16} /> Eliminar lista
+              <Trash2 size={16} /> Eliminar sección
             </button>
           ) : null}
           <span className="flex-1" />
@@ -82,7 +82,7 @@ export function ChatListDialog(props: {
           setName(event.target.value);
           setError('');
         }}
-        placeholder="Nombre, por ejemplo Familia"
+        placeholder="Nombre, por ejemplo Obra Huachipa"
         className="h-11 w-full rounded-xl border border-outline/30 bg-transparent px-3 text-[15px] outline-none focus:border-primary"
       />
       <FieldError>{error}</FieldError>
@@ -93,10 +93,15 @@ export function ChatListDialog(props: {
       <p className="mb-1 mt-3 text-[12px] font-semibold uppercase tracking-wide text-on-surface-variant">{chosen.length === 1 ? '1 chat elegido' : `${chosen.length} chats elegidos`}</p>
       {shown.map((chat) => {
         const inside = chosen.includes(chat.id);
+        // A chat lives in one section (pending 62): saving moves it from where it is.
+        const elsewhere = sectionOfChat(props.lists.filter((one) => one.id !== list?.id), chat.id);
         return (
           <button key={chat.id} type="button" role="checkbox" aria-checked={inside} data-testid={`chat-de-lista-${chat.id}`} onClick={() => toggle(chat.id)} className="flex min-h-[52px] w-full items-center gap-3 rounded-lg px-1 text-left hover:bg-background">
             <Avatar name={chat.title} size={36} />
-            <span className="min-w-0 flex-1 truncate text-sm">{chat.title}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm">{chat.title}</span>
+              {elsewhere ? <span className="block truncate text-[12px] text-on-surface-variant">{inside ? `Sale de «${elsewhere.name}»` : `En «${elsewhere.name}»`}</span> : null}
+            </span>
             <span className={`grid h-5 w-5 place-items-center rounded border-2 ${inside ? 'border-primary bg-primary text-on-primary' : 'border-outline/50'}`}>{inside ? <Check size={12} /> : null}</span>
           </button>
         );

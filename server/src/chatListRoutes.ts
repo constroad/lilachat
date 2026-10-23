@@ -27,6 +27,12 @@ async function myChatIds(userId: string, asked: unknown): Promise<string[]> {
   return ids.filter((id) => found.has(id));
 }
 
+/** The lists are sections, like Slack's (pending 62): a chat added to one leaves the others. */
+async function takeOutOfOtherLists(userId: string, keptListId: Types.ObjectId, chatIds: string[]): Promise<void> {
+  if (chatIds.length === 0) return;
+  await UserModel.updateOne({ _id: userId }, { $pull: { 'chatLists.$[other].chatIds': { $in: chatIds } } }, { arrayFilters: [{ 'other._id': { $ne: keptListId } }] });
+}
+
 const stringIds = (asked: unknown): string[] => (Array.isArray(asked) ? asked.filter((id): id is string => typeof id === 'string').slice(0, MAX_CHANGE) : []);
 
 const userOf = (req: Request): string => String(req.session!.userId);
@@ -47,14 +53,15 @@ export function buildChatListsRouter(): Router {
   router.post('/', asyncRoute(async (req, res) => {
     const userId = userOf(req);
     const lists = await listsOf(userId);
-    if (lists.length >= CHAT_LISTS_MAX) return res.status(400).json({ message: `Puedes tener hasta ${CHAT_LISTS_MAX} listas.` });
+    if (lists.length >= CHAT_LISTS_MAX) return res.status(400).json({ message: `Puedes tener hasta ${CHAT_LISTS_MAX} secciones.` });
     const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
     const error = chatListNameError(name, lists.map(toClient));
     if (error) return res.status(400).json({ message: error });
     const list: StoredList = { _id: new Types.ObjectId(), name, chatIds: changeListChats([], { add: await myChatIds(userId, req.body?.chatIds) }) };
     await UserModel.updateOne({ _id: userId }, { $push: { chatLists: list } });
+    await takeOutOfOtherLists(userId, list._id, list.chatIds);
     emitChatListsChanged(userId);
-    res.status(201).json({ list: toClient(list) });
+    res.status(201).json({ list: toClient(list), lists: (await listsOf(userId)).map(toClient) });
   }));
 
   // Before `/:id`, or «order» would be read as a list's id.
@@ -76,22 +83,24 @@ export function buildChatListsRouter(): Router {
     const userId = userOf(req);
     const lists = await listsOf(userId);
     const current = lists.find((list) => String(list._id) === req.params.id);
-    if (!current) return res.status(404).json({ message: 'Esa lista ya no existe.' });
+    if (!current) return res.status(404).json({ message: 'Esa sección ya no existe.' });
     const name = typeof req.body?.name === 'string' ? req.body.name.trim() : current.name;
     const error = chatListNameError(name, lists.map(toClient), String(current._id));
     if (error) return res.status(400).json({ message: error });
-    const chatIds = changeListChats(current.chatIds, { add: await myChatIds(userId, req.body?.add), remove: stringIds(req.body?.remove) });
+    const added = await myChatIds(userId, req.body?.add);
+    const chatIds = changeListChats(current.chatIds, { add: added, remove: stringIds(req.body?.remove) });
     await UserModel.updateOne({ _id: userId, 'chatLists._id': current._id }, { $set: { 'chatLists.$.name': name, 'chatLists.$.chatIds': chatIds } });
+    await takeOutOfOtherLists(userId, current._id, added);
     emitChatListsChanged(userId);
-    res.json({ list: toClient({ ...current, name, chatIds }) });
+    res.json({ list: toClient({ ...current, name, chatIds }), lists: (await listsOf(userId)).map(toClient) });
   }));
 
   router.delete('/:id', asyncRoute(async (req, res) => {
     const userId = userOf(req);
     const listId = req.params.id ?? '';
-    if (!Types.ObjectId.isValid(listId)) return res.status(404).json({ message: 'Esa lista ya no existe.' });
+    if (!Types.ObjectId.isValid(listId)) return res.status(404).json({ message: 'Esa sección ya no existe.' });
     const result = await UserModel.updateOne({ _id: userId }, { $pull: { chatLists: { _id: new Types.ObjectId(listId) } } });
-    if (result.modifiedCount === 0) return res.status(404).json({ message: 'Esa lista ya no existe.' });
+    if (result.modifiedCount === 0) return res.status(404).json({ message: 'Esa sección ya no existe.' });
     emitChatListsChanged(userId);
     res.json({ ok: true });
   }));

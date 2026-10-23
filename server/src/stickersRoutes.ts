@@ -5,7 +5,8 @@ import { dimensionValida, findPackSticker, packStickerPath, STICKER_SIZE } from 
 import { ChatModel, MessageModel } from './chatModels.js';
 import { sendMessage } from './chatService.js';
 import { pedidoSeguro } from './cookieDeDispositivo.js';
-import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
+import { toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
+import { defaultMediaUploader } from './localMediaUploader.js';
 import { toClientMessage } from './messageView.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import { notifyThread, publicarMensaje } from './socket.js';
@@ -127,7 +128,7 @@ function keepRoutes(router: Router) {
  * here live «Mis stickers», the default pack and the send, which reuses the
  * file instead of uploading it again. Session per route: mounted on `/api`.
  */
-export function buildStickersRouter(uploader: MediaUploader = buildLilaUploader(), animated: { convert?: GifConverter; fetchMedia?: MediaFetcher } = {}): Router {
+export function buildStickersRouter(uploader: MediaUploader = defaultMediaUploader(), animated: { convert?: GifConverter; fetchMedia?: MediaFetcher } = {}): Router {
   const router = Router();
   libraryRoutes(router, uploader);
   keepRoutes(router);

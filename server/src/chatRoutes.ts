@@ -33,7 +33,8 @@ import {
   puedeProgramar,
 } from './scheduledMessages.js';
 import { toClientMessages } from './messageView.js';
-import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
+import { toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
+import { defaultMediaUploader } from './localMediaUploader.js';
 import { avisarCambioDeChat, publicarAviso } from './socket.js';
 import { requireSession } from './requireSession.js';
 import { multerDeAvatar, subirFotoRedonda } from './subirAvatar.js';
@@ -99,7 +100,7 @@ export async function avisarEnElChat(params: {
   await publicarAviso(mensaje, [...new Set([...miembros, ...tambienA])]);
 }
 
-export function buildChatRouter(uploader: MediaUploader = buildLilaUploader()): Router {
+export function buildChatRouter(uploader: MediaUploader = defaultMediaUploader()): Router {
   const router = Router();
   router.use(requireSession);
 

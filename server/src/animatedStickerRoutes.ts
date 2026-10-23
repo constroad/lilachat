@@ -7,6 +7,7 @@ import { toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import { StickerModel } from './stickerModel.js';
 import { toClientSticker } from './stickerView.js';
+import { readOwnMedia } from './mediaDisk.js';
 
 /** A GIF from the gallery can be heavy: up to 8 MB goes in, at most 500 KB comes out. */
 export const MAX_GIF_BYTES = 8 * 1024 * 1024;
@@ -27,6 +28,12 @@ const asObjectId = (value: unknown) => (Types.ObjectId.isValid(String(value)) ? 
 
 /** Our own media only: the URL comes from the message the server stored, never from the client. */
 export async function fetchStoredMedia(url: string): Promise<Buffer> {
+  // Our own file (pending 82) is read from the disk, not fetched back through the internet.
+  const own = await readOwnMedia(url);
+  if (own) {
+    if (own.length > MAX_GIF_BYTES) throw new Error('media too large');
+    return own;
+  }
   const response = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!response.ok) throw new Error(`media ${response.status}`);
   const bytes = Buffer.from(await response.arrayBuffer());

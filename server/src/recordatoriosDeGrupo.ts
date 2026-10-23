@@ -4,7 +4,8 @@ import { ChatModel } from './chatModels.js';
 import { textoDeRecordatorioEnElChat } from '@lilachat/shared';
 import { ReminderModel, type Reminder } from './eventModels.js';
 import type { MediaUploader } from './mediaClient.js';
-import { buildLilaUploader, toAbsoluteMediaUrl } from './mediaClient.js';
+import { toAbsoluteMediaUrl } from './mediaClient.js';
+import { defaultMediaUploader } from './localMediaUploader.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import { multerDeAvatar, subirFotoRedonda } from './subirAvatar.js';
 import { publicarEnElChat } from './publicarEnElChat.js';
@@ -56,7 +57,7 @@ export async function permisoSobreRecordatorio(reminderId: unknown, userId: Type
 const vista = (r: Reminder) => ({ ...r, ...(r.imageUrl ? { imageUrl: toAbsoluteMediaUrl(r.imageUrl) } : {}) });
 
 export function buildRecordatoriosDeGrupoRouter(uploaderInyectado?: MediaUploader): Router {
-  const uploader = uploaderInyectado ?? buildLilaUploader();
+  const uploader = uploaderInyectado ?? defaultMediaUploader();
   const router = Router();
   router.use(requireSession);
 

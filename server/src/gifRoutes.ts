@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { GIF_MAX_BYTES, gifRenditionToSend, gifsFromGiphy, type GifResult } from '@lilachat/shared';
 import { ForbiddenChatError, mensajePropioPorClave, sendMessage } from './chatService.js';
-import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
+import { toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
+import { defaultMediaUploader } from './localMediaUploader.js';
 import { toClientMessage } from './messageView.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import { publicarMensaje } from './socket.js';
@@ -53,7 +54,7 @@ export function buildGifRouter(options: { apiKey?: string; fetchers?: GiphyFetch
   const router = Router();
   const apiKey = options.apiKey ?? '';
   const fetchers = options.fetchers ?? realFetchers;
-  const uploader = options.uploader ?? buildLilaUploader();
+  const uploader = options.uploader ?? defaultMediaUploader();
   const trending = new Map<number, { at: number; gifs: GifResult[] }>();
   router.use(requireSession);
 

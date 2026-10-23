@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { buildMediaPath, buildStorageName, type MediaKind } from '@lilachat/shared';
+import { MEDIA_PREFIX, ownMediaBase } from './mediaDisk.js';
 
 /**
  * Subida al storage de lila. Contrato copiado del código VIVO
@@ -117,6 +118,8 @@ export function toAbsoluteMediaUrl(relativeUrl: string): string {
   const base = (process.env.LILA_PUBLIC_URL || process.env.LILA_SERVER_URL || '').replace(/\/$/, '');
   if (!relativeUrl) return '';
   if (relativeUrl.startsWith('http')) return relativeUrl;
+  // Our own files (pending 82) carry our host; lila's keep lila's, so old messages still load.
+  if (relativeUrl.startsWith(MEDIA_PREFIX)) return `${ownMediaBase()}${relativeUrl}`;
   if (!base && !missingBaseWarned) {
     // Sin base, el cliente recibe `/files/…` y NINGUNA imagen carga — un fallo
     // mudo que en el E2E de F3 costó buscar del lado equivocado. Se avisa una

@@ -5,7 +5,8 @@ import { UserModel } from './models.js';
 import { announceJoin } from './joinNotice.js';
 import { contactIdsOf, presenceFrameOf, prefsFromUser, rememberPresencePrefs } from './presenceModes.js';
 import { emitPresence } from './reparto.js';
-import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
+import { toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
+import { defaultMediaUploader } from './localMediaUploader.js';
 import { multerDeAvatar, subirFotoRedonda } from './subirAvatar.js';
 
 /** Máximo del texto de auto-respuesta: un aviso, no un ensayo. */
@@ -21,7 +22,7 @@ function perfilPublico(user: { name?: string; phone: string; avatarUrl?: string 
  * foto— (FL9). Van acá y no en un chat porque son de la persona, no de una
  * conversación.
  */
-export function buildMeRouter(uploader: MediaUploader = buildLilaUploader()): Router {
+export function buildMeRouter(uploader: MediaUploader = defaultMediaUploader()): Router {
   const router = Router();
   router.use(requireSession);
 

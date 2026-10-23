@@ -19,7 +19,8 @@ import {
 } from './workspaces.js';
 import { createChannel, joinChannel, listChannels } from './workspaceChannels.js';
 import { emailInvitesOf, inviteByEmail, revokeEmailInvite } from './workspaceEmailInvites.js';
-import { buildLilaUploader, type MediaUploader } from './mediaClient.js';
+import { type MediaUploader } from './mediaClient.js';
+import { defaultMediaUploader } from './localMediaUploader.js';
 import { multerDeAvatar, subirFotoRedonda } from './subirAvatar.js';
 
 /** Tries of a code per person and minute: enough to fix a typo, not to guess codes. */
@@ -41,7 +42,7 @@ function handled(handler: (req: Request, res: Response) => Promise<unknown>) {
 }
 
 /** Company spaces (E1, spec §66), mounted on `/api/workspaces`. */
-export function buildWorkspaceRouter(uploader: MediaUploader = buildLilaUploader()): Router {
+export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploader()): Router {
   const router = Router();
   const codeTries = crearLimiteDeIntentos({ maximo: CODE_TRIES_PER_MINUTE, ventanaMs: ONE_MINUTE_MS });
   const limited = (req: Request, res: Response, next: NextFunction) =>

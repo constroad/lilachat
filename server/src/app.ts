@@ -52,6 +52,8 @@ import { mountAppLinks } from './appLinks.js';
 import { buildContactShareRouter } from './contactShareRoutes.js';
 import { buildLocationShareRouter } from './locationShareRoutes.js';
 import { buildStorageRouter } from './storageRoutes.js';
+import { buildMediaServeRouter } from './mediaServeRoutes.js';
+import { mediaDisk } from './mediaDisk.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -155,6 +157,8 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/respaldos', buildRespaldoRouter());
   app.use('/api/admin', buildAdminRouter());
   app.use('/api/enlaces', buildVistaPreviaRouter(deps.traerVistaPrevia ?? traerVistaPrevia));
+  // Our own media (pending 82), before the web's catch-all.
+  app.use('/media', buildMediaServeRouter(mediaDisk));
 
   // The join links open the app when it is installed (pending 47): Android reads this before the web.
   mountAppLinks(app);

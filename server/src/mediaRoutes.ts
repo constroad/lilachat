@@ -3,7 +3,8 @@ import multer from 'multer';
 import { MAX_BYTES_BY_KIND, dimensionValida, validateMedia, isAlbumId } from '@lilachat/shared';
 import { ForbiddenChatError, mensajePropioPorClave, sendMessage } from './chatService.js';
 import { publicarMensaje } from './socket.js';
-import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
+import { toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
+import { defaultMediaUploader } from './localMediaUploader.js';
 import { requireSession } from './requireSession.js';
 import { ondaValida } from './ondaDeVoz.js';
 import { toClientMessage } from './messageView.js';
@@ -24,7 +25,7 @@ const upload = multer({
   limits: { fileSize: Math.max(...Object.values(MAX_BYTES_BY_KIND)) },
 });
 
-export function buildMediaRouter(uploader: MediaUploader = buildLilaUploader()): Router {
+export function buildMediaRouter(uploader: MediaUploader = defaultMediaUploader()): Router {
   const router = Router();
   router.use(requireSession);
 

@@ -39,4 +39,21 @@ describe('la tarjeta de un enlace en la web', () => {
     fireEvent.error(screen.getByTestId('tarjeta-enlace').querySelector('img')!);
     expect(screen.getByTestId('tarjeta-enlace').querySelector('img')).toBeNull();
   });
+
+  it('a YouTube link plays inside Lilachat, in its own player (pending 6)', () => {
+    const video: VistaPreviaDeEnlace = { url: 'https://www.youtube.com/watch?v=jNQXAC9IVRw', titulo: 'Me at the zoo', sitio: 'YouTube', video: true };
+    render(<TarjetaDeEnlace vista={video} mio={false} />);
+    fireEvent.click(screen.getByTestId('tarjeta-enlace'));
+    const player = screen.getByTestId('reproductor-video');
+    expect(player.querySelector('iframe')?.getAttribute('src')).toBe('https://www.youtube-nocookie.com/embed/jNQXAC9IVRw?autoplay=1&playsinline=1&rel=0');
+    expect(screen.getByTestId('btn-abrir-video-afuera').getAttribute('href')).toBe(video.url);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByTestId('reproductor-video')).toBeNull();
+  });
+
+  it('any other link still opens in a new tab', () => {
+    render(<TarjetaDeEnlace vista={instagram} mio={false} />);
+    expect(fireEvent.click(screen.getByTestId('tarjeta-enlace'))).toBe(true);
+    expect(screen.queryByTestId('reproductor-video')).toBeNull();
+  });
 });

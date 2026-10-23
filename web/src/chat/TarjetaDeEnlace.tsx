@@ -1,6 +1,8 @@
 import { Play } from 'lucide-react';
 import { useState, type SyntheticEvent } from 'react';
 import { esMiniaturaCompacta, type VistaPreviaDeEnlace } from '@lilachat/shared';
+import { videoEmbedFor, type VideoEmbed } from '@lilachat/shared';
+import { VideoEmbedOverlay } from './VideoEmbedOverlay';
 
 /** Lado de la miniatura de un logo o un perfil, al costado del texto. */
 const LADO_DE_LA_MINIATURA = 72;
@@ -14,13 +16,22 @@ const LADO_DE_LA_MINIATURA = 72;
 export function TarjetaDeEnlace({ vista, mio }: { vista: VistaPreviaDeEnlace; mio: boolean }) {
   const [sinImagen, setSinImagen] = useState(false);
   const [compacta, setCompacta] = useState(false);
+  // Pending 6: a YouTube, TikTok, Instagram or Facebook video plays over the chat instead of in a new tab.
+  const [playing, setPlaying] = useState<VideoEmbed | null>(null);
   const imagen = sinImagen ? undefined : vista.imagen;
   const alCargar = (evento: SyntheticEvent<HTMLImageElement>) => {
     const { naturalWidth, naturalHeight } = evento.currentTarget;
     setCompacta(esMiniaturaCompacta({ ancho: naturalWidth, alto: naturalHeight, video: vista.video }));
   };
   return (
+    <>
     <a
+      onClick={(event) => {
+        const video = videoEmbedFor(vista.url);
+        if (!video || event.ctrlKey || event.metaKey || event.shiftKey) return;
+        event.preventDefault();
+        setPlaying(video);
+      }}
       href={vista.url}
       target="_blank"
       rel="noopener noreferrer"
@@ -56,5 +67,7 @@ export function TarjetaDeEnlace({ vista, mio }: { vista: VistaPreviaDeEnlace; mi
         <p className="mt-0.5 text-[11px] uppercase tracking-wide opacity-70">{vista.sitio}</p>
       </div>
     </a>
+    {playing ? <VideoEmbedOverlay video={playing} link={vista.url} onClose={() => setPlaying(null)} /> : null}
+    </>
   );
 }

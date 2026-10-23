@@ -31,6 +31,7 @@ import { useAccionesSobreChats } from './sync/accionesSobreChats';
 import { TAMANO_DE_PAGINA, useSincronizacion } from './sync/useSincronizacion';
 import { useSocket } from './useSocket';
 import { ChatFontChoice, GroupsAsListChoice, PresenceChoice } from './ui/settingsChoices';
+import { StorageChoice } from './storage/StorageChoice';
 import { chatNameWithAgenda } from './contacts/phoneAgenda';
 import { useAgendaRelay } from './contacts/useAgendaRelay';
 import { AppRail } from './rail/AppRail';
@@ -392,7 +393,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
       ) : null}
       {creando?.tipo === 'recordatorio' ? <CrearRecordatorio jwt={credential.jwt} chat={creando.chat} editando={creando.editando} onClose={() => setCreando(null)} onGuardado={() => setCreando(null)} /> : null}
 
-      {aviso === 'ajustes' ? <PanelDeAjustes jwt={credential.jwt} onAviso={setAviso} onSalir={logout} onCerrar={() => setAviso('')} instalacion={instalacion} superadmin={superadmin} /> : aviso ? (
+      {aviso === 'ajustes' ? <PanelDeAjustes jwt={credential.jwt} userId={credential.userId} onAviso={setAviso} onSalir={logout} onCerrar={() => setAviso('')} instalacion={instalacion} superadmin={superadmin} /> : aviso ? (
         <p data-testid="aviso" role="status" className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-on-surface px-4 py-2 text-sm text-surface">
           {aviso}
         </p>
@@ -419,6 +420,7 @@ function WebNotices({ sinConexion }: { sinConexion: boolean }) {
 /** Ajustes mínimos: notificaciones, instalar y salir. W3 trae los completos. */
 function PanelDeAjustes(props: {
   jwt: string;
+  userId: string;
   onAviso: (texto: string) => void;
   onSalir: () => void;
   onCerrar: () => void;
@@ -448,6 +450,7 @@ function PanelDeAjustes(props: {
       <AppearanceChoice />
       <ChatFontChoice />
       <GroupsAsListChoice />
+      <StorageChoice userId={props.userId} />
       <button type="button" data-testid="btn-notificaciones" onClick={() => void alternar()} className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-left text-sm hover:bg-background">
         {push === 'encendido' ? <BellOff size={16} /> : <Bell size={16} />}
         <span className="min-w-0 flex-1">{push === 'encendido' ? 'Desactivar notificaciones' : 'Activar notificaciones'}</span>

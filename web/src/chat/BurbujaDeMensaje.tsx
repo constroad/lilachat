@@ -16,6 +16,7 @@ import { BotonDeHilo } from './BotonDeHilo';
 import { PastillaDeReacciones } from './reacciones/PastillaDeReacciones';
 import { TextoDelMensaje } from './TextoDelMensaje';
 import { ContactCardWeb } from './ContactCardWeb';
+import { LocationCardWeb } from './LocationCardWeb';
 import { TarjetaDelMensaje } from './tarjetas/TarjetaDelMensaje';
 import { NudgeLine, WinkLine } from './nudge';
 import { StickerMessage } from './stickers/StickerMessage';
@@ -267,6 +268,9 @@ function MessageContent({ mensaje, mio, album }: { mensaje: MensajeEnPantalla; m
       {mensaje.kind === 'contact' && mensaje.contact && !mensaje.deletedAt ? (
         // A shared contact (pending 9): the card; its `body` is only the summary for the list and the search.
         <ContactCardWeb contact={mensaje.contact} mio={mio} jwt={jwt} yo={yo} />
+      ) : mensaje.kind === 'location' && mensaje.location && !mensaje.deletedAt ? (
+        // A shared location (pending 11): the map card; its `body` is only «Ubicación».
+        <LocationCardWeb location={mensaje.location} mio={mio} />
       ) : mensaje.body ? (
         <TextoDelMensaje clave={mensaje.clientKey} texto={mensaje.body} menciones={mensaje.menciones} nombres={nombres} yo={yo} mio={mio} />
       ) : null}

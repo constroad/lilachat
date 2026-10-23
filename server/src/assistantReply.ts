@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { detectLilaMention, TELEFONO_DE_LILA } from '@lilachat/shared';
+import { detectLilaCommand, TELEFONO_DE_LILA } from '@lilachat/shared';
 import { answerMention } from './assistantService.js';
 import { ChatModel } from './chatModels.js';
 import { sendMessage } from './chatService.js';
@@ -20,6 +20,8 @@ import { UserModel } from './models.js';
 
 /** El usuario con el que firma Lila. Se crea una vez y se reusa. */
 const LILA_PHONE = TELEFONO_DE_LILA;
+/** What the chat reads when the assistant fails. */
+const UNAVAILABLE_TEXT = 'No pude responder ahora. Prueba en un rato.';
 let lilaId: Types.ObjectId | null = null;
 
 export async function assistantUserId(): Promise<Types.ObjectId> {
@@ -45,19 +47,22 @@ export async function maybeAnswerMention(params: {
   /** Se llama con el mensaje de Lila ya guardado, para repartirlo por socket. */
   onReply: (message: Awaited<ReturnType<typeof sendMessage>>['message']) => Promise<void>;
 }): Promise<void> {
-  const mention = detectLilaMention(params.body ?? '');
-  if (!mention) return;
+  const command = detectLilaCommand(params.body ?? '');
+  if (!command) return;
 
   try {
+    // Only in a company space, like Slack (José, 22/10): never in a personal chat or group.
+    const chat = await ChatModel.findById(params.chatId).select('workspaceId').lean();
+    if (!chat?.workspaceId) return;
     const answer = await answerMention({
       chatId: params.chatId,
       userId: params.askedBy,
-      request: mention.request,
+      request: command.request,
     });
 
-    // Cuando falla, Lila lo DICE en el chat en vez de quedarse muda: un
-    // asistente que no contesta se lee como una app rota.
-    const text = answer.ok ? answer.text : `No pude responder ahora. (${answer.message})`;
+    // A failure is said in the chat, but its cause goes to the log: the server's configuration is not the chat's business.
+    if (!answer.ok) console.error(`[lila] ${answer.code}: ${answer.message}`);
+    const text = answer.ok ? answer.text : UNAVAILABLE_TEXT;
 
     // LILA SE SUMA AL CHAT la primera vez que la llaman ahí.
     //

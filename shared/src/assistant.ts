@@ -17,20 +17,18 @@ export const ASSISTANT_NAME = 'lila';
 /** Topes por defecto. Acotan el gasto y, sobre todo, cuánto se comparte. */
 export const CONTEXT_LIMITS = { maxMessages: 40, maxChars: 8_000 } as const;
 
-export type LilaMention = { request: string };
+export type LilaCommand = { request: string };
 
 /**
- * ¿Están llamando a Lila?
- *
- * Sin mención NO se llama al modelo. Es la diferencia entre un asistente al que
- * se invoca y uno que lee todo lo que la familia escribe — y esa diferencia es
- * la razón por la que alguien aceptaría tenerlo en el chat.
+ * Is someone calling Lila? Only with «/lila» at the start of the message (José,
+ * 22/10). A mention never calls it: in «Lokillos» «@Lila» was for Lila the
+ * PERSON and the assistant answered. Without the command the model is not
+ * called: an assistant you call, not one that reads everything.
  */
-export function detectLilaMention(text: string): LilaMention | null {
-  const match = new RegExp(`@${ASSISTANT_NAME}\\b`, 'i').exec(text ?? '');
+export function detectLilaCommand(text: string): LilaCommand | null {
+  const match = new RegExp(`^\\s*/${ASSISTANT_NAME}(?:\\s+|$)`, 'i').exec(text ?? '');
   if (!match) return null;
-
-  return { request: text.slice(match.index + match[0].length).trim() };
+  return { request: text.slice(match[0].length).trim() };
 }
 
 export type ContextMessage = { seq: number; body: string; from: string; kind: string };

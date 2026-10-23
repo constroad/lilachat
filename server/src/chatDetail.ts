@@ -42,6 +42,7 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId) {
     name: chat.name,
     descripcion: chat.descripcion,
     funAllowed: chat.funAllowed === true,
+    birthdaysOn: chat.birthdaysOn === true,
     encrypted: chat.encrypted === true,
     // MY mute (it is per person): the detail's switch shows it as it is,
     // instead of always starting off.

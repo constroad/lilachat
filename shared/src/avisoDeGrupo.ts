@@ -32,7 +32,9 @@ export type EventoDeGrupo =
   /** Someone I invited created their account (José, 21/10, like Telegram). */
   | 'se-unio'
   /** Someone became active in a company space: its #general hears it (José, 22/10, like Slack). */
-  | 'se-unio-espacio';
+  | 'se-unio-espacio'
+  /** Someone's birthday, in a chat that has them on (pending 17); `valor` is the age when known. */
+  | 'cumpleanos';
 
 export function textoDeAviso(params: {
   /** Quién lo hizo, con el nombre ya resuelto. */
@@ -107,6 +109,10 @@ export function textoDeAviso(params: {
 
     case 'se-unio-espacio':
       return esMio ? 'Te uniste al espacio' : `${quien} se unió al espacio`;
+
+    case 'cumpleanos':
+      if (esMio) return '🎂 ¡Hoy es tu cumpleaños! Tus chats lo saben.';
+      return valor ? `🎂 Hoy cumple ${quien} · ${valor} años` : `🎂 Hoy cumple ${quien}`;
 
     // La línea que deja una llamada (FL8.1): la frase depende de quién mira.
     case 'llamada':

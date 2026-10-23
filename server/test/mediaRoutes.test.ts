@@ -120,6 +120,26 @@ describe('POST /api/media', () => {
     expect(mala.body.message.media.height).toBeUndefined();
   });
 
+  /** Pending 12: photos sent together carry the same album id, so the chat draws them as one card. */
+  it('keeps the album id of photos sent together; a broken one is left out', async () => {
+    const { uploader } = fakeUploader();
+    const app = buildApp({ mediaUploader: uploader });
+    const send = (clientKey: string, albumId: string) =>
+      request(app)
+        .post('/api/media')
+        .set('Authorization', `Bearer ${token}`)
+        .field('chatId', chatId)
+        .field('clientKey', clientKey)
+        .field('albumId', albumId)
+        .attach('file', jpeg, { filename: 'foto.jpg', contentType: 'image/jpeg' });
+
+    const good = await send('ck-album-1', 'almq2x1abc123');
+    const broken = await send('ck-album-2', 'no vale!');
+
+    expect(good.body.message.media.album).toBe('almq2x1abc123');
+    expect(broken.body.message.media.album).toBeUndefined();
+  });
+
   /**
    * La onda de una nota de voz (FL9): barras de 0 a 100, como WhatsApp. Lo que
    * no son números se ignora y la nota se dibuja con la línea de siempre.

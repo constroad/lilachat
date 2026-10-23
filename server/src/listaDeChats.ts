@@ -60,6 +60,7 @@ export type ChatSummary = {
   channel?: { visibility: 'public' | 'private' };
   /** Nudges and winks switched on by an admin of the group (José, 21/10). */
   funAllowed?: boolean;
+  birthdaysOn?: boolean;
   /** Silenciado por MÍ: la lista lo marca y no me llega push de acá. */
   muted?: boolean;
   /** E3b: «todo», «menciones» or «nada» (from muted + avisos). */
@@ -167,6 +168,7 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
       ...(chat.propio ? { propio: true } : {}),
       ...(chat.channel ? { channel: { visibility: chat.channel.visibility } } : {}),
       ...(chat.funAllowed ? { funAllowed: true } : {}),
+      ...(chat.birthdaysOn ? { birthdaysOn: true } : {}),
       muted: yo?.muted === true,
       avisos: notificationLevel(yo ?? {}),
       pinned: yo?.pinned === true,

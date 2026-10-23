@@ -21,6 +21,7 @@ import { buildCallRouter } from './callRoutes.js';
 import { buildMeRouter } from './meRoutes.js';
 import { buildChatListsRouter } from './chatListRoutes.js';
 import { buildCallLinksRouter } from './callLinks.js';
+import { buildBirthdaysRouter } from './birthdays.js';
 import { buildProfileRouter } from './profileRoutes.js';
 import { buildAdminRouter } from './adminRoutes.js';
 import { buildQueueRouter } from './queueRoutes.js';
@@ -146,6 +147,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/me', buildMeRouter(deps.mediaUploader));
   app.use('/api/chat-lists', buildChatListsRouter());
   app.use('/api', buildCallLinksRouter());
+  app.use('/api', buildBirthdaysRouter());
   app.use('/api/respaldos', buildRespaldoRouter());
   app.use('/api/admin', buildAdminRouter());
   app.use('/api/enlaces', buildVistaPreviaRouter(deps.traerVistaPrevia ?? traerVistaPrevia));

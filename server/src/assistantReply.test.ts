@@ -51,6 +51,8 @@ beforeEach(async () => {
     name: 'Familia',
     lastSeq: 1,
     members: [{ userId: yo }],
+    // The assistant only answers in a company space (José, 22/10).
+    workspaceId: new Types.ObjectId(),
   });
   chatId = chat._id;
   await MessageModel.create({
@@ -70,7 +72,7 @@ describe('maybeAnswerMention', () => {
     await maybeAnswerMention({
       chatId,
       askedBy: yo,
-      body: '@lila ¿a qué hora quedamos?',
+      body: '/lila ¿a qué hora quedamos?',
       onReply: async (message) => void repartidos.push(message.body ?? ''),
     });
 
@@ -108,13 +110,14 @@ describe('maybeAnswerMention', () => {
     await maybeAnswerMention({
       chatId,
       askedBy: yo,
-      body: '@lila hola',
+      body: '/lila hola',
       onReply: async () => undefined,
     });
 
     const guardado = await MessageModel.findOne({ seq: 2 }).lean();
     expect(guardado?.body).toContain('No pude responder');
-    expect(guardado?.body).toContain('Falta la clave.');
+    // The server's configuration never reaches the chat (José, 22/10: «Falta ANTHROPIC_API_KEY»).
+    expect(guardado?.body).not.toContain('Falta la clave.');
   });
 
   /**
@@ -126,7 +129,7 @@ describe('maybeAnswerMention', () => {
     await maybeAnswerMention({
       chatId,
       askedBy: yo,
-      body: '@lila hola',
+      body: '/lila hola',
       onReply: async () => undefined,
     });
 
@@ -134,5 +137,24 @@ describe('maybeAnswerMention', () => {
     expect(String(guardado?.senderId)).not.toBe(String(yo));
     const lila = await UserModel.findById(guardado?.senderId).lean();
     expect(lila?.name).toBe('Lila');
+  });
+
+  it('a mention does not call it, even in a company space', async () => {
+    // Act
+    await maybeAnswerMention({ chatId, askedBy: yo, body: '@Lila ?', onReply: async () => undefined });
+    // Assert
+    expect(llamadas).toBe(0);
+    expect(await MessageModel.countDocuments({})).toBe(1);
+  });
+
+  it('in a personal chat or group «/lila» does nothing and it does not join', async () => {
+    // Arrange
+    await ChatModel.updateOne({ _id: chatId }, { $unset: { workspaceId: 1 } });
+    // Act
+    await maybeAnswerMention({ chatId, askedBy: yo, body: '/lila hola', onReply: async () => undefined });
+    // Assert
+    expect(llamadas).toBe(0);
+    const chat = await ChatModel.findById(chatId).lean();
+    expect(chat?.members).toHaveLength(1);
   });
 });

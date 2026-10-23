@@ -2,6 +2,7 @@ import { Types } from 'mongoose';
 import { ChatModel } from './chatModels.js';
 import { UserModel } from './models.js';
 import { isOnline } from './presence.js';
+import { prefsFromUser } from './presenceModes.js';
 
 /**
  * «últ. vez» (FL10, auditoría §46.3), como WhatsApp.
@@ -20,9 +21,13 @@ export async function guardarUltimaVez(userId: string, cuando: Date): Promise<vo
  * falta, así que no se consulta.
  */
 export async function ultimaVezDeContacto(yo: string, otro: unknown): Promise<string | null> {
-  if (typeof otro !== 'string' || !Types.ObjectId.isValid(otro) || otro === yo || isOnline(otro)) return null;
+  if (typeof otro !== 'string' || !Types.ObjectId.isValid(otro) || otro === yo) return null;
   const comparten = await ChatModel.exists({ 'members.userId': { $all: [yo, otro] } });
   if (!comparten) return null;
-  const usuario = await UserModel.findById(otro).select('lastSeenAt').lean();
-  return usuario?.lastSeenAt?.toISOString() ?? null;
+  const user = await UserModel.findById(otro).select('lastSeenAt presenceMode lastSeenHidden').lean();
+  const prefs = prefsFromUser(user);
+  // Hidden by its owner (pending 15): not told. Invisible and online: the last seen they had,
+  // so «online» does not show through the missing line.
+  if (prefs.lastSeenHidden || (isOnline(otro) && prefs.mode !== 'invisible')) return null;
+  return user?.lastSeenAt?.toISOString() ?? null;
 }

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { MAX_BYTES_BY_KIND, dimensionValida, validateMedia } from '@lilachat/shared';
+import { MAX_BYTES_BY_KIND, dimensionValida, validateMedia, isAlbumId } from '@lilachat/shared';
 import { ForbiddenChatError, mensajePropioPorClave, sendMessage } from './chatService.js';
 import { publicarMensaje } from './socket.js';
 import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
@@ -91,6 +91,8 @@ export function buildMediaRouter(uploader: MediaUploader = buildLilaUploader()):
           height: dimensionValida(req.body?.height),
           // La onda de una nota de voz (FL9): barras de 0 a 100.
           onda: ondaValida(req.body?.onda),
+          // Sent together (pending 12): the same album id, and the chat draws one card.
+          album: isAlbumId(req.body?.albumId) ? req.body.albumId : undefined,
           // RELATIVAS a propósito: se resuelven al servir (`messageView`).
           thumbUrl: uploaded.media.thumbnailUrl,
           url: uploaded.media.url,

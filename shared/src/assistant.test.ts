@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ASSISTANT_NAME,
-  detectLilaMention,
+  detectLilaCommand,
   parseEventDraft,
   selectContextMessages,
 } from './assistant.js';
@@ -14,37 +14,27 @@ import {
  * El recorte, el tope y qué se excluye no pueden depender de que el prompt esté
  * bien escrito.
  */
-describe('detectLilaMention', () => {
-  it('reconoce la mención al principio y extrae el pedido', () => {
-    const mencion = detectLilaMention('@lila ¿qué dijo mamá del domingo?');
-
-    expect(mencion).toEqual({ request: '¿qué dijo mamá del domingo?' });
+describe('detectLilaCommand', () => {
+  it('reads «/lila» at the start and takes the request', () => {
+    // Act / Assert
+    expect(detectLilaCommand('/lila ¿qué dijo mamá del domingo?')).toEqual({ request: '¿qué dijo mamá del domingo?' });
+    expect(detectLilaCommand('  /Lila   hola')).toEqual({ request: 'hola' });
   });
 
-  it('la reconoce en medio del mensaje', () => {
-    expect(detectLilaMention('oye @lila resumime esto')).toEqual({ request: 'resumime esto' });
+  /** José, 22/10: «@Lila» in «Lokillos» was for Lila the PERSON and the assistant answered. */
+  it('a mention never calls it, nor «/lila» in the middle', () => {
+    // Act / Assert
+    expect(detectLilaCommand('@lila ¿qué dijo mamá?')).toBeNull();
+    expect(detectLilaCommand('@Lila ?')).toBeNull();
+    expect(detectLilaCommand('oye /lila resume esto')).toBeNull();
+    expect(detectLilaCommand('/lilachat es la app')).toBeNull();
+    expect(detectLilaCommand('hablé con lila ayer')).toBeNull();
   });
 
-  it('no distingue mayúsculas ni tildes del nombre', () => {
-    expect(detectLilaMention('@Lila hola')).toEqual({ request: 'hola' });
-  });
-
-  /**
-   * Sin mención NO se llama al modelo. Es la diferencia entre un asistente que
-   * responde cuando lo llaman y uno que lee todo lo que escribe la familia.
-   */
-  it('un mensaje normal no la dispara', () => {
-    expect(detectLilaMention('mañana llevo el postre')).toBeNull();
-    expect(detectLilaMention('hablé con lila ayer')).toBeNull();
-  });
-
-  /** «@lila» a secas es una llamada sin pedido: se responde, no se ignora. */
-  it('sin pedido devuelve una petición vacía, no null', () => {
-    expect(detectLilaMention('@lila')).toEqual({ request: '' });
-  });
-
-  it('el nombre está en un solo lugar', () => {
-    expect(ASSISTANT_NAME).toBe('lila');
+  /** «/lila» alone is a call without a request: it is answered, not ignored. */
+  it('without a request returns an empty one, not null', () => {
+    // Act / Assert
+    expect(detectLilaCommand('/lila')).toEqual({ request: '' });
   });
 });
 

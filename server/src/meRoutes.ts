@@ -1,8 +1,10 @@
 import { Router } from 'express';
-import { validarNombreDePerfil } from '@lilachat/shared';
+import { isPresenceMode, validarNombreDePerfil, type PresenceMode } from '@lilachat/shared';
 import { requireSession } from './requireSession.js';
 import { UserModel } from './models.js';
 import { announceJoin } from './joinNotice.js';
+import { contactIdsOf, presenceFrameOf, prefsFromUser, rememberPresencePrefs } from './presenceModes.js';
+import { emitPresence } from './reparto.js';
 import { buildLilaUploader, toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
 import { multerDeAvatar, subirFotoRedonda } from './subirAvatar.js';
 
@@ -94,6 +96,22 @@ export function buildMeRouter(uploader: MediaUploader = buildLilaUploader()): Ro
       { $set: { autoReply: { enabled, text } } }
     );
     res.json({ autoReply: { enabled, text } });
+  });
+
+  // The presence I choose and my «últ. vez» (pending 15): saved, kept for the socket, told to my contacts.
+  router.get('/presence', async (req, res) => {
+    const user = await UserModel.findById(req.session!.userId).select('presenceMode lastSeenHidden').lean();
+    res.json(prefsFromUser(user));
+  });
+
+  router.put('/presence', async (req, res) => {
+    const userId = String(req.session!.userId);
+    if (!isPresenceMode(req.body?.mode)) return res.status(400).json({ message: 'Elige En línea, Ausente, Ocupado o Invisible.' });
+    const prefs = { mode: req.body.mode as PresenceMode, lastSeenHidden: req.body?.lastSeenHidden === true };
+    await UserModel.updateOne({ _id: userId }, { $set: { presenceMode: prefs.mode, lastSeenHidden: prefs.lastSeenHidden } });
+    rememberPresencePrefs(userId, prefs);
+    res.json(prefs);
+    void contactIdsOf(userId).then((contacts) => emitPresence(contacts, presenceFrameOf(userId))).catch(() => undefined);
   });
 
   return router;

@@ -9,6 +9,7 @@ import { resumeBotDeliveries } from './bots/botEvents.js';
 import { connectDb } from './db.js';
 import { attachSocket } from './socket.js';
 import { startReminderCron } from './reminderCron.js';
+import { startBirthdayCron } from './birthdays.js';
 import { startBackupCron } from './backupCron.js';
 import { alertarServidor } from './alertaTelegram.js';
 import { sellarConsola } from './registro.js';
@@ -99,6 +100,7 @@ export function startServer(): void {
     .then(() => {
       startReminderCron();
       startBackupCron();
+      startBirthdayCron();
       // The bots' events left pending at the last shutdown get their retry timers back.
       void resumeBotDeliveries().catch((error) => console.error('[bots] no se pudieron retomar los eventos:', error instanceof Error ? error.message : error));
     })

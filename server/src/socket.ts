@@ -17,7 +17,8 @@ import {
   markDelivered,
 } from './chatService.js';
 import { toClientMessages } from './messageView.js';
-import { isOnline, markOffline, markOnline, onlineAmong } from './presence.js';
+import { isOnline, markOffline, markOnline } from './presence.js';
+import { contactIdsOf, loadPresencePrefs, presenceFrameOf, presencePrefsOf, presenceSnapshot } from './presenceModes.js';
 import { guardarUltimaVez, ultimaVezDeContacto } from './ultimaVez.js';
 import { autoResponderA } from './autoReply.js';
 import { avisarFinDeLlamada, avisarLlamada, avisarReaccion, notifyOffline } from './pushService.js';
@@ -60,24 +61,6 @@ const userRoom = (userId: string) => `user:${userId}`;
 /** Sala por dispositivo: revocar una web vinculada corta SOLO su socket (W5). */
 const deviceRoom = (deviceId: string) => `device:${deviceId}`;
 
-/**
- * Con quién comparto chats. Es a quién le importa mi presencia — y el único
- * conjunto al que se le puede contar, porque un desconocido no tiene por qué
- * saber si estoy en línea.
- */
-async function contactIdsOf(userId: Types.ObjectId): Promise<string[]> {
-  const chats = await ChatModel.find({ 'members.userId': userId })
-    .select('members.userId')
-    .lean();
-  const ids = new Set<string>();
-  for (const chat of chats) {
-    for (const member of chat.members) {
-      const id = String(member.userId);
-      if (id !== String(userId)) ids.add(id);
-    }
-  }
-  return [...ids];
-}
 
 const PING_INTERVALO_MS = 15_000;
 const PING_ESPERA_MS = 10_000;
@@ -149,17 +132,17 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
     // Se avisa SOLO a quien comparte un chat conmigo. Emitirlo a todos
     // convertiría cada conexión en un broadcast global.
     void (async () => {
-      const contacts = await contactIdsOf(userId);
-      // Si ya se cortó, el «se fue» lo avisa la desconexión: no se pisa con un
-      // «se conectó» que llega tarde.
-      if (becameOnline && socket.connected) {
+      const [contacts, prefs] = await Promise.all([contactIdsOf(userId), loadPresencePrefs(me)]);
+      // If it already dropped, the disconnect tells the others: a late online frame
+      // does not overwrite that. Invisible (pending 15): nobody is told.
+      if (becameOnline && socket.connected && prefs.mode !== 'invisible') {
         for (const contact of contacts) {
-          io.to(userRoom(contact)).emit('presence', { userId: me, online: true });
+          io.to(userRoom(contact)).emit('presence', presenceFrameOf(me));
         }
       }
       // Y a mí me interesa quién YA estaba en línea: sin esto, los puntos
       // verdes solo aparecerían cuando alguien se conecta después que yo.
-      socket.emit('presence.snapshot', { online: onlineAmong(contacts) });
+      socket.emit('presence.snapshot', presenceSnapshot(contacts));
 
       // Lo que me llegó desconectado, entregado ahora (auditoría 19/10).
       await avisarEntregadoAlConectar(userId, me);
@@ -184,13 +167,17 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
       if (!markOffline(me).becameOffline) return;
       // «últ. vez» (FL10): se guarda y se avisa con la hora en que se fue.
       const lastSeenAt = new Date();
+      const prefs = presencePrefsOf(me);
+      // Invisible (pending 15): it never showed online, and its «últ. vez» does not move.
+      if (prefs.mode === 'invisible') return;
       void (async () => {
         const [contactos] = await Promise.all([
           contactIdsOf(userId),
           guardarUltimaVez(me, lastSeenAt).catch((error) => console.error('[presencia] últ. vez:', error?.message ?? error)),
         ]);
+        const frame = prefs.lastSeenHidden ? { userId: me, online: false } : { userId: me, online: false, lastSeenAt: lastSeenAt.toISOString() };
         for (const contact of contactos) {
-          io.to(userRoom(contact)).emit('presence', { userId: me, online: false, lastSeenAt: lastSeenAt.toISOString() });
+          io.to(userRoom(contact)).emit('presence', frame);
         }
       })();
     });
@@ -503,7 +490,7 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
      */
     socket.on('presence.request', async () => {
       const contacts = await contactIdsOf(userId);
-      socket.emit('presence.snapshot', { online: onlineAmong(contacts) });
+      socket.emit('presence.snapshot', presenceSnapshot(contacts));
     });
 
     /** La «últ. vez» del otro de un 1:1, al abrirlo (FL10). */

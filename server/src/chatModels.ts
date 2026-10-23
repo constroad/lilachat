@@ -68,6 +68,9 @@ export interface Chat {
   encrypted?: boolean;
   /** Nudges and winks in a group, switched on by an admin (José, 21/10). In a 1:1 they always go. */
   funAllowed?: boolean;
+  /** Birthdays on in this chat (pending 17), and the day each member's was announced. */
+  birthdaysOn?: boolean;
+  birthdayNotices?: Record<string, string>;
   /** Mensajes fijados arriba del chat (19/10): hasta 3, cada uno con su vencimiento. */
   fijados?: { seq: number; por: Types.ObjectId; en: Date; hasta: Date }[];
 }
@@ -111,6 +114,8 @@ export interface Message {
     mime?: string;
     /** An animated sticker of my own (pending 37): it plays a while and stops, like the pack's. */
     animated?: boolean;
+    /** Sent together with other photos or videos (pending 12): the chat draws one card. */
+    album?: string;
     /**
      * El nombre ORIGINAL del archivo y su tamaño.
      *
@@ -192,6 +197,8 @@ const chatSchema = new Schema<Chat>(
     descripcion: { type: String },
     propio: { type: Boolean },
     funAllowed: { type: Boolean },
+    birthdaysOn: { type: Boolean },
+    birthdayNotices: { type: Map, of: String, default: undefined },
     workspaceId: { type: Schema.Types.ObjectId },
     channel: { visibility: { type: String, enum: ['public', 'private'] } },
     suspendedMembers: {
@@ -270,6 +277,7 @@ const messageSchema = new Schema<Message>(
       onda: { type: [Number], default: undefined },
       mime: String,
       animated: Boolean,
+      album: String,
           fileName: String,
       sizeBytes: Number,
       durationMs: Number,

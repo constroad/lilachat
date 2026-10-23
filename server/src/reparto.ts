@@ -195,3 +195,8 @@ export function avisarCambioDeVinculos(userId: string): void {
 export function emitChatListsChanged(userId: string): void {
   ioVivo?.to(userRoom(userId)).emit('chatLists.changed', {});
 }
+
+/** A presence that changed (pending 15): to the people I share a chat with. */
+export function emitPresence(userIds: readonly string[], frame: object): void {
+  for (const userId of userIds) ioVivo?.to(userRoom(userId)).emit('presence', frame);
+}

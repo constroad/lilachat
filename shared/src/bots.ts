@@ -1,3 +1,4 @@
+import { cutAtWord } from './textCut.js';
 import { normalizePeruPhone } from './phone.js';
 import { TOPIC_KEY } from './noticeTopics.js';
 import { validateChecklist } from './checklists.js';
@@ -33,7 +34,7 @@ export type BotTarget = { channelId: string } | { topic: string } | { userPhone:
 export type BotPost = { target: BotTarget; text?: string; card?: BotCard; checklist?: BotChecklist; threadOf?: number; idempotencyKey: string };
 export type BotPostError = { ok: false; error: 'invalid_request'; message: string };
 
-export const BOT_LIMITS = { text: 4000, idempotencyKey: 120, fields: 12, actions: 3, actionValue: 2000, kicker: 60, title: 120, status: 24, label: 40, value: 120, linkLabel: 24, actionLabel: 24, actionId: 40, url: 500 };
+export const BOT_LIMITS = { text: 4000, idempotencyKey: 120, fields: 12, actions: 3, actionValue: 2000, kicker: 60, title: 120, status: 24, label: 40, value: 120, linkLabel: 40, actionLabel: 24, actionId: 40, url: 500 };
 const TONES: readonly CardTone[] = ['ok', 'warn', 'error', 'info', 'neutral'];
 const STYLES: readonly CardActionStyle[] = ['primary', 'secondary', 'danger'];
 const ACTION_ID = /^[a-z0-9_-]+$/;
@@ -88,7 +89,7 @@ export function validateBotCard(raw: unknown): { ok: true; card: BotCard } | { o
     title,
     ...(statusLabel ? { status: { label: statusLabel, tone: (status.tone as CardTone | undefined) ?? 'neutral' } } : {}),
     fields,
-    ...(url ? { link: { label: line(link.label, BOT_LIMITS.linkLabel) || 'Abrir', url } } : {}),
+    ...(url ? { link: { label: cutAtWord(line(link.label, BOT_LIMITS.text), BOT_LIMITS.linkLabel) || 'Abrir', url } } : {}),
     ...(actions.actions.length ? { actions: actions.actions } : {}),
     ...(blocks.blocks.length ? { blocks: blocks.blocks } : {}),
     ...(detailBlocks.blocks.length ? { detail: { title: line(rawDetail.title, BOT_LIMITS.title) || title, blocks: detailBlocks.blocks } } : {}),

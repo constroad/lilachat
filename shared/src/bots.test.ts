@@ -75,6 +75,13 @@ describe('bot card', () => {
     expect(result.ok && result.card.actions).toEqual([{ id: 'ok', label: 'Ok', style: 'secondary', value: '1' }]);
   });
 
+  it('a link label keeps whole words: «Abrir el chat con Inframaq» was cut to «…con Infram» (E2E 24/10)', () => {
+    const fits = validateBotCard({ title: 'T', link: { label: 'Abrir el chat con Inframaq', url: 'https://x.com' } });
+    const long = validateBotCard({ title: 'T', link: { label: 'Abrir el chat privado con Inframaq para ver los montos', url: 'https://x.com' } });
+    expect(fits.ok && fits.card.link?.label).toBe('Abrir el chat con Inframaq');
+    expect(long.ok && long.card.link?.label).toBe('Abrir el chat privado con Inframaq para…');
+  });
+
   it('only https links and known tones', () => {
     expect(validateBotCard({ title: 'T', link: { url: 'http://x.com' } })).toMatchObject({ ok: false });
     expect(validateBotCard({ title: 'T', status: { label: 'X', tone: 'purple' } })).toMatchObject({ ok: false });

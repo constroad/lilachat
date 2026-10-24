@@ -11514,6 +11514,24 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     «Abrir «Marcar asistencia»» sobre las acciones rápidas. Cerrar el
     formulario lo descarta: la tarjeta no queda. Si se cerró por error, se
     vuelve a tocar la acción.
+101. **Los logos reales de las apps** (José, 23/10: «si ya está conectado en
+    agentes, ¿por qué no obtienes los logos de Portal, Inframaq, Pulso?»). Hoy
+    el `avatar_url` de cada app es una letra sobre un color, generada por
+    agentes (`/apps/<app>/avatar.svg`). Lilachat ya dibuja el `avatar_url`
+    (SVG o PNG) en el directorio, el detalle, la lista y el chat. A agentes le
+    toca servir el logo de marca de cada producto, el mismo que usa el
+    producto. A Lilachat le toca usar ese logo también donde hoy va el robot
+    genérico: la cabecera de «Solo tú ves esto», los mensajes y tarjetas de la
+    app en los canales, y el ⚡.
+102. **Un «/comando» que la app no tiene no se manda como texto** (E2E del
+    23/10: `/kardex` en el 1:1 con Inframaq salió como mensaje). Como Slack:
+    «/kardex no es un comando de Inframaq», con los que sí tiene. Solo se
+    manda como texto si empieza con «//» o con un espacio.
+103. **«Está trabajando…» no se queda para siempre** (E2E del 23/10:
+    `/asistencia` y `/tanques` de Inframaq sin respuesta después de un
+    minuto). Pasados 45 s sin `/respond`, la tarjeta dice «Inframaq no
+    respondió a tiempo» con «Reintentar», y el server lo guarda en la corrida
+    (`failure: timeout`) para verlo después.
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

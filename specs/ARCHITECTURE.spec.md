@@ -4947,9 +4947,37 @@ Cerrado con agentes tras el E2E de punta a punta (pasos 1–5). `audience:
 - **Error junto al botón** (E2E, 24/10): el aviso de que no se pudo enviar sale
   encima del botón, no al final de la hoja, donde parecía un botón muerto.
 
-**Medición** (la hoja se arma con los mismos datos, solo cambia cómo se
-dibujan): sin consultas nuevas; el servidor suma una escritura
-(`updateMany` por `app.appId`) solo al reenviar un manifiesto.
+**Medición** (24/10, emulador y producción): el APK pesa 40 630 941 bytes
+(0.1.168: 40 624 329, +6,6 KB por el selector y las reglas de fechas); el
+chunk principal de la web, 1 162 kB. Sin consultas nuevas: la hoja se arma con
+los mismos datos y solo cambia cómo se dibuja. El servidor suma una escritura
+(`updateMany` por `app.appId`) únicamente al reenviar un manifiesto. En el
+emulador los formularios abren al instante; la tarjeta de respuesta del
+pedido llegó en ~7 s y la de la recepción en ~8 s (Portal).
+
+**E2E (emulador con el bundle nuevo y web en el Chrome de José, producción,
+«Test»):**
+- Recepción de material: «Fecha de ingreso» con la casilla «Día» en hoy
+  («sáb, 24 oct 2026»); el selector del sistema abre en hoy y deja elegir un
+  día pasado; transportista, cantera y planta salen como desplegables; las
+  canteras (3) abren sin buscador y de la altura de sus filas. Cerrar con la
+  fecha cambiada pregunta «¿Descartar?»; recién abierto, no.
+- Pedido con despacho (con el catálogo aprobado): cliente en dos líneas,
+  «dom, 25 oct 2026», hora 07:30 con el reloj de 24 h, diseños largos en dos
+  líneas, unidad F2K-908, 5 m³, hora del viaje 08:00. Tarjeta: «Pedido y
+  viaje creados: Municipalidad Distrital de Pachacámac · dom 25 oct · 10 m³ ·
+  Mac 1 - Diseno base para pruebas · 5 m³ en F2K-908» (15:12:22Z).
+- Recepción enviada a las 15:18:09Z: «Ingreso registrado: arena secundaria -
+  Prueba · 8 m3 · SAPITO TEST · CARLONCHO · 2 fotos. Queda pendiente de
+  validación en Portal.» y el aviso de #administracion con «Registró:
+  Lilachat · J zamora (51902049…)».
+- Tarjetas de Portal en #planta (9:04 y 9:09): las dos con avatar, nombre,
+  «App» y hora, en el APK y en la web.
+- Logo: el usuario-bot de Portal pasó del SVG al PNG de
+  `https://www.constroad.com/icons/icon-512.png` en cuanto agentes reenvió el
+  manifiesto (15:08:12Z), sin tocar la base a mano.
+- Un toque en «Crear» se perdió una vez (el primero del pedido); no se pudo
+  repetir en dos intentos con el mismo orden (selector, texto, botón).
 
 ## 132. Listas largas con buscador y el PIN, primera versión solo para el modo empresa (24/10/2026, 0.1.168)
 

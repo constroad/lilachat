@@ -189,6 +189,32 @@ describe('invoking', () => {
   });
 });
 
+describe('an app restarting in a deploy (agentes, 23/10: a 502 while it came back up)', () => {
+  it('a 502 is tried once more with the same delivery, and the second answer counts', async () => {
+    // Arrange: the first call finds the proxy without the app; the second, the app.
+    const { appId } = await installWithCommands();
+    let calls = 0;
+    answer = (res) => (++calls === 1 ? json(502, { error: 'bad gateway' })(res) : json(200, { text: 'Lurín: 24 °C' })(res));
+    // Act
+    const outcome = (await invoke(channel, { app_id: appId, command: 'clima', text: '' }).expect(200)).body;
+    // Assert
+    expect(outcome).toMatchObject({ outcome: 'ephemeral', response: { text: 'Lurín: 24 °C' } });
+    expect(received).toHaveLength(2);
+    expect(received[1]!.headers['x-lilachat-delivery']).toBe(received[0]!.headers['x-lilachat-delivery']);
+  });
+
+  it('still down after the second try: «se está actualizando», not «no pudo responder»; a 500 is a broken app', async () => {
+    const { appId } = await installWithCommands();
+    answer = json(503, {});
+    expect((await invoke(channel, { app_id: appId, command: 'clima', text: '' }).expect(200)).body).toMatchObject({ outcome: 'failed', message: 'Inframaq se está actualizando: vuelve a intentarlo en unos segundos.' });
+    expect(received).toHaveLength(2);
+    received.length = 0;
+    answer = json(500, {});
+    expect((await invoke(channel, { app_id: appId, command: 'clima', text: '' }).expect(200)).body.message).toBe('Inframaq no pudo responder.');
+    expect(received).toHaveLength(1);
+  });
+});
+
 describe('answering later', () => {
   it('an empty 200 or a slow app leaves it pending; /respond reaches only the asker', async () => {
     const { appId, token } = await installWithCommands();

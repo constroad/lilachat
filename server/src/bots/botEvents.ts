@@ -92,15 +92,18 @@ export async function resumeBotDeliveries(): Promise<number> {
   return pending.length;
 }
 
-/**
- * A slash command (§c-bis): the event goes out ONCE and the person waits for
- * the answer in the response body, so there is no queue and no retry. A
- * timeout is not an error: the app may still answer through `/respond`.
- */
-export async function callBotWebhook(installation: Pick<BotInstallation, '_id' | 'workspaceId' | 'signingSecret'> & { webhookUrl: string }, type: BotEventType, data: Record<string, unknown>, timeoutMs: number): Promise<WebhookReply> {
-  const deliveryId = randomUUID();
-  const body = envelope(installation, deliveryId, type, data);
-  let reply: WebhookReply;
+/** A restarting app (agentes deploys several times an hour): its proxy answers these, or nobody listens. */
+const RESTARTING_STATUSES = [502, 503, 504];
+/** The second try waits about what agentes takes to listen again after a deploy (~1 s, 23/10). */
+const RETRY_DELAY_MS = 1_200;
+const RETRY_SHARE_OF_WAIT = 0.4;
+
+/** The app was down for a moment (a deploy), not broken: the asker is told to try again in a few seconds. */
+export function isRestarting(reply: WebhookReply): boolean {
+  return reply.error !== 'timeout' && (reply.status === null || RESTARTING_STATUSES.includes(reply.status));
+}
+
+async function postOnce(installation: Pick<BotInstallation, '_id' | 'signingSecret'> & { webhookUrl: string }, type: BotEventType, deliveryId: string, body: string, timeoutMs: number): Promise<WebhookReply> {
   try {
     const response = await fetch(installation.webhookUrl, { method: 'POST', headers: signedHeaders(installation.signingSecret, type, deliveryId, installation._id, body), body, signal: AbortSignal.timeout(timeoutMs) });
     const text = (await response.text()).slice(0, REPLY_MAX_BYTES);
@@ -110,14 +113,31 @@ export async function callBotWebhook(installation: Pick<BotInstallation, '_id' |
     } catch {
       parsed = undefined; // a body that is not JSON: the answer is broken, not missing
     }
-    reply = { status: response.status, body: parsed, ...(response.ok ? {} : { error: `HTTP ${response.status}` }) };
+    return { status: response.status, body: parsed, ...(response.ok ? {} : { error: `HTTP ${response.status}` }) };
   } catch (error) {
     const slow = error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError');
     // Slow is the deferred answer, not a broken app.
     if (slow) return { status: null, body: null, error: 'timeout' };
-    reply = { status: null, body: null, error: (error instanceof Error ? error.message : String(error)).slice(0, ERROR_MAX) };
+    return { status: null, body: null, error: (error instanceof Error ? error.message : String(error)).slice(0, ERROR_MAX) };
   }
-  return reply;
+}
+
+/**
+ * A slash command (§c-bis): the person waits for the answer in the response
+ * body, so there is no queue. A timeout is not an error: the app may still
+ * answer through `/respond`. A 502/503/504 or a refused connection (the app
+ * restarting in a deploy) is tried ONCE more with the same delivery id, within
+ * the same wait: the app deduplicates by delivery (agentes, 23/10).
+ */
+export async function callBotWebhook(installation: Pick<BotInstallation, '_id' | 'workspaceId' | 'signingSecret'> & { webhookUrl: string }, type: BotEventType, data: Record<string, unknown>, timeoutMs: number): Promise<WebhookReply> {
+  const deliveryId = randomUUID();
+  const body = envelope(installation, deliveryId, type, data);
+  const deadline = Date.now() + timeoutMs;
+  const first = await postOnce(installation, type, deliveryId, body, timeoutMs);
+  const delay = Math.min(RETRY_DELAY_MS, timeoutMs * RETRY_SHARE_OF_WAIT);
+  if (!isRestarting(first) || deadline - Date.now() <= delay) return first;
+  await new Promise((resolve) => setTimeout(resolve, delay));
+  return postOnce(installation, type, deliveryId, body, Math.max(1, deadline - Date.now()));
 }
 
 /** Integraciones' health after a call, written ONCE with the final verdict and not awaited: the person waits for the answer, not for this. */

@@ -6,8 +6,8 @@ import type { UploadOutcome } from '../mediaClient.js';
 import { readOwnMedia, ownMediaBase } from '../mediaDisk.js';
 import { defaultMediaUploader } from '../localMediaUploader.js';
 import { resolveJwtSecret } from '../sessions.js';
-import { callBotWebhook, recordLastDelivery } from './botEvents.js';
-import { commandAnswerTimeout, deliverResponse, recordRunFailure, type Base, type ChatOfCommand, type CommandError } from './botCommands.js';
+import { callBotWebhook, isRestarting, recordLastDelivery } from './botEvents.js';
+import { commandAnswerTimeout, deliverResponse, recordRunFailure, restartingMessage, type Base, type ChatOfCommand, type CommandError } from './botCommands.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botModels.js';
 import { channelOf, personOf } from './botTriggers.js';
 
@@ -135,7 +135,7 @@ async function answerOf(reply: Awaited<ReturnType<typeof callBotWebhook>>, ctx: 
   recordLastDelivery(ctx.installation._id, judged.ok ? { ok: true } : { ok: false, error: `form.submitted: ${judged.message}` });
   if (!judged.ok) {
     recordRunFailure(ctx.base.commandId, `form.submitted: ${judged.message}`);
-    return { ...ctx.base, outcome: 'failed', message: `${ctx.base.appName} no pudo responder.` };
+    return { ...ctx.base, outcome: 'failed', message: isRestarting(reply) ? restartingMessage(ctx.base.appName) : `${ctx.base.appName} no pudo responder.` };
   }
   if ('errors' in judged) return { status: 422, errors: judged.errors };
   await BotCommandRunModel.updateOne({ _id: ctx.run._id }, { $inc: { responses: 1 }, $unset: { form: 1 } });

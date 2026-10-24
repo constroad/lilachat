@@ -2,7 +2,7 @@ import { Types } from 'mongoose';
 import { COMMAND_LIMITS, enabledAt, itemSettingOf, validateCommandResponse, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope } from '@lilachat/shared';
 import { ChatModel, type Chat } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
-import { callBotWebhook, recordLastDelivery, type WebhookReply } from './botEvents.js';
+import { callBotWebhook, isRestarting, recordLastDelivery, type WebhookReply } from './botEvents.js';
 import { postBotMessage } from './botMessages.js';
 import { announceAppChanged, announceLater } from './botAnnounce.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel, type BotCommandRun, type BotInstallation } from './botModels.js';
@@ -104,6 +104,9 @@ export async function deliverResponse(installation: BotInstallation, run: Pick<B
   return { ...base, outcome: 'ephemeral', response: { ...response, responseType: 'ephemeral' } };
 }
 
+/** What the asker reads when the app was restarting (a deploy) even after the second try. */
+export const restartingMessage = (appName: string): string => `${appName} se está actualizando: vuelve a intentarlo en unos segundos.`;
+
 /** Kept on the run, not awaited: the installation's last delivery is overwritten by the next one. */
 export function recordRunFailure(commandId: string, error: string): void {
   void BotCommandRunModel.updateOne({ _id: commandId }, { $set: { failure: { at: new Date(), error: error.slice(0, RUN_ERROR_MAX) } } }).catch((failure: unknown) => console.error('[bots] no se pudo guardar la falla del comando:', failure instanceof Error ? failure.message : failure));
@@ -115,11 +118,12 @@ export function recordRunFailure(commandId: string, error: string): void {
  */
 function judgeReply(reply: WebhookReply, command: string, installationId: Types.ObjectId, base: Base): CommandOutcome | { accepted: CommandResponse } {
   if (reply.error === 'timeout') return { ...base, outcome: 'pending' };
-  const failed = (error: string): CommandOutcome => {
+  const failed = (error: string, message = `${base.appName} no pudo responder.`): CommandOutcome => {
     recordLastDelivery(installationId, { ok: false, error });
     recordRunFailure(base.commandId, error);
-    return { ...base, outcome: 'failed', message: `${base.appName} no pudo responder.` };
+    return { ...base, outcome: 'failed', message };
   };
+  if (isRestarting(reply)) return failed(reply.error ?? 'Sin respuesta', restartingMessage(base.appName));
   if (reply.status === null || reply.status >= 400) return failed(reply.error ?? 'Sin respuesta');
   if (reply.body === null) {
     recordLastDelivery(installationId, { ok: true });

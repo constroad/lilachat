@@ -72,9 +72,9 @@ function stampDate(at: Date, timeZone: string): string {
 }
 
 /**
- * The two lines burned into a form's photo (pending 94, José 23/10: «coloca un
- * watermark fecha hora y ubicación»): the server writes them with ITS clock,
- * so the phone cannot fake the hour.
+ * The two lines burned into a form's photo (pending 94, José 23/10: a
+ * watermark with the date, the hour and the place): the server writes them
+ * with ITS clock, so the phone cannot fake the hour.
  */
 export function photoStampLines(params: { at: Date; timeZone?: string; location?: GeoPoint }): [string, string] {
   let date: string;

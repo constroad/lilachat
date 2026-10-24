@@ -1,3 +1,8 @@
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
+import { ChevronRight } from 'lucide-react';
+import { Overlay } from '../../ui/Overlay';
+import { BotBlocksView } from './BotBlocksView';
 import { tankFill, tankPercent, type TankItem } from '@lilachat/shared';
 import { TONE } from './tones';
 
@@ -35,22 +40,32 @@ function TankFacts({ tank, big }: { tank: TankItem; big: boolean }) {
 }
 
 export function BlockTank({ items }: { items: TankItem[] }) {
+  const [open, setOpen] = useState<TankItem | null>(null);
+  const sheet = open?.detail
+    ? createPortal(<Overlay title={open.detail.title} onClose={() => setOpen(null)} wide><div data-testid="detalle-tanque" className="space-y-3"><BotBlocksView blocks={open.detail.blocks} /></div></Overlay>, document.body)
+    : null;
   if (items.length === 1) {
+    const tank = items[0]!;
     return (
-      <div data-testid="bloque-tanque" className="flex items-center gap-3">
-        <TankDrawing tank={items[0]!} />
-        <TankFacts tank={items[0]!} big />
-      </div>
+      <>
+        <button type="button" data-testid="bloque-tanque" disabled={!tank.detail} onClick={() => setOpen(tank)} className="flex w-full items-center gap-3 rounded-xl text-left enabled:hover:bg-background">
+          <TankDrawing tank={tank} />
+          <TankFacts tank={tank} big />
+          {tank.detail ? <ChevronRight size={18} className="shrink-0 text-on-surface-variant" /> : null}
+        </button>
+        {sheet}
+      </>
     );
   }
   return (
     <div data-testid="bloque-tanques" className="grid grid-cols-2 gap-2">
       {items.map((tank) => (
-        <div key={tank.name} className={`flex items-center gap-2 rounded-xl border px-2 py-2 ${tank.tone === 'error' ? TONE.error.soft : 'border-outline/15'}`}>
+        <button type="button" key={tank.name} data-testid={`tanque-${tank.name}`} disabled={!tank.detail} onClick={() => setOpen(tank)} className={`flex items-center gap-2 rounded-xl border px-2 py-2 text-left enabled:hover:bg-background ${tank.tone === 'error' ? TONE.error.soft : 'border-outline/15'}`}>
           <TankDrawing tank={tank} scale={0.6} />
           <TankFacts tank={tank} big={false} />
-        </div>
+        </button>
       ))}
+      {sheet}
     </div>
   );
 }

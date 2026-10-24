@@ -10,7 +10,11 @@ import { validateWeatherBlock, type WeatherBlock } from './weatherBlock.js';
  */
 export type ChartKind = 'bar-h' | 'bar-v' | 'line';
 export type ChartPoint = { label: string; value: number; display?: string; note?: string; tone: CardTone };
-export type TankItem = { name: string; level: number; min?: number; value: string; sub?: string; delta?: string; /** The verdict in words («Saludable», «Stock medio», «Bajo»), colored by `tone` (design r155). */ status?: string; tone: CardTone };
+export type TankItemBase = { name: string; level: number; min?: number; value: string; sub?: string; delta?: string; /** The verdict in words («Saludable», «Stock medio», «Bajo»), colored by `tone` (design r155). */ status?: string; tone: CardTone };
+/** A tank's detail draws any block, and its own tank without a detail: one level, so it never loops (also for the types). */
+export type TankDetailBlock = Exclude<BotBlock, { type: 'tank' }> | { type: 'tank'; items: TankItemBase[] };
+/** Tapping the tank opens it (José, 24/10): the big tank, its level, minimum, last reading. */
+export type TankItem = TankItemBase & { detail?: { title: string; blocks: TankDetailBlock[] } };
 export type BotBlock =
   | { type: 'metric'; value: string; unit?: string; label?: string; tone: CardTone }
   | { type: 'chips'; items: { label: string; sub?: string; tone: CardTone }[] }
@@ -54,10 +58,20 @@ function chartBlock(raw: Record<string, unknown>): Result<BotBlock> {
   return { ok: true, value: { type: 'chart', kind: raw.kind as ChartKind, ...withText('unit', raw.unit, BLOCK_LIMITS.short), points, ...(threshold !== null ? { threshold: { value: threshold, ...withText('label', record(raw.threshold).label, BLOCK_LIMITS.short) } } : {}), ...(max !== null && max > 0 ? { max } : {}) } };
 }
 
+/** A tank's own detail; inside it a tank opens nothing more (one level, never a loop). */
+function tankDetail(raw: unknown, name: string): Pick<TankItem, 'detail'> {
+  const detail = record(raw);
+  const checked = validateBotBlocks(detail.blocks, BLOCK_LIMITS.detailBlocks);
+  if (!checked.ok || !checked.blocks.length) return {};
+  const blocks: TankDetailBlock[] = checked.blocks.map((one) => (one.type === 'tank' ? { type: 'tank' as const, items: one.items.map(({ detail: _nested, ...tank }) => tank) } : one));
+  return { detail: { title: text(detail.title, BLOCK_LIMITS.label) || name, blocks } };
+}
+
 function tankBlock(raw: Record<string, unknown>): Result<BotBlock> {
   const items: TankItem[] = list(raw.items, BLOCK_LIMITS.tanks).map((item) => {
     const tank = record(item);
-    return { name: text(tank.name, BLOCK_LIMITS.label), level: clamp01(tank.level), ...(tank.min !== undefined ? { min: clamp01(tank.min) } : {}), value: text(tank.value, BLOCK_LIMITS.short), ...withText('sub', tank.sub, BLOCK_LIMITS.label), ...withText('delta', tank.delta, BLOCK_LIMITS.short), ...withText('status', tank.status, BLOCK_LIMITS.short), tone: tone(tank.tone) };
+    const name = text(tank.name, BLOCK_LIMITS.label);
+    return { name, level: clamp01(tank.level), ...(tank.min !== undefined ? { min: clamp01(tank.min) } : {}), value: text(tank.value, BLOCK_LIMITS.short), ...withText('sub', tank.sub, BLOCK_LIMITS.label), ...withText('delta', tank.delta, BLOCK_LIMITS.short), ...withText('status', tank.status, BLOCK_LIMITS.short), tone: tone(tank.tone), ...(tank.detail ? tankDetail(tank.detail, name) : {}) };
   }).filter((tank) => tank.name);
   return items.length ? { ok: true, value: { type: 'tank', items } } : { ok: false, message: 'El tanque necesita nombre.' };
 }

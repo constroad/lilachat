@@ -11,6 +11,21 @@ describe('the tank as the r155 design shows it (José, 24/10: like Portal\'s Wha
   });
 });
 
+describe('tapping a tank opens its detail (José, 24/10)', () => {
+  it('keeps each tank\'s detail as blocks; a tank inside it opens nothing more; an empty or broken detail is dropped', () => {
+    // Arrange
+    const tank = { name: 'INFRA PEN #1', level: 0.84, min: 0.2, value: '84 cm', tone: 'ok' };
+    const detail = { title: 'INFRA PEN #1', blocks: [{ type: 'tank', items: [{ ...tank, detail: { blocks: [{ type: 'text', text: 'loop' }] } }] }, { type: 'rows', rows: [{ label: 'Disponible', value: '2589,1 gl' }, { label: 'Última medida', value: '08:33 · Darío Paredes' }] }] };
+    // Act
+    const result = validateBotBlocks([{ type: 'tank', items: [{ ...tank, detail }, { ...tank, name: 'INFRA PEN #2', detail: { blocks: [] } }, { ...tank, name: 'INFRA PEN #3', detail: { blocks: [{ type: 'chart', kind: 'pie', points: [] }] } }] }], BLOCK_LIMITS.cardBlocks);
+    // Assert
+    const items = result.ok && result.blocks[0]!.type === 'tank' ? result.blocks[0]!.items : [];
+    expect(items[0]!.detail).toEqual({ title: 'INFRA PEN #1', blocks: [{ type: 'tank', items: [{ name: 'INFRA PEN #1', level: 0.84, min: 0.2, value: '84 cm', tone: 'ok' }] }, { type: 'rows', rows: [{ label: 'Disponible', value: '2589,1 gl', tone: 'neutral' }, { label: 'Última medida', value: '08:33 · Darío Paredes', tone: 'neutral' }] }] });
+    expect(items[1]!.detail).toBeUndefined();
+    expect(items[2]!.detail).toBeUndefined();
+  });
+});
+
 describe('bot card blocks', () => {
   it('keeps a liquids card: a tank, a bar chart with its threshold and a line of context', () => {
     const result = validateBotBlocks([

@@ -1,8 +1,12 @@
-import { Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
+import { ChevronRight } from 'lucide-react-native';
 import Svg, { Ellipse, Line, Rect } from 'react-native-svg';
 import { tankFill, tankPercent, type TankItem } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { TONE_CLASS, TONE_COLOR } from './tones';
+import { PantallaEnModal } from '../../ui/PantallaEnModal';
+import { BotBlocksView } from './BotBlocksView';
 
 const BODY = { width: 44, height: 76 };
 
@@ -37,24 +41,36 @@ function TankFacts({ tank, big }: { tank: TankItem; big: boolean }) {
   );
 }
 
-/** One tank big, several in a grid of two (`r155-asistencia-tanque`, `r155-tanques-detalle`). */
+/** One tank big, several in a grid of two (`r155-asistencia-tanque`, `r155-tanques-detalle`); a tank with a detail opens it. */
 export function BlockTank({ items }: { items: TankItem[] }) {
+  const palette = useColores();
+  const [open, setOpen] = useState<TankItem | null>(null);
+  const sheet = open?.detail ? (
+    <PantallaEnModal visible titulo={open.detail.title} onCerrar={() => setOpen(null)} testIDCerrar="detalle-tanque-cerrar">
+      <View testID="detalle-tanque" className="gap-3 px-4 pb-8 pt-2"><BotBlocksView blocks={open.detail.blocks} /></View>
+    </PantallaEnModal>
+  ) : null;
   if (items.length === 1) {
+    const tank = items[0]!;
     return (
-      <View testID="bloque-tanque" className="flex-row items-center gap-3">
-        <TankDrawing tank={items[0]!} />
-        <TankFacts tank={items[0]!} big />
-      </View>
+      <Pressable testID="bloque-tanque" disabled={!tank.detail} accessibilityRole={tank.detail ? 'button' : undefined} accessibilityHint={tank.detail ? 'Abre el detalle del tanque' : undefined} onPress={() => setOpen(tank)} className="flex-row items-center gap-3">
+        <TankDrawing tank={tank} />
+        <TankFacts tank={tank} big />
+        {tank.detail ? <ChevronRight size={18} color={palette['on-surface-variant']} /> : null}
+        {sheet}
+      </Pressable>
     );
   }
   return (
     <View testID="bloque-tanques" className="flex-row flex-wrap" style={{ gap: 8 }}>
       {items.map((tank) => (
-        <View key={tank.name} className={`flex-row items-center gap-2 rounded-xl border px-2 py-2 ${tank.tone === 'error' ? TONE_CLASS.error.soft : 'border-outline/15'}`} style={{ width: '48%' }}>
+        <Pressable key={tank.name} testID={`tanque-${tank.name}`} disabled={!tank.detail} accessibilityRole={tank.detail ? 'button' : undefined} onPress={() => setOpen(tank)} className={`flex-row items-center gap-2 rounded-xl border px-2 py-2 ${tank.tone === 'error' ? TONE_CLASS.error.soft : 'border-outline/15'}`} style={{ width: '48%' }}>
           <TankDrawing tank={tank} scale={0.6} />
           <TankFacts tank={tank} big={false} />
-        </View>
+        </Pressable>
       ))}
+      {sheet}
     </View>
   );
 }
+

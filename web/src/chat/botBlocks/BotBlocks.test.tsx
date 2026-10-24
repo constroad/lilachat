@@ -58,3 +58,19 @@ describe('the weather block (pending 96, design e-33)', () => {
     expect(screen.queryByTestId('clima-curva')).toBeNull();
   });
 });
+
+describe('tapping a tank opens its detail (José, 24/10)', () => {
+  it('a tank with a detail is a button that opens the big tank and its rows; one without stays still', () => {
+    // Arrange
+    const tank = { name: 'INFRA PEN #1', level: 0.84, min: 0.2, value: '84 cm', tone: 'ok' };
+    const tanks = validateBotCard({ title: 'Tanques', fields: [], blocks: [{ type: 'tank', items: [{ ...tank, detail: { title: 'INFRA PEN #1', blocks: [{ type: 'tank', items: [tank] }, { type: 'rows', rows: [{ label: 'Disponible', value: '2589,1 gl' }] }] } }, { ...tank, name: 'INFRA PEN #2' }] }] });
+    if (!tanks.ok) throw new Error(tanks.message);
+    render(<BotCardView card={tanks.card} chatId="c" seq={1} jwt="j" />);
+    // Act
+    expect(screen.getByTestId('tanque-INFRA PEN #2')).toBeDisabled();
+    fireEvent.click(screen.getByTestId('tanque-INFRA PEN #1'));
+    // Assert
+    expect(screen.getByTestId('detalle-tanque').textContent).toContain('Disponible2589,1 gl');
+    expect(screen.getByTestId('detalle-tanque').querySelector('[data-testid="bloque-tanque"]')).not.toBeNull();
+  });
+});

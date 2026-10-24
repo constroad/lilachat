@@ -488,6 +488,16 @@ la app de ESA instalación, por su webhook y con la firma de `command.invoked`.
 - Sin conectar dice «<app> te lo pide la primera vez que la usas»: conectar
   sigue siendo el formulario «Conecta tu cuenta» que trae el rechazo de la app.
 
+## c-undecies) Tocar un tanque abre su detalle (0.1.166)
+
+José, 24/10: al tocar un tanque de la tarjeta quiere ver su detalle. Cada item
+del bloque `tank` acepta `detail: { title, blocks }`, igual que el `detail` de
+la tarjeta (hasta 12 bloques). agentes manda el `tank` con ese único item y un
+`rows` con Nivel, Llenado, Disponible, Mínimo, Estado y Última medida. Dentro
+del detalle, un tanque no abre otro: su `detail` se descarta, así nunca hay
+bucle. Un tanque sin `detail` no es tocable. Un servidor anterior descarta el
+campo y la tarjeta queda igual.
+
 ## c-decies) Bloque `weather`: el clima por horas (0.1.166)
 
 Pedido de José (23/10): /clima «como lo entrega Google, con horas». Diseño

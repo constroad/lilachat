@@ -13,6 +13,7 @@ import { revokeInstallation } from './botInstall.js';
 import { directWith, postBotMessage } from './botMessages.js';
 import { setTopicChannels, topicRoutesOf } from './botTopics.js';
 import { itemRowsOf, setItemSettings } from './botItems.js';
+import { linkOf, revokeLink } from './botLink.js';
 import { availableAppsIn, directoryOf } from './botDirectory.js';
 import { sendBotEvent } from './botEvents.js';
 import { BotAppModel, BotInstallationModel } from './botModels.js';
@@ -179,6 +180,22 @@ export function buildBotUserRouter(): Router {
     const outcome = await setItemSettings(installation, req.body?.items);
     if ('message' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
     res.json({ ...outcome, canEdit: true });
+  }));
+  // «Conectado como … / Desconectar» (pending 59): MY account in this app, asked to the app each time.
+  const myInstalledApp = async (spaceId: string, appId: unknown, userId: Types.ObjectId) => {
+    const isMember = isId(spaceId) && (await WorkspaceMemberModel.exists({ workspaceId: spaceId, userId, status: 'active' }));
+    return isMember ? installedApp(spaceId, appId) : null;
+  };
+  router.get('/workspaces/:id/apps/:appId/link', requireSession, asyncRoute(async (req, res) => {
+    const installation = await myInstalledApp(req.params.id!, req.params.appId, req.session!.userId);
+    if (!installation) return void res.status(404).json({ message: 'Esa app no está instalada en el espacio.' });
+    res.json(await linkOf(installation, req.session!.userId));
+  }));
+  router.delete('/workspaces/:id/apps/:appId/link', requireSession, asyncRoute(async (req, res) => {
+    const installation = await myInstalledApp(req.params.id!, req.params.appId, req.session!.userId);
+    if (!installation) return void res.status(404).json({ message: 'Esa app no está instalada en el espacio.' });
+    if (!(await revokeLink(installation, req.session!.userId))) return void res.status(502).json({ message: 'La app no confirmó la desconexión. Prueba otra vez en un momento.' });
+    res.status(204).end();
   }));
   // «Probar envío»: one line per channel, from the app, saying which topics land there.
   router.post('/workspaces/:id/apps/:appId/topics/test', requireSession, asyncRoute(async (req, res) => {

@@ -34,7 +34,7 @@ function CommandRow(props: { command: string; usageHint?: string; description: s
  * «Mensaje» or «Instalar», what it does, its commands, its permissions and who
  * installed it. The same block is the «Información» tab of its 1:1.
  */
-export function AppDetail(props: { app: DirectoryApp; spaceName: string; onMessage?: () => void; onInstall: () => void; onUninstall?: () => void; uninstalling?: boolean; /** «Avisos» (R160), only once installed. */ notices?: React.ReactNode }) {
+export function AppDetail(props: { app: DirectoryApp; spaceName: string; onMessage?: () => void; onInstall: () => void; onUninstall?: () => void; uninstalling?: boolean; /** «Avisos» (R160), only once installed. */ notices?: React.ReactNode; /** «Tu cuenta en <app>» (pending 59), only once installed. */ account?: React.ReactNode }) {
   const { app } = props;
   const [menu, setMenu] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -100,6 +100,7 @@ export function AppDetail(props: { app: DirectoryApp; spaceName: string; onMessa
           ) : <p className="text-[12px] text-on-surface-variant">Un admin del espacio la reinstala para aceptarlos.</p>}
         </section>
       ) : null}
+      {app.installation ? props.account : null}
       {app.features.length ? (
         <Section Icon={ListChecks} title="Qué hace">
           <ul className="space-y-2">

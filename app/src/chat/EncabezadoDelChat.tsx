@@ -49,7 +49,7 @@ export function EncabezadoDelChat(props: {
   const [openMenu, setOpenMenu] = useState<'calls' | 'chat' | null>(null);
   const directoryApp = useAppOfChat(props.app ?? { jwt: '' });
   const { nombre: nombreVisible, foto: fotoVisible } = props;
-  if (directoryApp) return <AppChatHeader app={directoryApp} spaceId={props.app?.spaceId} connected={props.conectado} menu={props.menu} onBack={props.onVolver} />;
+  if (directoryApp) return <AppChatHeader app={directoryApp} spaceId={props.app?.spaceId} jwt={props.app?.jwt} connected={props.conectado} menu={props.menu} onBack={props.onVolver} />;
   // Como el diseño: FLECHA (no la palabra «Atrás»), avatar del chat junto al
   // nombre, y el menú al final.
   return (

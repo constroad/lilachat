@@ -3,8 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppItems, AppTopics } from '../spacesApi';
 import { AppItemsSection } from './AppItemsSection';
 import { NoticeTopicsSection } from './NoticeTopicsSection';
+import { AppAccountSection } from './AppAccountSection';
 
-const api = vi.hoisted(() => ({ appItems: vi.fn(), saveAppItems: vi.fn(), appTopics: vi.fn(), saveAppTopics: vi.fn(), testAppTopics: vi.fn() }));
+const api = vi.hoisted(() => ({ appItems: vi.fn(), saveAppItems: vi.fn(), appTopics: vi.fn(), saveAppTopics: vi.fn(), testAppTopics: vi.fn(), appLink: vi.fn(), unlinkApp: vi.fn() }));
 vi.mock('../spacesApi', () => api);
 
 const channels = [{ id: 'ch1', name: 'general', private: false }, { id: 'ch2', name: 'planta', private: false }];
@@ -85,5 +86,42 @@ describe('«¿Dónde llega cada aviso?» (design e-31)', () => {
     api.appTopics.mockResolvedValue({ ok: true, data: { ...topics, topics: [] } });
     const { container } = render(<NoticeTopicsSection jwt="jwt" spaceId="s1" appId="a1" appName="Inframaq" />);
     await vi.waitFor(() => expect(container).toBeEmptyDOMElement());
+  });
+});
+
+describe('«Tu cuenta en <app>» (pending 59: the account is per app)', () => {
+  it('says who I am in Portal and disconnects after confirming', async () => {
+    // Arrange
+    api.appLink.mockResolvedValue({ ok: true, data: { linked: true, label: 'j•••@constroad.com' } });
+    api.unlinkApp.mockResolvedValue({ ok: true, data: undefined });
+    render(<AppAccountSection jwt="jwt" spaceId="s1" appId="portal" appName="Portal" />);
+    expect(await screen.findByTestId('cuenta-app-linea')).toHaveTextContent('Conectado como j•••@constroad.com');
+    // Act
+    fireEvent.click(screen.getByTestId('app-desconectar'));
+    fireEvent.click(screen.getByTestId('app-confirmar-desconectar'));
+    // Assert
+    await vi.waitFor(() => expect(screen.getByTestId('cuenta-app-linea')).toHaveTextContent('Sin conectar. Portal te lo pide la primera vez que la usas.'));
+    expect(api.unlinkApp).toHaveBeenCalledWith('jwt', 's1', 'portal');
+    expect(screen.queryByTestId('app-desconectar')).toBeNull();
+  });
+
+  it('keeps the account and says why when the app does not confirm', async () => {
+    api.appLink.mockResolvedValue({ ok: true, data: { linked: true, label: 'j•••@constroad.com' } });
+    api.unlinkApp.mockResolvedValue({ ok: false, status: 502, message: 'La app no confirmó la desconexión. Prueba otra vez en un momento.' });
+    render(<AppAccountSection jwt="jwt" spaceId="s1" appId="portal" appName="Portal" />);
+    fireEvent.click(await screen.findByTestId('app-desconectar'));
+    fireEvent.click(screen.getByTestId('app-confirmar-desconectar'));
+    expect(await screen.findByRole('alert')).toHaveTextContent('no confirmó');
+    expect(screen.getByTestId('cuenta-app-linea')).toHaveTextContent('Conectado como');
+  });
+
+  it('an app that does not answer, or a failed call, draws nothing', async () => {
+    api.appLink.mockResolvedValue({ ok: true, data: { unknown: true } });
+    const first = render(<AppAccountSection jwt="jwt" spaceId="s1" appId="portal" appName="Portal" />);
+    await vi.waitFor(() => expect(first.container).toBeEmptyDOMElement());
+    first.unmount();
+    api.appLink.mockResolvedValue({ ok: false, status: 500, message: 'x' });
+    const second = render(<AppAccountSection jwt="jwt" spaceId="s1" appId="portal" appName="Portal" />);
+    await vi.waitFor(() => expect(second.container).toBeEmptyDOMElement());
   });
 });

@@ -48,7 +48,7 @@ function CommandRow(props: { command: BotCommand }) {
  * «Mensaje» or «Instalar en <espacio>». The ⋮ uninstalls, for admins. The
  * same screen is the «Información» of a 1:1 with the app (e-26).
  */
-export function AppDetailScreen(props: { app: DirectoryApp; spaceName: string; canInstall: boolean; uninstalling?: boolean; onClose: () => void; onMessage?: () => void; onInstall: () => void; onUninstall?: () => void; /** «Comandos y acciones» and «Avisos» (R160), once installed. */ settings?: ReactNode }) {
+export function AppDetailScreen(props: { app: DirectoryApp; spaceName: string; canInstall: boolean; uninstalling?: boolean; onClose: () => void; onMessage?: () => void; onInstall: () => void; onUninstall?: () => void; /** «Comandos y acciones» and «Avisos» (R160), once installed. */ settings?: ReactNode; /** «Tu cuenta en <app>» (pending 59), once installed. */ account?: ReactNode }) {
   const colors = useColores();
   const margins = useMargenes();
   const { app } = props;
@@ -119,6 +119,7 @@ export function AppDetailScreen(props: { app: DirectoryApp; spaceName: string; c
                 ) : <Text className="text-[13px] text-on-surface-variant">Un admin del espacio la reinstala para aceptarlos.</Text>}
               </View>
             ) : null}
+            {installation ? props.account : null}
             {app.features.length ? (
               <Section Icon={Info} title="Qué hace">
                 {app.features.map((feature) => (

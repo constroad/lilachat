@@ -472,6 +472,22 @@ es global y un comando no; los dos funcionan en todos los canales.
   `installed_by: { id, name, phone, email? }`: quien aceptó la instalación, con
   la sesión de Lilachat que vio la pantalla de consentimiento.
 
+## c-novies) «Tu cuenta en <app>»: Conectado como / Desconectar (0.1.165)
+
+La cuenta que una persona conecta es por app, como en Slack (agentes f02cb99).
+El detalle de cada app instalada (y la pestaña «Información» de su 1:1)
+muestra «Tu cuenta en <app>». Lilachat no guarda nada: cada vez le pregunta a
+la app de ESA instalación, por su webhook y con la firma de `command.invoked`.
+- `link.status { user: { id } }` → `{ linked: true, label: "j•••@…" }` o
+  `{ linked: false }`. Cualquier otra respuesta, un error o más de 5 s
+  esconden la fila.
+- `link.revoke { user: { id } }` → `{ ok: true }`. Sin eso, la persona ve «La
+  app no confirmó la desconexión» y sigue conectada.
+- Personas: `GET` y `DELETE /api/workspaces/:id/apps/:appId/link` (cualquier
+  miembro, solo su propia cuenta).
+- Sin conectar dice «<app> te lo pide la primera vez que la usas»: conectar
+  sigue siendo el formulario «Conecta tu cuenta» que trae el rechazo de la app.
+
 ## d) Lectura
 
 - `GET /api/bots/me` → `{ installation_id, space: { id, name }, bot_user_id }`.

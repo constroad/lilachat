@@ -11,6 +11,7 @@ import { appDirectoryCache, appDirectoryKey, fetchAppDirectory, useCached } from
 import { useSpaceName } from '../currentSpace';
 import { AppBadge, AppLogo } from './AppLogo';
 import { AppDetailScreen } from './AppDetailScreen';
+import { AppAccountSection } from './AppAccountSection';
 
 const HEADER_LOGO_SIZE = 40;
 const CHAT_MENU_RIGHT = 8;
@@ -33,7 +34,7 @@ export function useAppOfChat(params: { appId?: string; spaceId?: string; jwt: st
  * calls: an app is not called. The ⋮ keeps the chat's options (search, mute),
  * which the design leaves out but a noisy app needs.
  */
-export function AppChatHeader(props: { app: DirectoryApp; spaceId?: string; connected: boolean; menu: ChatHeaderMenu; onBack: () => void }) {
+export function AppChatHeader(props: { app: DirectoryApp; spaceId?: string; jwt?: string; connected: boolean; menu: ChatHeaderMenu; onBack: () => void }) {
   const colors = useColores();
   const margins = useMargenes();
   const spaceName = useSpaceName(props.spaceId);
@@ -65,7 +66,7 @@ export function AppChatHeader(props: { app: DirectoryApp; spaceId?: string; conn
         <Segmentado opciones={TABS} valor={tab} onCambiar={setTab} />
       </View>
       <HeaderDropdown testID="menu-del-chat" visible={menuOpen} options={props.menu.options} right={CHAT_MENU_RIGHT} onSelect={props.menu.select} onClose={() => setMenuOpen(false)} />
-      {tab === 'info' ? <AppDetailScreen app={app} spaceName={spaceName} canInstall={false} onClose={() => setTab('messages')} onInstall={() => undefined} /> : null}
+      {tab === 'info' ? <AppDetailScreen app={app} spaceName={spaceName} canInstall={false} onClose={() => setTab('messages')} onInstall={() => undefined} account={props.jwt && props.spaceId ? <AppAccountSection jwt={props.jwt} spaceId={props.spaceId} appId={app.appId} appName={app.name} /> : null} /> : null}
     </View>
   );
 }

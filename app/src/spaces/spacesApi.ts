@@ -1,3 +1,4 @@
+import type { AppLink } from '@lilachat/shared';
 import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, SpaceApp, AvailableApp, SpaceAppDirectory, TopicRoute, AppItemRow, ItemChannels, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
 import { BASE_URL, type ChatSummary } from '../api/client';
 import { jsonCall } from '../api/jsonCall';
@@ -85,6 +86,10 @@ export type AppTopics = { topics: TopicRoute[]; channels: { id: string; name: st
 export const appTopics = (jwt: string, spaceId: string, appId: string) => jsonCall<AppTopics>(url(`/${spaceId}/apps/${appId}/topics`), jwt);
 export const saveAppTopics = (jwt: string, spaceId: string, appId: string, channels: Record<string, string | null>) => jsonCall<AppTopics>(url(`/${spaceId}/apps/${appId}/topics`), jwt, { method: 'PUT', body: JSON.stringify({ channels }) });
 export const testAppTopics = (jwt: string, spaceId: string, appId: string) => jsonCall<{ channels: number }>(url(`/${spaceId}/apps/${appId}/topics/test`), jwt, post({}));
+
+/** «Conectado como … / Desconectar» (pending 59): MY account in this app, asked to the app each time. */
+export const appLink = (jwt: string, spaceId: string, appId: string) => jsonCall<AppLink>(url(`/${spaceId}/apps/${appId}/link`), jwt);
+export const unlinkApp = (jwt: string, spaceId: string, appId: string) => jsonCall<Record<string, never>>(url(`/${spaceId}/apps/${appId}/link`), jwt, { method: 'DELETE' });
 
 /** «Comandos y acciones» (R160): where each command and action of the app works. */
 export type AppItems = { items: AppItemRow[]; channels: { id: string; name: string; private: boolean }[]; canEdit: boolean };

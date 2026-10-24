@@ -12,6 +12,7 @@ import { Composer, type ContextoDelComposer } from './Composer';
 import { useChatCommands } from './commands/useChatCommands';
 import { AppCommandsBar, AppConversationHeader, type AppConversationTab } from '../spaces/apps/AppConversation';
 import { AppDetail } from '../spaces/apps/AppDetail';
+import { AppAccountSection } from '../spaces/apps/AppAccountSection';
 import type { Mencionable } from './SugerenciasDeMencion';
 import type { NotaDeVozGrabada } from './useGrabadoraDeVoz';
 import { ListaDeMensajes } from './ListaDeMensajes';
@@ -125,7 +126,7 @@ export function Conversation(props: {
       )}
       {props.app && appTab === 'info' ? (
         <div data-testid="informacion-app" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-8">
-          <div className="mx-auto max-w-3xl"><AppDetail app={props.app} spaceName={props.spaceName ?? ''} onInstall={() => undefined} /></div>
+          <div className="mx-auto max-w-3xl"><AppDetail app={props.app} spaceName={props.spaceName ?? ''} onInstall={() => undefined} account={props.jwtParaEnlaces && chat.workspaceId ? <AppAccountSection jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} appId={props.app.appId} appName={props.app.name} /> : null} /></div>
         </div>
       ) : (
       <>

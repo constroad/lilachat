@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { answerOfOutcome, formSubmitOutcome, replaceAnswer, withAnswer, withNotice, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type ShortcutRow } from '@lilachat/shared';
+import { answerOfOutcome, formSubmitOutcome, giveUpPending, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type ShortcutRow } from '@lilachat/shared';
 import type { JsonResult } from '../../api/jsonCall';
 import { getSocket } from '../socketClient';
 import { runShortcut, submitAppForm, uploadFormPhoto } from './commandsApi';
@@ -61,7 +61,8 @@ export function useAppAnswers(params: { jwt: string; scope: CommandScope | null 
       if (outcome.done) {
         const label = answer.action ? { action: answer.action } : {};
         setAnswers((list) => replaceAnswer(list, answer.commandId, outcome.answer ? { ...outcome.answer, ...label } : null));
-        setOpenFormId(null);
+        // The app answered with the next form (the code after the destination): it opens on its own.
+        setOpenFormId(outcome.answer?.state === 'form' ? outcome.answer.commandId : null);
       }
       return outcome;
     },
@@ -87,6 +88,20 @@ export function useAppAnswers(params: { jwt: string; scope: CommandScope | null 
     setOpenFormId((open) => (open === commandId ? null : open));
   }, []);
   const removeAnswer = useCallback((commandId: string) => setAnswers((list) => list.filter((entry) => entry.commandId !== commandId)), []);
+  // «Working…» never stays forever (pending 103): past the wait it says the app did not answer.
+  const giveUpTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  useEffect(() => {
+    for (const entry of answers) {
+      if (entry.state !== 'pending' || entry.commandId.startsWith('sending-') || giveUpTimers.current.has(entry.commandId)) continue;
+      giveUpTimers.current.set(entry.commandId, setTimeout(() => setAnswers((list) => giveUpPending(list, entry.commandId)), PENDING_GIVE_UP_MS));
+    }
+  }, [answers]);
+  useEffect(() => {
+    const timers = giveUpTimers.current;
+    return () => {
+      for (const timer of timers.values()) clearTimeout(timer);
+    };
+  }, []);
   const openForm = answers.find((entry) => entry.commandId === openFormId && entry.state === 'form') ?? null;
   return { answers, track, runAction, uploadPhoto, submitForm, dismiss, removeAnswer, openForm, showForm: setOpenFormId };
 }

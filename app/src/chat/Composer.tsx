@@ -3,7 +3,7 @@ import { BackHandler, Keyboard, Pressable, Text, TextInput, View } from 'react-n
 import * as Haptics from 'expo-haptics';
 import { Camera, Keyboard as Teclado, Paperclip, Send, Smile, X } from 'lucide-react-native';
 import { duracionDeVoz, insertarEnTexto, type MencionEnMensaje, type Seleccion } from '@lilachat/shared';
-import { deleteBeforeCursor } from '@lilachat/shared';
+import { deleteBeforeCursor, formKeyOf } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { useChatFont } from '../ui/chatFont';
 import { precalentarPermisoDeVoz, useGrabadorDeVoz, type NotaGrabada } from './useGrabadorDeVoz';
@@ -405,7 +405,7 @@ export const Composer = memo(function Composer(props: {
       ) : null}
       {props.commands ? <EphemeralAnswers answers={props.commands.answers} onDismiss={props.commands.dismiss} onShare={props.commands.share} onOpenForm={props.commands.appAnswers.showForm} chatId={props.chatId} jwt={props.jwt ?? ''} /> : null}
       {props.commands?.appAnswers.openForm ? (
-        <AppFormSheet key={props.commands.appAnswers.openForm.commandId} answer={props.commands.appAnswers.openForm} personName={props.myName} onSubmit={(values) => props.commands!.appAnswers.submitForm(props.commands!.appAnswers.openForm!, values)} onUpload={(photo) => props.commands!.appAnswers.uploadPhoto(props.commands!.appAnswers.openForm!.commandId, photo)} onClose={() => props.commands!.appAnswers.showForm(null)} />
+        <AppFormSheet key={formKeyOf(props.commands.appAnswers.openForm)} answer={props.commands.appAnswers.openForm} personName={props.myName} onSubmit={(values) => props.commands!.appAnswers.submitForm(props.commands!.appAnswers.openForm!, values)} onUpload={(photo) => props.commands!.appAnswers.uploadPhoto(props.commands!.appAnswers.openForm!.commandId, photo)} onClose={() => props.commands!.appAnswers.dismiss(props.commands!.appAnswers.openForm!.commandId)} />
       ) : null}
       {props.commands ? (
         <CommandPanel

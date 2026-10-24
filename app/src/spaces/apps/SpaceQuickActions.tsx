@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { X, Zap } from 'lucide-react-native';
-import { quickActionRows, type CommandGroup } from '@lilachat/shared';
+import { formKeyOf, quickActionRows, type CommandGroup } from '@lilachat/shared';
 import { Modal } from '../../ui/Modal';
 import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
@@ -95,7 +95,7 @@ export function SpaceQuickActions(props: { jwt: string; spaceId: string; spaceNa
         </View>
       </Modal>
       {answers.openForm ? (
-        <AppFormSheet key={answers.openForm.commandId} answer={answers.openForm} personName={props.myName} onSubmit={(values) => answers.submitForm(answers.openForm!, values)} onUpload={(photo) => answers.uploadPhoto(answers.openForm!.commandId, photo)} onClose={() => answers.showForm(null)} />
+        <AppFormSheet key={formKeyOf(answers.openForm)} answer={answers.openForm} personName={props.myName} onSubmit={(values) => answers.submitForm(answers.openForm!, values)} onUpload={(photo) => answers.uploadPhoto(answers.openForm!.commandId, photo)} onClose={() => answers.dismiss(answers.openForm!.commandId)} />
       ) : null}
     </>
   );

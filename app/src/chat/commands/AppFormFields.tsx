@@ -12,6 +12,8 @@ const MAP_HEIGHT = 120;
 const SELFIE = 80;
 /** A selfie for the app, not a portrait: small enough to go up on a weak signal. */
 const SELFIE_QUALITY = 0.6;
+/** The digits of a one-time code, spread like the six boxes of a sign-in. */
+const CODE_LETTER_SPACING = 10;
 
 export type PhotoUpload = (photo: { uri: string; mime: string }) => Promise<{ ok: true; fileId: string } | { ok: false; message: string }>;
 type FieldProps<K extends FormField['kind']> = { field: Extract<FormField, { kind: K }>; value: unknown; error?: string; onChange: (value: unknown) => void };
@@ -55,6 +57,8 @@ export function ChoiceField({ field, value, error, onChange }: FieldProps<'choic
 export function TypedField({ field, value, error, onChange }: FieldProps<'text' | 'number' | 'date'>) {
   const colors = useColores();
   const multiline = field.kind === 'text' && field.multiline;
+  /** A one-time code (connecting an account): big digits, the number pad and the SMS autofill. */
+  const code = field.kind === 'text' ? field.digits : undefined;
   const text = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
   return (
     <View>
@@ -65,12 +69,14 @@ export function TypedField({ field, value, error, onChange }: FieldProps<'text' 
           value={text}
           onChangeText={(next) => onChange(next === '' ? undefined : next)}
           multiline={multiline}
-          maxLength={field.kind === 'text' ? field.maxLength : undefined}
-          keyboardType={field.kind === 'number' ? (field.integer ? 'number-pad' : 'decimal-pad') : 'default'}
+          maxLength={code ? code : field.kind === 'text' ? field.maxLength : undefined}
+          keyboardType={code || (field.kind === 'number' && field.integer) ? 'number-pad' : field.kind === 'number' ? 'decimal-pad' : 'default'}
+          textContentType={code ? 'oneTimeCode' : undefined}
+          autoComplete={code ? 'sms-otp' : undefined}
           placeholder={field.kind === 'date' ? (field.withTime ? 'AAAA-MM-DD HH:MM' : 'AAAA-MM-DD') : undefined}
           placeholderTextColor={colors['on-surface-variant']}
-          className={`min-h-[48px] flex-1 rounded-xl border border-outline/25 bg-background px-3 text-[16px] text-on-surface ${multiline ? 'py-2' : ''}`}
-          style={multiline ? { minHeight: 88, textAlignVertical: 'top' } : undefined}
+          className={`min-h-[48px] flex-1 rounded-xl border border-outline/25 bg-background px-3 text-on-surface ${code ? 'text-center text-[28px] font-bold' : 'text-[16px]'} ${multiline ? 'py-2' : ''}`}
+          style={multiline ? { minHeight: 88, textAlignVertical: 'top' } : code ? { letterSpacing: CODE_LETTER_SPACING, fontVariant: ['tabular-nums'] } : undefined}
         />
         {field.kind === 'number' && field.unit ? <Text className="text-[15px] font-semibold text-on-surface-variant">{field.unit}</Text> : null}
       </View>

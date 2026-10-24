@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { X } from 'lucide-react-native';
-import { evidenceLine, formFields, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues } from '@lilachat/shared';
+import { evidenceLine, formFields, initialValues, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { Modal } from '../../ui/Modal';
 import { useColores } from '../../ui/tema';
@@ -26,7 +26,8 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
   const { width, height } = useWindowDimensions();
   const form = props.answer.response!.form!;
   const fields = useMemo(() => formFields(form), [form]);
-  const [values, setValues] = useState<FormValues>({});
+  // What the app prefilled (agentes, 23/10: the verified phone for «Conecta tu cuenta»).
+  const [values, setValues] = useState<FormValues>(() => initialValues(fields));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -72,6 +73,8 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
             </Pressable>
           </View>
           <ScrollView keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }} contentContainerStyle={{ padding: SHEET_PADDING, gap: 14 }}>
+            {props.answer.response?.text ? <Text testID="formulario-texto" className="rounded-xl bg-primary/10 px-3 py-2.5 text-[15px] text-on-surface">{props.answer.response.text}</Text> : null}
+            {form.intro ? <Text className="text-[15px] text-on-surface-variant">{form.intro}</Text> : null}
             {evidence ? (
               <View className="items-center rounded-2xl border border-outline/15 py-4">
                 <Text className="text-[40px] font-bold text-on-surface" style={{ fontVariant: ['tabular-nums'] }}>{now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })}</Text>

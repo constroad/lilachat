@@ -488,6 +488,22 @@ la app de ESA instalación, por su webhook y con la firma de `command.invoked`.
 - Sin conectar dice «<app> te lo pide la primera vez que la usas»: conectar
   sigue siendo el formulario «Conecta tu cuenta» que trae el rechazo de la app.
 
+## c-terdecies) Varias fotos y fotos más livianas (0.1.169)
+
+- José, 24/10: en la medida de tanque y el ingreso de material se pueden
+  subir **varias fotos, quitarlas y volver a tomarlas**. Esquema:
+  `{ "type": "array", "x-input": "photo", "minItems": 1, "maxItems": 6 }`
+  (hasta 10). A la app le llega `values.<campo>` como **lista** de enlaces
+  firmados, en el orden en que se tomaron. Una lista de fotos nunca es la
+  selfie de la firma: usa la cámara trasera.
+- Una foto suelta que no es firma también usa la cámara trasera, con
+  «Tomar foto» (en el E2E del 24/10 la wincha abría la cámara frontal).
+- **Fotos más livianas** (agentes, 24/10: Portal sube la foto al Drive antes
+  de confirmar). El servidor guarda cada foto de un formulario derecha y con
+  el lado largo en 1280 px como máximo, en JPEG de calidad 80. Pasa también
+  con APK viejas y con la web. Si sharp no puede leerla, se guarda tal como
+  llegó.
+
 ## c-duodecies) Listas largas con buscador y el PIN (0.1.168)
 
 Para marcar asistencia eligiendo el nombre (agentes, 24/10; diseño e-35):

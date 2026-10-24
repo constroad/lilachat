@@ -4,7 +4,9 @@ import sharp from 'sharp';
 const BAND_SHARE = 0.17;
 const FONT_SHARE = 0.042;
 const MIN_FONT_PX = 12;
-const JPEG_QUALITY = 85;
+const JPEG_QUALITY = 80;
+/** The long side of a form photo (agentes, 24/10: Portal uploads it to Drive before confirming; ~1 MP is enough for a tape or a face). */
+export const FORM_PHOTO_LONG_SIDE = 1280;
 
 const escapeXml = (text: string) => text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 
@@ -22,11 +24,16 @@ function bandSvg(width: number, height: number, lines: readonly [string, string]
  * that is not an image; the caller answers 400.
  */
 export async function stampPhoto(bytes: Buffer, lines: readonly [string, string]): Promise<Buffer> {
-  const upright = await sharp(bytes).rotate().toBuffer({ resolveWithObject: true });
+  const upright = await sharp(bytes).rotate().resize({ width: FORM_PHOTO_LONG_SIDE, height: FORM_PHOTO_LONG_SIDE, fit: 'inside', withoutEnlargement: true }).toBuffer({ resolveWithObject: true });
   const { width, height } = upright.info;
   const band = Math.max(MIN_FONT_PX * 3, Math.round(height * BAND_SHARE));
   return sharp(upright.data)
     .composite([{ input: bandSvg(width, band, lines), gravity: 'south' }])
     .jpeg({ quality: JPEG_QUALITY })
     .toBuffer();
+}
+
+/** A form photo upright and at most ~1 MP in JPEG: the app downloads it and Portal uploads it, in proportion to its bytes. */
+export async function shrinkPhoto(bytes: Buffer): Promise<Buffer> {
+  return sharp(bytes).rotate().resize({ width: FORM_PHOTO_LONG_SIDE, height: FORM_PHOTO_LONG_SIDE, fit: 'inside', withoutEnlargement: true }).jpeg({ quality: JPEG_QUALITY }).toBuffer();
 }

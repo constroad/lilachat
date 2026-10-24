@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, LocateFixed, User } from 'lucide-react-native';
+import { Camera, LocateFixed } from 'lucide-react-native';
 import { geoPointOf, precisionLabel, type FormField, type GeoPoint } from '@lilachat/shared';
 import { Segmentado } from '../../ui/Segmentado';
 import { SearchableChoice } from './SearchableChoice';
@@ -37,7 +37,9 @@ export function ChoiceField({ field, value, error, onChange }: FieldProps<'choic
   return (
     <View>
       {field.segmented ? null : <Label field={field} />}
-      {field.searchable ? (
+      {field.options.length === 0 ? (
+        <Text testID={`sin-opciones-${field.name}`} className="rounded-xl border border-dashed border-outline/30 px-3 py-3 text-[14px] text-on-surface-variant">No hay opciones para elegir</Text>
+      ) : field.searchable ? (
         <SearchableChoice field={field} value={value} onChange={onChange} />
       ) : field.segmented ? (
         <Segmentado opciones={field.options.map((option) => ({ key: option.value, etiqueta: option.label, testID: `opcion-${field.name}-${option.value}` }))} valor={typeof value === 'string' ? value : ''} onCambiar={onChange} />
@@ -133,7 +135,7 @@ export function LocationField({ field, error, onChange, width }: FieldProps<'loc
   );
 }
 
-/** «Tomar selfie»: the front camera, and the photo goes up at once; the form carries its id. */
+/** «Tomar foto» of something (the tape measure, a delivery note): the rear camera, and it goes up at once; the form carries its id. A signature uses `LiveSelfie`, not this. */
 export function PhotoField({ field, value, error, onChange, upload }: FieldProps<'photo'> & { upload: PhotoUpload }) {
   const colors = useColores();
   const [preview, setPreview] = useState<string | null>(null);
@@ -141,7 +143,7 @@ export function PhotoField({ field, value, error, onChange, upload }: FieldProps
   const take = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) return setStatus({ busy: false, message: 'Permite la cámara para tomar la foto.' });
-    const shot = await ImagePicker.launchCameraAsync({ cameraType: ImagePicker.CameraType.front, quality: SELFIE_QUALITY, allowsEditing: false });
+    const shot = await ImagePicker.launchCameraAsync({ cameraType: ImagePicker.CameraType.back, quality: SELFIE_QUALITY, allowsEditing: false });
     const asset = shot.canceled ? null : shot.assets[0];
     if (!asset) return;
     setPreview(asset.uri);
@@ -153,15 +155,15 @@ export function PhotoField({ field, value, error, onChange, upload }: FieldProps
   };
   return (
     <View className="flex-row items-center gap-4 rounded-2xl border border-outline/15 p-3">
-      <View className="items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-outline/30 bg-background" style={{ width: SELFIE, height: SELFIE }}>
-        {preview ? <Image source={{ uri: preview }} style={{ width: SELFIE, height: SELFIE }} /> : <User size={30} color={colors['on-surface-variant']} />}
+      <View className="items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-outline/30 bg-background" style={{ width: SELFIE, height: SELFIE }}>
+        {preview ? <Image source={{ uri: preview }} style={{ width: SELFIE, height: SELFIE }} /> : <Camera size={30} color={colors['on-surface-variant']} />}
       </View>
       <View className="min-w-0 flex-1">
         <Text className="text-[15px] font-semibold text-on-surface">{field.label}</Text>
         {field.help ? <Text className="text-[13px] text-on-surface-variant">{field.help}</Text> : null}
         <Pressable testID={`campo-${field.name}`} disabled={status.busy} onPress={() => void take()} className={`mt-2 min-h-[44px] flex-row items-center justify-center gap-2 rounded-xl border border-outline/25 ${status.busy ? 'opacity-50' : ''}`}>
           {status.busy ? <ActivityIndicator size="small" color={colors.primary} /> : <Camera size={17} color={colors.primary} />}
-          <Text className="text-[15px] font-semibold text-on-surface">{status.busy ? 'Subiendo…' : value ? 'Cambiar foto' : 'Tomar selfie'}</Text>
+          <Text className="text-[15px] font-semibold text-on-surface">{status.busy ? 'Subiendo…' : value ? 'Cambiar foto' : 'Tomar foto'}</Text>
         </Pressable>
         <ErrorLine text={status.message ?? error} />
       </View>

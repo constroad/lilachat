@@ -9,6 +9,9 @@ import { cutAtWord } from './textCut.js';
  */
 export type FormSchemaProperty = {
   type?: string;
+  /** With `x-input: photo` and `type: array`: how many photos (José, 24/10: several, removable). */
+  minItems?: number;
+  maxItems?: number;
   title?: string;
   description?: string;
   enum?: unknown[];
@@ -40,16 +43,18 @@ export type FormField =
   | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true })
   | (Base & { kind: 'number'; unit?: string; min?: number; max?: number; integer: boolean })
   | (Base & { kind: 'date'; withTime: boolean })
-  | (Base & { kind: 'photo' })
+  | (Base & { kind: 'photo'; /** A list (`type: array`) where each photo can be removed and taken again; otherwise one photo. */ multiple: boolean; max: number; min: number })
   | (Base & { kind: 'location' });
 export type FormValues = Record<string, unknown>;
 export type GeoPoint = { lat: number; lng: number; precision: number; /** How old the reading was when it was sent (ms, the phone's own clock on both ends): signing takes only a reading of now (José, 24/10). */ age?: number };
 
-export const FORM_LIMITS = { id: 64, title: 60, submitLabel: 40, intro: 240, fields: 20, label: 60, help: 160, options: 300, text: 2000, pin: 8 };
+export const FORM_LIMITS = { id: 64, title: 60, submitLabel: 40, intro: 240, fields: 20, label: 60, help: 160, options: 300, text: 2000, pin: 8, photos: 10 };
 /** Up to this many options fit side by side (design e-28); more go to a list. */
 const SEGMENTED_MAX = 4;
 /** More options than this become a field with a search (a company's 31 people did not fit as buttons). */
 export const SEARCHABLE_FROM = 8;
+/** A list of photos without `maxItems`. */
+const DEFAULT_MAX_PHOTOS = 6;
 /** A text allowed longer than this gets several lines. */
 const MULTILINE_FROM = 120;
 const FORM_ID = /^[a-z][a-z0-9_-]*$/;
@@ -82,17 +87,25 @@ function choiceOptions(property: FormSchemaProperty): ChoiceOption[] | null {
   });
 }
 
+/** One photo, or a list of them when the schema is an array (minItems/maxItems, at most 10). */
+function photoField(base: Base, property: FormSchemaProperty): FormField {
+  if (property.type !== 'array') return { ...base, kind: 'photo', multiple: false, max: 1, min: base.required ? 1 : 0 };
+  const max = Math.min(FORM_LIMITS.photos, Math.max(1, Math.floor(property.maxItems ?? DEFAULT_MAX_PHOTOS)));
+  const min = Math.min(max, Math.max(base.required ? 1 : 0, Math.floor(property.minItems ?? 0)));
+  return { ...base, required: min > 0, kind: 'photo', multiple: true, max, min };
+}
+
 function fieldOf(name: string, property: FormSchemaProperty, required: boolean): FormField | string {
   const input = property['x-input'];
   if (input !== undefined && !INPUTS.includes(input)) return `El campo «${name}» pide x-input «${input}», que Lilachat no sabe dibujar.`;
   const visibleIf = visibleIfOf(property['x-visible-if']);
   const base: Base = { name, label: line(property.title, FORM_LIMITS.label) || labelOf(name), ...(property.description ? { help: line(property.description, FORM_LIMITS.help) } : {}), required, ...(visibleIf ? { visibleIf } : {}) };
-  if (input === 'photo') return { ...base, kind: 'photo' };
+  if (input === 'photo') return photoField(base, property);
   if (input === 'location') return { ...base, kind: 'location' };
   const options = choiceOptions(property);
   if (options) {
     const initial = options.some((option) => option.value === String(property.default)) ? { initial: String(property.default) } : {};
-    return { ...base, ...initial, kind: 'choice', options, segmented: options.length <= SEGMENTED_MAX, searchable: options.length > SEARCHABLE_FROM };
+    return { ...base, ...initial, kind: 'choice', options, segmented: options.length > 0 && options.length <= SEGMENTED_MAX, searchable: options.length > SEARCHABLE_FROM };
   }
   if (property.type === 'number' || property.type === 'integer') {
     const initial = typeof property.default === 'number' && Number.isFinite(property.default) ? { initial: property.default } : {};
@@ -168,7 +181,7 @@ const isGeoPoint = (value: unknown): value is GeoPoint => {
   const point = record(value);
   return typeof point.lat === 'number' && typeof point.lng === 'number' && typeof point.precision === 'number' && Math.abs(point.lat) <= 90 && Math.abs(point.lng) <= 180 && point.precision >= 0;
 };
-const isEmpty = (value: unknown) => value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
+const isEmpty = (value: unknown) => value === undefined || value === null || (typeof value === 'string' && value.trim() === '') || (Array.isArray(value) && value.length === 0);
 
 /** One value: the clean value, or the message for the person (neutral Spanish, under the field). */
 function checkValue(field: FormField, value: unknown): { value: unknown } | { error: string } {
@@ -196,8 +209,12 @@ function checkValue(field: FormField, value: unknown): { value: unknown } | { er
     }
     case 'date':
       return Number.isNaN(new Date(String(value)).getTime()) ? { error: 'La fecha no es válida.' } : { value: String(value) };
-    case 'photo':
-      return typeof value === 'string' && value.length > 0 ? { value } : { error: 'Falta la foto.' };
+    case 'photo': {
+      if (!field.multiple) return typeof value === 'string' && value.length > 0 ? { value } : { error: 'Falta la foto.' };
+      const photos = Array.isArray(value) ? value.filter((one): one is string => typeof one === 'string' && one.length > 0) : [];
+      if (photos.length < field.min) return { error: field.min === 1 ? 'Falta al menos una foto.' : `Faltan fotos: van al menos ${field.min}.` };
+      return photos.length > field.max ? { error: `Hasta ${field.max} fotos.` } : { value: photos };
+    }
     case 'location':
       // Only what the app's schema has: `age` is Lilachat's own check and never travels (agentes, 24/10: strict schemas).
       return isGeoPoint(value) ? { value: { lat: value.lat, lng: value.lng, precision: value.precision } } : { error: 'La ubicación no es válida.' };
@@ -215,7 +232,8 @@ export const FRESH_LOCATION_MS = 2 * 60_000;
  * takes it, with a reading of where the person is right now.
  */
 export function liveSelfieFieldOf<F extends Pick<FormField, 'kind' | 'name'>>(fields: readonly F[]): F | null {
-  return fields.some((field) => field.kind === 'location') ? (fields.find((field) => field.kind === 'photo') ?? null) : null;
+  // A signature is ONE selfie: a list of photos (the tape, a delivery note) is never the live camera.
+  return fields.some((field) => field.kind === 'location') ? (fields.find((field) => field.kind === 'photo' && !('multiple' in field && field.multiple)) ?? null) : null;
 }
 
 /** «Firmar» takes the camera on and the place of NOW, never one the phone kept (José, 24/10). */

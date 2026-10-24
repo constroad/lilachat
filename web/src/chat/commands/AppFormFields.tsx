@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, LocateFixed, MapPin, RefreshCw, User } from 'lucide-react';
+import { Camera, LocateFixed, MapPin, RefreshCw } from 'lucide-react';
 import { geoPointOf, mapTilesFor, precisionLabel, type FormField, type GeoPoint } from '@lilachat/shared';
 import { FieldError } from '../../ui/Overlay';
 import { SearchableChoice } from './SearchableChoice';
@@ -25,7 +25,12 @@ function Label(props: { field: FormField }) {
 export function ChoiceField({ field, value, error, onChange }: FieldProps<'choice'>) {
   return (
     <div>
-      {field.segmented ? (
+      {field.options.length === 0 ? (
+        <>
+          <Label field={field} />
+          <p data-testid={`sin-opciones-${field.name}`} className="rounded-xl border border-dashed border-outline/30 px-3 py-3 text-[14px] text-on-surface-variant">No hay opciones para elegir</p>
+        </>
+      ) : field.segmented ? (
         <div role="radiogroup" aria-label={field.label} className="grid gap-1 rounded-2xl border border-outline/15 bg-background p-1" style={{ gridTemplateColumns: `repeat(${field.options.length}, minmax(0, 1fr))` }}>
           {field.options.map((option) => (
             <button key={option.value} type="button" role="radio" aria-checked={value === option.value} data-testid={`opcion-${field.name}-${option.value}`} onClick={() => onChange(option.value)} className={`h-11 rounded-xl px-1 text-[14px] font-semibold transition-colors ${value === option.value ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-surface'}`}>
@@ -172,12 +177,12 @@ export function PhotoField({ field, value, error, onChange, upload }: FieldProps
   return (
     <div className="flex items-center gap-4 rounded-2xl border border-outline/15 p-3">
       <span className="relative grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-dashed border-outline/30 bg-background text-on-surface-variant">
-        {preview ? <img src={preview} alt="" className="h-full w-full object-cover" /> : <User size={30} />}
+        {preview ? <img src={preview} alt="" className="h-full w-full object-cover" /> : <Camera size={30} />}
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-[14px] font-semibold">{field.label}</p>
         {field.help ? <p className="text-[12px] text-on-surface-variant">{field.help}</p> : null}
-        <input ref={input} data-testid={`campo-${field.name}`} type="file" accept="image/jpeg,image/png,image/webp,image/heic" capture="user" className="hidden" onChange={(event) => void pick(event.target.files?.[0])} />
+        <input ref={input} data-testid={`campo-${field.name}`} type="file" accept="image/jpeg,image/png,image/webp,image/heic" capture="environment" className="hidden" onChange={(event) => void pick(event.target.files?.[0])} />
         <button type="button" disabled={status.busy} onClick={() => input.current?.click()} className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-outline/25 text-[14px] font-semibold text-on-surface disabled:opacity-50">
           <Camera size={16} className="text-primary" /> {status.busy ? 'Subiendo…' : value ? 'Cambiar foto' : 'Tomar foto'}
         </button>

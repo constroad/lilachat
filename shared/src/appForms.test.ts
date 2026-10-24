@@ -30,7 +30,7 @@ describe('an app form (R160, like Slack\'s modals; agentes builds it from the to
     expect(fields).toEqual<FormField[]>([
       { kind: 'choice', name: 'accion', label: 'Acción', required: true, segmented: true, searchable: false, options: [{ value: 'ingreso', label: 'Ingreso' }, { value: 'refrigerio', label: 'Refrigerio' }, { value: 'retorno', label: 'Retorno' }, { value: 'salida', label: 'Salida' }] },
       { kind: 'location', name: 'ubicacion', label: 'Tu ubicación', required: true },
-      { kind: 'photo', name: 'foto', label: 'Selfie', help: 'Una foto tuya al marcar', required: true },
+      { kind: 'photo', name: 'foto', label: 'Selfie', help: 'Una foto tuya al marcar', required: true, multiple: false, max: 1, min: 1 },
       { kind: 'text', name: 'actividades', label: 'Actividades del día', required: false, multiline: true, maxLength: 300 },
     ]);
   });
@@ -217,5 +217,29 @@ describe('marking attendance by name: the company\'s list and the PIN (agentes, 
     expect(validateFormValues(fields, { empleadoId: 'e0', accion: 'ingreso', pin: '12 34' })).toEqual({ ok: true, values: { empleadoId: 'e0', accion: 'ingreso', pin: '1234' } });
     expect(validateFormValues(fields, { empleadoId: 'e0', accion: 'ingreso', pin: '12a4' })).toEqual({ ok: false, errors: { pin: 'Solo números.' } });
     expect(validateFormValues(fields, { empleadoId: 'e0', accion: 'ingreso' })).toEqual({ ok: true, values: { empleadoId: 'e0', accion: 'ingreso' } });
+  });
+});
+
+describe('several photos, each removable (José, 24/10: the tank tape and the material receipt)', () => {
+  const form = { id: 'registrar_medida_tanque', title: 'Registrar una medida de tanque', schema: { type: 'object', properties: {
+    fotos: { type: 'array', 'x-input': 'photo', minItems: 2, maxItems: 4, title: 'Fotos de la wincha' },
+    ubicacion: { type: 'object', 'x-input': 'location' },
+  }, required: [] } };
+
+  it('an array with x-input photo is a list with its bounds; it is never the signature selfie', () => {
+    // Act
+    const fields = formFields(form);
+    // Assert
+    expect(fields[0]).toMatchObject({ kind: 'photo', multiple: true, min: 2, max: 4, required: true });
+    expect(liveSelfieFieldOf(fields)).toBeNull();
+    expect(formFields({ ...form, schema: { ...form.schema, properties: { fotos: { type: 'array', 'x-input': 'photo', maxItems: 50 } } } })[0]).toMatchObject({ multiple: true, max: 10, min: 0, required: false });
+  });
+
+  it('takes between min and max photos and says how many are missing', () => {
+    const fields = formFields(form).slice(0, 1);
+    expect(validateFormValues(fields, { fotos: ['f1', 'f2'] })).toEqual({ ok: true, values: { fotos: ['f1', 'f2'] } });
+    expect(validateFormValues(fields, { fotos: ['f1'] })).toEqual({ ok: false, errors: { fotos: 'Faltan fotos: van al menos 2.' } });
+    expect(validateFormValues(fields, { fotos: [] })).toEqual({ ok: false, errors: { fotos: 'Falta la foto.' } });
+    expect(validateFormValues(fields, { fotos: ['1', '2', '3', '4', '5'] })).toEqual({ ok: false, errors: { fotos: 'Hasta 4 fotos.' } });
   });
 });

@@ -1,5 +1,6 @@
 import { answerOfOutcome, type CommandGroup, type CommandOutcome, type EphemeralAnswer } from './botCommands.js';
 import type { AppForm, FormField, FormValues, GeoPoint } from './appForms.js';
+import { liveSelfieFieldOf } from './appForms.js';
 
 /**
  * The actions of the apps (R160): the rows of «Acciones rápidas» (the space's ⚡,
@@ -52,6 +53,8 @@ export function formSubmitOutcome(reply: FormSubmitReply, command: string): Form
 /** «Marcar ingreso»: the app's button with the option picked in the first side-by-side choice. */
 export function submitLabelOf(form: Pick<AppForm, 'submitLabel'>, fields: readonly FormField[], values: FormValues): string {
   const label = form.submitLabel ?? 'Enviar';
+  // Only a signature says what it signs («Marcar asistencia ingreso»); «Registrar una medida de tanque medida» read wrong (E2E 24/10).
+  if (!liveSelfieFieldOf(fields)) return label;
   const choice = fields.find((field): field is Extract<FormField, { kind: 'choice' }> => field.kind === 'choice' && field.segmented);
   const picked = choice?.options.find((option) => option.value === values[choice.name]);
   return picked && form.submitLabel ? `${label} ${picked.label.toLocaleLowerCase('es')}` : label;

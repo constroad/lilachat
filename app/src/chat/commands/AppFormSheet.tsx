@@ -8,6 +8,7 @@ import { Modal } from '../../ui/Modal';
 import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
 import { ChoiceField, LocationField, PhotoField, TypedField, type PhotoUpload } from './AppFormFields';
+import { PhotoListField } from './PhotoListField';
 import { LiveSelfie, type LiveSelfieHandle } from './LiveSelfie';
 import { useLiveSigning } from './useLiveSigning';
 
@@ -147,7 +148,7 @@ function Field(props: { field: FormField; value: unknown; error?: string; onChan
   switch (field.kind) {
     case 'choice': return <ChoiceField field={field} {...rest} />;
     case 'location': return <LocationField field={field} {...rest} width={width} />;
-    case 'photo': return <PhotoField field={field} {...rest} upload={upload} />;
+    case 'photo': return field.multiple ? <PhotoListField field={field} error={rest.error} onChange={rest.onChange} upload={upload} /> : <PhotoField field={field} {...rest} upload={upload} />;
     default: return <TypedField field={field} {...rest} />;
   }
 }

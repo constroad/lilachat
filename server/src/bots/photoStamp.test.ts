@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import sharp from 'sharp';
-import { stampPhoto } from './photoStamp.js';
+import { shrinkPhoto, stampPhoto } from './photoStamp.js';
 
 /** Pending 94: the selfie of a form carries the date, the hour and the place in its pixels. */
 describe('stampPhoto', () => {
@@ -26,5 +26,18 @@ describe('stampPhoto', () => {
     const meta = await sharp(stamped).metadata();
     expect([meta.width, meta.height]).toEqual([300, 400]);
     await expect(stampPhoto(Buffer.from('not an image'), ['a', 'b'])).rejects.toThrow();
+  });
+});
+
+describe('a form photo is made smaller (agentes, 24/10: Portal uploads it before confirming)', () => {
+  it('a 4000 px photo comes back at most 1280 px on its long side, in JPEG; a small one is not enlarged', async () => {
+    // Arrange
+    const big = await sharp({ create: { width: 4000, height: 3000, channels: 3, background: '#808080' } }).jpeg({ quality: 95 }).toBuffer();
+    const small = await sharp({ create: { width: 640, height: 480, channels: 3, background: '#808080' } }).png().toBuffer();
+    // Act
+    const [shrunkBig, shrunkSmall] = await Promise.all([shrinkPhoto(big), shrinkPhoto(small)]);
+    // Assert
+    expect(await sharp(shrunkBig).metadata()).toMatchObject({ width: 1280, height: 960, format: 'jpeg' });
+    expect(await sharp(shrunkSmall).metadata()).toMatchObject({ width: 640, height: 480, format: 'jpeg' });
   });
 });

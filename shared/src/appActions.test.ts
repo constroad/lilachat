@@ -51,13 +51,17 @@ describe('what sending a form leaves on screen', () => {
 
 describe('the button and the foot of a form (design e-28)', () => {
   const choice: FormField = { kind: 'choice', name: 'accion', label: 'Acción', required: true, segmented: true, options: [{ value: 'ingreso', label: 'Ingreso' }, { value: 'salida', label: 'Salida' }] };
-  const photo: FormField = { kind: 'photo', name: 'foto', label: 'Selfie', required: true };
+  const photo: FormField = { kind: 'photo', name: 'foto', label: 'Selfie', required: true, multiple: false, max: 1, min: 1 };
   const location: FormField = { kind: 'location', name: 'ubicacion', label: 'Tu ubicación', required: true };
 
-  it('«Marcar» + the option chosen in the first segmented choice: «Marcar ingreso»; without a label, «Enviar»', () => {
-    expect(submitLabelOf({ submitLabel: 'Marcar' }, [choice, photo], { accion: 'ingreso' })).toBe('Marcar ingreso');
+  it('a signature says what it signs: «Marcar» + the option chosen, «Marcar ingreso»; without a label, «Enviar»', () => {
+    expect(submitLabelOf({ submitLabel: 'Marcar' }, [choice, location, photo], { accion: 'ingreso' })).toBe('Marcar ingreso');
     expect(submitLabelOf({ submitLabel: 'Marcar' }, [choice], {})).toBe('Marcar');
     expect(submitLabelOf({}, [photo], {})).toBe('Enviar');
+  });
+
+  it('a form that is not a signature keeps its button as the app wrote it (E2E 24/10: «Registrar una medida de tanque medida»)', () => {
+    expect(submitLabelOf({ submitLabel: 'Registrar una medida de tanque' }, [choice, photo], { accion: 'ingreso' })).toBe('Registrar una medida de tanque');
   });
 
   it('says what goes with it: the location and the photo', () => {

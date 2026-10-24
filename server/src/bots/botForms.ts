@@ -10,7 +10,7 @@ import { callBotWebhook, isRestarting, recordLastDelivery } from './botEvents.js
 import { commandAnswerTimeout, deliverResponse, recordRunFailure, restartingMessage, type Base, type ChatOfCommand, type CommandError } from './botCommands.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botModels.js';
 import { channelOf, personOf } from './botTriggers.js';
-import { stampPhoto } from './photoStamp.js';
+import { shrinkPhoto, stampPhoto } from './photoStamp.js';
 
 /**
  * App forms (R160, `specs/BOTS-API.spec.md` §c-ter; José, 23/10: mark
@@ -96,11 +96,21 @@ async function stamped(file: { originalname: string; mimetype: string; buffer: B
   }
 }
 
+/** Smaller before it is kept; a file sharp cannot read goes as it came, the photo is not lost. */
+async function shrunk(file: { originalname: string; mimetype: string; buffer: Buffer }): Promise<{ fileName: string; mimeType: string; bytes: Buffer }> {
+  try {
+    return { fileName: file.originalname.replace(/\.[^.]+$/, '') + '.jpg', mimeType: 'image/jpeg', bytes: await shrinkPhoto(file.buffer) };
+  } catch (error) {
+    console.warn('[forms] foto sin reducir:', error instanceof Error ? error.message : error);
+    return { fileName: file.originalname, mimeType: file.mimetype, bytes: file.buffer };
+  }
+}
+
 export async function storeFormPhoto(userId: Types.ObjectId, scope: CommandScope, commandId: string, file: { originalname: string; mimetype: string; size: number; buffer: Buffer }, stamp?: { location?: GeoPoint }): Promise<{ fileId: string } | ReturnType<typeof fail>> {
   const run = await openRun(userId, scope, commandId);
   if ('error' in run) return run;
   if (!FORM_PHOTO_TYPES.includes(file.mimetype) || file.size > FORM_PHOTO_MAX_BYTES) return fail(400, 'invalid_photo', 'La foto va en JPEG, PNG, WEBP o HEIC, hasta 10 MB.');
-  const photo = stamp ? await stamped(file, stamp.location) : { fileName: file.originalname, mimeType: file.mimetype, bytes: file.buffer };
+  const photo = stamp ? await stamped(file, stamp.location) : await shrunk(file);
   // The media folder is the chat's, or the space's for the ⚡.
   const uploaded = await upload({ chatId: String(run.chatId ?? run.workspaceId), ...photo });
   if (!uploaded.ok) return fail(409, 'upload_failed', 'No se pudo guardar la foto. Inténtalo de nuevo.');
@@ -111,10 +121,14 @@ export async function storeFormPhoto(userId: Types.ObjectId, scope: CommandScope
 /** A photo field carries the id of a photo of THIS form; it goes to the app as its signed address. */
 async function withSignedPhotos(runId: Types.ObjectId, photoFields: string[], raw: Record<string, unknown>): Promise<Record<string, unknown>> {
   const values = { ...raw };
+  const signed = async (fileId: unknown) => (isId(fileId) && (await FormFileModel.exists({ _id: fileId, runId })) ? signedFileUrl(String(fileId)) : null);
   for (const name of photoFields) {
-    const fileId = values[name];
-    const owned = isId(fileId) ? await FormFileModel.exists({ _id: fileId, runId }) : null;
-    if (owned) values[name] = signedFileUrl(String(fileId));
+    const raw = values[name];
+    // A list of photos (José, 24/10): each one signed; one that is not this form's is dropped.
+    const urls = Array.isArray(raw) ? (await Promise.all(raw.map(signed))).filter((url): url is string => url !== null) : null;
+    const url = urls ? null : await signed(raw);
+    if (urls) values[name] = urls;
+    else if (url) values[name] = url;
     else delete values[name];
   }
   return values;

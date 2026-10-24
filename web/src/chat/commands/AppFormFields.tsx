@@ -55,7 +55,15 @@ export function TextField({ field, value, error, onChange }: FieldProps<'text'>)
       {field.multiline ? (
         <textarea data-testid={`campo-${field.name}`} value={text} maxLength={field.maxLength} rows={3} onChange={(event) => onChange(event.target.value)} className="w-full rounded-xl border border-outline/25 bg-background px-3 py-2 text-[15px] outline-none focus:border-primary" />
       ) : (
-        <input data-testid={`campo-${field.name}`} value={text} maxLength={field.maxLength} onChange={(event) => onChange(event.target.value)} className={inputClass} />
+        <input
+          data-testid={`campo-${field.name}`}
+          value={text}
+          maxLength={field.digits ?? field.maxLength}
+          // A one-time code (connecting an account): the number pad, the code autofill and big spread digits.
+          {...(field.digits ? { inputMode: 'numeric' as const, autoComplete: 'one-time-code' } : {})}
+          onChange={(event) => onChange(event.target.value)}
+          className={field.digits ? `${inputClass} text-center text-2xl font-bold tracking-[0.5em] tabular-nums` : inputClass}
+        />
       )}
       {field.help ? <p className="mt-1 text-[12px] text-on-surface-variant">{field.help}</p> : null}
       <FieldError>{error}</FieldError>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronRight, Zap } from 'lucide-react';
-import { quickActionRows, type CommandGroup, type ShortcutRow } from '@lilachat/shared';
+import { formKeyOf, quickActionRows, type CommandGroup, type ShortcutRow } from '@lilachat/shared';
 import { loadPerfil } from '../../api';
 import { currentSocket } from '../../useSocket';
 import { Overlay } from '../../ui/Overlay';
@@ -94,7 +94,7 @@ export function SpaceQuickActions(props: { jwt: string; spaceId: string; spaceNa
         </Overlay>
       ) : null}
       {answers.openForm ? (
-        <AppFormDialog key={answers.openForm.commandId} answer={answers.openForm} personName={loadPerfil()?.name} onSubmit={(values) => answers.submitForm(answers.openForm!, values)} onUpload={(file) => answers.uploadPhoto(answers.openForm!.commandId, file)} onClose={() => answers.showForm(null)} />
+        <AppFormDialog key={formKeyOf(answers.openForm)} answer={answers.openForm} personName={loadPerfil()?.name} onSubmit={(values) => answers.submitForm(answers.openForm!, values)} onUpload={(file) => answers.uploadPhoto(answers.openForm!.commandId, file)} onClose={() => answers.dismiss(answers.openForm!.commandId)} />
       ) : null}
     </>
   );

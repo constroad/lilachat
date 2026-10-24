@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { evidenceLine, formFields, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues } from '@lilachat/shared';
+import { evidenceLine, formFields, initialValues, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
 import { Avatar } from '../../ui/Avatar';
 import { ChoiceField, DateField, LocationField, NumberField, PhotoField, TextField } from './AppFormFields';
@@ -16,7 +16,8 @@ type Upload = (file: File) => Promise<{ ok: true; fileId: string } | { ok: false
 export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: Upload; onClose: () => void }) {
   const form = props.answer.response!.form!;
   const fields = useMemo(() => formFields(form), [form]);
-  const [values, setValues] = useState<FormValues>({});
+  // What the app prefilled (agentes, 23/10: the verified phone for «Conecta tu cuenta»).
+  const [values, setValues] = useState<FormValues>(() => initialValues(fields));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -50,6 +51,8 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
       }
     >
       <div data-testid={`formulario-${form.id}`} className="space-y-4">
+        {props.answer.response?.text ? <p data-testid="formulario-texto" className="rounded-xl bg-primary/10 px-3 py-2.5 text-[14px]">{props.answer.response.text}</p> : null}
+        {form.intro ? <p className="text-[14px] text-on-surface-variant">{form.intro}</p> : null}
         <p className="flex items-center gap-2 text-[13px] text-on-surface-variant">
           <Avatar name={props.answer.appName} size={22} bot />
           {props.answer.appName} · hoy, {today.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })}

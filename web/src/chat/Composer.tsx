@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { insertarEnTexto, type MencionEnMensaje } from '@lilachat/shared';
+import { formKeyOf, insertarEnTexto, type MencionEnMensaje } from '@lilachat/shared';
 import type { WinkId } from '@lilachat/shared';
 
 /** Se baja recién al abrir el panel (W2): pesa, y la mayoría no lo abre. */
@@ -184,12 +184,12 @@ export function Composer({
       {commands ? <EphemeralAnswers answers={commands.answers} onDismiss={commands.dismiss} onShare={commands.share} onOpenForm={commands.appAnswers.showForm} chatId={commands.chatId} jwt={commands.jwt} /> : null}
       {commands?.appAnswers.openForm ? (
         <AppFormDialog
-          key={commands.appAnswers.openForm.commandId}
+          key={formKeyOf(commands.appAnswers.openForm)}
           answer={commands.appAnswers.openForm}
           personName={loadPerfil()?.name}
           onSubmit={(values) => commands.appAnswers.submitForm(commands.appAnswers.openForm!, values)}
           onUpload={(file) => commands.appAnswers.uploadPhoto(commands.appAnswers.openForm!.commandId, file)}
-          onClose={() => commands.appAnswers.showForm(null)}
+          onClose={() => commands.appAnswers.dismiss(commands.appAnswers.openForm!.commandId)}
         />
       ) : null}
       {commands ? <CommandPanel groups={commands.suggestions} active={commands.activeCommand} onPick={pickCommand} /> : null}

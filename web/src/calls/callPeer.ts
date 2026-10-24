@@ -1,3 +1,4 @@
+import type { CameraFacing } from '@lilachat/shared';
 import { api } from '../api';
 
 /** The SDP and the candidates travel as plain objects through the socket, like the app's (`useCall.ts`). */
@@ -32,6 +33,18 @@ async function requestMedia(video: boolean): Promise<MediaStream> {
   }
 }
 
+/** A phone browser may not open both cameras at once: the old one is released and it is tried again. */
+async function openCamera(facing: CameraFacing, current: MediaStreamTrack): Promise<MediaStreamTrack | null> {
+  const ask = async () => (await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { exact: facing } } })).getVideoTracks()[0] ?? null;
+  try {
+    return await ask();
+  } catch (failure) {
+    if (errorName(failure) !== 'NotReadableError') throw failure;
+    current.stop();
+    return ask();
+  }
+}
+
 export type CallPeer = {
   connection: RTCPeerConnection;
   /** Microphone, and the camera for a video call; the tracks go to the peer. */
@@ -39,6 +52,8 @@ export type CallPeer = {
   /** The other side's description; the candidates that came before it are applied now. */
   setRemote: (sdp: Sdp) => Promise<void>;
   addCandidate: (candidate: Candidate) => Promise<void>;
+  /** The other camera (pending 97): its track replaces the old one in the same sender, without renegotiating. */
+  switchCamera: (facing: CameraFacing) => Promise<boolean>;
   /** Closes the peer and releases the microphone and camera. Idempotent. */
   close: () => void;
 };
@@ -98,6 +113,23 @@ export function createCallPeer(params: {
     addCandidate: async (candidate) => {
       if (remoteReady) await apply(candidate);
       else buffered.push(candidate);
+    },
+    switchCamera: async (facing) => {
+      const old = local?.getVideoTracks()[0];
+      const sender = connection.getSenders().find((one) => one.track?.kind === 'video');
+      if (!local || !old || !sender) return false;
+      const fresh = await openCamera(facing, old);
+      if (!fresh) return false;
+      if (closed) {
+        fresh.stop();
+        return false;
+      }
+      fresh.enabled = old.enabled;
+      await sender.replaceTrack(fresh);
+      local.removeTrack(old);
+      old.stop();
+      local.addTrack(fresh);
+      return true;
     },
     close: () => {
       closed = true;

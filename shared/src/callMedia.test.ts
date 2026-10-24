@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CALL_TIMEOUT_MS, type CallState } from './call.js';
-import { CONNECT_WAIT_MS, callCaption, callerName, mediaState, ringStart, waitBeforeGivingUp } from './callMedia.js';
+import { CONNECT_WAIT_MS, callCaption, callerName, canSwitchCamera, mediaState, mirrorsSelfView, otherFacing, ringStart, waitBeforeGivingUp } from './callMedia.js';
 
 /**
  * Answered ≠ connected (FL8; real test of 17/10/2026: the clock ran from when
@@ -74,5 +74,23 @@ describe('callerName', () => {
     expect(callerName({ fromName: 'Ana P.', fromPhone: '987654321' })).toBe('Ana P.');
     expect(callerName({ fromPhone: '987654321' })).toBe('987654321');
     expect(callerName({})).toBe('Alguien');
+  });
+});
+
+describe('switching the camera in a video call (pending 97)', () => {
+  it('goes to the other camera and back', () => {
+    expect(otherFacing('user')).toBe('environment');
+    expect(otherFacing('environment')).toBe('user');
+  });
+
+  it('mirrors my own view only with the front camera', () => {
+    expect(mirrorsSelfView('user')).toBe(true);
+    expect(mirrorsSelfView('environment')).toBe(false);
+  });
+
+  it('offers the switch only with two cameras or more', () => {
+    expect(canSwitchCamera(0)).toBe(false);
+    expect(canSwitchCamera(1)).toBe(false);
+    expect(canSwitchCamera(2)).toBe(true);
   });
 });

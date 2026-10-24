@@ -58,3 +58,14 @@ export function ringStart(remainingMs: number | undefined, now: number): number 
 export function callerName(params: { chatName?: string | null; fromName?: string | null; fromPhone?: string | null }): string {
   return params.chatName || params.fromName || params.fromPhone || 'Alguien';
 }
+
+/** Front or rear camera in a video call (pending 97). */
+export type CameraFacing = 'user' | 'environment';
+
+export const otherFacing = (facing: CameraFacing): CameraFacing => (facing === 'user' ? 'environment' : 'user');
+
+/** My own view is mirrored only with the front camera, like WhatsApp: the rear one shows the world as it is. */
+export const mirrorsSelfView = (facing: CameraFacing): boolean => facing === 'user';
+
+/** The switch only shows with two cameras: a laptop has one, a phone two. */
+export const canSwitchCamera = (videoInputs: number): boolean => videoInputs > 1;

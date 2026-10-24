@@ -11578,7 +11578,9 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     `users:read.email` en el manifiesto). Si no coincide, la app manda una
     tarjeta efímera «Conecta tu cuenta» con `link` a agentes (constroad-auth).
     En el detalle de la app: «Conectado como …» y «Desconectar», con el
-    contrato que pase agentes. R162.
+    contrato que pase agentes. R162. — «Conecta tu cuenta» dentro de
+    Lilachat en 0.1.162 (§126); «Tu cuenta en <app>» con «Conectado como» y
+    «Desconectar», por app, en 0.1.165 (§129).
 96. **El clima como lo muestra Google, con horas** (José, 23/10, con dos
     capturas de Google Clima: Lima y Puente Piedra). Hoy /clima es una tarjeta
     con una cifra y barras de lluvia por día. Lo pedido:
@@ -11596,7 +11598,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     y con test sobre la geometría. A agentes, mandar los datos por hora.
     Diseño en Stitch primero, en el lenguaje de Lilachat (no el tema oscuro de
     Google).
-97. **Cambiar entre cámara frontal y trasera en una videollamada** (José,
+97. ~~**Cambiar entre cámara frontal y trasera en una videollamada**~~ — hecho en 0.1.165 (§129). (José,
     23/10): hoy no se puede. Botón de girar la cámara en la barra de la
     llamada, APK y web (en la web, si el equipo tiene más de una cámara).
 98. **Stickers y guiños dentro de una videollamada** (José, 23/10, reclamado

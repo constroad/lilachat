@@ -3,7 +3,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Modal } from '../ui/Modal';
 import { RTCView, type MediaStream } from 'react-native-webrtc';
 import { Mic, MicOff, PhoneOff, User, Video, VideoOff, Volume2 } from 'lucide-react-native';
+import { SwitchCamera } from 'lucide-react-native';
 import type { CallState } from '@lilachat/shared';
+import { mirrorsSelfView, type CameraFacing } from '@lilachat/shared';
 import { leyendaDeLlamada, type EstadoDeMedios } from './estadoDeMedios';
 import { useColores, useTema } from '../ui/tema';
 import { useMargenes } from '../ui/useMargenes';
@@ -39,6 +41,8 @@ export function CallScreen({
   onToggleMute,
   onToggleSpeaker,
   onToggleVideo,
+  facing,
+  onSwitchCamera,
   puedeAlternarVideo,
   onAccept,
   onHangUp,
@@ -57,6 +61,9 @@ export function CallScreen({
   onToggleMute: () => void;
   onToggleSpeaker: () => void;
   onToggleVideo: () => void;
+  /** Front or rear camera (pending 97), with its button on my own view. */
+  facing: CameraFacing;
+  onSwitchCamera: () => void;
   /**
    * Solo en una videollamada: en una de voz el botón prendía el ícono sin
    * prender ninguna cámara (sumar video a mitad de llamada pide renegociar).
@@ -99,7 +106,13 @@ export function CallScreen({
           />
         ) : null}
         {video && localStream ? (
-          <RTCView streamURL={localStream.toURL()} objectFit="cover" mirror style={estilos.propio} />
+          <RTCView streamURL={localStream.toURL()} objectFit="cover" mirror={mirrorsSelfView(facing)} style={estilos.propio} />
+        ) : null}
+        {/* Like WhatsApp: the switch sits under my own view, not in the controls panel (it already has four). */}
+        {video && localStream?.getVideoTracks().length ? (
+          <Pressable testID="btn-girar-camara" accessibilityLabel={facing === 'user' ? 'Usar la cámara trasera' : 'Usar la cámara frontal'} onPress={onSwitchCamera} style={estilos.switchButton} className="h-12 w-12 items-center justify-center rounded-full bg-black/45">
+            <SwitchCamera size={22} color="white" />
+          </Pressable>
         ) : null}
 
         {/* WhatsApp's order (José, 22/10): who and how it goes on top, the face in the middle, the controls in a panel at the bottom. */}
@@ -156,6 +169,8 @@ const estilos = StyleSheet.create({
     backgroundColor: '#000',
     zIndex: 1,
   },
+  // Centered under my own view.
+  switchButton: { position: 'absolute', top: 216, right: 46, zIndex: 1 },
 });
 
 /**

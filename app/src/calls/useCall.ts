@@ -11,6 +11,7 @@ import {
 import type RTCIceCandidateEvent from 'react-native-webrtc/lib/typescript/RTCIceCandidateEvent';
 import type RTCTrackEvent from 'react-native-webrtc/lib/typescript/RTCTrackEvent';
 import { CALL_TIMEOUT_MS, nextCallState, type CallState } from '@lilachat/shared';
+import { otherFacing, type CameraFacing } from '@lilachat/shared';
 import { connectSocket, getSocket, sostenerPorLlamada } from '../chat/socketClient';
 import { obtenerIceServers, type ServidorIce } from './iceServers';
 import { esperaAntesDeRendirse, estadoDeMedios, type EstadoDeMedios } from './estadoDeMedios';
@@ -73,6 +74,8 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
   const [video, setVideo] = useState(false);
   const [muted, setMuted] = useState(false);
   const [speaker, setSpeaker] = useState(false);
+  /** Front or rear camera (pending 97); every call starts with the front one. */
+  const [facing, setFacing] = useState<CameraFacing>('user');
   /** Lo que se tocó en la notificación antes de que llegara la oferta (FL8.1). */
   const avisoPendiente = useRef<AccionDeAviso | null>(null);
   const aplicarAvisoRef = useRef<(aviso: AccionDeAviso) => void>(() => undefined);
@@ -118,6 +121,7 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
     }
     setLocalStream(null);
     setRemoteStream(null);
+    setFacing('user');
     buffer.current = [];
     remotoListo.current = false;
     yaConecto.current = false;
@@ -508,6 +512,14 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
         void setAudioModeAsync({ shouldRouteThroughEarpiece: !nuevo }).catch((error) => reportarError('call.altavoz', error));
         return nuevo;
       }),
+    facing,
+    // The other camera on the same track (pending 97): no renegotiation, the other side keeps receiving.
+    switchCamera: () => {
+      const track = localRef.current?.getVideoTracks()[0];
+      if (!track) return;
+      const next = otherFacing(facing);
+      void track.applyConstraints({ facingMode: next }).then(() => setFacing(next)).catch((error: unknown) => reportarError('call.camera', error));
+    },
     alternarVideo: () =>
       setVideo((valor) => {
         const nuevo = !valor;

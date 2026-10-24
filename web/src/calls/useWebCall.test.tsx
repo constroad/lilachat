@@ -15,6 +15,7 @@ vi.mock('../useSocket', () => ({ currentSocket: () => socket }));
 /** The browser's RTCPeerConnection, as small as the hook needs it. */
 class FakePeer {
   static last: FakePeer;
+  static senders: unknown[] = [];
   iceConnectionState = 'new';
   remote: unknown = null;
   local: unknown = null;
@@ -45,6 +46,9 @@ class FakePeer {
   }
   addTrack(track: unknown) {
     this.tracks.push(track);
+  }
+  getSenders() {
+    return FakePeer.senders;
   }
   close() {
     this.closed = true;
@@ -169,5 +173,43 @@ describe('web call without a camera', () => {
     expect(addTransceiver).toHaveBeenCalledWith('video', { direction: 'recvonly' });
     expect(lastSent('call.offer')).toMatchObject({ chatId: 'c1', video: true });
     expect(result.current.error).toBeNull();
+  });
+});
+
+describe('switching the camera in a video call (pending 97)', () => {
+  it('a phone with two cameras gets the switch; the rear track replaces the front one in the same sender and the old one stops', async () => {
+    // Arrange
+    const local = { video: [] as { stop: ReturnType<typeof vi.fn>; enabled: boolean; kind: string }[] };
+    const front = { stop: vi.fn(), enabled: true, kind: 'video' };
+    const rear = { stop: vi.fn(), enabled: true, kind: 'video' };
+    local.video = [front];
+    const replaceTrack = vi.fn(async () => undefined);
+    FakePeer.senders = [{ get track() { return local.video[0]; }, replaceTrack }];
+    getUserMedia.mockReset().mockImplementation(async (constraints: { audio: boolean; video: unknown }) =>
+      constraints.audio
+        ? { getTracks: () => [tracks[0], ...local.video], getAudioTracks: () => tracks.slice(0, 1), getVideoTracks: () => local.video, removeTrack: (one: unknown) => (local.video = local.video.filter((track) => track !== one)), addTrack: (one: typeof rear) => local.video.push(one) }
+        : { getVideoTracks: () => [rear] }
+    );
+    Object.defineProperty(navigator, 'mediaDevices', { value: { getUserMedia, enumerateDevices: async () => [{ kind: 'videoinput' }, { kind: 'videoinput' }, { kind: 'audioinput' }] }, configurable: true });
+    const { result } = mount();
+    await act(() => result.current.call('c1', 'Ana', true));
+    await waitFor(() => expect(result.current.canSwitch).toBe(true));
+    // Act
+    await act(() => result.current.switchCamera());
+    // Assert
+    expect(getUserMedia).toHaveBeenLastCalledWith({ audio: false, video: { facingMode: { exact: 'environment' } } });
+    expect(replaceTrack).toHaveBeenCalledWith(rear);
+    expect(front.stop).toHaveBeenCalled();
+    expect(local.video).toEqual([rear]);
+    expect(result.current.facing).toBe('environment');
+  });
+
+  it('a laptop with one camera gets no switch', async () => {
+    Object.defineProperty(navigator, 'mediaDevices', { value: { getUserMedia, enumerateDevices: async () => [{ kind: 'videoinput' }] }, configurable: true });
+    const { result } = mount();
+    await act(() => result.current.call('c1', 'Ana', true));
+    await waitFor(() => expect(result.current.localStream).not.toBeNull());
+    expect(result.current.canSwitch).toBe(false);
+    expect(result.current.facing).toBe('user');
   });
 });

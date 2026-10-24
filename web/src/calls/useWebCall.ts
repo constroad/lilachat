@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { CALL_TIMEOUT_MS, mediaState, nextCallState, ringStart, waitBeforeGivingUp, type CallEvent, type CallState, type MediaState } from '@lilachat/shared';
+import { canSwitchCamera, otherFacing, type CameraFacing } from '@lilachat/shared';
 import { currentSocket } from '../useSocket';
 import { createCallPeer, errorName, fetchIceServers, mediaErrorText, type CallPeer, type Candidate, type Sdp } from './callPeer';
 
@@ -26,6 +27,9 @@ export function useWebCall(params: { jwt: string; connected: boolean; nameOf: (o
   const [media, setMedia] = useState<MediaState>('conectando');
   const [muted, setMuted] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
+  /** Front or rear (pending 97), and how many cameras the device has: the switch shows with two. */
+  const [facing, setFacing] = useState<CameraFacing>('user');
+  const [cameras, setCameras] = useState(0);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +55,7 @@ export function useWebCall(params: { jwt: string; connected: boolean; nameOf: (o
     sessionRef.current = next;
     setSession(next);
     setCameraOn(next.videoCall);
+    setFacing('user');
     setMuted(false);
     setError(null);
   }, []);
@@ -183,7 +188,28 @@ export function useWebCall(params: { jwt: string; connected: boolean; nameOf: (o
     });
   }, [localStream]);
 
-  return { state, session, media, muted, cameraOn, localStream, remoteStream, error, call, answer, hangUp, close, toggleMute, toggleCamera };
+  useEffect(() => {
+    // An old browser without the listing gets no switch.
+    const listing = localStream?.getVideoTracks().length ? navigator.mediaDevices?.enumerateDevices?.() : undefined;
+    if (!listing) return setCameras(0);
+    let alive = true;
+    void listing
+      .then((devices) => alive && setCameras(devices.filter((device) => device.kind === 'videoinput').length))
+      .catch(() => alive && setCameras(0));
+    return () => {
+      alive = false;
+    };
+  }, [localStream]);
+  const switchCamera = useCallback(async () => {
+    const next = otherFacing(facing);
+    try {
+      if (await peerRef.current?.switchCamera(next)) setFacing(next);
+    } catch (failure) {
+      console.warn('[llamada] no se pudo girar la cámara:', failure);
+    }
+  }, [facing]);
+
+  return { state, session, media, muted, cameraOn, facing, canSwitch: canSwitchCamera(cameras), localStream, remoteStream, error, call, answer, hangUp, close, toggleMute, toggleCamera, switchCamera };
 }
 
 export type WebCall = ReturnType<typeof useWebCall>;

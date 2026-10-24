@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Mic, MicOff, Phone, PhoneOff, Video, VideoOff } from 'lucide-react';
+import { SwitchCamera } from 'lucide-react';
 import { callCaption } from '@lilachat/shared';
+import { mirrorsSelfView } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import type { WebCall } from './useWebCall';
 
@@ -63,7 +65,7 @@ export function CallOverlay({ call, peerPhoto }: { call: WebCall; /** The chat's
         {showVideo ? (
           <>
             <video ref={remoteMedia} autoPlay playsInline muted className="absolute inset-0 h-full w-full bg-on-surface object-cover" />
-            <video ref={localVideo} autoPlay playsInline muted data-testid="video-propio" className={`absolute bottom-28 right-4 h-28 w-20 rounded-lg border border-outline/20 bg-on-surface object-cover [transform:scaleX(-1)] ${cameraOn ? '' : 'invisible'}`} />
+            <video ref={localVideo} autoPlay playsInline muted data-testid="video-propio" className={`absolute bottom-28 right-4 h-28 w-20 rounded-lg border border-outline/20 bg-on-surface object-cover ${mirrorsSelfView(call.facing) ? '[transform:scaleX(-1)]' : ''} ${cameraOn ? '' : 'invisible'}`} />
           </>
         ) : null}
         {/* WhatsApp's order (José, 22/10): who and how it goes on top, the face in the middle, the controls in a panel at the bottom. */}
@@ -82,6 +84,9 @@ export function CallOverlay({ call, peerPhoto }: { call: WebCall; /** The chat's
             <>
               {session.videoCall && localStream?.getVideoTracks().length ? (
                 <RoundButton testId="btn-camara" label={cameraOn ? 'Cámara' : 'Sin cámara'} tone="plain" pressed={!cameraOn} onClick={call.toggleCamera}>{cameraOn ? <Video size={22} /> : <VideoOff size={22} />}</RoundButton>
+              ) : null}
+              {session.videoCall && call.canSwitch && cameraOn ? (
+                <RoundButton testId="btn-girar-camara" label="Girar" tone="plain" onClick={() => void call.switchCamera()}><SwitchCamera size={22} /></RoundButton>
               ) : null}
               <RoundButton testId="btn-silenciar" label={muted ? 'Activar' : 'Silenciar'} tone="plain" pressed={muted} onClick={call.toggleMute}>{muted ? <MicOff size={22} /> : <Mic size={22} />}</RoundButton>
               <RoundButton testId="btn-colgar" label="Colgar" tone="end" onClick={call.hangUp}><PhoneOff size={24} /></RoundButton>

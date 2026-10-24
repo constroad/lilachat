@@ -57,7 +57,8 @@ export async function installApp(params: { app: BotApp; workspaceId: Types.Objec
   const installation = await BotInstallationModel.findOneAndUpdate(
     { _id: installationId },
     {
-      $set: { appId: params.app._id, workspaceId: params.workspaceId, botUserId, tokenHash: sha256(token), signingSecret, installedBy: params.installedBy },
+      // What the app asks for now is what this admin accepted (a reinstall updates it).
+      $set: { appId: params.app._id, workspaceId: params.workspaceId, botUserId, tokenHash: sha256(token), signingSecret, installedBy: params.installedBy, grantedScopes: params.app.scopes ?? [] },
       $unset: { revokedAt: 1 },
     },
     { upsert: true, returnDocument: 'after' }

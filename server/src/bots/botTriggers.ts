@@ -12,11 +12,14 @@ import { botOfUser, botsAmong, type BotOfUser } from './botRegistry.js';
  * maps it to the Portal user. Never awaited by who acted: a slow or failing
  * webhook does not hold a message.
  */
-export type Person = { id: string; name: string | null; phone: string | null };
+export type Person = { id: string; name: string | null; phone: string | null; /** Only with the `users:read.email` scope accepted: the verified email, or null. */ email?: string | null };
 
-export async function personOf(userId: Types.ObjectId | string): Promise<Person> {
-  const user = await UserModel.findById(userId).select('name phone').lean();
-  return { id: String(userId), name: user?.name ?? null, phone: user ? toInternationalPhone(user.phone) || null : null };
+export async function personOf(userId: Types.ObjectId | string, scopes?: readonly string[]): Promise<Person> {
+  const withEmail = scopes?.includes('users:read.email') === true;
+  const user = await UserModel.findById(userId).select(withEmail ? 'name phone email emailVerifiedAt' : 'name phone').lean();
+  const base = { id: String(userId), name: user?.name ?? null, phone: user ? toInternationalPhone(user.phone) || null : null };
+  // An unverified email does not count (pending 95): the app links accounts by it.
+  return withEmail ? { ...base, email: user?.email && user.emailVerifiedAt ? user.email : null } : base;
 }
 
 export const channelOf = (chat: Pick<Chat, '_id' | 'kind' | 'name' | 'channel'>) => ({ id: String(chat._id), kind: chat.channel ? 'channel' : chat.kind, ...(chat.name ? { name: chat.name } : {}) });

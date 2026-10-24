@@ -165,7 +165,7 @@ async function invokeApp(userId: Types.ObjectId, scope: CommandScope, appId: unk
   // A failed run stays a week: its `failure` is how a «no pudo responder» gets explained (23/10).
   void BotCommandRunModel.deleteMany({ $or: [{ expiresAt: { $lt: new Date() }, failure: { $exists: false } }, { expiresAt: { $lt: new Date(Date.now() - FAILED_RUN_KEPT_MS) } }] }).catch((error: unknown) => console.error('[bots] no se pudieron purgar comandos vencidos:', error instanceof Error ? error.message : error));
   const { chat } = place;
-  const [run, user] = await Promise.all([BotCommandRunModel.create({ installationId: installation._id, ...(chat ? { chatId: chat._id } : {}), workspaceId: place.workspaceId, userId, command: name, expiresAt: new Date(Date.now() + COMMAND_TTL_MS) }), personOf(userId)]);
+  const [run, user] = await Promise.all([BotCommandRunModel.create({ installationId: installation._id, ...(chat ? { chatId: chat._id } : {}), workspaceId: place.workspaceId, userId, command: name, expiresAt: new Date(Date.now() + COMMAND_TTL_MS) }), personOf(userId, installation.grantedScopes)]);
   // Slack's global shortcuts carry no channel either.
   const common = { command_id: String(run._id), channel: chat ? channelOf(chat) : null, user };
   const reply = trigger.kind === 'command'

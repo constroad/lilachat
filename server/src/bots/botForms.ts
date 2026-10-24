@@ -131,11 +131,11 @@ export async function submitForm(userId: Types.ObjectId, scope: CommandScope, co
   // A signing takes the place of NOW (José, 24/10): a reading the phone kept is refused.
   const checked = validateFormValues(fields, values, { requireFresh: true });
   if (!checked.ok) return { status: 422, errors: checked.errors };
-  const [installation, chat, user] = await Promise.all([
+  const [installation, chat] = await Promise.all([
     BotInstallationModel.findOne({ _id: run.installationId, revokedAt: { $exists: false } }).lean(),
     run.chatId ? ChatModel.findById(run.chatId).select('_id kind name channel workspaceId members.userId').lean<ChatOfCommand | null>() : null,
-    personOf(userId),
   ]);
+  const user = await personOf(userId, installation?.grantedScopes);
   const app = installation ? await BotAppModel.findById(installation.appId).select('name webhookUrl').lean() : null;
   if (!installation || !app || (run.chatId && !chat)) return fail(410, 'app_uninstalled', 'La app ya no está instalada en este espacio.');
   const base: Base = { commandId, appId: String(app._id), appName: app.name };

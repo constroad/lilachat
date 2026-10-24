@@ -2,6 +2,7 @@ import { Types } from 'mongoose';
 import { canManageMembers } from '@lilachat/shared';
 import { WorkspaceMemberModel, WorkspaceModel } from '../workspaceModels.js';
 import { isAvailableIn } from './botAvailability.js';
+import { personOf } from './botTriggers.js';
 import { installApp } from './botInstall.js';
 import { BotAppModel, OAuthCodeModel, type BotApp } from './botModels.js';
 import { newSecret, pkceMatches, sameHash, sha256 } from './botSecrets.js';
@@ -89,5 +90,7 @@ export async function exchangeCode(body: Record<string, unknown>) {
     space: { id: String(space._id), name: space.name },
     bot_user_id: String(installed.installation.botUserId),
     signing_secret: installed.signingSecret,
+    // Who accepted the install, from the Lilachat session that saw the consent: the app links that admin at once.
+    installed_by: await personOf(grant.userId, installed.installation.grantedScopes),
   };
 }

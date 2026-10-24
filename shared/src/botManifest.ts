@@ -30,7 +30,19 @@ export type AppManifest = {
   shortcuts: AppShortcut[];
   /** Where its notices may land, picked per topic by the space's admin (R160, design e-31); always a list. */
   noticeTopics: NoticeTopic[];
+  /** What the app asks to see beyond the basics; accepted when installing (like Slack's scopes, pending 95). */
+  scopes: AppScope[];
 };
+
+/** The scopes an app may ask for, with what the admin reads when installing. */
+export const APP_SCOPES = { 'users:read.email': 'Ver el correo de quien la usa, si lo verificó en Lilachat' } as const;
+export type AppScope = keyof typeof APP_SCOPES;
+const isScope = (value: unknown): value is AppScope => typeof value === 'string' && value in APP_SCOPES;
+
+/** What a manifest asks for that the installation has not accepted yet: the detail offers «Reinstalar» (pending 95). */
+export function newScopesOf(asked: readonly string[] | undefined, granted: readonly string[] | undefined): AppScope[] {
+  return (asked ?? []).filter((scope): scope is AppScope => isScope(scope) && !(granted ?? []).includes(scope));
+}
 
 export const MANIFEST_LIMITS = { key: 32, name: 40, url: 500, appsPerDeveloper: 20, description: 120, features: 6, feature: 140, developer: 60, shortcuts: 10, shortcutName: 40, shortcutDescription: 80 };
 const KEY = /^[a-z][a-z0-9-]+$/;
@@ -65,7 +77,8 @@ export function validateAppManifest(raw: unknown): { ok: true; manifest: AppMani
   if (!Array.isArray(shortcuts)) return shortcuts;
   const noticeTopics = validateNoticeTopics(body.notice_topics);
   if (!Array.isArray(noticeTopics)) return noticeTopics;
-  return { ok: true, manifest: { key, name, ...(avatarUrl ? { avatarUrl } : {}), redirectUri, webhookUrl, ...(installUrl ? { installUrl } : {}), ...(commands ? { commands } : {}), ...about, shortcuts, noticeTopics } };
+  const scopes = [...new Set(Array.isArray(body.scopes) ? body.scopes.filter(isScope) : [])];
+  return { ok: true, manifest: { key, name, ...(avatarUrl ? { avatarUrl } : {}), redirectUri, webhookUrl, ...(installUrl ? { installUrl } : {}), ...(commands ? { commands } : {}), ...about, shortcuts, noticeTopics, scopes } };
 }
 
 const ELLIPSIS = '…';

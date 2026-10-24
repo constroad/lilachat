@@ -90,6 +90,16 @@ export function AppDetail(props: { app: DirectoryApp; spaceName: string; onMessa
           ) : null}
         </div>
       </section>
+      {/* A newer manifest asks for more (pending 95): it keeps working with what was accepted until an admin reinstalls. */}
+      {app.installation?.newPermissions?.length ? (
+        <section data-testid="app-permisos-nuevos" className="space-y-1.5 rounded-xl border border-warning/30 bg-warning/10 p-3">
+          <p className="text-[14px] font-semibold">Esta app pide permisos nuevos</p>
+          {app.installation.newPermissions.map((line) => <p key={line} className="text-[13px]">· {line}</p>)}
+          {app.installUrl ? (
+            <button type="button" data-testid="app-reinstalar-permisos" onClick={props.onInstall} className="mt-1 h-9 rounded-lg bg-primary px-3 text-[13px] font-semibold text-on-primary">Reinstalar</button>
+          ) : <p className="text-[12px] text-on-surface-variant">Un admin del espacio la reinstala para aceptarlos.</p>}
+        </section>
+      ) : null}
       {app.features.length ? (
         <Section Icon={ListChecks} title="Qué hace">
           <ul className="space-y-2">
@@ -106,7 +116,7 @@ export function AppDetail(props: { app: DirectoryApp; spaceName: string; onMessa
       {app.installation ? props.notices : null}
       <Section Icon={Lock} title="Permisos">
         <div className="grid gap-4 sm:grid-cols-2">
-          <ul className="space-y-1.5"><li className="text-[12px] font-semibold text-en-linea">Puede</li>{APP_PERMISSIONS.can.map((line) => <li key={line} className="flex gap-2 text-[13px]"><Check size={15} className="mt-0.5 shrink-0 text-en-linea" />{line}</li>)}</ul>
+          <ul className="space-y-1.5"><li className="text-[12px] font-semibold text-en-linea">Puede</li>{[...APP_PERMISSIONS.can, ...(app.asks ?? [])].map((line) => <li key={line} className="flex gap-2 text-[13px]"><Check size={15} className="mt-0.5 shrink-0 text-en-linea" />{line}</li>)}</ul>
           <ul className="space-y-1.5"><li className="text-[12px] font-semibold text-error">No puede</li>{APP_PERMISSIONS.cannot.map((line) => <li key={line} className="flex gap-2 text-[13px]"><X size={15} className="mt-0.5 shrink-0 text-error" />{line}</li>)}</ul>
         </div>
       </Section>

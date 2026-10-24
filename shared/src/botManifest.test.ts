@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MANIFEST_LIMITS, validateAppManifest } from './botManifest.js';
+import { MANIFEST_LIMITS, newScopesOf, validateAppManifest } from './botManifest.js';
 
 const manifest = {
   key: 'inframaq',
@@ -26,13 +26,14 @@ describe('app manifest', () => {
         commands: [{ command: 'clima', description: 'Clima de la planta', usageHint: '[mañana]' }],
         shortcuts: [],
         noticeTopics: [],
+        scopes: [],
       },
     });
   });
 
   it('avatar, install address and commands are optional; without commands they are not touched', () => {
     const result = validateAppManifest({ key: 'portal', name: 'Portal', redirect_uri: manifest.redirect_uri, webhook_url: manifest.webhook_url });
-    expect(result).toEqual({ ok: true, manifest: { key: 'portal', name: 'Portal', redirectUri: manifest.redirect_uri, webhookUrl: manifest.webhook_url, shortcuts: [], noticeTopics: [] } });
+    expect(result).toEqual({ ok: true, manifest: { key: 'portal', name: 'Portal', redirectUri: manifest.redirect_uri, webhookUrl: manifest.webhook_url, shortcuts: [], noticeTopics: [], scopes: [] } });
   });
 
   it('refuses a bad key, a missing name and addresses without https', () => {
@@ -87,5 +88,19 @@ describe('app manifest', () => {
 
   it('bad commands are refused with the same message as PUT /api/bots/commands', () => {
     expect(validateAppManifest({ ...manifest, commands: [{ command: '/Clima', description: 'x' }] }).ok).toBe(false);
+  });
+});
+
+describe('scopes (pending 95: the verified email, accepted when installing)', () => {
+  it('keeps the known ones once; an unknown scope is ignored, not an error', () => {
+    const parsed = validateAppManifest({ ...manifest, scopes: ['users:read.email', 'users:read.email', 'admin:all'] });
+    expect(parsed.ok && parsed.manifest.scopes).toEqual(['users:read.email']);
+    const none = validateAppManifest(manifest);
+    expect(none.ok && none.manifest.scopes).toEqual([]);
+  });
+  it('what the app asks and the installation did not accept is new', () => {
+    expect(newScopesOf(['users:read.email'], [])).toEqual(['users:read.email']);
+    expect(newScopesOf(['users:read.email'], ['users:read.email'])).toEqual([]);
+    expect(newScopesOf(undefined, undefined)).toEqual([]);
   });
 });

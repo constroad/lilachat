@@ -1,5 +1,5 @@
 import type { Types } from 'mongoose';
-import type { AvailableApp, DirectoryApp } from '@lilachat/shared';
+import { APP_SCOPES, newScopesOf, type AvailableApp, type DirectoryApp } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { isAvailableIn } from './botAvailability.js';
@@ -37,10 +37,17 @@ const aboutOf = (app: BotApp) => ({
   ...(app.developer ? { developer: app.developer } : {}),
   ...(app.category ? { category: app.category } : {}),
   commands: app.commands ?? [],
+  ...(app.scopes?.length ? { asks: newScopesOf(app.scopes, []).map((scope) => APP_SCOPES[scope]) } : {}),
 });
 
+/** A newer manifest asks for more than this space accepted (pending 95): in words, for the detail's «Reinstalar». */
+function newPermissionsOf(app: BotApp, granted: readonly string[] | undefined): { newPermissions?: string[] } {
+  const fresh = newScopesOf(app.scopes, granted).map((scope) => APP_SCOPES[scope]);
+  return fresh.length ? { newPermissions: fresh } : {};
+}
+
 export async function directoryOf(spaceId: string, canInstall: boolean, loginHint?: string): Promise<DirectoryApp[]> {
-  const installations = await BotInstallationModel.find({ workspaceId: spaceId, revokedAt: { $exists: false } }).select('appId botUserId installedBy createdAt').lean();
+  const installations = await BotInstallationModel.find({ workspaceId: spaceId, revokedAt: { $exists: false } }).select('appId botUserId installedBy createdAt grantedScopes').lean();
   const [apps, people, activity] = await Promise.all([
     BotAppModel.find({ $or: [{ installUrl: { $exists: true, $ne: '' } }, { _id: { $in: installations.map((one) => one.appId) } }] }).lean<BotApp[]>(),
     UserModel.find({ _id: { $in: installations.map((one) => one.installedBy) } }).select('name').lean(),
@@ -55,7 +62,7 @@ export async function directoryOf(spaceId: string, canInstall: boolean, loginHin
       if (installed) {
         const { one } = installed;
         // An admin can install it again (Slack's «Reinstall»): the company or the permissions may have changed.
-        return { ...aboutOf(app), ...(canInstall && app.installUrl ? { installUrl: withSpace(app.installUrl, spaceId, loginHint) } : {}), installation: { installationId: String(one._id), botUserId: String(one.botUserId), installedBy: names.get(String(one.installedBy)) ?? null, installedAt: one.createdAt.toISOString(), ...installed.activity } };
+        return { ...aboutOf(app), ...(canInstall && app.installUrl ? { installUrl: withSpace(app.installUrl, spaceId, loginHint) } : {}), installation: { installationId: String(one._id), botUserId: String(one.botUserId), installedBy: names.get(String(one.installedBy)) ?? null, installedAt: one.createdAt.toISOString(), ...installed.activity, ...newPermissionsOf(app, one.grantedScopes) } };
       }
       return { ...aboutOf(app), ...(canInstall && app.installUrl ? { installUrl: withSpace(app.installUrl, spaceId, loginHint) } : {}) };
     })

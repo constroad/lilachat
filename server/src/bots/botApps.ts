@@ -46,6 +46,7 @@ const manifestFields = (manifest: AppManifest) => ({
   ...(manifest.commands ? { commands: manifest.commands } : {}),
   shortcuts: manifest.shortcuts,
   noticeTopics: manifest.noticeTopics,
+  scopes: manifest.scopes,
   ...(manifest.description ? { description: manifest.description } : {}),
   ...(manifest.features ? { features: manifest.features } : {}),
   ...(manifest.developer ? { developer: manifest.developer } : {}),

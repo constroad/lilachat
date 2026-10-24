@@ -103,6 +103,24 @@ describe('the manifest', () => {
     expect(groups).toEqual([expect.objectContaining({ appName: 'Inframaq', commands: [{ command: 'clima', description: 'Clima de la planta' }] })]);
   });
 
+  it('the verified email goes only with the accepted scope; a newer manifest asking for it shows «permisos nuevos» until reinstalled (pending 95)', async () => {
+    // Arrange: José proved his email; the app is installed without asking for it.
+    await UserModel.updateOne({ _id: jose }, { $set: { email: 'jose@constroad.com', emailVerifiedAt: new Date() } });
+    const { body } = await request(app).post('/api/bots/apps').set(asLila).send(manifest()).expect(201);
+    const first = await installWith(body.client_id, body.client_secret);
+    expect(first.body.installed_by).toEqual({ id: String(jose), name: 'José', phone: '51902049935' });
+    // Act: the manifest now asks for the email.
+    await request(app).post('/api/bots/apps').set(asLila).send({ ...manifest(), scopes: ['users:read.email'] }).expect(200);
+    const before = (await request(app).get(`/api/workspaces/${spaceId}/app-directory`).set(asJose).expect(200)).body.apps.find((one: { name: string }) => one.name === 'Inframaq');
+    const again = await installWith(body.client_id, body.client_secret);
+    const after = (await request(app).get(`/api/workspaces/${spaceId}/app-directory`).set(asJose).expect(200)).body.apps.find((one: { name: string }) => one.name === 'Inframaq');
+    // Assert
+    expect(before.installation.newPermissions).toEqual(['Ver el correo de quien la usa, si lo verificó en Lilachat']);
+    expect(after.installation.newPermissions).toBeUndefined();
+    expect(after.asks).toEqual(['Ver el correo de quien la usa, si lo verificó en Lilachat']);
+    expect(again.body.installed_by).toEqual({ id: String(jose), name: 'José', phone: '51902049935', email: 'jose@constroad.com' });
+  });
+
   it('the «+» actions follow the manifest with the app avatar; a manifest without them removes them (agentes, 23/10)', async () => {
     // Arrange
     const attendance = { key: 'marcar_asistencia', name: 'Marcar asistencia', description: 'Ingreso, refrigerio o salida con tu foto y ubicación' };

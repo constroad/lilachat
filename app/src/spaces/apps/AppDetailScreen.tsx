@@ -109,6 +109,16 @@ export function AppDetailScreen(props: { app: DirectoryApp; spaceName: string; c
                 </View>
               ) : null}
             </View>
+            {/* A newer manifest asks for more (pending 95): it keeps working with what was accepted until an admin reinstalls. */}
+            {installation?.newPermissions?.length ? (
+              <View testID="app-permisos-nuevos" className="mx-4 mt-3 gap-2 rounded-2xl border border-warning/30 bg-warning/10 p-3">
+                <Text className="text-[15px] font-semibold text-on-surface">Esta app pide permisos nuevos</Text>
+                {installation.newPermissions.map((line) => <Text key={line} className="text-[14px] text-on-surface">{`· ${line}`}</Text>)}
+                {props.canInstall && app.installUrl ? (
+                  <Pressable testID="app-reinstalar-permisos" onPress={props.onInstall} className="mt-1 h-11 items-center justify-center self-start rounded-xl bg-primary px-4"><Text className="text-[14px] font-semibold text-on-primary">Reinstalar</Text></Pressable>
+                ) : <Text className="text-[13px] text-on-surface-variant">Un admin del espacio la reinstala para aceptarlos.</Text>}
+              </View>
+            ) : null}
             {app.features.length ? (
               <Section Icon={Info} title="Qué hace">
                 {app.features.map((feature) => (
@@ -128,7 +138,7 @@ export function AppDetailScreen(props: { app: DirectoryApp; spaceName: string; c
             {installation ? props.settings : null}
             <Section Icon={Lock} title="Permisos">
               <Text className="mb-1 text-[13px] font-semibold text-en-linea">Puede</Text>
-              {APP_PERMISSIONS.can.map((line) => <PermissionLine key={line} allowed text={line} />)}
+              {[...APP_PERMISSIONS.can, ...(app.asks ?? [])].map((line) => <PermissionLine key={line} allowed text={line} />)}
               <Text className="mb-1 mt-2 text-[13px] font-semibold text-error">No puede</Text>
               {APP_PERMISSIONS.cannot.map((line) => <PermissionLine key={line} allowed={false} text={line} />)}
             </Section>

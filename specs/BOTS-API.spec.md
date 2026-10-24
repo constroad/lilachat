@@ -452,6 +452,20 @@ es global y un comando no; los dos funcionan en todos los canales.
 - Tanque: `status` (hasta 24 caracteres, en palabras) además de `tone`; el %
   lo calcula Lilachat de `level`.
 
+## c-octies) Permisos (scopes) y quién instaló (0.1.165)
+
+- El manifiesto puede pedir `scopes: ["users:read.email"]`. La instalación
+  guarda lo que el admin aceptó (`grantedScopes`). Si un manifiesto nuevo pide
+  más, la app sigue funcionando con lo aceptado, y el detalle le muestra al
+  admin «Esta app pide permisos nuevos» con «Reinstalar», que lleva a tu
+  `install_url` sin desinstalar.
+- Con `users:read.email` aceptado, `user` de `command.invoked`,
+  `shortcut.invoked` y `form.submitted` trae `email`: el correo verificado, o
+  `null` si la persona no lo verificó. Sin el scope, el campo no viene.
+- El canje del código (`POST /api/oauth/token`) devuelve además
+  `installed_by: { id, name, phone, email? }`: quien aceptó la instalación, con
+  la sesión de Lilachat que vio la pantalla de consentimiento.
+
 ## d) Lectura
 
 - `GET /api/bots/me` → `{ installation_id, space: { id, name }, bot_user_id }`.

@@ -25,6 +25,8 @@ export type BotApp = {
   shortcuts?: AppShortcut[];
   /** Its notice topics (R160): the space's admin picks a channel for each (`botTopics.ts`). */
   noticeTopics?: NoticeTopic[];
+  /** What it asks to see beyond the basics (pending 95); an installation keeps what was accepted. */
+  scopes?: string[];
   /** Made by a developer app through its manifest (§0-bis): only that app sees or changes it, by its own `key`. */
   ownerAppId?: Types.ObjectId;
   key?: string;
@@ -73,6 +75,8 @@ export type BotInstallation = {
   lastDelivery?: { at: Date; ok: boolean; error?: string };
   /** The channel the admin picked for each notice topic; null = «Sin canal»; absent = #general (`botTopics.ts`). */
   topicChannels?: Record<string, string | null>;
+  /** The app's scopes accepted when installing: a newer manifest asking for more needs «Reinstalar». */
+  grantedScopes?: string[];
   /** Where each command and action works, as the admin left it (`appItems.ts` in shared); absent = the default. */
   itemSettings?: StoredItemSettings;
   createdAt: Date;
@@ -117,6 +121,7 @@ const appSchema = new Schema<BotApp>(
     commands: { type: [{ command: String, description: String, usageHint: String, _id: false }], default: undefined },
     shortcuts: { type: [{ key: String, name: String, description: String, _id: false }], default: undefined },
     noticeTopics: { type: [{ key: String, name: String, description: String, icon: String, _id: false }], default: undefined },
+    scopes: { type: [String], default: undefined },
     ownerAppId: { type: Schema.Types.ObjectId },
     key: { type: String },
     description: { type: String },
@@ -140,6 +145,7 @@ const installationSchema = new Schema<BotInstallation>(
     recentKeys: { type: [{ key: String, messageId: String, chatId: String, seq: Number, _id: false }], default: [] },
     lastDelivery: { at: Date, ok: Boolean, error: String },
     topicChannels: { type: Schema.Types.Mixed },
+    grantedScopes: { type: [String], default: undefined },
     itemSettings: { type: Schema.Types.Mixed },
   },
   { timestamps: true }

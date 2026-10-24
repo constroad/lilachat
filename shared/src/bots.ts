@@ -175,7 +175,9 @@ export type DirectoryApp = {
   category?: AppCategory;
   commands: BotCommand[];
   installUrl?: string;
-  installation?: { installationId: string; botUserId: string; installedBy: string | null; installedAt: string; channels: number; directs: number };
+  /** What it asks to see beyond the basics, in words (pending 95): «Ver el correo de quien la usa…». */
+  asks?: string[];
+  installation?: { installationId: string; botUserId: string; installedBy: string | null; installedAt: string; channels: number; directs: number; /** Asked by a newer manifest and not accepted yet: the detail offers «Reinstalar». */ newPermissions?: string[] };
 };
 export type SpaceAppDirectory = { apps: DirectoryApp[]; canInstall: boolean };
 

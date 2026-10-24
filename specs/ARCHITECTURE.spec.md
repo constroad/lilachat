@@ -4909,6 +4909,44 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 126. «Conecta tu cuenta» dentro de Lilachat y respuestas que siempre terminan (24/10/2026, 0.1.162)
+
+Pedido de José del 23/10, con urgencia: conectar la cuenta de una app «con un
+formulario… e ingresar allí mismo el código», sin la página de agentes («no
+tiene sentido»). Cerrado con agentes: el rechazo de identidad responde un
+formulario (`cuenta_destino`), y al enviarlo llega el del código
+(`cuenta_codigo`). Sin web de respaldo.
+
+- **Campo de código:** `x-input: "otp"`, o un `pattern` `^\d{N}$` (las
+  versiones viejas lo dibujan como texto corto). Teclado numérico,
+  autocompletar del código, dígitos grandes; se limpia lo pegado con espacios.
+  Sin los N dígitos: «Escribe los 6 dígitos.».
+- **El formulario trae lo que la app ya sabe** (`default`, por ejemplo el
+  teléfono verificado) y el porqué: el `text` de la respuesta va arriba y la
+  `description` del schema como introducción.
+- **El paso siguiente se abre solo:** un formulario que responde a otro (o que
+  llega tarde por `/respond`) se abre encima, con su propia clave
+  (`formKeyOf`). **Cerrar un formulario lo descarta** (pendiente 100: la tarjeta
+  «borrador» ya no queda en el ⚡).
+- **El teclado ya no tapa el campo** en el APK: la hoja sube con
+  `KeyboardAvoidingView` en Android (con edge-to-edge la ventana no se encoge)
+  y se achica a lo que queda de pantalla.
+- **«Trabajando…» siempre termina:**
+  - una respuesta tardía `in_channel` avisa a quien preguntó (`posted: true`)
+    y su tarjeta desaparece;
+  - un cuerpo que solo acusa recibo (`{}`, `response_type` solo) es
+    «trabajando…», no «no pudo responder»;
+  - a los 45 s sin respuesta: «<App> no respondió a tiempo».
+- **Una app que se está desplegando** (502/503/504): se reintenta una vez con
+  la misma entrega; si sigue caída, «se está actualizando».
+
+**E2E en producción (emulador, cuenta de José, espacio «Test»):** `/clima` y
+`/clima la próxima semana` (7 barras dentro), `/mantenimiento` y `/deudas`
+con el rechazo de identidad; José conectó su cuenta y `/tanques` respondió.
+Fallas encontradas y repartidas: 502 en un deploy de agentes (reintento),
+respuestas que agentes soltaba entre 2 y 2,5 s (agentes bajó a 1,5 s), un
+acuse `{}` leído como falla (arreglado acá) y la tarjeta congelada en la web.
+
 ## 125. Canales editables, apps que se sacan de un canal y el formulario de Inframaq que no se trababa (23/10/2026, 0.1.161)
 
 Pedidos de José del 23/10: «cuando creo un canal no se refresca la lista»;
@@ -11509,7 +11547,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     (Reinstalar y Desinstalar, solo admins). Auditar todas las pantallas y
     recorridos de apps (directorio, chat con la app, ⚡, «+», Integraciones)
     en APK y web, con diseño en Stitch primero.
-100. **⚡: cerrar el formulario no deja un «borrador» encima** (José, 23/10:
+100. ~~**⚡: cerrar el formulario no deja un «borrador» encima**~~ — hecho en 0.1.162 (§126). (José, 23/10:
     «pésimo»). Al cerrar «Marcar asistencia» sin enviar, queda la tarjeta
     «Abrir «Marcar asistencia»» sobre las acciones rápidas. Cerrar el
     formulario lo descarta: la tarjeta no queda. Si se cerró por error, se
@@ -11527,7 +11565,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     23/10: `/kardex` en el 1:1 con Inframaq salió como mensaje). Como Slack:
     «/kardex no es un comando de Inframaq», con los que sí tiene. Solo se
     manda como texto si empieza con «//» o con un espacio.
-103. **«Está trabajando…» no se queda para siempre** (E2E del 23/10:
+103. ~~**«Está trabajando…» no se queda para siempre**~~ — hecho en 0.1.162 (§126). (E2E del 23/10:
     `/asistencia` y `/tanques` de Inframaq sin respuesta después de un
     minuto). Pasados 45 s sin `/respond`, la tarjeta dice «Inframaq no
     respondió a tiempo» con «Reintentar», y el server lo guarda en la corrida

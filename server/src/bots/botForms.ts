@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import mongoose, { Types, type Model } from 'mongoose';
-import { formFields, validateFormReply, validateFormValues, type CommandOutcome, type CommandScope, type FormValues } from '@lilachat/shared';
+import { formFields, isAckBody, validateFormReply, validateFormValues, type CommandOutcome, type CommandScope, type FormValues } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
 import type { UploadOutcome } from '../mediaClient.js';
 import { readOwnMedia, ownMediaBase } from '../mediaDisk.js';
@@ -130,7 +130,8 @@ export async function submitForm(userId: Types.ObjectId, scope: CommandScope, co
 
 /** What the app said: its errors keep the form open; a slow or empty answer leaves it «enviando» until `/respond`. */
 async function answerOf(reply: Awaited<ReturnType<typeof callBotWebhook>>, ctx: { installation: Parameters<typeof deliverResponse>[0]; run: Parameters<typeof deliverResponse>[1]; chat: ChatOfCommand | null; base: Base }): Promise<FormOutcome> {
-  if (reply.error === 'timeout' || (reply.status !== null && reply.status < 400 && reply.body === null)) return { ...ctx.base, outcome: 'pending' };
+  // A timeout, or a body that only acknowledges: the answer comes by /respond.
+  if (reply.error === 'timeout' || (reply.status !== null && reply.status < 400 && isAckBody(reply.body))) return { ...ctx.base, outcome: 'pending' };
   const judged = reply.status !== null && reply.status < 400 ? validateFormReply(reply.body) : { ok: false as const, message: reply.error ?? 'Sin respuesta' };
   recordLastDelivery(ctx.installation._id, judged.ok ? { ok: true } : { ok: false, error: `form.submitted: ${judged.message}` });
   if (!judged.ok) {

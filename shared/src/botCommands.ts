@@ -72,6 +72,18 @@ export function validateCommandResponse(raw: unknown): { ok: true; response: Com
 }
 
 /**
+ * A body that only acknowledges (`{}`, or a response_type alone) means «I answer
+ * by `/respond`», like an empty 200: the person sees «working…», never «no pudo
+ * responder» (José, 23/10: red for a few seconds, then the good answer arrived).
+ */
+export function isAckBody(raw: unknown): boolean {
+  if (raw === null) return true;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return false;
+  const body = raw as Record<string, unknown>;
+  return body.response_type !== 'form' && !['text', 'card', 'form', 'errors'].some((key) => key in body && body[key] !== undefined && body[key] !== null && body[key] !== '');
+}
+
+/**
  * What the app answers to `form.submitted`: a normal answer (the form closes)
  * or `{ errors }`, a message per field and `"_"` for the whole form (it stays
  * open with them, agentes 23/10).

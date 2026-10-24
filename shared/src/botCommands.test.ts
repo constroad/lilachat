@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { answerOfOutcome, COMMAND_LIMITS, formKeyOf, giveUpPending, commandOf, matchCommands, replaceAnswer, sharedByLine, validateFormReply, parseSlashInput, slashQuery, validateBotCommands, validateCommandResponse, withAnswer, withNotice, type CommandGroup } from './botCommands.js';
+import { answerOfOutcome, COMMAND_LIMITS, formKeyOf, giveUpPending, isAckBody, commandOf, matchCommands, replaceAnswer, sharedByLine, validateFormReply, parseSlashInput, slashQuery, validateBotCommands, validateCommandResponse, withAnswer, withNotice, type CommandGroup } from './botCommands.js';
 
 /** The slash commands contract, `specs/BOTS-API.spec.md` §c. */
 describe('command registry', () => {
@@ -143,6 +143,13 @@ describe('a «working…» card always ends (José, 23/10: «se queda congelado 
     expect(giveUpPending([pending], 'c9')).toEqual([{ ...pending, state: 'failed', message: 'Inframaq no respondió a tiempo. Vuelve a intentarlo.' }]);
     const answered = { ...pending, state: 'answered' as const, response: { responseType: 'ephemeral' as const, text: 'ok' } };
     expect(giveUpPending([answered], 'c9')).toEqual([answered]);
+  });
+});
+
+describe('isAckBody (an answer that comes later by /respond)', () => {
+  it('an empty object, a response_type alone or null is an acknowledgement; anything with content is an answer', () => {
+    expect([null, {}, { response_type: 'ephemeral' }, { ok: true }, { text: '' }].map(isAckBody)).toEqual([true, true, true, true, true]);
+    expect([{ text: 'hola' }, { card: { title: 'x' } }, { response_type: 'form' }, { errors: { a: 'b' } }, 'texto', []].map(isAckBody)).toEqual([false, false, false, false, false, false]);
   });
 });
 

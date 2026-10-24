@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { X } from 'lucide-react-native';
 import { evidenceLine, formFields, initialValues, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
@@ -28,12 +28,23 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
   const fields = useMemo(() => formFields(form), [form]);
   // What the app prefilled (agentes, 23/10: the verified phone for «Conecta tu cuenta»).
   const [values, setValues] = useState<FormValues>(() => initialValues(fields));
+  // The keyboard's height: the sheet rises above it and shrinks to fit (José, 23/10: he typed the code without seeing it).
+  const [keyboard, setKeyboard] = useState(0);
+  useEffect(() => {
+    const shown = Keyboard.addListener('keyboardDidShow', (event) => setKeyboard(event.endCoordinates.height));
+    const hidden = Keyboard.addListener('keyboardDidHide', () => setKeyboard(0));
+    return () => {
+      shown.remove();
+      hidden.remove();
+    };
+  }, []);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const evidence = evidenceLine(fields);
   const sheetWidth = Math.min(width, SHEET_MAX_WIDTH);
-  const typed = Object.entries(values).some(([name, value]) => value !== undefined && fields.find((field) => field.name === name)?.kind !== 'location');
+  const prefilled = useMemo(() => initialValues(fields), [fields]);
+  const typed = Object.entries(values).some(([name, value]) => value !== undefined && value !== prefilled[name] && fields.find((field) => field.name === name)?.kind !== 'location');
   const close = () => {
     if (!typed) return props.onClose();
     Alert.alert('¿Descartar el formulario?', 'Lo que llenaste no se envía.', [{ text: 'Seguir llenando', style: 'cancel' }, { text: 'Descartar', style: 'destructive', onPress: props.onClose }]);
@@ -58,9 +69,9 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
   return (
     <Modal visible transparent animationType="slide" onRequestClose={close}>
       <Pressable className="flex-1 bg-black/40" onPress={close} accessibilityLabel="Cerrar" />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="self-center" style={{ width: sheetWidth }}>
+      <KeyboardAvoidingView behavior="padding" className="self-center" style={{ width: sheetWidth }}>
         {/* The sheet caps its height and the fields scroll inside it: the button stays in sight (José, 23/10: a long form hid «Marcar»). */}
-        <View testID={`formulario-${form.id}`} className="rounded-t-3xl bg-surface" style={{ maxHeight: height * MAX_SCREEN_SHARE, paddingBottom: margins.pie + 8 }}>
+        <View testID={`formulario-${form.id}`} className="rounded-t-3xl bg-surface" style={{ maxHeight: (height - keyboard) * MAX_SCREEN_SHARE, paddingBottom: keyboard ? 8 : margins.pie + 8 }}>
           <View className="mt-3 h-1.5 w-11 self-center rounded-full bg-outline/30" />
           <View className="flex-row items-center gap-3 border-b border-outline/10 px-4 pb-3 pt-3">
             <Avatar nombre={props.answer.appName} tamano={40} bot />

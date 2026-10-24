@@ -60,3 +60,29 @@ export function evidenceLine(fields: readonly FormField[]): string {
   const parts = [fields.some((field) => field.kind === 'location') ? 'tu ubicación' : '', fields.some((field) => field.kind === 'photo') ? 'tu foto' : ''].filter(Boolean);
   return parts.length ? `Se registra con ${parts.join(' y ')}` : '';
 }
+
+/** Where a stamp's hour is read when the space says nothing else (ConstRoad works in Peru). */
+export const STAMP_TIME_ZONE = 'America/Lima';
+const STAMP_DECIMALS = 5;
+
+function stampDate(at: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('es-PE', { timeZone, weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(at);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((one) => one.type === type)?.value ?? '';
+  return `${part('weekday').replace('.', '')} ${part('day')}/${part('month')}/${part('year')} · ${part('hour')}:${part('minute')}`;
+}
+
+/**
+ * The two lines burned into a form's photo (pending 94, José 23/10: «coloca un
+ * watermark fecha hora y ubicación»): the server writes them with ITS clock,
+ * so the phone cannot fake the hour.
+ */
+export function photoStampLines(params: { at: Date; timeZone?: string; location?: GeoPoint }): [string, string] {
+  let date: string;
+  try {
+    date = stampDate(params.at, params.timeZone ?? STAMP_TIME_ZONE);
+  } catch {
+    date = stampDate(params.at, STAMP_TIME_ZONE);
+  }
+  const place = params.location ? `${params.location.lat.toFixed(STAMP_DECIMALS)}, ${params.location.lng.toFixed(STAMP_DECIMALS)} · ${precisionLabel(params.location)}` : 'Sin ubicación';
+  return [date, place];
+}

@@ -10,6 +10,15 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.162',
+    items: [
+      '«Conecta tu cuenta» de una app se hace dentro de Lilachat: tu correo o WhatsApp y el código, sin salir de la app.',
+      'El formulario sube con el teclado, trae lo que la app ya sabe y te dice por qué te lo pide.',
+      'Cerrar un formulario lo descarta, y el paso siguiente se abre solo.',
+      '«Trabajando…» ya no se queda pegado: si la app no responde, te lo dice para que lo intentes de nuevo.',
+    ],
+  },
+  {
     version: '0.1.161',
     items: [
       'Un canal que creas o al que te unes aparece al toque en la lista, y sus admins lo pasan a privado o le cambian el nombre.',

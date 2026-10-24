@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { COMMAND_LIMITS, enabledAt, itemSettingOf, validateCommandResponse, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope } from '@lilachat/shared';
+import { COMMAND_LIMITS, enabledAt, isAckBody, itemSettingOf, validateCommandResponse, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope } from '@lilachat/shared';
 import { ChatModel, type Chat } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { callBotWebhook, isRestarting, recordLastDelivery, type WebhookReply } from './botEvents.js';
@@ -125,7 +125,8 @@ function judgeReply(reply: WebhookReply, command: string, installationId: Types.
   };
   if (isRestarting(reply)) return failed(reply.error ?? 'Sin respuesta', restartingMessage(base.appName));
   if (reply.status === null || reply.status >= 400) return failed(reply.error ?? 'Sin respuesta');
-  if (reply.body === null) {
+  // An empty body, `{}` or a response_type alone: the answer comes by /respond.
+  if (isAckBody(reply.body)) {
     recordLastDelivery(installationId, { ok: true });
     return { ...base, outcome: 'pending' };
   }

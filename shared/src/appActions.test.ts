@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evidenceLine, formSubmitOutcome, geoPointOf, precisionLabel, quickActionRows, shortcutRows, submitLabelOf } from './appActions.js';
+import { evidenceLine, formSubmitOutcome, geoPointOf, photoStampLines, precisionLabel, quickActionRows, shortcutRows, submitLabelOf } from './appActions.js';
 import type { FormField } from './appForms.js';
 import type { CommandGroup, CommandOutcome } from './botCommands.js';
 
@@ -64,5 +64,20 @@ describe('the button and the foot of a form (design e-28)', () => {
     expect(evidenceLine([location])).toBe('Se registra con tu ubicación');
     expect(evidenceLine([photo])).toBe('Se registra con tu foto');
     expect(evidenceLine([choice])).toBe('');
+  });
+});
+
+describe('photoStampLines (pending 94: date, time and place burned into the selfie)', () => {
+  it('says the day and the hour where the space is, and where the person stood', () => {
+    // Arrange: 23:51 UTC is 18:51 in Lima.
+    const at = new Date('2026-10-23T23:51:00.000Z');
+    // Act
+    const lines = photoStampLines({ at, timeZone: 'America/Lima', location: { lat: -11.98123456, lng: -76.954512, precision: 5 } });
+    // Assert
+    expect(lines).toEqual(['vie 23/10/2026 · 18:51', '-11.98123, -76.95451 · ± 5 m']);
+  });
+  it('without a location it says so, and an unknown zone falls back to Lima', () => {
+    const lines = photoStampLines({ at: new Date('2026-10-24T05:05:00.000Z'), timeZone: 'Mars/Olympus' });
+    expect(lines).toEqual(['sáb 24/10/2026 · 00:05', 'Sin ubicación']);
   });
 });

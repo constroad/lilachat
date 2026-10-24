@@ -20,8 +20,7 @@ export function BlockWeather({ block }: { block: WeatherBlock }) {
   const temperature = dayTemperature(day);
   const curve = weatherCurve(day.hours, series, CURVE.width, CURVE.height, CURVE.pad);
   return (
-    <div data-testid="bloque-clima" className="space-y-3">
-      {block.place ? <p className="text-[13px] font-semibold">{block.place}</p> : null}
+    <div data-testid="bloque-clima" aria-label={block.place ? `Clima en ${block.place}` : undefined} className="space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <Icon size={40} strokeWidth={1.5} className="shrink-0 text-on-surface-variant" />

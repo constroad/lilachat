@@ -46,6 +46,7 @@ describe('the weather block (pending 96, design e-33)', () => {
     // Act + Assert
     expect(screen.getByTestId('clima-temperatura').textContent).toBe('19 °C');
     expect(screen.getByTestId('bloque-clima').textContent).toContain('Humedad 78 %');
+    expect(screen.getByLabelText('Clima en Ate')).toBeInTheDocument();
     expect(screen.getByTestId('clima-riesgo').textContent).toBe('Riesgo medio para asfaltar');
     expect(screen.getByTestId('clima-curva').textContent).toBe('16°18°');
     fireEvent.click(screen.getByTestId('clima-pestana-rain'));

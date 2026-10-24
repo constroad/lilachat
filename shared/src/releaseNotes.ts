@@ -10,6 +10,15 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.166',
+    items: [
+      '/clima ahora es como el de Google: la temperatura por horas, la lluvia, el viento y 8 días; toca un día para verlo.',
+      'En una llamada puedes mandar guiños y stickers: aparecen en la pantalla de los dos.',
+      'Los formularios de las apps muestran los nombres de tanques y materiales, no códigos.',
+      'Los botones y enlaces de las apps ya no se cortan a mitad de palabra.',
+    ],
+  },
+  {
     version: '0.1.165',
     items: [
       'En una videollamada puedes girar entre la cámara frontal y la trasera.',

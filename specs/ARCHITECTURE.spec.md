@@ -4909,6 +4909,37 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 130. El clima por horas, guiños y stickers en llamadas, y formularios con nombres (24/10/2026, 0.1.166)
+
+- **/clima como Google** (pendiente 96, diseño e-33). Bloque `weather` del
+  kit (contrato en BOTS-API §c-decies, cerrado con agentes): arriba el ícono,
+  la temperatura grande y los datos que vinieron (lluvia % y mm, humedad,
+  viento), la pastilla de riesgo para asfaltar; pestañas Temperatura ·
+  Precipitaciones · Viento sobre una curva por hora (SVG con la geometría de
+  `weatherCurve`, igual en web y APK); y la tira de 8 días con un punto de
+  color por riesgo. Tocar un día cambia arriba y la curva. Un día sin horas
+  (lejano, o «Hoy» de noche) va sin curva.
+- **Guiños y stickers en la llamada** (pendiente 98). Un botón sobre los
+  controles abre los guiños (el mismo panel del chat) y los stickers de los
+  packs. El elegido se reproduce en las dos pantallas y se va. Viaja como
+  `call.reaction` por el socket de la llamada: el servidor solo reenvía a los
+  miembros del chat, no guarda nada, y solo pasan ids del catálogo
+  (`callReactionOf`), así nadie hace cargar una imagen de afuera.
+- **Formularios de apps con nombres.** En el E2E del 24/10, los de tanque y
+  material de Portal mostraban ids, uno repetido (React avisó por la key
+  duplicada) y el botón cortado. Ahora se leen `oneOf: [{ const, title }]`,
+  un valor repetido sale una vez y el botón admite 40 letras cortadas en
+  palabra. Agentes, por su lado, manda `x-labels` como mapa (1512845).
+- **Enlaces de tarjeta** de 40 letras cortados en palabra entera.
+
+**E2E (emulador, producción, cuenta de José, #planta, 04:53Z):** `/clima Ate`
+llegó con el bloque nuevo: «20 °C · Chubascos · Prob. 53 % · 4,1 mm · Humedad
+83 % · Viento 13 km/h», pastilla «No asfaltar», tira de 8 días con puntos
+rojo, naranja y verde. «Hoy» a las 23:53 no traía horas y se vio sin curva;
+«Sáb 24» mostró la curva de 12 a. m. a 9 p. m. Los guiños en llamada quedan
+cubiertos por tests de socket y de pantalla: el AVD no tiene con quién
+llamar.
+
 ## 129. Cuenta por app, avisos sensibles sin canal y girar la cámara (24/10/2026, 0.1.165)
 
 - **«Tu cuenta en <app>»** (pendiente 95, agentes f02cb99: la cuenta es por

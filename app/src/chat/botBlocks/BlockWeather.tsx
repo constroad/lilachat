@@ -26,8 +26,7 @@ export function BlockWeather({ block }: { block: WeatherBlock }) {
   const inner = Math.max(0, width - CURVE.side * 2);
   const curve = weatherCurve(day.hours, series, inner, CURVE.height, CURVE.pad);
   return (
-    <View testID="bloque-clima" className="gap-3">
-      {block.place ? <Text className="text-[14px] font-semibold text-on-surface">{block.place}</Text> : null}
+    <View testID="bloque-clima" accessibilityLabel={block.place ? `Clima en ${block.place}` : undefined} className="gap-3">
       <View className="flex-row items-start justify-between gap-3">
         <View className="flex-row items-center gap-2">
           <Icon size={40} strokeWidth={1.5} color={colors['on-surface-variant']} />

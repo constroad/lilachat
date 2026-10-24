@@ -3,6 +3,7 @@ import type { BotBlock } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { BlockChart } from './BlockChart';
 import { BlockTank } from './BlockTank';
+import { BlockWeather } from './BlockWeather';
 import { TONE } from './tones';
 
 function Rows({ rows }: { rows: Extract<BotBlock, { type: 'rows' }>['rows'] }) {
@@ -74,6 +75,8 @@ function Block({ block }: { block: BotBlock }) {
           <Paperclip size={14} className="text-on-surface-variant" /> {block.label}
         </a>
       );
+    case 'weather':
+      return <BlockWeather block={block} />;
   }
 }
 

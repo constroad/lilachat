@@ -127,5 +127,6 @@ export * from './appDirectory.js';
 export * from './appForms.js';
 export * from './noticeTopics.js';
 export * from './appLink.js';
+export * from './weatherBlock.js';
 export * from './appActions.js';
 export * from './appItems.js';

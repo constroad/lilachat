@@ -488,6 +488,33 @@ la app de ESA instalación, por su webhook y con la firma de `command.invoked`.
 - Sin conectar dice «<app> te lo pide la primera vez que la usas»: conectar
   sigue siendo el formulario «Conecta tu cuenta» que trae el rechazo de la app.
 
+## c-decies) Bloque `weather`: el clima por horas (0.1.166)
+
+Pedido de José (23/10): /clima «como lo entrega Google, con horas». Diseño
+e-33. Contrato cerrado con agentes el 24/10:
+```
+{ "type": "weather", "place": "Ate",
+  "days": [ { "label": "Hoy", "icon": "partly", "max": 22, "min": 16, "temp": 19,
+              "summary": "Parcialmente nublado", "rain": 10, "mm": 0, "humidity": 78, "wind": 12,
+              "risk": { "label": "Riesgo medio para asfaltar", "tone": "warn" }, "note": "Tendencia",
+              "hours": [ { "at": "06:00", "temp": 16, "rain": 0, "mm": 0, "wind": 8 } ] } ] }
+```
+- Hasta 8 días y 12 horas por día. `at` es `HH:MM`; una hora mal escrita se
+  descarta. `icon`: `sun | partly | cloud | rain | storm | fog`; otro valor se
+  dibuja como nube.
+- Números, no texto: °C, `rain` en % (0–100), `humidity` en %, `wind` en
+  km/h y `mm` de lluvia. Un número que falta no se dibuja; nunca se vuelve 0.
+- `temp` (la de ahora) solo cuenta en el primer día. Arriba va la del día
+  elegido: `temp`, o `max` si no viene.
+- `risk.tone`: `ok | warn | error` (otro, `warn`). Se dibuja como pastilla
+  bajo el resumen y como punto en el chip del día.
+- Pestañas Temperatura · Precipitaciones · Viento. Lluvia y viento arrancan
+  en 0; la temperatura usa su propio rango. En Precipitaciones el punto dice
+  los mm cuando llueve («3,2 mm») y si no, el %.
+- Un día sin `hours` (lejano, «Tendencia») no lleva curva.
+- Un servidor o una APK que no conocen el bloque lo saltan y dibujan el resto:
+  por eso van después las filas de distritos como respaldo.
+
 ## d) Lectura
 
 - `GET /api/bots/me` → `{ installation_id, space: { id, name }, bot_user_id }`.

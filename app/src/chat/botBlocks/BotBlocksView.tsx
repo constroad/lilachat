@@ -5,6 +5,7 @@ import { Avatar } from '../../ui/Avatar';
 import { useColores } from '../../ui/tema';
 import { BlockChart } from './BlockChart';
 import { BlockTank } from './BlockTank';
+import { BlockWeather } from './BlockWeather';
 import { TONE_CLASS, TONE_COLOR } from './tones';
 
 const PEOPLE_SIZE = 26;
@@ -89,6 +90,8 @@ function Block({ block }: { block: BotBlock }) {
           <Text className="text-[13px] font-semibold text-on-surface">{block.label}</Text>
         </Pressable>
       );
+    case 'weather':
+      return <BlockWeather block={block} />;
   }
 }
 

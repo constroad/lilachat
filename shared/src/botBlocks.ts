@@ -1,4 +1,5 @@
 import type { CardTone } from './bots.js';
+import { validateWeatherBlock, type WeatherBlock } from './weatherBlock.js';
 
 /**
  * The card kit (§118.4, José 23/10): what an app draws inside its card instead
@@ -19,7 +20,8 @@ export type BotBlock =
   | { type: 'text'; text: string; tone: CardTone }
   | { type: 'rows'; rows: { label: string; value: string; sub?: string; bar?: number; tone: CardTone }[] }
   | { type: 'people'; names: string[]; more?: number }
-  | { type: 'attachments'; count: number; label: string; url: string };
+  | { type: 'attachments'; count: number; label: string; url: string }
+  | WeatherBlock;
 
 export const BLOCK_LIMITS = { cardBlocks: 8, detailBlocks: 12, chips: 6, points: 31, tanks: 12, rows: 40, people: 8, label: 40, short: 24, text: 200, url: 500, cardBytes: 16_000 };
 const TONES: readonly CardTone[] = ['ok', 'warn', 'error', 'info', 'neutral'];
@@ -82,6 +84,7 @@ function block(raw: Record<string, unknown>): Result<BotBlock> | null {
     case 'rows': return { ok: true, value: { type: 'rows', rows: list(raw.rows, BLOCK_LIMITS.rows).map((item) => { const row = record(item); return { label: text(row.label, BLOCK_LIMITS.label), value: text(row.value, BLOCK_LIMITS.text), ...withText('sub', row.sub, BLOCK_LIMITS.text), ...(row.bar !== undefined ? { bar: clamp01(row.bar) } : {}), tone: tone(row.tone) }; }).filter((row) => row.label) } };
     case 'people': return { ok: true, value: { type: 'people', names: list(raw.names, BLOCK_LIMITS.people).map((name) => text(name, BLOCK_LIMITS.label)).filter(Boolean), ...(Number(raw.more) > 0 ? { more: Math.floor(Number(raw.more)) } : {}) } };
     case 'attachments': return attachmentsBlock(raw);
+    case 'weather': return validateWeatherBlock(raw);
     default: return null;
   }
 }

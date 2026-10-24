@@ -11612,7 +11612,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     contrato que pase agentes. R162. — «Conecta tu cuenta» dentro de
     Lilachat en 0.1.162 (§126); «Tu cuenta en <app>» con «Conectado como» y
     «Desconectar», por app, en 0.1.165 (§129).
-96. **El clima como lo muestra Google, con horas** (José, 23/10, con dos
+96. ~~**El clima como lo muestra Google, con horas**~~ — hecho en 0.1.166 (§130; bloque `weather`, diseño e-33). (José, 23/10, con dos
     capturas de Google Clima: Lima y Puente Piedra). Hoy /clima es una tarjeta
     con una cifra y barras de lluvia por día. Lo pedido:
     (a) Arriba: el ícono del estado, la temperatura grande en °C y el estado

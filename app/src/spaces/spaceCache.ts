@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createSessionCache, type ActivityItem, type ActivityType, type CacheEntry, type ClientChannel, type ClientWorkspaceMember, type SessionCache, type SpaceAppDirectory } from '@lilachat/shared';
+import { applyMyReads, createSessionCache, type ActivityItem, type ActivityType, type CacheEntry, type ClientChannel, type ClientWorkspaceMember, type SessionCache, type SpaceAppDirectory } from '@lilachat/shared';
 import type { JsonResult } from '../api/jsonCall';
 import type { ChatSummary } from '../api/client';
 import { appDirectory, spaceActivity, spaceChannels, spaceChats, spaceMembers } from './spacesApi';
@@ -63,11 +63,17 @@ export function dataOf<T>(response: JsonResult<T>, fallback: string): T {
 export const fetchMembers = (jwt: string, spaceId: string) => async () => dataOf(await spaceMembers(jwt, spaceId), 'No se pudo cargar el directorio.').members;
 export const fetchChannels = (jwt: string, spaceId: string) => async () => dataOf(await spaceChannels(jwt, spaceId), 'No se pudieron cargar los canales.').channels;
 export const fetchActivity = (jwt: string, spaceId: string, type: ActivityType) => async () => dataOf(await spaceActivity(jwt, spaceId, { type }), 'No se pudo cargar la actividad.');
+/** My reads heard on the socket: a load that left before one does not bring its «1» back (23/10). */
+const myReads = new Map<string, number>();
+export function rememberMyRead(chatId: string, seq: unknown): void {
+  if (typeof seq === 'number' && seq > (myReads.get(chatId) ?? 0)) myReads.set(chatId, seq);
+}
+
 export const fetchSpaceChats = (jwt: string, spaceId: string) => async (): Promise<SpaceChatsPage> => {
   const page = dataOf(await spaceChats(jwt, spaceId), 'No se pudo cargar el espacio.');
   // A server before 22/10 sends the chips' counts apart.
   const activity = page.activity ?? dataOf(await spaceActivity(jwt, spaceId, { countsOnly: true }), 'No se pudo cargar la actividad.').unread;
-  return rememberSpaceChats({ chats: page.chats, activity });
+  return rememberSpaceChats({ chats: applyMyReads(page.chats, myReads), activity });
 };
 export const appDirectoryKey = (spaceId: string) => `${spaceId}:apps`;
 export const fetchAppDirectory = (jwt: string, spaceId: string) => async () => dataOf(await appDirectory(jwt, spaceId), 'No se pudieron cargar las apps.');

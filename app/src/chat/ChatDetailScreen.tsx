@@ -34,7 +34,7 @@ import { ParticipantesDelGrupo, type Miembro } from './ParticipantesDelGrupo';
 import { VisorDeFoto } from '../ui/VisorDeFoto';
 import { RecordatoriosDelGrupo } from './RecordatoriosDelGrupo';
 import { EditarDescripcion, TarjetaDeDescripcion } from './descripcion/DescripcionDelGrupo';
-import { BirthdaysCard, GroupFunCard } from './GroupFunCard';
+import { BirthdaysCard, GroupFunCard, ChannelVisibilityCard } from './GroupFunCard';
 import { SeccionCompartido } from './CompartidoEnElChat';
 import { useMargenes } from '../ui/useMargenes';
 import type { ServerMessage } from './socketClient';
@@ -67,6 +67,8 @@ type Detalle = {
   /** Nudges and winks in a group, switched on by an admin (21/10). */
   funAllowed?: boolean;
   birthdaysOn?: boolean;
+  /** A channel (pending 93): who finds it, and whether it is #general. */
+  channel?: { visibility: 'public' | 'private'; general: boolean };
   members: Miembro[];
 };
 
@@ -285,6 +287,7 @@ export function ChatDetailScreen({
         quien: yo.id,
         aQuien: miembro.id,
         esGrupo: detalle.kind === 'group',
+        esApp: miembro.app === true,
         miembros: detalle.members.map((uno) => ({ userId: uno.id, role: uno.role })),
       });
     },
@@ -349,7 +352,7 @@ export function ChatDetailScreen({
    */
   const confirmarAccion = (miembro: Miembro, accion: AccionDeMiembro) => {
     const quien = nombreDe(miembro);
-    const guion = confirmacionDe(accion, quien);
+    const guion = confirmacionDe(accion, quien, miembro.app === true);
     Alert.alert(guion.titulo, guion.cuerpo, [
       { text: 'Cancelar', style: 'cancel' },
       {
@@ -482,6 +485,7 @@ export function ChatDetailScreen({
                 onAnadir={() => setAgregando(true)}
               />
             ) : null}
+            {tab === 'settings' && detalle!.channel ? <ChannelVisibilityCard chatId={chatId} jwt={credential.jwt} isPrivate={detalle!.channel.visibility === 'private'} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} isGeneral={detalle!.channel.general} /> : null}
             {tab === 'settings' && esGrupo ? <GroupFunCard chatId={chatId} jwt={credential.jwt} allowed={detalle!.funAllowed === true} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} /> : null}
             {tab === 'settings' && !esBorrador ? <BirthdaysCard chatId={chatId} jwt={credential.jwt} on={detalle!.birthdaysOn === true} isGroup={esGrupo} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} /> : null}
             {/* 20/10: también en un 1:1 y en un borrador (ahí cualquiera los administra); no en un chat secreto. */}
@@ -549,6 +553,7 @@ export function ChatDetailScreen({
         <AccionesDeMiembro
           visible={menuDe !== null}
           nombre={menuDe ? nombreDe(menuDe) : ''}
+          esApp={menuDe?.app === true}
           acciones={menuDe ? accionesPara(menuDe) : []}
           onCerrar={() => setMenuDe(null)}
           onElegir={(accion) => {

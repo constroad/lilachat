@@ -18,7 +18,7 @@ export type Confirmacion = {
   cuerpoHttp?: { role: 'admin' | 'member' };
 };
 
-export function confirmacionDe(accion: AccionDeMiembro, nombre: string): Confirmacion {
+export function confirmacionDe(accion: AccionDeMiembro, nombre: string, esApp = false): Confirmacion {
   if (accion === 'hacer-admin') {
     return {
       titulo: `¿Nombrar admin a ${nombre}?`,
@@ -37,6 +37,14 @@ export function confirmacionDe(accion: AccionDeMiembro, nombre: string): Confirm
       boton: 'Dejar',
       metodo: 'PATCH',
       cuerpoHttp: { role: 'member' },
+    };
+  }
+  if (esApp) {
+    return {
+      titulo: `¿Quitar ${nombre} del canal?`,
+      cuerpo: 'Deja de publicar aquí y no vuelve sola. Para que vuelva, un admin elige este canal en «¿Dónde llega cada aviso?», en el detalle de la app.',
+      boton: 'Quitar',
+      metodo: 'DELETE',
     };
   }
   return {

@@ -43,17 +43,22 @@ export function SpaceQuickActions(props: { jwt: string; spaceId: string; spaceNa
   useEffect(() => {
     setGroups(null);
   }, [spaceId]);
+  const openRef = useRef(open);
+  openRef.current = open;
   // A manifest or the admin's switches changed: the list already read is stale.
+  // With the sheet open it is read again at once (José, 23/10: skeletons that never loaded).
   useEffect(() => {
     const socket = getSocket();
     const onAppsChanged = (frame: { workspaceId?: string }) => {
-      if (frame.workspaceId === spaceId) setGroups(null);
+      if (frame.workspaceId !== spaceId) return;
+      setGroups(null);
+      if (openRef.current) void load();
     };
     socket?.on('workspace.apps.changed', onAppsChanged);
     return () => {
       socket?.off('workspace.apps.changed', onAppsChanged);
     };
-  }, [spaceId]);
+  }, [spaceId, load]);
   const seen = useRef(new Set<string>());
   useEffect(() => {
     const fresh = answers.answers.filter((answer) => answer.state === 'answered' && !seen.current.has(answer.commandId));

@@ -68,7 +68,7 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
   const [sheet, setSheet] = useState<Sheet>(null);
   /** A space's join link (pending 47): Android opens the app on it, and «Unirme» opens with its code. */
   const [joinCode, setJoinCode] = useState<string | null>(null);
-  const [appReturn, setAppReturn] = useState<{ spaceId: string; clientId: string } | null>(null);
+  const [appReturn, setAppReturn] = useState<{ spaceId: string; clientId: string; chat?: true } | null>(null);
   const [appsInitialId, setAppsInitialId] = useState<string | null>(null);
   /** While the return opens its app, the «te agregaron» screen waits: two windows at once and the second never showed (emulator, 23/10). */
   const [returning, setReturning] = useState(false);
@@ -177,7 +177,7 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
     if (!spaces.some((space) => space.id === appReturn.spaceId && space.status === 'active')) return void setAppReturn(null);
     if (currentId !== appReturn.spaceId) setCurrentSpaceId(appReturn.spaceId);
   }, [appReturn, spaces, currentId]);
-  const { reload: reloadApps } = apps;
+  const { reload: reloadApps, message: messageApp } = apps;
   useEffect(() => {
     if (!appReturn || current?.id !== appReturn.spaceId) return;
     const wanted = appReturn;
@@ -185,11 +185,14 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
     setReturning(true);
     void reloadApps()
       .then((directory) => {
-        setAppsInitialId(directory?.apps.find((app) => app.clientId === wanted.clientId)?.appId ?? null);
+        const app = directory?.apps.find((one) => one.clientId === wanted.clientId);
+        // Pending 49: «/chat» opens an installed app's 1:1; otherwise its detail.
+        if (wanted.chat && app?.installation) return messageApp(app);
+        setAppsInitialId(app?.appId ?? null);
         setSheet('apps');
       })
       .finally(() => setReturning(false));
-  }, [appReturn, current?.id, reloadApps]);
+  }, [appReturn, current?.id, reloadApps, messageApp]);
   const openNewDirect = useCallback(() => setSheet('newDirect'), []);
   const openNewGroup = useCallback(() => setSheet('newGroup'), []);
 

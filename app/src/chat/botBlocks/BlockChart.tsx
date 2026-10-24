@@ -1,6 +1,7 @@
-import { Text, View } from 'react-native';
+import { useState } from 'react';
+import { ScrollView, Text, View } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
-import { barFractions, linePath, type BotBlock } from '@lilachat/shared';
+import { barColumns, barFractions, linePath, type BotBlock } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { TONE_CLASS, TONE_COLOR } from './tones';
 
@@ -32,22 +33,29 @@ function BarsH({ chart }: { chart: Chart }) {
   );
 }
 
-/** Vertical bars (rain per day): the value on top, the label and its note below. */
+/** Vertical bars (rain per day): the value on top, the label and its note below. A week shares the card's width; a month scrolls. */
 function BarsV({ chart }: { chart: Chart }) {
   const colors = useColores();
+  const [width, setWidth] = useState(0);
   const fractions = barFractions(chart.points, chart.max);
+  const layout = barColumns(width, chart.points.length);
+  const columns = chart.points.map((point, index) => (
+    <View key={`${point.label}-${index}`} className="items-center" style={{ width: layout.column }}>
+      <Text numberOfLines={1} adjustsFontSizeToFit className={`text-[12px] font-bold ${TONE_CLASS[point.tone].text}`} style={{ fontVariant: ['tabular-nums'] }}>{shown(point, chart.unit)}</Text>
+      <View style={{ height: BAR_V_HEIGHT, justifyContent: 'flex-end' }}>
+        <View className="rounded-t-md" style={{ width: layout.bar, height: Math.max(3, Math.round(fractions[index]! * BAR_V_HEIGHT)), backgroundColor: colors[TONE_COLOR[point.tone]] }} />
+      </View>
+      <Text numberOfLines={1} adjustsFontSizeToFit className="mt-1 text-[12px] font-semibold text-on-surface">{point.label}</Text>
+      {point.note ? <Text numberOfLines={1} className="text-[11px] text-on-surface-variant">{point.note}</Text> : null}
+    </View>
+  ));
   return (
-    <View className="flex-row items-end justify-around" testID="bloque-grafico-barras-v">
-      {chart.points.map((point, index) => (
-        <View key={`${point.label}-${index}`} className="items-center" style={{ minWidth: 56 }}>
-          <Text className={`text-[12px] font-bold ${TONE_CLASS[point.tone].text}`} style={{ fontVariant: ['tabular-nums'] }}>{shown(point, chart.unit)}</Text>
-          <View style={{ height: BAR_V_HEIGHT, justifyContent: 'flex-end' }}>
-            <View className="w-8 rounded-t-md" style={{ height: Math.max(3, Math.round(fractions[index]! * BAR_V_HEIGHT)), backgroundColor: colors[TONE_COLOR[point.tone]] }} />
-          </View>
-          <Text className="mt-1 text-[12px] font-semibold text-on-surface">{point.label}</Text>
-          {point.note ? <Text className="text-[11px] text-on-surface-variant">{point.note}</Text> : null}
-        </View>
-      ))}
+    <View testID="bloque-grafico-barras-v" onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
+      {layout.scroll ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ alignItems: 'flex-end' }}>{columns}</ScrollView>
+      ) : (
+        <View className="flex-row items-end">{width > 0 ? columns : null}</View>
+      )}
     </View>
   );
 }

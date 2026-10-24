@@ -59,6 +59,13 @@ export function AppDetailScreen(props: { app: DirectoryApp; spaceName: string; c
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Desinstalar', style: 'destructive', onPress: props.onUninstall },
     ]);
+  // The ⋮ (agentes, 23/10): «Reinstalar» like Slack's, when the company or the permissions changed; then «Desinstalar».
+  const openMenu = () =>
+    Alert.alert(app.name, undefined, [
+      ...(app.installUrl ? [{ text: 'Reinstalar', onPress: props.onInstall }] : []),
+      { text: 'Desinstalar', style: 'destructive' as const, onPress: confirmUninstall },
+      { text: 'Cancelar', style: 'cancel' as const },
+    ]);
 
   return (
     <Modal visible animationType="slide" onRequestClose={props.onClose}>
@@ -72,7 +79,7 @@ export function AppDetailScreen(props: { app: DirectoryApp; spaceName: string; c
             <Text numberOfLines={1} className="text-[12px] text-on-surface-variant">{`Espacio ${props.spaceName}`}</Text>
           </View>
           {installation && props.onUninstall && !props.uninstalling ? (
-            <Pressable testID="app-mas-opciones" onPress={confirmUninstall} accessibilityLabel="Desinstalar la app" className="h-11 w-11 items-center justify-center">
+            <Pressable testID="app-mas-opciones" onPress={openMenu} accessibilityLabel="Más opciones de la app" className="h-11 w-11 items-center justify-center">
               <MoreVertical size={20} color={colors['on-surface-variant']} />
             </Pressable>
           ) : (

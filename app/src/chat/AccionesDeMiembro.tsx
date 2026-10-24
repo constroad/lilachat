@@ -31,6 +31,8 @@ const TEXTOS: Record<AccionDeMiembro, { etiqueta: string; detalle: string }> = {
     detalle: 'Deja de ver el grupo y los mensajes nuevos',
   },
 };
+/** An app is taken out of the channel and stays out (pending 91). */
+const APP_REMOVAL = { etiqueta: 'Quitar del canal', detalle: 'Deja de publicar aquí y no vuelve sola' };
 
 export function AccionesDeMiembro({
   visible,
@@ -38,9 +40,12 @@ export function AccionesDeMiembro({
   acciones,
   onElegir,
   onCerrar,
+  esApp,
 }: {
   visible: boolean;
   nombre: string;
+  /** The row is an installed app (pending 91). */
+  esApp?: boolean;
   acciones: AccionDeMiembro[];
   onElegir: (accion: AccionDeMiembro) => void;
   onCerrar: () => void;
@@ -89,10 +94,10 @@ export function AccionesDeMiembro({
                   className="text-[15px] font-semibold"
                   style={{ color: esDestructiva ? colores.error : colores['on-surface'] }}
                 >
-                  {TEXTOS[accion].etiqueta}
+                  {(esApp && accion === 'sacar' ? APP_REMOVAL : TEXTOS[accion]).etiqueta}
                 </Text>
                 <Text className="text-[12px] text-on-surface-variant">
-                  {TEXTOS[accion].detalle}
+                  {(esApp && accion === 'sacar' ? APP_REMOVAL : TEXTOS[accion]).detalle}
                 </Text>
               </View>
             </Pressable>

@@ -13,6 +13,8 @@ export type Miembro = {
   avatarUrl?: string;
   role: 'admin' | 'member';
   esYo: boolean;
+  /** An installed app (pending 91): an admin only takes it out of the channel. */
+  app?: boolean;
 };
 
 /** El avatar de cada participante (dp), el de las filas de contacto. */

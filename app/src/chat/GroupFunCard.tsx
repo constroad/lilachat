@@ -57,6 +57,29 @@ export function BirthdaysCard(props: { chatId: string; jwt: string; on: boolean;
 }
 
 /** A chat-wide switch saved on the server, with its own reason when it is refused. */
+/**
+ * «Canal privado» in a channel's info (pending 93; José, 23/10: a public channel
+ * could not be made private). Only its admins move it; #general stays public.
+ */
+export function ChannelVisibilityCard(props: { chatId: string; jwt: string; isPrivate: boolean; isAdmin: boolean; isGeneral: boolean }) {
+  const canChange = props.isAdmin && !props.isGeneral;
+  const hint = props.isGeneral ? '#general es de todo el espacio: siempre es público.' : `Privado, solo lo ven sus miembros; público, cualquiera del espacio lo encuentra en «Canales».${canChange ? '' : ' Solo los admins del canal pueden cambiarlo.'}`;
+  return (
+    <ChatToggleCard
+      testID="tarjeta-canal-privado"
+      switchTestID="switch-canal-privado"
+      kicker="Canal"
+      title="Canal privado"
+      hint={hint}
+      url={`${BASE_URL}/api/chats/${props.chatId}`}
+      body={(next) => ({ visibility: next ? 'private' : 'public' })}
+      jwt={props.jwt}
+      value={props.isPrivate}
+      canChange={canChange}
+    />
+  );
+}
+
 function ChatToggleCard(props: { testID: string; switchTestID: string; kicker: string; title: string; hint: string; url: string; body: (next: boolean) => object; jwt: string; value: boolean; canChange: boolean }) {
   const [value, setValue] = useState(props.value);
   const [saving, setSaving] = useState(false);

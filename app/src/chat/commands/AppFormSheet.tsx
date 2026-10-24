@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { X } from 'lucide-react-native';
-import { evidenceLine, formFields, submitLabelOf, validateFormValues, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues } from '@lilachat/shared';
+import { evidenceLine, formFields, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { Modal } from '../../ui/Modal';
 import { useColores } from '../../ui/tema';
@@ -57,8 +57,9 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
   return (
     <Modal visible transparent animationType="slide" onRequestClose={close}>
       <Pressable className="flex-1 bg-black/40" onPress={close} accessibilityLabel="Cerrar" />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="self-center" style={{ width: sheetWidth, maxHeight: height * MAX_SCREEN_SHARE }}>
-        <View testID={`formulario-${form.id}`} className="rounded-t-3xl bg-surface" style={{ paddingBottom: margins.pie + 8 }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="self-center" style={{ width: sheetWidth }}>
+        {/* The sheet caps its height and the fields scroll inside it: the button stays in sight (José, 23/10: a long form hid «Marcar»). */}
+        <View testID={`formulario-${form.id}`} className="rounded-t-3xl bg-surface" style={{ maxHeight: height * MAX_SCREEN_SHARE, paddingBottom: margins.pie + 8 }}>
           <View className="mt-3 h-1.5 w-11 self-center rounded-full bg-outline/30" />
           <View className="flex-row items-center gap-3 border-b border-outline/10 px-4 pb-3 pt-3">
             <Avatar nombre={props.answer.appName} tamano={40} bot />
@@ -70,14 +71,14 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
               <X size={22} color={colors['on-surface-variant']} />
             </Pressable>
           </View>
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: SHEET_PADDING, gap: 14 }}>
+          <ScrollView keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }} contentContainerStyle={{ padding: SHEET_PADDING, gap: 14 }}>
             {evidence ? (
               <View className="items-center rounded-2xl border border-outline/15 py-4">
                 <Text className="text-[40px] font-bold text-on-surface" style={{ fontVariant: ['tabular-nums'] }}>{now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })}</Text>
                 {props.personName ? <Text className="mt-1 rounded-lg border border-outline/15 px-3 py-1 text-[14px] text-on-surface">{props.personName}</Text> : null}
               </View>
             ) : null}
-            {fields.map((field) => <Field key={field.name} field={field} value={values[field.name]} error={errors[field.name]} onChange={set(field.name)} upload={props.onUpload} width={sheetWidth - SHEET_PADDING * 2} />)}
+            {visibleFields(fields, values).map((field) => <Field key={field.name} field={field} value={values[field.name]} error={errors[field.name]} onChange={set(field.name)} upload={props.onUpload} width={sheetWidth - SHEET_PADDING * 2} />)}
             {message ? <Text className="text-[14px] text-error">{message}</Text> : null}
           </ScrollView>
           <View className="px-4">

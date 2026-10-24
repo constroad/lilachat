@@ -12,7 +12,7 @@ import { getSocket } from '../chat/socketClient';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useAlVolver } from '../ui/useAlVolver';
 import { useColores } from '../ui/tema';
-import { fetchSpaceChats, isSpaceChat, spaceChatsCache, useCached } from './spaceCache';
+import { fetchSpaceChats, isSpaceChat, rememberMyRead, spaceChatsCache, useCached } from './spaceCache';
 import { chatsEnMemoria } from '../chat/chatsGuardados';
 import { AppsSection } from './apps/AppsSection';
 import type { SpaceApps } from './apps/useSpaceApps';
@@ -90,8 +90,10 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
       if (!frame.chatId || inList(frame.chatId) || !isInMyChatList(frame.chatId)) reloadSoon();
     };
     // I read one of these chats (here or on another device): its count goes down.
-    const onReceipt = (frame: { chatId?: string; userId?: string }) => {
-      if (frame.userId === myUserId && frame.chatId && inList(frame.chatId)) patchChats((current) => marcarLeido(current, frame.chatId!));
+    const onReceipt = (frame: { chatId?: string; userId?: string; readSeq?: number }) => {
+      if (frame.userId !== myUserId || !frame.chatId) return;
+      rememberMyRead(frame.chatId, frame.readSeq);
+      if (inList(frame.chatId)) patchChats((current) => marcarLeido(current, frame.chatId!));
     };
     socket?.on('msg.new', onMessage);
     socket?.on('chat.changed', onChanged);

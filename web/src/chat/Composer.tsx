@@ -189,7 +189,7 @@ export function Composer({
           answer={commands.appAnswers.openForm}
           personName={loadPerfil()?.name}
           onSubmit={(values) => commands.appAnswers.submitForm(commands.appAnswers.openForm!, values)}
-          onUpload={(file) => commands.appAnswers.uploadPhoto(commands.appAnswers.openForm!.commandId, file)}
+          onUpload={(file, stamp) => commands.appAnswers.uploadPhoto(commands.appAnswers.openForm!.commandId, file, stamp)}
           onClose={() => commands.appAnswers.dismiss(commands.appAnswers.openForm!.commandId)}
         />
       ) : null}

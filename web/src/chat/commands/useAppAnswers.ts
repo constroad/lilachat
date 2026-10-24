@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { answerOfOutcome, formSubmitOutcome, giveUpPending, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type ShortcutRow } from '@lilachat/shared';
+import { answerOfOutcome, formSubmitOutcome, giveUpPending, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type GeoPoint, type ShortcutRow } from '@lilachat/shared';
 import type { ApiResult } from '../../api';
 import { currentSocket } from '../../useSocket';
 import { runShortcut, submitAppForm, uploadFormPhoto } from './commandsApi';
@@ -51,7 +51,7 @@ export function useAppAnswers(params: { jwt?: string; scope: CommandScope | null
   );
 
   const uploadPhoto = useCallback(
-    (commandId: string, file: Blob) => (jwt && scope ? uploadFormPhoto(jwt, scope, commandId, file) : Promise.resolve({ ok: false as const, message: 'Sin sesión.' })),
+    (commandId: string, file: Blob, stamp?: GeoPoint) => (jwt && scope ? uploadFormPhoto(jwt, scope, commandId, file, stamp) : Promise.resolve({ ok: false as const, message: 'Sin sesión.' })),
     [jwt, scope]
   );
 

@@ -41,13 +41,13 @@ describe('filasDeLaConversacion', () => {
 
   it('an app card never groups: it carries its header (José, 24/10)', () => {
     const card = { title: 'Asistencia · Hoy' } as MensajeEnPantalla['card'];
-    const filas = filasDeLaConversacion([
+    const rows = filasDeLaConversacion([
       { ...m(1, 'portal', '2026-10-24T14:04:43.000Z'), card },
       { ...m(2, 'portal', '2026-10-24T14:09:34.000Z'), card },
       m(3, 'portal', '2026-10-24T14:10:00.000Z'),
     ]);
 
-    expect(filas.map((f) => [f.agrupado, f.ultimoDelGrupo])).toEqual([
+    expect(rows.map((row) => [row.agrupado, row.ultimoDelGrupo])).toEqual([
       [false, true],
       [false, true],
       [false, true],

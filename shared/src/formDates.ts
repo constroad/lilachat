@@ -1,8 +1,8 @@
 /**
- * Dates and times of an app's form (José, 24/10: «la fecha por defecto en la
- * fecha actual, y un selector, no un input»). The stored value is text in the
- * phone's own clock, which is what the pickers of the app and the web produce:
- * `2026-10-24`, `08:05`, `2026-10-24T08:05`. PURE.
+ * Dates and times of an app's form (José, 24/10: a date starts on today and is
+ * picked, never typed). The stored value is text in the phone's own clock,
+ * which is what the pickers of the app and the web produce: `2026-10-24`,
+ * `08:05`, `2026-10-24T08:05`. PURE.
  */
 export type DateMode = 'date' | 'time' | 'date-time';
 

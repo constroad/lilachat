@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { X } from 'lucide-react-native';
-import { evidenceLine, formFields, initialValues, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues } from '@lilachat/shared';
+import { evidenceLine, formFields, initialValues, liveSelfieFieldOf, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { Modal } from '../../ui/Modal';
 import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
 import { ChoiceField, LocationField, PhotoField, TypedField, type PhotoUpload } from './AppFormFields';
+import { LiveSelfie, type LiveSelfieHandle } from './LiveSelfie';
+import { useLiveSigning } from './useLiveSigning';
 
 const SHEET_PADDING = 16;
 /** A sheet on a tablet or a turned phone stays the width of a phone. */
@@ -38,9 +40,14 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
       hidden.remove();
     };
   }, []);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>(() => props.answer.errors ?? {});
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
+  // A form with a location and a photo is a signing (pending 94): live selfie, place of now, one tap.
+  const live = useMemo(() => liveSelfieFieldOf(fields), [fields]);
+  const locationName = fields.find((field) => field.kind === 'location')?.name;
+  const selfie = useRef<LiveSelfieHandle>(null);
+  const signing = useLiveSigning({ live, locationName, selfie, upload: props.onUpload });
   const evidence = evidenceLine(fields);
   const sheetWidth = Math.min(width, SHEET_MAX_WIDTH);
   const prefilled = useMemo(() => initialValues(fields), [fields]);
@@ -54,11 +61,16 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
     setErrors(({ [name]: _cleared, ...rest }) => rest);
   };
   const send = async () => {
-    const checked = validateFormValues(fields, values);
+    const checked = validateFormValues(fields, signing.placeholders(values));
     if (!checked.ok) return setErrors(checked.errors);
     setSending(true);
     setMessage('');
-    const outcome = await props.onSubmit(values);
+    const prepared = await signing.prepare(values);
+    if ('errors' in prepared) {
+      setSending(false);
+      return setErrors(prepared.errors);
+    }
+    const outcome = await props.onSubmit(prepared.values);
     setSending(false);
     if (!outcome.done) {
       setErrors(outcome.errors);
@@ -92,13 +104,22 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
                 {props.personName ? <Text className="mt-1 rounded-lg border border-outline/15 px-3 py-1 text-[14px] text-on-surface">{props.personName}</Text> : null}
               </View>
             ) : null}
-            {visibleFields(fields, values).map((field) => <Field key={field.name} field={field} value={values[field.name]} error={errors[field.name]} onChange={set(field.name)} upload={props.onUpload} width={sheetWidth - SHEET_PADDING * 2} />)}
+            {visibleFields(fields, values).map((field) =>
+              live && field.name === live.name ? (
+                <LiveSelfie key={field.name} ref={selfie} testID={`campo-${field.name}`} label={field.label} width={sheetWidth - SHEET_PADDING * 2} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={errors[field.name] ?? (locationName ? errors[locationName] : undefined)} />
+              ) : (
+                // In a signing the place shows inside the camera; its field keeps reading behind it.
+                <View key={field.name} style={live && field.kind === 'location' ? { display: 'none' } : undefined}>
+                  <Field field={field} value={values[field.name]} error={errors[field.name]} onChange={set(field.name)} upload={props.onUpload} width={sheetWidth - SHEET_PADDING * 2} />
+                </View>
+              )
+            )}
             {message ? <Text className="text-[14px] text-error">{message}</Text> : null}
           </ScrollView>
           <View className="px-4">
             <Pressable testID="btn-enviar-formulario" disabled={sending} onPress={() => void send()} className={`h-[72px] flex-row items-center justify-center gap-2 rounded-2xl bg-primary ${sending ? 'opacity-60' : ''}`}>
               {sending ? <ActivityIndicator color={colors['on-primary']} /> : null}
-              <Text className="text-[18px] font-bold text-on-primary">{sending ? 'Enviando…' : submitLabelOf(form, fields, values)}</Text>
+              <Text className="text-[18px] font-bold text-on-primary">{sending ? signing.phaseLabel : submitLabelOf(form, fields, values)}</Text>
             </Pressable>
             {evidence ? <Text className="mt-2 text-center text-[13px] text-on-surface-variant">{evidence}</Text> : null}
           </View>

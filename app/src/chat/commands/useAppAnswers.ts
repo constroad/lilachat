@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { answerOfOutcome, formSubmitOutcome, giveUpPending, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type ShortcutRow } from '@lilachat/shared';
+import { answerOfOutcome, formSubmitOutcome, giveUpPending, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type GeoPoint, type ShortcutRow } from '@lilachat/shared';
 import type { JsonResult } from '../../api/jsonCall';
 import { getSocket } from '../socketClient';
 import { runShortcut, submitAppForm, uploadFormPhoto } from './commandsApi';
@@ -50,7 +50,7 @@ export function useAppAnswers(params: { jwt: string; scope: CommandScope | null 
     [jwt, track]
   );
   const uploadPhoto = useCallback(
-    (commandId: string, photo: { uri: string; mime: string }) => (scopeRef.current ? uploadFormPhoto(jwt, scopeRef.current, commandId, photo) : Promise.resolve({ ok: false as const, message: 'Sin sesión.' })),
+    (commandId: string, photo: { uri: string; mime: string }, stamp?: GeoPoint) => (scopeRef.current ? uploadFormPhoto(jwt, scopeRef.current, commandId, photo, stamp) : Promise.resolve({ ok: false as const, message: 'Sin sesión.' })),
     [jwt]
   );
   /** Done: the app's answer takes the form's place and the sheet closes; otherwise what to fix. */

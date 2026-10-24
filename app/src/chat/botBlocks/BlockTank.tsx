@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native';
 import Svg, { Ellipse, Line, Rect } from 'react-native-svg';
-import { tankFill, type TankItem } from '@lilachat/shared';
+import { tankFill, tankPercent, type TankItem } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { TONE_CLASS, TONE_COLOR } from './tones';
 
@@ -29,7 +29,9 @@ function TankFacts({ tank, big }: { tank: TankItem; big: boolean }) {
     <View className="min-w-0 flex-1">
       <Text numberOfLines={1} className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">{tank.name}</Text>
       <Text className={`${big ? 'text-[26px]' : 'text-[15px]'} font-bold ${tank.tone === 'error' ? 'text-error' : 'text-on-surface'}`} style={{ fontVariant: ['tabular-nums'] }}>{tank.value}</Text>
-      {tank.sub ? <Text numberOfLines={1} className="text-[12px] text-on-surface-variant">{tank.sub}</Text> : null}
+      {/* The fill and the verdict, like design r155 and Portal's WhatsApp report (José, 24/10). */}
+      <Text numberOfLines={1} className="text-[12px] text-on-surface-variant" style={{ fontVariant: ['tabular-nums'] }}>{tank.sub ? `${tank.sub} · ${tankPercent(tank.level)}` : tankPercent(tank.level)}</Text>
+      {tank.status ? <View testID="tanque-estado" className={`mt-1 self-start rounded-md border px-1.5 py-0.5 ${TONE_CLASS[tank.tone].soft}`}><Text className={`text-[11px] font-semibold ${TONE_CLASS[tank.tone].text}`}>{tank.status}</Text></View> : null}
       {tank.delta ? <View className={`mt-1 self-start rounded-md border px-1.5 py-0.5 ${TONE_CLASS.neutral.soft}`}><Text className="text-[11px] font-semibold text-on-surface">{tank.delta}</Text></View> : null}
     </View>
   );

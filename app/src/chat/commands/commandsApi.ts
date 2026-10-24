@@ -1,4 +1,4 @@
-import { commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type ItemPlace } from '@lilachat/shared';
+import { commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type ItemPlace } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 import { subirPorXhr } from '../subidaXhr';
@@ -23,9 +23,16 @@ export const runShortcut = (jwt: string, scope: CommandScope, input: { kind: 'sh
     : jsonCall<CommandOutcome>(`${BASE_URL}${commandScopePath(scope)}/shortcuts`, jwt, { method: 'POST', body: JSON.stringify({ app_id: input.appId, shortcut: input.key }) });
 
 /** A form's photo, the moment it is taken: read from disk by the native multipart, never through JS memory. */
-export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandId: string, photo: { uri: string; mime: string }): Promise<{ ok: true; fileId: string } | { ok: false; message: string }> {
+export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandId: string, photo: { uri: string; mime: string }, stamp?: GeoPoint): Promise<{ ok: true; fileId: string } | { ok: false; message: string }> {
   const form = new FormData();
   form.append('file', { uri: photo.uri, name: photo.mime === 'image/png' ? 'foto.png' : 'foto.jpg', type: photo.mime } as unknown as Blob);
+  // A signing's selfie: the server burns its hour and this place into it (pending 94).
+  if (stamp) {
+    form.append('stamp', '1');
+    form.append('lat', String(stamp.lat));
+    form.append('lng', String(stamp.lng));
+    form.append('precision', String(stamp.precision));
+  }
   const reply = await subirPorXhr({ url: `${BASE_URL}${commandScopePath(scope)}/commands/${commandId}/files`, token: jwt, form, timeoutMs: PHOTO_UPLOAD_TIMEOUT_MS });
   if (reply.tipo === 'fallo') return { ok: false, message: reply.motivo };
   const fileId = reply.payload.fileId;

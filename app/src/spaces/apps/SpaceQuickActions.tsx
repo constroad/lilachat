@@ -95,7 +95,7 @@ export function SpaceQuickActions(props: { jwt: string; spaceId: string; spaceNa
         </View>
       </Modal>
       {answers.openForm ? (
-        <AppFormSheet key={formKeyOf(answers.openForm)} answer={answers.openForm} personName={props.myName} onSubmit={(values) => answers.submitForm(answers.openForm!, values)} onUpload={(photo) => answers.uploadPhoto(answers.openForm!.commandId, photo)} onClose={() => answers.dismiss(answers.openForm!.commandId)} />
+        <AppFormSheet key={formKeyOf(answers.openForm)} answer={answers.openForm} personName={props.myName} onSubmit={(values) => answers.submitForm(answers.openForm!, values)} onUpload={(photo, stamp) => answers.uploadPhoto(answers.openForm!.commandId, photo, stamp)} onClose={() => answers.dismiss(answers.openForm!.commandId)} />
       ) : null}
     </>
   );

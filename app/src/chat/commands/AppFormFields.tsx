@@ -15,7 +15,7 @@ const SELFIE_QUALITY = 0.6;
 /** The digits of a one-time code, spread like the six boxes of a sign-in. */
 const CODE_LETTER_SPACING = 10;
 
-export type PhotoUpload = (photo: { uri: string; mime: string }) => Promise<{ ok: true; fileId: string } | { ok: false; message: string }>;
+export type PhotoUpload = (photo: { uri: string; mime: string }, stamp?: GeoPoint) => Promise<{ ok: true; fileId: string } | { ok: false; message: string }>;
 type FieldProps<K extends FormField['kind']> = { field: Extract<FormField, { kind: K }>; value: unknown; error?: string; onChange: (value: unknown) => void };
 
 function ErrorLine(props: { text?: string }) {

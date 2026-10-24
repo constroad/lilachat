@@ -13,6 +13,8 @@ export type FormSchemaProperty = {
   enum?: unknown[];
   format?: string;
   maxLength?: number;
+  /** Only `^\\d{N}$` means something here: a one-time code of N digits. */
+  pattern?: string;
   minimum?: number;
   maximum?: number;
   default?: unknown;
@@ -23,13 +25,13 @@ export type FormSchemaProperty = {
   /** Shown only when another field has one of these answers: `{ "accion": ["salida"] }` (R161). */
   'x-visible-if'?: Record<string, unknown[]>;
 };
-export type FormSchema = { type?: string; properties?: Record<string, FormSchemaProperty>; required?: string[] };
-export type AppForm = { id: string; title: string; submitLabel?: string; schema: FormSchema };
+export type FormSchema = { type?: string; description?: string; properties?: Record<string, FormSchemaProperty>; required?: string[] };
+export type AppForm = { id: string; title: string; submitLabel?: string; /** The schema's `description`: a line under the title. */ intro?: string; schema: FormSchema };
 
-type Base = { name: string; label: string; help?: string; required: boolean; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]> };
+type Base = { name: string; label: string; help?: string; required: boolean; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number };
 export type FormField =
   | (Base & { kind: 'choice'; options: { value: string; label: string }[]; segmented: boolean })
-  | (Base & { kind: 'text'; multiline: boolean; maxLength?: number })
+  | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number })
   | (Base & { kind: 'number'; unit?: string; min?: number; max?: number; integer: boolean })
   | (Base & { kind: 'date'; withTime: boolean })
   | (Base & { kind: 'photo' })
@@ -37,13 +39,16 @@ export type FormField =
 export type FormValues = Record<string, unknown>;
 export type GeoPoint = { lat: number; lng: number; precision: number };
 
-export const FORM_LIMITS = { id: 64, title: 60, submitLabel: 24, fields: 20, label: 60, help: 160, options: 50, text: 2000 };
+export const FORM_LIMITS = { id: 64, title: 60, submitLabel: 24, intro: 240, fields: 20, label: 60, help: 160, options: 50, text: 2000 };
 /** Up to this many options fit side by side (design e-28); more go to a list. */
 const SEGMENTED_MAX = 4;
 /** A text allowed longer than this gets several lines. */
 const MULTILINE_FROM = 120;
 const FORM_ID = /^[a-z][a-z0-9_-]*$/;
-const INPUTS = ['photo', 'location', 'textarea'];
+const INPUTS = ['photo', 'location', 'textarea', 'otp'];
+/** A code longer than this is not typed by hand. */
+const CODE_MAX_DIGITS = 8;
+const DIGITS_PATTERN = /^\^\\d\{(\d)\}\$$/;
 const record = (value: unknown): Record<string, unknown> => (value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {});
 const line = (value: unknown, max: number): string => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, max) : '');
 /** «nota_corta» → «Nota corta» when the schema gives no title. */
@@ -59,17 +64,33 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
   if (Array.isArray(property.enum)) {
     const labels = record(property['x-labels']);
     const options = property.enum.slice(0, FORM_LIMITS.options).map((value) => String(value)).map((value) => ({ value, label: line(labels[value], FORM_LIMITS.label) || labelOf(value) }));
-    return { ...base, kind: 'choice', options, segmented: options.length <= SEGMENTED_MAX };
+    const initial = options.some((option) => option.value === String(property.default)) ? { initial: String(property.default) } : {};
+    return { ...base, ...initial, kind: 'choice', options, segmented: options.length <= SEGMENTED_MAX };
   }
   if (property.type === 'number' || property.type === 'integer') {
-    return { ...base, kind: 'number', ...(property['x-unit'] ? { unit: line(property['x-unit'], 12) } : {}), ...(typeof property.minimum === 'number' ? { min: property.minimum } : {}), ...(typeof property.maximum === 'number' ? { max: property.maximum } : {}), integer: property.type === 'integer' };
+    const initial = typeof property.default === 'number' && Number.isFinite(property.default) ? { initial: property.default } : {};
+    return { ...base, ...initial, kind: 'number', ...(property['x-unit'] ? { unit: line(property['x-unit'], 12) } : {}), ...(typeof property.minimum === 'number' ? { min: property.minimum } : {}), ...(typeof property.maximum === 'number' ? { max: property.maximum } : {}), integer: property.type === 'integer' };
   }
   if (property.type === 'string' && (property.format === 'date' || property.format === 'date-time')) return { ...base, kind: 'date', withTime: property.format === 'date-time' };
   if (property.type === 'string') {
     const maxLength = typeof property.maxLength === 'number' ? Math.min(property.maxLength, FORM_LIMITS.text) : undefined;
-    return { ...base, kind: 'text', multiline: input === 'textarea' || (maxLength ?? 0) > MULTILINE_FROM, ...(maxLength ? { maxLength } : {}) };
+    const digits = codeDigitsOf(input, property, maxLength);
+    const initial = typeof property.default === 'string' && property.default.trim() ? { initial: line(property.default, maxLength ?? FORM_LIMITS.text) } : {};
+    return { ...base, ...initial, kind: 'text', multiline: !digits && (input === 'textarea' || (maxLength ?? 0) > MULTILINE_FROM), ...(maxLength ? { maxLength } : {}), ...(digits ? { digits } : {}) };
   }
   return `El campo «${name}» es de un tipo que Lilachat no sabe dibujar.`;
+}
+
+/** `x-input: otp`, or a `^\\d{N}$` pattern that an older Lilachat draws as a short text: N digits to type. */
+function codeDigitsOf(input: string | undefined, property: FormSchemaProperty, maxLength: number | undefined): number | undefined {
+  const fromPattern = typeof property.pattern === 'string' ? Number(DIGITS_PATTERN.exec(property.pattern)?.[1]) : NaN;
+  const digits = Number.isInteger(fromPattern) ? fromPattern : input === 'otp' ? maxLength : undefined;
+  return digits && digits > 0 && digits <= CODE_MAX_DIGITS ? digits : undefined;
+}
+
+/** What a form starts with: each visible field's `default` (agentes prefills the verified phone, 23/10). */
+export function initialValues(fields: readonly FormField[]): FormValues {
+  return Object.fromEntries(fields.filter((field) => field.initial !== undefined).map((field) => [field.name, field.initial]));
 }
 
 function visibleIfOf(raw: unknown): Record<string, string[]> | null {
@@ -104,7 +125,8 @@ export function validateFormSpec(raw: unknown): { ok: true; form: AppForm } | { 
   if (schema.type !== 'object' || Object.keys(properties).length === 0) return { ok: false, message: '«form.schema» va con type "object" y al menos un campo.' };
   if (Object.keys(properties).length > FORM_LIMITS.fields) return { ok: false, message: `Un formulario lleva hasta ${FORM_LIMITS.fields} campos.` };
   const required = Array.isArray(schema.required) ? schema.required.filter((name): name is string => typeof name === 'string' && name in properties) : [];
-  const form: AppForm = { id, title, ...(line(body.submit_label, FORM_LIMITS.submitLabel) ? { submitLabel: line(body.submit_label, FORM_LIMITS.submitLabel) } : {}), schema: { type: 'object', properties, required } };
+  const intro = line(schema.description, FORM_LIMITS.intro);
+  const form: AppForm = { id, title, ...(line(body.submit_label, FORM_LIMITS.submitLabel) ? { submitLabel: line(body.submit_label, FORM_LIMITS.submitLabel) } : {}), ...(intro ? { intro } : {}), schema: { type: 'object', properties, required } };
   for (const [name, property] of Object.entries(properties)) {
     const field = fieldOf(name, record(property) as FormSchemaProperty, false);
     if (typeof field === 'string') return { ok: false, message: field };
@@ -124,6 +146,10 @@ function checkValue(field: FormField, value: unknown): { value: unknown } | { er
     case 'choice':
       return field.options.some((option) => option.value === value) ? { value } : { error: 'Elige una de las opciones.' };
     case 'text': {
+      if (field.digits) {
+        const code = String(value).replace(/\s+/g, '');
+        return new RegExp(`^\\d{${field.digits}}$`).test(code) ? { value: code } : { error: `Escribe los ${field.digits} dígitos.` };
+      }
       const text = String(value).trim();
       return field.maxLength && text.length > field.maxLength ? { error: `Hasta ${field.maxLength} caracteres.` } : { value: text.slice(0, FORM_LIMITS.text) };
     }

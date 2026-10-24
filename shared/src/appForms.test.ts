@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formFields, validateFormSpec, validateFormValues, visibleFields, type FormField } from './appForms.js';
+import { formFields, initialValues, validateFormSpec, validateFormValues, visibleFields, type FormField } from './appForms.js';
 
 /** Inframaq's real `registrar_marca` (agentes, 23/10), as the app sends it. */
 const attendanceForm = {
@@ -101,5 +101,34 @@ describe('fields that show only for some answers (José, 23/10: «si voy a marca
     expect(visibleFields(fields, { accion: 'salida' }).map((field) => field.name)).toEqual(['accion', 'actividades']);
     expect(validateFormValues(fields, { accion: 'ingreso', actividades: 'algo que quedó escrito' })).toEqual({ ok: true, values: { accion: 'ingreso' } });
     expect(validateFormValues(fields, { accion: 'salida' })).toEqual({ ok: false, errors: { actividades: 'Escribe algo aquí.' } });
+  });
+});
+
+describe('connecting an account inside Lilachat (José, 23/10: «ingresar allí mismo el código»)', () => {
+  // Arrange: agentes' two forms, the destination prefilled with the verified phone.
+  const destination = { id: 'cuenta_destino', title: 'Conecta tu cuenta de Inframaq', schema: { type: 'object', properties: { destino: { type: 'string', title: 'Correo o WhatsApp', default: '902049935' } }, required: ['destino'] } };
+  const code = { id: 'cuenta_codigo', title: 'Escribe el código', schema: { type: 'object', properties: { codigo: { type: 'string', title: 'Código', maxLength: 6, pattern: '^\\d{6}$' } }, required: ['codigo'] } };
+  const otp = { id: 'cuenta_codigo', title: 'Escribe el código', schema: { type: 'object', properties: { codigo: { type: 'string', 'x-input': 'otp', maxLength: 6 } }, required: ['codigo'] } };
+
+  it('starts with the default the app sent', () => {
+    expect(initialValues(formFields(destination))).toEqual({ destino: '902049935' });
+    expect(initialValues(formFields(code))).toEqual({});
+  });
+
+  it('a six-digit code is a code field, with x-input otp or with a digits pattern', () => {
+    expect(validateFormSpec(otp)).toMatchObject({ ok: true });
+    expect(formFields(otp)[0]).toMatchObject({ kind: 'text', digits: 6 });
+    expect(formFields(code)[0]).toMatchObject({ kind: 'text', digits: 6 });
+  });
+
+  it('asks for exactly the digits, and a pasted code with spaces is cleaned', () => {
+    const fields = formFields(code);
+    expect(validateFormValues(fields, { codigo: '12a4' })).toEqual({ ok: false, errors: { codigo: 'Escribe los 6 dígitos.' } });
+    expect(validateFormValues(fields, { codigo: ' 123 456 ' })).toEqual({ ok: true, values: { codigo: '123456' } });
+  });
+
+  it('a default that is not one of the options is not used', () => {
+    const choice = { id: 'f', title: 'F', schema: { type: 'object', properties: { accion: { type: 'string', enum: ['ingreso', 'salida'], default: 'fiesta' } } } };
+    expect(initialValues(formFields(choice))).toEqual({});
   });
 });

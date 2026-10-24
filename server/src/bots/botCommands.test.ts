@@ -232,6 +232,8 @@ describe('answering later', () => {
     const { commandId } = (await invoke(channel, { app_id: appId, command: 'clima', text: '' }).expect(200)).body;
     const respond = (body: Record<string, unknown>, bearer = token) => request(app).post(`/api/bots/commands/${commandId}/respond`).set(asBot(bearer)).send(body);
     expect((await respond({ response_type: 'in_channel', text: 'Clima de hoy: 24 °C' }).expect(200)).body).toEqual({ response_type: 'in_channel' });
+    // The asker's «working…» card is told to go away (José, 23/10: it stayed frozen).
+    expect(notices.at(-1)?.notice).toMatchObject({ commandId, posted: true });
     expect(await MessageModel.countDocuments({ chatId: channel })).toBe(1);
     for (let index = 0; index < 4; index++) await respond({ text: `vez ${index}` }).expect(200);
     expect((await respond({ text: 'una más' }).expect(409)).body.error).toBe('too_many_responses');

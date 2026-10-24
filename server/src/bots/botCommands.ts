@@ -208,6 +208,8 @@ export async function respondToCommand(installation: BotInstallation, commandId:
   const outcome = await deliverResponse(installation, run, chat, valid.response, base);
   const where = chat ? { chatId: String(chat._id) } : { workspaceId: String(run.workspaceId ?? installation.workspaceId) };
   if (outcome.outcome === 'ephemeral' || outcome.outcome === 'form') notifyAsker(String(run.userId), { ...where, commandId, appId: base.appId, appName: base.appName, response: outcome.response! });
+  // Posted in the channel: the asker's «working…» card must go away too (it stayed forever, 23/10).
+  else notifyAsker(String(run.userId), { ...where, commandId, appId: base.appId, appName: base.appName, response: valid.response, posted: true });
   return { response_type: outcome.outcome === 'posted' ? 'in_channel' : outcome.outcome === 'form' ? 'form' : 'ephemeral' };
 }
 

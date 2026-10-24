@@ -54,12 +54,13 @@ export function validateBotCommands(raw: unknown): { ok: true; commands: BotComm
 /** What the app answers to `command.invoked`, in the webhook body or later through `/respond`. */
 export function validateCommandResponse(raw: unknown): { ok: true; response: CommandResponse } | { ok: false; message: string } {
   const body = record(raw);
+  const text = typeof body.text === 'string' ? body.text.trim().slice(0, COMMAND_LIMITS.text) : '';
   if (body.response_type === 'form') {
     const form = validateFormSpec(body.form);
-    return form.ok ? { ok: true, response: { responseType: 'form', form: form.form } } : form;
+    // The text goes above the form: why it is asked (agentes, 23/10: «Inframaq no te reconoce todavía»).
+    return form.ok ? { ok: true, response: { responseType: 'form', form: form.form, ...(text ? { text } : {}) } } : form;
   }
   const responseType: CommandResponseType = body.response_type === 'in_channel' ? 'in_channel' : 'ephemeral';
-  const text = typeof body.text === 'string' ? body.text.trim().slice(0, COMMAND_LIMITS.text) : '';
   let card: BotCard | undefined;
   if (body.card !== undefined) {
     const checked = validateBotCard(body.card);
@@ -132,7 +133,7 @@ export type CommandOutcome = {
 
 /** A late answer that only the asker sees, over the socket (`command.response`). */
 /** `workspaceId` instead of `chatId`: it was used from the space's ⚡, outside any chat (José, 23/10). */
-export type CommandNotice = { chatId?: string; workspaceId?: string; commandId: string; appId: string; appName: string; response: CommandResponse };
+export type CommandNotice = { chatId?: string; workspaceId?: string; commandId: string; appId: string; appName: string; response: CommandResponse; /** The late answer went to the channel as the app's message: the «working…» card just goes away. */ posted?: true };
 /** Where a command or an action was used: a chat of the space, or the space itself (its ⚡). */
 export type CommandScope = { chatId: string } | { workspaceId: string };
 /** The API path of a scope: `/api/chats/<id>` or `/api/workspaces/<id>`. */
@@ -186,8 +187,20 @@ export function replaceAnswer(list: readonly EphemeralAnswer[], placeholderId: s
   return [...rest.slice(0, index), answer, ...rest.slice(index)].slice(-EPHEMERAL_KEPT);
 }
 
+/** A form's sheet is keyed by this: the next form of the same command (account code after destination) mounts fresh. */
+export const formKeyOf = (answer: Pick<EphemeralAnswer, 'commandId' | 'response'>): string => `${answer.commandId}:${answer.response?.form?.id ?? ''}`;
+
 /** A notice from the socket: it answers its pending command, or arrives on its own if that one was dismissed. */
 export function withNotice(list: readonly EphemeralAnswer[], notice: CommandNotice): EphemeralAnswer[] {
+  if (notice.posted) return list.filter((entry) => entry.commandId !== notice.commandId);
   const known = list.find((entry) => entry.commandId === notice.commandId);
   return withAnswer(list, { commandId: notice.commandId, appName: notice.appName, command: known?.command ?? '', ...(known?.action ? { action: known.action } : {}), state: notice.response.form ? 'form' : 'answered', response: notice.response });
+}
+
+/** A command still «working…» after this long gave up (pending 103: agentes never answered and the card stayed forever). */
+export const PENDING_GIVE_UP_MS = 45_000;
+
+/** The still-pending answer of that command becomes a failure the person can retry; anything else stays. */
+export function giveUpPending(list: readonly EphemeralAnswer[], commandId: string): EphemeralAnswer[] {
+  return list.map((entry) => (entry.commandId === commandId && entry.state === 'pending' ? { ...entry, state: 'failed', message: `${entry.appName} no respondió a tiempo. Vuelve a intentarlo.` } : entry));
 }

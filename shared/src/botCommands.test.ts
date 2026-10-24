@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { answerOfOutcome, COMMAND_LIMITS, commandOf, matchCommands, replaceAnswer, sharedByLine, validateFormReply, parseSlashInput, slashQuery, validateBotCommands, validateCommandResponse, withAnswer, withNotice, type CommandGroup } from './botCommands.js';
+import { answerOfOutcome, COMMAND_LIMITS, formKeyOf, giveUpPending, commandOf, matchCommands, replaceAnswer, sharedByLine, validateFormReply, parseSlashInput, slashQuery, validateBotCommands, validateCommandResponse, withAnswer, withNotice, type CommandGroup } from './botCommands.js';
 
 /** The slash commands contract, `specs/BOTS-API.spec.md` §c. */
 describe('command registry', () => {
@@ -133,6 +133,19 @@ describe('sharedByLine', () => {
   });
 });
 
+describe('a «working…» card always ends (José, 23/10: «se queda congelado Inframaq está trabajando»)', () => {
+  const pending = { commandId: 'c9', appName: 'Inframaq', command: 'clima', state: 'pending' as const };
+  it('a late answer posted in the channel removes the card instead of leaving it', () => {
+    const notice = { chatId: 'g1', commandId: 'c9', appId: 'a1', appName: 'Inframaq', response: { responseType: 'in_channel' as const, text: 'Ate: 24 °C' }, posted: true as const };
+    expect(withNotice([pending], notice)).toEqual([]);
+  });
+  it('after the wait it says the app did not answer; an answer already there is not touched', () => {
+    expect(giveUpPending([pending], 'c9')).toEqual([{ ...pending, state: 'failed', message: 'Inframaq no respondió a tiempo. Vuelve a intentarlo.' }]);
+    const answered = { ...pending, state: 'answered' as const, response: { responseType: 'ephemeral' as const, text: 'ok' } };
+    expect(giveUpPending([answered], 'c9')).toEqual([answered]);
+  });
+});
+
 describe('replaceAnswer (the «working…» card while the command leaves)', () => {
   const sending = { commandId: 'sending-1', appName: 'Inframaq', command: 'clima', state: 'pending' as const };
   const other = { commandId: 'c0', appName: 'Portal', command: 'asistencia', state: 'answered' as const, response: { responseType: 'ephemeral' as const, text: 'ok' } };
@@ -166,6 +179,22 @@ describe('answers that open a form or must not be shared (R160)', () => {
     expect(valid.ok && valid.response).toMatchObject({ responseType: 'form', form: { id: 'registrar_marca', title: 'Marcar asistencia' } });
     expect(validateCommandResponse({ response_type: 'form', form: { ...form, title: '' } }).ok).toBe(false);
     expect(answerOfOutcome({ commandId: 'c1', appId: 'a1', appName: 'Inframaq', outcome: 'form', response: valid.ok ? valid.response : undefined }, 'asistencia')).toMatchObject({ state: 'form' });
+  });
+
+  it('a form keeps the text that comes with it and the schema\'s description as its intro (agentes, «Conecta tu cuenta»)', () => {
+    // Arrange
+    const body = { response_type: 'form', text: 'Inframaq no te reconoce todavía.', form: { ...form, schema: { ...form.schema, description: 'Una sola vez, con tu correo o tu WhatsApp.' } } };
+    // Act
+    const valid = validateCommandResponse(body);
+    // Assert
+    expect(valid.ok && valid.response).toMatchObject({ responseType: 'form', text: 'Inframaq no te reconoce todavía.', form: { intro: 'Una sola vez, con tu correo o tu WhatsApp.' } });
+  });
+
+  it('the next form of the same command gets its own key, so its sheet starts clean', () => {
+    const first = { commandId: 'c1', response: { responseType: 'form' as const, form: { id: 'cuenta_destino', title: 'A', schema: {} } } };
+    const second = { commandId: 'c1', response: { responseType: 'form' as const, form: { id: 'cuenta_codigo', title: 'B', schema: {} } } };
+    expect(formKeyOf(first)).not.toBe(formKeyOf(second));
+    expect(formKeyOf({ commandId: 'c1' })).toBe('c1:');
   });
 
   it('shareable false is kept, and only false', () => {

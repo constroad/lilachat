@@ -4909,6 +4909,15 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 132. Listas largas con buscador y el PIN, primera versión solo para el modo empresa (24/10/2026, 0.1.168)
+
+- **Listas largas con buscador** y **PIN oculto** en los formularios de las
+  apps (BOTS-API §c-duodecies; diseño e-35), para marcar asistencia eligiendo
+  el nombre entre las personas de la empresa.
+- Sale con dos ítems y no cuatro porque José la pidió de inmediato («y en la
+  apk para cuando?»). Es la primera con `audience: 'spaces'`: un teléfono con
+  la 0.1.167 y sin espacios no recibe el aviso.
+
 ## 131. Cada versión dice a quién le toca, Ajustes con el espacio y el detalle del tanque (24/10/2026, 0.1.167)
 
 - **Actualizaciones por audiencia** (José, 24/10, urgente: «si un usuario

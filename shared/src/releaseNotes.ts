@@ -17,6 +17,15 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.168',
+    // Company mode only: the apps' forms. The first release the 0.1.167 filter skips for personal-only users.
+    audience: 'spaces',
+    items: [
+      'Marcar asistencia eligiendo tu nombre: las listas largas se abren con un buscador.',
+      'Si tu empresa te pide un PIN al marcar, se escribe oculto y no se guarda.',
+    ],
+  },
+  {
     version: '0.1.167',
     // For everyone: from this version on the app skips updates that are not for what each one uses.
     audience: 'all',

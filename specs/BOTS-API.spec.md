@@ -488,6 +488,21 @@ la app de ESA instalación, por su webhook y con la firma de `command.invoked`.
 - Sin conectar dice «<app> te lo pide la primera vez que la usas»: conectar
   sigue siendo el formulario «Conecta tu cuenta» que trae el rechazo de la app.
 
+## c-duodecies) Listas largas con buscador y el PIN (0.1.168)
+
+Para marcar asistencia eligiendo el nombre (agentes, 24/10; diseño e-35):
+- Un `enum` (o `oneOf: [{ const, title, description? }]`) con **más de 8**
+  opciones se dibuja como un campo que abre una hoja con buscador: filtra por
+  el nombre sin tildes ni mayúsculas, dice «3 de 31», resalta lo que coincide y
+  muestra `description` como línea de abajo (el cargo). Hasta 300 opciones.
+- `x-input: "pin"`: dígitos ocultos mientras se escriben, teclado numérico,
+  sin autocompletar. Nunca toma `default`, nunca se guarda en el teléfono ni
+  en el servidor; Lilachat solo exige que sean dígitos (hasta 8). La app lo
+  pide o no según la persona y rechaza con `errors: { pin: "…" }`.
+- Una APK anterior a la 0.1.168 no conoce `x-input: "pin"` y no abre ese
+  formulario: si el campo es opcional, la app puede mandarlo solo cuando lo
+  pide.
+
 ## c-undecies) Tocar un tanque abre su detalle (0.1.166)
 
 José, 24/10: al tocar un tanque de la tarjeta quiere ver su detalle. Cada item

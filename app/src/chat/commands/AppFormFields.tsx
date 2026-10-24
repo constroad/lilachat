@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Camera, LocateFixed, User } from 'lucide-react-native';
 import { geoPointOf, precisionLabel, type FormField, type GeoPoint } from '@lilachat/shared';
 import { Segmentado } from '../../ui/Segmentado';
+import { SearchableChoice } from './SearchableChoice';
 import { useColores } from '../../ui/tema';
 import { MapSnippet } from '../location/MapSnippet';
 import { useCurrentLocation } from '../location/useCurrentLocation';
@@ -36,7 +37,9 @@ export function ChoiceField({ field, value, error, onChange }: FieldProps<'choic
   return (
     <View>
       {field.segmented ? null : <Label field={field} />}
-      {field.segmented ? (
+      {field.searchable ? (
+        <SearchableChoice field={field} value={value} onChange={onChange} />
+      ) : field.segmented ? (
         <Segmentado opciones={field.options.map((option) => ({ key: option.value, etiqueta: option.label, testID: `opcion-${field.name}-${option.value}` }))} valor={typeof value === 'string' ? value : ''} onCambiar={onChange} />
       ) : (
         <View className="gap-1.5">
@@ -59,6 +62,8 @@ export function TypedField({ field, value, error, onChange }: FieldProps<'text' 
   const multiline = field.kind === 'text' && field.multiline;
   /** A one-time code (connecting an account): big digits, the number pad and the SMS autofill. */
   const code = field.kind === 'text' ? field.digits : undefined;
+  /** A PIN (Portal's employee PIN, agentes 24/10): hidden while typed, the number pad, never autofilled. */
+  const secret = field.kind === 'text' && field.secret === true;
   const text = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
   return (
     <View>
@@ -70,9 +75,10 @@ export function TypedField({ field, value, error, onChange }: FieldProps<'text' 
           onChangeText={(next) => onChange(next === '' ? undefined : next)}
           multiline={multiline}
           maxLength={code ? code : field.kind === 'text' ? field.maxLength : undefined}
-          keyboardType={code || (field.kind === 'number' && field.integer) ? 'number-pad' : field.kind === 'number' ? 'decimal-pad' : 'default'}
+          keyboardType={code || secret || (field.kind === 'number' && field.integer) ? 'number-pad' : field.kind === 'number' ? 'decimal-pad' : 'default'}
+          secureTextEntry={secret}
           textContentType={code ? 'oneTimeCode' : undefined}
-          autoComplete={code ? 'sms-otp' : undefined}
+          autoComplete={code ? 'sms-otp' : secret ? 'off' : undefined}
           placeholder={field.kind === 'date' ? (field.withTime ? 'AAAA-MM-DD HH:MM' : 'AAAA-MM-DD') : undefined}
           placeholderTextColor={colors['on-surface-variant']}
           className={`min-h-[48px] flex-1 rounded-xl border border-outline/25 bg-background px-3 text-on-surface ${code ? 'text-center text-[28px] font-bold' : 'text-[16px]'} ${multiline ? 'py-2' : ''}`}

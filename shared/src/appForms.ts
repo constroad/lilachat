@@ -24,17 +24,20 @@ export type FormSchemaProperty = {
   'x-unit'?: string;
   'x-labels'?: Record<string, string>;
   /** The standard way to name options: `[{ "const": "<id>", "title": "Tanque 1" }]`, same as `enum` + `x-labels`. */
-  oneOf?: { const?: unknown; title?: string }[];
+  oneOf?: { const?: unknown; title?: string; description?: string }[];
   /** Shown only when another field has one of these answers: `{ "accion": ["salida"] }` (R161). */
   'x-visible-if'?: Record<string, unknown[]>;
 };
 export type FormSchema = { type?: string; description?: string; properties?: Record<string, FormSchemaProperty>; required?: string[] };
 export type AppForm = { id: string; title: string; submitLabel?: string; /** The schema's `description`: a line under the title. */ intro?: string; schema: FormSchema };
 
+/** An option of a choice; `sub` is the line under it in a long list (the person's role). */
+export type ChoiceOption = { value: string; label: string; sub?: string };
+
 type Base = { name: string; label: string; help?: string; required: boolean; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number };
 export type FormField =
-  | (Base & { kind: 'choice'; options: { value: string; label: string }[]; segmented: boolean })
-  | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number })
+  | (Base & { kind: 'choice'; options: ChoiceOption[]; segmented: boolean; /** A long list (the company's people, agentes 24/10): a field that opens a sheet with a search. */ searchable: boolean })
+  | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true })
   | (Base & { kind: 'number'; unit?: string; min?: number; max?: number; integer: boolean })
   | (Base & { kind: 'date'; withTime: boolean })
   | (Base & { kind: 'photo' })
@@ -42,13 +45,15 @@ export type FormField =
 export type FormValues = Record<string, unknown>;
 export type GeoPoint = { lat: number; lng: number; precision: number; /** How old the reading was when it was sent (ms, the phone's own clock on both ends): signing takes only a reading of now (José, 24/10). */ age?: number };
 
-export const FORM_LIMITS = { id: 64, title: 60, submitLabel: 40, intro: 240, fields: 20, label: 60, help: 160, options: 50, text: 2000 };
+export const FORM_LIMITS = { id: 64, title: 60, submitLabel: 40, intro: 240, fields: 20, label: 60, help: 160, options: 300, text: 2000, pin: 8 };
 /** Up to this many options fit side by side (design e-28); more go to a list. */
 const SEGMENTED_MAX = 4;
+/** More options than this become a field with a search (a company's 31 people did not fit as buttons). */
+export const SEARCHABLE_FROM = 8;
 /** A text allowed longer than this gets several lines. */
 const MULTILINE_FROM = 120;
 const FORM_ID = /^[a-z][a-z0-9_-]*$/;
-const INPUTS = ['photo', 'location', 'textarea', 'otp'];
+const INPUTS = ['photo', 'location', 'textarea', 'otp', 'pin'];
 /** A code longer than this is not typed by hand. */
 const CODE_MAX_DIGITS = 8;
 const DIGITS_PATTERN = /^\^\\d\{(\d)\}\$$/;
@@ -62,16 +67,19 @@ const labelOf = (name: string) => name.replace(/[_-]+/g, ' ').replace(/^./, (fir
  * `const` and `title`. A repeated value is kept once: Portal's material list
  * sent one id twice and the sheet drew two rows with the same key (E2E 24/10).
  */
-function choiceOptions(property: FormSchemaProperty): { value: string; label: string }[] | null {
+function choiceOptions(property: FormSchemaProperty): ChoiceOption[] | null {
   const labels = record(property['x-labels']);
-  const pairs = Array.isArray(property.enum)
+  const pairs: { value: string; title: unknown; description?: unknown }[] | null = Array.isArray(property.enum)
     ? property.enum.map((value) => ({ value: String(value), title: labels[String(value)] }))
     : Array.isArray(property.oneOf) && property.oneOf.some((option) => record(option).const !== undefined)
-      ? property.oneOf.map(record).filter((option) => option.const !== undefined).map((option) => ({ value: String(option.const), title: option.title }))
+      ? property.oneOf.map(record).filter((option) => option.const !== undefined).map((option) => ({ value: String(option.const), title: option.title, description: option.description }))
       : null;
   if (!pairs) return null;
   const unique = pairs.filter((pair, index) => pairs.findIndex((other) => other.value === pair.value) === index);
-  return unique.slice(0, FORM_LIMITS.options).map((pair) => ({ value: pair.value, label: line(pair.title, FORM_LIMITS.label) || labelOf(pair.value) }));
+  return unique.slice(0, FORM_LIMITS.options).map((pair) => {
+    const sub = line(pair.description, FORM_LIMITS.label);
+    return { value: pair.value, label: line(pair.title, FORM_LIMITS.label) || labelOf(pair.value), ...(sub ? { sub } : {}) };
+  });
 }
 
 function fieldOf(name: string, property: FormSchemaProperty, required: boolean): FormField | string {
@@ -84,7 +92,7 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
   const options = choiceOptions(property);
   if (options) {
     const initial = options.some((option) => option.value === String(property.default)) ? { initial: String(property.default) } : {};
-    return { ...base, ...initial, kind: 'choice', options, segmented: options.length <= SEGMENTED_MAX };
+    return { ...base, ...initial, kind: 'choice', options, segmented: options.length <= SEGMENTED_MAX, searchable: options.length > SEARCHABLE_FROM };
   }
   if (property.type === 'number' || property.type === 'integer') {
     const initial = typeof property.default === 'number' && Number.isFinite(property.default) ? { initial: property.default } : {};
@@ -92,6 +100,8 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
   }
   if (property.type === 'string' && (property.format === 'date' || property.format === 'date-time')) return { ...base, kind: 'date', withTime: property.format === 'date-time' };
   if (property.type === 'string') {
+    // A PIN is never prefilled and never shown: no `default`, digits only, hidden while typed.
+    if (input === 'pin') return { ...base, kind: 'text', multiline: false, maxLength: Math.min(typeof property.maxLength === 'number' ? property.maxLength : FORM_LIMITS.pin, FORM_LIMITS.pin), secret: true };
     const maxLength = typeof property.maxLength === 'number' ? Math.min(property.maxLength, FORM_LIMITS.text) : undefined;
     const digits = codeDigitsOf(input, property, maxLength);
     const initial = typeof property.default === 'string' && property.default.trim() ? { initial: line(property.default, maxLength ?? FORM_LIMITS.text) } : {};
@@ -170,6 +180,10 @@ function checkValue(field: FormField, value: unknown): { value: unknown } | { er
         const code = String(value).replace(/\s+/g, '');
         return new RegExp(`^\\d{${field.digits}}$`).test(code) ? { value: code } : { error: `Escribe los ${field.digits} dígitos.` };
       }
+      if (field.secret) {
+        const pin = String(value).replace(/\s+/g, '');
+        return /^\d+$/.test(pin) && pin.length <= (field.maxLength ?? FORM_LIMITS.pin) ? { value: pin } : { error: 'Solo números.' };
+      }
       const text = String(value).trim();
       return field.maxLength && text.length > field.maxLength ? { error: `Hasta ${field.maxLength} caracteres.` } : { value: text.slice(0, FORM_LIMITS.text) };
     }
@@ -232,4 +246,23 @@ export function validateFormValues(fields: readonly FormField[], raw: unknown, o
   }
   if (options.requireFresh) Object.assign(errors, staleLocation(fields, input, values));
   return Object.keys(errors).length ? { ok: false, errors } : { ok: true, values };
+}
+
+/** «José» matches «jose», «JOSÉ»: one character at a time, so positions stay those of the label. */
+const foldChar = (char: string) => char.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const foldText = (text: string) => Array.from(text).map(foldChar).join('');
+
+/** The options of a long list that match the search, without accents or capitals; empty search = all. */
+export function filterChoiceOptions(options: readonly ChoiceOption[], query: string): ChoiceOption[] {
+  const wanted = foldText(query.trim());
+  if (!wanted) return [...options];
+  return options.filter((option) => foldText(option.label).includes(wanted));
+}
+
+/** Where the search falls in a label, to tint it (design e-35); null when it does not. */
+export function matchSpan(label: string, query: string): { start: number; end: number } | null {
+  const wanted = foldText(query.trim());
+  if (!wanted) return null;
+  const start = foldText(label).indexOf(wanted);
+  return start < 0 ? null : { start, end: start + wanted.length };
 }

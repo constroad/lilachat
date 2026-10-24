@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Camera, LocateFixed, MapPin, RefreshCw, User } from 'lucide-react';
 import { geoPointOf, mapTilesFor, precisionLabel, type FormField, type GeoPoint } from '@lilachat/shared';
 import { FieldError } from '../../ui/Overlay';
+import { SearchableChoice } from './SearchableChoice';
 
 const MAP = { width: 320, height: 120 };
 const PIN = 26;
@@ -32,6 +33,11 @@ export function ChoiceField({ field, value, error, onChange }: FieldProps<'choic
             </button>
           ))}
         </div>
+      ) : field.searchable ? (
+        <>
+          <Label field={field} />
+          <SearchableChoice field={field} value={value} onChange={onChange} />
+        </>
       ) : (
         <>
           <Label field={field} />
@@ -61,6 +67,8 @@ export function TextField({ field, value, error, onChange }: FieldProps<'text'>)
           maxLength={field.digits ?? field.maxLength}
           // A one-time code (connecting an account): the number pad, the code autofill and big spread digits.
           {...(field.digits ? { inputMode: 'numeric' as const, autoComplete: 'one-time-code' } : {})}
+          // A PIN (Portal's employee PIN, agentes 24/10): hidden, the number pad, never remembered by the browser.
+          {...(field.secret ? { type: 'password', inputMode: 'numeric' as const, autoComplete: 'off' } : {})}
           onChange={(event) => onChange(event.target.value)}
           className={field.digits ? `${inputClass} text-center text-2xl font-bold tracking-[0.5em] tabular-nums` : inputClass}
         />

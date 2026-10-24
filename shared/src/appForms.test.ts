@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FRESH_LOCATION_MS, formFields, initialValues, liveSelfieFieldOf, validateFormSpec, validateFormValues, visibleFields, type FormField } from './appForms.js';
+import { FRESH_LOCATION_MS, filterChoiceOptions, formFields, initialValues, liveSelfieFieldOf, matchSpan, validateFormSpec, validateFormValues, visibleFields, type FormField } from './appForms.js';
 
 /** Inframaq's real `registrar_marca` (agentes, 23/10), as the app sends it. */
 const attendanceForm = {
@@ -28,7 +28,7 @@ describe('an app form (R160, like Slack\'s modals; agentes builds it from the to
     // Assert
     expect(valid.ok && valid.form).toMatchObject({ id: 'registrar_marca', title: 'Marcar asistencia', submitLabel: 'Marcar' });
     expect(fields).toEqual<FormField[]>([
-      { kind: 'choice', name: 'accion', label: 'Acción', required: true, segmented: true, options: [{ value: 'ingreso', label: 'Ingreso' }, { value: 'refrigerio', label: 'Refrigerio' }, { value: 'retorno', label: 'Retorno' }, { value: 'salida', label: 'Salida' }] },
+      { kind: 'choice', name: 'accion', label: 'Acción', required: true, segmented: true, searchable: false, options: [{ value: 'ingreso', label: 'Ingreso' }, { value: 'refrigerio', label: 'Refrigerio' }, { value: 'retorno', label: 'Retorno' }, { value: 'salida', label: 'Salida' }] },
       { kind: 'location', name: 'ubicacion', label: 'Tu ubicación', required: true },
       { kind: 'photo', name: 'foto', label: 'Selfie', help: 'Una foto tuya al marcar', required: true },
       { kind: 'text', name: 'actividades', label: 'Actividades del día', required: false, multiline: true, maxLength: 300 },
@@ -39,7 +39,7 @@ describe('an app form (R160, like Slack\'s modals; agentes builds it from the to
     const fields = formFields({ id: 'medida', title: 'Medida', schema: { type: 'object', properties: { nivel: { type: 'number', 'x-unit': 'gl', minimum: 0, maximum: 20000 }, tanque: { type: 'string', enum: ['t1', 't2', 't3', 't4', 't5'] }, fecha: { type: 'string', format: 'date' }, nota_corta: { type: 'string' } } } });
     expect(fields).toEqual<FormField[]>([
       { kind: 'number', name: 'nivel', label: 'Nivel', required: false, unit: 'gl', min: 0, max: 20000, integer: false },
-      { kind: 'choice', name: 'tanque', label: 'Tanque', required: false, segmented: false, options: ['t1', 't2', 't3', 't4', 't5'].map((value) => ({ value, label: value.toUpperCase() })) },
+      { kind: 'choice', name: 'tanque', label: 'Tanque', required: false, segmented: false, searchable: false, options: ['t1', 't2', 't3', 't4', 't5'].map((value) => ({ value, label: value.toUpperCase() })) },
       { kind: 'date', name: 'fecha', label: 'Fecha', required: false, withTime: false },
       { kind: 'text', name: 'nota_corta', label: 'Nota corta', required: false, multiline: false },
     ]);
@@ -177,5 +177,45 @@ describe('Portal\'s tank and material lists (E2E 24/10: ids on screen, a repeate
     expect(material).toMatchObject({ kind: 'choice', options: [{ value: '857dd79f06bed055e71a8579', label: 'Arena gruesa' }, { value: '69f0e162bd9a0af2ba5b28e2', label: 'Piedra chancada' }] });
     expect(tanque).toMatchObject({ options: [{ value: 'a1', label: 'A1' }, { value: 'b2', label: 'B2' }] });
     expect(validateFormValues(formFields(form), { material: '69f0e162bd9a0af2ba5b28e2' })).toEqual({ ok: true, values: { material: '69f0e162bd9a0af2ba5b28e2' } });
+  });
+});
+
+describe('marking attendance by name: the company\'s list and the PIN (agentes, 24/10; design e-35)', () => {
+  const people = Array.from({ length: 31 }, (_, index) => ({ const: `e${index}`, title: `Persona ${index}`, description: 'Operador' }));
+  people[0] = { const: 'e0', title: 'José Zamora', description: 'Gerente' };
+  people[1] = { const: 'e1', title: 'Josefina Ramos', description: 'Asistente administrativa' };
+  const form = { id: 'registrar_asistencia', title: 'Marcar asistencia', schema: { type: 'object', properties: {
+    empleadoId: { type: 'string', title: '¿Quién eres?', oneOf: people },
+    accion: { type: 'string', enum: ['ingreso', 'salida'] },
+    pin: { type: 'string', 'x-input': 'pin', default: '1234' },
+  }, required: ['empleadoId', 'accion'] } };
+
+  it('more than 8 options is a field with a search; 4 or fewer stay side by side; the role comes as the line under', () => {
+    // Act
+    const [person, action, pin] = formFields(form);
+    // Assert
+    expect(person).toMatchObject({ kind: 'choice', searchable: true, segmented: false });
+    expect(person!.kind === 'choice' && person.options[0]).toEqual({ value: 'e0', label: 'José Zamora', sub: 'Gerente' });
+    expect(action).toMatchObject({ kind: 'choice', searchable: false, segmented: true });
+    expect(pin).toEqual({ name: 'pin', label: 'Pin', required: false, kind: 'text', multiline: false, maxLength: 8, secret: true });
+  });
+
+  it('the search ignores accents and capitals and tells where it falls', () => {
+    const [person] = formFields(form);
+    const options = person!.kind === 'choice' ? person.options : [];
+    expect(filterChoiceOptions(options, 'JOSE').map((option) => option.label)).toEqual(['José Zamora', 'Josefina Ramos']);
+    expect(filterChoiceOptions(options, '  ').length).toBe(31);
+    expect(filterChoiceOptions(options, 'xyz')).toEqual([]);
+    expect(matchSpan('José Zamora', 'jose')).toEqual({ start: 0, end: 4 });
+    expect(matchSpan('María José', 'JOSE')).toEqual({ start: 6, end: 10 });
+    expect(matchSpan('Ana', 'jose')).toBeNull();
+  });
+
+  it('a PIN takes digits only, never starts filled, and may be left out', () => {
+    const fields = formFields(form);
+    expect(initialValues(fields)).toEqual({});
+    expect(validateFormValues(fields, { empleadoId: 'e0', accion: 'ingreso', pin: '12 34' })).toEqual({ ok: true, values: { empleadoId: 'e0', accion: 'ingreso', pin: '1234' } });
+    expect(validateFormValues(fields, { empleadoId: 'e0', accion: 'ingreso', pin: '12a4' })).toEqual({ ok: false, errors: { pin: 'Solo números.' } });
+    expect(validateFormValues(fields, { empleadoId: 'e0', accion: 'ingreso' })).toEqual({ ok: true, values: { empleadoId: 'e0', accion: 'ingreso' } });
   });
 });

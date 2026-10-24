@@ -120,7 +120,7 @@ const appSchema = new Schema<BotApp>(
     installUrl: { type: String },
     commands: { type: [{ command: String, description: String, usageHint: String, _id: false }], default: undefined },
     shortcuts: { type: [{ key: String, name: String, description: String, _id: false }], default: undefined },
-    noticeTopics: { type: [{ key: String, name: String, description: String, icon: String, _id: false }], default: undefined },
+    noticeTopics: { type: [{ key: String, name: String, description: String, icon: String, noDefault: Boolean, _id: false }], default: undefined },
     scopes: { type: [String], default: undefined },
     ownerAppId: { type: Schema.Types.ObjectId },
     key: { type: String },

@@ -66,6 +66,21 @@ describe('«¿Dónde llega cada aviso?» (design e-31)', () => {
     await vi.waitFor(() => expect(api.saveAppTopics).toHaveBeenLastCalledWith('jwt', 's1', 'a1', { asistencia: null }));
   });
 
+  it('a payroll topic without a default asks for a private channel, and warns on a public one (agentes, 24/10)', async () => {
+    // Arrange
+    const withPrivate = [...channels, { id: 'ch3', name: 'gerencia', private: true }];
+    api.appTopics.mockResolvedValue({ ok: true, data: { canEdit: true, channels: withPrivate, topics: [{ key: 'planilla', name: 'Planilla', icon: 'cash', noDefault: true, channel: null }] } });
+    render(<NoticeTopicsSection jwt="jwt" spaceId="s1" appId="a1" appName="Inframaq" />);
+    // Act
+    const waiting = await screen.findByTestId('aviso-privado-planilla');
+    // Assert
+    expect(waiting).toHaveTextContent('Datos sensibles: elige un canal privado');
+    fireEvent.change(screen.getByTestId('canal-tema-planilla'), { target: { value: 'ch1' } });
+    expect(screen.getByTestId('aviso-privado-planilla')).toHaveTextContent('Es un canal abierto: mejor uno privado');
+    fireEvent.change(screen.getByTestId('canal-tema-planilla'), { target: { value: 'ch3' } });
+    expect(screen.queryByTestId('aviso-privado-planilla')).toBeNull();
+  });
+
   it('an app without topics draws nothing', async () => {
     api.appTopics.mockResolvedValue({ ok: true, data: { ...topics, topics: [] } });
     const { container } = render(<NoticeTopicsSection jwt="jwt" spaceId="s1" appId="a1" appName="Inframaq" />);

@@ -390,6 +390,12 @@ prefijo. La respuesta tardía de un uso del ⚡ llega por socket con
   aviso?» (e-31). Un tema sin tocar va a #general (o al canal público más
   viejo). «Sin canal» = no se publica. Un canal privado elegido suma la app
   como miembro.
+- `"default": null` en un tema (agentes, 24/10: la planilla lleva montos) lo
+  hace nacer en «Sin canal»: nunca se publica hasta que un admin elige uno, y
+  si el canal elegido se borra vuelve a «Sin canal», no a #general. La
+  pantalla dice «Datos sensibles: elige un canal privado» mientras no tiene, y
+  «Es un canal abierto: mejor uno privado» si eligen uno público. El 409 dice
+  «espera a que un admin elija un canal privado».
 - La app publica con `"topic": "asistencia"` en vez de `channel_id`. Si el
   tema está sin canal: 409 `topic_without_channel` (no es una falla, no se
   reintenta). Un tema que el manifiesto no declara: 404 `topic_not_found`.

@@ -66,8 +66,8 @@ beforeEach(async () => {
 });
 
 /** Inframaq through its manifest, installed in the space; its token and id. */
-async function installInframaq(): Promise<{ token: string; appId: string }> {
-  const { body } = await request(app).post('/api/bots/apps').set(asLila).send({ key: 'inframaq', name: 'Inframaq', redirect_uri: REDIRECT, webhook_url: 'http://127.0.0.1:9/events', notice_topics: TOPICS }).expect(201);
+async function installInframaq(topics: readonly Record<string, unknown>[] = TOPICS): Promise<{ token: string; appId: string }> {
+  const { body } = await request(app).post('/api/bots/apps').set(asLila).send({ key: 'inframaq', name: 'Inframaq', redirect_uri: REDIRECT, webhook_url: 'http://127.0.0.1:9/events', notice_topics: topics }).expect(201);
   const authorized = await request(app).post('/api/oauth/authorize').set(asJose).send({ client_id: body.client_id, redirect_uri: REDIRECT, state: 'state-0123456789abcdef', code_challenge: CHALLENGE, code_challenge_method: 'S256', space_id: String(spaceId), decision: 'approve' }).expect(200);
   const token = await request(app).post('/api/oauth/token').send({ grant_type: 'authorization_code', code: new URL(authorized.body.redirect).searchParams.get('code'), redirect_uri: REDIRECT, client_id: body.client_id, client_secret: body.client_secret, code_verifier: VERIFIER }).expect(200);
   return { token: token.body.access_token, appId: String((await BotAppModel.findOne({ clientId: body.client_id }).lean())!._id) };
@@ -101,6 +101,22 @@ describe('where each topic lands', () => {
     expect(posted.body.message.chat_id).toBe(String(planta));
     expect(silenced.body.error).toBe('topic_without_channel');
     await post(token, { topic: 'planilla', text: 'x', idempotency_key: 'p1' }).expect(404);
+  });
+
+  it('a topic declared with `default: null` waits in «Sin canal»: nothing is posted until an admin picks', async () => {
+    // Arrange
+    const { token, appId } = await installInframaq([...TOPICS, { key: 'planilla', name: 'Planilla', icon: 'cash', default: null }]);
+    // Act
+    const waiting = await post(token, { topic: 'planilla', text: 'S/ 4 820', idempotency_key: 'p1' }).expect(409);
+    const forJose = (await request(app).get(topicsPath(appId)).set(asJose).expect(200)).body;
+    await request(app).put(topicsPath(appId)).set(asJose).send({ channels: { planilla: String(gerencia) } }).expect(200);
+    const posted = await post(token, { topic: 'planilla', text: 'S/ 4 820', idempotency_key: 'p2' }).expect(201);
+    // Assert
+    expect(waiting.body).toMatchObject({ error: 'topic_without_channel', message: expect.stringMatching(/canal privado/) });
+    expect(forJose.topics[2]).toMatchObject({ key: 'planilla', noDefault: true, channel: null });
+    expect(forJose.topics[0].channel).toEqual({ id: String(general), name: 'general' });
+    expect(posted.body.message.chat_id).toBe(String(gerencia));
+    expect(await MessageModel.countDocuments({ chatId: general })).toBe(0);
   });
 
   it('the app moves some topics with a partial map; the rest keep theirs; a private channel gets the bot as a member', async () => {

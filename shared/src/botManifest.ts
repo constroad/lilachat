@@ -131,7 +131,7 @@ function validateNoticeTopics(raw: unknown): NoticeTopic[] | { ok: false; messag
     const name = oneLine(item.name, NOTICE_TOPIC_LIMITS.name);
     if (!TOPIC_KEY.test(key) || key.length > NOTICE_TOPIC_LIMITS.key || !name || topics.some((topic) => topic.key === key)) return { ok: false, message: `El tema «${key}» necesita una «key» única en minúsculas (a-z, 0-9, _ o -) y un «name».` };
     const description = oneLine(item.description, NOTICE_TOPIC_LIMITS.description);
-    topics.push({ key, name, ...(description ? { description } : {}), ...(isNoticeIcon(item.icon) ? { icon: item.icon } : {}) });
+    topics.push({ key, name, ...(description ? { description } : {}), ...(isNoticeIcon(item.icon) ? { icon: item.icon } : {}), ...('default' in item && item.default === null ? { noDefault: true as const } : {}) });
   }
   return topics;
 }

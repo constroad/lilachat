@@ -6,9 +6,19 @@
  */
 export const NOTICE_ICONS = ['attendance', 'tank', 'material', 'truck', 'weather', 'cash', 'document', 'alert'] as const;
 export type NoticeIcon = (typeof NOTICE_ICONS)[number];
-export type NoticeTopic = { key: string; name: string; description?: string; icon?: NoticeIcon };
+export type NoticeTopic = { key: string; name: string; description?: string; icon?: NoticeIcon; /** `default: null` in the manifest: it starts in «Sin canal» and is never posted until an admin picks one (agentes, 24/10: payroll carries amounts). */ noDefault?: true };
 /** A topic with where its notices land; null = «Sin canal», they are not posted. */
 export type TopicRoute = NoticeTopic & { channel: { id: string; name: string } | null };
+
+/**
+ * The line under a topic declared with `default: null` (agentes, 24/10): it
+ * waits for a private channel, and a public one gets a warning.
+ */
+export function topicPrivacyHint(topic: Pick<NoticeTopic, 'noDefault'>, channel: { private: boolean } | null): string | null {
+  if (!topic.noDefault) return null;
+  if (!channel) return 'Datos sensibles: elige un canal privado';
+  return channel.private ? null : 'Es un canal abierto: mejor uno privado';
+}
 
 export const NOTICE_TOPIC_LIMITS = { topics: 10, key: 32, name: 40, description: 80 };
 export const TOPIC_KEY = /^[a-z][a-z0-9_-]*$/;

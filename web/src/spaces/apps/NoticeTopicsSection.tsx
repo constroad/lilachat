@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Banknote, Bell, CloudSun, Database, FileText, Hash, Package, TriangleAlert, Truck, UserCheck, type LucideIcon } from 'lucide-react';
 import type { NoticeIcon, TopicRoute } from '@lilachat/shared';
+import { topicPrivacyHint } from '@lilachat/shared';
 import { appTopics, saveAppTopics, testAppTopics, type AppTopics } from '../spacesApi';
 
 const ICONS: Record<NoticeIcon, LucideIcon> = { attendance: UserCheck, tank: Database, material: Package, truck: Truck, weather: CloudSun, cash: Banknote, document: FileText, alert: TriangleAlert };
@@ -62,12 +63,14 @@ export function NoticeTopicsSection(props: { jwt: string; spaceId: string; appId
         {state.topics.map((topic) => {
           const Icon = topic.icon ? ICONS[topic.icon] : Bell;
           const value = picked[topic.key] ?? channelOf(topic);
+          const hint = topicPrivacyHint(topic, state.channels.find((channel) => channel.id === value) ?? null);
           return (
             <div key={topic.key} data-testid={`tema-${topic.key}`} className="flex items-center gap-3 px-3 py-3">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-outline/15 bg-background text-on-surface-variant"><Icon size={18} /></span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[15px] font-semibold">{topic.name}</span>
                 {topic.description ? <span className="block truncate text-[13px] text-on-surface-variant">{topic.description}</span> : null}
+                {hint ? <span data-testid={`aviso-privado-${topic.key}`} className="block text-[13px] font-semibold text-warning">{hint}</span> : null}
               </span>
               {state.canEdit ? (
                 <select data-testid={`canal-tema-${topic.key}`} aria-label={`Canal de ${topic.name}`} value={value} onChange={(event) => setPicked((before) => ({ ...before, [topic.key]: event.target.value }))} className={`h-10 max-w-[44%] rounded-xl border bg-background px-2 text-[14px] ${value ? 'border-outline/25' : 'border-dashed border-outline/40 italic text-on-surface-variant'}`}>

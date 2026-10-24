@@ -35,8 +35,9 @@ async function stateOf(installation: Pick<Installation, '_id' | 'appId' | 'works
 
 function channelOfTopic(topic: NoticeTopic, chosen: Record<string, string | null>, channels: readonly Channel[]): Channel | null {
   if (chosen[topic.key] === null) return null;
-  // A channel deleted after it was picked falls back like a topic never touched.
-  return channels.find((one) => String(one._id) === chosen[topic.key]) ?? defaultOf(channels);
+  // A channel deleted after it was picked falls back like a topic never touched;
+  // a topic declared with `default: null` (amounts) waits in «Sin canal» until an admin picks.
+  return channels.find((one) => String(one._id) === chosen[topic.key]) ?? (topic.noDefault ? null : defaultOf(channels));
 }
 
 export async function topicRoutesOf(installation: Pick<Installation, '_id' | 'appId' | 'workspaceId'>): Promise<{ topics: TopicRoute[]; channels: { id: string; name: string; private: boolean }[] }> {
@@ -75,5 +76,7 @@ export async function channelOfPostedTopic(installation: Pick<Installation, '_id
   const topic = topics.find((one) => one.key === key);
   if (!topic) return fail(404, 'topic_not_found', `La app no declaró el tema «${key}» en su manifiesto.`);
   const channel = channelOfTopic(topic, chosen, channels);
-  return channel ? String(channel._id) : fail(409, 'topic_without_channel', `El tema «${topic.name}» no tiene canal: el admin lo dejó sin canal.`);
+  if (channel) return String(channel._id);
+  const why = topic.noDefault && chosen[topic.key] === undefined ? 'espera a que un admin elija un canal privado' : 'el admin lo dejó sin canal';
+  return fail(409, 'topic_without_channel', `El tema «${topic.name}» no tiene canal: ${why}.`);
 }

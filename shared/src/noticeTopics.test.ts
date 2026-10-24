@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { validateAppManifest } from './botManifest.js';
-import { validateTopicChannels } from './noticeTopics.js';
+import { topicPrivacyHint, validateTopicChannels } from './noticeTopics.js';
 import { validateBotPost } from './bots.js';
 
 /** Notice topics (R160, design e-31): the app declares them, the space's admin picks a channel for each. */
@@ -28,6 +28,25 @@ describe('the topics an app declares in its manifest', () => {
     expect(validateAppManifest({ ...manifest, notice_topics: [{ key: 'Mal', name: 'x' }] }).ok).toBe(false);
     expect(validateAppManifest({ ...manifest, notice_topics: [{ key: 'caja', name: 'Caja' }, { key: 'caja', name: 'Otra' }] }).ok).toBe(false);
     expect(validateAppManifest({ ...manifest, notice_topics: Array.from({ length: 11 }, (_, i) => ({ key: `t${i}`, name: `T${i}` })) }).ok).toBe(false);
+  });
+});
+
+describe('a topic declared with `default: null` (agentes, 24/10: payroll carries amounts)', () => {
+  it('is marked to start in «Sin canal»; without `default`, or with another value, it is not', () => {
+    // Arrange
+    const topics = [{ key: 'planilla', name: 'Planilla', icon: 'cash', default: null }, { key: 'asistencia', name: 'Asistencia' }, { key: 'caja', name: 'Caja', default: 'general' }];
+    // Act
+    const result = validateAppManifest({ ...manifest, notice_topics: topics });
+    // Assert
+    expect(result.ok && result.manifest.noticeTopics).toEqual([{ key: 'planilla', name: 'Planilla', icon: 'cash', noDefault: true }, { key: 'asistencia', name: 'Asistencia' }, { key: 'caja', name: 'Caja' }]);
+  });
+
+  it('asks for a private channel while it has none, warns on a public one, and says nothing otherwise', () => {
+    expect(topicPrivacyHint({ noDefault: true }, null)).toBe('Datos sensibles: elige un canal privado');
+    expect(topicPrivacyHint({ noDefault: true }, { private: false })).toBe('Es un canal abierto: mejor uno privado');
+    expect(topicPrivacyHint({ noDefault: true }, { private: true })).toBeNull();
+    expect(topicPrivacyHint({}, null)).toBeNull();
+    expect(topicPrivacyHint({}, { private: false })).toBeNull();
   });
 });
 

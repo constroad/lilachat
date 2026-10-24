@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { Banknote, Bell, Check, ChevronDown, CloudSun, Database, FileText, Package, SlidersHorizontal, TriangleAlert, Truck, UserCheck, Zap, type LucideIcon } from 'lucide-react-native';
 import { itemKey, type AppItemRow, type ItemChannels, type NoticeIcon, type TopicRoute } from '@lilachat/shared';
+import { topicPrivacyHint } from '@lilachat/shared';
 import { Interruptor } from '../../ui/Interruptor';
 import { Modal } from '../../ui/Modal';
 import { Segmentado } from '../../ui/Segmentado';
@@ -150,12 +151,15 @@ export function NoticeTopicsSection(props: { jwt: string; spaceId: string; appId
       {state.topics.map((topic) => {
         const Icon = topic.icon ? ICONS[topic.icon] : Bell;
         const name = nameOf(channelOf(topic));
+        const chosenChannel = state.channels.find((channel) => channel.id === channelOf(topic)) ?? null;
+        const hint = topicPrivacyHint(topic, chosenChannel);
         return (
           <View key={topic.key} testID={`tema-${topic.key}`} className="mt-3 flex-row items-center gap-3 border-t border-outline/10 pt-3">
             <View className="h-10 w-10 items-center justify-center rounded-xl border border-outline/15 bg-background"><Icon size={18} color={colors['on-surface-variant']} /></View>
             <View className="min-w-0 flex-1">
               <Text className="text-[16px] font-semibold text-on-surface" numberOfLines={1}>{topic.name}</Text>
               {topic.description ? <Text className="text-[13px] text-on-surface-variant" numberOfLines={1}>{topic.description}</Text> : null}
+              {hint ? <Text testID={`aviso-privado-${topic.key}`} className="text-[13px] font-semibold text-warning">{hint}</Text> : null}
             </View>
             <Pressable testID={`canal-tema-${topic.key}`} disabled={!state.canEdit} onPress={() => setChoosing(topic)} className={`min-h-[40px] max-w-[45%] flex-row items-center gap-1 rounded-xl border px-2.5 ${name ? 'border-outline/25' : 'border-dashed border-outline/40'}`}>
               <Text className={`text-[14px] ${name ? 'text-on-surface' : 'italic text-on-surface-variant'}`} numberOfLines={1}>{name ? `# ${name}` : 'Sin canal'}</Text>

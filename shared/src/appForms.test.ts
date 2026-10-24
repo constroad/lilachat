@@ -145,7 +145,8 @@ describe('signing with the camera on and the place of now (José, 24/10)', () =>
   });
 
   it('a reading of seconds ago signs; an old one, a negative age or none is refused', () => {
-    expect(validateFormValues(fields, sent(10_000), { requireFresh: true })).toMatchObject({ ok: true, values: { ubicacion: { age: 10_000 } } });
+    // The app gets exactly its schema: `age` is checked here and never sent (agentes, 24/10).
+    expect(validateFormValues(fields, sent(10_000), { requireFresh: true })).toEqual({ ok: true, values: { accion: 'ingreso', foto: 'f1', ubicacion: { lat: -11.98, lng: -76.95, precision: 5 } } });
     expect(validateFormValues(fields, sent(FRESH_LOCATION_MS + 1), { requireFresh: true })).toEqual({ ok: false, errors: { ubicacion: 'Tu ubicación no es de ahora: vuelve a marcar.' } });
     expect(validateFormValues(fields, sent(-5), { requireFresh: true })).toMatchObject({ ok: false });
     expect(validateFormValues(fields, sent(), { requireFresh: true })).toEqual({ ok: false, errors: { ubicacion: 'Actualiza Lilachat: para marcar se lee tu ubicación de ahora.' } });

@@ -143,7 +143,9 @@ describe('an app answers a command with a form', () => {
     expect(done.body).toMatchObject({ outcome: 'ephemeral', response: { card: { title: 'Ingreso marcado' }, shareable: false } });
     const event = received[0]!;
     expect(event.type).toBe('form.submitted');
-    expect(event.data).toMatchObject({ form_id: 'registrar_marca', command_id: commandId, values: { accion: 'ingreso', ubicacion: here, actividades: 'Tolva 2' }, user: { name: 'Ana', phone: '51987654321' }, channel: { id: String(channel), kind: 'channel' } });
+    expect(event.data).toMatchObject({ form_id: 'registrar_marca', command_id: commandId, values: { accion: 'ingreso', ubicacion: { lat: -11.98, lng: -76.95, precision: 6 }, actividades: 'Tolva 2' }, user: { name: 'Ana', phone: '51987654321' }, channel: { id: String(channel), kind: 'channel' } });
+    // `age` is Lilachat's check: the app gets exactly its schema (agentes, 24/10).
+    expect((event.data.values as Record<string, Record<string, unknown>>).ubicacion).not.toHaveProperty('age');
     const photoUrl = new URL(String((event.data.values as Record<string, unknown>).foto));
     expect(photoUrl.pathname).toMatch(/^\/api\/bots\/files\/[\w-]+\.[\w-]+$/);
     const photo = await request(app).get(photoUrl.pathname).expect(200);

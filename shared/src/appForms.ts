@@ -165,7 +165,8 @@ function checkValue(field: FormField, value: unknown): { value: unknown } | { er
     case 'photo':
       return typeof value === 'string' && value.length > 0 ? { value } : { error: 'Falta la foto.' };
     case 'location':
-      return isGeoPoint(value) ? { value: { lat: value.lat, lng: value.lng, precision: value.precision, ...(typeof value.age === 'number' ? { age: value.age } : {}) } } : { error: 'La ubicación no es válida.' };
+      // Only what the app's schema has: `age` is Lilachat's own check and never travels (agentes, 24/10: strict schemas).
+      return isGeoPoint(value) ? { value: { lat: value.lat, lng: value.lng, precision: value.precision } } : { error: 'La ubicación no es válida.' };
   }
 }
 
@@ -184,10 +185,10 @@ export function liveSelfieFieldOf<F extends Pick<FormField, 'kind' | 'name'>>(fi
 }
 
 /** «Firmar» takes the camera on and the place of NOW, never one the phone kept (José, 24/10). */
-function staleLocation(fields: readonly FormField[], values: FormValues): Record<string, string> {
+function staleLocation(fields: readonly FormField[], input: FormValues, values: FormValues): Record<string, string> {
   if (!liveSelfieFieldOf(fields)) return {};
   return Object.fromEntries(fields.filter((field) => field.kind === 'location' && values[field.name] !== undefined).flatMap((field) => {
-    const age = (values[field.name] as GeoPoint).age;
+    const age = record(input[field.name]).age;
     if (typeof age !== 'number') return [[field.name, 'Actualiza Lilachat: para marcar se lee tu ubicación de ahora.']];
     return age < 0 || age > FRESH_LOCATION_MS ? [[field.name, 'Tu ubicación no es de ahora: vuelve a marcar.']] : [];
   }));
@@ -209,6 +210,6 @@ export function validateFormValues(fields: readonly FormField[], raw: unknown, o
     if ('error' in checked) errors[field.name] = checked.error;
     else values[field.name] = checked.value;
   }
-  if (options.requireFresh) Object.assign(errors, staleLocation(fields, values));
+  if (options.requireFresh) Object.assign(errors, staleLocation(fields, input, values));
   return Object.keys(errors).length ? { ok: false, errors } : { ok: true, values };
 }

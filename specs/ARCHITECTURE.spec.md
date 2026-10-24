@@ -4909,6 +4909,59 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 125. Canales editables, apps que se sacan de un canal y el formulario de Inframaq que no se trababa (23/10/2026, 0.1.161)
+
+Pedidos de José del 23/10: «cuando creo un canal no se refresca la lista»;
+«si creé un canal público, ¿cómo lo hago privado?»; con la captura del
+formulario real de Inframaq: «no veo el botón de marcar y hay actividades; si
+voy a marcar ingreso, ¿por qué pide actividades?». Además, lo que agentes
+encontró al probar de punta a punta.
+
+- **El canal nuevo aparece solo (92).** Al crear un canal o unirse a uno, el
+  server avisa `chat.changed` a la persona (`noticeChannelJoined`) y la lista
+  del espacio lo suma sin refrescar (web y APK; visto en el emulador).
+- **Ajustes del canal (93).** Nombre (normalizado y único; #general no se
+  renombra), descripción y «Canal privado», solo para admins. Pasar a
+  público suma las apps del espacio que no fueron sacadas. Queda el aviso
+  «X hizo privado/público el canal». Web: fila en el panel de info; APK:
+  tarjeta en Ajustes del detalle.
+- **«Quitar del canal» para una app (91).** En los miembros, un admin saca a
+  la app con su propia confirmación. Queda en `appsRemoved`: no vuelve sola al
+  pasar el canal a público y su API responde 403 en ese canal hasta que un
+  admin la agregue de nuevo (o la elija para un aviso por tema).
+- **El formulario largo ya no esconde el botón.** La hoja del APK limita el
+  alto y solo el contenido hace scroll; «Marcar» queda siempre abajo.
+  `x-visible-if` en el esquema (por ejemplo `actividades` solo con
+  `accion: salida`): lo oculto ni se muestra ni se valida. Las opciones sin
+  `x-labels` salen con mayúscula («Ingreso», no «ingreso»).
+- **Enlace al 1:1 con la app:** `/s/{space}/apps/{client_id}/chat` (el
+  «Pregúntalo en privado» de agentes) abre el chat con la app después del
+  ingreso. «Reinstalar» en el ⋮ del detalle de una app instalada.
+- **⚡ sin esqueletos eternos.** Si las apps cambian con la hoja abierta, se
+  vuelve a pedir la lista (antes quedaba en «cargando»).
+- **Gráfico de barras verticales.** Las columnas se reparten el ancho de la
+  tarjeta con un mínimo de 40 px (`barColumns`); con más (un mes), scroll
+  lateral. Antes eran 56 px fijos y la semana se cortaba en «Sá».
+- **La respuesta del socket no la tapa un «no pudo responder» tardío.** Si la
+  app contesta por `/respond` antes de que vuelva su propio webhook, el
+  resultado de la petición (pendiente o falla) ya no reemplaza la respuesta.
+  Era la línea roja bajo /asistencia que vio José a las 23:50Z.
+- **Cada corrida guarda por qué falló** (`BotCommandRun.failure`: «HTTP 500»,
+  o el campo inválido del cuerpo). Las que fallaron se guardan una semana; la
+  salud de la instalación se pisa con la entrega siguiente y no alcanzaba.
+- **El «1» que no bajaba en la lista del espacio.** Una recarga que salió
+  antes de mi acuse volvía con el conteo viejo. Ahora la lista recuerda mis
+  lecturas del socket y las aplica sobre lo que contesta el server
+  (`applyMyReads`, web y APK).
+
+**E2E en el emulador (APK, cuenta de José de paso en el espacio QA, server QA
+con la base de producción):** el ⚡ abre «Marcar asistencia» con el esquema de
+Inframaq. «Marcar» se ve sin scroll. Con «Ingreso» no hay Actividades y con
+«Salida» aparecen como opcionales. Unirse a #planta lo suma a la lista sin
+refrescar. QA Ana lo hace privado por la API: llega «QA Ana hizo privado el
+canal» y aparece el candado en la lista. /clima con 7 barras entra entero en
+la tarjeta.
+
 ## 124. Marcar asistencia desde el espacio: ⚡, formularios, avisos por tema y qué se habilita dónde (23/10/2026, 0.1.160)
 
 Pedidos de José del 23/10: «los empleados firmen asistencia, refrigerio y
@@ -11403,15 +11456,26 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
 90. **Adjuntos hacia la app** (vouchers, recibos, facturas, boletas):
     `message.created` con `files: [{ url, mime, name, size }]`, URL firmada de
     15 minutos en `https://lilachat.constroad.com/api/bots/files/<token>`. R160.
-91. **«Quitar del canal» para una app** (José, 23/10): hoy solo se saca como a
+91. ~~**«Quitar del canal» para una app**~~ — hecho en 0.1.161 (§125). (José, 23/10): hoy solo se saca como a
     un miembro cualquiera; el bot entra a todo canal público nuevo. R160.
-92. **Crear un canal no refresca la lista** (José, 23/10): al crearlo, la
+92. ~~**Crear un canal no refresca la lista**~~ — hecho en 0.1.161 (§125). (José, 23/10): al crearlo, la
     lista del espacio no lo muestra hasta refrescar a mano. La lista tiene que
     sumarlo al toque (web y APK).
-93. **Editar la configuración de un canal** (José, 23/10): un canal creado
+93. ~~**Editar la configuración de un canal**~~ — hecho en 0.1.161 (§125). (José, 23/10): un canal creado
     público no se puede pasar a privado; no hay dónde editar nombre,
     visibilidad ni descripción de un canal. Falta la pantalla de ajustes del
     canal para sus admins (web y APK).
+94. **Cámara frontal en el formulario de asistencia** (José, 23/10): al marcar
+    ingreso, la cámara frontal abre en vivo dentro del formulario. «Marcar»
+    toma la foto, le estampa fecha, hora y ubicación (marca de agua en el
+    píxel) y registra. APK y web. R162.
+95. **Vincular la cuenta del producto, como Slack con Bitbucket** (José lo
+    aprobó el 23/10, por agentes). Primero el vínculo automático: el teléfono
+    verificado y, si existe, el correo verificado (`user.email`, solo con
+    `users:read.email` en el manifiesto). Si no coincide, la app manda una
+    tarjeta efímera «Conecta tu cuenta» con `link` a agentes (constroad-auth).
+    En el detalle de la app: «Conectado como …» y «Desconectar», con el
+    contrato que pase agentes. R162.
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

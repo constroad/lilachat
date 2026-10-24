@@ -358,6 +358,12 @@ unidad de un número; `maxLength > 120` o `x-input: textarea` varias líneas;
   con esos errores.
 - `shareable: false` en cualquier respuesta: nadie la manda al canal (409 si
   se intenta).
+- `x-visible-if: { "campo": ["valor", …] }` en una propiedad (0.1.161): el
+  campo solo aparece, y solo se valida, cuando ese otro campo vale uno de esos
+  valores. Ejemplo: `actividades` con `{ "accion": ["salida"] }`. Lo oculto no
+  viaja en `values`.
+- Un `enum` sin `x-labels` se muestra con la primera letra en mayúscula
+  («Ingreso»); el valor que viaja es el del `enum`.
 
 **Acciones.** El manifiesto declara `shortcuts: [{ key, name, description? }]`
 (hasta 10; nombre ≤ 40, descripción ≤ 80). Un manifiesto sin ellas las borra.
@@ -408,6 +414,21 @@ es global y un comando no; los dos funcionan en todos los canales.
 - `GET/PUT /api/workspaces/:id/apps/:appId/items { items: { "command:clima":
   { global, channels } } }`, parcial; cambiar es de admins. Al guardar se
   avisa `workspace.apps.changed` y las listas se releen.
+
+## c-sexies) Lo que cambió en 0.1.161
+
+- **Sacar la app de un canal.** Un admin la quita desde los miembros. Desde
+  ahí la API responde 403 en ese canal (publicar, hilos), y la app no vuelve
+  sola si el canal pasa a público. Vuelve cuando un admin la agrega, o la elige
+  como canal de un tema de aviso.
+- **Enlaces de vuelta:** `/s/{space}/apps/{client_id}` abre el detalle de la
+  app; con `/chat` al final, su 1:1 (para «Pregúntalo en privado»).
+  Instalada, el directorio trae `installUrl` para «Reinstalar».
+- **Por qué falló un comando:** cada corrida guarda `failure { at, error }`
+  («HTTP 500», «timeout» no cuenta, o el campo inválido del cuerpo) y se
+  guarda una semana. Si la app contesta por `/respond` antes de que vuelva su
+  webhook, la persona ve esa respuesta: el resultado tardío del webhook no la
+  tapa.
 
 ## d) Lectura
 

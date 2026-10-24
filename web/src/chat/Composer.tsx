@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { formKeyOf, insertarEnTexto, type MencionEnMensaje } from '@lilachat/shared';
+import { insertarEnTexto, type MencionEnMensaje } from '@lilachat/shared';
+import { formKeyOf } from '@lilachat/shared';
 import type { WinkId } from '@lilachat/shared';
 
 /** Se baja recién al abrir el panel (W2): pesa, y la mayoría no lo abre. */

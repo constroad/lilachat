@@ -54,7 +54,8 @@ export async function directoryOf(spaceId: string, canInstall: boolean, loginHin
       const installed = byApp.get(String(app._id));
       if (installed) {
         const { one } = installed;
-        return { ...aboutOf(app), installation: { installationId: String(one._id), botUserId: String(one.botUserId), installedBy: names.get(String(one.installedBy)) ?? null, installedAt: one.createdAt.toISOString(), ...installed.activity } };
+        // An admin can install it again (Slack's «Reinstall»): the company or the permissions may have changed.
+        return { ...aboutOf(app), ...(canInstall && app.installUrl ? { installUrl: withSpace(app.installUrl, spaceId, loginHint) } : {}), installation: { installationId: String(one._id), botUserId: String(one.botUserId), installedBy: names.get(String(one.installedBy)) ?? null, installedAt: one.createdAt.toISOString(), ...installed.activity } };
       }
       return { ...aboutOf(app), ...(canInstall && app.installUrl ? { installUrl: withSpace(app.installUrl, spaceId, loginHint) } : {}) };
     })

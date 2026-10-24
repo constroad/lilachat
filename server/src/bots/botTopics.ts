@@ -58,10 +58,11 @@ export async function setTopicChannels(installation: Installation, raw: unknown)
   const picked = Object.values(valid.channels).filter((id): id is string => id !== null);
   const unknown = picked.find((id) => !channels.some((one) => String(one._id) === id));
   if (unknown) return fail(404, 'channel_not_found', 'Ese canal no existe en el espacio.');
-  const privateOnes = channels.filter((one) => one.channel?.visibility !== 'public' && picked.includes(String(one._id))).map((one) => one._id);
+  // A channel picked for a topic gets the app as a member: a private one, or one an admin had taken it out of (pending 91).
+  const pickedIds = channels.filter((one) => picked.includes(String(one._id))).map((one) => one._id);
   await Promise.all([
     Object.keys(valid.channels).length ? BotInstallationModel.updateOne({ _id: installation._id }, { $set: Object.fromEntries(Object.entries(valid.channels).map(([key, id]) => [`topicChannels.${key}`, id])) }) : null,
-    privateOnes.length ? ChatModel.updateMany({ _id: { $in: privateOnes }, 'members.userId': { $ne: installation.botUserId } }, { $push: { members: { userId: installation.botUserId, role: 'member', joinedAt: new Date() } } }) : null,
+    pickedIds.length ? ChatModel.updateMany({ _id: { $in: pickedIds }, 'members.userId': { $ne: installation.botUserId } }, { $push: { members: { userId: installation.botUserId, role: 'member', joinedAt: new Date() } }, $pull: { appsRemoved: installation.botUserId } }) : null,
   ]);
   return topicRoutesOf(installation);
 }

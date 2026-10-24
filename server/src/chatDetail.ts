@@ -4,6 +4,7 @@ import { ChatModel } from './chatModels.js';
 import { UserModel } from './models.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { WorkspaceMemberModel } from './workspaceModels.js';
+import { GENERAL_CHANNEL } from './workspaceGeneral.js';
 
 /**
  * A conversation's detail: who is in it and with what role (`GET
@@ -44,6 +45,8 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId) {
     funAllowed: chat.funAllowed === true,
     birthdaysOn: chat.birthdaysOn === true,
     encrypted: chat.encrypted === true,
+    // Pending 93: a channel's admins change who finds it; #general is always public.
+    ...(chat.channel ? { channel: { visibility: chat.channel.visibility, general: chat.name === GENERAL_CHANNEL } } : {}),
     // MY mute (it is per person): the detail's switch shows it as it is,
     // instead of always starting off.
     muted: chat.members.some((m) => String(m.userId) === String(userId) && m.muted === true),

@@ -172,9 +172,12 @@ describe('invoking', () => {
   it('a broken app says so to the asker; an unknown command, a chat that is not mine or outside a space is 404', async () => {
     const { appId } = await installWithCommands();
     answer = json(500, { oops: true });
-    expect((await invoke(channel, { app_id: appId, command: 'clima', text: '' }).expect(200)).body).toMatchObject({ outcome: 'failed', message: 'Inframaq no pudo responder.' });
+    const broken = (await invoke(channel, { app_id: appId, command: 'clima', text: '' }).expect(200)).body;
+    expect(broken).toMatchObject({ outcome: 'failed', message: 'Inframaq no pudo responder.' });
     // The health is written without awaiting: wait for this one before the next, or they land in any order.
     await waitUntil(async () => (await BotInstallationModel.findOne({}).lean())?.lastDelivery?.error === 'HTTP 500');
+    // The run keeps WHY, also after another delivery overwrites the installation's health (23/10).
+    await waitUntil(async () => (await BotCommandRunModel.findById(broken.commandId).lean())?.failure?.error === 'HTTP 500');
     answer = json(200, { card: { title: 'Tanques', blocks: [{ type: 'tank', items: [{ label: 'sin nombre', level: 0.5 }] }] } });
     expect((await invoke(channel, { app_id: appId, command: 'clima', text: '' }).expect(200)).body.outcome).toBe('failed');
     await waitUntil(async () => Boolean((await BotInstallationModel.findOne({}).lean())?.lastDelivery?.error?.includes('inválida')));

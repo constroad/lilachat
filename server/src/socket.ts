@@ -27,7 +27,7 @@ import { candidatosDeLaOferta, frameConAutor, guardarCandidato, hayOfertasPendie
 import { alContestar, alOfrecer, alTerminar, configurarCiclo } from './cicloDeLlamada.js';
 import { configurarEntrega } from './entregaPorAviso.js';
 import { configurarAvisoDeTarjeta } from './avisoDeTarjeta.js';
-import { configureMembersNotices, configureWorkspaceNotices } from './workspaceNotices.js';
+import { configureChannelNotices, configureMembersNotices, configureWorkspaceNotices } from './workspaceNotices.js';
 import { maybeAnswerMention } from './assistantReply.js';
 import { verifySession } from './sessions.js';
 import { esDispositivoVinculado } from '@lilachat/shared';
@@ -90,6 +90,7 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
   configureCommands({ notify: (userId, notice) => void io.to(userRoom(userId)).emit('command.response', notice) });
   configureWorkspaceNotices(emitSpacesChanged);
   configureMembersNotices(emitMembersChanged);
+  configureChannelNotices(avisarCambioDeChat);
   configurarCiclo({
     emitirA: (userId, evento, frame) => void io.to(userRoom(userId)).emit(evento, frame),
     publicar: (mensaje, members) => publicarMensaje(mensaje, members, { soloSiAlDia: true }),

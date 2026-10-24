@@ -1,6 +1,7 @@
 import { Types } from 'mongoose';
 import {
   decidirSalida,
+  normalizeChannelName,
   normalizarDescripcion,
   normalizarNombreDeGrupo,
   puedeAgregar,
@@ -8,10 +9,13 @@ import {
   puedeEditarInfo,
   puedeSacar,
   settingsForLevel,
+  type ChannelVisibility,
   type NotificationLevel,
 } from '@lilachat/shared';
 import { UserModel } from './models.js';
 import { ChatModel, ReceiptModel, type Chat } from './chatModels.js';
+import { addBotsToPublicChannel } from './bots/botInstall.js';
+import { GENERAL_CHANNEL } from './workspaceGeneral.js';
 
 /**
  * Quién está en un chat y cómo: sumar, sacar, cambiar el rol, salir, el nombre
@@ -54,7 +58,8 @@ export async function addMember(params: {
     // `$ne` en la condición y no solo `$addToSet`: así dos toques simultáneos no
     // pueden dejar a la misma persona dos veces en la lista.
     { _id: params.chatId, 'members.userId': { $ne: persona._id } },
-    { $push: { members: { userId: persona._id, role: 'member', joinedAt: new Date() } } },
+    // An app taken out by an admin (pending 91) comes back only like this: someone adds it.
+    { $push: { members: { userId: persona._id, role: 'member', joinedAt: new Date() } }, $pull: { appsRemoved: persona._id } },
     { returnDocument: 'after' }
   ).lean<Chat | null>();
 
@@ -141,9 +146,11 @@ export async function removeMember(params: {
   // La membresía va en la CONDICIÓN: si entre la lectura y el update la persona
   // ya salió sola, esto no modifica nada y se dice, en vez de contestar que se
   // hizo algo que no pasó.
+  // An app taken out stays out (pending 91): it does not rejoin a public channel on its next message.
+  const esApp = await UserModel.exists({ _id: victima, app: { $exists: true } });
   const resultado = await ChatModel.updateOne(
     { _id: params.chatId, 'members.userId': victima },
-    { $pull: { members: { userId: victima } } }
+    { $pull: { members: { userId: victima } }, ...(esApp ? { $addToSet: { appsRemoved: victima } } : {}) }
   );
   if (resultado.matchedCount === 0) {
     return { ok: false, motivo: 'Esa persona ya no está en el grupo.' };
@@ -221,7 +228,9 @@ export async function editarInfoDeGrupo(params: {
   nombre?: unknown;
   avatar?: { url: string; mediaId: string };
   descripcion?: unknown;
-}): Promise<{ ok: true; miembros: string[]; nombre?: string; descripcion?: string } | { ok: false; motivo: string }> {
+  /** A channel's `public` or `private` (pending 93): only its admins. */
+  visibility?: unknown;
+}): Promise<{ ok: true; miembros: string[]; nombre?: string; descripcion?: string; visibilidad?: ChannelVisibility } | { ok: false; motivo: string }> {
   const chat = await ChatModel.findOne({ _id: params.chatId }).lean<Chat | null>();
   if (!chat) return { ok: false, motivo: 'No encontramos esa conversación.' };
 
@@ -241,10 +250,19 @@ export async function editarInfoDeGrupo(params: {
 
   if (params.nombre !== undefined) {
     if (chat.propio) return { ok: false, motivo: 'Tu chat contigo siempre se llama «Tú».' };
-    const validado = normalizarNombreDeGrupo(params.nombre);
+    const validado = chat.channel ? await channelNameFor(chat, params.nombre) : normalizarNombreDeGrupo(params.nombre);
     if (!validado.ok) return { ok: false, motivo: validado.motivo };
     nombreNuevo = validado.nombre;
     cambios.name = validado.nombre;
+  }
+  let visibilidad: ChannelVisibility | undefined;
+  if (params.visibility !== undefined) {
+    const decided = channelVisibilityFor(chat, String(params.quien), params.visibility);
+    if (!decided.ok) return { ok: false, motivo: decided.motivo };
+    if (decided.visibility !== chat.channel!.visibility) {
+      visibilidad = decided.visibility;
+      cambios['channel.visibility'] = decided.visibility;
+    }
   }
   if (params.avatar) {
     cambios.avatarUrl = params.avatar.url;
@@ -265,7 +283,27 @@ export async function editarInfoDeGrupo(params: {
   }
 
   await ChatModel.updateOne({ _id: params.chatId }, { ...(Object.keys(cambios).length ? { $set: cambios } : {}), ...(Object.keys(sacar).length ? { $unset: sacar } : {}) });
-  return { ok: true, miembros: chat.members.map((m) => String(m.userId)), nombre: nombreNuevo, descripcion: descripcionNueva };
+  // A channel made public lets the space's apps in, as one created public does.
+  if (visibilidad === 'public' && chat.workspaceId) await addBotsToPublicChannel(chat.workspaceId, chat._id);
+  return { ok: true, miembros: chat.members.map((m) => String(m.userId)), nombre: nombreNuevo, descripcion: descripcionNueva, ...(visibilidad ? { visibilidad } : {}) };
+}
+
+/** A channel keeps a channel's name (#obra-norte), unique in its space; #general is everyone's and keeps its name. */
+async function channelNameFor(chat: Chat, raw: unknown): Promise<{ ok: true; nombre: string } | { ok: false; motivo: string }> {
+  const name = typeof raw === 'string' ? normalizeChannelName(raw) : null;
+  if (!name) return { ok: false, motivo: 'Ponle un nombre al canal (letras y números).' };
+  if (chat.name === GENERAL_CHANNEL && name !== GENERAL_CHANNEL) return { ok: false, motivo: 'El canal #general no se renombra: es el de todo el espacio.' };
+  if (await ChatModel.exists({ _id: { $ne: chat._id }, workspaceId: chat.workspaceId, 'channel.visibility': { $exists: true }, name })) return { ok: false, motivo: `Ya hay un canal #${name} en el espacio.` };
+  return { ok: true, nombre: name };
+}
+
+/** Who finds a channel: only its admins decide, and #general is always public. */
+function channelVisibilityFor(chat: Chat, quien: string, raw: unknown): { ok: true; visibility: ChannelVisibility } | { ok: false; motivo: string } {
+  if (!chat.channel) return { ok: false, motivo: 'Solo un canal es público o privado.' };
+  if (raw !== 'public' && raw !== 'private') return { ok: false, motivo: 'La visibilidad va como public o private.' };
+  if (!chat.members.some((member) => String(member.userId) === quien && member.role === 'admin')) return { ok: false, motivo: 'Solo los admins del canal cambian quién lo encuentra.' };
+  if (chat.name === GENERAL_CHANNEL && raw === 'private') return { ok: false, motivo: 'El canal #general es de todo el espacio: no se hace privado.' };
+  return { ok: true, visibility: raw };
 }
 
 /**

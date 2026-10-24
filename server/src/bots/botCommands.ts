@@ -21,6 +21,8 @@ export type Base = Pick<CommandOutcome, 'commandId' | 'appId' | 'appName'>;
 
 const COMMAND_TTL_MS = 15 * 60_000;
 const RESPONSES_PER_COMMAND = 5;
+const RUN_ERROR_MAX = 300;
+const FAILED_RUN_KEPT_MS = 7 * 24 * 3_600_000;
 const isId = (value: unknown): value is string => typeof value === 'string' && Types.ObjectId.isValid(value);
 const fail = (status: CommandError['status'], error: string, message: string): CommandError => ({ status, error, message });
 let answerTimeoutMs = 3_000;
@@ -102,6 +104,11 @@ export async function deliverResponse(installation: BotInstallation, run: Pick<B
   return { ...base, outcome: 'ephemeral', response: { ...response, responseType: 'ephemeral' } };
 }
 
+/** Kept on the run, not awaited: the installation's last delivery is overwritten by the next one. */
+export function recordRunFailure(commandId: string, error: string): void {
+  void BotCommandRunModel.updateOne({ _id: commandId }, { $set: { failure: { at: new Date(), error: error.slice(0, RUN_ERROR_MAX) } } }).catch((failure: unknown) => console.error('[bots] no se pudo guardar la falla del comando:', failure instanceof Error ? failure.message : failure));
+}
+
 /**
  * What the body of the webhook means for the asker, with Integraciones' health written once: a
  * timeout or an empty 200 is pending (not a failure), an error or a body that cannot be shown fails.
@@ -110,6 +117,7 @@ function judgeReply(reply: WebhookReply, command: string, installationId: Types.
   if (reply.error === 'timeout') return { ...base, outcome: 'pending' };
   const failed = (error: string): CommandOutcome => {
     recordLastDelivery(installationId, { ok: false, error });
+    recordRunFailure(base.commandId, error);
     return { ...base, outcome: 'failed', message: `${base.appName} no pudo responder.` };
   };
   if (reply.status === null || reply.status >= 400) return failed(reply.error ?? 'Sin respuesta');
@@ -149,7 +157,8 @@ async function invokeApp(userId: Types.ObjectId, scope: CommandScope, appId: unk
   if (!app || !installation) return notFound();
   const setting = itemSettingOf(installation.itemSettings, trigger.kind, name);
   if (!isOwnChat(place.chat, installation) && !enabledAt(setting, place.chat ? { chatId: String(place.chat._id) } : 'space')) return fail(404, 'not_enabled_here', 'Eso no está habilitado aquí: lo decide un admin del espacio.');
-  void BotCommandRunModel.deleteMany({ expiresAt: { $lt: new Date() } }).catch((error: unknown) => console.error('[bots] no se pudieron purgar comandos vencidos:', error instanceof Error ? error.message : error));
+  // A failed run stays a week: its `failure` is how a «no pudo responder» gets explained (23/10).
+  void BotCommandRunModel.deleteMany({ $or: [{ expiresAt: { $lt: new Date() }, failure: { $exists: false } }, { expiresAt: { $lt: new Date(Date.now() - FAILED_RUN_KEPT_MS) } }] }).catch((error: unknown) => console.error('[bots] no se pudieron purgar comandos vencidos:', error instanceof Error ? error.message : error));
   const { chat } = place;
   const [run, user] = await Promise.all([BotCommandRunModel.create({ installationId: installation._id, ...(chat ? { chatId: chat._id } : {}), workspaceId: place.workspaceId, userId, command: name, expiresAt: new Date(Date.now() + COMMAND_TTL_MS) }), personOf(userId)]);
   // Slack's global shortcuts carry no channel either.

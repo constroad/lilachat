@@ -322,12 +322,13 @@ export function buildChatRouter(uploader: MediaUploader = defaultMediaUploader()
 
   /**
    * Cambiar el nombre o la descripción del grupo (`{name?, descripcion?}`).
+   * A channel also takes `visibility` (pending 93).
    *
    * `PATCH` sobre el chat, no sobre una membresía: lo que cambia es el chat.
    */
   router.patch('/:chatId', async (req, res) => {
     const quien = new Types.ObjectId(req.session!.userId);
-    const r = await editarInfoDeGrupo({ chatId: req.params.chatId!, quien, nombre: req.body?.name, descripcion: req.body?.descripcion });
+    const r = await editarInfoDeGrupo({ chatId: req.params.chatId!, quien, nombre: req.body?.name, descripcion: req.body?.descripcion, visibility: req.body?.visibility });
     if (!r.ok) return res.status(400).json({ message: r.motivo });
 
     // El nombre se ve en la lista de TODOS, no solo de quien lo cambió.
@@ -335,7 +336,9 @@ export function buildChatRouter(uploader: MediaUploader = defaultMediaUploader()
     if (r.nombre !== undefined) await avisarEnElChat({ chatId: req.params.chatId!, quien, evento: 'nombre', valor: r.nombre });
     // La descripción (20/10): el aviso dice que cambió, no el texto (puede ser largo).
     if (r.descripcion !== undefined) await avisarEnElChat({ chatId: req.params.chatId!, quien, evento: 'descripcion', valor: r.descripcion ? undefined : 'borrada' });
-    return res.status(200).json({ ok: true, name: r.nombre, descripcion: r.descripcion });
+    // Pending 93: who can find the channel changed; its people see it in the chat.
+    if (r.visibilidad) await avisarEnElChat({ chatId: req.params.chatId!, quien, evento: 'visibilidad', valor: r.visibilidad === 'private' ? 'privado' : 'publico' });
+    return res.status(200).json({ ok: true, name: r.nombre, descripcion: r.descripcion, ...(r.visibilidad ? { visibility: r.visibilidad } : {}) });
   });
 
   /**

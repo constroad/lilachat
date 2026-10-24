@@ -5,9 +5,10 @@ import mongoose, { Types } from 'mongoose';
 import request from 'supertest';
 import { buildApp } from './app.js';
 import { InvitationModel, UserModel } from './models.js';
-import { ChatModel } from './chatModels.js';
+import { ChatModel, MessageModel } from './chatModels.js';
 import { WorkspaceMemberModel, WorkspaceModel } from './workspaceModels.js';
 import { claimPhoneInvites } from './workspaces.js';
+import { configureChannelNotices } from './workspaceNotices.js';
 import { signSession } from './sessions.js';
 
 /** E1 (spec §66): company spaces over the personal account. */
@@ -231,6 +232,44 @@ describe('channels (E2)', () => {
     await request(app).post(`/api/workspaces/${space.id}/channels/${boss.id}/join`).set('Authorization', jwt('beto')).expect(404);
     const after = await request(app).get(`/api/workspaces/${space.id}/channels`).set('Authorization', jwt('beto')).expect(200);
     expect(after.body.channels[0]).toMatchObject({ name: 'avisos', joined: true, members: 2 });
+  });
+
+  it('creating or joining a channel tells that person\'s devices, so the list shows it without refreshing (José, 23/10)', async () => {
+    // Arrange
+    const space = await spaceWithAna();
+    const told: [string, string][] = [];
+    configureChannelNotices((userId, chatId) => told.push([userId, chatId]));
+    const [ana, beto] = [String(users.ana), String(users.beto)];
+    // Act
+    const created = (await request(app).post(`/api/workspaces/${space.id}/channels`).set('Authorization', jwt('ana')).send({ name: 'tolva', visibility: 'public' }).expect(201)).body.channel;
+    await request(app).post(`/api/workspaces/${space.id}/channels/${created.id}/join`).set('Authorization', jwt('beto')).expect(200);
+    await request(app).post(`/api/workspaces/${space.id}/channels/${created.id}/join`).set('Authorization', jwt('beto')).expect(200);
+    // Assert: the second join was already in, nothing new to tell.
+    expect(told).toEqual([[ana, created.id], [beto, created.id]]);
+    configureChannelNotices(() => undefined);
+  });
+
+  it('a channel\'s admin makes it private or public and renames it as a channel; #general stays as it is (José, 23/10)', async () => {
+    // Arrange
+    const space = await spaceWithAna();
+    const work = (await request(app).post(`/api/workspaces/${space.id}/channels`).set('Authorization', jwt('jose')).send({ name: 'obra', visibility: 'public' }).expect(201)).body.channel;
+    await request(app).post(`/api/workspaces/${space.id}/channels`).set('Authorization', jwt('jose')).send({ name: 'flota', visibility: 'public' }).expect(201);
+    await request(app).post(`/api/workspaces/${space.id}/channels/${work.id}/join`).set('Authorization', jwt('ana')).expect(200);
+    const general = (await request(app).get(`/api/workspaces/${space.id}/channels`).set('Authorization', jwt('jose')).expect(200)).body.channels.find((c: { name: string }) => c.name === 'general');
+    const edit = (who: 'jose' | 'ana', chatId: string, body: Record<string, unknown>) => request(app).patch(`/api/chats/${chatId}`).set('Authorization', jwt(who)).send(body);
+    // Act + Assert: only its admins change who can find it.
+    expect((await edit('ana', work.id, { visibility: 'private' }).expect(400)).body.message).toMatch(/admin/i);
+    await edit('jose', work.id, { visibility: 'private' }).expect(200);
+    const seen = (await request(app).get(`/api/workspaces/${space.id}/channels`).set('Authorization', jwt('beto')).expect(200)).body.channels.map((c: { name: string }) => c.name);
+    expect(seen).not.toContain('obra');
+    expect(await MessageModel.countDocuments({ chatId: work.id, 'system.evento': 'visibilidad', 'system.valor': 'privado' })).toBe(1);
+    expect((await request(app).get(`/api/chats/${work.id}/detail`).set('Authorization', jwt('ana')).expect(200)).body.channel).toEqual({ visibility: 'private', general: false });
+    // A channel's name is a channel's name: lowercase with hyphens, and not one the space already has.
+    expect((await edit('jose', work.id, { name: 'Obra Norte' }).expect(200)).body.name).toBe('obra-norte');
+    expect((await edit('jose', work.id, { name: 'Flota' }).expect(400)).body.message).toMatch(/#flota/);
+    // #general is everyone's: never private, never renamed.
+    await edit('jose', general.id, { visibility: 'private' }).expect(400);
+    await edit('jose', general.id, { name: 'avisos' }).expect(400);
   });
 
   it('the same channel name twice in a space is refused; outsiders see nothing', async () => {

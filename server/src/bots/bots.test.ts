@@ -176,6 +176,20 @@ describe('the bot publishes (§b) and reads (§d)', () => {
     expect((await request(app).post('/api/bots/messages').set(asBot(token)).send({ channel_id: String(privateChannel), text: 'x', idempotency_key: 'k4' }).expect(403)).body.error).toBe('not_in_channel');
   });
 
+  it('an admin takes the app out of a channel and it does not come back on its own; adding it again lets it in (pending 91)', async () => {
+    // Arrange: the app posts once, so it is in the channel.
+    const { token, botUserId } = await install();
+    await request(app).post('/api/bots/messages').set(asBot(token)).send({ channel_id: String(channel), text: 'Hola', idempotency_key: 'r1' }).expect(201);
+    // Act: José (an admin of the channel) takes it out.
+    await request(app).delete(`/api/chats/${channel}/members/${botUserId}`).set(asJose).expect(200);
+    const refused = await request(app).post('/api/bots/messages').set(asBot(token)).send({ channel_id: String(channel), text: 'Otra vez', idempotency_key: 'r2' }).expect(403);
+    // Assert
+    expect(refused.body).toMatchObject({ error: 'not_in_channel', message: expect.stringMatching(/sacó/) });
+    expect((await ChatModel.findById(channel).lean())!.members.some((member) => String(member.userId) === botUserId)).toBe(false);
+    await request(app).post(`/api/chats/${channel}/members`).set(asJose).send({ userId: botUserId }).expect(200);
+    await request(app).post('/api/bots/messages').set(asBot(token)).send({ channel_id: String(channel), text: 'Volví', idempotency_key: 'r3' }).expect(201);
+  });
+
   it('a card keeps its actions; the bot closes it with PATCH', async () => {
     const { token } = await install();
     const card = { title: '¿Confirmas el pedido 1024?', status: { label: 'Por confirmar', tone: 'warn' }, fields: [{ label: 'm³', value: '12' }], actions: [{ id: 'confirm', label: 'Confirmar', style: 'primary', value: 'p-77' }] };
@@ -286,6 +300,11 @@ describe('the bot hears signed events (§c)', () => {
     const asOwner = (await request(app).get(`/api/workspaces/${spaceId}/app-directory`).set(asJose).expect(200)).body;
     expect(asOwner.apps[1].installUrl).toBe(`https://agentes.example.com/instalar?app=portal&space=${spaceId}&login_hint=902049935`);
     await request(app).get(`/api/workspaces/${spaceId}/app-directory`).set(asUser(() => beto)).expect(404);
+    // An installed app can be installed again by an admin (agentes, 23/10: like Slack's «Reinstall»).
+    await BotAppModel.updateOne({ clientId: 'lca_lila' }, { $set: { installUrl: 'https://agentes.example.com/instalar?app=lila' } });
+    const again = (await request(app).get(`/api/workspaces/${spaceId}/app-directory`).set(asJose).expect(200)).body.apps[0];
+    expect(again).toMatchObject({ name: 'Lila', installUrl: expect.stringContaining('app=lila'), installation: expect.any(Object) });
+    expect((await request(app).get(`/api/workspaces/${spaceId}/app-directory`).set(asAna).expect(200)).body.apps[0]).not.toHaveProperty('installUrl');
   });
 
   it('opening an app from «Apps» gives the same 1:1 with its bot every time; an app not installed is 404', async () => {

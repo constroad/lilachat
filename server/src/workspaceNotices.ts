@@ -36,3 +36,19 @@ export async function noticeMembersChanged(workspaceId: Types.ObjectId): Promise
   const ids = active.map((member) => String(member.userId));
   if (ids.length) notifyMembers(ids, String(workspaceId));
 }
+
+/**
+ * «This chat is yours now» to whoever created or joined a channel (José, 23/10:
+ * the new channel did not show until refreshing by hand). Their devices read
+ * the space's list again (`chat.changed`), the same as any other change.
+ */
+type NotifyChat = (userId: string, chatId: string) => void;
+let notifyChat: NotifyChat = () => undefined;
+
+export function configureChannelNotices(emit: NotifyChat): void {
+  notifyChat = emit;
+}
+
+export function noticeChannelJoined(userId: Types.ObjectId | string, chatId: Types.ObjectId | string): void {
+  notifyChat(String(userId), String(chatId));
+}

@@ -52,6 +52,8 @@ export type BotCommandRun = {
   answer?: { text?: string; card?: unknown; shareable?: false };
   /** The form the app asked for (R160): what was sent is checked against THIS, never against what the phone says. */
   form?: AppForm;
+  /** Why the asker saw «no pudo responder» (23/10): the installation's health is overwritten by the next delivery. */
+  failure?: { at: Date; error: string };
   expiresAt: Date;
   createdAt: Date;
 };
@@ -181,6 +183,7 @@ const commandRunSchema = new Schema<BotCommandRun>(
     responses: { type: Number, default: 0 },
     answer: { type: Schema.Types.Mixed },
     form: { type: Schema.Types.Mixed },
+    failure: { at: Date, error: String },
     expiresAt: { type: Date, required: true },
   },
   { timestamps: { createdAt: true, updatedAt: false } }

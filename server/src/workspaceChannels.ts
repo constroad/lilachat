@@ -4,6 +4,7 @@ import { normalizeChannelName, normalizarDescripcion, type ChannelVisibility } f
 import { ChatModel, type Chat } from './chatModels.js';
 import { actorIn, WorkspaceError } from './workspaces.js';
 import { ensureGeneralChannel } from './workspaceGeneral.js';
+import { noticeChannelJoined } from './workspaceNotices.js';
 
 /**
  * Channels of a company space (E2, spec §47): a group with `channel` set.
@@ -42,6 +43,7 @@ export async function createChannel(workspaceId: string, userId: Types.ObjectId,
     lastSeq: 0,
   });
   if (chat.channel?.visibility === 'public') await addBotsToPublicChannel(actor.workspaceId, chat._id);
+  noticeChannelJoined(userId, chat._id);
   return toClientChannel(chat.toObject(), userId);
 }
 
@@ -69,7 +71,10 @@ export async function joinChannel(workspaceId: string, userId: Types.ObjectId, c
     { $push: { members: { userId, role: 'member' } } },
     { returnDocument: 'after' }
   ).lean<Chat | null>();
-  if (chat) return toClientChannel(chat, userId);
+  if (chat) {
+    noticeChannelJoined(userId, chat._id);
+    return toClientChannel(chat, userId);
+  }
   const already = await ChatModel.findOne({ _id: chatId, workspaceId: actor.workspaceId, 'channel.visibility': { $exists: true }, 'members.userId': userId }).lean<Chat | null>();
   if (already) return toClientChannel(already, userId);
   throw new WorkspaceError(404, 'Ese canal no existe o es privado.');

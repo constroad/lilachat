@@ -37,9 +37,15 @@ export async function joinPublicChannels(workspaceId: Types.ObjectId, botUserId:
 
 /** A public channel just created: the space's installed bots are in it too. */
 export async function addBotsToPublicChannel(workspaceId: Types.ObjectId, chatId: Types.ObjectId): Promise<void> {
-  const bots = await BotInstallationModel.find({ workspaceId, revokedAt: { $exists: false } }).select('botUserId').lean();
-  if (bots.length === 0) return;
-  await ChatModel.updateOne({ _id: chatId }, { $push: { members: { $each: bots.map((bot) => ({ userId: bot.botUserId, role: 'member', joinedAt: new Date() })) } } });
+  const [bots, chat] = await Promise.all([
+    BotInstallationModel.find({ workspaceId, revokedAt: { $exists: false } }).select('botUserId').lean(),
+    ChatModel.findById(chatId).select('members.userId appsRemoved').lean(),
+  ]);
+  // Not twice (a channel made public may have them already), and not one an admin took out (pending 91).
+  const outside = new Set([...(chat?.members ?? []).map((member) => String(member.userId)), ...(chat?.appsRemoved ?? []).map(String)]);
+  const joining = bots.filter((bot) => !outside.has(String(bot.botUserId)));
+  if (joining.length === 0) return;
+  await ChatModel.updateOne({ _id: chatId }, { $push: { members: { $each: joining.map((bot) => ({ userId: bot.botUserId, role: 'member', joinedAt: new Date() })) } } });
 }
 
 export async function installApp(params: { app: BotApp; workspaceId: Types.ObjectId; installedBy: Types.ObjectId }): Promise<InstalledApp> {

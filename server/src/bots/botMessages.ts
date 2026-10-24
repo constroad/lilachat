@@ -41,9 +41,10 @@ export async function directWith(installation: Pick<BotInstallation, 'workspaceI
 /** A public channel lets the bot in on its first message; a private one or a group, only if it was added. */
 async function chatOfChannel(installation: Installation, channelId: string): Promise<Types.ObjectId | BotApiError> {
   if (!Types.ObjectId.isValid(channelId)) return fail(404, 'channel_not_found', 'Ese canal no existe en el espacio.');
-  const chat = await ChatModel.findOne({ _id: channelId, workspaceId: installation.workspaceId, kind: 'group' }).select('_id channel members.userId').lean<Chat | null>();
+  const chat = await ChatModel.findOne({ _id: channelId, workspaceId: installation.workspaceId, kind: 'group' }).select('_id channel members.userId appsRemoved').lean<Chat | null>();
   if (!chat) return fail(404, 'channel_not_found', 'Ese canal no existe en el espacio.');
   if (chat.members.some((member) => String(member.userId) === String(installation.botUserId))) return chat._id;
+  if (chat.appsRemoved?.some((id) => String(id) === String(installation.botUserId))) return fail(403, 'not_in_channel', 'Un admin sacó la app de este canal: vuelve solo si un admin la agrega.');
   if (chat.channel?.visibility !== 'public') return fail(403, 'not_in_channel', 'El bot no está en ese canal privado o grupo: alguien tiene que agregarlo.');
   await ChatModel.updateOne({ _id: chat._id, 'members.userId': { $ne: installation.botUserId } }, { $push: { members: { userId: installation.botUserId, role: 'member', joinedAt: new Date() } } });
   return chat._id;

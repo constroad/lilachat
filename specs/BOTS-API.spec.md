@@ -430,6 +430,13 @@ es global y un comando no; los dos funcionan en todos los canales.
   webhook, la persona ve esa respuesta: el resultado tardío del webhook no la
   tapa.
 
+- **Una app que se está desplegando** (502, 503, 504 o la conexión
+  rechazada): `command.invoked`, `shortcut.invoked` y `form.submitted` se
+  reintentan UNA vez a los ~1,2 s con el MISMO `X-Lilachat-Delivery`, dentro
+  de la misma espera de 3 s. La app deduplica por entrega. Si sigue caída, la
+  persona lee «<App> se está actualizando: vuelve a intentarlo en unos
+  segundos.». Un 500 sigue siendo «no pudo responder».
+
 ## d) Lectura
 
 - `GET /api/bots/me` → `{ installation_id, space: { id, name }, bot_user_id }`.

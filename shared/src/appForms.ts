@@ -1,3 +1,4 @@
+import { cutAtWord } from './textCut.js';
 /**
  * An app's form (R160, like Slack's modals; José, 23/10: mark attendance,
  * register material, measure a tank, from the space). Agentes builds it from
@@ -22,6 +23,8 @@ export type FormSchemaProperty = {
   'x-input'?: string;
   'x-unit'?: string;
   'x-labels'?: Record<string, string>;
+  /** The standard way to name options: `[{ "const": "<id>", "title": "Tanque 1" }]`, same as `enum` + `x-labels`. */
+  oneOf?: { const?: unknown; title?: string }[];
   /** Shown only when another field has one of these answers: `{ "accion": ["salida"] }` (R161). */
   'x-visible-if'?: Record<string, unknown[]>;
 };
@@ -39,7 +42,7 @@ export type FormField =
 export type FormValues = Record<string, unknown>;
 export type GeoPoint = { lat: number; lng: number; precision: number; /** How old the reading was when it was sent (ms, the phone's own clock on both ends): signing takes only a reading of now (José, 24/10). */ age?: number };
 
-export const FORM_LIMITS = { id: 64, title: 60, submitLabel: 24, intro: 240, fields: 20, label: 60, help: 160, options: 50, text: 2000 };
+export const FORM_LIMITS = { id: 64, title: 60, submitLabel: 40, intro: 240, fields: 20, label: 60, help: 160, options: 50, text: 2000 };
 /** Up to this many options fit side by side (design e-28); more go to a list. */
 const SEGMENTED_MAX = 4;
 /** A text allowed longer than this gets several lines. */
@@ -54,6 +57,23 @@ const line = (value: unknown, max: number): string => (typeof value === 'string'
 /** «nota_corta» → «Nota corta» when the schema gives no title. */
 const labelOf = (name: string) => name.replace(/[_-]+/g, ' ').replace(/^./, (first) => first.toUpperCase());
 
+/**
+ * The options of a choice, from `enum` (+ `x-labels`) or from `oneOf` with
+ * `const` and `title`. A repeated value is kept once: Portal's material list
+ * sent one id twice and the sheet drew two rows with the same key (E2E 24/10).
+ */
+function choiceOptions(property: FormSchemaProperty): { value: string; label: string }[] | null {
+  const labels = record(property['x-labels']);
+  const pairs = Array.isArray(property.enum)
+    ? property.enum.map((value) => ({ value: String(value), title: labels[String(value)] }))
+    : Array.isArray(property.oneOf) && property.oneOf.some((option) => record(option).const !== undefined)
+      ? property.oneOf.map(record).filter((option) => option.const !== undefined).map((option) => ({ value: String(option.const), title: option.title }))
+      : null;
+  if (!pairs) return null;
+  const unique = pairs.filter((pair, index) => pairs.findIndex((other) => other.value === pair.value) === index);
+  return unique.slice(0, FORM_LIMITS.options).map((pair) => ({ value: pair.value, label: line(pair.title, FORM_LIMITS.label) || labelOf(pair.value) }));
+}
+
 function fieldOf(name: string, property: FormSchemaProperty, required: boolean): FormField | string {
   const input = property['x-input'];
   if (input !== undefined && !INPUTS.includes(input)) return `El campo «${name}» pide x-input «${input}», que Lilachat no sabe dibujar.`;
@@ -61,9 +81,8 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
   const base: Base = { name, label: line(property.title, FORM_LIMITS.label) || labelOf(name), ...(property.description ? { help: line(property.description, FORM_LIMITS.help) } : {}), required, ...(visibleIf ? { visibleIf } : {}) };
   if (input === 'photo') return { ...base, kind: 'photo' };
   if (input === 'location') return { ...base, kind: 'location' };
-  if (Array.isArray(property.enum)) {
-    const labels = record(property['x-labels']);
-    const options = property.enum.slice(0, FORM_LIMITS.options).map((value) => String(value)).map((value) => ({ value, label: line(labels[value], FORM_LIMITS.label) || labelOf(value) }));
+  const options = choiceOptions(property);
+  if (options) {
     const initial = options.some((option) => option.value === String(property.default)) ? { initial: String(property.default) } : {};
     return { ...base, ...initial, kind: 'choice', options, segmented: options.length <= SEGMENTED_MAX };
   }
@@ -118,7 +137,7 @@ export function validateFormSpec(raw: unknown): { ok: true; form: AppForm } | { 
   const body = record(raw);
   const id = typeof body.id === 'string' ? body.id : '';
   if (!FORM_ID.test(id) || id.length > FORM_LIMITS.id) return { ok: false, message: '«form.id» va en minúsculas (a-z, 0-9, _ o -).' };
-  const title = line(body.title, FORM_LIMITS.title);
+  const title = cutAtWord(line(body.title, FORM_LIMITS.text), FORM_LIMITS.title);
   if (!title) return { ok: false, message: 'Falta «form.title».' };
   const schema = record(body.schema) as FormSchema;
   const properties = record(schema.properties) as Record<string, FormSchemaProperty>;
@@ -126,7 +145,8 @@ export function validateFormSpec(raw: unknown): { ok: true; form: AppForm } | { 
   if (Object.keys(properties).length > FORM_LIMITS.fields) return { ok: false, message: `Un formulario lleva hasta ${FORM_LIMITS.fields} campos.` };
   const required = Array.isArray(schema.required) ? schema.required.filter((name): name is string => typeof name === 'string' && name in properties) : [];
   const intro = line(schema.description, FORM_LIMITS.intro);
-  const form: AppForm = { id, title, ...(line(body.submit_label, FORM_LIMITS.submitLabel) ? { submitLabel: line(body.submit_label, FORM_LIMITS.submitLabel) } : {}), ...(intro ? { intro } : {}), schema: { type: 'object', properties, required } };
+  const submitLabel = cutAtWord(line(body.submit_label, FORM_LIMITS.text), FORM_LIMITS.submitLabel);
+  const form: AppForm = { id, title, ...(submitLabel ? { submitLabel } : {}), ...(intro ? { intro } : {}), schema: { type: 'object', properties, required } };
   for (const [name, property] of Object.entries(properties)) {
     const field = fieldOf(name, record(property) as FormSchemaProperty, false);
     if (typeof field === 'string') return { ok: false, message: field };

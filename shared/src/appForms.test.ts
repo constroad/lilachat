@@ -156,3 +156,26 @@ describe('signing with the camera on and the place of now (José, 24/10)', () =>
     expect(validateFormValues(fields, sent()).ok).toBe(true);
   });
 });
+
+describe('Portal\'s tank and material lists (E2E 24/10: ids on screen, a repeated id, a cut button)', () => {
+  it('names options from oneOf const/title, keeps a repeated value once, and cuts the button at a whole word', () => {
+    // Arrange
+    const form = {
+      id: 'registrar_movimiento_material',
+      title: 'Registrar un movimiento de material',
+      submit_label: 'Registrar un movimiento de material en la planta',
+      schema: { type: 'object', properties: {
+        material: { type: 'string', oneOf: [{ const: '857dd79f06bed055e71a8579', title: 'Arena gruesa' }, { const: '857dd79f06bed055e71a8579', title: 'Arena gruesa' }, { const: '69f0e162bd9a0af2ba5b28e2', title: 'Piedra chancada' }] },
+        tanque: { type: 'string', enum: ['a1', 'a1', 'b2'] },
+      }, required: ['material'] },
+    };
+    // Act
+    const spec = validateFormSpec(form);
+    const [material, tanque] = formFields(spec.ok ? spec.form : form);
+    // Assert
+    expect(spec.ok && spec.form.submitLabel).toBe('Registrar un movimiento de material en…');
+    expect(material).toMatchObject({ kind: 'choice', options: [{ value: '857dd79f06bed055e71a8579', label: 'Arena gruesa' }, { value: '69f0e162bd9a0af2ba5b28e2', label: 'Piedra chancada' }] });
+    expect(tanque).toMatchObject({ options: [{ value: 'a1', label: 'A1' }, { value: 'b2', label: 'B2' }] });
+    expect(validateFormValues(formFields(form), { material: '69f0e162bd9a0af2ba5b28e2' })).toEqual({ ok: true, values: { material: '69f0e162bd9a0af2ba5b28e2' } });
+  });
+});

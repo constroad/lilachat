@@ -22,7 +22,8 @@ describe('useChatCommands (23/10: a fast «/clima» + Enter went to the channel 
     expect(await outcome).toBe(true);
     expect(spaceCommands).toHaveBeenCalledTimes(1);
     expect(runCommand).toHaveBeenCalledWith('jwt', 'ch1', { appId: 'a1', command: 'clima', text: 'lurín' });
-    expect(await result.current.runIfCommand('/otra')).toBe('not-command');
+    // A command no app has is not sent as text: it says so (pending 102).
+    expect(await result.current.runIfCommand('/otra')).toBe(true);
     expect(await result.current.runIfCommand('hola')).toBe('not-command');
   });
 });

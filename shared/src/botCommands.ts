@@ -114,6 +114,19 @@ export function commandOf(groups: readonly CommandGroup[], input: string): { app
   return parsed && group ? { appId: group.appId, ...parsed } : null;
 }
 
+const SUGGESTED_COMMANDS = 4;
+
+/**
+ * A «/kardex» no app of this chat has (pending 102, E2E 23/10: it went to the
+ * chat as text): it is not sent, and the person reads which ones there are.
+ */
+export function unknownCommandMessage(command: string, groups: readonly CommandGroup[]): string {
+  const offered = [...new Set(groups.flatMap((group) => group.commands.map((entry) => `/${entry.command}`)))];
+  if (!offered.length) return `/${command} no es un comando de este chat: aquí ninguna app tiene comandos.`;
+  const shown = offered.slice(0, SUGGESTED_COMMANDS).join(', ');
+  return `/${command} no es un comando de este chat. Prueba ${shown}${offered.length > SUGGESTED_COMMANDS ? '…' : '.'}`;
+}
+
 /** While the name is being typed («/cl»), the part to suggest for; null once there is a space or no slash. */
 export function slashQuery(input: string): string | null {
   const match = /^\/([a-zA-Z0-9_-]*)$/.exec(input);
@@ -168,6 +181,10 @@ export type EphemeralAnswer = {
   message?: string;
   /** What the app refused in the sent form (by `/respond`), shown under each field when it opens again. */
   errors?: Record<string, string>;
+  /** The form was sent and the app answers later: its sheet stays open with «Enviando…». */
+  waiting?: true;
+  /** The app's logo (pending 101): its answers and forms show it instead of the generic robot. */
+  avatarUrl?: string;
 };
 export const EPHEMERAL_KEPT = 3;
 
@@ -195,10 +212,13 @@ export function replaceAnswer(list: readonly EphemeralAnswer[], placeholderId: s
   const settled = answer && (answer.state === 'pending' || answer.state === 'failed') && list.some((entry) => entry.commandId === answer.commandId && (entry.state === 'answered' || entry.state === 'form'));
   if (settled) return list.filter((entry) => entry.commandId !== placeholderId).map((entry) => (entry.commandId === answer.commandId && !entry.command ? { ...entry, command: answer.command, ...(answer.action ? { action: answer.action } : {}) } : entry));
   const index = list.findIndex((entry) => entry.commandId === placeholderId);
-  if (index < 0) return answer ? withAnswer(list, answer) : [...list];
-  const rest = list.filter((entry, at) => at !== index && entry.commandId !== answer?.commandId);
-  if (!answer) return rest;
-  return [...rest.slice(0, index), answer, ...rest.slice(index)].slice(-EPHEMERAL_KEPT);
+  // The logo the placeholder knew stays with the answer that replaces it.
+  const logo = list[index]?.avatarUrl;
+  const withLogo = answer && logo && !answer.avatarUrl ? { ...answer, avatarUrl: logo } : answer;
+  if (index < 0) return withLogo ? withAnswer(list, withLogo) : [...list];
+  const rest = list.filter((entry, at) => at !== index && entry.commandId !== withLogo?.commandId);
+  if (!withLogo) return rest;
+  return [...rest.slice(0, index), withLogo, ...rest.slice(index)].slice(-EPHEMERAL_KEPT);
 }
 
 /** A form's sheet is keyed by this: the next form of the same command (account code after destination) mounts fresh. */
@@ -208,7 +228,7 @@ export const formKeyOf = (answer: Pick<EphemeralAnswer, 'commandId' | 'response'
 export function withNotice(list: readonly EphemeralAnswer[], notice: CommandNotice): EphemeralAnswer[] {
   if (notice.posted) return list.filter((entry) => entry.commandId !== notice.commandId);
   const known = list.find((entry) => entry.commandId === notice.commandId);
-  return withAnswer(list, { commandId: notice.commandId, appName: notice.appName, command: known?.command ?? '', ...(known?.action ? { action: known.action } : {}), state: notice.response.form ? 'form' : 'answered', response: notice.response, ...(notice.errors ? { errors: notice.errors } : {}) });
+  return withAnswer(list, { commandId: notice.commandId, appName: notice.appName, command: known?.command ?? '', ...(known?.action ? { action: known.action } : {}), ...(known?.avatarUrl ? { avatarUrl: known.avatarUrl } : {}), state: notice.response.form ? 'form' : 'answered', response: notice.response, ...(notice.errors ? { errors: notice.errors } : {}) });
 }
 
 /** A command still «working…» after this long gave up (pending 103: agentes never answered and the card stayed forever). */
@@ -217,4 +237,17 @@ export const PENDING_GIVE_UP_MS = 45_000;
 /** The still-pending answer of that command becomes a failure the person can retry; anything else stays. */
 export function giveUpPending(list: readonly EphemeralAnswer[], commandId: string): EphemeralAnswer[] {
   return list.map((entry) => (entry.commandId === commandId && entry.state === 'pending' ? { ...entry, state: 'failed', message: `${entry.appName} no respondió a tiempo. Vuelve a intentarlo.` } : entry));
+}
+
+/** A sent form (a WRITE) still unanswered after this long is not retried: the person checks first (consensus 24/10). */
+export const WRITE_GIVE_UP_MS = 30_000;
+
+/** The sent form waits for the app: «Enviando…» on its button; old errors go away. */
+export function markWaiting(list: readonly EphemeralAnswer[], commandId: string): EphemeralAnswer[] {
+  return list.map((entry) => (entry.commandId === commandId ? { ...entry, waiting: true as const, errors: undefined } : entry));
+}
+
+/** Still waiting after `WRITE_GIVE_UP_MS`: never a silent retry of a write, the person checks before sending again. */
+export function giveUpWaiting(list: readonly EphemeralAnswer[], commandId: string): EphemeralAnswer[] {
+  return list.map((entry) => (entry.commandId === commandId && entry.state === 'form' && entry.waiting ? { commandId: entry.commandId, appName: entry.appName, command: entry.command, ...(entry.action ? { action: entry.action } : {}), ...(entry.avatarUrl ? { avatarUrl: entry.avatarUrl } : {}), state: 'failed' as const, message: `No se pudo confirmar «${entry.response?.form?.title ?? 'el formulario'}»: revisa antes de volver a enviarlo.` } : entry));
 }

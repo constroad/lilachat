@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { ArrowDownToLine, ArrowLeft, Check, Copy, Hash, Info, Lock, MessageSquare, MoreVertical, Terminal, X } from 'lucide-react-native';
-import { APP_PERMISSIONS, appActivityLine, appInstalledByLine, type BotCommand, type DirectoryApp } from '@lilachat/shared';
+import { APP_PERMISSIONS, appActivityLine, appInstalledByLine, uninstallWarning, type BotCommand, type DirectoryApp } from '@lilachat/shared';
 import { Modal } from '../../ui/Modal';
 import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
@@ -55,7 +55,7 @@ export function AppDetailScreen(props: { app: DirectoryApp; spaceName: string; c
   const installation = app.installation;
   const activity = installation ? appActivityLine(installation) : '';
   const confirmUninstall = () =>
-    Alert.alert(`¿Desinstalar ${app.name} de ${props.spaceName}?`, 'Deja de publicar y de recibir mensajes en este espacio.', [
+    Alert.alert(`¿Desinstalar ${app.name} de ${props.spaceName}?`, uninstallWarning(props.spaceName), [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Desinstalar', style: 'destructive', onPress: props.onUninstall },
     ]);

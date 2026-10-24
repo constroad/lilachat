@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ClipboardList, Send, X } from 'lucide-react';
 import type { EphemeralAnswer } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
+import { AppLogo } from '../../spaces/apps/AppLogo';
 import { BotCardView } from '../BotCardView';
 
 /**
@@ -16,7 +17,7 @@ export function EphemeralAnswers(props: { answers: readonly EphemeralAnswer[]; o
       {props.answers.map((answer) => (
         <div key={answer.commandId} data-testid={`efimera-${answer.state}`} className="rounded-xl border border-outline/15 bg-background px-3 pb-2.5 pt-2">
           <div className="flex items-center gap-2">
-            <Avatar name={answer.appName} size={22} bot />
+            {answer.avatarUrl ? <AppLogo avatarUrl={answer.avatarUrl} size={22} rounded="rounded-md" /> : <Avatar name={answer.appName} size={22} bot />}
             <p className="text-[14px] font-semibold text-on-surface">{answer.appName}</p>
             <p className="min-w-0 flex-1 truncate text-[12px] text-on-surface-variant">
               {answer.action ? `${answer.action} · ` : answer.command ? `/${answer.command} · ` : ''}Solo tú ves esto

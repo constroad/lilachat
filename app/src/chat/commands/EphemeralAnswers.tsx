@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, useWindowDimensions, Vi
 import { ClipboardList, Send, X } from 'lucide-react-native';
 import type { EphemeralAnswer } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
+import { AppLogo } from '../../spaces/apps/AppLogo';
 import { useColores } from '../../ui/tema';
 import { BotCardView } from '../BotCardView';
 
@@ -26,7 +27,7 @@ export function EphemeralAnswers(props: { answers: readonly EphemeralAnswer[]; o
       {props.answers.map((answer) => (
         <View key={answer.commandId} testID={`efimera-${answer.state}`} className="rounded-2xl border border-outline/15 bg-background px-3 pb-2.5 pt-2">
           <View className="flex-row items-center gap-2">
-            <Avatar nombre={answer.appName} tamano={APP_AVATAR} bot />
+            {answer.avatarUrl ? <AppLogo avatarUrl={answer.avatarUrl} size={APP_AVATAR} /> : <Avatar nombre={answer.appName} tamano={APP_AVATAR} bot />}
             <Text className="text-[14px] font-semibold text-on-surface" numberOfLines={1}>{answer.appName}</Text>
             <Text className="min-w-0 flex-1 text-[12px] text-on-surface-variant" numberOfLines={1}>
               {answer.action ? `${answer.action} · ` : answer.command ? `/${answer.command} · ` : ''}Solo tú ves esto

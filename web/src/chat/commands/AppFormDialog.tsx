@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { evidenceLine, formFields, initialValues, liveSelfieFieldOf, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
 import { Avatar } from '../../ui/Avatar';
+import { AppLogo } from '../../spaces/apps/AppLogo';
 import { ChoiceField, DateField, LocationField, NumberField, PhotoField, TextField } from './AppFormFields';
 import { LiveSelfie, type LiveSelfieHandle } from './LiveSelfie';
 import { useLiveSigning } from './useLiveSigning';
@@ -33,6 +34,13 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
   const locationName = fields.find((field) => field.kind === 'location')?.name;
   const selfie = useRef<LiveSelfieHandle>(null);
   const signing = useLiveSigning({ live, locationName, selfie, upload: props.onUpload });
+  // Sent and answered later (consensus 24/10): «Enviando…» until the answer closes it or the errors come back here.
+  const waiting = props.answer.waiting === true;
+  useEffect(() => {
+    if (!props.answer.errors) return;
+    setErrors(props.answer.errors);
+    setMessage(props.answer.errors._ ?? '');
+  }, [props.answer.errors]);
   const evidence = evidenceLine(fields);
   const set = (name: string) => (value: unknown) => {
     setValues((before) => ({ ...before, [name]: value }));
@@ -62,7 +70,7 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
       onClose={props.onClose}
       footer={
         <div>
-          <PrimaryButton testId="btn-enviar-formulario" disabled={sending} onClick={() => void send()}>{sending ? signing.phaseLabel : submitLabelOf(form, fields, values)}</PrimaryButton>
+          <PrimaryButton testId="btn-enviar-formulario" disabled={sending || waiting} onClick={() => void send()}>{waiting ? 'Enviando…' : sending ? signing.phaseLabel : submitLabelOf(form, fields, values)}</PrimaryButton>
           {evidence ? <p className="mt-2 text-center text-[12px] text-on-surface-variant">{live ? LIVE_FOOTER : evidence}</p> : null}
         </div>
       }
@@ -71,7 +79,7 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
         {props.answer.response?.text ? <p data-testid="formulario-texto" className="rounded-xl bg-primary/10 px-3 py-2.5 text-[14px]">{props.answer.response.text}</p> : null}
         {form.intro ? <p className="text-[14px] text-on-surface-variant">{form.intro}</p> : null}
         <p className="flex items-center gap-2 text-[13px] text-on-surface-variant">
-          <Avatar name={props.answer.appName} size={22} bot />
+          {props.answer.avatarUrl ? <AppLogo avatarUrl={props.answer.avatarUrl} size={22} rounded="rounded-md" /> : <Avatar name={props.answer.appName} size={22} bot />}
           {props.answer.appName} · hoy, {today.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>
         {evidence && !live ? (

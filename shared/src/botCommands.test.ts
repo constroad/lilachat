@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { answerOfOutcome, COMMAND_LIMITS, formKeyOf, giveUpPending, isAckBody, commandOf, matchCommands, replaceAnswer, sharedByLine, validateFormReply, parseSlashInput, slashQuery, validateBotCommands, validateCommandResponse, withAnswer, withNotice, type CommandGroup } from './botCommands.js';
+import { answerOfOutcome, COMMAND_LIMITS, formKeyOf, unknownCommandMessage, giveUpPending, giveUpWaiting, isAckBody, markWaiting, commandOf, matchCommands, replaceAnswer, sharedByLine, validateFormReply, parseSlashInput, slashQuery, validateBotCommands, validateCommandResponse, withAnswer, withNotice, type CommandGroup } from './botCommands.js';
 
 /** The slash commands contract, `specs/BOTS-API.spec.md` §c. */
 describe('command registry', () => {
@@ -145,10 +145,33 @@ describe('a «working…» card always ends (José, 23/10: «se queda congelado 
     expect(withNotice([pending], notice)).toEqual([expect.objectContaining({ commandId: 'c9', state: 'form', errors: { accion: 'Ya marcaste ingreso hoy.' } })]);
   });
 
+  it('a sent form waits with its sheet open; the app\'s answer or errors end it, and 30 s give up without retrying', () => {
+    // Arrange
+    const form = { id: 'registrar_asistencia', title: 'Marcar asistencia', schema: { type: 'object' } };
+    const open = { commandId: 'c9', appName: 'Inframaq', command: '', action: 'Marcar asistencia', state: 'form' as const, response: { responseType: 'form' as const, form }, errors: { accion: 'viejo' } };
+    // Act
+    const waiting = markWaiting([open], 'c9');
+    // Assert
+    expect(waiting[0]).toMatchObject({ waiting: true, errors: undefined });
+    expect(withNotice(waiting, { workspaceId: 's1', commandId: 'c9', appId: 'a1', appName: 'Inframaq', response: { responseType: 'ephemeral', text: 'Ingreso marcado · 07:12' } })[0]).toMatchObject({ state: 'answered' });
+    expect(withNotice(waiting, { workspaceId: 's1', commandId: 'c9', appId: 'a1', appName: 'Inframaq', response: { responseType: 'form', form }, errors: { accion: 'Ya tienes un turno abierto.' } })[0]).toMatchObject({ state: 'form', errors: { accion: 'Ya tienes un turno abierto.' } });
+    expect(withNotice(waiting, { workspaceId: 's1', commandId: 'c9', appId: 'a1', appName: 'Inframaq', response: { responseType: 'form', form }, errors: { accion: 'x' } })[0]?.waiting).toBeUndefined();
+    expect(giveUpWaiting(waiting, 'c9')).toEqual([{ commandId: 'c9', appName: 'Inframaq', command: '', action: 'Marcar asistencia', state: 'failed', message: 'No se pudo confirmar «Marcar asistencia»: revisa antes de volver a enviarlo.' }]);
+    expect(giveUpWaiting([open], 'c9')).toEqual([open]);
+  });
+
   it('after the wait it says the app did not answer; an answer already there is not touched', () => {
     expect(giveUpPending([pending], 'c9')).toEqual([{ ...pending, state: 'failed', message: 'Inframaq no respondió a tiempo. Vuelve a intentarlo.' }]);
     const answered = { ...pending, state: 'answered' as const, response: { responseType: 'ephemeral' as const, text: 'ok' } };
     expect(giveUpPending([answered], 'c9')).toEqual([answered]);
+  });
+});
+
+describe('a command no app of the chat has is not sent (pending 102)', () => {
+  it('says which ones there are, at most four', () => {
+    const groups = [{ appId: 'a1', appName: 'Inframaq', commands: ['clima', 'asistencia', 'tanques', 'mantenimiento', 'deudas'].map((command) => ({ command, description: '' })), shortcuts: [] }];
+    expect(unknownCommandMessage('kardex', groups)).toBe('/kardex no es un comando de este chat. Prueba /clima, /asistencia, /tanques, /mantenimiento…');
+    expect(unknownCommandMessage('kardex', [])).toBe('/kardex no es un comando de este chat: aquí ninguna app tiene comandos.');
   });
 });
 
@@ -166,6 +189,10 @@ describe('replaceAnswer (the «working…» card while the command leaves)', () 
     const answered = { commandId: 'c9', appName: 'Inframaq', command: 'clima', state: 'answered' as const, response: { responseType: 'ephemeral' as const, text: '24 °C' } };
     expect(replaceAnswer([sending, other], 'sending-1', answered).map((one) => one.commandId)).toEqual(['c9', 'c0']);
     expect(replaceAnswer([sending, other], 'sending-1', null).map((one) => one.commandId)).toEqual(['c0']);
+  });
+  it('the app\'s logo the placeholder knew stays with the answer (pending 101)', () => {
+    const answered = { commandId: 'c9', appName: 'Inframaq', command: 'clima', state: 'answered' as const, response: { responseType: 'ephemeral' as const, text: '24 °C' } };
+    expect(replaceAnswer([{ ...sending, avatarUrl: 'https://x/logo.svg' }], 'sending-1', answered)).toEqual([{ ...answered, avatarUrl: 'https://x/logo.svg' }]);
   });
   it('a placeholder already dismissed: the answer still arrives at the end', () => {
     expect(replaceAnswer([other], 'sending-1', { ...sending, commandId: 'c9' }).map((one) => one.commandId)).toEqual(['c0', 'c9']);

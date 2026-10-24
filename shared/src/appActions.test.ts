@@ -38,7 +38,8 @@ describe('what sending a form leaves on screen', () => {
     const answered: CommandOutcome = { ...base, outcome: 'ephemeral', response: { responseType: 'ephemeral', text: 'Ingreso marcado · 07:12', shareable: false } };
     expect(formSubmitOutcome({ ok: true, outcome: answered }, 'Marcar asistencia')).toEqual({ done: true, answer: { commandId: 'c1', appName: 'Inframaq', command: 'Marcar asistencia', state: 'answered', response: answered.response } });
     expect(formSubmitOutcome({ ok: true, outcome: { ...base, outcome: 'posted' } }, 'x')).toEqual({ done: true, answer: null });
-    expect(formSubmitOutcome({ ok: true, outcome: { ...base, outcome: 'pending' } }, 'x')).toMatchObject({ done: true, answer: { state: 'pending' } });
+    // Answered later by /respond: the form stays open, «Enviando…» (consensus with agentes and Inframaq, 24/10).
+    expect(formSubmitOutcome({ ok: true, outcome: { ...base, outcome: 'pending' } }, 'x')).toEqual({ done: false, errors: {}, waiting: true });
   });
 
   it('errors by field, a failed app or a refusal keep the form open with what to fix', () => {

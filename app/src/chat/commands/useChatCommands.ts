@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { commandOf, matchCommands, parseSlashInput, shortcutRows, slashQuery, type CommandGroup } from '@lilachat/shared';
+import { commandOf, matchCommands, parseSlashInput, shortcutRows, slashQuery, unknownCommandMessage, type CommandGroup } from '@lilachat/shared';
 import { getSocket } from '../socketClient';
 import { runCommand, shareCommandAnswer, spaceCommands } from './commandsApi';
 import { useAppAnswers } from './useAppAnswers';
@@ -61,10 +61,15 @@ export function useChatCommands(params: { jwt: string; chatId: string; workspace
       if (!workspaceId || !parseSlashInput(text)) return 'not-command';
       const known = await load();
       const found = known ? commandOf(known, text) : null;
+      // A command no app of this chat has is not sent as text (pending 102): it says which ones there are.
+      if (!found && known) {
+        appAnswers.say(parseSlashInput(text)!.command, unknownCommandMessage(parseSlashInput(text)!.command, known));
+        return true;
+      }
       if (!found) return 'not-command';
       setQuery(null);
-      const appName = known!.find((group) => group.appId === found.appId)?.appName ?? 'La app';
-      return appAnswers.track({ appName, command: found.command }, () => runCommand(jwt, chatId, found));
+      const group = known!.find((one) => one.appId === found.appId);
+      return appAnswers.track({ appName: group?.appName ?? 'La app', command: found.command, ...(group?.avatarUrl ? { avatarUrl: group.avatarUrl } : {}) }, () => runCommand(jwt, chatId, found));
     },
     [workspaceId, load, jwt, chatId, appAnswers]
   );

@@ -39,11 +39,13 @@ export function precisionLabel(point: GeoPoint): string {
 
 /** The server's answer to a sent form: `errors` are the 422's, `message` a refusal (expired, uninstalled). */
 export type FormSubmitReply = { ok: true; outcome: CommandOutcome } | { ok: false; errors?: Record<string, string>; message?: string };
-export type FormSubmitOutcome = { done: true; answer: EphemeralAnswer | null } | { done: false; errors: Record<string, string>; message?: string };
+/** `waiting`: the app answers later by `/respond`; the form stays open with «Enviando…» until then (consensus 24/10). */
+export type FormSubmitOutcome = { done: true; answer: EphemeralAnswer | null } | { done: false; errors: Record<string, string>; message?: string; waiting?: true };
 
 export function formSubmitOutcome(reply: FormSubmitReply, command: string): FormSubmitOutcome {
   if (!reply.ok) return { done: false, errors: reply.errors ?? {}, ...(reply.message ? { message: reply.message } : {}) };
   if (reply.outcome.outcome === 'failed') return { done: false, errors: {}, message: reply.outcome.message ?? `${reply.outcome.appName} no pudo responder.` };
+  if (reply.outcome.outcome === 'pending') return { done: false, errors: {}, waiting: true };
   return { done: true, answer: answerOfOutcome(reply.outcome, command) };
 }
 

@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Pressable, Sc
 import { X } from 'lucide-react-native';
 import { evidenceLine, formFields, initialValues, liveSelfieFieldOf, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
+import { AppLogo } from '../../spaces/apps/AppLogo';
 import { Modal } from '../../ui/Modal';
 import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
@@ -52,6 +53,13 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
   const locationName = fields.find((field) => field.kind === 'location')?.name;
   const selfie = useRef<LiveSelfieHandle>(null);
   const signing = useLiveSigning({ live, locationName, selfie, upload: props.onUpload });
+  // Sent and answered later (consensus 24/10): «Enviando…» until the answer closes it or the errors come back here.
+  const waiting = props.answer.waiting === true;
+  useEffect(() => {
+    if (!props.answer.errors) return;
+    setErrors(props.answer.errors);
+    setMessage(props.answer.errors._ ?? '');
+  }, [props.answer.errors]);
   const evidence = evidenceLine(fields);
   const sheetWidth = Math.min(width, SHEET_MAX_WIDTH);
   const prefilled = useMemo(() => initialValues(fields), [fields]);
@@ -90,7 +98,7 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
         <View testID={`formulario-${form.id}`} className="rounded-t-3xl bg-surface" style={{ maxHeight: (height - keyboard) * MAX_SCREEN_SHARE, paddingBottom: keyboard ? 8 : margins.pie + 8 }}>
           <View className="mt-3 h-1.5 w-11 self-center rounded-full bg-outline/30" />
           <View className="flex-row items-center gap-3 border-b border-outline/10 px-4 pb-3 pt-3">
-            <Avatar nombre={props.answer.appName} tamano={40} bot />
+            {props.answer.avatarUrl ? <AppLogo avatarUrl={props.answer.avatarUrl} size={40} /> : <Avatar nombre={props.answer.appName} tamano={40} bot />}
             <View className="min-w-0 flex-1">
               <Text className="text-[18px] font-bold text-on-surface" numberOfLines={1}>{form.title}</Text>
               <Text className="text-[13px] text-on-surface-variant" numberOfLines={1}>{`${props.answer.appName} · hoy, ${now.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })}`}</Text>
@@ -122,9 +130,9 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
             {message ? <Text className="text-[14px] text-error">{message}</Text> : null}
           </ScrollView>
           <View className="px-4">
-            <Pressable testID="btn-enviar-formulario" disabled={sending} onPress={() => void send()} className={`h-[72px] flex-row items-center justify-center gap-2 rounded-2xl bg-primary ${sending ? 'opacity-60' : ''}`}>
-              {sending ? <ActivityIndicator color={colors['on-primary']} /> : null}
-              <Text className="text-[18px] font-bold text-on-primary">{sending ? signing.phaseLabel : submitLabelOf(form, fields, values)}</Text>
+            <Pressable testID="btn-enviar-formulario" disabled={sending || waiting} onPress={() => void send()} className={`h-[72px] flex-row items-center justify-center gap-2 rounded-2xl bg-primary ${sending || waiting ? 'opacity-60' : ''}`}>
+              {sending || waiting ? <ActivityIndicator color={colors['on-primary']} /> : null}
+              <Text className="text-[18px] font-bold text-on-primary">{waiting ? 'Enviando…' : sending ? signing.phaseLabel : submitLabelOf(form, fields, values)}</Text>
             </Pressable>
             {evidence ? <Text className="mt-2 text-center text-[13px] text-on-surface-variant">{live ? LIVE_FOOTER : evidence}</Text> : null}
           </View>

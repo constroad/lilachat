@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appActivityLine, appChatLink, appInstalledByLine, appReturnFromLink, appReturnLink, directoryChips, filterDirectory, installedWithoutChat } from './appDirectory.js';
+import { appActivityLine, appChatLink, appInstalledByLine, appReturnFromLink, appReturnLink, directoryChips, filterDirectory, installedWithoutChat, uninstallWarning } from './appDirectory.js';
 import type { DirectoryApp } from './bots.js';
 
 const app = (name: string, extra: Partial<DirectoryApp> = {}): DirectoryApp => ({ appId: name.toLowerCase(), clientId: `lca_${name.toLowerCase()}`, name, features: [], commands: [], ...extra });
@@ -65,5 +65,11 @@ describe('back to Lilachat after installing (agentes\' return address)', () => {
     expect(appReturnFromLink('https://otro.com/s/6adbb0887ca6f18809904536/apps/lca_x1')).toBeNull();
     expect(appReturnFromLink('/s/no-es-un-id/apps/lca_x1')).toBeNull();
     expect(appReturnFromLink(null)).toBeNull();
+  });
+});
+
+describe('uninstallWarning', () => {
+  it('says what goes away and that the connected account stays', () => {
+    expect(uninstallWarning('Test')).toBe('Se van sus comandos, sus acciones del ⚡ y sus avisos en Test. Tu cuenta conectada sigue igual, y la puedes instalar de nuevo cuando quieras.');
   });
 });

@@ -73,3 +73,10 @@ export function appReturnFromLink(url: string | null | undefined): { spaceId: st
   const match = RETURN_LINK.exec(url ?? '');
   return match ? { spaceId: match[1]!.toLowerCase(), clientId: match[2]!, ...(match[3] ? { chat: true as const } : {}) } : null;
 }
+
+/**
+ * What uninstalling takes away (agentes, 23/10): the app's commands, its ⚡
+ * actions and its notices in this space. The person's connected account stays:
+ * it belongs to the person, for every app.
+ */
+export const uninstallWarning = (spaceName: string): string => `Se van sus comandos, sus acciones del ⚡ y sus avisos en ${spaceName}. Tu cuenta conectada sigue igual, y la puedes instalar de nuevo cuando quieras.`;

@@ -4909,6 +4909,33 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 128. La marca espera a la app sin trabas: consenso con agentes e Inframaq (24/10/2026, 0.1.164)
+
+José pidió «la mejor solución, no la más rápida» para cuando la marca tarda o
+se rechaza. Lo acordamos agentes, Inframaq y Lilachat:
+- **No tarda:** agentes llama a las apps por la red local. **No se pide lo
+  imposible:** al abrir, agentes manda el estado de la persona en el `text`
+  («Turno abierto desde 07:12»), el `enum` recortado y el `default`.
+- **Si igual tarda** (Lilachat, esta versión): la hoja queda abierta con
+  «Enviando…» (`waiting`) hasta que llega la respuesta por `/respond`, que la
+  cierra con la confirmación, o los `errors`, que aparecen en su campo. A los
+  30 s sin respuesta: «No se pudo confirmar «Marcar asistencia»: revisa antes
+  de volver a enviarlo.». Nunca hay un reintento automático de una escritura
+  (el único reintento es ante 502/503/504, con la misma entrega).
+- **Idempotencia:** el `command_id` es la clave de la escritura hasta Inframaq.
+  Reenviar el mismo formulario no marca dos veces.
+- **Códigos de Inframaq** en el rechazo (`turno_abierto`, `ya_marcada`, …):
+  con `campo`, el motivo va a `errors[campo]`.
+
+Además, en esta versión:
+- **Un `/comando` que no existe** (o está apagado en ese chat) ya no sale como
+  texto: «/kardex no es un comando de este chat. Prueba /clima, …» (pendiente
+  102).
+- **El logo de cada app** en sus respuestas y formularios, en lugar del robot
+  (pendiente 101).
+- **Desinstalar dice qué se pierde:** comandos, acciones del ⚡ y avisos; la
+  cuenta conectada sigue, porque es de la persona.
+
 ## 127. Firmar con la cámara prendida y la ubicación de ahora (24/10/2026, 0.1.163)
 
 Pedidos de José del 23 y 24/10: «estoy por marcar mi ingreso: debe abrir la
@@ -11599,7 +11626,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     producto. A Lilachat le toca usar ese logo también donde hoy va el robot
     genérico: la cabecera de «Solo tú ves esto», los mensajes y tarjetas de la
     app en los canales, y el ⚡.
-102. **Un «/comando» que la app no tiene no se manda como texto** (E2E del
+102. ~~**Un «/comando» que la app no tiene no se manda como texto**~~ — hecho en 0.1.164 (§128). (E2E del
     23/10: `/kardex` en el 1:1 con Inframaq salió como mensaje). Como Slack:
     «/kardex no es un comando de Inframaq», con los que sí tiene. Solo se
     manda como texto si empieza con «//» o con un espacio.

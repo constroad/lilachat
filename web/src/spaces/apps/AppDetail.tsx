@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, Copy, Hash, ListChecks, Lock, MessageSquare, MoreVertical, Terminal, X } from 'lucide-react';
-import { APP_PERMISSIONS, appActivityLine, appInstalledByLine, type DirectoryApp } from '@lilachat/shared';
+import { APP_PERMISSIONS, appActivityLine, appInstalledByLine, uninstallWarning, type DirectoryApp } from '@lilachat/shared';
 import { copiarTexto } from '../../chat/copiarTexto';
 import { AppBadge, AppLogo } from './AppLogo';
 
@@ -70,7 +70,8 @@ export function AppDetail(props: { app: DirectoryApp; spaceName: string; onMessa
                 <div className="absolute right-0 top-12 z-10 w-56 rounded-xl border border-outline/15 bg-surface p-1 shadow-lg">
                   {confirming ? (
                     <div className="p-2">
-                      <p className="text-[13px]">¿Desinstalar {app.name} de {props.spaceName}?</p>
+                      <p className="text-[13px] font-semibold">¿Desinstalar {app.name} de {props.spaceName}?</p>
+                      <p className="mt-1 text-[12px] text-on-surface-variant">{uninstallWarning(props.spaceName)}</p>
                       <div className="mt-2 flex gap-2">
                         <button type="button" data-testid="app-confirmar-desinstalar" onClick={() => { setMenu(false); props.onUninstall?.(); }} className="h-9 flex-1 rounded-lg bg-error text-[13px] font-semibold text-on-primary">Desinstalar</button>
                         <button type="button" aria-label="Cancelar" onClick={() => setConfirming(false)} className="grid h-9 w-9 place-items-center rounded-lg border border-outline/20"><X size={15} /></button>

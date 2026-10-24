@@ -10,6 +10,15 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.164',
+    items: [
+      'Al marcar, el formulario queda abierto con «Enviando…» hasta que la app confirme o te diga qué corregir.',
+      'Si una marca no se confirma en 30 segundos, te lo dice para que revises antes de volver a marcar.',
+      'Un comando que no existe en el chat ya no se manda como mensaje: te dice cuáles hay.',
+      'Las respuestas y los formularios de cada app llevan su logo, y desinstalar te dice qué se pierde.',
+    ],
+  },
+  {
     version: '0.1.163',
     items: [
       'Marcar asistencia en un toque: eliges el tipo y la selfie se toma con la cámara frontal en vivo.',

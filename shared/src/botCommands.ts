@@ -145,7 +145,7 @@ export type CommandOutcome = {
 
 /** A late answer that only the asker sees, over the socket (`command.response`). */
 /** `workspaceId` instead of `chatId`: it was used from the space's ⚡, outside any chat (José, 23/10). */
-export type CommandNotice = { chatId?: string; workspaceId?: string; commandId: string; appId: string; appName: string; response: CommandResponse; /** The late answer went to the channel as the app's message: the «working…» card just goes away. */ posted?: true };
+export type CommandNotice = { chatId?: string; workspaceId?: string; commandId: string; appId: string; appName: string; response: CommandResponse; /** The late answer went to the channel as the app's message: the «working…» card just goes away. */ posted?: true; /** The app refused the sent form late: it opens again with these, field by field. */ errors?: Record<string, string> };
 /** Where a command or an action was used: a chat of the space, or the space itself (its ⚡). */
 export type CommandScope = { chatId: string } | { workspaceId: string };
 /** The API path of a scope: `/api/chats/<id>` or `/api/workspaces/<id>`. */
@@ -166,6 +166,8 @@ export type EphemeralAnswer = {
   state: 'pending' | 'answered' | 'failed' | 'form';
   response?: CommandResponse;
   message?: string;
+  /** What the app refused in the sent form (by `/respond`), shown under each field when it opens again. */
+  errors?: Record<string, string>;
 };
 export const EPHEMERAL_KEPT = 3;
 
@@ -206,7 +208,7 @@ export const formKeyOf = (answer: Pick<EphemeralAnswer, 'commandId' | 'response'
 export function withNotice(list: readonly EphemeralAnswer[], notice: CommandNotice): EphemeralAnswer[] {
   if (notice.posted) return list.filter((entry) => entry.commandId !== notice.commandId);
   const known = list.find((entry) => entry.commandId === notice.commandId);
-  return withAnswer(list, { commandId: notice.commandId, appName: notice.appName, command: known?.command ?? '', ...(known?.action ? { action: known.action } : {}), state: notice.response.form ? 'form' : 'answered', response: notice.response });
+  return withAnswer(list, { commandId: notice.commandId, appName: notice.appName, command: known?.command ?? '', ...(known?.action ? { action: known.action } : {}), state: notice.response.form ? 'form' : 'answered', response: notice.response, ...(notice.errors ? { errors: notice.errors } : {}) });
 }
 
 /** A command still «working…» after this long gave up (pending 103: agentes never answered and the card stayed forever). */

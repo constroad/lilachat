@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { Types } from 'mongoose';
-import { canManageMembers, normalizePeruPhone, toInternationalPhone, type CommandScope } from '@lilachat/shared';
+import { canManageMembers, normalizePeruPhone, toInternationalPhone, type CommandScope, type GeoPoint } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Message } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { crearLimiteDeIntentos } from '../limiteDeIntentos.js';
@@ -81,11 +81,19 @@ export function buildBotUserRouter(): Router {
     if ('error' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
     res.json(outcome);
   }));
+  /** The live selfie asks for the stamp, with the place the form already has (pending 94). */
+  const stampOf = (body: unknown): { location?: GeoPoint } | undefined => {
+    const fields = (body ?? {}) as Record<string, unknown>;
+    if (fields.stamp !== '1') return undefined;
+    const [lat, lng, precision] = [fields.lat, fields.lng, fields.precision].map(Number);
+    const valid = [lat, lng, precision].every(Number.isFinite) && Math.abs(lat!) <= 90 && Math.abs(lng!) <= 180 && precision! >= 0;
+    return valid ? { location: { lat: lat!, lng: lng!, precision: Math.round(precision!) } } : {};
+  };
   // App forms (R160): the photo first, then the form; sending it is the person's confirmation.
   const photo = multer({ storage: multer.memoryStorage(), limits: { fileSize: FORM_PHOTO_MAX_BYTES } });
   router.post(['/chats/:chatId/commands/:commandId/files', '/workspaces/:id/commands/:commandId/files'], requireSession, photo.single('file'), asyncRoute(async (req, res) => {
     if (!req.file) return void res.status(400).json({ message: 'Falta la foto.' });
-    const outcome = await storeFormPhoto(req.session!.userId, scopeOf(req), req.params.commandId!, req.file);
+    const outcome = await storeFormPhoto(req.session!.userId, scopeOf(req), req.params.commandId!, req.file, stampOf(req.body));
     if ('error' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
     res.status(201).json(outcome);
   }));

@@ -139,6 +139,12 @@ describe('a «working…» card always ends (José, 23/10: «se queda congelado 
     const notice = { chatId: 'g1', commandId: 'c9', appId: 'a1', appName: 'Inframaq', response: { responseType: 'in_channel' as const, text: 'Ate: 24 °C' }, posted: true as const };
     expect(withNotice([pending], notice)).toEqual([]);
   });
+  it('a late refusal of the sent form opens it again with the errors under each field', () => {
+    const form = { id: 'registrar_marca', title: 'Marcar asistencia', schema: { type: 'object' } };
+    const notice = { workspaceId: 's1', commandId: 'c9', appId: 'a1', appName: 'Inframaq', response: { responseType: 'form' as const, form }, errors: { accion: 'Ya marcaste ingreso hoy.' } };
+    expect(withNotice([pending], notice)).toEqual([expect.objectContaining({ commandId: 'c9', state: 'form', errors: { accion: 'Ya marcaste ingreso hoy.' } })]);
+  });
+
   it('after the wait it says the app did not answer; an answer already there is not touched', () => {
     expect(giveUpPending([pending], 'c9')).toEqual([{ ...pending, state: 'failed', message: 'Inframaq no respondió a tiempo. Vuelve a intentarlo.' }]);
     const answered = { ...pending, state: 'answered' as const, response: { responseType: 'ephemeral' as const, text: 'ok' } };

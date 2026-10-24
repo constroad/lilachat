@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { COMMAND_LIMITS, enabledAt, isAckBody, itemSettingOf, validateCommandResponse, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope } from '@lilachat/shared';
+import { COMMAND_LIMITS, enabledAt, isAckBody, itemSettingOf, validateCommandResponse, validateFormReply, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope } from '@lilachat/shared';
 import { ChatModel, type Chat } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { callBotWebhook, isRestarting, recordLastDelivery, type WebhookReply } from './botEvents.js';
@@ -191,6 +191,8 @@ export function invokeShortcut(userId: Types.ObjectId, scope: CommandScope, inpu
 /** The late answer: once per call, five at most, within 15 minutes of the command. */
 export async function respondToCommand(installation: BotInstallation, commandId: string, raw: unknown): Promise<{ response_type: 'ephemeral' | 'in_channel' | 'form' } | CommandError> {
   if (!isId(commandId)) return fail(404, 'command_not_found', 'Ese comando no existe.');
+  const formReply = validateFormReply(raw);
+  if (formReply.ok && 'errors' in formReply) return respondWithErrors(installation, commandId, formReply.errors);
   const valid = validateCommandResponse(raw);
   if (!valid.ok) return fail(400, 'invalid_request', valid.message);
   const run = await BotCommandRunModel.findOneAndUpdate({ _id: commandId, installationId: installation._id, expiresAt: { $gt: new Date() }, responses: { $lt: RESPONSES_PER_COMMAND } }, { $inc: { responses: 1 } }, { returnDocument: 'after' }).lean();
@@ -212,6 +214,20 @@ export async function respondToCommand(installation: BotInstallation, commandId:
   // Posted in the channel: the asker's «working…» card must go away too (it stayed forever, 23/10).
   else notifyAsker(String(run.userId), { ...where, commandId, appId: base.appId, appName: base.appName, response: valid.response, posted: true });
   return { response_type: outcome.outcome === 'posted' ? 'in_channel' : outcome.outcome === 'form' ? 'form' : 'ephemeral' };
+}
+
+/**
+ * A late refusal of the sent form (agentes, 23/10: «Ya marcaste ingreso» came
+ * after the 1.5 s and got a 400): the asker's form opens again with the errors,
+ * while it is still open (sent and not yet answered).
+ */
+async function respondWithErrors(installation: BotInstallation, commandId: string, errors: Record<string, string>): Promise<{ response_type: 'form' } | CommandError> {
+  const run = await BotCommandRunModel.findOne({ _id: commandId, installationId: installation._id, expiresAt: { $gt: new Date() }, form: { $exists: true } }).lean();
+  if (!run?.form) return fail(409, 'form_closed', 'Ese formulario ya no está abierto: los errores van mientras la persona espera su respuesta.');
+  const app = await BotAppModel.findById(installation.appId).select('name').lean();
+  const where = run.chatId ? { chatId: String(run.chatId) } : { workspaceId: String(run.workspaceId ?? installation.workspaceId) };
+  notifyAsker(String(run.userId), { ...where, commandId, appId: String(installation.appId), appName: app?.name ?? 'App', response: { responseType: 'form', form: run.form }, errors });
+  return { response_type: 'form' };
 }
 
 /**

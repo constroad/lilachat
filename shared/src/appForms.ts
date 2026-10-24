@@ -37,7 +37,7 @@ export type FormField =
   | (Base & { kind: 'photo' })
   | (Base & { kind: 'location' });
 export type FormValues = Record<string, unknown>;
-export type GeoPoint = { lat: number; lng: number; precision: number };
+export type GeoPoint = { lat: number; lng: number; precision: number; /** How old the reading was when it was sent (ms, the phone's own clock on both ends): signing takes only a reading of now (José, 24/10). */ age?: number };
 
 export const FORM_LIMITS = { id: 64, title: 60, submitLabel: 24, intro: 240, fields: 20, label: 60, help: 160, options: 50, text: 2000 };
 /** Up to this many options fit side by side (design e-28); more go to a list. */
@@ -165,14 +165,36 @@ function checkValue(field: FormField, value: unknown): { value: unknown } | { er
     case 'photo':
       return typeof value === 'string' && value.length > 0 ? { value } : { error: 'Falta la foto.' };
     case 'location':
-      return isGeoPoint(value) ? { value: { lat: value.lat, lng: value.lng, precision: value.precision } } : { error: 'La ubicación no es válida.' };
+      return isGeoPoint(value) ? { value: { lat: value.lat, lng: value.lng, precision: value.precision, ...(typeof value.age === 'number' ? { age: value.age } : {}) } } : { error: 'La ubicación no es válida.' };
   }
 }
 
 const MISSING: Record<FormField['kind'], string> = { choice: 'Elige una opción.', text: 'Escribe algo aquí.', number: 'Escribe un número.', date: 'Elige una fecha.', photo: 'Falta la foto.', location: 'Falta tu ubicación.' };
 
-/** What the person sent: only the form's fields, cleaned, or a message per field. */
-export function validateFormValues(fields: readonly FormField[], raw: unknown): { ok: true; values: FormValues } | { ok: false; errors: Record<string, string> } {
+/** A signing's location older than this when sent is not «now». */
+export const FRESH_LOCATION_MS = 2 * 60_000;
+
+/**
+ * The photo of a form that also asks for the location is a live selfie
+ * (pending 94, design e-32): the camera opens inside the form and the button
+ * takes it, with a reading of where the person is right now.
+ */
+export function liveSelfieFieldOf<F extends Pick<FormField, 'kind' | 'name'>>(fields: readonly F[]): F | null {
+  return fields.some((field) => field.kind === 'location') ? (fields.find((field) => field.kind === 'photo') ?? null) : null;
+}
+
+/** «Firmar» takes the camera on and the place of NOW, never one the phone kept (José, 24/10). */
+function staleLocation(fields: readonly FormField[], values: FormValues): Record<string, string> {
+  if (!liveSelfieFieldOf(fields)) return {};
+  return Object.fromEntries(fields.filter((field) => field.kind === 'location' && values[field.name] !== undefined).flatMap((field) => {
+    const age = (values[field.name] as GeoPoint).age;
+    if (typeof age !== 'number') return [[field.name, 'Actualiza Lilachat: para marcar se lee tu ubicación de ahora.']];
+    return age < 0 || age > FRESH_LOCATION_MS ? [[field.name, 'Tu ubicación no es de ahora: vuelve a marcar.']] : [];
+  }));
+}
+
+/** What the person sent: only the form's fields, cleaned, or a message per field. With `requireFresh` (the server), a signing's location must be of now. */
+export function validateFormValues(fields: readonly FormField[], raw: unknown, options: { requireFresh?: boolean } = {}): { ok: true; values: FormValues } | { ok: false; errors: Record<string, string> } {
   const input = record(raw);
   const values: FormValues = {};
   const errors: Record<string, string> = {};
@@ -187,5 +209,6 @@ export function validateFormValues(fields: readonly FormField[], raw: unknown): 
     if ('error' in checked) errors[field.name] = checked.error;
     else values[field.name] = checked.value;
   }
+  if (options.requireFresh) Object.assign(errors, staleLocation(fields, values));
   return Object.keys(errors).length ? { ok: false, errors } : { ok: true, values };
 }

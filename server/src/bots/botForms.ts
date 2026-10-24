@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import mongoose, { Types, type Model } from 'mongoose';
-import { formFields, isAckBody, validateFormReply, validateFormValues, type CommandOutcome, type CommandScope, type FormValues } from '@lilachat/shared';
+import { formFields, isAckBody, photoStampLines, validateFormReply, validateFormValues, type CommandOutcome, type CommandScope, type FormValues, type GeoPoint } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
 import type { UploadOutcome } from '../mediaClient.js';
 import { readOwnMedia, ownMediaBase } from '../mediaDisk.js';
@@ -10,6 +10,7 @@ import { callBotWebhook, isRestarting, recordLastDelivery } from './botEvents.js
 import { commandAnswerTimeout, deliverResponse, recordRunFailure, restartingMessage, type Base, type ChatOfCommand, type CommandError } from './botCommands.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botModels.js';
 import { channelOf, personOf } from './botTriggers.js';
+import { stampPhoto } from './photoStamp.js';
 
 /**
  * App forms (R160, `specs/BOTS-API.spec.md` §c-ter; José, 23/10: mark
@@ -84,14 +85,26 @@ async function openRun(userId: Types.ObjectId, scope: CommandScope, commandId: s
   return run;
 }
 
-export async function storeFormPhoto(userId: Types.ObjectId, scope: CommandScope, commandId: string, file: { originalname: string; mimetype: string; size: number; buffer: Buffer }): Promise<{ fileId: string } | ReturnType<typeof fail>> {
+/** The live selfie (pending 94): the server burns ITS hour and the place into it; a photo it cannot read goes as it came. */
+async function stamped(file: { originalname: string; mimetype: string; buffer: Buffer }, location: GeoPoint | undefined): Promise<{ fileName: string; mimeType: string; bytes: Buffer }> {
+  try {
+    const bytes = await stampPhoto(file.buffer, photoStampLines({ at: new Date(), ...(location ? { location } : {}) }));
+    return { fileName: file.originalname.replace(/\.\w+$/, '') + '.jpg', mimeType: 'image/jpeg', bytes };
+  } catch (error) {
+    console.error('[bots] no se pudo sellar la foto, va sin sello:', error instanceof Error ? error.message : error);
+    return { fileName: file.originalname, mimeType: file.mimetype, bytes: file.buffer };
+  }
+}
+
+export async function storeFormPhoto(userId: Types.ObjectId, scope: CommandScope, commandId: string, file: { originalname: string; mimetype: string; size: number; buffer: Buffer }, stamp?: { location?: GeoPoint }): Promise<{ fileId: string } | ReturnType<typeof fail>> {
   const run = await openRun(userId, scope, commandId);
   if ('error' in run) return run;
   if (!FORM_PHOTO_TYPES.includes(file.mimetype) || file.size > FORM_PHOTO_MAX_BYTES) return fail(400, 'invalid_photo', 'La foto va en JPEG, PNG, WEBP o HEIC, hasta 10 MB.');
+  const photo = stamp ? await stamped(file, stamp.location) : { fileName: file.originalname, mimeType: file.mimetype, bytes: file.buffer };
   // The media folder is the chat's, or the space's for the ⚡.
-  const uploaded = await upload({ chatId: String(run.chatId ?? run.workspaceId), fileName: file.originalname, mimeType: file.mimetype, bytes: file.buffer });
+  const uploaded = await upload({ chatId: String(run.chatId ?? run.workspaceId), ...photo });
   if (!uploaded.ok) return fail(409, 'upload_failed', 'No se pudo guardar la foto. Inténtalo de nuevo.');
-  const stored = await FormFileModel.create({ runId: run._id, userId, url: uploaded.media.url, mime: file.mimetype, size: file.size });
+  const stored = await FormFileModel.create({ runId: run._id, userId, url: uploaded.media.url, mime: photo.mimeType, size: photo.bytes.length });
   return { fileId: String(stored._id) };
 }
 
@@ -115,7 +128,8 @@ export async function submitForm(userId: Types.ObjectId, scope: CommandScope, co
   const fields = formFields(run.form!);
   const input = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
   const values = await withSignedPhotos(run._id, fields.filter((field) => field.kind === 'photo').map((field) => field.name), input);
-  const checked = validateFormValues(fields, values);
+  // A signing takes the place of NOW (José, 24/10): a reading the phone kept is refused.
+  const checked = validateFormValues(fields, values, { requireFresh: true });
   if (!checked.ok) return { status: 422, errors: checked.errors };
   const [installation, chat, user] = await Promise.all([
     BotInstallationModel.findOne({ _id: run.installationId, revokedAt: { $exists: false } }).lean(),

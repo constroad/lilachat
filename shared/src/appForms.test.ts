@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formFields, initialValues, validateFormSpec, validateFormValues, visibleFields, type FormField } from './appForms.js';
+import { FRESH_LOCATION_MS, formFields, initialValues, liveSelfieFieldOf, validateFormSpec, validateFormValues, visibleFields, type FormField } from './appForms.js';
 
 /** Inframaq's real `registrar_marca` (agentes, 23/10), as the app sends it. */
 const attendanceForm = {
@@ -130,5 +130,28 @@ describe('connecting an account inside Lilachat (José, 23/10: «ingresar allí 
   it('a default that is not one of the options is not used', () => {
     const choice = { id: 'f', title: 'F', schema: { type: 'object', properties: { accion: { type: 'string', enum: ['ingreso', 'salida'], default: 'fiesta' } } } };
     expect(initialValues(formFields(choice))).toEqual({});
+  });
+});
+
+describe('signing with the camera on and the place of now (José, 24/10)', () => {
+  // Arrange: Inframaq's attendance form, with a location and a selfie.
+  const attendance = { id: 'registrar_asistencia', title: 'Marcar asistencia', schema: { type: 'object', properties: { accion: { type: 'string', enum: ['ingreso', 'salida'] }, ubicacion: { type: 'object', 'x-input': 'location' }, foto: { type: 'string', 'x-input': 'photo' } }, required: ['accion', 'ubicacion', 'foto'] } };
+  const fields = formFields(attendance);
+  const sent = (age?: number) => ({ accion: 'ingreso', foto: 'f1', ubicacion: { lat: -11.98, lng: -76.95, precision: 5, ...(age !== undefined ? { age } : {}) } });
+
+  it('the photo of a form with a location is a live selfie; a photo alone is not', () => {
+    expect(liveSelfieFieldOf(fields)?.name).toBe('foto');
+    expect(liveSelfieFieldOf(fields.filter((field) => field.kind !== 'location'))).toBeNull();
+  });
+
+  it('a reading of seconds ago signs; an old one, a negative age or none is refused', () => {
+    expect(validateFormValues(fields, sent(10_000), { requireFresh: true })).toMatchObject({ ok: true, values: { ubicacion: { age: 10_000 } } });
+    expect(validateFormValues(fields, sent(FRESH_LOCATION_MS + 1), { requireFresh: true })).toEqual({ ok: false, errors: { ubicacion: 'Tu ubicación no es de ahora: vuelve a marcar.' } });
+    expect(validateFormValues(fields, sent(-5), { requireFresh: true })).toMatchObject({ ok: false });
+    expect(validateFormValues(fields, sent(), { requireFresh: true })).toEqual({ ok: false, errors: { ubicacion: 'Actualiza Lilachat: para marcar se lee tu ubicación de ahora.' } });
+  });
+
+  it('without the check (the phone before it sends) only the fields are checked', () => {
+    expect(validateFormValues(fields, sent()).ok).toBe(true);
   });
 });

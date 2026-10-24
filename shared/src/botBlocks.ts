@@ -9,7 +9,7 @@ import type { CardTone } from './bots.js';
  */
 export type ChartKind = 'bar-h' | 'bar-v' | 'line';
 export type ChartPoint = { label: string; value: number; display?: string; note?: string; tone: CardTone };
-export type TankItem = { name: string; level: number; min?: number; value: string; sub?: string; delta?: string; tone: CardTone };
+export type TankItem = { name: string; level: number; min?: number; value: string; sub?: string; delta?: string; /** The verdict in words («Saludable», «Stock medio», «Bajo»), colored by `tone` (design r155). */ status?: string; tone: CardTone };
 export type BotBlock =
   | { type: 'metric'; value: string; unit?: string; label?: string; tone: CardTone }
   | { type: 'chips'; items: { label: string; sub?: string; tone: CardTone }[] }
@@ -55,7 +55,7 @@ function chartBlock(raw: Record<string, unknown>): Result<BotBlock> {
 function tankBlock(raw: Record<string, unknown>): Result<BotBlock> {
   const items: TankItem[] = list(raw.items, BLOCK_LIMITS.tanks).map((item) => {
     const tank = record(item);
-    return { name: text(tank.name, BLOCK_LIMITS.label), level: clamp01(tank.level), ...(tank.min !== undefined ? { min: clamp01(tank.min) } : {}), value: text(tank.value, BLOCK_LIMITS.short), ...withText('sub', tank.sub, BLOCK_LIMITS.label), ...withText('delta', tank.delta, BLOCK_LIMITS.short), tone: tone(tank.tone) };
+    return { name: text(tank.name, BLOCK_LIMITS.label), level: clamp01(tank.level), ...(tank.min !== undefined ? { min: clamp01(tank.min) } : {}), value: text(tank.value, BLOCK_LIMITS.short), ...withText('sub', tank.sub, BLOCK_LIMITS.label), ...withText('delta', tank.delta, BLOCK_LIMITS.short), ...withText('status', tank.status, BLOCK_LIMITS.short), tone: tone(tank.tone) };
   }).filter((tank) => tank.name);
   return items.length ? { ok: true, value: { type: 'tank', items } } : { ok: false, message: 'El tanque necesita nombre.' };
 }
@@ -138,3 +138,6 @@ export function tankFill(level: number, height: number): { y: number; height: nu
   const filled = Math.round(Math.min(1, Math.max(0, level)) * height);
   return { y: height - filled, height: filled };
 }
+
+/** The fill of a tank as the design writes it next to the level: «80 %». */
+export const tankPercent = (level: number): string => `${Math.round(clamp01(level) * 100)} %`;

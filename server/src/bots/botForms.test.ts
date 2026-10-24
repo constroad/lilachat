@@ -1,3 +1,4 @@
+import sharp from 'sharp';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import type { CommandNotice } from '@lilachat/shared';
@@ -115,7 +116,8 @@ async function openForm(): Promise<string> {
 }
 const uploadPhoto = (commandId: string, as = asAna) => request(app).post(`/api/chats/${channel}/commands/${commandId}/files`).set(as).attach('file', JPEG, { filename: 'selfie.jpg', contentType: 'image/jpeg' });
 const submit = (commandId: string, values: Record<string, unknown>, as = asAna) => request(app).post(`/api/chats/${channel}/commands/${commandId}/form`).set(as).send({ values });
-const here = { lat: -11.98, lng: -76.95, precision: 6 };
+// A reading of now: signing refuses an old one (José, 24/10).
+const here = { lat: -11.98, lng: -76.95, precision: 6, age: 3000 };
 
 describe('an app answers a command with a form', () => {
   it('the asker gets the form; what is missing is said field by field before the app hears anything', async () => {
@@ -148,6 +150,25 @@ describe('an app answers a command with a form', () => {
     expect(photo.headers['content-type']).toBe('image/jpeg');
     expect(Buffer.compare(photo.body as Buffer, JPEG)).toBe(0);
     await request(app).get(`${photoUrl.pathname}x`).expect(404);
+  });
+
+  it('the live selfie comes back stamped with the hour and the place; one it cannot read goes as it came (pending 94)', async () => {
+    // Arrange: a real 320×240 white photo, sent with the place the form has.
+    const commandId = await openForm();
+    const white = await sharp({ create: { width: 320, height: 240, channels: 3, background: '#ffffff' } }).jpeg().toBuffer();
+    // Act
+    const { fileId } = (await request(app).post(`/api/chats/${channel}/commands/${commandId}/files`).set(asAna).field('stamp', '1').field('lat', '-11.98123').field('lng', '-76.95451').field('precision', '5').attach('file', white, { filename: 'selfie.jpg', contentType: 'image/jpeg' }).expect(201)).body;
+    const broken = await request(app).post(`/api/chats/${channel}/commands/${commandId}/files`).set(asAna).field('stamp', '1').attach('file', JPEG, { filename: 'selfie.jpg', contentType: 'image/jpeg' }).expect(201);
+    answer = json({ text: 'Ingreso marcado' });
+    received.length = 0;
+    await submit(commandId, { accion: 'ingreso', ubicacion: here, foto: fileId }).expect(200);
+    // Assert: the stamped photo keeps its size and gets a dark band at the bottom.
+    const photoUrl = new URL(String((received[0]!.data.values as Record<string, unknown>).foto));
+    const photo = (await request(app).get(photoUrl.pathname).expect(200)).body as Buffer;
+    const { data, info } = await sharp(photo).raw().toBuffer({ resolveWithObject: true });
+    expect([info.width, info.height]).toEqual([320, 240]);
+    expect(data[(238 * info.width + 2) * info.channels]!).toBeLessThan(140);
+    expect(broken.body.fileId).toEqual(expect.any(String));
   });
 
   it('the app\'s errors keep the form open with them; a late answer through /respond closes it', async () => {

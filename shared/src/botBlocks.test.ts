@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { barColumns, barFractions, linePath, tankFill, validateBotBlocks, BLOCK_LIMITS } from './botBlocks.js';
+import { barColumns, barFractions, linePath, tankFill, tankPercent, validateBotBlocks, BLOCK_LIMITS } from './botBlocks.js';
 import { validateBotCard } from './bots.js';
 
 /** The card kit (§118.4, José 23/10): what agents and webhooks can draw in a card, validated once for server, app and web. */
+describe('the tank as the r155 design shows it (José, 24/10: like Portal\'s WhatsApp report)', () => {
+  it('keeps the verdict in words and writes the fill as a percent', () => {
+    const result = validateBotBlocks([{ type: 'tank', items: [{ name: 'INFRA PEN 2', level: 0.22, min: 0.25, value: '35 cm', sub: '18 m³ prod. disponibles', status: 'Bajo', tone: 'error' }] }], BLOCK_LIMITS.cardBlocks);
+    expect(result).toMatchObject({ ok: true, blocks: [{ type: 'tank', items: [{ status: 'Bajo', tone: 'error' }] }] });
+    expect([tankPercent(0.804), tankPercent(1.4), tankPercent(-1)]).toEqual(['80 %', '100 %', '0 %']);
+  });
+});
+
 describe('bot card blocks', () => {
   it('keeps a liquids card: a tank, a bar chart with its threshold and a line of context', () => {
     const result = validateBotBlocks([

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { barFractions, linePath, tankFill, validateBotBlocks, BLOCK_LIMITS } from './botBlocks.js';
+import { barColumns, barFractions, linePath, tankFill, validateBotBlocks, BLOCK_LIMITS } from './botBlocks.js';
 import { validateBotCard } from './bots.js';
 
 /** The card kit (§118.4, José 23/10): what agents and webhooks can draw in a card, validated once for server, app and web. */
@@ -42,5 +42,20 @@ describe('bot card blocks', () => {
     expect(linePath([95, 90, 85], 100, 50)).toBe('M0,0 L50,25 L100,50');
     expect(linePath([7], 100, 50)).toBe('M0,25 L100,25');
     expect(tankFill(0.81, 100)).toEqual({ y: 19, height: 81 });
+  });
+
+  it('fits a week of vertical bars in a phone card and scrolls a month (José, 23/10: «Sá 27» was cut)', () => {
+    // Arrange: a card about 300 wide, 7 days, then 31 days, then no width measured yet.
+    const week = barColumns(300, 7);
+    const month = barColumns(300, 31);
+    // Assert
+    expect(week.scroll).toBe(false);
+    expect(week.column * 7).toBeLessThanOrEqual(300);
+    expect(week.bar).toBeLessThan(week.column);
+    expect(month.scroll).toBe(true);
+    expect(month.column * 31).toBeGreaterThan(300);
+    expect(barColumns(300, 2).bar).toBe(32);
+    expect(barColumns(0, 7)).toMatchObject({ scroll: false });
+    expect(barColumns(300, 0)).toMatchObject({ scroll: false, column: 0 });
   });
 });

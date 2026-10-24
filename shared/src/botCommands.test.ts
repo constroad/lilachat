@@ -144,6 +144,19 @@ describe('replaceAnswer (the «working…» card while the command leaves)', () 
   it('a placeholder already dismissed: the answer still arrives at the end', () => {
     expect(replaceAnswer([other], 'sending-1', { ...sending, commandId: 'c9' }).map((one) => one.commandId)).toEqual(['c0', 'c9']);
   });
+  it('a late «failed» or «pending» from the request never hides the answer the socket already brought (José, 23/10: red under /asistencia)', () => {
+    // Arrange: the app answered by /respond before its webhook call came back.
+    const viaSocket = { commandId: 'c9', appName: 'Inframaq', command: 'mantenimiento', state: 'answered' as const, response: { responseType: 'ephemeral' as const, text: 'Inframaq no lo permitió' } };
+    const failed = { commandId: 'c9', appName: 'Inframaq', command: 'mantenimiento', state: 'failed' as const, message: 'Inframaq no pudo responder.' };
+    // Act
+    const afterFailed = replaceAnswer([sending, viaSocket], 'sending-1', failed);
+    const afterPending = replaceAnswer([sending, viaSocket], 'sending-1', { ...failed, state: 'pending' as const });
+    // Assert
+    expect(afterFailed).toEqual([viaSocket]);
+    // The socket did not know the command's name: the request's outcome gives it.
+    expect(replaceAnswer([sending, { ...viaSocket, command: '' }], 'sending-1', failed)).toEqual([viaSocket]);
+    expect(afterPending).toEqual([viaSocket]);
+  });
 });
 
 describe('answers that open a form or must not be shared (R160)', () => {

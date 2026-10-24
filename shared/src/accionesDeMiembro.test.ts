@@ -13,6 +13,11 @@ const de = (quien: string, aQuien: string, miembros: MiembroDeChat[]) =>
 describe('accionesDeMiembro', () => {
   const grupo = [m('yo', 'admin'), m('comun'), m('otroAdmin', 'admin')];
 
+  it('an app (Lila, Inframaq) is only taken out of the chat, never made admin (pending 91)', () => {
+    expect(accionesDeMiembro({ quien: 'yo', aQuien: 'comun', miembros: grupo, esGrupo: true, esApp: true })).toEqual(['sacar']);
+    expect(accionesDeMiembro({ quien: 'comun', aQuien: 'yo', miembros: grupo, esGrupo: true, esApp: true })).toEqual([]);
+  });
+
   it('sobre un miembro común, siendo admin: nombrarlo o sacarlo', () => {
     expect(de('yo', 'comun', grupo)).toEqual(['hacer-admin', 'sacar']);
   });

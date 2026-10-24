@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aplicarAcuseALista, aplicarBorradoALista, aplicarEdicionALista, aplicarMensajeALista, debeRecargarAlConectar, marcarLeido, puntoEnLinea, type ResumenEnVivo } from './listaEnVivo.js';
+import { aplicarAcuseALista, aplicarBorradoALista, aplicarEdicionALista, aplicarMensajeALista, applyMyReads, debeRecargarAlConectar, marcarLeido, puntoEnLinea, type ResumenEnVivo } from './listaEnVivo.js';
 
 type ChatSummary = ResumenEnVivo & { name?: string; pinned?: boolean };
 
@@ -351,3 +351,21 @@ describe('respuesta de hilo en la fila', () => {
   });
 });
 
+
+describe('applyMyReads (a load that left before my receipt, 23/10)', () => {
+  it('lowers the count a stale answer brought back and moves my cursor', () => {
+    // Arrange: the server answered «1 unread» while my receipt for seq 5 was on its way.
+    const stale = [chat({ lastSeq: 5, unread: 1, readSeq: 4 })];
+    // Act
+    const fixed = applyMyReads(stale, new Map([[CHAT, 5]]));
+    // Assert
+    expect(fixed[0]).toMatchObject({ unread: 0, readSeq: 5 });
+  });
+  it('a message newer than my read still counts, and an untouched list keeps its reference', () => {
+    const newer = [chat({ lastSeq: 7, unread: 3, readSeq: 4 })];
+    expect(applyMyReads(newer, new Map([[CHAT, 5]]))[0]).toMatchObject({ unread: 2, readSeq: 5 });
+    const upToDate = [chat({ lastSeq: 5, unread: 0, readSeq: 5 })];
+    expect(applyMyReads(upToDate, new Map([[CHAT, 5]]))).toBe(upToDate);
+    expect(applyMyReads(newer, new Map())).toBe(newer);
+  });
+});

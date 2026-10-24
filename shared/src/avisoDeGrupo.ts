@@ -34,7 +34,9 @@ export type EventoDeGrupo =
   /** Someone became active in a company space: its #general hears it (José, 22/10, like Slack). */
   | 'se-unio-espacio'
   /** Someone's birthday, in a chat that has them on (pending 17); `valor` is the age when known. */
-  | 'cumpleanos';
+  | 'cumpleanos'
+  /** A channel made private or public by one of its admins (pending 93); `valor` is `privado` or `publico`. */
+  | 'visibilidad';
 
 export function textoDeAviso(params: {
   /** Quién lo hizo, con el nombre ya resuelto. */
@@ -59,6 +61,10 @@ export function textoDeAviso(params: {
       return esMio
         ? `Cambiaste el nombre del grupo a «${valor}»`
         : `${quien} cambió el nombre del grupo a «${valor}»`;
+
+    case 'visibilidad':
+      if (valor !== 'privado' && valor !== 'publico') return '';
+      return `${esMio ? 'Hiciste' : `${quien} hizo`} ${valor === 'privado' ? 'privado' : 'público'} el canal`;
 
     case 'foto':
       return esMio ? 'Cambiaste la foto del grupo' : `${quien} cambió la foto del grupo`;

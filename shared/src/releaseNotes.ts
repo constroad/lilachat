@@ -10,6 +10,15 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.161',
+    items: [
+      'Un canal que creas o al que te unes aparece al toque en la lista, y sus admins lo pasan a privado o le cambian el nombre.',
+      'Un admin puede sacar una app de un canal, y no vuelve sola.',
+      'El formulario de asistencia muestra siempre el botón «Marcar» y solo pide actividades a la salida.',
+      'Los gráficos de la semana entran enteros en la tarjeta, y el «1» de no leídos ya no se queda pegado.',
+    ],
+  },
+  {
     version: '0.1.160',
     items: [
       'El ⚡ en la cabecera de tu espacio: marca asistencia y usa las acciones de las apps sin entrar a un canal.',

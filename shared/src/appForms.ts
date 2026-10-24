@@ -20,11 +20,13 @@ export type FormSchemaProperty = {
   'x-input'?: string;
   'x-unit'?: string;
   'x-labels'?: Record<string, string>;
+  /** Shown only when another field has one of these answers: `{ "accion": ["salida"] }` (R161). */
+  'x-visible-if'?: Record<string, unknown[]>;
 };
 export type FormSchema = { type?: string; properties?: Record<string, FormSchemaProperty>; required?: string[] };
 export type AppForm = { id: string; title: string; submitLabel?: string; schema: FormSchema };
 
-type Base = { name: string; label: string; help?: string; required: boolean };
+type Base = { name: string; label: string; help?: string; required: boolean; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]> };
 export type FormField =
   | (Base & { kind: 'choice'; options: { value: string; label: string }[]; segmented: boolean })
   | (Base & { kind: 'text'; multiline: boolean; maxLength?: number })
@@ -50,12 +52,13 @@ const labelOf = (name: string) => name.replace(/[_-]+/g, ' ').replace(/^./, (fir
 function fieldOf(name: string, property: FormSchemaProperty, required: boolean): FormField | string {
   const input = property['x-input'];
   if (input !== undefined && !INPUTS.includes(input)) return `El campo «${name}» pide x-input «${input}», que Lilachat no sabe dibujar.`;
-  const base: Base = { name, label: line(property.title, FORM_LIMITS.label) || labelOf(name), ...(property.description ? { help: line(property.description, FORM_LIMITS.help) } : {}), required };
+  const visibleIf = visibleIfOf(property['x-visible-if']);
+  const base: Base = { name, label: line(property.title, FORM_LIMITS.label) || labelOf(name), ...(property.description ? { help: line(property.description, FORM_LIMITS.help) } : {}), required, ...(visibleIf ? { visibleIf } : {}) };
   if (input === 'photo') return { ...base, kind: 'photo' };
   if (input === 'location') return { ...base, kind: 'location' };
   if (Array.isArray(property.enum)) {
     const labels = record(property['x-labels']);
-    const options = property.enum.slice(0, FORM_LIMITS.options).map((value) => String(value)).map((value) => ({ value, label: line(labels[value], FORM_LIMITS.label) || value }));
+    const options = property.enum.slice(0, FORM_LIMITS.options).map((value) => String(value)).map((value) => ({ value, label: line(labels[value], FORM_LIMITS.label) || labelOf(value) }));
     return { ...base, kind: 'choice', options, segmented: options.length <= SEGMENTED_MAX };
   }
   if (property.type === 'number' || property.type === 'integer') {
@@ -67,6 +70,16 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
     return { ...base, kind: 'text', multiline: input === 'textarea' || (maxLength ?? 0) > MULTILINE_FROM, ...(maxLength ? { maxLength } : {}) };
   }
   return `El campo «${name}» es de un tipo que Lilachat no sabe dibujar.`;
+}
+
+function visibleIfOf(raw: unknown): Record<string, string[]> | null {
+  const entries = Object.entries(record(raw)).flatMap(([name, answers]) => (Array.isArray(answers) && answers.length ? [[name, answers.map(String)] as const] : []));
+  return entries.length ? Object.fromEntries(entries) : null;
+}
+
+/** The fields shown with these answers: a field with `visibleIf` waits until one of its answers is picked. */
+export function visibleFields<F extends Pick<FormField, 'visibleIf'>>(fields: readonly F[], values: FormValues): F[] {
+  return fields.filter((field) => !field.visibleIf || Object.entries(field.visibleIf).every(([name, answers]) => answers.includes(String(values[name] ?? ''))));
 }
 
 /** The fields to draw, in the schema's order. A field Lilachat cannot draw throws: `validateFormSpec` catches it first. */
@@ -137,7 +150,8 @@ export function validateFormValues(fields: readonly FormField[], raw: unknown): 
   const input = record(raw);
   const values: FormValues = {};
   const errors: Record<string, string> = {};
-  for (const field of fields) {
+  // A field hidden by the other answers is neither required nor sent.
+  for (const field of visibleFields(fields, input)) {
     const value = input[field.name];
     if (isEmpty(value)) {
       if (field.required) errors[field.name] = MISSING[field.kind];

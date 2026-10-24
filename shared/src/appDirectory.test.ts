@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appActivityLine, appInstalledByLine, appReturnFromLink, appReturnLink, directoryChips, filterDirectory, installedWithoutChat } from './appDirectory.js';
+import { appActivityLine, appChatLink, appInstalledByLine, appReturnFromLink, appReturnLink, directoryChips, filterDirectory, installedWithoutChat } from './appDirectory.js';
 import type { DirectoryApp } from './bots.js';
 
 const app = (name: string, extra: Partial<DirectoryApp> = {}): DirectoryApp => ({ appId: name.toLowerCase(), clientId: `lca_${name.toLowerCase()}`, name, features: [], commands: [], ...extra });
@@ -55,6 +55,9 @@ describe('back to Lilachat after installing (agentes\' return address)', () => {
     expect(link).toBe('https://lilachat.constroad.com/s/6adbb0887ca6f18809904536/apps/lca_lnkjg6KXzr_GBiF-YG3V');
     expect(appReturnFromLink(`${link}?instalada=1`)).toEqual({ spaceId: '6adbb0887ca6f18809904536', clientId: 'lca_lnkjg6KXzr_GBiF-YG3V' });
     expect(appReturnFromLink('/s/6adbb0887ca6f18809904536/apps/lca_x1')).toEqual({ spaceId: '6adbb0887ca6f18809904536', clientId: 'lca_x1' });
+    // Pending 49: «/chat» at the end opens the 1:1 with the app (a product that answers only in private sends it).
+    expect(appReturnFromLink('https://lilachat.constroad.com/s/6adbb0887ca6f18809904536/apps/lca_x1/chat')).toEqual({ spaceId: '6adbb0887ca6f18809904536', clientId: 'lca_x1', chat: true });
+    expect(appChatLink('6adbb0887ca6f18809904536', 'lca_x1')).toBe('https://lilachat.constroad.com/s/6adbb0887ca6f18809904536/apps/lca_x1/chat');
   });
 
   it('anything else is not a return address', () => {

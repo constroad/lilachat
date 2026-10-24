@@ -20,8 +20,11 @@ export function accionesDeMiembro(params: {
   aQuien: string;
   miembros: readonly MiembroDeChat[];
   esGrupo: boolean;
+  /** An installed app (pending 91): an admin takes it out of the channel; it is never an admin. */
+  esApp?: boolean;
 }): AccionDeMiembro[] {
   const acciones: AccionDeMiembro[] = [];
+  if (params.esApp) return puedeSacar(params).ok ? ['sacar'] : [];
 
   if (puedeCambiarRol({ ...params, rol: 'admin' }).ok) acciones.push('hacer-admin');
   if (puedeCambiarRol({ ...params, rol: 'member' }).ok) acciones.push('dejar-admin');

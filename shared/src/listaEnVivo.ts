@@ -101,6 +101,25 @@ export function marcarLeido<C extends ResumenEnVivo>(chats: C[], chatId: string)
 }
 
 /**
+ * My reads heard live, laid over a list the server answered (23/10): a load
+ * that left before my receipt came back with the old count, and the «1» stayed
+ * until the next reload. Never raises a count; an untouched list keeps its reference.
+ */
+export function applyMyReads<C extends ResumenEnVivo>(chats: C[], reads: ReadonlyMap<string, number>): C[] {
+  if (reads.size === 0) return chats;
+  let changed = false;
+  const next = chats.map((chat) => {
+    const seq = reads.get(chat.id);
+    if (seq === undefined) return chat;
+    const unread = Math.min(chat.unread, Math.max(0, chat.lastSeq - seq));
+    if (unread === chat.unread) return chat;
+    changed = true;
+    return { ...chat, unread, ...readUpTo(chat, seq) };
+  });
+  return changed ? next : chats;
+}
+
+/**
  * El punto verde de una fila (FL10, auditoría §46.3): solo en un 1:1, como
  * WhatsApp. En un grupo, con varios conectados, sería ruido permanente.
  */

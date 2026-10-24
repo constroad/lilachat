@@ -176,6 +176,9 @@ export function withAnswer(list: readonly EphemeralAnswer[], answer: EphemeralAn
  * the channel) just takes it away.
  */
 export function replaceAnswer(list: readonly EphemeralAnswer[], placeholderId: string, answer: EphemeralAnswer | null): EphemeralAnswer[] {
+  // The socket can bring the app's late answer before its own request returns: a weaker state does not replace it.
+  const settled = answer && (answer.state === 'pending' || answer.state === 'failed') && list.some((entry) => entry.commandId === answer.commandId && (entry.state === 'answered' || entry.state === 'form'));
+  if (settled) return list.filter((entry) => entry.commandId !== placeholderId).map((entry) => (entry.commandId === answer.commandId && !entry.command ? { ...entry, command: answer.command, ...(answer.action ? { action: answer.action } : {}) } : entry));
   const index = list.findIndex((entry) => entry.commandId === placeholderId);
   if (index < 0) return answer ? withAnswer(list, answer) : [...list];
   const rest = list.filter((entry, at) => at !== index && entry.commandId !== answer?.commandId);

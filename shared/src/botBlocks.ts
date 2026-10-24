@@ -105,6 +105,25 @@ export function barFractions(points: readonly { value: number }[], max?: number)
   return points.map((point) => (top > 0 ? Math.max(0, point.value) / top : 0));
 }
 
+/** The narrowest column a vertical bar keeps its value and «Sá 27» legible in (px). */
+export const BAR_V_MIN_COLUMN = 40;
+const BAR_V_SCROLL_COLUMN = 48;
+const BAR_V_MAX_BAR = 32;
+const BAR_SHARE = 0.6;
+
+/**
+ * Vertical bars in `width` (José, 23/10: seven days at a fixed 56 px cut the
+ * last ones on a phone). They share the width while each keeps
+ * `BAR_V_MIN_COLUMN`; more than that (a month) scrolls sideways.
+ */
+export function barColumns(width: number, count: number): { column: number; bar: number; scroll: boolean } {
+  if (count <= 0) return { column: 0, bar: 0, scroll: false };
+  if (width <= 0) return { column: BAR_V_MIN_COLUMN, bar: BAR_V_MAX_BAR, scroll: false };
+  const shared = width / count;
+  const column = shared >= BAR_V_MIN_COLUMN ? shared : BAR_V_SCROLL_COLUMN;
+  return { column, bar: Math.min(BAR_V_MAX_BAR, Math.round(column * BAR_SHARE)), scroll: shared < BAR_V_MIN_COLUMN };
+}
+
 /** An SVG path for a line chart in a `width × height` box: the highest value at the top. */
 export function linePath(values: readonly number[], width: number, height: number): string {
   if (values.length === 1) return `M0,${height / 2} L${width},${height / 2}`;

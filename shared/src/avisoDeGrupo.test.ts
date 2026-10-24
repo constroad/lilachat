@@ -4,6 +4,12 @@ import { actsAsMessage, esAvisoDestacado, HIGHLIGHTED_NOTICE_EVENTS, textoDeAvis
 describe('textoDeAviso', () => {
   const wilson = { quien: 'Wilson', esMio: false };
 
+  it('a channel made private or public says so (José, 23/10: a public channel could not be made private)', () => {
+    expect(textoDeAviso({ ...wilson, evento: 'visibilidad', valor: 'privado' })).toBe('Wilson hizo privado el canal');
+    expect(textoDeAviso({ quien: 'Tú', esMio: true, evento: 'visibilidad', valor: 'publico' })).toBe('Hiciste público el canal');
+    expect(textoDeAviso({ ...wilson, evento: 'visibilidad' })).toBe('');
+  });
+
   it('cambio de nombre', () => {
     expect(textoDeAviso({ ...wilson, evento: 'nombre', valor: 'Los originales' })).toBe(
       'Wilson cambió el nombre del grupo a «Los originales»'

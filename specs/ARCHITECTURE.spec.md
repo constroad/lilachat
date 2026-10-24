@@ -4909,6 +4909,37 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 129. Cuenta por app, avisos sensibles sin canal y girar la cámara (24/10/2026, 0.1.165)
+
+- **«Tu cuenta en <app>»** (pendiente 95, agentes f02cb99: la cuenta es por
+  app, como en Slack). Va en el detalle de cada app instalada y en
+  «Información» de su 1:1, web y APK. Lilachat no guarda nada: pregunta a la
+  app de ESA instalación con `link.status` y desconecta con `link.revoke`,
+  firmados como `command.invoked` (BOTS-API §c-novies). Más de 5 s, un error
+  o una respuesta rara esconden la fila. «Desconectar» pide confirmación y
+  solo da por hecho con `{ ok: true }`.
+- **Temas con `default: null`** (agentes, 24/10: la planilla lleva montos).
+  Nacen en «Sin canal» y nunca caen en #general; publicar da 409
+  `topic_without_channel`. La pantalla dice «Datos sensibles: elige un canal
+  privado», y «Es un canal abierto: mejor uno privado» si eligen uno público.
+- **Girar la cámara en la videollamada** (pendiente 97). APK: el botón va bajo
+  la vista propia (la barra ya tiene cuatro) y cambia la cámara en la misma
+  pista con `applyConstraints({ facingMode })`, sin renegociar. Web: se
+  muestra con dos cámaras o más; la pista nueva reemplaza a la vieja en el
+  mismo sender (`replaceTrack`), y si el navegador no abre las dos a la vez,
+  suelta la vieja y reintenta. La vista propia se espeja solo con la frontal.
+- **Permisos nuevos** (§c-octies): el detalle avisa «Esta app pide permisos
+  nuevos» con «Reinstalar».
+
+**E2E (emulador, producción, cuenta de José, «Test»):** la ficha de Inframaq
+dice «Sin conectar. Inframaq te lo pide la primera vez que la usas.», que es
+lo esperado según agentes: la cuenta conectada antes de f02cb99 valía para
+todas las apps y quedó sin uso. «Planilla» aparece en «Sin canal» con el
+aviso de canal privado; el manifiesto de Inframaq se resincronizó a las
+03:17:32Z ya marcado. No se desconectó nada ni se hizo una videollamada real:
+el AVD no tiene una segunda persona; el giro queda cubierto por tests y lo
+prueba José con la 0.1.165.
+
 ## 128. La marca espera a la app sin trabas: consenso con agentes e Inframaq (24/10/2026, 0.1.164)
 
 José pidió «la mejor solución, no la más rápida» para cuando la marca tarda o

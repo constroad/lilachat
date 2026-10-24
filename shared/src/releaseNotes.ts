@@ -10,6 +10,15 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.165',
+    items: [
+      'En una videollamada puedes girar entre la cámara frontal y la trasera.',
+      'Cada app dice con qué cuenta estás conectado, y puedes desconectarla.',
+      'Los avisos con montos, como la planilla, no se publican hasta que un admin elija un canal privado.',
+      'Si una app pide permisos nuevos, su detalle te avisa y la reinstalas desde ahí.',
+    ],
+  },
+  {
     version: '0.1.164',
     items: [
       'Al marcar, el formulario queda abierto con «Enviando…» hasta que la app confirme o te diga qué corregir.',

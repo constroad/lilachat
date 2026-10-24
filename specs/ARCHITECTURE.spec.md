@@ -4914,9 +4914,20 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
 - **Listas largas con buscador** y **PIN oculto** en los formularios de las
   apps (BOTS-API §c-duodecies; diseño e-35), para marcar asistencia eligiendo
   el nombre entre las personas de la empresa.
-- Sale con dos ítems y no cuatro porque José la pidió de inmediato («y en la
-  apk para cuando?»). Es la primera con `audience: 'spaces'`: un teléfono con
-  la 0.1.167 y sin espacios no recibe el aviso.
+- **Varias fotos por formulario** (BOTS-API §c-terdecies; José, 24/10): quitar
+  y volver a tomar; la foto que no es firma abre la cámara trasera; el servidor
+  deja cada foto en 1280 px.
+- Es la primera con `audience: 'spaces'`: un teléfono con la 0.1.167 y sin
+  espacios no recibe el aviso.
+
+**E2E (emulador, producción, cuenta de José, «Test», con José mirando):**
+material «Arena fina» ingreso 1 kg (12:16:11Z, «quedan 12001 kg»), el
+buscador filtró «ARENA fina» → 1 de 12; medida «Tanque Prueba» 80 cm con foto
+(12:24:03Z, «232.74 gl disponibles»); el enlace de pedido salió con la lista
+vacía (Portal devolvió 0 pedidos) y ahora dice «No hay opciones para elegir»;
+la asistencia de Portal falta en el manifiesto hasta que José apruebe la
+herramienta. José marcó que al material le faltan foto, transportista y
+cantera: lo copia Portal de su flujo real.
 
 ## 131. Cada versión dice a quién le toca, Ajustes con el espacio y el detalle del tanque (24/10/2026, 0.1.167)
 

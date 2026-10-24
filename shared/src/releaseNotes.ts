@@ -23,6 +23,8 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
     items: [
       'Marcar asistencia eligiendo tu nombre: las listas largas se abren con un buscador.',
       'Si tu empresa te pide un PIN al marcar, se escribe oculto y no se guarda.',
+      'En la medida de tanque y el ingreso de material puedes subir varias fotos, quitarlas y volver a tomarlas.',
+      'La foto de la wincha o de la guía abre la cámara de atrás, no la selfie.',
     ],
   },
   {

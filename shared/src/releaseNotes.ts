@@ -3,12 +3,30 @@
  * «What's new»: shown once after updating, in the app and on the web. The
  * same catalog writes the notes published to LilaStore. Newest first. PURE.
  */
-export type ReleaseNote = { version: string; items: readonly string[] };
+/**
+ * Who a version is for (José, 24/10: someone with only personal chats should
+ * not update for a company-mode change, and vice versa):
+ * `spaces` only matters to who is in a company space, `personal` to who has
+ * personal chats; without it, everyone.
+ */
+export type ReleaseAudience = 'all' | 'personal' | 'spaces';
+export type ReleaseNote = { version: string; items: readonly string[]; audience?: ReleaseAudience };
 
 /** At most this many versions at once, for someone who skipped several. */
 const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
+  {
+    version: '0.1.167',
+    // For everyone: from this version on the app skips updates that are not for what each one uses.
+    audience: 'all',
+    items: [
+      'Solo te avisamos de una versión nueva si trae cambios para lo que usas: tus chats o el modo empresa.',
+      'En un espacio, la pestaña Ajustes empieza con el espacio: miembros, canales, apps e invitar.',
+      'Toca un tanque en la tarjeta para ver su detalle: nivel, disponible, mínimo y última medida.',
+      'Antes de actualizar ves solo las novedades que te tocan.',
+    ],
+  },
   {
     version: '0.1.166',
     items: [
@@ -154,5 +172,32 @@ export function notesToShow(notes: readonly ReleaseNote[], lastSeen: string | nu
   return notes.filter((note) => compareVersions(note.version, lastSeen) > 0 && compareVersions(note.version, current) <= 0).slice(0, MAX_VERSIONS_SHOWN);
 }
 
+/** The line the published notes carry so an installed app knows who the version is for; LilaStore passes it through untouched. */
+const AUDIENCE_LINES: Record<Exclude<ReleaseAudience, 'all'>, string> = { spaces: 'Para: modo empresa', personal: 'Para: chats personales' };
+
 /** The `--notes` text for `lila apk publish`. */
-export const releaseNotesText = (note: ReleaseNote): string => `Lilachat ${note.version}\n\n${note.items.map((item) => `- ${item}`).join('\n')}\n`;
+export const releaseNotesText = (note: ReleaseNote): string => {
+  const audience = note.audience && note.audience !== 'all' ? `${AUDIENCE_LINES[note.audience]}\n` : '';
+  return `Lilachat ${note.version}\n${audience}\n${note.items.map((item) => `- ${item}`).join('\n')}\n`;
+};
+
+/** Who published notes are for; notes without the line (every version before 0.1.167) are for everyone. */
+export function audienceOfNotes(notes: string): ReleaseAudience {
+  const lines = notes.split('\n').map((line) => line.trim());
+  if (lines.includes(AUDIENCE_LINES.spaces)) return 'spaces';
+  if (lines.includes(AUDIENCE_LINES.personal)) return 'personal';
+  return 'all';
+}
+
+/** The audience line is for the app, not for people: the notes screen drops it. */
+export const isAudienceLine = (line: string): boolean => Object.values(AUDIENCE_LINES).includes(line.trim());
+
+/**
+ * Does any version newer than the installed one matter to this person? What
+ * they use is unknown (still loading) → yes: a missed update costs more than
+ * one notice too many.
+ */
+export function updateMatters(audiences: readonly ReleaseAudience[], usage: { spaces: boolean; personal: boolean } | null): boolean {
+  if (!usage || audiences.length === 0) return true;
+  return audiences.some((audience) => audience === 'all' || (audience === 'spaces' && usage.spaces) || (audience === 'personal' && usage.personal));
+}

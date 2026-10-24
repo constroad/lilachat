@@ -176,7 +176,9 @@ export function TabsShell({
   const [showBackup, setShowBackup] = useState(false);
   const esOperador = useEsOperador(credential.jwt);
   const [invitando, setInvitando] = useState(false);
-  const actualizaciones = useActualizacionesDeLaApp();
+  // Who an update is for (José, 24/10): without spaces everyone is a personal user; with spaces, personal only if they chat there too.
+  const updateUsage = useMemo(() => (espacios.inSpaces === null ? null : { spaces: espacios.inSpaces, personal: !espacios.inSpaces || chats.length > 0 }), [espacios.inSpaces, chats.length]);
+  const actualizaciones = useActualizacionesDeLaApp(updateUsage);
   const [newChat, setNewChat] = useState(false);
 
   /**

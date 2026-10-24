@@ -4909,6 +4909,37 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 131. Cada versión dice a quién le toca, Ajustes con el espacio y el detalle del tanque (24/10/2026, 0.1.167)
+
+- **Actualizaciones por audiencia** (José, 24/10, urgente: «si un usuario
+  solo tiene cuenta personal por que deberia actualizar si hay una
+  actualizacion del modo slack y viceversa»). Cada entrada de
+  `RELEASE_NOTES` declara `audience`: `all` (por defecto), `personal` o
+  `spaces`. `releaseNotesText` lo escribe en las notas que se publican en
+  LilaStore («Para: modo empresa» / «Para: chats personales»), y la app lo
+  vuelve a leer de las novedades de cada versión más nueva
+  (`newerAudiences`). La banda solo aparece si alguna versión nueva le toca a
+  esa persona (`updateMatters`). Usa espacios quien es miembro activo de uno;
+  usa chats personales quien no tiene espacios o tiene algún chat personal.
+  Mientras eso carga, avisa (un aviso de más cuesta menos que uno perdido).
+  La versión **mínima bloquea igual** para todos. «Buscar actualizaciones»
+  en Ajustes sigue ofreciendo cualquier versión. Antes de bajar, «Novedades»
+  muestra solo las versiones que le tocan.
+  **Regla al publicar:** una versión que cambia solo el modo empresa va con
+  `audience: 'spaces'`; solo chats personales, `'personal'`; si toca a los
+  dos, o al motor de la app (avisos, llamadas, actualizador), `'all'`. La
+  0.1.167 va `all` porque trae el filtro: las anteriores no lo tienen.
+- **Ajustes con el espacio arriba** (José, 24/10; diseño e-34). Dentro de un
+  espacio, la pestaña empieza con su cabecera (tocarla cambia de espacio) y
+  las filas Ajustes del espacio (solo admins), Miembros, Canales, Apps,
+  Invitar (con código) y Medios del espacio; después «Tu cuenta».
+- **Tocar un tanque abre su detalle** (BOTS-API §c-undecies).
+
+**E2E (emulador, producción, cuenta de José, «Test»):** la pestaña Ajustes
+muestra el espacio como en e-34; «Apps» y «Ajustes del espacio» abren desde
+ahí. El filtro de la banda queda cubierto por tests (motor y notas): se ve
+con la próxima versión `spaces` en un teléfono sin espacios.
+
 ## 130. El clima por horas, guiños y stickers en llamadas, y formularios con nombres (24/10/2026, 0.1.166)
 
 - **/clima como Google** (pendiente 96, diseño e-33). Bloque `weather` del

@@ -277,6 +277,8 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
   const mentionsTab = (active: boolean): ReactNode => (current ? <ActivityScreen embedded visible={active} space={current} jwt={jwt} myUserId={myUserId} initialTab="mentions" onOpen={(item) => void openActivityItem(item)} onClose={() => undefined} /> : null);
   return {
     current,
+    /** Am I in any company space? `null` while it loads (who an update is for, José 24/10). */
+    inSpaces: spaces === null ? null : spaces.some((space) => space.status === 'active'),
     title,
     layer,
     directoryTab,

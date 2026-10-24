@@ -80,6 +80,20 @@ describe('decidirAvisoDeActualizacion', () => {
   });
 });
 
+/** José, 24/10: a version for company mode says nothing to someone with only personal chats, and vice versa. */
+describe('a version that is not for this person', () => {
+  const base = { actual: 37, ultima: 38, minima: 0, version: '0.1.167', descartada: null };
+
+  it('no notice when no newer version is for what this person uses', () => {
+    expect(decidirAvisoDeActualizacion({ ...base, relevant: false })).toEqual({ tipo: 'ninguno' });
+    expect(decidirAvisoDeActualizacion({ ...base, relevant: true })).toEqual({ tipo: 'sugerida', version: '0.1.167' });
+  });
+
+  it('below the minimum it still locks: the app no longer works for anyone', () => {
+    expect(decidirAvisoDeActualizacion({ ...base, minima: 38, relevant: false })).toEqual({ tipo: 'obligatoria', version: '0.1.167' });
+  });
+});
+
 /** Backlog 32 (José, 21/10): the notice only showed after a cold start; coming back to the app asks again, at most every 30 min. */
 describe('shouldRecheckVersion', () => {
   const now = Date.UTC(2026, 9, 21, 15, 0);

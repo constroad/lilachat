@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { audienceOfNotes, updateMatters } from '@lilachat/shared';
 import type { ResultadoDelChequeo } from './actualizacion';
 import { buscarActualizacion, versionCodeActual } from './versionApi';
 import { subscribeUpdateRequired } from '../api/appBuild';
@@ -9,7 +10,7 @@ import { abrirActualizacion } from './abrirTienda';
 import { useActualizador, type InfoActualizacion } from './useActualizador';
 import { infoParaActualizar } from './actualizacionInfo';
 import { guardarActualizacionDescartada, leerActualizacionDescartada } from './preferencias';
-import type { Novedad } from './novedades';
+import { newerAudiences, type Novedad } from './novedades';
 
 const SIN_INFO: InfoActualizacion = { downloadUrl: '', releaseId: '', sha256: '', size: 0 };
 
@@ -18,13 +19,14 @@ const SIN_INFO: InfoActualizacion = { downloadUrl: '', releaseId: '', sha256: ''
  * arranque, la banda de la lista, el botón de Ajustes y el enlace que lleva la
  * invitación.
  */
-export function useActualizacionesDeLaApp() {
+export function useActualizacionesDeLaApp(usage: { spaces: boolean; personal: boolean } | null) {
   const [chequeo, setChequeo] = useState<ResultadoDelChequeo | null>(null);
   const [verificando, setVerificando] = useState(false);
   const [enlaceApp, setEnlaceApp] = useState('');
   const [infoApp, setInfoApp] = useState<InfoActualizacion>(SIN_INFO);
   const { estado, actualizar } = useActualizador();
-  const [aviso, setAviso] = useState<AvisoDeActualizacion>({ tipo: 'ninguno' });
+  /** The last check, kept so the notice follows what this person uses once their spaces and chats load. */
+  const [published, setPublished] = useState<{ ultima: number | null; minima: number; version: string; descartada: string | null } | null>(null);
   /** Lo nuevo de cada versión posterior (19/10): se muestra ANTES de bajar. */
   const [novedades, setNovedades] = useState<Novedad[]>([]);
   const [viendoNovedades, setViendoNovedades] = useState(false);
@@ -44,7 +46,7 @@ export function useActualizacionesDeLaApp() {
     setNovedades(nuevas);
     setEnlaceApp(downloadUrl);
     setInfoApp({ downloadUrl, releaseId, sha256, size });
-    setAviso(decidirAvisoDeActualizacion({ actual: versionCodeActual(), ultima, minima, version, descartada }));
+    setPublished({ ultima, minima, version, descartada });
   }, []);
   useEffect(() => {
     void checkPublished();
@@ -95,13 +97,27 @@ export function useActualizacionesDeLaApp() {
     actualizarDesdeBanda();
   };
 
+  // José, 24/10: a company-mode release is not offered to someone with only personal chats, and vice versa.
+  const notice = useMemo<AvisoDeActualizacion>(() => {
+    if (!published) return { tipo: 'ninguno' };
+    const relevant = updateMatters(newerAudiences(novedades, versionCodeActual(), published.ultima), usage);
+    return decidirAvisoDeActualizacion({ actual: versionCodeActual(), ...published, relevant });
+  }, [published, novedades, usage]);
+
+  // The news before downloading: only the versions for what this person uses; if none is, all of them (a manual check).
+  const shownNews = useMemo(() => {
+    const mine = novedades.filter((novedad) => updateMatters([audienceOfNotes(novedad.notas)], usage));
+    return mine.length ? mine : novedades;
+  }, [novedades, usage]);
+
   const descartarAviso = () => {
-    if (aviso.tipo !== 'ninguno') void guardarActualizacionDescartada(aviso.version);
-    setAviso({ tipo: 'ninguno' });
+    if (notice.tipo === 'ninguno') return;
+    void guardarActualizacionDescartada(notice.version);
+    setPublished((before) => (before ? { ...before, descartada: notice.version } : before));
   };
 
   return {
-    aviso,
+    aviso: notice,
     /** The published APK's size, for the lock screen's «Se descarga desde LilaStore · 35 MB». */
     size: infoApp.size,
     estado,
@@ -111,7 +127,7 @@ export function useActualizacionesDeLaApp() {
     verificar,
     actualizarDesdeBanda,
     requestUpdate,
-    novedades,
+    novedades: shownNews,
     viendoNovedades,
     cerrarNovedades: () => setViendoNovedades(false),
     descargarDesdeNovedades,

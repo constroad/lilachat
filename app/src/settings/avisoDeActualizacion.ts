@@ -34,6 +34,8 @@ export function decidirAvisoDeActualizacion(params: {
   version: string;
   /** Qué versión descartó la persona, si descartó alguna. */
   descartada: string | null;
+  /** False when no newer version is for what this person uses (José, 24/10: personal vs. company mode). */
+  relevant?: boolean;
 }): AvisoDeActualizacion {
   const { actual, ultima, minima, version, descartada } = params;
 
@@ -51,6 +53,9 @@ export function decidirAvisoDeActualizacion(params: {
   // Descartar vale para ESA versión. Que vuelva con la siguiente es lo que hace
   // que descartarlo no sea apagarlo para siempre.
   if (descartada === version) return { tipo: 'ninguno' };
+
+  // A company-mode release says nothing to someone with only personal chats, and vice versa.
+  if (params.relevant === false) return { tipo: 'ninguno' };
 
   return { tipo: 'sugerida', version };
 }

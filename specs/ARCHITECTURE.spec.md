@@ -11493,6 +11493,27 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     y con test sobre la geometría. A agentes, mandar los datos por hora.
     Diseño en Stitch primero, en el lenguaje de Lilachat (no el tema oscuro de
     Google).
+97. **Cambiar entre cámara frontal y trasera en una videollamada** (José,
+    23/10): hoy no se puede. Botón de girar la cámara en la barra de la
+    llamada, APK y web (en la web, si el equipo tiene más de una cámara).
+98. **Stickers y guiños dentro de una videollamada** (José, 23/10, reclamado
+    otra vez): mandar un sticker o un guiño sin salir de la llamada. El otro
+    lo ve encima del video unos segundos y queda también en el chat.
+99. **Las apps, ordenadas como el detalle de un chat de WhatsApp** (José,
+    23/10: «muy complejo y nada intuitivo… una sábana todo mezclado»). Desde
+    la lista de apps, el chat con la app muestra Mensajes e Información, pero
+    no «Desinstalar» ni los interruptores de canales ni «¿Dónde llega cada
+    aviso?». Eso solo aparece entrando por el ícono del directorio. Una sola
+    pantalla de detalle de la app, igual entre por donde entre, con
+    pestañas: Información · Comandos y acciones · Avisos · Ajustes
+    (Reinstalar y Desinstalar, solo admins). Auditar todas las pantallas y
+    recorridos de apps (directorio, chat con la app, ⚡, «+», Integraciones)
+    en APK y web, con diseño en Stitch primero.
+100. **⚡: cerrar el formulario no deja un «borrador» encima** (José, 23/10:
+    «pésimo»). Al cerrar «Marcar asistencia» sin enviar, queda la tarjeta
+    «Abrir «Marcar asistencia»» sobre las acciones rápidas. Cerrar el
+    formulario lo descarta: la tarjeta no queda. Si se cerró por error, se
+    vuelve a tocar la acción.
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

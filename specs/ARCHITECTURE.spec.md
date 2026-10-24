@@ -11476,6 +11476,23 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     tarjeta efímera «Conecta tu cuenta» con `link` a agentes (constroad-auth).
     En el detalle de la app: «Conectado como …» y «Desconectar», con el
     contrato que pase agentes. R162.
+96. **El clima como lo muestra Google, con horas** (José, 23/10, con dos
+    capturas de Google Clima: Lima y Puente Piedra). Hoy /clima es una tarjeta
+    con una cifra y barras de lluvia por día. Lo pedido:
+    (a) Arriba: el ícono del estado, la temperatura grande en °C y el estado
+    en texto («Nublado», «Parcialmente soleado»), con «Prob. de
+    precipitaciones», «Humedad» y «Viento».
+    (b) Pestañas Temperatura · Precipitaciones · Viento sobre una curva por
+    horas (área rellena, el valor encima de cada punto, cada 3 horas: 2 a.m.…
+    11 p.m.).
+    (c) Abajo, la tira de 8 días: día, ícono y máxima/mínima; tocar un día
+    cambia la curva a ese día.
+    A Lilachat le toca un bloque nuevo del kit (`weather`: actual, horas por
+    serie y días, con los íconos como claves fijas `sun | partly | cloud |
+    rain | storm | fog`, nunca imágenes de afuera), dibujado igual en web y APK
+    y con test sobre la geometría. A agentes, mandar los datos por hora.
+    Diseño en Stitch primero, en el lenguaje de Lilachat (no el tema oscuro de
+    Google).
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

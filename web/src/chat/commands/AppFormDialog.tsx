@@ -6,6 +6,11 @@ import { ChoiceField, DateField, LocationField, NumberField, PhotoField, TextFie
 import { LiveSelfie, type LiveSelfieHandle } from './LiveSelfie';
 import { useLiveSigning } from './useLiveSigning';
 
+/** The two steps of a signing, as design e-32 writes them. */
+const LIVE_CHOICE_KICKER = '1 · Qué marcas';
+const LIVE_PHOTO_KICKER = '2 · Tu foto y tu ubicación';
+const LIVE_FOOTER = 'Al tocar se toma la foto con la hora y el lugar, y se envía.';
+
 type Upload = (file: File, stamp?: GeoPoint) => Promise<{ ok: true; fileId: string } | { ok: false; message: string }>;
 
 /**
@@ -58,7 +63,7 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
       footer={
         <div>
           <PrimaryButton testId="btn-enviar-formulario" disabled={sending} onClick={() => void send()}>{sending ? signing.phaseLabel : submitLabelOf(form, fields, values)}</PrimaryButton>
-          {evidence ? <p className="mt-2 text-center text-[12px] text-on-surface-variant">{evidence}</p> : null}
+          {evidence ? <p className="mt-2 text-center text-[12px] text-on-surface-variant">{live ? LIVE_FOOTER : evidence}</p> : null}
         </div>
       }
     >
@@ -69,7 +74,7 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
           <Avatar name={props.answer.appName} size={22} bot />
           {props.answer.appName} · hoy, {today.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>
-        {evidence ? (
+        {evidence && !live ? (
           <div className="rounded-2xl border border-outline/15 py-4 text-center">
             <p className="text-4xl font-bold tabular-nums tracking-tight">{today.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })}</p>
             {props.personName ? <p className="mx-auto mt-2 w-fit rounded-lg border border-outline/15 px-3 py-1 text-[13px]">{props.personName}</p> : null}
@@ -77,10 +82,11 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
         ) : null}
         {visibleFields(fields, values).map((field) =>
           live && field.name === live.name ? (
-            <LiveSelfie key={field.name} ref={selfie} testId={`campo-${field.name}`} label={field.label} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={errors[field.name] ?? (locationName ? errors[locationName] : undefined)} />
+            <LiveSelfie key={field.name} ref={selfie} testId={`campo-${field.name}`} label={LIVE_PHOTO_KICKER} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={errors[field.name] ?? (locationName ? errors[locationName] : undefined)} />
           ) : (
             // In a signing the place shows inside the camera; its field keeps reading behind it.
             <div key={field.name} hidden={Boolean(live) && field.kind === 'location'}>
+              {live && field.kind === 'choice' && field.segmented ? <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">{LIVE_CHOICE_KICKER}</p> : null}
               <Field field={field} value={values[field.name]} error={errors[field.name]} onChange={set(field.name)} upload={props.onUpload} />
             </div>
           )

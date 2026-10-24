@@ -10,6 +10,15 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.163',
+    items: [
+      'Marcar asistencia en un toque: eliges el tipo y la selfie se toma con la cámara frontal en vivo.',
+      'La foto lleva sellada la fecha, la hora y el lugar, y la ubicación se lee en ese momento, nunca la guardada.',
+      'Los tanques se ven como en el reporte: el %, el nivel y el estado en palabras.',
+      'Si una app te corrige un formulario después de enviarlo, se abre otra vez con lo que hay que arreglar.',
+    ],
+  },
+  {
     version: '0.1.162',
     items: [
       '«Conecta tu cuenta» de una app se hace dentro de Lilachat: tu correo o WhatsApp y el código, sin salir de la app.',

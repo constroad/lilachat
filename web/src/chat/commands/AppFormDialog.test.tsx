@@ -62,9 +62,11 @@ describe('AppFormDialog (design e-28)', () => {
     // Assert
     expect(screen.getAllByRole('radio')).toHaveLength(4);
     expect(screen.getByTestId('precision-ubicacion')).toHaveTextContent('± 6 m');
-    expect(screen.getByText('Darío Paredes')).toBeInTheDocument();
+    // A signing (design e-32): the two steps, the camera instead of the clock card, and what the tap does.
+    expect(screen.getByText('1 · Qué marcas')).toBeInTheDocument();
+    expect(screen.queryByText('Darío Paredes')).not.toBeInTheDocument();
     expect(screen.getByTestId('btn-enviar-formulario')).toHaveTextContent('Marcar ingreso');
-    expect(screen.getByText('Se registra con tu ubicación y tu foto')).toBeInTheDocument();
+    expect(screen.getByText('Al tocar se toma la foto con la hora y el lugar, y se envía.')).toBeInTheDocument();
   });
 
   it('what is missing is said field by field before anything is sent; the photo is taken by the button, so it is never «missing»', () => {

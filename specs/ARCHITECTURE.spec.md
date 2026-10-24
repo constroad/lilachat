@@ -4909,6 +4909,44 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 127. Firmar con la cámara prendida y la ubicación de ahora (24/10/2026, 0.1.163)
+
+Pedidos de José del 23 y 24/10: «estoy por marcar mi ingreso: debe abrir la
+cámara en modo frontal y, cuando doy marcar, se toma la foto, coloca un
+watermark de fecha, hora y ubicación, y marca asistencia»; «la regla de
+firmar es con cámara prendida y ubicación actual… en tiempo real, no la
+guardada en caché». Diseño e-32 en Stitch (aprobado para la R163).
+
+- **Selfie en vivo:** la foto de un formulario que también pide ubicación es
+  una firma (`liveSelfieFieldOf`). La cámara frontal se ve dentro del
+  formulario, con la guía de la cara, la pastilla «GPS ± 5 m» y las dos líneas
+  que se van a estampar. El paso 1 elige el tipo y el paso 2 es la cámara; no
+  hay galería ni foto tomada antes. APK (expo-camera) y web (getUserMedia).
+- **Un toque, en este orden:** lee la ubicación de AHORA (expo-location sin
+  usar la última conocida; en la web `maximumAge: 0`; una lectura de más de
+  30 s se rechaza), toma la foto, la sube con `stamp=1` y envía. El botón dice
+  en qué va: «Leyendo tu ubicación… / Tomando la foto… / Subiendo la foto…».
+- **Marca de agua en el píxel, del lado del servidor:** `stampPhoto` (sharp +
+  SVG) pone una banda oscura con «vie 24/10/2026 · 07:12» (el reloj del
+  SERVIDOR, hora de Lima) y «lat, lng · ± m». Una foto que no se puede leer va
+  sin sello antes que perder la marca.
+- **El servidor rechaza una ubicación vieja:** la ubicación de una firma
+  viaja con `age` (cuántos ms tenía la lectura al enviarse, medido con el
+  mismo reloj del teléfono, así un reloj mal puesto no importa). Sin `age`:
+  «Actualiza Lilachat…». Con más de 2 min: «Tu ubicación no es de ahora».
+- **Errores tardíos:** una app puede responder `{ errors }` por `/respond`
+  mientras el formulario está abierto. Se vuelve a abrir con los errores en
+  cada campo.
+- **Tanques como el reporte de WhatsApp (diseño r155):** `status` en palabras,
+  con su color por `tone`, y el % que sale de `level`.
+
+**E2E (emulador, producción, cuenta de José, «Test»):** el ⚡ abre «Marcar
+asistencia» con los logos reales de Inframaq y Portal. La cámara en vivo se
+ve (negra, porque el AVD no tiene cámara frontal), con «GPS ± 5 m» y la banda
+«vie 23/10/2026 · 20:54 / -11.98120, -76.95450 · ± 5 m». El botón «Marcar
+asistencia ingreso» queda a la vista. Cerrar descarta sin dejar tarjeta. No
+se marcó de verdad: la marca real la hace José con la 0.1.163.
+
 ## 126. «Conecta tu cuenta» dentro de Lilachat y respuestas que siempre terminan (24/10/2026, 0.1.162)
 
 Pedido de José del 23/10, con urgencia: conectar la cuenta de una app «con un
@@ -11503,7 +11541,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     público no se puede pasar a privado; no hay dónde editar nombre,
     visibilidad ni descripción de un canal. Falta la pantalla de ajustes del
     canal para sus admins (web y APK).
-94. **Cámara frontal en el formulario de asistencia** (José, 23/10): al marcar
+94. ~~**Cámara frontal en el formulario de asistencia**~~ — hecho en 0.1.163 (§127). (José, 23/10): al marcar
     ingreso, la cámara frontal abre en vivo dentro del formulario. «Marcar»
     toma la foto, le estampa fecha, hora y ubicación (marca de agua en el
     píxel) y registra. APK y web. R162.

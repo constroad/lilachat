@@ -14,6 +14,10 @@ const SHEET_PADDING = 16;
 /** A sheet on a tablet or a turned phone stays the width of a phone. */
 const SHEET_MAX_WIDTH = 560;
 const MAX_SCREEN_SHARE = 0.92;
+/** The two steps of a signing, as design e-32 writes them. */
+const LIVE_CHOICE_KICKER = '1 · Qué marcas';
+const LIVE_PHOTO_KICKER = '2 · Tu foto y tu ubicación';
+const LIVE_FOOTER = 'Al tocar se toma la foto con la hora y el lugar, y se envía.';
 
 /**
  * An app's form as a sheet (R160, design e-28): the fields its schema says,
@@ -98,7 +102,7 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
           <ScrollView keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }} contentContainerStyle={{ padding: SHEET_PADDING, gap: 14 }}>
             {props.answer.response?.text ? <Text testID="formulario-texto" className="rounded-xl bg-primary/10 px-3 py-2.5 text-[15px] text-on-surface">{props.answer.response.text}</Text> : null}
             {form.intro ? <Text className="text-[15px] text-on-surface-variant">{form.intro}</Text> : null}
-            {evidence ? (
+            {evidence && !live ? (
               <View className="items-center rounded-2xl border border-outline/15 py-4">
                 <Text className="text-[40px] font-bold text-on-surface" style={{ fontVariant: ['tabular-nums'] }}>{now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })}</Text>
                 {props.personName ? <Text className="mt-1 rounded-lg border border-outline/15 px-3 py-1 text-[14px] text-on-surface">{props.personName}</Text> : null}
@@ -106,10 +110,11 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
             ) : null}
             {visibleFields(fields, values).map((field) =>
               live && field.name === live.name ? (
-                <LiveSelfie key={field.name} ref={selfie} testID={`campo-${field.name}`} label={field.label} width={sheetWidth - SHEET_PADDING * 2} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={errors[field.name] ?? (locationName ? errors[locationName] : undefined)} />
+                <LiveSelfie key={field.name} ref={selfie} testID={`campo-${field.name}`} label={LIVE_PHOTO_KICKER} width={sheetWidth - SHEET_PADDING * 2} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={errors[field.name] ?? (locationName ? errors[locationName] : undefined)} />
               ) : (
                 // In a signing the place shows inside the camera; its field keeps reading behind it.
                 <View key={field.name} style={live && field.kind === 'location' ? { display: 'none' } : undefined}>
+                  {live && field.kind === 'choice' && field.segmented ? <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{LIVE_CHOICE_KICKER}</Text> : null}
                   <Field field={field} value={values[field.name]} error={errors[field.name]} onChange={set(field.name)} upload={props.onUpload} width={sheetWidth - SHEET_PADDING * 2} />
                 </View>
               )
@@ -121,7 +126,7 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
               {sending ? <ActivityIndicator color={colors['on-primary']} /> : null}
               <Text className="text-[18px] font-bold text-on-primary">{sending ? signing.phaseLabel : submitLabelOf(form, fields, values)}</Text>
             </Pressable>
-            {evidence ? <Text className="mt-2 text-center text-[13px] text-on-surface-variant">{evidence}</Text> : null}
+            {evidence ? <Text className="mt-2 text-center text-[13px] text-on-surface-variant">{live ? LIVE_FOOTER : evidence}</Text> : null}
           </View>
         </View>
       </KeyboardAvoidingView>

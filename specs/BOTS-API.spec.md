@@ -437,6 +437,21 @@ es global y un comando no; los dos funcionan en todos los canales.
   persona lee «<App> se está actualizando: vuelve a intentarlo en unos
   segundos.». Un 500 sigue siendo «no pudo responder».
 
+## c-septies) Firmar (0.1.163)
+
+- Un formulario con un campo `x-input: location` y uno `x-input: photo` es una
+  firma: la foto es una selfie en vivo, tomada al tocar el botón. No cambia el
+  schema.
+- La ubicación de una firma llega con `age` (ms). Lilachat ya rechazó la que
+  tenía más de 2 min o no traía `age`, así que la app la puede usar como
+  ubicación del momento.
+- La foto llega con la marca de agua ya estampada: hora del servidor de
+  Lilachat (Lima) y «lat, lng · ± m».
+- `/respond` con `{ "errors": { … } }` mientras el formulario espera respuesta
+  lo vuelve a abrir con esos errores. Si ya se cerró: 409 `form_closed`.
+- Tanque: `status` (hasta 24 caracteres, en palabras) además de `tone`; el %
+  lo calcula Lilachat de `level`.
+
 ## d) Lectura
 
 - `GET /api/bots/me` → `{ installation_id, space: { id, name }, bot_user_id }`.

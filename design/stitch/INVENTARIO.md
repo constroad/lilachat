@@ -116,6 +116,7 @@ Las capturas viven SOLO en la máquina (`design/stitch/`, en `.gitignore` desde 
 | `e-29-acciones-de-apps-app.png` | E · Menú + con acciones de las apps · Móvil (`screens/d9a8092c05564858b4a0ceef1bb65867`). Las acciones salen de los `shortcuts` del manifiesto de cada app instalada |
 | `e-30-acciones-del-espacio-app.png` | E · ⚡ Acciones rápidas del espacio · Móvil (`screens/5ac3d8a3ac624c67865a224c785b594d`). Sin la pastilla «Ingreso 07:12» ni el punto violeta del ⚡ (Lilachat no tiene ese dato) |
 | `e-31-avisos-por-tema-app.png` | E · ¿Dónde llega cada aviso? (detalle de la app) · Móvil (`screens/438a63e7ee2045ddae7ede87ab6c766b`). Los temas salen de `notice_topics` del manifiesto |
+| `e-32-marcar-asistencia-camara.png` | E · Marcar asistencia en 2 pasos con la cámara frontal en vivo · Móvil (`screens/b19ded2bc53e46328d69deb6224c3132`). Tipo arriba; el toque de «Marcar ingreso» toma la selfie, el servidor le estampa fecha, hora y ubicación y envía (pendiente 94) |
 
 ## Messenger: clip, guiños y personajes (21/10/2026)
 

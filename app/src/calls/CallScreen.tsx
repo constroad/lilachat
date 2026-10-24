@@ -6,6 +6,8 @@ import { Mic, MicOff, PhoneOff, User, Video, VideoOff, Volume2 } from 'lucide-re
 import { SwitchCamera } from 'lucide-react-native';
 import type { CallState } from '@lilachat/shared';
 import { mirrorsSelfView, type CameraFacing } from '@lilachat/shared';
+import type { CallReaction } from '@lilachat/shared';
+import { CallReactionButton, CallReactionOverlay, CallReactionSheet } from './CallReactions';
 import { leyendaDeLlamada, type EstadoDeMedios } from './estadoDeMedios';
 import { useColores, useTema } from '../ui/tema';
 import { useMargenes } from '../ui/useMargenes';
@@ -43,6 +45,9 @@ export function CallScreen({
   onToggleVideo,
   facing,
   onSwitchCamera,
+  reaction,
+  onSendReaction,
+  onReactionDone,
   puedeAlternarVideo,
   onAccept,
   onHangUp,
@@ -64,6 +69,10 @@ export function CallScreen({
   /** Front or rear camera (pending 97), with its button on my own view. */
   facing: CameraFacing;
   onSwitchCamera: () => void;
+  /** Winks and stickers during the call (pending 98): what plays now, sending one, and when it ends. */
+  reaction: { reaction: CallReaction; key: number } | null;
+  onSendReaction: (reaction: CallReaction) => void;
+  onReactionDone: () => void;
   /**
    * Solo en una videollamada: en una de voz el botón prendía el ícono sin
    * prender ninguna cámara (sumar video a mitad de llamada pide renegociar).
@@ -86,6 +95,7 @@ export function CallScreen({
   }, [state.fase]);
 
   const leyenda = leyendaDeLlamada({ state, medios, video, ahora });
+  const [reacting, setReacting] = useState(false);
 
   return (
     <Modal visible={visible} animationType="slide" statusBarTranslucent>
@@ -141,15 +151,20 @@ export function CallScreen({
               <DeslizarParaContestar onContestar={onAccept} />
             </View>
           ) : (
+            <>
+            {state.fase === 'activa' ? <View className="mb-3 flex-row"><CallReactionButton onPress={() => setReacting(true)} /></View> : null}
             <View className="flex-row items-start justify-evenly rounded-[32px] border border-on-primary/10 bg-black/25 px-2 py-6">
               <CallButton testID="btn-altavoz" label="Altavoz" onPress={onToggleSpeaker} activo={speaker} Icon={Volume2} />
               {puedeAlternarVideo ? <CallButton testID="btn-video" label="Video" onPress={onToggleVideo} activo={video} Icon={video ? Video : VideoOff} /> : null}
               <CallButton testID="btn-silenciar" label={muted ? 'Activar' : 'Silenciar'} onPress={onToggleMute} activo={muted} Icon={muted ? MicOff : Mic} />
               <CallButton testID="btn-colgar" label="Colgar" onPress={onHangUp} destructivo Icon={PhoneOff} />
             </View>
+            </>
           )}
         </View>
+        <CallReactionOverlay played={reaction} onDone={onReactionDone} />
       </View>
+      {reacting ? <CallReactionSheet peerName={peerName} onSend={onSendReaction} onClose={() => setReacting(false)} /> : null}
       </GestureHandlerRootView>
     </Modal>
   );

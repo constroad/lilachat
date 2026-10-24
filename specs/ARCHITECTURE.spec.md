@@ -11632,7 +11632,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
 97. ~~**Cambiar entre cámara frontal y trasera en una videollamada**~~ — hecho en 0.1.165 (§129). (José,
     23/10): hoy no se puede. Botón de girar la cámara en la barra de la
     llamada, APK y web (en la web, si el equipo tiene más de una cámara).
-98. **Stickers y guiños dentro de una videollamada** (José, 23/10, reclamado
+98. ~~**Stickers y guiños dentro de una videollamada**~~ — hecho en 0.1.166 (§130; evento `call.reaction`). (José, 23/10, reclamado
     otra vez): mandar un sticker o un guiño sin salir de la llamada. El otro
     lo ve encima del video unos segundos y queda también en el chat.
 99. **Las apps, ordenadas como el detalle de un chat de WhatsApp** (José,

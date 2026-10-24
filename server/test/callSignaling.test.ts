@@ -134,6 +134,20 @@ describe('señalización de llamadas', () => {
     expect(await fin).toMatchObject({ motivo: 'colgada', from: String(ana) });
   });
 
+  it('a wink or a sticker during the call reaches the other side; an outside one or a stranger\'s does not (pending 98)', async () => {
+    // Arrange
+    const [anaSocket, betoSocket, strangerSocket] = await Promise.all([abrir(ana), abrir(beto), abrir(extraño)]);
+    // Act
+    const winkSeen = esperar(betoSocket, 'call.reaction');
+    anaSocket.emit('call.reaction', { chatId, reaction: { kind: 'wink', id: 'hearts' } });
+    // Assert
+    expect(await winkSeen).toEqual({ chatId, reaction: { kind: 'wink', id: 'hearts' } });
+    const nothing = esperar(betoSocket, 'call.reaction', 800);
+    anaSocket.emit('call.reaction', { chatId, reaction: { kind: 'sticker', id: 'https://evil.example/x.webp' } });
+    strangerSocket.emit('call.reaction', { chatId, reaction: { kind: 'wink', id: 'hearts' } });
+    expect(await nothing).toBeNull();
+  });
+
   /** Un chat inventado no tumba la conexión ni entrega nada. */
   it('un chatId inválido se ignora en silencio', async () => {
     const [socketAna, socketBeto] = await Promise.all([abrir(ana), abrir(beto)]);

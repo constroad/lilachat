@@ -12,6 +12,7 @@ import type RTCIceCandidateEvent from 'react-native-webrtc/lib/typescript/RTCIce
 import type RTCTrackEvent from 'react-native-webrtc/lib/typescript/RTCTrackEvent';
 import { CALL_TIMEOUT_MS, nextCallState, type CallState } from '@lilachat/shared';
 import { otherFacing, type CameraFacing } from '@lilachat/shared';
+import { callReactionOf, type CallReaction } from '@lilachat/shared';
 import { connectSocket, getSocket, sostenerPorLlamada } from '../chat/socketClient';
 import { obtenerIceServers, type ServidorIce } from './iceServers';
 import { esperaAntesDeRendirse, estadoDeMedios, type EstadoDeMedios } from './estadoDeMedios';
@@ -76,6 +77,8 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
   const [speaker, setSpeaker] = useState(false);
   /** Front or rear camera (pending 97); every call starts with the front one. */
   const [facing, setFacing] = useState<CameraFacing>('user');
+  /** The last wink or sticker played over the call (pending 98), mine or the other's. */
+  const [reaction, setReaction] = useState<{ reaction: CallReaction; key: number } | null>(null);
   /** Lo que se tocó en la notificación antes de que llegara la oferta (FL8.1). */
   const avisoPendiente = useRef<AccionDeAviso | null>(null);
   const aplicarAvisoRef = useRef<(aviso: AccionDeAviso) => void>(() => undefined);
@@ -122,6 +125,7 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
     setLocalStream(null);
     setRemoteStream(null);
     setFacing('user');
+    setReaction(null);
     buffer.current = [];
     remotoListo.current = false;
     yaConecto.current = false;
@@ -374,8 +378,14 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
     socket.on('call.ice', hielo);
     socket.on('call.end', terminada);
     socket.on('call.reject', terminada);
+    const onReaction = (data: { chatId: string; reaction?: unknown }) => {
+      const played = esDeEstaLlamada(data.chatId) ? callReactionOf(data.reaction) : null;
+      if (played) setReaction({ reaction: played, key: Date.now() });
+    };
+    socket.on('call.reaction', onReaction);
 
     return () => {
+      socket.off('call.reaction', onReaction);
       socket.off('call.offer', entrante);
       socket.off('call.answer', contestada);
       socket.off('call.ice', hielo);
@@ -482,6 +492,9 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
     setChatId(null);
   }, [limpiar]);
 
+  // Stable: the overlay's timer restarts when its `onDone` changes, and the call screen repaints every second.
+  const clearReaction = useCallback(() => setReaction(null), []);
+
   return {
     state,
     medios,
@@ -513,6 +526,13 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
         return nuevo;
       }),
     facing,
+    reaction,
+    sendReaction: (sent: CallReaction) => {
+      if (!chatIdRef.current) return;
+      getSocket()?.emit('call.reaction', { chatId: chatIdRef.current, reaction: sent });
+      setReaction({ reaction: sent, key: Date.now() });
+    },
+    clearReaction,
     // The other camera on the same track (pending 97): no renegotiation, the other side keeps receiving.
     switchCamera: () => {
       const track = localRef.current?.getVideoTracks()[0];

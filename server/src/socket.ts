@@ -31,6 +31,7 @@ import { configureChannelNotices, configureMembersNotices, configureWorkspaceNot
 import { maybeAnswerMention } from './assistantReply.js';
 import { verifySession } from './sessions.js';
 import { esDispositivoVinculado } from '@lilachat/shared';
+import { callReactionOf } from '@lilachat/shared';
 import { vinculadoVigente } from './dispositivosVinculados.js';
 import { HiloInvalidoError } from './hilos.js';
 import { registerAgendaRelay } from './agendaRelay.js';
@@ -313,6 +314,20 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
     for (const evento of ['call.offer', 'call.answer', 'call.ice', 'call.end', 'call.reject']) {
       reenviarSeñal(evento);
     }
+    // A wink or a sticker during a call (pending 98): relayed to the other members, never stored; only catalog ids pass.
+    const relayCallReaction = async (frame: unknown) => {
+      const payload = (frame ?? {}) as { chatId?: unknown; reaction?: unknown };
+      const reaction = callReactionOf(payload.reaction);
+      if (!reaction || typeof payload.chatId !== 'string' || !Types.ObjectId.isValid(payload.chatId)) return;
+      try {
+        const members = await chatMemberIds(new Types.ObjectId(payload.chatId));
+        if (!members.includes(String(userId))) return;
+        for (const member of members) if (member !== String(userId)) io.to(userRoom(member)).emit('call.reaction', { chatId: payload.chatId, reaction });
+      } catch (error) {
+        console.warn('[llamada] no se pudo reenviar la reacción:', error instanceof Error ? error.message : error);
+      }
+    };
+    socket.on('call.reaction', (frame: unknown) => void relayCallReaction(frame));
 
     socket.on('sync.pull', async (frame: unknown, ack?: (response: unknown) => void) => {
       const cursors = ((frame ?? {}) as { cursors?: Record<string, number> }).cursors ?? {};

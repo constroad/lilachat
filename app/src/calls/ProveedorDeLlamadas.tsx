@@ -83,6 +83,9 @@ export function ProveedorDeLlamadas({ jwt, children }: { jwt: string; children: 
           onToggleVideo={llamada.alternarVideo}
           facing={llamada.facing}
           onSwitchCamera={llamada.switchCamera}
+          reaction={llamada.reaction}
+          onSendReaction={llamada.sendReaction}
+          onReactionDone={llamada.clearReaction}
           onAccept={llamada.contestar}
           // Colgar pasa a «terminada» y el efecto de arriba la cierra: un
           // instante a la vista, porque desaparecer de golpe se siente como

@@ -3,6 +3,7 @@ import { Mic, MicOff, Phone, PhoneOff, Video, VideoOff } from 'lucide-react';
 import { SwitchCamera } from 'lucide-react';
 import { callCaption } from '@lilachat/shared';
 import { mirrorsSelfView } from '@lilachat/shared';
+import { CallReactionOverlay, CallReactionPicker, useCallReactions } from './CallReactions';
 import { Avatar } from '../ui/Avatar';
 import type { WebCall } from './useWebCall';
 
@@ -55,6 +56,7 @@ export function CallOverlay({ call, peerPhoto }: { call: WebCall; /** The chat's
   const now = useNow(active);
   const remoteMedia = useStreamRef(remoteStream);
   const localVideo = useStreamRef(localStream);
+  const reactions = useCallReactions(active && session ? session.chatId : null);
   if (!state || !session) return null;
   const showVideo = session.videoCall && (active || state.fase === 'llamando');
   const caption = error ?? callCaption({ state, media, video: session.videoCall, now });
@@ -62,6 +64,7 @@ export function CallOverlay({ call, peerPhoto }: { call: WebCall; /** The chat's
     <div className="fixed inset-0 z-50 grid place-items-center bg-on-surface/50 p-4" data-testid="pantalla-llamada">
       <div role="dialog" aria-label={`Llamada con ${session.peerName}`} className="relative flex h-[min(620px,calc(100dvh-32px))] w-full max-w-[440px] flex-col items-center overflow-hidden rounded-2xl border border-outline/15 bg-surface shadow-2xl">
         <audio ref={remoteMedia} autoPlay />
+        <CallReactionOverlay played={reactions.played} onDone={reactions.clear} />
         {showVideo ? (
           <>
             <video ref={remoteMedia} autoPlay playsInline muted className="absolute inset-0 h-full w-full bg-on-surface object-cover" />
@@ -74,6 +77,7 @@ export function CallOverlay({ call, peerPhoto }: { call: WebCall; /** The chat's
           <p data-testid="leyenda-llamada" role="status" className={`text-sm ${error ? 'text-error' : 'text-on-surface-variant'} tabular-nums`}>{caption}</p>
         </div>
         <div className="relative grid flex-1 place-items-center">{showVideo ? null : <Avatar name={session.peerName} foto={peerPhoto} size={144} />}</div>
+        {active ? <div className="relative mx-4 mb-2 flex self-stretch"><CallReactionPicker peerName={session.peerName} onSend={reactions.send} /></div> : null}
         <div className={`relative mx-4 mb-6 flex items-start justify-evenly gap-2 self-stretch rounded-3xl border border-outline/15 px-4 py-4 ${showVideo ? 'bg-surface/85' : 'bg-background'}`}>
           {state.fase === 'sonando' ? (
             <>

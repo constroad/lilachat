@@ -11,8 +11,8 @@ const LIVE_PLACEHOLDER = 'live';
 const PLACE_PLACEHOLDER = { lat: 0, lng: 0, precision: 1 };
 
 /**
- * The one tap of a signing (pending 94; José, 24/10: «con cámara prendida y
- * ubicación actual»): a fresh reading of where the person is (never the cached
+ * The one tap of a signing (pending 94; José, 24/10: camera on and the place
+ * of now): a fresh reading of where the person is (never the cached
  * one), the photo from the live camera, its upload with the stamp request, and
  * the values ready to send. A form without a live selfie goes as it is.
  */

@@ -7,10 +7,10 @@ const FIX_TIMEOUT_MS = 15_000;
 const FRESH_FIX_MS = 30_000;
 
 /**
- * Where the person is RIGHT NOW, read when they sign (José, 24/10: «la
- * ubicación debe ser en tiempo real, no la guardada en caché»). Never the
- * last known position: without a fresh reading it gives null and the signing
- * waits. `age` goes with it so the server can judge it with no clock to trust.
+ * Where the person is RIGHT NOW, read when they sign (José, 24/10: the
+ * place in real time, never the one the phone kept). Never the last known
+ * position: without a fresh reading it gives null and the signing waits.
+ * `age` goes with it so the server can judge it with no clock to trust.
  */
 export async function freshPoint(): Promise<(GeoPoint & { readAt: number }) | null> {
   const permission = await Location.requestForegroundPermissionsAsync().catch(() => null);

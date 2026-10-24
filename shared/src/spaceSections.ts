@@ -141,3 +141,26 @@ export function unreadElsewhere(params: { spaces: readonly { id: string; status:
   const inSpaces = spaces.reduce((total, space) => total + (space.unreadChats ?? 0), 0);
   return inSpaces + (params.currentId ? params.personalUnread : 0);
 }
+
+export type SpaceSettingsRow = { key: 'settings' | 'members' | 'channels' | 'apps' | 'invite' | 'media'; title: string; detail: string };
+
+/**
+ * The space's part of the «Ajustes» tab (José, 24/10: the space's settings belong in the
+ * bottom tab; design e-34): what each one can do
+ * there. Settings only for owners and admins; inviting only with a code.
+ */
+export function spaceSettingsRows(space: { role: string; members: number; pendingRequests?: number; joinCode?: string }, apps: readonly string[]): SpaceSettingsRow[] {
+  const admin = space.role === 'owner' || space.role === 'admin';
+  const requests = space.pendingRequests ? ` · ${space.pendingRequests} ${space.pendingRequests === 1 ? 'solicitud' : 'solicitudes'}` : '';
+  return [
+    ...(admin ? [{ key: 'settings' as const, title: 'Ajustes del espacio', detail: 'Nombre, logo, rubro y código de ingreso' }] : []),
+    { key: 'members', title: admin ? 'Miembros y roles' : 'Miembros', detail: `${membersLabel(space.members)}${admin ? requests : ''}` },
+    { key: 'channels', title: 'Canales', detail: 'Explorar y unirte' },
+    { key: 'apps', title: 'Apps', detail: apps.length ? apps.join(', ') : 'Ninguna instalada todavía' },
+    ...(space.joinCode ? [{ key: 'invite' as const, title: 'Invitar al espacio', detail: `Código ${space.joinCode}` }] : []),
+    { key: 'media', title: 'Medios del espacio', detail: 'Fotos, videos y documentos de sus canales' },
+  ];
+}
+
+/** The badge next to the space's name: only for who runs it. */
+export const spaceRoleBadge = (role: string): string | null => (role === 'owner' ? 'Dueño' : role === 'admin' ? 'Admin' : null);

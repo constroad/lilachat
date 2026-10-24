@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { filterChannels, railSpaces, unreadElsewhere, splitArchived, SPACE_RUBROS, spaceInitials, spaceInviteEmail, spaceInviteMailto, spaceInviteMessage, spaceJoinLink, joinCodeFromLink, spaceSections, spaceSubtitle } from './spaceSections.js';
+import { spaceRoleBadge, spaceSettingsRows } from './spaceSections.js';
 
 /** The chats of a company space by sections, like Slack (designs `s-03-lista-con-secciones` and `e1-07-chats-del-espacio`). */
 describe('spaceSections', () => {
@@ -192,5 +193,29 @@ describe('unreadElsewhere', () => {
   });
   it('nothing loaded yet is zero', () => {
     expect(unreadElsewhere({ spaces: null, currentId: null, personalUnread: 0 })).toBe(0);
+  });
+});
+
+describe('the space in the «Ajustes» tab (José, 24/10; design e-34)', () => {
+  it('an admin gets settings, members with requests, channels, apps, invite and media', () => {
+    // Act
+    const rows = spaceSettingsRows({ role: 'admin', members: 12, pendingRequests: 2, joinCode: 'TEST-8355' }, ['Inframaq', 'Portal']);
+    // Assert
+    expect(rows.map((row) => [row.key, row.title, row.detail])).toEqual([
+      ['settings', 'Ajustes del espacio', 'Nombre, logo, rubro y código de ingreso'],
+      ['members', 'Miembros y roles', '12 miembros · 2 solicitudes'],
+      ['channels', 'Canales', 'Explorar y unirte'],
+      ['apps', 'Apps', 'Inframaq, Portal'],
+      ['invite', 'Invitar al espacio', 'Código TEST-8355'],
+      ['media', 'Medios del espacio', 'Fotos, videos y documentos de sus canales'],
+    ]);
+    expect([spaceRoleBadge('owner'), spaceRoleBadge('admin'), spaceRoleBadge('member')]).toEqual(['Dueño', 'Admin', null]);
+  });
+
+  it('a member sees no settings, no requests and no invite without a code', () => {
+    const rows = spaceSettingsRows({ role: 'member', members: 1, pendingRequests: 3 }, []);
+    expect(rows.map((row) => row.key)).toEqual(['members', 'channels', 'apps', 'media']);
+    expect(rows[0]).toMatchObject({ title: 'Miembros', detail: '1 miembro' });
+    expect(rows[2]!.detail).toBe('Ninguna instalada todavía');
   });
 });

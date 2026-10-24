@@ -118,6 +118,7 @@ Las capturas viven SOLO en la máquina (`design/stitch/`, en `.gitignore` desde 
 | `e-31-avisos-por-tema-app.png` | E · ¿Dónde llega cada aviso? (detalle de la app) · Móvil (`screens/438a63e7ee2045ddae7ede87ab6c766b`). Los temas salen de `notice_topics` del manifiesto |
 | `e-32-marcar-asistencia-camara.png` | E · Marcar asistencia en 2 pasos con la cámara frontal en vivo · Móvil (`screens/b19ded2bc53e46328d69deb6224c3132`). Tipo arriba; el toque de «Marcar ingreso» toma la selfie, el servidor le estampa fecha, hora y ubicación y envía (pendiente 94) |
 | `e-33-clima-por-horas.png` | E · /clima por horas como Google · Móvil (`screens/206b187184d64c828ef7ab4fb36789ea`). Ahora con ícono, °C grande y tres datos; pastilla de riesgo para asfaltar; pestañas Temperatura · Precipitaciones · Viento sobre la curva; tira de 8 días con punto de riesgo (pendiente 96) |
+| `e-34-ajustes-espacio-y-cuenta.png` | E · Pestaña Ajustes con el espacio abierto arriba (cabecera, ajustes, miembros, canales, apps, invitar, medios) y «Tu cuenta» abajo · Móvil (`screens/45c4d7bb77924645b348fe5afb8ce189`). José, 24/10 |
 
 ## Messenger: clip, guiños y personajes (21/10/2026)
 

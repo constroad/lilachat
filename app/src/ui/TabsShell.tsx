@@ -480,6 +480,7 @@ export function TabsShell({
             onRespaldoDelServidor={() => setShowBackup(true)}
             onLogout={onLogout}
             onAbrirDestacado={(chatId, seq) => void buscarChat(chatId, credential.jwt).then((chat) => chat && onOpenChat(chat, seq))}
+            space={espacios.settingsSection}
             media={{ spaceId: espacios.current?.id ?? null, spaceName: espacios.current?.name, onOpen: (item) => void (espacios.current ? findSpaceChat(credential.jwt, espacios.current.id, item.chatId) : buscarChat(item.chatId, credential.jwt)).then((chat) => chat && onOpenChat(chat, item.seq)) }}
           />
           </ErrorBoundary>

@@ -282,6 +282,8 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
     directoryTab,
     mentionsTab,
     openChannels: () => setSheet('channels'),
+    /** The space's part of the «Ajustes» tab (José, 24/10; design e-34). */
+    settingsSection: current ? { space: current, apps: (apps.directory?.apps ?? []).filter((app) => app.installation).map((app) => app.name), open: (link: 'settings' | 'members' | 'channels' | 'apps' | 'invite' | 'switch') => setSheet(link === 'switch' ? 'switcher' : link) } : null,
     openInvite: () => setSheet('invite'),
     /** A message arrived in a chat outside the personal list: the spaces' counters are read again, once per burst. */
     reloadSoon,

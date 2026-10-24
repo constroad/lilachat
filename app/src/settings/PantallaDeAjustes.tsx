@@ -21,7 +21,8 @@ import { RespaldoAjuste } from './RespaldoAjuste';
 import type { ResultadoDelChequeo } from './actualizacion';
 import type { EstadoActualizacion } from './useActualizador';
 import { ListaDeDestacados } from '../chat/destacados/ListaDeDestacados';
-import type { MediaLibraryItem } from '@lilachat/shared';
+import type { ClientWorkspace, MediaLibraryItem } from '@lilachat/shared';
+import { SpaceSettingsSection, type SpaceSettingsLink } from '../spaces/SpaceSettingsSection';
 import { MediaScreen } from '../media/MediaScreen';
 
 /**
@@ -49,6 +50,8 @@ export function PantallaDeAjustes(props: {
   onAbrirDestacado: (chatId: string, seq: number) => void;
   /** «Medios» of the personal chats or of the space open (pending 38): its chat at that message. */
   media: { spaceId: string | null; spaceName?: string; onOpen: (item: MediaLibraryItem) => void };
+  /** The space open goes first (José, 24/10: the space's settings belong in this tab). */
+  space: { space: ClientWorkspace; apps: readonly string[]; open: (link: Exclude<SpaceSettingsLink, 'media'>) => void } | null;
 }) {
   const { credential, actualizaciones } = props;
   const [verDestacados, setVerDestacados] = useState(false);
@@ -67,6 +70,8 @@ export function PantallaDeAjustes(props: {
         keyboardShouldPersistTaps="handled"
         testID="pantalla-ajustes"
       >
+        {props.space ? <SpaceSettingsSection space={props.space.space} apps={props.space.apps} onOpen={(link) => (link === 'media' ? setVerMedios(true) : props.space?.open(link))} /> : null}
+        {props.space ? <Rotulo>Tu cuenta</Rotulo> : null}
         <PerfilAjuste credential={credential} />
         <GrupoDeAjustes>
           <PresenceSetting jwt={credential.jwt} name={credential.name ?? 'Tú'} />
@@ -107,7 +112,7 @@ export function PantallaDeAjustes(props: {
         <GrupoDeAjustes>
           {/* La estrella personal (20/10), como WhatsApp: todos los que destaqué, de todos los chats. */}
           <GroupsAsListSetting />
-          <FilaDeAjuste testID="btn-medios" icono={Images} titulo="Medios" detalle="Fotos, videos, documentos y enlaces de tus chats" onPress={() => setVerMedios(true)} />
+          {props.space ? null : <FilaDeAjuste testID="btn-medios" icono={Images} titulo="Medios" detalle="Fotos, videos, documentos y enlaces de tus chats" onPress={() => setVerMedios(true)} />}
           <FilaDeAjuste testID="btn-almacenamiento" icono={HardDrive} titulo="Almacenamiento" detalle="Cuánto ocupa Lilachat y qué liberar" onPress={() => setShowStorage(true)} />
           <FilaDeAjuste testID="btn-destacados" icono={Star} titulo="Mensajes destacados" detalle="Los que guardaste con la estrella · solo tú los ves" onPress={() => setVerDestacados(true)} />
           <RespaldoAjuste credential={credential} />

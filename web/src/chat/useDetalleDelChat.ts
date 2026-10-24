@@ -5,9 +5,9 @@ import type { MemberPill } from '@lilachat/shared';
 import type { BaseLocal } from '../local/baseLocal';
 
 /** Un miembro como lo pinta la web: el nombre ya resuelto. */
-export type MiembroDelChat = { id: string; nombre: string; foto?: string; telefono?: string; rol: 'admin' | 'member'; esYo: boolean; /** An installed app (pending 91): an admin only takes it out. */ app?: boolean };
+export type ChatMemberInfo = { id: string; nombre: string; foto?: string; telefono?: string; rol: 'admin' | 'member'; esYo: boolean; /** An installed app (pending 91): an admin only takes it out. */ app?: boolean };
 export type DetalleDelChat = {
-  miembros: Map<string, MiembroDelChat>;
+  miembros: Map<string, ChatMemberInfo>;
   /** Each member's pill: in a company space, the job title and the role there (design s-01). */
   pills: Map<string, MemberPill>;
   soyAdmin: boolean;
@@ -42,7 +42,7 @@ export type Respuesta = {
 const vistos = new Map<string, DetalleDelChat>();
 
 export function aDetalle(respuesta: Respuesta): DetalleDelChat {
-  const miembros = new Map<string, MiembroDelChat>();
+  const miembros = new Map<string, ChatMemberInfo>();
   const pills = new Map<string, MemberPill>();
   for (const uno of respuesta.members) {
     pills.set(uno.id, { role: uno.app ? 'app' : (uno.spaceRole ?? uno.role ?? 'member'), title: uno.title });
@@ -77,7 +77,7 @@ const claveGuardada = (chatId: string) => `detalle:${chatId}`;
 /** Members show the name saved in the phone (20/10, option «b»), like the app. */
 export function detailWithAgenda(detail: DetalleDelChat, agenda: ReadonlyMap<string, string>): DetalleDelChat {
   let changed = false;
-  const members = new Map<string, MiembroDelChat>();
+  const members = new Map<string, ChatMemberInfo>();
   for (const [id, member] of detail.miembros) {
     const saved = member.esYo ? undefined : agendaNameFor(member.telefono, agenda);
     changed ||= Boolean(saved && saved !== member.nombre);

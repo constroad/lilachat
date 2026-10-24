@@ -1,6 +1,6 @@
 import { accionesDeMiembro, puedeAgregar, puedeEditarInfo, type AccionDeMiembro } from '@lilachat/shared';
 import { groupSubtitle } from '@lilachat/shared';
-import type { DetalleDelChat, MiembroDelChat } from '../useDetalleDelChat';
+import type { DetalleDelChat, ChatMemberInfo } from '../useDetalleDelChat';
 import type { ChatSummary } from '../types';
 
 /**
@@ -8,7 +8,7 @@ import type { ChatSummary } from '../types';
  * deja tocar. Las reglas son las MISMAS que decide el server (`shared`): la
  * pantalla pregunta, no opina aparte.
  */
-export type MiembroEnInfo = MiembroDelChat & { acciones: AccionDeMiembro[] };
+export type MiembroEnInfo = ChatMemberInfo & { acciones: AccionDeMiembro[] };
 export type VistaDeInfo = {
   titulo: string;
   subtitulo: string;
@@ -24,7 +24,7 @@ const TITULOS: Record<ChatSummary['kind'], string> = { group: 'Info. del grupo',
 const ALGUIEN_NUEVO = '__nuevo__';
 
 /** Yo primero, después los admins y el resto por nombre (como WhatsApp). */
-const orden = (a: MiembroDelChat, b: MiembroDelChat) =>
+const orden = (a: ChatMemberInfo, b: ChatMemberInfo) =>
   Number(b.esYo) - Number(a.esYo) || Number(b.rol === 'admin') - Number(a.rol === 'admin') || a.nombre.localeCompare(b.nombre, 'es');
 
 export function armarInfo(params: { chat: ChatSummary; detalle: DetalleDelChat | null; yo: string }): VistaDeInfo {

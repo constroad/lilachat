@@ -187,7 +187,7 @@ describe('the bot publishes (§b) and reads (§d)', () => {
     expect(refused.body).toMatchObject({ error: 'not_in_channel', message: expect.stringMatching(/sacó/) });
     expect((await ChatModel.findById(channel).lean())!.members.some((member) => String(member.userId) === botUserId)).toBe(false);
     await request(app).post(`/api/chats/${channel}/members`).set(asJose).send({ userId: botUserId }).expect(200);
-    await request(app).post('/api/bots/messages').set(asBot(token)).send({ channel_id: String(channel), text: 'Volví', idempotency_key: 'r3' }).expect(201);
+    await request(app).post('/api/bots/messages').set(asBot(token)).send({ channel_id: String(channel), text: 'De regreso', idempotency_key: 'r3' }).expect(201);
   });
 
   it('a card keeps its actions; the bot closes it with PATCH', async () => {

@@ -10,7 +10,7 @@ describe('ChannelVisibilityRow', () => {
     // Arrange
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true, visibility: 'private' }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
-    render(<ChannelVisibilityRow chatId="c1" jwt="jwt" isPrivate={false} isAdmin isGeneral={false} onAviso={() => undefined} />);
+    render(<ChannelVisibilityRow chatId="c1" jwt="jwt" isPrivate={false} isAdmin isGeneral={false} onNotice={() => undefined} />);
     // Act
     fireEvent.click(screen.getByTestId('interruptor-canal-privado'));
     // Assert
@@ -21,18 +21,18 @@ describe('ChannelVisibilityRow', () => {
 
   it('a refusal puts it back and says why', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ message: 'Solo los admins del canal cambian quién lo encuentra.' }), { status: 400 })));
-    const onAviso = vi.fn();
-    render(<ChannelVisibilityRow chatId="c1" jwt="jwt" isPrivate={false} isAdmin isGeneral={false} onAviso={onAviso} />);
+    const onNotice = vi.fn();
+    render(<ChannelVisibilityRow chatId="c1" jwt="jwt" isPrivate={false} isAdmin isGeneral={false} onNotice={onNotice} />);
     fireEvent.click(screen.getByTestId('interruptor-canal-privado'));
-    await vi.waitFor(() => expect(onAviso).toHaveBeenCalledWith('Solo los admins del canal cambian quién lo encuentra.'));
+    await vi.waitFor(() => expect(onNotice).toHaveBeenCalledWith('Solo los admins del canal cambian quién lo encuentra.'));
     expect(screen.getByTestId('interruptor-canal-privado')).not.toBeChecked();
   });
 
   it('a member, or #general, cannot move it', () => {
-    const { unmount } = render(<ChannelVisibilityRow chatId="c1" jwt="jwt" isPrivate={false} isAdmin={false} isGeneral={false} onAviso={() => undefined} />);
+    const { unmount } = render(<ChannelVisibilityRow chatId="c1" jwt="jwt" isPrivate={false} isAdmin={false} isGeneral={false} onNotice={() => undefined} />);
     expect(screen.getByTestId('interruptor-canal-privado')).toBeDisabled();
     unmount();
-    render(<ChannelVisibilityRow chatId="g" jwt="jwt" isPrivate={false} isAdmin isGeneral onAviso={() => undefined} />);
+    render(<ChannelVisibilityRow chatId="g" jwt="jwt" isPrivate={false} isAdmin isGeneral onNotice={() => undefined} />);
     expect(screen.getByTestId('interruptor-canal-privado')).toBeDisabled();
     expect(screen.getByText(/siempre es público/)).toBeInTheDocument();
   });

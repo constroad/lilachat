@@ -6,7 +6,7 @@ import { Lock } from 'lucide-react';
  * channel could not be made private). Only its admins move it; #general is the
  * whole space's and stays public. The server checks it too and tells the channel.
  */
-export function ChannelVisibilityRow(props: { chatId: string; jwt: string; isPrivate: boolean; isAdmin: boolean; isGeneral: boolean; onAviso: (text: string) => void }) {
+export function ChannelVisibilityRow(props: { chatId: string; jwt: string; isPrivate: boolean; isAdmin: boolean; isGeneral: boolean; onNotice: (text: string) => void }) {
   const [isPrivate, setPrivate] = useState(props.isPrivate);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
@@ -21,11 +21,11 @@ export function ChannelVisibilityRow(props: { chatId: string; jwt: string; isPri
       if (!response.ok) {
         const body = (await response.json().catch(() => null)) as { message?: string } | null;
         setPrivate(!next);
-        props.onAviso(body?.message ?? 'No se pudo cambiar.');
+        props.onNotice(body?.message ?? 'No se pudo cambiar.');
       }
     } catch {
       setPrivate(!next);
-      props.onAviso('Sin conexión. Prueba de nuevo.');
+      props.onNotice('Sin conexión. Prueba de nuevo.');
     } finally {
       setSaving(false);
     }

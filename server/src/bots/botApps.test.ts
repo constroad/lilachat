@@ -152,6 +152,34 @@ describe('the manifest', () => {
     configureAppsAnnounce(() => undefined);
   });
 
+  it("a re-sent manifest gives the app's bot users its new name and logo: an old SVG no longer shows as a letter (José, 24/10)", async () => {
+    // Arrange: installed while the manifest still carried an SVG, which the apps cannot draw.
+    const svg = 'https://agentes.example.com/apps/inframaq/avatar.svg';
+    const png = 'https://agentes.example.com/apps/inframaq/icon-512.png';
+    const { body } = await request(app).post('/api/bots/apps').set(asLila).send({ ...manifest(), avatar_url: svg }).expect(201);
+    await installWith(body.client_id, body.client_secret);
+    const botUser = () => UserModel.findOne({ 'app.workspaceId': spaceId }).lean();
+    expect(await botUser()).toMatchObject({ name: 'Inframaq', avatarUrl: svg });
+    // Act
+    await request(app).post('/api/bots/apps').set(asLila).send({ ...manifest(), name: 'Inframaq Planta', avatar_url: png }).expect(200);
+    // Assert
+    expect(await botUser()).toMatchObject({ name: 'Inframaq Planta', avatarUrl: png });
+  });
+
+  it('a manifest without a logo keeps the one the bot user has, and other apps\' bot users are not touched', async () => {
+    // Arrange
+    const png = 'https://agentes.example.com/apps/inframaq/icon-512.png';
+    const { body } = await request(app).post('/api/bots/apps').set(asLila).send({ ...manifest(), avatar_url: png }).expect(201);
+    await installWith(body.client_id, body.client_secret);
+    const other = await request(app).post('/api/bots/apps').set(asLila).send({ ...manifest(), key: 'portal', name: 'Portal' }).expect(201);
+    await installWith(other.body.client_id, other.body.client_secret);
+    // Act
+    await request(app).post('/api/bots/apps').set(asLila).send({ ...manifest(), name: 'Inframaq Planta' }).expect(200);
+    // Assert
+    const users = await UserModel.find({ 'app.workspaceId': spaceId }).sort({ name: 1 }).lean();
+    expect(users.map((user) => [user.name, user.avatarUrl])).toEqual([['Inframaq Planta', png], ['Portal', undefined]]);
+  });
+
   it('rotating gives a new secret and the old one stops working; the installation lives on', async () => {
     const { body } = await request(app).post('/api/bots/apps').set(asLila).send(manifest()).expect(201);
     const token = (await installWith(body.client_id, body.client_secret)).body.access_token;

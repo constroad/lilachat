@@ -39,3 +39,23 @@ export function divisorDesdeLeido(
   const primero = nuevos[0]?.seq;
   return typeof primero === 'number' ? { seq: primero, cantidad: nuevos.length } : null;
 }
+
+/**
+ * The rows a row groups with. The «N mensajes no leídos» divider cuts a block in two: the first unread
+ * row has no previous (it carries its header) and the one above has no next (its bubble closes the block).
+ * José, 24/10: the first unread came without avatar or name and he took it for another sender.
+ */
+export function neighboursForGrouping<Row extends object>(
+  rows: readonly Row[],
+  index: number,
+  dividerSeq: number | null
+): { previous: Row | undefined; next: Row | undefined } {
+  // A pending row has no `seq`: it is never the divider.
+  const startsAfterDivider = (row: Row | undefined) => dividerSeq !== null && row !== undefined && 'seq' in row && row.seq === dividerSeq;
+  const previous = rows[index - 1];
+  const next = rows[index + 1];
+  return {
+    previous: startsAfterDivider(rows[index]) ? undefined : previous,
+    next: startsAfterDivider(next) ? undefined : next,
+  };
+}

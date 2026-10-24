@@ -117,7 +117,11 @@ export function groupsWithPrevious(params: {
   previousAt?: string | Date;
   /** Un silencio largo corta el bloque aunque hable el mismo. */
   maxGapMinutes?: number;
+  /** A bot's card is a block of its own: it keeps its header and groups with nothing (José, 24/10). */
+  isCard?: boolean;
+  previousIsCard?: boolean;
 }): boolean {
+  if (params.isCard || params.previousIsCard) return false;
   if (!params.previousSenderId || params.previousSenderId !== params.senderId) return false;
   if (!params.previousAt) return false;
   const current = params.at instanceof Date ? params.at : new Date(params.at);

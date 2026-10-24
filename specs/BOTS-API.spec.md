@@ -68,6 +68,10 @@ da 401 `invalid_client`; una app que no es desarrolladora, 403
   - Idempotente por (desarrolladora, `key`): la primera vez, 201 `{
     client_id, client_secret }`; después, 200 `{ client_id }` con los
     campos al día y sin secreto.
+  - El nombre y el logo (`avatar_url`) también llegan a los usuarios-bot ya
+    instalados en cada espacio (0.1.169; Portal salía con la «P» porque
+    conservaba el SVG con que se instaló, que la app no dibuja). Un
+    manifiesto sin `avatar_url` no borra el logo que ya tienen. Mandar PNG.
   - Hasta 20 apps por desarrolladora (400 `too_many_apps`).
 - `POST /api/bots/apps/{client_id}/secret` → `{ client_secret }`. Rota: el
   viejo deja de servir para el canje de OAuth. Las instalaciones y sus
@@ -348,7 +352,8 @@ de un canal) y e-30 (el ⚡ del espacio).
 (con `x-labels`) es una opción, hasta 4 lado a lado; `x-input: photo` una
 foto; `x-input: location` la ubicación `{ lat, lng, precision }`; `x-unit` la
 unidad de un número; `maxLength > 120` o `x-input: textarea` varias líneas;
-`format: date | date-time` una fecha. Hasta 20 campos.
+`format: date | time | date-time` un selector (nunca un campo de texto): el
+día, la hora o ambos. Hasta 20 campos.
 - La foto sube a Lilachat al elegirla. La app recibe una URL firmada
   `https://lilachat.constroad.com/api/bots/files/<payload>.<firma>`, válida 15
   minutos (después 410).
@@ -364,6 +369,26 @@ unidad de un número; `maxLength > 120` o `x-input: textarea` varias líneas;
   viaja en `values`.
 - Un `enum` sin `x-labels` se muestra con la primera letra en mayúscula
   («Ingreso»); el valor que viaja es el del `enum`.
+- **Fechas y horas** (0.1.169; José, 24/10: «la fecha por defecto en la fecha
+  actual y un selector, no un input»). Llegan siempre como `AAAA-MM-DD`
+  (`date`), `HH:MM` en 24 h con cero adelante (`time`, «07:30», nunca
+  «7:30» ni «07:30 a. m.») y `AAAA-MM-DDTHH:MM` con el reloj del teléfono y sin
+  zona (`date-time`). Una fecha arranca en **hoy** y un `date-time` en
+  **ahora**, aunque el campo sea opcional; una hora arranca vacía (es una
+  decisión). Un `default` válido del mismo tipo manda sobre «hoy»; uno que no
+  lo es se ignora. Lo que no es una fecha que existe («2026-02-30») o una
+  hora de 24 h da «La fecha no es válida» / «La hora no es válida» en el
+  campo. Lilachat de antes de la 0.1.169 mandaba `AAAA-MM-DD HH:MM` con un
+  espacio: se acepta y se vuelve `T`.
+- **Cómo se dibuja un `enum`** (0.1.169): lado a lado mientras quepa (hasta 4
+  y el nombre más largo × la cantidad ≤ 40 letras; «Refrigerio» × 4 cabe),
+  lista de filas de 5 a 8 opciones cortas, y **desplegable** para una lista de
+  registros (valores que son ids de base de datos: transportistas, canteras,
+  plantas), para nombres largos (diseños de mezcla) y para más de 8, que
+  además lleva buscador. Un desplegable de 8 o menos abre sin buscador.
+- Una respuesta de rechazo («no se responde en un grupo», «esa acción ya se
+  decidió») va con `shareable: false`: Lilachat no puede saber qué respuesta
+  es un rechazo, y sin eso ofrece «Enviar al canal» sobre un error.
 
 **Acciones.** El manifiesto declara `shortcuts: [{ key, name, description? }]`
 (hasta 10; nombre ≤ 40, descripción ≤ 80). Un manifiesto sin ellas las borra.

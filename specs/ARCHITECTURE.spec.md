@@ -4909,6 +4909,48 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 133. Fechas con selector, listas desplegables y tarjetas con su encabezado (24/10/2026, 0.1.169)
+
+Cerrado con agentes tras el E2E de punta a punta (pasos 1–5). `audience:
+'spaces'`: todo es del modo empresa.
+
+- **Fechas y horas con selector** (`shared/src/formDates.ts`, BOTS-API §c-ter).
+  `format: date | time | date-time` dibuja el selector del sistema en la app
+  (`DateField`: dos casillas «Día» y «Hora», reloj de 24 h, también fechas
+  pasadas) y el del navegador en la web (`date`, `time`, `datetime-local`).
+  Una fecha arranca en hoy y un momento en ahora; la hora arranca vacía. El
+  valor viaja `AAAA-MM-DD`, `HH:MM` o `AAAA-MM-DDTHH:MM`; el motor valida que
+  la fecha exista (`new Date('2026-02-30')` rueda a marzo, así que se
+  compara el día de ida y vuelta) y acepta el espacio que mandaba la app
+  anterior. `initialValues(fields, now)` recibe el reloj: las dos listas de
+  valores de la hoja (los de partida y los que cuentan como «escritos» para
+  el «¿Descartar?») salen de una sola llamada, para que un minuto que cambia
+  no cuente como cambio de la persona.
+- **Listas desplegables** (`choiceLayout`). Los ids de base de datos
+  (transportista, cantera, planta) son siempre desplegable, aunque sean tres;
+  los nombres largos también (el nombre más largo × la cantidad > 40 letras);
+  el buscador solo sale con más de 8 opciones, y el desplegable corto es de
+  la altura de sus filas. Un nombre largo ocupa dos líneas, no una con «…».
+- **Tarjetas de app siempre con encabezado** (José, 24/10: «Asistencia · Hoy»
+  llegó sin logo ni nombre y pensó que no la mandó Portal). `groupsWithPrevious`
+  nunca agrupa una tarjeta (ni con otra tarjeta ni con un texto del mismo
+  emisor) y el divisor «N mensajes no leídos» corta el bloque
+  (`neighboursForGrouping`): el primer no leído lleva avatar y nombre. Antes,
+  Tanques (9:04:43) y Asistencia (9:09:34) de Portal quedaban a 4 min 51 s y
+  se pegaban. La web no tiene el divisor; la regla de tarjetas es la misma.
+- **Logo y nombre de la app al día** (`syncBotUsers`): un manifiesto
+  reenviado actualiza los usuarios-bot de cada espacio. Portal conservaba el
+  SVG con que se instaló y la app lo dibuja como la letra «P». Lo ya
+  instalado se corrige en cuanto agentes reenvía el manifiesto.
+- **El valor de un dato de la tarjeta** («Registró: Lilachat · (51902049…)»)
+  ocupa hasta dos líneas y lleva el texto completo en `title` (web).
+- **Error junto al botón** (E2E, 24/10): el aviso de que no se pudo enviar sale
+  encima del botón, no al final de la hoja, donde parecía un botón muerto.
+
+**Medición** (la hoja se arma con los mismos datos, solo cambia cómo se
+dibujan): sin consultas nuevas; el servidor suma una escritura
+(`updateMany` por `app.appId`) solo al reenviar un manifiesto.
+
 ## 132. Listas largas con buscador y el PIN, primera versión solo para el modo empresa (24/10/2026, 0.1.168)
 
 - **Listas largas con buscador** y **PIN oculto** en los formularios de las

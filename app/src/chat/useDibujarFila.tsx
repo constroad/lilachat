@@ -2,6 +2,7 @@ import { useCallback, useMemo, type ComponentProps } from 'react';
 import { albumLayout, alreadyGreeted, isHiddenNotice } from '@lilachat/shared';
 import { formatDayLabel, isAnimatedImage, memberBadge, miReaccion, canOpenThread, puedeReaccionar, resolveDeliveryState, startsNewDay, usesFlatLayout, type MemberPill } from '@lilachat/shared';
 import { DivisorNoLeidos } from './useDivisorNoLeidos';
+import { neighboursForGrouping } from './divisorNoLeidos';
 import { DaySeparator, isPending, MessageRow, type Row } from './MessageRow';
 import { ChipDeHilo } from './ChipDeHilo';
 import { BarraDeReacciones } from './reacciones/BarraDeReacciones';
@@ -76,10 +77,11 @@ export function useDibujarFila(p: {
       // The rest of an album is in its first card; a notice deleted for everyone is not drawn.
       if (albumRole?.role === 'member' || (!isPending(item) && isHiddenNotice(item))) return <></>;
       const album = albumRole?.role === 'head' ? albumRole.seqs.map((seq) => albums.bySeq.get(seq)).filter((one): one is ChatMessage => Boolean(one)) : undefined;
-      const previous = rows[index - 1];
-      const next = rows[index + 1];
+      // The day chip reads the real previous row; grouping reads it through the unread divider, which cuts the block.
+      const realPrevious = rows[index - 1];
+      const { previous, next } = neighboursForGrouping(rows, index, divisorSeq);
       const at = isPending(item) ? item.queuedAt : item.at;
-      const previousAt = previous ? (isPending(previous) ? previous.queuedAt : previous.at) : undefined;
+      const previousAt = realPrevious ? (isPending(realPrevious) ? realPrevious.queuedAt : realPrevious.at) : undefined;
       const mia = isPending(item) || item.senderId === yo;
       const conAvatar = esGrupo && !mia;
       const withBar = !isPending(item) && elegidos.size === 1 && elegidos.has(item.seq) && puedeReaccionar({ seq: item.seq, deletedAt: item.deletedAt, kind: item.kind, system: item.system, cifrado: encrypted });

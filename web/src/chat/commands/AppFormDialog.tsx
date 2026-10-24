@@ -25,7 +25,7 @@ type Upload = (file: File, stamp?: GeoPoint) => Promise<{ ok: true; fileId: stri
 export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: Upload; onClose: () => void }) {
   const form = props.answer.response!.form!;
   const fields = useMemo(() => formFields(form), [form]);
-  // What the app prefilled (agentes, 23/10: the verified phone for «Conecta tu cuenta»).
+  // What the app prefilled (agentes, 23/10: the verified phone) and today's date (José, 24/10).
   const [values, setValues] = useState<FormValues>(() => initialValues(fields));
   const [errors, setErrors] = useState<Record<string, string>>(() => props.answer.errors ?? {});
   const [message, setMessage] = useState('');
@@ -71,6 +71,8 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
       onClose={props.onClose}
       footer={
         <div>
+          {/* Next to the button, never at the end of the scroll: a refusal there looked like a dead button (E2E 24/10). */}
+          {message ? <div data-testid="formulario-error" className="mb-2"><FieldError>{message}</FieldError></div> : null}
           <PrimaryButton testId="btn-enviar-formulario" disabled={sending || waiting} onClick={() => void send()}>{waiting ? 'Enviando…' : sending ? signing.phaseLabel : submitLabelOf(form, fields, values)}</PrimaryButton>
           {evidence ? <p className="mt-2 text-center text-[12px] text-on-surface-variant">{live ? LIVE_FOOTER : evidence}</p> : null}
         </div>
@@ -79,10 +81,10 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
       <div data-testid={`formulario-${form.id}`} className="space-y-4">
         {props.answer.response?.text ? <p data-testid="formulario-texto" className="rounded-xl bg-primary/10 px-3 py-2.5 text-[14px]">{props.answer.response.text}</p> : null}
         {form.intro ? <p className="text-[14px] text-on-surface-variant">{form.intro}</p> : null}
-        <p className="flex items-center gap-2 text-[13px] text-on-surface-variant">
+        <div className="flex items-center gap-2 text-[13px] text-on-surface-variant">
           {props.answer.avatarUrl ? <AppLogo avatarUrl={props.answer.avatarUrl} size={22} rounded="rounded-md" /> : <Avatar name={props.answer.appName} size={22} bot />}
-          {props.answer.appName} · hoy, {today.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })}
-        </p>
+          <span>{props.answer.appName} · hoy, {today.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+        </div>
         {evidence && !live ? (
           <div className="rounded-2xl border border-outline/15 py-4 text-center">
             <p className="text-4xl font-bold tabular-nums tracking-tight">{today.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })}</p>
@@ -100,7 +102,6 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
             </div>
           )
         )}
-        {message ? <FieldError>{message}</FieldError> : null}
       </div>
     </Overlay>
   );

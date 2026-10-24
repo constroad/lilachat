@@ -8,6 +8,7 @@ import { Modal } from '../../ui/Modal';
 import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
 import { ChoiceField, LocationField, PhotoField, TypedField, type PhotoUpload } from './AppFormFields';
+import { DateField } from './DateField';
 import { PhotoListField } from './PhotoListField';
 import { LiveSelfie, type LiveSelfieHandle } from './LiveSelfie';
 import { useLiveSigning } from './useLiveSigning';
@@ -34,8 +35,9 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
   const { width, height } = useWindowDimensions();
   const form = props.answer.response!.form!;
   const fields = useMemo(() => formFields(form), [form]);
-  // What the app prefilled (agentes, 23/10: the verified phone for «Conecta tu cuenta»).
-  const [values, setValues] = useState<FormValues>(() => initialValues(fields));
+  // What the app prefilled (agentes, 23/10: the verified phone) and today's date (José, 24/10); read once, so «now» is one instant.
+  const prefilled = useMemo(() => initialValues(fields), [fields]);
+  const [values, setValues] = useState<FormValues>(prefilled);
   // The keyboard's height: the sheet rises above it and shrinks to fit (José, 23/10: he typed the code without seeing it).
   const [keyboard, setKeyboard] = useState(0);
   useEffect(() => {
@@ -63,7 +65,6 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
   }, [props.answer.errors]);
   const evidence = evidenceLine(fields);
   const sheetWidth = Math.min(width, SHEET_MAX_WIDTH);
-  const prefilled = useMemo(() => initialValues(fields), [fields]);
   const typed = Object.entries(values).some(([name, value]) => value !== undefined && value !== prefilled[name] && fields.find((field) => field.name === name)?.kind !== 'location');
   const close = () => {
     if (!typed) return props.onClose();
@@ -128,9 +129,10 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
                 </View>
               )
             )}
-            {message ? <Text className="text-[14px] text-error">{message}</Text> : null}
           </ScrollView>
           <View className="px-4">
+            {/* Next to the button, never at the end of the scroll: a refusal there looked like a dead button (E2E 24/10). */}
+            {message ? <Text testID="formulario-error" accessibilityRole="alert" className="mb-2 pt-2 text-[14px] text-error">{message}</Text> : null}
             <Pressable testID="btn-enviar-formulario" disabled={sending || waiting} onPress={() => void send()} className={`h-[72px] flex-row items-center justify-center gap-2 rounded-2xl bg-primary ${sending || waiting ? 'opacity-60' : ''}`}>
               {sending || waiting ? <ActivityIndicator color={colors['on-primary']} /> : null}
               <Text className="text-[18px] font-bold text-on-primary">{waiting ? 'Enviando…' : sending ? signing.phaseLabel : submitLabelOf(form, fields, values)}</Text>
@@ -147,6 +149,7 @@ function Field(props: { field: FormField; value: unknown; error?: string; onChan
   const { field, upload, width, ...rest } = props;
   switch (field.kind) {
     case 'choice': return <ChoiceField field={field} {...rest} />;
+    case 'date': return <DateField field={field} {...rest} />;
     case 'location': return <LocationField field={field} {...rest} width={width} />;
     case 'photo': return field.multiple ? <PhotoListField field={field} error={rest.error} onChange={rest.onChange} upload={upload} /> : <PhotoField field={field} {...rest} upload={upload} />;
     default: return <TypedField field={field} {...rest} />;

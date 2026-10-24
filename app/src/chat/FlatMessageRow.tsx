@@ -15,7 +15,7 @@ import { BotCardView } from './BotCardView';
 import { TextoDelMensaje } from './TextoDelMensaje';
 import { VistaPreviaDeEnlace } from './VistaPreviaDeEnlace';
 import { previewDeMensaje, quoteAction } from './MessageRow';
-import { isPending, type Row } from './rowKinds';
+import { hasBotCard, isPending, type Row } from './rowKinds';
 import type { Citado } from './filasDelChat';
 import { CardBody } from './TarjetaDelChat';
 import { showStickerOptions, useAnimatedStop } from './stickers/StickerMessage';
@@ -72,7 +72,7 @@ function FlatRow(props: {
   const { item, previous } = props;
   const mine = isPending(item) || item.senderId === props.myUserId;
   const senderId = isPending(item) ? props.myUserId : item.senderId;
-  const grouped = Boolean(previous) && groupsWithPrevious({ senderId, at: atOf(item), previousSenderId: previous && (isPending(previous) ? props.myUserId : previous.senderId), previousAt: previous && atOf(previous) });
+  const grouped = Boolean(previous) && groupsWithPrevious({ senderId, at: atOf(item), previousSenderId: previous && (isPending(previous) ? props.myUserId : previous.senderId), previousAt: previous && atOf(previous), isCard: hasBotCard(item), previousIsCard: previous ? hasBotCard(previous) : false });
   const id = isPending(item) ? item.clientKey : String(item.seq);
   const failed = isPending(item) ? item.fallo : undefined;
   const deleted = !isPending(item) && Boolean(item.deletedAt);

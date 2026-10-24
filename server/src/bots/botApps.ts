@@ -1,4 +1,6 @@
 import { MANIFEST_LIMITS, type AppManifest } from '@lilachat/shared';
+import type { Types } from 'mongoose';
+import { UserModel } from '../models.js';
 import { callBotWebhook } from './botEvents.js';
 import { announceAppChanged, announceLater } from './botAnnounce.js';
 import { revokeInstallation } from './botInstall.js';
@@ -53,11 +55,20 @@ const manifestFields = (manifest: AppManifest) => ({
   ...(manifest.category ? { category: manifest.category } : {}),
 });
 
+/**
+ * The bot users copy the app's name and logo when they are made (`botUserFor`), so a re-sent manifest
+ * has to reach them too (José, 24/10: Portal kept the SVG it was installed with and showed a «P»).
+ */
+async function syncBotUsers(appId: Types.ObjectId, manifest: AppManifest): Promise<void> {
+  await UserModel.updateMany({ 'app.appId': appId }, { $set: { name: manifest.name, ...(manifest.avatarUrl ? { avatarUrl: manifest.avatarUrl } : {}) } });
+}
+
 /** Idempotent by (developer, key): 201 with the secret the first time, 200 without it afterwards. */
 export async function upsertApp(developer: BotApp, manifest: AppManifest): Promise<{ status: 200 | 201; body: { client_id: string; client_secret?: string } } | AppsError> {
   const existing = await BotAppModel.findOne({ ownerAppId: developer._id, key: manifest.key }).select('clientId').lean();
   if (existing) {
     await BotAppModel.updateOne({ _id: existing._id }, { $set: manifestFields(manifest) });
+    await syncBotUsers(existing._id, manifest);
     announceLater(announceAppChanged(existing._id));
     return { status: 200, body: { client_id: existing.clientId } };
   }

@@ -38,7 +38,7 @@ import { Avatar } from '../ui/Avatar';
 import { MessageMedia } from './MessageMedia';
 import { AlbumGrid } from './AlbumGrid';
 import { BotCardView } from './BotCardView';
-import { drawsAsCard, drawsAsFunLine, isFileMime, isPending, type Row } from './rowKinds';
+import { drawsAsCard, drawsAsFunLine, hasBotCard, isFileMime, isPending, type Row } from './rowKinds';
 import { rememberBubbleWidth } from './bubbleWidths';
 import { showGifOptions } from './gifs/gifOptions';
 import { ContactCard } from './contactCard/ContactCard';
@@ -187,6 +187,8 @@ function FilaDeMensaje({
     at,
     previousSenderId: previous ? (isPending(previous) ? myUserId : previous.senderId) : undefined,
     previousAt: previous ? (isPending(previous) ? previous.queuedAt : previous.at) : undefined,
+    isCard: hasBotCard(item),
+    previousIsCard: previous ? hasBotCard(previous) : false,
   });
   // Solo el ÚLTIMO del bloque lleva la cola, como en el diseño.
   const nextGrouped = next
@@ -195,6 +197,8 @@ function FilaDeMensaje({
         at: isPending(next) ? next.queuedAt : next.at,
         previousSenderId: senderId,
         previousAt: at,
+        isCard: hasBotCard(next),
+        previousIsCard: hasBotCard(item),
       })
     : false;
 

@@ -31,6 +31,8 @@ export function ChoiceField({ field, value, error, onChange }: FieldProps<'choic
           <p data-testid={`sin-opciones-${field.name}`} className="rounded-xl border border-dashed border-outline/30 px-3 py-3 text-[14px] text-on-surface-variant">No hay opciones para elegir</p>
         </>
       ) : field.segmented ? (
+        <>
+        <Label field={field} />
         <div role="radiogroup" aria-label={field.label} className="grid gap-1 rounded-2xl border border-outline/15 bg-background p-1" style={{ gridTemplateColumns: `repeat(${field.options.length}, minmax(0, 1fr))` }}>
           {field.options.map((option) => (
             <button key={option.value} type="button" role="radio" aria-checked={value === option.value} data-testid={`opcion-${field.name}-${option.value}`} onClick={() => onChange(option.value)} className={`h-11 rounded-xl px-1 text-[14px] font-semibold transition-colors ${value === option.value ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-surface'}`}>
@@ -38,6 +40,7 @@ export function ChoiceField({ field, value, error, onChange }: FieldProps<'choic
             </button>
           ))}
         </div>
+        </>
       ) : field.searchable ? (
         <>
           <Label field={field} />
@@ -99,11 +102,15 @@ export function NumberField({ field, value, error, onChange }: FieldProps<'numbe
   );
 }
 
+/** The browser's own picker: a calendar for the day, a clock for the hour, both for a moment (José, 24/10: never typed). */
+const PICKER_TYPE = { date: 'date', time: 'time', 'date-time': 'datetime-local' } as const;
+
 export function DateField({ field, value, error, onChange }: FieldProps<'date'>) {
   return (
     <div>
       <Label field={field} />
-      <input data-testid={`campo-${field.name}`} type={field.withTime ? 'datetime-local' : 'date'} value={typeof value === 'string' ? value : ''} onChange={(event) => onChange(event.target.value)} className={inputClass} />
+      <input data-testid={`campo-${field.name}`} type={PICKER_TYPE[field.mode]} value={typeof value === 'string' ? value : ''} onChange={(event) => onChange(event.target.value === '' ? undefined : event.target.value)} className={inputClass} />
+      {field.help ? <p className="mt-1 text-[12px] text-on-surface-variant">{field.help}</p> : null}
       <FieldError>{error}</FieldError>
     </div>
   );

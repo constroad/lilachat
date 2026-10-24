@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { divisorDesdeLeido, seqDelDivisor } from './divisorNoLeidos';
+import { divisorDesdeLeido, neighboursForGrouping, seqDelDivisor } from './divisorNoLeidos';
 
 /** «N mensajes no leídos» donde empiezan los nuevos (FL9, auditoría §46.2). */
 describe('seqDelDivisor', () => {
@@ -50,5 +50,35 @@ describe('divisorDesdeLeido', () => {
 
   it('todo leído: no hay divisor', () => {
     expect(divisorDesdeLeido(filas, 'yo', 6)).toBeNull();
+  });
+});
+
+/**
+ * José, 24/10: the first message after «1 mensaje no leído» came without its header (avatar, name),
+ * grouped under a message from before the divider, and he took it for another sender.
+ */
+describe('neighboursForGrouping', () => {
+  const rows = [{ seq: 1 }, { seq: 2 }, { seq: 3 }, { seq: 4 }];
+
+  it('with no divider, the neighbours are the plain previous and next rows', () => {
+    expect(neighboursForGrouping(rows, 1, null)).toEqual({ previous: rows[0], next: rows[2] });
+  });
+
+  it('the divider cuts the block: the first unread has no previous', () => {
+    expect(neighboursForGrouping(rows, 2, 3)).toEqual({ previous: undefined, next: rows[3] });
+  });
+
+  it('the row above the divider has no next: its bubble closes its block', () => {
+    expect(neighboursForGrouping(rows, 1, 3)).toEqual({ previous: rows[0], next: undefined });
+  });
+
+  it('the ends of the list have one neighbour only', () => {
+    expect(neighboursForGrouping(rows, 0, null)).toEqual({ previous: undefined, next: rows[1] });
+    expect(neighboursForGrouping(rows, 3, null)).toEqual({ previous: rows[2], next: undefined });
+  });
+
+  it('a pending row (no seq) is never the divider', () => {
+    const withPending = [{ seq: 1 }, { clientKey: 'k1' }];
+    expect(neighboursForGrouping(withPending, 1, 1)).toEqual({ previous: withPending[0], next: undefined });
   });
 });

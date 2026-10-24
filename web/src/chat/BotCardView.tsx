@@ -57,7 +57,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
             {card.fields.map((field) => (
               <div key={`${field.label}-${field.value}`} className="min-w-0">
                 <dt className="text-[11px] text-on-surface-variant">{field.label}</dt>
-                <dd className="truncate font-semibold">{field.value}</dd>
+                <dd title={field.value} className="line-clamp-2 break-words font-semibold">{field.value}</dd>
               </div>
             ))}
           </dl>

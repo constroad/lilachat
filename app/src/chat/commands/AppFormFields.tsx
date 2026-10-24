@@ -19,11 +19,11 @@ const CODE_LETTER_SPACING = 10;
 export type PhotoUpload = (photo: { uri: string; mime: string }, stamp?: GeoPoint) => Promise<{ ok: true; fileId: string } | { ok: false; message: string }>;
 type FieldProps<K extends FormField['kind']> = { field: Extract<FormField, { kind: K }>; value: unknown; error?: string; onChange: (value: unknown) => void };
 
-function ErrorLine(props: { text?: string }) {
+export function ErrorLine(props: { text?: string }) {
   return props.text ? <Text className="mt-1 text-[13px] text-error">{props.text}</Text> : null;
 }
 
-function Label(props: { field: FormField }) {
+export function Label(props: { field: FormField }) {
   return (
     <Text className="mb-1.5 text-[14px] font-semibold text-on-surface">
       {props.field.label}
@@ -32,11 +32,11 @@ function Label(props: { field: FormField }) {
   );
 }
 
-/** Up to four side by side (design e-28), more as a list of choices. */
+/** Up to four fixed choices side by side (design e-28), records and long lists in a dropdown; always with its title. */
 export function ChoiceField({ field, value, error, onChange }: FieldProps<'choice'>) {
   return (
     <View>
-      {field.segmented ? null : <Label field={field} />}
+      <Label field={field} />
       {field.options.length === 0 ? (
         <Text testID={`sin-opciones-${field.name}`} className="rounded-xl border border-dashed border-outline/30 px-3 py-3 text-[14px] text-on-surface-variant">No hay opciones para elegir</Text>
       ) : field.searchable ? (
@@ -58,9 +58,8 @@ export function ChoiceField({ field, value, error, onChange }: FieldProps<'choic
   );
 }
 
-/** Text, a number with its unit, or a date typed as the schema asks («2026-10-23»). */
-export function TypedField({ field, value, error, onChange }: FieldProps<'text' | 'number' | 'date'>) {
-  const colors = useColores();
+/** Text, or a number with its unit. Dates have their own picker: `DateField`. */
+export function TypedField({ field, value, error, onChange }: FieldProps<'text' | 'number'>) {
   const multiline = field.kind === 'text' && field.multiline;
   /** A one-time code (connecting an account): big digits, the number pad and the SMS autofill. */
   const code = field.kind === 'text' ? field.digits : undefined;
@@ -81,8 +80,6 @@ export function TypedField({ field, value, error, onChange }: FieldProps<'text' 
           secureTextEntry={secret}
           textContentType={code ? 'oneTimeCode' : undefined}
           autoComplete={code ? 'sms-otp' : secret ? 'off' : undefined}
-          placeholder={field.kind === 'date' ? (field.withTime ? 'AAAA-MM-DD HH:MM' : 'AAAA-MM-DD') : undefined}
-          placeholderTextColor={colors['on-surface-variant']}
           className={`min-h-[48px] flex-1 rounded-xl border border-outline/25 bg-background px-3 text-on-surface ${code ? 'text-center text-[28px] font-bold' : 'text-[16px]'} ${multiline ? 'py-2' : ''}`}
           style={multiline ? { minHeight: 88, textAlignVertical: 'top' } : code ? { letterSpacing: CODE_LETTER_SPACING, fontVariant: ['tabular-nums'] } : undefined}
         />

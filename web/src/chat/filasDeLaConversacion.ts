@@ -18,7 +18,7 @@ const mismoBloque = (actual: MensajeEnPantalla, anterior?: MensajeEnPantalla): b
   Boolean(anterior) &&
   actual.kind !== 'system' &&
   anterior!.kind !== 'system' &&
-  groupsWithPrevious({ senderId: actual.senderId, at: actual.at, previousSenderId: anterior!.senderId, previousAt: anterior!.at });
+  groupsWithPrevious({ senderId: actual.senderId, at: actual.at, previousSenderId: anterior!.senderId, previousAt: anterior!.at, isCard: Boolean(actual.card), previousIsCard: Boolean(anterior!.card) });
 
 /** Las decisiones de dibujo de cada fila, fuera del componente (W1). */
 export function filasDeLaConversacion(mensajes: MensajeEnPantalla[]): FilaDeLaConversacion[] {

@@ -121,6 +121,39 @@ describe('groupsWithPrevious', () => {
       })
     ).toBe(false);
   });
+
+  // José, 24/10: «Asistencia · Hoy» (9:09:34) sat under «Tanques · Hoy» (9:04:43) with no header, and he took it for another sender.
+  it('an app card is its own block: it never groups with the card before it', () => {
+    expect(
+      groupsWithPrevious({
+        senderId: 'portal',
+        at: '2026-10-24T09:09:34',
+        previousSenderId: 'portal',
+        previousAt: '2026-10-24T09:04:43',
+        isCard: true,
+        previousIsCard: true,
+      })
+    ).toBe(false);
+  });
+
+  it('a card does not group under a text of the same sender, nor a text under a card', () => {
+    const times = { at: '2026-10-24T09:05:00', previousAt: '2026-10-24T09:04:00' };
+    expect(groupsWithPrevious({ ...times, senderId: 'portal', previousSenderId: 'portal', isCard: true })).toBe(false);
+    expect(groupsWithPrevious({ ...times, senderId: 'portal', previousSenderId: 'portal', previousIsCard: true })).toBe(false);
+  });
+
+  it('two texts of the same sender still group when neither is a card', () => {
+    expect(
+      groupsWithPrevious({
+        senderId: 'portal',
+        at: '2026-10-24T09:05:00',
+        previousSenderId: 'portal',
+        previousAt: '2026-10-24T09:04:00',
+        isCard: false,
+        previousIsCard: false,
+      })
+    ).toBe(true);
+  });
 });
 
 describe('formatChatTimestamp', () => {

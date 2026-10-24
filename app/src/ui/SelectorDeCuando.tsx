@@ -95,7 +95,8 @@ export function SelectorDeCuando({
   );
 }
 
-function Casilla(props: { testID: string; icono: React.ReactNode; rotulo: string; valor: string; onPress: () => void }) {
+/** A box that opens a picker and always shows what is chosen; `vacio` reads as a hint (the app's forms reuse it). */
+export function Casilla(props: { testID: string; icono: React.ReactNode; rotulo: string; valor: string; onPress: () => void; vacio?: boolean }) {
   return (
     <Pressable
       testID={props.testID}
@@ -105,7 +106,7 @@ function Casilla(props: { testID: string; icono: React.ReactNode; rotulo: string
       <View className="h-9 w-9 items-center justify-center rounded-lg bg-surface">{props.icono}</View>
       <View className="min-w-0 flex-1">
         <Text className="text-[11px] text-on-surface-variant">{props.rotulo}</Text>
-        <Text className="text-[15px] font-semibold text-on-surface" numberOfLines={1}>
+        <Text className={`text-[15px] ${props.vacio ? 'text-on-surface-variant' : 'font-semibold text-on-surface'}`} numberOfLines={1}>
           {props.valor}
         </Text>
       </View>

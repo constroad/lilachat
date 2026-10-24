@@ -35,3 +35,6 @@ export function drawsAsFlatRow(row: Row): boolean {
 export const drawsAsFunLine = (row: Row): boolean => !isPending(row) && !row.deletedAt && (row.kind === 'zumbido' || row.kind === 'guino');
 
 export const drawsAsCard = (row: Row): boolean => !isPending(row) && !row.deletedAt && Boolean(row.ref);
+
+/** A bot's card is a block of its own: it keeps its header and groups with no neighbour (José, 24/10). */
+export const hasBotCard = (row: Row): boolean => !isPending(row) && !row.deletedAt && Boolean(row.card);

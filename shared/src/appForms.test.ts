@@ -40,7 +40,7 @@ describe('an app form (R160, like Slack\'s modals; agentes builds it from the to
     expect(fields).toEqual<FormField[]>([
       { kind: 'number', name: 'nivel', label: 'Nivel', required: false, unit: 'gl', min: 0, max: 20000, integer: false },
       { kind: 'choice', name: 'tanque', label: 'Tanque', required: false, segmented: false, searchable: false, options: ['t1', 't2', 't3', 't4', 't5'].map((value) => ({ value, label: value.toUpperCase() })) },
-      { kind: 'date', name: 'fecha', label: 'Fecha', required: false, withTime: false },
+      { kind: 'date', name: 'fecha', label: 'Fecha', required: false, mode: 'date' },
       { kind: 'text', name: 'nota_corta', label: 'Nota corta', required: false, multiline: false },
     ]);
   });
@@ -200,6 +200,31 @@ describe('marking attendance by name: the company\'s list and the PIN (agentes, 
     expect(pin).toEqual({ name: 'pin', label: 'Pin', required: false, kind: 'text', multiline: false, maxLength: 8, secret: true });
   });
 
+  it('a list of records (database ids) is always a dropdown, even with three; fixed choices stay side by side', () => {
+    // Arrange: the material reception (José, 24/10: «quién trajo el material y de qué cantera, lista desplegable»)
+    const reception = { id: 'registrar_recepcion_material', title: 'Ingreso', schema: { type: 'object', properties: {
+      canteraId: { type: 'string', title: 'Cantera', enum: ['69d9f2ad975db728c8790e2b', '69d9f1f2975db728c8790dd4', '69d9f175975db728c8790d7f'], 'x-labels': { '69d9f2ad975db728c8790e2b': 'CARLONCHO', '69d9f1f2975db728c8790dd4': 'CRUSHING', '69d9f175975db728c8790d7f': 'GLOBAL' } },
+      sedeId: { type: 'string', oneOf: [{ const: '3fa85f64-5717-4562-b3fc-2c963f66afa6', title: 'Almacén Ate' }, { const: '9b2f7c1e-0d4a-4c8e-8f1a-6e2b3c4d5e6f', title: 'Planta Lurín' }] },
+      evento: { type: 'string', enum: ['medida', 'recarga', 'ajuste'] },
+    } } };
+    // Act
+    const [cantera, sede, evento] = formFields(reception);
+    // Assert
+    expect(cantera).toMatchObject({ kind: 'choice', searchable: true, segmented: false });
+    expect(sede).toMatchObject({ kind: 'choice', searchable: true, segmented: false });
+    expect(evento).toMatchObject({ kind: 'choice', searchable: false, segmented: true });
+  });
+
+  it('fixed choices with long names are a dropdown too: side by side they shrank to unreadable (the mix designs)', () => {
+    const order = { id: 'pedido', title: 'Pedido', schema: { type: 'object', properties: {
+      diseno: { type: 'string', enum: ['MAC-2 - Mezcla asfáltica en caliente para capa de rodadura', 'MAC-3 - Mezcla asfáltica para vías urbanas', 'Mac 1 - Diseno base para pruebas'] },
+      conDespacho: { type: 'string', enum: ['con_despacho', 'solo_pedido'], 'x-labels': { con_despacho: 'Con viaje', solo_pedido: 'Solo el pedido' } },
+    } } };
+    const [diseno, conDespacho] = formFields(order);
+    expect(diseno).toMatchObject({ kind: 'choice', searchable: true, segmented: false });
+    expect(conDespacho).toMatchObject({ kind: 'choice', searchable: false, segmented: true });
+  });
+
   it('the search ignores accents and capitals and tells where it falls', () => {
     const [person] = formFields(form);
     const options = person!.kind === 'choice' ? person.options : [];
@@ -241,5 +266,40 @@ describe('several photos, each removable (José, 24/10: the tank tape and the ma
     expect(validateFormValues(fields, { fotos: ['f1'] })).toEqual({ ok: false, errors: { fotos: 'Faltan fotos: van al menos 2.' } });
     expect(validateFormValues(fields, { fotos: [] })).toEqual({ ok: false, errors: { fotos: 'Falta la foto.' } });
     expect(validateFormValues(fields, { fotos: ['1', '2', '3', '4', '5'] })).toEqual({ ok: false, errors: { fotos: 'Hasta 4 fotos.' } });
+  });
+});
+
+describe('dates and times with a picker, today by default (José, 24/10: «fecha actual siempre y un selector de fecha, no un input»)', () => {
+  const order = { id: 'pedido', title: 'Pedido', schema: { type: 'object', properties: {
+    fecha: { type: 'string', format: 'date' },
+    hora: { type: 'string', format: 'time' },
+    llegada: { type: 'string', format: 'date-time' },
+    entrega: { type: 'string', format: 'date', default: '2026-11-02' },
+  } } };
+  const now = new Date(2026, 9, 24, 8, 5);
+
+  it('a date starts on today, a moment on now, a time stays empty; a default from the app wins', () => {
+    // Act
+    const fields = formFields(order);
+    // Assert
+    expect(fields.map((field) => field.kind === 'date' && field.mode)).toEqual(['date', 'time', 'date-time', 'date']);
+    expect(initialValues(fields, now)).toEqual({ fecha: '2026-10-24', llegada: '2026-10-24T08:05', entrega: '2026-11-02' });
+  });
+
+  it('a default that is not a date of that kind is ignored: the field still starts on today', () => {
+    const fields = formFields({ id: 'pedido', title: 'Pedido', schema: { type: 'object', properties: { fecha: { type: 'string', format: 'date', default: 'hoy' }, hora: { type: 'string', format: 'time', default: '7:30' } } } });
+    expect(initialValues(fields, now)).toEqual({ fecha: '2026-10-24', hora: '07:30' });
+  });
+
+  it('a required date or time says what is missing in its own words', () => {
+    const fields = formFields({ id: 'pedido', title: 'Pedido', schema: { type: 'object', required: ['fecha', 'hora'], properties: { fecha: { type: 'string', format: 'date' }, hora: { type: 'string', format: 'time' } } } });
+    expect(validateFormValues(fields, {})).toEqual({ ok: false, errors: { fecha: 'Elige una fecha.', hora: 'Elige una hora.' } });
+  });
+
+  it('takes a time as HH:MM in 24 h and a date that exists', () => {
+    const fields = formFields(order);
+    expect(validateFormValues(fields, { fecha: '2026-10-24', hora: '07:30' })).toEqual({ ok: true, values: { fecha: '2026-10-24', hora: '07:30' } });
+    expect(validateFormValues(fields, { hora: '25:00' })).toEqual({ ok: false, errors: { hora: 'La hora no es válida.' } });
+    expect(validateFormValues(fields, { fecha: 'mañana' })).toEqual({ ok: false, errors: { fecha: 'La fecha no es válida.' } });
   });
 });

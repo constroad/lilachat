@@ -1,4 +1,5 @@
 import { cutAtWord } from './textCut.js';
+import { normalizeFormDate, startingMoment, type DateMode } from './formDates.js';
 /**
  * An app's form (R160, like Slack's modals; José, 23/10: mark attendance,
  * register material, measure a tank, from the space). Agentes builds it from
@@ -42,7 +43,7 @@ export type FormField =
   | (Base & { kind: 'choice'; options: ChoiceOption[]; segmented: boolean; /** A long list (the company's people, agentes 24/10): a field that opens a sheet with a search. */ searchable: boolean })
   | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true })
   | (Base & { kind: 'number'; unit?: string; min?: number; max?: number; integer: boolean })
-  | (Base & { kind: 'date'; withTime: boolean })
+  | (Base & { kind: 'date'; /** `format: date | time | date-time`: a picker for the day, the hour or both (José, 24/10). */ mode: DateMode })
   | (Base & { kind: 'photo'; /** A list (`type: array`) where each photo can be removed and taken again; otherwise one photo. */ multiple: boolean; max: number; min: number })
   | (Base & { kind: 'location' });
 export type FormValues = Record<string, unknown>;
@@ -51,8 +52,12 @@ export type GeoPoint = { lat: number; lng: number; precision: number; /** How ol
 export const FORM_LIMITS = { id: 64, title: 60, submitLabel: 40, intro: 240, fields: 20, label: 60, help: 160, options: 300, text: 2000, pin: 8, photos: 10 };
 /** Up to this many options fit side by side (design e-28); more go to a list. */
 const SEGMENTED_MAX = 4;
+/** Side by side, the longest label times the number of options must fit this many characters: «Refrigerio» ×4 does, three mix designs do not. */
+const SEGMENTED_ROW_CHARS = 40;
 /** More options than this become a field with a search (a company's 31 people did not fit as buttons). */
 export const SEARCHABLE_FROM = 8;
+/** A database id (Mongo ObjectId or UUID): options with these are records that grow, never a fixed set. */
+const RECORD_ID = /^(?:[0-9a-f]{24}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 /** A list of photos without `maxItems`. */
 const DEFAULT_MAX_PHOTOS = 6;
 /** A text allowed longer than this gets several lines. */
@@ -105,13 +110,18 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
   const options = choiceOptions(property);
   if (options) {
     const initial = options.some((option) => option.value === String(property.default)) ? { initial: String(property.default) } : {};
-    return { ...base, ...initial, kind: 'choice', options, segmented: options.length > 0 && options.length <= SEGMENTED_MAX, searchable: options.length > SEARCHABLE_FROM };
+    return { ...base, ...initial, kind: 'choice', options, ...choiceLayout(options) };
   }
   if (property.type === 'number' || property.type === 'integer') {
     const initial = typeof property.default === 'number' && Number.isFinite(property.default) ? { initial: property.default } : {};
     return { ...base, ...initial, kind: 'number', ...(property['x-unit'] ? { unit: line(property['x-unit'], 12) } : {}), ...(typeof property.minimum === 'number' ? { min: property.minimum } : {}), ...(typeof property.maximum === 'number' ? { max: property.maximum } : {}), integer: property.type === 'integer' };
   }
-  if (property.type === 'string' && (property.format === 'date' || property.format === 'date-time')) return { ...base, kind: 'date', withTime: property.format === 'date-time' };
+  const mode = property.type === 'string' ? dateModeOf(property.format) : null;
+  if (mode) {
+    // The app's own default wins over «today»; a default that is not a date of this kind is ignored.
+    const given = normalizeFormDate(property.default, mode);
+    return { ...base, ...(given ? { initial: given } : {}), kind: 'date', mode };
+  }
   if (property.type === 'string') {
     // A PIN is never prefilled and never shown: no `default`, digits only, hidden while typed.
     if (input === 'pin') return { ...base, kind: 'text', multiline: false, maxLength: Math.min(typeof property.maxLength === 'number' ? property.maxLength : FORM_LIMITS.pin, FORM_LIMITS.pin), secret: true };
@@ -123,6 +133,18 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
   return `El campo «${name}» es de un tipo que Lilachat no sabe dibujar.`;
 }
 
+/** How a choice is drawn: side by side while it fits, a dropdown for records, long labels and long lists, else a list of rows. */
+function choiceLayout(options: ChoiceOption[]): { segmented: boolean; searchable: boolean } {
+  // A list of records (carriers, quarries, sites; José, 24/10) is a dropdown even with three: side by side it squeezes long names.
+  const records = options.some((option) => RECORD_ID.test(option.value));
+  const longest = Math.max(0, ...options.map((option) => option.label.length));
+  const fewEnough = options.length > 0 && options.length <= SEGMENTED_MAX;
+  const segmented = !records && fewEnough && longest * options.length <= SEGMENTED_ROW_CHARS;
+  return { segmented, searchable: records || options.length > SEARCHABLE_FROM || (fewEnough && !segmented) };
+}
+
+const dateModeOf = (format: string | undefined): DateMode | null => (format === 'date' || format === 'time' || format === 'date-time' ? format : null);
+
 /** `x-input: otp`, or a `^\\d{N}$` pattern that an older Lilachat draws as a short text: N digits to type. */
 function codeDigitsOf(input: string | undefined, property: FormSchemaProperty, maxLength: number | undefined): number | undefined {
   const fromPattern = typeof property.pattern === 'string' ? Number(DIGITS_PATTERN.exec(property.pattern)?.[1]) : NaN;
@@ -130,9 +152,15 @@ function codeDigitsOf(input: string | undefined, property: FormSchemaProperty, m
   return digits && digits > 0 && digits <= CODE_MAX_DIGITS ? digits : undefined;
 }
 
-/** What a form starts with: each visible field's `default` (agentes prefills the verified phone, 23/10). */
-export function initialValues(fields: readonly FormField[]): FormValues {
-  return Object.fromEntries(fields.filter((field) => field.initial !== undefined).map((field) => [field.name, field.initial]));
+/**
+ * What a form starts with: each field's `default` (agentes prefills the verified phone, 23/10), and
+ * today for a date or now for a moment when the app gave none (José, 24/10: «fecha actual siempre»).
+ */
+export function initialValues(fields: readonly FormField[], now: Date = new Date()): FormValues {
+  return Object.fromEntries(fields.flatMap((field) => {
+    const value = field.initial ?? (field.kind === 'date' ? startingMoment(field.mode, now) : undefined);
+    return value === undefined ? [] : [[field.name, value]];
+  }));
 }
 
 function visibleIfOf(raw: unknown): Record<string, string[]> | null {
@@ -207,8 +235,10 @@ function checkValue(field: FormField, value: unknown): { value: unknown } | { er
       if ((field.min !== undefined && number < field.min) || (field.max !== undefined && number > field.max)) return { error: field.min !== undefined && field.max !== undefined ? `Entre ${field.min} y ${field.max}.` : field.min !== undefined ? `Desde ${field.min}.` : `Hasta ${field.max}.` };
       return { value: number };
     }
-    case 'date':
-      return Number.isNaN(new Date(String(value)).getTime()) ? { error: 'La fecha no es válida.' } : { value: String(value) };
+    case 'date': {
+      const clean = normalizeFormDate(value, field.mode);
+      return clean ? { value: clean } : { error: field.mode === 'time' ? 'La hora no es válida.' : 'La fecha no es válida.' };
+    }
     case 'photo': {
       if (!field.multiple) return typeof value === 'string' && value.length > 0 ? { value } : { error: 'Falta la foto.' };
       const photos = Array.isArray(value) ? value.filter((one): one is string => typeof one === 'string' && one.length > 0) : [];
@@ -221,7 +251,8 @@ function checkValue(field: FormField, value: unknown): { value: unknown } | { er
   }
 }
 
-const MISSING: Record<FormField['kind'], string> = { choice: 'Elige una opción.', text: 'Escribe algo aquí.', number: 'Escribe un número.', date: 'Elige una fecha.', photo: 'Falta la foto.', location: 'Falta tu ubicación.' };
+const MISSING: Record<Exclude<FormField['kind'], 'date'>, string> = { choice: 'Elige una opción.', text: 'Escribe algo aquí.', number: 'Escribe un número.', photo: 'Falta la foto.', location: 'Falta tu ubicación.' };
+const missingOf = (field: FormField): string => (field.kind !== 'date' ? MISSING[field.kind] : field.mode === 'time' ? 'Elige una hora.' : 'Elige una fecha.');
 
 /** A signing's location older than this when sent is not «now». */
 export const FRESH_LOCATION_MS = 2 * 60_000;
@@ -255,7 +286,7 @@ export function validateFormValues(fields: readonly FormField[], raw: unknown, o
   for (const field of visibleFields(fields, input)) {
     const value = input[field.name];
     if (isEmpty(value)) {
-      if (field.required) errors[field.name] = MISSING[field.kind];
+      if (field.required) errors[field.name] = missingOf(field);
       continue;
     }
     const checked = checkValue(field, value);

@@ -17,6 +17,17 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.169',
+    // Company mode only: the apps' forms and cards.
+    audience: 'spaces',
+    items: [
+      'Las fechas de los formularios se eligen con un selector y arrancan en hoy; la hora, con su reloj.',
+      'Transportista, cantera, planta y los nombres largos se eligen en una lista desplegable.',
+      'Si no se puede enviar un formulario, el aviso sale junto al botón.',
+      'Las tarjetas de las apps siempre llevan su logo y su nombre, y los datos largos caben en dos líneas.',
+    ],
+  },
+  {
     version: '0.1.168',
     // Company mode only: the apps' forms. The first release the 0.1.167 filter skips for personal-only users.
     audience: 'spaces',

@@ -19,6 +19,8 @@ import { NotificationLevelDialog } from './NotificationLevelDialog';
 import { ParticipantesDelChat } from './ParticipantesDelChat';
 import { useEditarChat } from './useEditarChat';
 
+const NO_APPS: ReadonlySet<string> = new Set();
+
 /**
  * «Info. del grupo / del contacto / del borrador» (W3b, diseño
  * `w3-web-info-grupo.png`): tercera columna de 400 px desde 1024 px; en
@@ -75,6 +77,7 @@ export function PanelDeInfo(props: {
           <ParticipantesDelChat
             jwt={props.jwt}
             miembros={info.miembros}
+            appIds={detalle?.appIds ?? NO_APPS}
             puedeAgregar={info.puedeAgregar}
             onAgregar={(userId) => void editar.agregar(userId)}
             onCambiarRol={(userId, role) => void editar.cambiarRol(userId, role)}
@@ -89,7 +92,7 @@ export function PanelDeInfo(props: {
             <span className="text-sm text-on-surface-variant">{NOTIFICATION_LEVEL_TEXT[level].title}</span>
           </button>
         ) : null}
-        {tab === 'settings' && (chat.channel || detalle?.canal) ? <ChannelVisibilityRow chatId={chat.id} jwt={props.jwt} isPrivate={detalle?.canal ? detalle.canal.privado : chat.channel?.visibility === 'private'} isAdmin={Boolean(detalle?.soyAdmin)} isGeneral={Boolean(detalle?.canal?.general)} onNotice={props.onAviso} /> : null}
+        {tab === 'settings' && (chat.channel || detalle?.channel) ? <ChannelVisibilityRow chatId={chat.id} jwt={props.jwt} isPrivate={detalle?.channel ? detalle.channel.isPrivate : chat.channel?.visibility === 'private'} isAdmin={Boolean(detalle?.soyAdmin)} isGeneral={Boolean(detalle?.channel?.general)} onNotice={props.onAviso} /> : null}
         {tab === 'settings' && chat.kind === 'group' ? <GroupFunRow chatId={chat.id} jwt={props.jwt} allowed={Boolean(chat.funAllowed ?? detalle?.funAllowed)} isAdmin={Boolean(detalle?.soyAdmin)} onAviso={props.onAviso} /> : null}
         {tab === 'settings' && (chat.kind === 'group' || chat.kind === 'direct') ? <BirthdaysRow chatId={chat.id} jwt={props.jwt} on={Boolean(chat.birthdaysOn ?? detalle?.birthdaysOn)} canChange={chat.kind === 'direct' || Boolean(detalle?.soyAdmin)} isGroup={chat.kind === 'group'} onAviso={props.onAviso} /> : null}
         {choosingLevel ? (

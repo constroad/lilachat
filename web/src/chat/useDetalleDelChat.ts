@@ -5,9 +5,9 @@ import type { MemberPill } from '@lilachat/shared';
 import type { BaseLocal } from '../local/baseLocal';
 
 /** Un miembro como lo pinta la web: el nombre ya resuelto. */
-export type ChatMemberInfo = { id: string; nombre: string; foto?: string; telefono?: string; rol: 'admin' | 'member'; esYo: boolean; /** An installed app (pending 91): an admin only takes it out. */ app?: boolean };
+export type MiembroDelChat = { id: string; nombre: string; foto?: string; telefono?: string; rol: 'admin' | 'member'; esYo: boolean };
 export type DetalleDelChat = {
-  miembros: Map<string, ChatMemberInfo>;
+  miembros: Map<string, MiembroDelChat>;
   /** Each member's pill: in a company space, the job title and the role there (design s-01). */
   pills: Map<string, MemberPill>;
   soyAdmin: boolean;
@@ -23,7 +23,9 @@ export type DetalleDelChat = {
   /** Birthdays on in this chat (pending 17). */
   birthdaysOn?: boolean;
   /** A channel (pending 93): who finds it, and whether it is #general. */
-  canal?: { privado: boolean; general: boolean };
+  channel?: { isPrivate: boolean; general: boolean };
+  /** The installed apps among the members (pending 91): an admin only takes them out. */
+  appIds?: ReadonlySet<string>;
 };
 
 export type Respuesta = {
@@ -42,7 +44,7 @@ export type Respuesta = {
 const vistos = new Map<string, DetalleDelChat>();
 
 export function aDetalle(respuesta: Respuesta): DetalleDelChat {
-  const miembros = new Map<string, ChatMemberInfo>();
+  const miembros = new Map<string, MiembroDelChat>();
   const pills = new Map<string, MemberPill>();
   for (const uno of respuesta.members) {
     pills.set(uno.id, { role: uno.app ? 'app' : (uno.spaceRole ?? uno.role ?? 'member'), title: uno.title });
@@ -54,7 +56,6 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
       telefono: uno.phone ?? undefined,
       rol: uno.role ?? 'member',
       esYo: uno.esYo === true,
-      ...(uno.app ? { app: true } : {}),
     });
   }
   return {
@@ -68,7 +69,8 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
     descripcion: respuesta.descripcion,
     funAllowed: respuesta.funAllowed === true,
     birthdaysOn: respuesta.birthdaysOn === true,
-    ...(respuesta.channel ? { canal: { privado: respuesta.channel.visibility === 'private', general: respuesta.channel.general } } : {}),
+    ...(respuesta.channel ? { channel: { isPrivate: respuesta.channel.visibility === 'private', general: respuesta.channel.general } } : {}),
+    appIds: new Set(respuesta.members.filter((member) => member.app).map((member) => member.id)),
   };
 }
 
@@ -77,7 +79,7 @@ const claveGuardada = (chatId: string) => `detalle:${chatId}`;
 /** Members show the name saved in the phone (20/10, option «b»), like the app. */
 export function detailWithAgenda(detail: DetalleDelChat, agenda: ReadonlyMap<string, string>): DetalleDelChat {
   let changed = false;
-  const members = new Map<string, ChatMemberInfo>();
+  const members = new Map<string, MiembroDelChat>();
   for (const [id, member] of detail.miembros) {
     const saved = member.esYo ? undefined : agendaNameFor(member.telefono, agenda);
     changed ||= Boolean(saved && saved !== member.nombre);

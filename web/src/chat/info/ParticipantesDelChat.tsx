@@ -11,12 +11,14 @@ import type { MiembroEnInfo } from './infoDelChat';
 
 const ETIQUETAS: Record<AccionDeMiembro, string> = { 'hacer-admin': 'Nombrar admin', 'dejar-admin': 'Quitar como admin', sacar: 'Sacar del grupo' };
 /** An app is taken out of the channel, and stays out until an admin adds it again (pending 91). */
-const labelOf = (miembro: MiembroEnInfo, accion: AccionDeMiembro) => (miembro.app && accion === 'sacar' ? 'Quitar del canal' : ETIQUETAS[accion]);
+const labelOf = (isApp: boolean, accion: AccionDeMiembro) => (isApp && accion === 'sacar' ? 'Quitar del canal' : ETIQUETAS[accion]);
 
 /** Los participantes del grupo (W3b): sumar, y el menú de cada uno con lo que se puede. */
 export function ParticipantesDelChat(props: {
   jwt: string;
   miembros: MiembroEnInfo[];
+  /** The installed apps among them (pending 91). */
+  appIds: ReadonlySet<string>;
   puedeAgregar: boolean;
   onAgregar: (userId: string) => void;
   onCambiarRol: (userId: string, role: 'admin' | 'member') => void;
@@ -64,7 +66,7 @@ export function ParticipantesDelChat(props: {
                       onSelect={() => aplicar(miembro, accion)}
                       className={`flex min-h-[40px] cursor-pointer items-center rounded-lg px-3 text-sm outline-none data-[highlighted]:bg-background ${accion === 'sacar' ? 'text-error' : ''}`}
                     >
-                      {labelOf(miembro, accion)}
+                      {labelOf(props.appIds.has(miembro.id), accion)}
                     </DropdownMenu.Item>
                   ))}
                 </DropdownMenu.Content>
@@ -86,7 +88,7 @@ export function ParticipantesDelChat(props: {
       ) : null}
       {sacando ? (
         <Overlay
-          title={sacando.app ? `¿Quitar ${sacando.nombre} del canal?` : `¿Sacar a ${sacando.nombre} del grupo?`}
+          title={props.appIds.has(sacando.id) ? `¿Quitar ${sacando.nombre} del canal?` : `¿Sacar a ${sacando.nombre} del grupo?`}
           onClose={() => setSacando(null)}
           footer={
             <div className="flex gap-2">
@@ -102,12 +104,12 @@ export function ParticipantesDelChat(props: {
                 }}
                 className="flex min-h-[44px] flex-1 items-center justify-center rounded-xl bg-error text-sm font-semibold text-white"
               >
-                {sacando.app ? 'Quitar' : 'Sacar'}
+                {props.appIds.has(sacando.id) ? 'Quitar' : 'Sacar'}
               </button>
             </div>
           }
         >
-          <p className="text-sm text-on-surface-variant">{sacando.app ? 'Deja de publicar aquí y no vuelve sola. Para que vuelva, un admin elige este canal en «¿Dónde llega cada aviso?», en el detalle de la app.' : 'Deja de recibir los mensajes del grupo. En el chat queda la línea «sacaste a…».'}</p>
+          <p className="text-sm text-on-surface-variant">{props.appIds.has(sacando.id) ? 'Deja de publicar aquí y no vuelve sola. Para que vuelva, un admin elige este canal en «¿Dónde llega cada aviso?», en el detalle de la app.' : 'Deja de recibir los mensajes del grupo. En el chat queda la línea «sacaste a…».'}</p>
         </Overlay>
       ) : null}
     </section>

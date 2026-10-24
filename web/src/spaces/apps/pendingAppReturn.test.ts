@@ -18,6 +18,11 @@ describe('pendingAppReturn', () => {
     expect(takePendingAppReturn()).toBeNull();
   });
 
+  it('with /chat at the end it remembers to open the 1:1 with the app (pending 49)', () => {
+    catchAppReturn({ pathname: '/s/6adbb0887ca6f18809904536/apps/lca_inframaq/chat' }, { replaceState: vi.fn() });
+    expect(takePendingAppReturn()).toEqual({ spaceId: '6adbb0887ca6f18809904536', clientId: 'lca_inframaq', chat: true });
+  });
+
   it('any other address is left alone', () => {
     const replaceState = vi.fn();
     expect(catchAppReturn({ pathname: '/unirse/CONS-7K3P' }, { replaceState })).toBeNull();

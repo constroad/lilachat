@@ -77,7 +77,11 @@ export function AppDetail(props: { app: DirectoryApp; spaceName: string; onMessa
                       </div>
                     </div>
                   ) : (
-                    <button type="button" data-testid="app-desinstalar" onClick={() => setConfirming(true)} className="h-10 w-full rounded-lg px-3 text-left text-[14px] text-error hover:bg-background">Desinstalar</button>
+                    <>
+                      {/* Like Slack's «Reinstall» (agentes, 23/10): when the company or the permissions changed. */}
+                      {app.installUrl ? <button type="button" data-testid="app-reinstalar" onClick={() => { setMenu(false); props.onInstall(); }} className="h-10 w-full rounded-lg px-3 text-left text-[14px] hover:bg-background">Reinstalar</button> : null}
+                      <button type="button" data-testid="app-desinstalar" onClick={() => setConfirming(true)} className="h-10 w-full rounded-lg px-3 text-left text-[14px] text-error hover:bg-background">Desinstalar</button>
+                    </>
                   )}
                 </div>
               ) : null}

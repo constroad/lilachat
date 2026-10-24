@@ -5,7 +5,7 @@ import type { ChatMessage, ChatSummary } from '../chat/types';
 import { forgetMySpaces, setCurrentSpaceId, useCurrentSpaceId, useMySpaces } from './currentSpace';
 import { chatOfChannel, createSpaceChat, spaceActivity, spaceChats } from './spacesApi';
 import { markSpacesSeen, readSeenSpaces } from './seenSpaces';
-import { fetchSpaceChats, forgetAllSpaces, forgetSpace, isSpaceChat, membersChanged, prefetchSpace, setSpaceCacheDisk, spaceChatsCache, useCached } from './spaceCache';
+import { fetchSpaceChats, forgetAllSpaces, forgetSpace, isSpaceChat, membersChanged, prefetchSpace, rememberMyRead, setSpaceCacheDisk, spaceChatsCache, useCached } from './spaceCache';
 import type { BaseLocal } from '../local/baseLocal';
 import { memberName } from './memberWeb';
 import { SpacesLayer, type SpaceDialog } from './SpacesLayer';
@@ -16,7 +16,7 @@ import { useSpaceApps } from './apps/useSpaceApps';
 import { AppDirectory } from './apps/AppDirectory';
 
 /** What a socket event of a space chat says (22/10). */
-export type SpaceChatEvent = { type: 'message'; chatId: string; message: ChatMessage } | { type: 'receipt'; chatId: string; userId?: string } | { type: 'changed'; chatId: string };
+export type SpaceChatEvent = { type: 'message'; chatId: string; message: ChatMessage } | { type: 'receipt'; chatId: string; userId?: string; readSeq?: number } | { type: 'changed'; chatId: string };
 const NO_ACTIVITY = { mentions: 0, threads: 0 };
 
 /** Several messages in a row reload the space's list once. */
@@ -122,6 +122,7 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
    * count; an unknown chat or a changed one is asked for.
    */
   const onChatEvent = useCallback((event: SpaceChatEvent) => {
+    if (event.type === 'receipt' && event.userId === myUserId) rememberMyRead(event.chatId, event.readSeq);
     const key = spaceId ? `${spaceId}:chats` : null;
     const inList = Boolean(key && spaceChatsCache.get(key).value?.chats.some((chat) => chat.id === event.chatId));
     if (!inList) {
@@ -173,13 +174,16 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
       setAppReturn(null);
     } else if (currentId !== appReturn.spaceId) setCurrentSpaceId(appReturn.spaceId);
   }, [appReturn, spaces, currentId]);
-  const { directory, openDirectory } = apps;
+  const { directory, openDirectory, message } = apps;
   useEffect(() => {
     if (!appReturn || spaceId !== appReturn.spaceId || !directory) return;
     takePendingAppReturn();
     setAppReturn(null);
-    openDirectory(directory.apps.find((app) => app.clientId === appReturn.clientId)?.appId);
-  }, [appReturn, spaceId, directory, openDirectory]);
+    const app = directory.apps.find((one) => one.clientId === appReturn.clientId);
+    // Pending 49: an installed app's 1:1; otherwise its detail.
+    if (appReturn.chat && app?.installation) message(app);
+    else openDirectory(app?.appId);
+  }, [appReturn, spaceId, directory, openDirectory, message]);
   const talkTo = useCallback(async (admin: { userId: string }) => {
     setRemoved(null);
     const response = await api<{ chatId: string }>('/chats', { jwt, body: { kind: 'direct', memberIds: [admin.userId] } });

@@ -5,7 +5,7 @@ import type { MemberPill } from '@lilachat/shared';
 import type { BaseLocal } from '../local/baseLocal';
 
 /** Un miembro como lo pinta la web: el nombre ya resuelto. */
-export type MiembroDelChat = { id: string; nombre: string; foto?: string; telefono?: string; rol: 'admin' | 'member'; esYo: boolean };
+export type MiembroDelChat = { id: string; nombre: string; foto?: string; telefono?: string; rol: 'admin' | 'member'; esYo: boolean; /** An installed app (pending 91): an admin only takes it out. */ app?: boolean };
 export type DetalleDelChat = {
   miembros: Map<string, MiembroDelChat>;
   /** Each member's pill: in a company space, the job title and the role there (design s-01). */
@@ -22,6 +22,8 @@ export type DetalleDelChat = {
   funAllowed?: boolean;
   /** Birthdays on in this chat (pending 17). */
   birthdaysOn?: boolean;
+  /** A channel (pending 93): who finds it, and whether it is #general. */
+  canal?: { privado: boolean; general: boolean };
 };
 
 export type Respuesta = {
@@ -32,6 +34,7 @@ export type Respuesta = {
   descripcion?: string;
   funAllowed?: boolean;
   birthdaysOn?: boolean;
+  channel?: { visibility: 'public' | 'private'; general: boolean };
   members: { id: string; name: string | null; phone: string | null; avatarUrl?: string; role?: 'admin' | 'member'; esYo?: boolean; title?: string; spaceRole?: string; app?: boolean }[];
 };
 
@@ -51,6 +54,7 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
       telefono: uno.phone ?? undefined,
       rol: uno.role ?? 'member',
       esYo: uno.esYo === true,
+      ...(uno.app ? { app: true } : {}),
     });
   }
   return {
@@ -64,6 +68,7 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
     descripcion: respuesta.descripcion,
     funAllowed: respuesta.funAllowed === true,
     birthdaysOn: respuesta.birthdaysOn === true,
+    ...(respuesta.channel ? { canal: { privado: respuesta.channel.visibility === 'private', general: respuesta.channel.general } } : {}),
   };
 }
 

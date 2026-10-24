@@ -1,4 +1,4 @@
-import { barFractions, linePath, type BotBlock } from '@lilachat/shared';
+import { BAR_V_MIN_COLUMN, barFractions, linePath, type BotBlock } from '@lilachat/shared';
 import { TONE } from './tones';
 
 type Chart = Extract<BotBlock, { type: 'chart' }>;
@@ -27,18 +27,21 @@ function BarsH({ chart }: { chart: Chart }) {
 
 function BarsV({ chart }: { chart: Chart }) {
   const fractions = barFractions(chart.points, chart.max);
+  // A week shares the card's width; past BAR_V_MIN_COLUMN each (a month) it scrolls sideways (José, 23/10).
   return (
-    <div data-testid="bloque-grafico-barras-v" className="flex items-end justify-around">
-      {chart.points.map((point, index) => (
-        <div key={`${point.label}-${index}`} className="flex min-w-14 flex-col items-center">
-          <span className={`text-[12px] font-bold tabular-nums ${TONE[point.tone].text}`}>{shown(point, chart.unit)}</span>
-          <div className="flex items-end" style={{ height: BAR_V_HEIGHT }}>
-            <div className={`w-8 rounded-t-md ${TONE[point.tone].bar}`} style={{ height: Math.max(3, Math.round(fractions[index]! * BAR_V_HEIGHT)) }} />
+    <div data-testid="bloque-grafico-barras-v" className="overflow-x-auto">
+      <div className="grid items-end" style={{ gridTemplateColumns: `repeat(${chart.points.length}, minmax(${BAR_V_MIN_COLUMN}px, 1fr))` }}>
+        {chart.points.map((point, index) => (
+          <div key={`${point.label}-${index}`} className="flex min-w-0 flex-col items-center">
+            <span className={`max-w-full truncate text-[12px] font-bold tabular-nums ${TONE[point.tone].text}`}>{shown(point, chart.unit)}</span>
+            <div className="flex w-full items-end justify-center" style={{ height: BAR_V_HEIGHT }}>
+              <div className={`w-3/5 max-w-8 rounded-t-md ${TONE[point.tone].bar}`} style={{ height: Math.max(3, Math.round(fractions[index]! * BAR_V_HEIGHT)) }} />
+            </div>
+            <span className="mt-1 max-w-full truncate text-[12px] font-semibold">{point.label}</span>
+            {point.note ? <span className="max-w-full truncate text-[11px] text-on-surface-variant">{point.note}</span> : null}
           </div>
-          <span className="mt-1 text-[12px] font-semibold">{point.label}</span>
-          {point.note ? <span className="text-[11px] text-on-surface-variant">{point.note}</span> : null}
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

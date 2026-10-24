@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { evidenceLine, formFields, submitLabelOf, validateFormValues, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues } from '@lilachat/shared';
+import { evidenceLine, formFields, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
 import { Avatar } from '../../ui/Avatar';
 import { ChoiceField, DateField, LocationField, NumberField, PhotoField, TextField } from './AppFormFields';
@@ -60,7 +60,7 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
             {props.personName ? <p className="mx-auto mt-2 w-fit rounded-lg border border-outline/15 px-3 py-1 text-[13px]">{props.personName}</p> : null}
           </div>
         ) : null}
-        {fields.map((field) => <Field key={field.name} field={field} value={values[field.name]} error={errors[field.name]} onChange={set(field.name)} upload={props.onUpload} />)}
+        {visibleFields(fields, values).map((field) => <Field key={field.name} field={field} value={values[field.name]} error={errors[field.name]} onChange={set(field.name)} upload={props.onUpload} />)}
         {message ? <FieldError>{message}</FieldError> : null}
       </div>
     </Overlay>

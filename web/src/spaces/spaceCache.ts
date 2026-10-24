@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
-import { createSessionCache, type ActivityItem, type ActivityType, type CacheEntry, type ClientChannel, type ClientWorkspaceMember, type SessionCache } from '@lilachat/shared';
+import { applyMyReads, createSessionCache, type ActivityItem, type ActivityType, type CacheEntry, type ClientChannel, type ClientWorkspaceMember, type SessionCache } from '@lilachat/shared';
 import type { ApiResult } from '../api';
 import type { ChatSummary } from '../chat/types';
 import type { BaseLocal } from '../local/baseLocal';
@@ -67,11 +67,17 @@ export function dataOf<T>(response: ApiResult<T>): T {
 export const fetchMembers = (jwt: string, spaceId: string) => async () => dataOf(await spaceMembers(jwt, spaceId)).members;
 export const fetchChannels = (jwt: string, spaceId: string) => async () => dataOf(await spaceChannels(jwt, spaceId)).channels;
 export const fetchActivity = (jwt: string, spaceId: string, type: ActivityType) => async () => dataOf(await spaceActivity(jwt, spaceId, { type }));
+/** My reads heard on the socket: a load that left before one does not bring its «1» back (23/10). */
+const myReads = new Map<string, number>();
+export function rememberMyRead(chatId: string, seq: unknown): void {
+  if (typeof seq === 'number' && seq > (myReads.get(chatId) ?? 0)) myReads.set(chatId, seq);
+}
+
 export const fetchSpaceChats = (jwt: string, spaceId: string) => async (): Promise<SpaceChatsPage> => {
   const page = dataOf(await spaceChats(jwt, spaceId));
   // A server before 22/10 sends the chips' counts apart.
   const activity = page.activity ?? dataOf(await spaceActivity(jwt, spaceId, { countsOnly: true })).unread;
-  return rememberSpaceChats({ chats: page.chats, activity });
+  return rememberSpaceChats({ chats: applyMyReads(page.chats, myReads), activity });
 };
 /** Someone joined, left or changed in the space: its directories refresh where they are open (`workspace.members.changed`). */
 export function membersChanged(spaceId: string): void {

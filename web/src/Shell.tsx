@@ -106,7 +106,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
     },
     onReceipt: (acuse) => {
       eventos.current.onReceipt?.(acuse);
-      eventoDeEspacio.current({ type: 'receipt', chatId: acuse.chatId, userId: acuse.userId });
+      eventoDeEspacio.current({ type: 'receipt', chatId: acuse.chatId, userId: acuse.userId, readSeq: acuse.readSeq });
     },
     onBorrado: (dato) => {
       eventos.current.onBorrado?.(dato);

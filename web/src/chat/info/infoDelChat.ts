@@ -40,7 +40,7 @@ export function armarInfo(params: { chat: ChatSummary; detalle: DetalleDelChat |
     puedeEditar: Boolean(detalle) && puedeEditarInfo({ quien: yo, miembros: reglas, esGrupo: chat.kind !== 'direct' }).ok,
     puedeAgregar: esGrupo && Boolean(detalle) && puedeAgregar({ quien: yo, miembros: reglas, aQuien: ALGUIEN_NUEVO, esGrupo }).ok,
     miembros: esGrupo
-      ? lista.sort(orden).map((uno) => ({ ...uno, acciones: accionesDeMiembro({ quien: yo, aQuien: uno.id, miembros: reglas, esGrupo }) }))
+      ? lista.sort(orden).map((uno) => ({ ...uno, acciones: accionesDeMiembro({ quien: yo, aQuien: uno.id, miembros: reglas, esGrupo, esApp: uno.app === true }) }))
       : [],
     puedeSalir: esGrupo,
     puedeEliminar: !esGrupo,

@@ -34,17 +34,22 @@ export function SpaceQuickActions(props: { jwt: string; spaceId: string; spaceNa
   useEffect(() => {
     setGroups(null);
   }, [spaceId]);
-  // A manifest changed: the list already read is stale.
+  const openRef = useRef(open);
+  openRef.current = open;
+  // A manifest changed: the list already read is stale. With the sheet open it is
+  // read again at once (José, 23/10: skeletons that never loaded).
   useEffect(() => {
     const socket = currentSocket();
     const onAppsChanged = (frame: { workspaceId?: string }) => {
-      if (frame.workspaceId === spaceId) setGroups(null);
+      if (frame.workspaceId !== spaceId) return;
+      setGroups(null);
+      if (openRef.current) void load();
     };
     socket?.on('workspace.apps.changed', onAppsChanged);
     return () => {
       socket?.off('workspace.apps.changed', onAppsChanged);
     };
-  }, [spaceId]);
+  }, [spaceId, load]);
   // A late answer reopens the sheet: it would be lost behind a closed one.
   const seen = useRef(new Set<string>());
   useEffect(() => {

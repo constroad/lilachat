@@ -10,6 +10,8 @@ import { Overlay } from '../../ui/Overlay';
 import type { MiembroEnInfo } from './infoDelChat';
 
 const ETIQUETAS: Record<AccionDeMiembro, string> = { 'hacer-admin': 'Nombrar admin', 'dejar-admin': 'Quitar como admin', sacar: 'Sacar del grupo' };
+/** An app is taken out of the channel, and stays out until an admin adds it again (pending 91). */
+const labelOf = (miembro: MiembroEnInfo, accion: AccionDeMiembro) => (miembro.app && accion === 'sacar' ? 'Quitar del canal' : ETIQUETAS[accion]);
 
 /** Los participantes del grupo (W3b): sumar, y el menú de cada uno con lo que se puede. */
 export function ParticipantesDelChat(props: {
@@ -62,7 +64,7 @@ export function ParticipantesDelChat(props: {
                       onSelect={() => aplicar(miembro, accion)}
                       className={`flex min-h-[40px] cursor-pointer items-center rounded-lg px-3 text-sm outline-none data-[highlighted]:bg-background ${accion === 'sacar' ? 'text-error' : ''}`}
                     >
-                      {ETIQUETAS[accion]}
+                      {labelOf(miembro, accion)}
                     </DropdownMenu.Item>
                   ))}
                 </DropdownMenu.Content>
@@ -84,7 +86,7 @@ export function ParticipantesDelChat(props: {
       ) : null}
       {sacando ? (
         <Overlay
-          title={`¿Sacar a ${sacando.nombre} del grupo?`}
+          title={sacando.app ? `¿Quitar ${sacando.nombre} del canal?` : `¿Sacar a ${sacando.nombre} del grupo?`}
           onClose={() => setSacando(null)}
           footer={
             <div className="flex gap-2">
@@ -100,12 +102,12 @@ export function ParticipantesDelChat(props: {
                 }}
                 className="flex min-h-[44px] flex-1 items-center justify-center rounded-xl bg-error text-sm font-semibold text-white"
               >
-                Sacar
+                {sacando.app ? 'Quitar' : 'Sacar'}
               </button>
             </div>
           }
         >
-          <p className="text-sm text-on-surface-variant">Deja de recibir los mensajes del grupo. En el chat queda la línea «sacaste a…».</p>
+          <p className="text-sm text-on-surface-variant">{sacando.app ? 'Deja de publicar aquí y no vuelve sola. Para que vuelva, un admin elige este canal en «¿Dónde llega cada aviso?», en el detalle de la app.' : 'Deja de recibir los mensajes del grupo. En el chat queda la línea «sacaste a…».'}</p>
         </Overlay>
       ) : null}
     </section>

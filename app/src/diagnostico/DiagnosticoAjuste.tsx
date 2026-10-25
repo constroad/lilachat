@@ -12,7 +12,7 @@ import { describeRunningCode } from '../updates/runningCode';
 
 const MS_LENTO = 1_000;
 /** Which code this phone runs: the APK's own or an OTA update (the same build can run either). */
-const CODIGO_EN_USO = describeRunningCode({ updateId: Updates.updateId, runtimeVersion: Updates.runtimeVersion });
+const RUNNING_CODE = describeRunningCode({ updateId: Updates.updateId, runtimeVersion: Updates.runtimeVersion });
 
 const FRASE_DE_ENVIO = {
   ok: 'Enviado. Ya se puede mirar en LilaStore.',
@@ -76,7 +76,7 @@ export function DiagnosticoAjuste() {
               Errores y tiempos de la app en este teléfono. Nada personal: ni mensajes, ni números, ni contactos.
             </Text>
             <Text className="text-[12px] text-on-surface-variant" testID="diag-codigo">
-              Código: {CODIGO_EN_USO.code} · runtime {CODIGO_EN_USO.runtime}
+              Código: {RUNNING_CODE.code} · runtime {RUNNING_CODE.runtime}
             </Text>
             <View className="flex-row gap-2">
               <Pressable

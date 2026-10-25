@@ -24,11 +24,9 @@ export type PushMessage = {
   tokens: string[];
   title: string;
   body: string;
-  /**
-   * `tipo`: un recordatorio o evento (`agenda`, con banner) o una llamada que suena.
-   * `workspaceId` / `hiloDe` (agentes 25/10/2026): where tapping the notice lands, as text; empty when the
-   * message has no space or no thread. Absent on pushes that do not open a message (calls).
-   */
+  /** `tipo`: un recordatorio o evento (`agenda`, con banner) o una llamada que suena. */
+  // `workspaceId` / `hiloDe` (agentes 25/10/2026): where tapping the notice lands, as text; empty when the
+  // message has no space or no thread. Absent on pushes that do not open a message (calls).
   data: { chatId: string; seq: number; tipo?: 'agenda' | 'llamada'; workspaceId?: string; hiloDe?: string };
 };
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
 import type { ChatSummary } from '../api/client';
-import { buscarChat, findNoticeChat } from './buscarChat';
+import { buscarChat, lookupNoticeChat } from './buscarChat';
 import { noticeDestination, type EntryPoint, type NoticeDestination } from './destinoDeAviso';
 import { NoticeOpener } from './noticeOpener';
 import { llamadaNativa } from '../../modules/llamada-entrante/src';
@@ -42,7 +42,7 @@ export function useAbrirDesdeAviso(params: {
     const atendidas = new Set<string>();
     const opener = new NoticeOpener(
       {
-        find: (destination, jwt) => (destination.tipo === 'chat' ? findNoticeChat(destination, jwt) : Promise.resolve(null)),
+        find: (destination, jwt) => (destination.tipo === 'chat' ? lookupNoticeChat(destination, jwt) : Promise.resolve({ kind: 'missing' })),
         open: (plan) => {
           // Before navigating: otherwise the list of the wrong space paints for a moment and «back» lands on it.
           setCurrentSpaceId(plan.space);
@@ -51,6 +51,7 @@ export function useAbrirDesdeAviso(params: {
         },
         openAgenda: () => abrirAgendaRef.current(),
         now: Date.now,
+        sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
       },
       jwtRef.current
     );

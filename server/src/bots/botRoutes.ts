@@ -120,7 +120,7 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
   const topicsToWire = (routes: Awaited<ReturnType<typeof topicRoutesOf>>) => routes.topics.map((topic) => ({ key: topic.key, name: topic.name, channel: topic.channel }));
   router.get('/topics', asyncRoute(async (req, res) => res.json({ topics: topicsToWire(await topicRoutesOf(req.bot!)) })));
   router.put('/topics', asyncRoute(async (req, res) => {
-    const outcome = await setTopicChannels(req.bot!, req.body);
+    const outcome = await setTopicChannels(req.bot!, req.body, { kind: 'app' });
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.json({ topics: topicsToWire(outcome) });
   }));

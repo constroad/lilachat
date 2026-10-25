@@ -129,6 +129,35 @@ describe('where each topic lands', () => {
     await request(app).put('/api/bots/topics').set(asBot(token)).send({ caja: String(new Types.ObjectId()) }).expect(404);
   });
 
+  it('every change leaves a trace: who, when and which topics, by the admin route and by the app token', async () => {
+    // Arrange
+    const { token, appId } = await installInframaq();
+    const traceOf = async () => BotInstallationModel.findOne({}).select('topicChannelsBy topicChannelsAt topicChannelsTouched').lean();
+    expect(await traceOf()).not.toHaveProperty('topicChannelsBy');
+    // Act: the admin moves one topic
+    const before = Date.now();
+    await request(app).put(topicsPath(appId)).set(asJose).send({ channels: { asistencia: String(planta) } }).expect(200);
+    const byAdmin = await traceOf();
+    // Assert
+    expect(byAdmin).toMatchObject({ topicChannelsBy: `user:${jose}`, topicChannelsTouched: ['asistencia'] });
+    expect(byAdmin?.topicChannelsAt?.getTime()).toBeGreaterThanOrEqual(before);
+    // Act: the app moves another one; the trace now says the app and only that topic
+    await request(app).put('/api/bots/topics').set(asBot(token)).send({ caja: null }).expect(200);
+    // Assert
+    expect(await traceOf()).toMatchObject({ topicChannelsBy: 'app', topicChannelsTouched: ['caja'] });
+  });
+
+  it('a refused change (a member, an unknown topic, an unknown channel) leaves no trace', async () => {
+    // Arrange
+    const { token, appId } = await installInframaq();
+    // Act
+    await request(app).put(topicsPath(appId)).set(asAna).send({ channels: { asistencia: String(planta) } }).expect(403);
+    await request(app).put('/api/bots/topics').set(asBot(token)).send({ planilla: String(planta) }).expect(400);
+    await request(app).put('/api/bots/topics').set(asBot(token)).send({ caja: String(new Types.ObjectId()) }).expect(404);
+    // Assert
+    expect(await BotInstallationModel.findOne({}).select('topicChannelsBy topicChannelsAt topicChannelsTouched').lean()).not.toHaveProperty('topicChannelsBy');
+  });
+
   it('«Probar envío» posts one line per channel, saying which topics land there', async () => {
     const { appId } = await installInframaq();
     await request(app).put(topicsPath(appId)).set(asJose).send({ channels: { asistencia: String(planta) } }).expect(200);

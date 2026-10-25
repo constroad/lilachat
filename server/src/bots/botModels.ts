@@ -75,6 +75,10 @@ export type BotInstallation = {
   lastDelivery?: { at: Date; ok: boolean; error?: string };
   /** The channel the admin picked for each notice topic; null = «Sin canal»; absent = #general (`botTopics.ts`). */
   topicChannels?: Record<string, string | null>;
+  /** Who last changed the topics' channels (`user:<id>` or `app`), when, and which topics that change touched. */
+  topicChannelsBy?: string;
+  topicChannelsAt?: Date;
+  topicChannelsTouched?: string[];
   /** The app's scopes accepted when installing: a newer manifest asking for more needs «Reinstalar». */
   grantedScopes?: string[];
   /** Where each command and action works, as the admin left it (`appItems.ts` in shared); absent = the default. */
@@ -145,6 +149,9 @@ const installationSchema = new Schema<BotInstallation>(
     recentKeys: { type: [{ key: String, messageId: String, chatId: String, seq: Number, _id: false }], default: [] },
     lastDelivery: { at: Date, ok: Boolean, error: String },
     topicChannels: { type: Schema.Types.Mixed },
+    topicChannelsBy: { type: String },
+    topicChannelsAt: { type: Date },
+    topicChannelsTouched: { type: [String], default: undefined },
     grantedScopes: { type: [String], default: undefined },
     itemSettings: { type: Schema.Types.Mixed },
   },

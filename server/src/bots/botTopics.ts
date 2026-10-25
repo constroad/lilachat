@@ -51,8 +51,12 @@ export async function topicRoutesOf(installation: Pick<Installation, '_id' | 'ap
   };
 }
 
+/** Who moves the channels: the app with its token, or an admin of the space from Lilachat. Kept on the installation (Agentes, 25/10/2026). */
+export type TopicsActor = { kind: 'app' } | { kind: 'user'; userId: string };
+const actorLabel = (actor: TopicsActor) => (actor.kind === 'app' ? 'app' : `user:${actor.userId}`);
+
 /** A partial map: what is not sent keeps its value. A private channel gets the bot as a member, or it could not post there. */
-export async function setTopicChannels(installation: Installation, raw: unknown): Promise<Awaited<ReturnType<typeof topicRoutesOf>> | TopicsError> {
+export async function setTopicChannels(installation: Installation, raw: unknown, actor: TopicsActor): Promise<Awaited<ReturnType<typeof topicRoutesOf>> | TopicsError> {
   const { topics, channels } = await stateOf(installation);
   const valid = validateTopicChannels(raw, topics.map((topic) => topic.key));
   if (!valid.ok) return fail(400, 'invalid_request', valid.message);
@@ -62,7 +66,9 @@ export async function setTopicChannels(installation: Installation, raw: unknown)
   // A channel picked for a topic gets the app as a member: a private one, or one an admin had taken it out of (pending 91).
   const pickedIds = channels.filter((one) => picked.includes(String(one._id))).map((one) => one._id);
   await Promise.all([
-    Object.keys(valid.channels).length ? BotInstallationModel.updateOne({ _id: installation._id }, { $set: Object.fromEntries(Object.entries(valid.channels).map(([key, id]) => [`topicChannels.${key}`, id])) }) : null,
+    Object.keys(valid.channels).length
+      ? BotInstallationModel.updateOne({ _id: installation._id }, { $set: { ...Object.fromEntries(Object.entries(valid.channels).map(([key, id]) => [`topicChannels.${key}`, id])), topicChannelsBy: actorLabel(actor), topicChannelsAt: new Date(), topicChannelsTouched: Object.keys(valid.channels) } })
+      : null,
     pickedIds.length ? ChatModel.updateMany({ _id: { $in: pickedIds }, 'members.userId': { $ne: installation.botUserId } }, { $push: { members: { userId: installation.botUserId, role: 'member', joinedAt: new Date() } }, $pull: { appsRemoved: installation.botUserId } }) : null,
   ]);
   return topicRoutesOf(installation);

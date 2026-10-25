@@ -161,7 +161,7 @@ export function buildBotUserRouter(): Router {
     if (!(await adminOf(req.params.id!, req.session!.userId))) return void res.status(403).json({ message: 'Solo el dueño o un admin elige dónde llegan los avisos.' });
     const installation = await installedApp(req.params.id!, req.params.appId);
     if (!installation) return void res.status(404).json({ message: 'Esa app no está instalada en el espacio.' });
-    const outcome = await setTopicChannels(installation, req.body?.channels);
+    const outcome = await setTopicChannels(installation, req.body?.channels, { kind: 'user', userId: String(req.session!.userId) });
     if ('error' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
     res.json({ ...outcome, canEdit: true });
   }));

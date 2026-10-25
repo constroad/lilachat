@@ -59,7 +59,7 @@ const ELSEWHERE_RELOAD_MS = 1500;
  * someone else added me to, and «ya no tienes acceso» (e1-14). The space open
  * is remembered; one left falls back to personal.
  */
-export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name: string; phone: string }; personalUnread: number; onOpenChat: (chat: ChatSummary, seq?: number) => void }) {
+export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name: string; phone: string }; personalUnread: number; onOpenChat: (chat: ChatSummary, seq?: number, openThread?: number) => void }) {
   const { jwt, myUserId, onOpenChat } = params;
   const colors = useColores();
   const currentId = useCurrentSpaceId();
@@ -158,12 +158,13 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
     if (response.ok) onOpenChat({ id: response.data.chatId, kind: 'direct', name: admin.name, phone: admin.phone, memberIds: [myUserId, admin.userId], lastSeq: 0, unread: 0, othersReadSeq: 0, othersDeliveredSeq: 0, lastMessage: null });
   }, [jwt, myUserId, onOpenChat]);
   const openWorkspace = useCallback((link: WorkspaceLink) => setSheet(link), []);
-  const openActivityItem = useCallback(async (item: ActivityItem) => {
+  const openActivityItem = useCallback(async (item: ActivityItem, tab: ActivityType) => {
     if (!current) return;
     const chat = listChats.find((one) => one.id === item.chatId) ?? (await findSpaceChat(jwt, current.id, item.chatId));
     if (!chat) return;
     setActivityTab(null);
-    onOpenChat(chat, item.seq);
+    // A row of «Hilos» is the thread itself (its root is the item): it opens the thread over the chat. A mention or a reaction on a message that has replies still lands on the message.
+    onOpenChat(chat, item.seq, tab === 'threads' && item.thread ? item.seq : undefined);
   }, [current, listChats, jwt, onOpenChat]);
   // The 1:1 with an app (design e-26): opened from «Apps» or the directory; the list brings it with its first message.
   const openAppChat = useCallback((app: DirectoryApp, chat: { chatId: string; botUserId: string }) => {
@@ -267,14 +268,14 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
           onLater={() => markSpacesSeen([welcome.id])}
         />
       ) : null}
-      {current ? <ActivityScreen visible={activityTab !== null} space={current} jwt={jwt} myUserId={myUserId} initialTab={activityTab ?? 'mentions'} onOpen={(item) => void openActivityItem(item)} onClose={() => { setActivityTab(null); setReloadKey((key) => key + 1); }} /> : null}
+      {current ? <ActivityScreen visible={activityTab !== null} space={current} jwt={jwt} myUserId={myUserId} initialTab={activityTab ?? 'mentions'} onOpen={(item, tab) => void openActivityItem(item, tab)} onClose={() => { setActivityTab(null); setReloadKey((key) => key + 1); }} /> : null}
       {removed ? <AccessRemovedScreen space={removed} onPersonal={() => setRemoved(null)} onTalkTo={(admin) => void talkToAdmin(admin)} /> : null}
     </>
   );
 
   // Directorio and Menciones as tabs of the bar (22/10): mounted once and hidden, like Chats; no window that slides in.
   const directoryTab: ReactNode = current ? <DirectoryScreen embedded space={current} jwt={jwt} myUserId={myUserId} onOpenMember={setProfile} onMessage={(member) => void writeTo(member)} onInvite={current.joinCode ? () => setSheet('invite') : undefined} onClose={() => undefined} /> : null;
-  const mentionsTab = (active: boolean): ReactNode => (current ? <ActivityScreen embedded visible={active} space={current} jwt={jwt} myUserId={myUserId} initialTab="mentions" onOpen={(item) => void openActivityItem(item)} onClose={() => undefined} /> : null);
+  const mentionsTab = (active: boolean): ReactNode => (current ? <ActivityScreen embedded visible={active} space={current} jwt={jwt} myUserId={myUserId} initialTab="mentions" onOpen={(item, tab) => void openActivityItem(item, tab)} onClose={() => undefined} /> : null);
   return {
     current,
     /** Am I in any company space? `null` while it loads (who an update is for, José 24/10). */

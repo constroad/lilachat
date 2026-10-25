@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  CommonActions,
   createNavigationContainerRef,
   DefaultTheme,
   NavigationContainer,
@@ -20,6 +21,7 @@ import { CallLinkOpener } from '../chat/scheduledCall/CallLinkOpener';
 import { useColores, useTema } from './tema';
 import { chatAbiertoDe, chatQueSeVe } from './rutas';
 import { useAbrirDesdeAviso } from './useAbrirDesdeAviso';
+import type { EntryPoint } from './destinoDeAviso';
 import { ErrorBoundary } from './ErrorBoundary';
 import { useDisposicion } from './useDisposicion';
 import { ConMargenesLaterales, SinMargenArriba } from './PanelDeChat';
@@ -28,10 +30,15 @@ import { ReminderAlarmHost } from '../agenda/ReminderAlarmHost';
 import { WhatsNewHost } from '../settings/WhatsNewHost';
 import { SilentUpdateHost } from '../updates/SilentUpdateHost';
 
+/**
+ * Where the person lands when the chat is opened from outside (general search FL9d, a notice, «Menciones y actividad»).
+ * `requestedAt` changes with every tap on a notice: with the chat already open, it is what sends it to jump again.
+ */
+type ChatEntry = EntryPoint & { requestedAt?: number };
+
 type RutasDeSesion = {
   Inicio: undefined;
-  /** `irASeq`: viene de un resultado de la búsqueda general (FL9d). */
-  Chat: { chat: ChatSummary; irASeq?: number };
+  Chat: { chat: ChatSummary } & ChatEntry;
 };
 
 const Stack = createNativeStackNavigator<RutasDeSesion>();
@@ -59,7 +66,7 @@ export function NavegacionDeSesion(props: {
   const { onChatAbierto } = props;
   // En tablet (FL10) el chat se abre en un panel al lado de la lista, no en el stack.
   const { dosPaneles } = useDisposicion();
-  const [enPanel, setEnPanel] = useState<{ chat: ChatSummary; irASeq?: number } | null>(null);
+  const [enPanel, setEnPanel] = useState<({ chat: ChatSummary } & ChatEntry) | null>(null);
   const pestana = useRef<Tab>('chats');
   const enPanelRef = useRef(enPanel);
   enPanelRef.current = enPanel;
@@ -76,9 +83,9 @@ export function NavegacionDeSesion(props: {
   );
   const alCambiar = useCallback(() => avisarAbierto(), [avisarAbierto]);
   const abrirEnPanel = useCallback(
-    (chat: ChatSummary, irASeq?: number) => {
-      enPanelRef.current = { chat, irASeq };
-      setEnPanel({ chat, irASeq });
+    (chat: ChatSummary, entry: ChatEntry = {}) => {
+      enPanelRef.current = { chat, ...entry };
+      setEnPanel({ chat, ...entry });
       avisarAbierto();
     },
     [avisarAbierto]
@@ -103,7 +110,7 @@ export function NavegacionDeSesion(props: {
     if (dosPaneles && ruta?.name === 'Chat' && ruta.params) {
       const { chat, irASeq } = ruta.params as RutasDeSesion['Chat'];
       navegacion.dispatch(StackActions.popToTop());
-      abrirEnPanel(chat, irASeq);
+      abrirEnPanel(chat, { irASeq });
     } else if (!dosPaneles && enPanelRef.current) {
       const { chat, irASeq } = enPanelRef.current;
       cerrarPanel();
@@ -117,16 +124,22 @@ export function NavegacionDeSesion(props: {
   // Tocar una notificación (FL8): su chat encima de la lista, o la Agenda.
   useAbrirDesdeAviso({
     jwt: props.credential.jwt,
-    abrirChat: (chat) => {
+    abrirChat: (chat, entry) => {
       if (!navegacion.isReady()) return;
+      const target: ChatEntry | undefined = entry && { ...entry, requestedAt: Date.now() };
       if (dosPaneles) {
         if (chatAbiertoDe(navegacion.getRootState())) navegacion.dispatch(StackActions.popToTop());
-        return abrirEnPanel(chat);
+        return abrirEnPanel(chat, target);
       }
-      if (chatAbiertoDe(navegacion.getRootState()) === chat.id) return;
+      const openChatId = chatAbiertoDe(navegacion.getRootState());
+      if (openChatId === chat.id) {
+        // Already on screen: the message or thread of the tap is asked of it, not ignored.
+        if (target) navegacion.dispatch(CommonActions.setParams(target));
+        return;
+      }
       // Si había otro chat abierto, se reemplaza: atrás vuelve a la lista.
-      if (chatAbiertoDe(navegacion.getRootState())) navegacion.dispatch(StackActions.replace('Chat', { chat }));
-      else navegacion.navigate('Chat', { chat });
+      if (openChatId) navegacion.dispatch(StackActions.replace('Chat', { chat, ...target }));
+      else navegacion.navigate('Chat', { chat, ...target });
     },
     abrirAgenda: () => {
       if (navegacion.isReady() && chatAbiertoDe(navegacion.getRootState())) navegacion.dispatch(StackActions.popToTop());
@@ -173,14 +186,14 @@ export function NavegacionDeSesion(props: {
               panelDeChat={
                 dosPaneles && enPanel ? (
                   <SinMargenArriba>
-                    <PantallaDeChat key={enPanel.chat.id} chat={enPanel.chat} irASeq={enPanel.irASeq} credential={props.credential} onBack={cerrarPanel} />
+                    <PantallaDeChat key={enPanel.chat.id} chat={enPanel.chat} entry={enPanel} credential={props.credential} onBack={cerrarPanel} />
                   </SinMargenArriba>
                 ) : null
               }
-              onOpenChat={(chat, irASeq) => {
+              onOpenChat={(chat, irASeq, openThread) => {
                 iniciarCronometro('abrir-chat');
-                if (dosPaneles) abrirEnPanel(chat, irASeq);
-                else navigation.navigate('Chat', { chat, irASeq });
+                if (dosPaneles) abrirEnPanel(chat, { irASeq, openThread });
+                else navigation.navigate('Chat', { chat, irASeq, openThread });
               }}
               onLogout={props.onLogout}
             />
@@ -191,7 +204,7 @@ export function NavegacionDeSesion(props: {
             <ConMargenesLaterales>
               <PantallaDeChat
                 chat={route.params.chat}
-                irASeq={route.params.irASeq}
+                entry={route.params}
                 credential={props.credential}
                 onBack={() => navigation.goBack()}
               />
@@ -208,12 +221,12 @@ export function NavegacionDeSesion(props: {
 
 function PantallaDeChat({
   chat,
-  irASeq,
+  entry,
   credential,
   onBack,
 }: {
   chat: ChatSummary;
-  irASeq?: number;
+  entry: ChatEntry;
   credential: Credential;
   onBack: () => void;
 }) {
@@ -239,7 +252,10 @@ function PantallaDeChat({
       unread={chat.unread}
       readSeq={chat.readSeq}
       lastSeqInicial={chat.lastSeq}
-      irASeq={irASeq}
+      irASeq={entry.irASeq}
+      openThread={entry.openThread}
+      highlightReply={entry.highlightReply}
+      requestedAt={entry.requestedAt}
       encrypted={chat.encrypted}
       // El OTRO miembro, SOLO en un 1:1: con él se deriva la clave y se llama.
       // En un grupo es null — antes iba «el primero», así la pantalla no se

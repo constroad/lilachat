@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
 import type { ChatSummary } from '../api/client';
-import { buscarChat } from './buscarChat';
-import { destinoDeAviso } from './destinoDeAviso';
+import { buscarChat, findNoticeChat } from './buscarChat';
+import { noticeDestination, planOpening, type EntryPoint, type NoticeDestination } from './destinoDeAviso';
 import { llamadaNativa } from '../../modules/llamada-entrante/src';
 import { subscribeOpenChatRequests } from './openChatRequest';
+import { setCurrentSpaceId } from '../spaces/currentSpace';
 
 /**
  * Tocar una notificación abre lo que avisa (FL8; auditoría 17/10/2026: el
@@ -14,12 +15,15 @@ import { subscribeOpenChatRequests } from './openChatRequest';
  * que la abrió (`getLastNotificationResponseAsync`), que se BORRA después de
  * atenderla — si no, cada arranque volvería a abrir ese chat.
  *
- * El resumen del chat sale de lo que la app ya tiene (memoria, después disco)
- * y solo si no está se le pregunta al server.
+ * A message notice carries its full destination (agentes 25/10/2026): the
+ * space, the message and the thread. `openDestination` is the only path: it
+ * finds the chat, switches to its space BEFORE navigating and opens the message
+ * or the thread. The chat summary comes from what the app already has (memory,
+ * then disk) and the server is asked only when it is missing.
  */
 export function useAbrirDesdeAviso(params: {
   jwt: string;
-  abrirChat: (chat: ChatSummary) => void;
+  abrirChat: (chat: ChatSummary, entry?: EntryPoint) => void;
   abrirAgenda: () => void;
 }): void {
   const abrirChatRef = useRef(params.abrirChat);
@@ -31,18 +35,24 @@ export function useAbrirDesdeAviso(params: {
     let vivo = true;
     const atendidas = new Set<string>();
 
+    const openDestination = async (destination: NoticeDestination | null) => {
+      if (!destination || !vivo) return;
+      if (destination.tipo === 'agenda') return abrirAgendaRef.current();
+      const plan = planOpening(destination, await findNoticeChat(destination, params.jwt));
+      if (plan.action === 'none' || !vivo) return;
+      // Before navigating: otherwise the list of the wrong space paints for a moment and «back» lands on it.
+      setCurrentSpaceId(plan.space);
+      // All three keys, always: a `setParams` that left them out would keep the previous tap's thread.
+      abrirChatRef.current(plan.chat, { irASeq: plan.irASeq, openThread: plan.openThread, highlightReply: plan.highlightReply });
+    };
+
     const atender = async (respuesta: Notifications.NotificationResponse | null) => {
       if (!respuesta || !vivo) return;
       const id = respuesta.notification.request.identifier;
       if (atendidas.has(id)) return;
       atendidas.add(id);
       void Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
-
-      const destino = destinoDeAviso(respuesta.notification.request.content.data);
-      if (!destino) return;
-      if (destino.tipo === 'agenda') return abrirAgendaRef.current();
-      const chat = await buscarChat(destino.chatId, params.jwt);
-      if (chat && vivo) abrirChatRef.current(chat);
+      await openDestination(noticeDestination(respuesta.notification.request.content.data));
     };
 
     void Notifications.getLastNotificationResponseAsync()
@@ -52,21 +62,22 @@ export function useAbrirDesdeAviso(params: {
 
     // FL8.2: los avisos de mensaje que dibuja el servicio nativo. Expo no los
     // conoce: el toque llega por el puente (en frío, como pendiente).
-    const openById = async (chatId: string, known?: ChatSummary) => {
+    // The extras of a tap (space, thread, message) are outside text: `noticeDestination` validates them.
+    const coldStart = llamadaNativa.avisoPendiente();
+    if (coldStart) void openDestination(noticeDestination(coldStart));
+    // «Enviar mensaje» on a shared contact (pending 9): a chat already in hand, opened as it is (no space switch).
+    const openKnown = async (chatId: string, known?: ChatSummary) => {
       const chat = known ?? (await buscarChat(chatId, params.jwt));
       if (chat && vivo) abrirChatRef.current(chat);
     };
-    const enFrio = llamadaNativa.chatPendiente();
-    if (enFrio) void openById(enFrio);
-    // «Enviar mensaje» on a shared contact (pending 9): the same way as a notification.
-    const stopRequests = subscribeOpenChatRequests((chatId, known) => void openById(chatId, known));
-    const toques = llamadaNativa.alTocar((aviso) => {
-      if (aviso.accion === 'chat') void openById(aviso.chatId);
+    const stopRequests = subscribeOpenChatRequests((chatId, known) => void openKnown(chatId, known));
+    const taps = llamadaNativa.alTocar((aviso) => {
+      if (aviso.accion === 'chat') void openDestination(noticeDestination({ chatId: aviso.chatId, seq: aviso.seq, hiloDe: aviso.hiloDe, workspaceId: aviso.workspaceId }));
     });
     return () => {
       vivo = false;
       suscripcion.remove();
-      toques.remove();
+      taps.remove();
       stopRequests();
     };
   }, [params.jwt]);

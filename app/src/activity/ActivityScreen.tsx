@@ -18,7 +18,7 @@ const chatLabel = (item: ActivityItem) => (item.chat.channel ? `#${item.chat.nam
  * Menciones · Hilos · Reacciones with what is new, by day; each card says who,
  * where and when, the message with its mentions, and opens the chat there.
  */
-export function ActivityScreen(props: { /** As a tab of the bar (22/10): no window that slides in. */ embedded?: boolean; visible: boolean; space: ClientWorkspace; jwt: string; myUserId: string; initialTab: ActivityType; onOpen: (item: ActivityItem) => void; onClose: () => void }) {
+export function ActivityScreen(props: { /** As a tab of the bar (22/10): no window that slides in. */ embedded?: boolean; visible: boolean; space: ClientWorkspace; jwt: string; myUserId: string; initialTab: ActivityType; onOpen: (item: ActivityItem, tab: ActivityType) => void; onClose: () => void }) {
   const colors = useColores();
   const [tab, setTab] = useState<ActivityType>(props.initialTab);
   useEffect(() => {
@@ -48,7 +48,7 @@ export function ActivityScreen(props: { /** As a tab of the bar (22/10): no wind
               {section.items.some((item) => item.unread) ? <Text className="text-[13px] font-semibold text-primary">{`${section.items.filter((item) => item.unread).length} nuevas`}</Text> : null}
             </View>
             {section.items.map((item) => (
-              <Pressable key={`${item.chatId}:${item.seq}`} testID={`actividad-item-${item.seq}`} onPress={() => props.onOpen(item)} className="mb-3 rounded-2xl border border-outline/15 bg-surface p-4">
+              <Pressable key={`${item.chatId}:${item.seq}`} testID={`actividad-item-${item.seq}`} onPress={() => props.onOpen(item, tab)} className="mb-3 rounded-2xl border border-outline/15 bg-surface p-4">
                 <View className="flex-row items-start gap-3">
                   <Avatar nombre={nameOf(item.author)} tamano={44} />
                   <View className="min-w-0 flex-1">

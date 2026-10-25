@@ -1,4 +1,4 @@
-import { useCallback, useState, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import type { FlashListRef } from '@shopify/flash-list';
 import { isPending, type Row } from './MessageRow';
 import type { OpeningPlace } from './useDivisorNoLeidos';
@@ -17,6 +17,8 @@ export function useIrAMensaje(params: {
   rows: Row[];
   listaRef: MutableRefObject<FlashListRef<Row> | null>;
   irASeq?: number;
+  /** Changes with every tap on a notice: with the chat already open, it jumps to `irASeq` again. */
+  requestedAt?: number;
   irAlInicio: () => OpeningPlace;
   /** Not on screen: the window around it (pending 44), or why not (it never moves silently). */
   onNoEsta: (texto: string, seq: number) => void;
@@ -27,7 +29,7 @@ export function useIrAMensaje(params: {
    */
   releaseFromEnd?: () => void;
 }) {
-  const { rows, listaRef, irASeq, irAlInicio, onNoEsta, releaseFromEnd } = params;
+  const { rows, listaRef, irASeq, requestedAt, irAlInicio, onNoEsta, releaseFromEnd } = params;
   const [resaltado, setResaltado] = useState<number | null>(null);
 
   const irAMensaje = useCallback(
@@ -63,6 +65,20 @@ export function useIrAMensaje(params: {
     saltarA(irASeq, 'Ese mensaje está más arriba: sube para cargarlo.');
     return 'away' as const;
   }, [irASeq, irAlInicio, saltarA]);
+
+  // The first run is the opening itself (`alAbrir`); later ones are a notice tapped with this chat already open.
+  // Only a new `requestedAt` moves the list (new rows arriving must not drag it back), so the latest values are read from refs.
+  const latest = useRef({ irASeq, saltarA });
+  latest.current = { irASeq, saltarA };
+  const hasOpened = useRef(false);
+  useEffect(() => {
+    if (!hasOpened.current) {
+      hasOpened.current = true;
+      return;
+    }
+    const { irASeq: target, saltarA: jump } = latest.current;
+    if (target !== undefined) jump(target, 'Ese mensaje está más arriba: sube para cargarlo.');
+  }, [requestedAt]);
 
   return { irAMensaje, saltarA, alTocarCita, alAbrir, resaltado };
 }

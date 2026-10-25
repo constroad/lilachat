@@ -25,6 +25,12 @@ export type PropsDelChat = {
   lastSeqInicial?: number;
   /** Abrir en este mensaje: viene de un resultado de la búsqueda general (FL9d). */
   irASeq?: number;
+  /** Open the thread of this root over the chat: from tapping a reply's notice or a thread of «Menciones y actividad». */
+  openThread?: number;
+  /** The reply of that thread brought into view and highlighted. */
+  highlightReply?: number;
+  /** Changes with every tap on a notice: with the chat already open, it asks to jump and open the thread again. */
+  requestedAt?: number;
   /** Chat secreto (F9): cifra, y apaga a Lila. */
   encrypted?: boolean;
   otherUserId?: string | null;

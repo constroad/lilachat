@@ -71,7 +71,7 @@ export function TabsShell({
   onPestana,
 }: {
   credential: Credential;
-  onOpenChat: (chat: ChatSummary, irASeq?: number) => void;
+  onOpenChat: (chat: ChatSummary, irASeq?: number, abrirHilo?: number) => void;
   onLogout: () => void;
   /**
    * Si el servicio en primer plano puede correr. Baja desde `App.tsx` en vez de
@@ -118,9 +118,9 @@ export function TabsShell({
   const [chats, setChats] = useState<ChatSummary[]>([]);
   // The company spaces (E1/E2): the Chats title switches between personal and each space.
   // A chat opened from Directorio or Menciones (tabs since 22/10) shows in Chats, where the open chat lives on a tablet.
-  const openFromSpace = useCallback((chat: ChatSummary, seq?: number) => {
+  const openFromSpace = useCallback((chat: ChatSummary, seq?: number, openThread?: number) => {
     setTab('chats');
-    onOpenChat(chat, seq);
+    onOpenChat(chat, seq, openThread);
   }, [onOpenChat]);
   const espacios = useSpacesUi({ jwt: credential.jwt, myUserId: credential.userId, me: { name: perfilPropio.name?.trim() || 'Tú', phone: credential.phone }, personalUnread: chats.filter((chat) => chat.unread > 0).length, onOpenChat: openFromSpace });
   const inSpace = Boolean(espacios.current);

@@ -10,10 +10,24 @@ import type { ChatMessage, PendingMessage } from './useChat';
  * raíz tiene respuestas que no vi, y las respuestas del abierto —las de la
  * memoria más las que trae el server (historia que el teléfono no guardó)—.
  */
-export function useHilosEnElChat(params: { chatId: string; yo: string; jwt: string; messages: readonly ChatMessage[]; pending: readonly PendingMessage[] }) {
-  const { chatId, yo, jwt, messages, pending } = params;
+export function useHilosEnElChat(params: {
+  chatId: string;
+  yo: string;
+  jwt: string;
+  messages: readonly ChatMessage[];
+  pending: readonly PendingMessage[];
+  /** Open this thread (root) on arrival: tapping a reply's notice. `requestedAt` asks again with the chat already open. */
+  openThread?: number;
+  requestedAt?: number;
+}) {
+  const { chatId, yo, jwt, messages, pending, openThread, requestedAt } = params;
   const [abierto, setAbierto] = useState<number | null>(null);
   const [remotas, setRemotas] = useState<ChatMessage[]>([]);
+  /** The root as the server has it: a thread opened from a notice may be older than the window the chat loaded. */
+  const [raizRemota, setRaizRemota] = useState<ChatMessage | null>(null);
+  useEffect(() => {
+    if (openThread !== undefined) setAbierto(openThread);
+  }, [openThread, requestedAt]);
   const [, setVersion] = useState(0);
   useEffect(() => suscribirHilosVistos(() => setVersion((v) => v + 1)), []);
 
@@ -24,9 +38,14 @@ export function useHilosEnElChat(params: { chatId: string; yo: string; jwt: stri
   // Al abrir, lo que el server tiene del hilo (puede haber respuestas que este teléfono nunca bajó).
   useEffect(() => {
     setRemotas([]);
+    setRaizRemota(null);
     if (abierto === null) return;
     let vivo = true;
-    void hiloCompleto(jwt, chatId, abierto).then((respuesta) => vivo && respuesta.ok && setRemotas(respuesta.data.respuestas as ChatMessage[]));
+    void hiloCompleto(jwt, chatId, abierto).then((respuesta) => {
+      if (!vivo || !respuesta.ok) return;
+      setRemotas(respuesta.data.respuestas as ChatMessage[]);
+      setRaizRemota((respuesta.data.raiz ?? null) as ChatMessage | null);
+    });
     return () => void (vivo = false);
   }, [abierto, chatId, jwt]);
 
@@ -52,7 +71,7 @@ export function useHilosEnElChat(params: { chatId: string; yo: string; jwt: stri
     abierto,
     abrir: setAbierto,
     cerrar: useCallback(() => setAbierto(null), []),
-    raiz: abierto === null ? null : (messages.find((mensaje) => mensaje.seq === abierto) ?? null),
+    raiz: abierto === null ? null : (messages.find((mensaje) => mensaje.seq === abierto) ?? (raizRemota?.seq === abierto ? raizRemota : null)),
     respuestas,
     pendientesDelHilo,
   };

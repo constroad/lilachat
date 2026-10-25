@@ -3865,11 +3865,13 @@ aviso, la notificación abre su chat y la llamada suena fuera del chat.
 - `useArchivosDelChat` pinta lo encolado en la conversación con su progreso.
 
 **Tocar una notificación abre lo que avisa** (`ui/useAbrirDesdeAviso.ts`,
-`ui/destinoDeAviso.ts`, 4 tests)
+`ui/destinoDeAviso.ts`, 35 tests)
 - Con la app viva, el listener. Con la app cerrada, la respuesta que la abrió
   (`getLastNotificationResponseAsync`), que se borra al atenderla.
 - Un aviso de agenda va a la pestaña Agenda. Un `chatId` válido abre ese chat:
   primero desde memoria, después desde disco y, si no está, se pide al server.
+- Desde 25/10/2026 (§137) el aviso trae también el mensaje, el hilo y el espacio, y el
+  toque lleva hasta ahí.
 
 **Llamadas de la sesión** (`calls/ProveedorDeLlamadas.tsx`, `server/
 llamadas.ts`, 9 tests)
@@ -4946,7 +4948,20 @@ reglas de aplicación y reversa: `specs/DEPLOY.spec.md` §4-bis.
   reenvía esos dos campos. **B2 (nativo, en el APK 0.1.171):** `AvisoDeMensaje` los pone en el
   `Intent` (junto a `seq`), `Puente` los lleva a JS (`avisoPendiente()` y el evento `onAccion`
   `chat` con `seq`, `hiloDe`, `workspaceId` como texto) y `chatPendiente()` sigue igual para el
-  JS viejo. **B3 (JS, por OTA):** pendiente de la primera OTA.
+  JS viejo.
+- **B3 (JS, por OTA): el toque llega al espacio, al mensaje y al hilo.** `noticeDestination` (`ui/destinoDeAviso.ts`) valida
+  `seq` y `hiloDe` (enteros ≥ 1; `0` y lo vacío no cuentan) y `workspaceId` (id de Mongo): lo
+  inválido se descarta y el chat igual se abre. `planOpening` (pura) decide: si el chat no se
+  encontró no hace nada (no se cambia de espacio a ciegas); si no, muestra el espacio del aviso (o
+  Personal) con `setCurrentSpaceId` ANTES de navegar, salta a `hiloDe ?? seq`, abre el hilo de
+  `hiloDe` y resalta la respuesta `seq`. `findNoticeChat` le pregunta a su espacio
+  (`findSpaceChat`) cuando hay `workspaceId`, porque un chat de espacio no está en la lista
+  personal. Con el chat ya abierto, `setParams` con `requestedAt` (marca de tiempo) hace que
+  `useIrAMensaje` salte otra vez y `useHilosEnElChat` reabra el hilo; si la raíz queda fuera de la
+  ventana cargada, se usa la que devuelve el server. `HiloScreen` lleva la respuesta a la vista
+  y la resalta 1,5 s sin que el `scrollToEnd` automático la deshaga. «Enviar mensaje» sigue su
+  camino (chat ya en mano, sin cambiar de espacio). En «Menciones y actividad», solo una fila de
+  la pestaña Hilos abre el hilo; una mención o reacción aterriza en el mensaje.
 
 **Pruebas.** `server/src/ota/*.test.ts` (43: protocolo, firma, token, hash, tope, retención,
 disco ausente, montaje en la app real), `shared/src/otaPublish.test.ts` (25),
@@ -4954,9 +4969,17 @@ disco ausente, montaje en la app real), `shared/src/otaPublish.test.ts` (25),
 `server/test/pushService.test.ts` (destino del aviso). Ensayo del publicador:
 `--dry-run` exportó 9,3 MB de bundle y 642 assets en 26 s.
 
-**Sin verificar todavía (se anota al cerrar):** la OTA de punta a punta en un APK firmado en el
-emulador, el runtime que realmente lleva el APK frente al calculado, y el toque de aviso con
-espacio e hilo.
+**Verificado el 25/10/2026.** El runtime que lleva el APK 0.1.171 coincide con el calculado
+(`77c1a8b2`). La primera OTA (`393d0e53`, git `353bd75`, publicada 18:40:58Z) se probó en el
+emulador con el APK firmado: en el primer arranque (18:41Z) el log nativo `dev.expo.updates`
+dice «Manifest code signing signature verified successfully», 643 de 643 assets, 0 fallidos y
+`DownloadComplete` con la actualización pendiente; en el segundo, `CheckCompleteUnavailable`, y como
+el server solo contesta `noUpdateAvailable` cuando `expo-current-update-id` es el último publicado,
+el teléfono corre `393d0e53`.
+
+**Sin verificar todavía:** ver «Código en uso» en Diagnóstico y el aplicado silencioso tras ≥ 10 min
+en segundo plano (el emulador quedó sin sesión), y el toque de aviso con espacio e hilo (B4).
+Una OTA no suma entradas a «Novedades»: las notas se atan a la versión del APK.
 
 ## 136. La respuesta tardía de un formulario viaja en la misma llamada (25/10/2026, solo servidor)
 

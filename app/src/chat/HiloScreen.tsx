@@ -28,6 +28,10 @@ import { useReaccionesEnPantalla } from './reacciones/useReaccionesEnPantalla';
 const STICKER_IN_THREAD = 120;
 /** Lo escrito y no mandado en cada hilo, mientras la app está abierta. */
 const borradores = new Map<string, string>();
+/** How long the reply reached from a notice stays highlighted. */
+const HIGHLIGHT_MS = 1500;
+/** The second `scrollToIndex`, once the heights are measured (as in the chat). */
+const SECOND_PASS_MS = 400;
 
 type Respuesta = ChatMessage | PendingMessage;
 const esPendiente = (mensaje: Respuesta): mensaje is PendingMessage => mensaje.pending === true;
@@ -40,6 +44,8 @@ const esPendiente = (mensaje: Respuesta): mensaje is PendingMessage => mensaje.p
  */
 export function HiloScreen(props: {
   raiz: ChatMessage | null;
+  /** The reply to bring into view and highlight: the one a tapped notice was about. */
+  highlightReply?: number;
   chatId: string;
   chatName: string;
   yo: string;
@@ -91,6 +97,26 @@ export function HiloScreen(props: {
   // Las hojas viven DENTRO del modal del hilo: las del chat quedarían detrás.
   const reacciones = useReaccionesEnPantalla({ mensajes: props.respuestas, reaccionar: props.reaccionar, yo: props.yo, nombres: props.nombres, fotos: props.fotos, alReaccionar: () => setBarraEn(null) });
   const filas: Respuesta[] = [...props.respuestas, ...props.pendientes];
+  // From a notice: the tapped reply comes into view and is highlighted for a moment, like a quote in the chat.
+  const [highlighted, setHighlighted] = useState<number | null>(null);
+  /** Which opening already jumped, so a reply arriving later does not pull the list back. */
+  const jumpedKey = useRef<string | null>(null);
+  const replyIndex = props.highlightReply === undefined ? -1 : filas.findIndex((fila) => !esPendiente(fila) && fila.seq === props.highlightReply);
+  useEffect(() => {
+    if (props.raiz === null) jumpedKey.current = null;
+    const key = `${clave}:${props.highlightReply}`;
+    if (props.raiz === null || replyIndex < 0 || jumpedKey.current === key) return;
+    jumpedKey.current = key;
+    const scrollToReply = () => lista.current?.scrollToIndex({ index: replyIndex, animated: false, viewPosition: 0.4 });
+    scrollToReply();
+    setTimeout(scrollToReply, SECOND_PASS_MS);
+    setHighlighted(props.highlightReply ?? null);
+  }, [props.raiz, replyIndex, props.highlightReply, clave]);
+  useEffect(() => {
+    if (highlighted === null) return;
+    const clearTimer = setTimeout(() => setHighlighted(null), HIGHLIGHT_MS);
+    return () => clearTimeout(clearTimer);
+  }, [highlighted]);
   const nombreDe = (id: string) => (id === props.yo ? 'Tú' : (props.nombres.get(id) ?? 'Alguien'));
   // The thread follows its chat: as a list in the Slack format (design `s-02`).
   const flat = usesFlatLayout({ kind: props.esGrupo ? 'group' : 'direct', workspaceId: props.workspaceId }, { groupsAsList: useGroupsAsList() });
@@ -159,7 +185,10 @@ export function HiloScreen(props: {
             data={filas}
             keyExtractor={(fila) => fila.clientKey}
             contentContainerStyle={{ padding: 12, gap: 8 }}
-            onContentSizeChange={() => lista.current?.scrollToEnd({ animated: false })}
+            onContentSizeChange={() => {
+              if (jumpedKey.current === null) lista.current?.scrollToEnd({ animated: false });
+            }}
+            onScrollToIndexFailed={(fallo) => setTimeout(() => lista.current?.scrollToOffset({ offset: fallo.averageItemLength * fallo.index, animated: false }), 100)}
             ListHeaderComponent={flat ? (
               <FlatThreadRoot root={props.raiz} name={props.nombres.get(String(props.raiz.senderId)) ?? nombreDe(String(props.raiz.senderId))} photo={props.fotos.get(String(props.raiz.senderId))} badge={badgeOf(String(props.raiz.senderId))} count={props.respuestas.length} myUserId={props.yo} names={props.nombres} />
             ) : (
@@ -172,7 +201,7 @@ export function HiloScreen(props: {
                 const senderId = esPendiente(item) ? props.yo : String(item.senderId);
                 const toggleBar = confirmada && puedeReaccionar({ seq: confirmada.seq, deletedAt: confirmada.deletedAt, kind: confirmada.kind }) ? () => setBarraEn((antes) => (antes === confirmada.seq ? null : confirmada.seq)) : undefined;
                 return (
-                  <View>
+                  <View className={confirmada && highlighted === confirmada.seq ? 'rounded-lg bg-primary/15' : undefined}>
                     {confirmada && barraEn === confirmada.seq ? (
                       <BarraDeReacciones seq={confirmada.seq} mia={mia} conAvatar={false} indent={FLAT_INDENT} miEmoji={miReaccion(confirmada.reacciones, props.yo)} onElegir={reacciones.elegir} onMas={reacciones.masEmojis} onEditar={canEdit(confirmada) ? startEditing : undefined} />
                     ) : null}
@@ -197,7 +226,7 @@ export function HiloScreen(props: {
                 );
               }
               return (
-                <View>
+                <View className={confirmada && highlighted === confirmada.seq ? 'rounded-lg bg-primary/15' : undefined}>
                   {confirmada && barraEn === confirmada.seq ? (
                     <BarraDeReacciones seq={confirmada.seq} mia={mia} conAvatar={false} miEmoji={miReaccion(confirmada.reacciones, props.yo)} onElegir={reacciones.elegir} onMas={reacciones.masEmojis} onEditar={canEdit(confirmada) ? startEditing : undefined} />
                   ) : null}

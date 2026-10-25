@@ -89,7 +89,7 @@ export function ChatScreen({
   unread,
   readSeq,
   lastSeqInicial,
-  irASeq,
+  irASeq, openThread, highlightReply, requestedAt,
   encrypted,
   otherUserId,
   esBorrador = false, workspaceId, appId,
@@ -151,7 +151,7 @@ export function ChatScreen({
   /** El `seq` de la foto abierta a pantalla completa, o `null`. */
   const [viendoSeq, setViendoSeq] = useState<number | null>(null);
   // E3: las respuestas de un hilo no van en el chat; el hilo abierto, en su pantalla.
-  const hilos = useHilosEnElChat({ chatId, yo: credential.userId, jwt: credential.jwt, messages, pending });
+  const hilos = useHilosEnElChat({ chatId, yo: credential.userId, jwt: credential.jwt, messages, pending, openThread, requestedAt });
   /** Los mensajes elegidos con pulsación larga (FL9: uno o varios). */
   const seleccion = useSeleccionDeMensajes(messages);
   const destacados = useDestacadosDelChat({ chatId, jwt: credential.jwt, secreto: Boolean(encrypted) });
@@ -257,7 +257,7 @@ export function ChatScreen({
   });
 
   const releaseRef = useRef<() => void>(() => undefined);
-  const { alTocarCita, alAbrir, saltarA, resaltado } = useIrAMensaje({ rows, listaRef, irASeq, irAlInicio, onNoEsta: ventana.alNoEstar, releaseFromEnd: () => releaseRef.current() });
+  const { alTocarCita, alAbrir, saltarA, resaltado } = useIrAMensaje({ rows, listaRef, irASeq, requestedAt, irAlInicio, onNoEsta: ventana.alNoEstar, releaseFromEnd: () => releaseRef.current() });
   const fijar = useFijarMensajes({
     chatId,
     jwt: credential.jwt,
@@ -539,7 +539,7 @@ export function ChatScreen({
       <CamaraDelChat visible={camara.abierta} nombreDelChat={nombreVisible} onEnviar={(lista, opciones) => void camara.enviar(lista, opciones)} onGaleria={camara.aLaGaleria} onCerrar={camara.cerrar} />
       <EnviarFotos fotos={fotosElegidas} onCancelar={cerrarFotos} onEnviar={(lista, opciones) => void alEnviarFotos(lista, opciones)} />
       <HiloScreen
-        raiz={hilos.raiz}
+        raiz={hilos.raiz} highlightReply={highlightReply}
         chatId={chatId}
         chatName={chatName}
         yo={credential.userId} jwt={credential.jwt}

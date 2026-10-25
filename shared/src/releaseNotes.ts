@@ -17,6 +17,17 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.170',
+    // Everyone: the person card works in personal chats and in spaces.
+    audience: 'all',
+    items: [
+      'Toca el nombre o la foto de una persona para ver su ficha: «Enviar mensaje» abre su chat o lo crea.',
+      'En un espacio, la ficha abre el chat directo de ese mismo espacio; las apps instaladas abren su propio chat.',
+      'En un canal privado, «Agregar miembros» lista a los miembros del espacio aunque nunca hayas hablado con ellos.',
+      'Los zumbidos y los guiños de un canal aparecen en el compositor del modo empresa cuando están activados.',
+    ],
+  },
+  {
     version: '0.1.169',
     // Company mode only: the apps' forms and cards.
     audience: 'spaces',

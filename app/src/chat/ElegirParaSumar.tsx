@@ -25,11 +25,14 @@ export function ElegirParaSumar({
   visible,
   credential,
   yaEstan,
+  spaceId,
   onCerrar,
   onElegir,
 }: {
   visible: boolean;
   credential: Credential;
+  /** The channel's space: its members are listed instead of the contacts. */
+  spaceId?: string;
   yaEstan: readonly string[];
   onCerrar: () => void;
   onElegir: (userId: string) => void;
@@ -53,12 +56,12 @@ export function ElegirParaSumar({
             <ArrowLeft size={22} color={colores['on-surface']} />
           </Pressable>
           <View className="min-w-0 flex-1">
-            <Text className="text-lg font-bold text-on-surface">Sumar al grupo</Text>
+            <Text className="text-lg font-bold text-on-surface">{spaceId ? 'Sumar al canal' : 'Sumar al grupo'}</Text>
             {/* Se DICE que al que no está se lo puede invitar: sin esta línea,
                 buscar a alguien de la agenda y no encontrarlo se lee como que la
                 app no lo tiene, no como que le falta instalarla. */}
             <Text className="text-[12px] text-on-surface-variant">
-              De tus contactos. Al que no esté, invitalo y sumalo cuando entre.
+              {spaceId ? 'Miembros del espacio que aún no están aquí.' : 'De tus contactos. Al que no esté, invítalo y súmalo cuando entre.'}
             </Text>
           </View>
         </View>
@@ -71,8 +74,9 @@ export function ElegirParaSumar({
             selected={[]}
             multiple={false}
             excluidos={yaEstan}
-            vacio="Todos tus contactos de Lilachat ya están en este grupo."
-            conInvitar
+            vacio={spaceId ? 'Todos los miembros del espacio ya están aquí.' : 'Todos tus contactos de Lilachat ya están en este grupo.'}
+            conInvitar={!spaceId}
+            spaceId={spaceId}
             onToggle={(contacto) => onElegir(contacto.id)}
           />
         ) : null}

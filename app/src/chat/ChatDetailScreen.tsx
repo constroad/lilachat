@@ -85,6 +85,7 @@ export function ChatDetailScreen({
   openAt,
   chatId,
   chatName,
+  workspaceId,
   credential,
   mensajes,
   onCerrar,
@@ -100,6 +101,8 @@ export function ChatDetailScreen({
   openAt?: 'media' | 'add-members' | null;
   chatId: string;
   chatName: string;
+  /** The space of the chat: «Sumar» lists its members instead of the contacts. */
+  workspaceId?: string;
   credential: Credential;
   /** Los mensajes ya cargados: de ahí sale la tira de multimedia, sin pedir nada. */
   mensajes: ServerMessage[];
@@ -566,6 +569,7 @@ export function ChatDetailScreen({
           visible={agregando}
           credential={credential}
           yaEstan={yaEstan}
+          spaceId={workspaceId}
           onCerrar={() => setAgregando(false)}
           onElegir={async (userId) => {
             setAgregando(false);

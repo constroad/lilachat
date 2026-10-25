@@ -1,4 +1,5 @@
 import { groupContactsByLetter, type Contact, type ContactGroup } from './contacts.js';
+import type { ClientWorkspaceMember } from './workspaces.js';
 
 /**
  * A quién se puede sumar a un grupo. PURO.
@@ -40,4 +41,23 @@ export function candidatosParaSumar(params: {
     paraSumar: groupContactsByLetter(todos.filter((uno) => !dentro.has(uno.id))),
     registrados: todos,
   };
+}
+
+/**
+ * The people of a space as pickable contacts, grouped by letter. PURE.
+ *
+ * José, 25/10/2026: in a private channel of «Constroad», «Agregar miembros» did
+ * not list Max, who is in the space. The picker lists contacts (a 1:1 already
+ * open, or the phone agenda), so someone who signed up with a phone and never
+ * talked to the person adding them never showed. Inside a space the candidates
+ * are its active members: only those with an account (`userId`), because an
+ * invitation has nobody to add yet.
+ */
+export function spaceMembersAsContacts(members: readonly ClientWorkspaceMember[]): ContactGroup[] {
+  const people = members.flatMap((member): Contact[] =>
+    member.status === 'active' && member.userId
+      ? [{ id: member.userId, name: member.name ?? null, phone: member.phone ?? '', directChatId: null }]
+      : [],
+  );
+  return groupContactsByLetter(people);
 }

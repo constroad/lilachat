@@ -3,11 +3,11 @@ import { ChevronDown, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import type { AccionDeMiembro } from '@lilachat/shared';
 import { membersHeading } from '@lilachat/shared';
-import { useContactos } from '../../agenda/CreatePanels';
 import { ContactPicker } from '../../contacts/ContactPicker';
 import { Avatar } from '../../ui/Avatar';
 import { Overlay } from '../../ui/Overlay';
 import type { MiembroEnInfo } from './infoDelChat';
+import { useAddCandidates } from './useAddCandidates';
 
 const ETIQUETAS: Record<AccionDeMiembro, string> = { 'hacer-admin': 'Nombrar admin', 'dejar-admin': 'Quitar como admin', sacar: 'Sacar del grupo' };
 /** An app is taken out of the channel, and stays out until an admin adds it again (pending 91). */
@@ -16,6 +16,8 @@ const labelOf = (isApp: boolean, accion: AccionDeMiembro) => (isApp && accion ==
 /** Los participantes del grupo (W3b): sumar, y el menú de cada uno con lo que se puede. */
 export function ParticipantesDelChat(props: {
   jwt: string;
+  /** Inside a space, «Agregar miembros» lists the space's members. */
+  workspaceId?: string;
   miembros: MiembroEnInfo[];
   /** The installed apps among them (pending 91). */
   appIds: ReadonlySet<string>;
@@ -76,8 +78,9 @@ export function ParticipantesDelChat(props: {
         </div>
       ))}
       {agregando ? (
-        <AgregarParticipante
+        <AddParticipant
           jwt={props.jwt}
+          workspaceId={props.workspaceId}
           yaEstan={new Set(props.miembros.map((uno) => uno.id))}
           onElegir={(userId) => {
             setAgregando(false);
@@ -116,13 +119,13 @@ export function ParticipantesDelChat(props: {
   );
 }
 
-/** Elegir a quién sumar: los contactos con Lilachat que todavía no están. */
-function AgregarParticipante(props: { jwt: string; yaEstan: ReadonlySet<string>; onElegir: (userId: string) => void; onCerrar: () => void }) {
-  const grupos = useContactos(props.jwt, true);
-  const disponibles = (grupos ?? []).map((grupo) => ({ ...grupo, contacts: grupo.contacts.filter((uno) => !props.yaEstan.has(uno.id)) })).filter((grupo) => grupo.contacts.length);
+/** Pick who to add: the contacts with Lilachat that are not in yet (inside a space, its members). */
+function AddParticipant(props: { jwt: string; workspaceId?: string; yaEstan: ReadonlySet<string>; onElegir: (userId: string) => void; onCerrar: () => void }) {
+  const groups = useAddCandidates(props.jwt, props.workspaceId);
+  const available = (groups ?? []).map((group) => ({ ...group, contacts: group.contacts.filter((one) => !props.yaEstan.has(one.id)) })).filter((group) => group.contacts.length);
   return (
     <Overlay title="Añadir participante" onClose={props.onCerrar}>
-      <ContactPicker groups={disponibles} selected={[]} onToggle={(contacto) => props.onElegir(contacto.id)} loading={grupos === null} multiple={false} />
+      <ContactPicker groups={available} selected={[]} onToggle={(contact) => props.onElegir(contact.id)} loading={groups === null} multiple={false} />
     </Overlay>
   );
 }

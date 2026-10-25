@@ -4,10 +4,12 @@ import { Check, Search } from 'lucide-react-native';
 import {
   candidatosParaSumar,
   groupContactsByLetter,
+  spaceMembersAsContacts,
   type Contact,
   type ContactGroup,
 } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
+import { spaceMembers } from '../spaces/spacesApi';
 import { emparejarAgenda, listContacts } from './contactsApi';
 import { useAgendaDelTelefono, useAgendaParaInvitar } from './useAgendaParaInvitar';
 import { buscarEn, indexarParaBuscar } from './busqueda';
@@ -53,6 +55,7 @@ export function ContactPicker({
   conInvitar,
   excluidos,
   vacio,
+  spaceId,
 }: {
   credential: Credential;
   selected: string[];
@@ -74,6 +77,13 @@ export function ContactPicker({
   excluidos?: readonly string[];
   /** Qué decir cuando no queda nadie para elegir (y no hay búsqueda). */
   vacio?: string;
+  /**
+   * Inside a space the list is ITS active members, not the contacts: someone who
+   * signed up with a phone and never talked to the person adding is no contact,
+   * yet is in the space (25/10/2026, Max in «Constroad»). No phone book, no
+   * «Invitar».
+   */
+  spaceId?: string;
 }) {
   const colores = useColores();
   const [groups, setGroups] = useState<ContactGroup[] | null>(null);
@@ -111,8 +121,19 @@ export function ContactPicker({
   }, [credential.jwt, agendaCruda]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!spaceId) void load();
+  }, [load, spaceId]);
+
+  useEffect(() => {
+    if (!spaceId) return;
+    let current = true;
+    void spaceMembers(credential.jwt, spaceId).then((result) => {
+      if (current) setGroups(result.ok ? spaceMembersAsContacts(result.data.members) : []);
+    });
+    return () => {
+      current = false;
+    };
+  }, [credential.jwt, spaceId]);
 
   const consultaDiferida = useConsultaDiferida(query);
 

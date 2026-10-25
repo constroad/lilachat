@@ -573,6 +573,7 @@ export function ChatScreen({
         openAt={detailSection}
         chatId={chatId}
         chatName={nombreVisible}
+        workspaceId={workspaceId}
         credential={credential}
         mensajes={messages}
         onInfoCambiada={(info) => setInfoPropia((antes) => ({ ...antes, ...info }))}

@@ -76,6 +76,7 @@ export function PanelDeInfo(props: {
         {tab === 'members' && info.miembros.length ? (
           <ParticipantesDelChat
             jwt={props.jwt}
+            workspaceId={chat.workspaceId}
             miembros={info.miembros}
             appIds={detalle?.appIds ?? NO_APPS}
             puedeAgregar={info.puedeAgregar}

@@ -4962,6 +4962,25 @@ que sale por OTA (§137) y no necesita APK nuevo. Cada pieza tiene su motor puro
   dos líneas; ahora es una línea compacta de 36 dp (avatares de 20, textos de una línea). Una respuesta de hilo enviada
   también al chat es «↳ Respondió en un hilo» en una línea, no un bloque de cita de tres.
 
+### 138.4 Lo que encontró el E2E (web y emulador, 25/10/2026)
+
+Probado de punta a punta en el espacio «Test»: web en el Chrome de José (`64dc118`, `14a9872`) y emulador con la OTA
+`c03e5a53` (git `14a9872`). Dos fallos reales que los tests de unidad no podían ver:
+
+- **La línea de pendientes (`GET /api/agenda/linea`) no traía `location` ni `advance`** (su proyección `FIELDS` era
+  anterior). El formulario de edición sale de esa línea, así que un recordatorio recién creado se abría **sin avisos ni
+  ubicación y guardar los habría borrado**. `FIELDS` los incluye y `eventRoutes.test.ts` lo cubre.
+- **Una tarjeta eliminada para todos seguía dibujándose en el modo Slack de la app** (`FlatMessageRow` miraba solo `ref`;
+  la burbuja ya usaba `drawsAsCard`, que excluye `deletedAt`). Ahora se lee «Se eliminó este mensaje» en los dos modos.
+- La cita de hilo del modo Slack en la **web** (`ThreadQuote compact`) es una línea «↳ Respondió en un hilo», como en la app.
+
+Verificado en vivo: el aviso previo de 1 h sonó en el emulador («Empieza en 1 h», `Posponer 10 min` / `Listo`); la tarjeta
+muestra «Avisa 1 h, 30 min y 15 min antes» y «Cómo llegar a…», que abre «Google Maps / Waze / Cancelar» (Waze no está
+instalado en el emulador: abre su enlace web); la tarjeta web trae los enlaces «Maps» y «Waze». **No se pudo probar de
+punta a punta «agregar al canal a quien no está»**: el espacio «Test» tiene un solo miembro humano (las apps no cuentan
+como miembros del espacio), así que todos están ya en `#general`; esa parte queda cubierta por los tests de `shared`, de
+la ruta (`POST /api/chats/:id/members`) y de los hooks web.
+
 ## 137. Actualizaciones OTA propias y el destino de los avisos (25/10/2026, 0.1.171 + servidor)
 
 **Pedido** (agentes, de parte de José): que los cambios de solo JavaScript lleguen a los

@@ -1,0 +1,4 @@
+# Direcciones locales que el bundle de la app puede traer sin ser un error (gate urls-locales.sh).
+# Cada línea: <url>   # por qué. El bundle Hermes guarda las cadenas una junto a otra, así que lo que el gate ve
+# es la corrida entera de bytes de URL; si un build reordena la tabla de cadenas, el gate lo avisa y se ajusta aquí.
+http://localhost:8081/api/vinculos/aprobar   # «http://localhost:8081» es el respaldo del servidor de desarrollo de react-native (Libraries/Core/Devtools/getDevServer.js), pegado a nuestra ruta /api/vinculos/aprobar; nunca se llama desde un teléfono. El APK 0.1.171 lo trae igual

@@ -9,15 +9,16 @@
  *
  * The export runs with the APK build's environment (`app/lila.json` → `build.env`), never the developer's `.env`:
  * on 25/10/2026 the local one baked `http://10.0.2.2:4003` into two updates. The bundle is then checked, before the
- * upload and again as the server serves it, for the production url and for no extra development hosts.
+ * upload and again as the server serves it, for the production url and for no extra development hosts. The
+ * `urls-locales.sh` gate of constroad-gates (>= 1.9.0) then scans the same bundle for any local or test address.
  *
  * Needs `OTA_PUBLISH_TOKEN` (env or `app/.env`) and the private key (`OTA_PRIVATE_KEY_PATH`, default
  * `~/.config/lilachat-ota/private-key.pem`). Neither is ever printed. Spec: `specs/DEPLOY.spec.md` §OTA.
  */
 import { createHash, createSign, randomUUID } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { NO_UPDATE_DIRECTIVE, assertBundleBakedUrl, assertRuntimeMatches, buildEnvOf, buildManifest, countDevHosts, rollbackDirective, type ExportMetadata, type FileDigest, type RuntimeSnapshot } from '../shared/src/otaPublish.ts';
@@ -36,6 +37,7 @@ const dryRun = args.has('--dry-run');
 const skipGitChecks = args.has('--no-git-checks');
 const recordApk = process.argv.find((arg) => arg.startsWith('--record-apk='))?.slice('--record-apk='.length);
 const MAX_BUNDLE_BYTES = 128 * 1024 * 1024;
+const ROLLBACK_NOW = 'Corre `npx tsx scripts/ota-publish.mts --embedded` YA.';
 
 function fail(message: string): never {
   console.error(`\n✗ ${message}`);
@@ -44,6 +46,39 @@ function fail(message: string): never {
 
 function run(command: string, commandArgs: string[], cwd: string, env?: NodeJS.ProcessEnv): string {
   return execFileSync(command, commandArgs, { cwd, env, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'inherit'] }).trim();
+}
+
+const GATES_PLUGIN_DIR = path.join(homedir(), '.claude/plugins/cache/constroad-skills/constroad-gates');
+const GATES_CHECKOUT_SCRIPT = path.join(homedir(), 'projects/constroad-skills/plugins/constroad-gates/scripts/urls-locales.sh');
+
+/** `1.10.0` > `1.9.0`: compared by number, not as text. */
+const byVersionDescending = (a: string, b: string): number => b.localeCompare(a, undefined, { numeric: true });
+
+/** The gate script: `URLS_LOCALES_GATE`, the newest installed plugin that has it, or the skills repo checkout. */
+function findUrlsGate(): string {
+  const installed = existsSync(GATES_PLUGIN_DIR) ? readdirSync(GATES_PLUGIN_DIR).sort(byVersionDescending).map((version) => path.join(GATES_PLUGIN_DIR, version, 'scripts/urls-locales.sh')) : [];
+  const found = [process.env.URLS_LOCALES_GATE, ...installed, GATES_CHECKOUT_SCRIPT].find((candidate) => candidate && existsSync(candidate));
+  // A gate that is silently skipped is not a gate: without the script nothing is published.
+  return found ?? fail('No encuentro urls-locales.sh (constroad-gates >= 1.9.0): corre /plugin marketplace update constroad-skills');
+}
+
+/** Scans what is about to reach production for local or test addresses; the allowlist is `.gates/urls-permitidas`. */
+function assertNoLocalUrls(file: string, label: string, whatToDo = 'No se publicó nada.'): void {
+  const result = spawnSync('bash', [findUrlsGate(), file], { cwd: ROOT, encoding: 'utf8' });
+  if (result.status !== 0) fail(`${label} trae direcciones locales o de prueba:\n${result.stdout}${result.stderr}\n${whatToDo}`);
+  console.log(`✓ ${label}: sin direcciones locales ni de prueba`);
+}
+
+/** The same scan for bytes that only exist in memory (the APK's bundle, the one the server serves). */
+function assertNoLocalUrlsIn(content: Buffer | string, label: string, whatToDo?: string): void {
+  const folder = mkdtempSync(path.join(tmpdir(), 'lilachat-urls-'));
+  try {
+    const file = path.join(folder, 'bundle');
+    writeFileSync(file, content, typeof content === 'string' ? 'latin1' : undefined);
+    assertNoLocalUrls(file, label, whatToDo);
+  } finally {
+    rmSync(folder, { recursive: true, force: true });
+  }
 }
 
 /** The variables the APK build bakes in (`app/lila.json`); the export must see exactly these. */
@@ -111,6 +146,7 @@ function recordApkSnapshot(apkPath: string): void {
   const devHosts = countDevHosts(bundle);
   if (!bundle.includes(apiUrl)) fail(`El APK no trae ${apiUrl} en su bundle: no lo publiques`);
   if (devHosts['10.0.2.2']) fail('El bundle del APK trae 10.0.2.2: tiene URL de desarrollo horneada, no lo publiques');
+  assertNoLocalUrlsIn(bundle, 'El bundle del APK');
   const versionCode = (JSON.parse(readFileSync(path.join(APP, 'app.json'), 'utf8')) as { expo: { android: { versionCode: number } } }).expo.android.versionCode;
   const snapshot: RuntimeSnapshot = { versionCode, runtimeVersion: resolveRuntime(), devHosts };
   writeFileSync(path.join(APP, 'ota-runtime.json'), `${JSON.stringify(snapshot, null, 2)}\n`);
@@ -190,6 +226,7 @@ async function publishUpdate(token: string, privateKey: string, gitSha: string):
   } catch (error) {
     fail(`${(error as Error).message}. No se publicó nada.`);
   }
+  assertNoLocalUrls(path.join(APP, EXPORT_DIR, android.bundle), 'El bundle exportado');
   const paths = [android.bundle, ...android.assets.map((asset) => asset.path)];
   const digests: Record<string, FileDigest> = {};
   for (const file of paths) {
@@ -210,12 +247,13 @@ async function publishUpdate(token: string, privateKey: string, gitSha: string):
   const served = await check.text();
   if (check.status !== 200 || !served.includes(manifest.id)) fail(`Publicado, pero el server no sirve este manifest (${check.status}). Revisa antes de decir que está en vivo.`);
   // What phones will download, not what was exported: the bundle as the server serves it.
-  const servedBundle = await fetch(`${server}/api/ota/assets/${digests[android.bundle]!.sha256}`);
+  const servedBundle = Buffer.from(await (await fetch(`${server}/api/ota/assets/${digests[android.bundle]!.sha256}`)).arrayBuffer());
   try {
-    assertBundleBakedUrl(Buffer.from(await servedBundle.arrayBuffer()).toString('latin1'), { apiUrl, baseline: snapshot.devHosts });
+    assertBundleBakedUrl(servedBundle.toString('latin1'), { apiUrl, baseline: snapshot.devHosts });
   } catch (error) {
-    fail(`El bundle que sirve el server NO pasa la guardia: ${(error as Error).message}. Corre \`npx tsx scripts/ota-publish.mts --embedded\` YA.`);
+    fail(`El bundle que sirve el server NO pasa la guardia: ${(error as Error).message}. ${ROLLBACK_NOW}`);
   }
+  assertNoLocalUrlsIn(servedBundle, 'El bundle que sirve el server', ROLLBACK_NOW);
   console.log(`✓ Publicado y verificado en vivo (${uploaded} archivos nuevos)\n${summary}`);
 }
 

@@ -291,7 +291,8 @@ npx tsx scripts/ota-publish.mts --record-apk=app/dist/lilachat-<versión>-<versi
 ```
 
 Lee el bundle del APK (`assets/index.android.bundle`), se niega si no trae
-`https://lilachat.constroad.com` o si trae `10.0.2.2`, y escribe `app/ota-runtime.json`
+`https://lilachat.constroad.com`, si trae `10.0.2.2` o si el gate `urls-locales.sh` encuentra otra
+dirección local (4-bis.2, paso 4), y escribe `app/ota-runtime.json`
 (`versionCode`, `runtimeVersion` y cuántas veces aparecen `10.0.2.2`, `127.0.0.1` y `localhost`).
 Se commitea con el release. Comprobación cruzada, una vez por cambio de versión de Expo: el
 runtime que lleva el APK (`aapt dump xmltree <apk> AndroidManifest.xml | grep -A2
@@ -436,7 +437,17 @@ entonces el publicador:
    trae más `10.0.2.2`, `127.0.0.1` o `localhost` que el bundle del APK (línea base de
    `ota-runtime.json`; el APK trae dos `localhost` propios);
 3. tras publicar, baja el bundle tal como lo sirve el server y repite la comprobación; si falla,
-   dice que corras `--embedded` YA.
+   dice que corras `--embedded` YA;
+4. pasa el gate `urls-locales.sh` de constroad-gates (>= 1.9.0) sobre el bundle exportado (antes
+   de subir), sobre el que sirve el server (después) y sobre el del APK al anotarlo con
+   `--record-apk` (antes de `apk publish`). Busca cualquier dirección local o de prueba
+   (`10.0.2.2`, `localhost:<puerto>`, `127.0.0.1:<puerto>`, `192.168.x.x`, ngrok, staging…), no solo
+   `10.0.2.2`. Las excepciones viven en `.gates/urls-permitidas`, cada una con su porqué: hoy solo
+   `http://localhost:8081/api/vinculos/aprobar` (el respaldo del servidor de desarrollo de
+   react-native, pegado en la tabla de cadenas a nuestra ruta; nunca se llama desde un teléfono).
+   Si un build reordena esa tabla, el gate falla y la línea se ajusta. Sin el script instalado el
+   publicador se niega a seguir (`/plugin marketplace update constroad-skills`); también acepta
+   `URLS_LOCALES_GATE=<ruta>`.
 
 Lo que NO prueba el emulador: llega a `10.0.2.2` porque es la propia máquina de desarrollo, así
 que «cargó» no demuestra nada. La prueba es el host que trae el bundle publicado.

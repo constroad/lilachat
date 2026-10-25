@@ -114,10 +114,10 @@ describe('POST /api/chats/:id/members in a channel of a space', () => {
 
   it('a group outside any space keeps adding whoever the member picks', async () => {
     // Arrange
-    const personal = await ChatModel.create({ kind: 'group', name: 'Familia', members: [{ userId: users.jose, role: 'admin' }], lastSeq: 0 });
+    const outsideGroup = await ChatModel.create({ kind: 'group', name: 'Familia', members: [{ userId: users.jose, role: 'admin' }], lastSeq: 0 });
     // Act
-    await add(personal._id, 'jose', 'beto').expect(200);
+    await add(outsideGroup._id, 'jose', 'beto').expect(200);
     // Assert
-    expect(await membersOf(personal._id)).toContain(String(users.beto));
+    expect(await membersOf(outsideGroup._id)).toContain(String(users.beto));
   });
 });

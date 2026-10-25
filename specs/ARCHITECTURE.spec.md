@@ -4909,6 +4909,38 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 135. Sumar a un canal exige el espacio, y quién cambia los temas queda anotado (25/10/2026, solo servidor)
+
+Dos cambios del servidor pedidos por agentes el 25/10 tras la prueba de
+asistencia en «Test». Sin versión nueva de la app: se despliegan con el push.
+
+- **`POST /api/chats/:id/members` en un canal de un espacio** (`server/src/miembrosDelChat.ts`,
+  `addMember`; `chatRoutes.ts`). Antes aceptaba a cualquier usuario: el selector
+  solo ofrece miembros del espacio, pero un cliente modificado metía a un ajeno.
+  Ahora responde **403** con su motivo si (1) quien llama no está en ese chat o ya
+  no está activo en el espacio, o (2) quien se suma no es miembro activo del
+  espacio ni una app con instalación vigente en él (así vuelve una app que un
+  admin sacó, pending 91; una instalación revocada no vale). Un grupo fuera de un
+  espacio no cambia (400 como antes). Test: `server/src/channelMembers.test.ts`
+  (5 de sus 8 casos fallaban antes: devolvían 200 o 400).
+- **Huella de los temas de aviso** (`server/src/bots/botTopics.ts`,
+  `setTopicChannels`; `botModels.ts`). Cada cambio válido anota en la instalación
+  `topicChannelsBy` (`user:<id>` por la ruta del admin, `app` por `PUT /api/bot/topics`),
+  `topicChannelsAt` y `topicChannelsTouched` (los temas de ESE cambio). Un cambio
+  rechazado no deja huella. Motivo: el 25/10 Portal en «Test» apareció con los
+  cinco temas en `null` y nada permitía saber quién fue (los logs de la mini no
+  registran peticiones HTTP). Los clientes de Lilachat mandan solo los temas que
+  la persona movió y el servidor conserva el resto (`validateTopicChannels`), así
+  que ninguna ruta propia los anula al abrir la pantalla ni al reenviar el
+  manifiesto. Test: `server/src/bots/botTopics.test.ts` (huella por las dos
+  rutas y sin huella al rechazar).
+
+**Hallazgo sin arreglar** (otra sesión lo tomó, 25/10): la lista de un espacio
+en la web muestra «No se pudo cargar el espacio» en la primera carga sin la
+caché local (`space-cache:<id>:chats` en el IndexedDB) aunque el servidor
+responde 200; con la caché presente el error queda oculto y una conversación
+borrada en el servidor siguió en la lista hasta borrar esa clave a mano.
+
 ## 134. Ficha de personas, miembros del espacio en canales privados y guiños por canal (25/10/2026, 0.1.170)
 
 Tres fallos pedidos por José (25/10, por agentes). `audience: 'all'`. Cada
@@ -7196,6 +7228,25 @@ Al entrar a un espacio se precargan su directorio, menciones y canales. Un
 espacio en el que ya no estoy activo se borra de memoria y disco. El cierre de
 sesión borra todo (app: `forgetAllSpaces` junto a `olvidarChats`; web: la base
 se borra entera y la memoria se vacía al desmontar).
+
+**Web sin token en la recarga (25/10/2026).** Una recarga monta el shell ANTES
+de que la sesión se renueve: `credential.jwt` es `''` hasta que responde
+`POST /api/auth/session` (`useSesion.ts:130`). La lista del espacio
+(`useSpacesWeb.tsx`), la precarga (`prefetchSpace`) y el directorio de apps
+(`useSpaceApps.refresh`) pedían igual, sin `Authorization`: 401 que nadie
+repetía, porque el efecto de `useCached` solo vuelve a correr si cambia la
+clave, no el token. Sin caché, la barra decía «No se pudo cargar el espacio»
+hasta tocar «reintentar»; con una caché vencida, el error quedaba oculto y la
+lista vieja seguía (un DM borrado en el servidor siguió tras dos recargas).
+Ahora el `active` de `useCached` manda al **servidor, no al disco** (la caché
+pinta al instante y pide cuando llega el token; la web lo pasa como
+`Boolean(jwt)`), y `prefetchSpace` y `useSpaceApps.refresh` no piden sin token.
+Tests: `web/src/spaces/spaceCache.test.tsx` (sin caché y con caché vencida).
+Reproducido en producción con el código anterior (espacio «Test»): borrar
+`space-cache:<id>:chats` y recargar dejaba `GET /api/chats?workspace=` en 401 a
+los 440 ms y el aviso de error; la caché que había era de 17 min y 6 chats.
+**No verificado:** el arreglo en producción (espera el deploy), la app móvil
+(su `useCached` es otro archivo y siempre tiene token al montar).
 
 **Server.** `/api/activity` lee menciones e hilos una sola vez: las filas de la
 pestaña y los conteos de los chips salen de la misma respuesta (antes la misma

@@ -361,6 +361,15 @@ día, la hora o ambos. Hasta 20 campos.
   command_id, values, channel, user }`. La app responde como a un comando, o
   con `{ "errors": { "campo": "…", "_": "…" } }` y el formulario queda abierto
   con esos errores.
+- **Responder «después» también llega en la misma llamada** (25/10/2026,
+  agentes: «No se pudo confirmar» de una firma que sí se registró). Si la app
+  solo confirma la recepción (200 vacío o `{}`) y contesta por
+  `POST /api/bots/commands/{id}/respond`, Lilachat espera esa respuesta hasta 8
+  segundos con la llamada de la persona abierta y se la devuelve en ella: un
+  `/respond` que llega ANTES de que vuelva el acuse del webhook también cuenta.
+  Pasados los 8 segundos la persona ve «Enviando…» y la respuesta le llega por
+  el socket, como antes. Nada cambia para la app: sigue respondiendo por
+  `/respond` (15 minutos, hasta 5 veces).
 - `shareable: false` en cualquier respuesta: nadie la manda al canal (409 si
   se intenta).
 - `x-visible-if: { "campo": ["valor", …] }` en una propiedad (0.1.161): el

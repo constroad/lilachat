@@ -7,6 +7,7 @@ import { readOwnMedia, ownMediaBase } from '../mediaDisk.js';
 import { defaultMediaUploader } from '../localMediaUploader.js';
 import { resolveJwtSecret } from '../sessions.js';
 import { callBotWebhook, isRestarting, recordLastDelivery } from './botEvents.js';
+import { expectLateAnswer } from './lateAnswers.js';
 import { commandAnswerTimeout, deliverResponse, recordRunFailure, restartingMessage, type Base, type ChatOfCommand, type CommandError } from './botCommands.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botModels.js';
 import { channelOf, personOf } from './botTriggers.js';
@@ -153,7 +154,15 @@ export async function submitForm(userId: Types.ObjectId, scope: CommandScope, co
   const app = installation ? await BotAppModel.findById(installation.appId).select('name webhookUrl').lean() : null;
   if (!installation || !app || (run.chatId && !chat)) return fail(410, 'app_uninstalled', 'La app ya no está instalada en este espacio.');
   const base: Base = { commandId, appId: String(app._id), appName: app.name };
-  return answerOf(await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, 'form.submitted', { form_id: run.form!.id, command_id: commandId, values: checked.values as FormValues, channel: chat ? channelOf(chat) : null, user }, commandAnswerTimeout()), { installation, run, chat, base });
+  // Open before calling the app: its late answer can land before the webhook returns.
+  const late = expectLateAnswer(commandId);
+  try {
+    const reply = await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, 'form.submitted', { form_id: run.form!.id, command_id: commandId, values: checked.values as FormValues, channel: chat ? channelOf(chat) : null, user }, commandAnswerTimeout());
+    const outcome = await answerOf(reply, { installation, run, chat, base });
+    return 'outcome' in outcome && outcome.outcome === 'pending' ? ((await late.within()) ?? outcome) : outcome;
+  } finally {
+    late.cancel();
+  }
 }
 
 /** What the app said: its errors keep the form open; a slow or empty answer leaves it «enviando» until `/respond`. */

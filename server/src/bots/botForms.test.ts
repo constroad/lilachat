@@ -73,7 +73,7 @@ beforeAll(async () => {
   });
   await new Promise<void>((resolve) => hook.listen(0, '127.0.0.1', resolve));
   hookUrl = `http://127.0.0.1:${(hook.address() as AddressInfo).port}/events`;
-  configureCommands({ answerTimeoutMs: 300 });
+  configureCommands({ answerTimeoutMs: 300, lateAnswerWaitMs: 400 });
   configureFormFiles({
     upload: async ({ bytes }) => {
       const url = `/media/test/${stored.size + 1}.jpg`;
@@ -214,6 +214,59 @@ describe('an app answers a command with a form', () => {
     expect(received).toEqual([{ type: 'shortcut.invoked', data: expect.objectContaining({ shortcut: 'marcar_asistencia', command_id: opened.body.commandId, user: expect.objectContaining({ name: 'Ana', phone: '51987654321' }), channel: expect.objectContaining({ id: String(channel) }) }) }]);
     expect(received[0]!.data).not.toHaveProperty('command');
     await request(app).post(`/api/chats/${channel}/shortcuts`).set(asAna).send({ app_id: await appId(), shortcut: 'otra' }).expect(404);
+  });
+
+  describe('the late answer travels in the sent form\'s own reply (agentes, 25/10: «No se pudo confirmar» although it was recorded)', () => {
+    const sendLate = async (commandId: string, body: Record<string, unknown>) => request(app).post(`/api/bots/commands/${commandId}/respond`).set(await botAuth()).send(body).expect(200);
+    const send = async () => {
+      const commandId = await openForm();
+      const { fileId } = (await uploadPhoto(commandId).expect(201)).body;
+      return { commandId, values: { accion: 'salida', ubicacion: here, foto: fileId } };
+    };
+
+    it('the app answers through /respond BEFORE its webhook returns: the submit already carries that answer', async () => {
+      // Arrange: the order of agentes' logs (the late answer at 22.698, the acknowledgement at 22.807)
+      const { commandId, values } = await send();
+      answer = (event, res) => {
+        void sendLate(String(event.data.command_id), { text: 'Salida marcada · 11:19', shareable: false }).then(() => res.end());
+      };
+      // Act
+      const sent = await submit(commandId, values).expect(200);
+      // Assert
+      expect(sent.body).toMatchObject({ commandId, outcome: 'ephemeral', response: { responseType: 'ephemeral', text: 'Salida marcada · 11:19' } });
+    });
+
+    it('the app answers a moment AFTER acknowledging, within the wait: the same reply carries it', async () => {
+      const { commandId, values } = await send();
+      answer = (event, res) => {
+        res.end();
+        setTimeout(() => void sendLate(String(event.data.command_id), { text: 'Salida marcada · 11:19', shareable: false }), 30);
+      };
+      const sent = await submit(commandId, values).expect(200);
+      expect(sent.body).toMatchObject({ commandId, outcome: 'ephemeral', response: { text: 'Salida marcada · 11:19' } });
+    });
+
+    it('a late refusal inside the wait comes back as the form\'s errors, like an immediate one', async () => {
+      const { commandId, values } = await send();
+      answer = (event, res) => {
+        res.end();
+        setTimeout(() => void sendLate(String(event.data.command_id), { errors: { accion: 'Completa tu registro de refrigerio antes de firmar salida.' } }), 30);
+      };
+      const refused = await submit(commandId, values).expect(422);
+      expect(refused.body.errors).toEqual({ accion: 'Completa tu registro de refrigerio antes de firmar salida.' });
+    });
+
+    it('an answer that takes longer than the wait leaves the form «pending» and still reaches the asker by the socket', async () => {
+      const notices: CommandNotice[] = [];
+      configureCommands({ notify: (_userId, notice) => notices.push(notice) });
+      const { commandId, values } = await send();
+      answer = (_event, res) => res.end();
+      const sent = await submit(commandId, values).expect(200);
+      await sendLate(commandId, { text: 'Salida marcada · 11:19', shareable: false });
+      expect(sent.body.outcome).toBe('pending');
+      expect(notices.map((notice) => notice.commandId)).toEqual([commandId]);
+      configureCommands({ notify: () => undefined });
+    });
   });
 
   it('from the space\'s ⚡, outside any chat: channel null, the photo and the form by the space, the late answer to the asker', async () => {

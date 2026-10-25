@@ -7,6 +7,7 @@ import { postBotMessage } from './botMessages.js';
 import { announceAppChanged, announceLater } from './botAnnounce.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel, type BotCommandRun, type BotInstallation } from './botModels.js';
 import { channelOf, personOf } from './botTriggers.js';
+import { configureLateAnswers, settleLateAnswer } from './lateAnswers.js';
 
 /**
  * Slash commands (`specs/BOTS-API.spec.md` §c-bis), like Slack: the app
@@ -32,8 +33,9 @@ let notifyAsker: (userId: string, notice: CommandNotice) => void = () => undefin
 export const commandAnswerTimeout = (): number => answerTimeoutMs;
 
 /** The socket sets who hears a late ephemeral answer; tests shorten the wait. */
-export function configureCommands(options: { answerTimeoutMs?: number; notify?: (userId: string, notice: CommandNotice) => void }): void {
+export function configureCommands(options: { answerTimeoutMs?: number; lateAnswerWaitMs?: number; notify?: (userId: string, notice: CommandNotice) => void }): void {
   if (options.answerTimeoutMs !== undefined) answerTimeoutMs = options.answerTimeoutMs;
+  if (options.lateAnswerWaitMs !== undefined) configureLateAnswers({ waitMs: options.lateAnswerWaitMs });
   if (options.notify) notifyAsker = options.notify;
 }
 
@@ -213,6 +215,7 @@ export async function respondToCommand(installation: BotInstallation, commandId:
   if (outcome.outcome === 'ephemeral' || outcome.outcome === 'form') notifyAsker(String(run.userId), { ...where, commandId, appId: base.appId, appName: base.appName, response: outcome.response! });
   // Posted in the channel: the asker's «working…» card must go away too (it stayed forever, 23/10).
   else notifyAsker(String(run.userId), { ...where, commandId, appId: base.appId, appName: base.appName, response: valid.response, posted: true });
+  settleLateAnswer(commandId, outcome);
   return { response_type: outcome.outcome === 'posted' ? 'in_channel' : outcome.outcome === 'form' ? 'form' : 'ephemeral' };
 }
 
@@ -227,6 +230,7 @@ async function respondWithErrors(installation: BotInstallation, commandId: strin
   const app = await BotAppModel.findById(installation.appId).select('name').lean();
   const where = run.chatId ? { chatId: String(run.chatId) } : { workspaceId: String(run.workspaceId ?? installation.workspaceId) };
   notifyAsker(String(run.userId), { ...where, commandId, appId: String(installation.appId), appName: app?.name ?? 'App', response: { responseType: 'form', form: run.form }, errors });
+  settleLateAnswer(commandId, { status: 422, errors });
   return { response_type: 'form' };
 }
 

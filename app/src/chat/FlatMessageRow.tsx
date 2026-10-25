@@ -15,7 +15,7 @@ import { BotCardView } from './BotCardView';
 import { TextoDelMensaje } from './TextoDelMensaje';
 import { VistaPreviaDeEnlace } from './VistaPreviaDeEnlace';
 import { previewDeMensaje, quoteAction } from './MessageRow';
-import { hasBotCard, isPending, type Row } from './rowKinds';
+import { drawsAsCard, hasBotCard, isPending, type Row } from './rowKinds';
 import type { Citado } from './filasDelChat';
 import { CardBody } from './TarjetaDelChat';
 import { showStickerOptions, useAnimatedStop } from './stickers/StickerMessage';
@@ -80,7 +80,8 @@ function FlatRow(props: {
   const deleted = !isPending(item) && Boolean(item.deletedAt);
   const name = mine ? (props.authorName ?? 'Tú') : (props.authorName ?? 'Alguien');
   const meta = { hora: formatClock(atOf(item)), mia: mine, entrega: props.delivery ?? (isPending(item) ? ('pending' as const) : ('sent' as const)), id, fallido: Boolean(failed), editado: !isPending(item) && Boolean(item.editedAt) && !deleted, destacado: Boolean(props.starred), flat: true };
-  const card = !isPending(item) && item.ref && props.jwt ? item : null;
+  // Deleted for everyone it reads as a deleted message, like in the bubble layout (found in the QA cleanup of 25/10).
+  const card = drawsAsCard(item) && !isPending(item) && props.jwt ? item : null;
   const sticker = !isPending(item) && item.kind === 'sticker' && item.media?.url && !deleted && props.jwt ? item : null;
   const animated = useAnimatedStop(sticker?.media?.url, false, sticker?.media?.animated === true);
   const press = isPending(item) ? (failed ? () => props.onFailed?.(item.clientKey, failed) : undefined) : props.selecting ? () => props.onSelect?.(item.seq) : undefined;

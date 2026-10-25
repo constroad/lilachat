@@ -4977,8 +4977,14 @@ dice «Manifest code signing signature verified successfully», 643 de 643 asset
 el server solo contesta `noUpdateAvailable` cuando `expo-current-update-id` es el último publicado,
 el teléfono corre `393d0e53`.
 
+La OTA de B3 (`e124a5ac`, git `437d170`, publicada 19:13:43Z) también la bajó el emulador (firma
+verificada, 643/643 assets, 0 fallidos); el segundo arranque dio `CheckCompleteUnavailable` y la app
+abre sin errores (pantalla de ingreso, sin crash en `logcat -b crash`).
+
 **Sin verificar todavía:** ver «Código en uso» en Diagnóstico y el aplicado silencioso tras ≥ 10 min
-en segundo plano (el emulador quedó sin sesión), y el toque de aviso con espacio e hilo (B4).
+en segundo plano, y el toque de aviso con espacio e hilo (B4): el emulador quedó sin sesión y hace
+falta un código de ingreso del 902049935. Para B4, agentes publica como el bot de Portal en «Test»
+(mensajes de canal y respuestas en hilos), así que no hace falta una segunda persona.
 Una OTA no suma entradas a «Novedades»: las notas se atan a la versión del APK.
 
 ## 136. La respuesta tardía de un formulario viaja en la misma llamada (25/10/2026, solo servidor)

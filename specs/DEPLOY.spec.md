@@ -474,6 +474,19 @@ curl -s -o /dev/null -w "PUT sin token: %{http_code} (401)\n" -X PUT $B/api/ota/
 curl -s -o /dev/null -w "POST sin token: %{http_code} (401)\n" -X POST $B/api/ota/updates -H 'content-type: application/json' -d '{}'
 ```
 
+### 4-bis.7 Verificado en el emulador (25/10/2026)
+
+Con el APK firmado 0.1.171 (runtime `77c1a8b2`, igual al calculado por `runtimeversion:resolve`) y
+la primera OTA (`393d0e53…`, git `353bd75`, publicada 18:40:58Z), el log nativo
+(`adb logcat -s dev.expo.updates`) dice, en el primer arranque, «Manifest code signing signature
+verified successfully», 643 de 643 assets bajados, 0 fallidos y `DownloadComplete` con la
+actualización pendiente. En el segundo arranque dice `CheckCompleteUnavailable`: el server solo
+contesta `noUpdateAvailable` si `expo-current-update-id` es el último publicado, así que ese
+teléfono corre la OTA. Falta ver «Código en uso» en Diagnóstico y el aplicado tras ≥ 10 min en
+segundo plano (se hace con sesión iniciada). Para repetir la prueba sin sesión:
+`adb logcat -c`, abrir la app y filtrar el log con `grep -v embeddedAssetFileMap` (el volcado de los
+assets embebidos ocupa miles de líneas).
+
 ## 5. Errores conocidos y arreglo
 
 | Síntoma | Causa | Arreglo |
@@ -481,6 +494,7 @@ curl -s -o /dev/null -w "POST sin token: %{http_code} (401)\n" -X POST $B/api/ot
 | CI cae en «Run npm run build» con gates verdes | los gates no compilan los tests del server | `npm run build` en la raíz antes del push |
 | El hook bloquea el push: «el sello es de <otro commit>» | cambió HEAD después de los gates, o gates y push iban en el mismo comando | repetir gates; push en comando aparte |
 | Una llamada con `gates.sh`/`npm run build`/`apk build` es «BLOQUEADA por memoria» | la Mac está paginando (el hook `memoria.sh`) | `mem-guard.sh --wait` en una llamada previa, en segundo plano; si no baja en 20 min, avisar a José |
+| `apk build` cae en KSP con `OutOfMemoryError: Metaspace` (módulo `expo-updates`) | Gradle y Kotlin arrancan con 512 MB de Metaspace | ya lo sube el plugin `app/plugins/withGradleMemory.js` (`-Xmx2048m -XX:MaxMetaspaceSize=1024m`); si el build sigue colgado, un daemon viejo retiene el lock: `pkill -9 -f GradleDaemon` y repetir |
 | `gates=1` por `english-only` | un nombre o comentario en español en líneas cambiadas (los textos de UI pueden quedar en español) | renombrar/traducir y repetir gates |
 | Los gates se ponen rojos por un archivo que no es tuyo | cambio sin commitear de otra sesión en el árbol compartido | no lo toques; avisa a José y espera o repite cuando esa sesión cierre |
 | `git push` rechazado (non-fast-forward) | alguien subió antes | no fuerces: detente y avisa a José |

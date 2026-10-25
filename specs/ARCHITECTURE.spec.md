@@ -4977,9 +4977,12 @@ dice «Manifest code signing signature verified successfully», 643 de 643 asset
 el server solo contesta `noUpdateAvailable` cuando `expo-current-update-id` es el último publicado,
 el teléfono corre `393d0e53`.
 
-La OTA de B3 (`e124a5ac`, git `437d170`, publicada 19:13:43Z) también la bajó el emulador (firma
-verificada, 643/643 assets, 0 fallidos); el segundo arranque dio `CheckCompleteUnavailable` y la app
-abre sin errores (pantalla de ingreso, sin crash en `logcat -b crash`).
+**Incidente (25/10/2026, 19:13–19:34Z).** La OTA de B3 (`e124a5ac`, git `437d170`) y la primera
+(`393d0e53`) llevaban `EXPO_PUBLIC_API_URL=http://10.0.2.2:4003` horneado: el publicador exportó con
+`app/.env` y con la caché de Metro en vez de `app/lila.json`. El emulador las bajó (firma verificada,
+643/643 assets) y arrancó, pero toda petición fallaba con «Sin conexión». Se publicó el rollback
+(`492831f5`, 19:34:54Z). El publicador ahora exporta con el entorno de `lila.json` y `--clear`, y
+una guardia compara los hosts de desarrollo del bundle contra los del APK (DEPLOY 4-bis.2).
 
 **Sin verificar todavía:** ver «Código en uso» en Diagnóstico y el aplicado silencioso tras ≥ 10 min
 en segundo plano, y el toque de aviso con espacio e hilo (B4): el emulador quedó sin sesión y hace

@@ -83,8 +83,15 @@ export function buildManifest(input: ManifestInput): OtaManifest {
 /** The exact bytes the publisher signs for «nothing newer». The server verifies the same string (`server/src/ota/otaProtocol.ts`). */
 export const NO_UPDATE_DIRECTIVE = '{"type":"noUpdateAvailable"}';
 
-/** What `app/ota-runtime.json` remembers of the APK that is out there: its build and the runtime it was built with. */
-export type RuntimeSnapshot = { versionCode: number; runtimeVersion: string };
+/** Development addresses that must not be baked into a bundle that reaches phones. */
+export const DEV_HOSTS = ['10.0.2.2', '127.0.0.1', 'localhost'] as const;
+export type DevHostCounts = Record<string, number>;
+
+/**
+ * What `app/ota-runtime.json` remembers of the APK that is out there: its build, the runtime it was built with and
+ * how many development hosts its own bundle carries (the baseline an OTA bundle must not exceed).
+ */
+export type RuntimeSnapshot = { versionCode: number; runtimeVersion: string; devHosts?: DevHostCounts };
 
 export function assertRuntimeMatches(currentRuntime: string, snapshot: RuntimeSnapshot): void {
   if (currentRuntime !== snapshot.runtimeVersion) {
@@ -95,4 +102,40 @@ export function assertRuntimeMatches(currentRuntime: string, snapshot: RuntimeSn
 /** Sends every phone of the runtime back to the JavaScript inside its APK. The signature covers these exact bytes. */
 export function rollbackDirective(now: Date): string {
   return JSON.stringify({ type: 'rollBackToEmbedded', parameters: { commitTime: now.toISOString() } });
+}
+
+const PRODUCTION_URL = /^https:\/\/[^\s/]+/;
+
+/**
+ * The environment an OTA export runs with: the APK build's (`app/lila.json` → `build.env`), never the developer's
+ * `.env` (25/10/2026: that one baked `http://10.0.2.2:4003` into two updates). Refuses a config that would let the
+ * export fall back to local files: without an https `EXPO_PUBLIC_API_URL` there is nothing safe to publish.
+ */
+export function buildEnvOf(lilaConfig: unknown): Record<string, string> {
+  const env = (lilaConfig as { build?: { env?: Record<string, unknown> } } | null)?.build?.env ?? {};
+  const apiUrl = env.EXPO_PUBLIC_API_URL;
+  if (typeof apiUrl !== 'string' || !PRODUCTION_URL.test(apiUrl)) {
+    throw new Error('app/lila.json necesita build.env.EXPO_PUBLIC_API_URL con una URL https: sin ella la OTA heredaría el .env local');
+  }
+  return Object.fromEntries(Object.entries(env).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
+}
+
+/** How many times each development host appears in a bundle (the strings of a Hermes bundle are plain ASCII). */
+export function countDevHosts(bundle: string): DevHostCounts {
+  return Object.fromEntries(DEV_HOSTS.map((host) => [host, bundle.split(host).length - 1]));
+}
+
+/**
+ * Stops an OTA bundle that does not point at production: it must carry the production url and no more development
+ * hosts than the bundle of the APK that is out there (which has a few of its own, e.g. the link-approval endpoint).
+ */
+export function assertBundleBakedUrl(bundle: string, input: { apiUrl: string; baseline: DevHostCounts }): void {
+  if (!bundle.includes(input.apiUrl)) throw new Error(`El bundle no trae ${input.apiUrl}: los teléfonos no sabrían a qué server hablar`);
+  const found = countDevHosts(bundle);
+  for (const host of DEV_HOSTS) {
+    const allowed = input.baseline[host] ?? 0;
+    if (found[host]! > allowed) {
+      throw new Error(`El bundle trae ${found[host]} veces ${host} y el APK solo ${allowed}: se coló una URL de desarrollo (revisa los .env)`);
+    }
+  }
 }

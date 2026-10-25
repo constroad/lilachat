@@ -1,4 +1,9 @@
 {
   "versionCode": 172,
-  "runtimeVersion": "77c1a8b289d876eafb74a313dafa4a378ae09fae"
+  "runtimeVersion": "77c1a8b289d876eafb74a313dafa4a378ae09fae",
+  "devHosts": {
+    "10.0.2.2": 0,
+    "127.0.0.1": 0,
+    "localhost": 2
+  }
 }

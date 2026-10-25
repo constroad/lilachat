@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NO_UPDATE_DIRECTIVE, assertRuntimeMatches, buildManifest, contentTypeOfExtension, rollbackDirective, type ExportMetadata } from './otaPublish';
+import { NO_UPDATE_DIRECTIVE, assertBundleBakedUrl, assertRuntimeMatches, buildEnvOf, buildManifest, contentTypeOfExtension, countDevHosts, rollbackDirective, type ExportMetadata } from './otaPublish';
 
 /**
  * What José's machine builds before publishing an OTA update (agentes 25/10/2026). Pure: the script reads files and
@@ -120,5 +120,70 @@ describe('rollbackDirective', () => {
 describe('NO_UPDATE_DIRECTIVE', () => {
   it('is the literal the server verifies; changing it silently would make every «nothing newer» fail its signature', () => {
     expect(NO_UPDATE_DIRECTIVE).toBe('{"type":"noUpdateAvailable"}');
+  });
+});
+
+/**
+ * 25/10/2026: the first two OTA updates baked `EXPO_PUBLIC_API_URL=http://10.0.2.2:4003` (app/.env, the emulator's
+ * address for the dev machine) because `expo export` read the local env instead of `app/lila.json` → `build.env`
+ * like `apk build` does. Phones that applied it showed «Sin conexión». These tests are that incident.
+ */
+describe('buildEnvOf (the environment an OTA export must use: the APK build\'s, not the developer\'s)', () => {
+  const lila = { build: { env: { EXPO_PUBLIC_API_URL: 'https://lilachat.constroad.com', EXPO_PUBLIC_FLAG: 'on' } } };
+
+  it('returns every build.env entry', () => {
+    expect(buildEnvOf(lila)).toEqual({ EXPO_PUBLIC_API_URL: 'https://lilachat.constroad.com', EXPO_PUBLIC_FLAG: 'on' });
+  });
+
+  it('refuses a config without the API url: an export without it would fall back to whatever the local .env says', () => {
+    expect(() => buildEnvOf({ build: { env: {} } })).toThrow('EXPO_PUBLIC_API_URL');
+    expect(() => buildEnvOf({})).toThrow('EXPO_PUBLIC_API_URL');
+    expect(() => buildEnvOf(null)).toThrow('EXPO_PUBLIC_API_URL');
+  });
+
+  it.each([['http://10.0.2.2:4003'], ['http://lilachat.constroad.com'], ['lilachat.constroad.com'], [''], [42]])('refuses an API url that is not https (%j)', (url) => {
+    expect(() => buildEnvOf({ build: { env: { EXPO_PUBLIC_API_URL: url } } })).toThrow('https');
+  });
+
+  it('ignores entries that are not text', () => {
+    expect(buildEnvOf({ build: { env: { EXPO_PUBLIC_API_URL: 'https://lilachat.constroad.com', OTHER: 7 } } })).toEqual({ EXPO_PUBLIC_API_URL: 'https://lilachat.constroad.com' });
+  });
+});
+
+describe('countDevHosts', () => {
+  it('counts each development host that is baked into a bundle', () => {
+    const bundle = 'aaa http://localhost:8081/api/vinculos/aprobar bbb localhost:8081 ccc http://10.0.2.2:4003 ddd 127.0.0.1';
+    expect(countDevHosts(bundle)).toEqual({ '10.0.2.2': 1, '127.0.0.1': 1, localhost: 2 });
+  });
+
+  it('counts zero for a clean bundle', () => {
+    expect(countDevHosts('https://lilachat.constroad.com')).toEqual({ '10.0.2.2': 0, '127.0.0.1': 0, localhost: 0 });
+  });
+});
+
+describe('assertBundleBakedUrl (what the OTA bundle must carry before it is published)', () => {
+  const apiUrl = 'https://lilachat.constroad.com';
+  const baseline = { '10.0.2.2': 0, '127.0.0.1': 0, localhost: 2 };
+  const clean = `xx ${apiUrl} yy http://localhost:8081/api/vinculos/aprobar zz localhost:8081`;
+
+  it('accepts a bundle that has the production url and no more dev hosts than the APK that is out there', () => {
+    expect(() => assertBundleBakedUrl(clean, { apiUrl, baseline })).not.toThrow();
+  });
+
+  it('stops when a development url slipped in (the 25/10 incident)', () => {
+    expect(() => assertBundleBakedUrl(`${clean} http://10.0.2.2:4003`, { apiUrl, baseline })).toThrow('10.0.2.2');
+  });
+
+  it('stops when another dev host appears more often than in the APK', () => {
+    expect(() => assertBundleBakedUrl(`${clean} http://localhost:4003`, { apiUrl, baseline })).toThrow('localhost');
+    expect(() => assertBundleBakedUrl(`${clean} http://127.0.0.1:3000`, { apiUrl, baseline })).toThrow('127.0.0.1');
+  });
+
+  it('stops when the production url is missing', () => {
+    expect(() => assertBundleBakedUrl('http://localhost:8081/api/vinculos/aprobar localhost:8081', { apiUrl, baseline })).toThrow(apiUrl);
+  });
+
+  it('allows fewer dev hosts than the APK (a library that dropped a string is not a risk)', () => {
+    expect(() => assertBundleBakedUrl(`xx ${apiUrl}`, { apiUrl, baseline })).not.toThrow();
   });
 });

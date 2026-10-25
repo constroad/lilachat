@@ -279,22 +279,23 @@ Si la huella o la URL son otras: **no publicar** (firma de debug o URL de desarr
 horneada). La huella no es secreta: es la que LilaStore tiene registrada para validar al
 firmante.
 
-**Anotar el runtime del APK recién compilado (obligatorio desde la 0.1.171).** El runtime de
-las OTA es el *fingerprint* de lo nativo; cada APK tiene el suyo (entra hasta `versionCode`).
-El publicador compara contra lo anotado aquí para negarse a mandar por OTA algo que cambió
-lo nativo. Con el árbol limpio y SIN tocar `app/.gitignore`, `package.json` ni `app.json`
-entre la compilación y este paso:
+**Anotar el APK recién compilado (obligatorio desde la 0.1.171).** El runtime de las OTA es el
+*fingerprint* de lo nativo; cada APK tiene el suyo (entra hasta `versionCode`). El publicador
+compara contra lo anotado aquí para negarse a mandar por OTA algo que cambió lo nativo, y toma de
+aquí la línea base de hosts de desarrollo del bundle del APK (la guardia de 4-bis.2). Con el árbol
+limpio y SIN tocar `app/.gitignore`, `package.json` ni `app.json` entre la compilación y este paso:
 
 ```bash
-cd /Users/josezamora/projects/lilachat/app
-RT=$(npx expo-updates runtimeversion:resolve --platform android | python3 -c "import sys,json; print(json.load(sys.stdin)['runtimeVersion'])")
-VC=$(python3 -c "import json; print(json.load(open('app.json'))['expo']['android']['versionCode'])")
-echo "{\"versionCode\": $VC, \"runtimeVersion\": \"$RT\"}" > ota-runtime.json && cat ota-runtime.json
+cd /Users/josezamora/projects/lilachat
+npx tsx scripts/ota-publish.mts --record-apk=app/dist/lilachat-<versión>-<versionCode>.apk
 ```
 
-Se commitea con el release (`app/ota-runtime.json`). Comprobación cruzada, una vez por
-cambio de versión de Expo: el runtime que lleva el APK (`aapt dump xmltree <apk>
-AndroidManifest.xml | grep -A2 EXPO_RUNTIME_VERSION`) debe ser ese mismo.
+Lee el bundle del APK (`assets/index.android.bundle`), se niega si no trae
+`https://lilachat.constroad.com` o si trae `10.0.2.2`, y escribe `app/ota-runtime.json`
+(`versionCode`, `runtimeVersion` y cuántas veces aparecen `10.0.2.2`, `127.0.0.1` y `localhost`).
+Se commitea con el release. Comprobación cruzada, una vez por cambio de versión de Expo: el
+runtime que lleva el APK (`aapt dump xmltree <apk> AndroidManifest.xml | grep -A2
+EXPO_RUNTIME_VERSION`) debe ser ese mismo.
 
 ### 4.3 Publicar en LilaStore
 
@@ -421,6 +422,24 @@ en vivo` si el server ya sirve ese manifest. `--dry-run` hace todo menos subir (
 `--no-git-checks` solo se combina con `--dry-run`, para ensayar con cambios sin commitear).
 Lee el token de `OTA_PUBLISH_TOKEN` (entorno o `app/.env`) y la llave de
 `~/.config/lilachat-ota/private-key.pem`; no imprime ninguno.
+
+**Qué comprueba el publicador antes y después de subir (incidente del 25/10/2026).** Las dos
+primeras OTA se publicaron con `EXPO_PUBLIC_API_URL=http://10.0.2.2:4003`: `app/.env` (desarrollo)
+se coló en el bundle porque `expo export` no lee `app/lila.json` como `apk build`. Un teléfono que
+la aplicó mostraba «Sin conexión». Se publicó el rollback (`--embedded`, 19:34:54Z) y desde
+entonces el publicador:
+
+1. exporta con las variables de `app/lila.json` → `build.env` (y sin heredar `EXPO_PUBLIC_*` del
+   entorno del shell) y con `--clear`, porque la caché de transformación de Metro no distingue el
+   valor de `EXPO_PUBLIC_*` y conservaba la URL vieja aun con el entorno correcto;
+2. se niega a publicar (sin subir nada) si el bundle no trae `https://lilachat.constroad.com` o
+   trae más `10.0.2.2`, `127.0.0.1` o `localhost` que el bundle del APK (línea base de
+   `ota-runtime.json`; el APK trae dos `localhost` propios);
+3. tras publicar, baja el bundle tal como lo sirve el server y repite la comprobación; si falla,
+   dice que corras `--embedded` YA.
+
+Lo que NO prueba el emulador: llega a `10.0.2.2` porque es la propia máquina de desarrollo, así
+que «cargó» no demuestra nada. La prueba es el host que trae el bundle publicado.
 
 ### 4-bis.3 Cómo se aplica en el teléfono
 

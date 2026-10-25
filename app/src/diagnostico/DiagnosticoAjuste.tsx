@@ -76,7 +76,7 @@ export function DiagnosticoAjuste() {
               Errores y tiempos de la app en este teléfono. Nada personal: ni mensajes, ni números, ni contactos.
             </Text>
             <Text className="text-[12px] text-on-surface-variant" testID="diag-codigo">
-              Código: {RUNNING_CODE.code} · runtime {RUNNING_CODE.runtime}
+              Código en uso: {RUNNING_CODE.code} · runtime {RUNNING_CODE.runtime}
             </Text>
             <View className="flex-row gap-2">
               <Pressable

@@ -1,7 +1,7 @@
 import { LineaDeLlamada } from './LineaDeLlamada';
 import { memo, useContext, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertCircle, BellRing, CalendarDays, Check, CheckCheck, ChevronRight, Clock, FileText, Lock, Play } from 'lucide-react';
+import { AlertCircle, BellRing, CalendarDays, Check, CheckCheck, ChevronRight, Clock, CornerDownRight, FileText, Lock, Play } from 'lucide-react';
 import { Overlay } from '../ui/Overlay';
 import { RecordatorioEnElChat } from './tarjetas/RecordatorioEnElChat';
 import { colorDeAutor, esAvisoDestacado, type DeliveryState, formatClock, primerEnlace, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
@@ -145,7 +145,7 @@ function FlatMessage(props: Props) {
           <StickerMessage message={mensaje} url={mensaje.media.url} author={null} quote={mensaje.replyToSeq ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={false} /> : null} />
         ) : (
           <div className={`max-w-2xl text-[length:var(--chat-font,14px)] leading-[var(--chat-line,20px)] ${mensaje.estado === 'fallido' ? 'opacity-70' : ''}`}>
-            {mensaje.hiloDe !== undefined && mensaje.enElChat && !mensaje.deletedAt ? <ThreadQuote root={mensaje.hiloDe} mine={false} /> : null}
+            {mensaje.hiloDe !== undefined && mensaje.enElChat && !mensaje.deletedAt ? <ThreadQuote root={mensaje.hiloDe} mine={false} compact /> : null}
             {mensaje.replyToSeq && !mensaje.deletedAt ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={false} /> : null}
             <MessageContent mensaje={mensaje} mio={false} />
           </div>
@@ -206,9 +206,17 @@ function AuthorTap(props: { onTap?: () => void; testId: string; label: string; c
  * reaches the chat without saying which was the original message»): the root,
  * and a click opens the thread. Inside the thread panel it does not show.
  */
-function ThreadQuote({ root, mine }: { root: number; mine: boolean }) {
+function ThreadQuote({ root, mine, compact = false }: { root: number; mine: boolean; /** Slack format: one line, «↳ Respondió en un hilo», not a block that grows the row (José 25/10). */ compact?: boolean }) {
   const { citado, nombres, onAbrirHilo, inThread } = useConversacion();
   if (inThread) return null;
+  if (compact) {
+    return (
+      <button type="button" data-testid={`cita-hilo-${root}`} onClick={() => onAbrirHilo?.(root)} className="mb-0.5 flex max-w-full items-center gap-1 truncate text-left text-[12px] text-on-surface-variant hover:underline">
+        <CornerDownRight size={13} className="shrink-0" />
+        <span className="truncate">Respondió en un hilo</span>
+      </button>
+    );
+  }
   const rootMessage = citado(root);
   const preview = rootMessage?.deletedAt ? 'Se eliminó este mensaje' : rootMessage?.body ?? (rootMessage?.media ? 'Archivo' : 'Mensaje anterior');
   return (

@@ -285,6 +285,18 @@ describe('reminders with advance alerts and a location', () => {
     expect(await ReminderModel.findById(reminder._id).lean()).toMatchObject({ advance: [60, 10], advanceSent: [], location: 'Planta Lurín' });
   });
 
+  // Found in the web E2E (25/10): the edit form opens from this timeline, and the projection dropped both fields,
+  // so the form showed none and saving would have wiped them.
+  it('the pending timeline carries the location and the advances, so editing shows them', async () => {
+    // Arrange
+    await ReminderModel.create({ userId: jose, title: 'Reunión', startsAt: startsInMinutes(120), advance: [30, 15], location: 'Av. Larco 345' });
+    // Act
+    const response = await request(app()).get('/api/agenda/linea').set('Authorization', `Bearer ${token}`);
+    // Assert
+    expect(response.status).toBe(200);
+    expect(response.body.recordatorios[0]).toMatchObject({ title: 'Reunión', advance: [30, 15], location: 'Av. Larco 345' });
+  });
+
   it('removing every advance and the location clears both', async () => {
     const reminder = await ReminderModel.create({ userId: jose, title: 'Reunión', startsAt: startsInMinutes(120), advance: [15], location: 'Planta Lurín' });
     await request(app()).patch(`/api/agenda/reminders/${reminder._id}`).set('Authorization', `Bearer ${token}`).send({ advance: [], location: '' });

@@ -7,7 +7,7 @@ import { asyncRoute, requireSession } from './requireSession.js';
 
 /** Cuánto tiempo queda a la vista un recordatorio de una vez que ya sonó («Vencidos»). */
 const VENTANA_DE_VENCIDOS_MS = 24 * 3_600_000;
-const FIELDS = 'title note startsAt recurrence repeat active chatId imageUrl';
+const FIELDS = 'title note startsAt recurrence repeat active chatId imageUrl location advance';
 /** Los apagados que se listan para prenderlos de nuevo. */
 const MAXIMO_DE_APAGADOS = 50;
 

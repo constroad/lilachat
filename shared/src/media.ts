@@ -109,19 +109,22 @@ export function dimensionValida(valor: unknown): number | undefined {
   return Number.isFinite(numero) && numero > 0 && numero <= DIMENSION_MAXIMA ? numero : undefined;
 }
 
-const BURBUJA = { anchoMaximo: 240, altoMaximo: 320, minimo: 120, cuadrado: 220 } as const;
+const BURBUJA = { anchoMaximo: 240, altoMaximo: 320, minimo: 120, cuadrado: 220, anchoMinimoNatural: 200 } as const;
 
 /**
  * El tamaño de la burbuja de una foto o un video (FL9): su forma real dentro
  * de 240×320, como WhatsApp, y nunca menos de 120 de lado (una tira de 4000×200
  * sería una línea). Sin dimensiones —los mensajes viejos— el cuadrado de 220.
+ *
+ * A phone's portrait photo (1080×2340) used to come out 148 wide, a sliver
+ * (25/10): when its own shape leaves it under 200, it takes the full 240×320
+ * portrait frame and the image is cropped (`contentFit="cover"`), like WhatsApp.
  */
 export function tamanoDeBurbuja(media: { width?: number; height?: number }): { ancho: number; alto: number } {
   const { width, height } = media;
   if (!width || !height) return { ancho: BURBUJA.cuadrado, alto: BURBUJA.cuadrado };
   const escala = Math.min(BURBUJA.anchoMaximo / width, BURBUJA.altoMaximo / height);
-  return {
-    ancho: Math.max(BURBUJA.minimo, Math.round(width * escala)),
-    alto: Math.max(BURBUJA.minimo, Math.round(height * escala)),
-  };
+  const ancho = Math.round(width * escala);
+  if (ancho < BURBUJA.anchoMinimoNatural) return { ancho: BURBUJA.anchoMaximo, alto: BURBUJA.altoMaximo };
+  return { ancho: Math.max(BURBUJA.minimo, ancho), alto: Math.max(BURBUJA.minimo, Math.round(height * escala)) };
 }

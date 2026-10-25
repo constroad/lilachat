@@ -126,15 +126,32 @@ describe('tamanoDeBurbuja', () => {
 
   it('vertical: alto máximo y el ancho según su forma', () => {
     expect(tamanoDeBurbuja({ width: 3000, height: 4000 })).toEqual({ ancho: 240, alto: 320 });
-    expect(tamanoDeBurbuja({ width: 1000, height: 4000 })).toEqual({ ancho: 120, alto: 320 });
+    expect(tamanoDeBurbuja({ width: 1000, height: 4000 })).toEqual({ ancho: 240, alto: 320 });
   });
 
-  it('una tira muy angosta o muy baja no baja del mínimo', () => {
+  it('una tira muy baja no baja del mínimo; una muy angosta toma el marco vertical', () => {
     expect(tamanoDeBurbuja({ width: 4000, height: 200 })).toEqual({ ancho: 240, alto: 120 });
-    expect(tamanoDeBurbuja({ width: 100, height: 4000 })).toEqual({ ancho: 120, alto: 320 });
+    expect(tamanoDeBurbuja({ width: 100, height: 4000 })).toEqual({ ancho: 240, alto: 320 });
   });
 
   it('sin dimensiones (mensajes viejos): el cuadrado de siempre', () => {
     expect(tamanoDeBurbuja({})).toEqual({ ancho: 220, alto: 220 });
+  });
+
+  // 25/10: a phone's portrait photo came out as a 148 dp sliver; it takes the full portrait frame and the image crops (cover).
+  it('una foto vertical de teléfono no sale como una tira angosta: marco de 240×320', () => {
+    expect(tamanoDeBurbuja({ width: 1080, height: 2340 })).toEqual({ ancho: 240, alto: 320 });
+    expect(tamanoDeBurbuja({ width: 1080, height: 1920 })).toEqual({ ancho: 240, alto: 320 });
+    expect(tamanoDeBurbuja({ width: 200, height: 4000 })).toEqual({ ancho: 240, alto: 320 });
+  });
+
+  it('lo bastante ancha para verse bien conserva su forma (límite en 200)', () => {
+    expect(tamanoDeBurbuja({ width: 1000, height: 1600 })).toEqual({ ancho: 200, alto: 320 });
+    expect(tamanoDeBurbuja({ width: 1000, height: 1500 })).toEqual({ ancho: 213, alto: 320 });
+    expect(tamanoDeBurbuja({ width: 1000, height: 1000 })).toEqual({ ancho: 240, alto: 240 });
+  });
+
+  it('el frente del límite: un pelo más angosta que 200 ya es marco completo', () => {
+    expect(tamanoDeBurbuja({ width: 1000, height: 1700 })).toEqual({ ancho: 240, alto: 320 });
   });
 });

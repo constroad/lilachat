@@ -7246,7 +7246,7 @@ Reproducido en producción con el código anterior (espacio «Test»): borrar
 `space-cache:<id>:chats` y recargar dejaba `GET /api/chats?workspace=` en 401 a
 los 440 ms y el aviso de error; la caché que había era de 17 min y 6 chats.
 **No verificado:** el arreglo en producción (espera el deploy), la app móvil
-(su `useCached` es otro archivo y siempre tiene token al montar).
+(tiene su propio `useCached` en `app/src/spaces/`; no se revisó si monta con token).
 
 **Server.** `/api/activity` lee menciones e hilos una sola vez: las filas de la
 pestaña y los conteos de los chips salen de la misma respuesta (antes la misma

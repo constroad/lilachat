@@ -105,7 +105,8 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
   const welcome = spaces && seen ? (newlyAddedSpaces(spaces, seen)[0] ?? null) : null;
 
   // The space's list (and its chips) paints at once from what was seen and refreshes behind (22/10).
-  const page = useCached(spaceChatsCache, spaceId ? `${spaceId}:chats` : null, fetchSpaceChats(jwt, spaceId ?? ''));
+  // `jwt` is '' until the session renews on a reload: asking then is a 401 that nothing retries (25/10).
+  const page = useCached(spaceChatsCache, spaceId ? `${spaceId}:chats` : null, fetchSpaceChats(jwt, spaceId ?? ''), Boolean(jwt));
   const chats = page.value?.chats ?? null;
   const activity = page.value?.activity ?? NO_ACTIVITY;
   const failed = !page.value && Boolean(page.error);

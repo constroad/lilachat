@@ -37,7 +37,8 @@ export function useSpaceApps(params: { jwt: string; spaceId: string | null; onCh
   const [uninstallingId, setUninstallingId] = useState<string | null>(null);
   const lastRead = useRef(0);
   const refresh = useCallback(async () => {
-    if (!spaceId) return;
+    // No token yet on a reload (25/10): this runs again when the session renews.
+    if (!spaceId || !jwt) return;
     lastRead.current = Date.now();
     const result = await appDirectory(jwt, spaceId);
     if (result.ok) setDirectory(result.data);

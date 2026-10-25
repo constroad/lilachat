@@ -98,15 +98,21 @@ async function hydrateFromDisk<T>(cache: SessionCache<T>, key: string): Promise<
 
 const NONE: CacheEntry<never> = Object.freeze({ loading: false });
 
-/** The screen's data: what is cached at once, refreshed behind when old; `refresh` asks again now. */
+/**
+ * The screen's data: what is cached at once, refreshed behind when old; `refresh` asks again now.
+ * `active` gates the server, not the disk: a reload mounts before the session renews (no token
+ * yet), so the disk paints at once and the request waits for `active` to turn true (25/10).
+ */
 export function useCached<T>(cache: SessionCache<T>, key: string | null, fetcher: () => Promise<T>, active = true): CacheEntry<T> & { refresh: () => void } {
   const latest = useRef(fetcher);
   latest.current = fetcher;
   const subscribe = useCallback((listener: () => void) => (key ? cache.subscribe(key, listener) : () => undefined), [cache, key]);
   const entry = useSyncExternalStore(subscribe, () => (key ? cache.get(key) : (NONE as CacheEntry<T>)));
   useEffect(() => {
-    if (!key || !active) return;
-    void hydrateFromDisk(cache, key).then(() => cache.revalidate(key, () => latest.current()));
+    if (!key) return;
+    void hydrateFromDisk(cache, key).then(() => {
+      if (active) void cache.revalidate(key, () => latest.current());
+    });
   }, [cache, key, active]);
   // Expired while open (members changed, 22/10): refreshed now, keeping what is shown.
   useEffect(() => {
@@ -120,8 +126,9 @@ export function useCached<T>(cache: SessionCache<T>, key: string | null, fetcher
 
 const whenIdle = (work: () => void) => (typeof window.requestIdleCallback === 'function' ? window.requestIdleCallback(work) : window.setTimeout(work, 1));
 
-/** Entering a space: its directory, mentions and channels are asked for once the screen is drawn. */
+/** Entering a space: its directory, mentions and channels are asked for once the screen is drawn (and the session has a token). */
 export function prefetchSpace(jwt: string, spaceId: string): void {
+  if (!jwt) return;
   whenIdle(() => {
     void hydrateFromDisk(membersCache, `${spaceId}:members`).then(() => membersCache.revalidate(`${spaceId}:members`, fetchMembers(jwt, spaceId)));
     void hydrateFromDisk(activityCache, `${spaceId}:activity:mentions`).then(() => activityCache.revalidate(`${spaceId}:activity:mentions`, fetchActivity(jwt, spaceId, 'mentions')));

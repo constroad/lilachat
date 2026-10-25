@@ -21,7 +21,7 @@ class LlamadaEntranteModule : Module() {
     Events("onAccion")
 
     OnCreate {
-      Puente.oyente = { chatId, accion -> sendEvent("onAccion", mapOf("chatId" to chatId, "accion" to accion)) }
+      Puente.oyente = { chatId, accion, extras -> sendEvent("onAccion", mapOf("chatId" to chatId, "accion" to accion) + extras) }
     }
     OnDestroy { Puente.oyente = null }
 
@@ -48,6 +48,8 @@ class LlamadaEntranteModule : Module() {
     Function("finDeEnCurso") { ServicioDeLlamada.detener(contexto) }
     // FL8.2: el aviso de mensaje tocado, y limpiar el de un chat al abrirlo.
     Function("chatPendiente") { Puente.tomarChatPendiente() }
+    // The same tap with its destination: space, thread and message (agentes 25/10/2026).
+    Function("avisoPendiente") { Puente.tomarAvisoPendiente()?.asMap() }
     Function("limpiarChat") { chatId: String -> AvisoDeMensaje.limpiar(contexto, chatId) }
     // A message with the app in front: its sound only, nothing in the tray (José, 21/10).
     Function("playInAppAlert") { AvisoDeMensaje.playInAppAlert(contexto) }

@@ -14,8 +14,24 @@ export function setAppBuild(build: number): void {
   currentBuild = build;
 }
 
-export function buildHeader(build: number = currentBuild): Record<string, string> {
-  return build > 0 ? { [BUILD_HEADER]: String(build) } : {};
+/**
+ * Which OTA update is running (the id of the update, or `embedded` for the code
+ * inside the APK). The build alone no longer identifies the code a phone runs:
+ * the same APK can run any update published for its runtime.
+ */
+export const UPDATE_HEADER = 'x-lilachat-update';
+
+let currentUpdate = '';
+/** Set once at start (`index.ts`), like the build: `null` means the code of the APK itself. */
+export function setAppUpdateId(updateId: string | null): void {
+  currentUpdate = updateId ?? 'embedded';
+}
+
+export function buildHeader(build: number = currentBuild, update: string = currentUpdate): Record<string, string> {
+  return {
+    ...(build > 0 ? { [BUILD_HEADER]: String(build) } : {}),
+    ...(update ? { [UPDATE_HEADER]: update } : {}),
+  };
 }
 
 const listeners = new Set<() => void>();

@@ -17,6 +17,16 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.171',
+    // Everyone: the app now updates its own code in silence.
+    audience: 'all',
+    items: [
+      'Las mejoras pequeñas llegan solas: se descargan en silencio y se aplican cuando vuelves a abrir la app después de un rato, sin instalar nada.',
+      'Ajustes → Diagnóstico dice qué código está corriendo en tu teléfono.',
+      'Si una app tarda unos segundos en contestar un formulario, el resultado aparece igual, sin quedarse en «Enviando…».',
+    ],
+  },
+  {
     version: '0.1.170',
     // Everyone: the person card works in personal chats and in spaces.
     audience: 'all',

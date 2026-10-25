@@ -10,9 +10,11 @@ import { BASE_URL } from '../api/client';
 type Llamadas = {
   /** Llamar desde un chat: ese chat, con ese nombre, con o sin video. */
   llamar: (chatId: string, nombre: string, conVideo: boolean) => void;
+  /** There is a call on screen (ringing, dialing, active or ending): the app must not reload under it. */
+  hayLlamada: boolean;
 };
 
-const LlamadasContext = createContext<Llamadas>({ llamar: () => undefined });
+const LlamadasContext = createContext<Llamadas>({ llamar: () => undefined, hayLlamada: false });
 
 /** Cuánto se ve «Llamada terminada» antes de cerrarse sola. */
 const CIERRE_AL_TERMINAR_MS = 1_500;
@@ -57,9 +59,10 @@ export function ProveedorDeLlamadas({ jwt, children }: { jwt: string; children: 
     const temporizador = setTimeout(cerrar, CIERRE_AL_TERMINAR_MS);
     return () => clearTimeout(temporizador);
   }, [terminada, cerrar]);
+  const hayLlamada = llamada.state !== null;
   const valor = useMemo<Llamadas>(
-    () => ({ llamar: (chatId, nombre, conVideo) => void llamarConHook(chatId, nombre, conVideo) }),
-    [llamarConHook]
+    () => ({ llamar: (chatId, nombre, conVideo) => void llamarConHook(chatId, nombre, conVideo), hayLlamada }),
+    [llamarConHook, hayLlamada]
   );
 
   return (

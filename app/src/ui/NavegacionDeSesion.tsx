@@ -26,6 +26,7 @@ import { ConMargenesLaterales, SinMargenArriba } from './PanelDeChat';
 import type { Tab } from './BottomNav';
 import { ReminderAlarmHost } from '../agenda/ReminderAlarmHost';
 import { WhatsNewHost } from '../settings/WhatsNewHost';
+import { SilentUpdateHost } from '../updates/SilentUpdateHost';
 
 type RutasDeSesion = {
   Inicio: undefined;
@@ -147,6 +148,7 @@ export function NavegacionDeSesion(props: {
     {/* Pending 63: a reminder that rang full screen, over any screen. */}
     <ReminderAlarmHost jwt={props.credential.jwt} />
     <WhatsNewHost />
+    <SilentUpdateHost />
     <NavigationContainer ref={navegacion} theme={tema} onStateChange={alCambiar}>
       <Stack.Navigator
         screenOptions={{

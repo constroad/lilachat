@@ -44,7 +44,10 @@ data class MensajeRecibido(
   val image: String = "",
   /** The author's and the group's photos (pending 68); empty without one. */
   val photo: String = "",
-  val chatPhoto: String = ""
+  val chatPhoto: String = "",
+  /** The space of the chat and the thread the message belongs to (agentes 25/10/2026); empty when the push has none. */
+  val workspaceId: String = "",
+  val hiloDe: String = ""
 ) {
   companion object {
     fun desdePush(data: Map<String, String>): MensajeRecibido? {
@@ -61,7 +64,9 @@ data class MensajeRecibido(
         respuesta = data["respuesta"]?.takeIf { it.isNotBlank() },
         image = data["imagen"] ?: "",
         photo = data["foto"] ?: "",
-        chatPhoto = data["fotoChat"] ?: ""
+        chatPhoto = data["fotoChat"] ?: "",
+        workspaceId = data["workspaceId"] ?: "",
+        hiloDe = data["hiloDe"] ?: ""
       )
     }
   }
@@ -80,6 +85,9 @@ object AvisoDeMensaje {
   /** El MISMO canal que crea la app (`CANAL_MENSAJES`): si no existe aún, igual. */
   const val CANAL = "mensajes-v2"
   const val EXTRA_CHAT_MENSAJE = "lilachat.mensaje.chatId"
+  const val EXTRA_SEQ = "lilachat.mensaje.seq"
+  const val EXTRA_HILO = "lilachat.mensaje.hiloDe"
+  const val EXTRA_ESPACIO = "lilachat.mensaje.workspaceId"
   const val EXTRA_RESPUESTA = "lilachat.mensaje.respuesta"
   const val ACCION_RESPONDER = "lilachat.mensaje.RESPONDER"
   const val ACCION_LEIDO = "lilachat.mensaje.LEIDO"
@@ -168,7 +176,7 @@ object AvisoDeMensaje {
       .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
       .setAutoCancel(true)
       .setNumber(lineas.size)
-      .setContentIntent(abrirChat(contexto, mensaje.chatId))
+      .setContentIntent(abrirChat(contexto, mensaje.chatId, destinoDe(mensaje)))
       .setGroup(GROUP)
       // «Responder» y «Marcar como leído», como WhatsApp (FL11). Sin token
       // (server viejo o chat secreto) no se ofrecen.
@@ -333,9 +341,24 @@ object AvisoDeMensaje {
     }
   }
 
-  private fun abrirChat(contexto: Context, chatId: String): PendingIntent {
+  /** The newest message's destination: tapping a chat's notice jumps to it (UPDATE_CURRENT keeps the latest). */
+  private fun destinoDe(mensaje: MensajeRecibido) = DestinoDeAviso(
+    chatId = mensaje.chatId,
+    seq = if (mensaje.seq > 0) mensaje.seq.toString() else "",
+    hiloDe = mensaje.hiloDe,
+    workspaceId = mensaje.workspaceId
+  )
+
+  private fun abrirChat(contexto: Context, chatId: String, destino: DestinoDeAviso? = null): PendingIntent {
     val intent = (contexto.packageManager.getLaunchIntentForPackage(contexto.packageName) ?: Intent())
       .putExtra(EXTRA_CHAT_MENSAJE, chatId)
+      .apply {
+        if (destino != null) {
+          putExtra(EXTRA_SEQ, destino.seq)
+          putExtra(EXTRA_HILO, destino.hiloDe)
+          putExtra(EXTRA_ESPACIO, destino.workspaceId)
+        }
+      }
       .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
     return PendingIntent.getActivity(
       contexto,

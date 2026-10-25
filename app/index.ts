@@ -6,7 +6,8 @@ import {
   instalarEnvioAutomatico,
 } from './src/diagnostico/diagnostico';
 
-import { setAppBuild } from './src/api/appBuild';
+import * as Updates from 'expo-updates';
+import { setAppBuild, setAppUpdateId } from './src/api/appBuild';
 import { versionCodeActual } from './src/settings/versionApi';
 import App from './App';
 
@@ -20,6 +21,8 @@ instalarDetectorDeTrabas();
 instalarEnvioAutomatico();
 // Every request says its build: below LilaStore's minimum the server answers 426 (backlog 32).
 setAppBuild(versionCodeActual());
+// ...and which OTA update runs (`embedded` = the code inside the APK): a report tells the code from the installed build.
+setAppUpdateId(Updates.updateId);
 
 // El panel de emojis (`rn-emoji-keyboard`) usa `InteractionManager`, que RN
 // deprecó: funciona igual y el aviso solo tapa la barra de escribir en desarrollo.

@@ -111,31 +111,51 @@ object Http {
   }
 }
 
+/**
+ * Where a tapped MESSAGE notice leads (agentes 25/10/2026): the chat, plus the
+ * message, its thread and its space when the push said so. Strings, empty when
+ * missing: JS validates them (`destinoDeAviso`), never this layer.
+ */
+data class DestinoDeAviso(
+  val chatId: String,
+  val seq: String = "",
+  val hiloDe: String = "",
+  val workspaceId: String = ""
+) {
+  fun extras(): Map<String, String> = mapOf("seq" to seq, "hiloDe" to hiloDe, "workspaceId" to workspaceId)
+  fun asMap(): Map<String, String> = mapOf("chatId" to chatId) + extras()
+}
+
 /** Lo que se tocó en la notificación, de la parte nativa a JS. */
 object Puente {
   private const val VIGENCIA_MS = 40_000L
 
-  @Volatile var oyente: ((String, String) -> Unit)? = null
+  /** (chatId, accion, extras): the extras are empty unless a message notice carried a destination. */
+  @Volatile var oyente: ((String, String, Map<String, String>) -> Unit)? = null
   @Volatile private var pendiente: Triple<String, String, Long>? = null
 
   /** Se guarda SIEMPRE: JS puede no estar escuchando todavía (arranque en frío). */
   fun emitir(chatId: String, accion: String) {
     pendiente = Triple(chatId, accion, System.currentTimeMillis())
-    oyente?.invoke(chatId, accion)
+    oyente?.invoke(chatId, accion, emptyMap())
   }
 
   /**
    * Un aviso de MENSAJE tocado: va en su propio lugar. La llamada se lleva su
    * pendiente al arrancar; si compartieran, el chat a abrir se perdería ahí.
    */
-  @Volatile private var chatPendiente: Pair<String, Long>? = null
+  @Volatile private var chatPendiente: Pair<DestinoDeAviso, Long>? = null
 
-  fun emitirChat(chatId: String) {
-    chatPendiente = Pair(chatId, System.currentTimeMillis())
-    oyente?.invoke(chatId, "chat")
+  fun emitirChat(destino: DestinoDeAviso) {
+    chatPendiente = Pair(destino, System.currentTimeMillis())
+    oyente?.invoke(destino.chatId, "chat", destino.extras())
   }
 
-  fun tomarChatPendiente(): String? {
+  /** The chat alone: what JS builds before the destination existed read. */
+  fun tomarChatPendiente(): String? = tomarAvisoPendiente()?.chatId
+
+  /** The tapped notice's whole destination (space, thread, message); taken once. */
+  fun tomarAvisoPendiente(): DestinoDeAviso? {
     val actual = chatPendiente ?: return null
     chatPendiente = null
     return if (System.currentTimeMillis() - actual.second <= VIGENCIA_MS) actual.first else null
@@ -146,7 +166,7 @@ object Puente {
 
   fun emitReminder(alarm: ReminderAlarmData) {
     reminderPending = Pair(alarm, System.currentTimeMillis())
-    oyente?.invoke(alarm.id, "recordatorio")
+    oyente?.invoke(alarm.id, "recordatorio", emptyMap())
   }
 
   fun takeReminder(): ReminderAlarmData? {

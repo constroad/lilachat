@@ -36,6 +36,11 @@ function notify(): void {
   for (const listener of listeners) listener(queue);
 }
 
+/** Messages still waiting to leave: an OTA reload must not happen while any is pending. */
+export function pendingOutboxCount(): number {
+  return queue.length;
+}
+
 export function subscribeOutbox(listener: (items: OutboxItem[]) => void): () => void {
   listeners.add(listener);
   listener(queue);

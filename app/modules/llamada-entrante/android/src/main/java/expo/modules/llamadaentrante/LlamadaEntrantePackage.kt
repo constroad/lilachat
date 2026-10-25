@@ -49,9 +49,16 @@ class OyenteDeActividad : ReactActivityLifecycleListener {
     }
     // Un aviso de MENSAJE: abre ese chat, sin nada de bloqueo (FL8.2).
     intent?.getStringExtra(AvisoDeMensaje.EXTRA_CHAT_MENSAJE)?.let { chatId ->
-      intent.removeExtra(AvisoDeMensaje.EXTRA_CHAT_MENSAJE)
+      val destino = DestinoDeAviso(
+        chatId = chatId,
+        seq = intent.getStringExtra(AvisoDeMensaje.EXTRA_SEQ) ?: "",
+        hiloDe = intent.getStringExtra(AvisoDeMensaje.EXTRA_HILO) ?: "",
+        workspaceId = intent.getStringExtra(AvisoDeMensaje.EXTRA_ESPACIO) ?: ""
+      )
+      // So that a recreation (rotating the screen) does not attend it again.
+      listOf(AvisoDeMensaje.EXTRA_CHAT_MENSAJE, AvisoDeMensaje.EXTRA_SEQ, AvisoDeMensaje.EXTRA_HILO, AvisoDeMensaje.EXTRA_ESPACIO).forEach { intent.removeExtra(it) }
       AvisoDeMensaje.limpiar(activity, chatId)
-      Puente.emitirChat(chatId)
+      Puente.emitirChat(destino)
       return
     }
     val chatId = intent?.getStringExtra(AvisoDeLlamada.EXTRA_CHAT) ?: return

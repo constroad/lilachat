@@ -11,7 +11,20 @@ import { requireOptionalNativeModule } from 'expo';
  * `chat`: se tocó el aviso de un MENSAJE (FL8.2). `colgar`: el botón de la
  * notificación «Llamada en curso» (FL11). Lo demás es de la llamada entrante.
  */
-export type AccionDeAviso = { chatId: string; accion: 'abrir' | 'contestar' | 'rechazar' | 'chat' | 'colgar' };
+export type AccionDeAviso = {
+  chatId: string;
+  accion: 'abrir' | 'contestar' | 'rechazar' | 'chat' | 'colgar';
+  /**
+   * Only on `chat` (agentes 25/10/2026): the message, its thread and its space, as the push
+   * said them. Strings, empty when missing; builds before this one send none. They are
+   * UNTRUSTED text from the notice: `destinoDeAviso` validates them.
+   */
+  seq?: string;
+  hiloDe?: string;
+  workspaceId?: string;
+};
+/** A tapped message notice: where it leads, still as text. */
+export type AvisoTocado = { chatId: string; seq: string; hiloDe: string; workspaceId: string };
 /** What a notice tap tells JS, now with a reminder's full screen (pending 63). */
 export type NoticeAction = AccionDeAviso | { chatId: string; accion: 'recordatorio' };
 /** A reminder that rang full screen (pending 63). */
@@ -30,6 +43,7 @@ type LlamadaNativa = {
   reminderPending?(): ReminderAlarm | null;
   snoozeReminder?(alarm: ReminderAlarm): void;
   chatPendiente(): string | null;
+  avisoPendiente?(): AvisoTocado | null;
   limpiarChat(chatId: string): void;
   playInAppAlert?(): void;
   puedePantallaCompleta(): boolean;
@@ -68,6 +82,13 @@ export const llamadaNativa = {
   canRingReminders: (): boolean => typeof nativo?.reminderPending === 'function',
   /** El chat del aviso de mensaje con el que se abrió la app (FL8.2). */
   chatPendiente: (): string | null => seguro(() => nativo?.chatPendiente() ?? null, null),
+  /** The same tap with its destination (space, thread, message); builds before it give only the chat. */
+  avisoPendiente: (): AvisoTocado | null =>
+    seguro(() => {
+      if (typeof nativo?.avisoPendiente === 'function') return nativo.avisoPendiente();
+      const chatId = nativo?.chatPendiente() ?? null;
+      return chatId ? { chatId, seq: '', hiloDe: '', workspaceId: '' } : null;
+    }, null),
   /** Al abrir un chat: se va su aviso nativo. */
   limpiarChat: (chatId: string): void => seguro(() => nativo?.limpiarChat(chatId), undefined),
   /** Whether this build plays the in-app alert itself (older ones post a notice instead). */

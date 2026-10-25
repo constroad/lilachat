@@ -26,6 +26,9 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 
+# The OTA bundle `scripts/ota-publish.mts` exports before publishing it.
+dist-ota/
+
 # macOS
 .DS_Store
 *.pem

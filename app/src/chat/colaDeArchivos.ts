@@ -45,6 +45,11 @@ export function suscribirArchivos(oyente: () => void): () => void {
   return () => oyentes.delete(oyente);
 }
 
+/** Photos, files and voice notes still waiting to upload: an OTA reload must not happen while any is pending. */
+export function pendingFilesCount(): number {
+  return cola.length;
+}
+
 /** Lo encolado de un chat, con el progreso del que sube. */
 export function archivosDelChat(chatId: string): { archivo: ArchivoEnCola; progreso?: number }[] {
   return cola

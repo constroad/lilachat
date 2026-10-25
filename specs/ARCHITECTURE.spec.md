@@ -4949,10 +4949,12 @@ tres primeros fallaban antes del cambio.
 vivo): se envió otra salida de «Prueba Refrigerio», que el Portal rechaza («no
 tiene un turno abierto»); el rechazo apareció en el formulario unos 5 s después de
 que la app mostrara «Enviando…» (la foto del emulador tardó ~16 s en subir), sin
-«Enviando…» colgado ni «No se pudo confirmar». **No
-verificado en producción:** la rama de éxito tardío (haría falta firmar otro
-trabajador y dejaría un registro más en el Portal de pruebas; la cubren los
-tests).
+«Enviando…» colgado ni «No se pudo confirmar». **Éxito tardío en producción** (a petición de agentes, mismo día): un ingreso de
+«Prueba Refrigerio» enviado a las 16:50:30 UTC; la app mostró «Enviando…» a las
+16:50:42 (subida de la foto) y «ingreso registrada a las 11:50» a las 16:50:47, unos
+5 s después, con la hoja cerrada por sí sola y sin «No se pudo confirmar» (resolución
+del observador ±3 s). Portal lo aceptó como un turno nuevo del día. Esa ejecución
+dejó un ingreso abierto más en el Portal de pruebas, que limpia agentes.
 
 **Hallazgos de la prueba, ajenos al cambio.** Escribir texto con `adb shell input
 text` con dos «r» seguidas dispara el atajo de recarga doble-R del build de

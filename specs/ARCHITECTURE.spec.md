@@ -4909,6 +4909,56 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 136. La respuesta tardía de un formulario viaja en la misma llamada (25/10/2026, solo servidor)
+
+Pedido de agentes tras la prueba «Prueba Refrigerio» en «Test» (paso 6): la app
+mostró «Enviando…» más de 100 s y después «No se pudo confirmar "Registrar
+asistencia": revisa antes de volver a enviarlo.», pero la salida SÍ se había
+registrado (la tarjeta de #planta decía «salida 11:19»). Los pasos 1, 3 y 5, con
+la misma ruta, confirmaron en 12 a 17 s.
+
+**Qué se comprobó.** Con los logs de agentes (UTC, 25/10): `form.submitted` recibido
+a las 16:19:21.304; la respuesta tardía entregada a Lilachat a las 16:19:22.698,
+1,4 s después, ANTES de que saliera el acuse del webhook (contestó «después» a los
+1503 ms). En la base de producción, la corrida `6ade2bd14af7324805314fdd` quedó con
+`responses: 2` y `answer`: el servidor aceptó esa respuesta. Con los reductores de
+`shared/src/botCommands.ts` en las dos órdenes posibles: aviso del socket y luego
+«pendiente» termina en «respondida»; sin aviso, termina en `form` + `waiting` y a
+los 30 s `giveUpWaiting` escribe exactamente «No se pudo confirmar…», que es lo
+que se vio. **Lo que no se pudo determinar:** por qué el aviso por socket
+(`command.response`) no se aplicó en la app en ese momento (no hay logs del
+cliente ni del socket de esa hora). La respuesta tardía solo viajaba por ese
+aviso, que no se reenvía a quien no lo recibió.
+
+**Cambio (`288df28`).** `submitForm` abre una espera ANTES de llamar a la app
+(`server/src/bots/lateAnswers.ts`, `expectLateAnswer`) y, si la app solo acusa
+recibo, espera hasta 8 s esa respuesta (o sus errores) y la devuelve en la propia
+respuesta del envío; `respondToCommand` y `respondWithErrors` la entregan con
+`settleLateAnswer`. Una respuesta que llega antes que el acuse también cuenta
+(caso del paso 6). Pasados los 8 s todo sigue como antes (`pending` y aviso por
+socket). El aviso por socket se sigue emitiendo. Es un solo proceso: la espera es
+en memoria. Contrato para las apps sin cambios, anotado en `specs/BOTS-API.spec.md`
+(§ formularios). Sin versión nueva de la app.
+
+**Tests** (`server/src/bots/botForms.test.ts`, 4 nuevos): `/respond` ANTES del
+acuse; `/respond` unos ms después del acuse; rechazo tardío con errores (422);
+respuesta más lenta que la espera (queda `pending` y llega por el socket). Los
+tres primeros fallaban antes del cambio.
+
+**E2E en producción** (emulador, «Test», 16:43 UTC, con el deploy de `288df28` en
+vivo): se envió otra salida de «Prueba Refrigerio», que el Portal rechaza («no
+tiene un turno abierto»); el rechazo apareció en el formulario unos 5 s después de
+que la app mostrara «Enviando…» (la foto del emulador tardó ~16 s en subir), sin
+«Enviando…» colgado ni «No se pudo confirmar». **No
+verificado en producción:** la rama de éxito tardío (haría falta firmar otro
+trabajador y dejaría un registro más en el Portal de pruebas; la cubren los
+tests).
+
+**Hallazgos de la prueba, ajenos al cambio.** Escribir texto con `adb shell input
+text` con dos «r» seguidas dispara el atajo de recarga doble-R del build de
+desarrollo y recarga la app; la barra «Open debugger to view warnings» del mismo
+build tapa el botón de enviar. Ninguna existe en el APK de release.
+
 ## 135. Sumar a un canal exige el espacio, y quién cambia los temas queda anotado (25/10/2026, solo servidor)
 
 Dos cambios del servidor pedidos por agentes el 25/10 tras la prueba de

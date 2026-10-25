@@ -54,7 +54,9 @@ ese cambio. Quién decide qué:
    muere con un `ReferenceError` (`respuesta.status`, `src/publish.mjs:305` de 0.9.0) y tapa
    el motivo. Está arreglado en la copia local 0.10.0 (`/Users/josezamora/projects/lila-cli/src/publish.mjs`).
    Entre 0.9.0 y 0.10.0 solo difieren `args.mjs`, `publish.mjs` y un archivo nuevo
-   (`capturas.mjs`); `build.mjs` es el mismo. Publicar 0.10.0 en npm y subir el pin es
+   (`capturas.mjs`, el comando `app screenshots`); `build.mjs` es el mismo. El arreglo
+   está en el repo de la CLI (commit `5fbcddb`, «v0.9.1»), que tampoco se publicó en npm:
+   el registro termina en 0.9.0 (`npm view @constroad/lila-cli versions`). Publicar 0.10.0 en npm y subir el pin es
    decisión de José. Mientras tanto, un `ReferenceError` en `apk publish` significa
    «el server rechazó»: mira §5.
 4. **No pasar el texto de las notas a `--notes`**: es la RUTA de un archivo, pegada con `=`

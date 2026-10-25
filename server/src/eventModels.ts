@@ -52,6 +52,12 @@ export interface Reminder {
   repeat?: RepeatRule;
   active: boolean;
   remindedAt?: Date | null;
+  /** Where it happens (José 25/10): an address, coordinates or a map link; the alert opens it in Maps or Waze. */
+  location?: string;
+  /** Minutes before `startsAt` that it also rings (José 25/10), the longest first (`parseAdvance`). */
+  advance?: number[];
+  /** The advances that already rang for the current `startsAt`; re-armed when it moves or the reminder repeats. */
+  advanceSent?: number[];
   /**
    * «Recordarme devolverla» on a missed call (backlog 23, José 21/10): a PERSONAL
    * reminder (no `chatId`, the other person does not see it) that, when it
@@ -118,6 +124,9 @@ const reminderSchema = new Schema<Reminder>(
     repeat: { type: { every: Number, weekdays: { type: [Number], default: undefined }, monthDay: { type: String, enum: ['same', 'last'] }, day: Number }, _id: false, default: undefined },
     active: { type: Boolean, default: true },
     remindedAt: { type: Date, default: null },
+    location: { type: String, trim: true },
+    advance: { type: [Number], default: undefined },
+    advanceSent: { type: [Number], default: undefined },
     callBack: { type: { chatId: { type: Schema.Types.ObjectId, ref: 'Chat', required: true }, video: { type: Boolean, default: false } }, _id: false, default: undefined },
   },
   { timestamps: true }

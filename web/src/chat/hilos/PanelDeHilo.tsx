@@ -1,6 +1,7 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Check, ClipboardCheck, SendHorizontal, Smile, X } from 'lucide-react';
 import { formatClock } from '@lilachat/shared';
+import type { MencionElegida, MencionEnMensaje } from '@lilachat/shared';
 import { ConversacionContext, useConversacion, type ContextoDeLaConversacion } from '../contextoDeLaConversacion';
 import type { StickerChat } from '../stickers/EmojiStickerPanel';
 import { Avatar } from '../../ui/Avatar';
@@ -8,6 +9,8 @@ import { BurbujaDeMensaje } from '../BurbujaDeMensaje';
 import { TextoDelMensaje } from '../TextoDelMensaje';
 import { CreateChecklistOverlay } from '../../agenda/CreateChecklistOverlay';
 import type { ChatSummary, MensajeEnPantalla } from '../types';
+import { SugerenciasDeMencion, type Mencionable } from '../SugerenciasDeMencion';
+import { useMencionesDelCampo } from '../useMencionesDelCampo';
 
 const EmojiStickerPanel = lazy(() => import('../stickers/EmojiStickerPanel'));
 
@@ -27,7 +30,13 @@ export function PanelDeHilo(props: {
   yo: string;
   nombres: ReadonlyMap<string, string>;
   photos?: ReadonlyMap<string, string>;
-  onEnviar: (texto: string, enElChat: boolean) => void;
+  onEnviar: (texto: string, enElChat: boolean, menciones?: MencionEnMensaje[]) => void;
+  /** Who `@` offers in the reply field (José 25/10: tagging did not work in threads). */
+  mencionables?: Mencionable[];
+  /** Mentioned people who are not in the channel, once the reply left: the screen offers to add them. */
+  onOutsideMentions?: (people: MencionElegida[]) => void;
+  /** The offer to add them, over the field. */
+  avisoDeMencion?: ReactNode;
   onReintentar: (clientKey: string) => void;
   onDescartar: (clientKey: string) => void;
   /** Edit an own reply here (José, 20/10: «in a thread I can't edit my message»). */
@@ -46,6 +55,17 @@ export function PanelDeHilo(props: {
   const [creatingChecklist, setCreatingChecklist] = useState(false);
   const fin = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
+  const menciones = useMencionesDelCampo(props.mencionables);
+  const chooseMention = (uno: Mencionable) => {
+    const completado = menciones.elegir(texto, uno);
+    if (!completado) return;
+    setTexto(completado.texto);
+    if (!editing) borradores.set(clave, completado.texto);
+    requestAnimationFrame(() => {
+      input.current?.focus();
+      input.current?.setSelectionRange(completado.cursor, completado.cursor);
+    });
+  };
   // The bubbles here: «Editar» edits in THIS input, and they do not repeat «Respondió en un hilo».
   const parent = useConversacion();
   const threadContext = useMemo<ContextoDeLaConversacion>(
@@ -63,6 +83,7 @@ export function PanelDeHilo(props: {
     [parent]
   );
   useEffect(() => {
+    menciones.limpiar();
     setTexto(borradores.get(clave) ?? '');
     setEnElChat(false);
     setEditing(null);
@@ -91,7 +112,11 @@ export function PanelDeHilo(props: {
     if (editing) return void saveEdit(editing);
     const limpio = texto.trim();
     if (!limpio) return;
-    props.onEnviar(limpio, enElChat);
+    const rangos = menciones.mencionesDe(limpio);
+    const outside = menciones.outside(limpio);
+    menciones.limpiar();
+    props.onEnviar(limpio, enElChat, rangos.length ? rangos : undefined);
+    if (outside.length > 0) props.onOutsideMentions?.(outside);
     setTexto('');
     // Como en Slack: «También enviar al chat» vale para una respuesta, no para las que siguen.
     setEnElChat(false);
@@ -155,6 +180,7 @@ export function PanelDeHilo(props: {
         {creatingChecklist ? <CreateChecklistOverlay jwt={parent.jwt} chatId={props.chat.id} threadOf={props.raiz.seq} onClose={() => setCreatingChecklist(false)} /> : null}
       </div>
       <footer className="relative border-t border-outline/15 bg-surface px-3 pb-3 pt-2">
+        {props.avisoDeMencion}
         {picking ? (
           <div data-testid="selector-hilo" className="absolute bottom-full left-2 right-2 mb-2">
             <Suspense fallback={<div className="h-[360px] animate-pulse rounded-lg bg-background" />}>
@@ -180,6 +206,8 @@ export function PanelDeHilo(props: {
           <button type="button" data-testid="btn-emojis-hilo" aria-label="Emojis y stickers" aria-expanded={picking} onClick={() => setPicking((before) => !before)} className="grid h-11 w-10 shrink-0 place-items-center rounded-xl text-on-surface-variant hover:bg-background">
             <Smile size={20} />
           </button>
+          <div className="relative min-w-0 flex-1">
+          <SugerenciasDeMencion opciones={editing ? [] : menciones.opciones} activa={menciones.activa} onElegir={chooseMention} />
           <textarea
             ref={input}
             data-testid="input-hilo"
@@ -187,18 +215,21 @@ export function PanelDeHilo(props: {
             rows={1}
             onChange={(evento) => {
               setTexto(evento.target.value);
+              menciones.alCambiar(evento.target.value, evento.target.selectionStart ?? evento.target.value.length);
               // While editing, the draft of a new reply is kept as it was (it comes back after saving).
               if (!editing) borradores.set(clave, evento.target.value);
             }}
             onKeyDown={(evento) => {
+              if (!editing && menciones.alTeclear(evento, chooseMention)) return;
               if (evento.key === 'Enter' && !evento.shiftKey) {
                 evento.preventDefault();
                 enviar();
               }
             }}
             placeholder="Responder en el hilo…"
-            className="max-h-32 min-h-[44px] flex-1 resize-none rounded-xl border border-outline/25 bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+            className="block max-h-32 min-h-[44px] w-full resize-none rounded-xl border border-outline/25 bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
           />
+          </div>
           <button type="button" data-testid="btn-enviar-hilo" aria-label={editing ? 'Guardar la edición' : 'Enviar al hilo'} onClick={enviar} className="grid h-11 w-11 place-items-center rounded-xl bg-primary text-on-primary">
             {editing ? <Check size={18} /> : <SendHorizontal size={18} />}
           </button>

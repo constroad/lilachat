@@ -9,6 +9,8 @@ import {
   scheduledCallText,
   textoDeEventoEnElChat,
   textoDeRecordatorioEnElChat,
+  MAX_LOCATION_LENGTH,
+  parseAdvance,
   parseRepeatRule,
   validatePoll,
   type Recurrence,
@@ -354,6 +356,9 @@ export function buildEventRouter(): Router {
     if (Number.isNaN(startsAt.getTime())) return res.status(400).json({ message: 'Elige cuándo.' });
 
     const note = typeof req.body?.note === 'string' ? req.body.note.trim() : undefined;
+    const location = typeof req.body?.location === 'string' ? req.body.location.trim() : '';
+    if (location.length > MAX_LOCATION_LENGTH) return res.status(400).json({ message: 'La ubicación es muy larga.' });
+    const advance = parseAdvance(req.body?.advance);
     const recurrence = String(req.body?.recurrence ?? 'once') as Recurrence;
     let chatId: Types.ObjectId | undefined;
     if (req.body?.chatId) {
@@ -382,6 +387,8 @@ export function buildEventRouter(): Router {
       title,
       note,
       startsAt,
+      ...(location ? { location } : {}),
+      ...(advance.length > 0 ? { advance } : {}),
       recurrence: ['once', 'daily', 'weekly', 'monthly'].includes(recurrence) ? recurrence : 'once',
       // Pending 65: which weekdays, the month's last day or its day, every N.
       ...repeatFor(recurrence, req.body?.repeat, startsAt),
@@ -404,7 +411,7 @@ export function buildEventRouter(): Router {
       { _id: permiso.recordatorio!._id },
       // Reactivar limpia el sello: si no, uno que ya sonó quedaba con el
       // interruptor prendido y sin volver a sonar nunca.
-      req.body?.active !== false ? { $set: { active: true, remindedAt: null } } : { $set: { active: false } }
+      req.body?.active !== false ? { $set: { active: true, remindedAt: null, advanceSent: [] } } : { $set: { active: false } }
     );
     res.json({ ok: true });
     void avisarCambioDeTarjeta({ chatId: permiso.recordatorio!.chatId, tipo: 'recordatorio', id: permiso.recordatorio!._id });

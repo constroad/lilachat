@@ -30,3 +30,21 @@ describe('group mentions in the suggestions', () => {
     expect(filtrarMencionables(options, 'to').map((option) => option.id)).toEqual(['todos', 'ana', 'beto']);
   });
 });
+
+/** José 25/10: «puse @ y ni me salieron todos los miembros del canal». */
+describe('a whole space in the list', () => {
+  const people = Array.from({ length: 30 }, (_, index) => ({ id: `u${index}`, nombre: `Persona ${String(index).padStart(2, '0')}` }));
+
+  it('«@» alone lists everyone, not just the first few', () => {
+    expect(filtrarMencionables(people, '')).toHaveLength(30);
+  });
+
+  it('whoever is in the chat comes before whoever is only in the space', () => {
+    const mixed = [
+      { id: 'out', nombre: 'Ana Fuera', outsideChat: true },
+      { id: 'in', nombre: 'Mariana Dentro' },
+      { id: 'in2', nombre: 'Anabel Dentro' },
+    ];
+    expect(filtrarMencionables(mixed, 'an').map((one) => one.id)).toEqual(['in2', 'in', 'out']);
+  });
+});

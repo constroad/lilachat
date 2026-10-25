@@ -1,5 +1,6 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { insertarEnTexto, type MencionEnMensaje } from '@lilachat/shared';
+import type { MencionElegida } from '@lilachat/shared';
 import { formKeyOf } from '@lilachat/shared';
 import type { WinkId } from '@lilachat/shared';
 
@@ -45,6 +46,8 @@ export function Composer({
   contexto,
   onCancelarContexto,
   mencionables,
+  onOutsideMentions,
+  avisoDeMencion,
   jwtParaEnlaces,
   onNotaDeVoz,
   onEscribiendo,
@@ -59,6 +62,10 @@ export function Composer({
   onCancelarContexto?: () => void;
   /** En grupos (W2): a quién se puede @mencionar. */
   mencionables?: Mencionable[];
+  /** Mentioned people who are not in the chat, once the message left: the screen offers to add them. */
+  onOutsideMentions?: (people: MencionElegida[]) => void;
+  /** The offer to add them, over the field. */
+  avisoDeMencion?: ReactNode;
   /** Para la tarjeta del enlace al escribir; sin él (chat secreto), no se pide. */
   jwtParaEnlaces?: string;
   /** Con esto, el campo vacío ofrece el micrófono (W2). */
@@ -170,8 +177,12 @@ export function Composer({
     if (!value) return;
     setText('');
     const rangos = menciones.mencionesDe(value);
+    const outside = menciones.outside(value);
     menciones.limpiar();
-    const sendAsText = () => onSend(value, rangos.length ? rangos : undefined);
+    const sendAsText = () => {
+      onSend(value, rangos.length ? rangos : undefined);
+      if (outside.length > 0) onOutsideMentions?.(outside);
+    };
     if (!commands) return sendAsText();
     void commands.runIfCommand(value).then((outcome) => {
       if (outcome === 'not-command') sendAsText();
@@ -181,6 +192,7 @@ export function Composer({
 
   return (
     <div className="border-t border-outline/15 bg-surface px-4 py-3">
+      {avisoDeMencion}
       {contexto ? <FranjaDeContexto contexto={contexto} onCancelar={cancelarContexto} /> : null}
       {commands ? <EphemeralAnswers answers={commands.answers} onDismiss={commands.dismiss} onShare={commands.share} onOpenForm={commands.appAnswers.showForm} chatId={commands.chatId} jwt={commands.jwt} /> : null}
       {commands?.appAnswers.openForm ? (

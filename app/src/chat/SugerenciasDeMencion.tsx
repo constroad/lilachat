@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Megaphone, Zap } from 'lucide-react-native';
 import { MENTION_HERE } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
@@ -7,6 +7,9 @@ import type { MentionSuggestion } from './useMenciones';
 
 /** El avatar de cada sugerencia (dp). */
 const AVATAR_DE_SUGERENCIA = 32;
+/** Rows visible before the list scrolls: four and a half tell the person there is more below. */
+const VISIBLE_ROWS = 4.5;
+const ROW_HEIGHT = 48;
 
 /**
  * La lista de miembros que aparece arriba de la barra al escribir «@» en un
@@ -16,7 +19,7 @@ export function SugerenciasDeMencion(props: { sugerencias: readonly MentionSugge
   const palette = useColores();
   if (props.sugerencias.length === 0) return null;
   return (
-    <View testID="sugerencias-mencion" className="border-t border-outline/10 bg-surface py-1">
+    <ScrollView testID="sugerencias-mencion" keyboardShouldPersistTaps="always" className="border-t border-outline/10 bg-surface py-1" style={{ maxHeight: VISIBLE_ROWS * ROW_HEIGHT }}>
       {props.sugerencias.map((miembro) => (
         <Pressable
           key={miembro.id}
@@ -36,14 +39,14 @@ export function SugerenciasDeMencion(props: { sugerencias: readonly MentionSugge
             <Text className={`text-[15px] font-semibold ${miembro.hint ? 'text-primary' : 'text-on-surface'}`} numberOfLines={1}>
               {miembro.hint ? `@${miembro.nombre}` : miembro.nombre}
             </Text>
-            {miembro.hint ? (
+            {miembro.hint || miembro.outsideChat ? (
               <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>
-                {miembro.hint}
+                {miembro.hint ?? 'No está en este canal'}
               </Text>
             ) : null}
           </View>
         </Pressable>
       ))}
-    </View>
+    </ScrollView>
   );
 }

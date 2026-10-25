@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { agendaPorTelefono, suscribirAgenda } from '../contacts/agendaEnMemoria';
 import { getSocket } from './socketClient';
-import type { MiembroMencionable } from './useMenciones';
+import type { MentionableMember } from './useMenciones';
 import { fotosPorMiembro, membresiaPorRespuesta, nombresPorMiembro, type MiembroConNombre } from './nombresDelGrupo';
 import { pillOf } from './nombresDelGrupo';
 import type { MemberPill } from '@lilachat/shared';
@@ -31,7 +31,7 @@ export function useGrupo(
   nombres: Map<string, string>;
   fotos: Map<string, string>;
   soyMiembro: boolean | null;
-  mencionables: (yo: string) => MiembroMencionable[];
+  mencionables: (yo: string) => MentionableMember[];
   /** ¿Soy admin? Para lo que solo ellos crean (el recordatorio del grupo, 19/10). */
   soyAdmin: (yo: string) => boolean;
   /** Each member's pill: in a space, its job title and space role (design s-01). */

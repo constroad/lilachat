@@ -130,7 +130,7 @@ function FlatRow(props: {
             </View>
           )}
           {!isPending(item) && item.sharedBy && !deleted ? <Text testID={`compartido-por-${item.seq}`} className="text-[12px] text-on-surface-variant">{sharedByLine(item.sharedBy)}</Text> : null}
-          {props.quoted ? <CitaDeRespuesta citado={props.quoted} enBurbujaPropia={false} testID={`cita-${id}`} onPress={isPending(item) ? undefined : props.selecting ? () => props.onSelect?.(item.seq) : quoteAction(props.quoted, item.replyToSeq, props.onOpenThread, props.onGoToQuote)} /> : null}
+          {props.quoted ? <CitaDeRespuesta citado={props.quoted} enBurbujaPropia={false} compact testID={`cita-${id}`} onPress={isPending(item) ? undefined : props.selecting ? () => props.onSelect?.(item.seq) : quoteAction(props.quoted, item.replyToSeq, props.onOpenThread, props.onGoToQuote)} /> : null}
           {card ? (
             <View style={{ maxWidth: FLAT_CARD }}>
               <CardBody item={card} jwt={props.jwt!} yo={props.myUserId} everyName={props.everyName} selecting={props.selecting} onSelect={props.onSelect} />

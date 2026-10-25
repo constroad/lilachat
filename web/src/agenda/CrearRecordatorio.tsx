@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ImagePlus, Trash2 } from 'lucide-react';
-import { anchorRepeatRule, aQuienSuena, primerEnlace, crearRecordatorio, editarRecordatorio, opcionesRapidas, valorInicial, type AgendaReminder, type Recurrence, type RepeatRule } from '@lilachat/shared';
+import { anchorRepeatRule, aQuienSuena, DEFAULT_ADVANCE, MAX_LOCATION_LENGTH, primerEnlace, crearRecordatorio, editarRecordatorio, opcionesRapidas, valorInicial, type AgendaReminder, type Recurrence, type RepeatRule } from '@lilachat/shared';
+import { AdvanceFieldWeb } from './AdvanceFieldWeb';
 import { RepeatPickerWeb } from './RepeatPickerWeb';
 import { VistaPreviaAlEscribir } from '../chat/VistaPreviaAlEscribir';
 import { api } from '../api';
@@ -42,6 +43,9 @@ export function CrearRecordatorio({ jwt, chat, editando, onClose, onGuardado }: 
   const [repeat, setRepeat] = useState<RepeatRule | undefined>(editando?.repeat);
   // Once never repeats; an empty rule clears the stored one when editing.
   const repeatToSend = repetir === 'once' ? {} : (anchorRepeatRule(repetir, repeat, new Date(cuando)) ?? {});
+  // José 25/10: a new reminder starts with «15 min antes»; an edited one shows what it has.
+  const [avisos, setAvisos] = useState<number[]>(() => (editando ? (editando.advance ?? []) : [...DEFAULT_ADVANCE]));
+  const [ubicacion, setUbicacion] = useState(editando?.location ?? '');
   const [imagen, setImagen] = useState<File | null>(null);
   const [quitarImagen, setQuitarImagen] = useState(false);
   const [error, setError] = useState('');
@@ -55,7 +59,7 @@ export function CrearRecordatorio({ jwt, chat, editando, onClose, onGuardado }: 
     if (invalido) return setError(invalido);
     setGuardando(true);
     setError('');
-    const cuerpo = { title: titulo.trim(), note: nota.trim(), startsAt: fecha.toISOString(), recurrence: repetir };
+    const cuerpo = { title: titulo.trim(), note: nota.trim(), startsAt: fecha.toISOString(), recurrence: repetir, location: ubicacion.trim(), advance: avisos };
     const resultado = editando
       ? await editarRecordatorio(
           { imagen: imagen ? 'nueva' : quitarImagen ? 'quitar' : 'igual' },
@@ -137,6 +141,16 @@ export function CrearRecordatorio({ jwt, chat, editando, onClose, onGuardado }: 
           ))}
         </div>
       </fieldset>
+
+      <fieldset className="mt-4">
+        <legend className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Avisar antes</legend>
+        <AdvanceFieldWeb value={avisos} onChange={setAvisos} />
+      </fieldset>
+
+      <label className="mt-4 block">
+        <span className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Ubicación (opcional)</span>
+        <input data-testid="ubicacion-recordatorio" value={ubicacion} maxLength={MAX_LOCATION_LENGTH} onChange={(evento) => setUbicacion(evento.target.value)} placeholder="Dirección o enlace de Google Maps" className={`${CAMPO} h-11`} />
+      </label>
 
       <fieldset className="mt-4">
         <legend className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Repetir</legend>

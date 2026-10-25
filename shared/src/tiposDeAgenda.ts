@@ -44,6 +44,10 @@ export type AgendaReminder = {
   /** Weekdays, the month's last day, every N (pending 65). */
   repeat?: RepeatRule;
   active: boolean;
+  /** Where it happens (José 25/10): an address, coordinates or a map link. */
+  location?: string;
+  /** Minutes before the start that it also rings (José 25/10), the longest first. */
+  advance?: number[];
   /** Solo en los del grupo (19/10): el chat donde vive y su imagen. */
   chatId?: string;
   imageUrl?: string;

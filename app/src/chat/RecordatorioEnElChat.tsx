@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Bell } from 'lucide-react-native';
+import { Bell, MapPin } from 'lucide-react-native';
 import { agendaGet, type AgendaReminder } from '../agenda/agendaApi';
-import { whenItRings, primerEnlace } from '@lilachat/shared';
+import { advanceSummary, whenItRings, primerEnlace } from '@lilachat/shared';
+import { askMapsOrWaze } from '../agenda/openPlace';
 import { useColores } from '../ui/tema';
 import { useTarjetaViva } from './useTarjetaViva';
 import { useAccionesDeTarjeta } from './accionesDeTarjeta';
@@ -78,8 +79,15 @@ export function RecordatorioEnElChat({ reminderId, jwt, onLongPress }: { reminde
             <Text className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">Recordatorio</Text>
             <Text className="text-[15px] font-semibold text-on-surface">{recordatorio.title}</Text>
             <Text className="text-[13px] text-on-surface-variant">{whenItRings(recordatorio)}</Text>
+            {recordatorio.advance?.length ? <Text testID={`recordatorio-avisos-${reminderId}`} className="text-[12px] text-on-surface-variant">{advanceSummary(recordatorio.advance)}</Text> : null}
           </View>
         </View>
+        {recordatorio.location ? (
+          <Pressable testID={`recordatorio-ubicacion-${reminderId}`} accessibilityRole="button" accessibilityLabel={`Cómo llegar a ${recordatorio.location}`} onPress={() => askMapsOrWaze(recordatorio.location)} className="min-h-[44px] flex-row items-center gap-2">
+            <MapPin size={16} color={colores.primary} />
+            <Text className="min-w-0 flex-1 text-[14px] text-primary" numberOfLines={2}>{recordatorio.location}</Text>
+          </Pressable>
+        ) : null}
         {recordatorio.note ? (
           <Text className="mt-1 text-[14px] leading-5 text-on-surface">
             <TextoConEnlaces texto={recordatorio.note} />

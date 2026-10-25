@@ -45,7 +45,7 @@ import { citadosPorSeq, fotosDelChat } from './filasDelChat';
 import { useGrupo } from './useGrupo';
 import { usePersonCard } from './personCard/usePersonCard';
 import { FueraDelGrupo } from './FueraDelGrupo';
-import { subtituloDelChat } from './cabeceraDelChat';
+import { useChatSubtitle } from './useChatSubtitle';
 import { usePresenceStatus } from './presenceStatus';
 import { useDibujarFila } from './useDibujarFila';
 import { useUltimaVez } from './useUltimaVez';
@@ -56,6 +56,8 @@ import { useMensajeFallido } from './useMensajeFallido';
 import { useAlAbrirElChat } from './useAlAbrirElChat';
 import { useIrAMensaje } from './useIrAMensaje';
 import { useFijarMensajes } from './useFijarMensajes';
+import { useMentionCandidates } from './useMentionCandidates';
+import { useOutsideMentions } from './useOutsideMentions';
 import { useDestacadosDelChat } from './destacados/useDestacadosDelChat';
 import { useAcuseVivo } from './acuseVivo';
 import { useHilosEnElChat } from './useHilosEnElChat';
@@ -191,15 +193,7 @@ export function ChatScreen({
 
   const nombreVisible = infoPropia.name ?? chatName;
 
-  /**
-   * El subtítulo del header: «escribiendo…» / «en línea» como WhatsApp.
-   *
-   * En un 1:1 se sabe quién es el otro (`otherUserId`). En un grupo puede
-   * escribir cualquiera y acá no está la lista de miembros con sus nombres, así
-   * que se dice que ALGUIEN escribe —nombrarlo pediría un fetch de miembros que
-   * no vale la pena para un cartel—. «En línea» no se muestra en grupo: con
-   * varios conectados sería ruido permanente.
-   */
+  // The header's subtitle (`useChatSubtitle`): in a 1:1 we know who the other is (`otherUserId`).
   const esGrupoChat = !esBorrador && (otherUserId === null || otherUserId === undefined);
   const otroEscribe = otherUserId ? escribiendo.has(otherUserId) : escribiendo.size > 0;
   const otroEnLinea = otherUserId ? enLinea.has(otherUserId) : false;
@@ -211,8 +205,9 @@ export function ChatScreen({
   // En un 1:1 el otro se llama como el chat (reacciones y fijados).
   const nombresDeReacciones = useMemo(() => (esGrupoChat ? nombresDelGrupo : new Map(otherUserId ? [[otherUserId, chatName]] : [])), [esGrupoChat, nombresDelGrupo, otherUserId, chatName]);
   const nombreDe = useCallback((id: string) => (id === credential.userId ? 'Tú' : (nombresDeReacciones.get(id) ?? 'Alguien')), [credential.userId, nombresDeReacciones]);
-  // Memo: un arreglo nuevo en cada render redibujaría la barra de escribir (FL12).
-  const mencionables = useMemo(() => (esGrupoChat ? grupo.mencionables(credential.userId) : undefined), [esGrupoChat, grupo.mencionables, credential.userId]);
+  // In a space `@` lists the whole space; whoever is not in the channel is offered to be added (José 25/10).
+  const mencionables = useMentionCandidates({ jwt: credential.jwt, workspaceId, inChat: esGrupoChat ? grupo.mencionables : undefined, myUserId: credential.userId });
+  const outsideMentions = useOutsideMentions({ jwt: credential.jwt, chatId });
   /** Me sacaron del grupo (FL9d): se lee, pero ya no se escribe. */
   const fueraDelGrupo = esGrupoChat && grupo.soyMiembro === false;
   const soyAdminDelGrupo = esGrupoChat && grupo.soyAdmin(credential.userId);
@@ -222,14 +217,7 @@ export function ChatScreen({
   const accionesDeTarjeta = useMemo(() => ({ editarRecordatorio: puedeEditarRecordatorios ? (recordatorio: AgendaReminder) => setCreando({ recordatorio }) : undefined, callBack: callBack.actions }), [puedeEditarRecordatorios, callBack.actions]);
   // Fuera del grupo no se listan miembros: ya no es «QA Ana, Vos».
   const otherStatus = usePresenceStatus(otherUserId);
-  const subtitulo = fueraDelGrupo ? '' : esBorrador ? 'Solo tú lo ves' : subtituloDelChat({
-    esGrupo: esGrupoChat,
-    escriben: [...escribiendo],
-    otroEnLinea, otroEstado: otherStatus,
-    ultimaVez,
-    nombres: nombresDelGrupo,
-    yo: credential.userId,
-  });
+  const subtitulo = useChatSubtitle({ fueraDelGrupo, esBorrador, esGrupo: esGrupoChat, workspaceId, escriben: [...escribiendo], otroEnLinea, otroEstado: otherStatus, ultimaVez, nombres: nombresDelGrupo, totalMembers: grupo.members.length, yo: credential.userId });
   const fotoVisible = infoPropia.avatarUrl ?? chatAvatarUrl;
 
   /**
@@ -248,19 +236,14 @@ export function ChatScreen({
   );
   const { open: openPdf, viewer: pdfViewer } = usePdfViewer(ventana.messages);
 
-  const { divisorSeq, noLeidos: noLeidosAlAbrir, irAlInicio, placedLate } = useDivisorNoLeidos({
-    rows,
-    yo: credential.userId,
-    noLeidos: unread,
-    leidoHasta: readSeq,
-    listaRef,
-  });
+  const { divisorSeq, noLeidos: noLeidosAlAbrir, irAlInicio, placedLate } = useDivisorNoLeidos({ rows, yo: credential.userId, noLeidos: unread, leidoHasta: readSeq, listaRef });
 
   const releaseRef = useRef<() => void>(() => undefined);
   const { alTocarCita, alAbrir, saltarA, resaltado } = useIrAMensaje({ rows, listaRef, irASeq, requestedAt, irAlInicio, onNoEsta: ventana.alNoEstar, releaseFromEnd: () => releaseRef.current() });
   const fijar = useFijarMensajes({
     chatId,
     jwt: credential.jwt,
+    workspaceId,
     puedeFijar: esBorrador || !esGrupoChat || soyAdminDelGrupo,
     textoLocal: (seq) => messages.find((uno) => uno.seq === seq)?.body,
     nombreDe,
@@ -432,7 +415,7 @@ export function ChatScreen({
           secreto={Boolean(encrypted)}
           borrador={esBorrador}
           conectado={connected}
-          subtitulo={subtitulo}
+          subtitulo={subtitulo} grupo={esGrupoChat}
           otroEscribe={otroEscribe}
           puedeLlamar={Boolean(otherUserId) && grupo.roles.get(otherUserId ?? '')?.role !== 'app'}
           onVolver={onBack} app={appId ? { appId, spaceId: workspaceId, jwt: credential.jwt } : undefined}
@@ -525,7 +508,7 @@ export function ChatScreen({
           onAdjuntar={alAdjuntar} onPasteImage={(photo) => pickMedia([photo])}
           onCamara={alCamara} onEscribiendo={avisarEscribiendo}
           jwt={credential.jwt} conVistaPrevia={!encrypted}
-          miembros={mencionables} commands={encrypted ? undefined : commands} myName={credential.name ?? undefined}
+          miembros={mencionables} onOutsideMentions={outsideMentions.notify} notice={outsideMentions.banner} commands={encrypted ? undefined : commands} myName={credential.name ?? undefined}
           onEnviar={alEnviar}
           onProgramar={programados.abrir}
           onNotaDeVoz={alNotaDeVoz}
@@ -550,7 +533,8 @@ export function ChatScreen({
         pendientes={hilos.pendientesDelHilo}
         leidoHasta={leidoHasta}
         entregadoHasta={entregadoHasta}
-        onEnviar={(texto, enElChat) => send(texto, undefined, undefined, { de: hilos.abierto!, enElChat })}
+        mencionables={mencionables} onOutsideMentions={outsideMentions.notify} notice={outsideMentions.banner}
+        onEnviar={(texto, enElChat, menciones) => send(texto, undefined, menciones, { de: hilos.abierto!, enElChat })}
         reaccionar={reaccionar} editar={editar}
         onCerrar={hilos.cerrar}
       />

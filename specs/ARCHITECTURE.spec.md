@@ -4911,6 +4911,57 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 138. Recordatorios con avisos previos y ubicación, el @ de todo el espacio y cuatro arreglos de canales (25/10/2026, por OTA + servidor + web)
+
+Pedido de José del 25/10 («ahora ataca estas mejoras»). Todo es JavaScript, servidor y web: **no cambia lo nativo**, así
+que sale por OTA (§137) y no necesita APK nuevo. Cada pieza tiene su motor puro en `shared/` con test.
+
+### 138.1 Recordatorios: «Avisar antes» (varios) y ubicación con Maps o Waze
+
+- **Modelo** (`server/src/eventModels.ts`, `Reminder`): `location?` (una línea, tope `MAX_LOCATION_LENGTH` = 200),
+  `advance?: number[]` (minutos antes, el más largo primero) y `advanceSent?: number[]` (los que ya sonaron para el
+  `startsAt` actual).
+- **Motor** (`shared/src/reminderAdvance.ts`): `parseAdvance` (enteros de 1 min a 7 días, sin repetir, hasta 5, los más
+  largos), `advanceDue` (qué suena y qué se sella en esta pasada: si dos coinciden suena el más cercano al inicio; uno
+  tarde —más de 3 min— se sella sin sonar; ya empezado, lo que quede se sella), `toggleAdvance`, `advanceChips`,
+  `advanceLabel`/`advanceShort`/`advanceSummary`/`advanceNote` y `advanceToMinutes` (el «Otro…» del formulario).
+- **Cron** (`server/src/reminderCron.ts`, `runAdvancePass`): una pasada aparte por minuto sobre lo activo, con avisos y que
+  empieza en la próxima semana. El sello `advanceSent` se reclama ANTES de sonar y de forma condicional (`$nin`), como el
+  de `remindedAt`: dos corridas solapadas no suenan dos veces. El aviso previo suena igual que el recordatorio (pantalla
+  completa en los teléfonos que lo declaran; notificación en los demás) con la línea «Empieza en 15 min · <nota>», y NO
+  escribe en el chat. Mover la hora, cambiar los avisos, reactivarlo o repetirse **reabre** los avisos (`advanceSent: []`).
+- **Rutas**: `POST /api/agenda/reminders` acepta `location` y `advance`; `PATCH` los edita por `cambiosDeRecordatorio`
+  (vacío = se borra). Un recordatorio nuevo trae «15 min» marcado en el formulario (`DEFAULT_ADVANCE`); uno viejo no
+  tiene avisos y no cambia.
+- **Ubicación** (`shared/src/placeLinks.ts`): una dirección se busca; coordenadas van como punto; un enlace de Google Maps
+  se abre tal cual en Maps y su punto (`@lat,lng`, `q=`) se le pasa a Waze; cualquier otro enlace, o un `javascript:`,
+  es solo texto de búsqueda. App: `askMapsOrWaze` (`Alert` «¿Cómo quieres llegar?» con Google Maps, Waze y Cancelar) desde
+  el detalle, la tarjeta del chat y **la pantalla grande del aviso** (que pide el recordatorio por su id, porque el
+  aviso nativo no lleva la ubicación). Web: dos enlaces «Maps» y «Waze» que abren aparte (`PlaceLinksWeb`).
+- **Formularios**: `AdvanceField` (app) y `AdvanceFieldWeb` comparten reglas y textos de `reminderAdvance`.
+
+### 138.2 «@» lista a todo el espacio y ofrece agregar a quien no está en el canal
+
+- `shared/src/mentionCandidates.ts`: `mentionCandidates` junta a los del chat y, en un espacio, a los miembros activos del
+  resto marcados `outsideChat` (nunca yo, nunca pendientes ni sin nombre); `mentionOptions` cuenta solo a los del chat en
+  «@todos». `rangosDeMenciones` **no manda** la mención de quien está fuera (el servidor la descartaría y nadie recibe el
+  aviso); `outsideMentioned` dice a quién ofrecer agregar.
+- Como Slack: tras enviar, una línea «Carla no está en este canal, así que no recibió tu mención» con «Agregar al canal»
+  (`POST /api/chats/:id/members`, que ya exige ser del espacio) y «Ahora no»; el motivo del servidor se muestra tal cual.
+- La lista ya no corta en 5 (app) ni en 8 (web): se desplaza (4,5 filas visibles en la app).
+- **Los hilos también mencionan**: el campo del hilo (app `HiloScreen`, web `PanelDeHilo`) usa el mismo motor y envía las
+  menciones con la respuesta; antes el hilo no tenía `@`.
+
+### 138.3 Encabezado, fijados y altura en canales
+
+- **Fijados en el modo Slack** (`useFijarMensajes`): leía `fijados` de la lista PERSONAL (`GET /api/chats`), donde un canal
+  del espacio no está. Ahora `chatListFor` pide la lista del espacio del chat (`?workspace=`).
+- **Encabezado** (`cabeceraDelChat`): un grupo o canal no lista a todos sus miembros en letra chica; el modo Slack dice
+  «N miembros» y el de WhatsApp nombra a unos pocos y suma «y N más» (`memberCountLabel`).
+- **Altura de las filas** (modo Slack): el chip del hilo era una tarjeta de 132 px cuyo «· última 3:06 p. m.» se partía en
+  dos líneas; ahora es una línea compacta de 36 dp (avatares de 20, textos de una línea). Una respuesta de hilo enviada
+  también al chat es «↳ Respondió en un hilo» en una línea, no un bloque de cita de tres.
+
 ## 137. Actualizaciones OTA propias y el destino de los avisos (25/10/2026, 0.1.171 + servidor)
 
 **Pedido** (agentes, de parte de José): que los cambios de solo JavaScript lleguen a los

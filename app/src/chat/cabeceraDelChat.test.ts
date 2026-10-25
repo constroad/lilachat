@@ -71,3 +71,45 @@ describe('subtituloDelChat — últ. vez', () => {
     expect(subtituloDelChat({ ...base, esGrupo: true, nombres: new Map(), ultimaVez, ahora })).toBe('');
   });
 });
+
+/**
+ * José, 25/10/2026: with many people in a group or channel, every member showed in the header in small type and
+ * it looked terrible; do it like WhatsApp and Slack.
+ */
+describe('subtituloDelChat — many miembros', () => {
+  const base = { esGrupo: true, escriben: [], otroEnLinea: false, yo: 'yo' };
+  const many = new Map([
+    ['yo', 'José'],
+    ['a', 'Ana'],
+    ['b', 'Beto'],
+    ['c', 'Carla'],
+    ['d', 'Diego'],
+    ['e', 'Elena'],
+  ]);
+
+  it('WhatsApp: con más de tres, nombra a tres y cuenta al resto en vez de listar a todos', () => {
+    expect(subtituloDelChat({ ...base, nombres: many })).toBe('Ana, Beto, Carla y 2 más');
+  });
+
+  it('WhatsApp: con uno solo de más dice «y 1 más»', () => {
+    const four = new Map([...many].slice(0, 5));
+    expect(subtituloDelChat({ ...base, nombres: four })).toBe('Ana, Beto, Carla y 1 más');
+  });
+
+  it('Slack (modo lista): cuenta los miembros, sin nombrarlos', () => {
+    expect(subtituloDelChat({ ...base, nombres: many, listMode: true })).toBe('6 miembros');
+  });
+
+  it('Slack: un miembro es singular y sin nadie cargado no inventa nada', () => {
+    expect(subtituloDelChat({ ...base, nombres: new Map([['yo', 'José']]), listMode: true })).toBe('1 miembro');
+    expect(subtituloDelChat({ ...base, nombres: new Map(), listMode: true })).toBe('');
+  });
+
+  it('Slack: usa el total que el server informa cuando es mayor a los nombres cargados', () => {
+    expect(subtituloDelChat({ ...base, nombres: many, listMode: true, totalMembers: 40 })).toBe('40 miembros');
+  });
+
+  it('Slack: quien escribe sigue ganándole a la cuenta', () => {
+    expect(subtituloDelChat({ ...base, nombres: many, listMode: true, escriben: ['a'] })).toBe('Ana está escribiendo…');
+  });
+});

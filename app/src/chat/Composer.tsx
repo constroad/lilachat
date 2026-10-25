@@ -1,8 +1,9 @@
-import { memo, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
+import { memo, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import { BackHandler, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Camera, Keyboard as Teclado, Paperclip, Send, Smile, X } from 'lucide-react-native';
 import { duracionDeVoz, insertarEnTexto, type MencionEnMensaje, type Seleccion } from '@lilachat/shared';
+import type { MencionElegida } from '@lilachat/shared';
 import { deleteBeforeCursor, formKeyOf } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { useChatFont } from '../ui/chatFont';
@@ -14,7 +15,7 @@ import type { FotoElegida } from './envioDeFotos';
 import { BotonDeVoz } from './BotonDeVoz';
 import { formaDelTexto, type FormaDelTexto } from './campoDeTexto';
 import type { DecisionDeVoz, mientrasSostiene } from './gestoDeVoz';
-import { useMenciones, type MiembroMencionable } from './useMenciones';
+import { useMenciones, type MentionableMember } from './useMenciones';
 import { SugerenciasDeMencion } from './SugerenciasDeMencion';
 import { closeEmojiPanel, openEmojiPanel, useEmojiPanelOpen } from './emojiPanel';
 import { VistaPreviaAlEscribir } from './VistaPreviaAlEscribir';
@@ -80,7 +81,11 @@ export const Composer = memo(function Composer(props: {
   /** Apagado en los chats secretos: el server no tiene que ver sus links. */
   conVistaPrevia?: boolean;
   /** Solo en grupos: a quiénes se puede mencionar con «@» (sin mí). */
-  miembros?: MiembroMencionable[];
+  miembros?: MentionableMember[];
+  /** Mentioned people who are not in the chat, once the message left: the screen offers to add them. */
+  onOutsideMentions?: (people: MencionElegida[]) => void;
+  /** A line over the field (the offer to add them). */
+  notice?: ReactNode;
   /** The «/» of a space's chat (§c-bis): the apps' commands and what they answered only to me. */
   commands?: ChatCommands;
   /** On an app's form, who is registering (design e-28). */
@@ -302,12 +307,14 @@ export const Composer = memo(function Composer(props: {
       return;
     }
     const rangos = menciones.rangos();
+    const outside = menciones.outside(texto);
     menciones.limpiar();
     const respondiendoA = props.respondiendoA?.seq;
     const sendAsText = () =>
       void props.onEnviar(texto, respondiendoA, rangos).then((ok) => {
         // Not sent: the text goes back to the field; losing it would be worse than the notice.
         if (!ok) ponerTexto(texto);
+        else if (outside.length > 0) props.onOutsideMentions?.(outside);
       });
     if (!props.commands) return sendAsText();
     // A «/» line waits for the space's commands before deciding (23/10: a fast «/clima» went to the channel as text).
@@ -417,10 +424,11 @@ export const Composer = memo(function Composer(props: {
           }}
         />
       ) : null}
+      {props.notice}
       <SugerenciasDeMencion
         sugerencias={menciones.sugerencias}
         onElegir={(miembro) => {
-          const completado = menciones.elegir(textoRef.current, miembro);
+          const completado = menciones.choose(textoRef.current, miembro);
           if (completado) escribir(completado.texto, completado.cursor);
         }}
       />

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fijadosVigentes, textoDelFijado, type DuracionDeFijado } from '@lilachat/shared';
-import { desfijarMensajeEnChat, fijarMensajeEnChat, listChats, type FijadoEnLista } from '../api/client';
+import { desfijarMensajeEnChat, fijarMensajeEnChat, type FijadoEnLista } from '../api/client';
 import { chatsEnMemoria } from './chatsGuardados';
+import { chatListFor } from './listaDelChat';
 
 import { FranjaDeFijados } from './FranjaDeFijados';
 import { HojaDeFijarMensaje } from './HojaDeFijarMensaje';
@@ -19,6 +20,8 @@ const fijadosDe = (chats: { id: string; fijados?: FijadoEnLista[] }[] | null, ch
 export function useFijarMensajes(params: {
   chatId: string;
   jwt: string;
+  /** A chat of a space is not in the personal list: its pinned messages come from its space's list (José, 25/10). */
+  workspaceId?: string;
   puedeFijar: boolean;
   /** El texto descifrado de un mensaje propio del teléfono (chats secretos). */
   textoLocal: (seq: number) => string | undefined;
@@ -28,15 +31,15 @@ export function useFijarMensajes(params: {
   onIr: (seq: number) => void;
   onError: (texto: string) => void;
 }) {
-  const { chatId, jwt, onError } = params;
+  const { chatId, jwt, workspaceId, onError } = params;
   const [fijados, setFijados] = useState<FijadoEnLista[]>(() => fijadosDe(chatsEnMemoria(), chatId));
   const [pidiendo, setPidiendo] = useState<number | null>(null);
   const [verLista, setVerLista] = useState(false);
 
   const recargar = useCallback(async () => {
-    const respuesta = await listChats(jwt);
+    const respuesta = await chatListFor(jwt, workspaceId);
     if (respuesta.ok) setFijados(fijadosDe(respuesta.data.chats, chatId));
-  }, [jwt, chatId]);
+  }, [jwt, chatId, workspaceId]);
 
   useEffect(() => {
     void recargar();

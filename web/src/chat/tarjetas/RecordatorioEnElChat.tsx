@@ -1,5 +1,6 @@
 import { Bell, Pencil } from 'lucide-react';
-import { whenItRings, primerEnlace, type AgendaReminder } from '@lilachat/shared';
+import { advanceSummary, whenItRings, primerEnlace, type AgendaReminder } from '@lilachat/shared';
+import { PlaceLinksWeb } from '../../agenda/PlaceLinksWeb';
 import { useConversacion } from '../contextoDeLaConversacion';
 import { TarjetaDeEnlace } from '../TarjetaDeEnlace';
 import { TextoDelMensaje } from '../TextoDelMensaje';
@@ -30,6 +31,7 @@ export function RecordatorioEnElChat({ id }: { id: string }) {
           <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Recordatorio</p>
           <p className="text-[15px] font-semibold">{recordatorio.title}</p>
           <p className="text-[12px] text-on-surface-variant">{whenItRings(recordatorio)}</p>
+          {recordatorio.advance?.length ? <p className="text-[12px] text-on-surface-variant">{advanceSummary(recordatorio.advance)}</p> : null}
         </div>
         {onEditarRecordatorio ? (
           <button type="button" data-testid={`editar-recordatorio-${id}`} aria-label="Editar el recordatorio" title="Editar" onClick={() => onEditarRecordatorio(recordatorio)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-on-surface-variant hover:bg-background hover:text-primary">
@@ -37,6 +39,7 @@ export function RecordatorioEnElChat({ id }: { id: string }) {
           </button>
         ) : null}
       </div>
+      <PlaceLinksWeb location={recordatorio.location} />
       {recordatorio.note ? (
         <div className="mt-2 text-sm">
           <TextoDelMensaje clave={`recordatorio-${id}`} texto={recordatorio.note} nombres={nombres} yo={yo} mio={false} />

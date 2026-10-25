@@ -22,7 +22,7 @@ describe('cambiosDeRecordatorio', () => {
 
     expect(r).toEqual({
       ok: true,
-      set: { startsAt: new Date('2026-10-21T13:00:00.000Z'), remindedAt: null, active: true },
+      set: { startsAt: new Date('2026-10-21T13:00:00.000Z'), remindedAt: null, active: true, advanceSent: [] },
       unset: [],
     });
   });
@@ -51,6 +51,31 @@ describe('cambiosDeRecordatorio', () => {
     // Assert
     expect(monthly).toEqual({ ok: true, set: { recurrence: 'monthly', repeat: { monthDay: 'last' } }, unset: [] });
     expect(cleared).toEqual({ ok: true, set: {}, unset: ['repeat'] });
+  });
+
+  /** José 25/10: the location of a reminder and its advance alerts (several). */
+  describe('location and advance alerts', () => {
+    it('a location is kept trimmed; an empty one is cleared', () => {
+      expect(cambiosDeRecordatorio({ location: '  Av. Javier Prado 123 ' }, actual)).toEqual({ ok: true, set: { location: 'Av. Javier Prado 123' }, unset: [] });
+      expect(cambiosDeRecordatorio({ location: '   ' }, actual)).toEqual({ ok: true, set: {}, unset: ['location'] });
+    });
+
+    it('a location that is a paragraph is refused in words', () => {
+      expect(cambiosDeRecordatorio({ location: 'x'.repeat(201) }, actual)).toEqual({ ok: false, message: 'La ubicación es muy larga.' });
+    });
+
+    it('the advances are saved clean and re-armed, so none of them is taken as already sent', () => {
+      expect(cambiosDeRecordatorio({ advance: [5, 15, 15, 0, 'x'] }, actual)).toEqual({ ok: true, set: { advance: [15, 5], advanceSent: [] }, unset: [] });
+    });
+
+    it('an empty list clears the advances', () => {
+      expect(cambiosDeRecordatorio({ advance: [] }, actual)).toEqual({ ok: true, set: { advanceSent: [] }, unset: ['advance'] });
+    });
+
+    it('moving the hour re-arms the advances too', () => {
+      const r = cambiosDeRecordatorio({ startsAt: '2026-10-21T13:00:00.000Z', advance: [15] }, actual);
+      expect(r).toMatchObject({ ok: true, set: { advance: [15], advanceSent: [], remindedAt: null } });
+    });
   });
 
   it('ignora campos que no son editables (dueño, chat, sello del cron)', () => {

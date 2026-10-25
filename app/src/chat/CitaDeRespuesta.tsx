@@ -1,4 +1,6 @@
 import { Pressable, Text } from 'react-native';
+import { CornerDownRight } from 'lucide-react-native';
+import { useColores } from '../ui/tema';
 import type { Citado } from './filasDelChat';
 
 /**
@@ -11,13 +13,25 @@ export function CitaDeRespuesta({
   testID,
   onPress,
   enBurbujaPropia = false,
+  compact = false,
 }: {
   citado: Citado;
   testID: string;
   onPress?: () => void;
   /** Sobre la propia (violeta sólido, FL13) la cita va en blanco translúcido. */
   enBurbujaPropia?: boolean;
+  /** Slack format: a thread reply sent to the chat is one line, «↳ Respondió en un hilo», not a block that grows the row (José 25/10). */
+  compact?: boolean;
 }) {
+  const colores = useColores();
+  if (compact && citado.enHilo) {
+    return (
+      <Pressable testID={testID} onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined} accessibilityHint={onPress ? 'Abrir el hilo' : undefined} className="mt-0.5 min-h-[24px] flex-row items-center gap-1 self-start">
+        <CornerDownRight size={13} color={colores['on-surface-variant']} />
+        <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>Respondió en un hilo</Text>
+      </Pressable>
+    );
+  }
   return (
     <Pressable
       testID={testID}

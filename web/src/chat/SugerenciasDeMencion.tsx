@@ -2,18 +2,22 @@ import { Megaphone, Zap } from 'lucide-react';
 import { MENTION_HERE } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 
-export type Mencionable = { id: string; nombre: string; foto?: string };
+/** `outsideChat`: of the space but not in this chat; mentioning them offers to add them. */
+export type Mencionable = { id: string; nombre: string; foto?: string; outsideChat?: boolean };
+/** The list scrolls (`max-h-64`), so it can hold a whole space; this only guards a huge one. */
+const MAX_SUGGESTIONS = 100;
 /** A suggestion: a member, or a group mention with a `hint` that says what it does (E3b). */
 export type MentionSuggestion = Mencionable & { hint?: string };
 
 /** Sin tildes y en minúsculas: nadie escribe «@José» con tilde. */
 const clave = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-/** Los miembros que calzan con lo escrito tras el «@», los que empiezan así primero. */
+/** The members that match what follows the «@»: the chat's before the rest of the space's, and prefix matches first. */
 export function filtrarMencionables(miembros: readonly Mencionable[], consulta: string): Mencionable[] {
   const aguja = clave(consulta);
   const calzan = miembros.filter((uno) => clave(uno.nombre).includes(aguja));
-  return [...calzan.filter((uno) => clave(uno.nombre).startsWith(aguja)), ...calzan.filter((uno) => !clave(uno.nombre).startsWith(aguja))].slice(0, 8);
+  const ordenados = (grupo: readonly Mencionable[]) => [...grupo.filter((uno) => clave(uno.nombre).startsWith(aguja)), ...grupo.filter((uno) => !clave(uno.nombre).startsWith(aguja))];
+  return [...ordenados(calzan.filter((uno) => !uno.outsideChat)), ...ordenados(calzan.filter((uno) => uno.outsideChat))].slice(0, MAX_SUGGESTIONS);
 }
 
 /** La lista sobre el campo al escribir «@», como WhatsApp Web. */
@@ -42,7 +46,7 @@ export function SugerenciasDeMencion(props: { opciones: MentionSuggestion[]; act
             )}
             <span className="min-w-0">
               <span className={`block truncate ${uno.hint ? 'font-semibold text-primary' : ''}`}>{uno.hint ? `@${uno.nombre}` : uno.nombre}</span>
-              {uno.hint ? <span className="block truncate text-[12px] text-on-surface-variant">{uno.hint}</span> : null}
+              {uno.hint || uno.outsideChat ? <span className="block truncate text-[12px] text-on-surface-variant">{uno.hint ?? 'No está en este canal'}</span> : null}
             </span>
           </button>
         </li>

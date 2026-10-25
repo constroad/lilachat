@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { memberBadge, usesFlatLayout } from './flatLayout.js';
+import { memberBadge, memberCountLabel, usesFlatLayout } from './flatLayout.js';
 
 /**
  * The Slack format (José, 21/10: «Lilachat se ve muy desordenado»; designs
@@ -33,5 +33,18 @@ describe('memberBadge', () => {
     expect(memberBadge({ title: '  ', role: 'member', isMe: true })).toBe('Tú');
     expect(memberBadge({ role: 'member', isMe: false })).toBeNull();
     expect(memberBadge({ isMe: false })).toBeNull();
+  });
+});
+
+describe('memberCountLabel', () => {
+  it('counts the members the way Slack does, singular for one', () => {
+    expect(memberCountLabel(12)).toBe('12 miembros');
+    expect(memberCountLabel(2)).toBe('2 miembros');
+    expect(memberCountLabel(1)).toBe('1 miembro');
+  });
+  it('says nothing when nobody is known (never invents a count)', () => {
+    expect(memberCountLabel(0)).toBe('');
+    expect(memberCountLabel(-3)).toBe('');
+    expect(memberCountLabel(Number.NaN)).toBe('');
   });
 });

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Bell, Pencil } from 'lucide-react-native';
-import { primerEnlace, whenItRings } from '@lilachat/shared';
+import { Bell, MapPin, Navigation, Pencil } from 'lucide-react-native';
+import { advanceSummary, primerEnlace, whenItRings } from '@lilachat/shared';
+import { askMapsOrWaze } from './openPlace';
 import { agendaGet, type AgendaReminder } from './agendaApi';
 import { TextoConEnlaces } from '../chat/TextoConEnlaces';
 import { VistaPreviaDeEnlace } from '../chat/VistaPreviaDeEnlace';
@@ -47,8 +48,16 @@ export function ReminderDetailScreen(props: { reminderId: string | null; jwt: st
                   <Text testID="detalle-recordatorio-titulo" className="text-[20px] font-bold text-on-surface">{reminder.title}</Text>
                   <Text className="mt-0.5 text-[14px] text-on-surface-variant">{whenItRings(reminder)}</Text>
                   {reminder.chat?.name ? <Text className="text-[13px] text-on-surface-variant">{reminder.chat.name}</Text> : null}
+                  {reminder.advance?.length ? <Text testID="detalle-recordatorio-avisos" className="text-[13px] text-on-surface-variant">{advanceSummary(reminder.advance)}</Text> : null}
                 </View>
               </View>
+              {reminder.location ? (
+                <Pressable testID="detalle-recordatorio-ubicacion" accessibilityRole="button" accessibilityLabel={`Cómo llegar a ${reminder.location}`} onPress={() => askMapsOrWaze(reminder.location)} className="min-h-[48px] flex-row items-center gap-3 rounded-xl bg-primary/[0.07] px-3">
+                  <MapPin size={18} color={colors.primary} />
+                  <Text className="min-w-0 flex-1 text-[15px] text-on-surface">{reminder.location}</Text>
+                  <Navigation size={18} color={colors.primary} />
+                </Pressable>
+              ) : null}
               {reminder.note ? (
                 <Text testID="detalle-recordatorio-nota" selectable className="mt-1 text-[16px] leading-6 text-on-surface">
                   <TextoConEnlaces texto={reminder.note} />

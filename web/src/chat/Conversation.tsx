@@ -6,8 +6,8 @@ import { ConversacionContext } from './contextoDeLaConversacion';
 import { useContext, useEffect, useState, type ReactNode } from 'react';
 import { ArrowLeft, Phone, Search, Video } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
-import type { AgendaReminder, DirectoryApp, MencionEnMensaje, WinkId } from '@lilachat/shared';
-import { formatUltimaVez, presenceLine, type PresenceStatus } from '@lilachat/shared';
+import type { AgendaReminder, DirectoryApp, MencionElegida, MencionEnMensaje, WinkId } from '@lilachat/shared';
+import { formatUltimaVez, presenceLine, type PresenceStatus, memberCountLabel } from '@lilachat/shared';
 import { Composer, type ContextoDelComposer } from './Composer';
 import { useChatCommands } from './commands/useChatCommands';
 import { AppCommandsBar, AppConversationHeader, type AppConversationTab } from '../spaces/apps/AppConversation';
@@ -37,6 +37,8 @@ export function Conversation(props: {
   onSend: (text: string, menciones?: MencionEnMensaje[]) => void;
   /** En grupos: a quién se puede @mencionar (W2). */
   mencionables?: Mencionable[];
+  onOutsideMentions?: (people: MencionElegida[]) => void;
+  avisoDeMencion?: ReactNode;
   /** Para pedir tarjetas de enlaces al escribir; sin él no se piden. */
   jwtParaEnlaces?: string;
   onNotaDeVoz?: (nota: NotaDeVozGrabada) => void;
@@ -175,6 +177,8 @@ export function Conversation(props: {
         contexto={props.contexto}
         onCancelarContexto={props.onCancelarContexto}
         mencionables={props.mencionables}
+        onOutsideMentions={props.onOutsideMentions}
+        avisoDeMencion={props.avisoDeMencion}
         jwtParaEnlaces={props.jwtParaEnlaces}
         onNotaDeVoz={props.onNotaDeVoz}
         onEscribiendo={props.onEscribiendo}
@@ -208,7 +212,7 @@ function CabeceraDeLaConversacion(props: { chat: ChatSummary; typingName: string
         {/* La línea de estado no desaparece cuando nadie escribe: si el alto
             cambiara, la cabecera saltaría con cada tecla del otro. */}
         <p data-testid="estado-chat" className={`truncate text-[13px] ${typingName ? 'text-primary' : 'text-on-surface-variant'}`}>
-          {typingName ? (chat.kind === 'group' ? `${typingName} está escribiendo…` : 'Escribiendo…') : chat.kind === 'notas' ? 'Solo tú lo ves' : chat.online ? presenceLine({ online: true, status: props.status }) : props.lastSeen ? formatUltimaVez(props.lastSeen) : ' '}
+          {typingName ? (chat.kind === 'group' ? `${typingName} está escribiendo…` : 'Escribiendo…') : chat.kind === 'notas' ? 'Solo tú lo ves' : chat.kind === 'group' ? (memberCountLabel(chat.memberIds.length) || ' ') : chat.online ? presenceLine({ online: true, status: props.status }) : props.lastSeen ? formatUltimaVez(props.lastSeen) : ' '}
         </p>
       </div>
       </button>

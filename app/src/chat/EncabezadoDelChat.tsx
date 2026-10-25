@@ -30,6 +30,8 @@ export function EncabezadoDelChat(props: {
   borrador?: boolean;
   conectado: boolean;
   subtitulo: string;
+  /** A group or channel: its subtitle is cut with «…», never shrunk to fit. */
+  grupo?: boolean;
   otroEscribe: boolean;
   /** Solo en un 1:1: una llamada grupal es otra cosa. */
   puedeLlamar: boolean;
@@ -96,8 +98,8 @@ export function EncabezadoDelChat(props: {
             className={`text-xs ${props.otroEscribe ? 'text-primary' : 'text-on-surface-variant'}`}
             numberOfLines={1}
             // Con video, llamada y menú el espacio es poco: antes de cortar la
-            // «últ. vez» achica la letra un poco (FL13d).
-            adjustsFontSizeToFit
+            // «últ. vez» achica la letra un poco (FL13d). A group's line is short now (a few names or a count) and never shrinks.
+            adjustsFontSizeToFit={!props.grupo}
             minimumFontScale={0.85}
           >
             {props.subtitulo}

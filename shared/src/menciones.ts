@@ -26,10 +26,11 @@ export const isGroupMentionId = (userId: string): boolean => userId === MENTION_
 export type GroupMentionOption = { id: string; nombre: string; hint: string };
 
 /** A group's mention list: the two group mentions first, then the people. Without members (a 1:1) there is nothing to mention. */
-export function mentionOptions<T extends { id: string; nombre: string }>(members: readonly T[] | undefined): (T | GroupMentionOption)[] | undefined {
+export function mentionOptions<T extends { id: string; nombre: string; outsideChat?: boolean }>(members: readonly T[] | undefined): (T | GroupMentionOption)[] | undefined {
   if (!members?.length) return undefined;
-  // Like the design (`e-17`): the group mention for all says how many it reaches (the others plus me).
-  const all = { ...GROUP_MENTION_OPTIONS[0], hint: `Avisa a los ${members.length + 1} del grupo` };
+  // Like the design (`e-17`): the group mention for all says how many it reaches (the others in the chat plus me).
+  const inChat = members.filter((member) => !member.outsideChat).length;
+  const all = { ...GROUP_MENTION_OPTIONS[0], hint: `Avisa a los ${inChat + 1} del grupo` };
   return [all, GROUP_MENTION_OPTIONS[1], ...members];
 }
 

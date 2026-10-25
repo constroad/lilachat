@@ -80,3 +80,88 @@ describe('CrearRecordatorio', () => {
     await waitFor(() => expect(llamadas.some((l) => l.url.endsWith('/api/agenda/reminders/r9') && l.method === 'DELETE')).toBe(true));
   });
 });
+
+/** José 25/10: «avisar» before (15 min, configurable, several) and a location. */
+describe('CrearRecordatorio: avisos previos y ubicación', () => {
+  const openForm = (onSaved = vi.fn()) => render(<CrearRecordatorio jwt="j" chat={null} onClose={() => {}} onGuardado={onSaved} />);
+  const cuerpoEnviado = () => llamadas.find((l) => l.url.endsWith('/api/agenda/reminders') && l.method === 'POST')?.body as Record<string, unknown>;
+
+  it('un recordatorio nuevo ya trae «15 min» marcado', async () => {
+    openForm();
+    expect(screen.getByTestId('aviso-15').getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByTestId('aviso-5').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('se pueden marcar varios y se mandan, el más largo primero', async () => {
+    const onSaved = vi.fn();
+    openForm(onSaved);
+    await userEvent.type(screen.getByTestId('titulo-recordatorio'), 'Reunión');
+    await userEvent.click(screen.getByTestId('atajo-manana'));
+    await userEvent.click(screen.getByTestId('aviso-60'));
+    await userEvent.click(screen.getByTestId('aviso-5'));
+    await userEvent.click(screen.getByTestId('btn-guardar-recordatorio'));
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(cuerpoEnviado()).toMatchObject({ advance: [60, 15, 5] });
+  });
+
+  it('desmarcar todos manda la lista vacía: sin aviso previo', async () => {
+    const onSaved = vi.fn();
+    openForm(onSaved);
+    await userEvent.type(screen.getByTestId('titulo-recordatorio'), 'Reunión');
+    await userEvent.click(screen.getByTestId('atajo-manana'));
+    await userEvent.click(screen.getByTestId('aviso-15'));
+    await userEvent.click(screen.getByTestId('btn-guardar-recordatorio'));
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(cuerpoEnviado()).toMatchObject({ advance: [] });
+  });
+
+  it('«Otro» agrega un aviso a medida, en minutos, horas o días', async () => {
+    const onSaved = vi.fn();
+    openForm(onSaved);
+    await userEvent.type(screen.getByTestId('titulo-recordatorio'), 'Reunión');
+    await userEvent.click(screen.getByTestId('atajo-manana'));
+    await userEvent.click(screen.getByTestId('aviso-otro'));
+    await userEvent.type(screen.getByTestId('aviso-otro-cantidad'), '2');
+    await userEvent.selectOptions(screen.getByTestId('aviso-otro-unidad'), 'h');
+    await userEvent.click(screen.getByTestId('aviso-otro-agregar'));
+    expect(screen.getByTestId('aviso-120').getAttribute('aria-pressed')).toBe('true');
+    await userEvent.click(screen.getByTestId('btn-guardar-recordatorio'));
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(cuerpoEnviado()).toMatchObject({ advance: [120, 15] });
+  });
+
+  it('una cantidad que no sirve se dice y no se agrega', async () => {
+    openForm();
+    await userEvent.click(screen.getByTestId('aviso-otro'));
+    await userEvent.type(screen.getByTestId('aviso-otro-cantidad'), '0');
+    await userEvent.click(screen.getByTestId('aviso-otro-agregar'));
+    expect(await screen.findByText('Escribe una cantidad entera, de 1 minuto a 7 días.')).toBeTruthy();
+  });
+
+  it('la ubicación se manda recortada', async () => {
+    const onSaved = vi.fn();
+    openForm(onSaved);
+    await userEvent.type(screen.getByTestId('titulo-recordatorio'), 'Reunión');
+    await userEvent.click(screen.getByTestId('atajo-manana'));
+    await userEvent.type(screen.getByTestId('ubicacion-recordatorio'), '  Av. Javier Prado 123 ');
+    await userEvent.click(screen.getByTestId('btn-guardar-recordatorio'));
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(cuerpoEnviado()).toMatchObject({ location: 'Av. Javier Prado 123' });
+  });
+
+  it('al editar trae lo guardado, sin sumarle el aviso por defecto', async () => {
+    render(
+      <CrearRecordatorio
+        jwt="j"
+        chat={null}
+        editando={{ _id: 'r1', title: 'Reunión', startsAt: new Date(Date.now() + 86_400_000).toISOString(), recurrence: 'once', active: true, location: 'Planta Lurín', advance: [60] }}
+        onClose={() => {}}
+        onGuardado={() => {}}
+      />
+    );
+    expect(screen.getByTestId('aviso-60').getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByTestId('aviso-15').getAttribute('aria-pressed')).toBe('false');
+    expect((screen.getByTestId('ubicacion-recordatorio') as HTMLInputElement).value).toBe('Planta Lurín');
+  });
+});
+

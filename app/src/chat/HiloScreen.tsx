@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FlatList, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Modal } from '../ui/Modal';
@@ -6,6 +6,9 @@ import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useScrollConTeclado } from './useScrollConTeclado';
 import { ArrowLeft, Check, ClipboardCheck, Send, Smile, Square, SquareCheck, X } from 'lucide-react-native';
 import { checklistMembers, deleteBeforeCursor, formatClock, memberBadge, usesFlatLayout, miReaccion, primerEnlace, puedeEditar, puedeReaccionar, resolveDeliveryState, type DeliveryState, type MemberPill } from '@lilachat/shared';
+import type { MencionElegida, MencionEnMensaje } from '@lilachat/shared';
+import { useMenciones, type MentionableMember } from './useMenciones';
+import { SugerenciasDeMencion } from './SugerenciasDeMencion';
 import { ThreadPicker } from './ThreadPicker';
 import { ChecklistEnElChat } from './ChecklistEnElChat';
 import { CreateChecklistScreen } from '../agenda/CreateChecklistScreen';
@@ -62,7 +65,13 @@ export function HiloScreen(props: {
   pendientes: readonly PendingMessage[];
   leidoHasta: number;
   entregadoHasta: number;
-  onEnviar: (texto: string, enElChat: boolean) => Promise<{ ok: boolean }>;
+  onEnviar: (texto: string, enElChat: boolean, menciones?: (texto: string) => MencionEnMensaje[]) => Promise<{ ok: boolean }>;
+  /** Who `@` offers in the reply field (José 25/10: tagging did not work in threads). */
+  mencionables?: MentionableMember[];
+  /** Mentioned people who are not in the channel, once the reply left: the screen offers to add them. */
+  onOutsideMentions?: (people: MencionElegida[]) => void;
+  /** A line over the field (the offer to add them). */
+  notice?: ReactNode;
   /** Reacciones (20/10): mantener presionada una respuesta muestra la barra. */
   reaccionar: (seq: number, emoji: string | null) => Promise<RespuestaDeReaccion>;
   /** Edit an own reply (José, 20/10: «in a thread I can't edit my message»); the same rule as the chat. */
@@ -85,7 +94,11 @@ export function HiloScreen(props: {
   /** A checklist inside the thread (backlog 30): its card stays among the replies. */
   const [creatingChecklist, setCreatingChecklist] = useState(false);
   const input = useRef<TextInput>(null);
+  const mentions = useMenciones(props.mencionables);
+  /** The text the selection handler sees: the state of the render before has not arrived when it fires. */
+  const latestText = useRef('');
   useEffect(() => {
+    mentions.limpiar();
     setTexto(borradores.get(clave) ?? '');
     setEnElChat(false);
     setBarraEn(null);
@@ -153,11 +166,14 @@ export function HiloScreen(props: {
     borradores.delete(clave);
     // Como en Slack: «También enviar al chat» vale para una respuesta, no para las que siguen.
     setEnElChat(false);
-    const r = await props.onEnviar(limpio, enElChat);
+    const ranges = mentions.rangos();
+    const outside = mentions.outside(limpio);
+    mentions.limpiar();
+    const r = await props.onEnviar(limpio, enElChat, ranges);
     if (!r.ok) {
       setTexto(limpio);
       setEnElChat(enElChat);
-    }
+    } else if (outside.length > 0) props.onOutsideMentions?.(outside);
     setTimeout(() => lista.current?.scrollToEnd({ animated: true }), 100);
   };
 
@@ -250,6 +266,18 @@ export function HiloScreen(props: {
           />
         ) : null}
         <KeyboardStickyView offset={{ closed: 0, opened: margenes.pie }}>
+        {props.notice}
+        <SugerenciasDeMencion
+          sugerencias={editing ? [] : mentions.sugerencias}
+          onElegir={(member) => {
+            const completed = mentions.choose(latestText.current, member);
+            if (!completed) return;
+            latestText.current = completed.texto;
+            setTexto(completed.texto);
+            borradores.set(clave, completed.texto);
+            setTimeout(() => input.current?.setSelection(completed.cursor, completed.cursor), 0);
+          }}
+        />
         <View className="border-t border-outline/10 bg-surface px-3 pt-2" style={{ paddingBottom: margenes.pie + 4 }}>
           {editing ? (
             <View testID="barra-edicion-hilo" className="mb-1.5 flex-row items-center gap-2 rounded-lg bg-primary/[0.08] px-3 py-1.5">
@@ -268,7 +296,9 @@ export function HiloScreen(props: {
               ref={input}
               testID="input-hilo"
               value={texto}
+              onSelectionChange={(evento) => mentions.alCambiar(latestText.current, evento.nativeEvent.selection.end)}
               onChangeText={(nuevo) => {
+                latestText.current = nuevo;
                 setTexto(nuevo);
                 // While editing, the draft of a new reply is kept as it was (it comes back after saving).
                 if (!editing) borradores.set(clave, nuevo);

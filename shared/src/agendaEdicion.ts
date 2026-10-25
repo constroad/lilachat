@@ -1,5 +1,6 @@
 import type { Recurrence } from './events.js';
 import { parseRepeatRule } from './repeatRule.js';
+import { parseAdvance } from './reminderAdvance.js';
 
 /**
  * Qué se puede editar de un recordatorio o un evento, y cómo (17/10/2026).
@@ -18,7 +19,19 @@ import { parseRepeatRule } from './repeatRule.js';
  */
 export type Cambios<T> = { ok: true; set: Partial<T>; unset: string[] } | { ok: false; message: string };
 
-type Recordatorio = { title: string; note: string; startsAt: Date; recurrence: Recurrence; remindedAt: null; active: boolean };
+type Recordatorio = {
+  title: string;
+  note: string;
+  /** Where it happens (José 25/10): an address, coordinates or a map link. */
+  location: string;
+  startsAt: Date;
+  recurrence: Recurrence;
+  remindedAt: null;
+  active: boolean;
+  /** Minutes before the start that it rings in advance, and the ones that already rang (`reminderAdvance`). */
+  advance: number[];
+  advanceSent: number[];
+};
 type Evento = {
   title: string;
   description: string;
@@ -30,6 +43,8 @@ type Evento = {
 };
 
 const RECURRENCES: readonly string[] = ['once', 'daily', 'weekly', 'monthly'];
+/** A location is a line (address, coordinates, link), not a paragraph. */
+export const MAX_LOCATION_LENGTH = 200;
 
 const comoObjeto = (cuerpo: unknown): Record<string, unknown> =>
   cuerpo && typeof cuerpo === 'object' && !Array.isArray(cuerpo) ? (cuerpo as Record<string, unknown>) : {};
@@ -58,6 +73,15 @@ export function cambiosDeRecordatorio(cuerpo: unknown, actual: { startsAt: Date 
     set.title = titulo;
   }
   opcional<Recordatorio>(datos, 'note', set, unset);
+  opcional<Recordatorio>(datos, 'location', set, unset);
+  if ((set.location?.length ?? 0) > MAX_LOCATION_LENGTH) return { ok: false, message: 'La ubicación es muy larga.' };
+  // Changing the advances (or the hour, below) re-arms them: none counts as already rung.
+  if ('advance' in datos) {
+    const advance = parseAdvance(datos.advance);
+    if (advance.length > 0) set.advance = advance;
+    else unset.push('advance');
+    set.advanceSent = [];
+  }
   if ('recurrence' in datos) {
     if (!RECURRENCES.includes(String(datos.recurrence))) return { ok: false, message: 'Repetición inválida.' };
     set.recurrence = datos.recurrence as Recurrence;
@@ -72,7 +96,7 @@ export function cambiosDeRecordatorio(cuerpo: unknown, actual: { startsAt: Date 
     const inicio = fecha(datos.startsAt);
     if (!inicio) return { ok: false, message: 'Elige cuándo.' };
     if (inicio.getTime() !== actual.startsAt.getTime()) {
-      Object.assign(set, { startsAt: inicio, remindedAt: null, active: true });
+      Object.assign(set, { startsAt: inicio, remindedAt: null, active: true, advanceSent: [] });
     }
   }
   return { ok: true, set, unset };

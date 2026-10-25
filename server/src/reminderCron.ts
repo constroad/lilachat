@@ -1,4 +1,4 @@
-import { decidirRecordatorio, nextOccurrence, REMINDER_NATIVE_CAPABILITY, shouldRemind } from '@lilachat/shared';
+import { advanceDue, advanceNote, decidirRecordatorio, MAX_ADVANCE_MINUTES, nextOccurrence, REMINDER_NATIVE_CAPABILITY, shouldRemind } from '@lilachat/shared';
 import { EventModel, ReminderModel } from './eventModels.js';
 import { DeviceModel } from './models.js';
 import { ChatModel } from './chatModels.js';
@@ -24,6 +24,9 @@ import { avisarEnElChat } from './chatRoutes.js';
 const TICK_MS = 60_000;
 /** Tope por corrida: un pico de avisos no puede quedarse con el proceso. */
 const MAX_PER_TICK = 50;
+/** The advance pass looks at what has advances and starts within the longest one allowed. */
+const ADVANCE_LOOKAHEAD_MS = MAX_ADVANCE_MINUTES * 60_000;
+const MAX_ADVANCE_PER_TICK = 200;
 
 let timer: ReturnType<typeof setInterval> | null = null;
 let sender: PushSender = buildPushSender();
@@ -84,7 +87,7 @@ async function ringReminder(params: { userIds: string[]; title: string; note?: s
   }
 }
 
-export async function runReminderTick(now: Date = new Date()): Promise<{ events: number; reminders: number }> {
+export async function runReminderTick(now: Date = new Date()): Promise<{ events: number; reminders: number; advances: number }> {
   let events = 0;
   let reminders = 0;
 
@@ -153,7 +156,7 @@ export async function runReminderTick(now: Date = new Date()): Promise<{ events:
       // próxima vez sin avisar tarde, o se apaga si era «una vez».
       await ReminderModel.updateOne(
         { _id: reminder._id },
-        decision.proxima ? { $set: { startsAt: decision.proxima, remindedAt: null } } : { $set: { active: false } }
+        decision.proxima ? { $set: { startsAt: decision.proxima, remindedAt: null, advanceSent: [] } } : { $set: { active: false } }
       );
       continue;
     }
@@ -185,12 +188,47 @@ export async function runReminderTick(now: Date = new Date()): Promise<{ events:
     await ReminderModel.updateOne(
       { _id: reminder._id },
       next
-        ? { $set: { startsAt: next, remindedAt: null } }
+        ? { $set: { startsAt: next, remindedAt: null, advanceSent: [] } }
         : { $set: { active: false } } // «una vez» ya cumplió: se apaga sola.
     );
   }
 
-  return { events, reminders };
+  return { events, reminders, advances: await runAdvancePass(now) };
+}
+
+/**
+ * The advance alerts (José 25/10: «avisar 15 minutos antes», several). Same rules as the reminder
+ * itself: the stamp (`advanceSent`) is claimed BEFORE ringing and conditionally, so two overlapping
+ * ticks never ring twice, and a late one is stamped without ringing. It does not write in the chat:
+ * the notice of the reminder itself will.
+ */
+async function runAdvancePass(now: Date): Promise<number> {
+  const upcoming = await ReminderModel.find({
+    active: true,
+    'advance.0': { $exists: true },
+    startsAt: { $gt: now, $lte: new Date(now.getTime() + ADVANCE_LOOKAHEAD_MS) },
+  })
+    .sort({ startsAt: 1 })
+    .limit(MAX_ADVANCE_PER_TICK)
+    .lean();
+  let rung = 0;
+  for (const reminder of upcoming) {
+    const { ring, stamp } = advanceDue({ startsAt: reminder.startsAt, advance: reminder.advance ?? [], sent: reminder.advanceSent ?? [], now });
+    if (stamp.length === 0) continue;
+    const claimed = await ReminderModel.updateOne({ _id: reminder._id, advanceSent: { $nin: stamp } }, { $addToSet: { advanceSent: { $each: stamp } } });
+    if (claimed.modifiedCount === 0 || ring === null) continue;
+    const chat = reminder.chatId ? await ChatModel.findById(reminder.chatId).select('kind name members.userId').lean() : null;
+    await ringReminder({
+      userIds: chat ? chat.members.map((m) => String(m.userId)) : [String(reminder.userId)],
+      title: reminder.title,
+      note: [advanceNote(ring), reminder.note].filter(Boolean).join(' · '),
+      chat: chat?.kind === 'group' ? (chat.name ?? 'Grupo') : undefined,
+      reminderId: String(reminder._id),
+      data: { chatId: String(reminder.chatId ?? reminder.callBack?.chatId ?? ''), seq: 0 },
+    });
+    rung += 1;
+  }
+  return rung;
 }
 
 export function startReminderCron(): void {

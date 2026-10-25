@@ -61,4 +61,55 @@ describe('PanelDeHilo', () => {
     expect(screen.getByTestId('input-hilo')).toHaveValue('');
     expect(chatEdit).not.toHaveBeenCalled();
   });
+
+  /** José 25/10: «en un canal (incluido sus hilos) no puedo taggear». */
+  describe('mentions in the reply field', () => {
+    // The draft of a thread outlives its panel (module state): each test uses its own channel.
+    let channelCount = 0;
+    const people = [{ id: 'ana', nombre: 'Ana' }, { id: 'carla', nombre: 'Carla', outsideChat: true }];
+    const mountThread = (extra: Partial<Parameters<typeof PanelDeHilo>[0]> = {}) => {
+      Element.prototype.scrollIntoView = vi.fn();
+      channelCount += 1;
+      const channel = { ...chat, id: `channel-${channelCount}`, kind: 'group' } as ChatSummary;
+      const sent = vi.fn();
+      const onOutsideMentions = vi.fn();
+      render(
+        <ConversacionContext.Provider value={conversation}>
+          <PanelDeHilo chat={channel} raiz={raiz} respuestas={[]} yo="yo" nombres={new Map()} onEnviar={sent} onReintentar={vi.fn()} onDescartar={vi.fn()} onEdit={vi.fn()} onCerrar={vi.fn()} mencionables={people} onOutsideMentions={onOutsideMentions} {...extra} />
+        </ConversacionContext.Provider>
+      );
+      return { sent, onOutsideMentions };
+    };
+
+    it('«@» lists the group mentions, the people of the channel and the rest of the space', async () => {
+      mountThread();
+      await userEvent.type(screen.getByTestId('input-hilo'), '@');
+      expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual(expect.arrayContaining([expect.stringContaining('todos'), expect.stringContaining('Ana'), expect.stringContaining('Carla')]));
+      expect(screen.getByText('No está en este canal')).toBeInTheDocument();
+    });
+
+    it('choosing someone of the channel sends the reply with their mention', async () => {
+      const { sent, onOutsideMentions } = mountThread();
+      await userEvent.type(screen.getByTestId('input-hilo'), 'Hola @An');
+      await userEvent.click(screen.getByTestId('mencionar-ana'));
+      await userEvent.click(screen.getByTestId('btn-enviar-hilo'));
+      expect(sent).toHaveBeenCalledWith('Hola @Ana', false, [{ userId: 'ana', desde: 5, largo: 4 }]);
+      expect(onOutsideMentions).not.toHaveBeenCalled();
+    });
+
+    it('choosing someone from outside sends no mention and offers to add them', async () => {
+      const { sent, onOutsideMentions } = mountThread();
+      await userEvent.type(screen.getByTestId('input-hilo'), 'Hola @Ca');
+      await userEvent.click(screen.getByTestId('mencionar-carla'));
+      await userEvent.click(screen.getByTestId('btn-enviar-hilo'));
+      expect(sent).toHaveBeenCalledWith('Hola @Carla', false, undefined);
+      expect(onOutsideMentions).toHaveBeenCalledWith([{ userId: 'carla', nombre: 'Carla', outsideChat: true }]);
+    });
+
+    it('a thread without people to mention (a 1:1) shows no list', async () => {
+      mountThread({ mencionables: undefined });
+      await userEvent.type(screen.getByTestId('input-hilo'), '@');
+      expect(screen.queryByRole('listbox')).toBeNull();
+    });
+  });
 });

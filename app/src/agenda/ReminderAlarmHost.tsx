@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, Pressable, Text, View } from 'react-native';
-import { Bell, Clock, FileText } from 'lucide-react-native';
+import { Bell, Clock, FileText, MapPin } from 'lucide-react-native';
 import { ReminderDetailScreen } from './ReminderDetailScreen';
+import { agendaGet, type AgendaReminder } from './agendaApi';
+import { askMapsOrWaze } from './openPlace';
 import { formatClock } from '@lilachat/shared';
 import { llamadaNativa, type ReminderAlarm } from '../../modules/llamada-entrante/src';
 import { Modal } from '../ui/Modal';
@@ -23,6 +25,21 @@ export function ReminderAlarmHost(props: { jwt: string }) {
     const pending = llamadaNativa.reminderPending();
     if (pending) setAlarm({ reminder: pending, at: new Date() });
   }, []);
+
+  // The place of the reminder that rings (José 25/10): the native alert does not carry it, so it is asked for by its id.
+  const [place, setPlace] = useState<string | undefined>();
+  const ringingId = alarm?.reminder.id;
+  useEffect(() => {
+    setPlace(undefined);
+    if (!ringingId) return;
+    let current = true;
+    void agendaGet<{ reminder: AgendaReminder }>(`/reminders/${ringingId}`, props.jwt).then((response) => {
+      if (current && response.ok) setPlace(response.data.reminder.location);
+    });
+    return () => {
+      current = false;
+    };
+  }, [ringingId, props.jwt]);
 
   useEffect(() => {
     check();
@@ -56,6 +73,12 @@ export function ReminderAlarmHost(props: { jwt: string }) {
           <Text testID="recordatorio-titulo" className="text-center text-[30px] font-bold leading-9 text-on-primary">{alarm.reminder.title}</Text>
           {alarm.reminder.note ? <Text className="mt-3 text-center text-[17px] leading-6 text-on-primary/85">{alarm.reminder.note}</Text> : null}
           {alarm.reminder.chat ? <Text className="mt-3 text-center text-[14px] text-on-primary/70">{alarm.reminder.chat}</Text> : null}
+          {place ? (
+            <Pressable testID="btn-recordatorio-ubicacion" accessibilityRole="button" accessibilityLabel={`Cómo llegar a ${place}`} onPress={() => askMapsOrWaze(place)} className="mt-4 min-h-[48px] flex-row items-center justify-center gap-2 rounded-full bg-on-primary/15 px-5">
+              <MapPin size={18} color={colors['on-primary']} />
+              <Text className="shrink text-[16px] font-semibold text-on-primary" numberOfLines={2}>{place}</Text>
+            </Pressable>
+          ) : null}
         </View>
         <View className="w-full gap-3">
           {alarm.reminder.id ? (

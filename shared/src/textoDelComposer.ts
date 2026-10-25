@@ -3,7 +3,8 @@ import type { MencionEnMensaje } from './menciones.js';
 export type Seleccion = { start: number; end: number };
 /** Un «@algo» que se está escribiendo: desde dónde y qué se lleva tipeado. */
 export type ConsultaDeMencion = { inicio: number; consulta: string };
-export type MencionElegida = { userId: string; nombre: string };
+/** `outsideChat`: chosen from the space but not in the chat; it cannot notify, so it never travels as a mention. */
+export type MencionElegida = { userId: string; nombre: string; outsideChat?: boolean };
 
 /** Lo que se escribe después del «@» antes de rendirse: un nombre no es un párrafo. */
 const MAX_CONSULTA = 30;
@@ -81,7 +82,8 @@ export function completarMencion(texto: string, consulta: ConsultaDeMencion, nom
  */
 export function rangosDeMenciones(texto: string, elegidas: readonly MencionElegida[]): MencionEnMensaje[] {
   const rangos: MencionEnMensaje[] = [];
-  for (const { userId, nombre } of elegidas) {
+  for (const { userId, nombre, outsideChat } of elegidas) {
+    if (outsideChat) continue;
     const buscada = `@${nombre}`;
     for (let desde = texto.indexOf(buscada); desde >= 0; desde = texto.indexOf(buscada, desde + 1)) {
       const siguiente = texto[desde + buscada.length];

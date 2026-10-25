@@ -19,6 +19,9 @@ import { colaDeArchivosWeb, usarJwtParaSubir } from './colaDeArchivosWeb';
 import { aplicarEntrante } from '../local/mensajesLocales';
 import { useHilosWeb } from './hilos/useHilosWeb';
 import { PanelDeHilo } from './hilos/PanelDeHilo';
+import { OutsideMentionNotice } from './OutsideMentionNotice';
+import { useMentionCandidatesWeb } from './useMentionCandidatesWeb';
+import { useOutsideMentionsWeb } from './useOutsideMentionsWeb';
 import { PanelBoundary } from '../ui/ErrorBoundary';
 import { api } from '../api';
 import { Conversation } from './Conversation';
@@ -54,7 +57,7 @@ type PropsDeConversacion = ComponentProps<typeof Conversation>;
  * de los miembros para autores y menciones. Así `Shell` no crece.
  */
 export function ConversacionConAcciones(
-  props: Omit<PropsDeConversacion, 'contexto' | 'onCancelarContexto' | 'onSend' | 'mencionables' | 'jwtParaEnlaces' | 'onElegirArchivos' | 'onNotaDeVoz' | 'onEscribiendo' | 'franja' | 'queue' | 'salto' | 'onNoEsta' | 'ventana' | 'viewId'> & {
+  props: Omit<PropsDeConversacion, 'contexto' | 'onCancelarContexto' | 'onSend' | 'mencionables' | 'onOutsideMentions' | 'avisoDeMencion' | 'jwtParaEnlaces' | 'onElegirArchivos' | 'onNotaDeVoz' | 'onEscribiendo' | 'franja' | 'queue' | 'salto' | 'onNoEsta' | 'ventana' | 'viewId'> & {
     jwt: string;
     base: BaseLocal | null;
     sync: AccionesDeSync;
@@ -93,11 +96,9 @@ export function ConversacionConAcciones(
   /** Who has a photo, for the thread chip and root (backlog 18). */
   const photos = useMemo(() => new Map([...(detalle?.miembros.values() ?? [])].flatMap((member) => (member.foto ? [[member.id, member.foto] as const] : []))), [detalle]);
   const acciones = useAccionesSobreMensajes({ chatId: chat.id, sync, nombres, onAviso });
-  // Solo en grupos se menciona; a uno mismo, no.
-  const mencionables = useMemo(
-    () => (chat.kind === 'group' && detalle ? [...detalle.miembros.values()].filter((uno) => !uno.esYo).map(({ id, nombre, foto }) => ({ id, nombre, foto })) : undefined),
-    [chat.kind, detalle]
-  );
+  // Solo en grupos se menciona; a uno mismo, no. In a space `@` lists the whole space, and whoever is not in the channel is offered to be added (José 25/10).
+  const mencionables = useMentionCandidatesWeb({ jwt: props.jwt, workspaceId: chat.workspaceId, isGroup: chat.kind === 'group', detail: detalle, myUserId: yo });
+  const outsideMentions = useOutsideMentionsWeb({ jwt: props.jwt, chatId: chat.id });
   const [archivos, setArchivos] = useState<File[] | null>(null);
   const [fotoAbierta, setFotoAbierta] = useState<number | null>(null);
   // Photos, GIFs and videos; never a sticker (José, 22/10: they showed up while swiping).
@@ -198,6 +199,8 @@ export function ConversacionConAcciones(
         callExtras={canCall ? <CallExtrasMenu jwt={props.jwt} chat={{ id: chat.id, name: chat.name ?? chat.phone ?? 'Conversación' }} /> : undefined}
         onWink={funAllowed ? (wink) => void sync.sendWink(chat.id, wink).then((result) => result.ok || onAviso(result.motivo)) : undefined}
         mencionables={mencionables}
+        onOutsideMentions={outsideMentions.notify}
+        avisoDeMencion={<OutsideMentionNotice outside={outsideMentions} />}
         jwtParaEnlaces={chat.encrypted ? undefined : props.jwt}
         onElegirArchivos={setArchivos}
         onNotaDeVoz={(nota) => void colaDeArchivosWeb.encolar(chat.id, nota.file, { durationMs: nota.ms, onda: nota.onda, hd: true })}
@@ -248,7 +251,10 @@ export function ConversacionConAcciones(
           yo={yo}
           nombres={nombres}
           photos={photos}
-          onEnviar={(texto, enElChat) => void sync.enviarTexto(chat.id, texto, { hiloDe: hilos.raiz!.seq, ...(enElChat ? { enElChat: true } : {}) })}
+          mencionables={mencionables}
+          onOutsideMentions={outsideMentions.notify}
+          avisoDeMencion={<OutsideMentionNotice outside={outsideMentions} />}
+          onEnviar={(texto, enElChat, menciones) => void sync.enviarTexto(chat.id, texto, { hiloDe: hilos.raiz!.seq, ...(enElChat ? { enElChat: true } : {}), ...(menciones?.length ? { menciones } : {}) })}
           onReintentar={props.onReintentar}
           onDescartar={props.onDescartar}
           onEdit={(seq, text) => sync.editar(chat.id, seq, text)}

@@ -1,6 +1,6 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { completarMencion, consultaDeMencion, rangosDeMenciones, type ConsultaDeMencion, type MencionElegida, type MencionEnMensaje } from '@lilachat/shared';
-import { mentionOptions } from '@lilachat/shared';
+import { mentionOptions, outsideMentioned } from '@lilachat/shared';
 import { filtrarMencionables, type Mencionable, type MentionSuggestion } from './SugerenciasDeMencion';
 
 /**
@@ -25,7 +25,7 @@ export function useMencionesDelCampo(miembros: readonly Mencionable[] | undefine
   /** Cambia el «@an» por «@Ana » y devuelve el texto y dónde queda el cursor. */
   const elegir = (texto: string, uno: Mencionable): { texto: string; cursor: number } | null => {
     if (!consulta) return null;
-    elegidas.current = [...elegidas.current, { userId: uno.id, nombre: uno.nombre }];
+    elegidas.current = [...elegidas.current, { userId: uno.id, nombre: uno.nombre, ...(uno.outsideChat ? { outsideChat: true } : {}) }];
     setConsulta(null);
     return completarMencion(texto, consulta, uno.nombre);
   };
@@ -44,10 +44,12 @@ export function useMencionesDelCampo(miembros: readonly Mencionable[] | undefine
   };
 
   const mencionesDe = (texto: string): MencionEnMensaje[] => rangosDeMenciones(texto, elegidas.current);
+  /** The people chosen from outside the chat whose mention is still in the final text: the ones to offer adding. */
+  const outside = (texto: string): MencionElegida[] => outsideMentioned(texto, elegidas.current);
   const limpiar = () => {
     elegidas.current = [];
     setConsulta(null);
   };
 
-  return { opciones, activa, alCambiar, elegir, alTeclear, mencionesDe, limpiar };
+  return { opciones, activa, alCambiar, elegir, alTeclear, mencionesDe, outside, limpiar };
 }

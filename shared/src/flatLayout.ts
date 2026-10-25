@@ -24,3 +24,9 @@ export function memberBadge(params: { title?: string | null; role?: string | nul
   if (label) return params.isMe ? `${label} (Tú)` : label;
   return params.isMe ? 'Tú' : null;
 }
+
+/** «12 miembros», as Slack's header says it instead of listing everyone; empty when the count is not known. */
+export function memberCountLabel(total: number): string {
+  if (!Number.isFinite(total) || total < 1) return '';
+  return total === 1 ? '1 miembro' : `${total} miembros`;
+}

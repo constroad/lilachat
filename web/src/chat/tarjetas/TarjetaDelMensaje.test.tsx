@@ -95,3 +95,39 @@ describe('el recordatorio en el chat (web)', () => {
     expect(onEditarRecordatorio).toHaveBeenCalledWith(expect.objectContaining({ _id: 'r2', title: 'Pagar la luz' }));
   });
 });
+
+/** José 25/10: the reminder shows when it warns in advance and where it is, with «Maps o Waze». */
+describe('el recordatorio con ubicación y avisos previos (web)', () => {
+  const withExtra = (extra: Record<string, unknown>) => ({ _id: 'r9', title: 'Reunión', startsAt: '2030-10-21T14:00:00.000Z', recurrence: 'once', active: true, chatId: 'c1', ...extra });
+
+  it('dice cuándo avisa antes', async () => {
+    respuestas['/agenda/reminders/r9'] = { status: 200, body: { reminder: withExtra({ advance: [60, 15] }) } };
+    dibujar(mensaje('recordatorio', 'r9'));
+    expect(await screen.findByText('Avisa 1 h y 15 min antes')).toBeTruthy();
+  });
+
+  it('la ubicación ofrece abrirla en Maps o en Waze', async () => {
+    respuestas['/agenda/reminders/r9'] = { status: 200, body: { reminder: withExtra({ location: 'Av. Javier Prado 123' }) } };
+    dibujar(mensaje('recordatorio', 'r9'));
+    expect(await screen.findByText('Av. Javier Prado 123')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Abrir en Google Maps' }).getAttribute('href')).toContain('https://www.google.com/maps/search/?api=1&query=Av.%20Javier%20Prado%20123');
+    expect(screen.getByRole('link', { name: 'Abrir en Waze' }).getAttribute('href')).toContain('https://waze.com/ul?q=Av.%20Javier%20Prado%20123');
+  });
+
+  it('los enlaces se abren aparte, sin pasar el origen', async () => {
+    respuestas['/agenda/reminders/r9'] = { status: 200, body: { reminder: withExtra({ location: 'Planta Lurín' }) } };
+    dibujar(mensaje('recordatorio', 'r9'));
+    const maps = await screen.findByRole('link', { name: 'Abrir en Google Maps' });
+    expect(maps.getAttribute('target')).toBe('_blank');
+    expect(maps.getAttribute('rel')).toContain('noopener');
+  });
+
+  it('sin ubicación ni avisos no muestra nada de eso', async () => {
+    respuestas['/agenda/reminders/r9'] = { status: 200, body: { reminder: withExtra({}) } };
+    dibujar(mensaje('recordatorio', 'r9'));
+    await screen.findByText('Reunión');
+    expect(screen.queryByRole('link', { name: 'Abrir en Waze' })).toBeNull();
+    expect(screen.queryByText(/Avisa /)).toBeNull();
+  });
+});
+

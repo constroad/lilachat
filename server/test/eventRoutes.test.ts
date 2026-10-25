@@ -252,6 +252,137 @@ describe('reminders that repeat on some days (pending 65)', () => {
   });
 });
 
+/** José 25/10: advance alerts (several) and a location, from which the person navigates. */
+describe('reminders with advance alerts and a location', () => {
+  const MINUTE = 60_000;
+  const startsInMinutes = (minutes: number) => new Date(Date.now() + minutes * MINUTE);
+  // `deviceId` is unique: every test registers its own phones.
+  beforeEach(async () => {
+    await mongoose.connection.collection('devices').deleteMany({});
+  });
+
+  it('stores the location and the advances clean (the longest first, each once)', async () => {
+    // Act
+    const created = await request(app()).post('/api/agenda/reminders').set('Authorization', `Bearer ${token}`).send({ title: 'Reunión', startsAt: startsInMinutes(120).toISOString(), location: ' Av. Javier Prado 123 ', advance: [5, 15, 15, 0] });
+    // Assert
+    expect(created.status).toBe(201);
+    const stored = await ReminderModel.findById(created.body.id).lean();
+    expect(stored).toMatchObject({ location: 'Av. Javier Prado 123', advance: [15, 5] });
+  });
+
+  it('a location that is a paragraph is refused', async () => {
+    const created = await request(app()).post('/api/agenda/reminders').set('Authorization', `Bearer ${token}`).send({ title: 'Reunión', startsAt: startsInMinutes(120).toISOString(), location: 'x'.repeat(201) });
+    expect(created.status).toBe(400);
+  });
+
+  it('editing the advances replaces them and clears the ones that already rang', async () => {
+    // Arrange
+    const reminder = await ReminderModel.create({ userId: jose, title: 'Reunión', startsAt: startsInMinutes(120), advance: [15], advanceSent: [15] });
+    // Act
+    const patch = await request(app()).patch(`/api/agenda/reminders/${reminder._id}`).set('Authorization', `Bearer ${token}`).send({ advance: [60, 10], location: 'Planta Lurín' });
+    // Assert
+    expect(patch.status).toBe(200);
+    expect(await ReminderModel.findById(reminder._id).lean()).toMatchObject({ advance: [60, 10], advanceSent: [], location: 'Planta Lurín' });
+  });
+
+  it('removing every advance and the location clears both', async () => {
+    const reminder = await ReminderModel.create({ userId: jose, title: 'Reunión', startsAt: startsInMinutes(120), advance: [15], location: 'Planta Lurín' });
+    await request(app()).patch(`/api/agenda/reminders/${reminder._id}`).set('Authorization', `Bearer ${token}`).send({ advance: [], location: '' });
+    const stored = await ReminderModel.findById(reminder._id).lean();
+    expect(stored?.advance).toBeUndefined();
+    expect(stored?.location).toBeUndefined();
+  });
+
+  it('rings the advance when its time arrives, with how long is left, and only once', async () => {
+    // Arrange: starts in 14 minutes, 15 before: the advance time just passed
+    const reminder = await ReminderModel.create({ userId: jose, title: 'Reunión con el cliente', startsAt: startsInMinutes(14), advance: [15] });
+    await mongoose.connection.collection('devices').insertOne({ deviceId: 'd-jose', userId: jose, pushToken: 'tok-jose' });
+    // Act
+    const first = await runReminderTick();
+    const second = await runReminderTick();
+    // Assert
+    expect(first.reminders).toBe(0);
+    expect(pushes).toHaveLength(1);
+    expect(pushes[0]).toMatchObject({ tokens: ['tok-jose'], title: 'Reunión con el cliente', body: 'Empieza en 15 min' });
+    expect(second.reminders).toBe(0);
+    expect(await ReminderModel.findById(reminder._id).lean()).toMatchObject({ advanceSent: [15], active: true });
+  });
+
+  it('the full-screen phones get the advance as data, with the line that says how long is left', async () => {
+    // Arrange
+    const dataPushes: { tokens: string[]; data: Record<string, string> }[] = [];
+    setReminderPushSender({ send: async (message) => void pushes.push(message), sendDatos: async (message) => void dataPushes.push(message) });
+    await ReminderModel.create({ userId: jose, title: 'Reunión', note: 'Llevar planos', startsAt: startsInMinutes(14), advance: [15] });
+    await mongoose.connection.collection('devices').insertOne({ deviceId: 'd-full', userId: jose, pushToken: 'tok-full', capacidades: ['recordatorio-nativo'] });
+    // Act
+    await runReminderTick();
+    // Assert
+    expect(dataPushes).toHaveLength(1);
+    expect(dataPushes[0]?.data).toMatchObject({ tipo: 'recordatorio', titulo: 'Reunión', nota: 'Empieza en 15 min · Llevar planos' });
+  });
+
+  it('several advances ring one after the other, never together', async () => {
+    // Arrange: 15 and 5 before; the 15 is the one that arrived
+    const reminder = await ReminderModel.create({ userId: jose, title: 'Reunión', startsAt: startsInMinutes(14), advance: [15, 5] });
+    await mongoose.connection.collection('devices').insertOne({ deviceId: 'd-jose', userId: jose, pushToken: 'tok-jose' });
+    await runReminderTick();
+    expect(pushes).toHaveLength(1);
+    // Act: 9 minutes later the second one arrives
+    await ReminderModel.updateOne({ _id: reminder._id }, { $set: { startsAt: startsInMinutes(4) } });
+    await runReminderTick();
+    // Assert
+    expect(pushes).toHaveLength(2);
+    expect(pushes[1]?.body).toBe('Empieza en 5 min');
+    expect((await ReminderModel.findById(reminder._id).lean())?.advanceSent).toEqual([15, 5]);
+  });
+
+  it('a late advance (the cron was down) is stamped without ringing', async () => {
+    const reminder = await ReminderModel.create({ userId: jose, title: 'Reunión', startsAt: startsInMinutes(30), advance: [60] });
+    await mongoose.connection.collection('devices').insertOne({ deviceId: 'd-jose', userId: jose, pushToken: 'tok-jose' });
+    await runReminderTick();
+    expect(pushes).toHaveLength(0);
+    expect((await ReminderModel.findById(reminder._id).lean())?.advanceSent).toEqual([60]);
+  });
+
+  it('one without advances is not touched by that pass', async () => {
+    const reminder = await ReminderModel.create({ userId: jose, title: 'Sin aviso previo', startsAt: startsInMinutes(14) });
+    await runReminderTick();
+    expect(pushes).toHaveLength(0);
+    expect((await ReminderModel.findById(reminder._id).lean())?.advanceSent ?? []).toEqual([]);
+  });
+
+  it('a group reminder rings its advance to every member of the chat', async () => {
+    // Arrange
+    await ReminderModel.create({ userId: jose, chatId: new Types.ObjectId(chatId), title: 'Reunión del grupo', startsAt: startsInMinutes(14), advance: [15] });
+    await mongoose.connection.collection('devices').insertMany([
+      { deviceId: 'd-jose', userId: jose, pushToken: 'tok-jose' },
+      { deviceId: 'd-maria', userId: maria, pushToken: 'tok-maria' },
+    ]);
+    // Act
+    await runReminderTick();
+    // Assert
+    expect(pushes).toHaveLength(1);
+    expect([...(pushes[0]?.tokens ?? [])].sort()).toEqual(['tok-jose', 'tok-maria']);
+  });
+
+  it('when it starts it rings itself and re-arms the advances for the next time', async () => {
+    // Arrange: daily, starts now, the advance already rang
+    const reminder = await ReminderModel.create({ userId: jose, title: 'Tomar agua', startsAt: new Date(Date.now() - 1000), recurrence: 'daily', advance: [15], advanceSent: [15] });
+    // Act
+    await runReminderTick();
+    // Assert
+    const after = await ReminderModel.findById(reminder._id).lean();
+    expect(after?.startsAt.getTime()).toBeGreaterThan(Date.now());
+    expect(after?.advanceSent).toEqual([]);
+  });
+
+  it('reactivating it re-arms the advances', async () => {
+    const reminder = await ReminderModel.create({ userId: jose, title: 'Reunión', startsAt: startsInMinutes(120), advance: [15], advanceSent: [15], active: false });
+    await request(app()).post(`/api/agenda/reminders/${reminder._id}/toggle`).set('Authorization', `Bearer ${token}`).send({ active: true });
+    expect(await ReminderModel.findById(reminder._id).lean()).toMatchObject({ active: true, advanceSent: [] });
+  });
+});
+
 describe('a reminder rings full screen on phones that can (pending 63)', () => {
   it('a phone that declared it gets a data push; an older one, the usual notice', async () => {
     // Arrange

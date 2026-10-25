@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { Modal } from '../ui/Modal';
 import { Bell, Send, Trash2, X } from 'lucide-react-native';
-import { type Recurrence, type RepeatRule, anchorRepeatRule, aQuienSuena, primerEnlace, crearRecordatorio, editarRecordatorio, valorInicial } from '@lilachat/shared';
+import { type Recurrence, type RepeatRule, anchorRepeatRule, aQuienSuena, DEFAULT_ADVANCE, MAX_LOCATION_LENGTH, primerEnlace, crearRecordatorio, editarRecordatorio, valorInicial } from '@lilachat/shared';
+import { AdvanceField } from './AdvanceField';
 import { RepeatPicker } from './RepeatPicker';
 import { VistaPreviaAlEscribir } from '../chat/VistaPreviaAlEscribir';
 import type { Credential } from '../auth/credentialStore';
@@ -60,6 +61,9 @@ export function CreateReminderScreen({
   const [repeat, setRepeat] = useState<RepeatRule | undefined>(editando?.repeat);
   // Once never repeats; an empty rule clears the stored one when editing.
   const repeatToSend = recurrence === 'once' ? {} : (anchorRepeatRule(recurrence, repeat, cuando) ?? {});
+  // José 25/10: a new reminder starts with «15 min antes»; an edited one shows what it has.
+  const [advance, setAdvance] = useState<number[]>(() => (editando ? (editando.advance ?? []) : [...DEFAULT_ADVANCE]));
+  const [location, setLocation] = useState(editando?.location ?? '');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [imagen, setImagen] = useState<FotoElegida | null>(null);
@@ -72,7 +76,7 @@ export function CreateReminderScreen({
     if (cuando.getTime() < Date.now() && recurrence === 'once') return setError('Esa hora ya pasó. Elige una que venga.');
 
     setSaving(true);
-    const cuerpo = { title: title.trim(), note: note.trim(), startsAt: cuando.toISOString(), recurrence };
+    const cuerpo = { title: title.trim(), note: note.trim(), startsAt: cuando.toISOString(), recurrence, location: location.trim(), advance };
     const resultado = editando ? await guardarEdicion(editando._id, cuerpo) : await guardarNuevo(cuerpo);
     setSaving(false);
     if (!resultado.ok) return setError(resultado.motivo);
@@ -80,7 +84,7 @@ export function CreateReminderScreen({
     onClose();
   };
 
-  type Cuerpo = { title: string; note: string; startsAt: string; recurrence: Recurrence };
+  type Cuerpo = { title: string; note: string; startsAt: string; recurrence: Recurrence; location: string; advance: number[] };
 
   /** Nuevo: con imagen en un grupo, la tarjeta sale al final (`guardarRecordatorio.ts`). */
   const guardarNuevo = (cuerpo: Cuerpo) =>
@@ -133,7 +137,7 @@ export function CreateReminderScreen({
    * cambió). Con cambios queda la X, que es explícita.
    */
   const hayCambios = editando
-    ? title !== editando.title || note !== (editando.note ?? '')
+    ? title !== editando.title || note !== (editando.note ?? '') || location !== (editando.location ?? '')
     : Boolean(title.trim() || note.trim());
 
   return (
@@ -205,6 +209,12 @@ export function CreateReminderScreen({
               setError('');
             }}
           />
+
+          <SectionLabel>Avisar antes</SectionLabel>
+          <AdvanceField value={advance} onChange={setAdvance} />
+
+          <SectionLabel>Ubicación (opcional)</SectionLabel>
+          <FilledField testID="input-ubicacion" placeholder="Dirección o enlace de Google Maps" maxLength={MAX_LOCATION_LENGTH} value={location} onChangeText={setLocation} />
 
           <SectionLabel>Repetir</SectionLabel>
           <RepeatPicker

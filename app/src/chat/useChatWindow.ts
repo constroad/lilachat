@@ -5,6 +5,7 @@ import { messageWindowPage } from '../api/client';
 import { windowRows } from './messageWindowRows';
 import { filaDeArchivoEnCola, pendientesEnOrden, sinPendientesConfirmados } from './filasDelChat';
 import { sinOcultos } from './ocultos';
+import { planNotInList } from './planNotInList';
 import { isPending, type Row } from './rowKinds';
 import type { ChatMessage, PendingMessage } from './useChat';
 import type { useArchivosDelChat } from './useArchivosDelChat';
@@ -50,6 +51,8 @@ export function useChatWindow(p: {
   const [opened, setOpened] = useState<MessageWindow<ChatMessage> | null>(null);
   const [viewId, setViewId] = useState(0);
   const loading = useRef(false);
+  /** The message whose window `alNoEstar` is fetching, so a repeat of the same jump stays silent. */
+  const aroundSeq = useRef<number | null>(null);
   const current = useRef(opened);
   current.current = opened;
 
@@ -66,10 +69,14 @@ export function useChatWindow(p: {
 
   /** Not on screen: the window around it; a thread-only reply opens its thread. */
   const alNoEstar = useCallback((texto: string, seq: number) => {
-    if (encrypted || loading.current) return onNoEsta(texto);
+    const plan = planNotInList({ encrypted, busy: loading.current, fetchingSeq: aroundSeq.current, seq });
+    if (plan === 'report') return onNoEsta(texto);
+    if (plan === 'ignore') return;
     loading.current = true;
+    aroundSeq.current = seq;
     void ask(`around=${seq}`).then((page) => {
       loading.current = false;
+      aroundSeq.current = null;
       const made = page ? windowFromPage(page, seq) : null;
       if (!made) return onNoEsta(page ? 'Ese mensaje ya no está en el chat.' : 'Sin conexión: ese mensaje todavía no está en este teléfono.');
       const status = targetStatus(made, seq);

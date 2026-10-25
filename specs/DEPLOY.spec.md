@@ -517,6 +517,46 @@ segundo plano (se hace con sesión iniciada). Para repetir la prueba sin sesión
 `adb logcat -c`, abrir la app y filtrar el log con `grep -v embeddedAssetFileMap` (el volcado de los
 assets embebidos ocupa miles de líneas).
 
+### 4-bis.8 Arranque con expo-updates y peso del APK (medido el 25/10/2026)
+
+**Arranque en frío** (emulador Pixel 6 arm64, Android 15, un AVD propio y limpio, caché de páginas vaciada entre cada
+corrida, 1 corrida de calentamiento descartada, 10 corridas medidas, sin sesión: la pantalla de ingreso). «Ingreso» es
+desde `am start` hasta que la pantalla de ingreso pinta su botón (captura de pantalla cada ~150 ms); `am start -W` es solo
+hasta el primer cuadro (la pantalla de carga), no ve el JavaScript.
+
+| Versión | `am start -W` mediana / p90 | Ingreso mediana / p90 |
+| --- | --- | --- |
+| 0.1.170 (sin expo-updates) | 507 / 576 ms | 1748 / 1873 ms (control repetido al final: 1910 / 2090 ms) |
+| 0.1.171 embebida (sin red) | 412 / 450 ms | 2118 / 2225 ms |
+| 0.1.171 + OTA aplicada (sin red) | 388 / 459 ms | 2021 / 2119 ms |
+
+Lectura: llegar a la pantalla de ingreso tarda unos **0,2–0,3 s más** (10–16 %) que en la 0.1.170; el ruido entre dos
+corridas del mismo APK fue de ~0,16 s, así que la diferencia es real pero chica. **Arrancar desde una OTA no es más lento
+que desde el código embebido** (2021 contra 2118 ms). Lo medido incluye todo lo que cambió entre las dos versiones, no
+solo expo-updates. Reproducir: AVD aparte, `adb root`, wifi y datos apagados (`svc wifi disable; svc data disable`) para que
+no se baje ninguna OTA mientras se mide; para la tercera fila, red encendida y dos arranques antes de apagarla.
+
+**Qué pesa el APK 0.1.171** (40,2 MB, solo arm64-v8a, R8 y `shrinkResources` ya activos):
+
+| Parte | Comprimido | Nota |
+| --- | --- | --- |
+| Librerías nativas (31) | 15,4 MB | `libjingle_peerconnection_so` (WebRTC) 5,2; `libreactnative` 2,2; `libbarhopper_v3` (ML Kit) 2,0 |
+| `index.android.bundle` (Hermes) | 7,5 MB | |
+| `classes*.dex` (3) | 7,3 MB | |
+| 584 cuadros `assets/guinos/*.webp` | 4,4 MB | casi todo `res/`; 25 `webp` más son íconos |
+| `org/bouncycastle/pqc/crypto/picnic` | 1,2 MB | tablas de una firma poscuántica que la app no usa |
+| `resources.arsc` | 1,9 MB | |
+| Modelos ML Kit (`mlkit_barcode_models`) | 0,8 MB | no se toca |
+| 26 `mp3` + 1 `wav` | 0,28 + 0,15 MB | el `wav` pasado a `m4a` ahorra ~0,1 MB |
+
+Lo barato que se puede quitar es **~1,3 MB (3 %)**: excluir `org/bouncycastle/pqc/crypto/picnic/**`
+(`android.packagingOptions.excludes` en las propiedades de Gradle, que el `build.gradle` generado ya lee) y pasar el `wav`.
+**No se hizo todavía a propósito:** cambiar el empaquetado cambia el *fingerprint* nativo, o sea el runtime de las OTA
+(4-bis.1): desde ese commit `ota-publish` se niega a publicar hasta que haya un APK nuevo anotado con `--record-apk`. Va en
+el siguiente APK (0.1.172), junto con lo que ya lo necesite, y se verifica ahí con `unzip -l` y un ingreso en el emulador.
+Lo grande —los 4,4 MB de guiños— solo baja si los cuadros dejan de ir dentro del APK (bajarlos al primer uso o por OTA),
+que es una decisión de producto, no de empaquetado.
+
 ## 5. Errores conocidos y arreglo
 
 | Síntoma | Causa | Arreglo |

@@ -7295,8 +7295,14 @@ Tests: `web/src/spaces/spaceCache.test.tsx` (sin caché y con caché vencida).
 Reproducido en producción con el código anterior (espacio «Test»): borrar
 `space-cache:<id>:chats` y recargar dejaba `GET /api/chats?workspace=` en 401 a
 los 440 ms y el aviso de error; la caché que había era de 17 min y 6 chats.
-**No verificado:** el arreglo en producción (espera el deploy), la app móvil
-(tiene su propio `useCached` en `app/src/spaces/`; no se revisó si monta con token).
+**Verificado en producción (commit `802449c`, Chrome de José, espacio «Test»,
+25/10).** Sin caché y recargando: ningún pedido sale sin token (solo
+`/api/auth/session`, que usa la cookie), todos dan 200 y la lista carga sin el
+aviso. Con una caché de 10 min que traía un chat que el servidor no tiene: el
+chat se pinta del disco a los 392 ms y desaparece a los 791 ms, cuando llega la
+lista del servidor, y la caché queda sin él. La prueba sembró ese chat solo en la
+caché local y se reescribió sola. **No verificado:** la app móvil (tiene su
+propio `useCached` en `app/src/spaces/`; no se revisó si monta con token).
 
 **Server.** `/api/activity` lee menciones e hilos una sola vez: las filas de la
 pestaña y los conteos de los chips salen de la misma respuesta (antes la misma

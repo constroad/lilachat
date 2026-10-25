@@ -4909,6 +4909,92 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 134. Ficha de personas, miembros del espacio en canales privados y guiños por canal (25/10/2026, 0.1.170)
+
+Tres fallos pedidos por José (25/10, por agentes). `audience: 'all'`. Cada
+uno con su causa raíz, un test que fallaba antes y pasa después, y la prueba
+en el emulador y en la web **solo en el espacio «Test»** (nunca en Constroad
+ni en Inframaq).
+
+- **Canal privado: «Agregar miembros» no listaba a Max** (commit `2b87594`).
+  Causa: el selector listaba contactos (un 1:1 ya abierto o la agenda del
+  teléfono); quien se registró con su teléfono y nunca habló con quien suma no
+  aparecía aunque estuviera en el espacio. Dentro de un espacio los candidatos
+  son sus miembros activos con cuenta, menos los que ya están en el canal
+  (`spaceMembersAsContacts` en `shared/src/candidatosParaSumar.ts`;
+  `web/src/chat/info/useAddCandidates.ts`; `app/src/contacts/ContactPicker.tsx`
+  con `spaceId`). Sin permiso de agenda ni «Invitar». Tests:
+  `shared/src/candidatosParaSumar.test.ts`,
+  `web/src/chat/info/AgregarParticipante.test.tsx`.
+- **«Zumbidos y guiños» activado en un canal no aparecía en el compositor del
+  modo Slack** (commit `7b33fa0`; solo la app). Causa: la app leía `funAllowed`
+  de la lista personal de chats, que no guarda los de un espacio (viven en
+  `spaceChatsCache`), así que un canal salía siempre apagado. Ahora lo lee del
+  detalle del chat que `useGrupo` ya pide una vez (`funAllowed`) y relee con
+  `chat.changed`; la lista personal queda de respaldo mientras llega
+  (`app/src/chat/funAvailable.ts`, `nudge.tsx`, `useGrupo.ts`). En la web no se
+  reprodujo (verificado en «Test»). Test: `app/src/chat/funAvailable.test.ts`.
+- **Ficha de una persona con «Enviar mensaje», en todos los modos** (commit
+  `f52eb39`). Tocar el nombre o la foto de quien escribió, o su fila en la
+  lista de miembros, abre su ficha (foto, nombre, insignia, teléfono) con
+  «Enviar mensaje». La decisión es pura (`shared/src/personCard.ts`):
+  - Persona en un chat personal: el 1:1 simple (`POST /api/chats`).
+  - Persona en un chat de un espacio: el 1:1 de ESE espacio
+    (`POST /api/chats` con `workspaceId`; el server deduplica por espacio y
+    responde 403 si alguno no es miembro activo, que la ficha muestra junto
+    al botón).
+  - App instalada: solo por su propio 1:1 (`POST /api/workspaces/:id/apps/:appId/chat`);
+    el `botUserId` se cruza con `GET /api/workspaces/:id/app-directory`. Sin
+    instalación en ese espacio no se ofrece nada.
+  - Yo mismo: sin ficha.
+  El 1:1 de un espacio no está en la lista personal que usa `buscarChat`, y el
+  resumen del server no dice su espacio ni su app: se abre con el resumen
+  armado en el cliente (`requestOpenChat(chatId, known)` en la app,
+  `onOpenChat(chatId, known)` → `useSpacesWeb.openChat` en la web).
+  Archivos: app `app/src/chat/personCard/*` (hoja `PersonSheet`, hook
+  `usePersonCard`, `directChatSummary`); web `web/src/chat/personCard/*`
+  (`PersonCardDialog`, `usePersonCardWeb`, `cardPersonOf`) y
+  `web/src/spaces/openedChat.ts`. Puntos de entrada: avatar y nombre en
+  `FlatMessage` y el autor de la burbuja (`AuthorTap`, `BurbujaDeMensaje.tsx`),
+  `ParticipantesDelChat` (`ver-participante-<id>`) y los equivalentes de la app
+  (`FlatMessageRow`, `MessageRow`, `ParticipantesDelGrupo`, detalle del chat).
+  Tests: `shared/src/personCard.test.ts`,
+  `app/src/chat/personCard/directChatSummary.test.ts`,
+  `app/src/ui/openChatRequest.test.ts`,
+  `web/src/chat/personCard/*.test.ts(x)`,
+  `web/src/chat/BurbujaDeMensaje.person.test.tsx`,
+  `web/src/chat/info/ParticipantesDelChat.person.test.tsx`.
+
+**Riesgo conocido, sin tocar** (fuera del pedido): `POST /api/chats/:id/members`
+no verifica que quien se agrega pertenezca al espacio del canal; hoy el
+selector solo ofrece miembros del espacio, pero la API no lo impone.
+
+**Medición** (25/10, producción): el APK pesa 40 642 421 bytes (0.1.169:
+40 630 941, +11,2 KB por la ficha, `personCard` y el selector de miembros); el
+chunk principal de la web, 1 168,22 kB (0.1.169: 1 162 kB). Consultas nuevas:
+ninguna al abrir la ficha de una persona (el nombre, la foto y el teléfono ya
+vienen del detalle del chat); la ficha de una app suma un `GET
+/workspaces/:id/app-directory` (295–416 ms desde el navegador, una vez por
+apertura); «Enviar mensaje» es un `POST` (`/chats` o `/apps/:appId/chat`), de
+290 a 450 ms. El selector de «Agregar miembros» pide `GET
+/workspaces/:id/members` en vez de la agenda.
+
+**E2E** (web en el Chrome de José contra producción y emulador `lilafotos-qa`
+con el bundle de desarrollo apuntando a producción, siempre en «Test»):
+- Web, #planta: tocar «Portal» en su tarjeta abre la ficha «App» con
+  «Enviar mensaje»; el botón abre el 1:1 con Portal («Portal APP · de Agentes
+  ConstRoad» y sus comandos `/clima`, `/asistencia`…).
+- Web, #general → Info → Miembros: las filas de Inframaq, Portal y
+  QA-SUMAR abren su ficha; la mía («Tú») no es tocable. La ficha de QA-SUMAR
+  muestra nombre y «999 888 777»; «Enviar mensaje» abre el DM que ya existía
+  (la lista sigue en «1»: no se duplica).
+- App (emulador): la ficha desde un mensaje del modo empresa, desde la lista
+  de miembros del grupo y desde un chat personal; con una app, su 1:1; el
+  1:1 recién creado en un espacio abre con su resumen (antes no hacía nada).
+- Publicado: `lilachat-0.1.170-171.apk` en LilaStore (sha256 `70a4026e…`, el
+  mismo `etag` que sirve la descarga) y la web servida con la 0.1.170
+  (`a874de5`).
+
 ## 133. Fechas con selector, listas desplegables y tarjetas con su encabezado (24/10/2026, 0.1.169)
 
 Cerrado con agentes tras el E2E de punta a punta (pasos 1–5). `audience:
@@ -11802,7 +11888,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     «Abrir «Marcar asistencia»» sobre las acciones rápidas. Cerrar el
     formulario lo descarta: la tarjeta no queda. Si se cerró por error, se
     vuelve a tocar la acción.
-101. **Los logos reales de las apps** (José, 23/10: «si ya está conectado en
+101. ~~**Los logos reales de las apps**~~ — hecho en 0.1.169 (§133; el ⚡, «Solo tú ves esto» y las tarjetas ya llevan el PNG de cada producto, y un manifiesto reenviado actualiza el logo de los usuarios-bot instalados). (José, 23/10: «si ya está conectado en
     agentes, ¿por qué no obtienes los logos de Portal, Inframaq, Pulso?»). Hoy
     el `avatar_url` de cada app es una letra sobre un color, generada por
     agentes (`/apps/<app>/avatar.svg`). Lilachat ya dibuja el `avatar_url`

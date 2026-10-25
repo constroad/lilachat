@@ -15,7 +15,9 @@ import {
 import { UserModel } from './models.js';
 import { ChatModel, ReceiptModel, type Chat } from './chatModels.js';
 import { addBotsToPublicChannel } from './bots/botInstall.js';
+import { BotInstallationModel } from './bots/botModels.js';
 import { GENERAL_CHANNEL } from './workspaceGeneral.js';
+import { allActiveIn } from './workspaceChats.js';
 
 /**
  * Quién está en un chat y cómo: sumar, sacar, cambiar el rol, salir, el nombre
@@ -29,13 +31,32 @@ import { GENERAL_CHANNEL } from './workspaceGeneral.js';
  * solo evita el viaje, no protege — un cliente modificado se saltea cualquier
  * validación del teléfono.
  */
+export type AddMemberResult = { ok: true; chat: Chat } | { ok: false; motivo: string; status?: 403 };
+
+const forbidden = (motivo: string): AddMemberResult => ({ ok: false, motivo, status: 403 });
+
+/**
+ * Who may be added to a chat of a space: its active members, or an app installed there
+ * (an app comes back to a channel this way after an admin took it out, pending 91).
+ */
+async function mayJoinSpaceChat(spaceId: Types.ObjectId, userId: Types.ObjectId): Promise<boolean> {
+  if (await allActiveIn(spaceId, [userId])) return true;
+  return Boolean(await BotInstallationModel.exists({ workspaceId: spaceId, botUserId: userId, revokedAt: { $exists: false } }));
+}
+
 export async function addMember(params: {
   chatId: string;
   quien: Types.ObjectId;
   aQuien: string;
-}): Promise<{ ok: true; chat: Chat } | { ok: false; motivo: string }> {
+}): Promise<AddMemberResult> {
   const chat = await ChatModel.findOne({ _id: params.chatId }).lean<Chat | null>();
   if (!chat) return { ok: false, motivo: 'No encontramos esa conversación.' };
+
+  // In a space, only a member of this chat who is still active in the space lets people in (Agentes, 25/10/2026).
+  if (chat.workspaceId) {
+    const inChat = chat.members.some((member) => String(member.userId) === String(params.quien));
+    if (!inChat || !(await allActiveIn(chat.workspaceId, [params.quien]))) return forbidden('Solo quien está en este canal y sigue activo en el espacio puede agregar gente.');
+  }
 
   const decision = puedeAgregar({
     quien: String(params.quien),
@@ -53,6 +74,7 @@ export async function addMember(params: {
   // aparece en la lista y no es nadie.
   const persona = await UserModel.findById(params.aQuien).select('_id').lean();
   if (!persona) return { ok: false, motivo: 'No encontramos a esa persona.' };
+  if (chat.workspaceId && !(await mayJoinSpaceChat(chat.workspaceId, persona._id))) return forbidden('Esa persona no es miembro activo del espacio.');
 
   const actualizado = await ChatModel.findOneAndUpdate(
     // `$ne` en la condición y no solo `$addToSet`: así dos toques simultáneos no

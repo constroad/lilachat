@@ -399,7 +399,7 @@ export function buildChatRouter(uploader: MediaUploader = defaultMediaUploader()
     const r = await addMember({ chatId: req.params.chatId!, quien: userId, aQuien });
     // El motivo VIAJA: un «no» mudo en una pantalla de permisos se lee como que
     // la app se colgó, y acá los motivos son accionables («ya está en el grupo»).
-    if (!r.ok) return res.status(400).json({ message: r.motivo });
+    if (!r.ok) return res.status(r.status ?? 400).json({ message: r.motivo });
 
     // A todos los miembros, incluido el nuevo: su lista de chats tiene que
     // mostrarle el grupo sin que tenga que reabrir la app.

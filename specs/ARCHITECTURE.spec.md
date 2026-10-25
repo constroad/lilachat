@@ -4909,6 +4909,55 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 137. Actualizaciones OTA propias y el destino de los avisos (25/10/2026, 0.1.171 + servidor)
+
+**Pedido** (agentes, de parte de José): que los cambios de solo JavaScript lleguen a los
+teléfonos sin APK nuevo, sin EAS y sin que el servidor pueda firmar nada; y que tocar un aviso
+de mensaje abra el espacio, el mensaje y el hilo correctos.
+
+**OTA (Expo Updates v1, propio).** `expo-updates ~57.0.26` en el APK con
+`runtimeVersion: {policy: "fingerprint"}`, URL `…/api/ota/manifest`, `checkAutomatically:
+ON_LOAD`, `fallbackToCacheTimeout: 0` y firma de código (`app/certs/certificate.crt`, RSA-SHA256,
+`keyid main`; la llave privada vive solo en `~/.config/lilachat-ota/`, fuera del repo).
+Server: `server/src/ota/{otaRoutes,otaStore,otaProtocol,otaCertificate}.ts`, montado en
+`/api/ota` antes del `express.json` global (`app.ts`); `scripts/ota-publish.mts` (+ lógica pura
+en `shared/src/otaPublish.ts`) exporta el bundle, lo firma y lo sube. Procedimiento, rutas,
+reglas de aplicación y reversa: `specs/DEPLOY.spec.md` §4-bis.
+
+- **El server solo guarda y sirve.** Verifica la firma con el certificado público (422 si no
+  corresponde, si el manifest es de otro runtime o si falta algún asset), pero no firma.
+  `GET /manifest` y `GET /assets/:hash` son públicas a propósito (el teléfono no tiene sesión;
+  lo que sirven ya va en cada APK; lo protege la firma). Publicar exige `OTA_PUBLISH_TOKEN`
+  (`timingSafeEqual`; sin token configurado nadie publica). Disco ausente → 503 + `Retry-After`.
+- **`latest.json` se escribe de forma atómica** (temporal + `rename`): un teléfono que pregunta a
+  mitad de una publicación ve la anterior completa o la nueva completa.
+- **El runtime es el fingerprint de lo nativo y entra `android.versionCode`** (medido: subir solo
+  `versionCode` cambia el runtime), `app/.gitignore` y los `scripts` de `app/package.json`. Por eso
+  cada APK tiene el suyo y `app/ota-runtime.json` (`{versionCode, runtimeVersion}`, escrito
+  tras cada `apk build`) permite negarse a publicar por OTA algo que cambió lo nativo.
+- **Aplicar una OTA no es lo mismo que bajarla.** `useActualizacionSilenciosa` baja en silencio
+  y recarga solo al volver a primer plano tras ≥ 10 min fuera, sin llamada y con las colas de
+  mensajes y archivos vacías (`app/src/updates/applyPolicy.ts`, pura y probada).
+- **Cada petición dice qué código corre**: `x-lilachat-update: <updateId|embedded>` junto a
+  `x-lilachat-build`; el servidor aún no lo usa (queda para correlacionar reportes).
+- **Destino del aviso (B1, servidor).** `notifyOffline`, `avisarReaccion` y `notifyTasksDone`
+  añaden `workspaceId` (y `hiloDe` en los mensajes) al `data` del push común, al de Web Push y al
+  solo-datos; vacío si no hay espacio o hilo. El push común de FCM (`pushSender.send`) ahora
+  reenvía esos dos campos. **B2 (nativo, en el APK 0.1.171):** `AvisoDeMensaje` los pone en el
+  `Intent` (junto a `seq`), `Puente` los lleva a JS (`avisoPendiente()` y el evento `onAccion`
+  `chat` con `seq`, `hiloDe`, `workspaceId` como texto) y `chatPendiente()` sigue igual para el
+  JS viejo. **B3 (JS, por OTA):** pendiente de la primera OTA.
+
+**Pruebas.** `server/src/ota/*.test.ts` (43: protocolo, firma, token, hash, tope, retención,
+disco ausente, montaje en la app real), `shared/src/otaPublish.test.ts` (25),
+`app/src/updates/*.test.ts` (política de aplicar y descripción del código en uso),
+`server/test/pushService.test.ts` (destino del aviso). Ensayo del publicador:
+`--dry-run` exportó 9,3 MB de bundle y 642 assets en 26 s.
+
+**Sin verificar todavía (se anota al cerrar):** la OTA de punta a punta en un APK firmado en el
+emulador, el runtime que realmente lleva el APK frente al calculado, y el toque de aviso con
+espacio e hilo.
+
 ## 136. La respuesta tardía de un formulario viaja en la misma llamada (25/10/2026, solo servidor)
 
 Pedido de agentes tras la prueba «Prueba Refrigerio» en «Test» (paso 6): la app

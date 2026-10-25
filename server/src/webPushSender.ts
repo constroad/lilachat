@@ -60,7 +60,7 @@ export function resetVapidConfig(): void {
 export type WebPushPayload = {
   title: string;
   body: string;
-  data: { chatId: string; seq: number };
+  data: { chatId: string; seq: number; workspaceId?: string; hiloDe?: string };
 };
 
 export async function sendWebPush(

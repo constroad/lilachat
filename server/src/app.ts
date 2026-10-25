@@ -54,6 +54,8 @@ import { buildLocationShareRouter } from './locationShareRoutes.js';
 import { buildStorageRouter } from './storageRoutes.js';
 import { buildMediaServeRouter } from './mediaServeRoutes.js';
 import { mediaDisk } from './mediaDisk.js';
+import { buildOtaRouter } from './ota/otaRoutes.js';
+import { otaCertificate } from './ota/otaCertificate.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -103,6 +105,9 @@ export type AppDeps = {
  */
 export function buildApp(deps: AppDeps = {}): Express {
   const app = express();
+  // OTA updates (agentes 25/10/2026): BEFORE the global JSON parser, because an asset can arrive as `application/json`
+  // and the parser would swallow its body. Public for the phones, `OTA_PUBLISH_TOKEN` for the publisher.
+  app.use('/api/ota', buildOtaRouter({ disk: mediaDisk, token: () => process.env.OTA_PUBLISH_TOKEN, certificate: otaCertificate, log: (line) => console.log(line) }));
   app.use(express.json({ limit: '1mb' }));
 
   app.get('/api/health', (_req, res) => {

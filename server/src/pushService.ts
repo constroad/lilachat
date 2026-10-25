@@ -60,7 +60,7 @@ export async function notifyOffline(params: {
       .select('pushToken platform userId capacidades')
       .lean(),
     UserModel.findById(params.senderId).select('name phone avatarUrl').lean(),
-    ChatModel.findById(params.message.chatId).select('kind name encrypted avatarUrl').lean(),
+    ChatModel.findById(params.message.chatId).select('kind name encrypted avatarUrl workspaceId').lean(),
   ]);
   if (dispositivos.length === 0) return;
   // A mention rings even in a silenced chat, as in WhatsApp, unless the level
@@ -87,7 +87,10 @@ export async function notifyOffline(params: {
   // tiene un socket vivo: si lo tiene, ya le llegó en vivo.
   const nativos = reparto.nativos;
   const comunes = reparto.comunes.filter((d) => !silenciados.has(String(d.userId)) && !isOnline(String(d.userId)));
-  const data = { chatId: String(params.message.chatId), seq: params.message.seq };
+  // Where tapping the notice lands (agentes 25/10/2026): the chat's space and, for a reply, its thread. Empty = none.
+  const workspaceId = chat?.workspaceId ? String(chat.workspaceId) : '';
+  const hiloDe = params.message.hiloDe !== undefined && params.message.hiloDe !== null ? String(params.message.hiloDe) : '';
+  const data = { chatId: String(params.message.chatId), seq: params.message.seq, workspaceId, hiloDe };
   // DOS transportes para el mismo aviso: el teléfono por FCM y la pestaña del
   // navegador por Web Push. Son dispositivos distintos del mismo dueño, así que
   // los dos tienen que sonar (F6).
@@ -97,7 +100,7 @@ export async function notifyOffline(params: {
     await Promise.all([
       destinos.fcm.length > 0 ? sender.send({ tokens: destinos.fcm, ...text, data }) : undefined,
       sendWebPush(destinos.web, { ...text, data }),
-      ...mensajeSoloDatos({ message: params.message, nativos, silenciados, autor, telefono: sender_?.phone ?? '', chat: nombreDelGrupo ?? '', secreto: chat?.encrypted === true, text, photo: sender_?.avatarUrl, chatPhoto: chat?.kind === 'group' ? chat.avatarUrl : undefined }),
+      ...mensajeSoloDatos({ message: params.message, nativos, silenciados, workspaceId, hiloDe, autor, telefono: sender_?.phone ?? '', chat: nombreDelGrupo ?? '', secreto: chat?.encrypted === true, text, photo: sender_?.avatarUrl, chatPhoto: chat?.kind === 'group' ? chat.avatarUrl : undefined }),
     ]);
   } catch (error) {
     // Un push que no sale no puede tumbar el envío: el mensaje YA está
@@ -131,6 +134,9 @@ function mensajeSoloDatos(params: {
   message: Message;
   nativos: DispositivoDePush[];
   silenciados: Set<string>;
+  /** Where tapping the notice lands: the chat's space and the thread, as text; empty when none. */
+  workspaceId: string;
+  hiloDe: string;
   autor: string;
   /** El teléfono de quien escribe: el aviso nativo busca con él el nombre en la agenda (FL11). */
   telefono: string;
@@ -158,6 +164,8 @@ function mensajeSoloDatos(params: {
         tipo: 'mensaje',
         chatId,
         seq: String(params.message.seq),
+        workspaceId: params.workspaceId,
+        hiloDe: params.hiloDe,
         autor: params.autor,
         telefono: params.telefono,
         chat: params.chat,
@@ -316,12 +324,12 @@ export async function avisarReaccion(params: { chatId: string; seq: number; auto
       notificationLevelsOf(params.chatId, [params.autor]),
       DeviceModel.find({ userId: params.autor, pushToken: { $exists: true, $ne: '' } }).select('pushToken platform userId').lean(),
       UserModel.findById(params.quien).select('name phone').lean(),
-      ChatModel.findById(params.chatId).select('kind name').lean(),
+      ChatModel.findById(params.chatId).select('kind name workspaceId').lean(),
     ]);
     if ((levels.get(params.autor) ?? 'todo') !== 'todo' || dispositivos.length === 0) return;
     const nombre = quien?.name ?? quien?.phone ?? 'Alguien';
     const text = { title: chat?.kind === 'group' && chat.name ? `${chat.name} · ${nombre}` : nombre, body: textoDelAvisoDeReaccion(params.emoji, params.cuerpo) };
-    const data = { chatId: params.chatId, seq: params.seq };
+    const data = { chatId: params.chatId, seq: params.seq, workspaceId: chat?.workspaceId ? String(chat.workspaceId) : '' };
     const destinos = splitPushTargets(dispositivos);
     await Promise.all([destinos.fcm.length > 0 ? sender.send({ tokens: destinos.fcm, ...text, data }) : undefined, sendWebPush(destinos.web, { ...text, data })]);
   } catch (error) {
@@ -339,12 +347,13 @@ export async function notifyTasksDone(params: { chatId: string; seq: number | un
   if (offline.length === 0) return;
   try {
     const recipients = offline.map((notice) => notice.to);
-    const [levels, devices] = await Promise.all([
+    const [levels, devices, chat] = await Promise.all([
       notificationLevelsOf(params.chatId, recipients),
       DeviceModel.find({ userId: { $in: recipients }, pushToken: { $exists: true, $ne: '' } }).select('pushToken platform userId').lean(),
+      ChatModel.findById(params.chatId).select('workspaceId').lean(),
     ]);
     // seq 0 opens the chat at its end (a checklist from before it kept its card).
-    const data = { chatId: params.chatId, seq: params.seq ?? 0 };
+    const data = { chatId: params.chatId, seq: params.seq ?? 0, workspaceId: chat?.workspaceId ? String(chat.workspaceId) : '' };
     await Promise.all(
       offline
         .filter((notice) => (levels.get(notice.to) ?? 'todo') === 'todo')

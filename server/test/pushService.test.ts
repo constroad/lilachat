@@ -8,7 +8,7 @@ import { __resetPresence, markOnline } from '../src/presence.js';
 import { buildPushText, type PushDeDatos, type PushMessage } from '../src/pushSender.js';
 import { CAPACIDAD_MENSAJE_NATIVO } from '@lilachat/shared';
 import { verificarEntrega } from '../src/entregaPorAviso.js';
-import { avisarReaccion, notifyOffline, setPushSender } from '../src/pushService.js';
+import { avisarReaccion, notifyOffline, notifyTasksDone, setPushSender } from '../src/pushService.js';
 
 let mongo: MongoMemoryServer;
 let jose: Types.ObjectId;
@@ -327,5 +327,58 @@ describe('avisarReaccion', () => {
     await avisarReaccion({ chatId: String(chatId), seq: 4, autor: String(maria), quien: String(jose), emoji: '👍' });
 
     expect(sent).toHaveLength(0);
+  });
+});
+
+/**
+ * Tapping a notice must land where the message is (agentes 25/10/2026): in its SPACE, and inside its THREAD when
+ * it is a reply. The push carries both, as text; the phone validates them before using them.
+ */
+describe('the notice says where its message lives (space and thread)', () => {
+  let spaceId: Types.ObjectId;
+
+  beforeEach(async () => {
+    spaceId = new Types.ObjectId();
+    await DeviceModel.create({ deviceId: 'd-maria-tel', userId: maria, platform: 'android', pushToken: 'tok-maria-tel', capacidades: [CAPACIDAD_MENSAJE_NATIVO] });
+  });
+
+  it('a message in a channel of a space carries the space, in the common push and in the data-only one', async () => {
+    // Arrange
+    await ChatModel.updateOne({ _id: chatId }, { $set: { kind: 'group', name: 'obra', workspaceId: spaceId } });
+    // Act
+    await notifyOffline({ message: message(), members: members(), senderId: String(jose) });
+    // Assert
+    expect(sent[0]?.data).toMatchObject({ workspaceId: String(spaceId) });
+    expect(datos[0]?.data).toMatchObject({ workspaceId: String(spaceId), hiloDe: '' });
+  });
+
+  it('a reply in a thread carries the root message of the thread, as text', async () => {
+    await ChatModel.updateOne({ _id: chatId }, { $set: { kind: 'group', name: 'obra', workspaceId: spaceId } });
+    await notifyOffline({ message: message({ seq: 7, hiloDe: 5, enElChat: true }), members: members(), senderId: String(jose) });
+    expect(sent[0]?.data).toMatchObject({ seq: 7, hiloDe: '5', workspaceId: String(spaceId) });
+    expect(datos[0]?.data).toMatchObject({ seq: '7', hiloDe: '5', workspaceId: String(spaceId) });
+  });
+
+  it('a personal 1:1 has no space and no thread: both go empty, never undefined', async () => {
+    await notifyOffline({ message: message(), members: members(), senderId: String(jose) });
+    expect(sent[0]?.data).toMatchObject({ workspaceId: '', hiloDe: '' });
+    expect(datos[0]?.data).toMatchObject({ workspaceId: '', hiloDe: '' });
+  });
+
+  it('a reaction opens the right space too', async () => {
+    await ChatModel.updateOne({ _id: chatId }, { $set: { workspaceId: spaceId } });
+    await avisarReaccion({ chatId: String(chatId), seq: 4, autor: String(maria), quien: String(jose), emoji: '👍' });
+    expect(sent[0]?.data).toMatchObject({ chatId: String(chatId), seq: 4, workspaceId: String(spaceId) });
+  });
+
+  it('a ticked task opens the right space too', async () => {
+    await ChatModel.updateOne({ _id: chatId }, { $set: { workspaceId: spaceId } });
+    await notifyTasksDone({ chatId: String(chatId), seq: 3, title: 'Lista', notices: [{ to: String(maria), body: 'Ana marcó una tarea' }] });
+    expect(sent[0]?.data).toMatchObject({ chatId: String(chatId), seq: 3, workspaceId: String(spaceId) });
+  });
+
+  it('a reaction in a personal chat carries an empty space', async () => {
+    await avisarReaccion({ chatId: String(chatId), seq: 4, autor: String(maria), quien: String(jose), emoji: '👍' });
+    expect(sent[0]?.data).toMatchObject({ workspaceId: '' });
   });
 });

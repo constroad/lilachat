@@ -21,6 +21,7 @@
 | --- | --- | --- | --- |
 | Server + web | UN proceso Node (`dist/index.js`): API, Socket.IO y la web (Express sirve `web/dist`) | `git push` a `main` → GitHub Actions → Torre despliega | Mac mini, `https://lilachat.constroad.com` |
 | APK (`app/`) | App RN/Expo, fuera de los workspaces de npm (su propio `node_modules`) | Se compila en la máquina de José y se sube a **LilaStore** con `@constroad/lila-cli`. NO pasa por Torre | Teléfonos; se descarga de `lilastore.constroad.com` |
+| Actualización OTA (solo el JavaScript de la app) | El bundle de `app/` firmado, que el server guarda y los teléfonos bajan en silencio | `npx tsx scripts/ota-publish.mts` en la máquina de José (sección 4-bis). NO pasa por Torre ni por LilaStore | Server: `https://lilachat.constroad.com/api/ota/*`; teléfonos con el APK del mismo runtime |
 
 Un `git push` a `main` **despliega a producción**. Se hace solo con la orden de José para
 ese cambio. Quién decide qué:
@@ -87,6 +88,8 @@ ese cambio. Quién decide qué:
 | `TORRE_HMAC` | firma HMAC-SHA256 del disparo del deploy | Secret del repo `constroad/lilachat` en GitHub (Torre guarda el mismo para verificar) | `.github/workflows/deploy.yml` |
 | `LILASTORE_TOKEN` | token de publicación de la app `lilachat` en LilaStore (formato `lsp_<id>_<secreto>`) | `.env` de la raíz del repo (gitignoreado) | `apk publish` (variable de entorno) |
 | `LILACHAT_UPLOAD_STORE_FILE`, `LILACHAT_UPLOAD_KEY_ALIAS`, `LILACHAT_UPLOAD_STORE_PASSWORD`, `LILACHAT_UPLOAD_KEY_PASSWORD` | keystore de firma del APK | `~/.gradle/gradle.properties` (fuera del repo) | Gradle, vía `apk build` |
+| `OTA_PUBLISH_TOKEN` | autoriza publicar actualizaciones OTA (`PUT/HEAD /api/ota/assets`, `POST /api/ota/updates`) | server: `.env` compartido de la mini (Torre → app `chat`); publicador: `app/.env` (gitignoreado). El MISMO valor en los dos | el server al arrancar; `scripts/ota-publish.mts` |
+| Llave privada de las OTA (`~/.config/lilachat-ota/private-key.pem`, o `OTA_PRIVATE_KEY_PATH`) | firma cada actualización OTA; los teléfonos solo aceptan lo firmado con ella | SOLO la máquina de José, permisos 600. Nunca en el repo, en el chat ni en el server. **Respaldarla**: si se pierde, ningún teléfono acepta OTA hasta publicar un APK nuevo con otro certificado | `scripts/ota-publish.mts` |
 | `EXPO_PUBLIC_API_URL` | URL del server que se hornea en el APK | `app/lila.json` (release) y `app/.env` (desarrollo) | `apk build` |
 | `JWT_SECRET`, `MONGO_URL`, `CONSTROAD_AUTH_KEY`, `LILA_SERVER_URL`, `LILA_APP_JWT_SECRET`, `LILA_PUBLIC_URL`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `BACKUP_DIR` (+ opcionales `ANTHROPIC_API_KEY`, `TURN_URL`, `TURN_SECRET`) | server | `.env` compartido de la mini (`deploys/chat/shared/.env`, enlazado por `sharedFiles` en Torre) | el server al arrancar |
 
@@ -276,6 +279,23 @@ Si la huella o la URL son otras: **no publicar** (firma de debug o URL de desarr
 horneada). La huella no es secreta: es la que LilaStore tiene registrada para validar al
 firmante.
 
+**Anotar el runtime del APK recién compilado (obligatorio desde la 0.1.171).** El runtime de
+las OTA es el *fingerprint* de lo nativo; cada APK tiene el suyo (entra hasta `versionCode`).
+El publicador compara contra lo anotado aquí para negarse a mandar por OTA algo que cambió
+lo nativo. Con el árbol limpio y SIN tocar `app/.gitignore`, `package.json` ni `app.json`
+entre la compilación y este paso:
+
+```bash
+cd /Users/josezamora/projects/lilachat/app
+RT=$(npx expo-updates runtimeversion:resolve --platform android | python3 -c "import sys,json; print(json.load(sys.stdin)['runtimeVersion'])")
+VC=$(python3 -c "import json; print(json.load(open('app.json'))['expo']['android']['versionCode'])")
+echo "{\"versionCode\": $VC, \"runtimeVersion\": \"$RT\"}" > ota-runtime.json && cat ota-runtime.json
+```
+
+Se commitea con el release (`app/ota-runtime.json`). Comprobación cruzada, una vez por
+cambio de versión de Expo: el runtime que lleva el APK (`aapt dump xmltree <apk>
+AndroidManifest.xml | grep -A2 EXPO_RUNTIME_VERSION`) debe ser ese mismo.
+
 ### 4.3 Publicar en LilaStore
 
 Las notas salen del mismo catálogo (hace falta haber corrido `npm run build` en la raíz para
@@ -367,6 +387,93 @@ cd /Users/josezamora/projects/lilachat/app && ls -t dist/lilachat-*.apk | tail -
   la última (`## 135.`) está en la línea 4912, así que la nueva (`## 136.`) se inserta
   justo ANTES de esa línea. Ese archivo tiene unas 12 000 líneas; léelo por rangos.
 
+## 4-bis. Actualizaciones OTA (solo JavaScript, sin APK nuevo)
+
+Desde la 0.1.171 la app trae `expo-updates` apuntando a nuestro propio server
+(`https://lilachat.constroad.com/api/ota/manifest`, sin EAS). Un cambio **solo de JavaScript o
+assets** llega a los teléfonos en silencio; un cambio **nativo** sigue necesitando un APK.
+
+### 4-bis.1 ¿OTA o APK?
+
+| Cambió… | Va por |
+| --- | --- |
+| Pantallas, hooks, lógica, textos, imágenes/sonidos de `app/src` y `app/assets`, `shared/` usado por la app | **OTA** |
+| `app/modules/*` (Kotlin), `app/plugins/*`, `app/app.json` (permisos, plugins, versión), `app/package.json` (dependencias **y scripts**), `app/.gitignore`, una librería nativa nueva | **APK** (y ese APK trae su runtime nuevo) |
+| Server o web | `git push` (sección 3). No toca a la app |
+
+No hace falta decidirlo a ojo: `ota-publish` calcula el runtime y **aborta** con «Cambió algo
+nativo desde el APK <versionCode>: esto va en un APK, no por OTA» si no coincide con
+`app/ota-runtime.json`. Una OTA **nunca cambia** `version` ni `versionCode` (entran al runtime).
+
+### 4-bis.2 Publicar una OTA
+
+Con `main` limpio y empujado (el script lo exige: árbol limpio en `app/`, `shared/` y los
+`package*.json`, rama `main`, `HEAD == origin/main`):
+
+```bash
+cd /Users/josezamora/projects/lilachat
+~/.claude/skills/web-app-loop/scripts/mem-guard.sh --wait          # llamada aparte si la Mac pagina
+npx tsx scripts/ota-publish.mts                                    # exporta, firma, sube y verifica en vivo
+```
+
+Imprime `updateId`, runtime, git sha y tamaño del bundle, y solo dice `✓ Publicado y verificado
+en vivo` si el server ya sirve ese manifest. `--dry-run` hace todo menos subir (y
+`--no-git-checks` solo se combina con `--dry-run`, para ensayar con cambios sin commitear).
+Lee el token de `OTA_PUBLISH_TOKEN` (entorno o `app/.env`) y la llave de
+`~/.config/lilachat-ota/private-key.pem`; no imprime ninguno.
+
+### 4-bis.3 Cómo se aplica en el teléfono
+
+`useActualizacionSilenciosa` (montado en `NavegacionDeSesion` vía `SilentUpdateHost`) revisa al
+abrir, al volver a primer plano y cada 30 min (con 5 min mínimo entre revisiones) y baja la
+actualización sin avisar. La **aplica** (`reloadAsync`) solo cuando, a la vez: hay una
+descargada, la app vuelve a primer plano tras **≥ 10 min** en segundo plano, no hay llamada y la
+cola de mensajes y la de archivos están vacías (`app/src/updates/applyPolicy.ts`). Nunca
+recarga en segundo plano. Si no se dan, queda esperando (al abrir en frío entra sola).
+Ajustes → Diagnóstico dice si corre «Incluido en el APK» o «Actualización <8 caracteres>» y el
+runtime; cada petición lleva `x-lilachat-update: <updateId|embedded>`.
+
+### 4-bis.4 Volver atrás
+
+- **Publicar el código bueno otra vez**: `git revert <sha-malo>`, empujar, y
+  `npx tsx scripts/ota-publish.mts`. Sale con `id` y fecha nuevos, así que los teléfonos lo
+  toman aunque ya hubieran bajado el malo. (El publicador solo publica `main` empujado, nunca
+  un commit viejo suelto: lo que está en vivo tiene que estar en el repo.)
+- **Volver al código del APK**: `npx tsx scripts/ota-publish.mts --embedded` (publica una
+  directiva firmada `rollBackToEmbedded` para el runtime de `app/ota-runtime.json`; no exporta
+  nada y no exige que el árbol coincida).
+
+### 4-bis.5 El server
+
+`server/src/ota/*`, montado en `/api/ota` **antes** del `express.json` global (un asset
+`application/json` llegaría vacío). Guarda en `ota/` del disco de medios (`CHAT_STORAGE_ROOT`),
+nunca dentro de una release (un deploy la borraría):
+`ota/assets/<sha256-base64url>` (+ `.json` con el content-type),
+`ota/updates/<runtime>/<id>/{manifest|directive}.{json,sig}`, `latest.json` por runtime
+(escrito de forma atómica) y `ota/no-update.{json,sig}`. Guarda las últimas 10 por runtime y
+borra los assets huérfanos de más de 1 h. Sin disco responde 503 con `Retry-After`.
+
+| Ruta | Quién | Qué |
+| --- | --- | --- |
+| `GET /api/ota/manifest` | **pública** (los teléfonos no tienen sesión) | exige `expo-protocol-version: 1`, `expo-platform: android`, `expo-runtime-version` (`^[A-Za-z0-9._-]{1,128}$`) o 400; multipart con la última firmada, `noUpdateAvailable` firmado si ya la tiene o no hay, 404 si nunca se publicó |
+| `GET /api/ota/assets/:hash` | **pública** | el archivo por su SHA-256 (43 caracteres base64url), caché de un año, gzip si conviene |
+| `PUT /api/ota/assets/:hash` | `Authorization: Bearer <OTA_PUBLISH_TOKEN>` | ≤ 50 MB; si los bytes no dan ese SHA-256, 422; `201` nuevo, `200` ya estaba |
+| `HEAD /api/ota/assets/:hash` | token | `200`/`404` |
+| `POST /api/ota/updates` | token | `{runtimeVersion, manifest | directive, signature, noUpdateSignature?}`; verifica la firma con `app/certs/certificate.crt` (422 si no corresponde), que el manifest sea del runtime y que todos sus assets existan (422 con la lista) |
+
+Las dos rutas públicas contradicen a propósito la regla «toda ruta con sesión»: es el
+protocolo, y lo que sirven ya va dentro de cada APK; lo que protege es la **firma** (el
+teléfono ignora lo que no esté firmado con la llave privada, que el server no tiene).
+
+### 4-bis.6 Qué verificar tras desplegar el server (sin token)
+
+```bash
+B=https://lilachat.constroad.com
+curl -s -o /dev/null -w "manifest sin cabeceras: %{http_code} (400)\n" $B/api/ota/manifest
+curl -s -o /dev/null -w "PUT sin token: %{http_code} (401)\n" -X PUT $B/api/ota/assets/$(printf 'a%.0s' {1..43})
+curl -s -o /dev/null -w "POST sin token: %{http_code} (401)\n" -X POST $B/api/ota/updates -H 'content-type: application/json' -d '{}'
+```
+
 ## 5. Errores conocidos y arreglo
 
 | Síntoma | Causa | Arreglo |
@@ -413,7 +520,8 @@ cd /Users/josezamora/projects/lilachat/app && ls -t dist/lilachat-*.apk | tail -
 7. [ ] API + descarga real + sha256 iguales (4.4).
 8. [ ] E2E en el espacio «Test» (web y emulador, si José lo pide) y limpieza verificada en cero (4.5).
 9. [ ] Medición y `ARCHITECTURE.spec.md` actualizados (4.5).
-10. [ ] Informe a José: qué cambió, versión, enlace de descarga, qué quedó sin verificar.
+10. [ ] `app/ota-runtime.json` escrito tras compilar y commiteado (4.2).
+11. [ ] Informe a José: qué cambió, versión, enlace de descarga, qué quedó sin verificar.
 
 ## 7. Límites de este documento
 

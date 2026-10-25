@@ -1,6 +1,6 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { ChevronDown, UserPlus } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { AccionDeMiembro } from '@lilachat/shared';
 import { membersHeading } from '@lilachat/shared';
 import { ContactPicker } from '../../contacts/ContactPicker';
@@ -25,6 +25,8 @@ export function ParticipantesDelChat(props: {
   onAgregar: (userId: string) => void;
   onCambiarRol: (userId: string, role: 'admin' | 'member') => void;
   onSacar: (userId: string) => void;
+  /** Tapping a row opens that person's card (José, 25/10). Without it, the rows are plain. */
+  onViewPerson?: (userId: string) => void;
 }) {
   const [agregando, setAgregando] = useState(false);
   const [sacando, setSacando] = useState<MiembroEnInfo | null>(null);
@@ -46,11 +48,13 @@ export function ParticipantesDelChat(props: {
       <h4 className="px-6 pb-1 pt-3 text-[11px] font-bold uppercase tracking-[0.15em] text-on-surface-variant">{membersHeading(props.miembros.length)}</h4>
       {props.miembros.map((miembro) => (
         <div key={miembro.id} data-testid={`participante-${miembro.id}`} className="group flex min-h-[60px] items-center gap-4 px-6 hover:bg-background">
-          <Avatar name={miembro.nombre} foto={miembro.foto} size={40} />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[15px]">{miembro.nombre}</span>
-            {miembro.telefono && !miembro.esYo ? <span className="block text-xs text-on-surface-variant">{miembro.telefono}</span> : null}
-          </span>
+          <MemberTap onTap={props.onViewPerson && !miembro.esYo ? () => props.onViewPerson?.(miembro.id) : undefined} id={miembro.id} name={miembro.nombre}>
+            <Avatar name={miembro.nombre} foto={miembro.foto} size={40} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[15px]">{miembro.nombre}</span>
+              {miembro.telefono && !miembro.esYo ? <span className="block text-xs text-on-surface-variant">{miembro.telefono}</span> : null}
+            </span>
+          </MemberTap>
           {miembro.rol === 'admin' ? <span className="shrink-0 rounded-full border border-primary/30 bg-primary/[0.08] px-2.5 py-0.5 text-[11px] font-semibold text-primary">Admin del grupo</span> : null}
           {miembro.acciones.length ? (
             <DropdownMenu.Root modal={false}>
@@ -127,5 +131,15 @@ function AddParticipant(props: { jwt: string; workspaceId?: string; yaEstan: Rea
     <Overlay title="Añadir participante" onClose={props.onCerrar}>
       <ContactPicker groups={available} selected={[]} onToggle={(contact) => props.onElegir(contact.id)} loading={groups === null} multiple={false} />
     </Overlay>
+  );
+}
+
+/** The photo and name of a member: a button to their card when there is one, the plain row when not. */
+function MemberTap(props: { onTap?: () => void; id: string; name: string; children: ReactNode }) {
+  if (!props.onTap) return <div className="flex min-w-0 flex-1 items-center gap-4">{props.children}</div>;
+  return (
+    <button type="button" data-testid={`ver-participante-${props.id}`} aria-label={`Ver a ${props.name}`} onClick={props.onTap} className="flex min-h-[60px] min-w-0 flex-1 items-center gap-4 text-left">
+      {props.children}
+    </button>
   );
 }

@@ -38,6 +38,8 @@ export function useGrupo(
   roles: ReadonlyMap<string, MemberPill>;
   /** An admin switched nudges and winks on; unknown until the detail arrives. */
   funAllowed: boolean | undefined;
+  /** Everyone in the chat as the detail sent them: a person's card reads their phone and photo here. */
+  members: readonly MiembroConNombre[];
 } {
   const agenda = useSyncExternalStore(suscribirAgenda, agendaPorTelefono, agendaPorTelefono);
   const [miembros, setMiembros] = useState<MiembroConNombre[]>(() => cache.get(chatId) ?? []);
@@ -98,5 +100,5 @@ export function useGrupo(
   const soyAdmin = useCallback((yo: string) => miembros.some((uno) => uno.id === yo && uno.role === 'admin'), [miembros]);
   /** Each member's role, for the pill next to their name in the Slack format (design `s-01`). */
   const roleById = useMemo(() => new Map<string, MemberPill>(miembros.map((member) => [member.id, pillOf(member)])), [miembros]);
-  return { nombres, fotos, soyMiembro, mencionables, soyAdmin, roles: roleById, funAllowed };
+  return { nombres, fotos, soyMiembro, mencionables, soyAdmin, roles: roleById, funAllowed, members: miembros };
 }

@@ -30,6 +30,8 @@ export type ContextoDeLaConversacion = {
   isAppOf?: (senderId: string) => boolean;
   /** Member photos for the thread chip and root (backlog 18: only initials showed). */
   photos?: ReadonlyMap<string, string>;
+  /** The name or the photo of an author opens their card (José, 25/10). Without it (a thread panel, a secret chat), they are plain. */
+  onViewPerson?: (userId: string) => void;
   /** El mensaje citado por `replyToSeq`, si está cargado. */
   citado: (seq: number) => MensajeEnPantalla | undefined;
   onAccion: (mensaje: MensajeEnPantalla, accion: AccionSobreMensaje) => void;

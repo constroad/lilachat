@@ -27,6 +27,8 @@ import { DialogoEliminar, DialogoInfo } from './DialogosDelMensaje';
 import { DialogoReenviar, TU_NUEVO } from './reenviar/DialogoReenviar';
 import { useAccionesSobreMensajes, type AccionesDeSync } from './useAccionesSobreMensajes';
 import { useDetalleDelChat } from './useDetalleDelChat';
+import { cardPersonOf } from './personCard/cardPersonOf';
+import { usePersonCardWeb } from './personCard/usePersonCardWeb';
 import type { ChatSummary } from './types';
 import { CallExtrasMenu } from './scheduledCall/CallExtrasMenu';
 import type { BaseLocal } from '../local/baseLocal';
@@ -66,6 +68,8 @@ export function ConversacionConAcciones(
     onLevel: (chat: ChatSummary, level: NotificationLevel) => void;
     /** Ir a un mensaje pedido desde afuera (un destacado de la lista global, 20/10). */
     irA?: { seq: number; vez: number } | null;
+    /** A 1:1 opened from a person's card (José, 25/10); a space's 1:1 comes with its summary. */
+    onOpenChat?: (chatId: string, known?: ChatSummary) => void;
   }
 ) {
   const { chat, yo, sync, onAviso } = props;
@@ -163,9 +167,14 @@ export function ConversacionConAcciones(
   const flat = usesFlatLayout(chat, { groupsAsList: useGroupsAsList() });
   const badgeOf = useCallback((senderId: string) => memberBadge({ ...detalle?.pills.get(senderId), isMe: senderId === yo }), [detalle, yo]);
   const isAppOf = useCallback((senderId: string) => detalle?.pills.get(senderId)?.role === 'app', [detalle]);
+  const personCard = usePersonCardWeb({ jwt: props.jwt, myUserId: yo, spaceId: chat.workspaceId, onOpenChat: props.onOpenChat });
+  const showPerson = useCallback((userId: string) => {
+    const person = cardPersonOf({ userId, detail: detalle, names: nombres, myUserId: yo });
+    if (person) personCard.show(person);
+  }, [detalle, nombres, yo, personCard.show]);
   const contexto = useMemo<ContextoDeLaConversacion>(
-    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto: openPhoto, onVerPdf: setPdfAbierto, onGreet: greet, canGreet, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar, onEditarRecordatorio: editarRecordatorio, destacados: destacados.seqs, onStickerAction: chat.encrypted ? undefined : onStickerAction, flat, badgeOf, isAppOf }),
-    [yo, props.jwt, chat, detalle, nombres, photos, citado, onAccion, openPhoto, greet, canGreet, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editarRecordatorio, destacados.seqs, onStickerAction, flat, badgeOf, isAppOf]
+    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto: openPhoto, onViewPerson: showPerson, onVerPdf: setPdfAbierto, onGreet: greet, canGreet, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar, onEditarRecordatorio: editarRecordatorio, destacados: destacados.seqs, onStickerAction: chat.encrypted ? undefined : onStickerAction, flat, badgeOf, isAppOf }),
+    [yo, props.jwt, chat, detalle, nombres, photos, citado, onAccion, openPhoto, showPerson, greet, canGreet, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editarRecordatorio, destacados.seqs, onStickerAction, flat, badgeOf, isAppOf]
   );
 
   // Nudges and winks: in a 1:1 (not the chat with yourself), or a group whose admin allows them (José, 21/10).
@@ -265,6 +274,7 @@ export function ConversacionConAcciones(
           onAccionDeChat={props.onAccionDeChat}
           onLevel={props.onLevel}
           onVerFoto={openPhoto}
+          onViewPerson={showPerson}
           tarjetas={<>{chat.encrypted ? null : <ChecklistsCard chatId={chat.id} jwt={props.jwt} onOpen={(seq) => setSalto({ seq, vez: Date.now() })} />}<TarjetaDeFijados fijados={fijados} nombreDe={nombreDe} textoLocal={textoLocal} onVerTodos={() => setVerFijados(true)} />{chat.encrypted ? null : <TarjetaDeDestacados chatId={chat.id} jwt={props.jwt} yo={yo} cuantos={destacados.seqs.size} onIr={(seq) => setSalto({ seq, vez: Date.now() })} />}</>}
         />
         </PanelBoundary>
@@ -301,6 +311,7 @@ export function ConversacionConAcciones(
       ) : null}
       {archivos ? <EnviarArchivos archivos={archivos} onCerrar={() => setArchivos(null)} onEnviar={subir} /> : null}
       {fotoAbierta !== null ? <PhotoViewer fotos={viewerPhotos} indice={fotoAbierta} onCambiar={setFotoAbierta} onCerrar={() => setFotoAbierta(null)} onMakeSticker={chat.encrypted ? undefined : (foto) => void saveGif({ chatId: chat.id, seq: foto.seq }).then(onAviso)} /> : null}
+      {personCard.element}
       {pdfAbierto?.media?.url ? <PdfViewer jwt={props.jwt} chatId={chat.id} seq={pdfAbierto.seq} fileName={pdfAbierto.media.fileName ?? 'Documento PDF'} downloadUrl={pdfAbierto.media.url} onClose={() => setPdfAbierto(null)} /> : null}
       {chat.encrypted ? null : <BirthdayCardWeb chatId={chat.id} chatName={chat.name ?? ''} isGroup={chat.kind === 'group'} me={yo} messages={mensajes ?? []} names={nombres} photos={photos} onReact={(emoji) => void sync.enviarTexto(chat.id, emoji)} onGreet={insertIntoComposer} />}
       {acciones.viendoInfo ? <DialogoInfo chatId={chat.id} mensaje={acciones.viendoInfo} jwt={props.jwt} onCerrar={acciones.cerrarInfo} /> : null}

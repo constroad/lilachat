@@ -52,16 +52,16 @@ export function useAbrirDesdeAviso(params: {
 
     // FL8.2: los avisos de mensaje que dibuja el servicio nativo. Expo no los
     // conoce: el toque llega por el puente (en frío, como pendiente).
-    const abrirPorId = async (chatId: string) => {
-      const chat = await buscarChat(chatId, params.jwt);
+    const openById = async (chatId: string, known?: ChatSummary) => {
+      const chat = known ?? (await buscarChat(chatId, params.jwt));
       if (chat && vivo) abrirChatRef.current(chat);
     };
     const enFrio = llamadaNativa.chatPendiente();
-    if (enFrio) void abrirPorId(enFrio);
+    if (enFrio) void openById(enFrio);
     // «Enviar mensaje» on a shared contact (pending 9): the same way as a notification.
-    const stopRequests = subscribeOpenChatRequests((chatId) => void abrirPorId(chatId));
+    const stopRequests = subscribeOpenChatRequests((chatId, known) => void openById(chatId, known));
     const toques = llamadaNativa.alTocar((aviso) => {
-      if (aviso.accion === 'chat') void abrirPorId(aviso.chatId);
+      if (aviso.accion === 'chat') void openById(aviso.chatId);
     });
     return () => {
       vivo = false;

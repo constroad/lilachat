@@ -81,6 +81,7 @@ function FilaDeMensaje({
   onAbrirHilo,
   destacado = false,
   album,
+  onShowPerson,
 }: {
   item: Row;
   previous?: Row;
@@ -130,6 +131,8 @@ function FilaDeMensaje({
   destacado?: boolean;
   /** The first photo of an album (pending 12): it draws the card with all of them. */
   album?: readonly ChatMessage[];
+  /** Tapping someone else's photo or name in a group opens their card (José, 25/10/2026). */
+  onShowPerson?: (userId: string) => void;
 }) {
   const colores = useColores();
   // Which photo of an album is showing: on the first one, swiping right replies (pending 70).
@@ -241,6 +244,10 @@ function FilaDeMensaje({
       {!mine && esGrupo ? (
         nextGrouped ? (
           <View style={{ width: AVATAR_DE_AUTOR }} />
+        ) : onShowPerson && !isPending(item) ? (
+          <Pressable testID={`avatar-${idDeFila}`} accessibilityLabel={`Ver a ${nombreAutor ?? ''}`} onPress={() => (enSeleccion ? onSeleccionar?.(item.seq) : onShowPerson(senderId))} onLongPress={() => onSeleccionar?.(item.seq)} delayLongPress={350}>
+            <Avatar nombre={nombreAutor ?? ''} foto={fotoAutor} tamano={AVATAR_DE_AUTOR} />
+          </Pressable>
         ) : (
           <Avatar nombre={nombreAutor ?? ''} foto={fotoAutor} tamano={AVATAR_DE_AUTOR} />
         )
@@ -283,14 +290,27 @@ function FilaDeMensaje({
           }}
         >
           {conAutor && nombreAutor ? (
-            <Text
-              testID={`autor-${idDeFila}`}
-              className="px-3 pt-1.5 text-[13px] font-semibold"
-              style={{ color: colorAutor }}
-              numberOfLines={1}
+            <Pressable
+              disabled={!onShowPerson || isPending(item)}
+              onPress={() => {
+                if (isPending(item)) return;
+                if (enSeleccion) onSeleccionar?.(item.seq);
+                else onShowPerson?.(senderId);
+              }}
+              onLongPress={() => !isPending(item) && onSeleccionar?.(item.seq)}
+              delayLongPress={350}
+              testID={`persona-${idDeFila}`}
+              accessibilityLabel={`Ver a ${nombreAutor}`}
             >
-              {nombreAutor}
-            </Text>
+              <Text
+                testID={`autor-${idDeFila}`}
+                className="px-3 pt-1.5 text-[13px] font-semibold"
+                style={{ color: colorAutor }}
+                numberOfLines={1}
+              >
+                {nombreAutor}
+              </Text>
+            </Pressable>
           ) : null}
           {/* La cita llega resuelta desde la pantalla, que tiene todos los mensajes. */}
           {citado ? (

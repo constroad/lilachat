@@ -57,6 +57,8 @@ export function useDibujarFila(p: {
   destacados: ReadonlySet<number>;
   /** «Saludar 👋» on «X se unió a Lilachat» (José, 21/10). */
   onGreet?: () => void;
+  /** Someone's photo or name was tapped: their card (José, 25/10/2026). */
+  onShowPerson?: (userId: string) => void;
 }) {
   const { rows, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir } = p;
   // Groups as flat rows, like Slack (design `s-01`): always in a company space, on request in a personal group.
@@ -123,6 +125,7 @@ export function useDibujarFila(p: {
               onFailed={onFallido}
               onGoToQuote={onTocarCita}
               onOpenThread={onAbrirHilo}
+              onShowPerson={p.onShowPerson}
             />
           ) : (
           <MessageRow
@@ -150,6 +153,7 @@ export function useDibujarFila(p: {
             onAbrirHilo={onAbrirHilo}
             destacado={!isPending(item) && destacados.has(item.seq)}
             album={album}
+            onShowPerson={p.onShowPerson}
           />
           )}
           {!isPending(item) && item.reacciones?.length && !item.deletedAt ? (
@@ -173,6 +177,6 @@ export function useDibujarFila(p: {
         </>
       );
     },
-    [rows, albums, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, flat, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir, citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas, onReaccionar, onMasEmojis, onVerReacciones, destacados, onGreet]
+    [rows, albums, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, flat, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir, citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas, onReaccionar, onMasEmojis, onVerReacciones, destacados, onGreet, p.onShowPerson]
   );
 }

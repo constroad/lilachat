@@ -17,7 +17,7 @@ import {
   type AccionDeMiembro,
   type NotificationLevel,
 } from '@lilachat/shared';
-import { chatDetailTabs, groupSubtitle, initialChatDetailTab, type ChatDetailTab } from '@lilachat/shared';
+import { chatDetailTabs, groupSubtitle, initialChatDetailTab, personOfMember, type ChatDetailTab } from '@lilachat/shared';
 import { DetailTabBar, RoundAction } from './DetailTabBar';
 import { EditarNombreDeGrupo } from './EditarNombreDeGrupo';
 import { elegirFotoDeGrupo, subirFotoDeGrupo } from './fotoDeGrupo';
@@ -31,6 +31,7 @@ import { cambiarAjustesDeChat } from '../api/client';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useColores } from '../ui/tema';
 import { ParticipantesDelGrupo, type Miembro } from './ParticipantesDelGrupo';
+import { usePersonCard } from './personCard/usePersonCard';
 import { VisorDeFoto } from '../ui/VisorDeFoto';
 import { RecordatoriosDelGrupo } from './RecordatoriosDelGrupo';
 import { EditarDescripcion, TarjetaDeDescripcion } from './descripcion/DescripcionDelGrupo';
@@ -131,6 +132,7 @@ export function ChatDetailScreen({
   tarjetas?: ReactNode;
 }) {
   const colores = useColores();
+  const personCard = usePersonCard({ jwt: credential.jwt, myUserId: credential.userId, spaceId: workspaceId });
   const margenes = useMargenes();
   const [estado, setEstado] = useState<Estado>({ fase: 'cargando' });
   const [level, setLevel] = useState<NotificationLevel>('todo');
@@ -486,6 +488,7 @@ export function ChatDetailScreen({
                 accionando={accionando}
                 onMenu={setMenuDe}
                 onAnadir={() => setAgregando(true)}
+                onShowPerson={(miembro) => personCard.show(personOfMember({ member: miembro, displayName: nombreDe(miembro), pill: { role: miembro.app ? 'app' : miembro.role }, isMe: miembro.esYo }))}
               />
             ) : null}
             {tab === 'settings' && detalle!.channel ? <ChannelVisibilityCard chatId={chatId} jwt={credential.jwt} isPrivate={detalle!.channel.visibility === 'private'} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} isGeneral={detalle!.channel.general} /> : null}
@@ -578,6 +581,7 @@ export function ChatDetailScreen({
             if (await llamar('members', { userId })) await cargar();
           }}
         />
+        {personCard.element}
       </View>
     </Modal>
   );

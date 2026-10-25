@@ -6,6 +6,7 @@ import { ChatQueue } from './ChatQueue';
 import type { FlashListRef } from '@shopify/flash-list';
 import { ChatBottom } from './ChatBottom';
 import { etiquetaDeRecordatorioEnElChat, type MencionEnMensaje } from '@lilachat/shared';
+import { personOfMember } from '@lilachat/shared';
 import { useFunActions } from './nudge';
 import { useCallBack } from './useCallBack';
 import { AttachSheet } from './AttachSheet';
@@ -42,6 +43,7 @@ import { useBuscarEnChat } from './useBuscarEnChat';
 import { useChatHeaderMenu, type DetailSection } from './useChatHeaderMenu';
 import { citadosPorSeq, fotosDelChat } from './filasDelChat';
 import { useGrupo } from './useGrupo';
+import { usePersonCard } from './personCard/usePersonCard';
 import { FueraDelGrupo } from './FueraDelGrupo';
 import { subtituloDelChat } from './cabeceraDelChat';
 import { usePresenceStatus } from './presenceStatus';
@@ -337,6 +339,13 @@ export function ChatScreen({
   const reacciones = useReaccionesEnPantalla({ mensajes: ventana.messages, reaccionar, yo: credential.userId, nombres: nombresDeReacciones, fotos: fotosDelGrupo, alReaccionar: seleccion.soltar });
   // Una fila, estable mientras no cambien mensajes ni acuses: un mensaje nuevo dibuja SU burbuja (FL2).
   const saludar = useCallback(() => void alEnviar('👋'), [alEnviar]);
+  // Someone's photo or name in the chat: their card, with «Enviar mensaje» (José, 25/10/2026).
+  const personCard = usePersonCard({ jwt: credential.jwt, myUserId: credential.userId, spaceId: workspaceId });
+  const showPerson = useCallback(
+    (userId: string) =>
+      personCard.show(personOfMember({ member: grupo.members.find((one) => one.id === userId) ?? { id: userId }, displayName: nombresDelGrupo.get(userId), pill: grupo.roles.get(userId), isMe: userId === credential.userId })),
+    [personCard.show, grupo.members, grupo.roles, nombresDelGrupo, credential.userId]
+  );
   const dibujarFila = useDibujarFila({
     rows,
     yo: credential.userId,
@@ -365,6 +374,7 @@ export function ChatScreen({
     onMasEmojis: reacciones.masEmojis,
     onVerReacciones: reacciones.verReacciones,
     destacados: destacados.seqs, onGreet: saludar,
+    onShowPerson: showPerson,
   });
 
   // Lo que la barra sube MENOS que el teclado: su margen de navegación queda tapado (20/10, sin salto de layout).
@@ -567,6 +577,7 @@ export function ChatScreen({
         gifSticker={encrypted ? undefined : { jwt: credential.jwt, chatId }}
       />
       {pdfViewer}
+      {personCard.element}
       {detalleUsado ? (
       <ChatDetailScreen
         visible={verDetalle}

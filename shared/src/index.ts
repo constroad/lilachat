@@ -19,6 +19,7 @@ export * from './nombreDeContacto.js';
 export * from './eliminarMensaje.js';
 export * from './miembrosDeGrupo.js';
 export * from './candidatosParaSumar.js';
+export * from './personCard.js';
 export * from './accionesDeMiembro.js';
 export * from './infoDeGrupo.js';
 export * from './avisoDeGrupo.js';

@@ -1,5 +1,5 @@
 import { LineaDeLlamada } from './LineaDeLlamada';
-import { memo, useContext, useState } from 'react';
+import { memo, useContext, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertCircle, BellRing, CalendarDays, Check, CheckCheck, ChevronRight, Clock, FileText, Lock, Play } from 'lucide-react';
 import { Overlay } from '../ui/Overlay';
@@ -75,7 +75,7 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
           <StickerMessage
             message={mensaje}
             url={mensaje.media.url}
-            author={props.conAutor ? <NombreDelAutor senderId={mensaje.senderId} /> : null}
+            author={props.conAutor ? <AuthorName senderId={mensaje.senderId} clientKey={mensaje.clientKey} /> : null}
             quote={mensaje.hiloDe !== undefined && mensaje.enElChat ? <ThreadQuote root={mensaje.hiloDe} mine={false} /> : mensaje.replyToSeq ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={false} /> : null}
           />
         ) : (
@@ -84,7 +84,7 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
             mio ? 'bg-primary text-on-primary' : 'border border-outline/15 bg-surface text-on-surface'
           } ${mensaje.estado === 'fallido' ? 'opacity-70' : ''}`}
         >
-          {props.conAutor ? <NombreDelAutor senderId={mensaje.senderId} /> : null}
+          {props.conAutor ? <AuthorName senderId={mensaje.senderId} clientKey={mensaje.clientKey} /> : null}
           {/* Borrado: solo la lápida, sin la cita (como WhatsApp). */}
           {mensaje.hiloDe !== undefined && mensaje.enElChat && !mensaje.deletedAt ? <ThreadQuote root={mensaje.hiloDe} mine={mio} /> : null}
           {mensaje.replyToSeq && !mensaje.deletedAt ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={mio} /> : null}
@@ -115,8 +115,9 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
  */
 function FlatMessage(props: Props) {
   const { mensaje, agrupado } = props;
-  const { nombres, photos, yo, badgeOf, isAppOf } = useConversacion();
+  const { nombres, photos, yo, badgeOf, isAppOf, onViewPerson } = useConversacion();
   const mine = mensaje.senderId === yo;
+  const openCard = !mine && onViewPerson ? () => onViewPerson(mensaje.senderId) : undefined;
   const name = nombres.get(mensaje.senderId) ?? (mine ? 'Tú' : 'Alguien');
   // «Tú» next to «Tú» says nothing: the pill only when it adds something.
   const fullBadge = badgeOf?.(mensaje.senderId) ?? null;
@@ -126,12 +127,14 @@ function FlatMessage(props: Props) {
       {agrupado ? (
         <span className="w-9 shrink-0 pt-1 text-right text-[10px] text-on-surface-variant opacity-0 group-hover:opacity-100">{formatClock(mensaje.at)}</span>
       ) : (
-        <Avatar name={name} foto={photos?.get(mensaje.senderId)} size={36} bot={isAppOf?.(mensaje.senderId)} />
+        <AuthorTap onTap={openCard} testId={`avatar-${mensaje.clientKey}`} label={`Ver a ${name}`} bare>
+          <Avatar name={name} foto={photos?.get(mensaje.senderId)} size={36} bot={isAppOf?.(mensaje.senderId)} />
+        </AuthorTap>
       )}
       <div className="min-w-0 flex-1">
         {agrupado ? null : (
           <p className="flex flex-wrap items-baseline gap-x-2">
-            <span data-testid={`autor-${mensaje.clientKey}`} className={`truncate text-[15px] font-bold ${mine ? 'text-primary' : ''}`}>{name}</span>
+            <AuthorTap onTap={openCard} testId={`autor-${mensaje.clientKey}`} label={`Ver a ${name}`} className={`truncate text-[15px] font-bold ${mine ? 'text-primary' : ''}`}>{name}</AuthorTap>
             {badge ? <span className={`rounded-md px-1.5 py-px text-[11px] font-semibold ${mine ? 'bg-primary/10 text-primary' : 'bg-background text-on-surface-variant'}`}>{badge}</span> : null}
             <MessageFooter mensaje={mensaje} mio={mine} chat={props.chat} inline />
           </p>
@@ -174,9 +177,28 @@ function WinkFromContext({ seq, wink, mine, senderId, at }: { seq: number; wink?
   return <WinkLine seq={seq} wink={wink} mine={mine} author={nombres.get(senderId)} at={at} />;
 }
 
-function NombreDelAutor({ senderId }: { senderId: string }) {
-  const { nombres } = useConversacion();
-  return <p className={`mb-0.5 truncate text-[13px] font-semibold ${COLOR_DE_AUTOR[colorDeAutor(senderId)]}`}>{nombres.get(senderId) ?? 'Alguien'}</p>;
+function AuthorName({ senderId, clientKey }: { senderId: string; clientKey: string }) {
+  const { nombres, onViewPerson, yo } = useConversacion();
+  const name = nombres.get(senderId) ?? 'Alguien';
+  const openCard = senderId !== yo && onViewPerson ? () => onViewPerson(senderId) : undefined;
+  return (
+    <p className={`mb-0.5 truncate text-[13px] font-semibold ${COLOR_DE_AUTOR[colorDeAutor(senderId)]}`}>
+      <AuthorTap onTap={openCard} testId={`autor-${clientKey}`} label={`Ver a ${name}`}>{name}</AuthorTap>
+    </p>
+  );
+}
+
+/**
+ * The name or the photo of an author (José, 25/10/2026): a button that opens their card when
+ * there is one to open, and the plain thing when not (mine, a thread panel, a secret chat).
+ */
+function AuthorTap(props: { onTap?: () => void; testId: string; label: string; className?: string; /** Nothing around it when it is not tappable (the photo). */ bare?: boolean; children: ReactNode }) {
+  if (!props.onTap) return props.bare ? <>{props.children}</> : <span data-testid={props.testId} className={props.className}>{props.children}</span>;
+  return (
+    <button type="button" data-testid={props.testId} aria-label={props.label} onClick={props.onTap} className={`${props.className ?? ''} cursor-pointer text-left hover:underline focus-visible:underline`}>
+      {props.children}
+    </button>
+  );
 }
 
 /**

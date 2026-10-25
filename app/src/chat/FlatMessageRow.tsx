@@ -66,6 +66,8 @@ function FlatRow(props: {
   /** A quote goes to the quoted message; a thread reply sent to the chat opens its thread. */
   onGoToQuote?: (seq: number) => void;
   onOpenThread?: (seq: number) => void;
+  /** Tapping someone else's photo or name opens their card (José, 25/10/2026). */
+  onShowPerson?: (userId: string) => void;
 }) {
   const colors = useColores();
   const font = useChatFont();
@@ -82,26 +84,43 @@ function FlatRow(props: {
   const sticker = !isPending(item) && item.kind === 'sticker' && item.media?.url && !deleted && props.jwt ? item : null;
   const animated = useAnimatedStop(sticker?.media?.url, false, sticker?.media?.animated === true);
   const press = isPending(item) ? (failed ? () => props.onFailed?.(item.clientKey, failed) : undefined) : props.selecting ? () => props.onSelect?.(item.seq) : undefined;
+  const select = () => {
+    if (isPending(item)) return;
+    void Haptics.selectionAsync();
+    props.onSelect?.(item.seq);
+  };
+  // While selecting, a tap on the photo or the name selects like anywhere else on the row.
+  const showPerson = !mine && !isPending(item) && props.onShowPerson ? () => (props.selecting ? props.onSelect?.(item.seq) : props.onShowPerson?.(senderId)) : undefined;
 
   return (
     <DeslizarParaResponder habilitado={!isPending(item) && !props.selecting} onResponder={() => !isPending(item) && props.onReply?.(item.seq, previewDeMensaje(item), mine)}>
       <Pressable
         testID={!isPending(item) ? `fila-${item.seq}` : undefined}
         onPress={press}
-        onLongPress={() => {
-          if (isPending(item)) return;
-          void Haptics.selectionAsync();
-          props.onSelect?.(item.seq);
-        }}
+        onLongPress={select}
         delayLongPress={350}
         className={`-mx-3 flex-row px-3 ${grouped ? 'pt-0.5' : 'pt-3'} ${props.selected ? 'bg-primary/15' : ''}`}
         style={{ gap: FLAT_GAP }}
       >
-        {grouped ? <View style={{ width: FLAT_AVATAR }} /> : <Avatar nombre={name} foto={props.authorPhoto} tamano={FLAT_AVATAR} bot={props.authorIsApp} />}
+        {grouped ? (
+          <View style={{ width: FLAT_AVATAR }} />
+        ) : showPerson ? (
+          <Pressable testID={`avatar-${id}`} accessibilityLabel={`Ver a ${name}`} onPress={showPerson} onLongPress={select} delayLongPress={350}>
+            <Avatar nombre={name} foto={props.authorPhoto} tamano={FLAT_AVATAR} bot={props.authorIsApp} />
+          </Pressable>
+        ) : (
+          <Avatar nombre={name} foto={props.authorPhoto} tamano={FLAT_AVATAR} bot={props.authorIsApp} />
+        )}
         <View className="min-w-0 flex-1">
           {grouped ? null : (
             <View className="mb-0.5 flex-row flex-wrap items-center gap-x-2 gap-y-0.5">
-              <Text testID={`autor-${id}`} numberOfLines={1} className={`shrink text-[15px] font-bold ${mine ? 'text-primary' : 'text-on-surface'}`}>{name}</Text>
+              {showPerson ? (
+                <Pressable testID={`persona-${id}`} accessibilityLabel={`Ver a ${name}`} onPress={showPerson} onLongPress={select} delayLongPress={350} className="shrink">
+                  <Text testID={`autor-${id}`} numberOfLines={1} className="text-[15px] font-bold text-on-surface">{name}</Text>
+                </Pressable>
+              ) : (
+                <Text testID={`autor-${id}`} numberOfLines={1} className={`shrink text-[15px] font-bold ${mine ? 'text-primary' : 'text-on-surface'}`}>{name}</Text>
+              )}
               {props.badge && props.badge !== name ? (
                 <View className={`rounded-md px-1.5 py-0.5 ${mine ? 'bg-primary/10' : 'bg-surface-variant'}`}>
                   <Text className={`text-[11px] font-semibold ${mine ? 'text-primary' : 'text-on-surface-variant'}`}>{props.badge}</Text>

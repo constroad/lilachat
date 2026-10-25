@@ -40,6 +40,8 @@ export function ParticipantesDelGrupo(props: {
   accionando: boolean;
   onMenu: (miembro: Miembro) => void;
   onAnadir?: () => void;
+  /** Tapping someone else's photo or name opens their card (José, 25/10/2026). */
+  onShowPerson?: (miembro: Miembro) => void;
 }) {
   const colores = useColores();
   return (
@@ -65,12 +67,20 @@ export function ParticipantesDelGrupo(props: {
         {props.miembros.map((miembro, indice) => (
           <View key={miembro.id} testID={`miembro-${miembro.id}`} className="min-h-[64px] flex-row items-center gap-3 px-4 py-2.5">
             {indice > 0 ? <Separador /> : null}
-            {/* Tu avatar lleva TU nombre: «Tú» salía como iniciales «TÚ». */}
-            <Avatar nombre={miembro.esYo ? (miembro.name ?? '') : props.nombreDe(miembro)} foto={miembro.avatarUrl} tamano={AVATAR_DE_MIEMBRO} />
-            <View className="min-w-0 flex-1">
-              <Text className="text-[15px] font-semibold text-on-surface" numberOfLines={1}>{props.nombreDe(miembro)}</Text>
-              {!miembro.esYo && miembro.phone ? <Text className="text-[13px] text-on-surface-variant" numberOfLines={1}>{formatPhoneDisplay(miembro.phone)}</Text> : null}
-            </View>
+            <Pressable
+              testID={`perfil-${miembro.id}`}
+              accessibilityLabel={`Ver a ${props.nombreDe(miembro)}`}
+              disabled={!props.onShowPerson || miembro.esYo}
+              onPress={() => props.onShowPerson?.(miembro)}
+              className="min-w-0 flex-1 flex-row items-center gap-3"
+            >
+              {/* Tu avatar lleva TU nombre: «Tú» salía como iniciales «TÚ». */}
+              <Avatar nombre={miembro.esYo ? (miembro.name ?? '') : props.nombreDe(miembro)} foto={miembro.avatarUrl} tamano={AVATAR_DE_MIEMBRO} bot={miembro.app} />
+              <View className="min-w-0 flex-1">
+                <Text className="text-[15px] font-semibold text-on-surface" numberOfLines={1}>{props.nombreDe(miembro)}</Text>
+                {!miembro.esYo && miembro.phone ? <Text className="text-[13px] text-on-surface-variant" numberOfLines={1}>{formatPhoneDisplay(miembro.phone)}</Text> : null}
+              </View>
+            </Pressable>
             {miembro.role === 'admin' ? (
               <View className="shrink-0 rounded-full border border-primary/30 bg-primary/[0.08] px-2.5 py-1">
                 <Text className="text-[11px] font-semibold text-primary">Admin del grupo</Text>

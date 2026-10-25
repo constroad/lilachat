@@ -8,6 +8,7 @@ import { markSpacesSeen, readSeenSpaces } from './seenSpaces';
 import { fetchSpaceChats, forgetAllSpaces, forgetSpace, isSpaceChat, membersChanged, prefetchSpace, rememberMyRead, setSpaceCacheDisk, spaceChatsCache, useCached } from './spaceCache';
 import type { BaseLocal } from '../local/baseLocal';
 import { memberName } from './memberWeb';
+import { openedChat } from './openedChat';
 import { SpacesLayer, type SpaceDialog } from './SpacesLayer';
 import type { WorkspaceLink } from './SpaceChatList';
 import { peekPendingJoin, takePendingJoin } from './pendingJoin';
@@ -37,9 +38,6 @@ function useDebounced(run: () => void, delayMs: number) {
     timer.current = setTimeout(() => runRef.current(), delayMs);
   }, [delayMs]);
 }
-
-/** A chat of the space as the conversation opens it until the list brings it. */
-const openedChat = (chat: Pick<ChatSummary, 'id' | 'kind' | 'name' | 'phone' | 'memberIds'>, spaceId: string): ChatSummary => ({ lastSeq: 0, unread: 0, othersReadSeq: 0, othersDeliveredSeq: 0, lastMessage: null, workspaceId: spaceId, ...chat });
 
 /**
  * The company spaces on the web (E1/E2): which one is open (remembered in
@@ -254,6 +252,7 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
     reloadChats: loadChats,
     reloadSpaces: () => void reload(),
     chatById,
+    openChat: open,
     onChatEvent,
     enter: (next: string | null) => void enter(next),
     openSwitcher: () => setDialog('switcher'),

@@ -318,6 +318,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
           chats={chatsParaReenviar}
           onAviso={setAviso}
           onRecargarChats={() => void sync.cargarChats()}
+          onOpenChat={(chatId, known) => (known ? espacios.openChat(known) : abrirChat(chatId))}
           onAccionDeChat={(chat, accion) => void accionesSobreChats.aplicar(chat, accion)}
           onLevel={(chat, level) => void accionesSobreChats.setLevel(chat, level)}
           typingName={selected.typingName ?? null} app={selected.appId ? espacios.apps.directory?.apps.find((one) => one.appId === selected.appId) : undefined} spaceName={espacios.current?.name}

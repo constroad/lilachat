@@ -43,6 +43,8 @@ export function PanelDeInfo(props: {
   onVerFoto: (mensaje: MensajeEnPantalla) => void;
   /** Tarjetas que arma la conversación (20/10: los fijados), antes de los archivos. */
   tarjetas?: ReactNode;
+  /** A member's row opens their card (José, 25/10). */
+  onViewPerson?: (userId: string) => void;
 }) {
   const { chat, detalle } = props;
   const info = armarInfo({ chat, detalle, yo: props.yo });
@@ -83,6 +85,7 @@ export function PanelDeInfo(props: {
             onAgregar={(userId) => void editar.agregar(userId)}
             onCambiarRol={(userId, role) => void editar.cambiarRol(userId, role)}
             onSacar={(userId) => void editar.sacar(userId)}
+            onViewPerson={props.onViewPerson}
           />
         ) : null}
         {tab === 'media' ? <ArchivosDelChat base={props.base} chatId={chat.id} onVerFoto={props.onVerFoto} /> : null}

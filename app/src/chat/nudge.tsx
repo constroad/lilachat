@@ -6,6 +6,7 @@ import { WinkCharacter } from './WinkCharacter';
 import { funSeenFloor, rememberFunSeen } from './funSeen';
 import { getSocket } from './socketClient';
 import { chatsEnMemoria, suscribirChatsEnMemoria } from './chatsGuardados';
+import { funAvailable } from './funAvailable';
 import { playWinkCues, shakeScreen, startWink, stopFun } from './FunScreen';
 import { closeEmojiPanel } from './emojiPanel';
 import { FUN_LIVE_MS, NUDGE_SHAKE, formatClock, funArrivedInRow, funMessageToPlay, highestSeq, shouldPlayFun, winkById, winkCardLines, winkTileIsProp, type FunPlace, type FunToPlay, type WinkId } from '@lilachat/shared';
@@ -141,9 +142,9 @@ export function useFunPlayback(params: { messages: readonly { seq: number; kind?
  * a group only if an admin switched them on (the server checks it too); never
  * in a draft or the chat with yourself.
  */
-export function useFunActions(params: { chatId: string; isGroup: boolean; isDraft: boolean; onError: (text: string) => void }): { onNudge?: () => void; onWink?: (wink: WinkId) => void } {
-  const funAllowed = useSyncExternalStore(suscribirChatsEnMemoria, () => chatsEnMemoria()?.find((chat) => chat.id === params.chatId)?.funAllowed === true);
-  const allowed = !params.isDraft && (!params.isGroup || funAllowed);
+export function useFunActions(params: { chatId: string; isGroup: boolean; isDraft: boolean; detailAllows?: boolean; onError: (text: string) => void }): { onNudge?: () => void; onWink?: (wink: WinkId) => void } {
+  const listAllows = useSyncExternalStore(suscribirChatsEnMemoria, () => chatsEnMemoria()?.find((chat) => chat.id === params.chatId)?.funAllowed);
+  const allowed = funAvailable({ isDraft: params.isDraft, isGroup: params.isGroup, detailAllows: params.detailAllows, listAllows });
   const { chatId, onError } = params;
   return useMemo(
     () =>

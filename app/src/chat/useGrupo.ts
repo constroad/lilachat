@@ -11,6 +11,8 @@ const PLAZO_MS = 10_000;
 
 /** Los miembros por chat, en memoria: reabrir el grupo no vuelve a pedirlos. */
 const cache = new Map<string, MiembroConNombre[]>();
+/** Whether an admin switched nudges and winks on, read with the same detail. */
+const funCache = new Map<string, boolean>();
 
 /**
  * What the conversation needs from its members (FL3, FL9d): each member's
@@ -34,9 +36,12 @@ export function useGrupo(
   soyAdmin: (yo: string) => boolean;
   /** Each member's pill: in a space, its job title and space role (design s-01). */
   roles: ReadonlyMap<string, MemberPill>;
+  /** An admin switched nudges and winks on; unknown until the detail arrives. */
+  funAllowed: boolean | undefined;
 } {
   const agenda = useSyncExternalStore(suscribirAgenda, agendaPorTelefono, agendaPorTelefono);
   const [miembros, setMiembros] = useState<MiembroConNombre[]>(() => cache.get(chatId) ?? []);
+  const [funAllowed, setFunAllowed] = useState<boolean | undefined>(() => funCache.get(chatId));
   const [soyMiembro, setSoyMiembro] = useState<boolean | null>(null);
   const [version, setVersion] = useState(0);
 
@@ -47,6 +52,7 @@ export function useGrupo(
     const alCambiar = (frame: { chatId?: string }) => {
       if (frame?.chatId !== chatId) return;
       cache.delete(chatId);
+      funCache.delete(chatId);
       setVersion((actual) => actual + 1);
     };
     socket?.on('chat.changed', alCambiar);
@@ -67,10 +73,14 @@ export function useGrupo(
         const membresia = membresiaPorRespuesta(respuesta.status);
         if (vigente && esGrupo && membresia !== null) setSoyMiembro(membresia);
         if (!respuesta.ok) return;
-        const detalle = (await respuesta.json()) as { members?: MiembroConNombre[] };
-        const lista = detalle.members ?? [];
-        cache.set(chatId, lista);
-        if (vigente) setMiembros(lista);
+        const detail = (await respuesta.json()) as { members?: MiembroConNombre[]; funAllowed?: boolean };
+        const loaded = detail.members ?? [];
+        cache.set(chatId, loaded);
+        funCache.set(chatId, detail.funAllowed === true);
+        if (vigente) {
+          setMiembros(loaded);
+          setFunAllowed(detail.funAllowed === true);
+        }
       } catch {
         // Sin red: las burbujas van sin nombre y la membresía queda como estaba.
       }
@@ -88,5 +98,5 @@ export function useGrupo(
   const soyAdmin = useCallback((yo: string) => miembros.some((uno) => uno.id === yo && uno.role === 'admin'), [miembros]);
   /** Each member's role, for the pill next to their name in the Slack format (design `s-01`). */
   const roleById = useMemo(() => new Map<string, MemberPill>(miembros.map((member) => [member.id, pillOf(member)])), [miembros]);
-  return { nombres, fotos, soyMiembro, mencionables, soyAdmin, roles: roleById };
+  return { nombres, fotos, soyMiembro, mencionables, soyAdmin, roles: roleById, funAllowed };
 }

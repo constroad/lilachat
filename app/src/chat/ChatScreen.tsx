@@ -199,11 +199,11 @@ export function ChatScreen({
    * varios conectados sería ruido permanente.
    */
   const esGrupoChat = !esBorrador && (otherUserId === null || otherUserId === undefined);
-  const fun = useFunActions({ chatId, isGroup: esGrupoChat, isDraft: esBorrador, onError: setMediaError });
   const otroEscribe = otherUserId ? escribiendo.has(otherUserId) : escribiendo.size > 0;
   const otroEnLinea = otherUserId ? enLinea.has(otherUserId) : false;
   const ultimaVez = useUltimaVez(otherUserId);
   const grupo = useGrupo(chatId, credential.jwt, esGrupoChat);
+  const fun = useFunActions({ chatId, isGroup: esGrupoChat, isDraft: esBorrador, detailAllows: grupo.funAllowed, onError: setMediaError });
   const nombresDelGrupo = grupo.nombres;
   const fotosDelGrupo = grupo.fotos;
   // En un 1:1 el otro se llama como el chat (reacciones y fijados).

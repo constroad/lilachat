@@ -4,7 +4,7 @@ import type { ChatSummary } from '../api/client';
 import { buscarChat, lookupNoticeChat } from './buscarChat';
 import { noticeDestination, type EntryPoint, type NoticeDestination } from './destinoDeAviso';
 import { NoticeOpener, perfOfNoticeEvent } from './noticeOpener';
-import { registrarPerf } from '../diagnostico/diagnostico';
+import { inicioDelProceso, registrarPerf } from '../diagnostico/diagnostico';
 import { llamadaNativa } from '../../modules/llamada-entrante/src';
 import { subscribeOpenChatRequests } from './openChatRequest';
 import { setCurrentSpaceId } from '../spaces/currentSpace';
@@ -83,8 +83,14 @@ export function useAbrirDesdeAviso(params: {
     // FL8.2: los avisos de mensaje que dibuja el servicio nativo. Expo no los
     // conoce: el toque llega por el puente (en frío, como pendiente).
     // The extras of a tap (space, thread, message) are outside text: `noticeDestination` validates them.
+    // Marks in Diagnostics (no ids): when this screen mounted (a second mark means it was torn down and rebuilt) and what it found waiting.
+    void registrarPerf('aviso-montado', Date.now() - inicioDelProceso);
     const coldStart = llamadaNativa.avisoPendiente();
-    if (coldStart) void openDestination(noticeDestination(coldStart));
+    if (coldStart) {
+      const destination = noticeDestination(coldStart);
+      void registrarPerf('aviso-pendiente', 0, { valido: destination ? 1 : 0 });
+      void openDestination(destination);
+    }
     // «Enviar mensaje» on a shared contact (pending 9): a chat already in hand, opened as it is (no space switch).
     const openKnown = async (chatId: string, known?: ChatSummary) => {
       const chat = known ?? (await buscarChat(chatId, jwtRef.current));
@@ -92,7 +98,10 @@ export function useAbrirDesdeAviso(params: {
     };
     const stopRequests = subscribeOpenChatRequests((chatId, known) => void openKnown(chatId, known));
     const taps = llamadaNativa.alTocar((aviso) => {
-      if (aviso.accion === 'chat') void openDestination(noticeDestination({ chatId: aviso.chatId, seq: aviso.seq, hiloDe: aviso.hiloDe, workspaceId: aviso.workspaceId }));
+      if (aviso.accion !== 'chat') return;
+      const destination = noticeDestination({ chatId: aviso.chatId, seq: aviso.seq, hiloDe: aviso.hiloDe, workspaceId: aviso.workspaceId });
+      void registrarPerf('aviso-toque', 0, { valido: destination ? 1 : 0 });
+      void openDestination(destination);
     });
     return () => {
       vivo = false;

@@ -9,7 +9,8 @@ export type NoticeEvent =
   | { kind: 'lookup'; attempt: number; result: NoticeLookup['kind']; ms: number }
   | { kind: 'opened'; ms: number }
   | { kind: 'navigation-not-ready'; ms: number }
-  | { kind: 'gave-up'; ms: number };
+  | { kind: 'gave-up'; ms: number }
+  | { kind: 'cancelled'; ms: number };
 
 const LOOKUP_RESULT_CODE: Record<NoticeLookup['kind'], number> = { found: 0, missing: 1, failed: 2 };
 
@@ -24,6 +25,8 @@ export function perfOfNoticeEvent(event: NoticeEvent): { op: string; ms: number;
       return { op: 'aviso-sin-navegacion', ms: event.ms };
     case 'gave-up':
       return { op: 'aviso-sin-respuesta', ms: event.ms };
+    case 'cancelled':
+      return { op: 'aviso-cancelado', ms: event.ms };
   }
 }
 
@@ -46,6 +49,8 @@ type OpenPlan = Extract<OpeningPlan, { action: 'open' }>;
 export class NoticeOpener {
   private alive = true;
   private wake: (() => void) | null = null;
+  /** The tap being worked on, so tearing the opener down under it can be told apart from a quiet teardown. */
+  private inFlight: { startedAt: number } | null = null;
 
   constructor(
     private readonly deps: {
@@ -71,6 +76,15 @@ export class NoticeOpener {
     if (!this.alive) return;
     if (destination.tipo === 'agenda') return this.deps.openAgenda();
     const startedAt = this.deps.now();
+    this.inFlight = { startedAt };
+    try {
+      await this.run(destination, startedAt);
+    } finally {
+      this.inFlight = null;
+    }
+  }
+
+  private async run(destination: Extract<NoticeDestination, { tipo: 'chat' }>, startedAt: number): Promise<void> {
     for (let attempt = 0; this.alive; attempt += 1) {
       const askedWith = this.jwt;
       const lookup = await this.deps.find(destination, askedWith);
@@ -86,6 +100,7 @@ export class NoticeOpener {
   }
 
   dispose(): void {
+    if (this.alive && this.inFlight) this.deps.report({ kind: 'cancelled', ms: this.deps.now() - this.inFlight.startedAt });
     this.alive = false;
     this.wake?.();
   }

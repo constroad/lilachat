@@ -194,6 +194,22 @@ describe('NoticeOpener', () => {
     expect(find).not.toHaveBeenCalled();
   });
 
+  it('reports that a tap in flight was cancelled when the opener is disposed (the screen was torn down under it)', async () => {
+    const first = deferred<NoticeLookup>();
+    const { opener, events } = build(() => first.promise);
+    const pending = opener.handle(THREAD_REPLY);
+    opener.dispose();
+    first.resolve(FOUND);
+    await pending;
+    expect(events).toEqual([{ kind: 'cancelled', ms: 0 }]);
+  });
+
+  it('reports nothing when it is disposed with no tap in flight', () => {
+    const { opener, events } = build(scripted([FOUND]));
+    opener.dispose();
+    expect(events).toEqual([]);
+  });
+
   it('does nothing once disposed, even for a lookup already in flight or a wait pending', async () => {
     const first = deferred<NoticeLookup>();
     const { opener, open, sleep } = build(() => first.promise);
@@ -217,5 +233,6 @@ describe('perfOfNoticeEvent', () => {
     expect(perfOfNoticeEvent({ kind: 'opened', ms: 900 })).toEqual({ op: 'aviso-abierto', ms: 900 });
     expect(perfOfNoticeEvent({ kind: 'navigation-not-ready', ms: 45000 })).toEqual({ op: 'aviso-sin-navegacion', ms: 45000 });
     expect(perfOfNoticeEvent({ kind: 'gave-up', ms: 17000 })).toEqual({ op: 'aviso-sin-respuesta', ms: 17000 });
+    expect(perfOfNoticeEvent({ kind: 'cancelled', ms: 800 })).toEqual({ op: 'aviso-cancelado', ms: 800 });
   });
 });

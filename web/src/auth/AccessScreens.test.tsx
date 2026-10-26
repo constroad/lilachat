@@ -67,4 +67,19 @@ describe('AccessScreens (W5)', () => {
     await userEvent.click(await screen.findByTestId('chk-mantener'));
     await waitFor(() => expect(cuerpos.some((cuerpo) => String(cuerpo.url).endsWith('/esperar') && cuerpo.mantener === false)).toBe(true));
   });
+
+  it('el QR es tinta oscura sobre blanco aunque el tema sea oscuro', async () => {
+    conPantallaAncha(true);
+    servidorDeVinculacion(null);
+    document.documentElement.classList.add('dark');
+    try {
+      render(<AccessScreens onReady={vi.fn()} />);
+      const svg = await screen.findByTestId('codigo-qr');
+      // A phone camera cannot read a near-white QR on a white box: the QR must not follow the theme.
+      expect(svg.querySelector('path')).toHaveAttribute('fill', 'black');
+      expect(screen.getByTestId('cuadro-qr')).toHaveClass('bg-white');
+    } finally {
+      document.documentElement.classList.remove('dark');
+    }
+  });
 });

@@ -97,7 +97,8 @@ function CodigoQr({ token }: { token: string }) {
   return (
     <div className="relative h-full w-full">
       <svg data-testid="codigo-qr" data-token={token} viewBox={`0 0 ${modulos} ${modulos}`} role="img" aria-label="Código QR para vincular" className="h-full w-full" shapeRendering="crispEdges">
-        <path d={d} className="fill-on-surface" />
+        {/* Fixed ink: in dark mode `on-surface` is almost white and a camera cannot read the QR on the white box (26/10). */}
+        <path d={d} fill="black" />
       </svg>
       <img src="/icons/icon-192.png" alt="" className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-xl border-4 border-white" />
     </div>

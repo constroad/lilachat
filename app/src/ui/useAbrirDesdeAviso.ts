@@ -3,7 +3,8 @@ import * as Notifications from 'expo-notifications';
 import type { ChatSummary } from '../api/client';
 import { buscarChat, lookupNoticeChat } from './buscarChat';
 import { noticeDestination, type EntryPoint, type NoticeDestination } from './destinoDeAviso';
-import { NoticeOpener } from './noticeOpener';
+import { NoticeOpener, perfOfNoticeEvent } from './noticeOpener';
+import { registrarPerf } from '../diagnostico/diagnostico';
 import { llamadaNativa } from '../../modules/llamada-entrante/src';
 import { subscribeOpenChatRequests } from './openChatRequest';
 import { setCurrentSpaceId } from '../spaces/currentSpace';
@@ -24,7 +25,8 @@ import { setCurrentSpaceId } from '../spaces/currentSpace';
  */
 export function useAbrirDesdeAviso(params: {
   jwt: string;
-  abrirChat: (chat: ChatSummary, entry?: EntryPoint) => void;
+  /** `false` when the navigation is not ready to take the chat yet: the tap is tried again. */
+  abrirChat: (chat: ChatSummary, entry?: EntryPoint) => boolean;
   abrirAgenda: () => void;
 }): void {
   const abrirChatRef = useRef(params.abrirChat);
@@ -47,11 +49,15 @@ export function useAbrirDesdeAviso(params: {
           // Before navigating: otherwise the list of the wrong space paints for a moment and «back» lands on it.
           setCurrentSpaceId(plan.space);
           // All three keys, always: a `setParams` that left them out would keep the previous tap's thread.
-          abrirChatRef.current(plan.chat, { irASeq: plan.irASeq, openThread: plan.openThread, highlightReply: plan.highlightReply });
+          return abrirChatRef.current(plan.chat, { irASeq: plan.irASeq, openThread: plan.openThread, highlightReply: plan.highlightReply });
         },
         openAgenda: () => abrirAgendaRef.current(),
         now: Date.now,
         sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+        report: (event) => {
+          const { op, ms, extra } = perfOfNoticeEvent(event);
+          void registrarPerf(op, ms, extra);
+        },
       },
       jwtRef.current
     );

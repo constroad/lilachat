@@ -125,21 +125,23 @@ export function NavegacionDeSesion(props: {
   useAbrirDesdeAviso({
     jwt: props.credential.jwt,
     abrirChat: (chat, entry) => {
-      if (!navegacion.isReady()) return;
+      if (!navegacion.isReady()) return false;
       const target: ChatEntry | undefined = entry && { ...entry, requestedAt: Date.now() };
       if (dosPaneles) {
         if (chatAbiertoDe(navegacion.getRootState())) navegacion.dispatch(StackActions.popToTop());
-        return abrirEnPanel(chat, target);
+        abrirEnPanel(chat, target);
+        return true;
       }
       const openChatId = chatAbiertoDe(navegacion.getRootState());
       if (openChatId === chat.id) {
         // Already on screen: the message or thread of the tap is asked of it, not ignored.
         if (target) navegacion.dispatch(CommonActions.setParams(target));
-        return;
+        return true;
       }
       // Si había otro chat abierto, se reemplaza: atrás vuelve a la lista.
       if (openChatId) navegacion.dispatch(StackActions.replace('Chat', { chat, ...target }));
       else navegacion.navigate('Chat', { chat, ...target });
+      return true;
     },
     abrirAgenda: () => {
       if (navegacion.isReady() && chatAbiertoDe(navegacion.getRootState())) navegacion.dispatch(StackActions.popToTop());

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ChatSummary } from '../api/client';
-import { NoticeOpener, RETRY_DELAYS_MS, RETRY_WINDOW_MS, type NoticeLookup } from './noticeOpener';
+import { NAVIGATION_WAIT_MS, NoticeOpener, perfOfNoticeEvent, RETRY_DELAYS_MS, RETRY_WINDOW_MS, type NoticeEvent, type NoticeLookup } from './noticeOpener';
 import type { NoticeDestination } from './destinoDeAviso';
 
 const CHAT = { id: '6adbdcf17a5e0cc55ab3c185', kind: 'group', workspaceId: '6adbb02ec9d066b069307eb4' } as ChatSummary;
@@ -24,15 +24,16 @@ function scripted(answers: NoticeLookup[]) {
 
 function build(find: (destination: NoticeDestination, jwt: string) => Promise<NoticeLookup>, jwt = 'stale') {
   const clock = { now: 1_000 };
-  const open = vi.fn();
+  const open = vi.fn((_plan: Record<string, unknown>) => true);
   const openAgenda = vi.fn();
+  const events: NoticeEvent[] = [];
   const slept: number[] = [];
   const sleep = vi.fn(async (ms: number) => {
     slept.push(ms);
     clock.now += ms;
   });
-  const opener = new NoticeOpener({ find, open, openAgenda, now: () => clock.now, sleep }, jwt);
-  return { opener, open, openAgenda, clock, slept, sleep };
+  const opener = new NoticeOpener({ find, open, openAgenda, now: () => clock.now, sleep, report: (event) => events.push(event) }, jwt);
+  return { opener, open, openAgenda, clock, slept, sleep, events };
 }
 
 /**
@@ -110,9 +111,9 @@ describe('NoticeOpener', () => {
   it('wakes a wait early when the jwt changes during it', async () => {
     const wake = deferred<void>();
     const clock = { now: 1_000 };
-    const open = vi.fn();
+    const open = vi.fn(() => true);
     const find = vi.fn(async (_destination: NoticeDestination, jwt: string): Promise<NoticeLookup> => (jwt === 'fresh' ? FOUND : FAILED));
-    const opener = new NoticeOpener({ find, open, openAgenda: vi.fn(), now: () => clock.now, sleep: () => wake.promise }, 'stale');
+    const opener = new NoticeOpener({ find, open, openAgenda: vi.fn(), now: () => clock.now, sleep: () => wake.promise, report: () => undefined }, 'stale');
     const pending = opener.handle(THREAD_REPLY);
     await vi.waitFor(() => expect(find).toHaveBeenCalledTimes(1));
     opener.setJwt('fresh');
@@ -128,7 +129,7 @@ describe('NoticeOpener', () => {
       clock.now += RETRY_WINDOW_MS + 1;
       return find(...args);
     });
-    const slow = new NoticeOpener({ find: slowFind, open, openAgenda: vi.fn(), now: () => clock.now, sleep: async () => undefined }, 'stale');
+    const slow = new NoticeOpener({ find: slowFind, open, openAgenda: vi.fn(), now: () => clock.now, sleep: async () => undefined, report: () => undefined }, 'stale');
     await slow.handle(LOOSE_MESSAGE);
     expect(slowFind).toHaveBeenCalledTimes(1);
     expect(open).not.toHaveBeenCalled();
@@ -143,6 +144,46 @@ describe('NoticeOpener', () => {
     first.resolve(MISSING);
     await pending;
     expect(find).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps trying to open while the navigation is not ready, without looking the chat up again', async () => {
+    const find = scripted([FOUND]);
+    const { opener, open, slept } = build(find);
+    open.mockReturnValueOnce(false).mockReturnValueOnce(false).mockReturnValue(true);
+    await opener.handle(THREAD_REPLY);
+    expect(find).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledTimes(3);
+    expect(slept).toEqual([NAVIGATION_WAIT_MS, NAVIGATION_WAIT_MS]);
+  });
+
+  it('gives up opening once the window passed with the navigation still not ready', async () => {
+    const { opener, open, events } = build(scripted([FOUND]));
+    open.mockReturnValue(false);
+    await opener.handle(LOOSE_MESSAGE);
+    expect(open.mock.calls.length).toBeGreaterThan(1);
+    expect(events[events.length - 1]).toMatchObject({ kind: 'navigation-not-ready' });
+  });
+
+  it('reports each lookup, how it ended and how long the tap took', async () => {
+    const { opener, events } = build(scripted([FAILED, FOUND]));
+    await opener.handle(LOOSE_MESSAGE);
+    expect(events).toEqual([
+      { kind: 'lookup', attempt: 1, result: 'failed', ms: 0 },
+      { kind: 'lookup', attempt: 2, result: 'found', ms: RETRY_DELAYS_MS[0] },
+      { kind: 'opened', ms: RETRY_DELAYS_MS[0] },
+    ]);
+  });
+
+  it('reports that it gave up when the server never answered', async () => {
+    const { opener, events } = build(scripted([FAILED]));
+    await opener.handle(LOOSE_MESSAGE);
+    expect(events[events.length - 1]).toMatchObject({ kind: 'gave-up' });
+  });
+
+  it('reports a «missing» answer and stops', async () => {
+    const { opener, events } = build(scripted([MISSING]));
+    await opener.handle(LOOSE_MESSAGE);
+    expect(events).toEqual([{ kind: 'lookup', attempt: 1, result: 'missing', ms: 0 }]);
   });
 
   it('opens the agenda without looking any chat up', async () => {
@@ -162,5 +203,19 @@ describe('NoticeOpener', () => {
     await pending;
     expect(open).not.toHaveBeenCalled();
     expect(sleep).not.toHaveBeenCalled();
+  });
+});
+
+describe('perfOfNoticeEvent', () => {
+  it('codes the result of a lookup and keeps the attempt', () => {
+    expect(perfOfNoticeEvent({ kind: 'lookup', attempt: 2, result: 'failed', ms: 2100 })).toEqual({ op: 'aviso-busqueda', ms: 2100, extra: { intento: 2, resultado: 2 } });
+    expect(perfOfNoticeEvent({ kind: 'lookup', attempt: 1, result: 'found', ms: 40 })).toEqual({ op: 'aviso-busqueda', ms: 40, extra: { intento: 1, resultado: 0 } });
+    expect(perfOfNoticeEvent({ kind: 'lookup', attempt: 1, result: 'missing', ms: 40 }).extra).toEqual({ intento: 1, resultado: 1 });
+  });
+
+  it('names the three endings', () => {
+    expect(perfOfNoticeEvent({ kind: 'opened', ms: 900 })).toEqual({ op: 'aviso-abierto', ms: 900 });
+    expect(perfOfNoticeEvent({ kind: 'navigation-not-ready', ms: 45000 })).toEqual({ op: 'aviso-sin-navegacion', ms: 45000 });
+    expect(perfOfNoticeEvent({ kind: 'gave-up', ms: 17000 })).toEqual({ op: 'aviso-sin-respuesta', ms: 17000 });
   });
 });

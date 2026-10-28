@@ -17,8 +17,7 @@ import { resolveJwtSecret } from './sessions.js';
  * muere igual (el socket del que llama también).
  */
 type DatosDeOferta = { video: boolean; members: string[] };
-/** `answeringAt`: the callee tapped «Contestar» and its answer is on the way (backlog 114). */
-type Pendiente = DatosDeOferta & { frame: object; from: string; at: number; candidatos: object[]; answeringAt?: number };
+type Pendiente = DatosDeOferta & { frame: object; from: string; at: number; candidatos: object[] };
 /** Contestada y en curso (FL8.1): de acá sale la duración al terminar. */
 type EnCurso = DatosDeOferta & { from: string; contestadaEn: number };
 /** Cómo terminó: `segundos: null` es que nadie contestó. */
@@ -28,6 +27,11 @@ const pendientes = new Map<string, Pendiente>();
 /** Una oferta junta unos pocos candidatos (host, srflx, relay por interfaz); más es ruido. */
 const MAX_CANDIDATOS_POR_OFERTA = 40;
 const enCurso = new Map<string, EnCurso>();
+/**
+ * The callee tapped «Contestar» and its answer is on the way (backlog 114): by
+ * chat, with the offer it belongs to (`offerAt`), so a new offer never inherits it.
+ */
+const answering = new Map<string, { offerAt: number; since: number }>();
 
 export function guardarOferta(
   chatId: string,
@@ -57,21 +61,28 @@ export function candidatosDeLaOferta(chatId: string): object[] {
   return [...(pendientes.get(chatId)?.candidatos ?? [])];
 }
 
+const answeringSince = (chatId: string, offer: Pendiente): number | undefined => {
+  const mark = answering.get(chatId);
+  return mark?.offerAt === offer.at ? mark.since : undefined;
+};
+
 /** When an unanswered offer gives up: the 30 s ring, or the connect window once answering. */
-const deadlineOf = (pendiente: Pendiente): number =>
-  pendiente.answeringAt === undefined ? pendiente.at + CALL_TIMEOUT_MS : pendiente.answeringAt + CALL_CONNECT_TIMEOUT_MS;
+function deadlineOf(chatId: string, offer: Pendiente): number {
+  const since = answeringSince(chatId, offer);
+  return since === undefined ? offer.at + CALL_TIMEOUT_MS : since + CALL_CONNECT_TIMEOUT_MS;
+}
 
 /** ¿Sigue sonando esta oferta? (la que se guardó en `desde`, si se pasa). */
 export function sigueSonando(chatId: string, ahora: number = Date.now(), desde?: number): boolean {
   const pendiente = pendientes.get(chatId);
   if (!pendiente || (desde !== undefined && pendiente.at !== desde)) return false;
-  return ahora <= deadlineOf(pendiente);
+  return ahora <= deadlineOf(chatId, pendiente);
 }
 
 /** The deadline of the offer ringing in that chat, or `null` if none rings. */
 export function offerDeadline(chatId: string): number | null {
-  const pendiente = pendientes.get(chatId);
-  return pendiente ? deadlineOf(pendiente) : null;
+  const offer = pendientes.get(chatId);
+  return offer ? deadlineOf(chatId, offer) : null;
 }
 
 /**
@@ -80,11 +91,11 @@ export function offerDeadline(chatId: string): number | null {
  * call is between, or `null` when there is nothing to mark.
  */
 export function markAnswering(chatId: string, userId: string, ahora: number = Date.now()): { from: string; members: string[] } | null {
-  const pendiente = pendientes.get(chatId);
-  if (!pendiente || pendiente.answeringAt !== undefined || ahora > deadlineOf(pendiente)) return null;
-  if (userId === pendiente.from || !pendiente.members.includes(userId)) return null;
-  pendiente.answeringAt = ahora;
-  return { from: pendiente.from, members: pendiente.members };
+  const offer = pendientes.get(chatId);
+  if (!offer || answeringSince(chatId, offer) !== undefined || ahora > deadlineOf(chatId, offer)) return null;
+  if (userId === offer.from || !offer.members.includes(userId)) return null;
+  answering.set(chatId, { offerAt: offer.at, since: ahora });
+  return { from: offer.from, members: offer.members };
 }
 
 /** Cuándo empezó a sonar la oferta vigente de ese chat. */
@@ -97,6 +108,7 @@ export function marcarContestada(chatId: string, ahora: number = Date.now()): { 
   const pendiente = pendientes.get(chatId);
   if (!pendiente) return null;
   pendientes.delete(chatId);
+  answering.delete(chatId);
   enCurso.set(chatId, { video: pendiente.video, members: pendiente.members, from: pendiente.from, contestadaEn: ahora });
   return { from: pendiente.from, members: pendiente.members };
 }
@@ -114,12 +126,14 @@ export function terminarLlamada(chatId: string, ahora: number = Date.now()): Fin
   const pendiente = pendientes.get(chatId);
   if (!pendiente) return null;
   pendientes.delete(chatId);
+  answering.delete(chatId);
   return { video: pendiente.video, members: pendiente.members, from: pendiente.from, segundos: null };
 }
 
 /** Contestar, colgar, rechazar o «ocupado»: deja de sonar. */
 export function limpiarOferta(chatId: string): void {
   pendientes.delete(chatId);
+  answering.delete(chatId);
 }
 
 /** Las que siguen sonando en mis chats, sin las que hice yo. */
@@ -128,11 +142,12 @@ export function ofertasVigentes(chatIds: readonly string[], userId: string, ahor
   for (const chatId of chatIds) {
     const pendiente = pendientes.get(chatId);
     if (!pendiente) continue;
-    if (ahora > deadlineOf(pendiente)) {
+    if (ahora > deadlineOf(chatId, pendiente)) {
       pendientes.delete(chatId);
+  answering.delete(chatId);
       continue;
     }
-    if (pendiente.from !== userId) vigentes.push({ ...pendiente.frame, quedaMs: deadlineOf(pendiente) - ahora });
+    if (pendiente.from !== userId) vigentes.push({ ...pendiente.frame, quedaMs: deadlineOf(chatId, pendiente) - ahora });
   }
   return vigentes;
 }
@@ -189,4 +204,5 @@ export function verificarRechazo(token: string): { chatId: string; userId: strin
 export function __reiniciarLlamadas(): void {
   pendientes.clear();
   enCurso.clear();
+  answering.clear();
 }

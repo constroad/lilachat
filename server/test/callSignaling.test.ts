@@ -202,6 +202,8 @@ describe('call.answering', () => {
     expect(await answering).toMatchObject({ chatId, from: String(beto) });
     expect(await stopRinging).toMatchObject({ chatId, motivo: 'contestada-en-otro' });
     socketAna.emit('call.end', { chatId, motivo: 'colgada' });
+    // The call line is written after the end: let it land before the next test (and the DB closing).
+    await new Promise((listo) => setTimeout(listo, 400));
   });
 
   it('by HTTP from the lock screen: the caller hears it; a bad token is a 400', async () => {
@@ -218,6 +220,8 @@ describe('call.answering', () => {
     expect(await answering).toMatchObject({ chatId, from: String(beto) });
     await request(buildApp()).post('/api/calls/answering').send({ token: 'x' }).expect(400);
     socketAna.emit('call.end', { chatId, motivo: 'colgada' });
+    // The call line is written after the end: let it land before the next test (and the DB closing).
+    await new Promise((listo) => setTimeout(listo, 400));
   });
 });
 

@@ -2,9 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { RECORDING_KEEP_AWAKE_TAG, createRecordingWakeLock } from './recordingWakeLock';
 
 /**
- * Backlog 115 (José, 28/10): «a veces grabo 1 min y para cuando quiero enviar
- * ya la pantalla está bloqueada». The screen stays on while a voice note
- * records, and only then: its own tag, so the updater's lock is not touched.
+ * Backlog 115 (José, 28/10):
+ * «a veces grabo 1 min y para cuando quiero enviar ya la pantalla está bloqueada».
+ * The screen stays on while a voice note records, and only then: its own tag,
+ * so the updater's lock is not touched.
  */
 describe('createRecordingWakeLock', () => {
   const setup = () => {

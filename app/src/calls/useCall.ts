@@ -16,9 +16,9 @@ import { callReactionOf, type CallReaction } from '@lilachat/shared';
 import { connectSocket, getSocket, sostenerPorLlamada } from '../chat/socketClient';
 import { obtenerIceServers, type ServidorIce } from './iceServers';
 import { esperaAntesDeRendirse, estadoDeMedios, type EstadoDeMedios } from './estadoDeMedios';
-import { comoSuena, inicioDelTimbre, necesitaServicioDeLlamada, queHacerConElAviso, suenaTonoDeLlamando } from './llamadaNativa';
+import { announcesAnswering, comoSuena, inicioDelTimbre, necesitaServicioDeLlamada, queHacerConElAviso, suenaTonoDeLlamando } from './llamadaNativa';
 import { detenerTonoDeLlamando, iniciarTonoDeLlamando } from './tonoDeLlamando';
-import { llamadaNativa, type AccionDeAviso } from '../../modules/llamada-entrante/src';
+import { llamadaNativa, type AccionDeAviso, type CallNoticeTap } from '../../modules/llamada-entrante/src';
 import { reportarError } from '../ui/reportarError';
 
 /** El SDP y los candidatos viajan como objetos planos por el socket. */
@@ -193,7 +193,8 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
     buffer.current = [];
   }, []);
 
-  /** Corta sola si nadie contesta: «llamando…» eterno no le sirve a nadie. «Answering» moves the deadline (backlog 114). */
+  /** Corta sola si nadie contesta: «llamando…» eterno no le sirve a nadie. */
+  // «Answering» moves the deadline (backlog 114).
   useEffect(() => {
     if (timeout.current) clearTimeout(timeout.current);
     const deadline = state ? ringDeadline(state) : null;
@@ -482,7 +483,12 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
 
   /** Lo que se tocó en la notificación de llamada (FL8.1). */
   const aplicarAviso = useCallback(
-    (aviso: AccionDeAviso) => {
+    (aviso: CallNoticeTap) => {
+      // Backlog 114: «Contestar» on the lock screen; the activity brings «contestar» right after.
+      if (aviso.accion === 'answering') {
+        if (announcesAnswering({ tap: aviso, state: stateRef.current, callChatId: chatIdRef.current })) announceAnswering();
+        return;
+      }
       const decision = queHacerConElAviso({ aviso, estado: stateRef.current, chatId: chatIdRef.current });
       if (decision === 'esperar') {
         avisoPendiente.current = aviso;
@@ -498,7 +504,6 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
       avisoPendiente.current = null;
       if (decision === 'contestar') void contestar();
       else if (decision === 'colgar') colgar();
-      else if (decision === 'answering') announceAnswering();
     },
     [contestar, colgar, announceAnswering]
   );

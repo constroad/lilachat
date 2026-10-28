@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CALL_TIMEOUT_MS, type CallState } from '@lilachat/shared';
-import { comoSuena, decidirDeslizamiento, inicioDelTimbre, necesitaServicioDeLlamada, queHacerConElAviso, suenaTonoDeLlamando, UMBRAL_DE_DESLIZAR } from './llamadaNativa';
+import { announcesAnswering, comoSuena, decidirDeslizamiento, inicioDelTimbre, necesitaServicioDeLlamada, queHacerConElAviso, suenaTonoDeLlamando, UMBRAL_DE_DESLIZAR } from './llamadaNativa';
 
 /** FL8.1: la llamada entrante como WhatsApp, desde la notificación nativa. */
 const sonando: CallState = { fase: 'sonando', desde: 1, entrante: true };
@@ -39,12 +39,17 @@ describe('queHacerConElAviso', () => {
     expect(queHacerConElAviso({ aviso: { chatId: 'c1', accion: 'rechazar' }, estado: null, chatId: null })).toBe('nada');
   });
 
+});
+
+describe('announcesAnswering', () => {
   // Backlog 114: «Contestar» on the lock screen, with the app alive behind it, says «answering» by socket at once.
-  it('answering from the lock screen: tells the caller while it rings in that chat; otherwise nothing', () => {
-    expect(queHacerConElAviso({ aviso: { chatId: 'c1', accion: 'answering' }, estado: sonando, chatId: 'c1' })).toBe('answering');
-    expect(queHacerConElAviso({ aviso: { chatId: 'c1', accion: 'answering' }, estado: null, chatId: null })).toBe('nada');
-    expect(queHacerConElAviso({ aviso: { chatId: 'c2', accion: 'answering' }, estado: sonando, chatId: 'c1' })).toBe('nada');
-    expect(queHacerConElAviso({ aviso: { chatId: 'c1', accion: 'answering' }, estado: activa, chatId: 'c1' })).toBe('nada');
+  it('tells the caller while it rings in that chat; otherwise nothing', () => {
+    const tap = { chatId: 'c1', accion: 'answering' } as const;
+
+    expect(announcesAnswering({ tap, state: sonando, callChatId: 'c1' })).toBe(true);
+    expect(announcesAnswering({ tap, state: null, callChatId: null })).toBe(false);
+    expect(announcesAnswering({ tap: { chatId: 'c2', accion: 'answering' }, state: sonando, callChatId: 'c1' })).toBe(false);
+    expect(announcesAnswering({ tap, state: activa, callChatId: 'c1' })).toBe(false);
   });
 });
 

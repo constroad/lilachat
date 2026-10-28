@@ -18,7 +18,8 @@ import { obtenerIceServers, type ServidorIce } from './iceServers';
 import { esperaAntesDeRendirse, estadoDeMedios, type EstadoDeMedios } from './estadoDeMedios';
 import { announcesAnswering, comoSuena, inicioDelTimbre, necesitaServicioDeLlamada, queHacerConElAviso, suenaTonoDeLlamando } from './llamadaNativa';
 import { detenerTonoDeLlamando, iniciarTonoDeLlamando } from './tonoDeLlamando';
-import { llamadaNativa, type AccionDeAviso, type CallNoticeTap } from '../../modules/llamada-entrante/src';
+import { llamadaNativa, type AccionDeAviso } from '../../modules/llamada-entrante/src';
+import type { CallNoticeTap } from '../../modules/llamada-entrante/src';
 import { reportarError } from '../ui/reportarError';
 
 /** El SDP y los candidatos viajan como objetos planos por el socket. */

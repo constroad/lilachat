@@ -11,7 +11,7 @@ import { TextoConEnlaces } from '../TextoConEnlaces';
 const APP_AVATAR = 22;
 /** The answers never take more than this share of the screen: the conversation stays in sight. */
 const MAX_SCREEN_SHARE = 0.45;
-type Props = { answers: readonly EphemeralAnswer[]; onDismiss: (commandId: string) => void; onShare?: (commandId: string) => Promise<string | null>; onOpenForm?: (commandId: string) => void; chatId: string; jwt: string; /** Inside a sheet (the ⚡): it grows with its content instead of capping at the screen. */ embedded?: boolean };
+type Props = { answers: readonly EphemeralAnswer[]; onDismiss: (commandId: string) => void; onShare?: (commandId: string) => Promise<string | null>; onOpenForm?: (commandId: string) => void; chatId: string; jwt: string; /** Inside a sheet (the ⚡): it grows with its content instead of capping at the screen. */ embedded?: boolean; /** The command panel is open: every answer folds, or the bar would leave the screen (E2E 28/10). */ folded?: boolean };
 
 /**
  * What an app answered only to me (§c-bis), over the bar like Slack's
@@ -26,8 +26,15 @@ export function EphemeralAnswers(props: Props) {
   const { height } = useWindowDimensions();
   const scroll = useRef<ScrollView>(null);
   const [choice, setChoice] = useState<StackChoice>({ open: null, newest: null });
+  // Where each answer starts: a tall open card shows from its head (with its X), not from its end.
+  const tops = useRef(new Map<string, number>());
   if (props.answers.length === 0) return null;
-  const openId = openAnswerId(props.answers, choice);
+  const openId = props.folded ? null : openAnswerId(props.answers, choice);
+  const showOpen = () => {
+    const top = openId ? tops.current.get(openId) : undefined;
+    if (top === undefined) scroll.current?.scrollToEnd({ animated: true });
+    else scroll.current?.scrollTo({ y: top, animated: true });
+  };
   const toggle = (commandId: string) => setChoice((current) => toggleAnswer(props.answers, current, commandId));
   return (
     <View testID="respuestas-efimeras" className="border-t border-outline/10 bg-surface px-3 pb-2" style={props.embedded ? undefined : { maxHeight: height * MAX_SCREEN_SHARE }}>
@@ -40,9 +47,9 @@ export function EphemeralAnswers(props: Props) {
           </Pressable>
         ) : null}
       </View>
-      <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8 }} keyboardShouldPersistTaps="handled" ref={scroll} onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: true })}>
+      <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8 }} keyboardShouldPersistTaps="handled" ref={scroll} onContentSizeChange={showOpen}>
         {props.answers.map((answer) => (
-          <View key={answer.commandId} testID={`efimera-${answer.state}`} className="rounded-2xl border border-outline/15 bg-background px-3">
+          <View key={answer.commandId} testID={`efimera-${answer.state}`} onLayout={(event) => tops.current.set(answer.commandId, event.nativeEvent.layout.y)} className="rounded-2xl border border-outline/15 bg-background px-3">
             <AnswerHead answer={answer} open={answer.commandId === openId} onToggle={() => toggle(answer.commandId)} onDismiss={() => props.onDismiss(answer.commandId)} />
             {answer.commandId === openId ? <AnswerBody answer={answer} {...props} /> : null}
           </View>

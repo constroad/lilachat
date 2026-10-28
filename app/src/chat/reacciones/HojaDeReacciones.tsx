@@ -7,6 +7,8 @@ import { Avatar } from '../../ui/Avatar';
 import { useMargenes } from '../../ui/useMargenes';
 import { useColores } from '../../ui/tema';
 import { PanelDeEmojis } from '../PanelDeEmojis';
+import { ReactionGlyph } from './ReactionGlyph';
+import { SpaceEmojiGrid } from './SpaceEmojiGrid';
 
 const TODAS = 'todas';
 
@@ -50,7 +52,7 @@ export function HojaDeReacciones(props: {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-1 max-h-12 border-b border-outline/10" contentContainerStyle={{ paddingHorizontal: 16, gap: 18 }}>
           {[{ clave: TODAS, texto: 'Todas', cuantos: reacciones.length }, ...grupos.map((grupo) => ({ clave: grupo.emoji, texto: grupo.emoji, cuantos: grupo.cuantos }))].map((tab) => (
             <Pressable key={tab.clave} testID={`pestana-reacciones-${tab.clave}`} onPress={() => setPestana(tab.clave)} className={`min-h-[44px] flex-row items-center gap-1.5 border-b-2 ${pestana === tab.clave ? 'border-primary' : 'border-transparent'}`}>
-              <Text className={`text-[15px] ${pestana === tab.clave ? 'font-semibold text-primary' : 'text-on-surface'}`}>{tab.texto}</Text>
+              {tab.clave === TODAS ? <Text className={`text-[15px] ${pestana === tab.clave ? 'font-semibold text-primary' : 'text-on-surface'}`}>{tab.texto}</Text> : <ReactionGlyph emoji={tab.clave} size={18} />}
               <Text className="text-[13px] text-on-surface-variant">{tab.cuantos}</Text>
             </Pressable>
           ))}
@@ -71,7 +73,7 @@ export function HojaDeReacciones(props: {
                   <Text className="text-[16px] text-on-surface">{nombreDe(una.userId)}</Text>
                   {mia ? <Text className="text-[13px] text-on-surface-variant">Toca para quitar</Text> : null}
                 </View>
-                <Text className="text-[26px]">{una.emoji}</Text>
+                <ReactionGlyph emoji={una.emoji} size={28} />
               </Pressable>
             );
           })}
@@ -89,6 +91,7 @@ export function HojaDeEmojis(props: { visible: boolean; onElegir: (emoji: string
       <Pressable className="flex-1 bg-black/40" onPress={props.onCerrar} accessibilityLabel="Cerrar" />
       <View testID="hoja-emojis" className="rounded-t-xl bg-surface pt-3" style={{ paddingBottom: margenes.pie }}>
         <View className="mb-2 h-1.5 w-11 self-center rounded-full bg-outline/30" />
+        {props.visible ? <SpaceEmojiGrid onPick={props.onElegir} /> : null}
         {props.visible ? <PanelDeEmojis onElegir={props.onElegir} /> : null}
       </View>
     </Modal>

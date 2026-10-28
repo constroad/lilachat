@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 import { resumenDeReacciones, type Reaccion } from '@lilachat/shared';
 import { AVATAR_DE_AUTOR } from '../burbuja';
+import { ReactionGlyph } from './ReactionGlyph';
 
 /** El `gap-2` entre el avatar del autor y su burbuja (dp), más el aire hasta el borde de la burbuja. */
 const SANGRIA = 8 + 10;
@@ -29,7 +30,7 @@ export function PastillaDeReacciones(props: { id: string; reacciones: readonly R
         {visibles.map((grupo, indice) => (
           <View key={grupo.emoji} className="flex-row items-center gap-0.5">
             {indice > 0 ? <Text className="text-[12px] text-on-surface-variant">·</Text> : null}
-            <Text className="text-[14px]">{grupo.emoji}</Text>
+            <ReactionGlyph emoji={grupo.emoji} size={16} />
             {grupo.cuantos > 1 || grupos.length > 1 ? <Text className="text-[12px] text-on-surface">{grupo.cuantos}</Text> : null}
           </View>
         ))}

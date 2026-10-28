@@ -4,6 +4,7 @@ import { resumenDeReacciones } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { useConversacion } from '../contextoDeLaConversacion';
 import type { MensajeEnPantalla } from '../types';
+import { ReactionGlyph } from './ReactionGlyph';
 
 const TODAS = 'todas';
 /** Cuántos emojis distintos entran en la pastilla antes de resumir con «+N». */
@@ -35,7 +36,7 @@ export function PastillaDeReacciones({ mensaje, mio }: { mensaje: MensajeEnPanta
           {visibles.map((grupo, indice) => (
             <span key={grupo.emoji} className="flex items-center gap-0.5">
               {indice > 0 ? <span className="text-on-surface-variant">·</span> : null}
-              <span>{grupo.emoji}</span>
+              <ReactionGlyph emoji={grupo.emoji} size={16} />
               {grupo.cuantos > 1 || grupos.length > 1 ? <span className="text-[12px] text-on-surface">{grupo.cuantos}</span> : null}
             </span>
           ))}
@@ -48,7 +49,7 @@ export function PastillaDeReacciones({ mensaje, mio }: { mensaje: MensajeEnPanta
           <div className="flex gap-4 border-b border-outline/15 px-3">
             {[{ clave: TODAS, texto: 'Todas', cuantos: reacciones.length }, ...grupos.map((grupo) => ({ clave: grupo.emoji, texto: grupo.emoji, cuantos: grupo.cuantos }))].map((tab) => (
               <button key={tab.clave} type="button" data-testid={`pestana-reacciones-${tab.clave}`} onClick={() => setPestana(tab.clave)} className={`flex min-h-[36px] items-center gap-1 border-b-2 text-sm ${pestana === tab.clave ? 'border-primary font-semibold text-primary' : 'border-transparent'}`}>
-                {tab.texto} <span className="text-[12px] text-on-surface-variant">{tab.cuantos}</span>
+                {tab.clave === TODAS ? tab.texto : <ReactionGlyph emoji={tab.clave} size={18} />} <span className="text-[12px] text-on-surface-variant">{tab.cuantos}</span>
               </button>
             ))}
           </div>
@@ -68,7 +69,7 @@ export function PastillaDeReacciones({ mensaje, mio }: { mensaje: MensajeEnPanta
                     <span className="block truncate text-sm">{nombreDe(una.userId)}</span>
                     {mia ? <span className="block text-[12px] text-on-surface-variant">Clic para quitar</span> : null}
                   </span>
-                  <span className="text-[22px]">{una.emoji}</span>
+                  <ReactionGlyph emoji={una.emoji} size={24} />
                 </DropdownMenu.Item>
               );
             })}

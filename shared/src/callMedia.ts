@@ -71,3 +71,18 @@ export const mirrorsSelfView = (facing: CameraFacing): boolean => facing === 'us
 
 /** The switch only shows with two cameras: a laptop has one, a phone two. */
 export const canSwitchCamera = (videoInputs: number): boolean => videoInputs > 1;
+
+/**
+ * Whether a camera switch may start now (0.1.172 crash reports, 28/10): the
+ * native side throws «camera is not running» with the video off or ended, and
+ * «Camera switch already in progress» on a second tap before the first ends.
+ */
+export function cameraSwitchAllowed(params: { track: { enabled: boolean; readyState: string } | null | undefined; switching: boolean }): boolean {
+  return !params.switching && Boolean(params.track?.enabled) && params.track?.readyState === 'live';
+}
+
+/** Those two answers are a tap at the wrong time, not a failure: nothing to report. */
+export function isBenignCameraSwitchError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /camera is not running|switch already in progress/i.test(message);
+}

@@ -11,7 +11,8 @@ import {
 import type RTCIceCandidateEvent from 'react-native-webrtc/lib/typescript/RTCIceCandidateEvent';
 import type RTCTrackEvent from 'react-native-webrtc/lib/typescript/RTCTrackEvent';
 import { nextCallState, ringDeadline, type CallState } from '@lilachat/shared';
-import { otherFacing, type CameraFacing } from '@lilachat/shared';
+import { type CameraFacing } from '@lilachat/shared';
+import { switchCameraTrack } from './cameraSwitch';
 import { callReactionOf, createAckWatch, reactionKeyOf, reactionNotSeenNotice, type CallReaction } from '@lilachat/shared';
 import { connectSocket, getSocket, sostenerPorLlamada } from '../chat/socketClient';
 import { obtenerIceServers, type ServidorIce } from './iceServers';
@@ -80,6 +81,7 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
   const [speaker, setSpeaker] = useState(false);
   /** Front or rear camera (pending 97); every call starts with the front one. */
   const [facing, setFacing] = useState<CameraFacing>('user');
+  const switchingRef = useRef(false);
   /** The last wink or sticker played over the call (pending 98), mine or the other's. */
   const [reaction, setReaction] = useState<{ reaction: CallReaction; key: number } | null>(null);
   /** Pending 105b: the other did not answer «seen» to my last reaction. */
@@ -584,13 +586,7 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
       setReaction({ reaction: sent, key: Date.now() });
     },
     clearReaction,
-    // The other camera on the same track (pending 97): no renegotiation, the other side keeps receiving.
-    switchCamera: () => {
-      const track = localRef.current?.getVideoTracks()[0];
-      if (!track) return;
-      const next = otherFacing(facing);
-      void track.applyConstraints({ facingMode: next }).then(() => setFacing(next)).catch((error: unknown) => reportarError('call.camera', error));
-    },
+    switchCamera: () => switchCameraTrack({ track: localRef.current?.getVideoTracks()[0], facing, switching: switchingRef, onSwitched: setFacing }),
     alternarVideo: () =>
       setVideo((valor) => {
         const nuevo = !valor;

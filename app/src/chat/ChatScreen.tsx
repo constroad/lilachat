@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
+import { SpaceEmojisProvider } from '../spaces/customEmojis';
 import { Text, View } from 'react-native';
 import { ProgramarMensajeModal } from './ProgramarMensajeModal';
 import { ProgramadosDelChat } from './ProgramadosDelChat';
@@ -366,7 +367,7 @@ export function ChatScreen({
   useAlAbrirElChat({ hayContenido: rows.length > 0, mensajes: messages, lastSeqInicial, markRead });
 
   return (
-    <View style={{ flex: 1, backgroundColor: colores['fondo-chat'] }} testID="pantalla-chat">
+    <SpaceEmojisProvider jwt={credential.jwt} spaceId={workspaceId}><View style={{ flex: 1, backgroundColor: colores['fondo-chat'] }} testID="pantalla-chat">
       {/* La cabecera queda FUERA de lo que sube con el teclado y por encima: la conversación pasa por debajo. */}
       <View style={{ zIndex: 2, elevation: 2 }}>
       {/**
@@ -591,6 +592,6 @@ export function ChatScreen({
       />
       ) : null}
     </View>
-    </View>
+    </View></SpaceEmojisProvider>
   );
 }

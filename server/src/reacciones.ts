@@ -1,5 +1,7 @@
 import { Types } from 'mongoose';
 import { esEmojiDeReaccion } from '@lilachat/shared';
+import { customEmojiNameFromToken } from '@lilachat/shared';
+import { hasCustomEmoji } from './customEmojiCatalog.js';
 import { ACTS_AS_MESSAGE_FILTER, ChatModel, MessageModel, type Message } from './chatModels.js';
 
 export type ReaccionGuardada = { userId: string; emoji: string; en: Date };
@@ -18,13 +20,16 @@ const NO_ADMITE = { ok: false, status: 400, motivo: 'A ese mensaje no se le pued
  * chat secreto (el emoji iría en claro).
  */
 export async function reaccionar(params: { chatId: string; seq: number; userId: string; emoji: string | null }): Promise<ResultadoDeReaccion> {
-  if (params.emoji !== null && !esEmojiDeReaccion(params.emoji)) return { ok: false, status: 400, motivo: 'Esa reacción no es un emoji.' };
+  const customName = params.emoji === null ? null : customEmojiNameFromToken(params.emoji);
+  if (params.emoji !== null && !customName && !esEmojiDeReaccion(params.emoji)) return { ok: false, status: 400, motivo: 'Esa reacción no es un emoji.' };
   if (!Types.ObjectId.isValid(params.chatId) || !Number.isInteger(params.seq) || params.seq <= 0) return NO_ESTA;
   const chatId = new Types.ObjectId(params.chatId);
   // La membresía primero: sin esto se sondearía si un `seq` existe en un chat ajeno.
-  const chat = await ChatModel.findOne({ _id: chatId, 'members.userId': new Types.ObjectId(params.userId) }).select('encrypted').lean();
+  const chat = await ChatModel.findOne({ _id: chatId, 'members.userId': new Types.ObjectId(params.userId) }).select('encrypted workspaceId').lean();
   if (!chat) return { ok: false, status: 403, motivo: 'No eres miembro de este chat.' };
   if (chat.encrypted) return NO_ADMITE;
+  // Pending 19: a space's own emoji, only in that space's chats and while it exists.
+  if (customName && !(chat.workspaceId && (await hasCustomEmoji(chat.workspaceId, customName)))) return { ok: false, status: 400, motivo: 'Ese emoji no es de este espacio.' };
 
   const sinLaMia = { $filter: { input: { $ifNull: ['$reacciones', []] }, cond: { $ne: ['$$this.userId', params.userId] } } };
   const nueva = params.emoji ? [{ userId: params.userId, emoji: params.emoji, en: new Date() }] : [];

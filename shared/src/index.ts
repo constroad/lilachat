@@ -140,3 +140,4 @@ export * from './weatherBlock.js';
 export * from './appActions.js';
 export * from './appItems.js';
 export * from './appSchedules.js';
+export * from './customEmojis.js';

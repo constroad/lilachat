@@ -22,6 +22,9 @@ import { emailInvitesOf, inviteByEmail, revokeEmailInvite } from './workspaceEma
 import { type MediaUploader } from './mediaClient.js';
 import { defaultMediaUploader } from './localMediaUploader.js';
 import { multerDeAvatar, subirFotoRedonda } from './subirAvatar.js';
+import multer from 'multer';
+import { CUSTOM_EMOJI_MAX_BYTES } from '@lilachat/shared';
+import { addCustomEmoji, listCustomEmojis, removeCustomEmoji } from './customEmojiCatalog.js';
 
 /** Tries of a code per person and minute: enough to fix a typo, not to guess codes. */
 const CODE_TRIES_PER_MINUTE = 10;
@@ -85,6 +88,18 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
   router.patch('/:id/members/:memberId', handled(async (req, res) => res.json({ member: await updateMember(req.params.id!, me(req), req.params.memberId!, req.body ?? {}) })));
   router.get('/:id/channels', handled(async (req, res) => res.json({ channels: await listChannels(req.params.id!, me(req)) })));
   router.post('/:id/channels', handled(async (req, res) => res.status(201).json({ channel: await createChannel(req.params.id!, me(req), req.body ?? {}) })));
+  // Pending 19: the space's own emojis (designs c-06/c-07). Too big a file is a 400, not a 500.
+  const emojiFile = multer({ storage: multer.memoryStorage(), limits: { fileSize: CUSTOM_EMOJI_MAX_BYTES } }).single('file');
+  const emojiUpload = (req: Request, res: Response, next: NextFunction) =>
+    emojiFile(req, res, (error: unknown) => (error ? void res.status(400).json({ message: 'La imagen tiene que ser PNG, WebP o GIF de hasta 256 KB.' }) : next()));
+  router.get('/:id/emojis', handled(async (req, res) => res.json({ emojis: await listCustomEmojis(req.params.id!, me(req)) })));
+  router.post('/:id/emojis', emojiUpload, handled(async (req, res) => {
+    res.status(201).json({ emoji: await addCustomEmoji({ workspaceId: req.params.id!, userId: me(req), name: req.body?.name, bytes: req.file?.buffer, uploader }) });
+  }));
+  router.delete('/:id/emojis/:emojiId', handled(async (req, res) => {
+    await removeCustomEmoji(req.params.id!, me(req), req.params.emojiId!);
+    res.status(204).end();
+  }));
   router.post('/:id/channels/:chatId/join', handled(async (req, res) => res.json({ channel: await joinChannel(req.params.id!, me(req), req.params.chatId!) })));
   return router;
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CALL_TIMEOUT_MS, type CallState } from './call.js';
 import { CONNECT_WAIT_MS, callCaption, callerName, canSwitchCamera, mediaState, mirrorsSelfView, otherFacing, ringStart, waitBeforeGivingUp } from './callMedia.js';
+import { cameraSwitchAllowed, isBenignCameraSwitchError } from './callMedia.js';
 
 /**
  * Answered ≠ connected (FL8; real test of 17/10/2026: the clock ran from when
@@ -100,5 +101,23 @@ describe('switching the camera in a video call (pending 97)', () => {
     expect(canSwitchCamera(0)).toBe(false);
     expect(canSwitchCamera(1)).toBe(false);
     expect(canSwitchCamera(2)).toBe(true);
+  });
+});
+
+describe('camera switch guard (0.1.172 crash reports)', () => {
+  const live = { enabled: true, readyState: 'live' };
+
+  it('switches only a live, enabled track with no switch running', () => {
+    expect(cameraSwitchAllowed({ track: live, switching: false })).toBe(true);
+    expect(cameraSwitchAllowed({ track: live, switching: true })).toBe(false);
+    expect(cameraSwitchAllowed({ track: { enabled: false, readyState: 'live' }, switching: false })).toBe(false);
+    expect(cameraSwitchAllowed({ track: { enabled: true, readyState: 'ended' }, switching: false })).toBe(false);
+    expect(cameraSwitchAllowed({ track: null, switching: false })).toBe(false);
+  });
+
+  it('the two native answers of a mistimed tap are benign; anything else is reported', () => {
+    expect(isBenignCameraSwitchError(new Error('Error switching camera: switchCamera: camera is not running.'))).toBe(true);
+    expect(isBenignCameraSwitchError(new Error('Error switching camera: Camera switch already in progress.'))).toBe(true);
+    expect(isBenignCameraSwitchError(new Error('Permission denied'))).toBe(false);
   });
 });

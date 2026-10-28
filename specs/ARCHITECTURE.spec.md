@@ -4911,6 +4911,54 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 154. Llamadas como WhatsApp, girar la cámara sin errores y emojis propios del espacio (28/10/2026, servidor + OTA + web; pendientes 106, 78, 105b y 19)
+
+**Controles (pendiente 106, diseños c-02/c-03).** Barra abajo «⋯ · cámara ·
+altavoz · micrófono · colgar» (`callBarLayout.ts`, sin cámara en una llamada de
+voz). Arriba, minimizar: la llamada sigue en una pastilla con su reloj
+(`MinimizedCall`). «Más opciones» trae seis efectos rápidos (pendiente 78),
+«Enviar mensaje» (abre el chat y minimiza) y «Guiños y stickers».
+
+**Guiño que no llega (pendiente 105b).** Cada `call.reaction` lleva una
+`key`. El que la recibe devuelve `call.reaction.ack`. Sin ack en 4 s, quien la
+mandó ve «{nombre} no lo recibió. Puede que tenga que actualizar Lilachat.»
+(`createAckWatch`). La causa probable era una app sin el listener nuevo hasta
+reabrir.
+
+**Girar la cámara (reportes de 0.1.172, 28/10).** El bot de errores trajo dos
+excepciones en `call.camera`: «camera is not running» y «Camera switch already
+in progress». No eran caídas: era tocar «girar» con la cámara apagada, o dos
+veces antes de que terminara el primer giro. Ahora `switchCameraTrack`
+(`app/src/calls/cameraSwitch.ts`) solo gira una pista viva y prendida, con un
+candado mientras gira (`cameraSwitchAllowed` en `shared/callMedia.ts`). Esas
+dos respuestas del lado nativo ya no se reportan (`isBenignCameraSwitchError`);
+cualquier otra sí. `useCall.ts` vuelve a quedar bajo 600 líneas.
+
+**Emojis propios (pendiente 19, diseños c-06 y c-07).**
+- **Server:** colección `custom_emojis` (`customEmojiModel.ts`) con índice
+  único `{workspaceId, name}`. **La bóveda no crea índices sola:** el índice
+  espera el OK de José (`scripts/bot-indexes.ts --apply`). Mientras tanto, el
+  código ya revisa el nombre repetido antes de guardar.
+- **Rutas:** `GET/POST /api/workspaces/:id/emojis` y `DELETE …/:emojiId`.
+  - Agrega cualquier miembro activo. Quita quien lo agregó o un admin.
+  - La imagen es PNG, WebP o GIF de hasta 256 KB, revisada por sus primeros
+    bytes. Un archivo más grande da 400, no 500.
+  - Tope de 500 emojis por espacio.
+- **Reacción:** viaja como `:nombre:`. El server la acepta solo en chats del
+  espacio y mientras el emoji exista. No cambió el esquema de reacciones.
+- **Dibujo:** cada cliente resuelve el nombre con la lista del espacio
+  (`reactionGlyph`). Un emoji que se quitó se lee como su nombre.
+- **App:**
+  - `SpaceEmojisProvider` envuelve el chat. La lista se pide una vez por
+    espacio y nada hace polling.
+  - `ReactionGlyph` dibuja la pastilla y «quién reaccionó».
+  - El «+» muestra arriba «De {espacio}» con «Agregar», que abre la hoja
+    «Agregar emoji» (c-07). Mantener presionado quita un emoji.
+- **Web:** lo mismo con `useSpaceEmojis`, `SpaceEmojiSection` y
+  `AddCustomEmojiDialog`. Para quitar, una × al pasar el mouse.
+- **Tests:** `server/test/customEmojis.test.ts` (4), los de `shared` y
+  `web/src/chat/reacciones/customEmojis.test.tsx` (3).
+
 ## 153. Contestar con el teléfono bloqueado ya no corta la llamada, y la pantalla no se apaga mientras grabo (28/10/2026, servidor + OTA + web; pendientes 114 y 115)
 
 **114 (José, «otro error grave»).** El receptor tocaba Contestar en la pantalla bloqueada, escribía
@@ -12174,7 +12222,7 @@ tacha con la versión que lo cierra.
     en el chip y en la raíz del panel. Verificado: app en el emulador (raíz
     «QA Ana», chip con su inicial y la foto de José) y web E2E (chip con la
     foto de José en un 1:1).
-19. **Emojis propios para reaccionar, como Slack** (estáticos o GIF
+19. ✅ **Hecho (§154).** **Emojis propios para reaccionar, como Slack** (estáticos o GIF
     animados). Cada uno: nombre corto (`:vamos:`), imagen de hasta 128×128 y
     256 KB (PNG, WebP o GIF), quién lo subió y cuándo. Salen en una sección
     propia del panel de reacciones y del de emojis, y se escriben con `:`.
@@ -12592,7 +12640,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     también lleva «Ver recordatorio».
 77. ~~**Guiño «Rockero furioso»: rompe su guitarra**~~ **Hecho (§116, 0.1.154).** (José, 23/10, como el de
     Messenger), en los guiños que se ven siempre.
-78. **Guiños y efectos en las llamadas y videollamadas** (José, 23/10), como
+78. ✅ **Hecho (§154).** **Guiños y efectos en las llamadas y videollamadas** (José, 23/10), como
     los efectos de WhatsApp, para que la llamada sea más divertida.
 79. **Decisiones de José del 23/10:**
     - 19 (emojis propios): sí, con sus índices; medir la performance en cada
@@ -12788,12 +12836,12 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     efímeras de los comandos se apilan como mensajes encima de la lista. José
     pregunta si pueden verse como las tarjetas o chips de Claude: compactas,
     agrupadas y fáciles de cerrar.
-105. **(a) hecho en §148; (b) sin causa confirmada, ver §148.** **Videollamada: no se ve mi cámara y el otro no ve mis guiños ni stickers**
+105. ✅ **(a) hecho en §148; (b) en §154: ack por guiño y aviso «no lo recibió».** **Videollamada: no se ve mi cámara y el otro no ve mis guiños ni stickers**
     (José, 28/10, bug, llamada con Lila; captura): (a) ya no aparece el recuadro
     con mi propia cámara; (b) Lila no veía los guiños ni los stickers que José
     mandaba, aunque él sí los veía en su pantalla (evento `call.reaction`, del
     98).
-106. **Controles de la videollamada como en WhatsApp** (José, 28/10, con captura
+106. ✅ **Hecho (§154).** **Controles de la videollamada como en WhatsApp** (José, 28/10, con captura
     de una videollamada de WhatsApp): abajo, una barra con «⋯», cámara,
     altavoz, silencio y colgar; arriba, minimizar y agregar persona; mi cámara
     en un recuadro con «cambiar cámara» y efectos. «⋯» abre más opciones:

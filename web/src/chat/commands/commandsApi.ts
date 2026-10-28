@@ -1,5 +1,6 @@
 import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type ItemPlace } from '@lilachat/shared';
 import { api } from '../../api';
+import { shrinkPhotoBlob } from '../shrinkPhoto';
 
 /** The slash commands and actions of the apps (§c-bis), only what the admin enabled at that place (R160). */
 export const spaceCommands = (jwt: string, spaceId: string, place: ItemPlace) =>
@@ -20,10 +21,11 @@ export const runShortcut = (jwt: string, scope: CommandScope, input: { kind: 'sh
     ? api<CommandOutcome>(`${pathOf(scope)}/commands`, { jwt, body: { app_id: input.appId, command: input.key, text: '', forms: FORMS_LEVEL } })
     : api<CommandOutcome>(`${pathOf(scope)}/shortcuts`, { jwt, body: { app_id: input.appId, shortcut: input.key, forms: FORMS_LEVEL } });
 
-/** A form's photo, the moment it is picked: the form then carries its id. */
+/** A form's photo, the moment it is picked, lighter with Portal's standard (28/10): the form then carries its id. */
 export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandId: string, file: Blob, stamp?: GeoPoint): Promise<{ ok: true; fileId: string } | { ok: false; message: string }> {
+  const photo = await shrinkPhotoBlob(file, file instanceof File ? file.name : 'foto.jpg');
   const body = new FormData();
-  body.append('file', file, file instanceof File ? file.name : 'foto.jpg');
+  body.append('file', photo.blob, photo.name);
   // A signing's selfie: the server burns its hour and this place into it (pending 94).
   if (stamp) {
     body.append('stamp', '1');

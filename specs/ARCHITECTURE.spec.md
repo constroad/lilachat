@@ -4911,6 +4911,39 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 144. Fotos: una sola regla en todas las subidas, la de Portal (28/10/2026, servidor + OTA + web)
+
+José, 28/10 (por agentes): «lo mismo debemos hacer en lilachat y debe ser integral para
+todos los lados donde se suben las fotos sin comprometer la calidad». Había tres reglas:
+
+| Dónde | Antes | Ahora |
+| --- | --- | --- |
+| Chat (app y web) | siempre 1600 px y JPEG 0,70, sin umbral | estándar de Portal |
+| Formularios (cámara, galería, selfie) | captura a `quality: 0.6` sin achicar; el server a 1280 px y JPEG 80 | captura nativa, estándar en el teléfono y red en el server |
+| Foto de grupo, perfil, logo del espacio, imagen de agenda | `quality: 0.9` sin achicar | estándar en el teléfono y red en el server |
+
+**Una regla, tres motores.** `shared/src/photoSizing.ts` decide (umbral 1 MB, 1600 px,
+0,78 → 0,50 de 0,08 en 0,08, ×0,82 hasta 1000, 5 pasadas) y corre la escalera con el
+codificador de cada plataforma (`shrinkWithLadder`):
+- App, `app/src/chat/shrinkPhoto.ts`: `expo-image-manipulator` (reescalado nativo). Dibuja
+  una vez por lado y guarda una vez por calidad, y borra los intentos que no quedan. Sin
+  píxeles para leer, la transparencia sale de la cabecera (`headerMayHaveAlpha`): un PNG
+  que puede tenerla queda PNG, y un WebP así sube tal cual.
+- Web, `web/src/chat/shrinkPhoto.ts`: canvas como Portal 7727ee59. Suavizado `high`, mitades
+  mientras pase del doble, fondo blanco para JPEG y sin `resizeWidth` en
+  `createImageBitmap`.
+- Server, `server/src/photoShrink.ts`: sharp (lanczos3), `flatten` blanco y `stats().isOpaque`
+  para la transparencia. Es la red de seguridad de formularios y fotos redondas. La selfie
+  sellada pasa por la misma escalera con la franja dibujada en cada tamaño.
+- De a una foto (`createSerialRunner`) en los tres: decodificar una de 12 MP ocupa ~48 MB.
+- El chat no tiene red de seguridad en el server: «HD» manda la original a propósito, y
+  las APK viejas ya comprimían el chat.
+- Log por foto: `[fotos] 3.2 MB → 412 KB · 4000×3000 → 1600×1200` (logcat en la app,
+  consola en la web; `[forms]` y `[fotos]` en el server).
+- Stickers: su propio camino WebP, sin cambios.
+- Pruebas: shared `photoSizing.test.ts` (16), server `photoShrink.test.ts` (5) +
+  `photoStamp.test.ts`, web `shrinkPhoto.test.ts` (5).
+
 ## 143. Desplegable de media fila en una línea e iniciales solo para personas (28/10/2026, OTA + web)
 
 **Lo que mostró el esquema nuevo de Portal** (emulador, 28/10, 14:51–15:02 UTC):

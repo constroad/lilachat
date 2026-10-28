@@ -1,5 +1,7 @@
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import { shrinkPhotoFile } from './shrinkPhoto';
 import { subirPorXhr } from './subidaXhr';
 
 /**
@@ -24,7 +26,8 @@ import { subirPorXhr } from './subidaXhr';
 /** Una foto de pocos MB con señal mala: dos minutos antes de rendirse. */
 const TIEMPO_DE_SUBIDA_MS = 120_000;
 
-const OPCIONES_DE_RECORTE = { quality: 0.9, allowsEditing: true, aspect: [1, 1] as [number, number] };
+/** `quality: 1`: the crop untouched; `shrinkPhotoFile` makes it lighter once, before it goes up (28/10). */
+const OPCIONES_DE_RECORTE = { quality: 1, allowsEditing: true, aspect: [1, 1] as [number, number] };
 
 export type FotoElegida = { uri: string; nombre: string; mime: string };
 
@@ -126,13 +129,15 @@ export async function subirFotoRedonda(params: {
   jwt: string;
   foto: FotoElegida;
 }): Promise<{ ok: true; payload: Record<string, unknown> } | { ok: false; motivo: string }> {
+  // Portal's standard (28/10): the group, profile, space and agenda photos go lighter too.
+  const shrunk = await shrinkPhotoFile({ uri: params.foto.uri, mimeType: params.foto.mime, fileName: params.foto.nombre });
   const cuerpo = new FormData();
   // El archivo se adjunta por URI: el módulo nativo lo lee del disco al armar
   // el multipart, sin pasar por memoria JS.
   cuerpo.append('file', {
-    uri: params.foto.uri,
-    name: params.foto.nombre,
-    type: params.foto.mime,
+    uri: shrunk.uri,
+    name: shrunk.fileName,
+    type: shrunk.mimeType,
   } as unknown as Blob);
 
   const respuesta = await subirPorXhr({
@@ -140,7 +145,7 @@ export async function subirFotoRedonda(params: {
     token: params.jwt,
     form: cuerpo,
     timeoutMs: TIEMPO_DE_SUBIDA_MS,
-  });
+  }).finally(() => (shrunk.temporary ? FileSystem.deleteAsync(shrunk.uri, { idempotent: true }).catch(() => undefined) : undefined));
   if (respuesta.tipo === 'fallo') return { ok: false, motivo: respuesta.motivo };
 
   if (respuesta.status < 200 || respuesta.status >= 300) {

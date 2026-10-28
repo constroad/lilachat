@@ -11,8 +11,8 @@ import { useCurrentLocation } from '../location/useCurrentLocation';
 
 const MAP_HEIGHT = 120;
 const SELFIE = 80;
-/** A selfie for the app, not a portrait: small enough to go up on a weak signal. */
-const SELFIE_QUALITY = 0.6;
+/** Native and untouched: `uploadFormPhoto` makes it lighter once (Portal's standard, 28/10). */
+const SELFIE_QUALITY = 1;
 /** The digits of a one-time code, spread like the six boxes of a sign-in. */
 const CODE_LETTER_SPACING = 10;
 

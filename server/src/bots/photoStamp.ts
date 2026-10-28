@@ -1,12 +1,9 @@
-import sharp from 'sharp';
+import { shrinkPhotoBuffer, type ShrunkPhoto } from '../photoShrink.js';
 
 /** The band takes this share of the height, and the text this share of the width (readable on a phone). */
 const BAND_SHARE = 0.17;
 const FONT_SHARE = 0.042;
 const MIN_FONT_PX = 12;
-const JPEG_QUALITY = 80;
-/** The long side of a form photo (agentes, 24/10: Portal uploads it to Drive before confirming; ~1 MP is enough for a tape or a face). */
-export const FORM_PHOTO_LONG_SIDE = 1280;
 
 const escapeXml = (text: string) => text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 
@@ -20,20 +17,13 @@ function bandSvg(width: number, height: number, lines: readonly [string, string]
 /**
  * The date, the hour and the place burned into a form's photo (pending 94,
  * José 23/10): a dark band at the bottom with two lines. The photo is turned
- * upright first (a phone saves it sideways with an EXIF flag). Throws on a file
- * that is not an image; the caller answers 400.
+ * upright first (a phone saves it sideways with an EXIF flag) and sized with
+ * Portal's ladder, like every photo (28/10). Throws on a file that is not an
+ * image; the caller sends it without the stamp.
  */
-export async function stampPhoto(bytes: Buffer, lines: readonly [string, string]): Promise<Buffer> {
-  const upright = await sharp(bytes).rotate().resize({ width: FORM_PHOTO_LONG_SIDE, height: FORM_PHOTO_LONG_SIDE, fit: 'inside', withoutEnlargement: true }).toBuffer({ resolveWithObject: true });
-  const { width, height } = upright.info;
-  const band = Math.max(MIN_FONT_PX * 3, Math.round(height * BAND_SHARE));
-  return sharp(upright.data)
-    .composite([{ input: bandSvg(width, band, lines), gravity: 'south' }])
-    .jpeg({ quality: JPEG_QUALITY })
-    .toBuffer();
-}
-
-/** A form photo upright and at most ~1 MP in JPEG: the app downloads it and Portal uploads it, in proportion to its bytes. */
-export async function shrinkPhoto(bytes: Buffer): Promise<Buffer> {
-  return sharp(bytes).rotate().resize({ width: FORM_PHOTO_LONG_SIDE, height: FORM_PHOTO_LONG_SIDE, fit: 'inside', withoutEnlargement: true }).jpeg({ quality: JPEG_QUALITY }).toBuffer();
+export async function stampPhoto(bytes: Buffer, lines: readonly [string, string]): Promise<ShrunkPhoto> {
+  const overlay = ({ width, height }: { width: number; height: number }) => [{ input: bandSvg(width, Math.max(MIN_FONT_PX * 3, Math.round(height * BAND_SHARE)), lines), gravity: 'south' }];
+  const stamped = await shrinkPhotoBuffer({ bytes, mimeType: 'image/jpeg', fileName: 'selfie.jpg' }, { force: true, overlay });
+  if (!stamped) throw new Error('No se pudo leer la foto para sellarla.');
+  return stamped;
 }

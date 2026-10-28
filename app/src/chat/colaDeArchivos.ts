@@ -8,8 +8,7 @@ import { uploadMedia } from './mediaUpload';
 import type { ServerMessage } from './socketClient';
 import { alConectar } from './socketClient';
 import { valeAvisarProgreso } from './progresoDeSubida';
-import { nombreComprimido, planDeCompresion } from '@lilachat/shared';
-import { comprimirFoto } from './comprimirFoto';
+import { shrinkPhotoFile } from './shrinkPhoto';
 
 /**
  * La cola de FOTOS, ARCHIVOS y NOTAS DE VOZ, persistida (FL8).
@@ -159,19 +158,11 @@ export async function encolarArchivo(params: ArchivoNuevo & { hd?: boolean }): P
 
 /** La foto comprimida (o el archivo tal cual), ya en la carpeta de la app. */
 async function prepararArchivo(archivo: ArchivoNuevo, clientKey: string, hd: boolean) {
-  let fuente = { uri: archivo.uri, fileName: archivo.fileName, mimeType: archivo.mimeType, sizeBytes: archivo.sizeBytes, width: archivo.width, height: archivo.height };
-  let temporal = false;
-  const plan = planDeCompresion({ width: archivo.width, height: archivo.height, mimeType: archivo.mimeType, hd });
-  if (plan) {
-    try {
-      const comprimida = await comprimirFoto(archivo.uri, plan);
-      fuente = { ...comprimida, fileName: nombreComprimido(archivo.fileName), mimeType: 'image/jpeg' };
-      temporal = true;
-    } catch (error) {
-      // Si no se pudo achicar, va la original: mejor lenta que perdida.
-      reportarError('comprimirFoto', error);
-    }
-  }
+  // Portal's standard (28/10): a photo of 1 MB or more goes lighter; anything else, «HD» or a failure, as it is.
+  const isImage = archivo.mimeType.startsWith('image/');
+  const shrunk = isImage ? await shrinkPhotoFile(archivo, { hd }) : null;
+  const fuente = shrunk ?? { uri: archivo.uri, fileName: archivo.fileName, mimeType: archivo.mimeType, sizeBytes: archivo.sizeBytes, width: archivo.width, height: archivo.height };
+  const temporal = shrunk?.temporary === true;
   await FileSystem.makeDirectoryAsync(CARPETA, { intermediates: true }).catch(() => undefined);
   const destino = `${CARPETA}${clientKey}${extensionDe(fuente.fileName)}`;
   await (temporal ? FileSystem.moveAsync({ from: fuente.uri, to: destino }) : FileSystem.copyAsync({ from: fuente.uri, to: destino }));

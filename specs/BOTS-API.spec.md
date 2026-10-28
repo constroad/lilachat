@@ -522,6 +522,27 @@ la app de ESA instalación, por su webhook y con la firma de `command.invoked`.
 - Sin conectar dice «<app> te lo pide la primera vez que la usas»: conectar
   sigue siendo el formulario «Conecta tu cuenta» que trae el rechazo de la app.
 
+## c-octodecies) Fotos: una sola regla, la de Portal (28/10/2026, servidor + OTA + web)
+
+José, 28/10: «debe ser integral para todos los lados donde se suben las fotos sin
+comprometer la calidad». La regla es la de Portal (`optimizeBrowserImageFile`, 7727ee59)
+y vive una sola vez en `shared/src/photoSizing.ts`:
+- **Menos de 1 MB: no se toca.** Tampoco un GIF, un SVG, un ícono ni un video. «HD» en
+  el chat manda la original.
+- **1 MB o más:** lado largo hasta 1600 px y JPEG 0,78; si pasa de 1 MB, la calidad baja
+  de 0,08 en 0,08 hasta 0,50; si aún no entra, el lado ×0,82 hasta 1000 px (5 pasadas
+  como máximo).
+- Un PNG con transparencia real queda PNG y solo cambia de tamaño. Lo que pasa a JPEG
+  desde una fuente transparente lleva fondo blanco, nunca negro.
+- Si el resultado no pesa menos, o algo falla, sube la original.
+- La foto se toma a resolución nativa (`quality: 1`) y se comprime una sola vez.
+
+Qué recibe la app: las fotos de un formulario (cámara, galería y selfie) y la selfie
+sellada siguen esta regla. El servidor la aplica también como red de seguridad a lo que
+llega con 1 MB o más (APK viejas, web sin canvas). La selfie sellada siempre se vuelve a
+codificar con la misma escalera. Antes era 1280 px y JPEG 80: ahora una foto de
+formulario no queda peor que una del chat.
+
 ## c-septendecies) Iniciales solo para personas: `x-avatar` (28/10/2026, OTA + web)
 
 agentes, 28/10: los diseños de mezcla llegan con su **id** como valor (los nombres se
@@ -664,10 +685,10 @@ un id. Una lista de fotos dice «Se registra con las fotos», no «con tu foto»
 - Una foto suelta que no es firma también usa la cámara trasera, con
   «Tomar foto» (en el E2E del 24/10 la wincha abría la cámara frontal).
 - **Fotos más livianas** (agentes, 24/10: Portal sube la foto al Drive antes
-  de confirmar). El servidor guarda cada foto de un formulario derecha y con
-  el lado largo en 1280 px como máximo, en JPEG de calidad 80. Pasa también
-  con APK viejas y con la web. Si sharp no puede leerla, se guarda tal como
-  llegó.
+  de confirmar). Desde el 28/10 vale el estándar de Portal (§c-octodecies):
+  una foto de 1 MB o más llega con el lado largo en 1600 px como máximo y por
+  debajo de 1 MB; una más liviana llega como se tomó. Un HEIC siempre llega en
+  JPEG. Si sharp no puede leerla, se guarda tal como llegó.
 
 ## c-duodecies) Listas largas con buscador y el PIN (0.1.168)
 

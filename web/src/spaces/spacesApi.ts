@@ -2,6 +2,7 @@ import type { AppLink } from '@lilachat/shared';
 import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, SpaceApp, AvailableApp, SpaceAppDirectory, TopicRoute, AppItemRow, ItemChannels, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
 import { api } from '../api';
 import type { ChatSummary } from '../chat/types';
+import { shrinkPhotoBlob } from '../chat/shrinkPhoto';
 
 /** The company spaces (E1) and their channels (E2), the same `/api/workspaces` the phone uses (§72). */
 const path = (rest: string) => `/workspaces${rest}`;
@@ -45,8 +46,10 @@ export function mediaLibrary(jwt: string, params: { type: MediaLibraryType; spac
 
 /** The space's logo (design e1-12): the file goes as multipart, the common `api` sends JSON. */
 export async function uploadSpaceLogo(jwt: string, spaceId: string, file: File): Promise<{ ok: true; workspace: ClientWorkspace } | { ok: false; message: string }> {
+  // Portal's standard (28/10): a logo with transparency stays PNG.
+  const logo = await shrinkPhotoBlob(file, file.name);
   const form = new FormData();
-  form.append('file', file);
+  form.append('file', logo.blob, logo.name);
   try {
     const response = await fetch(`/api${path(`/${spaceId}/logo`)}`, { method: 'POST', headers: { Authorization: `Bearer ${jwt}` }, body: form });
     const payload = (await response.json().catch(() => ({}))) as { workspace?: ClientWorkspace; message?: string };

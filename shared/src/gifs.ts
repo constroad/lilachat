@@ -1,7 +1,7 @@
 /**
  * GIFs (backlog 37, José 21/10: upload a GIF, and the time has come for a
  * GIPHY section). A GIF is sent as an image message that keeps
- * its animation (it is never recompressed: `planDeCompresion`); GIPHY is
+ * its animation (it is never recompressed: `shouldShrinkPhoto`); GIPHY is
  * searched through the server, so its key never reaches the app or the web,
  * with its content filter at `pg-13` and the «Powered by GIPHY» its license
  * asks for.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import sharp from 'sharp';
-import { shrinkPhoto, stampPhoto } from './photoStamp.js';
+import { stampPhoto } from './photoStamp.js';
 
 /** Pending 94: the selfie of a form carries the date, the hour and the place in its pixels. */
 describe('stampPhoto', () => {
@@ -10,7 +10,7 @@ describe('stampPhoto', () => {
     // Act
     const stamped = await stampPhoto(white, ['vie 23/10/2026 · 18:51', '-11.98123, -76.95451 · ± 5 m']);
     // Assert
-    const { data, info } = await sharp(stamped).raw().toBuffer({ resolveWithObject: true });
+    const { data, info } = await sharp(stamped.bytes).raw().toBuffer({ resolveWithObject: true });
     expect([info.width, info.height]).toEqual([400, 300]);
     const pixel = (x: number, y: number) => data[(y * info.width + x) * info.channels]!;
     expect(pixel(2, 2)).toBeGreaterThan(240);
@@ -23,21 +23,20 @@ describe('stampPhoto', () => {
     // Act
     const stamped = await stampPhoto(sideways, ['a', 'b']);
     // Assert
-    const meta = await sharp(stamped).metadata();
+    const meta = await sharp(stamped.bytes).metadata();
     expect([meta.width, meta.height]).toEqual([300, 400]);
     await expect(stampPhoto(Buffer.from('not an image'), ['a', 'b'])).rejects.toThrow();
   });
 });
 
-describe('a form photo is made smaller (agentes, 24/10: Portal uploads it before confirming)', () => {
-  it('a 4000 px photo comes back at most 1280 px on its long side, in JPEG; a small one is not enlarged', async () => {
+describe('a stamped selfie follows Portal\'s standard (28/10)', () => {
+  it('a 12 MP selfie comes back at most 1600 px, stamped, in JPEG', async () => {
     // Arrange
-    const big = await sharp({ create: { width: 4000, height: 3000, channels: 3, background: '#808080' } }).jpeg({ quality: 95 }).toBuffer();
-    const small = await sharp({ create: { width: 640, height: 480, channels: 3, background: '#808080' } }).png().toBuffer();
+    const big = await sharp({ create: { width: 4000, height: 3000, channels: 3, background: '#808080', noise: { type: 'gaussian', mean: 128, sigma: 30 } } }).jpeg({ quality: 95 }).toBuffer();
     // Act
-    const [shrunkBig, shrunkSmall] = await Promise.all([shrinkPhoto(big), shrinkPhoto(small)]);
+    const stamped = await stampPhoto(big, ['mié 28/10/2026 · 10:30', 'Planta Lurín · ± 8 m']);
     // Assert
-    expect(await sharp(shrunkBig).metadata()).toMatchObject({ width: 1280, height: 960, format: 'jpeg' });
-    expect(await sharp(shrunkSmall).metadata()).toMatchObject({ width: 640, height: 480, format: 'jpeg' });
+    expect(await sharp(stamped.bytes).metadata()).toMatchObject({ width: 1600, height: 1200, format: 'jpeg' });
+    expect(stamped.bytes.length).toBeLessThan(big.length);
   });
 });

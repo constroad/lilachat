@@ -9,8 +9,8 @@ import type { PhotoUpload } from './AppFormFields';
 type PhotoList = Extract<FormField, { kind: 'photo' }>;
 type Shot = { key: string; uri: string; fileId: string | null };
 const THUMB = 84;
-/** The server makes it ~1 MP anyway; a lighter shot uploads faster from the field. */
-const PHOTO_QUALITY = 0.6;
+/** Native and untouched: `uploadFormPhoto` makes it lighter once (Portal's standard, 28/10). */
+const PHOTO_QUALITY = 1;
 
 /**
  * Several photos (José, 24/10: the tank tape and the material receipt): take

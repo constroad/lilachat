@@ -1,6 +1,8 @@
 import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type ItemPlace } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
+import * as FileSystem from 'expo-file-system/legacy';
+import { shrinkPhotoFile, type ShrunkPhotoFile } from '../shrinkPhoto';
 import { subirPorXhr } from '../subidaXhr';
 
 /** A selfie is small; a phone on a weak signal still gets a minute. */
@@ -22,10 +24,23 @@ export const runShortcut = (jwt: string, scope: CommandScope, input: { kind: 'sh
     ? jsonCall<CommandOutcome>(`${BASE_URL}${commandScopePath(scope)}/commands`, jwt, { method: 'POST', body: JSON.stringify({ app_id: input.appId, command: input.key, text: '', forms: FORMS_LEVEL }) })
     : jsonCall<CommandOutcome>(`${BASE_URL}${commandScopePath(scope)}/shortcuts`, jwt, { method: 'POST', body: JSON.stringify({ app_id: input.appId, shortcut: input.key, forms: FORMS_LEVEL }) });
 
-/** A form's photo, the moment it is taken: read from disk by the native multipart, never through JS memory. */
+/**
+ * A form's photo, the moment it is taken: made lighter with Portal's standard
+ * (28/10), then read from disk by the native multipart, never through JS memory.
+ */
 export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandId: string, photo: { uri: string; mime: string }, stamp?: GeoPoint): Promise<{ ok: true; fileId: string } | { ok: false; message: string }> {
+  const name = photo.mime === 'image/png' ? 'foto.png' : 'foto.jpg';
+  const shrunk = await shrinkPhotoFile({ uri: photo.uri, mimeType: photo.mime, fileName: name });
+  try {
+    return await sendFormPhoto(jwt, scope, commandId, shrunk, stamp);
+  } finally {
+    if (shrunk.temporary) await FileSystem.deleteAsync(shrunk.uri, { idempotent: true }).catch(() => undefined);
+  }
+}
+
+async function sendFormPhoto(jwt: string, scope: CommandScope, commandId: string, photo: ShrunkPhotoFile, stamp?: GeoPoint): Promise<{ ok: true; fileId: string } | { ok: false; message: string }> {
   const form = new FormData();
-  form.append('file', { uri: photo.uri, name: photo.mime === 'image/png' ? 'foto.png' : 'foto.jpg', type: photo.mime } as unknown as Blob);
+  form.append('file', { uri: photo.uri, name: photo.fileName, type: photo.mimeType } as unknown as Blob);
   // A signing's selfie: the server burns its hour and this place into it (pending 94).
   if (stamp) {
     form.append('stamp', '1');

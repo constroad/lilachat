@@ -11,7 +11,8 @@ import { expectLateAnswer } from './lateAnswers.js';
 import { commandAnswerTimeout, deliverResponse, recordRunFailure, restartingMessage, type Base, type ChatOfCommand, type CommandError } from './botCommands.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botModels.js';
 import { channelOf, personOf } from './botTriggers.js';
-import { shrinkPhoto, stampPhoto } from './photoStamp.js';
+import { shrinkPhotoBuffer } from '../photoShrink.js';
+import { stampPhoto } from './photoStamp.js';
 
 /**
  * App forms (R160, `specs/BOTS-API.spec.md` §c-ter; José, 23/10: mark
@@ -89,22 +90,30 @@ async function openRun(userId: Types.ObjectId, scope: CommandScope, commandId: s
 /** The live selfie (pending 94): the server burns ITS hour and the place into it; a photo it cannot read goes as it came. */
 async function stamped(file: { originalname: string; mimetype: string; buffer: Buffer }, location: GeoPoint | undefined): Promise<{ fileName: string; mimeType: string; bytes: Buffer }> {
   try {
-    const bytes = await stampPhoto(file.buffer, photoStampLines({ at: new Date(), ...(location ? { location } : {}) }));
-    return { fileName: file.originalname.replace(/\.\w+$/, '') + '.jpg', mimeType: 'image/jpeg', bytes };
+    const photo = await stampPhoto(file.buffer, photoStampLines({ at: new Date(), ...(location ? { location } : {}) }));
+    console.log(`[forms] selfie sellada ${photo.log}`);
+    return { fileName: file.originalname.replace(/\.\w+$/, '') + '.jpg', mimeType: photo.mimeType, bytes: photo.bytes };
   } catch (error) {
     console.error('[bots] no se pudo sellar la foto, va sin sello:', error instanceof Error ? error.message : error);
     return { fileName: file.originalname, mimeType: file.mimetype, bytes: file.buffer };
   }
 }
 
-/** Smaller before it is kept; a file sharp cannot read goes as it came, the photo is not lost. */
+const HEIC = /^image\/hei[cf]$/;
+
+/**
+ * Portal's standard (28/10): a photo of 1 MB or more goes through the ladder,
+ * a lighter one as it came. A HEIC always turns JPEG: Portal and Drive do not
+ * show it. A file sharp cannot read goes as it came, the photo is not lost.
+ */
 async function shrunk(file: { originalname: string; mimetype: string; buffer: Buffer }): Promise<{ fileName: string; mimeType: string; bytes: Buffer }> {
-  try {
-    return { fileName: file.originalname.replace(/\.[^.]+$/, '') + '.jpg', mimeType: 'image/jpeg', bytes: await shrinkPhoto(file.buffer) };
-  } catch (error) {
-    console.warn('[forms] foto sin reducir:', error instanceof Error ? error.message : error);
+  const photo = await shrinkPhotoBuffer({ bytes: file.buffer, mimeType: file.mimetype, fileName: file.originalname }, { force: HEIC.test(file.mimetype) });
+  if (!photo) {
+    console.log(`[forms] foto de ${Math.round(file.buffer.length / 1024)} KB, va como llegó`);
     return { fileName: file.originalname, mimeType: file.mimetype, bytes: file.buffer };
   }
+  console.log(`[forms] foto ${photo.log}`);
+  return { fileName: photo.fileName, mimeType: photo.mimeType, bytes: photo.bytes };
 }
 
 export async function storeFormPhoto(userId: Types.ObjectId, scope: CommandScope, commandId: string, file: { originalname: string; mimetype: string; size: number; buffer: Buffer }, stamp?: { location?: GeoPoint }): Promise<{ fileId: string } | ReturnType<typeof fail>> {

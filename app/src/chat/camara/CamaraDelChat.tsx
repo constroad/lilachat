@@ -52,7 +52,8 @@ export function CamaraDelChat(props: { visible: boolean; nombreDelChat: string; 
     setDisparando(true);
     Animated.sequence([Animated.timing(destello, { toValue: 1, duration: 60, useNativeDriver: true }), Animated.timing(destello, { toValue: 0, duration: 180, useNativeDriver: true })]).start();
     try {
-      await camara.current.takePictureAsync({ quality: 0.9, onPictureSaved: (foto: CameraCapturedPicture) => alTomar(aFotoElegida(foto)) });
+      // `quality: 1`: native and untouched; the queue makes it lighter once (Portal's standard, 28/10).
+      await camara.current.takePictureAsync({ quality: 1, onPictureSaved: (foto: CameraCapturedPicture) => alTomar(aFotoElegida(foto)) });
     } catch (error) {
       reportarError('CamaraDelChat.disparar', error);
       setDisparando(false);

@@ -1,6 +1,7 @@
 import multer from 'multer';
 import { MAX_BYTES_BY_KIND, validateMedia } from '@lilachat/shared';
 import type { MediaUploader } from './mediaClient.js';
+import { shrinkPhotoBuffer } from './photoShrink.js';
 
 /**
  * Subir una foto redonda —la del grupo o la del perfil (FL9)—. Va en MEMORIA y
@@ -30,12 +31,16 @@ export async function subirFotoRedonda(params: {
   if (!validado.ok) return { ok: false, status: 413, message: validado.reason };
   if (validado.kind !== 'image') return { ok: false, status: 400, message: params.siNoEsImagen };
 
+  // The safety net of Portal's standard (28/10): an old app sends the whole photo.
+  const fileName = file.originalname || params.nombrePorDefecto;
+  const shrunk = await shrinkPhotoBuffer({ bytes: file.buffer, mimeType: file.mimetype, fileName });
+  if (shrunk) console.log(`[fotos] ${params.carpeta} ${shrunk.log}`);
   const subida = await params.uploader.upload({
     chatId: params.carpeta,
-    fileName: file.originalname || params.nombrePorDefecto,
-    mimeType: file.mimetype,
+    fileName: shrunk?.fileName ?? fileName,
+    mimeType: shrunk?.mimeType ?? file.mimetype,
     kind: 'image',
-    bytes: file.buffer,
+    bytes: shrunk?.bytes ?? file.buffer,
   });
   if (subida.ok) return { ok: true, url: subida.media.url, mediaId: subida.media.storageName };
   // Distinguir «no pude preguntar» de «me dijeron que no»: el 503 es

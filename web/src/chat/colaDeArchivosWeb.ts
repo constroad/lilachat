@@ -1,7 +1,7 @@
-import { nombreComprimido, planDeCompresion } from '@lilachat/shared';
 import { crearColaDeArchivos } from './colaDeArchivos';
 import { medidasDeImagen } from './EnviarArchivos';
 import { subirArchivo } from './mediaUpload';
+import { shrinkPhotoBlob } from './shrinkPhoto';
 
 /** El JWT vigente: se renueva en memoria y la cola lo lee al subir. */
 let jwtVigente = '';
@@ -10,26 +10,13 @@ export function usarJwtParaSubir(jwt: string): void {
 }
 
 /**
- * Achica una foto en el navegador con la MISMA regla que la app
- * (`planDeCompresion`: lado largo 1600 px, JPEG 70 %). Con «HD», sin soporte de
- * canvas o si algo falla, va la original.
+ * The photo with Portal's standard (`shrinkPhotoBlob`, 28/10), the SAME rule as
+ * the app. With «HD», a light photo, no canvas or a failure, the original.
  */
 async function preparar(archivo: File, hd: boolean) {
-  const medidas = await medidasDeImagen(archivo);
-  const original = { archivo: archivo as Blob, nombre: archivo.name, mime: archivo.type, ...medidas };
-  const plan = planDeCompresion({ ...medidas, mimeType: archivo.type, hd });
-  if (!plan || typeof createImageBitmap !== 'function' || !medidas.width || !medidas.height) return original;
-  const escala = plan.redimension ? Math.min(1, ('width' in plan.redimension ? plan.redimension.width / medidas.width : plan.redimension.height / medidas.height)) : 1;
-  const ancho = Math.round(medidas.width * escala);
-  const alto = Math.round(medidas.height * escala);
-  const lienzo = document.createElement('canvas');
-  lienzo.width = ancho;
-  lienzo.height = alto;
-  const imagen = await createImageBitmap(archivo);
-  lienzo.getContext('2d')?.drawImage(imagen, 0, 0, ancho, alto);
-  imagen.close();
-  const comprimida = await new Promise<Blob | null>((resolver) => lienzo.toBlob(resolver, 'image/jpeg', plan.calidad));
-  return comprimida ? { archivo: comprimida, nombre: nombreComprimido(archivo.name), mime: 'image/jpeg', width: ancho, height: alto } : original;
+  const shrunk = await shrinkPhotoBlob(archivo, archivo.name, { hd });
+  if (shrunk.blob !== archivo) return { archivo: shrunk.blob, nombre: shrunk.name, mime: shrunk.mime, width: shrunk.width, height: shrunk.height };
+  return { archivo: archivo as Blob, nombre: archivo.name, mime: archivo.type, ...(await medidasDeImagen(archivo)) };
 }
 
 /** La cola de la pestaña: una sola para todos los chats. */

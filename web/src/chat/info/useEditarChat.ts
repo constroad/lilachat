@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { normalizarDescripcion, normalizarNombreDeGrupo } from '@lilachat/shared';
 import { api, type ApiResult } from '../../api';
+import { shrinkPhotoBlob } from '../shrinkPhoto';
 
 /**
  * Lo que se edita desde el panel «Info.» (W3b): nombre, foto y participantes.
@@ -50,8 +51,10 @@ export function useEditarChat(params: { chatId: string; jwt: string; onCambio: (
   /** La foto va como archivo: el `api` común manda JSON. */
   const cambiarFoto = useCallback(
     async (archivo: File) => {
+      // Portal's standard (28/10): the group photo goes lighter too.
+      const photo = await shrinkPhotoBlob(archivo, archivo.name);
       const formulario = new FormData();
-      formulario.append('file', archivo);
+      formulario.append('file', photo.blob, photo.name);
       try {
         const respuesta = await fetch(`/api/chats/${chatId}/avatar`, { method: 'POST', headers: { Authorization: `Bearer ${jwt}` }, body: formulario });
         const datos = (await respuesta.json().catch(() => ({}))) as { message?: string };

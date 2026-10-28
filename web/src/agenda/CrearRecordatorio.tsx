@@ -7,6 +7,7 @@ import { VistaPreviaAlEscribir } from '../chat/VistaPreviaAlEscribir';
 import { api } from '../api';
 import { FieldError, Overlay, PrimaryButton } from '../ui/Overlay';
 import { aValorLocal, validarRecordatorio } from './formularioDeRecordatorio';
+import { shrinkPhotoBlob } from '../chat/shrinkPhoto';
 
 export { aValorLocal, validarRecordatorio } from './formularioDeRecordatorio';
 
@@ -16,8 +17,10 @@ type ChatDelRecordatorio = { id: string; name?: string | null; kind: 'direct' | 
 
 /** La imagen va como archivo: el `api` común manda JSON. */
 async function subirImagen(id: string, archivo: File, jwt: string): Promise<{ ok: true } | { ok: false; motivo: string }> {
+  // Portal's standard (28/10): the reminder's picture goes lighter too.
+  const imagen = await shrinkPhotoBlob(archivo, archivo.name);
   const formulario = new FormData();
-  formulario.append('file', archivo);
+  formulario.append('file', imagen.blob, imagen.name);
   try {
     const respuesta = await fetch(`/api/agenda/reminders/${id}/imagen`, { method: 'POST', headers: { Authorization: `Bearer ${jwt}` }, body: formulario });
     if (respuesta.ok) return { ok: true };

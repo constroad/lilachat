@@ -9,8 +9,8 @@ import { precisionLabel, type GeoPoint } from '@lilachat/shared';
 const ASPECT = 4 / 3;
 const MAX_HEIGHT = 380;
 const CLOCK_TICK_MS = 15_000;
-/** Small enough to go up on a weak signal; the server stamps it. */
-const PHOTO_QUALITY = 0.6;
+/** Native and untouched: `uploadFormPhoto` makes it lighter once (Portal's standard, 28/10). */
+const PHOTO_QUALITY = 1;
 const COORD_DECIMALS = 5;
 const STAMP_FOREGROUND = '#ffffff';
 

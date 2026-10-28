@@ -60,19 +60,40 @@ describe('EphemeralAnswers', () => {
     { commandId: 'c3', appName: 'Inframaq', command: 'tanques', state: 'answered', response: { responseType: 'ephemeral', text: 'Tanque 1: 81 %' } },
   ];
 
-  it('working, failed and answered, each one only for me, and each can be dismissed', () => {
+  it('a stack like Claude\'s chips: the newest open, the others folded in one line, each can be dismissed (pending 104)', () => {
     // Arrange
     const onDismiss = vi.fn();
     render(<EphemeralAnswers answers={answers} onDismiss={onDismiss} chatId="c1" jwt="jwt" />);
     // Act
     fireEvent.click(screen.getAllByTestId('btn-descartar-efimera')[2]!);
     // Assert
-    expect(screen.getByText('Inframaq está trabajando…')).toBeInTheDocument();
-    expect(screen.getByRole('alert')).toHaveTextContent('Portal no pudo responder.');
+    expect(screen.getByText('Solo tú ves esto · 3')).toBeInTheDocument();
     expect(screen.getByText('Tanque 1: 81 %')).toBeInTheDocument();
-    expect(screen.getAllByText(/Solo tú ves esto/)).toHaveLength(3);
+    expect(screen.getByText('Inframaq está trabajando…')).toBeInTheDocument();
+    expect(screen.getByText('Portal no pudo responder.')).toBeInTheDocument();
+    expect(screen.queryByTestId('efimera-pensando')).toBeNull();
     expect(onDismiss).toHaveBeenCalledWith('c3');
     expect(screen.queryByTestId('btn-enviar-al-canal')).toBeNull();
+  });
+
+  it('tapping a folded chip opens it and folds the open one; «Cerrar todas» dismisses every answer', () => {
+    // Arrange
+    const onDismiss = vi.fn();
+    render(<EphemeralAnswers answers={answers} onDismiss={onDismiss} chatId="c1" jwt="jwt" />);
+    // Act
+    fireEvent.click(screen.getByTestId('efimera-plegar-c1'));
+    fireEvent.click(screen.getByTestId('btn-cerrar-todas-efimeras'));
+    // Assert
+    expect(screen.getByTestId('efimera-pensando')).toBeInTheDocument();
+    expect(screen.getByTestId('efimera-plegar-c1')).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByTestId('efimera-plegar-c3')).toHaveAttribute('aria-expanded', 'false');
+    expect(onDismiss.mock.calls.map(([id]) => id)).toEqual(['c1', 'c2', 'c3']);
+  });
+
+  it('a single answer has no «Cerrar todas»', () => {
+    render(<EphemeralAnswers answers={[answers[2]!]} onDismiss={() => undefined} chatId="c1" jwt="jwt" />);
+    expect(screen.queryByTestId('btn-cerrar-todas-efimeras')).toBeNull();
+    expect(screen.getByText('Solo tú ves esto · 1')).toBeInTheDocument();
   });
 
   it('in a channel an answer can be sent there; if it cannot, the card says why', async () => {
@@ -163,8 +184,10 @@ describe('the apps\' actions live in the ⚡, not in the «+» (pending 111, Jos
     const form: EphemeralAnswer = { commandId: 'c8', appName: 'Inframaq', command: '', action: 'Marcar asistencia', state: 'form', response: { responseType: 'form', form: { id: 'registrar_marca', title: 'Marcar asistencia', schema: { type: 'object', properties: {} } } } };
     render(<EphemeralAnswers answers={[privateAnswer, form]} onDismiss={() => undefined} onShare={vi.fn()} onOpenForm={onOpenForm} chatId="c1" jwt="jwt" />);
     fireEvent.click(screen.getByTestId('btn-abrir-formulario'));
-    expect(screen.queryByTestId('btn-enviar-al-canal')).toBeNull();
-    expect(screen.getByText('Marcar asistencia · Solo tú ves esto')).toBeInTheDocument();
+    expect(screen.getByText('Marcar asistencia')).toBeInTheDocument();
     expect(onOpenForm).toHaveBeenCalledWith('c8');
+    fireEvent.click(screen.getByTestId('efimera-plegar-c9'));
+    expect(screen.getByText('Debes S/ 120')).toBeInTheDocument();
+    expect(screen.queryByTestId('btn-enviar-al-canal')).toBeNull();
   });
 });

@@ -140,3 +140,19 @@ Las capturas viven SOLO en la máquina (`design/stitch/`, en `.gitignore` desde 
 | k-01-checklist-en-el-chat | Tarjeta de checklist en el chat (progreso, quién marcó, «Agregar tarea») | móvil, escritorio | Fuente de la tarjeta (§80). Sin las notas por tarea ni el aviso de CONSTROAD (inventados) |
 | k-02-crear-checklist | Crear checklist (título, tareas, ajustes) | móvil, escritorio | Fuente de «Nuevo checklist» (§80). Sin «Reordenar» |
 | w-a … w-e | Primera versión de personajes, chibi e infantil | escritorio | NO vale: rechazada por infantil (§74) |
+
+## Respuestas solo para ti, videollamada, detalle de app y emojis propios (28/10/2026)
+
+Pantallas en el proyecto con estos ids. Stitch generó además 2 copias de más de c-01, c-02 y
+c-03 (un error de descarga se reintentó generando; sus ids se perdieron): son duplicados, valen
+las de esta tabla.
+
+| Slug | Qué es | Dispositivos | Uso |
+| --- | --- | --- | --- |
+| c-01-efimeras-como-chips | «Solo tú ves esto» como pila de chips: la nueva abierta, las otras en una línea, «Cerrar todas» (`screens/34a7089a88f448ee8849dfb5bcd3b106`, escritorio `778add0a6662448bb28594a6f6f57f30`) | móvil, escritorio | Fuente del 104. Sin «hace 1 min» (la respuesta no trae hora) |
+| c-02-videollamada-controles | Videollamada como WhatsApp: minimizar y agregar persona arriba, mi cámara con girar y efectos, barra «⋯ · cámara · altavoz · micrófono · colgar» (`screens/36175f3fa8314ec784201e123057cf6e`) | móvil | Fuente del 106. Sin «HD · Conexión…» ni «CONSTROAD · #obra-miraflores» (inventados) |
+| c-03-videollamada-mas-opciones | Hoja «Más opciones»: compartir pantalla, enviar mensaje, cancelación de ruido, guiños y stickers (`screens/e09cabfbd2f34c359179cfc3d7123321`) | móvil | Fuente del 106 |
+| c-04-detalle-de-app | Detalle de una app con pestañas Información · Comandos · Avisos · Ajustes (`screens/61268af3104f40bbae60835e4675ea8f`, escritorio `3e7ee89ef79047bfb5eeaaf1979ad30e`) | móvil, escritorio | Fuente del 99. Sin la pastilla «AUTORIZADO» (inventada) |
+| c-05-detalle-de-app-ajustes | Pestaña Ajustes: en qué canales está, Reinstalar y Desinstalar (`screens/6a72d2e17b704da2bb47680352fa7b75`) | móvil | Fuente del 99 |
+| c-06-emojis-propios-panel | Panel de reacciones con la sección «De CONSTROAD» (`screens/e16d1548da734d9a80d3e05b9b9e4621`) | móvil | Fuente del 19 |
+| c-07-agregar-emoji | Agregar un emoji propio: imagen, nombre `:casco-ok:` y vista previa (`screens/fe76ae1a5bc64635a204f40c65df6f13`) | móvil | Fuente del 19 |

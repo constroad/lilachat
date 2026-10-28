@@ -128,6 +128,7 @@ export * from './storage.js';
 export * from './releaseNotes.js';
 export * from './botBlocks.js';
 export * from './botCommands.js';
+export * from './ephemeralStack.js';
 export * from './botManifest.js';
 export * from './appDirectory.js';
 export * from './appForms.js';

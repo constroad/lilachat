@@ -4911,6 +4911,25 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 150. «Solo tú ves esto» como chips, como Claude (28/10/2026, OTA + web; pendiente 104)
+
+**Pedido** (José, 28/10, con captura de «Acciones rápidas · Test»): las respuestas efímeras se
+apilaban como mensajes encima de la barra. Que sean compactas, agrupadas y fáciles de cerrar,
+como los chips de Claude. Diseño `c-01` (móvil y escritorio).
+
+- **Una pila**: arriba el rótulo «SOLO TÚ VES ESTO · N» y, con dos o más, «Cerrar todas». La
+  respuesta más nueva va abierta; las otras, plegadas en una línea de 44 px: logo, app, el
+  `/comando` (o la acción del ⚡), lo que dijo en una línea con «…», chevron y X.
+- **Tocar un chip** lo abre y pliega el que estaba abierto; tocar el abierto lo pliega. Una
+  respuesta nueva se abre sola. El motor es puro y compartido (`shared/src/ephemeralStack.ts`):
+  qué está abierto, el resumen de una línea (primera línea del texto, o el título y el estado
+  de la tarjeta; «está trabajando…», el error, «Abrir «formulario»») y la etiqueta.
+- «Enviar al canal» lleva al lado «Los demás no lo ven»; si falla, el motivo va en ese lugar.
+- Sin «hace 1 min» del diseño: la respuesta no trae hora. Lo demás, igual en APK y web.
+
+**Tests:** `shared/src/ephemeralStack.test.ts` (8) y `web/src/chat/commands/commands.test.tsx`
+(pila, abrir y plegar, «Cerrar todas», una sola sin «Cerrar todas»).
+
 ## 149. Las apps escuchan el canal, las ediciones, los borrados y los archivos (28/10/2026, solo servidor; pendientes 87 y 90)
 
 **Pedido.** 87 (José, 23/10): Inframaq tiene que entender el anuncio de producción que alguien
@@ -12616,7 +12635,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     minuto). Pasados 45 s sin `/respond`, la tarjeta dice «Inframaq no
     respondió a tiempo» con «Reintentar», y el server lo guarda en la corrida
     (`failure: timeout`) para verlo después.
-104. **Las respuestas «Solo tú ves esto» como tarjetas o chips, como Claude**
+104. ✅ **Hecho (§150).** **Las respuestas «Solo tú ves esto» como tarjetas o chips, como Claude**
     (José, 28/10, con captura de «Acciones rápidas · Test»): hoy las respuestas
     efímeras de los comandos se apilan como mensajes encima de la lista. José
     pregunta si pueden verse como las tarjetas o chips de Claude: compactas,

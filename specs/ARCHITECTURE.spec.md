@@ -5444,6 +5444,48 @@ y la foto firmada dentro de un ítem. Web: `appFormDialog.lists.test.tsx` (3), q
 manda el array, pinta el error en su fila, esconde el botón al tope y lleva el error de la app por
 ruta. El E2E en el emulador se hace con el `crear_pedido` nuevo de Portal (lo cambia agentes).
 
+## 139. El campo de escribir de la web es de cada chat y guarda su borrador (25/10/2026, solo web)
+
+**Fallo** (José, probando en `lilachat.constroad.com`): en `#general` se escribía «@» sin enviar; al abrir
+`#administracion` el campo ya traía «@». El `text` del `Composer` es estado local y `Conversation` no lo remontaba al
+cambiar de chat, así que el texto —y, peor, las menciones elegidas (`elegidas` de `useMencionesDelCampo`), la lista de
+sugerencias abierta, el panel de emojis y una nota de voz a medio grabar— viajaban al otro chat.
+
+**Arreglo** (`web/src/chat/Composer.tsx`, `chatDrafts.ts`):
+- `Composer` pide `chatId` y se remonta por chat (`key={chatId}` sobre `ComposerField`). Al cambiar de chat todo su estado
+  nace de cero: campo, menciones elegidas, sugerencias, paneles. La grabadora de voz suelta el micrófono y descarta lo
+  grabado al desmontarse (ya lo hacía), en vez de mandar la nota al chat nuevo.
+- **Borrador por chat** (`chatDrafts.ts`: `readDraft`, `saveDraft`, `forgetDrafts`): una clave `lilachat.draft.<chatId>` en
+  `localStorage`. El campo arranca con `readDraft(chatId)` y guarda en cada cambio —una recarga no corre cleanups—. Un
+  texto en blanco no es borrador (borra la clave); enviar vacía el campo y por tanto el borrador. Nunca lanza: sin
+  almacenamiento (ventana privada, cuota) el campo olvida, como antes.
+- **Editar no es un borrador**: mientras hay franja «Editando», el texto (el del mensaje viejo) no se guarda; el borrador
+  de antes queda como estaba. Es el mismo criterio de la app (`borradores.ts`).
+- **Cerrar sesión borra los borradores** (`useSesion.logout` → `forgetDrafts`): eran de quien se fue. Un chat secreto no
+  monta el `Composer` en la web, así que nunca deja borrador.
+- Tests: `chatDrafts.test.ts` (7), `Composer.test.tsx` (8: cambio de chat, recarga, envío, texto en blanco, el «@» que no
+  pasa de un canal al otro, la mención elegida que no se manda en el chat siguiente y sí en el mismo, editar) y el cierre
+  de sesión en `useSesion.test.ts`.
+
+**E2E (28/10/2026, web en el Chrome de José, `qa.localhost:4003` con el bundle de `web/dist` de este cambio, server de QA sin
+crons sobre la base de producción, vinculada como QA Ana; espacio «QA Borradores» con `#general` y `#administracion`).**
+Pasó, en este orden: «@» en `#general` → `#administracion` abre con el campo vacío → se escribe un borrador → de vuelta en
+`#general` sigue el «@» → de vuelta en `#administracion` sigue su texto → una **recarga** devuelve el borrador de
+`#administracion` → enviar vacía el campo y borra la clave → borrar el «@» a mano también la borra (`localStorage` sin
+claves `lilachat.draft.*`). **No se vio en vivo:** la lista de sugerencias cerrándose y la mención elegida que no viaja,
+porque el espacio de QA tiene un solo miembro (sin nadie que mencionar); eso lo cubren `Composer.test.tsx` y
+`useMencionesDelCampo.test.ts`. Limpieza: espacio, chats y mensaje en cero (segunda pasada), web desvinculada,
+cumpleaños de QA Ana devuelto. Incidente propio: en una primera recarga el app abrió el chat 1:1 de QA Ana con «J zamora»
+(no `#administracion`) y un envío de prueba salió ahí; se borró con «Eliminar para todos» (verificado `deletedAt` en la
+base). Queda **sin diagnosticar** por qué esa primera recarga cambió de chat (la segunda no; hubo un 401 de
+`/api/chat-lists` justo antes): no se atribuye a este cambio, que no toca la navegación.
+
+**Límites conocidos** (iguales a la app; no se tocó):
+- El borrador guarda el **texto**, no las menciones elegidas: «@Ana revisa esto» vuelve escrito pero, al enviarlo, `Ana` no
+  recibe el aviso de mención a menos que se vuelva a elegir de la lista.
+- La lista de chats de la web **no** muestra «Borrador: …» (la app sí, §45.21).
+- Los borradores de chats que dejan de existir quedan en `localStorage` hasta cerrar sesión; pesan lo que lo escrito.
+
 ## 138. Recordatorios con avisos previos y ubicación, el @ de todo el espacio y cuatro arreglos de canales (25/10/2026, por OTA + servidor + web)
 
 Pedido de José del 25/10 («ahora ataca estas mejoras»). Todo es JavaScript, servidor y web: **no cambia lo nativo**, así

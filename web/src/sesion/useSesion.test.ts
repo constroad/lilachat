@@ -63,3 +63,14 @@ describe('useSesion: los 401 del arranque', () => {
     expect(salidas).toBe(1);
   });
 });
+
+describe('useSesion: cerrar sesión', () => {
+  it('borra los borradores de los chats: eran de quien se fue', async () => {
+    localStorage.setItem('lilachat.draft.general', 'sin enviar');
+    const { result } = renderHook(() => useSesion());
+    await waitFor(() => expect(result.current.credential?.jwt).toBe('jwt-1'));
+    act(() => result.current.logout());
+    expect(localStorage.getItem('lilachat.draft.general')).toBeNull();
+    expect(localStorage.getItem('lilachat.perfil')).toBeNull();
+  });
+});

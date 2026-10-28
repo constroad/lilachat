@@ -181,6 +181,7 @@ export function Conversation(props: {
       {props.queue}
       {props.app ? <AppCommandsBar commands={props.app.commands} /> : null}
       <Composer
+        chatId={chat.id}
         onSend={props.onSend}
         onCreateEvent={props.onCreateEvent}
         onCreatePoll={props.onCreatePoll}

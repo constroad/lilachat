@@ -11,6 +11,7 @@ import {
   type Perfil,
 } from '../api';
 import { olvidarCache } from '../chat/cacheLocal';
+import { forgetDrafts } from '../chat/chatDrafts';
 import { borrarBaseDe } from '../local/baseLocal';
 
 /**
@@ -22,6 +23,7 @@ import { borrarBaseDe } from '../local/baseLocal';
  *   espera; al volver la red, se renueva sola;
  * - un 401 renueva UNA vez por token (sin el freno era un bucle contra la API);
  * - cerrar sesión borra la cookie, la base local y el perfil.
+ * - Logging out also forgets the drafts.
  */
 /** Sin sesión viva, cada cuánto se vuelve a probar (solo con la pestaña al frente). */
 const REINTENTO_DE_SESION_MS = 15_000;
@@ -38,6 +40,7 @@ export function useSesion() {
     void salirDelServer();
     clearPerfil();
     olvidarCache({ alSalir: true });
+    forgetDrafts();
     if (userId) void borrarBaseDe(userId);
     setPerfil(null);
     setJwt(null);

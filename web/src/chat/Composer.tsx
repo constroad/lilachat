@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { insertarEnTexto, type MencionEnMensaje } from '@lilachat/shared';
 import type { MencionElegida } from '@lilachat/shared';
 import { formKeyOf } from '@lilachat/shared';
@@ -8,6 +8,7 @@ import type { WinkId } from '@lilachat/shared';
 const EmojiStickerPanel = lazy(() => import('./stickers/EmojiStickerPanel'));
 import { SugerenciasDeMencion, type Mencionable } from './SugerenciasDeMencion';
 import { useMencionesDelCampo } from './useMencionesDelCampo';
+import { readDraft, saveDraft } from './chatDrafts';
 import { VistaPreviaAlEscribir } from './VistaPreviaAlEscribir';
 import { CornerUpLeft, Mic, Pencil, Plus, Send, Smile, X } from 'lucide-react';
 import { BarraDeGrabacion } from './BarraDeGrabacion';
@@ -33,7 +34,16 @@ import { loadPerfil } from '../api';
 /** Responder o editar (W2): la franja de arriba del campo, como WhatsApp Web. */
 export type ContextoDelComposer = { tipo: 'respuesta' | 'edicion'; titulo: string; texto: string; clave: string };
 
-export function Composer({
+/**
+ * One field per chat (José, 25/10): a new chat remounts it, so the text, the open
+ * panels and the chosen mentions never travel; each chat's draft comes back instead.
+ */
+export function Composer(props: ComponentProps<typeof ComposerField>) {
+  return <ComposerField key={props.chatId} {...props} />;
+}
+
+function ComposerField({
+  chatId,
   onSend,
   onCreateEvent,
   onCreatePoll,
@@ -54,6 +64,8 @@ export function Composer({
   stickers,
   commands,
 }: {
+  /** Whose draft the field holds and saves. */
+  chatId: string;
   /** The «/» of a space's chat (§c-bis): the apps' commands and what they answered only to me. */
   commands?: ChatCommands;
   /** For the Stickers tab (20/10); without it (secret chat), emojis only. */
@@ -86,7 +98,11 @@ export function Composer({
   /** Las fotos o archivos elegidos (o pegados). Quien recibe esto muestra la vista previa y sube. */
   onElegirArchivos: (files: File[]) => void;
 }) {
-  const [text, setText] = useState('');
+  const [text, setText] = useState(() => readDraft(chatId));
+  // Saved as it is typed, since a reload runs no cleanup. The text of a message being edited is not a draft.
+  useEffect(() => {
+    if (contexto?.tipo !== 'edicion') saveDraft(chatId, text);
+  }, [chatId, text, contexto?.tipo]);
   const [menuAbierto, setMenuAbierto] = useState(false);
   /**
    * El `<input type="file">` va oculto y lo dispara el menú.

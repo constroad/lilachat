@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import type { FlashListRef } from '@shopify/flash-list';
 import { isPending, type Row } from './MessageRow';
+import { anchorFor, anchoredIndex, type JumpAnchor } from './anchorAfterJump';
 import type { OpeningPlace } from './useDivisorNoLeidos';
 
 /** El segundo `scrollToIndex`, cuando la zona ya se midió. */
 const SEGUNDO_PASE_MS = 400;
 /** Cuánto queda resaltado el mensaje al que se saltó. */
 const RESALTADO_MS = 1500;
+/** Where the target sits on screen after a jump: a bit above the middle. */
+const VIEW_POSITION = 0.4;
 
 /**
  * Llevar la conversación a un mensaje y resaltarlo un momento: la cita (FL9),
@@ -32,20 +35,43 @@ export function useIrAMensaje(params: {
   const { rows, listaRef, irASeq, requestedAt, irAlInicio, onNoEsta, releaseFromEnd } = params;
   const [resaltado, setResaltado] = useState<number | null>(null);
 
+  // The latest rows: the second pass and the anchor look the target up again (rows arrive late after a cold start).
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
+  const anchorRef = useRef<JumpAnchor | null>(null);
+  const indexOfSeq = useCallback((seq: number) => rowsRef.current.findIndex((fila) => !isPending(fila) && fila.seq === seq), []);
+  const scrollTo = useCallback(
+    (index: number) => listaRef.current?.scrollToIndex({ index, animated: false, viewPosition: VIEW_POSITION }),
+    [listaRef]
+  );
+
+  /** While a jump lasts, the list goes back to its message whenever the rows around it change size. */
+  const keepAnchor = useCallback(() => {
+    const index = anchoredIndex(anchorRef.current, Date.now(), indexOfSeq);
+    if (index === null) anchorRef.current = null;
+    else scrollTo(index);
+  }, [indexOfSeq, scrollTo]);
+  /** A finger on the list: the person is reading, the jump stops holding. */
+  const dropAnchor = useCallback(() => {
+    anchorRef.current = null;
+  }, []);
+  const anchor = useMemo(() => ({ keep: keepAnchor, drop: dropAnchor }), [keepAnchor, dropAnchor]);
+
   const irAMensaje = useCallback(
     (seq: number): boolean => {
-      const indice = rows.findIndex((fila) => !isPending(fila) && fila.seq === seq);
+      const indice = indexOfSeq(seq);
       if (indice < 0) return false;
       releaseFromEnd?.();
       // At once, not animated: the animation reported its own «drag» while still at the end, and the list
       // stuck to it again (E2E, 22/10). An instant jump leaves the end in one step, like WhatsApp's search.
-      listaRef.current?.scrollToIndex({ index: indice, animated: false, viewPosition: 0.4 });
+      scrollTo(indice);
+      anchorRef.current = anchorFor(seq, Date.now());
       // Segundo pase: con alturas variables, si esa zona todavía no se midió el
       // primero cae corto o no se mueve (visto en el E2E con el chat recién abierto).
-      setTimeout(() => listaRef.current?.scrollToIndex({ index: indice, animated: false, viewPosition: 0.4 }), SEGUNDO_PASE_MS);
+      setTimeout(keepAnchor, SEGUNDO_PASE_MS);
       return true;
     },
-    [rows, listaRef, releaseFromEnd]
+    [indexOfSeq, scrollTo, keepAnchor, releaseFromEnd]
   );
 
   const saltarA = useCallback(
@@ -80,5 +106,5 @@ export function useIrAMensaje(params: {
     if (target !== undefined) jump(target, 'Ese mensaje está más arriba: sube para cargarlo.');
   }, [requestedAt]);
 
-  return { irAMensaje, saltarA, alTocarCita, alAbrir, resaltado };
+  return { irAMensaje, saltarA, alTocarCita, alAbrir, resaltado, anchor };
 }

@@ -98,6 +98,8 @@ export function ListaDeMensajes(props: {
   holdPosition?: boolean;
   /** Filled with this list's «stop following the end», for a jump to call before it scrolls. */
   releaseRef?: MutableRefObject<() => void>;
+  /** A jump's hold on its message (`useIrAMensaje`): kept when the content changes size, dropped by a finger. */
+  anchor?: { keep: () => void; drop: () => void };
 }) {
   const colores = useColores();
   const { listaRef, rows } = props;
@@ -171,13 +173,17 @@ export function ListaDeMensajes(props: {
         // WhatsApp. Leyendo arriba, no mueve nada.
         maintainVisibleContentPosition={inWindow ? { startRenderingFromBottom: false } : { startRenderingFromBottom: true, ...(props.holdPosition ? {} : { autoscrollToBottomThreshold: 0.2 }) }}
         onScroll={alScrollear}
-        onScrollBeginDrag={alEmpezarArrastre}
+        onScrollBeginDrag={() => {
+          props.anchor?.drop();
+          alEmpezarArrastre();
+        }}
         onScrollEndDrag={alTerminarArrastre}
         onMomentumScrollBegin={alEmpezarArrastre}
         onMomentumScrollEnd={alTerminarArrastre}
         onContentSizeChange={(width, height) => {
           onSize(height);
           alCambiarTamaño(width, height);
+          props.anchor?.keep();
         }}
         scrollEventThrottle={100}
         ListHeaderComponent={

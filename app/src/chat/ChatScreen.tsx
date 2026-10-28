@@ -239,7 +239,7 @@ export function ChatScreen({
   const { divisorSeq, noLeidos: noLeidosAlAbrir, irAlInicio, placedLate } = useDivisorNoLeidos({ rows, yo: credential.userId, noLeidos: unread, leidoHasta: readSeq, listaRef });
 
   const releaseRef = useRef<() => void>(() => undefined);
-  const { alTocarCita, alAbrir, saltarA, resaltado } = useIrAMensaje({ rows, listaRef, irASeq, requestedAt, irAlInicio, onNoEsta: ventana.alNoEstar, releaseFromEnd: () => releaseRef.current() });
+  const { alTocarCita, alAbrir, saltarA, resaltado, anchor } = useIrAMensaje({ rows, listaRef, irASeq, requestedAt, irAlInicio, onNoEsta: ventana.alNoEstar, releaseFromEnd: () => releaseRef.current() });
   const fijar = useFijarMensajes({
     chatId,
     jwt: credential.jwt,
@@ -470,7 +470,7 @@ export function ChatScreen({
           listaRef={listaRef}
           rows={rows}
           mensajes={messages}
-          yo={credential.userId} chatId={chatId} readSeqAtOpen={readSeq ?? 0} holdPosition={busqueda.activo || resaltado !== null} releaseRef={releaseRef}
+          yo={credential.userId} chatId={chatId} readSeqAtOpen={readSeq ?? 0} holdPosition={busqueda.activo || resaltado !== null} releaseRef={releaseRef} anchor={anchor}
           dibujarFila={dibujarFila}
           onListo={ventana.placement(alAbrir, (seq) => saltarA(seq, ''))} placedAwayLate={placedLate} ventana={ventana.list}
           onCargarAnteriores={ventana.inWindow ? ventana.loadOlder : () => void cargarAnteriores()}

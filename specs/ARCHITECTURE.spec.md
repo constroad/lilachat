@@ -12167,6 +12167,27 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     minuto). Pasados 45 s sin `/respond`, la tarjeta dice «Inframaq no
     respondió a tiempo» con «Reintentar», y el server lo guarda en la corrida
     (`failure: timeout`) para verlo después.
+104. **Las respuestas «Solo tú ves esto» como tarjetas o chips, como Claude**
+    (José, 28/10, con captura de «Acciones rápidas · Test»): hoy las respuestas
+    efímeras de los comandos se apilan como mensajes encima de la lista. José
+    pregunta si pueden verse como las tarjetas o chips de Claude: compactas,
+    agrupadas y fáciles de cerrar.
+105. **Videollamada: no se ve mi cámara y el otro no ve mis guiños ni stickers**
+    (José, 28/10, bug, llamada con Lila; captura): (a) ya no aparece el recuadro
+    con mi propia cámara; (b) Lila no veía los guiños ni los stickers que José
+    mandaba, aunque él sí los veía en su pantalla (evento `call.reaction`, del
+    98).
+106. **Controles de la videollamada como en WhatsApp** (José, 28/10, con captura
+    de una videollamada de WhatsApp): abajo, una barra con «⋯», cámara,
+    altavoz, silencio y colgar; arriba, minimizar y agregar persona; mi cámara
+    en un recuadro con «cambiar cámara» y efectos. «⋯» abre más opciones:
+    compartir pantalla, enviar mensaje y cancelación de ruido.
+107. **Zumbidos y guiños se vuelven a reproducir al volver a la app** (José,
+    28/10, bug): Lila mandó un zumbido al grupo Lokillos. José lo leyó y salió;
+    al volver, la lista de chats lo reprodujo otra vez. Entrar al chat, cerrar la
+    app por completo y abrirla de nuevo lo repite. Con los guiños pasa lo mismo,
+    aunque se corrigió hace poco: hay que buscar la causa común, no parchar cada
+    tipo por separado.
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

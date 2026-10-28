@@ -573,6 +573,7 @@ listener. Desde la 0.1.172, el plugin `app/plugins/withMainActivityNewIntent.js`
 - `android/` se regenera en cada `apk build`: cualquier cambio a `MainActivity` va por plugin.
 
 APK 0.1.172: versionCode 173, runtime `14d9450c`, publicado en LilaStore `stable` el 28/10/2026
+APK 0.1.173: versionCode 174, runtime `110ed71a`, con «Contestar» desde el bloqueo como broadcast (pendiente 114).
 (`https://lilastore.constroad.com/d/6ae1e472c97a234c836c302b`, 42 178 868 bytes). `minVersionCode`
 sigue en 0: obligar a actualizar es decisión de José. Resultados del E2E: ARCHITECTURE §137 (B4).
 

@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Model, type Types } from 'mongoose';
-import type { AppCategory, AppForm, AppShortcut, BotCommand, NoticeTopic, StoredItemSettings } from '@lilachat/shared';
+import type { AppCategory, AppForm, AppShortcut, BotCommand, NoticeTopic, ScheduleRepeat, StoredItemSettings, SuggestedSchedule } from '@lilachat/shared';
 
 /**
  * The bots API (`specs/BOTS-API.spec.md`). An app (Lila, through agentes) is
@@ -27,6 +27,8 @@ export type BotApp = {
   noticeTopics?: NoticeTopic[];
   /** What it asks to see beyond the basics (pending 95); an installation keeps what was accepted. */
   scopes?: string[];
+  /** Schedules it suggests, offered to the admin with one tap (agentes, 28/10); the manifest replaces them. */
+  suggestedSchedules?: SuggestedSchedule[];
   /** Made by a developer app through its manifest (§0-bis): only that app sees or changes it, by its own `key`. */
   ownerAppId?: Types.ObjectId;
   key?: string;
@@ -58,6 +60,8 @@ export type BotCommandRun = {
   formsLevel?: number;
   /** Why the asker saw «no pudo responder» (23/10): the installation's health is overwritten by the next delivery. */
   failure?: { at: Date; error: string };
+  /** A run started by a schedule (28/10): its answers go to the schedule's chat, and «solo si hay algo» is honored. */
+  schedule?: { id: Types.ObjectId; scheduledFor: Date; onlyIfSomething: boolean; time: string };
   expiresAt: Date;
   createdAt: Date;
 };
@@ -81,10 +85,14 @@ export type BotInstallation = {
   topicChannelsBy?: string;
   topicChannelsAt?: Date;
   topicChannelsTouched?: string[];
+  /** The `offer: 'chosen'` topics the app offered to THIS installation (agentes, 28/10: its alerts go to one space). */
+  offeredTopics?: string[];
   /** The app's scopes accepted when installing: a newer manifest asking for more needs «Reinstalar». */
   grantedScopes?: string[];
   /** Where each command and action works, as the admin left it (`appItems.ts` in shared); absent = the default. */
   itemSettings?: StoredItemSettings;
+  /** Settings v2 (all off, who, the 1:1): set on a new installation and by the migration José approves; absent = the old defaults. */
+  itemsV2?: boolean;
   createdAt: Date;
 };
 
@@ -124,9 +132,10 @@ const appSchema = new Schema<BotApp>(
     redirectUris: { type: [String], required: true },
     webhookUrl: { type: String, required: true },
     installUrl: { type: String },
-    commands: { type: [{ command: String, description: String, usageHint: String, _id: false }], default: undefined },
+    commands: { type: [{ command: String, description: String, usageHint: String, schedulable: Boolean, shareable: Boolean, _id: false }], default: undefined },
     shortcuts: { type: [{ key: String, name: String, description: String, _id: false }], default: undefined },
-    noticeTopics: { type: [{ key: String, name: String, description: String, icon: String, noDefault: Boolean, _id: false }], default: undefined },
+    noticeTopics: { type: [{ key: String, name: String, description: String, icon: String, noDefault: Boolean, offerChosen: Boolean, _id: false }], default: undefined },
+    suggestedSchedules: { type: Schema.Types.Mixed, default: undefined },
     scopes: { type: [String], default: undefined },
     ownerAppId: { type: Schema.Types.ObjectId },
     key: { type: String },
@@ -154,8 +163,10 @@ const installationSchema = new Schema<BotInstallation>(
     topicChannelsBy: { type: String },
     topicChannelsAt: { type: Date },
     topicChannelsTouched: { type: [String], default: undefined },
+    offeredTopics: { type: [String], default: undefined },
     grantedScopes: { type: [String], default: undefined },
     itemSettings: { type: Schema.Types.Mixed },
+    itemsV2: { type: Boolean },
   },
   { timestamps: true }
 );
@@ -200,6 +211,7 @@ const commandRunSchema = new Schema<BotCommandRun>(
     form: { type: Schema.Types.Mixed },
     formsLevel: { type: Number },
     failure: { at: Date, error: String },
+    schedule: { type: Schema.Types.Mixed },
     expiresAt: { type: Date, required: true },
   },
   { timestamps: { createdAt: true, updatedAt: false } }

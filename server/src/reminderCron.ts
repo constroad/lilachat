@@ -4,6 +4,7 @@ import { DeviceModel } from './models.js';
 import { ChatModel } from './chatModels.js';
 import { buildPushSender, type PushSender } from './pushSender.js';
 import { runScheduledTick } from './scheduledMessages.js';
+import { runDueSchedules } from './bots/botSchedules.js';
 import { avisarEnElChat } from './chatRoutes.js';
 
 /**
@@ -243,6 +244,10 @@ export function startReminderCron(): void {
     // vencieron. Independiente del de recordatorios: si uno falla, el otro sigue.
     void runScheduledTick().catch((error) => {
       console.error('[cron] tick de programados falló:', error instanceof Error ? error.message : error);
+    });
+    // Same clock for the apps' schedules (28/10): a command that runs at a time and posts its report.
+    void runDueSchedules().catch((error) => {
+      console.error('[cron] tick de horarios de apps falló:', error instanceof Error ? error.message : error);
     });
   }, TICK_MS);
   // `unref`: el cron no sostiene el proceso vivo por su cuenta.

@@ -1,4 +1,5 @@
 import { cutAtWord } from './textCut.js';
+import { validateSuggestedSchedules, type SuggestedSchedule } from './appSchedules.js';
 import { validateBotCommands, type AppShortcut, type BotCommand } from './botCommands.js';
 import { isNoticeIcon, NOTICE_TOPIC_LIMITS, TOPIC_KEY, type NoticeTopic } from './noticeTopics.js';
 
@@ -31,6 +32,8 @@ export type AppManifest = {
   shortcuts: AppShortcut[];
   /** Where its notices may land, picked per topic by the space's admin (R160, design e-31); always a list. */
   noticeTopics: NoticeTopic[];
+  /** Schedules offered to the admin with one tap, off until accepted (agentes, 28/10); always a list. */
+  suggestedSchedules: SuggestedSchedule[];
   /** What the app asks to see beyond the basics; accepted when installing (like Slack's scopes, pending 95). */
   scopes: AppScope[];
 };
@@ -83,7 +86,8 @@ export function validateAppManifest(raw: unknown): { ok: true; manifest: AppMani
   const noticeTopics = validateNoticeTopics(body.notice_topics);
   if (!Array.isArray(noticeTopics)) return noticeTopics;
   const scopes = [...new Set(Array.isArray(body.scopes) ? body.scopes.filter(isScope) : [])];
-  return { ok: true, manifest: { key, name, ...(avatarUrl ? { avatarUrl } : {}), redirectUri, webhookUrl, ...(installUrl ? { installUrl } : {}), ...(commands ? { commands } : {}), ...about, shortcuts, noticeTopics, scopes } };
+  const suggestedSchedules = validateSuggestedSchedules(body.suggested_schedules, commands ?? []);
+  return { ok: true, manifest: { key, name, ...(avatarUrl ? { avatarUrl } : {}), redirectUri, webhookUrl, ...(installUrl ? { installUrl } : {}), ...(commands ? { commands } : {}), ...about, shortcuts, noticeTopics, suggestedSchedules, scopes } };
 }
 
 const oneLine = (value: unknown, max: number): string => (typeof value === 'string' ? cutAtWord(value.replace(/\s+/g, ' ').trim(), max) : '');
@@ -124,7 +128,7 @@ function validateNoticeTopics(raw: unknown): NoticeTopic[] | { ok: false; messag
     const name = oneLine(item.name, NOTICE_TOPIC_LIMITS.name);
     if (!TOPIC_KEY.test(key) || key.length > NOTICE_TOPIC_LIMITS.key || !name || topics.some((topic) => topic.key === key)) return { ok: false, message: `El tema «${key}» necesita una «key» única en minúsculas (a-z, 0-9, _ o -) y un «name».` };
     const description = oneLine(item.description, NOTICE_TOPIC_LIMITS.description);
-    topics.push({ key, name, ...(description ? { description } : {}), ...(isNoticeIcon(item.icon) ? { icon: item.icon } : {}), ...('default' in item && item.default === null ? { noDefault: true as const } : {}) });
+    topics.push({ key, name, ...(description ? { description } : {}), ...(isNoticeIcon(item.icon) ? { icon: item.icon } : {}), ...('default' in item && item.default === null ? { noDefault: true as const } : {}), ...(item.offer === 'chosen' ? { offerChosen: true as const } : {}) });
   }
   return topics;
 }

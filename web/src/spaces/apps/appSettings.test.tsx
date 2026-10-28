@@ -1,51 +1,17 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AppChannels, AppItems, AppTopics } from '../spacesApi';
-import { AppItemsSection } from './AppItemsSection';
+import type { AppChannels, AppTopics } from '../spacesApi';
 import { NoticeTopicsSection } from './NoticeTopicsSection';
 import { AppAccountSection } from './AppAccountSection';
 import { AppChannelsSection } from './AppChannelsSection';
 
-const api = vi.hoisted(() => ({ appItems: vi.fn(), saveAppItems: vi.fn(), appTopics: vi.fn(), saveAppTopics: vi.fn(), testAppTopics: vi.fn(), appLink: vi.fn(), unlinkApp: vi.fn(), appChannels: vi.fn(), setAppInChannel: vi.fn() }));
+const api = vi.hoisted(() => ({ appTopics: vi.fn(), saveAppTopics: vi.fn(), testAppTopics: vi.fn(), appLink: vi.fn(), unlinkApp: vi.fn(), appChannels: vi.fn(), setAppInChannel: vi.fn() }));
 vi.mock('../spacesApi', () => api);
 
 const channels = [{ id: 'ch1', name: 'general', private: false }, { id: 'ch2', name: 'planta', private: false }];
-const items: AppItems = {
-  canEdit: true,
-  channels,
-  items: [
-    { kind: 'shortcut', key: 'marcar_asistencia', name: 'Marcar asistencia', global: true, channels: 'all' },
-    { kind: 'command', key: 'clima', name: '/clima', description: 'Clima de la planta', global: false, channels: 'all' },
-  ],
-};
 const topics: AppTopics = { canEdit: true, channels, topics: [{ key: 'asistencia', name: 'Asistencia', description: 'Ingresos, refrigerio y salida', icon: 'attendance', channel: { id: 'ch1', name: 'general' } }] };
 
 beforeEach(() => Object.values(api).forEach((fn) => fn.mockReset()));
-
-describe('«Comandos y acciones» (José, 23/10: only some are global)', () => {
-  it('the admin puts /clima in the ⚡ and the action only in #planta; only what changed is saved', async () => {
-    // Arrange
-    api.appItems.mockResolvedValue({ ok: true, data: items });
-    api.saveAppItems.mockResolvedValue({ ok: true, data: items });
-    render(<AppItemsSection jwt="jwt" spaceId="s1" appId="a1" />);
-    await screen.findByTestId('comandos-y-acciones');
-    // Act
-    fireEvent.click(screen.getByTestId('global-clima'));
-    fireEvent.change(screen.getByTestId('canales-marcar_asistencia'), { target: { value: 'some' } });
-    fireEvent.click(screen.getByTestId('canal-marcar_asistencia-planta'));
-    fireEvent.click(screen.getByTestId('btn-guardar-items'));
-    // Assert
-    await vi.waitFor(() => expect(api.saveAppItems).toHaveBeenCalledWith('jwt', 's1', 'a1', { 'shortcut:marcar_asistencia': { global: true, channels: ['ch2'] }, 'command:clima': { global: true, channels: 'all' } }));
-    expect(await screen.findByText('Guardado. Ya se ve así en el espacio.')).toBeInTheDocument();
-  });
-
-  it('a member sees where each works, without switches to save', async () => {
-    api.appItems.mockResolvedValue({ ok: true, data: { ...items, canEdit: false } });
-    render(<AppItemsSection jwt="jwt" spaceId="s1" appId="a1" />);
-    expect(await screen.findByTestId('global-clima')).toBeDisabled();
-    expect(screen.queryByTestId('btn-guardar-items')).toBeNull();
-  });
-});
 
 describe('«¿Dónde llega cada aviso?» (design e-31)', () => {
   it('the admin moves Asistencia to #planta, or leaves it without a channel; «Probar envío» says where it went', async () => {

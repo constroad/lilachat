@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { COMMAND_LIMITS, enabledAt, formLevelOf, isAckBody, itemSettingOf, validateCommandResponse, validateFormReply, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope } from '@lilachat/shared';
+import { canManageMembers, COMMAND_LIMITS, enabledAt, formLevelOf, isAckBody, itemSettingOf, mayUseItem, validateCommandResponse, validateFormReply, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope } from '@lilachat/shared';
 import { ChatModel, type Chat } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { callBotWebhook, isRestarting, recordLastDelivery, type WebhookReply } from './botEvents.js';
@@ -8,6 +8,7 @@ import { announceAppChanged, announceLater } from './botAnnounce.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel, type BotCommandRun, type BotInstallation } from './botModels.js';
 import { channelOf, personOf } from './botTriggers.js';
 import { configureLateAnswers, settleLateAnswer } from './lateAnswers.js';
+import { deliverScheduledAnswer } from './botScheduleDelivery.js';
 
 /**
  * Slash commands (`specs/BOTS-API.spec.md` §c-bis), like Slack: the app
@@ -16,7 +17,7 @@ import { configureLateAnswers, settleLateAnswer } from './lateAnswers.js';
  * response body (3 s) or later through `/respond` (15 min, up to 5 times).
  * An ephemeral answer is never stored: it goes back to the asker only.
  */
-export type CommandError = { status: 400 | 404 | 409 | 410; error: string; message: string };
+export type CommandError = { status: 400 | 403 | 404 | 409 | 410; error: string; message: string };
 export type ChatOfCommand = Pick<Chat, '_id' | 'kind' | 'name' | 'channel' | 'workspaceId' | 'members'>;
 export type Base = Pick<CommandOutcome, 'commandId' | 'appId' | 'appName'>;
 
@@ -27,6 +28,8 @@ const FAILED_RUN_KEPT_MS = 7 * 24 * 3_600_000;
 const isId = (value: unknown): value is string => typeof value === 'string' && Types.ObjectId.isValid(value);
 const fail = (status: CommandError['status'], error: string, message: string): CommandError => ({ status, error, message });
 let answerTimeoutMs = 3_000;
+/** How long a command waits for the app's answer before it is «working…»; a schedule waits the same. */
+export const commandAnswerTimeoutMs = (): number => answerTimeoutMs;
 let notifyAsker: (userId: string, notice: CommandNotice) => void = () => undefined;
 
 /** How long an answer in the webhook body is awaited (forms too, `botForms.ts`). */
@@ -52,9 +55,24 @@ export async function commandsOfApp(installation: Pick<BotInstallation, 'appId'>
   return (await BotAppModel.findById(installation.appId).select('commands').lean())?.commands ?? [];
 }
 
-/** An app's own 1:1 offers everything it has, whatever the admin left for the channels. */
-const isOwnChat = (chat: Pick<ChatOfCommand, 'kind' | 'members'> | null, installation: Pick<BotInstallation, 'botUserId'>) =>
+export const isOwnChat = (chat: Pick<ChatOfCommand, 'kind' | 'members'> | null, installation: Pick<BotInstallation, 'botUserId'>) =>
   Boolean(chat && chat.kind === 'direct' && chat.members.some((member) => String(member.userId) === String(installation.botUserId)));
+
+/**
+ * Where an item is used (José, 28/10): the app's own 1:1 follows «direct», any
+ * other chat its channels, and no chat is the space's ⚡. The 1:1 no longer
+ * offers everything.
+ */
+export function itemPlaceOf(chat: Pick<ChatOfCommand, '_id' | 'kind' | 'members'> | null, installation: Pick<BotInstallation, 'botUserId'>): ItemPlace {
+  if (!chat) return 'space';
+  return isOwnChat(chat, installation) ? 'direct' : { chatId: String(chat._id) };
+}
+
+/** On in some place: what a client without a place (before R160) is offered. */
+const onSomewhere = (setting: AppItemSetting): boolean => setting.global || setting.direct || setting.channels !== 'none';
+
+/** Said when the menu would not have offered it (agentes `COMANDOS-Y-HORARIOS.spec.md` §2.2). */
+const notAllowedHere = (label: string): CommandError => fail(403, 'not_allowed_here', `No tienes permiso para usar ${label} aquí. Pídeselo a un admin del espacio.`);
 
 /**
  * What the composer and the ⚡ offer in a space: each installed app with what
@@ -62,12 +80,14 @@ const isOwnChat = (chat: Pick<ChatOfCommand, 'kind' | 'members'> | null, install
  * for the ⚡). Without a place (clients before R160), everything. Null if not
  * an active member.
  */
-export async function commandGroupsOf(workspaceId: string, userId: Types.ObjectId, place?: ItemPlace): Promise<CommandGroup[] | null> {
-  if (!isId(workspaceId) || !(await WorkspaceMemberModel.exists({ workspaceId, userId, status: 'active' }))) return null;
+export async function commandGroupsOf(workspaceId: string, userId: Types.ObjectId, place?: 'space' | { chatId: string }): Promise<CommandGroup[] | null> {
+  const member = isId(workspaceId) ? await WorkspaceMemberModel.findOne({ workspaceId, userId, status: 'active' }).select('role').lean() : null;
+  if (!member) return null;
+  const person = { userId: String(userId), spaceAdmin: canManageMembers(member.role) };
   const inChat = place && place !== 'space' ? place : null;
   const [installations, chat] = await Promise.all([
-    BotInstallationModel.find({ workspaceId, revokedAt: { $exists: false } }).select('appId botUserId itemSettings').lean(),
-    inChat && isId(inChat.chatId) ? ChatModel.findOne({ _id: inChat.chatId, workspaceId, 'members.userId': userId }).select('kind members.userId').lean<Pick<ChatOfCommand, 'kind' | 'members'> | null>() : null,
+    BotInstallationModel.find({ workspaceId, revokedAt: { $exists: false } }).select('appId botUserId itemSettings itemsV2').lean(),
+    inChat && isId(inChat.chatId) ? ChatModel.findOne({ _id: inChat.chatId, workspaceId, 'members.userId': userId }).select('_id kind members.userId').lean<Pick<ChatOfCommand, '_id' | 'kind' | 'members'> | null>() : null,
   ]);
   if (inChat && !chat) return [];
   const byApp = new Map(installations.map((one) => [String(one.appId), one]));
@@ -75,12 +95,16 @@ export async function commandGroupsOf(workspaceId: string, userId: Types.ObjectI
   return apps
     .map((app) => {
       const installation = byApp.get(String(app._id))!;
-      const open = (kind: 'command' | 'shortcut', key: string) => !place || isOwnChat(chat, installation) || enabledAt(itemSettingOf(installation.itemSettings, kind, key), place);
+      const open = (kind: 'command' | 'shortcut', key: string) => {
+        const setting = itemSettingOf(installation.itemSettings, kind, key, !installation.itemsV2);
+        if (!mayUseItem(setting, person)) return false;
+        return place ? enabledAt(setting, place === 'space' ? 'space' : itemPlaceOf(chat, installation)) : onSomewhere(setting);
+      };
       const commands = (app.commands ?? []).filter((entry) => open('command', entry.command));
       const shortcuts = (app.shortcuts ?? []).filter((entry) => open('shortcut', entry.key));
       return { appId: String(app._id), appName: app.name, commands, ...(app.avatarUrl ? { avatarUrl: app.avatarUrl } : {}), shortcuts };
     })
-    .filter((group) => !place || group.commands.length > 0 || group.shortcuts.length > 0);
+    .filter((group) => group.commands.length > 0 || group.shortcuts.length > 0);
 }
 
 /** In a channel or group the app posts as itself; in its own 1:1 too; a 1:1 between people only gets the ephemeral answer. */
@@ -120,7 +144,7 @@ export function recordRunFailure(commandId: string, error: string): void {
  * What the body of the webhook means for the asker, with Integraciones' health written once: a
  * timeout or an empty 200 is pending (not a failure), an error or a body that cannot be shown fails.
  */
-function judgeReply(reply: WebhookReply, command: string, installationId: Types.ObjectId, base: Base): CommandOutcome | { accepted: CommandResponse } {
+export function judgeReply(reply: WebhookReply, command: string, installationId: Types.ObjectId, base: Base): CommandOutcome | { accepted: CommandResponse } {
   if (reply.error === 'timeout') return { ...base, outcome: 'pending' };
   const failed = (error: string, message = `${base.appName} no pudo responder.`): CommandOutcome => {
     recordLastDelivery(installationId, { ok: false, error });
@@ -164,8 +188,11 @@ async function invokeApp(userId: Types.ObjectId, scope: CommandScope, appId: unk
   const offered = trigger.kind === 'command' ? app?.commands?.some((entry) => entry.command === name) : app?.shortcuts?.some((entry) => entry.key === name);
   const installation = app && offered ? await BotInstallationModel.findOne({ appId: app._id, workspaceId: place.workspaceId, revokedAt: { $exists: false } }).lean() : null;
   if (!app || !installation) return notFound();
-  const setting = itemSettingOf(installation.itemSettings, trigger.kind, name);
-  if (!isOwnChat(place.chat, installation) && !enabledAt(setting, place.chat ? { chatId: String(place.chat._id) } : 'space')) return fail(404, 'not_enabled_here', 'Eso no está habilitado aquí: lo decide un admin del espacio.');
+  const setting = itemSettingOf(installation.itemSettings, trigger.kind, name, !installation.itemsV2);
+  // Checked here, not only in the menu: an old client or a direct call skips the menu (§2.2).
+  const member = await WorkspaceMemberModel.findOne({ workspaceId: place.workspaceId, userId, status: 'active' }).select('role').lean();
+  const label = trigger.kind === 'command' ? `/${name}` : `«${app.shortcuts?.find((entry) => entry.key === name)?.name ?? name}»`;
+  if (!member || !mayUseItem(setting, { userId: String(userId), spaceAdmin: canManageMembers(member.role) }) || !enabledAt(setting, itemPlaceOf(place.chat, installation))) return notAllowedHere(label);
   // A failed run stays a week: its `failure` is how a «no pudo responder» gets explained (23/10).
   void BotCommandRunModel.deleteMany({ $or: [{ expiresAt: { $lt: new Date() }, failure: { $exists: false } }, { expiresAt: { $lt: new Date(Date.now() - FAILED_RUN_KEPT_MS) } }] }).catch((error: unknown) => console.error('[bots] no se pudieron purgar comandos vencidos:', error instanceof Error ? error.message : error));
   const { chat } = place;
@@ -215,6 +242,11 @@ export async function respondToCommand(installation: BotInstallation, commandId:
     BotAppModel.findById(installation.appId).select('name').lean(),
   ]);
   if (run.chatId && !chat) return fail(404, 'chat_not_found', 'El chat de ese comando ya no existe.');
+  // A schedule's late answer follows the schedule's rules: its chat, «solo si hay algo», errors to the creator (28/10).
+  if (run.schedule) {
+    const scheduled = await deliverScheduledAnswer(installation, { ...run, schedule: run.schedule }, chat, valid.response);
+    return { response_type: scheduled === 'posted' ? 'in_channel' : 'ephemeral' };
+  }
   const base: Base = { commandId, appId: String(installation.appId), appName: app?.name ?? 'App' };
   const outcome = await deliverResponse(installation, run, chat, valid.response, base);
   const where = chat ? { chatId: String(chat._id) } : { workspaceId: String(run.workspaceId ?? installation.workspaceId) };

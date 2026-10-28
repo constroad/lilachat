@@ -16,6 +16,7 @@ import { BotAppModel, BotCommandRunModel, BotDeliveryModel, BotInstallationModel
 import { configureCommands } from './botCommands.js';
 import { forgetBots } from './botRegistry.js';
 import { sha256 } from './botSecrets.js';
+import { openEveryItem } from './testItems.js';
 
 /** Slash commands end to end (`specs/BOTS-API.spec.md` §c-bis): register, invoke, answer now or later. */
 let mongo: MongoMemoryServer;
@@ -104,10 +105,14 @@ async function install(): Promise<{ token: string; signingSecret: string; appId:
 async function installWithCommands() {
   const installed = await install();
   await request(app).put('/api/bots/commands').set(asBot(installed.token)).send({ commands: [{ command: 'clima', description: 'Clima de hoy en la planta', usage_hint: '[distrito]' }] }).expect(200);
+  await openEveryItem();
   return installed;
 }
 
-const invoke = (chatId: Types.ObjectId, body: Record<string, unknown>, as = asAna) => request(app).post(`/api/chats/${chatId}/commands`).set(as).send(body);
+// Not about permissions (`botItemAccess.test.ts`): what the app registered is on, as an admin would leave it.
+const invoke = (chatId: Types.ObjectId, body: Record<string, unknown>, as = asAna) => ({
+  expect: (status: number) => openEveryItem().then(() => request(app).post(`/api/chats/${chatId}/commands`).set(as).send(body).expect(status)),
+});
 
 describe('registering commands', () => {
   it('replaces the whole list and reads it back in the wire shape', async () => {

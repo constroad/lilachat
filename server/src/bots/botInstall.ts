@@ -60,6 +60,8 @@ export async function installApp(params: { app: BotApp; workspaceId: Types.Objec
       // What the app asks for now is what this admin accepted (a reinstall updates it).
       $set: { appId: params.app._id, workspaceId: params.workspaceId, botUserId, tokenHash: sha256(token), signingSecret, installedBy: params.installedBy, grantedScopes: params.app.scopes ?? [] },
       $unset: { revokedAt: 1 },
+      // A new installation starts all off (José, 28/10); one from before waits for the migration.
+      $setOnInsert: { itemsV2: true },
     },
     { upsert: true, returnDocument: 'after' }
   ).lean<BotInstallation>();

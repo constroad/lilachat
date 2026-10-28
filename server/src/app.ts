@@ -44,6 +44,7 @@ import { buildReenvioRouter } from './reenvioRoutes.js';
 import { buildHilosRouter } from './hilosRoutes.js';
 import { buildBotAppsRouter, buildBotRouter, buildBotSpacesRouter, buildOAuthRouter } from './bots/botRoutes.js';
 import { buildBotFilesRouter, buildBotUserRouter } from './bots/botUserRoutes.js';
+import { buildScheduleRouter } from './bots/botScheduleRoutes.js';
 import { buildFileViewRouter } from './fileViewRoutes.js';
 import { notifyEdited } from './reparto.js';
 import { requireMinimumBuild, type MinimumSource } from './minimumVersion.js';
@@ -128,6 +129,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/bots/files', buildBotFilesRouter());
   app.use('/api/bots', buildBotRouter(notifyEdited));
   app.use('/api', buildBotUserRouter());
+  app.use('/api', buildScheduleRouter());
   app.use('/api', buildDestacadosRouter());
   app.use('/api', buildActivityRouter());
   app.use('/api', buildFunRouter());

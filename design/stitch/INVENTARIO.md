@@ -156,3 +156,11 @@ las de esta tabla.
 | c-05-detalle-de-app-ajustes | Pestaña Ajustes: en qué canales está, Reinstalar y Desinstalar (`screens/6a72d2e17b704da2bb47680352fa7b75`) | móvil | Fuente del 99 |
 | c-06-emojis-propios-panel | Panel de reacciones con la sección «De CONSTROAD» (`screens/e16d1548da734d9a80d3e05b9b9e4621`) | móvil | Fuente del 19 |
 | c-07-agregar-emoji | Agregar un emoji propio: imagen, nombre `:casco-ok:` y vista previa (`screens/fe76ae1a5bc64635a204f40c65df6f13`) | móvil | Fuente del 19 |
+
+### Comandos y horarios (28/10/2026, agentes COMANDOS-Y-HORARIOS)
+
+| Slug | Qué es | Dispositivos | Uso |
+| --- | --- | --- | --- |
+| d-01-comandos-y-acciones | «Comandos y acciones» con Encendido/Apagado, ⚡, «En el chat con la app», canales, «Quién puede usarlo» y «Programar» (`screens/b902c33ac3c046bca8143a99285c83f5`, escritorio `9fc20bf4f8eb45ac84d00d079a29ee25`) | móvil, escritorio | Fuente del §152. Sin el bottom nav «Directorio · Menciones» (no es el de la app) |
+| d-02-programar-comando | Hoja «Programar»: hora, días L–D, dónde se publica, argumentos, «Solo si hay algo» (`screens/20be0a2812244fd597f61ab7e9963c13`) | móvil | Fuente del §152. Sin la pastilla «PROGRAMADO» (no aporta en una hoja nueva) |
+| d-03-horarios-de-la-app | «Horarios» con interruptor, «No corrió el 27/10: …» y «Sugeridos por la app» con «Crear» (`screens/2607f53c00664cb79313bdd817146399`) | móvil | Fuente del §152. Sin «Nueva acción» en el encabezado (no hay acción que crear desde ahí) |

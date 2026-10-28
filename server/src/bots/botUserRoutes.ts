@@ -73,14 +73,14 @@ export function buildBotUserRouter(): Router {
     const userId = req.session!.userId;
     if (!commandTries.permitir(String(userId))) return void res.status(429).set('Retry-After', '60').json({ message: 'Más de 20 comandos por minuto. Espera un momento.' });
     const outcome = await invokeCommand(userId, scopeOf(req), { appId: req.body?.app_id, command: req.body?.command, text: req.body?.text, forms: req.body?.forms });
-    if ('error' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
+    if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.json(outcome);
   }));
   router.post(['/chats/:chatId/shortcuts', '/workspaces/:id/shortcuts'], requireSession, asyncRoute(async (req, res) => {
     const userId = req.session!.userId;
     if (!commandTries.permitir(String(userId))) return void res.status(429).set('Retry-After', '60').json({ message: 'Más de 20 acciones por minuto. Espera un momento.' });
     const outcome = await invokeShortcut(userId, scopeOf(req), { appId: req.body?.app_id, shortcut: req.body?.shortcut, forms: req.body?.forms });
-    if ('error' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
+    if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.json(outcome);
   }));
   /** The live selfie asks for the stamp, with the place the form already has (pending 94). */

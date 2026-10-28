@@ -158,6 +158,45 @@ describe('where each topic lands', () => {
     expect(await BotInstallationModel.findOne({}).select('topicChannelsBy topicChannelsAt topicChannelsTouched').lean()).not.toHaveProperty('topicChannelsBy');
   });
 
+  it('a topic with `offer: chosen` is hidden until the app offers it to this installation; withdrawn, it hides again', async () => {
+    // Arrange
+    const { token, appId } = await installInframaq([...TOPICS, { key: 'alertas', name: 'Alertas de agentes', icon: 'alert', offer: 'chosen' }]);
+    const keysFor = async () => (await request(app).get(topicsPath(appId)).set(asJose).expect(200)).body.topics.map((topic: { key: string }) => topic.key);
+    const hidden = await keysFor();
+    const refused = await post(token, { topic: 'alertas', text: 'Lilachat no contesta', idempotency_key: 'al1' }).expect(409);
+    // Act
+    const offered = await request(app).post('/api/bots/topics/offer').set(asBot(token)).send({ topic: 'alertas' }).expect(200);
+    const shown = await keysFor();
+    const posted = await post(token, { topic: 'alertas', text: 'Lilachat no contesta', idempotency_key: 'al2' }).expect(201);
+    await request(app).post('/api/bots/topics/withdraw').set(asBot(token)).send({ topic: 'alertas' }).expect(200);
+    // Assert
+    expect(hidden).toEqual(['asistencia', 'caja']);
+    expect(refused.body.error).toBe('topic_not_offered');
+    expect(offered.body.topics.map((topic: { key: string }) => topic.key)).toEqual(['asistencia', 'caja', 'alertas']);
+    expect(shown).toEqual(['asistencia', 'caja', 'alertas']);
+    expect(posted.body.message.chat_id).toBe(String(general));
+    expect(await keysFor()).toEqual(['asistencia', 'caja']);
+    expect((await post(token, { topic: 'alertas', text: 'x', idempotency_key: 'al3' }).expect(409)).body.error).toBe('topic_not_offered');
+  });
+
+  it('offer and withdraw take only a topic of the manifest with `offer: chosen`; an admin cannot route a topic not offered', async () => {
+    // Arrange
+    const { token, appId } = await installInframaq([...TOPICS, { key: 'alertas', name: 'Alertas de agentes', offer: 'chosen' }]);
+    // Act
+    const unknown = await request(app).post('/api/bots/topics/offer').set(asBot(token)).send({ topic: 'planilla' }).expect(404);
+    const always = await request(app).post('/api/bots/topics/offer').set(asBot(token)).send({ topic: 'caja' }).expect(400);
+    const empty = await request(app).post('/api/bots/topics/withdraw').set(asBot(token)).send({}).expect(400);
+    const notOffered = await request(app).put(topicsPath(appId)).set(asJose).send({ channels: { alertas: String(planta) } }).expect(400);
+    await request(app).post('/api/bots/topics/offer').set(asBot(token)).send({ topic: 'alertas' }).expect(200);
+    await request(app).post('/api/bots/topics/offer').set(asBot(token)).send({ topic: 'alertas' }).expect(200);
+    // Assert
+    expect(unknown.body.error).toBe('topic_not_found');
+    expect(always.body.message).toMatch(/siempre/);
+    expect(empty.body.error).toBe('invalid_request');
+    expect(notOffered.body.message).toMatch(/alertas/);
+    expect((await BotInstallationModel.findOne({}).lean())!.offeredTopics).toEqual(['alertas']);
+  });
+
   it('«Probar envío» posts one line per channel, saying which topics land there', async () => {
     const { appId } = await installInframaq();
     await request(app).put(topicsPath(appId)).set(asJose).send({ channels: { asistencia: String(planta) } }).expect(200);

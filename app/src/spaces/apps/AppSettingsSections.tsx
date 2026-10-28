@@ -1,23 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { Banknote, Bell, Check, ChevronDown, CloudSun, Database, FileText, Package, SlidersHorizontal, TriangleAlert, Truck, UserCheck, Zap, type LucideIcon } from 'lucide-react-native';
-import { itemKey, type AppItemRow, type ItemChannels, type NoticeIcon, type TopicRoute } from '@lilachat/shared';
+import { Banknote, Bell, Check, ChevronDown, CloudSun, Database, FileText, Package, TriangleAlert, Truck, UserCheck, type LucideIcon } from 'lucide-react-native';
+import type { NoticeIcon, TopicRoute } from '@lilachat/shared';
 import { topicPrivacyHint } from '@lilachat/shared';
-import { Interruptor } from '../../ui/Interruptor';
 import { Modal } from '../../ui/Modal';
-import { Segmentado } from '../../ui/Segmentado';
 import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
-import { appItems, appTopics, saveAppItems, saveAppTopics, testAppTopics, type AppItems, type AppTopics } from '../spacesApi';
+import { appTopics, saveAppTopics, testAppTopics, type AppItems, type AppTopics } from '../spacesApi';
 
 const ICONS: Record<NoticeIcon, LucideIcon> = { attendance: UserCheck, tank: Database, material: Package, truck: Truck, weather: CloudSun, cash: Banknote, document: FileText, alert: TriangleAlert };
-type Mode = 'all' | 'some' | 'none';
 type Channel = AppItems['channels'][number];
-type Status = { busy: boolean; line?: string; error?: boolean };
-const modeOf = (channels: ItemChannels): Mode => (Array.isArray(channels) ? 'some' : channels);
-const sameChannels = (a: ItemChannels, b: ItemChannels) => JSON.stringify(Array.isArray(a) ? [...a].sort() : a) === JSON.stringify(Array.isArray(b) ? [...b].sort() : b);
+export type Status = { busy: boolean; line?: string; error?: boolean };
 
-function Card(props: { testID: string; Icon: LucideIcon; kicker: string; title?: string; lead: string; children: React.ReactNode }) {
+export function Card(props: { testID: string; Icon: LucideIcon; kicker: string; title?: string; lead: string; children: React.ReactNode }) {
   const colors = useColores();
   return (
     <View testID={props.testID} className="mt-4 rounded-2xl border border-outline/15 bg-surface p-4">
@@ -29,89 +24,17 @@ function Card(props: { testID: string; Icon: LucideIcon; kicker: string; title?:
   );
 }
 
-function StatusLine(props: { status: Status }) {
+export function StatusLine(props: { status: Status }) {
   return props.status.line ? <Text className={`mt-2 text-[13px] ${props.status.error ? 'text-error' : 'text-en-linea'}`}>{props.status.line}</Text> : null;
 }
 
-function SaveButton(props: { testID: string; disabled: boolean; busy: boolean; onPress: () => void; label?: string; secondary?: boolean }) {
+export function SaveButton(props: { testID: string; disabled: boolean; busy: boolean; onPress: () => void; label?: string; secondary?: boolean }) {
   const colors = useColores();
   return (
     <Pressable testID={props.testID} disabled={props.disabled || props.busy} onPress={props.onPress} className={`min-h-[48px] flex-1 flex-row items-center justify-center gap-2 rounded-xl ${props.secondary ? 'border border-outline/25' : 'bg-primary'} ${props.disabled || props.busy ? 'opacity-40' : ''}`}>
       {props.busy && !props.secondary ? <ActivityIndicator size="small" color={colors['on-primary']} /> : null}
       <Text className={`text-[15px] font-semibold ${props.secondary ? 'text-on-surface' : 'text-on-primary'}`}>{props.label ?? 'Guardar'}</Text>
     </Pressable>
-  );
-}
-
-/** «Comandos y acciones» (José, 23/10: «solo algunos van a ser globales»): in the ⚡ or not, and in which channels. */
-export function AppItemsSection(props: { jwt: string; spaceId: string; appId: string }) {
-  const [state, setState] = useState<AppItems | null>(null);
-  const [edits, setEdits] = useState<Record<string, AppItemRow>>({});
-  const [status, setStatus] = useState<Status>({ busy: false });
-  useEffect(() => {
-    let alive = true;
-    void appItems(props.jwt, props.spaceId, props.appId).then((result) => alive && result.ok && setState(result.data));
-    return () => {
-      alive = false;
-    };
-  }, [props.jwt, props.spaceId, props.appId]);
-  const rows = useMemo(() => (state?.items ?? []).map((item) => edits[itemKey(item.kind, item.key)] ?? item), [state, edits]);
-  const changed = rows.filter((row) => {
-    const before = state?.items.find((item) => item.kind === row.kind && item.key === row.key);
-    return before && (before.global !== row.global || !sameChannels(before.channels, row.channels));
-  });
-  if (!state || state.items.length === 0) return null;
-  const edit = (row: AppItemRow, change: Partial<AppItemRow>) => setEdits((before) => ({ ...before, [itemKey(row.kind, row.key)]: { ...row, ...change } }));
-  const save = async () => {
-    setStatus({ busy: true });
-    const result = await saveAppItems(props.jwt, props.spaceId, props.appId, Object.fromEntries(changed.map((row) => [itemKey(row.kind, row.key), { global: row.global, channels: row.channels }])));
-    if (!result.ok) return setStatus({ busy: false, line: result.message ?? 'No se pudo guardar.', error: true });
-    setState(result.data);
-    setEdits({});
-    setStatus({ busy: false, line: 'Guardado. Ya se ve así en el espacio.' });
-  };
-  return (
-    <Card testID="comandos-y-acciones" Icon={SlidersHorizontal} kicker="Comandos y acciones" lead={state.canEdit ? 'Elige cuáles salen en el ⚡ del espacio y en qué canales funcionan.' : 'Dónde funciona cada uno. Solo los admins lo cambian.'}>
-      {rows.map((row) => <ItemRow key={itemKey(row.kind, row.key)} row={row} channels={state.channels} canEdit={state.canEdit} onChange={(change) => edit(row, change)} />)}
-      {state.canEdit ? <View className="mt-3 flex-row"><SaveButton testID="btn-guardar-items" disabled={changed.length === 0} busy={status.busy} onPress={() => void save()} /></View> : null}
-      <StatusLine status={status} />
-    </Card>
-  );
-}
-
-function ItemRow(props: { row: AppItemRow; channels: Channel[]; canEdit: boolean; onChange: (change: Partial<AppItemRow>) => void }) {
-  const colors = useColores();
-  const { row } = props;
-  const mode = modeOf(row.channels);
-  const picked = Array.isArray(row.channels) ? row.channels : [];
-  return (
-    <View testID={`item-${row.kind}-${row.key}`} className="mt-3 border-t border-outline/10 pt-3">
-      <View className="flex-row items-center gap-2">
-        <View className="min-w-0 flex-1">
-          <Text className="text-[16px] font-semibold text-on-surface" numberOfLines={1}>{row.name}</Text>
-          <Text className="text-[13px] text-on-surface-variant" numberOfLines={1}>{row.kind === 'command' ? 'Comando' : 'Acción'}{row.description ? ` · ${row.description}` : ''}</Text>
-        </View>
-        <Zap size={15} color={colors.warning} fill={colors.warning} />
-        <Interruptor testID={`global-${row.key}`} value={row.global} disabled={!props.canEdit} onValueChange={(global) => props.onChange({ global })} />
-      </View>
-      {props.canEdit ? (
-        <View className="mt-2">
-          <Segmentado opciones={[{ key: 'all', etiqueta: 'Todos', testID: `canales-${row.key}-all` }, { key: 'some', etiqueta: 'Algunos', testID: `canales-${row.key}-some` }, { key: 'none', etiqueta: 'Ninguno', testID: `canales-${row.key}-none` }]} valor={mode} onCambiar={(next) => props.onChange({ channels: next === 'some' ? [] : next })} />
-        </View>
-      ) : <Text className="mt-1 text-[13px] text-on-surface-variant">{mode === 'all' ? 'En todos los canales' : mode === 'none' ? 'En ningún canal' : `En ${picked.length} canales`}</Text>}
-      {mode === 'some' && props.canEdit ? (
-        <View className="mt-2 flex-row flex-wrap gap-1.5">
-          {props.channels.map((channel) => {
-            const on = picked.includes(channel.id);
-            return (
-              <Pressable key={channel.id} testID={`canal-${row.key}-${channel.name}`} accessibilityState={{ selected: on }} onPress={() => props.onChange({ channels: on ? picked.filter((id) => id !== channel.id) : [...picked, channel.id] })} className={`min-h-[36px] justify-center rounded-full border px-3 ${on ? 'border-primary bg-primary/10' : 'border-outline/25'}`}>
-                <Text className={`text-[14px] ${on ? 'font-semibold text-primary' : 'text-on-surface-variant'}`}># {channel.name}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      ) : null}
-    </View>
   );
 }
 

@@ -6,7 +6,7 @@ import { DetailTabBar } from '../../chat/info/DetailTabBar';
 import { AppBadge, AppLogo } from './AppLogo';
 import { AppAccountSection } from './AppAccountSection';
 import { AppChannelsSection, AppInstallSection } from './AppChannelsSection';
-import { AppItemsSection } from './AppItemsSection';
+import { AppCommandsPanel } from './AppCommandsPanel';
 import { NoticeTopicsSection } from './NoticeTopicsSection';
 
 type AppDetailProps = {
@@ -107,18 +107,15 @@ function DetailTab(props: AppDetailProps & { tab: AppDetailTab }) {
   const { app } = props;
   const section = props.spaceId ? { jwt: props.jwt, spaceId: props.spaceId, appId: app.appId } : null;
   if (props.tab === 'commands') {
-    return (
-      <>
-        {app.commands.length ? (
-          <Section Icon={Terminal} title="Comandos">
-            <div className="space-y-2">{app.commands.map((entry) => <CommandRow key={entry.command} {...entry} />)}</div>
-            <p className="mt-2 text-[12px] text-on-surface-variant">Escríbelos en cualquier chat del espacio donde esté la app.</p>
-          </Section>
-        ) : (
-          <EmptyLine text={`${app.name} no tiene comandos.`} />
-        )}
-        {app.installation && section ? <AppItemsSection {...section} /> : null}
-      </>
+    // Installed, each command says where it works and who uses it, and «Horarios» follows (designs d-01, d-03).
+    if (app.installation && section) return <AppCommandsPanel {...section} appName={app.name} />;
+    return app.commands.length ? (
+      <Section Icon={Terminal} title="Comandos">
+        <div className="space-y-2">{app.commands.map((entry) => <CommandRow key={entry.command} {...entry} />)}</div>
+        <p className="mt-2 text-[12px] text-on-surface-variant">Escríbelos en cualquier chat del espacio donde esté la app.</p>
+      </Section>
+    ) : (
+      <EmptyLine text={`${app.name} no tiene comandos.`} />
     );
   }
   if (props.tab === 'notices') return section ? <NoticeTopicsSection {...section} appName={app.name} emptyText={`${app.name} no manda avisos al espacio.`} /> : null;

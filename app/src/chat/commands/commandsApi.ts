@@ -1,4 +1,4 @@
-import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type ItemPlace } from '@lilachat/shared';
+import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -9,7 +9,7 @@ import { subirPorXhr } from '../subidaXhr';
 const PHOTO_UPLOAD_TIMEOUT_MS = 60_000;
 
 /** The slash commands and actions of the apps (§c-bis), only what the admin enabled at that place (R160). */
-export const spaceCommands = (jwt: string, spaceId: string, place: ItemPlace) =>
+export const spaceCommands = (jwt: string, spaceId: string, place: CommandsPlace) =>
   jsonCall<{ groups: CommandGroup[] }>(`${BASE_URL}/api/workspaces/${spaceId}/commands?${place === 'space' ? 'place=space' : `chat=${place.chatId}`}`, jwt);
 
 export const runCommand = (jwt: string, chatId: string, input: { appId: string; command: string; text: string }) =>

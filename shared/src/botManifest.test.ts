@@ -26,6 +26,7 @@ describe('app manifest', () => {
         commands: [{ command: 'clima', description: 'Clima de la planta', usageHint: '[mañana]' }],
         shortcuts: [],
         noticeTopics: [],
+        suggestedSchedules: [],
         scopes: [],
       },
     });
@@ -33,7 +34,7 @@ describe('app manifest', () => {
 
   it('avatar, install address and commands are optional; without commands they are not touched', () => {
     const result = validateAppManifest({ key: 'portal', name: 'Portal', redirect_uri: manifest.redirect_uri, webhook_url: manifest.webhook_url });
-    expect(result).toEqual({ ok: true, manifest: { key: 'portal', name: 'Portal', redirectUri: manifest.redirect_uri, webhookUrl: manifest.webhook_url, shortcuts: [], noticeTopics: [], scopes: [] } });
+    expect(result).toEqual({ ok: true, manifest: { key: 'portal', name: 'Portal', redirectUri: manifest.redirect_uri, webhookUrl: manifest.webhook_url, shortcuts: [], noticeTopics: [], suggestedSchedules: [], scopes: [] } });
   });
 
   it('refuses a bad key, a missing name and addresses without https', () => {
@@ -88,6 +89,23 @@ describe('app manifest', () => {
 
   it('bad commands are refused with the same message as PUT /api/bots/commands', () => {
     expect(validateAppManifest({ ...manifest, commands: [{ command: '/Clima', description: 'x' }] }).ok).toBe(false);
+  });
+
+  it('schedules (agentes, 28/10): commands say schedulable and shareable, and the app suggests schedules for them', () => {
+    const checked = validateAppManifest({
+      ...manifest,
+      commands: [{ command: 'asistencia', description: 'Asistencia', schedulable: true }, { command: 'planilla', description: 'Planilla', schedulable: true, shareable: false }],
+      suggested_schedules: [{ command: 'asistencia', text: '', time: '10:30', repeat: { weekdays: [1, 2, 3, 4, 5, 6] } }, { command: 'clima', time: '06:00', repeat: { every: 1 } }],
+    });
+    expect(checked.ok && checked.manifest.commands).toEqual([{ command: 'asistencia', description: 'Asistencia', schedulable: true }, { command: 'planilla', description: 'Planilla', schedulable: true, shareable: false }]);
+    expect(checked.ok && checked.manifest.suggestedSchedules).toEqual([{ command: 'asistencia', text: '', time: '10:30', repeat: { weekdays: [1, 2, 3, 4, 5, 6] }, onlyIfSomething: false }]);
+    const none = validateAppManifest(manifest);
+    expect(none.ok && none.manifest.suggestedSchedules).toEqual([]);
+  });
+
+  it('a topic offered only to the installation the app chooses (agentes, 28/10: its alerts)', () => {
+    const checked = validateAppManifest({ ...manifest, notice_topics: [{ key: 'alertas', name: 'Alertas de agentes', offer: 'chosen' }, { key: 'asistencia', name: 'Asistencia', offer: 'all' }] });
+    expect(checked.ok && checked.manifest.noticeTopics).toEqual([{ key: 'alertas', name: 'Alertas de agentes', offerChosen: true }, { key: 'asistencia', name: 'Asistencia' }]);
   });
 });
 

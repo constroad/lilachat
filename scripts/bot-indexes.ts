@@ -8,8 +8,9 @@
  */
 import { connectDb } from '../server/src/db.js';
 import { BotAppModel, BotDeliveryModel, BotInstallationModel, OAuthCodeModel } from '../server/src/bots/botModels.js';
+import { AppScheduleModel } from '../server/src/bots/scheduleModels.js';
 
-const MODELS = [BotAppModel, BotInstallationModel, OAuthCodeModel, BotDeliveryModel] as const;
+const MODELS = [BotAppModel, BotInstallationModel, OAuthCodeModel, BotDeliveryModel, AppScheduleModel] as const;
 
 async function main(): Promise<void> {
   const apply = process.argv.includes('--apply');

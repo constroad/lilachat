@@ -1,5 +1,5 @@
 import type { AppLink } from '@lilachat/shared';
-import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, SpaceApp, AvailableApp, SpaceAppDirectory, TopicRoute, AppChannel, AppItemRow, ItemChannels, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
+import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, SpaceApp, AvailableApp, SpaceAppDirectory, TopicRoute, AppChannel, AppItemRow, AppItemSetting, AppSchedules, ScheduleRow, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
 import { BASE_URL, type ChatSummary } from '../api/client';
 import { jsonCall } from '../api/jsonCall';
 import { subirFotoRedonda } from '../chat/fotoDeGrupo';
@@ -97,4 +97,11 @@ export type AppItems = { items: AppItemRow[]; channels: { id: string; name: stri
 export type AppChannels = { channels: AppChannel[]; botUserId: string; canEdit: boolean };
 export const appChannels = (jwt: string, spaceId: string, appId: string) => jsonCall<AppChannels>(url(`/${spaceId}/apps/${appId}/channels`), jwt);
 export const appItems = (jwt: string, spaceId: string, appId: string) => jsonCall<AppItems>(url(`/${spaceId}/apps/${appId}/items`), jwt);
-export const saveAppItems = (jwt: string, spaceId: string, appId: string, items: Record<string, { global: boolean; channels: ItemChannels }>) => jsonCall<AppItems>(url(`/${spaceId}/apps/${appId}/items`), jwt, { method: 'PUT', body: JSON.stringify({ items }) });
+export const saveAppItems = (jwt: string, spaceId: string, appId: string, items: Record<string, AppItemSetting>) => jsonCall<AppItems>(url(`/${spaceId}/apps/${appId}/items`), jwt, { method: 'PUT', body: JSON.stringify({ items }) });
+
+/** «Horarios» (designs d-02, d-03): every member reads them; an admin programs, pauses or deletes. */
+const schedulesUrl = (spaceId: string, appId: string) => url(`/${spaceId}/apps/${appId}/schedules`);
+export const appSchedules = (jwt: string, spaceId: string, appId: string) => jsonCall<AppSchedules>(schedulesUrl(spaceId, appId), jwt);
+export const createAppSchedule = (jwt: string, spaceId: string, appId: string, body: Record<string, unknown>) => jsonCall<{ schedule: ScheduleRow }>(schedulesUrl(spaceId, appId), jwt, { method: 'POST', body: JSON.stringify(body) });
+export const setAppScheduleActive = (jwt: string, spaceId: string, appId: string, scheduleId: string, active: boolean) => jsonCall<{ ok: true }>(`${schedulesUrl(spaceId, appId)}/${scheduleId}`, jwt, { method: 'PATCH', body: JSON.stringify({ active }) });
+export const deleteAppSchedule = (jwt: string, spaceId: string, appId: string, scheduleId: string) => jsonCall<{ ok: true }>(`${schedulesUrl(spaceId, appId)}/${scheduleId}`, jwt, { method: 'DELETE' });

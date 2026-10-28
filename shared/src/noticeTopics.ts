@@ -6,7 +6,7 @@
  */
 export const NOTICE_ICONS = ['attendance', 'tank', 'material', 'truck', 'weather', 'cash', 'document', 'alert'] as const;
 export type NoticeIcon = (typeof NOTICE_ICONS)[number];
-export type NoticeTopic = { key: string; name: string; description?: string; icon?: NoticeIcon; /** `default: null` in the manifest: it starts in «Sin canal» and is never posted until an admin picks one (agentes, 24/10: payroll carries amounts). */ noDefault?: true };
+export type NoticeTopic = { key: string; name: string; description?: string; icon?: NoticeIcon; /** `default: null` in the manifest: it starts in «Sin canal» and is never posted until an admin picks one (agentes, 24/10: payroll carries amounts). */ noDefault?: true; /** `offer: 'chosen'`: only the installations the app offers it to see it (agentes, 28/10: its alerts go to one space). */ offerChosen?: true };
 /** A topic with where its notices land; null = «Sin canal», they are not posted. */
 export type TopicRoute = NoticeTopic & { channel: { id: string; name: string } | null };
 

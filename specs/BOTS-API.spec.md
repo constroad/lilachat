@@ -525,6 +525,59 @@ la app de ESA instalación, por su webhook y con la firma de `command.invoked`.
 - Sin conectar dice «<app> te lo pide la primera vez que la usas»: conectar
   sigue siendo el formulario «Conecta tu cuenta» que trae el rechazo de la app.
 
+## c-vicies) Comandos y horarios (28/10/2026, servidor + OTA + web)
+
+Contrato de agentes: `specs/COMANDOS-Y-HORARIOS.spec.md` (7fb04a5), diseños d-01, d-02 y d-03.
+
+**Ajuste v2 de cada comando y acción** (`shared/src/appItems.ts`): `{ global, channels, direct, who }`.
+`direct` = el 1:1 de la persona con la app (ya no lo abre todo: se quitó el atajo `isOwnChat`).
+`who` = `{ kind: 'admins' }` · `{ kind: 'everyone' }` · `{ kind: 'people', userIds }` (solo miembros
+activos del espacio; los admins siempre pueden). `PUT …/apps/:appId/items` sigue siendo un mapa parcial.
+
+**Todo apagado, con migración.** Una instalación nueva nace con `itemsV2: true` y todo apagado. Las de
+antes siguen con los valores de antes (acciones en el ⚡, todos los canales, el 1:1 abierto, cualquiera)
+hasta correr `scripts/migrate-items-all-off.ts --apply`, que escribe todo apagado y marca `itemsV2`.
+Ese paso escribe producción: **solo con el OK de José**. Así el deploy no apaga nada por sí solo.
+
+**Control al invocar.** `POST …/commands` y `…/shortcuts` revisan lugar y persona en el servidor (un
+cliente viejo o una llamada directa se saltan el menú): `403 { error: 'not_allowed_here' }` con «No
+tienes permiso para usar /x aquí. Pídeselo a un admin del espacio.».
+
+**Manifiesto.**
+- `commands[].schedulable: true`: es una consulta y se puede programar. `shareable: false`: tiene montos
+  y solo se programa en el 1:1 del que lo crea.
+- `suggested_schedules: [{ command, text, time: 'HH:mm', repeat: { weekdays: [1..6] } | { every: 1 }, only_if_something }]`
+  (hasta 10, solo de comandos `schedulable`; lo que no encaja se descarta sin rechazar el manifiesto).
+  Lilachat los ofrece al admin con «Crear»; nada corre hasta que un admin lo acepta y elige dónde.
+- `notice_topics[].offer: 'chosen'`: el tema no existe para una instalación hasta que la app se lo ofrece.
+
+**Horarios** (rutas de persona, colección propia `AppSchedule`):
+- `GET /api/workspaces/:id/apps/:appId/schedules` → `{ schedules, suggested, canEdit }` (cualquier miembro).
+- `POST` mismo path `{ command, text, time, repeat, chat_id: '<canal>' | 'direct', only_if_something }` → `201 { schedule }`.
+  `PATCH …/:scheduleId { active }` y `DELETE …/:scheduleId`. Solo dueño o admin (403).
+- Hasta 30 por app. El canal debe tener al creador y a la app (409 «X no está en #canal: agrégala en Ajustes.»).
+- **Por qué no es un recordatorio**: un recordatorio suena en el teléfono de todos y sale en la agenda;
+  un horario solo publica lo que la app responde. Usa la misma repetición (`nextRepeat`) y el mismo tick
+  de `reminderCron`. El cron toma el turno moviendo `nextRunAt` con un update condicional: dos ticks no
+  corren el mismo turno.
+
+**Al correr**: corre COMO el creador (su cuenta en la app, su permiso en Lilachat, revisados otra vez).
+`command.invoked` lleva `trigger: 'schedule'`, `schedule_id` y `scheduled_for` (ISO); el reintento del mismo
+envío conserva el `event_id`.
+- `in_channel` se publica en el canal (o en el 1:1), una vez por turno (`idempotency_key schedule:<id>:<iso>`).
+- `ephemeral` (un error, «conecta tu cuenta») va solo al creador, en su 1:1 con la app.
+- `nothing_to_report: true` con «Solo si hay algo» → no se publica nada.
+- Un formulario no se programa: falla y se avisa al creador.
+- Más de 30 minutos tarde (Lilachat caído) → no corre y se le dice al creador por qué.
+- Lo que no corrió queda en `lastRun` y la lista dice «No corrió el 27/10: la app no respondió».
+
+**Temas ofrecidos por instalación** (token del bot):
+- `POST /api/bots/topics/offer { topic }` y `POST /api/bots/topics/withdraw { topic }` → `{ topics }`.
+  Guarda `offeredTopics` en la instalación; repetirlo no hace daño. 404 `topic_not_found` si el manifiesto no
+  lo declara; 400 si el tema no es `offer: 'chosen'`.
+- Publicar con `topic` a uno no ofrecido → **409 `topic_not_offered`**. `GET /api/bots/topics`, los avisos
+  del admin y «Probar envío» solo muestran los ofrecidos.
+
 ## c-novendecies) Escuchar el canal, ediciones, borrados y archivos (28/10/2026, solo servidor)
 
 Para el pedido conversacional (pendiente 87) y los vouchers (pendiente 90).

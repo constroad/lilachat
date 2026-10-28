@@ -10,7 +10,7 @@ import { availabilityOf, setAvailability, spacesRunBy, type AppRef } from './bot
 import { commandsOfApp, commandsToWire, registerCommands, respondToCommand } from './botCommands.js';
 import { installationByToken, revokeInstallation } from './botInstall.js';
 import { postBotMessage, updateBotMessage } from './botMessages.js';
-import { setTopicChannels, topicRoutesOf } from './botTopics.js';
+import { setTopicChannels, setTopicOffered, topicRoutesOf } from './botTopics.js';
 import type { BotApp, BotInstallation } from './botModels.js';
 import { appForConsent, authorize, exchangeCode } from './oauthService.js';
 
@@ -124,6 +124,13 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.json({ topics: topicsToWire(outcome) });
   }));
+  for (const [path, offered] of [['/topics/offer', true], ['/topics/withdraw', false]] as const) {
+    router.post(path, asyncRoute(async (req, res) => {
+      const outcome = await setTopicOffered(req.bot!, req.body, offered);
+      if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+      res.json({ topics: topicsToWire(outcome) });
+    }));
+  }
   router.post('/commands/:id/respond', asyncRoute(async (req, res) => {
     const outcome = await respondToCommand(req.bot!, String(req.params.id), req.body);
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });

@@ -4911,6 +4911,38 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 152. Comandos y horarios: todo apagado, quién lo usa y reportes a una hora (28/10/2026, servidor + OTA + web)
+
+Pedido de José vía agentes (`specs/COMANDOS-Y-HORARIOS.spec.md` de agentes, 7fb04a5); diseños Stitch
+d-01 «Comandos y acciones», d-02 «Programar» y d-03 «Horarios». Contrato: `BOTS-API.spec.md` §c-vicies.
+
+**Qué cambió**
+- Cada comando y acción tiene `{ global, channels, direct, who }`. La pestaña «Comandos» de una app
+  instalada (web `AppCommandsPanel.tsx`, APK `AppCommandsPanel.tsx`) lista cada uno con «Encendido» o
+  «Apagado»; al abrirlo: ⚡, «En el chat con la app», canales (Todos/Algunos/Ninguno), «Quién puede
+  usarlo» (Solo admins/Todos/Algunas personas, con los miembros del espacio), «Programar» y su propio
+  «Guardar cambios de /x» (manda solo esa fila).
+- «Horarios» debajo: comando, hora · días · dónde, interruptor para pausar, borrar, y en rojo «No corrió
+  el 27/10: …». «Sugeridos por la app» con «Crear», que abre «Programar» con la hora y los días puestos.
+- «Programar»: hora, días (L a D), dónde (canales o «Tu chat con la app»; con montos solo el 1:1),
+  argumentos y «Solo si hay algo que reportar». Se valida con `validateScheduleInput` antes de mandar.
+- Servidor: `botSchedules.ts`, `botScheduleDelivery.ts`, `botScheduleRoutes.ts`, `scheduleModels.ts`
+  (colección `AppSchedule`), el tick en `reminderCron.ts`; temas `offer: 'chosen'` con offer/withdraw.
+- Lógica pura en `shared`: `appItems.ts` (`itemIsOn`, `sameItemSetting`, `mayUseItem`, valores de antes)
+  y `appSchedules.ts` (`scheduleLine`, `lastRunProblem`, `weekdaysOf`/`repeatOfDays`, `scheduleRequestOf`).
+
+**Decisiones no evidentes**
+- **El deploy no apaga nada.** Sin `itemsV2`, una instalación conserva los valores de antes. Todo apagado
+  llega con `scripts/migrate-items-all-off.ts --apply`, que escribe producción: pide el OK de José. Una
+  instalación nueva ya nace apagada.
+- Los horarios no son recordatorios: no suenan en los teléfonos ni salen en la agenda. Comparten la
+  repetición y el cron.
+- `AppSchedule` necesita sus índices (`{active, nextRunAt}`, `{installationId, createdAt}`): están en
+  `scripts/bot-indexes.ts`, que se corre con `--apply` con el OK de José (la bóveda no crea índices sola).
+
+**Tests**: shared `appItems.test.ts`, `appSchedules.test.ts`; servidor `botItemAccess.test.ts` (9),
+`botSchedules.test.ts` (9), `botTopics.test.ts` (9); web `appCommands.test.tsx` (5).
+
 ## 151. Un solo detalle de la app, con pestañas (28/10/2026, servidor + OTA + web; pendiente 99)
 
 **Pedido** (José, 23/10: «muy complejo y nada intuitivo… una sábana todo mezclado»): desde el

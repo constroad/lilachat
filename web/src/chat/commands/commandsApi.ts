@@ -1,9 +1,9 @@
-import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type ItemPlace } from '@lilachat/shared';
+import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace } from '@lilachat/shared';
 import { api } from '../../api';
 import { shrinkPhotoBlob } from '../shrinkPhoto';
 
 /** The slash commands and actions of the apps (§c-bis), only what the admin enabled at that place (R160). */
-export const spaceCommands = (jwt: string, spaceId: string, place: ItemPlace) =>
+export const spaceCommands = (jwt: string, spaceId: string, place: CommandsPlace) =>
   api<{ groups: CommandGroup[] }>(`/workspaces/${spaceId}/commands?${place === 'space' ? 'place=space' : `chat=${place.chatId}`}`, { jwt });
 
 export const runCommand = (jwt: string, chatId: string, input: { appId: string; command: string; text: string }) =>

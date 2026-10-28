@@ -10,7 +10,8 @@ import { useMargenes } from '../../ui/useMargenes';
 import { AppBadge, AppLogo } from './AppLogo';
 import { AppAccountSection } from './AppAccountSection';
 import { AppChannelsSection, AppInstallSection } from './AppChannelsSection';
-import { AppItemsSection, NoticeTopicsSection } from './AppSettingsSections';
+import { NoticeTopicsSection } from './AppSettingsSections';
+import { AppCommandsPanel } from './AppCommandsPanel';
 
 /** Lists and two columns stay readable on a tablet or a turned phone (rn-app-loop §3). */
 const CONTENT_MAX_WIDTH = 720;
@@ -156,18 +157,15 @@ function DetailTab(props: AppDetailProps & { tab: AppDetailTab }) {
   const { app } = props;
   const section = { jwt: props.jwt, spaceId: props.spaceId, appId: app.appId };
   if (props.tab === 'commands') {
-    return (
-      <>
-        {app.commands.length ? (
-          <Section Icon={Terminal} title="Comandos">
-            {app.commands.map((command) => <CommandRow key={command.command} command={command} />)}
-            <Text className="text-[13px] text-on-surface-variant">Escríbelos en cualquier chat del espacio donde esté la app.</Text>
-          </Section>
-        ) : (
-          <EmptyLine text={`${app.name} no tiene comandos.`} />
-        )}
-        {app.installation ? <AppItemsSection {...section} /> : null}
-      </>
+    // Installed, each command says where it works and who uses it, and «Horarios» follows (designs d-01, d-03).
+    if (app.installation) return <AppCommandsPanel {...section} appName={app.name} />;
+    return app.commands.length ? (
+      <Section Icon={Terminal} title="Comandos">
+        {app.commands.map((command) => <CommandRow key={command.command} command={command} />)}
+        <Text className="text-[13px] text-on-surface-variant">Escríbelos en cualquier chat del espacio donde esté la app.</Text>
+      </Section>
+    ) : (
+      <EmptyLine text={`${app.name} no tiene comandos.`} />
     );
   }
   if (props.tab === 'notices') return <NoticeTopicsSection {...section} appName={app.name} emptyText={`${app.name} no manda avisos al espacio.`} />;

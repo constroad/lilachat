@@ -18,6 +18,7 @@ import { configureCommands } from './botCommands.js';
 import { configureFormFiles, FormFileModel } from './botForms.js';
 import { forgetBots } from './botRegistry.js';
 import { sha256 } from './botSecrets.js';
+import { openEveryItem } from './testItems.js';
 
 /** App forms (R160, `specs/BOTS-API.spec.md` §c-ter): Inframaq's real `registrar_marca`. */
 let mongo: MongoMemoryServer;
@@ -107,7 +108,11 @@ beforeEach(async () => {
   botToken = (await request(app).post('/api/oauth/token').send({ grant_type: 'authorization_code', code: new URL(authorized.body.redirect).searchParams.get('code'), redirect_uri: REDIRECT, client_id: 'lca_inframaq', client_secret: SECRET, code_verifier: VERIFIER }).expect(200)).body.access_token;
 });
 
-const appId = async () => String((await BotAppModel.findOne({ clientId: 'lca_inframaq' }).lean())!._id);
+// Not about permissions (`botItemAccess.test.ts`): everything on, as an admin would leave it.
+const appId = async () => {
+  await openEveryItem();
+  return String((await BotAppModel.findOne({ clientId: 'lca_inframaq' }).lean())!._id);
+};
 async function openForm(): Promise<string> {
   answer = json({ response_type: 'form', form: attendanceForm });
   const outcome = await request(app).post(`/api/chats/${channel}/commands`).set(asAna).send({ app_id: await appId(), command: 'asistencia', text: '' }).expect(200);
@@ -293,41 +298,6 @@ describe('an app answers a command with a form', () => {
     const stranger = (await UserModel.create({ phone: '51911111111', name: 'Otro' }))._id;
     await request(app).post(`${space}/shortcuts`).set(asUser(() => stranger)).send({ app_id: await appId(), shortcut: 'marcar_asistencia' }).expect(404);
     configureCommands({ notify: () => undefined });
-  });
-});
-
-describe('where each command and action works (José, 23/10: only some are global)', () => {
-  const groupsAt = (query: string) => request(app).get(`/api/workspaces/${spaceId}/commands?${query}`).set(asAna).expect(200).then((res) => res.body.groups as { commands: { command: string }[]; shortcuts: { key: string }[] }[]);
-  const names = (groups: { commands: { command: string }[]; shortcuts: { key: string }[] }[]) => groups.flatMap((group) => [...group.commands.map((entry) => `/${entry.command}`), ...group.shortcuts.map((entry) => entry.key)]);
-
-  it('untouched: the action is in the ⚡ and in the channels, the command only in the channels', async () => {
-    await BotAppModel.updateOne({ clientId: 'lca_inframaq' }, { $set: { shortcuts: [{ key: 'marcar_asistencia', name: 'Marcar asistencia' }] } });
-    expect(names(await groupsAt('place=space'))).toEqual(['marcar_asistencia']);
-    expect(names(await groupsAt(`chat=${channel}`))).toEqual(['/asistencia', 'marcar_asistencia']);
-  });
-
-  it('the admin makes the command global and takes the action out of the channels; the server refuses what is off', async () => {
-    // Arrange
-    await BotAppModel.updateOne({ clientId: 'lca_inframaq' }, { $set: { shortcuts: [{ key: 'marcar_asistencia', name: 'Marcar asistencia' }] } });
-    const items = `/api/workspaces/${spaceId}/apps/${await appId()}/items`;
-    await request(app).put(items).set(asAna).send({ items: { 'command:asistencia': { global: true } } }).expect(403);
-    // Act
-    const saved = await request(app).put(items).set(asJose).send({ items: { 'command:asistencia': { global: true }, 'shortcut:marcar_asistencia': { channels: 'none' } } }).expect(200);
-    answer = json({ text: 'Hoy: 12 de 15' });
-    received.length = 0;
-    const fromSpace = await request(app).post(`/api/workspaces/${spaceId}/commands`).set(asAna).send({ app_id: await appId(), command: 'asistencia', text: '' }).expect(200);
-    const offInChannel = await request(app).post(`/api/chats/${channel}/shortcuts`).set(asAna).send({ app_id: await appId(), shortcut: 'marcar_asistencia' }).expect(404);
-    // Assert
-    expect(saved.body.items).toEqual([
-      { kind: 'shortcut', key: 'marcar_asistencia', name: 'Marcar asistencia', global: true, channels: 'none' },
-      { kind: 'command', key: 'asistencia', name: '/asistencia', description: 'Marcar asistencia', global: true, channels: 'all' },
-    ]);
-    expect(names(await groupsAt('place=space'))).toEqual(['/asistencia', 'marcar_asistencia']);
-    expect(names(await groupsAt(`chat=${channel}`))).toEqual(['/asistencia']);
-    expect(fromSpace.body).toMatchObject({ outcome: 'ephemeral', response: { text: 'Hoy: 12 de 15' } });
-    expect(received.map((event) => [event.type, event.data.channel])).toEqual([['command.invoked', null]]);
-    expect(offInChannel.body.message).toMatch(/habilitado/);
-    expect((await request(app).get(items).set(asAna).expect(200)).body.canEdit).toBe(false);
   });
 });
 

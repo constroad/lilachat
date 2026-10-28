@@ -16,6 +16,7 @@ import { configureDevelopers } from './botApps.js';
 import { configureAppsAnnounce } from './botAnnounce.js';
 import { forgetBots } from './botRegistry.js';
 import { sha256 } from './botSecrets.js';
+import { openEveryItem } from './testItems.js';
 
 /** Apps made by a developer app through a manifest (`specs/BOTS-API.spec.md` §0-bis): no secret per app through a person. */
 let mongo: MongoMemoryServer;
@@ -99,6 +100,7 @@ describe('the manifest', () => {
     const token = await installWith(body.client_id, body.client_secret);
     expect(token.status).toBe(200);
     expect(token.body.access_token).toMatch(/^lcb_/);
+    await openEveryItem();
     const groups = (await request(app).get(`/api/workspaces/${spaceId}/commands`).set(asJose).expect(200)).body.groups;
     expect(groups).toEqual([expect.objectContaining({ appName: 'Inframaq', commands: [{ command: 'clima', description: 'Clima de la planta' }] })]);
   });
@@ -127,6 +129,7 @@ describe('the manifest', () => {
     const { body } = await request(app).post('/api/bots/apps').set(asLila).send({ ...manifest(), avatar_url: 'https://agentes.example.com/inframaq.png', shortcuts: [attendance] }).expect(201);
     await installWith(body.client_id, body.client_secret);
     const groups = () => request(app).get(`/api/workspaces/${spaceId}/commands`).set(asJose).expect(200).then((res) => res.body.groups);
+    await openEveryItem();
     // Act
     const offered = await groups();
     await request(app).post('/api/bots/apps').set(asLila).send({ ...manifest(), commands: [] }).expect(200);

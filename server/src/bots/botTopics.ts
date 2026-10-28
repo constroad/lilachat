@@ -24,13 +24,18 @@ export const channelsOf = (workspaceId: Types.ObjectId) =>
 /** #general, or the oldest public channel. */
 const defaultOf = (channels: readonly Channel[]) => channels.find((one) => one.channel?.visibility === 'public' && one.name?.toLowerCase() === 'general') ?? channels.find((one) => one.channel?.visibility === 'public') ?? null;
 
+/** A topic with `offer: 'chosen'` exists only for the installations the app offered it to. */
+const isOffered = (topic: NoticeTopic, offered: readonly string[]) => !topic.offerChosen || offered.includes(topic.key);
+
 async function stateOf(installation: Pick<Installation, '_id' | 'appId' | 'workspaceId'>) {
   const [app, stored, channels] = await Promise.all([
     BotAppModel.findById(installation.appId).select('noticeTopics').lean(),
-    BotInstallationModel.findById(installation._id).select('topicChannels').lean(),
+    BotInstallationModel.findById(installation._id).select('topicChannels offeredTopics').lean(),
     channelsOf(installation.workspaceId),
   ]);
-  return { topics: app?.noticeTopics ?? [], chosen: stored?.topicChannels ?? {}, channels };
+  const declared = app?.noticeTopics ?? [];
+  const offered = stored?.offeredTopics ?? [];
+  return { declared, topics: declared.filter((topic) => isOffered(topic, offered)), chosen: stored?.topicChannels ?? {}, channels };
 }
 
 function channelOfTopic(topic: NoticeTopic, chosen: Record<string, string | null>, channels: readonly Channel[]): Channel | null {
@@ -78,11 +83,28 @@ export async function setTopicChannels(installation: Installation, raw: unknown,
 export async function channelOfPostedTopic(installation: Pick<Installation, '_id' | 'workspaceId'>, key: string): Promise<string | TopicsError> {
   const stored = await BotInstallationModel.findById(installation._id).select('appId workspaceId').lean();
   if (!stored) return fail(404, 'topic_not_found', 'Esa instalación ya no existe.');
-  const { topics, chosen, channels } = await stateOf(stored);
+  const { declared, topics, chosen, channels } = await stateOf(stored);
   const topic = topics.find((one) => one.key === key);
+  if (!topic && declared.some((one) => one.key === key)) return fail(409, 'topic_not_offered', `El tema «${key}» no se ofreció a este espacio.`);
   if (!topic) return fail(404, 'topic_not_found', `La app no declaró el tema «${key}» en su manifiesto.`);
   const channel = channelOfTopic(topic, chosen, channels);
   if (channel) return String(channel._id);
   const why = topic.noDefault && chosen[topic.key] === undefined ? 'espera a que un admin elija un canal privado' : 'el admin lo dejó sin canal';
   return fail(409, 'topic_without_channel', `El tema «${topic.name}» no tiene canal: ${why}.`);
+}
+
+/**
+ * The app offers or withdraws an `offer: 'chosen'` topic for this
+ * installation with its token (agentes COMANDOS-Y-HORARIOS §5: «Alertas de
+ * agentes» only in the space picked in its console). Repeating it is harmless.
+ */
+export async function setTopicOffered(installation: Installation, raw: unknown, offered: boolean): Promise<Awaited<ReturnType<typeof topicRoutesOf>> | TopicsError> {
+  const key = typeof raw === 'object' && raw !== null ? (raw as { topic?: unknown }).topic : undefined;
+  if (typeof key !== 'string' || !key) return fail(400, 'invalid_request', 'Manda { topic: "<clave del tema>" }.');
+  const { declared } = await stateOf(installation);
+  const topic = declared.find((one) => one.key === key);
+  if (!topic) return fail(404, 'topic_not_found', `La app no declaró el tema «${key}» en su manifiesto.`);
+  if (!topic.offerChosen) return fail(400, 'invalid_request', `El tema «${key}» llega siempre: solo se ofrece uno con offer: "chosen".`);
+  await BotInstallationModel.updateOne({ _id: installation._id }, offered ? { $addToSet: { offeredTopics: key } } : { $pull: { offeredTopics: key } });
+  return topicRoutesOf(installation);
 }

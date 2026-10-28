@@ -1,5 +1,5 @@
 import type { AppChannel, AppLink } from '@lilachat/shared';
-import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, SpaceApp, AvailableApp, SpaceAppDirectory, TopicRoute, AppItemRow, ItemChannels, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
+import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, SpaceApp, AvailableApp, SpaceAppDirectory, TopicRoute, AppItemRow, AppItemSetting, AppSchedules, ScheduleRow, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
 import { api } from '../api';
 import type { ChatSummary } from '../chat/types';
 import { shrinkPhotoBlob } from '../chat/shrinkPhoto';
@@ -107,4 +107,11 @@ export const setAppInChannel = (jwt: string, chatId: string, botUserId: string, 
 /** «Comandos y acciones» (R160): where each command and action of the app works. */
 export type AppItems = { items: AppItemRow[]; channels: { id: string; name: string; private: boolean }[]; canEdit: boolean };
 export const appItems = (jwt: string, spaceId: string, appId: string) => api<AppItems>(`/workspaces/${spaceId}/apps/${appId}/items`, { jwt });
-export const saveAppItems = (jwt: string, spaceId: string, appId: string, items: Record<string, { global: boolean; channels: ItemChannels }>) => api<AppItems>(`/workspaces/${spaceId}/apps/${appId}/items`, { jwt, method: 'PUT', body: { items } });
+export const saveAppItems = (jwt: string, spaceId: string, appId: string, items: Record<string, AppItemSetting>) => api<AppItems>(`/workspaces/${spaceId}/apps/${appId}/items`, { jwt, method: 'PUT', body: { items } });
+
+/** «Horarios» (designs d-02, d-03): every member reads them; an admin programs, pauses or deletes. */
+const schedulesPath = (spaceId: string, appId: string) => `/workspaces/${spaceId}/apps/${appId}/schedules`;
+export const appSchedules = (jwt: string, spaceId: string, appId: string) => api<AppSchedules>(schedulesPath(spaceId, appId), { jwt });
+export const createAppSchedule = (jwt: string, spaceId: string, appId: string, body: Record<string, unknown>) => api<{ schedule: ScheduleRow }>(schedulesPath(spaceId, appId), { jwt, body });
+export const setAppScheduleActive = (jwt: string, spaceId: string, appId: string, scheduleId: string, active: boolean) => api<{ ok: true }>(`${schedulesPath(spaceId, appId)}/${scheduleId}`, { jwt, method: 'PATCH', body: { active } });
+export const deleteAppSchedule = (jwt: string, spaceId: string, appId: string, scheduleId: string) => api<{ ok: true }>(`${schedulesPath(spaceId, appId)}/${scheduleId}`, { jwt, method: 'DELETE' });

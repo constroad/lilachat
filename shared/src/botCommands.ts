@@ -9,14 +9,20 @@ import { validateBotCard, type BotCard } from './bots.js';
  * server validates with this and the app and the web suggest with it.
  * The wire is snake_case; what comes out is camelCase.
  */
-export type BotCommand = { command: string; description: string; usageHint?: string };
+/**
+ * `schedulable` (a read command; forms never) and `shareable: false` (amounts:
+ * a schedule only in the creator's 1:1) come in the manifest (agentes, 28/10,
+ * COMANDOS-Y-HORARIOS §3.2); only meaningful values are kept.
+ */
+export type BotCommand = { command: string; description: string; usageHint?: string; schedulable?: true; shareable?: false };
 /** An action of the composer's «+» (R160, design e-29): tapping it is like a command without typing it. */
 export type AppShortcut = { key: string; name: string; description?: string };
 export type CommandGroup = { appId: string; appName: string; commands: BotCommand[]; avatarUrl?: string; shortcuts?: AppShortcut[] };
 /** `form` (R160): the answer is a form only the asker sees; sending it is their confirmation. */
 export type CommandResponseType = 'ephemeral' | 'in_channel' | 'form';
 /** `shareable: false` (agentes, 23/10: debts, payments, payroll): no «Enviar al canal». */
-export type CommandResponse = { responseType: CommandResponseType; text?: string; card?: BotCard; form?: AppForm; shareable?: false };
+/** `nothingToReport` (schedules, agentes 28/10): the report still comes, and a schedule «solo si hay algo» posts nothing. */
+export type CommandResponse = { responseType: CommandResponseType; text?: string; card?: BotCard; form?: AppForm; shareable?: false; nothingToReport?: true };
 
 export const COMMAND_LIMITS = { commands: 25, name: 32, description: 100, usageHint: 60, text: 4000, input: 2000 };
 const COMMAND_NAME = /^[a-z][a-z0-9_-]+$/;
@@ -33,7 +39,7 @@ function validateCommand(raw: unknown): { ok: true; command: BotCommand } | { ok
   const description = line(entry.description, COMMAND_LIMITS.description);
   if (!description) return { ok: false, message: `«/${name}» necesita una descripción.` };
   const usageHint = line(entry.usage_hint, COMMAND_LIMITS.usageHint);
-  return { ok: true, command: { command: name, description, ...(usageHint ? { usageHint } : {}) } };
+  return { ok: true, command: { command: name, description, ...(usageHint ? { usageHint } : {}), ...(entry.schedulable === true ? { schedulable: true as const } : {}), ...(entry.shareable === false ? { shareable: false as const } : {}) } };
 }
 
 /** The body of `PUT /api/bots/commands`: the whole list, which replaces the app's previous one. */
@@ -68,7 +74,7 @@ export function validateCommandResponse(raw: unknown): { ok: true; response: Com
     card = checked.card;
   }
   if (!text && !card) return { ok: false, message: 'La respuesta lleva «text» o «card».' };
-  return { ok: true, response: { responseType, ...(text ? { text } : {}), ...(card ? { card } : {}), ...(body.shareable === false ? { shareable: false as const } : {}) } };
+  return { ok: true, response: { responseType, ...(text ? { text } : {}), ...(card ? { card } : {}), ...(body.shareable === false ? { shareable: false as const } : {}), ...(body.nothing_to_report === true ? { nothingToReport: true as const } : {}) } };
 }
 
 /**

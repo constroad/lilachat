@@ -8,6 +8,7 @@ import { defaultMediaUploader } from './localMediaUploader.js';
 import { requireSession } from './requireSession.js';
 import { ondaValida } from './ondaDeVoz.js';
 import { toClientMessage } from './messageView.js';
+import { botsHearMessage } from './bots/botTriggers.js';
 
 /**
  * Subir un archivo y publicarlo como mensaje, en UN request.
@@ -115,6 +116,8 @@ export function buildMediaRouter(uploader: MediaUploader = defaultMediaUploader(
        * se repartió cuando se creó de verdad.
        */
       if (!result.duplicate) await publicarMensaje(result.message, result.members);
+      // A voucher sent to an app (pending 90): it hears the file by a signed address. Never awaited by who sent it.
+      if (!result.duplicate) void botsHearMessage(result.message, result.members ?? []).catch((error) => console.error('[bots] no se pudo avisar el archivo:', error?.message ?? error));
 
       // En la forma del socket (URLs absolutas): la app pinta el mensaje
       // confirmado con esto, sin esperar el `msg.new` (auditoría 19/10).

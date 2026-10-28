@@ -1,6 +1,6 @@
 import { ensureFunAllowed, NudgeError } from './zumbido.js';
 import { botsAmong } from './bots/botRegistry.js';
-import { botsHearMessage } from './bots/botTriggers.js';
+import { botsHearDelete, botsHearEdit, botsHearMessage } from './bots/botTriggers.js';
 import type { Server as HttpServer } from 'node:http';
 import { Types } from 'mongoose';
 import { Server as SocketServer, type Socket } from 'socket.io';
@@ -378,6 +378,8 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
           if (resultado.hilo) io.to(userRoom(member)).emit('msg.hilo', { chatId: String(resultado.message.chatId), raiz: resultado.message.hiloDe, hilo: resultado.hilo });
         }
         ack?.({ ok: true });
+        // The app that heard it learns it is gone (pending 87b), after the ack: a slow webhook holds nothing.
+        void botsHearDelete(resultado.previous, members, new Types.ObjectId(userId)).catch((error) => console.error('[bots] no se pudo avisar el borrado:', error?.message ?? error));
       } catch (error) {
         console.error('[chat] no se pudo eliminar:', (error as Error).message);
         ack?.({ ok: false, motivo: 'No se pudo eliminar.' });
@@ -408,10 +410,13 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
           body: resultado.message.body,
           editedAt: resultado.message.editedAt,
         };
-        for (const member of await chatMemberIds(resultado.message.chatId)) {
+        const members = await chatMemberIds(resultado.message.chatId);
+        for (const member of members) {
           io.to(userRoom(member)).emit('msg.edited', editado);
         }
         ack?.({ ok: true, editedAt: editado.editedAt });
+        // «Mejor a las 05:00»: the app that heard it (or that the new text names) hears the change (pending 87b).
+        void botsHearEdit(resultado.message, resultado.previous, members).catch((error) => console.error('[bots] no se pudo avisar la edición:', error?.message ?? error));
       } catch (error) {
         console.error('[chat] no se pudo editar:', (error as Error).message);
         ack?.({ ok: false, motivo: 'No se pudo editar.' });

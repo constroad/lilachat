@@ -299,7 +299,7 @@ export async function deleteMessage(params: {
   chatId: string;
   seq: number;
   userId: Types.ObjectId;
-}): Promise<{ ok: true; message: Message; hilo?: ResumenDeHilo } | { ok: false; motivo: string }> {
+}): Promise<{ ok: true; message: Message; previous: Message; hilo?: ResumenDeHilo } | { ok: false; motivo: string }> {
   // La membresía primero: sin esto se podría sondear si un `seq` existe en un
   // chat ajeno por la diferencia entre «no permitido» y «no existe».
   const chat = await ChatModel.findOne({
@@ -332,7 +332,7 @@ export async function deleteMessage(params: {
   const hilo = actualizado?.hiloDe ? await descontarRespuesta(actualizado.chatId, actualizado.hiloDe) : null;
 
   return actualizado
-    ? { ok: true, message: actualizado, ...(hilo ? { hilo } : {}) }
+    ? { ok: true, message: actualizado, previous: mensaje, ...(hilo ? { hilo } : {}) }
     : { ok: false, motivo: 'No se pudo eliminar.' };
 }
 
@@ -347,7 +347,7 @@ export async function editMessage(params: {
   seq: number;
   userId: Types.ObjectId;
   body: string;
-}): Promise<{ ok: true; message: Message } | { ok: false; motivo: string }> {
+}): Promise<{ ok: true; message: Message; previous: Message } | { ok: false; motivo: string }> {
   const chat = await ChatModel.findOne({ _id: params.chatId, 'members.userId': params.userId })
     .select('encrypted')
     .lean<{ encrypted?: boolean } | null>();
@@ -377,7 +377,7 @@ export async function editMessage(params: {
     { $set: { body, editedAt: new Date() }, $unset: { menciones: 1 } },
     { returnDocument: 'after' }
   ).lean<Message | null>();
-  return actualizado ? { ok: true, message: actualizado } : { ok: false, motivo: 'No se pudo editar.' };
+  return actualizado ? { ok: true, message: actualizado, previous: mensaje } : { ok: false, motivo: 'No se pudo editar.' };
 }
 
 /**

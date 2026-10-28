@@ -36,7 +36,11 @@ export type AppManifest = {
 };
 
 /** The scopes an app may ask for, with what the admin reads when installing. */
-export const APP_SCOPES = { 'users:read.email': 'Ver el correo de quien la usa, si lo verificó en Lilachat' } as const;
+export const APP_SCOPES = {
+  'users:read.email': 'Ver el correo de quien la usa, si lo verificó en Lilachat',
+  // Like Slack's channels:history (pending 87): without it the app hears only its 1:1 and what names it.
+  'channels:history': 'Leer los mensajes de los canales y grupos donde está, aunque no la mencionen',
+} as const;
 export type AppScope = keyof typeof APP_SCOPES;
 const isScope = (value: unknown): value is AppScope => typeof value === 'string' && value in APP_SCOPES;
 

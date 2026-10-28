@@ -240,7 +240,7 @@ Lilachat hace `POST webhook_url` con:
 
 | Cabecera | Valor |
 | --- | --- |
-| `X-Lilachat-Event` | `message.created` · `button.click` · `checklist.item.toggled` · `app.uninstalled` · `command.invoked` |
+| `X-Lilachat-Event` | `message.created` · `message.edited` · `message.deleted` · `button.click` · `checklist.item.toggled` · `app.uninstalled` · `command.invoked` |
 | `X-Lilachat-Delivery` | uuid; **el mismo en los reintentos** (para deduplicar) |
 | `X-Lilachat-Installation` | el `installation_id`: con él se busca el `signing_secret` antes de leer el cuerpo |
 | `X-Lilachat-Timestamp` | milisegundos |
@@ -260,8 +260,9 @@ Cuerpo:
 ```
 
 - **`message.created`**: los mensajes de un 1:1 con el bot, y los de un canal o
-  grupo donde está el bot que lo mencionan (`@Lila`). Nunca los del propio
-  bot.
+  grupo donde está el bot que lo mencionan (`@Lila`), o todos con
+  `channels:history` (§c-novendecies). Nunca los del propio bot. Con un archivo,
+  `message.files`.
   `data: { channel: { id, kind: "channel" | "group" | "direct", name? },
   message: { id, seq, text, thread_of?, mentions_bot }, author: { id, name,
   phone } }`
@@ -521,6 +522,26 @@ la app de ESA instalación, por su webhook y con la firma de `command.invoked`.
   miembro, solo su propia cuenta).
 - Sin conectar dice «<app> te lo pide la primera vez que la usas»: conectar
   sigue siendo el formulario «Conecta tu cuenta» que trae el rechazo de la app.
+
+## c-novendecies) Escuchar el canal, ediciones, borrados y archivos (28/10/2026, solo servidor)
+
+Para el pedido conversacional (pendiente 87) y los vouchers (pendiente 90).
+
+- **`scopes: ["channels:history"]`** en el manifiesto. Al instalar, el admin lee «Leer los
+  mensajes de los canales y grupos donde está, aunque no la mencionen». Con el permiso
+  aceptado, `message.created` llega por TODO mensaje de los canales y grupos donde la app es
+  miembro, con `mentions_bot: false` cuando no la nombran. Una instalación vieja sigue sin él
+  hasta que un admin toque «Reinstalar» (§c-octies).
+- **`message.edited`**: `data: { channel, message: { id, seq, text, thread_of?, mentions_bot,
+  previous_text? }, author }`. Llega si la app escucha el texto nuevo o escuchó el original.
+  `previous_text` viene solo si escuchó el original.
+- **`message.deleted`**: `data: { channel, message: { id, seq, thread_of? }, by: { id, name,
+  phone } }`. Solo si la app lo escuchó. No trae el texto: ya no existe.
+- **Archivos en `message.created`**: `message.files: [{ url, mime, name, size? }]` para fotos,
+  documentos y notas de voz (no stickers ni videos). `text` puede venir vacío: una foto sin
+  texto también llega. La `url` es `https://lilachat.constroad.com/api/bots/files/<token>`,
+  vale 15 minutos y responde 410 al vencer y 404 si el mensaje se borró. Bajarlo al llegar.
+- Responder en el hilo del mensaje sigue igual: `thread_of` en `POST /api/bots/messages`.
 
 ## c-octodecies) Fotos: una sola regla, la de Portal (28/10/2026, servidor + OTA + web)
 

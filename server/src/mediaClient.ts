@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { buildMediaPath, buildStorageName, type MediaKind } from '@lilachat/shared';
-import { MEDIA_PREFIX, ownMediaBase } from './mediaDisk.js';
+import { MEDIA_PREFIX, ownMediaBase, readOwnMedia } from './mediaDisk.js';
 
 /**
  * Subida al storage de lila. Contrato copiado del código VIVO
@@ -128,4 +128,14 @@ export function toAbsoluteMediaUrl(relativeUrl: string): string {
     console.error('[media] falta LILA_PUBLIC_URL: las imágenes no van a cargar en el cliente');
   }
   return `${base}${relativeUrl}`;
+}
+
+const READ_TIMEOUT_MS = 30_000;
+
+/** A chat file's bytes: ours from the disk (pending 82), lila's through the internet; null when it cannot be read. */
+export async function readMediaBytes(url: string): Promise<Buffer | null> {
+  const own = await readOwnMedia(url);
+  if (own) return own;
+  const upstream = await fetch(toAbsoluteMediaUrl(url), { signal: AbortSignal.timeout(READ_TIMEOUT_MS) }).catch(() => null);
+  return upstream?.ok ? Buffer.from(await upstream.arrayBuffer()) : null;
 }

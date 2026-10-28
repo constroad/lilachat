@@ -8,15 +8,15 @@ import { BotInstallationModel } from './botModels.js';
  * removed. One server process (the mini); with more, each forgets on its own
  * install or removal and reloads within `RELOAD_MS`.
  */
-export type BotOfUser = { installationId: Types.ObjectId; appId: Types.ObjectId; workspaceId: Types.ObjectId; botUserId: Types.ObjectId };
+export type BotOfUser = { installationId: Types.ObjectId; appId: Types.ObjectId; workspaceId: Types.ObjectId; botUserId: Types.ObjectId; /** What the admin accepted when installing (`channels:history`: it hears the whole channel). */ scopes: readonly string[] };
 
 const RELOAD_MS = 10 * 60_000;
 let cache: { byUser: Map<string, BotOfUser>; loadedAt: number } | null = null;
 
 async function load(): Promise<Map<string, BotOfUser>> {
   if (cache && Date.now() - cache.loadedAt < RELOAD_MS) return cache.byUser;
-  const active = await BotInstallationModel.find({ revokedAt: { $exists: false } }).select('_id appId workspaceId botUserId').lean();
-  const byUser = new Map(active.map((one) => [String(one.botUserId), { installationId: one._id, appId: one.appId, workspaceId: one.workspaceId, botUserId: one.botUserId }]));
+  const active = await BotInstallationModel.find({ revokedAt: { $exists: false } }).select('_id appId workspaceId botUserId grantedScopes').lean();
+  const byUser = new Map(active.map((one) => [String(one.botUserId), { installationId: one._id, appId: one.appId, workspaceId: one.workspaceId, botUserId: one.botUserId, scopes: one.grantedScopes ?? [] }]));
   cache = { byUser, loadedAt: Date.now() };
   return byUser;
 }

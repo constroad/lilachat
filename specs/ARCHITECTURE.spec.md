@@ -4911,6 +4911,44 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 149. Las apps escuchan el canal, las ediciones, los borrados y los archivos (28/10/2026, solo servidor; pendientes 87 y 90)
+
+**Pedido.** 87 (José, 23/10): Inframaq tiene que entender el anuncio de producción que alguien
+escribe en «INFRAMAQ admin» sin nombrarla, y enterarse si después cambian la hora o lo borran.
+90: los vouchers, recibos y facturas que se mandan a la app tienen que llegarle. El cerebro es
+de agentes; esto es lo que le toca a Lilachat.
+
+- **Permiso `channels:history`** (`shared/src/botManifest.ts`, como el de Slack). El admin lo
+  acepta al instalar: «Leer los mensajes de los canales y grupos donde está, aunque no la
+  mencionen». Con él, la app recibe `message.created` de TODO mensaje de los canales y grupos
+  donde es miembro, con `mentions_bot: false`. Sin él, sigue igual: su 1:1 y lo que la nombra.
+  Una regla pura decide quién escucha (`botHears`), y el registro de bots en memoria guarda los
+  permisos aceptados de cada instalación.
+- **`message.edited`** a la app que escucha el texto nuevo o escuchó el original. Lleva
+  `previous_text` solo si escuchó el original: una app que recién la nombran no lee lo que no
+  le correspondía. **`message.deleted`** a la app que lo escuchó, con quién lo borró y sin
+  contenido. Los dos salen después del ack, sin hacer esperar a nadie. `editMessage` y
+  `deleteMessage` devuelven además el mensaje como estaba (`previous`).
+- **Archivos** (`files: [{ url, mime, name, size? }]` en `message.created`): fotos, documentos y
+  notas de voz. Ni stickers ni videos. La dirección es la misma de las fotos de los
+  formularios (`/api/bots/files/<token>`, 15 minutos, un solo host), ahora de dos clases: la
+  firma vive en `bots/botFiles.ts` y `m-<id del mensaje>` apunta al archivo del chat. Un
+  mensaje borrado deja de servirse aunque la dirección no haya vencido. Un archivo sin texto
+  también llega (antes se descartaba por no tener `body`).
+- **El archivo llegaba solo por el socket.** Las fotos y documentos se suben por
+  `POST /api/media`, que no avisaba a las apps: ahora llama al mismo `botsHearMessage`.
+- **Leer el archivo, en el disco propio o en lila** (`readMediaBytes`, `mediaClient.ts`).
+  Antes la dirección firmada leía solo el disco propio: con los medios todavía en lila, la foto
+  de un formulario daba 404.
+- **Menos consultas.** El nombre de los bots del chat se lee en una sola consulta, no una por bot.
+
+**Tests:** `bots/botListening.test.ts` (10): quién escucha con y sin el permiso, `thread_of`,
+edición con y sin el texto anterior, borrado sin contenido, archivos por kind, voucher subido al
+1:1 que llega y se sirve, y archivo borrado que deja de servirse. Suite del server: 1033 en verde.
+
+**E2E:** pendiente de que agentes pida `channels:history` en el manifiesto de Inframaq y un
+admin reinstale (el detalle muestra «Esta app pide permisos nuevos»).
+
 ## 148. Videollamada: mi cámara vuelve a verse (28/10/2026, OTA; pendiente 105a)
 
 **(a) No aparecía el recuadro con mi cámara** (José, 28/10, llamada con Lila). En Android cada
@@ -12467,7 +12505,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     los vouchers y solo pida confirmar, con cola y trabajo en paralelo.
 86. ~~**El «1» de Personal sin no leídos en la lista**~~ **Hecho (§121, 0.1.157).**
     (José, 23/10, con captura): la copia de chats de `TabsShell` solo sumaba.
-87. **Pedido conversacional: la app entiende el anuncio de producción** (José,
+87. **Lo de Lilachat, hecho en §149 (`channels:history`, `message.edited` y `message.deleted`); el resto es de agentes.** **Pedido conversacional: la app entiende el anuncio de producción** (José,
     23/10, con captura del grupo «INFRAMAQ admin»). Alguien escribe libre
     «tenemos producción en INFRAMAQ sábado 24-10, 03:00, 480 m³, cliente…».
     La app responde EN UN HILO: «Entiendo que habrá producción, ¿creo el
@@ -12497,7 +12535,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     `x-input: photo | location`); el envío es la confirmación de la persona
     (`form.submitted` → la herramienta con `confirmed_by`). Agentes pasa los
     nombres y campos reales antes de construir. Diseño en Stitch primero. R160.
-90. **Adjuntos hacia la app** (vouchers, recibos, facturas, boletas):
+90. ✅ **Hecho (§149).** **Adjuntos hacia la app** (vouchers, recibos, facturas, boletas):
     `message.created` con `files: [{ url, mime, name, size }]`, URL firmada de
     15 minutos en `https://lilachat.constroad.com/api/bots/files/<token>`. R160.
 91. ~~**«Quitar del canal» para una app**~~ — hecho en 0.1.161 (§125). (José, 23/10): hoy solo se saca como a
@@ -12513,7 +12551,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     ingreso, la cámara frontal abre en vivo dentro del formulario. «Marcar»
     toma la foto, le estampa fecha, hora y ubicación (marca de agua en el
     píxel) y registra. APK y web. R162.
-95. **Vincular la cuenta del producto, como Slack con Bitbucket** (José lo
+95. ✅ **Hecho (§126 y §129).** **Vincular la cuenta del producto, como Slack con Bitbucket** (José lo
     aprobó el 23/10, por agentes). Primero el vínculo automático: el teléfono
     verificado y, si existe, el correo verificado (`user.email`, solo con
     `users:read.email` en el manifiesto). Si no coincide, la app manda una

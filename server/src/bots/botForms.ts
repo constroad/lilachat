@@ -1,11 +1,8 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
 import mongoose, { Types, type Model } from 'mongoose';
 import { formFields, isAckBody, photoStampLines, validateFormReply, validateFormValues, type CommandOutcome, type CommandScope, type FormField, type FormValues, type GeoPoint } from '@lilachat/shared';
-import { ChatModel } from '../chatModels.js';
-import type { UploadOutcome } from '../mediaClient.js';
-import { readOwnMedia, ownMediaBase } from '../mediaDisk.js';
+import { ChatModel, MessageModel } from '../chatModels.js';
+import { readMediaBytes, type UploadOutcome } from '../mediaClient.js';
 import { defaultMediaUploader } from '../localMediaUploader.js';
-import { resolveJwtSecret } from '../sessions.js';
 import { callBotWebhook, isRestarting, recordLastDelivery } from './botEvents.js';
 import { expectLateAnswer } from './lateAnswers.js';
 import { commandAnswerTimeout, deliverResponse, recordRunFailure, restartingMessage, type Base, type ChatOfCommand, type CommandError } from './botCommands.js';
@@ -13,6 +10,7 @@ import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botMode
 import { channelOf, personOf } from './botTriggers.js';
 import { shrinkPhotoBuffer } from '../photoShrink.js';
 import { stampPhoto } from './photoStamp.js';
+import { signedFormFileUrl, verifyFileToken } from './botFiles.js';
 
 /**
  * App forms (R160, `specs/BOTS-API.spec.md` §c-ter; José, 23/10: mark
@@ -37,7 +35,6 @@ const fileSchema = new mongoose.Schema<FormFile>(
 fileSchema.index({ createdAt: 1 }, { expireAfterSeconds: 24 * 60 * 60 });
 export const FormFileModel: Model<FormFile> = (mongoose.models.FormFile as Model<FormFile>) ?? mongoose.model<FormFile>('FormFile', fileSchema);
 
-const SIGNED_TTL_MS = 15 * 60_000;
 /** The photos a form takes (agentes: JPEG, PNG, WEBP or HEIC, up to 10 MB). */
 export const FORM_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
 export const FORM_PHOTO_MAX_BYTES = 10 * 1024 * 1024;
@@ -46,7 +43,7 @@ const fail = (status: CommandError['status'] | 422, error: string, message: stri
 
 type Upload = (params: { chatId: string; fileName: string; mimeType: string; bytes: Buffer }) => Promise<UploadOutcome>;
 let upload: Upload = (params) => defaultMediaUploader().upload({ ...params, kind: 'image' });
-let read: (url: string) => Promise<Buffer | null> = readOwnMedia;
+let read: (url: string) => Promise<Buffer | null> = readMediaBytes;
 
 /** Tests keep the photos in memory. */
 export function configureFormFiles(deps: { upload?: Upload; read?: (url: string) => Promise<Buffer | null> }): void {
@@ -54,26 +51,15 @@ export function configureFormFiles(deps: { upload?: Upload; read?: (url: string)
   if (deps.read) read = deps.read;
 }
 
-const signingKey = () => createHmac('sha256', resolveJwtSecret()).update('lilachat:bot-files').digest();
-const signatureOf = (payload: string) => createHmac('sha256', signingKey()).update(payload).digest('base64url');
-
-/** `https://<host>/api/bots/files/<payload>.<signature>`, valid 15 minutes. */
-export function signedFileUrl(fileId: Types.ObjectId | string, now = Date.now()): string {
-  const payload = Buffer.from(`${fileId}:${now + SIGNED_TTL_MS}`).toString('base64url');
-  return `${ownMediaBase()}/api/bots/files/${payload}.${signatureOf(payload)}`;
-}
-
-/** The file behind a signed address: 404 for a bad one, 410 once it expired. */
+/** The file behind a signed address (`botFiles.ts`): a form's photo or a chat file not deleted since; 404 for a bad one, 410 once it expired. */
 export async function readSignedFile(token: string): Promise<{ bytes: Buffer; mime: string } | { status: 404 | 410 }> {
-  const [payload = '', signature = ''] = token.split('.');
-  const expected = signatureOf(payload);
-  if (!signature || signature.length !== expected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return { status: 404 };
-  const [fileId, expires] = Buffer.from(payload, 'base64url').toString('utf8').split(':');
-  if (!isId(fileId)) return { status: 404 };
-  if (Number(expires) < Date.now()) return { status: 410 };
-  const file = await FormFileModel.findById(fileId).lean();
-  const bytes = file ? await read(file.url) : null;
-  return file && bytes ? { bytes, mime: file.mime } : { status: 404 };
+  const signed = verifyFileToken(token);
+  if ('status' in signed) return signed;
+  const file = signed.kind === 'form'
+    ? await FormFileModel.findById(signed.id).select('url mime').lean()
+    : (await MessageModel.findOne({ _id: signed.id, deletedAt: { $exists: false } }).select('media').lean())?.media;
+  const bytes = file?.url ? await read(file.url) : null;
+  return file && bytes ? { bytes, mime: file.mime ?? 'application/octet-stream' } : { status: 404 };
 }
 
 /** The asker's open form, or why not: in its chat, or in the space when it came from the ⚡. */
@@ -131,7 +117,7 @@ export async function storeFormPhoto(userId: Types.ObjectId, scope: CommandScope
 /** A photo field carries the id of a photo of THIS form; it goes to the app as its signed address. */
 async function withSignedPhotos(runId: Types.ObjectId, fields: readonly FormField[], raw: Record<string, unknown>): Promise<Record<string, unknown>> {
   const values = { ...raw };
-  const signed = async (fileId: unknown) => (isId(fileId) && (await FormFileModel.exists({ _id: fileId, runId })) ? signedFileUrl(String(fileId)) : null);
+  const signed = async (fileId: unknown) => (isId(fileId) && (await FormFileModel.exists({ _id: fileId, runId })) ? signedFormFileUrl(String(fileId)) : null);
   for (const field of fields) {
     const raw = values[field.name];
     // A list's items (28/10): each item's photos signed the same way.

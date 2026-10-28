@@ -30,7 +30,7 @@ const stubCommands = (overrides: Partial<ChatCommands> = {}): ChatCommands => ({
 });
 
 const composer = (commands: ChatCommands, onSend = vi.fn()) =>
-  render(<Composer chatId="c1" onSend={onSend} onCreateEvent={() => undefined} onCreatePoll={() => undefined} onElegirArchivos={() => undefined} commands={commands} />);
+  render(<Composer onSend={onSend} onCreateEvent={() => undefined} onCreatePoll={() => undefined} onElegirArchivos={() => undefined} commands={commands} />);
 
 describe('CommandPanel (design e-20)', () => {
   it('groups the commands by app; the active one shows its example and Enter', () => {

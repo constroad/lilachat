@@ -1,6 +1,6 @@
 import { useRef, type ReactNode } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { itemPath, newItem, visibleFields, type FormField, type FormValues, type ItemField } from '@lilachat/shared';
+import { formRows, itemPath, newItem, visibleFields, type FormField, type FormValues, type ItemField } from '@lilachat/shared';
 import { FieldError } from '../../ui/Overlay';
 import { Label } from './AppFormFields';
 
@@ -54,7 +54,10 @@ export function ListField({ field, value, errors, onChange, renderField }: Props
                   </button>
                 ) : null}
               </div>
-              {visibleFields(field.fields, item).map((child) => renderField(child, item[child.name], errors[itemPath(field.name, index, child.name)], setCell(index, child.name), `${keys.current[index]}-${child.name}`))}
+              {formRows(visibleFields(field.fields, item)).map((row) => {
+                const cells = row.map((child) => renderField(child, item[child.name], errors[itemPath(field.name, index, child.name)], setCell(index, child.name), `${keys.current[index]}-${child.name}`));
+                return row.length === 2 ? <div key={row[0]!.name} data-row="2" className="grid grid-cols-2 items-start gap-3">{cells}</div> : cells;
+              })}
             </div>
           ))}
         </div>

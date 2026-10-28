@@ -52,6 +52,7 @@ describe('a list in the web form (José and agentes, 28/10)', () => {
     // Arrange
     const onSubmit = draw(answerWith(trucks, ['despachos']));
     // Act
+    screen.getByTestId('campo-despachos-0-m3').focus();
     type('campo-despachos-0-m3', '0');
     fireEvent.click(screen.getByTestId('btn-enviar-formulario'));
     // Assert
@@ -59,6 +60,8 @@ describe('a list in the web form (José and agentes, 28/10)', () => {
     expect(screen.getByTestId('campo-despachos-0-m3').getAttribute('aria-invalid')).toBe('true');
     expect(screen.queryByTestId('quitar-despachos-0')).toBeNull();
     expect(onSubmit).not.toHaveBeenCalled();
+    // The input that had the keyboard lets go, so the phone does not pull the dialog back to it.
+    expect(document.activeElement).not.toBe(screen.getByTestId('campo-despachos-0-m3'));
     fireEvent.click(screen.getByTestId('agregar-despachos'));
     fireEvent.click(screen.getByTestId('agregar-despachos'));
     expect(screen.queryByTestId('agregar-despachos')).toBeNull();
@@ -78,5 +81,37 @@ describe('a list in the web form (José and agentes, 28/10)', () => {
     expect(screen.getAllByTestId('campo-detalle')).toHaveLength(1);
     await vi.waitFor(() => expect(screen.getByTestId('item-items-1').textContent).toContain('Ese producto no existe.'));
     expect(onSubmit).toHaveBeenCalledWith({ items: [{ producto: 'mezcla' }, { producto: 'otro', detalle: 'Imprimante' }] });
+  });
+});
+
+describe('two short fields share a row (José, 28/10: «se generan sábanas de formularios»)', () => {
+  const cellOf = (name: string) => document.querySelector(`[data-field="${name}"]`)!;
+
+  it('the amount beside the day; the description keeps its own row', () => {
+    // Arrange
+    const expense: Record<string, FormSchemaProperty> = {
+      monto: { type: 'number', title: 'Monto', 'x-unit': 'S/' },
+      fecha: { type: 'string', format: 'date', title: 'Fecha' },
+      descripcion: { type: 'string', title: 'Descripción', maxLength: 300 },
+    };
+    // Act
+    draw(answerWith(expense, ['monto']));
+    // Assert
+    expect(cellOf('monto').parentElement).toBe(cellOf('fecha').parentElement);
+    expect(cellOf('monto').parentElement!.getAttribute('data-row')).toBe('2');
+    expect(cellOf('descripcion').parentElement).not.toBe(cellOf('monto').parentElement);
+  });
+
+  it('inside a product card, the quantity beside the price', () => {
+    // Arrange
+    const quote: Record<string, FormSchemaProperty> = {
+      items: { type: 'array', title: 'Productos', minItems: 1, items: { type: 'object', properties: { producto: { type: 'string', enum: ['mezcla', 'otro'] }, cantidad: { type: 'number', title: 'Cantidad' }, precio: { type: 'number', title: 'Precio', 'x-unit': 'S/' } } } },
+    };
+    // Act
+    draw(answerWith(quote, ['items']));
+    // Assert
+    const quantity = screen.getByTestId('campo-cantidad').closest('[data-row]');
+    expect(quantity?.getAttribute('data-row')).toBe('2');
+    expect(quantity?.contains(screen.getByTestId('campo-precio'))).toBe(true);
   });
 });

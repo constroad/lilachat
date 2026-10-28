@@ -41,14 +41,18 @@ export type FormSchemaProperty = {
   oneOf?: { const?: unknown; title?: string; description?: string }[];
   /** Shown only when another field has one of these answers: `{ "accion": ["salida"] }` (R161). */
   'x-visible-if'?: Record<string, unknown[]>;
+  /** Half a row beside another short field, or the whole row (José, 28/10: forms were a field per row). Without it, `formRows` decides. */
+  'x-width'?: FieldWidth;
 };
+/** How much of a row a field takes: half beside another, or all of it. */
+export type FieldWidth = 'half' | 'full';
 export type FormSchema = { type?: string; description?: string; properties?: Record<string, FormSchemaProperty>; required?: string[] };
 export type AppForm = { id: string; title: string; submitLabel?: string; /** The schema's `description`: a line under the title. */ intro?: string; schema: FormSchema };
 
 /** An option of a choice; `sub` is the line under it in a long list (the person's role). */
 export type ChoiceOption = { value: string; label: string; sub?: string };
 
-type Base = { name: string; label: string; help?: string; required: boolean; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number };
+type Base = { name: string; label: string; help?: string; required: boolean; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number };
 export type FormField =
   | (Base & { kind: 'choice'; options: ChoiceOption[]; segmented: boolean; /** A long list (the company's people, agentes 24/10): a field that opens a sheet with a search. */ searchable: boolean })
   | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true })
@@ -177,7 +181,8 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
   const input = property['x-input'];
   if (input !== undefined && !INPUTS.includes(input)) return `El campo «${name}» pide x-input «${input}», que Lilachat no sabe dibujar.`;
   const visibleIf = visibleIfOf(property['x-visible-if']);
-  const base: Base = { name, label: line(property.title, FORM_LIMITS.label) || labelOf(name), ...(property.description ? { help: line(property.description, FORM_LIMITS.help) } : {}), required, ...(visibleIf ? { visibleIf } : {}) };
+  const width = property['x-width'] === 'half' || property['x-width'] === 'full' ? property['x-width'] : undefined;
+  const base: Base = { name, label: line(property.title, FORM_LIMITS.label) || labelOf(name), ...(property.description ? { help: line(property.description, FORM_LIMITS.help) } : {}), required, ...(visibleIf ? { visibleIf } : {}), ...(width ? { width } : {}) };
   if (input === 'photo') return photoField(base, property);
   if (property.type === 'array' && input === undefined) return listField(base, property);
   if (input === 'location') return { ...base, kind: 'location' };

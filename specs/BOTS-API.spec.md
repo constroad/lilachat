@@ -522,6 +522,36 @@ la app de ESA instalación, por su webhook y con la firma de `command.invoked`.
 - Sin conectar dice «<app> te lo pide la primera vez que la usas»: conectar
   sigue siendo el formulario «Conecta tu cuenta» que trae el rechazo de la app.
 
+## c-quindecies) Dos campos por fila: `x-width` (28/10/2026, OTA + web)
+
+José, 28/10: «cada input ocupa una fila entera y se generan sábanas». Desde
+ahora Lilachat pone **dos campos cortos en la misma fila**, en el orden del
+schema. La regla es pura y compartida (`shared/src/appFormRows.ts`,
+`formRows`): la usan la hoja de la app, el diálogo de la web y las tarjetas
+de una lista.
+
+**Cortos sin marcar nada:** `number`/`integer`, `format: date`,
+`format: time` y un texto de una línea con `maxLength` ≤ 24. Dos cortos
+seguidos comparten la fila; un tercero empieza la siguiente.
+
+**La app decide con `x-width`:**
+- `"x-width": "half"`: un campo que Lilachat no emparejaría solo (una lista
+  de opciones con nombres cortos, un texto de 60 que en la práctica es una
+  placa) va al lado de otro corto.
+- `"x-width": "full"`: un número o una fecha que debe ir solo.
+- Otro valor se ignora.
+
+**Siempre a lo ancho, diga lo que diga la app:** una lista, una ubicación,
+una foto (también la selfie de una firma), un texto largo, un código o PIN y
+un `date-time` (ya son dos casillas, día y hora).
+
+**Se emparejan los campos que SE VEN:** uno oculto por `x-visible-if` entre
+dos cortos no los separa.
+
+El orden manda: para que «Fecha» y «Hora» compartan fila, van seguidas en
+`properties`. Un cliente viejo ignora `x-width` y dibuja un campo por fila;
+por eso no sube el nivel de `forms`.
+
 ## c-quaterdecies) Listas de ítems, fotos de la galería y límites exclusivos (28/10/2026, OTA + web + servidor)
 
 José, 28/10: el pedido se carga con **filas**: «N.º de carros» y al lado «m³

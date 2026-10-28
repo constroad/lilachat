@@ -30,7 +30,7 @@ const stubCommands = (overrides: Partial<ChatCommands> = {}): ChatCommands => ({
 });
 
 const composer = (commands: ChatCommands, onSend = vi.fn()) =>
-  render(<Composer onSend={onSend} onCreateEvent={() => undefined} onCreatePoll={() => undefined} onElegirArchivos={() => undefined} commands={commands} />);
+  render(<Composer chatId="c1" onSend={onSend} onCreateEvent={() => undefined} onCreatePoll={() => undefined} onElegirArchivos={() => undefined} commands={commands} />);
 
 describe('CommandPanel (design e-20)', () => {
   it('groups the commands by app; the active one shows its example and Enter', () => {
@@ -85,6 +85,16 @@ describe('EphemeralAnswers', () => {
     expect(screen.getAllByTestId('btn-enviar-al-canal')).toHaveLength(1);
     expect(onShare).toHaveBeenCalledWith('c3');
     expect(await screen.findByText('La app no está en este canal.')).toBeInTheDocument();
+  });
+
+  it('a link in the answer opens (E2E 28/10: the quote\'s link could not be tapped)', () => {
+    // Arrange
+    const quote: EphemeralAnswer = { commandId: 'c4', appName: 'Portal', command: '', state: 'answered', response: { responseType: 'ephemeral', text: 'Cotización N° 20260064. Ábrela: https://constroad.com/admin/cotizar/editor/simple/6ae1f5774b5867096e4bf9b7' } };
+    // Act
+    render(<EphemeralAnswers answers={[quote]} onDismiss={() => undefined} chatId="c1" jwt="jwt" />);
+    // Assert
+    expect(screen.getByRole('link')).toHaveAttribute('href', 'https://constroad.com/admin/cotizar/editor/simple/6ae1f5774b5867096e4bf9b7');
+    expect(screen.getByText(/Cotización N° 20260064/)).toBeInTheDocument();
   });
 });
 

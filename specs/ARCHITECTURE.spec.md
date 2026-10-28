@@ -4911,6 +4911,42 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 141. Dos campos por fila, ir al error con el teclado abierto y enlaces en «Solo tú ves esto» (28/10/2026, OTA + web)
+
+**Pedido** (José, 28/10): «en los formularios cada input ocupa una fila
+entera y se generan sábanas; unidad, hora, m³ podrían ser una sola fila».
+
+**Dos por fila** (`shared/src/appFormRows.ts`, `formRows`):
+- Pura y compartida. Recibe los campos que se ven y devuelve filas de uno o
+  dos, en el orden del schema.
+- Cortos solos: número, día, hora y texto de una línea de hasta 24.
+- `x-width: half | full` de la app manda. Nunca a media fila: lista,
+  ubicación, foto, texto largo, código, PIN y día con hora.
+- App (`AppFormSheet`): la fila es un `flex-row` con `ROW_GAP` 12; cada celda
+  `flex: 1`. La fila escribe la posición de sus dos campos (para ir al error):
+  el `onLayout` de una celda daría la `y` dentro de la fila.
+- La casilla de fecha a media fila va `compacta` (`Casilla` de
+  `SelectorDeCuando`): el ícono sin su caja y el valor que se achica hasta
+  0,8 antes de cortarse.
+- Web (`AppFormDialog`): `grid grid-cols-2` con `data-row="2"`; cada celda
+  conserva su `data-field`.
+- Las tarjetas de una lista (los productos de la cotización) usan la misma
+  regla: «Cantidad» y «Precio unitario» comparten fila.
+
+**Ir al error con el teclado abierto** (E2E 28/10, B3: el error de «Fecha»
+quedó fuera de vista). El `ScrollView` de Android vuelve al input enfocado
+cada vez que cambia el tamaño. Ahora, con teclado, primero se cierra
+(`Keyboard.dismiss`) y se baja al campo en el `keyboardDidHide`. En la web
+se quita el foco del input antes del `scrollIntoView`.
+
+**Enlaces tocables en «Solo tú ves esto»** (E2E 28/10, C: el enlace de la
+cotización no se tocaba). App: `TextoConEnlaces`. Web: `LinkedText`
+(nuevo, `web/src/chat/LinkedText.tsx`), el mismo que usa la burbuja.
+
+**Pruebas:** `shared/src/appFormRows.test.ts` (8);
+`appFormDialog.lists.test.tsx` (+2 filas, +1 foco);
+`commands.test.tsx` (+1 enlace).
+
 ## 140. Listas en los formularios de las apps: filas de carros y tarjetas de productos (28/10/2026, OTA + web + servidor)
 
 **Pedido.** José, 28/10, viendo el E2E de «Crear un pedido»: en vez de «¿Hay carros de otra

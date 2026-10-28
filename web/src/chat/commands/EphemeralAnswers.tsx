@@ -4,6 +4,7 @@ import type { EphemeralAnswer } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { BotCardView } from '../BotCardView';
+import { LinkedText } from '../LinkedText';
 
 /**
  * What an app answered only to me (§c-bis), like Slack's «Only visible to
@@ -40,7 +41,7 @@ export function EphemeralAnswers(props: { answers: readonly EphemeralAnswer[]; o
               <ClipboardList size={14} /> Abrir «{answer.response?.form?.title}»
             </button>
           ) : null}
-          {answer.response?.text ? <p className="mt-1 whitespace-pre-wrap text-[14px] text-on-surface">{answer.response.text}</p> : null}
+          {answer.response?.text ? <p className="mt-1 whitespace-pre-wrap break-words text-[14px] text-on-surface"><LinkedText text={answer.response.text} own={false} /></p> : null}
           {answer.response?.card ? (
             <div className="mt-2">
               <BotCardView card={{ ...answer.response.card, actions: [] }} chatId={props.chatId} seq={0} jwt={props.jwt} />

@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { partirEnEnlaces, partirEnMenciones, recorteDeMensaje, textoDeMencion, type MencionEnMensaje } from '@lilachat/shared';
+import { partirEnMenciones, recorteDeMensaje, textoDeMencion } from '@lilachat/shared';
+import type { MencionEnMensaje } from '@lilachat/shared';
+import { LinkedText } from './LinkedText';
 
 /** Lo desplegado se recuerda por mensaje: la lista virtualizada desmonta las burbujas al scrollear. */
 const desplegados = new Set<string>();
@@ -35,7 +37,7 @@ export function TextoDelMensaje(props: {
             {textoDeMencion({ userId: tramo.userId, original: tramo.texto, nombres: props.nombres, yo: props.yo })}
           </span>
         ) : (
-          <TextoConEnlaces key={indice} texto={tramo.texto} mio={props.mio} />
+          <LinkedText key={indice} text={tramo.texto} own={props.mio} />
         )
       )}
       {recorte.recortado ? (
@@ -48,24 +50,3 @@ export function TextoDelMensaje(props: {
 }
 
 /** Links, correos y celulares tocables (motor compartido con la app). */
-function TextoConEnlaces({ texto, mio }: { texto: string; mio: boolean }) {
-  return (
-    <>
-      {partirEnEnlaces(texto).map((parte, indice) =>
-        parte.tipo === 'texto' ? (
-          <span key={indice}>{parte.texto}</span>
-        ) : (
-          <a
-            key={indice}
-            href={parte.destino}
-            target={parte.tipo === 'url' ? '_blank' : undefined}
-            rel="noopener noreferrer"
-            className={`underline underline-offset-2 ${mio ? '' : 'text-primary'}`}
-          >
-            {parte.texto}
-          </a>
-        )
-      )}
-    </>
-  );
-}

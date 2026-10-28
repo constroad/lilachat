@@ -6,6 +6,7 @@ import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { useColores } from '../../ui/tema';
 import { BotCardView } from '../BotCardView';
+import { TextoConEnlaces } from '../TextoConEnlaces';
 
 const APP_AVATAR = 24;
 /** The answers never take more than this share of the screen: the conversation stays in sight. */
@@ -51,7 +52,7 @@ export function EphemeralAnswers(props: { answers: readonly EphemeralAnswer[]; o
           ) : null}
           {answer.response?.text ? (
             <Text selectable className="mt-1 text-[15px] text-on-surface">
-              {answer.response.text}
+              <TextoConEnlaces texto={answer.response.text} />
             </Text>
           ) : null}
           {answer.response?.card ? (

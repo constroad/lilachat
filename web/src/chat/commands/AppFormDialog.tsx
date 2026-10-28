@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { evidenceLine, firstErrorField, formFields, initialValues, liveSelfieFieldOf, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint } from '@lilachat/shared';
+import { evidenceLine, firstErrorField, formFields, formRows, initialValues, liveSelfieFieldOf, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
@@ -43,7 +43,10 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
   const showErrors = (next: Record<string, string>) => {
     setErrors(next);
     const name = firstErrorField(visibleFields(fields, values).map((field) => field.name), next);
-    if (name) body.current?.querySelector(`[data-field="${name}"]`)?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+    if (!name) return;
+    // A phone's keyboard keeps the focused input in view and pulls the dialog back to it.
+    if (document.activeElement instanceof HTMLElement && body.current?.contains(document.activeElement)) document.activeElement.blur();
+    body.current?.querySelector(`[data-field="${name}"]`)?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
   };
   useEffect(() => {
     if (!props.answer.errors) return;
@@ -77,6 +80,20 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
       setMessage(outcome.errors._ ?? outcome.message ?? '');
     }
   };
+  const drawField = (field: FormField) =>
+    live && field.name === live.name ? (
+      <LiveSelfie key={field.name} ref={selfie} testId={`campo-${field.name}`} label={LIVE_PHOTO_KICKER} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={errors[field.name] ?? (locationName ? errors[locationName] : undefined)} />
+    ) : (
+      // In a signing the place shows inside the camera; its field keeps reading behind it.
+      <div key={field.name} data-field={field.name} hidden={Boolean(live) && field.kind === 'location'}>
+        {live && field.kind === 'choice' && field.segmented ? <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">{LIVE_CHOICE_KICKER}</p> : null}
+        {field.kind === 'list' ? (
+          <ListField field={field} value={values[field.name]} errors={errors} onChange={setList(field.name)} renderField={(child, value, error, onChange, key) => <Field key={key} field={child} value={value} error={error} onChange={onChange} upload={props.onUpload} />} />
+        ) : (
+          <Field field={field} value={values[field.name]} error={errors[field.name]} onChange={set(field.name)} upload={props.onUpload} />
+        )}
+      </div>
+    );
   const today = new Date();
   return (
     <Overlay
@@ -104,19 +121,14 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
             {props.personName ? <p className="mx-auto mt-2 w-fit rounded-lg border border-outline/15 px-3 py-1 text-[13px]">{props.personName}</p> : null}
           </div>
         ) : null}
-        {visibleFields(fields, values).map((field) =>
-          live && field.name === live.name ? (
-            <LiveSelfie key={field.name} ref={selfie} testId={`campo-${field.name}`} label={LIVE_PHOTO_KICKER} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={errors[field.name] ?? (locationName ? errors[locationName] : undefined)} />
-          ) : (
-            // In a signing the place shows inside the camera; its field keeps reading behind it.
-            <div key={field.name} data-field={field.name} hidden={Boolean(live) && field.kind === 'location'}>
-              {live && field.kind === 'choice' && field.segmented ? <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">{LIVE_CHOICE_KICKER}</p> : null}
-              {field.kind === 'list' ? (
-                <ListField field={field} value={values[field.name]} errors={errors} onChange={setList(field.name)} renderField={(child, value, error, onChange, key) => <Field key={key} field={child} value={value} error={error} onChange={onChange} upload={props.onUpload} />} />
-              ) : (
-                <Field field={field} value={values[field.name]} error={errors[field.name]} onChange={set(field.name)} upload={props.onUpload} />
-              )}
+        {/* Two short fields share a row (José, 28/10: a field per row made the forms a sheet). */}
+        {formRows(visibleFields(fields, values)).map((row) =>
+          row.length === 2 ? (
+            <div key={row[0]!.name} data-row="2" className="grid grid-cols-2 items-start gap-3">
+              {row.map(drawField)}
             </div>
+          ) : (
+            drawField(row[0]!)
           )
         )}
       </div>

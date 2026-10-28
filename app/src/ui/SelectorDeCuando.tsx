@@ -5,6 +5,9 @@ import { CalendarDays, Clock } from 'lucide-react-native';
 import { combinarFecha, opcionesRapidas } from '@lilachat/shared';
 import { useColores } from './tema';
 
+/** How far a compact box's value may shrink before it is cut. */
+const COMPACT_MIN_SCALE = 0.8;
+
 const DIA = new Intl.DateTimeFormat('es-PE', { weekday: 'short', day: 'numeric', month: 'short' });
 const TIME = new Intl.DateTimeFormat('es-PE', { hour: 'numeric', minute: '2-digit', hourCycle: 'h12' });
 
@@ -96,17 +99,18 @@ export function SelectorDeCuando({
 }
 
 /** A box that opens a picker and always shows what is chosen; `vacio` reads as a hint (the app's forms reuse it). */
-export function Casilla(props: { testID: string; icono: React.ReactNode; rotulo: string; valor: string; onPress: () => void; vacio?: boolean }) {
+/** `compacta`: half a row of a form (José, 28/10): the icon without its box, and the value shrinks a little before it is cut. */
+export function Casilla(props: { testID: string; icono: React.ReactNode; rotulo: string; valor: string; onPress: () => void; vacio?: boolean; compacta?: boolean }) {
   return (
     <Pressable
       testID={props.testID}
       onPress={props.onPress}
-      className="min-h-[60px] flex-1 flex-row items-center gap-3 rounded-xl bg-primary/[0.07] px-3 py-2"
+      className={`min-h-[60px] flex-1 flex-row items-center rounded-xl bg-primary/[0.07] py-2 ${props.compacta ? 'gap-2 px-2.5' : 'gap-3 px-3'}`}
     >
-      <View className="h-9 w-9 items-center justify-center rounded-lg bg-surface">{props.icono}</View>
+      {props.compacta ? props.icono : <View className="h-9 w-9 items-center justify-center rounded-lg bg-surface">{props.icono}</View>}
       <View className="min-w-0 flex-1">
         <Text className="text-[11px] text-on-surface-variant">{props.rotulo}</Text>
-        <Text className={`text-[15px] ${props.vacio ? 'text-on-surface-variant' : 'font-semibold text-on-surface'}`} numberOfLines={1}>
+        <Text className={`text-[15px] ${props.vacio ? 'text-on-surface-variant' : 'font-semibold text-on-surface'}`} numberOfLines={1} adjustsFontSizeToFit={props.compacta} minimumFontScale={COMPACT_MIN_SCALE}>
           {props.valor}
         </Text>
       </View>

@@ -1,13 +1,13 @@
 import { useRef, type ReactNode } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Plus, Trash2 } from 'lucide-react-native';
-import { itemPath, newItem, visibleFields, type FormField, type FormValues, type ItemField } from '@lilachat/shared';
+import { formRows, itemPath, newItem, visibleFields, type FormField, type FormValues, type ItemField } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { ErrorLine, Label } from './AppFormFields';
 
 type ListOfItems = Extract<FormField, { kind: 'list' }>;
 /** Draws one field of a card item with the sheet's own kit (choice, date, photos…). */
-export type RenderItemField = (field: ItemField, value: unknown, error: string | undefined, onChange: (value: unknown) => void, key: string) => ReactNode;
+export type RenderItemField = (field: ItemField, value: unknown, error: string | undefined, onChange: (value: unknown) => void, key: string, half: boolean) => ReactNode;
 type Props = {
   field: ListOfItems;
   value: unknown;
@@ -59,7 +59,16 @@ export function ListField({ field, value, errors, onChange, renderField }: Props
                   </Pressable>
                 ) : null}
               </View>
-              {visibleFields(field.fields, item).map((child) => renderField(child, item[child.name], errors[itemPath(field.name, index, child.name)], setCell(index, child.name), `${keys.current[index]}-${child.name}`))}
+              {formRows(visibleFields(field.fields, item)).map((row) => {
+                const cell = (child: ItemField, half: boolean) => renderField(child, item[child.name], errors[itemPath(field.name, index, child.name)], setCell(index, child.name), `${keys.current[index]}-${child.name}`, half);
+                return row.length === 2 ? (
+                  <View key={row[0]!.name} className="flex-row items-start gap-3">
+                    {row.map((child) => <View key={child.name} className="min-w-0 flex-1">{cell(child, true)}</View>)}
+                  </View>
+                ) : (
+                  cell(row[0]!, false)
+                );
+              })}
             </View>
           ))}
         </View>

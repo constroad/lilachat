@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { X } from 'lucide-react-native';
-import { evidenceLine, firstErrorField, formFields, initialValues, liveSelfieFieldOf, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint } from '@lilachat/shared';
+import { evidenceLine, firstErrorField, formFields, formRows, initialValues, liveSelfieFieldOf, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { Modal } from '../../ui/Modal';
@@ -24,6 +24,8 @@ const LIVE_PHOTO_KICKER = '2 · Tu foto y tu ubicación';
 const LIVE_FOOTER = 'Al tocar se toma la foto con la hora y el lugar, y se envía.';
 /** Room above a field the sheet scrolls to, so its title shows too. */
 const REVEAL_MARGIN = 12;
+/** Between the two fields of a row. */
+const ROW_GAP = 12;
 
 /**
  * An app's form as a sheet (R160, design e-28): the fields its schema says,
@@ -68,7 +70,16 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
     setErrors(next);
     const name = firstErrorField(visibleFields(fields, values).map((field) => field.name), next);
     const y = name ? positions.current[name] : undefined;
-    if (y !== undefined) scroll.current?.scrollTo({ y: Math.max(0, y - REVEAL_MARGIN), animated: true });
+    if (y === undefined) return;
+    const reveal = () => scroll.current?.scrollTo({ y: Math.max(0, y - REVEAL_MARGIN), animated: true });
+    if (!keyboard) return reveal();
+    // With the keyboard up, the scroll goes back to the focused input (E2E 28/10: «Fecha»'s error stayed out of sight):
+    // close it first, and go once the sheet has its height back.
+    const hidden = Keyboard.addListener('keyboardDidHide', () => {
+      hidden.remove();
+      requestAnimationFrame(reveal);
+    });
+    Keyboard.dismiss();
   };
   useEffect(() => {
     if (!props.answer.errors) return;
@@ -108,6 +119,27 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
       setMessage(outcome.errors._ ?? outcome.message ?? '');
     }
   };
+  /** One field; in a row of two (`half`) its position is the row's, written by the row. */
+  const drawField = (field: FormField, half: boolean) =>
+    live && field.name === live.name ? (
+      <LiveSelfie key={field.name} ref={selfie} testID={`campo-${field.name}`} label={LIVE_PHOTO_KICKER} width={sheetWidth - SHEET_PADDING * 2} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={errors[field.name] ?? (locationName ? errors[locationName] : undefined)} />
+    ) : (
+      // In a signing the place shows inside the camera; its field keeps reading behind it.
+      <View key={field.name} onLayout={half ? undefined : (event) => (positions.current[field.name] = event.nativeEvent.layout.y)} style={live && field.kind === 'location' ? { display: 'none' } : half ? { flex: 1, minWidth: 0 } : undefined}>
+        {live && field.kind === 'choice' && field.segmented ? <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{LIVE_CHOICE_KICKER}</Text> : null}
+        {field.kind === 'list' ? (
+          <ListField
+            field={field}
+            value={values[field.name]}
+            errors={errors}
+            onChange={setList(field.name)}
+            renderField={(child, value, error, onChange, key, half) => <Field key={key} field={child} value={value} error={error} onChange={onChange} upload={props.onUpload} width={sheetWidth - SHEET_PADDING * 4} half={half} />}
+          />
+        ) : (
+          <Field field={field} value={values[field.name]} error={errors[field.name]} onChange={set(field.name)} upload={props.onUpload} width={sheetWidth - SHEET_PADDING * 2} half={half} />
+        )}
+      </View>
+    );
   const now = new Date();
   return (
     <Modal visible transparent animationType="slide" onRequestClose={close}>
@@ -135,25 +167,14 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
                 {props.personName ? <Text className="mt-1 rounded-lg border border-outline/15 px-3 py-1 text-[14px] text-on-surface">{props.personName}</Text> : null}
               </View>
             ) : null}
-            {visibleFields(fields, values).map((field) =>
-              live && field.name === live.name ? (
-                <LiveSelfie key={field.name} ref={selfie} testID={`campo-${field.name}`} label={LIVE_PHOTO_KICKER} width={sheetWidth - SHEET_PADDING * 2} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={errors[field.name] ?? (locationName ? errors[locationName] : undefined)} />
-              ) : (
-                // In a signing the place shows inside the camera; its field keeps reading behind it.
-                <View key={field.name} onLayout={(event) => (positions.current[field.name] = event.nativeEvent.layout.y)} style={live && field.kind === 'location' ? { display: 'none' } : undefined}>
-                  {live && field.kind === 'choice' && field.segmented ? <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{LIVE_CHOICE_KICKER}</Text> : null}
-                  {field.kind === 'list' ? (
-                    <ListField
-                      field={field}
-                      value={values[field.name]}
-                      errors={errors}
-                      onChange={setList(field.name)}
-                      renderField={(child, value, error, onChange, key) => <Field key={key} field={child} value={value} error={error} onChange={onChange} upload={props.onUpload} width={sheetWidth - SHEET_PADDING * 4} />}
-                    />
-                  ) : (
-                    <Field field={field} value={values[field.name]} error={errors[field.name]} onChange={set(field.name)} upload={props.onUpload} width={sheetWidth - SHEET_PADDING * 2} />
-                  )}
+            {/* Two short fields share a row (José, 28/10: a field per row made the forms a sheet). */}
+            {formRows(visibleFields(fields, values)).map((row) =>
+              row.length === 2 ? (
+                <View key={row[0]!.name} onLayout={(event) => row.forEach((field) => (positions.current[field.name] = event.nativeEvent.layout.y))} className="flex-row items-start" style={{ gap: ROW_GAP }}>
+                  {row.map((field) => drawField(field, true))}
                 </View>
+              ) : (
+                drawField(row[0]!, false)
               )
             )}
           </ScrollView>
@@ -172,11 +193,11 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
   );
 }
 
-function Field(props: { field: Exclude<FormField, { kind: 'list' }>; value: unknown; error?: string; onChange: (value: unknown) => void; upload: PhotoUpload; width: number }) {
-  const { field, upload, width, ...rest } = props;
+function Field(props: { field: Exclude<FormField, { kind: 'list' }>; value: unknown; error?: string; onChange: (value: unknown) => void; upload: PhotoUpload; width: number; half?: boolean }) {
+  const { field, upload, width, half, ...rest } = props;
   switch (field.kind) {
     case 'choice': return <ChoiceField field={field} {...rest} />;
-    case 'date': return <DateField field={field} {...rest} />;
+    case 'date': return <DateField field={field} {...rest} compact={half} />;
     case 'location': return <LocationField field={field} {...rest} width={width} />;
     case 'photo': return field.multiple ? <PhotoListField field={field} error={rest.error} onChange={rest.onChange} upload={upload} /> : <PhotoField field={field} {...rest} upload={upload} />;
     default: return <TypedField field={field} {...rest} />;

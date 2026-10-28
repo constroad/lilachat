@@ -157,12 +157,13 @@ export async function frameConAutor(evento: string, payload: object, userId: str
 }
 
 /**
- * El token para RECHAZAR desde la notificación (FL8.1). Also serves to say
- * «answering» from the lock screen (backlog 114): it only stops the ring. Con la app cerrada el
+ * El token para RECHAZAR desde la notificación (FL8.1). Con la app cerrada el
  * teléfono no tiene el JWT a mano (vive cifrado en el llavero de la app), así
  * que el push de la llamada trae uno corto que solo sirve para rechazar esa
  * llamada. Se firma con un secreto DERIVADO: firmado con el de las sesiones,
  * `verifySession` lo aceptaría como sesión.
+ *
+ * It also says «answering» from the lock screen (backlog 114): that only stops the ring.
  */
 const AUDIENCIA_RECHAZO = 'rechazo-llamada';
 const VIDA_DEL_RECHAZO_S = 90;

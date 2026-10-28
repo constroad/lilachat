@@ -4927,6 +4927,10 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
     abre el hilo con `focusInput`, y `HiloScreen` enfoca el campo a los 350 ms
     (`FOCUS_AFTER_OPEN_MS`, lo que tarda la hoja en subir).
   - En la app, deslizar para responder sigue la misma regla.
+  - **Lo encontró el E2E del 28/10:** la flecha «Responder» de la barra de selección (al
+    mantener presionado) iba directo a citar. Ahora `useDibujarFila` devuelve `reply`
+    además de la fila, y la barra usa esa misma ruta: una sola decisión para la fila, el
+    deslizamiento y la barra.
   - En un chat secreto no hay hilos: «Responder» cita, como antes.
 - El modo WhatsApp no cambia: «Responder» cita el mensaje en el chat.
 
@@ -4951,6 +4955,27 @@ Ahora carga por páginas de 60 (`MEDIA_PAGE`):
 - `appendGalleryPage` salta los ids ya listados: una foto tomada mientras se baja
   corre las páginas un lugar.
 - Una página que falla queda en `reportarError` y la grilla sigue con lo que tenía.
+
+**Documento que no se podía seleccionar (E2E del 28/10).** En el modo Slack, mantener
+presionado un documento lo abría («Abrir con…») en vez de seleccionarlo. La tarjeta
+(`TarjetaDeArchivo`) tomaba el toque y la fila no recibía la pulsación larga, igual que
+pasaba antes con las fotos. Ahora la tarjeta selecciona al mantenerla presionada. Sin esto,
+un documento no se podía borrar, responder ni reenviar desde un canal.
+
+**E2E en el emulador (28/10, OTA sobre el APK 0.1.171, espacio Test, #general).**
+
+| Caso | Resultado |
+| --- | --- |
+| Deslizar «QA110 raiz» | Abre el hilo con el teclado; la respuesta queda en el hilo y el chat muestra «1 respuesta» |
+| Flecha «Responder» de la barra | Citaba en el chat: arreglado en este cambio |
+| Chip del hilo | Abre el hilo sin teclado |
+| Clip | Compartir y Organizar, sin «Acciones de las apps» |
+| «Documento» | El selector dejó marcar 2; llegaron los 2 al canal |
+| Galería «Ver todas» | 75 elementos (70 fotos + 5 videos): pasa de las 60 de la primera página |
+
+Para la galería se sembraron 70 fotos sintéticas en el emulador. Antes se cortó la red de
+Lilafotos (`iptables` e `ip6tables` por uid) y la batería se puso en «descargando», para
+que no subieran al disco de José. Al terminar se borraron las fotos y se quitó el bloqueo.
 
 **Pruebas.**
 

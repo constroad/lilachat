@@ -329,7 +329,7 @@ export function ChatScreen({
       personCard.show(personOfMember({ member: grupo.members.find((one) => one.id === userId) ?? { id: userId }, displayName: nombresDelGrupo.get(userId), pill: grupo.roles.get(userId), isMe: userId === credential.userId })),
     [personCard.show, grupo.members, grupo.roles, nombresDelGrupo, credential.userId]
   );
-  const dibujarFila = useDibujarFila({
+  const { dibujarFila, reply: responder } = useDibujarFila({
     rows,
     yo: credential.userId,
     jwt: credential.jwt,
@@ -385,7 +385,7 @@ export function ChatScreen({
           onCancelar={seleccion.soltar}
           onResponder={(seq) => {
             const elegido = seleccion.mensajes.find((uno) => uno.seq === seq);
-            if (elegido) alResponder(seq, previewDeMensaje(elegido), elegido.senderId === credential.userId);
+            if (elegido) responder(seq, previewDeMensaje(elegido), elegido.senderId === credential.userId);
           }}
           onEliminarParaTodos={eliminar}
           onEliminarParaMi={ocultar}

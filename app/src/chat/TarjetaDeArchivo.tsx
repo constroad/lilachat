@@ -16,11 +16,11 @@ const ALTO_DE_LA_MINIATURA = 180;
  * 220×220 —lila le genera miniatura de la primera página— sin nombre, sin
  * tamaño y sin nada que dijera qué era. Un documento ES su nombre.
  */
-export function TarjetaDeArchivo(props: { seq: number; media: NonNullable<ChatMessage['media']>; mia: boolean; onPress: () => void }) {
+export function FileCard(props: { seq: number; media: NonNullable<ChatMessage['media']>; mia: boolean; onPress: () => void; onLongPress?: () => void }) {
   const colores = useColores();
   const { media, mia } = props;
   return (
-    <Pressable testID={`archivo-${props.seq}`} onPress={props.onPress}>
+    <Pressable testID={`archivo-${props.seq}`} onPress={props.onPress} onLongPress={props.onLongPress} delayLongPress={350}>
       {/* La MINIATURA de la primera página, como la preview card de WhatsApp. */}
       {media.thumbUrl ? (
         <View className="overflow-hidden">

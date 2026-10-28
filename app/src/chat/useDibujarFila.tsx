@@ -75,6 +75,7 @@ export function useDibujarFila(p: {
     return { roles: albumLayout(confirmed), bySeq };
   }, [rows]);
   const { onResponderEnHilo } = p;
+  /** «Responder» from the row, the swipe and the selection bar: ONE route (pending 110). */
   const reply = useCallback(
     (seq: number, preview: string, mine: boolean) => {
       const message = albums.bySeq.get(seq);
@@ -83,7 +84,7 @@ export function useDibujarFila(p: {
     },
     [albums, encrypted, flat, onResponder, onResponderEnHilo]
   );
-  return useCallback(
+  const drawRow = useCallback(
     ({ item, index }: { item: Row; index: number }) => {
       // The flat (Slack) rows keep each photo apart.
       const albumRole = isPending(item) || flat ? undefined : albums.roles.get(item.seq);
@@ -190,4 +191,5 @@ export function useDibujarFila(p: {
     },
     [rows, albums, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, flat, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir, citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, reply, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas, onReaccionar, onMasEmojis, onVerReacciones, destacados, onGreet, p.onShowPerson]
   );
+  return { dibujarFila: drawRow, reply };
 }

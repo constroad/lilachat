@@ -4,7 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { CircleAlert, Play } from 'lucide-react-native';
 import { isAnimatedImage } from '@lilachat/shared';
 import { useAnimatedStop } from './stickers/StickerMessage';
-import { TarjetaDeArchivo } from './TarjetaDeArchivo';
+import { FileCard } from './TarjetaDeArchivo';
 import { NotaDeVoz } from './NotaDeVoz';
 import { etiquetaDeSubida } from './progresoDeSubida';
 import { AnilloDeSubida } from './AnilloDeSubida';
@@ -42,11 +42,17 @@ export function MessageMedia({ item, mine, selecting, onSelect, onOpen, onGifTap
 
       {/* Un ARCHIVO no es una foto: es una tarjeta con su nombre. */}
       {!isPending(item) && item.media && isFileMime(item.media.mime) && !isVoiceMime(item.media.mime) ? (
-        <TarjetaDeArchivo
+        <FileCard
           seq={item.seq}
           media={item.media}
           mia={mine}
           onPress={() => !isPending(item) && (selecting ? onSelect?.(item.seq) : onOpen?.(item.seq))}
+          // Like a photo: the card took the touch and a long press opened the file instead of selecting it (28/10).
+          onLongPress={() => {
+            if (isPending(item)) return;
+            void Haptics.selectionAsync();
+            onSelect?.(item.seq);
+          }}
         />
       ) : null}
 

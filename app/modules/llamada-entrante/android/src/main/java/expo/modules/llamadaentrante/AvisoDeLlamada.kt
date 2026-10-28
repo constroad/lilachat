@@ -1,5 +1,6 @@
 package expo.modules.llamadaentrante
 
+import android.app.KeyguardManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -60,6 +61,13 @@ object AvisoDeLlamada {
   const val EXTRA_ACCION = "lilachat.llamada.accion"
   const val EXTRA_RECHAZO = "lilachat.llamada.rechazo"
   const val ACCION_RECHAZAR = "expo.modules.llamadaentrante.RECHAZAR"
+  const val ACTION_ANSWER_LOCKED = "expo.modules.llamadaentrante.ANSWER_LOCKED"
+  const val EXTRA_NAME = "lilachat.llamada.nombre"
+  const val EXTRA_VIDEO = "lilachat.llamada.video"
+  /** Without ring: the call already rang, this one only opens the app over the lock. */
+  private const val ANSWERING_CHANNEL = "lilachat-llamada-contestando"
+  /** As long as the caller waits once «answering» (`CALL_CONNECT_TIMEOUT_MS`). */
+  private const val ANSWERING_MS = 45_000L
   private val VIBRACION = longArrayOf(0, 800, 1200)
 
   fun idDe(chatId: String): Int = 0x11A0 xor chatId.hashCode()
@@ -70,7 +78,9 @@ object AvisoDeLlamada {
     crearCanal(contexto)
     val id = idDe(datos.chatId)
     val abrir = intentDeApp(contexto, datos.chatId, "abrir", id)
-    val contestar = intentDeApp(contexto, datos.chatId, "contestar", id + 1)
+    // Backlog 114: on a locked phone an activity button asks for the code first, and the ring
+    // ran out on the caller while it was typed. Locked, «Contestar» is a broadcast: no unlock.
+    val contestar = if (locked(contexto)) answerLocked(contexto, datos, id + 1) else intentDeApp(contexto, datos.chatId, "contestar", id + 1)
     val rechazar = PendingIntent.getBroadcast(
       contexto,
       id + 2,
@@ -110,6 +120,71 @@ object AvisoDeLlamada {
 
   fun quitar(contexto: Context, chatId: String) {
     NotificationManagerCompat.from(contexto).cancel(idDe(chatId))
+    NotificationManagerCompat.from(contexto).cancel(answeringIdOf(chatId))
+  }
+
+  private fun answeringIdOf(chatId: String): Int = idDe(chatId) + 3
+
+  private fun locked(context: Context): Boolean =
+    context.getSystemService(KeyguardManager::class.java)?.isKeyguardLocked ?: false
+
+  private fun answerLocked(context: Context, call: DatosDeLlamada, code: Int): PendingIntent = PendingIntent.getBroadcast(
+    context,
+    code,
+    Intent(context, ReceptorDeLlamada::class.java)
+      .setAction(ACTION_ANSWER_LOCKED)
+      .putExtra(EXTRA_CHAT, call.chatId)
+      .putExtra(EXTRA_RECHAZO, call.rechazo)
+      .putExtra(EXTRA_NAME, call.nombre)
+      .putExtra(EXTRA_VIDEO, call.video),
+    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+  )
+
+  /**
+   * «Contestar» tapped on the lock screen: the ring stops, and a silent full
+   * screen notice opens the app OVER the lock with «contestar», the same way
+   * the incoming call does. Without full screen permission it stays as a
+   * heads-up «Contestando…» to tap (that one does ask for the code, but the
+   * caller already waits). JS, when alive, says «answering» by socket.
+   */
+  fun showAnswering(context: Context, intent: Intent) {
+    val chatId = intent.getStringExtra(EXTRA_CHAT) ?: return
+    NotificationManagerCompat.from(context).cancel(idDe(chatId))
+    Tono.detener()
+    Puente.emitir(chatId, "answering")
+    createAnsweringChannel(context)
+    val open = intentDeApp(context, chatId, "contestar", answeringIdOf(chatId))
+    val video = intent.getBooleanExtra(EXTRA_VIDEO, false)
+    val notice = NotificationCompat.Builder(context, ANSWERING_CHANNEL)
+      .setSmallIcon(iconoChico(context))
+      .setContentTitle(intent.getStringExtra(EXTRA_NAME) ?: "Llamada")
+      .setContentText(if (video) "Contestando la videollamada…" else "Contestando…")
+      .setCategory(NotificationCompat.CATEGORY_CALL)
+      .setPriority(NotificationCompat.PRIORITY_MAX)
+      .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+      .setOngoing(true)
+      .setTimeoutAfter(ANSWERING_MS)
+      .setContentIntent(open)
+      .setFullScreenIntent(open, true)
+      .build()
+    try {
+      NotificationManagerCompat.from(context).notify(answeringIdOf(chatId), notice)
+    } catch (_: SecurityException) {
+      // Without notification permission the app still opens from its icon; the caller waits.
+    }
+  }
+
+  private fun createAnsweringChannel(context: Context) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+    val manager = context.getSystemService(NotificationManager::class.java) ?: return
+    if (manager.getNotificationChannel(ANSWERING_CHANNEL) != null) return
+    val channel = NotificationChannel(ANSWERING_CHANNEL, "Llamada contestada", NotificationManager.IMPORTANCE_HIGH).apply {
+      description = "Abre la llamada que contestaste con el teléfono bloqueado"
+      setSound(null, null)
+      enableVibration(false)
+      lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+    }
+    manager.createNotificationChannel(channel)
   }
 
   private fun crearCanal(contexto: Context) {

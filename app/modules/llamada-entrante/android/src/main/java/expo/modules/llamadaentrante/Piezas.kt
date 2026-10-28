@@ -55,6 +55,7 @@ class ReceptorDeLlamada : BroadcastReceiver() {
       ServicioDeLlamada.detener(contexto)
       return
     }
+    if (intent.action == AvisoDeLlamada.ACTION_ANSWER_LOCKED) return answerLocked(contexto, intent)
     if (intent.action != AvisoDeLlamada.ACCION_RECHAZAR) return
     val chatId = intent.getStringExtra(AvisoDeLlamada.EXTRA_CHAT) ?: return
     AvisoDeLlamada.quitar(contexto, chatId)
@@ -71,6 +72,24 @@ class ReceptorDeLlamada : BroadcastReceiver() {
         // Sin red el rechazo no llega: a quien llama le vence el timbre igual.
       } finally {
         pendiente.finish()
+      }
+    }
+  }
+
+  /** Backlog 114: «Contestar» on the lock screen. The caller hears «answering» by HTTP before the code is typed. */
+  private fun answerLocked(context: Context, intent: Intent) {
+    AvisoDeLlamada.showAnswering(context, intent)
+    val token = intent.getStringExtra(AvisoDeLlamada.EXTRA_RECHAZO)
+    val server = Preferencias.servidor(context)
+    if (token.isNullOrEmpty() || server.isNullOrEmpty()) return
+    val pending = goAsync()
+    thread {
+      try {
+        Http.postearToken("${server.trimEnd('/')}/api/calls/answering", token)
+      } catch (_: Exception) {
+        // Without network the caller waits for the 30 s ring; JS says it by socket when it comes up.
+      } finally {
+        pending.finish()
       }
     }
   }

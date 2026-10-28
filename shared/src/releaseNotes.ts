@@ -17,6 +17,17 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.173',
+    // Everyone: calls answered on a locked phone, voice notes and attachments (backlog 110-115).
+    audience: 'all',
+    items: [
+      'Si contestas una llamada con el teléfono bloqueado, quien te llama espera en «Conectando…» y la llamada ya no se corta mientras lo desbloqueas.',
+      'Con el teléfono bloqueado, «Contestar» avisa al instante a quien llama y abre la llamada encima del bloqueo.',
+      'La pantalla no se apaga mientras grabas una nota de voz.',
+      'Puedes adjuntar varias fotos y videos a la vez, y la galería muestra todas las fotos del teléfono.',
+    ],
+  },
+  {
     version: '0.1.172',
     // Everyone: tapping a notice with the app closed works again (B4, 28/10).
     audience: 'all',

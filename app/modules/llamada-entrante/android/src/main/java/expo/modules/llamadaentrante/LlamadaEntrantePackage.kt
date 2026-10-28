@@ -26,6 +26,10 @@ class OyenteDeActividad : ReactActivityLifecycleListener {
 
   override fun onResume(activity: Activity) {
     actividad = WeakReference(activity)
+    // A tap whose onNewIntent Expo dropped while the app was still loading (process dead, task
+    // alive; B4, 25/10/2026): MainActivity kept it as its intent (plugin withMainActivityNewIntent).
+    // An intent already attended has no extras left, so this does nothing twice.
+    atender(activity, activity.intent)
   }
 
   override fun onNewIntent(intent: Intent): Boolean {

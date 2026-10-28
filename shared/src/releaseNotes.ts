@@ -17,6 +17,17 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.172',
+    // Everyone: tapping a notice with the app closed works again (B4, 28/10).
+    audience: 'all',
+    items: [
+      'Tocar un aviso con la app cerrada abre el espacio, el chat y el mensaje, igual que con la app abierta.',
+      'Una respuesta en un hilo abre ese hilo con la respuesta resaltada.',
+      'Si la conexión falla justo al tocar un aviso, la app lo vuelve a intentar sola unos segundos.',
+      'El recordatorio a pantalla completa y «Contestar» una llamada también funcionan con la app cerrada.',
+    ],
+  },
+  {
     version: '0.1.171',
     // Everyone: the app now updates its own code in silence.
     audience: 'all',

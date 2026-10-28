@@ -68,6 +68,43 @@ describe('AppDirectory (design e-24)', () => {
     expect(screen.getByTestId('app-mensaje')).toBeDisabled();
   });
 
+  it('one detail with tabs (pending 99): Información · Comandos · Avisos · Ajustes once installed, the first two before', () => {
+    // Arrange
+    render(<AppDirectory space={space} apps={appsOf()} />);
+    const tabsNow = () => screen.getAllByRole('tab').map((tab) => tab.textContent);
+    // Act
+    const installed = tabsNow();
+    const commandsBefore = screen.queryByText('/clima [mañana]');
+    fireEvent.click(screen.getByTestId('app-ver-comandos'));
+    const commandsAfter = screen.queryByText('/clima [mañana]') !== null;
+    fireEvent.click(screen.getByTestId('fila-app-a2'));
+    // Assert
+    expect(installed).toEqual(['Información', 'Comandos', 'Avisos', 'Ajustes']);
+    expect(commandsBefore).toBeNull();
+    expect(commandsAfter).toBe(true);
+    expect(tabsNow()).toEqual(['Información', 'Comandos']);
+    // Another app opens on its Información, not on the tab the previous one was in.
+    expect(screen.queryByText('Pulso no tiene comandos.')).toBeNull();
+  });
+
+  it('Ajustes: an admin reinstalls or uninstalls after confirming; a member does not see it', () => {
+    // Arrange
+    const apps = appsOf({ directory: { apps: [{ ...inframaq, installUrl: 'https://agentes.example.com/install?app=inframaq' }, pulso], canInstall: true } });
+    const view = render(<AppDirectory space={space} apps={apps} />);
+    // Act
+    fireEvent.click(screen.getByTestId('pestana-detalle-settings'));
+    fireEvent.click(screen.getByTestId('app-reinstalar'));
+    fireEvent.click(screen.getByTestId('app-desinstalar'));
+    fireEvent.click(screen.getByTestId('app-confirmar-desinstalar'));
+    view.unmount();
+    render(<AppDirectory space={space} apps={appsOf({ directory: { apps: [inframaq], canInstall: false } })} />);
+    fireEvent.click(screen.getByTestId('pestana-detalle-settings'));
+    // Assert
+    expect(apps.install).toHaveBeenCalledTimes(1);
+    expect(apps.uninstall).toHaveBeenCalledWith(expect.objectContaining({ appId: 'a1' }));
+    expect(screen.queryByTestId('app-desinstalar')).toBeNull();
+  });
+
   it('the search narrows the list and says when nothing matches', () => {
     render(<AppDirectory space={space} apps={appsOf()} />);
     fireEvent.change(screen.getByTestId('buscar-apps'), { target: { value: 'zzz' } });

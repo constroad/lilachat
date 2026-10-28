@@ -1,4 +1,4 @@
-import type { AppLink } from '@lilachat/shared';
+import type { AppChannel, AppLink } from '@lilachat/shared';
 import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, SpaceApp, AvailableApp, SpaceAppDirectory, TopicRoute, AppItemRow, ItemChannels, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
 import { api } from '../api';
 import type { ChatSummary } from '../chat/types';
@@ -97,6 +97,12 @@ export const testAppTopics = (jwt: string, spaceId: string, appId: string) => ap
 /** «Conectado como … / Desconectar» (pending 59): MY account in this app, asked to the app each time. */
 export const appLink = (jwt: string, spaceId: string, appId: string) => api<AppLink>(`/workspaces/${spaceId}/apps/${appId}/link`, { jwt });
 export const unlinkApp = (jwt: string, spaceId: string, appId: string) => api<Record<string, never>>(`/workspaces/${spaceId}/apps/${appId}/link`, { jwt, method: 'DELETE' });
+
+/** «En qué canales está» (pending 99): the switch rides the chat's members routes, so the channel says who took the app out. */
+export type AppChannels = { channels: AppChannel[]; botUserId: string; canEdit: boolean };
+export const appChannels = (jwt: string, spaceId: string, appId: string) => api<AppChannels>(`/workspaces/${spaceId}/apps/${appId}/channels`, { jwt });
+export const setAppInChannel = (jwt: string, chatId: string, botUserId: string, inChannel: boolean) =>
+  inChannel ? api<{ ok: true }>(`/chats/${chatId}/members`, { jwt, body: { userId: botUserId } }) : api<{ ok: true }>(`/chats/${chatId}/members/${botUserId}`, { jwt, method: 'DELETE' });
 
 /** «Comandos y acciones» (R160): where each command and action of the app works. */
 export type AppItems = { items: AppItemRow[]; channels: { id: string; name: string; private: boolean }[]; canEdit: boolean };

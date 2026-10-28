@@ -12,7 +12,7 @@ import { Composer, type ContextoDelComposer } from './Composer';
 import { useChatCommands } from './commands/useChatCommands';
 import { AppCommandsBar, AppConversationHeader, type AppConversationTab } from '../spaces/apps/AppConversation';
 import { AppDetail } from '../spaces/apps/AppDetail';
-import { AppAccountSection } from '../spaces/apps/AppAccountSection';
+import type { SpaceApps } from '../spaces/apps/useSpaceApps';
 import type { Mencionable } from './SugerenciasDeMencion';
 import type { NotaDeVozGrabada } from './useGrabadoraDeVoz';
 import { ListaDeMensajes } from './ListaDeMensajes';
@@ -84,6 +84,8 @@ export function Conversation(props: {
   /** A 1:1 with an app (designs e-23/e-26): its head, the «Información» tab and its commands. */
   app?: DirectoryApp;
   spaceName?: string;
+  /** The space's apps: its «Información» is the same detail as the directory's, with Ajustes for an admin (pending 99). */
+  spaceApps?: SpaceApps;
 }) {
   const { chat } = props;
   const [appTab, setAppTab] = useState<AppConversationTab>('messages');
@@ -128,7 +130,20 @@ export function Conversation(props: {
       )}
       {props.app && appTab === 'info' ? (
         <div data-testid="informacion-app" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-8">
-          <div className="mx-auto max-w-3xl"><AppDetail app={props.app} spaceName={props.spaceName ?? ''} onInstall={() => undefined} account={props.jwtParaEnlaces && chat.workspaceId ? <AppAccountSection jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} appId={props.app.appId} appName={props.app.name} /> : null} /></div>
+          <div className="mx-auto max-w-3xl">
+            <AppDetail
+              key={props.app.appId}
+              app={props.app}
+              jwt={props.jwtParaEnlaces ?? ''}
+              spaceId={props.jwtParaEnlaces ? (chat.workspaceId ?? null) : null}
+              spaceName={props.spaceName ?? ''}
+              admin={props.spaceApps?.directory?.canInstall ?? false}
+              uninstalling={props.spaceApps?.uninstallingId === props.app.appId}
+              onMessage={() => setAppTab('messages')}
+              onInstall={() => props.app && props.spaceApps?.install(props.app)}
+              onUninstall={props.spaceApps?.directory?.canInstall ? () => props.app && props.spaceApps?.uninstall(props.app) : undefined}
+            />
+          </div>
         </div>
       ) : (
       <>

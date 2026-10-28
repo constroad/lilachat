@@ -116,7 +116,7 @@ function ItemRow(props: { row: AppItemRow; channels: Channel[]; canEdit: boolean
 }
 
 /** «¿Dónde llega cada aviso?» (design e-31): each topic of the app, with the channel where it lands. */
-export function NoticeTopicsSection(props: { jwt: string; spaceId: string; appId: string; appName: string }) {
+export function NoticeTopicsSection(props: { jwt: string; spaceId: string; appId: string; appName: string; /** Said when the app declares no topics (its own tab, pending 99). */ emptyText?: string }) {
   const colors = useColores();
   const [state, setState] = useState<AppTopics | null>(null);
   const [picked, setPicked] = useState<Record<string, string | null>>({});
@@ -129,7 +129,8 @@ export function NoticeTopicsSection(props: { jwt: string; spaceId: string; appId
       alive = false;
     };
   }, [props.jwt, props.spaceId, props.appId]);
-  if (!state || state.topics.length === 0) return null;
+  if (!state) return null;
+  if (state.topics.length === 0) return props.emptyText ? <Text testID="avisos-app-vacio" className="mt-6 text-center text-[14px] text-on-surface-variant">{props.emptyText}</Text> : null;
   const channelOf = (topic: TopicRoute) => (topic.key in picked ? picked[topic.key]! : (topic.channel?.id ?? null));
   const changed = state.topics.filter((topic) => topic.key in picked && picked[topic.key] !== (topic.channel?.id ?? null));
   const nameOf = (id: string | null) => state.channels.find((channel) => channel.id === id)?.name;

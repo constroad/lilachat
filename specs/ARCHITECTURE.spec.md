@@ -4911,6 +4911,40 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 151. Un solo detalle de la app, con pestañas (28/10/2026, servidor + OTA + web; pendiente 99)
+
+**Pedido** (José, 23/10: «muy complejo y nada intuitivo… una sábana todo mezclado»): desde el
+chat con la app no se veía «Desinstalar», ni los canales, ni «¿Dónde llega cada aviso?». Eso
+solo salía entrando por el directorio. Diseños `c-04` (móvil y escritorio) y `c-05` (Ajustes).
+
+- **Una pantalla, entre por donde entre**: el directorio y la pestaña «Información» del 1:1
+  abren el mismo `AppDetailScreen` (APK) / `AppDetail` (web). Arriba, el logo, el nombre, quién
+  la hizo, si está instalada y dos botones: «Mensaje» y «Comandos» (abre esa pestaña). En el
+  1:1, «Mensaje» vuelve a la conversación. El ⋮ se fue: lo que tenía está en Ajustes.
+- **Pestañas** (`appDetailTabs`, en `shared/src/appDirectory.ts`): Información · Comandos y,
+  si está instalada, Avisos · Ajustes. Información = permisos nuevos, qué hace, tu cuenta,
+  permisos y quién la instaló. Comandos = la lista con copiar + «Comandos y acciones» por canal.
+  Avisos = «¿Dónde llega cada aviso?», o «X no manda avisos al espacio». Al desinstalarla
+  estando en Avisos o Ajustes, vuelve a Información. Otra app abre en Información (web: `key`).
+- **Ajustes · En qué canales está**: `GET /api/workspaces/:id/apps/:appId/channels`
+  (`server/src/bots/botChannels.ts`) da los canales que la persona ve (públicos + los privados
+  donde está), si la app está y si puede cambiarlo, más `botUserId` y `canEdit`. «N activos» sale
+  de `activeChannelsLine`. **El interruptor no tiene ruta propia**: usa
+  `POST/DELETE /api/chats/:id/members`, así que el canal dice «José sacó a Inframaq» como con
+  cualquier miembro y valen sus reglas (admin del espacio, estar en el canal, y ser admin del
+  canal para sacar). `canChange` repite esas reglas para no mostrar un interruptor que daría 403.
+  Después de cada cambio la lista se vuelve a leer.
+- **Ajustes · Solo admins**: «Reinstalar app» (si la app tiene `installUrl`) y «Desinstalar de
+  <espacio>», con confirmación y el aviso de `uninstallWarning`.
+- Sin la pastilla «AUTORIZADO» ni «Compartir app»/«Nueva acción» del diseño: no hay dato ni
+  función detrás.
+- **Queda aparte (deuda):** Integraciones, en los ajustes del espacio, conserva su propio
+  «Desinstalar» con la salud del último evento. Podría abrir este detalle.
+
+**Tests:** `server/src/bots/botChannels.test.ts` (5), `shared/src/appDirectory.test.ts`
+(pestañas y «N activos»), `web/src/spaces/apps/apps.test.tsx` (pestañas, «Comandos», Ajustes
+para admin y miembro) y `appSettings.test.tsx` (interruptor de canal, solo lectura, error).
+
 ## 150. «Solo tú ves esto» como chips, como Claude (28/10/2026, OTA + web; pendiente 104)
 
 **Pedido** (José, 28/10, con captura de «Acciones rápidas · Test»): las respuestas efímeras se
@@ -12608,7 +12642,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
 98. ~~**Stickers y guiños dentro de una videollamada**~~ — hecho en 0.1.166 (§130; evento `call.reaction`). (José, 23/10, reclamado
     otra vez): mandar un sticker o un guiño sin salir de la llamada. El otro
     lo ve encima del video unos segundos y queda también en el chat.
-99. **Las apps, ordenadas como el detalle de un chat de WhatsApp** (José,
+99. ~~**Las apps, ordenadas como el detalle de un chat de WhatsApp**~~ — hecho el 28/10 (§151; Integraciones queda con su propio «Desinstalar»). (José,
     23/10: «muy complejo y nada intuitivo… una sábana todo mezclado»). Desde
     la lista de apps, el chat con la app muestra Mensajes e Información, pero
     no «Desinstalar» ni los interruptores de canales ni «¿Dónde llega cada

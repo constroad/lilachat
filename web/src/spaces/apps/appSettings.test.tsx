@@ -1,11 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AppItems, AppTopics } from '../spacesApi';
+import type { AppChannels, AppItems, AppTopics } from '../spacesApi';
 import { AppItemsSection } from './AppItemsSection';
 import { NoticeTopicsSection } from './NoticeTopicsSection';
 import { AppAccountSection } from './AppAccountSection';
+import { AppChannelsSection } from './AppChannelsSection';
 
-const api = vi.hoisted(() => ({ appItems: vi.fn(), saveAppItems: vi.fn(), appTopics: vi.fn(), saveAppTopics: vi.fn(), testAppTopics: vi.fn(), appLink: vi.fn(), unlinkApp: vi.fn() }));
+const api = vi.hoisted(() => ({ appItems: vi.fn(), saveAppItems: vi.fn(), appTopics: vi.fn(), saveAppTopics: vi.fn(), testAppTopics: vi.fn(), appLink: vi.fn(), unlinkApp: vi.fn(), appChannels: vi.fn(), setAppInChannel: vi.fn() }));
 vi.mock('../spacesApi', () => api);
 
 const channels = [{ id: 'ch1', name: 'general', private: false }, { id: 'ch2', name: 'planta', private: false }];
@@ -123,5 +124,41 @@ describe('«Tu cuenta en <app>» (pending 59: the account is per app)', () => {
     api.appLink.mockResolvedValue({ ok: false, status: 500, message: 'x' });
     const second = render(<AppAccountSection jwt="jwt" spaceId="s1" appId="portal" appName="Portal" />);
     await vi.waitFor(() => expect(second.container).toBeEmptyDOMElement());
+  });
+});
+
+/** «En qué canales está» (pending 99, design c-05): a switch per channel, through the members routes. */
+describe('the channels of an app', () => {
+  const where = (inPlanta: boolean): AppChannels => ({
+    botUserId: 'bot1',
+    canEdit: true,
+    channels: [
+      { id: 'ch1', name: 'planta-asfalto', description: 'Reportes de tolvas y clima', private: false, inChannel: inPlanta, canChange: true },
+      { id: 'ch2', name: 'gerencia', private: true, inChannel: false, canChange: false },
+    ],
+  });
+
+  it('says how many it is in and takes it out of a channel; the list reads again', async () => {
+    // Arrange
+    api.appChannels.mockResolvedValueOnce({ ok: true, data: where(true) }).mockResolvedValueOnce({ ok: true, data: where(false) });
+    api.setAppInChannel.mockResolvedValue({ ok: true, data: { ok: true } });
+    render(<AppChannelsSection jwt="jwt" spaceId="s1" appId="a1" />);
+    expect(await screen.findByText('1 activo')).toBeInTheDocument();
+    // Act
+    fireEvent.click(screen.getByTestId('interruptor-canal-planta-asfalto'));
+    // Assert
+    await vi.waitFor(() => expect(screen.getByText('En ningún canal')).toBeInTheDocument());
+    expect(api.setAppInChannel).toHaveBeenCalledWith('jwt', 'ch1', 'bot1', false);
+    expect(screen.getByTestId('interruptor-canal-gerencia')).toBeDisabled();
+    expect(screen.getByText('Reportes de tolvas y clima')).toBeInTheDocument();
+  });
+
+  it('a member sees it read-only, and a failed switch says why', async () => {
+    api.appChannels.mockResolvedValue({ ok: true, data: { ...where(true), canEdit: false } });
+    api.setAppInChannel.mockResolvedValue({ ok: false, status: 403, message: 'Solo un admin del canal puede sacar miembros.' });
+    render(<AppChannelsSection jwt="jwt" spaceId="s1" appId="a1" />);
+    expect(await screen.findByText('Solo los admins cambian esto.')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('interruptor-canal-planta-asfalto'));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Solo un admin del canal');
   });
 });

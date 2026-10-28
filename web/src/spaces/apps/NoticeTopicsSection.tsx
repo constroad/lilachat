@@ -16,7 +16,7 @@ const channelOf = (topic: TopicRoute) => topic.channel?.id ?? NO_CHANNEL;
  * changes it and tries it; everyone else sees it. A topic without a channel is
  * not posted.
  */
-export function NoticeTopicsSection(props: { jwt: string; spaceId: string; appId: string; appName: string }) {
+export function NoticeTopicsSection(props: { jwt: string; spaceId: string; appId: string; appName: string; /** Said when the app declares no topics (its own tab, pending 99). */ emptyText?: string }) {
   const [state, setState] = useState<AppTopics | null>(null);
   const [failed, setFailed] = useState(false);
   const [picked, setPicked] = useState<Record<string, string>>({});
@@ -37,7 +37,8 @@ export function NoticeTopicsSection(props: { jwt: string; spaceId: string; appId
   }, [props.jwt, props.spaceId, props.appId]);
 
   const changed = useMemo(() => (state ? state.topics.filter((topic) => picked[topic.key] !== undefined && picked[topic.key] !== channelOf(topic)) : []), [state, picked]);
-  if (failed || (state && state.topics.length === 0)) return null;
+  if (failed) return null;
+  if (state && state.topics.length === 0) return props.emptyText ? <p data-testid="avisos-app-vacio" className="py-8 text-center text-[14px] text-on-surface-variant">{props.emptyText}</p> : null;
   if (!state) return <div data-testid="avisos-cargando" className="h-40 animate-pulse rounded-2xl bg-surface" />;
 
   const save = async () => {

@@ -1,16 +1,34 @@
 import { useState, type ReactNode } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { ArrowDownToLine, ArrowLeft, Check, Copy, Hash, Info, Lock, MessageSquare, MoreVertical, Terminal, X } from 'lucide-react-native';
-import { APP_PERMISSIONS, appActivityLine, appInstalledByLine, uninstallWarning, type BotCommand, type DirectoryApp } from '@lilachat/shared';
+import { ArrowDownToLine, ArrowLeft, Check, Copy, Hash, Info, Lock, MessageSquare, Slash, Terminal, X } from 'lucide-react-native';
+import { APP_PERMISSIONS, appActivityLine, appDetailTabs, appInstalledByLine, type AppDetailTab, type BotCommand, type DirectoryApp } from '@lilachat/shared';
+import { DetailTabBar } from '../../chat/DetailTabBar';
 import { Modal } from '../../ui/Modal';
 import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
 import { AppBadge, AppLogo } from './AppLogo';
+import { AppAccountSection } from './AppAccountSection';
+import { AppChannelsSection, AppInstallSection } from './AppChannelsSection';
+import { AppItemsSection, NoticeTopicsSection } from './AppSettingsSections';
 
 /** Lists and two columns stay readable on a tablet or a turned phone (rn-app-loop §3). */
 const CONTENT_MAX_WIDTH = 720;
 const LOGO_SIZE = 72;
+
+type AppDetailProps = {
+  app: DirectoryApp;
+  jwt: string;
+  spaceId: string;
+  spaceName: string;
+  /** Installs, reinstalls and uninstalls (an admin of the space). */
+  admin: boolean;
+  uninstalling?: boolean;
+  onClose: () => void;
+  onMessage?: () => void;
+  onInstall: () => void;
+  onUninstall?: () => void;
+};
 
 function Section(props: { Icon: typeof Info; title: string; children: ReactNode }) {
   const colors = useColores();
@@ -43,113 +61,164 @@ function CommandRow(props: { command: BotCommand }) {
 }
 
 /**
- * The detail of an app (design e-25): what it is, where it is active, what it
- * does, its commands, its permissions and who installed it; at the foot
- * «Mensaje» or «Instalar en <espacio>». The ⋮ uninstalls, for admins. The
- * same screen is the «Información» of a 1:1 with the app (e-26).
+ * The one detail of an app (pending 99, designs c-04 and c-05), the same from
+ * the directory and from the 1:1: «Mensaje» and «Comandos» under its name,
+ * then Información · Comandos and, once installed, Avisos · Ajustes. Ajustes
+ * says in which channels it is and, for admins, reinstalls or uninstalls.
  */
-export function AppDetailScreen(props: { app: DirectoryApp; spaceName: string; canInstall: boolean; uninstalling?: boolean; onClose: () => void; onMessage?: () => void; onInstall: () => void; onUninstall?: () => void; /** «Comandos y acciones» and «Avisos» (R160), once installed. */ settings?: ReactNode; /** «Tu cuenta en <app>» (pending 59), once installed. */ account?: ReactNode }) {
+export function AppDetailScreen(props: AppDetailProps) {
   const colors = useColores();
   const margins = useMargenes();
   const { app } = props;
-  const installation = app.installation;
-  const activity = installation ? appActivityLine(installation) : '';
-  const confirmUninstall = () =>
-    Alert.alert(`¿Desinstalar ${app.name} de ${props.spaceName}?`, uninstallWarning(props.spaceName), [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Desinstalar', style: 'destructive', onPress: props.onUninstall },
-    ]);
-  // The ⋮ (agentes, 23/10): «Reinstalar» like Slack's, when the company or the permissions changed; then «Desinstalar».
-  const openMenu = () =>
-    Alert.alert(app.name, undefined, [
-      ...(app.installUrl ? [{ text: 'Reinstalar', onPress: props.onInstall }] : []),
-      { text: 'Desinstalar', style: 'destructive' as const, onPress: confirmUninstall },
-      { text: 'Cancelar', style: 'cancel' as const },
-    ]);
-
+  const tabs = appDetailTabs(Boolean(app.installation));
+  const [tab, setTab] = useState<AppDetailTab>('info');
+  // Uninstalled while on Avisos or Ajustes: those tabs go, and the detail falls back to Información.
+  const shownTab = tabs.some((one) => one.key === tab) ? tab : 'info';
   return (
     <Modal visible animationType="slide" onRequestClose={props.onClose}>
       <View testID={`detalle-app-${app.appId}`} className="flex-1 bg-background" style={{ paddingTop: margins.cabecera }}>
-        <View className="flex-row items-center gap-2 border-b border-outline/10 px-3 pb-2">
+        <View className="flex-row items-center gap-2 border-b border-outline/10 bg-surface px-3 pb-2">
           <Pressable testID="detalle-app-volver" onPress={props.onClose} accessibilityLabel="Volver" className="h-11 w-11 items-center justify-center">
             <ArrowLeft size={22} color={colors['on-surface']} />
           </Pressable>
-          <View className="min-w-0 flex-1 items-center">
-            <Text className="text-[17px] font-bold text-on-surface">Detalle de la app</Text>
-            <Text numberOfLines={1} className="text-[12px] text-on-surface-variant">{`Espacio ${props.spaceName}`}</Text>
+          <View className="min-w-0 flex-1">
+            <Text className="text-[11px] font-bold uppercase tracking-widest text-primary">Aplicación</Text>
+            <Text numberOfLines={1} className="text-[17px] font-bold text-on-surface">{app.name}</Text>
           </View>
-          {installation && props.onUninstall && !props.uninstalling ? (
-            <Pressable testID="app-mas-opciones" onPress={openMenu} accessibilityLabel="Más opciones de la app" className="h-11 w-11 items-center justify-center">
-              <MoreVertical size={20} color={colors['on-surface-variant']} />
-            </Pressable>
-          ) : (
-            <View className="h-11 w-11" />
-          )}
         </View>
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
-          <View style={{ width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' }}>
-            <View className="items-center rounded-2xl border border-outline/15 bg-surface p-5">
-              <AppLogo avatarUrl={app.avatarUrl} size={LOGO_SIZE} />
-              <View className="mt-3 flex-row flex-wrap items-center justify-center gap-2">
-                <Text className="text-[24px] font-bold text-on-surface">{app.name}</Text>
-                <AppBadge />
-              </View>
-              {app.developer ? <Text className="mt-0.5 text-[14px] font-medium text-primary">{`de ${app.developer}`}</Text> : null}
-              {app.description ? <Text className="mt-2 text-center text-[15px] text-on-surface-variant">{app.description}</Text> : null}
-              {installation ? (
-                <View testID={props.uninstalling ? 'app-desinstalando' : 'app-instalada'} className={`mt-3 flex-row items-center gap-1.5 rounded-full border px-3 py-1 ${props.uninstalling ? 'border-outline/25' : 'border-en-linea/30 bg-en-linea/10'}`}>
-                  {props.uninstalling ? null : <View className="h-2 w-2 rounded-full bg-en-linea" />}
-                  <Text className={`text-[13px] font-semibold ${props.uninstalling ? 'text-on-surface-variant' : 'text-en-linea'}`}>{props.uninstalling ? 'Desinstalando…' : 'Instalada'}</Text>
-                </View>
-              ) : null}
-              {activity ? (
-                <View className="mt-3 flex-row items-center gap-1.5">
-                  <Hash size={14} color={colors.primary} />
-                  <Text className="text-[13px] text-on-surface-variant">{activity}</Text>
-                </View>
-              ) : null}
-            </View>
-            {/* A newer manifest asks for more (pending 95): it keeps working with what was accepted until an admin reinstalls. */}
-            {installation?.newPermissions?.length ? (
-              <View testID="app-permisos-nuevos" className="mx-4 mt-3 gap-2 rounded-2xl border border-warning/30 bg-warning/10 p-3">
-                <Text className="text-[15px] font-semibold text-on-surface">Esta app pide permisos nuevos</Text>
-                {installation.newPermissions.map((line) => <Text key={line} className="text-[14px] text-on-surface">{`· ${line}`}</Text>)}
-                {props.canInstall && app.installUrl ? (
-                  <Pressable testID="app-reinstalar-permisos" onPress={props.onInstall} className="mt-1 h-11 items-center justify-center self-start rounded-xl bg-primary px-4"><Text className="text-[14px] font-semibold text-on-primary">Reinstalar</Text></Pressable>
-                ) : <Text className="text-[13px] text-on-surface-variant">Un admin del espacio la reinstala para aceptarlos.</Text>}
-              </View>
-            ) : null}
-            {installation ? props.account : null}
-            {app.features.length ? (
-              <Section Icon={Info} title="Qué hace">
-                {app.features.map((feature) => (
-                  <View key={feature} className="mb-2 flex-row gap-2.5">
-                    <View className="mt-[7px] h-1.5 w-1.5 rounded-full bg-primary" />
-                    <Text className="flex-1 text-[15px] text-on-surface">{feature}</Text>
-                  </View>
-                ))}
-              </Section>
-            ) : null}
-            {app.commands.length ? (
-              <Section Icon={Terminal} title="Comandos">
-                {app.commands.map((command) => <CommandRow key={command.command} command={command} />)}
-                <Text className="text-[13px] text-on-surface-variant">Escríbelos en cualquier chat del espacio donde esté la app.</Text>
-              </Section>
-            ) : null}
-            {installation ? props.settings : null}
-            <Section Icon={Lock} title="Permisos">
-              <Text className="mb-1 text-[13px] font-semibold text-en-linea">Puede</Text>
-              {[...APP_PERMISSIONS.can, ...(app.asks ?? [])].map((line) => <PermissionLine key={line} allowed text={line} />)}
-              <Text className="mb-1 mt-2 text-[13px] font-semibold text-error">No puede</Text>
-              {APP_PERMISSIONS.cannot.map((line) => <PermissionLine key={line} allowed={false} text={line} />)}
-            </Section>
-            {installation ? <Text className="mt-4 text-center text-[13px] text-on-surface-variant">{appInstalledByLine(installation)}</Text> : null}
+        <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+          <View className="bg-surface">
+            <DetailHero {...props} onCommands={() => setTab('commands')} />
+            <DetailTabBar tabs={tabs.map((one) => one.key)} active={shownTab} onChange={setTab} labelOf={(key) => tabs.find((one) => one.key === key)?.label ?? key} />
+          </View>
+          <View className="px-4" style={{ width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' }}>
+            <DetailTab {...props} tab={shownTab} />
           </View>
         </ScrollView>
-        <DetailFoot app={app} spaceName={props.spaceName} canInstall={props.canInstall} uninstalling={props.uninstalling} bottom={margins.pie} onMessage={props.onMessage} onInstall={props.onInstall} />
+        <DetailFoot app={app} spaceName={props.spaceName} admin={props.admin} bottom={margins.pie} onInstall={props.onInstall} />
       </View>
     </Modal>
   );
+}
+
+/** Logo, name, who made it, what it is, whether it is installed, and «Mensaje» · «Comandos» (design c-04). */
+function DetailHero(props: AppDetailProps & { onCommands: () => void }) {
+  const colors = useColores();
+  const { app } = props;
+  const installation = app.installation;
+  const activity = installation ? appActivityLine(installation) : '';
+  return (
+    <View className="items-center px-4 pt-5" style={{ width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' }}>
+      <AppLogo avatarUrl={app.avatarUrl} size={LOGO_SIZE} />
+      <View className="mt-3 flex-row flex-wrap items-center justify-center gap-2">
+        <Text className="text-[24px] font-bold text-on-surface">{app.name}</Text>
+        <AppBadge />
+      </View>
+      {app.developer ? <Text className="mt-0.5 text-[14px] font-medium text-primary">{`de ${app.developer}`}</Text> : null}
+      {app.description ? <Text className="mt-2 text-center text-[15px] text-on-surface-variant">{app.description}</Text> : null}
+      {installation ? (
+        <View className="mt-3 flex-row flex-wrap items-center justify-center gap-3">
+          <View testID={props.uninstalling ? 'app-desinstalando' : 'app-instalada'} className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1 ${props.uninstalling ? 'border-outline/25' : 'border-en-linea/30 bg-en-linea/10'}`}>
+            {props.uninstalling ? null : <View className="h-2 w-2 rounded-full bg-en-linea" />}
+            <Text className={`text-[13px] font-semibold ${props.uninstalling ? 'text-on-surface-variant' : 'text-en-linea'}`}>{props.uninstalling ? 'Desinstalando…' : 'Instalada'}</Text>
+          </View>
+          {activity ? (
+            <View className="flex-row items-center gap-1.5">
+              <Hash size={14} color={colors.primary} />
+              <Text className="text-[13px] text-on-surface-variant">{activity}</Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+      {installation && props.onMessage ? (
+        <View className="mt-4 w-full flex-row gap-3">
+          <HeroButton testID="app-mensaje" label="Mensaje" Icon={MessageSquare} primary disabled={props.uninstalling} onPress={props.onMessage} />
+          <HeroButton testID="app-ver-comandos" label="Comandos" Icon={Slash} onPress={props.onCommands} />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function HeroButton(props: { testID: string; label: string; Icon: typeof Info; primary?: boolean; disabled?: boolean; onPress: () => void }) {
+  const colors = useColores();
+  return (
+    <Pressable testID={props.testID} disabled={props.disabled} onPress={props.onPress} className={`min-h-[48px] flex-1 flex-row items-center justify-center gap-2 rounded-xl border border-outline/25 bg-surface ${props.disabled ? 'opacity-50' : ''}`}>
+      <props.Icon size={18} color={colors.primary} />
+      <Text className={`text-[15px] font-semibold ${props.primary ? 'text-primary' : 'text-on-surface'}`}>{props.label}</Text>
+    </Pressable>
+  );
+}
+
+function DetailTab(props: AppDetailProps & { tab: AppDetailTab }) {
+  const { app } = props;
+  const section = { jwt: props.jwt, spaceId: props.spaceId, appId: app.appId };
+  if (props.tab === 'commands') {
+    return (
+      <>
+        {app.commands.length ? (
+          <Section Icon={Terminal} title="Comandos">
+            {app.commands.map((command) => <CommandRow key={command.command} command={command} />)}
+            <Text className="text-[13px] text-on-surface-variant">Escríbelos en cualquier chat del espacio donde esté la app.</Text>
+          </Section>
+        ) : (
+          <EmptyLine text={`${app.name} no tiene comandos.`} />
+        )}
+        {app.installation ? <AppItemsSection {...section} /> : null}
+      </>
+    );
+  }
+  if (props.tab === 'notices') return <NoticeTopicsSection {...section} appName={app.name} emptyText={`${app.name} no manda avisos al espacio.`} />;
+  if (props.tab === 'settings') {
+    return (
+      <>
+        <AppChannelsSection {...section} />
+        {props.admin && props.onUninstall ? <AppInstallSection appName={app.name} spaceName={props.spaceName} uninstalling={props.uninstalling} onReinstall={app.installUrl ? props.onInstall : undefined} onUninstall={props.onUninstall} /> : null}
+      </>
+    );
+  }
+  return <InfoTab {...props} />;
+}
+
+function InfoTab(props: AppDetailProps) {
+  const { app } = props;
+  const installation = app.installation;
+  return (
+    <>
+      {/* A newer manifest asks for more (pending 95): it keeps working with what was accepted until an admin reinstalls. */}
+      {installation?.newPermissions?.length ? (
+        <View testID="app-permisos-nuevos" className="mt-4 gap-2 rounded-2xl border border-warning/30 bg-warning/10 p-3">
+          <Text className="text-[15px] font-semibold text-on-surface">Esta app pide permisos nuevos</Text>
+          {installation.newPermissions.map((line) => <Text key={line} className="text-[14px] text-on-surface">{`· ${line}`}</Text>)}
+          {props.admin && app.installUrl ? (
+            <Pressable testID="app-reinstalar-permisos" onPress={props.onInstall} className="mt-1 h-11 items-center justify-center self-start rounded-xl bg-primary px-4"><Text className="text-[14px] font-semibold text-on-primary">Reinstalar</Text></Pressable>
+          ) : <Text className="text-[13px] text-on-surface-variant">Un admin del espacio la reinstala para aceptarlos.</Text>}
+        </View>
+      ) : null}
+      {app.features.length ? (
+        <Section Icon={Info} title="Qué hace">
+          {app.features.map((feature) => (
+            <View key={feature} className="mb-2 flex-row gap-2.5">
+              <View className="mt-[7px] h-1.5 w-1.5 rounded-full bg-primary" />
+              <Text className="flex-1 text-[15px] text-on-surface">{feature}</Text>
+            </View>
+          ))}
+        </Section>
+      ) : null}
+      {installation ? <AppAccountSection jwt={props.jwt} spaceId={props.spaceId} appId={app.appId} appName={app.name} /> : null}
+      <Section Icon={Lock} title="Permisos">
+        <Text className="mb-1 text-[13px] font-semibold text-en-linea">Puede</Text>
+        {[...APP_PERMISSIONS.can, ...(app.asks ?? [])].map((line) => <PermissionLine key={line} allowed text={line} />)}
+        <Text className="mb-1 mt-2 text-[13px] font-semibold text-error">No puede</Text>
+        {APP_PERMISSIONS.cannot.map((line) => <PermissionLine key={line} allowed={false} text={line} />)}
+      </Section>
+      {installation ? <Text className="mt-4 text-center text-[13px] text-on-surface-variant">{appInstalledByLine(installation)}</Text> : null}
+    </>
+  );
+}
+
+function EmptyLine(props: { text: string }) {
+  return <Text className="mt-6 text-center text-[14px] text-on-surface-variant">{props.text}</Text>;
 }
 
 function PermissionLine(props: { allowed: boolean; text: string }) {
@@ -162,32 +231,21 @@ function PermissionLine(props: { allowed: boolean; text: string }) {
   );
 }
 
-/** The foot (design e-25): «Mensaje» for an installed app, «Instalar en» for an admin, and why not for a member. */
-function DetailFoot(props: { app: DirectoryApp; spaceName: string; canInstall: boolean; uninstalling?: boolean; bottom: number; onMessage?: () => void; onInstall: () => void }) {
+/** The foot of an app not installed (design e-25): «Instalar en» for an admin, and why not for a member. */
+function DetailFoot(props: { app: DirectoryApp; spaceName: string; admin: boolean; bottom: number; onInstall: () => void }) {
   const colors = useColores();
-  const { app } = props;
-  let content: ReactNode = null;
-  if (app.installation && props.onMessage) {
-    content = (
-      <Pressable testID="app-mensaje" disabled={props.uninstalling} onPress={props.onMessage} className={`min-h-[52px] flex-row items-center justify-center gap-2 rounded-2xl bg-primary ${props.uninstalling ? 'opacity-50' : ''}`}>
-        <MessageSquare size={18} color={colors['on-primary']} />
-        <Text className="text-[16px] font-bold text-on-primary">Mensaje</Text>
+  if (props.app.installation || (props.admin && !props.app.installUrl)) return null;
+  const content = props.admin && props.app.installUrl ? (
+    <>
+      <Pressable testID="app-instalar" onPress={props.onInstall} className="min-h-[52px] flex-row items-center justify-center gap-2 rounded-2xl bg-primary">
+        <ArrowDownToLine size={18} color={colors['on-primary']} />
+        <Text className="text-[16px] font-bold text-on-primary">{`Instalar en ${props.spaceName}`}</Text>
       </Pressable>
-    );
-  } else if (!app.installation && props.canInstall && app.installUrl) {
-    content = (
-      <>
-        <Pressable testID="app-instalar" onPress={props.onInstall} className="min-h-[52px] flex-row items-center justify-center gap-2 rounded-2xl bg-primary">
-          <ArrowDownToLine size={18} color={colors['on-primary']} />
-          <Text className="text-[16px] font-bold text-on-primary">{`Instalar en ${props.spaceName}`}</Text>
-        </Pressable>
-        <Text className="mt-2 text-center text-[13px] text-on-surface-variant">Se abre la página de la app para conectar tu empresa</Text>
-      </>
-    );
-  } else if (!app.installation) {
-    content = <Text className="text-center text-[14px] text-on-surface-variant">Las apps las instala un admin del espacio.</Text>;
-  }
-  if (!content) return null;
+      <Text className="mt-2 text-center text-[13px] text-on-surface-variant">Se abre la página de la app para conectar tu empresa</Text>
+    </>
+  ) : (
+    <Text className="text-center text-[14px] text-on-surface-variant">Las apps las instala un admin del espacio.</Text>
+  );
   return (
     <View className="border-t border-outline/10 bg-surface px-4 pt-3" style={{ paddingBottom: props.bottom + 8 }}>
       <View style={{ width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' }}>{content}</View>

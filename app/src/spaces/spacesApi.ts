@@ -1,5 +1,5 @@
 import type { AppLink } from '@lilachat/shared';
-import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, SpaceApp, AvailableApp, SpaceAppDirectory, TopicRoute, AppItemRow, ItemChannels, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
+import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, SpaceApp, AvailableApp, SpaceAppDirectory, TopicRoute, AppChannel, AppItemRow, ItemChannels, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
 import { BASE_URL, type ChatSummary } from '../api/client';
 import { jsonCall } from '../api/jsonCall';
 import { subirFotoRedonda } from '../chat/fotoDeGrupo';
@@ -93,5 +93,8 @@ export const unlinkApp = (jwt: string, spaceId: string, appId: string) => jsonCa
 
 /** «Comandos y acciones» (R160): where each command and action of the app works. */
 export type AppItems = { items: AppItemRow[]; channels: { id: string; name: string; private: boolean }[]; canEdit: boolean };
+/** «En qué canales está» an app (pending 99, design c-05); the switch uses the chat's members routes. */
+export type AppChannels = { channels: AppChannel[]; botUserId: string; canEdit: boolean };
+export const appChannels = (jwt: string, spaceId: string, appId: string) => jsonCall<AppChannels>(url(`/${spaceId}/apps/${appId}/channels`), jwt);
 export const appItems = (jwt: string, spaceId: string, appId: string) => jsonCall<AppItems>(url(`/${spaceId}/apps/${appId}/items`), jwt);
 export const saveAppItems = (jwt: string, spaceId: string, appId: string, items: Record<string, { global: boolean; channels: ItemChannels }>) => jsonCall<AppItems>(url(`/${spaceId}/apps/${appId}/items`), jwt, { method: 'PUT', body: JSON.stringify({ items }) });

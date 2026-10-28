@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appActivityLine, appChatLink, appInstalledByLine, appReturnFromLink, appReturnLink, directoryChips, filterDirectory, installedWithoutChat, uninstallWarning } from './appDirectory.js';
+import { activeChannelsLine, appActivityLine, appChatLink, appDetailTabs, appInstalledByLine, appReturnFromLink, appReturnLink, directoryChips, filterDirectory, installedWithoutChat, uninstallWarning } from './appDirectory.js';
 import type { DirectoryApp } from './bots.js';
 
 const app = (name: string, extra: Partial<DirectoryApp> = {}): DirectoryApp => ({ appId: name.toLowerCase(), clientId: `lca_${name.toLowerCase()}`, name, features: [], commands: [], ...extra });
@@ -71,5 +71,19 @@ describe('back to Lilachat after installing (agentes\' return address)', () => {
 describe('uninstallWarning', () => {
   it('says what goes away and that the connected account stays', () => {
     expect(uninstallWarning('Test')).toBe('Se van sus comandos, sus acciones del ⚡ y sus avisos en Test. Tu cuenta conectada sigue igual, y la puedes instalar de nuevo cuando quieras.');
+  });
+});
+
+describe('the app detail with tabs (pending 99, design c-04)', () => {
+  it('installed: Información · Comandos · Avisos · Ajustes; not installed: only what it is and its commands', () => {
+    expect(appDetailTabs(true).map((tab) => tab.label)).toEqual(['Información', 'Comandos', 'Avisos', 'Ajustes']);
+    expect(appDetailTabs(false).map((tab) => tab.key)).toEqual(['info', 'commands']);
+  });
+
+  it('«N activos» over the channel switches', () => {
+    const one = { id: 'c', name: 'planta', private: false, canChange: true };
+    expect(activeChannelsLine([{ ...one, inChannel: true }, { ...one, inChannel: true }, { ...one, inChannel: false }])).toBe('2 activos');
+    expect(activeChannelsLine([{ ...one, inChannel: true }])).toBe('1 activo');
+    expect(activeChannelsLine([{ ...one, inChannel: false }])).toBe('En ningún canal');
   });
 });

@@ -1,6 +1,4 @@
 import { useMemo, useState } from 'react';
-import { AppItemsSection, NoticeTopicsSection } from './AppSettingsSections';
-import { AppAccountSection } from './AppAccountSection';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { ArrowLeft, Lock, Search } from 'lucide-react-native';
 import { directoryChips, filterDirectory, type ClientWorkspace, type DirectoryApp, type DirectoryFilter } from '@lilachat/shared';
@@ -86,8 +84,10 @@ export function AppDirectoryScreen(props: { space: ClientWorkspace; apps: SpaceA
       {chosen ? (
         <AppDetailScreen
           app={chosen}
+          jwt={props.jwt}
+          spaceId={space.id}
           spaceName={space.name}
-          canInstall={admin}
+          admin={admin}
           uninstalling={apps.uninstallingId === chosen.appId}
           onClose={() => setChosenId(null)}
           onMessage={() => {
@@ -96,8 +96,6 @@ export function AppDirectoryScreen(props: { space: ClientWorkspace; apps: SpaceA
           }}
           onInstall={() => apps.install(chosen)}
           onUninstall={admin ? () => apps.uninstall(chosen) : undefined}
-          account={<AppAccountSection jwt={props.jwt} spaceId={space.id} appId={chosen.appId} appName={chosen.name} />}
-          settings={<><AppItemsSection jwt={props.jwt} spaceId={space.id} appId={chosen.appId} /><NoticeTopicsSection jwt={props.jwt} spaceId={space.id} appId={chosen.appId} appName={chosen.name} /></>}
         />
       ) : null}
     </Modal>

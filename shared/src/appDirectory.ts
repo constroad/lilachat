@@ -1,5 +1,5 @@
 import { APP_CATEGORIES, APP_CATEGORY_LABEL, type AppCategory } from './botManifest.js';
-import type { DirectoryApp } from './bots.js';
+import type { AppChannel, DirectoryApp } from './bots.js';
 import { LILACHAT_WEB_URL } from './spaceSections.js';
 
 /**
@@ -80,3 +80,22 @@ export function appReturnFromLink(url: string | null | undefined): { spaceId: st
  * it belongs to the person, for every app.
  */
 export const uninstallWarning = (spaceName: string): string => `Se van sus comandos, sus acciones del ⚡ y sus avisos en ${spaceName}. Tu cuenta conectada sigue igual, y la puedes instalar de nuevo cuando quieras.`;
+
+export type AppDetailTab = 'info' | 'commands' | 'notices' | 'settings';
+
+/**
+ * One detail of an app, whichever way it is opened (José, 23/10, pending 99;
+ * design c-04): like a WhatsApp chat's detail, by tabs. «Avisos» and «Ajustes»
+ * exist only once it is installed in the space.
+ */
+export function appDetailTabs(installed: boolean): { key: AppDetailTab; label: string }[] {
+  const tabs: { key: AppDetailTab; label: string }[] = [{ key: 'info', label: 'Información' }, { key: 'commands', label: 'Comandos' }];
+  return installed ? [...tabs, { key: 'notices', label: 'Avisos' }, { key: 'settings', label: 'Ajustes' }] : tabs;
+}
+
+/** Over «En qué canales está» (design c-05). */
+export function activeChannelsLine(channels: readonly Pick<AppChannel, 'inChannel'>[]): string {
+  const active = channels.filter((channel) => channel.inChannel).length;
+  if (active === 0) return 'En ningún canal';
+  return active === 1 ? '1 activo' : `${active} activos`;
+}

@@ -450,6 +450,8 @@ export const fijarMensajeEnChat = (token: string, chatId: string, seq: number, d
 
 /** Add a person to a chat or channel (Slack's «add them» after a mention of someone who is not in it). */
 export const addChatMember = (token: string, chatId: string, userId: string) => authed<{ ok: true }>('POST', `/api/chats/${chatId}/members`, token, { userId });
+/** Take someone out of a chat or channel; an app too («En qué canales está», pending 99). */
+export const removeChatMember = (token: string, chatId: string, userId: string) => authed<{ ok: true }>('DELETE', `/api/chats/${chatId}/members/${userId}`, token);
 
 export const desfijarMensajeEnChat = (token: string, chatId: string, seq: number) =>
   authed<{ ok: true }>('DELETE', `/api/chats/${chatId}/fijados/${seq}`, token);

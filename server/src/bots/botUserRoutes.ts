@@ -9,6 +9,7 @@ import { asyncRoute, requireSession } from '../requireSession.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { commandGroupsOf, invokeCommand, invokeShortcut, shareCommandAnswer } from './botCommands.js';
 import { FORM_PHOTO_MAX_BYTES, readSignedFile, storeFormPhoto, submitForm } from './botForms.js';
+import { appChannelsOf } from './botChannels.js';
 import { revokeInstallation } from './botInstall.js';
 import { directWith, postBotMessage } from './botMessages.js';
 import { setTopicChannels, topicRoutesOf } from './botTopics.js';
@@ -164,6 +165,16 @@ export function buildBotUserRouter(): Router {
     const outcome = await setTopicChannels(installation, req.body?.channels, { kind: 'user', userId: String(req.session!.userId) });
     if ('error' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
     res.json({ ...outcome, canEdit: true });
+  }));
+  // «En qué canales está» (pending 99, design c-05): every member sees it; the switches use the chat's members routes.
+  router.get('/workspaces/:id/apps/:appId/channels', requireSession, asyncRoute(async (req, res) => {
+    const spaceId = req.params.id!;
+    const member = isId(spaceId) ? await WorkspaceMemberModel.findOne({ workspaceId: spaceId, userId: req.session!.userId, status: 'active' }).select('role').lean() : null;
+    const installation = member ? await installedApp(spaceId, req.params.appId) : null;
+    if (!member || !installation) return void res.status(404).json({ message: 'Esa app no está instalada en el espacio.' });
+    const spaceAdmin = canManageMembers(member.role);
+    const channels = await appChannelsOf({ workspaceId: installation.workspaceId, botUserId: installation.botUserId, userId: req.session!.userId, spaceAdmin });
+    res.json({ channels, botUserId: String(installation.botUserId), canEdit: spaceAdmin });
   }));
   // «Comandos y acciones» (R160): every member sees where each works; only an admin changes it.
   router.get('/workspaces/:id/apps/:appId/items', requireSession, asyncRoute(async (req, res) => {

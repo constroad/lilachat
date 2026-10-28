@@ -11,9 +11,11 @@ import { appDirectoryCache, appDirectoryKey, fetchAppDirectory, useCached } from
 import { useSpaceName } from '../currentSpace';
 import { AppBadge, AppLogo } from './AppLogo';
 import { AppDetailScreen } from './AppDetailScreen';
-import { AppAccountSection } from './AppAccountSection';
+import { useSpaceApps } from './useSpaceApps';
 
 const HEADER_LOGO_SIZE = 40;
+/** The 1:1 is already open: «Mensaje» in its detail goes back to it, not to another chat. */
+const STAY_IN_CHAT = () => undefined;
 const CHAT_MENU_RIGHT = 8;
 type AppTab = 'messages' | 'info';
 const TABS = [
@@ -30,7 +32,8 @@ export function useAppOfChat(params: { appId?: string; spaceId?: string; jwt: st
 
 /**
  * The head of a 1:1 with an app (design e-26): its square logo, «APP», who
- * made it, and the tabs «Mensajes» and «Información» (its detail, e-25). No
+ * made it, and the tabs «Mensajes» and «Información» (the one detail of
+ * the app, pending 99, the same as from the directory). No
  * calls: an app is not called. The ⋮ keeps the chat's options (search, mute),
  * which the design leaves out but a noisy app needs.
  */
@@ -40,6 +43,9 @@ export function AppChatHeader(props: { app: DirectoryApp; spaceId?: string; jwt?
   const spaceName = useSpaceName(props.spaceId);
   const [tab, setTab] = useState<AppTab>('messages');
   const [menuOpen, setMenuOpen] = useState(false);
+  // The same detail as from the directory (pending 99): an admin reinstalls or uninstalls it from here too.
+  const apps = useSpaceApps({ jwt: props.jwt ?? '', spaceId: props.spaceId ?? null, active: false, onChat: STAY_IN_CHAT });
+  const admin = apps.directory?.canInstall ?? false;
   const { app } = props;
   return (
     <View testID="cabecera-app" className="border-b border-outline/10 bg-surface px-3 pb-2" style={{ paddingTop: margins.cabecera }}>
@@ -66,7 +72,20 @@ export function AppChatHeader(props: { app: DirectoryApp; spaceId?: string; jwt?
         <Segmentado opciones={TABS} valor={tab} onCambiar={setTab} />
       </View>
       <HeaderDropdown testID="menu-del-chat" visible={menuOpen} options={props.menu.options} right={CHAT_MENU_RIGHT} onSelect={props.menu.select} onClose={() => setMenuOpen(false)} />
-      {tab === 'info' ? <AppDetailScreen app={app} spaceName={spaceName} canInstall={false} onClose={() => setTab('messages')} onInstall={() => undefined} account={props.jwt && props.spaceId ? <AppAccountSection jwt={props.jwt} spaceId={props.spaceId} appId={app.appId} appName={app.name} /> : null} /> : null}
+      {tab === 'info' && props.jwt && props.spaceId ? (
+        <AppDetailScreen
+          app={app}
+          jwt={props.jwt}
+          spaceId={props.spaceId}
+          spaceName={spaceName}
+          admin={admin}
+          uninstalling={apps.uninstallingId === app.appId}
+          onClose={() => setTab('messages')}
+          onMessage={() => setTab('messages')}
+          onInstall={() => apps.install(app)}
+          onUninstall={admin ? () => apps.uninstall(app) : undefined}
+        />
+      ) : null}
     </View>
   );
 }

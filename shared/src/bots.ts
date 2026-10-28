@@ -157,6 +157,13 @@ export function validateBotPost(raw: unknown): { ok: true; post: BotPost } | Bot
 /** What the chat list, the notification and the search read of a card. */
 export const botCardSummary = (card: Pick<BotCard, 'title' | 'status'>): string => [card.title, card.status?.label].filter(Boolean).join(' · ');
 
+/**
+ * A channel of the space and whether the app is in it (pending 99, design c-05):
+ * the switch takes it out or puts it back through the chat's members routes,
+ * so `canChange` says what those routes would allow me.
+ */
+export type AppChannel = { id: string; name: string; description?: string; private: boolean; inChannel: boolean; canChange: boolean };
+
 /** An app an admin can install from Integraciones (`GET /api/workspaces/:id/available-apps`), its address already pointing at the space. */
 export type AvailableApp = { id: string; name: string; avatarUrl?: string; installUrl: string; installed: boolean };
 /**

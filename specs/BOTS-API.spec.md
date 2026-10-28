@@ -458,7 +458,9 @@ es global y un comando no; los dos funcionan en todos los canales.
 
 ## c-sexies) Lo que cambió en 0.1.161
 
-- **Sacar la app de un canal.** Un admin la quita desde los miembros. Desde
+- **Sacar la app de un canal.** Un admin la quita desde los miembros, o desde
+  Ajustes del detalle de la app (28/10, §151: `GET /api/workspaces/:id/apps/:appId/channels`
+  lista dónde está y el interruptor usa las mismas rutas de miembros). Desde
   ahí la API responde 403 en ese canal (publicar, hilos), y la app no vuelve
   sola si el canal pasa a público. Vuelve cuando un admin la agrega, o la elige
   como canal de un tema de aviso.

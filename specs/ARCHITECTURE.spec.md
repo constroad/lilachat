@@ -4924,6 +4924,9 @@ tardan 120–156 ms. El resto de los ~3 s de «toque → formulario» son los sa
   encabezados y firma. Si nadie escucha en local, el mismo envío sale por la URL pública
   dentro de la misma espera; un timeout local no se repite.
 - Pruebas: `server/src/bots/botLoopback.test.ts` (3).
+- **Medido** en el emulador, «Registrar un gasto» desde el ⚡, del toque al formulario
+  (lectura de pantalla cada ~0,3 s): antes (14:39 UTC) 3,2 · 4,0 · 4,2 s; después (5a82bc3
+  en vivo 14:40:44) 2,6 · 2,7 · 2,6 · 2,5 · 2,5 s. Cerca de 1 s menos por toque.
 
 **Texto corto hasta 60** (`shared/src/appFormRows.ts`, `SHORT_TEXT_MAX`). Recorrido de
 los 10 formularios en el emulador (28/10): «Fletero o placa» (60) quedaba solo en el

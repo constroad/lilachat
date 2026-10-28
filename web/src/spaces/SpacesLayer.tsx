@@ -10,11 +10,10 @@ import { DirectoryDialog } from './DirectoryDialog';
 import { MemberProfileDialog } from './MemberProfileDialog';
 import { MembersDialog } from './MembersDialog';
 import { SpaceSettingsDialog } from './SpaceSettingsDialog';
-import { NewSpaceGroupDialog } from './NewSpaceGroupDialog';
 import { AddedToSpaceDialog } from './AddedToSpaceDialog';
 import { AccessRemovedDialog } from './AccessRemovedDialog';
 
-export type SpaceDialog = 'switcher' | 'join' | 'create' | 'invite' | 'channels' | 'directory' | 'members' | 'requests' | 'settings' | 'newDirect' | 'newGroup' | null;
+export type SpaceDialog = 'switcher' | 'join' | 'create' | 'invite' | 'channels' | 'directory' | 'members' | 'requests' | 'settings' | 'newDirect' | null;
 type Admin = { userId: string; name?: string; phone: string };
 
 /** Every dialog of the company spaces on the web, as `useSpacesWeb` decides which one shows. */
@@ -44,7 +43,6 @@ export function SpacesLayer(props: {
     channel: (channel: ClientChannel) => void;
     profile: (member: ClientWorkspaceMember | null) => void;
     writeTo: (member: ClientWorkspaceMember) => void;
-    groupCreated: (chat: { id: string; name: string; memberIds: string[] }) => void;
     welcomeSeen: (then?: 'enter' | 'directory') => void;
     removedSeen: () => void;
     talkTo: (admin: Admin) => void;
@@ -72,7 +70,6 @@ export function SpacesLayer(props: {
         <MembersDialog space={current} jwt={jwt} myUserId={props.myUserId} online={props.online} initialTab={dialog === 'requests' ? 'pending' : 'active'} onInvite={() => on.dialog('invite')} onChanged={on.reload} onClose={close} />
       ) : null}
       {current && dialog === 'settings' ? <SpaceSettingsDialog space={current} jwt={jwt} onSaved={on.reload} onClose={close} /> : null}
-      {current && dialog === 'newGroup' ? <NewSpaceGroupDialog space={current} jwt={jwt} myUserId={props.myUserId} onCreated={on.groupCreated} onClose={close} /> : null}
       {props.welcome && !dialog ? <AddedToSpaceDialog space={props.welcome} jwt={jwt} onEnter={() => on.welcomeSeen('enter')} onDirectory={() => on.welcomeSeen('directory')} onLater={() => on.welcomeSeen()} /> : null}
       {current && props.activityTab ? <ActivityDialog spaceId={current.id} spaceName={current.name} jwt={jwt} myUserId={props.myUserId} initialTab={props.activityTab} onOpen={on.activityItem} onClose={() => on.activity(null)} /> : null}
       {props.removed ? <AccessRemovedDialog space={props.removed} onPersonal={on.removedSeen} onTalkTo={on.talkTo} /> : null}

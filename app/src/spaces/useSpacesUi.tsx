@@ -20,7 +20,6 @@ import { DirectoryScreen } from './DirectoryScreen';
 import { MemberProfileScreen } from './MemberProfileScreen';
 import { MembersScreen } from './MembersScreen';
 import { SpaceSettingsScreen } from './SpaceSettingsScreen';
-import { NewSpaceGroupScreen } from './NewSpaceGroupScreen';
 import { AddedToSpaceScreen } from './AddedToSpaceScreen';
 import { AccessRemovedScreen } from './AccessRemovedScreen';
 import { markSpacesSeen, useSeenSpaces } from './seenSpaces';
@@ -31,7 +30,7 @@ import type { WorkspaceLink } from './SpaceChatsScreen';
 import { AppDirectoryScreen } from './apps/AppDirectoryScreen';
 import { useSpaceApps } from './apps/useSpaceApps';
 
-type Sheet = 'switcher' | 'join' | 'create' | 'invite' | 'channels' | 'directory' | 'members' | 'requests' | 'settings' | 'newDirect' | 'newGroup' | 'apps' | null;
+type Sheet = 'switcher' | 'join' | 'create' | 'invite' | 'channels' | 'directory' | 'members' | 'requests' | 'settings' | 'newDirect' | 'apps' | null;
 
 /** A chat of the space as the conversation opens it until the list brings it. */
 const spaceChat = (chat: Pick<ChatSummary, 'id' | 'kind' | 'name' | 'phone' | 'memberIds' | 'channel'>, spaceId: string): ChatSummary => ({
@@ -195,7 +194,6 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
       .finally(() => setReturning(false));
   }, [appReturn, current?.id, reloadApps, messageApp]);
   const openNewDirect = useCallback(() => setSheet('newDirect'), []);
-  const openNewGroup = useCallback(() => setSheet('newGroup'), []);
 
   // A message in personal or in another space is not missed (José, 22/10): the title carries how many chats wait elsewhere.
   const elsewhere = unreadElsewhere({ spaces, currentId: current?.id ?? null, personalUnread: params.personalUnread });
@@ -256,9 +254,6 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
       ) : null}
       {current && sheet === 'apps' ? <AppDirectoryScreen space={current} apps={apps} jwt={jwt} initialAppId={appsInitialId} onClose={() => { setSheet(null); setAppsInitialId(null); }} /> : null}
       {current && sheet === 'settings' ? <SpaceSettingsScreen space={current} jwt={jwt} onSaved={() => void reload()} onClose={() => setSheet(null)} /> : null}
-      {current && sheet === 'newGroup' ? (
-        <NewSpaceGroupScreen space={current} jwt={jwt} myUserId={myUserId} onCreated={(chat) => { setSheet(null); setReloadKey((key) => key + 1); onOpenChat(spaceChat({ ...chat, kind: 'group' }, current.id)); }} onClose={() => setSheet(null)} />
-      ) : null}
       {welcome && !sheet && !appReturn && !returning ? (
         <AddedToSpaceScreen
           space={welcome}
@@ -290,6 +285,6 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
     openInvite: () => setSheet('invite'),
     /** A message arrived in a chat outside the personal list: the spaces' counters are read again, once per burst. */
     reloadSoon,
-    listProps: { reloadKey, onWorkspace: openWorkspace, onNewDirect: openNewDirect, onNewGroup: openNewGroup, onChats: setListChats, onRefresh: reload, onActivity: setActivityTab, apps, onExploreApps: () => setSheet('apps') },
+    listProps: { reloadKey, onWorkspace: openWorkspace, onNewDirect: openNewDirect, onChats: setListChats, onRefresh: reload, onActivity: setActivityTab, apps, onExploreApps: () => setSheet('apps') },
   };
 }

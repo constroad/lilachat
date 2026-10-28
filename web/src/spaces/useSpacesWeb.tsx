@@ -223,7 +223,6 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
         channel: openChannel,
         profile: setProfile,
         writeTo: (member) => void writeTo(member),
-        groupCreated: (chat) => spaceId && open(openedChat({ ...chat, kind: 'group' }, spaceId)),
         welcomeSeen: (then) => {
           if (!welcome) return;
           setSeen(markSpacesSeen([welcome.id]));
@@ -264,7 +263,6 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
     openInvite: () => setDialog('invite'),
     openWorkspace: (link: WorkspaceLink) => setDialog(link),
     openNewDirect: () => setDialog('newDirect'),
-    openNewGroup: () => setDialog('newGroup'),
     activity,
     openActivity: setActivityTab,
     apps,

@@ -5,7 +5,9 @@ import { normalizeJoinCode } from './workspaces.js';
  * The chats of a company space by sections, like Slack (designs `s-03` and
  * `e1-07`): channels, groups, direct messages and apps (`e-23`). Channels go by name
  * (#general first), the rest by their last activity. Every section shows,
- * even empty: channels keep their «Agregar canal». PURE.
+ * even empty (channels keep their «Agregar canal»), except groups: a space
+ * creates channels, not groups (pending 109, José 28/10), so it only lists
+ * the ones made before. PURE.
  */
 export type SpaceSectionKey = 'channels' | 'groups' | 'directs' | 'apps';
 type SpaceChat = { kind: 'direct' | 'group' | 'notas'; name?: string; channel?: { visibility: string } | null; lastAt?: string; appId?: string };
@@ -19,9 +21,10 @@ const byChannelName = (a: SpaceChat, b: SpaceChat) => {
 };
 
 export function spaceSections<T extends SpaceChat>(chats: readonly T[]): SpaceSection<T>[] {
+  const groups = chats.filter((chat) => chat.kind === 'group' && !chat.channel).sort(byRecent);
   return [
     { key: 'channels', title: 'Canales', chats: chats.filter((chat) => chat.channel).sort(byChannelName) },
-    { key: 'groups', title: 'Grupos', chats: chats.filter((chat) => chat.kind === 'group' && !chat.channel).sort(byRecent) },
+    ...(groups.length ? [{ key: 'groups' as const, title: 'Grupos', chats: groups }] : []),
     { key: 'directs', title: 'Mensajes directos', chats: chats.filter((chat) => chat.kind === 'direct' && !chat.appId).sort(byRecent) },
     // The 1:1s with apps, like Slack's «Apps» (design e-23): the list adds the installed apps not talked to yet.
     { key: 'apps', title: 'Apps', chats: chats.filter((chat) => chat.kind === 'direct' && chat.appId).sort(byRecent) },

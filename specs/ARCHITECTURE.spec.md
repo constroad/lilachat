@@ -4911,6 +4911,25 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 147. En un espacio solo se crean canales (28/10/2026, OTA + web; pendiente 109)
+
+**Pedido** (José, 28/10): dentro de un espacio no debe existir la opción de crear un grupo; lo
+que se crea ahí es un canal.
+
+- `spaceSections` (`shared/src/spaceSections.ts`) ya no devuelve la sección «Grupos» vacía. Si el
+  espacio tiene grupos hechos antes de esta regla, la sección sigue y los muestra.
+- App (`SpaceChatsScreen`): solo «Mensajes directos» tiene «+» en su cabecera. Se borró
+  `NewSpaceGroupScreen` y su hoja en `useSpacesUi`.
+- Web (`SpaceChatList`): «Grupos» no tiene «+». Se borró `NewSpaceGroupDialog` y su
+  diálogo en `SpacesLayer` y `useSpacesWeb`.
+- El modo personal no cambia: «Nuevo grupo» sigue ahí.
+- El server no se tocó: un cliente viejo todavía podría crear un grupo con `workspaceId`. Si
+  José quiere cerrarlo también en el server, es un 400 en `POST /chats` con
+  `kind: 'group'` y `workspaceId`.
+
+**Pruebas.** `spaceSections.test.ts`: sin grupos no hay sección, y un grupo viejo sigue
+(30 tests). `spaces.test.tsx`: sin «Nuevo grupo» ni «Grupos» vacío, y un grupo viejo sin «+».
+
 ## 146. Responder en el hilo, clip sin acciones, varios documentos y la galería entera (28/10/2026, OTA + web; pendientes 110–113)
 
 **110 — La respuesta a un hilo salía en el chat principal.** Dos caminos llevaban ahí:
@@ -12561,7 +12580,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     leyó el mensaje, el indicador de mensajes nuevos sigue apareciendo en los
     grupos y en los canales (el número del espacio en el riel y el del chat en
     la lista).
-109. **En el modo empresa solo se crean canales, no grupos** (José, 28/10):
+109. ✅ **Hecho (§147).** **En el modo empresa solo se crean canales, no grupos** (José, 28/10):
     dentro de un espacio no debería existir la opción de crear un grupo; lo que
     se crea ahí es un canal.
 110. ✅ **Hecho (§146).** **Responder en un hilo manda al hilo principal** (José, 28/10, bug, en la

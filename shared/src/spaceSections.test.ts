@@ -25,13 +25,17 @@ describe('spaceSections', () => {
       ['apps', ['a-portal', 'a-pulso']],
     ]);
   });
-  it('a section always shows, even empty (channels keep «Agregar canal»)', () => {
+  it('a section shows even empty (channels keep «Agregar canal»), except groups: a space creates channels (pending 109)', () => {
     expect(spaceSections([]).map((section) => [section.key, section.title, section.chats.length])).toEqual([
       ['channels', 'Canales', 0],
-      ['groups', 'Grupos', 0],
       ['directs', 'Mensajes directos', 0],
       ['apps', 'Apps', 0],
     ]);
+  });
+
+  it('a group made before the rule still shows in its section', () => {
+    const sections = spaceSections([chat('g1', 'group', '2026-10-21T09:30:00Z', { name: 'Choferes' })]);
+    expect(sections.find((section) => section.key === 'groups')?.chats.map((one) => one.id)).toEqual(['g1']);
   });
 });
 

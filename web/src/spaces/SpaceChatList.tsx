@@ -30,7 +30,6 @@ type Props = {
   onInvite: () => void;
   onWorkspace: (link: WorkspaceLink) => void;
   onNewDirect: () => void;
-  onNewGroup: () => void;
   /** New mentions and threads, and «Menciones y actividad» (design e-19). */
   activity?: { mentions: number; threads: number };
   onActivity?: (tab: ActivityType) => void;
@@ -133,7 +132,9 @@ export function SpaceChatList(props: Props) {
                     <span className="flex-1 text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{section.title}</span>
                     <span className="text-[11px] text-on-surface-variant">{section.chats.length}</span>
                   </button>
-                  <button type="button" data-testid={`nuevo-${section.key}`} aria-label={NEW_IN_SECTION[section.key]} title={NEW_IN_SECTION[section.key]} onClick={section.key === 'channels' ? props.onChannels : section.key === 'groups' ? props.onNewGroup : props.onNewDirect} className="grid h-8 w-8 place-items-center rounded-full text-on-surface-variant hover:bg-background"><Plus size={16} /></button>
+                  {section.key === 'groups' ? null : (
+                    <button type="button" data-testid={`nuevo-${section.key}`} aria-label={NEW_IN_SECTION[section.key]} title={NEW_IN_SECTION[section.key]} onClick={section.key === 'channels' ? props.onChannels : props.onNewDirect} className="grid h-8 w-8 place-items-center rounded-full text-on-surface-variant hover:bg-background"><Plus size={16} /></button>
+                  )}
                 </div>
                 {folded.has(section.key)
                   ? null
@@ -185,7 +186,8 @@ function ActivityChip(props: { testId: string; Icon: LucideIcon; label: string; 
   );
 }
 
-const NEW_IN_SECTION: Record<SpaceSectionKey, string> = { channels: 'Agregar canal', groups: 'Nuevo grupo', directs: 'Nuevo mensaje directo', apps: 'Agregar apps' };
+/** A space creates channels, not groups (pending 109, José 28/10): the groups section has no «+». */
+const NEW_IN_SECTION: Record<Exclude<SpaceSectionKey, 'groups'>, string> = { channels: 'Agregar canal', directs: 'Nuevo mensaje directo', apps: 'Agregar apps' };
 
 /**
  * «Espacio de trabajo» on top of the list (desktop designs `e1-05`, `e1-06`):

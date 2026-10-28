@@ -7,7 +7,6 @@ import { MembersDialog } from './MembersDialog';
 import { SpaceSettingsDialog } from './SpaceSettingsDialog';
 import { AddedToSpaceDialog } from './AddedToSpaceDialog';
 import { AccessRemovedDialog } from './AccessRemovedDialog';
-import { NewSpaceGroupDialog } from './NewSpaceGroupDialog';
 
 /** The enterprise screens on the web (designs `e1-08`…`e1-14`): what reaches the server, and what the screen does with it. */
 let calls: { url: string; method: string; body: unknown }[] = [];
@@ -142,16 +141,3 @@ describe('«te agregaron» and «ya no tienes acceso» (e1-13, e1-14)', () => {
   });
 });
 
-describe('NewSpaceGroupDialog', () => {
-  it('a group inside the space with its name and the chosen people', async () => {
-    answer('/workspaces/w1/members?status=active', { members: people });
-    answer('/chats', { chatId: 'g1' }, 201, 'POST');
-    const onCreated = vi.fn();
-    render(<NewSpaceGroupDialog space={space()} jwt="t" myUserId="u-me" onCreated={onCreated} onClose={() => undefined} />);
-    await userEvent.type(screen.getByTestId('input-nombre-grupo-espacio'), 'Compras de obra');
-    await userEvent.click(await screen.findByTestId('elegir-987654321'));
-    await userEvent.click(screen.getByTestId('crear-grupo-espacio'));
-    await waitFor(() => expect(onCreated).toHaveBeenCalledWith({ id: 'g1', name: 'Compras de obra', memberIds: ['u-me', 'u-ana'] }));
-    expect(calls.find((call) => call.method === 'POST')?.body).toEqual({ kind: 'group', name: 'Compras de obra', memberIds: ['u-ana'], workspaceId: 'w1' });
-  });
-});

@@ -32,7 +32,7 @@ const isInMyChatList = (chatId: string) => Boolean(chatsEnMemoria()?.some((chat)
  */
 export type WorkspaceLink = 'directory' | 'members' | 'requests' | 'settings';
 
-export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; myUserId: string; active: boolean; openChatId: string | null; reloadKey?: number; onOpenChat: (chat: ChatSummary) => void; onChannels: () => void; onInvite: () => void; onWorkspace: (link: WorkspaceLink) => void; onNewDirect: () => void; onNewGroup: () => void; onChats?: (chats: ChatSummary[]) => void; onRefresh?: () => void; onActivity: (tab: ActivityType) => void; apps?: SpaceApps; onExploreApps?: () => void }) {
+export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; myUserId: string; active: boolean; openChatId: string | null; reloadKey?: number; onOpenChat: (chat: ChatSummary) => void; onChannels: () => void; onInvite: () => void; onWorkspace: (link: WorkspaceLink) => void; onNewDirect: () => void; onChats?: (chats: ChatSummary[]) => void; onRefresh?: () => void; onActivity: (tab: ActivityType) => void; apps?: SpaceApps; onExploreApps?: () => void }) {
   const colors = useColores();
   const { space, jwt, myUserId, onOpenChat } = props;
   const [refreshing, setRefreshing] = useState(false);
@@ -197,11 +197,12 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
             <View key={section.key} testID={`seccion-${section.key}`} className="border-t border-outline/10 pt-1">
               <Pressable testID={`plegar-${section.key}`} onPress={() => toggle(section.key)} className="min-h-[44px] flex-row items-center px-4">
                 <Text className="flex-1 text-[12px] font-bold uppercase tracking-widest text-on-surface-variant">{section.title}</Text>
-                {section.key === 'channels' ? null : (
-                  <Pressable testID={`nuevo-${section.key}`} onPress={section.key === 'groups' ? props.onNewGroup : props.onNewDirect} accessibilityLabel={section.key === 'groups' ? 'Nuevo grupo' : 'Nuevo mensaje directo'} hitSlop={8} className="mr-2 h-9 w-9 items-center justify-center">
+                {/* A space creates channels, not groups (pending 109, José 28/10): only direct messages have a «+» here. */}
+                {section.key === 'directs' ? (
+                  <Pressable testID="nuevo-directs" onPress={props.onNewDirect} accessibilityLabel="Nuevo mensaje directo" hitSlop={8} className="mr-2 h-9 w-9 items-center justify-center">
                     <Plus size={18} color={colors['on-surface-variant']} />
                   </Pressable>
-                )}
+                ) : null}
                 {folded.has(section.key) ? <ChevronRight size={18} color={colors['on-surface-variant']} /> : <ChevronDown size={18} color={colors['on-surface-variant']} />}
               </Pressable>
               {folded.has(section.key)

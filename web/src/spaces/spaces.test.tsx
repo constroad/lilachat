@@ -133,7 +133,7 @@ describe('SpaceChatList', () => {
   const chat = (id: string, extra: Partial<ChatSummary>): ChatSummary => ({ id, kind: 'group', memberIds: [], lastSeq: 1, unread: 0, othersReadSeq: 0, othersDeliveredSeq: 0, lastMessage: null, ...extra }) as ChatSummary;
 
   const list = (chats: ChatSummary[] | null, extra: Partial<Parameters<typeof SpaceChatList>[0]> = {}) => (
-    <SpaceChatList space={space()} chats={chats} failed={false} onRetry={() => undefined} yo="u1" me={{ name: 'José', phone: '902049935' }} selectedChatId={null} onOpenChat={() => undefined} onAccion={() => undefined} onSwitch={() => undefined} onChannels={() => undefined} onInvite={() => undefined} onWorkspace={() => undefined} onNewDirect={() => undefined} onNewGroup={() => undefined} onSettings={() => undefined} {...extra} />
+    <SpaceChatList space={space()} chats={chats} failed={false} onRetry={() => undefined} yo="u1" me={{ name: 'José', phone: '902049935' }} selectedChatId={null} onOpenChat={() => undefined} onAccion={() => undefined} onSwitch={() => undefined} onChannels={() => undefined} onInvite={() => undefined} onWorkspace={() => undefined} onNewDirect={() => undefined} onSettings={() => undefined} {...extra} />
   );
 
   it('channels, groups and direct messages in sections, folded with the arrow, with the code to copy at the foot', async () => {
@@ -149,6 +149,22 @@ describe('SpaceChatList', () => {
     await userEvent.click(screen.getByTestId('plegar-channels'));
     await userEvent.click(screen.getByTestId('canal-fila-c1'));
     expect(onOpenChat).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }));
+  });
+
+  it('a space creates channels, not groups (pending 109, José 28/10): no «Nuevo grupo» and no empty «Grupos»', () => {
+    // Arrange: a space with a channel and a direct message, no groups.
+    render(list([chat('c1', { name: 'general', channel: { visibility: 'public' } }), chat('d1', { kind: 'direct', name: 'Ana Torres' })]));
+    // Assert
+    expect(screen.getByTestId('nuevo-channels')).toBeInTheDocument();
+    expect(screen.getByTestId('nuevo-directs')).toBeInTheDocument();
+    expect(screen.queryByTestId('seccion-groups')).toBeNull();
+    expect(screen.queryByTestId('nuevo-groups')).toBeNull();
+  });
+
+  it('a group made before the rule still shows, without a button to make more', () => {
+    render(list([chat('g1', { name: 'Compras de obra' })]));
+    expect(screen.getByTestId('seccion-groups')).toHaveTextContent('Compras de obra');
+    expect(screen.queryByTestId('nuevo-groups')).toBeNull();
   });
 
   it('an empty space invites to the channels and to the team; a failed load offers to retry', async () => {

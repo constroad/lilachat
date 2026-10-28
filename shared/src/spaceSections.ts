@@ -125,6 +125,20 @@ export function railSpaces<T extends { status: string }>(spaces: readonly T[] | 
   return (spaces ?? []).filter((space) => space.status === 'active' || space.status === 'pending');
 }
 
+/**
+ * The badge of the space I am in, live from its list (pending 108, José 28/10:
+ * reading a chat there cleared its row but the rail kept the space's count
+ * until the next reload). Other spaces keep the server's count. Same array
+ * when nothing changes.
+ */
+export function withLiveUnread<S extends { id: string; unreadChats?: number }>(spaces: S[] | null, currentId: string | null, chats: readonly { unread: number }[] | null): S[] | null {
+  if (!spaces || !currentId || !chats) return spaces;
+  const live = chats.filter((chat) => chat.unread > 0).length;
+  const index = spaces.findIndex((space) => space.id === currentId);
+  if (index === -1 || spaces[index]!.unreadChats === live) return spaces;
+  return spaces.map((space, position) => (position === index ? { ...space, unreadChats: live } : space));
+}
+
 /** The chats of a space without the archived ones, or only those when «Archivados» is open; and how many are archived. */
 export function splitArchived<T extends { archived?: boolean }>(chats: readonly T[], openArchived: boolean): { shown: T[]; archived: number } {
   const archived = chats.filter((chat) => chat.archived === true);

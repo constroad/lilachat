@@ -5,7 +5,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { ChatModel, MessageModel } from '../src/chatModels.js';
-import { deleteMessage, sendMessage } from '../src/chatService.js';
+import { deleteMessage, escribirAviso, markRead, sendMessage } from '../src/chatService.js';
 import { HiloInvalidoError } from '../src/hilos.js';
 import { listChats } from '../src/listaDeChats.js';
 import { UserModel } from '../src/models.js';
@@ -83,6 +83,44 @@ describe('responder en un hilo', () => {
     await escribir(beto, 'en el hilo', { hiloDe: raiz.seq });
     const [chat] = await listChats(jose);
     expect(chat?.lastMessage).toMatchObject({ body: 'en el hilo', hiloDe: raiz.seq });
+  });
+
+  it('a reply in a thread does not make the chat unread again (pending 108, José 28/10)', async () => {
+    // Arrange: José read the whole group; then Beto answers in a thread.
+    const raiz = (await escribir(ana, 'Raíz')).message;
+    await markRead({ chatId: grupo, userId: jose, seq: raiz.seq });
+    await escribir(beto, 'en el hilo', { hiloDe: raiz.seq });
+    // Act
+    const [chat] = await listChats(jose);
+    // Assert
+    expect(chat?.unread).toBe(0);
+  });
+
+  it('a server notice after a thread reply counts again (both writers move the main seq)', async () => {
+    // Arrange
+    const raiz = (await escribir(ana, 'Raíz')).message;
+    await markRead({ chatId: grupo, userId: jose, seq: raiz.seq });
+    await escribir(beto, 'solo en el hilo', { hiloDe: raiz.seq });
+    await escribirAviso({ chatId: grupo, quien: ana, evento: 'nombre', body: 'Ana cambió el nombre del grupo' });
+    // Act
+    const [chat] = await listChats(jose);
+    const stored = await ChatModel.findById(grupo).lean();
+    // Assert
+    expect(chat?.unread).toBeGreaterThan(0);
+    expect(stored?.lastMainSeq).toBe(stored?.lastSeq);
+  });
+
+  it('a reply also sent to the chat, or a new message, does count', async () => {
+    // Arrange
+    const raiz = (await escribir(ana, 'Raíz')).message;
+    await markRead({ chatId: grupo, userId: jose, seq: raiz.seq });
+    await escribir(beto, 'en el hilo y en el chat', { hiloDe: raiz.seq, enElChat: true });
+    await escribir(beto, 'solo en el hilo', { hiloDe: raiz.seq });
+    await escribir(carla, 'nuevo en el chat');
+    // Act
+    const [chat] = await listChats(jose);
+    // Assert
+    expect(chat?.unread).toBeGreaterThan(0);
   });
 });
 

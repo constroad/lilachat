@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { ChatModel, ReceiptModel, type Message } from './chatModels.js';
+import { ChatModel, MessageModel, ReceiptModel, type Message } from './chatModels.js';
 import { ForbiddenChatError } from './erroresDelChat.js';
 
 /**
@@ -73,6 +73,20 @@ async function moverCursor(
   return !anterior || campos.some((campo) => (anterior[campo] ?? 0) < seq);
 }
 
+/**
+ * Up to `lastSeq` when everything after `seq` is a thread reply the main chat
+ * hides (pending 108, José 28/10: groups and channels stayed unread after
+ * reading them). A reply takes the chat's next `seq`, but a client can only
+ * acknowledge the last message it SHOWS, so the cursor stopped short and the
+ * next list reload brought the count back. A reply also sent to the chat
+ * (`enElChat`) is visible and is not skipped.
+ */
+async function throughHiddenReplies(chatId: Types.ObjectId, seq: number, lastSeq: number): Promise<number> {
+  if (seq <= 0 || seq >= lastSeq) return seq;
+  const visibleAfter = await MessageModel.exists({ chatId, seq: { $gt: seq, $lte: lastSeq }, $or: [{ hiloDe: null }, { enElChat: true }] });
+  return visibleAfter ? seq : lastSeq;
+}
+
 export async function markRead(params: { chatId: string; userId: Types.ObjectId; seq: number }): Promise<number | false> {
   return (await marcarLeidoDetallado(params)).leido;
 }
@@ -84,7 +98,7 @@ export async function markRead(params: { chatId: string; userId: Types.ObjectId;
  */
 export async function marcarLeidoDetallado(params: { chatId: string; userId: Types.ObjectId; seq: number }): Promise<{ leido: number | false; desmarcado: boolean }> {
   const { id: chatId, lastSeq } = await ultimoSeqDelMiembro(params.chatId, params.userId);
-  const seq = Math.min(params.seq, lastSeq);
+  const seq = await throughHiddenReplies(chatId, Math.min(params.seq, lastSeq), lastSeq);
   if (seq <= 0) return { leido: false, desmarcado: false };
   const [avanzo, marca] = await Promise.all([
     // Leer implica entregado: no se puede leer lo que no llego.
@@ -114,7 +128,7 @@ export async function markDelivered(params: {
   seq: number;
 }): Promise<number | false> {
   const { id: chatId, lastSeq } = await ultimoSeqDelMiembro(params.chatId, params.userId);
-  const seq = Math.min(params.seq, lastSeq);
+  const seq = await throughHiddenReplies(chatId, Math.min(params.seq, lastSeq), lastSeq);
   if (seq <= 0) return false;
   return (await moverCursor({ chatId, userId: params.userId }, ['deliveredSeq'], seq)) ? seq : false;
 }

@@ -191,8 +191,9 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
       acuseDe: acusan,
       lastSeq: chat.lastSeq,
       readSeq: readByChat.get(String(chat._id)) ?? 0,
+      // Only what the main chat shows counts (pending 108): a thread reply has its own chip.
       unread: unreadCount({
-        lastSeq: chat.lastSeq,
+        lastSeq: chat.lastMainSeq ?? chat.lastSeq,
         readSeq: readByChat.get(String(chat._id)) ?? 0,
       }),
       lastMessage: last

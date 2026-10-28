@@ -291,16 +291,6 @@ export function winkCardLines(params: { wink?: string; mine: boolean; author?: s
   return { who: winkWho(params.mine, params.author), detail };
 }
 
-/**
- * A nudge or wink that just arrived to a row of the chat list (José, 21/10:
- * «en la lista de chats el card item no se mueve»). Never on the first look
- * at the row (`previousSeq` unknown) and never for what I sent.
- */
-export function funArrivedInRow(previousSeq: number | undefined, last: { seq: number; kind?: string; senderId: string } | null | undefined, me: string): 'zumbido' | 'guino' | null {
-  if (previousSeq === undefined || !last || last.seq <= previousSeq || last.senderId === me) return null;
-  return last.kind === 'zumbido' || last.kind === 'guino' ? last.kind : null;
-}
-
 /** The strong part of the shake: wide swings to each side. */
 const STRONG_SWINGS: readonly number[] = [-1, 1, -0.9, 0.9, -1, 0.8, -0.9, 1];
 /** How it calms down before stopping. */

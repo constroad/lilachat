@@ -3,13 +3,13 @@ import { Pressable, Text, Vibration, View } from 'react-native';
 import { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming, type SharedValue } from 'react-native-reanimated';
 import { Heart, Play, Vibrate } from 'lucide-react-native';
 import { WinkCharacter } from './WinkCharacter';
-import { funSeenFloor, rememberFunSeen } from './funSeen';
+import { funSeenFloor, rememberFunSeen, rememberRowPlayed, rowPlayedSeq, useFunLedgerReady } from './funSeen';
 import { getSocket } from './socketClient';
 import { chatsEnMemoria, suscribirChatsEnMemoria } from './chatsGuardados';
 import { funAvailable } from './funAvailable';
 import { playWinkCues, shakeScreen, startWink, stopFun } from './FunScreen';
 import { closeEmojiPanel } from './emojiPanel';
-import { FUN_LIVE_MS, NUDGE_SHAKE, formatClock, funArrivedInRow, funMessageToPlay, highestSeq, shouldPlayFun, winkById, winkCardLines, winkTileIsProp, type FunPlace, type FunToPlay, type WinkId } from '@lilachat/shared';
+import { FUN_LIVE_MS, NUDGE_SHAKE, formatClock, funMessageToPlay, funToPlayInRow, highestSeq, shouldPlayFun, winkById, winkCardLines, winkTileIsProp, type FunPlace, type FunToPlay, type WinkId } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 
 const SEND_TIMEOUT_MS = 8000;
@@ -63,24 +63,28 @@ function shakeRow(offset: SharedValue<number>): void {
 /**
  * The row of the chat list when a nudge or wink arrives (José, 21/10: «en la
  * lista de chats el card item no se mueve»): a nudge shakes it and vibrates, a
- * wink pops it. Not while that chat is open (the chat plays it), not muted.
+ * wink pops it. Not while that chat is open (the chat plays it), not muted,
+ * and only while it is live and not played here yet (pending 107: the list
+ * reloads, remounts and recycles rows, and an old nudge shook them again).
  */
-export function useFunInRow(chat: { id: string; muted?: boolean; lastMessage: { seq: number; kind?: string; senderId: string } | null }, me: string, open: boolean) {
+export function useFunInRow(chat: { id: string; muted?: boolean; lastMessage: { seq: number; kind?: string; senderId: string; at?: string; deletedAt?: string } | null }, me: string, open: boolean) {
   const reducedMotion = useReducedMotion();
   const offset = useSharedValue(0);
   const scale = useSharedValue(1);
-  const lastSeq = useRef<number | undefined>(undefined);
-  const { lastMessage } = chat;
+  const ready = useFunLedgerReady();
+  const { lastMessage, id } = chat;
   useEffect(() => {
-    const arrived = open ? null : funArrivedInRow(lastSeq.current, lastMessage, me);
-    lastSeq.current = lastMessage?.seq ?? lastSeq.current ?? 0;
+    if (open || !ready || !lastMessage) return;
+    const arrived = funToPlayInRow({ last: lastMessage, me, playedSeq: rowPlayedSeq(id), now: Date.now() });
     if (!arrived) return;
+    rememberRowPlayed(id, lastMessage.seq);
+    console.log(`[fun] ${arrived} ${lastMessage.seq} plays in the row of ${id}`);
     const how = shouldPlayFun({ muted: chat.muted === true, reducedMotion, place: 'row' });
     if (how.vibrate) Vibration.vibrate(arrived === 'zumbido' ? NUDGE_VIBRATION : WINK_VIBRATION);
     if (!how.animate) return;
     if (arrived === 'zumbido') shakeRow(offset);
     else scale.value = withSequence(...[POP_SCALE, 1, POP_SCALE, 1].map((value) => withTiming(value, { duration: POP_STEP_MS })));
-  }, [lastMessage, me, open, chat.muted, reducedMotion, offset, scale]);
+  }, [lastMessage, id, me, open, ready, chat.muted, reducedMotion, offset, scale]);
   return useAnimatedStyle(() => ({ transform: [{ translateX: offset.value }, { scale: scale.value }] }));
 }
 
@@ -91,13 +95,16 @@ export function useFunInRow(chat: { id: string; muted?: boolean; lastMessage: { 
  * (`FunScreen`). In the open chat it always plays, a muted one only without
  * sound; «Ver otra vez» plays it whole (`shouldPlayFun`). What I had read is
  * taken once, when the chat opens: the list marks it read right away, and
- * reading it later made the wink count as already seen.
+ * reading it later made the wink count as already seen. What this phone already
+ * played (saved, `funSeen`) raises that floor, so nothing replays after a
+ * restart; until it is read from storage nothing plays.
  */
 export function useFunPlayback(params: { messages: readonly { seq: number; kind?: string; senderId: string; wink?: string; at?: string }[]; me: string; chatId: string; afterSeq: number }): void {
   const muted = useChatMuted(params.chatId);
   const reducedMotion = useReducedMotion();
   const seen = useRef<number | null>(null);
-  const readAtOpen = useRef(funSeenFloor(params.chatId, params.afterSeq)).current;
+  const readAtOpen = useRef(params.afterSeq).current;
+  const ready = useFunLedgerReady();
   const play = useCallback(
     (fun: FunToPlay, place: FunPlace) => {
       const how = shouldPlayFun({ muted, reducedMotion, place });
@@ -116,16 +123,19 @@ export function useFunPlayback(params: { messages: readonly { seq: number; kind?
   );
   const { messages, me, chatId } = params;
   useEffect(() => {
-    if (messages.length === 0) return;
+    if (!ready || messages.length === 0) return;
     // The first look at the chat plays only what someone sent me; mine plays when it goes, live.
     const opening = seen.current === null;
-    seen.current ??= readAtOpen;
+    seen.current ??= funSeenFloor(chatId, readAtOpen);
     // Mine plays live only if it was just sent: the history that arrives after opening is not live.
     const fun = funMessageToPlay(messages, me, seen.current, { mineToo: !opening, mineSince: Date.now() - FUN_LIVE_MS });
     seen.current = Math.max(seen.current, highestSeq(messages));
     rememberFunSeen(chatId, seen.current);
-    if (fun) play(fun, 'chat');
-  }, [messages, me, chatId, readAtOpen, play]);
+    if (!fun) return;
+    // One line per automatic play: «it played again» is answered by logcat (pending 107).
+    console.log(`[fun] ${fun.kind} ${fun.seq} plays in chat ${chatId}`);
+    play(fun, 'chat');
+  }, [ready, messages, me, chatId, readAtOpen, play]);
   useEffect(() => {
     const listener: ReplayListener = (fun) => play(fun, 'replay');
     replayListeners.add(listener);

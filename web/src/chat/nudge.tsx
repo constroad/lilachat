@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Heart, Play, Vibrate } from 'lucide-react';
-import { FUN_LIVE_MS, formatClock, funArrivedInRow, funMessageToPlay, highestSeq, shouldPlayFun, winkById, winkCardLines, winkRowSound, winkTileIsProp, type FunPlace, type FunToPlay, type Wink, type WinkId } from '@lilachat/shared';
+import { FUN_LIVE_MS, formatClock, funMessageToPlay, funToPlayInRow, highestSeq, shouldPlayFun, winkById, winkCardLines, winkRowSound, winkTileIsProp, type FunPlace, type FunToPlay, type Wink, type WinkId } from '@lilachat/shared';
 import { WinkOverlay } from './WinkOverlay';
+import { funSeenFloor, rememberFunSeen, rememberRowPlayed, rowPlayedSeq } from './funSeen';
 import { WinkCharacter } from './WinkCharacter';
 import { playWinkCues, playWinkSound, shakeWholeScreen, stopWinkSounds } from './winkSounds';
 
@@ -47,7 +48,9 @@ const prefersReducedMotion = () => Boolean(window.matchMedia?.('(prefers-reduced
  * came while it was closed plays once when it opens (`afterSeq` = what I had
  * read, taken once when the chat opens), and each new one on arrival. In the
  * open chat it always plays, a muted one only without sound; «Ver otra vez»
- * plays it whole (`shouldPlayFun`).
+ * plays it whole (`shouldPlayFun`). What this browser already played (saved,
+ * `funSeen`) raises that floor: a reload or a stale group cursor does not
+ * replay it (pending 107).
  */
 export function useFunPlayback(params: { messages: readonly { chatId?: string; seq: number; kind?: string; senderId: string; wink?: string; at?: string }[] | null; me: string; chatId: string; muted: boolean; afterSeq: number }): { overlay: ReactNode } {
   const [playing, setPlaying] = useState<{ seq: number; wink: Wink } | null>(null);
@@ -81,11 +84,12 @@ export function useFunPlayback(params: { messages: readonly { chatId?: string; s
     if (!messages || messages.length === 0 || messages.some((message) => message.chatId !== undefined && message.chatId !== chatId)) return;
     // The first look at the chat plays only what someone sent me; mine plays when it goes, live.
     const opening = seen.current?.chatId !== chatId;
-    const current = opening || !seen.current ? { chatId, seq: readAtOpen.current.seq } : seen.current;
+    const current = opening || !seen.current ? { chatId, seq: funSeenFloor(chatId, readAtOpen.current.seq) } : seen.current;
     seen.current = current;
     // Mine plays live only if it was just sent: the history that arrives after opening is not live.
     const fun = funMessageToPlay(messages, me, current.seq, { mineToo: !opening, mineSince: Date.now() - FUN_LIVE_MS });
     current.seq = Math.max(current.seq, highestSeq(messages));
+    rememberFunSeen(chatId, current.seq);
     if (fun) play(fun, 'chat');
   }, [messages, me, chatId, play]);
   useEffect(() => {
@@ -113,25 +117,27 @@ export function useFunPlayback(params: { messages: readonly { chatId?: string; s
  * A nudge or wink to a chat that is NOT open (José, 21/10: a nudge moves the
  * whole screen, not only when that chat is open): a nudge
  * shakes the whole window and buzzes; a wink pops its row with its sound and
- * plays in full when that chat is opened. Not when muted.
+ * plays in full when that chat is opened. Not when muted, and only while it is
+ * live and not played here yet (pending 107: the list reloads and an old one
+ * shook again).
  */
-export function useFunInRow(chat: { muted?: boolean; lastMessage: { seq: number; kind?: string; senderId: string; wink?: string } | null }, me: string | undefined, open: boolean): string {
+export function useFunInRow(chat: { id: string; muted?: boolean; lastMessage: { seq: number; kind?: string; senderId: string; wink?: string; at?: string; deletedAt?: string } | null }, me: string | undefined, open: boolean): string {
   const [effect, setEffect] = useState('');
-  const lastSeq = useRef<number | undefined>(undefined);
-  const { lastMessage, muted } = chat;
+  const { lastMessage, muted, id } = chat;
   useEffect(() => {
-    const arrived = open || !me ? null : funArrivedInRow(lastSeq.current, lastMessage, me);
-    lastSeq.current = lastMessage?.seq ?? lastSeq.current ?? 0;
+    if (open || !me || !lastMessage) return;
+    const arrived = funToPlayInRow({ last: lastMessage, me, playedSeq: rowPlayedSeq(id), now: Date.now() });
     if (!arrived) return;
+    rememberRowPlayed(id, lastMessage.seq);
     const how = shouldPlayFun({ muted: muted === true, reducedMotion: prefersReducedMotion(), place: 'row' });
     if (how.sound) {
       if (arrived === 'zumbido') buzz();
-      else playWinkSound(winkRowSound(winkById(lastMessage?.wink)));
+      else playWinkSound(winkRowSound(winkById(lastMessage.wink)));
     }
     if (!how.animate) return;
     if (arrived === 'zumbido') shakeWholeScreen();
     else setEffect('wink-pop');
-  }, [lastMessage, me, open, muted]);
+  }, [lastMessage, id, me, open, muted]);
   useEffect(() => {
     if (!effect) return;
     const stop = setTimeout(() => setEffect(''), POP_MS);

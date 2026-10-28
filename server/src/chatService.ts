@@ -117,11 +117,15 @@ export async function sendMessage(params: {
   // 17/10/2026 — antes este comentario prometía el corte y el código no lo
   // hacía). Vale para todas las puertas: socket, archivos, auto-respuesta,
   // @lila y programados.
+  // A reply only in a thread is hidden in the main chat: `lastMainSeq` stays (pending 108), and a
+  // chat that never had it starts from the `lastSeq` before this reply.
+  const hiddenInChat = params.hiloDe !== undefined && !params.enElChat;
+  const nextSeq = { $add: [{ $ifNull: ['$lastSeq', 0] }, 1] };
   const chat = await ChatModel.findOneAndUpdate(
     // A nudge or a wink carries no content, so it also goes in a secret chat (backlog 3).
     { _id: chatId, 'members.userId': params.senderId, ...(params.envelope || isFunKind(params.kind) ? {} : { encrypted: { $ne: true } }) },
-    { $inc: { lastSeq: 1 } },
-    { returnDocument: 'after', projection: { lastSeq: 1, kind: 1, 'members.userId': 1 } }
+    [{ $set: { lastSeq: nextSeq, lastMainSeq: hiddenInChat ? { $ifNull: ['$lastMainSeq', { $ifNull: ['$lastSeq', 0] }] } : nextSeq } }],
+    { returnDocument: 'after', projection: { lastSeq: 1, kind: 1, 'members.userId': 1 }, updatePipeline: true }
   ).lean<{ lastSeq: number; kind?: string; members: { userId: Types.ObjectId }[] } | null>();
   if (!chat) {
     const esMiembroDeUnSecreto =
@@ -403,10 +407,12 @@ export async function escribirAviso(params: {
   /** What the notice is about (pending 76: the reminder that rang), so a tap opens it. */
   ref?: Message['ref'];
 }): Promise<Message | null> {
+  // A notice shows in the main chat: `lastMainSeq` moves with it (pending 108).
+  const nextSeq = { $add: [{ $ifNull: ['$lastSeq', 0] }, 1] };
   const chat = await ChatModel.findOneAndUpdate(
     { _id: params.chatId, encrypted: { $ne: true } },
-    { $inc: { lastSeq: 1 } },
-    { returnDocument: 'after' }
+    [{ $set: { lastSeq: nextSeq, lastMainSeq: nextSeq } }],
+    { returnDocument: 'after', updatePipeline: true }
   ).lean<{ lastSeq: number } | null>();
   if (!chat) return null;
 

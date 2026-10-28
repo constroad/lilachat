@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NUDGE_SHAKE, funArrivedInRow, funMessageToPlay, FUN_LIVE_MS, funNoticeText, isWinkId, shouldPlayFun, WINKS, winkById, winkCardLines, winkCues, winkParticles, winkRowSound } from './winks.js';
+import { NUDGE_SHAKE, funMessageToPlay, FUN_LIVE_MS, funNoticeText, isWinkId, shouldPlayFun, WINKS, winkById, winkCardLines, winkCues, winkParticles, winkRowSound } from './winks.js';
 
 describe('the wink catalog', () => {
   it('characters, construction ones and the first emoji ones, each with a name and its length', () => {
@@ -171,21 +171,6 @@ describe('winkCardLines', () => {
   });
   it('a wink this version does not know: only who, and the time if there is one', () => {
     expect(winkCardLines({ wink: 'chanchito', mine: false, time: '9:00 a. m.' })).toEqual({ who: 'Te mandaron un guiño', detail: '9:00 a. m.' });
-  });
-});
-
-describe('funArrivedInRow', () => {
-  const nudge = { seq: 8, kind: 'zumbido', senderId: 'ana' };
-  it('a nudge or wink from someone else that just came', () => {
-    expect(funArrivedInRow(7, nudge, 'jose')).toBe('zumbido');
-    expect(funArrivedInRow(7, { ...nudge, kind: 'guino' }, 'jose')).toBe('guino');
-  });
-  it('not on the first look, not twice, not mine, not a text', () => {
-    expect(funArrivedInRow(undefined, nudge, 'jose')).toBeNull();
-    expect(funArrivedInRow(8, nudge, 'jose')).toBeNull();
-    expect(funArrivedInRow(7, { ...nudge, senderId: 'jose' }, 'jose')).toBeNull();
-    expect(funArrivedInRow(7, { ...nudge, kind: 'text' }, 'jose')).toBeNull();
-    expect(funArrivedInRow(7, null, 'jose')).toBeNull();
   });
 });
 

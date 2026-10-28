@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { filterChannels, railSpaces, unreadElsewhere, splitArchived, SPACE_RUBROS, spaceInitials, spaceInviteEmail, spaceInviteMailto, spaceInviteMessage, spaceJoinLink, joinCodeFromLink, spaceSections, spaceSubtitle } from './spaceSections.js';
-import { spaceRoleBadge, spaceSettingsRows } from './spaceSections.js';
+import { spaceRoleBadge, spaceSettingsRows, withLiveUnread } from './spaceSections.js';
 
 /** The chats of a company space by sections, like Slack (designs `s-03-lista-con-secciones` and `e1-07-chats-del-espacio`). */
 describe('spaceSections', () => {
@@ -217,5 +217,32 @@ describe('the space in the «Ajustes» tab (José, 24/10; design e-34)', () => {
     expect(rows.map((row) => row.key)).toEqual(['members', 'channels', 'apps', 'media']);
     expect(rows[0]).toMatchObject({ title: 'Miembros', detail: '1 miembro' });
     expect(rows[2]!.detail).toBe('Ninguna instalada todavía');
+  });
+});
+
+describe('withLiveUnread (pending 108, José 28/10: the space kept its badge after reading)', () => {
+  const spaces = [
+    { id: 'test', name: 'Test', unreadChats: 3 },
+    { id: 'inframaq', name: 'Inframaq', unreadChats: 2 },
+  ];
+
+  it('the space I am in counts its chats with something unread, live from its list', () => {
+    // Arrange
+    const chats = [{ unread: 0 }, { unread: 4 }, { unread: 0 }];
+    // Act
+    const shown = withLiveUnread(spaces, 'test', chats);
+    // Assert
+    expect(shown?.map((space) => space.unreadChats)).toEqual([1, 2]);
+  });
+
+  it('nothing to change: same array (the rail does not redraw)', () => {
+    const chats = [{ unread: 1 }, { unread: 2 }, { unread: 3 }];
+    expect(withLiveUnread(spaces, 'test', chats)).toBe(spaces);
+  });
+
+  it('personal, no list yet or no spaces: the server count stays', () => {
+    expect(withLiveUnread(spaces, null, [{ unread: 0 }])).toBe(spaces);
+    expect(withLiveUnread(spaces, 'test', null)).toBe(spaces);
+    expect(withLiveUnread(null, 'test', [])).toBeNull();
   });
 });

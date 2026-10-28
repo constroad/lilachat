@@ -59,6 +59,12 @@ export interface Chat {
   /** Último `seq` asignado. Es el contador que `$inc` mueve. */
   lastSeq: number;
   /**
+   * The newest `seq` the main chat shows: a thread reply takes a `seq` but is
+   * hidden there, and must not make a chat already read count as unread
+   * (pending 108). Missing in chats older than 28/10/2026: `lastSeq` stands in.
+   */
+  lastMainSeq?: number;
+  /**
    * Chat secreto (F9): el server solo ve sobres.
    *
    * Es una propiedad del CHAT y no del mensaje porque tiene que decidirse una
@@ -229,6 +235,7 @@ const chatSchema = new Schema<Chat>(
       },
     ],
     lastSeq: { type: Number, default: 0 },
+    lastMainSeq: { type: Number },
     encrypted: { type: Boolean, default: false },
     fijados: {
       type: [{ seq: { type: Number, required: true }, por: { type: Schema.Types.ObjectId, required: true }, en: { type: Date, required: true }, hasta: { type: Date, required: true }, _id: false }],

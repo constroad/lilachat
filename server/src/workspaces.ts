@@ -126,13 +126,14 @@ async function activeMembersOf(workspaceIds: Types.ObjectId[]): Promise<Map<stri
 
 /** The switcher's badge: how many of my chats in each space have something I have not read (like WhatsApp counts chats, not messages). */
 async function unreadChatsOf(userId: Types.ObjectId, workspaceIds: Types.ObjectId[]): Promise<Map<string, number>> {
-  const chats = await ChatModel.find({ workspaceId: { $in: workspaceIds }, 'members.userId': userId, lastSeq: { $gt: 0 } }).select('workspaceId lastSeq').lean();
+  const chats = await ChatModel.find({ workspaceId: { $in: workspaceIds }, 'members.userId': userId, lastSeq: { $gt: 0 } }).select('workspaceId lastSeq lastMainSeq').lean();
   if (chats.length === 0) return new Map();
   const receipts = await ReceiptModel.find({ userId, chatId: { $in: chats.map((chat) => chat._id) } }).select('chatId readSeq').lean();
   const readSeq = new Map(receipts.map((receipt) => [String(receipt.chatId), receipt.readSeq]));
   const unread = new Map<string, number>();
   for (const chat of chats) {
-    if (chat.lastSeq > (readSeq.get(String(chat._id)) ?? 0)) unread.set(String(chat.workspaceId), (unread.get(String(chat.workspaceId)) ?? 0) + 1);
+    // A thread reply alone does not light the space (pending 108).
+    if ((chat.lastMainSeq ?? chat.lastSeq) > (readSeq.get(String(chat._id)) ?? 0)) unread.set(String(chat.workspaceId), (unread.get(String(chat.workspaceId)) ?? 0) + 1);
   }
   return unread;
 }

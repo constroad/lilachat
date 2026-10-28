@@ -4911,6 +4911,61 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 145. Zumbidos y guiños que no se repiten, y grupos y canales que quedan leídos (28/10/2026, servidor + OTA + web; pendientes 107 y 108)
+
+**107 — La causa común.** Lila mandó un zumbido a «Lokillos». José lo leyó y salió.
+Volvió a sonar al regresar a la lista, al entrar al chat y al reabrir la app. Con los
+guiños pasaba igual. «Ya lo reproduje» vivía en memoria (`funSeen` de la app, un `ref`
+por fila, un `ref` en la web). Al reiniciar la app, al remontar la lista o al reciclar
+una fila, eso se perdía y quedaba el cursor de leído. Ese cursor se atrasa en grupos y
+canales (108), así que el zumbido viejo volvía a contar como nuevo.
+
+- **Una libreta por equipo** (`shared/src/funLedger.ts`): por chat, el `seq` más nuevo
+  que ese equipo ya mostró. Guarda hasta 300 chats y olvida el más viejo.
+  - En la app vive en AsyncStorage (`lilachat.funPlayed`). Nada suena solo hasta leerla
+    (`useFunLedgerReady`).
+  - En la web vive en localStorage (misma clave). Cada escritura parte de lo guardado,
+    así dos pestañas no se pisan.
+- **El chat abierto** reproduce desde `max(cursor al abrir, libreta)` y anota lo que vio.
+- **La fila de la lista** reproduce solo lo que está **en vivo**: es de otro, llegó hace
+  menos de 30 s (`FUN_LIVE_MS`), no está borrado y es más nuevo que lo ya reproducido
+  (`funToPlayInRow`, que reemplaza a `funArrivedInRow`). Lo que sonó en la fila se anota
+  por sesión, así una recarga no lo repite.
+- «Ver otra vez» no pasa por la libreta.
+- Cada reproducción automática deja `[fun] zumbido 52 plays in chat …` en logcat. Así,
+  la próxima vez que «sonó otra vez», se contesta mirando el log.
+
+**108 — La causa.** Una respuesta en un hilo toma el siguiente `seq` del chat, pero el
+chat principal la oculta. El contador era `lastSeq − readSeq`. Si llegaba una respuesta
+con el canal ya leído, el cliente no tenía nada visible que acusar, y la siguiente
+recarga de la lista mostraba «1». El riel del espacio tampoco se actualizaba al leer.
+
+- **`chat.lastMainSeq`** es el `seq` más nuevo que muestra el chat principal. Se escribe
+  en el mismo `$inc` atómico de `sendMessage` y de `escribirAviso`, como pipeline, sin un
+  viaje más.
+  - Una respuesta solo en el hilo no lo mueve.
+  - En un chat viejo sin el campo, la primera respuesta lo inicia con el `lastSeq` de
+    antes.
+  - La lista (`listaDeChats`) y el riel (`unreadChatsOf`) cuentan desde
+    `lastMainSeq ?? lastSeq`.
+- **El acuse pasa por encima de lo oculto:** si todo lo que hay después del `seq`
+  acusado son respuestas ocultas, el cursor llega a `lastSeq` (`throughHiddenReplies`).
+  Una respuesta con `enElChat` es visible y no se salta.
+- **En vivo** (`aplicarMensajeALista`), una respuesta solo en el hilo mueve la vista
+  previa pero no suma no leídos. El hilo tiene su propio chip.
+- **Web:** el número del espacio actual en el riel sale de su lista en vivo
+  (`withLiveUnread`). Al leer un chat, baja en el momento.
+- Medido en la base antes del cambio: 20 grupos y canales de José, 0 con el cursor
+  trabado. En toda la base, 16 cursores atrasados, todos con mensajes visibles sin leer.
+  El caso aparece con respuestas que llegan después de leer, no en datos viejos.
+
+**Pruebas.**
+- shared: `funLedger.test.ts` (8), `listaEnVivo` (+1), `spaceSections` (+3).
+- app: `funSeen.test.ts` (6, con reinicio simulado).
+- web: `funSeen.test.ts` (4).
+- server: `acusesDelChat.test.ts` (4) y `hilos.test.ts` (+3: la respuesta no marca no
+  leído, el aviso del server sí cuenta, lo visible cuenta).
+
 ## 144. Fotos: una sola regla en todas las subidas, la de Portal (28/10/2026, servidor + OTA + web)
 
 José, 28/10 (por agentes): «lo mismo debemos hacer en lilachat y debe ser integral para
@@ -12415,13 +12470,13 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     altavoz, silencio y colgar; arriba, minimizar y agregar persona; mi cámara
     en un recuadro con «cambiar cámara» y efectos. «⋯» abre más opciones:
     compartir pantalla, enviar mensaje y cancelación de ruido.
-107. **Zumbidos y guiños se vuelven a reproducir al volver a la app** (José,
+107. ✅ **Hecho (§145).** **Zumbidos y guiños se vuelven a reproducir al volver a la app** (José,
     28/10, bug): Lila mandó un zumbido al grupo Lokillos. José lo leyó y salió;
     al volver, la lista de chats lo reprodujo otra vez. Entrar al chat, cerrar la
     app por completo y abrirla de nuevo lo repite. Con los guiños pasa lo mismo,
     aunque se corrigió hace poco: hay que buscar la causa común, no parchar cada
     tipo por separado.
-108. **Grupos y canales siguen marcados como no leídos después de leerlos**
+108. ✅ **Hecho (§145).** **Grupos y canales siguen marcados como no leídos después de leerlos**
     (José, 28/10, bug, en la web y en la app; captura de la web): aunque ya
     leyó el mensaje, el indicador de mensajes nuevos sigue apareciendo en los
     grupos y en los canales (el número del espacio en el riel y el del chat en

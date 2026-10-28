@@ -1,3 +1,4 @@
+import { visibleEnElChat } from './hilos.js';
 import { acuseDelGrupo } from './acuses.js';
 
 /**
@@ -32,6 +33,8 @@ export type MensajeEnVivo = {
   system?: unknown;
   /** E3: es una respuesta de hilo (la vista previa lo dice). */
   hiloDe?: number;
+  /** A thread reply also sent to the chat: it shows there and counts as unread. */
+  enElChat?: boolean;
   /** A wink's id (José, 21/10). */
   wink?: string;
   /** The file, whose type names a GIF in the list (pending 53). */
@@ -65,7 +68,8 @@ export function aplicarMensajeALista<C extends ResumenEnVivo>(
   const actual = chats[indice];
   if (!actual || mensaje.seq <= actual.lastSeq) return chats;
 
-  const yaLeido = String(mensaje.senderId) === yo || mensaje.chatId === chatAbierto;
+  // A reply only in a thread does not count: the main chat hides it and the thread has its own chip (pending 108).
+  const yaLeido = String(mensaje.senderId) === yo || mensaje.chatId === chatAbierto || !visibleEnElChat(mensaje);
   const actualizado = {
     ...actual,
     lastSeq: mensaje.seq,

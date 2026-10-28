@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { aplicarMensajeALista, marcarLeido, newlyAddedSpaces, railSpaces, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember, type DirectoryApp } from '@lilachat/shared';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { aplicarMensajeALista, marcarLeido, newlyAddedSpaces, railSpaces, withLiveUnread, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember, type DirectoryApp } from '@lilachat/shared';
 import { api } from '../api';
 import type { ChatMessage, ChatSummary } from '../chat/types';
 import { forgetMySpaces, setCurrentSpaceId, useCurrentSpaceId, useMySpaces } from './currentSpace';
@@ -244,9 +244,12 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
     />
   );
 
+  // The rail's badge for this space follows its list: reading a chat clears it at once (pending 108).
+  const spacesShown = useMemo(() => withLiveUnread(spaces, current?.id ?? null, chats), [spaces, current?.id, chats]);
+
   return {
     current,
-    spaces,
+    spaces: spacesShown,
     hasRail: railSpaces(spaces).length > 0,
     chats,
     failed,

@@ -53,6 +53,17 @@ describe('aplicarMensajeALista', () => {
     expect(rows?.[0]?.lastMessage).toMatchObject({ kind: 'image', mime: 'image/gif' });
   });
 
+  it('a reply only in a thread moves the preview but does not add unread (pending 108)', () => {
+    // Arrange
+    const chats = [chat()];
+    // Act
+    const hidden = aplicarMensajeALista(chats, mensaje({ hiloDe: 3 }), YO);
+    const alsoInChat = aplicarMensajeALista(chats, mensaje({ hiloDe: 3, enElChat: true }), YO);
+    // Assert
+    expect(hidden?.[0]).toMatchObject({ lastSeq: 5, unread: 0, lastMessage: { seq: 5, hiloDe: 3 } });
+    expect(alsoInChat?.[0]?.unread).toBe(1);
+  });
+
   it('lo mío mueve la vista previa pero NO suma no leídos', () => {
     const resultado = aplicarMensajeALista([chat()], mensaje({ senderId: YO }), YO);
 

@@ -26,14 +26,12 @@ export function EphemeralAnswers(props: Props) {
   const { height } = useWindowDimensions();
   const scroll = useRef<ScrollView>(null);
   const [choice, setChoice] = useState<StackChoice>({ open: null, newest: null });
-  // Where each answer starts: a tall open card shows from its head (with its X), not from its end.
-  const tops = useRef(new Map<string, number>());
   if (props.answers.length === 0) return null;
   const openId = props.folded ? null : openAnswerId(props.answers, choice);
-  const showOpen = () => {
-    const top = openId ? tops.current.get(openId) : undefined;
-    if (top === undefined) scroll.current?.scrollToEnd({ animated: true });
-    else scroll.current?.scrollTo({ y: top, animated: true });
+  // A tall open card shows from its head (with its X), not from its end. It is measured after it grows
+  // (a placeholder swapped for the answer, a card that loads), so it scrolls itself into view from its own layout.
+  const placeAnswer = (commandId: string, top: number) => {
+    if (commandId === openId) scroll.current?.scrollTo({ y: top, animated: true });
   };
   const toggle = (commandId: string) => setChoice((current) => toggleAnswer(props.answers, current, commandId));
   return (
@@ -47,9 +45,9 @@ export function EphemeralAnswers(props: Props) {
           </Pressable>
         ) : null}
       </View>
-      <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8 }} keyboardShouldPersistTaps="handled" ref={scroll} onContentSizeChange={showOpen}>
+      <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8 }} keyboardShouldPersistTaps="handled" ref={scroll}>
         {props.answers.map((answer) => (
-          <View key={answer.commandId} testID={`efimera-${answer.state}`} onLayout={(event) => tops.current.set(answer.commandId, event.nativeEvent.layout.y)} className="rounded-2xl border border-outline/15 bg-background px-3">
+          <View key={answer.commandId} testID={`efimera-${answer.state}`} onLayout={(event) => placeAnswer(answer.commandId, event.nativeEvent.layout.y)} className="rounded-2xl border border-outline/15 bg-background px-3">
             <AnswerHead answer={answer} open={answer.commandId === openId} onToggle={() => toggle(answer.commandId)} onDismiss={() => props.onDismiss(answer.commandId)} />
             {answer.commandId === openId ? <AnswerBody answer={answer} {...props} /> : null}
           </View>

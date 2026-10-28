@@ -1,4 +1,4 @@
-import { commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type ItemPlace } from '@lilachat/shared';
+import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type ItemPlace } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 import { subirPorXhr } from '../subidaXhr';
@@ -11,7 +11,7 @@ export const spaceCommands = (jwt: string, spaceId: string, place: ItemPlace) =>
   jsonCall<{ groups: CommandGroup[] }>(`${BASE_URL}/api/workspaces/${spaceId}/commands?${place === 'space' ? 'place=space' : `chat=${place.chatId}`}`, jwt);
 
 export const runCommand = (jwt: string, chatId: string, input: { appId: string; command: string; text: string }) =>
-  jsonCall<CommandOutcome>(`${BASE_URL}/api/chats/${chatId}/commands`, jwt, { method: 'POST', body: JSON.stringify({ app_id: input.appId, command: input.command, text: input.text }) });
+  jsonCall<CommandOutcome>(`${BASE_URL}/api/chats/${chatId}/commands`, jwt, { method: 'POST', body: JSON.stringify({ app_id: input.appId, command: input.command, text: input.text, forms: FORMS_LEVEL }) });
 
 /** «Enviar al canal»: the app posts in the channel the answer only I saw. */
 export const shareCommandAnswer = (jwt: string, chatId: string, commandId: string) => jsonCall<{ seq: number }>(`${BASE_URL}/api/chats/${chatId}/commands/${commandId}/share`, jwt, { method: 'POST', body: '{}' });
@@ -19,8 +19,8 @@ export const shareCommandAnswer = (jwt: string, chatId: string, commandId: strin
 /** An action of the space's ⚡ or a chat's «+» (R160); a global command from the ⚡ goes with no text. */
 export const runShortcut = (jwt: string, scope: CommandScope, input: { kind: 'shortcut' | 'command'; appId: string; key: string }) =>
   input.kind === 'command'
-    ? jsonCall<CommandOutcome>(`${BASE_URL}${commandScopePath(scope)}/commands`, jwt, { method: 'POST', body: JSON.stringify({ app_id: input.appId, command: input.key, text: '' }) })
-    : jsonCall<CommandOutcome>(`${BASE_URL}${commandScopePath(scope)}/shortcuts`, jwt, { method: 'POST', body: JSON.stringify({ app_id: input.appId, shortcut: input.key }) });
+    ? jsonCall<CommandOutcome>(`${BASE_URL}${commandScopePath(scope)}/commands`, jwt, { method: 'POST', body: JSON.stringify({ app_id: input.appId, command: input.key, text: '', forms: FORMS_LEVEL }) })
+    : jsonCall<CommandOutcome>(`${BASE_URL}${commandScopePath(scope)}/shortcuts`, jwt, { method: 'POST', body: JSON.stringify({ app_id: input.appId, shortcut: input.key, forms: FORMS_LEVEL }) });
 
 /** A form's photo, the moment it is taken: read from disk by the native multipart, never through JS memory. */
 export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandId: string, photo: { uri: string; mime: string }, stamp?: GeoPoint): Promise<{ ok: true; fileId: string } | { ok: false; message: string }> {

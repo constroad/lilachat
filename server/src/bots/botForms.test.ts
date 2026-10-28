@@ -330,3 +330,52 @@ describe('where each command and action works (José, 23/10: only some are globa
     expect((await request(app).get(items).set(asAna).expect(200)).body.canEdit).toBe(false);
   });
 });
+
+describe('a form with a list (José and agentes, 28/10: the order\'s trucks in rows, the quote\'s products)', () => {
+  const orderForm = {
+    id: 'crear_pedido',
+    title: 'Crear un pedido',
+    schema: {
+      type: 'object',
+      properties: {
+        despachos: {
+          type: 'array', title: 'Carros', minItems: 1, maxItems: 6, default: [{ carros: 1, m3: 25 }],
+          items: { type: 'object', required: ['carros', 'm3'], properties: { carros: { type: 'integer', minimum: 1 }, m3: { type: 'number', exclusiveMinimum: 0 }, foto: { type: 'string', 'x-input': 'photo' } } },
+        },
+      },
+      required: ['despachos'],
+    },
+  };
+  const ask = (body: Record<string, unknown>) => request(app).post(`/api/chats/${channel}/commands`).set(asAna).send({ app_id: body.app_id, command: 'asistencia', text: '', ...body });
+
+  it('a Lilachat that does not draw lists yet is told to update instead of getting a form it cannot open', async () => {
+    // Arrange
+    answer = json({ response_type: 'form', form: orderForm });
+    const id = await appId();
+    // Act
+    const old = await ask({ app_id: id }).expect(200);
+    const current = await ask({ app_id: id, forms: 2 }).expect(200);
+    // Assert
+    expect(old.body).toMatchObject({ outcome: 'failed', message: 'Actualiza Lilachat para llenar este formulario.' });
+    expect(old.body).not.toHaveProperty('response');
+    expect(current.body).toMatchObject({ outcome: 'form', response: { form: { id: 'crear_pedido' } } });
+  });
+
+  it('checks each item, with the path under the field; a photo inside an item goes to the app signed', async () => {
+    // Arrange
+    answer = json({ response_type: 'form', form: orderForm });
+    const commandId = (await ask({ app_id: await appId(), forms: 2 }).expect(200)).body.commandId;
+    const { fileId } = (await uploadPhoto(commandId).expect(201)).body;
+    // Act
+    const wrong = await submit(commandId, { despachos: [{ carros: 2, m3: 25 }, { carros: 1, m3: 0 }] }).expect(422);
+    answer = json({ text: 'Pedido creado' });
+    received.length = 0;
+    await submit(commandId, { despachos: [{ carros: 2, m3: 25, foto: fileId }, { carros: 1, m3: 15 }] }).expect(200);
+    // Assert
+    expect(wrong.body.errors).toEqual({ 'despachos[1].m3': 'Mayor que 0.' });
+    const items = (received[0]!.data.values as { despachos: Record<string, unknown>[] }).despachos;
+    expect(items[1]).toEqual({ carros: 1, m3: 15 });
+    expect(items[0]).toMatchObject({ carros: 2, m3: 25 });
+    expect(String(items[0]!.foto)).toMatch(/\/api\/bots\/files\/[\w-]+\.[\w-]+$/);
+  });
+});

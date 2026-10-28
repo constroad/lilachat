@@ -22,8 +22,18 @@ export type FormSchemaProperty = {
   pattern?: string;
   minimum?: number;
   maximum?: number;
+  /** zod's `.positive()`: the edge itself is out (E2E 28/10: an expense of 0 reached the app). */
+  exclusiveMinimum?: number;
+  exclusiveMaximum?: number;
   default?: unknown;
   properties?: Record<string, FormSchemaProperty>;
+  /** A list's item (`type: object`) and which of its fields are required (José and agentes, 28/10). */
+  items?: FormSchemaProperty;
+  required?: string[];
+  /** The list's button: «Agregar producto». Without it, «Agregar fila». */
+  'x-add-label'?: string;
+  /** A list of photos that also takes them from the gallery (a transfer receipt is a screenshot); only the camera without it. */
+  'x-gallery'?: boolean;
   'x-input'?: string;
   'x-unit'?: string;
   'x-labels'?: Record<string, string>;
@@ -42,14 +52,28 @@ type Base = { name: string; label: string; help?: string; required: boolean; /**
 export type FormField =
   | (Base & { kind: 'choice'; options: ChoiceOption[]; segmented: boolean; /** A long list (the company's people, agentes 24/10): a field that opens a sheet with a search. */ searchable: boolean })
   | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true })
-  | (Base & { kind: 'number'; unit?: string; min?: number; max?: number; integer: boolean })
+  | (Base & { kind: 'number'; unit?: string; min?: number; max?: number; /** The limit itself is out: «Mayor que 0». */ minExclusive?: true; maxExclusive?: true; integer: boolean })
   | (Base & { kind: 'date'; /** `format: date | time | date-time`: a picker for the day, the hour or both (José, 24/10). */ mode: DateMode })
-  | (Base & { kind: 'photo'; /** A list (`type: array`) where each photo can be removed and taken again; otherwise one photo. */ multiple: boolean; max: number; min: number })
-  | (Base & { kind: 'location' });
+  | (Base & { kind: 'photo'; /** A list (`type: array`) where each photo can be removed and taken again; otherwise one photo. */ multiple: boolean; max: number; min: number; /** `x-gallery`: also from the gallery. */ gallery?: true })
+  | (Base & { kind: 'location' })
+  | (Base & {
+      kind: 'list';
+      /** Each item's fields: anything but another list or a location. */
+      fields: ItemField[];
+      min: number;
+      max: number;
+      addLabel: string;
+      /** Up to three short fields side by side (José, 28/10: «carros» and «m³» in one row); otherwise a card per item. */
+      layout: 'row' | 'card';
+      /** The schema's `default`, cut to the item's own keys and to `max`. */
+      initialItems?: FormValues[];
+    });
+/** A field inside a list's item. */
+export type ItemField = Exclude<FormField, { kind: 'list' } | { kind: 'location' }>;
 export type FormValues = Record<string, unknown>;
 export type GeoPoint = { lat: number; lng: number; precision: number; /** How old the reading was when it was sent (ms, the phone's own clock on both ends): signing takes only a reading of now (José, 24/10). */ age?: number };
 
-export const FORM_LIMITS = { id: 64, title: 60, submitLabel: 40, intro: 240, fields: 20, label: 60, help: 160, options: 300, text: 2000, pin: 8, photos: 10 };
+export const FORM_LIMITS = { id: 64, title: 60, submitLabel: 40, intro: 240, fields: 20, label: 60, help: 160, options: 300, text: 2000, pin: 8, photos: 10, items: 20, itemFields: 8 };
 /** Up to this many options fit side by side (design e-28); more go to a list. */
 const SEGMENTED_MAX = 4;
 /** Side by side, the longest label times the number of options must fit this many characters: «Refrigerio» ×4 does, three mix designs do not. */
@@ -60,6 +84,10 @@ export const SEARCHABLE_FROM = 8;
 const RECORD_ID = /^(?:[0-9a-f]{24}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 /** A list of photos without `maxItems`. */
 const DEFAULT_MAX_PHOTOS = 6;
+/** A list of items without `maxItems`. */
+const DEFAULT_MAX_ITEMS = 10;
+/** More fields than this per item, or a long or conditional one, and the item is a card instead of a row. */
+const ROW_MAX_FIELDS = 3;
 /** A text allowed longer than this gets several lines. */
 const MULTILINE_FROM = 120;
 const FORM_ID = /^[a-z][a-z0-9_-]*$/;
@@ -97,7 +125,52 @@ function photoField(base: Base, property: FormSchemaProperty): FormField {
   if (property.type !== 'array') return { ...base, kind: 'photo', multiple: false, max: 1, min: base.required ? 1 : 0 };
   const max = Math.min(FORM_LIMITS.photos, Math.max(1, Math.floor(property.maxItems ?? DEFAULT_MAX_PHOTOS)));
   const min = Math.min(max, Math.max(base.required ? 1 : 0, Math.floor(property.minItems ?? 0)));
-  return { ...base, required: min > 0, kind: 'photo', multiple: true, max, min };
+  return { ...base, required: min > 0, kind: 'photo', multiple: true, max, min, ...(property['x-gallery'] === true ? { gallery: true as const } : {}) };
+}
+
+/** A row holds short typed values only: numbers and one-line texts, none that waits for another answer. */
+function fitsInRow(fields: readonly ItemField[]): boolean {
+  return fields.length <= ROW_MAX_FIELDS && fields.every((field) => !field.visibleIf && (field.kind === 'number' || (field.kind === 'text' && !field.multiline && !field.secret && !field.digits)));
+}
+
+/** The app's `default` items, with only the item's own keys and plain values. */
+function defaultItems(raw: unknown, fields: readonly ItemField[], max: number): FormValues[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const names = new Set(fields.map((field) => field.name));
+  const items = raw.slice(0, max).map((item) => Object.fromEntries(Object.entries(record(item)).filter(([name, value]) => names.has(name) && (typeof value === 'string' || typeof value === 'number'))));
+  return items.length ? items : undefined;
+}
+
+/** An array of objects (José and agentes, 28/10: the order's trucks, the quote's products). */
+function listField(base: Base, property: FormSchemaProperty): FormField | string {
+  const item = record(property.items) as FormSchemaProperty;
+  const entries = Object.entries(record(item.properties));
+  if (item.type !== 'object' || entries.length === 0) return `La lista «${base.name}» va con items de type "object" y al menos un campo.`;
+  if (entries.length > FORM_LIMITS.itemFields) return `Un ítem de «${base.name}» lleva hasta ${FORM_LIMITS.itemFields} campos.`;
+  const required = new Set(Array.isArray(item.required) ? item.required : []);
+  const fields: ItemField[] = [];
+  for (const [name, child] of entries) {
+    const field = fieldOf(name, record(child) as FormSchemaProperty, required.has(name));
+    if (typeof field === 'string') return field;
+    if (field.kind === 'list' || field.kind === 'location') return `Dentro de «${base.name}» no va ${field.kind === 'list' ? 'otra lista' : 'una ubicación'}.`;
+    fields.push(field);
+  }
+  const max = Math.min(FORM_LIMITS.items, Math.max(1, Math.floor(property.maxItems ?? DEFAULT_MAX_ITEMS)));
+  const min = Math.min(max, Math.max(base.required ? 1 : 0, Math.floor(property.minItems ?? 0)));
+  const initialItems = defaultItems(property.default, fields, max);
+  const addLabel = line(property['x-add-label'], FORM_LIMITS.label) || 'Agregar fila';
+  return { ...base, required: min > 0, kind: 'list', fields, min, max, addLabel, layout: fitsInRow(fields) ? 'row' : 'card', ...(initialItems ? { initialItems } : {}) };
+}
+
+/** A number's limits, an exclusive one winning over an inclusive one at the same edge or inside it. */
+function numberLimits(property: FormSchemaProperty): Pick<Extract<FormField, { kind: 'number' }>, 'min' | 'max' | 'minExclusive' | 'maxExclusive'> {
+  const { minimum, maximum, exclusiveMinimum, exclusiveMaximum } = property;
+  const lowExclusive = typeof exclusiveMinimum === 'number' && (typeof minimum !== 'number' || exclusiveMinimum >= minimum);
+  const highExclusive = typeof exclusiveMaximum === 'number' && (typeof maximum !== 'number' || exclusiveMaximum <= maximum);
+  return {
+    ...(lowExclusive ? { min: exclusiveMinimum, minExclusive: true as const } : typeof minimum === 'number' ? { min: minimum } : {}),
+    ...(highExclusive ? { max: exclusiveMaximum, maxExclusive: true as const } : typeof maximum === 'number' ? { max: maximum } : {}),
+  };
 }
 
 function fieldOf(name: string, property: FormSchemaProperty, required: boolean): FormField | string {
@@ -106,6 +179,7 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
   const visibleIf = visibleIfOf(property['x-visible-if']);
   const base: Base = { name, label: line(property.title, FORM_LIMITS.label) || labelOf(name), ...(property.description ? { help: line(property.description, FORM_LIMITS.help) } : {}), required, ...(visibleIf ? { visibleIf } : {}) };
   if (input === 'photo') return photoField(base, property);
+  if (property.type === 'array' && input === undefined) return listField(base, property);
   if (input === 'location') return { ...base, kind: 'location' };
   const options = choiceOptions(property);
   if (options) {
@@ -114,7 +188,7 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
   }
   if (property.type === 'number' || property.type === 'integer') {
     const initial = typeof property.default === 'number' && Number.isFinite(property.default) ? { initial: property.default } : {};
-    return { ...base, ...initial, kind: 'number', ...(property['x-unit'] ? { unit: line(property['x-unit'], 12) } : {}), ...(typeof property.minimum === 'number' ? { min: property.minimum } : {}), ...(typeof property.maximum === 'number' ? { max: property.maximum } : {}), integer: property.type === 'integer' };
+    return { ...base, ...initial, kind: 'number', ...(property['x-unit'] ? { unit: line(property['x-unit'], 12) } : {}), ...numberLimits(property), integer: property.type === 'integer' };
   }
   const mode = property.type === 'string' ? dateModeOf(property.format) : null;
   if (mode) {
@@ -158,9 +232,34 @@ function codeDigitsOf(input: string | undefined, property: FormSchemaProperty, m
  */
 export function initialValues(fields: readonly FormField[], now: Date = new Date()): FormValues {
   return Object.fromEntries(fields.flatMap((field) => {
-    const value = field.initial ?? (field.kind === 'date' ? startingMoment(field.mode, now) : undefined);
+    const value = field.kind === 'list' ? startingItems(field, now) : (field.initial ?? (field.kind === 'date' ? startingMoment(field.mode, now) : undefined));
     return value === undefined ? [] : [[field.name, value]];
   }));
+}
+
+/** A new item of a list: its fields' own defaults. */
+export function newItem(fields: readonly ItemField[], now: Date = new Date()): FormValues {
+  return initialValues(fields, now);
+}
+
+/** The app's default items, or `min` new ones (agentes, 28/10: «arranca con minItems ítems»). */
+function startingItems(field: Extract<FormField, { kind: 'list' }>, now: Date): FormValues[] {
+  if (field.initialItems) return field.initialItems.map((item) => ({ ...newItem(field.fields, now), ...item }));
+  return Array.from({ length: field.min }, () => newItem(field.fields, now));
+}
+
+/** Where an item's field answers, in the errors both Lilachat and the app write: `despachos[0].m3`. */
+export const itemPath = (list: string, index: number, field: string): string => `${list}[${index}].${field}`;
+
+/** The first field, in the form's order, with an error of its own or of one of its items: where the sheet scrolls to. */
+export function firstErrorField(names: readonly string[], errors: Readonly<Record<string, string>>): string | null {
+  const keys = Object.keys(errors);
+  return names.find((name) => keys.some((key) => key === name || key.startsWith(`${name}[`))) ?? null;
+}
+
+/** Initials beside the options only for records (people, clients); beside «No» or a mix design they read as noise (E2E 28/10). */
+export function showsInitials(field: Extract<FormField, { kind: 'choice' }>): boolean {
+  return field.options.some((option) => RECORD_ID.test(option.value));
 }
 
 function visibleIfOf(raw: unknown): Record<string, string[]> | null {
@@ -181,6 +280,16 @@ export function formFields(form: AppForm): FormField[] {
     if (typeof field === 'string') throw new Error(field);
     return field;
   });
+}
+
+/**
+ * What a Lilachat can draw, sent with each command (`forms`): 2 draws lists (28/10). An older
+ * one sends nothing, and a form with a list would break its sheet, so it is told to update.
+ */
+export const FORMS_LEVEL = 2;
+/** The level a form needs: 2 with a list, 1 otherwise. */
+export function formLevelOf(form: AppForm): number {
+  return Object.values(form.schema.properties ?? {}).some((property) => property.type === 'array' && property['x-input'] === undefined) ? 2 : 1;
 }
 
 /** What the app answered with `response_type: "form"`: refused with a reason when it cannot be drawn. */
@@ -212,7 +321,7 @@ const isGeoPoint = (value: unknown): value is GeoPoint => {
 const isEmpty = (value: unknown) => value === undefined || value === null || (typeof value === 'string' && value.trim() === '') || (Array.isArray(value) && value.length === 0);
 
 /** One value: the clean value, or the message for the person (neutral Spanish, under the field). */
-function checkValue(field: FormField, value: unknown): { value: unknown } | { error: string } {
+function checkValue(field: Exclude<FormField, { kind: 'list' }>, value: unknown): { value: unknown } | { error: string } {
   switch (field.kind) {
     case 'choice':
       return field.options.some((option) => option.value === value) ? { value } : { error: 'Elige una de las opciones.' };
@@ -232,8 +341,9 @@ function checkValue(field: FormField, value: unknown): { value: unknown } | { er
       const number = typeof value === 'number' ? value : Number(String(value).replace(',', '.'));
       if (!Number.isFinite(number)) return { error: 'Va un número.' };
       if (field.integer && !Number.isInteger(number)) return { error: 'Va un número entero.' };
-      if ((field.min !== undefined && number < field.min) || (field.max !== undefined && number > field.max)) return { error: field.min !== undefined && field.max !== undefined ? `Entre ${field.min} y ${field.max}.` : field.min !== undefined ? `Desde ${field.min}.` : `Hasta ${field.max}.` };
-      return { value: number };
+      const low = field.min !== undefined && (field.minExclusive ? number <= field.min : number < field.min);
+      const high = field.max !== undefined && (field.maxExclusive ? number >= field.max : number > field.max);
+      return low || high ? { error: rangeMessage(field) } : { value: number };
     }
     case 'date': {
       const clean = normalizeFormDate(value, field.mode);
@@ -251,7 +361,15 @@ function checkValue(field: FormField, value: unknown): { value: unknown } | { er
   }
 }
 
-const MISSING: Record<Exclude<FormField['kind'], 'date'>, string> = { choice: 'Elige una opción.', text: 'Escribe algo aquí.', number: 'Escribe un número.', photo: 'Falta la foto.', location: 'Falta tu ubicación.' };
+/** «Entre 1 y 40.», «Mayor que 0.», «Mayor que 0 y hasta 40.» */
+function rangeMessage(field: Extract<FormField, { kind: 'number' }>): string {
+  const low = field.min === undefined ? '' : field.minExclusive ? `Mayor que ${field.min}` : `Desde ${field.min}`;
+  const high = field.max === undefined ? '' : field.maxExclusive ? `Menor que ${field.max}` : `Hasta ${field.max}`;
+  if (low && high && !field.minExclusive && !field.maxExclusive) return `Entre ${field.min} y ${field.max}.`;
+  return low && high ? `${low} y ${high.charAt(0).toLowerCase()}${high.slice(1)}.` : `${low || high}.`;
+}
+
+const MISSING: Record<Exclude<FormField['kind'], 'date'>, string> = { choice: 'Elige una opción.', text: 'Escribe algo aquí.', number: 'Escribe un número.', photo: 'Falta la foto.', location: 'Falta tu ubicación.', list: 'Agrega al menos uno.' };
 const missingOf = (field: FormField): string => (field.kind !== 'date' ? MISSING[field.kind] : field.mode === 'time' ? 'Elige una hora.' : 'Elige una fecha.');
 
 /** A signing's location older than this when sent is not «now». */
@@ -280,21 +398,46 @@ function staleLocation(fields: readonly FormField[], input: FormValues, values: 
 /** What the person sent: only the form's fields, cleaned, or a message per field. With `requireFresh` (the server), a signing's location must be of now. */
 export function validateFormValues(fields: readonly FormField[], raw: unknown, options: { requireFresh?: boolean } = {}): { ok: true; values: FormValues } | { ok: false; errors: Record<string, string> } {
   const input = record(raw);
+  const { values, errors } = checkFields(fields, input);
+  if (options.requireFresh) Object.assign(errors, staleLocation(fields, input, values));
+  return Object.keys(errors).length ? { ok: false, errors } : { ok: true, values };
+}
+
+/** The shown fields of a form or of one item: a field hidden by the other answers is neither required nor sent. */
+function checkFields(fields: readonly FormField[], input: FormValues): { values: FormValues; errors: Record<string, string> } {
   const values: FormValues = {};
   const errors: Record<string, string> = {};
-  // A field hidden by the other answers is neither required nor sent.
   for (const field of visibleFields(fields, input)) {
     const value = input[field.name];
     if (isEmpty(value)) {
       if (field.required) errors[field.name] = missingOf(field);
       continue;
     }
+    if (field.kind === 'list') {
+      const list = checkList(field, value);
+      if ('errors' in list) Object.assign(errors, list.errors);
+      else values[field.name] = list.value;
+      continue;
+    }
     const checked = checkValue(field, value);
     if ('error' in checked) errors[field.name] = checked.error;
     else values[field.name] = checked.value;
   }
-  if (options.requireFresh) Object.assign(errors, staleLocation(fields, input, values));
-  return Object.keys(errors).length ? { ok: false, errors } : { ok: true, values };
+  return { values, errors };
+}
+
+/** Each item checked like a small form; its errors go under `list[i].field`, the count's under the list. */
+function checkList(field: Extract<FormField, { kind: 'list' }>, value: unknown): { value: FormValues[] } | { errors: Record<string, string> } {
+  const items = Array.isArray(value) ? value.map(record) : [];
+  if (items.length < field.min) return { errors: { [field.name]: field.min === 1 ? MISSING.list : `Agrega al menos ${field.min}.` } };
+  if (items.length > field.max) return { errors: { [field.name]: `Hasta ${field.max}.` } };
+  const errors: Record<string, string> = {};
+  const clean = items.map((item, index) => {
+    const checked = checkFields(field.fields, item);
+    for (const [name, message] of Object.entries(checked.errors)) errors[itemPath(field.name, index, name)] = message;
+    return checked.values;
+  });
+  return Object.keys(errors).length ? { errors } : { value: clean };
 }
 
 /** «José» matches «jose», «JOSÉ»: one character at a time, so positions stay those of the label. */

@@ -68,6 +68,7 @@ describe('the button and the foot of a form (design e-28)', () => {
     expect(evidenceLine([choice, location, photo])).toBe('Se registra con tu ubicación y tu foto');
     expect(evidenceLine([location])).toBe('Se registra con tu ubicación');
     expect(evidenceLine([photo])).toBe('Se registra con tu foto');
+    expect(evidenceLine([{ ...photo, multiple: true, max: 6 }])).toBe('Se registra con las fotos');
     expect(evidenceLine([choice])).toBe('');
   });
 });

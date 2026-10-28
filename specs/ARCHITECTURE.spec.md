@@ -4911,6 +4911,48 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 140. Listas en los formularios de las apps: filas de carros y tarjetas de productos (28/10/2026, OTA + web + servidor)
+
+**Pedido.** José, 28/10, viendo el E2E de «Crear un pedido»: en vez de «¿Hay carros de otra
+capacidad?» y «Carros del grupo 2», **una fila con el N.º de carros y al lado los m³, y un botón
+para agregar más filas**. agentes, el mismo día: la cotización lleva «los productos que sean
+necesarios». Un solo campo para los dos. Contrato para las apps: `specs/BOTS-API.spec.md`
+§c-quaterdecies.
+
+- **Contrato puro (`shared/src/appForms.ts`).** Un `type: array` con `items` de `type: object` es
+  `kind: 'list'`: `fields` (los del ítem, por el mismo `fieldOf`), `min`, `max`, `addLabel` y
+  `layout`. `row` si son hasta 3 campos cortos (número o texto de una línea, sin `visibleIf`);
+  `card` si no. Arranca con el `default` recortado a las claves del ítem o con `min` ítems nuevos
+  (`newItem`). `checkFields` valida un formulario o un ítem con la misma regla (lo oculto ni se
+  exige ni se manda), y `checkList` deja los errores en `itemPath` (`despachos[1].m3`).
+  `firstErrorField` dice a qué campo desplazarse. Tests: `appFormLists.test.ts` (13).
+- **Límites exclusivos.** `exclusiveMinimum` / `exclusiveMaximum` pasan a `minExclusive` /
+  `maxExclusive` con «Mayor que 0.» y «Menor que N.». En el E2E del 28/10 un gasto de 0 llegó a
+  Portal porque se ignoraban.
+- **App y web (`ListField`, uno en cada una).** En las filas, los títulos van una vez arriba,
+  la unidad dentro de la caja, un tacho por fila y los errores de la fila debajo. En las
+  tarjetas, los campos se dibujan con el mismo `Field` del formulario. Las claves son estables,
+  así que quitar la segunda fila no le pasa lo escrito a la tercera. Un cambio borra solo el error
+  de esa celda y el de la lista. Tras un rechazo, la hoja (app) o el diálogo (web) va al primer
+  campo con error: en el E2E, «Más de 40 caracteres.» quedó bajo «Diseño», fuera de la vista, y
+  parecía que el botón no hacía nada.
+- **Lilachat viejo (servidor).** Los dos clientes mandan `forms: FORMS_LEVEL` (2) en cada comando
+  y acción. El run lo guarda (`formsLevel`), y `deliverResponse` no entrega un formulario que pide
+  más (`formLevelOf`): contesta `failed` con «Actualiza Lilachat para llenar este formulario.».
+  Sin eso, un teléfono que todavía no aplicó la OTA rompía la hoja al abrir el pedido.
+- **Fotos dentro de un ítem.** `withSignedPhotos` recorre los ítems y firma sus fotos como las
+  de arriba.
+- **Arreglos del mismo E2E.** `x-gallery` suma «Galería» a una lista de fotos (en la web, el
+  `input` pierde `capture`). Las iniciales salen solo junto a opciones que son registros
+  (`showsInitials`); junto a «NO», «SU» o «MM» eran ruido. Una lista de fotos dice «Se
+  registra con las fotos».
+
+**Pruebas.** Shared: `appFormLists.test.ts` (13) y `appActions.test.ts`. Servidor:
+`botForms.test.ts`, que prueba el aviso de actualizar a un cliente sin `forms`, la ruta del error
+y la foto firmada dentro de un ítem. Web: `appFormDialog.lists.test.tsx` (3), que agrega, quita,
+manda el array, pinta el error en su fila, esconde el botón al tope y lleva el error de la app por
+ruta. El E2E en el emulador se hace con el `crear_pedido` nuevo de Portal (lo cambia agentes).
+
 ## 138. Recordatorios con avisos previos y ubicación, el @ de todo el espacio y cuatro arreglos de canales (25/10/2026, por OTA + servidor + web)
 
 Pedido de José del 25/10 («ahora ataca estas mejoras»). Todo es JavaScript, servidor y web: **no cambia lo nativo**, así

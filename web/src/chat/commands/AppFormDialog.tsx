@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { evidenceLine, formFields, initialValues, liveSelfieFieldOf, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint } from '@lilachat/shared';
+import { evidenceLine, firstErrorField, formFields, initialValues, liveSelfieFieldOf, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { ChoiceField, DateField, LocationField, NumberField, PhotoField, TextField } from './AppFormFields';
+import { ListField } from './ListField';
 import { PhotoListField } from './PhotoListField';
 import { LiveSelfie, type LiveSelfieHandle } from './LiveSelfie';
 import { useLiveSigning } from './useLiveSigning';
@@ -37,9 +38,16 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
   const signing = useLiveSigning({ live, locationName, selfie, upload: props.onUpload });
   // Sent and answered later (consensus 24/10): «Enviando…» until the answer closes it or the errors come back here.
   const waiting = props.answer.waiting === true;
+  // After a refusal the dialog goes to the first field with an error (E2E 28/10: «Diseño» was out of sight).
+  const body = useRef<HTMLDivElement>(null);
+  const showErrors = (next: Record<string, string>) => {
+    setErrors(next);
+    const name = firstErrorField(visibleFields(fields, values).map((field) => field.name), next);
+    if (name) body.current?.querySelector(`[data-field="${name}"]`)?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+  };
   useEffect(() => {
     if (!props.answer.errors) return;
-    setErrors(props.answer.errors);
+    showErrors(props.answer.errors);
     setMessage(props.answer.errors._ ?? '');
   }, [props.answer.errors]);
   const evidence = evidenceLine(fields);
@@ -47,20 +55,25 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
     setValues((before) => ({ ...before, [name]: value }));
     setErrors(({ [name]: _cleared, ...rest }) => rest);
   };
+  /** A list: the cell that changed loses its error, and so does the list's own («Agrega al menos uno»). */
+  const setList = (name: string) => (items: FormValues[], changed: string) => {
+    setValues((before) => ({ ...before, [name]: items }));
+    setErrors(({ [name]: _list, [changed]: _cell, ...rest }) => rest);
+  };
   const send = async () => {
     const checked = validateFormValues(fields, signing.placeholders(values));
-    if (!checked.ok) return setErrors(checked.errors);
+    if (!checked.ok) return showErrors(checked.errors);
     setSending(true);
     setMessage('');
     const prepared = await signing.prepare(values);
     if ('errors' in prepared) {
       setSending(false);
-      return setErrors(prepared.errors);
+      return showErrors(prepared.errors);
     }
     const outcome = await props.onSubmit(prepared.values);
     setSending(false);
     if (!outcome.done) {
-      setErrors(outcome.errors);
+      showErrors(outcome.errors);
       setMessage(outcome.errors._ ?? outcome.message ?? '');
     }
   };
@@ -78,7 +91,7 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
         </div>
       }
     >
-      <div data-testid={`formulario-${form.id}`} className="space-y-4">
+      <div ref={body} data-testid={`formulario-${form.id}`} className="space-y-4">
         {props.answer.response?.text ? <p data-testid="formulario-texto" className="rounded-xl bg-primary/10 px-3 py-2.5 text-[14px]">{props.answer.response.text}</p> : null}
         {form.intro ? <p className="text-[14px] text-on-surface-variant">{form.intro}</p> : null}
         <div className="flex items-center gap-2 text-[13px] text-on-surface-variant">
@@ -96,9 +109,13 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
             <LiveSelfie key={field.name} ref={selfie} testId={`campo-${field.name}`} label={LIVE_PHOTO_KICKER} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={errors[field.name] ?? (locationName ? errors[locationName] : undefined)} />
           ) : (
             // In a signing the place shows inside the camera; its field keeps reading behind it.
-            <div key={field.name} hidden={Boolean(live) && field.kind === 'location'}>
+            <div key={field.name} data-field={field.name} hidden={Boolean(live) && field.kind === 'location'}>
               {live && field.kind === 'choice' && field.segmented ? <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">{LIVE_CHOICE_KICKER}</p> : null}
-              <Field field={field} value={values[field.name]} error={errors[field.name]} onChange={set(field.name)} upload={props.onUpload} />
+              {field.kind === 'list' ? (
+                <ListField field={field} value={values[field.name]} errors={errors} onChange={setList(field.name)} renderField={(child, value, error, onChange, key) => <Field key={key} field={child} value={value} error={error} onChange={onChange} upload={props.onUpload} />} />
+              ) : (
+                <Field field={field} value={values[field.name]} error={errors[field.name]} onChange={set(field.name)} upload={props.onUpload} />
+              )}
             </div>
           )
         )}
@@ -107,7 +124,7 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
   );
 }
 
-function Field(props: { field: FormField; value: unknown; error?: string; onChange: (value: unknown) => void; upload: Upload }) {
+function Field(props: { field: Exclude<FormField, { kind: 'list' }>; value: unknown; error?: string; onChange: (value: unknown) => void; upload: Upload }) {
   const { field, upload, ...rest } = props;
   switch (field.kind) {
     case 'choice': return <ChoiceField field={field} {...rest} />;

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, Search, X } from 'lucide-react';
-import { SEARCHABLE_FROM, filterChoiceOptions, matchSpan, type ChoiceOption, type FormField } from '@lilachat/shared';
+import { showsInitials, SEARCHABLE_FROM, filterChoiceOptions, matchSpan, type ChoiceOption, type FormField } from '@lilachat/shared';
 
 type Choice = Extract<FormField, { kind: 'choice' }>;
 
@@ -12,6 +12,8 @@ const initialsOf = (label: string) => label.split(/\s+/).filter(Boolean).slice(0
  * ignoring accents and capitals. The APK's `SearchableChoice` is its twin.
  */
 export function SearchableChoice({ field, value, onChange }: { field: Choice; value: unknown; onChange: (value: unknown) => void }) {
+  // Initials beside people and clients, not beside «No» or a mix design (E2E 28/10).
+  const initials = showsInitials(field);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const search = useRef<HTMLInputElement>(null);
@@ -30,7 +32,7 @@ export function SearchableChoice({ field, value, onChange }: { field: Choice; va
   return (
     <div className="relative">
       <button type="button" data-testid={`campo-${field.name}`} aria-expanded={open} onClick={() => setOpen((was) => !was)} className={`flex min-h-12 w-full items-center gap-3 rounded-xl border px-3 text-left ${picked ? 'border-primary bg-primary/5' : 'border-outline/25 bg-background'}`}>
-        {picked ? <Initials label={picked.label} /> : <Search size={18} className="text-on-surface-variant" />}
+        {picked ? (initials ? <Initials label={picked.label} /> : null) : <Search size={18} className="text-on-surface-variant" />}
         <span className="min-w-0 flex-1">
           <span className={`block ${picked?.sub ? 'truncate' : 'line-clamp-2 break-words'} text-[15px] ${picked ? 'font-semibold' : 'text-on-surface-variant'}`}>{picked ? picked.label : 'Elige de la lista'}</span>
           {picked?.sub ? <span className="block truncate text-[12px] text-on-surface-variant">{picked.sub}</span> : null}
@@ -51,7 +53,7 @@ export function SearchableChoice({ field, value, onChange }: { field: Choice; va
             {shown.length ? shown.map((option) => (
               <li key={option.value}>
                 <button type="button" role="option" aria-selected={option.value === value} data-testid={`opcion-${field.name}-${option.value}`} onClick={() => pick(option)} className={`flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-background ${option.value === value ? 'bg-primary/10' : ''}`}>
-                  <Initials label={option.label} />
+                  {initials ? <Initials label={option.label} /> : null}
                   <span className="min-w-0 flex-1">
                     <Highlighted label={option.label} query={query} clamp={!option.sub} />
                     {option.sub ? <span className="block truncate text-[12px] text-on-surface-variant">{option.sub}</span> : null}

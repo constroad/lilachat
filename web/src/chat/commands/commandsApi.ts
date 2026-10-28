@@ -1,4 +1,4 @@
-import { commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type ItemPlace } from '@lilachat/shared';
+import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type ItemPlace } from '@lilachat/shared';
 import { api } from '../../api';
 
 /** The slash commands and actions of the apps (§c-bis), only what the admin enabled at that place (R160). */
@@ -6,7 +6,7 @@ export const spaceCommands = (jwt: string, spaceId: string, place: ItemPlace) =>
   api<{ groups: CommandGroup[] }>(`/workspaces/${spaceId}/commands?${place === 'space' ? 'place=space' : `chat=${place.chatId}`}`, { jwt });
 
 export const runCommand = (jwt: string, chatId: string, input: { appId: string; command: string; text: string }) =>
-  api<CommandOutcome>(`/chats/${chatId}/commands`, { jwt, body: { app_id: input.appId, command: input.command, text: input.text } });
+  api<CommandOutcome>(`/chats/${chatId}/commands`, { jwt, body: { app_id: input.appId, command: input.command, text: input.text, forms: FORMS_LEVEL } });
 
 /** «Enviar al canal»: the app posts in the channel the answer only I saw. */
 export const shareCommandAnswer = (jwt: string, chatId: string, commandId: string) => api<{ seq: number }>(`/chats/${chatId}/commands/${commandId}/share`, { jwt, body: {} });
@@ -17,8 +17,8 @@ const pathOf = (scope: CommandScope) => commandScopePath(scope).replace(/^\/api/
 /** An action of the space's ⚡ or a chat's «+» (R160); a global command from the ⚡ goes with no text. */
 export const runShortcut = (jwt: string, scope: CommandScope, input: { kind: 'shortcut' | 'command'; appId: string; key: string }) =>
   input.kind === 'command'
-    ? api<CommandOutcome>(`${pathOf(scope)}/commands`, { jwt, body: { app_id: input.appId, command: input.key, text: '' } })
-    : api<CommandOutcome>(`${pathOf(scope)}/shortcuts`, { jwt, body: { app_id: input.appId, shortcut: input.key } });
+    ? api<CommandOutcome>(`${pathOf(scope)}/commands`, { jwt, body: { app_id: input.appId, command: input.key, text: '', forms: FORMS_LEVEL } })
+    : api<CommandOutcome>(`${pathOf(scope)}/shortcuts`, { jwt, body: { app_id: input.appId, shortcut: input.key, forms: FORMS_LEVEL } });
 
 /** A form's photo, the moment it is picked: the form then carries its id. */
 export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandId: string, file: Blob, stamp?: GeoPoint): Promise<{ ok: true; fileId: string } | { ok: false; message: string }> {

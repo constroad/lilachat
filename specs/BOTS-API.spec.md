@@ -522,6 +522,65 @@ la app de ESA instalación, por su webhook y con la firma de `command.invoked`.
 - Sin conectar dice «<app> te lo pide la primera vez que la usas»: conectar
   sigue siendo el formulario «Conecta tu cuenta» que trae el rechazo de la app.
 
+## c-quaterdecies) Listas de ítems, fotos de la galería y límites exclusivos (28/10/2026, OTA + web + servidor)
+
+José, 28/10: el pedido se carga con **filas**: «N.º de carros» y al lado «m³
+por carro», con un botón para agregar otra fila. agentes, 28/10: la cotización
+lleva «los productos que sean necesarios». Es el mismo campo:
+
+```json
+"despachos": {
+  "type": "array", "title": "Carros", "minItems": 1, "maxItems": 6,
+  "default": [{ "carros": 1, "m3": 25 }],
+  "x-add-label": "Agregar fila",
+  "items": { "type": "object", "required": ["carros", "m3"], "properties": {
+    "carros": { "type": "integer", "title": "Carros", "minimum": 1, "maximum": 60 },
+    "m3": { "type": "number", "title": "m³ por carro", "x-unit": "m³", "exclusiveMinimum": 0, "maximum": 40 }
+  } }
+}
+```
+
+- **Cómo se dibuja.** Hasta 3 campos cortos (número o texto de una línea, sin
+  `x-visible-if`) van **en una fila**, con los títulos una vez arriba y un
+  tacho por fila. Si no, cada ítem es una **tarjeta** («Productos · 2») con sus
+  campos y «Quitar». Abajo, el botón `x-add-label` (sin él, «Agregar fila»)
+  hasta `maxItems` (sin él, 10; tope 20). No se quita por debajo de `minItems`.
+- **Arranca** con el `default` (solo las claves del ítem, hasta `maxItems`) o,
+  sin él, con `minItems` ítems nuevos, cada uno con sus propios `default` (hoy
+  para una fecha).
+- **Dentro de un ítem** valen texto, número, enum (con `x-labels`, `oneOf` o
+  lo que agentes resuelve de `x-options`), fecha, hora y fotos. No van otra
+  lista ni una ubicación (el formulario se rechaza diciendo por qué). Hasta 8
+  campos por ítem. `x-visible-if` mira los campos **del mismo ítem**, y un
+  `required` oculto no se exige.
+- **Llega** como array de objetos, limpio (números leídos, claves ajenas
+  fuera). Las fotos dentro de un ítem llegan como enlaces firmados, igual que
+  arriba.
+- **Errores con ruta**: Lilachat y la app escriben `despachos[1].m3`, y se
+  pintan debajo de ESE campo de ESE ítem (en la fila: «m³ por carro: Mayor que
+  0.»). El error de la lista entera va con su nombre (`despachos: "Agrega al
+  menos uno."`).
+- **Lilachat viejo.** Cada comando y acción manda `forms: 2` (este Lilachat
+  dibuja listas). A uno que no lo manda, el servidor no le entrega un
+  formulario con lista: le dice «Actualiza Lilachat para llenar este
+  formulario.» en vez de abrir una hoja que no sabe dibujar.
+
+**Límites exclusivos.** `exclusiveMinimum` / `exclusiveMaximum` (lo que sale de
+zod `.positive()`) se respetan en el teléfono: «Mayor que 0.», «Menor que 100.»,
+«Mayor que 0 y hasta 40.». Antes se ignoraban y un gasto de 0 llegaba a la app
+(E2E 28/10). Igual, los 422 de la app van por campo y en español:
+`errors: { monto: "El monto debe ser mayor que 0." }`.
+
+**Fotos de la galería.** `"x-gallery": true` en una lista de fotos suma
+«Galería» junto a «Tomar» (un comprobante de transferencia es una captura). Sin
+él, solo la cámara. La selfie de la firma sigue siendo solo cámara.
+
+**Otros cambios del 28/10.** Tras un rechazo (de Lilachat o de la app), el
+formulario se desplaza hasta el primer campo con error. Las iniciales al lado de
+una opción solo salen para registros (ids: personas, clientes); al lado de «No»
+o de un diseño de mezcla no. Una lista de fotos dice «Se registra con las
+fotos», no «con tu foto».
+
 ## c-terdecies) Varias fotos y fotos más livianas (0.1.169)
 
 - José, 24/10: en la medida de tanque y el ingreso de material se pueden

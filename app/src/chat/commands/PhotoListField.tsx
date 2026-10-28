@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, X } from 'lucide-react-native';
+import { Camera, Image as ImageIcon, X } from 'lucide-react-native';
 import type { FormField } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import type { PhotoUpload } from './AppFormFields';
@@ -27,10 +27,15 @@ export function PhotoListField(props: { field: PhotoList; error?: string; onChan
     const ids = next.map((shot) => shot.fileId).filter((id): id is string => id !== null);
     props.onChange(ids.length ? ids : undefined);
   };
-  const take = async () => {
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) return setMessage('Permite la cámara para tomar la foto.');
-    const result = await ImagePicker.launchCameraAsync({ cameraType: ImagePicker.CameraType.back, quality: PHOTO_QUALITY, allowsEditing: false });
+  /** The camera, or the gallery when the app allows it (`x-gallery`: a transfer receipt is a screenshot, E2E 28/10). */
+  const take = async (source: 'camera' | 'gallery') => {
+    if (source === 'camera') {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) return setMessage('Permite la cámara para tomar la foto.');
+    }
+    const result = source === 'camera'
+      ? await ImagePicker.launchCameraAsync({ cameraType: ImagePicker.CameraType.back, quality: PHOTO_QUALITY, allowsEditing: false })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: PHOTO_QUALITY, allowsEditing: false });
     const asset = result.canceled ? null : result.assets[0];
     if (!asset) return;
     const shot: Shot = { key: `${Date.now()}`, uri: asset.uri, fileId: null };
@@ -63,9 +68,15 @@ export function PhotoListField(props: { field: PhotoList; error?: string; onChan
           </View>
         ))}
         {full ? null : (
-          <Pressable testID={`campo-${props.field.name}`} accessibilityLabel="Tomar otra foto" disabled={uploading} onPress={() => void take()} className={`items-center justify-center gap-1 rounded-xl border-2 border-dashed border-outline/30 ${uploading ? 'opacity-50' : ''}`} style={{ width: THUMB, height: THUMB }}>
+          <Pressable testID={`campo-${props.field.name}`} accessibilityLabel="Tomar otra foto" disabled={uploading} onPress={() => void take('camera')} className={`items-center justify-center gap-1 rounded-xl border-2 border-dashed border-outline/30 ${uploading ? 'opacity-50' : ''}`} style={{ width: THUMB, height: THUMB }}>
             <Camera size={22} color={colors.primary} />
             <Text className="text-[12px] font-semibold text-primary">{shots.length ? 'Otra' : 'Tomar'}</Text>
+          </Pressable>
+        )}
+        {full || !props.field.gallery ? null : (
+          <Pressable testID={`galeria-${props.field.name}`} accessibilityLabel="Elegir de la galería" disabled={uploading} onPress={() => void take('gallery')} className={`items-center justify-center gap-1 rounded-xl border-2 border-dashed border-outline/30 ${uploading ? 'opacity-50' : ''}`} style={{ width: THUMB, height: THUMB }}>
+            <ImageIcon size={22} color={colors.primary} />
+            <Text className="text-[12px] font-semibold text-primary">Galería</Text>
           </Pressable>
         )}
       </View>

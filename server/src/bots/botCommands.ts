@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { COMMAND_LIMITS, enabledAt, isAckBody, itemSettingOf, validateCommandResponse, validateFormReply, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope } from '@lilachat/shared';
+import { COMMAND_LIMITS, enabledAt, formLevelOf, isAckBody, itemSettingOf, validateCommandResponse, validateFormReply, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope } from '@lilachat/shared';
 import { ChatModel, type Chat } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { callBotWebhook, isRestarting, recordLastDelivery, type WebhookReply } from './botEvents.js';
@@ -90,8 +90,10 @@ function inChannelTarget(chat: ChatOfCommand, installation: Pick<BotInstallation
 }
 
 /** `chat` is null for the space's ⚡: an in_channel answer has nowhere to go and stays for the asker. */
-export async function deliverResponse(installation: BotInstallation, run: Pick<BotCommandRun, '_id' | 'userId' | 'responses'>, chat: ChatOfCommand | null, response: CommandResponse, base: Base): Promise<CommandOutcome> {
+export async function deliverResponse(installation: BotInstallation, run: Pick<BotCommandRun, '_id' | 'userId' | 'responses' | 'formsLevel'>, chat: ChatOfCommand | null, response: CommandResponse, base: Base): Promise<CommandOutcome> {
   if (response.responseType === 'form' && response.form) {
+    // A Lilachat that cannot draw it is told so, instead of a sheet that breaks (28/10, lists).
+    if (formLevelOf(response.form) > (run.formsLevel ?? 1)) return { ...base, outcome: 'failed', message: OUTDATED_FORM_MESSAGE };
     // Kept to check what is sent against it (`botForms.ts`).
     await BotCommandRunModel.updateOne({ _id: run._id }, { $set: { form: response.form } });
     return { ...base, outcome: 'form', response };
@@ -152,7 +154,7 @@ async function placeOf(userId: Types.ObjectId, scope: CommandScope): Promise<{ c
   return { chat: null, workspaceId: new Types.ObjectId(scope.workspaceId) };
 }
 
-async function invokeApp(userId: Types.ObjectId, scope: CommandScope, appId: unknown, trigger: Trigger): Promise<CommandOutcome | CommandError> {
+async function invokeApp(userId: Types.ObjectId, scope: CommandScope, appId: unknown, trigger: Trigger, formsLevel: number): Promise<CommandOutcome | CommandError> {
   const name = trigger.kind === 'command' ? trigger.command : trigger.key;
   const notFound = () => fail(404, 'command_not_found', trigger.kind === 'command' ? `No hay un comando /${name} en este espacio.` : 'Esa acción ya no está en este espacio.');
   if (!isId(appId)) return notFound();
@@ -167,7 +169,7 @@ async function invokeApp(userId: Types.ObjectId, scope: CommandScope, appId: unk
   // A failed run stays a week: its `failure` is how a «no pudo responder» gets explained (23/10).
   void BotCommandRunModel.deleteMany({ $or: [{ expiresAt: { $lt: new Date() }, failure: { $exists: false } }, { expiresAt: { $lt: new Date(Date.now() - FAILED_RUN_KEPT_MS) } }] }).catch((error: unknown) => console.error('[bots] no se pudieron purgar comandos vencidos:', error instanceof Error ? error.message : error));
   const { chat } = place;
-  const [run, user] = await Promise.all([BotCommandRunModel.create({ installationId: installation._id, ...(chat ? { chatId: chat._id } : {}), workspaceId: place.workspaceId, userId, command: name, expiresAt: new Date(Date.now() + COMMAND_TTL_MS) }), personOf(userId, installation.grantedScopes)]);
+  const [run, user] = await Promise.all([BotCommandRunModel.create({ installationId: installation._id, ...(chat ? { chatId: chat._id } : {}), workspaceId: place.workspaceId, userId, command: name, formsLevel, expiresAt: new Date(Date.now() + COMMAND_TTL_MS) }), personOf(userId, installation.grantedScopes)]);
   // Slack's global shortcuts carry no channel either.
   const common = { command_id: String(run._id), channel: chat ? channelOf(chat) : null, user };
   const reply = trigger.kind === 'command'
@@ -180,14 +182,18 @@ async function invokeApp(userId: Types.ObjectId, scope: CommandScope, appId: unk
   return outcome;
 }
 
-export function invokeCommand(userId: Types.ObjectId, scope: CommandScope, input: { appId: unknown; command: unknown; text: unknown }): Promise<CommandOutcome | CommandError> {
+/** What the asker's Lilachat says it draws; an older one says nothing (1). */
+const formsLevelOf = (raw: unknown): number => (typeof raw === 'number' && Number.isInteger(raw) && raw > 1 ? raw : 1);
+export const OUTDATED_FORM_MESSAGE = 'Actualiza Lilachat para llenar este formulario.';
+
+export function invokeCommand(userId: Types.ObjectId, scope: CommandScope, input: { appId: unknown; command: unknown; text: unknown; forms?: unknown }): Promise<CommandOutcome | CommandError> {
   const text = typeof input.text === 'string' ? input.text.trim().slice(0, COMMAND_LIMITS.input) : '';
-  return invokeApp(userId, scope, input.appId, { kind: 'command', command: typeof input.command === 'string' ? input.command : '', text });
+  return invokeApp(userId, scope, input.appId, { kind: 'command', command: typeof input.command === 'string' ? input.command : '', text }, formsLevelOf(input.forms));
 }
 
 /** An action of the «+»: the app hears `shortcut.invoked` and answers like a command, usually with its form. */
-export function invokeShortcut(userId: Types.ObjectId, scope: CommandScope, input: { appId: unknown; shortcut: unknown }): Promise<CommandOutcome | CommandError> {
-  return invokeApp(userId, scope, input.appId, { kind: 'shortcut', key: typeof input.shortcut === 'string' ? input.shortcut : '' });
+export function invokeShortcut(userId: Types.ObjectId, scope: CommandScope, input: { appId: unknown; shortcut: unknown; forms?: unknown }): Promise<CommandOutcome | CommandError> {
+  return invokeApp(userId, scope, input.appId, { kind: 'shortcut', key: typeof input.shortcut === 'string' ? input.shortcut : '' }, formsLevelOf(input.forms));
 }
 
 /** The late answer: once per call, five at most, within 15 minutes of the command. */

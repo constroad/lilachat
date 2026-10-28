@@ -8,11 +8,11 @@ const MAP = { width: 320, height: 120 };
 const PIN = 26;
 /** The browser asks for the location once; a phone outdoors answers within seconds. */
 const LOCATION_TIMEOUT_MS = 15_000;
-const inputClass = 'h-11 w-full rounded-xl border border-outline/25 bg-background px-3 text-[15px] outline-none focus:border-primary';
+export const inputClass = 'h-11 w-full rounded-xl border border-outline/25 bg-background px-3 text-[15px] outline-none focus:border-primary';
 
 type FieldProps<K extends FormField['kind']> = { field: Extract<FormField, { kind: K }>; value: unknown; error?: string; onChange: (value: unknown) => void };
 
-function Label(props: { field: FormField }) {
+export function Label(props: { field: FormField }) {
   return (
     <p className="mb-1.5 text-[13px] font-semibold text-on-surface">
       {props.field.label}

@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import mongoose, { Types, type Model } from 'mongoose';
-import { formFields, isAckBody, photoStampLines, validateFormReply, validateFormValues, type CommandOutcome, type CommandScope, type FormValues, type GeoPoint } from '@lilachat/shared';
+import { formFields, isAckBody, photoStampLines, validateFormReply, validateFormValues, type CommandOutcome, type CommandScope, type FormField, type FormValues, type GeoPoint } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
 import type { UploadOutcome } from '../mediaClient.js';
 import { readOwnMedia, ownMediaBase } from '../mediaDisk.js';
@@ -120,17 +120,23 @@ export async function storeFormPhoto(userId: Types.ObjectId, scope: CommandScope
 }
 
 /** A photo field carries the id of a photo of THIS form; it goes to the app as its signed address. */
-async function withSignedPhotos(runId: Types.ObjectId, photoFields: string[], raw: Record<string, unknown>): Promise<Record<string, unknown>> {
+async function withSignedPhotos(runId: Types.ObjectId, fields: readonly FormField[], raw: Record<string, unknown>): Promise<Record<string, unknown>> {
   const values = { ...raw };
   const signed = async (fileId: unknown) => (isId(fileId) && (await FormFileModel.exists({ _id: fileId, runId })) ? signedFileUrl(String(fileId)) : null);
-  for (const name of photoFields) {
-    const raw = values[name];
+  for (const field of fields) {
+    const raw = values[field.name];
+    // A list's items (28/10): each item's photos signed the same way.
+    if (field.kind === 'list') {
+      if (Array.isArray(raw)) values[field.name] = await Promise.all(raw.map((item) => (item && typeof item === 'object' ? withSignedPhotos(runId, field.fields, item as Record<string, unknown>) : item)));
+      continue;
+    }
+    if (field.kind !== 'photo') continue;
     // A list of photos (José, 24/10): each one signed; one that is not this form's is dropped.
     const urls = Array.isArray(raw) ? (await Promise.all(raw.map(signed))).filter((url): url is string => url !== null) : null;
     const url = urls ? null : await signed(raw);
-    if (urls) values[name] = urls;
-    else if (url) values[name] = url;
-    else delete values[name];
+    if (urls) values[field.name] = urls;
+    else if (url) values[field.name] = url;
+    else delete values[field.name];
   }
   return values;
 }
@@ -142,7 +148,7 @@ export async function submitForm(userId: Types.ObjectId, scope: CommandScope, co
   if ('error' in run) return run;
   const fields = formFields(run.form!);
   const input = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
-  const values = await withSignedPhotos(run._id, fields.filter((field) => field.kind === 'photo').map((field) => field.name), input);
+  const values = await withSignedPhotos(run._id, fields, input);
   // A signing takes the place of NOW (José, 24/10): a reading the phone kept is refused.
   const checked = validateFormValues(fields, values, { requireFresh: true });
   if (!checked.ok) return { status: 422, errors: checked.errors };

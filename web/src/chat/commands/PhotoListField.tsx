@@ -59,7 +59,7 @@ export function PhotoListField({ field, error, onChange, upload }: { field: Phot
           </button>
         )}
       </div>
-      <input ref={input} data-testid={`archivo-${field.name}`} type="file" multiple accept="image/jpeg,image/png,image/webp,image/heic" capture="environment" className="hidden" onChange={(event) => { void add(event.target.files); event.target.value = ''; }} />
+      <input ref={input} data-testid={`archivo-${field.name}`} type="file" multiple accept="image/jpeg,image/png,image/webp,image/heic" capture={field.gallery ? undefined : 'environment'} className="hidden" onChange={(event) => { void add(event.target.files); event.target.value = ''; }} />
       {message ?? error ? <p role="alert" className="mt-1 text-[12px] text-error">{message ?? error}</p> : null}
     </div>
   );

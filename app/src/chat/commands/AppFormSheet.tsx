@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { X } from 'lucide-react-native';
-import { evidenceLine, formFields, initialValues, liveSelfieFieldOf, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint } from '@lilachat/shared';
+import { evidenceLine, firstErrorField, formFields, initialValues, liveSelfieFieldOf, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { Modal } from '../../ui/Modal';
@@ -9,6 +9,7 @@ import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
 import { ChoiceField, LocationField, PhotoField, TypedField, type PhotoUpload } from './AppFormFields';
 import { DateField } from './DateField';
+import { ListField } from './ListField';
 import { PhotoListField } from './PhotoListField';
 import { LiveSelfie, type LiveSelfieHandle } from './LiveSelfie';
 import { useLiveSigning } from './useLiveSigning';
@@ -21,6 +22,8 @@ const MAX_SCREEN_SHARE = 0.92;
 const LIVE_CHOICE_KICKER = '1 · Qué marcas';
 const LIVE_PHOTO_KICKER = '2 · Tu foto y tu ubicación';
 const LIVE_FOOTER = 'Al tocar se toma la foto con la hora y el lugar, y se envía.';
+/** Room above a field the sheet scrolls to, so its title shows too. */
+const REVEAL_MARGIN = 12;
 
 /**
  * An app's form as a sheet (R160, design e-28): the fields its schema says,
@@ -58,9 +61,18 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
   const signing = useLiveSigning({ live, locationName, selfie, upload: props.onUpload });
   // Sent and answered later (consensus 24/10): «Enviando…» until the answer closes it or the errors come back here.
   const waiting = props.answer.waiting === true;
+  // Where each field sits in the scroll: after a refusal the sheet goes to the first one with an error (E2E 28/10).
+  const scroll = useRef<ScrollView>(null);
+  const positions = useRef<Record<string, number>>({});
+  const showErrors = (next: Record<string, string>) => {
+    setErrors(next);
+    const name = firstErrorField(visibleFields(fields, values).map((field) => field.name), next);
+    const y = name ? positions.current[name] : undefined;
+    if (y !== undefined) scroll.current?.scrollTo({ y: Math.max(0, y - REVEAL_MARGIN), animated: true });
+  };
   useEffect(() => {
     if (!props.answer.errors) return;
-    setErrors(props.answer.errors);
+    showErrors(props.answer.errors);
     setMessage(props.answer.errors._ ?? '');
   }, [props.answer.errors]);
   const evidence = evidenceLine(fields);
@@ -74,20 +86,25 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
     setValues((before) => ({ ...before, [name]: value }));
     setErrors(({ [name]: _cleared, ...rest }) => rest);
   };
+  /** A list: the cell that changed loses its error, and so does the list's own («Agrega al menos uno»). */
+  const setList = (name: string) => (items: FormValues[], changed: string) => {
+    setValues((before) => ({ ...before, [name]: items }));
+    setErrors(({ [name]: _list, [changed]: _cell, ...rest }) => rest);
+  };
   const send = async () => {
     const checked = validateFormValues(fields, signing.placeholders(values));
-    if (!checked.ok) return setErrors(checked.errors);
+    if (!checked.ok) return showErrors(checked.errors);
     setSending(true);
     setMessage('');
     const prepared = await signing.prepare(values);
     if ('errors' in prepared) {
       setSending(false);
-      return setErrors(prepared.errors);
+      return showErrors(prepared.errors);
     }
     const outcome = await props.onSubmit(prepared.values);
     setSending(false);
     if (!outcome.done) {
-      setErrors(outcome.errors);
+      showErrors(outcome.errors);
       setMessage(outcome.errors._ ?? outcome.message ?? '');
     }
   };
@@ -109,7 +126,7 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
               <X size={22} color={colors['on-surface-variant']} />
             </Pressable>
           </View>
-          <ScrollView keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }} contentContainerStyle={{ padding: SHEET_PADDING, gap: 14 }}>
+          <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }} contentContainerStyle={{ padding: SHEET_PADDING, gap: 14 }}>
             {props.answer.response?.text ? <Text testID="formulario-texto" className="rounded-xl bg-primary/10 px-3 py-2.5 text-[15px] text-on-surface">{props.answer.response.text}</Text> : null}
             {form.intro ? <Text className="text-[15px] text-on-surface-variant">{form.intro}</Text> : null}
             {evidence && !live ? (
@@ -123,9 +140,19 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
                 <LiveSelfie key={field.name} ref={selfie} testID={`campo-${field.name}`} label={LIVE_PHOTO_KICKER} width={sheetWidth - SHEET_PADDING * 2} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={errors[field.name] ?? (locationName ? errors[locationName] : undefined)} />
               ) : (
                 // In a signing the place shows inside the camera; its field keeps reading behind it.
-                <View key={field.name} style={live && field.kind === 'location' ? { display: 'none' } : undefined}>
+                <View key={field.name} onLayout={(event) => (positions.current[field.name] = event.nativeEvent.layout.y)} style={live && field.kind === 'location' ? { display: 'none' } : undefined}>
                   {live && field.kind === 'choice' && field.segmented ? <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{LIVE_CHOICE_KICKER}</Text> : null}
-                  <Field field={field} value={values[field.name]} error={errors[field.name]} onChange={set(field.name)} upload={props.onUpload} width={sheetWidth - SHEET_PADDING * 2} />
+                  {field.kind === 'list' ? (
+                    <ListField
+                      field={field}
+                      value={values[field.name]}
+                      errors={errors}
+                      onChange={setList(field.name)}
+                      renderField={(child, value, error, onChange, key) => <Field key={key} field={child} value={value} error={error} onChange={onChange} upload={props.onUpload} width={sheetWidth - SHEET_PADDING * 4} />}
+                    />
+                  ) : (
+                    <Field field={field} value={values[field.name]} error={errors[field.name]} onChange={set(field.name)} upload={props.onUpload} width={sheetWidth - SHEET_PADDING * 2} />
+                  )}
                 </View>
               )
             )}
@@ -145,7 +172,7 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
   );
 }
 
-function Field(props: { field: FormField; value: unknown; error?: string; onChange: (value: unknown) => void; upload: PhotoUpload; width: number }) {
+function Field(props: { field: Exclude<FormField, { kind: 'list' }>; value: unknown; error?: string; onChange: (value: unknown) => void; upload: PhotoUpload; width: number }) {
   const { field, upload, width, ...rest } = props;
   switch (field.kind) {
     case 'choice': return <ChoiceField field={field} {...rest} />;

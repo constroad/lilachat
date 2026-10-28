@@ -62,7 +62,10 @@ export function submitLabelOf(form: Pick<AppForm, 'submitLabel'>, fields: readon
 
 /** The foot under the button: what is sent with the form besides what was typed. */
 export function evidenceLine(fields: readonly FormField[]): string {
-  const parts = [fields.some((field) => field.kind === 'location') ? 'tu ubicación' : '', fields.some((field) => field.kind === 'photo') ? 'tu foto' : ''].filter(Boolean);
+  // A list of photos is a receipt or a tape, not the person: «las fotos», never «tu foto» (E2E 28/10, an expense).
+  const photos = fields.filter((field) => field.kind === 'photo');
+  const photoWords = photos.some((field) => field.kind === 'photo' && !field.multiple) ? 'tu foto' : photos.length ? 'las fotos' : '';
+  const parts = [fields.some((field) => field.kind === 'location') ? 'tu ubicación' : '', photoWords].filter(Boolean);
   return parts.length ? `Se registra con ${parts.join(' y ')}` : '';
 }
 

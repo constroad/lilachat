@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { FlatList, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Modal } from '../ui/Modal';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
@@ -81,6 +81,8 @@ export function HiloScreen(props: {
   reaccionar: (seq: number, emoji: string | null) => Promise<RespuestaDeReaccion>;
   /** Edit an own reply (José, 20/10: «in a thread I can't edit my message»); the same rule as the chat. */
   editar: (seq: number, texto: string) => Promise<{ ok: boolean; motivo?: string }>;
+  /** Deletes for everyone, like «Eliminar para todos» in the chat. */
+  onDelete?: (seq: number) => void;
   onCerrar: () => void;
 }) {
   const colores = useColores();
@@ -167,6 +169,14 @@ export function HiloScreen(props: {
     if (!result.ok) return setNotice(result.motivo ?? 'No se pudo editar.');
     stopEditing();
   };
+  const confirmDelete = (seq: number) => {
+    setBarraEn(null);
+    Alert.alert('¿Eliminar el mensaje?', undefined, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Eliminar para todos', style: 'destructive', onPress: () => props.onDelete?.(seq) },
+    ]);
+  };
+  const canDelete = (reply: ChatMessage) => Boolean(props.onDelete) && String(reply.senderId) === props.yo && !reply.deletedAt;
   const canEdit = (reply: ChatMessage) =>
     puedeEditar({ yo: props.yo, autor: String(reply.senderId), kind: reply.kind, eliminado: Boolean(reply.deletedAt), secreto: false, enviadoEn: reply.at, ahora: Date.now() }).permitido;
 
@@ -231,7 +241,7 @@ export function HiloScreen(props: {
                 return (
                   <View className={confirmada && highlighted === confirmada.seq ? 'rounded-lg bg-primary/15' : undefined}>
                     {confirmada && barraEn === confirmada.seq ? (
-                      <BarraDeReacciones seq={confirmada.seq} mia={mia} conAvatar={false} indent={FLAT_INDENT} miEmoji={miReaccion(confirmada.reacciones, props.yo)} onElegir={reacciones.elegir} onMas={reacciones.masEmojis} onEditar={canEdit(confirmada) ? startEditing : undefined} />
+                      <BarraDeReacciones seq={confirmada.seq} mia={mia} conAvatar={false} indent={FLAT_INDENT} miEmoji={miReaccion(confirmada.reacciones, props.yo)} onElegir={reacciones.elegir} onMas={reacciones.masEmojis} onEditar={canEdit(confirmada) ? startEditing : undefined} onDelete={canDelete(confirmada) ? confirmDelete : undefined} />
                     ) : null}
                     <FlatMessageRow
                       item={item}
@@ -256,7 +266,7 @@ export function HiloScreen(props: {
               return (
                 <View className={confirmada && highlighted === confirmada.seq ? 'rounded-lg bg-primary/15' : undefined}>
                   {confirmada && barraEn === confirmada.seq ? (
-                    <BarraDeReacciones seq={confirmada.seq} mia={mia} conAvatar={false} miEmoji={miReaccion(confirmada.reacciones, props.yo)} onElegir={reacciones.elegir} onMas={reacciones.masEmojis} onEditar={canEdit(confirmada) ? startEditing : undefined} />
+                    <BarraDeReacciones seq={confirmada.seq} mia={mia} conAvatar={false} miEmoji={miReaccion(confirmada.reacciones, props.yo)} onElegir={reacciones.elegir} onMas={reacciones.masEmojis} onEditar={canEdit(confirmada) ? startEditing : undefined} onDelete={canDelete(confirmada) ? confirmDelete : undefined} />
                   ) : null}
                   <BurbujaDelHilo
                     mensaje={item}

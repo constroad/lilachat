@@ -535,7 +535,7 @@ export function ChatScreen({
         entregadoHasta={entregadoHasta}
         mencionables={mencionables} onOutsideMentions={outsideMentions.notify} notice={outsideMentions.banner}
         onEnviar={(texto, enElChat, menciones) => send(texto, undefined, menciones, { de: hilos.abierto!, enElChat })}
-        reaccionar={reaccionar} editar={editar}
+        reaccionar={reaccionar} editar={editar} onDelete={eliminar}
         onCerrar={hilos.cerrar}
       />
       {reacciones.hojas}

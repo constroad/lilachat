@@ -4962,6 +4962,11 @@ presionado un documento lo abría («Abrir con…») en vez de seleccionarlo. La
 pasaba antes con las fotos. Ahora la tarjeta selecciona al mantenerla presionada. Sin esto,
 un documento no se podía borrar, responder ni reenviar desde un canal.
 
+**Borrar tu respuesta dentro del hilo (E2E del 28/10).** En la app, mantener presionada una
+respuesta en el hilo ofrecía reacciones y «Editar», pero no «Eliminar»: la única forma de
+borrarla era desde la web. Ahora la barra trae «Eliminar» en tus respuestas y pide
+confirmar («Eliminar para todos»), por la misma ruta del chat (`eliminar` de `useChat`).
+
 **E2E en el emulador (28/10, OTA sobre el APK 0.1.171, espacio Test, #general).**
 
 | Caso | Resultado |

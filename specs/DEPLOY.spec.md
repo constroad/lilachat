@@ -553,9 +553,28 @@ Lo barato que se puede quitar es **~1,3 MB (3 %)**: excluir `org/bouncycastle/pq
 (`android.packagingOptions.excludes` en las propiedades de Gradle, que el `build.gradle` generado ya lee) y pasar el `wav`.
 **No se hizo todavía a propósito:** cambiar el empaquetado cambia el *fingerprint* nativo, o sea el runtime de las OTA
 (4-bis.1): desde ese commit `ota-publish` se niega a publicar hasta que haya un APK nuevo anotado con `--record-apk`. Va en
-el siguiente APK (0.1.172), junto con lo que ya lo necesite, y se verifica ahí con `unzip -l` y un ingreso en el emulador.
+el siguiente APK, junto con lo que ya lo necesite, y se verifica ahí con `unzip -l` y un ingreso en el emulador. **No
+entró en la 0.1.172** (salió por el arreglo de 4-bis.9 y no se quiso sumar otro cambio de empaquetado sin medirlo).
 Lo grande —los 4,4 MB de guiños— solo baja si los cuadros dejan de ir dentro del APK (bajarlos al primer uso o por OTA),
 que es una decisión de producto, no de empaquetado.
+
+### 4-bis.9 Intents nativos con la carga retrasada (0.1.172, 28/10/2026)
+
+Con `expo-updates` en release, la app carga tarde a propósito (`DelayLoadAppHandler`). Si el proceso
+murió y la tarea sigue viva, Android relanza `MainActivity` y entrega el toque de una notificación por
+`onNewIntent` antes de esa carga, y `ReactActivityDelegateWrapper` lo descarta sin avisar a ningún
+listener. Desde la 0.1.172, el plugin `app/plugins/withMainActivityNewIntent.js` hace que
+`MainActivity` guarde el intent (`setIntent`) y `llamada-entrante` lo atiende en `onResume`.
+
+- **Todo módulo nativo que lea un intent tiene que mirarlo también en `onResume`**, no solo en
+  `onCreate` y `onNewIntent`, y borrar sus extras al atenderlo para no repetirlo.
+- **El plugin hace fallar el build** si `MainActivity` ya trae otro `onNewIntent` (de un módulo
+  nuevo o de Expo): en ese caso se une a mano, no se pisa.
+- `android/` se regenera en cada `apk build`: cualquier cambio a `MainActivity` va por plugin.
+
+APK 0.1.172: versionCode 173, runtime `14d9450c`, publicado en LilaStore `stable` el 28/10/2026
+(`https://lilastore.constroad.com/d/6ae1e472c97a234c836c302b`, 42 178 868 bytes). `minVersionCode`
+sigue en 0: obligar a actualizar es decisión de José. Resultados del E2E: ARCHITECTURE §137 (B4).
 
 ## 5. Errores conocidos y arreglo
 

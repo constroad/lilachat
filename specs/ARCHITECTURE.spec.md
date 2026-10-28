@@ -5054,10 +5054,51 @@ el teléfono corre `393d0e53`.
 (`492831f5`, 19:34:54Z). El publicador ahora exporta con el entorno de `lila.json` y `--clear`, y
 una guardia compara los hosts de desarrollo del bundle contra los del APK (DEPLOY 4-bis.2).
 
-**Sin verificar todavía:** ver «Código en uso» en Diagnóstico y el aplicado silencioso tras ≥ 10 min
-en segundo plano, y el toque de aviso con espacio e hilo (B4): el emulador quedó sin sesión y hace
-falta un código de ingreso del 902049935. Para B4, agentes publica como el bot de Portal en «Test»
-(mensajes de canal y respuestas en hilos), así que no hace falta una segunda persona.
+**B4 (25–28/10/2026): el toque de un aviso, con la app viva y con la app cerrada.** El E2E en
+el emulador (cuenta de José, espacio «Test», #planta; agentes publicó como el bot de Portal) sacó
+tres defectos, cada uno con su arreglo:
+
+- **Con el proceso muerto y la tarea viva, el toque no llegaba a JavaScript** (causa raíz, APK
+  0.1.172). Android relanza `MainActivity` y entrega el toque por `onNewIntent` justo después de
+  `onCreate`. Desde la 0.1.171, `expo-updates` retrasa la carga a propósito (`DelayLoadAppHandler`)
+  y `ReactActivityDelegateWrapper` descarta ese intent sin avisar a nadie
+  (`if (!loadAppReady.isCompleted) return false`); `onCreate` solo ve el intent viejo de la tarea.
+  El plugin `app/plugins/withMainActivityNewIntent.js` hace que `MainActivity` guarde el intent
+  nuevo (`setIntent`), y `OyenteDeActividad` (`llamada-entrante`) lo atiende también en
+  `onResume`, que Expo sí corre cuando terminó de cargar. Un intent ya atendido queda sin extras,
+  así que no se atiende dos veces. Cubre el aviso de mensaje, el recordatorio a pantalla completa
+  y «Contestar». El plugin falla el build si `MainActivity` ya tiene otro `onNewIntent`.
+- **El toque se rendía a la primera** (OTA). `NoticeOpener` (`ui/noticeOpener.ts`, puro) busca el
+  chat primero en memoria y en la lista guardada en el disco (también los de espacio), y después
+  en la red. Distingue «no existe» (403/404: se rinde) de «no hubo respuesta» (reintenta a los 2,
+  5 y 10 s dentro de 45 s; un jwt nuevo reintenta al instante). Si la navegación todavía no está
+  lista, reintenta cada 300 ms. Cada paso queda en Diagnóstico (`aviso-busqueda`, `aviso-abierto`,
+  `aviso-sin-navegacion`, `aviso-sin-respuesta`, `aviso-cancelado`, y las marcas `aviso-montado`,
+  `aviso-pendiente`, `aviso-toque`).
+- **Defecto D: tras abrir en frío, la lista se iba del mensaje a los ~2,4 s** (APK 0.1.172).
+  Las filas de arriba (nombres, avatares, tarjetas del bot) se miden tarde y el MVCP de FlashList
+  2.0.2 no sostiene la posición. Un salto deja un ancla de 6 s (`chat/anchorAfterJump.ts`, puro):
+  mientras dura, cada cambio de tamaño del contenido vuelve a llevar la lista a su mensaje; un dedo
+  sobre la lista la suelta.
+
+| Caso | Código | Hora UTC (envío → toque) | Resultado |
+| --- | --- | --- | --- |
+| 1 hilo, app viva | OTA `5f1bd1cb` | 25/10 | pasa |
+| 5b canal ya abierto | OTA `5f1bd1cb` | 25/10 | pasa |
+| 2 suelto, app viva | OTA `57390a90` | 23:59:37 → 00:00:04 | pasa |
+| 3 hilo, app cerrada | OTA `57390a90` | 00:02:13 → 00:02:36 | **falla** (la causa raíz) |
+| 3 hilo, app cerrada | APK 0.1.172 | 28/10 11:32:18 → 11:32:53 | pasa |
+| 4 suelto, app cerrada | APK 0.1.172 | 11:34:12 → 11:34:32 | a medias (defecto D) |
+| 4b suelto, app cerrada | APK 0.1.172 con ancla | 11:48:44 → 11:49:05 | pasa (a la vista a los 8 y 31 s) |
+| 1 regresión, app viva | APK 0.1.172 | 11:50:39 → 11:50:58 | pasa |
+| Recordatorio, app cerrada y pantalla apagada | APK 0.1.172 | 12:00:12 → 12:00:28 | pasa (pantalla completa) |
+
+El APK 0.1.172 (versionCode 173, runtime `14d9450c`) está publicado en LilaStore `stable` desde
+el 28/10/2026; `minVersionCode` sigue en 0. Diagnóstico mostró «Código en uso»: `57390a90` con
+la OTA y `f5b662f9 · runtime 14d9450c` con el APK 0.1.172.
+
+**Sin verificar todavía:** «Contestar» de una llamada real con la app cerrada (José lo prueba;
+hace falta otra cuenta que lo llame) y el aplicado silencioso tras ≥ 10 min en segundo plano.
 Una OTA no suma entradas a «Novedades»: las notas se atan a la versión del APK.
 
 ## 136. La respuesta tardía de un formulario viaja en la misma llamada (25/10/2026, solo servidor)

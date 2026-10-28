@@ -1,5 +1,5 @@
 /**
- * Comandos y horarios (agentes `specs/COMANDOS-Y-HORARIOS.spec.md` §2.1): every
+ * Commands and schedules (agentes `specs/COMANDOS-Y-HORARIOS.spec.md` §2.1): every
  * installation from before gets every command and action of its app written
  * off, as José approved. Until this runs they keep the old defaults (actions
  * global, every channel, the 1:1, anyone). It writes production: only with

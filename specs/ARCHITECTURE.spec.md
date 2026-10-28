@@ -12412,6 +12412,18 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
 109. **En el modo empresa solo se crean canales, no grupos** (José, 28/10):
     dentro de un espacio no debería existir la opción de crear un grupo; lo que
     se crea ahí es un canal.
+110. **Responder en un hilo manda al hilo principal** (José, 28/10, bug, en la
+    web y en la APK): al responder dentro de un hilo, el mensaje sale por defecto
+    en la conversación principal y no en el hilo.
+111. **Quitar las acciones rápidas del clip** (José, 28/10): el panel del clip
+    (adjuntar) muestra también las acciones de las apps («Registrar un gasto»,
+    «Crear una cotización»…). Se quitan de ahí; siguen en el ⚡.
+112. **Adjuntar varios a la vez** (José, 28/10, bug): al adjuntar imágenes, videos
+    o archivos no deja elegir más de uno. (En el E2E del 28/10 en el emulador, el
+    selector de fotos de «Galería» sí dejó elegir 6; revisar videos, «Documento» y
+    el teléfono de José.)
+113. **La galería no muestra todas las fotos** (José, 28/10, bug que vuelve): no
+    deja hacer scroll para ver el resto de las fotos del teléfono, solo algunas.
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

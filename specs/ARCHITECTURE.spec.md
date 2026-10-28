@@ -4911,6 +4911,30 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 148. Videollamada: mi cámara vuelve a verse (28/10/2026, OTA; pendiente 105a)
+
+**(a) No aparecía el recuadro con mi cámara** (José, 28/10, llamada con Lila). En Android cada
+`RTCView` de `react-native-webrtc` es un SurfaceView. Sin `zOrder`, Android no respeta el orden
+de las vistas: gana el SurfaceView creado último. El video del otro llega después que el mío,
+así que tapaba mi recuadro. La librería documenta el arreglo: `zOrder={0}` para el remoto y
+`zOrder={1}` para el propio (`CallScreen.tsx`). La web no tiene el problema: ahí son `<video>`
+y manda el orden del DOM.
+
+**(b) Lila no veía mis guiños ni stickers: sin causa confirmada.** Lo revisado:
+- El server reenvía `call.reaction` a los otros miembros del chat (`socket.ts`) y valida con el
+  mismo catálogo compartido que usan la app y la web (`callReactionOf`). Los stickers de la hoja
+  de la llamada salen de esos mismos paquetes.
+- La app escucha `call.reaction` en el mismo efecto que el resto de la señalización
+  (`useCall.ts`), y lo compara con el chat de la llamada en curso.
+- Un sticker se dibuja con una vista normal, que queda encima del video. Si Lila tampoco vio los
+  stickers, la reacción no llegó a su teléfono; no es un problema de dibujo.
+- Lo más probable: el teléfono de Lila tiene un APK anterior al 0.1.166, que no escucha
+  `call.reaction`. Un APK anterior al 0.1.171 tampoco recibe las OTA. Hay que mirar en su
+  teléfono Ajustes › Acerca de.
+- Para reproducirlo hacen falta dos personas en llamada. Con un solo usuario de QA no se puede.
+
+**Sin E2E en el emulador:** probar la videollamada exige llamar a otra persona real.
+
 ## 147. En un espacio solo se crean canales (28/10/2026, OTA + web; pendiente 109)
 
 **Pedido** (José, 28/10): dentro de un espacio no debe existir la opción de crear un grupo; lo
@@ -12559,7 +12583,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     efímeras de los comandos se apilan como mensajes encima de la lista. José
     pregunta si pueden verse como las tarjetas o chips de Claude: compactas,
     agrupadas y fáciles de cerrar.
-105. **Videollamada: no se ve mi cámara y el otro no ve mis guiños ni stickers**
+105. **(a) hecho en §148; (b) sin causa confirmada, ver §148.** **Videollamada: no se ve mi cámara y el otro no ve mis guiños ni stickers**
     (José, 28/10, bug, llamada con Lila; captura): (a) ya no aparece el recuadro
     con mi propia cámara; (b) Lila no veía los guiños ni los stickers que José
     mandaba, aunque él sí los veía en su pantalla (evento `call.reaction`, del

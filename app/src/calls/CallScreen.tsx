@@ -112,11 +112,14 @@ export function CallScreen({
           <RTCView
             streamURL={remoteStream.toURL()}
             objectFit="cover"
+            // Each RTCView is a SurfaceView on Android: without a z-order the one created last wins, and the
+            // other's video (it arrives after mine) covered my own box (pending 105, José 28/10).
+            zOrder={0}
             style={StyleSheet.absoluteFill}
           />
         ) : null}
         {video && localStream ? (
-          <RTCView streamURL={localStream.toURL()} objectFit="cover" mirror={mirrorsSelfView(facing)} style={estilos.propio} />
+          <RTCView streamURL={localStream.toURL()} objectFit="cover" mirror={mirrorsSelfView(facing)} zOrder={1} style={estilos.propio} />
         ) : null}
         {/* Like WhatsApp: the switch sits under my own view, not in the controls panel (it already has four). */}
         {video && localStream?.getVideoTracks().length ? (

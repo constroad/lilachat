@@ -250,11 +250,7 @@ export function Composer({
             data-testid="btn-mas"
             aria-label="Crear"
             aria-expanded={menuAbierto}
-            onClick={() => {
-              // The apps' actions are asked once, the first time the menu opens.
-              if (!menuAbierto) void commands?.loadActions();
-              setMenuAbierto((abierto) => !abierto);
-            }}
+            onClick={() => setMenuAbierto((abierto) => !abierto)}
             className="grid h-10 w-10 place-items-center rounded-full text-on-surface-variant hover:bg-background"
           >
             <Plus size={20} />
@@ -268,8 +264,6 @@ export function Composer({
               onCreatePoll={onCreatePoll}
               onCreateReminder={onCreateReminder}
               onCreateChecklist={onCreateChecklist}
-              actions={commands?.actions}
-              onAction={commands ? (row) => void commands.appAnswers.runAction(row) : undefined}
             />
           ) : null}
         </div>

@@ -45,10 +45,15 @@ const esPendiente = (mensaje: Respuesta): mensaje is PendingMessage => mensaje.p
  * modal dentro de la conversación: funciona igual en el teléfono y en el panel
  * de la tablet. Atrás lo cierra; lo escrito queda como borrador.
  */
+/** The modal's slide-in; focusing earlier does not raise the keyboard. */
+const FOCUS_AFTER_OPEN_MS = 350;
+
 export function HiloScreen(props: {
   raiz: ChatMessage | null;
   /** The reply to bring into view and highlight: the one a tapped notice was about. */
   highlightReply?: number;
+  /** Opened by «Responder» (pending 110): the reply field takes the keyboard. */
+  focusInput?: boolean;
   chatId: string;
   chatName: string;
   yo: string;
@@ -107,6 +112,13 @@ export function HiloScreen(props: {
     setNotice('');
     setCreatingChecklist(false);
   }, [clave]);
+  const wantsKeyboard = Boolean(props.raiz && props.focusInput);
+  useEffect(() => {
+    if (!wantsKeyboard) return;
+    // After the modal slides in: a focus during the animation is dropped on Android.
+    const timer = setTimeout(() => input.current?.focus(), FOCUS_AFTER_OPEN_MS);
+    return () => clearTimeout(timer);
+  }, [wantsKeyboard, clave]);
   // Las hojas viven DENTRO del modal del hilo: las del chat quedarían detrás.
   const reacciones = useReaccionesEnPantalla({ mensajes: props.respuestas, reaccionar: props.reaccionar, yo: props.yo, nombres: props.nombres, fotos: props.fotos, alReaccionar: () => setBarraEn(null) });
   const filas: Respuesta[] = [...props.respuestas, ...props.pendientes];

@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { encolarArchivo } from './colaDeArchivos';
+import { documentsToSend } from './attachSelection';
 import { MAXIMO_DE_FOTOS, type FotoAEnviar, type FotoElegida } from './envioDeFotos';
 import type { NotaGrabada } from './useGrabadorDeVoz';
 import { reportarError } from '../ui/reportarError';
@@ -103,17 +104,10 @@ export function useAdjuntosDelChat(params: { chatId: string; onError: (texto: st
   };
 
   const pickFile = async () => {
-    const picked = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
-    const asset = picked.assets?.[0];
-    if (picked.canceled || !asset) return;
-    // Un documento va intacto, aunque sea una imagen (como WhatsApp).
-    await upload({
-      uri: asset.uri,
-      fileName: asset.name,
-      mimeType: asset.mimeType ?? 'application/octet-stream',
-      sizeBytes: asset.size ?? 0,
-      hd: true,
-    });
+    // Several at once (pending 112); each goes untouched, in the order chosen (the queue keeps it).
+    const picked = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true, multiple: true });
+    if (picked.canceled) return;
+    await Promise.all(documentsToSend(picked.assets).map((file) => upload(file)));
   };
 
   // Por un ref: `pickFromCamera` se rearma en cada render y el Composer es memo.

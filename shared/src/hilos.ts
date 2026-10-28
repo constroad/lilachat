@@ -23,6 +23,17 @@ export function canOpenThread(message: { seq: number | null; kind?: string; syst
   return message.seq !== null && actsAsMessage(message) && message.hiloDe === undefined && !message.deletedAt && !message.cifrado;
 }
 
+/**
+ * «Responder» on a message opens its thread (pending 110, José 28/10: a reply
+ * meant for a thread went to the main chat). In the Slack layout (`flat`:
+ * channels, groups of a space, or groups shown as a list) a reply is a thread
+ * reply, as in Slack; elsewhere it quotes the message in the chat, as in
+ * WhatsApp. Only a message that can have a thread.
+ */
+export function replyOpensThread(params: { flat: boolean; message: Parameters<typeof canOpenThread>[0] }): boolean {
+  return params.flat && canOpenThread(params.message);
+}
+
 /** «1 respuesta · 11:05» o «4 respuestas · última 10:42». Sin respuestas, nada. */
 export function textoDelChipDeHilo(hilo: ResumenDeHiloEnCliente): string {
   if (hilo.respuestas <= 0) return '';

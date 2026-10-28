@@ -351,7 +351,7 @@ export function ChatScreen({
     onResponder: alResponder,
     onFallido: alFallido,
     onTocarCita: alTocarCita,
-    onAbrirHilo: hilos.abrir,
+    onAbrirHilo: hilos.abrir, onResponderEnHilo: encrypted ? undefined : hilos.escribirEn,
     hiloConNuevas: hilos.hiloConNuevas,
     onReaccionar: reacciones.elegir,
     onMasEmojis: reacciones.masEmojis,
@@ -522,7 +522,7 @@ export function ChatScreen({
       <CamaraDelChat visible={camara.abierta} nombreDelChat={nombreVisible} onEnviar={(lista, opciones) => void camara.enviar(lista, opciones)} onGaleria={camara.aLaGaleria} onCerrar={camara.cerrar} />
       <EnviarFotos fotos={fotosElegidas} onCancelar={cerrarFotos} onEnviar={(lista, opciones) => void alEnviarFotos(lista, opciones)} />
       <HiloScreen
-        raiz={hilos.raiz} highlightReply={highlightReply}
+        raiz={hilos.raiz} highlightReply={highlightReply} focusInput={hilos.focusInput}
         chatId={chatId}
         chatName={chatName}
         yo={credential.userId} jwt={credential.jwt}
@@ -545,7 +545,7 @@ export function ChatScreen({
         onPickMedia={pickMedia}
         onPickGallery={() => void pickFromGallery()}
         onCreateEvent={() => setCreando('event')}
-        onCreatePoll={() => setCreando('poll')} onCreateChecklist={encrypted ? undefined : () => setCreando('checklist')} commands={encrypted ? undefined : commands}
+        onCreatePoll={() => setCreando('poll')} onCreateChecklist={encrypted ? undefined : () => setCreando('checklist')}
         // 20/10: también en un 1:1 y en un borrador; en un grupo, sus admins. No en un chat secreto.
         onCreateReminder={!encrypted && (!esGrupoChat || soyAdminDelGrupo) ? () => setCreando('reminder') : undefined}
         etiquetaDelRecordatorio={etiquetaDeRecordatorioEnElChat(esBorrador ? 'notas' : esGrupoChat ? 'group' : 'direct')}

@@ -49,3 +49,32 @@ export function mediaAccessFrom(permission: { granted: boolean; canAskAgain: boo
   if (permission.granted) return permission.accessPrivileges === 'limited' ? 'limited' : 'granted';
   return permission.canAskAgain ? 'ask' : 'denied';
 }
+
+/** Documents picked together (pending 112): as many as photos in one go. */
+export const MAX_DOCUMENTS_AT_ONCE = MAXIMO_DE_FOTOS;
+
+/**
+ * The documents to send, in the order chosen (pending 112, José 28/10: only
+ * one could be attached). A document goes untouched, even an image, like
+ * WhatsApp (`hd`).
+ */
+export function documentsToSend(assets: readonly { uri: string; name: string; mimeType?: string | null; size?: number | null }[] | null | undefined): { uri: string; fileName: string; mimeType: string; sizeBytes: number; hd: true }[] {
+  return (assets ?? []).slice(0, MAX_DOCUMENTS_AT_ONCE).map((asset) => ({
+    uri: asset.uri,
+    fileName: asset.name,
+    mimeType: asset.mimeType ?? 'application/octet-stream',
+    sizeBytes: asset.size ?? 0,
+    hd: true,
+  }));
+}
+
+/**
+ * The gallery loads the phone in pages (pending 113, José 28/10: scrolling
+ * never reached the rest of the photos). A photo taken meanwhile shifts the
+ * pages by one, so an id already listed is skipped.
+ */
+export function appendGalleryPage<T extends { id: string }>(shown: readonly T[], page: readonly T[]): readonly T[] {
+  const listed = new Set(shown.map((one) => one.id));
+  const fresh = page.filter((one) => !listed.has(one.id));
+  return fresh.length ? [...shown, ...fresh] : shown;
+}

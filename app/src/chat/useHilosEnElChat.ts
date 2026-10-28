@@ -22,6 +22,8 @@ export function useHilosEnElChat(params: {
 }) {
   const { chatId, yo, jwt, messages, pending, openThread, requestedAt } = params;
   const [abierto, setAbierto] = useState<number | null>(null);
+  /** Opened by «Responder» (pending 110): the reply field takes the keyboard. */
+  const [typing, setTyping] = useState(false);
   const [remotas, setRemotas] = useState<ChatMessage[]>([]);
   /** The root as the server has it: a thread opened from a notice may be older than the window the chat loaded. */
   const [raizRemota, setRaizRemota] = useState<ChatMessage | null>(null);
@@ -69,7 +71,15 @@ export function useHilosEnElChat(params: {
     pendientesDelChat,
     hiloConNuevas,
     abierto,
-    abrir: setAbierto,
+    abrir: useCallback((seq: number) => {
+      setTyping(false);
+      setAbierto(seq);
+    }, []),
+    escribirEn: useCallback((seq: number) => {
+      setTyping(true);
+      setAbierto(seq);
+    }, []),
+    focusInput: typing,
     cerrar: useCallback(() => setAbierto(null), []),
     raiz: abierto === null ? null : (messages.find((mensaje) => mensaje.seq === abierto) ?? (raizRemota?.seq === abierto ? raizRemota : null)),
     respuestas,

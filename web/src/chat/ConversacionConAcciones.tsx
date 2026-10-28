@@ -39,7 +39,7 @@ import { useDestacadosWeb } from './destacados/useDestacadosWeb';
 import { TarjetaDeDestacados } from './destacados/TarjetaDeDestacados';
 import { useStickers } from './stickers/useStickers';
 import type { StickerAction } from './contextoDeLaConversacion';
-import { memberBadge, opensInPhotoViewer, usesFlatLayout } from '@lilachat/shared';
+import { memberBadge, opensInPhotoViewer, replyOpensThread, usesFlatLayout } from '@lilachat/shared';
 import { useGroupsAsList } from '../ui/groupsAsList';
 import { useCalls } from '../calls/CallProvider';
 import { ChatQueue } from './queue/ChatQueue';
@@ -148,15 +148,19 @@ export function ConversacionConAcciones(
     (mensaje: MensajeEnPantalla, action: StickerAction) => void (action === 'gif' ? saveGif({ chatId: chat.id, seq: mensaje.seq }) : keepReceived(chat.id, mensaje.seq, action === 'favorite')).then(onAviso),
     [keepReceived, saveGif, chat.id, onAviso]
   );
+  // Groups as flat rows, like Slack (design `s-01`): always in a company space, on request in a personal group.
+  const flat = usesFlatLayout(chat, { groupsAsList: useGroupsAsList() });
   const onAccion = useCallback(
     (mensaje: MensajeEnPantalla, accion: AccionSobreMensaje) => {
       if (accion === 'fijar') return fijar.pedir(mensaje.seq);
       if (accion === 'hilo') return abrirHilo(mensaje.seq);
+      // In the Slack layout «Responder» answers in the thread, as in Slack (pending 110).
+      if (accion === 'responder' && !chat.encrypted && replyOpensThread({ flat, message: mensaje })) return abrirHilo(mensaje.seq);
       if (accion === 'desfijar') return void fijar.desfijar(mensaje.seq);
       if (accion === 'destacar' || accion === 'quitarDestacado') return void destacados.alternar(mensaje.seq).then((r) => !r.ok && onAviso('No se pudo destacar. Revisa tu conexión.'));
       acciones.onAccion(mensaje, accion);
     },
-    [fijar, acciones, abrirHilo, destacados, onAviso]
+    [fijar, acciones, abrirHilo, destacados, onAviso, chat.encrypted, flat]
   );
   const onReaccionar = useCallback(
     (seq: number, emoji: string | null) => void sync.reaccionar(chat.id, seq, emoji).then((r) => !r.ok && r.motivo && onAviso(r.motivo)),
@@ -164,8 +168,6 @@ export function ConversacionConAcciones(
   );
   // El recordatorio del chat (W3c): lo crean y editan quienes pueden fijar (en un grupo, sus admins), nunca en un secreto.
   const editarRecordatorio = !chat.encrypted && puedeFijar ? props.onEditReminder : undefined;
-  // Groups as flat rows, like Slack (design `s-01`): always in a company space, on request in a personal group.
-  const flat = usesFlatLayout(chat, { groupsAsList: useGroupsAsList() });
   const badgeOf = useCallback((senderId: string) => memberBadge({ ...detalle?.pills.get(senderId), isMe: senderId === yo }), [detalle, yo]);
   const isAppOf = useCallback((senderId: string) => detalle?.pills.get(senderId)?.role === 'app', [detalle]);
   const personCard = usePersonCardWeb({ jwt: props.jwt, myUserId: yo, spaceId: chat.workspaceId, onOpenChat: props.onOpenChat });

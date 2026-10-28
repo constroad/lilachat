@@ -1,19 +1,19 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FlatList, Linking, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { Modal } from '../ui/Modal';
-import type { ChatCommands } from './commands/useChatCommands';
-import { AppActionRows } from './commands/AppActionRows';
 import { Image } from 'expo-image';
 import * as MediaLibrary from 'expo-media-library/legacy';
-import { ArrowLeft, BarChart3, Bell, CalendarDays, ClipboardCheck, FileText, Image as ImageIcon, LayoutGrid, type LucideIcon, MapPin, Send, UserRound, Zap } from 'lucide-react-native';
+import { ArrowLeft, BarChart3, Bell, CalendarDays, ClipboardCheck, FileText, Image as ImageIcon, LayoutGrid, type LucideIcon, MapPin, Send, UserRound } from 'lucide-react-native';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { reportarError } from '../ui/reportarError';
-import { mediaAccessFrom, toggleSelection, toPickedPhoto, type GalleryItem, type MediaAccess } from './attachSelection';
+import { appendGalleryPage, mediaAccessFrom, toggleSelection, toPickedPhoto, type GalleryItem, type MediaAccess } from './attachSelection';
 import type { FotoElegida } from './envioDeFotos';
 
-/** How many recent photos and videos the sheet lists (like WhatsApp's first screen). */
-const RECENT_MEDIA = 60;
+/** Photos and videos per page: the first one is WhatsApp's first screen, the rest load while scrolling (pending 113). */
+const MEDIA_PAGE = 60;
+/** Start the next page when the last screen and a half is left. */
+const LOAD_MORE_THRESHOLD = 1.5;
 const COLUMNS = 4;
 const GAP = 3;
 /** Room under the grid so the «Enviar» button never covers the last row. */
@@ -29,17 +29,24 @@ type Asset = GalleryItem & { id: string; duration: number };
 
 const formatDuration = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, '0')}`;
 
-async function loadRecentMedia(): Promise<{ access: Access; assets: Asset[] }> {
+type MediaPage = { assets: Asset[]; nextCursor: string | null };
+
+/** One page of the phone's photos and videos, newest first; `nextCursor` null = there are no more. */
+async function loadMediaPage(after?: string): Promise<MediaPage> {
+  const page = await MediaLibrary.getAssetsAsync({ first: MEDIA_PAGE, after, mediaType: [MediaLibrary.MediaType.photo, MediaLibrary.MediaType.video], sortBy: [[MediaLibrary.SortBy.creationTime, false]] });
+  const assets = page.assets.map((asset) => ({ id: asset.id, uri: asset.uri, filename: asset.filename, width: asset.width, height: asset.height, duration: asset.duration, mediaType: asset.mediaType === MediaLibrary.MediaType.video ? ('video' as const) : ('photo' as const) }));
+  return { assets, nextCursor: page.hasNextPage ? page.endCursor : null };
+}
+
+async function loadRecentMedia(): Promise<{ access: Access } & MediaPage> {
   try {
     const permission = await MediaLibrary.getPermissionsAsync(false, ['photo', 'video']);
     const access = mediaAccessFrom(permission);
-    if (access === 'ask' || access === 'denied') return { access, assets: [] };
-    const page = await MediaLibrary.getAssetsAsync({ first: RECENT_MEDIA, mediaType: [MediaLibrary.MediaType.photo, MediaLibrary.MediaType.video], sortBy: [[MediaLibrary.SortBy.creationTime, false]] });
-    const assets = page.assets.map((asset) => ({ id: asset.id, uri: asset.uri, filename: asset.filename, width: asset.width, height: asset.height, duration: asset.duration, mediaType: asset.mediaType === MediaLibrary.MediaType.video ? ('video' as const) : ('photo' as const) }));
-    return { access, assets };
+    if (access === 'ask' || access === 'denied') return { access, assets: [], nextCursor: null };
+    return { access, ...(await loadMediaPage()) };
   } catch (error) {
     reportarError('AttachSheet.loadRecentMedia', error);
-    return { access: 'denied', assets: [] };
+    return { access: 'denied', assets: [], nextCursor: null };
   }
 }
 
@@ -72,14 +79,14 @@ export function AttachSheet(props: {
   /** The reminder that lives in the chat: in a group, its admins (19/10); in a 1:1 or a draft, anyone (20/10). */
   onCreateReminder?: () => void;
   etiquetaDelRecordatorio?: string;
-  /** «Acciones de las apps» (R160, design e-29): asked when the sheet opens, in a space's chat. */
-  commands?: ChatCommands;
 }) {
   const colors = useColores();
   const margins = useMargenes();
   const { width, height } = useWindowDimensions();
   const [access, setAccess] = useState<Access>('unknown');
-  const [assets, setAssets] = useState<Asset[]>([]);
+  const [assets, setAssets] = useState<readonly Asset[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const loadingMore = useRef(false);
   const [selected, setSelected] = useState<readonly string[]>([]);
   const [allPhotos, setAllPhotos] = useState(false);
   const side = (width - GAP * (COLUMNS - 1)) / COLUMNS;
@@ -93,6 +100,7 @@ export function AttachSheet(props: {
       if (!current) return;
       setAccess(result.access);
       setAssets(result.assets);
+      setNextCursor(result.nextCursor);
     });
     return () => {
       current = false;
@@ -106,15 +114,25 @@ export function AttachSheet(props: {
     const result = await loadRecentMedia();
     setAccess(result.access);
     setAssets(result.assets);
+    setNextCursor(result.nextCursor);
+  };
+  const loadMore = async () => {
+    if (!nextCursor || loadingMore.current) return;
+    loadingMore.current = true;
+    try {
+      const page = await loadMediaPage(nextCursor);
+      setAssets((shown) => appendGalleryPage(shown, page.assets));
+      setNextCursor(page.nextCursor);
+    } catch (error) {
+      reportarError('AttachSheet.loadMore', error);
+    } finally {
+      loadingMore.current = false;
+    }
   };
   const run = (action: () => void) => {
     props.onClose();
     action();
   };
-  const { loadActions } = props.commands ?? {};
-  useEffect(() => {
-    if (props.visible) void loadActions?.();
-  }, [props.visible, loadActions]);
   const sendSelected = () => run(() => props.onPickMedia(selected.flatMap((id) => assets.filter((asset) => asset.id === id).map(toPickedPhoto))));
 
   const sections: { title: string; options: Option[] }[] = [
@@ -183,6 +201,8 @@ export function AttachSheet(props: {
               columnWrapperStyle={{ gap: GAP }}
               contentContainerStyle={{ gap: GAP, paddingBottom: selected.length ? SEND_BUTTON_ROOM : 0 }}
               ListEmptyComponent={<Text className="px-5 py-6 text-center text-[13px] text-on-surface-variant">{emptyText}</Text>}
+              onEndReached={() => void loadMore()}
+              onEndReachedThreshold={LOAD_MORE_THRESHOLD}
               renderItem={({ item }) => <MediaTile asset={item} side={side} order={selected.indexOf(item.id)} onPress={() => pickToggle(item.id)} />}
             />
           </>
@@ -203,12 +223,6 @@ export function AttachSheet(props: {
                 </View>
               </View>
             ))}
-            {props.commands?.actions.length ? (
-              <View testID="acciones-de-apps" className="mx-5 border-t border-outline/15 py-3">
-                <View className="mb-3 flex-row items-center gap-1.5"><Zap size={14} color={colors.warning} fill={colors.warning} /><Kicker>Acciones de las apps</Kicker></View>
-                <AppActionRows rows={props.commands.actions} testPrefix="accion" onPick={(row) => run(() => void props.commands!.appAnswers.runAction(row))} />
-              </View>
-            ) : null}
             <View className="border-t border-outline/15 pt-3" style={{ marginHorizontal: SHEET_PADDING }}>
               <Kicker>Fotos recientes</Kicker>
             </View>

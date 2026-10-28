@@ -4911,6 +4911,56 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 146. Responder en el hilo, clip sin acciones, varios documentos y la galería entera (28/10/2026, OTA + web; pendientes 110–113)
+
+**110 — La respuesta a un hilo salía en el chat principal.** Dos caminos llevaban ahí:
+- En la web, «Responder» sobre un mensaje DENTRO del hilo usaba la acción del chat:
+  citaba el mensaje en el campo de abajo. Y al abrir un hilo el cursor seguía en ese
+  campo, así que lo escrito salía en el chat. Ahora «Responder» dentro del hilo pone
+  el cursor en el campo del hilo, y abrir un hilo también (`PanelDeHilo.tsx`).
+- En el modo Slack (canales y grupos de un espacio, o grupos en lista), «Responder»
+  sobre un mensaje del chat lo citaba abajo, como WhatsApp. En Slack, responder es
+  responder en el hilo. `replyOpensThread({ flat, message })` (`shared/src/hilos.ts`)
+  decide: en modo Slack y si el mensaje admite hilo, «Responder» abre su hilo.
+  - Web: `ConversacionConAcciones.tsx` abre el hilo, y el panel toma el cursor.
+  - App: `useDibujarFila` llama a `onResponderEnHilo`. `useHilosEnElChat.escribirEn`
+    abre el hilo con `focusInput`, y `HiloScreen` enfoca el campo a los 350 ms
+    (`FOCUS_AFTER_OPEN_MS`, lo que tarda la hoja en subir).
+  - En la app, deslizar para responder sigue la misma regla.
+  - En un chat secreto no hay hilos: «Responder» cita, como antes.
+- El modo WhatsApp no cambia: «Responder» cita el mensaje en el chat.
+
+**111 — Las acciones de las apps salen del clip.** El clip (app `AttachSheet`, web
+`AttachMenu`) ya no lista «Registrar un gasto», «Crear una cotización» y las demás.
+Viven solo en el ⚡. El clip ya no llama a `loadActions` al abrirse: es una consulta
+menos cada vez.
+
+**112 — Varios documentos a la vez.** «Documento» abría el selector del sistema con
+un solo archivo. Ahora usa `multiple: true`, y `documentsToSend`
+(`attachSelection.ts`) arma la lista en el orden elegido. El tope es el mismo de
+las fotos (`MAX_DOCUMENTS_AT_ONCE = MAXIMO_DE_FOTOS`). Cada documento sube aparte y
+sin tocar, aunque sea una imagen (`hd: true`), como WhatsApp. La galería y la cámara
+ya dejaban elegir varias: el E2E del 28/10 eligió 6.
+
+**113 — La galería mostraba solo las 60 más nuevas.** `AttachSheet` pedía una sola
+página a `MediaLibrary.getAssetsAsync` y no seguía. Al final de la grilla no había más.
+Ahora carga por páginas de 60 (`MEDIA_PAGE`):
+- Usa el cursor del teléfono (`endCursor`, `hasNextPage`).
+- La página siguiente se pide al quedar una pantalla y media (`onEndReachedThreshold`).
+- Un candado evita pedir dos veces la misma página.
+- `appendGalleryPage` salta los ids ya listados: una foto tomada mientras se baja
+  corre las páginas un lugar.
+- Una página que falla queda en `reportarError` y la grilla sigue con lo que tenía.
+
+**Pruebas.**
+
+| Dónde | Archivo | Casos |
+| --- | --- | --- |
+| shared | `hilos.test.ts` | +3 de `replyOpensThread` (modo Slack, WhatsApp, mensaje sin hilo) |
+| web | `PanelDeHilo.test.tsx` | +2: el cursor va al hilo al abrirlo, y «Responder» se queda en el hilo |
+| web | `commands.test.tsx` | el «+» tiene «Archivo», no tiene acciones de apps y no llama a `loadActions` |
+| app | `attachSelection.test.ts` | +3 de `documentsToSend` y +3 de `appendGalleryPage` |
+
 ## 145. Zumbidos y guiños que no se repiten, y grupos y canales que quedan leídos (28/10/2026, servidor + OTA + web; pendientes 107 y 108)
 
 **107 — La causa común.** Lila mandó un zumbido a «Lokillos». José lo leyó y salió.
@@ -12484,17 +12534,17 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
 109. **En el modo empresa solo se crean canales, no grupos** (José, 28/10):
     dentro de un espacio no debería existir la opción de crear un grupo; lo que
     se crea ahí es un canal.
-110. **Responder en un hilo manda al hilo principal** (José, 28/10, bug, en la
+110. ✅ **Hecho (§146).** **Responder en un hilo manda al hilo principal** (José, 28/10, bug, en la
     web y en la APK): al responder dentro de un hilo, el mensaje sale por defecto
     en la conversación principal y no en el hilo.
-111. **Quitar las acciones rápidas del clip** (José, 28/10): el panel del clip
+111. ✅ **Hecho (§146).** **Quitar las acciones rápidas del clip** (José, 28/10): el panel del clip
     (adjuntar) muestra también las acciones de las apps («Registrar un gasto»,
     «Crear una cotización»…). Se quitan de ahí; siguen en el ⚡.
-112. **Adjuntar varios a la vez** (José, 28/10, bug): al adjuntar imágenes, videos
+112. ✅ **Hecho (§146).** **Adjuntar varios a la vez** (José, 28/10, bug): al adjuntar imágenes, videos
     o archivos no deja elegir más de uno. (En el E2E del 28/10 en el emulador, el
     selector de fotos de «Galería» sí dejó elegir 6; revisar videos, «Documento» y
     el teléfono de José.)
-113. **La galería no muestra todas las fotos** (José, 28/10, bug que vuelve): no
+113. ✅ **Hecho (§146).** **La galería no muestra todas las fotos** (José, 28/10, bug que vuelve): no
     deja hacer scroll para ver el resto de las fotos del teléfono, solo algunas.
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera

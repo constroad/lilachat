@@ -142,19 +142,19 @@ describe('Composer with commands', () => {
   });
 });
 
-describe('the apps\' actions in the «+» (R160, design e-29)', () => {
-  it('opening the menu asks for them once; tapping one runs it', async () => {
+describe('the apps\' actions live in the ⚡, not in the «+» (pending 111, José 28/10)', () => {
+  it('the «+» shows only what to share and organize: no app actions, nothing asked for them', () => {
     // Arrange
     const row = { kind: 'shortcut' as const, appId: 'a1', appName: 'Inframaq', key: 'marcar_asistencia', name: 'Marcar asistencia' };
     const commands = stubCommands({ actions: [row] });
     composer(commands);
     // Act
     fireEvent.click(screen.getByTestId('btn-mas'));
-    fireEvent.click(screen.getByTestId('accion-marcar_asistencia'));
     // Assert
-    expect(commands.loadActions).toHaveBeenCalledTimes(1);
-    expect(commands.appAnswers.runAction).toHaveBeenCalledWith(row);
-    expect(screen.queryByTestId('menu-adjuntar')).toBeNull();
+    expect(screen.getByTestId('btn-archivo-chat')).toBeInTheDocument();
+    expect(screen.queryByTestId('acciones-de-apps')).toBeNull();
+    expect(screen.queryByTestId('accion-marcar_asistencia')).toBeNull();
+    expect(commands.loadActions).not.toHaveBeenCalled();
   });
 
   it('an answer marked shareable:false has no «Enviar al canal»; a pending form can be reopened', () => {

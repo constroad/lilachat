@@ -37,6 +37,33 @@ describe('PanelDeHilo', () => {
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
   });
 
+  it('opening a thread puts the cursor in its reply field (pending 110: typing went to the main chat)', () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    render(
+      <ConversacionContext.Provider value={conversation}>
+        <PanelDeHilo chat={chat} raiz={raiz} respuestas={[respuesta]} yo="yo" nombres={new Map()} onEnviar={vi.fn()} onReintentar={vi.fn()} onDescartar={vi.fn()} onEdit={vi.fn()} onCerrar={vi.fn()} />
+      </ConversacionContext.Provider>
+    );
+    expect(screen.getByTestId('input-hilo')).toHaveFocus();
+  });
+
+  it('«Responder» on a reply answers in this thread, never quotes it in the main chat (pending 110)', async () => {
+    // Arrange
+    Element.prototype.scrollIntoView = vi.fn();
+    const chatAction = vi.fn();
+    render(
+      <ConversacionContext.Provider value={{ ...conversation, onAccion: chatAction }}>
+        <PanelDeHilo chat={chat} raiz={raiz} respuestas={[{ ...respuesta, senderId: 'w' }]} yo="yo" nombres={new Map()} onEnviar={vi.fn()} onReintentar={vi.fn()} onDescartar={vi.fn()} onEdit={vi.fn()} onCerrar={vi.fn()} />
+      </ConversacionContext.Provider>
+    );
+    // Act
+    await userEvent.click(screen.getByTestId('menu-r2'));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Responder' }));
+    // Assert
+    expect(chatAction).not.toHaveBeenCalled();
+    expect(screen.getByTestId('input-hilo')).toHaveFocus();
+  });
+
   it('«Editar» on my reply edits it in the thread input, not in the chat (José, 20/10)', async () => {
     Element.prototype.scrollIntoView = vi.fn();
     const mine = { ...respuesta, at: new Date().toISOString() };

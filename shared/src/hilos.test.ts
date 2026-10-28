@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aplicarResumenDeHilo, hayRespuestasNuevas, canOpenThread, respuestasDelHilo, textoDelChipDeHilo, visibleEnElChat } from './hilos.js';
+import { aplicarResumenDeHilo, hayRespuestasNuevas, canOpenThread, respuestasDelHilo, textoDelChipDeHilo, visibleEnElChat, replyOpensThread } from './hilos.js';
 
 /** E3 (20/10): hilos. */
 describe('visibleEnElChat', () => {
@@ -69,5 +69,25 @@ describe('canOpenThread', () => {
   it('ni en un chat secreto, ni de lo que todavía no llegó al server', () => {
     expect(canOpenThread({ ...vivo, cifrado: true })).toBe(false);
     expect(canOpenThread({ ...vivo, seq: null })).toBe(false);
+  });
+});
+
+describe('replyOpensThread (pending 110, José 28/10)', () => {
+  const message = { seq: 12, kind: 'text' };
+
+  it('in the Slack layout «Responder» answers in the thread', () => {
+    expect(replyOpensThread({ flat: true, message })).toBe(true);
+  });
+
+  it('in a WhatsApp-style chat it quotes the message, as before', () => {
+    expect(replyOpensThread({ flat: false, message })).toBe(false);
+  });
+
+  it('a reply already in a thread, a notice, a deleted or unsent message, or a secret one never opens a thread', () => {
+    expect(replyOpensThread({ flat: true, message: { ...message, hiloDe: 3 } })).toBe(false);
+    expect(replyOpensThread({ flat: true, message: { ...message, kind: 'system' } })).toBe(false);
+    expect(replyOpensThread({ flat: true, message: { ...message, deletedAt: '2026-10-28T10:00:00Z' } })).toBe(false);
+    expect(replyOpensThread({ flat: true, message: { ...message, seq: null } })).toBe(false);
+    expect(replyOpensThread({ flat: true, message: { ...message, cifrado: true } })).toBe(false);
   });
 });

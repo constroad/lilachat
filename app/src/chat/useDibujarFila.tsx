@@ -1,6 +1,6 @@
 import { useCallback, useMemo, type ComponentProps } from 'react';
 import { albumLayout, alreadyGreeted, isHiddenNotice } from '@lilachat/shared';
-import { formatDayLabel, isAnimatedImage, memberBadge, miReaccion, canOpenThread, puedeReaccionar, resolveDeliveryState, startsNewDay, usesFlatLayout, type MemberPill } from '@lilachat/shared';
+import { formatDayLabel, isAnimatedImage, memberBadge, miReaccion, canOpenThread, puedeReaccionar, replyOpensThread, resolveDeliveryState, startsNewDay, usesFlatLayout, type MemberPill } from '@lilachat/shared';
 import { DivisorNoLeidos } from './useDivisorNoLeidos';
 import { neighboursForGrouping } from './divisorNoLeidos';
 import { DaySeparator, isPending, MessageRow, type Row } from './MessageRow';
@@ -48,6 +48,8 @@ export function useDibujarFila(p: {
   onTocarCita: PropsDeFila['onTocarCita'];
   /** E3: abrir el hilo de una raíz, y si tiene respuestas que no vi. */
   onAbrirHilo: (seq: number) => void;
+  /** In the Slack layout «Responder» answers in the thread, keyboard up (pending 110). */
+  onResponderEnHilo?: (seq: number) => void;
   hiloConNuevas: (seq: number, hilo: NonNullable<ChatMessage['hilo']>) => boolean;
   /** Reacciones (20/10): la barra sobre el único elegido, «+» y quién reaccionó. */
   onReaccionar: (seq: number, emoji: string | null) => void;
@@ -72,6 +74,15 @@ export function useDibujarFila(p: {
     const bySeq = new Map(confirmed.map((row) => [row.seq, row]));
     return { roles: albumLayout(confirmed), bySeq };
   }, [rows]);
+  const { onResponderEnHilo } = p;
+  const reply = useCallback(
+    (seq: number, preview: string, mine: boolean) => {
+      const message = albums.bySeq.get(seq);
+      if (message && !encrypted && onResponderEnHilo && replyOpensThread({ flat, message })) return onResponderEnHilo(seq);
+      onResponder?.(seq, preview, mine);
+    },
+    [albums, encrypted, flat, onResponder, onResponderEnHilo]
+  );
   return useCallback(
     ({ item, index }: { item: Row; index: number }) => {
       // The flat (Slack) rows keep each photo apart.
@@ -121,7 +132,7 @@ export function useDibujarFila(p: {
               starred={!isPending(item) && destacados.has(item.seq)}
               onOpenMedia={onVerImagen}
               onSelect={onSeleccionar}
-              onReply={onResponder}
+              onReply={reply}
               onFailed={onFallido}
               onGoToQuote={onTocarCita}
               onOpenThread={onAbrirHilo}
@@ -145,7 +156,7 @@ export function useDibujarFila(p: {
             onVerImagen={onVerImagen}
             onSeleccionar={onSeleccionar}
             enSeleccion={enSeleccion}
-            onResponder={onResponder}
+            onResponder={reply}
             citado={isPending(item) ? null : (citados.get(item.seq) ?? null)}
             seleccionado={!isPending(item) && (elegidos.has(item.seq) || item.seq === resaltado || item.seq === seqBuscado)}
             onFallido={onFallido}
@@ -177,6 +188,6 @@ export function useDibujarFila(p: {
         </>
       );
     },
-    [rows, albums, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, flat, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir, citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas, onReaccionar, onMasEmojis, onVerReacciones, destacados, onGreet, p.onShowPerson]
+    [rows, albums, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, flat, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir, citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, reply, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas, onReaccionar, onMasEmojis, onVerReacciones, destacados, onGreet, p.onShowPerson]
   );
 }

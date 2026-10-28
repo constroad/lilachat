@@ -73,6 +73,8 @@ export function PanelDeHilo(props: {
       ...parent,
       inThread: true,
       onAccion: (mensaje: MensajeEnPantalla, accion: Parameters<ContextoDeLaConversacion['onAccion']>[1]) => {
+        // «Responder» here answers in THIS thread, never in the main chat (pending 110).
+        if (accion === 'responder') return input.current?.focus();
         if (accion !== 'editar') return parent.onAccion(mensaje, accion);
         setEditing(mensaje);
         setTexto(mensaje.body ?? '');
@@ -88,6 +90,8 @@ export function PanelDeHilo(props: {
     setEnElChat(false);
     setEditing(null);
     setPicking(false);
+    // Opening a thread puts the cursor in its reply field, as in Slack: typing never lands in the main chat (pending 110).
+    input.current?.focus();
   }, [clave]);
   // Braces on purpose: recent Chrome returns a Promise from scrollIntoView, and a returned value is taken as the cleanup.
   useEffect(() => {

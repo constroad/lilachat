@@ -184,6 +184,43 @@ describe('POST /api/calls/rechazar', () => {
   });
 });
 
+/**
+ * Backlog 114 (José, 28/10): «Contestar» on the locked phone. The caller hears
+ * «answering» at once — by socket from the app, or by HTTP from the lock
+ * screen with the push token — and waits in «Conectando…» instead of hanging up.
+ */
+describe('call.answering', () => {
+  it('by socket: reaches the caller, and my other phone stops ringing', async () => {
+    const [socketAna, socketBeto, otherBeto] = await Promise.all([abrir(ana), abrir(beto), abrir(beto)]);
+    socketAna.emit('call.offer', { chatId, sdp: 'v=0 oferta', video: false });
+    await new Promise((listo) => setTimeout(listo, 300));
+    const answering = esperar(socketAna, 'call.answering');
+    const stopRinging = esperar(otherBeto, 'call.end');
+
+    socketBeto.emit('call.answering', { chatId });
+
+    expect(await answering).toMatchObject({ chatId, from: String(beto) });
+    expect(await stopRinging).toMatchObject({ chatId, motivo: 'contestada-en-otro' });
+    socketAna.emit('call.end', { chatId, motivo: 'colgada' });
+  });
+
+  it('by HTTP from the lock screen: the caller hears it; a bad token is a 400', async () => {
+    const socketAna = await abrir(ana);
+    socketAna.emit('call.offer', { chatId, sdp: 'v=0 oferta', video: false });
+    await new Promise((listo) => setTimeout(listo, 300));
+    const answering = esperar(socketAna, 'call.answering');
+
+    await request(buildApp())
+      .post('/api/calls/answering')
+      .send({ token: firmarRechazo({ chatId, userId: String(beto) }) })
+      .expect(204);
+
+    expect(await answering).toMatchObject({ chatId, from: String(beto) });
+    await request(buildApp()).post('/api/calls/answering').send({ token: 'x' }).expect(400);
+    socketAna.emit('call.end', { chatId, motivo: 'colgada' });
+  });
+});
+
 describe('GET /api/calls/ice', () => {
   it('entrega los servidores ICE del usuario', async () => {
     const respuesta = await request(buildApp())

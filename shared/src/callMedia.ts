@@ -32,6 +32,8 @@ export function waitBeforeGivingUp(media: MediaState): number | null {
 /** The line under the name on the call screen. */
 export function callCaption(params: { state: CallState; media: MediaState; video: boolean; now: number }): string {
   const { state, media } = params;
+  // Backlog 114: once answering, both sides read «Conectando…» until the answer lands.
+  if ((state.fase === 'llamando' || state.fase === 'sonando') && state.answeringAt !== undefined) return 'Conectando…';
   if (state.fase === 'llamando') return 'Llamando…';
   if (state.fase === 'sonando') return params.video ? 'Videollamada entrante' : 'Llamada entrante';
   if (state.fase === 'terminada') {

@@ -40,7 +40,7 @@ export function AppSchedulesSection(props: SectionProps) {
             <View key={`${suggestion.command}-${suggestion.time}-${index}`} testID={`sugerido-${index}`} className="mb-2 flex-row items-center gap-3 rounded-xl border border-outline/15 bg-background px-3 py-2">
               <View className="min-w-0 flex-1">
                 <Text className="font-mono text-[15px] text-on-surface" numberOfLines={1}>/{suggestion.command}{suggestion.text ? ` ${suggestion.text}` : ''}</Text>
-                <Text className="text-[13px] text-on-surface-variant" numberOfLines={1}>{scheduleLine(suggestion, '')}</Text>
+                <Text className="text-[13px] text-on-surface-variant" numberOfLines={2}>{scheduleLine(suggestion, '')}</Text>
               </View>
               <Pressable testID={`crear-sugerido-${index}`} onPress={() => props.onSuggestion(suggestion)} className="min-h-[40px] justify-center rounded-lg border border-primary px-3">
                 <Text className="text-[15px] font-semibold text-primary">Crear</Text>
@@ -77,7 +77,7 @@ function ScheduleItem(props: SectionProps & { row: ScheduleRow; canEdit: boolean
       <View className="h-10 w-10 items-center justify-center rounded-lg border border-outline/15 bg-primary/5"><Clock size={18} color={colors.primary} /></View>
       <View className="min-w-0 flex-1">
         <Text className="font-mono text-[16px] text-on-surface" numberOfLines={1}>/{row.command}{row.text ? ` ${row.text}` : ''}</Text>
-        <Text className="text-[13px] text-on-surface-variant" numberOfLines={1}>{scheduleLine(row, scheduleWhere(row.where))}</Text>
+        <Text className="text-[13px] text-on-surface-variant" numberOfLines={2}>{scheduleLine(row, scheduleWhere(row.where))}</Text>
         {problem ? (
           <View testID={`horario-error-${row.id}`} className="mt-0.5 flex-row items-center gap-1">
             <AlertCircle size={13} color={colors.error} />

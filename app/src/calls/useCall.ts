@@ -10,7 +10,7 @@ import {
 } from 'react-native-webrtc';
 import type RTCIceCandidateEvent from 'react-native-webrtc/lib/typescript/RTCIceCandidateEvent';
 import type RTCTrackEvent from 'react-native-webrtc/lib/typescript/RTCTrackEvent';
-import { CALL_TIMEOUT_MS, nextCallState, type CallState } from '@lilachat/shared';
+import { nextCallState, ringDeadline, type CallState } from '@lilachat/shared';
 import { otherFacing, type CameraFacing } from '@lilachat/shared';
 import { callReactionOf, type CallReaction } from '@lilachat/shared';
 import { connectSocket, getSocket, sostenerPorLlamada } from '../chat/socketClient';
@@ -193,13 +193,14 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
     buffer.current = [];
   }, []);
 
-  /** Corta sola si nadie contesta: «llamando…» eterno no le sirve a nadie. */
+  /** Corta sola si nadie contesta: «llamando…» eterno no le sirve a nadie. «Answering» moves the deadline (backlog 114). */
   useEffect(() => {
     if (timeout.current) clearTimeout(timeout.current);
-    if (!state || state.fase === 'activa' || state.fase === 'terminada') return;
+    const deadline = state ? ringDeadline(state) : null;
+    if (deadline === null) return;
     timeout.current = setTimeout(
-      () => aplicar({ tipo: 'tiempo', at: Date.now() }),
-      Math.max(0, state.desde + CALL_TIMEOUT_MS - Date.now())
+      () => aplicar({ tipo: 'tiempo', at: Math.max(Date.now(), deadline) }),
+      Math.max(0, deadline - Date.now())
     );
     return () => {
       if (timeout.current) clearTimeout(timeout.current);
@@ -364,6 +365,11 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
       }
     };
 
+    // Backlog 114: the other side tapped «Contestar» (maybe on its lock screen): wait in «Conectando…».
+    const answering = (data: { chatId: string }) => {
+      if (esDeEstaLlamada(data.chatId)) aplicar({ tipo: 'answering', at: Date.now() });
+    };
+
     const terminada = (data: { chatId: string; motivo?: string }) => {
       if (!esDeEstaLlamada(data.chatId)) return;
       aplicar(
@@ -375,6 +381,7 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
 
     socket.on('call.offer', entrante);
     socket.on('call.answer', contestada);
+    socket.on('call.answering', answering);
     socket.on('call.ice', hielo);
     socket.on('call.end', terminada);
     socket.on('call.reject', terminada);
@@ -388,6 +395,7 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
       socket.off('call.reaction', onReaction);
       socket.off('call.offer', entrante);
       socket.off('call.answer', contestada);
+      socket.off('call.answering', answering);
       socket.off('call.ice', hielo);
       socket.off('call.end', terminada);
       socket.off('call.reject', terminada);
@@ -426,9 +434,20 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
     [params.jwt, crearPc, agregarMedios, aplicar]
   );
 
+  /**
+   * Backlog 114: «answering» goes out at the tap, before the mic, the camera and
+   * the answer, which can take seconds on a phone that was just unlocked.
+   */
+  const announceAnswering = useCallback(() => {
+    if (stateRef.current?.fase !== 'sonando') return;
+    getSocket()?.emit('call.answering', { chatId: chatIdRef.current });
+    aplicar({ tipo: 'answering', at: Date.now() });
+  }, [aplicar]);
+
   const contestar = useCallback(async () => {
     const pc = pcRef.current;
     if (!pc) return;
+    announceAnswering();
     const conVideo = conVideoRef.current;
     if (!(await pedirPermisos(conVideo))) return;
     try {
@@ -444,7 +463,7 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
     } catch (error) {
       reportarError('call.contestar', error);
     }
-  }, [agregarMedios, aplicar]);
+  }, [agregarMedios, aplicar, announceAnswering]);
 
   const colgar = useCallback(() => {
     // Se avisa SIEMPRE, incluso rechazando: el otro tiene que dejar de sonar.
@@ -479,8 +498,9 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
       avisoPendiente.current = null;
       if (decision === 'contestar') void contestar();
       else if (decision === 'colgar') colgar();
+      else if (decision === 'answering') announceAnswering();
     },
-    [contestar, colgar]
+    [contestar, colgar, announceAnswering]
   );
   aplicarAvisoRef.current = aplicarAviso;
 

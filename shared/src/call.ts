@@ -10,6 +10,11 @@
 
 /** Cuánto suena antes de rendirse. Treinta segundos es lo que hace todo el mundo. */
 export const CALL_TIMEOUT_MS = 30_000;
+/**
+ * Once the other side said «answering» (backlog 114), how long the media has to
+ * arrive: unlocking the phone, starting the app and opening mic and camera.
+ */
+export const CALL_CONNECT_TIMEOUT_MS = 45_000;
 
 /**
  * Lo que un teléfono declara al registrar su push (FL8.1): sabe dibujar la
@@ -30,8 +35,9 @@ export const REMINDER_NATIVE_CAPABILITY = 'recordatorio-nativo';
 export const PUSH_CAPABILITIES: readonly string[] = [...CAPACIDADES_DE_PUSH, REMINDER_NATIVE_CAPABILITY];
 
 export type CallState =
-  | { fase: 'llamando'; desde: number; entrante: false }
-  | { fase: 'sonando'; desde: number; entrante: true }
+  /** `answeringAt`: the callee tapped «Contestar» and its media is on the way (backlog 114). */
+  | { fase: 'llamando'; desde: number; entrante: false; answeringAt?: number }
+  | { fase: 'sonando'; desde: number; entrante: true; answeringAt?: number }
   | { fase: 'activa'; desde: number; entrante: boolean; conectadaEn: number }
   | {
       fase: 'terminada';
@@ -46,6 +52,7 @@ export type CallState =
 
 export type CallEvent =
   | { tipo: 'contestada'; at: number }
+  | { tipo: 'answering'; at: number }
   | { tipo: 'colgada'; at: number; porMi: boolean }
   | { tipo: 'rechazada'; at: number }
   | { tipo: 'tiempo'; at: number }
@@ -67,6 +74,12 @@ const terminar = (
   porMi,
 });
 
+/** When an unanswered call gives up: the ring, or the connect window once answering. `null` once answered or ended. */
+export function ringDeadline(state: CallState): number | null {
+  if (state.fase !== 'llamando' && state.fase !== 'sonando') return null;
+  return state.answeringAt === undefined ? state.desde + CALL_TIMEOUT_MS : state.answeringAt + CALL_CONNECT_TIMEOUT_MS;
+}
+
 export function nextCallState(estado: CallState, evento: CallEvent): CallState {
   // UNA LLAMADA TERMINADA NO VUELVE. Un evento tardío —el «colgó» del otro que
   // llega después de que yo colgué— reabriría la pantalla de llamada sola.
@@ -77,6 +90,10 @@ export function nextCallState(estado: CallState, evento: CallEvent): CallState {
       return estado.fase === 'activa'
         ? estado
         : { fase: 'activa', desde: estado.desde, entrante: estado.entrante, conectadaEn: evento.at };
+
+    // The first one counts: the window is measured from the tap.
+    case 'answering':
+      return estado.fase === 'activa' || estado.answeringAt !== undefined ? estado : { ...estado, answeringAt: evento.at };
 
     case 'colgada':
       return terminar(estado, evento.at, 'colgada', evento.porMi);
@@ -94,8 +111,11 @@ export function nextCallState(estado: CallState, evento: CallEvent): CallState {
 
     // El tiempo solo mata lo que NUNCA se conectó: una llamada activa puede
     // durar horas.
-    case 'tiempo':
-      return estado.fase === 'activa' ? estado : terminar(estado, evento.at, 'sin-respuesta', false);
+    // A timer set before «answering» (or one that fires a hair early) does not count.
+    case 'tiempo': {
+      const deadline = ringDeadline(estado);
+      return deadline === null || evento.at < deadline ? estado : terminar(estado, evento.at, 'sin-respuesta', false);
+    }
   }
 }
 

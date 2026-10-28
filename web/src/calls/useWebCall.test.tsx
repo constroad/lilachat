@@ -122,6 +122,25 @@ describe('web call', () => {
     expect(result.current.state?.fase).toBe('activa');
   });
 
+  /** Backlog 114: the other phone tapped «Contestar» on its lock screen; the ring no longer runs out. */
+  it('the caller hears «answering» and waits past the 30 s ring; the callee says it before its microphone', async () => {
+    const { result } = mount();
+    await act(() => result.current.call('c1', 'Ana', false));
+    await receive('call.answering', { chatId: 'c1', from: 'ana' });
+    expect(result.current.state).toMatchObject({ fase: 'llamando' });
+    expect(result.current.state && 'answeringAt' in result.current.state && typeof result.current.state.answeringAt).toBe('number');
+    await receive('call.answering', { chatId: 'other', from: 'x' });
+    act(() => result.current.hangUp());
+
+    const callee = mount();
+    await receive('call.offer', { chatId: 'c3', video: false, fromName: 'Beto', sdp: { type: 'offer', sdp: 'their-offer' } });
+    await act(() => callee.result.current.answer());
+    const order = sent.map((one) => one.event);
+    expect(order.indexOf('call.answering')).toBeGreaterThan(-1);
+    expect(order.indexOf('call.answering')).toBeLessThan(order.indexOf('call.answer'));
+    expect(lastSent('call.answering')).toEqual({ chatId: 'c3' });
+  });
+
   it('another call while in one gets «busy», and the one in course goes on', async () => {
     const { result } = mount();
     await act(() => result.current.call('c1', 'Ana', false));

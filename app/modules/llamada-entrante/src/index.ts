@@ -9,9 +9,11 @@ import { requireOptionalNativeModule } from 'expo';
  */
 /**
  * `chat`: se tocó el aviso de un MENSAJE (FL8.2). `colgar`: el botón de la
- * notificación «Llamada en curso» (FL11). Lo demás es de la llamada entrante.
+ * notificación «Llamada en curso» (FL11). `answering`: «Contestar» tapped on
+ * the lock screen, before the app comes up (backlog 114). Lo demás es de la
+ * llamada entrante.
  */
-export type AccionDeAviso = { chatId: string; accion: 'abrir' | 'contestar' | 'rechazar' | 'chat' | 'colgar' };
+export type AccionDeAviso = { chatId: string; accion: 'abrir' | 'contestar' | 'rechazar' | 'chat' | 'colgar' | 'answering' };
 /**
  * A tapped message notice with where it leads (agentes 25/10/2026): the message, its thread and its space, as
  * the push said them. Strings, empty when missing; builds before this one send none. UNTRUSTED text from the

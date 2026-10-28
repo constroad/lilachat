@@ -40,6 +40,14 @@ describe('waitBeforeGivingUp', () => {
 });
 
 describe('callCaption', () => {
+  it('the caller reads «Conectando…» once the other side is answering (backlog 114)', () => {
+    const answering: CallState = { fase: 'llamando', desde: 1000, entrante: false, answeringAt: 20_000 };
+
+    expect(callCaption({ state: answering, media: 'conectando', video: false, now: 21_000 })).toBe('Conectando…');
+    expect(callCaption({ state: { fase: 'llamando', desde: 1000, entrante: false }, media: 'conectando', video: false, now: 2000 })).toBe('Llamando…');
+    expect(callCaption({ state: { fase: 'sonando', desde: 1000, entrante: true, answeringAt: 20_000 }, media: 'conectando', video: true, now: 21_000 })).toBe('Conectando…');
+  });
+
   const since = 1_000_000;
   const active: CallState = { fase: 'activa', desde: since, entrante: false, conectadaEn: since + 5_000 };
 

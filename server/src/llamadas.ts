@@ -1,4 +1,4 @@
-import { CALL_TIMEOUT_MS } from '@lilachat/shared';
+import { CALL_CONNECT_TIMEOUT_MS, CALL_TIMEOUT_MS } from '@lilachat/shared';
 import jwt from 'jsonwebtoken';
 import { UserModel } from './models.js';
 import { resolveJwtSecret } from './sessions.js';
@@ -17,7 +17,8 @@ import { resolveJwtSecret } from './sessions.js';
  * muere igual (el socket del que llama también).
  */
 type DatosDeOferta = { video: boolean; members: string[] };
-type Pendiente = DatosDeOferta & { frame: object; from: string; at: number; candidatos: object[] };
+/** `answeringAt`: the callee tapped «Contestar» and its answer is on the way (backlog 114). */
+type Pendiente = DatosDeOferta & { frame: object; from: string; at: number; candidatos: object[]; answeringAt?: number };
 /** Contestada y en curso (FL8.1): de acá sale la duración al terminar. */
 type EnCurso = DatosDeOferta & { from: string; contestadaEn: number };
 /** Cómo terminó: `segundos: null` es que nadie contestó. */
@@ -56,11 +57,34 @@ export function candidatosDeLaOferta(chatId: string): object[] {
   return [...(pendientes.get(chatId)?.candidatos ?? [])];
 }
 
+/** When an unanswered offer gives up: the 30 s ring, or the connect window once answering. */
+const deadlineOf = (pendiente: Pendiente): number =>
+  pendiente.answeringAt === undefined ? pendiente.at + CALL_TIMEOUT_MS : pendiente.answeringAt + CALL_CONNECT_TIMEOUT_MS;
+
 /** ¿Sigue sonando esta oferta? (la que se guardó en `desde`, si se pasa). */
 export function sigueSonando(chatId: string, ahora: number = Date.now(), desde?: number): boolean {
   const pendiente = pendientes.get(chatId);
   if (!pendiente || (desde !== undefined && pendiente.at !== desde)) return false;
-  return ahora - pendiente.at <= CALL_TIMEOUT_MS;
+  return ahora <= deadlineOf(pendiente);
+}
+
+/** The deadline of the offer ringing in that chat, or `null` if none rings. */
+export function offerDeadline(chatId: string): number | null {
+  const pendiente = pendientes.get(chatId);
+  return pendiente ? deadlineOf(pendiente) : null;
+}
+
+/**
+ * The callee said «answering» (backlog 114): the ring stops counting and the
+ * offer waits for its answer. Only someone it rings for, once; returns who the
+ * call is between, or `null` when there is nothing to mark.
+ */
+export function markAnswering(chatId: string, userId: string, ahora: number = Date.now()): { from: string; members: string[] } | null {
+  const pendiente = pendientes.get(chatId);
+  if (!pendiente || pendiente.answeringAt !== undefined || ahora > deadlineOf(pendiente)) return null;
+  if (userId === pendiente.from || !pendiente.members.includes(userId)) return null;
+  pendiente.answeringAt = ahora;
+  return { from: pendiente.from, members: pendiente.members };
 }
 
 /** Cuándo empezó a sonar la oferta vigente de ese chat. */
@@ -104,11 +128,11 @@ export function ofertasVigentes(chatIds: readonly string[], userId: string, ahor
   for (const chatId of chatIds) {
     const pendiente = pendientes.get(chatId);
     if (!pendiente) continue;
-    if (ahora - pendiente.at > CALL_TIMEOUT_MS) {
+    if (ahora > deadlineOf(pendiente)) {
       pendientes.delete(chatId);
       continue;
     }
-    if (pendiente.from !== userId) vigentes.push({ ...pendiente.frame, quedaMs: CALL_TIMEOUT_MS - (ahora - pendiente.at) });
+    if (pendiente.from !== userId) vigentes.push({ ...pendiente.frame, quedaMs: deadlineOf(pendiente) - ahora });
   }
   return vigentes;
 }
@@ -133,7 +157,8 @@ export async function frameConAutor(evento: string, payload: object, userId: str
 }
 
 /**
- * El token para RECHAZAR desde la notificación (FL8.1). Con la app cerrada el
+ * El token para RECHAZAR desde la notificación (FL8.1). Also serves to say
+ * «answering» from the lock screen (backlog 114): it only stops the ring. Con la app cerrada el
  * teléfono no tiene el JWT a mano (vive cifrado en el llavero de la app), así
  * que el push de la llamada trae uno corto que solo sirve para rechazar esa
  * llamada. Se firma con un secreto DERIVADO: firmado con el de las sesiones,

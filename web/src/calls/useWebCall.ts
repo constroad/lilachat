@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
-import { CALL_TIMEOUT_MS, mediaState, nextCallState, ringStart, waitBeforeGivingUp, type CallEvent, type CallState, type MediaState } from '@lilachat/shared';
+import { mediaState, nextCallState, ringDeadline, ringStart, waitBeforeGivingUp, type CallEvent, type CallState, type MediaState } from '@lilachat/shared';
 import { canSwitchCamera, otherFacing, type CameraFacing } from '@lilachat/shared';
 import { currentSocket } from '../useSocket';
 import { createCallPeer, errorName, fetchIceServers, mediaErrorText, type CallPeer, type Candidate, type Sdp } from './callPeer';
@@ -98,10 +98,11 @@ export function useWebCall(params: { jwt: string; connected: boolean; nameOf: (o
     return peer;
   }, [giveUp]);
 
-  // It hangs up alone if nobody answers; an endless «Llamando…» helps nobody.
+  // It hangs up alone if nobody answers; an endless «Llamando…» helps nobody. «Answering» moves the deadline (backlog 114).
   useEffect(() => {
-    if (!state || state.fase === 'activa' || state.fase === 'terminada') return;
-    const timer = window.setTimeout(() => apply({ tipo: 'tiempo', at: Date.now() }), Math.max(0, state.desde + CALL_TIMEOUT_MS - Date.now()));
+    const deadline = state ? ringDeadline(state) : null;
+    if (deadline === null) return;
+    const timer = window.setTimeout(() => apply({ tipo: 'tiempo', at: Math.max(Date.now(), deadline) }), Math.max(0, deadline - Date.now()));
     return () => window.clearTimeout(timer);
   }, [state, apply]);
   useEffect(() => {
@@ -145,6 +146,11 @@ export function useWebCall(params: { jwt: string; connected: boolean; nameOf: (o
     const peer = peerRef.current;
     const current = sessionRef.current;
     if (!peer || !current) return;
+    // Backlog 114: said at the tap, before the browser asks for the microphone.
+    if (stateRef.current?.fase === 'sonando') {
+      emit('call.answering', { chatId: current.chatId });
+      apply({ tipo: 'answering', at: Date.now() });
+    }
     try {
       const stream = await peer.addLocalMedia(current.videoCall);
       setLocalStream(stream);
@@ -262,6 +268,10 @@ function useIncomingSignals(deps: {
       }
       apply({ tipo: 'contestada', at: Date.now() });
     };
+    const answering = (frame: { chatId: string }) => {
+      const { isThisCall, apply } = latest.current;
+      if (isThisCall(frame.chatId)) apply({ tipo: 'answering', at: Date.now() });
+    };
     const candidate = (frame: { chatId: string; candidate?: Candidate }) => {
       const { isThisCall, peerRef, early } = latest.current;
       if (!isThisCall(frame.chatId) || !frame.candidate) return;
@@ -275,12 +285,14 @@ function useIncomingSignals(deps: {
     };
     socket.on('call.offer', incoming);
     socket.on('call.answer', answered);
+    socket.on('call.answering', answering);
     socket.on('call.ice', candidate);
     socket.on('call.end', ended);
     socket.on('call.reject', ended);
     return () => {
       socket.off('call.offer', incoming);
       socket.off('call.answer', answered);
+      socket.off('call.answering', answering);
       socket.off('call.ice', candidate);
       socket.off('call.end', ended);
       socket.off('call.reject', ended);

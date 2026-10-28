@@ -4911,6 +4911,40 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 153. Contestar con el teléfono bloqueado ya no corta la llamada, y la pantalla no se apaga mientras grabo (28/10/2026, servidor + OTA + web; pendientes 114 y 115)
+
+**114 (José, «otro error grave»).** El receptor tocaba Contestar en la pantalla bloqueada, escribía
+el código y, mientras tanto, a quien llamaba se le acababan los 30 s de timbre: la llamada moría y
+el contestar llegaba a una llamada que ya no existía. Causa: nadie avisaba nada hasta que la app
+quedaba adelante, abría micrófono y cámara y mandaba `call.answer`. El timbre de quien llama, el
+del server y el del propio receptor seguían corriendo durante el desbloqueo.
+
+- **Señal nueva `call.answering`** («contestando»): sale al TOCAR, antes del micrófono, la cámara y
+  la respuesta (`announceAnswering` en `useCall.ts`; también en `useWebCall.answer`). La reenvía el
+  socket como las demás señales; el server marca la oferta (`markAnswering` en `llamadas.ts`) y apaga
+  mis otros teléfonos (`call.end` «contestada-en-otro»).
+- **Máquina de estados** (`shared/call.ts`): evento `answering` → `answeringAt` en `llamando` /
+  `sonando`. `ringDeadline(state)` = 30 s de timbre, o `CALL_CONNECT_TIMEOUT_MS` (45 s) desde que
+  contestaron. Un `tiempo` anterior a ese plazo no corta (sirve también para un temporizador que se
+  dispara un milisegundo antes). Las dos pantallas leen «Conectando…» (`callCaption`) y se apaga el
+  «tuu… tuu» y el timbre de la web.
+- **Server**: el vencimiento (`expireAt` en `cicloDeLlamada.ts`) se vuelve a programar si la oferta
+  está contestándose; `sigueSonando` y `ofertasVigentes` usan el mismo plazo, así un teléfono que
+  conecta tarde (recién desbloqueado) todavía recibe la oferta, con `quedaMs` del plazo nuevo.
+- **Desde el bloqueo, sin desbloquear**: `POST /api/calls/answering {token}` sin sesión, con el mismo
+  token corto del push que sirve para rechazar (`answerFromNotice`): solo detiene el timbre y avisa a
+  quien llama. Lo usa el nativo del APK 0.1.173 (abajo).
+
+**115 (José, «grabo 1 min y la pantalla ya está bloqueada»).** `recordingWakeLock.ts`
+(`createRecordingWakeLock`, puro y con test): `expo-keep-awake` con la etiqueta propia `voice-note`
+(la del actualizador es `lilachat-update` y ninguna suelta la otra). Se toma al empezar a grabar y se
+suelta al enviar, cancelar o salir del chat (`useGrabadorDeVoz`).
+
+**Tests**: `shared/call.test.ts` (6, «answering»), `callMedia.test.ts` (leyenda),
+`cicloDeLlamada.test.ts` (3), `test/callSignaling.test.ts` (socket y HTTP), `llamadaNativa.test.ts`
+(decisión y tono), `useWebCall.test.tsx` (quien llama espera más de 30 s; quien contesta avisa antes
+del micrófono), `recordingWakeLock.test.ts` (4).
+
 ## 152. Comandos y horarios: todo apagado, quién lo usa y reportes a una hora (28/10/2026, servidor + OTA + web)
 
 Pedido de José vía agentes (`specs/COMANDOS-Y-HORARIOS.spec.md` de agentes, 7fb04a5); diseños Stitch
@@ -12748,6 +12782,18 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     el teléfono de José.)
 113. ✅ **Hecho (§146).** **La galería no muestra todas las fotos** (José, 28/10, bug que vuelve): no
     deja hacer scroll para ver el resto de las fotos del teléfono, solo algunas.
+114. ✅ **Hecho (§153).** **PRIORIDAD. Una llamada contestada con el teléfono bloqueado se cae** (José, 28/10, vía
+    agentes: «otro error grave»). El receptor toca Contestar en la pantalla bloqueada, escribe el
+    código del teléfono y, mientras tanto, del lado de quien llama la llamada se cuelga; el
+    contestar llega a una llamada que ya no existe. Una llamada contestada debe dejar a quien llama
+    en «Conectando…» y no colgar. A revisar: el tiempo de timbre de quien llama corre durante el
+    desbloqueo, o el contestar se avisa recién cuando la app queda en primer plano (debe avisarse al
+    tocar y armar el audio después).
+115. ✅ **Hecho (§153).** **PRIORIDAD. La pantalla no se bloquea mientras grabo una nota de voz** (José, 28/10, vía
+    agentes): «a veces grabo 1 min y para cuando quiero enviar ya la pantalla está bloqueada».
+    `expo-keep-awake` con su propia etiqueta: se activa al empezar a grabar y se suelta al enviar,
+    cancelar o salir.
+
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el
@@ -12755,4 +12801,3 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
 > revisión de k-04/k-05). Mientras tanto se avanza con lo que ya tiene diseño:
 > el modo empresa estilo Slack (`s-01`…`s-04`), y lo que no necesita pantalla
 > (repreguntar la versión en app y web, avisos de tareas del 35).
-

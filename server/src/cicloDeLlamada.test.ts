@@ -2,10 +2,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { MongoMemoryServer } from 'mongodb-memory-server';
 import { startTestMongo } from './testMongo.js';
 import mongoose, { Types } from 'mongoose';
-import { alContestar, alOfrecer, alTerminar, configurarCiclo, rechazarDesdeAviso } from './cicloDeLlamada.js';
-import { __reiniciarLlamadas, firmarRechazo, sigueSonando } from './llamadas.js';
+import { alContestar, alOfrecer, alTerminar, answerFromNotice, configurarCiclo, onAnswering, rechazarDesdeAviso } from './cicloDeLlamada.js';
+import { __reiniciarLlamadas, firmarRechazo, ofertasVigentes, sigueSonando } from './llamadas.js';
 import { ChatModel, MessageModel, type Message } from './chatModels.js';
 import { UserModel } from './models.js';
+import { CALL_CONNECT_TIMEOUT_MS } from '@lilachat/shared';
 
 /**
  * El ciclo de una llamada en el server (FL8.1): suena, vence o la contestan,
@@ -141,4 +142,45 @@ describe('cicloDeLlamada', () => {
     expect(await lineas()).toHaveLength(0);
     expect(fines).toHaveLength(1);
   });
+
+  /**
+   * Backlog 114 (José, 28/10): the callee taps «Contestar» on the lock screen
+   * and types the code; the ring must not run out on the server meanwhile.
+   */
+  it('answering: the first ring deadline does not end it, the connect window does', async () => {
+    ofrecer();
+    reloj += 20_000;
+    expect(onAnswering(chatId, jose)).toEqual({ from: ana, members: [ana, jose] });
+
+    reloj += 11_500;
+    await pendiente!();
+    expect(await lineas()).toHaveLength(0);
+    expect(sigueSonando(chatId, reloj)).toBe(true);
+    expect(ofertasVigentes([chatId], jose, reloj)).toEqual([{ chatId, quedaMs: 20_000 + CALL_CONNECT_TIMEOUT_MS - 31_500 }]);
+
+    reloj = 1_000_000 + 20_000 + CALL_CONNECT_TIMEOUT_MS + 1_500;
+    await pendiente!();
+    expect((await lineas())[0]?.system?.valor).toBe('voz:perdida');
+  });
+
+  it('answering only counts from the callee, once, while it rings', () => {
+    ofrecer();
+
+    expect(onAnswering(chatId, ana)).toBeNull();
+    expect(onAnswering(chatId, String(new Types.ObjectId()))).toBeNull();
+    expect(onAnswering(chatId, jose)).not.toBeNull();
+    expect(onAnswering(chatId, jose)).toBeNull();
+    expect(onAnswering('otro-chat', jose)).toBeNull();
+  });
+
+  it('«Contestar» on the lock screen (HTTP with the push token) tells the caller at once', async () => {
+    ofrecer();
+
+    expect(await answerFromNotice(firmarRechazo({ chatId, userId: jose }))).toBe(true);
+    expect(emitidos).toEqual([{ a: ana, evento: 'call.answering', frame: { chatId, from: jose } }]);
+    expect(await answerFromNotice('basura')).toBe(false);
+    expect(await answerFromNotice(firmarRechazo({ chatId, userId: String(new Types.ObjectId()) }))).toBe(false);
+    expect(emitidos).toHaveLength(1);
+  });
 });
+

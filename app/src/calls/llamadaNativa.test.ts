@@ -38,7 +38,16 @@ describe('queHacerConElAviso', () => {
   it('rechazar sin llamada: nada (el server ya la cortó por HTTP)', () => {
     expect(queHacerConElAviso({ aviso: { chatId: 'c1', accion: 'rechazar' }, estado: null, chatId: null })).toBe('nada');
   });
+
+  // Backlog 114: «Contestar» on the lock screen, with the app alive behind it, says «answering» by socket at once.
+  it('answering from the lock screen: tells the caller while it rings in that chat; otherwise nothing', () => {
+    expect(queHacerConElAviso({ aviso: { chatId: 'c1', accion: 'answering' }, estado: sonando, chatId: 'c1' })).toBe('answering');
+    expect(queHacerConElAviso({ aviso: { chatId: 'c1', accion: 'answering' }, estado: null, chatId: null })).toBe('nada');
+    expect(queHacerConElAviso({ aviso: { chatId: 'c2', accion: 'answering' }, estado: sonando, chatId: 'c1' })).toBe('nada');
+    expect(queHacerConElAviso({ aviso: { chatId: 'c1', accion: 'answering' }, estado: activa, chatId: 'c1' })).toBe('nada');
+  });
 });
+
 
 describe('comoSuena', () => {
   it('entrante con la app adelante: el tono del teléfono; de fondo: la notificación a pantalla completa', () => {
@@ -134,5 +143,9 @@ describe('suenaTonoDeLlamando', () => {
     expect(suenaTonoDeLlamando(sonando)).toBe(false);
     expect(suenaTonoDeLlamando(activa)).toBe(false);
     expect(suenaTonoDeLlamando(null)).toBe(false);
+  });
+
+  it('the caller hears the ringback until the other side says «answering» (backlog 114)', () => {
+    expect(suenaTonoDeLlamando({ fase: 'llamando', desde: 1, entrante: false, answeringAt: 5 })).toBe(false);
   });
 });

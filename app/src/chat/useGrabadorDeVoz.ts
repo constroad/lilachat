@@ -9,9 +9,11 @@ import {
   type AudioRecorder,
 } from 'expo-audio';
 import * as FileSystem from 'expo-file-system/legacy';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { esVozUsable, ondaDesdeMuestras } from '@lilachat/shared';
 import { opcionesNativasDeGrabacion } from './opcionesDeGrabacion';
 import { recordingAudioMode } from './audioMode';
+import { createRecordingWakeLock } from './recordingWakeLock';
 
 /** Con la medición del nivel encendida: de ahí sale la onda (FL9). Fija: el hook la compara. */
 const OPCIONES_DE_GRABACION = { ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true };
@@ -67,12 +69,15 @@ export function useGrabadorDeVoz() {
     grabadorRef.current ??= new AudioModule.AudioRecorder(opcionesNativasDeGrabacion(OPCIONES_DE_GRABACION, Platform.OS));
     return grabadorRef.current;
   };
+  // Backlog 115: the screen does not lock in the middle of a note.
+  const wakeLock = useRef(createRecordingWakeLock({ activate: activateKeepAwakeAsync, deactivate: deactivateKeepAwake })).current;
   useEffect(
     () => () => {
+      wakeLock.release();
       grabadorRef.current?.release();
       grabadorRef.current = null;
     },
-    []
+    [wakeLock]
   );
   const [estado, setEstado] = useState<EstadoDeGrabacion>({ fase: 'quieto' });
   const desde = useRef(0);
@@ -121,6 +126,7 @@ export function useGrabadorDeVoz() {
       await grabador.prepareToRecordAsync();
       muestras.current = [];
       grabador.record();
+      wakeLock.hold();
       desde.current = Date.now();
       grabando.current = true;
       setEstado({ fase: 'grabando', ms: 0 });
@@ -138,6 +144,7 @@ export function useGrabadorDeVoz() {
   const terminar = async (params: { cancelar?: boolean } = {}): Promise<NotaGrabada | null> => {
     if (!grabando.current) return null;
     grabando.current = false;
+    wakeLock.release();
     const ms = Date.now() - desde.current;
     setEstado({ fase: 'quieto' });
 

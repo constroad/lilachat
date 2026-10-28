@@ -37,7 +37,7 @@ export function AppSchedulesSection(props: SectionProps) {
               <div key={`${suggestion.command}-${suggestion.time}-${index}`} data-testid={`sugerido-${index}`} className="flex items-center gap-3 rounded-xl border border-outline/15 bg-background/50 px-3 py-2">
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-mono text-[14px]">/{suggestion.command}{suggestion.text ? ` ${suggestion.text}` : ''}</span>
-                  <span className="block truncate text-[13px] text-on-surface-variant">{scheduleLine(suggestion, '')}</span>
+                  <span className="block text-[13px] text-on-surface-variant">{scheduleLine(suggestion, '')}</span>
                 </span>
                 <button type="button" data-testid={`crear-sugerido-${index}`} onClick={() => props.onSuggestion(suggestion)} className="h-9 shrink-0 rounded-lg border border-primary px-3 text-[14px] font-semibold text-primary">Crear</button>
               </div>
@@ -72,7 +72,7 @@ function ScheduleItem(props: SectionProps & { row: ScheduleRow; canEdit: boolean
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-outline/15 bg-primary/5 text-primary"><Clock size={18} /></span>
       <span className="min-w-0 flex-1">
         <span className="block truncate font-mono text-[15px]">/{row.command}{row.text ? ` ${row.text}` : ''}</span>
-        <span className="block truncate text-[13px] text-on-surface-variant">{scheduleLine(row, scheduleWhere(row.where))}</span>
+        <span className="block text-[13px] text-on-surface-variant">{scheduleLine(row, scheduleWhere(row.where))}</span>
         {problem ? <span data-testid={`horario-error-${row.id}`} className="mt-0.5 flex items-center gap-1 text-[12px] font-semibold text-error"><AlertCircle size={13} /> {problem}</span> : null}
         {error ? <span role="alert" className="block text-[12px] text-error">{error}</span> : null}
       </span>

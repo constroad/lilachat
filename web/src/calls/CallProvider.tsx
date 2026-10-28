@@ -22,7 +22,9 @@ const NOTICE_ICON = '/icons/icon-192.png';
 
 /** The ring while it rings; the «tuu… tuu» while I call. */
 function useCallTones(state: CallState | null): void {
-  const tone = state?.fase === 'sonando' ? 'incoming' : state?.fase === 'llamando' ? 'outgoing' : null;
+  // Once the other side says «answering» (backlog 114) the tones stop: it is connecting.
+  const ringing = state && (state.fase === 'sonando' || state.fase === 'llamando') && state.answeringAt === undefined ? state.fase : null;
+  const tone = ringing === 'sonando' ? 'incoming' : ringing === 'llamando' ? 'outgoing' : null;
   useEffect(() => {
     if (!tone) return;
     // `startCallTone` returns the function that stops it: the effect's cleanup.

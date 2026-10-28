@@ -6,7 +6,8 @@ import {
   guardarOferta,
   inicioDeOferta,
   marcarContestada,
-  sigueSonando,
+  markAnswering,
+  offerDeadline,
   terminarLlamada,
   verificarRechazo,
   type FinDeLlamada,
@@ -65,10 +66,40 @@ export function alOfrecer(params: Miembros & { video: boolean; frame: object }):
   void deps.avisarLlamada(params).catch((error) => reportar('avisar la llamada', error));
   // Venció sin que nadie contestara ni colgara (el que llama cerró la app, se
   // quedó sin red): la llamada igual se cierra y queda como perdida.
+  expireAt(params.chatId, desde, CALL_TIMEOUT_MS + MARGEN_DE_VENCIMIENTO_MS);
+}
+
+/** Ends the offer of `since` once its deadline passes; «answering» moves the deadline, so it checks again then. */
+function expireAt(chatId: string, since: number, ms: number): void {
   programar(async () => {
-    if (inicioDeOferta(params.chatId) !== desde) return;
-    if (sigueSonando(params.chatId, desde, desde)) await alTerminar(params.chatId);
-  }, CALL_TIMEOUT_MS + MARGEN_DE_VENCIMIENTO_MS);
+    if (inicioDeOferta(chatId) !== since) return;
+    const deadline = offerDeadline(chatId);
+    if (deadline === null) return;
+    if (ahora() < deadline) return expireAt(chatId, since, deadline - ahora() + MARGEN_DE_VENCIMIENTO_MS);
+    await alTerminar(chatId);
+  }, ms);
+}
+
+/** The callee said «answering» by socket or from the lock screen (backlog 114). */
+export function onAnswering(chatId: string, userId: string): { from: string; members: string[] } | null {
+  return deps ? markAnswering(chatId, userId, ahora()) : null;
+}
+
+/**
+ * «Contestar» tapped on the lock screen: the phone says so by HTTP with the
+ * push token before it is unlocked, and the caller waits in «Conectando…»
+ * instead of running out of ring while the code is typed.
+ */
+export async function answerFromNotice(token: string): Promise<boolean> {
+  if (!deps) return false;
+  const notice = verificarRechazo(token);
+  if (!notice || !Types.ObjectId.isValid(notice.chatId)) return false;
+  const call = onAnswering(notice.chatId, notice.userId);
+  if (!call) return false;
+  for (const member of call.members) {
+    if (member !== notice.userId) deps.emitirA(member, 'call.answering', { chatId: notice.chatId, from: notice.userId });
+  }
+  return true;
 }
 
 export async function alContestar(chatId: string): Promise<void> {

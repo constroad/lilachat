@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CALL_CONNECT_TIMEOUT_MS,
   CALL_TIMEOUT_MS,
   formatCallDuration,
+  ringDeadline,
   nextCallState,
   summarizeEndedCall,
   type CallState,
@@ -117,5 +119,56 @@ describe('summarizeEndedCall', () => {
     const perdida = nextCallState(sonando, { tipo: 'rechazada', at: 3000 });
 
     expect(summarizeEndedCall(perdida).duracion).toBe('');
+  });
+});
+
+/**
+ * Backlog 114 (José, 28/10): the callee taps «Contestar» on the locked phone,
+ * types the code, and meanwhile the caller's ring ran out and the call died.
+ * «Answering» stops the ring clock on both sides and gives the media its own,
+ * longer window; the caller waits in «Conectando…».
+ */
+describe('answering', () => {
+  const llamando: CallState = { fase: 'llamando', desde: 1000, entrante: false };
+
+  it('the ring deadline is the 30 s ring, or the connect window once answering', () => {
+    expect(ringDeadline(sonando)).toBe(1000 + CALL_TIMEOUT_MS);
+    const answering = nextCallState(llamando, { tipo: 'answering', at: 25_000 });
+
+    expect(answering).toMatchObject({ fase: 'llamando', answeringAt: 25_000 });
+    expect(ringDeadline(answering)).toBe(25_000 + CALL_CONNECT_TIMEOUT_MS);
+    expect(ringDeadline(activa)).toBeNull();
+  });
+
+  it('the old ring timer does not end a call that is being answered', () => {
+    const answering = nextCallState(llamando, { tipo: 'answering', at: 25_000 });
+
+    expect(nextCallState(answering, { tipo: 'tiempo', at: 1000 + CALL_TIMEOUT_MS }).fase).toBe('llamando');
+  });
+
+  it('answering that never connects still ends, without answer, at its own deadline', () => {
+    const answering = nextCallState(sonando, { tipo: 'answering', at: 25_000 });
+    const ended = nextCallState(answering, { tipo: 'tiempo', at: 25_000 + CALL_CONNECT_TIMEOUT_MS });
+
+    expect(ended).toMatchObject({ fase: 'terminada', motivo: 'sin-respuesta' });
+  });
+
+  it('a second answering keeps the first time; an answered or ended call ignores it', () => {
+    const first = nextCallState(llamando, { tipo: 'answering', at: 25_000 });
+
+    expect(nextCallState(first, { tipo: 'answering', at: 40_000 })).toBe(first);
+    expect(nextCallState(activa, { tipo: 'answering', at: 6000 })).toBe(activa);
+    const ended = nextCallState(sonando, { tipo: 'rechazada', at: 2000 });
+    expect(nextCallState(ended, { tipo: 'answering', at: 3000 })).toBe(ended);
+  });
+
+  it('a timer that fires a hair early does not end the ring', () => {
+    expect(nextCallState(sonando, { tipo: 'tiempo', at: 1000 + CALL_TIMEOUT_MS - 1 }).fase).toBe('sonando');
+  });
+
+  it('answered after answering connects as usual', () => {
+    const answering = nextCallState(llamando, { tipo: 'answering', at: 25_000 });
+
+    expect(nextCallState(answering, { tipo: 'contestada', at: 31_000 })).toMatchObject({ fase: 'activa', conectadaEn: 31_000 });
   });
 });

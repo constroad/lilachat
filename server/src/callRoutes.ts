@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { obtenerIceServers } from './turnCredentials.js';
 import { asyncRoute, requireSession } from './requireSession.js';
-import { rechazarDesdeAviso } from './cicloDeLlamada.js';
+import { answerFromNotice, rechazarDesdeAviso } from './cicloDeLlamada.js';
 import { callHistoryOf } from './callHistory.js';
 
 /**
@@ -25,6 +25,23 @@ export function buildCallRouter(): Router {
       const token = typeof req.body?.token === 'string' ? req.body.token : '';
       if (!(await rechazarDesdeAviso(token))) {
         res.status(400).json({ message: 'No se pudo rechazar la llamada.' });
+        return;
+      }
+      res.status(204).end();
+    })
+  );
+
+  /**
+   * «Contestar» on the lock screen (backlog 114), also without a session: the
+   * phone says it before being unlocked, with the same short push token. It
+   * only stops the ring; the answer itself goes by socket once the app is up.
+   */
+  router.post(
+    '/answering',
+    asyncRoute(async (req, res) => {
+      const token = typeof req.body?.token === 'string' ? req.body.token : '';
+      if (!(await answerFromNotice(token))) {
+        res.status(400).json({ message: 'La llamada ya no está sonando.' });
         return;
       }
       res.status(204).end();

@@ -24,7 +24,7 @@ import { autoResponderA } from './autoReply.js';
 import { avisarFinDeLlamada, avisarLlamada, avisarReaccion, notifyOffline } from './pushService.js';
 import { reaccionar } from './reacciones.js';
 import { candidatosDeLaOferta, frameConAutor, guardarCandidato, hayOfertasPendientes, ofertasVigentes } from './llamadas.js';
-import { alContestar, alOfrecer, alTerminar, configurarCiclo } from './cicloDeLlamada.js';
+import { alContestar, alOfrecer, alTerminar, configurarCiclo, onAnswering } from './cicloDeLlamada.js';
 import { configurarEntrega } from './entregaPorAviso.js';
 import { configurarAvisoDeTarjeta } from './avisoDeTarjeta.js';
 import { configureChannelNotices, configureMembersNotices, configureWorkspaceNotices } from './workspaceNotices.js';
@@ -302,6 +302,9 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
             await alContestar(payload.chatId);
           } else if (evento === 'call.ice') {
             guardarCandidato(payload.chatId, frame, String(userId));
+          } else if (evento === 'call.answering') {
+            // Backlog 114: the ring stops counting while this phone opens its mic; my other phones stop ringing.
+            if (onAnswering(payload.chatId, String(userId))) socket.to(userRoom(String(userId))).emit('call.end', { chatId: payload.chatId, motivo: 'contestada-en-otro' });
           } else {
             await alTerminar(payload.chatId);
           }
@@ -311,7 +314,7 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
         }
       }));
 
-    for (const evento of ['call.offer', 'call.answer', 'call.ice', 'call.end', 'call.reject']) {
+    for (const evento of ['call.offer', 'call.answering', 'call.answer', 'call.ice', 'call.end', 'call.reject']) {
       reenviarSeñal(evento);
     }
     // A wink or a sticker during a call (pending 98): relayed to the other members, never stored; only catalog ids pass.

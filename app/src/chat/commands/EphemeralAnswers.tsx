@@ -11,7 +11,7 @@ import { TextoConEnlaces } from '../TextoConEnlaces';
 const APP_AVATAR = 22;
 /** The answers never take more than this share of the screen: the conversation stays in sight. */
 const MAX_SCREEN_SHARE = 0.45;
-type Props = { answers: readonly EphemeralAnswer[]; onDismiss: (commandId: string) => void; onShare?: (commandId: string) => Promise<string | null>; onOpenForm?: (commandId: string) => void; chatId: string; jwt: string; /** Inside a sheet (the ⚡): it grows with its content instead of capping at the screen. */ embedded?: boolean; /** The command panel is open: every answer folds, or the bar would leave the screen (E2E 28/10). */ folded?: boolean };
+type Props = { answers: readonly EphemeralAnswer[]; onDismiss: (commandId: string) => void; onShare?: (commandId: string) => Promise<string | null>; onOpenForm?: (commandId: string) => void; chatId: string; jwt: string; /** Inside a sheet (the ⚡): it grows with its content instead of capping at the screen. */ embedded?: boolean; /** The command panel is open: with the keyboard up there is no room left, so the stack steps aside until it closes (E2E 28/10). */ hidden?: boolean };
 
 /**
  * What an app answered only to me (§c-bis), over the bar like Slack's
@@ -26,8 +26,8 @@ export function EphemeralAnswers(props: Props) {
   const { height } = useWindowDimensions();
   const scroll = useRef<ScrollView>(null);
   const [choice, setChoice] = useState<StackChoice>({ open: null, newest: null });
-  if (props.answers.length === 0) return null;
-  const openId = props.folded ? null : openAnswerId(props.answers, choice);
+  if (props.answers.length === 0 || props.hidden) return null;
+  const openId = openAnswerId(props.answers, choice);
   // A tall open card shows from its head (with its X), not from its end. It is measured after it grows
   // (a placeholder swapped for the answer, a card that loads), so it scrolls itself into view from its own layout.
   const placeAnswer = (commandId: string, top: number) => {

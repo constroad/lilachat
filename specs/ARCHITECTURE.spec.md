@@ -4928,8 +4928,9 @@ como los chips de Claude. Diseño `c-01` (móvil y escritorio).
 - Sin «hace 1 min» del diseño: la respuesta no trae hora. Lo demás, igual en APK y web.
 - **E2E en el emulador (28/10) encontró dos cosas, ya corregidas en la APK:** con un recordatorio
   en cola, la respuesta de `/clima` abierta y el panel de comandos a la vez, el campo de escribir
-  quedaba fuera de la pantalla; ahora, mientras el panel de comandos está abierto, la pila se
-  pliega entera. Y una tarjeta alta abierta se desplazaba hasta su final, con la cabecera y su X
+  quedaba fuera de la pantalla. Con el teclado y el panel abiertos no queda espacio (el
+  recordatorio en cola ya mide 0): mientras el panel de comandos está abierto, la pila se oculta y
+  vuelve al cerrarlo. Y una tarjeta alta abierta se desplazaba hasta su final, con la cabecera y su X
   fuera de la vista; ahora se muestra desde su cabecera.
 
 **Tests:** `shared/src/ephemeralStack.test.ts` (8) y `web/src/chat/commands/commands.test.tsx`

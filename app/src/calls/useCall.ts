@@ -12,7 +12,7 @@ import type RTCIceCandidateEvent from 'react-native-webrtc/lib/typescript/RTCIce
 import type RTCTrackEvent from 'react-native-webrtc/lib/typescript/RTCTrackEvent';
 import { nextCallState, ringDeadline, type CallState } from '@lilachat/shared';
 import { otherFacing, type CameraFacing } from '@lilachat/shared';
-import { callReactionOf, type CallReaction } from '@lilachat/shared';
+import { callReactionOf, createAckWatch, reactionKeyOf, reactionNotSeenNotice, type CallReaction } from '@lilachat/shared';
 import { connectSocket, getSocket, sostenerPorLlamada } from '../chat/socketClient';
 import { obtenerIceServers, type ServidorIce } from './iceServers';
 import { esperaAntesDeRendirse, estadoDeMedios, type EstadoDeMedios } from './estadoDeMedios';
@@ -57,6 +57,8 @@ const TIMBRE = [0, 800, 1200];
  * existe y la app deja de mostrarse sobre el bloqueo.
  */
 const ESPERA_DE_LA_OFERTA_MS = 8_000;
+/** How long a notice over the call stays (pending 105b). */
+const NOTICE_MS = 6_000;
 
 /**
  * Desde FL8 la llamada es de la SESIÓN, no de una pantalla de chat: el chat se
@@ -80,6 +82,14 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
   const [facing, setFacing] = useState<CameraFacing>('user');
   /** The last wink or sticker played over the call (pending 98), mine or the other's. */
   const [reaction, setReaction] = useState<{ reaction: CallReaction; key: number } | null>(null);
+  /** Pending 105b: the other did not answer «seen» to my last reaction. */
+  const [notice, setNotice] = useState<string | null>(null);
+  const [ackWatch] = useState(() => createAckWatch(() => setNotice(reactionNotSeenNotice(nombreRef.current))));
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [notice]);
   /** Lo que se tocó en la notificación antes de que llegara la oferta (FL8.1). */
   const avisoPendiente = useRef<AccionDeAviso | null>(null);
   const aplicarAvisoRef = useRef<(aviso: AccionDeAviso) => void>(() => undefined);
@@ -127,11 +137,13 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
     setRemoteStream(null);
     setFacing('user');
     setReaction(null);
+    setNotice(null);
+    ackWatch.stop();
     buffer.current = [];
     remotoListo.current = false;
     yaConecto.current = false;
     setMedios('conectando');
-  }, []);
+  }, [ackWatch]);
 
   /** El audio no pasa: se corta y se avisa al otro, en vez de un reloj mudo. */
   const rendirse = useCallback(() => {
@@ -387,14 +399,23 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
     socket.on('call.ice', hielo);
     socket.on('call.end', terminada);
     socket.on('call.reject', terminada);
-    const onReaction = (data: { chatId: string; reaction?: unknown }) => {
+    const onReaction = (data: { chatId: string; reaction?: unknown; key?: unknown }) => {
       const played = esDeEstaLlamada(data.chatId) ? callReactionOf(data.reaction) : null;
-      if (played) setReaction({ reaction: played, key: Date.now() });
+      if (!played) return;
+      setReaction({ reaction: played, key: Date.now() });
+      const key = reactionKeyOf(data.key);
+      if (key) socket.emit('call.reaction.ack', { chatId: data.chatId, key });
+    };
+    const onReactionSeen = (data: { chatId: string; key?: unknown }) => {
+      const key = esDeEstaLlamada(data.chatId) ? reactionKeyOf(data.key) : null;
+      if (key) ackWatch.seen(key);
     };
     socket.on('call.reaction', onReaction);
+    socket.on('call.reaction.ack', onReactionSeen);
 
     return () => {
       socket.off('call.reaction', onReaction);
+      socket.off('call.reaction.ack', onReactionSeen);
       socket.off('call.offer', entrante);
       socket.off('call.answer', contestada);
       socket.off('call.answering', answering);
@@ -402,7 +423,7 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
       socket.off('call.end', terminada);
       socket.off('call.reject', terminada);
     };
-  }, [params.jwt, aplicar, crearPc, drenarCandidatos]);
+  }, [params.jwt, aplicar, crearPc, drenarCandidatos, ackWatch]);
 
   const llamar = useCallback(
     async (chatDestino: string, nombre: string, conVideo: boolean) => {
@@ -553,9 +574,13 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
       }),
     facing,
     reaction,
+    notice,
     sendReaction: (sent: CallReaction) => {
       if (!chatIdRef.current) return;
-      getSocket()?.emit('call.reaction', { chatId: chatIdRef.current, reaction: sent });
+      const key = `k-${Date.now()}`;
+      setNotice(null);
+      getSocket()?.emit('call.reaction', { chatId: chatIdRef.current, reaction: sent, key });
+      ackWatch.sent(key);
       setReaction({ reaction: sent, key: Date.now() });
     },
     clearReaction,

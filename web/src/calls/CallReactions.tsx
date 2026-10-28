@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Smile, X } from 'lucide-react';
-import { CALL_STICKER_MS, callReactionOf, winkById, type CallReaction } from '@lilachat/shared';
+import { CALL_EMOJIS, CALL_STICKER_MS, callReactionOf, createAckWatch, reactionKeyOf, reactionNotSeenNotice, winkById, type CallReaction } from '@lilachat/shared';
 import { currentSocket } from '../useSocket';
 import { WinkOverlay } from '../chat/WinkOverlay';
 import { WinkPanel } from '../chat/WinkPanel';
@@ -9,28 +9,57 @@ import { STICKER_PACK_SECTIONS } from '../chat/stickers/useStickers';
 type Played = { reaction: CallReaction; key: number };
 const FADE_SHARE = 0.12;
 
-/** Winks and stickers in a call (pending 98): the other's arrive by socket, mine play here too. The APK's `useCall` does the same. */
-export function useCallReactions(chatId: string | null) {
+/** How long the «did not get it» notice stays over the call (pending 105b). */
+const NOTICE_MS = 6000;
+
+/**
+ * Winks, stickers and effects in a call (pending 98 and 78): the other's arrive by socket, mine play here too.
+ * Each one travels with a key and the other side answers «seen»; without it the sender is told (pending 105b).
+ * The APK's `useCall` does the same.
+ */
+export function useCallReactions(chatId: string | null, peerName = '') {
   const [played, setPlayed] = useState<Played | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const nameRef = useRef(peerName);
+  nameRef.current = peerName;
+  const [watch] = useState(() => createAckWatch(() => setNotice(reactionNotSeenNotice(nameRef.current))));
   useEffect(() => {
     const socket = currentSocket();
     if (!socket || !chatId) return;
-    const onReaction = (frame: { chatId?: string; reaction?: unknown }) => {
+    const onReaction = (frame: { chatId?: string; reaction?: unknown; key?: unknown }) => {
       const reaction = frame.chatId === chatId ? callReactionOf(frame.reaction) : null;
-      if (reaction) setPlayed({ reaction, key: Date.now() });
+      if (!reaction) return;
+      setPlayed({ reaction, key: Date.now() });
+      const key = reactionKeyOf(frame.key);
+      if (key) socket.emit('call.reaction.ack', { chatId, key });
+    };
+    const onSeen = (frame: { chatId?: string; key?: unknown }) => {
+      const key = frame.chatId === chatId ? reactionKeyOf(frame.key) : null;
+      if (key) watch.seen(key);
     };
     socket.on('call.reaction', onReaction);
+    socket.on('call.reaction.ack', onSeen);
     return () => {
       socket.off('call.reaction', onReaction);
+      socket.off('call.reaction.ack', onSeen);
+      watch.stop();
     };
-  }, [chatId]);
+  }, [chatId, watch]);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [notice]);
   const send = useCallback((reaction: CallReaction) => {
     if (!chatId) return;
-    currentSocket()?.emit('call.reaction', { chatId, reaction });
+    const key = `k-${Date.now()}`;
+    setNotice(null);
+    currentSocket()?.emit('call.reaction', { chatId, reaction, key });
+    watch.sent(key);
     setPlayed({ reaction, key: Date.now() });
-  }, [chatId]);
+  }, [chatId, watch]);
   const clear = useCallback(() => setPlayed(null), []);
-  return { played, send, clear };
+  return { played, send, clear, notice };
 }
 
 export function CallReactionPicker(props: { peerName: string; onSend: (reaction: CallReaction) => void }) {
@@ -51,6 +80,11 @@ export function CallReactionPicker(props: { peerName: string; onSend: (reaction:
             ))}
             <span className="flex-1" />
             <button type="button" aria-label="Cerrar" onClick={() => setOpen(false)} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-background"><X size={16} /></button>
+          </div>
+          <div data-testid="efectos-llamada" className="flex justify-between border-b border-outline/10 px-3 py-2">
+            {CALL_EMOJIS.map((emoji) => (
+              <button key={emoji} type="button" data-testid={`efecto-${emoji}`} aria-label={`Mandar ${emoji}`} onClick={() => send({ kind: 'emoji', id: emoji })} className="grid h-10 w-10 place-items-center rounded-full text-[24px] hover:bg-background">{emoji}</button>
+            ))}
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-2">
             {tab === 'winks' ? <WinkPanel recipient={props.peerName} onSend={(id) => send({ kind: 'wink', id })} /> : STICKER_PACK_SECTIONS.map((pack) => (
@@ -76,7 +110,26 @@ export function CallReactionOverlay({ played, onDone }: { played: Played | null;
   const winkPlay = useMemo(() => (played && wink ? { seq: played.key, wink } : null), [played, wink]);
   if (!played) return null;
   if (played.reaction.kind === 'wink') return <WinkOverlay play={winkPlay} onDone={onDone} />;
+  if (played.reaction.kind === 'emoji') return <FloatingEmoji key={played.key} emoji={played.reaction.id} onDone={onDone} />;
   return <FloatingSticker key={played.key} id={played.reaction.id} onDone={onDone} />;
+}
+
+/** An effect (pending 78): the emoji rises from the bottom of the window and fades. */
+function FloatingEmoji({ emoji, onDone }: { emoji: string; onDone: () => void }) {
+  const glyph = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    glyph.current?.animate?.(
+      [{ opacity: 0, transform: 'translateY(160px)' }, { opacity: 1, offset: FADE_SHARE }, { opacity: 1, offset: 1 - FADE_SHARE }, { opacity: 0, transform: 'translateY(-120px)' }],
+      { duration: CALL_STICKER_MS, easing: 'ease-out', fill: 'forwards' }
+    );
+    const timer = setTimeout(onDone, CALL_STICKER_MS);
+    return () => clearTimeout(timer);
+  }, [onDone]);
+  return (
+    <div data-testid={`efecto-en-llamada-${emoji}`} className="pointer-events-none absolute inset-0 z-20 grid place-items-center" aria-hidden="true">
+      <span ref={glyph} className="text-[96px] leading-none">{emoji}</span>
+    </div>
+  );
 }
 
 function FloatingSticker({ id, onDone }: { id: string; onDone: () => void }) {

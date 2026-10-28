@@ -148,6 +148,22 @@ describe('señalización de llamadas', () => {
     expect(await nothing).toBeNull();
   });
 
+  /** Pending 105b: the reaction travels with its key and the other side's «seen» comes back; 78's emoji effects too. */
+  it('a reaction keeps its key, «seen» returns to the sender, and an emoji effect travels like a wink', async () => {
+    const [anaSocket, betoSocket] = await Promise.all([abrir(ana), abrir(beto)]);
+    const arrived = esperar(betoSocket, 'call.reaction');
+    anaSocket.emit('call.reaction', { chatId, reaction: { kind: 'emoji', id: '🎉' }, key: 'k-1' });
+    expect(await arrived).toEqual({ chatId, reaction: { kind: 'emoji', id: '🎉' }, key: 'k-1' });
+
+    const seen = esperar(anaSocket, 'call.reaction.ack');
+    betoSocket.emit('call.reaction.ack', { chatId, key: 'k-1' });
+    expect(await seen).toEqual({ chatId, key: 'k-1' });
+
+    const nothing = esperar(anaSocket, 'call.reaction.ack', 800);
+    betoSocket.emit('call.reaction.ack', { chatId, key: 'no spaces allowed' });
+    expect(await nothing).toBeNull();
+  });
+
   /** Un chat inventado no tumba la conexión ni entrega nada. */
   it('un chatId inválido se ignora en silencio', async () => {
     const [socketAna, socketBeto] = await Promise.all([abrir(ana), abrir(beto)]);

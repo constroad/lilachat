@@ -1,8 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { nombreDeContacto } from '@lilachat/shared';
 import { chatsEnMemoria } from '../chat/chatsGuardados';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { CallScreen } from './CallScreen';
+import { CallPill } from './CallControls';
+import { leyendaDeLlamada } from './estadoDeMedios';
+import type { EstadoDeMedios } from './estadoDeMedios';
+import type { CallState } from '@lilachat/shared';
 import { useCall, type AutorDeLlamada } from './useCall';
 import { llamadaNativa } from '../../modules/llamada-entrante/src';
 import { BASE_URL } from '../api/client';
@@ -28,7 +32,7 @@ export const useLlamadas = (): Llamadas => useContext(LlamadasContext);
  * pantalla de llamada se muestra encima de lo que esté abierto, y el chat sale
  * de la oferta.
  */
-export function ProveedorDeLlamadas({ jwt, children }: { jwt: string; children: ReactNode }) {
+export function ProveedorDeLlamadas({ jwt, children, onOpenChat }: { jwt: string; children: ReactNode; onOpenChat?: (chatId: string) => void }) {
   // Del chat cargado; si todavía no está (se abrió desde el push, o el chat es
   // nuevo), de lo que la oferta trae de quien llama.
   const nombreDe = useCallback((chatId: string, autor?: AutorDeLlamada) => {
@@ -60,6 +64,17 @@ export function ProveedorDeLlamadas({ jwt, children }: { jwt: string; children: 
     return () => clearTimeout(temporizador);
   }, [terminada, cerrar]);
   const hayLlamada = llamada.state !== null;
+  // Pending 106: minimized, the call goes on under a pill; a call that rings, or ends, always shows.
+  const [minimized, setMinimized] = useState(false);
+  const fase = llamada.state?.fase;
+  useEffect(() => {
+    if (fase !== 'activa' && fase !== 'llamando') setMinimized(false);
+  }, [fase]);
+  const chatDeLaLlamada = llamada.chatId;
+  const sendMessage = useMemo(
+    () => (onOpenChat && chatDeLaLlamada ? () => { setMinimized(true); onOpenChat(chatDeLaLlamada); } : undefined),
+    [onOpenChat, chatDeLaLlamada]
+  );
   const valor = useMemo<Llamadas>(
     () => ({ llamar: (chatId, nombre, conVideo) => void llamarConHook(chatId, nombre, conVideo), hayLlamada }),
     [llamarConHook, hayLlamada]
@@ -68,7 +83,10 @@ export function ProveedorDeLlamadas({ jwt, children }: { jwt: string; children: 
   return (
     <LlamadasContext.Provider value={valor}>
       {children}
-      {llamada.state ? (
+      {llamada.state && minimized ? (
+        <MinimizedCall state={llamada.state} medios={llamada.medios} video={llamada.video} peerName={llamada.peerName} onRestore={() => setMinimized(false)} />
+      ) : null}
+      {llamada.state && !minimized ? (
         <CallScreen
           visible
           state={llamada.state}
@@ -90,6 +108,9 @@ export function ProveedorDeLlamadas({ jwt, children }: { jwt: string; children: 
           onSendReaction={llamada.sendReaction}
           onReactionDone={llamada.clearReaction}
           onAccept={llamada.contestar}
+          onMinimize={() => setMinimized(true)}
+          onSendMessage={sendMessage}
+          notice={llamada.notice}
           // Colgar pasa a «terminada» y el efecto de arriba la cierra: un
           // instante a la vista, porque desaparecer de golpe se siente como
           // que se cortó sola.
@@ -98,4 +119,14 @@ export function ProveedorDeLlamadas({ jwt, children }: { jwt: string; children: 
       ) : null}
     </LlamadasContext.Provider>
   );
+}
+
+/** The pill of a minimized call, with its clock ticking (pending 106). */
+function MinimizedCall(props: { state: CallState; medios: EstadoDeMedios; video: boolean; peerName: string; onRestore: () => void }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return <CallPill peerName={props.peerName} caption={leyendaDeLlamada({ state: props.state, medios: props.medios, video: props.video, ahora: now })} onPress={props.onRestore} />;
 }

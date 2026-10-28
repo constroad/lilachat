@@ -12,6 +12,7 @@ import { nombreDeContacto } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 import type { Credential } from '../auth/credentialStore';
 import { ChatScreen } from '../chat/ChatScreen';
+import { chatsEnMemoria } from '../chat/chatsGuardados';
 import { ProveedorDeLlamadas } from '../calls/ProveedorDeLlamadas';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { iniciarCronometro } from '../diagnostico/diagnostico';
@@ -117,6 +118,16 @@ export function NavegacionDeSesion(props: {
       navegacion.navigate('Chat', { chat, irASeq });
     }
   }, [dosPaneles, abrirEnPanel, cerrarPanel]);
+  // «Enviar mensaje» during a call (pending 106): its chat, while the call goes on minimized.
+  const openCallChat = useCallback(
+    (chatId: string) => {
+      const chat = chatsEnMemoria()?.find((one) => one.id === chatId);
+      if (!chat) return;
+      if (dosPaneles) abrirEnPanel(chat, {});
+      else if (navegacion.isReady()) navegacion.navigate('Chat', { chat });
+    },
+    [dosPaneles, abrirEnPanel]
+  );
   // La pestaña que pide una notificación de la agenda; `n` la vuelve a pedir
   // aunque ya se hubiera pedido antes.
   const [pestanaPedida, setPestanaPedida] = useState<{ tab: 'agenda'; n: number } | null>(null);
@@ -159,7 +170,7 @@ export function NavegacionDeSesion(props: {
 
   return (
     // Las llamadas envuelven toda la sesión: suenan en cualquier pantalla (FL8).
-    <ProveedorDeLlamadas jwt={props.credential.jwt}>
+    <ProveedorDeLlamadas jwt={props.credential.jwt} onOpenChat={openCallChat}>
     {/* Pending 63: a reminder that rang full screen, over any screen. */}
     <ReminderAlarmHost jwt={props.credential.jwt} />
     <WhatsNewHost />

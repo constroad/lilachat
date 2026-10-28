@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { Image } from 'expo-image';
-import { Smile, X } from 'lucide-react-native';
+import { X } from 'lucide-react-native';
 import { CALL_STICKER_MS, winkById, type CallReaction } from '@lilachat/shared';
 import { Modal } from '../ui/Modal';
 import { Segmentado } from '../ui/Segmentado';
@@ -17,16 +17,8 @@ const TABS = [{ key: 'winks', etiqueta: 'Guiños', testID: 'reacciones-guinos' }
 const STICKER_TILE = 76;
 const FLOAT_SIZE = 180;
 const FADE_MS = 300;
-
-/** The round button over the call's controls that opens winks and stickers (pending 98). */
-export function CallReactionButton(props: { onPress: () => void }) {
-  const colors = useColores();
-  return (
-    <Pressable testID="btn-reacciones-llamada" accessibilityLabel="Guiños y stickers" onPress={props.onPress} className="h-12 w-12 items-center justify-center rounded-full bg-black/30">
-      <Smile size={24} color={colors['on-primary']} />
-    </Pressable>
-  );
-}
+/** An effect is bigger than a sticker: it is the whole gesture. */
+const EMOJI_SIZE = 96;
 
 /** Winks (the chat's own panel) and the packs' stickers; picking one sends it and closes. */
 export function CallReactionSheet(props: { peerName: string; onSend: (reaction: CallReaction) => void; onClose: () => void }) {
@@ -76,7 +68,29 @@ export function CallReactionOverlay(props: { played: { reaction: CallReaction; k
   const winkPlay = useMemo(() => (played && wink ? { seq: played.key, wink, run: played.key } : null), [played, wink]);
   if (!played) return null;
   if (played.reaction.kind === 'wink') return <WinkOverlay play={winkPlay} onDone={onDone} />;
+  if (played.reaction.kind === 'emoji') return <FloatingEmoji key={played.key} emoji={played.reaction.id} onDone={onDone} />;
   return <FloatingSticker key={played.key} id={played.reaction.id} onDone={onDone} />;
+}
+
+/** An effect (pending 78): the emoji rises from the bottom and fades, like WhatsApp's. */
+function FloatingEmoji(props: { emoji: string; onDone: () => void }) {
+  const opacity = useSharedValue(0);
+  const lift = useSharedValue(160);
+  const { onDone } = props;
+  useEffect(() => {
+    opacity.value = withSequence(withTiming(1, { duration: FADE_MS }), withTiming(1, { duration: CALL_STICKER_MS - FADE_MS * 2 }), withTiming(0, { duration: FADE_MS }));
+    lift.value = withTiming(-120, { duration: CALL_STICKER_MS, easing: Easing.out(Easing.cubic) });
+    const timer = setTimeout(onDone, CALL_STICKER_MS);
+    return () => clearTimeout(timer);
+  }, [opacity, lift, onDone]);
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value, transform: [{ translateY: lift.value }] }));
+  return (
+    <View testID={`efecto-en-llamada-${props.emoji}`} pointerEvents="none" style={[StyleSheet.absoluteFill, styles.center]}>
+      <Animated.View style={style}>
+        <Text style={{ fontSize: EMOJI_SIZE }} allowFontScaling={false}>{props.emoji}</Text>
+      </Animated.View>
+    </View>
+  );
 }
 
 function FloatingSticker(props: { id: string; onDone: () => void }) {

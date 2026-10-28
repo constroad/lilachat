@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Modal } from '../ui/Modal';
 import { RTCView, type MediaStream } from 'react-native-webrtc';
-import { Mic, MicOff, PhoneOff, User, Video, VideoOff, Volume2 } from 'lucide-react-native';
+import { Mic, PhoneOff, User } from 'lucide-react-native';
 import { SwitchCamera } from 'lucide-react-native';
 import type { CallState } from '@lilachat/shared';
 import { mirrorsSelfView, type CameraFacing } from '@lilachat/shared';
 import type { CallReaction } from '@lilachat/shared';
-import { CallReactionButton, CallReactionOverlay, CallReactionSheet } from './CallReactions';
+import type { CallEmoji } from '@lilachat/shared';
+import { CallReactionOverlay, CallReactionSheet } from './CallReactions';
+import { CallBar, CallMoreSheet, CallNotice, CallTopBar, EffectsButton } from './CallControls';
+import { callBarButtons, moreOptions } from './callBarLayout';
 import { leyendaDeLlamada, type EstadoDeMedios } from './estadoDeMedios';
 import { useColores, useTema } from '../ui/tema';
 import { useMargenes } from '../ui/useMargenes';
@@ -51,6 +54,9 @@ export function CallScreen({
   puedeAlternarVideo,
   onAccept,
   onHangUp,
+  onMinimize,
+  onSendMessage,
+  notice,
   peerPhoto,
 }: {
   visible: boolean;
@@ -80,6 +86,11 @@ export function CallScreen({
   puedeAlternarVideo: boolean;
   onAccept: () => void;
   onHangUp: () => void;
+  /** Pending 106: the call goes to a pill over the app; `onSendMessage` minimizes and opens its chat. */
+  onMinimize: () => void;
+  onSendMessage?: () => void;
+  /** Pending 105b: the other did not get the last reaction. */
+  notice: string | null;
   /** The other person's photo (the chat's), for the middle of the screen. */
   peerPhoto?: string;
 }) {
@@ -96,6 +107,8 @@ export function CallScreen({
 
   const leyenda = leyendaDeLlamada({ state, medios, video, ahora });
   const [reacting, setReacting] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const sendEmoji = (emoji: CallEmoji) => onSendReaction({ kind: 'emoji', id: emoji });
 
   return (
     <Modal visible={visible} animationType="slide" statusBarTranslucent>
@@ -121,22 +134,24 @@ export function CallScreen({
         {video && localStream ? (
           <RTCView streamURL={localStream.toURL()} objectFit="cover" mirror={mirrorsSelfView(facing)} zOrder={1} style={estilos.propio} />
         ) : null}
-        {/* Like WhatsApp: the switch sits under my own view, not in the controls panel (it already has four). */}
+        {/* Like WhatsApp (design c-02): switching the camera and the effects sit under my own view. */}
         {video && localStream?.getVideoTracks().length ? (
-          <Pressable testID="btn-girar-camara" accessibilityLabel={facing === 'user' ? 'Usar la cámara trasera' : 'Usar la cámara frontal'} onPress={onSwitchCamera} style={estilos.switchButton} className="h-12 w-12 items-center justify-center rounded-full bg-black/45">
-            <SwitchCamera size={22} color="white" />
-          </Pressable>
+          <View style={estilos.selfActions} className="flex-row gap-3">
+            <Pressable testID="btn-girar-camara" accessibilityLabel={facing === 'user' ? 'Usar la cámara trasera' : 'Usar la cámara frontal'} onPress={onSwitchCamera} className="h-11 w-11 items-center justify-center rounded-full bg-black/45">
+              <SwitchCamera size={20} color="white" />
+            </Pressable>
+            {state.fase === 'activa' ? <EffectsButton onPress={() => setReacting(true)} /> : null}
+          </View>
         ) : null}
 
-        {/* WhatsApp's order (José, 22/10): who and how it goes on top, the face in the middle, the controls in a panel at the bottom. */}
-        <View className="items-center px-8" style={{ paddingTop: margenes.cabecera + 28 }}>
-          <Text className="text-2xl font-bold text-on-primary" numberOfLines={1} testID="nombre-llamada">
-            {peerName}
-          </Text>
-          <Text className="mt-1 text-[15px] text-on-primary/70" testID="estado-llamada">
-            {leyenda}
-          </Text>
-        </View>
+        {state.fase === 'sonando' ? (
+          <View className="items-center px-8" style={{ paddingTop: margenes.cabecera + 28 }}>
+            <Text className="text-2xl font-bold text-on-primary" numberOfLines={1} testID="nombre-llamada">{peerName}</Text>
+            <Text className="mt-1 text-[15px] text-on-primary/70" testID="estado-llamada">{leyenda}</Text>
+          </View>
+        ) : (
+          <CallTopBar peerName={peerName} caption={leyenda} onMinimize={onMinimize} />
+        )}
 
         <View className="flex-1 items-center justify-center">
           {/* With the other's video the face would cover it. */}
@@ -155,19 +170,17 @@ export function CallScreen({
             </View>
           ) : (
             <>
-            {state.fase === 'activa' ? <View className="mb-3 flex-row"><CallReactionButton onPress={() => setReacting(true)} /></View> : null}
-            <View className="flex-row items-start justify-evenly rounded-[32px] border border-on-primary/10 bg-black/25 px-2 py-6">
-              <CallButton testID="btn-altavoz" label="Altavoz" onPress={onToggleSpeaker} activo={speaker} Icon={Volume2} />
-              {puedeAlternarVideo ? <CallButton testID="btn-video" label="Video" onPress={onToggleVideo} activo={video} Icon={video ? Video : VideoOff} /> : null}
-              <CallButton testID="btn-silenciar" label={muted ? 'Activar' : 'Silenciar'} onPress={onToggleMute} activo={muted} Icon={muted ? MicOff : Mic} />
-              <CallButton testID="btn-colgar" label="Colgar" onPress={onHangUp} destructivo Icon={PhoneOff} />
-            </View>
+              <CallNotice text={notice} />
+              <CallBar buttons={callBarButtons(puedeAlternarVideo)} video={video} muted={muted} speaker={speaker} onMore={() => setMoreOpen(true)} onToggleVideo={onToggleVideo} onToggleSpeaker={onToggleSpeaker} onToggleMute={onToggleMute} onHangUp={onHangUp} />
             </>
           )}
         </View>
         <CallReactionOverlay played={reaction} onDone={onReactionDone} />
       </View>
       {reacting ? <CallReactionSheet peerName={peerName} onSend={onSendReaction} onClose={() => setReacting(false)} /> : null}
+      {moreOpen ? (
+        <CallMoreSheet options={moreOptions(Boolean(onSendMessage))} video={video} onClose={() => setMoreOpen(false)} onMessage={() => onSendMessage?.()} onReactions={() => setReacting(true)} onEmoji={sendEmoji} />
+      ) : null}
       </GestureHandlerRootView>
     </Modal>
   );
@@ -187,8 +200,8 @@ const estilos = StyleSheet.create({
     backgroundColor: '#000',
     zIndex: 1,
   },
-  // Centered under my own view.
-  switchButton: { position: 'absolute', top: 216, right: 46, zIndex: 1 },
+  // Under my own view, its two buttons side by side.
+  selfActions: { position: 'absolute', top: 216, right: 16, zIndex: 1 },
 });
 
 /**

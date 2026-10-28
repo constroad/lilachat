@@ -81,7 +81,7 @@ describe('winks and stickers during the call (pending 98)', () => {
     fireEvent.click(screen.getByTestId('reacciones-stickers'));
     fireEvent.click(screen.getByTestId(`sticker-llamada-${sticker.id}`));
     // Assert
-    expect(emitted.at(-1)).toEqual({ event: 'call.reaction', frame: { chatId: 'c1', reaction: { kind: 'sticker', id: sticker.id } } });
+    expect(emitted.at(-1)).toEqual({ event: 'call.reaction', frame: { chatId: 'c1', reaction: { kind: 'sticker', id: sticker.id }, key: expect.stringMatching(/^k-/) } });
     expect(screen.getByTestId(`sticker-en-llamada-${sticker.id}`)).toBeInTheDocument();
     act(() => socketHandlers.get('call.reaction')?.({ chatId: 'c1', reaction: { kind: 'wink', id: 'hearts' } }));
     expect(screen.getByTestId('guino-en-pantalla-hearts')).toBeInTheDocument();

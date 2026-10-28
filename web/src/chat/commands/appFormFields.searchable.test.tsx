@@ -46,6 +46,40 @@ describe('a long list and a PIN in an app form', () => {
     expect(screen.getByTestId('hoja-diseno').querySelector('.truncate')).toBeNull();
   });
 
+  // José, 28/10: in half a row «Elige de la lista» and «Planta Lurín» broke into two lines.
+  it('in half a row the dropdown keeps one line: a short prompt, and the name cut with «…»', () => {
+    // Arrange
+    const sites = { '6a5503b40afd38abc67ff7ab': 'Planta Lurín', '6a5503b40afd38abc67ff7ac': 'Planta Ate', '6a5503b40afd38abc67ff7ad': 'Planta Chilca' };
+    const [site] = formFields({ id: 'pedido', title: 'Pedido', schema: { type: 'object', properties: { sedeId: { type: 'string', title: 'Sede', enum: Object.keys(sites), 'x-labels': sites } } } });
+    if (site?.kind !== 'choice') throw new Error('choice');
+    // Act
+    const { rerender } = render(<ChoiceField field={site} value={undefined} onChange={() => undefined} compact />);
+    const empty = screen.getByTestId('campo-sedeId').textContent;
+    rerender(<ChoiceField field={site} value="6a5503b40afd38abc67ff7ab" onChange={() => undefined} compact />);
+    // Assert
+    expect(empty).toBe('Elige…');
+    expect(screen.getByText('Planta Lurín').className).toContain('truncate');
+  });
+
+  it('initials only when the app declares x-avatar: initials, never beside a site or a mix design', () => {
+    // Arrange
+    const ids = ['6a71ae537c8d2b5b5ad796a1', '6a72bba87c8d2b5b5ad7c287', '6a72bba87c8d2b5b5ad7c288'];
+    const labels = { [ids[0]!]: 'Minera Santa Rita SAC', [ids[1]!]: 'Constructora Norte', [ids[2]!]: 'Inversiones Sur' };
+    const field = (extra: Record<string, unknown>) => formFields({ id: 'f', title: 'F', schema: { type: 'object', properties: { clienteId: { type: 'string', title: 'Cliente', enum: ids, 'x-labels': labels, ...extra } } } })[0];
+    const people = field({ 'x-avatar': 'initials' });
+    const records = field({});
+    if (people?.kind !== 'choice' || records?.kind !== 'choice') throw new Error('choice');
+    // Act
+    const { container, unmount } = render(<ChoiceField field={people} value={ids[0]} onChange={() => undefined} />);
+    const withInitials = container.querySelectorAll('[data-initials]').length;
+    unmount();
+    const plain = render(<ChoiceField field={records} value={ids[0]} onChange={() => undefined} />);
+    fireEvent.click(screen.getByTestId('campo-clienteId'));
+    // Assert
+    expect(withInitials).toBe(1);
+    expect(plain.container.querySelectorAll('[data-initials]')).toHaveLength(0);
+  });
+
   it('the PIN is hidden, numeric and never remembered by the browser', () => {
     if (pin?.kind !== 'text') throw new Error('text');
     render(<TextField field={pin} value="" onChange={() => undefined} />);

@@ -6,6 +6,7 @@ import { Modal } from '../../ui/Modal';
 import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
 import { inicialesDe } from '../../ui/avatarMotor';
+import { COMPACT_MIN_SCALE } from '../../ui/SelectorDeCuando';
 
 type Choice = Extract<FormField, { kind: 'choice' }>;
 const ROW_HEIGHT = 60;
@@ -16,17 +17,19 @@ const SHEET_MAX_SHARE = '85%';
  * A long list (the company's people to mark attendance, agentes 24/10;
  * design e-35): a field with the one picked, and a sheet with a search that
  * ignores accents and capitals. The web's `SearchableChoice` is its twin.
+ * In half a row (`compact`) it keeps one line: «Elige…» with no search icon,
+ * and the name shrinks a little before it is cut (José, 28/10: it broke in two).
  */
-export function SearchableChoice(props: { field: Choice; value: unknown; onChange: (value: unknown) => void }) {
+export function SearchableChoice(props: { field: Choice; value: unknown; onChange: (value: unknown) => void; compact?: boolean }) {
   const colors = useColores();
   const [open, setOpen] = useState(false);
   const picked = props.field.options.find((option) => option.value === props.value);
   return (
     <>
       <Pressable testID={`campo-${props.field.name}`} accessibilityRole="button" accessibilityLabel={picked ? `${props.field.label}: ${picked.label}` : props.field.label} onPress={() => setOpen(true)} className={`min-h-[52px] flex-row items-center gap-3 rounded-xl border px-3 ${picked ? 'border-primary bg-primary/[0.06]' : 'border-outline/25 bg-background'}`}>
-        {picked ? (showsInitials(props.field) ? <Initials label={picked.label} /> : null) : <Search size={18} color={colors['on-surface-variant']} />}
+        {picked ? (showsInitials(props.field) ? <Initials label={picked.label} /> : null) : props.compact ? null : <Search size={18} color={colors['on-surface-variant']} />}
         <View className="min-w-0 flex-1">
-          <Text numberOfLines={picked?.sub ? 1 : 2} className={`text-[16px] ${picked ? 'font-semibold text-on-surface' : 'text-on-surface-variant'}`}>{picked ? picked.label : 'Elige de la lista'}</Text>
+          <Text numberOfLines={props.compact || picked?.sub ? 1 : 2} adjustsFontSizeToFit={props.compact} minimumFontScale={COMPACT_MIN_SCALE} className={`text-[16px] ${picked ? 'font-semibold text-on-surface' : 'text-on-surface-variant'}`}>{picked ? picked.label : props.compact ? 'Elige…' : 'Elige de la lista'}</Text>
           {picked?.sub ? <Text numberOfLines={1} className="text-[13px] text-on-surface-variant">{picked.sub}</Text> : null}
         </View>
         <ChevronDown size={18} color={colors['on-surface-variant']} />

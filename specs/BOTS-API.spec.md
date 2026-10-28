@@ -522,6 +522,22 @@ la app de ESA instalación, por su webhook y con la firma de `command.invoked`.
 - Sin conectar dice «<app> te lo pide la primera vez que la usas»: conectar
   sigue siendo el formulario «Conecta tu cuenta» que trae el rechazo de la app.
 
+## c-septendecies) Iniciales solo para personas: `x-avatar` (28/10/2026, OTA + web)
+
+agentes, 28/10: los diseños de mezcla llegan con su **id** como valor (los nombres se
+repiten y Portal guarda el id). Lilachat ponía iniciales junto a todo id, y salía «MM»
+al lado de MAC-2. Desde ahora las iniciales se piden:
+
+```json
+"clienteId": { "type": "string", "title": "Cliente", "oneOf": [ { "const": "<id>", "title": "Minera Santa Rita SAC" } ], "x-avatar": "initials" }
+```
+
+- `"x-avatar": "initials"`: cada opción lleva las iniciales de su nombre, en el campo y
+  en la hoja. Es para personas: un cliente, un empleado.
+- Sin `x-avatar`, u otro valor: ninguna opción lleva avatar, sea id o no. Así quedan
+  diseños, sedes, productos y unidades.
+- Un Lilachat anterior a este OTA sigue poniendo iniciales junto a cualquier id.
+
 ## c-sexdecies) Webhooks por loopback en la misma máquina (28/10/2026, solo servidor)
 
 agentes midió el 28/10: desde la mini, un salto por la URL pública cuesta 0,6–0,96 s
@@ -570,6 +586,10 @@ un `date-time` (ya son dos casillas, día y hora).
 
 **Se emparejan los campos que SE VEN:** uno oculto por `x-visible-if` entre
 dos cortos no los separa.
+
+**Un desplegable en media fila va en una línea** (José, 28/10: «Elige de la lista» y
+«Planta Lurín» se partían en dos): «Elige…» sin lupa, y el nombre se achica un poco
+antes de cortarse con «…». La hoja que abre muestra el nombre entero.
 
 El orden manda: para que «Fecha» y «Hora» compartan fila, van seguidas en
 `properties`. Un cliente viejo ignora `x-width` y dibuja un campo por fila;
@@ -630,9 +650,8 @@ zod `.positive()`) se respetan en el teléfono: «Mayor que 0.», «Menor que 10
 
 **Otros cambios del 28/10.** Tras un rechazo (de Lilachat o de la app), el
 formulario se desplaza hasta el primer campo con error. Las iniciales al lado de
-una opción solo salen para registros (ids: personas, clientes); al lado de «No»
-o de un diseño de mezcla no. Una lista de fotos dice «Se registra con las
-fotos», no «con tu foto».
+una opción las pide la app con `x-avatar` (c-septendecies); ya no salen por ser
+un id. Una lista de fotos dice «Se registra con las fotos», no «con tu foto».
 
 ## c-terdecies) Varias fotos y fotos más livianas (0.1.169)
 

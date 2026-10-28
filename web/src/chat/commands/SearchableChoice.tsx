@@ -10,9 +10,10 @@ const initialsOf = (label: string) => label.split(/\s+/).filter(Boolean).slice(0
  * A long list (the company's people to mark attendance, agentes 24/10;
  * design e-35): a field with the one picked that opens a panel with a search
  * ignoring accents and capitals. The APK's `SearchableChoice` is its twin.
+ * In half a row (`compact`) it keeps one line: «Elige…» and the name cut with «…».
  */
-export function SearchableChoice({ field, value, onChange }: { field: Choice; value: unknown; onChange: (value: unknown) => void }) {
-  // Initials beside people and clients, not beside «No» or a mix design (E2E 28/10).
+export function SearchableChoice({ field, value, onChange, compact }: { field: Choice; value: unknown; onChange: (value: unknown) => void; compact?: boolean }) {
+  // Initials only when the app says the options are people (`x-avatar`, agentes 28/10).
   const initials = showsInitials(field);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -32,9 +33,9 @@ export function SearchableChoice({ field, value, onChange }: { field: Choice; va
   return (
     <div className="relative">
       <button type="button" data-testid={`campo-${field.name}`} aria-expanded={open} onClick={() => setOpen((was) => !was)} className={`flex min-h-12 w-full items-center gap-3 rounded-xl border px-3 text-left ${picked ? 'border-primary bg-primary/5' : 'border-outline/25 bg-background'}`}>
-        {picked ? (initials ? <Initials label={picked.label} /> : null) : <Search size={18} className="text-on-surface-variant" />}
+        {picked ? (initials ? <Initials label={picked.label} /> : null) : compact ? null : <Search size={18} className="text-on-surface-variant" />}
         <span className="min-w-0 flex-1">
-          <span className={`block ${picked?.sub ? 'truncate' : 'line-clamp-2 break-words'} text-[15px] ${picked ? 'font-semibold' : 'text-on-surface-variant'}`}>{picked ? picked.label : 'Elige de la lista'}</span>
+          <span className={`block ${compact || picked?.sub ? 'truncate' : 'line-clamp-2 break-words'} text-[15px] ${picked ? 'font-semibold' : 'text-on-surface-variant'}`}>{picked ? picked.label : compact ? 'Elige…' : 'Elige de la lista'}</span>
           {picked?.sub ? <span className="block truncate text-[12px] text-on-surface-variant">{picked.sub}</span> : null}
         </span>
         <ChevronDown size={18} className="text-on-surface-variant" />
@@ -78,5 +79,5 @@ function Highlighted({ label, query, clamp }: { label: string; query: string; cl
 }
 
 function Initials({ label }: { label: string }) {
-  return <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-[13px] font-semibold text-primary">{initialsOf(label)}</span>;
+  return <span data-initials className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-[13px] font-semibold text-primary">{initialsOf(label)}</span>;
 }

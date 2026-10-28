@@ -6,7 +6,7 @@ import { Label } from './AppFormFields';
 
 type ListOfItems = Extract<FormField, { kind: 'list' }>;
 /** Draws one field of a card item with the dialog's own kit (choice, date, photos…). */
-export type RenderItemField = (field: ItemField, value: unknown, error: string | undefined, onChange: (value: unknown) => void, key: string) => ReactNode;
+export type RenderItemField = (field: ItemField, value: unknown, error: string | undefined, onChange: (value: unknown) => void, key: string, half: boolean) => ReactNode;
 type Props = {
   field: ListOfItems;
   value: unknown;
@@ -55,7 +55,7 @@ export function ListField({ field, value, errors, onChange, renderField }: Props
                 ) : null}
               </div>
               {formRows(visibleFields(field.fields, item)).map((row) => {
-                const cells = row.map((child) => renderField(child, item[child.name], errors[itemPath(field.name, index, child.name)], setCell(index, child.name), `${keys.current[index]}-${child.name}`));
+                const cells = row.map((child) => renderField(child, item[child.name], errors[itemPath(field.name, index, child.name)], setCell(index, child.name), `${keys.current[index]}-${child.name}`, row.length === 2));
                 return row.length === 2 ? <div key={row[0]!.name} data-row="2" className="grid grid-cols-2 items-start gap-3">{cells}</div> : cells;
               })}
             </div>

@@ -33,14 +33,14 @@ export function Label(props: { field: FormField }) {
 }
 
 /** Up to four fixed choices side by side (design e-28), records and long lists in a dropdown; always with its title. */
-export function ChoiceField({ field, value, error, onChange }: FieldProps<'choice'>) {
+export function ChoiceField({ field, value, error, onChange, compact }: FieldProps<'choice'> & { /** Half a row. */ compact?: boolean }) {
   return (
     <View>
       <Label field={field} />
       {field.options.length === 0 ? (
         <Text testID={`sin-opciones-${field.name}`} className="rounded-xl border border-dashed border-outline/30 px-3 py-3 text-[14px] text-on-surface-variant">No hay opciones para elegir</Text>
       ) : field.searchable ? (
-        <SearchableChoice field={field} value={value} onChange={onChange} />
+        <SearchableChoice field={field} value={value} onChange={onChange} compact={compact} />
       ) : field.segmented ? (
         <Segmentado opciones={field.options.map((option) => ({ key: option.value, etiqueta: option.label, testID: `opcion-${field.name}-${option.value}` }))} valor={typeof value === 'string' ? value : ''} onCambiar={onChange} />
       ) : (

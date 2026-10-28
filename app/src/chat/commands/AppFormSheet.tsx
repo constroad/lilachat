@@ -196,7 +196,7 @@ export function AppFormSheet(props: { answer: EphemeralAnswer; personName?: stri
 function Field(props: { field: Exclude<FormField, { kind: 'list' }>; value: unknown; error?: string; onChange: (value: unknown) => void; upload: PhotoUpload; width: number; half?: boolean }) {
   const { field, upload, width, half, ...rest } = props;
   switch (field.kind) {
-    case 'choice': return <ChoiceField field={field} {...rest} />;
+    case 'choice': return <ChoiceField field={field} {...rest} compact={half} />;
     case 'date': return <DateField field={field} {...rest} compact={half} />;
     case 'location': return <LocationField field={field} {...rest} width={width} />;
     case 'photo': return field.multiple ? <PhotoListField field={field} error={rest.error} onChange={rest.onChange} upload={upload} /> : <PhotoField field={field} {...rest} upload={upload} />;

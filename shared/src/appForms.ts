@@ -43,6 +43,8 @@ export type FormSchemaProperty = {
   'x-visible-if'?: Record<string, unknown[]>;
   /** Half a row beside another short field, or the whole row (José, 28/10: forms were a field per row). Without it, `formRows` decides. */
   'x-width'?: FieldWidth;
+  /** `initials`: the options are people (a client, an employee) and get their initials; without it, none (agentes, 28/10). */
+  'x-avatar'?: 'initials';
 };
 /** How much of a row a field takes: half beside another, or all of it. */
 export type FieldWidth = 'half' | 'full';
@@ -54,7 +56,7 @@ export type ChoiceOption = { value: string; label: string; sub?: string };
 
 type Base = { name: string; label: string; help?: string; required: boolean; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number };
 export type FormField =
-  | (Base & { kind: 'choice'; options: ChoiceOption[]; segmented: boolean; /** A long list (the company's people, agentes 24/10): a field that opens a sheet with a search. */ searchable: boolean })
+  | (Base & { kind: 'choice'; options: ChoiceOption[]; segmented: boolean; /** A long list (the company's people, agentes 24/10): a field that opens a sheet with a search. */ searchable: boolean; /** `x-avatar: initials`: each option with its initials. */ initials?: true })
   | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true })
   | (Base & { kind: 'number'; unit?: string; min?: number; max?: number; /** The limit itself is out: «Mayor que 0». */ minExclusive?: true; maxExclusive?: true; integer: boolean })
   | (Base & { kind: 'date'; /** `format: date | time | date-time`: a picker for the day, the hour or both (José, 24/10). */ mode: DateMode })
@@ -189,7 +191,7 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
   const options = choiceOptions(property);
   if (options) {
     const initial = options.some((option) => option.value === String(property.default)) ? { initial: String(property.default) } : {};
-    return { ...base, ...initial, kind: 'choice', options, ...choiceLayout(options) };
+    return { ...base, ...initial, kind: 'choice', options, ...choiceLayout(options), ...(property['x-avatar'] === 'initials' ? { initials: true as const } : {}) };
   }
   if (property.type === 'number' || property.type === 'integer') {
     const initial = typeof property.default === 'number' && Number.isFinite(property.default) ? { initial: property.default } : {};
@@ -262,9 +264,9 @@ export function firstErrorField(names: readonly string[], errors: Readonly<Recor
   return names.find((name) => keys.some((key) => key === name || key.startsWith(`${name}[`))) ?? null;
 }
 
-/** Initials beside the options only for records (people, clients); beside «No» or a mix design they read as noise (E2E 28/10). */
+/** Initials only when the app says its options are people: a mix design or a site is an id too, and «MM» beside it is noise (agentes, 28/10). */
 export function showsInitials(field: Extract<FormField, { kind: 'choice' }>): boolean {
-  return field.options.some((option) => RECORD_ID.test(option.value));
+  return field.initials === true;
 }
 
 function visibleIfOf(raw: unknown): Record<string, string[]> | null {

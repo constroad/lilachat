@@ -22,7 +22,7 @@ export function Label(props: { field: FormField }) {
 }
 
 /** Up to four side by side (design e-28), more in a list. */
-export function ChoiceField({ field, value, error, onChange }: FieldProps<'choice'>) {
+export function ChoiceField({ field, value, error, onChange, compact }: FieldProps<'choice'> & { /** Half a row. */ compact?: boolean }) {
   return (
     <div>
       {field.options.length === 0 ? (
@@ -44,7 +44,7 @@ export function ChoiceField({ field, value, error, onChange }: FieldProps<'choic
       ) : field.searchable ? (
         <>
           <Label field={field} />
-          <SearchableChoice field={field} value={value} onChange={onChange} />
+          <SearchableChoice field={field} value={value} onChange={onChange} compact={compact} />
         </>
       ) : (
         <>

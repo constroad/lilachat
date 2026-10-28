@@ -200,16 +200,21 @@ describe('photos from the gallery, only when the app asks (E2E 28/10: a transfer
   });
 });
 
-describe('initials beside an option only for records (E2E 28/10: «NO», «SU» and «MM» beside plain answers)', () => {
-  it('a list of database ids (clients, people) shows initials; plain answers and mix designs do not', () => {
+describe('initials beside an option only when the app asks for them (agentes, 28/10: «MM» beside a mix design whose value is an id)', () => {
+  it('x-avatar: initials draws them beside people; without it, no option has them, ids or not', () => {
     // Arrange
-    const choice = (values: string[]): AppForm => ({ id: 'f', title: 'F', schema: { type: 'object', properties: { c: { type: 'string', enum: values } } } });
+    const choice = (values: string[], extra: Record<string, unknown> = {}): AppForm => ({ id: 'f', title: 'F', schema: { type: 'object', properties: { c: { type: 'string', enum: values, ...extra } } } });
+    const ids = ['6a71ae537c8d2b5b5ad796a1', '6a72bba87c8d2b5b5ad7c287'];
     // Act
-    const clients = formFields(choice(['6a71ae537c8d2b5b5ad796a1', '6a72bba87c8d2b5b5ad7c287']))[0];
-    const designs = formFields(choice(['MAC-2 - Mezcla asfáltica en caliente para capa de rodadura', 'MAC-3 - Mezcla asfáltica para vías urbanas']))[0];
+    const people = formFields(choice(ids, { 'x-avatar': 'initials' }))[0];
+    const designs = formFields(choice(ids))[0];
+    const answers = formFields(choice(['si', 'no']))[0];
+    const unknown = formFields(choice(ids, { 'x-avatar': 'photo' }))[0];
     // Assert
-    expect(clients.kind === 'choice' && showsInitials(clients)).toBe(true);
+    expect(people.kind === 'choice' && showsInitials(people)).toBe(true);
     expect(designs.kind === 'choice' && showsInitials(designs)).toBe(false);
+    expect(answers.kind === 'choice' && showsInitials(answers)).toBe(false);
+    expect(unknown.kind === 'choice' && showsInitials(unknown)).toBe(false);
   });
 });
 

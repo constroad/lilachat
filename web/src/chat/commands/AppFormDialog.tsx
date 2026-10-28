@@ -80,7 +80,8 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
       setMessage(outcome.errors._ ?? outcome.message ?? '');
     }
   };
-  const drawField = (field: FormField) =>
+  /** One field; `half` when it shares its row. */
+  const drawField = (field: FormField, half = false) =>
     live && field.name === live.name ? (
       <LiveSelfie key={field.name} ref={selfie} testId={`campo-${field.name}`} label={LIVE_PHOTO_KICKER} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={errors[field.name] ?? (locationName ? errors[locationName] : undefined)} />
     ) : (
@@ -88,9 +89,9 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
       <div key={field.name} data-field={field.name} hidden={Boolean(live) && field.kind === 'location'}>
         {live && field.kind === 'choice' && field.segmented ? <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">{LIVE_CHOICE_KICKER}</p> : null}
         {field.kind === 'list' ? (
-          <ListField field={field} value={values[field.name]} errors={errors} onChange={setList(field.name)} renderField={(child, value, error, onChange, key) => <Field key={key} field={child} value={value} error={error} onChange={onChange} upload={props.onUpload} />} />
+          <ListField field={field} value={values[field.name]} errors={errors} onChange={setList(field.name)} renderField={(child, value, error, onChange, key, halfCell) => <Field key={key} field={child} value={value} error={error} onChange={onChange} upload={props.onUpload} half={halfCell} />} />
         ) : (
-          <Field field={field} value={values[field.name]} error={errors[field.name]} onChange={set(field.name)} upload={props.onUpload} />
+          <Field field={field} value={values[field.name]} error={errors[field.name]} onChange={set(field.name)} upload={props.onUpload} half={half} />
         )}
       </div>
     );
@@ -125,7 +126,7 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
         {formRows(visibleFields(fields, values)).map((row) =>
           row.length === 2 ? (
             <div key={row[0]!.name} data-row="2" className="grid grid-cols-2 items-start gap-3">
-              {row.map(drawField)}
+              {row.map((field) => drawField(field, true))}
             </div>
           ) : (
             drawField(row[0]!)
@@ -136,10 +137,10 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
   );
 }
 
-function Field(props: { field: Exclude<FormField, { kind: 'list' }>; value: unknown; error?: string; onChange: (value: unknown) => void; upload: Upload }) {
-  const { field, upload, ...rest } = props;
+function Field(props: { field: Exclude<FormField, { kind: 'list' }>; value: unknown; error?: string; onChange: (value: unknown) => void; upload: Upload; half?: boolean }) {
+  const { field, upload, half, ...rest } = props;
   switch (field.kind) {
-    case 'choice': return <ChoiceField field={field} {...rest} />;
+    case 'choice': return <ChoiceField field={field} {...rest} compact={half} />;
     case 'text': return <TextField field={field} {...rest} />;
     case 'number': return <NumberField field={field} {...rest} />;
     case 'date': return <DateField field={field} {...rest} />;

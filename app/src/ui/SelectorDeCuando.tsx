@@ -6,7 +6,7 @@ import { combinarFecha, opcionesRapidas } from '@lilachat/shared';
 import { useColores } from './tema';
 
 /** How far a compact box's value may shrink before it is cut. */
-const COMPACT_MIN_SCALE = 0.8;
+export const COMPACT_MIN_SCALE = 0.8;
 
 const DIA = new Intl.DateTimeFormat('es-PE', { weekday: 'short', day: 'numeric', month: 'short' });
 const TIME = new Intl.DateTimeFormat('es-PE', { hour: 'numeric', minute: '2-digit', hourCycle: 'h12' });

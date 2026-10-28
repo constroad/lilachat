@@ -4911,6 +4911,36 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 143. Desplegable de media fila en una línea e iniciales solo para personas (28/10/2026, OTA + web)
+
+**Lo que mostró el esquema nuevo de Portal** (emulador, 28/10, 14:51–15:02 UTC):
+- En media fila, «Elige de la lista» y «Planta Lurín» se partían en dos líneas. La Sede
+  quedaba más alta que «m³ del pedido» a su lado.
+- Los diseños llegan con su id como valor, y salían con «MM» al lado.
+
+**Cambios**
+- `SearchableChoice` con `compact` (media fila, app y web): una línea, «Elige…» sin
+  lupa. En la app el nombre se achica hasta 0,8 (`COMPACT_MIN_SCALE`, el mismo de la
+  fecha compacta) antes de cortarse; en la web, `truncate`. A lo ancho sigue igual:
+  hasta dos líneas. La web pasa `half` también a las tarjetas de una lista.
+- Iniciales solo con `"x-avatar": "initials"` (agentes, 28/10; BOTS-API
+  §c-septendecies). `showsInitials` ya no mira si el valor es un id.
+- Pruebas: `shared/src/appFormLists.test.ts` (x-avatar) y
+  `web/src/chat/commands/appFormFields.searchable.test.tsx` (+2).
+
+**Prueba de punta a punta con el esquema nuevo** (emulador, Test, 28/10):
+
+| Prueba | Resultado |
+| --- | --- |
+| Pedido sin Sede | «Elige una opción.» bajo Sede; la hoja baja hasta ahí |
+| Pedido real (Minera Santa Rita, 25 m³) | envío 14:57:35 → respuesta 14:57:38, sin id |
+| El mismo pedido otra vez | 14:59:12: «Ya existe un pedido…» bajo Fecha, sin id; no se creó |
+| Gasto con foto de la galería | envío 15:02:07 → respuesta 15:02:17 (10 s) |
+
+Del gasto, según agentes: traer la foto 16 ms (antes 1158, el loopback de Portal) y
+subirla al Drive 4379 ms por HTTPS. Portal además esperaba el WhatsApp de caja (~0,9 s);
+agentes le pidió que no lo espere. Los dos registros de QA los borra Portal.
+
 ## 142. Webhooks a agentes por loopback y texto corto hasta 60 (28/10/2026, servidor + OTA + web)
 
 **Loopback** (agentes, 28/10, medido en `agentes.log`). Los 4 reads de agentes + Portal

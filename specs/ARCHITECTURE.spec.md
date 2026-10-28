@@ -12188,6 +12188,14 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
     app por completo y abrirla de nuevo lo repite. Con los guiños pasa lo mismo,
     aunque se corrigió hace poco: hay que buscar la causa común, no parchar cada
     tipo por separado.
+108. **Grupos y canales siguen marcados como no leídos después de leerlos**
+    (José, 28/10, bug, en la web y en la app; captura de la web): aunque ya
+    leyó el mensaje, el indicador de mensajes nuevos sigue apareciendo en los
+    grupos y en los canales (el número del espacio en el riel y el del chat en
+    la lista).
+109. **En el modo empresa solo se crean canales, no grupos** (José, 28/10):
+    dentro de un espacio no debería existir la opción de crear un grupo; lo que
+    se crea ahí es un canal.
 
 > **Pausa por diseños (José, 21/10):** lo que necesita pantallas nuevas espera
 > a que se reinicie la cuota de Stitch: la pantalla de bloqueo del 32, el

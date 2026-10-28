@@ -4944,6 +4944,23 @@ codificador de cada plataforma (`shrinkWithLadder`):
 - Pruebas: shared `photoSizing.test.ts` (16), server `photoShrink.test.ts` (5) +
   `photoStamp.test.ts`, web `shrinkPhoto.test.ts` (5).
 
+**E2E** (28/10, emulador Pixel 6, OTA f66d3c02, Test · general, galería → chat):
+
+| Foto | Antes | Después |
+| --- | --- | --- |
+| Cámara 12 MP (JPEG) | 5,9 MB · 4000×3000 | 277 KB · 1600×1200 |
+| Comprobante con letra chica | 5,0 MB · 3000×4000 | 317 KB · 1200×1600, legible al 100 % |
+| Captura de pantalla (PNG opaco) | 3,0 MB · 1080×2400 | 210 KB JPEG · 720×1600 |
+| Logo PNG transparente | 2,9 MB · 2000×2000 | 800 KB PNG · 1076×1076, transparencia intacta |
+| JPEG de 106 KB | 108 498 B | los mismos bytes |
+| GIF animado | 5 541 B | los mismos bytes |
+
+- Las cuatro que se achican tardan ~0,5 s en total en el emulador, de a una.
+- «Registrar gasto» con la foto de 12 MP: 6,5 s de enviar a la respuesta (antes 10 s).
+- El logo bajó hasta 1076 px porque un PNG no tiene calidad: a 1600 y 1312 pasaba de 1 MB.
+- La cámara del chat en el emulador entrega cuadros negros (HAL emulada); la vista previa
+  anda. No es del compresor: falta mirarla en un teléfono real.
+
 ## 143. Desplegable de media fila en una línea e iniciales solo para personas (28/10/2026, OTA + web)
 
 **Lo que mostró el esquema nuevo de Portal** (emulador, 28/10, 14:51–15:02 UTC):

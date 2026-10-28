@@ -84,6 +84,7 @@ export function AppChatHeader(props: { app: DirectoryApp; spaceId?: string; jwt?
           onMessage={() => setTab('messages')}
           onInstall={() => apps.install(app)}
           onUninstall={admin ? () => apps.uninstall(app) : undefined}
+          onChannelsChanged={() => void apps.reload()}
         />
       ) : null}
     </View>

@@ -142,6 +142,7 @@ export function Conversation(props: {
               onMessage={() => setAppTab('messages')}
               onInstall={() => props.app && props.spaceApps?.install(props.app)}
               onUninstall={props.spaceApps?.directory?.canInstall ? () => props.app && props.spaceApps?.uninstall(props.app) : undefined}
+              onChannelsChanged={props.spaceApps?.refresh}
             />
           </div>
         </div>

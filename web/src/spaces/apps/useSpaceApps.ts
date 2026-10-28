@@ -19,6 +19,8 @@ export type SpaceApps = {
   openedChats: Record<string, string>;
   /** The app being uninstalled: the server takes a moment and the detail says so. */
   uninstallingId: string | null;
+  /** Reads the directory again (a switch of «En qué canales está» changes «Activa en N canales»). */
+  refresh: () => void;
   /** For what the detail asks on its own («Avisos», R160). */
   jwt: string;
   spaceId: string | null;
@@ -94,5 +96,5 @@ export function useSpaceApps(params: { jwt: string; spaceId: string | null; onCh
     },
     [jwt, spaceId, refresh]
   );
-  return { directory, open, openDirectory: (appId) => setOpen({ appId: appId ?? null }), closeDirectory: () => setOpen(null), message, install, uninstall, openedChats, uninstallingId, jwt, spaceId };
+  return { directory, open, openDirectory: (appId) => setOpen({ appId: appId ?? null }), closeDirectory: () => setOpen(null), message, install, uninstall, openedChats, uninstallingId, refresh: () => void refresh(), jwt, spaceId };
 }

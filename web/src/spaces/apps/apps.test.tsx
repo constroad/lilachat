@@ -23,6 +23,7 @@ const appsOf = (overrides: Partial<SpaceApps> = {}): SpaceApps => ({
   uninstall: vi.fn(),
   openedChats: {},
   uninstallingId: null,
+  refresh: vi.fn(),
   jwt: 'jwt',
   spaceId: null,
   ...overrides,

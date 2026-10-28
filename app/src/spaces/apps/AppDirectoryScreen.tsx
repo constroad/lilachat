@@ -96,6 +96,7 @@ export function AppDirectoryScreen(props: { space: ClientWorkspace; apps: SpaceA
           }}
           onInstall={() => apps.install(chosen)}
           onUninstall={admin ? () => apps.uninstall(chosen) : undefined}
+          onChannelsChanged={() => void apps.reload()}
         />
       ) : null}
     </Modal>

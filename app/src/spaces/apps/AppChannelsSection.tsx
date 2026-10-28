@@ -13,7 +13,7 @@ import { appChannels, type AppChannels } from '../spacesApi';
  * channel shows «José sacó a Inframaq» like any member. The list reads again
  * after each switch: who may change it depends on being that channel's admin.
  */
-export function AppChannelsSection(props: { jwt: string; spaceId: string; appId: string }) {
+export function AppChannelsSection(props: { jwt: string; spaceId: string; appId: string; /** After a switch that worked: the hero's «Activa en N canales» reads again. */ onChanged?: () => void }) {
   const colors = useColores();
   const [state, setState] = useState<AppChannels | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -32,6 +32,7 @@ export function AppChannelsSection(props: { jwt: string; spaceId: string; appId:
     setError('');
     const result = on ? await addChatMember(props.jwt, channel.id, state.botUserId) : await removeChatMember(props.jwt, channel.id, state.botUserId);
     if (!result.ok) setError(result.message ?? 'No se pudo cambiar.');
+    else props.onChanged?.();
     await load();
     setBusyId(null);
   };

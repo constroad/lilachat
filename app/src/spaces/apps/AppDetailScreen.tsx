@@ -28,6 +28,8 @@ type AppDetailProps = {
   onMessage?: () => void;
   onInstall: () => void;
   onUninstall?: () => void;
+  /** A switch of «En qué canales está» worked: the caller reads the directory again. */
+  onChannelsChanged?: () => void;
 };
 
 function Section(props: { Icon: typeof Info; title: string; children: ReactNode }) {
@@ -172,7 +174,7 @@ function DetailTab(props: AppDetailProps & { tab: AppDetailTab }) {
   if (props.tab === 'settings') {
     return (
       <>
-        <AppChannelsSection {...section} />
+        <AppChannelsSection {...section} onChanged={props.onChannelsChanged} />
         {props.admin && props.onUninstall ? <AppInstallSection appName={app.name} spaceName={props.spaceName} uninstalling={props.uninstalling} onReinstall={app.installUrl ? props.onInstall : undefined} onUninstall={props.onUninstall} /> : null}
       </>
     );

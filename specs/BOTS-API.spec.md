@@ -522,6 +522,29 @@ la app de ESA instalación, por su webhook y con la firma de `command.invoked`.
 - Sin conectar dice «<app> te lo pide la primera vez que la usas»: conectar
   sigue siendo el formulario «Conecta tu cuenta» que trae el rechazo de la app.
 
+## c-sexdecies) Webhooks por loopback en la misma máquina (28/10/2026, solo servidor)
+
+agentes midió el 28/10: desde la mini, un salto por la URL pública cuesta 0,6–0,96 s
+y por loopback 0,002–0,003 s. Cada toque de un comando pagaba ese salto.
+
+**Desde Lilachat:** en producción (Torre arranca Lilachat con `NODE_ENV=production` en
+la mini), un `webhook_url` de `agentes.constroad.com` se llama en
+`http://127.0.0.1:3012` (el puerto que Torre le da a agentes), con la misma ruta y la
+misma consulta. Cuerpo, encabezados y firma `X-Lilachat-Signature` (HMAC-SHA256 con el
+secreto de la instalación) no cambian. Para la app solo cambia que el pedido llega
+desde `127.0.0.1`.
+
+**Si nadie escucha en local** (un deploy, la app se mudó), el mismo envío, con el mismo
+`X-Lilachat-Delivery`, sale por la URL pública dentro de la misma espera. Una respuesta
+lenta NO se reintenta por la pública: la app ya la tiene.
+
+**Sin configuración:** la lista vive en el código (`server/src/bots/botLoopback.ts`), no
+en el manifiesto ni en una variable. Si Torre cambia el puerto de agentes, se cambia ahí;
+mientras tanto todo sigue por la URL pública.
+
+**De la app hacia Lilachat** (responder, `/respond`, mensajes): eso es del lado de la
+app. Desde la mini, `http://127.0.0.1:3004` es Lilachat, con los mismos tokens.
+
 ## c-quindecies) Dos campos por fila: `x-width` (28/10/2026, OTA + web)
 
 José, 28/10: «cada input ocupa una fila entera y se generan sábanas». Desde
@@ -531,7 +554,7 @@ schema. La regla es pura y compartida (`shared/src/appFormRows.ts`,
 de una lista.
 
 **Cortos sin marcar nada:** `number`/`integer`, `format: date`,
-`format: time` y un texto de una línea con `maxLength` ≤ 24. Dos cortos
+`format: time` y un texto de una línea con `maxLength` ≤ 60. Dos cortos
 seguidos comparten la fila; un tercero empieza la siguiente.
 
 **La app decide con `x-width`:**

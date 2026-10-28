@@ -1,7 +1,7 @@
 import type { FormField } from './appForms.js';
 
-/** A one-line text allowed up to this many characters fits half a row: a plate, a lot. */
-const SHORT_TEXT_MAX = 24;
+/** A one-line text allowed up to this many characters fits half a row: a plate, a carrier, a lot (José, 28/10: «Fletero o placa» beside «Cubos»). */
+const SHORT_TEXT_MAX = 60;
 
 /**
  * The rows a form is drawn in (José, 28/10: a field per row turned every form

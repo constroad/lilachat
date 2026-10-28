@@ -4911,6 +4911,37 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 142. Webhooks a agentes por loopback y texto corto hasta 60 (28/10/2026, servidor + OTA + web)
+
+**Loopback** (agentes, 28/10, medido en `agentes.log`). Los 4 reads de agentes + Portal
+tardan 120–156 ms. El resto de los ~3 s de «toque → formulario» son los saltos públicos:
+0,6–0,96 s por request desde la mini, contra 0,002–0,003 s por loopback.
+- `server/src/bots/botLoopback.ts`: en producción (`NODE_ENV=production`, como arranca
+  Torre), `agentes.constroad.com` se llama en `http://127.0.0.1:3012`, el puerto de
+  `torre.apps.json`. Sin variable de entorno (José, 28/10: «no entiendo para qué quieres
+  otra env»).
+- `callBotWebhook` (comandos, formularios, acciones) y la cola de eventos: misma ruta,
+  encabezados y firma. Si nadie escucha en local, el mismo envío sale por la URL pública
+  dentro de la misma espera; un timeout local no se repite.
+- Pruebas: `server/src/bots/botLoopback.test.ts` (3).
+
+**Texto corto hasta 60** (`shared/src/appFormRows.ts`, `SHORT_TEXT_MAX`). Recorrido de
+los 10 formularios en el emulador (28/10): «Fletero o placa» (60) quedaba solo en el
+ingreso de material. Ahora va con «Cubos» sin que la app marque nada.
+
+**Recorrido de los formularios (emulador, 28/10, después del OTA c5cfec42):**
+
+| Formulario | En una fila | Queda para agentes |
+| --- | --- | --- |
+| Crear un pedido | Fecha · Hora; Carros · m³ por carro | m³ del pedido con la Sede (`x-width`) |
+| Registrar un gasto | Monto · Fecha | ¿De qué es? con Estado; Descripción de una línea |
+| Crear una cotización | Cantidad · Precio unitario | IGV con Fecha |
+| Registrar un ingreso de material | Fletero · Cubos (con este cambio) | Fecha con Sede |
+| Medida de tanque, movimiento de material | — (el número va solo entre listas) | — |
+| Asignar unidad, enlace de servicio | — (listas de nombres largos) | — |
+| Registrar / Marcar asistencia | — (dos listas y la cámara) | — |
+| Enlace de un pedido | no abre: «No hay pedido para elegir en Portal» | revisar en Portal |
+
 ## 141. Dos campos por fila, ir al error con el teclado abierto y enlaces en «Solo tú ves esto» (28/10/2026, OTA + web)
 
 **Pedido** (José, 28/10): «en los formularios cada input ocupa una fila
@@ -4919,7 +4950,7 @@ entera y se generan sábanas; unidad, hora, m³ podrían ser una sola fila».
 **Dos por fila** (`shared/src/appFormRows.ts`, `formRows`):
 - Pura y compartida. Recibe los campos que se ven y devuelve filas de uno o
   dos, en el orden del schema.
-- Cortos solos: número, día, hora y texto de una línea de hasta 24.
+- Cortos solos: número, día, hora y texto de una línea de hasta 60 (era 24; §142).
 - `x-width: half | full` de la app manda. Nunca a media fila: lista,
   ubicación, foto, texto largo, código, PIN y día con hora.
 - App (`AppFormSheet`): la fila es un `flex-row` con `ROW_GAP` 12; cada celda

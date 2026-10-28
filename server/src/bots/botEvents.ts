@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Types } from 'mongoose';
 import { BotAppModel, BotDeliveryModel, BotInstallationModel, type BotInstallation } from './botModels.js';
+import { loopbackUrlOf, machineLoopbackOrigins } from './botLoopback.js';
 import { eventSignature } from './botSecrets.js';
 
 /**
@@ -47,14 +48,27 @@ export async function sendBotEvent(installation: Pick<BotInstallation, '_id' | '
   void attemptDelivery(delivery._id);
 }
 
+/** One attempt of a queued event: by loopback when the app lives on this machine, by its public address if nobody listens there. */
 async function post(url: string, headers: Record<string, string>, body: string): Promise<string | null> {
+  const local = loopbackUrlOf(url, machineLoopbackOrigins());
+  if (local) {
+    const attempt = await postTo(local, headers, body);
+    if (attempt.reached) return attempt.error;
+  }
+  return (await postTo(url, headers, body)).error;
+}
+
+/** `reached`: the app answered (any status) or was too slow; false when nothing listens at that address. */
+async function postTo(url: string, headers: Record<string, string>, body: string): Promise<{ error: string | null; reached: boolean }> {
   try {
     const response = await fetch(url, { method: 'POST', headers, body, signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS) });
-    return response.ok ? null : `HTTP ${response.status}`;
+    return { error: response.ok ? null : `HTTP ${response.status}`, reached: true };
   } catch (error) {
-    return (error instanceof Error ? error.message : String(error)).slice(0, ERROR_MAX);
+    return { error: (error instanceof Error ? error.message : String(error)).slice(0, ERROR_MAX), reached: isTimeout(error) };
   }
 }
+
+const isTimeout = (error: unknown) => error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError');
 
 async function attemptDelivery(id: Types.ObjectId): Promise<void> {
   try {
@@ -103,9 +117,20 @@ export function isRestarting(reply: WebhookReply): boolean {
   return reply.error !== 'timeout' && (reply.status === null || RESTARTING_STATUSES.includes(reply.status));
 }
 
+/** By loopback when the app lives on this machine; by its public address if nobody listens there, within the same wait. */
 async function postOnce(installation: Pick<BotInstallation, '_id' | 'signingSecret'> & { webhookUrl: string }, type: BotEventType, deliveryId: string, body: string, timeoutMs: number): Promise<WebhookReply> {
+  const headers = signedHeaders(installation.signingSecret, type, deliveryId, installation._id, body);
+  const local = loopbackUrlOf(installation.webhookUrl, machineLoopbackOrigins());
+  if (!local) return postReply(installation.webhookUrl, headers, body, timeoutMs);
+  const started = Date.now();
+  const reply = await postReply(local, headers, body, timeoutMs);
+  if (reply.status !== null || reply.error === 'timeout') return reply;
+  return postReply(installation.webhookUrl, headers, body, Math.max(1, timeoutMs - (Date.now() - started)));
+}
+
+async function postReply(url: string, headers: Record<string, string>, body: string, timeoutMs: number): Promise<WebhookReply> {
   try {
-    const response = await fetch(installation.webhookUrl, { method: 'POST', headers: signedHeaders(installation.signingSecret, type, deliveryId, installation._id, body), body, signal: AbortSignal.timeout(timeoutMs) });
+    const response = await fetch(url, { method: 'POST', headers, body, signal: AbortSignal.timeout(timeoutMs) });
     const text = (await response.text()).slice(0, REPLY_MAX_BYTES);
     let parsed: unknown = null;
     try {
@@ -115,9 +140,8 @@ async function postOnce(installation: Pick<BotInstallation, '_id' | 'signingSecr
     }
     return { status: response.status, body: parsed, ...(response.ok ? {} : { error: `HTTP ${response.status}` }) };
   } catch (error) {
-    const slow = error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError');
     // Slow is the deferred answer, not a broken app.
-    if (slow) return { status: null, body: null, error: 'timeout' };
+    if (isTimeout(error)) return { status: null, body: null, error: 'timeout' };
     return { status: null, body: null, error: (error instanceof Error ? error.message : String(error)).slice(0, ERROR_MAX) };
   }
 }

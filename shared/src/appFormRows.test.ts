@@ -42,7 +42,7 @@ describe('two short fields share a row (José, 28/10: «unidad, hora, m³ podrí
     expect(rows).toEqual([['fecha', 'hora'], ['m3']]);
   });
 
-  it('a short text is short; a one-time code, a PIN, a day with its hour and a text of 60 are not', () => {
+  it('a one-line text up to 60 is short (a plate, a carrier); a text of 61, a code, a PIN and a day with its hour are not', () => {
     // Arrange
     const form = formWith({
       placa: { type: 'string', title: 'Placa', maxLength: 10 },
@@ -50,13 +50,14 @@ describe('two short fields share a row (José, 28/10: «unidad, hora, m³ podrí
       codigo: { type: 'string', title: 'Código', pattern: '^\\d{6}$' },
       pin: { type: 'string', title: 'PIN', 'x-input': 'pin' },
       cuando: { type: 'string', format: 'date-time', title: 'Cuándo' },
+      direccion: { type: 'string', title: 'Dirección', maxLength: 61 },
       fletero: { type: 'string', title: 'Fletero o placa', maxLength: 60 },
       cubos: { type: 'number', title: 'Cubos' },
     });
     // Act
     const rows = rowsOf(form);
     // Assert
-    expect(rows).toEqual([['placa', 'lote'], ['codigo'], ['pin'], ['cuando'], ['fletero'], ['cubos']]);
+    expect(rows).toEqual([['placa', 'lote'], ['codigo'], ['pin'], ['cuando'], ['direccion'], ['fletero', 'cubos']]);
   });
 
   it('the app decides with x-width: «half» puts a short choice or text beside another, «full» keeps a number alone', () => {

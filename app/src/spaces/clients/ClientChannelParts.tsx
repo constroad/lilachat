@@ -1,6 +1,7 @@
-import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
-import { Archive, ExternalLink, FileText, FolderOpen } from 'lucide-react-native';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, recordsByService, shortDate, type ClientRecord, type ClientServiceStatus, type SpaceClient } from '@lilachat/shared';
+import { useState } from 'react';
+import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Archive, ExternalLink, FileText, FolderOpen, Search } from 'lucide-react-native';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, shortDate, type ServiceFilter, type ClientRecord, type ClientServiceStatus, type SpaceClient } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 
 /** The parts of a client's channel (design f-03): the archived banner, the note over the composer and «Servicios». */
@@ -37,7 +38,9 @@ const STATUS_TONE: Record<ClientServiceStatus, string> = {
  */
 export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord: (seq: number) => void }) {
   const colors = useColores();
-  const { services } = props.client;
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<ServiceFilter>('all');
+  const { services, counts } = filterServices(props.client.services, { query, filter });
   const grouped = props.records ? recordsByService(props.records) : null;
   const driveUrl = props.client.drive_url;
   return (
@@ -52,7 +55,23 @@ export function ClientServices(props: { client: SpaceClient; records: ClientReco
           <ExternalLink size={16} color={colors['on-surface-variant']} />
         </Pressable>
       ) : null}
-      {services.length === 0 ? <Text className="pt-10 text-center text-[14px] text-on-surface-variant">Este cliente todavía no tiene servicios.</Text> : null}
+      {props.client.services.length > 1 ? (
+        <View className="gap-2">
+          <View className="h-11 flex-row items-center gap-2 rounded-xl border border-outline/15 bg-surface px-3">
+            <Search size={16} color={colors['on-surface-variant']} />
+            <TextInput testID="buscar-servicio" value={query} onChangeText={setQuery} placeholder="Buscar servicio" placeholderTextColor={colors['on-surface-variant']} className="flex-1 text-[14px] text-on-surface" />
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {(Object.keys(SERVICE_FILTER_LABELS) as ServiceFilter[]).map((key) => (
+              <Pressable key={key} testID={`filtro-servicio-${key}`} onPress={() => setFilter(key)} accessibilityState={{ selected: filter === key }} className={`min-h-[36px] flex-row items-center gap-1.5 rounded-full border px-3 ${filter === key ? 'border-primary bg-primary' : 'border-outline/20 bg-surface'}`}>
+                <Text className={`text-[13px] font-semibold ${filter === key ? 'text-on-primary' : 'text-on-surface-variant'}`}>{`${SERVICE_FILTER_LABELS[key]} · ${counts[key]}`}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+      {props.client.services.length === 0 ? <Text className="pt-10 text-center text-[14px] text-on-surface-variant">Este cliente todavía no tiene servicios.</Text> : null}
+      {props.client.services.length > 0 && services.length === 0 ? <Text className="pt-6 text-center text-[14px] text-on-surface-variant">Ningún servicio con ese filtro.</Text> : null}
       {services.map((service) => (
         <View key={service.id} testID={`servicio-${service.id}`} className="rounded-2xl border border-outline/15 bg-surface p-4">
           <View className="flex-row items-start gap-3">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { recordsByService, archivedBanner, clientChatIds, clientHeaderSubtitle, clientRowSubtitle, dayLabel, filterArchivedClients, pageLiveClients, splitClients, CLIENTS_PAGE, CLIENTS_PREVIEW, type SpaceClient } from './spaceClients.js';
+import { recordsByService, archivedBanner, clientChatIds, clientHeaderSubtitle, clientRowSubtitle, dayLabel, filterArchivedClients, filterServices, pageLiveClients, splitClients, CLIENTS_PAGE, CLIENTS_PREVIEW, type SpaceClient } from './spaceClients.js';
 
 /** Pending 21 (§157): the client channels in the space list and «Archivados» (designs f-01, f-02, f-03). */
 const now = new Date('2026-10-29T15:00:00Z');
@@ -121,5 +121,23 @@ describe('pageLiveClients (José 29/10: the last 3 or 4, «Ver más» and a filt
   it('a filter searches every live client by name without accents, or by RUC, with no page limit', () => {
     expect(pageLiveClients(live, { query: 'pachacámac', shown: CLIENTS_PREVIEW }).entries.map((one) => one.client.id)).toEqual(['2']);
     expect(pageLiveClients(live, { query: '2060123', shown: CLIENTS_PREVIEW }).entries.map((one) => one.client.id)).toEqual(['6']);
+  });
+});
+
+describe('filterServices (José 29/10: the services of a client channel with their search filters)', () => {
+  const service = (id: string, name: string, status: SpaceClient['services'][number]['status']) => ({ id, name, status, stage_label: '' });
+  const services = [service('1', 'Pavimentación Av. Los Álamos', 'in_progress'), service('2', 'Bacheo Jr. Lima', 'pending'), service('3', 'Parchado Av. Central', 'completed'), service('4', 'Asfaltado Calle 5', 'rejected')];
+
+  it('counts each filter and shows the open ones (pending or in progress) first', () => {
+    const shown = filterServices(services, { query: '', filter: 'all' });
+
+    expect(shown.counts).toEqual({ all: 4, open: 2, completed: 1, rejected: 1 });
+    expect(shown.services.map((one) => one.id)).toEqual(['1', '2', '3', '4']);
+  });
+
+  it('a chip keeps only its state, and the search finds by name without accents', () => {
+    expect(filterServices(services, { query: '', filter: 'open' }).services.map((one) => one.id)).toEqual(['1', '2']);
+    expect(filterServices(services, { query: 'alamos', filter: 'all' }).services.map((one) => one.id)).toEqual(['1']);
+    expect(filterServices(services, { query: 'av.', filter: 'completed' }).services.map((one) => one.id)).toEqual(['3']);
   });
 });

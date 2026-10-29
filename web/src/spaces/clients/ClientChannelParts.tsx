@@ -1,5 +1,6 @@
-import { Archive, ExternalLink, FileText, FolderOpen } from 'lucide-react';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, recordsByService, shortDate, type ClientRecord, type ClientServiceStatus, type SpaceClient } from '@lilachat/shared';
+import { useState } from 'react';
+import { Archive, ExternalLink, FileText, FolderOpen, Search } from 'lucide-react';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, shortDate, type ServiceFilter, type ClientRecord, type ClientServiceStatus, type SpaceClient } from '@lilachat/shared';
 
 /** The parts of a client's channel (design f-03): the archived banner, the note over the composer and «Servicios». */
 export function ArchivedClientBanner(props: { client: SpaceClient }) {
@@ -33,7 +34,9 @@ const STATUS_TONE: Record<ClientServiceStatus, string> = {
  * records (informes, quotes, payments) — tapping one goes to its message.
  */
 export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord?: (seq: number) => void }) {
-  const { services } = props.client;
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<ServiceFilter>('all');
+  const { services, counts } = filterServices(props.client.services, { query, filter });
   const grouped = props.records ? recordsByService(props.records) : null;
   return (
     <div data-testid="servicios-cliente" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-6">
@@ -45,7 +48,21 @@ export function ClientServices(props: { client: SpaceClient; records: ClientReco
             <ExternalLink size={16} className="text-on-surface-variant" />
           </a>
         ) : null}
-        {services.length === 0 ? <p className="pt-10 text-center text-sm text-on-surface-variant">Este cliente todavía no tiene servicios.</p> : null}
+        {props.client.services.length > 1 ? (
+          <div className="flex flex-col gap-2 md:flex-row md:items-center">
+            <label className="flex h-9 flex-1 items-center gap-2 rounded-lg border border-outline/15 bg-surface px-3">
+              <Search size={15} className="text-on-surface-variant" />
+              <input data-testid="buscar-servicio" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar servicio" aria-label="Buscar servicio" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
+            </label>
+            <div role="group" aria-label="Filtrar por estado" className="flex flex-wrap gap-1.5">
+              {(Object.keys(SERVICE_FILTER_LABELS) as ServiceFilter[]).map((key) => (
+                <button key={key} type="button" data-testid={`filtro-servicio-${key}`} aria-pressed={filter === key} onClick={() => setFilter(key)} className={`h-8 rounded-full border px-3 text-[12px] font-semibold ${filter === key ? 'border-primary bg-primary text-on-primary' : 'border-outline/20 bg-surface text-on-surface-variant hover:text-on-surface'}`}>{`${SERVICE_FILTER_LABELS[key]} · ${counts[key]}`}</button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {props.client.services.length === 0 ? <p className="pt-10 text-center text-sm text-on-surface-variant">Este cliente todavía no tiene servicios.</p> : null}
+        {props.client.services.length > 0 && services.length === 0 ? <p className="pt-6 text-center text-sm text-on-surface-variant">Ningún servicio con ese filtro.</p> : null}
         {services.map((service) => (
           <article key={service.id} data-testid={`servicio-${service.id}`} className="rounded-xl border border-outline/15 bg-surface p-4">
             <div className="flex items-start gap-3">

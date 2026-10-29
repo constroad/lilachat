@@ -4938,7 +4938,21 @@ protocolo aparte, `groupcall.*`, para no tocar lo que ya anda.
   los miembros, `groupcall.ring` a los demás cuando la sala NACE,
   `groupcall.left` a los que quedan.
 - Al terminar (sale el último) queda una línea en el chat: «Videollamada grupal
-  · N personas», por el mismo `escribirAviso` de las llamadas.
+  · 3 personas · 02:30», por el mismo `escribirAviso` de las llamadas. El valor
+  es el de la 1:1 con `:gN` al final (`video:150:g3`); uno sin `:gN` se lee como
+  antes.
+- El timbre trae `chatName`: el teléfono solo conoce los nombres de sus chats
+  personales, y el aviso de un canal decía «Grupo» (visto en el E2E).
+
+**E2E (29/10, emulador + `scripts/demo-group-call.ts`)**: Lucía (demo) abre una
+videollamada en #obra-carretera-km-12; el teléfono muestra el aviso con el
+nombre del canal, la franja «Videollamada en curso · 1 persona · Unirse», y al
+unirse la cuadrícula «2 personas» con la cámara propia y la ficha de Lucía. El
+teléfono le mandó la oferta con audio y video (2 pistas) y 29 candidatos ICE;
+silenciar, colgar e ignorar funcionan, y la franja vuelve a «1 persona». Lo que
+NO se probó: audio y video reales entre dos dispositivos (Lucía es un script que
+solo firma señales). Las 4 líneas de llamada de QA se borraron con «Eliminar
+para todos» como Lucía: quedan 0.
 
 **En el teléfono** (`app/src/calls/group/*`): la cámara del encabezado de un
 grupo abre «Llamada grupal de voz» o «Videollamada grupal» (programar y enlace

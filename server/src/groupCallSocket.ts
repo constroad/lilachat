@@ -1,6 +1,6 @@
 import { Types } from 'mongoose';
 import type { Server, Socket } from 'socket.io';
-import { valorDeLlamada } from '@lilachat/shared';
+import { cuerpoDeLlamada, valorDeLlamada } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import { UserModel } from './models.js';
 import { escribirAviso } from './chatService.js';
@@ -22,12 +22,13 @@ export function buildGroupCallHub(io: Server, userRoom: (userId: string) => stri
     emitToSocket: (socketId, event, frame) => void io.to(socketId).emit(event, frame),
     nameOf: async (userId) => (await UserModel.findById(userId).select('name').lean<{ name?: string } | null>())?.name ?? null,
     writeEnd: async (chatId, end, members) => {
+      const recorded = valorDeLlamada({ video: end.video, segundos: end.seconds, personas: end.people });
       const message = await escribirAviso({
         chatId,
         quien: new Types.ObjectId(end.startedBy),
         evento: 'llamada',
-        valor: valorDeLlamada({ video: end.video, segundos: end.seconds, personas: end.people }),
-        body: `${end.video ? 'Videollamada' : 'Llamada'} grupal · ${end.people} personas`,
+        valor: recorded,
+        body: cuerpoDeLlamada({ valor: recorded, quien: '' }),
       });
       if (message) await publicarAviso(message, members);
     },

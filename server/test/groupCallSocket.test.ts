@@ -71,7 +71,8 @@ describe('group call over the socket', () => {
     expect(b.heard.find((one) => one.event === 'groupcall.left')?.frame).toEqual({ chatId, userId: ana });
     expect(c.heard.filter((one) => one.event === 'groupcall.state').at(-1)?.frame).toEqual({ chatId, room: null, names: {} });
     const line = await MessageModel.findOne({ chatId, kind: 'system' }).sort({ seq: -1 }).lean();
-    expect(line?.body).toBe('Videollamada grupal · 2 personas');
+    // Same words the phone shows (`cuerpoDeLlamada`): singular for one, and the length.
+    expect(line?.body).toMatch(/^Videollamada grupal · 2 personas · \d\d:\d\d$/);
   });
 
   it('a 1:1 chat cannot have a group call', async () => {

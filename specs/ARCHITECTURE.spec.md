@@ -4911,6 +4911,52 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 157. Canales por cliente: contrato con agentes y Archivados (29/10/2026, diseño; pendiente 21)
+
+**Decisiones de José (29/10).**
+- Un canal por cliente, no por obra.
+- Dentro del canal, cada servicio (ServiceManagement) es un expediente. La
+  pestaña se llama «Servicios», como en todo el Portal.
+- Un canal está vivo si el cliente tuvo un pedido en los últimos 90 días o
+  tiene un servicio abierto (pending o in_progress). Si no, pasa a
+  «Archivados».
+- «Archivados» se ve, y un canal vuelve solo con el próximo pedido o servicio.
+
+**Diseños:** f-01 (lista con «CLIENTES · 8» y la fila «Archivados · 237»),
+f-02 (Archivados en móvil y escritorio) y f-03 (canal archivado con aviso y
+«Chat · Servicios»).
+- Un mensaje NO saca un canal de Archivados: el aviso de f-03 lo dice sobre el
+  compositor.
+- Del escritorio se borran «Espacio conectado» y «Actualizado automáticamente…»
+  (inventados), y la columna Cliente se ensancha.
+
+**Archivado = cálculo, no cron.** `isClientChannelLive({lastOrderAt,
+openServices}, now)` en `shared` es una función pura con test. La lista lo
+calcula al leer, así que el día 91 el canal pasa a Archivados sin ningún
+proceso que lo mueva.
+
+**Contrato con agentes (la app escribe, Lilachat dibuja).**
+- `PUT /api/bots/clients/:clientId`:
+  `{ name, ruc?, lastOrderAt, ordersTotal, services: [{ id, name, status, stage, stageLabel, progress?, url? }] }`.
+  Crea el canal la primera vez y actualiza el estado. `clientId` es el `_id`
+  del cliente en el Portal.
+  - Es idempotente: el mismo cuerpo dos veces no cambia nada.
+  - `status` es el del Portal (`pending | in_progress | completed |
+    cancelled`). Solo los dos primeros cuentan como abiertos.
+- Los avisos van con `target: { client: "<clientId>" }` (además de `topic` y
+  `channelId`). Llevan `kind` y `refs: { serviceId?, recordId? }`, y un aviso
+  con `serviceId` sale además en ese servicio de la pestaña.
+- Kinds de pedido: `order.created`, `order.dispatched`, `order.delivered`.
+- Kinds de servicio: `service.created`, `service.stage_changed`,
+  `service.completed`, `service.cancelled`.
+- Kind de registro del expediente: `service.record`. Lleva
+  `record: { kind: quote | purchase_order | valuation | payment | report |
+  observation | photo, id, title, url? }`.
+- Antes de cada aviso, agentes manda el `PUT` con el estado nuevo. El aviso no
+  saca el canal de Archivados: lo saca el estado.
+- El Drive no se copia. «Ver en el Drive» abre la pestaña Drive del servicio
+  en el Portal con `crear_enlace_de_servicio`.
+
 ## 156. Ubicación en tiempo real: 15 min, 1 hora u 8 horas (28/10/2026, servidor + APK 0.1.174 + web; pendiente 11)
 
 Sobre la ubicación fija (§114, diseño `r152-ubicacion`). No hay diseño propio

@@ -164,3 +164,11 @@ las de esta tabla.
 | d-01-comandos-y-acciones | «Comandos y acciones» con Encendido/Apagado, ⚡, «En el chat con la app», canales, «Quién puede usarlo» y «Programar» (`screens/b902c33ac3c046bca8143a99285c83f5`, escritorio `9fc20bf4f8eb45ac84d00d079a29ee25`) | móvil, escritorio | Fuente del §152. Sin el bottom nav «Directorio · Menciones» (no es el de la app) |
 | d-02-programar-comando | Hoja «Programar»: hora, días L–D, dónde se publica, argumentos, «Solo si hay algo» (`screens/20be0a2812244fd597f61ab7e9963c13`) | móvil | Fuente del §152. Sin la pastilla «PROGRAMADO» (no aporta en una hoja nueva) |
 | d-03-horarios-de-la-app | «Horarios» con interruptor, «No corrió el 27/10: …» y «Sugeridos por la app» con «Crear» (`screens/2607f53c00664cb79313bdd817146399`) | móvil | Fuente del §152. Sin «Nueva acción» en el encabezado (no hay acción que crear desde ahí) |
+
+### Canales por cliente y Archivados (29/10/2026, pendiente 21, §157)
+
+| Slug | Qué es | Dispositivos | Uso |
+| --- | --- | --- | --- |
+| f-01-clientes-del-espacio | Lista del espacio con chips, «CLIENTES · 8» y la fila «Archivados · 237 · 2 sin leer» (`screens/156e746e9a7049ffac5a86a48be63116`) | móvil | Fuente del §157 |
+| f-02-clientes-archivados | Archivados: aviso de la regla, buscador por nombre o RUC, chips, grupos por antigüedad del último pedido (`screens/2ad22c8297f249c8a7fdaf6472355928`, escritorio `a4935ca6e60d4679b6616c1f3fdb65f3`) | móvil, escritorio | Fuente del §157. En escritorio sin «Espacio conectado» ni «Actualizado automáticamente…» (inventados) |
+| f-03-canal-de-cliente-archivado | Canal archivado: «Chat · Servicios 3», aviso «Archivado desde…» y «Escribir aquí no lo saca de Archivados» (`screens/d77a29c1886c430396fe359dab6f06ee`) | móvil | Fuente del §157 |

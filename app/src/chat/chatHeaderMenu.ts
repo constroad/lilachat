@@ -30,3 +30,9 @@ export const CALL_MENU: readonly { id: CallMenuId; label: string }[] = [
   { id: 'schedule', label: 'Programar llamada' },
   { id: 'link', label: 'Crear enlace de llamada' },
 ];
+
+/** Pending 56: in a group the camera opens the group call; scheduling and links stay for a 1:1. */
+export const GROUP_CALL_MENU: readonly { id: CallMenuId; label: string }[] = [
+  { id: 'voice', label: 'Llamada grupal de voz' },
+  { id: 'video', label: 'Videollamada grupal' },
+];

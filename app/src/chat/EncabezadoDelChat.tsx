@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ArrowLeft, Building2, CalendarClock, ChevronDown, Link, Lock, MoreVertical, NotebookPen, Phone, Video } from 'lucide-react-native';
-import { CALL_MENU } from './chatHeaderMenu';
+import { CALL_MENU, GROUP_CALL_MENU } from './chatHeaderMenu';
 import { HeaderDropdown } from './HeaderDropdown';
 import type { ChatHeaderMenu } from './useChatHeaderMenu';
 import { useMargenes } from '../ui/useMargenes';
@@ -16,6 +16,7 @@ const CALL_MENU_RIGHT = 52;
 const CHAT_MENU_RIGHT = 8;
 const CALL_ICONS = { voice: Phone, video: Video, schedule: CalendarClock, link: Link } as const;
 const CALL_OPTIONS = CALL_MENU.map((option) => ({ ...option, Icon: CALL_ICONS[option.id] }));
+const GROUP_CALL_OPTIONS = GROUP_CALL_MENU.map((option) => ({ ...option, Icon: CALL_ICONS[option.id] }));
 
 /**
  * La cabecera del chat (salió de `ChatScreen`, que pasaba de 900 líneas): la
@@ -33,7 +34,7 @@ export function EncabezadoDelChat(props: {
   /** A group or channel: its subtitle is cut with «…», never shrunk to fit. */
   grupo?: boolean;
   otroEscribe: boolean;
-  /** Solo en un 1:1: una llamada grupal es otra cosa. */
+  /** A 1:1 calls the other; a group or channel opens its group call (pending 56). */
   puedeLlamar: boolean;
   onVolver: () => void;
   onAbrirDetalle: () => void;
@@ -110,7 +111,7 @@ export function EncabezadoDelChat(props: {
         ) : null}
       </View>
       </Pressable>
-      {/* Calls like WhatsApp (José, 21/10): the camera with its arrow opens voice or video. Only in a 1:1 (F10): a group call is another thing. */}
+      {/* Calls like WhatsApp (José, 21/10): the camera with its arrow opens voice or video; in a group, the group call (pending 56). */}
       {props.puedeLlamar ? (
         <Pressable testID="btn-llamadas" accessibilityLabel="Llamar" onPress={() => setOpenMenu('calls')} className="h-11 flex-row items-center justify-center gap-0.5 px-1.5">
           <Video size={21} color={colores["on-surface-variant"]} />
@@ -129,7 +130,7 @@ export function EncabezadoDelChat(props: {
       >
         <MoreVertical size={20} color={colores["on-surface-variant"]} />
       </Pressable>
-      <HeaderDropdown testID="menu-llamadas" visible={openMenu === 'calls'} options={CALL_OPTIONS} right={CALL_MENU_RIGHT} onSelect={(id) => (id === 'schedule' ? props.onProgramarLlamada?.() : id === 'link' ? props.onEnlaceDeLlamada?.() : props.onLlamar(id === 'video'))} onClose={() => setOpenMenu(null)} />
+      <HeaderDropdown testID="menu-llamadas" visible={openMenu === 'calls'} options={props.grupo ? GROUP_CALL_OPTIONS : CALL_OPTIONS} right={CALL_MENU_RIGHT} onSelect={(id) => (id === 'schedule' ? props.onProgramarLlamada?.() : id === 'link' ? props.onEnlaceDeLlamada?.() : props.onLlamar(id === 'video'))} onClose={() => setOpenMenu(null)} />
       <HeaderDropdown testID="menu-del-chat" visible={openMenu === 'chat'} options={props.menu.options} right={CHAT_MENU_RIGHT} onSelect={props.menu.select} onClose={() => setOpenMenu(null)} />
     </View>
   );

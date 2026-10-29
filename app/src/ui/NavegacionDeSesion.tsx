@@ -170,7 +170,7 @@ export function NavegacionDeSesion(props: {
 
   return (
     // Las llamadas envuelven toda la sesión: suenan en cualquier pantalla (FL8).
-    <ProveedorDeLlamadas jwt={props.credential.jwt} onOpenChat={openCallChat}>
+    <ProveedorDeLlamadas jwt={props.credential.jwt} me={props.credential.userId} onOpenChat={openCallChat}>
     {/* Pending 63: a reminder that rang full screen, over any screen. */}
     <ReminderAlarmHost jwt={props.credential.jwt} />
     <WhatsNewHost />

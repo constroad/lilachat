@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CALL_MENU, chatMenuOptions } from './chatHeaderMenu';
+import { CALL_MENU, chatMenuOptions, GROUP_CALL_MENU } from './chatHeaderMenu';
 
 /** José, 21/10: the ⋮ opened the same as the avatar; WhatsApp's has options. */
 describe('chat header menu', () => {
@@ -26,5 +26,11 @@ describe('chat header menu', () => {
 
   it('the call menu: voice, video, scheduling and a link, like the camera with its arrow in WhatsApp (pending 42)', () => {
     expect(CALL_MENU.map((option) => option.label)).toEqual(['Llamada de voz', 'Videollamada', 'Programar llamada', 'Crear enlace de llamada']);
+  });
+});
+
+describe('the call menu of a group (pending 56)', () => {
+  it('offers only voice and video: a scheduled call and a link are for a 1:1', () => {
+    expect(GROUP_CALL_MENU.map((option) => option.label)).toEqual(['Llamada grupal de voz', 'Videollamada grupal']);
   });
 });

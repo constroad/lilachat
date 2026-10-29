@@ -38,6 +38,7 @@ import { registerAgendaRelay } from './agendaRelay.js';
 import { BUILD_HEADER, appBelowMinimum, type MinimumSource } from './minimumVersion.js';
 import { avisarCambioDeChat, emitMembersChanged, emitSpacesChanged, avisarEntregadoAlConectar, avisarMensajeNuevo, fijarServidorDelReparto, leerLoPropio, publicarAviso, publicarMensaje } from './reparto.js';
 import { configureCommands } from './bots/botCommands.js';
+import { buildGroupCallHub, registerGroupCallEvents } from './groupCallSocket.js';
 
 export { avisarCambioDeChat, avisarCambioDeVinculos, avisarMensajeNuevo, desconectarDispositivo, notifyThread, publicarAviso, publicarMensaje } from './reparto.js';
 
@@ -120,6 +121,9 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
     );
   });
 
+  // Group calls (pending 56): their own rooms, apart from the 1:1 call.
+  const groupCalls = buildGroupCallHub(io, userRoom);
+
   io.on('connection', (socket: AuthedSocket) => {
     const userId = socket.userId;
     if (!userId) return socket.disconnect(true);
@@ -127,6 +131,7 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
     void socket.join(userRoom(me));
     if (socket.deviceId) void socket.join(deviceRoom(socket.deviceId));
     registerAgendaRelay(io, socket, me, userRoom(me));
+    registerGroupCallEvents(socket, me, groupCalls);
 
     // Presencia: el alta es SINCRÓNICA, antes de cualquier `await`. Si se
     // contaba después de leer los contactos, un corte inmediato (salir rápido

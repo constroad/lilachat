@@ -25,7 +25,7 @@ import { Composer, type ComposerHandle } from './Composer';
 import { useChatCommands } from './commands/useChatCommands';
 import { ChatDetailScreen } from './ChatDetailScreen';
 import { useChat } from './useChat';
-import { useLlamadas } from '../calls/ProveedorDeLlamadas';
+import { GroupCallStrip, useLlamadas } from '../calls/ProveedorDeLlamadas';
 import { useArchivosDelChat } from './useArchivosDelChat';
 import { useLimpiarAvisoDelChat } from './useLimpiarAvisoDelChat';
 import { SeleccionDeMensaje } from './SeleccionDeMensaje';
@@ -149,7 +149,7 @@ export function ChatScreen({
   const [creando, setCreando] = useState<QueSeCrea>(null);
   const [falloCifrado, setFalloCifrado] = useState(false);
   // Las llamadas son de la sesión (FL8): suenan en cualquier pantalla.
-  const { llamar } = useLlamadas();
+  const { llamar, callGroup } = useLlamadas();
 
   const archivosEnCola = useArchivosDelChat(chatId);
   /** El `seq` de la foto abierta a pantalla completa, o `null`. */
@@ -420,16 +420,16 @@ export function ChatScreen({
           conectado={connected}
           subtitulo={channelWork.client ? clientHeaderSubtitle(grupo.members.length) : subtitulo} grupo={esGrupoChat} cliente={Boolean(channelWork.client)}
           otroEscribe={otroEscribe}
-          puedeLlamar={Boolean(otherUserId) && grupo.roles.get(otherUserId ?? '')?.role !== 'app'}
+          puedeLlamar={esGrupoChat ? !encrypted && !fueraDelGrupo : Boolean(otherUserId) && grupo.roles.get(otherUserId ?? '')?.role !== 'app'}
           onVolver={onBack} app={appId ? { appId, spaceId: workspaceId, jwt: credential.jwt } : undefined}
           onAbrirDetalle={() => setVerDetalle(true)}
-          onLlamar={(conVideo) => llamar(chatId, chatName, conVideo)}
+          onLlamar={(conVideo) => (esGrupoChat ? callGroup(chatId, nombreVisible, conVideo) : llamar(chatId, chatName, conVideo))}
           onProgramarLlamada={() => setCreando('scheduled-call')} onEnlaceDeLlamada={() => offerCallLink({ jwt: credential.jwt, chatId, chatName: nombreVisible })}
           menu={headerMenu}
         />
       )}
 
-      {fijar.franja}{channelWork.tabs}
+      {fijar.franja}{esGrupoChat ? <GroupCallStrip chatId={chatId} chatName={nombreVisible} me={credential.userId} /> : null}{channelWork.tabs}
       </View>
       {/* Keyboard like Telegram (20/10): see `useScrollConTeclado`; the bar rides on the keyboard or the emoji panel in `ChatBottom`. */}
       <View style={{ flex: 1, zIndex: 1 }}>

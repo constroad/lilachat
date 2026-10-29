@@ -97,7 +97,7 @@ export const Composer = memo(function Composer(props: {
   onNotaDeVoz: (nota: NotaGrabada) => Promise<void>;
   /**
    * Chat secreto (auditoría 17/10/2026). `bloqueado`: la clave todavía no está
-   * y NADA se puede mandar — antes salía en claro.
+   * and NOTHING can be sent (it used to go out in clear).
    * `sealed`: the key is ready; text, photos and videos travel encrypted
    * (pending 67, 29/10), voice notes and scheduled messages not yet, so they
    * are not offered.

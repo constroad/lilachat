@@ -10,12 +10,13 @@ const DAY_MS = 86_400_000;
 const SIX_MONTHS_DAYS = 180;
 const MAX_SERVICES = 200;
 const MAX_TEXT = 160;
+const MAX_URL = 1000;
 
 export const CLIENT_SERVICE_STATUSES = ['pending', 'in_progress', 'completed', 'rejected'] as const;
 export type ClientServiceStatus = (typeof CLIENT_SERVICE_STATUSES)[number];
 export type ClientService = { id: string; name: string; status: ClientServiceStatus; stage: string; stageLabel: string; progress?: number; url?: string; closedAt?: string };
 /** `lastOrderAt` and `ordersTotal` are only shown; `lastActivityAt` decides. */
-export type ClientState = { name: string; ruc?: string; lastActivityAt: string | null; lastOrderAt: string | null; ordersTotal: number; services: ClientService[] };
+export type ClientState = { name: string; ruc?: string; /** The client's Drive folder in the Portal (José, 29/10: «no veo el Drive»). */ driveUrl?: string; lastActivityAt: string | null; lastOrderAt: string | null; ordersTotal: number; services: ClientService[] };
 export type ArchivedAgeGroup = '2-6' | '6+';
 
 export function isClientChannelLive(state: Pick<ClientState, 'lastActivityAt'>, now: Date): boolean {
@@ -51,7 +52,7 @@ function validateService(raw: unknown): { ok: true; service: ClientService } | R
   if (progress !== undefined && !(Number.isFinite(progress) && progress >= 0 && progress <= 100)) return refuse('progress va de 0 a 100.');
   const closedAt = isoOrNull(body.closed_at);
   if (closedAt === undefined) return refuse('closed_at va como fecha ISO.');
-  const url = text(body.url);
+  const url = typeof body.url === 'string' ? body.url.trim().slice(0, MAX_URL) : '';
   return {
     ok: true,
     service: { id, name, status: body.status as ClientServiceStatus, stage: text(body.stage), stageLabel: text(body.stage_label), ...(progress !== undefined ? { progress } : {}), ...(url.startsWith('https://') ? { url } : {}), ...(closedAt ? { closedAt } : {}) },
@@ -76,6 +77,7 @@ export function validateClientState(raw: unknown): { ok: true; state: ClientStat
     services.push(valid.service);
   }
   const ruc = text(body.ruc);
+  const driveUrl = typeof body.drive_url === 'string' ? body.drive_url.trim().slice(0, MAX_URL) : '';
   const ordersTotal = Number.isInteger(body.orders_total) && Number(body.orders_total) >= 0 ? Number(body.orders_total) : 0;
-  return { ok: true, state: { name, ...(ruc ? { ruc } : {}), lastActivityAt, lastOrderAt, ordersTotal, services } };
+  return { ok: true, state: { name, ...(ruc ? { ruc } : {}), ...(driveUrl.startsWith('https://') ? { driveUrl } : {}), lastActivityAt, lastOrderAt, ordersTotal, services } };
 }

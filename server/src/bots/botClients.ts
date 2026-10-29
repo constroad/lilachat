@@ -1,6 +1,6 @@
 import { model, Schema, Types } from 'mongoose';
 import { archivedAgeGroup, archivedSince, CLIENT_ID, isClientChannelLive, validateClientState, type ClientService, type ClientState } from '@lilachat/shared';
-import { ChatModel } from '../chatModels.js';
+import { ChatModel, MessageModel } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { actorIn } from '../workspaces.js';
 import type { BotInstallation } from './botModels.js';
@@ -25,6 +25,7 @@ const clientChannelSchema = new Schema<ClientChannel>(
     chatId: { type: Schema.Types.ObjectId, required: true },
     name: { type: String, required: true },
     ruc: { type: String },
+    driveUrl: { type: String },
     lastActivityAt: { type: String, default: null },
     lastOrderAt: { type: String, default: null },
     ordersTotal: { type: Number, default: 0 },
@@ -100,12 +101,13 @@ export async function listClients(workspaceId: string, userId: Types.ObjectId, n
   await actorIn(workspaceId, userId);
   const spaceId = new Types.ObjectId(workspaceId);
   const mine = await ChatModel.find({ workspaceId: spaceId, 'members.userId': userId }).select('_id').lean();
-  const docs = await ClientChannelModel.find({ workspaceId: spaceId, chatId: { $in: mine.map((chat) => chat._id) } }).select('clientId chatId name ruc lastActivityAt lastOrderAt ordersTotal services').lean<ClientChannel[]>();
+  const docs = await ClientChannelModel.find({ workspaceId: spaceId, chatId: { $in: mine.map((chat) => chat._id) } }).select('clientId chatId name ruc driveUrl lastActivityAt lastOrderAt ordersTotal services').lean<ClientChannel[]>();
   const clients = docs.map((doc) => ({
     ...toWire(doc, now),
     chat_id: String(doc.chatId),
     name: doc.name,
     ...(doc.ruc ? { ruc: doc.ruc } : {}),
+    ...(doc.driveUrl ? { drive_url: doc.driveUrl } : {}),
     last_activity_at: doc.lastActivityAt,
     last_order_at: doc.lastOrderAt,
     orders_total: doc.ordersTotal,
@@ -114,4 +116,35 @@ export async function listClients(workspaceId: string, userId: Types.ObjectId, n
   }));
   const lastActivity = (one: { last_activity_at: string | null }) => (one.last_activity_at ? Date.parse(one.last_activity_at) : 0);
   return clients.sort((a, b) => Number(b.live) - Number(a.live) || lastActivity(b) - lastActivity(a));
+}
+
+/** How many records «Servicios» shows per client: the newest ones. */
+const MAX_RECORDS = 200;
+
+/**
+ * The records of a client's services (José, 29/10: «no veo los servicios,
+ * informes»): the messages the app posted with `refs.service_id`, newest
+ * first, for a member of the client's channel. Anyone else gets 404.
+ */
+export async function clientRecords(workspaceId: string, clientId: string, userId: Types.ObjectId) {
+  await actorIn(workspaceId, userId);
+  const notFound = fail(404, 'client_not_found', 'Ese cliente no existe o no estás en su canal.');
+  const found = await ClientChannelModel.findOne({ workspaceId: new Types.ObjectId(workspaceId), clientId }).select('chatId').lean<Pick<ClientChannel, 'chatId'> | null>();
+  if (!found || !(await ChatModel.exists({ _id: found.chatId, 'members.userId': userId }))) return notFound;
+  const messages = await MessageModel.find({ chatId: found.chatId, 'clientRef.serviceId': { $exists: true }, deletedAt: { $exists: false } })
+    .sort({ seq: -1 })
+    .limit(MAX_RECORDS)
+    .select('seq at body card.title card.kicker clientRef')
+    .lean();
+  return {
+    records: messages.map((message) => ({
+      seq: message.seq,
+      at: message.at,
+      kind: message.clientRef?.kind,
+      service_id: message.clientRef?.serviceId,
+      ...(message.clientRef?.recordId ? { record_id: message.clientRef.recordId } : {}),
+      title: message.card?.title ?? message.body ?? '',
+      ...(message.card?.kicker ? { kicker: message.card.kicker } : {}),
+    })),
+  };
 }

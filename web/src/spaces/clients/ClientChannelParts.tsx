@@ -1,5 +1,5 @@
-import { Archive, ExternalLink } from 'lucide-react';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, type ClientServiceStatus, type SpaceClient } from '@lilachat/shared';
+import { Archive, ExternalLink, FileText, FolderOpen } from 'lucide-react';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, recordsByService, shortDate, type ClientRecord, type ClientServiceStatus, type SpaceClient } from '@lilachat/shared';
 
 /** The parts of a client's channel (design f-03): the archived banner, the note over the composer and «Servicios». */
 export function ArchivedClientBanner(props: { client: SpaceClient }) {
@@ -27,13 +27,25 @@ const STATUS_TONE: Record<ClientServiceStatus, string> = {
   rejected: 'border-error/30 bg-error/10 text-error',
 };
 
-/** «Servicios»: each service with its state, its progress (the client portal's) and «Ver en el Drive» when Portal sends the link. */
-export function ClientServices(props: { client: SpaceClient }) {
+/**
+ * «Servicios»: the client's Drive on top (José, 29/10), then each service with
+ * its state, its progress (the client portal's), «Ver en el Drive» and its
+ * records (informes, quotes, payments) — tapping one goes to its message.
+ */
+export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord?: (seq: number) => void }) {
   const { services } = props.client;
+  const grouped = props.records ? recordsByService(props.records) : null;
   return (
     <div data-testid="servicios-cliente" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-6">
-      {services.length === 0 ? <p className="pt-10 text-center text-sm text-on-surface-variant">Este cliente todavía no tiene servicios.</p> : null}
       <div className="mx-auto flex max-w-3xl flex-col gap-3">
+        {props.client.drive_url ? (
+          <a href={props.client.drive_url} target="_blank" rel="noreferrer" data-testid="drive-cliente" className="flex items-center gap-3 rounded-xl border border-outline/15 bg-surface p-4 hover:bg-background">
+            <FolderOpen size={20} className="text-primary" />
+            <span className="min-w-0 flex-1"><span className="block font-semibold">Drive del cliente</span><span className="block text-[12px] text-on-surface-variant">Todas sus carpetas en el Portal</span></span>
+            <ExternalLink size={16} className="text-on-surface-variant" />
+          </a>
+        ) : null}
+        {services.length === 0 ? <p className="pt-10 text-center text-sm text-on-surface-variant">Este cliente todavía no tiene servicios.</p> : null}
         {services.map((service) => (
           <article key={service.id} data-testid={`servicio-${service.id}`} className="rounded-xl border border-outline/15 bg-surface p-4">
             <div className="flex items-start gap-3">
@@ -49,9 +61,31 @@ export function ClientServices(props: { client: SpaceClient }) {
             {service.url ? (
               <a href={service.url} target="_blank" rel="noreferrer" data-testid={`servicio-drive-${service.id}`} className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary"><ExternalLink size={14} /> Ver en el Drive</a>
             ) : null}
+            <ServiceRecords records={grouped ? (grouped.get(service.id) ?? []) : null} onOpen={props.onOpenRecord} />
           </article>
         ))}
       </div>
     </div>
+  );
+}
+
+function ServiceRecords(props: { records: ClientRecord[] | null; onOpen?: (seq: number) => void }) {
+  if (props.records === null) return <div className="mt-3 h-8 animate-pulse rounded-lg bg-background" />;
+  if (props.records.length === 0) return null;
+  return (
+    <ul className="mt-3 divide-y divide-outline/10 border-t border-outline/10">
+      {props.records.map((record) => (
+        <li key={record.seq}>
+          <button type="button" data-testid={`registro-${record.seq}`} onClick={() => props.onOpen?.(record.seq)} className="flex w-full items-center gap-2.5 py-2 text-left hover:bg-background">
+            <FileText size={15} className="shrink-0 text-on-surface-variant" />
+            <span className="min-w-0 flex-1">
+              {record.kicker ? <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">{record.kicker}</span> : null}
+              <span className="block truncate text-[13px]">{record.title}</span>
+            </span>
+            <span className="shrink-0 font-mono text-[11px] text-on-surface-variant">{shortDate(record.at)}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }

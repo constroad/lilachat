@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import type { SpaceClient } from '@lilachat/shared';
+import type { ClientRecord, SpaceClient } from '@lilachat/shared';
 import { api } from '../../api';
 
 /**
@@ -43,4 +43,19 @@ export function useSpaceClients(jwt: string | undefined, spaceId: string, chatsK
     return () => controller.abort();
   }, [jwt, spaceId, chatsKey]);
   return clients;
+}
+
+/** The records of a client's services (informes, quotes, payments), asked when «Servicios» opens; `null` while loading. */
+export function useClientRecords(jwt: string | undefined, spaceId: string | undefined, clientId: string | undefined): ClientRecord[] | null {
+  const [records, setRecords] = useState<ClientRecord[] | null>(null);
+  useEffect(() => {
+    setRecords(null);
+    if (!jwt || !spaceId || !clientId) return;
+    const controller = new AbortController();
+    void api<{ records: ClientRecord[] }>(`/workspaces/${spaceId}/clients/${encodeURIComponent(clientId)}/records`, { jwt, signal: controller.signal }).then((response) => {
+      if (!controller.signal.aborted) setRecords(response.ok ? response.data.records : []);
+    });
+    return () => controller.abort();
+  }, [jwt, spaceId, clientId]);
+  return records;
 }

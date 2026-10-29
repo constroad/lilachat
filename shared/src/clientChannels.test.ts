@@ -44,6 +44,18 @@ describe('validateClientState', () => {
     expect(validateClientState({ ...wire, services: [{ ...wire.services[0], progress: 140 }] }).ok).toBe(false);
   });
 
+  it('a long Drive link of a service is not cut at 160 characters', () => {
+    const url = `https://portal.constroad.com/drive/${'a'.repeat(300)}`;
+    const valid = validateClientState({ ...wire, services: [{ ...wire.services[0], url }] });
+    expect(valid.ok && valid.state.services[0]!.url).toBe(url);
+  });
+
+  it('keeps the client Drive folder only when it is https', () => {
+    expect(validateClientState({ ...wire, drive_url: 'https://portal.constroad.com/drive/c1' })).toMatchObject({ ok: true, state: { driveUrl: 'https://portal.constroad.com/drive/c1' } });
+    const plain = validateClientState({ ...wire, drive_url: 'http://x.com' });
+    expect(plain.ok && 'driveUrl' in plain.state).toBe(false);
+  });
+
   it('a client without orders yet sends last_order_at null', () => {
     const valid = validateClientState({ ...wire, last_order_at: null, orders_total: 0, services: [] });
     expect(valid.ok && valid.state.lastOrderAt).toBeNull();

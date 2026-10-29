@@ -89,11 +89,26 @@ describe('a client channel (design f-03)', () => {
     expect(screen.queryByTestId('nota-archivado')).toBeNull();
   });
 
-  it('«Servicios» shows each service with its state, progress and the Drive link', () => {
-    render(<ClientServices client={client('x', { services: [inProgress, { id: 's2', name: 'Bacheo', status: 'completed', stage_label: '' }] })} />);
+  it('«Servicios» shows the client Drive, each service with its state, progress, Drive link and records; a record opens its message', () => {
+    // Arrange
+    const onOpenRecord = vi.fn();
+    const records = [{ seq: 7, at: '2026-10-29T11:36:30Z', kind: 'service.record', service_id: 's1', title: 'Control de pista · 29 de octubre', kicker: 'INFORME' }];
+    render(<ClientServices client={client('x', { drive_url: 'https://portal.constroad.com/drive/c1', services: [inProgress, { id: 's2', name: 'Bacheo', status: 'completed', stage_label: '' }] })} records={records} onOpenRecord={onOpenRecord} />);
+    // Act
+    fireEvent.click(screen.getByTestId('registro-7'));
+    // Assert
+    expect(screen.getByTestId('drive-cliente')).toHaveAttribute('href', 'https://portal.constroad.com/drive/c1');
     expect(screen.getByTestId('servicio-s1')).toHaveTextContent('En ejecución');
     expect(screen.getByTestId('servicio-s1')).toHaveTextContent('40 %');
+    expect(screen.getByTestId('servicio-s1')).toHaveTextContent('INFORME');
     expect(screen.getByTestId('servicio-drive-s1')).toHaveAttribute('href', 'https://drive.example.com/s1');
     expect(screen.getByTestId('servicio-s2')).toHaveTextContent('Completado');
+    expect(onOpenRecord).toHaveBeenCalledWith(7);
+  });
+
+  it('without a client Drive there is no Drive row, and records still loading show a placeholder', () => {
+    render(<ClientServices client={client('x', { services: [inProgress] })} records={null} />);
+    expect(screen.queryByTestId('drive-cliente')).toBeNull();
+    expect(screen.queryByTestId(/registro-/)).toBeNull();
   });
 });

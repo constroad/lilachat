@@ -3,7 +3,7 @@ import { BackHandler, Pressable, Text, ToastAndroid, View } from 'react-native';
 import { checklistMembers, type SpaceClient } from '@lilachat/shared';
 import { useWorkPlan } from './useWorkPlan';
 import { WorkPlanPanel } from './WorkPlanPanel';
-import { useClientOfChat } from '../../spaces/clients/useSpaceClients';
+import { useClientOfChat, useClientRecords } from '../../spaces/clients/useSpaceClients';
 import { ArchivedClientBanner, ArchivedComposerNote, ClientServices } from '../../spaces/clients/ClientChannelParts';
 
 type Tab = 'chat' | 'services' | 'checklist';
@@ -16,9 +16,10 @@ type Tab = 'chat' | 'services' | 'checklist';
  * design f-03) adds «Servicios N», and archived its banner and the note over
  * the composer.
  */
-export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: string; yo: string; names: ReadonlyMap<string, string> }): { tabs: ReactNode; panel: ReactNode; note: ReactNode; client: SpaceClient | null } {
+export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: string; yo: string; names: ReadonlyMap<string, string>; spaceId?: string; onOpenRecord?: (seq: number) => void }): { tabs: ReactNode; panel: ReactNode; note: ReactNode; client: SpaceClient | null } {
   const [tab, setTab] = useState<Tab>('chat');
   const client = useClientOfChat(params.chatId);
+  const records = useClientRecords(params.jwt, params.spaceId, client?.id, tab === 'services');
   const plan = useWorkPlan(params.jwt, params.chatId, params.enabled);
   // Android's BACK on the checklist goes back to the chat first; the last listener added runs first.
   useEffect(() => {
@@ -44,7 +45,10 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
   const panel =
     tab === 'services' && client ? (
       <View className="bg-background" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, elevation: 10 }}>
-        <ClientServices client={client} />
+        <ClientServices client={client} records={records} onOpenRecord={(seq) => {
+          setTab('chat');
+          params.onOpenRecord?.(seq);
+        }} />
       </View>
     ) : tab === 'checklist' ? (
       <View className="bg-background" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, elevation: 10 }}>

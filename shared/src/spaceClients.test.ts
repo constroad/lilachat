@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { archivedBanner, clientChatIds, clientHeaderSubtitle, clientRowSubtitle, dayLabel, filterArchivedClients, splitClients, type SpaceClient } from './spaceClients.js';
+import { recordsByService, archivedBanner, clientChatIds, clientHeaderSubtitle, clientRowSubtitle, dayLabel, filterArchivedClients, splitClients, type SpaceClient } from './spaceClients.js';
 
 /** Pending 21 (§157): the client channels in the space list and «Archivados» (designs f-01, f-02, f-03). */
 const now = new Date('2026-10-29T15:00:00Z');
@@ -90,5 +90,15 @@ describe('filterArchivedClients', () => {
 
   it('nothing matching leaves no groups', () => {
     expect(filterArchivedClients(archived, { query: 'nadie', filter: 'all' }, now)).toMatchObject({ groups: [], shown: 0 });
+  });
+});
+
+describe('recordsByService', () => {
+  it('groups the records by service and keeps the newest first', () => {
+    const record = (seq: number, service: string) => ({ seq, at: daysAgo(0), service_id: service, title: `r${seq}` });
+    const grouped = recordsByService([record(9, 's1'), record(7, 's2'), record(5, 's1')]);
+    expect(grouped.get('s1')!.map((one) => one.seq)).toEqual([9, 5]);
+    expect(grouped.get('s2')!.map((one) => one.seq)).toEqual([7]);
+    expect(grouped.get('s3')).toBeUndefined();
   });
 });

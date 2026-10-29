@@ -19,6 +19,7 @@ import { ListaDeMensajes } from './ListaDeMensajes';
 import { useWorkPlanWeb, WorkPlanWeb } from './workPlan/WorkPlanWeb';
 import { useClientOfChat } from '../spaces/clients/useSpaceClients';
 import { ArchivedClientBanner, ArchivedComposerNote, ClientServices } from '../spaces/clients/ClientChannelParts';
+import { useClientRecords } from '../spaces/clients/useSpaceClients';
 import type { ChatSummary, MensajeEnPantalla } from './types';
 
 /**
@@ -76,6 +77,8 @@ export function Conversation(props: {
   franja?: ReactNode;
   /** The cards queued over the writing bar (backlog 36). */
   queue?: ReactNode;
+  /** Go to a message from outside the list (a record in «Servicios»). */
+  onIrA?: (seq: number) => void;
   /** Ir a un mensaje (desde la franja). */
   salto?: { seq: number; vez: number } | null;
   onNoEsta?: () => void;
@@ -145,7 +148,10 @@ export function Conversation(props: {
       {isChannel && channelTab === 'checklist' ? (
         <WorkPlanWeb plan={workPlan} />
       ) : isChannel && client && channelTab === 'services' ? (
-        <ClientServices client={client} />
+        <ClientServicesPanel client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} onOpenRecord={(seq) => {
+          setChannelTab('chat');
+          props.onIrA?.(seq);
+        }} />
       ) : props.app && appTab === 'info' ? (
         <div data-testid="informacion-app" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-8">
           <div className="mx-auto max-w-3xl">
@@ -293,6 +299,12 @@ function BannerWithSession() {
 }
 
 type ChannelTab = 'chat' | 'services' | 'checklist';
+
+/** «Servicios» asks for its records only while it is open. */
+function ClientServicesPanel(props: { client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; onOpenRecord: (seq: number) => void }) {
+  const records = useClientRecords(props.jwt, props.spaceId, props.client.id);
+  return <ClientServices client={props.client} records={records} onOpenRecord={props.onOpenRecord} />;
+}
 
 /** «Chat · Checklist» under a channel's header (pending 21, design e2-17); a client's channel adds «Servicios N» (design f-03). */
 function ChannelTabs(props: { tab: ChannelTab; onTab: (tab: ChannelTab) => void; counter: string | null; services: number | null }) {

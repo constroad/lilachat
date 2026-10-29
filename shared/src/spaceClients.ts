@@ -15,6 +15,8 @@ export type SpaceClient = {
   chat_id: string;
   name: string;
   ruc?: string;
+  /** The client's Drive folder in the Portal, when the app sends it. */
+  drive_url?: string;
   live: boolean;
   archived_since: string | null;
   last_activity_at: string | null;
@@ -96,4 +98,14 @@ export function filterArchivedClients<T extends ClientChat>(archived: readonly C
   const shown = matching.filter((entry) => params.filter === 'all' || (params.filter === 'unread' ? (entry.chat?.unread ?? 0) > 0 : isRecentOrder(entry.client, now)));
   const groups = (['2-6', '6+'] as const).map((key) => ({ key, title: ARCHIVED_GROUP_TITLES[key], entries: shown.filter((entry) => entry.client.archived_group === key) })).filter((group) => group.entries.length > 0);
   return { groups, counts, shown: shown.length };
+}
+
+/** One record of a service (an informe, a quote, a payment, a photo): `GET …/clients/:id/records`. */
+export type ClientRecord = { seq: number; at: string; kind?: string; service_id: string; record_id?: string; title: string; kicker?: string };
+
+/** The records grouped by service, keeping the server's order (newest first). */
+export function recordsByService(records: readonly ClientRecord[]): Map<string, ClientRecord[]> {
+  const grouped = new Map<string, ClientRecord[]>();
+  for (const record of records) grouped.set(record.service_id, [...(grouped.get(record.service_id) ?? []), record]);
+  return grouped;
 }

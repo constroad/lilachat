@@ -231,6 +231,7 @@ export function ConversacionConAcciones(
         }
         queue={chat.kind === 'notas' ? null : <ChatQueue jwt={props.jwt} chatId={chat.id} onOpen={(seq) => setSalto({ seq, vez: Date.now() })} />}
         salto={salto}
+        onIrA={(seq) => setSalto({ seq, vez: Date.now() })}
         onNoEsta={() => {
           if (!salto || chat.encrypted) return onAviso('Ese mensaje está más arriba: sube para cargarlo.');
           void ventana.jumpTo(salto.seq).then((outcome) => {

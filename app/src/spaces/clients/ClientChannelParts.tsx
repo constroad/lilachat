@@ -1,6 +1,6 @@
 import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
-import { Archive, ExternalLink } from 'lucide-react-native';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, type ClientServiceStatus, type SpaceClient } from '@lilachat/shared';
+import { Archive, ExternalLink, FileText, FolderOpen } from 'lucide-react-native';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, recordsByService, shortDate, type ClientRecord, type ClientServiceStatus, type SpaceClient } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 
 /** The parts of a client's channel (design f-03): the archived banner, the note over the composer and «Servicios». */
@@ -30,12 +30,28 @@ const STATUS_TONE: Record<ClientServiceStatus, string> = {
   rejected: 'border-error/30 bg-error/10 text-error',
 };
 
-/** «Servicios»: each service with its state, its progress (the client portal's) and «Ver en el Drive». */
-export function ClientServices(props: { client: SpaceClient }) {
+/**
+ * «Servicios»: the client's Drive on top (José, 29/10), then each service with
+ * its state, its progress, «Ver en el Drive» and its records (informes,
+ * quotes, payments) — tapping one goes to its message in the chat.
+ */
+export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord: (seq: number) => void }) {
   const colors = useColores();
   const { services } = props.client;
+  const grouped = props.records ? recordsByService(props.records) : null;
+  const driveUrl = props.client.drive_url;
   return (
     <ScrollView testID="servicios-cliente" contentContainerStyle={{ padding: 16, gap: 12 }}>
+      {driveUrl ? (
+        <Pressable testID="drive-cliente" onPress={() => void Linking.openURL(driveUrl)} className="min-h-[60px] flex-row items-center gap-3 rounded-2xl border border-outline/15 bg-surface p-4">
+          <FolderOpen size={22} color={colors.primary} />
+          <View className="min-w-0 flex-1">
+            <Text className="text-[15px] font-semibold text-on-surface">Drive del cliente</Text>
+            <Text className="text-[12px] text-on-surface-variant">Todas sus carpetas en el Portal</Text>
+          </View>
+          <ExternalLink size={16} color={colors['on-surface-variant']} />
+        </Pressable>
+      ) : null}
       {services.length === 0 ? <Text className="pt-10 text-center text-[14px] text-on-surface-variant">Este cliente todavía no tiene servicios.</Text> : null}
       {services.map((service) => (
         <View key={service.id} testID={`servicio-${service.id}`} className="rounded-2xl border border-outline/15 bg-surface p-4">
@@ -55,8 +71,29 @@ export function ClientServices(props: { client: SpaceClient }) {
               <Text className="text-[14px] font-semibold text-primary">Ver en el Drive</Text>
             </Pressable>
           ) : null}
+          <ServiceRecords records={grouped ? (grouped.get(service.id) ?? []) : null} onOpen={props.onOpenRecord} />
         </View>
       ))}
     </ScrollView>
+  );
+}
+
+function ServiceRecords(props: { records: ClientRecord[] | null; onOpen: (seq: number) => void }) {
+  const colors = useColores();
+  if (props.records === null) return <View className="mt-3 h-8 rounded-lg bg-background" />;
+  if (props.records.length === 0) return null;
+  return (
+    <View className="mt-3 border-t border-outline/10">
+      {props.records.map((record) => (
+        <Pressable key={record.seq} testID={`registro-${record.seq}`} onPress={() => props.onOpen(record.seq)} className="min-h-[48px] flex-row items-center gap-2.5 border-b border-outline/10 py-2">
+          <FileText size={16} color={colors['on-surface-variant']} />
+          <View className="min-w-0 flex-1">
+            {record.kicker ? <Text className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{record.kicker}</Text> : null}
+            <Text numberOfLines={1} className="text-[14px] text-on-surface">{record.title}</Text>
+          </View>
+          <Text className="text-[11px] text-on-surface-variant">{shortDate(record.at)}</Text>
+        </Pressable>
+      ))}
+    </View>
   );
 }

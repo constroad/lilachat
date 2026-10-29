@@ -697,8 +697,9 @@ por eso no sube el nivel de `forms`.
 - `PUT /api/bots/clients/:clientId` crea el canal del cliente la primera vez
   (201) y actualiza su estado (200). Cuerpo: `{ name, ruc?, last_activity_at,
   last_order_at, orders_total, services: [{ id, name, status, stage,
-  stage_label, progress?, url?, closed_at? }] }`. `status` puede ser pending, in_progress, completed o
-  rejected.
+  stage_label, progress?, url?, closed_at? }], drive_url? }`. `status` puede ser pending, in_progress, completed o
+  rejected. `drive_url` (https, opcional) es la carpeta del cliente en el Portal: la app la muestra
+  como «Drive del cliente» arriba de «Servicios». Los enlaces se guardan hasta 1000 caracteres.
   Responde `{ client: { id, channel: { id, name }, live, archived_since } }`.
   El canal nace PRIVADO, solo con el bot y los admins del espacio. Un admin
   nombrado después entra con el siguiente PUT.
@@ -710,6 +711,13 @@ por eso no sube el nivel de `forms`.
 - Vivo = `last_activity_at` dentro de los últimos 60 días (José, 29/10). Se
   calcula al leer, no hay ningún cron que lo mueva. Un PUT solo, sin mensaje,
   ya saca el canal de Archivados.
+- Los registros de cada servicio salen de los mensajes con `refs.service_id`:
+  `GET /api/workspaces/:id/clients/:clientId/records` (solo para miembros del canal; los demás
+  reciben 404) devuelve `{ records: [{ seq, at, kind, service_id, record_id?, title, kicker? }] }`,
+  los 200 más nuevos primero. «Servicios» los lista dentro de cada servicio y al tocar uno
+  salta a su mensaje.
+- Los despachos no publican mensajes en el canal del cliente (José, 29/10): solo redibujan la
+  tarjeta del pedido. Cada unidad va en el espacio de la planta.
 - El fake tiene las mismas rutas y `GET /__fake/clients`.
 
 ## c-quaterdecies) Listas de ítems, fotos de la galería y límites exclusivos (28/10/2026, OTA + web + servidor)

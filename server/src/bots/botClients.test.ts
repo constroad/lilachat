@@ -169,3 +169,22 @@ describe('GET /api/workspaces/:id/clients', () => {
     expect(forAna.body.clients).toEqual([]);
   });
 });
+
+describe('GET /api/workspaces/:id/clients/:clientId/records', () => {
+  it('lists the records of each service for a member of the channel, newest first; a plain member of the space gets 404', async () => {
+    // Arrange
+    const token = await installApp();
+    await putClient(token, { ...state(daysAgo(1), [service('in_progress')]), drive_url: 'https://portal.constroad.com/drive/c1' }).expect(201);
+    await post(token, { client: CLIENT, kind: 'service.record', refs: { service_id: 'srv-1', record_id: 'r1' }, text: 'Control de pista · 29 de octubre', idempotency_key: 'k1' }).expect(201);
+    await post(token, { client: CLIENT, kind: 'service.record', refs: { service_id: 'srv-1', record_id: 'r2' }, text: 'Cotización COT-12', idempotency_key: 'k2' }).expect(201);
+    await post(token, { client: CLIENT, text: 'Sin servicio', idempotency_key: 'k3' }).expect(201);
+    // Act
+    const forJose = await request(app).get(`/api/workspaces/${spaceId}/clients/${CLIENT}/records`).set(asJose).expect(200);
+    await request(app).get(`/api/workspaces/${spaceId}/clients/${CLIENT}/records`).set(asAna).expect(404);
+    const list = await listClients(asJose).expect(200);
+    // Assert
+    expect(forJose.body.records.map((one: { title: string; service_id: string }) => [one.title, one.service_id])).toEqual([['Cotización COT-12', 'srv-1'], ['Control de pista · 29 de octubre', 'srv-1']]);
+    expect(forJose.body.records[0]).toMatchObject({ kind: 'service.record', record_id: 'r2' });
+    expect(list.body.clients[0].drive_url).toBe('https://portal.constroad.com/drive/c1');
+  });
+});

@@ -4971,8 +4971,12 @@ en el mismo lenguaje del diseño.
     quedaba congelado con «En tiempo real». Ahora `resumeLiveSharing` lo vuelve
     a prender al abrir la app (en `App.tsx`, solo en primer plano). Va por OTA.
     Ojo: `expo-task-manager` restaura la tarea tras el cierre, pero SIN el
-    servicio. `hasStartedLocationUpdatesAsync` dice que ya corre, por eso se
-    para y se vuelve a arrancar.
+    servicio. `hasStartedLocationUpdatesAsync` dice que ya corre, y ni la
+    reanudación ni un envío nuevo lo prendían. Por eso `startUpdates` siempre
+    para y vuelve a arrancar.
+  - **Deuda vista en el mismo E2E:** `expo-updates` pidió 40 MB al purgar su log
+    (`UpdatesLogReader.purgeLogEntries`) y dio OutOfMemoryError. Lo atrapa y
+    la app sigue, pero en gama baja es un riesgo. Falta medir el tamaño del log.
 - **Falta:**
   - El mapa en vivo dentro del chat (MapLibre). Hoy la tarjeta redibuja el
     mapa fijo con cada posición.

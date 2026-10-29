@@ -82,16 +82,17 @@ export async function startLiveSharing(share: LiveShare): Promise<boolean> {
  * (E2E 28/10).
  */
 export async function resumeLiveSharing(): Promise<void> {
-  if ((await readShares()).length === 0) return;
-  // The task manager restores the task after a forced close, but WITHOUT the foreground service:
-  // it says «started» and the system throttles it in the background. Restart it with the service.
-  await stopUpdates();
-  await startUpdates();
+  if ((await readShares()).length > 0) await startUpdates();
 }
 
+/**
+ * Always a fresh start: the task manager restores the task after a forced
+ * close WITHOUT the foreground service, so «already started» lied and neither
+ * resuming nor a new share brought the service back (E2E 28/10).
+ */
 async function startUpdates(): Promise<boolean> {
+  await stopUpdates();
   try {
-    if (await Location.hasStartedLocationUpdatesAsync(TASK)) return true;
     await Location.startLocationUpdatesAsync(TASK, {
       accuracy: Location.Accuracy.High,
       timeInterval: LIVE_MIN_INTERVAL_MS,

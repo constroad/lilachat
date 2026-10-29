@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { GroupCallRoom } from '@lilachat/shared';
+import { canSwitchCamera, otherFacing, type CameraFacing, type GroupCallRoom } from '@lilachat/shared';
 import { currentSocket } from '../../useSocket';
-import { createCallPeer, fetchIceServers, mediaErrorText, type CallPeer, type Candidate, type Sdp } from '../callPeer';
+import { createCallPeer, fetchIceServers, mediaErrorText, openCamera, type CallPeer, type Candidate, type Sdp } from '../callPeer';
 
 type Signal = { chatId: string; from: string; kind: 'offer' | 'answer' | 'ice'; data: Sdp | Candidate };
 type JoinAnswer = { ok: boolean; motivo?: string; peers?: string[]; room?: GroupCallRoom; names?: Record<string, string> };
@@ -25,6 +25,9 @@ export function useWebGroupCall(params: { jwt: string; me: string; connected: bo
   const [muted, setMuted] = useState(false);
   const [cameraOn, setCameraOn] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** Front or rear (pending 4), and how many cameras: the switch shows with two, like the 1:1. */
+  const [facing, setFacing] = useState<CameraFacing>('user');
+  const [cameras, setCameras] = useState(0);
   const peers = useRef(new Map<string, CallPeer>());
   const iceServers = useRef<RTCIceServer[]>([]);
   const callRef = useRef<WebGroupCallState | null>(null);
@@ -48,6 +51,7 @@ export function useWebGroupCall(params: { jwt: string; me: string; connected: bo
     setLocalStream(null);
     setMuted(false);
     setCameraOn(true);
+    setFacing('user');
     setCall(null);
   }, [dropPeer]);
 
@@ -161,6 +165,38 @@ export function useWebGroupCall(params: { jwt: string; me: string; connected: bo
     setCameraOn(next);
   }, [cameraOn]);
 
+  useEffect(() => {
+    const listing = localStream?.getVideoTracks().length ? navigator.mediaDevices?.enumerateDevices?.() : undefined;
+    if (!listing) return setCameras(0);
+    let alive = true;
+    void listing
+      .then((devices) => alive && setCameras(devices.filter((device) => device.kind === 'videoinput').length))
+      .catch(() => alive && setCameras(0));
+    return () => {
+      alive = false;
+    };
+  }, [localStream]);
+
+  /** The other camera (pending 4): its track replaces the old one in EVERY peer's sender, without renegotiating. */
+  const switchCamera = useCallback(async () => {
+    const local = localRef.current;
+    const old = local?.getVideoTracks()[0];
+    if (!local || !old) return;
+    const next = otherFacing(facing);
+    try {
+      const fresh = await openCamera(next, old);
+      if (!fresh || localRef.current !== local) return fresh?.stop();
+      fresh.enabled = old.enabled;
+      for (const peer of peers.current.values()) await peer.connection.getSenders().find((sender) => sender.track === old)?.replaceTrack(fresh);
+      local.removeTrack(old);
+      old.stop();
+      local.addTrack(fresh);
+      setFacing(next);
+    } catch (failure) {
+      console.warn('[llamada grupal] no se pudo girar la cámara:', failure);
+    }
+  }, [facing]);
+
   /** The room of a chat, asked when it opens (the strip «Unirse»). */
   const refreshRoom = useCallback((chatId: string) => {
     currentSocket()?.emit('groupcall.get', { chatId }, (answer: { room?: GroupCallRoom | null }) => {
@@ -176,7 +212,7 @@ export function useWebGroupCall(params: { jwt: string; me: string; connected: bo
   // Closing the tab or the session leaves the call (the server also drops the socket).
   useEffect(() => () => cleanUp(), [cleanUp]);
 
-  return { call, ring, rooms, names, localStream, streams, muted, cameraOn, error, join, leave, toggleMute, toggleCamera, refreshRoom, ignoreRing: () => setRing(null), clearError: () => setError(null) };
+  return { call, ring, rooms, names, localStream, streams, muted, cameraOn, facing, canSwitch: canSwitchCamera(cameras), switchCamera, error, join, leave, toggleMute, toggleCamera, refreshRoom, ignoreRing: () => setRing(null), clearError: () => setError(null) };
 }
 
 export type WebGroupCall = ReturnType<typeof useWebGroupCall>;

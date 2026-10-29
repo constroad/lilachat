@@ -5051,8 +5051,27 @@ el chat, mientras sigue, la franja «Videollamada en curso · 2 personas» con
 cabecera de un grupo entran a la llamada del grupo, la franja «Unirse» va bajo
 la cabecera y el aviso sale en la esquina superior derecha.
 
-**Fuera de alcance (deuda)**: guiños y stickers dentro de la grupal, girar la
-cámara, programar y enlace en grupos, y más de 4 (eso pide un SFU).
+**Guiños, stickers y girar la cámara (pendiente 4, 29/10).**
+- Eventos propios: `groupcall.reaction` y `groupcall.reaction.ack`
+  (`reactionEvents('groupcall')`).
+  - El server los reparte solo a los sockets de la sala (`hub.relay`).
+  - No llegan a los miembros del chat que no están en la llamada ni vuelven
+    al que los mandó.
+  - Solo pasan ids del catálogo y nunca se guardan.
+- Con un «visto» de cualquiera alcanza. Si no vuelve ninguno, se muestra
+  «Nadie lo recibió. Puede que tengan que actualizar Lilachat.».
+- Girar la cámara:
+  - Teléfono: `applyConstraints` sobre la misma pista, que comparten todas
+    las conexiones (`switchCameraTrack`).
+  - Web: una pista nueva reemplaza a la vieja en el sender de CADA conexión,
+    con el mismo `openCamera` de la 1:1.
+  - En los dos, la vista propia deja de verse en espejo con la cámara
+    trasera.
+- Sigue sin probarse audio y video entre dos teléfonos reales. Necesita a José
+  con dos dispositivos.
+
+**Fuera de alcance (deuda)**: programar y enlace en grupos, pasar a video a
+mitad de la llamada, y más de 4 personas (eso pide un SFU).
 
 ## 158. Fotos y videos cifrados en los chats secretos (29/10/2026, servidor + OTA; pendiente 67 / F12.3)
 

@@ -42,6 +42,22 @@ export function reactionNotSeenNotice(peerName: string): string {
   return `${peerName} no lo recibió. Puede que tenga que actualizar Lilachat.`;
 }
 
+/** In a group call one «seen» is enough; none at all is told this way (pending 4). */
+export const GROUP_REACTION_NOT_SEEN = 'Nadie lo recibió. Puede que tengan que actualizar Lilachat.';
+
+/** A 1:1 call (`call.*`) or a group call (`groupcall.*`, relayed only to the room). */
+export type ReactionChannel = 'call' | 'groupcall';
+
+/** The socket events of a channel's winks and their «seen». */
+export function reactionEvents(channel: ReactionChannel): { reaction: string; ack: string } {
+  return { reaction: `${channel}.reaction`, ack: `${channel}.reaction.ack` };
+}
+
+/** What the sender reads when no «seen» came back. */
+export function reactionMissedNotice(channel: ReactionChannel, peerName: string): string {
+  return channel === 'groupcall' ? GROUP_REACTION_NOT_SEEN : reactionNotSeenNotice(peerName);
+}
+
 /**
  * Waits for «seen» of each reaction sent (pending 105b): an app without the
  * listener (an old version) never answers, and the sender is told once per

@@ -44,7 +44,7 @@ async function swapTrack(sender: RTCRtpSender, stream: MediaStream, old: MediaSt
 }
 
 /** A phone browser may not open both cameras at once: the old one is released and it is tried again. */
-async function openCamera(facing: CameraFacing, current: MediaStreamTrack): Promise<MediaStreamTrack | null> {
+export async function openCamera(facing: CameraFacing, current: MediaStreamTrack): Promise<MediaStreamTrack | null> {
   const ask = async () => (await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { exact: facing } } })).getVideoTracks()[0] ?? null;
   try {
     return await ask();

@@ -44,6 +44,10 @@ class FakePeer {
   addTrack(track: unknown) {
     this.tracks.push(track);
   }
+  replaced: unknown[] = [];
+  getSenders() {
+    return this.tracks.map((one) => ({ track: one, replaceTrack: async (fresh: unknown) => void this.replaced.push(fresh) }));
+  }
   close() {
     this.closed = true;
   }
@@ -96,5 +100,27 @@ describe('useWebGroupCall', () => {
     expect(result.current.call).toBeNull();
     expect(result.current.error).toBe('La llamada está llena (4 personas).');
     expect(track.stop).toHaveBeenCalled();
+  });
+
+  it('switching the camera puts the rear track in EVERY connection, stops the front one and stops mirroring (pending 4)', async () => {
+    // Arrange
+    const front = { kind: 'video', enabled: true, stop: vi.fn() };
+    const rear = { kind: 'video', enabled: true, stop: vi.fn() };
+    let video = [front];
+    const local = { getTracks: () => [track, ...video], getAudioTracks: () => [track], getVideoTracks: () => video, removeTrack: (one: unknown) => (video = video.filter((other) => other !== one)), addTrack: (one: typeof rear) => video.push(one) };
+    const getUserMedia = vi.fn(async (constraints: { audio: unknown }) => (constraints.audio === false ? { getVideoTracks: () => [rear] } : local));
+    Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia, enumerateDevices: async () => [{ kind: 'videoinput' }, { kind: 'videoinput' }] } });
+    joinAnswer = { ok: true, peers: ['a', 'b'], room: { chatId: 'g1', video: true, startedAt: 1, participants: ['a', 'b', 'me'] }, names: {} };
+    const { result } = renderHook(() => useWebGroupCall({ jwt: 'jwt', me: 'me', connected: true }));
+    await act(() => result.current.join('g1', 'Obra', true));
+    await waitFor(() => expect(result.current.canSwitch).toBe(true));
+    // Act
+    await act(() => result.current.switchCamera());
+    // Assert
+    expect(getUserMedia).toHaveBeenLastCalledWith({ audio: false, video: { facingMode: { exact: 'environment' } } });
+    expect(FakePeer.all.map((peer) => peer.replaced)).toEqual([[rear], [rear]]);
+    expect(front.stop).toHaveBeenCalled();
+    expect(video).toEqual([rear]);
+    expect(result.current.facing).toBe('environment');
   });
 });

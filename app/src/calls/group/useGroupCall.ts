@@ -4,10 +4,11 @@ import { setAudioModeAsync } from 'expo-audio';
 import { RTCPeerConnection, RTCIceCandidate, RTCSessionDescription, mediaDevices, type MediaStream } from 'react-native-webrtc';
 import type RTCIceCandidateEvent from 'react-native-webrtc/lib/typescript/RTCIceCandidateEvent';
 import type RTCTrackEvent from 'react-native-webrtc/lib/typescript/RTCTrackEvent';
-import type { GroupCallRoom } from '@lilachat/shared';
+import type { CameraFacing, GroupCallRoom } from '@lilachat/shared';
 import { connectSocket, getSocket, sostenerPorLlamada } from '../../chat/socketClient';
 import { obtenerIceServers, type ServidorIce } from '../iceServers';
 import { reportarError } from '../../ui/reportarError';
+import { switchCameraTrack } from '../cameraSwitch';
 import type { GroupRing } from './groupCallView';
 
 type Sdp = { type: 'offer' | 'answer'; sdp: string };
@@ -41,6 +42,9 @@ export function useGroupCall(params: { jwt: string; me: string }) {
   const [streams, setStreams] = useState<ReadonlyMap<string, MediaStream>>(new Map());
   const [muted, setMuted] = useState(false);
   const [cameraOn, setCameraOn] = useState(true);
+  /** Front or rear (pending 4). The same track goes to every peer, so switching it on the track reaches all of them. */
+  const [facing, setFacing] = useState<CameraFacing>('user');
+  const switching = useRef(false);
   const peers = useRef(new Map<string, Peer>());
   const iceServers = useRef<ServidorIce[]>([]);
   const callRef = useRef<GroupCallState | null>(null);
@@ -64,6 +68,7 @@ export function useGroupCall(params: { jwt: string; me: string }) {
     setLocalStream(null);
     setMuted(false);
     setCameraOn(true);
+    setFacing('user');
     setCall(null);
     sostenerPorLlamada(false);
   }, [dropPeer]);
@@ -196,6 +201,10 @@ export function useGroupCall(params: { jwt: string; me: string }) {
     setCameraOn(next);
   }, [cameraOn]);
 
+  const switchCamera = useCallback(() => {
+    switchCameraTrack({ track: localRef.current?.getVideoTracks()[0], facing, switching, onSwitched: setFacing });
+  }, [facing]);
+
   /** The room of a chat, asked once when it opens (the strip «Unirse»). */
   const refreshRoom = useCallback((chatId: string) => {
     connectSocket(params.jwt).emit('groupcall.get', { chatId }, (answer: { room?: GroupCallRoom | null }) => {
@@ -215,7 +224,7 @@ export function useGroupCall(params: { jwt: string; me: string }) {
 
   useEffect(() => () => cleanUp(), [cleanUp]);
 
-  return { call, ring, rooms, names, localStream, streams, muted, cameraOn, join, leave, toggleMute, toggleCamera, refreshRoom, ignoreRing };
+  return { call, ring, rooms, names, localStream, streams, muted, cameraOn, facing, switchCamera, join, leave, toggleMute, toggleCamera, refreshRoom, ignoreRing };
 }
 
 export type GroupCall = ReturnType<typeof useGroupCall>;

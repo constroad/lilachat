@@ -1,6 +1,6 @@
 import { Types } from 'mongoose';
 import type { Server, Socket } from 'socket.io';
-import { cuerpoDeLlamada, valorDeLlamada } from '@lilachat/shared';
+import { callReactionOf, cuerpoDeLlamada, reactionKeyOf, valorDeLlamada } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import { UserModel } from './models.js';
 import { escribirAviso } from './chatService.js';
@@ -38,7 +38,7 @@ export function buildGroupCallHub(io: Server, userRoom: (userId: string) => stri
 type Ack = (answer: unknown) => void;
 const chatIdOf = (frame: unknown) => String((frame as { chatId?: unknown } | null)?.chatId ?? '');
 
-/** The four events of a group call on one socket, and leaving every room when it goes away. */
+/** The events of a group call on one socket, and leaving every room when it goes away. */
 export function registerGroupCallEvents(socket: Socket, userId: string, hub: GroupCallHub): void {
   const fail = (ack: Ack | undefined, error: unknown) => {
     console.warn('[llamada grupal]', error instanceof Error ? error.message : error);
@@ -52,6 +52,17 @@ export function registerGroupCallEvents(socket: Socket, userId: string, hub: Gro
     void hub.leave({ socketId: socket.id, userId, chatId: chatIdOf(frame) }).then(() => ack?.({ ok: true }), (error) => fail(ack, error));
   });
   socket.on('groupcall.signal', (frame: unknown) => void hub.signal({ userId, frame }));
+  // Winks and stickers (pending 4): only catalog ids pass, never stored; the «seen» goes back like in the 1:1 (105b).
+  socket.on('groupcall.reaction', (frame: unknown) => {
+    const payload = (frame ?? {}) as { reaction?: unknown; key?: unknown };
+    const reaction = callReactionOf(payload.reaction);
+    const key = reactionKeyOf(payload.key);
+    if (reaction) hub.relay({ userId, chatId: chatIdOf(frame), event: 'groupcall.reaction', frame: key ? { reaction, key } : { reaction } });
+  });
+  socket.on('groupcall.reaction.ack', (frame: unknown) => {
+    const key = reactionKeyOf((frame as { key?: unknown } | null)?.key);
+    if (key) hub.relay({ userId, chatId: chatIdOf(frame), event: 'groupcall.reaction.ack', frame: { key } });
+  });
   socket.on('groupcall.get', (frame: unknown, ack?: Ack) => {
     void hub.roomOf(chatIdOf(frame), userId).then((room) => ack?.({ ok: true, room }), (error) => fail(ack, error));
   });

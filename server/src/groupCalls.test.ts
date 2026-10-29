@@ -89,3 +89,30 @@ describe('signals and leaving', () => {
     expect((await hub.roomOf('g1', 'a'))?.participants).toEqual(['a']);
   });
 });
+
+describe('winks and stickers in a group call (pending 4)', () => {
+  it('go to the sockets of the others in the room, never to the chat members outside it nor back to the sender', async () => {
+    // Arrange
+    const { hub, toSocket } = setup();
+    await hub.join({ socketId: 's-a', userId: 'a', chatId: 'g1', video: true });
+    await hub.join({ socketId: 's-b', userId: 'b', chatId: 'g1', video: true });
+    await hub.join({ socketId: 's-c', userId: 'c', chatId: 'g1', video: true });
+    toSocket.length = 0;
+    // Act
+    const relayed = hub.relay({ userId: 'b', chatId: 'g1', event: 'groupcall.reaction', frame: { reaction: { kind: 'emoji', id: '😂' }, key: 'k-1' } });
+    // Assert
+    expect(relayed).toBe(true);
+    expect(toSocket.map((one) => one.socketId)).toEqual(['s-a', 's-c']);
+    expect(toSocket[0]).toMatchObject({ event: 'groupcall.reaction', frame: { chatId: 'g1', from: 'b', reaction: { kind: 'emoji', id: '😂' }, key: 'k-1' } });
+  });
+
+  it('someone outside the room, or a chat without a call, relays nothing', async () => {
+    const { hub, toSocket } = setup();
+    await hub.join({ socketId: 's-a', userId: 'a', chatId: 'g1', video: false });
+    toSocket.length = 0;
+    expect(hub.relay({ userId: 'd', chatId: 'g1', event: 'groupcall.reaction', frame: {} })).toBe(false);
+    expect(hub.relay({ userId: 'a', chatId: 'd1', event: 'groupcall.reaction', frame: {} })).toBe(false);
+    expect(toSocket).toEqual([]);
+  });
+});
+

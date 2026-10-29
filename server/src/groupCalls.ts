@@ -100,6 +100,17 @@ export function createGroupCallHub(deps: GroupCallDeps) {
     return true;
   }
 
+  /** A wink, sticker or its «seen» (pending 4): to the others in the room, by the socket that joined. */
+  function relay(input: { userId: string; chatId: string; event: string; frame: object }): boolean {
+    const room = rooms.get(input.chatId);
+    if (!room?.participants.includes(input.userId)) return false;
+    for (const peer of room.participants) {
+      const socketId = peer === input.userId ? undefined : sockets.get(input.chatId)?.get(peer);
+      if (socketId) deps.emitToSocket(socketId, input.event, { chatId: input.chatId, from: input.userId, ...input.frame });
+    }
+    return true;
+  }
+
   /** The room of a chat I am in (the strip «Unirse» when the chat opens). */
   async function roomOf(chatId: string, userId: string): Promise<GroupCallRoom | null> {
     return (await deps.access(chatId, userId)) ? (rooms.get(chatId) ?? null) : null;
@@ -111,7 +122,7 @@ export function createGroupCallHub(deps: GroupCallDeps) {
     for (const chatId of chatIds) await leave({ socketId, userId, chatId });
   }
 
-  return { join, leave, signal, roomOf, dropSocket };
+  return { join, leave, signal, relay, roomOf, dropSocket };
 }
 
 export type GroupCallHub = ReturnType<typeof createGroupCallHub>;

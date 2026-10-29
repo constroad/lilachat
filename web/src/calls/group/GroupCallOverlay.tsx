@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Mic, MicOff, Phone, PhoneOff, Users, Video, VideoOff } from 'lucide-react';
-import { groupCallBanner, gridOf, type GroupCallRoom } from '@lilachat/shared';
+import { Mic, MicOff, Phone, PhoneOff, SwitchCamera, Users, Video, VideoOff } from 'lucide-react';
+import { groupCallBanner, gridOf, mirrorsSelfView, type GroupCallRoom } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
+import { CallReactionOverlay, CallReactionPicker, useCallReactions } from '../CallReactions';
 import type { WebGroupCall } from './useWebGroupCall';
 
 /** «2 personas · 04:12», like the phone's (`groupCallView.ts`). */
@@ -21,7 +22,7 @@ function useSecondsSince(startedAt: number | null): number | null {
   return startedAt === null ? null : Math.max(0, Math.floor((now - startedAt) / 1000));
 }
 
-function Tile(props: { name: string; stream: MediaStream | null; mine: boolean; video: boolean }) {
+function Tile(props: { name: string; stream: MediaStream | null; mine: boolean; mirrored: boolean; video: boolean }) {
   // A callback ref, like `CallOverlay`: `srcObject` does not go through JSX.
   const attach = useCallback((element: HTMLMediaElement | null) => {
     if (element && element.srcObject !== props.stream) element.srcObject = props.stream;
@@ -30,7 +31,7 @@ function Tile(props: { name: string; stream: MediaStream | null; mine: boolean; 
   return (
     <div data-testid={props.mine ? 'mosaico-yo' : 'mosaico'} className="relative grid min-h-0 place-items-center overflow-hidden rounded-xl bg-on-surface/80">
       {props.mine ? null : <audio ref={attach} autoPlay />}
-      {hasVideo ? <video ref={attach} autoPlay playsInline muted className={`absolute inset-0 h-full w-full object-cover ${props.mine ? '[transform:scaleX(-1)]' : ''}`} /> : <Avatar name={props.name} size={72} />}
+      {hasVideo ? <video ref={attach} autoPlay playsInline muted className={`absolute inset-0 h-full w-full object-cover ${props.mirrored ? '[transform:scaleX(-1)]' : ''}`} /> : <Avatar name={props.name} size={72} />}
       <span className="absolute bottom-2 left-2 max-w-[80%] truncate rounded-full bg-on-surface/70 px-2.5 py-0.5 text-[12px] font-semibold text-background">{props.name}</span>
     </div>
   );
@@ -49,6 +50,7 @@ function RoundButton(props: { testId: string; label: string; danger?: boolean; p
 export function GroupCallOverlay(props: { group: WebGroupCall; me: string }) {
   const { group } = props;
   const seconds = useSecondsSince(group.call?.startedAt ?? null);
+  const reactions = useCallReactions(group.call?.chatId ?? null, group.call?.chatName ?? '', 'groupcall');
   if (!group.call) return null;
   const { call } = group;
   const others = call.participants.filter((userId) => userId !== props.me);
@@ -56,17 +58,23 @@ export function GroupCallOverlay(props: { group: WebGroupCall; me: string }) {
   const { columns } = gridOf(tiles.length);
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-on-surface/50 p-4" data-testid="pantalla-llamada-grupal">
-      <div role="dialog" aria-label={`Llamada grupal en ${call.chatName}`} className="flex h-[min(680px,calc(100dvh-32px))] w-full max-w-[720px] flex-col overflow-hidden rounded-2xl border border-outline/15 bg-surface shadow-2xl">
+      <div role="dialog" aria-label={`Llamada grupal en ${call.chatName}`} className="relative flex h-[min(680px,calc(100dvh-32px))] w-full max-w-[720px] flex-col overflow-hidden rounded-2xl border border-outline/15 bg-surface shadow-2xl">
+        <CallReactionOverlay played={reactions.played} onDone={reactions.clear} />
         <div className="flex flex-col items-center gap-0.5 px-6 pb-3 pt-5 text-center">
           <h2 className="max-w-full truncate text-xl font-bold">{call.chatName}</h2>
           <p data-testid="leyenda-llamada-grupal" role="status" className="text-sm tabular-nums text-on-surface-variant">{groupCaption(call.participants.length, seconds)}</p>
         </div>
         <div className="grid min-h-0 flex-1 gap-2 px-4" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
-          {tiles.map((tile) => <Tile key={tile.key} name={tile.name} stream={tile.stream} mine={tile.mine} video={call.video && (!tile.mine || group.cameraOn)} />)}
+          {tiles.map((tile) => <Tile key={tile.key} name={tile.name} stream={tile.stream} mine={tile.mine} mirrored={tile.mine && mirrorsSelfView(group.facing)} video={call.video && (!tile.mine || group.cameraOn)} />)}
         </div>
-        <div className="mx-4 my-4 flex items-center justify-center gap-4 rounded-3xl border border-outline/15 bg-background px-4 py-3">
+        {reactions.notice ? <p data-testid="aviso-llamada-grupal-reaccion" role="status" className="mx-4 mt-2 rounded-xl bg-background px-3 py-2 text-center text-[13px] text-on-surface-variant">{reactions.notice}</p> : null}
+        <div className="relative mx-4 my-4 flex items-center justify-center gap-4 rounded-3xl border border-outline/15 bg-background px-4 py-3">
+          <div className="absolute left-3"><CallReactionPicker peerName={call.chatName} onSend={reactions.send} /></div>
           {call.video ? (
             <RoundButton testId="btn-camara-grupal" label={group.cameraOn ? 'Apagar la cámara' : 'Prender la cámara'} pressed={!group.cameraOn} onClick={group.toggleCamera}>{group.cameraOn ? <Video size={22} /> : <VideoOff size={22} />}</RoundButton>
+          ) : null}
+          {call.video && group.canSwitch && group.cameraOn ? (
+            <RoundButton testId="btn-girar-camara-grupal" label="Girar la cámara" onClick={() => void group.switchCamera()}><SwitchCamera size={22} /></RoundButton>
           ) : null}
           <RoundButton testId="btn-silenciar-grupal" label={group.muted ? 'Activar el micrófono' : 'Silenciar'} pressed={group.muted} onClick={group.toggleMute}>{group.muted ? <MicOff size={22} /> : <Mic size={22} />}</RoundButton>
           <RoundButton testId="btn-colgar-grupal" label="Salir de la llamada" danger onClick={group.leave}><PhoneOff size={24} /></RoundButton>

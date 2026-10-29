@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Smile, X } from 'lucide-react';
-import { CALL_EMOJIS, CALL_STICKER_MS, callReactionOf, createAckWatch, reactionKeyOf, reactionNotSeenNotice, winkById, type CallReaction } from '@lilachat/shared';
+import { CALL_EMOJIS, CALL_STICKER_MS, callReactionOf, createAckWatch, reactionEvents, reactionKeyOf, reactionMissedNotice, winkById, type CallReaction, type ReactionChannel } from '@lilachat/shared';
 import { currentSocket } from '../useSocket';
 import { WinkOverlay } from '../chat/WinkOverlay';
 import { WinkPanel } from '../chat/WinkPanel';
@@ -15,14 +15,16 @@ const NOTICE_MS = 6000;
 /**
  * Winks, stickers and effects in a call (pending 98 and 78): the other's arrive by socket, mine play here too.
  * Each one travels with a key and the other side answers «seen»; without it the sender is told (pending 105b).
- * The APK's `useCall` does the same.
+ * The APK's `useCall` does the same. A group call (pending 4) uses its own
+ * `groupcall.*` events, relayed only to the people in the room.
  */
-export function useCallReactions(chatId: string | null, peerName = '') {
+export function useCallReactions(chatId: string | null, peerName = '', channel: ReactionChannel = 'call') {
   const [played, setPlayed] = useState<Played | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const nameRef = useRef(peerName);
   nameRef.current = peerName;
-  const [watch] = useState(() => createAckWatch(() => setNotice(reactionNotSeenNotice(nameRef.current))));
+  const [watch] = useState(() => createAckWatch(() => setNotice(reactionMissedNotice(channel, nameRef.current))));
+  const { reaction: reactionEvent, ack: ackEvent } = reactionEvents(channel);
   useEffect(() => {
     const socket = currentSocket();
     if (!socket || !chatId) return;
@@ -31,20 +33,20 @@ export function useCallReactions(chatId: string | null, peerName = '') {
       if (!reaction) return;
       setPlayed({ reaction, key: Date.now() });
       const key = reactionKeyOf(frame.key);
-      if (key) socket.emit('call.reaction.ack', { chatId, key });
+      if (key) socket.emit(ackEvent, { chatId, key });
     };
     const onSeen = (frame: { chatId?: string; key?: unknown }) => {
       const key = frame.chatId === chatId ? reactionKeyOf(frame.key) : null;
       if (key) watch.seen(key);
     };
-    socket.on('call.reaction', onReaction);
-    socket.on('call.reaction.ack', onSeen);
+    socket.on(reactionEvent, onReaction);
+    socket.on(ackEvent, onSeen);
     return () => {
-      socket.off('call.reaction', onReaction);
-      socket.off('call.reaction.ack', onSeen);
+      socket.off(reactionEvent, onReaction);
+      socket.off(ackEvent, onSeen);
       watch.stop();
     };
-  }, [chatId, watch]);
+  }, [chatId, watch, reactionEvent, ackEvent]);
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(null), NOTICE_MS);
@@ -54,10 +56,10 @@ export function useCallReactions(chatId: string | null, peerName = '') {
     if (!chatId) return;
     const key = `k-${Date.now()}`;
     setNotice(null);
-    currentSocket()?.emit('call.reaction', { chatId, reaction, key });
+    currentSocket()?.emit(reactionEvent, { chatId, reaction, key });
     watch.sent(key);
     setPlayed({ reaction, key: Date.now() });
-  }, [chatId, watch]);
+  }, [chatId, watch, reactionEvent]);
   const clear = useCallback(() => setPlayed(null), []);
   return { played, send, clear, notice };
 }

@@ -81,4 +81,28 @@ describe('group call over the socket', () => {
     const { socket } = await connect(String(users[0]!._id));
     expect(await ask(socket, 'groupcall.join', { chatId: String(chat._id), video: false })).toMatchObject({ ok: false });
   });
+
+  it('a wink in the call reaches the others in it and comes back «seen»; a made-up reaction is dropped (pending 4)', async () => {
+    // Arrange
+    const users = await UserModel.create([{ phone: '900000097', name: 'Dani' }, { phone: '900000098', name: 'Eva' }, { phone: '900000099', name: 'Fito' }]);
+    const [dani, eva, fito] = users.map((user) => String(user._id)) as [string, string, string];
+    const chat = await ChatModel.create({ kind: 'group', name: 'Planta', members: users.map((user) => ({ userId: user._id })), lastSeq: 0 });
+    const chatId = String(chat._id);
+    const [d, e, f] = await Promise.all([connect(dani), connect(eva), connect(fito)]);
+    await ask(d.socket, 'groupcall.join', { chatId, video: true });
+    await ask(e.socket, 'groupcall.join', { chatId, video: true });
+    // Act
+    d.socket.emit('groupcall.reaction', { chatId, reaction: { kind: 'emoji', id: 'nada-de-esto' }, key: 'k-0' });
+    d.socket.emit('groupcall.reaction', { chatId, reaction: { kind: 'emoji', id: '😂' }, key: 'k-1' });
+    await settle();
+    e.socket.emit('groupcall.reaction.ack', { chatId, key: 'k-1' });
+    await settle();
+    // Assert
+    const got = e.heard.filter((one) => one.event === 'groupcall.reaction');
+    expect(got).toHaveLength(1);
+    expect(got[0]!.frame).toMatchObject({ chatId, from: dani, reaction: { kind: 'emoji', id: '😂' }, key: 'k-1' });
+    expect(d.heard.filter((one) => one.event === 'groupcall.reaction.ack').map((one) => one.frame)).toEqual([{ chatId, from: eva, key: 'k-1' }]);
+    // Fito is in the chat but not in the call.
+    expect(f.heard.some((one) => one.event.startsWith('groupcall.reaction'))).toBe(false);
+  });
 });

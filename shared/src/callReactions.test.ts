@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { CALL_EMOJIS, CALL_REACTION_ACK_MS, callReactionOf, createAckWatch, reactionKeyOf, reactionNotSeenNotice } from './callReactions.js';
+import { CALL_EMOJIS, CALL_REACTION_ACK_MS, callReactionOf, createAckWatch, reactionKeyOf, reactionNotSeenNotice, GROUP_REACTION_NOT_SEEN, reactionEvents, reactionMissedNotice } from './callReactions.js';
 import { STICKER_PACKS, packStickerId } from './stickers.js';
 import { WINKS } from './winks.js';
 
@@ -77,5 +77,13 @@ describe('the delivery of a reaction', () => {
 
   it('the notice names the other and says what to do', () => {
     expect(reactionNotSeenNotice('Lila')).toBe('Lila no lo recibió. Puede que tenga que actualizar Lilachat.');
+    expect(GROUP_REACTION_NOT_SEEN).toBe('Nadie lo recibió. Puede que tengan que actualizar Lilachat.');
+  });
+
+  it('a group call has its own events and a notice for nobody (pending 4)', () => {
+    expect(reactionEvents('call')).toEqual({ reaction: 'call.reaction', ack: 'call.reaction.ack' });
+    expect(reactionEvents('groupcall')).toEqual({ reaction: 'groupcall.reaction', ack: 'groupcall.reaction.ack' });
+    expect(reactionMissedNotice('call', 'Lila')).toBe(reactionNotSeenNotice('Lila'));
+    expect(reactionMissedNotice('groupcall', 'obra-km-12')).toBe(GROUP_REACTION_NOT_SEEN);
   });
 });

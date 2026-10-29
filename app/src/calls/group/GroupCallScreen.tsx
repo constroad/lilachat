@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { RTCView, type MediaStream } from 'react-native-webrtc';
-import { Phone, PhoneOff, Users, Video } from 'lucide-react-native';
+import { Phone, PhoneOff, SwitchCamera, Users, Video } from 'lucide-react-native';
 import { StatusBar } from 'expo-status-bar';
-import { gridOf } from '@lilachat/shared';
+import { gridOf, mirrorsSelfView } from '@lilachat/shared';
 import { Modal } from '../../ui/Modal';
 import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
 import { inicialesDe } from '../../ui/avatarMotor';
-import { CallBar, CallPill, CallTopBar } from '../CallControls';
+import { CallBar, CallNotice, CallPill, CallTopBar, EffectsButton } from '../CallControls';
+import { CallReactionOverlay, CallReactionSheet } from '../CallReactions';
+import { useGroupReactions } from './useGroupReactions';
 import { groupCallCaption, ringText, tilesOf, type GroupRing, type Tile } from './groupCallView';
 import type { GroupCall } from './useGroupCall';
 
@@ -23,13 +25,13 @@ function useSecondsSince(startedAt: number | null): number | null {
 }
 
 /** One person: their video, or their initials while it has not arrived or it is a voice call. */
-function GroupTile(props: { tile: Tile<MediaStream>; video: boolean; cameraOn: boolean }) {
+function GroupTile(props: { tile: Tile<MediaStream>; video: boolean; cameraOn: boolean; mirrored: boolean }) {
   const { tile } = props;
   const showVideo = props.video && tile.stream && (tile.mine ? props.cameraOn : tile.stream.getVideoTracks().length > 0);
   return (
     <View className="flex-1 overflow-hidden rounded-2xl bg-black/30" testID={`mosaico-${tile.mine ? 'yo' : tile.key}`}>
       {showVideo ? (
-        <RTCView streamURL={tile.stream!.toURL()} objectFit="cover" mirror={tile.mine} zOrder={tile.mine ? 1 : 0} style={StyleSheet.absoluteFill} />
+        <RTCView streamURL={tile.stream!.toURL()} objectFit="cover" mirror={tile.mine && props.mirrored} zOrder={tile.mine ? 1 : 0} style={StyleSheet.absoluteFill} />
       ) : (
         <View className="flex-1 items-center justify-center">
           <View className="h-20 w-20 items-center justify-center rounded-full bg-on-primary/20">
@@ -46,13 +48,16 @@ function GroupTile(props: { tile: Tile<MediaStream>; video: boolean; cameraOn: b
 
 /**
  * The group call (pending 56): the people in a grid of up to 2×2, with the
- * same top bar and round controls as the 1:1 call (design c-02), minus what a
- * mesh has no backend for yet (effects and switching to video mid-call).
+ * same top bar and round controls as the 1:1 call (design c-02). Winks,
+ * stickers and the camera switch since pending 4; switching to video mid-call
+ * is still not there.
  */
 export function GroupCallScreen(props: { group: GroupCall; me: string; onMinimize: () => void }) {
   const { group } = props;
   const margins = useMargenes();
   const seconds = useSecondsSince(group.call?.startedAt ?? null);
+  const reactions = useGroupReactions(group.call?.chatId ?? null);
+  const [reacting, setReacting] = useState(false);
   if (!group.call) return null;
   const { call } = group;
   const tiles = tilesOf({ me: props.me, myStream: group.localStream, participants: call.participants, streams: group.streams, nameOf: (userId) => group.names[userId] || 'Participante' });
@@ -67,11 +72,20 @@ export function GroupCallScreen(props: { group: GroupCall; me: string; onMinimiz
         <View className="flex-1 gap-2 px-3 py-3">
           {rows.map((row) => (
             <View key={row.map((tile) => tile.key).join('-')} className="flex-1 flex-row gap-2">
-              {row.map((tile) => <GroupTile key={tile.key} tile={tile} video={call.video} cameraOn={group.cameraOn} />)}
+              {row.map((tile) => <GroupTile key={tile.key} tile={tile} video={call.video} cameraOn={group.cameraOn} mirrored={mirrorsSelfView(group.facing)} />)}
             </View>
           ))}
         </View>
         <View className="px-4" style={{ paddingBottom: margins.pie + 24 }}>
+          <View className="mb-3 flex-row justify-center gap-3">
+            <EffectsButton onPress={() => setReacting(true)} />
+            {call.video && group.cameraOn ? (
+              <Pressable testID="btn-girar-camara-grupal" accessibilityLabel={group.facing === 'user' ? 'Usar la cámara trasera' : 'Usar la cámara frontal'} onPress={group.switchCamera} className="h-11 w-11 items-center justify-center rounded-full bg-black/45">
+                <SwitchCamera size={20} color="white" />
+              </Pressable>
+            ) : null}
+          </View>
+          <CallNotice text={reactions.notice} />
           <CallBar
             buttons={call.video ? ['camera', 'mic', 'hangup'] : ['mic', 'hangup']}
             video={group.cameraOn}
@@ -84,7 +98,9 @@ export function GroupCallScreen(props: { group: GroupCall; me: string; onMinimiz
             onHangUp={group.leave}
           />
         </View>
+        <CallReactionOverlay played={reactions.played} onDone={reactions.clear} />
       </View>
+      {reacting ? <CallReactionSheet peerName={call.chatName} onSend={reactions.send} onClose={() => setReacting(false)} /> : null}
     </Modal>
   );
 }

@@ -11,6 +11,8 @@ import { ReactionGlyph } from './ReactionGlyph';
 import { SpaceEmojiGrid } from './SpaceEmojiGrid';
 
 const TODAS = 'todas';
+/** The «+» panel's own height (dp): search, tabs and five rows of emojis. */
+const EMOJI_PANEL_HEIGHT = 380;
 
 /**
  * Quién reaccionó (20/10; diseño `f1-app-quien-reacciono`): pestañas «Todas»
@@ -92,7 +94,8 @@ export function HojaDeEmojis(props: { visible: boolean; onElegir: (emoji: string
       <View testID="hoja-emojis" className="rounded-t-xl bg-surface pt-3" style={{ paddingBottom: margenes.pie }}>
         <View className="mb-2 h-1.5 w-11 self-center rounded-full bg-outline/30" />
         {props.visible ? <SpaceEmojiGrid onPick={props.onElegir} /> : null}
-        {props.visible ? <PanelDeEmojis onElegir={props.onElegir} /> : null}
+        {/* The panel grows with flex: in a sheet without a height it collapsed to nothing. */}
+        {props.visible ? <View style={{ height: EMOJI_PANEL_HEIGHT }}><PanelDeEmojis onElegir={props.onElegir} /></View> : null}
       </View>
     </Modal>
   );

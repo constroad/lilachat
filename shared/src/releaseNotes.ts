@@ -17,6 +17,17 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.174',
+    // Everyone: live location (backlog 11); spaces get their emojis and the stages checklist (19, 21).
+    audience: 'all',
+    items: [
+      'Puedes compartir tu ubicación en tiempo real por 15 minutos, 1 hora u 8 horas, aunque cierres la app.',
+      'En tu tarjeta aparece «Dejar de compartir», en el teléfono y en la computadora.',
+      'Girar la cámara en una videollamada ya no da error, y puedes minimizarla para seguir chateando.',
+      'En los espacios: emojis propios para reaccionar y un checklist por etapas en cada canal.',
+    ],
+  },
+  {
     version: '0.1.173',
     // Everyone: calls answered on a locked phone, voice notes and attachments (backlog 110-115).
     audience: 'all',

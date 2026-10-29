@@ -17,6 +17,8 @@ import type { Mencionable } from './SugerenciasDeMencion';
 import type { NotaDeVozGrabada } from './useGrabadoraDeVoz';
 import { ListaDeMensajes } from './ListaDeMensajes';
 import { useWorkPlanWeb, WorkPlanWeb } from './workPlan/WorkPlanWeb';
+import { useClientOfChat } from '../spaces/clients/useSpaceClients';
+import { ArchivedClientBanner, ArchivedComposerNote, ClientServices } from '../spaces/clients/ClientChannelParts';
 import type { ChatSummary, MensajeEnPantalla } from './types';
 
 /**
@@ -92,7 +94,9 @@ export function Conversation(props: {
   const [appTab, setAppTab] = useState<AppConversationTab>('messages');
   // Pending 21: a space's channel has «Chat · Checklist»; the checklist takes the place of the messages.
   const isChannel = Boolean(chat.workspaceId && chat.kind === 'group' && !props.app && !chat.encrypted);
-  const [channelTab, setChannelTab] = useState<'chat' | 'checklist'>('chat');
+  const [channelTab, setChannelTab] = useState<ChannelTab>('chat');
+  // Pending 21 (design f-03): a client's channel adds «Servicios» and, archived, its banner.
+  const client = useClientOfChat(chat.id);
   const workPlan = useWorkPlanWeb(props.jwtParaEnlaces ?? '', chat.id, isChannel && Boolean(props.jwtParaEnlaces));
   useEffect(() => {
     setChannelTab('chat');
@@ -136,9 +140,12 @@ export function Conversation(props: {
       ) : (
         <CabeceraDeLaConversacion chat={chat} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} lastSeen={lastSeen} status={otherStatus} onCall={props.onCall} callExtras={props.callExtras} />
       )}
-      {isChannel ? <ChannelTabs tab={channelTab} onTab={setChannelTab} counter={workPlan.summary?.total ? `${workPlan.summary.done}/${workPlan.summary.total}` : null} /> : null}
+      {isChannel ? <ChannelTabs tab={channelTab} onTab={setChannelTab} counter={workPlan.summary?.total ? `${workPlan.summary.done}/${workPlan.summary.total}` : null} services={client ? client.services.length : null} /> : null}
+      {isChannel && client ? <ArchivedClientBanner client={client} /> : null}
       {isChannel && channelTab === 'checklist' ? (
         <WorkPlanWeb plan={workPlan} />
+      ) : isChannel && client && channelTab === 'services' ? (
+        <ClientServices client={client} />
       ) : props.app && appTab === 'info' ? (
         <div data-testid="informacion-app" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-8">
           <div className="mx-auto max-w-3xl">
@@ -191,6 +198,7 @@ export function Conversation(props: {
       <>
       {props.queue}
       {props.app ? <AppCommandsBar commands={props.app.commands} /> : null}
+      {isChannel && client ? <ArchivedComposerNote client={client} /> : null}
       <Composer
         chatId={chat.id}
         onSend={props.onSend}
@@ -280,15 +288,18 @@ function BannerWithSession() {
   return context ? <NotificationsBanner jwt={context.jwt} /> : null;
 }
 
-/** «Chat · Checklist» under a channel's header (pending 21, design e2-17). */
-function ChannelTabs(props: { tab: 'chat' | 'checklist'; onTab: (tab: 'chat' | 'checklist') => void; counter: string | null }) {
-  const tabs = [{ key: 'chat' as const, label: 'Chat' }, { key: 'checklist' as const, label: 'Checklist' }];
+type ChannelTab = 'chat' | 'services' | 'checklist';
+
+/** «Chat · Checklist» under a channel's header (pending 21, design e2-17); a client's channel adds «Servicios N» (design f-03). */
+function ChannelTabs(props: { tab: ChannelTab; onTab: (tab: ChannelTab) => void; counter: string | null; services: number | null }) {
+  const tabs = [{ key: 'chat' as const, label: 'Chat' }, ...(props.services !== null ? [{ key: 'services' as const, label: 'Servicios' }] : []), { key: 'checklist' as const, label: 'Checklist' }];
   return (
     <div role="tablist" className="flex gap-6 border-b border-outline/15 bg-surface px-4">
       {tabs.map((one) => (
         <button key={one.key} type="button" role="tab" aria-selected={props.tab === one.key} data-testid={`pestana-canal-${one.key}`} onClick={() => props.onTab(one.key)} className={`flex min-h-[40px] items-center gap-1.5 border-b-2 text-sm ${props.tab === one.key ? 'border-primary font-semibold text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
           {one.label}
           {one.key === 'checklist' && props.counter ? <span className="rounded-full bg-primary/10 px-1.5 text-[11px] font-bold text-primary">{props.counter}</span> : null}
+          {one.key === 'services' && props.services ? <span className="rounded-full bg-background px-1.5 text-[11px] font-bold text-on-surface-variant">{props.services}</span> : null}
         </button>
       ))}
     </div>

@@ -144,3 +144,4 @@ export * from './customEmojis.js';
 export * from './workStages.js';
 export * from './liveLocation.js';
 export * from './clientChannels.js';
+export * from './spaceClients.js';

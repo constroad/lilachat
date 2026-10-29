@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Archive, AtSign, ChevronDown, ChevronRight, Copy, Hash, Inbox, Lock, MessagesSquare, PanelLeftClose, Plus, Search, Settings, Settings2, UserCog, UserPlus, Users, type LucideIcon } from 'lucide-react';
-import { canManageMembers, formatChatTimestamp, membersLabel, spaceSections, spaceSubtitle, splitArchived, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
+import { canManageMembers, clientChatIds, formatChatTimestamp, membersLabel, spaceSections, spaceSubtitle, splitArchived, splitClients, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { ChatRow } from '../chat/FilaDeChat';
 import { copiarTexto } from '../chat/copiarTexto';
@@ -11,6 +11,9 @@ import { PendingMarker } from '../chat/queue/PendingMarker';
 import { AppsSection } from './apps/AppsSection';
 import { SpaceQuickActions } from './apps/SpaceQuickActions';
 import type { SpaceApps } from './apps/useSpaceApps';
+import { useSpaceClients } from './clients/useSpaceClients';
+import { ClientsSection } from './clients/ClientsSection';
+import { ArchivedClients } from './clients/ArchivedClients';
 
 export type WorkspaceLink = 'directory' | 'members' | 'requests' | 'settings';
 
@@ -58,11 +61,22 @@ export function SpaceChatList(props: Props) {
   const [openArchived, setOpenArchived] = useState(false);
   // An archived chat leaves the sections, like in the personal list; «Archivados» shows them.
   const split = useMemo(() => splitArchived(chats ?? [], openArchived), [chats, openArchived]);
+  // Pending 21: the client channels leave «Canales» for «Clientes» and its «Archivados».
+  const clients = useSpaceClients(props.jwt, space.id, useMemo(() => (chats ?? []).filter((chat) => chat.kind === 'group').map((chat) => chat.id).join(','), [chats]));
+  const [foldedClients, setFoldedClients] = useState(false);
+  const [openArchivedClients, setOpenArchivedClients] = useState(false);
+  const clientIds = useMemo(() => clientChatIds(clients ?? []), [clients]);
   const sections = useMemo(() => {
     const text = query.trim().toLowerCase();
-    const visible = split.shown.filter((chat) => !text || (chat.name ?? chat.phone ?? '').toLowerCase().includes(text));
+    const visible = split.shown.filter((chat) => !clientIds.has(chat.id) && (!text || (chat.name ?? chat.phone ?? '').toLowerCase().includes(text)));
     return spaceSections(visible.map((chat) => ({ ...chat, lastAt: chat.lastMessage?.at })));
-  }, [split, query]);
+  }, [split, query, clientIds]);
+  const clientSplit = useMemo(() => {
+    const text = query.trim().toLowerCase();
+    const split = splitClients(clients ?? [], (chats ?? []).map((chat) => ({ ...chat, lastAt: chat.lastMessage?.at })));
+    // The list's search narrows the live clients; «Archivados» has its own.
+    return { ...split, live: split.live.filter(({ client }) => !text || client.name.toLowerCase().includes(text) || (client.ruc ?? '').includes(text)) };
+  }, [clients, chats, query]);
   const toggle = (key: SpaceSectionKey) => setFolded((before) => {
     const next = new Set(before);
     if (next.has(key)) next.delete(key);
@@ -121,6 +135,9 @@ export function SpaceChatList(props: Props) {
             </div>
           </div>
         ) : null}
+        {chats !== null ? (
+          <ClientsSection live={clientSplit.live} archived={clientSplit.archived.length} archivedUnread={clientSplit.archivedUnread} folded={foldedClients} onToggle={() => setFoldedClients((before) => !before)} selectedChatId={props.selectedChatId} onOpen={props.onOpenChat} onArchived={() => setOpenArchivedClients(true)} />
+        ) : null}
         {chats !== null && (chats.length > 0 || query)
           ? sections.map((section) => section.key === 'apps' ? (
               props.apps ? <AppsSection key="apps" chats={section.chats} apps={props.apps} folded={folded.has('apps')} onToggle={() => toggle('apps')} selectedChatId={props.selectedChatId} onOpenChat={props.onOpenChat} /> : null
@@ -158,6 +175,16 @@ export function SpaceChatList(props: Props) {
           </button>
         ) : null}
       </div>
+      {openArchivedClients ? (
+        <ArchivedClients
+          archived={clientSplit.archived}
+          onClose={() => setOpenArchivedClients(false)}
+          onOpen={(chat) => {
+            setOpenArchivedClients(false);
+            props.onOpenChat(chat);
+          }}
+        />
+      ) : null}
       {space.joinCode ? (
         <div className="flex items-center gap-2 border-t border-outline/15 px-4 py-2">
           <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Código</span>

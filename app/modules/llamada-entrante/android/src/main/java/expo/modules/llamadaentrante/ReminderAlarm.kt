@@ -99,15 +99,14 @@ object ReminderAlarm {
   }
 
   /**
-   * Again in 10 minutes (or the minutes chosen on the app's screen, design
-   * a-01: «Posponer 5 min» with − and +), from the phone itself. Exact when
-   * the phone allows exact alarms; otherwise Android may move it a few minutes.
+   * Again in 10 minutes, from the phone itself. Exact when the phone allows
+   * exact alarms; otherwise Android may move it a few minutes (still while idle).
    */
-  fun snooze(context: Context, alarm: ReminderAlarmData, minutes: Int = 10) {
+  fun snooze(context: Context, alarm: ReminderAlarmData) {
     dismiss(context, alarm.id)
     val manager = context.getSystemService(AlarmManager::class.java) ?: return
     val ring = broadcast(context, ACTION_RING, alarm, idOf(alarm.id) + 3)
-    val at = System.currentTimeMillis() + if (minutes in 1..120) minutes * 60_000L else SNOOZE_MS
+    val at = System.currentTimeMillis() + SNOOZE_MS
     val exact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || manager.canScheduleExactAlarms()
     when {
       Build.VERSION.SDK_INT < Build.VERSION_CODES.M -> manager.set(AlarmManager.RTC_WAKEUP, at, ring)

@@ -494,7 +494,7 @@ export function ChatScreen({
       <ProgramadosDelChat pendientes={programados.pendientes} onCancelar={programados.cancelar} />
       {esBorrador ? null : <ChatQueue jwt={credential.jwt} chatId={chatId} onOpen={(seq) => saltarA(seq, 'Esa tarjeta está más arriba: sube para cargarla.')} />}
 
-      {/* La barra de escribir: su composición (la píldora con emoji, clip y cámara; UN botón afuera) se explica en `Composer`. */}
+      {/* La barra de escribir: su composición (la píldora con emoji, clip y cámara; UN botón afuera) se explica en `Composer`. */}{channelWork.note}
       {fueraDelGrupo ? (
         <FueraDelGrupo margenPie={margenes.pie} />
       ) : (

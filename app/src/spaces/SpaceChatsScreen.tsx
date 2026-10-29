@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { Archive, AtSign, ChevronDown, ChevronRight, Hash, Inbox, Lock, MessagesSquare, Plus, Search, Settings2, UserCog, UserPlus, Users } from 'lucide-react-native';
-import { aplicarMensajeALista, canManageMembers, formatChatTimestamp, marcarLeido, membersLabel, nombreDeContacto, spaceSections, splitArchived, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
+import { aplicarMensajeALista, canManageMembers, clientChatIds, formatChatTimestamp, marcarLeido, membersLabel, nombreDeContacto, spaceSections, splitArchived, splitClients, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
 import type { MensajeEnVivo as LiveMessage } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 import { BarraDeSeleccionDeChats } from '../chat/BarraDeSeleccionDeChats';
@@ -16,6 +16,9 @@ import { fetchSpaceChats, isSpaceChat, rememberMyRead, spaceChatsCache, useCache
 import { chatsEnMemoria } from '../chat/chatsGuardados';
 import { AppsSection } from './apps/AppsSection';
 import type { SpaceApps } from './apps/useSpaceApps';
+import { useSpaceClients } from './clients/useSpaceClients';
+import { ClientsSection } from './clients/ClientsSection';
+import { ArchivedClientsScreen } from './clients/ArchivedClientsScreen';
 
 /** Several messages in a row reload the list once. */
 const RELOAD_DELAY_MS = 600;
@@ -123,10 +126,20 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
   const [openArchived, setOpenArchived] = useState(false);
   // An archived chat leaves the sections, like in the personal list; «Archivados» shows them.
   const split = useMemo(() => splitArchived(chats ?? [], openArchived), [chats, openArchived]);
+  // Pending 21: the client channels leave «Canales» for «Clientes» and its «Archivados» (designs f-01, f-02).
+  const clients = useSpaceClients(jwt, space.id, useMemo(() => (chats ?? []).filter((chat) => chat.kind === 'group').map((chat) => chat.id).join(','), [chats]));
+  const [foldedClients, setFoldedClients] = useState(false);
+  const [openArchivedClients, setOpenArchivedClients] = useState(false);
+  const clientIds = useMemo(() => clientChatIds(clients ?? []), [clients]);
   const sections = useMemo(() => {
-    const visible = split.shown.filter((chat) => !query.trim() || title(chat).toLowerCase().includes(query.trim().toLowerCase()));
+    const visible = split.shown.filter((chat) => !clientIds.has(chat.id) && (!query.trim() || title(chat).toLowerCase().includes(query.trim().toLowerCase())));
     return spaceSections(visible.map((chat) => ({ ...chat, lastAt: chat.lastMessage?.at })));
-  }, [split, query, title]);
+  }, [split, query, title, clientIds]);
+  const clientSplit = useMemo(() => {
+    const text = query.trim().toLowerCase();
+    const all = splitClients(clients ?? [], (chats ?? []).map((chat) => ({ ...chat, lastAt: chat.lastMessage?.at })));
+    return { ...all, live: all.live.filter(({ client }) => !text || client.name.toLowerCase().includes(text) || (client.ruc ?? '').includes(text)) };
+  }, [clients, chats, query]);
   const toggle = (key: SpaceSectionKey) => setFolded((before) => {
     const next = new Set(before);
     if (next.has(key)) next.delete(key);
@@ -190,6 +203,8 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
         </View>
       ) : null}
       {chats !== null && chats.length === 0 && !query ? appsSection([]) : null}
+      {chats !== null ? <ClientsSection live={clientSplit.live} archived={clientSplit.archived.length} archivedUnread={clientSplit.archivedUnread} folded={foldedClients} onToggle={() => setFoldedClients((before) => !before)} openChatId={props.openChatId} onOpen={onOpenChat} onArchived={() => setOpenArchivedClients(true)} /> : null}
+      {openArchivedClients ? <ArchivedClientsScreen archived={clientSplit.archived} onClose={() => setOpenArchivedClients(false)} onOpen={(chat) => { setOpenArchivedClients(false); onOpenChat(chat); }} /> : null}
       {chats !== null && (chats.length > 0 || query)
         ? sections.map((section) => section.key === 'apps' ? (
             appsSection(section.chats)

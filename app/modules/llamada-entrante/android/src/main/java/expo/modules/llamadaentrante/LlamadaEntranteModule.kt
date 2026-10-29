@@ -41,6 +41,8 @@ class LlamadaEntranteModule : Module() {
     // Pending 63: the reminder that opened the app full screen, and «Posponer» from the app's screen.
     Function("reminderPending") { Puente.takeReminder()?.asMap() }
     Function("snoozeReminder") { alarm: Map<String, Any?> -> ReminderAlarmData.fromMap(alarm)?.let { ReminderAlarm.snooze(contexto, it) } }
+    // Design a-01 (29/10): the minutes chosen with − and +.
+    Function("snoozeReminderFor") { alarm: Map<String, Any?>, minutes: Int -> ReminderAlarmData.fromMap(alarm)?.let { ReminderAlarm.snooze(contexto, it, minutes) } }
     // FL11: la llamada en curso no se corta al ir al fondo.
     Function("enCurso") { chatId: String, nombre: String, video: Boolean, desde: Double ->
       ServicioDeLlamada.iniciar(contexto, chatId, nombre, video, desde.toLong())

@@ -40,6 +40,7 @@ type LlamadaNativa = {
   soltarBloqueo(): void;
   reminderPending?(): ReminderAlarm | null;
   snoozeReminder?(alarm: ReminderAlarm): void;
+  snoozeReminderFor?(alarm: ReminderAlarm, minutes: number): void;
   chatPendiente(): string | null;
   avisoPendiente?(): TappedNotice | null;
   limpiarChat(chatId: string): void;
@@ -76,6 +77,9 @@ export const llamadaNativa = {
   reminderPending: (): ReminderAlarm | null => seguro(() => nativo?.reminderPending?.() ?? null, null),
   /** «Posponer 10 min» from the app's screen: the phone shows it again by itself. */
   snoozeReminder: (alarm: ReminderAlarm): void => seguro(() => nativo?.snoozeReminder?.(alarm), undefined),
+  /** Design a-01: «Posponer N min» with − and +; builds before 0.1.175 only snooze 10 min. */
+  canSnoozeMinutes: (): boolean => typeof nativo?.snoozeReminderFor === 'function',
+  snoozeReminderFor: (alarm: ReminderAlarm, minutes: number): void => seguro(() => nativo?.snoozeReminderFor?.(alarm, minutes), undefined),
   /** Whether this build draws reminders full screen (it declares so to the server). */
   canRingReminders: (): boolean => typeof nativo?.reminderPending === 'function',
   /** El chat del aviso de mensaje con el que se abrió la app (FL8.2). */

@@ -7,7 +7,7 @@ import { useMargenes } from '../ui/useMargenes';
 import { alarmCountdown, alarmKicker, alarmWhen, nextSnooze, noteWithoutAdvance, SNOOZE_DEFAULT } from './alarmView';
 
 /**
- * The alert's own palette (Stitch a-01/a-02, José 25/10 vía agentes): deep
+ * The alert's own palette (Stitch a-01/a-02, asked by José on 25/10 through agents): deep
  * guinda fading to almost black, with a dim copper glow top right. Fixed on
  * purpose: it rings over the lock screen and does not follow the app's theme.
  */

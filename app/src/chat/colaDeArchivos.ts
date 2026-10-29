@@ -75,6 +75,22 @@ export function copiaLocalDe(clientKey: string): string | undefined {
   return copiasConfirmadas.get(clientKey);
 }
 
+/**
+ * The key of each open secret chat (pending 67): its photos and videos go up
+ * encrypted. Without it a file goes as it is, and the server refuses a plain
+ * file in a secret chat before storing it.
+ */
+const sealsByChat = new Map<string, (text: string) => Envelope | null>();
+
+/** Registered by the chat while its key is ready; the returned function forgets it. */
+export function registerChatSeal(chatId: string, seal: ((text: string) => Envelope | null) | undefined): () => void {
+  if (!seal) return () => undefined;
+  sealsByChat.set(chatId, seal);
+  return () => {
+    if (sealsByChat.get(chatId) === seal) sealsByChat.delete(chatId);
+  };
+}
+
 /** Quien pinta el chat recibe el mensaje confirmado ANTES de que se quite la burbuja pendiente. */
 const oyentesDeConfirmados = new Set<(mensaje: ServerMessage) => void>();
 
@@ -135,9 +151,10 @@ type ArchivoNuevo = {
  * se comprime salvo `hd` (José, 19/10) y se copia a la carpeta de la app—.
  * Se sube cuando está lista.
  */
-export async function encolarArchivo(params: ArchivoNuevo & { hd?: boolean; seal?: (text: string) => Envelope | null }): Promise<void> {
+export async function encolarArchivo(params: ArchivoNuevo & { hd?: boolean }): Promise<void> {
   await hidratar();
-  const { hd, seal, ...archivo } = params;
+  const { hd, ...archivo } = params;
+  const seal = sealsByChat.get(archivo.chatId);
   const clientKey = Crypto.randomUUID();
   cola = [...cola, { ...archivo, clientKey, queuedAt: new Date().toISOString(), intentos: 0, preparando: true }];
   avisar();

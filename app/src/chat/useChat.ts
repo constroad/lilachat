@@ -27,7 +27,7 @@ import {
 import { connectSocket, getSocket, type ServerMessage } from './socketClient';
 import { pedirEditar, pedirEliminar } from './pedidosDeMensaje';
 import { drainOutbox, hydrateOutbox, queueMessage, subscribeOutbox } from './outboxStore';
-import { suscribirConfirmados } from './colaDeArchivos';
+import { registerChatSeal, suscribirConfirmados } from './colaDeArchivos';
 import { withOpenedText } from './secretMedia';
 import { secretFileOf, useSecretFilesVersion } from './secretMediaFiles';
 import { useAvisoDeEscribiendo } from './useAvisoDeEscribiendo';
@@ -114,6 +114,11 @@ export function useChat(params: {
    * puede ser de antes de tener la clave, o uno manipulado, y las dos cosas son
    * información real.
    */
+  // A secret chat's photos and videos go up encrypted with this key (pending 67).
+  useEffect(() => {
+    const forget = registerChatSeal(params.chatId, params.seal);
+    return forget;
+  }, [params.chatId, params.seal]);
   // A sealed photo or video is drawn once its decrypted copy is on the phone (pending 67).
   const secretFiles = useSecretFilesVersion();
   const visibles = useMemo(

@@ -191,7 +191,7 @@ export function ChatScreen({
   );
   const alAdjuntar = useCallback(() => setAttachOpen(true), []);
   const { fotosElegidas, cerrarFotos, alEnviarFotos, alCamara, alNotaDeVoz, pickFromGallery, pickMedia, pickFile, camara } =
-    useAdjuntosDelChat({ chatId, onError: setMediaError, seal: sesionLista?.seal });
+    useAdjuntosDelChat({ chatId, onError: setMediaError });
 
   const nombreVisible = infoPropia.name ?? chatName;
 

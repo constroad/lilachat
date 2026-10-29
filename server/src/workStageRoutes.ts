@@ -27,8 +27,9 @@ export function buildWorkStageRouter(): Router {
 
   router.get('/checklists/stages', asyncRoute(async (req, res) => {
     const userId = req.session!.userId;
-    if (!(await channelOfMember(req.query.chatId, userId))) return res.status(403).json({ message: NO_ACCESS });
-    const stages = await ChecklistModel.find({ chatId: req.query.chatId, stage: { $exists: true } }).sort({ stage: 1 }).lean();
+    const channel = await channelOfMember(req.query.chatId, userId);
+    if (!channel) return res.status(403).json({ message: NO_ACCESS });
+    const stages = await ChecklistModel.find({ chatId: channel._id, stage: { $exists: true } }).sort({ stage: 1 }).lean();
     res.json({ stages: stages.map((one): WorkStage & { othersCanAdd: boolean } => ({ ...view(one), stage: one.stage!, othersCanAdd: one.othersCanAdd })) });
   }));
 

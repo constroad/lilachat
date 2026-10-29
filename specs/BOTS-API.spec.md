@@ -700,6 +700,8 @@ por eso no sube el nivel de `forms`.
   stage_label, progress?, url?, closed_at? }] }`. `status` puede ser pending, in_progress, completed o
   rejected.
   Responde `{ client: { id, channel: { id, name }, live, archived_since } }`.
+  El canal nace PRIVADO, solo con el bot y los admins del espacio. Un admin
+  nombrado después entra con el siguiente PUT.
 - `POST /api/bots/messages` acepta `client: "<clientId>"` como destino, junto
   con `kind` («order.created»), `refs: { service_id?, record_id? }` y
   `thread_of`.

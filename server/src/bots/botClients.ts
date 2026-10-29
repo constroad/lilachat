@@ -8,9 +8,9 @@ import type { BotInstallation } from './botModels.js';
 /**
  * A channel per client of the company (pending 21, §157). The app (agentes)
  * sends the client's state with `PUT /api/bots/clients/:clientId`; the first
- * time it creates a public channel with the bot and the space's admins (the
- * rest join from «Explorar canales»). Live or archived is worked out from the
- * state when read, never stored.
+ * time it creates a PRIVATE channel with the bot and the space's admins only
+ * (José, 29/10); every later PUT adds an admin promoted since. Live or archived
+ * is worked out from the state when read, never stored.
  */
 export type ClientChannel = ClientState & { _id: Types.ObjectId; workspaceId: Types.ObjectId; appId: Types.ObjectId; clientId: string; chatId: Types.ObjectId; updatedAt: Date };
 type Installation = Pick<BotInstallation, '_id' | 'appId' | 'workspaceId' | 'botUserId'>;
@@ -43,11 +43,25 @@ function toWire(doc: Pick<ClientChannel, 'clientId' | 'chatId' | 'name' | 'lastA
   return { id: doc.clientId, channel: { id: String(doc.chatId), name: doc.name }, live, archived_since: live ? null : archivedSince(doc) };
 }
 
+async function spaceAdminIds(workspaceId: Types.ObjectId): Promise<Types.ObjectId[]> {
+  const admins = await WorkspaceMemberModel.find({ workspaceId, status: 'active', role: { $in: ['owner', 'admin'] } }).select('userId').lean();
+  return admins.flatMap((admin) => (admin.userId ? [admin.userId] : []));
+}
+
 async function createClientChat(installation: Installation, name: string): Promise<Types.ObjectId> {
-  const admins = await WorkspaceMemberModel.find({ workspaceId: installation.workspaceId, status: 'active', role: { $in: ['owner', 'admin'] } }).select('userId').lean();
-  const members = [{ userId: installation.botUserId, role: 'member' as const }, ...admins.flatMap((admin) => (admin.userId ? [{ userId: admin.userId, role: 'admin' as const }] : []))];
-  const chat = await ChatModel.create({ kind: 'group', name, workspaceId: installation.workspaceId, channel: { visibility: 'public' }, members, lastSeq: 0 });
+  const admins = await spaceAdminIds(installation.workspaceId);
+  const members = [{ userId: installation.botUserId, role: 'member' as const }, ...admins.map((userId) => ({ userId, role: 'admin' as const }))];
+  const chat = await ChatModel.create({ kind: 'group', name, workspaceId: installation.workspaceId, channel: { visibility: 'private' }, members, lastSeq: 0 });
   return chat._id;
+}
+
+/** An admin promoted after the channel was born joins it with the next PUT. */
+async function addMissingAdmins(installation: Installation, chatId: Types.ObjectId): Promise<void> {
+  const chat = await ChatModel.findById(chatId).select('members.userId').lean();
+  if (!chat) return;
+  const inside = new Set(chat.members.map((member) => String(member.userId)));
+  const missing = (await spaceAdminIds(installation.workspaceId)).filter((userId) => !inside.has(String(userId)));
+  if (missing.length) await ChatModel.updateOne({ _id: chatId }, { $push: { members: { $each: missing.map((userId) => ({ userId, role: 'admin' })) } } });
 }
 
 /** Creates the channel the first time (201) and keeps the state up to date (200); the same body twice changes nothing. */
@@ -60,6 +74,7 @@ export async function upsertClientChannel(installation: Installation, clientId: 
   if (existing) {
     await ClientChannelModel.updateOne({ _id: existing._id }, { $set: valid.state });
     if (existing.name !== valid.state.name) await ChatModel.updateOne({ _id: existing.chatId }, { $set: { name: valid.state.name } });
+    await addMissingAdmins(installation, existing.chatId);
     return { status: 200, client: toWire({ ...existing, ...valid.state }, now) };
   }
   const chatId = await createClientChat(installation, valid.state.name);
@@ -80,10 +95,12 @@ export async function chatOfClient(installation: Installation, clientId: string)
   return found?.chatId ?? fail(404, 'client_not_found', `Ese cliente no tiene canal: manda primero PUT /api/bots/clients/${clientId} con su estado.`);
 }
 
-/** The space's clients for any active member (designs f-01/f-02): live first, then by last movement. */
+/** The space's clients whose private channel this member is in (designs f-01/f-02): live first, then by last movement. */
 export async function listClients(workspaceId: string, userId: Types.ObjectId, now = new Date()) {
   await actorIn(workspaceId, userId);
-  const docs = await ClientChannelModel.find({ workspaceId: new Types.ObjectId(workspaceId) }).select('clientId chatId name ruc lastActivityAt lastOrderAt ordersTotal services').lean<ClientChannel[]>();
+  const spaceId = new Types.ObjectId(workspaceId);
+  const mine = await ChatModel.find({ workspaceId: spaceId, 'members.userId': userId }).select('_id').lean();
+  const docs = await ClientChannelModel.find({ workspaceId: spaceId, chatId: { $in: mine.map((chat) => chat._id) } }).select('clientId chatId name ruc lastActivityAt lastOrderAt ordersTotal services').lean<ClientChannel[]>();
   const clients = docs.map((doc) => ({
     ...toWire(doc, now),
     chat_id: String(doc.chatId),

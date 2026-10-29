@@ -71,7 +71,7 @@ const post = (token: string, body: Record<string, unknown>) => request(app).post
 const listClients = (as: { Authorization: string }) => request(app).get(`/api/workspaces/${spaceId}/clients`).set(as);
 
 describe('PUT /api/bots/clients/:clientId', () => {
-  it('the first time it creates a public channel with the client name, the bot and the space admins; again it changes nothing', async () => {
+  it('the first time it creates a PRIVATE channel with the client name, the bot and the space admins only; again it changes nothing', async () => {
     // Arrange
     const token = await installApp();
     // Act
@@ -81,10 +81,23 @@ describe('PUT /api/bots/clients/:clientId', () => {
     expect(first.body.client).toMatchObject({ id: CLIENT, live: true, archived_since: null, channel: { name: 'Transportes Huaral' } });
     expect(again.body.client.channel.id).toBe(first.body.client.channel.id);
     const chat = await ChatModel.findById(first.body.client.channel.id).lean();
-    expect(chat).toMatchObject({ kind: 'group', workspaceId: spaceId, channel: { visibility: 'public' } });
+    expect(chat).toMatchObject({ kind: 'group', workspaceId: spaceId, channel: { visibility: 'private' } });
     expect(chat!.members.map((member) => String(member.userId))).toContain(String(jose));
     expect(chat!.members.map((member) => String(member.userId))).not.toContain(String(ana));
     expect(await ChatModel.countDocuments({ name: 'Transportes Huaral' })).toBe(1);
+  });
+
+  it('an admin promoted after the channel was born joins it with the next PUT', async () => {
+    // Arrange
+    const token = await installApp();
+    const created = await putClient(token, state(daysAgo(1))).expect(201);
+    await WorkspaceMemberModel.updateOne({ workspaceId: spaceId, userId: ana }, { $set: { role: 'admin' } });
+    // Act
+    await putClient(token, state(daysAgo(0))).expect(200);
+    await putClient(token, state(daysAgo(0))).expect(200);
+    // Assert
+    const chat = await ChatModel.findById(created.body.client.channel.id).lean();
+    expect(chat!.members.filter((member) => String(member.userId) === String(ana))).toEqual([expect.objectContaining({ role: 'admin' })]);
   });
 
   it('refuses a bad body or a bad client id with 400', async () => {
@@ -140,17 +153,19 @@ describe('posting to a client', () => {
 });
 
 describe('GET /api/workspaces/:id/clients', () => {
-  it('every member sees the clients with live or archived; someone outside the space gets 404 like the rest of the space routes', async () => {
+  it('an admin sees the clients with live or archived; a plain member sees none; someone outside the space gets 404', async () => {
     // Arrange
     const token = await installApp();
     await putClient(token, state(daysAgo(1))).expect(201);
     await putClient(token, { ...state(daysAgo(200)), name: 'Constructora Rímac' }, 'cliente-2').expect(201);
     // Act
+    const forJose = await listClients(asJose).expect(200);
     const forAna = await listClients(asAna).expect(200);
     await listClients(asOutsider).expect(404);
     // Assert
-    expect(forAna.body.clients.map((one: { name: string; live: boolean }) => [one.name, one.live])).toEqual([['Transportes Huaral', true], ['Constructora Rímac', false]]);
-    expect(forAna.body.clients[1]).toMatchObject({ ruc: '20491238471', orders_total: 12, archived_group: '6+' });
-    expect(forAna.body.clients[0].chat_id).toBeTruthy();
+    expect(forJose.body.clients.map((one: { name: string; live: boolean }) => [one.name, one.live])).toEqual([['Transportes Huaral', true], ['Constructora Rímac', false]]);
+    expect(forJose.body.clients[1]).toMatchObject({ ruc: '20491238471', orders_total: 12, archived_group: '6+' });
+    expect(forJose.body.clients[0].chat_id).toBeTruthy();
+    expect(forAna.body.clients).toEqual([]);
   });
 });

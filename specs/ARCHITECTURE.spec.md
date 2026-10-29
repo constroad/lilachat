@@ -4953,8 +4953,9 @@ el día 61 el canal pasa a Archivados sin ningún proceso que lo mueva.
     mucho uno por cliente al día.
   - Crea el canal la primera vez (201) y después actualiza el estado (200).
     `clientId` es el `_id` del cliente en el Portal.
-  - El canal nace público, con el bot y los admins del espacio. Los demás
-    entran desde «Explorar canales».
+  - El canal nace PRIVADO, solo con el bot y los admins del espacio (José,
+    29/10). Un admin nombrado después entra con el siguiente PUT. La lista
+    de clientes solo muestra los canales donde la persona es miembro.
   - `status` es el del Portal: `pending | in_progress | completed |
     rejected`. Un servicio abierto ya no mantiene vivo el canal.
   - Portal no tiene etapas. `stage` es el estado de

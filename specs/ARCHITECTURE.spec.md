@@ -12396,6 +12396,19 @@ tacha con la versión que lo cierra.
       aprobada la cotización → crear la orden y avisar en #compras; el 25 de
       cada mes → recordar la valorización; pago registrado en el Portal →
       tarjeta en el canal.
+    - **Canal por cliente (José, 29/10, vía agentes):** un canal por cliente,
+      no por obra. Quedan vivos los clientes con pedidos en los últimos 90
+      días; los demás van a «Archivados», que se ve como en WhatsApp. Un
+      pedido nuevo devuelve el canal a la lista. Hoy serían 8 de 245 en
+      Constroad, 14 de 54 en Globofast y 1 de 5 en Inframaq.
+    - **Dentro del canal, cada servicio (ServiceManagement) es un
+      expediente** con sus etapas, registros y avance. El Drive va dentro de
+      cada servicio y vive en el Portal (`service-<id>`); Lilachat lo abre
+      con `crear_enlace_de_servicio`, nunca guarda una copia.
+    - **Falta que José decida:** si el nombre de la pestaña es «Servicios»
+      (como en todo el Portal; «Obras» es el módulo de construcción) y si un
+      servicio pending/in_progress sin pedido en 90 días mantiene vivo el
+      canal (1 caso en Constroad, 1 en Globofast).
 22. ✅ (§68, 0.1.115) **Un audio se corta cuando la pantalla se bloquea** (José, 20/10).
     Causa: `expo-audio` pausa todos los reproductores y grabadores cuando la
     actividad pasa a segundo plano (bloquear la pantalla cuenta), salvo que

@@ -8,7 +8,7 @@ import { ChatQueue } from './ChatQueue';
 import type { FlashListRef } from '@shopify/flash-list';
 import { ChatBottom } from './ChatBottom';
 import { etiquetaDeRecordatorioEnElChat, type MencionEnMensaje } from '@lilachat/shared';
-import { personOfMember } from '@lilachat/shared';
+import { clientHeaderSubtitle, personOfMember } from '@lilachat/shared';
 import { useFunActions } from './nudge';
 import { useCallBack } from './useCallBack';
 import { AttachSheet } from './AttachSheet';
@@ -418,7 +418,7 @@ export function ChatScreen({
           secreto={Boolean(encrypted)}
           borrador={esBorrador}
           conectado={connected}
-          subtitulo={subtitulo} grupo={esGrupoChat}
+          subtitulo={channelWork.client ? clientHeaderSubtitle(grupo.members.length) : subtitulo} grupo={esGrupoChat} cliente={Boolean(channelWork.client)}
           otroEscribe={otroEscribe}
           puedeLlamar={Boolean(otherUserId) && grupo.roles.get(otherUserId ?? '')?.role !== 'app'}
           onVolver={onBack} app={appId ? { appId, spaceId: workspaceId, jwt: credential.jwt } : undefined}

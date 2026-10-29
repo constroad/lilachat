@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { ArrowLeft, CalendarClock, ChevronDown, Link, Lock, MoreVertical, NotebookPen, Phone, Video } from 'lucide-react-native';
+import { ArrowLeft, Building2, CalendarClock, ChevronDown, Link, Lock, MoreVertical, NotebookPen, Phone, Video } from 'lucide-react-native';
 import { CALL_MENU } from './chatHeaderMenu';
 import { HeaderDropdown } from './HeaderDropdown';
 import type { ChatHeaderMenu } from './useChatHeaderMenu';
@@ -45,12 +45,15 @@ export function EncabezadoDelChat(props: {
   menu: ChatHeaderMenu;
   /** A 1:1 with an app: its own head (design e-26) once the space's directory knows it. */
   app?: { appId: string; spaceId?: string; jwt: string };
+  /** A client's channel (pending 21, design f-03): the building and its name without «#». */
+  cliente?: boolean;
 }) {
   const colores = useColores();
   const margenes = useMargenes();
   const [openMenu, setOpenMenu] = useState<'calls' | 'chat' | null>(null);
   const directoryApp = useAppOfChat(props.app ?? { jwt: '' });
-  const { nombre: nombreVisible, foto: fotoVisible } = props;
+  const { foto: fotoVisible } = props;
+  const nombreVisible = props.cliente ? props.nombre.replace(/^# /, '') : props.nombre;
   if (directoryApp) return <AppChatHeader app={directoryApp} spaceId={props.app?.spaceId} jwt={props.app?.jwt} connected={props.conectado} menu={props.menu} onBack={props.onVolver} />;
   // Como el diseño: FLECHA (no la palabra «Atrás»), avatar del chat junto al
   // nombre, y el menú al final.
@@ -73,7 +76,7 @@ export function EncabezadoDelChat(props: {
         nombre={nombreVisible}
         foto={fotoVisible}
         tamano={AVATAR_DE_CABECERA}
-        icono={props.borrador ? <NotebookPen size={20} color={colores.primary} /> : undefined}
+        icono={props.borrador ? <NotebookPen size={20} color={colores.primary} /> : props.cliente ? <Building2 size={20} color={colores['on-surface-variant']} /> : undefined}
       />
       <View className="min-w-0 flex-1">
         <View className="flex-row items-center gap-1.5">

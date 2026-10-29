@@ -1,4 +1,5 @@
 import { CLIENT_LIVE_DAYS, type ArchivedAgeGroup, type ClientServiceStatus } from './clientChannels.js';
+import { memberCountLabel } from './flatLayout.js';
 
 /**
  * The client channels of a space as the list shows them (pending 21, §157;
@@ -70,6 +71,9 @@ export function clientRowSubtitle(client: Pick<SpaceClient, 'services' | 'last_o
   const services = open === 0 ? 'Sin servicios en curso' : `${open} ${open === 1 ? 'servicio' : 'servicios'} en curso`;
   return client.last_order_at ? `${services} · Último pedido ${dayLabel(client.last_order_at, now)}` : services;
 }
+
+/** The line under a client channel's name (design f-03): it is a client, not a «#» channel. */
+export const clientHeaderSubtitle = (members: number): string => `Cliente · ${memberCountLabel(members)}`;
 
 /** The banner of an archived channel (design f-03), or `null` for a live one. */
 export function archivedBanner(client: Pick<SpaceClient, 'live' | 'archived_since'>): { title: string; body: string } | null {

@@ -4,10 +4,10 @@ import { usePresenceStatus } from '../presence/presenceStatus';
 import { NotificationsBanner } from '../notify/NotificationsBanner';
 import { ConversacionContext } from './contextoDeLaConversacion';
 import { useContext, useEffect, useState, type ReactNode } from 'react';
-import { ArrowLeft, Phone, Search, Video } from 'lucide-react';
+import { ArrowLeft, Building2, Phone, Search, Video } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import type { AgendaReminder, DirectoryApp, MencionElegida, MencionEnMensaje, WinkId } from '@lilachat/shared';
-import { formatUltimaVez, presenceLine, type PresenceStatus, memberCountLabel } from '@lilachat/shared';
+import { clientHeaderSubtitle, formatUltimaVez, presenceLine, type PresenceStatus, memberCountLabel } from '@lilachat/shared';
 import { Composer, type ContextoDelComposer } from './Composer';
 import { useChatCommands } from './commands/useChatCommands';
 import { AppCommandsBar, AppConversationHeader, type AppConversationTab } from '../spaces/apps/AppConversation';
@@ -138,7 +138,7 @@ export function Conversation(props: {
       {props.app ? (
         <AppConversationHeader app={props.app} tab={appTab} onTab={setAppTab} showBack={props.showBack} onBack={props.onBack} />
       ) : (
-        <CabeceraDeLaConversacion chat={chat} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} lastSeen={lastSeen} status={otherStatus} onCall={props.onCall} callExtras={props.callExtras} />
+        <CabeceraDeLaConversacion chat={chat} isClient={Boolean(client)} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} lastSeen={lastSeen} status={otherStatus} onCall={props.onCall} callExtras={props.callExtras} />
       )}
       {isChannel ? <ChannelTabs tab={channelTab} onTab={setChannelTab} counter={workPlan.summary?.total ? `${workPlan.summary.done}/${workPlan.summary.total}` : null} services={client ? client.services.length : null} /> : null}
       {isChannel && client ? <ArchivedClientBanner client={client} /> : null}
@@ -229,10 +229,10 @@ export function Conversation(props: {
   );
 }
 
-function CabeceraDeLaConversacion(props: { chat: ChatSummary; typingName: string | null; showBack: boolean; onBack: () => void; onAbrirInfo?: () => void; /** The other's «últ. vez» in a 1:1, like the app. */ lastSeen?: string; /** «Ausente» or «Ocupado» (pending 15). */ status?: PresenceStatus; onCall?: (video: boolean) => void; callExtras?: ReactNode }) {
+function CabeceraDeLaConversacion(props: { chat: ChatSummary; /** A client's channel (design f-03): the building and «Cliente · N miembros», not «#». */ isClient?: boolean; typingName: string | null; showBack: boolean; onBack: () => void; onAbrirInfo?: () => void; /** The other's «últ. vez» in a 1:1, like the app. */ lastSeen?: string; /** «Ausente» or «Ocupado» (pending 15). */ status?: PresenceStatus; onCall?: (video: boolean) => void; callExtras?: ReactNode }) {
   const { chat, typingName } = props;
   // A channel of a space reads as Slack's: «#planta-web».
-  const title = chat.channel ? `#${chat.name ?? ''}` : (chat.name ?? chat.phone ?? 'Conversación');
+  const title = chat.channel && !props.isClient ? `#${chat.name ?? ''}` : (chat.name ?? chat.phone ?? 'Conversación');
   return (
     <header className="flex items-center gap-3 border-b border-outline/15 bg-primary/5 px-4 py-3">
       {props.showBack ? (
@@ -242,13 +242,17 @@ function CabeceraDeLaConversacion(props: { chat: ChatSummary; typingName: string
       ) : null}
       {/* Nombre y foto abren «Info.» (W3b), como en WhatsApp Web. */}
       <button type="button" data-testid="btn-info-del-chat" aria-label={`Info. de ${title}`} onClick={props.onAbrirInfo} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left">
-      <Avatar name={title} kind={chat.kind} online={chat.online} foto={chat.avatarUrl} />
+      {props.isClient ? (
+        <span data-testid="cabecera-cliente" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-outline/15 bg-surface"><Building2 size={20} className="text-on-surface-variant" /></span>
+      ) : (
+        <Avatar name={title} kind={chat.kind} online={chat.online} foto={chat.avatarUrl} />
+      )}
       <div className="min-w-0 flex-1">
         <h2 className="truncate text-base font-bold">{title}</h2>
         {/* La línea de estado no desaparece cuando nadie escribe: si el alto
             cambiara, la cabecera saltaría con cada tecla del otro. */}
         <p data-testid="estado-chat" className={`truncate text-[13px] ${typingName ? 'text-primary' : 'text-on-surface-variant'}`}>
-          {typingName ? (chat.kind === 'group' ? `${typingName} está escribiendo…` : 'Escribiendo…') : chat.kind === 'notas' ? 'Solo tú lo ves' : chat.kind === 'group' ? (memberCountLabel(chat.memberIds.length) || ' ') : chat.online ? presenceLine({ online: true, status: props.status }) : props.lastSeen ? formatUltimaVez(props.lastSeen) : ' '}
+          {typingName ? (chat.kind === 'group' ? `${typingName} está escribiendo…` : 'Escribiendo…') : chat.kind === 'notas' ? 'Solo tú lo ves' : props.isClient ? clientHeaderSubtitle(chat.memberIds.length) : chat.kind === 'group' ? (memberCountLabel(chat.memberIds.length) || ' ') : chat.online ? presenceLine({ online: true, status: props.status }) : props.lastSeen ? formatUltimaVez(props.lastSeen) : ' '}
         </p>
       </div>
       </button>

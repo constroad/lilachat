@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { BackHandler, Pressable, Text, ToastAndroid, View } from 'react-native';
-import { checklistMembers } from '@lilachat/shared';
+import { checklistMembers, type SpaceClient } from '@lilachat/shared';
 import { useWorkPlan } from './useWorkPlan';
 import { WorkPlanPanel } from './WorkPlanPanel';
 import { useClientOfChat } from '../../spaces/clients/useSpaceClients';
@@ -16,7 +16,7 @@ type Tab = 'chat' | 'services' | 'checklist';
  * design f-03) adds «Servicios N», and archived its banner and the note over
  * the composer.
  */
-export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: string; yo: string; names: ReadonlyMap<string, string> }): { tabs: ReactNode; panel: ReactNode; note: ReactNode } {
+export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: string; yo: string; names: ReadonlyMap<string, string> }): { tabs: ReactNode; panel: ReactNode; note: ReactNode; client: SpaceClient | null } {
   const [tab, setTab] = useState<Tab>('chat');
   const client = useClientOfChat(params.chatId);
   const plan = useWorkPlan(params.jwt, params.chatId, params.enabled);
@@ -29,7 +29,7 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
     });
     return () => subscription.remove();
   }, [tab]);
-  if (!params.enabled) return { tabs: null, panel: null, note: null };
+  if (!params.enabled) return { tabs: null, panel: null, note: null, client: null };
   const counter = plan.summary && plan.summary.total ? `${plan.summary.done}/${plan.summary.total}` : null;
   const tabs = (
     <>
@@ -51,7 +51,7 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
         <WorkPlanPanel plan={plan} jwt={params.jwt} yo={params.yo} nameOf={(userId) => params.names.get(userId) ?? 'Alguien'} members={checklistMembers(params.names, params.yo)} onStartFailed={(message) => ToastAndroid.show(message, ToastAndroid.SHORT)} />
       </View>
     ) : null;
-  return { tabs, panel, note: <ArchivedComposerNote client={client} /> };
+  return { tabs, panel, note: <ArchivedComposerNote client={client} />, client };
 }
 
 function TabButton(props: { label: string; badge?: string | null; active: boolean; onPress: () => void; testID: string }) {

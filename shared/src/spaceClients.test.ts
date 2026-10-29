@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { archivedBanner, clientChatIds, clientRowSubtitle, dayLabel, filterArchivedClients, splitClients, type SpaceClient } from './spaceClients.js';
+import { archivedBanner, clientChatIds, clientHeaderSubtitle, clientRowSubtitle, dayLabel, filterArchivedClients, splitClients, type SpaceClient } from './spaceClients.js';
 
 /** Pending 21 (§157): the client channels in the space list and «Archivados» (designs f-01, f-02, f-03). */
 const now = new Date('2026-10-29T15:00:00Z');
@@ -49,6 +49,13 @@ describe('clientRowSubtitle and dayLabel', () => {
   it('counts the days in Lima: 23:30 of the 28th in Lima is «ayer» although it is the 29th in UTC', () => {
     expect(dayLabel('2026-10-29T04:30:00Z', now)).toBe('ayer');
     expect(dayLabel('2026-10-12T15:00:00Z', now)).toBe('12 oct');
+  });
+});
+
+describe('clientHeaderSubtitle', () => {
+  it('a client channel reads «Cliente · N miembros» under its name (design f-03)', () => {
+    expect(clientHeaderSubtitle(6)).toBe('Cliente · 6 miembros');
+    expect(clientHeaderSubtitle(1)).toBe('Cliente · 1 miembro');
   });
 });
 

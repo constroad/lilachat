@@ -41,7 +41,7 @@ import { useStickers } from './stickers/useStickers';
 import type { StickerAction } from './contextoDeLaConversacion';
 import { memberBadge, opensInPhotoViewer, replyOpensThread, usesFlatLayout } from '@lilachat/shared';
 import { useGroupsAsList } from '../ui/groupsAsList';
-import { useCalls } from '../calls/CallProvider';
+import { GroupCallStripFor, useCalls } from '../calls/CallProvider';
 import { ChatQueue } from './queue/ChatQueue';
 import { gifAsPendingMessage, useGifsInFlight } from './gifs/gifsInFlight';
 import { useMessageWindow } from './useMessageWindow';
@@ -185,6 +185,8 @@ export function ConversacionConAcciones(
   // Calls: a 1:1 with a person, never with yourself or an installed app (a bot does not answer).
   const otherId = chat.kind === 'direct' && !chat.propio ? chat.memberIds.find((id) => id !== yo) : undefined;
   const canCall = Boolean(otherId) && detalle?.pills.get(otherId ?? '')?.role !== 'app';
+  // Pending 56: a group or channel calls everyone in it (not a secret one, not from outside).
+  const groupCall = chat.kind === 'group' && !chat.encrypted && chat.memberIds.includes(yo);
   return (
     <ConversacionContext.Provider value={contexto}>
       <Conversation
@@ -197,7 +199,8 @@ export function ConversacionConAcciones(
         onCancelarContexto={acciones.cancelarContexto}
         replyingTo={acciones.replyingTo}
         onNudge={funAllowed ? () => void sync.sendNudge(chat.id).then((result) => result.ok || onAviso(result.motivo)) : undefined}
-        onCall={canCall ? (video) => calls.call(chat.id, chat.name ?? chat.phone ?? 'Llamada', video) : undefined}
+        onCall={canCall ? (video) => calls.call(chat.id, chat.name ?? chat.phone ?? 'Llamada', video) : groupCall ? (video) => calls.callGroup(chat.id, chat.name ?? 'Grupo', video) : undefined}
+        callStrip={groupCall ? <GroupCallStripFor chatId={chat.id} chatName={chat.name ?? 'Grupo'} /> : undefined}
         callExtras={canCall ? <CallExtrasMenu jwt={props.jwt} chat={{ id: chat.id, name: chat.name ?? chat.phone ?? 'Conversación' }} /> : undefined}
         onWink={funAllowed ? (wink) => void sync.sendWink(chat.id, wink).then((result) => result.ok || onAviso(result.motivo)) : undefined}
         mencionables={mencionables}

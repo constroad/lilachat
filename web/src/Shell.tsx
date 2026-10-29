@@ -233,7 +233,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
   };
 
   return (
-    <CallProvider jwt={credential.jwt} connected={socket.connected} nameOf={callerOf} photoOf={(chatId) => [...chats, ...(spaceChatsShown ?? [])].find((chat) => chat.id === chatId)?.avatarUrl}>
+    <CallProvider jwt={credential.jwt} me={credential.userId} connected={socket.connected} nameOf={callerOf} photoOf={(chatId) => [...chats, ...(spaceChatsShown ?? [])].find((chat) => chat.id === chatId)?.avatarUrl} chatNameOf={(chatId) => [...chats, ...(spaceChatsShown ?? [])].find((chat) => chat.id === chatId)?.name ?? undefined}>
     <div className="relative flex h-full">
       <WebNotices sinConexion={sinConexion} />
       <WhatsNewDialog />

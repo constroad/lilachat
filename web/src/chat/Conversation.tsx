@@ -59,6 +59,8 @@ export function Conversation(props: {
   onCall?: (video: boolean) => void;
   /** The arrow with «Programar llamada» and «Crear enlace de llamada» (pending 42). */
   callExtras?: ReactNode;
+  /** A group's call going on: who is in it and «Unirse» (pending 56). */
+  callStrip?: ReactNode;
   showBack: boolean;
   hayAnteriores: boolean;
   onCargarAnteriores: () => void;
@@ -143,6 +145,7 @@ export function Conversation(props: {
       ) : (
         <CabeceraDeLaConversacion chat={chat} isClient={Boolean(client)} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} lastSeen={lastSeen} status={otherStatus} onCall={props.onCall} callExtras={props.callExtras} />
       )}
+      {props.callStrip}
       {isChannel ? <ChannelTabs tab={channelTab} onTab={setChannelTab} counter={workPlan.summary?.total ? `${workPlan.summary.done}/${workPlan.summary.total}` : null} services={client ? client.services.length : null} /> : null}
       {isChannel && client ? <ArchivedClientBanner client={client} /> : null}
       {isChannel && channelTab === 'checklist' ? (

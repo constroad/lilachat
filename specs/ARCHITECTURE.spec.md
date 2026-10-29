@@ -4950,6 +4950,24 @@ y la cámara no aparecían, porque una foto iba a ir en claro.
 - La web sigue diciendo «Mensaje cifrado: léelo en tu teléfono» (la web no
   tiene clave hasta F12.4).
 
+**E2E (29/10, emulador con la OTA `5157b80a`, server en vivo `0ee003b`).**
+No hay en QA dos cuentas con clave publicada (solo personas reales), así que
+el par es «Lucía Paredes» del espacio demo (`scripts/seed-demo-space.ts`): su
+clave privada vive solo en esta Mac (`~/.lilachat-demo/lucia.json`) y
+`scripts/demo-secret-peer.ts` contesta por ella.
+- Teléfono → Lucía: el clip abrió la galería directo; la foto (127 523 B) salió
+  con pie y ✓. Lucía la bajó y descifró: **mismo sha** (`c68ce744…`), sellado
+  127 539 B; el server guardó `application/octet-stream` sin pie ni forma.
+- Lucía → teléfono: foto sellada por la ruta real (201). Llegó en vivo, el
+  teléfono la bajó, la descifró y la mostró con su pie.
+- La cuenta tiene 18 dispositivos con clave: Lucía usa la del que abre lo
+  último que mandó el teléfono (limitación conocida hasta F12.4).
+
+**Espacio demo «Constructora Andes»** (José, 29/10: sí; para las capturas de la
+tienda): 5 personas inventadas con teléfono `demo-0N` (nadie puede entrar con
+ellas), #general + 3 canales con conversación y el chat secreto con Lucía.
+`--clean` lo borra todo y verifica en cero.
+
 **Pendiente:** notas de voz y documentos cifrados (mismo motor); miniatura de
 los videos (hoy cuadro oscuro con el play).
 

@@ -18,7 +18,7 @@ const seen = new Map<string, AgendaChecklist | null>();
  * when, and «Agregar tarea». A tick shows at once and goes back if the server
  * refuses it; every change reaches the chat live (`ref.changed`).
  */
-export function ChecklistEnElChat(props: { checklistId: string; jwt: string; yo: string; nameOf: (userId: string) => string; members: readonly ChecklistMember[] }) {
+export function ChecklistEnElChat(props: { checklistId: string; jwt: string; yo: string; nameOf: (userId: string) => string; members: readonly ChecklistMember[]; /** A job's stage (design e2-18): the text opens the task's detail instead of the edit sheet. */ onOpenTask?: (item: ChecklistItem) => void }) {
   const colors = useColores();
   const { checklistId, jwt } = props;
   const [checklist, setChecklist] = useState<AgendaChecklist | null | undefined>(() => seen.get(checklistId));
@@ -153,7 +153,7 @@ export function ChecklistEnElChat(props: { checklistId: string; jwt: string; yo:
               {item.doneBy ? <Check size={14} color={colors['on-primary']} strokeWidth={3} /> : null}
             </View>
           </Pressable>
-          <Pressable testID={`checklist-editar-${index}`} disabled={!canAdd} onPress={() => setEditing(item)} accessibilityHint={canAdd ? 'Edita la tarea, el responsable y la fecha' : undefined} className="flex-1 py-2">
+          <Pressable testID={`checklist-editar-${index}`} disabled={!canAdd && !props.onOpenTask} onPress={() => (props.onOpenTask ? props.onOpenTask(item) : setEditing(item))} accessibilityHint={canAdd ? 'Edita la tarea, el responsable y la fecha' : undefined} className="flex-1 py-2">
             <Text className={`text-[15px] ${item.doneBy ? 'text-on-surface-variant line-through' : 'text-on-surface'}`}>{item.text}</Text>
             {item.doneBy && item.doneAt ? (
               <Text className="mt-0.5 text-[12px] text-on-surface-variant">{`Hecha por ${item.doneBy === props.yo ? 'ti' : props.nameOf(item.doneBy)} · ${formatClock(item.doneAt)}`}</Text>

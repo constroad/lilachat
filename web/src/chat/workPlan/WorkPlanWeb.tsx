@@ -32,13 +32,13 @@ export function useWorkPlanWeb(jwt: string, chatId: string, enabled: boolean) {
     await reload();
     return null;
   }, [jwt, chatId, reload]);
-  return { stages, summary, failed, start };
+  return { stages, summary, failed, start, reload };
 }
 
 export type WorkPlanWebState = ReturnType<typeof useWorkPlanWeb>;
 
 /** The «Checklist» tab of a channel on the web (design e2-17, desktop). */
-export function WorkPlanWeb({ plan }: { plan: WorkPlanWebState }) {
+export function WorkPlanWeb({ plan, onOpenTask }: { plan: WorkPlanWebState; onOpenTask: (task: { stageId: string; itemId: string }) => void }) {
   const [open, setOpen] = useState<string | null>(null);
   const [error, setError] = useState('');
   if (plan.stages === null) return <p className="min-h-0 flex-1 pt-10 text-center text-sm text-on-surface-variant">{plan.failed ? 'No se pudo cargar el checklist.' : 'Cargando…'}</p>;
@@ -84,7 +84,7 @@ export function WorkPlanWeb({ plan }: { plan: WorkPlanWebState }) {
                   <span className={`block h-full rounded-full ${done ? 'bg-en-linea' : 'bg-primary'}`} style={{ width: `${stage.total ? (stage.done / stage.total) * 100 : 0}%` }} />
                 </span>
               </button>
-              {isOpen ? <div className="px-3 pb-3"><ChecklistEnElChat id={stage.id} /></div> : null}
+              {isOpen ? <div className="px-3 pb-3"><ChecklistEnElChat id={stage.id} onOpenTask={(item) => onOpenTask({ stageId: stage.id, itemId: item.id })} /></div> : null}
             </section>
           );
         })}

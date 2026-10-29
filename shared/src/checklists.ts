@@ -8,7 +8,9 @@
 export const CHECKLIST_LIMITS = { title: 120, item: 200, items: 30 } as const;
 
 /** `assignee` and `dueAt` (backlog 30): who does it and for when; both optional. */
-export type ChecklistItem = { id: string; text: string; doneBy: string | null; doneAt: string | null; assignee?: string | null; dueAt?: string | null };
+/** A file that proves a task (pending 21, design e2-18): a message of the channel, linked to the task by its seq. */
+export type TaskEvidence = { seq: number; kind: 'image' | 'video' | 'file'; url: string; thumbnailUrl?: string; name: string; sizeBytes: number; by: string; at: string };
+export type ChecklistItem = { id: string; text: string; doneBy: string | null; doneAt: string | null; assignee?: string | null; dueAt?: string | null; addedBy?: string; evidence?: TaskEvidence[] };
 export type AgendaChecklist = {
   _id: string;
   chatId: string;

@@ -16,7 +16,7 @@ const PILL = { overdue: 'bg-error/10 font-bold text-error', today: 'bg-primary/1
  * and when, and «Agregar tarea». A tick shows at once and goes back if the
  * server refuses it; every change arrives live (`ref.changed`).
  */
-export function ChecklistEnElChat({ id }: { id: string }) {
+export function ChecklistEnElChat({ id, onOpenTask }: { id: string; /** A job's stage (design e2-18): the text opens the task's detail instead of the edit dialog. */ onOpenTask?: (item: ChecklistItem) => void }) {
   const { jwt, yo, nombres } = useConversacion();
   const { valor: checklist, fallo, cargar, reemplazar } = useTarjeta<AgendaChecklist>({ tipo: 'checklist', id, ruta: `/agenda/checklists/${id}`, campo: 'checklist', jwt });
   const [error, setError] = useState('');
@@ -122,7 +122,7 @@ export function ChecklistEnElChat({ id }: { id: string }) {
             <button type="button" data-testid={`checklist-marcar-${index}`} role="checkbox" aria-checked={Boolean(item.doneBy)} aria-label={item.text} disabled={!canTick} title={canTick || !item.assignee ? undefined : `Es de ${nameOf(item.assignee)}: solo esa persona o quien creó el checklist la marca.`} onClick={() => void toggle(item.id)} className="-ml-2 grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-background disabled:cursor-default disabled:opacity-40">
               <span className={`grid h-5 w-5 place-items-center rounded-full ${item.doneBy ? 'bg-primary text-on-primary' : 'border-2 border-outline/40'}`}>{item.doneBy ? <Check size={12} strokeWidth={3} /> : null}</span>
             </button>
-            <button type="button" data-testid={`checklist-tarea-${index}`} disabled={!canAdd} onClick={() => setEditing(item)} title={canAdd ? 'Editar la tarea' : undefined} className="min-w-0 flex-1 py-2 text-left disabled:cursor-default">
+            <button type="button" data-testid={`checklist-tarea-${index}`} disabled={!canAdd && !onOpenTask} onClick={() => (onOpenTask ? onOpenTask(item) : setEditing(item))} title={canAdd ? 'Editar la tarea' : undefined} className="min-w-0 flex-1 py-2 text-left disabled:cursor-default">
               <span className={`block text-[14px] ${item.doneBy ? 'text-on-surface-variant line-through' : ''}`}>{item.text}</span>
               {item.doneBy && item.doneAt ? (
                 <span className="block text-[12px] text-on-surface-variant">{`Hecha por ${item.doneBy === yo ? 'ti' : nameOf(item.doneBy)} · ${formatClock(item.doneAt)}`}</span>

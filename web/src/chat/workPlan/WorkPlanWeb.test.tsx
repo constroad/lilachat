@@ -11,11 +11,11 @@ const stages: WorkStage[] = [
   { _id: 's1', title: 'Cotización', stage: 1, items: [task('a', true)] },
   { _id: 's2', title: 'Orden de compra y servicio', stage: 2, items: [task('b', false), task('c', false)] },
 ];
-const planOf = (list: WorkStage[] | null, start = vi.fn(async () => null)): WorkPlanWebState => ({ stages: list, summary: list ? workPlanSummary(list, new Date('2026-10-28T12:00:00Z')) : null, failed: false, start });
+const planOf = (list: WorkStage[] | null, start = vi.fn(async () => null)): WorkPlanWebState => ({ stages: list, summary: list ? workPlanSummary(list, new Date('2026-10-28T12:00:00Z')) : null, failed: false, start, reload: vi.fn(async () => undefined) });
 
 const channel: ChatSummary = { id: 'c9', kind: 'group', name: 'obra', workspaceId: 'w1', memberIds: ['yo'], lastSeq: 0, unread: 0, lastMessage: null, othersReadSeq: 0, othersDeliveredSeq: 0 };
 const context: ContextoDeLaConversacion = { yo: 'yo', jwt: 'j', chat: channel, detalle: null, nombres: new Map(), citado: () => undefined, onAccion: vi.fn(), onVerFoto: vi.fn(), puedeFijar: false, fijados: new Set() };
-const renderPlan = (plan: WorkPlanWebState) => render(<ConversacionContext.Provider value={context}><WorkPlanWeb plan={plan} /></ConversacionContext.Provider>);
+const renderPlan = (plan: WorkPlanWebState) => render(<ConversacionContext.Provider value={context}><WorkPlanWeb plan={plan} onOpenTask={vi.fn()} /></ConversacionContext.Provider>);
 
 afterEach(() => vi.unstubAllGlobals());
 

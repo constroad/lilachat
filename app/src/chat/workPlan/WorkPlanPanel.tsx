@@ -6,10 +6,11 @@ import { ChecklistEnElChat } from '../ChecklistEnElChat';
 import type { ChecklistMember } from '../TaskSheet';
 import { useColores } from '../../ui/tema';
 import type { WorkPlan } from './useWorkPlan';
+import type { OpenTask } from './TaskDetailSheet';
 
 const STATUS_LABEL: Record<StageStatus, string> = { done: 'HECHO', in_progress: 'EN PROCESO', pending: 'PENDIENTE' };
 
-type Props = { plan: WorkPlan; jwt: string; yo: string; nameOf: (userId: string) => string; members: readonly ChecklistMember[]; onStartFailed: (message: string) => void };
+type Props = { plan: WorkPlan; jwt: string; yo: string; nameOf: (userId: string) => string; members: readonly ChecklistMember[]; onStartFailed: (message: string) => void; onOpenTask: (task: OpenTask) => void };
 
 /** The «Checklist» tab of a channel (design e2-17): the plan at a glance and its stages, each one opening its tasks. */
 export function WorkPlanPanel(props: Props) {
@@ -34,7 +35,7 @@ export function WorkPlanPanel(props: Props) {
           <StageRow stage={stage} open={expanded === stage.id} onPress={() => setOpen(expanded === stage.id ? '' : stage.id)} />
           {expanded === stage.id ? (
             <View className="px-2 pb-2">
-              <ChecklistEnElChat checklistId={stage.id} jwt={props.jwt} yo={props.yo} nameOf={props.nameOf} members={props.members} />
+              <ChecklistEnElChat checklistId={stage.id} jwt={props.jwt} yo={props.yo} nameOf={props.nameOf} members={props.members} onOpenTask={(item) => props.onOpenTask({ stageId: stage.id, itemId: item.id })} />
             </View>
           ) : null}
         </View>

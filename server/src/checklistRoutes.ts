@@ -1,9 +1,10 @@
 import { Router, type Response } from 'express';
 import { botHearsChecklist } from './bots/botTriggers.js';
 import { Types } from 'mongoose';
-import { canToggleTask, checklistOverdue, checklistPermissions, checklistTextInChat, toggleChecklistItem, validateChecklist, validateChecklistItem, validateChecklistTitle, type AgendaChecklist } from '@lilachat/shared';
+import { canToggleTask, checklistOverdue, checklistPermissions, checklistTextInChat, toggleChecklistItem, validateChecklist, validateChecklistItem, validateChecklistTitle, type AgendaChecklist, type TaskEvidence } from '@lilachat/shared';
 import { ChatModel, MessageModel } from './chatModels.js';
-import { ChecklistModel, type Checklist } from './checklistModel.js';
+import { ChecklistModel, type Checklist, type TaskEvidenceEntry } from './checklistModel.js';
+import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import { avisarCambioDeTarjeta } from './avisoDeTarjeta.js';
 import { deleteMessage } from './chatService.js';
@@ -13,6 +14,8 @@ import { createChecklistInChat, newItemId } from './checklistService.js';
 
 /** A task's own id: 6 random bytes, enough inside one checklist of up to 30. */
 
+const evidenceView = (file: TaskEvidenceEntry): TaskEvidence => ({ seq: file.seq, kind: file.kind, url: toAbsoluteMediaUrl(file.url), ...(file.thumbUrl ? { thumbnailUrl: toAbsoluteMediaUrl(file.thumbUrl) } : {}), name: file.name, sizeBytes: file.sizeBytes, by: String(file.by), at: file.at.toISOString() });
+
 /** The checklist as the card reads it (ids as strings). */
 export function view(checklist: Checklist): AgendaChecklist {
   return {
@@ -20,7 +23,7 @@ export function view(checklist: Checklist): AgendaChecklist {
     chatId: String(checklist.chatId),
     createdBy: String(checklist.createdBy),
     title: checklist.title,
-    items: checklist.items.map((item) => ({ id: item.id, text: item.text, doneBy: item.doneBy ? String(item.doneBy) : null, doneAt: item.doneAt ? item.doneAt.toISOString() : null, assignee: item.assignee ? String(item.assignee) : null, dueAt: item.dueAt ? item.dueAt.toISOString() : null })),
+    items: checklist.items.map((item) => ({ id: item.id, text: item.text, doneBy: item.doneBy ? String(item.doneBy) : null, doneAt: item.doneAt ? item.doneAt.toISOString() : null, assignee: item.assignee ? String(item.assignee) : null, dueAt: item.dueAt ? item.dueAt.toISOString() : null, addedBy: String(item.addedBy), ...(item.evidence ? { evidence: item.evidence.map(evidenceView) } : {}) })),
     othersCanMark: checklist.othersCanMark,
     othersCanAdd: checklist.othersCanAdd,
     createdAt: checklist.createdAt.toISOString(),

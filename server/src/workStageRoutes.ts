@@ -6,6 +6,7 @@ import { ChecklistModel } from './checklistModel.js';
 import { view } from './checklistRoutes.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import { avisarCambioDeTarjeta } from './avisoDeTarjeta.js';
+import { ClientChannelModel } from './bots/botClients.js';
 
 const NO_ACCESS = 'No tienes acceso a ese canal.';
 
@@ -38,7 +39,8 @@ export function buildWorkStageRouter(): Router {
     const userId = req.session!.userId;
     const channel = await channelOfMember(req.body?.chatId, userId);
     if (!channel) return res.status(403).json({ message: NO_ACCESS });
-    if (!channel.workspaceId || channel.encrypted) return res.status(400).json({ message: 'El checklist por etapas es de los canales de un espacio.' });
+    // José 29/10: the job's plan belongs to a client's channel only, not to every channel of the space.
+    if (!channel.workspaceId || channel.encrypted || !(await ClientChannelModel.exists({ chatId: channel._id }))) return res.status(400).json({ message: 'El checklist por etapas es de los canales de cliente.' });
     if (await ChecklistModel.exists({ chatId: channel._id, stage: { $exists: true } })) return res.status(409).json({ message: 'Este canal ya tiene su checklist por etapas.' });
     const created = await ChecklistModel.insertMany(
       DEFAULT_WORK_STAGES.map((title, index) => ({ chatId: channel._id, createdBy: userId, title, items: [], othersCanMark: true, othersCanAdd: true, stage: index + 1 }))

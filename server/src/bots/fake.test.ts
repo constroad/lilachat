@@ -132,12 +132,12 @@ describe('the bots fake', () => {
     const created = await putClient({ name: 'Transportes Huaral', last_order_at: recent, orders_total: 3, services: [] });
     expect(created).toMatchObject({ status: 201, body: { client: { id: 'cli-1', live: true, archived_since: null, channel: { name: 'Transportes Huaral' } } } });
     expect((await putClient({ name: 'Transportes Huaral', last_order_at: '2026-01-10T00:00:00Z', services: [{ id: 's1', name: 'Base', status: 'completed' }] })).body.client).toMatchObject({ live: false, archived_since: '2026-04-10T00:00:00.000Z' });
-    const card = await bot({ client: 'cli-1', kind: 'order.created', refs: { record_id: 'ped-1' }, text: 'Pedido PED-1', idempotency_key: 'c1' });
-    const dispatched = await bot({ client: 'cli-1', kind: 'order.dispatched', thread_of: card.body.message.seq, text: 'Salió la unidad 1', idempotency_key: 'c2' });
-    expect(card.body.message.chat_id).toBe(created.body.client.channel.id);
+    const card = (await bot({ client: 'cli-1', kind: 'order.created', refs: { record_id: 'ped-1' }, text: 'Pedido PED-1', idempotency_key: 'c1' })).body.message as { seq: number; chat_id: string };
+    const dispatched = await bot({ client: 'cli-1', kind: 'order.dispatched', thread_of: card.seq, text: 'Salió la unidad 1', idempotency_key: 'c2' });
+    expect(card.chat_id).toBe((created.body.client as { channel: { id: string } }).channel.id);
     expect(dispatched.status).toBe(201);
     expect((await bot({ client: 'cli-1', kind: 'Pedido', text: 'x', idempotency_key: 'c3' })).body.error).toBe('invalid_request');
-    expect((await call('/__fake/messages')).body.messages.slice(-2)).toMatchObject([{ kind: 'order.created', refs: { record_id: 'ped-1' } }, { kind: 'order.dispatched', thread_of: card.body.message.seq }]);
+    expect(((await call('/__fake/messages')).body.messages as unknown[]).slice(-2)).toMatchObject([{ kind: 'order.created', refs: { record_id: 'ped-1' } }, { kind: 'order.dispatched', thread_of: card.seq }]);
   });
 
   it('revoking kills the token', async () => {

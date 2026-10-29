@@ -7,6 +7,8 @@ import { pdfCacheName, pdfFailureFrom, type ChatPdf, type PdfFailure } from './p
 export type PdfDocumentState = { status: 'loading' } | { status: 'ready'; id: string; pages: PdfPageSize[] } | { status: 'failed'; failure: PdfFailure };
 
 async function downloadPdf(pdf: ChatPdf): Promise<string> {
+  // A secret chat's PDF is already decrypted on the phone (pending 118): open it where it is.
+  if (pdf.url.startsWith('file:')) return pdf.url;
   const target = `${FileSystem.cacheDirectory}${pdfCacheName(pdf.seq)}`;
   const existing = await FileSystem.getInfoAsync(target);
   if (existing.exists && existing.size > 0) return target;

@@ -40,6 +40,11 @@ async function bajarACache(params: {
 }): Promise<{ ok: true; uri: string } | { ok: false; motivo: string }> {
   const destino = `${FileSystem.cacheDirectory}${nombreDeArchivo({ ...params, original: params.nombre })}`;
   try {
+    // A secret chat's file is already decrypted on the phone (pending 118): it is copied, not downloaded.
+    if (params.url.startsWith('file:')) {
+      await FileSystem.copyAsync({ from: params.url, to: destino });
+      return { ok: true, uri: destino };
+    }
     const { status, uri } = await FileSystem.downloadAsync(params.url, destino);
     if (status < 200 || status >= 300) {
       return { ok: false, motivo: 'No pudimos descargar la foto.' };

@@ -51,4 +51,18 @@ describe('the media secret inside the sealed text', () => {
     expect(parseMediaSecret('hola')).toBeNull();
     expect(parseMediaSecret('{"lilachat":"media","k":"corto"}')).toBeNull();
   });
+
+  it('a voice note keeps its duration and its waveform; a waveform that is not bars of 0 to 100 is dropped', () => {
+    // Arrange
+    const key = createMediaKey();
+    const voice = { key, mime: 'audio/mp4', fileName: 'nota.m4a', sizeBytes: 9000, durationMs: 4200, waveform: [0, 40, 100, 12] };
+    const broken = JSON.parse(serializeMediaSecret({ ...voice, waveform: undefined })) as Record<string, unknown>;
+    // Act
+    const parsed = parseMediaSecret(serializeMediaSecret(voice));
+    const withBadBars = parseMediaSecret(JSON.stringify({ ...broken, waveform: [5, 'x', 300] }));
+    // Assert
+    expect(parsed).toEqual(voice);
+    expect(withBadBars?.waveform).toBeUndefined();
+    expect(withBadBars?.durationMs).toBe(4200);
+  });
 });

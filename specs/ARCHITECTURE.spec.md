@@ -5111,8 +5111,18 @@ tienda): 5 personas inventadas con teléfono `demo-0N` (nadie puede entrar con
 ellas), #general + 3 canales con conversación y el chat secreto con Lucía.
 `--clean` lo borra todo y verifica en cero.
 
-**Pendiente:** notas de voz y documentos cifrados (mismo motor); miniatura de
-los videos (hoy cuadro oscuro con el play).
+**Pendiente:** miniatura de los videos (hoy cuadro oscuro con el play).
+
+**Documentos y notas de voz (29/10/2026, OTA; pendiente 118).** El mismo
+motor sella ahora las notas de voz y los documentos (el server ya aceptaba
+`sealedKind` audio y file). La nota de voz guarda su duración y su onda
+(`waveform`, barras de 0 a 100, hasta 120) DENTRO del texto sellado: el
+server no ve la forma de la nota (sí el tamaño del archivo). La copia descifrada se reproduce, se abre en el
+visor de PDF y se comparte desde el archivo local (`file:`), sin descargar.
+Tests: `shared/mediaCrypto.test.ts` (onda que va y vuelve; una onda rota se
+descarta) y `app/secretMedia.test.ts` (nota de voz y PDF descifrados, sin
+miniatura).
+
 
 ## 157. Canales por cliente: contrato con agentes y Archivados (29/10/2026, diseño; pendiente 21)
 

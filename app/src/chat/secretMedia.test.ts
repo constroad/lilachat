@@ -17,6 +17,20 @@ describe('withOpenedText', () => {
     expect(shown.media?.sealed).toBeUndefined();
   });
 
+  it('a decrypted voice note keeps its duration and waveform; a document keeps its name; neither gets a thumbnail (pending 118)', () => {
+    // Arrange
+    const voice = serializeMediaSecret({ key: createMediaKey(), mime: 'audio/mp4', fileName: 'nota.m4a', sizeBytes: 9000, durationMs: 4200, waveform: [10, 80, 30] });
+    const pdf = serializeMediaSecret({ key: createMediaKey(), mime: 'application/pdf', fileName: 'contrato.pdf', sizeBytes: 50_000 });
+    // Act
+    const heard = withOpenedText(sealedMessage, voice, () => ({ uri: 'file:///cache/secreto/abc123.m4a' }));
+    const read = withOpenedText(sealedMessage, pdf, () => ({ uri: 'file:///cache/secreto/abc123.pdf' }));
+    // Assert
+    expect(heard.media).toMatchObject({ mime: 'audio/mp4', durationMs: 4200, onda: [10, 80, 30], url: 'file:///cache/secreto/abc123.m4a' });
+    expect(heard.media?.thumbUrl).toBeUndefined();
+    expect(read.media).toMatchObject({ mime: 'application/pdf', fileName: 'contrato.pdf', url: 'file:///cache/secreto/abc123.pdf' });
+    expect(read.media?.thumbUrl).toBeUndefined();
+  });
+
   it('still decrypting shows its shape and «opening» with no server address; a failure says so', () => {
     const opening = withOpenedText(sealedMessage, secretText, () => ({}));
     const failed = withOpenedText(sealedMessage, secretText, () => ({ failed: true }));

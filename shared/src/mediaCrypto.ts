@@ -23,7 +23,10 @@ const NOT_LAST = Uint8Array.of(0);
 
 export type MediaKey = { key: Uint8Array; prefix: Uint8Array };
 /** What the sealed text carries for an encrypted file. */
-export type MediaSecret = { key: MediaKey; mime: string; fileName: string; sizeBytes: number; width?: number; height?: number; durationMs?: number; caption?: string };
+/** `waveform`: a voice note's bars of 0 to 100 (pending 118), sealed with the rest: the server never sees it. */
+export type MediaSecret = { key: MediaKey; mime: string; fileName: string; sizeBytes: number; width?: number; height?: number; durationMs?: number; waveform?: number[]; caption?: string };
+const WAVEFORM_MAX_BARS = 120;
+const isWaveform = (value: unknown): value is number[] => Array.isArray(value) && value.length > 0 && value.length <= WAVEFORM_MAX_BARS && value.every((bar) => typeof bar === 'number' && bar >= 0 && bar <= 100);
 
 export const createMediaKey = (): MediaKey => ({ key: randomBytes(KEY_BYTES), prefix: randomBytes(PREFIX_BYTES) });
 
@@ -90,7 +93,8 @@ export function parseMediaSecret(text: string): MediaSecret | null {
     if (key.key.length !== KEY_BYTES || key.prefix.length !== PREFIX_BYTES) return null;
     const optional = (name: 'width' | 'height' | 'durationMs') => (typeof raw[name] === 'number' ? { [name]: raw[name] as number } : {});
     const caption = typeof raw.caption === 'string' && raw.caption ? { caption: raw.caption } : {};
-    return { key, mime: raw.mime, fileName: typeof raw.fileName === 'string' ? raw.fileName : 'archivo', sizeBytes: Number(raw.sizeBytes) || 0, ...optional('width'), ...optional('height'), ...optional('durationMs'), ...caption };
+    const waveform = isWaveform(raw.waveform) ? { waveform: raw.waveform } : {};
+    return { key, mime: raw.mime, fileName: typeof raw.fileName === 'string' ? raw.fileName : 'archivo', sizeBytes: Number(raw.sizeBytes) || 0, ...optional('width'), ...optional('height'), ...optional('durationMs'), ...waveform, ...caption };
   } catch {
     return null;
   }

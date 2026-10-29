@@ -1,7 +1,7 @@
 import { parseMediaSecret, type MediaSecret } from '@lilachat/shared';
 
 /**
- * A secret chat's photo or video (pending 67 / F12.3, José 29/10), as the
+ * A secret chat's photo, video, voice note or document (pending 67 / F12.3 and 118, José 29/10), as the
  * bubble draws it. The server keeps an encrypted file with no name or shape;
  * the opened text of the message says what it is and holds its key. Until the
  * phone decrypts it, the bubble shows its shape and «opening». PURE.
@@ -9,7 +9,7 @@ import { parseMediaSecret, type MediaSecret } from '@lilachat/shared';
 export const UNREADABLE = '🔒 No se pudo descifrar';
 
 export type SecretFile = { uri?: string; failed?: boolean };
-type WithMedia = { body?: string; media?: { url?: string; thumbUrl?: string; mime?: string; fileName?: string; sizeBytes?: number; width?: number; height?: number; durationMs?: number; sealed?: 'opening' | 'failed' } };
+type WithMedia = { body?: string; media?: { url?: string; thumbUrl?: string; mime?: string; fileName?: string; sizeBytes?: number; width?: number; height?: number; durationMs?: number; onda?: number[]; sealed?: 'opening' | 'failed' } };
 
 /** The message with its opened text: plain words, or the decrypted photo or video once it is on the phone. */
 export function withOpenedText<M extends WithMedia>(message: M, text: string | null, fileOf: (url: string, secret: MediaSecret) => SecretFile): M {
@@ -31,6 +31,7 @@ export function withOpenedText<M extends WithMedia>(message: M, text: string | n
       width: secret.width,
       height: secret.height,
       durationMs: secret.durationMs,
+      onda: secret.waveform,
       url: file.uri,
       // A video's thumbnail cannot be the video itself: the bubble draws its dark frame with the play.
       thumbUrl: secret.mime.startsWith('image/') ? file.uri : undefined,

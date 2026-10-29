@@ -161,7 +161,7 @@ export async function encolarArchivo(params: ArchivoNuevo & { hd?: boolean }): P
   let preparado: Prepared;
   try {
     preparado = await prepararArchivo(archivo, clientKey, Boolean(hd));
-    if (seal) preparado = { ...preparado, sealed: await sealPrepared(preparado, archivo.caption, clientKey, seal) };
+    if (seal) preparado = { ...preparado, sealed: await sealPrepared(preparado, archivo, clientKey, seal) };
   } catch (error) {
     cola = cola.filter((uno) => uno.clientKey !== clientKey);
     avisar();
@@ -197,14 +197,14 @@ type Prepared = Awaited<ReturnType<typeof prepararArchivo>> & { sealed?: SealedU
 /**
  * A secret chat's photo or video (pending 67): encrypted next to its plain
  * copy with a key of its own, and that key sealed end to end in the text.
- * Only photos and videos, and never in clear: a seal that fails stops it.
+ * Photos, videos, voice notes and documents (pending 118), never in clear: a
+ * seal that fails stops it.
  */
-async function sealPrepared(prepared: Prepared, caption: string | undefined, clientKey: string, seal: (text: string) => Envelope | null): Promise<SealedUpload> {
+async function sealPrepared(prepared: Prepared, original: Pick<ArchivoNuevo, 'caption' | 'durationMs' | 'onda'>, clientKey: string, seal: (text: string) => Envelope | null): Promise<SealedUpload> {
   const validation = validateMedia({ mimeType: prepared.mimeType, sizeBytes: prepared.sizeBytes });
   if (!validation.ok) throw new Error(validation.reason);
-  if (validation.kind !== 'image' && validation.kind !== 'video') throw new Error('En un chat secreto solo van fotos y videos.');
   const key = createMediaKey();
-  const envelope = seal(serializeMediaSecret({ key, mime: prepared.mimeType, fileName: prepared.fileName, sizeBytes: prepared.sizeBytes, width: prepared.width, height: prepared.height, caption: caption?.trim() || undefined }));
+  const envelope = seal(serializeMediaSecret({ key, mime: prepared.mimeType, fileName: prepared.fileName, sizeBytes: prepared.sizeBytes, width: prepared.width, height: prepared.height, durationMs: original.durationMs, waveform: original.onda?.length ? original.onda : undefined, caption: original.caption?.trim() || undefined }));
   if (!envelope) throw new Error('No se pudo cifrar el archivo.');
   const target = new File(`${CARPETA}${clientKey}.sellado`);
   const sizeBytes = await sealFile(new File(prepared.uri), target, key);

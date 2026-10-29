@@ -19,7 +19,7 @@ const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.
 const UPLOAD_TIMEOUT_MS = 120_000;
 
 /** A secret chat's photo or video ready to go up (pending 67): the encrypted copy and the sealed text with its key. */
-export type SealedUpload = { uri: string; sizeBytes: number; envelope: Envelope; kind: 'image' | 'video' };
+export type SealedUpload = { uri: string; sizeBytes: number; envelope: Envelope; kind: 'image' | 'video' | 'audio' | 'file' };
 
 export type UploadResult =
   | { ok: true; seq: number; url: string; thumbnailUrl?: string; mensaje?: ServerMessage }

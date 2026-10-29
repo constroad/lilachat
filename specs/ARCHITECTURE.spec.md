@@ -4970,6 +4970,9 @@ en el mismo lenguaje del diseño.
   - **Hallazgo 2:** cerrar la app a la fuerza mata el servicio, y el pin se
     quedaba congelado con «En tiempo real». Ahora `resumeLiveSharing` lo vuelve
     a prender al abrir la app (en `App.tsx`, solo en primer plano). Va por OTA.
+    Ojo: `expo-task-manager` restaura la tarea tras el cierre, pero SIN el
+    servicio. `hasStartedLocationUpdatesAsync` dice que ya corre, por eso se
+    para y se vuelve a arrancar.
 - **Falta:**
   - El mapa en vivo dentro del chat (MapLibre). Hoy la tarjeta redibuja el
     mapa fijo con cada posición.

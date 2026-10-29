@@ -78,10 +78,15 @@ export async function startLiveSharing(share: LiveShare): Promise<boolean> {
 
 /**
  * Closing the app by force kills the service and the card would say «En
- * tiempo real» with a frozen pin; opening the app again resumes what still lasts.
+ * tiempo real» with a frozen pin; opening the app again resumes what still lasts
+ * (E2E 28/10).
  */
 export async function resumeLiveSharing(): Promise<void> {
-  if ((await readShares()).length > 0) await startUpdates();
+  if ((await readShares()).length === 0) return;
+  // The task manager restores the task after a forced close, but WITHOUT the foreground service:
+  // it says «started» and the system throttles it in the background. Restart it with the service.
+  await stopUpdates();
+  await startUpdates();
 }
 
 async function startUpdates(): Promise<boolean> {

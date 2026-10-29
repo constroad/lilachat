@@ -7,6 +7,7 @@ import { publicarMensaje } from '../reparto.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { BotInstallationModel, type BotInstallation } from './botModels.js';
 import { channelOfPostedTopic } from './botTopics.js';
+import { chatOfClient } from './botClients.js';
 
 /**
  * What a bot publishes (`specs/BOTS-API.spec.md` §b): to a channel or group of
@@ -16,7 +17,7 @@ import { channelOfPostedTopic } from './botTopics.js';
  */
 export type BotApiError = { status: 400 | 403 | 404 | 409; error: string; message: string; phone?: string };
 export type PostedMessage = { id: string; chat_id: string; seq: number };
-type Installation = Pick<BotInstallation, '_id' | 'workspaceId' | 'botUserId' | 'recentKeys'>;
+type Installation = Pick<BotInstallation, '_id' | 'appId' | 'workspaceId' | 'botUserId' | 'recentKeys'>;
 
 const RECENT_KEYS_KEPT = 500;
 const fail = (status: BotApiError['status'], error: string, message: string): BotApiError => ({ status, error, message });
@@ -52,6 +53,7 @@ async function chatOfChannel(installation: Installation, channelId: string): Pro
 
 async function resolveChat(installation: Installation, target: BotPost['target']): Promise<Types.ObjectId | BotApiError> {
   if ('channelId' in target) return chatOfChannel(installation, target.channelId);
+  if ('client' in target) return chatOfClient(installation, target.client);
   if ('topic' in target) {
     const channelId = await channelOfPostedTopic(installation, target.topic);
     return typeof channelId === 'string' ? chatOfChannel(installation, channelId) : channelId;
@@ -82,6 +84,7 @@ async function publishText(installation: Installation, chatId: Types.ObjectId, p
     ...(sharedBy ? { sharedBy } : {}),
     ...(post.threadOf ? { hiloDe: post.threadOf } : {}),
   });
+  if (post.clientRef && !result.duplicate) await MessageModel.updateOne({ _id: result.message._id }, { $set: { clientRef: post.clientRef } });
   if (!result.duplicate) await publicarMensaje(result.message, result.members);
   return result.message;
 }

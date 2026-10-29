@@ -4935,27 +4935,51 @@ openServices}, now)` en `shared` es una función pura con test. La lista lo
 calcula al leer, así que el día 91 el canal pasa a Archivados sin ningún
 proceso que lo mueva.
 
-**Contrato con agentes (la app escribe, Lilachat dibuja).**
-- `PUT /api/bots/clients/:clientId`:
-  `{ name, ruc?, lastOrderAt, ordersTotal, services: [{ id, name, status, stage, stageLabel, progress?, url? }] }`.
-  Crea el canal la primera vez y actualiza el estado. `clientId` es el `_id`
-  del cliente en el Portal.
-  - Es idempotente: el mismo cuerpo dos veces no cambia nada.
-  - `status` es el del Portal (`pending | in_progress | completed |
-    cancelled`). Solo los dos primeros cuentan como abiertos.
-- Los avisos van con `target: { client: "<clientId>" }` (además de `topic` y
-  `channelId`). Llevan `kind` y `refs: { serviceId?, recordId? }`, y un aviso
-  con `serviceId` sale además en ese servicio de la pestaña.
-- Kinds de pedido: `order.created`, `order.dispatched`, `order.delivered`.
-- Kinds de servicio: `service.created`, `service.stage_changed`,
-  `service.completed`, `service.cancelled`.
-- Kind de registro del expediente: `service.record`. Lleva
-  `record: { kind: quote | purchase_order | valuation | payment | report |
-  observation | photo, id, title, url? }`.
-- Antes de cada aviso, agentes manda el `PUT` con el estado nuevo. El aviso no
-  saca el canal de Archivados: lo saca el estado.
+**Contrato con agentes (la app escribe, Lilachat dibuja; acordado el 29/10).**
+- `PUT /api/bots/clients/:clientId`, en snake_case como el resto de la API:
+  `{ name, ruc?, last_order_at (ISO o null), orders_total, services: [{ id, name, status, stage, stage_label, progress?, url?, closed_at? }] }`.
+  - Crea el canal la primera vez (201) y después actualiza el estado (200).
+    `clientId` es el `_id` del cliente en el Portal.
+  - El canal nace público, con el bot y los admins del espacio. Los demás
+    entran desde «Explorar canales».
+  - `status` es el del Portal: `pending | in_progress | completed |
+    rejected`. Solo los dos primeros cuentan como abiertos.
+  - Portal no tiene etapas. `stage` es el estado de
+    `derivePublicServiceStatus`, `stage_label` su nombre y `progress` sale de
+    `progressPercentage`, el mismo motor del portal de cliente.
+  - `closed_at` solo viene en los servicios que se cierren desde ahora. Sin
+    él, «Archivado desde» es 90 días después del último pedido.
+- Avisos: el POST de siempre con `client: "<clientId>"` (en lugar de
+  `channel_id`, `topic` o `user`), `kind` y `refs: { service_id?, record_id? }`.
+  Se guardan en `message.clientRef`. Acepta `thread_of`.
+  - Kinds de pedido: una tarjeta por pedido (`order.created`, refs.record_id =
+    pedido). Cada despacho va en su hilo (`order.dispatched`,
+    `order.delivered`), y la tarjeta se actualiza con PATCH.
+  - Kinds de servicio: `service.created`, `service.status_changed`,
+    `service.completed` y `service.rejected`.
+  - `service.record` para quote, payment, report, observation y photo. Portal
+    no emite purchase_order ni valuation.
+- Va al espacio que ya recibe los avisos de la empresa (la instalación con sus
+  temas), con su token. Un pedido sin cliente no va a ningún canal.
+- El aviso no saca el canal de Archivados: lo saca el estado. Tampoco lo saca
+  escribir en el canal.
 - El Drive no se copia. «Ver en el Drive» abre la pestaña Drive del servicio
   en el Portal con `crear_enlace_de_servicio`.
+- Con la regla, hoy quedarían vivos 13 canales en Constroad, 20 en Globofast y
+  3 en Inframaq: Portal casi nunca cierra un servicio.
+
+**Server (29/10):**
+- `server/src/bots/botClients.ts` tiene la colección `ClientChannel` (índice
+  único `{workspaceId, appId, clientId}`). Si dos PUT llegan a la vez, el que
+  pierde borra su chat y actualiza el del ganador.
+- `GET /api/workspaces/:id/clients` sirve a cualquier miembro activo (404
+  fuera del espacio). Devuelve vivo o archivado, `archived_since`,
+  `archived_group` (3-6 o 6+) y los servicios, con los vivos primero.
+- El fake (`tools/bots-fake`) tiene las mismas rutas y `GET /__fake/clients`.
+- Tests: `shared/src/clientChannels.test.ts` (8),
+  `server/src/bots/botClients.test.ts` (6) y uno en `fake.test.ts`.
+- Falta: la app y la web (sección CLIENTES, Archivados, aviso y pestaña
+  «Servicios»).
 
 ## 156. Ubicación en tiempo real: 15 min, 1 hora u 8 horas (28/10/2026, servidor + APK 0.1.174 + web; pendiente 11)
 

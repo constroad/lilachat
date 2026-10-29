@@ -121,6 +121,25 @@ describe('the bots fake', () => {
     expect((await call(`/api/bots/apps/${created.body.client_id}/secret`, { method: 'POST', headers: asDeveloper })).status).toBe(404);
   });
 
+  it('pending 21 like the server: PUT the client creates its channel, posts by client keep kind, thread and refs', async () => {
+    const { token } = await install();
+    const asBot = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+    const putClient = (body: unknown, id = 'cli-1') => call(`/api/bots/clients/${id}`, { method: 'PUT', headers: asBot, body: JSON.stringify(body) });
+    const bot = (body: unknown) => call('/api/bots/messages', { method: 'POST', headers: asBot, body: JSON.stringify(body) });
+    const recent = new Date(Date.now() - 86_400_000).toISOString();
+    expect((await bot({ client: 'cli-1', text: 'x', idempotency_key: 'c0' })).body.error).toBe('client_not_found');
+    expect((await putClient({ name: 'Transportes Huaral', last_order_at: recent, services: [{ id: 's1', name: 'Base', status: 'done' }] })).body.error).toBe('invalid_request');
+    const created = await putClient({ name: 'Transportes Huaral', last_order_at: recent, orders_total: 3, services: [] });
+    expect(created).toMatchObject({ status: 201, body: { client: { id: 'cli-1', live: true, archived_since: null, channel: { name: 'Transportes Huaral' } } } });
+    expect((await putClient({ name: 'Transportes Huaral', last_order_at: '2026-01-10T00:00:00Z', services: [{ id: 's1', name: 'Base', status: 'completed' }] })).body.client).toMatchObject({ live: false, archived_since: '2026-04-10T00:00:00.000Z' });
+    const card = await bot({ client: 'cli-1', kind: 'order.created', refs: { record_id: 'ped-1' }, text: 'Pedido PED-1', idempotency_key: 'c1' });
+    const dispatched = await bot({ client: 'cli-1', kind: 'order.dispatched', thread_of: card.body.message.seq, text: 'Salió la unidad 1', idempotency_key: 'c2' });
+    expect(card.body.message.chat_id).toBe(created.body.client.channel.id);
+    expect(dispatched.status).toBe(201);
+    expect((await bot({ client: 'cli-1', kind: 'Pedido', text: 'x', idempotency_key: 'c3' })).body.error).toBe('invalid_request');
+    expect((await call('/__fake/messages')).body.messages.slice(-2)).toMatchObject([{ kind: 'order.created', refs: { record_id: 'ped-1' } }, { kind: 'order.dispatched', thread_of: card.body.message.seq }]);
+  });
+
   it('revoking kills the token', async () => {
     const { token } = await install();
     expect((await call('/api/oauth/revoke', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })).status).toBe(200);

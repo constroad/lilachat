@@ -1,0 +1,82 @@
+/**
+ * A channel per client of the company (pending 21, §157; José, 29/10): live
+ * while the client had an order in the last 90 days or has an open service,
+ * otherwise in «Archivados». It is worked out when the list is read, so the
+ * 91st day needs no job to move it. The app (agentes) sends the state; PURE.
+ */
+export const CLIENT_LIVE_DAYS = 90;
+const DAY_MS = 86_400_000;
+const SIX_MONTHS_DAYS = 180;
+const MAX_SERVICES = 200;
+const MAX_TEXT = 160;
+
+export const CLIENT_SERVICE_STATUSES = ['pending', 'in_progress', 'completed', 'rejected'] as const;
+export type ClientServiceStatus = (typeof CLIENT_SERVICE_STATUSES)[number];
+export type ClientService = { id: string; name: string; status: ClientServiceStatus; stage: string; stageLabel: string; progress?: number; url?: string; closedAt?: string };
+export type ClientState = { name: string; ruc?: string; lastOrderAt: string | null; ordersTotal: number; services: ClientService[] };
+export type ArchivedAgeGroup = '3-6' | '6+';
+
+const isOpen = (service: Pick<ClientService, 'status'>) => service.status === 'pending' || service.status === 'in_progress';
+
+export function isClientChannelLive(state: Pick<ClientState, 'lastOrderAt' | 'services'>, now: Date): boolean {
+  if (state.services.some(isOpen)) return true;
+  return state.lastOrderAt !== null && now.getTime() - Date.parse(state.lastOrderAt) <= CLIENT_LIVE_DAYS * DAY_MS;
+}
+
+/** When it went to «Archivados»: 90 days after the last order, or when its last service closed if that came later. */
+export function archivedSince(state: Pick<ClientState, 'lastOrderAt' | 'services'>): string | null {
+  const times = state.services.flatMap((service) => (service.closedAt ? [Date.parse(service.closedAt)] : []));
+  if (state.lastOrderAt) times.push(Date.parse(state.lastOrderAt) + CLIENT_LIVE_DAYS * DAY_MS);
+  return times.length ? new Date(Math.max(...times)).toISOString() : null;
+}
+
+/** The groups of the archived list (design f-02): last order 3 to 6 months ago, or older (or never). */
+export function archivedAgeGroup(lastOrderAt: string | null, now: Date): ArchivedAgeGroup {
+  if (!lastOrderAt) return '6+';
+  return now.getTime() - Date.parse(lastOrderAt) <= SIX_MONTHS_DAYS * DAY_MS ? '3-6' : '6+';
+}
+
+type Refused = { ok: false; message: string };
+const refuse = (message: string): Refused => ({ ok: false, message });
+const text = (raw: unknown): string => (typeof raw === 'string' ? raw.trim().slice(0, MAX_TEXT) : '');
+const isoOrNull = (raw: unknown): string | null | undefined => {
+  if (raw === null || raw === undefined) return null;
+  return typeof raw === 'string' && !Number.isNaN(Date.parse(raw)) ? new Date(raw).toISOString() : undefined;
+};
+
+function validateService(raw: unknown): { ok: true; service: ClientService } | Refused {
+  const body = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
+  const id = text(body.id);
+  const name = text(body.name);
+  if (!id || !name) return refuse('Cada servicio lleva id y name.');
+  if (!CLIENT_SERVICE_STATUSES.includes(body.status as ClientServiceStatus)) return refuse(`status va como ${CLIENT_SERVICE_STATUSES.join(', ')}.`);
+  const progress = body.progress === undefined || body.progress === null ? undefined : Number(body.progress);
+  if (progress !== undefined && !(Number.isFinite(progress) && progress >= 0 && progress <= 100)) return refuse('progress va de 0 a 100.');
+  const closedAt = isoOrNull(body.closed_at);
+  if (closedAt === undefined) return refuse('closed_at va como fecha ISO.');
+  const url = text(body.url);
+  return {
+    ok: true,
+    service: { id, name, status: body.status as ClientServiceStatus, stage: text(body.stage), stageLabel: text(body.stage_label), ...(progress !== undefined ? { progress } : {}), ...(url.startsWith('https://') ? { url } : {}), ...(closedAt ? { closedAt } : {}) },
+  };
+}
+
+/** The body of `PUT /api/bots/clients/:clientId`, in the API's snake_case. */
+export function validateClientState(raw: unknown): { ok: true; state: ClientState } | Refused {
+  const body = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
+  const name = text(body.name);
+  if (!name) return refuse('El cliente lleva name.');
+  const lastOrderAt = isoOrNull(body.last_order_at);
+  if (lastOrderAt === undefined) return refuse('last_order_at va como fecha ISO, o null si todavía no tiene pedidos.');
+  const rawServices = Array.isArray(body.services) ? body.services : [];
+  if (rawServices.length > MAX_SERVICES) return refuse(`Hasta ${MAX_SERVICES} servicios por cliente.`);
+  const services: ClientService[] = [];
+  for (const one of rawServices) {
+    const valid = validateService(one);
+    if (!valid.ok) return valid;
+    services.push(valid.service);
+  }
+  const ruc = text(body.ruc);
+  const ordersTotal = Number.isInteger(body.orders_total) && Number(body.orders_total) >= 0 ? Number(body.orders_total) : 0;
+  return { ok: true, state: { name, ...(ruc ? { ruc } : {}), lastOrderAt, ordersTotal, services } };
+}

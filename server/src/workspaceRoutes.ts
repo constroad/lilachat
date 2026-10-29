@@ -25,6 +25,7 @@ import { multerDeAvatar, subirFotoRedonda } from './subirAvatar.js';
 import multer from 'multer';
 import { CUSTOM_EMOJI_MAX_BYTES } from '@lilachat/shared';
 import { addCustomEmoji, listCustomEmojis, removeCustomEmoji } from './customEmojiCatalog.js';
+import { listClients } from './bots/botClients.js';
 
 /** Tries of a code per person and minute: enough to fix a typo, not to guess codes. */
 const CODE_TRIES_PER_MINUTE = 10;
@@ -86,6 +87,7 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
     res.status(204).end();
   }));
   router.patch('/:id/members/:memberId', handled(async (req, res) => res.json({ member: await updateMember(req.params.id!, me(req), req.params.memberId!, req.body ?? {}) })));
+  router.get('/:id/clients', handled(async (req, res) => res.json({ clients: await listClients(req.params.id!, me(req)) })));
   router.get('/:id/channels', handled(async (req, res) => res.json({ channels: await listChannels(req.params.id!, me(req)) })));
   router.post('/:id/channels', handled(async (req, res) => res.status(201).json({ channel: await createChannel(req.params.id!, me(req), req.body ?? {}) })));
   // Pending 19: the space's own emojis (designs c-06/c-07). Too big a file is a 400, not a 500.

@@ -30,8 +30,11 @@ export type BotCard = {
 };
 export type BotChecklist = { title: string; othersCanMark: boolean; items: { text: string; assigneePhone?: string; dueAt?: string }[] };
 /** `topic` (R160): the channel the space's admin picked for that topic of the app. */
-export type BotTarget = { channelId: string } | { topic: string } | { userPhone: string } | { userId: string };
-export type BotPost = { target: BotTarget; text?: string; card?: BotCard; checklist?: BotChecklist; threadOf?: number; idempotencyKey: string };
+/** `client` (pending 21, §157): the channel of that client, created by `PUT /api/bots/clients/:id`. */
+export type BotTarget = { channelId: string } | { topic: string } | { userPhone: string } | { userId: string } | { client: string };
+/** What a message to a client is about, so the «Servicios» tab can show it under its service. */
+export type BotClientRef = { kind: string; serviceId?: string; recordId?: string };
+export type BotPost = { target: BotTarget; text?: string; card?: BotCard; checklist?: BotChecklist; threadOf?: number; clientRef?: BotClientRef; idempotencyKey: string };
 export type BotPostError = { ok: false; error: 'invalid_request'; message: string };
 
 export const BOT_LIMITS = { text: 4000, idempotencyKey: 120, fields: 12, actions: 3, actionValue: 2000, kicker: 60, title: 120, status: 24, label: 40, value: 120, linkLabel: 40, actionLabel: 24, actionId: 40, url: 500 };
@@ -118,12 +121,25 @@ function validateBotChecklist(raw: unknown): { ok: true; checklist: BotChecklist
   return { ok: true, checklist: { title: valid.title, othersCanMark: checklist.others_can_mark === true, items: kept } };
 }
 
+export const CLIENT_ID = /^[A-Za-z0-9_-]{1,64}$/;
+const CLIENT_KIND = /^[a-z_]{1,32}\.[a-z_]{1,32}$/;
+
+function clientRefOf(body: Record<string, unknown>): BotClientRef | null {
+  if (typeof body.kind !== 'string' || !CLIENT_KIND.test(body.kind)) return null;
+  const refs = record(body.refs);
+  const serviceId = typeof refs.service_id === 'string' && CLIENT_ID.test(refs.service_id) ? refs.service_id : undefined;
+  const recordId = typeof refs.record_id === 'string' && CLIENT_ID.test(refs.record_id) ? refs.record_id : undefined;
+  return { kind: body.kind, ...(serviceId ? { serviceId } : {}), ...(recordId ? { recordId } : {}) };
+}
+
 function validateTarget(body: Record<string, unknown>): { ok: true; target: BotTarget } | BotPostError {
   const channelId = typeof body.channel_id === 'string' && body.channel_id ? body.channel_id : undefined;
   const topic = body.topic === undefined ? undefined : String(body.topic);
   const user = body.user === undefined ? undefined : record(body.user);
-  if ([channelId, topic, user].filter((one) => one !== undefined).length !== 1) return refuse('Indica un destino: channel_id, topic o user, uno solo.');
+  const client = body.client === undefined ? undefined : String(body.client);
+  if ([channelId, topic, user, client].filter((one) => one !== undefined).length !== 1) return refuse('Indica un destino: channel_id, topic, user o client, uno solo.');
   if (channelId) return { ok: true, target: { channelId } };
+  if (client !== undefined) return CLIENT_ID.test(client) ? { ok: true, target: { client } } : refuse('client es el id del cliente (letras, números, _ o -, hasta 64).');
   if (topic !== undefined) return TOPIC_KEY.test(topic) ? { ok: true, target: { topic } } : refuse('topic va en minúsculas (a-z, 0-9, _ o -), como en el manifiesto.');
   if (typeof user!.id === 'string' && user!.id) return { ok: true, target: { userId: user!.id } };
   const phone = normalizePeruPhone(user!.phone);
@@ -150,6 +166,11 @@ export function validateBotPost(raw: unknown): { ok: true; post: BotPost } | Bot
     post.checklist = checklist.checklist;
   }
   if (Number.isInteger(body.thread_of) && Number(body.thread_of) > 0) post.threadOf = Number(body.thread_of);
+  if (body.kind !== undefined) {
+    const clientRef = clientRefOf(body);
+    if (!clientRef) return refuse('kind va como «order.created» (minúsculas, con un punto) y refs como { service_id?, record_id? }.');
+    post.clientRef = clientRef;
+  }
   if (!post.text && !post.card && !post.checklist) return refuse('Manda un texto, una tarjeta o un checklist.');
   return { ok: true, post };
 }

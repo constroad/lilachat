@@ -22,10 +22,21 @@
  * `/__fake/command`, and returns `{ command_id, outcome, response?, errors? }`.
  * In `form.submitted`, a value "@photo" becomes a signed photo URL that answers
  * 200 image/jpeg for 15 minutes.
+ *
+ * Pending 21 (§157): PUT /api/bots/clients/:clientId creates the client's
+ * channel (`client_<id>`) and answers live/archived_since; POST
+ * /api/bots/messages takes `client` (with thread_of, kind and refs). GET
+ * /__fake/clients lists them.
  */
 import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import { pathToFileURL } from 'node:url';
+
+const CLIENT_ID = /^[A-Za-z0-9_-]{1,64}$/;
+const CLIENT_KIND = /^[a-z_]{1,32}\.[a-z_]{1,32}$/;
+const CLIENT_SERVICE_STATUSES = ['pending', 'in_progress', 'completed', 'rejected'];
+const CLIENT_LIVE_DAYS = 90;
+const DAY_MS = 86_400_000;
 
 const DEFAULT_CHANNELS = [
   { id: 'ch_general', name: 'general', visibility: 'public' },
@@ -99,7 +110,7 @@ export function createFake(options = {}) {
   const fileKey = randomBytes(32);
   let state;
   const reset = () => {
-    state = { codes: new Map(), installation: null, messages: [], deliveries: [], minute: { start: Date.now(), used: 0 }, seq: 0, joined: new Set(config.channels.filter((c) => c.visibility === 'public').map((c) => c.id)), commands: [], runs: new Map(), commandResponses: [], apps: new Map(), installedClientId: null, topicChannels: {}, files: new Map() };
+    state = { codes: new Map(), installation: null, messages: [], deliveries: [], minute: { start: Date.now(), used: 0 }, seq: 0, joined: new Set(config.channels.filter((c) => c.visibility === 'public').map((c) => c.id)), commands: [], runs: new Map(), commandResponses: [], apps: new Map(), installedClientId: null, topicChannels: {}, files: new Map(), clients: new Map() };
   };
   reset();
 
@@ -150,7 +161,13 @@ export function createFake(options = {}) {
     let channelId = typeof body.channel_id === 'string' && body.channel_id ? body.channel_id : null;
     const topic = body.topic === undefined ? null : String(body.topic);
     const user = body.user && typeof body.user === 'object' ? body.user : null;
-    if ([channelId, topic, user].filter((one) => one !== null).length !== 1) return [400, { error: 'invalid_request', message: 'Indica un destino: channel_id, topic o user, uno solo.' }];
+    const client = body.client === undefined ? null : String(body.client);
+    if ([channelId, topic, user, client].filter((one) => one !== null).length !== 1) return [400, { error: 'invalid_request', message: 'Indica un destino: channel_id, topic, user o client, uno solo.' }];
+    if (client !== null) {
+      if (!CLIENT_ID.test(client)) return [400, { error: 'invalid_request', message: 'client es el id del cliente (letras, números, _ o -, hasta 64).' }];
+      if (!state.clients.has(client)) return [404, { error: 'client_not_found', message: `Ese cliente no tiene canal: manda primero PUT /api/bots/clients/${client} con su estado.` }];
+    }
+    if (body.kind !== undefined && (typeof body.kind !== 'string' || !CLIENT_KIND.test(body.kind))) return [400, { error: 'invalid_request', message: 'kind va como «order.created» (minúsculas, con un punto) y refs como { service_id?, record_id? }.' }];
     if (topic !== null) {
       if (!TOPIC_KEY.test(topic)) return [400, { error: 'invalid_request', message: 'topic va en minúsculas (a-z, 0-9, _ o -), como en el manifiesto.' }];
       const routed = channelOfTopic(topic);
@@ -173,7 +190,8 @@ export function createFake(options = {}) {
       if (!config.members.some((member) => member.phone === phone)) return [400, { error: 'assignee_not_member', message: `El responsable ${item.assignee_phone} no es miembro activo del espacio.`, phone: phone || String(item.assignee_phone) }];
     }
     let chatId;
-    if (channelId) {
+    if (client !== null) chatId = state.clients.get(client).channel.id;
+    else if (channelId) {
       const channel = config.channels.find((one) => one.id === channelId);
       if (!channel) return [404, { error: 'channel_not_found', message: 'Ese canal no existe en el espacio.' }];
       if (channel.visibility !== 'public' && !state.joined.has(channelId)) return [403, { error: 'not_in_channel', message: 'El bot no está en ese canal privado o grupo: alguien tiene que agregarlo.' }];
@@ -184,9 +202,36 @@ export function createFake(options = {}) {
       chatId = `dm_${member.id}`;
     }
     state.seq += 1;
-    const message = { id: `msg_${randomBytes(6).toString('hex')}`, chat_id: chatId, seq: state.seq, idempotency_key: key, text: body.text, card: body.card, checklist: body.checklist, thread_of: body.thread_of, at: new Date().toISOString() };
+    const message = { id: `msg_${randomBytes(6).toString('hex')}`, chat_id: chatId, seq: state.seq, idempotency_key: key, text: body.text, card: body.card, checklist: body.checklist, thread_of: body.thread_of, ...(body.kind ? { kind: body.kind, refs: body.refs ?? {} } : {}), at: new Date().toISOString() };
     state.messages.push(message);
     return [201, { message: { id: message.id, chat_id: message.chat_id, seq: message.seq } }];
+  }
+
+  // A channel per client (pending 21, §157): live with an order in 90 days or an open service.
+  function putClient(clientId, body) {
+    if (!CLIENT_ID.test(clientId)) return [400, { error: 'invalid_request', message: 'El id del cliente lleva letras, números, _ o -, hasta 64.' }];
+    const name = typeof body.name === 'string' ? body.name.trim() : '';
+    if (!name) return [400, { error: 'invalid_request', message: 'El cliente lleva name.' }];
+    const isDate = (value) => value === null || value === undefined || (typeof value === 'string' && !Number.isNaN(Date.parse(value)));
+    if (!isDate(body.last_order_at)) return [400, { error: 'invalid_request', message: 'last_order_at va como fecha ISO, o null si todavía no tiene pedidos.' }];
+    const services = Array.isArray(body.services) ? body.services : [];
+    for (const one of services) {
+      if (!one?.id || !one?.name) return [400, { error: 'invalid_request', message: 'Cada servicio lleva id y name.' }];
+      if (!CLIENT_SERVICE_STATUSES.includes(one.status)) return [400, { error: 'invalid_request', message: `status va como ${CLIENT_SERVICE_STATUSES.join(', ')}.` }];
+      if (one.progress !== undefined && one.progress !== null && !(Number(one.progress) >= 0 && Number(one.progress) <= 100)) return [400, { error: 'invalid_request', message: 'progress va de 0 a 100.' }];
+      if (!isDate(one.closed_at)) return [400, { error: 'invalid_request', message: 'closed_at va como fecha ISO.' }];
+    }
+    const known = state.clients.get(clientId);
+    const channel = known?.channel ?? { id: `client_${clientId}`, name };
+    channel.name = name;
+    const lastOrderAt = body.last_order_at ? new Date(body.last_order_at).toISOString() : null;
+    const open = services.some((one) => one.status === 'pending' || one.status === 'in_progress');
+    const live = open || (lastOrderAt !== null && Date.now() - Date.parse(lastOrderAt) <= CLIENT_LIVE_DAYS * DAY_MS);
+    const closes = services.flatMap((one) => (one.closed_at ? [Date.parse(one.closed_at)] : []));
+    if (lastOrderAt) closes.push(Date.parse(lastOrderAt) + CLIENT_LIVE_DAYS * DAY_MS);
+    const archivedSince = live || closes.length === 0 ? null : new Date(Math.max(...closes)).toISOString();
+    state.clients.set(clientId, { channel, state: body });
+    return [known ? 200 : 201, { client: { id: clientId, channel, live, archived_since: archivedSince } }];
   }
 
   // Notice topics (§c-quater): the installed app's, a topic never touched goes to #general, null is «Sin canal».
@@ -433,6 +478,7 @@ export function createFake(options = {}) {
       return id ? [202, { delivery_id: id }] : [409, { error: 'not_installed', message: 'Instala la app primero.' }];
     }
     if (req.method === 'GET' && path === '/__fake/messages') return [200, { messages: state.messages }];
+    if (req.method === 'GET' && path === '/__fake/clients') return [200, { clients: [...state.clients.entries()].map(([id, one]) => ({ id, channel: one.channel, state: one.state })) }];
     if (req.method === 'POST' && path === '/__fake/command') return invokeCommand(await readBody(req));
     if (req.method === 'GET' && path === '/__fake/command-responses') return [200, { responses: state.commandResponses }];
     if (req.method === 'GET' && path === '/__fake/deliveries') return [200, { deliveries: state.deliveries.map(({ signingSecret: _hidden, ...rest }) => rest) }];
@@ -448,6 +494,8 @@ export function createFake(options = {}) {
     if (req.method === 'GET' && path === '/api/bots/members') return [200, { members: config.members }];
     if (req.method === 'GET' && path === '/api/bots/commands') return [200, { commands: state.commands }];
     if (req.method === 'PUT' && path === '/api/bots/commands') return registerCommands(await readBody(req));
+    const clientPath = path.match(/^\/api\/bots\/clients\/([^/]+)$/);
+    if (req.method === 'PUT' && clientPath) return putClient(decodeURIComponent(clientPath[1]), await readBody(req));
     if (req.method === 'GET' && path === '/api/bots/topics') return [200, topicsToWire()];
     if (req.method === 'PUT' && path === '/api/bots/topics') return setTopics(await readBody(req));
     const responded = path.match(/^\/api\/bots\/commands\/([^/]+)\/respond$/);

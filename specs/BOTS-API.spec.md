@@ -692,6 +692,23 @@ El orden manda: para que «Fecha» y «Hora» compartan fila, van seguidas en
 `properties`. Un cliente viejo ignora `x-width` y dibuja un campo por fila;
 por eso no sube el nivel de `forms`.
 
+## c-quindecies) Canales por cliente (29/10/2026, servidor; ARCHITECTURE §157)
+
+- `PUT /api/bots/clients/:clientId` crea el canal del cliente la primera vez
+  (201) y actualiza su estado (200). Cuerpo: `{ name, ruc?, last_order_at,
+  orders_total, services: [{ id, name, status, stage, stage_label, progress?,
+  url?, closed_at? }] }`. `status` puede ser pending, in_progress, completed o
+  rejected.
+  Responde `{ client: { id, channel: { id, name }, live, archived_since } }`.
+- `POST /api/bots/messages` acepta `client: "<clientId>"` como destino, junto
+  con `kind` («order.created»), `refs: { service_id?, record_id? }` y
+  `thread_of`.
+  - Un cliente sin PUT previo da 404 `client_not_found`.
+  - El cliente de otra app también da 404.
+- Vivo = un pedido en los últimos 90 días o un servicio pending/in_progress.
+  Se calcula al leer, no hay ningún cron que lo mueva.
+- El fake tiene las mismas rutas y `GET /__fake/clients`.
+
 ## c-quaterdecies) Listas de ítems, fotos de la galería y límites exclusivos (28/10/2026, OTA + web + servidor)
 
 José, 28/10: el pedido se carga con **filas**: «N.º de carros» y al lado «m³

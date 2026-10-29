@@ -10,6 +10,7 @@ import { availabilityOf, setAvailability, spacesRunBy, type AppRef } from './bot
 import { commandsOfApp, commandsToWire, registerCommands, respondToCommand } from './botCommands.js';
 import { installationByToken, revokeInstallation } from './botInstall.js';
 import { postBotMessage, updateBotMessage } from './botMessages.js';
+import { upsertClientChannel } from './botClients.js';
 import { setTopicChannels, setTopicOffered, topicRoutesOf } from './botTopics.js';
 import type { BotApp, BotInstallation } from './botModels.js';
 import { appForConsent, authorize, exchangeCode } from './oauthService.js';
@@ -109,6 +110,11 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
     const outcome = await updateBotMessage(req.bot!, String(req.params.id), { ...(text ? { text } : {}), ...(card?.ok ? { card: card.card } : {}) }, notifyEdited);
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.json(outcome);
+  }));
+  router.put('/clients/:clientId', asyncRoute(async (req, res) => {
+    const outcome = await upsertClientChannel(req.bot!, String(req.params.clientId), req.body);
+    if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+    res.status(outcome.status).json({ client: outcome.client });
   }));
   router.get('/commands', asyncRoute(async (req, res) => res.json({ commands: commandsToWire(await commandsOfApp(req.bot!)) })));
   router.put('/commands', asyncRoute(async (req, res) => {

@@ -5,7 +5,7 @@ import { createCallPeer, fetchIceServers, mediaErrorText, type CallPeer, type Ca
 
 type Signal = { chatId: string; from: string; kind: 'offer' | 'answer' | 'ice'; data: Sdp | Candidate };
 type JoinAnswer = { ok: boolean; motivo?: string; peers?: string[]; room?: GroupCallRoom; names?: Record<string, string> };
-export type GroupRing = { chatId: string; from: string; fromName: string | null; video: boolean };
+export type GroupRing = { chatId: string; chatName?: string | null; from: string; fromName: string | null; video: boolean };
 export type WebGroupCallState = { chatId: string; chatName: string; video: boolean; participants: string[]; startedAt: number | null };
 
 const emit = (event: string, frame: object) => void currentSocket()?.emit(event, frame);

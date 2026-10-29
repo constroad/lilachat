@@ -13,10 +13,10 @@ export function buildGroupCallHub(io: Server, userRoom: (userId: string) => stri
     access: async (chatId, userId) => {
       if (!Types.ObjectId.isValid(chatId)) return null;
       const chat = await ChatModel.findOne({ _id: chatId, 'members.userId': new Types.ObjectId(userId) })
-        .select('kind encrypted members.userId')
-        .lean<{ kind?: string; encrypted?: boolean; members: { userId: Types.ObjectId }[] } | null>();
+        .select('kind encrypted name members.userId')
+        .lean<{ kind?: string; encrypted?: boolean; name?: string; members: { userId: Types.ObjectId }[] } | null>();
       if (!chat) return null;
-      return { members: chat.members.map((member) => String(member.userId)), isGroup: chat.kind === 'group' && chat.encrypted !== true };
+      return { members: chat.members.map((member) => String(member.userId)), isGroup: chat.kind === 'group' && chat.encrypted !== true, name: chat.name };
     },
     emitToUser: (userId, event, frame) => void io.to(userRoom(userId)).emit(event, frame),
     emitToSocket: (socketId, event, frame) => void io.to(socketId).emit(event, frame),

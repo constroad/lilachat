@@ -8,7 +8,7 @@ import { GROUP_CALL_MAX, joinGroupCall, leaveGroupCall, type GroupCallEnd, type 
  * Each participant is ONE socket: the signals of a pair go to the phone that
  * joined, not to every device of that person (two of them would answer).
  */
-export type GroupChatAccess = { members: string[]; isGroup: boolean };
+export type GroupChatAccess = { members: string[]; isGroup: boolean; name?: string };
 
 export type GroupCallDeps = {
   /** The chat's members when `userId` is one of them, else `null`. */
@@ -62,7 +62,7 @@ export function createGroupCallHub(deps: GroupCallDeps) {
     await announce(input.chatId, access.members);
     if (joined.created) {
       const fromName = (await namesOf(joined.room))[input.userId] || null;
-      for (const member of access.members) if (member !== input.userId) deps.emitToUser(member, 'groupcall.ring', { chatId: input.chatId, from: input.userId, fromName, video: input.video });
+      for (const member of access.members) if (member !== input.userId) deps.emitToUser(member, 'groupcall.ring', { chatId: input.chatId, chatName: access.name ?? null, from: input.userId, fromName, video: input.video });
     }
     return { ok: true, room: joined.room, peers: joined.peers, names: await namesOf(joined.room) };
   }

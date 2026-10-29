@@ -89,7 +89,7 @@ export function CallProvider(props: { jwt: string; me: string; connected: boolea
     () => ({ call: (chatId, peerName, video) => void call(chatId, peerName, video), busy, callGroup: (chatId, chatName, video) => void joinGroup(chatId, chatName, video), groupRooms, refreshGroupRoom, me: props.me }),
     [call, busy, joinGroup, groupRooms, refreshGroupRoom, props.me]
   );
-  const ringName = group.ring ? (props.chatNameOf?.(group.ring.chatId) ?? 'Grupo') : '';
+  const ringName = group.ring ? (group.ring.chatName || props.chatNameOf?.(group.ring.chatId) || 'Grupo') : '';
   return (
     <CallsContext.Provider value={value}>
       {props.children}

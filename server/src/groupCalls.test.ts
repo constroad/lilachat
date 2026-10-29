@@ -3,7 +3,7 @@ import type { GroupCallEnd } from '@lilachat/shared';
 import { createGroupCallHub, type GroupChatAccess } from './groupCalls.js';
 
 /** Pending 56 (José, 29/10): group calls, a mesh of up to four, apart from the 1:1 call. */
-function setup(chats: Record<string, GroupChatAccess> = { g1: { members: ['a', 'b', 'c', 'd', 'e'], isGroup: true }, d1: { members: ['a', 'b'], isGroup: false } }) {
+function setup(chats: Record<string, GroupChatAccess> = { g1: { members: ['a', 'b', 'c', 'd', 'e'], isGroup: true, name: 'obra-km-12' }, d1: { members: ['a', 'b'], isGroup: false } }) {
   const toUser: { userId: string; event: string; frame: Record<string, unknown> }[] = [];
   const toSocket: { socketId: string; event: string; frame: Record<string, unknown> }[] = [];
   const ends: { chatId: string; end: GroupCallEnd }[] = [];
@@ -31,7 +31,8 @@ describe('joining a group call', () => {
     expect(second).toMatchObject({ ok: true, peers: ['a'], room: { participants: ['a', 'b'] } });
     const rings = toUser.filter((one) => one.event === 'groupcall.ring');
     expect(rings.map((one) => one.userId)).toEqual(['b', 'c', 'd', 'e']);
-    expect(rings[0]!.frame).toMatchObject({ chatId: 'g1', from: 'a', fromName: 'Nombre a', video: true });
+    // The ring names the channel: a phone only knows the names of its personal chats.
+    expect(rings[0]!.frame).toMatchObject({ chatId: 'g1', chatName: 'obra-km-12', from: 'a', fromName: 'Nombre a', video: true });
     expect(toUser.filter((one) => one.event === 'groupcall.state')).toHaveLength(10);
     // The tiles show who is in the call: the room travels with their names.
     expect(toUser.filter((one) => one.event === 'groupcall.state').at(-1)!.frame).toMatchObject({ names: { a: 'Nombre a', b: 'Nombre b' } });

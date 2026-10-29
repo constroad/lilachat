@@ -102,7 +102,7 @@ export function ProveedorDeLlamadas({ jwt, me, children, onOpenChat }: { jwt: st
     }),
     [llamarConHook, hayLlamada, group.join, group.rooms, group.refreshRoom]
   );
-  const ringChatName = group.ring ? (chatsEnMemoria()?.find((uno) => uno.id === group.ring?.chatId)?.name ?? '') : '';
+  const ringChatName = group.ring ? (group.ring.chatName || chatsEnMemoria()?.find((uno) => uno.id === group.ring?.chatId)?.name || '') : '';
 
   return (
     <LlamadasContext.Provider value={valor}>

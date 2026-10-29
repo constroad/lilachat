@@ -2,7 +2,7 @@
  * What the group call screen shows (pending 56). PURE: the hook keeps the
  * streams, this decides the order of the tiles and the words.
  */
-export type GroupRing = { chatId: string; from: string; fromName: string | null; video: boolean };
+export type GroupRing = { chatId: string; chatName?: string | null; from: string; fromName: string | null; video: boolean };
 
 /** «Ana te invita a una videollamada» over «Obra km 12». */
 export function ringText(ring: GroupRing, chatName: string): { title: string; subtitle: string } {

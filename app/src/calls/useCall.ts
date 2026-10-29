@@ -569,7 +569,7 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
       }),
     noiseSuppression: noise.on,
     setNoiseSuppression: (on: boolean) => void noise.set(on, { pc: pcRef.current, stream: localRef.current, muted }),
-    // Altavoz de verdad (FL8): `expo-audio` enruta por el parlante o el auricular (`setSpeakerphoneOn`); se verifica en un teléfono real.
+    // Real speaker (FL8): `expo-audio` routes to the loudspeaker or the earpiece (`setSpeakerphoneOn`); checked on a real phone.
     alternarAltavoz: () =>
       setSpeaker((valor) => {
         const nuevo = !valor;

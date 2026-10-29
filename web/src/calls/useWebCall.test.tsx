@@ -64,10 +64,13 @@ let tracks: ReturnType<typeof track>[] = [];
 const getUserMedia = vi.fn();
 const receive = (event: string, frame: object) => act(async () => void (await handlers.get(event)?.(frame as never)));
 const lastSent = (event: string) => sent.filter((one) => one.event === event).at(-1)?.frame;
+/** The microphone with the noise filter on, the default (pending 3). */
+const FILTERED = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
 const candidate = { candidate: 'candidate:1', sdpMid: '0', sdpMLineIndex: 0 };
 
 beforeEach(() => {
   sent.length = 0;
+  window.localStorage.clear();
   tracks = [track(), track()];
   getUserMedia.mockReset().mockImplementation(async (constraints: { video: boolean }) => ({
     getTracks: () => (constraints.video ? tracks : tracks.slice(0, 1)),
@@ -90,7 +93,7 @@ describe('web call', () => {
   it('calls: the offer goes out, the answer connects it, the audio flows, and hanging up releases the microphone', async () => {
     const { result } = mount();
     await act(() => result.current.call('c1', 'Ana', false));
-    expect(getUserMedia).toHaveBeenCalledWith({ audio: true, video: false });
+    expect(getUserMedia).toHaveBeenCalledWith({ audio: FILTERED, video: false });
     expect(lastSent('call.offer')).toEqual({ chatId: 'c1', video: false, sdp: { type: 'offer', sdp: 'offer-sdp' } });
     expect(result.current.state?.fase).toBe('llamando');
     await receive('call.answer', { chatId: 'c1', sdp: { type: 'answer', sdp: 'their-answer' } });
@@ -117,7 +120,7 @@ describe('web call', () => {
     expect(result.current.session).toEqual({ chatId: 'c2', peerName: 'Beto', videoCall: true });
     await waitFor(() => expect(FakePeer.last.applied).toEqual([candidate]));
     await act(() => result.current.answer());
-    expect(getUserMedia).toHaveBeenCalledWith({ audio: true, video: true });
+    expect(getUserMedia).toHaveBeenCalledWith({ audio: FILTERED, video: true });
     expect(lastSent('call.answer')).toEqual({ chatId: 'c2', sdp: { type: 'answer', sdp: 'answer-sdp' } });
     expect(result.current.state?.fase).toBe('activa');
   });
@@ -188,7 +191,7 @@ describe('web call without a camera', () => {
     });
     const { result } = mount();
     await act(() => result.current.call('c1', 'Ana', true));
-    expect(getUserMedia).toHaveBeenLastCalledWith({ audio: true, video: false });
+    expect(getUserMedia).toHaveBeenLastCalledWith({ audio: FILTERED, video: false });
     expect(addTransceiver).toHaveBeenCalledWith('video', { direction: 'recvonly' });
     expect(lastSent('call.offer')).toMatchObject({ chatId: 'c1', video: true });
     expect(result.current.error).toBeNull();
@@ -230,5 +233,106 @@ describe('switching the camera in a video call (pending 97)', () => {
     await waitFor(() => expect(result.current.localStream).not.toBeNull());
     expect(result.current.canSwitch).toBe(false);
     expect(result.current.facing).toBe('user');
+  });
+});
+
+describe('noise filter and screen sharing (pending 3, Stitch c-03)', () => {
+  type FakeTrack = { stop: ReturnType<typeof vi.fn>; enabled: boolean; kind: string; contentHint?: string; onended?: (() => void) | null };
+  const fake = (kind: string): FakeTrack => ({ stop: vi.fn(), enabled: true, kind });
+  let mic: FakeTrack;
+  let camera: FakeTrack;
+  let local: FakeTrack[];
+  const replaceAudio = vi.fn(async () => undefined);
+  const replaceVideo = vi.fn(async () => undefined);
+  const stream = () => ({
+    getTracks: () => local,
+    getAudioTracks: () => local.filter((one) => one.kind === 'audio'),
+    getVideoTracks: () => local.filter((one) => one.kind === 'video'),
+    removeTrack: (one: FakeTrack) => (local = local.filter((other) => other !== one)),
+    addTrack: (one: FakeTrack) => local.push(one),
+  });
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    mic = fake('audio');
+    camera = fake('video');
+    local = [mic, camera];
+    replaceAudio.mockClear();
+    replaceVideo.mockClear();
+    FakePeer.senders = [
+      { get track() { return local.find((one) => one.kind === 'audio'); }, replaceTrack: replaceAudio },
+      { get track() { return local.find((one) => one.kind === 'video'); }, replaceTrack: replaceVideo },
+    ];
+  });
+
+  it('the call opens the microphone with the filter on by default; turning it off swaps the microphone, keeps it muted and remembers it', async () => {
+    // Arrange
+    const fresh = fake('audio');
+    getUserMedia.mockReset().mockImplementation(async (constraints: { video: unknown }) => (constraints.video === false ? { getAudioTracks: () => [fresh] } : stream()));
+    const { result } = mount();
+    await act(() => result.current.call('c1', 'Ana', true));
+    act(() => result.current.toggleMute());
+    // Act
+    await act(() => result.current.setNoiseSuppression(false));
+    // Assert
+    expect(getUserMedia.mock.calls[0]?.[0]).toMatchObject({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    expect(getUserMedia).toHaveBeenLastCalledWith({ audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: false }, video: false });
+    expect(replaceAudio).toHaveBeenCalledWith(fresh);
+    expect(mic.stop).toHaveBeenCalled();
+    expect(fresh.enabled).toBe(false);
+    expect(result.current.noiseSuppression).toBe(false);
+    expect(window.localStorage.getItem('lilachat.llamada.cancelacionDeRuido')).toBe('off');
+  });
+
+  it('the next call starts as the person left the filter', async () => {
+    window.localStorage.setItem('lilachat.llamada.cancelacionDeRuido', 'off');
+    getUserMedia.mockReset().mockImplementation(async () => stream());
+    const { result } = mount();
+    await act(() => result.current.call('c1', 'Ana', false));
+    expect(result.current.noiseSuppression).toBe(false);
+    expect(getUserMedia.mock.calls[0]?.[0]).toMatchObject({ audio: { noiseSuppression: false } });
+  });
+
+  it('sharing the screen replaces the camera in the same sender; stopping, or the browser\'s «stop sharing», brings the camera back', async () => {
+    // Arrange
+    const screen = fake('video');
+    const getDisplayMedia = vi.fn(async () => ({ getVideoTracks: () => [screen] }));
+    getUserMedia.mockReset().mockImplementation(async () => stream());
+    Object.defineProperty(navigator, 'mediaDevices', { value: { getUserMedia, getDisplayMedia }, configurable: true });
+    const { result } = mount();
+    await act(() => result.current.call('c1', 'Ana', true));
+    expect(result.current.canShareScreen).toBe(true);
+    // Act
+    await act(() => result.current.toggleScreenShare());
+    // Assert
+    expect(getDisplayMedia).toHaveBeenCalledWith({ video: true, audio: false });
+    expect(replaceVideo).toHaveBeenLastCalledWith(screen);
+    expect(screen.contentHint).toBe('detail');
+    expect(result.current.sharingScreen).toBe(true);
+    // The browser's own «Dejar de compartir».
+    await act(async () => screen.onended?.());
+    await waitFor(() => expect(result.current.sharingScreen).toBe(false));
+    expect(replaceVideo).toHaveBeenLastCalledWith(camera);
+    expect(screen.stop).toHaveBeenCalled();
+    expect(camera.stop).not.toHaveBeenCalled();
+  });
+
+  it('a voice call, or a browser without screen capture, offers no sharing; closing the picker is not an error', async () => {
+    const getDisplayMedia = vi.fn(async () => {
+      throw new DOMException('cancelled', 'NotAllowedError');
+    });
+    getUserMedia.mockReset().mockImplementation(async () => stream());
+    Object.defineProperty(navigator, 'mediaDevices', { value: { getUserMedia }, configurable: true });
+    const voice = mount();
+    await act(() => voice.result.current.call('c1', 'Ana', false));
+    expect(voice.result.current.canShareScreen).toBe(false);
+    voice.unmount();
+    Object.defineProperty(navigator, 'mediaDevices', { value: { getUserMedia, getDisplayMedia }, configurable: true });
+    const { result } = mount();
+    await act(() => result.current.call('c2', 'Ana', true));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await act(() => result.current.toggleScreenShare());
+    expect(result.current.sharingScreen).toBe(false);
+    expect(warn).not.toHaveBeenCalled();
   });
 });

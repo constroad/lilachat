@@ -31,6 +31,11 @@ function callWith(change: Partial<WebCall>): WebCall {
     close: vi.fn(),
     toggleMute: vi.fn(),
     toggleCamera: vi.fn(),
+    noiseSuppression: true,
+    setNoiseSuppression: vi.fn(),
+    canShareScreen: false,
+    sharingScreen: false,
+    toggleScreenShare: vi.fn(),
     ...change,
   } as WebCall;
 }
@@ -65,6 +70,37 @@ describe('call window', () => {
     render(<CallOverlay call={callWith({ state: active, localStream: stream(false), error: 'Permite el micrófono en el navegador para llamar.' })} />);
     expect(screen.queryByTestId('btn-camara')).toBeNull();
     expect(screen.getByTestId('leyenda-llamada').textContent).toBe('Permite el micrófono en el navegador para llamar.');
+  });
+});
+
+describe('«Más» of the call (pending 3, Stitch c-03)', () => {
+  it('opens the noise filter and screen sharing; the switch and the share call the hook; sharing says so on screen', () => {
+    // Arrange
+    const call = callWith({ state: active, localStream: stream(true), cameraOn: true, canShareScreen: true });
+    const { rerender } = render(<CallOverlay call={call} />);
+    expect(screen.queryByTestId('menu-mas-opciones')).toBeNull();
+    // Act
+    fireEvent.click(screen.getByTestId('btn-mas-opciones'));
+    fireEvent.click(screen.getByTestId('interruptor-cancelacion-ruido'));
+    fireEvent.click(screen.getByTestId('btn-compartir-pantalla'));
+    // Assert
+    expect(call.setNoiseSuppression).toHaveBeenCalledWith(false);
+    expect(call.toggleScreenShare).toHaveBeenCalled();
+    expect(screen.queryByTestId('menu-mas-opciones')).toBeNull();
+    rerender(<CallOverlay call={callWith({ state: active, localStream: stream(true), cameraOn: true, canShareScreen: true, sharingScreen: true, canSwitch: true })} />);
+    expect(screen.getByTestId('aviso-compartiendo').textContent).toBe('Estás compartiendo tu pantalla');
+    expect(screen.queryByTestId('btn-girar-camara')).toBeNull();
+    fireEvent.click(screen.getByTestId('btn-mas-opciones'));
+    expect(screen.getByTestId('btn-compartir-pantalla').textContent).toBe('Dejar de compartir');
+  });
+
+  it('a voice call shows the filter without sharing; ringing shows no «Más»', () => {
+    const { rerender } = render(<CallOverlay call={callWith({ state: active, session: { chatId: 'c1', peerName: 'José', videoCall: false }, localStream: stream(false) })} />);
+    fireEvent.click(screen.getByTestId('btn-mas-opciones'));
+    expect(screen.getByTestId('interruptor-cancelacion-ruido')).toBeTruthy();
+    expect(screen.queryByTestId('btn-compartir-pantalla')).toBeNull();
+    rerender(<CallOverlay call={callWith({})} />);
+    expect(screen.queryByTestId('btn-mas-opciones')).toBeNull();
   });
 });
 

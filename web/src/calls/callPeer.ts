@@ -1,4 +1,4 @@
-import type { CameraFacing } from '@lilachat/shared';
+import { callAudioConstraints, type CameraFacing } from '@lilachat/shared';
 import { api } from '../api';
 
 /** The SDP and the candidates travel as plain objects through the socket, like the app's (`useCall.ts`). */
@@ -24,13 +24,23 @@ export async function fetchIceServers(jwt: string): Promise<RTCIceServer[]> {
 const CAMERA_MISSING = new Set(['NotFoundError', 'OverconstrainedError', 'NotReadableError']);
 
 /** A computer without a camera still takes and makes video calls, with its voice (like WhatsApp Web). */
-async function requestMedia(video: boolean): Promise<MediaStream> {
+async function requestMedia(video: boolean, noiseSuppression: boolean): Promise<MediaStream> {
+  const audio = callAudioConstraints(noiseSuppression);
   try {
-    return await navigator.mediaDevices.getUserMedia({ audio: true, video });
+    return await navigator.mediaDevices.getUserMedia({ audio, video });
   } catch (failure) {
     if (!video || !CAMERA_MISSING.has(errorName(failure))) throw failure;
-    return navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    return navigator.mediaDevices.getUserMedia({ audio, video: false });
   }
+}
+
+/** A track replaces another in its sender and in the local stream, without renegotiating. */
+async function swapTrack(sender: RTCRtpSender, stream: MediaStream, old: MediaStreamTrack, fresh: MediaStreamTrack): Promise<void> {
+  fresh.enabled = old.enabled;
+  await sender.replaceTrack(fresh);
+  stream.removeTrack(old);
+  old.stop();
+  stream.addTrack(fresh);
 }
 
 /** A phone browser may not open both cameras at once: the old one is released and it is tried again. */
@@ -48,12 +58,21 @@ async function openCamera(facing: CameraFacing, current: MediaStreamTrack): Prom
 export type CallPeer = {
   connection: RTCPeerConnection;
   /** Microphone, and the camera for a video call; the tracks go to the peer. */
-  addLocalMedia: (video: boolean) => Promise<MediaStream>;
+  addLocalMedia: (video: boolean, noiseSuppression: boolean) => Promise<MediaStream>;
   /** The other side's description; the candidates that came before it are applied now. */
   setRemote: (sdp: Sdp) => Promise<void>;
   addCandidate: (candidate: Candidate) => Promise<void>;
   /** The other camera (pending 97): its track replaces the old one in the same sender, without renegotiating. */
   switchCamera: (facing: CameraFacing) => Promise<boolean>;
+  /** A new microphone with the filter on or off (pending 3): it replaces the old one in the same sender. */
+  setNoiseSuppression: (on: boolean) => Promise<boolean>;
+  /**
+   * The screen goes out in place of the camera, in the same sender. It comes
+   * back with `stopScreen`, or alone when the browser's «Dejar de compartir»
+   * ends the screen track (then `onEnded` says so).
+   */
+  shareScreen: (onEnded: () => void) => Promise<boolean>;
+  stopScreen: () => Promise<void>;
   /** Closes the peer and releases the microphone and camera. Idempotent. */
   close: () => void;
 };
@@ -74,6 +93,16 @@ export function createCallPeer(params: {
   let remoteReady = false;
   let local: MediaStream | null = null;
   let closed = false;
+  /** While the screen is shared: its track, and the camera that comes back after. */
+  let screen: { track: MediaStreamTrack; camera: MediaStreamTrack; sender: RTCRtpSender } | null = null;
+  const restoreCamera = async () => {
+    const sharing = screen;
+    if (!sharing) return;
+    screen = null;
+    sharing.track.onended = null;
+    sharing.track.stop();
+    if (!closed) await sharing.sender.replaceTrack(sharing.camera);
+  };
   connection.onicecandidate = (event) => {
     const found = event.candidate;
     if (found) params.onCandidate({ candidate: found.candidate, sdpMid: found.sdpMid, sdpMLineIndex: found.sdpMLineIndex });
@@ -92,8 +121,8 @@ export function createCallPeer(params: {
   };
   return {
     connection,
-    addLocalMedia: async (video) => {
-      const stream = await requestMedia(video);
+    addLocalMedia: async (video, noiseSuppression) => {
+      const stream = await requestMedia(video, noiseSuppression);
       // Hung up while the browser asked: the microphone is released, not left on.
       if (closed) {
         stream.getTracks().forEach((track) => track.stop());
@@ -124,15 +153,44 @@ export function createCallPeer(params: {
         fresh.stop();
         return false;
       }
-      fresh.enabled = old.enabled;
-      await sender.replaceTrack(fresh);
-      local.removeTrack(old);
-      old.stop();
-      local.addTrack(fresh);
+      await swapTrack(sender, local, old, fresh);
       return true;
     },
+    setNoiseSuppression: async (on) => {
+      const old = local?.getAudioTracks()[0];
+      const sender = connection.getSenders().find((one) => one.track?.kind === 'audio');
+      if (!local || !old || !sender) return false;
+      const fresh = (await navigator.mediaDevices.getUserMedia({ audio: callAudioConstraints(on), video: false })).getAudioTracks()[0];
+      if (!fresh) return false;
+      if (closed) {
+        fresh.stop();
+        return false;
+      }
+      await swapTrack(sender, local, old, fresh);
+      return true;
+    },
+    shareScreen: async (onEnded) => {
+      const camera = local?.getVideoTracks()[0];
+      const sender = connection.getSenders().find((one) => one.track?.kind === 'video');
+      if (!camera || !sender || screen) return false;
+      const shared = (await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })).getVideoTracks()[0];
+      if (!shared) return false;
+      if (closed) {
+        shared.stop();
+        return false;
+      }
+      // Text and slides: sharpness before motion.
+      shared.contentHint = 'detail';
+      shared.onended = () => void restoreCamera().then(onEnded);
+      screen = { track: shared, camera, sender };
+      await sender.replaceTrack(shared);
+      return true;
+    },
+    stopScreen: () => restoreCamera(),
     close: () => {
       closed = true;
+      screen?.track.stop();
+      screen = null;
       connection.close();
       local?.getTracks().forEach((track) => track.stop());
       local = null;

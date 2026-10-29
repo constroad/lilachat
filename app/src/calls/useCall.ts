@@ -13,6 +13,7 @@ import type RTCTrackEvent from 'react-native-webrtc/lib/typescript/RTCTrackEvent
 import { nextCallState, ringDeadline, type CallState } from '@lilachat/shared';
 import { type CameraFacing } from '@lilachat/shared';
 import { switchCameraTrack } from './cameraSwitch';
+import { useNoiseSuppression } from './noiseSuppression';
 import { callReactionOf, createAckWatch, reactionKeyOf, reactionNotSeenNotice, type CallReaction } from '@lilachat/shared';
 import { connectSocket, getSocket, sostenerPorLlamada } from '../chat/socketClient';
 import { obtenerIceServers, type ServidorIce } from './iceServers';
@@ -107,6 +108,7 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
 
   const timeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
+  const noise = useNoiseSuppression();
   const localRef = useRef<MediaStream | null>(null);
   const stateRef = useRef<CallState | null>(null);
   /** Candidatos llegados antes de fijar la descripción remota. */
@@ -187,12 +189,12 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
 
   const agregarMedios = useCallback(
     async (pc: RTCPeerConnection, conVideo: boolean): Promise<void> => {
-      const stream = await mediaDevices.getUserMedia({ audio: true, video: conVideo });
+      const stream = await mediaDevices.getUserMedia({ audio: noise.constraints(), video: conVideo });
       localRef.current = stream;
       setLocalStream(stream);
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
     },
-    []
+    [noise]
   );
 
   /** Marca la descripción remota como lista y aplica lo que estaba en cola. */
@@ -565,9 +567,9 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
         localRef.current?.getAudioTracks().forEach((track) => (track.enabled = !nuevo));
         return nuevo;
       }),
-    // Altavoz de verdad (FL8): antes solo cambiaba el ícono. `expo-audio`
-    // enruta por el parlante o el auricular (`setSpeakerphoneOn`). Verificarlo
-    // pide un teléfono real: el emulador no tiene auricular.
+    noiseSuppression: noise.on,
+    setNoiseSuppression: (on: boolean) => void noise.set(on, { pc: pcRef.current, stream: localRef.current, muted }),
+    // Altavoz de verdad (FL8): `expo-audio` enruta por el parlante o el auricular (`setSpeakerphoneOn`); se verifica en un teléfono real.
     alternarAltavoz: () =>
       setSpeaker((valor) => {
         const nuevo = !valor;

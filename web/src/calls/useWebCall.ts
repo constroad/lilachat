@@ -1,12 +1,30 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { mediaState, nextCallState, ringDeadline, ringStart, waitBeforeGivingUp, type CallEvent, type CallState, type MediaState } from '@lilachat/shared';
-import { canSwitchCamera, otherFacing, type CameraFacing } from '@lilachat/shared';
+import { canSwitchCamera, otherFacing, readNoisePreference, writeNoisePreference, type CameraFacing } from '@lilachat/shared';
 import { currentSocket } from '../useSocket';
 import { createCallPeer, errorName, fetchIceServers, mediaErrorText, type CallPeer, type Candidate, type Sdp } from './callPeer';
 
 /** An offer as the server relays it: it adds who calls and what is left of the ring (`socket.ts`). */
 export type IncomingOffer = { chatId: string; video?: boolean; sdp?: Sdp; fromName?: string | null; fromPhone?: string; quedaMs?: number };
 type Session = { chatId: string; peerName: string; videoCall: boolean };
+
+/** The filter is the person's, not the call's: the next call starts as they left it. */
+const NOISE_KEY = 'lilachat.llamada.cancelacionDeRuido';
+function storedNoise(): boolean {
+  try {
+    return readNoisePreference(window.localStorage.getItem(NOISE_KEY));
+  } catch {
+    // Blocked storage (private window): the filter goes on, as by default.
+    return readNoisePreference(null);
+  }
+}
+function storeNoise(on: boolean): void {
+  try {
+    window.localStorage.setItem(NOISE_KEY, writeNoisePreference(on));
+  } catch (failure) {
+    console.warn('[llamada] no se guardó la cancelación de ruido:', failure);
+  }
+}
 
 const emit = (event: string, frame: object) => void currentSocket()?.emit(event, frame);
 /** The call ended while the browser was asking for the microphone (`callPeer.ts`): nothing to say. */
@@ -30,6 +48,10 @@ export function useWebCall(params: { jwt: string; connected: boolean; nameOf: (o
   /** Front or rear (pending 97), and how many cameras the device has: the switch shows with two. */
   const [facing, setFacing] = useState<CameraFacing>('user');
   const [cameras, setCameras] = useState(0);
+  const [noiseSuppression, setNoise] = useState(storedNoise);
+  const noiseRef = useRef(noiseSuppression);
+  noiseRef.current = noiseSuppression;
+  const [sharingScreen, setSharingScreen] = useState(false);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +92,7 @@ export function useWebCall(params: { jwt: string; connected: boolean; nameOf: (o
     connectedOnce.current = false;
     setLocalStream(null);
     setRemoteStream(null);
+    setSharingScreen(false);
     setMedia('conectando');
   }, []);
 
@@ -126,7 +149,7 @@ export function useWebCall(params: { jwt: string; connected: boolean; nameOf: (o
     setCall({ fase: 'llamando', desde: Date.now(), entrante: false });
     try {
       const peer = await openPeer();
-      const stream = await peer.addLocalMedia(video);
+      const stream = await peer.addLocalMedia(video, noiseRef.current);
       setLocalStream(stream);
       setCameraOn(stream.getVideoTracks().length > 0);
       // Hung up while the browser asked for the microphone: nothing to send.
@@ -152,7 +175,7 @@ export function useWebCall(params: { jwt: string; connected: boolean; nameOf: (o
       apply({ tipo: 'answering', at: Date.now() });
     }
     try {
-      const stream = await peer.addLocalMedia(current.videoCall);
+      const stream = await peer.addLocalMedia(current.videoCall, noiseRef.current);
       setLocalStream(stream);
       setCameraOn(stream.getVideoTracks().length > 0);
       const reply = await peer.connection.createAnswer();
@@ -215,7 +238,33 @@ export function useWebCall(params: { jwt: string; connected: boolean; nameOf: (o
     }
   }, [facing]);
 
-  return { state, session, media, muted, cameraOn, facing, canSwitch: canSwitchCamera(cameras), localStream, remoteStream, error, call, answer, hangUp, close, toggleMute, toggleCamera, switchCamera };
+  const setNoiseSuppression = useCallback(async (on: boolean) => {
+    setNoise(on);
+    storeNoise(on);
+    try {
+      await peerRef.current?.setNoiseSuppression(on);
+    } catch (failure) {
+      console.warn('[llamada] no se cambió la cancelación de ruido:', failure);
+    }
+  }, []);
+
+  const canShareScreen = Boolean(session?.videoCall && localStream?.getVideoTracks().length && typeof navigator.mediaDevices?.getDisplayMedia === 'function');
+  const toggleScreenShare = useCallback(async () => {
+    const peer = peerRef.current;
+    if (!peer) return;
+    if (sharingScreen) {
+      await peer.stopScreen();
+      return setSharingScreen(false);
+    }
+    try {
+      if (await peer.shareScreen(() => setSharingScreen(false))) setSharingScreen(true);
+    } catch (failure) {
+      // Closing the browser's picker is not an error worth saying.
+      if (errorName(failure) !== 'NotAllowedError') console.warn('[llamada] no se pudo compartir la pantalla:', failure);
+    }
+  }, [sharingScreen]);
+
+  return { state, session, media, muted, cameraOn, facing, canSwitch: canSwitchCamera(cameras), localStream, remoteStream, error, call, answer, hangUp, close, toggleMute, toggleCamera, switchCamera, noiseSuppression, setNoiseSuppression, canShareScreen, sharingScreen, toggleScreenShare };
 }
 
 export type WebCall = ReturnType<typeof useWebCall>;

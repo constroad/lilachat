@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Switch, Text, View } from 'react-native';
 import { ChevronDown, MessageSquare, Mic, MicOff, MoreHorizontal, PhoneOff, Sparkles, Video, VideoOff, Volume2, X, type LucideIcon } from 'lucide-react-native';
 import { CALL_EMOJIS, type CallEmoji } from '@lilachat/shared';
 import { Modal } from '../ui/Modal';
@@ -72,9 +72,9 @@ export function EffectsButton(props: { onPress: () => void }) {
   );
 }
 
-type MoreProps = { options: MoreOption[]; video: boolean; onClose: () => void; onMessage: () => void; onReactions: () => void; onEmoji: (emoji: CallEmoji) => void };
+type MoreProps = { options: MoreOption[]; video: boolean; noiseSuppression: boolean; onNoiseSuppression: (on: boolean) => void; onClose: () => void; onMessage: () => void; onReactions: () => void; onEmoji: (emoji: CallEmoji) => void };
 
-/** «Más opciones» (design c-03): quick effects (pending 78), send a message, winks and stickers. */
+/** «Más opciones» (design c-03): quick effects (pending 78), send a message, noise cancellation, winks and stickers. */
 export function CallMoreSheet(props: MoreProps) {
   const colors = useColores();
   const margins = useMargenes();
@@ -102,6 +102,17 @@ export function CallMoreSheet(props: MoreProps) {
           ))}
         </View>
         {props.options.includes('message') ? <MoreRow testID="opcion-enviar-mensaje" Icon={MessageSquare} label="Enviar mensaje" onPress={() => pick(props.onMessage)} /> : null}
+        <View testID="opcion-cancelacion-ruido" className="min-h-[68px] flex-row items-center gap-3 border-b border-outline/10">
+          <View className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20"><Mic size={20} color={colors['on-surface']} /></View>
+          <View className="flex-1">
+            <View className="flex-row items-center gap-2">
+              <Text className="text-[16px] text-on-surface">Cancelación de ruido</Text>
+              {props.noiseSuppression ? <Text className="rounded-md border border-en-linea/30 bg-en-linea/10 px-1.5 text-[10px] font-bold text-en-linea">ACTIVO</Text> : null}
+            </View>
+            <Text className="text-[13px] text-on-surface-variant">Baja el ruido de la obra y del tráfico</Text>
+          </View>
+          <Switch testID="switch-cancelacion-ruido" value={props.noiseSuppression} onValueChange={props.onNoiseSuppression} trackColor={{ true: colors.primary, false: colors.outline }} thumbColor={colors['on-primary']} accessibilityLabel="Cancelación de ruido" />
+        </View>
         <MoreRow testID="opcion-guinos" Icon={Sparkles} label="Guiños y stickers" onPress={() => pick(props.onReactions)} />
       </View>
     </Modal>

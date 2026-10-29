@@ -5361,6 +5361,30 @@ voz). Arriba, minimizar: la llamada sigue en una pastilla con su reloj
 (`MinimizedCall`). «Más opciones» trae seis efectos rápidos (pendiente 78),
 «Enviar mensaje» (abre el chat y minimiza) y «Guiños y stickers».
 
+**Cancelación de ruido y compartir pantalla (pendiente 3, 29/10, c-03).**
+- La cancelación de ruido sale encendida por defecto y se recuerda por persona
+  (`lilachat.llamada.cancelacionDeRuido`; `shared/callAudio.ts`).
+  - Cambiarla pide un micrófono nuevo y lo pone en el mismo sender con
+    `replaceTrack`, sin renegociar. El silencio se conserva.
+  - En Android, react-native-webrtc 124 pasa las claves de audio como
+    restricciones obligatorias de libwebrtc. Solo valen los nombres `goog*`
+    (`nativeCallAudioConstraints`). La web usa las estándar
+    (`callAudioConstraints`).
+  - App: fila con interruptor en «Más opciones». Web: botón «Más» con un
+    panel.
+- Compartir pantalla existe solo en la web, en videollamadas con cámara.
+  - `getDisplayMedia` reemplaza la cámara en el mismo sender, con
+    `contentHint = 'detail'`.
+  - «Dejar de compartir» del panel, o el botón del navegador (`onended`),
+    devuelve la cámara, que nunca se apagó.
+  - Mientras se comparte se ve el aviso «Estás compartiendo tu pantalla» y se
+    oculta «Girar».
+  - En el teléfono necesita un servicio en primer plano de `mediaProjection`
+    (nativo), así que va en el APK 0.1.175.
+- «Agregar persona» a una 1:1 queda diferido. Convertir una 1:1 en grupal
+  exige migrar la llamada a la malla de §56 sin cortarla. Hoy la llamada
+  grupal se inicia desde el grupo.
+
 **Guiño que no llega (pendiente 105b).** Cada `call.reaction` lleva una
 `key`. El que la recibe devuelve `call.reaction.ack`. Sin ack en 4 s, quien la
 mandó ve «{nombre} no lo recibió. Puede que tenga que actualizar Lilachat.»
@@ -9006,7 +9030,7 @@ recibía el `srcObject` y se veía negro. Ahora es un callback ref (test).
   reusar `seq`: el emulador las tiene en caché), recibos restaurados,
   perfiles de José, Ana y Beto restaurados, dispositivos web desvinculados.
 
-**Pendiente.** Llamadas de grupo (ni la app las tiene). Compartir pantalla.
+**Pendiente.** ~~Llamadas de grupo~~ (hechas, pendiente 56). ~~Compartir pantalla~~ en la web (§154); en el teléfono, APK 0.1.175.
 
 ## 94. Panel de superadmin: los usuarios de Lilachat (22/10/2026, web)
 

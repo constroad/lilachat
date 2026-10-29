@@ -3,6 +3,7 @@ import { Mic, MicOff, Phone, PhoneOff, Video, VideoOff } from 'lucide-react';
 import { SwitchCamera } from 'lucide-react';
 import { callCaption } from '@lilachat/shared';
 import { mirrorsSelfView } from '@lilachat/shared';
+import { CallMoreMenu } from './CallMoreMenu';
 import { CallReactionOverlay, CallReactionPicker, useCallReactions } from './CallReactions';
 import { Avatar } from '../ui/Avatar';
 import type { WebCall } from './useWebCall';
@@ -36,7 +37,7 @@ function useStreamRef(stream: MediaStream | null) {
 function RoundButton(props: { testId: string; label: string; tone: 'answer' | 'end' | 'plain'; pressed?: boolean; onClick: () => void; children: ReactNode }) {
   const tones = { answer: 'bg-en-linea text-background', end: 'bg-error text-background', plain: props.pressed ? 'bg-on-surface text-background' : 'bg-surface-variant text-on-surface' };
   return (
-    <span className="flex w-20 flex-col items-center gap-1.5">
+    <span className="flex w-[68px] flex-col items-center gap-1.5">
       <button type="button" data-testid={props.testId} aria-label={props.label} title={props.label} aria-pressed={props.pressed} onClick={props.onClick} className={`grid h-14 w-14 place-items-center rounded-full transition-transform active:scale-95 ${tones[props.tone]}`}>
         {props.children}
       </button>
@@ -77,6 +78,7 @@ export function CallOverlay({ call, peerPhoto }: { call: WebCall; /** The chat's
           <p data-testid="leyenda-llamada" role="status" className={`text-sm ${error ? 'text-error' : 'text-on-surface-variant'} tabular-nums`}>{caption}</p>
         </div>
         <div className="relative grid flex-1 place-items-center">{showVideo ? null : <Avatar name={session.peerName} foto={peerPhoto} size={144} />}</div>
+        {call.sharingScreen ? <p data-testid="aviso-compartiendo" role="status" className="relative mx-4 mb-2 rounded-xl bg-primary px-3 py-2 text-center text-[13px] text-background">Estás compartiendo tu pantalla</p> : null}
         {active && reactions.notice ? <p data-testid="aviso-llamada" role="status" className="mx-4 mb-2 rounded-xl bg-background px-3 py-2 text-center text-[13px] text-on-surface-variant">{reactions.notice}</p> : null}
         {active ? <div className="relative mx-4 mb-2 flex self-stretch"><CallReactionPicker peerName={session.peerName} onSend={reactions.send} /></div> : null}
         <div className={`relative mx-4 mb-6 flex items-start justify-evenly gap-2 self-stretch rounded-3xl border border-outline/15 px-4 py-4 ${showVideo ? 'bg-surface/85' : 'bg-background'}`}>
@@ -90,10 +92,11 @@ export function CallOverlay({ call, peerPhoto }: { call: WebCall; /** The chat's
               {session.videoCall && localStream?.getVideoTracks().length ? (
                 <RoundButton testId="btn-camara" label={cameraOn ? 'Cámara' : 'Sin cámara'} tone="plain" pressed={!cameraOn} onClick={call.toggleCamera}>{cameraOn ? <Video size={22} /> : <VideoOff size={22} />}</RoundButton>
               ) : null}
-              {session.videoCall && call.canSwitch && cameraOn ? (
+              {session.videoCall && call.canSwitch && cameraOn && !call.sharingScreen ? (
                 <RoundButton testId="btn-girar-camara" label="Girar" tone="plain" onClick={() => void call.switchCamera()}><SwitchCamera size={22} /></RoundButton>
               ) : null}
               <RoundButton testId="btn-silenciar" label={muted ? 'Activar' : 'Silenciar'} tone="plain" pressed={muted} onClick={call.toggleMute}>{muted ? <MicOff size={22} /> : <Mic size={22} />}</RoundButton>
+              {active ? <CallMoreMenu call={call} button={(more) => <RoundButton testId="btn-mas-opciones" label="Más" tone="plain" {...more} />} /> : null}
               <RoundButton testId="btn-colgar" label="Colgar" tone="end" onClick={call.hangUp}><PhoneOff size={24} /></RoundButton>
             </>
           )}

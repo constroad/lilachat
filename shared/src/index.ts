@@ -143,6 +143,7 @@ export * from './appSchedules.js';
 export * from './customEmojis.js';
 export * from './workStages.js';
 export * from './workFiles.js';
+export * from './callAudio.js';
 export * from './liveLocation.js';
 export * from './clientChannels.js';
 export * from './spaceClients.js';

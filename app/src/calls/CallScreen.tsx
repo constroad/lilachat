@@ -44,6 +44,8 @@ export function CallScreen({
   localStream,
   remoteStream,
   onToggleMute,
+  noiseSuppression,
+  onNoiseSuppression,
   onToggleSpeaker,
   onToggleVideo,
   facing,
@@ -70,6 +72,9 @@ export function CallScreen({
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   onToggleMute: () => void;
+  /** «Cancelación de ruido» (design c-03): on by default, remembered. */
+  noiseSuppression: boolean;
+  onNoiseSuppression: (on: boolean) => void;
   onToggleSpeaker: () => void;
   onToggleVideo: () => void;
   /** Front or rear camera (pending 97), with its button on my own view. */
@@ -179,7 +184,7 @@ export function CallScreen({
       </View>
       {reacting ? <CallReactionSheet peerName={peerName} onSend={onSendReaction} onClose={() => setReacting(false)} /> : null}
       {moreOpen ? (
-        <CallMoreSheet options={moreOptions(Boolean(onSendMessage))} video={video} onClose={() => setMoreOpen(false)} onMessage={() => onSendMessage?.()} onReactions={() => setReacting(true)} onEmoji={sendEmoji} />
+        <CallMoreSheet options={moreOptions(Boolean(onSendMessage))} video={video} noiseSuppression={noiseSuppression} onNoiseSuppression={onNoiseSuppression} onClose={() => setMoreOpen(false)} onMessage={() => onSendMessage?.()} onReactions={() => setReacting(true)} onEmoji={sendEmoji} />
       ) : null}
       </GestureHandlerRootView>
     </Modal>

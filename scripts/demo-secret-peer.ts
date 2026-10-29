@@ -4,7 +4,8 @@
  * decrypted — and sends a sealed photo back through the real upload route.
  *
  *   npx tsx --env-file=.env scripts/demo-secret-peer.ts read
- *   npx tsx --env-file=.env scripts/demo-secret-peer.ts send-photo <file.jpg>
+ *   npx tsx --env-file=.env scripts/demo-secret-peer.ts send-photo <file.jpg> [caption]
+ *   npx tsx --env-file=.env scripts/demo-secret-peer.ts send-text <text> | delete <seq>
  *
  * The phone's key is the one that opens the last thing it sent: the account
  * has several devices and only that one holds the private half.
@@ -13,6 +14,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { Types } from 'mongoose';
+import { io } from 'socket.io-client';
 import { advanceChain, base64ToBytes, createMediaKey, decryptMessage, deriveSessionRoot, encryptMessage, openMediaFile, parseMediaSecret, sealMediaFile, serializeMediaSecret, type Envelope } from '@lilachat/shared';
 import { connectDb } from '../server/src/db.js';
 import { ChatModel, MessageModel } from '../server/src/chatModels.js';
@@ -77,14 +79,47 @@ async function read(): Promise<void> {
   }
 }
 
-async function sendPhoto(file: string): Promise<void> {
-  const { chatId, keys, ownerId, luciaId } = await context();
-  const last = await MessageModel.findOne({ chatId, senderId: ownerId, envelope: { $exists: true } }).sort({ seq: -1 }).lean();
+async function phoneKey(chatId: Types.ObjectId, ownerId: Types.ObjectId, keys: Keys) {
+  const last = await MessageModel.findOne({ chatId, senderId: ownerId, envelope: { $exists: true }, deletedAt: { $exists: false } }).sort({ seq: -1 }).lean();
   const phone = last ? openAny(last.envelope as Envelope, keys) : null;
-  if (!phone) throw new Error('Primero escribe algo desde el teléfono en el chat secreto: así se sabe cuál es su clave.');
+  if (phone) return phone;
+  // Nothing of the phone's left in the chat (cleaned): the device that opened it last time.
+  const known = keys.find((candidate) => candidate.deviceId === process.env.DEMO_PHONE_DEVICE);
+  if (!known) throw new Error('Primero escribe algo desde el teléfono en el chat secreto, o pasa DEMO_PHONE_DEVICE.');
+  return { text: '', deviceId: known.deviceId, key: known.key };
+}
+
+/** As Lucía, over the real socket: the phone hears it live, like any message. */
+async function asLucia<T>(luciaId: Types.ObjectId, event: string, frame: Record<string, unknown>): Promise<T> {
+  const socket = io(API, { auth: { token: signSession({ userId: String(luciaId), deviceId: LUCIA_DEVICE, email: '' }) }, transports: ['websocket'] });
+  try {
+    return await new Promise<T>((resolve, reject) => {
+      socket.on('connect_error', reject);
+      socket.on('connect', () => socket.emit(event, frame, (answer: T) => resolve(answer)));
+    });
+  } finally {
+    socket.close();
+  }
+}
+
+async function sendText(text: string): Promise<void> {
+  const { chatId, keys, ownerId, luciaId } = await context();
+  const phone = await phoneKey(chatId, ownerId, keys);
+  const answer = await asLucia<unknown>(luciaId, 'msg.send', { chatId: String(chatId), clientKey: `demo-peer-${Date.now()}`, envelope: encryptMessage(phone.key, text) });
+  console.log('msg.send →', JSON.stringify(answer).slice(0, 120));
+}
+
+async function remove(seq: number): Promise<void> {
+  const { chatId, luciaId } = await context();
+  console.log('msg.delete →', JSON.stringify(await asLucia<unknown>(luciaId, 'msg.delete', { chatId: String(chatId), seq })));
+}
+
+async function sendPhoto(file: string, caption: string): Promise<void> {
+  const { chatId, keys, ownerId, luciaId } = await context();
+  const phone = await phoneKey(chatId, ownerId, keys);
   const photo = new Uint8Array(readFileSync(file));
   const fileKey = createMediaKey();
-  const envelope = encryptMessage(phone.key, serializeMediaSecret({ key: fileKey, mime: 'image/jpeg', fileName: path.basename(file), sizeBytes: photo.length, caption: 'Foto del avance, km 12' }));
+  const envelope = encryptMessage(phone.key, serializeMediaSecret({ key: fileKey, mime: 'image/jpeg', fileName: path.basename(file), sizeBytes: photo.length, caption }));
   const form = new FormData();
   form.append('chatId', String(chatId));
   form.append('clientKey', `demo-peer-${Date.now()}`);
@@ -99,10 +134,12 @@ async function sendPhoto(file: string): Promise<void> {
 
 const main = async () => {
   await connectDb();
-  const [command, argument] = process.argv.slice(2);
+  const [command, argument, extra] = process.argv.slice(2);
   if (command === 'read') await read();
-  else if (command === 'send-photo' && argument) await sendPhoto(argument);
-  else console.log('Uso: demo-secret-peer.ts read | send-photo <archivo.jpg>');
+  else if (command === 'send-photo' && argument) await sendPhoto(argument, extra ?? '');
+  else if (command === 'send-text' && argument) await sendText(argument);
+  else if (command === 'delete' && argument) await remove(Number(argument));
+  else console.log('Uso: demo-secret-peer.ts read | send-text <texto> | send-photo <archivo.jpg> [pie] | delete <seq>');
   process.exit(0);
 };
 

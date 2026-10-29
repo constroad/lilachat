@@ -4992,9 +4992,42 @@ el día 61 el canal pasa a Archivados sin ningún proceso que lo mueva.
   por último movimiento.
 - El fake (`tools/bots-fake`) tiene las mismas rutas y `GET /__fake/clients`.
 - Tests: `shared/src/clientChannels.test.ts` (7),
-  `server/src/bots/botClients.test.ts` (6) y uno en `fake.test.ts`.
-- Falta: la app y la web (sección CLIENTES, Archivados, aviso y pestaña
-  «Servicios»).
+  `server/src/bots/botClients.test.ts` (7) y uno en `fake.test.ts`.
+
+**App y web (29/10/2026, web 1eb79de, app afbb645 por OTA 6b03159f).** El
+motor es `shared/src/spaceClients.ts` (7 tests): junta cada cliente con su
+chat, arma la línea «2 servicios en curso · Último pedido hoy» (días en
+hora de Lima), el aviso de archivado y el filtro de Archivados.
+- Lista del espacio (f-01): los canales de cliente salen de «Canales» y van
+  a «CLIENTES · N» con el edificio. Al final va «Archivados · N clientes ·
+  X sin leer». Sin canales de cliente, la sección no aparece.
+- Archivados (f-02): la regla de 60 días, un buscador por nombre (sin
+  tildes) o RUC, y los chips Todos, Sin leer y «Último pedido < 6 meses»
+  con sus cuentas. Los clientes van agrupados en «Hace 2 a 6 meses» y «Hace
+  más de 6 meses», con «Mostrando N de M» al pie.
+  - En la web de escritorio es una tabla (Cliente, Último pedido, Pedidos,
+    Servicios, Último mensaje y Archivado), sin el «Espacio conectado» que
+    inventó el diseño.
+  - En el teléfono son filas.
+- Canal de cliente (f-03): pestañas «Chat · Servicios N · Checklist».
+  - Archivado, muestra «Archivado desde el dd/mm/aaaa» con la regla y,
+    sobre el compositor, «Escribir aquí no lo saca de Archivados».
+  - «Servicios» muestra cada servicio con la pastilla de estado, la barra
+    de avance y «Ver en el Drive».
+- `GET /clients` se pide al entrar al espacio y cuando cambian los ids de
+  sus grupos, nunca con temporizador. La conversación lee su cliente del
+  mismo almacén.
+- Tests web: `web/src/spaces/clients/clients.test.tsx` (6).
+- Datos verificados en la base (Test, 29/10):
+  - Clientes: los dos E2E de agentes («Constructora Vía Sur» vivo,
+    «Consorcio Norte» archivado) y uno real de Portal («QA Avisos Cliente
+    29-10»).
+  - Despachos y llegadas van en el hilo del pedido. La raíz se redibuja
+    («Entregado»).
+  - Un post no saca a un cliente de Archivados.
+- Falta el E2E en pantalla: el emulador no arranca con 1,9 GB libres en la
+  Mac, y la web pide código o vínculo con el teléfono. Los 3 canales QA
+  quedan en Test hasta verlos.
 
 ## 156. Ubicación en tiempo real: 15 min, 1 hora u 8 horas (28/10/2026, servidor + APK 0.1.174 + web; pendiente 11)
 

@@ -11,6 +11,7 @@ describe('welcomeGate', () => {
     expect(welcomeGate({ seen: undefined, spaces: [], personalChats: 0 })).toBe('wait');
     expect(welcomeGate({ seen: null, spaces: null, personalChats: 0 })).toBe('wait');
     expect(welcomeGate({ seen: null, spaces: [], personalChats: null })).toBe('wait');
+    expect(welcomeGate({ seen: null, spaces: undefined, personalChats: 0 })).toBe('wait');
   });
 
   it('someone already using the app skips it: chats, a space, or seen before', () => {

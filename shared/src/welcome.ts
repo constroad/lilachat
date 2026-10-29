@@ -10,12 +10,13 @@ export function welcomeGate(input: {
   /** `undefined` = not read from the phone yet; `null` = never shown; `true` = done. */
   seen: boolean | null | undefined;
   /** The spaces I am in, any status; `null` while they load. */
-  spaces: readonly unknown[] | null;
+  spaces: readonly unknown[] | null | undefined;
   /** My personal chats; `null` while the list loads. */
   personalChats: number | null;
 }): WelcomeGate {
   if (input.seen === undefined) return 'wait';
   if (input.seen === true) return 'skip';
-  if (input.spaces === null || input.personalChats === null) return 'wait';
+  // An answer without the list (an older server, a broken reply) is not «no spaces».
+  if (!Array.isArray(input.spaces) || input.personalChats === null) return 'wait';
   return input.spaces.length > 0 || input.personalChats > 0 ? 'skip' : 'show';
 }

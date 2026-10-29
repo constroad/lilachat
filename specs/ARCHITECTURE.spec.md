@@ -4917,10 +4917,14 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
 - Un canal por cliente, no por obra.
 - Dentro del canal, cada servicio (ServiceManagement) es un expediente. La
   pestaña se llama «Servicios», como en todo el Portal.
-- Un canal está vivo si el cliente tuvo un pedido en los últimos 90 días o
-  tiene un servicio abierto (pending o in_progress). Si no, pasa a
-  «Archivados».
-- «Archivados» se ve, y un canal vuelve solo con el próximo pedido o servicio.
+- Un canal está vivo si el cliente tuvo algún movimiento en el Portal en los
+  últimos 60 días: pedidos, despachos, cotizaciones, servicios, informes o
+  archivos del Drive de sus servicios. José cambió la regla el mismo 29/10;
+  antes era «un pedido en 90 días o un servicio abierto».
+- Si no tuvo movimiento, pasa a «Archivados». «Archivados» se ve, y el canal
+  vuelve solo con el próximo movimiento.
+- Las órdenes de compra no cuentan: Portal solo guarda las que la empresa le
+  hace a sus proveedores.
 
 **Diseños:** f-01 (lista con «CLIENTES · 8» y la fila «Archivados · 237»),
 f-02 (Archivados en móvil y escritorio) y f-03 (canal archivado con aviso y
@@ -4930,25 +4934,34 @@ f-02 (Archivados en móvil y escritorio) y f-03 (canal archivado con aviso y
 - Del escritorio se borran «Espacio conectado» y «Actualizado automáticamente…»
   (inventados), y la columna Cliente se ensancha.
 
-**Archivado = cálculo, no cron.** `isClientChannelLive({lastOrderAt,
-openServices}, now)` en `shared` es una función pura con test. La lista lo
-calcula al leer, así que el día 91 el canal pasa a Archivados sin ningún
-proceso que lo mueva.
+**Archivado = cálculo, no cron.** `isClientChannelLive({lastActivityAt}, now)`
+en `shared` es una función pura con test. La lista lo calcula al leer, así que
+el día 61 el canal pasa a Archivados sin ningún proceso que lo mueva.
+- «Archivado desde» es `last_activity_at` + 60 días.
+- Archivados se agrupa por la antigüedad del último movimiento: de 2 a 6 meses
+  y más de 6 meses.
+- Los textos de f-02 y f-03 al implementar: «Sin movimiento en 60 días. Vuelve
+  a Clientes con el próximo movimiento.» Los diseños todavía dicen «90 días».
 
 **Contrato con agentes (la app escribe, Lilachat dibuja; acordado el 29/10).**
 - `PUT /api/bots/clients/:clientId`, en snake_case como el resto de la API:
-  `{ name, ruc?, last_order_at (ISO o null), orders_total, services: [{ id, name, status, stage, stage_label, progress?, url?, closed_at? }] }`.
+  `{ name, ruc?, last_activity_at (ISO o null), last_order_at (ISO o null), orders_total, services: [{ id, name, status, stage, stage_label, progress?, url?, closed_at? }] }`.
+  - `last_activity_at` lo calcula Portal y es el único que decide. Los demás
+    campos solo se muestran.
+  - Un movimiento sin aviso (una cotización, una foto en el Drive) llega como
+    un PUT solo: crea el canal o lo saca de Archivados. agentes manda como
+    mucho uno por cliente al día.
   - Crea el canal la primera vez (201) y después actualiza el estado (200).
     `clientId` es el `_id` del cliente en el Portal.
   - El canal nace público, con el bot y los admins del espacio. Los demás
     entran desde «Explorar canales».
   - `status` es el del Portal: `pending | in_progress | completed |
-    rejected`. Solo los dos primeros cuentan como abiertos.
+    rejected`. Un servicio abierto ya no mantiene vivo el canal.
   - Portal no tiene etapas. `stage` es el estado de
     `derivePublicServiceStatus`, `stage_label` su nombre y `progress` sale de
     `progressPercentage`, el mismo motor del portal de cliente.
-  - `closed_at` solo viene en los servicios que se cierren desde ahora. Sin
-    él, «Archivado desde» es 90 días después del último pedido.
+  - `closed_at` solo viene en los servicios que se cierren desde ahora, y solo
+    se muestra.
 - Avisos: el POST de siempre con `client: "<clientId>"` (en lugar de
   `channel_id`, `topic` o `user`), `kind` y `refs: { service_id?, record_id? }`.
   Se guardan en `message.clientRef`. Acepta `thread_of`.
@@ -4965,8 +4978,8 @@ proceso que lo mueva.
   escribir en el canal.
 - El Drive no se copia. «Ver en el Drive» abre la pestaña Drive del servicio
   en el Portal con `crear_enlace_de_servicio`.
-- Con la regla, hoy quedarían vivos 13 canales en Constroad, 20 en Globofast y
-  3 en Inframaq: Portal casi nunca cierra un servicio.
+- Con la regla, hoy quedarían vivos 25 canales en Constroad, 14 en Globofast y
+  4 en Inframaq. Constroad sube porque cuenta las cotizaciones.
 
 **Server (29/10):**
 - `server/src/bots/botClients.ts` tiene la colección `ClientChannel` (índice
@@ -4974,9 +4987,10 @@ proceso que lo mueva.
   pierde borra su chat y actualiza el del ganador.
 - `GET /api/workspaces/:id/clients` sirve a cualquier miembro activo (404
   fuera del espacio). Devuelve vivo o archivado, `archived_since`,
-  `archived_group` (3-6 o 6+) y los servicios, con los vivos primero.
+  `archived_group` (2-6 o 6+) y los servicios, con los vivos primero y luego
+  por último movimiento.
 - El fake (`tools/bots-fake`) tiene las mismas rutas y `GET /__fake/clients`.
-- Tests: `shared/src/clientChannels.test.ts` (8),
+- Tests: `shared/src/clientChannels.test.ts` (7),
   `server/src/bots/botClients.test.ts` (6) y uno en `fake.test.ts`.
 - Falta: la app y la web (sección CLIENTES, Archivados, aviso y pestaña
   «Servicios»).

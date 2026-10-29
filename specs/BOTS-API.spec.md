@@ -695,9 +695,9 @@ por eso no sube el nivel de `forms`.
 ## c-quindecies) Canales por cliente (29/10/2026, servidor; ARCHITECTURE §157)
 
 - `PUT /api/bots/clients/:clientId` crea el canal del cliente la primera vez
-  (201) y actualiza su estado (200). Cuerpo: `{ name, ruc?, last_order_at,
-  orders_total, services: [{ id, name, status, stage, stage_label, progress?,
-  url?, closed_at? }] }`. `status` puede ser pending, in_progress, completed o
+  (201) y actualiza su estado (200). Cuerpo: `{ name, ruc?, last_activity_at,
+  last_order_at, orders_total, services: [{ id, name, status, stage,
+  stage_label, progress?, url?, closed_at? }] }`. `status` puede ser pending, in_progress, completed o
   rejected.
   Responde `{ client: { id, channel: { id, name }, live, archived_since } }`.
 - `POST /api/bots/messages` acepta `client: "<clientId>"` como destino, junto
@@ -705,8 +705,9 @@ por eso no sube el nivel de `forms`.
   `thread_of`.
   - Un cliente sin PUT previo da 404 `client_not_found`.
   - El cliente de otra app también da 404.
-- Vivo = un pedido en los últimos 90 días o un servicio pending/in_progress.
-  Se calcula al leer, no hay ningún cron que lo mueva.
+- Vivo = `last_activity_at` dentro de los últimos 60 días (José, 29/10). Se
+  calcula al leer, no hay ningún cron que lo mueva. Un PUT solo, sin mensaje,
+  ya saca el canal de Archivados.
 - El fake tiene las mismas rutas y `GET /__fake/clients`.
 
 ## c-quaterdecies) Listas de ítems, fotos de la galería y límites exclusivos (28/10/2026, OTA + web + servidor)

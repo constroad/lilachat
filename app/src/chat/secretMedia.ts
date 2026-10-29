@@ -39,12 +39,21 @@ export function withOpenedText<M extends WithMedia>(message: M, text: string | n
   };
 }
 
-const EXTENSIONS: Record<string, string> = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/heic': '.heic', 'image/gif': '.gif', 'video/mp4': '.mp4', 'video/quicktime': '.mov', 'video/webm': '.webm', 'video/3gpp': '.3gp' };
+const EXTENSIONS: Record<string, string> = {
+  'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/heic': '.heic', 'image/gif': '.gif',
+  'video/mp4': '.mp4', 'video/quicktime': '.mov', 'video/webm': '.webm', 'video/3gpp': '.3gp',
+  'audio/mp4': '.m4a', 'audio/m4a': '.m4a', 'audio/x-m4a': '.m4a', 'audio/aac': '.aac', 'audio/mpeg': '.mp3', 'audio/ogg': '.ogg', 'audio/webm': '.webm', 'audio/3gpp': '.3gp',
+  'application/pdf': '.pdf', 'application/zip': '.zip', 'text/plain': '.txt',
+  'application/msword': '.doc', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+  'application/vnd.ms-excel': '.xls', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+};
+
+const fallbackExtension = (mime: string) => (mime.startsWith('video/') ? '.mp4' : mime.startsWith('audio/') ? '.m4a' : mime.startsWith('image/') ? '.jpg' : '.bin');
 
 /** The name of the decrypted copy: one per stored file, with the extension the viewer needs to play it. */
 export function openedFileName(url: string, mime: string): string | null {
   const last = (url.split(/[?#]/)[0] ?? '').split('/').filter(Boolean).pop();
   if (!last) return null;
   const base = last.replace(/\.[A-Za-z0-9]{1,5}$/, '').replace(/[^A-Za-z0-9_-]/g, '_');
-  return `${base}${EXTENSIONS[mime.toLowerCase()] ?? (mime.startsWith('video/') ? '.mp4' : '.jpg')}`;
+  return `${base}${EXTENSIONS[mime.toLowerCase()] ?? fallbackExtension(mime)}`;
 }

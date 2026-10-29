@@ -2,12 +2,12 @@ import { MAX_BYTES_BY_KIND, sealedMediaSize, type MediaKind } from '@lilachat/sh
 import type { Message } from './chatModels.js';
 
 /**
- * A photo or video of a secret chat (pending 67 / F12.3): the phone uploads it
+ * A photo, video, document or voice note of a secret chat (pending 67 / F12.3): the phone uploads it
  * already encrypted and sends, beside it, the end-to-end sealed text that
  * carries its key. The server only checks the shape of what it keeps: it
  * cannot read either of them. PURE.
  */
-const SEALED_KINDS = ['image', 'video'] as const;
+const SEALED_KINDS = ['image', 'video', 'audio', 'file'] as const;
 type SealedKind = (typeof SEALED_KINDS)[number];
 /** The sealed text holds a key, a type and a few numbers: far less than this. */
 const MAX_SEALED_TEXT = 4000;
@@ -28,7 +28,7 @@ export function parseSealedUpload(body: Record<string, unknown> | undefined): Se
     envelope = null;
   }
   if (!envelope || envelope.v !== 1 || !isPart(envelope.nonce) || !isPart(envelope.ciphertext)) return { ok: false, message: 'El archivo cifrado llegó incompleto.' };
-  if (!isSealedKind(body?.sealedKind)) return { ok: false, message: 'En un chat secreto solo van fotos y videos.' };
+  if (!isSealedKind(body?.sealedKind)) return { ok: false, message: 'Ese tipo de archivo no va en un chat secreto.' };
   return { ok: true, envelope: { v: 1, nonce: envelope.nonce as string, ciphertext: envelope.ciphertext as string }, kind: body.sealedKind };
 }
 

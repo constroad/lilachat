@@ -43,5 +43,9 @@ describe('openedFileName', () => {
     expect(openedFileName('https://x/media/a b/f.bin?t=1', 'image/png')).toBe('f.png');
     expect(openedFileName('https://x/media/z', 'video/x-matroska')).toBe('z.mp4');
     expect(openedFileName('', 'image/jpeg')).toBeNull();
+    // Documents and voice notes (secret chat): the viewer and the player need their own extension.
+    expect(openedFileName('https://x/media/d1.bin', 'application/pdf')).toBe('d1.pdf');
+    expect(openedFileName('https://x/media/v1.bin', 'audio/mp4')).toBe('v1.m4a');
+    expect(openedFileName('https://x/media/v2.bin', 'audio/ogg')).toBe('v2.ogg');
   });
 });

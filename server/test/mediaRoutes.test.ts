@@ -372,20 +372,34 @@ describe('POST /api/media with an envelope (secret chat)', () => {
     expect(await MessageModel.countDocuments({ chatId: chat })).toBe(0);
   });
 
-  it('refuses a broken envelope, a kind that is not a photo or video, and a sealed file in an ordinary chat', async () => {
+  it('refuses a broken envelope, an unknown kind, and a sealed file in an ordinary chat', async () => {
     // Arrange
     const { uploader, calls } = fakeUploader();
     const app = buildApp({ mediaUploader: uploader });
     const chat = await secretChat();
     // Act
     const broken = await sendSealed(app, chat, { clientKey: 'a', envelope: '{"v":1}', sealedKind: 'image' });
-    const kind = await sendSealed(app, chat, { clientKey: 'b', envelope: JSON.stringify(envelope), sealedKind: 'file' });
+    const kind = await sendSealed(app, chat, { clientKey: 'b', envelope: JSON.stringify(envelope), sealedKind: 'sticker' });
     const ordinary = await sendSealed(app, chatId, { clientKey: 'c', envelope: JSON.stringify(envelope), sealedKind: 'image' });
     // Assert
     expect(broken.status).toBe(400);
     expect(kind.status).toBe(400);
     expect(ordinary.status).toBe(400);
     expect(calls).toHaveLength(0);
+  });
+
+  // Documents and voice notes too (José 29/10: «termina tus pendientes»).
+  it('a sealed document and a sealed voice note are kept like a sealed photo: no name, no type', async () => {
+    // Arrange
+    const { uploader, calls } = fakeUploader();
+    const app = buildApp({ mediaUploader: uploader });
+    const chat = await secretChat();
+    // Act
+    const document = await sendSealed(app, chat, { clientKey: 'doc', envelope: JSON.stringify(envelope), sealedKind: 'file' });
+    const voice = await sendSealed(app, chat, { clientKey: 'voz', envelope: JSON.stringify(envelope), sealedKind: 'audio' });
+    // Assert
+    expect([document.status, voice.status]).toEqual([201, 201]);
+    expect(calls.map((call) => [call.fileName, call.kind])).toEqual([['sellado', 'file'], ['sellado', 'file']]);
   });
 });
 

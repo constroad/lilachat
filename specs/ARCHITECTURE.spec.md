@@ -4974,6 +4974,9 @@ en el mismo lenguaje del diseño.
     servicio. `hasStartedLocationUpdatesAsync` dice que ya corre, y ni la
     reanudación ni un envío nuevo lo prendían. Por eso `startUpdates` siempre
     para y vuelve a arrancar.
+  - **Hallazgo 3:** mantener presionada la tarjeta abría Google Maps en vez de
+    seleccionar el mensaje para borrarlo. Ahora la tarjeta pasa la pulsación
+    larga a la selección de la fila, y mientras seleccionas un toque selecciona.
   - **Deuda vista en el mismo E2E:** `expo-updates` pidió 40 MB al purgar su log
     (`UpdatesLogReader.purgeLogEntries`) y dio OutOfMemoryError. Lo atrapa y
     la app sigue, pero en gama baja es un riesgo. Falta medir el tamaño del log.

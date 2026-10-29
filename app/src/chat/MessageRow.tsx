@@ -351,7 +351,7 @@ function FilaDeMensaje({
           ) : contacto && jwt ? (
             <ContactCard contact={contacto} mine={mine} jwt={jwt} myUserId={myUserId} />
           ) : sharedLocation ? (
-            <LocationCard location={sharedLocation} mine={mine} live={jwt && !isPending(item) ? { jwt, chatId: item.chatId, seq: item.seq } : undefined} />
+            <LocationCard location={sharedLocation} mine={mine} live={jwt && !isPending(item) ? { jwt, chatId: item.chatId, seq: item.seq } : undefined} selecting={Boolean(enSeleccion)} onSelect={() => !isPending(item) && onSeleccionar?.(item.seq)} />
           ) : item.body ? (
             <>
             {conVistaPrevia && jwt && !isPending(item) && !item.media && primerEnlace(item.body) ? (

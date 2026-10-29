@@ -150,7 +150,7 @@ function FlatRow(props: {
           ) : !isPending(item) && item.card && props.jwt ? (
             <BotCardView card={item.card} chatId={item.chatId} seq={item.seq} jwt={props.jwt} />
           ) : !isPending(item) && sharedLocationOf(item) ? (
-            <LocationCard location={sharedLocationOf(item)!} mine={mine} onOwnBubble={false} live={props.jwt ? { jwt: props.jwt, chatId: item.chatId, seq: item.seq } : undefined} />
+            <LocationCard location={sharedLocationOf(item)!} mine={mine} onOwnBubble={false} live={props.jwt ? { jwt: props.jwt, chatId: item.chatId, seq: item.seq } : undefined} selecting={props.selecting} onSelect={select} />
           ) : sharedContactOf(item) && props.jwt ? (
             <ContactCard contact={sharedContactOf(item)!} mine={false} jwt={props.jwt} myUserId={props.myUserId} />
           ) : item.body ? (

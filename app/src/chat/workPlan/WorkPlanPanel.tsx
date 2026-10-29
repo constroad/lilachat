@@ -20,7 +20,7 @@ export function WorkPlanPanel(props: Props) {
   const summary = plan.summary!;
   const expanded = open ?? summary.current?.id ?? null;
   return (
-    <ScrollView testID="checklist-de-obra" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
+    <ScrollView testID="checklist-de-obra" keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
       <SummaryCard summary={summary} />
       <View className="mt-2 flex-row items-end justify-between">
         <View>

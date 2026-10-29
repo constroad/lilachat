@@ -4934,6 +4934,10 @@ las rutas de siempre (`/api/agenda/checklists/:id/...`), con su aviso en vivo.
   Android un toque fuera del padre no llega. Arriba va el resumen; cada etapa se
   despliega con `ChecklistEnElChat` (marcar, agregar, responsable y fecha), y la
   etapa actual abre sola. Sin etapas: «Armar el checklist de la obra».
+  ATRÁS en «Checklist» vuelve a «Chat», y un toque con el teclado abierto
+  llega al botón (`keyboardShouldPersistTaps`); los dos salieron en el E2E.
+  E2E en Test → #planta: armar, agregar, marcar (Cotización HECHO, etapa 2
+  actual, «1/1» en la pestaña) y borrar las 7 etapas por la app.
 - **Web:** lo mismo en `Conversation` (`ChannelTabs`, `WorkPlanWeb`).
 - **Falta del 21:** las pestañas «Archivos» y «Pendientes», la evidencia por
   ítem (e2-18), lo financiero desde el Portal y los «Flujos» automáticos.

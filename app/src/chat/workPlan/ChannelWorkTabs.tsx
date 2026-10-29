@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react';
-import { Pressable, Text, ToastAndroid, View } from 'react-native';
+import { useEffect, useState, type ReactNode } from 'react';
+import { BackHandler, Pressable, Text, ToastAndroid, View } from 'react-native';
 import { checklistMembers } from '@lilachat/shared';
 import { useWorkPlan } from './useWorkPlan';
 import { WorkPlanPanel } from './WorkPlanPanel';
@@ -15,6 +15,15 @@ type Tab = 'chat' | 'checklist';
 export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: string; yo: string; names: ReadonlyMap<string, string> }): { tabs: ReactNode; panel: ReactNode } {
   const [tab, setTab] = useState<Tab>('chat');
   const plan = useWorkPlan(params.jwt, params.chatId, params.enabled);
+  // Android's BACK on the checklist goes back to the chat first; the last listener added runs first.
+  useEffect(() => {
+    if (tab !== 'checklist') return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setTab('chat');
+      return true;
+    });
+    return () => subscription.remove();
+  }, [tab]);
   if (!params.enabled) return { tabs: null, panel: null };
   const counter = plan.summary && plan.summary.total ? `${plan.summary.done}/${plan.summary.total}` : null;
   const tabs = (

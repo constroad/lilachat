@@ -23,7 +23,8 @@ function useNowUntil(liveUntil: string | undefined): Date {
   return now;
 }
 
-type Props = { location: LiveLocation; mine: boolean; live?: { jwt: string; chatId: string; seq: number } };
+/** `mine` = I sent it (I can stop it); `onOwnBubble` = drawn on my coloured bubble, not in a flat row. */
+type Props = { location: LiveLocation; mine: boolean; onOwnBubble?: boolean; live?: { jwt: string; chatId: string; seq: number } };
 
 /**
  * A location shared in the chat (pending 11, design `r152-ubicacion`): the
@@ -35,7 +36,8 @@ export function LocationCard(props: Props) {
   const now = useNowUntil(props.location.endedAt ? undefined : props.location.liveUntil);
   const [stopping, setStopping] = useState(false);
   const open = () => void Linking.openURL(locationMapLink(props.location));
-  const soft = props.mine ? 'text-on-burbuja-propia-suave' : 'text-on-surface-variant';
+  const tinted = props.onOwnBubble ?? props.mine;
+  const soft = tinted ? 'text-on-burbuja-propia-suave' : 'text-on-surface-variant';
   const caption = liveCaption(props.location, now, clock);
   const canStop = props.mine && props.live && liveState(props.location, now) === 'live';
   const stop = async () => {
@@ -50,23 +52,23 @@ export function LocationCard(props: Props) {
         <MapSnippet location={props.location} width={CARD_WIDTH - 8} height={MAP_HEIGHT} testID="mapa-ubicacion" />
       </Pressable>
       <View className="px-3 pt-2">
-        <Text className={`text-[15px] font-semibold ${props.mine ? 'text-on-burbuja-propia' : 'text-on-surface'}`}>{caption ? 'Ubicación en tiempo real' : 'Ubicación'}</Text>
+        <Text className={`text-[15px] font-semibold ${tinted ? 'text-on-burbuja-propia' : 'text-on-surface'}`}>{caption ? 'Ubicación en tiempo real' : 'Ubicación'}</Text>
         {caption ? (
           <View className="flex-row items-center gap-1">
-            {liveState(props.location, now) === 'live' ? <Radio size={13} color={props.mine ? colors['on-burbuja-propia'] : colors.primary} /> : null}
+            {liveState(props.location, now) === 'live' ? <Radio size={13} color={tinted ? colors['on-burbuja-propia'] : colors.primary} /> : null}
             <Text testID="estado-tiempo-real" className={`text-[13px] ${soft}`}>{caption}</Text>
           </View>
         ) : null}
         {props.location.accuracy !== undefined ? <Text className={`text-[13px] ${soft}`}>{accuracyLabel(props.location.accuracy)}</Text> : null}
       </View>
-      <Pressable testID="btn-abrir-mapa" onPress={open} className={`mx-3 mt-2 h-10 flex-row items-center justify-center gap-1.5 rounded-xl border ${props.mine ? 'border-white/30' : 'border-primary/25 bg-primary/[0.06]'}`}>
-        <Text className={`text-[14px] font-semibold ${props.mine ? 'text-on-burbuja-propia' : 'text-primary'}`}>Abrir en el mapa</Text>
-        <ExternalLink size={15} color={props.mine ? colors['on-burbuja-propia'] : colors.primary} />
+      <Pressable testID="btn-abrir-mapa" onPress={open} className={`mx-3 mt-2 h-10 flex-row items-center justify-center gap-1.5 rounded-xl border ${tinted ? 'border-white/30' : 'border-primary/25 bg-primary/[0.06]'}`}>
+        <Text className={`text-[14px] font-semibold ${tinted ? 'text-on-burbuja-propia' : 'text-primary'}`}>Abrir en el mapa</Text>
+        <ExternalLink size={15} color={tinted ? colors['on-burbuja-propia'] : colors.primary} />
       </Pressable>
       {canStop ? (
         <Pressable testID="btn-dejar-de-compartir" disabled={stopping} onPress={() => void stop()} className="mx-3 mt-1 h-10 flex-row items-center justify-center gap-2">
-          {stopping ? <ActivityIndicator size="small" color={colors['on-burbuja-propia']} /> : null}
-          <Text className="text-[14px] font-semibold text-on-burbuja-propia">Dejar de compartir</Text>
+          {stopping ? <ActivityIndicator size="small" color={tinted ? colors['on-burbuja-propia'] : colors.primary} /> : null}
+          <Text className={`text-[14px] font-semibold ${tinted ? 'text-on-burbuja-propia' : 'text-primary'}`}>Dejar de compartir</Text>
         </Pressable>
       ) : null}
     </View>

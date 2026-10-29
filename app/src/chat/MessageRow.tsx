@@ -38,7 +38,7 @@ import { Avatar } from '../ui/Avatar';
 import { MessageMedia } from './MessageMedia';
 import { AlbumGrid } from './AlbumGrid';
 import { BotCardView } from './BotCardView';
-import { drawsAsCard, drawsAsFunLine, hasBotCard, isFileMime, isPending, type Row } from './rowKinds';
+import { drawsAsCard, drawsAsFunLine, hasBotCard, isFileMime, isPending, sharedContactOf, sharedLocationOf, type Row } from './rowKinds';
 import { rememberBubbleWidth } from './bubbleWidths';
 import { showGifOptions } from './gifs/gifOptions';
 import { ContactCard } from './contactCard/ContactCard';
@@ -218,9 +218,9 @@ function FilaDeMensaje({
   // A bot's card: drawn whole, with the time on its own line (its `body` is only the summary).
   const botCard = !isPending(item) && jwt ? item.card : undefined;
   // A shared contact (pending 9): drawn as a card, its `body` is only the summary; the time on its own line.
-  const contacto = !isPending(item) && item.kind === 'contact' && !item.deletedAt && jwt ? item.contact : undefined;
+  const contacto = jwt ? sharedContactOf(item) : undefined;
   // A shared location (pending 11): the map card; its `body` is only «Ubicación».
-  const sharedLocation = !isPending(item) && item.kind === 'location' && !item.deletedAt ? item.location : undefined;
+  const sharedLocation = sharedLocationOf(item);
   const lugarDeLaHora = dondeVaLaHora({
     conTexto: Boolean(item.body) && !botCard && !contacto && !sharedLocation,
     eliminado: !isPending(item) && Boolean(item.deletedAt),

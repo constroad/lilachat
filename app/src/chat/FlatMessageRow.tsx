@@ -15,7 +15,9 @@ import { BotCardView } from './BotCardView';
 import { TextoDelMensaje } from './TextoDelMensaje';
 import { VistaPreviaDeEnlace } from './VistaPreviaDeEnlace';
 import { previewDeMensaje, quoteAction } from './MessageRow';
-import { drawsAsCard, hasBotCard, isPending, type Row } from './rowKinds';
+import { drawsAsCard, hasBotCard, isPending, sharedContactOf, sharedLocationOf, type Row } from './rowKinds';
+import { LocationCard } from './location/LocationCard';
+import { ContactCard } from './contactCard/ContactCard';
 import type { Citado } from './filasDelChat';
 import { CardBody } from './TarjetaDelChat';
 import { showStickerOptions, useAnimatedStop } from './stickers/StickerMessage';
@@ -147,6 +149,10 @@ function FlatRow(props: {
             <Text testID={`eliminado-${id}`} className="text-[15px] italic text-on-surface-variant">{TEXTO_ELIMINADO}</Text>
           ) : !isPending(item) && item.card && props.jwt ? (
             <BotCardView card={item.card} chatId={item.chatId} seq={item.seq} jwt={props.jwt} />
+          ) : !isPending(item) && sharedLocationOf(item) ? (
+            <LocationCard location={sharedLocationOf(item)!} mine={mine} onOwnBubble={false} live={props.jwt ? { jwt: props.jwt, chatId: item.chatId, seq: item.seq } : undefined} />
+          ) : sharedContactOf(item) && props.jwt ? (
+            <ContactCard contact={sharedContactOf(item)!} mine={false} jwt={props.jwt} myUserId={props.myUserId} />
           ) : item.body ? (
             <>
               {props.linkPreview && props.jwt && !isPending(item) && !item.media && primerEnlace(item.body) ? <VistaPreviaDeEnlace url={primerEnlace(item.body)!} jwt={props.jwt} mia={false} /> : null}

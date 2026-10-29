@@ -38,3 +38,9 @@ export const drawsAsCard = (row: Row): boolean => !isPending(row) && !row.delete
 
 /** A bot's card is a block of its own: it keeps its header and groups with no neighbour (José, 24/10). */
 export const hasBotCard = (row: Row): boolean => !isPending(row) && !row.deletedAt && Boolean(row.card);
+
+/** A shared location (pending 11) draws as its map card in the bubble AND the flat row; its `body` is only «Ubicación». */
+export const sharedLocationOf = (row: Row): ChatMessage['location'] => (!isPending(row) && row.kind === 'location' && !row.deletedAt ? row.location : undefined);
+
+/** A shared contact (pending 9), the same way. */
+export const sharedContactOf = (row: Row): ChatMessage['contact'] => (!isPending(row) && row.kind === 'contact' && !row.deletedAt ? row.contact : undefined);

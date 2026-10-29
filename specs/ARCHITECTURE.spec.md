@@ -4911,6 +4911,88 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 160. Canal de cliente de punta a punta: cuándo nace, cobranza, Drive del servicio y evidencia (29/10/2026, análisis + diseño; pendiente 21)
+
+José, 29/10: «¿el canal cliente se crea solo? ¿lo creo yo? Al aceptar la
+cotización, se supone. Quiero ver los pagos de un servicio, su vencimiento, si
+fue al crédito. No hay un tab de Drive, solo un link que abre Portal y no el
+Drive de ese servicio». Antes, el mismo día: el checklist de obra salía en
+TODOS los canales; **ahora solo en los canales de cliente** (server, app y
+web, git 3d15c65).
+
+**Lo que hay en Portal.** Leído en el código el 29/10, con archivo y línea, sin
+suponer nada:
+- **Cotización:**
+  - `status` es `draft | sent | accepted | rejected | expired` (`models/quote.ts:8`, `service-quote.ts:9`).
+  - «Aceptada» se marca A MANO en el editor (`QuoteDataInspectorTab.tsx:16`) y se guarda con `PUT /api/quotes/[id]`.
+  - Ningún proceso del server reacciona a ese cambio.
+  - La cotización no apunta al servicio. Es al revés: `ServiceManagement.serviceQuoteId`.
+- **Servicio (`service-management.ts`):**
+  - Crédito: `isCredit` (:346) y `creditDueDate` (:350). No hay «días de crédito».
+  - Montos: `total` e IGV por partida, y `financialConfig.detraccionRate` (:286).
+  - Cobranza calculada en `financialSummary`: esperado, `collectedBase`, `pendingCollectionBase` y `collectionProgressPercentage`.
+  - Factura: solo el flag `isInvoiced` por partida. **No hay número de factura, estado SUNAT ni PDF.**
+- **Cobros:** cada cobro es un `FinancialMovement` de ingreso.
+  - Campos: fecha, monto, `paymentMethod`, `referenceNumber` y `attachmentResourceIds` (el voucher).
+  - Se une al servicio por `serviceManagementId` y al pedido por `orderId`.
+  - No hay modelo de cuentas por cobrar: se calcula al vuelo.
+- **Pedido:**
+  - Crédito y pago: `isCredit`, `isPaid` y `fechaVencimiento`.
+  - Pagos: `payments[]` con `{date, amount, notes}`, sin medio ni voucher.
+  - Factura: `invoice` como texto suelto.
+- **Drive del servicio:**
+  - Son `Folder` y `Media` con `resourceId: "service-<id>"`.
+  - Se listan con `GET /api/media` y `GET /api/drive/folders`.
+  - `Media` trae nombre, `mimeTye` (sic), fecha, `url`, `thumbnailUrl` y `metadata.fileSize`.
+  - No hay URL firmada.
+  - La pestaña Drive de UN servicio en el admin es `/admin/service-management/<id>?tab=drive`, y agentes ya la arma (`serviceDriveUrl`).
+  - Hoy el canal abre `crear_enlace_de_servicio`, que es el informe público del servicio, no su Drive. **Ese es el error que vio José.**
+
+**Cuándo nace el canal (propuesta).**
+1. Nace cuando la cotización pasa a `accepted`.
+   - Portal emite el evento en el PUT, cuando `status` cambia a `accepted`.
+   - agentes hace el `PUT /api/bots/clients/:id` y publica la tarjeta «COTIZACIÓN ACEPTADA» (diseño f-07).
+2. Un pedido directo sin cotización también lo crea, como hoy, para no dejar clientes sin canal.
+3. La regla de Archivados (60 días sin movimiento) no cambia.
+
+**Cobranza en el canal (diseños f-05 y f-08).**
+- `services[]` del PUT suma `billing`, solo con lo que existe:
+  - `{ total, currency, is_credit, due_at, collected, pending, progress, detraction_rate, items: [{ name, total, invoiced }], payments: [{ at, amount, method, reference, voucher_url? }] }`.
+- El cliente suma `account`: los pedidos al crédito con su vencimiento, lo pendiente y sus pagos.
+- Lilachat calcula «vencido / vence en N días» con una función pura, en hora de Lima.
+- Avisos que hace agentes:
+  - «vence mañana» y «venció», una vez por día;
+  - cada cobro nuevo como `service.record` de tipo `payment`.
+
+**Drive dentro del canal (diseño f-06).**
+- agentes manda en `services[].drive` una foto de cada servicio: carpetas con su cuenta y los 9 archivos más recientes. Va cuando cambia y como mucho una vez por día.
+- Para entrar a una carpeta, Lilachat le pide la lista a agentes con el token de la instalación. Es un pedido de la app hacia agentes, a definir con agentes.
+- Los archivos se abren en el visor de Lilachat. «Abrir en Portal» lleva a `?tab=drive` de ESE servicio.
+- **Arreglo inmediato:** «Ver en el Drive» usa la URL `?tab=drive` y no el informe público. El que mira es admin y tiene cuenta en Portal.
+
+**El servicio como expediente (diseño f-04).** En «Servicios», tocar un servicio abre su expediente con «Resumen · Cobranza · Drive · Registros». El Resumen muestra:
+- la cotización de origen;
+- la condición de pago;
+- los pedidos;
+- los últimos registros.
+
+**Quién hace qué.**
+
+| Pieza | Portal | agentes | Lilachat |
+| --- | --- | --- | --- |
+| Nace al aceptar | evento al pasar a `accepted` | PUT del cliente + tarjeta f-07 | — (ya crea el canal con el PUT) |
+| Cobranza | — (los datos existen) | arma `billing` y `account`; avisos de vencimiento | contrato + pestaña Cobranza + Cuenta |
+| Drive | — (API existente) | foto en el PUT + lista de una carpeta | pestaña Drive + visor |
+| Expediente | — | — | vista del servicio con sub-pestañas |
+
+Pedido a agentes el 29/10, con estas preguntas y el contrato propuesto. Se
+espera su respuesta para cerrar los nombres.
+
+**Diseños pedidos a Stitch (29/10):** f-04 expediente, f-05 cobranza,
+f-06 Drive, f-07 canal que nace con la cotización y f-08 cuenta del cliente,
+en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
+INVENTARIO.
+
 ## 159. Llamadas grupales: una malla de hasta 4 en grupos y canales (29/10/2026, servidor + OTA + web; pendiente 56)
 
 La llamada 1:1 (`call.*`, `shared/call.ts`) queda como estaba. La grupal es un
@@ -5251,8 +5333,11 @@ las rutas de siempre (`/api/agenda/checklists/:id/...`), con su aviso en vivo.
   E2E en Test → #planta: armar, agregar, marcar (Cotización HECHO, etapa 2
   actual, «1/1» en la pestaña) y borrar las 7 etapas por la app.
 - **Web:** lo mismo en `Conversation` (`ChannelTabs`, `WorkPlanWeb`).
-- **Falta del 21:** las pestañas «Archivos» y «Pendientes», la evidencia por
-  ítem (e2-18), lo financiero desde el Portal y los «Flujos» automáticos.
+- **Del 21, hecho el 29/10 (3d15c65), solo en canales de cliente:** «Archivos»
+  (evidencia por etapa), «Pendientes» (abiertas, vencidas primero) y el
+  detalle de la tarea (e2-18) con evidencia: un mensaje del canal unido a la
+  tarea por su seq (`POST/DELETE /api/agenda/checklists/:id/items/:itemId/evidence`).
+  Lo financiero y el Drive del servicio: §160. Los «Flujos» van con el 17.
 - **Tests:** `shared/workStages.test.ts` (4), `server/test/workStages.test.ts`
   (5) y `web/src/chat/workPlan/WorkPlanWeb.test.tsx` (2).
 
@@ -12611,7 +12696,7 @@ tacha con la versión que lo cierra.
     teléfono (hoy la web nombra solo los números que ya muestra).
     **«Nuevo chat» con la agenda completa: hecho (§109, 0.1.147).**
     **Decisión de José (20/10): la (b).** Sin guardar la agenda en el server.
-21. **Checklist por etapas hecho (§155); faltan Archivos, Pendientes, evidencia y Flujos.** **Un canal como el expediente de una obra** (José, 20/10: «¿para qué
+21. **Checklist por etapas (§155), Archivos, Pendientes y evidencia por tarea hechos, solo en canales de cliente (3d15c65); cobranza, Drive del servicio, expediente y «nace al aceptar la cotización» analizados en §160 (esperan a agentes y Portal); Flujos van con el 17.** **Un canal como el expediente de una obra** (José, 20/10: «¿para qué
     sirven los canales, cuál es la diferencia con un grupo? ¿Puedo manejar una
     obra por etapas: checklist, cotización, órdenes de compra y servicio,
     ejecución, pagos, valorizaciones, informes, levantamiento de

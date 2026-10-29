@@ -73,11 +73,11 @@ describe('call back (backlog 23)', () => {
 describe('the line of a group call (pending 56)', () => {
   it('says it was a group call and how many took part; a 1:1 value reads as before', () => {
     // Arrange
-    const valor = valorDeLlamada({ video: true, segundos: 150, personas: 3 });
+    const recorded = valorDeLlamada({ video: true, segundos: 150, personas: 3 });
     // Act + Assert
-    expect(valor).toBe('video:150:g3');
-    expect(leerValorDeLlamada(valor)).toEqual({ video: true, segundos: 150, personas: 3 });
-    expect(textoDeLlamada({ valor, esMio: false })).toBe('Videollamada grupal · 3 personas · 02:30');
+    expect(recorded).toBe('video:150:g3');
+    expect(leerValorDeLlamada(recorded)).toEqual({ video: true, segundos: 150, personas: 3 });
+    expect(textoDeLlamada({ valor: recorded, esMio: false })).toBe('Videollamada grupal · 3 personas · 02:30');
     expect(cuerpoDeLlamada({ valor: 'voz:65:g2', quien: 'Ana' })).toBe('Llamada grupal · 2 personas · 01:05');
     expect(leerValorDeLlamada('voz:65')).toEqual({ video: false, segundos: 65 });
   });

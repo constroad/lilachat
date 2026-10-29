@@ -14,8 +14,8 @@ const PERDIDA = 'perdida';
 
 export function valorDeLlamada(registro: RegistroDeLlamada): string {
   const tipo = registro.video ? 'video' : 'voz';
-  const grupo = registro.personas ? `:g${registro.personas}` : '';
-  return `${tipo}:${registro.segundos === null ? PERDIDA : Math.max(0, Math.floor(registro.segundos))}${grupo}`;
+  const groupSuffix = registro.personas ? `:g${registro.personas}` : '';
+  return `${tipo}:${registro.segundos === null ? PERDIDA : Math.max(0, Math.floor(registro.segundos))}${groupSuffix}`;
 }
 
 export function leerValorDeLlamada(valor: string | undefined): RegistroDeLlamada | null {

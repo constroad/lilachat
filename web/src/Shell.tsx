@@ -180,6 +180,8 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
     base,
     me: { name: credential.name, phone: credential.phone },
     personalUnread: chatsSinLeer(chats),
+    // Chats saved here are enough to skip the welcome; none saved waits for the server's word (a new browser).
+    personalChats: chatsGuardados?.length ? chatsGuardados.length : sync.chatsDelServidor,
     online: socket.online,
     selectedChatId: selectedId,
     onOpenChat: abrirChat,

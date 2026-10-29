@@ -4995,6 +4995,32 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 161. Bienvenida «¿Cómo vas a usar Lilachat?» (29/10/2026, OTA + web; pendiente 5, diseño e-01)
+
+Es la primera pantalla de una cuenta nueva y sale una sola vez. Antes no
+existía: después del código se caía en una lista vacía.
+- **Quién la ve** (`shared/welcome.ts › welcomeGate`): solo quien no tiene
+  chats personales ni espacios. Espera a que carguen las dos listas. Quien ya
+  usaba la app la salta para siempre y queda marcada como vista: un OTA no
+  saluda a nadie que ya estaba.
+  - Teléfono: `lilachat.pref.welcomeSeen`.
+  - Web: `lilachat.bienvenida-vista`. Un navegador nuevo sin chats guardados
+    espera el conteo del server (`chatsDelServidor`), no el `[]` de la base
+    local vacía.
+- **Tres opciones**:
+  - «Para mí» cierra y deja los chats personales.
+  - «Unirme a mi empresa» abre «Unirme a un espacio».
+  - «Crear un espacio para mi empresa» abre la creación.
+  - Al pie: «Puedes hacer las dos cosas».
+- **«Detectado»**: si un enlace de unión abrió la app o la web, la tarjeta de
+  unirse va resaltada con el código y el nombre del espacio
+  (`previewSpace`). Unirse abre con el código ya escrito.
+  - Para una cuenta que ya existía, el enlace sigue abriendo «Unirme»
+    directo, como antes.
+- **Diferencia con el diseño web**: el mockup la pinta en el panel derecho con
+  la barra lateral visible. Aquí cubre la ventana. Una cuenta nueva no tiene
+  nada que mostrar en la barra, y así funciona igual en un teléfono.
+
 ## 159. Llamadas grupales: una malla de hasta 4 en grupos y canales (29/10/2026, servidor + OTA + web; pendiente 56)
 
 La llamada 1:1 (`call.*`, `shared/call.ts`) queda como estaba. La grupal es un

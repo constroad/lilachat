@@ -1,5 +1,5 @@
 import type { LiveLocation } from '@lilachat/shared';
-import { useCallback, useEffect, useMemo, useRef, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { showBrowserNoticeIfHidden } from '../notify/browserNotice';
 import type { Socket } from 'socket.io-client';
 import { api } from '../api';
@@ -46,6 +46,8 @@ type Params = {
  */
 export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401, chatAbierto = null }: Params) {
   const cargas = useMemo(crearUltimaGana, []);
+  /** How many chats the server said I have, after the first good load (the welcome e-01 waits for it). */
+  const [chatsDelServidor, setChatsDelServidor] = useState<number | null>(null);
   const cargarChats = useCallback(async () => {
     if (!base || !jwt) return;
     const turno = cargas.empezar();
@@ -55,6 +57,7 @@ export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401
       if (respuesta.status === 401) await manejar401();
       return;
     }
+    setChatsDelServidor(respuesta.data.chats.length);
     if (cargas.vigente(turno)) await guardarChats(base, respuesta.data.chats).catch(ignoreClosedBase);
   }, [base, jwt, manejar401, cargas]);
 
@@ -110,7 +113,7 @@ export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401
 
   const acciones = useAccionesDelChat({ base, jwt, yo, socket, drenar, cargarChats });
   const avisarEscribiendo = useAvisoDeEscribiendo(socket);
-  return { eventos, cargarChats, invalidarCargas: cargas.invalidar, avisarEscribiendo, ...acciones };
+  return { eventos, cargarChats, chatsDelServidor, invalidarCargas: cargas.invalidar, avisarEscribiendo, ...acciones };
 }
 
 /** Abrir, paginar, enviar, reintentar y descartar. */

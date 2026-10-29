@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { SpaceQuickActions } from './apps/SpaceQuickActions';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { ChevronDown } from 'lucide-react-native';
-import { appReturnFromLink, joinCodeFromLink, newlyAddedSpaces, spaceSubtitle, unreadElsewhere, type ActivityItem, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember, type DirectoryApp } from '@lilachat/shared';
+import { appReturnFromLink, joinCodeFromLink, newlyAddedSpaces, spaceSubtitle, unreadElsewhere, welcomeGate, type ActivityItem, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember, type DirectoryApp } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 import { createChat } from '../contacts/contactsApi';
 import { getSocket } from '../chat/socketClient';
@@ -23,6 +23,8 @@ import { SpaceSettingsScreen } from './SpaceSettingsScreen';
 import { AddedToSpaceScreen } from './AddedToSpaceScreen';
 import { AccessRemovedScreen } from './AccessRemovedScreen';
 import { markSpacesSeen, useSeenSpaces } from './seenSpaces';
+import { markWelcomeSeen, useWelcomeSeen } from './welcomeSeen';
+import { WelcomeScreen } from './WelcomeScreen';
 import { memberName } from './memberUi';
 import { createSpaceChat, findSpaceChat } from './spacesApi';
 import { ActivityScreen } from '../activity/ActivityScreen';
@@ -58,7 +60,7 @@ const ELSEWHERE_RELOAD_MS = 1500;
  * someone else added me to, and «ya no tienes acceso» (e1-14). The space open
  * is remembered; one left falls back to personal.
  */
-export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name: string; phone: string }; personalUnread: number; onOpenChat: (chat: ChatSummary, seq?: number, openThread?: number) => void }) {
+export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name: string; phone: string }; personalUnread: number; /** `null` while the personal list loads (the welcome waits for it). */ personalChats: number | null; onOpenChat: (chat: ChatSummary, seq?: number, openThread?: number) => void }) {
   const { jwt, myUserId, onOpenChat } = params;
   const colors = useColores();
   const currentId = useCurrentSpaceId();
@@ -78,8 +80,8 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
       if (back) return void setAppReturn(back);
       const code = joinCodeFromLink(url);
       if (!code) return;
+      // The join opens below once the welcome is decided: a new account sees the code inside it (e-01).
       setJoinCode(code);
-      setSheet('join');
     };
     void Linking.getInitialURL().then(openLink);
     const subscription = Linking.addEventListener('url', (event) => openLink(event.url));
@@ -131,6 +133,20 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
     if (spaces && seen === null) markSpacesSeen(spaces.map((space) => space.id));
   }, [spaces, seen]);
   const welcome = spaces && seen ? (newlyAddedSpaces(spaces, seen)[0] ?? null) : null;
+  // «¿Cómo vas a usar Lilachat?» (e-01, pending 5): once, only for a new account.
+  const welcomeSeen = useWelcomeSeen();
+  const firstWelcome = welcomeGate({ seen: welcomeSeen, spaces, personalChats: params.personalChats });
+  useEffect(() => {
+    if (firstWelcome === 'skip' && welcomeSeen !== true) markWelcomeSeen();
+  }, [firstWelcome, welcomeSeen]);
+  useEffect(() => {
+    if (joinCode && firstWelcome === 'skip') setSheet((open) => open ?? 'join');
+  }, [joinCode, firstWelcome]);
+  const leaveWelcome = useCallback((next: Sheet) => {
+    markWelcomeSeen();
+    if (next) setSheet(next);
+    else setJoinCode(null);
+  }, []);
 
   const enter = useCallback(async (spaceId: string | null) => {
     setSheet(null);
@@ -255,6 +271,7 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
       ) : null}
       {current && sheet === 'apps' ? <AppDirectoryScreen space={current} apps={apps} jwt={jwt} initialAppId={appsInitialId} onClose={() => { setSheet(null); setAppsInitialId(null); }} /> : null}
       {current && sheet === 'settings' ? <SpaceSettingsScreen space={current} jwt={jwt} onSaved={() => void reload()} onClose={() => setSheet(null)} /> : null}
+      {firstWelcome === 'show' && !sheet ? <WelcomeScreen jwt={jwt} detectedCode={joinCode} onPersonal={() => leaveWelcome(null)} onJoin={() => leaveWelcome('join')} onCreate={() => leaveWelcome('create')} /> : null}
       {welcome && !sheet && !appReturn && !returning ? (
         <AddedToSpaceScreen
           space={welcome}

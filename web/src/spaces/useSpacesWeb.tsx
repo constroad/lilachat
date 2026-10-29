@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { aplicarMensajeALista, marcarLeido, newlyAddedSpaces, railSpaces, withLiveUnread, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember, type DirectoryApp } from '@lilachat/shared';
+import { aplicarMensajeALista, marcarLeido, newlyAddedSpaces, railSpaces, welcomeGate, withLiveUnread, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember, type DirectoryApp } from '@lilachat/shared';
 import { api } from '../api';
 import type { ChatMessage, ChatSummary } from '../chat/types';
 import { forgetMySpaces, setCurrentSpaceId, useCurrentSpaceId, useMySpaces } from './currentSpace';
@@ -12,6 +12,8 @@ import { openedChat } from './openedChat';
 import { SpacesLayer, type SpaceDialog } from './SpacesLayer';
 import type { WorkspaceLink } from './SpaceChatList';
 import { peekPendingJoin, takePendingJoin } from './pendingJoin';
+import { markWelcomeSeen, readWelcomeSeen } from './welcomeSeen';
+import { WelcomePane } from './WelcomePane';
 import { peekPendingAppReturn, takePendingAppReturn } from './apps/pendingAppReturn';
 import { useSpaceApps } from './apps/useSpaceApps';
 import { AppDirectory } from './apps/AppDirectory';
@@ -47,19 +49,35 @@ function useDebounced(run: () => void, delayMs: number) {
  * Socket events of chats outside the personal list reload the space's list
  * and the rail's counts.
  */
-export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The session's local base: the spaces' screens keep what they saw there (22/10). */ base?: BaseLocal | null; me: { name?: string | null; phone: string }; personalUnread: number; online: ReadonlySet<string>; selectedChatId: string | null; onOpenChat: (chatId: string) => void; onOpenMessage: (chatId: string, seq: number) => void; onPersonalChat: (chatId: string) => void }) {
+export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The session's local base: the spaces' screens keep what they saw there (22/10). */ base?: BaseLocal | null; me: { name?: string | null; phone: string }; personalUnread: number; /** `null` while the personal list loads (the welcome waits for it). */ personalChats?: number | null; online: ReadonlySet<string>; selectedChatId: string | null; onOpenChat: (chatId: string) => void; onOpenMessage: (chatId: string, seq: number) => void; onPersonalChat: (chatId: string) => void }) {
   const { jwt, myUserId, onOpenChat, onPersonalChat } = params;
   const currentId = useCurrentSpaceId();
   const { spaces, reload } = useMySpaces(jwt, myUserId);
   const [dialog, setDialog] = useState<SpaceDialog>(null);
   /** A join link opened on the web (pending 47): «Unirme» opens with its code, once. */
   // Read pure, removed in the effect: StrictMode runs an initializer twice and a «take» there would lose it.
-  const [joinCode] = useState(peekPendingJoin);
+  const [joinCode, setJoinCode] = useState(peekPendingJoin);
+  // «¿Cómo vas a usar Lilachat?» (e-01, pending 5): once, only for a new account; a join link shows inside it.
+  const [welcomeSeen, setWelcomeSeen] = useState(readWelcomeSeen);
+  // Without the personal count (a screen that does not pass it) there is no welcome.
+  const firstWelcome = params.personalChats === undefined ? 'skip' : welcomeGate({ seen: welcomeSeen, spaces, personalChats: params.personalChats });
   useEffect(() => {
-    if (!joinCode) return;
+    if (firstWelcome !== 'skip' || welcomeSeen) return;
+    markWelcomeSeen();
+    setWelcomeSeen(true);
+  }, [firstWelcome, welcomeSeen]);
+  useEffect(() => {
+    if (!joinCode || firstWelcome !== 'skip') return;
     takePendingJoin();
-    setDialog('join');
-  }, [joinCode]);
+    setDialog((open) => open ?? 'join');
+  }, [joinCode, firstWelcome]);
+  const leaveWelcome = (next: SpaceDialog) => {
+    markWelcomeSeen();
+    setWelcomeSeen(true);
+    if (next) return setDialog(next);
+    takePendingJoin();
+    setJoinCode(null);
+  };
   const [inviting, setInviting] = useState<ClientWorkspace | null>(null);
   const [profile, setProfile] = useState<ClientWorkspaceMember | null>(null);
   const [removed, setRemoved] = useState<ClientWorkspace | null>(null);
@@ -269,6 +287,7 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
     layer: (
       <>
         {layer}
+        {firstWelcome === 'show' && !dialog ? <WelcomePane jwt={jwt} detectedCode={joinCode} onPersonal={() => leaveWelcome(null)} onJoin={() => leaveWelcome('join')} onCreate={() => leaveWelcome('create')} /> : null}
         {current && apps.open ? <AppDirectory space={current} apps={apps} /> : null}
       </>
     ),

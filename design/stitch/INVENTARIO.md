@@ -68,8 +68,8 @@ Las capturas viven SOLO en la máquina (`design/stitch/`, en `.gitignore` desde 
 | `s1-web-stickers.png` | S1 · Web: panel de stickers sobre la barra y diálogo «Crear sticker» (`screens/5901b731b3a742c3b2aeb64930f6d31d`) |
 | `s1-pack-lila.png` | S1 · Hoja de 24 stickers del paquete por defecto «Lila» (SVG; `web/scripts/extract-sticker-pack.mjs` los pasa a WebP) (`screens/10f511ccc1aa4b34ad04df756730e310`) |
 | `c1-app-cumpleanos.png` | C1 · App: aviso de cumpleaños a pantalla completa con confeti, tarjeta con el avatar, reacciones, «Saludar en el grupo» y «Crear tarjeta con IA» (`screens/cd0ecbeba4524e54b2bd8ba2886d7b9b`; sin el logo inventado arriba a la izquierda) |
-| `e-01-bienvenida-app.png` | E · Bienvenida «¿Cómo vas a usar Lilachat?» · Móvil (`screens/6a425c590a304d02a5a3dc705d56ee9a`) |
-| `e-01-bienvenida-web.png` | E · Bienvenida «¿Cómo vas a usar Lilachat?» · Web (`screens/a45e8dfce3484f88b0b8409beeb8db9a`) |
+| `e-01-bienvenida-app.png` | E · Bienvenida «¿Cómo vas a usar Lilachat?» · Móvil (`screens/6a425c590a304d02a5a3dc705d56ee9a`) · **implementado 29/10 (§161)** |
+| `e-01-bienvenida-web.png` | E · Bienvenida «¿Cómo vas a usar Lilachat?» · Web (`screens/a45e8dfce3484f88b0b8409beeb8db9a`) · **implementado 29/10 (§161)** |
 | `e-02-unirse-codigo-app.png` | E · Unirse con código · Móvil (`screens/f7bf09fdac744807a56be471033b8f95`) |
 | `e-02-unirse-codigo-web.png` | E · Unirse con código · Web (`screens/0ac16ae02e6040809f7537c8f1cc4a1f`) |
 | `e-03-solicitud-enviada-app.png` | E · Solicitud enviada · Móvil (`screens/9707b5e54e994f4d97b40db3f26130f4`) |

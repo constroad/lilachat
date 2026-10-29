@@ -116,13 +116,14 @@ export function TabsShell({
   }, [pestanaPedida]);
   const [creating, setCreating] = useState<'poll' | null>(null);
   const [chats, setChats] = useState<ChatSummary[]>([]);
+  const [chatsLoaded, setChatsLoaded] = useState(false);
   // The company spaces (E1/E2): the Chats title switches between personal and each space.
   // A chat opened from Directorio or Menciones (tabs since 22/10) shows in Chats, where the open chat lives on a tablet.
   const openFromSpace = useCallback((chat: ChatSummary, seq?: number, openThread?: number) => {
     setTab('chats');
     onOpenChat(chat, seq, openThread);
   }, [onOpenChat]);
-  const espacios = useSpacesUi({ jwt: credential.jwt, myUserId: credential.userId, me: { name: perfilPropio.name?.trim() || 'Tú', phone: credential.phone }, personalUnread: chats.filter((chat) => chat.unread > 0).length, onOpenChat: openFromSpace });
+  const espacios = useSpacesUi({ jwt: credential.jwt, myUserId: credential.userId, me: { name: perfilPropio.name?.trim() || 'Tú', phone: credential.phone }, personalUnread: chats.filter((chat) => chat.unread > 0).length, personalChats: chatsLoaded ? chats.length : null, onOpenChat: openFromSpace });
   const inSpace = Boolean(espacios.current);
   /**
    * The title's «elsewhere» counter stays live (José, 22/10): a message from someone else in a
@@ -222,6 +223,7 @@ export function TabsShell({
     if (!result.ok) return;
     lastLoad.current = Date.now();
     setChats(result.data.chats);
+    setChatsLoaded(true);
   }, []);
 
   /**

@@ -210,8 +210,9 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
     <Pressable testID="titulo-espacio" accessibilityLabel="Cambiar de espacio" onPress={() => setSheet('switcher')} className="min-h-[44px] flex-1 flex-row items-center gap-2.5">
       {current ? <SpaceLogo space={current} size={36} /> : <Logo tamano={32} />}
       <View className="min-w-0 flex-shrink">
-        <View className="flex-row items-center gap-1">
-          <Text numberOfLines={1} className={`text-[22px] font-bold ${current ? 'text-on-surface' : 'text-primary'}`}>{current ? current.name : 'Lilachat'}</Text>
+        {/* A long name shrinks with «…»: «Constructora Andes» ran under the ⚡ (29/10). */}
+        <View className="min-w-0 flex-row items-center gap-1">
+          <Text numberOfLines={1} className={`flex-shrink text-[22px] font-bold ${current ? 'text-on-surface' : 'text-primary'}`}>{current ? current.name : 'Lilachat'}</Text>
           <ChevronDown size={18} color={colors['on-surface-variant']} />
           {elsewhere > 0 ? (
             <View testID="badge-otros-espacios" accessibilityLabel={`${elsewhere} ${elsewhere === 1 ? 'chat' : 'chats'} con algo nuevo en otro espacio`} className="ml-0.5 h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5">

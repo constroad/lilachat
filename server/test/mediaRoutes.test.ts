@@ -8,6 +8,8 @@ import { ChatModel, MessageModel } from '../src/chatModels.js';
 import type { MediaUploader, UploadOutcome } from '../src/mediaClient.js';
 import { UserModel } from '../src/models.js';
 import { signSession } from '../src/sessions.js';
+import { toClientMessage } from '../src/messageView.js';
+import { advanceChain, createMediaKey, decryptMessage, deriveSessionRoot, encryptMessage, generateIdentity, openMediaFile, parseMediaSecret, sealMediaFile, serializeMediaSecret, MEDIA_CHUNK } from '@lilachat/shared';
 
 /**
  * La subida, con lila FALSO e inyectado: lo que se prueba es NUESTRO camino
@@ -384,5 +386,40 @@ describe('POST /api/media with an envelope (secret chat)', () => {
     expect(kind.status).toBe(400);
     expect(ordinary.status).toBe(400);
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe('a secret photo from one phone to the other', () => {
+  it('the other phone opens the sealed text, finds the key and gets back the same bytes', async () => {
+    // Arrange: two phones with their own identities, as `deviceKeys.claveDeMensajes` derives them.
+    const mine = generateIdentity();
+    const theirs = generateIdentity();
+    const keyOf = (own: typeof mine, other: typeof mine) => advanceChain(deriveSessionRoot({ myPrivateKey: own.privateKey, theirPublicKey: other.publicKey })).messageKey;
+    const photo = Uint8Array.from({ length: MEDIA_CHUNK + 999 }, (_, index) => (index * 7) % 256);
+    const fileKey = createMediaKey();
+    const envelope = encryptMessage(keyOf(mine, theirs), serializeMediaSecret({ key: fileKey, mime: 'image/jpeg', fileName: 'obra.jpg', sizeBytes: photo.length, width: 1080, height: 1440, caption: 'Avance' }));
+    let stored = new Uint8Array(0);
+    const uploader: MediaUploader = {
+      upload: async (params) => {
+        stored = new Uint8Array(params.bytes);
+        return { ok: true, media: { url: '/media/chats/x/abc.bin', thumbnailStatus: 'unsupported', sizeBytes: params.bytes.length, storageName: 'abc.bin' } };
+      },
+    };
+    const chat = await ChatModel.create({ kind: 'direct', encrypted: true, members: [{ userId: jose, role: 'admin' }, { userId: ajeno, role: 'member' }], lastSeq: 0 });
+    // Act
+    await request(buildApp({ mediaUploader: uploader }))
+      .post('/api/media')
+      .set('Authorization', `Bearer ${token}`)
+      .field('chatId', String(chat._id))
+      .field('clientKey', 'ck-roundtrip')
+      .field('envelope', JSON.stringify(envelope))
+      .field('sealedKind', 'image')
+      .attach('file', Buffer.from(sealMediaFile(photo, fileKey)), { filename: 'sellado', contentType: 'application/octet-stream' });
+    const received = toClientMessage((await MessageModel.findOne({ chatId: chat._id }).lean())!);
+    const secret = parseMediaSecret(decryptMessage(keyOf(theirs, mine), received.envelope as typeof envelope));
+    // Assert
+    expect(received.media?.url).toBeTruthy();
+    expect(secret).toMatchObject({ mime: 'image/jpeg', caption: 'Avance', width: 1080 });
+    expect(openMediaFile(stored, secret!.key)).toEqual(photo);
   });
 });

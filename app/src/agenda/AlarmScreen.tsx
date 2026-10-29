@@ -1,22 +1,24 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { Bell, CalendarDays, FileText, MapPin, Minus, Plus } from 'lucide-react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useMargenes } from '../ui/useMargenes';
 import { alarmCountdown, alarmKicker, alarmWhen, nextSnooze, noteWithoutAdvance, SNOOZE_DEFAULT } from './alarmView';
 
 /**
- * The alert's own palette (Stitch a-01/a-02, asked by José on 25/10 through agents): deep
- * guinda fading to almost black, with a dim copper glow top right. Fixed on
- * purpose: it rings over the lock screen and does not follow the app's theme.
+ * The alert's own palette (José's last ask for the Stitch alert, 25/10): Lilachat's
+ * dark lila melting into black — deep lila, a wide blot of the brand violet
+ * center-left, plum-indigo, almost black at the edges and the bottom, and a
+ * soft lila light top right. Fixed on purpose: it rings over the lock screen
+ * and does not follow the app's theme.
  */
 const ALARM = {
-  guinda: '#5B0F2E',
-  wine: '#2A0714',
-  night: '#0B0507',
-  copper: '#8A4A2A',
-  warm: '#E3A57C',
+  lila: '#3A1C7A',
+  violet: '#5B2FC0',
+  indigo: '#1A0B3D',
+  night: '#07040F',
+  light: '#B9A2F0',
   white: '#FFFFFF',
 } as const;
 const COUNTDOWN_TICK_MS = 30_000;
@@ -26,18 +28,28 @@ function AlarmBackdrop() {
   return (
     <Svg style={StyleSheet.absoluteFill} preserveAspectRatio="none" viewBox="0 0 100 100">
       <Defs>
-        <RadialGradient id="center" cx="50%" cy="58%" rx="75%" ry="60%">
-          <Stop offset="0" stopColor={ALARM.guinda} stopOpacity="1" />
-          <Stop offset="0.55" stopColor={ALARM.wine} stopOpacity="1" />
+        <RadialGradient id="base" cx="45%" cy="42%" rx="80%" ry="62%">
+          <Stop offset="0" stopColor={ALARM.lila} stopOpacity="1" />
+          <Stop offset="0.5" stopColor={ALARM.indigo} stopOpacity="1" />
           <Stop offset="1" stopColor={ALARM.night} stopOpacity="1" />
         </RadialGradient>
-        <RadialGradient id="glow" cx="88%" cy="14%" rx="45%" ry="28%">
-          <Stop offset="0" stopColor={ALARM.copper} stopOpacity="0.55" />
-          <Stop offset="1" stopColor={ALARM.copper} stopOpacity="0" />
+        <RadialGradient id="violet" cx="32%" cy="46%" rx="55%" ry="34%">
+          <Stop offset="0" stopColor={ALARM.violet} stopOpacity="0.75" />
+          <Stop offset="1" stopColor={ALARM.violet} stopOpacity="0" />
         </RadialGradient>
+        <RadialGradient id="light" cx="86%" cy="12%" rx="42%" ry="24%">
+          <Stop offset="0" stopColor={ALARM.light} stopOpacity="0.32" />
+          <Stop offset="1" stopColor={ALARM.light} stopOpacity="0" />
+        </RadialGradient>
+        <LinearGradient id="floor" x1="0" y1="0.55" x2="0" y2="1">
+          <Stop offset="0" stopColor={ALARM.night} stopOpacity="0" />
+          <Stop offset="1" stopColor={ALARM.night} stopOpacity="0.95" />
+        </LinearGradient>
       </Defs>
-      <Rect x="0" y="0" width="100" height="100" fill="url(#center)" />
-      <Rect x="0" y="0" width="100" height="100" fill="url(#glow)" />
+      <Rect x="0" y="0" width="100" height="100" fill="url(#base)" />
+      <Rect x="0" y="0" width="100" height="100" fill="url(#violet)" />
+      <Rect x="0" y="0" width="100" height="100" fill="url(#light)" />
+      <Rect x="0" y="0" width="100" height="100" fill="url(#floor)" />
     </Svg>
   );
 }
@@ -88,7 +100,7 @@ export function AlarmScreen(props: Props) {
           </View>
           <Text testID="recordatorio-titulo" className="mt-5 text-center text-[32px] font-bold leading-[38px] text-white" numberOfLines={4}>{props.title}</Text>
           {when ? <Text className="mt-4 text-[18px] text-white/90">{when}</Text> : null}
-          {countdown ? <Text testID="recordatorio-cuenta" className="mt-1.5 text-[16px] font-semibold" style={{ color: ALARM.warm }}>{countdown}</Text> : null}
+          {countdown ? <Text testID="recordatorio-cuenta" className="mt-1.5 text-[16px] font-semibold" style={{ color: ALARM.light }}>{countdown}</Text> : null}
           {props.place ? (
             <Pressable testID="btn-recordatorio-ubicacion" accessibilityRole="button" accessibilityLabel={`Cómo llegar a ${props.place}`} onPress={props.onPlace} className="mt-4 min-h-[44px] max-w-full flex-row items-center gap-2 px-3">
               <MapPin size={18} color={ALARM.white} opacity={0.8} />

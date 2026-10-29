@@ -2,7 +2,7 @@ import { advanceShort, formatClock } from '@lilachat/shared';
 
 /**
  * What the full-screen alert says (Stitch a-01 «recordatorio sonando» and
- * a-02 «evento por empezar», guinda and black; José 29/10). PURE: the screen
+ * a-02 «evento por empezar», dark lila to black; José 29/10). PURE: the screen
  * only draws it.
  */
 export const SNOOZE_DEFAULT = 5;

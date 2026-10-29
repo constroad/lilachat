@@ -10,7 +10,7 @@ import { AlarmScreen } from './AlarmScreen';
 /**
  * The reminder big, over the lock screen, like Google Calendar (pending 63,
  * José 22/10). The native full-screen notice opens the app with it; here it is
- * shown in the guinda-and-black design (Stitch a-01/a-02) with «Descartar»
+ * shown in the dark-lila-to-black design (Stitch alert set, 25/10) with «Descartar»
  * and «Posponer N min», and the lock is released after.
  */
 export function ReminderAlarmHost(props: { jwt: string }) {

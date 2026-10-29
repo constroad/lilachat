@@ -27,6 +27,8 @@ export interface Checklist {
   othersCanAdd: boolean;
   /** The seq of its card in the chat: the chat info and «Mis tareas» jump to it. */
   cardSeq?: number;
+  /** A stage of the channel's job (pending 21): its order in the plan; such a checklist has no card. */
+  stage?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -51,6 +53,7 @@ const checklistSchema = new Schema<Checklist>(
     othersCanMark: { type: Boolean, default: true },
     othersCanAdd: { type: Boolean, default: true },
     cardSeq: { type: Number },
+    stage: { type: Number },
   },
   { timestamps: true }
 );

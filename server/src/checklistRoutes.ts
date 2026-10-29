@@ -14,7 +14,7 @@ import { createChecklistInChat, newItemId } from './checklistService.js';
 /** A task's own id: 6 random bytes, enough inside one checklist of up to 30. */
 
 /** The checklist as the card reads it (ids as strings). */
-function view(checklist: Checklist): AgendaChecklist {
+export function view(checklist: Checklist): AgendaChecklist {
   return {
     _id: String(checklist._id),
     chatId: String(checklist.chatId),
@@ -147,7 +147,7 @@ export function buildChecklistRouter(): Router {
     const userId = req.session!.userId;
     const chatId = typeof req.query.chatId === 'string' && Types.ObjectId.isValid(req.query.chatId) ? req.query.chatId : null;
     if (!chatId || !(await ChatModel.exists({ _id: chatId, 'members.userId': userId }))) return res.status(403).json({ message: 'No tienes acceso a esa conversación.' });
-    const checklists = await withCardSeq(await ChecklistModel.find({ chatId }).sort({ createdAt: -1 }).limit(LIST_LIMIT).lean());
+    const checklists = await withCardSeq(await ChecklistModel.find({ chatId, stage: { $exists: false } }).sort({ createdAt: -1 }).limit(LIST_LIMIT).lean());
     const now = new Date();
     res.json({
       checklists: checklists.map((checklist) => {

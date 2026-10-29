@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { SpaceEmojisProvider } from '../spaces/customEmojis';
+import { useChannelWork } from './workPlan/ChannelWorkTabs';
 import { Text, View } from 'react-native';
 import { ProgramarMensajeModal } from './ProgramarMensajeModal';
 import { ProgramadosDelChat } from './ProgramadosDelChat';
@@ -218,6 +219,7 @@ export function ChatScreen({
   const accionesDeTarjeta = useMemo(() => ({ editarRecordatorio: puedeEditarRecordatorios ? (recordatorio: AgendaReminder) => setCreando({ recordatorio }) : undefined, callBack: callBack.actions }), [puedeEditarRecordatorios, callBack.actions]);
   // Fuera del grupo no se listan miembros: ya no es «QA Ana, Vos».
   const otherStatus = usePresenceStatus(otherUserId);
+  const channelWork = useChannelWork({ enabled: Boolean(workspaceId && esGrupoChat && !appId && !encrypted), jwt: credential.jwt, chatId, yo: credential.userId, names: nombresDelGrupo });
   const subtitulo = useChatSubtitle({ fueraDelGrupo, esBorrador, esGrupo: esGrupoChat, workspaceId, escriben: [...escribiendo], otroEnLinea, otroEstado: otherStatus, ultimaVez, nombres: nombresDelGrupo, totalMembers: grupo.members.length, yo: credential.userId });
   const fotoVisible = infoPropia.avatarUrl ?? chatAvatarUrl;
 
@@ -427,11 +429,11 @@ export function ChatScreen({
         />
       )}
 
-      {fijar.franja}
+      {fijar.franja}{channelWork.tabs}
       </View>
       {/* Keyboard like Telegram (20/10): see `useScrollConTeclado`; the bar rides on the keyboard or the emoji panel in `ChatBottom`. */}
       <View style={{ flex: 1, zIndex: 1 }}>
-      {fijar.hoja}
+      {fijar.hoja}{channelWork.panel}
 
       {encrypted || esBorrador ? null : <BirthdayCard chatId={chatId} chatName={chatName} isGroup={esGrupoChat} me={credential.userId} messages={messages} names={nombresDelGrupo} photos={fotosDelGrupo} onReact={(emoji) => void send(emoji)} onGreet={(text) => composerRef.current?.insertEmoji(text)} />}
       <CrearDesdeElChat

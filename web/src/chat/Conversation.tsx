@@ -16,6 +16,7 @@ import type { SpaceApps } from '../spaces/apps/useSpaceApps';
 import type { Mencionable } from './SugerenciasDeMencion';
 import type { NotaDeVozGrabada } from './useGrabadoraDeVoz';
 import { ListaDeMensajes } from './ListaDeMensajes';
+import { useWorkPlanWeb, WorkPlanWeb } from './workPlan/WorkPlanWeb';
 import type { ChatSummary, MensajeEnPantalla } from './types';
 
 /**
@@ -89,6 +90,11 @@ export function Conversation(props: {
 }) {
   const { chat } = props;
   const [appTab, setAppTab] = useState<AppConversationTab>('messages');
+  // Pending 21: a space's channel has «Chat · Checklist»; the checklist takes the place of the messages.
+  const isChannel = Boolean(chat.workspaceId && chat.kind === 'group' && !props.app && !chat.encrypted);
+  const [channelTab, setChannelTab] = useState<'chat' | 'checklist'>('chat');
+  const workPlan = useWorkPlanWeb(props.jwtParaEnlaces ?? '', chat.id, isChannel && Boolean(props.jwtParaEnlaces));
+  useEffect(() => setChannelTab('chat'), [chat.id]);
   useEffect(() => {
     setAppTab('messages');
   }, [chat.id]);
@@ -128,7 +134,10 @@ export function Conversation(props: {
       ) : (
         <CabeceraDeLaConversacion chat={chat} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} lastSeen={lastSeen} status={otherStatus} onCall={props.onCall} callExtras={props.callExtras} />
       )}
-      {props.app && appTab === 'info' ? (
+      {isChannel ? <ChannelTabs tab={channelTab} onTab={setChannelTab} counter={workPlan.summary?.total ? `${workPlan.summary.done}/${workPlan.summary.total}` : null} /> : null}
+      {isChannel && channelTab === 'checklist' ? (
+        <WorkPlanWeb plan={workPlan} />
+      ) : props.app && appTab === 'info' ? (
         <div data-testid="informacion-app" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-8">
           <div className="mx-auto max-w-3xl">
             <AppDetail
@@ -267,4 +276,19 @@ function EsqueletoDeMensajes() {
 function BannerWithSession() {
   const context = useContext(ConversacionContext);
   return context ? <NotificationsBanner jwt={context.jwt} /> : null;
+}
+
+/** «Chat · Checklist» under a channel's header (pending 21, design e2-17). */
+function ChannelTabs(props: { tab: 'chat' | 'checklist'; onTab: (tab: 'chat' | 'checklist') => void; counter: string | null }) {
+  const tabs = [{ key: 'chat' as const, label: 'Chat' }, { key: 'checklist' as const, label: 'Checklist' }];
+  return (
+    <div role="tablist" className="flex gap-6 border-b border-outline/15 bg-surface px-4">
+      {tabs.map((one) => (
+        <button key={one.key} type="button" role="tab" aria-selected={props.tab === one.key} data-testid={`pestana-canal-${one.key}`} onClick={() => props.onTab(one.key)} className={`flex min-h-[40px] items-center gap-1.5 border-b-2 text-sm ${props.tab === one.key ? 'border-primary font-semibold text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
+          {one.label}
+          {one.key === 'checklist' && props.counter ? <span className="rounded-full bg-primary/10 px-1.5 text-[11px] font-bold text-primary">{props.counter}</span> : null}
+        </button>
+      ))}
+    </div>
+  );
 }

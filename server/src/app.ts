@@ -39,6 +39,7 @@ import { buildDestacadosRouter } from './destacadosRoutes.js';
 import { buildActivityRouter } from './activityRoutes.js';
 import { buildFunRouter } from './funRoutes.js';
 import { buildChecklistRouter } from './checklistRoutes.js';
+import { buildWorkStageRouter } from './workStageRoutes.js';
 import { buildStickersRouter } from './stickersRoutes.js';
 import { buildReenvioRouter } from './reenvioRoutes.js';
 import { buildHilosRouter } from './hilosRoutes.js';
@@ -148,6 +149,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/agenda', buildPendientesRouter());
   app.use('/api/agenda', buildQueueRouter());
   app.use('/api/agenda', buildEventRouter());
+  app.use('/api/agenda', buildWorkStageRouter());
   app.use('/api/agenda', buildChecklistRouter());
   app.use('/api/push', buildPushRouter());
   app.use('/api/backup', buildBackupRouter());

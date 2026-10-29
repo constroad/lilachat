@@ -4911,6 +4911,35 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 155. Un canal como el expediente de una obra: checklist por etapas (28/10/2026, servidor + OTA + web; pendiente 21)
+
+Diseños e2-17 (canal de obra) y e2-18 (ítem). **Reuse-first:** cada etapa es un
+checklist del canal (el de Telegram, pendiente 8) con su número `stage` y **sin
+tarjeta en el chat**. Agregar, asignar responsable y fecha, y marcar tareas usan
+las rutas de siempre (`/api/agenda/checklists/:id/...`), con su aviso en vivo.
+
+- **Server (`workStageRoutes.ts`, montado antes de `/checklists/:id`):**
+  - `GET /api/agenda/checklists/stages?chatId=`: las etapas en orden, con sus
+    tareas. Solo miembros del canal.
+  - `POST /api/agenda/checklists/stages {chatId}`: arma las siete etapas
+    (`DEFAULT_WORK_STAGES`). Solo en canales de un espacio (400 fuera de uno), y
+    una sola vez (409 si ya están).
+  - Las etapas no salen en los checklists del detalle del chat. Las tareas
+    asignadas sí salen en «Mis tareas».
+- **Resumen (`shared/workStages.ts`):** `workPlanSummary` da la etapa actual (la
+  primera sin terminar; una vacía cuenta como pendiente), el avance, los
+  pendientes y los vencidos. Cada etapa sale como hecha, en proceso o pendiente.
+- **App:** `useChannelWork` agrega «Chat · Checklist» bajo la cabecera de un
+  canal del espacio. El checklist tapa la conversación en su propia área: en
+  Android un toque fuera del padre no llega. Arriba va el resumen; cada etapa se
+  despliega con `ChecklistEnElChat` (marcar, agregar, responsable y fecha), y la
+  etapa actual abre sola. Sin etapas: «Armar el checklist de la obra».
+- **Web:** lo mismo en `Conversation` (`ChannelTabs`, `WorkPlanWeb`).
+- **Falta del 21:** las pestañas «Archivos» y «Pendientes», la evidencia por
+  ítem (e2-18), lo financiero desde el Portal y los «Flujos» automáticos.
+- **Tests:** `shared/workStages.test.ts` (4), `server/test/workStages.test.ts`
+  (5) y `web/src/chat/workPlan/WorkPlanWeb.test.tsx` (2).
+
 ## 154. Llamadas como WhatsApp, girar la cámara sin errores y emojis propios del espacio (28/10/2026, servidor + OTA + web; pendientes 106, 78, 105b y 19)
 
 **Controles (pendiente 106, diseños c-02/c-03).** Barra abajo «⋯ · cámara ·
@@ -12263,7 +12292,7 @@ tacha con la versión que lo cierra.
     teléfono (hoy la web nombra solo los números que ya muestra).
     **«Nuevo chat» con la agenda completa: hecho (§109, 0.1.147).**
     **Decisión de José (20/10): la (b).** Sin guardar la agenda en el server.
-21. **Un canal como el expediente de una obra** (José, 20/10: «¿para qué
+21. **Checklist por etapas hecho (§155); faltan Archivos, Pendientes, evidencia y Flujos.** **Un canal como el expediente de una obra** (José, 20/10: «¿para qué
     sirven los canales, cuál es la diferencia con un grupo? ¿Puedo manejar una
     obra por etapas: checklist, cotización, órdenes de compra y servicio,
     ejecución, pagos, valorizaciones, informes, levantamiento de

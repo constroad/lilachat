@@ -4,7 +4,11 @@ import * as Crypto from 'expo-crypto';
 import { loadCredential } from '../auth/credentialStore';
 import { reportarError } from '../ui/reportarError';
 import { decidirSubida, paraPersistir, siguienteArchivo, type ArchivoEnCola } from './colaDeArchivosMotor';
-import { uploadMedia } from './mediaUpload';
+import { uploadMedia, type SealedUpload } from './mediaUpload';
+import { createMediaKey, serializeMediaSecret, validateMedia, type Envelope } from '@lilachat/shared';
+import { File } from 'expo-file-system';
+import { sealFile } from '../crypto/sealedFiles';
+import { rememberOpened } from './secretMediaFiles';
 import type { ServerMessage } from './socketClient';
 import { alConectar } from './socketClient';
 import { valeAvisarProgreso } from './progresoDeSubida';
@@ -131,15 +135,16 @@ type ArchivoNuevo = {
  * se comprime salvo `hd` (José, 19/10) y se copia a la carpeta de la app—.
  * Se sube cuando está lista.
  */
-export async function encolarArchivo(params: ArchivoNuevo & { hd?: boolean }): Promise<void> {
+export async function encolarArchivo(params: ArchivoNuevo & { hd?: boolean; seal?: (text: string) => Envelope | null }): Promise<void> {
   await hidratar();
-  const { hd, ...archivo } = params;
+  const { hd, seal, ...archivo } = params;
   const clientKey = Crypto.randomUUID();
   cola = [...cola, { ...archivo, clientKey, queuedAt: new Date().toISOString(), intentos: 0, preparando: true }];
   avisar();
-  let preparado: Awaited<ReturnType<typeof prepararArchivo>>;
+  let preparado: Prepared;
   try {
     preparado = await prepararArchivo(archivo, clientKey, Boolean(hd));
+    if (seal) preparado = { ...preparado, sealed: await sealPrepared(preparado, archivo.caption, clientKey, seal) };
   } catch (error) {
     cola = cola.filter((uno) => uno.clientKey !== clientKey);
     avisar();
@@ -148,6 +153,7 @@ export async function encolarArchivo(params: ArchivoNuevo & { hd?: boolean }): P
   // Descartada mientras se preparaba: la copia sobra.
   if (!cola.some((uno) => uno.clientKey === clientKey)) {
     await FileSystem.deleteAsync(preparado.uri, { idempotent: true }).catch(() => undefined);
+    if (preparado.sealed) await FileSystem.deleteAsync(preparado.sealed.uri, { idempotent: true }).catch(() => undefined);
     return;
   }
   actualizar(clientKey, { ...preparado, preparando: false });
@@ -169,6 +175,25 @@ async function prepararArchivo(archivo: ArchivoNuevo, clientKey: string, hd: boo
   return { ...fuente, uri: destino, sizeBytes: await knownSize(destino, fuente.sizeBytes) };
 }
 
+type Prepared = Awaited<ReturnType<typeof prepararArchivo>> & { sealed?: SealedUpload };
+
+/**
+ * A secret chat's photo or video (pending 67): encrypted next to its plain
+ * copy with a key of its own, and that key sealed end to end in the text.
+ * Only photos and videos, and never in clear: a seal that fails stops it.
+ */
+async function sealPrepared(prepared: Prepared, caption: string | undefined, clientKey: string, seal: (text: string) => Envelope | null): Promise<SealedUpload> {
+  const validation = validateMedia({ mimeType: prepared.mimeType, sizeBytes: prepared.sizeBytes });
+  if (!validation.ok) throw new Error(validation.reason);
+  if (validation.kind !== 'image' && validation.kind !== 'video') throw new Error('En un chat secreto solo van fotos y videos.');
+  const key = createMediaKey();
+  const envelope = seal(serializeMediaSecret({ key, mime: prepared.mimeType, fileName: prepared.fileName, sizeBytes: prepared.sizeBytes, width: prepared.width, height: prepared.height, caption: caption?.trim() || undefined }));
+  if (!envelope) throw new Error('No se pudo cifrar el archivo.');
+  const target = new File(`${CARPETA}${clientKey}.sellado`);
+  const sizeBytes = await sealFile(new File(prepared.uri), target, key);
+  return { uri: target.uri, sizeBytes, envelope, kind: validation.kind };
+}
+
 /**
  * The real size when the source did not say it: the clip's gallery (20/10)
  * lists files without a size, and a 0 failed as an «empty file».
@@ -185,6 +210,8 @@ async function sacar(clientKey: string, opciones: { confirmado?: boolean } = {})
   // Lo que subió conserva su copia para la burbuja; lo descartado, no.
   if (archivo && opciones.confirmado && !archivo.preparando) copiasConfirmadas.set(clientKey, archivo.uri);
   else if (archivo && !archivo.preparando) await FileSystem.deleteAsync(archivo.uri, { idempotent: true }).catch(() => undefined);
+  // The encrypted copy only had to go up.
+  if (archivo?.sealed) await FileSystem.deleteAsync(archivo.sealed.uri, { idempotent: true }).catch(() => undefined);
   avisar();
   await persistir();
 }
@@ -218,6 +245,7 @@ export async function drenarArchivos(): Promise<void> {
         height: archivo.height,
         onda: archivo.onda,
         albumId: archivo.albumId,
+        sealed: archivo.sealed,
         onProgress: (ratio) => {
           const avisado = progreso?.clientKey === archivo.clientKey ? progreso.ratio : null;
           // Por pasos visibles (FL12): cada aviso redibuja la pantalla del chat.
@@ -232,6 +260,8 @@ export async function drenarArchivos(): Promise<void> {
         // Primero el confirmado al chat, después se quita la pendiente: sin
         // hueco aunque el socket esté caído (auditoría 19/10).
         const confirmado = resultado.ok ? resultado.mensaje : undefined;
+        // My own sealed photo is already on the phone: the bubble does not wait to download and decrypt it.
+        if (resultado.ok && archivo.sealed) rememberOpened(resultado.url, archivo.mimeType, archivo.uri);
         if (confirmado) oyentesDeConfirmados.forEach((oyente) => oyente(confirmado));
         await sacar(archivo.clientKey, { confirmado: true });
         continue;

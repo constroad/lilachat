@@ -1,5 +1,5 @@
 import { retryDelayMs } from '@lilachat/shared';
-import type { UploadResult } from './mediaUpload';
+import type { SealedUpload, UploadResult } from './mediaUpload';
 
 /**
  * Lo puro de la cola de archivos (FL8): las mismas reglas que la cola de texto
@@ -28,6 +28,11 @@ export type ArchivoEnCola = {
   queuedAt: string;
   intentos: number;
   fallo?: string;
+  /**
+   * A secret chat's photo or video (pending 67): the encrypted copy that goes
+   * up and the sealed text with its key. `uri` stays the plain copy, for my own bubble.
+   */
+  sealed?: SealedUpload;
   /**
    * Se está copiando a la carpeta de la app (auditoría 19/10): la burbuja sale
    * ya, con la `uri` original; se sube recién con la copia lista.

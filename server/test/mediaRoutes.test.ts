@@ -324,3 +324,65 @@ describe('la respuesta de la subida', () => {
     expect(response.body.message.media.url).toMatch(/^https:\/\/lila\.constroad\.com\//);
   });
 });
+
+/**
+ * The photos and videos of a secret chat (pending 67 / F12.3, José 29/10): the
+ * phone sends the file already encrypted and its key inside the sealed text,
+ * so the server keeps bytes it cannot read and makes no thumbnail of them.
+ */
+describe('POST /api/media with an envelope (secret chat)', () => {
+  const sealed = Buffer.alloc(300, 7);
+  const envelope = { v: 1, nonce: 'bm9uY2U=', ciphertext: 'c2VjcmV0bw==' };
+
+  async function secretChat() {
+    const chat = await ChatModel.create({ kind: 'direct', encrypted: true, members: [{ userId: jose, role: 'admin' }, { userId: ajeno, role: 'member' }], lastSeq: 0 });
+    return String(chat._id);
+  }
+  const sendSealed = (app: ReturnType<typeof buildApp>, chat: string, fields: Record<string, string>) => {
+    let call = request(app).post('/api/media').set('Authorization', `Bearer ${token}`).field('chatId', chat).field('clientKey', fields.clientKey ?? 'ck-sealed');
+    for (const [name, value] of Object.entries(fields)) if (name !== 'clientKey') call = call.field(name, value);
+    return call.attach('file', sealed, { filename: 'sellado', contentType: 'application/octet-stream' });
+  };
+
+  it('keeps the sealed text and the file with no name, shape, caption or thumbnail', async () => {
+    // Arrange
+    const { uploader, calls } = fakeUploader();
+    const chat = await secretChat();
+    // Act
+    const response = await sendSealed(buildApp({ mediaUploader: uploader }), chat, { envelope: JSON.stringify(envelope), sealedKind: 'image', caption: 'en claro', width: '4000', height: '3000' });
+    // Assert
+    expect(response.status).toBe(201);
+    expect(calls[0]).toMatchObject({ kind: 'file', bytes: 300 });
+    const saved = await MessageModel.findOne({ chatId: chat }).lean();
+    expect(saved).toMatchObject({ kind: 'image', envelope });
+    expect(saved?.body).toBeUndefined();
+    expect(saved?.media).toMatchObject({ mime: 'application/octet-stream', fileName: 'sellado', sizeBytes: 300 });
+    expect(saved?.media?.thumbUrl).toBeUndefined();
+    expect(saved?.media?.width).toBeUndefined();
+  });
+
+  it('a plain photo in a secret chat is refused before it is stored', async () => {
+    const { uploader, calls } = fakeUploader();
+    const chat = await secretChat();
+    const response = await request(buildApp({ mediaUploader: uploader })).post('/api/media').set('Authorization', `Bearer ${token}`).field('chatId', chat).field('clientKey', 'ck-plain').attach('file', jpeg, { filename: 'foto.jpg', contentType: 'image/jpeg' });
+    expect(response.status).toBe(403);
+    expect(calls).toHaveLength(0);
+    expect(await MessageModel.countDocuments({ chatId: chat })).toBe(0);
+  });
+
+  it('refuses a broken envelope, a kind that is not a photo or video, and a sealed file in an ordinary chat', async () => {
+    // Arrange
+    const { uploader, calls } = fakeUploader();
+    const app = buildApp({ mediaUploader: uploader });
+    const chat = await secretChat();
+    // Act
+    const broken = await sendSealed(app, chat, { clientKey: 'a', envelope: '{"v":1}', sealedKind: 'image' });
+    const kind = await sendSealed(app, chat, { clientKey: 'b', envelope: JSON.stringify(envelope), sealedKind: 'file' });
+    const ordinary = await sendSealed(app, chatId, { clientKey: 'c', envelope: JSON.stringify(envelope), sealedKind: 'image' });
+    // Assert
+    expect(broken.status).toBe(400);
+    expect(kind.status).toBe(400);
+    expect(ordinary.status).toBe(400);
+    expect(calls).toHaveLength(0);
+  });
+});

@@ -3375,7 +3375,7 @@ mismo commit** (fecha, commit, versión del APK). ✅ hecho y verificado ·
 | F10 | Llamadas voz/video (WebRTC + TURN Cloudflare) | 🟡 14/09 | llamada entre dos teléfonos en redes distintas |
 | F11 | Automatizaciones: programados, auto-respuesta | 🟡 14/09 | auto-respuesta en teléfono real; reglas «si X → Y» diferidas |
 | F12.0–2 | Historial en el teléfono, respaldo cifrado, restaurar | 🟡 16/10 `943d293` | alta del disco en la mini (runbook); pendientes §44.4 |
-| F12.3 | Cifrado por defecto + media cifrada | ⬜ | **bloqueada por D1** |
+| F12.3 | Cifrado por defecto + media cifrada | 🟡 29/10 | fotos y videos de los chats secretos cifrados (§158); el cifrado POR DEFECTO sigue **bloqueado por D1** |
 | F12.4 | Multi-dispositivo/web con sobre por dispositivo | ⬜ | después de F12.3 |
 | F13 | Mongo de emergencia en la mini | ⬜ | **redefinido (§117.6, 23/10)**: con la base ya EN la mini, un standby en la misma máquina no protege; pasa a ser respaldo verificado (F12 + restauración de prueba semanal) |
 | F14 | Legado Digital (antes «F12» en §13) | ⬜ | — |
@@ -4910,6 +4910,48 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
 - Al responder rápido con `adb`, el pie de la foto se cortó a mitad: se tocó
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
+
+## 158. Fotos y videos cifrados en los chats secretos (29/10/2026, servidor + OTA; pendiente 67 / F12.3)
+
+José dijo que sí el 29/10. Hasta hoy un chat secreto era «solo texto»: el clip
+y la cámara no aparecían, porque una foto iba a ir en claro.
+
+**Cómo viaja.**
+- Cada foto o video tiene **su propia clave al azar** (32 bytes) y un prefijo
+  de nonce (8 bytes). Se cifra en trozos de 256 KiB con ChaCha20-Poly1305:
+  nonce = prefijo ‖ número de trozo y AAD = «último trozo». Mover, quitar o
+  cortar trozos hace fallar el descifrado (`shared/src/mediaCrypto.ts`).
+- ChaCha y no AES-GCM: en JavaScript puro midió 33 MB/s contra 6 (Node, 29/10).
+- La clave viaja **dentro del texto sellado de punta a punta** del mensaje:
+  JSON `{lilachat:'media', k, p, mime, fileName, sizeBytes, width, height,
+  caption}` (`serializeMediaSecret`). El server no ve ni la clave ni el pie.
+- Sube por la misma `POST /api/media` con `envelope` (el sobre) y
+  `sealedKind` (`image` | `video`). El server guarda `kind`, el sobre y un
+  archivo `sellado` `application/octet-stream`: **sin nombre, forma, pie,
+  álbum ni miniatura** (`server/src/sealedUpload.ts`). El límite es el del
+  archivo en claro más 16 bytes por trozo.
+- **Antes de guardar nada** la ruta mira el chat: un archivo en claro a un
+  chat secreto da 403 y uno sellado a un chat común da 400. Antes el archivo
+  en claro se guardaba y después se rechazaba el mensaje.
+
+**En el teléfono.**
+- Al preparar la subida, `colaDeArchivos` cifra la copia comprimida a
+  `<clientKey>.sellado` (`crypto/sealedFiles.ts`, trozo a trozo, un cuadro de
+  pantalla entre trozos). Si el sello falla no sale nada: nunca en claro.
+- Mi burbuja usa la copia en claro, y al confirmarse queda en la caché
+  (`rememberOpened`): no se vuelve a bajar.
+- Al recibir, `useChat` abre el sobre. Si es un archivo, `secretMediaFiles`
+  baja el cifrado, lo descifra a `cache/secreto/` y borra el cifrado. Dos a la
+  vez, como las notas de voz. Mientras tanto la burbuja muestra su forma y
+  «Descifrando…»; si falla, «No se pudo abrir» (`MessageMedia`).
+- El compositor del chat secreto (`modoSecreto: 'sealed'`) ofrece clip y
+  cámara. El clip abre la galería directo: documentos, ubicación y lo demás
+  no viajan cifrados todavía. Tampoco la voz ni los programados.
+- La web sigue diciendo «Mensaje cifrado: léelo en tu teléfono» (la web no
+  tiene clave hasta F12.4).
+
+**Pendiente:** notas de voz y documentos cifrados (mismo motor); miniatura de
+los videos (hoy cuadro oscuro con el play).
 
 ## 157. Canales por cliente: contrato con agentes y Archivados (29/10/2026, diseño; pendiente 21)
 

@@ -64,6 +64,8 @@ export type ServerMessage = {
     album?: string;
     /** Duración de una nota de voz en ms. */
     durationMs?: number;
+    /** A secret chat's photo or video still being decrypted on the phone, or one that could not be (pending 67). */
+    sealed?: 'opening' | 'failed';
   };
   /**
    * El aviso de un cambio del grupo (`kind: 'system'`). Trae el EVENTO y con

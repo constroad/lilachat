@@ -56,6 +56,14 @@ export function MessageMedia({ item, mine, selecting, onSelect, onOpen, onGifTap
         />
       ) : null}
 
+      {/* A secret chat's photo or video while the phone decrypts it (pending 67): its shape, and why it is not there yet. */}
+      {!isPending(item) && item.media?.sealed ? (
+        <View testID={`media-sellado-${item.seq}`} style={photoStyle(item.media)} className="items-center justify-center gap-2 bg-black/40">
+          {item.media.sealed === 'opening' ? <ActivityIndicator color="#ffffff" /> : <CircleAlert size={22} color="#ffffff" />}
+          <Text className="text-[12px] font-semibold text-white">{item.media.sealed === 'opening' ? 'Descifrando…' : 'No se pudo abrir'}</Text>
+        </View>
+      ) : null}
+
       {!isPending(item) && item.media && (miniaturaDe(item.media) || isThumblessVideo(item.media)) && !isFileMime(item.media.mime) ? (
         <Pressable
           testID={`media-${item.seq}`}

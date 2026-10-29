@@ -97,10 +97,11 @@ export const Composer = memo(function Composer(props: {
   onNotaDeVoz: (nota: NotaGrabada) => Promise<void>;
   /**
    * Chat secreto (auditoría 17/10/2026). `bloqueado`: la clave todavía no está
-   * y NADA se puede mandar — antes salía en claro. `solo-texto`: hay clave,
-   * pero fotos, voz y programados no viajan cifrados, así que no se ofrecen.
+   * y NADA se puede mandar — antes salía en claro. `sealed`: hay clave; el
+   * texto, las fotos y los videos viajan cifrados (pendiente 67, 29/10), la voz
+   * y los programados todavía no, así que no se ofrecen.
    */
-  modoSecreto?: 'bloqueado' | 'solo-texto';
+  modoSecreto?: 'bloqueado' | 'sealed';
 }) {
   const colores = useColores();
   // The bar is one point above the bubble (16 at Mediana, as it was).
@@ -113,7 +114,7 @@ export const Composer = memo(function Composer(props: {
    */
   const inputRef = useRef<TextInput>(null);
   const [focused, setFocused] = useState(false);
-  const clipboard = useClipboardImage(focused, !props.modoSecreto && Boolean(props.onPasteImage));
+  const clipboard = useClipboardImage(focused, props.modoSecreto !== 'bloqueado' && Boolean(props.onPasteImage));
   const textoRef = useRef('');
   const [forma, setForma] = useState<FormaDelTexto>(() => formaDelTexto(''));
   /**
@@ -293,7 +294,7 @@ export const Composer = memo(function Composer(props: {
     else if (decision === 'enviar') await mandarVoz();
   };
 
-  const soloTexto = props.modoSecreto === 'solo-texto';
+  const sealedMode = props.modoSecreto === 'sealed';
 
   const enviar = () => {
     const texto = textoRef.current;
@@ -371,32 +372,28 @@ export const Composer = memo(function Composer(props: {
       />
       {/* Como WhatsApp (José, 19/10): el clip siempre adentro; la cámara, solo
           con el campo vacío. El «+» de afuera se fue: era la misma puerta. */}
-      {soloTexto ? null : (
-        <>
-          <Pressable
-            testID="btn-clip"
-            accessibilityLabel="Adjuntar"
-            onPress={props.onAdjuntar}
-            disabled={props.subiendo}
-            android_ripple={{ color: colores.outline, borderless: true, radius: 20 }}
-            className="h-11 w-11 items-center justify-center"
-          >
-            <Paperclip size={20} color={colores.outline} />
-          </Pressable>
-          {forma.vacio ? (
-          <Pressable
-            testID="btn-camara"
-            accessibilityLabel="Tomar una foto"
-            onPress={props.onCamara}
-            disabled={props.subiendo}
-            android_ripple={{ color: colores.outline, borderless: true, radius: 20 }}
-            className="h-11 w-11 items-center justify-center"
-          >
-            <Camera size={20} color={colores.outline} />
-          </Pressable>
-          ) : null}
-        </>
-      )}
+      <Pressable
+        testID="btn-clip"
+        accessibilityLabel="Adjuntar"
+        onPress={props.onAdjuntar}
+        disabled={props.subiendo}
+        android_ripple={{ color: colores.outline, borderless: true, radius: 20 }}
+        className="h-11 w-11 items-center justify-center"
+      >
+        <Paperclip size={20} color={colores.outline} />
+      </Pressable>
+      {forma.vacio ? (
+      <Pressable
+        testID="btn-camara"
+        accessibilityLabel="Tomar una foto"
+        onPress={props.onCamara}
+        disabled={props.subiendo}
+        android_ripple={{ color: colores.outline, borderless: true, radius: 20 }}
+        className="h-11 w-11 items-center justify-center"
+      >
+        <Camera size={20} color={colores.outline} />
+      </Pressable>
+      ) : null}
     </View>
   );
 
@@ -536,12 +533,12 @@ export const Composer = memo(function Composer(props: {
               >
                 <Send size={20} color={colores['on-primary']} />
               </Pressable>
-            ) : modoVoz === 'normal' && (forma.conTexto || soloTexto) ? (
+            ) : modoVoz === 'normal' && (forma.conTexto || sealedMode) ? (
               <Pressable
                 testID="btn-enviar"
                 accessibilityLabel="Enviar"
                 disabled={!forma.conTexto}
-                onLongPress={soloTexto ? undefined : () => props.onProgramar(textoRef.current.trim())}
+                onLongPress={sealedMode ? undefined : () => props.onProgramar(textoRef.current.trim())}
                 onPress={enviar}
                 className={`h-12 w-12 items-center justify-center rounded-full bg-primary ${forma.conTexto ? '' : 'opacity-40'}`}
               >

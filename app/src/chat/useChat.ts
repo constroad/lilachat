@@ -28,6 +28,8 @@ import { connectSocket, getSocket, type ServerMessage } from './socketClient';
 import { pedirEditar, pedirEliminar } from './pedidosDeMensaje';
 import { drainOutbox, hydrateOutbox, queueMessage, subscribeOutbox } from './outboxStore';
 import { suscribirConfirmados } from './colaDeArchivos';
+import { withOpenedText } from './secretMedia';
+import { secretFileOf, useSecretFilesVersion } from './secretMediaFiles';
 import { useAvisoDeEscribiendo } from './useAvisoDeEscribiendo';
 import { useResumenesDeHilos } from './useResumenesDeHilos';
 import { useCambiosDeMensajes } from './useCambiosDeMensajes';
@@ -112,14 +114,12 @@ export function useChat(params: {
    * puede ser de antes de tener la clave, o uno manipulado, y las dos cosas son
    * información real.
    */
+  // A sealed photo or video is drawn once its decrypted copy is on the phone (pending 67).
+  const secretFiles = useSecretFilesVersion();
   const visibles = useMemo(
-    () =>
-      messages.map((message) =>
-        message.envelope
-          ? { ...message, body: params.open?.(message.envelope) ?? '🔒 No se pudo descifrar' }
-          : message
-      ),
-    [messages, params.open]
+    () => messages.map((message) => (message.envelope ? withOpenedText(message, params.open?.(message.envelope) ?? null, secretFileOf) : message)),
+    // `secretFiles` is the store's version: a copy that became ready re-derives the list.
+    [messages, params.open, secretFiles]
   );
   const [pending, setPending] = useState<PendingMessage[]>([]);
   // Born from the live socket: starting at `false` flashed the offline notice in the header on every open (20/10).

@@ -1,4 +1,4 @@
-import { resolveMediaKind, validateMedia } from '@lilachat/shared';
+import { resolveMediaKind, validateMedia, type Envelope } from '@lilachat/shared';
 import { subirPorXhr } from './subidaXhr';
 import { mensajeSubido } from './mensajeSubido';
 import type { ServerMessage } from './socketClient';
@@ -17,6 +17,9 @@ import type { ServerMessage } from './socketClient';
  */
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
 const UPLOAD_TIMEOUT_MS = 120_000;
+
+/** A secret chat's photo or video ready to go up (pending 67): the encrypted copy and the sealed text with its key. */
+export type SealedUpload = { uri: string; sizeBytes: number; envelope: Envelope; kind: 'image' | 'video' };
 
 export type UploadResult =
   | { ok: true; seq: number; url: string; thumbnailUrl?: string; mensaje?: ServerMessage }
@@ -42,12 +45,37 @@ export async function uploadMedia(params: {
   albumId?: string;
   /** 0→1 mientras suben los bytes. Un video sin progreso parece colgado. */
   onProgress?: (ratio: number) => void;
+  /** A secret chat's photo or video (pending 67): only the encrypted file and its sealed text go up. */
+  sealed?: SealedUpload;
 }): Promise<UploadResult> {
   // La MISMA validación que el server (motor compartido): así el usuario se
   // entera antes de esperar una subida que iba a morir al final.
   const validation = validateMedia({ mimeType: params.mimeType, sizeBytes: params.sizeBytes });
   if (!validation.ok) return { ok: false, reason: validation.reason, retryable: false };
 
+  const form = params.sealed ? sealedForm(params.chatId, params.clientKey, params.sealed) : plainForm(params);
+  const respuesta = await subirPorXhr({
+    url: `${BASE_URL}/api/media`,
+    token: params.token,
+    form,
+    timeoutMs: UPLOAD_TIMEOUT_MS,
+    onProgress: params.onProgress,
+  });
+  return resultOf(respuesta);
+}
+
+/** Nothing readable beside the encrypted file: no name, caption, shape or album. */
+function sealedForm(chatId: string, clientKey: string, sealed: SealedUpload): FormData {
+  const form = new FormData();
+  form.append('chatId', chatId);
+  form.append('clientKey', clientKey);
+  form.append('envelope', JSON.stringify(sealed.envelope));
+  form.append('sealedKind', sealed.kind);
+  form.append('file', { uri: sealed.uri, name: 'sellado', type: 'application/octet-stream' } as unknown as Blob);
+  return form;
+}
+
+function plainForm(params: Parameters<typeof uploadMedia>[0]): FormData {
   const form = new FormData();
   form.append('chatId', params.chatId);
   form.append('clientKey', params.clientKey);
@@ -66,14 +94,10 @@ export async function uploadMedia(params: {
     name: params.fileName,
     type: params.mimeType,
   } as unknown as Blob);
+  return form;
+}
 
-  const respuesta = await subirPorXhr({
-    url: `${BASE_URL}/api/media`,
-    token: params.token,
-    form,
-    timeoutMs: UPLOAD_TIMEOUT_MS,
-    onProgress: params.onProgress,
-  });
+function resultOf(respuesta: Awaited<ReturnType<typeof subirPorXhr>>): UploadResult {
   if (respuesta.tipo === 'fallo') {
     return { ok: false, reason: respuesta.motivo, retryable: respuesta.reintentable };
   }

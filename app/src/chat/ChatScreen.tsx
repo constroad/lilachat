@@ -191,7 +191,7 @@ export function ChatScreen({
   );
   const alAdjuntar = useCallback(() => setAttachOpen(true), []);
   const { fotosElegidas, cerrarFotos, alEnviarFotos, alCamara, alNotaDeVoz, pickFromGallery, pickMedia, pickFile, camara } =
-    useAdjuntosDelChat({ chatId, onError: setMediaError });
+    useAdjuntosDelChat({ chatId, onError: setMediaError, seal: sesionLista?.seal });
 
   const nombreVisible = infoPropia.name ?? chatName;
 
@@ -508,7 +508,7 @@ export function ChatScreen({
           onEditar={respuesta.guardarEdicion}
           subiendo={false}
           margenPie={margenes.pie}
-          onAdjuntar={alAdjuntar} onPasteImage={(photo) => pickMedia([photo])}
+          onAdjuntar={encrypted ? pickFromGallery : alAdjuntar} onPasteImage={(photo) => pickMedia([photo])}
           onCamara={alCamara} onEscribiendo={avisarEscribiendo}
           jwt={credential.jwt} conVistaPrevia={!encrypted}
           miembros={mencionables} onOutsideMentions={outsideMentions.notify} notice={outsideMentions.banner} commands={encrypted ? undefined : commands} myName={credential.name ?? undefined}
@@ -516,7 +516,7 @@ export function ChatScreen({
           onProgramar={programados.abrir}
           onNotaDeVoz={alNotaDeVoz}
           // Chat secreto: sin clave no se manda nada; con clave, solo texto.
-          modoSecreto={encrypted ? (sesionLista ? 'solo-texto' : 'bloqueado') : undefined}
+          modoSecreto={encrypted ? (sesionLista ? 'sealed' : 'bloqueado') : undefined}
         />
       )}
 

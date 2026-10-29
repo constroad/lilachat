@@ -6,14 +6,14 @@ import { documentsToSend } from './attachSelection';
 import { MAXIMO_DE_FOTOS, type FotoAEnviar, type FotoElegida } from './envioDeFotos';
 import type { NotaGrabada } from './useGrabadorDeVoz';
 import { reportarError } from '../ui/reportarError';
-import { newAlbumId } from '@lilachat/shared';
+import { newAlbumId, type Envelope } from '@lilachat/shared';
 
 /**
  * Lo que se adjunta en un chat (salió de `ChatScreen`): fotos de la galería o
  * la cámara —que pasan por la previsualización con pie (FL9b)—, archivos y
  * notas de voz. Todo termina en la cola persistida (`colaDeArchivos`).
  */
-export function useAdjuntosDelChat(params: { chatId: string; onError: (texto: string) => void }) {
+export function useAdjuntosDelChat(params: { chatId: string; onError: (texto: string) => void; /** A secret chat with its key (pending 67): photos and videos go up encrypted. */ seal?: (text: string) => Envelope | null }) {
   /** Las fotos elegidas que se están por mandar; vacío = previsualización cerrada. */
   const [fotosElegidas, setFotosElegidas] = useState<FotoElegida[]>([]);
   const [camaraAbierta, setCamaraAbierta] = useState(false);
@@ -39,7 +39,7 @@ export function useAdjuntosDelChat(params: { chatId: string; onError: (texto: st
   }) => {
     params.onError('');
     try {
-      await encolarArchivo({ chatId: params.chatId, ...file });
+      await encolarArchivo({ chatId: params.chatId, ...file, ...(params.seal ? { seal: params.seal, albumId: undefined } : {}) });
     } catch (error) {
       reportarError('encolarArchivo', error);
       params.onError('No se pudo preparar el archivo para enviarlo.');

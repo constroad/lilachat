@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { MAX_BYTES_BY_KIND, dimensionValida, validateMedia, isAlbumId } from '@lilachat/shared';
+import { MAX_BYTES_BY_KIND, dimensionValida, validateMedia, isAlbumId, sealedMediaSize, type MediaKind } from '@lilachat/shared';
+import { Types } from 'mongoose';
+import { ChatModel } from './chatModels.js';
+import { parseSealedUpload, sealedSizeProblem } from './sealedUpload.js';
 import { ForbiddenChatError, mensajePropioPorClave, sendMessage } from './chatService.js';
 import { publicarMensaje } from './socket.js';
 import { toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
@@ -21,9 +24,34 @@ import { botsHearMessage } from './bots/botTriggers.js';
  * de solo lectura y no tiene por qué dejar temporales; el techo de multer es la
  * red de seguridad antes de que nada toque la RAM de verdad.
  */
+const SEALED_NAME = 'sellado';
+const SEALED_MIME = 'application/octet-stream';
+
+type Validated = { ok: true; kind: MediaKind } | { ok: false; reason: string };
+function sealedValidation(sizeBytes: number, kind: MediaKind): Validated {
+  const problem = sealedSizeProblem(sizeBytes, kind);
+  return problem ? { ok: false, reason: problem } : { ok: true, kind };
+}
+
+/** A sealed file keeps no name, shape or thumbnail: those travel inside the sealed text. */
+function sealedMedia(stored: { storageName: string; url: string }, sizeBytes: number) {
+  return { mediaId: stored.storageName, fileName: SEALED_NAME, sizeBytes, url: stored.url, mime: SEALED_MIME };
+}
+
+/** Who is not a member gets 403; a plain file in a secret chat 403, a sealed one in an ordinary chat 400. */
+async function chatProblem(chatId: string, userId: Types.ObjectId, sealed: boolean): Promise<{ status: number; message: string } | null> {
+  if (!Types.ObjectId.isValid(chatId)) return { status: 403, message: 'No eres parte de este chat.' };
+  const chat = await ChatModel.findOne({ _id: chatId, 'members.userId': userId }).select('encrypted').lean<{ encrypted?: boolean } | null>();
+  if (!chat) return { status: 403, message: 'No eres parte de este chat.' };
+  if (chat.encrypted && !sealed) return { status: 403, message: 'Este chat es secreto: el archivo tiene que ir cifrado.' };
+  if (!chat.encrypted && sealed) return { status: 400, message: 'Solo un chat secreto recibe archivos cifrados.' };
+  return null;
+}
+
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: Math.max(...Object.values(MAX_BYTES_BY_KIND)) },
+  // A sealed video is a little bigger than the plain one (one tag per chunk).
+  limits: { fileSize: sealedMediaSize(Math.max(...Object.values(MAX_BYTES_BY_KIND))) },
 });
 
 export function buildMediaRouter(uploader: MediaUploader = defaultMediaUploader()): Router {
@@ -38,7 +66,9 @@ export function buildMediaRouter(uploader: MediaUploader = defaultMediaUploader(
       return res.status(400).json({ message: 'Faltan datos para subir el archivo.' });
     }
 
-    const validation = validateMedia({ mimeType: file.mimetype, sizeBytes: file.size });
+    const sealed = parseSealedUpload(req.body);
+    if (sealed && !sealed.ok) return res.status(400).json({ message: sealed.message });
+    const validation = sealed ? sealedValidation(file.size, sealed.kind) : validateMedia({ mimeType: file.mimetype, sizeBytes: file.size });
     if (!validation.ok) return res.status(413).json({ message: validation.reason });
 
     try {
@@ -53,11 +83,16 @@ export function buildMediaRouter(uploader: MediaUploader = defaultMediaUploader(
           thumbnailUrl: toAbsoluteMediaUrl(previo.media?.thumbUrl ?? ''),
         });
       }
+      // Checked BEFORE storing anything: a plain photo in a secret chat, or a
+      // sealed one in an ordinary chat, used to be stored and then refused.
+      const problem = await chatProblem(chatId, req.session!.userId, Boolean(sealed));
+      if (problem) return res.status(problem.status).json({ message: problem.message });
       const uploaded = await uploader.upload({
         chatId,
-        fileName: file.originalname,
-        mimeType: file.mimetype,
-        kind: validation.kind,
+        fileName: sealed ? SEALED_NAME : file.originalname,
+        mimeType: sealed ? SEALED_MIME : file.mimetype,
+        // As a plain file: no thumbnail is tried on bytes nobody can read here.
+        kind: sealed ? 'file' : validation.kind,
         bytes: file.buffer,
       });
       if (!uploaded.ok) {
@@ -78,8 +113,8 @@ export function buildMediaRouter(uploader: MediaUploader = defaultMediaUploader(
         senderId: req.session!.userId,
         clientKey,
         kind: validation.kind,
-        body: typeof req.body?.caption === 'string' ? req.body.caption.trim() : undefined,
-        media: {
+        ...(sealed?.ok ? { envelope: sealed.envelope } : { body: typeof req.body?.caption === 'string' ? req.body.caption.trim() : undefined }),
+        media: sealed ? sealedMedia(uploaded.media, file.size) : {
           mediaId: uploaded.media.storageName,
           // El nombre que la persona ve en su teléfono, no el del storage.
           fileName: file.originalname,

@@ -26,7 +26,7 @@ export function buildGroupCallHub(io: Server, userRoom: (userId: string) => stri
         chatId,
         quien: new Types.ObjectId(end.startedBy),
         evento: 'llamada',
-        valor: valorDeLlamada({ video: end.video, segundos: end.seconds }),
+        valor: valorDeLlamada({ video: end.video, segundos: end.seconds, personas: end.people }),
         body: `${end.video ? 'Videollamada' : 'Llamada'} grupal · ${end.people} personas`,
       });
       if (message) await publicarAviso(message, members);

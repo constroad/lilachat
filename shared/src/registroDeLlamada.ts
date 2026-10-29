@@ -8,19 +8,21 @@
  * misma llamada es «perdida» para quien no contestó y «sin respuesta» para
  * quien llamó.
  */
-export type RegistroDeLlamada = { video: boolean; segundos: number | null };
+export type RegistroDeLlamada = { video: boolean; segundos: number | null; /** A group call (pending 56): how many took part. */ personas?: number };
 
 const PERDIDA = 'perdida';
 
 export function valorDeLlamada(registro: RegistroDeLlamada): string {
   const tipo = registro.video ? 'video' : 'voz';
-  return `${tipo}:${registro.segundos === null ? PERDIDA : Math.max(0, Math.floor(registro.segundos))}`;
+  const grupo = registro.personas ? `:g${registro.personas}` : '';
+  return `${tipo}:${registro.segundos === null ? PERDIDA : Math.max(0, Math.floor(registro.segundos))}${grupo}`;
 }
 
 export function leerValorDeLlamada(valor: string | undefined): RegistroDeLlamada | null {
-  const partes = /^(voz|video):(perdida|\d+)$/.exec(valor ?? '');
+  const partes = /^(voz|video):(perdida|\d+)(?::g(\d+))?$/.exec(valor ?? '');
   if (!partes) return null;
-  return { video: partes[1] === 'video', segundos: partes[2] === PERDIDA ? null : Number(partes[2]) };
+  const registro: RegistroDeLlamada = { video: partes[1] === 'video', segundos: partes[2] === PERDIDA ? null : Number(partes[2]) };
+  return partes[3] ? { ...registro, personas: Number(partes[3]) } : registro;
 }
 
 const dosDigitos = (n: number) => String(n).padStart(2, '0');
@@ -33,6 +35,7 @@ function duracion(segundos: number): string {
 }
 
 function contestada(registro: RegistroDeLlamada & { segundos: number }): string {
+  if (registro.personas) return `${registro.video ? 'Videollamada' : 'Llamada'} grupal · ${registro.personas} ${registro.personas === 1 ? 'persona' : 'personas'} · ${duracion(registro.segundos)}`;
   return `${registro.video ? 'Videollamada' : 'Llamada de voz'} · ${duracion(registro.segundos)}`;
 }
 

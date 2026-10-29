@@ -4911,6 +4911,51 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 159. Llamadas grupales: una malla de hasta 4 en grupos y canales (29/10/2026, servidor + OTA + web; pendiente 56)
+
+La llamada 1:1 (`call.*`, `shared/call.ts`) queda como estaba. La grupal es un
+protocolo aparte, `groupcall.*`, para no tocar lo que ya anda.
+
+**Cómo funciona**
+- **Sala por chat, en memoria** (`server/src/groupCalls.ts`): vive mientras
+  viven sus sockets, como el timbre de la 1:1; un reinicio la termina igual.
+  Motor puro en `shared/src/groupCall.ts` (`joinGroupCall`, `leaveGroupCall`,
+  `gridOf`, `groupCallBanner`), con test.
+- **Malla, sin servidor de medios**: cada participante abre una conexión con
+  cada otro. **El que entra ofrece** a todos los que ya están; los demás solo
+  contestan. Así dos teléfonos nunca se ofrecen a la vez. Tope `GROUP_CALL_MAX
+  = 4`: con 4 cada teléfono sube su video 3 veces, y más que eso no aguanta un
+  plan de datos.
+- **Un participante = un socket**: las señales de un par van al socket que
+  entró, no a todos los dispositivos de esa persona (dos contestarían). Que
+  otro dispositivo de la misma persona se desconecte no la saca de la sala.
+- **El server solo reparte señales entre dos personas de la MISMA sala**: un
+  extraño o alguien fuera de la llamada no puede mandar ni recibir.
+- Solo grupos y canales (`kind: 'group'`) y nunca un chat secreto.
+- Eventos: `groupcall.join` (ack con `peers` y `names`), `groupcall.leave`,
+  `groupcall.signal {to, kind: offer|answer|ice}`, `groupcall.get` (la sala al
+  abrir el chat). Hacia los clientes: `groupcall.state {room, names}` a todos
+  los miembros, `groupcall.ring` a los demás cuando la sala NACE,
+  `groupcall.left` a los que quedan.
+- Al terminar (sale el último) queda una línea en el chat: «Videollamada grupal
+  · N personas», por el mismo `escribirAviso` de las llamadas.
+
+**En el teléfono** (`app/src/calls/group/*`): la cámara del encabezado de un
+grupo abre «Llamada grupal de voz» o «Videollamada grupal» (programar y enlace
+siguen siendo de un 1:1). Pantalla con la misma barra de arriba y los botones
+redondos de la 1:1 (c-02), cuadrícula de hasta 2×2 con el nombre de cada uno;
+minimizada, la misma pastilla. Cuando alguien empieza, una tarjeta arriba con
+Ignorar / Unirse (no ocupa la pantalla: es una invitación, no un timbre). Sobre
+el chat, mientras sigue, la franja «Videollamada en curso · 2 personas» con
+«Unirse».
+
+**En la web** (`web/src/calls/group/*`): lo mismo. Los botones de llamada de la
+cabecera de un grupo entran a la llamada del grupo, la franja «Unirse» va bajo
+la cabecera y el aviso sale en la esquina superior derecha.
+
+**Fuera de alcance (deuda)**: guiños y stickers dentro de la grupal, girar la
+cámara, programar y enlace en grupos, y más de 4 (eso pide un SFU).
+
 ## 158. Fotos y videos cifrados en los chats secretos (29/10/2026, servidor + OTA; pendiente 67 / F12.3)
 
 José dijo que sí el 29/10. Hasta hoy un chat secreto era «solo texto»: el clip
@@ -12827,7 +12872,7 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
 55. **LilaStore también debe instalar con sesión** (de §108). Que declare
     `USE_FULL_SCREEN_INTENT` concedido al actualizar una app que lo pide.
     Es el repo de LilaStore; se derivó a su sesión.
-56. **Llamadas grupales** (de §109: el 42 en grupos las necesita). Hoy una
+56. ✅ **Hecho (§159, malla hasta 4).** **Llamadas grupales** (de §109: el 42 en grupos las necesita). Hoy una
     llamada es de dos (WebRTC punto a punto). Para un grupo hace falta malla
     para pocos (hasta 4) o un servidor de medios para más, la grilla de
     videos y quién entra y sale. Después: programar y enlace en grupos.

@@ -4959,6 +4959,17 @@ en el mismo lenguaje del diseño.
   - `server/test/liveLocation.test.ts` (5)
   - `app/src/chat/location/liveShares.test.ts` (4)
   - `web/src/chat/LocationCardWeb.test.tsx` (3 nuevos)
+- **E2E (emulador, APK 0.1.174, Test → #planta):**
+  - Funcionó: el servicio quedó en primer plano (`types=0x8`, sin «todo el tiempo»).
+    Con tres movimientos del GPS la base guardó la última posición, y al vencer
+    la tarjeta dijo «Ya no comparte su ubicación».
+  - **Hallazgo 1:** en un canal la ubicación salía como el texto «Ubicación».
+    `FlatMessageRow` nunca tuvo la tarjeta de ubicación ni la de contacto
+    (desde §114). Ahora las dos filas usan `sharedLocationOf` y
+    `sharedContactOf` (`rowKinds.ts`). Va por OTA.
+  - **Hallazgo 2:** cerrar la app a la fuerza mata el servicio, y el pin se
+    quedaba congelado con «En tiempo real». Ahora `resumeLiveSharing` lo vuelve
+    a prender al abrir la app (en `App.tsx`, solo en primer plano). Va por OTA.
 - **Falta:**
   - El mapa en vivo dentro del chat (MapLibre). Hoy la tarjeta redibuja el
     mapa fijo con cada posición.

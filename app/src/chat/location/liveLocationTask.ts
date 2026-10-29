@@ -73,6 +73,18 @@ async function stopUpdates(): Promise<void> {
 export async function startLiveSharing(share: LiveShare): Promise<boolean> {
   await writeShares(withShare(await readShares(), share));
   await AsyncStorage.removeItem(LAST_SENT_KEY).catch(() => undefined);
+  return startUpdates();
+}
+
+/**
+ * Closing the app by force kills the service and the card would say «En
+ * tiempo real» with a frozen pin; opening the app again resumes what still lasts.
+ */
+export async function resumeLiveSharing(): Promise<void> {
+  if ((await readShares()).length > 0) await startUpdates();
+}
+
+async function startUpdates(): Promise<boolean> {
   try {
     if (await Location.hasStartedLocationUpdatesAsync(TASK)) return true;
     await Location.startLocationUpdatesAsync(TASK, {

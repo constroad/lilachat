@@ -34,6 +34,7 @@ import { avisarMensaje } from './src/chat/avisoLocal';
 import { sonarPorMensaje } from './src/chat/sonarPorMensaje';
 import { guardarMensajes, olvidarMensajes } from './src/chat/mensajesGuardados';
 import { hidratarTodo } from './src/chat/hidratador';
+import { resumeLiveSharing } from './src/chat/location/liveLocationTask';
 import { desregistrarTareaDeFondo, registrarTareaDeFondo } from './src/respaldo/tareaDeFondo';
 import { leerPassphrase, olvidarPassphrase } from './src/respaldo/passphraseDeRespaldo';
 import { olvidarLibro } from './src/respaldo/libroDeRespaldos';
@@ -191,6 +192,8 @@ function Contenido() {
     });
     // Y aplicar el estado ACTUAL al montar/cambiar la preferencia.
     if (AppState.currentState === 'active') resumeSocket();
+    // A live location the system killed starts again, only in the foreground (Android refuses it from the back).
+    if (AppState.currentState === 'active') void resumeLiveSharing();
     else if (!permanente) pauseSocket();
     return () => sub.remove();
   }, [haySesion, segundoPlano]);

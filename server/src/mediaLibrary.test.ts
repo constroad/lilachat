@@ -91,4 +91,19 @@ describe('GET /api/media/library', () => {
     const second = await library(`type=photos&limit=1&before=${encodeURIComponent(String(first.items[0]!.at))}`);
     expect(second.items.map((item) => (item.media as { url: string }).url.split('/').pop())).toEqual(['a.jpg']);
   });
+
+  it('«Todo» brings photos, videos, documents and links together, newest first; never a voice note or plain text (pending 6)', async () => {
+    const all = (await library('type=all')).items;
+    expect(all.map((item) => item.kind)).toEqual(['image', 'image', 'video', 'file', 'text']);
+  });
+
+  it('the search finds by file name, caption or link, in any tab; a one-letter search does not filter (pending 6)', async () => {
+    expect((await library('type=all&q=informe')).items.map((item) => (item.media as { fileName?: string } | undefined)?.fileName)).toEqual(['Informe.pdf']);
+    expect((await library('type=links&q=constroad.com')).items).toHaveLength(1);
+    expect((await library('type=photos&q=informe')).items).toEqual([]);
+    // Regex characters are text, not a pattern.
+    expect((await library('type=all&q=.*')).items).toEqual([]);
+    expect((await library('type=all&q=i')).items).toHaveLength(5);
+  });
 });
+

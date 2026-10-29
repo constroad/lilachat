@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Types, type QueryFilter } from 'mongoose';
-import { mediaLibraryType, primerEnlace, type MediaLibraryItem, type MediaLibraryType } from '@lilachat/shared';
+import { escaparRegex, mediaLibraryType, mediaSearchTerm, primerEnlace, type MediaLibraryItem, type MediaLibraryType } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Message } from './chatModels.js';
 import { chatVisible, infoDeChats, personasPorId } from './contextoDeChats.js';
 import { toClientMessage } from './messageView.js';
@@ -10,7 +10,7 @@ import { asyncRoute, requireSession } from './requireSession.js';
 /** A page of the library: a screen of thumbnails, and «before» asks for the next one. */
 const PAGE_DEFAULT = 60;
 const PAGE_MAX = 100;
-const KINDS: Record<MediaLibraryType, Message['kind'][]> = { photos: ['image'], videos: ['video'], files: ['file'], links: ['text'] };
+const KINDS: Record<MediaLibraryType, Message['kind'][]> = { all: ['image', 'video', 'file', 'text'], photos: ['image'], videos: ['video'], files: ['file'], links: ['text'] };
 const HAS_LINK = /https?:\/\//i;
 
 const pageSize = (value: unknown) => {
@@ -26,6 +26,20 @@ const validDate = (value: unknown): Date | null => {
 async function chatsOf(me: Types.ObjectId, workspaceId: Types.ObjectId | undefined): Promise<Types.ObjectId[]> {
   const chats = await ChatModel.find({ 'members.userId': me, encrypted: { $ne: true }, workspaceId: workspaceId ?? { $exists: false } }).select('_id').lean();
   return chats.map((chat) => chat._id);
+}
+
+/** Which messages of a tab: a text counts only with a link, in «Enlaces» and in «Todo». */
+function kindFilter(type: MediaLibraryType): QueryFilter<Message> {
+  if (type === 'links') return { kind: 'text', body: HAS_LINK };
+  if (type !== 'all') return { kind: { $in: KINDS[type] } };
+  return { kind: { $in: KINDS.all }, $or: [{ kind: { $ne: 'text' } }, { body: HAS_LINK }] };
+}
+
+/** The search (pending 6): the file's name, the caption or the link's text, as plain text. */
+function searchFilter(term: string | null): QueryFilter<Message> {
+  if (!term) return {};
+  const pattern = new RegExp(escaparRegex(term), 'i');
+  return { $and: [{ $or: [{ 'media.fileName': pattern }, { body: pattern }] }] };
 }
 
 async function toItems(messages: Message[], me: string): Promise<MediaLibraryItem[]> {
@@ -52,6 +66,7 @@ async function toItems(messages: Message[], me: string): Promise<MediaLibraryIte
  * «Medios» (pending 38, José 21/10): photos, videos, documents and links of
  * all my chats — the personal ones, or those of one space (`?workspace=`), so
  * the company never mixes with the personal. Newest first, paged by date.
+ * «Todo» and the search `?q=` since pending 6.
  *
  * Read through the index `{chatId, kind, at}`, declared in `chatModels.ts` and
  * created in the vault on 21/10 with José's OK (the vault has no autoIndex).
@@ -68,10 +83,10 @@ export function buildMediaLibraryRouter(): Router {
     const before = validDate(req.query.before);
     const filter: QueryFilter<Message> = {
       chatId: { $in: await chatsOf(me, workspaceId) },
-      kind: { $in: KINDS[type] },
+      ...kindFilter(type),
+      ...searchFilter(mediaSearchTerm(req.query.q)),
       deletedAt: { $exists: false },
       envelope: { $exists: false },
-      ...(type === 'links' ? { body: HAS_LINK } : {}),
       ...(before ? { at: { $lt: before } } : {}),
     };
     const found = await MessageModel.find(filter).select('chatId seq senderId kind body media at').sort({ at: -1, _id: -1 }).limit(limit + 1).lean<Message[]>();

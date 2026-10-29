@@ -39,8 +39,8 @@ export const updateSpace = (jwt: string, spaceId: string, change: { name?: strin
 export const createSpaceChat = (jwt: string, spaceId: string, body: { kind: 'direct' | 'group'; memberIds: string[]; name?: string }) => api<{ chatId: string }>('/chats', { jwt, body: { ...body, workspaceId: spaceId } });
 
 /** «Medios» (pending 38): photos, videos, documents or links of the personal chats, or of a space. */
-export function mediaLibrary(jwt: string, params: { type: MediaLibraryType; spaceId?: string | null; before?: string }) {
-  const query = new URLSearchParams({ type: params.type, ...(params.spaceId ? { workspace: params.spaceId } : {}), ...(params.before ? { before: params.before } : {}) });
+export function mediaLibrary(jwt: string, params: { type: MediaLibraryType; spaceId?: string | null; before?: string; q?: string | null }) {
+  const query = new URLSearchParams({ type: params.type, ...(params.spaceId ? { workspace: params.spaceId } : {}), ...(params.before ? { before: params.before } : {}), ...(params.q ? { q: params.q } : {}) });
   return api<{ items: MediaLibraryItem[]; hasMore: boolean }>(`/media/library?${query}`, { jwt });
 }
 

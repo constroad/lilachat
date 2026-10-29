@@ -18,11 +18,11 @@ beforeEach(() => {
 });
 
 describe('MediaDialog', () => {
-  it('photos of the personal chats first; documents in their tab; a click opens the message', async () => {
+  it('«Todo» of the personal chats first; documents in their tab; a click opens the message', async () => {
     const onOpen = vi.fn();
     render(<MediaDialog jwt="t" spaceId={null} chatName={(item) => item.chat.name ?? item.chat.phone ?? ''} onOpen={onOpen} onClose={() => undefined} />);
     expect(await screen.findByTestId('medio-c1-2')).toBeInTheDocument();
-    expect(urls[0]).toContain('/api/media/library?type=photos');
+    expect(urls[0]).toContain('/api/media/library?type=all');
     expect(urls[0]).not.toContain('workspace=');
     expect(screen.getByText('Este mes')).toBeInTheDocument();
     await userEvent.click(screen.getByTestId('medios-files'));
@@ -37,4 +37,23 @@ describe('MediaDialog', () => {
     await waitFor(() => expect(urls[0]).toContain('workspace=w1'));
     expect(screen.getByRole('dialog')).toHaveAccessibleName('Medios de QA Obra');
   });
+
+  it('the search asks the server after a pause and only with two letters; nothing found says so (pending 6)', async () => {
+    // Arrange
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      urls.push(url);
+      return new Response(JSON.stringify({ items: [], hasMore: false }), { status: 200 });
+    }));
+    render(<MediaDialog jwt="t" spaceId={null} chatName={() => ''} onOpen={() => undefined} onClose={() => undefined} />);
+    await waitFor(() => expect(urls).toHaveLength(1));
+    // Act
+    await userEvent.type(screen.getByTestId('medios-buscar'), 'p');
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    await userEvent.type(screen.getByTestId('medios-buscar'), 'lanos');
+    // Assert
+    await waitFor(() => expect(urls.at(-1)).toContain('q=planos'));
+    expect(urls.some((url) => url.includes('q=p&') || url.endsWith('q=p'))).toBe(false);
+    expect(await screen.findByText('Nada coincide con «planos».')).toBeInTheDocument();
+  });
 });
+

@@ -4995,6 +4995,27 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 162. Medios: «Todo» y búsqueda (29/10/2026, servidor + OTA + web; pendiente 6, diseño `busqueda-archivos`)
+
+- **«Todo»** es la primera pestaña y la que abre por defecto. Junta fotos,
+  videos, documentos y enlaces, del más nuevo al más viejo.
+  - Un texto cuenta solo si trae un enlace.
+  - Nunca entra una nota de voz.
+  - En cada mes van primero las miniaturas y después las filas de documentos y
+    enlaces (`splitMediaSection`).
+  - El server sigue leyendo una pestaña desconocida como fotos. Un APK viejo
+    que manda `type=photos` ve lo mismo que antes.
+- **Buscar** (`?q=`) busca en el nombre del archivo, el pie o el texto del
+  enlace, en cualquier pestaña.
+  - Se busca como texto plano (`escaparRegex`), así que `.*` no es un patrón.
+  - Con una sola letra no se filtra (`MEDIA_SEARCH_MIN = 2`).
+  - Se pide al server 300 ms después de la última tecla.
+  - Sin resultados dice «Nada coincide con «planos».».
+- Las pestañas son chips con scroll horizontal. Cinco segmentos no caben a
+  390 px.
+- Usa el mismo índice `{chatId, kind, at}`. La búsqueda filtra sobre lo que el
+  índice ya acotó a mis chats.
+
 ## 161. Bienvenida «¿Cómo vas a usar Lilachat?» (29/10/2026, OTA + web; pendiente 5, diseño e-01)
 
 Es la primera pantalla de una cuenta nueva y sale una sola vez. Antes no

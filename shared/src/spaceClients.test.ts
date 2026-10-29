@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { recordsByService, archivedBanner, clientChatIds, clientHeaderSubtitle, clientRowSubtitle, dayLabel, filterArchivedClients, splitClients, type SpaceClient } from './spaceClients.js';
+import { recordsByService, archivedBanner, clientChatIds, clientHeaderSubtitle, clientRowSubtitle, dayLabel, filterArchivedClients, pageLiveClients, splitClients, CLIENTS_PAGE, CLIENTS_PREVIEW, type SpaceClient } from './spaceClients.js';
 
 /** Pending 21 (§157): the client channels in the space list and «Archivados» (designs f-01, f-02, f-03). */
 const now = new Date('2026-10-29T15:00:00Z');
@@ -100,5 +100,26 @@ describe('recordsByService', () => {
     expect(grouped.get('s1')!.map((one) => one.seq)).toEqual([9, 5]);
     expect(grouped.get('s2')!.map((one) => one.seq)).toEqual([7]);
     expect(grouped.get('s3')).toBeUndefined();
+  });
+});
+
+describe('pageLiveClients (José 29/10: the last 3 or 4, «Ver más» and a filter by client)', () => {
+  const entry = (id: string, name: string, unread = 0, ruc?: string) => ({ client: { id, name, ruc } as SpaceClient, chat: { id: `c-${id}`, unread } });
+  const live = [entry('1', 'El Almirante'), entry('2', 'Pachacamac SAC'), entry('3', 'Vía Sur'), entry('4', 'Consorcio Norte'), entry('5', 'Andes', 2), entry('6', 'Lurín', 0, '20601234567')];
+
+  it('shows the newest four first, plus any further one with unread messages, and says how many stay hidden', () => {
+    const page = pageLiveClients(live, { query: '', shown: CLIENTS_PREVIEW });
+
+    expect(page.entries.map((one) => one.client.id)).toEqual(['1', '2', '3', '4', '5']);
+    expect(page.hidden).toBe(1);
+  });
+
+  it('«Ver más» grows the page and leaves nothing hidden at the end', () => {
+    expect(pageLiveClients(live, { query: '', shown: CLIENTS_PREVIEW + CLIENTS_PAGE }).hidden).toBe(0);
+  });
+
+  it('a filter searches every live client by name without accents, or by RUC, with no page limit', () => {
+    expect(pageLiveClients(live, { query: 'pachacámac', shown: CLIENTS_PREVIEW }).entries.map((one) => one.client.id)).toEqual(['2']);
+    expect(pageLiveClients(live, { query: '2060123', shown: CLIENTS_PREVIEW }).entries.map((one) => one.client.id)).toEqual(['6']);
   });
 });

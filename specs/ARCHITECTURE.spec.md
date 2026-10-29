@@ -4948,12 +4948,14 @@ suponer nada:
   - La pestaña Drive de UN servicio en el admin es `/admin/service-management/<id>?tab=drive`, y agentes ya la arma (`serviceDriveUrl`).
   - Hoy el canal abre `crear_enlace_de_servicio`, que es el informe público del servicio, no su Drive. **Ese es el error que vio José.**
 
-**Cuándo nace el canal (propuesta).**
-1. Nace cuando la cotización pasa a `accepted`.
-   - Portal emite el evento en el PUT, cuando `status` cambia a `accepted`.
-   - agentes hace el `PUT /api/bots/clients/:id` y publica la tarjeta «COTIZACIÓN ACEPTADA» (diseño f-07).
-2. Un pedido directo sin cotización también lo crea, como hoy, para no dejar clientes sin canal.
-3. La regla de Archivados (60 días sin movimiento) no cambia.
+**Cuándo nace el canal (decisión de José, 29/10).** Sigue la primera regla:
+nace con el primer movimiento del cliente en Portal en los últimos 60 días, y
+pasa a Archivados sin movimiento. **No se implementa «nace al aceptar la
+cotización»**: Portal no lo usa como flag. Constroad tenía 0 canales de cliente
+el 29/10 (agentes nunca mandó su PUT; solo Test). Se le pidió el backfill (El
+Almirante, Pachacamac…). La lista muestra los 4 más recientes, «Ver más» de a
+10 y un filtro por nombre o RUC (`pageLiveClients`, app y web); un cliente con
+no leídos nunca queda detrás de «Ver más».
 
 **Cobranza en el canal (diseños f-05 y f-08).**
 - `services[]` del PUT suma `billing`, solo con lo que existe:
@@ -4980,7 +4982,7 @@ suponer nada:
 
 | Pieza | Portal | agentes | Lilachat |
 | --- | --- | --- | --- |
-| Nace al aceptar | evento al pasar a `accepted` | PUT del cliente + tarjeta f-07 | — (ya crea el canal con el PUT) |
+| Canales de Constroad | — | backfill y PUT por cada movimiento | lista corta + «Ver más» + filtro |
 | Cobranza | — (los datos existen) | arma `billing` y `account`; avisos de vencimiento | contrato + pestaña Cobranza + Cuenta |
 | Drive | — (API existente) | foto en el PUT + lista de una carpeta | pestaña Drive + visor |
 | Expediente | — | — | vista del servicio con sub-pestañas |
@@ -4989,7 +4991,7 @@ Pedido a agentes el 29/10, con estas preguntas y el contrato propuesto. Se
 espera su respuesta para cerrar los nombres.
 
 **Diseños pedidos a Stitch (29/10):** f-04 expediente, f-05 cobranza,
-f-06 Drive, f-07 canal que nace con la cotización y f-08 cuenta del cliente,
+f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se implementa) y f-08 cuenta del cliente,
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 

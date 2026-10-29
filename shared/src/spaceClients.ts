@@ -100,6 +100,22 @@ export function filterArchivedClients<T extends ClientChat>(archived: readonly C
   return { groups, counts, shown: shown.length };
 }
 
+/** The client list starts short (José 29/10: «los últimos 3 o 4»); «Ver más» opens a page at a time. */
+export const CLIENTS_PREVIEW = 4;
+export const CLIENTS_PAGE = 10;
+
+/**
+ * The live clients the list shows: the newest `shown`, plus any further one
+ * with unread messages (it must not hide behind «Ver más»). A filter searches
+ * all of them by name without accents, or by RUC, with no page limit.
+ */
+export function pageLiveClients<T extends ClientChat>(live: readonly ClientEntry<T>[], params: { query: string; shown: number }): { entries: ClientEntry<T>[]; hidden: number } {
+  const text = normalize(params.query.trim());
+  if (text) return { entries: live.filter(({ client }) => normalize(client.name).includes(text) || (client.ruc ?? '').includes(text)), hidden: 0 };
+  const entries = live.filter((entry, index) => index < params.shown || (entry.chat?.unread ?? 0) > 0);
+  return { entries, hidden: live.length - entries.length };
+}
+
 /** One record of a service (an informe, a quote, a payment, a photo): `GET …/clients/:id/records`. */
 export type ClientRecord = { seq: number; at: string; kind?: string; service_id: string; record_id?: string; title: string; kicker?: string };
 

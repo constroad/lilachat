@@ -71,12 +71,8 @@ export function SpaceChatList(props: Props) {
     const visible = split.shown.filter((chat) => !clientIds.has(chat.id) && (!text || (chat.name ?? chat.phone ?? '').toLowerCase().includes(text)));
     return spaceSections(visible.map((chat) => ({ ...chat, lastAt: chat.lastMessage?.at })));
   }, [split, query, clientIds]);
-  const clientSplit = useMemo(() => {
-    const text = query.trim().toLowerCase();
-    const split = splitClients(clients ?? [], (chats ?? []).map((chat) => ({ ...chat, lastAt: chat.lastMessage?.at })));
-    // The list's search narrows the live clients; «Archivados» has its own.
-    return { ...split, live: split.live.filter(({ client }) => !text || client.name.toLowerCase().includes(text) || (client.ruc ?? '').includes(text)) };
-  }, [clients, chats, query]);
+  // The list's search reaches the live clients (ClientsSection pages them, José 29/10); «Archivados» has its own.
+  const clientSplit = useMemo(() => splitClients(clients ?? [], (chats ?? []).map((chat) => ({ ...chat, lastAt: chat.lastMessage?.at }))), [clients, chats]);
   const toggle = (key: SpaceSectionKey) => setFolded((before) => {
     const next = new Set(before);
     if (next.has(key)) next.delete(key);
@@ -136,7 +132,7 @@ export function SpaceChatList(props: Props) {
           </div>
         ) : null}
         {chats !== null ? (
-          <ClientsSection live={clientSplit.live} archived={clientSplit.archived.length} archivedUnread={clientSplit.archivedUnread} folded={foldedClients} onToggle={() => setFoldedClients((before) => !before)} selectedChatId={props.selectedChatId} onOpen={props.onOpenChat} onArchived={() => setOpenArchivedClients(true)} />
+          <ClientsSection live={clientSplit.live} query={query} archived={clientSplit.archived.length} archivedUnread={clientSplit.archivedUnread} folded={foldedClients} onToggle={() => setFoldedClients((before) => !before)} selectedChatId={props.selectedChatId} onOpen={props.onOpenChat} onArchived={() => setOpenArchivedClients(true)} />
         ) : null}
         {chats !== null && (chats.length > 0 || query)
           ? sections.map((section) => section.key === 'apps' ? (

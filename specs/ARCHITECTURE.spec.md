@@ -5281,9 +5281,10 @@ cualquier otra sí. `useCall.ts` vuelve a quedar bajo 600 líneas.
 
 **Emojis propios (pendiente 19, diseños c-06 y c-07).**
 - **Server:** colección `custom_emojis` (`customEmojiModel.ts`) con índice
-  único `{workspaceId, name}`. **La bóveda no crea índices sola:** el índice
-  espera el OK de José (`scripts/bot-indexes.ts --apply`). Mientras tanto, el
-  código ya revisa el nombre repetido antes de guardar.
+  único `{workspaceId, name}`. **La bóveda no crea índices sola:** José dio el
+  OK y el índice está creado (verificado el 29/10 con
+  `scripts/bot-indexes.ts`: «custom_emojis: completos»). El código además
+  revisa el nombre repetido antes de guardar.
 - **Rutas:** `GET/POST /api/workspaces/:id/emojis` y `DELETE …/:emojiId`.
   - Agrega cualquier miembro activo. Quita quien lo agregó o un admin.
   - La imagen es PNG, WebP o GIF de hasta 256 KB, revisada por sus primeros
@@ -7243,12 +7244,14 @@ de quien confirma; Lilachat solo muestra la vista previa y devuelve el «sí».
 | A4 | Consumos y material por foto | agentes |
 | A5 | Medir: mensajes por día en el canal, MB por teléfono al mes, minutos de voucher a Portal, % de borradores confirmados sin editar | todos |
 
-### 118.8 Lo que decide José
+### 118.8 Lo que decidió José (29/10)
 
-1. ¿Los montos se ven en # flujo-caja (canal con permiso de caja)?
-2. ¿Quién confirma los gastos?
-3. ¿Arrancamos el piloto con clima y líquidos (sin plata)?
-4. ¿Cuántos vouchers por mes? (para el ahorro real)
+1. **El canal de los gastos es configuración de la app**: van al canal que
+   elija la empresa; en Constroad, # flujo-caja, con montos.
+2. **Nadie confirma por ahora**: el voucher basta. El paso «Confirmar» de
+   118.5 queda apagado; vuelve si José lo pide.
+3. **El piloto ya está**: clima y líquidos ya avisan por Lilachat.
+4. **Llegan muchos vouchers**: el ahorro justifica `/gastos`.
 
 ## 117. Análisis del 23/10: alertas vía agentes, API/MCP, «Zernio propio», IA con la suscripción y el Mongo de emergencia
 
@@ -7802,7 +7805,7 @@ bug 58. José pidió un mínimo de cuatro pendientes por versión.
 - Al abrir el chat ese día, los demás ven la tarjeta, una vez por
   dispositivo. Trae cuatro reacciones que mandan el emoji, y «Saludar» (o
   «Saludar en el grupo»), que escribe el saludo en el campo sin mandarlo.
-  «Crear tarjeta con IA» necesita un modelo pago: espera la decisión de José.
+  «Crear tarjeta con IA» descartado por José (29/10): basta el mensaje.
 - App: el interruptor en el detalle del chat. Web: la fila en Info.
 - E2E: el aviso salió en los dos chats de QA. Tardó 5,3 s desde la Mac por
   el túnel; la segunda corrida no agregó avisos. La tarjeta salió en el
@@ -12528,7 +12531,7 @@ tacha con la versión que lo cierra.
     (software propio o autorizado) y sería un riesgo legal. Para construir
     algo como Zernio se usan las APIs oficiales.
 
-17. ~~**Recordatorio de cumpleaños en grupos y chats (opcional)**~~ **Hecho (§110, 0.1.148), salvo «Crear tarjeta con IA» (decide José: modelo pago).** (José, 20/10).
+17. ~~**Recordatorio de cumpleaños en grupos y chats (opcional)**~~ **Hecho (§110, 0.1.148). «Crear tarjeta con IA» descartado (José 29/10): basta un mensaje de feliz cumpleaños.** (José, 20/10).
     - ~~**Alta:**~~ **Hecho (§93, 0.1.133)**, con correo verificado. Nombre y fecha de cumpleaños pasan a ser OBLIGATORIOS al
       registrarse (hoy el nombre es opcional y la fecha no existe). Quien ya
       tiene cuenta los completa la próxima vez que abre la app (pantalla de

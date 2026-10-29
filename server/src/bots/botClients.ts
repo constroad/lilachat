@@ -25,6 +25,7 @@ const clientChannelSchema = new Schema<ClientChannel>(
     chatId: { type: Schema.Types.ObjectId, required: true },
     name: { type: String, required: true },
     ruc: { type: String },
+    lastActivityAt: { type: String, default: null },
     lastOrderAt: { type: String, default: null },
     ordersTotal: { type: Number, default: 0 },
     services: { type: [serviceSchema], default: [] },
@@ -37,7 +38,7 @@ export const ClientChannelModel = model<ClientChannel>('ClientChannel', clientCh
 const fail = (status: ClientsError['status'], error: string, message: string): ClientsError => ({ status, error, message });
 const isDuplicateKey = (error: unknown) => (error as { code?: number })?.code === 11000;
 
-function toWire(doc: Pick<ClientChannel, 'clientId' | 'chatId' | 'name' | 'lastOrderAt' | 'services'>, now: Date) {
+function toWire(doc: Pick<ClientChannel, 'clientId' | 'chatId' | 'name' | 'lastActivityAt'>, now: Date) {
   const live = isClientChannelLive(doc, now);
   return { id: doc.clientId, channel: { id: String(doc.chatId), name: doc.name }, live, archived_since: live ? null : archivedSince(doc) };
 }
@@ -79,20 +80,21 @@ export async function chatOfClient(installation: Installation, clientId: string)
   return found?.chatId ?? fail(404, 'client_not_found', `Ese cliente no tiene canal: manda primero PUT /api/bots/clients/${clientId} con su estado.`);
 }
 
-/** The space's clients for any active member (designs f-01/f-02): live first, then by last order. */
+/** The space's clients for any active member (designs f-01/f-02): live first, then by last movement. */
 export async function listClients(workspaceId: string, userId: Types.ObjectId, now = new Date()) {
   await actorIn(workspaceId, userId);
-  const docs = await ClientChannelModel.find({ workspaceId: new Types.ObjectId(workspaceId) }).select('clientId chatId name ruc lastOrderAt ordersTotal services').lean<ClientChannel[]>();
+  const docs = await ClientChannelModel.find({ workspaceId: new Types.ObjectId(workspaceId) }).select('clientId chatId name ruc lastActivityAt lastOrderAt ordersTotal services').lean<ClientChannel[]>();
   const clients = docs.map((doc) => ({
     ...toWire(doc, now),
     chat_id: String(doc.chatId),
     name: doc.name,
     ...(doc.ruc ? { ruc: doc.ruc } : {}),
+    last_activity_at: doc.lastActivityAt,
     last_order_at: doc.lastOrderAt,
     orders_total: doc.ordersTotal,
-    archived_group: archivedAgeGroup(doc.lastOrderAt, now),
+    archived_group: archivedAgeGroup(doc.lastActivityAt, now),
     services: doc.services.map((one) => ({ id: one.id, name: one.name, status: one.status, stage_label: one.stageLabel, ...(one.progress !== undefined ? { progress: one.progress } : {}), ...(one.url ? { url: one.url } : {}) })),
   }));
-  const lastOrder = (one: { last_order_at: string | null }) => (one.last_order_at ? Date.parse(one.last_order_at) : 0);
-  return clients.sort((a, b) => Number(b.live) - Number(a.live) || lastOrder(b) - lastOrder(a));
+  const lastActivity = (one: { last_activity_at: string | null }) => (one.last_activity_at ? Date.parse(one.last_activity_at) : 0);
+  return clients.sort((a, b) => Number(b.live) - Number(a.live) || lastActivity(b) - lastActivity(a));
 }

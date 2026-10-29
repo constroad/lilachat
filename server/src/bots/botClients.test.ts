@@ -35,7 +35,7 @@ const DAY_MS = 86_400_000;
 const daysAgo = (days: number) => new Date(Date.now() - days * DAY_MS).toISOString();
 const CLIENT = '64f1c2a9b8e7d6c5b4a39281';
 const service = (status: string, extra: Record<string, unknown> = {}) => ({ id: 'srv-1', name: 'Base granular km 12', status, stage: 'ejecucion', stage_label: 'Ejecución', progress: 40, ...extra });
-const state = (lastOrderAt: string | null, services: Record<string, unknown>[] = []) => ({ name: 'Transportes Huaral', ruc: '20491238471', last_order_at: lastOrderAt, orders_total: 12, services });
+const state = (lastActivityAt: string | null, services: Record<string, unknown>[] = []) => ({ name: 'Transportes Huaral', ruc: '20491238471', last_activity_at: lastActivityAt, last_order_at: lastActivityAt, orders_total: 12, services });
 
 beforeAll(async () => {
   mongo = await startTestMongo();
@@ -98,12 +98,12 @@ describe('PUT /api/bots/clients/:clientId', () => {
     expect(badId.body.error).toBe('invalid_request');
   });
 
-  it('without an order in 90 days nor an open service it is archived, with the day it was', async () => {
+  it('without movement in 60 days it is archived even with an open service; a new movement brings it back', async () => {
     // Arrange
     const token = await installApp();
     // Act
-    const archived = await putClient(token, state(daysAgo(120), [service('completed')])).expect(201);
-    const back = await putClient(token, state(daysAgo(0), [service('completed')])).expect(200);
+    const archived = await putClient(token, state(daysAgo(120), [service('in_progress')])).expect(201);
+    const back = await putClient(token, state(daysAgo(0), [service('in_progress')])).expect(200);
     // Assert
     expect(archived.body.client).toMatchObject({ live: false });
     expect(Date.parse(archived.body.client.archived_since)).toBeLessThan(Date.now());

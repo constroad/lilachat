@@ -35,7 +35,7 @@ import { pathToFileURL } from 'node:url';
 const CLIENT_ID = /^[A-Za-z0-9_-]{1,64}$/;
 const CLIENT_KIND = /^[a-z_]{1,32}\.[a-z_]{1,32}$/;
 const CLIENT_SERVICE_STATUSES = ['pending', 'in_progress', 'completed', 'rejected'];
-const CLIENT_LIVE_DAYS = 90;
+const CLIENT_LIVE_DAYS = 60;
 const DAY_MS = 86_400_000;
 
 const DEFAULT_CHANNELS = [
@@ -207,13 +207,14 @@ export function createFake(options = {}) {
     return [201, { message: { id: message.id, chat_id: message.chat_id, seq: message.seq } }];
   }
 
-  // A channel per client (pending 21, §157): live with an order in 90 days or an open service.
+  // A channel per client (pending 21, §157): live with any movement (last_activity_at) in the last 60 days.
   function putClient(clientId, body) {
     if (!CLIENT_ID.test(clientId)) return [400, { error: 'invalid_request', message: 'El id del cliente lleva letras, números, _ o -, hasta 64.' }];
     const name = typeof body.name === 'string' ? body.name.trim() : '';
     if (!name) return [400, { error: 'invalid_request', message: 'El cliente lleva name.' }];
     const isDate = (value) => value === null || value === undefined || (typeof value === 'string' && !Number.isNaN(Date.parse(value)));
     if (!isDate(body.last_order_at)) return [400, { error: 'invalid_request', message: 'last_order_at va como fecha ISO, o null si todavía no tiene pedidos.' }];
+    if (!isDate(body.last_activity_at)) return [400, { error: 'invalid_request', message: 'last_activity_at va como fecha ISO: el último movimiento del cliente en el Portal.' }];
     const services = Array.isArray(body.services) ? body.services : [];
     for (const one of services) {
       if (!one?.id || !one?.name) return [400, { error: 'invalid_request', message: 'Cada servicio lleva id y name.' }];
@@ -224,12 +225,9 @@ export function createFake(options = {}) {
     const known = state.clients.get(clientId);
     const channel = known?.channel ?? { id: `client_${clientId}`, name };
     channel.name = name;
-    const lastOrderAt = body.last_order_at ? new Date(body.last_order_at).toISOString() : null;
-    const open = services.some((one) => one.status === 'pending' || one.status === 'in_progress');
-    const live = open || (lastOrderAt !== null && Date.now() - Date.parse(lastOrderAt) <= CLIENT_LIVE_DAYS * DAY_MS);
-    const closes = services.flatMap((one) => (one.closed_at ? [Date.parse(one.closed_at)] : []));
-    if (lastOrderAt) closes.push(Date.parse(lastOrderAt) + CLIENT_LIVE_DAYS * DAY_MS);
-    const archivedSince = live || closes.length === 0 ? null : new Date(Math.max(...closes)).toISOString();
+    const lastActivityAt = body.last_activity_at ? Date.parse(body.last_activity_at) : null;
+    const live = lastActivityAt !== null && Date.now() - lastActivityAt <= CLIENT_LIVE_DAYS * DAY_MS;
+    const archivedSince = live || lastActivityAt === null ? null : new Date(lastActivityAt + CLIENT_LIVE_DAYS * DAY_MS).toISOString();
     state.clients.set(clientId, { channel, state: body });
     return [known ? 200 : 201, { client: { id: clientId, channel, live, archived_since: archivedSince } }];
   }

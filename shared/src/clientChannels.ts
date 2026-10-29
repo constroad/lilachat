@@ -1,10 +1,11 @@
 /**
  * A channel per client of the company (pending 21, §157; José, 29/10): live
- * while the client had an order in the last 90 days or has an open service,
- * otherwise in «Archivados». It is worked out when the list is read, so the
- * 91st day needs no job to move it. The app (agentes) sends the state; PURE.
+ * while the client had any movement in the Portal in the last 60 days (orders,
+ * dispatches, quotes, services, reports, its services' Drive), otherwise in
+ * «Archivados». It is worked out when the list is read, so the 61st day needs
+ * no job to move it. The app (agentes) sends the state; PURE.
  */
-export const CLIENT_LIVE_DAYS = 90;
+export const CLIENT_LIVE_DAYS = 60;
 const DAY_MS = 86_400_000;
 const SIX_MONTHS_DAYS = 180;
 const MAX_SERVICES = 200;
@@ -13,27 +14,23 @@ const MAX_TEXT = 160;
 export const CLIENT_SERVICE_STATUSES = ['pending', 'in_progress', 'completed', 'rejected'] as const;
 export type ClientServiceStatus = (typeof CLIENT_SERVICE_STATUSES)[number];
 export type ClientService = { id: string; name: string; status: ClientServiceStatus; stage: string; stageLabel: string; progress?: number; url?: string; closedAt?: string };
-export type ClientState = { name: string; ruc?: string; lastOrderAt: string | null; ordersTotal: number; services: ClientService[] };
-export type ArchivedAgeGroup = '3-6' | '6+';
+/** `lastOrderAt` and `ordersTotal` are only shown; `lastActivityAt` decides. */
+export type ClientState = { name: string; ruc?: string; lastActivityAt: string | null; lastOrderAt: string | null; ordersTotal: number; services: ClientService[] };
+export type ArchivedAgeGroup = '2-6' | '6+';
 
-const isOpen = (service: Pick<ClientService, 'status'>) => service.status === 'pending' || service.status === 'in_progress';
-
-export function isClientChannelLive(state: Pick<ClientState, 'lastOrderAt' | 'services'>, now: Date): boolean {
-  if (state.services.some(isOpen)) return true;
-  return state.lastOrderAt !== null && now.getTime() - Date.parse(state.lastOrderAt) <= CLIENT_LIVE_DAYS * DAY_MS;
+export function isClientChannelLive(state: Pick<ClientState, 'lastActivityAt'>, now: Date): boolean {
+  return state.lastActivityAt !== null && now.getTime() - Date.parse(state.lastActivityAt) <= CLIENT_LIVE_DAYS * DAY_MS;
 }
 
-/** When it went to «Archivados»: 90 days after the last order, or when its last service closed if that came later. */
-export function archivedSince(state: Pick<ClientState, 'lastOrderAt' | 'services'>): string | null {
-  const times = state.services.flatMap((service) => (service.closedAt ? [Date.parse(service.closedAt)] : []));
-  if (state.lastOrderAt) times.push(Date.parse(state.lastOrderAt) + CLIENT_LIVE_DAYS * DAY_MS);
-  return times.length ? new Date(Math.max(...times)).toISOString() : null;
+/** When it went to «Archivados»: 60 days after its last movement. */
+export function archivedSince(state: Pick<ClientState, 'lastActivityAt'>): string | null {
+  return state.lastActivityAt ? new Date(Date.parse(state.lastActivityAt) + CLIENT_LIVE_DAYS * DAY_MS).toISOString() : null;
 }
 
-/** The groups of the archived list (design f-02): last order 3 to 6 months ago, or older (or never). */
-export function archivedAgeGroup(lastOrderAt: string | null, now: Date): ArchivedAgeGroup {
-  if (!lastOrderAt) return '6+';
-  return now.getTime() - Date.parse(lastOrderAt) <= SIX_MONTHS_DAYS * DAY_MS ? '3-6' : '6+';
+/** The groups of the archived list (design f-02): last movement 2 to 6 months ago, or older (or never). */
+export function archivedAgeGroup(lastActivityAt: string | null, now: Date): ArchivedAgeGroup {
+  if (!lastActivityAt) return '6+';
+  return now.getTime() - Date.parse(lastActivityAt) <= SIX_MONTHS_DAYS * DAY_MS ? '2-6' : '6+';
 }
 
 type Refused = { ok: false; message: string };
@@ -68,6 +65,8 @@ export function validateClientState(raw: unknown): { ok: true; state: ClientStat
   if (!name) return refuse('El cliente lleva name.');
   const lastOrderAt = isoOrNull(body.last_order_at);
   if (lastOrderAt === undefined) return refuse('last_order_at va como fecha ISO, o null si todavía no tiene pedidos.');
+  const lastActivityAt = isoOrNull(body.last_activity_at);
+  if (lastActivityAt === undefined) return refuse('last_activity_at va como fecha ISO: el último movimiento del cliente en el Portal.');
   const rawServices = Array.isArray(body.services) ? body.services : [];
   if (rawServices.length > MAX_SERVICES) return refuse(`Hasta ${MAX_SERVICES} servicios por cliente.`);
   const services: ClientService[] = [];
@@ -78,5 +77,5 @@ export function validateClientState(raw: unknown): { ok: true; state: ClientStat
   }
   const ruc = text(body.ruc);
   const ordersTotal = Number.isInteger(body.orders_total) && Number(body.orders_total) >= 0 ? Number(body.orders_total) : 0;
-  return { ok: true, state: { name, ...(ruc ? { ruc } : {}), lastOrderAt, ordersTotal, services } };
+  return { ok: true, state: { name, ...(ruc ? { ruc } : {}), lastActivityAt, lastOrderAt, ordersTotal, services } };
 }

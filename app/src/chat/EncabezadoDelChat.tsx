@@ -53,7 +53,7 @@ export function EncabezadoDelChat(props: {
   const [openMenu, setOpenMenu] = useState<'calls' | 'chat' | null>(null);
   const directoryApp = useAppOfChat(props.app ?? { jwt: '' });
   const { foto: fotoVisible } = props;
-  const nombreVisible = props.cliente ? props.nombre.replace(/^# /, '') : props.nombre;
+  const shownName = props.cliente ? props.nombre.replace(/^# /, '') : props.nombre;
   if (directoryApp) return <AppChatHeader app={directoryApp} spaceId={props.app?.spaceId} jwt={props.app?.jwt} connected={props.conectado} menu={props.menu} onBack={props.onVolver} />;
   // Como el diseño: FLECHA (no la palabra «Atrás»), avatar del chat junto al
   // nombre, y el menú al final.
@@ -73,7 +73,7 @@ export function EncabezadoDelChat(props: {
         className="min-w-0 flex-1 flex-row items-center gap-2"
       >
       <Avatar
-        nombre={nombreVisible}
+        nombre={shownName}
         foto={fotoVisible}
         tamano={AVATAR_DE_CABECERA}
         icono={props.borrador ? <NotebookPen size={20} color={colores.primary} /> : props.cliente ? <Building2 size={20} color={colores['on-surface-variant']} /> : undefined}
@@ -85,7 +85,7 @@ export function EncabezadoDelChat(props: {
               misma mirada que el nombre. */}
           {props.secreto ? <Lock size={13} color={colores.primary} /> : null}
           <Text className="min-w-0 flex-1 text-base font-bold text-on-surface" numberOfLines={1}>
-            {nombreVisible}
+            {shownName}
           </Text>
         </View>
         {/* El estado de conexión se DICE: un mensaje que no sale sin

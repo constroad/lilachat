@@ -98,7 +98,14 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
   // Pending 19: the space's own emojis (designs c-06/c-07). Too big a file is a 400, not a 500.
   const emojiFile = multer({ storage: multer.memoryStorage(), limits: { fileSize: CUSTOM_EMOJI_MAX_BYTES } }).single('file');
   const emojiUpload = (req: Request, res: Response, next: NextFunction) =>
-    emojiFile(req, res, (error: unknown) => (error ? void res.status(400).json({ message: 'La imagen tiene que ser PNG, WebP o GIF de hasta 256 KB.' }) : next()));
+    emojiFile(req, res, (error: unknown) => {
+      if (!error) return next();
+      // Answered while the phone was still sending, the socket broke and it saw a network error instead of this.
+      const refuse = () => void res.status(400).json({ message: 'La imagen tiene que ser PNG, WebP o GIF de hasta 256 KB.' });
+      if (req.complete) return refuse();
+      req.once('end', refuse);
+      req.resume();
+    });
   router.get('/:id/emojis', handled(async (req, res) => res.json({ emojis: await listCustomEmojis(req.params.id!, me(req)) })));
   router.post('/:id/emojis', emojiUpload, handled(async (req, res) => {
     res.status(201).json({ emoji: await addCustomEmoji({ workspaceId: req.params.id!, userId: me(req), name: req.body?.name, bytes: req.file?.buffer, uploader }) });

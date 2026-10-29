@@ -406,8 +406,8 @@ export function marcarBorradoGuardado(chatId: string, seq: number): Promise<void
 }
 
 /** A message changed on the server: a person's edit, or a bot closing its card (no «editado» then). */
-export function saveEditedMessage(chatId: string, seq: number, change: { body: string; editedAt?: string; card?: ChatMessage['card'] }): Promise<void> {
-  return reescribirGuardado(chatId, seq, (message) => ({ ...message, body: change.body, ...(change.editedAt ? { editedAt: change.editedAt } : {}), ...(change.card ? { card: change.card } : {}) }));
+export function saveEditedMessage(chatId: string, seq: number, change: { body: string; editedAt?: string; card?: ChatMessage['card']; location?: ChatMessage['location'] }): Promise<void> {
+  return reescribirGuardado(chatId, seq, (message) => ({ ...message, body: change.body, ...(change.editedAt ? { editedAt: change.editedAt } : {}), ...(change.card ? { card: change.card } : {}), ...(change.location ? { location: change.location } : {}) }));
 }
 
 /** El cursor de sincronización de un chat: hasta qué `seq` ya se tiene. `null` = nada guardado. */

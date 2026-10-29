@@ -101,8 +101,15 @@ export const getStorageReport = (token: string) => get<StorageReport>('/api/me/s
 export const getChatStorageFiles = (token: string, chatId: string) => get<{ files: BigFile[] }>(`/api/me/storage/chats/${chatId}/files`, token);
 
 /** Shares where I am in the chat (pending 11); the `clientKey` keeps a retry from duplicating it. */
-export const shareLocation = (token: string, chatId: string, location: { lat: number; lng: number; accuracy?: number; clientKey: string }) =>
-  authed<{ duplicate: boolean }>('POST', `/api/chats/${chatId}/locations`, token, location);
+export const shareLocation = (token: string, chatId: string, location: { lat: number; lng: number; accuracy?: number; clientKey: string; liveMinutes?: number }) =>
+  authed<{ message: ServerMessage; duplicate: boolean }>('POST', `/api/chats/${chatId}/locations`, token, location);
+
+/** A new fix of my live location; 410 = it ended and the phone stops (pending 11). */
+export const updateLiveLocation = (token: string, chatId: string, seq: number, location: { lat: number; lng: number; accuracy?: number }) =>
+  authed<{ location: NonNullable<ServerMessage['location']> }>('PUT', `/api/chats/${chatId}/locations/${seq}`, token, location);
+
+export const stopLiveLocation = (token: string, chatId: string, seq: number) =>
+  authed<{ ended: true }>('POST', `/api/chats/${chatId}/locations/${seq}/stop`, token);
 
 /** My lists of chats (pending 45): the same ones the web shows. */
 export const listChatLists = (token: string) => get<{ lists: ChatList[] }>('/api/chat-lists', token);

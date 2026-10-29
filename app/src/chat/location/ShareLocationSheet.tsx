@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, Text, View, useWindowDimensions } from 'react-native';
-import { LocateFixed, MapPin } from 'lucide-react-native';
-import { accuracyLabel, type SharedLocation } from '@lilachat/shared';
+import { LocateFixed, MapPin, Radio } from 'lucide-react-native';
+import { accuracyLabel, LIVE_LOCATION_MINUTES, type LiveLocationMinutes, type SharedLocation } from '@lilachat/shared';
 import { Modal } from '../../ui/Modal';
 import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
@@ -10,22 +10,24 @@ import { useCurrentLocation } from './useCurrentLocation';
 
 const SHEET_PADDING = 16;
 const MAP_HEIGHT = 180;
+const LIVE_LABELS: Record<LiveLocationMinutes, string> = { 15: '15 min', 60: '1 hora', 480: '8 horas' };
 
 /**
  * «Ubicación» in the clip (pending 11, design `r152-ubicacion`): the phone's
  * current location on a small map with its accuracy, and «Enviar ubicación».
- * Each state says what is going on: looking, no permission, no fix.
+ * Each state says what is going on: looking, no permission, no fix. Under it,
+ * «En tiempo real» for 15 min, 1 h or 8 h: the card follows the phone.
  */
-export function ShareLocationSheet(props: { visible: boolean; onClose: () => void; onSend: (location: SharedLocation) => Promise<boolean> }) {
+export function ShareLocationSheet(props: { visible: boolean; onClose: () => void; onSend: (location: SharedLocation, liveMinutes?: LiveLocationMinutes) => Promise<boolean> }) {
   const colors = useColores();
   const margins = useMargenes();
   const { width } = useWindowDimensions();
   const { current, retry } = useCurrentLocation(props.visible);
   const [sending, setSending] = useState(false);
   const mapWidth = width - SHEET_PADDING * 2;
-  const send = async (location: SharedLocation) => {
+  const send = async (location: SharedLocation, liveMinutes?: LiveLocationMinutes) => {
     setSending(true);
-    const sent = await props.onSend(location);
+    const sent = await props.onSend(location, liveMinutes);
     setSending(false);
     if (sent) props.onClose();
   };
@@ -71,6 +73,24 @@ export function ShareLocationSheet(props: { visible: boolean; onClose: () => voi
           {sending ? <ActivityIndicator color={colors['on-primary']} /> : <MapPin size={18} color={colors['on-primary']} />}
           <Text className="text-[15px] font-semibold text-on-primary">Enviar ubicación</Text>
         </Pressable>
+        <View className="mt-4 flex-row items-center gap-2">
+          <Radio size={16} color={colors.primary} />
+          <Text className="text-[13px] font-semibold text-on-surface">Compartir en tiempo real</Text>
+        </View>
+        <View className="mt-2 flex-row gap-2">
+          {LIVE_LOCATION_MINUTES.map((minutes) => (
+            <Pressable
+              key={minutes}
+              testID={`btn-tiempo-real-${minutes}`}
+              accessibilityLabel={`Compartir en tiempo real por ${LIVE_LABELS[minutes]}`}
+              disabled={current.state !== 'ready' || sending}
+              onPress={() => current.state === 'ready' && void send(current.location, minutes)}
+              className={`h-11 flex-1 items-center justify-center rounded-xl border border-primary/25 bg-primary/[0.06] ${current.state !== 'ready' || sending ? 'opacity-40' : ''}`}
+            >
+              <Text className="text-[14px] font-semibold text-primary">{LIVE_LABELS[minutes]}</Text>
+            </Pressable>
+          ))}
+        </View>
         <Pressable testID="btn-cancelar-ubicacion" onPress={props.onClose} className="mt-1 h-12 items-center justify-center">
           <Text className="text-[15px] text-on-surface-variant">Cancelar</Text>
         </Pressable>

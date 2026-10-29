@@ -38,9 +38,9 @@ export function useCambiosDeMensajes(params: { chatId: string; token: string; yo
       void marcarBorradoGuardado(chatId, frame.seq);
     };
     // A bot closing its card (PATCH) comes the same way: the new card, and no «editado».
-    const onEdited = (frame: { chatId: string; seq: number; body: string; editedAt?: string; card?: ServerMessage['card'] }) => {
+    const onEdited = (frame: { chatId: string; seq: number; body: string; editedAt?: string; card?: ServerMessage['card']; location?: ServerMessage['location'] }) => {
       if (!vivo || frame.chatId !== chatId) return;
-      setMessages((actuales) => actuales.map((m) => (m.seq === frame.seq ? { ...m, body: frame.body, ...(frame.editedAt ? { editedAt: frame.editedAt } : {}), ...(frame.card ? { card: frame.card } : {}) } : m)));
+      setMessages((actuales) => actuales.map((m) => (m.seq === frame.seq ? { ...m, body: frame.body, ...(frame.editedAt ? { editedAt: frame.editedAt } : {}), ...(frame.card ? { card: frame.card } : {}), ...(frame.location ? { location: frame.location } : {}) } : m)));
       void saveEditedMessage(chatId, frame.seq, frame);
     };
     const onReacciones = (frame: { chatId: string; seq: number; reacciones: Reaccion[] }) => {

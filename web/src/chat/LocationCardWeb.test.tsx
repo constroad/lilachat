@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LocationCardWeb } from './LocationCardWeb';
 
 describe('a shared location on the web (pending 11)', () => {
@@ -16,5 +16,29 @@ describe('a shared location on the web (pending 11)', () => {
   it('without an accuracy it says nothing about it', () => {
     render(<LocationCardWeb location={{ lat: 1, lng: 2 }} mio />);
     expect(screen.getByTestId('tarjeta-ubicacion').textContent).not.toContain('Precisión');
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('a live one says until when, and its author can stop it', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ended: true }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const liveUntil = new Date(Date.now() + 15 * 60_000).toISOString();
+    render(<LocationCardWeb location={{ lat: 1, lng: 2, liveUntil }} mio live={{ jwt: 'jwt-de-prueba', chatId: '6720f0a1b2c3d4e5f6a7b8c9', seq: 42 }} />);
+    expect(screen.getByTestId('estado-tiempo-real').textContent).toMatch(/^En tiempo real · hasta /);
+    fireEvent.click(screen.getByTestId('btn-dejar-de-compartir'));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/chats/6720f0a1b2c3d4e5f6a7b8c9/locations/42/stop', expect.objectContaining({ method: 'POST' })));
+  });
+
+  it('someone else\'s live location cannot be stopped from here', () => {
+    const liveUntil = new Date(Date.now() + 15 * 60_000).toISOString();
+    render(<LocationCardWeb location={{ lat: 1, lng: 2, liveUntil }} mio={false} live={{ jwt: 'jwt-de-prueba', chatId: '6720f0a1b2c3d4e5f6a7b8c9', seq: 42 }} />);
+    expect(screen.queryByTestId('btn-dejar-de-compartir')).toBeNull();
+  });
+
+  it('an ended one says so, without the button', () => {
+    render(<LocationCardWeb location={{ lat: 1, lng: 2, liveUntil: new Date(Date.now() + 60_000).toISOString(), endedAt: new Date().toISOString() }} mio live={{ jwt: 'jwt-de-prueba', chatId: '6720f0a1b2c3d4e5f6a7b8c9', seq: 42 }} />);
+    expect(screen.getByTestId('estado-tiempo-real').textContent).toBe('Ya no comparte su ubicación');
+    expect(screen.queryByTestId('btn-dejar-de-compartir')).toBeNull();
   });
 });

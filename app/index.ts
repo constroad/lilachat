@@ -10,6 +10,8 @@ import * as Updates from 'expo-updates';
 import { setAppBuild, setAppUpdateId } from './src/api/appBuild';
 import { versionCodeActual } from './src/settings/versionApi';
 import App from './App';
+// Live location (pending 11): the background task must exist before any fix arrives, even with the app closed.
+import './src/chat/location/liveLocationTask';
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);
 // It also ensures that whether you load the app in Expo Go or in a native build,

@@ -1,3 +1,4 @@
+import type { LiveLocation } from '@lilachat/shared';
 import type { BotCard } from '@lilachat/shared';
 import type { MencionEnMensaje, MessageRef, ResumenDeHiloEnCliente, Reaccion } from '@lilachat/shared';
 import { avisarTarjeta, refrescarTodas } from '@lilachat/shared';
@@ -31,7 +32,7 @@ export type ServerMessage = {
   /** A shared contact (kind `contact`, pending 9): `userId` when that number is on Lilachat. */
   contact?: { name: string; phone: string; userId?: string };
   /** A shared location (kind `location`, pending 11). */
-  location?: { lat: number; lng: number; accuracy?: number };
+  location?: LiveLocation;
   /** A bot's card (`specs/BOTS-API.spec.md` §b): `body` carries its summary. */
   card?: BotCard;
   /** An app's answer sent to the channel by who asked: «José usó /clima» on top. */

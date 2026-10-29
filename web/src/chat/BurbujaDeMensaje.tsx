@@ -305,7 +305,7 @@ function MessageContent({ mensaje, mio, album }: { mensaje: MensajeEnPantalla; m
         <ContactCardWeb contact={mensaje.contact} mio={mio} jwt={jwt} yo={yo} />
       ) : mensaje.kind === 'location' && mensaje.location && !mensaje.deletedAt ? (
         // A shared location (pending 11): the map card; its `body` is only «Ubicación».
-        <LocationCardWeb location={mensaje.location} mio={mio} />
+        <LocationCardWeb location={mensaje.location} mio={mio} live={{ jwt, chatId: chat.id, seq: mensaje.seq }} />
       ) : mensaje.body ? (
         <TextoDelMensaje clave={mensaje.clientKey} texto={mensaje.body} menciones={mensaje.menciones} nombres={nombres} yo={yo} mio={mio} />
       ) : null}

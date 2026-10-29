@@ -1,3 +1,4 @@
+import type { LiveLocation } from '@lilachat/shared';
 import { useCallback, useEffect, useMemo, useRef, type MutableRefObject } from 'react';
 import { showBrowserNoticeIfHidden } from '../notify/browserNotice';
 import type { Socket } from 'socket.io-client';
@@ -97,7 +98,7 @@ export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401
         if (base) void aplicarBorrado(base, { ...dato, deletedAt: ahora });
         enLaFila(dato.chatId, (chats) => aplicarBorradoALista(chats, dato, ahora));
       },
-      onEditado: (dato: { chatId: string; seq: number; body: string; editedAt?: string; card?: BotCard }) => {
+      onEditado: (dato: { chatId: string; seq: number; body: string; editedAt?: string; card?: BotCard; location?: LiveLocation }) => {
         if (base) void aplicarEdicion(base, dato);
         enLaFila(dato.chatId, (chats) => aplicarEdicionALista(chats, dato));
       },

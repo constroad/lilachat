@@ -124,7 +124,7 @@
         {
           "locationWhenInUsePermission": "Lilachat usa tu ubicación solo cuando eliges compartirla en un chat.",
           "isAndroidBackgroundLocationEnabled": false,
-          "isAndroidForegroundServiceEnabled": false
+          "isAndroidForegroundServiceEnabled": true
         }
       ]
     ],

@@ -4911,6 +4911,60 @@ se dejaba de oír, y volvía al regresar. Va como ítem 7 de §46.4.
   enviar antes de que el build de desarrollo procesara todas las teclas. No es
   un límite de la app.
 
+## 156. Ubicación en tiempo real: 15 min, 1 hora u 8 horas (28/10/2026, servidor + APK 0.1.174 + web; pendiente 11)
+
+Sobre la ubicación fija (§114, diseño `r152-ubicacion`). No hay diseño propio
+de la de tiempo real: la hoja suma «Compartir en tiempo real» con tres botones
+en el mismo lenguaje del diseño.
+
+- **Motor (`shared/liveLocation.ts`):**
+  - `LIVE_LOCATION_MINUTES` = 15, 60 y 480.
+  - `liveState` da fija, en vivo o terminada. Termina al pasar `liveUntil` o
+    con `endedAt`.
+  - `shouldSendLiveUpdate` manda una posición si pasaron 10 s y se movió 25 m.
+    Si no se movió, manda una cada 60 s para que se vea viva.
+  - `liveCaption` da «En tiempo real · hasta HH:MM» o «Ya no comparte su
+    ubicación».
+- **Server (`locationShareRoutes.ts`):**
+  - `POST /api/chats/:id/locations` acepta `liveMinutes`. Un valor fuera de la
+    lista da 400. Guarda `location.liveUntil` y `updatedAt`.
+  - `PUT /api/chats/:id/locations/:seq {lat,lng,accuracy}` mueve la tarjeta.
+    Solo lo hace el autor (403). Si terminó, venció o es fija, da 410 y el
+    teléfono deja de mandar.
+  - `POST /api/chats/:id/locations/:seq/stop` pone `endedAt`.
+  - Los dos avisan a los miembros con `msg.edited`, con la `location` nueva y
+    sin «editado». Sin push.
+  - El esquema suma `liveUntil`, `endedAt` y `updatedAt` al subdocumento.
+- **App:**
+  - **`liveLocationTask.ts`** (importado en `index.ts`) define la tarea de
+    `expo-task-manager`. Con la app cerrada, cada posición va a todas las
+    ubicaciones vivas del teléfono (`liveShares.ts`, guardadas en
+    AsyncStorage). Las que dan 410 salen, y sin ninguna se apaga el servicio.
+  - **Servicio en primer plano de tipo `location`:**
+    - En Android no pide «todo el tiempo»; ver la memoria del servicio en
+      primer plano.
+    - Lleva una notificación fija: «Compartiendo tu ubicación en tiempo real».
+    - El manifiesto suma `FOREGROUND_SERVICE_LOCATION`. Por eso hace falta APK
+      nuevo y no alcanza un OTA.
+  - **`LocationCard`** muestra el estado y «Dejar de compartir» al autor.
+    Cambia sola a «Ya no comparte» al vencer.
+  - **`useCambiosDeMensajes`** y el guardado local mezclan `location` del
+    `msg.edited`.
+- **Web:**
+  - `LocationCardWeb` hace lo mismo. El autor también puede terminarla desde
+    la web, y el teléfono se apaga con el siguiente 410.
+  - `useSincronizacion` y Dexie guardan la `location` editada.
+- **Tests:**
+  - `shared/liveLocation.test.ts` (4)
+  - `server/test/liveLocation.test.ts` (5)
+  - `app/src/chat/location/liveShares.test.ts` (4)
+  - `web/src/chat/LocationCardWeb.test.tsx` (3 nuevos)
+- **Falta:**
+  - El mapa en vivo dentro del chat (MapLibre). Hoy la tarjeta redibuja el
+    mapa fijo con cada posición.
+  - El aviso por socket cuando no hay red: hoy esa posición se pierde y va la
+    siguiente.
+
 ## 155. Un canal como el expediente de una obra: checklist por etapas (28/10/2026, servidor + OTA + web; pendiente 21)
 
 Diseños e2-17 (canal de obra) y e2-18 (ítem). **Reuse-first:** cada etapa es un
@@ -7212,7 +7266,7 @@ diciembre de Lima (verano).
 - E2E: enviada desde el emulador (Plaza San Martín, precisión 5 m), vista en
   la web de Ana y borrada para todos. Se quitó el permiso de ubicación del
   emulador al terminar.
-- Falta la ubicación en tiempo real.
+- La ubicación en tiempo real se hizo en §156.
 
 **Administrar el almacenamiento (13).** Diseño `r152-almacenamiento`.
 - App, Ajustes → «Almacenamiento»: cuánto ocupa Lilachat y el libre del
@@ -12170,7 +12224,7 @@ tacha con la versión que lo cierra.
    teléfono, «Enviar mensaje» si está en Lilachat y «Agregar a contactos».~~ **Hecho (§108, 0.1.146).**
 10. ~~**Sacar «Cámara» del menú del clip**~~ (hecho en §63.3): ya hay botón de cámara en la barra;
     en el clip sobra y además aparece primero.
-11. **Compartir ubicación y ubicación en tiempo real** (**la fija, hecha en §114**; falta la de tiempo real) (15 min / 1 h / 8 h),
+11. ~~**Compartir ubicación y ubicación en tiempo real**~~ **Hecho: la fija en §114, la de tiempo real en §156 (APK 0.1.174).** (15 min / 1 h / 8 h),
     que se siga actualizando con la pantalla bloqueada: servicio en primer
     plano de tipo `location` en Android con el permiso de ubicación «siempre»
     (o «mientras se usa» + servicio visible), envío por socket con pausa si no

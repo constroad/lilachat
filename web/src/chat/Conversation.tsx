@@ -94,7 +94,9 @@ export function Conversation(props: {
   const isChannel = Boolean(chat.workspaceId && chat.kind === 'group' && !props.app && !chat.encrypted);
   const [channelTab, setChannelTab] = useState<'chat' | 'checklist'>('chat');
   const workPlan = useWorkPlanWeb(props.jwtParaEnlaces ?? '', chat.id, isChannel && Boolean(props.jwtParaEnlaces));
-  useEffect(() => setChannelTab('chat'), [chat.id]);
+  useEffect(() => {
+    setChannelTab('chat');
+  }, [chat.id]);
   useEffect(() => {
     setAppTab('messages');
   }, [chat.id]);

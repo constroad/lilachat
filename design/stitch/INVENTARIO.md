@@ -172,3 +172,16 @@ las de esta tabla.
 | f-01-clientes-del-espacio | Lista del espacio con chips, «CLIENTES · 8» y la fila «Archivados · 237 · 2 sin leer» (`screens/156e746e9a7049ffac5a86a48be63116`) | móvil | Fuente del §157 |
 | f-02-clientes-archivados | Archivados: aviso de la regla, buscador por nombre o RUC, chips, grupos por antigüedad del último pedido (`screens/2ad22c8297f249c8a7fdaf6472355928`, escritorio `a4935ca6e60d4679b6616c1f3fdb65f3`) | móvil, escritorio | Fuente del §157. En escritorio sin «Espacio conectado» ni «Actualizado automáticamente…» (inventados) |
 | f-03-canal-de-cliente-archivado | Canal archivado: «Chat · Servicios 3», aviso «Archivado desde…» y «Escribir aquí no lo saca de Archivados» (`screens/d77a29c1886c430396fe359dab6f06ee`) | móvil | Fuente del §157 |
+
+
+## Canal de cliente, segunda tanda (29/10/2026, José: cobranza, crédito, Drive del servicio)
+
+Proyecto 15540754270713720465. Capturas `design/stitch/<slug>.png` (móvil) y `<slug>-escritorio.png`. Solo campos que existen en Portal (§160): sin número de factura ni estado SUNAT.
+
+| Slug | Pantalla | Ids (móvil · escritorio) | Spec | Estado |
+| --- | --- | --- | --- | --- |
+| f-04-servicio-expediente | Servicio como expediente (Resumen · Cobranza · Drive · Registros) | 0e49eb0f6cd14a019783d5d5dca8cb80 · da0dd1cf8115479fb2f7e09af7ce8a60 | §160 | falta: espera billing/drive de agentes |
+| f-05-servicio-cobranza | Cobranza y crédito del servicio | 4a5b31f556b745108d58d720d37a23d8 · f30a8bf3b5f54252ab8ae6ff7f1970c3 | §160 | falta: espera billing de agentes |
+| f-06-servicio-drive | Drive del servicio dentro del canal | 6bf4ae1f669540659debaebe4fd6623c · 711bc4c1d604450eb84c29c34fcbed51 | §160 | falta: espera services[].drive de agentes |
+| f-07-canal-nace-cotizacion | Canal que nace con la cotización aceptada | 5fd47963182b479bbd2c0b309993352b · a71c64722ca545789d613ef6ae807c17 | §160 | DESCARTADO por José 29/10 (regla de movimientos) |
+| f-08-cuenta-del-cliente | Cuenta del cliente (vencido primero) | d77022ed9d0e4cc69813f57a85b43a7a · 5c6e87e8c1ba46febcaf413c77fc2d62 | §160 | falta: espera account de agentes |

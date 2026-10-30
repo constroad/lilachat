@@ -231,7 +231,7 @@ export function HiloScreen(props: {
             ListHeaderComponent={flat ? (
               <FlatThreadRoot root={props.raiz} name={props.nombres.get(String(props.raiz.senderId)) ?? nombreDe(String(props.raiz.senderId))} photo={props.fotos.get(String(props.raiz.senderId))} badge={badgeOf(String(props.raiz.senderId))} count={props.respuestas.length} myUserId={props.yo} names={props.nombres} jwt={props.jwt} />
             ) : (
-              <CabeceraDelHilo raiz={props.raiz} nombre={nombreDe(String(props.raiz.senderId))} foto={props.fotos.get(String(props.raiz.senderId))} cuantas={props.respuestas.length} jwt={props.jwt} yo={props.yo} nombres={props.nombres} />
+              <ThreadHeader root={props.raiz} name={nombreDe(String(props.raiz.senderId))} photo={props.fotos.get(String(props.raiz.senderId))} count={props.respuestas.length} jwt={props.jwt} me={props.yo} names={props.nombres} />
             )}
             renderItem={({ item, index }) => {
               const mia = esPendiente(item) || String(item.senderId) === props.yo;
@@ -411,24 +411,24 @@ function FlatThreadRoot(props: { root: ChatMessage; name: string; photo?: string
   );
 }
 
-function CabeceraDelHilo(props: { raiz: ChatMessage; nombre: string; foto?: string; cuantas: number; jwt: string; yo: string; nombres: ReadonlyMap<string, string> }) {
+function ThreadHeader(props: { root: ChatMessage; name: string; photo?: string; count: number; jwt: string; me: string; names: ReadonlyMap<string, string> }) {
   return (
     <View className="mb-1 gap-2">
       <View testID="raiz-del-hilo" className="flex-row gap-3 rounded-xl border border-outline/10 bg-surface p-3">
-        <Avatar nombre={props.nombre} foto={props.foto} tamano={36} />
+        <Avatar nombre={props.name} foto={props.photo} tamano={36} />
         <View className="min-w-0 flex-1">
           <View className="flex-row items-center justify-between">
-            <Text className="text-[14px] font-semibold text-on-surface">{props.nombre}</Text>
-            <Text className="text-[11px] text-on-surface-variant">{formatClock(props.raiz.at)}</Text>
+            <Text className="text-[14px] font-semibold text-on-surface">{props.name}</Text>
+            <Text className="text-[11px] text-on-surface-variant">{formatClock(props.root.at)}</Text>
           </View>
-          {isCardRoot(props.raiz, props.jwt) ? <TarjetaDelChat item={props.raiz} mia={false} jwt={props.jwt} yo={props.yo} everyName={props.nombres} /> : (
-            <Text className="mt-0.5 text-[15px] text-on-surface">{props.raiz.deletedAt ? 'Se eliminó este mensaje' : props.raiz.body ? <TextoConEnlaces texto={props.raiz.body} /> : props.raiz.media ? 'Archivo' : ''}</Text>
+          {isCardRoot(props.root, props.jwt) ? <TarjetaDelChat item={props.root} mia={false} jwt={props.jwt} yo={props.me} everyName={props.names} /> : (
+            <Text className="mt-0.5 text-[15px] text-on-surface">{props.root.deletedAt ? 'Se eliminó este mensaje' : props.root.body ? <TextoConEnlaces texto={props.root.body} /> : props.root.media ? 'Archivo' : ''}</Text>
           )}
         </View>
       </View>
       <View className="flex-row items-center gap-3">
         <View className="h-px flex-1 bg-outline/15" />
-        <Text className="text-[12px] text-on-surface-variant">{props.cuantas === 1 ? '1 respuesta' : `${props.cuantas} respuestas`}</Text>
+        <Text className="text-[12px] text-on-surface-variant">{props.count === 1 ? '1 respuesta' : `${props.count} respuestas`}</Text>
         <View className="h-px flex-1 bg-outline/15" />
       </View>
     </View>

@@ -39,7 +39,7 @@ describe('useEditarChat', () => {
 
   it('sumar, nombrar admin y sacar van a sus rutas', async () => {
     const { result, pedidos } = montar();
-    await act(() => result.current.agregar('ana'));
+    await act(() => result.current.addMember('ana'));
     await act(() => result.current.cambiarRol('ana', 'admin'));
     await act(() => result.current.sacar('ana'));
     expect(pedidos.map((uno) => `${uno.method} ${uno.url}`)).toEqual(['POST /api/chats/c1/members', 'PATCH /api/chats/c1/members/ana', 'DELETE /api/chats/c1/members/ana']);

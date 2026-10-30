@@ -59,7 +59,7 @@ export function useEditarChat(params: { chatId: string; jwt: string; onCambio: (
     [chatId, jwt, onAviso, resolver]
   );
 
-  const agregar = useCallback(
+  const addMember = useCallback(
     async (userId: string, history?: boolean) => void resolver(await api(`/chats/${chatId}/members`, { body: history === undefined ? { userId } : { userId, history }, jwt })),
     [chatId, jwt, resolver]
   );
@@ -69,5 +69,5 @@ export function useEditarChat(params: { chatId: string; jwt: string; onCambio: (
   );
   const sacar = useCallback(async (userId: string) => void resolver(await api(`/chats/${chatId}/members/${userId}`, { method: 'DELETE', jwt })), [chatId, jwt, resolver]);
 
-  return { renombrar, describir, cambiarFoto, agregar, cambiarRol, sacar };
+  return { renombrar, describir, cambiarFoto, addMember, cambiarRol, sacar };
 }

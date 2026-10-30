@@ -93,7 +93,7 @@ export function useAccionesSobreChats(params: {
   );
 
   /** The chat is gone for everyone (a deleted channel): out of the list, closed if open. */
-  const quitar = useCallback(
+  const removeFromList = useCallback(
     async (chat: ChatSummary) => {
       invalidarCargas();
       if (base) await quitarChatLocal(base, chat.id);
@@ -122,5 +122,5 @@ export function useAccionesSobreChats(params: {
     [ajustar, eliminar, salir]
   );
 
-  return { aplicar, setLevel, quitar };
+  return { aplicar, setLevel, removeFromList };
 }

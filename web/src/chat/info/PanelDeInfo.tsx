@@ -92,7 +92,7 @@ export function PanelDeInfo(props: {
             appIds={detalle?.appIds ?? NO_APPS}
             puedeAgregar={info.puedeAgregar}
             hasHistory={chat.lastSeq > 0}
-            onAgregar={(userId, history) => void editar.agregar(userId, history)}
+            onAgregar={(userId, history) => void editar.addMember(userId, history)}
             onCambiarRol={(userId, role) => void editar.cambiarRol(userId, role)}
             onSacar={(userId) => void editar.sacar(userId)}
             onViewPerson={props.onViewPerson}

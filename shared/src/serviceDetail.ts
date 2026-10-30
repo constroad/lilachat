@@ -209,7 +209,9 @@ export function dayAndTimeOf(iso: string): string {
   return `${instantDayOf(iso)}, ${time.replace(/[\u00a0\u202f]/g, ' ')}`;
 }
 
-export const amount = (quantity?: number, unit?: string) => (quantity === undefined ? undefined : `${quantity}${unit ? ` ${unit}` : ''}`);
+const AMOUNT_DECIMALS = 2;
+/** «25.5 m³»: at most two decimals, since Portal sends computed volumes raw (24.114116940799995). */
+export const amount = (quantity?: number, unit?: string) => (quantity === undefined ? undefined : `${Number(quantity.toFixed(AMOUNT_DECIMALS))}${unit ? ` ${unit}` : ''}`);
 const joined = (parts: (string | undefined)[]) => parts.filter(Boolean).join(' · ');
 const money = (total?: number) => (total === undefined ? undefined : moneyOf(total));
 

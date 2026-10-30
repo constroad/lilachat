@@ -3,7 +3,7 @@ import { pdfPages } from '../../../modules/pdf-pages/src';
 import { abrirConOtraApp } from '../../chat/guardarYCompartir';
 import { PdfViewerScreen } from '../../chat/pdf/PdfViewerScreen';
 import { VisorDelChat } from '../../chat/VisorDelChat';
-import { galleryOf, mimeOf, openingOf, pdfsOf, type ViewableFile } from '@lilachat/shared';
+import { galleryOf, mimeOf, openingOf, pdfsOf, viewerWhenOf, type ViewableFile } from '@lilachat/shared';
 
 type Session = { files: ViewableFile[]; url: string };
 
@@ -32,7 +32,7 @@ export function useFileViewer() {
     });
   }, [say]);
 
-  const photos = useMemo(() => galleryOf(session?.files ?? []).map((file, index) => ({ url: file.url, autor: file.name, cuando: file.when ?? '', seq: index + 1, mia: false, cuandoReal: new Date(), mime: mimeOf(file), nombre: file.name, ...(file.thumbUrl ? { miniatura: file.thumbUrl } : {}) })), [session]);
+  const photos = useMemo(() => galleryOf(session?.files ?? []).map((file, index) => ({ url: file.url, autor: file.name, cuando: viewerWhenOf(file.when), seq: index + 1, mia: false, cuandoReal: new Date(), mime: mimeOf(file), nombre: file.name, ...(file.thumbUrl ? { miniatura: file.thumbUrl } : {}) })), [session]);
   const pdfs = useMemo(() => pdfsOf(session?.files ?? []).map((file, index) => ({ seq: index + 1, url: file.url, name: file.name, at: new Date().toISOString(), mime: 'application/pdf' })), [session]);
   const photoSeq = photos.find((photo) => photo.url === session?.url)?.seq ?? null;
   const pdf = pdfs.find((one) => one.url === session?.url) ?? null;

@@ -11,7 +11,7 @@ export type SheetItem = { name: string; line: string; total?: string };
 export type SheetFile = { url: string; label: string };
 /** `pdfOnDemand`: a report with no PDF stored, asked to Portal when tapped (agentes 30/10, `client.report.requested`). */
 /** A photo or video shown as a thumbnail that opens the viewer (a dispatch's, José 30/10 night). */
-export type SheetMedia = { url: string; thumbUrl?: string; mime: string; name: string };
+export type SheetMedia = { url: string; thumbUrl?: string; mime: string; name: string; /** The dispatch's departure, so the viewer does not date the photo «Hoy». */ when?: string };
 /** A block of facts with its own title, like a dispatch's «Cubicaje». */
 export type SheetGroup = { title: string; facts: SheetFact[] };
 export type DetailSheet = { title: string; status: DetailStatus; facts: SheetFact[]; related: DetailRow[]; items: SheetItem[]; files: SheetFile[]; media: SheetMedia[]; groups: SheetGroup[]; url?: string; note?: string; pdfOnDemand?: string };
@@ -45,12 +45,12 @@ function orderSheet(order: ServiceOrder, detail: ServiceDetail): DetailSheet {
 
 /** Each photo or video with a name the viewer can show: its own, or «AZJ 910 · foto 2». */
 const mediaOf = (dispatch: ServiceDispatch): SheetMedia[] =>
-  (dispatch.pictures ?? []).map((picture, index) => ({ url: picture.url, ...(picture.thumbUrl ? { thumbUrl: picture.thumbUrl } : {}), mime: picture.mime, name: picture.name ?? `${dispatch.plate ?? 'Despacho'} · ${picture.mime.startsWith('video/') ? 'video' : 'foto'} ${index + 1}` }));
+  (dispatch.pictures ?? []).map((picture, index) => ({ url: picture.url, ...(picture.thumbUrl ? { thumbUrl: picture.thumbUrl } : {}), mime: picture.mime, name: picture.name ?? `${dispatch.plate ?? 'Despacho'} · ${picture.mime.startsWith('video/') ? 'video' : 'foto'} ${index + 1}`, ...(dispatch.at ? { when: dispatch.at } : {}) }));
 
 function cubicageGroup(dispatch: ServiceDispatch): SheetGroup[] {
   const cubicage = dispatch.cubicage;
   if (!cubicage) return [];
-  const head = facts([['Volquete cubica', cubicage.m3 === undefined ? undefined : `${cubicage.m3} m³`], ['Forma', cubicage.shape]]);
+  const head = facts([['Volquete cubica', amount(cubicage.m3, 'm³')], ['Forma', cubicage.shape]]);
   return [{ title: 'Cubicaje', facts: [...head, ...cubicage.dimensions] }];
 }
 

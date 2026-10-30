@@ -1,3 +1,5 @@
+import { dayAndTimeOf } from './serviceDetail.js';
+
 /**
  * Portal's files inside Lilachat (José 30/10: photos, videos and PDFs should
  * open in Lilachat's viewer, not in Portal): Drive, vouchers, guides and
@@ -38,3 +40,12 @@ export function openingOf(mime: string): FileOpening {
 export const galleryOf = (files: readonly ViewableFile[]): ViewableFile[] => files.filter((file) => openingOf(mimeOf(file)) === 'gallery');
 
 export const pdfsOf = (files: readonly ViewableFile[]): ViewableFile[] => files.filter((file) => openingOf(mimeOf(file)) === 'pdf');
+
+const ISO_MOMENT = /^\d{4}-\d{2}-\d{2}T/;
+
+/** The line under a photo in the viewer: an ISO moment (a dispatch's departure) as «10 set, 1:57 a. m.»; a ready label as it came. */
+export function viewerWhenOf(when: string | undefined): string {
+  if (!when) return '';
+  if (!ISO_MOMENT.test(when)) return when;
+  return Number.isNaN(Date.parse(when)) ? '' : dayAndTimeOf(when);
+}

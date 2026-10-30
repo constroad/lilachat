@@ -65,13 +65,15 @@ describe('detailSheet', () => {
       service: { id: 's', name: 'S' },
       orders: [],
       reports: [],
-      dispatches: [{ id: 'd9', plate: 'AZJ 910', status_label: 'Entregado', tone: 'ok', pictures: [{ url: 'https://lila.constroad.com/f/p1.jpg', thumb_url: 'https://lila.constroad.com/t/p1.jpg', mime: 'image/jpeg', name: 'carga.jpg' }, { url: 'https://lila.constroad.com/f/v1.mp4', mime: 'video/mp4' }, { url: 'http://inseguro/x.jpg', mime: 'image/jpeg' }], cubicage: { m3: 25.5, shape: 'Cuadrado', dimensions: [{ label: 'Largo', value: '5.20 m' }, { label: 'Ancho', value: '' }] } }],
+      dispatches: [{ id: 'd9', plate: 'AZJ 910', at: '2026-09-10T06:57:00.000Z', status_label: 'Entregado', tone: 'ok', pictures: [{ url: 'https://lila.constroad.com/f/p1.jpg', thumb_url: 'https://lila.constroad.com/t/p1.jpg', mime: 'image/jpeg', name: 'carga.jpg' }, { url: 'https://lila.constroad.com/f/v1.mp4', mime: 'video/mp4' }, { url: 'http://inseguro/x.jpg', mime: 'image/jpeg' }], cubicage: { m3: 24.114116940799995, shape: 'Cuadrado', dimensions: [{ label: 'Largo', value: '5.20 m' }, { label: 'Ancho', value: '' }] } }],
     })!;
     // Act
     const sheet = detailSheet(withMedia, 'dispatches', 'd9')!;
     // Assert
-    expect(sheet.media).toEqual([{ url: 'https://lila.constroad.com/f/p1.jpg', thumbUrl: 'https://lila.constroad.com/t/p1.jpg', mime: 'image/jpeg', name: 'carga.jpg' }, { url: 'https://lila.constroad.com/f/v1.mp4', mime: 'video/mp4', name: 'AZJ 910 · video 2' }]);
-    expect(sheet.groups).toEqual([{ title: 'Cubicaje', facts: [{ label: 'Volquete cubica', value: '25.5 m³' }, { label: 'Forma', value: 'Cuadrado' }, { label: 'Largo', value: '5.20 m' }] }]);
+    // The viewer dates each photo with the dispatch's departure, not «Hoy»; Portal's raw m³ comes with 15 decimals.
+    const when = '2026-09-10T06:57:00.000Z';
+    expect(sheet.media).toEqual([{ url: 'https://lila.constroad.com/f/p1.jpg', thumbUrl: 'https://lila.constroad.com/t/p1.jpg', mime: 'image/jpeg', name: 'carga.jpg', when }, { url: 'https://lila.constroad.com/f/v1.mp4', mime: 'video/mp4', name: 'AZJ 910 · video 2', when }]);
+    expect(sheet.groups).toEqual([{ title: 'Cubicaje', facts: [{ label: 'Volquete cubica', value: '24.11 m³' }, { label: 'Forma', value: 'Cuadrado' }, { label: 'Largo', value: '5.20 m' }] }]);
   });
 
   it('a report with its PDF; one without asks Portal for it on demand (agentes 30/10)', () => {

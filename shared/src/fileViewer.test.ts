@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { galleryOf, mimeOf, openingOf } from './fileViewer.js';
+import { galleryOf, mimeOf, openingOf, viewerWhenOf } from './fileViewer.js';
 
 /** José 30/10: Portal's files open in Lilachat's viewer, not in Portal. */
 describe('fileViewer', () => {
@@ -29,5 +29,18 @@ describe('fileViewer', () => {
     ];
     // Act / Assert
     expect(galleryOf(files).map((file) => file.name)).toEqual(['1', '2']);
+  });
+});
+
+/** The viewer's line under the photo: a dispatch's ISO departure reads as a day and an hour, a label stays as it came. */
+describe('viewerWhenOf', () => {
+  it('formats an ISO moment and keeps a ready label', () => {
+    // Act / Assert
+    expect(viewerWhenOf('2026-09-10T06:57:00.000Z')).toBe('10 set, 1:57 a. m.');
+    expect(viewerWhenOf('CON-IAA · 2.4 MB · 14 set')).toBe('CON-IAA · 2.4 MB · 14 set');
+  });
+  it('nothing or an impossible date gives an empty line', () => {
+    expect(viewerWhenOf(undefined)).toBe('');
+    expect(viewerWhenOf('2026-99-99T00:00:00Z')).toBe('');
   });
 });

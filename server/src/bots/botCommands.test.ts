@@ -218,6 +218,17 @@ describe('an app restarting in a deploy (agentes, 23/10: a 502 while it came bac
     expect((await invoke(channel, { app_id: appId, command: 'clima', text: '' }).expect(200)).body.message).toBe('Inframaq no pudo responder.');
     expect(received).toHaveLength(1);
   });
+
+  it('a 502/503 with a `code` is the app answering, not a restart: one try, «no pudo responder» (agentes, 30/10)', async () => {
+    // Arrange: agentes says it has no reader; a retry would come back 200 {ok:true} as a duplicate.
+    const { appId } = await installWithCommands();
+    answer = json(503, { error: 'Sin lector de Drive', code: 'not-configured' });
+    // Act
+    const outcome = (await invoke(channel, { app_id: appId, command: 'clima', text: '' }).expect(200)).body;
+    // Assert
+    expect(outcome.message).toBe('Inframaq no pudo responder.');
+    expect(received).toHaveLength(1);
+  });
 });
 
 describe('answering later', () => {

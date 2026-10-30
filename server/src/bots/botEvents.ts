@@ -112,9 +112,21 @@ const RESTARTING_STATUSES = [502, 503, 504];
 const RETRY_DELAY_MS = 1_200;
 const RETRY_SHARE_OF_WAIT = 0.4;
 
-/** The app was down for a moment (a deploy), not broken: the asker is told to try again in a few seconds. */
+/** A body with a `code` (`product_failed`, `not-configured`) came from the app itself, not from a proxy without it. */
+const appCodeOf = (body: unknown): string | null => {
+  const code = (body as { code?: unknown } | null)?.code;
+  return typeof code === 'string' && code ? code : null;
+};
+
+/**
+ * The app was down for a moment (a deploy), not broken: the asker is told to
+ * try again in a few seconds. A 502/503 carrying the app's own `code` is its
+ * answer: retrying it comes back 200 as a duplicate delivery and the code is
+ * lost (agentes, 30/10).
+ */
 export function isRestarting(reply: WebhookReply): boolean {
-  return reply.error !== 'timeout' && (reply.status === null || RESTARTING_STATUSES.includes(reply.status));
+  if (reply.error === 'timeout' || appCodeOf(reply.body)) return false;
+  return reply.status === null || RESTARTING_STATUSES.includes(reply.status);
 }
 
 /** By loopback when the app lives on this machine; by its public address if nobody listens there, within the same wait. */
@@ -138,7 +150,8 @@ async function postReply(url: string, headers: Record<string, string>, body: str
     } catch {
       parsed = undefined; // a body that is not JSON: the answer is broken, not missing
     }
-    return { status: response.status, body: parsed, ...(response.ok ? {} : { error: `HTTP ${response.status}` }) };
+    const code = appCodeOf(parsed);
+    return { status: response.status, body: parsed, ...(response.ok ? {} : { error: `HTTP ${response.status}${code ? ` ${code}` : ''}` }) };
   } catch (error) {
     // Slow is the deferred answer, not a broken app.
     if (isTimeout(error)) return { status: null, body: null, error: 'timeout' };
@@ -151,7 +164,8 @@ async function postReply(url: string, headers: Record<string, string>, body: str
  * body, so there is no queue. A timeout is not an error: the app may still
  * answer through `/respond`. A 502/503/504 or a refused connection (the app
  * restarting in a deploy) is tried ONCE more with the same delivery id, within
- * the same wait: the app deduplicates by delivery (agentes, 23/10).
+ * the same wait: the app deduplicates by delivery (agentes, 23/10). Not when
+ * the body brings the app's `code`: that one already answered.
  */
 export async function callBotWebhook(installation: Pick<BotInstallation, '_id' | 'workspaceId' | 'signingSecret'> & { webhookUrl: string }, type: BotEventType, data: Record<string, unknown>, timeoutMs: number): Promise<WebhookReply> {
   const deliveryId = randomUUID();

@@ -1,3 +1,4 @@
+import { ServiceDriveWeb } from './ServiceDriveWeb';
 import { useState } from 'react';
 import { Archive, ExternalLink, FileText, FolderOpen, Search } from 'lucide-react';
 import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, shortDate, type ServiceFilter, type ClientRecord, type ClientServiceStatus, type SpaceClient } from '@lilachat/shared';
@@ -33,13 +34,15 @@ const STATUS_TONE: Record<ClientServiceStatus, string> = {
  * its state, its progress (the client portal's), «Ver en el Drive» and its
  * records (informes, quotes, payments) — tapping one goes to its message.
  */
-export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord?: (seq: number) => void }) {
+export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord?: (seq: number) => void; drive?: { jwt: string; spaceId: string } }) {
   const [query, setQuery] = useState('');
+  const [driveOf, setDriveOf] = useState<{ id: string; name: string } | null>(null);
   const [filter, setFilter] = useState<ServiceFilter>('all');
   const { services, counts } = filterServices(props.client.services, { query, filter });
   const grouped = props.records ? recordsByService(props.records) : null;
   return (
     <div data-testid="servicios-cliente" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-6">
+      {driveOf && props.drive ? <ServiceDriveWeb jwt={props.drive.jwt} spaceId={props.drive.spaceId} clientId={props.client.id} service={driveOf} onClose={() => setDriveOf(null)} /> : null}
       <div className="mx-auto flex max-w-3xl flex-col gap-3">
         {props.client.drive_url ? (
           <a href={props.client.drive_url} target="_blank" rel="noreferrer" data-testid="drive-cliente" className="flex items-center gap-3 rounded-xl border border-outline/15 bg-surface p-4 hover:bg-background">
@@ -75,7 +78,9 @@ export function ClientServices(props: { client: SpaceClient; records: ClientReco
                 <span className="text-[12px] font-semibold tabular-nums text-on-surface-variant">{`${service.progress} %`}</span>
               </div>
             ) : null}
-            {service.url ? (
+            {props.drive ? (
+              <button type="button" data-testid={`servicio-drive-${service.id}`} onClick={() => setDriveOf({ id: service.id, name: service.name })} className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary"><FolderOpen size={14} /> Drive del servicio</button>
+            ) : service.url ? (
               <a href={service.url} target="_blank" rel="noreferrer" data-testid={`servicio-drive-${service.id}`} className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary"><ExternalLink size={14} /> Ver en el Drive</a>
             ) : null}
             <ServiceRecords records={grouped ? (grouped.get(service.id) ?? []) : null} onOpen={props.onOpenRecord} />

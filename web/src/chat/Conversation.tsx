@@ -323,7 +323,7 @@ type ChannelTab = 'chat' | 'services' | 'checklist' | 'files' | 'pending';
 /** «Servicios» asks for its records only while it is open. */
 function ClientServicesPanel(props: { client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; onOpenRecord: (seq: number) => void }) {
   const records = useClientRecords(props.jwt, props.spaceId, props.client.id);
-  return <ClientServices client={props.client} records={records} onOpenRecord={props.onOpenRecord} />;
+  return <ClientServices client={props.client} records={records} onOpenRecord={props.onOpenRecord} drive={props.jwt && props.spaceId ? { jwt: props.jwt, spaceId: props.spaceId } : undefined} />;
 }
 
 /** A client's channel (José 29/10: only those): «Chat · Servicios N · Checklist · Archivos · Pendientes» (designs f-03 and e2-17). */

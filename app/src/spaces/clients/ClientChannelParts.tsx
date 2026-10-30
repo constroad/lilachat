@@ -3,6 +3,7 @@ import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-nat
 import { Archive, ExternalLink, FileText, FolderOpen, Search } from 'lucide-react-native';
 import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, shortDate, type ServiceFilter, type ClientRecord, type ClientServiceStatus, type SpaceClient } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
+import { ServiceDriveScreen } from './ServiceDriveScreen';
 
 /** The parts of a client's channel (design f-03): the archived banner, the note over the composer and «Servicios». */
 export function ArchivedClientBanner(props: { client: SpaceClient }) {
@@ -36,7 +37,8 @@ const STATUS_TONE: Record<ClientServiceStatus, string> = {
  * its state, its progress, «Ver en el Drive» and its records (informes,
  * quotes, payments) — tapping one goes to its message in the chat.
  */
-export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord: (seq: number) => void }) {
+export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord: (seq: number) => void; drive?: { jwt: string; spaceId: string } }) {
+  const [driveOf, setDriveOf] = useState<{ id: string; name: string } | null>(null);
   const colors = useColores();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<ServiceFilter>('all');
@@ -84,7 +86,12 @@ export function ClientServices(props: { client: SpaceClient; records: ClientReco
               <Text className="text-[12px] font-semibold text-on-surface-variant">{`${service.progress} %`}</Text>
             </View>
           ) : null}
-          {service.url ? (
+          {props.drive ? (
+            <Pressable testID={`servicio-drive-${service.id}`} onPress={() => setDriveOf({ id: service.id, name: service.name })} className="mt-3 min-h-[44px] flex-row items-center gap-1.5">
+              <FolderOpen size={16} color={colors.primary} />
+              <Text className="text-[14px] font-semibold text-primary">Drive del servicio</Text>
+            </Pressable>
+          ) : service.url ? (
             <Pressable testID={`servicio-drive-${service.id}`} onPress={() => service.url && void Linking.openURL(service.url)} className="mt-3 min-h-[44px] flex-row items-center gap-1.5">
               <ExternalLink size={16} color={colors.primary} />
               <Text className="text-[14px] font-semibold text-primary">Ver en el Drive</Text>
@@ -93,6 +100,7 @@ export function ClientServices(props: { client: SpaceClient; records: ClientReco
           <ServiceRecords records={grouped ? (grouped.get(service.id) ?? []) : null} onOpen={props.onOpenRecord} />
         </View>
       ))}
+      {props.drive ? <ServiceDriveScreen jwt={props.drive.jwt} spaceId={props.drive.spaceId} clientId={props.client.id} service={driveOf} onClose={() => setDriveOf(null)} /> : null}
     </ScrollView>
   );
 }

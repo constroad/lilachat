@@ -4995,6 +4995,40 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 169. Drive del servicio a pedido: `client.files.requested` (29/10/2026, servidor + OTA + web; pendiente 121, diseño f-06, agentes c27e939)
+
+- **Contrato con agentes:**
+  - Evento firmado `client.files.requested` por el mismo canal de webhooks
+    (`callBotWebhook`, con reintento si la app se está reiniciando).
+  - `data: { client_id, service_id, user: { id, name?, phone? } }`; el
+    `space_id` va en el sobre.
+  - 200 = `{ files: [...], drive_url }`, en 7 s o menos (esperamos 8). Un 400,
+    502 o 503, o el tiempo agotado, es la misma pantalla para la persona: «No
+    se pudo traer el Drive» con el enlace del servicio. El `code` del cuerpo
+    (`product_failed`, `not-configured`, `invalid-input`) queda en el log.
+- **Server (`bots/clientFiles.ts`):**
+  - `GET /api/workspaces/:id/clients/:clientId/services/:serviceId/files`.
+  - Antes de mandar el evento revisa todo: los ids cumplen `CLIENT_ID`, el
+    servicio está en los `services` del último PUT de ESE cliente (Portal solo
+    revisa la empresa) y quien pregunta es miembro del canal privado del
+    cliente. Si no, 404 sin evento.
+  - La falla responde 200 con `{ error: 'drive_failed', message, drive_url }`:
+    el enlace del servicio o el Drive del cliente.
+  - No se guarda nada. Las URL son de lila y no vencen, así que solo se
+    muestran dentro del canal privado.
+- **Motor (`shared/serviceFiles.ts`):**
+  - `serviceFilesOf` valida la respuesta: solo https y hasta 200 archivos.
+  - `driveFolders` da las carpetas del primer nivel con su cuenta.
+  - `filesInFolder` y `searchServiceFiles` (sin tildes ni mayúsculas, desde 2
+    letras).
+- **UI:** en «Servicios» del canal del cliente, cada servicio tiene «Drive del
+  servicio». Abre `ServiceDriveWeb` (ventana) o `ServiceDriveScreen` (pantalla)
+  con migas, buscador, «Carpetas principales» con su cuenta, «Recientes» (los 3
+  más nuevos), los archivos sueltos y «Abrir en Google Drive».
+- **Para que funcione:** José aprueba `archivos_de_servicio` en la consola de
+  agentes. Sin eso, agentes responde 502 y se ve «No se pudo traer el Drive».
+- **Tests:** server 3, shared 5, web 3.
+
 ## 168. Automatizaciones: silenciar por horario y «recordar la próxima vez que hables» (29/10/2026, servidor + OTA + web; pendiente 17, diseño `automatizaciones`)
 
 Dos de las tres rutinas del diseño. Las dos son de UN miembro en UN chat y

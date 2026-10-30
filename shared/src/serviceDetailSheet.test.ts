@@ -56,9 +56,10 @@ describe('detailSheet', () => {
     expect(sheet.files).toEqual([{ url: 'https://lila.constroad.com/files/g1.jpg', label: 'Guía' }]);
   });
 
-  it('a report with its PDF; one without says it has no PDF saved', () => {
+  it('a report with its PDF; one without asks Portal for it on demand (agentes 30/10)', () => {
     expect(detailSheet(detail, 'reports', 'r1')).toMatchObject({ facts: [{ label: 'Tipo', value: 'Producción de planta' }, { label: 'Fecha', value: '10 set' }], files: [{ url: 'https://lila.constroad.com/files/r1.pdf', label: 'PDF' }] });
-    expect(detailSheet(detail, 'reports', 'r2')).toMatchObject({ note: 'Este informe todavía no tiene PDF guardado en el Portal.' });
+    expect(detailSheet(detail, 'reports', 'r2')).toMatchObject({ files: [], pdfOnDemand: 'r2' });
+    expect(detailSheet(detail, 'reports', 'r2')?.note).toBeUndefined();
   });
 
   it('a quote: total, day and its line items when they come', () => {

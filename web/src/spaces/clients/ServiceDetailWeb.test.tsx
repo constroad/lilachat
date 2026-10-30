@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ServiceDetailWeb } from './ServiceDetailWeb';
 
@@ -71,5 +71,22 @@ describe('ServiceDetailWeb', () => {
     expect(screen.getByTestId('detalle-fallo-portal')).toHaveAttribute('href', 'https://portal.constroad.com/s/318');
     fireEvent.click(screen.getByTestId('volver-a-servicios'));
     expect(onBack).toHaveBeenCalled();
+  });
+  it('a report with no PDF stored asks Portal; while it generates it says so, and ready its link opens (agentes 30/10)', async () => {
+    // Arrange
+    const withReport = { ...detail, reports: [{ id: 'r9', title: 'Control de compactación', status: { label: 'Publicado', tone: 'ok' } }], totals: { ...detail.totals, reports: 1 } };
+    const bodies = [{ detail: withReport }, { pdf: { status: 'generating', retryAfterS: 1 } }, { pdf: { status: 'ready', pdfUrl: 'https://lila.constroad.com/r9.pdf' } }];
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(bodies.shift()), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
+    fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
+    fireEvent.click(within(screen.getByTestId('fila-r9')).getByRole('button'));
+    // Act
+    fireEvent.click(screen.getByTestId('pedir-pdf-ficha'));
+    // Assert
+    expect(await screen.findByText('Generando el PDF…')).toBeInTheDocument();
+    expect(await screen.findByTestId('abrir-pdf-ficha', {}, { timeout: 3000 })).toHaveAttribute('href', 'https://lila.constroad.com/r9.pdf');
+    expect(String((fetchMock.mock.calls[1] as unknown as [string])[0])).toContain('/api/workspaces/s1/clients/cli-cvs/services/srv-318/reports/r9/pdf');
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });

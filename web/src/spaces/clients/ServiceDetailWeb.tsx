@@ -4,6 +4,7 @@ import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRow
 import { RecordSheetWeb } from './RecordSheetWeb';
 import { ServiceBillingWeb } from './ServiceBillingWeb';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
+import { useReportPdf } from './useReportPdf';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
 
 const PortalLink = (props: { url: string; label: string; testId: string }) => (
@@ -52,12 +53,17 @@ function RowView({ row, onOpen }: { row: DetailRow; onOpen: (id: string) => void
   );
 }
 
-function DetailTabs({ detail }: { detail: ServiceDetail }) {
+function DetailTabs({ detail, target, serviceId }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string }) {
   const [tab, setTab] = useState<DetailTabKey>('orders');
   const [openId, setOpenId] = useState<string | null>(null);
   const rows = detailRows(detail, tab);
   const more = tab === 'billing' ? null : moreInPortal(rows.length, detail.totals[tab] ?? rows.length);
   const sheet = openId ? detailSheet(detail, tab, openId) : null;
+  const reportPdf = useReportPdf(target, serviceId);
+  const close = () => {
+    reportPdf.stop();
+    setOpenId(null);
+  };
   return (
     <>
       <div role="tablist" className="flex gap-1 overflow-x-auto rounded-xl border border-outline/15 bg-surface p-1">
@@ -70,7 +76,7 @@ function DetailTabs({ detail }: { detail: ServiceDetail }) {
           {rows.length ? rows.map((row) => <RowView key={row.id} row={row} onOpen={setOpenId} />) : <li className="p-4 text-sm text-on-surface-variant">{DETAIL_EMPTY[tab]}</li>}
         </ul>
       )}
-      {sheet ? <RecordSheetWeb sheet={sheet} onClose={() => setOpenId(null)} /> : null}
+      {sheet ? <RecordSheetWeb sheet={sheet} onClose={close} pdf={sheet.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, readyUrl: reportPdf.readyUrl, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!) } : undefined} /> : null}
       {more ? <p className="text-center text-[12px] text-on-surface-variant">{`${more} · el resto está en el Portal`}</p> : null}
       {detail.service.url ? <PortalLink url={detail.service.url} label="Abrir en el Portal" testId="abrir-servicio-portal" /> : null}
     </>
@@ -89,7 +95,7 @@ export function ServiceDetailWeb(props: { target: ServiceAskTarget; service: Spa
       <button type="button" data-testid="volver-a-servicios" onClick={props.onBack} className="inline-flex items-center gap-1 self-start text-sm font-semibold text-primary"><ChevronLeft size={16} /> Servicios</button>
       <ServiceHead service={props.service} />
       {answer === null ? <div data-testid="detalle-cargando" className="h-48 animate-pulse rounded-xl bg-surface" /> : null}
-      {answer?.ok ? <DetailTabs detail={answer.value} /> : null}
+      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} /> : null}
       {answer && !answer.ok ? (
         <div data-testid="detalle-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm">
           <p className="mb-2 font-semibold">{answer.message}</p>

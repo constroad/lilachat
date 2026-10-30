@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { canManageMembers, CLIENT_ID, clientAccountOf, serviceDetailOf, serviceFilesOf, type ClientAccount, type ServiceDetail, type ServiceFiles } from '@lilachat/shared';
+import { canManageMembers, CLIENT_ID, clientAccountOf, REPORT_PDF_FAILED, reportPdfOf, serviceDetailOf, serviceFilesOf, type ClientAccount, type ReportPdf, type ServiceDetail, type ServiceFiles } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { actorIn } from '../workspaces.js';
@@ -55,7 +55,7 @@ function logUnanswered(label: string, reply: { status?: number | null; error?: s
  * same request (pending 121 Drive; José 30/10 detail). Nothing is stored: the
  * links never expire, so they only show inside that channel.
  */
-async function askAboutService<T>(ask: ServiceAsk<T>, workspaceId: string, clientId: string, serviceId: string | null, userId: Types.ObjectId): Promise<AskOutcome<T> | NotFound> {
+async function askAboutService<T>(ask: ServiceAsk<T>, workspaceId: string, clientId: string, serviceId: string | null, userId: Types.ObjectId, extra: Record<string, string> = {}): Promise<AskOutcome<T> | NotFound> {
   const asked = await findAskedService(workspaceId, clientId, serviceId, userId);
   if (!asked) return notFound();
   const { client, fallbackUrl, seesBilling } = asked;
@@ -65,7 +65,7 @@ async function askAboutService<T>(ask: ServiceAsk<T>, workspaceId: string, clien
     askerOf(userId, seesBilling),
   ]);
   if (!installation || !app?.webhookUrl) return { ok: false, message: ask.failed, fallbackUrl };
-  const reply = await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, ask.event, { client_id: clientId, ...(serviceId ? { service_id: serviceId } : {}), user }, ASK_TIMEOUT_MS);
+  const reply = await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, ask.event, { client_id: clientId, ...(serviceId ? { service_id: serviceId } : {}), ...extra, user }, ASK_TIMEOUT_MS);
   const value = reply.status === 200 ? ask.parse(reply.body) : null;
   recordLastDelivery(installation._id, value ? { ok: true } : { ok: false, error: reply.error ?? `HTTP ${reply.status}` });
   if (value) return { ok: true, value };
@@ -76,6 +76,7 @@ async function askAboutService<T>(ask: ServiceAsk<T>, workspaceId: string, clien
 const FILES: ServiceAsk<ServiceFiles> = { event: 'client.files.requested', parse: serviceFilesOf, failed: DRIVE_FAILED, label: 'Drive del servicio' };
 const DETAIL: ServiceAsk<ServiceDetail> = { event: 'client.service.requested', parse: serviceDetailOf, failed: DETAIL_FAILED, label: 'Detalle del servicio' };
 const ACCOUNT: ServiceAsk<ClientAccount> = { event: 'client.account.requested', parse: clientAccountOf, failed: ACCOUNT_FAILED, label: 'Cuenta del cliente' };
+const REPORT_PDF: ServiceAsk<ReportPdf> = { event: 'client.report.requested', parse: reportPdfOf, failed: REPORT_PDF_FAILED, label: 'PDF del informe' };
 
 /** The Drive of a client's service (pending 121, agentes c27e939). */
 export async function clientServiceFiles(workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId): Promise<FilesOutcome | NotFound> {
@@ -89,3 +90,9 @@ export const clientServiceDetail = (workspaceId: string, clientId: string, servi
 
 /** All the client's quotes and its orders on credit (José 30/10, design f-08; agentes cf37b98, Portal 0227a1f0). */
 export const clientAccount = (workspaceId: string, clientId: string, userId: Types.ObjectId) => askAboutService(ACCOUNT, workspaceId, clientId, null, userId);
+
+/** A report's PDF: ready, or still generating with how long to wait (agentes 30/10, Portal 588e3ff9). The app or the web asks again. */
+export async function clientReportPdf(workspaceId: string, clientId: string, serviceId: string, reportId: string, userId: Types.ObjectId): Promise<AskOutcome<ReportPdf> | NotFound> {
+  if (!CLIENT_ID.test(reportId)) return notFound();
+  return askAboutService(REPORT_PDF, workspaceId, clientId, serviceId, userId, { report_id: reportId });
+}

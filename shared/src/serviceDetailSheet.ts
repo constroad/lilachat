@@ -9,9 +9,9 @@ import { amount, dayAndTimeOf, dayOf, dispatchRow, longDayOf, type DetailRow, ty
 export type SheetFact = { label: string; value: string };
 export type SheetItem = { name: string; line: string; total?: string };
 export type SheetFile = { url: string; label: string };
-export type DetailSheet = { title: string; status: DetailStatus; facts: SheetFact[]; related: DetailRow[]; items: SheetItem[]; files: SheetFile[]; url?: string; note?: string };
+/** `pdfOnDemand`: a report with no PDF stored, asked to Portal when tapped (agentes 30/10, `client.report.requested`). */
+export type DetailSheet = { title: string; status: DetailStatus; facts: SheetFact[]; related: DetailRow[]; items: SheetItem[]; files: SheetFile[]; url?: string; note?: string; pdfOnDemand?: string };
 
-const NO_REPORT_PDF = 'Este informe todavía no tiene PDF guardado en el Portal.';
 
 /** The facts that came, in reading order; a missing one is not a «—». */
 const facts = (pairs: [string, string | undefined][]): SheetFact[] => pairs.flatMap(([label, value]) => (value ? [{ label, value }] : []));
@@ -43,7 +43,7 @@ function dispatchSheet(dispatch: ServiceDispatch, detail: ServiceDetail): Detail
 
 function reportSheet(report: ServiceReport): DetailSheet {
   const sheet = { ...base(report.title, report.status, report.url), facts: facts([['Tipo', report.typeLabel], ['Fecha', report.date && dayOf(report.date)]]) };
-  return report.pdfUrl ? { ...sheet, files: [{ url: report.pdfUrl, label: 'PDF' }] } : { ...sheet, note: NO_REPORT_PDF };
+  return report.pdfUrl ? { ...sheet, files: [{ url: report.pdfUrl, label: 'PDF' }] } : { ...sheet, pdfOnDemand: report.id };
 }
 
 const itemLine = (item: QuoteItem) => [amount(item.quantity, item.unit), item.unitPrice === undefined ? undefined : `${moneyOf(item.unitPrice)} c/u`].filter(Boolean).join(' · ');

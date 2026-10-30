@@ -71,7 +71,7 @@ describe('app manifest', () => {
     expect(result.ok && result.manifest.developer!.length).toBeLessThanOrEqual(MANIFEST_LIMITS.developer);
   });
 
-  it('shortcuts for the «+» menu: cut to 40 and 80, up to 10; none (or no key) means none, so a retired tool takes its shortcut away', () => {
+  it('shortcuts for the «+» menu: cut to 40 and 80, up to 20; none (or no key) means none, so a retired tool takes its shortcut away', () => {
     // Arrange
     const long = { key: 'marcar_asistencia', name: 'Marcar asistencia de ingreso, refrigerio, retorno y salida del personal', description: 'Ingreso, refrigerio, retorno o salida, con tu ubicación y una selfie, desde cualquier canal del espacio' };
     // Act
@@ -84,7 +84,9 @@ describe('app manifest', () => {
     expect(shortcut!.description!.length).toBeLessThanOrEqual(80);
     expect(without.ok && without.manifest.shortcuts).toEqual([]);
     expect(validateAppManifest({ ...manifest, shortcuts: [{ key: 'Mal Key', name: 'x' }] }).ok).toBe(false);
-    expect(validateAppManifest({ ...manifest, shortcuts: Array.from({ length: 11 }, (_, i) => ({ key: `a${i}`, name: `A${i}` })) }).ok).toBe(false);
+    // agentes 30/10: Portal's 11th approved action (crear_cliente) was lost; all start off, so the cap guards nothing at 10.
+    expect(validateAppManifest({ ...manifest, shortcuts: Array.from({ length: 20 }, (_, i) => ({ key: `a${i}`, name: `A${i}` })) }).ok).toBe(true);
+    expect(validateAppManifest({ ...manifest, shortcuts: Array.from({ length: 21 }, (_, i) => ({ key: `a${i}`, name: `A${i}` })) }).ok).toBe(false);
   });
 
   it('bad commands are refused with the same message as PUT /api/bots/commands', () => {

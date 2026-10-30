@@ -1,4 +1,4 @@
-import { Linking, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
 import { ExternalLink, FileText } from 'lucide-react-native';
 import type { DetailRow, DetailSheet, SheetItem } from '@lilachat/shared';
 import { PantallaEnModal } from '../../ui/PantallaEnModal';
@@ -15,6 +15,22 @@ function FileButton(props: { title: string; file: { url: string; label: string }
       <FileText size={18} color={colors['on-primary']} />
       <Text className="text-[15px] font-semibold text-on-primary" numberOfLines={1}>{props.file.label === 'PDF' ? 'Ver el PDF' : `Ver ${props.file.label}`}</Text>
     </Pressable>
+  );
+}
+
+/** A report with no PDF stored: asked to Portal on tap (agentes 30/10); the first one may take a few waits. */
+export type PdfOnDemand = { asking: boolean; message: string | null; onAsk: () => void };
+
+function AskPdfButton({ pdf }: { pdf: PdfOnDemand }) {
+  const colors = useColores();
+  return (
+    <>
+      <Pressable testID="pedir-pdf-ficha" disabled={pdf.asking} onPress={pdf.onAsk} className={`min-h-[48px] flex-row items-center justify-center gap-2 rounded-xl bg-primary px-4 ${pdf.asking ? 'opacity-70' : ''}`}>
+        {pdf.asking ? <ActivityIndicator size="small" color={colors['on-primary']} /> : <FileText size={18} color={colors['on-primary']} />}
+        <Text className="text-[15px] font-semibold text-on-primary">{pdf.asking ? 'Generando el PDF…' : 'Ver el PDF'}</Text>
+      </Pressable>
+      {pdf.message ? <Text testID="pdf-ficha-fallo" className="text-[14px] text-error">{pdf.message}</Text> : null}
+    </>
   );
 }
 
@@ -49,7 +65,7 @@ function RelatedRow(props: { row: DetailRow; onOpenFile: (file: ViewableFile) =>
  * viewer, an order's dispatches and a quote's line items. Portal stays at the
  * foot, secondary.
  */
-export function RecordSheet(props: { sheet: DetailSheet | null; onClose: () => void; onOpenFile: (file: ViewableFile) => void }) {
+export function RecordSheet(props: { sheet: DetailSheet | null; onClose: () => void; onOpenFile: (file: ViewableFile) => void; pdf?: PdfOnDemand }) {
   const colors = useColores();
   const { sheet } = props;
   return (
@@ -68,6 +84,7 @@ export function RecordSheet(props: { sheet: DetailSheet | null; onClose: () => v
             </View>
           ) : null}
           {sheet.files.map((file, index) => <FileButton key={file.url} title={sheet.title} file={file} onOpenFile={props.onOpenFile} testID={index ? `ver-archivo-ficha-${index}` : 'ver-archivo-ficha'} />)}
+          {sheet.pdfOnDemand && props.pdf ? <AskPdfButton pdf={props.pdf} /> : null}
           {sheet.note ? <Text testID="nota-ficha" className="text-[14px] text-on-surface-variant">{sheet.note}</Text> : null}
           {sheet.items.length ? <><Kicker>Partidas</Kicker><View className="rounded-2xl border border-outline/15 bg-surface px-4">{sheet.items.map((item, index) => <ItemRow key={`${item.name}-${index}`} item={item} />)}</View></> : null}
           {sheet.related.length ? <><Kicker>Despachos de este pedido</Kicker><View className="rounded-2xl border border-outline/15 bg-surface px-4">{sheet.related.map((row) => <RelatedRow key={row.id} row={row} onOpenFile={props.onOpenFile} />)}</View></> : null}

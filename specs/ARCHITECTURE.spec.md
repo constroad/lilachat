@@ -5070,9 +5070,21 @@ enlace secundario al pie.
   - En «Comandos y acciones» el interruptor dice «Selector de clientes», no «Acciones rápidas»
     (`spacePlaceOf` en `shared/src/appItems.ts`).
   - Código: `ClientPicker` (app), `ClientPickerWeb` (web) y `useSpaceAction` en cada uno.
-  - Falta que agentes publique `crear_cliente` como acción (shortcut) del manifiesto de Portal.
-- **Pendiente:**
-  - el PDF de los informes que no lo tienen guardado (Portal).
+  - `crear_cliente` era el atajo 11 de Portal y el manifiesto aceptaba 10: agentes
+    cortaba en silencio y se perdía. `MANIFEST_LIMITS.shortcuts` sube a 20; todos
+    nacen apagados, así que el tope no protegía nada.
+- **PDF del informe a pedido** (agentes 30/10, Portal 588e3ff9; `client.report.requested`).
+  - Un informe sin PDF guardado muestra «Ver el PDF». Al tocarlo se le pide a
+    Portal con `{client_id, service_id, report_id, user}`.
+  - `ready` trae el enlace de lila. `generating` trae la espera (1–60 s): se vuelve
+    a pedir después, hasta 6 veces, con «Generando el PDF…» en el botón.
+  - 502 (borrador, otra empresa, falla): «No se pudo traer el PDF del informe».
+  - App: abre en el visor de PDF. Web: el botón pasa a «Abrir el PDF», porque una
+    pestaña abierta después de las esperas la bloquea el navegador.
+  - Cerrar la ficha deja de pedir.
+  - Servidor: `GET /api/workspaces/:id/clients/:clientId/services/:serviceId/reports/:reportId/pdf`,
+    con la misma validación de canal y servicio que el detalle.
+  - Código: `shared/src/reportPdf.ts` (`askReportPdfUntilDone`) y `useReportPdf` en app y web.
 
 ## 172. APK 0.1.175: compartir pantalla, guardia nativa del log y APK más liviano (30/10/2026)
 

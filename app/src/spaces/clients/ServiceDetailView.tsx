@@ -8,6 +8,7 @@ import { RecordSheet } from './RecordSheet';
 import { ServiceBilling } from './ServiceBilling';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
 import { useFileViewer } from './useFileViewer';
+import { useReportPdf } from './useReportPdf';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
 
 /** How much of the previous tab stays visible when one scrolls into view. */
@@ -90,9 +91,15 @@ function TabStrip(props: { detail: ServiceDetail; tab: DetailTabKey; onTab: (tab
   );
 }
 
-function DetailTabs({ detail, onOpenFile }: { detail: ServiceDetail; onOpenFile: (file: ViewableFile) => void }) {
+function DetailTabs({ detail, target, serviceId, onOpenFile }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; onOpenFile: (file: ViewableFile) => void }) {
   const [tab, setTab] = useState<DetailTabKey>('orders');
   const [openId, setOpenId] = useState<string | null>(null);
+  const reportPdf = useReportPdf(target, serviceId, onOpenFile);
+  const sheet = openId ? detailSheet(detail, tab, openId) : null;
+  const close = () => {
+    reportPdf.stop();
+    setOpenId(null);
+  };
   const rows = detailRows(detail, tab);
   const more = tab === 'billing' ? null : moreInPortal(rows.length, detail.totals[tab] ?? rows.length);
   return (
@@ -104,7 +111,7 @@ function DetailTabs({ detail, onOpenFile }: { detail: ServiceDetail; onOpenFile:
         </View>
       )}
       {more ? <Text className="text-center text-[12px] text-on-surface-variant">{`${more} · el resto está en el Portal`}</Text> : null}
-      <RecordSheet sheet={openId ? detailSheet(detail, tab, openId) : null} onClose={() => setOpenId(null)} onOpenFile={onOpenFile} />
+      <RecordSheet sheet={sheet} onClose={close} onOpenFile={onOpenFile} pdf={sheet?.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!, `${sheet.title} · PDF`) } : undefined} />
       {detail.service.url ? <PortalLink url={detail.service.url} label="Abrir en el Portal" testID="abrir-servicio-portal" /> : null}
     </>
   );
@@ -143,7 +150,7 @@ export function ServiceDetailView(props: { target: ServiceAskTarget; service: Sp
       </Pressable>
       <ServiceHead service={props.service} />
       {answer === null ? <Skeleton /> : null}
-      {answer?.ok ? <DetailTabs detail={answer.value} onOpenFile={files.open} /> : null}
+      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} onOpenFile={files.open} /> : null}
       {files.notice ? <Text className="text-center text-[13px] text-error">{files.notice}</Text> : null}
       {files.viewer}
       {answer && !answer.ok ? (

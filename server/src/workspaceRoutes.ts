@@ -26,7 +26,7 @@ import multer from 'multer';
 import { CUSTOM_EMOJI_MAX_BYTES } from '@lilachat/shared';
 import { addCustomEmoji, listCustomEmojis, removeCustomEmoji } from './customEmojiCatalog.js';
 import { clientRecords, listClients } from './bots/botClients.js';
-import { clientAccount, clientServiceDetail, clientServiceFiles } from './bots/clientFiles.js';
+import { clientAccount, clientReportPdf, clientServiceDetail, clientServiceFiles } from './bots/clientFiles.js';
 import { listBillingViewers, setBillingViewer } from './bots/clientBillingViewers.js';
 
 /** Tries of a code per person and minute: enough to fix a typo, not to guess codes. */
@@ -106,6 +106,12 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
     const found = await clientServiceDetail(req.params.id!, req.params.clientId!, req.params.serviceId!, me(req));
     if ('error' in found) return res.status(found.status).json({ error: found.error, message: found.message });
     res.json(found.ok ? { detail: found.value } : { error: 'detail_failed', message: found.message, portal_url: found.fallbackUrl });
+  }));
+  // agentes 30/10: a report's PDF, ready or generating; the app asks again after the wait.
+  router.get('/:id/clients/:clientId/services/:serviceId/reports/:reportId/pdf', handled(async (req, res) => {
+    const found = await clientReportPdf(req.params.id!, req.params.clientId!, req.params.serviceId!, req.params.reportId!, me(req));
+    if ('error' in found) return res.status(found.status).json({ error: found.error, message: found.message });
+    res.json(found.ok ? { pdf: found.value } : { error: 'report_pdf_failed', message: found.message });
   }));
   // José 30/10 (design f-08): all the client's quotes and its orders on credit; a failure is a 200 with the message.
   router.get('/:id/clients/:clientId/account', handled(async (req, res) => {

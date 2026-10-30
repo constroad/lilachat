@@ -184,3 +184,28 @@ describe('the client account on demand (José 30/10: «¿dónde veo las cotizaci
     expect((await accountOf(jose).expect(200)).body).toEqual({ error: 'account_failed', message: 'No se pudo traer la cuenta del cliente', portal_url: null });
   });
 });
+
+describe('a report\'s PDF on demand (agentes 30/10, Portal 588e3ff9: client.report.requested)', () => {
+  const pdfOf = (who: Types.ObjectId, service = 'srv-318', report = 'rep-1') => request(app).get(`/api/workspaces/${spaceId}/clients/cli-cvs/services/${service}/reports/${report}/pdf`).set(auth(who));
+
+  it('asks with client, service and report; answers ready with its link or generating with the wait', async () => {
+    // Arrange
+    answer = { status: 200, body: { status: 'ready', pdf_url: 'https://lila.example.com/f/rep-1.pdf' } };
+    // Act
+    const ready = await pdfOf(jose).expect(200);
+    // Assert
+    expect(received).toEqual([{ type: 'client.report.requested', space: String(spaceId), data: { client_id: 'cli-cvs', service_id: 'srv-318', report_id: 'rep-1', user: { id: String(jose), name: 'José', phone: '51902049935', sees_billing: true } } }]);
+    expect(ready.body).toEqual({ pdf: { status: 'ready', pdfUrl: 'https://lila.example.com/f/rep-1.pdf' } });
+    answer = { status: 200, body: { status: 'generating', retry_after_s: 5 } };
+    expect((await pdfOf(jose).expect(200)).body).toEqual({ pdf: { status: 'generating', retryAfterS: 5 } });
+  });
+
+  it('a service the app did not list, a bad report id or someone outside: 404 and no event; a failure says so', async () => {
+    expect((await pdfOf(jose, 'srv-999')).status).toBe(404);
+    expect((await pdfOf(jose, 'srv-318', 'mal id')).status).toBe(404);
+    expect((await pdfOf(outsider)).status).toBe(404);
+    expect(received).toHaveLength(0);
+    answer = { status: 502, body: { error: 'No se pudo traer el PDF del informe', code: 'product_failed' } };
+    expect((await pdfOf(jose).expect(200)).body).toEqual({ error: 'report_pdf_failed', message: 'No se pudo traer el PDF del informe' });
+  });
+});

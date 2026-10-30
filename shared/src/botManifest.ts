@@ -52,7 +52,7 @@ export function newScopesOf(asked: readonly string[] | undefined, granted: reado
   return (asked ?? []).filter((scope): scope is AppScope => isScope(scope) && !(granted ?? []).includes(scope));
 }
 
-export const MANIFEST_LIMITS = { key: 32, name: 40, url: 500, appsPerDeveloper: 20, description: 120, features: 6, feature: 140, developer: 60, shortcuts: 10, shortcutName: 40, shortcutDescription: 80 };
+export const MANIFEST_LIMITS = { key: 32, name: 40, url: 500, appsPerDeveloper: 20, description: 120, features: 6, feature: 140, developer: 60, shortcuts: 20, shortcutName: 40, shortcutDescription: 80 };
 const KEY = /^[a-z][a-z0-9-]+$/;
 const record = (value: unknown): Record<string, unknown> => (value && typeof value === 'object' ? (value as Record<string, unknown>) : {});
 

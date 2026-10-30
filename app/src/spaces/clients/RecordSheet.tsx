@@ -44,8 +44,8 @@ function RelatedRow(props: { row: DetailRow; onOpenFile: (file: ViewableFile) =>
 }
 
 /**
- * A pedido, despacho, informe or cotización inside Lilachat (José 30/10: «me
- * dice que abra Portal… no me parece muy útil»): its facts, its files in the
+ * An order, dispatch, report or quote inside Lilachat (José 30/10: sending him
+ * to Portal for every detail was not useful): its facts, its files in the
  * viewer, an order's dispatches and a quote's line items. Portal stays at the
  * foot, secondary.
  */

@@ -1,7 +1,7 @@
 /**
- * Portal's files inside Lilachat (José 30/10: «por qué no usamos el visor
- * para ver las imágenes, videos y PDF sin tener que abrir Portal»): Drive,
- * vouchers, guides and report PDFs. agentes confirmed the links are lila's
+ * Portal's files inside Lilachat (José 30/10: photos, videos and PDFs should
+ * open in Lilachat's viewer, not in Portal): Drive, vouchers, guides and
+ * report PDFs. agentes confirmed the links are lila's
  * files, open without a Portal session and accept Range. PURE.
  */
 export type ViewableFile = { url: string; name: string; mime?: string; thumbUrl?: string; when?: string };

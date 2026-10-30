@@ -1,10 +1,10 @@
 import { moneyOf } from './serviceBilling.js';
 import { amount, dayAndTimeOf, dayOf, dispatchRow, type DetailRow, type DetailStatus, type DetailTabKey, type QuoteItem, type ServiceDetail, type ServiceDispatch, type ServiceOrder, type ServiceQuote, type ServiceReport } from './serviceDetail.js';
 /**
- * One pedido, despacho, informe or cotización opened inside Lilachat (José
- * 30/10: «si quiero ver el detalle de un pedido me dice que abra Portal… no
- * me parece muy útil»). Built from what the detail already brought; Portal
- * stays as a secondary link. PURE: app and web.
+ * One order, dispatch, report or quote opened inside Lilachat (José 30/10:
+ * sending him to Portal for an order's detail was not useful). Built from
+ * what the detail already brought; Portal stays as a secondary link. PURE:
+ * app and web.
  */
 export type SheetFact = { label: string; value: string };
 export type SheetItem = { name: string; line: string; total?: string };

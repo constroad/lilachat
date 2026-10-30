@@ -6,8 +6,8 @@ import { DETAIL_TONE } from './tones';
 const Kicker = ({ children }: { children: string }) => <p className="mt-1 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{children}</p>;
 
 /**
- * A pedido, despacho, informe or cotización inside Lilachat (José 30/10: «me
- * dice que abra Portal… no me parece muy útil»): its facts, its file straight
+ * An order, dispatch, report or quote inside Lilachat (José 30/10: sending him
+ * to Portal for every detail was not useful): its facts, its file straight
  * from lila (no Portal session), an order's dispatches and a quote's line
  * items. Portal stays at the foot, secondary.
  */

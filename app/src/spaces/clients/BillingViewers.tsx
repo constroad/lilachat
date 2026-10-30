@@ -34,9 +34,9 @@ function useBillingViewers(target: ServiceAskTarget) {
 }
 
 /**
- * José 30/10: the collection is seen by the space's admins «y podemos asignar
- * algún otro miembro del canal». Only an admin sees this row; the switch of
- * each channel member marks who else sees «Cobranza».
+ * José 30/10: the collection is seen by the space's admins plus any channel
+ * member an admin picks. Only an admin sees this row; the switch of each
+ * channel member marks who else sees the collection tab.
  */
 export function BillingViewers(props: { target: ServiceAskTarget; members: ReadonlyMap<string, string>; me: string }) {
   const colors = useColores();

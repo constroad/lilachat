@@ -35,12 +35,12 @@ export function sumarEnvio(frecuencias: Frecuencias, chatId: string, ahora: numb
 }
 
 const sinTildes = (texto: string) => texto.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
-const porReciente = (a: ChatParaReenviar, b: ChatParaReenviar) => compareOrdinal(b.ultimoEn ?? '', a.ultimoEn ?? '');
+const byMostRecent = (a: ChatParaReenviar, b: ChatParaReenviar) => compareOrdinal(b.ultimoEn ?? '', a.ultimoEn ?? '');
 
 export function destinosDeReenvio(params: { chats: readonly ChatParaReenviar[]; frecuencias: Frecuencias; busqueda: string; ahora: number }): { frecuentes: ChatParaReenviar[]; recientes: ChatParaReenviar[] } {
   const posibles = params.chats.filter((chat) => !chat.cifrado);
   const aguja = sinTildes(params.busqueda.trim());
-  if (aguja) return { frecuentes: [], recientes: posibles.filter((chat) => sinTildes(chat.nombre).includes(aguja)).sort(porReciente) };
+  if (aguja) return { frecuentes: [], recientes: posibles.filter((chat) => sinTildes(chat.nombre).includes(aguja)).sort(byMostRecent) };
   const frecuentes = posibles
     .map((chat) => ({ chat, puntaje: puntajeA(params.frecuencias[chat.id], params.ahora) }))
     .filter((uno) => uno.puntaje > 0)
@@ -48,7 +48,7 @@ export function destinosDeReenvio(params: { chats: readonly ChatParaReenviar[]; 
     .slice(0, FRECUENTES)
     .map((uno) => uno.chat);
   const yaEstan = new Set(frecuentes.map((chat) => chat.id));
-  return { frecuentes, recientes: posibles.filter((chat) => !yaEstan.has(chat.id)).sort(porReciente) };
+  return { frecuentes, recientes: posibles.filter((chat) => !yaEstan.has(chat.id)).sort(byMostRecent) };
 }
 
 /** Elegir o soltar un destino; con 5 ya elegidos, el siguiente no entra. */

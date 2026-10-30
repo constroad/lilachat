@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BackHandler, Linking, Pressable, Text, TextInput, View } from 'react-native';
-import { ChevronLeft, ChevronRight, Cloud, ExternalLink, FileText, Folder, Image as ImageIcon, Search } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Cloud, ExternalLink, FileText, Film, Folder, Image as ImageIcon, Search } from 'lucide-react-native';
 import { driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
+import type { ViewableFile } from './fileViewer';
+import { useFileViewer } from './useFileViewer';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
+
+type OpenFile = (file: ServiceFile) => void;
+const viewableOf = (file: ServiceFile): ViewableFile => ({ url: file.url, name: file.name, mime: file.mime, ...(file.thumbUrl ? { thumbUrl: file.thumbUrl } : {}), when: driveFileLine(file) });
 
 const RECENT = 3;
 const SEARCH_MIN = 2;
@@ -12,11 +17,14 @@ const open = (url?: string | null) => {
   if (url) void Linking.openURL(url);
 };
 
-function FileRow({ file }: { file: ServiceFile }) {
+const iconOf = (mime: string) => (mime.startsWith('image/') ? ImageIcon : mime.startsWith('video/') ? Film : FileText);
+
+/** José 30/10: it opens in Lilachat's viewer, not in the browser or Portal. */
+function FileRow({ file, onOpen }: { file: ServiceFile; onOpen: OpenFile }) {
   const colors = useColores();
-  const Icon = file.mime.startsWith('image/') ? ImageIcon : FileText;
+  const Icon = iconOf(file.mime);
   return (
-    <Pressable testID="archivo-drive" onPress={() => open(file.url)} className="min-h-[52px] flex-row items-center gap-3 border-b border-outline/10 px-3 py-2">
+    <Pressable testID="archivo-drive" onPress={() => onOpen(file)} className="min-h-[52px] flex-row items-center gap-3 border-b border-outline/10 px-3 py-2">
       <Icon size={18} color={colors.primary} />
       <View className="min-w-0 flex-1">
         <Text className="text-[14px] text-on-surface" numberOfLines={1}>{file.name}</Text>
@@ -51,18 +59,18 @@ function FolderRows(props: { files: readonly ServiceFile[]; onOpen: (folder: str
 }
 
 /** Search results, one folder, or the root: top folders, the newest and the loose files. */
-function DriveBody(props: { files: ServiceFile[]; query: string; folder: string | null; onFolder: (folder: string) => void }) {
+function DriveBody(props: { files: ServiceFile[]; query: string; folder: string | null; onFolder: (folder: string) => void; onOpen: OpenFile }) {
   const found = useMemo(() => searchServiceFiles(props.files, props.query), [props.files, props.query]);
   if (!props.files.length) return <Text className="py-6 text-center text-[14px] text-on-surface-variant">Este servicio todavía no tiene archivos.</Text>;
-  if (props.query.trim().length >= SEARCH_MIN) return <Group>{found.length ? found.map((file) => <FileRow key={file.url} file={file} />) : <Text className="p-4 text-[14px] text-on-surface-variant">{`Nada coincide con «${props.query.trim()}».`}</Text>}</Group>;
-  if (props.folder) return <Group>{filesInFolder(props.files, props.folder).map((file) => <FileRow key={file.url} file={file} />)}</Group>;
+  if (props.query.trim().length >= SEARCH_MIN) return <Group>{found.length ? found.map((file) => <FileRow key={file.url} file={file} onOpen={props.onOpen} />) : <Text className="p-4 text-[14px] text-on-surface-variant">{`Nada coincide con «${props.query.trim()}».`}</Text>}</Group>;
+  if (props.folder) return <Group>{filesInFolder(props.files, props.folder).map((file) => <FileRow key={file.url} file={file} onOpen={props.onOpen} />)}</Group>;
   const loose = filesInFolder(props.files, null);
   return (
     <>
       <FolderRows files={props.files} onOpen={props.onFolder} />
       <Kicker>Recientes</Kicker>
-      <Group>{props.files.slice(0, RECENT).map((file) => <FileRow key={file.url} file={file} />)}</Group>
-      {loose.length ? <Group>{loose.map((file) => <FileRow key={file.url} file={file} />)}</Group> : null}
+      <Group>{props.files.slice(0, RECENT).map((file) => <FileRow key={file.url} file={file} onOpen={props.onOpen} />)}</Group>
+      {loose.length ? <Group>{loose.map((file) => <FileRow key={file.url} file={file} onOpen={props.onOpen} />)}</Group> : null}
     </>
   );
 }
@@ -101,6 +109,7 @@ function Breadcrumb(props: { service: string; folder: string | null; onBack: () 
 export function ServiceDrive(props: { target: ServiceAskTarget; service: SpaceClientService; onBack: () => void }) {
   const colors = useColores();
   const answer = useServiceAsk('files', props.target, props.service.id);
+  const viewer = useFileViewer();
   const [folder, setFolder] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const { onBack } = props;
@@ -119,7 +128,9 @@ export function ServiceDrive(props: { target: ServiceAskTarget; service: SpaceCl
       {answer === null ? <View testID="drive-cargando" className="h-40 rounded-2xl bg-surface-variant" /> : null}
       {answer && !answer.ok ? <Text testID="drive-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-[15px] font-semibold text-on-surface">{answer.message}</Text> : null}
       {answer?.ok ? <DriveSearch query={query} onQuery={setQuery} /> : null}
-      {answer?.ok ? <DriveBody files={answer.value.files} query={query} folder={folder} onFolder={setFolder} /> : null}
+      {answer?.ok ? <DriveBody files={answer.value.files} query={query} folder={folder} onFolder={setFolder} onOpen={(file) => viewer.open(viewableOf(file), answer.value.files.map(viewableOf))} /> : null}
+      {viewer.notice ? <Text className="text-center text-[13px] text-error">{viewer.notice}</Text> : null}
+      {viewer.viewer}
       {driveUrl ? (
         <Pressable testID="abrir-drive-portal" onPress={() => open(driveUrl)} className="min-h-[44px] flex-row items-center gap-1.5">
           <ExternalLink size={15} color={colors.primary} />

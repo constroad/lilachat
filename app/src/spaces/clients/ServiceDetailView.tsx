@@ -1,10 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronLeft, ExternalLink, FileText } from 'lucide-react-native';
-import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailTabs, moreInPortal, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailSheet, detailTabs, moreInPortal, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
+import type { ViewableFile } from './fileViewer';
+import { RecordSheet } from './RecordSheet';
+import { ServiceBilling } from './ServiceBilling';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
+import { useFileViewer } from './useFileViewer';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
+
+/** How much of the previous tab stays visible when one scrolls into view. */
+const TAB_SCROLL_MARGIN = 24;
 
 const open = (url?: string | null) => {
   if (url) void Linking.openURL(url);
@@ -44,17 +51,18 @@ export function ServiceHead({ service }: { service: SpaceClientService }) {
   );
 }
 
-function RowView({ row }: { row: DetailRow }) {
+function RowView({ row, onOpen, onOpenFile }: { row: DetailRow; onOpen: (id: string) => void; onOpenFile: (file: ViewableFile) => void }) {
   const colors = useColores();
+  const file = row.file;
   return (
-    <Pressable testID={`fila-${row.id}`} disabled={!row.url} onPress={() => open(row.url)} className="min-h-[60px] flex-row items-center gap-3 border-b border-outline/10 px-3 py-2.5">
+    <Pressable testID={`fila-${row.id}`} onPress={() => onOpen(row.id)} className="min-h-[60px] flex-row items-center gap-3 border-b border-outline/10 px-3 py-2.5">
       <View className="min-w-0 flex-1">
         <Text className="text-[14px] font-semibold text-on-surface" numberOfLines={1}>{row.title}</Text>
         {row.line ? <Text className="mt-0.5 text-[12px] text-on-surface-variant" numberOfLines={1}>{row.line}</Text> : null}
-        {row.file ? (
-          <Pressable testID={`archivo-${row.id}`} onPress={() => open(row.file?.url)} className="mt-1 min-h-[32px] flex-row items-center gap-1">
+        {file ? (
+          <Pressable testID={`archivo-${row.id}`} onPress={() => onOpenFile({ url: file.url, name: `${row.title} · ${file.label}` })} className="mt-1 min-h-[32px] flex-row items-center gap-1">
             <FileText size={14} color={colors.primary} />
-            <Text className="text-[13px] font-semibold text-primary">{row.file.label}</Text>
+            <Text className="text-[13px] font-semibold text-primary">{file.label}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -63,23 +71,40 @@ function RowView({ row }: { row: DetailRow }) {
   );
 }
 
-function DetailTabs({ detail }: { detail: ServiceDetail }) {
+/** The tabs scroll so the one touched is whole on screen (30/10: «Cotizaciones» showed as a cut «C»). */
+function TabStrip(props: { detail: ServiceDetail; tab: DetailTabKey; onTab: (tab: DetailTabKey) => void }) {
+  const strip = useRef<ScrollView>(null);
+  const starts = useRef<Partial<Record<DetailTabKey, number>>>({});
+  const pick = (key: DetailTabKey) => {
+    props.onTab(key);
+    strip.current?.scrollTo({ x: Math.max(0, (starts.current[key] ?? 0) - TAB_SCROLL_MARGIN), animated: true });
+  };
+  return (
+    <ScrollView ref={strip} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }} className="flex-grow-0 rounded-xl border border-outline/15 bg-surface p-1">
+      {detailTabs(props.detail).map((one) => (
+        <Pressable key={one.key} testID={`pestana-detalle-${one.key}`} onLayout={(event) => (starts.current[one.key] = event.nativeEvent.layout.x)} onPress={() => pick(one.key)} accessibilityRole="tab" accessibilityState={{ selected: props.tab === one.key }} className={`min-h-[40px] justify-center rounded-lg px-3 ${props.tab === one.key ? 'bg-primary' : ''}`}>
+          <Text className={`text-[14px] ${props.tab === one.key ? 'font-semibold text-on-primary' : 'text-on-surface-variant'}`}>{one.label}</Text>
+        </Pressable>
+      ))}
+    </ScrollView>
+  );
+}
+
+function DetailTabs({ detail, onOpenFile }: { detail: ServiceDetail; onOpenFile: (file: ViewableFile) => void }) {
   const [tab, setTab] = useState<DetailTabKey>('orders');
+  const [openId, setOpenId] = useState<string | null>(null);
   const rows = detailRows(detail, tab);
-  const more = moreInPortal(rows.length, detail.totals[tab] ?? rows.length);
+  const more = tab === 'billing' ? null : moreInPortal(rows.length, detail.totals[tab] ?? rows.length);
   return (
     <>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }} className="flex-grow-0 rounded-xl border border-outline/15 bg-surface p-1">
-        {detailTabs(detail).map((one) => (
-          <Pressable key={one.key} testID={`pestana-detalle-${one.key}`} onPress={() => setTab(one.key)} accessibilityRole="tab" accessibilityState={{ selected: tab === one.key }} className={`min-h-[40px] justify-center rounded-lg px-3 ${tab === one.key ? 'bg-primary' : ''}`}>
-            <Text className={`text-[14px] ${tab === one.key ? 'font-semibold text-on-primary' : 'text-on-surface-variant'}`}>{one.label}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-      <View className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">
-        {rows.length ? rows.map((row) => <RowView key={row.id} row={row} />) : <Text className="p-4 text-[14px] text-on-surface-variant">{DETAIL_EMPTY[tab]}</Text>}
-      </View>
+      <TabStrip detail={detail} tab={tab} onTab={setTab} />
+      {tab === 'billing' && detail.billing ? <ServiceBilling billing={detail.billing} onOpenFile={onOpenFile} /> : (
+        <View className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">
+          {rows.length ? rows.map((row) => <RowView key={row.id} row={row} onOpen={setOpenId} onOpenFile={onOpenFile} />) : <Text className="p-4 text-[14px] text-on-surface-variant">{DETAIL_EMPTY[tab]}</Text>}
+        </View>
+      )}
       {more ? <Text className="text-center text-[12px] text-on-surface-variant">{`${more} · el resto está en el Portal`}</Text> : null}
+      <RecordSheet sheet={openId ? detailSheet(detail, tab, openId) : null} onClose={() => setOpenId(null)} onOpenFile={onOpenFile} />
       {detail.service.url ? <PortalLink url={detail.service.url} label="Abrir en el Portal" testID="abrir-servicio-portal" /> : null}
     </>
   );
@@ -100,6 +125,7 @@ const Skeleton = () => (
 export function ServiceDetailView(props: { target: ServiceAskTarget; service: SpaceClientService; onBack: () => void }) {
   const colors = useColores();
   const answer = useServiceAsk('detail', props.target, props.service.id);
+  const files = useFileViewer();
   const { onBack } = props;
   // Android's BACK goes back to the list; the last listener added runs first.
   useEffect(() => {
@@ -117,7 +143,9 @@ export function ServiceDetailView(props: { target: ServiceAskTarget; service: Sp
       </Pressable>
       <ServiceHead service={props.service} />
       {answer === null ? <Skeleton /> : null}
-      {answer?.ok ? <DetailTabs detail={answer.value} /> : null}
+      {answer?.ok ? <DetailTabs detail={answer.value} onOpenFile={files.open} /> : null}
+      {files.notice ? <Text className="text-center text-[13px] text-error">{files.notice}</Text> : null}
+      {files.viewer}
       {answer && !answer.ok ? (
         <View testID="detalle-fallo" className="rounded-2xl border border-outline/15 bg-surface p-4">
           <Text className="text-[15px] font-semibold text-on-surface">{answer.message}</Text>

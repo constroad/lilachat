@@ -156,4 +156,6 @@ export * from './routines.js';
 export * from './serviceFiles.js';
 export * from './compareText.js';
 export * from './serviceDetail.js';
+export * from './serviceBilling.js';
+export * from './serviceDetailSheet.js';
 export * from './serviceAsk.js';

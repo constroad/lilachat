@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { CLIENT_ID, serviceDetailOf, serviceFilesOf, type ServiceDetail, type ServiceFiles } from '@lilachat/shared';
+import { canManageMembers, CLIENT_ID, serviceDetailOf, serviceFilesOf, type ServiceDetail, type ServiceFiles } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { actorIn } from '../workspaces.js';
@@ -20,22 +20,24 @@ const notFound = (): NotFound => ({ status: 404, error: 'service_not_found', mes
 
 type ServiceAsk<T> = { event: Extract<BotEventType, `client.${string}.requested`>; parse: (body: unknown) => T | null; failed: string; label: string };
 
-type AskedService = { client: Pick<ClientChannel, 'appId' | 'chatId' | 'driveUrl' | 'services'>; fallbackUrl: string | null };
-type Asker = { id: string; name?: string; phone?: string };
+type AskedService = { client: Pick<ClientChannel, 'appId' | 'chatId' | 'driveUrl' | 'services'>; fallbackUrl: string | null; seesBilling: boolean };
+type Asker = { id: string; name?: string; phone?: string; sees_billing?: true };
 
 /** The service, only for a member of the client's PRIVATE channel and only if the app listed it in its last PUT (Portal only checks the company). */
 async function findAskedService(workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId): Promise<AskedService | null> {
-  await actorIn(workspaceId, userId);
+  const actor = await actorIn(workspaceId, userId);
   if (!CLIENT_ID.test(clientId) || !CLIENT_ID.test(serviceId)) return null;
-  const client = await ClientChannelModel.findOne({ workspaceId: new Types.ObjectId(workspaceId), clientId }).select('appId chatId driveUrl services').lean<AskedService['client'] | null>();
+  const client = await ClientChannelModel.findOne({ workspaceId: new Types.ObjectId(workspaceId), clientId }).select('appId chatId driveUrl services billingViewers').lean<(AskedService['client'] & Pick<ClientChannel, 'billingViewers'>) | null>();
   const service = client?.services.find((one) => one.id === serviceId);
   if (!client || !service || !(await ChatModel.exists({ _id: client.chatId, 'members.userId': userId }))) return null;
-  return { client, fallbackUrl: service.url ?? client.driveUrl ?? null };
+  // José 30/10: the space's admins, plus whoever an admin marked in THIS channel; Portal widens `billing` with it.
+  const seesBilling = canManageMembers(actor.role) || (client.billingViewers ?? []).some((one) => one.equals(userId));
+  return { client, fallbackUrl: service.url ?? client.driveUrl ?? null, seesBilling };
 }
 
-async function askerOf(userId: Types.ObjectId): Promise<Asker> {
+async function askerOf(userId: Types.ObjectId, seesBilling: boolean): Promise<Asker> {
   const user = await UserModel.findById(userId).select('name phone').lean();
-  return { id: String(userId), ...(user?.name ? { name: user.name } : {}), ...(user?.phone ? { phone: user.phone } : {}) };
+  return { id: String(userId), ...(user?.name ? { name: user.name } : {}), ...(user?.phone ? { phone: user.phone } : {}), ...(seesBilling ? { sees_billing: true as const } : {}) };
 }
 
 /** The person sees one screen; the log keeps agentes' code (product_failed, not-configured, invalid-input). */
@@ -52,11 +54,11 @@ function logUnanswered(label: string, reply: { status?: number | null; error?: s
 async function askAboutService<T>(ask: ServiceAsk<T>, workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId): Promise<AskOutcome<T> | NotFound> {
   const asked = await findAskedService(workspaceId, clientId, serviceId, userId);
   if (!asked) return notFound();
-  const { client, fallbackUrl } = asked;
+  const { client, fallbackUrl, seesBilling } = asked;
   const [installation, app, user] = await Promise.all([
     BotInstallationModel.findOne({ appId: client.appId, workspaceId: new Types.ObjectId(workspaceId), revokedAt: { $exists: false } }).lean(),
     BotAppModel.findById(client.appId).select('webhookUrl').lean(),
-    askerOf(userId),
+    askerOf(userId, seesBilling),
   ]);
   if (!installation || !app?.webhookUrl) return { ok: false, message: ask.failed, fallbackUrl };
   const reply = await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, ask.event, { client_id: clientId, service_id: serviceId, user }, ASK_TIMEOUT_MS);

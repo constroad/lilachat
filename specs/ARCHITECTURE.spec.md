@@ -4995,6 +4995,60 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 173. Cobranza, fichas y archivos dentro de Lilachat; quién ve la cobranza (30/10/2026, servidor + OTA + web)
+
+Pedido de José del 30/10: «todo me dice abre desde Portal… no me parece muy
+útil». Desde aquí el servicio se lee entero en Lilachat y Portal queda como
+enlace secundario al pie.
+
+- **Cobranza** (diseño f-05). `billing` llega dentro de `client.service.requested`,
+  con la forma cerrada con Portal (e7d3ffd7): `{ total, is_credit, due_at?,
+  collected, pending, detraction_rate?, items[{name,total,invoiced}],
+  payments[{date,amount,method?,reference?,voucher_url?}] }`.
+  - Todo va en soles; las fechas son días.
+  - El avance es `collected/total`.
+  - «vence en N días / venció hace N días» se cuenta en días de Lima.
+  - Código: `shared/src/serviceBilling.ts` (`billingOf`, `billingSummary`,
+    `dueStatus`, `moneyOf`), con la pestaña «Cobranza» solo si vino `billing`.
+  - Vista: `ServiceBilling` (app) y `ServiceBillingWeb`, con condición de pago,
+    estado de cobranza, partidas y pagos con su comprobante.
+- **Quién ve la cobranza** (decisión de José, Portal 9faab303). La ven los
+  admins del espacio y los miembros que un admin marque en ESE canal de cliente.
+  - `ClientChannel.billingViewers`.
+  - `GET` y `PUT /api/workspaces/:id/clients/:clientId/billing-viewers[/:userId]`,
+    solo admins; marcar exige estar en el canal.
+  - `client.service.requested` y `client.files.requested` mandan
+    `user.sees_billing: true` a quien la ve. Portal amplía `billing` con eso.
+  - UI: la fila «Quién ve la cobranza» en «Servicios», solo para un admin
+    (el servidor contesta 403 a los demás).
+- **Fichas** (`shared/src/serviceDetailSheet.ts › detailSheet`). Tocar un
+  pedido, despacho, informe o cotización abre su ficha dentro de Lilachat.
+  - Un pedido trae sus despachos, por `order_id`.
+  - Un despacho trae su chofer, su salida en Lima, su pedido y su guía.
+  - Un informe trae su PDF, o «todavía no tiene PDF guardado en el Portal».
+  - Una cotización trae sus partidas cuando agentes las mande (`quotes[].items`).
+  - Vista: `RecordSheet` (app) y `RecordSheetWeb`.
+- **Archivos en el visor** (`app/src/spaces/clients/useFileViewer.tsx`).
+  - Fotos y videos del Drive, comprobantes, guías y PDF de informes se abren en
+    el visor del chat; los PDF, en el visor de PDF de la app; el resto, con otra
+    app del teléfono.
+  - agentes confirmó que las URLs son archivos de lila, sin sesión de Portal y
+    con Range.
+  - En la web se abren directo de lila.
+- **Arreglos.**
+  - La pestaña tocada se desplaza hasta verse entera: «Cotizaciones» salía como
+    una «C» cortada.
+  - La copia del visor de PDF se nombraba por `seq`, que se repite en cada chat:
+    el PDF 12 del chat A abría como el 12 del chat B. Ahora va por URL
+    (`pdfCacheName(url)`).
+- **Pendiente de agentes y Portal:**
+  - campos del pedido (obra, precio, crédito, factura y pagos);
+  - el PDF de los informes que no lo tienen guardado;
+  - las guías;
+  - las partidas de las cotizaciones;
+  - `client.account.requested` (cotizaciones de todo el cliente, diseño f-08);
+  - la acción «Crear un cliente» de Portal, que abrirá el selector de clientes.
+
 ## 172. APK 0.1.175: compartir pantalla, guardia nativa del log y APK más liviano (30/10/2026)
 
 Lo que esperaba un APK porque toca lo nativo (cambia el runtime de las OTA):

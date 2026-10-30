@@ -1,3 +1,4 @@
+import { billingOf, moneyOf, type ServiceBilling } from './serviceBilling.js';
 /**
  * The detail of a client's service (José, 30/10: there was no way to see a
  * service's reports, orders and dispatches): agentes answers
@@ -11,7 +12,8 @@ export type DetailStatus = { label: string; tone: DetailTone };
 export type ServiceOrder = { id: string; date?: string; product?: string; quantity?: number; unit?: string; status: DetailStatus; url?: string };
 export type ServiceDispatch = { id: string; orderId?: string; at?: string; plate?: string; driver?: string; quantity?: number; unit?: string; status: DetailStatus; guideUrl?: string; url?: string };
 export type ServiceReport = { id: string; title: string; typeLabel?: string; date?: string; status: DetailStatus; pdfUrl?: string; url?: string };
-export type ServiceQuote = { id: string; code?: string; date?: string; total?: number; status: DetailStatus; url?: string };
+export type QuoteItem = { name: string; quantity?: number; unit?: string; unitPrice?: number; total?: number };
+export type ServiceQuote = { id: string; code?: string; date?: string; total?: number; status: DetailStatus; url?: string; items?: QuoteItem[] };
 export type DetailTotals = { orders: number; dispatches: number; reports: number; quotes?: number };
 export type ServiceDetail = {
   service: { id: string; name: string; stageLabel?: string; progress?: number; url?: string };
@@ -20,9 +22,11 @@ export type ServiceDetail = {
   reports: ServiceReport[];
   /** Portal leaves them out where amounts are not shown (a group, like the client channel): no tab then. */
   quotes?: ServiceQuote[];
+  /** Same rule as quotes: only in the private view (design f-05). */
+  billing?: ServiceBilling;
   totals: DetailTotals;
 };
-export type DetailTabKey = 'orders' | 'dispatches' | 'reports' | 'quotes';
+export type DetailTabKey = 'orders' | 'dispatches' | 'reports' | 'quotes' | 'billing';
 
 const LIST_MAX = 100;
 const TIME_ZONE = 'America/Lima';
@@ -45,7 +49,14 @@ const orderOf = (raw: Raw): ServiceOrder => defined({ id: text(raw.id)!, date: d
 const dispatchOf = (raw: Raw): ServiceDispatch =>
   defined({ id: text(raw.id)!, orderId: text(raw.order_id), at: instant(raw.at), plate: text(raw.plate), driver: text(raw.driver), quantity: count(raw.quantity), unit: text(raw.unit), status: statusOf(raw), guideUrl: https(raw.guide_url), url: https(raw.url) });
 const reportOf = (raw: Raw): ServiceReport => defined({ id: text(raw.id)!, title: text(raw.title) ?? 'Informe', typeLabel: text(raw.type_label), date: dateOnly(raw.date), status: statusOf(raw), pdfUrl: https(raw.pdf_url), url: https(raw.url) });
-const quoteOf = (raw: Raw): ServiceQuote => defined({ id: text(raw.id)!, code: text(raw.code), date: dateOnly(raw.date), total: count(raw.total), status: statusOf(raw), url: https(raw.url) });
+const quoteItemOf = (one: unknown): QuoteItem[] => {
+  const raw = record(one);
+  const name = text(raw?.name);
+  return raw && name ? [defined({ name, quantity: count(raw.quantity), unit: text(raw.unit), unitPrice: count(raw.unit_price), total: count(raw.total) })] : [];
+};
+/** Its line items only when agentes sends them (private view, `quotes:view`). */
+const quoteItemsOf = (value: unknown) => (Array.isArray(value) ? value.flatMap(quoteItemOf).slice(0, LIST_MAX) : undefined);
+const quoteOf = (raw: Raw): ServiceQuote => defined({ id: text(raw.id)!, code: text(raw.code), date: dateOnly(raw.date), total: count(raw.total), status: statusOf(raw), url: https(raw.url), items: quoteItemsOf(raw.items) });
 
 function listOf<T>(value: unknown, parse: (raw: Raw) => T): T[] | null {
   if (!Array.isArray(value)) return null;
@@ -80,12 +91,14 @@ export function serviceDetailOf(body: unknown): ServiceDetail | null {
   const reports = listOf(input?.reports, reportOf);
   if (!input || !service || !text(service.id) || !orders || !dispatches || !reports) return null;
   const quotes = input.quotes === undefined ? undefined : (listOf(input.quotes, quoteOf) ?? undefined);
+  const billing = billingOf(input.billing);
   return {
     service: serviceHeadOf(service),
     orders,
     dispatches,
     reports,
     ...(quotes ? { quotes } : {}),
+    ...(billing ? { billing } : {}),
     totals: totalsOf(input.totals, { orders, dispatches, reports, quotes }),
   };
 }
@@ -109,10 +122,9 @@ export function dayAndTimeOf(iso: string): string {
   return `${instantDayOf(iso)}, ${time.replace(/[\u00a0\u202f]/g, ' ')}`;
 }
 
-const amount = (quantity?: number, unit?: string) => (quantity === undefined ? undefined : `${quantity}${unit ? ` ${unit}` : ''}`);
+export const amount = (quantity?: number, unit?: string) => (quantity === undefined ? undefined : `${quantity}${unit ? ` ${unit}` : ''}`);
 const joined = (parts: (string | undefined)[]) => parts.filter(Boolean).join(' · ');
-let soles: Intl.NumberFormat | null = null;
-const money = (total?: number) => (total === undefined ? undefined : `S/ ${(soles ??= new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })).format(total)}`);
+const money = (total?: number) => (total === undefined ? undefined : moneyOf(total));
 
 /** One row of the detail, whatever the tab: what the person reads and what opens. */
 export type DetailRow = { id: string; title: string; line: string; status: DetailStatus; url?: string; file?: { url: string; label: string } };
@@ -121,7 +133,7 @@ const fileOf = (url: string | undefined, label: string) => (url ? { file: { url,
 const urlOf = (url: string | undefined) => (url ? { url } : {});
 
 const orderRow = (order: ServiceOrder): DetailRow => ({ id: order.id, title: order.product ?? 'Pedido', line: joined([amount(order.quantity, order.unit), order.date ? dayOf(order.date) : 'sin fecha']), status: order.status, ...urlOf(order.url) });
-const dispatchRow = (dispatch: ServiceDispatch): DetailRow => ({
+export const dispatchRow = (dispatch: ServiceDispatch): DetailRow => ({
   id: dispatch.id,
   title: dispatch.plate ?? 'Despacho',
   line: joined([amount(dispatch.quantity, dispatch.unit), dispatch.at ? dayAndTimeOf(dispatch.at) : undefined, dispatch.driver]),
@@ -144,24 +156,31 @@ function reportLine(report: ServiceReport): string {
 const reportRow = (report: ServiceReport): DetailRow => ({ id: report.id, title: report.title, line: reportLine(report), status: report.status, ...urlOf(report.url), ...fileOf(report.pdfUrl, 'PDF') });
 const quoteRow = (quote: ServiceQuote): DetailRow => ({ id: quote.id, title: quote.code ?? 'Cotización', line: joined([money(quote.total), quote.date ? dayOf(quote.date) : undefined]), status: quote.status, ...urlOf(quote.url) });
 
-/** The rows of one tab: a pedido has no number of its own in Portal, a dispatch shows its departure or the planned hour. */
+/** The rows of one tab: a pedido has no number of its own in Portal, a dispatch shows its departure or the planned hour. «Cobranza» has its own view. */
 export function detailRows(detail: ServiceDetail, tab: DetailTabKey): DetailRow[] {
   if (tab === 'orders') return detail.orders.map(orderRow);
   if (tab === 'dispatches') return detail.dispatches.map(dispatchRow);
   if (tab === 'reports') return detail.reports.map(reportRow);
-  return (detail.quotes ?? []).map(quoteRow);
+  if (tab === 'quotes') return (detail.quotes ?? []).map(quoteRow);
+  return [];
 }
 
 /** «Mostrando 100 de 148» when Portal has more than it sent; the rest is in Portal. */
 export const moreInPortal = (shown: number, total: number): string | null => (total > shown ? `Mostrando ${shown} de ${total}` : null);
 
-const TAB_NAMES: Record<DetailTabKey, string> = { orders: 'Pedidos', dispatches: 'Despachos', reports: 'Informes', quotes: 'Cotizaciones' };
+const TAB_NAMES: Record<DetailTabKey, string> = { orders: 'Pedidos', dispatches: 'Despachos', reports: 'Informes', quotes: 'Cotizaciones', billing: 'Cobranza' };
 
 /** What an empty tab says. */
-export const DETAIL_EMPTY: Record<DetailTabKey, string> = { orders: 'Este servicio todavía no tiene pedidos.', dispatches: 'Todavía no hay despachos.', reports: 'Todavía no hay informes.', quotes: 'Sin cotizaciones.' };
+export const DETAIL_EMPTY: Record<DetailTabKey, string> = { orders: 'Este servicio todavía no tiene pedidos.', dispatches: 'Todavía no hay despachos.', reports: 'Todavía no hay informes.', quotes: 'Sin cotizaciones.', billing: 'Sin cobranza.' };
 
-/** The detail's tabs with Portal's real counts; «Cotizaciones» only when they came. */
+/** The detail's tabs with Portal's real counts; «Cotizaciones» and «Cobranza» only when they came. */
 export function detailTabs(detail: ServiceDetail): { key: DetailTabKey; label: string }[] {
-  const keys: DetailTabKey[] = ['orders', 'dispatches', 'reports', ...(detail.quotes ? (['quotes'] as const) : [])];
-  return keys.map((key) => ({ key, label: `${TAB_NAMES[key]} · ${detail.totals[key] ?? 0}` }));
+  const keys: DetailTabKey[] = ['orders', 'dispatches', 'reports', ...(detail.quotes ? (['quotes'] as const) : []), ...(detail.billing ? (['billing'] as const) : [])];
+  return keys.map((key) => ({ key, label: key === 'billing' ? TAB_NAMES.billing : `${TAB_NAMES[key]} · ${detail.totals[key] ?? 0}` }));
+}
+
+/** «15 nov 2026»: a calendar day with its year, for a due date. */
+export function longDayOf(date: string): string {
+  const year = DATE_ONLY.exec(date)?.[1];
+  return year ? `${dayOf(date)} ${year}` : date;
 }

@@ -13,7 +13,16 @@ import type { BotInstallation } from './botModels.js';
  * (José, 29/10); every later PUT adds an admin promoted since. Live or archived
  * is worked out from the state when read, never stored.
  */
-export type ClientChannel = ClientState & { _id: Types.ObjectId; workspaceId: Types.ObjectId; appId: Types.ObjectId; clientId: string; chatId: Types.ObjectId; updatedAt: Date };
+export type ClientChannel = ClientState & {
+  _id: Types.ObjectId;
+  workspaceId: Types.ObjectId;
+  appId: Types.ObjectId;
+  clientId: string;
+  chatId: Types.ObjectId;
+  /** Channel members an admin marked to see the collection (José 30/10); admins always see it. */
+  billingViewers: Types.ObjectId[];
+  updatedAt: Date;
+};
 type Installation = Pick<BotInstallation, '_id' | 'appId' | 'workspaceId' | 'botUserId'>;
 type ClientsError = { status: 400 | 404; error: string; message: string };
 
@@ -31,6 +40,7 @@ const clientChannelSchema = new Schema<ClientChannel>(
     lastOrderAt: { type: String, default: null },
     ordersTotal: { type: Number, default: 0 },
     services: { type: [serviceSchema], default: [] },
+    billingViewers: { type: [Schema.Types.ObjectId], default: [] },
   },
   { timestamps: { createdAt: false, updatedAt: true } },
 );

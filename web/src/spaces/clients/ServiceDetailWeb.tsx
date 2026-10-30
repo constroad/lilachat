@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { ChevronLeft, ExternalLink, FileText } from 'lucide-react';
-import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailTabs, moreInPortal, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailSheet, detailTabs, moreInPortal, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { RecordSheetWeb } from './RecordSheetWeb';
+import { ServiceBillingWeb } from './ServiceBillingWeb';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
 
@@ -34,14 +36,14 @@ function ServiceHead({ service }: { service: SpaceClientService }) {
   );
 }
 
-function RowView({ row }: { row: DetailRow }) {
-  const title = row.url ? <a href={row.url} target="_blank" rel="noreferrer" className="hover:underline">{row.title}</a> : row.title;
+/** José 30/10: the row opens its sheet inside Lilachat; the file opens straight from lila, not in Portal. */
+function RowView({ row, onOpen }: { row: DetailRow; onOpen: (id: string) => void }) {
   return (
     <li data-testid={`fila-${row.id}`} className="flex min-h-[56px] items-center gap-3 px-4 py-2.5">
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold">{title}</p>
+      <button type="button" onClick={() => onOpen(row.id)} className="min-w-0 flex-1 text-left">
+        <p className="truncate text-sm font-semibold hover:underline">{row.title}</p>
         {row.line ? <p className="truncate text-[12px] text-on-surface-variant">{row.line}</p> : null}
-      </div>
+      </button>
       {row.file ? (
         <a href={row.file.url} target="_blank" rel="noreferrer" data-testid={`archivo-${row.id}`} className="inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold text-primary hover:underline"><FileText size={14} /> {row.file.label}</a>
       ) : null}
@@ -52,18 +54,23 @@ function RowView({ row }: { row: DetailRow }) {
 
 function DetailTabs({ detail }: { detail: ServiceDetail }) {
   const [tab, setTab] = useState<DetailTabKey>('orders');
+  const [openId, setOpenId] = useState<string | null>(null);
   const rows = detailRows(detail, tab);
-  const more = moreInPortal(rows.length, detail.totals[tab] ?? rows.length);
+  const more = tab === 'billing' ? null : moreInPortal(rows.length, detail.totals[tab] ?? rows.length);
+  const sheet = openId ? detailSheet(detail, tab, openId) : null;
   return (
     <>
       <div role="tablist" className="flex gap-1 overflow-x-auto rounded-xl border border-outline/15 bg-surface p-1">
         {detailTabs(detail).map((one) => (
-          <button key={one.key} type="button" role="tab" aria-selected={tab === one.key} data-testid={`pestana-detalle-${one.key}`} onClick={() => setTab(one.key)} className={`h-9 shrink-0 rounded-lg px-3 text-sm ${tab === one.key ? 'bg-primary font-semibold text-on-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>{one.label}</button>
+          <button key={one.key} type="button" role="tab" aria-selected={tab === one.key} data-testid={`pestana-detalle-${one.key}`} onClick={(event) => { setTab(one.key); event.currentTarget.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }} className={`h-9 shrink-0 rounded-lg px-3 text-sm ${tab === one.key ? 'bg-primary font-semibold text-on-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>{one.label}</button>
         ))}
       </div>
-      <ul className="divide-y divide-outline/10 overflow-hidden rounded-xl border border-outline/15 bg-surface">
-        {rows.length ? rows.map((row) => <RowView key={row.id} row={row} />) : <li className="p-4 text-sm text-on-surface-variant">{DETAIL_EMPTY[tab]}</li>}
-      </ul>
+      {tab === 'billing' && detail.billing ? <ServiceBillingWeb billing={detail.billing} /> : (
+        <ul className="divide-y divide-outline/10 overflow-hidden rounded-xl border border-outline/15 bg-surface">
+          {rows.length ? rows.map((row) => <RowView key={row.id} row={row} onOpen={setOpenId} />) : <li className="p-4 text-sm text-on-surface-variant">{DETAIL_EMPTY[tab]}</li>}
+        </ul>
+      )}
+      {sheet ? <RecordSheetWeb sheet={sheet} onClose={() => setOpenId(null)} /> : null}
       {more ? <p className="text-center text-[12px] text-on-surface-variant">{`${more} · el resto está en el Portal`}</p> : null}
       {detail.service.url ? <PortalLink url={detail.service.url} label="Abrir en el Portal" testId="abrir-servicio-portal" /> : null}
     </>

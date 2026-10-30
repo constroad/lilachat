@@ -63,7 +63,7 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
     <>
       {tab === 'services' && client ? (
         <View className="bg-background" style={COVER}>
-          <ClientServices client={client} records={records} onOpenRecord={toMessage} target={target} />
+          <ClientServices client={client} records={records} onOpenRecord={toMessage} target={target} members={params.names} me={params.yo} />
         </View>
       ) : null}
       {tab === 'checklist' ? (

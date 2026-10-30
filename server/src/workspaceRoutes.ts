@@ -27,6 +27,7 @@ import { CUSTOM_EMOJI_MAX_BYTES } from '@lilachat/shared';
 import { addCustomEmoji, listCustomEmojis, removeCustomEmoji } from './customEmojiCatalog.js';
 import { clientRecords, listClients } from './bots/botClients.js';
 import { clientServiceDetail, clientServiceFiles } from './bots/clientFiles.js';
+import { listBillingViewers, setBillingViewer } from './bots/clientBillingViewers.js';
 
 /** Tries of a code per person and minute: enough to fix a typo, not to guess codes. */
 const CODE_TRIES_PER_MINUTE = 10;
@@ -106,6 +107,9 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
     if ('error' in found) return res.status(found.status).json({ error: found.error, message: found.message });
     res.json(found.ok ? { detail: found.value } : { error: 'detail_failed', message: found.message, portal_url: found.fallbackUrl });
   }));
+  // José 30/10: who else sees a client's collection, chosen by an admin per client channel.
+  router.get('/:id/clients/:clientId/billing-viewers', handled(async (req, res) => res.json(await listBillingViewers(req.params.id!, req.params.clientId!, me(req)))));
+  router.put('/:id/clients/:clientId/billing-viewers/:userId', handled(async (req, res) => res.json(await setBillingViewer(req.params.id!, req.params.clientId!, me(req), req.params.userId!, req.body ?? {}))));
   router.get('/:id/channels', handled(async (req, res) => res.json({ channels: await listChannels(req.params.id!, me(req)) })));
   router.post('/:id/channels', handled(async (req, res) => res.status(201).json({ channel: await createChannel(req.params.id!, me(req), req.body ?? {}) })));
   // Pending 19: the space's own emojis (designs c-06/c-07). Too big a file is a 400, not a 500.

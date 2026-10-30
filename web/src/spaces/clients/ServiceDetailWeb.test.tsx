@@ -42,6 +42,27 @@ describe('ServiceDetailWeb', () => {
     expect(screen.getByText('Todavía no hay informes.')).toBeInTheDocument();
   });
 
+  it('a row opens its sheet inside Lilachat: an order with its dispatches, Portal only at the foot', async () => {
+    vi.stubGlobal('fetch', reply({ detail: { ...detail, dispatches: [{ ...detail.dispatches[0], orderId: 'o1' }] } }));
+    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
+    fireEvent.click(await screen.findByText('Asfalto MAC 2'));
+    expect(screen.getByTestId('ficha-registro')).toHaveTextContent('Cantidad120 m³');
+    expect(screen.getByTestId('relacionado-d1')).toHaveTextContent('ABC-123');
+    expect(screen.queryByTestId('ficha-en-portal')).toBeNull();
+  });
+
+  it('«Cobranza» shows the credit, what is pending and the line items when billing came', async () => {
+    const billing = { isCredit: true, dueAt: '2099-01-10', total: 1000, collected: 250, pending: 750, items: [{ name: 'Transporte a obra', total: 600, invoiced: true }], payments: [] };
+    vi.stubGlobal('fetch', reply({ detail: { ...detail, billing } }));
+    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
+    fireEvent.click(await screen.findByTestId('pestana-detalle-billing'));
+    expect(screen.getByTestId('condicion-de-pago')).toHaveTextContent('Vence el 10 ene 2099');
+    expect(screen.getByTestId('estado-de-cobranza')).toHaveTextContent('25 % cobrado');
+    expect(screen.getByTestId('estado-de-cobranza')).toHaveTextContent('S/ 750.00');
+    expect(screen.getByTestId('partidas')).toHaveTextContent('Facturada');
+    expect(screen.getByTestId('pagos')).toHaveTextContent('Todavía no hay pagos registrados.');
+  });
+
   it('when the app fails it says so with Portal’s link; «Servicios» goes back', async () => {
     const onBack = vi.fn();
     vi.stubGlobal('fetch', reply({ error: 'detail_failed', message: 'No se pudo traer el detalle del servicio', portal_url: 'https://portal.constroad.com/s/318' }));

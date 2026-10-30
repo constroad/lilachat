@@ -20,6 +20,7 @@ let answer: { status: number; body: unknown } = { status: 200, body: {} };
 let received: { type?: string; data?: Record<string, unknown>; space?: string }[] = [];
 let jose: Types.ObjectId;
 let outsider: Types.ObjectId;
+let ana: Types.ObjectId;
 let spaceId: Types.ObjectId;
 const app = buildApp();
 const auth = (userId: Types.ObjectId) => ({ Authorization: `Bearer ${signSession({ userId: String(userId), deviceId: `d-${userId}`, email: 'x@x.com' })}` });
@@ -53,13 +54,13 @@ beforeEach(async () => {
   received = [];
   answer = { status: 200, body: { files: [{ name: 'densidades.pdf', mime: 'application/pdf', url: 'https://lila.constroad.com/f/1', folder: 'Informes', size_bytes: 1800000 }], drive_url: 'https://drive.google.com/drive/folders/x' } };
   await Promise.all([UserModel, ChatModel, WorkspaceModel, WorkspaceMemberModel, BotAppModel, BotInstallationModel, ClientChannelModel].map((model) => (model as unknown as mongoose.Model<unknown>).deleteMany({})));
-  [jose, outsider] = (await UserModel.create([{ phone: '51902049935', name: 'José' }, { phone: '51911111111', name: 'Otro' }])).map((user) => user._id) as [Types.ObjectId, Types.ObjectId];
+  [jose, outsider, ana] = (await UserModel.create([{ phone: '51902049935', name: 'José' }, { phone: '51911111111', name: 'Otro' }, { phone: '51922222222', name: 'Ana' }])).map((user) => user._id) as [Types.ObjectId, Types.ObjectId, Types.ObjectId];
   spaceId = (await WorkspaceModel.create({ name: 'Test', ownerId: jose, joinCode: 'TEST-7K3P' }))._id;
-  await WorkspaceMemberModel.create([{ workspaceId: spaceId, userId: jose, phone: '51902049935', role: 'owner', status: 'active' }, { workspaceId: spaceId, userId: outsider, phone: '51911111111', role: 'member', status: 'active' }]);
+  await WorkspaceMemberModel.create([{ workspaceId: spaceId, userId: jose, phone: '51902049935', role: 'owner', status: 'active' }, { workspaceId: spaceId, userId: outsider, phone: '51911111111', role: 'member', status: 'active' }, { workspaceId: spaceId, userId: ana, phone: '51922222222', role: 'member', status: 'active' }]);
   const botUser = (await UserModel.create({ phone: 'bot-portal', name: 'Portal' }))._id;
   const appDoc = await BotAppModel.create({ clientId: 'lca_portal', clientSecretHash: 'x', name: 'Portal', redirectUris: ['https://agentes.example.com/cb'], webhookUrl: hookUrl });
   await BotInstallationModel.create({ appId: appDoc._id, workspaceId: spaceId, botUserId: botUser, tokenHash: 'h1', signingSecret: 'secret', installedBy: jose });
-  const chat = await ChatModel.create({ kind: 'group', name: 'constructora-via-sur', workspaceId: spaceId, channel: { visibility: 'private' }, members: [{ userId: botUser, role: 'member' }, { userId: jose, role: 'admin' }], lastSeq: 0 });
+  const chat = await ChatModel.create({ kind: 'group', name: 'constructora-via-sur', workspaceId: spaceId, channel: { visibility: 'private' }, members: [{ userId: botUser, role: 'member' }, { userId: jose, role: 'admin' }, { userId: ana, role: 'member' }], lastSeq: 0 });
   await ClientChannelModel.create({ workspaceId: spaceId, appId: appDoc._id, clientId: 'cli-cvs', chatId: chat._id, name: 'Constructora Vía Sur', services: [{ id: 'srv-318', name: 'Pavimentación', status: 'in_progress', url: 'https://portal.example.com/s/318' }] });
 });
 
@@ -68,7 +69,7 @@ describe('the service Drive on demand', () => {
     // Act
     const response = await filesOf(jose).expect(200);
     // Assert
-    expect(received).toEqual([{ type: 'client.files.requested', space: String(spaceId), data: { client_id: 'cli-cvs', service_id: 'srv-318', user: { id: String(jose), name: 'José', phone: '51902049935' } } }]);
+    expect(received).toEqual([{ type: 'client.files.requested', space: String(spaceId), data: { client_id: 'cli-cvs', service_id: 'srv-318', user: { id: String(jose), name: 'José', phone: '51902049935', sees_billing: true } } }]);
     expect(response.body.files).toEqual([expect.objectContaining({ name: 'densidades.pdf', folder: 'Informes', sizeBytes: 1800000 })]);
     expect(response.body.drive_url).toBe('https://drive.google.com/drive/folders/x');
   });
@@ -106,7 +107,7 @@ describe('the service detail on demand (José, 30/10: pedidos, despachos e infor
     // Act
     const response = await detailOf(jose).expect(200);
     // Assert
-    expect(received).toEqual([{ type: 'client.service.requested', space: String(spaceId), data: { client_id: 'cli-cvs', service_id: 'srv-318', user: { id: String(jose), name: 'José', phone: '51902049935' } } }]);
+    expect(received).toEqual([{ type: 'client.service.requested', space: String(spaceId), data: { client_id: 'cli-cvs', service_id: 'srv-318', user: { id: String(jose), name: 'José', phone: '51902049935', sees_billing: true } } }]);
     expect(response.body.detail.orders).toEqual([{ id: 'o1', date: '2026-10-12', product: 'Asfalto', quantity: 24, unit: 'm³', status: { label: 'Despachado', tone: 'ok' } }]);
     expect(response.body.detail.totals.orders).toBe(148);
   });
@@ -121,3 +122,42 @@ describe('the service detail on demand (José, 30/10: pedidos, despachos e infor
   });
 });
 
+
+describe('who sees the collection (José 30/10: «los admins y podemos asignar algún otro miembro del canal»)', () => {
+  const viewersOf = (who: Types.ObjectId) => request(app).get(`/api/workspaces/${spaceId}/clients/cli-cvs/billing-viewers`).set(auth(who));
+  const mark = (who: Types.ObjectId, target: Types.ObjectId, sees: boolean) => request(app).put(`/api/workspaces/${spaceId}/clients/cli-cvs/billing-viewers/${target}`).set(auth(who)).send({ sees });
+  const seesBillingSent = () => (received.at(-1)?.data?.user as { sees_billing?: boolean } | undefined)?.sees_billing;
+
+  it('a channel member who is not an admin does not get sees_billing', async () => {
+    // Act
+    await detailOf(ana).expect(200);
+    // Assert
+    expect(seesBillingSent()).toBeUndefined();
+  });
+
+  it('an admin marks her and she gets it on the detail and the Drive; unmarked, it goes away', async () => {
+    // Act
+    expect((await mark(jose, ana, true).expect(200)).body).toEqual({ viewers: [String(ana)] });
+    await detailOf(ana).expect(200);
+    const afterMark = seesBillingSent();
+    await filesOf(ana).expect(200);
+    const onDrive = seesBillingSent();
+    await mark(jose, ana, false).expect(200);
+    await detailOf(ana).expect(200);
+    // Assert
+    expect(afterMark).toBe(true);
+    expect(onDrive).toBe(true);
+    expect(seesBillingSent()).toBeUndefined();
+    expect((await viewersOf(jose).expect(200)).body).toEqual({ viewers: [] });
+  });
+
+  it('marking twice keeps one; only admins mark or list; only members of the channel can be marked', async () => {
+    await mark(jose, ana, true).expect(200);
+    expect((await mark(jose, ana, true).expect(200)).body.viewers).toEqual([String(ana)]);
+    expect((await mark(ana, ana, true)).status).toBe(403);
+    expect((await viewersOf(ana)).status).toBe(403);
+    expect((await mark(jose, outsider, true)).status).toBe(404);
+    expect((await request(app).put(`/api/workspaces/${spaceId}/clients/otro/billing-viewers/${ana}`).set(auth(jose)).send({ sees: true })).status).toBe(404);
+    expect((await mark(jose, ana, 'si' as unknown as boolean)).status).toBe(400);
+  });
+});

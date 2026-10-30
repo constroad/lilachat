@@ -3,6 +3,7 @@ import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-nat
 import { Archive, ChevronRight, ExternalLink, FileText, Search } from 'lucide-react-native';
 import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, shortDate, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
+import { BillingViewers } from './BillingViewers';
 import { ServiceDetailView } from './ServiceDetailView';
 import { STATUS_TONE } from './tones';
 import type { ServiceAskTarget } from './useServiceAsk';
@@ -82,7 +83,7 @@ function ServiceCard(props: { service: SpaceClientService; records: ClientRecord
  * Tapping the service opens its expediente (José, 30/10); the Drive moved to
  * «Archivos».
  */
-export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord: (seq: number) => void; target: ServiceAskTarget | null }) {
+export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord: (seq: number) => void; target: ServiceAskTarget | null; members: ReadonlyMap<string, string>; me: string }) {
   const [opened, setOpened] = useState<SpaceClientService | null>(null);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<ServiceFilter>('all');
@@ -93,6 +94,7 @@ export function ClientServices(props: { client: SpaceClient; records: ClientReco
   const total = props.client.services.length;
   return (
     <ScrollView testID="servicios-cliente" contentContainerStyle={{ padding: 16, gap: 12 }}>
+      {props.target ? <BillingViewers target={props.target} members={props.members} me={props.me} /> : null}
       {total > 1 ? <ServiceFilters query={query} onQuery={setQuery} filter={filter} onFilter={setFilter} counts={counts} /> : null}
       {total === 0 ? <Text className="pt-10 text-center text-[14px] text-on-surface-variant">Este cliente todavía no tiene servicios.</Text> : null}
       {total > 0 && services.length === 0 ? <Text className="pt-6 text-center text-[14px] text-on-surface-variant">Ningún servicio con ese filtro.</Text> : null}

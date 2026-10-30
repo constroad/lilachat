@@ -19,8 +19,20 @@ export function chatPdfs(messages: readonly MessageLike[]): ChatPdf[] {
   return pdfs.sort((a, b) => b.seq - a.seq);
 }
 
-/** The working copy: one per message, so reopening it does not download again. */
-export const pdfCacheName = (seq: number): string => `pdf-view-${seq}.pdf`;
+const HASH_SEED = 5381;
+const HASH_SHIFT = 5;
+const HASH_RADIX = 36;
+
+/**
+ * The working copy: one per FILE, so reopening it does not download again.
+ * By URL and not by `seq`: a seq repeats in every chat, and the copy of
+ * chat A's message 12 opened as chat B's (found 30/10).
+ */
+export function pdfCacheName(url: string): string {
+  let hash = HASH_SEED;
+  for (let index = 0; index < url.length; index += 1) hash = ((hash << HASH_SHIFT) + hash + url.charCodeAt(index)) >>> 0;
+  return `pdf-view-${hash.toString(HASH_RADIX)}-${url.length.toString(HASH_RADIX)}.pdf`;
+}
 
 export type PdfFailure = 'protected' | 'download' | 'damaged';
 

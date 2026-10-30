@@ -28,9 +28,13 @@ describe('pdfSource', () => {
     expect(isPdf(undefined)).toBe(false);
   });
 
-  it('names the working copy by message', () => {
-    // Act / Assert
-    expect(pdfCacheName(42)).toBe('pdf-view-42.pdf');
+  it('names the working copy by file, not by message: a seq repeats in every chat', () => {
+    // Act
+    const first = pdfCacheName('https://lila.constroad.com/files/a.pdf');
+    // Assert
+    expect(first).toMatch(/^pdf-view-[a-z0-9-]+\.pdf$/);
+    expect(pdfCacheName('https://lila.constroad.com/files/a.pdf')).toBe(first);
+    expect(pdfCacheName('https://lila.constroad.com/files/b.pdf')).not.toBe(first);
   });
 
   it('reads the renderer\'s codes and anything else as damaged', () => {

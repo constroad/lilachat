@@ -1,4 +1,5 @@
 import { compareNames } from './compareText.js';
+import { instantDayOf } from './serviceDetail.js';
 /**
  * The Drive of a client's service, on demand (pending 121, design f-06):
  * agentes answers `client.files.requested` with the files Portal keeps for
@@ -61,3 +62,9 @@ export function searchServiceFiles(files: readonly ServiceFile[], query: string)
   if (term.length < SEARCH_MIN) return [...files];
   return files.filter((file) => plain(`${file.name} ${file.folder ?? ''}`).includes(term));
 }
+
+const BYTES_PER_MB = 1_048_576;
+
+/** The second line of a Drive file: «Informes · 2.4 MB · 21 oct», the day as it was in Lima. */
+export const driveFileLine = (file: ServiceFile): string =>
+  [file.folder, file.sizeBytes !== undefined ? `${(file.sizeBytes / BYTES_PER_MB).toFixed(1)} MB` : undefined, file.modifiedAt && !Number.isNaN(Date.parse(file.modifiedAt)) ? instantDayOf(file.modifiedAt) : undefined].filter(Boolean).join(' · ');

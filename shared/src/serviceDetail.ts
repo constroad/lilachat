@@ -55,6 +55,22 @@ function listOf<T>(value: unknown, parse: (raw: Raw) => T): T[] | null {
   }).slice(0, LIST_MAX);
 }
 
+function serviceHeadOf(service: Raw): ServiceDetail['service'] {
+  return defined({ id: text(service.id)!, name: text(service.name) ?? 'Servicio', stageLabel: text(service.stage_label), progress: count(service.progress), url: https(service.url) });
+}
+
+/** Portal's real counts; the length of what came when it sends none. */
+function totalsOf(raw: unknown, lists: Pick<ServiceDetail, 'orders' | 'dispatches' | 'reports' | 'quotes'>): DetailTotals {
+  const totals = record(raw) ?? {};
+  const { orders, dispatches, reports, quotes } = lists;
+  return defined({
+    orders: count(totals.orders) ?? orders.length,
+    dispatches: count(totals.dispatches) ?? dispatches.length,
+    reports: count(totals.reports) ?? reports.length,
+    quotes: quotes ? (count(totals.quotes) ?? quotes.length) : undefined,
+  });
+}
+
 /** agentes' 200 body, validated (https links only, a known tone or neutral, 100 per list). `null` if it is not that shape. */
 export function serviceDetailOf(body: unknown): ServiceDetail | null {
   const input = record(body);
@@ -64,14 +80,13 @@ export function serviceDetailOf(body: unknown): ServiceDetail | null {
   const reports = listOf(input?.reports, reportOf);
   if (!input || !service || !text(service.id) || !orders || !dispatches || !reports) return null;
   const quotes = input.quotes === undefined ? undefined : (listOf(input.quotes, quoteOf) ?? undefined);
-  const totals = record(input.totals) ?? {};
   return {
-    service: defined({ id: text(service.id)!, name: text(service.name) ?? 'Servicio', stageLabel: text(service.stage_label), progress: count(service.progress), url: https(service.url) }),
+    service: serviceHeadOf(service),
     orders,
     dispatches,
     reports,
     ...(quotes ? { quotes } : {}),
-    totals: defined({ orders: count(totals.orders) ?? orders.length, dispatches: count(totals.dispatches) ?? dispatches.length, reports: count(totals.reports) ?? reports.length, quotes: quotes ? (count(totals.quotes) ?? quotes.length) : undefined }),
+    totals: totalsOf(input.totals, { orders, dispatches, reports, quotes }),
   };
 }
 
@@ -84,28 +99,54 @@ export function dayOf(date: string): string {
 let clock: Intl.DateTimeFormat | null = null;
 let limaDay: Intl.DateTimeFormat | null = null;
 
-/** «12 oct, 9:05 a. m.» in Lima; the formatters are built once (Hermes, OOM 30/10). */
+/** «12 oct» for an instant, as the day it was in Lima; the formatter is built once (Hermes, OOM 30/10). */
+export const instantDayOf = (iso: string): string => dayOf((limaDay ??= new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' })).format(new Date(iso)));
+
+/** «12 oct, 9:05 a. m.» in Lima. */
 export function dayAndTimeOf(iso: string): string {
-  const at = new Date(iso);
-  const day = (limaDay ??= new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' })).format(at);
-  const time = (clock ??= new Intl.DateTimeFormat('es-PE', { timeZone: TIME_ZONE, hour: 'numeric', minute: '2-digit', hourCycle: 'h12' })).format(at);
+  const time = (clock ??= new Intl.DateTimeFormat('es-PE', { timeZone: TIME_ZONE, hour: 'numeric', minute: '2-digit', hourCycle: 'h12' })).format(new Date(iso));
   // ICU puts narrow no-break spaces in «a. m.»; plain spaces read the same everywhere.
-  return `${dayOf(day)}, ${time.replace(/[\u00a0\u202f]/g, ' ')}`;
+  return `${instantDayOf(iso)}, ${time.replace(/[\u00a0\u202f]/g, ' ')}`;
 }
 
 const amount = (quantity?: number, unit?: string) => (quantity === undefined ? undefined : `${quantity}${unit ? ` ${unit}` : ''}`);
 const joined = (parts: (string | undefined)[]) => parts.filter(Boolean).join(' · ');
+let soles: Intl.NumberFormat | null = null;
+const money = (total?: number) => (total === undefined ? undefined : `S/ ${(soles ??= new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })).format(total)}`);
 
-/** «Asfalto MAC 2 · 24 m³ · 12 oct»; a pedido has no number of its own in Portal. */
-export const orderLine = (order: ServiceOrder): string => joined([order.product ?? 'Pedido', amount(order.quantity, order.unit), order.date ? dayOf(order.date) : 'sin fecha']);
+/** One row of the detail, whatever the tab: what the person reads and what opens. */
+export type DetailRow = { id: string; title: string; line: string; status: DetailStatus; url?: string; file?: { url: string; label: string } };
 
-/** «ABC-123 · 12 m³ · 12 oct, 9:05 a. m.»: the departure, or the planned hour if it has not left. */
-export const dispatchLine = (dispatch: ServiceDispatch): string => joined([dispatch.plate ?? 'Despacho', amount(dispatch.quantity, dispatch.unit), dispatch.at ? dayAndTimeOf(dispatch.at) : undefined]);
+const fileOf = (url: string | undefined, label: string) => (url ? { file: { url, label } } : {});
+const urlOf = (url: string | undefined) => (url ? { url } : {});
+
+const orderRow = (order: ServiceOrder): DetailRow => ({ id: order.id, title: order.product ?? 'Pedido', line: joined([amount(order.quantity, order.unit), order.date ? dayOf(order.date) : 'sin fecha']), status: order.status, ...urlOf(order.url) });
+const dispatchRow = (dispatch: ServiceDispatch): DetailRow => ({
+  id: dispatch.id,
+  title: dispatch.plate ?? 'Despacho',
+  line: joined([amount(dispatch.quantity, dispatch.unit), dispatch.at ? dayAndTimeOf(dispatch.at) : undefined, dispatch.driver]),
+  status: dispatch.status,
+  ...urlOf(dispatch.url),
+  ...fileOf(dispatch.guideUrl, 'Guía'),
+});
+const reportRow = (report: ServiceReport): DetailRow => ({ id: report.id, title: report.title, line: joined([report.typeLabel, report.date ? dayOf(report.date) : undefined]), status: report.status, ...urlOf(report.url), ...fileOf(report.pdfUrl, 'PDF') });
+const quoteRow = (quote: ServiceQuote): DetailRow => ({ id: quote.id, title: quote.code ?? 'Cotización', line: joined([money(quote.total), quote.date ? dayOf(quote.date) : undefined]), status: quote.status, ...urlOf(quote.url) });
+
+/** The rows of one tab: a pedido has no number of its own in Portal, a dispatch shows its departure or the planned hour. */
+export function detailRows(detail: ServiceDetail, tab: DetailTabKey): DetailRow[] {
+  if (tab === 'orders') return detail.orders.map(orderRow);
+  if (tab === 'dispatches') return detail.dispatches.map(dispatchRow);
+  if (tab === 'reports') return detail.reports.map(reportRow);
+  return (detail.quotes ?? []).map(quoteRow);
+}
 
 /** «Mostrando 100 de 148» when Portal has more than it sent; the rest is in Portal. */
 export const moreInPortal = (shown: number, total: number): string | null => (total > shown ? `Mostrando ${shown} de ${total}` : null);
 
 const TAB_NAMES: Record<DetailTabKey, string> = { orders: 'Pedidos', dispatches: 'Despachos', reports: 'Informes', quotes: 'Cotizaciones' };
+
+/** What an empty tab says. */
+export const DETAIL_EMPTY: Record<DetailTabKey, string> = { orders: 'Este servicio todavía no tiene pedidos.', dispatches: 'Todavía no hay despachos.', reports: 'Todavía no hay informes.', quotes: 'Sin cotizaciones.' };
 
 /** The detail's tabs with Portal's real counts; «Cotizaciones» only when they came. */
 export function detailTabs(detail: ServiceDetail): { key: DetailTabKey; label: string }[] {

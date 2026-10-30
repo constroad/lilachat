@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Archive, ExternalLink, FileText, FolderOpen, Search } from 'lucide-react-native';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, shortDate, type ServiceFilter, type ClientRecord, type ClientServiceStatus, type SpaceClient } from '@lilachat/shared';
+import { Archive, ChevronRight, ExternalLink, FileText, Search } from 'lucide-react-native';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, shortDate, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
-import { ServiceDriveScreen } from './ServiceDriveScreen';
+import { ServiceDetailView } from './ServiceDetailView';
+import { STATUS_TONE } from './tones';
+import type { ServiceAskTarget } from './useServiceAsk';
 
 /** The parts of a client's channel (design f-03): the archived banner, the note over the composer and «Servicios». */
 export function ArchivedClientBanner(props: { client: SpaceClient }) {
@@ -25,82 +27,78 @@ export function ArchivedComposerNote(props: { client: SpaceClient | null }) {
   return props.client && !props.client.live ? <Text testID="nota-archivado" className="bg-background pt-2 text-center text-[13px] text-on-surface-variant">{ARCHIVED_COMPOSER_NOTE}</Text> : null;
 }
 
-const STATUS_TONE: Record<ClientServiceStatus, string> = {
-  pending: 'border-warning/30 bg-warning/10 text-warning',
-  in_progress: 'border-primary/30 bg-primary/10 text-primary',
-  completed: 'border-en-linea/30 bg-en-linea/10 text-en-linea',
-  rejected: 'border-error/30 bg-error/10 text-error',
-};
+function ServiceFilters(props: { query: string; onQuery: (query: string) => void; filter: ServiceFilter; onFilter: (filter: ServiceFilter) => void; counts: Record<ServiceFilter, number> }) {
+  const colors = useColores();
+  return (
+    <View className="gap-2">
+      <View className="h-11 flex-row items-center gap-2 rounded-xl border border-outline/15 bg-surface px-3">
+        <Search size={16} color={colors['on-surface-variant']} />
+        <TextInput testID="buscar-servicio" value={props.query} onChangeText={props.onQuery} placeholder="Buscar servicio" placeholderTextColor={colors['on-surface-variant']} className="flex-1 text-[14px] text-on-surface" />
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+        {(Object.keys(SERVICE_FILTER_LABELS) as ServiceFilter[]).map((key) => (
+          <Pressable key={key} testID={`filtro-servicio-${key}`} onPress={() => props.onFilter(key)} accessibilityState={{ selected: props.filter === key }} className={`min-h-[36px] flex-row items-center gap-1.5 rounded-full border px-3 ${props.filter === key ? 'border-primary bg-primary' : 'border-outline/20 bg-surface'}`}>
+            <Text className={`text-[13px] font-semibold ${props.filter === key ? 'text-on-primary' : 'text-on-surface-variant'}`}>{`${SERVICE_FILTER_LABELS[key]} · ${props.counts[key]}`}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+/** Tapping the head opens its expediente; without the space (no way to ask), its Portal link. */
+function ServiceCard(props: { service: SpaceClientService; records: ClientRecord[] | null; canOpen: boolean; onOpen: () => void; onOpenRecord: (seq: number) => void }) {
+  const colors = useColores();
+  const { service } = props;
+  const action = props.canOpen ? props.onOpen : service.url ? () => service.url && void Linking.openURL(service.url) : undefined;
+  return (
+    <View testID={`servicio-${service.id}`} className="rounded-2xl border border-outline/15 bg-surface p-4">
+      <Pressable testID={`abrir-servicio-${service.id}`} disabled={!action} onPress={action}>
+        <View className="flex-row items-start gap-3">
+          <Text className="flex-1 text-[15px] font-semibold text-on-surface">{service.name}</Text>
+          <Text className={`rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{service.stage_label || CLIENT_SERVICE_STATUS_LABELS[service.status]}</Text>
+        </View>
+        {service.progress !== undefined ? (
+          <View className="mt-3 flex-row items-center gap-3">
+            <View className="h-1.5 flex-1 overflow-hidden rounded-full bg-background"><View className="h-full rounded-full bg-primary" style={{ width: `${service.progress}%` }} /></View>
+            <Text className="text-[12px] font-semibold text-on-surface-variant">{`${service.progress} %`}</Text>
+          </View>
+        ) : null}
+        {action ? (
+          <View className="mt-3 min-h-[36px] flex-row items-center gap-1.5">
+            <Text className="text-[14px] font-semibold text-primary">{props.canOpen ? 'Pedidos, despachos e informes' : 'Ver en el Portal'}</Text>
+            {props.canOpen ? <ChevronRight size={16} color={colors.primary} /> : <ExternalLink size={15} color={colors.primary} />}
+          </View>
+        ) : null}
+      </Pressable>
+      <ServiceRecords records={props.records} onOpen={props.onOpenRecord} />
+    </View>
+  );
+}
 
 /**
- * «Servicios»: the client's Drive on top (José, 29/10), then each service with
- * its state, its progress, «Ver en el Drive» and its records (informes,
- * quotes, payments) — tapping one goes to its message in the chat.
+ * «Servicios»: each service with its state, its progress and its records
+ * (informes, quotes, payments) — tapping one goes to its message in the chat.
+ * Tapping the service opens its expediente (José, 30/10); the Drive moved to
+ * «Archivos».
  */
-export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord: (seq: number) => void; drive?: { jwt: string; spaceId: string } }) {
-  const [driveOf, setDriveOf] = useState<{ id: string; name: string } | null>(null);
-  const colors = useColores();
+export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord: (seq: number) => void; target: ServiceAskTarget | null }) {
+  const [opened, setOpened] = useState<SpaceClientService | null>(null);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<ServiceFilter>('all');
+  const close = useCallback(() => setOpened(null), []);
   const { services, counts } = filterServices(props.client.services, { query, filter });
   const grouped = props.records ? recordsByService(props.records) : null;
-  const driveUrl = props.client.drive_url;
+  if (opened && props.target) return <ServiceDetailView target={props.target} service={opened} onBack={close} />;
+  const total = props.client.services.length;
   return (
     <ScrollView testID="servicios-cliente" contentContainerStyle={{ padding: 16, gap: 12 }}>
-      {driveUrl ? (
-        <Pressable testID="drive-cliente" onPress={() => void Linking.openURL(driveUrl)} className="min-h-[60px] flex-row items-center gap-3 rounded-2xl border border-outline/15 bg-surface p-4">
-          <FolderOpen size={22} color={colors.primary} />
-          <View className="min-w-0 flex-1">
-            <Text className="text-[15px] font-semibold text-on-surface">Drive del cliente</Text>
-            <Text className="text-[12px] text-on-surface-variant">Todas sus carpetas en el Portal</Text>
-          </View>
-          <ExternalLink size={16} color={colors['on-surface-variant']} />
-        </Pressable>
-      ) : null}
-      {props.client.services.length > 1 ? (
-        <View className="gap-2">
-          <View className="h-11 flex-row items-center gap-2 rounded-xl border border-outline/15 bg-surface px-3">
-            <Search size={16} color={colors['on-surface-variant']} />
-            <TextInput testID="buscar-servicio" value={query} onChangeText={setQuery} placeholder="Buscar servicio" placeholderTextColor={colors['on-surface-variant']} className="flex-1 text-[14px] text-on-surface" />
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-            {(Object.keys(SERVICE_FILTER_LABELS) as ServiceFilter[]).map((key) => (
-              <Pressable key={key} testID={`filtro-servicio-${key}`} onPress={() => setFilter(key)} accessibilityState={{ selected: filter === key }} className={`min-h-[36px] flex-row items-center gap-1.5 rounded-full border px-3 ${filter === key ? 'border-primary bg-primary' : 'border-outline/20 bg-surface'}`}>
-                <Text className={`text-[13px] font-semibold ${filter === key ? 'text-on-primary' : 'text-on-surface-variant'}`}>{`${SERVICE_FILTER_LABELS[key]} · ${counts[key]}`}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-      ) : null}
-      {props.client.services.length === 0 ? <Text className="pt-10 text-center text-[14px] text-on-surface-variant">Este cliente todavía no tiene servicios.</Text> : null}
-      {props.client.services.length > 0 && services.length === 0 ? <Text className="pt-6 text-center text-[14px] text-on-surface-variant">Ningún servicio con ese filtro.</Text> : null}
+      {total > 1 ? <ServiceFilters query={query} onQuery={setQuery} filter={filter} onFilter={setFilter} counts={counts} /> : null}
+      {total === 0 ? <Text className="pt-10 text-center text-[14px] text-on-surface-variant">Este cliente todavía no tiene servicios.</Text> : null}
+      {total > 0 && services.length === 0 ? <Text className="pt-6 text-center text-[14px] text-on-surface-variant">Ningún servicio con ese filtro.</Text> : null}
       {services.map((service) => (
-        <View key={service.id} testID={`servicio-${service.id}`} className="rounded-2xl border border-outline/15 bg-surface p-4">
-          <View className="flex-row items-start gap-3">
-            <Text className="flex-1 text-[15px] font-semibold text-on-surface">{service.name}</Text>
-            <Text className={`rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{service.stage_label || CLIENT_SERVICE_STATUS_LABELS[service.status]}</Text>
-          </View>
-          {service.progress !== undefined ? (
-            <View className="mt-3 flex-row items-center gap-3">
-              <View className="h-1.5 flex-1 overflow-hidden rounded-full bg-background"><View className="h-full rounded-full bg-primary" style={{ width: `${service.progress}%` }} /></View>
-              <Text className="text-[12px] font-semibold text-on-surface-variant">{`${service.progress} %`}</Text>
-            </View>
-          ) : null}
-          {props.drive ? (
-            <Pressable testID={`servicio-drive-${service.id}`} onPress={() => setDriveOf({ id: service.id, name: service.name })} className="mt-3 min-h-[44px] flex-row items-center gap-1.5">
-              <FolderOpen size={16} color={colors.primary} />
-              <Text className="text-[14px] font-semibold text-primary">Drive del servicio</Text>
-            </Pressable>
-          ) : service.url ? (
-            <Pressable testID={`servicio-drive-${service.id}`} onPress={() => service.url && void Linking.openURL(service.url)} className="mt-3 min-h-[44px] flex-row items-center gap-1.5">
-              <ExternalLink size={16} color={colors.primary} />
-              <Text className="text-[14px] font-semibold text-primary">Ver en el Drive</Text>
-            </Pressable>
-          ) : null}
-          <ServiceRecords records={grouped ? (grouped.get(service.id) ?? []) : null} onOpen={props.onOpenRecord} />
-        </View>
+        <ServiceCard key={service.id} service={service} records={grouped ? (grouped.get(service.id) ?? []) : null} canOpen={Boolean(props.target)} onOpen={() => setOpened(service)} onOpenRecord={props.onOpenRecord} />
       ))}
-      {props.drive ? <ServiceDriveScreen jwt={props.drive.jwt} spaceId={props.drive.spaceId} clientId={props.client.id} service={driveOf} onClose={() => setDriveOf(null)} /> : null}
     </ScrollView>
   );
 }

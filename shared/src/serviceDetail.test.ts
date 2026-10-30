@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detailTabs, dispatchLine, moreInPortal, orderLine, serviceDetailOf } from './serviceDetail.js';
+import { detailRows, detailTabs, moreInPortal, serviceDetailOf } from './serviceDetail.js';
 
 /** The detail of a client's service (José, 30/10: «qué informes hay, qué pedidos, qué despachos»), from `client.service.requested`. */
 const body = {
@@ -33,15 +33,26 @@ describe('serviceDetailOf', () => {
   });
 });
 
-describe('lines and tabs', () => {
-  it('an order reads product · quantity · day, the day without moving to the day before in Lima', () => {
-    const [first, second] = serviceDetailOf(body)!.orders;
-    expect(orderLine(first!)).toBe('Asfalto MAC 2 · 24 m³ · 12 oct');
-    expect(orderLine(second!)).toBe('Imprimación · sin fecha');
+describe('rows and tabs', () => {
+  it('an order reads product, then quantity · day, the day without moving to the day before in Lima', () => {
+    const [first, second] = detailRows(serviceDetailOf(body)!, 'orders');
+    expect(first).toEqual({ id: 'o1', title: 'Asfalto MAC 2', line: '24 m³ · 12 oct', status: { label: 'Despachado', tone: 'ok' }, url: 'https://portal.constroad.com/o/1' });
+    expect(second).toEqual({ id: 'o2', title: 'Imprimación', line: 'sin fecha', status: { label: 'Pendiente', tone: 'warn' } });
   });
 
-  it('a dispatch reads plate · quantity · day and hour in Lima', () => {
-    expect(dispatchLine(serviceDetailOf(body)!.dispatches[0]!)).toBe('ABC-123 · 12 m³ · 12 oct, 9:05 a. m.');
+  it('a dispatch reads the plate, then quantity · day and hour in Lima · driver, with its guide', () => {
+    const detail = serviceDetailOf({ ...body, dispatches: [{ ...body.dispatches[0], driver: 'Rosa Quispe' }] })!;
+    expect(detailRows(detail, 'dispatches')[0]).toEqual({ id: 'd1', title: 'ABC-123', line: '12 m³ · 12 oct, 9:05 a. m. · Rosa Quispe', status: { label: 'En ruta', tone: 'info' }, file: { url: 'https://lila.constroad.com/g/1', label: 'Guía' } });
+  });
+
+  it('a report reads its title, then type · day, with its PDF', () => {
+    expect(detailRows(serviceDetailOf(body)!, 'reports')[0]).toEqual({ id: 'r1', title: 'Densidades de campo', line: 'Densidad · 13 oct', status: { label: 'Completado', tone: 'ok' }, file: { url: 'https://lila.constroad.com/r/1.pdf', label: 'PDF' } });
+  });
+
+  it('a quote reads its code, then the total in soles · day; nothing when they did not come', () => {
+    const detail = serviceDetailOf({ ...body, quotes: [{ id: 'q1', code: 'COT-2026-0142', total: 48380, date: '2026-10-14', status_label: 'Aceptada', tone: 'ok' }] })!;
+    expect(detailRows(detail, 'quotes')[0]).toMatchObject({ title: 'COT-2026-0142', line: 'S/ 48,380.00 · 14 oct' });
+    expect(detailRows(serviceDetailOf(body)!, 'quotes')).toEqual([]);
   });
 
   it('«100 de 148» only when Portal has more than it sent; quotes only when they came', () => {

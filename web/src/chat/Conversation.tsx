@@ -17,7 +17,8 @@ import type { Mencionable } from './SugerenciasDeMencion';
 import type { NotaDeVozGrabada } from './useGrabadoraDeVoz';
 import { ListaDeMensajes } from './ListaDeMensajes';
 import { useWorkPlanWeb, WorkPlanWeb } from './workPlan/WorkPlanWeb';
-import { PendingWeb, StageFilesWeb, TaskDetailWeb, type OpenTask } from './workPlan/WorkListsWeb';
+import { PendingWeb, TaskDetailWeb, type OpenTask } from './workPlan/WorkListsWeb';
+import { ClientFilesWeb } from '../spaces/clients/ClientFilesWeb';
 import { stageFiles } from '@lilachat/shared';
 import { useClientOfChat } from '../spaces/clients/useSpaceClients';
 import { ArchivedClientBanner, ArchivedComposerNote, ClientServices } from '../spaces/clients/ClientChannelParts';
@@ -160,8 +161,8 @@ export function Conversation(props: {
       {isClientChannel && client ? <ChannelTabs tab={channelTab} onTab={setChannelTab} counter={workPlan.summary?.total ? `${workPlan.summary.done}/${workPlan.summary.total}` : null} services={client.services.length} files={workPlan.stages?.length ? stageFiles(workPlan.stages).total : null} overdue={Boolean(workPlan.summary?.overdue)} /> : null}
       {isClientChannel && client ? <ArchivedClientBanner client={client} /> : null}
       {openTask && workPlan.stages ? <TaskDetailWeb open={openTask} stages={workPlan.stages} onChanged={() => void workPlan.reload()} onOpenMessage={toMessage} onClose={() => setOpenTask(null)} /> : null}
-      {isClientChannel && channelTab === 'files' ? (
-        <StageFilesWeb stages={workPlan.stages ?? []} onOpenMessage={toMessage} />
+      {isClientChannel && client && channelTab === 'files' ? (
+        <ClientFilesWeb client={client} target={props.jwtParaEnlaces && chat.workspaceId ? { jwt: props.jwtParaEnlaces, spaceId: chat.workspaceId, clientId: client.id } : null} stages={workPlan.stages ?? []} onOpenMessage={toMessage} />
       ) : isClientChannel && channelTab === 'pending' ? (
         <PendingWeb stages={workPlan.stages ?? []} onOpen={setOpenTask} />
       ) : isClientChannel && channelTab === 'checklist' ? (
@@ -323,7 +324,7 @@ type ChannelTab = 'chat' | 'services' | 'checklist' | 'files' | 'pending';
 /** «Servicios» asks for its records only while it is open. */
 function ClientServicesPanel(props: { client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; onOpenRecord: (seq: number) => void }) {
   const records = useClientRecords(props.jwt, props.spaceId, props.client.id);
-  return <ClientServices client={props.client} records={records} onOpenRecord={props.onOpenRecord} drive={props.jwt && props.spaceId ? { jwt: props.jwt, spaceId: props.spaceId } : undefined} />;
+  return <ClientServices client={props.client} records={records} onOpenRecord={props.onOpenRecord} target={props.jwt && props.spaceId ? { jwt: props.jwt, spaceId: props.spaceId, clientId: props.client.id } : null} />;
 }
 
 /** A client's channel (José 29/10: only those): «Chat · Servicios N · Checklist · Archivos · Pendientes» (designs f-03 and e2-17). */
@@ -332,7 +333,9 @@ function ChannelTabs(props: { tab: ChannelTab; onTab: (tab: ChannelTab) => void;
     { key: 'chat' as const, label: 'Chat', badge: null },
     { key: 'services' as const, label: 'Servicios', badge: props.services ? String(props.services) : null },
     { key: 'checklist' as const, label: 'Checklist', badge: props.counter },
-    ...(props.files !== null ? [{ key: 'files' as const, label: 'Archivos', badge: props.files ? String(props.files) : null }, { key: 'pending' as const, label: 'Pendientes', badge: null }] : []),
+    // José 30/10: «Archivos» always (the checklist's files and Portal's Drive); «Pendientes» once there is a checklist.
+    { key: 'files' as const, label: 'Archivos', badge: props.files ? String(props.files) : null },
+    ...(props.files !== null ? [{ key: 'pending' as const, label: 'Pendientes', badge: null }] : []),
   ];
   return (
     <div role="tablist" className="flex gap-6 overflow-x-auto border-b border-outline/15 bg-surface px-4">

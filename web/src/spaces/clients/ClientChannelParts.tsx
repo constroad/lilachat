@@ -1,7 +1,9 @@
-import { ServiceDriveWeb } from './ServiceDriveWeb';
 import { useState } from 'react';
-import { Archive, ExternalLink, FileText, FolderOpen, Search } from 'lucide-react';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, shortDate, type ServiceFilter, type ClientRecord, type ClientServiceStatus, type SpaceClient } from '@lilachat/shared';
+import { Archive, ChevronRight, ExternalLink, FileText, Search } from 'lucide-react';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, shortDate, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
+import { ServiceDetailWeb } from './ServiceDetailWeb';
+import { STATUS_TONE } from './tones';
+import type { ServiceAskTarget } from './useServiceAsk';
 
 /** The parts of a client's channel (design f-03): the archived banner, the note over the composer and «Servicios». */
 export function ArchivedClientBanner(props: { client: SpaceClient }) {
@@ -22,71 +24,88 @@ export function ArchivedComposerNote(props: { client: SpaceClient }) {
   return props.client.live ? null : <p data-testid="nota-archivado" className="border-t border-outline/15 bg-surface px-4 pt-2 text-center text-[12px] text-on-surface-variant">{ARCHIVED_COMPOSER_NOTE}</p>;
 }
 
-const STATUS_TONE: Record<ClientServiceStatus, string> = {
-  pending: 'border-warning/30 bg-warning/10 text-warning',
-  in_progress: 'border-primary/30 bg-primary/10 text-primary',
-  completed: 'border-en-linea/30 bg-en-linea/10 text-en-linea',
-  rejected: 'border-error/30 bg-error/10 text-error',
-};
+function ServiceFilters(props: { query: string; onQuery: (query: string) => void; filter: ServiceFilter; onFilter: (filter: ServiceFilter) => void; counts: Record<ServiceFilter, number> }) {
+  return (
+    <div className="flex flex-col gap-2 md:flex-row md:items-center">
+      <label className="flex h-9 flex-1 items-center gap-2 rounded-lg border border-outline/15 bg-surface px-3">
+        <Search size={15} className="text-on-surface-variant" />
+        <input data-testid="buscar-servicio" value={props.query} onChange={(event) => props.onQuery(event.target.value)} placeholder="Buscar servicio" aria-label="Buscar servicio" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
+      </label>
+      <div role="group" aria-label="Filtrar por estado" className="flex flex-wrap gap-1.5">
+        {(Object.keys(SERVICE_FILTER_LABELS) as ServiceFilter[]).map((key) => (
+          <button key={key} type="button" data-testid={`filtro-servicio-${key}`} aria-pressed={props.filter === key} onClick={() => props.onFilter(key)} className={`h-8 rounded-full border px-3 text-[12px] font-semibold ${props.filter === key ? 'border-primary bg-primary text-on-primary' : 'border-outline/20 bg-surface text-on-surface-variant hover:text-on-surface'}`}>{`${SERVICE_FILTER_LABELS[key]} · ${props.counts[key]}`}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ServiceSummary({ service }: { service: SpaceClientService }) {
+  return (
+    <>
+      <span className="flex items-start gap-3">
+        <span className="min-w-0 flex-1 font-semibold">{service.name}</span>
+        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{service.stage_label || CLIENT_SERVICE_STATUS_LABELS[service.status]}</span>
+      </span>
+      {service.progress !== undefined ? (
+        <span className="mt-3 flex items-center gap-3">
+          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-background"><span className="block h-full rounded-full bg-primary" style={{ width: `${service.progress}%` }} /></span>
+          <span className="text-[12px] font-semibold tabular-nums text-on-surface-variant">{`${service.progress} %`}</span>
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+/** The head opens its expediente; without the space (no way to ask), its Portal link. */
+function ServiceCard(props: { service: SpaceClientService; records: ClientRecord[] | null; canOpen: boolean; onOpen: () => void; onOpenRecord?: (seq: number) => void }) {
+  const { service } = props;
+  const head = 'block w-full text-left';
+  return (
+    <article data-testid={`servicio-${service.id}`} className="rounded-xl border border-outline/15 bg-surface p-4">
+      {props.canOpen ? (
+        <button type="button" data-testid={`abrir-servicio-${service.id}`} onClick={props.onOpen} className={head}>
+          <ServiceSummary service={service} />
+          <span className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-primary">Pedidos, despachos e informes <ChevronRight size={14} /></span>
+        </button>
+      ) : (
+        <div className={head}>
+          <ServiceSummary service={service} />
+          {service.url ? <a href={service.url} target="_blank" rel="noreferrer" data-testid={`abrir-servicio-${service.id}`} className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary"><ExternalLink size={14} /> Ver en el Portal</a> : null}
+        </div>
+      )}
+      <ServiceRecords records={props.records} onOpen={props.onOpenRecord} />
+    </article>
+  );
+}
 
 /**
- * «Servicios»: the client's Drive on top (José, 29/10), then each service with
- * its state, its progress (the client portal's), «Ver en el Drive» and its
- * records (informes, quotes, payments) — tapping one goes to its message.
+ * «Servicios»: each service with its state, its progress (the client portal's)
+ * and its records (informes, quotes, payments) — tapping one goes to its
+ * message. The service opens its expediente (José, 30/10); the Drive moved to
+ * «Archivos».
  */
-export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord?: (seq: number) => void; drive?: { jwt: string; spaceId: string } }) {
+export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord?: (seq: number) => void; target: ServiceAskTarget | null }) {
   const [query, setQuery] = useState('');
-  const [driveOf, setDriveOf] = useState<{ id: string; name: string } | null>(null);
+  const [opened, setOpened] = useState<SpaceClientService | null>(null);
   const [filter, setFilter] = useState<ServiceFilter>('all');
   const { services, counts } = filterServices(props.client.services, { query, filter });
   const grouped = props.records ? recordsByService(props.records) : null;
+  const total = props.client.services.length;
   return (
     <div data-testid="servicios-cliente" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-6">
-      {driveOf && props.drive ? <ServiceDriveWeb jwt={props.drive.jwt} spaceId={props.drive.spaceId} clientId={props.client.id} service={driveOf} onClose={() => setDriveOf(null)} /> : null}
-      <div className="mx-auto flex max-w-3xl flex-col gap-3">
-        {props.client.drive_url ? (
-          <a href={props.client.drive_url} target="_blank" rel="noreferrer" data-testid="drive-cliente" className="flex items-center gap-3 rounded-xl border border-outline/15 bg-surface p-4 hover:bg-background">
-            <FolderOpen size={20} className="text-primary" />
-            <span className="min-w-0 flex-1"><span className="block font-semibold">Drive del cliente</span><span className="block text-[12px] text-on-surface-variant">Todas sus carpetas en el Portal</span></span>
-            <ExternalLink size={16} className="text-on-surface-variant" />
-          </a>
-        ) : null}
-        {props.client.services.length > 1 ? (
-          <div className="flex flex-col gap-2 md:flex-row md:items-center">
-            <label className="flex h-9 flex-1 items-center gap-2 rounded-lg border border-outline/15 bg-surface px-3">
-              <Search size={15} className="text-on-surface-variant" />
-              <input data-testid="buscar-servicio" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar servicio" aria-label="Buscar servicio" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
-            </label>
-            <div role="group" aria-label="Filtrar por estado" className="flex flex-wrap gap-1.5">
-              {(Object.keys(SERVICE_FILTER_LABELS) as ServiceFilter[]).map((key) => (
-                <button key={key} type="button" data-testid={`filtro-servicio-${key}`} aria-pressed={filter === key} onClick={() => setFilter(key)} className={`h-8 rounded-full border px-3 text-[12px] font-semibold ${filter === key ? 'border-primary bg-primary text-on-primary' : 'border-outline/20 bg-surface text-on-surface-variant hover:text-on-surface'}`}>{`${SERVICE_FILTER_LABELS[key]} · ${counts[key]}`}</button>
-              ))}
-            </div>
-          </div>
-        ) : null}
-        {props.client.services.length === 0 ? <p className="pt-10 text-center text-sm text-on-surface-variant">Este cliente todavía no tiene servicios.</p> : null}
-        {props.client.services.length > 0 && services.length === 0 ? <p className="pt-6 text-center text-sm text-on-surface-variant">Ningún servicio con ese filtro.</p> : null}
-        {services.map((service) => (
-          <article key={service.id} data-testid={`servicio-${service.id}`} className="rounded-xl border border-outline/15 bg-surface p-4">
-            <div className="flex items-start gap-3">
-              <p className="min-w-0 flex-1 font-semibold">{service.name}</p>
-              <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{service.stage_label || CLIENT_SERVICE_STATUS_LABELS[service.status]}</span>
-            </div>
-            {service.progress !== undefined ? (
-              <div className="mt-3 flex items-center gap-3">
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-background"><div className="h-full rounded-full bg-primary" style={{ width: `${service.progress}%` }} /></div>
-                <span className="text-[12px] font-semibold tabular-nums text-on-surface-variant">{`${service.progress} %`}</span>
-              </div>
-            ) : null}
-            {props.drive ? (
-              <button type="button" data-testid={`servicio-drive-${service.id}`} onClick={() => setDriveOf({ id: service.id, name: service.name })} className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary"><FolderOpen size={14} /> Drive del servicio</button>
-            ) : service.url ? (
-              <a href={service.url} target="_blank" rel="noreferrer" data-testid={`servicio-drive-${service.id}`} className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary"><ExternalLink size={14} /> Ver en el Drive</a>
-            ) : null}
-            <ServiceRecords records={grouped ? (grouped.get(service.id) ?? []) : null} onOpen={props.onOpenRecord} />
-          </article>
-        ))}
-      </div>
+      {opened && props.target ? (
+        <ServiceDetailWeb target={props.target} service={opened} onBack={() => setOpened(null)} />
+      ) : (
+        <div className="mx-auto flex max-w-3xl flex-col gap-3">
+          {total > 1 ? <ServiceFilters query={query} onQuery={setQuery} filter={filter} onFilter={setFilter} counts={counts} /> : null}
+          {total === 0 ? <p className="pt-10 text-center text-sm text-on-surface-variant">Este cliente todavía no tiene servicios.</p> : null}
+          {total > 0 && services.length === 0 ? <p className="pt-6 text-center text-sm text-on-surface-variant">Ningún servicio con ese filtro.</p> : null}
+          {services.map((service) => (
+            <ServiceCard key={service.id} service={service} records={grouped ? (grouped.get(service.id) ?? []) : null} canOpen={Boolean(props.target)} onOpen={() => setOpened(service)} onOpenRecord={props.onOpenRecord} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

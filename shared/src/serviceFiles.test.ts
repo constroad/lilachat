@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SERVICE_FILES_MAX, driveFolders, filesInFolder, searchServiceFiles, serviceFilesOf } from './serviceFiles.js';
+import { SERVICE_FILES_MAX, driveFolders, filesInFolder, searchServiceFiles, serviceFilesOf, driveFileLine } from './serviceFiles.js';
 
 /** The service's Drive on demand (pending 121, design f-06): what agentes answers to `client.files.requested`. */
 const file = (name: string, folder?: string, extra: object = {}) => ({ name, mime: 'application/pdf', url: `https://lila.constroad.com/f/${name}`, ...(folder ? { folder } : {}), ...extra });
@@ -40,5 +40,13 @@ describe('folders and search', () => {
     expect(searchServiceFiles(files, 'dia 2').map((one) => one.name)).toEqual(['c.jpg']);
     expect(searchServiceFiles(files, 'INFORM').map((one) => one.name)).toEqual(['a.pdf']);
     expect(searchServiceFiles(files, 'a')).toEqual(files);
+  });
+});
+
+describe('driveFileLine', () => {
+  it('folder · MB · day in Lima, skipping what is missing', () => {
+    expect(driveFileLine({ name: 'a.pdf', mime: 'application/pdf', url: 'https://x/a', folder: 'Informes', sizeBytes: 2_516_582, modifiedAt: '2026-10-21T15:00:00.000Z' })).toBe('Informes · 2.4 MB · 21 oct');
+    expect(driveFileLine({ name: 'b.jpg', mime: 'image/jpeg', url: 'https://x/b', modifiedAt: '2026-10-22T03:30:00.000Z' })).toBe('21 oct');
+    expect(driveFileLine({ name: 'c', mime: 'x', url: 'https://x/c' })).toBe('');
   });
 });

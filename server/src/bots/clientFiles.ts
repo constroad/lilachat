@@ -20,36 +20,50 @@ const notFound = (): NotFound => ({ status: 404, error: 'service_not_found', mes
 
 type ServiceAsk<T> = { event: Extract<BotEventType, `client.${string}.requested`>; parse: (body: unknown) => T | null; failed: string; label: string };
 
+type AskedService = { client: Pick<ClientChannel, 'appId' | 'chatId' | 'driveUrl' | 'services'>; fallbackUrl: string | null };
+type Asker = { id: string; name?: string; phone?: string };
+
+/** The service, only for a member of the client's PRIVATE channel and only if the app listed it in its last PUT (Portal only checks the company). */
+async function findAskedService(workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId): Promise<AskedService | null> {
+  await actorIn(workspaceId, userId);
+  if (!CLIENT_ID.test(clientId) || !CLIENT_ID.test(serviceId)) return null;
+  const client = await ClientChannelModel.findOne({ workspaceId: new Types.ObjectId(workspaceId), clientId }).select('appId chatId driveUrl services').lean<AskedService['client'] | null>();
+  const service = client?.services.find((one) => one.id === serviceId);
+  if (!client || !service || !(await ChatModel.exists({ _id: client.chatId, 'members.userId': userId }))) return null;
+  return { client, fallbackUrl: service.url ?? client.driveUrl ?? null };
+}
+
+async function askerOf(userId: Types.ObjectId): Promise<Asker> {
+  const user = await UserModel.findById(userId).select('name phone').lean();
+  return { id: String(userId), ...(user?.name ? { name: user.name } : {}), ...(user?.phone ? { phone: user.phone } : {}) };
+}
+
+/** The person sees one screen; the log keeps agentes' code (product_failed, not-configured, invalid-input). */
+function logUnanswered(label: string, reply: { status?: number; error?: string; body?: unknown }): void {
+  const code = (reply.body as { code?: unknown } | null)?.code;
+  console.warn(`[clientes] ${label} sin respuesta:`, reply.status ?? reply.error, typeof code === 'string' ? code : '');
+}
+
 /**
  * Asks the app that owns a client about one of its services, answered in the
- * same request (pending 121 Drive; José 30/10 detail). Only a member of the
- * client's PRIVATE channel asks, and only for a service the app listed in its
- * last PUT (Portal only checks the company). Nothing is stored: the links
- * never expire, so they only show inside that channel.
+ * same request (pending 121 Drive; José 30/10 detail). Nothing is stored: the
+ * links never expire, so they only show inside that channel.
  */
 async function askAboutService<T>(ask: ServiceAsk<T>, workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId): Promise<AskOutcome<T> | NotFound> {
-  await actorIn(workspaceId, userId);
-  if (!CLIENT_ID.test(clientId) || !CLIENT_ID.test(serviceId)) return notFound();
-  const client = await ClientChannelModel.findOne({ workspaceId: new Types.ObjectId(workspaceId), clientId }).select('appId chatId driveUrl services').lean<Pick<ClientChannel, 'appId' | 'chatId' | 'driveUrl' | 'services'> | null>();
-  const service = client?.services.find((one) => one.id === serviceId);
-  if (!client || !service || !(await ChatModel.exists({ _id: client.chatId, 'members.userId': userId }))) return notFound();
-  const fallbackUrl = service.url ?? client.driveUrl ?? null;
+  const asked = await findAskedService(workspaceId, clientId, serviceId, userId);
+  if (!asked) return notFound();
+  const { client, fallbackUrl } = asked;
   const [installation, app, user] = await Promise.all([
     BotInstallationModel.findOne({ appId: client.appId, workspaceId: new Types.ObjectId(workspaceId), revokedAt: { $exists: false } }).lean(),
     BotAppModel.findById(client.appId).select('webhookUrl').lean(),
-    UserModel.findById(userId).select('name phone').lean(),
+    askerOf(userId),
   ]);
   if (!installation || !app?.webhookUrl) return { ok: false, message: ask.failed, fallbackUrl };
-  const reply = await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, ask.event, { client_id: clientId, service_id: serviceId, user: { id: String(userId), ...(user?.name ? { name: user.name } : {}), ...(user?.phone ? { phone: user.phone } : {}) } }, ASK_TIMEOUT_MS);
+  const reply = await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, ask.event, { client_id: clientId, service_id: serviceId, user }, ASK_TIMEOUT_MS);
   const value = reply.status === 200 ? ask.parse(reply.body) : null;
-  if (value) {
-    recordLastDelivery(installation._id, { ok: true });
-    return { ok: true, value };
-  }
-  // The person sees one screen; the log keeps agentes' code (product_failed, not-configured, invalid-input).
-  const code = (reply.body as { code?: unknown } | null)?.code;
-  console.warn(`[clientes] ${ask.label} sin respuesta:`, reply.status ?? reply.error, typeof code === 'string' ? code : '');
-  recordLastDelivery(installation._id, { ok: false, error: reply.error ?? `HTTP ${reply.status}` });
+  recordLastDelivery(installation._id, value ? { ok: true } : { ok: false, error: reply.error ?? `HTTP ${reply.status}` });
+  if (value) return { ok: true, value };
+  logUnanswered(ask.label, reply);
   return { ok: false, message: ask.failed, fallbackUrl };
 }
 

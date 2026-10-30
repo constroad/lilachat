@@ -3,10 +3,11 @@ import { BackHandler, Pressable, ScrollView, Text, ToastAndroid, View } from 're
 import { checklistMembers, stageFiles, type SpaceClient } from '@lilachat/shared';
 import { useWorkPlan } from './useWorkPlan';
 import { WorkPlanPanel } from './WorkPlanPanel';
-import { PendingPanel, StageFilesPanel } from './WorkListsPanels';
+import { PendingPanel } from './WorkListsPanels';
 import { TaskDetailSheet, type OpenTask } from './TaskDetailSheet';
 import { useClientOfChat, useClientRecords } from '../../spaces/clients/useSpaceClients';
 import { ArchivedClientBanner, ArchivedComposerNote, ClientServices } from '../../spaces/clients/ClientChannelParts';
+import { ClientFilesPanel } from '../../spaces/clients/ClientFilesPanel';
 
 type Tab = 'chat' | 'services' | 'checklist' | 'files' | 'pending';
 const COVER = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, elevation: 10 } as const;
@@ -17,7 +18,8 @@ const COVER = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zInd
  * chat keeps its place and its keyboard when you go back. Only in a space's
  * channels: elsewhere the pieces are `null`. A client's channel (pending 21,
  * design f-03) adds «Servicios N», and archived its banner and the note over
- * the composer.
+ * the composer. «Archivos» is always there (José 30/10): the checklist's files
+ * and Portal's Drive per service, in one tab.
  */
 export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: string; channelName: string; yo: string; names: ReadonlyMap<string, string>; spaceId?: string; onOpenRecord?: (seq: number) => void }): { tabs: ReactNode; panel: ReactNode; note: ReactNode; client: SpaceClient | null } {
   const [tab, setTab] = useState<Tab>('chat');
@@ -40,6 +42,7 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
   const stages = plan.stages ?? [];
   const filesTotal = stageFiles(stages).total;
   const nameOf = (userId: string) => params.names.get(userId) ?? 'Alguien';
+  const target = params.spaceId ? { jwt: params.jwt, spaceId: params.spaceId, clientId: client.id } : null;
   const toMessage = (seq: number) => {
     setTab('chat');
     params.onOpenRecord?.(seq);
@@ -50,7 +53,7 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
         <TabButton label="Chat" active={tab === 'chat'} onPress={() => setTab('chat')} testID="pestana-canal-chat" />
         <TabButton label="Servicios" badge={client.services.length ? String(client.services.length) : null} active={tab === 'services'} onPress={() => setTab('services')} testID="pestana-canal-services" />
         <TabButton label="Checklist" badge={counter} active={tab === 'checklist'} onPress={() => setTab('checklist')} testID="pestana-canal-checklist" />
-        {stages.length ? <TabButton label="Archivos" badge={filesTotal ? String(filesTotal) : null} active={tab === 'files'} onPress={() => setTab('files')} testID="pestana-canal-files" /> : null}
+        <TabButton label="Archivos" badge={filesTotal ? String(filesTotal) : null} active={tab === 'files'} onPress={() => setTab('files')} testID="pestana-canal-files" />
         {stages.length ? <TabButton label="Pendientes" dot={Boolean(plan.summary?.overdue)} active={tab === 'pending'} onPress={() => setTab('pending')} testID="pestana-canal-pending" /> : null}
       </ScrollView>
       <ArchivedClientBanner client={client} />
@@ -60,7 +63,7 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
     <>
       {tab === 'services' && client ? (
         <View className="bg-background" style={COVER}>
-          <ClientServices client={client} records={records} onOpenRecord={toMessage} drive={params.spaceId ? { jwt: params.jwt, spaceId: params.spaceId } : undefined} />
+          <ClientServices client={client} records={records} onOpenRecord={toMessage} target={target} />
         </View>
       ) : null}
       {tab === 'checklist' ? (
@@ -68,7 +71,7 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
           <WorkPlanPanel plan={plan} jwt={params.jwt} yo={params.yo} nameOf={nameOf} members={checklistMembers(params.names, params.yo)} onStartFailed={(message) => ToastAndroid.show(message, ToastAndroid.SHORT)} onOpenTask={setOpenTask} />
         </View>
       ) : null}
-      {tab === 'files' ? <View className="bg-background" style={COVER}><StageFilesPanel stages={stages} onOpenMessage={toMessage} /></View> : null}
+      {tab === 'files' ? <View className="bg-background" style={COVER}><ClientFilesPanel client={client} target={target} stages={stages} onOpenMessage={toMessage} /></View> : null}
       {tab === 'pending' ? <View className="bg-background" style={COVER}><PendingPanel stages={stages} nameOf={nameOf} onOpen={setOpenTask} /></View> : null}
       <TaskDetailSheet open={openTask} stages={stages} channelName={params.channelName} jwt={params.jwt} chatId={params.chatId} yo={params.yo} nameOf={nameOf} members={checklistMembers(params.names, params.yo)} onChanged={() => void plan.reload()} onOpenMessage={toMessage} onClose={() => setOpenTask(null)} />
     </>

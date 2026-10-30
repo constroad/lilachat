@@ -4995,6 +4995,40 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 171. Detalle del servicio y una sola pestaña «Archivos» (30/10/2026, OTA + web; diseño f-04, agentes 77e7782, Portal 1d4072d5)
+
+Pedido de José del 30/10: «en la web no veo cómo navegar en el servicio, qué
+informes hay, qué pedidos, qué despachos» y «una sola pestaña Archivos».
+
+- **El servicio abre su expediente.** En «Servicios», tocar la cabecera de un
+  servicio muestra `ServiceDetailView` (app) o `ServiceDetailWeb` (web):
+  kicker «Servicio», nombre, estado, etapa y avance (diseño f-04), y abajo
+  Pedidos · Despachos · Informes (· Cotizaciones si Portal las manda) con los
+  totales reales de Portal. Cada fila sale de `detailRows` (shared): título,
+  línea «cantidad · día» y estado con el tono de Portal; el despacho trae su
+  guía y el informe su PDF. Si Portal tiene más de 100, «Mostrando 100 de 148 ·
+  el resto está en el Portal». En la app, ATRÁS vuelve a la lista.
+- **Se pide al abrir y no se guarda**: `GET …/services/:id/detail`, que
+  dispara `client.service.requested` (§169, el mismo camino del Drive). Si
+  agentes falla, dice «No se pudo traer el detalle del servicio» con el enlace
+  al Portal. La ruta y la lectura de la respuesta son una sola para app y web:
+  `shared/serviceAsk.ts` (`serviceAskPath`, `readServiceAsk`).
+- **El Drive salió de «Servicios».** «Archivos» está siempre en un canal de
+  cliente, con dos vistas: «Del canal · N» (lo subido al checklist, la vista
+  anterior) y «Drive del Portal»: el Drive del cliente y una fila por servicio
+  que abre su Drive en la misma pestaña (`ClientFilesPanel` /
+  `ClientFilesWeb`, `ServiceDrive` / `ServiceDriveWeb`). «Pendientes» sigue
+  apareciendo solo con checklist.
+- **Hermes**: el Drive de la app formateaba la fecha con
+  `toLocaleDateString(…, {opciones})` en cada fila, un formateador nuevo por
+  llamada. Ahora usa `driveFileLine` (shared), con el formateador cacheado.
+- Lo que el diseño f-04 trae y no se hizo: Resumen con montos, Cobranza y
+  condición de pago. Esperan `billing` de agentes (§160).
+- Tests: `shared/src/serviceDetail.test.ts` (filas), `serviceAsk.test.ts`,
+  `serviceFiles.test.ts` (`driveFileLine`), `web/src/spaces/clients/
+  ServiceDetailWeb.test.tsx`, `ClientFilesWeb.test.tsx`,
+  `ServiceDriveWeb.test.tsx` y `clients.test.tsx`.
+
 ## 170. Canales de cliente que aparecen solos, sin cotizaciones sueltas, y «Aceptar permisos» (30/10/2026, servidor + OTA + web)
 
 Pedidos de José del 30/10.

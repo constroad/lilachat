@@ -1,30 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, Cloud, ExternalLink, FileText, Folder, Image as ImageIcon, Search } from 'lucide-react';
-import { driveFolders, filesInFolder, searchServiceFiles, type ServiceFile } from '@lilachat/shared';
-import { api } from '../../api';
-import { Overlay } from '../../ui/Overlay';
+import { useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, Cloud, ExternalLink, FileText, Folder, Image as ImageIcon, Search } from 'lucide-react';
+import { driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService } from '@lilachat/shared';
+import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
 
 const RECENT = 3;
-const BYTES_PER_MB = 1_048_576;
-type Loaded = { state: 'loading' } | { state: 'ready'; files: ServiceFile[]; driveUrl: string | null } | { state: 'failed'; message: string; driveUrl: string | null };
-
-/** Asked when the Drive opens, never stored (pending 121): agentes asks Portal for the service's files. */
-function useServiceFiles(jwt: string, spaceId: string, clientId: string, serviceId: string): Loaded {
-  const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' });
-  useEffect(() => {
-    const controller = new AbortController();
-    void api<{ files?: ServiceFile[]; drive_url?: string | null; message?: string }>(`/workspaces/${spaceId}/clients/${encodeURIComponent(clientId)}/services/${encodeURIComponent(serviceId)}/files`, { jwt, signal: controller.signal }).then((response) => {
-      if (controller.signal.aborted) return;
-      if (response.ok && response.data.files) setLoaded({ state: 'ready', files: response.data.files, driveUrl: response.data.drive_url ?? null });
-      else setLoaded({ state: 'failed', message: response.ok ? (response.data.message ?? 'No se pudo traer el Drive') : 'No se pudo traer el Drive', driveUrl: response.ok ? (response.data.drive_url ?? null) : null });
-    });
-    return () => controller.abort();
-  }, [jwt, spaceId, clientId, serviceId]);
-  return loaded;
-}
-
-const sizeLabel = (bytes?: number) => (bytes === undefined ? '' : `${(bytes / BYTES_PER_MB).toFixed(1)} MB`);
-const dayLabel = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('es-PE', { day: 'numeric', month: 'short' }) : '');
+const SEARCH_MIN = 2;
+const LIST = 'divide-y divide-outline/10 overflow-hidden rounded-xl border border-outline/15 bg-surface';
+const KICKER = 'mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant';
 
 function FileRow({ file }: { file: ServiceFile }) {
   const Icon = file.mime.startsWith('image/') ? ImageIcon : FileText;
@@ -33,82 +15,84 @@ function FileRow({ file }: { file: ServiceFile }) {
       <Icon size={18} className="shrink-0 text-primary" />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm">{file.name}</span>
-        <span className="block text-[11px] text-on-surface-variant">{[file.folder, sizeLabel(file.sizeBytes), dayLabel(file.modifiedAt)].filter(Boolean).join(' · ')}</span>
+        <span className="block text-[11px] text-on-surface-variant">{driveFileLine(file)}</span>
       </span>
     </a>
   );
 }
 
+function FolderRows(props: { files: readonly ServiceFile[]; onOpen: (folder: string) => void }) {
+  const folders = driveFolders(props.files);
+  if (!folders.length) return null;
+  return (
+    <section>
+      <p className={`${KICKER} flex justify-between`}>Carpetas principales <span className="font-mono normal-case tracking-normal">{folders.length === 1 ? '1 carpeta' : `${folders.length} carpetas`}</span></p>
+      <div className={LIST}>
+        {folders.map((one) => (
+          <button key={one.name} type="button" data-testid={`carpeta-${one.name}`} onClick={() => props.onOpen(one.name)} className="flex min-h-[52px] w-full items-center gap-3 px-3 text-left hover:bg-background">
+            <Folder size={18} className="text-primary" />
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold">{one.name}</span>
+            <span className="text-sm font-semibold tabular-nums text-on-surface-variant">{one.count}</span>
+            <ChevronRight size={15} className="text-on-surface-variant" />
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Search results, one folder, or the root: top folders, the newest and the loose files. */
+function DriveBody(props: { files: ServiceFile[]; query: string; folder: string | null; onFolder: (folder: string) => void }) {
+  const found = useMemo(() => searchServiceFiles(props.files, props.query), [props.files, props.query]);
+  if (!props.files.length) return <p className="py-6 text-center text-sm text-on-surface-variant">Este servicio todavía no tiene archivos.</p>;
+  if (props.query.trim().length >= SEARCH_MIN) return <div className={LIST}>{found.length ? found.map((file) => <FileRow key={file.url} file={file} />) : <p className="p-4 text-sm text-on-surface-variant">{`Nada coincide con «${props.query.trim()}».`}</p>}</div>;
+  if (props.folder) return <div className={LIST}>{filesInFolder(props.files, props.folder).map((file) => <FileRow key={file.url} file={file} />)}</div>;
+  const loose = filesInFolder(props.files, null);
+  return (
+    <>
+      <FolderRows files={props.files} onOpen={props.onFolder} />
+      <section>
+        <p className={KICKER}>Recientes</p>
+        <div className={LIST}>{props.files.slice(0, RECENT).map((file) => <FileRow key={file.url} file={file} />)}</div>
+      </section>
+      {loose.length ? <div className={LIST}>{loose.map((file) => <FileRow key={file.url} file={file} />)}</div> : null}
+    </>
+  );
+}
+
+function Breadcrumb(props: { service: string; folder: string | null; onBack: () => void; onRoot: () => void }) {
+  return (
+    <p className="flex items-center gap-1.5 text-sm">
+      <button type="button" data-testid="volver-a-drive" aria-label="Volver a Archivos" onClick={props.onBack} className="flex items-center gap-1 font-semibold text-primary"><ChevronLeft size={16} /> <Cloud size={15} /></button>
+      <button type="button" onClick={props.onRoot} className="truncate font-semibold text-primary hover:underline">{props.service}</button>
+      {props.folder ? <><ChevronRight size={14} className="text-on-surface-variant" /><span className="truncate">{props.folder}</span></> : null}
+    </p>
+  );
+}
+
 /**
- * «Drive» of one service (pending 121, design f-06): breadcrumb, search, the
- * top folders with their counts, the newest files and, inside a folder, its
- * files. A failure says «No se pudo traer el Drive» with the service's link.
+ * The Drive of one service inside «Archivos» (pending 121, design f-06):
+ * search, top folders with counts, the newest files and, inside a folder, its
+ * files. A failure says why, with the service's link.
  */
-export function ServiceDriveWeb(props: { jwt: string; spaceId: string; clientId: string; service: { id: string; name: string }; onClose: () => void }) {
-  const loaded = useServiceFiles(props.jwt, props.spaceId, props.clientId, props.service.id);
+export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: SpaceClientService; onBack: () => void }) {
+  const answer = useServiceAsk('files', props.target, props.service.id);
   const [folder, setFolder] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const files = loaded.state === 'ready' ? loaded.files : [];
-  const found = useMemo(() => searchServiceFiles(files, query), [files, query]);
-  const searching = query.trim().length >= 2;
-  const folders = driveFolders(files);
+  const driveUrl = answer?.ok ? answer.value.driveUrl : (answer?.portalUrl ?? null);
   return (
-    <Overlay title="Drive del servicio" onClose={props.onClose} wide>
-      <div data-testid="drive-servicio" className="flex flex-col gap-3">
-        <p className="flex items-center gap-1.5 text-sm">
-          <button type="button" onClick={() => setFolder(null)} className="flex items-center gap-1 font-semibold text-primary"><Cloud size={15} /> Drive</button>
-          <ChevronRight size={14} className="text-on-surface-variant" />
-          <span className="truncate">{props.service.name}</span>
-          {folder ? <><ChevronRight size={14} className="text-on-surface-variant" /><span className="truncate">{folder}</span></> : null}
-        </p>
-        {loaded.state === 'loading' ? <div data-testid="drive-cargando" className="h-32 animate-pulse rounded-xl bg-background" /> : null}
-        {loaded.state === 'failed' ? (
-          <div data-testid="drive-fallo" className="rounded-xl border border-outline/15 p-4 text-sm">
-            <p className="font-semibold">{loaded.message}</p>
-            {loaded.driveUrl ? <a href={loaded.driveUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 font-semibold text-primary"><ExternalLink size={14} /> Abrir el servicio en el Portal</a> : null}
-          </div>
-        ) : null}
-        {loaded.state === 'ready' ? (
-          <>
-            <label className="flex h-10 items-center gap-2 rounded-xl border border-outline/15 px-3">
-              <Search size={15} className="text-on-surface-variant" />
-              <input data-testid="buscar-drive" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar en el Drive del servicio…" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
-            </label>
-            {files.length === 0 ? <p className="py-6 text-center text-sm text-on-surface-variant">Este servicio todavía no tiene archivos.</p> : null}
-            {searching ? (
-              <div className="divide-y divide-outline/10 rounded-xl border border-outline/15">{found.length ? found.map((file) => <FileRow key={file.url} file={file} />) : <p className="p-4 text-sm text-on-surface-variant">{`Nada coincide con «${query.trim()}».`}</p>}</div>
-            ) : folder ? (
-              <div className="divide-y divide-outline/10 rounded-xl border border-outline/15">{filesInFolder(files, folder).map((file) => <FileRow key={file.url} file={file} />)}</div>
-            ) : (
-              <>
-                {folders.length ? (
-                  <section>
-                    <p className="mb-2 flex justify-between text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Carpetas principales <span className="font-mono normal-case tracking-normal">{folders.length === 1 ? '1 carpeta' : `${folders.length} carpetas`}</span></p>
-                    <div className="divide-y divide-outline/10 rounded-xl border border-outline/15">
-                      {folders.map((one) => (
-                        <button key={one.name} type="button" data-testid={`carpeta-${one.name}`} onClick={() => setFolder(one.name)} className="flex min-h-[52px] w-full items-center gap-3 px-3 text-left hover:bg-background">
-                          <Folder size={18} className="text-primary" />
-                          <span className="min-w-0 flex-1 truncate text-sm font-semibold">{one.name}</span>
-                          <span className="text-sm font-semibold tabular-nums text-on-surface-variant">{one.count}</span>
-                          <ChevronRight size={15} className="text-on-surface-variant" />
-                        </button>
-                      ))}
-                    </div>
-                  </section>
-                ) : null}
-                {files.length ? (
-                  <section>
-                    <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Recientes</p>
-                    <div className="divide-y divide-outline/10 rounded-xl border border-outline/15">{files.slice(0, RECENT).map((file) => <FileRow key={file.url} file={file} />)}</div>
-                  </section>
-                ) : null}
-                {filesInFolder(files, null).length ? <div className="divide-y divide-outline/10 rounded-xl border border-outline/15">{filesInFolder(files, null).map((file) => <FileRow key={file.url} file={file} />)}</div> : null}
-              </>
-            )}
-            {loaded.driveUrl ? <a href={loaded.driveUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary"><ExternalLink size={14} /> Abrir en Google Drive</a> : null}
-          </>
-        ) : null}
-      </div>
-    </Overlay>
+    <div data-testid="drive-servicio" className="flex flex-col gap-3">
+      <Breadcrumb service={props.service.name} folder={folder} onBack={props.onBack} onRoot={() => setFolder(null)} />
+      {answer === null ? <div data-testid="drive-cargando" className="h-32 animate-pulse rounded-xl bg-surface" /> : null}
+      {answer && !answer.ok ? <p data-testid="drive-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm font-semibold">{answer.message}</p> : null}
+      {answer?.ok ? (
+        <label className="flex h-10 items-center gap-2 rounded-xl border border-outline/15 bg-surface px-3">
+          <Search size={15} className="text-on-surface-variant" />
+          <input data-testid="buscar-drive" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar en el Drive del servicio…" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
+        </label>
+      ) : null}
+      {answer?.ok ? <DriveBody files={answer.value.files} query={query} folder={folder} onFolder={setFolder} /> : null}
+      {driveUrl ? <a href={driveUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary"><ExternalLink size={14} /> {answer?.ok ? 'Abrir en Google Drive' : 'Abrir el servicio en el Portal'}</a> : null}
+    </div>
   );
 }

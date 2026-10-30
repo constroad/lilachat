@@ -46,7 +46,7 @@ import { useChatHeaderMenu, type DetailSection } from './useChatHeaderMenu';
 import { citadosPorSeq, fotosDelChat } from './filasDelChat';
 import { useGrupo } from './useGrupo';
 import { usePersonCard } from './personCard/usePersonCard';
-import { FueraDelGrupo } from './FueraDelGrupo';
+import { ComposerLocked } from './FueraDelGrupo';
 import { useChatSubtitle } from './useChatSubtitle';
 import { usePresenceStatus } from './presenceStatus';
 import { useDibujarFila } from './useDibujarFila';
@@ -496,7 +496,7 @@ export function ChatScreen({
 
       {/* La barra de escribir: su composición (la píldora con emoji, clip y cámara; UN botón afuera) se explica en `Composer`. */}{channelWork.note}
       {fueraDelGrupo || grupo.sendLock(credential.userId) ? (
-        <FueraDelGrupo margenPie={margenes.pie} text={fueraDelGrupo ? null : grupo.sendLock(credential.userId)} />
+        <ComposerLocked bottomInset={margenes.pie} text={fueraDelGrupo ? null : grupo.sendLock(credential.userId)} />
       ) : (
         <Composer
           ref={composerRef}

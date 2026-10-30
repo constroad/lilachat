@@ -22,10 +22,10 @@ describe('GroupPermissionsRow', () => {
 
   it('a refusal puts the switch back and says why', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ message: 'Solo los admins cambian los permisos.' }), { status: 403 })));
-    const onAviso = vi.fn();
-    render(<GroupPermissionsRow chatId="g1" jwt="jwt" permissions={{ pinMessages: false }} isAdmin onAviso={onAviso} />);
+    const onNotice = vi.fn();
+    render(<GroupPermissionsRow chatId="g1" jwt="jwt" permissions={{ pinMessages: false }} isAdmin onAviso={onNotice} />);
     fireEvent.click(screen.getByTestId('interruptor-permiso-pinMessages'));
-    await vi.waitFor(() => expect(onAviso).toHaveBeenCalledWith('Solo los admins cambian los permisos.'));
+    await vi.waitFor(() => expect(onNotice).toHaveBeenCalledWith('Solo los admins cambian los permisos.'));
     expect(screen.getByTestId('interruptor-permiso-pinMessages')).not.toBeChecked();
   });
 

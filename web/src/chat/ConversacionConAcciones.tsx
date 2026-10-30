@@ -117,10 +117,10 @@ export function ConversacionConAcciones(
   const citado = useCallback((seq: number) => mensajes?.find((uno) => uno.seq === seq), [mensajes]);
   // Fijar mensajes (19/10): en un grupo, solo los admins.
   // Reminders stay with the admins; pinning follows the group's switch (pending 8).
-  const administra = puedeFijarEnElChat({ kind: chat.kind, esAdmin: detalle?.soyAdmin ?? false });
-  const miRol = detalle?.soyAdmin ? 'admin' : 'member';
-  const puedeFijar = administra || (chat.kind === 'group' && memberMay({ permission: 'pinMessages', role: miRol, permissions: detalle?.memberPermissions }));
-  const sendLock = chat.kind === 'group' && detalle && !memberMay({ permission: 'sendMessages', role: miRol, permissions: detalle.memberPermissions }) ? memberPermissionDenied('sendMessages') : null;
+  const canManage = puedeFijarEnElChat({ kind: chat.kind, esAdmin: detalle?.soyAdmin ?? false });
+  const myRole = detalle?.soyAdmin ? 'admin' : 'member';
+  const puedeFijar = canManage || (chat.kind === 'group' && memberMay({ permission: 'pinMessages', role: myRole, permissions: detalle?.memberPermissions }));
+  const sendLock = chat.kind === 'group' && detalle && !memberMay({ permission: 'sendMessages', role: myRole, permissions: detalle.memberPermissions }) ? memberPermissionDenied('sendMessages') : null;
   const fijados = useMemo(() => fijadosVigentes(chat.fijados, Date.now()), [chat.fijados]);
   const seqsFijados = useMemo(() => new Set(fijados.map((uno) => uno.seq)), [fijados]);
   const fijar = useFijarEnLaWeb({ chatId: chat.id, jwt: props.jwt, onAviso, onCambio: props.onRecargarChats });
@@ -171,7 +171,7 @@ export function ConversacionConAcciones(
     [sync, chat.id, onAviso]
   );
   // El recordatorio del chat (W3c): lo crean y editan quienes pueden fijar (en un grupo, sus admins), nunca en un secreto.
-  const editarRecordatorio = !chat.encrypted && administra ? props.onEditReminder : undefined;
+  const editReminder = !chat.encrypted && canManage ? props.onEditReminder : undefined;
   const badgeOf = useCallback((senderId: string) => memberBadge({ ...detalle?.pills.get(senderId), isMe: senderId === yo }), [detalle, yo]);
   const isAppOf = useCallback((senderId: string) => detalle?.pills.get(senderId)?.role === 'app', [detalle]);
   const personCard = usePersonCardWeb({ jwt: props.jwt, myUserId: yo, spaceId: chat.workspaceId, onOpenChat: props.onOpenChat });
@@ -180,8 +180,8 @@ export function ConversacionConAcciones(
     if (person) personCard.show(person);
   }, [detalle, nombres, yo, personCard.show]);
   const contexto = useMemo<ContextoDeLaConversacion>(
-    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto: openPhoto, onViewPerson: showPerson, onVerPdf: setPdfAbierto, onGreet: greet, canGreet, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar, onEditarRecordatorio: editarRecordatorio, destacados: destacados.seqs, onStickerAction: chat.encrypted ? undefined : onStickerAction, flat, badgeOf, isAppOf }),
-    [yo, props.jwt, chat, detalle, nombres, photos, citado, onAccion, openPhoto, showPerson, greet, canGreet, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editarRecordatorio, destacados.seqs, onStickerAction, flat, badgeOf, isAppOf]
+    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto: openPhoto, onViewPerson: showPerson, onVerPdf: setPdfAbierto, onGreet: greet, canGreet, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar, onEditarRecordatorio: editReminder, destacados: destacados.seqs, onStickerAction: chat.encrypted ? undefined : onStickerAction, flat, badgeOf, isAppOf }),
+    [yo, props.jwt, chat, detalle, nombres, photos, citado, onAccion, openPhoto, showPerson, greet, canGreet, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editReminder, destacados.seqs, onStickerAction, flat, badgeOf, isAppOf]
   );
 
   // Nudges and winks: in a 1:1 (not the chat with yourself), or a group whose admin allows them (José, 21/10).
@@ -195,7 +195,7 @@ export function ConversacionConAcciones(
     <ConversacionContext.Provider value={contexto}>
       <Conversation
         {...props}
-        onCreateReminder={!chat.encrypted && administra ? props.onCreateReminder : undefined}
+        onCreateReminder={!chat.encrypted && canManage ? props.onCreateReminder : undefined}
         sendLock={sendLock}
         // En un grupo, quién escribe (el socket trae su id).
         typingName={props.typingName ? nombres.get(props.typingName) ?? 'Alguien' : null}

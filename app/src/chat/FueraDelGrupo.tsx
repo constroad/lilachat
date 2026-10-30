@@ -6,12 +6,12 @@ import { Text, View } from 'react-native';
  * no se puede escribir.
  */
 /** `text`: another reason the composer is closed (pending 8: only admins write). */
-export function FueraDelGrupo({ margenPie, text }: { margenPie: number; text?: string | null }) {
+export function ComposerLocked({ bottomInset, text }: { bottomInset: number; text?: string | null }) {
   return (
     <View
       testID="fuera-del-grupo"
       className="items-center border-t border-outline/10 bg-surface px-6 pt-4"
-      style={{ paddingBottom: margenPie + 8 }}
+      style={{ paddingBottom: bottomInset + 8 }}
     >
       <Text className="text-center text-sm leading-5 text-on-surface-variant">
         {text ?? 'No puedes enviar mensajes a este grupo porque ya no eres participante.'}

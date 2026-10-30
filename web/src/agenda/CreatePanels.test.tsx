@@ -104,16 +104,16 @@ describe('the group photo at creation (pending 7)', () => {
 
   it('the photo goes up to the new group after creating it, and the group opens', async () => {
     // Arrange
-    const alCrear = vi.fn();
-    render(<NewChatOverlay jwt="j" kind="group" onClose={() => {}} onCreated={alCrear} />);
-    const foto = new File(['jpg'], 'obra.jpg', { type: 'image/jpeg' });
+    const onCreated = vi.fn();
+    render(<NewChatOverlay jwt="j" kind="group" onClose={() => {}} onCreated={onCreated} />);
+    const photo = new File(['jpg'], 'obra.jpg', { type: 'image/jpeg' });
     // Act
-    await userEvent.upload(screen.getByTestId('foto-grupo-nuevo'), foto);
+    await userEvent.upload(screen.getByTestId('foto-grupo-nuevo'), photo);
     await userEvent.type(screen.getByTestId('nombre-grupo'), 'Obra');
     await userEvent.click(await screen.findByTestId('contacto-u2'));
     await userEvent.click(screen.getByTestId('btn-crear-chat'));
     // Assert
-    await waitFor(() => expect(alCrear).toHaveBeenCalledWith('c-nuevo'));
+    await waitFor(() => expect(onCreated).toHaveBeenCalledWith('c-nuevo'));
     const subida = llamadas.find((llamada) => llamada.url.endsWith('/api/chats/c-nuevo/avatar'));
     expect((subida?.body as FormData).get('file')).toBeInstanceOf(Blob);
     expect(llamadas.findIndex((llamada) => llamada.url.endsWith('/avatar'))).toBeGreaterThan(llamadas.findIndex((llamada) => llamada.body && (llamada.body as { kind?: string }).kind === 'group'));

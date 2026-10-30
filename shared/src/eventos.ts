@@ -60,18 +60,23 @@ const GRUPOS: { clave: Rsvp | 'pending'; titulo: string }[] = [
   { clave: 'pending', titulo: 'Sin responder' },
 ];
 
-/** Quiénes van, por respuesta y con «Tú» primero. Los grupos vacíos no salen. */
+/**
+ * Quiénes van, por respuesta y con «Tú» primero. Los grupos vacíos no salen;
+ * with `includeEmpty` (the web detail, pending 10) Van, Tal vez and No van
+ * always show, and «Sin responder» only with someone in it.
+ */
 export function asistentesPorRespuesta(params: {
   asistentes: readonly { userId: string; rsvp?: string }[];
   personas: Readonly<Record<string, Persona>>;
   yo: string;
   agenda: Agenda;
+  includeEmpty?: boolean;
 }): { clave: Rsvp | 'pending'; titulo: string; nombres: string[] }[] {
   return GRUPOS.map(({ clave, titulo }) => {
     const ids = params.asistentes.filter((a) => (a.rsvp ?? 'pending') === clave).map((a) => a.userId);
     const ordenados = ids.sort((a, b) => Number(b === params.yo) - Number(a === params.yo));
     return { clave, titulo, nombres: ordenados.map((id) => nombrar(id, params.personas, params.yo, params.agenda)) };
-  }).filter((grupo) => grupo.nombres.length > 0);
+  }).filter((grupo) => grupo.nombres.length > 0 || (params.includeEmpty === true && grupo.clave !== 'pending'));
 }
 
 /**

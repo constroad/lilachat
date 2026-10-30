@@ -14,14 +14,10 @@ import {
   type TonoDelEstado,
 } from '@lilachat/shared';
 import { api } from '../api';
+import { EventDetailPane } from './EventDetailPane';
 
 type Linea = { recordatorios: AgendaReminder[]; vencidos: AgendaReminder[]; apagados: AgendaReminder[] };
 
-const RESPUESTAS: { valor: Rsvp; etiqueta: string }[] = [
-  { valor: 'yes', etiqueta: 'Voy' },
-  { valor: 'maybe', etiqueta: 'Tal vez' },
-  { valor: 'no', etiqueta: 'No voy' },
-];
 const TONO: Record<TonoDelEstado, string> = {
   propio: 'border-primary/30 bg-primary/10 text-primary',
   pendiente: 'border-tertiary/30 bg-tertiary/10 text-tertiary',
@@ -37,8 +33,11 @@ const DIA = new Intl.DateTimeFormat('es-PE', { weekday: 'short' });
  * recordatorios en UNA línea —Vencidos, Hoy, Mañana, Esta semana, Más
  * adelante— y al final los míos apagados, para prenderlos.
  */
-export function LineaDePendientes({ jwt, onEditarRecordatorio }: { jwt: string; onEditarRecordatorio: (recordatorio: AgendaReminder) => void }) {
+export function LineaDePendientes({ jwt, me, onEditarRecordatorio }: { jwt: string; me: string; onEditarRecordatorio: (recordatorio: AgendaReminder) => void }) {
   const [eventos, setEventos] = useState<AgendaEvent[] | null>(null);
+  // Pending 10 (design w3c-web-agenda): the event opened at the right; on a phone it takes the whole panel.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = eventos?.find((evento) => evento.id === selectedId) ?? null;
   const [linea, setLinea] = useState<Linea | null>(null);
   const [fallo, setFallo] = useState('');
 
@@ -74,14 +73,15 @@ export function LineaDePendientes({ jwt, onEditarRecordatorio }: { jwt: string; 
     return <p data-testid="pendientes-vacio" className="py-6 text-center text-sm leading-5 text-on-surface-variant">Nada pendiente. Los eventos y recordatorios de tus chats aparecen acá, por cuándo tocan.</p>;
   }
   return (
-    <div>
+    <div className={selected ? 'md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] md:gap-6' : ''}>
+    <div className={selected ? 'hidden md:block' : ''}>
       {fallo ? <p role="alert" className="mb-2 text-[12px] text-error">{fallo}</p> : null}
       {secciones.map((seccion) => (
         <section key={seccion.clave} data-testid={`seccion-${seccion.clave}`} className="mb-3">
           <h3 className="pb-2 text-[11px] font-bold uppercase tracking-wide text-primary">{seccion.titulo} · {seccion.items.length}</h3>
           {seccion.items.map((item) =>
             item.tipo === 'evento' ? (
-              <FilaDeEvento key={`e-${item.id}`} evento={item.evento} onResponder={(rsvp) => void responder(item.evento, rsvp)} />
+              <FilaDeEvento key={`e-${item.id}`} evento={item.evento} selected={item.evento.id === selectedId} onOpen={() => setSelectedId(item.evento.id)} />
             ) : (
               <FilaDeRecordatorio key={`r-${item.id}`} recordatorio={item.recordatorio} cuando={item.cuando} vencido={seccion.clave === 'vencidos'} onEditar={() => onEditarRecordatorio(item.recordatorio)} />
             )
@@ -97,14 +97,20 @@ export function LineaDePendientes({ jwt, onEditarRecordatorio }: { jwt: string; 
         </section>
       ) : null}
     </div>
+    {selected ? (
+      <div className="md:border-l md:border-outline/15 md:pl-6">
+        <EventDetailPane event={selected} me={me} onAnswer={(rsvp) => void responder(selected, rsvp)} onBack={() => setSelectedId(null)} />
+      </div>
+    ) : null}
+    </div>
   );
 }
 
-function FilaDeEvento({ evento, onResponder }: { evento: AgendaEvent; onResponder: (rsvp: Rsvp) => void }) {
+function FilaDeEvento({ evento, selected, onOpen }: { evento: AgendaEvent; selected: boolean; onOpen: () => void }) {
   const inicio = new Date(evento.startsAt);
   const estado = estadoDelEvento(evento);
   return (
-    <article data-testid={`pendiente-evento-${evento.id}`} className="mb-2 rounded-xl border border-outline/15 bg-surface p-3">
+    <button type="button" data-testid={`pendiente-evento-${evento.id}`} aria-pressed={selected} onClick={onOpen} className={`mb-2 block w-full rounded-xl border p-3 text-left ${selected ? 'border-primary/40 bg-primary/5' : 'border-outline/15 bg-surface hover:bg-background'}`}>
       <div className="flex items-start gap-3">
         <div className="grid w-12 shrink-0 place-items-center rounded-lg border border-outline/15 py-1 leading-none">
           <span className="text-[10px] font-bold uppercase text-primary">{DIA.format(inicio).replace('.', '')}</span>
@@ -117,16 +123,7 @@ function FilaDeEvento({ evento, onResponder }: { evento: AgendaEvent; onResponde
         </div>
         <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${TONO[estado.tono]}`}>{estado.texto}</span>
       </div>
-      {evento.mio ? null : (
-        <div className="mt-2 grid grid-cols-3 gap-1">
-          {RESPUESTAS.map((opcion) => (
-            <button key={opcion.valor} type="button" data-testid={`rsvp-${evento.id}-${opcion.valor}`} aria-pressed={evento.myRsvp === opcion.valor} onClick={() => onResponder(opcion.valor)} className={`min-h-[34px] rounded-lg text-[12px] font-medium ${evento.myRsvp === opcion.valor ? 'bg-primary text-on-primary' : 'bg-background text-on-surface-variant hover:bg-primary/10'}`}>
-              {opcion.etiqueta}
-            </button>
-          ))}
-        </div>
-      )}
-    </article>
+    </button>
   );
 }
 

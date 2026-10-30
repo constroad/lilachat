@@ -4995,6 +4995,23 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 166. Pendientes web: lista + detalle del evento con Van / Tal vez / No van (29/10/2026, web; pendiente 10, diseño `w3c-web-agenda`)
+
+- La ventana «Pendientes» es ancha (`Overlay wide`). En la pestaña Pendientes,
+  cada evento es una fila con su fecha, su hora y la pastilla de estado; tocarlo
+  abre el detalle a la derecha (`EventDetailPane`). En el celular, el detalle
+  ocupa el panel y «Pendientes» vuelve a la lista.
+- El detalle: kicker «EVENTO · chat», título, tarjeta con cuándo, dónde y la
+  nota; «Tu respuesta» Voy / Tal vez / No voy (quien lo creó no responde); y
+  «ASISTENTES · N convocados» por grupo con chips de iniciales.
+- Van, Tal vez y No van salen siempre, con su texto cuando están vacíos; Sin
+  responder, solo con alguien (`asistentesPorRespuesta({ includeEmpty })`).
+- Las respuestas ya no van en la fila: viven en el detalle, con los mismos
+  `rsvp-{id}-{valor}`.
+- Diferencias con el diseño: las pestañas siguen siendo Pendientes · Mis tareas
+  · Encuestas (José, 20/10) y crear está arriba en tres botones, no un «Nuevo
+  evento».
+
 ## 165. Contactos bloqueados y bloqueo de la app (29/10/2026, servidor + OTA + web; pendiente 9)
 
 Sin diseño Stitch propio: sigue a WhatsApp.

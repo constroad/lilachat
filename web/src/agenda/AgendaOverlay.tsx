@@ -44,7 +44,7 @@ export function AgendaOverlay({
   ];
 
   return (
-    <Overlay title="Pendientes" onClose={onClose}>
+    <Overlay title="Pendientes" onClose={onClose} wide>
       <div className="mb-3 grid grid-cols-3 gap-2">
         {crear.map(({ id, etiqueta, Icono, accion }) => (
           <button key={id} type="button" data-testid={id} onClick={accion} className="flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl bg-primary/10 px-2 text-[13px] font-semibold text-primary">
@@ -59,7 +59,7 @@ export function AgendaOverlay({
           </button>
         ))}
       </div>
-      {pestana === 'pendientes' ? <LineaDePendientes jwt={jwt} onEditarRecordatorio={onEditarRecordatorio} /> : pestana === 'tareas' ? <MisTareas jwt={jwt} me={myUserId} chatNameOf={chatNameOf} onOpen={onOpenTask} /> : <EncuestasAbiertas jwt={jwt} myUserId={myUserId} />}
+      {pestana === 'pendientes' ? <LineaDePendientes jwt={jwt} me={myUserId} onEditarRecordatorio={onEditarRecordatorio} /> : pestana === 'tareas' ? <MisTareas jwt={jwt} me={myUserId} chatNameOf={chatNameOf} onOpen={onOpenTask} /> : <EncuestasAbiertas jwt={jwt} myUserId={myUserId} />}
     </Overlay>
   );
 }

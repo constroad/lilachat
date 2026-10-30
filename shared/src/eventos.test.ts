@@ -86,3 +86,11 @@ describe('resumenDeRsvp', () => {
     expect(resumenDeRsvp({ yes: 0, maybe: 0, no: 0, pending: 0 })).toBe('0 van · 0 tal vez · 0 sin responder');
   });
 });
+
+describe('asistentesPorRespuesta in the web detail (pending 10, design w3c-web-agenda)', () => {
+  it('with includeEmpty, Van, Tal vez and No van always show; Sin responder only with someone', () => {
+    const personas = { a: { phone: '987654321', name: 'Ana' } };
+    const grupos = asistentesPorRespuesta({ asistentes: [{ userId: 'a', rsvp: 'yes' }], personas, yo: 'yo', agenda: new Map(), includeEmpty: true });
+    expect(grupos.map((grupo) => [grupo.clave, grupo.nombres.length])).toEqual([['yes', 1], ['maybe', 0], ['no', 0]]);
+  });
+});

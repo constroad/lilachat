@@ -21,7 +21,7 @@ export function RecordSheetWeb({ sheet, onClose }: { sheet: DetailSheet; onClose
             {sheet.facts.map((fact) => <div key={fact.label} className="flex justify-between gap-3 py-2.5 text-sm"><dt className="text-on-surface-variant">{fact.label}</dt><dd className="text-right font-semibold">{fact.value}</dd></div>)}
           </dl>
         ) : null}
-        {sheet.file ? <a href={sheet.file.url} target="_blank" rel="noreferrer" data-testid="ver-archivo-ficha" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 font-semibold text-on-primary"><FileText size={16} /> {sheet.file.label === 'PDF' ? 'Ver el PDF' : 'Ver la guía'}</a> : null}
+        {sheet.files.map((file, index) => <a key={file.url} href={file.url} target="_blank" rel="noreferrer" data-testid={index ? `ver-archivo-ficha-${index}` : 'ver-archivo-ficha'} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 font-semibold text-on-primary"><FileText size={16} /> {file.label === 'PDF' ? 'Ver el PDF' : `Ver ${file.label}`}</a>)}
         {sheet.note ? <p data-testid="nota-ficha" className="text-sm text-on-surface-variant">{sheet.note}</p> : null}
         {sheet.items.length ? (
           <>

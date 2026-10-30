@@ -13,7 +13,7 @@ function FileButton(props: { title: string; file: { url: string; label: string }
   return (
     <Pressable testID={props.testID} onPress={() => props.onOpenFile({ url: props.file.url, name: `${props.title} · ${props.file.label}` })} className="min-h-[48px] flex-row items-center justify-center gap-2 rounded-xl bg-primary px-4">
       <FileText size={18} color={colors['on-primary']} />
-      <Text className="text-[15px] font-semibold text-on-primary">{`Ver ${props.file.label === 'PDF' ? 'el PDF' : 'la guía'}`}</Text>
+      <Text className="text-[15px] font-semibold text-on-primary" numberOfLines={1}>{props.file.label === 'PDF' ? 'Ver el PDF' : `Ver ${props.file.label}`}</Text>
     </Pressable>
   );
 }
@@ -67,7 +67,7 @@ export function RecordSheet(props: { sheet: DetailSheet | null; onClose: () => v
               ))}
             </View>
           ) : null}
-          {sheet.file ? <FileButton title={sheet.title} file={sheet.file} onOpenFile={props.onOpenFile} testID="ver-archivo-ficha" /> : null}
+          {sheet.files.map((file, index) => <FileButton key={file.url} title={sheet.title} file={file} onOpenFile={props.onOpenFile} testID={index ? `ver-archivo-ficha-${index}` : 'ver-archivo-ficha'} />)}
           {sheet.note ? <Text testID="nota-ficha" className="text-[14px] text-on-surface-variant">{sheet.note}</Text> : null}
           {sheet.items.length ? <><Kicker>Partidas</Kicker><View className="rounded-2xl border border-outline/15 bg-surface px-4">{sheet.items.map((item, index) => <ItemRow key={`${item.name}-${index}`} item={item} />)}</View></> : null}
           {sheet.related.length ? <><Kicker>Despachos de este pedido</Kicker><View className="rounded-2xl border border-outline/15 bg-surface px-4">{sheet.related.map((row) => <RelatedRow key={row.id} row={row} onOpenFile={props.onOpenFile} />)}</View></> : null}

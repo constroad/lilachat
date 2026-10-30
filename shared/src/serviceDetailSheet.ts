@@ -1,5 +1,5 @@
 import { moneyOf } from './serviceBilling.js';
-import { amount, dayAndTimeOf, dayOf, dispatchRow, type DetailRow, type DetailStatus, type DetailTabKey, type QuoteItem, type ServiceDetail, type ServiceDispatch, type ServiceOrder, type ServiceQuote, type ServiceReport } from './serviceDetail.js';
+import { amount, dayAndTimeOf, dayOf, dispatchRow, longDayOf, type DetailRow, type DetailStatus, type DetailTabKey, type QuoteItem, type ServiceDetail, type ServiceDispatch, type ServiceOrder, type ServiceQuote, type ServiceReport } from './serviceDetail.js';
 /**
  * One order, dispatch, report or quote opened inside Lilachat (José 30/10:
  * sending him to Portal for an order's detail was not useful). Built from
@@ -8,28 +8,42 @@ import { amount, dayAndTimeOf, dayOf, dispatchRow, type DetailRow, type DetailSt
  */
 export type SheetFact = { label: string; value: string };
 export type SheetItem = { name: string; line: string; total?: string };
-export type DetailSheet = { title: string; status: DetailStatus; facts: SheetFact[]; related: DetailRow[]; items: SheetItem[]; file?: { url: string; label: string }; url?: string; note?: string };
+export type SheetFile = { url: string; label: string };
+export type DetailSheet = { title: string; status: DetailStatus; facts: SheetFact[]; related: DetailRow[]; items: SheetItem[]; files: SheetFile[]; url?: string; note?: string };
 
 const NO_REPORT_PDF = 'Este informe todavía no tiene PDF guardado en el Portal.';
 
 /** The facts that came, in reading order; a missing one is not a «—». */
 const facts = (pairs: [string, string | undefined][]): SheetFact[] => pairs.flatMap(([label, value]) => (value ? [{ label, value }] : []));
-const base = (title: string, status: DetailStatus, url?: string) => ({ title, status, related: [], items: [], ...(url ? { url } : {}) });
+const base = (title: string, status: DetailStatus, url?: string) => ({ title, status, related: [], items: [], files: [], ...(url ? { url } : {}) });
+
+const money = (value?: number) => (value === undefined ? undefined : moneyOf(value));
+const conditionOf = (order: ServiceOrder) => (order.isCredit === undefined ? undefined : order.isCredit ? `Crédito${order.dueAt ? ` · vence el ${longDayOf(order.dueAt)}` : ''}` : 'Contado');
+
+/** Collected is the sum of its payments (there is no per-order «collected»); pending, the total minus that. */
+function orderMoney(order: ServiceOrder): [string, string | undefined][] {
+  const collected = order.payments?.reduce((sum, payment) => sum + payment.amount, 0);
+  const pending = order.total !== undefined && collected !== undefined ? Math.max(0, order.total - collected) : undefined;
+  return [['Precio unitario', money(order.unitPrice)], ['Total', money(order.total)], ['Condición', conditionOf(order)], ['Cobrado', money(collected)], ['Por cobrar', money(pending)]];
+}
+
+const orderFiles = (order: ServiceOrder): SheetFile[] => [...(order.invoiceUrl ? [{ url: order.invoiceUrl, label: order.invoice ? `Factura ${order.invoice}` : 'Factura' }] : []), ...(order.guides ?? []).map((guide) => ({ url: guide.url, label: guide.name }))];
 
 function orderSheet(order: ServiceOrder, detail: ServiceDetail): DetailSheet {
   const dispatches = detail.dispatches.filter((one) => one.orderId === order.id);
-  return { ...base(order.product ?? 'Pedido', order.status, order.url), facts: facts([['Cantidad', amount(order.quantity, order.unit)], ['Fecha', order.date && dayOf(order.date)], ['Despachos', String(dispatches.length)]]), related: dispatches.map(dispatchRow) };
+  const head: [string, string | undefined][] = [['Obra', order.site], ['Cantidad', amount(order.quantity, order.unit)], ['Fecha', order.date && dayOf(order.date)], ['Despachos', String(dispatches.length)]];
+  return { ...base(order.product ?? 'Pedido', order.status, order.url), facts: facts([...head, ...orderMoney(order), ['Factura', order.invoice]]), related: dispatches.map(dispatchRow), files: orderFiles(order) };
 }
 
 function dispatchSheet(dispatch: ServiceDispatch, detail: ServiceDetail): DetailSheet {
   const order = detail.orders.find((one) => one.id === dispatch.orderId);
-  const sheetFacts = facts([['Chofer', dispatch.driver], ['Cantidad', amount(dispatch.quantity, dispatch.unit)], ['Salida', dispatch.at && dayAndTimeOf(dispatch.at)], ['Pedido', order?.product]]);
-  return { ...base(dispatch.plate ?? 'Despacho', dispatch.status, dispatch.url), facts: sheetFacts, ...(dispatch.guideUrl ? { file: { url: dispatch.guideUrl, label: 'Guía' } } : {}) };
+  const sheetFacts = facts([['Chofer', dispatch.driver], ['Cantidad', amount(dispatch.quantity, dispatch.unit)], ['Salida', dispatch.at && dayAndTimeOf(dispatch.at)], ['Guía N°', dispatch.guideNumber], ['Pedido', order?.product]]);
+  return { ...base(dispatch.plate ?? 'Despacho', dispatch.status, dispatch.url), facts: sheetFacts, files: dispatch.guideUrl ? [{ url: dispatch.guideUrl, label: 'Guía' }] : [] };
 }
 
 function reportSheet(report: ServiceReport): DetailSheet {
   const sheet = { ...base(report.title, report.status, report.url), facts: facts([['Tipo', report.typeLabel], ['Fecha', report.date && dayOf(report.date)]]) };
-  return report.pdfUrl ? { ...sheet, file: { url: report.pdfUrl, label: 'PDF' } } : { ...sheet, note: NO_REPORT_PDF };
+  return report.pdfUrl ? { ...sheet, files: [{ url: report.pdfUrl, label: 'PDF' }] } : { ...sheet, note: NO_REPORT_PDF };
 }
 
 const itemLine = (item: QuoteItem) => [amount(item.quantity, item.unit), item.unitPrice === undefined ? undefined : `${moneyOf(item.unitPrice)} c/u`].filter(Boolean).join(' · ');

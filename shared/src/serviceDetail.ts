@@ -9,8 +9,28 @@ import { billingOf, moneyOf, type ServiceBilling } from './serviceBilling.js';
 export const DETAIL_TONES = ['ok', 'info', 'warn', 'error', 'neutral'] as const;
 export type DetailTone = (typeof DETAIL_TONES)[number];
 export type DetailStatus = { label: string; tone: DetailTone };
-export type ServiceOrder = { id: string; date?: string; product?: string; quantity?: number; unit?: string; status: DetailStatus; url?: string };
-export type ServiceDispatch = { id: string; orderId?: string; at?: string; plate?: string; driver?: string; quantity?: number; unit?: string; status: DetailStatus; guideUrl?: string; url?: string };
+export type OrderGuide = { name: string; url: string };
+export type OrderPayment = { date: string; amount: number };
+/** Amounts, credit and payments only come under the collection rule (Portal 611e61d7). */
+export type ServiceOrder = {
+  id: string;
+  date?: string;
+  product?: string;
+  quantity?: number;
+  unit?: string;
+  status: DetailStatus;
+  url?: string;
+  site?: string;
+  invoice?: string;
+  invoiceUrl?: string;
+  guides?: OrderGuide[];
+  unitPrice?: number;
+  total?: number;
+  isCredit?: boolean;
+  dueAt?: string;
+  payments?: OrderPayment[];
+};
+export type ServiceDispatch = { id: string; orderId?: string; at?: string; plate?: string; driver?: string; quantity?: number; unit?: string; status: DetailStatus; guideUrl?: string; guideNumber?: string; url?: string };
 export type ServiceReport = { id: string; title: string; typeLabel?: string; date?: string; status: DetailStatus; pdfUrl?: string; url?: string };
 export type QuoteItem = { name: string; quantity?: number; unit?: string; unitPrice?: number; total?: number };
 export type ServiceQuote = { id: string; code?: string; date?: string; total?: number; status: DetailStatus; url?: string; items?: QuoteItem[] };
@@ -45,9 +65,39 @@ const defined = <T extends object>(value: T): T => Object.fromEntries(Object.ent
 
 const statusOf = (raw: Raw): DetailStatus => ({ label: text(raw.status_label) ?? '—', tone: DETAIL_TONES.includes(raw.tone as DetailTone) ? (raw.tone as DetailTone) : 'neutral' });
 
-const orderOf = (raw: Raw): ServiceOrder => defined({ id: text(raw.id)!, date: dateOnly(raw.date), product: text(raw.product), quantity: count(raw.quantity), unit: text(raw.unit), status: statusOf(raw), url: https(raw.url) });
+const guideOf = (one: unknown): OrderGuide[] => {
+  const raw = record(one);
+  const url = https(raw?.url);
+  return url ? [{ name: text(raw?.name) ?? 'Guía', url }] : [];
+};
+const orderPaymentOf = (one: unknown): OrderPayment[] => {
+  const raw = record(one);
+  const date = dateOnly(raw?.date);
+  const paid = count(raw?.amount);
+  return date && paid ? [{ date, amount: paid }] : [];
+};
+const listMap = <T>(value: unknown, parse: (one: unknown) => T[]) => (Array.isArray(value) ? value.flatMap(parse).slice(0, LIST_MAX) : undefined);
+const orderOf = (raw: Raw): ServiceOrder =>
+  defined({
+    id: text(raw.id)!,
+    date: dateOnly(raw.date),
+    product: text(raw.product),
+    quantity: count(raw.quantity),
+    unit: text(raw.unit),
+    status: statusOf(raw),
+    url: https(raw.url),
+    site: text(raw.site),
+    invoice: text(raw.invoice),
+    invoiceUrl: https(raw.invoice_url),
+    guides: listMap(raw.guides, guideOf),
+    unitPrice: count(raw.unit_price),
+    total: count(raw.total),
+    isCredit: typeof raw.is_credit === 'boolean' ? raw.is_credit : undefined,
+    dueAt: dateOnly(raw.due_at),
+    payments: listMap(raw.payments, orderPaymentOf),
+  });
 const dispatchOf = (raw: Raw): ServiceDispatch =>
-  defined({ id: text(raw.id)!, orderId: text(raw.order_id), at: instant(raw.at), plate: text(raw.plate), driver: text(raw.driver), quantity: count(raw.quantity), unit: text(raw.unit), status: statusOf(raw), guideUrl: https(raw.guide_url), url: https(raw.url) });
+  defined({ id: text(raw.id)!, orderId: text(raw.order_id), at: instant(raw.at), plate: text(raw.plate), driver: text(raw.driver), quantity: count(raw.quantity), unit: text(raw.unit), status: statusOf(raw), guideUrl: https(raw.guide_url), guideNumber: text(raw.guide_number), url: https(raw.url) });
 const reportOf = (raw: Raw): ServiceReport => defined({ id: text(raw.id)!, title: text(raw.title) ?? 'Informe', typeLabel: text(raw.type_label), date: dateOnly(raw.date), status: statusOf(raw), pdfUrl: https(raw.pdf_url), url: https(raw.url) });
 const quoteItemOf = (one: unknown): QuoteItem[] => {
   const raw = record(one);

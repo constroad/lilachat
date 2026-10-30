@@ -7,7 +7,7 @@ const detail = serviceDetailOf({
   service: { id: 's', name: 'CHANCAY' },
   orders: [{ id: 'o1', date: '2026-09-10', product: 'ASTM D 3515 - tamaño 12.5mm', quantity: 383.5, unit: 'm³', status_label: 'Despachado', tone: 'ok', url: 'https://portal.constroad.com/o/1' }],
   dispatches: [
-    { id: 'd1', order_id: 'o1', at: '2026-09-10T06:57:00.000Z', plate: 'AZJ 910', driver: 'Huber Quispe', quantity: 25.5, unit: 'm³', status_label: 'Entregado', tone: 'ok', guide_url: 'https://lila.constroad.com/files/g1.jpg' },
+    { id: 'd1', order_id: 'o1', at: '2026-09-10T06:57:00.000Z', plate: 'AZJ 910', driver: 'Huber Quispe', quantity: 25.5, unit: 'm³', status_label: 'Entregado', tone: 'ok', guide_url: 'https://lila.constroad.com/files/g1.jpg', guide_number: '001-77' },
     { id: 'd2', order_id: 'otro', plate: 'BBE 942', status_label: 'Entregado', tone: 'ok' },
   ],
   reports: [
@@ -26,16 +26,38 @@ describe('detailSheet', () => {
     expect(sheet.facts).toEqual([{ label: 'Cantidad', value: '383.5 m³' }, { label: 'Fecha', value: '10 set' }, { label: 'Despachos', value: '1' }]);
     expect(sheet.related.map((row) => row.id)).toEqual(['d1']);
     expect(sheet.url).toBe('https://portal.constroad.com/o/1');
+    expect(sheet.files).toEqual([]);
+  });
+
+  it('an order with Portal 611e61d7 fields: site, invoice and guides as files; with the collection rule, price, credit and what is pending', () => {
+    // Arrange
+    const order = { id: 'o2', product: 'MAC 2', quantity: 10, unit: 'm³', status_label: 'Despachado', tone: 'ok', site: 'Av. Los Álamos km 12', invoice: 'F001-345', invoice_url: 'https://lila.constroad.com/files/f345.pdf', guides: [{ name: 'Guía 001-77', url: 'https://lila.constroad.com/files/g77.jpg' }, { name: 'sin url' }], unit_price: 320, total: 3200, is_credit: true, due_at: '2026-11-15', payments: [{ date: '2026-10-20', amount: 1000 }, { date: '2026-10-25', amount: 200 }] };
+    const withOrder = serviceDetailOf({ service: { id: 's', name: 'S' }, orders: [order], dispatches: [], reports: [] })!;
+    // Act
+    const sheet = detailSheet(withOrder, 'orders', 'o2')!;
+    // Assert
+    expect(sheet.facts).toEqual([
+      { label: 'Obra', value: 'Av. Los Álamos km 12' },
+      { label: 'Cantidad', value: '10 m³' },
+      { label: 'Despachos', value: '0' },
+      { label: 'Precio unitario', value: 'S/ 320.00' },
+      { label: 'Total', value: 'S/ 3,200.00' },
+      { label: 'Condición', value: 'Crédito · vence el 15 nov 2026' },
+      { label: 'Cobrado', value: 'S/ 1,200.00' },
+      { label: 'Por cobrar', value: 'S/ 2,000.00' },
+      { label: 'Factura', value: 'F001-345' },
+    ]);
+    expect(sheet.files).toEqual([{ url: 'https://lila.constroad.com/files/f345.pdf', label: 'Factura F001-345' }, { url: 'https://lila.constroad.com/files/g77.jpg', label: 'Guía 001-77' }]);
   });
 
   it('a dispatch: plate, driver, quantity, departure in Lima and its order; the guide as a file', () => {
     const sheet = detailSheet(detail, 'dispatches', 'd1')!;
-    expect(sheet.facts).toEqual([{ label: 'Chofer', value: 'Huber Quispe' }, { label: 'Cantidad', value: '25.5 m³' }, { label: 'Salida', value: '10 set, 1:57 a. m.' }, { label: 'Pedido', value: 'ASTM D 3515 - tamaño 12.5mm' }]);
-    expect(sheet.file).toEqual({ url: 'https://lila.constroad.com/files/g1.jpg', label: 'Guía' });
+    expect(sheet.facts).toEqual([{ label: 'Chofer', value: 'Huber Quispe' }, { label: 'Cantidad', value: '25.5 m³' }, { label: 'Salida', value: '10 set, 1:57 a. m.' }, { label: 'Guía N°', value: '001-77' }, { label: 'Pedido', value: 'ASTM D 3515 - tamaño 12.5mm' }]);
+    expect(sheet.files).toEqual([{ url: 'https://lila.constroad.com/files/g1.jpg', label: 'Guía' }]);
   });
 
   it('a report with its PDF; one without says it has no PDF saved', () => {
-    expect(detailSheet(detail, 'reports', 'r1')).toMatchObject({ facts: [{ label: 'Tipo', value: 'Producción de planta' }, { label: 'Fecha', value: '10 set' }], file: { url: 'https://lila.constroad.com/files/r1.pdf', label: 'PDF' } });
+    expect(detailSheet(detail, 'reports', 'r1')).toMatchObject({ facts: [{ label: 'Tipo', value: 'Producción de planta' }, { label: 'Fecha', value: '10 set' }], files: [{ url: 'https://lila.constroad.com/files/r1.pdf', label: 'PDF' }] });
     expect(detailSheet(detail, 'reports', 'r2')).toMatchObject({ note: 'Este informe todavía no tiene PDF guardado en el Portal.' });
   });
 

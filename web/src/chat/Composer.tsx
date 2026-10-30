@@ -232,6 +232,8 @@ function ComposerField({
           personName={loadPerfil()?.name}
           onSubmit={(values) => commands.appAnswers.submitForm(commands.appAnswers.openForm!, values)}
           onUpload={(file, stamp) => commands.appAnswers.uploadPhoto(commands.appAnswers.openForm!.commandId, file, stamp)}
+          onRefresh={(draft) => commands.appAnswers.refreshForm(commands.appAnswers.openForm!, draft)}
+          onPreview={(draft) => commands.appAnswers.previewForm(commands.appAnswers.openForm!, draft)}
           onClose={() => commands.appAnswers.dismiss(commands.appAnswers.openForm!.commandId)}
         />
       ) : null}

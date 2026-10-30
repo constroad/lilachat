@@ -185,3 +185,14 @@ Proyecto 15540754270713720465. Capturas `design/stitch/<slug>.png` (móvil) y `<
 | f-06-servicio-drive | Drive del servicio dentro del canal | 6bf4ae1f669540659debaebe4fd6623c · 711bc4c1d604450eb84c29c34fcbed51 | §160 | falta: espera services[].drive de agentes |
 | f-07-canal-nace-cotizacion | Canal que nace con la cotización aceptada | 5fd47963182b479bbd2c0b309993352b · a71c64722ca545789d613ef6ae807c17 | §160 | DESCARTADO por José 29/10 (regla de movimientos) |
 | f-08-cuenta-del-cliente | Cuenta del cliente (vencido primero) | d77022ed9d0e4cc69813f57a85b43a7a · 5c6e87e8c1ba46febcaf413c77fc2d62 | §160 | falta: espera account de agentes |
+
+## Formularios vivos: consumo de combustible (30/10/2026, agentes 2483da7)
+
+Proyecto 15540754270713720465. Capturas `design/stitch/<slug>.png` (móvil), `-tablet` y `-desktop`. Datos de Wilson: 23–29 oct, 4 pedidos (uno bloqueado), PEN-1 con 5 lecturas y una recarga, Petróleo con 3. Contrato: `BOTS-API.spec.md` §c-octodecies.
+
+| Slug | Pantalla | Ids (móvil · tablet · escritorio) | Spec | Estado |
+| --- | --- | --- | --- | --- |
+| h-01-consumo-formulario | Periodo, pedidos como filas con casilla (uno bloqueado con su motivo) y lecturas por tanque | f313756b8d1b4d4b96aaf2a88fd6cf69 · 107d6af1f47443a2ad932b789b63ed75 · 63e67c227ff443cf91815dd95f37f5e0 | §176 | hecho (web + OTA). Sin «Semana operativa 43», «Enviar reporte al canal» ni la línea de archivo en Portal (inventados) |
+| h-02-consumo-elegir-lectura | Hoja de lecturas de un tanque con miniaturas, recarga y una bloqueada; «Elegir» | 9432de413568419db3d637253fb8b61b · c3ccfda5796147cc8689b18b0a0c8f46 · e4578e844a39446b93b6d10036ac4192 | §176 | hecho. La pastilla «RECARGA» llega en el `title`/`description` de la opción, no es un campo |
+| h-03-consumo-visor-lectura | Fotos de la lectura en el visor con «Elegir esta lectura» | 5e69e9d8377a482f819fba73d8898ba1 · 2ceebcb60a734f6cb0bc573691dcae90 · c84abcdd2b4f46a289d9addf5479bd81 | §176 | hecho, con «Elegir esta opción» (el visor no sabe que es una lectura) |
+| h-04-consumo-resumen | Resumen en vivo arriba de «Enviar» (cifras, aviso, filas por tanque, pedidos) | 0da416f046324157a93d8275c1a0d5e8 · ece708f413ca47ec935bf25f764526e0 · 79c6afd4702d4ee4b0900086d6e1135b | §176 | hecho con los bloques del kit; sin «Revisado hace 2 s» |

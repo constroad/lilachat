@@ -21,6 +21,8 @@ export function VisorDelChat(props: {
   gifSticker?: { jwt: string; chatId: string };
   /** A PDF opens in the app's viewer (pending 7); `false` = this build has none, so another app opens it. */
   onOpenPdf?: (seq: number) => boolean;
+  /** A form's option seen in the viewer (design h-03). */
+  action?: { label: string; onPress: () => void };
 }) {
   const { gifSticker } = props;
   /** El resultado de descargar/compartir, que se pinta DENTRO del visor. */
@@ -32,6 +34,7 @@ export function VisorDelChat(props: {
     onCerrar={() => props.onCambiar(null)}
     onCambiar={(otra) => props.onCambiar(otra.seq)}
     aviso={avisoVisor}
+    {...(props.action ? { action: props.action } : {})}
     onDescargar={async (f) => {
       // El resultado se DICE en los dos sentidos, y DENTRO del visor: una
       // descarga que no avisa nada deja sin saber si hay que reintentar.

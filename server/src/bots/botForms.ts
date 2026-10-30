@@ -63,7 +63,7 @@ export async function readSignedFile(token: string): Promise<{ bytes: Buffer; mi
 }
 
 /** The asker's open form, or why not: in its chat, or in the space when it came from the ⚡. */
-async function openRun(userId: Types.ObjectId, scope: CommandScope, commandId: string) {
+export async function openRun(userId: Types.ObjectId, scope: CommandScope, commandId: string) {
   const where = 'chatId' in scope ? (isId(scope.chatId) ? { chatId: scope.chatId } : null) : isId(scope.workspaceId) ? { workspaceId: scope.workspaceId, chatId: { $exists: false } } : null;
   if (!where || !isId(commandId)) return fail(404, 'command_not_found', 'Ese formulario no existe.');
   const run = await BotCommandRunModel.findOne({ _id: commandId, userId, ...where }).lean();
@@ -137,6 +137,20 @@ async function withSignedPhotos(runId: Types.ObjectId, fields: readonly FormFiel
 }
 
 export type FormOutcome = CommandOutcome | { status: 422; errors: Record<string, string> };
+type OpenRun = Exclude<Awaited<ReturnType<typeof openRun>>, ReturnType<typeof fail>>;
+
+/** Who a form talks to: the installation, its chat, the asker as the app sees them; 410 once the app is gone. */
+export async function formParty(run: OpenRun, commandId: string) {
+  const [installation, chat] = await Promise.all([
+    BotInstallationModel.findOne({ _id: run.installationId, revokedAt: { $exists: false } }).lean(),
+    run.chatId ? ChatModel.findById(run.chatId).select('_id kind name channel workspaceId members.userId').lean<ChatOfCommand | null>() : null,
+  ]);
+  const user = await personOf(run.userId, installation?.grantedScopes);
+  const app = installation ? await BotAppModel.findById(installation.appId).select('name webhookUrl').lean() : null;
+  if (!installation || !app || (run.chatId && !chat)) return fail(410, 'app_uninstalled', 'La app ya no está instalada en este espacio.');
+  const base: Base = { commandId, appId: String(app._id), appName: app.name };
+  return { installation, chat, user, app, base };
+}
 
 export async function submitForm(userId: Types.ObjectId, scope: CommandScope, commandId: string, raw: unknown): Promise<FormOutcome | ReturnType<typeof fail>> {
   const run = await openRun(userId, scope, commandId);
@@ -147,14 +161,9 @@ export async function submitForm(userId: Types.ObjectId, scope: CommandScope, co
   // A signing takes the place of NOW (José, 24/10): a reading the phone kept is refused.
   const checked = validateFormValues(fields, values, { requireFresh: true });
   if (!checked.ok) return { status: 422, errors: checked.errors };
-  const [installation, chat] = await Promise.all([
-    BotInstallationModel.findOne({ _id: run.installationId, revokedAt: { $exists: false } }).lean(),
-    run.chatId ? ChatModel.findById(run.chatId).select('_id kind name channel workspaceId members.userId').lean<ChatOfCommand | null>() : null,
-  ]);
-  const user = await personOf(userId, installation?.grantedScopes);
-  const app = installation ? await BotAppModel.findById(installation.appId).select('name webhookUrl').lean() : null;
-  if (!installation || !app || (run.chatId && !chat)) return fail(410, 'app_uninstalled', 'La app ya no está instalada en este espacio.');
-  const base: Base = { commandId, appId: String(app._id), appName: app.name };
+  const party = await formParty(run, commandId);
+  if ('error' in party) return party;
+  const { installation, chat, user, app, base } = party;
   // Open before calling the app: its late answer can land before the webhook returns.
   const late = expectLateAnswer(commandId);
   try {

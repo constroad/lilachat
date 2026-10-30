@@ -131,6 +131,7 @@ export function VisorDeImagen({
   onAbrirArchivo,
   onMakeSticker,
   aviso,
+  action,
 }: {
   foto: FotoDelVisor | null;
   /** Todas las fotos del chat, de la MÁS VIEJA a la más nueva (como el chat). */
@@ -149,6 +150,8 @@ export function VisorDeImagen({
    * completa tapa cualquier aviso de la pantalla de abajo.
    */
   aviso?: string;
+  /** A form's option seen here: «Elegir esta opción» (design h-03). */
+  action?: { label: string; onPress: () => void };
 }) {
   const margenes = useMargenes();
   const { width: ancho, height: alto } = useWindowDimensions();
@@ -268,6 +271,14 @@ export function VisorDeImagen({
               <Text testID="aviso-visor" style={{ color: '#ffffff' }} className="rounded-full bg-black/70 px-4 py-2 text-sm">
                 {aviso}
               </Text>
+            </View>
+          ) : null}
+
+          {action ? (
+            <View className="items-center px-4 pb-3">
+              <Pressable testID="visor-accion" onPress={action.onPress} className="h-12 items-center justify-center rounded-full bg-white px-6">
+                <Text style={{ color: '#000000' }} className="text-[15px] font-semibold">{action.label}</Text>
+              </Pressable>
             </View>
           ) : null}
 

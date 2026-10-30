@@ -1,4 +1,4 @@
-import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace } from '@lilachat/shared';
+import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply } from '@lilachat/shared';
 import { api } from '../../api';
 import { shrinkPhotoBlob } from '../shrinkPhoto';
 
@@ -20,6 +20,12 @@ export const runShortcut = (jwt: string, scope: CommandScope, input: { kind: 'sh
   input.kind === 'command'
     ? api<CommandOutcome>(`${pathOf(scope)}/commands`, { jwt, body: { app_id: input.appId, command: input.key, text: '', forms: FORMS_LEVEL } })
     : api<CommandOutcome>(`${pathOf(scope)}/shortcuts`, { jwt, body: { app_id: input.appId, shortcut: input.key, forms: FORMS_LEVEL } });
+
+/** `x-refresh`: the app sends the form again for this draft, on the same command (agentes 2483da7). */
+export const refreshAppForm = (jwt: string, scope: CommandScope, commandId: string, values: FormValues) => api<CommandOutcome>(`${pathOf(scope)}/commands/${commandId}/refresh`, { jwt, body: { values } });
+
+/** `x-preview`: the app's summary of the draft; an empty one when it cannot answer. */
+export const previewAppForm = (jwt: string, scope: CommandScope, commandId: string, values: FormValues) => api<PreviewReply>(`${pathOf(scope)}/commands/${commandId}/preview`, { jwt, body: { values } });
 
 /** A form's photo, the moment it is picked, lighter with Portal's standard (28/10): the form then carries its id. */
 export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandId: string, file: Blob, stamp?: GeoPoint): Promise<{ ok: true; fileId: string } | { ok: false; message: string }> {

@@ -12,7 +12,7 @@ import { eventSignature } from './botSecrets.js';
  * Retries are timers in this process, not a poll of the database: at boot,
  * `resumeBotDeliveries` sets the timers of what was left pending.
  */
-export type BotEventType = 'message.created' | 'message.edited' | 'message.deleted' | 'button.click' | 'checklist.item.toggled' | 'app.uninstalled' | 'command.invoked' | 'form.submitted' | 'shortcut.invoked' | 'link.status' | 'link.revoke' | 'client.files.requested' | 'client.service.requested' | 'client.account.requested' | 'client.report.requested';
+export type BotEventType = 'message.created' | 'message.edited' | 'message.deleted' | 'button.click' | 'checklist.item.toggled' | 'app.uninstalled' | 'command.invoked' | 'form.submitted' | 'form.preview.requested' | 'shortcut.invoked' | 'link.status' | 'link.revoke' | 'client.files.requested' | 'client.service.requested' | 'client.account.requested' | 'client.report.requested';
 export type WebhookReply = { status: number | null; body: unknown; error?: string };
 
 const ATTEMPT_TIMEOUT_MS = 10_000;

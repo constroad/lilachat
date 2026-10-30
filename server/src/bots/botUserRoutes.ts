@@ -9,6 +9,7 @@ import { asyncRoute, requireSession } from '../requireSession.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { commandGroupsOf, invokeCommand, invokeShortcut, shareCommandAnswer } from './botCommands.js';
 import { FORM_PHOTO_MAX_BYTES, readSignedFile, storeFormPhoto, submitForm } from './botForms.js';
+import { previewForm, refreshForm } from './botFormLive.js';
 import { appChannelsOf } from './botChannels.js';
 import { acceptAppScopes, revokeInstallation } from './botInstall.js';
 import { directWith, postBotMessage } from './botMessages.js';
@@ -102,6 +103,18 @@ export function buildBotUserRouter(): Router {
   router.post(['/chats/:chatId/commands/:commandId/form', '/workspaces/:id/commands/:commandId/form'], requireSession, asyncRoute(async (req, res) => {
     const outcome = await submitForm(req.session!.userId, scopeOf(req), req.params.commandId!, req.body?.values);
     if ('errors' in outcome) return void res.status(422).json({ errors: outcome.errors });
+    if ('error' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
+    res.json(outcome);
+  }));
+  // While the form is filled (agentes 2483da7): a new period asks for it again; the read tool sums up the draft.
+  router.post(['/chats/:chatId/commands/:commandId/refresh', '/workspaces/:id/commands/:commandId/refresh'], requireSession, asyncRoute(async (req, res) => {
+    const outcome = await refreshForm(req.session!.userId, scopeOf(req), req.params.commandId!, req.body?.values);
+    if ('errors' in outcome) return void res.status(422).json({ errors: outcome.errors });
+    if ('error' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
+    res.json(outcome);
+  }));
+  router.post(['/chats/:chatId/commands/:commandId/preview', '/workspaces/:id/commands/:commandId/preview'], requireSession, asyncRoute(async (req, res) => {
+    const outcome = await previewForm(req.session!.userId, scopeOf(req), req.params.commandId!, req.body?.values);
     if ('error' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
     res.json(outcome);
   }));

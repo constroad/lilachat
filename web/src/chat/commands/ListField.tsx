@@ -1,6 +1,6 @@
 import { useRef, type ReactNode } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { formRows, itemPath, newItem, visibleFields, type FormField, type FormValues, type ItemField } from '@lilachat/shared';
+import { formRows, itemPath, newItem, optionsForRow, rowTitleOf, visibleFields, type FormField, type FormValues, type ItemField } from '@lilachat/shared';
 import { FieldError } from '../../ui/Overlay';
 import { Label } from './AppFormFields';
 
@@ -17,6 +17,12 @@ type Props = {
 };
 
 const asItems = (value: unknown): FormValues[] => (Array.isArray(value) ? value.map((item) => (item && typeof item === 'object' ? (item as FormValues) : {})) : []);
+
+/** An item's fields to fill: its title field is not edited, and each choice offers only this row's options (`x-match`). */
+const cellsOf = (field: ListOfItems, item: FormValues): ItemField[] =>
+  visibleFields(field.fields, item)
+    .filter((child) => child.name !== field.rowTitle)
+    .map((child) => (child.kind === 'choice' ? { ...child, options: optionsForRow(child.options, item) } : child));
 
 /**
  * A list of items (José, 28/10: one row with the number of trucks and their m³ beside it, and a
@@ -35,7 +41,8 @@ export function ListField({ field, value, errors, onChange, renderField }: Props
     keys.current.splice(index, 1);
     onChange(items.filter((_item, at) => at !== index), field.name);
   };
-  const removable = items.length > field.min;
+  // Fixed rows (agentes 2483da7): one per tank, nothing added nor removed.
+  const removable = !field.fixedRows && items.length > field.min;
   return (
     <div data-testid={`lista-${field.name}`}>
       <Label field={field} />
@@ -47,14 +54,14 @@ export function ListField({ field, value, errors, onChange, renderField }: Props
           {items.map((item, index) => (
             <div key={keys.current[index]} data-testid={`item-${field.name}-${index}`} className="space-y-3 rounded-2xl border border-outline/15 p-3">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">{`${field.label} · ${index + 1}`}</p>
+                {field.fixedRows ? <p data-testid={`titulo-${field.name}-${index}`} className="text-[15px] font-semibold">{rowTitleOf(field, item) || `${field.label} · ${index + 1}`}</p> : <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">{`${field.label} · ${index + 1}`}</p>}
                 {removable ? (
                   <button type="button" data-testid={`quitar-${field.name}-${index}`} onClick={() => remove(index)} className="flex items-center gap-1 rounded-lg px-1.5 py-1 text-[13px] text-on-surface-variant hover:bg-on-surface/5">
                     <Trash2 size={15} /> Quitar
                   </button>
                 ) : null}
               </div>
-              {formRows(visibleFields(field.fields, item)).map((row) => {
+              {formRows(cellsOf(field, item)).map((row) => {
                 const cells = row.map((child) => renderField(child, item[child.name], errors[itemPath(field.name, index, child.name)], setCell(index, child.name), `${keys.current[index]}-${child.name}`, row.length === 2));
                 return row.length === 2 ? <div key={row[0]!.name} data-row="2" className="grid grid-cols-2 items-start gap-3">{cells}</div> : cells;
               })}
@@ -62,7 +69,7 @@ export function ListField({ field, value, errors, onChange, renderField }: Props
           ))}
         </div>
       )}
-      {items.length < field.max ? (
+      {!field.fixedRows && items.length < field.max ? (
         <button type="button" data-testid={`agregar-${field.name}`} onClick={() => onChange([...items, newItem(field.fields)], field.name)} className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40 text-[14px] font-semibold text-primary hover:bg-primary/5">
           <Plus size={17} /> {field.addLabel}
         </button>

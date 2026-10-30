@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { answerOfOutcome, formSubmitOutcome, giveUpPending, giveUpWaiting, markWaiting, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, WRITE_GIVE_UP_MS, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type GeoPoint, type ShortcutRow } from '@lilachat/shared';
+import { answerOfOutcome, formSubmitOutcome, giveUpPending, giveUpWaiting, markWaiting, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, WRITE_GIVE_UP_MS, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type ShortcutRow } from '@lilachat/shared';
 import type { JsonResult } from '../../api/jsonCall';
 import { getSocket } from '../socketClient';
-import { runShortcut, submitAppForm, uploadFormPhoto } from './commandsApi';
+import { previewAppForm, refreshAppForm, runShortcut, submitAppForm, uploadFormPhoto } from './commandsApi';
 
 export type AppAnswers = ReturnType<typeof useAppAnswers>;
 
@@ -72,6 +72,26 @@ export function useAppAnswers(params: { jwt: string; scope: CommandScope | null 
     [jwt]
   );
 
+  /** A new period: the form the app sends back takes the open one's place; a late one comes by the socket the same way. */
+  const refreshForm = useCallback(
+    async (answer: EphemeralAnswer, values: FormValues): Promise<void> => {
+      if (!scopeRef.current) return;
+      const result = await refreshAppForm(jwt, scopeRef.current, answer.commandId, values);
+      const next = result.ok ? answerOfOutcome(result.data, answer.command) : null;
+      if (next?.state !== 'form') return;
+      setAnswers((list) => replaceAnswer(list, answer.commandId, { ...next, ...(answer.action ? { action: answer.action } : {}), ...(answer.avatarUrl ? { avatarUrl: answer.avatarUrl } : {}) }));
+    },
+    [jwt]
+  );
+
+  const previewForm = useCallback(
+    async (answer: EphemeralAnswer, values: FormValues): Promise<PreviewReply> => {
+      const result = scopeRef.current ? await previewAppForm(jwt, scopeRef.current, answer.commandId, values) : null;
+      return result?.ok ? result.data : { blocks: [], errors: {} };
+    },
+    [jwt]
+  );
+
   useEffect(() => {
     const socket = getSocket();
     if (!socket || !key) return;
@@ -117,5 +137,5 @@ export function useAppAnswers(params: { jwt: string; scope: CommandScope | null 
     };
   }, []);
   const openForm = answers.find((entry) => entry.commandId === openFormId && entry.state === 'form') ?? null;
-  return { answers, track, runAction, uploadPhoto, submitForm, dismiss, removeAnswer, say, openForm, showForm: setOpenFormId };
+  return { answers, track, runAction, uploadPhoto, submitForm, refreshForm, previewForm, dismiss, removeAnswer, say, openForm, showForm: setOpenFormId };
 }

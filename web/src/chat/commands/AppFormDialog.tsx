@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { evidenceLine, firstErrorField, formFields, formRows, initialValues, liveSelfieFieldOf, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint } from '@lilachat/shared';
+import { evidenceLine, firstErrorField, formFields, formRows, initialValues, keptAfterRefresh, liveSelfieFieldOf, submitLabelOf, validateFormValues, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { ChoiceField, DateField, LocationField, NumberField, PhotoField, TextField } from './AppFormFields';
 import { ListField } from './ListField';
+import { isRichChoice, MultiField, RichChoiceField } from './RichChoiceFields';
 import { PhotoListField } from './PhotoListField';
 import { LiveSelfie, type LiveSelfieHandle } from './LiveSelfie';
 import { useLiveSigning } from './useLiveSigning';
+import { useFormLive } from './useFormLive';
+import { BotBlocksView } from '../botBlocks/BotBlocksView';
 
 /** The two steps of a signing, as design e-32 writes them. */
 const LIVE_CHOICE_KICKER = '1 · Qué marcas';
@@ -23,19 +26,29 @@ type Upload = (file: File, stamp?: GeoPoint) => Promise<{ ok: true; fileId: stri
  * said field by field before it leaves, and what the app refuses comes back
  * the same way.
  */
-export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: Upload; onClose: () => void }) {
+export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: Upload; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply> }) {
   const form = props.answer.response!.form!;
   const fields = useMemo(() => formFields(form), [form]);
   // What the app prefilled (agentes, 23/10: the verified phone) and today's date (José, 24/10).
   const [values, setValues] = useState<FormValues>(() => initialValues(fields));
+  // The app sent the form again (a new period, or its late answer): what is still offered stays picked.
+  const shownFields = useRef(fields);
+  useEffect(() => {
+    if (shownFields.current === fields) return;
+    shownFields.current = fields;
+    setValues((before) => ({ ...initialValues(fields), ...keptAfterRefresh(fields, before) }));
+  }, [fields]);
+  const live = useFormLive({ fields, values, preview: form.preview, onRefresh: props.onRefresh, onPreview: props.onPreview });
   const [errors, setErrors] = useState<Record<string, string>>(() => props.answer.errors ?? {});
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   // A form with a location and a photo is a signing (pending 94): live selfie, place of now, one click.
-  const live = useMemo(() => liveSelfieFieldOf(fields), [fields]);
+  const selfieField = useMemo(() => liveSelfieFieldOf(fields), [fields]);
   const locationName = fields.find((field) => field.kind === 'location')?.name;
   const selfie = useRef<LiveSelfieHandle>(null);
-  const signing = useLiveSigning({ live, locationName, selfie, upload: props.onUpload });
+  const signing = useLiveSigning({ live: selfieField, locationName, selfie, upload: props.onUpload });
+  // The summary's remarks («la lectura de fin va después del inicio») under their fields; the person's own errors win.
+  const shownErrors = { ...live.summary.errors, ...errors };
   // Sent and answered later (consensus 24/10): «Enviando…» until the answer closes it or the errors come back here.
   const waiting = props.answer.waiting === true;
   // After a refusal the dialog goes to the first field with an error (E2E 28/10: «Diseño» was out of sight).
@@ -82,16 +95,16 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
   };
   /** One field; `half` when it shares its row. */
   const drawField = (field: FormField, half = false) =>
-    live && field.name === live.name ? (
-      <LiveSelfie key={field.name} ref={selfie} testId={`campo-${field.name}`} label={LIVE_PHOTO_KICKER} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={errors[field.name] ?? (locationName ? errors[locationName] : undefined)} />
+    selfieField && field.name === selfieField.name ? (
+      <LiveSelfie key={field.name} ref={selfie} testId={`campo-${field.name}`} label={LIVE_PHOTO_KICKER} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={shownErrors[field.name] ?? (locationName ? shownErrors[locationName] : undefined)} />
     ) : (
       // In a signing the place shows inside the camera; its field keeps reading behind it.
-      <div key={field.name} data-field={field.name} hidden={Boolean(live) && field.kind === 'location'}>
-        {live && field.kind === 'choice' && field.segmented ? <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">{LIVE_CHOICE_KICKER}</p> : null}
+      <div key={field.name} data-field={field.name} hidden={Boolean(selfieField) && field.kind === 'location'}>
+        {selfieField && field.kind === 'choice' && field.segmented ? <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">{LIVE_CHOICE_KICKER}</p> : null}
         {field.kind === 'list' ? (
-          <ListField field={field} value={values[field.name]} errors={errors} onChange={setList(field.name)} renderField={(child, value, error, onChange, key, halfCell) => <Field key={key} field={child} value={value} error={error} onChange={onChange} upload={props.onUpload} half={halfCell} />} />
+          <ListField field={field} value={values[field.name]} errors={shownErrors} onChange={setList(field.name)} renderField={(child, value, error, onChange, key, halfCell) => <Field key={key} field={child} value={value} error={error} onChange={onChange} upload={props.onUpload} half={halfCell} />} />
         ) : (
-          <Field field={field} value={values[field.name]} error={errors[field.name]} onChange={set(field.name)} upload={props.onUpload} half={half} />
+          <Field field={field} value={values[field.name]} error={shownErrors[field.name]} onChange={set(field.name)} upload={props.onUpload} half={half} />
         )}
       </div>
     );
@@ -103,20 +116,27 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
       footer={
         <div>
           {/* Next to the button, never at the end of the scroll: a refusal there looked like a dead button (E2E 24/10). */}
+          {live.summary.blocks.length ? (
+            <section data-testid="formulario-resumen" className="mb-3 rounded-2xl border border-outline/15 p-3">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">Resumen</p>
+              <BotBlocksView blocks={live.summary.blocks} />
+            </section>
+          ) : null}
           {message ? <div data-testid="formulario-error" className="mb-2"><FieldError>{message}</FieldError></div> : null}
           <PrimaryButton testId="btn-enviar-formulario" disabled={sending || waiting} onClick={() => void send()}>{waiting ? 'Enviando…' : sending ? signing.phaseLabel : submitLabelOf(form, fields, values)}</PrimaryButton>
-          {evidence ? <p className="mt-2 text-center text-[12px] text-on-surface-variant">{live ? LIVE_FOOTER : evidence}</p> : null}
+          {evidence ? <p className="mt-2 text-center text-[12px] text-on-surface-variant">{selfieField ? LIVE_FOOTER : evidence}</p> : null}
         </div>
       }
     >
       <div ref={body} data-testid={`formulario-${form.id}`} className="space-y-4">
+        {live.refreshing ? <p data-testid="formulario-actualizando" className="text-[13px] text-on-surface-variant">Actualizando las opciones…</p> : null}
         {props.answer.response?.text ? <p data-testid="formulario-texto" className="rounded-xl bg-primary/10 px-3 py-2.5 text-[14px]">{props.answer.response.text}</p> : null}
         {form.intro ? <p className="text-[14px] text-on-surface-variant">{form.intro}</p> : null}
         <div className="flex items-center gap-2 text-[13px] text-on-surface-variant">
           {props.answer.avatarUrl ? <AppLogo avatarUrl={props.answer.avatarUrl} size={22} rounded="rounded-md" /> : <Avatar name={props.answer.appName} size={22} bot />}
           <span>{props.answer.appName} · hoy, {today.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
         </div>
-        {evidence && !live ? (
+        {evidence && !selfieField ? (
           <div className="rounded-2xl border border-outline/15 py-4 text-center">
             <p className="text-4xl font-bold tabular-nums tracking-tight">{today.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })}</p>
             {props.personName ? <p className="mx-auto mt-2 w-fit rounded-lg border border-outline/15 px-3 py-1 text-[13px]">{props.personName}</p> : null}
@@ -140,7 +160,8 @@ export function AppFormDialog(props: { answer: EphemeralAnswer; personName?: str
 function Field(props: { field: Exclude<FormField, { kind: 'list' }>; value: unknown; error?: string; onChange: (value: unknown) => void; upload: Upload; half?: boolean }) {
   const { field, upload, half, ...rest } = props;
   switch (field.kind) {
-    case 'choice': return <ChoiceField field={field} {...rest} compact={half} />;
+    case 'choice': return isRichChoice(field) ? <RichChoiceField field={field} {...rest} /> : <ChoiceField field={field} {...rest} compact={half} />;
+    case 'multi': return <MultiField field={field} {...rest} />;
     case 'text': return <TextField field={field} {...rest} />;
     case 'number': return <NumberField field={field} {...rest} />;
     case 'date': return <DateField field={field} {...rest} />;

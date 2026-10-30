@@ -349,3 +349,63 @@ describe('a form with a list (José and agentes, 28/10: the order\'s trucks in r
     expect(String(items[0]!.foto)).toMatch(/\/api\/bots\/files\/[\w-]+\.[\w-]+$/);
   });
 });
+
+/** Fuel consumption (agentes 2483da7, 30/10): the period refreshes the options, a read tool sums up the draft. */
+describe('a form that refreshes and sums up before sending', () => {
+  const orders = (ids: string[]) => ({ type: 'array', title: 'Pedidos', minItems: 1, items: { type: 'string', oneOf: ids.map((id) => ({ const: id, title: `PED-${id}` })) } });
+  const consumption = (ids: string[], extra: Record<string, unknown> = {}) => ({
+    id: 'registrar_consumo',
+    title: 'Registrar consumo',
+    schema: { type: 'object', 'x-preview': { tool: 'revisar_consumo' }, properties: { desde: { type: 'string', format: 'date', 'x-refresh': true }, pedidos: orders(ids), foto: { type: 'string', 'x-input': 'photo' } }, required: ['pedidos'], ...extra },
+  });
+  const open = async (form = consumption(['p1', 'p2']), forms = 3) => {
+    await BotAppModel.updateOne({ clientId: 'lca_inframaq' }, { $set: { shortcuts: [{ key: 'registrar_consumo', name: 'Registrar consumo' }] } });
+    answer = json({ response_type: 'form', form });
+    return request(app).post(`/api/chats/${channel}/shortcuts`).set(asAna).send({ app_id: await appId(), shortcut: 'registrar_consumo', forms }).expect(200);
+  };
+  const live = (commandId: string, what: 'refresh' | 'preview', values: Record<string, unknown>) => request(app).post(`/api/chats/${channel}/commands/${commandId}/${what}`).set(asAna).send({ values });
+
+  it('a Lilachat that does not draw these yet is told to update', async () => {
+    const old = await open(consumption(['p1']), 2);
+    expect(old.body).toMatchObject({ outcome: 'failed', message: 'Actualiza Lilachat para llenar este formulario.' });
+  });
+
+  it('a new period asks the app again with the draft on the same command; the new form is what gets checked', async () => {
+    // Arrange
+    const commandId = (await open()).body.commandId;
+    answer = json({ response_type: 'form', text: 'No hay pedidos para elegir en Portal en ese periodo.', form: consumption(['p7']) });
+    received.length = 0;
+    // Act
+    const refreshed = await live(commandId, 'refresh', { desde: '2026-10-23', pedidos: ['p1'], foto: 'file-x', ajeno: 1 }).expect(200);
+    // Assert
+    expect(refreshed.body).toMatchObject({ outcome: 'form', commandId, response: { text: 'No hay pedidos para elegir en Portal en ese periodo.', form: { id: 'registrar_consumo' } } });
+    expect(received).toEqual([{ type: 'shortcut.invoked', data: expect.objectContaining({ command_id: commandId, shortcut: 'registrar_consumo', refresh: true, values: { desde: '2026-10-23', pedidos: ['p1'] } }) }]);
+    answer = json({ text: 'Consumo registrado' });
+    expect((await submit(commandId, { pedidos: ['p1'] }).expect(422)).body.errors).toEqual({ pedidos: 'Elige entre las opciones.' });
+    await submit(commandId, { pedidos: ['p7'] }).expect(200);
+  });
+
+  it('the summary: form.preview.requested with the draft, its blocks and errors back; a failing app means no summary', async () => {
+    // Arrange
+    const commandId = (await open()).body.commandId;
+    answer = json({ blocks: [{ type: 'metric', value: '8.68', unit: 'gl/m³', label: 'Rendimiento', tone: 'warn' }], errors: { pedidos: 'Ese pedido ya tiene consumo.' } });
+    received.length = 0;
+    // Act
+    const summed = await live(commandId, 'preview', { pedidos: ['p1'] }).expect(200);
+    answer = (_event, res) => res.writeHead(502).end();
+    const failed = await live(commandId, 'preview', { pedidos: ['p1'] }).expect(200);
+    // Assert
+    expect(summed.body).toEqual({ blocks: [{ type: 'metric', value: '8.68', unit: 'gl/m³', label: 'Rendimiento', tone: 'warn' }], errors: { pedidos: 'Ese pedido ya tiene consumo.' } });
+    expect(received[0]).toEqual({ type: 'form.preview.requested', data: expect.objectContaining({ command_id: commandId, form_id: 'registrar_consumo', values: { pedidos: ['p1'] }, user: expect.objectContaining({ name: 'Ana' }) }) });
+    expect(failed.body).toEqual({ blocks: [], errors: {} });
+  });
+
+  it('a form without x-refresh or x-preview refuses both; only who asked may', async () => {
+    // Arrange
+    const commandId = (await open(consumption(['p1'], { 'x-preview': undefined, properties: { pedidos: orders(['p1']) } }))).body.commandId;
+    // Act / Assert
+    await live(commandId, 'refresh', {}).expect(409);
+    await live(commandId, 'preview', {}).expect(409);
+    await request(app).post(`/api/chats/${channel}/commands/${commandId}/preview`).set(asJose).send({ values: {} }).expect(404);
+  });
+});

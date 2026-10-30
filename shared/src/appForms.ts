@@ -1,5 +1,6 @@
 import { cutAtWord } from './textCut.js';
 import { normalizeFormDate, startingMoment, type DateMode } from './formDates.js';
+import { choiceOptions, previewToolOf, refusalOf, type ChoiceOption } from './appFormOptions.js';
 /**
  * An app's form (R160, like Slack's modals; José, 23/10: mark attendance,
  * register material, measure a tank, from the space). Agentes builds it from
@@ -38,23 +39,26 @@ export type FormSchemaProperty = {
   'x-unit'?: string;
   'x-labels'?: Record<string, string>;
   /** The standard way to name options: `[{ "const": "<id>", "title": "Tanque 1" }]`, same as `enum` + `x-labels`. */
-  oneOf?: { const?: unknown; title?: string; description?: string }[];
+  oneOf?: ({ const?: unknown; title?: string; description?: string } & Record<string, unknown>)[];
   /** Shown only when another field has one of these answers: `{ "accion": ["salida"] }` (R161). */
   'x-visible-if'?: Record<string, unknown[]>;
   /** Half a row beside another short field, or the whole row (José, 28/10: forms were a field per row). Without it, `formRows` decides. */
   'x-width'?: FieldWidth;
   /** `initials`: the options are people (a client, an employee) and get their initials; without it, none (agentes, 28/10). */
   'x-avatar'?: 'initials';
+  /** A list whose rows are its `default` items, one per tank: no adding nor removing (agentes 2483da7). */
+  'x-fixed-rows'?: boolean;
+  /** The item field whose answer titles each fixed row. */
+  'x-row-title'?: string;
+  /** Changing this field asks the app for the form again with the draft (the period changes the orders). */
+  'x-refresh'?: boolean;
 };
 /** How much of a row a field takes: half beside another, or all of it. */
 export type FieldWidth = 'half' | 'full';
-export type FormSchema = { type?: string; description?: string; properties?: Record<string, FormSchemaProperty>; required?: string[] };
-export type AppForm = { id: string; title: string; submitLabel?: string; /** The schema's `description`: a line under the title. */ intro?: string; schema: FormSchema };
+export type FormSchema = { type?: string; description?: string; properties?: Record<string, FormSchemaProperty>; required?: string[]; /** The read tool that sums up the draft above «Enviar». */ 'x-preview'?: { tool?: string } };
+export type AppForm = { id: string; title: string; submitLabel?: string; /** The schema's `description`: a line under the title. */ intro?: string; schema: FormSchema; /** `x-preview`'s tool: the summary above «Enviar». */ preview?: string };
 
-/** An option of a choice; `sub` is the line under it in a long list (the person's role). */
-export type ChoiceOption = { value: string; label: string; sub?: string };
-
-type Base = { name: string; label: string; help?: string; required: boolean; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number };
+type Base = { name: string; label: string; help?: string; required: boolean; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number; /** `x-refresh`: changing it asks the app for the form again. */ refresh?: true };
 export type FormField =
   | (Base & { kind: 'choice'; options: ChoiceOption[]; segmented: boolean; /** A long list (the company's people, agentes 24/10): a field that opens a sheet with a search. */ searchable: boolean; /** `x-avatar: initials`: each option with its initials. */ initials?: true })
   | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true })
@@ -62,6 +66,8 @@ export type FormField =
   | (Base & { kind: 'date'; /** `format: date | time | date-time`: a picker for the day, the hour or both (José, 24/10). */ mode: DateMode })
   | (Base & { kind: 'photo'; /** A list (`type: array`) where each photo can be removed and taken again; otherwise one photo. */ multiple: boolean; max: number; min: number; /** `x-gallery`: also from the gallery. */ gallery?: true })
   | (Base & { kind: 'location' })
+  /** `type: array` of options (agentes 2483da7): chips with a check, the week's orders. */
+  | (Base & { kind: 'multi'; options: ChoiceOption[]; min: number; max: number })
   | (Base & {
       kind: 'list';
       /** Each item's fields: anything but another list or a location. */
@@ -73,9 +79,13 @@ export type FormField =
       layout: 'row' | 'card';
       /** The schema's `default`, cut to the item's own keys and to `max`. */
       initialItems?: FormValues[];
+      /** `x-fixed-rows`: the rows are the default items; nothing is added nor removed. */
+      fixedRows?: true;
+      /** `x-row-title`: the item field that titles each fixed row (and is not edited). */
+      rowTitle?: string;
     });
 /** A field inside a list's item. */
-export type ItemField = Exclude<FormField, { kind: 'list' } | { kind: 'location' }>;
+export type ItemField = Exclude<FormField, { kind: 'list' } | { kind: 'location' } | { kind: 'multi' }>;
 export type FormValues = Record<string, unknown>;
 export type GeoPoint = { lat: number; lng: number; precision: number; /** How old the reading was when it was sent (ms, the phone's own clock on both ends): signing takes only a reading of now (José, 24/10). */ age?: number };
 
@@ -105,26 +115,6 @@ const record = (value: unknown): Record<string, unknown> => (value && typeof val
 const line = (value: unknown, max: number): string => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, max) : '');
 /** «nota_corta» → «Nota corta» when the schema gives no title. */
 const labelOf = (name: string) => name.replace(/[_-]+/g, ' ').replace(/^./, (first) => first.toUpperCase());
-
-/**
- * The options of a choice, from `enum` (+ `x-labels`) or from `oneOf` with
- * `const` and `title`. A repeated value is kept once: Portal's material list
- * sent one id twice and the sheet drew two rows with the same key (E2E 24/10).
- */
-function choiceOptions(property: FormSchemaProperty): ChoiceOption[] | null {
-  const labels = record(property['x-labels']);
-  const pairs: { value: string; title: unknown; description?: unknown }[] | null = Array.isArray(property.enum)
-    ? property.enum.map((value) => ({ value: String(value), title: labels[String(value)] }))
-    : Array.isArray(property.oneOf) && property.oneOf.some((option) => record(option).const !== undefined)
-      ? property.oneOf.map(record).filter((option) => option.const !== undefined).map((option) => ({ value: String(option.const), title: option.title, description: option.description }))
-      : null;
-  if (!pairs) return null;
-  const unique = pairs.filter((pair, index) => pairs.findIndex((other) => other.value === pair.value) === index);
-  return unique.slice(0, FORM_LIMITS.options).map((pair) => {
-    const sub = line(pair.description, FORM_LIMITS.label);
-    return { value: pair.value, label: line(pair.title, FORM_LIMITS.label) || labelOf(pair.value), ...(sub ? { sub } : {}) };
-  });
-}
 
 /** One photo, or a list of them when the schema is an array (minItems/maxItems, at most 10). */
 function photoField(base: Base, property: FormSchemaProperty): FormField {
@@ -158,14 +148,31 @@ function listField(base: Base, property: FormSchemaProperty): FormField | string
   for (const [name, child] of entries) {
     const field = fieldOf(name, record(child) as FormSchemaProperty, required.has(name));
     if (typeof field === 'string') return field;
-    if (field.kind === 'list' || field.kind === 'location') return `Dentro de «${base.name}» no va ${field.kind === 'list' ? 'otra lista' : 'una ubicación'}.`;
+    if (field.kind === 'list' || field.kind === 'location' || field.kind === 'multi') return `Dentro de «${base.name}» no va ${field.kind === 'location' ? 'una ubicación' : 'otra lista'}.`;
     fields.push(field);
   }
+  if (property['x-fixed-rows'] === true) return fixedRowsField(base, property, fields);
   const max = Math.min(FORM_LIMITS.items, Math.max(1, Math.floor(property.maxItems ?? DEFAULT_MAX_ITEMS)));
   const min = Math.min(max, Math.max(base.required ? 1 : 0, Math.floor(property.minItems ?? 0)));
   const initialItems = defaultItems(property.default, fields, max);
   const addLabel = line(property['x-add-label'], FORM_LIMITS.label) || 'Agregar fila';
   return { ...base, required: min > 0, kind: 'list', fields, min, max, addLabel, layout: fitsInRow(fields) ? 'row' : 'card', ...(initialItems ? { initialItems } : {}) };
+}
+
+/** One row per `default` item (one per tank), titled by `x-row-title`: as many as the app sent, no more, no less. */
+function fixedRowsField(base: Base, property: FormSchemaProperty, fields: ItemField[]): FormField | string {
+  const initialItems = defaultItems(property.default, fields, FORM_LIMITS.items);
+  if (!initialItems) return `La lista «${base.name}» con x-fixed-rows trae sus filas en «default».`;
+  const rowTitle = typeof property['x-row-title'] === 'string' && fields.some((field) => field.name === property['x-row-title']) ? property['x-row-title'] : undefined;
+  const count = initialItems.length;
+  return { ...base, required: true, kind: 'list', fields, min: count, max: count, addLabel: '', layout: 'card', initialItems, fixedRows: true, ...(rowTitle ? { rowTitle } : {}) };
+}
+
+/** `type: array` whose items are options: a multi-select, at least `minItems`, at most every option. */
+function multiField(base: Base, property: FormSchemaProperty, options: ChoiceOption[]): FormField {
+  const max = Math.min(options.length, Math.max(1, Math.floor(property.maxItems ?? options.length)));
+  const min = Math.min(max, Math.max(base.required ? 1 : 0, Math.floor(property.minItems ?? 0)));
+  return { ...base, required: min > 0, kind: 'multi', options, min, max };
 }
 
 /** A number's limits, an exclusive one winning over an inclusive one at the same edge or inside it. */
@@ -184,8 +191,10 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
   if (input !== undefined && !INPUTS.includes(input)) return `El campo «${name}» pide x-input «${input}», que Lilachat no sabe dibujar.`;
   const visibleIf = visibleIfOf(property['x-visible-if']);
   const width = property['x-width'] === 'half' || property['x-width'] === 'full' ? property['x-width'] : undefined;
-  const base: Base = { name, label: line(property.title, FORM_LIMITS.label) || labelOf(name), ...(property.description ? { help: line(property.description, FORM_LIMITS.help) } : {}), required, ...(visibleIf ? { visibleIf } : {}), ...(width ? { width } : {}) };
+  const base: Base = { name, label: line(property.title, FORM_LIMITS.label) || labelOf(name), ...(property.description ? { help: line(property.description, FORM_LIMITS.help) } : {}), required, ...(visibleIf ? { visibleIf } : {}), ...(width ? { width } : {}), ...(property['x-refresh'] === true ? { refresh: true as const } : {}) };
   if (input === 'photo') return photoField(base, property);
+  const picks = property.type === 'array' && input === undefined ? choiceOptions(record(property.items) as FormSchemaProperty) : null;
+  if (picks) return multiField(base, property, picks);
   if (property.type === 'array' && input === undefined) return listField(base, property);
   if (input === 'location') return { ...base, kind: 'location' };
   const options = choiceOptions(property);
@@ -290,13 +299,24 @@ export function formFields(form: AppForm): FormField[] {
 }
 
 /**
- * What a Lilachat can draw, sent with each command (`forms`): 2 draws lists (28/10). An older
- * one sends nothing, and a form with a list would break its sheet, so it is told to update.
+ * What a Lilachat can draw, sent with each command (`forms`): 2 draws lists (28/10), 3 the
+ * rich options, fixed rows, refresh and preview (30/10). An older one sends less, and a
+ * form beyond it would break its sheet, so it is told to update.
  */
-export const FORMS_LEVEL = 2;
-/** The level a form needs: 2 with a list, 1 otherwise. */
+export const FORMS_LEVEL = 3;
+const RICH_OPTION_KEYS = ['x-thumb', 'x-photos', 'x-match', 'x-disabled'];
+const hasRichOptions = (property: FormSchemaProperty): boolean => [...(property.oneOf ?? []), ...(property.items?.oneOf ?? [])].some((option) => RICH_OPTION_KEYS.some((key) => key in record(option)));
+/** Needs level 3: a multi-select, fixed rows, refresh or rich options, here or inside a list's item. */
+function needsLevel3(property: FormSchemaProperty): boolean {
+  if (property['x-fixed-rows'] === true || property['x-refresh'] === true || hasRichOptions(property)) return true;
+  if (property.type === 'array' && property['x-input'] === undefined && choiceOptions(record(property.items) as FormSchemaProperty)) return true;
+  return Object.values(record(property.items?.properties)).some((child) => needsLevel3(record(child) as FormSchemaProperty));
+}
+/** The level a form needs: 3 with the 30/10 pieces or a preview, 2 with a list, 1 otherwise. */
 export function formLevelOf(form: AppForm): number {
-  return Object.values(form.schema.properties ?? {}).some((property) => property.type === 'array' && property['x-input'] === undefined) ? 2 : 1;
+  const properties = Object.values(form.schema.properties ?? {});
+  if (form.preview || previewToolOf(form.schema) || properties.some(needsLevel3)) return 3;
+  return properties.some((property) => property.type === 'array' && property['x-input'] === undefined) ? 2 : 1;
 }
 
 /** What the app answered with `response_type: "form"`: refused with a reason when it cannot be drawn. */
@@ -313,7 +333,8 @@ export function validateFormSpec(raw: unknown): { ok: true; form: AppForm } | { 
   const required = Array.isArray(schema.required) ? schema.required.filter((name): name is string => typeof name === 'string' && name in properties) : [];
   const intro = line(schema.description, FORM_LIMITS.intro);
   const submitLabel = cutAtWord(line(body.submit_label, FORM_LIMITS.text), FORM_LIMITS.submitLabel);
-  const form: AppForm = { id, title, ...(submitLabel ? { submitLabel } : {}), ...(intro ? { intro } : {}), schema: { type: 'object', properties, required } };
+  const preview = previewToolOf(schema);
+  const form: AppForm = { id, title, ...(submitLabel ? { submitLabel } : {}), ...(intro ? { intro } : {}), schema: { type: 'object', properties, required, ...(preview ? { 'x-preview': { tool: preview } } : {}) }, ...(preview ? { preview } : {}) };
   for (const [name, property] of Object.entries(properties)) {
     const field = fieldOf(name, record(property) as FormSchemaProperty, false);
     if (typeof field === 'string') return { ok: false, message: field };
@@ -328,10 +349,15 @@ const isGeoPoint = (value: unknown): value is GeoPoint => {
 const isEmpty = (value: unknown) => value === undefined || value === null || (typeof value === 'string' && value.trim() === '') || (Array.isArray(value) && value.length === 0);
 
 /** One value: the clean value, or the message for the person (neutral Spanish, under the field). */
-function checkValue(field: Exclude<FormField, { kind: 'list' }>, value: unknown): { value: unknown } | { error: string } {
+function checkValue(field: Exclude<FormField, { kind: 'list' }>, value: unknown, row?: FormValues): { value: unknown } | { error: string } {
   switch (field.kind) {
-    case 'choice':
-      return field.options.some((option) => option.value === value) ? { value } : { error: 'Elige una de las opciones.' };
+    case 'choice': {
+      if (!field.options.some((option) => option.value === value)) return { error: 'Elige una de las opciones.' };
+      const refusal = refusalOf(field.options, value, row);
+      return refusal ? { error: refusal } : { value };
+    }
+    case 'multi':
+      return checkPicks(field, value);
     case 'text': {
       if (field.digits) {
         const code = String(value).replace(/\s+/g, '');
@@ -368,6 +394,15 @@ function checkValue(field: Exclude<FormField, { kind: 'list' }>, value: unknown)
   }
 }
 
+/** A multi-select's picks: each once, each an open option, between `min` and `max`. */
+function checkPicks(field: Extract<FormField, { kind: 'multi' }>, value: unknown): { value: string[] } | { error: string } {
+  const picks = [...new Set((Array.isArray(value) ? value : []).map(String))];
+  const refusal = picks.map((pick) => refusalOf(field.options, pick)).find(Boolean);
+  if (refusal) return { error: refusal };
+  if (picks.length < field.min) return { error: field.min === 1 ? MISSING.multi : `Elige al menos ${field.min}.` };
+  return picks.length > field.max ? { error: `Hasta ${field.max}.` } : { value: picks };
+}
+
 /** «Entre 1 y 40.», «Mayor que 0.», «Mayor que 0 y hasta 40.» */
 function rangeMessage(field: Extract<FormField, { kind: 'number' }>): string {
   const low = field.min === undefined ? '' : field.minExclusive ? `Mayor que ${field.min}` : `Desde ${field.min}`;
@@ -376,7 +411,7 @@ function rangeMessage(field: Extract<FormField, { kind: 'number' }>): string {
   return low && high ? `${low} y ${high.charAt(0).toLowerCase()}${high.slice(1)}.` : `${low || high}.`;
 }
 
-const MISSING: Record<Exclude<FormField['kind'], 'date'>, string> = { choice: 'Elige una opción.', text: 'Escribe algo aquí.', number: 'Escribe un número.', photo: 'Falta la foto.', location: 'Falta tu ubicación.', list: 'Agrega al menos uno.' };
+const MISSING: Record<Exclude<FormField['kind'], 'date'>, string> = { multi: 'Elige al menos una.', choice: 'Elige una opción.', text: 'Escribe algo aquí.', number: 'Escribe un número.', photo: 'Falta la foto.', location: 'Falta tu ubicación.', list: 'Agrega al menos uno.' };
 const missingOf = (field: FormField): string => (field.kind !== 'date' ? MISSING[field.kind] : field.mode === 'time' ? 'Elige una hora.' : 'Elige una fecha.');
 
 /** A signing's location older than this when sent is not «now». */
@@ -411,7 +446,7 @@ export function validateFormValues(fields: readonly FormField[], raw: unknown, o
 }
 
 /** The shown fields of a form or of one item: a field hidden by the other answers is neither required nor sent. */
-function checkFields(fields: readonly FormField[], input: FormValues): { values: FormValues; errors: Record<string, string> } {
+function checkFields(fields: readonly FormField[], input: FormValues, row?: FormValues): { values: FormValues; errors: Record<string, string> } {
   const values: FormValues = {};
   const errors: Record<string, string> = {};
   for (const field of visibleFields(fields, input)) {
@@ -426,7 +461,7 @@ function checkFields(fields: readonly FormField[], input: FormValues): { values:
       else values[field.name] = list.value;
       continue;
     }
-    const checked = checkValue(field, value);
+    const checked = checkValue(field, value, row);
     if ('error' in checked) errors[field.name] = checked.error;
     else values[field.name] = checked.value;
   }
@@ -440,7 +475,7 @@ function checkList(field: Extract<FormField, { kind: 'list' }>, value: unknown):
   if (items.length > field.max) return { errors: { [field.name]: `Hasta ${field.max}.` } };
   const errors: Record<string, string> = {};
   const clean = items.map((item, index) => {
-    const checked = checkFields(field.fields, item);
+    const checked = checkFields(field.fields, item, item);
     for (const [name, message] of Object.entries(checked.errors)) errors[itemPath(field.name, index, name)] = message;
     return checked.values;
   });

@@ -58,6 +58,10 @@ export type BotCommandRun = {
   form?: AppForm;
   /** What the asker's Lilachat draws (`forms`, 28/10): 2 with lists; absent = 1. */
   formsLevel?: number;
+  /** What opened it, so `x-refresh` sends the same event again (30/10); absent = a shortcut. */
+  trigger?: 'command' | 'shortcut';
+  /** The command's text, sent again with a refresh. */
+  text?: string;
   /** Why the asker saw «no pudo responder» (23/10): the installation's health is overwritten by the next delivery. */
   failure?: { at: Date; error: string };
   /** A run started by a schedule (28/10): its answers go to the schedule's chat, and «solo si hay algo» is honored. */
@@ -210,6 +214,8 @@ const commandRunSchema = new Schema<BotCommandRun>(
     answer: { type: Schema.Types.Mixed },
     form: { type: Schema.Types.Mixed },
     formsLevel: { type: Number },
+    trigger: { type: String },
+    text: { type: String },
     failure: { at: Date, error: String },
     schedule: { type: Schema.Types.Mixed },
     expiresAt: { type: Date, required: true },

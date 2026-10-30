@@ -619,6 +619,56 @@ llega con 1 MB o más (APK viejas, web sin canvas). La selfie sellada siempre se
 codificar con la misma escalera. Antes era 1280 px y JPEG 80: ahora una foto de
 formulario no queda peor que una del chat.
 
+## c-octodecies) Formularios vivos: varias opciones, miniaturas, filas fijas, refresco y resumen (30/10/2026, servidor + OTA + web)
+
+Contrato cerrado con agentes (2483da7 y 44b0a77) para el consumo de combustible de
+Wilson. Agentes resuelve `x-options` del producto a lo que Lilachat dibuja. Diseños
+`h-01`…`h-04` en `design/stitch/INVENTARIO.md`. Un formulario que usa algo de esto pide
+`forms: 3`; un Lilachat anterior recibe «Actualiza Lilachat para llenar este formulario.».
+
+**Opciones enriquecidas** (`oneOf[]`, en un `choice` o en `items.oneOf` de un multi-select):
+
+```json
+{ "const": "<id>", "title": "23 oct · 82 cm", "description": "Usada en el consumo del 22/10",
+  "x-thumb": "https://…", "x-photos": ["https://…"], "x-match": { "tanque": "<idTanque>" }, "x-disabled": true }
+```
+
+- `x-thumb`: miniatura cuadrada junto a la opción. Solo https; lo demás se descarta.
+- `x-photos`: hasta 6, https. Tocar la miniatura abre el visor con «Elegir esta opción».
+- `x-match`: en una fila de lista, la opción solo se ofrece si los valores de la fila
+  coinciden. El servidor lo vuelve a revisar al enviar: «Esa opción no va en esta fila.».
+- `x-disabled`: se ve tachada, con su `description` en ámbar, y no se elige. El servidor
+  la rechaza: «Esa opción ya no se puede elegir.».
+- Sin extras, un `choice` sigue saliendo como antes (`enum` + `x-labels`).
+
+**Varias opciones**: `type: array` con `items.oneOf` (o `items.enum`) es un multi-select
+de filas con casilla. `minItems` es el mínimo («Elige al menos una.»); el máximo, todas.
+
+**Filas fijas**: una lista con `x-fixed-rows: true` toma sus filas de `default` (una por
+tanque), sin agregar ni quitar. `x-row-title: "<campo>"` titula cada fila con la etiqueta
+de esa opción, y ese campo no se edita.
+
+**Refresco** (`x-refresh: true` en un campo, p. ej. `desde` y `hasta`): 600 ms después del
+último cambio, Lilachat reenvía el MISMO evento que abrió el formulario:
+
+- `shortcut.invoked` o `command.invoked`, con el mismo `command_id`;
+- más `values` (el borrador, sin fotos ni ubicación) y `refresh: true`.
+
+La respuesta trae el formulario resuelto y quizá un `text`, que se muestra como nota. Si
+tarda, llega por `/respond` con el mismo `command_id`. En los dos casos reemplaza al
+formulario abierto y conserva lo elegido que siga existiendo. Las filas fijas siguen a las
+nuevas filas, cada una con lo elegido en la fila del mismo título.
+
+**Resumen** (`"x-preview": { "tool": "revisar_consumo" }` en la raíz del esquema): 600 ms
+después de cada cambio, Lilachat manda `form.preview.requested` firmado con
+`{command_id, form_id, values, channel, user}` y espera 3 s.
+
+- La respuesta `{blocks, errors?}` lleva bloques del kit (`metric`, `rows`, `chips`,
+  `text`, hasta 8). Se dibujan arriba de «Enviar». `errors` va bajo cada campo.
+- Si falla o tarda, no hay resumen y se envía igual.
+- Rutas de Lilachat: `POST …/commands/:commandId/refresh` y `…/preview` con `{values}`.
+  Responden 409 si el formulario no tiene `x-refresh` o `x-preview`.
+
 ## c-septendecies) Iniciales solo para personas: `x-avatar` (28/10/2026, OTA + web)
 
 agentes, 28/10: los diseños de mezcla llegan con su **id** como valor (los nombres se

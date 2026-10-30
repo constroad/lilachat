@@ -4995,6 +4995,31 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 176. Formularios vivos para el consumo de combustible (30/10/2026 noche, servidor + OTA + web)
+
+Contrato con agentes en `BOTS-API.spec.md` §c-octodecies. Diseños `h-01`…`h-04`.
+
+- **Motor** (`shared/appFormOptions.ts`, puro, 14 tests):
+  - `choiceOptions` lee `x-thumb`, `x-photos`, `x-match` y `x-disabled`. Antes vivía
+    en `appForms.ts`.
+  - `optionsForRow`, `refusalOf`, `rowTitleOf`, `keptAfterRefresh`, `draftValues`
+    (sin fotos ni ubicación) y `previewReplyOf`.
+  - `appForms.ts` suma el campo `multi`, las filas fijas (`fixedRows`, `rowTitle`),
+    `refresh` por campo y `AppForm.preview`. `FORMS_LEVEL` pasa a 3.
+- **Servidor** (`bots/botFormLive.ts`):
+  - `refreshForm` reenvía `shortcut.invoked` o `command.invoked`. La corrida guarda
+    ahora `trigger` y `text` para saber cuál.
+  - `previewForm` manda `form.preview.requested` con 3 s de plazo; si falla, el
+    resumen sale vacío.
+  - `formParty` (en `botForms.ts`) reúne instalación, chat, persona y app para las
+    tres rutas del formulario.
+- **Web y app**: `MultiField`, `RichChoiceField` (lista con miniaturas, visor con
+  «Elegir esta opción», «Elegir»), `ListField` con filas fijas y filtro por fila, y
+  `useFormLive` (600 ms, solo el resumen más nuevo). El visor de fotos acepta una
+  `action`.
+- Cuando el formulario cambia (refresco o respuesta tardía), se queda lo que siga
+  ofrecido. El `formKeyOf` no cambia, así que la hoja no se cierra.
+
 ## 175. Canal del cliente: accesos por miembro, detalle del servicio y archivos con visor (30/10/2026 noche, servidor + OTA + web)
 
 Pedido de José en una sola iteración. Seis puntos.

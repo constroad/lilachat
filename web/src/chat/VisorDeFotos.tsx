@@ -9,7 +9,7 @@ import { openMiniPlayer } from '../media/miniPlayer';
  * las del teclado) para pasar a la anterior o la siguiente, Escape para salir y
  * un botón para bajarla. Antes la foto se abría en otra pestaña.
  */
-export function PhotoViewer(props: { fotos: MensajeEnPantalla[]; indice: number; onCambiar: (indice: number) => void; onCerrar: () => void; /** A GIF of the chat becomes my animated sticker (pending 37); absent in a secret chat. */ onMakeSticker?: (foto: MensajeEnPantalla) => void }) {
+export function PhotoViewer(props: { fotos: MensajeEnPantalla[]; indice: number; onCambiar: (indice: number) => void; onCerrar: () => void; /** A GIF of the chat becomes my animated sticker (pending 37); absent in a secret chat. */ onMakeSticker?: (foto: MensajeEnPantalla) => void; /** A form's option seen in the viewer: «Elegir esta lectura» (design h-03). */ action?: { label: string; onPress: () => void } }) {
   const { fotos, indice, onCambiar, onCerrar } = props;
   const foto = fotos[indice];
   const video = useRef<HTMLVideoElement>(null);
@@ -78,6 +78,11 @@ export function PhotoViewer(props: { fotos: MensajeEnPantalla[]; indice: number;
         ) : null}
       </div>
       {foto.body ? <p className="px-6 pb-6 text-center text-sm text-white">{foto.body}</p> : null}
+      {props.action ? (
+        <button type="button" data-testid="visor-accion" onClick={props.action.onPress} className="mx-auto mb-6 flex h-12 items-center rounded-full bg-white px-6 text-[15px] font-semibold text-black hover:bg-white/90">
+          {props.action.label}
+        </button>
+      ) : null}
     </div>
   );
 }

@@ -5,7 +5,8 @@ import { PhotoViewer } from '../../chat/VisorDeFotos';
 import type { MensajeEnPantalla } from '../../chat/types';
 import { Overlay } from '../../ui/Overlay';
 
-type Session = { files: ViewableFile[]; url: string };
+type Session = { files: ViewableFile[]; url: string; action?: ViewerAction };
+export type ViewerAction = { label: string; onPress: () => void };
 
 /** A Portal file as the chat's viewer reads a photo: it only needs the file, its name and a day. */
 const asMessage = (file: ViewableFile, index: number): MensajeEnPantalla => ({
@@ -46,9 +47,9 @@ function PortalPdf(props: { file: ViewableFile; onClose: () => void }) {
 export function usePortalFileViewer() {
   const [session, setSession] = useState<Session | null>(null);
   const [pdf, setPdf] = useState<ViewableFile | null>(null);
-  const open = useCallback((file: ViewableFile, siblings?: readonly ViewableFile[]) => {
+  const open = useCallback((file: ViewableFile, siblings?: readonly ViewableFile[], action?: ViewerAction) => {
     const opening = openingOf(mimeOf(file));
-    if (opening === 'gallery') return setSession({ files: galleryOf(siblings ?? [file]), url: file.url });
+    if (opening === 'gallery') return setSession({ files: galleryOf(siblings ?? [file]), url: file.url, ...(action ? { action: { label: action.label, onPress: () => { setSession(null); action.onPress(); } } } : {}) });
     if (opening === 'pdf') return setPdf(file);
     window.open(file.url, '_blank', 'noopener');
   }, []);
@@ -56,7 +57,7 @@ export function usePortalFileViewer() {
   const index = photos.findIndex((photo) => photo.media?.url === session?.url);
   const viewer: ReactNode = (
     <>
-      {session && index >= 0 ? <PhotoViewer fotos={photos} indice={index} onCambiar={(next) => setSession({ ...session, url: photos[next]?.media?.url ?? session.url })} onCerrar={() => setSession(null)} /> : null}
+      {session && index >= 0 ? <PhotoViewer fotos={photos} indice={index} onCambiar={(next) => setSession({ ...session, url: photos[next]?.media?.url ?? session.url })} onCerrar={() => setSession(null)} {...(session.action ? { action: session.action } : {})} /> : null}
       {pdf ? <PortalPdf file={pdf} onClose={() => setPdf(null)} /> : null}
     </>
   );

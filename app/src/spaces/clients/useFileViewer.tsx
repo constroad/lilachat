@@ -5,7 +5,8 @@ import { PdfViewerScreen } from '../../chat/pdf/PdfViewerScreen';
 import { VisorDelChat } from '../../chat/VisorDelChat';
 import { galleryOf, mimeOf, openingOf, pdfsOf, viewerWhenOf, type ViewableFile } from '@lilachat/shared';
 
-type Session = { files: ViewableFile[]; url: string };
+type Session = { files: ViewableFile[]; url: string; action?: ViewerAction };
+export type ViewerAction = { label: string; onPress: () => void };
 
 const NOTICE_MS = 4000;
 /** The viewer has nothing to delete here: these are Portal's files. */
@@ -24,9 +25,10 @@ export function useFileViewer() {
     setTimeout(() => setNotice(''), NOTICE_MS);
   }, []);
 
-  const open = useCallback((file: ViewableFile, siblings?: readonly ViewableFile[]) => {
+  const open = useCallback((file: ViewableFile, siblings?: readonly ViewableFile[], action?: ViewerAction) => {
     const opening = openingOf(mimeOf(file));
-    if (opening === 'gallery' || (opening === 'pdf' && pdfPages)) return setSession({ files: [...(siblings ?? [file])], url: file.url });
+    const picked = action ? { action: { label: action.label, onPress: () => { setSession(null); action.onPress(); } } } : {};
+    if (opening === 'gallery' || (opening === 'pdf' && pdfPages)) return setSession({ files: [...(siblings ?? [file])], url: file.url, ...picked });
     void abrirConOtraApp({ url: file.url, cuando: new Date(), mime: mimeOf(file), seq: 0, nombre: file.name }).then((result) => {
       if (!result.ok) say(result.motivo);
     });
@@ -40,7 +42,7 @@ export function useFileViewer() {
   const moveTo = (url: string | undefined) => setSession((current) => (current && url ? { ...current, url } : null));
   const viewer = (
     <>
-      <VisorDelChat fotos={photos} viendoSeq={photoSeq} onCambiar={(seq) => moveTo(photos.find((photo) => photo.seq === seq)?.url)} onEliminar={cannotDelete} onError={say} />
+      <VisorDelChat fotos={photos} viendoSeq={photoSeq} onCambiar={(seq) => moveTo(photos.find((photo) => photo.seq === seq)?.url)} onEliminar={cannotDelete} onError={say} {...(session?.action ? { action: session.action } : {})} />
       <PdfViewerScreen pdf={pdf} others={pdfs} onPick={(seq) => moveTo(pdfs.find((one) => one.seq === seq)?.url)} onClose={() => setSession(null)} />
     </>
   );

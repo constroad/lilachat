@@ -1,4 +1,4 @@
-import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace } from '@lilachat/shared';
+import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -23,6 +23,14 @@ export const runShortcut = (jwt: string, scope: CommandScope, input: { kind: 'sh
   input.kind === 'command'
     ? jsonCall<CommandOutcome>(`${BASE_URL}${commandScopePath(scope)}/commands`, jwt, { method: 'POST', body: JSON.stringify({ app_id: input.appId, command: input.key, text: '', forms: FORMS_LEVEL }) })
     : jsonCall<CommandOutcome>(`${BASE_URL}${commandScopePath(scope)}/shortcuts`, jwt, { method: 'POST', body: JSON.stringify({ app_id: input.appId, shortcut: input.key, forms: FORMS_LEVEL }) });
+
+/** `x-refresh`: the app sends the form again for this draft, on the same command (agentes 2483da7). */
+export const refreshAppForm = (jwt: string, scope: CommandScope, commandId: string, values: FormValues) =>
+  jsonCall<CommandOutcome>(`${BASE_URL}${commandScopePath(scope)}/commands/${commandId}/refresh`, jwt, { method: 'POST', body: JSON.stringify({ values }) });
+
+/** `x-preview`: the app's summary of the draft; an empty one when it cannot answer. */
+export const previewAppForm = (jwt: string, scope: CommandScope, commandId: string, values: FormValues) =>
+  jsonCall<PreviewReply>(`${BASE_URL}${commandScopePath(scope)}/commands/${commandId}/preview`, jwt, { method: 'POST', body: JSON.stringify({ values }) });
 
 /**
  * A form's photo, the moment it is taken: made lighter with Portal's standard

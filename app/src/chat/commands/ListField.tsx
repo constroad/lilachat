@@ -1,11 +1,16 @@
 import { useRef, type ReactNode } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Plus, Trash2 } from 'lucide-react-native';
-import { formRows, itemPath, newItem, visibleFields, type FormField, type FormValues, type ItemField } from '@lilachat/shared';
+import { formRows, itemPath, newItem, optionsForRow, rowTitleOf, visibleFields, type FormField, type FormValues, type ItemField } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { ErrorLine, Label } from './AppFormFields';
 
 type ListOfItems = Extract<FormField, { kind: 'list' }>;
+/** An item's fields to fill: its title field is not edited, and each choice offers only this row's options (`x-match`). */
+const cellsOf = (field: ListOfItems, item: FormValues): ItemField[] =>
+  visibleFields(field.fields, item)
+    .filter((child) => child.name !== field.rowTitle)
+    .map((child) => (child.kind === 'choice' ? { ...child, options: optionsForRow(child.options, item) } : child));
 /** Draws one field of a card item with the sheet's own kit (choice, date, photos…). */
 export type RenderItemField = (field: ItemField, value: unknown, error: string | undefined, onChange: (value: unknown) => void, key: string, half: boolean) => ReactNode;
 type Props = {
@@ -39,7 +44,8 @@ export function ListField({ field, value, errors, onChange, renderField }: Props
     onChange(items.filter((_item, at) => at !== index), field.name);
   };
   const add = () => onChange([...items, newItem(field.fields)], field.name);
-  const removable = items.length > field.min;
+  // Fixed rows (agentes 2483da7): one per tank, nothing added nor removed.
+  const removable = !field.fixedRows && items.length > field.min;
   return (
     <View testID={`lista-${field.name}`}>
       <Label field={field} />
@@ -51,7 +57,7 @@ export function ListField({ field, value, errors, onChange, renderField }: Props
           {items.map((item, index) => (
             <View key={keys.current[index]} testID={`item-${field.name}-${index}`} className="gap-3 rounded-2xl border border-outline/15 p-3">
               <View className="flex-row items-center justify-between">
-                <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{`${field.label} · ${index + 1}`}</Text>
+                {field.fixedRows ? <Text testID={`titulo-${field.name}-${index}`} className="text-[16px] font-semibold text-on-surface">{rowTitleOf(field, item) || `${field.label} · ${index + 1}`}</Text> : <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{`${field.label} · ${index + 1}`}</Text>}
                 {removable ? (
                   <Pressable testID={`quitar-${field.name}-${index}`} accessibilityLabel={`Quitar ${index + 1}`} onPress={() => remove(index)} hitSlop={8} className="min-h-[36px] flex-row items-center gap-1 px-1">
                     <Trash2 size={16} color={colors['on-surface-variant']} />
@@ -59,7 +65,7 @@ export function ListField({ field, value, errors, onChange, renderField }: Props
                   </Pressable>
                 ) : null}
               </View>
-              {formRows(visibleFields(field.fields, item)).map((row) => {
+              {formRows(cellsOf(field, item)).map((row) => {
                 const cell = (child: ItemField, half: boolean) => renderField(child, item[child.name], errors[itemPath(field.name, index, child.name)], setCell(index, child.name), `${keys.current[index]}-${child.name}`, half);
                 return row.length === 2 ? (
                   <View key={row[0]!.name} className="flex-row items-start gap-3">
@@ -73,7 +79,7 @@ export function ListField({ field, value, errors, onChange, renderField }: Props
           ))}
         </View>
       )}
-      {items.length < field.max ? (
+      {!field.fixedRows && items.length < field.max ? (
         <Pressable testID={`agregar-${field.name}`} accessibilityRole="button" onPress={add} className="mt-2 h-12 flex-row items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40">
           <Plus size={18} color={colors.primary} />
           <Text className="text-[15px] font-semibold text-primary">{field.addLabel}</Text>

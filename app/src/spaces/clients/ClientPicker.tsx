@@ -14,8 +14,8 @@ type Entry = ClientEntry<ChatSummary>;
 const ALL = Number.MAX_SAFE_INTEGER;
 
 /**
- * The clients' picker (José 30/10: «que sea tipo un selector y una opción de
- * poder crear un cliente»): every live client, searched by name or RUC, the
+ * The clients' picker (José 30/10: a picker with an option to create a
+ * client): every live client, searched by name or RUC, the
  * archived ones, and «Crear un cliente» for whoever may run Portal's action.
  * It is not in the ⚡: it lives here.
  */

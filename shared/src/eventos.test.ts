@@ -89,8 +89,8 @@ describe('resumenDeRsvp', () => {
 
 describe('asistentesPorRespuesta in the web detail (pending 10, design w3c-web-agenda)', () => {
   it('with includeEmpty, Van, Tal vez and No van always show; Sin responder only with someone', () => {
-    const personas = { a: { phone: '987654321', name: 'Ana' } };
-    const grupos = asistentesPorRespuesta({ asistentes: [{ userId: 'a', rsvp: 'yes' }], personas, yo: 'yo', agenda: new Map(), includeEmpty: true });
-    expect(grupos.map((grupo) => [grupo.clave, grupo.nombres.length])).toEqual([['yes', 1], ['maybe', 0], ['no', 0]]);
+    const people = { a: { phone: '987654321', name: 'Ana' } };
+    const groups = asistentesPorRespuesta({ asistentes: [{ userId: 'a', rsvp: 'yes' }], personas: people, yo: 'yo', agenda: new Map(), includeEmpty: true });
+    expect(groups.map((group) => [group.clave, group.nombres.length])).toEqual([['yes', 1], ['maybe', 0], ['no', 0]]);
   });
 });

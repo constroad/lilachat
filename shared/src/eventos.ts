@@ -61,7 +61,7 @@ const GRUPOS: { clave: Rsvp | 'pending'; titulo: string }[] = [
 ];
 
 /**
- * Quiénes van, por respuesta y con «Tú» primero. Los grupos vacíos no salen;
+ * Who goes, by answer, with «Tú» first. Empty groups are left out;
  * with `includeEmpty` (the web detail, pending 10) Van, Tal vez and No van
  * always show, and «Sin responder» only with someone in it.
  */

@@ -81,7 +81,7 @@ export function LineaDePendientes({ jwt, me, onEditarRecordatorio }: { jwt: stri
           <h3 className="pb-2 text-[11px] font-bold uppercase tracking-wide text-primary">{seccion.titulo} · {seccion.items.length}</h3>
           {seccion.items.map((item) =>
             item.tipo === 'evento' ? (
-              <FilaDeEvento key={`e-${item.id}`} evento={item.evento} selected={item.evento.id === selectedId} onOpen={() => setSelectedId(item.evento.id)} />
+              <EventRow key={`e-${item.id}`} evento={item.evento} selected={item.evento.id === selectedId} onOpen={() => setSelectedId(item.evento.id)} />
             ) : (
               <FilaDeRecordatorio key={`r-${item.id}`} recordatorio={item.recordatorio} cuando={item.cuando} vencido={seccion.clave === 'vencidos'} onEditar={() => onEditarRecordatorio(item.recordatorio)} />
             )
@@ -106,7 +106,7 @@ export function LineaDePendientes({ jwt, me, onEditarRecordatorio }: { jwt: stri
   );
 }
 
-function FilaDeEvento({ evento, selected, onOpen }: { evento: AgendaEvent; selected: boolean; onOpen: () => void }) {
+function EventRow({ evento, selected, onOpen }: { evento: AgendaEvent; selected: boolean; onOpen: () => void }) {
   const inicio = new Date(evento.startsAt);
   const estado = estadoDelEvento(evento);
   return (

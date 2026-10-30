@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import { agendaPorTelefono, suscribirAgenda } from '../contacts/agendaEnMemoria';
 import { getSocket } from './socketClient';
 import type { MentionableMember } from './useMenciones';
-import { fotosPorMiembro, membresiaPorRespuesta, nombresPorMiembro, type MiembroConNombre } from './nombresDelGrupo';
+import { fotosPorMiembro, membresiaPorRespuesta, nombresPorMiembro, type MiembroConNombre, type SpaceMemberFields } from './nombresDelGrupo';
 import { pillOf } from './nombresDelGrupo';
 import { BLOCKED_BY_ME_COMPOSER, memberMay, type ContactNote, memberPermissionDenied, type MemberPermission, type MemberPill } from '@lilachat/shared';
 
@@ -10,7 +10,8 @@ const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.
 const PLAZO_MS = 10_000;
 
 /** Los miembros por chat, en memoria: reabrir el grupo no vuelve a pedirlos. */
-const cache = new Map<string, MiembroConNombre[]>();
+type Member = MiembroConNombre & SpaceMemberFields;
+const cache = new Map<string, Member[]>();
 /** Whether an admin switched nudges and winks on, read with the same detail. */
 const funCache = new Map<string, boolean>();
 /** What the members may do (pending 8), read with the detail. */
@@ -46,6 +47,8 @@ export function useGrupo(
   funAllowed: boolean | undefined;
   /** Everyone in the chat as the detail sent them: a person's card reads their phone and photo here. */
   members: readonly MiembroConNombre[];
+  /** The installed apps among the members: not people to restrict nor to assign a task. */
+  appIds: ReadonlySet<string>;
   /** Pending 8: may I do it in this group? An admin always may; unknown permissions count as the defaults. */
   may: (yo: string, permission: MemberPermission) => boolean;
   /** Why I cannot write here (admins only, or I blocked this contact), or `null`. */
@@ -54,7 +57,7 @@ export function useGrupo(
   contactNote: ContactNote | undefined;
 } {
   const agenda = useSyncExternalStore(suscribirAgenda, agendaPorTelefono, agendaPorTelefono);
-  const [miembros, setMiembros] = useState<MiembroConNombre[]>(() => cache.get(chatId) ?? []);
+  const [miembros, setMiembros] = useState<Member[]>(() => cache.get(chatId) ?? []);
   const [funAllowed, setFunAllowed] = useState<boolean | undefined>(() => funCache.get(chatId));
   const [permissions, setPermissions] = useState<unknown>(() => permissionsCache.get(chatId));
   const [blockedByMe, setBlockedByMe] = useState(() => blockedCache.get(chatId) === true);
@@ -92,7 +95,7 @@ export function useGrupo(
         const membresia = membresiaPorRespuesta(respuesta.status);
         if (vigente && esGrupo && membresia !== null) setSoyMiembro(membresia);
         if (!respuesta.ok) return;
-        const detail = (await respuesta.json()) as { members?: MiembroConNombre[]; funAllowed?: boolean; memberPermissions?: unknown; blockedByMe?: boolean; routines?: { contactNote?: ContactNote } };
+        const detail = (await respuesta.json()) as { members?: Member[]; funAllowed?: boolean; memberPermissions?: unknown; blockedByMe?: boolean; routines?: { contactNote?: ContactNote } };
         const loaded = detail.members ?? [];
         cache.set(chatId, loaded);
         funCache.set(chatId, detail.funAllowed === true);
@@ -122,9 +125,10 @@ export function useGrupo(
   const mencionables = useCallback((yo: string) => lista.filter((uno) => uno.id !== yo), [lista]);
   const soyAdmin = useCallback((yo: string) => miembros.some((uno) => uno.id === yo && uno.role === 'admin'), [miembros]);
   /** Each member's role, for the pill next to their name in the Slack format (design `s-01`). */
+  const appIds = useMemo(() => new Set(miembros.filter((member) => member.app).map((member) => member.id)), [miembros]);
   const roleById = useMemo(() => new Map<string, MemberPill>(miembros.map((member) => [member.id, pillOf(member)])), [miembros]);
   const may = useCallback((yo: string, permission: MemberPermission) => !esGrupo || memberMay({ permission, role: soyAdmin(yo) ? 'admin' : 'member', permissions }), [esGrupo, soyAdmin, permissions]);
   // Only once the members arrived: an admin must not see the lock flash while the detail loads.
   const sendLock = useCallback((yo: string) => (blockedByMe ? BLOCKED_BY_ME_COMPOSER : miembros.length && !may(yo, 'sendMessages') ? memberPermissionDenied('sendMessages') : null), [blockedByMe, miembros.length, may]);
-  return { nombres, fotos, soyMiembro, mencionables, soyAdmin, roles: roleById, funAllowed, members: miembros, may, sendLock, contactNote };
+  return { nombres, fotos, soyMiembro, mencionables, soyAdmin, roles: roleById, funAllowed, members: miembros, appIds, may, sendLock, contactNote };
 }

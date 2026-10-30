@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react';
 import { CalendarDays, Check, CheckCircle2, FileText, FolderOpen, Plus, RotateCcw, X } from 'lucide-react';
-import { checklistMembers, formatClock, pendingTasks, stageFiles, taskActivity, taskDueLabel, taskDueState, type ChecklistItem, type TaskEvidence, type WorkStage } from '@lilachat/shared';
+import { checklistMembers, withoutApps, formatClock, pendingTasks, stageFiles, taskActivity, taskDueLabel, taskDueState, type ChecklistItem, type TaskEvidence, type WorkStage } from '@lilachat/shared';
 import { api } from '../../api';
 import { useConversacion } from '../contextoDeLaConversacion';
 import { TaskDialog, type TaskEdit } from '../tarjetas/TaskDialog';
 import { attachEvidenceWeb, detachEvidenceWeb } from './evidenceWeb';
+
+const NO_APPS: ReadonlySet<string> = new Set();
 
 export type OpenTask = { stageId: string; itemId: string };
 
@@ -80,7 +82,7 @@ export function StageFilesWeb(props: { stages: readonly WorkStage[]; onOpenMessa
 
 /** A task of the job on the web (design e2-18): who, when, stage, evidence, activity, «Reasignar» and «Marcar como hecho». */
 export function TaskDetailWeb(props: { open: OpenTask; stages: readonly WorkStage[]; onChanged: () => void; onOpenMessage: (seq: number) => void; onClose: () => void }) {
-  const { jwt, yo, nombres, chat } = useConversacion();
+  const { jwt, yo, nombres, chat, detalle } = useConversacion();
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -135,7 +137,7 @@ export function TaskDetailWeb(props: { open: OpenTask; stages: readonly WorkStag
           </button>
         </footer>
       </div>
-      {editing ? <TaskDialog item={item} members={checklistMembers(nombres, yo)} canRemove={false} onSave={(edit) => { setEditing(false); save(edit); }} onRemove={() => setEditing(false)} onClose={() => setEditing(false)} /> : null}
+      {editing ? <TaskDialog item={item} members={checklistMembers(withoutApps(nombres, detalle?.appIds ?? NO_APPS), yo)} canRemove={false} onSave={(edit) => { setEditing(false); save(edit); }} onRemove={() => setEditing(false)} onClose={() => setEditing(false)} /> : null}
     </div>
   );
 }

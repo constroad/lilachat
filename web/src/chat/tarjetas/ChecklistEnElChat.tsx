@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Check, ClipboardCheck, EllipsisVertical, Pencil, Plus } from 'lucide-react';
-import { CHECKLIST_LIMITS, canToggleTask, checklistMembers, checklistPermissions, checklistProgress, formatClock, taskDueLabel, taskDueState, toggleChecklistItem, validateChecklistItem, type AgendaChecklist, type ChecklistItem } from '@lilachat/shared';
+import { CHECKLIST_LIMITS, canToggleTask, checklistMembers, withoutApps, checklistPermissions, checklistProgress, formatClock, taskDueLabel, taskDueState, toggleChecklistItem, validateChecklistItem, type AgendaChecklist, type ChecklistItem } from '@lilachat/shared';
 import { api } from '../../api';
 import { useConversacion } from '../contextoDeLaConversacion';
 import { useTarjeta } from './useTarjeta';
 import { TaskDialog, type TaskEdit } from './TaskDialog';
 import { ChecklistOptionsDialog, type ChecklistEdit } from './ChecklistOptionsDialog';
+
+const NO_APPS: ReadonlySet<string> = new Set();
 
 /** The date pill by state: late in the error tone, today in the accent, later in grey. */
 const PILL = { overdue: 'bg-error/10 font-bold text-error', today: 'bg-primary/10 font-semibold text-primary', upcoming: 'bg-background text-on-surface-variant' } as const;
@@ -17,7 +19,7 @@ const PILL = { overdue: 'bg-error/10 font-bold text-error', today: 'bg-primary/1
  * server refuses it; every change arrives live (`ref.changed`).
  */
 export function ChecklistEnElChat({ id, onOpenTask }: { id: string; /** A job's stage (design e2-18): the text opens the task's detail instead of the edit dialog. */ onOpenTask?: (item: ChecklistItem) => void }) {
-  const { jwt, yo, nombres } = useConversacion();
+  const { jwt, yo, nombres, detalle } = useConversacion();
   const { valor: checklist, fallo, cargar, reemplazar } = useTarjeta<AgendaChecklist>({ tipo: 'checklist', id, ruta: `/agenda/checklists/${id}`, campo: 'checklist', jwt });
   const [error, setError] = useState('');
   const [adding, setAdding] = useState<string | null>(null);
@@ -154,7 +156,7 @@ export function ChecklistEnElChat({ id, onOpenTask }: { id: string; /** A job's 
       ) : null}
       {error ? <p className="pt-1 text-[12px] text-error">{error}</p> : null}
       {options ? <ChecklistOptionsDialog checklist={options} onSave={(edit) => void saveChecklist(edit)} onDelete={() => void deleteChecklist()} onClose={() => setOptions(null)} /> : null}
-      {editing ? <TaskDialog item={editing} members={checklistMembers(nombres, yo)} canRemove={checklist.items.length > 1} onSave={(edit) => void saveTask(editing.id, edit)} onRemove={() => void removeTask(editing.id)} onClose={() => setEditing(null)} /> : null}
+      {editing ? <TaskDialog item={editing} members={checklistMembers(withoutApps(nombres, detalle?.appIds ?? NO_APPS), yo)} canRemove={checklist.items.length > 1} onSave={(edit) => void saveTask(editing.id, edit)} onRemove={() => void removeTask(editing.id)} onClose={() => setEditing(null)} /> : null}
     </div>
   );
 }

@@ -220,7 +220,7 @@ export function ChatScreen({
   const accionesDeTarjeta = useMemo(() => ({ editarRecordatorio: puedeEditarRecordatorios ? (recordatorio: AgendaReminder) => setCreando({ recordatorio }) : undefined, callBack: callBack.actions }), [puedeEditarRecordatorios, callBack.actions]);
   // Fuera del grupo no se listan miembros: ya no es «QA Ana, Vos».
   const otherStatus = usePresenceStatus(otherUserId);
-  const channelWork = useChannelWork({ enabled: Boolean(workspaceId && esGrupoChat && !appId && !encrypted), jwt: credential.jwt, chatId, channelName: nombreVisible, yo: credential.userId, names: nombresDelGrupo, spaceId: workspaceId, onOpenRecord: (seq) => saltarA(seq, 'Ese registro está más arriba: sube para cargarlo.') });
+  const channelWork = useChannelWork({ enabled: Boolean(workspaceId && esGrupoChat && !appId && !encrypted), jwt: credential.jwt, chatId, channelName: nombreVisible, yo: credential.userId, names: nombresDelGrupo, apps: grupo.appIds, spaceId: workspaceId, onOpenRecord: (seq) => saltarA(seq, 'Ese registro está más arriba: sube para cargarlo.') });
   const subtitulo = useChatSubtitle({ fueraDelGrupo, esBorrador, esGrupo: esGrupoChat, workspaceId, escriben: [...escribiendo], otroEnLinea, otroEstado: otherStatus, ultimaVez, nombres: nombresDelGrupo, totalMembers: grupo.members.length, yo: credential.userId });
   const fotoVisible = infoPropia.avatarUrl ?? chatAvatarUrl;
 

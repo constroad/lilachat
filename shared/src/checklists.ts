@@ -201,6 +201,12 @@ export function checklistMembers(names: ReadonlyMap<string, string> | undefined,
   return names.has(me) ? [{ id: me, name: 'Tú' }, ...others] : others;
 }
 
+/** The channel's people without its installed apps: a bot is not restricted nor assigned a task. */
+export function withoutApps(names: ReadonlyMap<string, string>, apps: ReadonlySet<string>): ReadonlyMap<string, string> {
+  if (!apps.size) return names;
+  return new Map([...names].filter(([id]) => !apps.has(id)));
+}
+
 /** A checklist as the chat info lists it (GET `/checklists?chatId`). */
 export type ChecklistSummary = { _id: string; title: string; done: number; total: number; overdue: number; cardSeq?: number };
 

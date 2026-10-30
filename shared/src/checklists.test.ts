@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHECKLIST_LIMITS, activeDueChoice, checklistsBadge, taskCountLabel, checklistMembers, checklistSummaryLine, taskDoneNotices, checklistOverdue, checklistPermissions, checklistProgress, checklistTextInChat, myTasks, shortPersonName, taskDueLabel, taskDueOptions, taskDueState, toggleChecklistItem, validateChecklist, validateChecklistItem, canToggleTask } from './checklists.js';
+import { CHECKLIST_LIMITS, activeDueChoice, checklistsBadge, taskCountLabel, checklistMembers, withoutApps, checklistSummaryLine, taskDoneNotices, checklistOverdue, checklistPermissions, checklistProgress, checklistTextInChat, myTasks, shortPersonName, taskDueLabel, taskDueOptions, taskDueState, toggleChecklistItem, validateChecklist, validateChecklistItem, canToggleTask } from './checklists.js';
 
 /** José, 21/10: «agrega el checklist al estilo de Telegram» (backlog 8). */
 describe('validateChecklist', () => {
@@ -136,6 +136,23 @@ describe('checklistMembers', () => {
     const names = new Map([['u2', 'Luis Huamán'], ['me', 'José Zamora'], ['u3', 'Ana Torres']]);
     expect(checklistMembers(names, 'me')).toEqual([{ id: 'me', name: 'Tú' }, { id: 'u3', name: 'Ana Torres' }, { id: 'u2', name: 'Luis Huamán' }]);
     expect(checklistMembers(undefined, 'me')).toEqual([]);
+  });
+});
+
+/** An installed app (the «Portal» bot) is a member of the channel, not a person to restrict or assign. */
+describe('withoutApps', () => {
+  it('keeps the people and drops the apps, without touching the map it got', () => {
+    // Arrange
+    const names = new Map([['me', 'José'], ['bot', 'Portal'], ['u2', 'Wilson']]);
+    // Act
+    const people = withoutApps(names, new Set(['bot']));
+    // Assert
+    expect([...people.keys()]).toEqual(['me', 'u2']);
+    expect(names.size).toBe(3);
+  });
+  it('no apps = the same names', () => {
+    const names = new Map([['me', 'José']]);
+    expect(withoutApps(names, new Set())).toBe(names);
   });
 });
 

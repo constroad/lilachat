@@ -5061,6 +5061,9 @@ Pedido de José en una sola iteración. Seis puntos.
   ser su interruptor «Ve montos». Está en:
   - la web: info del canal → Miembros;
   - la app: Servicios.
+- Las apps instaladas (el bot «Portal») no salen en «Accesos del canal» ni como
+  responsables de una tarea (`withoutApps`). El E2E del 30/10 mostró al bot
+  como «Todo el canal, sin montos» en la app.
 - Al agregar a alguien a un canal de cliente, un admin elige en un solo paso el
   historial y qué ve.
 - El checklist ya tenía responsable y fecha por tarea (backlog 30). La

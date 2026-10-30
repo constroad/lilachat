@@ -81,6 +81,8 @@ export function Conversation(props: {
   franja?: ReactNode;
   /** The cards queued over the writing bar (backlog 36). */
   queue?: ReactNode;
+  /** Pending 8: why I cannot write here (only admins do), or nothing. */
+  sendLock?: string | null;
   /** Go to a message from outside the list (a record in «Servicios»). */
   onIrA?: (seq: number) => void;
   /** Ir a un mensaje (desde la franja). */
@@ -219,6 +221,9 @@ export function Conversation(props: {
       {props.queue}
       {props.app ? <AppCommandsBar commands={props.app.commands} /> : null}
       {isChannel && client ? <ArchivedComposerNote client={client} /> : null}
+      {props.sendLock ? (
+        <p data-testid="solo-admins-escriben" className="border-t border-outline/15 bg-surface px-4 py-4 text-center text-[13px] text-on-surface-variant">{props.sendLock}</p>
+      ) : (
       <Composer
         chatId={chat.id}
         onSend={props.onSend}
@@ -241,6 +246,7 @@ export function Conversation(props: {
         commands={commands.enabled ? commands : undefined}
         stickers={props.jwtParaEnlaces ? { jwt: props.jwtParaEnlaces, me: props.yo, chatId: chat.id, chatName: chat.name ?? chat.phone ?? '', replyToSeq: props.replyingTo, onSent: props.replyingTo ? props.onCancelarContexto : undefined } : undefined}
       />
+      )}
       </>
       )}
       </>

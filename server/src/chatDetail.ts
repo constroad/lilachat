@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { notificationLevel } from '@lilachat/shared';
+import { memberPermissionsOf, notificationLevel } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import { UserModel } from './models.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
@@ -43,6 +43,8 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId) {
     name: chat.name,
     descripcion: chat.descripcion,
     funAllowed: chat.funAllowed === true,
+    // Pending 8: what the members may do; the screen shows it to everyone and lets admins change it.
+    ...(chat.kind === 'group' ? { memberPermissions: memberPermissionsOf(chat.memberPermissions) } : {}),
     birthdaysOn: chat.birthdaysOn === true,
     encrypted: chat.encrypted === true,
     // Pending 93: a channel's admins change who finds it; #general is always public.

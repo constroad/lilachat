@@ -17,7 +17,7 @@ import {
   type AccionDeMiembro,
   type NotificationLevel,
 } from '@lilachat/shared';
-import { chatDetailTabs, groupSubtitle, initialChatDetailTab, personOfMember, type ChatDetailTab } from '@lilachat/shared';
+import { chatDetailTabs, groupSubtitle, initialChatDetailTab, personOfMember, type ChatDetailTab, type MemberPermissions } from '@lilachat/shared';
 import { DetailTabBar, RoundAction } from './DetailTabBar';
 import { EditarNombreDeGrupo } from './EditarNombreDeGrupo';
 import { elegirFotoDeGrupo, subirFotoDeGrupo } from './fotoDeGrupo';
@@ -36,6 +36,7 @@ import { VisorDeFoto } from '../ui/VisorDeFoto';
 import { RecordatoriosDelGrupo } from './RecordatoriosDelGrupo';
 import { EditarDescripcion, TarjetaDeDescripcion } from './descripcion/DescripcionDelGrupo';
 import { BirthdaysCard, GroupFunCard, ChannelVisibilityCard } from './GroupFunCard';
+import { GroupPermissionsCard } from './GroupPermissionsCard';
 import { SeccionCompartido } from './CompartidoEnElChat';
 import { useMargenes } from '../ui/useMargenes';
 import type { ServerMessage } from './socketClient';
@@ -67,6 +68,8 @@ type Detalle = {
   avisos?: NotificationLevel;
   /** Nudges and winks in a group, switched on by an admin (21/10). */
   funAllowed?: boolean;
+  /** What the members may do (pending 8). */
+  memberPermissions?: MemberPermissions;
   birthdaysOn?: boolean;
   /** A channel (pending 93): who finds it, and whether it is #general. */
   channel?: { visibility: 'public' | 'private'; general: boolean };
@@ -492,6 +495,7 @@ export function ChatDetailScreen({
               />
             ) : null}
             {tab === 'settings' && detalle!.channel ? <ChannelVisibilityCard chatId={chatId} jwt={credential.jwt} isPrivate={detalle!.channel.visibility === 'private'} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} isGeneral={detalle!.channel.general} /> : null}
+            {tab === 'settings' && esGrupo ? <GroupPermissionsCard chatId={chatId} jwt={credential.jwt} permissions={detalle!.memberPermissions} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} /> : null}
             {tab === 'settings' && esGrupo ? <GroupFunCard chatId={chatId} jwt={credential.jwt} allowed={detalle!.funAllowed === true} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} /> : null}
             {tab === 'settings' && !esBorrador ? <BirthdaysCard chatId={chatId} jwt={credential.jwt} on={detalle!.birthdaysOn === true} isGroup={esGrupo} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} /> : null}
             {/* 20/10: también en un 1:1 y en un borrador (ahí cualquiera los administra); no en un chat secreto. */}

@@ -77,6 +77,7 @@ async function publishText(installation: Installation, chatId: Types.ObjectId, p
   const result = await sendMessage({
     chatId: String(chatId),
     senderId: installation.botUserId,
+    skipMemberPermissions: true,
     clientKey: `bot:${installation._id}:${post.idempotencyKey}`,
     kind: 'text',
     body: post.text ?? botCardSummary(post.card!),

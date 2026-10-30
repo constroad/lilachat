@@ -247,7 +247,7 @@ export function ChatScreen({
     chatId,
     jwt: credential.jwt,
     workspaceId,
-    puedeFijar: esBorrador || !esGrupoChat || soyAdminDelGrupo,
+    puedeFijar: esBorrador || grupo.may(credential.userId, 'pinMessages'),
     textoLocal: (seq) => messages.find((uno) => uno.seq === seq)?.body,
     nombreDe,
     fotoDe: (id) => fotosDelGrupo.get(id),
@@ -394,7 +394,7 @@ export function ChatScreen({
           onEliminarParaMi={ocultar}
           onEditar={respuesta.empezarEdicion}
           onError={setMediaError}
-          puedeFijar={esBorrador || !esGrupoChat || soyAdminDelGrupo}
+          puedeFijar={esBorrador || grupo.may(credential.userId, 'pinMessages')}
           fijados={fijar.seqsFijados}
           onFijar={fijar.pedirFijar}
           onDesfijar={(seq) => void fijar.desfijar(seq)}
@@ -495,8 +495,8 @@ export function ChatScreen({
       {esBorrador ? null : <ChatQueue jwt={credential.jwt} chatId={chatId} onOpen={(seq) => saltarA(seq, 'Esa tarjeta está más arriba: sube para cargarla.')} />}
 
       {/* La barra de escribir: su composición (la píldora con emoji, clip y cámara; UN botón afuera) se explica en `Composer`. */}{channelWork.note}
-      {fueraDelGrupo ? (
-        <FueraDelGrupo margenPie={margenes.pie} />
+      {fueraDelGrupo || grupo.sendLock(credential.userId) ? (
+        <FueraDelGrupo margenPie={margenes.pie} text={fueraDelGrupo ? null : grupo.sendLock(credential.userId)} />
       ) : (
         <Composer
           ref={composerRef}

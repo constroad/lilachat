@@ -20,6 +20,8 @@ export type DetalleDelChat = {
   descripcion?: string;
   /** Nudges and winks in a group, switched on by an admin (21/10). */
   funAllowed?: boolean;
+  /** What the members may do (pending 8); unknown counts as the defaults. */
+  memberPermissions?: unknown;
   /** Birthdays on in this chat (pending 17). */
   birthdaysOn?: boolean;
   /** A channel (pending 93): who finds it, and whether it is #general. */
@@ -35,6 +37,7 @@ export type Respuesta = {
   name?: string;
   descripcion?: string;
   funAllowed?: boolean;
+  memberPermissions?: unknown;
   birthdaysOn?: boolean;
   channel?: { visibility: 'public' | 'private'; general: boolean };
   members: { id: string; name: string | null; phone: string | null; avatarUrl?: string; role?: 'admin' | 'member'; esYo?: boolean; title?: string; spaceRole?: string; app?: boolean }[];
@@ -68,6 +71,7 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
     nombre: respuesta.name,
     descripcion: respuesta.descripcion,
     funAllowed: respuesta.funAllowed === true,
+    memberPermissions: respuesta.memberPermissions,
     birthdaysOn: respuesta.birthdaysOn === true,
     ...(respuesta.channel ? { channel: { isPrivate: respuesta.channel.visibility === 'private', general: respuesta.channel.general } } : {}),
     appIds: new Set(respuesta.members.filter((member) => member.app).map((member) => member.id)),

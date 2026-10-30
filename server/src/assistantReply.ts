@@ -80,6 +80,7 @@ export async function maybeAnswerMention(params: {
     const result = await sendMessage({
       chatId: String(params.chatId),
       senderId: lila,
+      skipMemberPermissions: true,
       // La clave sale del chat y del mensaje que la invocó: si el envío se
       // reintenta, no se duplica la respuesta.
       clientKey: `lila-${params.chatId}-${Date.now()}`,

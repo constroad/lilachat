@@ -5,7 +5,8 @@ import { Text, View } from 'react-native';
  * auditoría §46.2), como WhatsApp: la conversación se sigue leyendo, pero ya
  * no se puede escribir.
  */
-export function FueraDelGrupo({ margenPie }: { margenPie: number }) {
+/** `text`: another reason the composer is closed (pending 8: only admins write). */
+export function FueraDelGrupo({ margenPie, text }: { margenPie: number; text?: string | null }) {
   return (
     <View
       testID="fuera-del-grupo"
@@ -13,7 +14,7 @@ export function FueraDelGrupo({ margenPie }: { margenPie: number }) {
       style={{ paddingBottom: margenPie + 8 }}
     >
       <Text className="text-center text-sm leading-5 text-on-surface-variant">
-        No puedes enviar mensajes a este grupo porque ya no eres participante.
+        {text ?? 'No puedes enviar mensajes a este grupo porque ya no eres participante.'}
       </Text>
     </View>
   );

@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { acuseDelGrupo, listThumbPath, notificationLevel, TELEFONO_DE_LILA, unreadCount, type NotificationLevel } from '@lilachat/shared';
+import { acuseDelGrupo, listThumbPath, memberPermissionsOf, notificationLevel, TELEFONO_DE_LILA, unreadCount, type MemberPermissions, type NotificationLevel } from '@lilachat/shared';
 import { UserModel } from './models.js';
 import { ChatModel, MessageModel, ReceiptModel, type Message } from './chatModels.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
@@ -64,6 +64,7 @@ export type ChatSummary = {
   channel?: { visibility: 'public' | 'private' };
   /** Nudges and winks switched on by an admin of the group (José, 21/10). */
   funAllowed?: boolean;
+  memberPermissions?: MemberPermissions;
   birthdaysOn?: boolean;
   /** Silenciado por MÍ: la lista lo marca y no me llega push de acá. */
   muted?: boolean;
@@ -181,6 +182,8 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
       ...(chat.propio ? { propio: true } : {}),
       ...(chat.channel ? { channel: { visibility: chat.channel.visibility } } : {}),
       ...(chat.funAllowed ? { funAllowed: true } : {}),
+      // Pending 8: only when an admin changed them, so the composer knows who may write.
+      ...(chat.memberPermissions ? { memberPermissions: memberPermissionsOf(chat.memberPermissions) } : {}),
       ...(chat.birthdaysOn ? { birthdaysOn: true } : {}),
       muted: yo?.muted === true,
       avisos: notificationLevel(yo ?? {}),

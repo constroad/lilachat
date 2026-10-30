@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { actsAsMessage, agregarFijado, fijadosVigentes, puedeFijarEnElChat, venceDelFijado } from '@lilachat/shared';
+import { actsAsMessage, agregarFijado, fijadosVigentes, memberMay, memberPermissionDenied, puedeFijarEnElChat, venceDelFijado } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Chat } from './chatModels.js';
 
 /**
@@ -37,8 +37,10 @@ async function permiso(chatId: string, quien: Types.ObjectId): Promise<{ ok: tru
   const chat = (await chatDelMiembro(chatId, quien)) as Chat | null;
   if (!chat) return { ok: false, status: 403, motivo: 'No estás en esa conversación.' };
   const yo = chat.members.find((miembro) => String(miembro.userId) === String(quien));
-  if (!puedeFijarEnElChat({ kind: chat.kind, esAdmin: yo?.role === 'admin' })) {
-    return { ok: false, status: 403, motivo: 'En un grupo, solo los admins fijan mensajes.' };
+  // Pending 8: in a group the admins may let everyone pin; off by default, as before.
+  const esAdmin = yo?.role === 'admin';
+  if (!puedeFijarEnElChat({ kind: chat.kind, esAdmin: esAdmin || memberMay({ permission: 'pinMessages', role: 'member', permissions: chat.memberPermissions }) })) {
+    return { ok: false, status: 403, motivo: memberPermissionDenied('pinMessages') };
   }
   return { ok: true, chat };
 }

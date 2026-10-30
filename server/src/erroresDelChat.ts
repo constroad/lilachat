@@ -22,3 +22,12 @@ export class CifradoRequeridoError extends ForbiddenChatError {
     this.name = 'CifradoRequeridoError';
   }
 }
+
+/** Pending 8: the group's admins turned off «send messages» for the rest. */
+export class OnlyAdminsSendError extends ForbiddenChatError {
+  constructor(message: string) {
+    super();
+    this.message = message;
+    this.name = 'OnlyAdminsSendError';
+  }
+}

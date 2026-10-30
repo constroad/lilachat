@@ -3,7 +3,7 @@ import { alreadyGreeted, newAlbumId } from '@lilachat/shared';
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { PanelDeInfo } from './info/PanelDeInfo';
 import type { ChatAction } from './menuDelChat';
-import { fijadosVigentes, puedeFijarEnElChat } from '@lilachat/shared';
+import { fijadosVigentes, memberMay, memberPermissionDenied, puedeFijarEnElChat } from '@lilachat/shared';
 import { DialogoFijar } from './DialogoFijar';
 import { FranjaDeFijados } from './FranjaDeFijados';
 import { ListaDeFijados, TarjetaDeFijados } from './fijados/ListaDeFijados';
@@ -116,7 +116,11 @@ export function ConversacionConAcciones(
   };
   const citado = useCallback((seq: number) => mensajes?.find((uno) => uno.seq === seq), [mensajes]);
   // Fijar mensajes (19/10): en un grupo, solo los admins.
-  const puedeFijar = puedeFijarEnElChat({ kind: chat.kind, esAdmin: detalle?.soyAdmin ?? false });
+  // Reminders stay with the admins; pinning follows the group's switch (pending 8).
+  const administra = puedeFijarEnElChat({ kind: chat.kind, esAdmin: detalle?.soyAdmin ?? false });
+  const miRol = detalle?.soyAdmin ? 'admin' : 'member';
+  const puedeFijar = administra || (chat.kind === 'group' && memberMay({ permission: 'pinMessages', role: miRol, permissions: detalle?.memberPermissions }));
+  const sendLock = chat.kind === 'group' && detalle && !memberMay({ permission: 'sendMessages', role: miRol, permissions: detalle.memberPermissions }) ? memberPermissionDenied('sendMessages') : null;
   const fijados = useMemo(() => fijadosVigentes(chat.fijados, Date.now()), [chat.fijados]);
   const seqsFijados = useMemo(() => new Set(fijados.map((uno) => uno.seq)), [fijados]);
   const fijar = useFijarEnLaWeb({ chatId: chat.id, jwt: props.jwt, onAviso, onCambio: props.onRecargarChats });
@@ -167,7 +171,7 @@ export function ConversacionConAcciones(
     [sync, chat.id, onAviso]
   );
   // El recordatorio del chat (W3c): lo crean y editan quienes pueden fijar (en un grupo, sus admins), nunca en un secreto.
-  const editarRecordatorio = !chat.encrypted && puedeFijar ? props.onEditReminder : undefined;
+  const editarRecordatorio = !chat.encrypted && administra ? props.onEditReminder : undefined;
   const badgeOf = useCallback((senderId: string) => memberBadge({ ...detalle?.pills.get(senderId), isMe: senderId === yo }), [detalle, yo]);
   const isAppOf = useCallback((senderId: string) => detalle?.pills.get(senderId)?.role === 'app', [detalle]);
   const personCard = usePersonCardWeb({ jwt: props.jwt, myUserId: yo, spaceId: chat.workspaceId, onOpenChat: props.onOpenChat });
@@ -191,7 +195,8 @@ export function ConversacionConAcciones(
     <ConversacionContext.Provider value={contexto}>
       <Conversation
         {...props}
-        onCreateReminder={!chat.encrypted && puedeFijar ? props.onCreateReminder : undefined}
+        onCreateReminder={!chat.encrypted && administra ? props.onCreateReminder : undefined}
+        sendLock={sendLock}
         // En un grupo, quién escribe (el socket trae su id).
         typingName={props.typingName ? nombres.get(props.typingName) ?? 'Alguien' : null}
         onEscribiendo={() => sync.avisarEscribiendo(chat.id)}

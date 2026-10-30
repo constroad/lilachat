@@ -4995,6 +4995,33 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 164. Permisos del grupo (29/10/2026, servidor + OTA + web; pendiente 8, diseño `permisos-admin`)
+
+- **Qué decide el admin**: cuatro interruptores sobre lo que pueden hacer los
+  MIEMBROS de un grupo: editar la info, enviar mensajes, agregar personas y
+  fijar mensajes. Los admins siempre pueden todo. Por defecto queda como antes:
+  los tres primeros abiertos y fijar solo admins (`DEFAULT_MEMBER_PERMISSIONS`
+  en `shared/src/groupPermissions.ts`).
+- **Dónde se guarda**: `chat.memberPermissions` (subdoc). Sin el campo valen los
+  defaults; el detalle del chat lo devuelve en grupos y la lista solo si existe.
+- **API**: `PATCH /api/chats/:chatId/permissions` con las claves a cambiar.
+  Solo admins y solo grupos (403/400). Responde `{ok, memberPermissions}` y avisa
+  el cambio del chat a todos los miembros.
+- **Dónde se aplica (el server decide)**:
+  - Enviar: el filtro del `findOneAndUpdate` del mensaje exige `sendMessages`
+    o ser admin; si no, `OnlyAdminsSendError` (403). Los bots y la respuesta de
+    Lila lo saltan (`skipMemberPermissions`).
+  - Agregar persona y editar la info: `mayInGroup` en `miembrosDelChat.ts`.
+  - Fijar: `memberMay(pinMessages)` en `mensajesFijados.ts`.
+- **UI**: app — tarjeta «Permisos» en el detalle del grupo
+  (`GroupPermissionsCard`, `switch-permiso-{clave}`); web — sección en Ajustes
+  del panel de info (`GroupPermissionsRow`, `interruptor-permiso-{clave}`).
+  Un miembro ve las reglas sin poder moverlas. Con «enviar mensajes» cerrado, el
+  compositor se reemplaza por «Solo los admins pueden enviar mensajes en este
+  grupo.» (app `FueraDelGrupo` con texto; web `solo-admins-escriben`).
+- **Recordatorios del chat** siguen siendo solo de admins: fijar y recordar ya no
+  comparten la misma bandera.
+
 ## 163. Foto del grupo al crearlo (29/10/2026, OTA + web; pendiente 7, diseño `nuevo-grupo-info`)
 
 Antes la foto se ponía solo después, desde la info del grupo.

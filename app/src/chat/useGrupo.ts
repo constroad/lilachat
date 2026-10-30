@@ -4,7 +4,7 @@ import { getSocket } from './socketClient';
 import type { MentionableMember } from './useMenciones';
 import { fotosPorMiembro, membresiaPorRespuesta, nombresPorMiembro, type MiembroConNombre } from './nombresDelGrupo';
 import { pillOf } from './nombresDelGrupo';
-import type { MemberPill } from '@lilachat/shared';
+import { memberMay, memberPermissionDenied, type MemberPermission, type MemberPill } from '@lilachat/shared';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
 const PLAZO_MS = 10_000;
@@ -13,6 +13,8 @@ const PLAZO_MS = 10_000;
 const cache = new Map<string, MiembroConNombre[]>();
 /** Whether an admin switched nudges and winks on, read with the same detail. */
 const funCache = new Map<string, boolean>();
+/** What the members may do (pending 8), read with the detail. */
+const permissionsCache = new Map<string, unknown>();
 
 /**
  * What the conversation needs from its members (FL3, FL9d): each member's
@@ -40,10 +42,15 @@ export function useGrupo(
   funAllowed: boolean | undefined;
   /** Everyone in the chat as the detail sent them: a person's card reads their phone and photo here. */
   members: readonly MiembroConNombre[];
+  /** Pending 8: may I do it in this group? An admin always may; unknown permissions count as the defaults. */
+  may: (yo: string, permission: MemberPermission) => boolean;
+  /** Why I cannot write here (admins only), or `null`. */
+  sendLock: (yo: string) => string | null;
 } {
   const agenda = useSyncExternalStore(suscribirAgenda, agendaPorTelefono, agendaPorTelefono);
   const [miembros, setMiembros] = useState<MiembroConNombre[]>(() => cache.get(chatId) ?? []);
   const [funAllowed, setFunAllowed] = useState<boolean | undefined>(() => funCache.get(chatId));
+  const [permissions, setPermissions] = useState<unknown>(() => permissionsCache.get(chatId));
   const [soyMiembro, setSoyMiembro] = useState<boolean | null>(null);
   const [version, setVersion] = useState(0);
 
@@ -55,6 +62,7 @@ export function useGrupo(
       if (frame?.chatId !== chatId) return;
       cache.delete(chatId);
       funCache.delete(chatId);
+      permissionsCache.delete(chatId);
       setVersion((actual) => actual + 1);
     };
     socket?.on('chat.changed', alCambiar);
@@ -75,13 +83,15 @@ export function useGrupo(
         const membresia = membresiaPorRespuesta(respuesta.status);
         if (vigente && esGrupo && membresia !== null) setSoyMiembro(membresia);
         if (!respuesta.ok) return;
-        const detail = (await respuesta.json()) as { members?: MiembroConNombre[]; funAllowed?: boolean };
+        const detail = (await respuesta.json()) as { members?: MiembroConNombre[]; funAllowed?: boolean; memberPermissions?: unknown };
         const loaded = detail.members ?? [];
         cache.set(chatId, loaded);
         funCache.set(chatId, detail.funAllowed === true);
+        permissionsCache.set(chatId, detail.memberPermissions);
         if (vigente) {
           setMiembros(loaded);
           setFunAllowed(detail.funAllowed === true);
+          setPermissions(detail.memberPermissions);
         }
       } catch {
         // Sin red: las burbujas van sin nombre y la membresía queda como estaba.
@@ -100,5 +110,8 @@ export function useGrupo(
   const soyAdmin = useCallback((yo: string) => miembros.some((uno) => uno.id === yo && uno.role === 'admin'), [miembros]);
   /** Each member's role, for the pill next to their name in the Slack format (design `s-01`). */
   const roleById = useMemo(() => new Map<string, MemberPill>(miembros.map((member) => [member.id, pillOf(member)])), [miembros]);
-  return { nombres, fotos, soyMiembro, mencionables, soyAdmin, roles: roleById, funAllowed, members: miembros };
+  const may = useCallback((yo: string, permission: MemberPermission) => !esGrupo || memberMay({ permission, role: soyAdmin(yo) ? 'admin' : 'member', permissions }), [esGrupo, soyAdmin, permissions]);
+  // Only once the members arrived: an admin must not see the lock flash while the detail loads.
+  const sendLock = useCallback((yo: string) => (miembros.length && !may(yo, 'sendMessages') ? memberPermissionDenied('sendMessages') : null), [miembros.length, may]);
+  return { nombres, fotos, soyMiembro, mencionables, soyAdmin, roles: roleById, funAllowed, members: miembros, may, sendLock };
 }

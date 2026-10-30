@@ -74,6 +74,8 @@ export interface Chat {
   encrypted?: boolean;
   /** Nudges and winks in a group, switched on by an admin (José, 21/10). In a 1:1 they always go. */
   funAllowed?: boolean;
+  /** What the members of a group may do, set by its admins (pending 8); unset = `DEFAULT_MEMBER_PERMISSIONS`. */
+  memberPermissions?: { editInfo?: boolean; sendMessages?: boolean; addMembers?: boolean; pinMessages?: boolean };
   /** Apps an admin took out of this channel (pending 91): they do not rejoin on their own. */
   appsRemoved?: Types.ObjectId[];
   /** Birthdays on in this chat (pending 17), and the day each member's was announced. */
@@ -213,6 +215,7 @@ const chatSchema = new Schema<Chat>(
     descripcion: { type: String },
     propio: { type: Boolean },
     funAllowed: { type: Boolean },
+    memberPermissions: { type: { editInfo: Boolean, sendMessages: Boolean, addMembers: Boolean, pinMessages: Boolean, _id: false }, default: undefined },
     appsRemoved: { type: [Schema.Types.ObjectId], default: undefined },
     birthdaysOn: { type: Boolean },
     birthdayNotices: { type: Map, of: String, default: undefined },

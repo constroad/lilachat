@@ -4,12 +4,13 @@ import {
   puedeEliminar,
   busquedaValida,
   escaparRegex,
+  memberPermissionDenied,
   validateMentions,
 } from '@lilachat/shared';
 import { UserModel } from './models.js';
 import { ChatModel, MessageModel, ReceiptModel, type Chat, type Message, type ResumenDeHilo } from './chatModels.js';
 import { anotarRespuesta, descontarRespuesta, validarRaiz } from './hilos.js';
-import { CifradoRequeridoError, ForbiddenChatError } from './erroresDelChat.js';
+import { CifradoRequeridoError, ForbiddenChatError, OnlyAdminsSendError } from './erroresDelChat.js';
 
 export { CifradoRequeridoError, ForbiddenChatError } from './erroresDelChat.js';
 export * from './acusesDelChat.js';
@@ -65,6 +66,11 @@ export async function mensajePropioPorClave(params: { chatId: Types.ObjectId | s
   return MessageModel.findOne({ chatId, senderId: params.senderId, clientKey: params.clientKey }).lean<Message | null>();
 }
 
+/** Pending 8: with «send messages» off only the group's admins write; unset, everyone does as before. */
+const mayWriteFilter = (senderId: Types.ObjectId) => ({
+  $or: [{ 'memberPermissions.sendMessages': { $ne: false } }, { members: { $elemMatch: { userId: senderId, role: 'admin' } } }],
+});
+
 export async function sendMessage(params: {
   chatId: string;
   senderId: Types.ObjectId;
@@ -94,6 +100,8 @@ export async function sendMessage(params: {
   contact?: Message['contact'];
   /** A shared location (pending 11, `locationShareRoutes.ts` validated it). */
   location?: Message['location'];
+  /** A bot or Lila answering (pending 8): the group's «send messages» switch is for people, not for them. */
+  skipMemberPermissions?: boolean;
 }): Promise<SendResult> {
   const chatId = toObjectId(params.chatId);
   if (!chatId) throw new ForbiddenChatError();
@@ -123,11 +131,14 @@ export async function sendMessage(params: {
   const nextSeq = { $add: [{ $ifNull: ['$lastSeq', 0] }, 1] };
   const chat = await ChatModel.findOneAndUpdate(
     // A nudge or a wink carries no content, so it also goes in a secret chat (backlog 3).
-    { _id: chatId, 'members.userId': params.senderId, ...(params.envelope || isFunKind(params.kind) ? {} : { encrypted: { $ne: true } }) },
+    { _id: chatId, 'members.userId': params.senderId, ...(params.envelope || isFunKind(params.kind) ? {} : { encrypted: { $ne: true } }), ...(params.skipMemberPermissions ? {} : mayWriteFilter(params.senderId)) },
     [{ $set: { lastSeq: nextSeq, lastMainSeq: hiddenInChat ? { $ifNull: ['$lastMainSeq', { $ifNull: ['$lastSeq', 0] }] } : nextSeq } }],
     { returnDocument: 'after', projection: { lastSeq: 1, kind: 1, 'members.userId': 1 }, updatePipeline: true }
   ).lean<{ lastSeq: number; kind?: string; members: { userId: Types.ObjectId }[] } | null>();
   if (!chat) {
+    if (!params.skipMemberPermissions && (await ChatModel.exists({ _id: chatId, 'members.userId': params.senderId, 'memberPermissions.sendMessages': false }))) {
+      throw new OnlyAdminsSendError(memberPermissionDenied('sendMessages'));
+    }
     const esMiembroDeUnSecreto =
       !params.envelope && (await ChatModel.exists({ _id: chatId, 'members.userId': params.senderId, encrypted: true }));
     throw esMiembroDeUnSecreto ? new CifradoRequeridoError() : new ForbiddenChatError();

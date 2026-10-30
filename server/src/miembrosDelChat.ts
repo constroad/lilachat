@@ -1,6 +1,8 @@
 import { Types } from 'mongoose';
 import {
   decidirSalida,
+  memberMay,
+  memberPermissionDenied,
   normalizeChannelName,
   normalizarDescripcion,
   normalizarNombreDeGrupo,
@@ -10,6 +12,7 @@ import {
   puedeSacar,
   settingsForLevel,
   type ChannelVisibility,
+  type MemberPermission,
   type NotificationLevel,
 } from '@lilachat/shared';
 import { UserModel } from './models.js';
@@ -34,6 +37,13 @@ import { allActiveIn } from './workspaceChats.js';
 export type AddMemberResult = { ok: true; chat: Chat } | { ok: false; motivo: string; status?: 403 };
 
 const forbidden = (motivo: string): AddMemberResult => ({ ok: false, motivo, status: 403 });
+
+/** Pending 8: what the group's admins let the rest do; a draft or a 1:1 has no such switches. */
+function mayInGroup(chat: Chat, who: Types.ObjectId, permission: MemberPermission): boolean {
+  if (chat.kind !== 'group') return true;
+  const role = chat.members.find((member) => String(member.userId) === String(who))?.role;
+  return memberMay({ permission, role: role === 'admin' ? 'admin' : 'member', permissions: chat.memberPermissions });
+}
 
 /**
  * Who may be added to a chat of a space: its active members, or an app installed there
@@ -68,6 +78,7 @@ export async function addMember(params: {
     })),
   });
   if (!decision.ok) return { ok: false, motivo: decision.motivo };
+  if (!mayInGroup(chat, params.quien, 'addMembers')) return forbidden(memberPermissionDenied('addMembers'));
 
   // Que la persona EXISTA se comprueba acá y no en el motor: es un dato de la
   // base, no una regla. Sumar un id inventado dejaría un miembro fantasma que
@@ -266,6 +277,7 @@ export async function editarInfoDeGrupo(params: {
     })),
   });
   if (!decision.ok) return { ok: false, motivo: decision.motivo };
+  if (!mayInGroup(chat, params.quien, 'editInfo')) return { ok: false, motivo: memberPermissionDenied('editInfo') };
 
   const cambios: Record<string, unknown> = {};
   let nombreNuevo: string | undefined;

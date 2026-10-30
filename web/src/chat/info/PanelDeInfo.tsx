@@ -12,6 +12,7 @@ import { DetailTabBar } from './DetailTabBar';
 import { IdentidadDelChat } from './IdentidadDelChat';
 import { DescripcionDelChat } from './DescripcionDelChat';
 import { GroupFunRow } from './GroupFunRow';
+import { GroupPermissionsRow } from './GroupPermissionsRow';
 import { BirthdaysRow } from './BirthdaysRow';
 import { ChannelVisibilityRow } from './ChannelVisibilityRow';
 import { armarInfo } from './infoDelChat';
@@ -97,6 +98,7 @@ export function PanelDeInfo(props: {
           </button>
         ) : null}
         {tab === 'settings' && (chat.channel || detalle?.channel) ? <ChannelVisibilityRow chatId={chat.id} jwt={props.jwt} isPrivate={detalle?.channel ? detalle.channel.isPrivate : chat.channel?.visibility === 'private'} isAdmin={Boolean(detalle?.soyAdmin)} isGeneral={Boolean(detalle?.channel?.general)} onNotice={props.onAviso} /> : null}
+        {tab === 'settings' && chat.kind === 'group' ? <GroupPermissionsRow chatId={chat.id} jwt={props.jwt} permissions={detalle?.memberPermissions} isAdmin={Boolean(detalle?.soyAdmin)} onAviso={props.onAviso} /> : null}
         {tab === 'settings' && chat.kind === 'group' ? <GroupFunRow chatId={chat.id} jwt={props.jwt} allowed={Boolean(chat.funAllowed ?? detalle?.funAllowed)} isAdmin={Boolean(detalle?.soyAdmin)} onAviso={props.onAviso} /> : null}
         {tab === 'settings' && (chat.kind === 'group' || chat.kind === 'direct') ? <BirthdaysRow chatId={chat.id} jwt={props.jwt} on={Boolean(chat.birthdaysOn ?? detalle?.birthdaysOn)} canChange={chat.kind === 'direct' || Boolean(detalle?.soyAdmin)} isGroup={chat.kind === 'group'} onAviso={props.onAviso} /> : null}
         {choosingLevel ? (

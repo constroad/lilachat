@@ -7,7 +7,9 @@ import { blockPerson, unblockPerson } from './blockedApi';
 export function BlockContactRow(props: { jwt: string; personId: string; name: string; blockedByMe: boolean; onNotice: (text: string) => void }) {
   const [blocked, setBlocked] = useState(props.blockedByMe);
   const [busy, setBusy] = useState(false);
-  useEffect(() => setBlocked(props.blockedByMe), [props.blockedByMe]);
+  useEffect(() => {
+    setBlocked(props.blockedByMe);
+  }, [props.blockedByMe]);
   const toggle = async () => {
     if (!blocked && !window.confirm(blockConfirmText(props.name))) return;
     setBusy(true);

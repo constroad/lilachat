@@ -14,7 +14,9 @@ export function BlockContactCard(props: { jwt: string; personId: string; name: s
   const [blocked, setBlocked] = useState(props.blockedByMe);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  useEffect(() => setBlocked(props.blockedByMe), [props.blockedByMe]);
+  useEffect(() => {
+    setBlocked(props.blockedByMe);
+  }, [props.blockedByMe]);
 
   const apply = async (next: boolean) => {
     setBusy(true);

@@ -1,5 +1,5 @@
 /**
- * Contactos bloqueados y bloqueo de la app (pending 9), like WhatsApp. The
+ * Blocked contacts and the app lock (pending 9), like WhatsApp. The
  * texts live here so the phone and the web say the same thing.
  */
 

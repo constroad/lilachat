@@ -59,7 +59,7 @@ beforeEach(async () => {
   const appDoc = await BotAppModel.create({ clientId: 'lca_portal', clientSecretHash: 'x', name: 'Portal', redirectUris: ['https://agentes.example.com/cb'], webhookUrl: hookUrl });
   await BotInstallationModel.create({ appId: appDoc._id, workspaceId: spaceId, botUserId: botUser, tokenHash: 'h1', signingSecret: 'secret', installedBy: jose });
   const chat = await ChatModel.create({ kind: 'group', name: 'constructora-via-sur', workspaceId: spaceId, channel: { visibility: 'private' }, members: [{ userId: botUser, role: 'member' }, { userId: jose, role: 'admin' }], lastSeq: 0 });
-  await ClientChannelModel.create({ workspaceId: spaceId, appId: appDoc._id, clientId: 'cli-cvs', chatId: chat._id, name: 'Constructora Vía Sur', services: [{ id: 'srv-318', name: 'Pavimentación', status: 'en_proceso', url: 'https://portal.example.com/s/318' }] });
+  await ClientChannelModel.create({ workspaceId: spaceId, appId: appDoc._id, clientId: 'cli-cvs', chatId: chat._id, name: 'Constructora Vía Sur', services: [{ id: 'srv-318', name: 'Pavimentación', status: 'in_progress', url: 'https://portal.example.com/s/318' }] });
 });
 
 describe('the service Drive on demand', () => {

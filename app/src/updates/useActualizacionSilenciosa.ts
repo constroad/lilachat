@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 import * as Updates from 'expo-updates';
 import { pendingFilesCount } from '../chat/colaDeArchivos';
 import { pendingOutboxCount } from '../chat/outboxStore';
-import { CHECK_EVERY_MS, shouldApplyUpdateNow, shouldCheckForUpdate } from './applyPolicy';
+import { CHECK_EVERY_MS, CLEAR_UPDATES_LOG_AFTER_MS, shouldApplyUpdateNow, shouldCheckForUpdate } from './applyPolicy';
 
 /**
  * OTA updates with no screen of their own (agentes 25/10/2026). Checks and
@@ -53,6 +53,9 @@ export function useActualizacionSilenciosa(callInProgress: boolean): void {
   useEffect(() => {
     if (__DEV__ || !Updates.isEnabled) return;
     void checkQuietly();
+    const clearLog = setTimeout(() => {
+      Updates.clearLogEntriesAsync().catch((error: unknown) => console.warn('[ota] could not clear the updates log:', error instanceof Error ? error.message : String(error)));
+    }, CLEAR_UPDATES_LOG_AFTER_MS);
     const timer = setInterval(() => {
       if (AppState.currentState === 'active') void checkQuietly();
     }, CHECK_EVERY_MS);
@@ -70,6 +73,7 @@ export function useActualizacionSilenciosa(callInProgress: boolean): void {
     });
     return () => {
       clearInterval(timer);
+      clearTimeout(clearLog);
       subscription.remove();
     };
   }, [applyIfIdle, checkQuietly]);

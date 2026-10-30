@@ -558,6 +558,12 @@ entró en la 0.1.172** (salió por el arreglo de 4-bis.9 y no se quiso sumar otr
 Lo grande —los 4,4 MB de guiños— solo baja si los cuadros dejan de ir dentro del APK (bajarlos al primer uso o por OTA),
 que es una decisión de producto, no de empaquetado.
 
+**Log de expo-updates (pendiente 13, 29/10/2026, por OTA).** Al arrancar, expo-updates purga su log
+leyendo TODAS las líneas a memoria (`PersistentFileLog.readFileLinesSync`); con 40 MB dio
+OutOfMemoryError. La app no lee ese log, así que `useActualizacionSilenciosa` lo vacía 20 s después
+de arrancar con `Updates.clearLogEntriesAsync()` (escribe el archivo en blanco, no lo lee). El
+recorte de ~1,3 MB de arriba sigue para el próximo APK (0.1.175), porque cambia el runtime de las OTA.
+
 ### 4-bis.9 Intents nativos con la carga retrasada (0.1.172, 28/10/2026)
 
 Con `expo-updates` en release, la app carga tarde a propósito (`DelayLoadAppHandler`). Si el proceso

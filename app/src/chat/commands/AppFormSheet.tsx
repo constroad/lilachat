@@ -30,6 +30,9 @@ const LIVE_FOOTER = 'Al tocar se toma la foto con la hora y el lugar, y se enví
 const REVEAL_MARGIN = 12;
 /** Between the two fields of a row. */
 const ROW_GAP = 12;
+/** Built once: Hermes builds a new formatter for every date string with options. */
+const TODAY = new Intl.DateTimeFormat('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
+const CLOCK = new Intl.DateTimeFormat('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false });
 
 type SheetProps = { answer: EphemeralAnswer; personName?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: PhotoUpload; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply> };
 
@@ -132,7 +135,7 @@ export function AppFormSheet(props: SheetProps) {
 function SheetHeader(props: { answer: EphemeralAnswer; onClose: () => void }) {
   const colors = useColores();
   const { answer } = props;
-  const today = new Date().toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
+  const today = TODAY.format(new Date());
   return (
     <View className="flex-row items-center gap-3 border-b border-outline/10 px-4 pb-3 pt-3">
       {answer.avatarUrl ? <AppLogo avatarUrl={answer.avatarUrl} size={40} /> : <Avatar nombre={answer.appName} tamano={40} bot />}
@@ -157,7 +160,7 @@ function FormIntro(props: { answer: EphemeralAnswer; refreshing: boolean; clock:
       {answer.response?.form?.intro ? <Text className="text-[15px] text-on-surface-variant">{answer.response.form.intro}</Text> : null}
       {props.clock ? (
         <View className="items-center rounded-2xl border border-outline/15 py-4">
-          <Text className="text-[40px] font-bold text-on-surface" style={{ fontVariant: ['tabular-nums'] }}>{new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })}</Text>
+          <Text className="text-[40px] font-bold text-on-surface" style={{ fontVariant: ['tabular-nums'] }}>{CLOCK.format(new Date())}</Text>
           {props.personName ? <Text className="mt-1 rounded-lg border border-outline/15 px-3 py-1 text-[14px] text-on-surface">{props.personName}</Text> : null}
         </View>
       ) : null}

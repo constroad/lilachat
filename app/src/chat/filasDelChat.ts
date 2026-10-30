@@ -1,4 +1,4 @@
-import { formatClock, tamanoDeBurbuja } from '@lilachat/shared';
+import { compareOrdinal, formatClock, tamanoDeBurbuja } from '@lilachat/shared';
 import { isAnimatedImage, opensInPhotoViewer } from '@lilachat/shared';
 import type { ArchivoEnCola } from './colaDeArchivosMotor';
 
@@ -212,5 +212,5 @@ export function anchoDeBurbujaConFoto(media: { width?: number; height?: number }
  * `sort` es estable: con la misma hora queda el orden de llegada.
  */
 export function pendientesEnOrden<P extends { queuedAt: string }>(textos: readonly P[], archivos: readonly P[]): P[] {
-  return [...textos, ...archivos].sort((a, b) => a.queuedAt.localeCompare(b.queuedAt));
+  return [...textos, ...archivos].sort((a, b) => compareOrdinal(a.queuedAt, b.queuedAt));
 }

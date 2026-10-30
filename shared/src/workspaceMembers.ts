@@ -1,4 +1,5 @@
 import { canChangeRole, canDeactivate, type WorkspaceMemberStatus, type WorkspaceRole } from './workspaces.js';
+import { compareNames } from './compareText.js';
 
 /**
  * The enterprise screens (designs `e1-08` directory, `e1-10` members and
@@ -41,7 +42,7 @@ const folded = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').t
 export function directoryAreas(members: readonly Searchable[]): { area: string | null; label: string; count: number }[] {
   const counts = new Map<string, number>();
   for (const member of members) if (member.area) counts.set(member.area, (counts.get(member.area) ?? 0) + 1);
-  const areas = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'es')).map(([area, count]) => ({ area, label: area, count }));
+  const areas = [...counts.entries()].sort((a, b) => b[1] - a[1] || compareNames(a[0], b[0])).map(([area, count]) => ({ area, label: area, count }));
   return [{ area: null, label: 'Todas', count: members.length }, ...areas];
 }
 

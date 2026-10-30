@@ -64,18 +64,22 @@ export function splitClients<T extends ClientChat>(clients: readonly SpaceClient
 
 export const openServices = (client: Pick<SpaceClient, 'services'>): number => client.services.filter((service) => OPEN_STATUSES.includes(service.status)).length;
 
-const limaDay = (at: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(at);
+/** Built once: Hermes pays ICU's whole locale matching on every formatter it creates (OOM, 30/10). */
+let dayKey: Intl.DateTimeFormat | null = null;
+let dayAndMonth: Intl.DateTimeFormat | null = null;
+let numericDate: Intl.DateTimeFormat | null = null;
+const limaDay = (at: Date) => (dayKey ??= new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' })).format(at);
 
 /** «hoy», «ayer» or «12 oct», by the calendar in Lima. */
 export function dayLabel(iso: string, now: Date): string {
   const day = limaDay(new Date(iso));
   if (day === limaDay(now)) return 'hoy';
   if (day === limaDay(new Date(now.getTime() - DAY_MS))) return 'ayer';
-  return new Date(iso).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', timeZone: TIME_ZONE }).replace('.', '');
+  return (dayAndMonth ??= new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short', timeZone: TIME_ZONE })).format(new Date(iso)).replace('.', '');
 }
 
 /** «12/10/2026» in Lima: the archived banner and the desktop table. */
-export const shortDate = (iso: string): string => new Date(iso).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: TIME_ZONE });
+export const shortDate = (iso: string): string => (numericDate ??= new Intl.DateTimeFormat('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: TIME_ZONE })).format(new Date(iso));
 
 /** The second line of a client row (design f-01): «2 servicios en curso · Último pedido hoy». */
 export function clientRowSubtitle(client: Pick<SpaceClient, 'services' | 'last_order_at'>, now: Date): string {

@@ -69,20 +69,20 @@ export function summarizeRsvp(attendees: { rsvp?: Rsvp | null }[]): AttendeeSumm
  * Cómo se lee la fecha de un evento en la tarjeta: el diseño muestra
  * «Tomorrow, 7:00 PM», no una fecha completa.
  */
+/** Built once: Hermes pays ICU's locale matching on every formatter it creates (OOM, 30/10). */
+let eventClock: Intl.DateTimeFormat | null = null;
+let eventDay: Intl.DateTimeFormat | null = null;
+
 export function formatEventWhen(startsAt: Date, now: Date = new Date()): string {
   const startOfDay = (value: Date) =>
     new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
   const days = Math.round((startOfDay(startsAt) - startOfDay(now)) / 86_400_000);
-  const time = new Intl.DateTimeFormat('es-PE', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hourCycle: 'h12',
-  }).format(startsAt);
+  const time = (eventClock ??= new Intl.DateTimeFormat('es-PE', { hour: 'numeric', minute: '2-digit', hourCycle: 'h12' })).format(startsAt);
 
   if (days === 0) return `Hoy, ${time}`;
   if (days === 1) return `Mañana, ${time}`;
   if (days === -1) return `Ayer, ${time}`;
-  const date = new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short' }).format(startsAt);
+  const date = (eventDay ??= new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short' })).format(startsAt);
   return `${date.replace('.', '')}, ${time}`;
 }
 

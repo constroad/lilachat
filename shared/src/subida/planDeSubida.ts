@@ -5,6 +5,7 @@ import {
   LOTE_MAX_ELEMENTOS,
 } from './constantes.js';
 import type { Condiciones, ElementoDelRollo, MotivoDeEspera, Veredicto } from './tipos.js';
+import { compareOrdinal } from '../compareText.js';
 
 /**
  * Qué se sube y cuándo (Lilafotos spec §5; copiado a Lilachat
@@ -51,7 +52,7 @@ const bateriaCritica = (pct: number | null): boolean =>
  */
 export function ordenarParaSubir<E extends ElementoDelRollo>(pendientes: readonly E[]): E[] {
   return [...pendientes].sort(
-    (a, b) => b.capturadoEn - a.capturadoEn || a.id.localeCompare(b.id)
+    (a, b) => b.capturadoEn - a.capturadoEn || compareOrdinal(a.id, b.id)
   );
 }
 

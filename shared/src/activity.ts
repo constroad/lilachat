@@ -1,5 +1,6 @@
 import { isGroupMentionId } from './menciones.js';
 import type { Reaccion } from './reacciones.js';
+import { compareOrdinal } from './compareText.js';
 
 /** A mention inside a message's text: who, and where in the text. */
 type MessageMention = import('./menciones.js').MencionEnMensaje;
@@ -44,7 +45,7 @@ export function reactionsFromOthers(reactions: readonly Reaccion[], me: string):
   if (others.length === 0) return null;
   const groups = new Map<string, string[]>();
   for (const reaction of others) groups.set(reaction.emoji, [...(groups.get(reaction.emoji) ?? []), reaction.userId]);
-  const latest = [...others].sort((a, b) => (b.en ?? '').localeCompare(a.en ?? ''))[0]!;
+  const latest = [...others].sort((a, b) => compareOrdinal(b.en ?? '', a.en ?? ''))[0]!;
   return {
     groups: [...groups.entries()].map(([emoji, userIds]) => ({ emoji, count: userIds.length, userIds })).sort((a, b) => b.count - a.count),
     ...(latest.en ? { latestAt: latest.en } : {}),

@@ -1,3 +1,4 @@
+import { compareNames } from './compareText.js';
 /**
  * The Drive of a client's service, on demand (pending 121, design f-06):
  * agentes answers `client.files.requested` with the files Portal keeps for
@@ -46,7 +47,7 @@ export function driveFolders(files: readonly ServiceFile[]): { name: string; cou
     const top = topFolderOf(file);
     if (top) counts.set(top, (counts.get(top) ?? 0) + 1);
   }
-  return [...counts].map(([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  return [...counts].map(([name, count]) => ({ name, count })).sort((a, b) => compareNames(a.name, b.name));
 }
 
 /** The files under a top folder (sub-folders included); `null` = the loose ones. */

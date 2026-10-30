@@ -1,4 +1,5 @@
 import { normalizePeruPhone } from './phone.js';
+import { compareNames } from './compareText.js';
 
 /**
  * Contacts on the web, like WhatsApp Web (José, 20/10, option «b»): the web
@@ -58,7 +59,7 @@ export const FULL_AGENDA_MAX = 2000;
 export function fullAgendaFrom(agenda: ReadonlyMap<string, string>): AgendaContact[] {
   return [...agenda]
     .flatMap(([phone, name]) => (name.trim() ? [{ phone, name: name.trim() }] : []))
-    .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+    .sort((a, b) => compareNames(a.name, b.name))
     .slice(0, FULL_AGENDA_MAX);
 }
 

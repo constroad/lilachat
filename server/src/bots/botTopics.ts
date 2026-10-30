@@ -2,6 +2,7 @@ import { Types } from 'mongoose';
 import { validateTopicChannels, type NoticeTopic, type TopicRoute } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
 import { BotAppModel, BotInstallationModel, type BotInstallation } from './botModels.js';
+import { clientChatIdsOf } from './botClients.js';
 
 /**
  * Where each notice topic of an app lands in a space (R160, design e-31;
@@ -18,8 +19,8 @@ const fail = (status: TopicsError['status'], error: string, message: string): To
 const CHANNELS_READ = 200;
 
 /** The space's channels, oldest first (also what «Comandos y acciones» lists, `botItems.ts`). */
-export const channelsOf = (workspaceId: Types.ObjectId) =>
-  ChatModel.find({ workspaceId, kind: 'group', channel: { $exists: true } }).select('_id name channel').sort({ createdAt: 1, _id: 1 }).limit(CHANNELS_READ).lean<Channel[]>();
+export const channelsOf = async (workspaceId: Types.ObjectId) =>
+  ChatModel.find({ workspaceId, kind: 'group', channel: { $exists: true }, _id: { $nin: await clientChatIdsOf(workspaceId) } }).select('_id name channel').sort({ createdAt: 1, _id: 1 }).limit(CHANNELS_READ).lean<Channel[]>();
 
 /** #general, or the oldest public channel. */
 const defaultOf = (channels: readonly Channel[]) => channels.find((one) => one.channel?.visibility === 'public' && one.name?.toLowerCase() === 'general') ?? channels.find((one) => one.channel?.visibility === 'public') ?? null;

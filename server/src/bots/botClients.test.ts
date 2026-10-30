@@ -184,6 +184,24 @@ describe('GET /api/workspaces/:id/clients', () => {
   });
 });
 
+describe('client channels stay out of the app\'s channel pickers (José, 30/10)', () => {
+  it('«Canales donde funciona», «En qué canales está» and «¿Dónde llega cada aviso?» do not list them', async () => {
+    // Arrange
+    const token = await installApp();
+    await putClient(token, state(daysAgo(1))).expect(201);
+    const appId = String((await BotAppModel.findOne({ name: 'portal' }).lean())!._id);
+    // Act
+    const items = await request(app).get(`/api/workspaces/${spaceId}/apps/${appId}/items`).set(asJose).expect(200);
+    const channels = await request(app).get(`/api/workspaces/${spaceId}/apps/${appId}/channels`).set(asJose).expect(200);
+    const topics = await request(app).get(`/api/workspaces/${spaceId}/apps/${appId}/topics`).set(asJose).expect(200);
+    // Assert
+    const names = (list: { name: string }[]) => list.map((one) => one.name);
+    expect(names(items.body.channels)).toEqual(['general']);
+    expect(names(channels.body.channels)).toEqual(['general']);
+    expect(names(topics.body.channels)).toEqual(['general']);
+  });
+});
+
 describe('GET /api/workspaces/:id/clients/:clientId/records', () => {
   it('lists the records of each service for a member of the channel, newest first; a plain member of the space gets 404', async () => {
     // Arrange

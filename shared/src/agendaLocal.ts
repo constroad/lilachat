@@ -1,4 +1,5 @@
 import { normalizePeruPhone } from './phone.js';
+import { compareNames } from './compareText.js';
 
 /**
  * Separar la agenda del teléfono entre «ya están» y «hay que invitar».
@@ -36,7 +37,7 @@ export function separarAgenda(params: {
     paraInvitar.push(contacto);
   }
 
-  paraInvitar.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  paraInvitar.sort((a, b) => compareNames(a.nombre, b.nombre));
 
   return { enLilachat: params.registrados, paraInvitar };
 }

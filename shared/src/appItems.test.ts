@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ALL_OFF, allOffSettings, enabledAt, itemIsOn, itemKey, itemSettingOf, mayUseItem, sameItemSetting, validateItemSettings } from './appItems.js';
+import { ALL_OFF, allOffSettings, enabledAt, itemIsOn, itemPlacesLine, itemKey, itemSettingOf, mayUseItem, sameItemSetting, validateItemSettings } from './appItems.js';
 
 /** Which commands and actions of an app work where, and for whom (José, 23/10 and 28/10: everything starts off). */
 const PLANTA = '6ad8b0cb30ce97957f4acc04';
@@ -31,6 +31,11 @@ describe('where it works', () => {
     expect(enabledAt({ ...ALL_OFF, global: true }, { chatId: PLANTA })).toBe(false);
     expect(enabledAt(on, 'direct')).toBe(false);
     expect(enabledAt({ ...ALL_OFF, direct: true }, 'direct')).toBe(true);
+  });
+
+  it('«Todos» leaves out the client channels (José, 30/10: «no deberían aparecer esos»)', () => {
+    expect(enabledAt({ ...ALL_OFF, channels: 'all' }, { chatId: CAJA, client: true })).toBe(false);
+    expect(enabledAt({ ...ALL_OFF, channels: 'all' }, { chatId: CAJA, client: false })).toBe(true);
   });
 });
 
@@ -110,3 +115,19 @@ describe('before the migration to all off', () => {
     expect(itemSettingOf(undefined, 'command', 'clima')).toEqual(ALL_OFF);
   });
 });
+
+describe('itemPlacesLine (José, 30/10: «Encendido» and nothing in «/»)', () => {
+  const names = new Map([[PLANTA, 'planta'], [CAJA, 'flujo-caja']]);
+  it('says where it works, so «Encendido» is not read as «everywhere»', () => {
+    expect(itemPlacesLine({ ...ALL_OFF, channels: [CAJA, PLANTA], direct: true }, names)).toBe('Funciona en #flujo-caja, #planta y el chat con la app');
+    expect(itemPlacesLine({ ...ALL_OFF, global: true, direct: true }, names)).toBe('Funciona en ⚡ Acciones rápidas y el chat con la app');
+    expect(itemPlacesLine({ ...ALL_OFF, channels: 'all' }, names)).toBe('Funciona en todos los canales');
+    expect(itemPlacesLine({ ...ALL_OFF, direct: true }, names)).toBe('Funciona solo en el chat con la app');
+    expect(itemPlacesLine(ALL_OFF, names)).toBe('No funciona en ningún lugar');
+  });
+
+  it('a channel that no longer exists is not named', () => {
+    expect(itemPlacesLine({ ...ALL_OFF, channels: ['gone'] }, names)).toBe('No funciona en ningún lugar');
+  });
+});
+

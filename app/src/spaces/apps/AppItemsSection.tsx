@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react-native';
-import { itemIsOn, itemKey, sameItemSetting, type AppItemRow, type AppItemSetting, type ClientWorkspaceMember } from '@lilachat/shared';
+import { itemIsOn, itemKey, itemPlacesLine, sameItemSetting, type AppItemRow, type AppItemSetting, type ClientWorkspaceMember } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { saveAppItems, type AppItems } from '../spacesApi';
 import { AppItemEditor } from './AppItemEditor';
@@ -28,6 +28,7 @@ const settingOf = (row: AppItemRow): AppItemSetting => ({ global: row.global, ch
 export function AppItemsSection(props: SectionProps) {
   const [open, setOpen] = useState<string | null>(null);
   const [edits, setEdits] = useState<Record<string, AppItemRow>>({});
+  const channelNames = new Map(props.state.channels.map((channel) => [channel.id, channel.name]));
   const [status, setStatus] = useState<(Status & { key: string }) | null>(null);
 
   const save = async (row: AppItemRow) => {
@@ -46,7 +47,7 @@ export function AppItemsSection(props: SectionProps) {
         const row = edits[key] ?? saved;
         return (
           <View key={key} className="mt-3 border-t border-outline/10 pt-3">
-            <ItemHeader row={row} open={open === key} onToggle={() => setOpen(open === key ? null : key)} />
+            <ItemHeader row={row} places={itemPlacesLine(settingOf(row), channelNames)} open={open === key} onToggle={() => setOpen(open === key ? null : key)} />
             {open === key ? (
               <AppItemEditor
                 row={row}
@@ -67,7 +68,7 @@ export function AppItemsSection(props: SectionProps) {
   );
 }
 
-function ItemHeader(props: { row: AppItemRow; open: boolean; onToggle: () => void }) {
+function ItemHeader(props: { row: AppItemRow; places: string; open: boolean; onToggle: () => void }) {
   const colors = useColores();
   const { row } = props;
   const on = itemIsOn(row);
@@ -77,6 +78,7 @@ function ItemHeader(props: { row: AppItemRow; open: boolean; onToggle: () => voi
       <View className="min-w-0 flex-1">
         <Text className="text-[17px] font-bold text-on-surface" numberOfLines={1}>{row.name}</Text>
         <Text className="text-[13px] text-on-surface-variant" numberOfLines={2}>{row.kind === 'command' ? 'Comando' : 'Acción'}{row.description ? ` · ${row.description}` : ''}</Text>
+        <Text testID={`lugares-${row.key}`} className="text-[12px] text-on-surface-variant" numberOfLines={2}>{props.places}</Text>
       </View>
       <View testID={`estado-${row.key}`} className={`rounded-full border px-2.5 py-0.5 ${on ? 'border-en-linea/30 bg-en-linea/10' : 'border-outline/25 bg-background'}`}>
         <Text className={`text-[11px] font-bold uppercase ${on ? 'text-en-linea' : 'text-on-surface-variant'}`}>{on ? 'Encendido' : 'Apagado'}</Text>

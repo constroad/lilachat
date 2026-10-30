@@ -17,8 +17,8 @@ export type WebhookReply = { status: number | null; body: unknown; error?: strin
 
 const ATTEMPT_TIMEOUT_MS = 10_000;
 const ERROR_MAX = 200;
-/** A command's answer is at most a 16 KB card plus its text: anything bigger is not read. */
-const REPLY_MAX_BYTES = 64_000;
+/** A command's answer is a 16 KB card at most; a Drive of 200 files with thumbnails is ~150 KB of JSON, which a 64 KB cut broke (agentes, 30/10). */
+const REPLY_MAX_BYTES = 256_000;
 let retryDelaysMs: readonly number[] = [10_000, 60_000, 300_000, 1_800_000];
 
 /** Tests shorten the waits. */

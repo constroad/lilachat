@@ -1,5 +1,6 @@
 import type { WorkspaceMemberStatus } from './workspaces.js';
 import { rangosDeMenciones, type MencionElegida } from './textoDelComposer.js';
+import { compareNamesLoose } from './compareText.js';
 
 /** A person the composer offers after «@»: of the chat, or of its space but not in the chat yet (Slack). */
 export type MentionCandidate = { id: string; nombre: string; foto?: string; outsideChat?: boolean };
@@ -28,7 +29,7 @@ export function mentionCandidates(params: {
     seen.add(userId);
     outside.push({ id: userId, nombre: name, ...(member.avatarUrl ? { foto: member.avatarUrl } : {}), outsideChat: true });
   }
-  outside.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+  outside.sort((a, b) => compareNamesLoose(a.nombre, b.nombre));
   return [...params.chatMembers, ...outside];
 }
 

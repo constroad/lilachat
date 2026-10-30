@@ -6,6 +6,7 @@
  */
 import { taskDueState, type ChecklistItem, type TaskEvidence } from './checklists.js';
 import type { WorkStage } from './workStages.js';
+import { compareOrdinal } from './compareText.js';
 
 export const EVIDENCE_LIMIT = 12;
 
@@ -34,7 +35,7 @@ export function stageFiles(stages: readonly WorkStage[]): { groups: StageFileGro
       stage: one.stage,
       files: one.items
         .flatMap((item) => (item.evidence ?? []).map((file): StageFile => ({ ...file, taskId: item.id, taskText: item.text })))
-        .sort((a, b) => b.at.localeCompare(a.at)),
+        .sort((a, b) => compareOrdinal(b.at, a.at)),
     }))
     .filter((group) => group.files.length > 0);
   return { groups, total: groups.reduce((sum, group) => sum + group.files.length, 0) };
@@ -51,7 +52,7 @@ const FILE_WORD: Record<TaskEvidence['kind'], string> = { image: 'una foto', vid
 
 /** «Beto Ramos lo creó», «Ana Torres subió una foto», «… lo marcó hecho»: what the data says, oldest first. */
 export function taskActivity(item: ChecklistItem, nameOf: (userId: string) => string): ActivityLine[] {
-  const files = [...(item.evidence ?? [])].sort((a, b) => a.at.localeCompare(b.at)).map((file): ActivityLine => ({ text: `${nameOf(file.by)} subió ${FILE_WORD[file.kind]}`, at: file.at, tone: 'file' }));
+  const files = [...(item.evidence ?? [])].sort((a, b) => compareOrdinal(a.at, b.at)).map((file): ActivityLine => ({ text: `${nameOf(file.by)} subió ${FILE_WORD[file.kind]}`, at: file.at, tone: 'file' }));
   return [
     ...(item.addedBy ? [{ text: `${nameOf(item.addedBy)} lo creó`, at: null, tone: 'created' as const }] : []),
     ...files,

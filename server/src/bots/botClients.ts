@@ -37,6 +37,15 @@ const clientChannelSchema = new Schema<ClientChannel>(
 clientChannelSchema.index({ workspaceId: 1, appId: 1, clientId: 1 }, { unique: true });
 export const ClientChannelModel = model<ClientChannel>('ClientChannel', clientChannelSchema);
 
+/** The space's client channels: the app's channel pickers and «Todos» leave them out (José, 30/10). */
+export async function clientChatIdsOf(workspaceId: Types.ObjectId): Promise<Types.ObjectId[]> {
+  return (await ClientChannelModel.find({ workspaceId }).select('chatId').lean()).map((one) => one.chatId);
+}
+
+export async function isClientChat(chatId: Types.ObjectId | string): Promise<boolean> {
+  return Boolean(await ClientChannelModel.exists({ chatId }));
+}
+
 const fail = (status: ClientsError['status'], error: string, message: string): ClientsError => ({ status, error, message });
 const isDuplicateKey = (error: unknown) => (error as { code?: number })?.code === 11000;
 

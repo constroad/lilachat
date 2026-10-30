@@ -15,7 +15,8 @@ export type AppItemSetting = { global: boolean; channels: ItemChannels; direct: 
 export type AppItemRow = AppItemSetting & { kind: AppItemKind; key: string; name: string; description?: string; /** A command that may be programmed (agentes, 28/10), and one with amounts that only goes to the creator's 1:1. */ schedulable?: true; shareable?: false };
 export type StoredItemSettings = Record<string, Partial<AppItemSetting>>;
 /** Where it is used: the space's ⚡, a chat, or the person's 1:1 with the app. */
-export type ItemPlace = 'space' | 'direct' | { chatId: string };
+/** `client`: a client's channel (§157), which «Todos» leaves out. */
+export type ItemPlace = 'space' | 'direct' | { chatId: string; client?: boolean };
 /** Where a client asks for the commands: the ⚡ or a chat; the server tells a 1:1 with the app («direct») from its chat id. */
 export type CommandsPlace = Exclude<ItemPlace, 'direct'>;
 
@@ -42,7 +43,7 @@ export function itemSettingOf(stored: StoredItemSettings | undefined, kind: AppI
 export function enabledAt(setting: AppItemSetting, place: ItemPlace): boolean {
   if (place === 'space') return setting.global;
   if (place === 'direct') return setting.direct;
-  if (setting.channels === 'all' || setting.channels === 'none') return setting.channels === 'all';
+  if (setting.channels === 'all' || setting.channels === 'none') return setting.channels === 'all' && !place.client;
   return setting.channels.includes(place.chatId);
 }
 
@@ -55,6 +56,16 @@ export function mayUseItem(setting: Pick<AppItemSetting, 'who'>, person: { userI
 /** «Encendido» in «Comandos y acciones» (design d-01): it works somewhere. */
 export function itemIsOn(setting: AppItemSetting): boolean {
   return setting.global || setting.direct || setting.channels === 'all' || (Array.isArray(setting.channels) && setting.channels.length > 0);
+}
+
+const joinPlaces = (places: readonly string[]): string => (places.length < 2 ? places.join('') : `${places.slice(0, -1).join(', ')} y ${places.at(-1)}`);
+
+/** Where an item works, in words (José, 30/10: «Encendido» read as «everywhere», and «/» came out empty). */
+export function itemPlacesLine(setting: AppItemSetting, channelNames: ReadonlyMap<string, string>): string {
+  const channels = setting.channels === 'all' ? ['todos los canales'] : setting.channels === 'none' ? [] : setting.channels.flatMap((id) => (channelNames.has(id) ? [`#${channelNames.get(id)}`] : []));
+  const places = [...(setting.global ? ['⚡ Acciones rápidas'] : []), ...channels];
+  if (places.length === 0) return setting.direct ? 'Funciona solo en el chat con la app' : 'No funciona en ningún lugar';
+  return `Funciona en ${joinPlaces(setting.direct ? [...places, 'el chat con la app'] : places)}`;
 }
 
 const sorted = (ids: readonly string[]) => [...ids].sort().join(',');

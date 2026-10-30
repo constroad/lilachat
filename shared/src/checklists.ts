@@ -1,3 +1,4 @@
+import { compareNames } from './compareText.js';
 /**
  * Checklists in the chat, like Telegram's (José, 21/10; backlog 8): a card
  * with a title and tasks that people tick; each done task says who ticked it
@@ -196,7 +197,7 @@ export function shortPersonName(name: string): string {
 /** Who can be put in charge of a task: the chat's members, me first as «Tú», the rest by name. */
 export function checklistMembers(names: ReadonlyMap<string, string> | undefined, me: string): { id: string; name: string }[] {
   if (!names) return [];
-  const others = [...names].filter(([id]) => id !== me).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  const others = [...names].filter(([id]) => id !== me).map(([id, name]) => ({ id, name })).sort((a, b) => compareNames(a.name, b.name));
   return names.has(me) ? [{ id: me, name: 'Tú' }, ...others] : others;
 }
 

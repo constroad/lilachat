@@ -72,6 +72,17 @@ describe('the service Drive on demand', () => {
     expect(response.body.drive_url).toBe('https://drive.google.com/drive/folders/x');
   });
 
+  it('a Drive of 200 files (well over 64 KB of JSON) arrives whole (agentes, 30/10: 149 files read as «sin respuesta»)', async () => {
+    // Arrange
+    const files = Array.from({ length: 200 }, (_, index) => ({ name: `informe-de-densidades-de-campo-km-12-tramo-norte-${index}.pdf`, mime: 'application/pdf', url: `https://lila.constroad.com/f/archivo-largo-${index}`, thumb_url: `https://lila.constroad.com/t/miniatura-${index}`, folder: 'Informes de laboratorio de suelos y asfalto', size_bytes: 1800000, modified_at: '2026-10-30T11:17:22.000Z' }));
+    answer = { status: 200, body: { files, drive_url: 'https://drive.google.com/drive/folders/x' } };
+    expect(JSON.stringify(answer.body).length).toBeGreaterThan(64_000);
+    // Act
+    const response = await filesOf(jose).expect(200);
+    // Assert
+    expect(response.body.files).toHaveLength(200);
+  });
+
   it('a service the app did not list, another client, or someone outside the channel: 404 and no event', async () => {
     expect((await filesOf(jose, 'srv-999')).status).toBe(404);
     expect((await filesOf(jose, 'srv-318', 'otro')).status).toBe(404);

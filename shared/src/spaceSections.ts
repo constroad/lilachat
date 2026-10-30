@@ -1,5 +1,6 @@
 import { ENLACE_DE_DESCARGA } from './invitacion.js';
 import { normalizeJoinCode } from './workspaces.js';
+import { compareNames, compareOrdinal } from './compareText.js';
 
 /**
  * The chats of a company space by sections, like Slack (designs `s-03` and
@@ -13,11 +14,11 @@ export type SpaceSectionKey = 'channels' | 'groups' | 'directs' | 'apps';
 type SpaceChat = { kind: 'direct' | 'group' | 'notas'; name?: string; channel?: { visibility: string } | null; lastAt?: string; appId?: string };
 export type SpaceSection<T> = { key: SpaceSectionKey; title: string; chats: T[] };
 
-const byRecent = (a: SpaceChat, b: SpaceChat) => (b.lastAt ?? '').localeCompare(a.lastAt ?? '');
+const byRecent = (a: SpaceChat, b: SpaceChat) => compareOrdinal(b.lastAt ?? '', a.lastAt ?? '');
 const byChannelName = (a: SpaceChat, b: SpaceChat) => {
   if (a.name === 'general') return -1;
   if (b.name === 'general') return 1;
-  return (a.name ?? '').localeCompare(b.name ?? '', 'es');
+  return compareNames(a.name ?? '', b.name ?? '');
 };
 
 export function spaceSections<T extends SpaceChat>(chats: readonly T[]): SpaceSection<T>[] {

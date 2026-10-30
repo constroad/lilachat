@@ -9,6 +9,7 @@ import { BotAppModel, BotCommandRunModel, BotInstallationModel, type BotCommandR
 import { channelOf, personOf } from './botTriggers.js';
 import { configureLateAnswers, settleLateAnswer } from './lateAnswers.js';
 import { deliverScheduledAnswer } from './botScheduleDelivery.js';
+import { isClientChat } from './botClients.js';
 
 /**
  * Slash commands (`specs/BOTS-API.spec.md` §c-bis), like Slack: the app
@@ -63,9 +64,9 @@ export const isOwnChat = (chat: Pick<ChatOfCommand, 'kind' | 'members'> | null, 
  * other chat its channels, and no chat is the space's ⚡. The 1:1 no longer
  * offers everything.
  */
-export function itemPlaceOf(chat: Pick<ChatOfCommand, '_id' | 'kind' | 'members'> | null, installation: Pick<BotInstallation, 'botUserId'>): ItemPlace {
+export function itemPlaceOf(chat: Pick<ChatOfCommand, '_id' | 'kind' | 'members'> | null, installation: Pick<BotInstallation, 'botUserId'>, client = false): ItemPlace {
   if (!chat) return 'space';
-  return isOwnChat(chat, installation) ? 'direct' : { chatId: String(chat._id) };
+  return isOwnChat(chat, installation) ? 'direct' : { chatId: String(chat._id), client };
 }
 
 /** On in some place: what a client without a place (before R160) is offered. */
@@ -85,9 +86,11 @@ export async function commandGroupsOf(workspaceId: string, userId: Types.ObjectI
   if (!member) return null;
   const person = { userId: String(userId), spaceAdmin: canManageMembers(member.role) };
   const inChat = place && place !== 'space' ? place : null;
-  const [installations, chat] = await Promise.all([
+  const validChat = inChat && isId(inChat.chatId) ? inChat.chatId : null;
+  const [installations, chat, clientChat] = await Promise.all([
     BotInstallationModel.find({ workspaceId, revokedAt: { $exists: false } }).select('appId botUserId itemSettings itemsV2').lean(),
-    inChat && isId(inChat.chatId) ? ChatModel.findOne({ _id: inChat.chatId, workspaceId, 'members.userId': userId }).select('_id kind members.userId').lean<Pick<ChatOfCommand, '_id' | 'kind' | 'members'> | null>() : null,
+    validChat ? ChatModel.findOne({ _id: validChat, workspaceId, 'members.userId': userId }).select('_id kind members.userId').lean<Pick<ChatOfCommand, '_id' | 'kind' | 'members'> | null>() : null,
+    validChat ? isClientChat(validChat) : false,
   ]);
   if (inChat && !chat) return [];
   const byApp = new Map(installations.map((one) => [String(one.appId), one]));
@@ -98,7 +101,7 @@ export async function commandGroupsOf(workspaceId: string, userId: Types.ObjectI
       const open = (kind: 'command' | 'shortcut', key: string) => {
         const setting = itemSettingOf(installation.itemSettings, kind, key, !installation.itemsV2);
         if (!mayUseItem(setting, person)) return false;
-        return place ? enabledAt(setting, place === 'space' ? 'space' : itemPlaceOf(chat, installation)) : onSomewhere(setting);
+        return place ? enabledAt(setting, place === 'space' ? 'space' : itemPlaceOf(chat, installation, clientChat)) : onSomewhere(setting);
       };
       const commands = (app.commands ?? []).filter((entry) => open('command', entry.command));
       const shortcuts = (app.shortcuts ?? []).filter((entry) => open('shortcut', entry.key));
@@ -190,9 +193,9 @@ async function invokeApp(userId: Types.ObjectId, scope: CommandScope, appId: unk
   if (!app || !installation) return notFound();
   const setting = itemSettingOf(installation.itemSettings, trigger.kind, name, !installation.itemsV2);
   // Checked here, not only in the menu: an old client or a direct call skips the menu (§2.2).
-  const member = await WorkspaceMemberModel.findOne({ workspaceId: place.workspaceId, userId, status: 'active' }).select('role').lean();
+  const [member, clientChat] = await Promise.all([WorkspaceMemberModel.findOne({ workspaceId: place.workspaceId, userId, status: 'active' }).select('role').lean(), place.chat ? isClientChat(place.chat._id) : false]);
   const label = trigger.kind === 'command' ? `/${name}` : `«${app.shortcuts?.find((entry) => entry.key === name)?.name ?? name}»`;
-  if (!member || !mayUseItem(setting, { userId: String(userId), spaceAdmin: canManageMembers(member.role) }) || !enabledAt(setting, itemPlaceOf(place.chat, installation))) return notAllowedHere(label);
+  if (!member || !mayUseItem(setting, { userId: String(userId), spaceAdmin: canManageMembers(member.role) }) || !enabledAt(setting, itemPlaceOf(place.chat, installation, clientChat))) return notAllowedHere(label);
   // A failed run stays a week: its `failure` is how a «no pudo responder» gets explained (23/10).
   void BotCommandRunModel.deleteMany({ $or: [{ expiresAt: { $lt: new Date() }, failure: { $exists: false } }, { expiresAt: { $lt: new Date(Date.now() - FAILED_RUN_KEPT_MS) } }] }).catch((error: unknown) => console.error('[bots] no se pudieron purgar comandos vencidos:', error instanceof Error ? error.message : error));
   const { chat } = place;

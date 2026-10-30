@@ -1,6 +1,7 @@
 import type { Types } from 'mongoose';
 import type { AppChannel } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
+import { clientChatIdsOf } from './botClients.js';
 
 /** A space has a handful of channels; this bounds the read, never the choice. */
 const CHANNELS_READ = 200;
@@ -14,7 +15,8 @@ type Row = { _id: Types.ObjectId; name?: string; descripcion?: string; channel?:
  * back, and takes it out only as that channel's admin.
  */
 export async function appChannelsOf(params: { workspaceId: Types.ObjectId; botUserId: Types.ObjectId; userId: Types.ObjectId; spaceAdmin: boolean }): Promise<AppChannel[]> {
-  const rows = await ChatModel.find({ workspaceId: params.workspaceId, kind: 'group', channel: { $exists: true }, $or: [{ 'channel.visibility': 'public' }, { 'members.userId': params.userId }] })
+  const clientChats = await clientChatIdsOf(params.workspaceId);
+  const rows = await ChatModel.find({ workspaceId: params.workspaceId, kind: 'group', channel: { $exists: true }, _id: { $nin: clientChats }, $or: [{ 'channel.visibility': 'public' }, { 'members.userId': params.userId }] })
     .select('_id name descripcion channel members.userId members.role')
     .sort({ createdAt: 1, _id: 1 })
     .limit(CHANNELS_READ)

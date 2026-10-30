@@ -8,6 +8,7 @@ import {
   type MotivoDeDetencion,
 } from '@lilachat/shared';
 import type { EstadoDeRespaldo } from './estadoDeRespaldo';
+import { compareOrdinal } from '@lilachat/shared';
 
 /**
  * Lo PURO del respaldo del teléfono (F12.1). Sin SQLite, sin FileSystem, sin
@@ -42,7 +43,7 @@ export type ResumenDeChat = { chatId: string; ultimoSeq: number; cantidad: numbe
  * mismo historial cada hora.
  */
 export function huellaDelAlmacen(chats: readonly ResumenDeChat[]): string {
-  const ordenados = [...chats].sort((a, b) => a.chatId.localeCompare(b.chatId));
+  const ordenados = [...chats].sort((a, b) => compareOrdinal(a.chatId, b.chatId));
   return ordenados.map((chat) => `${chat.chatId}:${chat.ultimoSeq}:${chat.cantidad}`).join('|');
 }
 

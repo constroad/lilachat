@@ -1,3 +1,4 @@
+import { compareOrdinal } from './compareText.js';
 /**
  * Elegir a quién reenviar, como WhatsApp (José, 20/10: «la pantalla de
  * reenviar no muestra los frecuentes ni los recientes»). Frecuentes = a donde
@@ -34,7 +35,7 @@ export function sumarEnvio(frecuencias: Frecuencias, chatId: string, ahora: numb
 }
 
 const sinTildes = (texto: string) => texto.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
-const porReciente = (a: ChatParaReenviar, b: ChatParaReenviar) => (b.ultimoEn ?? '').localeCompare(a.ultimoEn ?? '');
+const porReciente = (a: ChatParaReenviar, b: ChatParaReenviar) => compareOrdinal(b.ultimoEn ?? '', a.ultimoEn ?? '');
 
 export function destinosDeReenvio(params: { chats: readonly ChatParaReenviar[]; frecuencias: Frecuencias; busqueda: string; ahora: number }): { frecuentes: ChatParaReenviar[]; recientes: ChatParaReenviar[] } {
   const posibles = params.chats.filter((chat) => !chat.cifrado);

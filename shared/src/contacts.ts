@@ -1,3 +1,4 @@
+import { compareNames } from './compareText.js';
 /**
  * Contactos y su agrupación (diseño «New Group»).
  *
@@ -27,7 +28,7 @@ const inicial = (contact: Contact): string => {
 };
 
 const comparar = (a: Contact, b: Contact): number =>
-  (a.name ?? a.phone).localeCompare(b.name ?? b.phone, 'es');
+  compareNames(a.name ?? a.phone, b.name ?? b.phone);
 
 export function groupContactsByLetter(contacts: Contact[]): ContactGroup[] {
   const porLetra = new Map<string, Contact[]>();
@@ -38,7 +39,7 @@ export function groupContactsByLetter(contacts: Contact[]): ContactGroup[] {
 
   return [...porLetra.entries()]
     // `#` al final: los sin nombre no encabezan la lista.
-    .sort(([a], [b]) => (a === '#' ? 1 : b === '#' ? -1 : a.localeCompare(b)))
+    .sort(([a], [b]) => (a === '#' ? 1 : b === '#' ? -1 : compareNames(a, b)))
     .map(([letter, lista]) => ({ letter, contacts: [...lista].sort(comparar) }));
 }
 

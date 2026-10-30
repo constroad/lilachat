@@ -1,11 +1,12 @@
 import type { Programado } from '../api/client';
+import { compareOrdinal } from '@lilachat/shared';
 
 /**
  * Lo puro de ver los programados de un chat (FL9d; auditoría §46.2: se podían
  * programar y no ver ni cancelar, aunque el server ya lo permitía).
  */
 export function programadosDelChat(lista: readonly Programado[], chatId: string): Programado[] {
-  return lista.filter((uno) => uno.chatId === chatId).sort((a, b) => a.sendAt.localeCompare(b.sendAt));
+  return lista.filter((uno) => uno.chatId === chatId).sort((a, b) => compareOrdinal(a.sendAt, b.sendAt));
 }
 
 export function textoDeProgramados(cantidad: number): string {

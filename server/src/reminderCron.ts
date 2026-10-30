@@ -72,6 +72,8 @@ async function ringReminder(params: { userIds: string[]; title: string; note?: s
   const devices = await DeviceModel.find({ userId: { $in: params.userIds }, pushToken: { $exists: true, $ne: '' } })
     .select('pushToken capacidades')
     .lean();
+  // A reminder that rang leaves a trace (agentes 30/10: «no sonó» could not be told from «sonó y el teléfono no lo mostró»).
+  console.log(`[recordatorios] suena ${params.reminderId}${params.chat ? ` en ${params.chat}` : ''}: ${params.userIds.length} personas, ${devices.length} teléfonos con aviso`);
   if (devices.length === 0) return;
   const native = sender.sendDatos ? new Set(devices.filter((device) => device.capacidades?.includes(REMINDER_NATIVE_CAPABILITY)).map((device) => device.pushToken!)) : new Set<string>();
   const plain = [...new Set(devices.map((device) => device.pushToken!))].filter((token) => !native.has(token));

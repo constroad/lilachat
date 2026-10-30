@@ -4995,6 +4995,68 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 174. Diez pedidos del 30/10 en una sola salida (servidor + OTA + web)
+
+José pidió los diez en una sola iteración. Lo que cambió:
+
+- **Cursor en el campo al abrir un chat (web).** El `Composer` toma el foco al
+  montarse, solo con puntero fino (`matchMedia('(pointer: fine)')`). En un
+  teléfono no abre el teclado solo.
+- **Eliminar un canal.** `DELETE /api/workspaces/:id/channels/:chatId`
+  (`deleteChannel` en `workspaceChannels.ts`).
+  - Solo un admin del espacio (`canManageMembers`). Nunca #general ni el canal
+    de un cliente: responde 400.
+  - Deja `members: []`, quita `channel` y guarda `deletedChannel` (nombre,
+    visibilidad, quién, cuándo y los miembros) para auditoría.
+  - Avisa `avisarCambioDeChat` a cada ex miembro.
+  - Web: «Eliminar canal» en Info › Ajustes (`DeleteChannelRow`), con
+    confirmación. Al confirmar, el chat sale de la lista y se cierra
+    (`accionesSobreChats.quitar`).
+- **¿Ve el historial al agregarlo?** `POST /api/chats/:id/members` acepta
+  `history`. Con `false` se le pone `borradoHasta = lastSeq`: el mismo piso que
+  «Vaciar chat», así que no ve lo anterior en mensajes, búsqueda, fijados ni
+  archivos.
+  - Web: se pregunta si el chat ya tiene mensajes (`HistoryChoiceDialog`).
+  - App: se pregunta siempre (`HistoryChoiceSheet`, dentro de `ElegirParaSumar`).
+  - Mencionar con @ a alguien de fuera sigue agregándolo con todo el historial.
+- **Sin la sección «Espacio de trabajo».**
+  - Web: el nombre del espacio abre un menú (`SpaceTitleMenu`) con Directorio,
+    Miembros y roles, Solicitudes, Ajustes del espacio y Cambiar de espacio.
+    Un punto en el título avisa si hay solicitudes.
+  - App: solo queda la fila «Solicitudes · N» para admins, cuando hay alguna.
+    Lo demás ya está en las pestañas Directorio y Ajustes.
+- **Riel más compacto (web).** Cuadros de espacio de 40 px (antes 48) y riel
+  de 64 px (antes 72). Logos de Constroad e Inframaq subidos desde «Ajustes
+  del espacio».
+- **Abrir el panel de emojis rompía la web.** Causa: tras un deploy, el chunk
+  viejo del panel ya no existía y el server respondía el `index.html` con 200.
+  - Server: `missingVersionedFile` responde 404 en `assets/`, `mediapipe/` y
+    `stickers/` (`staleAssets.ts`).
+  - Web: `lazyChunk` recarga una sola vez (marca en `sessionStorage`) y, si
+    vuelve a fallar, lanza el error.
+- **«:hug» sugiere emojis (web y app).** `emojiShortcode.ts` en shared:
+  `shortcodeAt`, `searchEmojis` e `insertShortcodeEmoji`.
+  - La tabla de nombres (en + es, de emoji-picker-react 4.22.3) vive en
+    `emojiNamesData.ts`. Se carga con import dinámico la primera vez que se
+    escribe «:».
+  - Web: flechas, Enter o Tab y Escape.
+  - App: una tira de emojis sobre el campo.
+- **Recordatorio en un hilo.** La raíz de un hilo que es un recordatorio,
+  encuesta, evento o checklist se dibuja como su tarjeta (web `PanelDeHilo`,
+  app `HiloScreen`). Antes salía como texto plano (caso de Wilson en
+  #administracion).
+  - El aviso «suena» (`recordatorio-suena`) ya se dibujaba como chip destacado
+    también en canales.
+  - `ringReminder` ahora deja una línea por recordatorio que suena:
+    `[recordatorios] suena <id> en <chat>: N personas, M teléfonos con aviso`.
+    Antes no quedaba rastro cuando salía bien.
+- **Etapas del servicio.** El detalle del servicio abre con «Etapas · N de M»
+  (`serviceStages`): Cotización, Pedidos, Despachos, Informes, Facturación y
+  Cobranza, cada una leída de los datos de Portal. Nadie las marca.
+  Cotización, Facturación y Cobranza salen solo en la vista privada.
+  - El checklist de obra queda para lo que Portal no registra (permisos,
+    coordinaciones, observaciones). Su estado vacío lo dice.
+
 ## 173. Cobranza, fichas y archivos dentro de Lilachat; quién ve la cobranza (30/10/2026, servidor + OTA + web)
 
 Pedido de José del 30/10: «todo me dice abre desde Portal… no me parece muy

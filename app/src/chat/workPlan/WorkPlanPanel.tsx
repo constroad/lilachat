@@ -93,8 +93,8 @@ function EmptyPlan(props: { starting: boolean; onStart: () => void }) {
   return (
     <View testID="checklist-de-obra-vacio" className="flex-1 items-center justify-center px-8">
       <ClipboardList size={40} color={colors.primary} />
-      <Text className="mt-3 text-center text-[18px] font-bold text-on-surface">Maneja la obra por etapas</Text>
-      <Text className="mt-1 text-center text-[14px] text-on-surface-variant">Cotización, orden de compra, ejecución, valorizaciones, pagos, informes y observaciones. Cada etapa con sus tareas, responsable y fecha.</Text>
+      <Text className="mt-3 text-center text-[18px] font-bold text-on-surface">Para lo que el Portal no registra</Text>
+      <Text className="mt-1 text-center text-[14px] text-on-surface-variant">El avance de cada servicio (pedidos, despachos, informes, facturas y cobranza) sale solo del Portal: míralo en Servicios. Usa este checklist para lo demás, como permisos, coordinaciones con el cliente u observaciones de obra, con responsable y fecha.</Text>
       <Pressable testID="btn-armar-checklist-de-obra" disabled={props.starting} onPress={props.onStart} className="mt-5 min-h-[48px] flex-row items-center justify-center rounded-2xl bg-primary px-6">
         {props.starting ? <ActivityIndicator color={colors['on-primary']} /> : <Text className="text-[16px] font-semibold text-on-primary">Armar el checklist de la obra</Text>}
       </Pressable>

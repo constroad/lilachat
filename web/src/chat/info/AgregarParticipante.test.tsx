@@ -75,8 +75,28 @@ describe('Agregar miembros in a channel of a space', () => {
     await userEvent.type(screen.getByTestId('buscar-contactos'), 'max');
     expect(screen.queryByTestId('contacto-u-ana')).toBeNull();
     await userEvent.click(screen.getByTestId('contacto-u-max'));
+    expect(screen.getByText('¿Max puede ver el historial?')).toBeInTheDocument();
+    await userEvent.click(screen.getByTestId('historial-todo'));
     // Assert
-    await waitFor(() => expect(calls).toContainEqual({ url: '/api/chats/c1/members', method: 'POST', body: JSON.stringify({ userId: 'u-max' }) }));
+    await waitFor(() => expect(calls).toContainEqual({ url: '/api/chats/c1/members', method: 'POST', body: JSON.stringify({ userId: 'u-max', history: true }) }));
+  });
+
+  it('«No, solo desde ahora» adds them without the earlier messages (José 30/10)', async () => {
+    const calls = stubServer();
+    open();
+    await userEvent.click(screen.getByTestId('btn-agregar-participante'));
+    await userEvent.click(await screen.findByTestId('contacto-u-ana'));
+    await userEvent.click(screen.getByTestId('historial-desde-ahora'));
+    await waitFor(() => expect(calls).toContainEqual({ url: '/api/chats/c1/members', method: 'POST', body: JSON.stringify({ userId: 'u-ana', history: false }) }));
+  });
+
+  it('a chat with no messages yet adds without asking', async () => {
+    const calls = stubServer();
+    open({ ...channel, lastSeq: 0 });
+    await userEvent.click(screen.getByTestId('btn-agregar-participante'));
+    await userEvent.click(await screen.findByTestId('contacto-u-ana'));
+    expect(screen.queryByTestId('historial-todo')).toBeNull();
+    await waitFor(() => expect(calls).toContainEqual({ url: '/api/chats/c1/members', method: 'POST', body: JSON.stringify({ userId: 'u-ana' }) }));
   });
 
   it('a group outside any space keeps listing the contacts', async () => {

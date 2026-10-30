@@ -46,8 +46,8 @@ export function WorkPlanWeb({ plan, onOpenTask }: { plan: WorkPlanWebState; onOp
     return (
       <div data-testid="checklist-de-obra-vacio" className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
         <ClipboardList className="text-primary" size={40} />
-        <p className="text-lg font-bold">Maneja la obra por etapas</p>
-        <p className="max-w-md text-sm text-on-surface-variant">Cotización, orden de compra, ejecución, valorizaciones, pagos, informes y observaciones. Cada etapa con sus tareas, responsable y fecha.</p>
+        <p className="text-lg font-bold">Para lo que el Portal no registra</p>
+        <p className="max-w-md text-sm text-on-surface-variant">El avance de cada servicio (pedidos, despachos, informes, facturas y cobranza) sale solo del Portal: míralo en Servicios. Usa este checklist para lo demás, como permisos, coordinaciones con el cliente u observaciones de obra, con responsable y fecha.</p>
         <button type="button" data-testid="btn-armar-checklist-de-obra" onClick={() => void plan.start().then((message) => setError(message ?? ''))} className="min-h-[44px] rounded-xl bg-primary px-5 font-semibold text-on-primary">
           Armar el checklist de la obra
         </button>

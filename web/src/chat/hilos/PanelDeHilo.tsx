@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Check, ClipboardCheck, SendHorizontal, Smile, X } from 'lucide-react';
 import { formatClock } from '@lilachat/shared';
 import type { MencionElegida, MencionEnMensaje } from '@lilachat/shared';
@@ -6,13 +6,15 @@ import { ConversacionContext, useConversacion, type ContextoDeLaConversacion } f
 import type { StickerChat } from '../stickers/EmojiStickerPanel';
 import { Avatar } from '../../ui/Avatar';
 import { BurbujaDeMensaje } from '../BurbujaDeMensaje';
+import { TarjetaDelMensaje } from '../tarjetas/TarjetaDelMensaje';
 import { TextoDelMensaje } from '../TextoDelMensaje';
 import { CreateChecklistOverlay } from '../../agenda/CreateChecklistOverlay';
 import type { ChatSummary, MensajeEnPantalla } from '../types';
 import { SugerenciasDeMencion, type Mencionable } from '../SugerenciasDeMencion';
 import { useMencionesDelCampo } from '../useMencionesDelCampo';
+import { lazyChunk } from '../../ui/lazyChunk';
 
-const EmojiStickerPanel = lazy(() => import('../stickers/EmojiStickerPanel'));
+const EmojiStickerPanel = lazyChunk(() => import('../stickers/EmojiStickerPanel'));
 
 /** Lo escrito y no mandado en cada hilo, mientras la pestaña está abierta. */
 const borradores = new Map<string, string>();
@@ -152,7 +154,10 @@ export function PanelDeHilo(props: {
           </div>
           {/* Con sus links y menciones, como en la app (20/10). */}
           <div className="mt-2 text-sm">
-            {props.raiz.deletedAt ? 'Se eliminó este mensaje' : props.raiz.body ? <TextoDelMensaje clave={`raiz-${props.raiz.clientKey}`} texto={props.raiz.body} menciones={props.raiz.menciones} nombres={props.nombres} yo={props.yo} mio={false} /> : props.raiz.media ? 'Archivo' : ''}
+            {props.raiz.deletedAt ? 'Se eliminó este mensaje' : props.raiz.ref ? (
+              // A reminder, poll, event or checklist opens its thread as its card (Wilson, 30/10: it read as plain text).
+              <ConversacionContext.Provider value={threadContext}><TarjetaDelMensaje mensaje={props.raiz} mio={false} conAutor={false} /></ConversacionContext.Provider>
+            ) : props.raiz.body ? <TextoDelMensaje clave={`raiz-${props.raiz.clientKey}`} texto={props.raiz.body} menciones={props.raiz.menciones} nombres={props.nombres} yo={props.yo} mio={false} /> : props.raiz.media ? 'Archivo' : ''}
           </div>
         </div>
         <div className="my-3 flex items-center gap-3 text-[12px] text-on-surface-variant">

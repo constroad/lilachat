@@ -17,6 +17,7 @@ import { BlockContactRow } from '../../privacy/BlockContactRow';
 import { RoutinesRow } from '../../routines/RoutinesRow';
 import { BirthdaysRow } from './BirthdaysRow';
 import { ChannelVisibilityRow } from './ChannelVisibilityRow';
+import { DeleteChannelRow, useChannelDeletable } from './DeleteChannelRow';
 import { armarInfo } from './infoDelChat';
 import { NotificationLevelDialog } from './NotificationLevelDialog';
 import { ParticipantesDelChat } from './ParticipantesDelChat';
@@ -48,6 +49,8 @@ export function PanelDeInfo(props: {
   tarjetas?: ReactNode;
   /** A member's row opens their card (José, 25/10). */
   onViewPerson?: (userId: string) => void;
+  /** A space admin deleted the channel: it leaves the list and closes. */
+  onChannelDeleted?: (chat: ChatSummary) => void;
 }) {
   const { chat, detalle } = props;
   const info = armarInfo({ chat, detalle, yo: props.yo });
@@ -58,6 +61,8 @@ export function PanelDeInfo(props: {
   const level: NotificationLevel = chat.avisos ?? (silenciado ? 'menciones' : 'todo');
   const [choosingLevel, setChoosingLevel] = useState(false);
   const [tab, setTab] = useState<ChatDetailTab>(() => initialChatDetailTab(chat.kind));
+  const isChannel = Boolean(chat.channel || detalle?.channel);
+  const channelDeletable = useChannelDeletable({ jwt: props.jwt, chatId: chat.id, workspaceId: chat.workspaceId, isChannel, isGeneral: Boolean(detalle?.channel?.general) });
   return (
     <aside data-testid="panel-info" className="fixed inset-0 z-30 flex flex-col bg-background lg:static lg:z-auto lg:w-[400px] lg:shrink-0 lg:border-l lg:border-outline/15">
       <header className="flex items-center gap-3 border-b border-outline/15 bg-surface px-3 py-3">
@@ -86,7 +91,8 @@ export function PanelDeInfo(props: {
             miembros={info.miembros}
             appIds={detalle?.appIds ?? NO_APPS}
             puedeAgregar={info.puedeAgregar}
-            onAgregar={(userId) => void editar.agregar(userId)}
+            hasHistory={chat.lastSeq > 0}
+            onAgregar={(userId, history) => void editar.agregar(userId, history)}
             onCambiarRol={(userId, role) => void editar.cambiarRol(userId, role)}
             onSacar={(userId) => void editar.sacar(userId)}
             onViewPerson={props.onViewPerson}
@@ -142,6 +148,18 @@ export function PanelDeInfo(props: {
               <Trash2 size={18} /> Eliminar chat
             </button>
           ) : null}
+          <DeleteChannelRow
+            chatId={chat.id}
+            workspaceId={chat.workspaceId ?? ''}
+            name={chat.name ?? 'canal'}
+            jwt={props.jwt}
+            canDelete={channelDeletable}
+            onNotice={props.onAviso}
+            onDeleted={() => {
+              props.onChannelDeleted?.(chat);
+              props.onCerrar();
+            }}
+          />
         </section>
         )}
       </div>

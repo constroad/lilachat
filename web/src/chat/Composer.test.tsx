@@ -108,3 +108,38 @@ describe('Composer: the text is per chat (José, 25/10)', () => {
     expect(field().value).toBe('borrador');
   });
 });
+
+describe('Composer: «:hug» and the focus (José, 30/10)', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('typing «:hug» offers the hug emoji; Enter puts it in place of the word, without sending', async () => {
+    // Arrange
+    const user = userEvent.setup();
+    const onSend = vi.fn();
+    render(composer({ chatId: 'general' }, onSend));
+    // Act
+    await user.type(field(), 'hola :hug');
+    // Assert
+    expect(await screen.findByTestId('emoji-sugerido-🤗')).toBeInTheDocument();
+    await user.keyboard('{Enter}');
+    expect(field().value).toBe('hola 🤗 ');
+    expect(onSend).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('sugerencias-emoji')).toBeNull();
+  });
+
+  it('a click on a suggestion also puts it; «10:30» offers nothing', async () => {
+    const user = userEvent.setup();
+    render(composer({ chatId: 'general' }));
+    await user.type(field(), ':abrazo');
+    fireEvent.mouseDown(await screen.findByTestId('emoji-sugerido-🤗'));
+    expect(field().value).toBe('🤗 ');
+    await user.type(field(), 'a las 10:30');
+    expect(screen.queryByTestId('sugerencias-emoji')).toBeNull();
+  });
+
+  it('opening a chat on a computer leaves the cursor in the field', () => {
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true }) as unknown as typeof window.matchMedia;
+    render(composer({ chatId: 'general' }));
+    expect(document.activeElement).toBe(field());
+  });
+});

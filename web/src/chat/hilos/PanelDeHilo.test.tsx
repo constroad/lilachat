@@ -37,6 +37,18 @@ describe('PanelDeHilo', () => {
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
   });
 
+  it('a reminder at the root shows as its card, not as plain text (Wilson, 30/10)', () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    const reminderRoot = { ...raiz, body: 'Recordatorio: Pagar baño portátil', ref: { tipo: 'recordatorio', id: 'r-1' } } as MensajeEnPantalla;
+    render(
+      <ConversacionContext.Provider value={conversation}>
+        <PanelDeHilo chat={chat} raiz={reminderRoot} respuestas={[]} yo="yo" nombres={new Map()} onEnviar={vi.fn()} onReintentar={vi.fn()} onDescartar={vi.fn()} onEdit={vi.fn()} onCerrar={vi.fn()} />
+      </ConversacionContext.Provider>
+    );
+    expect(screen.getByTestId('tarjeta-recordatorio-1')).toBeInTheDocument();
+    expect(screen.queryByText('Recordatorio: Pagar baño portátil')).toBeNull();
+  });
+
   it('opening a thread puts the cursor in its reply field (pending 110: typing went to the main chat)', () => {
     Element.prototype.scrollIntoView = vi.fn();
     render(

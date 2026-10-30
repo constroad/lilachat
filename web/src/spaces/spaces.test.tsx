@@ -151,6 +151,33 @@ describe('SpaceChatList', () => {
     expect(onOpenChat).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }));
   });
 
+  it('the space links live in the title menu, not in a section on top of the list (José 30/10)', async () => {
+    // Arrange
+    const onWorkspace = vi.fn();
+    const onSwitch = vi.fn();
+    render(list([], { space: space({ role: 'admin', pendingRequests: 2 }), onWorkspace, onSwitch }));
+    expect(screen.queryByTestId('seccion-espacio-de-trabajo')).toBeNull();
+    expect(screen.getByTestId('aviso-solicitudes')).toBeInTheDocument();
+    // Act
+    await userEvent.click(screen.getByTestId('titulo-espacio'));
+    // Assert
+    expect(await screen.findByRole('menuitem', { name: /Solicitudes/ })).toHaveTextContent('2');
+    expect(screen.getByRole('menuitem', { name: /Miembros y roles/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('menuitem', { name: /Ajustes del espacio/ }));
+    expect(onWorkspace).toHaveBeenCalledWith('settings');
+    await userEvent.click(screen.getByTestId('titulo-espacio'));
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Cambiar de espacio/ }));
+    expect(onSwitch).toHaveBeenCalled();
+  });
+
+  it('a member only sees the directory and switching in the title menu', async () => {
+    render(list([], { space: space({ role: 'member' }) }));
+    await userEvent.click(screen.getByTestId('titulo-espacio'));
+    expect(await screen.findByRole('menuitem', { name: /Directorio de equipo/ })).toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: /Ajustes del espacio/ })).toBeNull();
+    expect(screen.queryByTestId('aviso-solicitudes')).toBeNull();
+  });
+
   it('a space creates channels, not groups (pending 109, José 28/10): no «Nuevo grupo» and no empty «Grupos»', () => {
     // Arrange: a space with a channel and a direct message, no groups.
     render(list([chat('c1', { name: 'general', channel: { visibility: 'public' } }), chat('d1', { kind: 'direct', name: 'Ana Torres' })]));

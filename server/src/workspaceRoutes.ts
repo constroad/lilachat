@@ -17,7 +17,7 @@ import {
   updateWorkspace,
   WorkspaceError,
 } from './workspaces.js';
-import { createChannel, joinChannel, listChannels } from './workspaceChannels.js';
+import { createChannel, deleteChannel, joinChannel, listChannels } from './workspaceChannels.js';
 import { emailInvitesOf, inviteByEmail, revokeEmailInvite } from './workspaceEmailInvites.js';
 import { type MediaUploader } from './mediaClient.js';
 import { defaultMediaUploader } from './localMediaUploader.js';
@@ -142,6 +142,11 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
   router.delete('/:id/emojis/:emojiId', handled(async (req, res) => {
     await removeCustomEmoji(req.params.id!, me(req), req.params.emojiId!);
     res.status(204).end();
+  }));
+  // José 30/10: deleting a channel, for the space's admins.
+  router.delete('/:id/channels/:chatId', handled(async (req, res) => {
+    await deleteChannel(req.params.id!, me(req), req.params.chatId!);
+    res.json({ ok: true });
   }));
   router.post('/:id/channels/:chatId/join', handled(async (req, res) => res.json({ channel: await joinChannel(req.params.id!, me(req), req.params.chatId!) })));
   return router;

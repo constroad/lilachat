@@ -59,7 +59,10 @@ export function useEditarChat(params: { chatId: string; jwt: string; onCambio: (
     [chatId, jwt, onAviso, resolver]
   );
 
-  const agregar = useCallback(async (userId: string) => void resolver(await api(`/chats/${chatId}/members`, { body: { userId }, jwt })), [chatId, jwt, resolver]);
+  const agregar = useCallback(
+    async (userId: string, history?: boolean) => void resolver(await api(`/chats/${chatId}/members`, { body: history === undefined ? { userId } : { userId, history }, jwt })),
+    [chatId, jwt, resolver]
+  );
   const cambiarRol = useCallback(
     async (userId: string, role: 'admin' | 'member') => void resolver(await api(`/chats/${chatId}/members/${userId}`, { method: 'PATCH', body: { role }, jwt })),
     [chatId, jwt, resolver]

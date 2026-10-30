@@ -58,6 +58,8 @@ export async function addMember(params: {
   chatId: string;
   quien: Types.ObjectId;
   aQuien: string;
+  /** José 30/10: `false` keeps what was said before out of their sight (from the last message on). */
+  history?: boolean;
 }): Promise<AddMemberResult> {
   const chat = await ChatModel.findOne({ _id: params.chatId }).lean<Chat | null>();
   if (!chat) return { ok: false, motivo: 'No encontramos esa conversación.' };
@@ -92,7 +94,7 @@ export async function addMember(params: {
     // pueden dejar a la misma persona dos veces en la lista.
     { _id: params.chatId, 'members.userId': { $ne: persona._id } },
     // An app taken out by an admin (pending 91) comes back only like this: someone adds it.
-    { $push: { members: { userId: persona._id, role: 'member', joinedAt: new Date() } }, $pull: { appsRemoved: persona._id } },
+    { $push: { members: { userId: persona._id, role: 'member', joinedAt: new Date(), ...(params.history === false ? { borradoHasta: chat.lastSeq ?? 0 } : {}) } }, $pull: { appsRemoved: persona._id } },
     { returnDocument: 'after' }
   ).lean<Chat | null>();
 

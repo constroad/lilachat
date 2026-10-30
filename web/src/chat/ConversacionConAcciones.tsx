@@ -68,6 +68,8 @@ export function ConversacionConAcciones(
     onRecargarChats: () => void;
     /** Silenciar, salir o eliminar desde «Info.» (W3b): las mismas acciones de la lista. */
     onAccionDeChat: (chat: ChatSummary, accion: ChatAction) => void;
+    /** A space admin deleted the channel from «Info.». */
+    onChannelDeleted?: (chat: ChatSummary) => void;
     /** E3b: a group's notification level, from «Info.». */
     onLevel: (chat: ChatSummary, level: NotificationLevel) => void;
     /** Ir a un mensaje pedido desde afuera (un destacado de la lista global, 20/10). */
@@ -296,6 +298,7 @@ export function ConversacionConAcciones(
           onLevel={props.onLevel}
           onVerFoto={openPhoto}
           onViewPerson={showPerson}
+          onChannelDeleted={props.onChannelDeleted}
           tarjetas={<>{chat.encrypted ? null : <ChecklistsCard chatId={chat.id} jwt={props.jwt} onOpen={(seq) => setSalto({ seq, vez: Date.now() })} />}<TarjetaDeFijados fijados={fijados} nombreDe={nombreDe} textoLocal={textoLocal} onVerTodos={() => setVerFijados(true)} />{chat.encrypted ? null : <TarjetaDeDestacados chatId={chat.id} jwt={props.jwt} yo={yo} cuantos={destacados.seqs.size} onIr={(seq) => setSalto({ seq, vez: Date.now() })} />}</>}
         />
         </PanelBoundary>

@@ -6,6 +6,7 @@ import { useColores } from '../../ui/tema';
 import type { ViewableFile } from './fileViewer';
 import { RecordSheet } from './RecordSheet';
 import { ServiceBilling } from './ServiceBilling';
+import { ServiceStages } from './ServiceStages';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
 import { useFileViewer } from './useFileViewer';
 import { useReportPdf } from './useReportPdf';
@@ -104,6 +105,7 @@ function DetailTabs({ detail, target, serviceId, onOpenFile }: { detail: Service
   const more = tab === 'billing' ? null : moreInPortal(rows.length, detail.totals[tab] ?? rows.length);
   return (
     <>
+      <ServiceStages detail={detail} />
       <TabStrip detail={detail} tab={tab} onTab={setTab} />
       {tab === 'billing' && detail.billing ? <ServiceBilling billing={detail.billing} onOpenFile={onOpenFile} /> : (
         <View className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">

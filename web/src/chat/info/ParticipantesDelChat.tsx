@@ -4,10 +4,12 @@ import { useState, type ReactNode } from 'react';
 import type { AccionDeMiembro } from '@lilachat/shared';
 import { membersHeading } from '@lilachat/shared';
 import { ContactPicker } from '../../contacts/ContactPicker';
+import type { Contact } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { Overlay } from '../../ui/Overlay';
 import type { MiembroEnInfo } from './infoDelChat';
 import { useAddCandidates } from './useAddCandidates';
+import { HistoryChoiceDialog } from './HistoryChoiceDialog';
 
 const ETIQUETAS: Record<AccionDeMiembro, string> = { 'hacer-admin': 'Nombrar admin', 'dejar-admin': 'Quitar como admin', sacar: 'Sacar del grupo' };
 /** An app is taken out of the channel, and stays out until an admin adds it again (pending 91). */
@@ -22,13 +24,16 @@ export function ParticipantesDelChat(props: {
   /** The installed apps among them (pending 91). */
   appIds: ReadonlySet<string>;
   puedeAgregar: boolean;
-  onAgregar: (userId: string) => void;
+  /** The chat already has messages: adding someone asks whether they see them. */
+  hasHistory?: boolean;
+  onAgregar: (userId: string, history?: boolean) => void;
   onCambiarRol: (userId: string, role: 'admin' | 'member') => void;
   onSacar: (userId: string) => void;
   /** Tapping a row opens that person's card (José, 25/10). Without it, the rows are plain. */
   onViewPerson?: (userId: string) => void;
 }) {
   const [agregando, setAgregando] = useState(false);
+  const [askingHistory, setAskingHistory] = useState<Contact | null>(null);
   const [sacando, setSacando] = useState<MiembroEnInfo | null>(null);
   const aplicar = (miembro: MiembroEnInfo, accion: AccionDeMiembro) => {
     if (accion === 'sacar') return setSacando(miembro);
@@ -86,11 +91,22 @@ export function ParticipantesDelChat(props: {
           jwt={props.jwt}
           workspaceId={props.workspaceId}
           yaEstan={new Set(props.miembros.map((uno) => uno.id))}
-          onElegir={(userId) => {
+          onElegir={(contact) => {
             setAgregando(false);
-            props.onAgregar(userId);
+            if (props.hasHistory) setAskingHistory(contact);
+            else props.onAgregar(contact.id);
           }}
           onCerrar={() => setAgregando(false)}
+        />
+      ) : null}
+      {askingHistory ? (
+        <HistoryChoiceDialog
+          name={askingHistory.name ?? askingHistory.phone}
+          onChoose={(history) => {
+            setAskingHistory(null);
+            props.onAgregar(askingHistory.id, history);
+          }}
+          onClose={() => setAskingHistory(null)}
         />
       ) : null}
       {sacando ? (
@@ -124,12 +140,12 @@ export function ParticipantesDelChat(props: {
 }
 
 /** Pick who to add: the contacts with Lilachat that are not in yet (inside a space, its members). */
-function AddParticipant(props: { jwt: string; workspaceId?: string; yaEstan: ReadonlySet<string>; onElegir: (userId: string) => void; onCerrar: () => void }) {
+function AddParticipant(props: { jwt: string; workspaceId?: string; yaEstan: ReadonlySet<string>; onElegir: (contact: Contact) => void; onCerrar: () => void }) {
   const groups = useAddCandidates(props.jwt, props.workspaceId);
   const available = (groups ?? []).map((group) => ({ ...group, contacts: group.contacts.filter((one) => !props.yaEstan.has(one.id)) })).filter((group) => group.contacts.length);
   return (
     <Overlay title="Añadir participante" onClose={props.onCerrar}>
-      <ContactPicker groups={available} selected={[]} onToggle={(contact) => props.onElegir(contact.id)} loading={groups === null} multiple={false} />
+      <ContactPicker groups={available} selected={[]} onToggle={(contact) => props.onElegir(contact)} loading={groups === null} multiple={false} />
     </Overlay>
   );
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
-import { Archive, AtSign, ChevronDown, ChevronRight, Hash, Inbox, Lock, MessagesSquare, Plus, Search, Settings2, UserCog, UserPlus, Users } from 'lucide-react-native';
-import { aplicarMensajeALista, canManageMembers, clientChatIds, formatChatTimestamp, marcarLeido, membersLabel, nombreDeContacto, spaceSections, splitArchived, splitClients, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
+import { Archive, AtSign, ChevronDown, ChevronRight, Hash, Inbox, Lock, MessagesSquare, Plus, Search, UserPlus } from 'lucide-react-native';
+import { aplicarMensajeALista, canManageMembers, clientChatIds, formatChatTimestamp, marcarLeido, nombreDeContacto, spaceSections, splitArchived, splitClients, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
 import type { MensajeEnVivo as LiveMessage } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 import { BarraDeSeleccionDeChats } from '../chat/BarraDeSeleccionDeChats';
@@ -184,7 +184,7 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
         <ActivityChip testID="chip-hilos" Icon={MessagesSquare} label="Hilos" count={activity.threads} onPress={() => props.onActivity('threads')} />
         <ActivityChip testID="chip-menciones" Icon={AtSign} label="Menciones" count={activity.mentions} onPress={() => props.onActivity('mentions')} />
       </View>
-      <WorkspaceLinks space={space} onOpen={props.onWorkspace} />
+      <PendingRequestsRow space={space} onOpen={props.onWorkspace} />
       {failed && chats === null ? (
         <Pressable onPress={() => void load()} className="mx-4 mt-3 rounded-xl bg-error/10 px-4 py-3"><Text className="text-[13px] text-error">No se pudo cargar el espacio. Toca para reintentar.</Text></Pressable>
       ) : null}
@@ -266,31 +266,20 @@ function ChannelRow(props: { chat: ChatSummary; open: boolean; onOpen: () => voi
 }
 
 /**
- * «Espacio de trabajo» on top of the list (the desktop designs `e1-05` and
- * `e1-06`): the directory for everyone; members and roles, requests (with how
- * many wait) and the settings for those who manage the space.
+ * Only the waiting requests stay on top of the list, for the admins (José
+ * 30/10: the «Espacio de trabajo» section only took room). The directory,
+ * members and settings already live in the Directorio and Ajustes tabs.
  */
-function WorkspaceLinks(props: { space: ClientWorkspace; onOpen: (link: WorkspaceLink) => void }) {
+function PendingRequestsRow(props: { space: ClientWorkspace; onOpen: (link: WorkspaceLink) => void }) {
   const colors = useColores();
-  const admin = canManageMembers(props.space.role);
-  const pending = props.space.pendingRequests ?? 0;
-  const row = (link: WorkspaceLink, Icon: typeof Users, label: string, trailing?: string, highlight?: boolean) => (
-    <Pressable key={link} testID={`espacio-${link}`} onPress={() => props.onOpen(link)} className="min-h-[44px] flex-row items-center gap-3 px-4">
-      <Icon size={18} color={highlight ? colors.primary : colors['on-surface-variant']} />
-      <Text className={`flex-1 text-[15px] ${highlight ? 'font-bold text-on-surface' : 'text-on-surface'}`}>{label}</Text>
-      {trailing ? (
-        <Text className={highlight ? 'h-6 min-w-[24px] rounded-full bg-primary px-1.5 text-center text-[12px] font-bold leading-6 text-on-primary' : 'text-[13px] text-on-surface-variant'}>{trailing}</Text>
-      ) : null}
-    </Pressable>
-  );
+  const pending = canManageMembers(props.space.role) ? props.space.pendingRequests ?? 0 : 0;
+  if (pending === 0) return null;
   return (
-    <View testID="seccion-espacio-de-trabajo" className="mb-1">
-      <Text className="px-4 pb-1 pt-1 text-[12px] font-bold uppercase tracking-widest text-on-surface-variant">Espacio de trabajo</Text>
-      {row('directory', Users, 'Directorio de equipo', membersLabel(props.space.members))}
-      {admin ? row('members', UserCog, 'Miembros y roles') : null}
-      {admin && pending > 0 ? row('requests', Inbox, 'Solicitudes', String(pending), true) : null}
-      {admin ? row('settings', Settings2, 'Ajustes del espacio') : null}
-    </View>
+    <Pressable testID="espacio-requests" onPress={() => props.onOpen('requests')} className="mx-4 mb-2 min-h-[44px] flex-row items-center gap-3 rounded-xl bg-primary/10 px-4">
+      <Inbox size={18} color={colors.primary} />
+      <Text className="flex-1 text-[15px] font-bold text-on-surface">Solicitudes</Text>
+      <Text className="h-6 min-w-[24px] rounded-full bg-primary px-1.5 text-center text-[12px] font-bold leading-6 text-on-primary">{String(pending)}</Text>
+    </Pressable>
   );
 }
 

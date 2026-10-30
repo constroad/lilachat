@@ -28,6 +28,9 @@ describe('ServiceDetailWeb', () => {
     expect(screen.getByTestId('fila-o1')).toHaveTextContent('Entregado');
     expect(screen.getByTestId('detalle-servicio')).toHaveTextContent('Etapa: Ejecución');
     expect(screen.getByTestId('pestana-detalle-orders')).toHaveTextContent('Pedidos · 148');
+    // José 30/10: progress comes from Portal, stage by stage, nobody ticks it.
+    expect(screen.getByTestId('etapas-servicio')).toHaveTextContent(/Etapas · \d+ de \d+/);
+    expect(screen.getByTestId('etapa-orders-done')).toHaveTextContent('Pedidos');
     expect(screen.getByText('Mostrando 1 de 148 · el resto está en el Portal')).toBeInTheDocument();
     expect(screen.getByTestId('abrir-servicio-portal')).toHaveAttribute('href', 'https://portal.constroad.com/s/318');
     expect(String((fetchMock.mock.calls[0] as unknown as [string])[0])).toContain('/api/workspaces/s1/clients/cli-cvs/services/srv-318/detail');

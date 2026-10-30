@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Archive, AtSign, ChevronDown, ChevronRight, Copy, Hash, Inbox, Lock, MessagesSquare, PanelLeftClose, Plus, Search, Settings, Settings2, UserCog, UserPlus, Users, type LucideIcon } from 'lucide-react';
-import { canManageMembers, clientChatIds, formatChatTimestamp, membersLabel, spaceSections, spaceSubtitle, splitArchived, splitClients, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
+import { Archive, AtSign, ChevronDown, ChevronRight, Copy, Hash, Lock, MessagesSquare, PanelLeftClose, Plus, Search, Settings, UserPlus, type LucideIcon } from 'lucide-react';
+import { clientChatIds, formatChatTimestamp, spaceSections, splitArchived, splitClients, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { ChatRow } from '../chat/FilaDeChat';
 import { copiarTexto } from '../chat/copiarTexto';
 import type { ChatAction } from '../chat/menuDelChat';
 import type { ChatSummary } from '../chat/types';
-import { SpaceLogo } from './SpaceLogo';
+import { SpaceTitleMenu, type WorkspaceLink } from './SpaceTitleMenu';
 import { PendingMarker } from '../chat/queue/PendingMarker';
 import { AppsSection } from './apps/AppsSection';
 import { SpaceQuickActions } from './apps/SpaceQuickActions';
@@ -15,7 +15,7 @@ import { useSpaceClients } from './clients/useSpaceClients';
 import { ClientsSection } from './clients/ClientsSection';
 import { ArchivedClients } from './clients/ArchivedClients';
 
-export type WorkspaceLink = 'directory' | 'members' | 'requests' | 'settings';
+export type { WorkspaceLink } from './SpaceTitleMenu';
 
 type Props = {
   space: ClientWorkspace;
@@ -86,13 +86,7 @@ export function SpaceChatList(props: Props) {
   return (
     <aside data-testid="panel-espacio" className={`flex h-full w-full min-w-0 flex-col bg-surface ${props.width ? 'shrink-0' : 'border-r border-outline/15 md:w-[340px] md:shrink-0 lg:w-[400px]'}`} style={props.width ? { width: props.width } : undefined}>
       <header className="flex items-center gap-2 px-4 py-3">
-        <button type="button" data-testid="titulo-espacio" aria-label="Cambiar de espacio" onClick={props.onSwitch} className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left">
-          <SpaceLogo space={space} size={36} />
-          <span className="min-w-0">
-            <span className="flex items-center gap-1"><span className="truncate text-base font-extrabold tracking-tight">{space.name}</span><ChevronDown size={16} className="shrink-0 text-on-surface-variant" /></span>
-            <span className="block truncate text-[12px] text-on-surface-variant">{spaceSubtitle(space, { membersFirst: true })}</span>
-          </span>
-        </button>
+        <SpaceTitleMenu space={space} onOpen={props.onWorkspace} onSwitch={props.onSwitch} />
         {props.jwt ? <SpaceQuickActions jwt={props.jwt} spaceId={space.id} spaceName={space.name} /> : null}
         <button type="button" data-testid="btn-invitar-espacio" aria-label="Invitar personas" title="Invitar personas" onClick={props.onInvite} className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant hover:bg-background">
           <UserPlus size={18} />
@@ -116,7 +110,6 @@ export function SpaceChatList(props: Props) {
         </div>
       ) : null}
       <div className="min-h-0 flex-1 overflow-y-auto pb-2">
-        <WorkspaceLinks space={space} onOpen={props.onWorkspace} />
         {props.failed && chats === null ? (
           <button type="button" onClick={props.onRetry} className="mx-3 mt-2 w-[calc(100%-24px)] rounded-xl bg-error/10 px-4 py-3 text-left text-[13px] text-error">No se pudo cargar el espacio. Toca para reintentar.</button>
         ) : null}
@@ -211,32 +204,6 @@ function ActivityChip(props: { testId: string; Icon: LucideIcon; label: string; 
 
 /** A space creates channels, not groups (pending 109, José 28/10): the groups section has no «+». */
 const NEW_IN_SECTION: Record<Exclude<SpaceSectionKey, 'groups'>, string> = { channels: 'Agregar canal', directs: 'Nuevo mensaje directo', apps: 'Agregar apps' };
-
-/**
- * «Espacio de trabajo» on top of the list (desktop designs `e1-05`, `e1-06`):
- * the directory for everyone; members and roles, requests (with how many
- * wait) and the settings for those who manage the space.
- */
-function WorkspaceLinks(props: { space: ClientWorkspace; onOpen: (link: WorkspaceLink) => void }) {
-  const admin = canManageMembers(props.space.role);
-  const pending = props.space.pendingRequests ?? 0;
-  const row = (link: WorkspaceLink, Icon: LucideIcon, label: string, trailing?: string, highlight?: boolean) => (
-    <button key={link} type="button" data-testid={`espacio-${link}`} onClick={() => props.onOpen(link)} className="flex h-10 w-full items-center gap-2.5 px-4 text-left text-sm hover:bg-background">
-      <Icon size={16} className={highlight ? 'text-primary' : 'text-on-surface-variant'} />
-      <span className={`min-w-0 flex-1 truncate ${highlight ? 'font-bold' : ''}`}>{label}</span>
-      {trailing ? <span className={highlight ? 'grid h-5 min-w-[20px] place-items-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-on-primary' : 'text-[11px] text-on-surface-variant'}>{trailing}</span> : null}
-    </button>
-  );
-  return (
-    <section data-testid="seccion-espacio-de-trabajo" className="pb-1">
-      <p className="px-4 pb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Espacio de trabajo</p>
-      {row('directory', Users, 'Directorio de equipo', membersLabel(props.space.members))}
-      {admin ? row('members', UserCog, 'Miembros y roles') : null}
-      {admin && pending > 0 ? row('requests', Inbox, 'Solicitudes', String(pending), true) : null}
-      {admin ? row('settings', Settings2, 'Ajustes del espacio') : null}
-    </section>
-  );
-}
 
 /** A channel as a short row (design `s-03`): «# name», bold with something new, and its count or time. */
 function ChannelRow(props: { chat: ChatSummary; open: boolean; onOpen: () => void }) {

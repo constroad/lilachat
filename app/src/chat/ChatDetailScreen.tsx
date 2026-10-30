@@ -585,11 +585,11 @@ export function ChatDetailScreen({
           yaEstan={yaEstan}
           spaceId={workspaceId}
           onCerrar={() => setAgregando(false)}
-          onElegir={async (userId) => {
+          onElegir={async (userId, history) => {
             setAgregando(false);
             // Se recarga el detalle: la lista de participantes es justo lo que
             // la persona está mirando, y dejarla vieja hace dudar de si funcionó.
-            if (await llamar('members', { userId })) await cargar();
+            if (await llamar('members', { userId, history })) await cargar();
           }}
         />
         {personCard.element}

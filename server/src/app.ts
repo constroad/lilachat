@@ -62,6 +62,7 @@ import { buildMediaServeRouter } from './mediaServeRoutes.js';
 import { mediaDisk } from './mediaDisk.js';
 import { buildOtaRouter } from './ota/otaRoutes.js';
 import { otaCertificate } from './ota/otaCertificate.js';
+import { missingVersionedFile, VERSIONED_FOLDERS } from './staleAssets.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -205,11 +206,12 @@ export function buildApp(deps: AppDeps = {}): Express {
         // Lo que tiene hash en el nombre no cambia nunca: se guarda un año.
         setHeaders: (res, archivo) => {
           // MediaPipe's wasm and the sticker packs carry their version in the folder: they never change either.
-          const versioned = ['assets', 'mediapipe', 'stickers'].some((folder) => archivo.includes(`${path.sep}${folder}${path.sep}`));
+          const versioned = VERSIONED_FOLDERS.some((folder) => archivo.includes(`${path.sep}${folder}${path.sep}`));
           if (versioned) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
         },
       })
     );
+    app.use(missingVersionedFile);
     // Toda ruta que no sea API cae en el `index.html`: la SPA maneja su propio
     // ruteo y un refresco en cualquier URL tiene que seguir funcionando. Sin
     // caché: es el que apunta a los archivos de cada versión.

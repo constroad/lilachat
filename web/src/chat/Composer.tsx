@@ -1,11 +1,11 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { insertarEnTexto, type MencionEnMensaje } from '@lilachat/shared';
 import type { MencionElegida } from '@lilachat/shared';
 import { formKeyOf } from '@lilachat/shared';
 import type { WinkId } from '@lilachat/shared';
 
 /** Se baja recién al abrir el panel (W2): pesa, y la mayoría no lo abre. */
-const EmojiStickerPanel = lazy(() => import('./stickers/EmojiStickerPanel'));
+const EmojiStickerPanel = lazyChunk(() => import('./stickers/EmojiStickerPanel'));
 import { SugerenciasDeMencion, type Mencionable } from './SugerenciasDeMencion';
 import { useMencionesDelCampo } from './useMencionesDelCampo';
 import { readDraft, saveDraft } from './chatDrafts';
@@ -22,6 +22,9 @@ import { CommandPanel } from './commands/CommandPanel';
 import { EphemeralAnswers } from './commands/EphemeralAnswers';
 import { AppFormDialog } from './commands/AppFormDialog';
 import { loadPerfil } from '../api';
+import { lazyChunk } from '../ui/lazyChunk';
+import { EmojiSuggestions } from './emojiShortcode/EmojiSuggestions';
+import { useEmojiShortcode } from './emojiShortcode/useEmojiShortcode';
 
 /**
  * La barra de escritura del diseño: «+» suelto a la izquierda, el campo con
@@ -114,6 +117,11 @@ function ComposerField({
   const menuRef = useRef<HTMLDivElement>(null);
   const campoRef = useRef<HTMLTextAreaElement>(null);
   const menciones = useMencionesDelCampo(mencionables);
+  const emojis = useEmojiShortcode();
+  // Opening a chat on a computer leaves the cursor in the field (José 30/10); on a phone it would raise the keyboard.
+  useEffect(() => {
+    if (window.matchMedia?.('(pointer: fine)').matches) campoRef.current?.focus({ preventScroll: true });
+  }, []);
   const voz = useGrabadoraDeVoz();
   const [conEmojis, setConEmojis] = useState(false);
   // A click on the messages or Escape closes it; typing in the field keeps it open, like WhatsApp Web (José, 21/10).
@@ -145,6 +153,12 @@ function ComposerField({
     if (nota) onNotaDeVoz?.(nota);
   };
   const conMicrofono = Boolean(onNotaDeVoz) && !text.trim() && contexto?.tipo !== 'edicion';
+  const pickEmoji = (emoji: string) => {
+    const done = emojis.pick(text, campoRef.current?.selectionStart ?? text.length, emoji);
+    if (!done) return;
+    pendingCaret.current = done.caret;
+    setText(done.text);
+  };
   const elegirMencion = (uno: Mencionable) => {
     const completado = menciones.elegir(text, uno);
     if (!completado) return;
@@ -286,6 +300,7 @@ function ComposerField({
 
         <div className="relative min-w-0 flex-1">
         <SugerenciasDeMencion opciones={menciones.opciones} activa={menciones.activa} onElegir={elegirMencion} />
+        <EmojiSuggestions options={emojis.options} active={emojis.active} onPick={pickEmoji} />
         <textarea
           ref={campoRef}
           data-testid="input-mensaje"
@@ -296,6 +311,7 @@ function ComposerField({
             if (event.target.value) onEscribiendo?.();
             commands?.onType(event.target.value);
             menciones.alCambiar(event.target.value, event.target.selectionStart ?? event.target.value.length);
+            emojis.onChange(event.target.value, event.target.selectionStart ?? event.target.value.length);
           }}
           onPaste={(event) => {
             // Pegar una captura (W2): va a la vista previa, como WhatsApp Web.
@@ -306,6 +322,7 @@ function ComposerField({
           }}
           onKeyDown={(event) => {
             if (commands?.onKey(event, pickCommand)) return;
+            if (emojis.onKey(event, pickEmoji)) return;
             if (menciones.alTeclear(event, elegirMencion)) return;
             if (event.key === 'Enter' && !event.shiftKey) {
               event.preventDefault();

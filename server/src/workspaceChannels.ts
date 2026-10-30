@@ -1,8 +1,11 @@
 import { Types } from 'mongoose';
 import { addBotsToPublicChannel } from './bots/botInstall.js';
-import { normalizeChannelName, normalizarDescripcion, type ChannelVisibility } from '@lilachat/shared';
+import { canManageMembers, normalizeChannelName, normalizarDescripcion, type ChannelVisibility } from '@lilachat/shared';
 import { ChatModel, type Chat } from './chatModels.js';
+import { ClientChannelModel } from './bots/botClients.js';
+import { avisarCambioDeChat } from './reparto.js';
 import { actorIn, WorkspaceError } from './workspaces.js';
+import { WorkspaceModel } from './workspaceModels.js';
 import { ensureGeneralChannel } from './workspaceGeneral.js';
 import { noticeChannelJoined } from './workspaceNotices.js';
 
@@ -78,4 +81,27 @@ export async function joinChannel(workspaceId: string, userId: Types.ObjectId, c
   const already = await ChatModel.findOne({ _id: chatId, workspaceId: actor.workspaceId, 'channel.visibility': { $exists: true }, 'members.userId': userId }).lean<Chat | null>();
   if (already) return toClientChannel(already, userId);
   throw new WorkspaceError(404, 'Ese canal no existe o es privado.');
+}
+
+/**
+ * Deletes a channel (José 30/10: there was no way). Only the space's admins.
+ * It stops being a channel and has no members, so it leaves every list and
+ * frees its name; its messages and who was in it stay, so it can come back.
+ * #general belongs to the whole space and a client channel is Portal's.
+ */
+export async function deleteChannel(workspaceId: string, userId: Types.ObjectId, chatId: string): Promise<void> {
+  const actor = await actorIn(workspaceId, userId);
+  if (!canManageMembers(actor.role)) throw new WorkspaceError(403, 'Solo un admin del espacio puede eliminar canales.');
+  if (!Types.ObjectId.isValid(chatId)) throw new WorkspaceError(404, 'Ese canal no existe.');
+  const chat = await ChatModel.findOne({ _id: chatId, workspaceId: actor.workspaceId, 'channel.visibility': { $exists: true } }).select('name channel members').lean<Chat | null>();
+  if (!chat) throw new WorkspaceError(404, 'Ese canal no existe.');
+  const space = await WorkspaceModel.findById(actor.workspaceId).select('generalChatId').lean();
+  if (space?.generalChatId?.equals(chat._id)) throw new WorkspaceError(400, '#general es el canal de todo el espacio: no se elimina.');
+  if (await ClientChannelModel.exists({ chatId: chat._id })) throw new WorkspaceError(400, 'Los canales de cliente vienen de Portal: no se eliminan desde aquí.');
+  const members = chat.members.map((member) => ({ userId: member.userId, role: member.role }));
+  await ChatModel.updateOne(
+    { _id: chat._id },
+    { $set: { members: [], deletedChannel: { name: chat.name ?? '', visibility: chat.channel?.visibility ?? 'public', deletedAt: new Date(), deletedBy: userId, members } }, $unset: { channel: '' } }
+  );
+  for (const member of members) avisarCambioDeChat(String(member.userId), String(chat._id));
 }

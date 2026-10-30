@@ -19,6 +19,7 @@ import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { colorDeAutor } from './burbuja';
 import { TextoConHora } from './TextoConHora';
+import { TarjetaDelChat } from './TarjetaDelChat';
 import { TextoConEnlaces } from './TextoConEnlaces';
 import { VistaPreviaDeEnlace } from './VistaPreviaDeEnlace';
 import type { ChatMessage, PendingMessage } from './useChat';
@@ -228,9 +229,9 @@ export function HiloScreen(props: {
             }}
             onScrollToIndexFailed={(fallo) => setTimeout(() => lista.current?.scrollToOffset({ offset: fallo.averageItemLength * fallo.index, animated: false }), 100)}
             ListHeaderComponent={flat ? (
-              <FlatThreadRoot root={props.raiz} name={props.nombres.get(String(props.raiz.senderId)) ?? nombreDe(String(props.raiz.senderId))} photo={props.fotos.get(String(props.raiz.senderId))} badge={badgeOf(String(props.raiz.senderId))} count={props.respuestas.length} myUserId={props.yo} names={props.nombres} />
+              <FlatThreadRoot root={props.raiz} name={props.nombres.get(String(props.raiz.senderId)) ?? nombreDe(String(props.raiz.senderId))} photo={props.fotos.get(String(props.raiz.senderId))} badge={badgeOf(String(props.raiz.senderId))} count={props.respuestas.length} myUserId={props.yo} names={props.nombres} jwt={props.jwt} />
             ) : (
-              <CabeceraDelHilo raiz={props.raiz} nombre={nombreDe(String(props.raiz.senderId))} foto={props.fotos.get(String(props.raiz.senderId))} cuantas={props.respuestas.length} />
+              <CabeceraDelHilo raiz={props.raiz} nombre={nombreDe(String(props.raiz.senderId))} foto={props.fotos.get(String(props.raiz.senderId))} cuantas={props.respuestas.length} jwt={props.jwt} yo={props.yo} nombres={props.nombres} />
             )}
             renderItem={({ item, index }) => {
               const mia = esPendiente(item) || String(item.senderId) === props.yo;
@@ -378,7 +379,10 @@ export function HiloScreen(props: {
  * The root of a thread in the Slack format (design `s-02-hilo-abierto`): the
  * message in a flat row with its role, and «N RESPUESTAS» with a line below.
  */
-function FlatThreadRoot(props: { root: ChatMessage; name: string; photo?: string; badge: string | null; count: number; myUserId: string; names: ReadonlyMap<string, string> }) {
+/** A reminder, poll, event or checklist opens its thread as its card (Wilson, 30/10: it read as plain text). */
+const isCardRoot = (root: ChatMessage, jwt: string) => Boolean(root.ref && !root.deletedAt && jwt);
+
+function FlatThreadRoot(props: { root: ChatMessage; name: string; photo?: string; badge: string | null; count: number; myUserId: string; names: ReadonlyMap<string, string>; jwt: string }) {
   const { root } = props;
   return (
     <View className="-mx-3 mb-1">
@@ -394,7 +398,9 @@ function FlatThreadRoot(props: { root: ChatMessage; name: string; photo?: string
             ) : null}
             <Text className="ml-auto text-[12px] text-on-surface-variant">{formatClock(root.at)}</Text>
           </View>
-          <Text className="mt-1 text-[15px] leading-[22px] text-on-surface">{root.deletedAt ? 'Se eliminó este mensaje' : root.body ? <TextoConEnlaces texto={root.body} /> : root.media ? 'Archivo' : ''}</Text>
+          {isCardRoot(root, props.jwt) ? <TarjetaDelChat item={root} mia={false} jwt={props.jwt} yo={props.myUserId} everyName={props.names} /> : (
+            <Text className="mt-1 text-[15px] leading-[22px] text-on-surface">{root.deletedAt ? 'Se eliminó este mensaje' : root.body ? <TextoConEnlaces texto={root.body} /> : root.media ? 'Archivo' : ''}</Text>
+          )}
         </View>
       </View>
       <View className="flex-row items-center gap-3 px-3 pt-3">
@@ -405,7 +411,7 @@ function FlatThreadRoot(props: { root: ChatMessage; name: string; photo?: string
   );
 }
 
-function CabeceraDelHilo(props: { raiz: ChatMessage; nombre: string; foto?: string; cuantas: number }) {
+function CabeceraDelHilo(props: { raiz: ChatMessage; nombre: string; foto?: string; cuantas: number; jwt: string; yo: string; nombres: ReadonlyMap<string, string> }) {
   return (
     <View className="mb-1 gap-2">
       <View testID="raiz-del-hilo" className="flex-row gap-3 rounded-xl border border-outline/10 bg-surface p-3">
@@ -415,7 +421,9 @@ function CabeceraDelHilo(props: { raiz: ChatMessage; nombre: string; foto?: stri
             <Text className="text-[14px] font-semibold text-on-surface">{props.nombre}</Text>
             <Text className="text-[11px] text-on-surface-variant">{formatClock(props.raiz.at)}</Text>
           </View>
-          <Text className="mt-0.5 text-[15px] text-on-surface">{props.raiz.deletedAt ? 'Se eliminó este mensaje' : props.raiz.body ? <TextoConEnlaces texto={props.raiz.body} /> : props.raiz.media ? 'Archivo' : ''}</Text>
+          {isCardRoot(props.raiz, props.jwt) ? <TarjetaDelChat item={props.raiz} mia={false} jwt={props.jwt} yo={props.yo} everyName={props.nombres} /> : (
+            <Text className="mt-0.5 text-[15px] text-on-surface">{props.raiz.deletedAt ? 'Se eliminó este mensaje' : props.raiz.body ? <TextoConEnlaces texto={props.raiz.body} /> : props.raiz.media ? 'Archivo' : ''}</Text>
+          )}
         </View>
       </View>
       <View className="flex-row items-center gap-3">

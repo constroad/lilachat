@@ -60,6 +60,8 @@ export interface Chat {
   members: ChatMember[];
   /** E1: people deactivated in the space, out of `members` until reactivated (`workspaceChats`). */
   suspendedMembers?: Pick<ChatMember, 'userId' | 'role' | 'joinedAt'>[];
+  /** A deleted channel (José 30/10): it stops being a channel and has no members; what it was stays here. */
+  deletedChannel?: { name: string; visibility: 'public' | 'private'; deletedAt: Date; deletedBy: Types.ObjectId; members: Pick<ChatMember, 'userId' | 'role'>[] };
   /** Último `seq` asignado. Es el contador que `$inc` mueve. */
   lastSeq: number;
   /**
@@ -230,6 +232,10 @@ const chatSchema = new Schema<Chat>(
     channel: { visibility: { type: String, enum: ['public', 'private'] } },
     suspendedMembers: {
       type: [{ userId: { type: Schema.Types.ObjectId, required: true }, role: { type: String, enum: ['admin', 'member'] }, joinedAt: { type: Date }, _id: false }],
+      default: undefined,
+    },
+    deletedChannel: {
+      type: { name: String, visibility: { type: String, enum: ['public', 'private'] }, deletedAt: Date, deletedBy: Schema.Types.ObjectId, members: [{ userId: Schema.Types.ObjectId, role: { type: String, enum: ['admin', 'member'] }, _id: false }], _id: false },
       default: undefined,
     },
     members: [

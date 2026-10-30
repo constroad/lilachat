@@ -3,6 +3,7 @@ import { ChevronLeft, ExternalLink, FileText } from 'lucide-react';
 import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailSheet, detailTabs, moreInPortal, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { RecordSheetWeb } from './RecordSheetWeb';
 import { ServiceBillingWeb } from './ServiceBillingWeb';
+import { ServiceStagesWeb } from './ServiceStagesWeb';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
 import { useReportPdf } from './useReportPdf';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
@@ -66,6 +67,7 @@ function DetailTabs({ detail, target, serviceId }: { detail: ServiceDetail; targ
   };
   return (
     <>
+      <ServiceStagesWeb detail={detail} />
       <div role="tablist" className="flex gap-1 overflow-x-auto rounded-xl border border-outline/15 bg-surface p-1">
         {detailTabs(detail).map((one) => (
           <button key={one.key} type="button" role="tab" aria-selected={tab === one.key} data-testid={`pestana-detalle-${one.key}`} onClick={(event) => { setTab(one.key); event.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); }} className={`h-9 shrink-0 rounded-lg px-3 text-sm ${tab === one.key ? 'bg-primary font-semibold text-on-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>{one.label}</button>

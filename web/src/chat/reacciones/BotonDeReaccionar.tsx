@@ -1,13 +1,14 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Plus, SmilePlus } from 'lucide-react';
-import { lazy, Suspense, useState } from 'react';
+import { Suspense, useState } from 'react';
 import { actsAsMessage, EMOJIS_RAPIDOS, miReaccion } from '@lilachat/shared';
 import { useConversacion } from '../contextoDeLaConversacion';
 import type { MensajeEnPantalla } from '../types';
 import { AddCustomEmojiDialog } from './AddCustomEmojiDialog';
 import { SpaceEmojiSection } from './SpaceEmojiSection';
+import { lazyChunk } from '../../ui/lazyChunk';
 
-const PanelDeEmojis = lazy(() => import('../PanelDeEmojis'));
+const PanelDeEmojis = lazyChunk(() => import('../PanelDeEmojis'));
 
 /**
  * El botón de reaccionar al pasar el mouse (20/10; diseño

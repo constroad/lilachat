@@ -92,6 +92,17 @@ export function useAccionesSobreChats(params: {
     [base, pedir, invalidarCargas, onAviso, alQuitar]
   );
 
+  /** The chat is gone for everyone (a deleted channel): out of the list, closed if open. */
+  const quitar = useCallback(
+    async (chat: ChatSummary) => {
+      invalidarCargas();
+      if (base) await quitarChatLocal(base, chat.id);
+      alQuitar(chat.id);
+      void cargarChats();
+    },
+    [base, invalidarCargas, alQuitar, cargarChats]
+  );
+
   const salir = useCallback(
     async (chat: ChatSummary) => {
       const respuesta = await pedir(`/chats/${chat.id}/leave`, { method: 'POST' });
@@ -111,5 +122,5 @@ export function useAccionesSobreChats(params: {
     [ajustar, eliminar, salir]
   );
 
-  return { aplicar, setLevel };
+  return { aplicar, setLevel, quitar };
 }

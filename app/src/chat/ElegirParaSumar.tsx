@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Modal } from '../ui/Modal';
 import { ArrowLeft } from 'lucide-react-native';
@@ -5,6 +6,7 @@ import { ContactPicker } from '../contacts/ContactPicker';
 import type { Credential } from '../auth/credentialStore';
 import { useColores } from '../ui/tema';
 import { useMargenes } from '../ui/useMargenes';
+import { HistoryChoiceSheet } from './HistoryChoiceSheet';
 
 /**
  * Elegir a quién sumar al grupo.
@@ -35,10 +37,12 @@ export function ElegirParaSumar({
   spaceId?: string;
   yaEstan: readonly string[];
   onCerrar: () => void;
-  onElegir: (userId: string) => void;
+  /** `history`: whether they see the earlier messages (José 30/10, always asked). */
+  onElegir: (userId: string, history: boolean) => void;
 }) {
   const colores = useColores();
   const margenes = useMargenes();
+  const [picked, setPicked] = useState<{ id: string; name: string } | null>(null);
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onCerrar}>
@@ -77,10 +81,19 @@ export function ElegirParaSumar({
             vacio={spaceId ? 'Todos los miembros del espacio ya están aquí.' : 'Todos tus contactos de Lilachat ya están en este grupo.'}
             conInvitar={!spaceId}
             spaceId={spaceId}
-            onToggle={(contacto) => onElegir(contacto.id)}
+            onToggle={(contacto) => setPicked({ id: contacto.id, name: contacto.name ?? contacto.phone })}
           />
         ) : null}
       </View>
+      <HistoryChoiceSheet
+        name={picked?.name ?? null}
+        onClose={() => setPicked(null)}
+        onChoose={(history) => {
+          const person = picked;
+          setPicked(null);
+          if (person) onElegir(person.id, history);
+        }}
+      />
     </Modal>
   );
 }

@@ -400,7 +400,9 @@ export function buildChatRouter(uploader: MediaUploader = defaultMediaUploader()
       return res.status(400).json({ message: 'No encontramos a esa persona.' });
     }
 
-    const r = await addMember({ chatId: req.params.chatId!, quien: userId, aQuien });
+    // José 30/10: whoever adds chooses whether they see the history; an app that does not say keeps the old behavior.
+    const history = typeof req.body?.history === 'boolean' ? req.body.history : undefined;
+    const r = await addMember({ chatId: req.params.chatId!, quien: userId, aQuien, history });
     // El motivo VIAJA: un «no» mudo en una pantalla de permisos se lee como que
     // la app se colgó, y acá los motivos son accionables («ya está en el grupo»).
     if (!r.ok) return res.status(r.status ?? 400).json({ message: r.motivo });

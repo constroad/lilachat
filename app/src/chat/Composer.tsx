@@ -17,6 +17,8 @@ import { formaDelTexto, type FormaDelTexto } from './campoDeTexto';
 import type { DecisionDeVoz, mientrasSostiene } from './gestoDeVoz';
 import { useMenciones, type MentionableMember } from './useMenciones';
 import { SugerenciasDeMencion } from './SugerenciasDeMencion';
+import { useEmojiShortcode } from './emojiShortcode/useEmojiShortcode';
+import { EmojiSuggestions } from './emojiShortcode/EmojiSuggestions';
 import { closeEmojiPanel, openEmojiPanel, useEmojiPanelOpen } from './emojiPanel';
 import { VistaPreviaAlEscribir } from './VistaPreviaAlEscribir';
 import type { ChatCommands } from './commands/useChatCommands';
@@ -173,6 +175,7 @@ export const Composer = memo(function Composer(props: {
   /** El texto, solo si parece tener un link: es lo único que mira la tarjeta. */
   const [textoConLink, setTextoConLink] = useState('');
   const menciones = useMenciones(props.miembros);
+  const emojis = useEmojiShortcode();
   const emojiPanelOpen = useEmojiPanelOpen();
   // Back with the panel open closes it, like the keyboard; it does not leave the chat.
   useEffect(() => {
@@ -347,6 +350,7 @@ export const Composer = memo(function Composer(props: {
         onSelectionChange={(evento) => {
           seleccion.current = evento.nativeEvent.selection;
           menciones.alCambiar(textoRef.current, evento.nativeEvent.selection.end);
+          emojis.onChange(textoRef.current, evento.nativeEvent.selection.end);
         }}
         // Al entrar a editar, o al completar una mención con el teclado abierto,
         // el campo se remonta con el texto: que siga con el foco.
@@ -423,6 +427,10 @@ export const Composer = memo(function Composer(props: {
         />
       ) : null}
       {props.notice}
+      <EmojiSuggestions options={emojis.options} onPick={(emoji) => {
+        const done = emojis.pick(textoRef.current, emoji);
+        if (done) escribir(done.text, done.caret);
+      }} />
       <SugerenciasDeMencion
         sugerencias={menciones.sugerencias}
         onElegir={(miembro) => {

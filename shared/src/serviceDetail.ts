@@ -1,6 +1,6 @@
 /**
- * The detail of a client's service (José, 30/10: «no veo cómo navegar en el
- * servicio, qué informes hay, qué pedidos, qué despachos»): agentes answers
+ * The detail of a client's service (José, 30/10: there was no way to see a
+ * service's reports, orders and dispatches): agentes answers
  * `client.service.requested` with what Portal keeps for it, in the same
  * request, and nothing is stored. Labels and tones are Portal's, so there is
  * no second table to keep in sync. PURE: server, app and web.

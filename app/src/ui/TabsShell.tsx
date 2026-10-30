@@ -514,6 +514,7 @@ export function TabsShell({
             kind: nuevo.kind,
             encrypted: nuevo.encrypted,
             memberIds: nuevo.memberIds,
+            avatarUrl: nuevo.avatarUrl,
             lastSeq: 0,
             unread: 0,
             lastMessage: null,

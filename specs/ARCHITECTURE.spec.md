@@ -4995,6 +4995,23 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 163. Foto del grupo al crearlo (29/10/2026, OTA + web; pendiente 7, diseño `nuevo-grupo-info`)
+
+Antes la foto se ponía solo después, desde la info del grupo.
+- Ahora el paso «Información del grupo» trae arriba el círculo «Foto del
+  grupo» con la cámara y el «+».
+  - Teléfono: `elegirFotoDeGrupo`, con recorte cuadrado y cámara o galería
+    por separado.
+  - Web: un `input file` con la vista previa.
+- La foto se sube **después** de crear el grupo, por la misma
+  `POST /api/chats/:id/avatar` de la info. No hay endpoint nuevo.
+  - Si la subida falla, el grupo se crea igual y la foto se pone después
+    desde la info. El teléfono lo reporta (`group.photo`) y la web lo deja en
+    la consola.
+  - El botón dice «Creando y subiendo la foto…» mientras sube.
+- Web: la subida vive en `chat/info/groupPhoto.ts › uploadGroupPhoto`, que
+  ahora usa también la info del grupo (`useEditarChat`).
+
 ## 162. Medios: «Todo» y búsqueda (29/10/2026, servidor + OTA + web; pendiente 6, diseño `busqueda-archivos`)
 
 - **«Todo»** es la primera pestaña y la que abre por defecto. Junta fotos,

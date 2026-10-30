@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Trash2, UserRound } from 'lucide-react';
+import { Camera, Plus, Trash2, UserRound } from 'lucide-react';
 import {
   planTargetChat,
   validatePoll,
@@ -11,6 +11,7 @@ import { ContactPicker } from '../contacts/ContactPicker';
 import { FieldError, Overlay, PrimaryButton } from '../ui/Overlay';
 import { usePhoneContacts } from '../contacts/usePhoneContacts';
 import { mergeContactGroups } from '../contacts/mergeContacts';
+import { uploadGroupPhoto } from '../chat/info/groupPhoto';
 
 /**
  * Todo lo que la web puede CREAR: chat, grupo, evento y encuesta.
@@ -99,6 +100,10 @@ export function NewChatOverlay({
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
+  /** The group's photo at creation (design `nuevo-grupo-info`, pending 7). */
+  const [photo, setPhoto] = useState<File | null>(null);
+  const preview = useMemo(() => (photo ? URL.createObjectURL(photo) : null), [photo]);
+  useEffect(() => () => void (preview && URL.revokeObjectURL(preview)), [preview]);
 
   const crear = async () => {
     if (guardando) return;
@@ -115,9 +120,16 @@ export function NewChatOverlay({
         ...(kind === 'group' ? { name: name.trim() } : {}),
       },
     });
+    if (!resultado.ok) {
+      setGuardando(false);
+      return setError(resultado.message);
+    }
+    // Once the group exists; if the photo fails, the group is still made and it can be set from its info.
+    if (kind === 'group' && photo) {
+      const subida = await uploadGroupPhoto(jwt, resultado.data.chatId, photo);
+      if (!subida.ok) console.warn('[grupo] no se pudo poner la foto:', subida.message);
+    }
     setGuardando(false);
-
-    if (!resultado.ok) return setError(resultado.message);
     onCreated(resultado.data.chatId);
   };
 
@@ -128,7 +140,7 @@ export function NewChatOverlay({
       footer={
         <>
           <PrimaryButton testId="btn-crear-chat" onClick={() => void crear()} disabled={guardando}>
-            {kind === 'group' ? 'Crear grupo' : 'Empezar a chatear'}
+            {kind === 'group' ? (guardando && photo ? 'Creando y subiendo la foto…' : 'Crear grupo') : 'Empezar a chatear'}
           </PrimaryButton>
           <FieldError>{error}</FieldError>
         </>
@@ -157,6 +169,16 @@ export function NewChatOverlay({
             <span className="block text-[12px] text-on-surface-variant">Envíate un mensaje: lo que quieras guardar, solo para ti.</span>
           </span>
         </button>
+      ) : null}
+      {kind === 'group' ? (
+        <label className="mx-auto mb-4 flex w-fit cursor-pointer flex-col items-center gap-2">
+          <span className="relative grid h-24 w-24 place-items-center overflow-hidden rounded-full bg-surface-variant text-on-surface-variant">
+            {preview ? <img src={preview} alt="" className="h-full w-full object-cover" /> : <Camera size={30} />}
+          </span>
+          <span className="absolute ml-16 mt-16 grid h-8 w-8 place-items-center rounded-full border-2 border-surface bg-primary text-background"><Plus size={16} /></span>
+          <span className="text-[13px] text-on-surface-variant">{photo ? 'Cambiar foto' : 'Foto del grupo'}</span>
+          <input data-testid="foto-grupo-nuevo" type="file" accept="image/*" className="sr-only" onChange={(evento) => setPhoto(evento.target.files?.[0] ?? null)} />
+        </label>
       ) : null}
       {kind === 'group' ? (
         <label className="mb-3 block">

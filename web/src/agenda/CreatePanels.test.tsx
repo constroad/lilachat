@@ -33,7 +33,7 @@ beforeEach(() => {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string, init?: RequestInit) => {
-      llamadas.push({ url, body: init?.body ? JSON.parse(String(init.body)) : undefined });
+      llamadas.push({ url, body: init?.body instanceof FormData ? init.body : init?.body ? JSON.parse(String(init.body)) : undefined });
       if (url.includes('/contacts')) {
         return new Response(JSON.stringify(contactos), { status: 200 });
       }
@@ -44,6 +44,9 @@ beforeEach(() => {
     })
   );
 });
+
+// jsdom has no canvas: the photo goes as it is.
+vi.mock('../chat/shrinkPhoto', () => ({ shrinkPhotoBlob: async (blob: Blob, name: string) => ({ blob, name }) }));
 
 const cuerpoDe = (parte: string) => llamadas.find((llamada) => llamada.url.includes(parte))?.body;
 
@@ -89,6 +92,40 @@ describe('NewChatOverlay', () => {
         name: 'Familia',
       })
     );
+  });
+});
+
+describe('the group photo at creation (pending 7)', () => {
+  // jsdom has no object URLs; the preview only needs one.
+  beforeEach(() => {
+    URL.createObjectURL = vi.fn(() => 'blob:vista');
+    URL.revokeObjectURL = vi.fn();
+  });
+
+  it('the photo goes up to the new group after creating it, and the group opens', async () => {
+    // Arrange
+    const alCrear = vi.fn();
+    render(<NewChatOverlay jwt="j" kind="group" onClose={() => {}} onCreated={alCrear} />);
+    const foto = new File(['jpg'], 'obra.jpg', { type: 'image/jpeg' });
+    // Act
+    await userEvent.upload(screen.getByTestId('foto-grupo-nuevo'), foto);
+    await userEvent.type(screen.getByTestId('nombre-grupo'), 'Obra');
+    await userEvent.click(await screen.findByTestId('contacto-u2'));
+    await userEvent.click(screen.getByTestId('btn-crear-chat'));
+    // Assert
+    await waitFor(() => expect(alCrear).toHaveBeenCalledWith('c-nuevo'));
+    const subida = llamadas.find((llamada) => llamada.url.endsWith('/api/chats/c-nuevo/avatar'));
+    expect((subida?.body as FormData).get('file')).toBeInstanceOf(Blob);
+    expect(llamadas.findIndex((llamada) => llamada.url.endsWith('/avatar'))).toBeGreaterThan(llamadas.findIndex((llamada) => llamada.body && (llamada.body as { kind?: string }).kind === 'group'));
+  });
+
+  it('without a photo nothing goes up, and a direct chat never offers one', async () => {
+    render(<NewChatOverlay jwt="j" kind="group" onClose={() => {}} onCreated={() => {}} />);
+    await userEvent.type(screen.getByTestId('nombre-grupo'), 'Obra');
+    await userEvent.click(await screen.findByTestId('contacto-u2'));
+    await userEvent.click(screen.getByTestId('btn-crear-chat'));
+    await waitFor(() => expect(cuerpoDe('/chats')).toBeDefined());
+    expect(llamadas.some((llamada) => llamada.url.endsWith('/avatar'))).toBe(false);
   });
 });
 

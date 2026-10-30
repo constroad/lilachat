@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Modal } from '../ui/Modal';
 import { Interruptor } from '../ui/Interruptor';
-import { ArrowLeft, Check, Lock, NotebookPen, UserRound, Users, X } from 'lucide-react-native';
+import { ArrowLeft, Camera, Check, Lock, NotebookPen, Plus, UserRound, Users, X } from 'lucide-react-native';
 import { MAX_NOMBRE_DE_GRUPO, type Contact } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { ContactPicker } from './ContactPicker';
@@ -11,9 +12,14 @@ import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { Avatar } from '../ui/Avatar';
 import { FilaDeAjuste, GrupoDeAjustes } from '../ui/FilaDeAjuste';
+import { BASE_URL } from '../api/client';
+import { elegirFotoDeGrupo, subirFotoDeGrupo, type FotoElegida } from '../chat/fotoDeGrupo';
+import { reportarError } from '../ui/reportarError';
 
 /** El avatar de cada elegido arriba de la lista (dp): 56, como el diseño. */
 const AVATAR_ELEGIDO = 56;
+/** The group's photo at creation (design `nuevo-grupo-info`, pending 7). */
+const FOTO_DEL_GRUPO = 96;
 
 /**
  * Nuevo chat (el lápiz de la lista, que no hacía nada — reclamo de José).
@@ -49,6 +55,8 @@ export function NewChatScreen({
     encrypted?: boolean;
     /** Yo incluido. Sin esto un 1:1 recién creado se trataba como grupo (FL8). */
     memberIds: string[];
+    /** The photo chosen while creating the group (pending 7). */
+    avatarUrl?: string;
   }) => void;
 }) {
   const colores = useColores();
@@ -61,6 +69,7 @@ export function NewChatScreen({
   const [secreto, setSecreto] = useState(false);
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
+  const [foto, setFoto] = useState<FotoElegida | null>(null);
 
   const volverAContactos = () => {
     setPaso('contactos');
@@ -74,6 +83,7 @@ export function NewChatScreen({
     setElegidos([]);
     setNombre('');
     setSecreto(false);
+    setFoto(null);
     setError('');
     onClose();
   };
@@ -121,10 +131,22 @@ export function NewChatScreen({
       name: nombre.trim(),
       memberIds: elegidos.map((contact) => contact.id),
     });
+    if (!result.ok) {
+      setGuardando(false);
+      return setError(result.message ?? 'No se pudo crear el grupo.');
+    }
+    // The photo goes up once the group exists; if it fails, the group is still made and it can be set from its info.
+    const subida = foto ? await subirFotoDeGrupo({ baseUrl: BASE_URL, chatId: result.data.chatId, jwt: credential.jwt, foto }) : null;
+    if (subida && !subida.ok) reportarError('group.photo', new Error(subida.motivo));
     setGuardando(false);
-    if (!result.ok) return setError(result.message ?? 'No se pudo crear el grupo.');
-    onOpenChat({ id: result.data.chatId, name: nombre.trim(), kind: 'group', memberIds: [credential.userId, ...elegidos.map((contact) => contact.id)] });
+    onOpenChat({ id: result.data.chatId, name: nombre.trim(), kind: 'group', memberIds: [credential.userId, ...elegidos.map((contact) => contact.id)], ...(subida?.ok && subida.avatarUrl ? { avatarUrl: subida.avatarUrl } : {}) });
     cerrar();
+  };
+
+  const elegirFoto = async () => {
+    const eleccion = await elegirFotoDeGrupo();
+    if (eleccion.tipo === 'sin-permiso') return setError('Permite la cámara para sacar la foto.');
+    if (eleccion.tipo === 'foto') setFoto(eleccion.foto);
   };
 
   /** «Tú · Envíate un mensaje» (José, 20/10): siempre el MISMO chat contigo; la primera vez se crea. */
@@ -248,6 +270,15 @@ export function NewChatScreen({
           />
         ) : (
           <View className="flex-1 px-4">
+            {modo === 'grupo' ? (
+              <Pressable testID="btn-foto-grupo-nuevo" accessibilityRole="button" accessibilityLabel={foto ? 'Cambiar la foto del grupo' : 'Poner foto del grupo'} onPress={() => void elegirFoto()} className="mb-5 mt-2 items-center gap-2 self-center">
+                <View style={{ width: FOTO_DEL_GRUPO, height: FOTO_DEL_GRUPO }} className="items-center justify-center overflow-hidden rounded-full bg-surface-variant">
+                  {foto ? <Image source={{ uri: foto.uri }} style={{ width: FOTO_DEL_GRUPO, height: FOTO_DEL_GRUPO }} contentFit="cover" /> : <Camera size={32} color={colores['on-surface-variant']} />}
+                </View>
+                <View className="absolute right-0 top-[66px] h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-primary"><Plus size={16} color={colores['on-primary']} /></View>
+                <Text className="text-[13px] text-on-surface-variant">{foto ? 'Cambiar foto' : 'Foto del grupo'}</Text>
+              </Pressable>
+            ) : null}
             <View className="flex-row items-center gap-2 rounded-xl bg-primary/[0.07] px-4">
               <TextInput
                 testID="input-nombre-grupo"
@@ -337,7 +368,7 @@ export function NewChatScreen({
                 {paso === 'contactos'
                   ? `Continuar${elegidos.length ? ` (${elegidos.length})` : ''}`
                   : guardando
-                    ? 'Creando…'
+                    ? foto ? 'Creando y subiendo la foto…' : 'Creando…'
                     : 'Crear grupo'}
               </Text>
             </Pressable>

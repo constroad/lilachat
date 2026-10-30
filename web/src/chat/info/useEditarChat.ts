@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { normalizarDescripcion, normalizarNombreDeGrupo } from '@lilachat/shared';
 import { api, type ApiResult } from '../../api';
-import { shrinkPhotoBlob } from '../shrinkPhoto';
+import { uploadGroupPhoto } from './groupPhoto';
 
 /**
  * Lo que se edita desde el panel «Info.» (W3b): nombre, foto y participantes.
@@ -51,17 +51,10 @@ export function useEditarChat(params: { chatId: string; jwt: string; onCambio: (
   /** La foto va como archivo: el `api` común manda JSON. */
   const cambiarFoto = useCallback(
     async (archivo: File) => {
-      // Portal's standard (28/10): the group photo goes lighter too.
-      const photo = await shrinkPhotoBlob(archivo, archivo.name);
-      const formulario = new FormData();
-      formulario.append('file', photo.blob, photo.name);
-      try {
-        const respuesta = await fetch(`/api/chats/${chatId}/avatar`, { method: 'POST', headers: { Authorization: `Bearer ${jwt}` }, body: formulario });
-        const datos = (await respuesta.json().catch(() => ({}))) as { message?: string };
-        resolver(respuesta.ok ? { ok: true, data: datos } : { ok: false, status: respuesta.status, message: datos.message ?? 'No se pudo cambiar la foto.' });
-      } catch {
-        onAviso('Sin conexión. Revisa tu internet.');
-      }
+      const subida = await uploadGroupPhoto(jwt, chatId, archivo);
+      if (subida.ok) return void resolver({ ok: true, data: subida });
+      if (subida.status === 0) return onAviso(subida.message);
+      resolver({ ok: false, status: subida.status, message: subida.message });
     },
     [chatId, jwt, onAviso, resolver]
   );

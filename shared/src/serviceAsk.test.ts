@@ -5,10 +5,17 @@ import { readServiceAsk, serviceAskPath } from './serviceAsk.js';
 describe('serviceAskPath', () => {
   it('escapes the ids Portal sends', () => {
     expect(serviceAskPath('w1', 'cli 1', 'srv/2', 'detail')).toBe('/workspaces/w1/clients/cli%201/services/srv%2F2/detail');
+    expect(serviceAskPath('w1', 'cli 1', 'cli 1', 'account')).toBe('/workspaces/w1/clients/cli%201/account');
   });
 });
 
 describe('readServiceAsk', () => {
+  it('the account comes as-is; a failure keeps its message', () => {
+    const account = { client: { id: 'c', name: 'C' }, totals: {} };
+    expect(readServiceAsk('account', { account })).toEqual({ ok: true, value: account });
+    expect(readServiceAsk('account', { error: 'account_failed', message: 'No se pudo traer la cuenta del cliente', portal_url: null })).toEqual({ ok: false, message: 'No se pudo traer la cuenta del cliente', portalUrl: null });
+  });
+
   it('the files with the Drive link', () => {
     const files = [{ name: 'a.pdf', mime: 'application/pdf', url: 'https://x/a' }];
     expect(readServiceAsk('files', { files, drive_url: 'https://drive/1' })).toEqual({ ok: true, value: { files, driveUrl: 'https://drive/1' } });

@@ -5041,13 +5041,25 @@ enlace secundario al pie.
   - La copia del visor de PDF se nombraba por `seq`, que se repite en cada chat:
     el PDF 12 del chat A abría como el 12 del chat B. Ahora va por URL
     (`pdfCacheName(url)`).
-- **Pendiente de agentes y Portal:**
-  - campos del pedido (obra, precio, crédito, factura y pagos);
-  - el PDF de los informes que no lo tienen guardado;
-  - las guías;
-  - las partidas de las cotizaciones;
-  - `client.account.requested` (cotizaciones de todo el cliente, diseño f-08);
-  - la acción «Crear un cliente» de Portal, que abrirá el selector de clientes.
+- **Ficha del pedido completa** (Portal 611e61d7, agentes fde87d5).
+  - Muestra obra, factura, número de guía del despacho y las guías como archivos.
+  - Con la regla de la cobranza suma precio unitario, total, crédito con su
+    vencimiento, cobrado (la suma de `payments`) y por cobrar.
+  - `DetailSheet.files` admite varios archivos.
+- **Pestaña «Cuenta»** del canal de cliente (diseño f-08; `client.account.requested`,
+  agentes cf37b98, Portal 0227a1f0).
+  - Muestra TODAS las cotizaciones del cliente, también las sin servicio, y abre
+    cada una con sus partidas.
+  - Muestra los pedidos al crédito, primero los vencidos, cada uno con lo que debe.
+  - Arriba, el total por cobrar (el de Portal, de todos) y lo vencido hoy en Lima.
+  - Una lista que no viene es que esa persona no la ve.
+  - Servidor: `GET /api/workspaces/:id/clients/:clientId/account`, con la misma
+    validación de canal que el detalle y sin `service_id`.
+  - Código: `shared/src/clientAccount.ts`, `ClientAccountPanel` y `ClientAccountWeb`.
+- **Pendiente:**
+  - el PDF de los informes que no lo tienen guardado (Portal);
+  - el selector de clientes, con «Crear un cliente» como acción de Portal
+    (aprobada por José; hay que encenderla en Comandos y acciones).
 
 ## 172. APK 0.1.175: compartir pantalla, guardia nativa del log y APK más liviano (30/10/2026)
 

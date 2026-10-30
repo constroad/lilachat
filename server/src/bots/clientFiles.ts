@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { canManageMembers, CLIENT_ID, serviceDetailOf, serviceFilesOf, type ServiceDetail, type ServiceFiles } from '@lilachat/shared';
+import { canManageMembers, CLIENT_ID, clientAccountOf, serviceDetailOf, serviceFilesOf, type ClientAccount, type ServiceDetail, type ServiceFiles } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { actorIn } from '../workspaces.js';
@@ -11,6 +11,7 @@ import { BotAppModel, BotInstallationModel } from './botModels.js';
 const ASK_TIMEOUT_MS = 8_000;
 export const DRIVE_FAILED = 'No se pudo traer el Drive';
 export const DETAIL_FAILED = 'No se pudo traer el detalle del servicio';
+export const ACCOUNT_FAILED = 'No se pudo traer la cuenta del cliente';
 
 type NotFound = { status: 404; error: string; message: string };
 export type AskOutcome<T> = { ok: true; value: T } | { ok: false; message: string; fallbackUrl: string | null };
@@ -23,16 +24,19 @@ type ServiceAsk<T> = { event: Extract<BotEventType, `client.${string}.requested`
 type AskedService = { client: Pick<ClientChannel, 'appId' | 'chatId' | 'driveUrl' | 'services'>; fallbackUrl: string | null; seesBilling: boolean };
 type Asker = { id: string; name?: string; phone?: string; sees_billing?: true };
 
-/** The service, only for a member of the client's PRIVATE channel and only if the app listed it in its last PUT (Portal only checks the company). */
-async function findAskedService(workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId): Promise<AskedService | null> {
+/**
+ * The client (and, when asked, its service), only for a member of the client's PRIVATE channel and only if the app
+ * listed that service in its last PUT (Portal only checks the company). `serviceId` null asks about the whole client.
+ */
+async function findAskedService(workspaceId: string, clientId: string, serviceId: string | null, userId: Types.ObjectId): Promise<AskedService | null> {
   const actor = await actorIn(workspaceId, userId);
-  if (!CLIENT_ID.test(clientId) || !CLIENT_ID.test(serviceId)) return null;
+  if (!CLIENT_ID.test(clientId) || (serviceId !== null && !CLIENT_ID.test(serviceId))) return null;
   const client = await ClientChannelModel.findOne({ workspaceId: new Types.ObjectId(workspaceId), clientId }).select('appId chatId driveUrl services billingViewers').lean<(AskedService['client'] & Pick<ClientChannel, 'billingViewers'>) | null>();
-  const service = client?.services.find((one) => one.id === serviceId);
-  if (!client || !service || !(await ChatModel.exists({ _id: client.chatId, 'members.userId': userId }))) return null;
+  const service = serviceId === null ? null : client?.services.find((one) => one.id === serviceId);
+  if (!client || service === undefined || !(await ChatModel.exists({ _id: client.chatId, 'members.userId': userId }))) return null;
   // José 30/10: the space's admins, plus whoever an admin marked in THIS channel; Portal widens `billing` with it.
   const seesBilling = canManageMembers(actor.role) || (client.billingViewers ?? []).some((one) => one.equals(userId));
-  return { client, fallbackUrl: service.url ?? client.driveUrl ?? null, seesBilling };
+  return { client, fallbackUrl: service?.url ?? client.driveUrl ?? null, seesBilling };
 }
 
 async function askerOf(userId: Types.ObjectId, seesBilling: boolean): Promise<Asker> {
@@ -51,7 +55,7 @@ function logUnanswered(label: string, reply: { status?: number | null; error?: s
  * same request (pending 121 Drive; José 30/10 detail). Nothing is stored: the
  * links never expire, so they only show inside that channel.
  */
-async function askAboutService<T>(ask: ServiceAsk<T>, workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId): Promise<AskOutcome<T> | NotFound> {
+async function askAboutService<T>(ask: ServiceAsk<T>, workspaceId: string, clientId: string, serviceId: string | null, userId: Types.ObjectId): Promise<AskOutcome<T> | NotFound> {
   const asked = await findAskedService(workspaceId, clientId, serviceId, userId);
   if (!asked) return notFound();
   const { client, fallbackUrl, seesBilling } = asked;
@@ -61,7 +65,7 @@ async function askAboutService<T>(ask: ServiceAsk<T>, workspaceId: string, clien
     askerOf(userId, seesBilling),
   ]);
   if (!installation || !app?.webhookUrl) return { ok: false, message: ask.failed, fallbackUrl };
-  const reply = await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, ask.event, { client_id: clientId, service_id: serviceId, user }, ASK_TIMEOUT_MS);
+  const reply = await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, ask.event, { client_id: clientId, ...(serviceId ? { service_id: serviceId } : {}), user }, ASK_TIMEOUT_MS);
   const value = reply.status === 200 ? ask.parse(reply.body) : null;
   recordLastDelivery(installation._id, value ? { ok: true } : { ok: false, error: reply.error ?? `HTTP ${reply.status}` });
   if (value) return { ok: true, value };
@@ -71,6 +75,7 @@ async function askAboutService<T>(ask: ServiceAsk<T>, workspaceId: string, clien
 
 const FILES: ServiceAsk<ServiceFiles> = { event: 'client.files.requested', parse: serviceFilesOf, failed: DRIVE_FAILED, label: 'Drive del servicio' };
 const DETAIL: ServiceAsk<ServiceDetail> = { event: 'client.service.requested', parse: serviceDetailOf, failed: DETAIL_FAILED, label: 'Detalle del servicio' };
+const ACCOUNT: ServiceAsk<ClientAccount> = { event: 'client.account.requested', parse: clientAccountOf, failed: ACCOUNT_FAILED, label: 'Cuenta del cliente' };
 
 /** The Drive of a client's service (pending 121, agentes c27e939). */
 export async function clientServiceFiles(workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId): Promise<FilesOutcome | NotFound> {
@@ -81,3 +86,6 @@ export async function clientServiceFiles(workspaceId: string, clientId: string, 
 
 /** Its pedidos, despachos and informes (José, 30/10; agentes 77e7782, Portal 1d4072d5). */
 export const clientServiceDetail = (workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId) => askAboutService(DETAIL, workspaceId, clientId, serviceId, userId);
+
+/** All the client's quotes and its orders on credit (José 30/10, design f-08; agentes cf37b98, Portal 0227a1f0). */
+export const clientAccount = (workspaceId: string, clientId: string, userId: Types.ObjectId) => askAboutService(ACCOUNT, workspaceId, clientId, null, userId);

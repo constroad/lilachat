@@ -161,3 +161,26 @@ describe('who sees the collection (José 30/10: «los admins y podemos asignar a
     expect((await mark(jose, ana, 'si' as unknown as boolean)).status).toBe(400);
   });
 });
+
+describe('the client account on demand (José 30/10: «¿dónde veo las cotizaciones del cliente?», design f-08)', () => {
+  const accountOf = (who: Types.ObjectId, client = 'cli-cvs') => request(app).get(`/api/workspaces/${spaceId}/clients/${client}/account`).set(auth(who));
+
+  it('asks with client.account.requested, without a service, and answers the validated account', async () => {
+    // Arrange
+    answer = { status: 200, body: { client: { id: 'cli-cvs', name: 'Constructora Vía Sur' }, quotes: [{ id: 'q1', code: '313', date: '2026-08-28', total: 1000, status_label: 'Borrador', tone: 'neutral' }], credit_orders: [], pending: 0, totals: { quotes: 1, credit_orders: 0 } } };
+    // Act
+    const response = await accountOf(jose).expect(200);
+    // Assert
+    expect(received).toEqual([{ type: 'client.account.requested', space: String(spaceId), data: { client_id: 'cli-cvs', user: { id: String(jose), name: 'José', phone: '51902049935', sees_billing: true } } }]);
+    expect(response.body.account.quotes).toEqual([{ id: 'q1', code: '313', date: '2026-08-28', total: 1000, status: { label: 'Borrador', tone: 'neutral' } }]);
+    expect(response.body.account.totals).toEqual({ quotes: 1, creditOrders: 0 });
+  });
+
+  it('another client or someone outside the channel: 404 and no event; a failure says so', async () => {
+    expect((await accountOf(outsider)).status).toBe(404);
+    expect((await accountOf(jose, 'otro')).status).toBe(404);
+    expect(received).toHaveLength(0);
+    answer = { status: 502, body: { error: 'No se pudo traer la cuenta del cliente', code: 'product_failed' } };
+    expect((await accountOf(jose).expect(200)).body).toEqual({ error: 'account_failed', message: 'No se pudo traer la cuenta del cliente', portal_url: null });
+  });
+});

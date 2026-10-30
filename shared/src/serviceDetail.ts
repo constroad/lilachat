@@ -63,7 +63,7 @@ const instant = (value: unknown) => (typeof value === 'string' && !Number.isNaN(
 /** Drops the keys whose value did not validate, so the wire shape stays tight. */
 const defined = <T extends object>(value: T): T => Object.fromEntries(Object.entries(value).filter(([, one]) => one !== undefined)) as T;
 
-const statusOf = (raw: Raw): DetailStatus => ({ label: text(raw.status_label) ?? '—', tone: DETAIL_TONES.includes(raw.tone as DetailTone) ? (raw.tone as DetailTone) : 'neutral' });
+export const statusOf = (raw: Raw): DetailStatus => ({ label: text(raw.status_label) ?? '—', tone: DETAIL_TONES.includes(raw.tone as DetailTone) ? (raw.tone as DetailTone) : 'neutral' });
 
 const guideOf = (one: unknown): OrderGuide[] => {
   const raw = record(one);
@@ -106,7 +106,7 @@ const quoteItemOf = (one: unknown): QuoteItem[] => {
 };
 /** Its line items only when agentes sends them (private view, `quotes:view`). */
 const quoteItemsOf = (value: unknown) => (Array.isArray(value) ? value.flatMap(quoteItemOf).slice(0, LIST_MAX) : undefined);
-const quoteOf = (raw: Raw): ServiceQuote => defined({ id: text(raw.id)!, code: text(raw.code), date: dateOnly(raw.date), total: count(raw.total), status: statusOf(raw), url: https(raw.url), items: quoteItemsOf(raw.items) });
+export const quoteOf = (raw: Raw): ServiceQuote => defined({ id: text(raw.id)!, code: text(raw.code), date: dateOnly(raw.date), total: count(raw.total), status: statusOf(raw), url: https(raw.url), items: quoteItemsOf(raw.items) });
 
 function listOf<T>(value: unknown, parse: (raw: Raw) => T): T[] | null {
   if (!Array.isArray(value)) return null;

@@ -26,7 +26,7 @@ import multer from 'multer';
 import { CUSTOM_EMOJI_MAX_BYTES } from '@lilachat/shared';
 import { addCustomEmoji, listCustomEmojis, removeCustomEmoji } from './customEmojiCatalog.js';
 import { clientRecords, listClients } from './bots/botClients.js';
-import { clientServiceDetail, clientServiceFiles } from './bots/clientFiles.js';
+import { clientAccount, clientServiceDetail, clientServiceFiles } from './bots/clientFiles.js';
 import { listBillingViewers, setBillingViewer } from './bots/clientBillingViewers.js';
 
 /** Tries of a code per person and minute: enough to fix a typo, not to guess codes. */
@@ -106,6 +106,12 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
     const found = await clientServiceDetail(req.params.id!, req.params.clientId!, req.params.serviceId!, me(req));
     if ('error' in found) return res.status(found.status).json({ error: found.error, message: found.message });
     res.json(found.ok ? { detail: found.value } : { error: 'detail_failed', message: found.message, portal_url: found.fallbackUrl });
+  }));
+  // José 30/10 (design f-08): all the client's quotes and its orders on credit; a failure is a 200 with the message.
+  router.get('/:id/clients/:clientId/account', handled(async (req, res) => {
+    const found = await clientAccount(req.params.id!, req.params.clientId!, me(req));
+    if ('error' in found) return res.status(found.status).json({ error: found.error, message: found.message });
+    res.json(found.ok ? { account: found.value } : { error: 'account_failed', message: found.message, portal_url: found.fallbackUrl });
   }));
   // José 30/10: who else sees a client's collection, chosen by an admin per client channel.
   router.get('/:id/clients/:clientId/billing-viewers', handled(async (req, res) => res.json(await listBillingViewers(req.params.id!, req.params.clientId!, me(req)))));

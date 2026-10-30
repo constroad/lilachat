@@ -158,4 +158,5 @@ export * from './compareText.js';
 export * from './serviceDetail.js';
 export * from './serviceBilling.js';
 export * from './serviceDetailSheet.js';
+export * from './clientAccount.js';
 export * from './serviceAsk.js';

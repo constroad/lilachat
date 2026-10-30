@@ -19,6 +19,7 @@ import { ListaDeMensajes } from './ListaDeMensajes';
 import { useWorkPlanWeb, WorkPlanWeb } from './workPlan/WorkPlanWeb';
 import { PendingWeb, TaskDetailWeb, type OpenTask } from './workPlan/WorkListsWeb';
 import { ClientFilesWeb } from '../spaces/clients/ClientFilesWeb';
+import { ClientAccountWeb } from '../spaces/clients/ClientAccountWeb';
 import { stageFiles } from '@lilachat/shared';
 import { useClientOfChat } from '../spaces/clients/useSpaceClients';
 import { ArchivedClientBanner, ArchivedComposerNote, ClientServices } from '../spaces/clients/ClientChannelParts';
@@ -167,6 +168,8 @@ export function Conversation(props: {
         <PendingWeb stages={workPlan.stages ?? []} onOpen={setOpenTask} />
       ) : isClientChannel && channelTab === 'checklist' ? (
         <WorkPlanWeb plan={workPlan} onOpenTask={setOpenTask} />
+      ) : isClientChannel && client && channelTab === 'account' && props.jwtParaEnlaces && chat.workspaceId ? (
+        <ClientAccountWeb target={{ jwt: props.jwtParaEnlaces, spaceId: chat.workspaceId, clientId: client.id }} />
       ) : isClientChannel && client && channelTab === 'services' ? (
         <ClientServicesPanel client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} onOpenRecord={toMessage} />
       ) : props.app && appTab === 'info' ? (
@@ -319,7 +322,7 @@ function BannerWithSession() {
   return context ? <NotificationsBanner jwt={context.jwt} /> : null;
 }
 
-type ChannelTab = 'chat' | 'services' | 'checklist' | 'files' | 'pending';
+type ChannelTab = 'chat' | 'services' | 'account' | 'checklist' | 'files' | 'pending';
 
 /** «Servicios» asks for its records only while it is open. */
 function ClientServicesPanel(props: { client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; onOpenRecord: (seq: number) => void }) {
@@ -332,6 +335,8 @@ function ChannelTabs(props: { tab: ChannelTab; onTab: (tab: ChannelTab) => void;
   const tabs = [
     { key: 'chat' as const, label: 'Chat', badge: null },
     { key: 'services' as const, label: 'Servicios', badge: props.services ? String(props.services) : null },
+    // José 30/10 (design f-08): all the client's quotes and its orders on credit.
+    { key: 'account' as const, label: 'Cuenta', badge: null },
     { key: 'checklist' as const, label: 'Checklist', badge: props.counter },
     // José 30/10: «Archivos» always (the checklist's files and Portal's Drive); «Pendientes» once there is a checklist.
     { key: 'files' as const, label: 'Archivos', badge: props.files ? String(props.files) : null },

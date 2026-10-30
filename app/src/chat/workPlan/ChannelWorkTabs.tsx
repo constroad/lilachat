@@ -7,9 +7,10 @@ import { PendingPanel } from './WorkListsPanels';
 import { TaskDetailSheet, type OpenTask } from './TaskDetailSheet';
 import { useClientOfChat, useClientRecords } from '../../spaces/clients/useSpaceClients';
 import { ArchivedClientBanner, ArchivedComposerNote, ClientServices } from '../../spaces/clients/ClientChannelParts';
+import { ClientAccountPanel } from '../../spaces/clients/ClientAccountPanel';
 import { ClientFilesPanel } from '../../spaces/clients/ClientFilesPanel';
 
-type Tab = 'chat' | 'services' | 'checklist' | 'files' | 'pending';
+type Tab = 'chat' | 'services' | 'account' | 'checklist' | 'files' | 'pending';
 const COVER = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, elevation: 10 } as const;
 
 /**
@@ -52,6 +53,7 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-grow-0 border-b border-outline/10 bg-surface" contentContainerStyle={{ paddingHorizontal: 16 }}>
         <TabButton label="Chat" active={tab === 'chat'} onPress={() => setTab('chat')} testID="pestana-canal-chat" />
         <TabButton label="Servicios" badge={client.services.length ? String(client.services.length) : null} active={tab === 'services'} onPress={() => setTab('services')} testID="pestana-canal-services" />
+        {target ? <TabButton label="Cuenta" active={tab === 'account'} onPress={() => setTab('account')} testID="pestana-canal-account" /> : null}
         <TabButton label="Checklist" badge={counter} active={tab === 'checklist'} onPress={() => setTab('checklist')} testID="pestana-canal-checklist" />
         <TabButton label="Archivos" badge={filesTotal ? String(filesTotal) : null} active={tab === 'files'} onPress={() => setTab('files')} testID="pestana-canal-files" />
         {stages.length ? <TabButton label="Pendientes" dot={Boolean(plan.summary?.overdue)} active={tab === 'pending'} onPress={() => setTab('pending')} testID="pestana-canal-pending" /> : null}
@@ -66,6 +68,7 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
           <ClientServices client={client} records={records} onOpenRecord={toMessage} target={target} members={params.names} me={params.yo} />
         </View>
       ) : null}
+      {tab === 'account' && target ? <View className="bg-background" style={COVER}><ClientAccountPanel target={target} /></View> : null}
       {tab === 'checklist' ? (
         <View className="bg-background" style={COVER}>
           <WorkPlanPanel plan={plan} jwt={params.jwt} yo={params.yo} nameOf={nameOf} members={checklistMembers(params.names, params.yo)} onStartFailed={(message) => ToastAndroid.show(message, ToastAndroid.SHORT)} onOpenTask={setOpenTask} />

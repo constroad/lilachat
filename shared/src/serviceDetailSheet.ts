@@ -49,7 +49,8 @@ function reportSheet(report: ServiceReport): DetailSheet {
 const itemLine = (item: QuoteItem) => [amount(item.quantity, item.unit), item.unitPrice === undefined ? undefined : `${moneyOf(item.unitPrice)} c/u`].filter(Boolean).join(' · ');
 const sheetItem = (item: QuoteItem): SheetItem => ({ name: item.name, line: itemLine(item), ...(item.total === undefined ? {} : { total: moneyOf(item.total) }) });
 
-function quoteSheet(quote: ServiceQuote): DetailSheet {
+/** Also opened from the client's account (all its quotes, design f-08). */
+export function quoteSheet(quote: ServiceQuote): DetailSheet {
   return { ...base(quote.code ? `Cotización ${quote.code}` : 'Cotización', quote.status, quote.url), facts: facts([['Total', quote.total === undefined ? undefined : moneyOf(quote.total)], ['Fecha', quote.date && dayOf(quote.date)]]), items: (quote.items ?? []).map(sheetItem) };
 }
 

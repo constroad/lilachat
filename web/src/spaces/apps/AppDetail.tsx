@@ -4,6 +4,7 @@ import { APP_PERMISSIONS, appActivityLine, appDetailTabs, appInstalledByLine, ty
 import { copiarTexto } from '../../chat/copiarTexto';
 import { DetailTabBar } from '../../chat/info/DetailTabBar';
 import { AppBadge, AppLogo } from './AppLogo';
+import { NewPermissionsNotice } from './NewPermissionsNotice';
 import { AppAccountSection } from './AppAccountSection';
 import { AppChannelsSection, AppInstallSection } from './AppChannelsSection';
 import { AppCommandsPanel } from './AppCommandsPanel';
@@ -134,16 +135,7 @@ function InfoTab(props: AppDetailProps) {
   const { app } = props;
   return (
     <>
-      {/* A newer manifest asks for more (pending 95): it keeps working with what was accepted until an admin reinstalls. */}
-      {app.installation?.newPermissions?.length ? (
-        <section data-testid="app-permisos-nuevos" className="space-y-1.5 rounded-xl border border-warning/30 bg-warning/10 p-3">
-          <p className="text-[14px] font-semibold">Esta app pide permisos nuevos</p>
-          {app.installation.newPermissions.map((line) => <p key={line} className="text-[13px]">· {line}</p>)}
-          {props.admin && app.installUrl ? (
-            <button type="button" data-testid="app-reinstalar-permisos" onClick={props.onInstall} className="mt-1 h-9 rounded-lg bg-primary px-3 text-[13px] font-semibold text-on-primary">Reinstalar</button>
-          ) : <p className="text-[12px] text-on-surface-variant">Un admin del espacio la reinstala para aceptarlos.</p>}
-        </section>
-      ) : null}
+      {app.installation?.newPermissions?.length && props.spaceId ? <NewPermissionsNotice jwt={props.jwt} spaceId={props.spaceId} appId={app.appId} lines={app.installation.newPermissions} admin={props.admin} /> : null}
       {app.features.length ? (
         <Section Icon={ListChecks} title="Qué hace">
           <ul className="space-y-2">

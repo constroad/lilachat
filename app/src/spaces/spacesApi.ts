@@ -90,6 +90,8 @@ export const testAppTopics = (jwt: string, spaceId: string, appId: string) => js
 /** «Conectado como … / Desconectar» (pending 59): MY account in this app, asked to the app each time. */
 export const appLink = (jwt: string, spaceId: string, appId: string) => jsonCall<AppLink>(url(`/${spaceId}/apps/${appId}/link`), jwt);
 export const unlinkApp = (jwt: string, spaceId: string, appId: string) => jsonCall<Record<string, never>>(url(`/${spaceId}/apps/${appId}/link`), jwt, { method: 'DELETE' });
+/** «Aceptar permisos» (José, 30/10): an admin accepts what the manifest asks now, without reinstalling. */
+export const acceptAppScopes = (jwt: string, spaceId: string, appId: string) => jsonCall<{ grantedScopes: string[] }>(url(`/${spaceId}/apps/${appId}/scopes`), jwt, { method: 'POST' });
 
 /** «Comandos y acciones» (R160): where each command and action of the app works. */
 export type AppItems = { items: AppItemRow[]; channels: { id: string; name: string; private: boolean }[]; canEdit: boolean };

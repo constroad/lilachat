@@ -10,7 +10,7 @@ import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { commandGroupsOf, invokeCommand, invokeShortcut, shareCommandAnswer } from './botCommands.js';
 import { FORM_PHOTO_MAX_BYTES, readSignedFile, storeFormPhoto, submitForm } from './botForms.js';
 import { appChannelsOf } from './botChannels.js';
-import { revokeInstallation } from './botInstall.js';
+import { acceptAppScopes, revokeInstallation } from './botInstall.js';
 import { directWith, postBotMessage } from './botMessages.js';
 import { setTopicChannels, topicRoutesOf } from './botTopics.js';
 import { itemRowsOf, setItemSettings } from './botItems.js';
@@ -207,6 +207,13 @@ export function buildBotUserRouter(): Router {
     if (!installation) return void res.status(404).json({ message: 'Esa app no está instalada en el espacio.' });
     if (!(await revokeLink(installation, req.session!.userId))) return void res.status(502).json({ message: 'La app no confirmó la desconexión. Prueba otra vez en un momento.' });
     res.status(204).end();
+  }));
+  router.post('/workspaces/:id/apps/:appId/scopes', requireSession, asyncRoute(async (req, res) => {
+    if (!(await adminOf(req.params.id!, req.session!.userId))) return void res.status(403).json({ message: 'Solo el dueño o un admin acepta los permisos de una app.' });
+    const installation = await installedApp(req.params.id!, req.params.appId);
+    const grantedScopes = installation ? await acceptAppScopes(installation) : null;
+    if (!grantedScopes) return void res.status(404).json({ message: 'Esa app no está instalada en el espacio.' });
+    res.json({ grantedScopes });
   }));
   // «Probar envío»: one line per channel, from the app, saying which topics land there.
   router.post('/workspaces/:id/apps/:appId/topics/test', requireSession, asyncRoute(async (req, res) => {

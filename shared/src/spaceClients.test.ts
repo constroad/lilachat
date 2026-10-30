@@ -32,6 +32,18 @@ describe('splitClients', () => {
     expect(split.archivedUnread).toBe(1);
     expect([...clientChatIds(clients)]).toEqual(['chat-a', 'chat-b', 'chat-c', 'chat-d']);
   });
+  it('a client with only quotes (no order, no service) is not listed, unless its channel has something unread (José, 30/10)', () => {
+    // Arrange
+    const quoted = client('q', { orders_total: 0, last_order_at: null });
+    const quotedWithNews = client('n', { orders_total: 0, last_order_at: null, live: false });
+    const serviced = client('s', { orders_total: 0, last_order_at: null, services: [{ id: 's1', name: 'Base', status: 'pending', stage_label: '' }] });
+    // Act
+    const split = splitClients([quoted, quotedWithNews, serviced, client('o')], [chat('n', 1)]);
+    // Assert
+    expect(split.live.map((entry) => entry.client.id)).toEqual(['s', 'o']);
+    expect(split.archived.map((entry) => entry.client.id)).toEqual(['n']);
+    expect([...clientChatIds([quoted])]).toEqual(['chat-q']);
+  });
 });
 
 describe('clientRowSubtitle and dayLabel', () => {

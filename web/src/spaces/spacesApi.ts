@@ -97,6 +97,8 @@ export const testAppTopics = (jwt: string, spaceId: string, appId: string) => ap
 /** «Conectado como … / Desconectar» (pending 59): MY account in this app, asked to the app each time. */
 export const appLink = (jwt: string, spaceId: string, appId: string) => api<AppLink>(`/workspaces/${spaceId}/apps/${appId}/link`, { jwt });
 export const unlinkApp = (jwt: string, spaceId: string, appId: string) => api<Record<string, never>>(`/workspaces/${spaceId}/apps/${appId}/link`, { jwt, method: 'DELETE' });
+/** «Aceptar permisos» (José, 30/10): an admin accepts what the manifest asks now, without reinstalling. */
+export const acceptAppScopes = (jwt: string, spaceId: string, appId: string) => api<{ grantedScopes: string[] }>(`/workspaces/${spaceId}/apps/${appId}/scopes`, { jwt, method: 'POST' });
 
 /** «En qué canales está» (pending 99): the switch rides the chat's members routes, so the channel says who took the app out. */
 export type AppChannels = { channels: AppChannel[]; botUserId: string; canEdit: boolean };

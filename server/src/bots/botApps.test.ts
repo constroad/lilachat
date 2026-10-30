@@ -123,6 +123,25 @@ describe('the manifest', () => {
     expect(again.body.installed_by).toEqual({ id: String(jose), name: 'José', phone: '51902049935', email: 'jose@constroad.com' });
   });
 
+  it('«Aceptar permisos»: an admin accepts the new scopes with one tap, without reinstalling; a plain member cannot (José, 30/10)', async () => {
+    // Arrange: installed without scopes; the manifest now asks for the email.
+    const { body } = await request(app).post('/api/bots/apps').set(asLila).send(manifest()).expect(201);
+    await installWith(body.client_id, body.client_secret);
+    await request(app).post('/api/bots/apps').set(asLila).send({ ...manifest(), scopes: ['users:read.email'] }).expect(200);
+    const directory = async () => (await request(app).get(`/api/workspaces/${spaceId}/app-directory`).set(asJose).expect(200)).body.apps.find((one: { name: string }) => one.name === 'Inframaq');
+    const { appId } = await directory();
+    const ana = (await UserModel.create({ phone: '51987654321', name: 'Ana' }))._id;
+    await WorkspaceMemberModel.create({ workspaceId: spaceId, userId: ana, phone: '51987654321', role: 'member', status: 'active' });
+    const asAna = { Authorization: `Bearer ${signSession({ userId: String(ana), deviceId: 'd-ana', email: 'x' })}` };
+    // Act
+    await request(app).post(`/api/workspaces/${spaceId}/apps/${appId}/scopes`).set(asAna).expect(403);
+    const accepted = await request(app).post(`/api/workspaces/${spaceId}/apps/${appId}/scopes`).set(asJose).expect(200);
+    // Assert
+    expect(accepted.body).toEqual({ grantedScopes: ['users:read.email'] });
+    expect((await directory()).installation.newPermissions).toBeUndefined();
+    expect((await BotInstallationModel.findOne({}).lean())!.grantedScopes).toEqual(['users:read.email']);
+  });
+
   it('the «+» actions follow the manifest with the app avatar; a manifest without them removes them (agentes, 23/10)', async () => {
     // Arrange
     const attendance = { key: 'marcar_asistencia', name: 'Marcar asistencia', description: 'Ingreso, refrigerio o salida con tu foto y ubicación' };

@@ -44,10 +44,20 @@ export const clientChatIds = (clients: readonly SpaceClient[]): Set<string> => n
 
 const lastMovement = <T extends ClientChat>(entry: ClientEntry<T>) => Math.max(Date.parse(entry.chat?.lastAt ?? '') || 0, Date.parse(entry.client.last_activity_at ?? '') || 0);
 
+/**
+ * A quote alone is not business (José, 30/10): the client shows with an order
+ * or a service. Its channel still exists and stays out of «Canales»; it shows
+ * anyway if something unread is waiting there.
+ */
+const isListed = <T extends ClientChat>(entry: ClientEntry<T>) => entry.client.orders_total > 0 || entry.client.services.length > 0 || (entry.chat?.unread ?? 0) > 0;
+
 /** Live and archived clients with their chat (only the ones whose channel this person is in), the newest first. */
 export function splitClients<T extends ClientChat>(clients: readonly SpaceClient[], chats: readonly T[]): { live: ClientEntry<T>[]; archived: ClientEntry<T>[]; archivedUnread: number } {
   const chatById = new Map(chats.map((chat) => [chat.id, chat]));
-  const entries = clients.map((client) => ({ client, chat: chatById.get(client.chat_id) ?? null })).sort((a, b) => lastMovement(b) - lastMovement(a));
+  const entries = clients
+    .map((client) => ({ client, chat: chatById.get(client.chat_id) ?? null }))
+    .filter(isListed)
+    .sort((a, b) => lastMovement(b) - lastMovement(a));
   const archived = entries.filter((entry) => !entry.client.live);
   return { live: entries.filter((entry) => entry.client.live), archived, archivedUnread: archived.filter((entry) => (entry.chat?.unread ?? 0) > 0).length };
 }

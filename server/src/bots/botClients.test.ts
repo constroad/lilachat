@@ -14,6 +14,7 @@ import { ClientChannelModel } from './botClients.js';
 import { configureDevelopers } from './botApps.js';
 import { forgetBots } from './botRegistry.js';
 import { sha256 } from './botSecrets.js';
+import { configureChannelNotices } from '../workspaceNotices.js';
 
 /** A channel per client (pending 21, §157): the app sends the client's state and posts by client. */
 let mongo: MongoMemoryServer;
@@ -85,6 +86,19 @@ describe('PUT /api/bots/clients/:clientId', () => {
     expect(chat!.members.map((member) => String(member.userId))).toContain(String(jose));
     expect(chat!.members.map((member) => String(member.userId))).not.toContain(String(ana));
     expect(await ChatModel.countDocuments({ name: 'Transportes Huaral' })).toBe(1);
+  });
+
+  it('the admins are told a new channel is theirs, so it shows without reloading (José, 30/10: El Almirante did not show)', async () => {
+    // Arrange
+    const token = await installApp();
+    const told: [string, string][] = [];
+    configureChannelNotices((userId, chatId) => told.push([userId, chatId]));
+    // Act
+    const first = await putClient(token, state(daysAgo(3))).expect(201);
+    await putClient(token, state(daysAgo(2))).expect(200);
+    configureChannelNotices(() => undefined);
+    // Assert
+    expect(told).toEqual([[String(jose), first.body.client.channel.id]]);
   });
 
   it('an admin promoted after the channel was born joins it with the next PUT', async () => {

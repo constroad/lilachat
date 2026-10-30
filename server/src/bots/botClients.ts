@@ -2,6 +2,7 @@ import { model, Schema, Types } from 'mongoose';
 import { archivedAgeGroup, archivedSince, CLIENT_ID, isClientChannelLive, validateClientState, type ClientService, type ClientState } from '@lilachat/shared';
 import { ChatModel, MessageModel } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
+import { noticeChannelJoined } from '../workspaceNotices.js';
 import { actorIn } from '../workspaces.js';
 import type { BotInstallation } from './botModels.js';
 
@@ -49,11 +50,11 @@ async function spaceAdminIds(workspaceId: Types.ObjectId): Promise<Types.ObjectI
   return admins.flatMap((admin) => (admin.userId ? [admin.userId] : []));
 }
 
-async function createClientChat(installation: Installation, name: string): Promise<Types.ObjectId> {
+async function createClientChat(installation: Installation, name: string): Promise<{ chatId: Types.ObjectId; admins: Types.ObjectId[] }> {
   const admins = await spaceAdminIds(installation.workspaceId);
   const members = [{ userId: installation.botUserId, role: 'member' as const }, ...admins.map((userId) => ({ userId, role: 'admin' as const }))];
   const chat = await ChatModel.create({ kind: 'group', name, workspaceId: installation.workspaceId, channel: { visibility: 'private' }, members, lastSeq: 0 });
-  return chat._id;
+  return { chatId: chat._id, admins };
 }
 
 /** An admin promoted after the channel was born joins it with the next PUT. */
@@ -62,7 +63,9 @@ async function addMissingAdmins(installation: Installation, chatId: Types.Object
   if (!chat) return;
   const inside = new Set(chat.members.map((member) => String(member.userId)));
   const missing = (await spaceAdminIds(installation.workspaceId)).filter((userId) => !inside.has(String(userId)));
-  if (missing.length) await ChatModel.updateOne({ _id: chatId }, { $push: { members: { $each: missing.map((userId) => ({ userId, role: 'admin' })) } } });
+  if (!missing.length) return;
+  await ChatModel.updateOne({ _id: chatId }, { $push: { members: { $each: missing.map((userId) => ({ userId, role: 'admin' })) } } });
+  missing.forEach((userId) => noticeChannelJoined(userId, chatId));
 }
 
 /** Creates the channel the first time (201) and keeps the state up to date (200); the same body twice changes nothing. */
@@ -78,7 +81,7 @@ export async function upsertClientChannel(installation: Installation, clientId: 
     await addMissingAdmins(installation, existing.chatId);
     return { status: 200, client: toWire({ ...existing, ...valid.state }, now) };
   }
-  const chatId = await createClientChat(installation, valid.state.name);
+  const { chatId, admins } = await createClientChat(installation, valid.state.name);
   try {
     await ClientChannelModel.create({ ...key, chatId, ...valid.state });
   } catch (error) {
@@ -87,6 +90,8 @@ export async function upsertClientChannel(installation: Installation, clientId: 
     await ChatModel.deleteOne({ _id: chatId });
     return upsertClientChannel(installation, clientId, raw, now);
   }
+  // Their devices read the space again and the channel shows without reloading (José, 30/10).
+  admins.forEach((userId) => noticeChannelJoined(userId, chatId));
   return { status: 201, client: toWire({ clientId, chatId, ...valid.state }, now) };
 }
 

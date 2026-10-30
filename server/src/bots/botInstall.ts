@@ -1,7 +1,8 @@
 import { Types } from 'mongoose';
+import { newScopesOf } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
 import { UserModel } from '../models.js';
-import { BotInstallationModel, type BotApp, type BotInstallation } from './botModels.js';
+import { BotAppModel, BotInstallationModel, type BotApp, type BotInstallation } from './botModels.js';
 import { forgetBots } from './botRegistry.js';
 import { announceLater, announceSpaceApps } from './botAnnounce.js';
 import { newSecret, sha256 } from './botSecrets.js';
@@ -87,4 +88,19 @@ export async function revokeInstallation(installation: Pick<BotInstallation, '_i
 export async function installationByToken(token: string): Promise<BotInstallation | null> {
   if (!token.startsWith('lcb_')) return null;
   return BotInstallationModel.findOne({ tokenHash: sha256(token), revokedAt: { $exists: false } }).lean<BotInstallation | null>();
+}
+
+/**
+ * «Aceptar permisos» (José, 30/10): an admin accepts what the manifest asks
+ * now, with one tap and without reinstalling (which also rotated the token).
+ * Only known scopes count; `null` when the app is gone.
+ */
+export async function acceptAppScopes(installation: Pick<BotInstallation, '_id' | 'appId' | 'workspaceId'>): Promise<string[] | null> {
+  const app = await BotAppModel.findById(installation.appId).select('scopes').lean();
+  if (!app) return null;
+  const grantedScopes = newScopesOf(app.scopes, []);
+  await BotInstallationModel.updateOne({ _id: installation._id }, { $set: { grantedScopes } });
+  forgetBots();
+  announceLater(announceSpaceApps(installation.workspaceId));
+  return grantedScopes;
 }

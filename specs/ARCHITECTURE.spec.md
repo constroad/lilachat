@@ -4995,6 +4995,33 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 170. Canales de cliente que aparecen solos, sin cotizaciones sueltas, y «Aceptar permisos» (30/10/2026, servidor + OTA + web)
+
+Pedidos de José del 30/10.
+- **El canal nuevo aparece sin recargar.** El Almirante, Loroña y Astec
+  nacieron a las 11:14 y José no los veía. `createClientChat` creaba el chat
+  sin avisar a nadie. Ahora cada admin recibe `chat.changed`
+  (`noticeChannelJoined`), y también el admin que se suma con un PUT
+  posterior. Test: `botClients.test.ts` («the admins are told…»).
+- **Una cotización sola no lista al cliente.** `splitClients`
+  (`shared/spaceClients.ts › isListed`) deja afuera al cliente con 0 pedidos y
+  0 servicios, salvo que su canal tenga algo sin leer. El canal sigue
+  existiendo y sigue fuera de «Canales». El filtro de fondo lo hace Portal:
+  `last_activity_at` deja de contar cotizaciones y no emite al cliente que
+  solo cotizó (agentes se lo pasó a Portal, `clientNoticeContext.ts:93-101`).
+  Los 14 canales vacíos de Constroad quedan escondidos y no se borran.
+- **«Aceptar permisos».** `POST /api/workspaces/:id/apps/:appId/scopes`
+  (solo dueño o admin; si no, 403). Guarda en `grantedScopes` los permisos
+  conocidos que pide hoy el manifiesto, sin reinstalar ni rotar el token,
+  olvida la caché de bots y avisa a los miembros
+  (`botInstall.ts › acceptAppScopes`). El detalle de la app muestra
+  `NewPermissionsNotice` (app y web) con «Aceptar permisos». Un miembro común
+  lee «Un admin del espacio los acepta.». Tests: `botApps.test.ts`,
+  `web/src/spaces/apps/NewPermissionsNotice.test.tsx`.
+- **Reintento ante un 502/503 de la app** (a9d4ad3): si el cuerpo trae
+  `code`, es la respuesta de la app y no un reinicio. No se reintenta, y el
+  error queda como «HTTP 503 not-configured».
+
 ## 169. Drive del servicio a pedido: `client.files.requested` (29/10/2026, servidor + OTA + web; pendiente 121, diseño f-06, agentes c27e939)
 
 - **Contrato con agentes:**

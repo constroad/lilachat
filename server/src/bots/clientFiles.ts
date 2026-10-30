@@ -39,7 +39,7 @@ async function askerOf(userId: Types.ObjectId): Promise<Asker> {
 }
 
 /** The person sees one screen; the log keeps agentes' code (product_failed, not-configured, invalid-input). */
-function logUnanswered(label: string, reply: { status?: number; error?: string; body?: unknown }): void {
+function logUnanswered(label: string, reply: { status?: number | null; error?: string; body?: unknown }): void {
   const code = (reply.body as { code?: unknown } | null)?.code;
   console.warn(`[clientes] ${label} sin respuesta:`, reply.status ?? reply.error, typeof code === 'string' ? code : '');
 }

@@ -60,8 +60,8 @@ function SourceSwitch(props: { source: Source; channelFiles: number; onSource: (
 }
 
 /**
- * «Archivos» of a client's channel, ONE tab (José, 30/10: «una sola pestaña
- * Archivos»): what was uploaded to the checklist («Del canal») and Portal's
+ * «Archivos» of a client's channel, ONE tab (José asked for a single one on
+ * 30/10): what was uploaded to the checklist («Del canal») and Portal's
  * Drive, per service. The Drive left «Servicios».
  */
 export function ClientFilesPanel(props: { client: SpaceClient; target: ServiceAskTarget | null; stages: readonly WorkStage[]; onOpenMessage: (seq: number) => void }) {

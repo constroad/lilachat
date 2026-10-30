@@ -71,9 +71,9 @@ function DetailTabs({ detail }: { detail: ServiceDetail }) {
 }
 
 /**
- * A client's service as an expediente (José 30/10: «no veo cómo navegar en el
- * servicio, qué informes, qué pedidos, qué despachos»; design f-04): its head,
- * then Pedidos · Despachos · Informes with Portal's counts. Asked when it opens.
+ * A client's service as an expediente (José 30/10: there was no way to see a
+ * service's reports, orders and dispatches; design f-04): its head, then
+ * Pedidos · Despachos · Informes with Portal's counts. Asked when it opens.
  */
 export function ServiceDetailWeb(props: { target: ServiceAskTarget; service: SpaceClientService; onBack: () => void }) {
   const answer = useServiceAsk('detail', props.target, props.service.id);

@@ -3,7 +3,7 @@ import { alreadyGreeted, newAlbumId } from '@lilachat/shared';
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { PanelDeInfo } from './info/PanelDeInfo';
 import type { ChatAction } from './menuDelChat';
-import { fijadosVigentes, memberMay, memberPermissionDenied, puedeFijarEnElChat } from '@lilachat/shared';
+import { BLOCKED_BY_ME_COMPOSER, fijadosVigentes, memberMay, memberPermissionDenied, puedeFijarEnElChat } from '@lilachat/shared';
 import { DialogoFijar } from './DialogoFijar';
 import { FranjaDeFijados } from './FranjaDeFijados';
 import { ListaDeFijados, TarjetaDeFijados } from './fijados/ListaDeFijados';
@@ -120,7 +120,7 @@ export function ConversacionConAcciones(
   const canManage = puedeFijarEnElChat({ kind: chat.kind, esAdmin: detalle?.soyAdmin ?? false });
   const myRole = detalle?.soyAdmin ? 'admin' : 'member';
   const puedeFijar = canManage || (chat.kind === 'group' && memberMay({ permission: 'pinMessages', role: myRole, permissions: detalle?.memberPermissions }));
-  const sendLock = chat.kind === 'group' && detalle && !memberMay({ permission: 'sendMessages', role: myRole, permissions: detalle.memberPermissions }) ? memberPermissionDenied('sendMessages') : null;
+  const sendLock = detalle?.blockedByMe ? BLOCKED_BY_ME_COMPOSER : chat.kind === 'group' && detalle && !memberMay({ permission: 'sendMessages', role: myRole, permissions: detalle.memberPermissions }) ? memberPermissionDenied('sendMessages') : null;
   const fijados = useMemo(() => fijadosVigentes(chat.fijados, Date.now()), [chat.fijados]);
   const seqsFijados = useMemo(() => new Set(fijados.map((uno) => uno.seq)), [fijados]);
   const fijar = useFijarEnLaWeb({ chatId: chat.id, jwt: props.jwt, onAviso, onCambio: props.onRecargarChats });

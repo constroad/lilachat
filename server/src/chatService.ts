@@ -10,7 +10,7 @@ import {
 import { UserModel } from './models.js';
 import { ChatModel, MessageModel, ReceiptModel, type Chat, type Message, type ResumenDeHilo } from './chatModels.js';
 import { anotarRespuesta, descontarRespuesta, validarRaiz } from './hilos.js';
-import { CifradoRequeridoError, ForbiddenChatError, OnlyAdminsSendError } from './erroresDelChat.js';
+import { BlockedContactError, CifradoRequeridoError, ForbiddenChatError, OnlyAdminsSendError } from './erroresDelChat.js';
 
 export { CifradoRequeridoError, ForbiddenChatError } from './erroresDelChat.js';
 export * from './acusesDelChat.js';
@@ -131,11 +131,13 @@ export async function sendMessage(params: {
   const nextSeq = { $add: [{ $ifNull: ['$lastSeq', 0] }, 1] };
   const chat = await ChatModel.findOneAndUpdate(
     // A nudge or a wink carries no content, so it also goes in a secret chat (backlog 3).
-    { _id: chatId, 'members.userId': params.senderId, ...(params.envelope || isFunKind(params.kind) ? {} : { encrypted: { $ne: true } }), ...(params.skipMemberPermissions ? {} : mayWriteFilter(params.senderId)) },
+    { _id: chatId, 'members.userId': params.senderId, 'blockedBy.0': { $exists: false }, ...(params.envelope || isFunKind(params.kind) ? {} : { encrypted: { $ne: true } }), ...(params.skipMemberPermissions ? {} : mayWriteFilter(params.senderId)) },
     [{ $set: { lastSeq: nextSeq, lastMainSeq: hiddenInChat ? { $ifNull: ['$lastMainSeq', { $ifNull: ['$lastSeq', 0] }] } : nextSeq } }],
     { returnDocument: 'after', projection: { lastSeq: 1, kind: 1, 'members.userId': 1 }, updatePipeline: true }
   ).lean<{ lastSeq: number; kind?: string; members: { userId: Types.ObjectId }[] } | null>();
   if (!chat) {
+    const blocked = await ChatModel.findOne({ _id: chatId, 'members.userId': params.senderId, 'blockedBy.0': { $exists: true } }).select('blockedBy').lean();
+    if (blocked) throw new BlockedContactError((blocked.blockedBy ?? []).some((id) => String(id) === String(params.senderId)));
     if (!params.skipMemberPermissions && (await ChatModel.exists({ _id: chatId, 'members.userId': params.senderId, 'memberPermissions.sendMessages': false }))) {
       throw new OnlyAdminsSendError(memberPermissionDenied('sendMessages'));
     }

@@ -4995,6 +4995,45 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 165. Contactos bloqueados y bloqueo de la app (29/10/2026, servidor + OTA + web; pendiente 9)
+
+Sin diseño Stitch propio: sigue a WhatsApp.
+
+- **Bloquear** (`server/src/blockedContacts.ts`, `/api/me/blocked`):
+  - `GET` lista; `POST {userId}` bloquea; `DELETE /:userId` desbloquea.
+  - 400 a mí mismo o a un id inválido; 404 a quien no existe.
+  - Se guarda en `user.blockedUsers` y en `chat.blockedBy` de TODOS los 1:1
+    entre los dos (personal y de cada espacio). Así el envío no suma lecturas:
+    el filtro del `findOneAndUpdate` exige `blockedBy` vacío.
+  - Un 1:1 creado después del bloqueo nace cerrado (`blockedByAmong`).
+- **Qué cierra**:
+  - Mensajes en el 1:1, en los dos sentidos (`BlockedContactError`, 403). Quien
+    bloqueó lee «Desbloquea este contacto para escribirle.»; el otro, «No se
+    pudo entregar el mensaje.» y nunca sabe por qué.
+  - Llamadas: la oferta en un 1:1 bloqueado no se reenvía (`isBlockedChat`); el
+    que llama la oye sonar hasta su tiempo.
+  - Presencia: `contactIdsOf` saca a los dos lados, en vivo y en el snapshot.
+  - Los grupos en común siguen igual.
+- **El detalle** del 1:1 trae `blockedByMe` solo para quien bloqueó.
+- **UI**:
+  - App: tarjeta «Bloquear a …» en Ajustes del detalle del 1:1
+    (`BlockContactCard`, pide confirmación); en Ajustes → Privacidad,
+    «Contactos bloqueados» con «Desbloquear». El compositor del 1:1 bloqueado se
+    reemplaza por `BLOCKED_BY_ME_COMPOSER`.
+  - Web: `BlockContactRow` en el panel de info y `BlockedContactsChoice` en el
+    panel de ajustes; mismo texto en el compositor.
+- **Bloqueo de la app** (solo teléfono, `app/src/settings/appLock.ts`):
+  - Ajustes → Privacidad → «Bloqueo de la app»: pide la huella, el rostro o el
+    bloqueo del teléfono. Activarlo y quitarlo también lo piden.
+  - Espera: inmediatamente, 1 minuto (por defecto) o 30 minutos
+    (`APP_LOCK_DELAYS`, motor `appLockDue` con test en shared).
+  - Un arranque en frío con el bloqueo puesto siempre pide. Mientras el aviso
+    del sistema está abierto, los cambios de `AppState` no cuentan.
+  - Un teléfono sin bloqueo de pantalla no puede activarlo: la fila lo dice.
+  - `AppLockGate` tapa la navegación; las pantallas de llamada quedan encima,
+    para contestar sin desbloquear, como WhatsApp.
+- **Deuda**: la web no tiene bloqueo propio (WhatsApp Web usa contraseña).
+
 ## 164. Permisos del grupo (29/10/2026, servidor + OTA + web; pendiente 8, diseño `permisos-admin`)
 
 - **Qué decide el admin**: cuatro interruptores sobre lo que pueden hacer los

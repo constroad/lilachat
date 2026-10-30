@@ -22,6 +22,8 @@ export type DetalleDelChat = {
   funAllowed?: boolean;
   /** What the members may do (pending 8); unknown counts as the defaults. */
   memberPermissions?: unknown;
+  /** Pending 9: in a 1:1, whether I blocked the other one. */
+  blockedByMe?: boolean;
   /** Birthdays on in this chat (pending 17). */
   birthdaysOn?: boolean;
   /** A channel (pending 93): who finds it, and whether it is #general. */
@@ -38,6 +40,7 @@ export type Respuesta = {
   descripcion?: string;
   funAllowed?: boolean;
   memberPermissions?: unknown;
+  blockedByMe?: boolean;
   birthdaysOn?: boolean;
   channel?: { visibility: 'public' | 'private'; general: boolean };
   members: { id: string; name: string | null; phone: string | null; avatarUrl?: string; role?: 'admin' | 'member'; esYo?: boolean; title?: string; spaceRole?: string; app?: boolean }[];
@@ -72,6 +75,7 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
     descripcion: respuesta.descripcion,
     funAllowed: respuesta.funAllowed === true,
     memberPermissions: respuesta.memberPermissions,
+    blockedByMe: respuesta.blockedByMe === true,
     birthdaysOn: respuesta.birthdaysOn === true,
     ...(respuesta.channel ? { channel: { isPrivate: respuesta.channel.visibility === 'private', general: respuesta.channel.general } } : {}),
     appIds: new Set(respuesta.members.filter((member) => member.app).map((member) => member.id)),

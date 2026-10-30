@@ -46,6 +46,8 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId) {
     // Pending 8: what the members may do; the screen shows it to everyone and lets admins change it.
     ...(chat.kind === 'group' ? { memberPermissions: memberPermissionsOf(chat.memberPermissions) } : {}),
     birthdaysOn: chat.birthdaysOn === true,
+    // Pending 9: only whoever blocked learns it; the other side sees a normal 1:1.
+    ...(chat.kind === 'direct' ? { blockedByMe: (chat.blockedBy ?? []).some((id) => String(id) === String(userId)) } : {}),
     encrypted: chat.encrypted === true,
     // Pending 93: a channel's admins change who finds it; #general is always public.
     ...(chat.channel ? { channel: { visibility: chat.channel.visibility, general: chat.name === GENERAL_CHANNEL } } : {}),

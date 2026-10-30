@@ -28,6 +28,7 @@ import { useDisposicion } from './useDisposicion';
 import { ConMargenesLaterales, SinMargenArriba } from './PanelDeChat';
 import type { Tab } from './BottomNav';
 import { ReminderAlarmHost } from '../agenda/ReminderAlarmHost';
+import { AppLockGate } from '../settings/AppLockGate';
 import { WhatsNewHost } from '../settings/WhatsNewHost';
 import { SilentUpdateHost } from '../updates/SilentUpdateHost';
 
@@ -226,6 +227,8 @@ export function NavegacionDeSesion(props: {
         </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
+    {/* Pending 9: the app lock covers the chats; the call screens above stay reachable. */}
+    <AppLockGate />
     <FullScreenCallsPrompt />
     <CallLinkOpener jwt={props.credential.jwt} />
     </ProveedorDeLlamadas>

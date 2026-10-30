@@ -4,7 +4,7 @@ import { getSocket } from './socketClient';
 import type { MentionableMember } from './useMenciones';
 import { fotosPorMiembro, membresiaPorRespuesta, nombresPorMiembro, type MiembroConNombre } from './nombresDelGrupo';
 import { pillOf } from './nombresDelGrupo';
-import { memberMay, memberPermissionDenied, type MemberPermission, type MemberPill } from '@lilachat/shared';
+import { BLOCKED_BY_ME_COMPOSER, memberMay, memberPermissionDenied, type MemberPermission, type MemberPill } from '@lilachat/shared';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
 const PLAZO_MS = 10_000;
@@ -15,6 +15,8 @@ const cache = new Map<string, MiembroConNombre[]>();
 const funCache = new Map<string, boolean>();
 /** What the members may do (pending 8), read with the detail. */
 const permissionsCache = new Map<string, unknown>();
+/** Pending 9: in a 1:1, whether I blocked the other one. */
+const blockedCache = new Map<string, boolean>();
 
 /**
  * What the conversation needs from its members (FL3, FL9d): each member's
@@ -44,32 +46,33 @@ export function useGrupo(
   members: readonly MiembroConNombre[];
   /** Pending 8: may I do it in this group? An admin always may; unknown permissions count as the defaults. */
   may: (yo: string, permission: MemberPermission) => boolean;
-  /** Why I cannot write here (admins only), or `null`. */
+  /** Why I cannot write here (admins only, or I blocked this contact), or `null`. */
   sendLock: (yo: string) => string | null;
 } {
   const agenda = useSyncExternalStore(suscribirAgenda, agendaPorTelefono, agendaPorTelefono);
   const [miembros, setMiembros] = useState<MiembroConNombre[]>(() => cache.get(chatId) ?? []);
   const [funAllowed, setFunAllowed] = useState<boolean | undefined>(() => funCache.get(chatId));
   const [permissions, setPermissions] = useState<unknown>(() => permissionsCache.get(chatId));
+  const [blockedByMe, setBlockedByMe] = useState(() => blockedCache.get(chatId) === true);
   const [soyMiembro, setSoyMiembro] = useState<boolean | null>(null);
   const [version, setVersion] = useState(0);
 
   // El server avisa cambios del chat: se vuelve a preguntar.
   useEffect(() => {
-    if (!esGrupo) return;
     const socket = getSocket();
     const alCambiar = (frame: { chatId?: string }) => {
       if (frame?.chatId !== chatId) return;
       cache.delete(chatId);
       funCache.delete(chatId);
       permissionsCache.delete(chatId);
+      blockedCache.delete(chatId);
       setVersion((actual) => actual + 1);
     };
     socket?.on('chat.changed', alCambiar);
     return () => {
       socket?.off('chat.changed', alCambiar);
     };
-  }, [chatId, esGrupo]);
+  }, [chatId]);
 
   useEffect(() => {
     if (cache.has(chatId)) return;
@@ -83,15 +86,17 @@ export function useGrupo(
         const membresia = membresiaPorRespuesta(respuesta.status);
         if (vigente && esGrupo && membresia !== null) setSoyMiembro(membresia);
         if (!respuesta.ok) return;
-        const detail = (await respuesta.json()) as { members?: MiembroConNombre[]; funAllowed?: boolean; memberPermissions?: unknown };
+        const detail = (await respuesta.json()) as { members?: MiembroConNombre[]; funAllowed?: boolean; memberPermissions?: unknown; blockedByMe?: boolean };
         const loaded = detail.members ?? [];
         cache.set(chatId, loaded);
         funCache.set(chatId, detail.funAllowed === true);
         permissionsCache.set(chatId, detail.memberPermissions);
+        blockedCache.set(chatId, detail.blockedByMe === true);
         if (vigente) {
           setMiembros(loaded);
           setFunAllowed(detail.funAllowed === true);
           setPermissions(detail.memberPermissions);
+          setBlockedByMe(detail.blockedByMe === true);
         }
       } catch {
         // Sin red: las burbujas van sin nombre y la membresía queda como estaba.
@@ -112,6 +117,6 @@ export function useGrupo(
   const roleById = useMemo(() => new Map<string, MemberPill>(miembros.map((member) => [member.id, pillOf(member)])), [miembros]);
   const may = useCallback((yo: string, permission: MemberPermission) => !esGrupo || memberMay({ permission, role: soyAdmin(yo) ? 'admin' : 'member', permissions }), [esGrupo, soyAdmin, permissions]);
   // Only once the members arrived: an admin must not see the lock flash while the detail loads.
-  const sendLock = useCallback((yo: string) => (miembros.length && !may(yo, 'sendMessages') ? memberPermissionDenied('sendMessages') : null), [miembros.length, may]);
+  const sendLock = useCallback((yo: string) => (blockedByMe ? BLOCKED_BY_ME_COMPOSER : miembros.length && !may(yo, 'sendMessages') ? memberPermissionDenied('sendMessages') : null), [blockedByMe, miembros.length, may]);
   return { nombres, fotos, soyMiembro, mencionables, soyAdmin, roles: roleById, funAllowed, members: miembros, may, sendLock };
 }

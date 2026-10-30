@@ -2,6 +2,7 @@ import { allActiveIn } from './workspaceChats.js';
 import { ensureGeneralChannel } from './workspaceGeneral.js';
 import { activityCounts } from './activityRoutes.js';
 import { Router } from 'express';
+import { blockedByAmong } from './blockedContacts.js';
 import { Types } from 'mongoose';
 import { PUSH_CAPABILITIES, normalizarNombreDeGrupo, NOTIFICATION_LEVELS, notificationLevel, textoDeAviso } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
@@ -250,8 +251,11 @@ export function buildChatRouter(uploader: MediaUploader = defaultMediaUploader()
       if (existente) return res.status(201).json({ chatId: String(existente._id) });
     }
 
+    // Pending 9: a 1:1 with someone on the other side of a block is born closed.
+    const blockedBy = kind === 'direct' ? await blockedByAmong([...unique.values()]) : [];
     const chat = await ChatModel.create({
       kind,
+      ...(blockedBy.length > 0 ? { blockedBy } : {}),
       // Se decide AL CREAR y no se puede cambiar después: un chat que a veces
       // cifra y a veces no da una promesa que nadie puede sostener (F9).
       encrypted: req.body?.encrypted === true,

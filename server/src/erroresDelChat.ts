@@ -23,6 +23,15 @@ export class CifradoRequeridoError extends ForbiddenChatError {
   }
 }
 
+/** Pending 9: a blocked 1:1. Whoever blocked is told how to undo it; the other side never learns why. */
+export class BlockedContactError extends ForbiddenChatError {
+  constructor(blockedByMe: boolean) {
+    super();
+    this.message = blockedByMe ? 'Desbloquea este contacto para escribirle.' : 'No se pudo entregar el mensaje.';
+    this.name = 'BlockedContactError';
+  }
+}
+
 /** Pending 8: the group's admins turned off «send messages» for the rest. */
 export class OnlyAdminsSendError extends ForbiddenChatError {
   constructor(message: string) {

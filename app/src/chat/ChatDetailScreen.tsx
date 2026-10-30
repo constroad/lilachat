@@ -37,6 +37,7 @@ import { RecordatoriosDelGrupo } from './RecordatoriosDelGrupo';
 import { EditarDescripcion, TarjetaDeDescripcion } from './descripcion/DescripcionDelGrupo';
 import { BirthdaysCard, GroupFunCard, ChannelVisibilityCard } from './GroupFunCard';
 import { GroupPermissionsCard } from './GroupPermissionsCard';
+import { BlockContactCard } from './BlockContactCard';
 import { SeccionCompartido } from './CompartidoEnElChat';
 import { useMargenes } from '../ui/useMargenes';
 import type { ServerMessage } from './socketClient';
@@ -70,6 +71,8 @@ type Detalle = {
   funAllowed?: boolean;
   /** What the members may do (pending 8). */
   memberPermissions?: MemberPermissions;
+  /** Pending 9: in a 1:1, whether I blocked the other one. */
+  blockedByMe?: boolean;
   birthdaysOn?: boolean;
   /** A channel (pending 93): who finds it, and whether it is #general. */
   channel?: { visibility: 'public' | 'private'; general: boolean };
@@ -496,6 +499,7 @@ export function ChatDetailScreen({
             ) : null}
             {tab === 'settings' && detalle!.channel ? <ChannelVisibilityCard chatId={chatId} jwt={credential.jwt} isPrivate={detalle!.channel.visibility === 'private'} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} isGeneral={detalle!.channel.general} /> : null}
             {tab === 'settings' && esGrupo ? <GroupPermissionsCard chatId={chatId} jwt={credential.jwt} permissions={detalle!.memberPermissions} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} /> : null}
+            {tab === 'settings' && detalle!.kind === 'direct' && detalle!.members.some((uno) => !uno.esYo) ? <BlockContactCard jwt={credential.jwt} personId={detalle!.members.find((uno) => !uno.esYo)!.id} name={nombreVisible} blockedByMe={detalle!.blockedByMe === true} /> : null}
             {tab === 'settings' && esGrupo ? <GroupFunCard chatId={chatId} jwt={credential.jwt} allowed={detalle!.funAllowed === true} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} /> : null}
             {tab === 'settings' && !esBorrador ? <BirthdaysCard chatId={chatId} jwt={credential.jwt} on={detalle!.birthdaysOn === true} isGroup={esGrupo} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} /> : null}
             {/* 20/10: también en un 1:1 y en un borrador (ahí cualquiera los administra); no en un chat secreto. */}

@@ -18,6 +18,7 @@ import {
 } from './chatService.js';
 import { toClientMessages } from './messageView.js';
 import { isOnline, markOffline, markOnline } from './presence.js';
+import { isBlockedChat } from './blockedContacts.js';
 import { contactIdsOf, loadPresencePrefs, presenceFrameOf, presencePrefsOf, presenceSnapshot } from './presenceModes.js';
 import { guardarUltimaVez, ultimaVezDeContacto } from './ultimaVez.js';
 import { autoResponderA } from './autoReply.js';
@@ -287,6 +288,7 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
         try {
           const members = await chatMemberIds(new Types.ObjectId(payload.chatId));
           if (!members.includes(String(userId))) return;
+          if (evento === 'call.offer' && (await isBlockedChat(payload.chatId))) return;
 
           const frame = await frameConAutor(evento, payload, String(userId));
           for (const member of members) {

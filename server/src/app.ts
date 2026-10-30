@@ -19,6 +19,7 @@ import { buildContactRouter } from './contactRoutes.js';
 import { buildKeyRouter } from './keyRoutes.js';
 import { buildCallRouter } from './callRoutes.js';
 import { buildMeRouter } from './meRoutes.js';
+import { buildBlockedRouter } from './blockedContacts.js';
 import { buildChatListsRouter } from './chatListRoutes.js';
 import { buildCallLinksRouter } from './callLinks.js';
 import { buildBirthdaysRouter } from './birthdays.js';
@@ -165,6 +166,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/keys', buildKeyRouter());
   app.use('/api/calls', buildCallRouter());
   app.use('/api/me', buildProfileRouter(deps.authClient ?? buildHttpAuthClient()));
+  app.use('/api/me/blocked', buildBlockedRouter());
   app.use('/api/me', buildMeRouter(deps.mediaUploader));
   app.use('/api/me', buildStorageRouter());
   app.use('/api/chat-lists', buildChatListsRouter());

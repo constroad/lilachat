@@ -76,6 +76,8 @@ export interface Chat {
   funAllowed?: boolean;
   /** What the members of a group may do, set by its admins (pending 8); unset = `DEFAULT_MEMBER_PERMISSIONS`. */
   memberPermissions?: { editInfo?: boolean; sendMessages?: boolean; addMembers?: boolean; pinMessages?: boolean };
+  /** In a 1:1, who of the two blocked the other (pending 9); while it has anyone, nobody writes. */
+  blockedBy?: Types.ObjectId[];
   /** Apps an admin took out of this channel (pending 91): they do not rejoin on their own. */
   appsRemoved?: Types.ObjectId[];
   /** Birthdays on in this chat (pending 17), and the day each member's was announced. */
@@ -242,6 +244,7 @@ const chatSchema = new Schema<Chat>(
     lastSeq: { type: Number, default: 0 },
     lastMainSeq: { type: Number },
     encrypted: { type: Boolean, default: false },
+    blockedBy: { type: [Schema.Types.ObjectId], default: undefined },
     fijados: {
       type: [{ seq: { type: Number, required: true }, por: { type: Schema.Types.ObjectId, required: true }, en: { type: Date, required: true }, hasta: { type: Date, required: true }, _id: false }],
       default: undefined,

@@ -13,6 +13,8 @@ import { AparienciaAjuste } from './AparienciaAjuste';
 import { ChatFontSetting } from './ChatFontSetting';
 import { GroupsAsListSetting } from './GroupsAsListSetting';
 import { AutoRespuestaAjuste } from './AutoRespuestaAjuste';
+import { AppLockSetting } from './AppLockSetting';
+import { BlockedContactsSetting } from './BlockedContactsSetting';
 import { PresenceSetting } from './presence/PresenceSetting';
 import { BuscarActualizacionesAjuste } from './BuscarActualizacionesAjuste';
 import { DispositivosVinculadosAjuste } from './DispositivosVinculadosAjuste';
@@ -80,6 +82,12 @@ export function PantallaDeAjustes(props: {
         <AparienciaAjuste />
 
         <ChatFontSetting />
+
+        <Rotulo>Privacidad</Rotulo>
+        <GrupoDeAjustes>
+          <AppLockSetting />
+          <BlockedContactsSetting jwt={credential.jwt} />
+        </GrupoDeAjustes>
 
         <Rotulo>Notificaciones</Rotulo>
         {/* Solo aparece si Android las negó: es un aviso, no un ajuste más. */}

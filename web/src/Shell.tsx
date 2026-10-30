@@ -31,6 +31,7 @@ import { useAccionesSobreChats } from './sync/accionesSobreChats';
 import { TAMANO_DE_PAGINA, useSincronizacion } from './sync/useSincronizacion';
 import { useSocket } from './useSocket';
 import { ChatFontChoice, GroupsAsListChoice, PresenceChoice } from './ui/settingsChoices';
+import { BlockedContactsChoice } from './privacy/BlockedContactsChoice';
 import { StorageChoice } from './storage/StorageChoice';
 import { WhatsNewDialog } from './ui/WhatsNewDialog';
 import { chatNameWithAgenda } from './contacts/phoneAgenda';
@@ -455,6 +456,7 @@ function PanelDeAjustes(props: {
       <ChatFontChoice />
       <GroupsAsListChoice />
       <StorageChoice userId={props.userId} />
+      <BlockedContactsChoice jwt={jwt} onNotice={onAviso} />
       <button type="button" data-testid="btn-notificaciones" onClick={() => void alternar()} className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-left text-sm hover:bg-background">
         {push === 'encendido' ? <BellOff size={16} /> : <Bell size={16} />}
         <span className="min-w-0 flex-1">{push === 'encendido' ? 'Desactivar notificaciones' : 'Activar notificaciones'}</span>

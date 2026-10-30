@@ -3,6 +3,7 @@ import { broadcastStatus, isPresenceMode, type PresenceMode, type PresenceStatus
 import { ChatModel } from './chatModels.js';
 import { UserModel } from './models.js';
 import { isOnline, onlineAmong } from './presence.js';
+import { blockedEitherWay } from './blockedContacts.js';
 
 /**
  * The presence each person chooses (pending 15): «En línea» (automatic),
@@ -56,7 +57,10 @@ export function presenceFrameOf(userId: string): { userId: string; online: boole
  * only ones it may be told to. A stranger has no business knowing I am online.
  */
 export async function contactIdsOf(userId: Types.ObjectId | string): Promise<string[]> {
-  const chats = await ChatModel.find({ 'members.userId': userId }).select('members.userId').lean();
+  const [chats, blocks] = await Promise.all([
+    ChatModel.find({ 'members.userId': userId }).select('members.userId').lean(),
+    blockedEitherWay(userId),
+  ]);
   const ids = new Set<string>();
   for (const chat of chats) {
     for (const member of chat.members) {
@@ -64,7 +68,7 @@ export async function contactIdsOf(userId: Types.ObjectId | string): Promise<str
       if (id !== String(userId)) ids.add(id);
     }
   }
-  return [...ids];
+  return [...ids].filter((id) => !blocks.has(id));
 }
 
 export function __resetPresenceModes(): void {

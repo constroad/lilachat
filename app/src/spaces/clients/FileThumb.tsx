@@ -5,8 +5,8 @@ import { mimeOf, type ViewableFile } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 
 /**
- * A Portal file's thumbnail (José 30/10 night: «¿por qué no se muestra el
- * thumbnail?»): the photo or its preview, a video's frame with a play mark,
+ * A Portal file's thumbnail (José 30/10 night asked why it did not show the
+ * thumbnail): the photo or its preview, a video's frame with a play mark,
  * a PDF and any other file as a tile. Decoded at its own small size.
  */
 export function FileThumb(props: { file: ViewableFile; size?: number }) {

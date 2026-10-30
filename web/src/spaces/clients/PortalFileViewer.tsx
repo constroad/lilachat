@@ -64,8 +64,8 @@ export function usePortalFileViewer() {
 }
 
 /**
- * The file's thumbnail (José 30/10 night: «¿por qué no se muestra el
- * thumbnail?»): the photo itself or its preview, a video's frame with a play
+ * The file's thumbnail (José 30/10 night asked why it did not show the
+ * thumbnail): the photo itself or its preview, a video's frame with a play
  * mark, a PDF and any other file as a tile.
  */
 export function FileThumb(props: { file: ViewableFile; size?: number }) {

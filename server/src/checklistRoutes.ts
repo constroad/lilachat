@@ -6,6 +6,7 @@ import { ChatModel, MessageModel } from './chatModels.js';
 import { ChecklistModel, type Checklist, type TaskEvidenceEntry } from './checklistModel.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { asyncRoute, requireSession } from './requireSession.js';
+import { ownTasksOnly, stageScopeFor } from './stageAccess.js';
 import { avisarCambioDeTarjeta } from './avisoDeTarjeta.js';
 import { deleteMessage } from './chatService.js';
 import { avisarCambioDeChat, notifyDeleted } from './reparto.js';
@@ -31,16 +32,30 @@ export function view(checklist: Checklist): AgendaChecklist {
   };
 }
 
-/** The checklist if it exists and I am in its chat; otherwise 404 (it is not confirmed to exist) and null. */
-async function checklistOfMember(id: unknown, userId: Types.ObjectId, res: Response): Promise<Checklist | null> {
+/** A stage a restricted member sees only partly (José 30/10 night): it comes with their tasks only. */
+type Seen = Checklist & { ownOnly?: true };
+
+/**
+ * The checklist if it exists and I am in its chat; otherwise 404 (it is not confirmed to exist) and null.
+ * A stage hidden to a restricted member is a 404 too; one they see partly comes with their tasks and is not `edit`able.
+ */
+async function checklistOfMember(id: unknown, userId: Types.ObjectId, res: Response, need: 'read' | 'edit' = 'read'): Promise<Seen | null> {
   const checklist = typeof id === 'string' && Types.ObjectId.isValid(id) ? await ChecklistModel.findById(id).lean() : null;
   const member = checklist && (await ChatModel.exists({ _id: checklist.chatId, 'members.userId': userId }));
-  if (!checklist || !member) {
+  const scope = checklist && member ? await stageScopeFor(checklist, userId) : 'none';
+  if (!checklist || scope === 'none') {
     res.status(404).json({ message: 'Ese checklist ya no está.' });
     return null;
   }
-  return checklist;
+  if (scope === 'own' && need === 'edit') {
+    res.status(403).json({ message: 'En esta etapa solo marcas las tareas que te asignaron.' });
+    return null;
+  }
+  return scope === 'own' ? { ...ownTasksOnly(checklist, userId), ownOnly: true } : checklist;
 }
+
+/** What goes back after a change: a partly seen stage keeps showing only my tasks. */
+const shownTo = (seen: Seen, updated: Checklist, userId: Types.ObjectId) => view(seen.ownOnly ? ownTasksOnly(updated, userId) : updated);
 
 /** How many checklists the chat info and «Mis tareas» bring. */
 const LIST_LIMIT = 50;
@@ -48,7 +63,7 @@ const MINE_LIMIT = 100;
 
 /** The checklist if I may edit its tasks (who made it, or anyone if «los demás pueden agregar»); otherwise answers and null. */
 async function editableChecklist(id: unknown, userId: Types.ObjectId, res: Response): Promise<Checklist | null> {
-  const checklist = await checklistOfMember(id, userId, res);
+  const checklist = await checklistOfMember(id, userId, res, 'edit');
   if (!checklist) return null;
   if (!checklistPermissions({ me: String(userId), createdBy: String(checklist.createdBy), othersCanMark: checklist.othersCanMark, othersCanAdd: checklist.othersCanAdd }).canAdd) {
     res.status(403).json({ message: 'Solo quien lo creó edita las tareas.' });
@@ -185,7 +200,7 @@ export function buildChecklistRouter(): Router {
       { returnDocument: 'after' }
     ).lean();
     if (!updated) return res.status(409).json({ message: 'Alguien la marcó al mismo tiempo. Mira cómo quedó.' });
-    res.json({ checklist: view(updated) });
+    res.json({ checklist: shownTo(checklist, updated, userId) });
     announce(updated);
     noteTaskToggle(String(updated._id), String(userId), item.id, Boolean(item.doneBy));
     // A bot's checklist (`bots/`): the bot hears which task changed and who did it.
@@ -196,7 +211,7 @@ export function buildChecklistRouter(): Router {
 
   router.post('/checklists/:id/items', asyncRoute(async (req, res) => {
     const userId = req.session!.userId;
-    const checklist = await checklistOfMember(req.params.id, userId, res);
+    const checklist = await checklistOfMember(req.params.id, userId, res, 'edit');
     if (!checklist) return;
     if (!checklistPermissions({ me: String(userId), createdBy: String(checklist.createdBy), othersCanMark: checklist.othersCanMark, othersCanAdd: checklist.othersCanAdd }).canAdd) {
       return res.status(403).json({ message: 'Solo quien lo creó agrega tareas.' });
@@ -238,7 +253,7 @@ export function buildChecklistRouter(): Router {
   /** Its author renames it and decides again who ticks and adds (José, 21/10: «¿cómo edito un checklist?»). */
   router.patch('/checklists/:id', asyncRoute(async (req, res) => {
     const userId = req.session!.userId;
-    const checklist = await checklistOfMember(req.params.id, userId, res);
+    const checklist = await checklistOfMember(req.params.id, userId, res, 'edit');
     if (!checklist) return;
     if (String(checklist.createdBy) !== String(userId)) return res.status(403).json({ message: 'Solo quien lo creó lo edita.' });
     const set: Partial<Pick<Checklist, 'title' | 'othersCanMark' | 'othersCanAdd'>> = {};
@@ -259,7 +274,7 @@ export function buildChecklistRouter(): Router {
 
   router.delete('/checklists/:id', asyncRoute(async (req, res) => {
     const userId = req.session!.userId;
-    const checklist = await checklistOfMember(req.params.id, userId, res);
+    const checklist = await checklistOfMember(req.params.id, userId, res, 'edit');
     if (!checklist) return;
     if (String(checklist.createdBy) !== String(userId)) return res.status(403).json({ message: 'Solo quien lo creó lo borra.' });
     await ChecklistModel.deleteOne({ _id: checklist._id });

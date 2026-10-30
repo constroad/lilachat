@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { askReportPdfUntilDone, reportPdfPath, type ReportPdfBody } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
-import type { ViewableFile } from './fileViewer';
+import type { ViewableFile } from '@lilachat/shared';
 import type { ServiceAskTarget } from './useServiceAsk';
 
 const PDF_MIME = 'application/pdf';

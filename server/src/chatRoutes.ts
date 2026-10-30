@@ -1,6 +1,7 @@
 import { allActiveIn } from './workspaceChats.js';
 import { ensureGeneralChannel } from './workspaceGeneral.js';
 import { activityCounts } from './activityRoutes.js';
+import { joinAccessOf } from './bots/clientBillingViewers.js';
 import { Router } from 'express';
 import { blockedByAmong } from './blockedContacts.js';
 import { Types } from 'mongoose';
@@ -402,10 +403,14 @@ export function buildChatRouter(uploader: MediaUploader = defaultMediaUploader()
 
     // José 30/10: whoever adds chooses whether they see the history; an app that does not say keeps the old behavior.
     const history = typeof req.body?.history === 'boolean' ? req.body.history : undefined;
+    // José 30/10 night: in a client's channel an admin may add someone who only sees some tabs and stages.
+    const access = await joinAccessOf(req.params.chatId!, userId, aQuien, req.body?.access);
+    if (!access.ok) return res.status(access.status).json({ message: access.message });
     const r = await addMember({ chatId: req.params.chatId!, quien: userId, aQuien, history });
     // El motivo VIAJA: un «no» mudo en una pantalla de permisos se lee como que
     // la app se colgó, y acá los motivos son accionables («ya está en el grupo»).
     if (!r.ok) return res.status(r.status ?? 400).json({ message: r.motivo });
+    await access.save?.();
 
     // A todos los miembros, incluido el nuevo: su lista de chats tiene que
     // mostrarle el grupo sin que tenga que reabrir la app.

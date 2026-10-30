@@ -64,6 +64,7 @@ describe('rows and tabs', () => {
     expect(moreInPortal(100, 148)).toBe('Mostrando 100 de 148');
     expect(moreInPortal(3, 3)).toBeNull();
     expect(detailTabs(serviceDetailOf(body)!).map((tab) => tab.label)).toEqual(['Pedidos · 148', 'Despachos · 1', 'Informes · 1']);
-    expect(detailTabs({ ...serviceDetailOf(body)!, quotes: [], totals: { orders: 0, dispatches: 0, reports: 0, quotes: 2 } }).map((tab) => tab.key)).toEqual(['orders', 'dispatches', 'reports', 'quotes']);
+    // José 30/10 night: Cotizaciones and Cobranza go first.
+    expect(detailTabs({ ...serviceDetailOf(body)!, quotes: [], totals: { orders: 0, dispatches: 0, reports: 0, quotes: 2 } }).map((tab) => tab.key)).toEqual(['quotes', 'orders', 'dispatches', 'reports']);
   });
 });

@@ -1,5 +1,6 @@
-import { Receipt } from 'lucide-react';
-import { billingSummary, dayOf, dueStatus, longDayOf, moneyOf, type BillingItem, type BillingPayment, type ServiceBilling } from '@lilachat/shared';
+import { FileText, Receipt } from 'lucide-react';
+import { billingSummary, dayOf, dueStatus, longDayOf, moneyOf, type BillingItem, type BillingPayment, type InvoiceRow, type ServiceBilling } from '@lilachat/shared';
+import type { OpenSheetFile } from './RecordSheetWeb';
 import { DETAIL_TONE } from './tones';
 
 const Kicker = ({ children }: { children: string }) => <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{children}</p>;
@@ -76,12 +77,31 @@ function Payments({ payments }: { payments: BillingPayment[] }) {
   );
 }
 
+/** José 30/10 night: «¿las facturas van en cobranza?» — yes, each order's invoice, opened in the viewer. */
+function Invoices({ invoices, onOpenFile }: { invoices: InvoiceRow[]; onOpenFile?: OpenSheetFile }) {
+  if (!invoices.length) return null;
+  return (
+    <section data-testid="facturas" className="rounded-xl border border-outline/15 bg-surface p-4">
+      <div className="flex justify-between"><Kicker>Facturas</Kicker><span className="text-[12px] text-on-surface-variant">{invoices.length}</span></div>
+      <ul className="mt-2 divide-y divide-outline/10">
+        {invoices.map((invoice) => (
+          <li key={invoice.id} className="flex items-center gap-3 py-2.5">
+            <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{invoice.label}</p>{invoice.line ? <p className="truncate text-[12px] text-on-surface-variant">{invoice.line}</p> : null}</div>
+            {invoice.url && onOpenFile ? <button type="button" data-testid={`factura-${invoice.id}`} onClick={() => onOpenFile({ url: invoice.url!, name: invoice.label })} className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary hover:underline"><FileText size={14} /> Ver</button> : null}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /** «Cobranza» of a service (design f-05): only reaches whoever may see it (admins, or marked in the channel). */
-export function ServiceBillingWeb({ billing }: { billing: ServiceBilling }) {
+export function ServiceBillingWeb({ billing, invoices = [], onOpenFile }: { billing: ServiceBilling; invoices?: InvoiceRow[]; onOpenFile?: OpenSheetFile }) {
   return (
     <div data-testid="cobranza" className="flex flex-col gap-3">
       <PaymentCondition billing={billing} paidOff={billingSummary(billing).paidOff} />
       <CollectionState billing={billing} />
+      <Invoices invoices={invoices} onOpenFile={onOpenFile} />
       <Items items={billing.items} />
       <Payments payments={billing.payments} />
     </div>

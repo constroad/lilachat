@@ -1,10 +1,11 @@
 import { model, Schema, Types } from 'mongoose';
-import { archivedAgeGroup, archivedSince, CLIENT_ID, isClientChannelLive, validateClientState, type ClientService, type ClientState } from '@lilachat/shared';
+import { archivedAgeGroup, archivedSince, canManageMembers, CLIENT_ID, isClientChannelLive, validateClientState, type ClientService, type ClientState, type MemberAccess } from '@lilachat/shared';
 import { ChatModel, MessageModel } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { noticeChannelJoined } from '../workspaceNotices.js';
 import { actorIn } from '../workspaces.js';
 import type { BotInstallation } from './botModels.js';
+import { accessOf } from '../stageAccess.js';
 
 /**
  * A channel per client of the company (pending 21, §157). The app (agentes)
@@ -21,11 +22,15 @@ export type ClientChannel = ClientState & {
   chatId: Types.ObjectId;
   /** Channel members an admin marked to see the collection (José 30/10); admins always see it. */
   billingViewers: Types.ObjectId[];
+  /** Members who only see the tabs and stages an admin picked (José 30/10 night); everyone else sees the whole channel. */
+  restrictedMembers: RestrictedMember[];
   updatedAt: Date;
 };
+export type RestrictedMember = MemberAccess & { userId: Types.ObjectId };
 type Installation = Pick<BotInstallation, '_id' | 'appId' | 'workspaceId' | 'botUserId'>;
 type ClientsError = { status: 400 | 404; error: string; message: string };
 
+const restrictedSchema = new Schema<RestrictedMember>({ userId: { type: Schema.Types.ObjectId, required: true }, tabs: { type: [String], default: [] }, stages: { type: [String], default: [] } }, { _id: false });
 const serviceSchema = new Schema<ClientService>({ id: String, name: String, status: String, stage: String, stageLabel: String, progress: Number, url: String, closedAt: String }, { _id: false });
 const clientChannelSchema = new Schema<ClientChannel>(
   {
@@ -41,6 +46,7 @@ const clientChannelSchema = new Schema<ClientChannel>(
     ordersTotal: { type: Number, default: 0 },
     services: { type: [serviceSchema], default: [] },
     billingViewers: { type: [Schema.Types.ObjectId], default: [] },
+    restrictedMembers: { type: [restrictedSchema], default: [] },
   },
   { timestamps: { createdAt: false, updatedAt: true } },
 );
@@ -122,10 +128,11 @@ export async function chatOfClient(installation: Installation, clientId: string)
 
 /** The space's clients whose private channel this member is in (designs f-01/f-02): live first, then by last movement. */
 export async function listClients(workspaceId: string, userId: Types.ObjectId, now = new Date()) {
-  await actorIn(workspaceId, userId);
+  const actor = await actorIn(workspaceId, userId);
+  const isAdmin = canManageMembers(actor.role);
   const spaceId = new Types.ObjectId(workspaceId);
   const mine = await ChatModel.find({ workspaceId: spaceId, 'members.userId': userId }).select('_id').lean();
-  const docs = await ClientChannelModel.find({ workspaceId: spaceId, chatId: { $in: mine.map((chat) => chat._id) } }).select('clientId chatId name ruc driveUrl lastActivityAt lastOrderAt ordersTotal services').lean<ClientChannel[]>();
+  const docs = await ClientChannelModel.find({ workspaceId: spaceId, chatId: { $in: mine.map((chat) => chat._id) } }).select('clientId chatId name ruc driveUrl lastActivityAt lastOrderAt ordersTotal services billingViewers restrictedMembers').lean<ClientChannel[]>();
   const clients = docs.map((doc) => ({
     ...toWire(doc, now),
     chat_id: String(doc.chatId),
@@ -137,6 +144,8 @@ export async function listClients(workspaceId: string, userId: Types.ObjectId, n
     orders_total: doc.ordersTotal,
     archived_group: archivedAgeGroup(doc.lastActivityAt, now),
     services: doc.services.map((one) => ({ id: one.id, name: one.name, status: one.status, stage_label: one.stageLabel, ...(one.progress !== undefined ? { progress: one.progress } : {}), ...(one.url ? { url: one.url } : {}) })),
+    // José 30/10 night: which tabs and stages I see, and whether I see money.
+    access: accessOf(doc, userId, isAdmin),
   }));
   const lastActivity = (one: { last_activity_at: string | null }) => (one.last_activity_at ? Date.parse(one.last_activity_at) : 0);
   return clients.sort((a, b) => Number(b.live) - Number(a.live) || lastActivity(b) - lastActivity(a));

@@ -30,10 +30,14 @@ export type ServiceOrder = {
   dueAt?: string;
   payments?: OrderPayment[];
 };
-export type ServiceDispatch = { id: string; orderId?: string; at?: string; plate?: string; driver?: string; quantity?: number; unit?: string; status: DetailStatus; guideUrl?: string; guideNumber?: string; url?: string };
+/** A dispatch's photo or video (Portal's DISPATCH_PICTURES, José 30/10 night). */
+export type DispatchPicture = { url: string; thumbUrl?: string; mime: string; name?: string };
+/** The truck's cubicaje as the client reads it: «Volquete cubica X m³», its shape and measures. */
+export type DispatchCubicage = { m3?: number; shape?: string; dimensions: { label: string; value: string }[] };
+export type ServiceDispatch = { id: string; orderId?: string; at?: string; plate?: string; driver?: string; quantity?: number; unit?: string; status: DetailStatus; guideUrl?: string; guideNumber?: string; url?: string; pictures?: DispatchPicture[]; cubicage?: DispatchCubicage };
 export type ServiceReport = { id: string; title: string; typeLabel?: string; date?: string; status: DetailStatus; pdfUrl?: string; url?: string };
 export type QuoteItem = { name: string; quantity?: number; unit?: string; unitPrice?: number; total?: number };
-export type ServiceQuote = { id: string; code?: string; date?: string; total?: number; status: DetailStatus; url?: string; items?: QuoteItem[] };
+export type ServiceQuote = { id: string; code?: string; date?: string; total?: number; status: DetailStatus; url?: string; items?: QuoteItem[]; pdfUrl?: string };
 export type DetailTotals = { orders: number; dispatches: number; reports: number; quotes?: number };
 export type ServiceDetail = {
   service: { id: string; name: string; stageLabel?: string; progress?: number; url?: string };
@@ -96,8 +100,41 @@ const orderOf = (raw: Raw): ServiceOrder =>
     dueAt: dateOnly(raw.due_at),
     payments: listMap(raw.payments, orderPaymentOf),
   });
+const PICTURES_MAX = 20;
+const pictureOf = (one: unknown): DispatchPicture[] => {
+  const raw = record(one);
+  const url = https(raw?.url);
+  return raw && url ? [defined({ url, thumbUrl: https(raw.thumb_url), mime: text(raw.mime) ?? 'application/octet-stream', name: text(raw.name) })] : [];
+};
+const dimensionOf = (one: unknown) => {
+  const raw = record(one);
+  const label = text(raw?.label);
+  const value = text(raw?.value);
+  return label && value ? [{ label, value }] : [];
+};
+/** `null` when nothing in it says anything. */
+function cubicageOf(value: unknown): DispatchCubicage | undefined {
+  const raw = record(value);
+  if (!raw) return undefined;
+  const cubicage = { ...defined({ m3: count(raw.m3) || undefined, shape: text(raw.shape) }), dimensions: Array.isArray(raw.dimensions) ? raw.dimensions.flatMap(dimensionOf) : [] };
+  return cubicage.m3 !== undefined || cubicage.shape || cubicage.dimensions.length ? cubicage : undefined;
+}
 const dispatchOf = (raw: Raw): ServiceDispatch =>
-  defined({ id: text(raw.id)!, orderId: text(raw.order_id), at: instant(raw.at), plate: text(raw.plate), driver: text(raw.driver), quantity: count(raw.quantity), unit: text(raw.unit), status: statusOf(raw), guideUrl: https(raw.guide_url), guideNumber: text(raw.guide_number), url: https(raw.url) });
+  defined({
+    id: text(raw.id)!,
+    orderId: text(raw.order_id),
+    at: instant(raw.at),
+    plate: text(raw.plate),
+    driver: text(raw.driver),
+    quantity: count(raw.quantity),
+    unit: text(raw.unit),
+    status: statusOf(raw),
+    guideUrl: https(raw.guide_url),
+    guideNumber: text(raw.guide_number),
+    url: https(raw.url),
+    pictures: Array.isArray(raw.pictures) ? raw.pictures.flatMap(pictureOf).slice(0, PICTURES_MAX) : undefined,
+    cubicage: cubicageOf(raw.cubicage),
+  });
 const reportOf = (raw: Raw): ServiceReport => defined({ id: text(raw.id)!, title: text(raw.title) ?? 'Informe', typeLabel: text(raw.type_label), date: dateOnly(raw.date), status: statusOf(raw), pdfUrl: https(raw.pdf_url), url: https(raw.url) });
 const quoteItemOf = (one: unknown): QuoteItem[] => {
   const raw = record(one);
@@ -106,7 +143,7 @@ const quoteItemOf = (one: unknown): QuoteItem[] => {
 };
 /** Its line items only when agentes sends them (private view, `quotes:view`). */
 const quoteItemsOf = (value: unknown) => (Array.isArray(value) ? value.flatMap(quoteItemOf).slice(0, LIST_MAX) : undefined);
-export const quoteOf = (raw: Raw): ServiceQuote => defined({ id: text(raw.id)!, code: text(raw.code), date: dateOnly(raw.date), total: count(raw.total), status: statusOf(raw), url: https(raw.url), items: quoteItemsOf(raw.items) });
+export const quoteOf = (raw: Raw): ServiceQuote => defined({ id: text(raw.id)!, code: text(raw.code), date: dateOnly(raw.date), total: count(raw.total), status: statusOf(raw), url: https(raw.url), items: quoteItemsOf(raw.items), pdfUrl: https(raw.pdf_url) });
 
 function listOf<T>(value: unknown, parse: (raw: Raw) => T): T[] | null {
   if (!Array.isArray(value)) return null;
@@ -223,9 +260,9 @@ const TAB_NAMES: Record<DetailTabKey, string> = { orders: 'Pedidos', dispatches:
 /** What an empty tab says. */
 export const DETAIL_EMPTY: Record<DetailTabKey, string> = { orders: 'Este servicio todavía no tiene pedidos.', dispatches: 'Todavía no hay despachos.', reports: 'Todavía no hay informes.', quotes: 'Sin cotizaciones.', billing: 'Sin cobranza.' };
 
-/** The detail's tabs with Portal's real counts; «Cotizaciones» and «Cobranza» only when they came. */
+/** The detail's tabs with Portal's real counts; «Cotizaciones» and «Cobranza» only when they came, and first (José 30/10 night). */
 export function detailTabs(detail: ServiceDetail): { key: DetailTabKey; label: string }[] {
-  const keys: DetailTabKey[] = ['orders', 'dispatches', 'reports', ...(detail.quotes ? (['quotes'] as const) : []), ...(detail.billing ? (['billing'] as const) : [])];
+  const keys: DetailTabKey[] = [...(detail.quotes ? (['quotes'] as const) : []), ...(detail.billing ? (['billing'] as const) : []), 'orders', 'dispatches', 'reports'];
   return keys.map((key) => ({ key, label: key === 'billing' ? TAB_NAMES.billing : `${TAB_NAMES[key]} · ${detail.totals[key] ?? 0}` }));
 }
 

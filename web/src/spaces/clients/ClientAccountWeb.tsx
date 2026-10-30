@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { accountSummary, amount, creditOrdersByUrgency, dayOf, dueStatus, moneyOf, quoteSheet, type AccountQuote, type ClientAccount, type CreditOrder } from '@lilachat/shared';
 import { RecordSheetWeb } from './RecordSheetWeb';
+import { usePortalFileViewer } from './PortalFileViewer';
 import { DETAIL_TONE } from './tones';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
 
@@ -35,6 +36,7 @@ function CreditRow({ order }: { order: CreditOrder }) {
 
 function AccountBody({ account }: { account: ClientAccount }) {
   const [quote, setQuote] = useState<AccountQuote | null>(null);
+  const viewer = usePortalFileViewer();
   const credit = account.creditOrders;
   if (!credit && !account.quotes) return <p className="pt-6 text-center text-sm text-on-surface-variant">No tienes permiso para ver la cuenta de este cliente.</p>;
   return (
@@ -63,7 +65,8 @@ function AccountBody({ account }: { account: ClientAccount }) {
           ) : <p className="py-3 text-sm text-on-surface-variant">Sin cotizaciones.</p>}
         </section>
       ) : null}
-      {quote ? <RecordSheetWeb sheet={quoteSheet(quote)} onClose={() => setQuote(null)} /> : null}
+      {quote ? <RecordSheetWeb sheet={quoteSheet(quote)} onClose={() => setQuote(null)} onOpenFile={viewer.open} /> : null}
+      {viewer.viewer}
     </>
   );
 }

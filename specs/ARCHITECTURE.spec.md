@@ -4995,6 +4995,91 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 175. Canal del cliente: accesos por miembro, detalle del servicio y archivos con visor (30/10/2026 noche, servidor + OTA + web)
+
+Pedido de José en una sola iteración. Seis puntos.
+
+**1. Archivos con miniatura y visor (web y app).**
+- Cada archivo del Drive del servicio muestra su miniatura (`FileThumb`):
+  - una foto, su `thumb_url` o la foto misma;
+  - un video, su cuadro con la marca de play;
+  - un PDF y cualquier otro archivo, una baldosa.
+- En la web ya no se abre la URL en otra pestaña (`usePortalFileViewer`):
+  - fotos y videos se abren en el visor del chat (`PhotoViewer`) y se pasa entre ellos;
+  - el PDF se abre en su propio visor, con «Descargar»;
+  - un archivo de tipo desconocido sí se abre en una pestaña nueva.
+- El motor `fileViewer` (`mimeOf`, `openingOf`, `galleryOf`) pasó de la app a `shared`.
+
+**2. Orden de las pestañas.**
+- Quedan así: Chat · Cuenta · Servicios · Archivos · Checklist · Pendientes (`channelTabs`).
+- Cuenta solo aparece para quien ve montos.
+- Una pestaña que el acceso ya no da vuelve al chat.
+
+**3. Detalle del servicio.**
+- Las etapas se pliegan dentro de la tarjeta de avance y empiezan cerradas.
+- Cotizaciones y Cobranza van primero, y el detalle abre en la primera pestaña que llegó.
+- La ficha del despacho trae:
+  - sus fotos y videos (`pictures`, abren en el visor);
+  - el bloque «Cubicaje» (`cubicage`: «Volquete cubica», forma y medidas).
+  Portal los publicó en 6d4b922a.
+- Las facturas de los pedidos pasaron a Cobranza (`invoicesOf`).
+- Las guías del pedido entero pasaron a Despachos (`orderGuidesOf`).
+- La ficha del pedido ya no lleva la factura ni las guías.
+- PDF de la cotización: Lilachat ya lee `pdf_url`. Portal no guarda ese PDF y
+  falta la vista de impresión. Por ahora no hay ruta ni `client.quote.requested`:
+  lo decide José.
+
+**4 y 5. Accesos por miembro en el canal del cliente.**
+- `ClientChannel.restrictedMembers: [{ userId, tabs, stages }]`. Quien no está
+  en la lista ve el canal entero.
+- Las pestañas que se pueden restringir son Servicios, Archivos y Checklist.
+  El chat lo ven todos.
+- Los montos (Cuenta, cotizaciones, cobranza y facturas) los ven solo los admins
+  del espacio y los marcados en `billingViewers`.
+- El servidor quita `quotes` y `billing` del detalle a quien no ve montos,
+  aunque Portal los mande.
+- `GET /clients/:id/account` da 404 a quien no ve montos.
+- Un miembro restringido:
+  - **Etapas.** Ve enteras las etapas elegidas. En las demás solo ve las tareas
+    asignadas a él. Una etapa oculta da 404.
+  - **Tareas.** En una etapa que ve a medias solo marca lo suyo y no agrega ni
+    edita (403).
+  - **Arranque.** No arranca el checklist.
+  - **Servicios.** Sin Servicios, detalle e informe dan 404.
+  - **Archivos.** Sin Archivos, el Drive da 404.
+- Un admin del espacio nunca queda restringido. Si se nombra admin a un
+  restringido, se le quita la restricción en todos los canales.
+- Rutas:
+  - `GET /workspaces/:id/clients/:clientId/access`: devuelve `viewers`,
+    `restricted` y `admins`.
+  - `PUT /workspaces/:id/clients/:clientId/access/:userId`: recibe `money` y
+    `restricted` (`null` lo levanta).
+  - `POST /api/chats/:id/members` acepta `access`. Solo un admin del espacio
+    puede usarlo, y se guarda después de agregar.
+- `GET /clients` trae `access` de cada cliente para mí.
+- La UI de «Accesos del canal» reemplaza a «Quién ve la cobranza», que pasa a
+  ser su interruptor «Ve montos». Está en:
+  - la web: info del canal → Miembros;
+  - la app: Servicios.
+- Al agregar a alguien a un canal de cliente, un admin elige en un solo paso el
+  historial y qué ve.
+- El checklist ya tenía responsable y fecha por tarea (backlog 30). La
+  visibilidad por etapa se suma a eso.
+
+**6. Alta.** Ya funciona: registro abierto (§5.1), bienvenida «¿Cómo vas a usar
+Lilachat?» (§161), y enlace `/unirse/<código>` que abre «Unirme» (47). Para un
+topógrafo:
+1. Se le invita al espacio.
+2. Entra con su número.
+3. Se une con el código.
+4. Un admin lo agrega al canal del cliente con acceso restringido.
+
+Pruebas:
+- `shared/clientAccess.test.ts` (13).
+- `server/bots/clientAccess.test.ts` (12).
+- `web/ClientAccessWeb.test.tsx` (5).
+- `serviceDetail*` y `ServiceDetailWeb.test.tsx`, actualizados.
+
 ## 174. Diez pedidos del 30/10 en una sola salida (servidor + OTA + web)
 
 José pidió los diez en una sola iteración. Lo que cambió:

@@ -3,7 +3,7 @@ import { pdfPages } from '../../../modules/pdf-pages/src';
 import { abrirConOtraApp } from '../../chat/guardarYCompartir';
 import { PdfViewerScreen } from '../../chat/pdf/PdfViewerScreen';
 import { VisorDelChat } from '../../chat/VisorDelChat';
-import { galleryOf, mimeOf, openingOf, pdfsOf, type ViewableFile } from './fileViewer';
+import { galleryOf, mimeOf, openingOf, pdfsOf, type ViewableFile } from '@lilachat/shared';
 
 type Session = { files: ViewableFile[]; url: string };
 

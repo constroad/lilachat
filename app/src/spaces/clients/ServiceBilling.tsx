@@ -1,8 +1,8 @@
 import { Pressable, Text, View } from 'react-native';
-import { Receipt } from 'lucide-react-native';
-import { billingSummary, dayOf, dueStatus, longDayOf, moneyOf, type BillingItem, type BillingPayment, type ServiceBilling as Billing } from '@lilachat/shared';
+import { FileText, Receipt } from 'lucide-react-native';
+import { billingSummary, dayOf, dueStatus, longDayOf, moneyOf, type BillingItem, type BillingPayment, type InvoiceRow, type ServiceBilling as Billing } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
-import type { ViewableFile } from './fileViewer';
+import type { ViewableFile } from '@lilachat/shared';
 import { DETAIL_TONE } from './tones';
 
 const Kicker = ({ children }: { children: string }) => <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{children}</Text>;
@@ -102,12 +102,33 @@ function Payments(props: { payments: BillingPayment[]; onOpenFile: (file: Viewab
 }
 
 /** «Cobranza» of a service (design f-05): only reaches whoever may see it (admins, or marked in the channel). */
-export function ServiceBilling(props: { billing: Billing; onOpenFile: (file: ViewableFile) => void }) {
+/** José 30/10 night: «¿las facturas van en cobranza?» — yes, each order's invoice, opened in the viewer. */
+function Invoices(props: { invoices: InvoiceRow[]; onOpenFile: (file: ViewableFile) => void }) {
+  const colors = useColores();
+  if (!props.invoices.length) return null;
+  return (
+    <View testID="facturas" className="rounded-2xl border border-outline/15 bg-surface p-4">
+      <View className="flex-row justify-between"><Kicker>Facturas</Kicker><Text className="text-[12px] text-on-surface-variant">{String(props.invoices.length)}</Text></View>
+      {props.invoices.map((invoice) => (
+        <Pressable key={invoice.id} testID={`factura-${invoice.id}`} disabled={!invoice.url} onPress={() => invoice.url && props.onOpenFile({ url: invoice.url, name: invoice.label })} className="min-h-[52px] flex-row items-center gap-3 border-t border-outline/10 py-2">
+          <View className="min-w-0 flex-1">
+            <Text className="text-[14px] font-semibold text-on-surface">{invoice.label}</Text>
+            {invoice.line ? <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>{invoice.line}</Text> : null}
+          </View>
+          {invoice.url ? <FileText size={16} color={colors.primary} /> : null}
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+export function ServiceBilling(props: { billing: Billing; invoices?: InvoiceRow[]; onOpenFile: (file: ViewableFile) => void }) {
   const { billing } = props;
   return (
     <View testID="cobranza" className="gap-3">
       <PaymentCondition billing={billing} paidOff={billingSummary(billing).paidOff} />
       <CollectionState billing={billing} />
+      <Invoices invoices={props.invoices ?? []} onOpenFile={props.onOpenFile} />
       <Items items={billing.items} />
       <Payments payments={billing.payments} onOpenFile={props.onOpenFile} />
     </View>

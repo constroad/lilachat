@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BackHandler, Linking, Pressable, Text, TextInput, View } from 'react-native';
-import { ChevronLeft, ChevronRight, Cloud, ExternalLink, FileText, Film, Folder, Image as ImageIcon, Search } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Cloud, ExternalLink, Folder, Search } from 'lucide-react-native';
+import { FileThumb } from './FileThumb';
 import { driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
-import type { ViewableFile } from './fileViewer';
+import type { ViewableFile } from '@lilachat/shared';
 import { useFileViewer } from './useFileViewer';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
 
@@ -17,15 +18,11 @@ const open = (url?: string | null) => {
   if (url) void Linking.openURL(url);
 };
 
-const iconOf = (mime: string) => (mime.startsWith('image/') ? ImageIcon : mime.startsWith('video/') ? Film : FileText);
-
-/** José 30/10: it opens in Lilachat's viewer, not in the browser or Portal. */
+/** José 30/10 night: with its thumbnail, and it opens in Lilachat's viewer, not in the browser or Portal. */
 function FileRow({ file, onOpen }: { file: ServiceFile; onOpen: OpenFile }) {
-  const colors = useColores();
-  const Icon = iconOf(file.mime);
   return (
-    <Pressable testID="archivo-drive" onPress={() => onOpen(file)} className="min-h-[52px] flex-row items-center gap-3 border-b border-outline/10 px-3 py-2">
-      <Icon size={18} color={colors.primary} />
+    <Pressable testID="archivo-drive" onPress={() => onOpen(file)} className="min-h-[60px] flex-row items-center gap-3 border-b border-outline/10 px-3 py-2">
+      <FileThumb file={viewableOf(file)} />
       <View className="min-w-0 flex-1">
         <Text className="text-[14px] text-on-surface" numberOfLines={1}>{file.name}</Text>
         <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>{driveFileLine(file)}</Text>

@@ -20,7 +20,7 @@ import { useWorkPlanWeb, WorkPlanWeb } from './workPlan/WorkPlanWeb';
 import { PendingWeb, TaskDetailWeb, type OpenTask } from './workPlan/WorkListsWeb';
 import { ClientFilesWeb } from '../spaces/clients/ClientFilesWeb';
 import { ClientAccountWeb } from '../spaces/clients/ClientAccountWeb';
-import { stageFiles } from '@lilachat/shared';
+import { CHANNEL_TAB_LABELS, channelTabs, stageFiles, type ChannelTab } from '@lilachat/shared';
 import { useClientOfChat } from '../spaces/clients/useSpaceClients';
 import { ArchivedClientBanner, ArchivedComposerNote, ClientServices } from '../spaces/clients/ClientChannelParts';
 import { useClientRecords } from '../spaces/clients/useSpaceClients';
@@ -111,6 +111,9 @@ export function Conversation(props: {
   // José 29/10: Checklist, Archivos and Pendientes belong to a client's channel only.
   const isClientChannel = isChannel && Boolean(client);
   const workPlan = useWorkPlanWeb(props.jwtParaEnlaces ?? '', chat.id, isClientChannel && Boolean(props.jwtParaEnlaces));
+  const tabs = client ? channelTabs(client.access, Boolean(workPlan.stages?.length)) : (['chat'] as ChannelTab[]);
+  // A tab the access no longer gives (an admin just restricted me) falls back to the chat.
+  const shownTab = tabs.includes(channelTab) ? channelTab : 'chat';
   const [openTask, setOpenTask] = useState<OpenTask | null>(null);
   const toMessage = (seq: number) => {
     setChannelTab('chat');
@@ -159,18 +162,18 @@ export function Conversation(props: {
         <CabeceraDeLaConversacion chat={chat} isClient={Boolean(client)} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} lastSeen={lastSeen} status={otherStatus} onCall={props.onCall} callExtras={props.callExtras} />
       )}
       {props.callStrip}
-      {isClientChannel && client ? <ChannelTabs tab={channelTab} onTab={setChannelTab} counter={workPlan.summary?.total ? `${workPlan.summary.done}/${workPlan.summary.total}` : null} services={client.services.length} files={workPlan.stages?.length ? stageFiles(workPlan.stages).total : null} overdue={Boolean(workPlan.summary?.overdue)} /> : null}
+      {isClientChannel && client ? <ChannelTabs tabs={tabs} tab={shownTab} onTab={setChannelTab} counter={workPlan.summary?.total ? `${workPlan.summary.done}/${workPlan.summary.total}` : null} services={client.services.length} files={workPlan.stages?.length ? stageFiles(workPlan.stages).total : null} overdue={Boolean(workPlan.summary?.overdue)} /> : null}
       {isClientChannel && client ? <ArchivedClientBanner client={client} /> : null}
       {openTask && workPlan.stages ? <TaskDetailWeb open={openTask} stages={workPlan.stages} onChanged={() => void workPlan.reload()} onOpenMessage={toMessage} onClose={() => setOpenTask(null)} /> : null}
-      {isClientChannel && client && channelTab === 'files' ? (
+      {isClientChannel && client && shownTab === 'files' ? (
         <ClientFilesWeb client={client} target={props.jwtParaEnlaces && chat.workspaceId ? { jwt: props.jwtParaEnlaces, spaceId: chat.workspaceId, clientId: client.id } : null} stages={workPlan.stages ?? []} onOpenMessage={toMessage} />
-      ) : isClientChannel && channelTab === 'pending' ? (
+      ) : isClientChannel && shownTab === 'pending' ? (
         <PendingWeb stages={workPlan.stages ?? []} onOpen={setOpenTask} />
-      ) : isClientChannel && channelTab === 'checklist' ? (
-        <WorkPlanWeb plan={workPlan} onOpenTask={setOpenTask} />
-      ) : isClientChannel && client && channelTab === 'account' && props.jwtParaEnlaces && chat.workspaceId ? (
+      ) : isClientChannel && shownTab === 'checklist' ? (
+        <WorkPlanWeb plan={workPlan} onOpenTask={setOpenTask} restricted={Boolean(client?.access?.restricted)} />
+      ) : isClientChannel && client && shownTab === 'account' && props.jwtParaEnlaces && chat.workspaceId ? (
         <ClientAccountWeb target={{ jwt: props.jwtParaEnlaces, spaceId: chat.workspaceId, clientId: client.id }} />
-      ) : isClientChannel && client && channelTab === 'services' ? (
+      ) : isClientChannel && client && shownTab === 'services' ? (
         <ClientServicesPanel client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} onOpenRecord={toMessage} />
       ) : props.app && appTab === 'info' ? (
         <div data-testid="informacion-app" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-8">
@@ -322,33 +325,26 @@ function BannerWithSession() {
   return context ? <NotificationsBanner jwt={context.jwt} /> : null;
 }
 
-type ChannelTab = 'chat' | 'services' | 'account' | 'checklist' | 'files' | 'pending';
-
 /** «Servicios» asks for its records only while it is open. */
 function ClientServicesPanel(props: { client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; onOpenRecord: (seq: number) => void }) {
   const records = useClientRecords(props.jwt, props.spaceId, props.client.id);
   return <ClientServices client={props.client} records={records} onOpenRecord={props.onOpenRecord} target={props.jwt && props.spaceId ? { jwt: props.jwt, spaceId: props.spaceId, clientId: props.client.id } : null} />;
 }
 
-/** A client's channel (José 29/10: only those): «Chat · Servicios N · Checklist · Archivos · Pendientes» (designs f-03 and e2-17). */
-function ChannelTabs(props: { tab: ChannelTab; onTab: (tab: ChannelTab) => void; counter: string | null; services: number; files: number | null; overdue: boolean }) {
-  const tabs = [
-    { key: 'chat' as const, label: 'Chat', badge: null },
-    { key: 'services' as const, label: 'Servicios', badge: props.services ? String(props.services) : null },
-    // José 30/10 (design f-08): all the client's quotes and its orders on credit.
-    { key: 'account' as const, label: 'Cuenta', badge: null },
-    { key: 'checklist' as const, label: 'Checklist', badge: props.counter },
-    // José 30/10: «Archivos» always (the checklist's files and Portal's Drive); «Pendientes» once there is a checklist.
-    { key: 'files' as const, label: 'Archivos', badge: props.files ? String(props.files) : null },
-    ...(props.files !== null ? [{ key: 'pending' as const, label: 'Pendientes', badge: null }] : []),
-  ];
+/**
+ * A client's channel (designs f-03 and e2-17), in José's order of 30/10 night:
+ * Chat · Cuenta · Servicios · Archivos · Checklist · Pendientes. Cuenta only
+ * for whoever sees money; a restricted member only gets the tabs an admin picked.
+ */
+function ChannelTabs(props: { tabs: ChannelTab[]; tab: ChannelTab; onTab: (tab: ChannelTab) => void; counter: string | null; services: number; files: number | null; overdue: boolean }) {
+  const badges: Partial<Record<ChannelTab, string | null>> = { services: props.services ? String(props.services) : null, checklist: props.counter, files: props.files ? String(props.files) : null };
   return (
     <div role="tablist" className="flex gap-6 overflow-x-auto border-b border-outline/15 bg-surface px-4">
-      {tabs.map((one) => (
-        <button key={one.key} type="button" role="tab" aria-selected={props.tab === one.key} data-testid={`pestana-canal-${one.key}`} onClick={() => props.onTab(one.key)} className={`flex min-h-[40px] shrink-0 items-center gap-1.5 border-b-2 text-sm ${props.tab === one.key ? 'border-primary font-semibold text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
-          {one.label}
-          {one.badge ? <span className="rounded-full bg-primary/10 px-1.5 text-[11px] font-bold text-primary">{one.badge}</span> : null}
-          {one.key === 'pending' && props.overdue ? <span data-testid="pestana-canal-pending-vencidos" className="h-2 w-2 rounded-full bg-error" /> : null}
+      {props.tabs.map((key) => (
+        <button key={key} type="button" role="tab" aria-selected={props.tab === key} data-testid={`pestana-canal-${key}`} onClick={() => props.onTab(key)} className={`flex min-h-[40px] shrink-0 items-center gap-1.5 border-b-2 text-sm ${props.tab === key ? 'border-primary font-semibold text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
+          {CHANNEL_TAB_LABELS[key]}
+          {badges[key] ? <span className="rounded-full bg-primary/10 px-1.5 text-[11px] font-bold text-primary">{badges[key]}</span> : null}
+          {key === 'pending' && props.overdue ? <span data-testid="pestana-canal-pending-vencidos" className="h-2 w-2 rounded-full bg-error" /> : null}
         </button>
       ))}
     </div>

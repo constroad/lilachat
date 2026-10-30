@@ -1,5 +1,6 @@
 import { CLIENT_LIVE_DAYS, type ArchivedAgeGroup, type ClientServiceStatus } from './clientChannels.js';
 import { memberCountLabel } from './flatLayout.js';
+import type { MyClientAccess } from './clientAccess.js';
 
 /**
  * The client channels of a space as the list shows them (pending 21, §157;
@@ -24,6 +25,8 @@ export type SpaceClient = {
   orders_total: number;
   archived_group: ArchivedAgeGroup;
   services: SpaceClientService[];
+  /** José 30/10 night: the tabs and stages I see, and whether I see money. An older server leaves it out. */
+  access?: MyClientAccess;
 };
 type ClientChat = { id: string; unread: number; lastAt?: string };
 export type ClientEntry<T extends ClientChat> = { client: SpaceClient; chat: T | null };

@@ -583,13 +583,13 @@ export function ChatDetailScreen({
           visible={agregando}
           credential={credential}
           yaEstan={yaEstan}
-          spaceId={workspaceId}
+          spaceId={workspaceId} chatId={chatId}
           onCerrar={() => setAgregando(false)}
-          onElegir={async (userId, history) => {
+          onElegir={async (userId, history, access) => {
             setAgregando(false);
             // Se recarga el detalle: la lista de participantes es justo lo que
             // la persona está mirando, y dejarla vieja hace dudar de si funcionó.
-            if (await llamar('members', { userId, history })) await cargar();
+            if (await llamar('members', { userId, history, ...(access ? { access } : {}) })) await cargar();
           }}
         />
         {personCard.element}

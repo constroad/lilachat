@@ -1,5 +1,5 @@
 import { Bell, BellOff, LogOut, Trash2, X } from 'lucide-react';
-import { NOTIFICATION_LEVEL_TEXT, type NotificationLevel } from '@lilachat/shared';
+import { canManageMembers, NOTIFICATION_LEVEL_TEXT, type NotificationLevel } from '@lilachat/shared';
 import { chatDetailTabs, initialChatDetailTab, type ChatDetailTab } from '@lilachat/shared';
 import { useState, type ReactNode } from 'react';
 import type { BaseLocal } from '../../local/baseLocal';
@@ -22,6 +22,9 @@ import { armarInfo } from './infoDelChat';
 import { NotificationLevelDialog } from './NotificationLevelDialog';
 import { ParticipantesDelChat } from './ParticipantesDelChat';
 import { useEditarChat } from './useEditarChat';
+import { useClientOfChat } from '../../spaces/clients/useSpaceClients';
+import { useMySpaces } from '../../spaces/currentSpace';
+import { ClientAccessSection, useChannelStages } from '../../spaces/clients/ClientAccessWeb';
 
 const NO_APPS: ReadonlySet<string> = new Set();
 
@@ -63,6 +66,14 @@ export function PanelDeInfo(props: {
   const [tab, setTab] = useState<ChatDetailTab>(() => initialChatDetailTab(chat.kind));
   const isChannel = Boolean(chat.channel || detalle?.channel);
   const channelDeletable = useChannelDeletable({ jwt: props.jwt, chatId: chat.id, workspaceId: chat.workspaceId, isChannel, isGeneral: Boolean(detalle?.channel?.general) });
+  // José 30/10 night: in a client's channel a space admin decides what each member sees.
+  const client = useClientOfChat(chat.id);
+  const { spaces } = useMySpaces(props.jwt);
+  const spaceAdmin = Boolean(spaces?.find((one) => one.id === chat.workspaceId && canManageMembers(one.role)));
+  const accessTarget = client && chat.workspaceId && spaceAdmin ? { jwt: props.jwt, spaceId: chat.workspaceId, clientId: client.id } : null;
+  const stages = useChannelStages(props.jwt, chat.id, Boolean(accessTarget));
+  const appIds = detalle?.appIds ?? NO_APPS;
+  const people = info.miembros.filter((member) => !member.esYo && !appIds.has(member.id)).map((member) => ({ id: member.id, name: member.nombre, photo: member.foto }));
   return (
     <aside data-testid="panel-info" className="fixed inset-0 z-30 flex flex-col bg-background lg:static lg:z-auto lg:w-[400px] lg:shrink-0 lg:border-l lg:border-outline/15">
       <header className="flex items-center gap-3 border-b border-outline/15 bg-surface px-3 py-3">
@@ -84,15 +95,17 @@ export function PanelDeInfo(props: {
         {chat.kind !== 'direct' ? <DescripcionDelChat descripcion={detalle?.descripcion} editable={info.puedeEditar} onGuardar={editar.describir} /> : null}
         {props.tarjetas}
         <DetailTabBar tabs={chatDetailTabs(chat.kind)} active={tab} onChange={setTab} />
+        {tab === 'members' && accessTarget ? <ClientAccessSection target={accessTarget} people={people} stages={stages} /> : null}
         {tab === 'members' && info.miembros.length ? (
           <ParticipantesDelChat
             jwt={props.jwt}
             workspaceId={chat.workspaceId}
             miembros={info.miembros}
-            appIds={detalle?.appIds ?? NO_APPS}
+            appIds={appIds}
             puedeAgregar={info.puedeAgregar}
             hasHistory={chat.lastSeq > 0}
-            onAgregar={(userId, history) => void editar.addMember(userId, history)}
+            onAgregar={(userId, history, access) => void editar.addMember(userId, history, access)}
+            clientJoin={accessTarget ? { stages } : undefined}
             onCambiarRol={(userId, role) => void editar.cambiarRol(userId, role)}
             onSacar={(userId) => void editar.sacar(userId)}
             onViewPerson={props.onViewPerson}

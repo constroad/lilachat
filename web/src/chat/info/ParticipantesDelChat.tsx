@@ -10,6 +10,8 @@ import { Overlay } from '../../ui/Overlay';
 import type { MiembroEnInfo } from './infoDelChat';
 import { useAddCandidates } from './useAddCandidates';
 import { HistoryChoiceDialog } from './HistoryChoiceDialog';
+import { JoinClientChannelDialog, type StageOption } from '../../spaces/clients/ClientAccessWeb';
+import type { MemberAccess } from '@lilachat/shared';
 
 const ETIQUETAS: Record<AccionDeMiembro, string> = { 'hacer-admin': 'Nombrar admin', 'dejar-admin': 'Quitar como admin', sacar: 'Sacar del grupo' };
 /** An app is taken out of the channel, and stays out until an admin adds it again (pending 91). */
@@ -26,7 +28,9 @@ export function ParticipantesDelChat(props: {
   puedeAgregar: boolean;
   /** The chat already has messages: adding someone asks whether they see them. */
   hasHistory?: boolean;
-  onAgregar: (userId: string, history?: boolean) => void;
+  onAgregar: (userId: string, history?: boolean, access?: MemberAccess) => void;
+  /** A client's channel and I am a space admin (José 30/10 night): adding asks what they see, too. */
+  clientJoin?: { stages: readonly StageOption[] };
   onCambiarRol: (userId: string, role: 'admin' | 'member') => void;
   onSacar: (userId: string) => void;
   /** Tapping a row opens that person's card (José, 25/10). Without it, the rows are plain. */
@@ -34,6 +38,7 @@ export function ParticipantesDelChat(props: {
 }) {
   const [agregando, setAgregando] = useState(false);
   const [askingHistory, setAskingHistory] = useState<Contact | null>(null);
+  const [joining, setJoining] = useState<Contact | null>(null);
   const [sacando, setSacando] = useState<MiembroEnInfo | null>(null);
   const aplicar = (miembro: MiembroEnInfo, accion: AccionDeMiembro) => {
     if (accion === 'sacar') return setSacando(miembro);
@@ -93,7 +98,8 @@ export function ParticipantesDelChat(props: {
           yaEstan={new Set(props.miembros.map((uno) => uno.id))}
           onElegir={(contact) => {
             setAgregando(false);
-            if (props.hasHistory) setAskingHistory(contact);
+            if (props.clientJoin) setJoining(contact);
+            else if (props.hasHistory) setAskingHistory(contact);
             else props.onAgregar(contact.id);
           }}
           onCerrar={() => setAgregando(false)}
@@ -107,6 +113,18 @@ export function ParticipantesDelChat(props: {
             props.onAgregar(askingHistory.id, history);
           }}
           onClose={() => setAskingHistory(null)}
+        />
+      ) : null}
+      {joining && props.clientJoin ? (
+        <JoinClientChannelDialog
+          name={joining.name ?? joining.phone}
+          askHistory={Boolean(props.hasHistory)}
+          stages={props.clientJoin.stages}
+          onConfirm={(history, access) => {
+            setJoining(null);
+            props.onAgregar(joining.id, history, access ?? undefined);
+          }}
+          onClose={() => setJoining(null)}
         />
       ) : null}
       {sacando ? (

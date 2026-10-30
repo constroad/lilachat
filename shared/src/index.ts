@@ -160,6 +160,8 @@ export * from './serviceDetail.js';
 export * from './serviceBilling.js';
 export * from './serviceDetailSheet.js';
 export * from './clientAccount.js';
+export * from './clientAccess.js';
+export * from './fileViewer.js';
 export * from './serviceAsk.js';
 export * from './emojiShortcode.js';
 export * from './serviceStages.js';

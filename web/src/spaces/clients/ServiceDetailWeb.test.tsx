@@ -28,21 +28,52 @@ describe('ServiceDetailWeb', () => {
     expect(screen.getByTestId('fila-o1')).toHaveTextContent('Entregado');
     expect(screen.getByTestId('detalle-servicio')).toHaveTextContent('Etapa: Ejecución');
     expect(screen.getByTestId('pestana-detalle-orders')).toHaveTextContent('Pedidos · 148');
-    // José 30/10: progress comes from Portal, stage by stage, nobody ticks it.
+    // José 30/10: progress comes from Portal, stage by stage; 30/10 night: folded in the progress card.
     expect(screen.getByTestId('etapas-servicio')).toHaveTextContent(/Etapas · \d+ de \d+/);
+    expect(screen.queryByTestId('etapa-orders-done')).toBeNull();
+    fireEvent.click(screen.getByTestId('etapas-toggle'));
     expect(screen.getByTestId('etapa-orders-done')).toHaveTextContent('Pedidos');
     expect(screen.getByText('Mostrando 1 de 148 · el resto está en el Portal')).toBeInTheDocument();
     expect(screen.getByTestId('abrir-servicio-portal')).toHaveAttribute('href', 'https://portal.constroad.com/s/318');
     expect(String((fetchMock.mock.calls[0] as unknown as [string])[0])).toContain('/api/workspaces/s1/clients/cli-cvs/services/srv-318/detail');
   });
 
-  it('another tab shows its rows with their file, and an empty one says so', async () => {
+  it('another tab shows its rows with their file in the viewer, and an empty one says so', async () => {
     vi.stubGlobal('fetch', reply({ detail }));
+    const opened = vi.fn();
+    vi.stubGlobal('open', opened);
     render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
     fireEvent.click(await screen.findByTestId('pestana-detalle-dispatches'));
-    expect(screen.getByTestId('archivo-d1')).toHaveAttribute('href', 'https://lila.constroad.com/g/1');
+    fireEvent.click(screen.getByTestId('archivo-d1'));
+    // José 30/10 night: «solo abre la url en la web» — a photo or a PDF opens in the viewer; a file of unknown kind, in a tab.
+    expect(opened).toHaveBeenCalledWith('https://lila.constroad.com/g/1', '_blank', 'noopener');
     fireEvent.click(screen.getByTestId('pestana-detalle-reports'));
     expect(screen.getByText('Todavía no hay informes.')).toBeInTheDocument();
+  });
+
+  it('José 30/10 night: Cotizaciones and Cobranza first; a dispatch shows its photos and cubicaje; invoices in Cobranza, guides in Despachos', async () => {
+    // Arrange
+    const billing = { isCredit: false, total: 1000, collected: 0, pending: 1000, items: [], payments: [] };
+    const orders = [{ ...detail.orders[0], invoice: 'F001-9', invoiceUrl: 'https://lila.constroad.com/f9.pdf', guides: [{ name: 'Guía 001-2', url: 'https://lila.constroad.com/g2.jpg' }] }];
+    const dispatches = [{ ...detail.dispatches[0], pictures: [{ url: 'https://lila.constroad.com/p1.jpg', mime: 'image/jpeg' }], cubicage: { m3: 25.5, shape: 'Cuadrado', dimensions: [] } }];
+    vi.stubGlobal('fetch', reply({ detail: { ...detail, orders, dispatches, quotes: [{ id: 'q1', code: '300', status: { label: 'Borrador', tone: 'neutral' } }], billing, totals: { ...detail.totals, quotes: 1 } } }));
+    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
+    // Act
+    const tabs = (await screen.findAllByRole('tab')).map((tab) => tab.getAttribute('data-testid'));
+    const firstShown = screen.getByTestId('pestana-detalle-quotes').getAttribute('aria-selected');
+    fireEvent.click(screen.getByTestId('pestana-detalle-billing'));
+    const invoices = screen.getByTestId('facturas').textContent;
+    fireEvent.click(screen.getByTestId('pestana-detalle-dispatches'));
+    const guides = screen.getByTestId('guias-del-pedido').textContent;
+    fireEvent.click(within(screen.getByTestId('fila-d1')).getAllByRole('button')[0]!);
+    fireEvent.click(screen.getByTestId('media-ficha-0'));
+    // Assert
+    expect(tabs).toEqual(['pestana-detalle-quotes', 'pestana-detalle-billing', 'pestana-detalle-orders', 'pestana-detalle-dispatches', 'pestana-detalle-reports']);
+    expect(firstShown).toBe('true');
+    expect(invoices).toContain('Factura F001-9');
+    expect(guides).toContain('Guía 001-2 · Asfalto MAC 2');
+    expect(screen.getByTestId('grupo-Cubicaje')).toHaveTextContent('Volquete cubica25.5 m³');
+    expect(screen.getByTestId('visor-fotos')).toBeInTheDocument();
   });
 
   it('a row opens its sheet inside Lilachat: an order with its dispatches, Portal only at the foot', async () => {

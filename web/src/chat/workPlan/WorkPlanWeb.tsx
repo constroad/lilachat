@@ -38,10 +38,12 @@ export function useWorkPlanWeb(jwt: string, chatId: string, enabled: boolean) {
 export type WorkPlanWebState = ReturnType<typeof useWorkPlanWeb>;
 
 /** The «Checklist» tab of a channel on the web (design e2-17, desktop). */
-export function WorkPlanWeb({ plan, onOpenTask }: { plan: WorkPlanWebState; onOpenTask: (task: { stageId: string; itemId: string }) => void }) {
+export function WorkPlanWeb({ plan, onOpenTask, restricted }: { plan: WorkPlanWebState; onOpenTask: (task: { stageId: string; itemId: string }) => void; restricted?: boolean }) {
   const [open, setOpen] = useState<string | null>(null);
   const [error, setError] = useState('');
   if (plan.stages === null) return <p className="min-h-0 flex-1 pt-10 text-center text-sm text-on-surface-variant">{plan.failed ? 'No se pudo cargar el checklist.' : 'Cargando…'}</p>;
+  // José 30/10 night: a restricted member only sees the stages an admin gave them and their own tasks.
+  if (plan.stages.length === 0 && restricted) return <p data-testid="checklist-sin-acceso" className="min-h-0 flex-1 px-8 pt-10 text-center text-sm text-on-surface-variant">Todavía no te dieron etapas ni te asignaron tareas en este canal.</p>;
   if (plan.stages.length === 0) {
     return (
       <div data-testid="checklist-de-obra-vacio" className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-8 text-center">

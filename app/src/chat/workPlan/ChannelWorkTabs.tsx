@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { BackHandler, Pressable, ScrollView, Text, ToastAndroid, View } from 'react-native';
-import { checklistMembers, stageFiles, type SpaceClient } from '@lilachat/shared';
+import { CHANNEL_TAB_LABELS, channelTabs, checklistMembers, stageFiles, type ChannelTab, type SpaceClient } from '@lilachat/shared';
 import { useWorkPlan } from './useWorkPlan';
 import { WorkPlanPanel } from './WorkPlanPanel';
 import { PendingPanel } from './WorkListsPanels';
@@ -10,7 +10,7 @@ import { ArchivedClientBanner, ArchivedComposerNote, ClientServices } from '../.
 import { ClientAccountPanel } from '../../spaces/clients/ClientAccountPanel';
 import { ClientFilesPanel } from '../../spaces/clients/ClientFilesPanel';
 
-type Tab = 'chat' | 'services' | 'account' | 'checklist' | 'files' | 'pending';
+type Tab = ChannelTab;
 const COVER = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, elevation: 10 } as const;
 
 /**
@@ -48,34 +48,34 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
     setTab('chat');
     params.onOpenRecord?.(seq);
   };
+  const allowed = channelTabs(client.access, stages.length > 0);
+  // A tab the access no longer gives (an admin just restricted me) falls back to the chat.
+  const shown = allowed.includes(tab) ? tab : 'chat';
+  const badges: Partial<Record<Tab, string | null>> = { services: client.services.length ? String(client.services.length) : null, checklist: counter, files: filesTotal ? String(filesTotal) : null };
   const tabs = (
     <>
+      {/* José 30/10 night: Chat · Cuenta · Servicios · Archivos · Checklist · Pendientes; Cuenta only with money. */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-grow-0 border-b border-outline/10 bg-surface" contentContainerStyle={{ paddingHorizontal: 16 }}>
-        <TabButton label="Chat" active={tab === 'chat'} onPress={() => setTab('chat')} testID="pestana-canal-chat" />
-        <TabButton label="Servicios" badge={client.services.length ? String(client.services.length) : null} active={tab === 'services'} onPress={() => setTab('services')} testID="pestana-canal-services" />
-        {target ? <TabButton label="Cuenta" active={tab === 'account'} onPress={() => setTab('account')} testID="pestana-canal-account" /> : null}
-        <TabButton label="Checklist" badge={counter} active={tab === 'checklist'} onPress={() => setTab('checklist')} testID="pestana-canal-checklist" />
-        <TabButton label="Archivos" badge={filesTotal ? String(filesTotal) : null} active={tab === 'files'} onPress={() => setTab('files')} testID="pestana-canal-files" />
-        {stages.length ? <TabButton label="Pendientes" dot={Boolean(plan.summary?.overdue)} active={tab === 'pending'} onPress={() => setTab('pending')} testID="pestana-canal-pending" /> : null}
+        {allowed.map((key) => <TabButton key={key} label={CHANNEL_TAB_LABELS[key]} badge={badges[key]} dot={key === 'pending' && Boolean(plan.summary?.overdue)} active={shown === key} onPress={() => setTab(key)} testID={`pestana-canal-${key}`} />)}
       </ScrollView>
       <ArchivedClientBanner client={client} />
     </>
   );
   const panel = (
     <>
-      {tab === 'services' && client ? (
+      {shown === 'services' && client ? (
         <View className="bg-background" style={COVER}>
           <ClientServices client={client} records={records} onOpenRecord={toMessage} target={target} members={params.names} me={params.yo} />
         </View>
       ) : null}
-      {tab === 'account' && target ? <View className="bg-background" style={COVER}><ClientAccountPanel target={target} /></View> : null}
-      {tab === 'checklist' ? (
+      {shown === 'account' && target ? <View className="bg-background" style={COVER}><ClientAccountPanel target={target} /></View> : null}
+      {shown === 'checklist' ? (
         <View className="bg-background" style={COVER}>
-          <WorkPlanPanel plan={plan} jwt={params.jwt} yo={params.yo} nameOf={nameOf} members={checklistMembers(params.names, params.yo)} onStartFailed={(message) => ToastAndroid.show(message, ToastAndroid.SHORT)} onOpenTask={setOpenTask} />
+          <WorkPlanPanel restricted={Boolean(client.access?.restricted)} plan={plan} jwt={params.jwt} yo={params.yo} nameOf={nameOf} members={checklistMembers(params.names, params.yo)} onStartFailed={(message) => ToastAndroid.show(message, ToastAndroid.SHORT)} onOpenTask={setOpenTask} />
         </View>
       ) : null}
-      {tab === 'files' ? <View className="bg-background" style={COVER}><ClientFilesPanel client={client} target={target} stages={stages} onOpenMessage={toMessage} /></View> : null}
-      {tab === 'pending' ? <View className="bg-background" style={COVER}><PendingPanel stages={stages} nameOf={nameOf} onOpen={setOpenTask} /></View> : null}
+      {shown === 'files' ? <View className="bg-background" style={COVER}><ClientFilesPanel client={client} target={target} stages={stages} onOpenMessage={toMessage} /></View> : null}
+      {shown === 'pending' ? <View className="bg-background" style={COVER}><PendingPanel stages={stages} nameOf={nameOf} onOpen={setOpenTask} /></View> : null}
       <TaskDetailSheet open={openTask} stages={stages} channelName={params.channelName} jwt={params.jwt} chatId={params.chatId} yo={params.yo} nameOf={nameOf} members={checklistMembers(params.names, params.yo)} onChanged={() => void plan.reload()} onOpenMessage={toMessage} onClose={() => setOpenTask(null)} />
     </>
   );

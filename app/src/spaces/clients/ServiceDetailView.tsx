@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronLeft, ExternalLink, FileText } from 'lucide-react-native';
-import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailSheet, detailTabs, moreInPortal, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orderGuidesOf, type DetailRow, type DetailTabKey, type ServiceDetail, type SheetFile, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
-import type { ViewableFile } from './fileViewer';
+import type { ViewableFile } from '@lilachat/shared';
 import { RecordSheet } from './RecordSheet';
 import { ServiceBilling } from './ServiceBilling';
 import { ServiceStages } from './ServiceStages';
@@ -30,7 +30,7 @@ function PortalLink(props: { url: string; label: string; testID: string }) {
 }
 
 /** The expediente's head (design f-04): kicker, name, state and stage with its progress. */
-export function ServiceHead({ service }: { service: SpaceClientService }) {
+export function ServiceHead({ service, detail }: { service: SpaceClientService; detail?: ServiceDetail | null }) {
   return (
     <View className="rounded-2xl border border-outline/15 border-t-[3px] border-t-primary bg-surface p-4">
       <View className="flex-row items-start gap-3">
@@ -49,6 +49,23 @@ export function ServiceHead({ service }: { service: SpaceClientService }) {
           {service.progress !== undefined ? <View className="mt-2 h-1.5 overflow-hidden rounded-full bg-background"><View className="h-full rounded-full bg-primary" style={{ width: `${service.progress}%` }} /></View> : null}
         </View>
       ) : null}
+      {detail ? <ServiceStages detail={detail} /> : null}
+    </View>
+  );
+}
+
+/** A whole-order guide (José 30/10 night: «¿las guías deberían ir en despachos?»): at the top of Despachos. */
+function OrderGuides({ guides, onOpenFile }: { guides: SheetFile[]; onOpenFile: (file: ViewableFile) => void }) {
+  const colors = useColores();
+  return (
+    <View testID="guias-del-pedido" className="rounded-2xl border border-outline/15 bg-surface px-4 py-2">
+      <Text className="py-1 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">Guías del pedido</Text>
+      {guides.map((guide) => (
+        <Pressable key={guide.url} onPress={() => onOpenFile({ url: guide.url, name: guide.label })} className="min-h-[44px] flex-row items-center gap-2">
+          <FileText size={15} color={colors.primary} />
+          <Text className="flex-1 text-[14px] font-semibold text-primary" numberOfLines={1}>{guide.label}</Text>
+        </Pressable>
+      ))}
     </View>
   );
 }
@@ -92,9 +109,11 @@ function TabStrip(props: { detail: ServiceDetail; tab: DetailTabKey; onTab: (tab
   );
 }
 
-function DetailTabs({ detail, target, serviceId, onOpenFile }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; onOpenFile: (file: ViewableFile) => void }) {
-  const [tab, setTab] = useState<DetailTabKey>('orders');
+function DetailTabs({ detail, target, serviceId, onOpenFile }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void }) {
+  // José 30/10 night: Cotizaciones and Cobranza first; it opens on the first one that came.
+  const [tab, setTab] = useState<DetailTabKey>(() => detailTabs(detail)[0]?.key ?? 'orders');
   const [openId, setOpenId] = useState<string | null>(null);
+  const guides = tab === 'dispatches' ? orderGuidesOf(detail) : [];
   const reportPdf = useReportPdf(target, serviceId, onOpenFile);
   const sheet = openId ? detailSheet(detail, tab, openId) : null;
   const close = () => {
@@ -105,9 +124,9 @@ function DetailTabs({ detail, target, serviceId, onOpenFile }: { detail: Service
   const more = tab === 'billing' ? null : moreInPortal(rows.length, detail.totals[tab] ?? rows.length);
   return (
     <>
-      <ServiceStages detail={detail} />
       <TabStrip detail={detail} tab={tab} onTab={setTab} />
-      {tab === 'billing' && detail.billing ? <ServiceBilling billing={detail.billing} onOpenFile={onOpenFile} /> : (
+      {guides.length ? <OrderGuides guides={guides} onOpenFile={onOpenFile} /> : null}
+      {tab === 'billing' && detail.billing ? <ServiceBilling billing={detail.billing} invoices={invoicesOf(detail)} onOpenFile={onOpenFile} /> : (
         <View className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">
           {rows.length ? rows.map((row) => <RowView key={row.id} row={row} onOpen={setOpenId} onOpenFile={onOpenFile} />) : <Text className="p-4 text-[14px] text-on-surface-variant">{DETAIL_EMPTY[tab]}</Text>}
         </View>
@@ -150,7 +169,7 @@ export function ServiceDetailView(props: { target: ServiceAskTarget; service: Sp
         <ChevronLeft size={18} color={colors.primary} />
         <Text className="text-[14px] font-semibold text-primary">Servicios</Text>
       </Pressable>
-      <ServiceHead service={props.service} />
+      <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
       {answer === null ? <Skeleton /> : null}
       {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} onOpenFile={files.open} /> : null}
       {files.notice ? <Text className="text-center text-[13px] text-error">{files.notice}</Text> : null}

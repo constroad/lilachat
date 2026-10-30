@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { Types } from 'mongoose';
-import { DEFAULT_WORK_STAGES, type WorkStage } from '@lilachat/shared';
+import { DEFAULT_WORK_STAGES, visibleStagesFor, type WorkStage } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import { ChecklistModel } from './checklistModel.js';
 import { view } from './checklistRoutes.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import { avisarCambioDeTarjeta } from './avisoDeTarjeta.js';
 import { ClientChannelModel } from './bots/botClients.js';
+import { restrictionIn } from './stageAccess.js';
 
 const NO_ACCESS = 'No tienes acceso a ese canal.';
 
@@ -30,8 +31,10 @@ export function buildWorkStageRouter(): Router {
     const userId = req.session!.userId;
     const channel = await channelOfMember(req.query.chatId, userId);
     if (!channel) return res.status(403).json({ message: NO_ACCESS });
-    const stages = await ChecklistModel.find({ chatId: channel._id, stage: { $exists: true } }).sort({ stage: 1 }).lean();
-    res.json({ stages: stages.map((one): WorkStage & { othersCanAdd: boolean } => ({ ...view(one), stage: one.stage!, othersCanAdd: one.othersCanAdd })) });
+    const [stages, restricted] = await Promise.all([ChecklistModel.find({ chatId: channel._id, stage: { $exists: true } }).sort({ stage: 1 }).lean(), restrictionIn(channel._id, userId)]);
+    const all = stages.map((one): WorkStage & { othersCanAdd: boolean } => ({ ...view(one), stage: one.stage!, othersCanAdd: one.othersCanAdd }));
+    // José 30/10 night: a restricted member sees the stages an admin picked and, elsewhere, only their tasks.
+    res.json({ stages: visibleStagesFor(all, restricted, String(userId)) });
   }));
 
   /** Any member starts it once, with the seven stages; each one is then edited like any checklist. */
@@ -42,6 +45,7 @@ export function buildWorkStageRouter(): Router {
     // José 29/10: the job's plan belongs to a client's channel only, not to every channel of the space.
     if (!channel.workspaceId || channel.encrypted || !(await ClientChannelModel.exists({ chatId: channel._id }))) return res.status(400).json({ message: 'El checklist por etapas es de los canales de cliente.' });
     if (await ChecklistModel.exists({ chatId: channel._id, stage: { $exists: true } })) return res.status(409).json({ message: 'Este canal ya tiene su checklist por etapas.' });
+    if (await restrictionIn(channel._id, userId)) return res.status(403).json({ message: 'El checklist lo empieza quien ve todo el canal.' });
     const created = await ChecklistModel.insertMany(
       DEFAULT_WORK_STAGES.map((title, index) => ({ chatId: channel._id, createdBy: userId, title, items: [], othersCanMark: true, othersCanAdd: true, stage: index + 1 }))
     );

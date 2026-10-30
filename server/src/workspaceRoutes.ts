@@ -27,7 +27,7 @@ import { CUSTOM_EMOJI_MAX_BYTES } from '@lilachat/shared';
 import { addCustomEmoji, listCustomEmojis, removeCustomEmoji } from './customEmojiCatalog.js';
 import { clientRecords, listClients } from './bots/botClients.js';
 import { clientAccount, clientReportPdf, clientServiceDetail, clientServiceFiles } from './bots/clientFiles.js';
-import { listBillingViewers, setBillingViewer } from './bots/clientBillingViewers.js';
+import { liftRestrictionsOfAdmin, listBillingViewers, listClientAccess, setBillingViewer, setClientAccess } from './bots/clientBillingViewers.js';
 
 /** Tries of a code per person and minute: enough to fix a typo, not to guess codes. */
 const CODE_TRIES_PER_MINUTE = 10;
@@ -88,7 +88,12 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
     await rejectRequest(req.params.id!, me(req), req.params.memberId!);
     res.status(204).end();
   }));
-  router.patch('/:id/members/:memberId', handled(async (req, res) => res.json({ member: await updateMember(req.params.id!, me(req), req.params.memberId!, req.body ?? {}) })));
+  router.patch('/:id/members/:memberId', handled(async (req, res) => {
+    const member = await updateMember(req.params.id!, me(req), req.params.memberId!, req.body ?? {});
+    // José 30/10 night: an admin always sees every client channel whole.
+    if (req.body?.role !== undefined) await liftRestrictionsOfAdmin(req.params.id!, req.params.memberId!);
+    res.json({ member });
+  }));
   router.get('/:id/clients', handled(async (req, res) => res.json({ clients: await listClients(req.params.id!, me(req)) })));
   router.get('/:id/clients/:clientId/records', handled(async (req, res) => {
     const found = await clientRecords(req.params.id!, req.params.clientId!, me(req));
@@ -122,6 +127,9 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
   // José 30/10: who else sees a client's collection, chosen by an admin per client channel.
   router.get('/:id/clients/:clientId/billing-viewers', handled(async (req, res) => res.json(await listBillingViewers(req.params.id!, req.params.clientId!, me(req)))));
   router.put('/:id/clients/:clientId/billing-viewers/:userId', handled(async (req, res) => res.json(await setBillingViewer(req.params.id!, req.params.clientId!, me(req), req.params.userId!, req.body ?? {}))));
+  // José 30/10 night: who sees money and who only sees some tabs and stages of a client's channel.
+  router.get('/:id/clients/:clientId/access', handled(async (req, res) => res.json(await listClientAccess(req.params.id!, req.params.clientId!, me(req)))));
+  router.put('/:id/clients/:clientId/access/:userId', handled(async (req, res) => res.json(await setClientAccess(req.params.id!, req.params.clientId!, me(req), req.params.userId!, req.body ?? {}))));
   router.get('/:id/channels', handled(async (req, res) => res.json({ channels: await listChannels(req.params.id!, me(req)) })));
   router.post('/:id/channels', handled(async (req, res) => res.status(201).json({ channel: await createChannel(req.params.id!, me(req), req.body ?? {}) })));
   // Pending 19: the space's own emojis (designs c-06/c-07). Too big a file is a 400, not a 500.

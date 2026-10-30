@@ -7,6 +7,9 @@ import type { Credential } from '../auth/credentialStore';
 import { useColores } from '../ui/tema';
 import { useMargenes } from '../ui/useMargenes';
 import { HistoryChoiceSheet } from './HistoryChoiceSheet';
+import type { MemberAccess } from '@lilachat/shared';
+import { JoinAccessScreen, useChannelStages, useClientAccess } from '../spaces/clients/ClientAccess';
+import { useClientOfChat } from '../spaces/clients/useSpaceClients';
 
 /**
  * Elegir a quién sumar al grupo.
@@ -28,6 +31,7 @@ export function ElegirParaSumar({
   credential,
   yaEstan,
   spaceId,
+  chatId,
   onCerrar,
   onElegir,
 }: {
@@ -36,13 +40,24 @@ export function ElegirParaSumar({
   /** The channel's space: its members are listed instead of the contacts. */
   spaceId?: string;
   yaEstan: readonly string[];
+  /** The group or channel; a client's channel asks a space admin what the person sees (José 30/10 night). */
+  chatId: string;
   onCerrar: () => void;
   /** `history`: whether they see the earlier messages (José 30/10, always asked). */
-  onElegir: (userId: string, history: boolean) => void;
+  onElegir: (userId: string, history: boolean, access?: MemberAccess) => void;
 }) {
   const colores = useColores();
   const margenes = useMargenes();
   const [picked, setPicked] = useState<{ id: string; name: string } | null>(null);
+  const client = useClientOfChat(chatId);
+  // The access list answers only to a space admin: with it, adding asks what the person sees.
+  const { list } = useClientAccess(visible && client && spaceId ? { jwt: credential.jwt, spaceId, clientId: client.id } : null);
+  const stages = useChannelStages(credential.jwt, chatId, list !== null);
+  const choose = (history: boolean, access?: MemberAccess) => {
+    const person = picked;
+    setPicked(null);
+    if (person) onElegir(person.id, history, access);
+  };
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onCerrar}>
@@ -85,15 +100,11 @@ export function ElegirParaSumar({
           />
         ) : null}
       </View>
-      <HistoryChoiceSheet
-        name={picked?.name ?? null}
-        onClose={() => setPicked(null)}
-        onChoose={(history) => {
-          const person = picked;
-          setPicked(null);
-          if (person) onElegir(person.id, history);
-        }}
-      />
+      {list ? (
+        <JoinAccessScreen name={picked?.name ?? null} askHistory stages={stages} onClose={() => setPicked(null)} onConfirm={(history, access) => choose(history, access ?? undefined)} />
+      ) : (
+        <HistoryChoiceSheet name={picked?.name ?? null} onClose={() => setPicked(null)} onChoose={(history) => choose(history)} />
+      )}
     </Modal>
   );
 }

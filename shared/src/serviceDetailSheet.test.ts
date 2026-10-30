@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { serviceDetailOf } from './serviceDetail.js';
-import { detailSheet } from './serviceDetailSheet.js';
+import { detailSheet, invoicesOf, orderGuidesOf } from './serviceDetailSheet.js';
 
 /** José 30/10: «si quiero ver el detalle de un pedido me dice que abra Portal… lo mismo con informes». */
 const detail = serviceDetailOf({
@@ -29,7 +29,7 @@ describe('detailSheet', () => {
     expect(sheet.files).toEqual([]);
   });
 
-  it('an order with Portal 611e61d7 fields: site, invoice and guides as files; with the collection rule, price, credit and what is pending', () => {
+  it('an order with Portal 611e61d7 fields: site and, with the collection rule, price, credit and what is pending; its invoice goes to Cobranza and its guides to Despachos', () => {
     // Arrange
     const order = { id: 'o2', product: 'MAC 2', quantity: 10, unit: 'm³', status_label: 'Despachado', tone: 'ok', site: 'Av. Los Álamos km 12', invoice: 'F001-345', invoice_url: 'https://lila.constroad.com/files/f345.pdf', guides: [{ name: 'Guía 001-77', url: 'https://lila.constroad.com/files/g77.jpg' }, { name: 'sin url' }], unit_price: 320, total: 3200, is_credit: true, due_at: '2026-11-15', payments: [{ date: '2026-10-20', amount: 1000 }, { date: '2026-10-25', amount: 200 }] };
     const withOrder = serviceDetailOf({ service: { id: 's', name: 'S' }, orders: [order], dispatches: [], reports: [] })!;
@@ -45,15 +45,33 @@ describe('detailSheet', () => {
       { label: 'Condición', value: 'Crédito · vence el 15 nov 2026' },
       { label: 'Cobrado', value: 'S/ 1,200.00' },
       { label: 'Por cobrar', value: 'S/ 2,000.00' },
-      { label: 'Factura', value: 'F001-345' },
     ]);
-    expect(sheet.files).toEqual([{ url: 'https://lila.constroad.com/files/f345.pdf', label: 'Factura F001-345' }, { url: 'https://lila.constroad.com/files/g77.jpg', label: 'Guía 001-77' }]);
+    expect(sheet.files).toEqual([]);
+    expect(invoicesOf(withOrder)).toEqual([{ id: 'o2', label: 'Factura F001-345', line: 'MAC 2', url: 'https://lila.constroad.com/files/f345.pdf' }]);
+    expect(orderGuidesOf(withOrder)).toEqual([{ url: 'https://lila.constroad.com/files/g77.jpg', label: 'Guía 001-77 · MAC 2' }]);
   });
 
   it('a dispatch: plate, driver, quantity, departure in Lima and its order; the guide as a file', () => {
     const sheet = detailSheet(detail, 'dispatches', 'd1')!;
     expect(sheet.facts).toEqual([{ label: 'Chofer', value: 'Huber Quispe' }, { label: 'Cantidad', value: '25.5 m³' }, { label: 'Salida', value: '10 set, 1:57 a. m.' }, { label: 'Guía N°', value: '001-77' }, { label: 'Pedido', value: 'ASTM D 3515 - tamaño 12.5mm' }]);
     expect(sheet.files).toEqual([{ url: 'https://lila.constroad.com/files/g1.jpg', label: 'Guía' }]);
+    expect(sheet.media).toEqual([]);
+    expect(sheet.groups).toEqual([]);
+  });
+
+  it('a dispatch with its photos, videos and the truck cubicaje (José 30/10 night)', () => {
+    // Arrange
+    const withMedia = serviceDetailOf({
+      service: { id: 's', name: 'S' },
+      orders: [],
+      reports: [],
+      dispatches: [{ id: 'd9', plate: 'AZJ 910', status_label: 'Entregado', tone: 'ok', pictures: [{ url: 'https://lila.constroad.com/f/p1.jpg', thumb_url: 'https://lila.constroad.com/t/p1.jpg', mime: 'image/jpeg', name: 'carga.jpg' }, { url: 'https://lila.constroad.com/f/v1.mp4', mime: 'video/mp4' }, { url: 'http://inseguro/x.jpg', mime: 'image/jpeg' }], cubicage: { m3: 25.5, shape: 'Cuadrado', dimensions: [{ label: 'Largo', value: '5.20 m' }, { label: 'Ancho', value: '' }] } }],
+    })!;
+    // Act
+    const sheet = detailSheet(withMedia, 'dispatches', 'd9')!;
+    // Assert
+    expect(sheet.media).toEqual([{ url: 'https://lila.constroad.com/f/p1.jpg', thumbUrl: 'https://lila.constroad.com/t/p1.jpg', mime: 'image/jpeg', name: 'carga.jpg' }, { url: 'https://lila.constroad.com/f/v1.mp4', mime: 'video/mp4', name: 'AZJ 910 · video 2' }]);
+    expect(sheet.groups).toEqual([{ title: 'Cubicaje', facts: [{ label: 'Volquete cubica', value: '25.5 m³' }, { label: 'Forma', value: 'Cuadrado' }, { label: 'Largo', value: '5.20 m' }] }]);
   });
 
   it('a report with its PDF; one without asks Portal for it on demand (agentes 30/10)', () => {
@@ -66,6 +84,12 @@ describe('detailSheet', () => {
     const sheet = detailSheet(detail, 'quotes', 'q1')!;
     expect(sheet.facts).toEqual([{ label: 'Total', value: 'S/ 142,416.02' }, { label: 'Fecha', value: '28 ago' }]);
     expect(sheet.items).toEqual([{ name: 'Mezcla asfáltica', line: '383.5 m³ · S/ 320.00 c/u', total: 'S/ 122,720.00' }]);
+  });
+
+  it('a quote with its PDF (José 30/10 night: «en cotizaciones me gustaría poder ver el PDF»)', () => {
+    const withPdf = serviceDetailOf({ service: { id: 's', name: 'S' }, orders: [], dispatches: [], reports: [], quotes: [{ id: 'q2', code: '301', status_label: 'Enviada', tone: 'info', pdf_url: 'https://lila.constroad.com/files/q301.pdf' }] })!;
+    expect(detailSheet(withPdf, 'quotes', 'q2')?.files).toEqual([{ url: 'https://lila.constroad.com/files/q301.pdf', label: 'PDF' }]);
+    expect(detailSheet(detail, 'quotes', 'q1')?.files).toEqual([]);
   });
 
   it('null for an id that is not there or for the collection tab', () => {

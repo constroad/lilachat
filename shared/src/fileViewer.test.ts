@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { galleryOf, mimeOf, openingOf } from './fileViewer';
+import { galleryOf, mimeOf, openingOf } from './fileViewer.js';
 
 /** José 30/10: Portal's files open in Lilachat's viewer, not in Portal. */
 describe('fileViewer', () => {

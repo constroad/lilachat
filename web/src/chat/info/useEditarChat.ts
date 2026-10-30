@@ -1,3 +1,4 @@
+import type { MemberAccess } from '@lilachat/shared';
 import { useCallback } from 'react';
 import { normalizarDescripcion, normalizarNombreDeGrupo } from '@lilachat/shared';
 import { api, type ApiResult } from '../../api';
@@ -60,7 +61,7 @@ export function useEditarChat(params: { chatId: string; jwt: string; onCambio: (
   );
 
   const addMember = useCallback(
-    async (userId: string, history?: boolean) => void resolver(await api(`/chats/${chatId}/members`, { body: history === undefined ? { userId } : { userId, history }, jwt })),
+    async (userId: string, history?: boolean, access?: MemberAccess) => void resolver(await api(`/chats/${chatId}/members`, { body: { userId, ...(history === undefined ? {} : { history }), ...(access ? { access } : {}) }, jwt })),
     [chatId, jwt, resolver]
   );
   const cambiarRol = useCallback(

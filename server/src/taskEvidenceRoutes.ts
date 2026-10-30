@@ -5,15 +5,19 @@ import { ChatModel, MessageModel } from './chatModels.js';
 import { ChecklistModel, type Checklist, type TaskEvidenceEntry } from './checklistModel.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import { avisarCambioDeTarjeta } from './avisoDeTarjeta.js';
+import { ownTasksOnly, stageScopeFor } from './stageAccess.js';
 
 const EVIDENCE_KINDS = new Set<TaskEvidenceEntry['kind']>(['image', 'video', 'file']);
 const GONE = 'Esa tarea ya no está.';
 
 /** The checklist and its task if I am in its chat; otherwise 404 (nothing confirmed to exist) and null. */
 async function taskOfMember(params: { id: string; itemId: string; userId: Types.ObjectId; res: Response }): Promise<Checklist | null> {
-  const checklist = Types.ObjectId.isValid(params.id) ? await ChecklistModel.findById(params.id).lean() : null;
-  const member = checklist && (await ChatModel.exists({ _id: checklist.chatId, 'members.userId': params.userId }));
-  if (!checklist || !member || !checklist.items.some((item) => item.id === params.itemId)) {
+  const found = Types.ObjectId.isValid(params.id) ? await ChecklistModel.findById(params.id).lean() : null;
+  const member = found && (await ChatModel.exists({ _id: found.chatId, 'members.userId': params.userId }));
+  // José 30/10 night: a restricted member only reaches the tasks of the stages they see (or their own).
+  const scope = found && member ? await stageScopeFor(found, params.userId) : 'none';
+  const checklist = found && scope === 'own' ? ownTasksOnly(found, params.userId) : found;
+  if (!checklist || scope === 'none' || !checklist.items.some((item) => item.id === params.itemId)) {
     params.res.status(404).json({ message: GONE });
     return null;
   }

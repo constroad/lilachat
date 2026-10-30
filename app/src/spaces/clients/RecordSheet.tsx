@@ -1,12 +1,39 @@
 import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
 import { ExternalLink, FileText } from 'lucide-react-native';
-import type { DetailRow, DetailSheet, SheetItem } from '@lilachat/shared';
+import type { DetailRow, DetailSheet, SheetFact, SheetItem, SheetMedia } from '@lilachat/shared';
+import { FileThumb } from './FileThumb';
 import { PantallaEnModal } from '../../ui/PantallaEnModal';
 import { useColores } from '../../ui/tema';
-import type { ViewableFile } from './fileViewer';
+import type { ViewableFile } from '@lilachat/shared';
 import { DETAIL_TONE } from './tones';
 
 const Kicker = ({ children }: { children: string }) => <Text className="mt-2 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{children}</Text>;
+type OpenFile = (file: ViewableFile, siblings?: readonly ViewableFile[]) => void;
+
+const Facts = ({ facts }: { facts: SheetFact[] }) => (
+  <View className="rounded-2xl border border-outline/15 bg-surface px-4">
+    {facts.map((fact, index) => (
+      <View key={fact.label} className={`flex-row justify-between gap-3 py-3 ${index ? 'border-t border-outline/10' : ''}`}>
+        <Text className="text-[14px] text-on-surface-variant">{fact.label}</Text>
+        <Text className="min-w-0 flex-shrink text-right text-[14px] font-semibold text-on-surface">{fact.value}</Text>
+      </View>
+    ))}
+  </View>
+);
+
+/** A dispatch's photos and videos (José 30/10 night: «no veo las fotos y videos»), opened in the viewer. */
+const MediaStrip = ({ media, onOpen }: { media: SheetMedia[]; onOpen: OpenFile }) => (
+  <>
+    <Kicker>{`Fotos y videos · ${media.length}`}</Kicker>
+    <View className="flex-row flex-wrap gap-2">
+      {media.map((one, index) => (
+        <Pressable key={one.url} testID={`media-ficha-${index}`} accessibilityLabel={one.name} onPress={() => onOpen(one, media)}>
+          <FileThumb file={one} size={76} />
+        </Pressable>
+      ))}
+    </View>
+  </>
+);
 
 function FileButton(props: { title: string; file: { url: string; label: string }; onOpenFile: (file: ViewableFile) => void; testID: string }) {
   const colors = useColores();
@@ -65,7 +92,7 @@ function RelatedRow(props: { row: DetailRow; onOpenFile: (file: ViewableFile) =>
  * viewer, an order's dispatches and a quote's line items. Portal stays at the
  * foot, secondary.
  */
-export function RecordSheet(props: { sheet: DetailSheet | null; onClose: () => void; onOpenFile: (file: ViewableFile) => void; pdf?: PdfOnDemand }) {
+export function RecordSheet(props: { sheet: DetailSheet | null; onClose: () => void; onOpenFile: OpenFile; pdf?: PdfOnDemand }) {
   const colors = useColores();
   const { sheet } = props;
   return (
@@ -73,16 +100,9 @@ export function RecordSheet(props: { sheet: DetailSheet | null; onClose: () => v
       {sheet ? (
         <View testID="ficha-registro" className="gap-3">
           <Text className={`self-start rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase ${DETAIL_TONE[sheet.status.tone]}`}>{sheet.status.label}</Text>
-          {sheet.facts.length ? (
-            <View className="rounded-2xl border border-outline/15 bg-surface px-4">
-              {sheet.facts.map((fact, index) => (
-                <View key={fact.label} className={`flex-row justify-between gap-3 py-3 ${index ? 'border-t border-outline/10' : ''}`}>
-                  <Text className="text-[14px] text-on-surface-variant">{fact.label}</Text>
-                  <Text className="min-w-0 flex-shrink text-right text-[14px] font-semibold text-on-surface">{fact.value}</Text>
-                </View>
-              ))}
-            </View>
-          ) : null}
+          {sheet.facts.length ? <Facts facts={sheet.facts} /> : null}
+          {sheet.groups.map((group) => <View key={group.title} testID={`grupo-${group.title}`}><Kicker>{group.title}</Kicker><View className="mt-2"><Facts facts={group.facts} /></View></View>)}
+          {sheet.media.length ? <MediaStrip media={sheet.media} onOpen={props.onOpenFile} /> : null}
           {sheet.files.map((file, index) => <FileButton key={file.url} title={sheet.title} file={file} onOpenFile={props.onOpenFile} testID={index ? `ver-archivo-ficha-${index}` : 'ver-archivo-ficha'} />)}
           {sheet.pdfOnDemand && props.pdf ? <AskPdfButton pdf={props.pdf} /> : null}
           {sheet.note ? <Text testID="nota-ficha" className="text-[14px] text-on-surface-variant">{sheet.note}</Text> : null}

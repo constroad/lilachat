@@ -10,13 +10,15 @@ import type { OpenTask } from './TaskDetailSheet';
 
 const STATUS_LABEL: Record<StageStatus, string> = { done: 'HECHO', in_progress: 'EN PROCESO', pending: 'PENDIENTE' };
 
-type Props = { plan: WorkPlan; jwt: string; yo: string; nameOf: (userId: string) => string; members: readonly ChecklistMember[]; onStartFailed: (message: string) => void; onOpenTask: (task: OpenTask) => void };
+type Props = { plan: WorkPlan; jwt: string; yo: string; nameOf: (userId: string) => string; members: readonly ChecklistMember[]; onStartFailed: (message: string) => void; onOpenTask: (task: OpenTask) => void; restricted?: boolean };
 
 /** The «Checklist» tab of a channel (design e2-17): the plan at a glance and its stages, each one opening its tasks. */
 export function WorkPlanPanel(props: Props) {
   const { plan } = props;
   const [open, setOpen] = useState<string | null>(null);
   if (plan.stages === null) return <View className="flex-1 items-center justify-center">{plan.failed ? <Text className="text-on-surface-variant">No se pudo cargar el checklist.</Text> : <ActivityIndicator />}</View>;
+  // José 30/10 night: a restricted member only sees the stages an admin gave them and their own tasks.
+  if (plan.stages.length === 0 && props.restricted) return <Text testID="checklist-sin-acceso" className="px-8 pt-10 text-center text-[14px] text-on-surface-variant">Todavía no te dieron etapas ni te asignaron tareas en este canal.</Text>;
   if (plan.stages.length === 0) return <EmptyPlan starting={plan.starting} onStart={() => void plan.start().then((message) => message && props.onStartFailed(message))} />;
   const summary = plan.summary!;
   const expanded = open ?? summary.current?.id ?? null;

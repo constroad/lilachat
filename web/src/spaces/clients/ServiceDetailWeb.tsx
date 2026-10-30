@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { ChevronLeft, ExternalLink, FileText } from 'lucide-react';
-import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailSheet, detailTabs, moreInPortal, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orderGuidesOf, type DetailRow, type DetailTabKey, type ServiceDetail, type SheetFile, type SpaceClientService } from '@lilachat/shared';
+import { usePortalFileViewer } from './PortalFileViewer';
+import type { OpenSheetFile } from './RecordSheetWeb';
 import { RecordSheetWeb } from './RecordSheetWeb';
 import { ServiceBillingWeb } from './ServiceBillingWeb';
 import { ServiceStagesWeb } from './ServiceStagesWeb';
@@ -15,7 +17,7 @@ const PortalLink = (props: { url: string; label: string; testId: string }) => (
 );
 
 /** The expediente's head (design f-04): kicker, name, state and stage with its progress. */
-function ServiceHead({ service }: { service: SpaceClientService }) {
+function ServiceHead({ service, detail }: { service: SpaceClientService; detail: ServiceDetail | null }) {
   return (
     <section className="rounded-xl border border-outline/15 border-t-[3px] border-t-primary bg-surface p-4 md:p-5">
       <div className="flex items-start gap-3">
@@ -34,12 +36,23 @@ function ServiceHead({ service }: { service: SpaceClientService }) {
           {service.progress !== undefined ? <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background"><div className="h-full rounded-full bg-primary" style={{ width: `${service.progress}%` }} /></div> : null}
         </div>
       ) : null}
+      {detail ? <ServiceStagesWeb detail={detail} /> : null}
     </section>
   );
 }
 
-/** José 30/10: the row opens its sheet inside Lilachat; the file opens straight from lila, not in Portal. */
-function RowView({ row, onOpen }: { row: DetailRow; onOpen: (id: string) => void }) {
+/** A whole-order guide (José 30/10 night: «¿las guías deberían ir en despachos?»): at the top of Despachos. */
+function OrderGuides({ guides, onOpenFile }: { guides: SheetFile[]; onOpenFile: OpenSheetFile }) {
+  return (
+    <section data-testid="guias-del-pedido" className="rounded-xl border border-outline/15 bg-surface px-4 py-2">
+      <p className="py-1 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Guías del pedido</p>
+      {guides.map((guide) => <button key={guide.url} type="button" onClick={() => onOpenFile({ url: guide.url, name: guide.label })} className="flex min-h-[40px] w-full items-center gap-2 text-left text-sm font-semibold text-primary hover:underline"><FileText size={15} /> {guide.label}</button>)}
+    </section>
+  );
+}
+
+/** José 30/10: the row opens its sheet inside Lilachat; the file opens in Lilachat's viewer, not in Portal. */
+function RowView({ row, onOpen, onOpenFile }: { row: DetailRow; onOpen: (id: string) => void; onOpenFile: OpenSheetFile }) {
   return (
     <li data-testid={`fila-${row.id}`} className="flex min-h-[56px] items-center gap-3 px-4 py-2.5">
       <button type="button" onClick={() => onOpen(row.id)} className="min-w-0 flex-1 text-left">
@@ -47,7 +60,7 @@ function RowView({ row, onOpen }: { row: DetailRow; onOpen: (id: string) => void
         {row.line ? <p className="truncate text-[12px] text-on-surface-variant">{row.line}</p> : null}
       </button>
       {row.file ? (
-        <a href={row.file.url} target="_blank" rel="noreferrer" data-testid={`archivo-${row.id}`} className="inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold text-primary hover:underline"><FileText size={14} /> {row.file.label}</a>
+        <button type="button" onClick={() => row.file && onOpenFile({ url: row.file.url, name: `${row.title} · ${row.file.label}` })} data-testid={`archivo-${row.id}`} className="inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold text-primary hover:underline"><FileText size={14} /> {row.file.label}</button>
       ) : null}
       <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${DETAIL_TONE[row.status.tone]}`}>{row.status.label}</span>
     </li>
@@ -55,7 +68,10 @@ function RowView({ row, onOpen }: { row: DetailRow; onOpen: (id: string) => void
 }
 
 function DetailTabs({ detail, target, serviceId }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string }) {
-  const [tab, setTab] = useState<DetailTabKey>('orders');
+  // José 30/10 night: Cotizaciones and Cobranza first; it opens on the first one that came.
+  const [tab, setTab] = useState<DetailTabKey>(() => detailTabs(detail)[0]?.key ?? 'orders');
+  const viewer = usePortalFileViewer();
+  const guides = tab === 'dispatches' ? orderGuidesOf(detail) : [];
   const [openId, setOpenId] = useState<string | null>(null);
   const rows = detailRows(detail, tab);
   const more = tab === 'billing' ? null : moreInPortal(rows.length, detail.totals[tab] ?? rows.length);
@@ -67,18 +83,19 @@ function DetailTabs({ detail, target, serviceId }: { detail: ServiceDetail; targ
   };
   return (
     <>
-      <ServiceStagesWeb detail={detail} />
       <div role="tablist" className="flex gap-1 overflow-x-auto rounded-xl border border-outline/15 bg-surface p-1">
         {detailTabs(detail).map((one) => (
           <button key={one.key} type="button" role="tab" aria-selected={tab === one.key} data-testid={`pestana-detalle-${one.key}`} onClick={(event) => { setTab(one.key); event.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); }} className={`h-9 shrink-0 rounded-lg px-3 text-sm ${tab === one.key ? 'bg-primary font-semibold text-on-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>{one.label}</button>
         ))}
       </div>
-      {tab === 'billing' && detail.billing ? <ServiceBillingWeb billing={detail.billing} /> : (
+      {guides.length ? <OrderGuides guides={guides} onOpenFile={viewer.open} /> : null}
+      {tab === 'billing' && detail.billing ? <ServiceBillingWeb billing={detail.billing} invoices={invoicesOf(detail)} onOpenFile={viewer.open} /> : (
         <ul className="divide-y divide-outline/10 overflow-hidden rounded-xl border border-outline/15 bg-surface">
-          {rows.length ? rows.map((row) => <RowView key={row.id} row={row} onOpen={setOpenId} />) : <li className="p-4 text-sm text-on-surface-variant">{DETAIL_EMPTY[tab]}</li>}
+          {rows.length ? rows.map((row) => <RowView key={row.id} row={row} onOpen={setOpenId} onOpenFile={viewer.open} />) : <li className="p-4 text-sm text-on-surface-variant">{DETAIL_EMPTY[tab]}</li>}
         </ul>
       )}
-      {sheet ? <RecordSheetWeb sheet={sheet} onClose={close} pdf={sheet.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, readyUrl: reportPdf.readyUrl, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!) } : undefined} /> : null}
+      {viewer.viewer}
+      {sheet ? <RecordSheetWeb sheet={sheet} onClose={close} onOpenFile={viewer.open} pdf={sheet.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, readyUrl: reportPdf.readyUrl, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!) } : undefined} /> : null}
       {more ? <p className="text-center text-[12px] text-on-surface-variant">{`${more} · el resto está en el Portal`}</p> : null}
       {detail.service.url ? <PortalLink url={detail.service.url} label="Abrir en el Portal" testId="abrir-servicio-portal" /> : null}
     </>
@@ -95,7 +112,7 @@ export function ServiceDetailWeb(props: { target: ServiceAskTarget; service: Spa
   return (
     <div data-testid="detalle-servicio" className="mx-auto flex max-w-3xl flex-col gap-3">
       <button type="button" data-testid="volver-a-servicios" onClick={props.onBack} className="inline-flex items-center gap-1 self-start text-sm font-semibold text-primary"><ChevronLeft size={16} /> Servicios</button>
-      <ServiceHead service={props.service} />
+      <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
       {answer === null ? <div data-testid="detalle-cargando" className="h-48 animate-pulse rounded-xl bg-surface" /> : null}
       {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} /> : null}
       {answer && !answer.ok ? (

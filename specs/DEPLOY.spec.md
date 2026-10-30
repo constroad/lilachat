@@ -555,6 +555,7 @@ Lo barato que se puede quitar es **~1,3 MB (3 %)**: excluir `org/bouncycastle/pq
 (4-bis.1): desde ese commit `ota-publish` se niega a publicar hasta que haya un APK nuevo anotado con `--record-apk`. Va en
 el siguiente APK, junto con lo que ya lo necesite, y se verifica ahí con `unzip -l` y un ingreso en el emulador. **No
 entró en la 0.1.172** (salió por el arreglo de 4-bis.9 y no se quiso sumar otro cambio de empaquetado sin medirlo).
+**Entró en la 0.1.175** (ARCHITECTURE §172): `expo-build-properties › android.packagingOptions.exclude` y el tono en `m4a`.
 Lo grande —los 4,4 MB de guiños— solo baja si los cuadros dejan de ir dentro del APK (bajarlos al primer uso o por OTA),
 que es una decisión de producto, no de empaquetado.
 
@@ -562,7 +563,9 @@ que es una decisión de producto, no de empaquetado.
 leyendo TODAS las líneas a memoria (`PersistentFileLog.readFileLinesSync`); con 40 MB dio
 OutOfMemoryError. La app no lee ese log, así que `useActualizacionSilenciosa` lo vacía 20 s después
 de arrancar con `Updates.clearLogEntriesAsync()` (escribe el archivo en blanco, no lo lee). El
-recorte de ~1,3 MB de arriba sigue para el próximo APK (0.1.175), porque cambia el runtime de las OTA.
+recorte de ~1,3 MB de arriba entró en la 0.1.175, y desde ese APK `withNativeStartup` además vacía el log en
+`MainApplication.onCreate` si pasa de 1 MB, antes de que expo-updates lo lea (una app que muere antes de su JS no
+llega al vaciado de `index.ts`).
 
 ### 4-bis.9 Intents nativos con la carga retrasada (0.1.172, 28/10/2026)
 

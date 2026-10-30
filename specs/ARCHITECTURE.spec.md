@@ -4995,6 +4995,49 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 172. APK 0.1.175: compartir pantalla, guardia nativa del log y APK más liviano (30/10/2026)
+
+Lo que esperaba un APK porque toca lo nativo (cambia el runtime de las OTA):
+
+- **Compartir pantalla en el teléfono** (pendiente 3, la web lo tiene desde §154).
+  En una videollamada activa, «Más opciones» → «Compartir pantalla».
+  - react-native-webrtc 124 ya trae el servicio de primer plano de
+    `mediaProjection` que Android 10+ exige al capturar la pantalla, y su
+    `getDisplayMedia` pide el permiso, arranca el servicio y captura en ese
+    orden. Solo hay que encenderlo antes de que cargue el módulo
+    (`WebRTCModuleOptions.enableMediaProjectionService`, en
+    `plugins/withNativeStartup.js`) y declarar
+    `FOREGROUND_SERVICE_MEDIA_PROJECTION`.
+  - La pantalla va en el sender de la cámara (`replaceTrack`, sin
+    renegociar). La cámara sigue encendida debajo y vuelve al dejar de
+    compartir, o cuando Android corta desde su notificación (`onended`).
+    Mientras se comparte se oculta «Girar» y se ve «Estás compartiendo tu
+    pantalla». Al terminar la llamada se corta sola.
+  - Cerrar el diálogo de permiso de Android no es un error
+    (`NotAllowedError` → nada).
+  - Código: `src/calls/screenShare.ts` (puro, con test),
+    `useScreenShare.ts`, `callBarLayout.ts › moreOptions(hasChat,
+    canShareScreen)`.
+- **Guardia nativa del log de expo-updates.** `withNativeStartup` vacía
+  `files/dev.expo.modules.core.logging.dev.expo.updates` si pasa de 1 MB, en
+  `MainApplication.onCreate`, antes de `ApplicationLifecycleDispatcher` (donde
+  arranca expo-updates y su purga lee el log entero). El vaciado de `index.ts`
+  (§4-bis de DEPLOY, 30/10) sigue, pero una app que muere antes de su JS nunca
+  llegaba a él: fue la 0.1.174.
+- **APK más liviano** (DEPLOY §4-bis): fuera
+  `org/bouncycastle/pqc/crypto/picnic/**` (`expo-build-properties ›
+  packagingOptions.exclude`) y el tono de llamando pasa de `wav` (160 KB) a
+  `m4a` (6 KB, `afconvert -d aac`).
+- Tests: `plugins/withNativeStartup.test.js`, `src/calls/screenShare.test.ts`,
+  `callBarLayout.test.ts`.
+- **Publicada** en LilaStore `stable` el 30/10 (release `6ae4a2d93a5e366dfa955e45`,
+  39,3 MB, −1,1 MB contra la 0.1.174; runtime OTA `93aad2f5`). La descarga real da el
+  mismo sha256 que el binario. En el emulador: 3 aperturas en frío limpias (heap 24 MB)
+  y el chat secreto descifra texto e imagen sin las tablas de picnic.
+- **Sin probar de punta a punta:** compartir pantalla desde el teléfono. Hace falta una
+  videollamada con un segundo dispositivo. Lo cubren los tests y el manifiesto del APK
+  (servicio `MediaProjectionService` + permiso, leídos con `aapt2`).
+
 ## 171. Detalle del servicio y una sola pestaña «Archivos» (30/10/2026, OTA + web; diseño f-04, agentes 77e7782, Portal 1d4072d5)
 
 Pedido de José del 30/10: «en la web no veo cómo navegar en el servicio, qué

@@ -4,7 +4,7 @@ import * as TaskManager from 'expo-task-manager';
 import { shouldSendLiveUpdate, LIVE_MIN_INTERVAL_MS, type SharedLocation } from '@lilachat/shared';
 import { stopLiveLocation, updateLiveLocation } from '../../api/client';
 import { loadCredential } from '../../auth/credentialStore';
-import { activeShares, withShare, withoutShare, type LiveShare } from './liveShares';
+import { activeShares, afterLiveSend, withShare, withoutShare, type LiveShare } from './liveShares';
 
 const TASK = 'lilachat-live-location';
 const SHARES_KEY = 'lilachat.liveLocationShares';
@@ -48,12 +48,14 @@ async function sendFix(fix: Location.LocationObject): Promise<void> {
   if (!shouldSendLiveUpdate(await readLastSent(), next, now)) return;
   const credential = await loadCredential().catch(() => null);
   if (!credential) return;
-  await AsyncStorage.setItem(LAST_SENT_KEY, JSON.stringify({ ...next, at: now })).catch(() => undefined);
-  let left = shares;
+  const results = [];
   for (const share of shares) {
     const sent = await updateLiveLocation(credential.jwt, share.chatId, share.seq, next);
-    if (!sent.ok && sent.status === GONE) left = withoutShare(left, share.chatId, share.seq);
+    results.push({ share, ok: sent.ok, status: sent.ok ? undefined : sent.status });
   }
+  const { left, delivered } = afterLiveSend(shares, results);
+  // Pending 12: only a point that got through counts as sent; without signal the next fix retries at once.
+  if (delivered) await AsyncStorage.setItem(LAST_SENT_KEY, JSON.stringify({ ...next, at: now })).catch(() => undefined);
   if (left.length !== shares.length) await writeShares(left);
   if (left.length === 0) await stopUpdates();
 }

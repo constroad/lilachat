@@ -41,4 +41,20 @@ describe('a shared location on the web (pending 11)', () => {
     expect(screen.getByTestId('estado-tiempo-real').textContent).toBe('Ya no comparte su ubicación');
     expect(screen.queryByTestId('btn-dejar-de-compartir')).toBeNull();
   });
+
+  it('a live one whose points stopped says «Sin señal desde» (pending 12)', () => {
+    const old = new Date(Date.now() - 5 * 60_000).toISOString();
+    render(<LocationCardWeb location={{ lat: 1, lng: 2, liveUntil: new Date(Date.now() + 3_600_000).toISOString(), updatedAt: old }} mio={false} />);
+    expect(screen.getByTestId('sin-senal').textContent).toContain('Sin señal desde');
+  });
+
+  it('the map opens inside Lilachat, bigger and with zoom (pending 12)', () => {
+    render(<LocationCardWeb location={{ lat: -12.046374, lng: -77.042793 }} mio={false} />);
+    fireEvent.click(screen.getByTestId('btn-ver-mapa'));
+    const dialog = screen.getByTestId('mapa-en-vivo');
+    expect(dialog.querySelectorAll('img[src^="https://tile.openstreetmap.org/16/"]').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByTestId('btn-acercar-mapa'));
+    expect(dialog.querySelectorAll('img[src^="https://tile.openstreetmap.org/17/"]').length).toBeGreaterThan(0);
+    expect(screen.getByTestId('btn-como-llegar').getAttribute('href')).toContain('google.com/maps');
+  });
 });

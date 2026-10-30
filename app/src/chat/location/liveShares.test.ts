@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { activeShares, withShare, withoutShare, type LiveShare } from './liveShares';
+import { activeShares, afterLiveSend, withShare, withoutShare, type LiveShare } from './liveShares';
 
 const NOW = new Date('2026-10-28T20:00:00.000Z');
 const share = (seq: number, liveUntil: string, chatId = '6720f0a1b2c3d4e5f6a7b8c9'): LiveShare => ({ chatId, seq, liveUntil });
@@ -25,5 +25,18 @@ describe('live shares of this phone', () => {
   it('reads anything but a list as no shares', () => {
     expect(activeShares(null, NOW)).toEqual([]);
     expect(activeShares([{ chatId: 3 }] as unknown, NOW)).toEqual([]);
+  });
+});
+
+describe('afterLiveSend (pending 12: without signal)', () => {
+  const a = { chatId: 'c1', seq: 1, liveUntil: '2099-01-01T00:00:00.000Z' };
+  const b = { chatId: 'c2', seq: 2, liveUntil: '2099-01-01T00:00:00.000Z' };
+
+  it('no send got through: nothing leaves and the point is not marked as sent', () => {
+    expect(afterLiveSend([a, b], [{ share: a, ok: false, status: 'network' }, { share: b, ok: false, status: 503 }])).toEqual({ left: [a, b], delivered: false });
+  });
+
+  it('an ended one leaves; that answer counts as delivered', () => {
+    expect(afterLiveSend([a, b], [{ share: a, ok: false, status: 410 }, { share: b, ok: true }])).toEqual({ left: [b], delivered: true });
   });
 });

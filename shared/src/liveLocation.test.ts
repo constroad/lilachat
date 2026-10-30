@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { distanceMeters, liveCaption, liveMinutesOf, liveState, liveUntilFrom, shouldSendLiveUpdate, LIVE_KEEPALIVE_MS } from './liveLocation.js';
+import { distanceMeters, liveCaption, liveMinutesOf, liveState, liveUntilFrom, shouldSendLiveUpdate, LIVE_KEEPALIVE_MS, LIVE_MAP_MAX_ZOOM, LIVE_MAP_MIN_ZOOM, LIVE_STALE_MS, clampMapZoom, liveStaleCaption } from './liveLocation.js';
 
 /** Pending 11: live location for 15 min, 1 h or 8 h. */
 const now = new Date('2026-10-28T15:00:00Z');
@@ -36,5 +36,28 @@ describe('live location', () => {
     expect(liveCaption({ liveUntil: '2026-10-28T16:00:00Z' }, now, clock)).toBe('En tiempo real · hasta 16:00');
     expect(liveCaption({ liveUntil: '2026-10-28T16:00:00Z', endedAt: '2026-10-28T15:01:00Z' }, now, clock)).toBe('Ya no comparte su ubicación');
     expect(liveCaption({}, now, clock)).toBeNull();
+  });
+});
+
+describe('a live location without signal (pending 12)', () => {
+  const clock = (iso: string) => iso.slice(11, 16);
+  const now = new Date('2026-10-29T15:10:00.000Z');
+  const live = { lat: -12, lng: -77, liveUntil: '2026-10-29T16:00:00.000Z' };
+
+  it('fresh, or not live, says nothing', () => {
+    expect(liveStaleCaption({ ...live, updatedAt: '2026-10-29T15:08:30.000Z' }, now, clock)).toBeNull();
+    expect(liveStaleCaption({ lat: -12, lng: -77, updatedAt: '2026-10-29T14:00:00.000Z' }, now, clock)).toBeNull();
+    expect(liveStaleCaption({ ...live, endedAt: '2026-10-29T15:00:00.000Z', updatedAt: '2026-10-29T14:00:00.000Z' }, now, clock)).toBeNull();
+  });
+
+  it('three keep-alives missed: «Sin señal desde» the last point', () => {
+    expect(liveStaleCaption({ ...live, updatedAt: '2026-10-29T15:07:00.000Z' }, now, clock)).toBe('Sin señal desde 15:07');
+    expect(LIVE_STALE_MS).toBe(3 * 60_000);
+  });
+
+  it('the map zoom stays between the city and the street', () => {
+    expect(clampMapZoom(20)).toBe(LIVE_MAP_MAX_ZOOM);
+    expect(clampMapZoom(2)).toBe(LIVE_MAP_MIN_ZOOM);
+    expect(clampMapZoom(15.6)).toBe(16);
   });
 });

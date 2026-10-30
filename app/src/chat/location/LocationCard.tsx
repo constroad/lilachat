@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
-import { ExternalLink, Radio } from 'lucide-react-native';
-import { accuracyLabel, liveCaption, liveState, locationMapLink, type LiveLocation } from '@lilachat/shared';
+import { ExternalLink, Radio, WifiOff } from 'lucide-react-native';
+import { LIVE_KEEPALIVE_MS, accuracyLabel, liveCaption, liveStaleCaption, liveState, locationMapLink, type LiveLocation } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { MapSnippet } from './MapSnippet';
+import { LiveMapScreen } from './LiveMapScreen';
 import { stopLiveSharing } from './liveLocationTask';
 
 const CARD_WIDTH = 260;
@@ -11,14 +12,17 @@ const MAP_HEIGHT = 140;
 
 const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-/** «Now», again when a live location runs out, so the card turns to «Ya no comparte» by itself. */
+/**
+ * «Now» while a live location lasts: once a keep-alive, so «Sin señal desde»
+ * shows when the points stop (pending 12), and the card turns to «Ya no
+ * comparte» by itself when the time runs out.
+ */
 function useNowUntil(liveUntil: string | undefined): Date {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const left = liveUntil ? new Date(liveUntil).getTime() - Date.now() : 0;
-    if (!(left > 0)) return undefined;
-    const timer = setTimeout(() => setNow(new Date()), left + 500);
-    return () => clearTimeout(timer);
+    if (!liveUntil || new Date(liveUntil).getTime() <= Date.now()) return undefined;
+    const timer = setInterval(() => setNow(new Date()), LIVE_KEEPALIVE_MS);
+    return () => clearInterval(timer);
   }, [liveUntil]);
   return now;
 }
@@ -43,7 +47,11 @@ export function LocationCard(props: Props) {
   const colors = useColores();
   const now = useNowUntil(props.location.endedAt ? undefined : props.location.liveUntil);
   const [stopping, setStopping] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
   const open = () => (props.selecting && props.onSelect ? props.onSelect() : void Linking.openURL(locationMapLink(props.location)));
+  // Pending 12: the map itself opens inside the app; «Abrir en el mapa» still hands over to Maps.
+  const openMap = () => (props.selecting && props.onSelect ? props.onSelect() : setMapOpen(true));
+  const stale = liveStaleCaption(props.location, now, clock);
   const tinted = props.onOwnBubble ?? props.mine;
   const soft = tinted ? 'text-on-burbuja-propia-suave' : 'text-on-surface-variant';
   const caption = liveCaption(props.location, now, clock);
@@ -56,7 +64,8 @@ export function LocationCard(props: Props) {
   };
   return (
     <View testID="tarjeta-ubicacion" style={{ width: CARD_WIDTH }}>
-      <Pressable onPress={open} onLongPress={props.onSelect} delayLongPress={350} accessibilityLabel="Abrir la ubicación en el mapa" className="m-1 mb-0 overflow-hidden rounded-lg">
+      <LiveMapScreen visible={mapOpen} location={props.location} now={now} clock={clock} onClose={() => setMapOpen(false)} />
+      <Pressable testID="btn-ver-mapa" onPress={openMap} onLongPress={props.onSelect} delayLongPress={350} accessibilityLabel="Ver la ubicación en el mapa" className="m-1 mb-0 overflow-hidden rounded-lg">
         <MapSnippet location={props.location} width={CARD_WIDTH - 8} height={MAP_HEIGHT} testID="mapa-ubicacion" />
       </Pressable>
       <View className="px-3 pt-2">
@@ -65,6 +74,12 @@ export function LocationCard(props: Props) {
           <View className="flex-row items-center gap-1">
             {liveState(props.location, now) === 'live' ? <Radio size={13} color={tinted ? colors['on-burbuja-propia'] : colors.primary} /> : null}
             <Text testID="estado-tiempo-real" className={`text-[13px] ${soft}`}>{caption}</Text>
+          </View>
+        ) : null}
+        {stale ? (
+          <View className="flex-row items-center gap-1">
+            <WifiOff size={13} color={tinted ? colors['on-burbuja-propia'] : colors.error} />
+            <Text testID="sin-senal" className={`text-[13px] ${tinted ? soft : 'text-error'}`}>{stale}</Text>
           </View>
         ) : null}
         {props.location.accuracy !== undefined ? <Text className={`text-[13px] ${soft}`}>{accuracyLabel(props.location.accuracy)}</Text> : null}

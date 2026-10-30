@@ -4995,6 +4995,33 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 167. Ubicación en tiempo real: el mapa dentro de la app y sin señal (29/10/2026, OTA + web; pendiente 12)
+
+Cierra los dos «Falta» del §156, sin SDK de mapas ni servicio pago.
+
+- **El mapa dentro de la app.** Tocar el mapa de la tarjeta abre el mapa
+  grande, en el teléfono (`LiveMapScreen`, pantalla completa) y en la web
+  (`LiveMapDialog`).
+  - Son los mismos mosaicos de OpenStreetMap, centrados en el punto, con zoom
+    + / − entre 12 y 18 (`clampMapZoom`).
+  - Mientras dura, sigue al punto: la tarjeta se redibuja con cada `msg.edited`
+    y le pasa la posición nueva.
+  - «Cómo llegar» abre la app o el sitio de mapas. «Abrir en el mapa» de la
+    tarjeta sigue igual.
+  - Sin arrastrar el mapa: se queda centrado en la persona, como el seguimiento
+    de WhatsApp.
+- **Sin señal, del lado de quien mira.** Si una ubicación viva no recibe puntos
+  en 3 minutos (tres keep-alive, `LIVE_STALE_MS`), la tarjeta y el mapa dicen
+  «Sin señal desde HH:MM» (`liveStaleCaption`). Para eso la tarjeta se
+  redibuja una vez por minuto mientras está viva.
+- **Sin señal, del lado de quien comparte.** Antes, el punto se marcaba como
+  enviado ANTES de mandarlo: sin red se perdía y el siguiente esperaba el
+  keep-alive de 60 s. Ahora solo cuenta si algún envío pasó (`afterLiveSend`).
+  Sin red, el próximo punto (10 s después) sale apenas vuelve la señal.
+- **Tests:** `shared/liveLocation.test.ts` (+3),
+  `app/src/chat/location/liveShares.test.ts` (+2),
+  `web/src/chat/LocationCardWeb.test.tsx` (+2).
+
 ## 166. Pendientes web: lista + detalle del evento con Van / Tal vez / No van (29/10/2026, web; pendiente 10, diseño `w3c-web-agenda`)
 
 - La ventana «Pendientes» es ancha (`Overlay wide`). En la pestaña Pendientes,

@@ -55,3 +55,20 @@ export function liveCaption(location: Pick<LiveLocation, 'liveUntil' | 'endedAt'
   if (state === 'fixed') return null;
   return state === 'live' ? `En tiempo real · hasta ${clock(location.liveUntil!)}` : 'Ya no comparte su ubicación';
 }
+
+/** Three keep-alives missed: the phone sharing lost its signal (pending 12) (ms). */
+export const LIVE_STALE_MS = 3 * LIVE_KEEPALIVE_MS;
+
+/** «Sin señal desde HH:MM» under a live map whose last point is too old; otherwise nothing. */
+export function liveStaleCaption(location: Pick<LiveLocation, 'liveUntil' | 'endedAt' | 'updatedAt'>, now: Date, clock: (iso: string) => string): string | null {
+  if (liveState(location, now) !== 'live' || !location.updatedAt) return null;
+  const age = now.getTime() - new Date(location.updatedAt).getTime();
+  return age >= LIVE_STALE_MS ? `Sin señal desde ${clock(location.updatedAt)}` : null;
+}
+
+/** The in-app map (pending 12): from the neighbourhood to the street, whole tile zooms. */
+export const LIVE_MAP_MIN_ZOOM = 12;
+export const LIVE_MAP_MAX_ZOOM = 18;
+export const LIVE_MAP_DEFAULT_ZOOM = 16;
+
+export const clampMapZoom = (zoom: number): number => Math.min(LIVE_MAP_MAX_ZOOM, Math.max(LIVE_MAP_MIN_ZOOM, Math.round(zoom)));

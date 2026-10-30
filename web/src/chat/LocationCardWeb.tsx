@@ -1,21 +1,24 @@
 import { useEffect, useState } from 'react';
-import { ExternalLink, MapPin, Radio } from 'lucide-react';
-import { accuracyLabel, liveCaption, liveState, locationMapLink, mapTilesFor, type LiveLocation } from '@lilachat/shared';
+import { ExternalLink, Radio, WifiOff } from 'lucide-react';
+import { LIVE_KEEPALIVE_MS, accuracyLabel, liveCaption, liveStaleCaption, liveState, locationMapLink, type LiveLocation } from '@lilachat/shared';
 import { api } from '../api';
+import { LiveMapDialog } from './LiveMapDialog';
+import { TileMapWeb } from './TileMapWeb';
 
 const MAP = { width: 260, height: 140 };
-const PIN = 30;
 
 const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-/** «Now», again when a live location runs out, so the card turns to «Ya no comparte» by itself. */
+/**
+ * «Now» while a live location lasts: once a keep-alive, so «Sin señal desde»
+ * shows when the points stop (pending 12) and «Ya no comparte» when it ends.
+ */
 function useNowUntil(liveUntil: string | undefined): Date {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const left = liveUntil ? new Date(liveUntil).getTime() - Date.now() : 0;
-    if (!(left > 0)) return undefined;
-    const timer = setTimeout(() => setNow(new Date()), left + 500);
-    return () => clearTimeout(timer);
+    if (!liveUntil || new Date(liveUntil).getTime() <= Date.now()) return undefined;
+    const timer = setInterval(() => setNow(new Date()), LIVE_KEEPALIVE_MS);
+    return () => clearInterval(timer);
   }, [liveUntil]);
   return now;
 }
@@ -32,6 +35,8 @@ type Props = { location: LiveLocation; mio: boolean; live?: { jwt: string; chatI
 export function LocationCardWeb({ location, mio, live }: Props) {
   const now = useNowUntil(location.endedAt ? undefined : location.liveUntil);
   const [stopping, setStopping] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
+  const stale = liveStaleCaption(location, now, clock);
   const caption = liveCaption(location, now, clock);
   const isLive = liveState(location, now) === 'live';
   const stop = async () => {
@@ -40,21 +45,14 @@ export function LocationCardWeb({ location, mio, live }: Props) {
     await api(`/chats/${live.chatId}/locations/${live.seq}/stop`, { method: 'POST', jwt: live.jwt });
     setStopping(false);
   };
-  const map = mapTilesFor(location, MAP);
   const link = locationMapLink(location);
-  const radius = Math.min(map.accuracyRadius, MAP.width);
   return (
     <div data-testid="tarjeta-ubicacion" className="mb-1 w-[260px]">
-      <a href={link} target="_blank" rel="noopener noreferrer" aria-label="Abrir la ubicación en el mapa" className="relative block overflow-hidden rounded-lg bg-background" style={MAP}>
-        {map.tiles.map((tile) => (
-          <img key={tile.url} src={tile.url} alt="" loading="lazy" draggable={false} className="absolute max-w-none" style={{ left: tile.left, top: tile.top, width: 256, height: 256 }} />
-        ))}
-        {radius > 6 ? <span className="absolute rounded-full border border-primary/60 bg-primary/15" style={{ left: map.pin.left - radius, top: map.pin.top - radius, width: radius * 2, height: radius * 2 }} /> : null}
-        <span data-testid="pin-ubicacion" className="absolute text-primary" style={{ left: map.pin.left - PIN / 2, top: map.pin.top - PIN }}>
-          <MapPin size={PIN} fill="currentColor" stroke="white" strokeWidth={1.5} />
-        </span>
-        <span className="absolute bottom-0 right-0 bg-white/80 px-1 text-[9px] text-black/70">© OpenStreetMap</span>
-      </a>
+      {mapOpen ? <LiveMapDialog location={location} now={now} clock={clock} onClose={() => setMapOpen(false)} /> : null}
+      {/* Pending 12: the map opens inside Lilachat; «Abrir en el mapa» still goes to the maps site. */}
+      <button type="button" data-testid="btn-ver-mapa" aria-label="Ver la ubicación en el mapa" onClick={() => setMapOpen(true)} className="block overflow-hidden rounded-lg">
+        <TileMapWeb location={location} width={MAP.width} height={MAP.height} />
+      </button>
       <p className="mt-2 text-[14px] font-semibold">{caption ? 'Ubicación en tiempo real' : 'Ubicación'}</p>
       {caption ? (
         <p className="flex items-center gap-1 text-[12px] opacity-75">
@@ -62,6 +60,7 @@ export function LocationCardWeb({ location, mio, live }: Props) {
           <span data-testid="estado-tiempo-real">{caption}</span>
         </p>
       ) : null}
+      {stale ? <p data-testid="sin-senal" className="flex items-center gap-1 text-[12px] font-medium text-error"><WifiOff size={12} /> {stale}</p> : null}
       {location.accuracy !== undefined ? <p className="text-[12px] opacity-75">{accuracyLabel(location.accuracy)}</p> : null}
       <a data-testid="btn-abrir-mapa" href={link} target="_blank" rel="noopener noreferrer" className={`mt-2 flex h-9 items-center justify-center gap-1.5 rounded-lg border text-[13px] font-semibold ${mio ? 'border-white/30' : 'border-primary/25 bg-primary/[0.06] text-primary'}`}>
         Abrir en el mapa <ExternalLink size={14} />

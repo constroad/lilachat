@@ -13,9 +13,9 @@ const PIN = 30;
  * it, the pin in the middle and, when known, the accuracy circle. No map SDK
  * and no paid service; the attribution OpenStreetMap asks for goes in a corner.
  */
-export function MapSnippet(props: { location: SharedLocation; width: number; height: number; testID?: string }) {
+export function MapSnippet(props: { location: SharedLocation; width: number; height: number; zoom?: number; testID?: string }) {
   const colors = useColores();
-  const map = mapTilesFor(props.location, { width: props.width, height: props.height });
+  const map = mapTilesFor(props.location, { width: props.width, height: props.height }, props.zoom);
   const radius = Math.min(map.accuracyRadius, Math.max(props.width, props.height));
   return (
     <View testID={props.testID} className="overflow-hidden bg-surface-variant" style={{ width: props.width, height: props.height }}>

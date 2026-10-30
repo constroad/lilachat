@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Clock, MessageSquare, Plus, X, Zap, type LucideIcon } from 'lucide-react-native';
-import type { AppItemRow, ClientWorkspaceMember, ItemChannels, ItemWho } from '@lilachat/shared';
+import { Building2, Clock, MessageSquare, Plus, X, Zap, type LucideIcon } from 'lucide-react-native';
+import { hasOwnSpacePlace, spacePlaceOf, type AppItemRow, type ClientWorkspaceMember, type ItemChannels, type ItemWho } from '@lilachat/shared';
 import { Interruptor } from '../../ui/Interruptor';
 import { Segmentado } from '../../ui/Segmentado';
 import { useColores } from '../../ui/tema';
@@ -32,7 +32,7 @@ export function AppItemEditor(props: EditorProps) {
   const mode = modeOf(row.channels);
   return (
     <View className="mt-3 gap-3 rounded-2xl border border-outline/15 bg-background p-3">
-      <SwitchRow testID={`global-${row.key}`} Icon={Zap} label="Acciones rápidas del espacio" value={row.global} disabled={!props.canEdit} onChange={(global) => props.onChange({ global })} />
+      <SwitchRow testID={`global-${row.key}`} Icon={hasOwnSpacePlace(row.kind, row.key) ? Building2 : Zap} label={spacePlaceOf(row.kind, row.key).label} value={row.global} disabled={!props.canEdit} onChange={(global) => props.onChange({ global })} />
       <SwitchRow testID={`directo-${row.key}`} Icon={MessageSquare} label="En el chat con la app" value={row.direct} disabled={!props.canEdit} onChange={(direct) => props.onChange({ direct })} />
       <View className="border-t border-outline/10 pt-3">
         <Text className="mb-2 text-[14px] font-semibold text-on-surface">Canales donde funciona</Text>

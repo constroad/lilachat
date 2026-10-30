@@ -5056,10 +5056,23 @@ enlace secundario al pie.
   - Servidor: `GET /api/workspaces/:id/clients/:clientId/account`, con la misma
     validación de canal que el detalle y sin `service_id`.
   - Código: `shared/src/clientAccount.ts`, `ClientAccountPanel` y `ClientAccountWeb`.
+- **Selector de clientes** (José 30/10: «que sea tipo un selector y una opción
+  de poder crear un cliente»). Reemplaza el campo «Filtrar por cliente o RUC».
+  - Abre la lista de TODOS los clientes vivos, con búsqueda por nombre o RUC, y
+    el enlace a «Archivados».
+  - «Crear un cliente» corre la acción `crear_cliente` de Portal (0227a1f0)
+    desde el mismo selector, con su formulario y su respuesta.
+  - **No está en el ⚡** (José: «el crear cliente no debería ser desde el rayo»).
+    `quickActionRows` la saca; `placedActionRow` la busca para el selector.
+  - El botón sale solo si la acción está encendida en el espacio y esa persona
+    puede usarla: por defecto, solo los admins. Portal además exige
+    `clients:manage`.
+  - En «Comandos y acciones» el interruptor dice «Selector de clientes», no «Acciones rápidas»
+    (`spacePlaceOf` en `shared/src/appItems.ts`).
+  - Código: `ClientPicker` (app), `ClientPickerWeb` (web) y `useSpaceAction` en cada uno.
+  - Falta que agentes publique `crear_cliente` como acción (shortcut) del manifiesto de Portal.
 - **Pendiente:**
-  - el PDF de los informes que no lo tienen guardado (Portal);
-  - el selector de clientes, con «Crear un cliente» como acción de Portal
-    (aprobada por José; hay que encenderla en Comandos y acciones).
+  - el PDF de los informes que no lo tienen guardado (Portal).
 
 ## 172. APK 0.1.175: compartir pantalla, guardia nativa del log y APK más liviano (30/10/2026)
 

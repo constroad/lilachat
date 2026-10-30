@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Archive, Building2, ChevronDown, ChevronRight, Search } from 'lucide-react';
+import { Archive, Building2, ChevronDown, ChevronRight } from 'lucide-react';
 import { CLIENTS_PAGE, CLIENTS_PREVIEW, clientRowSubtitle, formatChatTimestamp, pageLiveClients, type ClientEntry } from '@lilachat/shared';
 import type { ChatSummary } from '../../chat/types';
+import { ClientPickerWeb } from './ClientPickerWeb';
 
 type Entry = ClientEntry<ChatSummary>;
 
@@ -10,15 +11,14 @@ type Entry = ClientEntry<ChatSummary>;
  * with its open services and last order, and at the end the row
  * «Archivados · N clientes · X sin leer» that opens the archived screen.
  * Hidden when the person is in no client channel. It starts with the newest
- * four (José 29/10), «Ver más» opens ten more, and past four a field filters
- * by client name or RUC.
+ * four (José 29/10) and «Ver más» opens ten more. On top, the picker searches
+ * all of them and creates a client (José 30/10).
  */
-export function ClientsSection(props: { live: Entry[]; query: string; archived: number; archivedUnread: number; folded: boolean; onToggle: () => void; selectedChatId: string | null; onOpen: (chat: ChatSummary) => void; onArchived: () => void; now?: Date }) {
+export function ClientsSection(props: { jwt?: string; spaceId: string; live: Entry[]; query: string; archived: number; archivedUnread: number; folded: boolean; onToggle: () => void; selectedChatId: string | null; onOpen: (chat: ChatSummary) => void; onArchived: () => void; now?: Date }) {
   const [shown, setShown] = useState(CLIENTS_PREVIEW);
-  const [filter, setFilter] = useState('');
   if (props.live.length === 0 && props.archived === 0) return null;
   const now = props.now ?? new Date();
-  const page = pageLiveClients(props.live, { query: props.query || filter, shown });
+  const page = pageLiveClients(props.live, { query: props.query, shown });
   return (
     <section data-testid="seccion-clientes" className="pt-1">
       <button type="button" data-testid="plegar-clientes" aria-expanded={!props.folded} onClick={props.onToggle} className="flex h-10 w-full items-center gap-1.5 px-4 text-left">
@@ -28,14 +28,9 @@ export function ClientsSection(props: { live: Entry[]; query: string; archived: 
       </button>
       {props.folded ? null : (
         <>
-          {props.live.length > CLIENTS_PREVIEW && !props.query ? (
-            <label className="mx-4 mb-1 flex h-8 items-center gap-2 rounded-lg bg-background px-2.5">
-              <Search size={14} className="text-on-surface-variant" />
-              <input data-testid="filtro-clientes" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Filtrar por cliente o RUC" aria-label="Filtrar por cliente o RUC" className="min-w-0 flex-1 bg-transparent text-[13px] outline-none" />
-            </label>
-          ) : null}
+          {props.query ? null : <ClientPickerWeb jwt={props.jwt} spaceId={props.spaceId} live={props.live} archived={props.archived} onOpen={props.onOpen} onArchived={props.onArchived} now={props.now} />}
           {page.entries.map((entry) => <ClientRow key={entry.client.id} entry={entry} now={now} open={entry.client.chat_id === props.selectedChatId} onOpen={props.onOpen} />)}
-          {(props.query || filter) && page.entries.length === 0 ? <p className="px-4 py-1.5 text-[12px] text-on-surface-variant">Ningún cliente con ese nombre.</p> : null}
+          {props.query && page.entries.length === 0 ? <p className="px-4 py-1.5 text-[12px] text-on-surface-variant">Ningún cliente con ese nombre.</p> : null}
           {page.hidden > 0 ? (
             <button type="button" data-testid="clientes-ver-mas" onClick={() => setShown((before) => before + CLIENTS_PAGE)} className="h-9 w-full px-4 text-left text-[13px] font-semibold text-primary hover:bg-background">{`Ver más · ${page.hidden}`}</button>
           ) : null}

@@ -19,7 +19,7 @@ describe('ClientsSection (design f-01)', () => {
     // Arrange
     const onOpen = vi.fn();
     const onArchived = vi.fn();
-    render(<ClientsSection query="" live={[entry(client('a', { services: [inProgress] }), 3)]} archived={237} archivedUnread={2} folded={false} onToggle={vi.fn()} selectedChatId={null} onOpen={onOpen} onArchived={onArchived} now={now} />);
+    render(<ClientsSection spaceId="sp1" query="" live={[entry(client('a', { services: [inProgress] }), 3)]} archived={237} archivedUnread={2} folded={false} onToggle={vi.fn()} selectedChatId={null} onOpen={onOpen} onArchived={onArchived} now={now} />);
     // Act
     fireEvent.click(screen.getByTestId('cliente-fila-a'));
     fireEvent.click(screen.getByTestId('clientes-archivados'));
@@ -32,7 +32,7 @@ describe('ClientsSection (design f-01)', () => {
   });
 
   it('is not there for someone in no client channel', () => {
-    const { container } = render(<ClientsSection query="" live={[]} archived={0} archivedUnread={0} folded={false} onToggle={vi.fn()} selectedChatId={null} onOpen={vi.fn()} onArchived={vi.fn()} />);
+    const { container } = render(<ClientsSection spaceId="sp1" query="" live={[]} archived={0} archivedUnread={0} folded={false} onToggle={vi.fn()} selectedChatId={null} onOpen={vi.fn()} onArchived={vi.fn()} />);
     expect(container).toBeEmptyDOMElement();
   });
 });

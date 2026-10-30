@@ -1,6 +1,7 @@
 import { answerOfOutcome, type CommandGroup, type CommandOutcome, type EphemeralAnswer } from './botCommands.js';
 import type { AppForm, FormField, FormValues, GeoPoint } from './appForms.js';
 import { liveSelfieFieldOf } from './appForms.js';
+import { hasOwnSpacePlace } from './appItems.js';
 
 /**
  * The actions of the apps (R160): the rows of «Acciones rápidas» (the space's ⚡,
@@ -20,10 +21,16 @@ export function shortcutRows(groups: readonly CommandGroup[]): ShortcutRow[] {
 /** The space's ⚡: the actions and the commands the server says are global here, app by app. */
 export function quickActionRows(groups: readonly CommandGroup[]): ShortcutRow[] {
   return groups.flatMap((group) => [
-    ...(group.shortcuts ?? []).map((shortcut) => ({ kind: 'shortcut' as const, ...appOf(group), ...shortcut })),
+    ...(group.shortcuts ?? []).filter((shortcut) => !hasOwnSpacePlace('shortcut', shortcut.key)).map((shortcut) => ({ kind: 'shortcut' as const, ...appOf(group), ...shortcut })),
     ...group.commands.map((entry) => ({ kind: 'command' as const, ...appOf(group), key: entry.command, name: `/${entry.command}`, description: entry.description })),
   ]);
 }
+
+/** Portal's action that the clients' picker runs (Portal 0227a1f0). */
+export const CREATE_CLIENT_ACTION = 'crear_cliente';
+
+/** An action with its own place in the space; absent when it is off there or that person may not run it. */
+export const placedActionRow = (groups: readonly CommandGroup[], key: string): ShortcutRow | undefined => shortcutRows(groups).find((row) => row.key === key);
 
 const METERS_PER_KM = 1000;
 

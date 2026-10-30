@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Clock, MessageSquare, Plus, X, Zap } from 'lucide-react';
-import type { AppItemRow, ClientWorkspaceMember, ItemChannels, ItemWho } from '@lilachat/shared';
+import { Building2, Clock, MessageSquare, Plus, X, Zap } from 'lucide-react';
+import { hasOwnSpacePlace, spacePlaceOf, type AppItemRow, type ClientWorkspaceMember, type ItemChannels, type ItemWho } from '@lilachat/shared';
 import type { AppItems } from '../spacesApi';
 
 type EditorProps = {
@@ -28,7 +28,7 @@ export function AppItemEditor(props: EditorProps) {
   const toggleChannel = (id: string) => props.onChange({ channels: picked.includes(id) ? picked.filter((one) => one !== id) : [...picked, id] });
   return (
     <div className="mx-5 mb-4 space-y-4 rounded-xl border border-outline/15 bg-background/50 p-4">
-      <SwitchRow testId={`global-${row.key}`} Icon={Zap} label="Acciones rápidas del espacio" on={row.global} disabled={!props.canEdit} onChange={(on) => props.onChange({ global: on })} />
+      <SwitchRow testId={`global-${row.key}`} Icon={hasOwnSpacePlace(row.kind, row.key) ? Building2 : Zap} label={spacePlaceOf(row.kind, row.key).label} on={row.global} disabled={!props.canEdit} onChange={(on) => props.onChange({ global: on })} />
       <SwitchRow testId={`directo-${row.key}`} Icon={MessageSquare} label="En el chat con la app" on={row.direct} disabled={!props.canEdit} onChange={(on) => props.onChange({ direct: on })} />
       <div className="border-t border-outline/10 pt-3">
         <p className="mb-2 text-[13px] font-semibold">Canales donde funciona</p>

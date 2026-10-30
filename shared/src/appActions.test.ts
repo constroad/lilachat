@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evidenceLine, formSubmitOutcome, geoPointOf, photoStampLines, precisionLabel, quickActionRows, shortcutRows, submitLabelOf } from './appActions.js';
+import { evidenceLine, formSubmitOutcome, geoPointOf, photoStampLines, placedActionRow, precisionLabel, quickActionRows, shortcutRows, submitLabelOf } from './appActions.js';
 import type { FormField } from './appForms.js';
 import type { CommandGroup, CommandOutcome } from './botCommands.js';
 
@@ -21,6 +21,20 @@ describe('the rows of «Acciones rápidas»', () => {
 
   it('the space\'s ⚡ also lists the commands made global, as «/command»', () => {
     expect(quickActionRows(groups).map((row) => [row.kind, row.name])).toEqual([['shortcut', 'Marcar asistencia'], ['shortcut', 'Medir tanque'], ['command', '/pedidos']]);
+  });
+
+  it('«Crear un cliente» lives in the clients\' picker, not in the ⚡ (José 30/10); the picker finds it only when it is on for that person', () => {
+    // Arrange
+    const withCreate: CommandGroup[] = [{ ...groups[1], shortcuts: [{ key: 'crear_cliente', name: 'Crear un cliente' }, { key: 'crear_pedido', name: 'Crear un pedido' }] }];
+    // Act / Assert
+    expect(quickActionRows(withCreate).map((row) => row.key)).toEqual(['crear_pedido', 'pedidos']);
+    expect(placedActionRow(withCreate, 'crear_cliente')).toMatchObject({ kind: 'shortcut', appName: 'Portal', name: 'Crear un cliente' });
+    expect(placedActionRow(groups, 'crear_cliente')).toBeUndefined();
+  });
+
+  it('a command whose name matches a placed action stays in the ⚡: only actions have their own place', () => {
+    const commandOnly: CommandGroup[] = [{ appId: 'a2', appName: 'Portal', commands: [{ command: 'crear_cliente', description: 'Crear' }] }];
+    expect(quickActionRows(commandOnly).map((row) => row.name)).toEqual(['/crear_cliente']);
   });
 });
 

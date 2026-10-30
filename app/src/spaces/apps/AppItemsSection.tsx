@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react-native';
-import { itemIsOn, itemKey, itemPlacesLine, sameItemSetting, type AppItemRow, type AppItemSetting, type ClientWorkspaceMember } from '@lilachat/shared';
+import { itemIsOn, itemKey, itemPlacesLine, sameItemSetting, spacePlaceOf, type AppItemRow, type AppItemSetting, type ClientWorkspaceMember } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { saveAppItems, type AppItems } from '../spacesApi';
 import { AppItemEditor } from './AppItemEditor';
@@ -47,7 +47,7 @@ export function AppItemsSection(props: SectionProps) {
         const row = edits[key] ?? saved;
         return (
           <View key={key} className="mt-3 border-t border-outline/10 pt-3">
-            <ItemHeader row={row} places={itemPlacesLine(settingOf(row), channelNames)} open={open === key} onToggle={() => setOpen(open === key ? null : key)} />
+            <ItemHeader row={row} places={itemPlacesLine(settingOf(row), channelNames, spacePlaceOf(row.kind, row.key).line)} open={open === key} onToggle={() => setOpen(open === key ? null : key)} />
             {open === key ? (
               <AppItemEditor
                 row={row}

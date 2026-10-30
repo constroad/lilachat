@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ALL_OFF, allOffSettings, enabledAt, itemIsOn, itemPlacesLine, itemKey, itemSettingOf, mayUseItem, sameItemSetting, validateItemSettings } from './appItems.js';
+import { ALL_OFF, allOffSettings, enabledAt, itemIsOn, itemPlacesLine, itemKey, itemSettingOf, mayUseItem, sameItemSetting, spacePlaceOf, validateItemSettings } from './appItems.js';
 
 /** Which commands and actions of an app work where, and for whom (José, 23/10 and 28/10: everything starts off). */
 const PLANTA = '6ad8b0cb30ce97957f4acc04';
@@ -128,6 +128,16 @@ describe('itemPlacesLine (José, 30/10: «Encendido» and nothing in «/»)', ()
 
   it('a channel that no longer exists is not named', () => {
     expect(itemPlacesLine({ ...ALL_OFF, channels: ['gone'] }, names)).toBe('No funciona en ningún lugar');
+  });
+
+  it('an action with its own place in the space names that place, not the ⚡ (José 30/10: «Crear un cliente» in the clients\' picker)', () => {
+    // Arrange
+    const place = spacePlaceOf('shortcut', 'crear_cliente');
+    // Act / Assert
+    expect(place.label).toBe('Selector de clientes');
+    expect(itemPlacesLine({ ...ALL_OFF, global: true }, names, place.line)).toBe('Funciona en el selector de clientes');
+    expect(spacePlaceOf('command', 'crear_cliente').label).toBe('Acciones rápidas del espacio');
+    expect(spacePlaceOf('shortcut', 'toString').line).toBe('⚡ Acciones rápidas');
   });
 });
 

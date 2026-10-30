@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react';
-import { itemIsOn, itemKey, itemPlacesLine, sameItemSetting, type AppItemRow, type AppItemSetting, type ClientWorkspaceMember } from '@lilachat/shared';
+import { itemIsOn, itemKey, itemPlacesLine, sameItemSetting, spacePlaceOf, type AppItemRow, type AppItemSetting, type ClientWorkspaceMember } from '@lilachat/shared';
 import { saveAppItems, type AppItems } from '../spacesApi';
 import { AppItemEditor } from './AppItemEditor';
 
@@ -49,7 +49,7 @@ export function AppItemsSection(props: SectionProps) {
           const row = edits[key] ?? saved;
           return (
             <div key={key}>
-              <ItemHeader row={row} places={itemPlacesLine(settingOf(row), channelNames)} open={open === key} onToggle={() => setOpen(open === key ? null : key)} />
+              <ItemHeader row={row} places={itemPlacesLine(settingOf(row), channelNames, spacePlaceOf(row.kind, row.key).line)} open={open === key} onToggle={() => setOpen(open === key ? null : key)} />
               {open === key ? (
                 <AppItemEditor
                   row={row}

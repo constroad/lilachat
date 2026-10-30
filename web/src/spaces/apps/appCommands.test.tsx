@@ -70,6 +70,13 @@ describe('«Comandos y acciones»: everything starts off, the admin turns on and
     expect(await screen.findByTestId('horario-s1')).toBeInTheDocument();
     expect(screen.queryByTestId('crear-sugerido-0')).toBeNull();
   });
+
+  it('«Crear un cliente» is turned on for the clients\' picker, not for the ⚡ (José 30/10)', async () => {
+    arrange({ items: { ...items, items: [{ kind: 'shortcut', key: 'crear_cliente', name: 'Crear un cliente', ...OFF, global: true }] } });
+    expect(await screen.findByTestId('item-crear_cliente')).toHaveTextContent('Funciona en el selector de clientes');
+    fireEvent.click(screen.getByTestId('item-crear_cliente'));
+    expect(screen.getByTestId('global-crear_cliente').closest('label') ?? screen.getByTestId('global-crear_cliente')).toHaveTextContent('Selector de clientes');
+  });
 });
 
 describe('«Horarios»: what runs at a time and how the last run went', () => {

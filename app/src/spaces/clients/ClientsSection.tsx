@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
-import { Archive, Building2, ChevronDown, ChevronRight, Search } from 'lucide-react-native';
+import { Pressable, Text, View } from 'react-native';
+import { Archive, Building2, ChevronDown, ChevronRight } from 'lucide-react-native';
 import { CLIENTS_PAGE, CLIENTS_PREVIEW, clientRowSubtitle, formatChatTimestamp, pageLiveClients, type ClientEntry } from '@lilachat/shared';
 import type { ChatSummary } from '../../api/client';
 import { useColores } from '../../ui/tema';
+import { ClientPicker } from './ClientPicker';
 
 type Entry = ClientEntry<ChatSummary>;
 
@@ -11,16 +12,15 @@ type Entry = ClientEntry<ChatSummary>;
  * «CLIENTES · N» in the space list (design f-01): one row per live client
  * with its open services and last order, and the row «Archivados · N
  * clientes · X sin leer». Hidden for someone in no client channel. It starts
- * with the newest four (José 29/10), «Ver más» opens ten more, and past four a
- * field filters by client name or RUC.
+ * with the newest four (José 29/10) and «Ver más» opens ten more. On top, the
+ * picker searches all of them and creates a client (José 30/10).
  */
-export function ClientsSection(props: { live: Entry[]; query: string; archived: number; archivedUnread: number; folded: boolean; onToggle: () => void; openChatId: string | null; onOpen: (chat: ChatSummary) => void; onArchived: () => void }) {
+export function ClientsSection(props: { jwt: string; spaceId: string; live: Entry[]; query: string; archived: number; archivedUnread: number; folded: boolean; onToggle: () => void; openChatId: string | null; onOpen: (chat: ChatSummary) => void; onArchived: () => void }) {
   const colors = useColores();
   const [shown, setShown] = useState(CLIENTS_PREVIEW);
-  const [filter, setFilter] = useState('');
   if (props.live.length === 0 && props.archived === 0) return null;
   const now = new Date();
-  const page = pageLiveClients(props.live, { query: props.query || filter, shown });
+  const page = pageLiveClients(props.live, { query: props.query, shown });
   return (
     <View testID="seccion-clientes" className="border-t border-outline/10 pt-1">
       <Pressable testID="plegar-clientes" onPress={props.onToggle} className="min-h-[44px] flex-row items-center px-4">
@@ -29,14 +29,9 @@ export function ClientsSection(props: { live: Entry[]; query: string; archived: 
       </Pressable>
       {props.folded ? null : (
         <>
-          {props.live.length > CLIENTS_PREVIEW && !props.query ? (
-            <View className="mx-4 mb-1 h-10 flex-row items-center gap-2 rounded-xl bg-surface px-3">
-              <Search size={16} color={colors['on-surface-variant']} />
-              <TextInput testID="filtro-clientes" value={filter} onChangeText={setFilter} placeholder="Filtrar por cliente o RUC" placeholderTextColor={colors['on-surface-variant']} className="flex-1 text-[14px] text-on-surface" />
-            </View>
-          ) : null}
+          {props.query ? null : <ClientPicker jwt={props.jwt} spaceId={props.spaceId} live={props.live} archived={props.archived} onOpen={props.onOpen} onArchived={props.onArchived} />}
           {page.entries.map((entry) => <ClientRow key={entry.client.id} entry={entry} now={now} open={entry.client.chat_id === props.openChatId} onOpen={props.onOpen} />)}
-          {(props.query || filter) && page.entries.length === 0 ? <Text className="px-4 py-2 text-[13px] text-on-surface-variant">Ningún cliente con ese nombre.</Text> : null}
+          {props.query && page.entries.length === 0 ? <Text className="px-4 py-2 text-[13px] text-on-surface-variant">Ningún cliente con ese nombre.</Text> : null}
           {page.hidden > 0 ? (
             <Pressable testID="clientes-ver-mas" onPress={() => setShown((before) => before + CLIENTS_PAGE)} className="min-h-[44px] justify-center px-4">
               <Text className="text-[14px] font-semibold text-primary">{`Ver más · ${page.hidden}`}</Text>

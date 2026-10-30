@@ -58,12 +58,21 @@ export function itemIsOn(setting: AppItemSetting): boolean {
   return setting.global || setting.direct || setting.channels === 'all' || (Array.isArray(setting.channels) && setting.channels.length > 0);
 }
 
+type SpacePlace = { line: string; label: string };
+const QUICK_ACTIONS_PLACE: SpacePlace = { line: '⚡ Acciones rápidas', label: 'Acciones rápidas del espacio' };
+/** Actions with their own place in the space instead of the ⚡ (José 30/10: «Crear un cliente» goes in the clients' picker). */
+const OWN_SPACE_PLACES = new Map<string, SpacePlace>([['crear_cliente', { line: 'el selector de clientes', label: 'Selector de clientes' }]]);
+
+export const hasOwnSpacePlace = (kind: AppItemKind, key: string): boolean => kind === 'shortcut' && OWN_SPACE_PLACES.has(key);
+/** Where `global` puts an item: the ⚡, or the place of its own. */
+export const spacePlaceOf = (kind: AppItemKind, key: string): SpacePlace => (kind === 'shortcut' ? OWN_SPACE_PLACES.get(key) : undefined) ?? QUICK_ACTIONS_PLACE;
+
 const joinPlaces = (places: readonly string[]): string => (places.length < 2 ? places.join('') : `${places.slice(0, -1).join(', ')} y ${places.at(-1)}`);
 
 /** Where an item works, in words (José, 30/10: «Encendido» read as «everywhere», and «/» came out empty). */
-export function itemPlacesLine(setting: AppItemSetting, channelNames: ReadonlyMap<string, string>): string {
+export function itemPlacesLine(setting: AppItemSetting, channelNames: ReadonlyMap<string, string>, spaceLine = QUICK_ACTIONS_PLACE.line): string {
   const channels = setting.channels === 'all' ? ['todos los canales'] : setting.channels === 'none' ? [] : setting.channels.flatMap((id) => (channelNames.has(id) ? [`#${channelNames.get(id)}`] : []));
-  const places = [...(setting.global ? ['⚡ Acciones rápidas'] : []), ...channels];
+  const places = [...(setting.global ? [spaceLine] : []), ...channels];
   if (places.length === 0) return setting.direct ? 'Funciona solo en el chat con la app' : 'No funciona en ningún lugar';
   return `Funciona en ${joinPlaces(setting.direct ? [...places, 'el chat con la app'] : places)}`;
 }

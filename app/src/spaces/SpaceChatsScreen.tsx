@@ -200,7 +200,7 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
         </View>
       ) : null}
       {chats !== null && chats.length === 0 && !query ? appsSection([]) : null}
-      {chats !== null ? <ClientsSection live={clientSplit.live} query={query} archived={clientSplit.archived.length} archivedUnread={clientSplit.archivedUnread} folded={foldedClients} onToggle={() => setFoldedClients((before) => !before)} openChatId={props.openChatId} onOpen={onOpenChat} onArchived={() => setOpenArchivedClients(true)} /> : null}
+      {chats !== null ? <ClientsSection jwt={props.jwt} spaceId={space.id} live={clientSplit.live} query={query} archived={clientSplit.archived.length} archivedUnread={clientSplit.archivedUnread} folded={foldedClients} onToggle={() => setFoldedClients((before) => !before)} openChatId={props.openChatId} onOpen={onOpenChat} onArchived={() => setOpenArchivedClients(true)} /> : null}
       {openArchivedClients ? <ArchivedClientsScreen archived={clientSplit.archived} onClose={() => setOpenArchivedClients(false)} onOpen={(chat) => { setOpenArchivedClients(false); onOpenChat(chat); }} /> : null}
       {chats !== null && (chats.length > 0 || query)
         ? sections.map((section) => section.key === 'apps' ? (

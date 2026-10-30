@@ -16,3 +16,5 @@ design/stitch/*
 
 # Generador de Stitch (skill stitch-design): prompts, capturas y HTML locales, nunca al repo.
 .stitch-work/
+.claude/rn-smoke-ok
+.claude/last-publish

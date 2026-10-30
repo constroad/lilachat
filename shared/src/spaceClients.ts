@@ -39,6 +39,12 @@ export const ARCHIVED_RULE = `Sin movimiento en ${CLIENT_LIVE_DAYS} días. Vuelv
 export const ARCHIVED_COMPOSER_NOTE = 'Escribir aquí no lo saca de Archivados';
 export const CLIENT_SERVICE_STATUS_LABELS: Record<ClientServiceStatus, string> = { pending: 'Pendiente', in_progress: 'En ejecución', completed: 'Completado', rejected: 'Rechazado' };
 
+/** The stage over the progress bar; «Avance» when it only repeats the state pill («Pendiente» twice, CARCELI 30/10). */
+export function serviceStageLine(service: Pick<SpaceClientService, 'status' | 'stage_label'>): string {
+  const stage = service.stage_label.trim();
+  return stage && stage.toLowerCase() !== CLIENT_SERVICE_STATUS_LABELS[service.status].toLowerCase() ? `Etapa: ${stage}` : 'Avance';
+}
+
 /** The chats that are a client's channel: they leave «Canales» and go to «Clientes». */
 export const clientChatIds = (clients: readonly SpaceClient[]): Set<string> => new Set(clients.map((client) => client.chat_id));
 

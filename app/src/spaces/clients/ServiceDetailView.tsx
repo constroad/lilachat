@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronLeft, ExternalLink, FileText } from 'lucide-react-native';
-import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, detailRows, detailTabs, moreInPortal, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailTabs, moreInPortal, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
@@ -34,7 +34,7 @@ export function ServiceHead({ service }: { service: SpaceClientService }) {
       {service.stage_label || service.progress !== undefined ? (
         <View className="mt-3 border-t border-outline/10 pt-3">
           <View className="flex-row items-center justify-between">
-            <Text className="text-[14px] text-on-surface">{service.stage_label ? `Etapa: ${service.stage_label}` : 'Avance'}</Text>
+            <Text className="text-[14px] text-on-surface">{serviceStageLine(service)}</Text>
             {service.progress !== undefined ? <Text className="text-[14px] font-bold text-on-surface">{`${service.progress} %`}</Text> : null}
           </View>
           {service.progress !== undefined ? <View className="mt-2 h-1.5 overflow-hidden rounded-full bg-background"><View className="h-full rounded-full bg-primary" style={{ width: `${service.progress}%` }} /></View> : null}

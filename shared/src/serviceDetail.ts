@@ -129,7 +129,19 @@ const dispatchRow = (dispatch: ServiceDispatch): DetailRow => ({
   ...urlOf(dispatch.url),
   ...fileOf(dispatch.guideUrl, 'Guía'),
 });
-const reportRow = (report: ServiceReport): DetailRow => ({ id: report.id, title: report.title, line: joined([report.typeLabel, report.date ? dayOf(report.date) : undefined]), status: report.status, ...urlOf(report.url), ...fileOf(report.pdfUrl, 'PDF') });
+const LONG_MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
+const titleHasDay = (title: string, date: string) => title.toLowerCase().includes(LONG_MONTHS[Number(DATE_ONLY.exec(date)?.[2] ?? 0) - 1] ?? '\u0000');
+
+/** «Densidades de campo» does not start with the type «Densidad»; «Densidad · 9 set» does. */
+const titleStartsWith = (title: string, type: string) => title.toLowerCase().startsWith(type.toLowerCase()) && /^\s*([·\-–—:]|$)/.test(title.slice(type.length));
+
+/** Portal titles a report «Producción de planta · 10 de setiembre»: the line only adds what the title does not say. */
+function reportLine(report: ServiceReport): string {
+  const type = report.typeLabel && !titleStartsWith(report.title, report.typeLabel) ? report.typeLabel : undefined;
+  const day = report.date && !titleHasDay(report.title, report.date) ? dayOf(report.date) : undefined;
+  return joined([type, day]);
+}
+const reportRow = (report: ServiceReport): DetailRow => ({ id: report.id, title: report.title, line: reportLine(report), status: report.status, ...urlOf(report.url), ...fileOf(report.pdfUrl, 'PDF') });
 const quoteRow = (quote: ServiceQuote): DetailRow => ({ id: quote.id, title: quote.code ?? 'Cotización', line: joined([money(quote.total), quote.date ? dayOf(quote.date) : undefined]), status: quote.status, ...urlOf(quote.url) });
 
 /** The rows of one tab: a pedido has no number of its own in Portal, a dispatch shows its departure or the planned hour. */

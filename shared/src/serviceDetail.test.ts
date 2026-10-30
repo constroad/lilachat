@@ -49,6 +49,11 @@ describe('rows and tabs', () => {
     expect(detailRows(serviceDetailOf(body)!, 'reports')[0]).toEqual({ id: 'r1', title: 'Densidades de campo', line: 'Densidad · 13 oct', status: { label: 'Completado', tone: 'ok' }, file: { url: 'https://lila.constroad.com/r/1.pdf', label: 'PDF' } });
   });
 
+  it('a report line does not repeat what its title already says (type, day in words)', () => {
+    const detail = serviceDetailOf({ ...body, reports: [{ id: 'r2', title: 'Producción de planta · 10 de setiembre', type_label: 'Producción de planta', date: '2026-09-10', status_label: 'Completado', tone: 'ok' }] })!;
+    expect(detailRows(detail, 'reports')[0]!.line).toBe('');
+  });
+
   it('a quote reads its code, then the total in soles · day; nothing when they did not come', () => {
     const detail = serviceDetailOf({ ...body, quotes: [{ id: 'q1', code: 'COT-2026-0142', total: 48380, date: '2026-10-14', status_label: 'Aceptada', tone: 'ok' }] })!;
     expect(detailRows(detail, 'quotes')[0]).toMatchObject({ title: 'COT-2026-0142', line: 'S/ 48,380.00 · 14 oct' });

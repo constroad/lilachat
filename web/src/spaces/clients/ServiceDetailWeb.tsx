@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronLeft, ExternalLink, FileText } from 'lucide-react';
-import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, detailRows, detailTabs, moreInPortal, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailTabs, moreInPortal, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
 
@@ -24,7 +24,7 @@ function ServiceHead({ service }: { service: SpaceClientService }) {
       {service.stage_label || service.progress !== undefined ? (
         <div className="mt-3 border-t border-outline/10 pt-3">
           <p className="flex justify-between text-sm">
-            <span>{service.stage_label ? `Etapa: ${service.stage_label}` : 'Avance'}</span>
+            <span>{serviceStageLine(service)}</span>
             {service.progress !== undefined ? <span className="font-bold tabular-nums">{`${service.progress} %`}</span> : null}
           </p>
           {service.progress !== undefined ? <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background"><div className="h-full rounded-full bg-primary" style={{ width: `${service.progress}%` }} /></div> : null}

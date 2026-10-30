@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { recordsByService, archivedBanner, clientChatIds, clientHeaderSubtitle, clientRowSubtitle, dayLabel, filterArchivedClients, filterServices, pageLiveClients, splitClients, CLIENTS_PAGE, CLIENTS_PREVIEW, type SpaceClient } from './spaceClients.js';
+import { recordsByService, serviceStageLine, archivedBanner, clientChatIds, clientHeaderSubtitle, clientRowSubtitle, dayLabel, filterArchivedClients, filterServices, pageLiveClients, splitClients, CLIENTS_PAGE, CLIENTS_PREVIEW, type SpaceClient } from './spaceClients.js';
 
 /** Pending 21 (§157): the client channels in the space list and «Archivados» (designs f-01, f-02, f-03). */
 const now = new Date('2026-10-29T15:00:00Z');
@@ -151,5 +151,13 @@ describe('filterServices (José 29/10: the services of a client channel with the
     expect(filterServices(services, { query: '', filter: 'open' }).services.map((one) => one.id)).toEqual(['1', '2']);
     expect(filterServices(services, { query: 'alamos', filter: 'all' }).services.map((one) => one.id)).toEqual(['1']);
     expect(filterServices(services, { query: 'av.', filter: 'completed' }).services.map((one) => one.id)).toEqual(['3']);
+  });
+});
+
+describe('serviceStageLine', () => {
+  it('«Etapa: X» unless the stage only repeats the state pill', () => {
+    expect(serviceStageLine({ status: 'in_progress', stage_label: 'Ejecución' })).toBe('Etapa: Ejecución');
+    expect(serviceStageLine({ status: 'pending', stage_label: 'Pendiente' })).toBe('Avance');
+    expect(serviceStageLine({ status: 'pending', stage_label: '' })).toBe('Avance');
   });
 });

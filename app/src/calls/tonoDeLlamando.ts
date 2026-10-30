@@ -2,11 +2,11 @@ import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { reportarError } from '../ui/reportarError';
 
 /**
- * El «tuu… tuu» mientras llamo (José, 20/10: «no hay sonido cuando hago una
- * llamada»): 425 Hz, 1 s sí y 4 s no, el tono de llamada de Perú. Es un
- * archivo propio (`assets/sonidos/llamando.m4a`, generado, sin licencias) en
- * bucle; se corta al contestar, rechazar o colgar. Nunca lanza: un tono que
- * falla no puede tumbar la llamada.
+ * The ringback tone while I call (José, 20/10: there was no sound when
+ * calling): 425 Hz, 1 s on and 4 s off, Peru's tone. It is our own file
+ * (`assets/sonidos/llamando.m4a`, generated, no license; m4a since 0.1.175,
+ * 6 KB instead of a 160 KB wav), looped; it stops on answer, reject or hang
+ * up. It never throws: a failing tone cannot bring the call down.
  */
 let reproductor: AudioPlayer | null = null;
 

@@ -19,7 +19,8 @@ import { obtenerIceServers, type ServidorIce } from './iceServers';
 import { esperaAntesDeRendirse, estadoDeMedios, type EstadoDeMedios } from './estadoDeMedios';
 import { announcesAnswering, comoSuena, inicioDelTimbre, necesitaServicioDeLlamada, queHacerConElAviso, suenaTonoDeLlamando } from './llamadaNativa';
 import { detenerTonoDeLlamando, iniciarTonoDeLlamando } from './tonoDeLlamando';
-import { llamadaNativa, type AccionDeAviso, type CallNoticeTap } from '../../modules/llamada-entrante/src';
+import { llamadaNativa, type AccionDeAviso } from '../../modules/llamada-entrante/src';
+import type { CallNoticeTap } from '../../modules/llamada-entrante/src';
 import { reportarError } from '../ui/reportarError';
 
 /** El SDP y los candidatos viajan como objetos planos por el socket. */
@@ -231,8 +232,7 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
 
   useEffect(() => () => limpiar(), [limpiar]);
 
-  // Al conectar, el audio va por donde corresponde: videollamada por el
-  // parlante, llamada de voz por el auricular (como WhatsApp).
+  // On connecting, a video call goes to the speaker and a voice call to the earpiece (like WhatsApp).
   const speakerRef = useRef(speaker);
   speakerRef.current = speaker;
   const enCurso = state?.fase === 'activa';

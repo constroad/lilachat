@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { BackHandler, Pressable, ScrollView, Text, ToastAndroid, View } from 'react-native';
-import { CHANNEL_TAB_LABELS, channelTabs, checklistMembers, stageFiles, withoutApps, type ChannelTab, type SpaceClient } from '@lilachat/shared';
+import { CHANNEL_TAB_LABELS, channelTabs, checklistMembers, stageFiles, withoutApps, type ChannelTab, type SpaceClient, type WorkStage } from '@lilachat/shared';
 import { useWorkPlan } from './useWorkPlan';
 import { WorkPlanPanel } from './WorkPlanPanel';
 import { PendingPanel } from './WorkListsPanels';
@@ -9,6 +9,7 @@ import { useClientOfChat, useClientRecords } from '../../spaces/clients/useSpace
 import { ArchivedClientBanner, ArchivedComposerNote, ClientServices } from '../../spaces/clients/ClientChannelParts';
 import { ClientAccountPanel } from '../../spaces/clients/ClientAccountPanel';
 import { ClientFilesPanel } from '../../spaces/clients/ClientFilesPanel';
+import type { ServiceAskTarget } from '../../spaces/clients/useServiceAsk';
 
 type Tab = ChannelTab;
 const COVER = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, elevation: 10 } as const;
@@ -62,25 +63,34 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
       <ArchivedClientBanner client={client} />
     </>
   );
-  const panel = (
+  const panel = <ChannelPanels shown={shown} client={client} records={records} plan={plan} stages={stages} target={target} people={people} params={params} nameOf={nameOf} toMessage={toMessage} openTask={openTask} setOpenTask={setOpenTask} />;
+  return { tabs, panel, note: <ArchivedComposerNote client={client} />, client };
+}
+
+type ChannelWorkParams = Parameters<typeof useChannelWork>[0];
+
+/** The open tab's panel of a client's channel, and the task sheet over it. */
+function ChannelPanels(props: { shown: Tab; client: SpaceClient; records: ReturnType<typeof useClientRecords>; plan: ReturnType<typeof useWorkPlan>; stages: WorkStage[]; target: ServiceAskTarget | null; people: ReadonlyMap<string, string>; params: ChannelWorkParams; nameOf: (userId: string) => string; toMessage: (seq: number) => void; openTask: OpenTask | null; setOpenTask: (task: OpenTask | null) => void }) {
+  const { shown, client, plan, stages, target, params, nameOf, toMessage, setOpenTask } = props;
+  const members = checklistMembers(props.people, params.yo);
+  return (
     <>
-      {shown === 'services' && client ? (
+      {shown === 'services' ? (
         <View className="bg-background" style={COVER}>
-          <ClientServices client={client} records={records} onOpenRecord={toMessage} target={target} members={people} me={params.yo} />
+          <ClientServices client={client} records={props.records} onOpenRecord={toMessage} target={target} members={props.people} me={params.yo} />
         </View>
       ) : null}
       {shown === 'account' && target ? <View className="bg-background" style={COVER}><ClientAccountPanel target={target} /></View> : null}
       {shown === 'checklist' ? (
         <View className="bg-background" style={COVER}>
-          <WorkPlanPanel restricted={Boolean(client.access?.restricted)} plan={plan} jwt={params.jwt} yo={params.yo} nameOf={nameOf} members={checklistMembers(people, params.yo)} onStartFailed={(message) => ToastAndroid.show(message, ToastAndroid.SHORT)} onOpenTask={setOpenTask} />
+          <WorkPlanPanel restricted={Boolean(client.access?.restricted)} plan={plan} jwt={params.jwt} yo={params.yo} nameOf={nameOf} members={members} onStartFailed={(message) => ToastAndroid.show(message, ToastAndroid.SHORT)} onOpenTask={setOpenTask} />
         </View>
       ) : null}
       {shown === 'files' ? <View className="bg-background" style={COVER}><ClientFilesPanel client={client} target={target} stages={stages} onOpenMessage={toMessage} /></View> : null}
       {shown === 'pending' ? <View className="bg-background" style={COVER}><PendingPanel stages={stages} nameOf={nameOf} onOpen={setOpenTask} /></View> : null}
-      <TaskDetailSheet open={openTask} stages={stages} channelName={params.channelName} jwt={params.jwt} chatId={params.chatId} yo={params.yo} nameOf={nameOf} members={checklistMembers(people, params.yo)} onChanged={() => void plan.reload()} onOpenMessage={toMessage} onClose={() => setOpenTask(null)} />
+      <TaskDetailSheet open={props.openTask} stages={stages} channelName={params.channelName} jwt={params.jwt} chatId={params.chatId} yo={params.yo} nameOf={nameOf} members={members} onChanged={() => void plan.reload()} onOpenMessage={toMessage} onClose={() => setOpenTask(null)} />
     </>
   );
-  return { tabs, panel, note: <ArchivedComposerNote client={client} />, client };
 }
 
 function TabButton(props: { label: string; badge?: string | null; dot?: boolean; active: boolean; onPress: () => void; testID: string }) {

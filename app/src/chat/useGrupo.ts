@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import { agendaPorTelefono, suscribirAgenda } from '../contacts/agendaEnMemoria';
 import { getSocket } from './socketClient';
 import type { MentionableMember } from './useMenciones';
-import { fotosPorMiembro, membresiaPorRespuesta, nombresPorMiembro, type MiembroConNombre, type SpaceMemberFields } from './nombresDelGrupo';
+import { fotosPorMiembro, membresiaPorRespuesta, nombresPorMiembro, type MiembroConNombre } from './nombresDelGrupo';
+import type { SpaceMemberFields } from './nombresDelGrupo';
 import { pillOf } from './nombresDelGrupo';
 import { BLOCKED_BY_ME_COMPOSER, memberMay, type ContactNote, memberPermissionDenied, type MemberPermission, type MemberPill } from '@lilachat/shared';
 

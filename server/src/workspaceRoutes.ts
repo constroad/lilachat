@@ -26,7 +26,7 @@ import multer from 'multer';
 import { CUSTOM_EMOJI_MAX_BYTES } from '@lilachat/shared';
 import { addCustomEmoji, listCustomEmojis, removeCustomEmoji } from './customEmojiCatalog.js';
 import { clientRecords, listClients } from './bots/botClients.js';
-import { clientServiceFiles } from './bots/clientFiles.js';
+import { clientServiceDetail, clientServiceFiles } from './bots/clientFiles.js';
 
 /** Tries of a code per person and minute: enough to fix a typo, not to guess codes. */
 const CODE_TRIES_PER_MINUTE = 10;
@@ -99,6 +99,12 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
     const found = await clientServiceFiles(req.params.id!, req.params.clientId!, req.params.serviceId!, me(req));
     if ('error' in found) return res.status(found.status).json({ error: found.error, message: found.message });
     res.json(found.ok ? { files: found.files.files, drive_url: found.files.driveUrl } : { error: 'drive_failed', message: found.message, drive_url: found.fallbackUrl });
+  }));
+  // José 30/10: the service's pedidos, despachos and informes on demand; a failure is a 200 with the message and Portal's link.
+  router.get('/:id/clients/:clientId/services/:serviceId/detail', handled(async (req, res) => {
+    const found = await clientServiceDetail(req.params.id!, req.params.clientId!, req.params.serviceId!, me(req));
+    if ('error' in found) return res.status(found.status).json({ error: found.error, message: found.message });
+    res.json(found.ok ? { detail: found.value } : { error: 'detail_failed', message: found.message, portal_url: found.fallbackUrl });
   }));
   router.get('/:id/channels', handled(async (req, res) => res.json({ channels: await listChannels(req.params.id!, me(req)) })));
   router.post('/:id/channels', handled(async (req, res) => res.status(201).json({ channel: await createChannel(req.params.id!, me(req), req.body ?? {}) })));

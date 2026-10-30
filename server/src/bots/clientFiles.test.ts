@@ -23,6 +23,7 @@ let outsider: Types.ObjectId;
 let spaceId: Types.ObjectId;
 const app = buildApp();
 const auth = (userId: Types.ObjectId) => ({ Authorization: `Bearer ${signSession({ userId: String(userId), deviceId: `d-${userId}`, email: 'x@x.com' })}` });
+const detailOf = (who: Types.ObjectId, service = 'srv-318') => request(app).get(`/api/workspaces/${spaceId}/clients/cli-cvs/services/${service}/detail`).set(auth(who));
 const filesOf = (who: Types.ObjectId, service = 'srv-318', client = 'cli-cvs') => request(app).get(`/api/workspaces/${spaceId}/clients/${client}/services/${service}/files`).set(auth(who));
 
 beforeAll(async () => {
@@ -97,3 +98,26 @@ describe('the service Drive on demand', () => {
     expect(response.body).toEqual({ error: 'drive_failed', message: 'No se pudo traer el Drive', drive_url: 'https://portal.example.com/s/318' });
   });
 });
+
+describe('the service detail on demand (José, 30/10: pedidos, despachos e informes)', () => {
+  it('asks the app with client.service.requested and answers the validated detail', async () => {
+    // Arrange
+    answer = { status: 200, body: { service: { id: 'srv-318', name: 'Pavimentación', status: 'in_progress', stage_label: 'Ejecución', progress: 40 }, orders: [{ id: 'o1', date: '2026-10-12', product: 'Asfalto', quantity: 24, unit: 'm³', status_label: 'Despachado', tone: 'ok' }], dispatches: [], reports: [], totals: { orders: 148, dispatches: 0, reports: 0 } } };
+    // Act
+    const response = await detailOf(jose).expect(200);
+    // Assert
+    expect(received).toEqual([{ type: 'client.service.requested', space: String(spaceId), data: { client_id: 'cli-cvs', service_id: 'srv-318', user: { id: String(jose), name: 'José', phone: '51902049935' } } }]);
+    expect(response.body.detail.orders).toEqual([{ id: 'o1', date: '2026-10-12', product: 'Asfalto', quantity: 24, unit: 'm³', status: { label: 'Despachado', tone: 'ok' } }]);
+    expect(response.body.detail.totals.orders).toBe(148);
+  });
+
+  it('a service the app did not list or someone outside the channel: 404 and no event; a failure says so with the Portal link', async () => {
+    expect((await detailOf(jose, 'srv-999')).status).toBe(404);
+    expect((await detailOf(outsider)).status).toBe(404);
+    expect(received).toHaveLength(0);
+    answer = { status: 503, body: { error: 'Sin lector', code: 'not-configured' } };
+    const failed = await detailOf(jose).expect(200);
+    expect(failed.body).toEqual({ error: 'detail_failed', message: 'No se pudo traer el detalle del servicio', portal_url: 'https://portal.example.com/s/318' });
+  });
+});
+

@@ -1,30 +1,33 @@
 import { Types } from 'mongoose';
-import { CLIENT_ID, serviceFilesOf, type ServiceFiles } from '@lilachat/shared';
+import { CLIENT_ID, serviceDetailOf, serviceFilesOf, type ServiceDetail, type ServiceFiles } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { actorIn } from '../workspaces.js';
 import { ClientChannelModel, type ClientChannel } from './botClients.js';
-import { callBotWebhook, recordLastDelivery } from './botEvents.js';
+import { callBotWebhook, recordLastDelivery, type BotEventType } from './botEvents.js';
 import { BotAppModel, BotInstallationModel } from './botModels.js';
 
 /** agentes answers within 7 s (its contract); this waits a little longer so its own 502 arrives first. */
-const FILES_TIMEOUT_MS = 8_000;
+const ASK_TIMEOUT_MS = 8_000;
 export const DRIVE_FAILED = 'No se pudo traer el Drive';
+export const DETAIL_FAILED = 'No se pudo traer el detalle del servicio';
 
-type FilesError = { status: 404; error: string; message: string };
+type NotFound = { status: 404; error: string; message: string };
+export type AskOutcome<T> = { ok: true; value: T } | { ok: false; message: string; fallbackUrl: string | null };
 export type FilesOutcome = { ok: true; files: ServiceFiles } | { ok: false; message: string; fallbackUrl: string | null };
 
-const notFound = (): FilesError => ({ status: 404, error: 'service_not_found', message: 'Ese servicio no existe o no estás en el canal del cliente.' });
+const notFound = (): NotFound => ({ status: 404, error: 'service_not_found', message: 'Ese servicio no existe o no estás en el canal del cliente.' });
+
+type ServiceAsk<T> = { event: Extract<BotEventType, `client.${string}.requested`>; parse: (body: unknown) => T | null; failed: string; label: string };
 
 /**
- * The Drive of a client's service, on demand (pending 121, agentes c27e939):
- * a signed `client.files.requested` to the app that owns the client, answered
- * in the same request. Only a member of the client's PRIVATE channel asks,
- * and only for a service the app listed in its last PUT (Portal only checks
- * the company). Nothing is stored: the links never expire, so they only show
- * inside that channel.
+ * Asks the app that owns a client about one of its services, answered in the
+ * same request (pending 121 Drive; José 30/10 detail). Only a member of the
+ * client's PRIVATE channel asks, and only for a service the app listed in its
+ * last PUT (Portal only checks the company). Nothing is stored: the links
+ * never expire, so they only show inside that channel.
  */
-export async function clientServiceFiles(workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId): Promise<FilesOutcome | FilesError> {
+async function askAboutService<T>(ask: ServiceAsk<T>, workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId): Promise<AskOutcome<T> | NotFound> {
   await actorIn(workspaceId, userId);
   if (!CLIENT_ID.test(clientId) || !CLIENT_ID.test(serviceId)) return notFound();
   const client = await ClientChannelModel.findOne({ workspaceId: new Types.ObjectId(workspaceId), clientId }).select('appId chatId driveUrl services').lean<Pick<ClientChannel, 'appId' | 'chatId' | 'driveUrl' | 'services'> | null>();
@@ -36,16 +39,29 @@ export async function clientServiceFiles(workspaceId: string, clientId: string, 
     BotAppModel.findById(client.appId).select('webhookUrl').lean(),
     UserModel.findById(userId).select('name phone').lean(),
   ]);
-  if (!installation || !app?.webhookUrl) return { ok: false, message: DRIVE_FAILED, fallbackUrl };
-  const reply = await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, 'client.files.requested', { client_id: clientId, service_id: serviceId, user: { id: String(userId), ...(user?.name ? { name: user.name } : {}), ...(user?.phone ? { phone: user.phone } : {}) } }, FILES_TIMEOUT_MS);
-  const files = reply.status === 200 ? serviceFilesOf(reply.body) : null;
-  if (files) {
+  if (!installation || !app?.webhookUrl) return { ok: false, message: ask.failed, fallbackUrl };
+  const reply = await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, ask.event, { client_id: clientId, service_id: serviceId, user: { id: String(userId), ...(user?.name ? { name: user.name } : {}), ...(user?.phone ? { phone: user.phone } : {}) } }, ASK_TIMEOUT_MS);
+  const value = reply.status === 200 ? ask.parse(reply.body) : null;
+  if (value) {
     recordLastDelivery(installation._id, { ok: true });
-    return { ok: true, files };
+    return { ok: true, value };
   }
   // The person sees one screen; the log keeps agentes' code (product_failed, not-configured, invalid-input).
   const code = (reply.body as { code?: unknown } | null)?.code;
-  console.warn('[clientes] Drive del servicio sin respuesta:', reply.status ?? reply.error, typeof code === 'string' ? code : '');
+  console.warn(`[clientes] ${ask.label} sin respuesta:`, reply.status ?? reply.error, typeof code === 'string' ? code : '');
   recordLastDelivery(installation._id, { ok: false, error: reply.error ?? `HTTP ${reply.status}` });
-  return { ok: false, message: DRIVE_FAILED, fallbackUrl };
+  return { ok: false, message: ask.failed, fallbackUrl };
 }
+
+const FILES: ServiceAsk<ServiceFiles> = { event: 'client.files.requested', parse: serviceFilesOf, failed: DRIVE_FAILED, label: 'Drive del servicio' };
+const DETAIL: ServiceAsk<ServiceDetail> = { event: 'client.service.requested', parse: serviceDetailOf, failed: DETAIL_FAILED, label: 'Detalle del servicio' };
+
+/** The Drive of a client's service (pending 121, agentes c27e939). */
+export async function clientServiceFiles(workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId): Promise<FilesOutcome | NotFound> {
+  const outcome = await askAboutService(FILES, workspaceId, clientId, serviceId, userId);
+  if ('error' in outcome) return outcome;
+  return outcome.ok ? { ok: true, files: outcome.value } : outcome;
+}
+
+/** Its pedidos, despachos and informes (José, 30/10; agentes 77e7782, Portal 1d4072d5). */
+export const clientServiceDetail = (workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId) => askAboutService(DETAIL, workspaceId, clientId, serviceId, userId);

@@ -7,12 +7,6 @@
 export const MIN_BACKGROUND_BEFORE_APPLY_MS = 10 * 60_000;
 /** How often the quiet check runs while the app is in use. */
 export const CHECK_EVERY_MS = 30 * 60_000;
-/**
- * Pending 13: expo-updates purges its own log at launch by reading EVERY line
- * into memory; a 40 MB log gave an OutOfMemoryError (E2E 28/10). Nobody reads
- * that log, so it is emptied (written blank, never read) a while after start.
- */
-export const CLEAR_UPDATES_LOG_AFTER_MS = 20_000;
 /** Coming back to the app checks too, but never twice within this gap. */
 export const MIN_GAP_BETWEEN_CHECKS_MS = 5 * 60_000;
 

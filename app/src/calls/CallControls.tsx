@@ -1,5 +1,5 @@
 import { Pressable, Switch, Text, View } from 'react-native';
-import { ChevronDown, MessageSquare, Mic, MicOff, MoreHorizontal, PhoneOff, Sparkles, Video, VideoOff, Volume2, X, type LucideIcon } from 'lucide-react-native';
+import { ChevronDown, MessageSquare, Mic, MicOff, MonitorUp, MoreHorizontal, PhoneOff, Sparkles, Video, VideoOff, Volume2, X, type LucideIcon } from 'lucide-react-native';
 import { CALL_EMOJIS, type CallEmoji } from '@lilachat/shared';
 import { Modal } from '../ui/Modal';
 import { useColores } from '../ui/tema';
@@ -72,9 +72,9 @@ export function EffectsButton(props: { onPress: () => void }) {
   );
 }
 
-type MoreProps = { options: MoreOption[]; video: boolean; noiseSuppression: boolean; onNoiseSuppression: (on: boolean) => void; onClose: () => void; onMessage: () => void; onReactions: () => void; onEmoji: (emoji: CallEmoji) => void };
+type MoreProps = { options: MoreOption[]; video: boolean; noiseSuppression: boolean; onNoiseSuppression: (on: boolean) => void; sharingScreen: boolean; onScreen: () => void; onClose: () => void; onMessage: () => void; onReactions: () => void; onEmoji: (emoji: CallEmoji) => void };
 
-/** «Más opciones» (design c-03): quick effects (pending 78), send a message, noise cancellation, winks and stickers. */
+/** «Más opciones» (design c-03): quick effects (pending 78), send a message, share the screen, noise cancellation, winks and stickers. */
 export function CallMoreSheet(props: MoreProps) {
   const colors = useColores();
   const margins = useMargenes();
@@ -102,6 +102,7 @@ export function CallMoreSheet(props: MoreProps) {
           ))}
         </View>
         {props.options.includes('message') ? <MoreRow testID="opcion-enviar-mensaje" Icon={MessageSquare} label="Enviar mensaje" onPress={() => pick(props.onMessage)} /> : null}
+        {props.options.includes('screen') ? <MoreRow testID="opcion-compartir-pantalla" Icon={MonitorUp} label={props.sharingScreen ? 'Dejar de compartir la pantalla' : 'Compartir pantalla'} onPress={() => pick(props.onScreen)} /> : null}
         <View testID="opcion-cancelacion-ruido" className="min-h-[68px] flex-row items-center gap-3 border-b border-outline/10">
           <View className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20"><Mic size={20} color={colors['on-surface']} /></View>
           <View className="flex-1">

@@ -17,6 +17,17 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.175',
+    // Everyone: phone screen sharing and the launch crash guard; spaces get the service detail (José, 30/10).
+    audience: 'all',
+    items: [
+      'En una videollamada puedes compartir la pantalla de tu teléfono desde «Más opciones».',
+      'La app ya no se cierra al abrir: el registro de actualizaciones se limpia antes de arrancar.',
+      'En los canales de clientes, toca un servicio para ver sus pedidos, despachos e informes.',
+      'Una sola pestaña Archivos con lo subido al canal y el Drive del Portal de cada servicio.',
+    ],
+  },
+  {
     version: '0.1.174',
     // Everyone: live location (backlog 11); spaces get their emojis and the stages checklist (19, 21).
     audience: 'all',

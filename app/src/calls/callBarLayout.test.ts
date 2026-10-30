@@ -17,4 +17,10 @@ describe('moreOptions', () => {
     expect(moreOptions(true)).toEqual(['message', 'reactions']);
     expect(moreOptions(false)).toEqual(['reactions']);
   });
+
+  it('«Compartir pantalla» only in a video call with the camera on (APK 0.1.175, mediaProjection)', () => {
+    expect(moreOptions(true, true)).toEqual(['message', 'screen', 'reactions']);
+    expect(moreOptions(false, true)).toEqual(['screen', 'reactions']);
+    expect(moreOptions(true, false)).toEqual(['message', 'reactions']);
+  });
 });

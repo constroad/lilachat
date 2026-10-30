@@ -46,6 +46,7 @@ export function CallScreen({
   onToggleMute,
   noiseSuppression,
   onNoiseSuppression,
+  screen,
   onToggleSpeaker,
   onToggleVideo,
   facing,
@@ -74,6 +75,8 @@ export function CallScreen({
   onToggleMute: () => void;
   /** «Cancelación de ruido» (design c-03): on by default, remembered. */
   noiseSuppression: boolean;
+  /** «Compartir pantalla» (APK 0.1.175): only in a video call. */
+  screen: { sharing: boolean; toggle: () => void };
   onNoiseSuppression: (on: boolean) => void;
   onToggleSpeaker: () => void;
   onToggleVideo: () => void;
@@ -142,9 +145,11 @@ export function CallScreen({
         {/* Like WhatsApp (design c-02): switching the camera and the effects sit under my own view. */}
         {video && localStream?.getVideoTracks().length ? (
           <View style={estilos.selfActions} className="flex-row gap-3">
-            <Pressable testID="btn-girar-camara" accessibilityLabel={facing === 'user' ? 'Usar la cámara trasera' : 'Usar la cámara frontal'} onPress={onSwitchCamera} className="h-11 w-11 items-center justify-center rounded-full bg-black/45">
-              <SwitchCamera size={20} color="white" />
-            </Pressable>
+            {screen.sharing ? null : (
+              <Pressable testID="btn-girar-camara" accessibilityLabel={facing === 'user' ? 'Usar la cámara trasera' : 'Usar la cámara frontal'} onPress={onSwitchCamera} className="h-11 w-11 items-center justify-center rounded-full bg-black/45">
+                <SwitchCamera size={20} color="white" />
+              </Pressable>
+            )}
             {state.fase === 'activa' ? <EffectsButton onPress={() => setReacting(true)} /> : null}
           </View>
         ) : null}
@@ -175,7 +180,7 @@ export function CallScreen({
             </View>
           ) : (
             <>
-              <CallNotice text={notice} />
+              <CallNotice text={screen.sharing ? 'Estás compartiendo tu pantalla' : notice} />
               <CallBar buttons={callBarButtons(puedeAlternarVideo)} video={video} muted={muted} speaker={speaker} onMore={() => setMoreOpen(true)} onToggleVideo={onToggleVideo} onToggleSpeaker={onToggleSpeaker} onToggleMute={onToggleMute} onHangUp={onHangUp} />
             </>
           )}
@@ -184,7 +189,7 @@ export function CallScreen({
       </View>
       {reacting ? <CallReactionSheet peerName={peerName} onSend={onSendReaction} onClose={() => setReacting(false)} /> : null}
       {moreOpen ? (
-        <CallMoreSheet options={moreOptions(Boolean(onSendMessage))} video={video} noiseSuppression={noiseSuppression} onNoiseSuppression={onNoiseSuppression} onClose={() => setMoreOpen(false)} onMessage={() => onSendMessage?.()} onReactions={() => setReacting(true)} onEmoji={sendEmoji} />
+        <CallMoreSheet options={moreOptions(Boolean(onSendMessage), video && state.fase === 'activa')} video={video} noiseSuppression={noiseSuppression} onNoiseSuppression={onNoiseSuppression} sharingScreen={screen.sharing} onScreen={screen.toggle} onClose={() => setMoreOpen(false)} onMessage={() => onSendMessage?.()} onReactions={() => setReacting(true)} onEmoji={sendEmoji} />
       ) : null}
       </GestureHandlerRootView>
     </Modal>

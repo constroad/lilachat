@@ -131,6 +131,7 @@ export function ProveedorDeLlamadas({ jwt, me, children, onOpenChat }: { jwt: st
           onToggleMute={llamada.alternarMute}
           noiseSuppression={llamada.noiseSuppression}
           onNoiseSuppression={llamada.setNoiseSuppression}
+          screen={llamada.screen}
           onToggleSpeaker={llamada.alternarAltavoz}
           onToggleVideo={llamada.alternarVideo}
           facing={llamada.facing}

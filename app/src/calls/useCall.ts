@@ -10,18 +10,16 @@ import {
 } from 'react-native-webrtc';
 import type RTCIceCandidateEvent from 'react-native-webrtc/lib/typescript/RTCIceCandidateEvent';
 import type RTCTrackEvent from 'react-native-webrtc/lib/typescript/RTCTrackEvent';
-import { nextCallState, ringDeadline, type CallState } from '@lilachat/shared';
-import { type CameraFacing } from '@lilachat/shared';
+import { callReactionOf, createAckWatch, nextCallState, reactionKeyOf, reactionNotSeenNotice, ringDeadline, type CallReaction, type CallState, type CameraFacing } from '@lilachat/shared';
 import { switchCameraTrack } from './cameraSwitch';
 import { useNoiseSuppression } from './noiseSuppression';
-import { callReactionOf, createAckWatch, reactionKeyOf, reactionNotSeenNotice, type CallReaction } from '@lilachat/shared';
+import { useScreenShare } from './useScreenShare';
 import { connectSocket, getSocket, sostenerPorLlamada } from '../chat/socketClient';
 import { obtenerIceServers, type ServidorIce } from './iceServers';
 import { esperaAntesDeRendirse, estadoDeMedios, type EstadoDeMedios } from './estadoDeMedios';
 import { announcesAnswering, comoSuena, inicioDelTimbre, necesitaServicioDeLlamada, queHacerConElAviso, suenaTonoDeLlamando } from './llamadaNativa';
 import { detenerTonoDeLlamando, iniciarTonoDeLlamando } from './tonoDeLlamando';
-import { llamadaNativa, type AccionDeAviso } from '../../modules/llamada-entrante/src';
-import type { CallNoticeTap } from '../../modules/llamada-entrante/src';
+import { llamadaNativa, type AccionDeAviso, type CallNoticeTap } from '../../modules/llamada-entrante/src';
 import { reportarError } from '../ui/reportarError';
 
 /** El SDP y los candidatos viajan como objetos planos por el socket. */
@@ -110,6 +108,7 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const noise = useNoiseSuppression();
   const localRef = useRef<MediaStream | null>(null);
+  const screen = useScreenShare(pcRef, localRef, state?.fase === 'activa' && video);
   const stateRef = useRef<CallState | null>(null);
   /** Candidatos llegados antes de fijar la descripción remota. */
   const buffer = useRef<Candidato[]>([]);
@@ -569,6 +568,7 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
       }),
     noiseSuppression: noise.on,
     setNoiseSuppression: (on: boolean) => void noise.set(on, { pc: pcRef.current, stream: localRef.current, muted }),
+    screen,
     // Real speaker (FL8): `expo-audio` routes to the loudspeaker or the earpiece (`setSpeakerphoneOn`); checked on a real phone.
     alternarAltavoz: () =>
       setSpeaker((valor) => {

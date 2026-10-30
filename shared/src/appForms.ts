@@ -349,49 +349,62 @@ const isGeoPoint = (value: unknown): value is GeoPoint => {
 const isEmpty = (value: unknown) => value === undefined || value === null || (typeof value === 'string' && value.trim() === '') || (Array.isArray(value) && value.length === 0);
 
 /** One value: the clean value, or the message for the person (neutral Spanish, under the field). */
-function checkValue(field: Exclude<FormField, { kind: 'list' }>, value: unknown, row?: FormValues): { value: unknown } | { error: string } {
+type Checked = { value: unknown } | { error: string };
+type FieldOf<K extends FormField['kind']> = Extract<FormField, { kind: K }>;
+
+/** One value per kind, each in its own checker. */
+function checkValue(field: Exclude<FormField, { kind: 'list' }>, value: unknown, row?: FormValues): Checked {
   switch (field.kind) {
-    case 'choice': {
-      if (!field.options.some((option) => option.value === value)) return { error: 'Elige una de las opciones.' };
-      const refusal = refusalOf(field.options, value, row);
-      return refusal ? { error: refusal } : { value };
-    }
-    case 'multi':
-      return checkPicks(field, value);
-    case 'text': {
-      if (field.digits) {
-        const code = String(value).replace(/\s+/g, '');
-        return new RegExp(`^\\d{${field.digits}}$`).test(code) ? { value: code } : { error: `Escribe los ${field.digits} dígitos.` };
-      }
-      if (field.secret) {
-        const pin = String(value).replace(/\s+/g, '');
-        return /^\d+$/.test(pin) && pin.length <= (field.maxLength ?? FORM_LIMITS.pin) ? { value: pin } : { error: 'Solo números.' };
-      }
-      const text = String(value).trim();
-      return field.maxLength && text.length > field.maxLength ? { error: `Hasta ${field.maxLength} caracteres.` } : { value: text.slice(0, FORM_LIMITS.text) };
-    }
-    case 'number': {
-      const number = typeof value === 'number' ? value : Number(String(value).replace(',', '.'));
-      if (!Number.isFinite(number)) return { error: 'Va un número.' };
-      if (field.integer && !Number.isInteger(number)) return { error: 'Va un número entero.' };
-      const low = field.min !== undefined && (field.minExclusive ? number <= field.min : number < field.min);
-      const high = field.max !== undefined && (field.maxExclusive ? number >= field.max : number > field.max);
-      return low || high ? { error: rangeMessage(field) } : { value: number };
-    }
-    case 'date': {
-      const clean = normalizeFormDate(value, field.mode);
-      return clean ? { value: clean } : { error: field.mode === 'time' ? 'La hora no es válida.' : 'La fecha no es válida.' };
-    }
-    case 'photo': {
-      if (!field.multiple) return typeof value === 'string' && value.length > 0 ? { value } : { error: 'Falta la foto.' };
-      const photos = Array.isArray(value) ? value.filter((one): one is string => typeof one === 'string' && one.length > 0) : [];
-      if (photos.length < field.min) return { error: field.min === 1 ? 'Falta al menos una foto.' : `Faltan fotos: van al menos ${field.min}.` };
-      return photos.length > field.max ? { error: `Hasta ${field.max} fotos.` } : { value: photos };
-    }
+    case 'choice': return checkChoice(field, value, row);
+    case 'multi': return checkPicks(field, value);
+    case 'text': return checkText(field, value);
+    case 'number': return checkNumber(field, value);
+    case 'date': return checkDate(field, value);
+    case 'photo': return checkPhoto(field, value);
     case 'location':
       // Only what the app's schema has: `age` is Lilachat's own check and never travels (agentes, 24/10: strict schemas).
       return isGeoPoint(value) ? { value: { lat: value.lat, lng: value.lng, precision: value.precision } } : { error: 'La ubicación no es válida.' };
   }
+}
+
+function checkChoice(field: FieldOf<'choice'>, value: unknown, row?: FormValues): Checked {
+  if (!field.options.some((option) => option.value === value)) return { error: 'Elige una de las opciones.' };
+  const refusal = refusalOf(field.options, value, row);
+  return refusal ? { error: refusal } : { value };
+}
+
+function checkText(field: FieldOf<'text'>, value: unknown): Checked {
+  if (field.digits) {
+    const code = String(value).replace(/\s+/g, '');
+    return new RegExp(`^\\d{${field.digits}}$`).test(code) ? { value: code } : { error: `Escribe los ${field.digits} dígitos.` };
+  }
+  if (field.secret) {
+    const pin = String(value).replace(/\s+/g, '');
+    return /^\d+$/.test(pin) && pin.length <= (field.maxLength ?? FORM_LIMITS.pin) ? { value: pin } : { error: 'Solo números.' };
+  }
+  const text = String(value).trim();
+  return field.maxLength && text.length > field.maxLength ? { error: `Hasta ${field.maxLength} caracteres.` } : { value: text.slice(0, FORM_LIMITS.text) };
+}
+
+function checkNumber(field: FieldOf<'number'>, value: unknown): Checked {
+  const number = typeof value === 'number' ? value : Number(String(value).replace(',', '.'));
+  if (!Number.isFinite(number)) return { error: 'Va un número.' };
+  if (field.integer && !Number.isInteger(number)) return { error: 'Va un número entero.' };
+  const low = field.min !== undefined && (field.minExclusive ? number <= field.min : number < field.min);
+  const high = field.max !== undefined && (field.maxExclusive ? number >= field.max : number > field.max);
+  return low || high ? { error: rangeMessage(field) } : { value: number };
+}
+
+function checkDate(field: FieldOf<'date'>, value: unknown): Checked {
+  const clean = normalizeFormDate(value, field.mode);
+  return clean ? { value: clean } : { error: field.mode === 'time' ? 'La hora no es válida.' : 'La fecha no es válida.' };
+}
+
+function checkPhoto(field: FieldOf<'photo'>, value: unknown): Checked {
+  if (!field.multiple) return typeof value === 'string' && value.length > 0 ? { value } : { error: 'Falta la foto.' };
+  const photos = Array.isArray(value) ? value.filter((one): one is string => typeof one === 'string' && one.length > 0) : [];
+  if (photos.length < field.min) return { error: field.min === 1 ? 'Falta al menos una foto.' : `Faltan fotos: van al menos ${field.min}.` };
+  return photos.length > field.max ? { error: `Hasta ${field.max} fotos.` } : { value: photos };
 }
 
 /** A multi-select's picks: each once, each an open option, between `min` and `max`. */

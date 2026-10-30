@@ -1,3 +1,4 @@
+import { ContactNoteBannerWeb } from '../routines/ContactNoteBannerWeb';
 import type { NotificationLevel } from '@lilachat/shared';
 import { alreadyGreeted, newAlbumId } from '@lilachat/shared';
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
@@ -227,6 +228,8 @@ export function ConversacionConAcciones(
           void acciones.enviar(texto, menciones);
         }}
         franja={
+          <>
+          {chat.kind === 'direct' ? <ContactNoteBannerWeb chatId={chat.id} jwt={props.jwt} note={detalle?.routines?.contactNote} /> : null}
           <FranjaDeFijados
             fijados={fijados}
             nombreDe={nombreDe}
@@ -236,6 +239,7 @@ export function ConversacionConAcciones(
             onDesfijar={(seq) => void fijar.desfijar(seq)}
             onVerTodos={() => setVerFijados(true)}
           />
+          </>
         }
         queue={chat.kind === 'notas' ? null : <ChatQueue jwt={props.jwt} chatId={chat.id} onOpen={(seq) => setSalto({ seq, vez: Date.now() })} />}
         salto={salto}

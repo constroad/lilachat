@@ -8,7 +8,7 @@ import { isOnline } from './presence.js';
 import { buildPushSender, buildPushText, type PushSender } from './pushSender.js';
 import { splitPushTargets } from './pushTargets.js';
 import { sendWebPush } from './webPushSender.js';
-import { CALL_TIMEOUT_MS, CAPACIDAD_LLAMADA_NATIVA, CAPACIDAD_MENSAJE_NATIVO, listThumbPath, mentionedUserIds, notificationLevel, ringsFor, textoDelAvisoDeReaccion, winkTileUrl, type NotificationLevel } from '@lilachat/shared';
+import { CALL_TIMEOUT_MS, CAPACIDAD_LLAMADA_NATIVA, CAPACIDAD_MENSAJE_NATIVO, listThumbPath, mentionedUserIds, isQuietNow, notificationLevel, quietHoursOf, ringsFor, textoDelAvisoDeReaccion, winkTileUrl, type NotificationLevel } from '@lilachat/shared';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { firmarEntrega } from './entregaPorAviso.js';
 import { firmarRechazo } from './llamadas.js';
@@ -187,11 +187,14 @@ function mensajeSoloDatos(params: {
  * De un chat, cuáles de estos usuarios lo tienen SILENCIADO. Para no mandarles
  * push. Una sola lectura del chat: los flags viven en su subdoc de miembros.
  */
-async function notificationLevelsOf(chatId: string, userIds: string[]): Promise<Map<string, NotificationLevel>> {
-  const chat = await ChatModel.findById(chatId).select('members.userId members.muted members.avisos').lean();
+export async function notificationLevelsOf(chatId: string, userIds: string[], now: Date = new Date()): Promise<Map<string, NotificationLevel>> {
+  const chat = await ChatModel.findById(chatId).select('members.userId members.muted members.avisos members.quietHours').lean();
   const levels = new Map<string, NotificationLevel>();
   for (const member of chat?.members ?? []) {
-    if (userIds.includes(String(member.userId))) levels.set(String(member.userId), notificationLevel(member));
+    if (!userIds.includes(String(member.userId))) continue;
+    // Pending 17: inside my own quiet schedule nothing rings, not even a mention (calls still do).
+    const quiet = member.quietHours ? quietHoursOf(member.quietHours) : null;
+    levels.set(String(member.userId), quiet && isQuietNow(quiet, now) ? 'nada' : notificationLevel(member));
   }
   return levels;
 }

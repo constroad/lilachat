@@ -4995,6 +4995,43 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 168. Automatizaciones: silenciar por horario y «recordar la próxima vez que hables» (29/10/2026, servidor + OTA + web; pendiente 17, diseño `automatizaciones`)
+
+Dos de las tres rutinas del diseño. Las dos son de UN miembro en UN chat y
+viven en su subdocumento (`members.$.quietHours`, `members.$.contactNote`).
+Por eso el push no suma lecturas.
+
+- **Motor (`shared/routines.ts`):**
+  - `quietHoursOf` valida: al menos un día 0–6 (domingo = 0), dos horas
+    «HH:MM» distintas y una zona horaria real.
+  - `isQuietNow` mira la hora en la zona guardada. Un rango que cruza la
+    medianoche cuenta para el día en que empieza.
+  - `quietHoursLabel` da «Lun a vie · 18:00–08:00».
+  - `contactNoteOf` recorta el texto y pide entre 1 y 200 letras.
+- **Server (`routinesRoutes.ts`):**
+  - `PUT /api/chats/:id/routines {quietHours?, contactNote?}`: `null` borra.
+    Solo miembros (404). Un horario inválido o una nota en un grupo dan 400.
+  - `GET /api/routines`: mis rutinas, con el nombre del grupo o de la persona.
+  - `notificationLevelsOf` devuelve «nada» dentro de mi horario: no suena ni una
+    mención. Las llamadas suenan igual.
+  - El detalle del chat trae `routines`, solo para mí.
+- **App:** tarjeta «Automatizaciones» en Ajustes del detalle (`RoutinesCard`).
+  Tiene el interruptor, los días, «Desde / Hasta» con el selector de hora y, en
+  un 1:1, la nota. Al abrir el 1:1, `ContactNoteBanner` muestra la nota arriba;
+  «Listo» la borra y la X la oculta hasta la próxima.
+- **Web:** `RoutinesRow` en Ajustes del panel de info y `ContactNoteBannerWeb`
+  sobre la franja de fijados.
+- **No se hizo:**
+  - El disparador por ubicación del diseño: seguir el lugar del teléfono gasta
+    batería todo el día, y F11 pide medirlo antes de prometerlo.
+  - **Legado Digital** (`legado.png`) necesita decisiones de José: a quién se le
+    entrega qué, tras cuánta inactividad y cómo se confirma antes de abrir el
+    vault.
+  - **La galería propia** (`galeria-foto-grupo.png`): el selector del sistema
+    ya da Recientes, Álbumes y Cámara.
+- **Deuda:** `ChatScreen.tsx` y `ChatDetailScreen.tsx` quedaron en 600 líneas,
+  el tope. Lo próximo que entre ahí obliga a partirlas.
+
 ## 167. Ubicación en tiempo real: el mapa dentro de la app y sin señal (29/10/2026, OTA + web; pendiente 12)
 
 Cierra los dos «Falta» del §156, sin SDK de mapas ni servicio pago.

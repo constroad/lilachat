@@ -14,6 +14,7 @@ import { DescripcionDelChat } from './DescripcionDelChat';
 import { GroupFunRow } from './GroupFunRow';
 import { GroupPermissionsRow } from './GroupPermissionsRow';
 import { BlockContactRow } from '../../privacy/BlockContactRow';
+import { RoutinesRow } from '../../routines/RoutinesRow';
 import { BirthdaysRow } from './BirthdaysRow';
 import { ChannelVisibilityRow } from './ChannelVisibilityRow';
 import { armarInfo } from './infoDelChat';
@@ -100,6 +101,7 @@ export function PanelDeInfo(props: {
           </button>
         ) : null}
         {tab === 'settings' && (chat.channel || detalle?.channel) ? <ChannelVisibilityRow chatId={chat.id} jwt={props.jwt} isPrivate={detalle?.channel ? detalle.channel.isPrivate : chat.channel?.visibility === 'private'} isAdmin={Boolean(detalle?.soyAdmin)} isGeneral={Boolean(detalle?.channel?.general)} onNotice={props.onAviso} /> : null}
+        {tab === 'settings' && chat.kind !== 'notas' ? <RoutinesRow chatId={chat.id} jwt={props.jwt} isDirect={chat.kind === 'direct'} name={otherMember?.nombre ?? chat.name ?? ''} quietHours={detalle?.routines?.quietHours} contactNote={detalle?.routines?.contactNote} onNotice={props.onAviso} /> : null}
         {tab === 'settings' && chat.kind === 'direct' && otherMember ? <BlockContactRow jwt={props.jwt} personId={otherMember.id} name={otherMember.nombre} blockedByMe={detalle?.blockedByMe === true} onNotice={props.onAviso} /> : null}
         {tab === 'settings' && chat.kind === 'group' ? <GroupPermissionsRow chatId={chat.id} jwt={props.jwt} permissions={detalle?.memberPermissions} isAdmin={Boolean(detalle?.soyAdmin)} onAviso={props.onAviso} /> : null}
         {tab === 'settings' && chat.kind === 'group' ? <GroupFunRow chatId={chat.id} jwt={props.jwt} allowed={Boolean(chat.funAllowed ?? detalle?.funAllowed)} isAdmin={Boolean(detalle?.soyAdmin)} onAviso={props.onAviso} /> : null}

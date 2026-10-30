@@ -40,6 +40,7 @@ import { buildDestacadosRouter } from './destacadosRoutes.js';
 import { buildActivityRouter } from './activityRoutes.js';
 import { buildFunRouter } from './funRoutes.js';
 import { buildGroupPermissionsRouter } from './groupPermissionsRoutes.js';
+import { buildRoutinesRouter } from './routinesRoutes.js';
 import { buildChecklistRouter } from './checklistRoutes.js';
 import { buildWorkStageRouter } from './workStageRoutes.js';
 import { buildTaskEvidenceRouter } from './taskEvidenceRoutes.js';
@@ -138,6 +139,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api', buildActivityRouter());
   app.use('/api', buildFunRouter());
   app.use('/api', buildGroupPermissionsRouter());
+  app.use('/api', buildRoutinesRouter());
   app.use('/api', buildStickersRouter(deps.mediaUploader, deps.animatedStickers));
   app.use('/api/chats', buildFileViewRouter());
   app.use('/api/chats', buildFijadosRouter());

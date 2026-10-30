@@ -34,6 +34,10 @@ export interface ChatMember {
    * chat sale de su lista hasta que llegue uno nuevo.
    */
   borradoHasta?: number;
+  /** Pending 17: this member's own quiet schedule for the chat (no push while it runs). */
+  quietHours?: { days: number[]; from: string; to: string; tz: string };
+  /** Pending 17: in a 1:1, a note for the next time this member talks to the other one. */
+  contactNote?: { text: string };
 }
 
 export interface Chat {
@@ -235,6 +239,8 @@ const chatSchema = new Schema<Chat>(
         joinedAt: { type: Date, default: Date.now },
         muted: { type: Boolean },
         avisos: { type: String, enum: ['nada'] },
+        quietHours: { type: { days: [Number], from: String, to: String, tz: String, _id: false }, default: undefined },
+        contactNote: { type: { text: String, _id: false }, default: undefined },
         pinned: { type: Boolean },
         archived: { type: Boolean },
         markedUnread: { type: Boolean },

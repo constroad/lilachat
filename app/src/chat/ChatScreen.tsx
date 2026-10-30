@@ -58,6 +58,7 @@ import { useMensajeFallido } from './useMensajeFallido';
 import { useAlAbrirElChat } from './useAlAbrirElChat';
 import { useIrAMensaje } from './useIrAMensaje';
 import { useFijarMensajes } from './useFijarMensajes';
+import { ContactNoteBanner } from './ContactNoteBanner';
 import { useMentionCandidates } from './useMentionCandidates';
 import { useOutsideMentions } from './useOutsideMentions';
 import { useDestacadosDelChat } from './destacados/useDestacadosDelChat';
@@ -429,7 +430,7 @@ export function ChatScreen({
         />
       )}
 
-      {fijar.franja}{esGrupoChat ? <GroupCallStrip chatId={chatId} chatName={nombreVisible} me={credential.userId} /> : null}{channelWork.tabs}
+      {fijar.franja}{esGrupoChat ? <GroupCallStrip chatId={chatId} chatName={nombreVisible} me={credential.userId} /> : null}{channelWork.tabs}<ContactNoteBanner chatId={chatId} jwt={credential.jwt} note={grupo.contactNote} />
       </View>
       {/* Keyboard like Telegram (20/10): see `useScrollConTeclado`; the bar rides on the keyboard or the emoji panel in `ChatBottom`. */}
       <View style={{ flex: 1, zIndex: 1 }}>

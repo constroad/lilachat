@@ -6,6 +6,12 @@ import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { WorkspaceMemberModel } from './workspaceModels.js';
 import { GENERAL_CHANNEL } from './workspaceGeneral.js';
 
+/** Pending 17: my own routines in this chat, only for me; nothing when there are none. */
+function routinesOf(mine: { quietHours?: unknown; contactNote?: unknown } | undefined) {
+  if (!mine?.quietHours && !mine?.contactNote) return {};
+  return { routines: { ...(mine.quietHours ? { quietHours: mine.quietHours } : {}), ...(mine.contactNote ? { contactNote: mine.contactNote } : {}) } };
+}
+
 /**
  * A conversation's detail: who is in it and with what role (`GET
  * /api/chats/:chatId/detail`).
@@ -47,6 +53,7 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId) {
     ...(chat.kind === 'group' ? { memberPermissions: memberPermissionsOf(chat.memberPermissions) } : {}),
     birthdaysOn: chat.birthdaysOn === true,
     // Pending 9: only whoever blocked learns it; the other side sees a normal 1:1.
+    ...routinesOf(chat.members.find((m) => String(m.userId) === String(userId))),
     ...(chat.kind === 'direct' ? { blockedByMe: (chat.blockedBy ?? []).some((id) => String(id) === String(userId)) } : {}),
     encrypted: chat.encrypted === true,
     // Pending 93: a channel's admins change who finds it; #general is always public.

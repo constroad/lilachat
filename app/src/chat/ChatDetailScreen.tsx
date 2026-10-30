@@ -17,7 +17,7 @@ import {
   type AccionDeMiembro,
   type NotificationLevel,
 } from '@lilachat/shared';
-import { chatDetailTabs, groupSubtitle, initialChatDetailTab, personOfMember, type ChatDetailTab, type MemberPermissions } from '@lilachat/shared';
+import { chatDetailTabs, groupSubtitle, initialChatDetailTab, personOfMember, type ChatDetailTab, type ContactNote, type MemberPermissions, type QuietHours } from '@lilachat/shared';
 import { DetailTabBar, RoundAction } from './DetailTabBar';
 import { EditarNombreDeGrupo } from './EditarNombreDeGrupo';
 import { elegirFotoDeGrupo, subirFotoDeGrupo } from './fotoDeGrupo';
@@ -38,6 +38,7 @@ import { EditarDescripcion, TarjetaDeDescripcion } from './descripcion/Descripci
 import { BirthdaysCard, GroupFunCard, ChannelVisibilityCard } from './GroupFunCard';
 import { GroupPermissionsCard } from './GroupPermissionsCard';
 import { BlockContactCard } from './BlockContactCard';
+import { RoutinesCard } from './RoutinesCard';
 import { SeccionCompartido } from './CompartidoEnElChat';
 import { useMargenes } from '../ui/useMargenes';
 import type { ServerMessage } from './socketClient';
@@ -71,8 +72,9 @@ type Detalle = {
   funAllowed?: boolean;
   /** What the members may do (pending 8). */
   memberPermissions?: MemberPermissions;
-  /** Pending 9: in a 1:1, whether I blocked the other one. */
+  /** Pending 9: in a 1:1, whether I blocked the other one. Pending 17: my own routines here. */
   blockedByMe?: boolean;
+  routines?: { quietHours?: QuietHours; contactNote?: ContactNote };
   birthdaysOn?: boolean;
   /** A channel (pending 93): who finds it, and whether it is #general. */
   channel?: { visibility: 'public' | 'private'; general: boolean };
@@ -499,6 +501,7 @@ export function ChatDetailScreen({
             ) : null}
             {tab === 'settings' && detalle!.channel ? <ChannelVisibilityCard chatId={chatId} jwt={credential.jwt} isPrivate={detalle!.channel.visibility === 'private'} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} isGeneral={detalle!.channel.general} /> : null}
             {tab === 'settings' && esGrupo ? <GroupPermissionsCard chatId={chatId} jwt={credential.jwt} permissions={detalle!.memberPermissions} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} /> : null}
+            {tab === 'settings' && !esBorrador ? <RoutinesCard chatId={chatId} jwt={credential.jwt} isDirect={detalle!.kind === 'direct'} name={nombreVisible} quietHours={detalle!.routines?.quietHours} contactNote={detalle!.routines?.contactNote} /> : null}
             {tab === 'settings' && detalle!.kind === 'direct' && detalle!.members.some((uno) => !uno.esYo) ? <BlockContactCard jwt={credential.jwt} personId={detalle!.members.find((uno) => !uno.esYo)!.id} name={nombreVisible} blockedByMe={detalle!.blockedByMe === true} /> : null}
             {tab === 'settings' && esGrupo ? <GroupFunCard chatId={chatId} jwt={credential.jwt} allowed={detalle!.funAllowed === true} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} /> : null}
             {tab === 'settings' && !esBorrador ? <BirthdaysCard chatId={chatId} jwt={credential.jwt} on={detalle!.birthdaysOn === true} isGroup={esGrupo} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} /> : null}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { api } from '../api';
 import { agendaNameFor, getAgendaNames, requestAgendaNames, subscribeAgendaNames } from '../contacts/phoneAgenda';
-import type { MemberPill } from '@lilachat/shared';
+import type { ContactNote, MemberPill, QuietHours } from '@lilachat/shared';
 import type { BaseLocal } from '../local/baseLocal';
 
 /** Un miembro como lo pinta la web: el nombre ya resuelto. */
@@ -24,6 +24,8 @@ export type DetalleDelChat = {
   memberPermissions?: unknown;
   /** Pending 9: in a 1:1, whether I blocked the other one. */
   blockedByMe?: boolean;
+  /** Pending 17: my own routines in this chat. */
+  routines?: { quietHours?: QuietHours; contactNote?: ContactNote };
   /** Birthdays on in this chat (pending 17). */
   birthdaysOn?: boolean;
   /** A channel (pending 93): who finds it, and whether it is #general. */
@@ -41,6 +43,7 @@ export type Respuesta = {
   funAllowed?: boolean;
   memberPermissions?: unknown;
   blockedByMe?: boolean;
+  routines?: { quietHours?: QuietHours; contactNote?: ContactNote };
   birthdaysOn?: boolean;
   channel?: { visibility: 'public' | 'private'; general: boolean };
   members: { id: string; name: string | null; phone: string | null; avatarUrl?: string; role?: 'admin' | 'member'; esYo?: boolean; title?: string; spaceRole?: string; app?: boolean }[];
@@ -76,6 +79,7 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
     funAllowed: respuesta.funAllowed === true,
     memberPermissions: respuesta.memberPermissions,
     blockedByMe: respuesta.blockedByMe === true,
+    routines: respuesta.routines,
     birthdaysOn: respuesta.birthdaysOn === true,
     ...(respuesta.channel ? { channel: { isPrivate: respuesta.channel.visibility === 'private', general: respuesta.channel.general } } : {}),
     appIds: new Set(respuesta.members.filter((member) => member.app).map((member) => member.id)),

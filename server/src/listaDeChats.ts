@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { acuseDelGrupo, listThumbPath, memberPermissionsOf, notificationLevel, TELEFONO_DE_LILA, unreadCount, type MemberPermissions, type NotificationLevel } from '@lilachat/shared';
+import { acuseDelGrupo, listThumbPath, memberPermissionsOf, muteStateOf, notificationLevel, TELEFONO_DE_LILA, unreadCount, type MemberPermissions, type NotificationLevel } from '@lilachat/shared';
 import { UserModel } from './models.js';
 import { ChatModel, MessageModel, ReceiptModel, type Message } from './chatModels.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
@@ -68,6 +68,8 @@ export type ChatSummary = {
   birthdaysOn?: boolean;
   /** Silenciado por MÍ: la lista lo marca y no me llega push de acá. */
   muted?: boolean;
+  /** R31/10: when my «8 horas» or «1 semana» silence ends. */
+  mutedUntil?: string;
   /** E3b: «todo», «menciones» or «nada» (from muted + avisos). */
   avisos?: NotificationLevel;
   /** Fijado por MÍ: va arriba en mi lista. */
@@ -109,16 +111,18 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
   // mensaje de todos los chats sale de UNA agregación sobre el índice
   // {chatId, seq} —antes era un `findOne` por chat—, y los nombres van en el
   // mismo viaje en vez de esperar a los otros dos.
-  const [allReceipts, ultimos, otros, fijados] = await Promise.all([
+  const [allReceipts, ultimos, otros, fijados, yoUsuario] = await Promise.all([
     ReceiptModel.find({ chatId: { $in: chatIds } }).lean(),
     MessageModel.aggregate<{ _id: Types.ObjectId; ultimo: Message }>([
       { $match: { chatId: { $in: chatIds } } },
       { $sort: { chatId: -1, seq: -1 } },
       { $group: { _id: '$chatId', ultimo: { $first: '$$ROOT' } } },
     ]),
-    UserModel.find({ _id: { $in: otrosIds } }).select('name phone avatarUrl app.appId').lean(),
+    UserModel.find({ _id: { $in: otrosIds } }).select('name phone avatarUrl app.appId readReceiptsOff').lean(),
     // Los fijados (19/10) en el mismo viaje: casi ningún chat tiene, y sin fijados no consulta.
     fijadosParaLaLista(chats, userId),
+    // R31/10: my «Confirmaciones de lectura»; off, I do not see the others' «leído» in a 1:1 either.
+    UserModel.findById(userId).select('readReceiptsOff').lean(),
   ]);
   const ultimoPorChat = new Map(ultimos.map((fila) => [String(fila._id), fila.ultimo]));
   const lastMessages = chats.map((chat) => ultimoPorChat.get(String(chat._id)) ?? null);
@@ -128,6 +132,9 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
   // The 1:1 with an app's bot goes to the space's «Apps» section, not to its direct messages (design e-23).
   const apps = new Map(otros.flatMap((user) => (user.app?.appId ? [[String(user._id), String(user.app.appId)] as const] : [])));
 
+  // R31/10: in a 1:1 where either side turned read receipts off, nobody sees «leído» (`readPrivacy.ts`).
+  const hidesRead = new Set(otros.filter((user) => user.readReceiptsOff === true).map((user) => String(user._id)));
+  const iHideRead = yoUsuario?.readReceiptsOff === true;
   const receipts = allReceipts.filter((receipt) => String(receipt.userId) === String(userId));
   const readByChat = new Map(receipts.map((receipt) => [String(receipt.chatId), receipt.readSeq]));
   // Los acuses AJENOS, por chat y por miembro: deciden el check de mis
@@ -185,7 +192,7 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
       // Pending 8: only when an admin changed them, so the composer knows who may write.
       ...(chat.memberPermissions ? { memberPermissions: memberPermissionsOf(chat.memberPermissions) } : {}),
       ...(chat.birthdaysOn ? { birthdaysOn: true } : {}),
-      muted: yo?.muted === true,
+      ...muteStateOf(yo),
       avisos: notificationLevel(yo ?? {}),
       pinned: yo?.pinned === true,
       archived: yo?.archived === true,
@@ -220,7 +227,7 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
             ...thumbFor(last, chat.encrypted === true),
           }
         : null,
-      othersReadSeq: acuseDelGrupo({ otros: acusan, porMiembro: acuses?.read ?? new Map() }),
+      othersReadSeq: chat.kind === 'direct' && (iHideRead || acusan.some((id) => hidesRead.has(id))) ? 0 : acuseDelGrupo({ otros: acusan, porMiembro: acuses?.read ?? new Map() }),
       othersDeliveredSeq: acuseDelGrupo({ otros: acusan, porMiembro: acuses?.delivered ?? new Map() }),
       ...(fijados.has(String(chat._id)) ? { fijados: fijados.get(String(chat._id)) } : {}),
     };

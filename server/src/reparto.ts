@@ -5,6 +5,7 @@ import { chatMemberIds, entregarAlConectar, markDelivered, marcarPropioLeido } f
 import { toClientMessage } from './messageView.js';
 import { isOnline } from './presence.js';
 import { notifyOffline } from './pushService.js';
+import { broadcastReceipt } from './readPrivacy.js';
 
 /**
  * El REPARTO de lo que pasa en un chat (salió de `socket.ts` el 20/10; el
@@ -93,9 +94,9 @@ export async function leerLoPropio(message: Pick<Message, 'chatId' | 'senderId' 
   try {
     const antes = await marcarPropioLeido(message, opciones);
     if (antes === null || antes >= message.seq - 1) return;
-    const miembros = conocidos ?? (await chatMemberIds(new Types.ObjectId(String(message.chatId))));
     const acuse = { chatId: String(message.chatId), userId: String(message.senderId), readSeq: message.seq, deliveredSeq: message.seq };
-    for (const miembro of miembros) ioVivo?.to(userRoom(miembro)).emit('receipt', acuse);
+    // R31/10: with read receipts off in a 1:1, the other only learns «entregado».
+    await broadcastReceipt(String(message.chatId), String(message.senderId), acuse, (miembro, frame) => ioVivo?.to(userRoom(miembro)).emit('receipt', frame));
   } catch (error) {
     console.error('[leído] no se pudo marcar lo propio:', (error as Error)?.message ?? error);
   }

@@ -115,5 +115,18 @@ export function buildMeRouter(uploader: MediaUploader = defaultMediaUploader()):
     void contactIdsOf(userId).then((contacts) => emitPresence(contacts, presenceFrameOf(userId))).catch(() => undefined);
   });
 
+  // «Confirmaciones de lectura» (R31/10): on unless turned off; groups always tell «leído».
+  router.get('/read-receipts', async (req, res) => {
+    const user = await UserModel.findById(req.session!.userId).select('readReceiptsOff').lean();
+    res.json({ on: user?.readReceiptsOff !== true });
+  });
+
+  router.put('/read-receipts', async (req, res) => {
+    if (typeof req.body?.on !== 'boolean') return res.status(400).json({ message: 'Elige si se envían o no.' });
+    const on = req.body.on as boolean;
+    await UserModel.updateOne({ _id: req.session!.userId }, on ? { $unset: { readReceiptsOff: 1 } } : { $set: { readReceiptsOff: true } });
+    res.json({ on });
+  });
+
   return router;
 }

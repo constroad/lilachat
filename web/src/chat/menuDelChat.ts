@@ -1,5 +1,5 @@
 import { accionesDeSeleccion } from '@lilachat/shared';
-import type { NotificationLevel } from '@lilachat/shared';
+import type { MuteFor, NotificationLevel } from '@lilachat/shared';
 import type { ChatSummary } from './types';
 
 /**
@@ -9,7 +9,8 @@ import type { ChatSummary } from './types';
  */
 export type ChatAction = 'archivar' | 'desarchivar' | 'silenciar' | 'reactivar' | 'fijar' | 'desfijar' | 'lista' | 'leido' | 'no-leido' | 'salir' | 'eliminar';
 export type ChatMenuOption = { accion: ChatAction; etiqueta: string; peligro?: boolean };
-export type CambiosDeAjustes = { archived?: boolean; muted?: boolean; pinned?: boolean; markedUnread?: boolean };
+/** `muteFor` (R31/10): how long a mute lasts; without it, siempre. */
+export type CambiosDeAjustes = { archived?: boolean; muted?: boolean; pinned?: boolean; markedUnread?: boolean; muteFor?: MuteFor };
 
 const ETIQUETAS: Record<ChatAction, string> = {
   archivar: 'Archivar chat',

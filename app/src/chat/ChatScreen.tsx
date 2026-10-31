@@ -8,7 +8,7 @@ import { ChatQueue } from './ChatQueue';
 import type { FlashListRef } from '@shopify/flash-list';
 import { ChatBottom } from './ChatBottom';
 import { etiquetaDeRecordatorioEnElChat, type MencionEnMensaje } from '@lilachat/shared';
-import { clientHeaderSubtitle, personOfMember } from '@lilachat/shared';
+import { chatHasActionPlace, clientHeaderSubtitle, personOfMember } from '@lilachat/shared';
 import { useFunActions } from './nudge';
 import { useCallBack } from './useCallBack';
 import { AttachSheet } from './AttachSheet';
@@ -161,7 +161,7 @@ export function ChatScreen({
   const seleccion = useSeleccionDeMensajes(messages);
   const destacados = useDestacadosDelChat({ chatId, jwt: credential.jwt, secreto: Boolean(encrypted) });
   const { ocultos, ocultar } = useOcultos(chatId);
-  const commands = useChatCommands({ jwt: credential.jwt, chatId, workspaceId, shareable: !esBorrador && !otherUserId });
+  const commands = useChatCommands({ jwt: credential.jwt, chatId, workspaceId, shareable: !esBorrador && !otherUserId, actionPlace: !esBorrador && chatHasActionPlace({ workspaceId, isGroup: !otherUserId, appId }) });
   const [verDetalle, setVerDetalle] = useState(false);
   const [detailSection, setDetailSection] = useState<DetailSection | null>(null);
   // The detail mounts the FIRST time it opens and stays (FL12, §49 #13): it is rarely opened, and staying keeps the animation.

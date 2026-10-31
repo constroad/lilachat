@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { cambiarAjustesDeChat } from '../api/client';
 import { chatMenuOptions, type ChatMenuId, type ChatMenuKind } from './chatHeaderMenu';
+import type { MuteFor } from '@lilachat/shared';
+import { askMuteDuration } from './askMuteDuration';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
 
@@ -22,9 +24,9 @@ export function useChatHeaderMenu(params: { chatId: string; jwt: string; kind: C
       .then((detail) => detail && setMuted((detail.avisos ?? (detail.muted ? 'menciones' : 'todo')) !== 'todo'))
       .catch(() => undefined);
   }, [chatId, jwt]);
-  const setNotices = useCallback((silence: boolean) => {
+  const setNotices = useCallback((silence: boolean, muteFor?: MuteFor) => {
     setMuted(silence);
-    void cambiarAjustesDeChat(chatId, jwt, { avisos: silence ? 'nada' : 'todo' }).then((ok) => {
+    void cambiarAjustesDeChat(chatId, jwt, { avisos: silence ? 'nada' : 'todo', muteFor }).then((ok) => {
       if (ok) return;
       setMuted(!silence);
       onError('No se pudo cambiar los avisos. Revisa tu conexión.');
@@ -32,7 +34,9 @@ export function useChatHeaderMenu(params: { chatId: string; jwt: string; kind: C
   }, [chatId, jwt, onError]);
   const select = useCallback((id: ChatMenuId) => {
     if (id === 'search') onSearch();
-    else if (id === 'mute' || id === 'unmute') setNotices(id === 'mute');
+    // R31/10: muting asks for how long, like WhatsApp.
+    else if (id === 'mute') askMuteDuration((muteFor) => setNotices(true, muteFor));
+    else if (id === 'unmute') setNotices(false);
     else onDetail(id === 'info' ? undefined : id);
   }, [onDetail, onSearch, setNotices]);
   const options = useMemo(() => chatMenuOptions({ kind, muted }), [kind, muted]);

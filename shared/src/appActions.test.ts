@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evidenceLine, formSubmitOutcome, geoPointOf, photoStampLines, placedActionRow, precisionLabel, quickActionRows, shortcutRows, submitLabelOf } from './appActions.js';
+import { chatActionRows, chatHasActionPlace, evidenceLine, formSubmitOutcome, geoPointOf, photoStampLines, placedActionRow, precisionLabel, quickActionRows, shortcutRows, submitLabelOf } from './appActions.js';
 import type { FormField } from './appForms.js';
 import type { CommandGroup, CommandOutcome } from './botCommands.js';
 
@@ -35,6 +35,36 @@ describe('the rows of «Acciones rápidas»', () => {
   it('a command whose name matches a placed action stays in the ⚡: only actions have their own place', () => {
     const commandOnly: CommandGroup[] = [{ appId: 'a2', appName: 'Portal', commands: [{ command: 'crear_cliente', description: 'Crear' }] }];
     expect(quickActionRows(commandOnly).map((row) => row.name)).toEqual(['/crear_cliente']);
+  });
+});
+
+describe('the ⚡ of a chat (R31/10: since the clip lost the actions, a chat\'s own had no place)', () => {
+  it('a channel of a space and the chat with an app can have actions; a person\'s 1:1 and a personal chat never', () => {
+    // Arrange
+    const channel = { workspaceId: 's1', isGroup: true };
+    const appChat = { workspaceId: 's1', isGroup: false, appId: 'a1' };
+    const personInSpace = { workspaceId: 's1', isGroup: false };
+    const personalGroup = { workspaceId: null, isGroup: true };
+    // Act / Assert
+    expect(chatHasActionPlace(channel)).toBe(true);
+    expect(chatHasActionPlace(appChat)).toBe(true);
+    expect(chatHasActionPlace(personInSpace)).toBe(false);
+    expect(chatHasActionPlace(personalGroup)).toBe(false);
+  });
+
+  it('lists only the actions (the commands are a «/» away) and leaves out the ones with a place of their own', () => {
+    // Arrange
+    const withCreate: CommandGroup[] = [...groups, { appId: 'a3', appName: 'Portal', commands: [], shortcuts: [{ key: 'crear_cliente', name: 'Crear un cliente' }, { key: 'registrar_consumo', name: 'Registrar consumo' }] }];
+    // Act
+    const rows = chatActionRows(withCreate);
+    // Assert
+    expect(rows.map((row) => row.key)).toEqual(['marcar_asistencia', 'medir_tanque', 'registrar_consumo']);
+    expect(rows.every((row) => row.kind === 'shortcut')).toBe(true);
+  });
+
+  it('no groups yet, or apps with no actions here: no rows, so no ⚡', () => {
+    expect(chatActionRows([])).toEqual([]);
+    expect(chatActionRows([{ appId: 'a2', appName: 'Portal', commands: [{ command: 'pedidos', description: 'Pedidos' }], shortcuts: [] }])).toEqual([]);
   });
 });
 

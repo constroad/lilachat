@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { Types } from 'mongoose';
 import { chatMemberIds, markDelivered } from './chatService.js';
 import { resolveJwtSecret } from './sessions.js';
+import { broadcastReceipt, type ReceiptFrame } from './readPrivacy.js';
 
 /**
  * El doble check sin abrir la app (FL8.2).
@@ -64,7 +65,7 @@ export async function confirmarEntregaDesdeAviso(token: string): Promise<boolean
 }
 
 /** Reparte un acuse (entregado o leído) a los del chat, por el socket. */
-export async function repartirAcuse(chatId: string, frame: object): Promise<void> {
-  const members = await chatMemberIds(new Types.ObjectId(chatId));
-  for (const member of members) emitirAcuse?.(member, frame);
+export async function repartirAcuse(chatId: string, frame: ReceiptFrame & { userId: string }): Promise<void> {
+  // R31/10: with read receipts off in a 1:1, the other only learns «entregado».
+  await broadcastReceipt(chatId, frame.userId, frame, (member, each) => emitirAcuse?.(member, each));
 }

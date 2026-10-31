@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { commandOf, matchCommands, parseSlashInput, shortcutRows, slashQuery, unknownCommandMessage, type CommandGroup } from '@lilachat/shared';
+import { chatActionRows, commandOf, matchCommands, parseSlashInput, slashQuery, unknownCommandMessage, type CommandGroup } from '@lilachat/shared';
 import { currentSocket } from '../../useSocket';
 import { runCommand, shareCommandAnswer, spaceCommands } from './commandsApi';
 import { useAppAnswers } from './useAppAnswers';
@@ -11,7 +11,7 @@ export type ChatCommands = ReturnType<typeof useChatCommands>;
  * once, at the first slash; the answers only I see live here and are gone on
  * reload. On the web the panel also answers to the keyboard.
  */
-export function useChatCommands(params: { jwt?: string; chatId: string; workspaceId?: string; /** A channel or a group: what only I saw can be sent there. */ shareable?: boolean }) {
+export function useChatCommands(params: { jwt?: string; chatId: string; workspaceId?: string; /** A channel or a group: what only I saw can be sent there. */ shareable?: boolean; /** A channel or the chat with an app: its actions are asked on open, for its ⚡ (R31/10). */ actionPlace?: boolean }) {
   const { jwt, chatId, workspaceId } = params;
   const [groups, setGroups] = useState<CommandGroup[]>([]);
   const [query, setQuery] = useState<string | null>(null);
@@ -41,6 +41,11 @@ export function useChatCommands(params: { jwt?: string; chatId: string; workspac
     loaded.current = null;
     setGroups([]);
   }, [chatId, workspaceId]);
+
+  // A chat that can have actions asks once on open: its ⚡ only shows when there is one (R31/10).
+  useEffect(() => {
+    if (params.actionPlace) void load();
+  }, [params.actionPlace, load]);
 
   const onType = useCallback(
     (text: string) => {
@@ -129,7 +134,7 @@ export function useChatCommands(params: { jwt?: string; chatId: string; workspac
     },
     [jwt, chatId, appAnswers]
   );
-  /** The «Acciones de las apps» of the «+» (design e-29): asked when the menu opens. */
-  const actions = useMemo(() => shortcutRows(groups), [groups]);
+  /** The chat's ⚡ (R31/10): its actions, asked on open in a channel or the chat with an app. */
+  const actions = useMemo(() => chatActionRows(groups), [groups]);
   return { enabled, suggestions, activeCommand: flat[Math.min(active, flat.length - 1)] ?? null, onType, onKey, runIfCommand, answers: appAnswers.answers, dismiss: appAnswers.dismiss, appAnswers, actions, loadActions: load, share: params.shareable ? share : undefined, jwt: jwt ?? '', chatId };
 }

@@ -7,7 +7,7 @@ import { useContext, useEffect, useState, type ReactNode } from 'react';
 import { ArrowLeft, Building2, Phone, Search, Video } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import type { AgendaReminder, DirectoryApp, MencionElegida, MencionEnMensaje, WinkId } from '@lilachat/shared';
-import { clientHeaderSubtitle, formatUltimaVez, presenceLine, type PresenceStatus, memberCountLabel } from '@lilachat/shared';
+import { chatHasActionPlace, clientHeaderSubtitle, formatUltimaVez, presenceLine, type PresenceStatus, memberCountLabel } from '@lilachat/shared';
 import { Composer, type ContextoDelComposer } from './Composer';
 import { useChatCommands } from './commands/useChatCommands';
 import { AppCommandsBar, AppConversationHeader, type AppConversationTab } from '../spaces/apps/AppConversation';
@@ -130,7 +130,7 @@ export function Conversation(props: {
   const lastSeen = useLastSeen(otherId);
   const otherStatus = usePresenceStatus(otherId);
   const fun = useFunPlayback({ messages: props.mensajes, me: props.yo, chatId: chat.id, muted: Boolean(chat.muted), afterSeq: chat.lastSeq - chat.unread });
-  const commands = useChatCommands({ jwt: props.jwtParaEnlaces, chatId: chat.id, workspaceId: chat.workspaceId, shareable: chat.kind === 'group' });
+  const commands = useChatCommands({ jwt: props.jwtParaEnlaces, chatId: chat.id, workspaceId: chat.workspaceId, shareable: chat.kind === 'group', actionPlace: chatHasActionPlace({ workspaceId: chat.workspaceId, isGroup: chat.kind === 'group', appId: chat.appId }) });
   return (
     <section
       data-testid="panel-conversacion"

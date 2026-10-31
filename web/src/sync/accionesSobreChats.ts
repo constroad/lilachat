@@ -2,6 +2,7 @@ import { useCallback, type MutableRefObject } from 'react';
 import type { Socket } from 'socket.io-client';
 import { api, type ApiResult } from '../api';
 import { cambiosDeAjustes, type ChatAction } from '../chat/menuDelChat';
+import { askMuteDuration } from '../chat/MuteDialog';
 import { levelChanges } from '../chat/menuDelChat';
 import type { NotificationLevel } from '@lilachat/shared';
 import type { ChatSummary } from '../chat/types';
@@ -61,9 +62,13 @@ export function useAccionesSobreChats(params: {
 
   const ajustar = useCallback(
     async (chat: ChatSummary, accion: ChatAction) => {
-      const cambios = cambiosDeAjustes(accion);
-      if (!cambios) return;
-      const local: AjusteLocal = accion === 'leido' ? { ...cambios, unread: 0 } : cambios;
+      const asked = cambiosDeAjustes(accion);
+      if (!asked) return;
+      // R31/10: muting asks how long; cancelling mutes nothing.
+      const muteFor = accion === 'silenciar' ? await askMuteDuration() : undefined;
+      if (muteFor === null) return;
+      const cambios = muteFor ? { ...asked, muteFor } : asked;
+      const local: AjusteLocal = accion === 'leido' ? { ...asked, unread: 0 } : asked;
       if (!(await applySettings(chat, local, cambios))) return;
       if (accion === 'leido' && chat.lastSeq > 0) socket.current?.emit('read.set', { chatId: chat.id, seq: chat.lastSeq });
       void cargarChats();

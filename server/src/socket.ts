@@ -5,6 +5,8 @@ import type { Server as HttpServer } from 'node:http';
 import { Types } from 'mongoose';
 import { Server as SocketServer, type Socket } from 'socket.io';
 import { ChatModel, type Message } from './chatModels.js';
+import { typingMembers, typingTargets } from './typingRelay.js';
+import { broadcastReceipt } from './readPrivacy.js';
 import { crearColaSerial } from '@lilachat/shared';
 import {
   ForbiddenChatError,
@@ -480,17 +482,11 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
         const { leido, desmarcado } = await marcarLeidoDetallado({ chatId: payload.chatId, userId, seq: payload.seq });
         // Sin avance pero con la marca de «no leído» quitada: mis otros equipos releen.
         if (!leido) return void (desmarcado && avisarCambioDeChat(me, payload.chatId));
-        const members = await chatMemberIds(new Types.ObjectId(payload.chatId));
-        for (const member of members) {
-          io.to(userRoom(member)).emit('receipt', {
-            chatId: payload.chatId,
-            userId: String(userId),
-            readSeq: leido,
-            // Leer implica entregado: sin esto el doble check gris nunca se
-            // pondria azul si el otro ya lo tenia como entregado.
-            deliveredSeq: leido,
-          });
-        }
+        // Leer implica entregado: sin esto el doble check gris nunca se
+        // pondria azul si el otro ya lo tenia como entregado.
+        // R31/10: with read receipts off in a 1:1, the other only learns «entregado».
+        const acuse = { chatId: payload.chatId, userId: String(userId), readSeq: leido, deliveredSeq: leido };
+        await broadcastReceipt(payload.chatId, String(userId), acuse, (member, frame) => io.to(userRoom(member)).emit('receipt', frame));
       } catch {
         // Un acuse que no se pudo guardar no rompe la sesión: el próximo lo
         // arregla, porque es un cursor y no un incremento.
@@ -543,11 +539,9 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
 
     socket.on('typing', async (frame: unknown) => {
       const payload = (frame ?? {}) as { chatId?: string; on?: boolean };
-      if (!payload.chatId) return;
       try {
-        const members = await chatMemberIds(new Types.ObjectId(payload.chatId));
-        for (const member of members) {
-          if (member === String(userId)) continue; // a mí mismo, no
+        // Only a member's typing goes out (R31/10), never back to themselves.
+        for (const member of await typingTargets(payload.chatId, String(userId), typingMembers)) {
           io.to(userRoom(member)).emit('typing', {
             chatId: payload.chatId,
             userId: String(userId),

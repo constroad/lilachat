@@ -4995,6 +4995,80 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 178. El ⚡ del chat, silenciar por tiempo, «escribiendo…» solo de miembros, bloqueo de la web y confirmaciones de lectura (31/10/2026, servidor + OTA + web)
+
+José aprobó las herramientas de consumo («sigue con el backlog»). Al preparar
+su prueba apareció un hueco y se sumaron cuatro deudas del as-is.
+
+1. **El ⚡ del chat (regresión del pendiente 111).** El 28/10 se quitaron las
+   acciones del clip; desde entonces una acción encendida para un canal o para
+   «el chat con la app» no aparecía en ningún lado. Solo funcionaba la del ⚡
+   del espacio. Ahora, en un canal o en el chat con una app, el compositor
+   muestra un ⚡ (como el botón de atajos de Slack) solo si ese chat tiene
+   acciones. Las pide una vez al abrir (`useChatCommands` con `actionPlace`) y
+   se refresca con `workspace.apps.changed`. Un 1:1 entre personas no pide nada.
+   - `shared/appActions.ts`: `chatHasActionPlace` y `chatActionRows` (sin las
+     acciones con lugar propio, como `crear_cliente`).
+   - App: `ChatQuickActions` en `Composer` (con el campo vacío, como la cámara)
+     y `QuickActionsSheet`, la hoja que ahora comparte con el ⚡ del espacio.
+   - Web: `ChatQuickActions` junto al «+» y `AppActionList`, compartida con el
+     ⚡ del espacio.
+2. **Silenciar por 8 horas, 1 semana o siempre**, como WhatsApp (el §66 lo
+   dejó pendiente).
+   - `shared/muteDuration.ts`: `MUTE_OPTIONS`, `mutedUntilFor`, `isMutedNow`,
+     `muteStateOf` y `mutedUntilShort/Text`.
+   - El fin se guarda en `members.mutedUntil`. Pasado el fin, el chat vuelve a
+     sonar sin que nadie escriba en la base: `notificationLevel(member, now)`
+     lo lee, y con él el push, la lista y el detalle.
+   - `PATCH /ajustes` acepta `muteFor` (`8h | 1w | always`). Silenciar sin
+     duración es «siempre» y borra un fin viejo (si no, un fin vencido dejaba
+     sin efecto un silencio nuevo). Reactivar también lo borra.
+   - La lista y el detalle devuelven `muted` solo mientras dura, y `mutedUntil`.
+   - App: `askMuteDuration` (el diálogo de WhatsApp) en el menú del chat, la
+     selección de la lista y el detalle, que dice «hasta las 18:00».
+   - Web: `MuteDialog`, montado una vez en `App` (fuera del Shell). Toda acción
+     «Silenciar» pasa por él; «Info.» dice «Silenciado hasta…».
+3. **«Escribiendo…» solo de miembros.** El socket reenviaba `typing` a los
+   miembros sin revisar que quien escribe lo fuera: cualquiera que supiera el
+   id de un chat hacía aparecer «escribiendo…» ahí.
+   - `typingRelay.ts`: `typingTargets` exige ser miembro y rechaza ids que no
+     son de chat.
+   - Una caché de miembros de 10 s y 2000 chats (deuda FL4) evita una consulta
+     por ráfaga de teclas. Solo vale para esta señal decorativa: alguien recién
+     sacado puede seguir mostrando «escribiendo…» hasta 10 s.
+   - `read.set` y `deliver.set` ya exigían membresía (`ForbiddenChatError`).
+4. **Bloqueo de pantalla de la web**, como WhatsApp Web (deuda del §163).
+   - `web/src/privacy/screenLock.ts`: contraseña de 6 caracteres o más,
+     guardada solo como hash PBKDF2-SHA256 con sal (150 000 vueltas), por
+     persona en este navegador. Se bloquea tras 1 minuto, 15 minutos o 1 hora
+     sin uso, y con «Bloquear ahora».
+   - `ScreenLockGate` va en `App`: con bloqueo, la web abre bloqueada. El
+     temporizador es local, cada 15 s, sin pedidos al server, y revisa también
+     al volver a la pestaña.
+   - «¿Olvidaste la contraseña? Cerrar sesión» quita el bloqueo y sale.
+     Desactivarlo pide la contraseña.
+   - Es un candado de pantalla, no cifrado: los chats siguen corriendo debajo,
+     y los avisos del navegador pueden seguir mostrando el texto.
+5. **Confirmaciones de lectura**, como WhatsApp. En un 1:1, si cualquiera de
+   los dos las apaga, ninguno ve «leído»: los dos ven «entregado». Los grupos
+   siempre las envían.
+   - Se guarda en `User.readReceiptsOff`, con `GET/PUT /api/me/read-receipts`.
+   - `readPrivacy.ts` (`receiptAudience`, `receiptFor`, `broadcastReceipt`)
+     cubre toda salida del cursor de leído: el acuse en vivo de `read.set`,
+     leer al responder (`leerLoPropio`), leer desde el aviso (`repartirAcuse`),
+     la lista (`othersReadSeq` 0) y la info del mensaje.
+   - Los otros equipos de quien lee siguen recibiendo su `readSeq`: sin eso no
+     se les borraría el «sin leer».
+   - App: interruptor en Ajustes → Privacidad. Web: fila en el panel de ajustes.
+
+**Pruebas:**
+- shared: `appActions` 15 y `muteDuration` 6.
+- server: `typingRelay` 6, socket 23, `chatNotifications` 12,
+  `readReceipts` 7; la suite completa da 1182.
+- web: `ChatQuickActions`, `useChatCommands`, `MuteDialog`, `screenLock`,
+  `ScreenLockGate` y `ReadReceiptsChoice`.
+- app: 755.
+
 ## 177. Cinco deudas del as-is: el espacio en vivo, el borrado completo, Integraciones y los errores que se perdían (31/10/2026, servidor + OTA + web)
 
 **El logo y el nombre del espacio, en vivo (deuda de la §85).** Al cambiar el

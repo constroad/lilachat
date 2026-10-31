@@ -454,3 +454,24 @@ describe('reacciones por el socket', () => {
     expect(r).toMatchObject({ ok: false, motivo: 'Esa reacción no es un emoji.' });
   });
 });
+
+describe('escribiendo… (R31/10)', () => {
+  it('llega al otro miembro; el que no es del chat no hace aparecer nada aunque sepa el id', async () => {
+    // Arrange
+    const pedro = (await UserModel.create({ phone: '900000003', email: 'pedro@x.com', name: 'Pedro' }))._id;
+    const mia = await connect(tokenFor(jose));
+    const deMaria = await connect(tokenFor(maria));
+    const intruso = await connect(tokenFor(pedro));
+    const recibidos: { userId: string }[] = [];
+    mia.on('typing', (frame: { userId: string }) => recibidos.push(frame));
+    const deMariaLlega = new Promise<{ userId: string; on: boolean }>((resolve) => mia.once('typing', resolve));
+    // Act
+    intruso.emit('typing', { chatId, on: true });
+    intruso.emit('typing', { chatId: 'no-es-un-id', on: true });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    deMaria.emit('typing', { chatId, on: true });
+    // Assert
+    await expect(deMariaLlega).resolves.toMatchObject({ userId: String(maria), on: true });
+    expect(recibidos.map((frame) => frame.userId)).toEqual([String(maria)]);
+  });
+});

@@ -10,6 +10,8 @@ import { markWorkerWaiting } from './ui/webUpdate';
 import { Shell } from './Shell';
 import { MiniVideoPlayer } from './media/MiniVideoPlayer';
 import { useSesion } from './sesion/useSesion';
+import { MuteDialogHost } from './chat/MuteDialog';
+import { ScreenLockGate } from './privacy/ScreenLockGate';
 
 /**
  * La puerta: sin sesión, el acceso; con sesión, el shell de dos paneles.
@@ -49,6 +51,10 @@ export function App() {
       />
       {/* Outside the Shell: a video in the mini player outlives the chat it came from (pending 14). */}
       <MiniVideoPlayer />
+      {/* R31/10: every «Silenciar» asks how long here, once for the whole web. */}
+      <MuteDialogHost />
+      {/* R31/10: the screen lock covers everything, like WhatsApp Web's. */}
+      <ScreenLockGate userId={sesion.credential.userId} onForgot={sesion.logout} />
     </>
   );
 }

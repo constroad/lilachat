@@ -65,7 +65,7 @@ type Detalle = {
   avatarUrl?: string;
   encrypted: boolean;
   /** MI silenciado de este chat (FL8: antes el interruptor arrancaba siempre apagado). */
-  muted?: boolean;
+  muted?: boolean; mutedUntil?: string;
   /** E3b: todo / menciones / nada; a server without it leaves only `muted`. */
   avisos?: NotificationLevel;
   /** Nudges and winks in a group, switched on by an admin (21/10). */
@@ -530,13 +530,13 @@ export function ChatDetailScreen({
             <AjustesDelChat
               esGrupo={esGrupo}
               cifrado={detalle!.encrypted}
-              level={level}
-              onLevel={(next) => {
+              level={level} mutedUntil={detalle!.mutedUntil}
+              onLevel={(next, muteFor) => {
                 // Se guarda de verdad (FL8): antes era solo un estado local.
                 // If the server rejects it, it goes back and says so.
                 const before = level;
                 setLevel(next);
-                void cambiarAjustesDeChat(chatId, credential.jwt, { avisos: next }).then((ok) => {
+                void cambiarAjustesDeChat(chatId, credential.jwt, { avisos: next, muteFor }).then((ok) => {
                   if (ok) return;
                   setLevel(before);
                   setAviso('No se pudo cambiar. Revisa la conexión.');

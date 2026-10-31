@@ -1,3 +1,5 @@
+import { isMutedNow } from './muteDuration.js';
+
 /**
  * Una mención en un mensaje de grupo (José, 18/10: «taggear con @»). Viaja el
  * texto que eligió quien escribe («@Ana») MÁS el rango y el id: cada teléfono
@@ -61,8 +63,9 @@ export const NOTIFICATION_LEVEL_TEXT: Record<NotificationLevel, { title: string;
   nada: { title: 'Nada', detail: 'Ni siquiera cuando te nombran' },
 };
 
-export function notificationLevel(member: { muted?: boolean; avisos?: string | null }): NotificationLevel {
-  if (member.muted !== true) return 'todo';
+/** A silence past its end (R31/10: 8 horas, 1 semana) rings again: «todo». */
+export function notificationLevel(member: { muted?: boolean; avisos?: string | null; mutedUntil?: Date | string | null }, now: Date = new Date()): NotificationLevel {
+  if (!isMutedNow(member, now)) return 'todo';
   return member.avisos === 'nada' ? 'nada' : 'menciones';
 }
 

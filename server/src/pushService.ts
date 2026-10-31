@@ -188,7 +188,7 @@ function mensajeSoloDatos(params: {
  * push. Una sola lectura del chat: los flags viven en su subdoc de miembros.
  */
 export async function notificationLevelsOf(chatId: string, userIds: string[], now: Date = new Date()): Promise<Map<string, NotificationLevel>> {
-  const chat = await ChatModel.findById(chatId).select('members.userId members.muted members.avisos members.quietHours').lean();
+  const chat = await ChatModel.findById(chatId).select('members.userId members.muted members.avisos members.mutedUntil members.quietHours').lean();
   const levels = new Map<string, NotificationLevel>();
   for (const member of chat?.members ?? []) {
     if (!userIds.includes(String(member.userId))) continue;

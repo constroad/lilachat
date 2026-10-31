@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { Interruptor } from '../ui/Interruptor';
 import { Bell, BellOff, Lock, LogOut } from 'lucide-react-native';
-import { NOTIFICATION_LEVEL_TEXT, type NotificationLevel } from '@lilachat/shared';
+import { mutedUntilFor, mutedUntilShort, NOTIFICATION_LEVEL_TEXT, type MuteFor, type NotificationLevel } from '@lilachat/shared';
+import { askMuteDuration } from './askMuteDuration';
 import { NotificationLevelSheet } from './NotificationLevelSheet';
 import { FilaDeAjuste, GrupoDeAjustes } from '../ui/FilaDeAjuste';
 import { Rotulo } from '../ui/Rotulo';
@@ -20,6 +21,7 @@ export function AjustesDelChat({
   cifrado,
   level,
   onLevel,
+  mutedUntil,
   accionando,
   onSalir,
 }: {
@@ -27,25 +29,40 @@ export function AjustesDelChat({
   cifrado: boolean;
   /** E3b: a group chooses everything / only mentions / nothing; a 1:1 keeps the switch. */
   level: NotificationLevel;
-  onLevel: (level: NotificationLevel) => void;
+  /** R31/10: muting asks for how long (8 horas, 1 semana, siempre). */
+  onLevel: (level: NotificationLevel, muteFor?: MuteFor) => void;
+  /** When my silence ends; none = siempre. */
+  mutedUntil?: string;
   accionando: boolean;
   onSalir: () => Promise<void> | void;
 }) {
   const [choosing, setChoosing] = useState(false);
+  const [until, setUntil] = useState(mutedUntil);
   const silenced = level !== 'todo';
+  const endText = silenced ? mutedUntilShort(until, new Date()) : '';
+  const choose = (next: NotificationLevel) => {
+    if (next === 'todo') {
+      setUntil(undefined);
+      return onLevel('todo');
+    }
+    askMuteDuration((muteFor) => {
+      setUntil(mutedUntilFor(muteFor, new Date())?.toISOString());
+      onLevel(next, muteFor);
+    });
+  };
   return (
     <>
       <Rotulo sangrado>Ajustes del chat</Rotulo>
       <View className="gap-3 px-4">
         <GrupoDeAjustes>
           {esGrupo ? (
-            <FilaDeAjuste testID="btn-avisos" icono={silenced ? BellOff : Bell} titulo="Avisos" detalle={NOTIFICATION_LEVEL_TEXT[level].title} onPress={() => setChoosing(true)} />
+            <FilaDeAjuste testID="btn-avisos" icono={silenced ? BellOff : Bell} titulo="Avisos" detalle={endText ? `${NOTIFICATION_LEVEL_TEXT[level].title} · ${endText}` : NOTIFICATION_LEVEL_TEXT[level].title} onPress={() => setChoosing(true)} />
           ) : (
             <FilaDeAjuste
               icono={BellOff}
               titulo="Silenciar notificaciones"
-              detalle={silenced ? 'No te avisamos de este chat' : 'Te avisamos de cada mensaje'}
-              derecha={<Interruptor testID="sw-silenciar" value={silenced} onValueChange={(value) => onLevel(value ? 'menciones' : 'todo')} />}
+              detalle={silenced ? `No te avisamos de este chat${endText ? ` ${endText}` : ''}` : 'Te avisamos de cada mensaje'}
+              derecha={<Interruptor testID="sw-silenciar" value={silenced} onValueChange={(value) => choose(value ? 'menciones' : 'todo')} />}
             />
           )}
           {/* El cifrado se DICE como es, no como nos gustaría. Solo los chats
@@ -84,7 +101,7 @@ export function AjustesDelChat({
         level={level}
         onChoose={(next) => {
           setChoosing(false);
-          onLevel(next);
+          choose(next);
         }}
         onClose={() => setChoosing(false)}
       />

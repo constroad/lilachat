@@ -39,6 +39,8 @@ export interface User {
   lastSeenHidden?: boolean;
   /** People I blocked (pending 9): our 1:1 closes both ways and neither sees the other's presence. */
   blockedUsers?: Types.ObjectId[];
+  /** R31/10: «Confirmaciones de lectura» off — in 1:1s neither side sees «leído» (`readPrivacy.ts`). */
+  readReceiptsOff?: boolean;
   /** Lists of chats of my own, in my order (pending 45). */
   chatLists?: { _id: Types.ObjectId; name: string; chatIds: string[] }[];
   /** «últ. vez» (FL10): cuándo se cerró su último socket. */
@@ -110,6 +112,7 @@ const userSchema = new Schema<User>(
     presenceMode: { type: String, enum: ['auto', 'away', 'busy', 'invisible'] },
     lastSeenHidden: { type: Boolean },
     blockedUsers: { type: [Schema.Types.ObjectId], default: undefined },
+    readReceiptsOff: { type: Boolean },
     chatLists: { type: [{ name: { type: String, required: true }, chatIds: { type: [String], default: [] } }], default: undefined },
   },
   { timestamps: true }

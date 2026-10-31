@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronRight, Zap } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { formKeyOf, quickActionRows, type CommandGroup, type ShortcutRow } from '@lilachat/shared';
 import { loadPerfil } from '../../api';
 import { currentSocket } from '../../useSocket';
 import { Overlay } from '../../ui/Overlay';
+import { AppActionList } from '../../chat/commands/AppActionList';
 import { AppFormDialog } from '../../chat/commands/AppFormDialog';
 import { EphemeralAnswers } from '../../chat/commands/EphemeralAnswers';
 import { spaceCommands } from '../../chat/commands/commandsApi';
 import { useAppAnswers } from '../../chat/commands/useAppAnswers';
-import { AppLogo } from './AppLogo';
 
 /**
  * The space's ⚡ (R160, design e-30; José, 23/10: it belongs to the space,
@@ -76,20 +76,7 @@ export function SpaceQuickActions(props: { jwt: string; spaceId: string; spaceNa
             {groups === null && !failed ? <div data-testid="acciones-cargando" className="space-y-2">{[0, 1, 2].map((index) => <div key={index} className="h-14 animate-pulse rounded-xl bg-background" />)}</div> : null}
             {failed ? <button type="button" onClick={() => void load()} className="w-full rounded-xl bg-error/10 px-4 py-3 text-left text-[13px] text-error">No se pudieron leer las acciones. Toca para reintentar.</button> : null}
             {groups && rows.length === 0 ? <p data-testid="acciones-vacias" className="rounded-xl border border-outline/15 p-4 text-[13px] text-on-surface-variant">Las apps de {props.spaceName} todavía no tienen acciones. Cuando una las tenga, aparecen aquí.</p> : null}
-            {rows.length ? (
-              <div className="divide-y divide-outline/10 overflow-hidden rounded-2xl border border-outline/15">
-                {rows.map((row) => (
-                  <button key={`${row.appId}:${row.key}`} type="button" data-testid={`accion-espacio-${row.key}`} onClick={() => run(row)} className="flex min-h-16 w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-background">
-                    <AppLogo avatarUrl={row.avatarUrl} size={40} rounded="rounded-xl" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[15px] font-semibold">{row.name}</span>
-                      <span className="block truncate text-[13px] text-on-surface-variant">{row.appName}</span>
-                    </span>
-                    <ChevronRight size={18} className="shrink-0 text-on-surface-variant" />
-                  </button>
-                ))}
-              </div>
-            ) : null}
+            {rows.length ? <AppActionList rows={rows} testPrefix="accion-espacio" onPick={run} /> : null}
           </div>
         </Overlay>
       ) : null}

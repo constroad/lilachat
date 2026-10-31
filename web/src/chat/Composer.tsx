@@ -21,6 +21,7 @@ import type { ChatCommands } from './commands/useChatCommands';
 import { CommandPanel } from './commands/CommandPanel';
 import { EphemeralAnswers } from './commands/EphemeralAnswers';
 import { AppFormDialog } from './commands/AppFormDialog';
+import { ChatQuickActions } from './commands/ChatQuickActions';
 import { loadPerfil } from '../api';
 import { lazyChunk } from '../ui/lazyChunk';
 import { EmojiSuggestions } from './emojiShortcode/EmojiSuggestions';
@@ -299,6 +300,9 @@ function ComposerField({
             />
           ) : null}
         </div>
+
+        {/* The ⚡ of a channel or the chat with an app, only when it has actions (R31/10). */}
+        {commands ? <ChatQuickActions commands={commands} /> : null}
 
         <div className="relative min-w-0 flex-1">
         <SugerenciasDeMencion opciones={menciones.opciones} activa={menciones.activa} onElegir={elegirMencion} />

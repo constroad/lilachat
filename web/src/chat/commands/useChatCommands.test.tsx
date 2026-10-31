@@ -27,3 +27,30 @@ describe('useChatCommands (23/10: a fast «/clima» + Enter went to the channel 
     expect(await result.current.runIfCommand('hola')).toBe('not-command');
   });
 });
+
+describe('the ⚡ of a chat (R31/10: the actions turned on for a chat had no place since the clip lost them)', () => {
+  it('a channel or the chat with an app asks for its actions on open, once; only the actions are listed', async () => {
+    // Arrange
+    spaceCommands.mockClear();
+    const withActions: CommandGroup[] = [{ appId: 'a2', appName: 'Portal', commands: [{ command: 'tanques', description: 'Tanques' }], shortcuts: [{ key: 'registrar_consumo', name: 'Registrar consumo' }, { key: 'crear_cliente', name: 'Crear un cliente' }] }];
+    spaceCommands.mockImplementationOnce(async () => ({ ok: true, data: { groups: withActions } }) as never);
+    // Act
+    const { result } = renderHook(() => useChatCommands({ jwt: 'jwt', chatId: 'dm-app', workspaceId: 's1', actionPlace: true }));
+    await act(async () => undefined);
+    // Assert
+    expect(spaceCommands).toHaveBeenCalledTimes(1);
+    expect(spaceCommands).toHaveBeenCalledWith('jwt', 's1', { chatId: 'dm-app' });
+    expect(result.current.actions.map((row) => row.key)).toEqual(['registrar_consumo']);
+  });
+
+  it('a person\'s chat asks nothing on open and has no actions', async () => {
+    // Arrange
+    spaceCommands.mockClear();
+    // Act
+    const { result } = renderHook(() => useChatCommands({ jwt: 'jwt', chatId: 'dm-person', workspaceId: 's1' }));
+    await act(async () => undefined);
+    // Assert
+    expect(spaceCommands).not.toHaveBeenCalled();
+    expect(result.current.actions).toEqual([]);
+  });
+});

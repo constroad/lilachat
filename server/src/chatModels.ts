@@ -23,6 +23,8 @@ export interface ChatMember {
   muted?: boolean;
   /** E3b: with `muted`, «nada» means not even mentions ring (`notificationLevel`). */
   avisos?: 'nada';
+  /** R31/10: when an «8 horas» or «1 semana» silence ends; none = siempre. */
+  mutedUntil?: Date;
   /** Fijado por ESTE miembro: va arriba de su lista. */
   pinned?: boolean;
   /** Archivado por ESTE miembro (FL9): vive en su «Archivados». */
@@ -245,6 +247,7 @@ const chatSchema = new Schema<Chat>(
         joinedAt: { type: Date, default: Date.now },
         muted: { type: Boolean },
         avisos: { type: String, enum: ['nada'] },
+        mutedUntil: { type: Date },
         quietHours: { type: { days: [Number], from: String, to: String, tz: String, _id: false }, default: undefined },
         contactNote: { type: { text: String, _id: false }, default: undefined },
         pinned: { type: Boolean },

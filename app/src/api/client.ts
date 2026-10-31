@@ -6,7 +6,7 @@
  * .env de dev sale apuntando al emulador y falla con wifi andando — el script
  * de release lo fija y lo verifica dentro del binario).
  */
-import type { ChatList, DestacadoEnLista, PresenceMode, NotificationLevel, ResumenDeHiloEnCliente, VistaDelFijado, VistaPreviaDeEnlace } from '@lilachat/shared';
+import type { ChatList, DestacadoEnLista, MuteFor, PresenceMode, NotificationLevel, ResumenDeHiloEnCliente, VistaDelFijado, VistaPreviaDeEnlace } from '@lilachat/shared';
 import type { BigFile, StorageReport } from '@lilachat/shared';
 import type { ServerMessage } from '../chat/socketClient';
 import { unSoloPedido } from './pedidoUnico';
@@ -133,6 +133,11 @@ export type PresencePrefs = { mode: PresenceMode; lastSeenHidden: boolean };
 export const readPresence = (token: string) => get<PresencePrefs>('/api/me/presence', token);
 
 export const savePresence = (token: string, prefs: PresencePrefs) => authed<PresencePrefs>('PUT', '/api/me/presence', token, prefs);
+
+/** «Confirmaciones de lectura» (R31/10): off, in 1:1s neither side sees «leído». */
+export const readReadReceipts = (token: string) => get<{ on: boolean }>('/api/me/read-receipts', token);
+
+export const saveReadReceipts = (token: string, on: boolean) => authed<{ on: boolean }>('PUT', '/api/me/read-receipts', token, { on });
 
 export type Programado = { id: string; chatId: string; body: string; sendAt: string };
 
@@ -273,7 +278,8 @@ export type FijadoEnLista = {
 };
 
 /** Lo que cada uno ajusta para sí en un chat (FL9 suma archivar y no leído). */
-export type AjustesDeChat = { muted?: boolean; pinned?: boolean; archived?: boolean; markedUnread?: boolean; avisos?: NotificationLevel };
+/** `muteFor` (R31/10): how long a mute lasts; without it, siempre. */
+export type AjustesDeChat = { muted?: boolean; pinned?: boolean; archived?: boolean; markedUnread?: boolean; avisos?: NotificationLevel; muteFor?: MuteFor };
 
 async function get<T>(route: string, token: string, fetchImpl: FetchLike = fetch): Promise<ApiResult<T>> {
   try {

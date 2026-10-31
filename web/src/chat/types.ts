@@ -59,6 +59,8 @@ export type ChatSummary = {
   /** Birthdays on in this chat (pending 17). */
   birthdaysOn?: boolean;
   muted?: boolean;
+  /** R31/10: when my «8 horas» or «1 semana» silence ends. */
+  mutedUntil?: string;
   /** E3b: todo / menciones / nada (from the server; older data only has `muted`). */
   avisos?: NotificationLevel;
   pinned?: boolean;

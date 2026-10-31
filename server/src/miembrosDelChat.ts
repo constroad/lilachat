@@ -10,9 +10,11 @@ import {
   puedeCambiarRol,
   puedeEditarInfo,
   puedeSacar,
+  mutedUntilFor,
   settingsForLevel,
   type ChannelVisibility,
   type MemberPermission,
+  type MuteFor,
   type NotificationLevel,
 } from '@lilachat/shared';
 import { UserModel } from './models.js';
@@ -126,8 +128,11 @@ export async function cambiarAjustesDeChat(params: {
   markedUnread?: boolean;
   /** E3b: «todo», «menciones» or «nada»; it is written as `muted` + `avisos`. */
   avisos?: NotificationLevel;
+  /** R31/10: how long a mute lasts; without it, siempre. */
+  muteFor?: MuteFor;
+  now?: Date;
 }): Promise<{ ok: true } | { ok: false; motivo: string }> {
-  const cambios: Record<string, boolean | string> = {};
+  const cambios: Record<string, boolean | string | Date> = {};
   for (const campo of AJUSTES_DE_MIEMBRO) {
     const valor = params[campo];
     if (typeof valor === 'boolean') cambios[`members.$.${campo}`] = valor;
@@ -136,15 +141,27 @@ export async function cambiarAjustesDeChat(params: {
   if (level) cambios['members.$.muted'] = level.muted;
   if (level?.avisos) cambios['members.$.avisos'] = level.avisos;
   if (Object.keys(cambios).length === 0) return { ok: false, motivo: 'No hay nada que cambiar.' };
+  const quitar: Record<string, 1> = {};
   // Unmuting (from any client) or choosing a level without «nada» clears it.
-  const clearNothing = (level && !level.avisos) || params.muted === false;
+  if ((level && !level.avisos) || params.muted === false) quitar['members.$.avisos'] = 1;
+  const end = muteEndOf({ muted: params.muted ?? level?.muted, muteFor: params.muteFor, now: params.now ?? new Date() });
+  if (end instanceof Date) cambios['members.$.mutedUntil'] = end;
+  else if (end === 'clear') quitar['members.$.mutedUntil'] = 1;
 
-  const r = await ChatModel.updateOne(
-    { _id: params.chatId, 'members.userId': params.quien },
-    { $set: cambios, ...(clearNothing ? { $unset: { 'members.$.avisos': 1 } } : {}) }
-  );
+  const r = await ChatModel.updateOne({ _id: params.chatId, 'members.userId': params.quien }, { $set: cambios, ...(Object.keys(quitar).length ? { $unset: quitar } : {}) });
   if (r.matchedCount === 0) return { ok: false, motivo: 'No estás en esa conversación.' };
   return { ok: true };
+}
+
+/**
+ * The end of a silence (R31/10): muting writes it (none = siempre, so an old
+ * expired end never leaves a fresh mute without effect); unmuting clears it;
+ * a change that is not about muting leaves it alone.
+ */
+function muteEndOf(change: { muted?: boolean; muteFor?: MuteFor; now: Date }): Date | 'clear' | 'keep' {
+  if (change.muted === undefined) return 'keep';
+  if (!change.muted) return 'clear';
+  return mutedUntilFor(change.muteFor ?? 'always', change.now) ?? 'clear';
 }
 
 /**

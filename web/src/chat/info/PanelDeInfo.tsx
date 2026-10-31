@@ -1,5 +1,5 @@
 import { Bell, BellOff, LogOut, Trash2, X } from 'lucide-react';
-import { canManageMembers, NOTIFICATION_LEVEL_TEXT, type NotificationLevel } from '@lilachat/shared';
+import { canManageMembers, mutedUntilText, NOTIFICATION_LEVEL_TEXT, type NotificationLevel } from '@lilachat/shared';
 import { chatDetailTabs, initialChatDetailTab, type ChatDetailTab } from '@lilachat/shared';
 import { useState, type ReactNode } from 'react';
 import type { BaseLocal } from '../../local/baseLocal';
@@ -138,7 +138,10 @@ export function PanelDeInfo(props: {
         {tab !== 'settings' || chat.kind !== 'direct' ? null : (
           <label className="mt-2 flex min-h-[56px] cursor-pointer items-center gap-4 bg-surface px-6">
             <Bell size={18} className="text-on-surface-variant" />
-            <span className="flex-1 text-[15px]">Silenciar notificaciones</span>
+            <span className="flex-1">
+              <span className="block text-[15px]">Silenciar notificaciones</span>
+              {silenciado && chat.mutedUntil ? <span data-testid="silenciado-hasta" className="block text-[13px] text-on-surface-variant">{mutedUntilText(chat.mutedUntil, new Date())}</span> : null}
+            </span>
             <input
               type="checkbox"
               role="switch"

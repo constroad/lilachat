@@ -38,6 +38,7 @@ import { useColores } from '../ui/tema';
 import { decidirAtras } from '../ui/botonAtras';
 import { agendaPorTelefono, suscribirAgenda } from '../contacts/agendaEnMemoria';
 import { isSpaceChat } from '../spaces/spaceCache';
+import { askMuteDuration } from './askMuteDuration';
 
 /**
  * La lista de chats (diseño Stitch «Lilachat: Chats»).
@@ -405,7 +406,7 @@ export function ChatListScreen({
           onCancelar={selection.clear}
           onLectura={(lectura) => void cambiarLectura(lectura)}
           onFijar={(pinned) => void aplicarAjuste({ pinned })}
-          onSilenciar={(muted) => void aplicarAjuste({ muted })}
+          onSilenciar={(muted) => (muted ? askMuteDuration((muteFor) => void aplicarAjuste({ muted, muteFor })) : void aplicarAjuste({ muted }))}
           onArchivar={(archived) => void aplicarAjuste({ archived })}
           onSalir={() => void salirDeGrupos()}
           onEliminar={eliminarChats}

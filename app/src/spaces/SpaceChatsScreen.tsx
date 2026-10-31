@@ -19,6 +19,7 @@ import type { SpaceApps } from './apps/useSpaceApps';
 import { useSpaceClients } from './clients/useSpaceClients';
 import { ClientsSection } from './clients/ClientsSection';
 import { ArchivedClientsScreen } from './clients/ArchivedClientsScreen';
+import { askMuteDuration } from '../chat/askMuteDuration';
 
 /** Several messages in a row reload the list once. */
 const RELOAD_DELAY_MS = 600;
@@ -168,7 +169,7 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
           onCancelar={selection.clear}
           onLectura={(read) => void batch.cambiarLectura(read)}
           onFijar={(pinned) => void batch.aplicarAjuste({ pinned })}
-          onSilenciar={(muted) => void batch.aplicarAjuste({ muted })}
+          onSilenciar={(muted) => (muted ? askMuteDuration((muteFor) => void batch.aplicarAjuste({ muted, muteFor })) : void batch.aplicarAjuste({ muted }))}
           onArchivar={(archived) => void batch.aplicarAjuste({ archived })}
           onSalir={() => void batch.salirDeGrupos()}
           onEliminar={batch.eliminarChats}

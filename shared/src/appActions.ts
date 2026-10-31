@@ -26,6 +26,20 @@ export function quickActionRows(groups: readonly CommandGroup[]): ShortcutRow[] 
   ]);
 }
 
+/**
+ * The ⚡ of a chat (R31/10): backlog 111 took the actions out of the clip and
+ * the ones the admin turns on for a channel or for the chat with the app were
+ * left with no place. Only those two kinds of chat can have them.
+ */
+export function chatHasActionPlace(chat: { workspaceId?: string | null; isGroup: boolean; appId?: string | null }): boolean {
+  return Boolean(chat.workspaceId) && (chat.isGroup || Boolean(chat.appId));
+}
+
+/** The rows of a chat's ⚡: its actions, without the ones that live in a place of their own. */
+export function chatActionRows(groups: readonly CommandGroup[]): ShortcutRow[] {
+  return shortcutRows(groups).filter((row) => !hasOwnSpacePlace('shortcut', row.key));
+}
+
 /** Portal's action that the clients' picker runs (Portal 0227a1f0). */
 export const CREATE_CLIENT_ACTION = 'crear_cliente';
 

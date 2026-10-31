@@ -116,3 +116,60 @@ describe('PATCH /api/chats/:id/ajustes — avisos', () => {
     await request(app).patch(`/api/chats/${groupId}/ajustes`).set('Authorization', `Bearer ${jwt()}`).send({ avisos: 'a veces' }).expect(400);
   });
 });
+
+describe('silenciar por 8 horas, 1 semana o siempre (R31/10)', () => {
+  const jwt = () => signSession({ userId: String(me), deviceId: 'd1', email: '51902049935' });
+  const detail = async () => (await request(app).get(`/api/chats/${groupId}/detail`).set('Authorization', `Bearer ${jwt()}`).expect(200)).body;
+  const patch = (body: object) => request(app).patch(`/api/chats/${groupId}/ajustes`).set('Authorization', `Bearer ${jwt()}`).send(body).expect(200);
+
+  it('8 horas keeps its end; the detail and the list both say until when', async () => {
+    // Arrange
+    const before = Date.now();
+    // Act
+    await patch({ muted: true, muteFor: '8h' });
+    // Assert
+    const seen = await detail();
+    expect(seen.muted).toBe(true);
+    const end = new Date(seen.mutedUntil).getTime();
+    expect(end - before).toBeGreaterThanOrEqual(8 * 3_600_000 - 1_000);
+    expect(end - before).toBeLessThanOrEqual(8 * 3_600_000 + 5_000);
+    const list = (await request(app).get('/api/chats').set('Authorization', `Bearer ${jwt()}`).expect(200)).body;
+    const row = (list.chats ?? list).find((chat: { id: string }) => chat.id === String(groupId));
+    expect(row.mutedUntil).toBe(seen.mutedUntil);
+  });
+
+  it('siempre, unmuting, and a mute with no duration leave no end', async () => {
+    await patch({ muted: true, muteFor: '1w' });
+    await patch({ muted: true, muteFor: 'always' });
+    expect((await detail()).mutedUntil).toBeUndefined();
+    await patch({ muted: true, muteFor: '8h' });
+    await patch({ muted: false });
+    expect((await detail()).mutedUntil).toBeUndefined();
+    await patch({ avisos: 'nada', muteFor: '8h' });
+    await patch({ avisos: 'menciones' });
+    const seen = await detail();
+    expect(seen.mutedUntil).toBeUndefined();
+    expect(seen.avisos).toBe('menciones');
+  });
+
+  it('past its end the chat rings again and reads as not muted, with nobody writing to the base', async () => {
+    // Arrange
+    await ChatModel.updateOne({ _id: groupId, 'members.userId': ana }, { $set: { 'members.$.mutedUntil': new Date(Date.now() - 60_000) } });
+    // Act
+    const tokens = await pushFor('Ya llegó la tolva', []);
+    // Assert
+    expect(tokens).toContain('tok-ana');
+    await ChatModel.updateOne({ _id: groupId, 'members.userId': me }, { $set: { 'members.$.muted': true, 'members.$.mutedUntil': new Date(Date.now() - 60_000) } });
+    const seen = await detail();
+    expect(seen.muted).toBe(false);
+    expect(seen.avisos).toBe('todo');
+    expect(seen.mutedUntil).toBeUndefined();
+  });
+
+  it('an unknown duration is ignored: the mute is siempre', async () => {
+    await patch({ muted: true, muteFor: '1y' });
+    const seen = await detail();
+    expect(seen.muted).toBe(true);
+    expect(seen.mutedUntil).toBeUndefined();
+  });
+});

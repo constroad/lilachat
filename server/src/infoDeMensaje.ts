@@ -2,6 +2,7 @@ import { Types } from 'mongoose';
 import { resolveDeliveryState, TELEFONO_DE_LILA, type DeliveryState } from '@lilachat/shared';
 import { ChatModel, MessageModel, ReceiptModel } from './chatModels.js';
 import { UserModel } from './models.js';
+import { anyHidesRead } from './readPrivacy.js';
 
 export type MiembroDeInfo = { id: string; name: string | null; phone: string | null; estado: DeliveryState };
 
@@ -21,7 +22,7 @@ export async function infoDeMensaje(params: {
   }
   const chatId = new Types.ObjectId(params.chatId);
   const [chat, mensaje] = await Promise.all([
-    ChatModel.findOne({ _id: chatId, 'members.userId': params.quien }).select('members.userId').lean(),
+    ChatModel.findOne({ _id: chatId, 'members.userId': params.quien }).select('kind members.userId').lean(),
     MessageModel.findOne({ chatId, seq: params.seq }).select('senderId').lean(),
   ]);
   if (!chat || !mensaje || String(mensaje.senderId) !== String(params.quien)) {
@@ -33,6 +34,8 @@ export async function infoDeMensaje(params: {
     UserModel.find({ _id: { $in: otros } }).select('name phone').lean(),
     ReceiptModel.find({ chatId, userId: { $in: otros } }).select('userId readSeq deliveredSeq').lean(),
   ]);
+  // R31/10: with read receipts off in a 1:1 (either side), «leído» is not told; «entregado» is.
+  const hideRead = chat.kind === 'direct' && (await anyHidesRead(chat.members.map((member) => member.userId)));
   const acusePorId = new Map(acuses.map((acuse) => [String(acuse.userId), acuse]));
   const personaPorId = new Map(personas.map((persona) => [String(persona._id), persona]));
   // En el orden de los miembros del chat: el `find` no garantiza ninguno.
@@ -49,7 +52,7 @@ export async function infoDeMensaje(params: {
         phone: persona.phone ?? null,
         estado: resolveDeliveryState({
           seq: params.seq,
-          otherReadSeq: acuse?.readSeq ?? 0,
+          otherReadSeq: hideRead ? 0 : (acuse?.readSeq ?? 0),
           otherDeliveredSeq: acuse?.deliveredSeq ?? 0,
         }),
       };

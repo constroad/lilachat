@@ -5,7 +5,7 @@ import { joinAccessOf } from './bots/clientBillingViewers.js';
 import { Router } from 'express';
 import { blockedByAmong } from './blockedContacts.js';
 import { Types } from 'mongoose';
-import { PUSH_CAPABILITIES, normalizarNombreDeGrupo, NOTIFICATION_LEVELS, notificationLevel, textoDeAviso } from '@lilachat/shared';
+import { isMuteFor, PUSH_CAPABILITIES, normalizarNombreDeGrupo, NOTIFICATION_LEVELS, notificationLevel, textoDeAviso } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import type { Message } from './chatModels.js';
 import { DeviceModel, UserModel } from './models.js';
@@ -281,7 +281,7 @@ export function buildChatRouter(uploader: MediaUploader = defaultMediaUploader()
   /**
    * Silenciar / fijar / archivar / marcar no leído un chat, para MÍ.
    *
-   * `PATCH` con `{muted?, pinned?, archived?, markedUnread?}`. Lo usa la
+   * `PATCH` con `{muted?, pinned?, archived?, markedUnread?, muteFor?}`. Lo usa la
    * selección múltiple de la lista. Son ajustes por-usuario: viven en el
    * subdoc del miembro, no en el chat. Lo que no es booleano se ignora.
    */
@@ -296,6 +296,7 @@ export function buildChatRouter(uploader: MediaUploader = defaultMediaUploader()
       archived: soloBooleano(body.archived),
       markedUnread: soloBooleano(body.markedUnread),
       avisos: NOTIFICATION_LEVELS.find((level) => level === body.avisos),
+      muteFor: isMuteFor(body.muteFor) ? body.muteFor : undefined,
     });
     if (!r.ok) return res.status(400).json({ message: r.motivo });
     // Mis otros dispositivos (la web vinculada, W3a) reflejan el cambio.

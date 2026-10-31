@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { memberPermissionsOf, notificationLevel } from '@lilachat/shared';
+import { memberPermissionsOf, muteStateOf, notificationLevel } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import { UserModel } from './models.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
@@ -60,7 +60,8 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId) {
     ...(chat.channel ? { channel: { visibility: chat.channel.visibility, general: chat.name === GENERAL_CHANNEL } } : {}),
     // MY mute (it is per person): the detail's switch shows it as it is,
     // instead of always starting off.
-    muted: chat.members.some((m) => String(m.userId) === String(userId) && m.muted === true),
+    // R31/10: muted only while it holds, with its end («Silenciado hasta…»).
+    ...muteStateOf(chat.members.find((m) => String(m.userId) === String(userId))),
     avisos: notificationLevel(chat.members.find((m) => String(m.userId) === String(userId)) ?? {}),
     avatarUrl: photo ? toAbsoluteMediaUrl(photo) : undefined,
     members: chat.members.map((m) => {

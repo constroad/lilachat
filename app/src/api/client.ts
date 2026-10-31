@@ -139,6 +139,14 @@ export const readReadReceipts = (token: string) => get<{ on: boolean }>('/api/me
 
 export const saveReadReceipts = (token: string, on: boolean) => authed<{ on: boolean }>('PUT', '/api/me/read-receipts', token, { on });
 
+/** «Vista previa en los avisos» (R31/10-B8): off, a notice says who wrote but not what. */
+export const readNoticePreview = (token: string) => get<{ on: boolean }>('/api/me/notification-preview', token);
+
+export const saveNoticePreview = (token: string, on: boolean) => authed<{ on: boolean }>('PUT', '/api/me/notification-preview', token, { on });
+
+/** «Marcar todo como leído» (R31/10-B9): every chat of a space's list, or the personal one. */
+export const readAllChats = (token: string, workspaceId: string | null) => authed<{ ok: true; chats: number }>('POST', '/api/chats/read-all', token, workspaceId ? { workspaceId } : {});
+
 export type Programado = { id: string; chatId: string; body: string; sendAt: string };
 
 /** Programar un mensaje para que se envíe solo a `sendAt` (ISO). */

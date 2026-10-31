@@ -27,6 +27,7 @@ import type { ClientWorkspace, MediaLibraryItem } from '@lilachat/shared';
 import { SpaceSettingsSection, type SpaceSettingsLink } from '../spaces/SpaceSettingsSection';
 import { MediaScreen } from '../media/MediaScreen';
 import { ReadReceiptsSetting } from './ReadReceiptsSetting';
+import { NoticePreviewSetting } from './NoticePreviewSetting';
 
 /**
  * La pestaña Ajustes (salió de `TabsShell`, que pasaba de 560 líneas). Listas
@@ -88,6 +89,7 @@ export function PantallaDeAjustes(props: {
         <GrupoDeAjustes>
           <AppLockSetting />
           <ReadReceiptsSetting jwt={credential.jwt} />
+          <NoticePreviewSetting jwt={credential.jwt} />
           <BlockedContactsSetting jwt={credential.jwt} />
         </GrupoDeAjustes>
 

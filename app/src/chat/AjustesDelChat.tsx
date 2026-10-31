@@ -5,8 +5,9 @@ import { Bell, BellOff, Lock, LogOut } from 'lucide-react-native';
 import { mutedUntilFor, mutedUntilShort, NOTIFICATION_LEVEL_TEXT, type MuteFor, type NotificationLevel } from '@lilachat/shared';
 import { askMuteDuration } from './askMuteDuration';
 import { DisappearingRow } from './DisappearingRow';
-import type { DisappearSetting } from './disappearSetting';
-export { disappearSettingOf } from './disappearSetting';
+import { ExportChatRow } from './ExportChatRow';
+import type { ChatTools } from './disappearSetting';
+export { chatToolsOf } from './disappearSetting';
 import { NotificationLevelSheet } from './NotificationLevelSheet';
 import { FilaDeAjuste, GrupoDeAjustes } from '../ui/FilaDeAjuste';
 import { Rotulo } from '../ui/Rotulo';
@@ -25,7 +26,7 @@ export function AjustesDelChat({
   level,
   onLevel,
   mutedUntil,
-  disappear,
+  tools,
   accionando,
   onSalir,
 }: {
@@ -37,8 +38,8 @@ export function AjustesDelChat({
   onLevel: (level: NotificationLevel, muteFor?: MuteFor) => void;
   /** When my silence ends; none = siempre. */
   mutedUntil?: string;
-  /** R31/10-B6: «Mensajes temporales»; none where the chat cannot have them. */
-  disappear?: DisappearSetting;
+  /** R31/10-B6/B7: «Mensajes temporales» and «Exportar chat»; none where the chat cannot have them. */
+  tools?: ChatTools;
   accionando: boolean;
   onSalir: () => Promise<void> | void;
 }) {
@@ -71,7 +72,8 @@ export function AjustesDelChat({
               derecha={<Interruptor testID="sw-silenciar" value={silenced} onValueChange={(value) => choose(value ? 'menciones' : 'todo')} />}
             />
           )}
-          {disappear ? <DisappearingRow {...disappear} /> : null}
+          {tools?.disappear ? <DisappearingRow {...tools.disappear} /> : null}
+          {tools?.exportChat ? <ExportChatRow {...tools.exportChat} /> : null}
           {/* El cifrado se DICE como es, no como nos gustaría. Solo los chats
               secretos son de punta a punta; en los demás el servidor guarda
               el texto, y decir otra cosa acá sería mentir sobre privacidad. */}

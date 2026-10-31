@@ -5,13 +5,14 @@ import type { Message } from './chatModels.js';
 import { ChatModel } from './chatModels.js';
 import { DeviceModel, UserModel } from './models.js';
 import { isOnline } from './presence.js';
-import { buildPushSender, buildPushText, type PushSender } from './pushSender.js';
+import { buildPushSender, buildPushText, type PushMessage, type PushSender } from './pushSender.js';
 import { splitPushTargets } from './pushTargets.js';
 import { sendWebPush } from './webPushSender.js';
 import { CALL_TIMEOUT_MS, CAPACIDAD_LLAMADA_NATIVA, CAPACIDAD_MENSAJE_NATIVO, listThumbPath, mentionedUserIds, isQuietNow, notificationLevel, quietHoursOf, ringsFor, textoDelAvisoDeReaccion, winkTileUrl, type NotificationLevel } from '@lilachat/shared';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { firmarEntrega } from './entregaPorAviso.js';
 import { firmarRechazo } from './llamadas.js';
+import { HIDDEN_PREVIEW_BODY, previewHiddenFor, withoutPreview } from './pushPreview.js';
 
 /**
  * A quién notificar y con qué texto (F4).
@@ -54,13 +55,14 @@ export async function notifyOffline(params: {
   // Quien SILENCIÓ este chat no recibe una notificación que suene: es el punto
   // de silenciarlo. Pero si su teléfono sabe acusar la entrega (FL8.2), igual
   // le va un push SILENCIOSO: silenciado no es «no le llegó».
-  const [levels, dispositivos, sender_, chat] = await Promise.all([
+  const [levels, dispositivos, sender_, chat, hidden] = await Promise.all([
     notificationLevelsOf(String(params.message.chatId), candidatos),
     DeviceModel.find({ userId: { $in: candidatos }, pushToken: { $exists: true, $ne: '' } })
       .select('pushToken platform userId capacidades')
       .lean(),
     UserModel.findById(params.senderId).select('name phone avatarUrl').lean(),
     ChatModel.findById(params.message.chatId).select('kind name encrypted avatarUrl workspaceId').lean(),
+    previewHiddenFor(candidatos),
   ]);
   if (dispositivos.length === 0) return;
   // A mention rings even in a silenced chat, as in WhatsApp, unless the level
@@ -94,13 +96,14 @@ export async function notifyOffline(params: {
   // DOS transportes para el mismo aviso: el teléfono por FCM y la pestaña del
   // navegador por Web Push. Son dispositivos distintos del mismo dueño, así que
   // los dos tienen que sonar (F6).
-  const destinos = splitPushTargets(comunes);
+  // B8: whoever turned the preview off gets who wrote, not what.
+  const veiled = (d: DispositivoDePush) => hidden.has(String(d.userId));
 
   try {
     await Promise.all([
-      destinos.fcm.length > 0 ? sender.send({ tokens: destinos.fcm, ...text, data }) : undefined,
-      sendWebPush(destinos.web, { ...text, data }),
-      ...mensajeSoloDatos({ message: params.message, nativos, silenciados, workspaceId, hiloDe, autor, telefono: sender_?.phone ?? '', chat: nombreDelGrupo ?? '', secreto: chat?.encrypted === true, text, photo: sender_?.avatarUrl, chatPhoto: chat?.kind === 'group' ? chat.avatarUrl : undefined }),
+      ...sendCommon(splitPushTargets(comunes.filter((d) => !veiled(d))), { ...text, data }),
+      ...sendCommon(splitPushTargets(comunes.filter(veiled)), { ...withoutPreview(text), data }),
+      ...mensajeSoloDatos({ message: params.message, nativos, silenciados, hidden, workspaceId, hiloDe, autor, telefono: sender_?.phone ?? '', chat: nombreDelGrupo ?? '', secreto: chat?.encrypted === true, text, photo: sender_?.avatarUrl, chatPhoto: chat?.kind === 'group' ? chat.avatarUrl : undefined }),
     ]);
   } catch (error) {
     // Un push que no sale no puede tumbar el envío: el mensaje YA está
@@ -110,6 +113,12 @@ export async function notifyOffline(params: {
 }
 
 type DispositivoDePush = { pushToken?: string; platform?: string; userId: unknown; capacidades?: string[] };
+
+/** The common notice to these targets: the phone by FCM and the browser tab by Web Push. */
+const sendCommon = (targets: ReturnType<typeof splitPushTargets>, notice: Omit<PushMessage, 'tokens'>) => [
+  targets.fcm.length > 0 ? sender.send({ tokens: targets.fcm, ...notice }) : undefined,
+  sendWebPush(targets.web, notice),
+];
 
 /** El teléfono que dibuja el aviso del mensaje y acusa la entrega (FL8.2). */
 const dibujaElMensaje = (dispositivo: DispositivoDePush) =>
@@ -134,6 +143,8 @@ function mensajeSoloDatos(params: {
   message: Message;
   nativos: DispositivoDePush[];
   silenciados: Set<string>;
+  /** Who turned the preview off (B8): their notice says who, not what, and has no picture. */
+  hidden: Set<string>;
   /** Where tapping the notice lands: the chat's space and the thread, as text; empty when none. */
   workspaceId: string;
   hiloDe: string;
@@ -156,8 +167,9 @@ function mensajeSoloDatos(params: {
     const userId = String(dispositivo.userId);
     porPersona.set(userId, [...(porPersona.get(userId) ?? []), dispositivo.pushToken]);
   }
-  return [...porPersona].map(([userId, tokens]) =>
-    sender.sendDatos!({
+  return [...porPersona].map(([userId, tokens]) => {
+    const veiled = params.hidden.has(userId);
+    return sender.sendDatos!({
       tokens,
       ttlSegundos: VIDA_DEL_MENSAJE_S,
       data: {
@@ -170,17 +182,17 @@ function mensajeSoloDatos(params: {
         telefono: params.telefono,
         chat: params.chat,
         titulo: params.text.title,
-        cuerpo: params.text.body,
+        cuerpo: veiled ? HIDDEN_PREVIEW_BODY : params.text.body,
         silencioso: params.silenciados.has(userId) ? '1' : '0',
         entrega: firmarEntrega({ chatId, userId, seq: params.message.seq }),
         // «Responder» y «Marcar como leído» desde el aviso (FL11).
         respuesta: params.secreto ? '' : firmarRespuesta({ chatId, userId }),
-        imagen: pushImageOf(params.message, params.secreto),
+        imagen: veiled ? '' : pushImageOf(params.message, params.secreto),
         foto: params.photo ? toAbsoluteMediaUrl(params.photo) : '',
         fotoChat: params.chatPhoto ? toAbsoluteMediaUrl(params.chatPhoto) : '',
       },
-    })
-  );
+    });
+  });
 }
 
 /**
@@ -323,15 +335,16 @@ export async function avisarFinDeLlamada(params: { chatId: string; from: string;
 export async function avisarReaccion(params: { chatId: string; seq: number; autor: string; quien: string; emoji: string; cuerpo?: string }): Promise<void> {
   if (params.autor === params.quien || isOnline(params.autor)) return;
   try {
-    const [levels, dispositivos, quien, chat] = await Promise.all([
+    const [levels, dispositivos, quien, chat, hidden] = await Promise.all([
       notificationLevelsOf(params.chatId, [params.autor]),
       DeviceModel.find({ userId: params.autor, pushToken: { $exists: true, $ne: '' } }).select('pushToken platform userId').lean(),
       UserModel.findById(params.quien).select('name phone').lean(),
       ChatModel.findById(params.chatId).select('kind name workspaceId').lean(),
+      previewHiddenFor([params.autor]),
     ]);
     if ((levels.get(params.autor) ?? 'todo') !== 'todo' || dispositivos.length === 0) return;
     const nombre = quien?.name ?? quien?.phone ?? 'Alguien';
-    const text = { title: chat?.kind === 'group' && chat.name ? `${chat.name} · ${nombre}` : nombre, body: textoDelAvisoDeReaccion(params.emoji, params.cuerpo) };
+    const text = { title: chat?.kind === 'group' && chat.name ? `${chat.name} · ${nombre}` : nombre, body: textoDelAvisoDeReaccion(params.emoji, hidden.size > 0 ? undefined : params.cuerpo) };
     const data = { chatId: params.chatId, seq: params.seq, workspaceId: chat?.workspaceId ? String(chat.workspaceId) : '' };
     const destinos = splitPushTargets(dispositivos);
     await Promise.all([destinos.fcm.length > 0 ? sender.send({ tokens: destinos.fcm, ...text, data }) : undefined, sendWebPush(destinos.web, { ...text, data })]);

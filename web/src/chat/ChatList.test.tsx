@@ -206,3 +206,33 @@ describe('ChatList — vista previa de avisos (W3b)', () => {
     expect(screen.getByText('Ana fijó un mensaje')).toBeInTheDocument();
   });
 });
+
+describe('ChatList — «Leer todo» (R31/10-B9)', () => {
+  it('is in the menu only with something unread, and reads the space of the list', async () => {
+    // Arrange
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true, chats: 1 }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const { rerender } = render(<ChatList {...base} chats={[chat()]} />);
+    await userEvent.click(screen.getByTestId('btn-menu'));
+    expect(screen.queryByTestId('btn-leer-todo')).not.toBeInTheDocument();
+    // Act
+    rerender(<ChatList {...base} chats={[chat({ unread: 2, workspaceId: 'w1' })]} />);
+    await userEvent.click(screen.getByTestId('btn-leer-todo'));
+    // Assert
+    expect(fetchMock).toHaveBeenCalledWith('/api/chats/read-all', expect.objectContaining({ method: 'POST', body: JSON.stringify({ workspaceId: 'w1' }) }));
+    vi.unstubAllGlobals();
+  });
+
+  it('a read that fails says so', async () => {
+    // Arrange
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 500 })));
+    const onNotice = vi.fn();
+    render(<ChatList {...base} chats={[chat({ markedUnread: true })]} onNotice={onNotice} />);
+    // Act
+    await userEvent.click(screen.getByTestId('btn-menu'));
+    await userEvent.click(screen.getByTestId('btn-leer-todo'));
+    // Assert
+    await vi.waitFor(() => expect(onNotice).toHaveBeenCalledWith('No se pudo marcar todo como leído. Revisa tu conexión.'));
+    vi.unstubAllGlobals();
+  });
+});

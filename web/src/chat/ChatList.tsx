@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, ListTodo, MessageSquarePlus, MoreVertical, NotebookPen, PanelLeftClose, Search, Settings, SquarePen, Star, Users } from 'lucide-react';
+import { CheckCheck, ChevronDown, ListTodo, MessageSquarePlus, MoreVertical, NotebookPen, PanelLeftClose, Search, Settings, SquarePen, Star, Users } from 'lucide-react';
 import type { FiltroDeChats } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { Logo } from '../ui/Logo';
@@ -12,6 +12,7 @@ import type { ChatAction } from './menuDelChat';
 import type { ChatSummary } from './types';
 import { NewVersionBand } from '../ui/NewVersionBand';
 import { NowPlayingBar } from './NowPlayingBar';
+import { readAllChats, scopeOf } from './readAllChats';
 
 /**
  * El panel izquierdo del diseño web (W3a: `w3-web-lista.png`).
@@ -45,6 +46,7 @@ export function ChatList({
   onHome,
   onSpaces,
   jwt,
+  onNotice,
 }: {
   chats: ChatSummary[];
   selectedChatId: string | null;
@@ -74,6 +76,8 @@ export function ChatList({
   onSpaces?: () => void;
   /** The session, for my lists of chats (pending 45). */
   jwt: string;
+  /** Says what failed («Leer todo»). */
+  onNotice?: (text: string) => void;
 }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [filtro, setFiltro] = useState<FiltroDeChats>('todos');
@@ -105,12 +109,17 @@ export function ChatList({
     };
   }, [menuAbierto]);
 
+  const readAll = async () => {
+    if (!(await readAllChats(jwt, scopeOf(chats)))) onNotice?.('No se pudo marcar todo como leído. Revisa tu conexión.');
+  };
+
   const acciones = [
     { id: 'nuevo-chat', label: 'Nuevo chat', icon: MessageSquarePlus, run: onNewChat },
     { id: 'nuevo-grupo', label: 'Nuevo grupo', icon: Users, run: onNewGroup },
     { id: 'nuevo-borrador', label: 'Nuevo borrador', icon: NotebookPen, run: onNewBorrador },
     { id: 'agenda', label: 'Pendientes y encuestas', icon: ListTodo, run: onAgenda },
     ...(onDestacados ? [{ id: 'destacados', label: 'Mensajes destacados', icon: Star, run: onDestacados }] : []),
+    ...(chats.some((chat) => chat.unread > 0 || chat.markedUnread === true) ? [{ id: 'leer-todo', label: 'Leer todo', icon: CheckCheck, run: () => void readAll() }] : []),
   ];
 
   return (

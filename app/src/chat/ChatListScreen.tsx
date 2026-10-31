@@ -38,6 +38,7 @@ import { useColores } from '../ui/tema';
 import { decidirAtras } from '../ui/botonAtras';
 import { agendaPorTelefono, suscribirAgenda } from '../contacts/agendaEnMemoria';
 import { isSpaceChat } from '../spaces/spaceCache';
+import { ReadAllRow } from './ReadAllRow';
 import { askMuteDuration } from './askMuteDuration';
 
 /**
@@ -417,6 +418,8 @@ export function ChatListScreen({
       ) : hayChats ? (
         <BuscadorDeChats busqueda={busqueda} onBuscar={setBusqueda} filtro={filtro} onFiltrar={setFiltro} cuentas={cuentas} listas={myLists.lists} onNuevaLista={myLists.openNew} onEditarLista={myLists.openEdit} />
       ) : null}
+      {/* B9: «Leer todo» over the unread ones, like WhatsApp; the personal list (a space has its own screen). */}
+      {hayChats && !verArchivados && filtro === 'no-leidos' && cuentas['no-leidos'] > 0 ? <ReadAllRow jwt={credential.jwt} workspaceId={null} onDone={() => void load()} /> : null}
 
       {chats === null ? (
         <View className="px-5 pt-4" testID="chats-cargando">

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { disappearSettingOf } from './disappearSetting';
+import { chatToolsOf, disappearSettingOf } from './disappearSetting';
 
 const me = { esYo: true, role: 'member' };
 const onNotice = vi.fn();
@@ -22,5 +22,10 @@ describe('where «Mensajes temporales» shows in the app (R31/10-B6)', () => {
     expect(disappearSettingOf({ kind: 'group', encrypted: false, channel: { visibility: 'public' }, members: [me] }, 'c1', 't', onNotice)).toBeUndefined();
     expect(disappearSettingOf({ kind: 'direct', encrypted: true, members: [me] }, 'c1', 't', onNotice)).toBeUndefined();
     expect(disappearSettingOf({ kind: 'notas', encrypted: false, members: [me] }, 'c1', 't', onNotice)).toBeUndefined();
+  });
+
+  it('«Exportar chat» (B7) is in every chat but a secret one, a channel included', () => {
+    expect(chatToolsOf({ kind: 'group', encrypted: false, channel: { visibility: 'public' }, members: [me] }, 'c1', 't', onNotice)).toEqual({ disappear: undefined, exportChat: { chatId: 'c1', jwt: 't', onNotice } });
+    expect(chatToolsOf({ kind: 'direct', encrypted: true, members: [me] }, 'c1', 't', onNotice)).toEqual({});
   });
 });

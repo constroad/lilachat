@@ -4995,7 +4995,7 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
-## 179. Mensajes temporales y formularios sin opciones (31/10/2026, servidor + OTA + web)
+## 179. Mensajes temporales, exportar chat, vista previa de avisos, leer todo y formularios sin opciones (31/10/2026, servidor + OTA + web)
 
 **Mensajes temporales (B6), como WhatsApp: 24 horas, 7 días o 90 días.**
 - Es del CHAT, no de la persona: `Chat.disappearSeconds`. Se cambia con
@@ -5023,6 +5023,39 @@ filas fijas con `default: []` son una lista sin filas. Antes Test, sin pedidos,
 rechazaba todo «Registrar consumo» como «Portal no pudo responder.». E2E en el
 emulador: abre, el x-refresh re-pide al cambiar «Desde» y el x-preview resume.
 No se envió nada, y «Registrar consumo» quedó apagado otra vez en Test.
+
+**Exportar chat (B7), como WhatsApp.**
+- `GET /api/chats/:id/export?tz=America/Lima` devuelve un `.txt`: una línea
+  por mensaje, «31/10/2026, 14:05 - Ana: texto». El formato vive en
+  `shared/chatExport.ts`.
+- Los medios se nombran, no se adjuntan («<Foto omitida> pie»,
+  «<Archivo: informe.pdf>»). Lo borrado para todos dice «Se eliminó este
+  mensaje». Lo vencido de un chat temporal no sale.
+- Respeta lo que vacié «para mí» (`borradoHasta`). Tope de 40 000 mensajes.
+- Un chat secreto da 409: el servidor no puede leerlo.
+- La zona sale del teléfono o del navegador. Una zona desconocida cae en Lima.
+- Web: «Exportar chat» en la info del chat descarga el archivo. App: lo baja a
+  la caché con el nombre del servidor y abre «Compartir».
+
+**Vista previa en los avisos (B8).**
+- `User.pushPreviewOff`, con `GET/PUT /api/me/notification-preview {on}`.
+- Apagada, el aviso dice quién escribió («Obra · Ana») y «Nuevo mensaje», sin
+  imagen. Vale para FCM, Web Push, el aviso nativo de la app y el aviso de
+  reacción (que citaba el mensaje).
+- Un interruptor genérico (`PersonalSwitchSetting` en la app,
+  `PersonalSwitchChoice` en la web) sirve también a «Confirmaciones de lectura».
+
+**Leer todo (B9).**
+- `POST /api/chats/read-all {workspaceId?}`: cada chat de esa lista (un espacio
+  o los personales) se lee hasta el final, como si se abriera.
+- Los demás reciben el mismo acuse, con «leído» oculto donde corresponde.
+  Quita mi marca «no leído». Mis equipos recargan la lista UNA vez:
+  un aviso por chat era una ráfaga de recargas.
+- Un espacio solo para un miembro activo (404); un id inválido da 400.
+- App: «Marcar todo como leído» sobre el filtro «No leídos». Web: «Leer todo»
+  en el menú de la lista.
+- El export nombra un 1:1 por la otra persona. El primer test lo agarró
+  usando a quien exporta: `req.session.userId` es un ObjectId, no un texto.
 
 ## 178. El ⚡ del chat, silenciar por tiempo, «escribiendo…» solo de miembros, bloqueo de la web y confirmaciones de lectura (31/10/2026, servidor + OTA + web)
 

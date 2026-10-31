@@ -23,7 +23,7 @@ import { EditarNombreDeGrupo } from './EditarNombreDeGrupo';
 import { elegirFotoDeGrupo, subirFotoDeGrupo } from './fotoDeGrupo';
 import { IdentidadDelChat } from './IdentidadDelChat';
 import { confirmacionDe } from './confirmacionesDeMiembro';
-import { AjustesDelChat, disappearSettingOf } from './AjustesDelChat';
+import { AjustesDelChat, chatToolsOf } from './AjustesDelChat';
 import { AccionesDeMiembro } from './AccionesDeMiembro';
 import { ElegirParaSumar } from './ElegirParaSumar';
 import type { Credential } from '../auth/credentialStore';
@@ -529,7 +529,7 @@ export function ChatDetailScreen({
             {esBorrador || tab !== 'settings' ? null : (
             <AjustesDelChat
               esGrupo={esGrupo} cifrado={detalle!.encrypted}
-              disappear={disappearSettingOf(detalle!, chatId, credential.jwt, setAviso)}
+              tools={chatToolsOf(detalle!, chatId, credential.jwt, setAviso)}
               level={level} mutedUntil={detalle!.mutedUntil}
               onLevel={(next, muteFor) => {
                 // Se guarda de verdad (FL8): antes era solo un estado local.

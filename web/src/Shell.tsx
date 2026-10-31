@@ -298,7 +298,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
           onAgenda={() => setCreando({ tipo: 'agenda' })}
           onDestacados={() => setCreando({ tipo: 'destacados' })}
           onNewBorrador={() => setCreando({ tipo: 'borrador' })}
-          yo={yo} jwt={credential.jwt}
+          yo={yo} jwt={credential.jwt} onNotice={setAviso}
           onAccion={(chat, accion) => void accionesSobreChats.aplicar(chat, accion)}
           width={panel === 'both' ? listLayout.width : undefined}
           onCollapse={panel === 'both' ? () => listLayout.setCollapsed(true) : undefined}

@@ -1,3 +1,5 @@
+import { buildChatExportRouter } from './chatExportRoutes.js';
+import { buildReadAllRouter } from './readAll.js';
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -148,6 +150,8 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/chats', buildHilosRouter());
   app.use('/api/chats', buildContactShareRouter());
   app.use('/api/chats', buildLocationShareRouter());
+  app.use('/api/chats', buildChatExportRouter());
+  app.use('/api/chats', buildReadAllRouter());
   app.use('/api/chats', buildChatRouter(deps.mediaUploader));
   app.use('/api/media', buildMediaLibraryRouter());
   app.use('/api/media', buildMediaRouter(deps.mediaUploader));

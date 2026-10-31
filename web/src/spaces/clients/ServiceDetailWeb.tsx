@@ -85,14 +85,25 @@ function ReportDays({ detail, onOpen, onOpenFile }: { detail: ServiceDetail; onO
 const orderLinkAction = (links: ChannelLinks | undefined, tab: DetailTabKey, target: ServiceAskTarget, orderId: string | null) =>
   links?.can('order') && tab === 'orders' && orderId ? { label: 'Crear enlace del pedido', onPress: () => links.open({ kind: 'order', clientId: target.clientId, orderId }) } : undefined;
 
+/** The open tab's body: «Cobranza» has its own view; the reports go by day; the rest, a row each. */
+function TabBody({ detail, tab, onOpen, onOpenFile }: { detail: ServiceDetail; tab: DetailTabKey; onOpen: (id: string) => void; onOpenFile: OpenSheetFile }) {
+  if (tab === 'billing' && detail.billing) return <ServiceBillingWeb billing={detail.billing} invoices={invoicesOf(detail)} onOpenFile={onOpenFile} />;
+  const rows = detailRows(detail, tab);
+  return (
+    <ul className="divide-y divide-outline/10 overflow-hidden rounded-xl border border-outline/15 bg-surface">
+      {!rows.length ? <li className="p-4 text-sm text-on-surface-variant">{DETAIL_EMPTY[tab]}</li> : tab === 'reports' ? <ReportDays detail={detail} onOpen={onOpen} onOpenFile={onOpenFile} /> : rows.map((row) => <RowView key={row.id} row={row} onOpen={onOpen} onOpenFile={onOpenFile} />)}
+    </ul>
+  );
+}
+
 function DetailTabs({ detail, target, serviceId, links }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; links?: ChannelLinks }) {
   // José 30/10 night: Cotizaciones and Cobranza first; it opens on the first one that came.
   const [tab, setTab] = useState<DetailTabKey>(() => detailTabs(detail)[0]?.key ?? 'orders');
   const viewer = usePortalFileViewer();
   const guides = tab === 'dispatches' ? orderGuidesOf(detail) : [];
   const [openId, setOpenId] = useState<string | null>(null);
-  const rows = detailRows(detail, tab);
-  const more = tab === 'billing' ? null : moreInPortal(rows.length, detail.totals[tab] ?? rows.length);
+  const shown = detailRows(detail, tab).length;
+  const more = tab === 'billing' ? null : moreInPortal(shown, detail.totals[tab] ?? shown);
   const sheet = openId ? detailSheet(detail, tab, openId) : null;
   const reportPdf = useReportPdf(target, serviceId);
   const close = () => {
@@ -108,11 +119,7 @@ function DetailTabs({ detail, target, serviceId, links }: { detail: ServiceDetai
       </div>
       {guides.length ? <OrderGuides guides={guides} onOpenFile={viewer.open} /> : null}
       {tab === 'valuations' && detail.valuationsUrl ? <PortalLink url={detail.valuationsUrl} label="Generar en el Portal" testId="generar-valorizacion" /> : null}
-      {tab === 'billing' && detail.billing ? <ServiceBillingWeb billing={detail.billing} invoices={invoicesOf(detail)} onOpenFile={viewer.open} /> : (
-        <ul className="divide-y divide-outline/10 overflow-hidden rounded-xl border border-outline/15 bg-surface">
-          {!rows.length ? <li className="p-4 text-sm text-on-surface-variant">{DETAIL_EMPTY[tab]}</li> : tab === 'reports' ? <ReportDays detail={detail} onOpen={setOpenId} onOpenFile={viewer.open} /> : rows.map((row) => <RowView key={row.id} row={row} onOpen={setOpenId} onOpenFile={viewer.open} />)}
-        </ul>
-      )}
+      <TabBody detail={detail} tab={tab} onOpen={setOpenId} onOpenFile={viewer.open} />
       {viewer.viewer}
       {sheet ? <RecordSheetWeb sheet={sheet} onClose={close} onOpenFile={viewer.open} pdf={sheet.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, readyUrl: reportPdf.readyUrl, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!) } : undefined} action={orderLinkAction(links, tab, target, openId)} /> : null}
       {more ? <p className="text-center text-[12px] text-on-surface-variant">{`${more} · el resto está en el Portal`}</p> : null}

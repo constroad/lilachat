@@ -33,6 +33,16 @@ const draw = () => {
 const settle = () => act(async () => { await vi.advanceTimersByTimeAsync(LIVE_DEBOUNCE_MS + 10); });
 
 describe('the consumption form on the web', () => {
+  it('a period with no orders and no tanks still opens and says so (Test, 31/10)', () => {
+    // Arrange
+    const empty: EphemeralAnswer = { ...answer, response: { responseType: 'form', form: { id: 'registrar_consumo', title: 'Registrar consumo', schema: { type: 'object', properties: { pedidos: { ...properties.pedidos!, items: { type: 'string', oneOf: [] } }, lecturas: { ...properties.lecturas!, default: [] } }, required: ['pedidos', 'lecturas'] } } } };
+    // Act
+    render(<AppFormDialog answer={empty} onSubmit={vi.fn()} onUpload={vi.fn()} onClose={vi.fn()} />);
+    // Assert
+    expect(screen.getByTestId('sin-opciones-pedidos')).toHaveTextContent('No hay opciones para elegir');
+    expect(screen.getByTestId('sin-filas-lecturas')).toHaveTextContent('No hay filas para completar');
+  });
+
   it('orders as check rows; a locked one shows why and is never picked', () => {
     // Arrange
     draw();

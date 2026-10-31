@@ -30,10 +30,15 @@ const https = (value: unknown): string | undefined => (typeof value === 'string'
 
 type Pair = { value: string; title: unknown; raw: Record<string, unknown> };
 
-/** `enum` (+ `x-labels`) or `oneOf` with `const`; null when it is neither. */
+/**
+ * `enum` (+ `x-labels`) or `oneOf` with `const`; null when it is neither. An
+ * empty `oneOf` is a choice with nothing to pick yet: Test had no orders in the
+ * period and the whole consumption form failed as «no pudo responder» (31/10).
+ */
 function pairsOf(property: FormSchemaProperty): Pair[] | null {
   const labels = record(property['x-labels']);
   if (Array.isArray(property.enum)) return property.enum.map((value) => ({ value: String(value), title: labels[String(value)], raw: {} }));
+  if (Array.isArray(property.oneOf) && property.oneOf.length === 0) return [];
   if (!Array.isArray(property.oneOf) || !property.oneOf.some((option) => record(option).const !== undefined)) return null;
   return property.oneOf.map(record).filter((option) => option.const !== undefined).map((option) => ({ value: String(option.const), title: option.title, raw: option }));
 }

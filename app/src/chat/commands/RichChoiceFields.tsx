@@ -48,6 +48,7 @@ export function MultiField({ field, value, error, onChange }: FieldProps<'multi'
         <Label field={field} />
         {picked.size ? <Text testID={`elegidos-${field.name}`} className="mb-1.5 rounded-full border border-primary/30 px-2.5 py-0.5 text-[12px] font-semibold text-primary">{`${picked.size} ${picked.size === 1 ? 'elegido' : 'elegidos'}`}</Text> : null}
       </View>
+      {field.options.length === 0 ? <Text testID={`sin-opciones-${field.name}`} className="rounded-xl border border-dashed border-outline/30 px-3 py-3 text-[14px] text-on-surface-variant">No hay opciones para elegir</Text> : null}
       <View className="gap-2">
         {field.options.map((option) => {
           const on = picked.has(option.value);

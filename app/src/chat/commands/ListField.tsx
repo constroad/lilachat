@@ -50,6 +50,7 @@ export function ListField({ field, value, errors, onChange, renderField }: Props
     <View testID={`lista-${field.name}`}>
       <Label field={field} />
       {field.help ? <Text className="-mt-1 mb-1.5 text-[13px] text-on-surface-variant">{field.help}</Text> : null}
+      {field.fixedRows && items.length === 0 ? <Text testID={`sin-filas-${field.name}`} className="rounded-xl border border-dashed border-outline/30 px-3 py-3 text-[14px] text-on-surface-variant">No hay filas para completar</Text> : null}
       {field.layout === 'row' ? (
         <RowItems field={field} items={items} keys={keys.current} errors={errors} removable={removable} onCell={setCell} onRemove={remove} />
       ) : (

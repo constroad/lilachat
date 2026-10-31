@@ -648,6 +648,11 @@ de filas con casilla. `minItems` es el mínimo («Elige al menos una.»); el má
 tanque), sin agregar ni quitar. `x-row-title: "<campo>"` titula cada fila con la etiqueta
 de esa opción, y ese campo no se edita.
 
+**Sin nada que elegir** (31/10): un `oneOf: []` es una elección sin opciones todavía, y
+un `default: []` en filas fijas es una lista sin filas. El formulario se abre y dice «No
+hay opciones para elegir» o «No hay filas para completar». Antes, Test sin pedidos en el
+periodo rechazaba el formulario entero y la persona veía «Portal no pudo responder.».
+
 **Refresco** (`x-refresh: true` en un campo, p. ej. `desde` y `hasta`): 600 ms después del
 último cambio, Lilachat reenvía el MISMO evento que abrió el formulario:
 

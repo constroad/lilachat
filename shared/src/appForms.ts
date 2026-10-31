@@ -161,6 +161,8 @@ function listField(base: Base, property: FormSchemaProperty): FormField | string
 
 /** One row per `default` item (one per tank), titled by `x-row-title`: as many as the app sent, no more, no less. */
 function fixedRowsField(base: Base, property: FormSchemaProperty, fields: ItemField[]): FormField | string {
+  // An empty `default` is a period with nothing to fill (no tanks), not a broken form.
+  if (Array.isArray(property.default) && property.default.length === 0) return { ...base, required: false, kind: 'list', fields, min: 0, max: 0, addLabel: '', layout: 'card', initialItems: [], fixedRows: true };
   const initialItems = defaultItems(property.default, fields, FORM_LIMITS.items);
   if (!initialItems) return `La lista «${base.name}» con x-fixed-rows trae sus filas en «default».`;
   const rowTitle = typeof property['x-row-title'] === 'string' && fields.some((field) => field.name === property['x-row-title']) ? property['x-row-title'] : undefined;

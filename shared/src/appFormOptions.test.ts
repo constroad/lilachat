@@ -59,6 +59,21 @@ describe('multi-select (type array + items.oneOf)', () => {
     expect(validateFormValues(fields, { pedidos: ['p9'] })).toEqual({ ok: false, errors: { pedidos: 'Esa opción ya no se puede elegir.' } });
     expect(validateFormValues(fields, { pedidos: [] })).toEqual({ ok: false, errors: { pedidos: 'Elige al menos una.' } });
   });
+  it('an empty oneOf is a choice with no options yet, not a broken form (Test without orders, 31/10)', () => {
+    // Arrange
+    const empty: FormSchemaProperty = { type: 'array', title: 'Pedidos del periodo', minItems: 1, items: { type: 'string', oneOf: [] } };
+    const spec = form({ pedidos: empty, lectura: { type: 'string', oneOf: [] } });
+    // Act
+    const fields = formFields(spec);
+    // Assert
+    expect(validateFormSpec(spec)).toMatchObject({ ok: true });
+    expect(fields[0]).toMatchObject({ kind: 'multi', options: [], min: 0, max: 0 });
+    expect(fields[1]).toMatchObject({ kind: 'choice', options: [] });
+    expect(validateFormValues(fields, { pedidos: [], lectura: '' })).toEqual({ ok: false, errors: { lectura: 'Elige una opción.' } });
+  });
+  it('a oneOf without any const is still not a choice', () => {
+    expect(choiceOptions({ type: 'string', oneOf: [{ title: 'sin const' }] })).toBeNull();
+  });
   it('a single choice refuses a disabled option too', () => {
     const fields = formFields(form({ lectura: { type: 'string', oneOf: READINGS } }));
     expect(validateFormValues(fields, { lectura: 'r4' })).toEqual({ ok: false, errors: { lectura: 'Esa opción ya no se puede elegir.' } });
@@ -66,6 +81,16 @@ describe('multi-select (type array + items.oneOf)', () => {
 });
 
 describe('fixed rows per tank (x-fixed-rows, x-row-title, x-match)', () => {
+  it('no tanks in the period: an empty default is a list with no rows, not a broken form', () => {
+    // Arrange
+    const spec = form({ lecturas: { ...readings, default: [] } });
+    // Act
+    const [field] = formFields(spec);
+    // Assert
+    expect(validateFormSpec(spec)).toMatchObject({ ok: true });
+    expect(field).toMatchObject({ kind: 'list', fixedRows: true, min: 0, max: 0 });
+    expect(validateFormValues([field], { lecturas: [] })).toMatchObject({ ok: true });
+  });
   it('a row per default item, no adding nor removing, titled by its tank', () => {
     // Act
     const [field] = formFields(form({ lecturas: readings }));

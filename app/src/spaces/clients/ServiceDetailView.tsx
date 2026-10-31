@@ -144,7 +144,6 @@ function DetailTabs({ detail, target, serviceId, onOpenFile, links }: { detail: 
     <>
       <TabStrip detail={detail} tab={tab} onTab={setTab} />
       {guides.length ? <OrderGuides guides={guides} onOpenFile={onOpenFile} /> : null}
-      {tab === 'valuations' && detail.valuationsUrl ? <PortalLink url={detail.valuationsUrl} label="Generar en el Portal" testID="generar-valorizacion" /> : null}
       {tab === 'billing' && detail.billing ? <ServiceBilling billing={detail.billing} invoices={invoicesOf(detail)} onOpenFile={onOpenFile} /> : (
         <View className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">
           {!rows.length ? <Text className="p-4 text-[14px] text-on-surface-variant">{DETAIL_EMPTY[tab]}</Text> : tab === 'reports' ? <ReportDays detail={detail} onOpen={setOpenId} onOpenFile={onOpenFile} /> : rows.map((row) => <RowView key={row.id} row={row} onOpen={setOpenId} onOpenFile={onOpenFile} />)}

@@ -118,7 +118,6 @@ function DetailTabs({ detail, target, serviceId, links }: { detail: ServiceDetai
         ))}
       </div>
       {guides.length ? <OrderGuides guides={guides} onOpenFile={viewer.open} /> : null}
-      {tab === 'valuations' && detail.valuationsUrl ? <PortalLink url={detail.valuationsUrl} label="Generar en el Portal" testId="generar-valorizacion" /> : null}
       <TabBody detail={detail} tab={tab} onOpen={setOpenId} onOpenFile={viewer.open} />
       {viewer.viewer}
       {sheet ? <RecordSheetWeb sheet={sheet} onClose={close} onOpenFile={viewer.open} pdf={sheet.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, readyUrl: reportPdf.readyUrl, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!) } : undefined} action={orderLinkAction(links, tab, target, openId)} /> : null}

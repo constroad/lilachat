@@ -95,21 +95,6 @@ describe('ServiceDetailWeb', () => {
     expect(within(screen.getByTestId('fila-r6')).getByText('Producción de planta')).toBeInTheDocument();
   });
 
-  it('«Valorizaciones» lists them and «Generar en el Portal» opens Portal\'s valuations (José 31/10)', async () => {
-    // Arrange
-    const valuations = [{ id: 'v1', number: '3', period: 'Octubre 2026', total: 18500.5, status: { label: 'Aprobada', tone: 'ok' } }];
-    vi.stubGlobal('fetch', reply({ detail: { ...detail, valuations, valuationsUrl: 'https://portal.constroad.com/valorizaciones?servicio=srv-318', totals: { ...detail.totals, valuations: 1 } } }));
-    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
-    // Act
-    fireEvent.click(await screen.findByTestId('pestana-detalle-valuations'));
-    // Assert
-    expect(screen.getByTestId('fila-v1')).toHaveTextContent('Valorización 3');
-    expect(screen.getByTestId('fila-v1')).toHaveTextContent('Octubre 2026 · S/ 18,500.50');
-    expect(screen.getByTestId('generar-valorizacion')).toHaveAttribute('href', 'https://portal.constroad.com/valorizaciones?servicio=srv-318');
-    fireEvent.click(screen.getByTestId('pestana-detalle-orders'));
-    expect(screen.queryByTestId('generar-valorizacion')).toBeNull();
-  });
-
   it('an order\'s sheet makes its link with what Portal\'s modal asks (José 31/10: «un CTA para crear el enlace de pedido»)', async () => {
     // Arrange
     vi.stubGlobal('fetch', reply({ detail }));
@@ -121,13 +106,6 @@ describe('ServiceDetailWeb', () => {
     // Assert
     expect(screen.getByTestId('accion-ficha')).toHaveTextContent('Crear enlace del pedido');
     expect(open).toHaveBeenCalledWith({ kind: 'order', clientId: 'cli-cvs', orderId: 'o1' });
-  });
-
-  it('without valuations (a member who does not see amounts) there is no «Valorizaciones» tab', async () => {
-    vi.stubGlobal('fetch', reply({ detail }));
-    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
-    expect(await screen.findByTestId('pestana-detalle-orders')).toBeInTheDocument();
-    expect(screen.queryByTestId('pestana-detalle-valuations')).toBeNull();
   });
 
   it('a row opens its sheet inside Lilachat: an order with its dispatches, Portal only at the foot', async () => {

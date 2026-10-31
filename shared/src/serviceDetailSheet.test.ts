@@ -95,17 +95,6 @@ describe('detailSheet', () => {
     expect(detailSheet(detail, 'quotes', 'q1')?.files).toEqual([]);
   });
 
-  it('a valuation: its period with the days, the total and its PDF (agentes 757d107)', () => {
-    // Arrange
-    const valued = serviceDetailOf({ service: { id: 's', name: 'S' }, orders: [], dispatches: [], reports: [], valuations: [{ id: 'v1', number: 3, period: 'Octubre 2026', period_from: '2026-10-01', period_to: '2026-10-31', total: 18500.5, status_label: 'Aprobada', tone: 'ok', pdf_url: 'https://portal.constroad.com/v/3.pdf' }] })!;
-    // Act
-    const sheet = detailSheet(valued, 'valuations', 'v1')!;
-    // Assert
-    expect(sheet.title).toBe('Valorización 3');
-    expect(sheet.facts).toEqual([{ label: 'Periodo', value: 'Octubre 2026' }, { label: 'Desde', value: '1 oct' }, { label: 'Hasta', value: '31 oct' }, { label: 'Total', value: 'S/ 18,500.50' }]);
-    expect(sheet.files).toEqual([{ url: 'https://portal.constroad.com/v/3.pdf', label: 'PDF' }]);
-  });
-
   it('null for an id that is not there or for the collection tab', () => {
     expect(detailSheet(detail, 'orders', 'nada')).toBeNull();
     expect(detailSheet(detail, 'billing', 'o1')).toBeNull();

@@ -4995,7 +4995,7 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
-## 180. Canal del cliente: informes por día, cubicaje, obra, inicio, «Recordatorio», valorizaciones, enlaces y PDF que se genera (31/10/2026, servidor + OTA + web)
+## 180. Canal del cliente: informes por día, cubicaje, obra, inicio, «Recordatorio», enlaces y PDF que se genera (31/10/2026, servidor + OTA + web)
 
 José probó el canal de CONSORCIO EL ALMIRANTE en el teléfono y pidió ocho cosas. Siete
 salen en este cambio. Subir pagos espera el OK de José.
@@ -5019,20 +5019,13 @@ salen en este cambio. Subir pagos espera el OK de José.
   guarda el día. Un instante (un agentes viejo) se vuelve el día de Lima en que cayó.
 - Un día imposible (`2026-13-40`, `2026-02-30`) o un texto se rechaza con 400.
 
-**Valorizaciones en el detalle del servicio (agentes 757d107)**
-- Llegan en `client.service.requested`, solo para quien ve montos: `valuations[]`,
-  `valuations_url` y `totals.valuations`. Las fechas son días sin hora.
-- `serviceDetailOf` las valida igual que las cotizaciones: links https y tono conocido.
-- La pestaña «Valorizaciones · N» va después de Cobranza. Sale aunque esté vacía,
-  para generar la primera. Sin `valuations` no hay pestaña.
-- La fila dice «Valorización 3 · Octubre 2026 · S/ 18,500.50» con su PDF. La ficha
-  muestra periodo, desde, hasta y total.
-- «Generar en el Portal» abre `valuations_url`. La valorización no se arma en el teléfono:
-  es un documento con montos que se revisa antes de mandarlo.
-- `withoutMoney` del servidor las quita, con su url y su total, a quien no ve montos.
-- Hoy no llegan: Portal ya no tiene valorizaciones. Se fueron con el rubro construcción a
-  constroad/constructora (Portal 530d7763). Que vengan de ahí lo decide José. Sin
-  `valuations` la pestaña no aparece, así que no hay nada vacío a la vista.
+**Valorización = informe de servicio (José 31/10)**
+- Hubo una pestaña «Valorizaciones» sobre `valuations[]` (49befca). Se quitó en el mismo
+  día. Para José la valorización de un servicio ES su informe de servicio: no es otro
+  documento ni viene de constructora.
+- Lo que queda es generar ese informe desde el servicio. Puede ser el mismo
+  `crear_enlace_de_servicio` (la página `/service-report/` de Portal). agentes lo confirma
+  con Portal.
 
 **Enlaces del cliente, del pedido y del servicio (pedidos 4, 5 y 6)**
 - Una sola mecánica: la acción de Portal con `values` ya llenos. No hay eventos nuevos.
@@ -5069,8 +5062,12 @@ salen en este cambio. Subir pagos espera el OK de José.
   El CORS se pidió a la sesión de Portal.
 
 **Lo que espera**
-- **Subir pagos en Cobranza.** `registrar_pago` mueve dinero y Portal tendría que bajar
-  un archivo de afuera. Espera el OK de José.
+- **Subir pagos en Cobranza.** José lo aprobó el 31/10: sin paso de aprobación, solo
+  admins. `registrar_pago` lleva `{servicioId}` o `{pedidoId}` y el voucher con
+  `'x-input': 'photo'` + `'x-gallery': true`. Portal decide quién es admin con su propio
+  permiso; el botón de Lilachat sale solo a quien puede correr la acción (encendida queda
+  «solo admins» por defecto). La respuesta es privada porque lleva montos. Espera que
+  Portal la publique.
 
 ## 179. Mensajes temporales, exportar chat, vista previa de avisos, leer todo y formularios sin opciones (31/10/2026, servidor + OTA + web)
 

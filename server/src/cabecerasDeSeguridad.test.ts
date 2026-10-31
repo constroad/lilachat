@@ -42,6 +42,14 @@ describe('cabecerasDeSeguridad', () => {
     expect(csp).toMatch(/connect-src [^;]*https:\/\/storage\.googleapis\.com\/mediapipe-models\//);
   });
 
+  it('Portal files are fetched from their two exact origins only (31/10: a frame cannot show them, they are SAMEORIGIN)', () => {
+    const connect = politicaDeContenido('lilachat.constroad.com').split('; ').find((rule) => rule.startsWith('connect-src'));
+
+    expect(connect).toContain(' https://www.constroad.com');
+    expect(connect).toContain(' https://lila.constroad.com');
+    expect(connect).not.toMatch(/ https:( |$)/);
+  });
+
   it('un Host raro no se cuela en la política', () => {
     expect(politicaDeContenido('evil.com; script-src *')).not.toContain('script-src *');
   });

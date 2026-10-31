@@ -5057,9 +5057,15 @@ salen en este cambio. Subir pagos espera el OK de José.
 - App: `downloadAsync` tomaba el 202 como éxito, guardaba el JSON como PDF y el visor decía
   «No se pudo mostrar». Ahora solo guarda un 200/206. Cada estado tiene su texto, y
   «generando» ofrece «Reintentar».
-- Web: antes del iframe pide `Range: bytes=0-0`. Mientras la ruta de Portal no mande CORS
-  para lilachat.constroad.com, el fetch falla y el PDF se abre en el iframe como antes.
-  El CORS se pidió a la sesión de Portal.
+- Web: el iframe de la URL nunca funcionó. Portal (quote-pdf) manda `X-Frame-Options:
+  SAMEORIGIN`, y lila manda `frame-ancestors` sin Lilachat. El navegador rechazaba el
+  marco, y la CSP propia (`frame-src`) tampoco lo permitía. Se vio en el E2E del 31/10.
+  Ahora `usePdfFromMemory` baja el PDF con fetch, reintenta el 202 y lo muestra como
+  `blob:`, igual que el visor de PDFs del chat. «Descargar» usa ese blob, porque `download`
+  se ignora entre orígenes.
+- Para eso `connect-src` suma solo `https://www.constroad.com` y `https://lila.constroad.com`.
+  Los dos responden CORS para lilachat.constroad.com: Portal desde aa5d2e6d, lila desde antes.
+- Si no se puede bajar, dice «Ábrelo en otra pestaña» y deja ese enlace.
 
 **Lo que espera**
 - **Subir pagos en Cobranza.** José lo aprobó el 31/10: sin paso de aprobación, solo

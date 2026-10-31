@@ -21,40 +21,55 @@ const asMessage = (file: ViewableFile, index: number): MensajeEnPantalla => ({
 });
 
 const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-const FAILED_TEXT = 'No se pudo abrir el PDF. Prueba en otra pestaña.';
+const FAILED_TEXT = 'No se pudo mostrar el PDF aquí. Ábrelo en otra pestaña.';
+
+type PdfView = { state: 'checking' } | { state: 'ready'; src: string } | { state: Exclude<PdfReadiness, 'ready'> };
 
 /**
- * Asked for one byte before the frame shows it (Portal 31/10: a quote's PDF answers
- * 202 while it is generated). A host that does not allow asking from here (no
- * CORS) opens in the frame as before.
+ * The PDF from memory (31/10): Portal and lila send their files SAMEORIGIN, so a
+ * frame of their URL is refused; fetched (they allow CORS for Lilachat) it shows
+ * as `blob:`. A quote's PDF answers 202 while it is generated: asked again.
  */
-function usePdfReadiness(url: string): PdfReadiness | 'checking' {
-  const [readiness, setReadiness] = useState<PdfReadiness | 'checking'>('checking');
+function usePdfFromMemory(url: string): PdfView {
+  const [view, setView] = useState<PdfView>({ state: 'checking' });
   useEffect(() => {
     let alive = true;
+    let objectUrl: string | null = null;
+    let last: Response | null = null;
     const ask = async () => {
-      const response = await fetch(url, { headers: { Range: 'bytes=0-0' } });
-      return { status: response.status, retryAfter: response.headers.get('Retry-After') };
+      last = await fetch(url);
+      return { status: last.status, retryAfter: last.headers.get('Retry-After') };
     };
+    const show = async (readiness: PdfReadiness) => {
+      if (readiness !== 'ready' || !last) return setView({ state: readiness === 'ready' ? 'failed' : readiness });
+      const blob = await last.blob();
+      if (!alive) return;
+      objectUrl = URL.createObjectURL(blob);
+      setView({ state: 'ready', src: objectUrl });
+    };
+    setView({ state: 'checking' });
     void untilPdfReady(ask, pause)
-      .then((verdict) => alive && setReadiness(verdict))
-      .catch(() => alive && setReadiness('ready'));
+      .then((readiness) => (alive ? show(readiness) : undefined))
+      .catch(() => alive && setView({ state: 'failed' }));
     return () => {
       alive = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [url]);
-  return readiness;
+  return view;
 }
 
-function PdfFrame(props: { file: ViewableFile }) {
-  const readiness = usePdfReadiness(props.file.url);
-  if (readiness === 'ready') return <iframe data-testid="pdf-visor" title={props.file.name} src={props.file.url} className="h-[70vh] w-full rounded-lg border border-outline/15 bg-white" />;
-  if (readiness === 'checking') return <div data-testid="pdf-preparando" className="grid h-[70vh] w-full animate-pulse place-items-center rounded-lg bg-background text-sm text-on-surface-variant">Preparando el PDF…</div>;
-  return <p data-testid="pdf-no-disponible" className="grid h-40 place-items-center px-6 text-center text-sm text-on-surface-variant">{readiness === 'failed' ? FAILED_TEXT : PDF_READINESS_TEXT[readiness]}</p>;
+function PdfFrame(props: { file: ViewableFile; view: PdfView }) {
+  const { view } = props;
+  if (view.state === 'ready') return <iframe data-testid="pdf-visor" title={props.file.name} src={view.src} className="h-[70vh] w-full rounded-lg border border-outline/15 bg-white" />;
+  if (view.state === 'checking') return <div data-testid="pdf-preparando" className="grid h-[70vh] w-full animate-pulse place-items-center rounded-lg bg-background text-sm text-on-surface-variant">Preparando el PDF…</div>;
+  return <p data-testid="pdf-no-disponible" className="grid h-40 place-items-center px-6 text-center text-sm text-on-surface-variant">{view.state === 'failed' ? FAILED_TEXT : PDF_READINESS_TEXT[view.state]}</p>;
 }
 
-/** Portal's PDF inside Lilachat: the browser's own viewer in a frame, with its download at the foot. */
+/** Portal's PDF inside Lilachat: the browser's own viewer in a frame, with its download at the foot (from memory: `download` is ignored across origins). */
 function PortalPdf(props: { file: ViewableFile; onClose: () => void }) {
+  const view = usePdfFromMemory(props.file.url);
+  const saved = view.state === 'ready' ? view.src : props.file.url;
   return (
     <Overlay
       title={props.file.name}
@@ -62,12 +77,12 @@ function PortalPdf(props: { file: ViewableFile; onClose: () => void }) {
       wide
       footer={
         <div className="flex gap-2">
-          <a href={props.file.url} download={props.file.name} target="_blank" rel="noreferrer" data-testid="pdf-descargar" className="inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold text-primary hover:bg-background"><Download size={16} /> Descargar</a>
+          <a href={saved} download={props.file.name} target="_blank" rel="noreferrer" data-testid="pdf-descargar" className="inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold text-primary hover:bg-background"><Download size={16} /> Descargar</a>
           <a href={props.file.url} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm text-on-surface-variant hover:bg-background"><ExternalLink size={16} /> Abrir en otra pestaña</a>
         </div>
       }
     >
-      <PdfFrame file={props.file} />
+      <PdfFrame file={props.file} view={view} />
     </Overlay>
   );
 }

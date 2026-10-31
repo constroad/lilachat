@@ -13,7 +13,9 @@ import type { DisappearSetting } from './disappearSetting';
  */
 export function DisappearingRow(props: DisappearSetting) {
   const [key, setKey] = useState<DisappearKey>(disappearKeyOf(props.seconds));
-  useEffect(() => setKey(disappearKeyOf(props.seconds)), [props.seconds]);
+  useEffect(() => {
+    setKey(disappearKeyOf(props.seconds));
+  }, [props.seconds]);
   const choose = (next: DisappearKey) => {
     if (next === key) return;
     const before = key;

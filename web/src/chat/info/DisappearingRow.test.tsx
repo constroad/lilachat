@@ -21,12 +21,12 @@ describe('«Mensajes temporales» on the web (R31/10-B6)', () => {
   it('a refusal goes back and says why', async () => {
     // Arrange
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ message: 'Solo los admins pueden cambiar la info del grupo.' }), { status: 403 })));
-    const onAviso = vi.fn();
-    render(<DisappearingRow chatId="c1" jwt="t" seconds={0} canChange onAviso={onAviso} />);
+    const onNotice = vi.fn();
+    render(<DisappearingRow chatId="c1" jwt="t" seconds={0} canChange onAviso={onNotice} />);
     // Act
     fireEvent.change(screen.getByTestId('select-temporales'), { target: { value: '7d' } });
     // Assert
-    await waitFor(() => expect(onAviso).toHaveBeenCalledWith('Solo los admins pueden cambiar la info del grupo.'));
+    await waitFor(() => expect(onNotice).toHaveBeenCalledWith('Solo los admins pueden cambiar la info del grupo.'));
     expect(screen.getByTestId('select-temporales')).toHaveValue('off');
   });
 

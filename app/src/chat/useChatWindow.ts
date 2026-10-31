@@ -34,14 +34,14 @@ export function useChatWindow(p: {
   onThread: (root: number) => void;
 }) {
   const { jwt, chatId, encrypted, messages: liveMessages, ocultos, archivosEnCola, listaRef, onNoEsta, onThread } = p;
-  const { pendientesDelChat } = p.hilos;
+  const { delChat, pendientesDelChat } = p.hilos;
   // R31/10-B6: what passed its time is not drawn, even before the server sweeps it.
-  const delChat = useWithoutDisappeared(p.hilos.delChat) ?? p.hilos.delChat;
+  const chatRows = useWithoutDisappeared(delChat) ?? delChat;
   // Memoized: each render (a key, a «typing») used to redraw every bubble (FL2).
   const liveRows: Row[] = useMemo(
     () => [
       // «Eliminar para mí» (FL9): hidden on this phone.
-      ...sinOcultos(delChat, ocultos),
+      ...sinOcultos(chatRows, ocultos),
       // What is pending, in the order it was sent. The echo can arrive before the ack:
       // without the filter the bubble showed twice (files share their `clientKey`).
       ...pendientesEnOrden(
@@ -49,7 +49,7 @@ export function useChatWindow(p: {
         sinPendientesConfirmados(archivosEnCola.map(({ archivo, progreso }) => filaDeArchivoEnCola(archivo, progreso)), liveMessages)
       ),
     ],
-    [liveMessages, ocultos, archivosEnCola, delChat, pendientesDelChat]
+    [liveMessages, ocultos, archivosEnCola, chatRows, pendientesDelChat]
   );
   const [opened, setOpened] = useState<MessageWindow<ChatMessage> | null>(null);
   const [viewId, setViewId] = useState(0);

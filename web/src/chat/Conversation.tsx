@@ -131,8 +131,8 @@ export function Conversation(props: {
   const lastSeen = useLastSeen(otherId);
   const otherStatus = usePresenceStatus(otherId);
   // R31/10-B6: what passed its time is not drawn, even before the server sweeps it.
-  const mensajes = useWithoutDisappeared(props.mensajes);
-  const fun = useFunPlayback({ messages: mensajes, me: props.yo, chatId: chat.id, muted: Boolean(chat.muted), afterSeq: chat.lastSeq - chat.unread });
+  const visibleMessages = useWithoutDisappeared(props.mensajes);
+  const fun = useFunPlayback({ messages: visibleMessages, me: props.yo, chatId: chat.id, muted: Boolean(chat.muted), afterSeq: chat.lastSeq - chat.unread });
   const commands = useChatCommandsWithActions({ jwt: props.jwtParaEnlaces, chatId: chat.id, workspaceId: chat.workspaceId, shareable: chat.kind === 'group', actionPlace: chatHasActionPlace({ workspaceId: chat.workspaceId, isGroup: chat.kind === 'group', appId: chat.appId }) });
   return (
     <section
@@ -200,15 +200,15 @@ export function Conversation(props: {
       <>
       <BannerWithSession />
       {props.franja}
-      {mensajes === null ? (
+      {visibleMessages === null ? (
         <EsqueletoDeMensajes />
-      ) : mensajes.length === 0 ? (
+      ) : visibleMessages.length === 0 ? (
         <p className="min-h-0 flex-1 pt-10 text-center text-sm text-on-surface-variant">Todavía no hay mensajes. Escribe el primero.</p>
       ) : (
         <ListaDeMensajes
           key={`${chat.id}-${props.viewId ?? 0}`}
           chat={chat}
-          mensajes={mensajes}
+          mensajes={visibleMessages}
           yo={props.yo}
           escribiendo={Boolean(props.typingName)}
           hayAnteriores={props.hayAnteriores}

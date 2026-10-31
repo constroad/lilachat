@@ -8,7 +8,7 @@ const headersOf = (jwt: string) => ({ 'Content-Type': 'application/json', Author
  * route): read once when the panel opens; the switch waits for the server and
  * goes back if it refuses. Read receipts (R31/10) and the notices' preview (B8).
  */
-export function PersonalSwitchChoice(props: { jwt: string; route: string; icon: LucideIcon; title: string; hint: string; testId: string; onNotice: (text: string) => void }) {
+export function OwnSwitchChoice(props: { jwt: string; route: string; icon: LucideIcon; title: string; hint: string; testId: string; onNotice: (text: string) => void }) {
   const [on, setOn] = useState<boolean | null>(null);
   useEffect(() => {
     void fetch(props.route, { headers: headersOf(props.jwt) })

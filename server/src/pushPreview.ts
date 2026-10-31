@@ -19,7 +19,7 @@ export async function previewHiddenFor(userIds: readonly string[]): Promise<Set<
 export const withoutPreview = <T extends { title: string; body: string }>(text: T): T => ({ ...text, body: HIDDEN_PREVIEW_BODY });
 
 /** A person's on/off setting stored as an «off» flag: GET and PUT `{on}` on `path`. */
-export function personalSwitch(router: Router, path: string, offField: 'readReceiptsOff' | 'pushPreviewOff', refusal: string): void {
+export function ownSwitch(router: Router, path: string, offField: 'readReceiptsOff' | 'pushPreviewOff', refusal: string): void {
   router.get(path, async (req, res) => {
     const user = await UserModel.findById(req.session!.userId).select(offField).lean<Record<string, unknown> | null>();
     res.json({ on: user?.[offField] !== true });

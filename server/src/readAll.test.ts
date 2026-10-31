@@ -59,10 +59,10 @@ describe('«Leer todo»', () => {
     // Act
     const stranger = await request(app).post('/api/chats/read-all').set('Authorization', `Bearer ${token}`).send({ workspaceId: String(space) });
     const bad = await request(app).post('/api/chats/read-all').set('Authorization', `Bearer ${token}`).send({ workspaceId: 'x' });
-    const personal = await request(app).post('/api/chats/read-all').set('Authorization', `Bearer ${token}`).send({});
+    const withoutSpace = await request(app).post('/api/chats/read-all').set('Authorization', `Bearer ${token}`).send({});
     // Assert
     expect(stranger.status).toBe(404);
     expect(bad.status).toBe(400);
-    expect(personal.body).toEqual({ ok: true, chats: 0 });
+    expect(withoutSpace.body).toEqual({ ok: true, chats: 0 });
   });
 });

@@ -8,7 +8,7 @@ import { emitPresence } from './reparto.js';
 import { toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
 import { defaultMediaUploader } from './localMediaUploader.js';
 import { multerDeAvatar, subirFotoRedonda } from './subirAvatar.js';
-import { personalSwitch } from './pushPreview.js';
+import { ownSwitch } from './pushPreview.js';
 
 /** Máximo del texto de auto-respuesta: un aviso, no un ensayo. */
 const MAX_TEXTO = 300;
@@ -117,9 +117,9 @@ export function buildMeRouter(uploader: MediaUploader = defaultMediaUploader()):
   });
 
   // «Confirmaciones de lectura» (R31/10): on unless turned off; groups always tell «leído».
-  personalSwitch(router, '/read-receipts', 'readReceiptsOff', 'Elige si se envían o no.');
+  ownSwitch(router, '/read-receipts', 'readReceiptsOff', 'Elige si se envían o no.');
   // R31/10-B8: the notices' preview.
-  personalSwitch(router, '/notification-preview', 'pushPreviewOff', 'Elige si se muestra o no.');
+  ownSwitch(router, '/notification-preview', 'pushPreviewOff', 'Elige si se muestra o no.');
 
   return router;
 }

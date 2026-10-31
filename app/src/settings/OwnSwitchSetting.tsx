@@ -10,7 +10,7 @@ type Answer = { ok: true; data: { on: boolean } } | { ok: false };
  * settings open; the switch waits for the server and goes back if it refuses.
  * Read receipts (R31/10) and the notices' preview (B8).
  */
-export function PersonalSwitchSetting(props: { read: () => Promise<Answer>; save: (on: boolean) => Promise<Answer>; icon: LucideIcon; title: string; detail: string; testID: string }) {
+export function OwnSwitchSetting(props: { read: () => Promise<Answer>; save: (on: boolean) => Promise<Answer>; icon: LucideIcon; title: string; detail: string; testID: string }) {
   const { read, save } = props;
   const [on, setOn] = useState<boolean | null>(null);
   const [failed, setFailed] = useState(false);

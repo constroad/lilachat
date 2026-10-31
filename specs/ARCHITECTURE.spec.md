@@ -5042,8 +5042,8 @@ No se envió nada, y «Registrar consumo» quedó apagado otra vez en Test.
 - Apagada, el aviso dice quién escribió («Obra · Ana») y «Nuevo mensaje», sin
   imagen. Vale para FCM, Web Push, el aviso nativo de la app y el aviso de
   reacción (que citaba el mensaje).
-- Un interruptor genérico (`PersonalSwitchSetting` en la app,
-  `PersonalSwitchChoice` en la web) sirve también a «Confirmaciones de lectura».
+- Un interruptor genérico (`OwnSwitchSetting` en la app,
+  `OwnSwitchChoice` en la web) sirve también a «Confirmaciones de lectura».
 
 **Leer todo (B9).**
 - `POST /api/chats/read-all {workspaceId?}`: cada chat de esa lista (un espacio

@@ -5014,8 +5014,9 @@ INVENTARIO.
   `useWithoutDisappeared` despierta una vez, al próximo vencimiento; sin
   temporizador no pone ningún timer.
 - La lista de chats no muestra el texto ni la lápida de un último mensaje vencido.
-- Índice declarado y NO creado: `{nextDisappearAt: 1}` sparse. Hoy son 80
-  chats; se crea con el OK de José.
+- Índice `{nextDisappearAt: 1}` sparse (`nextDisappearAt_1`), creado el 31/10
+  con el OK de José sobre 80 chats. El barrido usa IXSCAN y examina 0 documentos
+  cuando no vence nada.
 - Ajustes: fila «Mensajes temporales» en la app (Alert) y en la web (select).
 
 **Formularios sin opciones.** Un `oneOf: []` es una elección sin opciones, y

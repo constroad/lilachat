@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Archive, ChevronRight, ExternalLink, FileText, Link2, Search, Share2 } from 'lucide-react';
+import { Archive, ChevronRight, ExternalLink, FileText, Link2, Search } from 'lucide-react';
 import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, dayOf, shortDate, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
 import { ServiceDetailWeb } from './ServiceDetailWeb';
 import { STATUS_TONE } from './tones';
@@ -59,7 +59,7 @@ function ServiceSummary({ service }: { service: SpaceClientService }) {
   );
 }
 
-/** The head opens its expediente; without the space (no way to ask), its Portal link. «Compartir» makes its link (José 31/10). */
+/** The head opens its expediente; without the space (no way to ask), its Portal link. «Enlace del servicio» makes its link (José 31/10). */
 function ServiceCard(props: { service: SpaceClientService; records: ClientRecord[] | null; canOpen: boolean; onOpen: () => void; onOpenRecord?: (seq: number) => void; onShare?: () => void }) {
   const { service } = props;
   const head = 'block w-full text-left';
@@ -76,7 +76,7 @@ function ServiceCard(props: { service: SpaceClientService; records: ClientRecord
           {service.url ? <a href={service.url} target="_blank" rel="noreferrer" data-testid={`abrir-servicio-${service.id}`} className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary"><ExternalLink size={14} /> Ver en el Portal</a> : null}
         </div>
       )}
-      {props.onShare ? <button type="button" data-testid={`compartir-servicio-${service.id}`} onClick={props.onShare} className="mt-3 inline-flex h-8 items-center gap-1.5 rounded-lg border border-outline/20 px-3 text-[12px] font-semibold text-primary hover:bg-background"><Share2 size={14} /> Compartir</button> : null}
+      {props.onShare ? <button type="button" data-testid={`enlace-servicio-${service.id}`} onClick={props.onShare} className="mt-3 inline-flex h-8 items-center gap-1.5 rounded-lg border border-outline/20 px-3 text-[12px] font-semibold text-primary hover:bg-background"><Link2 size={14} /> Enlace del servicio</button> : null}
       <ServiceRecords records={props.records} onOpen={props.onOpenRecord} />
     </article>
   );

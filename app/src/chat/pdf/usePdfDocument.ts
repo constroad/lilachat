@@ -2,9 +2,22 @@ import { useEffect, useState } from 'react';
 import * as FileSystem from 'expo-file-system/legacy';
 import { pdfPages } from '../../../modules/pdf-pages/src';
 import type { PdfPageSize } from './pdfLayout';
-import { pdfCacheName, pdfFailureFrom, type ChatPdf, type PdfFailure } from './pdfSource';
+import { pdfReadinessOf, untilPdfReady } from '@lilachat/shared';
+import { pdfCacheName, pdfDownloadCodeOf, pdfFailureFrom, type ChatPdf, type PdfFailure } from './pdfSource';
 
 export type PdfDocumentState = { status: 'loading' } | { status: 'ready'; id: string; pages: PdfPageSize[] } | { status: 'failed'; failure: PdfFailure };
+
+const NETWORK_FAILED = 0;
+const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const downloadFailed = (code: string) => Object.assign(new Error('download failed'), { code });
+
+/** One try: what came stays only when it is the PDF (a 202 «generating» body is not, quote-pdf 31/10). */
+async function downloadOnce(url: string, target: string): Promise<{ status: number; retryAfter?: string | null }> {
+  const download = await FileSystem.downloadAsync(url, target).catch(() => null);
+  const status = download?.status ?? NETWORK_FAILED;
+  if (pdfReadinessOf(status) !== 'ready') await FileSystem.deleteAsync(target, { idempotent: true }).catch(() => undefined);
+  return { status, retryAfter: download?.headers['Retry-After'] ?? download?.headers['retry-after'] };
+}
 
 async function downloadPdf(pdf: ChatPdf): Promise<string> {
   // A secret chat's PDF is already decrypted on the phone (pending 118): open it where it is.
@@ -12,12 +25,10 @@ async function downloadPdf(pdf: ChatPdf): Promise<string> {
   const target = `${FileSystem.cacheDirectory}${pdfCacheName(pdf.url)}`;
   const existing = await FileSystem.getInfoAsync(target);
   if (existing.exists && existing.size > 0) return target;
-  const download = await FileSystem.downloadAsync(pdf.url, target).catch(() => null);
-  if (!download || download.status < 200 || download.status >= 300) {
-    await FileSystem.deleteAsync(target, { idempotent: true }).catch(() => undefined);
-    throw Object.assign(new Error('download failed'), { code: 'ERR_PDF_DOWNLOAD' });
-  }
-  return download.uri;
+  // Portal answers 202 while it generates a quote's PDF: ask again as it says.
+  const code = pdfDownloadCodeOf(await untilPdfReady(() => downloadOnce(pdf.url, target), pause));
+  if (code) throw downloadFailed(code);
+  return target;
 }
 
 /**

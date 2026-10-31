@@ -89,14 +89,14 @@ describe('a client channel (design f-03)', () => {
     expect(screen.queryByTestId('nota-archivado')).toBeNull();
   });
 
-  it('the links of the channel (José 31/10): the client\'s at the top and «Compartir» on each service, only while their action is on', () => {
+  it('the links of the channel (José 31/10): the client\'s at the top and each service\'s on its card, only while their action is on', () => {
     // Arrange
     const open = vi.fn();
     const links = { can: (kind: string) => kind !== 'order', open };
     render(<ClientServices client={client('x', { services: [inProgress] })} records={[]} target={null} links={links} />);
     // Act
     fireEvent.click(screen.getByTestId('enlace-cliente'));
-    fireEvent.click(screen.getByTestId('compartir-servicio-s1'));
+    fireEvent.click(screen.getByTestId('enlace-servicio-s1'));
     // Assert
     expect(open.mock.calls).toEqual([[{ kind: 'client', clientId: 'x' }], [{ kind: 'service', clientId: 'x', serviceId: 's1' }]]);
   });
@@ -104,7 +104,7 @@ describe('a client channel (design f-03)', () => {
   it('without the link actions on in the channel there is nothing to tap', () => {
     render(<ClientServices client={client('x', { services: [inProgress] })} records={[]} target={null} links={{ can: () => false, open: vi.fn() }} />);
     expect(screen.queryByTestId('enlace-cliente')).toBeNull();
-    expect(screen.queryByTestId('compartir-servicio-s1')).toBeNull();
+    expect(screen.queryByTestId('enlace-servicio-s1')).toBeNull();
   });
 
   it('«Servicios» shows each service with its state, progress and records; a record opens its message', () => {

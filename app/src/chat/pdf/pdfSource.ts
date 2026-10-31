@@ -1,3 +1,5 @@
+import { PDF_READINESS_TEXT, type PdfReadiness } from '@lilachat/shared';
+
 /**
  * Which messages open in the PDF viewer and how its failures read (pending 7).
  * PURE.
@@ -34,18 +36,26 @@ export function pdfCacheName(url: string): string {
   return `pdf-view-${hash.toString(HASH_RADIX)}-${url.length.toString(HASH_RADIX)}.pdf`;
 }
 
-export type PdfFailure = 'protected' | 'download' | 'damaged';
+export type PdfFailure = 'protected' | 'download' | 'damaged' | 'generating' | 'expired' | 'missing';
+
+const FAILURE_CODES: Record<string, PdfFailure> = { ERR_PDF_PROTECTED: 'protected', ERR_PDF_DOWNLOAD: 'download', ERR_PDF_GENERATING: 'generating', ERR_PDF_EXPIRED: 'expired', ERR_PDF_MISSING: 'missing' };
 
 /** A failure as the screen says it, from the renderer's code or the download. */
 export function pdfFailureFrom(error: unknown): PdfFailure {
   const code = typeof error === 'object' && error !== null && 'code' in error ? String((error as { code: unknown }).code) : '';
-  if (code === 'ERR_PDF_PROTECTED') return 'protected';
-  if (code === 'ERR_PDF_DOWNLOAD') return 'download';
-  return 'damaged';
+  return FAILURE_CODES[code] ?? 'damaged';
+}
+
+/** The code a download that did not bring the PDF throws (quote-pdf, Portal f09e3dc1); null when it came. */
+export function pdfDownloadCodeOf(readiness: PdfReadiness): string | null {
+  if (readiness === 'ready') return null;
+  if (readiness === 'failed') return 'ERR_PDF_DOWNLOAD';
+  return `ERR_PDF_${readiness.toUpperCase()}`;
 }
 
 export const PDF_FAILURE_TEXT: Record<PdfFailure, string> = {
   protected: 'Este PDF tiene contraseña. Ábrelo con otra app para escribirla.',
   download: 'No se pudo descargar el PDF. Revisa tu conexión y prueba de nuevo.',
   damaged: 'No se pudo mostrar este PDF aquí. Prueba abrirlo con otra app.',
+  ...PDF_READINESS_TEXT,
 };

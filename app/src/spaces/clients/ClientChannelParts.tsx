@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Archive, ChevronRight, ExternalLink, FileText, Link2, Search, Share2 } from 'lucide-react-native';
+import { Archive, ChevronRight, ExternalLink, FileText, Link2, Search } from 'lucide-react-native';
 import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, dayOf, shortDate, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { ClientAccessRow } from './ClientAccess';
@@ -47,7 +47,7 @@ function ServiceFilters(props: { query: string; onQuery: (query: string) => void
   );
 }
 
-/** Tapping the head opens its expediente; without the space (no way to ask), its Portal link. «Compartir» makes its link (José 31/10). */
+/** Tapping the head opens its expediente; without the space (no way to ask), its Portal link. «Enlace del servicio» makes its link (José 31/10). */
 function ServiceCard(props: { service: SpaceClientService; records: ClientRecord[] | null; canOpen: boolean; onOpen: () => void; onOpenRecord: (seq: number) => void; onShare?: () => void }) {
   const colors = useColores();
   const { service } = props;
@@ -75,9 +75,9 @@ function ServiceCard(props: { service: SpaceClientService; records: ClientRecord
         ) : null}
       </Pressable>
       {props.onShare ? (
-        <Pressable testID={`compartir-servicio-${service.id}`} onPress={props.onShare} className="mt-2 min-h-[40px] flex-row items-center gap-1.5 self-start rounded-lg border border-outline/20 px-3">
-          <Share2 size={15} color={colors.primary} />
-          <Text className="text-[13px] font-semibold text-primary">Compartir</Text>
+        <Pressable testID={`enlace-servicio-${service.id}`} onPress={props.onShare} className="mt-2 min-h-[40px] flex-row items-center gap-1.5 self-start rounded-lg border border-outline/20 px-3">
+          <Link2 size={15} color={colors.primary} />
+          <Text className="text-[13px] font-semibold text-primary">Enlace del servicio</Text>
         </Pressable>
       ) : null}
       <ServiceRecords records={props.records} onOpen={props.onOpenRecord} />

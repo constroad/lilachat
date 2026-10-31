@@ -154,7 +154,7 @@ export function PdfViewerScreen(props: { pdf: ChatPdf | null; others: readonly C
             </View>
             <Text className="mt-4 text-center text-[15px] text-on-surface">{PDF_FAILURE_TEXT[document.failure]}</Text>
             <View className="mt-6 flex-row gap-3">
-              {document.failure === 'download' ? (
+              {document.failure === 'download' || document.failure === 'generating' ? (
                 <Pressable testID="btn-pdf-reintentar" onPress={() => setAttempt((count) => count + 1)} className="min-h-[48px] items-center justify-center rounded-full border border-primary px-6">
                   <Text className="text-sm font-semibold text-primary">Reintentar</Text>
                 </Pressable>

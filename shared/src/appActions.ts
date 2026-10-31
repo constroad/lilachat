@@ -65,19 +65,19 @@ export function shortcutValuesOf(raw: unknown): ShortcutValues | null | undefine
 
 /**
  * Portal's link actions (agentes 31/10): the client's or an order's link asks
- * what Portal's modal asks (tabs, days); a service's is «compartir_servicio».
+ * what Portal's modal asks (tabs, days); a service's has an action of its own.
  */
 export const CLIENT_LINK_ACTION = 'crear_enlace_cliente';
-export const SHARE_SERVICE_ACTION = 'compartir_servicio';
+export const SERVICE_LINK_ACTION = 'crear_enlace_de_servicio';
 export type LinkTarget = { kind: 'client'; clientId: string } | { kind: 'order'; clientId: string; orderId: string } | { kind: 'service'; clientId: string; serviceId: string };
 
 const linkValuesOf = (target: LinkTarget): ShortcutValues => {
   if (target.kind === 'client') return { alcance: 'cliente', clienteId: target.clientId };
   if (target.kind === 'order') return { alcance: 'pedido', clienteId: target.clientId, pedidoId: target.orderId };
-  return { clienteId: target.clientId, servicioId: target.serviceId };
+  return { servicioId: target.serviceId };
 };
 
-const linkRowOf = (actions: readonly ShortcutRow[], kind: LinkTarget['kind']) => actions.find((one) => one.kind === 'shortcut' && one.key === (kind === 'service' ? SHARE_SERVICE_ACTION : CLIENT_LINK_ACTION));
+const linkRowOf = (actions: readonly ShortcutRow[], kind: LinkTarget['kind']) => actions.find((one) => one.kind === 'shortcut' && one.key === (kind === 'service' ? SERVICE_LINK_ACTION : CLIENT_LINK_ACTION));
 
 /** The action of a client's channel that makes that link, with what it already knows; null while it is off there. */
 export function linkActionOf(actions: readonly ShortcutRow[], target: LinkTarget): { row: ShortcutRow; values: ShortcutValues } | null {

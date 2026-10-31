@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Download, ExternalLink, FileText, Film, Image as ImageIcon, Play } from 'lucide-react';
-import { galleryOf, mimeOf, openingOf, type ViewableFile } from '@lilachat/shared';
+import { galleryOf, mimeOf, openingOf, PDF_READINESS_TEXT, untilPdfReady, type PdfReadiness, type ViewableFile } from '@lilachat/shared';
 import { PhotoViewer } from '../../chat/VisorDeFotos';
 import type { MensajeEnPantalla } from '../../chat/types';
 import { Overlay } from '../../ui/Overlay';
@@ -20,6 +20,39 @@ const asMessage = (file: ViewableFile, index: number): MensajeEnPantalla => ({
   at: file.when && !Number.isNaN(Date.parse(file.when)) ? file.when : new Date().toISOString(),
 });
 
+const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const FAILED_TEXT = 'No se pudo abrir el PDF. Prueba en otra pestaña.';
+
+/**
+ * Asked for one byte before the frame shows it (Portal 31/10: a quote's PDF answers
+ * 202 while it is generated). A host that does not allow asking from here (no
+ * CORS) opens in the frame as before.
+ */
+function usePdfReadiness(url: string): PdfReadiness | 'checking' {
+  const [readiness, setReadiness] = useState<PdfReadiness | 'checking'>('checking');
+  useEffect(() => {
+    let alive = true;
+    const ask = async () => {
+      const response = await fetch(url, { headers: { Range: 'bytes=0-0' } });
+      return { status: response.status, retryAfter: response.headers.get('Retry-After') };
+    };
+    void untilPdfReady(ask, pause)
+      .then((verdict) => alive && setReadiness(verdict))
+      .catch(() => alive && setReadiness('ready'));
+    return () => {
+      alive = false;
+    };
+  }, [url]);
+  return readiness;
+}
+
+function PdfFrame(props: { file: ViewableFile }) {
+  const readiness = usePdfReadiness(props.file.url);
+  if (readiness === 'ready') return <iframe data-testid="pdf-visor" title={props.file.name} src={props.file.url} className="h-[70vh] w-full rounded-lg border border-outline/15 bg-white" />;
+  if (readiness === 'checking') return <div data-testid="pdf-preparando" className="grid h-[70vh] w-full animate-pulse place-items-center rounded-lg bg-background text-sm text-on-surface-variant">Preparando el PDF…</div>;
+  return <p data-testid="pdf-no-disponible" className="grid h-40 place-items-center px-6 text-center text-sm text-on-surface-variant">{readiness === 'failed' ? FAILED_TEXT : PDF_READINESS_TEXT[readiness]}</p>;
+}
+
 /** Portal's PDF inside Lilachat: the browser's own viewer in a frame, with its download at the foot. */
 function PortalPdf(props: { file: ViewableFile; onClose: () => void }) {
   return (
@@ -34,7 +67,7 @@ function PortalPdf(props: { file: ViewableFile; onClose: () => void }) {
         </div>
       }
     >
-      <iframe data-testid="pdf-visor" title={props.file.name} src={props.file.url} className="h-[70vh] w-full rounded-lg border border-outline/15 bg-white" />
+      <PdfFrame file={props.file} />
     </Overlay>
   );
 }

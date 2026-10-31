@@ -133,10 +133,10 @@ describe('photoStampLines (pending 94: date, time and place burned into the self
 });
 
 describe('a link from a client\'s channel (José 31/10: «crear el enlace del pedido, del servicio o del cliente»)', () => {
-  const portal: CommandGroup[] = [{ appId: 'p1', appName: 'Portal', commands: [], shortcuts: [{ key: 'crear_enlace_cliente', name: 'Crear enlace' }, { key: 'compartir_servicio', name: 'Compartir servicio' }] }];
+  const portal: CommandGroup[] = [{ appId: 'p1', appName: 'Portal', commands: [], shortcuts: [{ key: 'crear_enlace_cliente', name: 'Crear enlace' }, { key: 'crear_enlace_de_servicio', name: 'Enlace del servicio' }] }];
   const actions = chatActionRows(portal);
 
-  it('the client\'s and an order\'s run Portal\'s «crear_enlace_cliente» with what it already knows; a service\'s, «compartir_servicio»', () => {
+  it('the client\'s and an order\'s run Portal\'s «crear_enlace_cliente» with what it already knows; a service\'s, «crear_enlace_de_servicio»', () => {
     // Act
     const client = linkActionOf(actions, { kind: 'client', clientId: 'cli-1' });
     const order = linkActionOf(actions, { kind: 'order', clientId: 'cli-1', orderId: 'o-7' });
@@ -144,7 +144,8 @@ describe('a link from a client\'s channel (José 31/10: «crear el enlace del pe
     // Assert
     expect(client).toEqual({ row: expect.objectContaining({ appId: 'p1', key: 'crear_enlace_cliente' }), values: { alcance: 'cliente', clienteId: 'cli-1' } });
     expect(order?.values).toEqual({ alcance: 'pedido', clienteId: 'cli-1', pedidoId: 'o-7' });
-    expect(service).toEqual({ row: expect.objectContaining({ key: 'compartir_servicio' }), values: { clienteId: 'cli-1', servicioId: 'srv-3' } });
+    // Agentes 31/10: a service's link needs only the service; an order's client is checked by Portal.
+    expect(service).toEqual({ row: expect.objectContaining({ key: 'crear_enlace_de_servicio' }), values: { servicioId: 'srv-3' } });
   });
 
   it('the buttons: which show, and a tap runs the action with its values', () => {
@@ -162,7 +163,7 @@ describe('a link from a client\'s channel (José 31/10: «crear el enlace del pe
 
   it('nothing to tap while the action is off in the channel', () => {
     // Act
-    const onlyShare = chatActionRows([{ ...portal[0]!, shortcuts: [{ key: 'compartir_servicio', name: 'Compartir servicio' }] }]);
+    const onlyShare = chatActionRows([{ ...portal[0]!, shortcuts: [{ key: 'crear_enlace_de_servicio', name: 'Enlace del servicio' }] }]);
     // Assert
     expect(linkActionOf(onlyShare, { kind: 'client', clientId: 'cli-1' })).toBeNull();
     expect(linkActionOf([], { kind: 'service', clientId: 'cli-1', serviceId: 'srv-3' })).toBeNull();

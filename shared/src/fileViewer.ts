@@ -49,3 +49,51 @@ export function viewerWhenOf(when: string | undefined): string {
   if (!ISO_MOMENT.test(when)) return when;
   return Number.isNaN(Date.parse(when)) ? '' : dayAndTimeOf(when);
 }
+
+/**
+ * A Portal PDF that may still be generating (quote-pdf, Portal f09e3dc1): 202
+ * is «generating, ask again» after `Retry-After` (the route already waited 6 s);
+ * 401 is an expired token, 404/409 a quote without a document.
+ */
+export type PdfReadiness = 'ready' | 'generating' | 'expired' | 'missing' | 'failed';
+const HTTP_OK = 200;
+const HTTP_PARTIAL = 206;
+const HTTP_ACCEPTED = 202;
+const HTTP_UNAUTHORIZED = 401;
+const HTTP_NOT_FOUND = 404;
+const HTTP_CONFLICT = 409;
+export function pdfReadinessOf(status: number): PdfReadiness {
+  if (status === HTTP_OK || status === HTTP_PARTIAL) return 'ready';
+  if (status === HTTP_ACCEPTED) return 'generating';
+  if (status === HTTP_UNAUTHORIZED) return 'expired';
+  return status === HTTP_NOT_FOUND || status === HTTP_CONFLICT ? 'missing' : 'failed';
+}
+
+const RETRY_DEFAULT_S = 5;
+const RETRY_MAX_S = 10;
+const MS_PER_S = 1000;
+export const retryAfterMsOf = (header: string | null | undefined): number => {
+  const seconds = Number(header);
+  return MS_PER_S * (header && Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds, RETRY_MAX_S) : RETRY_DEFAULT_S);
+};
+
+/** About a minute and a half with the route's own 6 s per try; then it is still «generating». */
+export const PDF_GENERATING_TRIES = 6;
+type PdfAnswer = { status: number; retryAfter?: string | null };
+
+/** Asks until the PDF is there, waiting what Portal says between tries. */
+export async function untilPdfReady(ask: () => Promise<PdfAnswer>, wait: (ms: number) => Promise<void>, tries = PDF_GENERATING_TRIES): Promise<PdfReadiness> {
+  for (let attempt = 1; ; attempt += 1) {
+    const answer = await ask();
+    const readiness = pdfReadinessOf(answer.status);
+    if (readiness !== 'generating' || attempt >= tries) return readiness;
+    await wait(retryAfterMsOf(answer.retryAfter));
+  }
+}
+
+/** What the viewer says when the PDF did not come; «failed» is the download's own message. */
+export const PDF_READINESS_TEXT: Record<'generating' | 'expired' | 'missing', string> = {
+  generating: 'El Portal sigue preparando el PDF. Prueba de nuevo en un minuto.',
+  expired: 'El enlace del PDF venció. Vuelve a abrirlo desde el servicio.',
+  missing: 'Este PDF no existe o todavía no se generó en el Portal.',
+};

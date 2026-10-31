@@ -4995,7 +4995,7 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
-## 180. Canal del cliente: informes por día, cubicaje, obra, inicio, «Recordatorio», valorizaciones y enlaces (31/10/2026, servidor + OTA + web)
+## 180. Canal del cliente: informes por día, cubicaje, obra, inicio, «Recordatorio», valorizaciones, enlaces y PDF que se genera (31/10/2026, servidor + OTA + web)
 
 José probó el canal de CONSORCIO EL ALMIRANTE en el teléfono y pidió ocho cosas. Siete
 salen en este cambio. Subir pagos espera el OK de José.
@@ -5030,6 +5030,9 @@ salen en este cambio. Subir pagos espera el OK de José.
 - «Generar en el Portal» abre `valuations_url`. La valorización no se arma en el teléfono:
   es un documento con montos que se revisa antes de mandarlo.
 - `withoutMoney` del servidor las quita, con su url y su total, a quien no ve montos.
+- Hoy no llegan: Portal ya no tiene valorizaciones. Se fueron con el rubro construcción a
+  constroad/constructora (Portal 530d7763). Que vengan de ahí lo decide José. Sin
+  `valuations` la pestaña no aparece, así que no hay nada vacío a la vista.
 
 **Enlaces del cliente, del pedido y del servicio (pedidos 4, 5 y 6)**
 - Una sola mecánica: la acción de Portal con `values` ya llenos. No hay eventos nuevos.
@@ -5042,13 +5045,28 @@ salen en este cambio. Subir pagos espera el OK de José.
     `{alcance: 'cliente', clienteId}`.
   - «Crear enlace del pedido», en la ficha del pedido: `crear_enlace_cliente` con
     `{alcance: 'pedido', clienteId, pedidoId}`.
-  - «Compartir», en la tarjeta del servicio: `compartir_servicio` con
-    `{clienteId, servicioId}`.
+  - «Enlace del servicio», en la tarjeta del servicio: `crear_enlace_de_servicio` con
+    `{servicioId}` (agentes 31/10).
+  - Con alcance pedido, `clienteId` sobra, pero se manda: Portal comprueba que el pedido
+    sea de ese cliente. `crear_enlace_cliente` es Portal 979e2b86 y José la aprueba.
+  - agentes 43e80a9 pone cada valor como `default` de su campo, también al refrescar.
 - Cada botón sale solo si su acción está encendida en ese canal (el ⚡ del chat). Todo
   nace apagado: un admin la enciende en la ficha de Portal.
 - Al tocarlo se vuelve a la pestaña Chat y se corre la acción ahí. El formulario de Portal
   pregunta pestañas y días. La respuesta, con el enlace, queda «Solo tú ves esto» con
   «Enviar al canal», que la publica en el canal del cliente.
+
+**PDF que todavía se genera (quote-pdf, Portal f09e3dc1)**
+- `quotes[].pdf_url` responde 202 `{status:'generating'}` con `Retry-After: 5` la primera
+  vez o después de editar la cotización. 401 es token vencido; 404 o 409, sin documento.
+- `untilPdfReady` (shared) pregunta otra vez lo que dice `Retry-After` (5 s si falta, 10 s
+  de tope), hasta 6 veces. Si se agota sigue en «generando», no en «falló».
+- App: `downloadAsync` tomaba el 202 como éxito, guardaba el JSON como PDF y el visor decía
+  «No se pudo mostrar». Ahora solo guarda un 200/206. Cada estado tiene su texto, y
+  «generando» ofrece «Reintentar».
+- Web: antes del iframe pide `Range: bytes=0-0`. Mientras la ruta de Portal no mande CORS
+  para lilachat.constroad.com, el fetch falla y el PDF se abre en el iframe como antes.
+  El CORS se pidió a la sesión de Portal.
 
 **Lo que espera**
 - **Subir pagos en Cobranza.** `registrar_pago` mueve dinero y Portal tendría que bajar

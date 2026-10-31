@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chatPdfs, isPdf, pdfCacheName, pdfFailureFrom, PDF_FAILURE_TEXT } from './pdfSource';
+import { chatPdfs, isPdf, pdfCacheName, pdfDownloadCodeOf, pdfFailureFrom, PDF_FAILURE_TEXT } from './pdfSource';
 
 const pdf = (seq: number, extra: object = {}) => ({ seq, at: `2026-10-22T1${seq}:00:00Z`, media: { url: `https://x/${seq}.pdf`, mime: 'application/pdf', fileName: `Plano ${seq}.pdf` }, ...extra });
 
@@ -44,5 +44,16 @@ describe('pdfSource', () => {
     expect(pdfFailureFrom(new Error('boom'))).toBe('damaged');
     expect(pdfFailureFrom(null)).toBe('damaged');
     expect(PDF_FAILURE_TEXT.protected).toContain('contraseña');
+  });
+
+  it('a Portal PDF that did not come says why (quote-pdf: 202 for too long, 401, 404/409); a 5xx is the download\'s', () => {
+    // Act / Assert
+    expect(pdfFailureFrom({ code: 'ERR_PDF_GENERATING' })).toBe('generating');
+    expect(pdfFailureFrom({ code: 'ERR_PDF_EXPIRED' })).toBe('expired');
+    expect(pdfFailureFrom({ code: 'ERR_PDF_MISSING' })).toBe('missing');
+    expect(PDF_FAILURE_TEXT.generating).toContain('preparando');
+    expect(pdfDownloadCodeOf('failed')).toBe('ERR_PDF_DOWNLOAD');
+    expect(pdfDownloadCodeOf('missing')).toBe('ERR_PDF_MISSING');
+    expect(pdfDownloadCodeOf('ready')).toBeNull();
   });
 });

@@ -90,3 +90,24 @@ describe('textoDeAlerta', () => {
     expect(texto).toContain('Rendered more hooks');
   });
 });
+
+/** The alert names the code that crashed, and a crash that comes back on a new update alerts again. */
+describe('the code in the alert', () => {
+  it('the text says which update ran', () => {
+    // Arrange / Act
+    const texto = textoDeAlerta({ ...base, codigo: '3b7f15e9' });
+    // Assert
+    expect(texto).toContain('Código: 3b7f15e9');
+  });
+
+  it('without it, no empty line', () => {
+    // Arrange / Act / Assert
+    expect(textoDeAlerta(base)).not.toContain('Código');
+  });
+
+  it('the same crash on another update is another fingerprint', () => {
+    // Arrange / Act / Assert
+    expect(huellaDeReporte({ ...base, codigo: 'a1' })).not.toBe(huellaDeReporte({ ...base, codigo: 'b2' }));
+    expect(huellaDeReporte(base)).toBe(huellaDeReporte({ ...base }));
+  });
+});

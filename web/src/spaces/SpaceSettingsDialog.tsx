@@ -13,7 +13,7 @@ const NAME_MAX = 60;
  * name, the trade, whether an admin approves who comes in, and a new code
  * (the old one stops working), and its logo: an image, or its initials.
  */
-export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string; onSaved: (space: ClientWorkspace) => void; onClose: () => void }) {
+export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string; onSaved: (space: ClientWorkspace) => void; onClose: () => void; onOpenApp?: (appId: string) => void }) {
   const { space } = props;
   const [name, setName] = useState(space.name);
   const [rubro, setRubro] = useState(space.rubro ?? '');
@@ -95,7 +95,7 @@ export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string
         <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Aprobar a quien entre con el código</span><span className="block text-[12px] leading-4 text-on-surface-variant">Recibirás una solicitud cada vez que alguien nuevo use el código, antes de ver los canales.</span></span>
         <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${approval ? 'bg-primary' : 'bg-outline/40'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-surface shadow transition-transform ${approval ? 'translate-x-[22px]' : 'translate-x-0.5'}`} /></span>
       </button>
-      <IntegrationsSection jwt={props.jwt} spaceId={space.id} />
+      <IntegrationsSection jwt={props.jwt} spaceId={space.id} onOpenApp={props.onOpenApp} />
     </Overlay>
   );
 }

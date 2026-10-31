@@ -72,13 +72,19 @@ export async function medir<T>(op: string, tarea: () => Promise<T>, extra?: Reco
 type ManejadorGlobal = (error: unknown, fatal?: boolean) => void;
 type UtilidadesDeError = { getGlobalHandler?: () => ManejadorGlobal; setGlobalHandler?: (h: ManejadorGlobal) => void };
 
-/** Todo error sin atrapar queda en el log y sigue al manejador de antes. */
-export function instalarCapturaGlobal(): void {
+/**
+ * Todo error sin atrapar queda en el log y sigue al manejador de antes.
+ * `alServidor` (31/10) also sends it to /api/crash: a fatal one used to stay
+ * only in this local log, so «the app closes» left no trace on the server.
+ */
+export function instalarCapturaGlobal(alServidor?: (pantalla: string, error: unknown) => void): void {
   const utilidades = (globalThis as { ErrorUtils?: UtilidadesDeError }).ErrorUtils;
   if (!utilidades?.setGlobalHandler) return;
   const anterior = utilidades.getGlobalHandler?.();
   utilidades.setGlobalHandler((error, fatal) => {
-    void registrarError(error, fatal ? 'fatal' : 'global');
+    const pantalla = fatal ? 'fatal' : 'global';
+    void registrarError(error, pantalla);
+    alServidor?.(pantalla, error);
     anterior?.(error, fatal);
   });
 }

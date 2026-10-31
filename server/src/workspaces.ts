@@ -139,8 +139,13 @@ async function unreadChatsOf(userId: Types.ObjectId, workspaceIds: Types.ObjectI
 }
 
 async function adminIdsOf(workspaceId: Types.ObjectId): Promise<Types.ObjectId[]> {
-  const admins = await WorkspaceMemberModel.find({ workspaceId, status: 'active', role: { $in: ['owner', 'admin'] } }).select('userId').lean();
-  return admins.flatMap((admin) => (admin.userId ? [admin.userId] : []));
+  return activeIdsOf(workspaceId, { role: { $in: ['owner', 'admin'] } });
+}
+
+/** Who is active in the space (and matches `filter`); a pending request is nobody yet. */
+async function activeIdsOf(workspaceId: Types.ObjectId, filter: Record<string, unknown> = {}): Promise<Types.ObjectId[]> {
+  const members = await WorkspaceMemberModel.find({ workspaceId, status: 'active', ...filter }).select('userId').lean();
+  return members.flatMap((member) => (member.userId ? [member.userId] : []));
 }
 
 /** The person's ACTIVE membership in the space, or a 404 that says nothing about the space. */
@@ -248,6 +253,8 @@ export async function updateWorkspace(workspaceId: string, actorId: Types.Object
   if (change.newCode === true) set.joinCode = await uniqueCode(name ?? current.name);
   const updated = await WorkspaceModel.findOneAndUpdate({ _id: current._id }, { $set: set }, { returnDocument: 'after' }).lean<Workspace>();
   if (!updated) throw new WorkspaceError(404, NOT_FOUND);
+  // A new name reaches every member's rail live (deuda §85: they saw it only after reopening).
+  noticeSpacesChanged(await activeIdsOf(updated._id));
   return toClientWorkspace(updated, actor);
 }
 
@@ -263,6 +270,7 @@ export async function setWorkspaceLogo(workspaceId: string, actorId: Types.Objec
   const actor = await logoEditor(workspaceId, actorId);
   const updated = await WorkspaceModel.findOneAndUpdate({ _id: actor.workspaceId }, url ? { $set: { logoUrl: url } } : { $unset: { logoUrl: 1 } }, { returnDocument: 'after' }).lean<Workspace>();
   if (!updated) throw new WorkspaceError(404, NOT_FOUND);
+  noticeSpacesChanged(await activeIdsOf(updated._id));
   return toClientWorkspace(updated, actor);
 }
 

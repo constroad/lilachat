@@ -115,6 +115,43 @@ describe('live notice «workspaces.changed»', () => {
     expect(told.at(-1)).toEqual([String(users.beto)]);
     configureWorkspaceNotices(() => undefined);
   });
+
+  it('a new name or logo tells every active member, so their rail changes without reopening the app', async () => {
+    // Arrange
+    const { configureWorkspaceNotices } = await import('./workspaceNotices.js');
+    const told: string[][] = [];
+    const space = await createSpace();
+    await request(app).post(`/api/workspaces/${space.id}/members`).set('Authorization', jwt('jose')).send({ phone: '987654321' }).expect(201);
+    await request(app).post('/api/workspaces/join').set('Authorization', jwt('beto')).send({ code: space.joinCode }).expect(200);
+    configureWorkspaceNotices((ids) => told.push([...ids].sort()));
+    const everyoneActive = [String(users.jose), String(users.ana)].sort();
+    const png = Buffer.from('89504e470d0a1a0a', 'hex');
+    // Act
+    await request(app).patch(`/api/workspaces/${space.id}`).set('Authorization', jwt('jose')).send({ name: 'CONSTROAD SAC' }).expect(200);
+    const afterRename = told.at(-1);
+    await request(app).post(`/api/workspaces/${space.id}/logo`).set('Authorization', jwt('jose')).attach('file', png, { filename: 'logo.png', contentType: 'image/png' }).expect(200);
+    const afterLogo = told.at(-1);
+    await request(app).delete(`/api/workspaces/${space.id}/logo`).set('Authorization', jwt('jose')).expect(200);
+    // Assert: the pending request (beto) is not told; the active ones are.
+    expect(afterRename).toEqual(everyoneActive);
+    expect(afterLogo).toEqual(everyoneActive);
+    expect(told.at(-1)).toEqual(everyoneActive);
+    configureWorkspaceNotices(() => undefined);
+  });
+
+  it('a change that is refused tells nobody', async () => {
+    // Arrange
+    const { configureWorkspaceNotices } = await import('./workspaceNotices.js');
+    const told: string[][] = [];
+    const space = await createSpace();
+    await request(app).post(`/api/workspaces/${space.id}/members`).set('Authorization', jwt('jose')).send({ phone: '987654321' }).expect(201);
+    configureWorkspaceNotices((ids) => told.push([...ids]));
+    // Act
+    await request(app).patch(`/api/workspaces/${space.id}`).set('Authorization', jwt('ana')).send({ name: 'Otro' }).expect(403);
+    // Assert
+    expect(told).toEqual([]);
+    configureWorkspaceNotices(() => undefined);
+  });
 });
 
 describe('the space logo (e1-12)', () => {

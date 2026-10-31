@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { armarReporte, esReporteValido } from './crashReport.js';
+import { armarReporte, codigoDeReporte, esReporteValido, MAX_PENDING_REPORTS, pendingReportsFrom, queueReport, type CrashReport } from './crashReport.js';
 
 /**
  * Los errores de las apps RN, para que dejen de ser invisibles.
@@ -101,5 +101,85 @@ describe('esReporteValido', () => {
    */
   it('rechaza una app que no conocemos', () => {
     expect(esReporteValido({ ...valido, app: 'la-que-sea' })).toBe(false);
+  });
+});
+
+/**
+ * Which code crashed (31/10): the same APK runs any OTA of its runtime, so the
+ * version alone could not tell whether a phone that kept closing had the fix.
+ */
+describe('the code a report ran', () => {
+  const base = { app: 'lilachat', version: '0.1.175', plataforma: 'android', pantalla: 'app', error: new Error('boom'), enviadoEn: '2026-10-31T00:00:00.000Z' };
+
+  it('carries the OTA update id, or «embedded» for the APK own code', () => {
+    // Arrange / Act
+    const withUpdate = armarReporte({ ...base, codigo: '3b7f15e9-0d1c-4a7e-9a55-12ab34cd56ef' });
+    const embedded = armarReporte({ ...base, codigo: 'embedded' });
+    // Assert
+    expect(withUpdate.codigo).toBe('3b7f15e9-0d1c-4a7e-9a55-12ab34cd56ef');
+    expect(embedded.codigo).toBe('embedded');
+  });
+
+  it('drops anything that is not an id: no spaces, no long text, nothing that could carry data', () => {
+    // Arrange / Act / Assert
+    expect(armarReporte({ ...base, codigo: 'hola José 902049935' }).codigo).toBeUndefined();
+    expect(armarReporte({ ...base, codigo: 'a'.repeat(65) }).codigo).toBeUndefined();
+    expect(armarReporte({ ...base, codigo: '' }).codigo).toBeUndefined();
+    expect(armarReporte(base).codigo).toBeUndefined();
+  });
+
+  it('the server reads it from an untrusted body the same way', () => {
+    // Arrange / Act / Assert
+    expect(codigoDeReporte({ codigo: 'embedded' })).toBe('embedded');
+    expect(codigoDeReporte({ codigo: '<script>' })).toBeUndefined();
+    expect(codigoDeReporte({ codigo: 42 })).toBeUndefined();
+    expect(codigoDeReporte(null)).toBeUndefined();
+  });
+});
+
+/**
+ * Reports that could not leave (31/10): a fatal error closes the app before the
+ * request goes out, and without signal it never did. They wait on the phone
+ * and go at the next start.
+ */
+describe('the reports waiting to leave', () => {
+  const report = (mensaje: string, extra: Partial<CrashReport> = {}): CrashReport => ({ app: 'lilachat', version: '0.1.175', plataforma: 'android', pantalla: 'fatal', mensaje, stack: '', enviadoEn: '2026-10-31T00:00:00.000Z', ...extra });
+
+  it('a new one waits last', () => {
+    // Arrange / Act
+    const queued = queueReport([report('uno')], report('dos'));
+    // Assert
+    expect(queued.map((one) => one.mensaje)).toEqual(['uno', 'dos']);
+  });
+
+  it('the same crash again does not take a second place: the newer one stays', () => {
+    // Arrange / Act
+    const queued = queueReport([report('boom', { enviadoEn: 'antes' }), report('otro')], report('boom', { enviadoEn: 'después' }));
+    // Assert
+    expect(queued.map((one) => [one.mensaje, one.enviadoEn])).toEqual([['otro', '2026-10-31T00:00:00.000Z'], ['boom', 'después']]);
+  });
+
+  it('the same message on another update is another crash', () => {
+    // Arrange / Act
+    const queued = queueReport([report('boom', { codigo: 'a1' })], report('boom', { codigo: 'b2' }));
+    // Assert
+    expect(queued).toHaveLength(2);
+  });
+
+  it('at most the newest ones fit: a phone that crashes in a loop does not fill its storage', () => {
+    // Arrange
+    let queued: CrashReport[] = [];
+    // Act
+    for (let index = 0; index < MAX_PENDING_REPORTS + 5; index += 1) queued = queueReport(queued, report(`error ${index}`));
+    // Assert
+    expect(queued).toHaveLength(MAX_PENDING_REPORTS);
+    expect(queued.at(-1)?.mensaje).toBe(`error ${MAX_PENDING_REPORTS + 4}`);
+  });
+
+  it('what was stored is read back only when it is a report; anything else is dropped', () => {
+    // Arrange / Act / Assert
+    expect(pendingReportsFrom(JSON.stringify([report('uno'), { app: 'otra' }, 'basura']))).toEqual([report('uno')]);
+    expect(pendingReportsFrom('no es json')).toEqual([]);
+    expect(pendingReportsFrom(null)).toEqual([]);
   });
 });

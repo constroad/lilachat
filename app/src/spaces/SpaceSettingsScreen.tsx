@@ -18,7 +18,7 @@ const NAME_MAX = 60;
  * name, the trade, whether an admin approves who comes in, and a new code
  * (the old one stops working), and its logo: an image, or its initials.
  */
-export function SpaceSettingsScreen(props: { space: ClientWorkspace; jwt: string; onSaved: (space: ClientWorkspace) => void; onClose: () => void }) {
+export function SpaceSettingsScreen(props: { space: ClientWorkspace; jwt: string; onSaved: (space: ClientWorkspace) => void; onClose: () => void; onOpenApp?: (appId: string) => void }) {
   const colors = useColores();
   const margins = useMargenes();
   const { space } = props;
@@ -130,7 +130,7 @@ export function SpaceSettingsScreen(props: { space: ClientWorkspace; jwt: string
               <Interruptor testID="ajustes-aprobar" value={approval} onValueChange={setApproval} />
             </View>
           </View>
-          <IntegrationsSection jwt={props.jwt} spaceId={space.id} />
+          <IntegrationsSection jwt={props.jwt} spaceId={space.id} onOpenApp={props.onOpenApp} />
         </ScrollView>
       </View>
     </Modal>

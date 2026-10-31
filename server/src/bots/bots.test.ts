@@ -270,9 +270,11 @@ describe('the bot hears signed events (§c)', () => {
 
   it('uninstalling from Integraciones: app.uninstalled, the token dies and the bot leaves the channel', async () => {
     const { token, botUserId } = await install();
-    expect((await request(app).get(`/api/workspaces/${spaceId}/apps`).set(asJose).expect(200)).body.apps).toMatchObject([{ name: 'Lila', installedBy: 'José' }]);
+    const installation = (await BotInstallationModel.findOne({}).lean())!;
+    // `appId` lets the row open the app's own detail (the directory names it so).
+    expect((await request(app).get(`/api/workspaces/${spaceId}/apps`).set(asJose).expect(200)).body.apps).toMatchObject([{ id: String(installation._id), appId: String(installation.appId), name: 'Lila', installedBy: 'José' }]);
     await request(app).get(`/api/workspaces/${spaceId}/apps`).set(asAna).expect(403);
-    const installationId = (await BotInstallationModel.findOne({}).lean())!._id;
+    const installationId = installation._id;
     await request(app).delete(`/api/workspaces/${spaceId}/apps/${installationId}`).set(asJose).expect(204);
     expect(JSON.parse((await eventOf('app.uninstalled')).body).data).toMatchObject({ by: { id: String(jose), phone: '51902049935' } });
     await request(app).get('/api/bots/me').set(asBot(token)).expect(401);

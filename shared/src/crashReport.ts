@@ -11,6 +11,8 @@
  * de que quien lanzó el error se haya portado bien.
  */
 
+import { huellaDeReporte } from './alerta.js';
+
 /** Las apps que pueden reportar. El endpoint no está autenticado (ver abajo). */
 export const APPS_QUE_REPORTAN = ['lilachat', 'lilastore', 'timon'] as const;
 
@@ -26,7 +28,18 @@ export type CrashReport = {
   mensaje: string;
   stack: string;
   enviadoEn: string;
+  /** The code that ran (31/10): the OTA update id, or `embedded` for the APK's own; the version alone no longer says it. */
+  codigo?: string;
 };
+
+/** An update id or `embedded`: letters, digits, dots and dashes, nothing that could carry a message or a number. */
+const CODE_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
+
+/** The code from an untrusted value (the endpoint is open): an id, or nothing. */
+export function codigoDeReporte(valor: unknown): string | undefined {
+  const codigo = typeof valor === 'object' && valor !== null ? (valor as Record<string, unknown>).codigo : undefined;
+  return typeof codigo === 'string' && CODE_PATTERN.test(codigo) ? codigo : undefined;
+}
 
 export function armarReporte(params: {
   app: string;
@@ -35,6 +48,7 @@ export function armarReporte(params: {
   pantalla: string;
   error: unknown;
   enviadoEn: string;
+  codigo?: string;
 }): CrashReport {
   const { error } = params;
 
@@ -56,6 +70,7 @@ export function armarReporte(params: {
     mensaje: mensaje.slice(0, MAX_MENSAJE),
     stack,
     enviadoEn: params.enviadoEn,
+    ...(codigoDeReporte(params) ? { codigo: codigoDeReporte(params) } : {}),
   };
 }
 
@@ -79,4 +94,30 @@ export function esReporteValido(valor: unknown): boolean {
     texto(dato.version) &&
     texto(dato.mensaje)
   );
+}
+
+/** How many reports a phone keeps while they cannot leave: the newest; a crash loop does not fill its storage. */
+export const MAX_PENDING_REPORTS = 10;
+
+/**
+ * The reports waiting to leave the phone (31/10): a fatal error closes the
+ * app before its request goes out, and without signal it never does. A new
+ * one goes last; the same crash again (same fingerprint) keeps one place,
+ * the newer.
+ */
+export function queueReport(pending: readonly CrashReport[], report: CrashReport): CrashReport[] {
+  const fingerprint = huellaDeReporte(report);
+  const others = pending.filter((one) => huellaDeReporte(one) !== fingerprint);
+  return [...others, report].slice(-MAX_PENDING_REPORTS);
+}
+
+/** What the phone had stored, read back: only what still is a report. */
+export function pendingReportsFrom(stored: string | null): CrashReport[] {
+  if (!stored) return [];
+  try {
+    const parsed: unknown = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed.filter((one): one is CrashReport => esReporteValido(one)) : [];
+  } catch {
+    return [];
+  }
 }

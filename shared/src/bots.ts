@@ -211,7 +211,7 @@ export type DirectoryApp = {
 export type SpaceAppDirectory = { apps: DirectoryApp[]; canInstall: boolean };
 
 /** An app installed in a space, as Integraciones lists it (`GET /api/workspaces/:id/apps`). */
-export type SpaceApp = { id: string; name: string; avatarUrl?: string; installedBy: string | null; installedAt: string; lastDelivery?: { at: string; ok: boolean; error?: string } };
+export type SpaceApp = { id: string; /** The app itself (the directory's `appId`), to open its detail. */ appId: string; name: string; avatarUrl?: string; installedBy: string | null; installedAt: string; lastDelivery?: { at: string; ok: boolean; error?: string } };
 
 /** «Instalada por José · 21 oct.»: who installed it and when. */
 export function appInstalledLine(app: Pick<SpaceApp, 'installedBy' | 'installedAt'>): string {

@@ -514,3 +514,43 @@ describe('la lista dice hasta dónde leí', () => {
     expect(chat).toMatchObject({ readSeq: message.seq, unread: 1 });
   });
 });
+
+/**
+ * Deleted for everyone means its content leaves the database (debt from §102:
+ * a deleted call line kept its `system` and was still drawn). A shared contact
+ * kept the number, a location the coordinates, a bot card its figures.
+ */
+describe('a message deleted for everyone keeps no content', () => {
+  it('a shared location and a contact lose their data; the thread and the reply stay', async () => {
+    // Arrange
+    const { message: root } = await sendMessage({ chatId, senderId: jose, clientKey: 'd-0', body: 'raíz' });
+    const { message } = await sendMessage({ chatId, senderId: jose, clientKey: 'd-1', body: 'aquí' });
+    await MessageModel.updateOne(
+      { chatId, seq: message.seq },
+      { $set: { kind: 'location', location: { lat: -12.05, lng: -77.04 }, contact: { name: 'Ana', phone: '987654321' }, card: { title: 'Saldo' }, system: { evento: 'llamada' }, wink: 'perrito', replyToSeq: root.seq, menciones: [{ userId: String(maria), desde: 0, largo: 4 }], reacciones: [{ userId: String(maria), emoji: '👍', en: new Date() }] } },
+    );
+
+    // Act
+    const outcome = await deleteMessage({ chatId, seq: message.seq, userId: jose });
+
+    // Assert
+    expect(outcome.ok).toBe(true);
+    const stored = await MessageModel.findOne({ chatId, seq: message.seq }).lean();
+    expect(stored).toMatchObject({ kind: 'location', replyToSeq: root.seq });
+    expect(stored?.deletedAt).toBeTruthy();
+    for (const field of ['body', 'location', 'contact', 'card', 'system', 'wink', 'menciones', 'reacciones'] as const) expect(stored?.[field]).toBeUndefined();
+  });
+
+  it('someone else cannot delete it, and the content stays', async () => {
+    // Arrange
+    const { message } = await sendMessage({ chatId, senderId: jose, clientKey: 'd-2', body: 'mío' });
+    await MessageModel.updateOne({ chatId, seq: message.seq }, { $set: { contact: { name: 'Ana', phone: '987654321' } } });
+
+    // Act
+    const outcome = await deleteMessage({ chatId, seq: message.seq, userId: maria });
+
+    // Assert
+    expect(outcome.ok).toBe(false);
+    expect((await MessageModel.findOne({ chatId, seq: message.seq }).lean())?.contact).toMatchObject({ phone: '987654321' });
+  });
+});

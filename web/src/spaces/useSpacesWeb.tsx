@@ -257,6 +257,10 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
           setActivityTab(null);
           params.onOpenMessage(item.chatId, item.seq);
         },
+        openApp: (appId) => {
+          setDialog(null);
+          openDirectory(appId);
+        },
       }}
     />
   );

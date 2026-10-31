@@ -31,7 +31,8 @@ export const VENTANA_DEDUPE_MS = 10 * 60 * 1000;
  * exactamente la forma de que el dedupe no dedupee nada.
  */
 export function huellaDeReporte(reporte: CrashReport): string {
-  return [reporte.app, reporte.version, reporte.pantalla ?? '?', reporte.mensaje].join('|');
+  // The code goes in: the same crash after a new update means the fix did not hold, and that is news.
+  return [reporte.app, reporte.version, reporte.codigo ?? '', reporte.pantalla ?? '?', reporte.mensaje].join('|');
 }
 
 /**
@@ -66,6 +67,7 @@ export function textoDeAlerta(reporte: CrashReport): string {
   const lineas = [
     `🔴 ${reporte.app} ${reporte.version || 'sin versión'} (${reporte.plataforma ?? '?'})`,
     `Pantalla: ${reporte.pantalla ?? '?'}`,
+    ...(reporte.codigo ? [`Código: ${reporte.codigo}`] : []),
     '',
     reporte.mensaje,
   ];

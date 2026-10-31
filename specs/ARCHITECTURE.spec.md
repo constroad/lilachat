@@ -4995,6 +4995,66 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 177. Cinco deudas del as-is: el espacio en vivo, el borrado completo, Integraciones y los errores que se perdían (31/10/2026, servidor + OTA + web)
+
+**El logo y el nombre del espacio, en vivo (deuda de la §85).** Al cambiar el
+nombre o el logo, los miembros lo veían recién al volver a la app o al recargar.
+Ahora `updateWorkspace` y `setWorkspaceLogo` avisan `workspaces.changed` a todos
+los miembros activos (`activeIdsOf` en `workspaces.ts`). Una solicitud pendiente
+no recibe el aviso. Un cambio rechazado (403) no avisa a nadie. La app
+(`useSpacesUi`) y la web (`useSocket`) ya volvían a leer los espacios con ese
+aviso. Tests: `server/src/workspaceAdmin.test.ts` (2).
+
+**«Eliminar para todos» saca todo el contenido.** Antes se borraban solo `body`,
+`envelope` y `media`. El número de un contacto compartido, las coordenadas de
+una ubicación, las cifras de una tarjeta de app, el `system` de una línea de
+llamada, el guiño, las menciones y las reacciones quedaban en la base y se
+servían. Ahora `DELETED_CONTENT` (`chatService.ts`) los quita todos. Quedan
+`kind`, `seq`, la respuesta (`replyToSeq`) y el hilo, para que la conversación
+siga en su lugar. Los dos clientes ya dibujaban un borrado sin leer esos campos
+(`rowKinds.ts`, `isHiddenNotice`). Tests: `server/test/chatService.test.ts` (2).
+
+**Integraciones abre la ficha de la app (deuda de la §151).** Cada app
+instalada en los ajustes del espacio es un botón con su chevron. Abre el
+directorio en la ficha de esa app, con sus pestañas. Para eso,
+`GET /api/workspaces/:id/apps` trae `appId` además del id de la instalación.
+«Desinstalar» sigue siendo un botón aparte.
+- Web: `IntegrationsSection` → `SpaceSettingsDialog` → `SpacesLayer`
+  (`on.openApp`) → `openDirectory(appId)`.
+- App: `IntegrationsSection` → `SpaceSettingsScreen` → `useSpacesUi`
+  (`setAppsInitialId` + `setSheet('apps')`).
+- Tests: `web/src/spaces/IntegrationsSection.test.tsx` (3) y
+  `server/src/bots/bots.test.ts`.
+
+**Cada reporte de error dice qué código corría.** El mismo APK corre cualquier
+OTA de su runtime, así que la versión no decía si el teléfono que «se sigue
+cerrando» ya tenía el arreglo.
+- `CrashReport.codigo` es el id de la OTA, o `embedded` para el código del APK.
+  Solo se acepta con forma de id (`codigoDeReporte`: letras, dígitos, `.`, `_`,
+  `-`, hasta 64), porque el endpoint está abierto.
+- Va en la línea del log (`lilachat@0.1.175+<código>`), en el aviso de
+  Telegram («Código: …») y en la huella. El mismo error en otra OTA vuelve a
+  avisar: el arreglo no aguantó.
+- Tests: `shared/src/crashReport.test.ts` y `shared/src/alerta.test.ts`.
+
+**Los errores fatales llegan al server, y un reporte que no salió espera.**
+- Hallazgo: el manejador global (`instalarCapturaGlobal`) escribía un error
+  fatal solo en el diagnóstico local. Nunca iba a `/api/crash` ni a Telegram.
+  Por eso «la app se cierra» no dejaba rastro en el server.
+- Ahora recibe `reportarAlServidor` desde `index.ts`.
+- `reportarError` guarda el reporte en AsyncStorage
+  (`lilachat.crash.pendientes`) antes de mandarlo, y lo saca al llegar.
+  Cualquier respuesta menor que 500 cuenta como llegada: el server contesta 204
+  también a lo que descarta.
+- Al arrancar, `enviarReportesPendientes()` manda lo que quedó.
+- La cola (`queueReport`, `pendingReportsFrom` en `shared`) guarda los 10 más
+  nuevos. El mismo error ocupa un solo lugar. Lo guardado que no es un reporte
+  se descarta.
+- Los cambios a la cola van de a uno (una promesa encadenada), para que dos
+  reportes juntos no se pisen.
+- **Límite:** si el proceso muere antes de que AsyncStorage escriba, ese
+  reporte se pierde igual. Un crash nativo (no de JS) no pasa por acá.
+
 ## 176. Formularios vivos para el consumo de combustible (30/10/2026 noche, servidor + OTA + web)
 
 Contrato con agentes en `BOTS-API.spec.md` §c-octodecies. Diseños `h-01`…`h-04`.

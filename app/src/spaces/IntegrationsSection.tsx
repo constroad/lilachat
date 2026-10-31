@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Image, Pressable, Text, View } from 'react-native';
-import { AlertTriangle, Bot } from 'lucide-react-native';
+import { AlertTriangle, Bot, ChevronRight } from 'lucide-react-native';
 import { appDeliveryWarning, appInstalledLine, type SpaceApp } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { spaceApps, uninstallApp } from './spacesApi';
@@ -10,9 +10,10 @@ import { AvailableApps } from './AvailableApps';
  * Integraciones in the space's settings, like the web's (`specs/BOTS-API.spec.md`):
  * the installed apps (Lila), who installed them, whether their last event
  * arrived, and «Desinstalar» (confirmed first). Installing starts on the app's
- * own page (agentes), not here.
+ * own page (agentes), not here. Tapping an app opens its own detail with the
+ * tabs (§151); the web's is its twin.
  */
-export function IntegrationsSection(props: { jwt: string; spaceId: string }) {
+export function IntegrationsSection(props: { jwt: string; spaceId: string; onOpenApp?: (appId: string) => void }) {
   const colors = useColores();
   const [apps, setApps] = useState<SpaceApp[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -37,14 +38,17 @@ export function IntegrationsSection(props: { jwt: string; spaceId: string }) {
       {apps?.map((app) => (
         <View key={app.id} testID={`app-${app.id}`} className="mt-3 border-t border-outline/10 pt-3">
           <View className="flex-row items-center gap-3">
-            {app.avatarUrl ? <Image source={{ uri: app.avatarUrl }} style={{ width: 40, height: 40, borderRadius: 10 }} /> : <View className="h-10 w-10 items-center justify-center rounded-xl bg-primary/10"><Bot size={20} color={colors.primary} /></View>}
-            <View className="min-w-0 flex-1">
-              <View className="flex-row items-center gap-1.5">
-                <Text className="text-[15px] font-semibold text-on-surface">{app.name}</Text>
-                <Text className="rounded-md bg-background px-1.5 text-[10px] font-bold text-on-surface-variant">App</Text>
+            <Pressable testID={`abrir-app-${app.id}`} disabled={!props.onOpenApp} accessibilityRole="button" accessibilityLabel={`Ver el detalle de ${app.name}`} onPress={() => props.onOpenApp?.(app.appId)} className="min-h-[44px] min-w-0 flex-1 flex-row items-center gap-3">
+              {app.avatarUrl ? <Image source={{ uri: app.avatarUrl }} style={{ width: 40, height: 40, borderRadius: 10 }} /> : <View className="h-10 w-10 items-center justify-center rounded-xl bg-primary/10"><Bot size={20} color={colors.primary} /></View>}
+              <View className="min-w-0 flex-1">
+                <View className="flex-row items-center gap-1.5">
+                  <Text className="text-[15px] font-semibold text-on-surface">{app.name}</Text>
+                  <Text className="rounded-md bg-background px-1.5 text-[10px] font-bold text-on-surface-variant">App</Text>
+                </View>
+                <Text className="text-[12px] text-on-surface-variant">{appInstalledLine(app)}</Text>
               </View>
-              <Text className="text-[12px] text-on-surface-variant">{appInstalledLine(app)}</Text>
-            </View>
+              {props.onOpenApp ? <ChevronRight size={18} color={colors['on-surface-variant']} /> : null}
+            </Pressable>
             <Pressable testID={`desinstalar-${app.id}`} onPress={() => uninstall(app)} className="min-h-[40px] justify-center rounded-xl border border-error/30 px-3">
               <Text className="text-[14px] font-semibold text-error">Desinstalar</Text>
             </Pressable>

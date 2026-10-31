@@ -308,6 +308,14 @@ export async function chatMemberIds(chatId: Types.ObjectId): Promise<string[]> {
  * de en la app: un cliente modificado se saltea cualquier validación del
  * teléfono, así que la app solo evita el viaje, no protege.
  */
+/**
+ * What «delete for everyone» takes out of the document: everything the message
+ * said or showed. The number of a shared contact, the coordinates of a location
+ * and a bot card's figures used to stay, and a deleted call line kept being
+ * drawn by its `system`. What places it stays: kind, seq, the reply and thread.
+ */
+const DELETED_CONTENT = Object.fromEntries(['body', 'envelope', 'media', 'contact', 'location', 'card', 'system', 'wink', 'menciones', 'reacciones'].map((field) => [field, ''])) as Record<string, ''>;
+
 export async function deleteMessage(params: {
   chatId: string;
   seq: number;
@@ -337,7 +345,7 @@ export async function deleteMessage(params: {
   const actualizado = await MessageModel.findOneAndUpdate(
     { chatId: params.chatId, seq: params.seq },
     // `$unset` y no «poner en vacío»: el campo se va del documento.
-    { $set: { deletedAt: new Date() }, $unset: { body: '', envelope: '', media: '' } },
+    { $set: { deletedAt: new Date() }, $unset: DELETED_CONTENT },
     { returnDocument: 'after' }
   ).lean<Message | null>();
   // Borrado para todos no puede seguir fijado arriba del chat (19/10), y una respuesta de hilo descuenta (E3).

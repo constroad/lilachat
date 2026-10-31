@@ -27,6 +27,9 @@ export function setAppUpdateId(updateId: string | null): void {
   currentUpdate = updateId ?? 'embedded';
 }
 
+/** The code running now, for a crash report: the update id, `embedded`, or '' before start sets it. */
+export const appUpdateId = (): string => currentUpdate;
+
 export function buildHeader(build: number = currentBuild, update: string = currentUpdate): Record<string, string> {
   return {
     ...(build > 0 ? { [BUILD_HEADER]: String(build) } : {}),

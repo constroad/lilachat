@@ -43,6 +43,7 @@ async function appsOf(workspaceId: string) {
   const people = new Map((await UserModel.find({ _id: { $in: installations.map((one) => one.installedBy) } }).select('name').lean()).map((user) => [String(user._id), user.name ?? null]));
   return installations.map((one) => ({
     id: String(one._id),
+    appId: String(one.appId),
     name: apps.get(String(one.appId))?.name ?? 'App',
     ...(apps.get(String(one.appId))?.avatarUrl ? { avatarUrl: apps.get(String(one.appId))!.avatarUrl } : {}),
     installedBy: people.get(String(one.installedBy)) ?? null,

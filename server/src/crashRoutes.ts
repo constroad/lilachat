@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { esReporteValido, type CrashReport } from '@lilachat/shared';
+import { codigoDeReporte, esReporteValido, type CrashReport } from '@lilachat/shared';
 import { alertarCrash } from './alertaTelegram.js';
 import { registro } from './registro.js';
 
@@ -50,10 +50,13 @@ export function buildCrashRouter(): Router {
 
     if (!esReporteValido(req.body)) return res.status(204).end();
 
-    const reporte = req.body as CrashReport;
+    // The body is untrusted: the code is kept only when it looks like an update id.
+    const { codigo: _untrusted, ...rest } = req.body as CrashReport;
+    const codigo = codigoDeReporte(req.body);
+    const reporte: CrashReport = { ...rest, ...(codigo ? { codigo } : {}) };
     // Una sola línea y con prefijo: así se filtra en Torre con un grep.
     registro.error(
-      `[crash] ${reporte.app}@${reporte.version} ${reporte.plataforma ?? '?'} ` +
+      `[crash] ${reporte.app}@${reporte.version}${codigo ? `+${codigo}` : ''} ${reporte.plataforma ?? '?'} ` +
         `${reporte.pantalla ?? '?'} — ${reporte.mensaje}` +
         (reporte.stack ? `\n${reporte.stack}` : '')
     );

@@ -1,3 +1,4 @@
+import { disappearNoticeText } from './disappearing.js';
 import { textoDeLlamada } from './registroDeLlamada.js';
 
 /**
@@ -68,6 +69,10 @@ export function textoDeAviso(params: {
 
     case 'foto':
       return esMio ? 'Cambiaste la foto del grupo' : `${quien} cambió la foto del grupo`;
+
+    // R31/10-B6: the chat's timer, with the key as its value.
+    case 'temporales':
+      return disappearNoticeText(quien, valor, esMio);
 
     // 20/10: cuando suena un recordatorio o se acerca un evento, también queda en el chat.
     case 'recordatorio-suena':

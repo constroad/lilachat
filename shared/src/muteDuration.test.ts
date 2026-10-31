@@ -4,7 +4,7 @@ import { notificationLevel } from './menciones.js';
 
 const NOW = new Date('2026-10-31T15:00:00.000Z');
 
-/** Silenciar por 8 horas, 1 semana o siempre, como WhatsApp (R31/10; §66 lo dejó pendiente). */
+/** Mute for 8 hours, 1 week or always, like WhatsApp (R31/10; §66 left it pending). */
 describe('mutedUntilFor', () => {
   it('8 horas and 1 semana end at a time; siempre has no end', () => {
     expect(mutedUntilFor('8h', NOW)?.toISOString()).toBe('2026-10-31T23:00:00.000Z');

@@ -281,7 +281,7 @@ export function buildChatRouter(uploader: MediaUploader = defaultMediaUploader()
   /**
    * Silenciar / fijar / archivar / marcar no leído un chat, para MÍ.
    *
-   * `PATCH` con `{muted?, pinned?, archived?, markedUnread?, muteFor?}`. Lo usa la
+   * `PATCH` con `{muted?, pinned?, archived?, markedUnread?}`. Lo usa la
    * selección múltiple de la lista. Son ajustes por-usuario: viven en el
    * subdoc del miembro, no en el chat. Lo que no es booleano se ignora.
    */
@@ -296,6 +296,7 @@ export function buildChatRouter(uploader: MediaUploader = defaultMediaUploader()
       archived: soloBooleano(body.archived),
       markedUnread: soloBooleano(body.markedUnread),
       avisos: NOTIFICATION_LEVELS.find((level) => level === body.avisos),
+      // R31/10: how long a mute lasts (8h, 1w, always).
       muteFor: isMuteFor(body.muteFor) ? body.muteFor : undefined,
     });
     if (!r.ok) return res.status(400).json({ message: r.motivo });

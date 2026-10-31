@@ -1,6 +1,6 @@
 /**
- * «Bloqueo de pantalla» de la web, como WhatsApp Web (R31/10; deuda del §163:
- * la app tenía bloqueo y la web no). The password never leaves this browser
+ * The web's «Bloqueo de pantalla», like WhatsApp Web (R31/10; debt of §163:
+ * the app had a lock and the web did not). The password never leaves this browser
  * and is kept only as a salted PBKDF2 hash, per person. It guards the screen
  * from whoever sits at an unattended computer; it is not encryption of the
  * data (the same promise WhatsApp Web makes).

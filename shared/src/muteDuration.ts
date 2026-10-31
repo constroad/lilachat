@@ -1,6 +1,6 @@
 /**
- * Silenciar por 8 horas, 1 semana o siempre, como WhatsApp (R31/10; §66 lo
- * dejó pendiente: el server no tenía silencio por tiempo). The end is stored
+ * Mute for 8 hours, 1 week or always, like WhatsApp (R31/10; §66 left it
+ * pending: the server had no timed mute). The end is stored
  * as `mutedUntil`; past it the chat rings again without anyone writing to the
  * base, because every reader asks `isMutedNow`.
  */
@@ -37,14 +37,10 @@ export function isMutedNow(member: { muted?: boolean; mutedUntil?: Date | string
   return end === null || end > now.getTime();
 }
 
-const formatters = new Map<string, Intl.DateTimeFormat>();
+const formatters: Record<string, Intl.DateTimeFormat> = {};
 function localParts(at: Date, timeZone?: string): { day: string; month: number; year: string; time: string } {
-  const key = timeZone ?? '';
-  let format = formatters.get(key);
-  if (!format) {
-    format = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
-    formatters.set(key, format);
-  }
+  // One formatter per time zone, built once (Hermes builds a new one on every `new Intl.*`).
+  const format = (formatters[timeZone ?? ''] ??= new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }));
   const parts = format.formatToParts(at);
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((one) => one.type === type)?.value ?? '';
   return { day: String(Number(part('day'))), month: Number(part('month')) - 1, year: part('year'), time: `${part('hour')}:${part('minute')}` };

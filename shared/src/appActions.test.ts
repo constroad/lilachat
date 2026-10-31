@@ -44,12 +44,12 @@ describe('the ⚡ of a chat (R31/10: since the clip lost the actions, a chat\'s 
     const channel = { workspaceId: 's1', isGroup: true };
     const appChat = { workspaceId: 's1', isGroup: false, appId: 'a1' };
     const personInSpace = { workspaceId: 's1', isGroup: false };
-    const personalGroup = { workspaceId: null, isGroup: true };
+    const groupOutsideSpace = { workspaceId: null, isGroup: true };
     // Act / Assert
     expect(chatHasActionPlace(channel)).toBe(true);
     expect(chatHasActionPlace(appChat)).toBe(true);
     expect(chatHasActionPlace(personInSpace)).toBe(false);
-    expect(chatHasActionPlace(personalGroup)).toBe(false);
+    expect(chatHasActionPlace(groupOutsideSpace)).toBe(false);
   });
 
   it('lists only the actions (the commands are a «/» away) and leaves out the ones with a place of their own', () => {

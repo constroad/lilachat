@@ -141,14 +141,14 @@ export async function cambiarAjustesDeChat(params: {
   if (level) cambios['members.$.muted'] = level.muted;
   if (level?.avisos) cambios['members.$.avisos'] = level.avisos;
   if (Object.keys(cambios).length === 0) return { ok: false, motivo: 'No hay nada que cambiar.' };
-  const quitar: Record<string, 1> = {};
+  const unset: Record<string, 1> = {};
   // Unmuting (from any client) or choosing a level without «nada» clears it.
-  if ((level && !level.avisos) || params.muted === false) quitar['members.$.avisos'] = 1;
+  if ((level && !level.avisos) || params.muted === false) unset['members.$.avisos'] = 1;
   const end = muteEndOf({ muted: params.muted ?? level?.muted, muteFor: params.muteFor, now: params.now ?? new Date() });
   if (end instanceof Date) cambios['members.$.mutedUntil'] = end;
-  else if (end === 'clear') quitar['members.$.mutedUntil'] = 1;
+  else if (end === 'clear') unset['members.$.mutedUntil'] = 1;
 
-  const r = await ChatModel.updateOne({ _id: params.chatId, 'members.userId': params.quien }, { $set: cambios, ...(Object.keys(quitar).length ? { $unset: quitar } : {}) });
+  const r = await ChatModel.updateOne({ _id: params.chatId, 'members.userId': params.quien }, { $set: cambios, ...(Object.keys(unset).length ? { $unset: unset } : {}) });
   if (r.matchedCount === 0) return { ok: false, motivo: 'No estás en esa conversación.' };
   return { ok: true };
 }

@@ -11,7 +11,7 @@ export type ChatCommands = ReturnType<typeof useChatCommands>;
  * time a line starts with a slash (never polled); the answers only I see live
  * here and die with the screen, like Slack's.
  */
-export function useChatCommands(params: { jwt: string; chatId: string; workspaceId?: string | null; /** A channel or a group: what only I saw can be sent there. */ shareable?: boolean; /** A channel or the chat with an app: its actions are asked on open, for its ⚡ (R31/10). */ actionPlace?: boolean }) {
+export function useChatCommands(params: { jwt: string; chatId: string; workspaceId?: string | null; /** A channel or a group: what only I saw can be sent there. */ shareable?: boolean }) {
   const { jwt, chatId, workspaceId } = params;
   const [groups, setGroups] = useState<CommandGroup[]>([]);
   const [query, setQuery] = useState<string | null>(null);
@@ -39,11 +39,6 @@ export function useChatCommands(params: { jwt: string; chatId: string; workspace
     loaded.current = null;
     setGroups([]);
   }, [chatId, workspaceId]);
-
-  // A chat that can have actions asks once on open: its ⚡ only shows when there is one (R31/10).
-  useEffect(() => {
-    if (params.actionPlace) void load();
-  }, [params.actionPlace, load]);
 
   /** Called on every keystroke: it only sets state when the slash query changes. */
   const onType = useCallback(
@@ -108,4 +103,14 @@ export function useChatCommands(params: { jwt: string; chatId: string; workspace
   /** The chat's ⚡ (R31/10): its actions, asked on open in a channel or the chat with an app. */
   const actions = useMemo(() => chatActionRows(groups), [groups]);
   return { enabled: Boolean(workspaceId), suggestions, onType, runIfCommand, answers: appAnswers.answers, dismiss: appAnswers.dismiss, appAnswers, actions, loadActions: load, share: params.shareable ? share : undefined };
+}
+
+/** A channel or the chat with an app also asks for its actions on open, for its ⚡ (R31/10); a person's chat asks nothing. */
+export function useChatCommandsWithActions(params: Parameters<typeof useChatCommands>[0] & { actionPlace: boolean }): ChatCommands {
+  const commands = useChatCommands(params);
+  const { loadActions } = commands;
+  useEffect(() => {
+    if (params.actionPlace) void loadActions();
+  }, [params.actionPlace, loadActions]);
+  return commands;
 }

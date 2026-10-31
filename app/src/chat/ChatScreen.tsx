@@ -22,7 +22,7 @@ import { useSecretChat } from '../crypto/useSecretChat';
 import { previewDeMensaje, type Row } from './MessageRow';
 import { abrirConOtraApp } from './guardarYCompartir';
 import { Composer, type ComposerHandle } from './Composer';
-import { useChatCommands } from './commands/useChatCommands';
+import { useChatCommandsWithActions } from './commands/useChatCommands';
 import { ChatDetailScreen } from './ChatDetailScreen';
 import { useChat } from './useChat';
 import { GroupCallStrip, useLlamadas } from '../calls/ProveedorDeLlamadas';
@@ -161,7 +161,7 @@ export function ChatScreen({
   const seleccion = useSeleccionDeMensajes(messages);
   const destacados = useDestacadosDelChat({ chatId, jwt: credential.jwt, secreto: Boolean(encrypted) });
   const { ocultos, ocultar } = useOcultos(chatId);
-  const commands = useChatCommands({ jwt: credential.jwt, chatId, workspaceId, shareable: !esBorrador && !otherUserId, actionPlace: !esBorrador && chatHasActionPlace({ workspaceId, isGroup: !otherUserId, appId }) });
+  const commands = useChatCommandsWithActions({ jwt: credential.jwt, chatId, workspaceId, shareable: !esBorrador && !otherUserId, actionPlace: !esBorrador && chatHasActionPlace({ workspaceId, isGroup: !otherUserId, appId }) });
   const [verDetalle, setVerDetalle] = useState(false);
   const [detailSection, setDetailSection] = useState<DetailSection | null>(null);
   // The detail mounts the FIRST time it opens and stays (FL12, §49 #13): it is rarely opened, and staying keeps the animation.

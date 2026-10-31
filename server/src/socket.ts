@@ -482,8 +482,7 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
         const { leido, desmarcado } = await marcarLeidoDetallado({ chatId: payload.chatId, userId, seq: payload.seq });
         // Sin avance pero con la marca de «no leído» quitada: mis otros equipos releen.
         if (!leido) return void (desmarcado && avisarCambioDeChat(me, payload.chatId));
-        // Leer implica entregado: sin esto el doble check gris nunca se
-        // pondria azul si el otro ya lo tenia como entregado.
+        // Reading implies delivered: without it the grey double check would never turn blue.
         // R31/10: with read receipts off in a 1:1, the other only learns «entregado».
         const acuse = { chatId: payload.chatId, userId: String(userId), readSeq: leido, deliveredSeq: leido };
         await broadcastReceipt(payload.chatId, String(userId), acuse, (member, frame) => io.to(userRoom(member)).emit('receipt', frame));

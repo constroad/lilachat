@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createLock, isIdleTooLong, LOCK_AFTER_MINUTES, newPasswordError, passwordMatches, readLock, saveLock } from './screenLock';
 
-/** «Bloqueo de pantalla» de la web, como WhatsApp Web (R31/10; deuda del §163). */
+/** The web's «Bloqueo de pantalla», like WhatsApp Web (R31/10; debt of §163). */
 describe('newPasswordError', () => {
   it('asks for at least 6 characters and the same password twice', () => {
     expect(newPasswordError('12345', '12345')).toBe('Usa al menos 6 caracteres.');

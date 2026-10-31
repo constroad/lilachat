@@ -66,10 +66,19 @@ export function shortcutValuesOf(raw: unknown): ShortcutValues | null | undefine
 /**
  * Portal's link actions (agentes 31/10): the client's or an order's link asks
  * what Portal's modal asks (tabs, days); a service's has an action of its own.
+ * The service report (LIQ-SRV, «Liquidación Final del Servicio») is
+ * `informe_de_servicio`: quote, executed, payments and balance.
  */
 export const CLIENT_LINK_ACTION = 'crear_enlace_cliente';
 export const SERVICE_LINK_ACTION = 'crear_enlace_de_servicio';
-export type LinkTarget = { kind: 'client'; clientId: string } | { kind: 'order'; clientId: string; orderId: string } | { kind: 'service'; clientId: string; serviceId: string };
+export const SERVICE_REPORT_ACTION = 'informe_de_servicio';
+export type LinkTarget =
+  | { kind: 'client'; clientId: string }
+  | { kind: 'order'; clientId: string; orderId: string }
+  | { kind: 'service'; clientId: string; serviceId: string }
+  | { kind: 'serviceReport'; clientId: string; serviceId: string };
+
+const LINK_ACTIONS: Record<LinkTarget['kind'], string> = { client: CLIENT_LINK_ACTION, order: CLIENT_LINK_ACTION, service: SERVICE_LINK_ACTION, serviceReport: SERVICE_REPORT_ACTION };
 
 const linkValuesOf = (target: LinkTarget): ShortcutValues => {
   if (target.kind === 'client') return { alcance: 'cliente', clienteId: target.clientId };
@@ -77,7 +86,7 @@ const linkValuesOf = (target: LinkTarget): ShortcutValues => {
   return { servicioId: target.serviceId };
 };
 
-const linkRowOf = (actions: readonly ShortcutRow[], kind: LinkTarget['kind']) => actions.find((one) => one.kind === 'shortcut' && one.key === (kind === 'service' ? SERVICE_LINK_ACTION : CLIENT_LINK_ACTION));
+const linkRowOf = (actions: readonly ShortcutRow[], kind: LinkTarget['kind']) => actions.find((one) => one.kind === 'shortcut' && one.key === LINK_ACTIONS[kind]);
 
 /** The action of a client's channel that makes that link, with what it already knows; null while it is off there. */
 export function linkActionOf(actions: readonly ShortcutRow[], target: LinkTarget): { row: ShortcutRow; values: ShortcutValues } | null {
@@ -96,6 +105,18 @@ export function channelLinksOf(actions: readonly ShortcutRow[], run: (row: Short
     },
   };
 }
+
+/**
+ * Registering a payment from Cobranza (José 31/10: admins only, no approval
+ * step; Portal 2d0bdea2). Portal refuses it inside a group, and the client's
+ * channel is one: it runs from the space (its ⚡), with the service filled in.
+ */
+export const PAYMENT_ACTION = 'registrar_pago';
+export const paymentValuesOf = (serviceId: string): ShortcutValues => ({ servicioId: serviceId });
+
+/** The answers that came back since the last look, once each: after a payment the detail is asked again. */
+export const answeredSince = (answers: readonly Pick<EphemeralAnswer, 'commandId' | 'state'>[], seen: ReadonlySet<string>): string[] =>
+  answers.filter((answer) => answer.state === 'answered' && !seen.has(answer.commandId)).map((answer) => answer.commandId);
 
 const METERS_PER_KM = 1000;
 

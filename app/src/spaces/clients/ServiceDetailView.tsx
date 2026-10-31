@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronLeft, ExternalLink, FileText } from 'lucide-react-native';
 import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orderGuidesOf, reportGroups, type ChannelLinks, type DetailRow, type DetailTabKey, type ServiceDetail, type SheetFile, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import type { ViewableFile } from '@lilachat/shared';
 import { RecordSheet } from './RecordSheet';
+import { RegisterPayment } from './RegisterPayment';
 import { ServiceBilling } from './ServiceBilling';
 import { ServiceStages } from './ServiceStages';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
@@ -127,7 +128,20 @@ function TabStrip(props: { detail: ServiceDetail; tab: DetailTabKey; onTab: (tab
 const orderLinkAction = (links: ChannelLinks | undefined, tab: DetailTabKey, target: ServiceAskTarget, orderId: string | null) =>
   links?.can('order') && tab === 'orders' && orderId ? { label: 'Crear enlace del pedido', onPress: () => links.open({ kind: 'order', clientId: target.clientId, orderId }) } : undefined;
 
-function DetailTabs({ detail, target, serviceId, onOpenFile, links }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void; links?: ChannelLinks }) {
+/** Above the tab (José 31/10): «Registrar pago» in Cobranza; «Generar informe de servicio» in Informes while Portal's tool exists. */
+function TabActions({ tab, links, target, serviceId, onPaid }: { tab: DetailTabKey; links?: ChannelLinks; target: ServiceAskTarget; serviceId: string; onPaid: () => void }) {
+  const colors = useColores();
+  if (tab === 'billing') return <RegisterPayment jwt={target.jwt} spaceId={target.spaceId} serviceId={serviceId} onPaid={onPaid} />;
+  if (tab !== 'reports' || !links?.can('serviceReport')) return null;
+  return (
+    <Pressable testID="generar-informe-servicio" onPress={() => links.open({ kind: 'serviceReport', clientId: target.clientId, serviceId })} className="min-h-[48px] flex-row items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 px-3">
+      <FileText size={18} color={colors.primary} />
+      <Text className="flex-1 text-[15px] font-semibold text-primary">Generar informe de servicio</Text>
+    </Pressable>
+  );
+}
+
+function DetailTabs({ detail, target, serviceId, onOpenFile, links, onPaid }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void; links?: ChannelLinks; onPaid: () => void }) {
   // José 30/10 night: Cotizaciones and Cobranza first; it opens on the first one that came.
   const [tab, setTab] = useState<DetailTabKey>(() => detailTabs(detail)[0]?.key ?? 'orders');
   const [openId, setOpenId] = useState<string | null>(null);
@@ -144,6 +158,7 @@ function DetailTabs({ detail, target, serviceId, onOpenFile, links }: { detail: 
     <>
       <TabStrip detail={detail} tab={tab} onTab={setTab} />
       {guides.length ? <OrderGuides guides={guides} onOpenFile={onOpenFile} /> : null}
+      <TabActions tab={tab} links={links} target={target} serviceId={serviceId} onPaid={onPaid} />
       {tab === 'billing' && detail.billing ? <ServiceBilling billing={detail.billing} invoices={invoicesOf(detail)} onOpenFile={onOpenFile} /> : (
         <View className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">
           {!rows.length ? <Text className="p-4 text-[14px] text-on-surface-variant">{DETAIL_EMPTY[tab]}</Text> : tab === 'reports' ? <ReportDays detail={detail} onOpen={setOpenId} onOpenFile={onOpenFile} /> : rows.map((row) => <RowView key={row.id} row={row} onOpen={setOpenId} onOpenFile={onOpenFile} />)}
@@ -170,7 +185,10 @@ const Skeleton = () => (
  */
 export function ServiceDetailView(props: { target: ServiceAskTarget; service: SpaceClientService; onBack: () => void; links?: ChannelLinks }) {
   const colors = useColores();
-  const answer = useServiceAsk('detail', props.target, props.service.id);
+  // After a payment the detail is asked again, keeping the open tab (agentes 31/10).
+  const [round, setRound] = useState(0);
+  const askAgain = useCallback(() => setRound((count) => count + 1), []);
+  const answer = useServiceAsk('detail', props.target, props.service.id, round);
   const files = useFileViewer();
   const { onBack } = props;
   // Android's BACK goes back to the list; the last listener added runs first.
@@ -189,7 +207,7 @@ export function ServiceDetailView(props: { target: ServiceAskTarget; service: Sp
       </Pressable>
       <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
       {answer === null ? <Skeleton /> : null}
-      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} onOpenFile={files.open} links={props.links} /> : null}
+      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} onOpenFile={files.open} links={props.links} onPaid={askAgain} /> : null}
       {files.notice ? <Text className="text-center text-[13px] text-error">{files.notice}</Text> : null}
       {files.viewer}
       {answer && !answer.ok ? (

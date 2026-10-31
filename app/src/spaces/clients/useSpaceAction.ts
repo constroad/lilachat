@@ -16,7 +16,7 @@ export function useSpaceAction(jwt: string, spaceId: string, key: string, wanted
     if (!wanted) return;
     let alive = true;
     void spaceCommands(jwt, spaceId, 'space').then((result) => {
-      if (alive) setRow(result.ok ? (placedActionRow(result.data.groups, key) ?? null) : null);
+      if (alive) setRow(result.ok ? (placedActionRow(result.data.groups ?? [], key) ?? null) : null);
     });
     return () => {
       alive = false;

@@ -5,12 +5,15 @@ import { jsonCall } from '../../api/jsonCall';
 
 export type ServiceAskTarget = { jwt: string; spaceId: string; clientId: string };
 
-/** Asked when it opens, never stored (pending 121; José 30/10): agentes asks Portal in the same request. `null` while it loads. */
-export function useServiceAsk<K extends ServiceAskKind>(kind: K, target: ServiceAskTarget, serviceId: string | null): ServiceAskResult<ServiceAskValue<K>> | null {
+/**
+ * Asked when it opens, never stored (pending 121; José 30/10): agentes asks Portal in the same request. `null` while it loads.
+ * A new `round` asks again keeping what is on screen (after a payment, agentes 31/10).
+ */
+export function useServiceAsk<K extends ServiceAskKind>(kind: K, target: ServiceAskTarget, serviceId: string | null, round = 0): ServiceAskResult<ServiceAskValue<K>> | null {
   const { jwt, spaceId, clientId } = target;
   const [answer, setAnswer] = useState<ServiceAskResult<ServiceAskValue<K>> | null>(null);
   useEffect(() => {
-    setAnswer(null);
+    if (round === 0) setAnswer(null);
     if (!serviceId) return undefined;
     let alive = true;
     void jsonCall<ServiceAskBody>(`${BASE_URL}/api${serviceAskPath(spaceId, clientId, serviceId, kind)}`, jwt).then((response) => {
@@ -19,6 +22,6 @@ export function useServiceAsk<K extends ServiceAskKind>(kind: K, target: Service
     return () => {
       alive = false;
     };
-  }, [kind, jwt, spaceId, clientId, serviceId]);
+  }, [kind, jwt, spaceId, clientId, serviceId, round]);
   return answer;
 }

@@ -4997,8 +4997,9 @@ INVENTARIO.
 
 ## 180. Canal del cliente: informes por día, cubicaje, obra, inicio, «Recordatorio», enlaces y PDF que se genera (31/10/2026, servidor + OTA + web)
 
-José probó el canal de CONSORCIO EL ALMIRANTE en el teléfono y pidió ocho cosas. Siete
-salen en este cambio. Subir pagos espera el OK de José.
+José probó el canal de CONSORCIO EL ALMIRANTE en el teléfono y pidió ocho cosas. Seis
+están en vivo. Subir pagos y generar la liquidación ya están cableados y esperan que Portal
+publique sus herramientas y que José las apruebe.
 
 **Primera tanda (65d0283)**
 - **«Recordatorio» en el clip, también en grupos.** Antes decía «Recordatorio del grupo»:
@@ -5023,9 +5024,15 @@ salen en este cambio. Subir pagos espera el OK de José.
 - Hubo una pestaña «Valorizaciones» sobre `valuations[]` (49befca). Se quitó en el mismo
   día. Para José la valorización de un servicio ES su informe de servicio: no es otro
   documento ni viene de constructora.
-- Lo que queda es generar ese informe desde el servicio. Puede ser el mismo
-  `crear_enlace_de_servicio` (la página `/service-report/` de Portal). agentes lo confirma
-  con Portal.
+- Portal lo corrigió el 31/10: es el informe **LIQ-SRV «Liquidación Final del Servicio»**
+  (cotización inicial, monto ejecutado, pagos con sus vouchers y saldo). No es
+  `crear_enlace_de_servicio`, que es el enlace del informe de obra.
+- Uno ya publicado llega en `reports[]` del detalle y su PDF sale como cualquier informe.
+- Para generarlo, Portal fija la herramienta `informe_de_servicio {servicioId}`, todavía sin
+  publicar. «Generar informe de servicio» está en la pestaña Informes y sale solo mientras
+  esa acción esté encendida en el canal (`links.can('serviceReport')`). Hasta que Portal la
+  suba y José la apruebe, no existe y el botón no se ve.
+- Portal aún no define si regenerar pisa una liquidación editada a mano.
 
 **Enlaces del cliente, del pedido y del servicio (pedidos 4, 5 y 6)**
 - Una sola mecánica: la acción de Portal con `values` ya llenos. No hay eventos nuevos.
@@ -5040,6 +5047,8 @@ salen en este cambio. Subir pagos espera el OK de José.
     `{alcance: 'pedido', clienteId, pedidoId}`.
   - «Enlace del servicio», en la tarjeta del servicio: `crear_enlace_de_servicio` con
     `{servicioId}` (agentes 31/10).
+  - «Generar informe de servicio», en la pestaña Informes: `informe_de_servicio` con
+    `{servicioId}` (`LinkTarget` `serviceReport`).
   - Con alcance pedido, `clienteId` sobra, pero se manda: Portal comprueba que el pedido
     sea de ese cliente. `crear_enlace_cliente` es Portal 979e2b86 y José la aprueba.
   - agentes 43e80a9 pone cada valor como `default` de su campo, también al refrescar.
@@ -5067,13 +5076,29 @@ salen en este cambio. Subir pagos espera el OK de José.
   Los dos responden CORS para lilachat.constroad.com: Portal desde aa5d2e6d, lila desde antes.
 - Si no se puede bajar, dice «Ábrelo en otra pestaña» y deja ese enlace.
 
-**Lo que espera**
-- **Subir pagos en Cobranza.** José lo aprobó el 31/10: sin paso de aprobación, solo
-  admins. `registrar_pago` lleva `{servicioId}` o `{pedidoId}` y el voucher con
-  `'x-input': 'photo'` + `'x-gallery': true`. Portal decide quién es admin con su propio
-  permiso; el botón de Lilachat sale solo a quien puede correr la acción (encendida queda
-  «solo admins» por defecto). La respuesta es privada porque lleva montos. Espera que
-  Portal la publique.
+**Registrar pago en Cobranza (José 31/10: solo admins, sin paso de aprobación)**
+- `registrar_pago` es Portal 2d0bdea2. Se abre con `{servicioId}` (`paymentValuesOf`).
+  Esta versión no tiene `pedidoId`: un pedido manda el servicio al que pertenece.
+- **Portal lo rechaza dentro de un grupo, y el canal del cliente es uno.** Por eso el
+  botón corre la acción en el alcance del ESPACIO (`useSpaceAction`, el mismo camino del ⚡
+  y de «Crear un cliente»), no en el canal.
+- El botón «Registrar pago» sale arriba de Cobranza solo si la acción está encendida en el
+  espacio y esa persona puede correrla. Encendida nace «solo admins»; Portal vuelve a
+  comprobar que sea admin de la empresa.
+- El formulario y la respuesta privada (lleva montos) quedan en la misma pestaña.
+  `answeredSince` detecta la respuesta nueva y el detalle se pide otra vez con `round`,
+  sin poner el esqueleto ni cambiar de pestaña.
+- Falta que Portal la publique y que José la apruebe en la consola, porque es nueva.
+
+**Lo que Portal ya no tiene (agentes 6fc3ca5)**
+- El 31/10 el detalle del servicio QA del 29/10 daba «No se pudo traer…»: Portal lo borró
+  en la limpieza QA y no avisó. agentes contestaba 502 `product_failed`.
+- Ahora, si Portal dice `no_existe`, agentes responde 404 `{code: 'not-found'}`. Lilachat
+  dice «Este servicio ya no está en el Portal.» (o «Este cliente…», «Este informe…»),
+  sin enlace al Portal porque también daría 404, y sin «reintentar». Un 502 sigue siendo
+  una falla.
+- Al borrar, Portal manda el PUT del cliente sin ese servicio. `services` se reemplaza
+  entero en cada PUT, así que la tarjeta sale sola del canal.
 
 ## 179. Mensajes temporales, exportar chat, vista previa de avisos, leer todo y formularios sin opciones (31/10/2026, servidor + OTA + web)
 

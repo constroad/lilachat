@@ -13,6 +13,7 @@ const ASK_TIMEOUT_MS = 8_000;
 export const DRIVE_FAILED = 'No se pudo traer el Drive';
 export const DETAIL_FAILED = 'No se pudo traer el detalle del servicio';
 export const ACCOUNT_FAILED = 'No se pudo traer la cuenta del cliente';
+const SERVICE_GONE = 'Este servicio ya no está en el Portal.';
 
 type NotFound = { status: 404; error: string; message: string };
 export type AskOutcome<T> = { ok: true; value: T } | { ok: false; message: string; fallbackUrl: string | null };
@@ -22,7 +23,8 @@ const notFound = (): NotFound => ({ status: 404, error: 'service_not_found', mes
 
 /** What the question needs from the member's access (José 30/10 night): a tab, or seeing money. */
 type Need = RestrictableTab | 'money';
-type ServiceAsk<T> = { event: Extract<BotEventType, `client.${string}.requested`>; parse: (body: unknown) => T | null; failed: string; label: string; need: Need; scrub?: (value: T, seesMoney: boolean) => T };
+/** `gone`: what it says when Portal no longer has it (agentes 6fc3ca5: 404 `not-found`), without a link that would 404 too. */
+type ServiceAsk<T> = { event: Extract<BotEventType, `client.${string}.requested`>; parse: (body: unknown) => T | null; failed: string; gone: string; label: string; need: Need; scrub?: (value: T, seesMoney: boolean) => T };
 
 type AskedService = { client: Pick<ClientChannel, 'appId' | 'chatId' | 'driveUrl' | 'services'>; fallbackUrl: string | null; seesBilling: boolean };
 type Asker = { id: string; name?: string; phone?: string; sees_billing?: true };
@@ -54,6 +56,8 @@ function logUnanswered(label: string, reply: { status?: number | null; error?: s
   console.warn(`[clientes] ${label} sin respuesta:`, reply.status ?? reply.error, typeof code === 'string' ? code : '');
 }
 
+const isGone = (reply: { status?: number | null; body?: unknown }): boolean => reply.status === 404 && (reply.body as { code?: unknown } | null)?.code === 'not-found';
+
 /**
  * Asks the app that owns a client about one of its services, answered in the
  * same request (pending 121 Drive; José 30/10 detail). Nothing is stored: the
@@ -73,6 +77,7 @@ async function askAboutService<T>(ask: ServiceAsk<T>, workspaceId: string, clien
   const value = reply.status === 200 ? ask.parse(reply.body) : null;
   recordLastDelivery(installation._id, value ? { ok: true } : { ok: false, error: reply.error ?? `HTTP ${reply.status}` });
   if (value) return { ok: true, value: ask.scrub ? ask.scrub(value, seesBilling) : value };
+  if (isGone(reply)) return { ok: false, message: ask.gone, fallbackUrl: null };
   logUnanswered(ask.label, reply);
   return { ok: false, message: ask.failed, fallbackUrl };
 }
@@ -85,10 +90,10 @@ function withoutMoney(detail: ServiceDetail, seesMoney: boolean): ServiceDetail 
   return { ...rest, totals: counts };
 }
 
-const FILES: ServiceAsk<ServiceFiles> = { event: 'client.files.requested', parse: serviceFilesOf, failed: DRIVE_FAILED, label: 'Drive del servicio', need: 'files' };
-const DETAIL: ServiceAsk<ServiceDetail> = { event: 'client.service.requested', parse: serviceDetailOf, failed: DETAIL_FAILED, label: 'Detalle del servicio', need: 'services', scrub: withoutMoney };
-const ACCOUNT: ServiceAsk<ClientAccount> = { event: 'client.account.requested', parse: clientAccountOf, failed: ACCOUNT_FAILED, label: 'Cuenta del cliente', need: 'money' };
-const REPORT_PDF: ServiceAsk<ReportPdf> = { event: 'client.report.requested', parse: reportPdfOf, failed: REPORT_PDF_FAILED, label: 'PDF del informe', need: 'services' };
+const FILES: ServiceAsk<ServiceFiles> = { event: 'client.files.requested', parse: serviceFilesOf, failed: DRIVE_FAILED, gone: SERVICE_GONE, label: 'Drive del servicio', need: 'files' };
+const DETAIL: ServiceAsk<ServiceDetail> = { event: 'client.service.requested', parse: serviceDetailOf, failed: DETAIL_FAILED, gone: SERVICE_GONE, label: 'Detalle del servicio', need: 'services', scrub: withoutMoney };
+const ACCOUNT: ServiceAsk<ClientAccount> = { event: 'client.account.requested', parse: clientAccountOf, failed: ACCOUNT_FAILED, gone: 'Este cliente ya no está en el Portal.', label: 'Cuenta del cliente', need: 'money' };
+const REPORT_PDF: ServiceAsk<ReportPdf> = { event: 'client.report.requested', parse: reportPdfOf, failed: REPORT_PDF_FAILED, gone: 'Este informe ya no está en el Portal.', label: 'PDF del informe', need: 'services' };
 
 /** The Drive of a client's service (pending 121, agentes c27e939). */
 export async function clientServiceFiles(workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId): Promise<FilesOutcome | NotFound> {

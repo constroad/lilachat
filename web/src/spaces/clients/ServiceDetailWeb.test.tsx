@@ -108,6 +108,57 @@ describe('ServiceDetailWeb', () => {
     expect(open).toHaveBeenCalledWith({ kind: 'order', clientId: 'cli-cvs', orderId: 'o1' });
   });
 
+  it('Informes has «Generar informe de servicio» while informe_de_servicio is on in the channel (agentes 31/10: LIQ-SRV)', async () => {
+    // Arrange
+    vi.stubGlobal('fetch', reply({ detail }));
+    const open = vi.fn();
+    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} links={{ can: (kind) => kind === 'serviceReport', open }} />);
+    // Act
+    fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
+    fireEvent.click(screen.getByTestId('generar-informe-servicio'));
+    // Assert
+    expect(open).toHaveBeenCalledWith({ kind: 'serviceReport', clientId: 'cli-cvs', serviceId: 'srv-318' });
+  });
+
+  it('no «Generar informe de servicio» while the tool does not exist', async () => {
+    vi.stubGlobal('fetch', reply({ detail }));
+    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} links={{ can: () => false, open: vi.fn() }} />);
+    fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
+    expect(screen.queryByTestId('generar-informe-servicio')).toBeNull();
+  });
+
+  it('«Registrar pago» in Cobranza runs registrar_pago from the space with the service, and asks the detail again after (José 31/10)', async () => {
+    // Arrange
+    const billing = { isCredit: false, total: 1000, collected: 0, pending: 1000, items: [], payments: [] };
+    const groups = [{ appId: 'p1', appName: 'Portal', commands: [], shortcuts: [{ key: 'registrar_pago', name: 'Registrar pago' }] }];
+    const answered = { commandId: 'c1', appId: 'p1', appName: 'Portal', outcome: 'ephemeral', response: { responseType: 'ephemeral', text: 'Pago registrado: S/ 250.00' } };
+    const fetchMock = vi.fn(async (url: string) => {
+      const body = String(url).includes('/commands?place=space') ? { groups } : String(url).endsWith('/shortcuts') ? answered : { detail: { ...detail, billing } };
+      return new Response(JSON.stringify(body), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
+    fireEvent.click(await screen.findByTestId('pestana-detalle-billing'));
+    // Act
+    fireEvent.click(await screen.findByTestId('registrar-pago'));
+    // Assert
+    expect(await screen.findByText('Pago registrado: S/ 250.00')).toBeInTheDocument();
+    const shortcut = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/shortcuts')) as unknown as [string, RequestInit];
+    expect(shortcut[0]).toContain('/api/workspaces/s1/shortcuts');
+    expect(JSON.parse(String(shortcut[1].body))).toMatchObject({ app_id: 'p1', shortcut: 'registrar_pago', values: { servicioId: 'srv-318' } });
+    await vi.waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/detail'))).toHaveLength(2));
+  });
+
+  it('no «Registrar pago» when the action is off in the space or that person may not run it', async () => {
+    const billing = { isCredit: false, total: 1000, collected: 0, pending: 1000, items: [], payments: [] };
+    const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(String(url).includes('/commands?place=space') ? { groups: [] } : { detail: { ...detail, billing } }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
+    fireEvent.click(await screen.findByTestId('pestana-detalle-billing'));
+    await vi.waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/commands?place=space'))).toBe(true));
+    expect(screen.queryByTestId('registrar-pago')).toBeNull();
+  });
+
   it('a row opens its sheet inside Lilachat: an order with its dispatches, Portal only at the foot', async () => {
     vi.stubGlobal('fetch', reply({ detail: { ...detail, dispatches: [{ ...detail.dispatches[0], orderId: 'o1' }] } }));
     render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);

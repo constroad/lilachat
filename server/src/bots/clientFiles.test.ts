@@ -120,6 +120,17 @@ describe('the service detail on demand (José, 30/10: pedidos, despachos e infor
     const failed = await detailOf(jose).expect(200);
     expect(failed.body).toEqual({ error: 'detail_failed', message: 'No se pudo traer el detalle del servicio', portal_url: 'https://portal.example.com/s/318' });
   });
+
+  it('Portal no longer has it (agentes 6fc3ca5: 404 not-found): it says so, without a link that would 404 too', async () => {
+    // Arrange
+    answer = { status: 404, body: { error: 'Esta empresa no tiene ese servicio.', code: 'not-found' } };
+    // Act
+    const detail = await detailOf(jose).expect(200);
+    const files = await filesOf(jose).expect(200);
+    // Assert
+    expect(detail.body).toEqual({ error: 'detail_failed', message: 'Este servicio ya no está en el Portal.', portal_url: null });
+    expect(files.body).toEqual({ error: 'drive_failed', message: 'Este servicio ya no está en el Portal.', drive_url: null });
+  });
 });
 
 

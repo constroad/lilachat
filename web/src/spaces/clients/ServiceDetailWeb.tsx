@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ChevronLeft, ExternalLink, FileText } from 'lucide-react';
 import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orderGuidesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceDetail, type SheetFile, type SpaceClientService } from '@lilachat/shared';
 import { usePortalFileViewer } from './PortalFileViewer';
 import type { OpenSheetFile } from './RecordSheetWeb';
 import { RecordSheetWeb } from './RecordSheetWeb';
+import { RegisterPaymentWeb } from './RegisterPaymentWeb';
 import { ServiceBillingWeb } from './ServiceBillingWeb';
 import { ServiceStagesWeb } from './ServiceStagesWeb';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
@@ -85,6 +86,17 @@ function ReportDays({ detail, onOpen, onOpenFile }: { detail: ServiceDetail; onO
 const orderLinkAction = (links: ChannelLinks | undefined, tab: DetailTabKey, target: ServiceAskTarget, orderId: string | null) =>
   links?.can('order') && tab === 'orders' && orderId ? { label: 'Crear enlace del pedido', onPress: () => links.open({ kind: 'order', clientId: target.clientId, orderId }) } : undefined;
 
+/** Above the tab (José 31/10): «Registrar pago» in Cobranza; «Generar informe de servicio» in Informes while Portal's tool exists. */
+function TabActions({ tab, links, target, serviceId, onPaid }: { tab: DetailTabKey; links?: ChannelLinks; target: ServiceAskTarget; serviceId: string; onPaid: () => void }) {
+  if (tab === 'billing') return <RegisterPaymentWeb jwt={target.jwt} spaceId={target.spaceId} serviceId={serviceId} onPaid={onPaid} />;
+  if (tab !== 'reports' || !links?.can('serviceReport')) return null;
+  return (
+    <button type="button" data-testid="generar-informe-servicio" onClick={() => links.open({ kind: 'serviceReport', clientId: target.clientId, serviceId })} className="flex h-11 w-full items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 text-left text-sm font-semibold text-primary hover:bg-primary/15">
+      <FileText size={16} /> Generar informe de servicio
+    </button>
+  );
+}
+
 /** The open tab's body: «Cobranza» has its own view; the reports go by day; the rest, a row each. */
 function TabBody({ detail, tab, onOpen, onOpenFile }: { detail: ServiceDetail; tab: DetailTabKey; onOpen: (id: string) => void; onOpenFile: OpenSheetFile }) {
   if (tab === 'billing' && detail.billing) return <ServiceBillingWeb billing={detail.billing} invoices={invoicesOf(detail)} onOpenFile={onOpenFile} />;
@@ -96,7 +108,7 @@ function TabBody({ detail, tab, onOpen, onOpenFile }: { detail: ServiceDetail; t
   );
 }
 
-function DetailTabs({ detail, target, serviceId, links }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; links?: ChannelLinks }) {
+function DetailTabs({ detail, target, serviceId, links, onPaid }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; links?: ChannelLinks; onPaid: () => void }) {
   // José 30/10 night: Cotizaciones and Cobranza first; it opens on the first one that came.
   const [tab, setTab] = useState<DetailTabKey>(() => detailTabs(detail)[0]?.key ?? 'orders');
   const viewer = usePortalFileViewer();
@@ -118,6 +130,7 @@ function DetailTabs({ detail, target, serviceId, links }: { detail: ServiceDetai
         ))}
       </div>
       {guides.length ? <OrderGuides guides={guides} onOpenFile={viewer.open} /> : null}
+      <TabActions tab={tab} links={links} target={target} serviceId={serviceId} onPaid={onPaid} />
       <TabBody detail={detail} tab={tab} onOpen={setOpenId} onOpenFile={viewer.open} />
       {viewer.viewer}
       {sheet ? <RecordSheetWeb sheet={sheet} onClose={close} onOpenFile={viewer.open} pdf={sheet.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, readyUrl: reportPdf.readyUrl, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!) } : undefined} action={orderLinkAction(links, tab, target, openId)} /> : null}
@@ -133,13 +146,16 @@ function DetailTabs({ detail, target, serviceId, links }: { detail: ServiceDetai
  * Pedidos · Despachos · Informes with Portal's counts. Asked when it opens.
  */
 export function ServiceDetailWeb(props: { target: ServiceAskTarget; service: SpaceClientService; onBack: () => void; links?: ChannelLinks }) {
-  const answer = useServiceAsk('detail', props.target, props.service.id);
+  // After a payment the detail is asked again, keeping the open tab (agentes 31/10).
+  const [round, setRound] = useState(0);
+  const askAgain = useCallback(() => setRound((count) => count + 1), []);
+  const answer = useServiceAsk('detail', props.target, props.service.id, round);
   return (
     <div data-testid="detalle-servicio" className="mx-auto flex max-w-3xl flex-col gap-3">
       <button type="button" data-testid="volver-a-servicios" onClick={props.onBack} className="inline-flex items-center gap-1 self-start text-sm font-semibold text-primary"><ChevronLeft size={16} /> Servicios</button>
       <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
       {answer === null ? <div data-testid="detalle-cargando" className="h-48 animate-pulse rounded-xl bg-surface" /> : null}
-      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} links={props.links} /> : null}
+      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} links={props.links} onPaid={askAgain} /> : null}
       {answer && !answer.ok ? (
         <div data-testid="detalle-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm">
           <p className="mb-2 font-semibold">{answer.message}</p>

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { channelLinksOf, chatActionRows, chatHasActionPlace, evidenceLine, formSubmitOutcome, geoPointOf, linkActionOf, photoStampLines, placedActionRow, precisionLabel, quickActionRows, shortcutRows, shortcutValuesOf, submitLabelOf } from './appActions.js';
+import { answeredSince, channelLinksOf, chatActionRows, chatHasActionPlace, evidenceLine, formSubmitOutcome, geoPointOf, linkActionOf, paymentValuesOf, photoStampLines, placedActionRow, precisionLabel, quickActionRows, shortcutRows, shortcutValuesOf, submitLabelOf } from './appActions.js';
 import type { FormField } from './appForms.js';
 import type { CommandGroup, CommandOutcome } from './botCommands.js';
 
@@ -167,6 +167,37 @@ describe('a link from a client\'s channel (José 31/10: «crear el enlace del pe
     // Assert
     expect(linkActionOf(onlyShare, { kind: 'client', clientId: 'cli-1' })).toBeNull();
     expect(linkActionOf([], { kind: 'service', clientId: 'cli-1', serviceId: 'srv-3' })).toBeNull();
+  });
+});
+
+describe('the service report and the payment (agentes 31/10: informe_de_servicio, registrar_pago)', () => {
+  it('«Generar informe de servicio» runs informe_de_servicio with the service, and only shows while it is in the channel', () => {
+    // Arrange
+    const run = vi.fn();
+    const on = chatActionRows([{ appId: 'p1', appName: 'Portal', commands: [], shortcuts: [{ key: 'informe_de_servicio', name: 'Informe de servicio' }] }]);
+    // Act
+    channelLinksOf(on, run).open({ kind: 'serviceReport', clientId: 'cli-1', serviceId: 'srv-3' });
+    // Assert
+    expect(run).toHaveBeenCalledWith(expect.objectContaining({ key: 'informe_de_servicio' }), { servicioId: 'srv-3' });
+    // Until Portal publishes it and José approves it, the tool does not exist: no button.
+    expect(channelLinksOf([], run).can('serviceReport')).toBe(false);
+    expect(channelLinksOf(on, run).can('service')).toBe(false);
+  });
+
+  it('a payment opens with the service; from an order it is that order\'s service (no pedidoId in this version)', () => {
+    expect(paymentValuesOf('srv-3')).toEqual({ servicioId: 'srv-3' });
+  });
+
+  it('answeredSince: the answers that came back since the last look, once each; a form or a failure is not a payment', () => {
+    // Arrange
+    const base = { appName: 'Portal', command: '' };
+    const answers = [{ ...base, commandId: 'c1', state: 'answered' as const }, { ...base, commandId: 'c2', state: 'form' as const }, { ...base, commandId: 'c3', state: 'failed' as const }];
+    // Act
+    const first = answeredSince(answers, new Set());
+    const again = answeredSince(answers, new Set(['c1']));
+    // Assert
+    expect(first).toEqual(['c1']);
+    expect(again).toEqual([]);
   });
 });
 

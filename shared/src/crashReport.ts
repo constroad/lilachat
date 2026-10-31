@@ -29,16 +29,16 @@ export type CrashReport = {
   stack: string;
   enviadoEn: string;
   /** The code that ran (31/10): the OTA update id, or `embedded` for the APK's own; the version alone no longer says it. */
-  codigo?: string;
+  code?: string;
 };
 
 /** An update id or `embedded`: letters, digits, dots and dashes, nothing that could carry a message or a number. */
 const CODE_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
 
 /** The code from an untrusted value (the endpoint is open): an id, or nothing. */
-export function codigoDeReporte(valor: unknown): string | undefined {
-  const codigo = typeof valor === 'object' && valor !== null ? (valor as Record<string, unknown>).codigo : undefined;
-  return typeof codigo === 'string' && CODE_PATTERN.test(codigo) ? codigo : undefined;
+export function reportCode(value: unknown): string | undefined {
+  const code = typeof value === 'object' && value !== null ? (value as Record<string, unknown>).code : undefined;
+  return typeof code === 'string' && CODE_PATTERN.test(code) ? code : undefined;
 }
 
 export function armarReporte(params: {
@@ -48,7 +48,7 @@ export function armarReporte(params: {
   pantalla: string;
   error: unknown;
   enviadoEn: string;
-  codigo?: string;
+  code?: string;
 }): CrashReport {
   const { error } = params;
 
@@ -70,7 +70,7 @@ export function armarReporte(params: {
     mensaje: mensaje.slice(0, MAX_MENSAJE),
     stack,
     enviadoEn: params.enviadoEn,
-    ...(codigoDeReporte(params) ? { codigo: codigoDeReporte(params) } : {}),
+    ...(reportCode(params) ? { code: reportCode(params) } : {}),
   };
 }
 

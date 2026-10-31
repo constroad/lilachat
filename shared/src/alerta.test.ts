@@ -95,9 +95,9 @@ describe('textoDeAlerta', () => {
 describe('the code in the alert', () => {
   it('the text says which update ran', () => {
     // Arrange / Act
-    const texto = textoDeAlerta({ ...base, codigo: '3b7f15e9' });
+    const text = textoDeAlerta({ ...base, code: '3b7f15e9' });
     // Assert
-    expect(texto).toContain('Código: 3b7f15e9');
+    expect(text).toContain('Código: 3b7f15e9');
   });
 
   it('without it, no empty line', () => {
@@ -107,7 +107,7 @@ describe('the code in the alert', () => {
 
   it('the same crash on another update is another fingerprint', () => {
     // Arrange / Act / Assert
-    expect(huellaDeReporte({ ...base, codigo: 'a1' })).not.toBe(huellaDeReporte({ ...base, codigo: 'b2' }));
+    expect(huellaDeReporte({ ...base, code: 'a1' })).not.toBe(huellaDeReporte({ ...base, code: 'b2' }));
     expect(huellaDeReporte(base)).toBe(huellaDeReporte({ ...base }));
   });
 });

@@ -85,17 +85,26 @@ export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string
         {!rubro ? <option value="">Sin rubro</option> : null}
         {SPACE_RUBROS.map((option) => <option key={option} value={option}>{option}</option>)}
       </select>
-      <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Ingreso</p>
-      <div className="mt-2 flex items-center gap-3 rounded-xl bg-background p-3">
-        <KeyRound size={16} className="text-primary" />
-        <span data-testid="codigo-ajustes" className="flex-1 select-all font-mono text-lg font-bold tracking-widest">{code}</span>
-        <button type="button" data-testid="ajustes-cambiar-codigo" disabled={busy} onClick={newCode} className="h-9 rounded-lg border border-outline/25 bg-surface px-3 text-sm font-semibold text-primary">Cambiar código</button>
-      </div>
-      <button type="button" role="switch" aria-checked={approval} data-testid="ajustes-aprobar" onClick={() => setApproval((before) => !before)} className="mt-3 flex w-full items-center gap-3 rounded-xl border border-outline/20 p-3 text-left">
-        <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Aprobar a quien entre con el código</span><span className="block text-[12px] leading-4 text-on-surface-variant">Recibirás una solicitud cada vez que alguien nuevo use el código, antes de ver los canales.</span></span>
-        <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${approval ? 'bg-primary' : 'bg-outline/40'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-surface shadow transition-transform ${approval ? 'translate-x-[22px]' : 'translate-x-0.5'}`} /></span>
-      </button>
+      <JoinSection code={code} approval={approval} busy={busy} onNewCode={newCode} onApproval={() => setApproval((before) => !before)} />
       <IntegrationsSection jwt={props.jwt} spaceId={space.id} onOpenApp={props.onOpenApp} />
     </Overlay>
+  );
+}
+
+/** «Ingreso»: the code to come in and whether an admin approves who uses it. */
+function JoinSection(props: { code?: string; approval: boolean; busy: boolean; onNewCode: () => void; onApproval: () => void }) {
+  return (
+    <>
+    <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Ingreso</p>
+    <div className="mt-2 flex items-center gap-3 rounded-xl bg-background p-3">
+      <KeyRound size={16} className="text-primary" />
+      <span data-testid="codigo-ajustes" className="flex-1 select-all font-mono text-lg font-bold tracking-widest">{props.code}</span>
+      <button type="button" data-testid="ajustes-cambiar-codigo" disabled={props.busy} onClick={props.onNewCode} className="h-9 rounded-lg border border-outline/25 bg-surface px-3 text-sm font-semibold text-primary">Cambiar código</button>
+    </div>
+    <button type="button" role="switch" aria-checked={props.approval} data-testid="ajustes-aprobar" onClick={props.onApproval} className="mt-3 flex w-full items-center gap-3 rounded-xl border border-outline/20 p-3 text-left">
+      <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Aprobar a quien entre con el código</span><span className="block text-[12px] leading-4 text-on-surface-variant">Recibirás una solicitud cada vez que alguien nuevo use el código, antes de ver los canales.</span></span>
+      <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${props.approval ? 'bg-primary' : 'bg-outline/40'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-surface shadow transition-transform ${props.approval ? 'translate-x-[22px]' : 'translate-x-0.5'}`} /></span>
+    </button>
+    </>
   );
 }

@@ -88,51 +88,70 @@ export function SpaceSettingsScreen(props: { space: ClientWorkspace; jwt: string
             <Text className="flex-1 text-[14px] text-on-surface-variant">{`${membersLabel(space.members)} activos`}</Text>
           </View>
           {error ? <Text testID="error-ajustes-espacio" className="mt-3 text-[13px] text-error">{error}</Text> : null}
-          <View className="mt-3 rounded-2xl border border-outline/15 bg-surface p-4">
-            <Text className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Espacio</Text>
-            <View className="mt-3 flex-row items-center gap-3">
-              <SpaceLogo space={{ name: clean || space.name, logoUrl }} size={56} />
-              <View className="min-w-0 flex-1">
-                <Text className="text-[14px] font-semibold text-on-surface">Logo del espacio</Text>
-                <Text className="text-[12px] text-on-surface-variant">Una imagen cuadrada, o las iniciales del nombre.</Text>
-                <View className="mt-2 flex-row gap-2">
-                  <Pressable testID="ajustes-cambiar-logo" disabled={busy} onPress={() => void changeLogo()} className="min-h-[40px] justify-center rounded-xl border border-outline/25 px-3"><Text className="text-[14px] font-semibold text-on-surface">Cambiar logo</Text></Pressable>
-                  {logoUrl ? <Pressable testID="ajustes-quitar-logo" disabled={busy} onPress={() => void removeLogo()} className="min-h-[40px] justify-center px-2"><Text className="text-[14px] font-semibold text-on-surface-variant">Restablecer</Text></Pressable> : null}
-                </View>
-              </View>
-            </View>
-            <Text className="mb-1.5 mt-4 text-[14px] font-semibold text-on-surface">Nombre del espacio</Text>
-            <TextInput testID="input-nombre-ajustes" value={name} onChangeText={setName} maxLength={NAME_MAX} className="min-h-[48px] rounded-xl border border-outline/25 bg-background px-3 text-[16px] text-on-surface" />
-            <Text className="mb-1.5 mt-4 text-[14px] font-semibold text-on-surface">Rubro</Text>
-            <View className="flex-row flex-wrap gap-2">
-              {SPACE_RUBROS.map((option) => (
-                <Pressable key={option} testID={`ajustes-rubro-${option}`} onPress={() => setRubro(option)} className={`min-h-[40px] justify-center rounded-xl border px-3 ${rubro === option ? 'border-primary bg-primary/10' : 'border-outline/20'}`}>
-                  <Text className={`text-[14px] font-semibold ${rubro === option ? 'text-primary' : 'text-on-surface'}`}>{option}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-          <View className="mt-4 rounded-2xl border border-outline/15 bg-surface p-4">
-            <Text className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Ingreso</Text>
-            <Text className="mb-2 mt-3 text-[14px] font-semibold text-on-surface">Código de ingreso</Text>
-            <View className="flex-row items-center gap-3 rounded-xl bg-background p-3">
-              <KeyRound size={18} color={colors.primary} />
-              <Text testID="codigo-ajustes" selectable className="flex-1 font-mono text-[20px] font-bold tracking-widest text-on-surface">{code}</Text>
-              <Pressable testID="ajustes-cambiar-codigo" disabled={busy} onPress={newCode} className="min-h-[40px] justify-center rounded-xl border border-outline/25 bg-surface px-3">
-                <Text className="text-[14px] font-semibold text-primary">Cambiar código</Text>
-              </Pressable>
-            </View>
-            <View className="mt-4 flex-row items-center gap-3 border-t border-outline/10 pt-4">
-              <View className="min-w-0 flex-1">
-                <Text className="text-[15px] font-semibold text-on-surface">Aprobar a quien entre con el código</Text>
-                <Text className="mt-0.5 text-[13px] text-on-surface-variant">Recibirás una solicitud cada vez que alguien nuevo use el código, antes de ver los canales.</Text>
-              </View>
-              <Interruptor testID="ajustes-aprobar" value={approval} onValueChange={setApproval} />
-            </View>
-          </View>
+          <IdentitySection space={space} name={name} rubro={rubro} logoUrl={logoUrl} busy={busy} onName={setName} onRubro={setRubro} onChangeLogo={() => void changeLogo()} onRemoveLogo={() => void removeLogo()} />
+          <JoinSection code={code} approval={approval} busy={busy} onNewCode={newCode} onApproval={setApproval} />
           <IntegrationsSection jwt={props.jwt} spaceId={space.id} onOpenApp={props.onOpenApp} />
         </ScrollView>
       </View>
     </Modal>
+  );
+}
+
+type IdentityProps = { space: ClientWorkspace; name: string; rubro: string; logoUrl?: string; busy: boolean; onName: (name: string) => void; onRubro: (rubro: string) => void; onChangeLogo: () => void; onRemoveLogo: () => void };
+
+/** «Espacio»: its logo, name and trade. */
+function IdentitySection(props: IdentityProps) {
+  return (
+    <View className="mt-3 rounded-2xl border border-outline/15 bg-surface p-4">
+      <Text className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Espacio</Text>
+      <View className="mt-3 flex-row items-center gap-3">
+        <SpaceLogo space={{ name: props.name.trim() || props.space.name, logoUrl: props.logoUrl }} size={56} />
+        <View className="min-w-0 flex-1">
+          <Text className="text-[14px] font-semibold text-on-surface">Logo del espacio</Text>
+          <Text className="text-[12px] text-on-surface-variant">Una imagen cuadrada, o las iniciales del nombre.</Text>
+          <View className="mt-2 flex-row gap-2">
+            <Pressable testID="ajustes-cambiar-logo" disabled={props.busy} onPress={() => props.onChangeLogo()} className="min-h-[40px] justify-center rounded-xl border border-outline/25 px-3"><Text className="text-[14px] font-semibold text-on-surface">Cambiar logo</Text></Pressable>
+            {props.logoUrl ? <Pressable testID="ajustes-quitar-logo" disabled={props.busy} onPress={() => props.onRemoveLogo()} className="min-h-[40px] justify-center px-2"><Text className="text-[14px] font-semibold text-on-surface-variant">Restablecer</Text></Pressable> : null}
+          </View>
+        </View>
+      </View>
+      <Text className="mb-1.5 mt-4 text-[14px] font-semibold text-on-surface">Nombre del espacio</Text>
+      <TextInput testID="input-nombre-ajustes" value={props.name} onChangeText={props.onName} maxLength={NAME_MAX} className="min-h-[48px] rounded-xl border border-outline/25 bg-background px-3 text-[16px] text-on-surface" />
+      <Text className="mb-1.5 mt-4 text-[14px] font-semibold text-on-surface">Rubro</Text>
+      <View className="flex-row flex-wrap gap-2">
+        {SPACE_RUBROS.map((option) => (
+          <Pressable key={option} testID={`ajustes-rubro-${option}`} onPress={() => props.onRubro(option)} className={`min-h-[40px] justify-center rounded-xl border px-3 ${props.rubro === option ? 'border-primary bg-primary/10' : 'border-outline/20'}`}>
+            <Text className={`text-[14px] font-semibold ${props.rubro === option ? 'text-primary' : 'text-on-surface'}`}>{option}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+type JoinProps = { code?: string; approval: boolean; busy: boolean; onNewCode: () => void; onApproval: (approval: boolean) => void };
+
+/** «Ingreso»: the code to come in and whether an admin approves who uses it. */
+function JoinSection(props: JoinProps) {
+  const colors = useColores();
+  return (
+    <View className="mt-4 rounded-2xl border border-outline/15 bg-surface p-4">
+      <Text className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Ingreso</Text>
+      <Text className="mb-2 mt-3 text-[14px] font-semibold text-on-surface">Código de ingreso</Text>
+      <View className="flex-row items-center gap-3 rounded-xl bg-background p-3">
+        <KeyRound size={18} color={colors.primary} />
+        <Text testID="codigo-ajustes" selectable className="flex-1 font-mono text-[20px] font-bold tracking-widest text-on-surface">{props.code}</Text>
+        <Pressable testID="ajustes-cambiar-codigo" disabled={props.busy} onPress={props.onNewCode} className="min-h-[40px] justify-center rounded-xl border border-outline/25 bg-surface px-3">
+          <Text className="text-[14px] font-semibold text-primary">Cambiar código</Text>
+        </Pressable>
+      </View>
+      <View className="mt-4 flex-row items-center gap-3 border-t border-outline/10 pt-4">
+        <View className="min-w-0 flex-1">
+          <Text className="text-[15px] font-semibold text-on-surface">Aprobar a quien entre con el código</Text>
+          <Text className="mt-0.5 text-[13px] text-on-surface-variant">Recibirás una solicitud cada vez que alguien nuevo use el código, antes de ver los canales.</Text>
+        </View>
+        <Interruptor testID="ajustes-aprobar" value={props.approval} onValueChange={props.onApproval} />
+      </View>
+    </View>
   );
 }

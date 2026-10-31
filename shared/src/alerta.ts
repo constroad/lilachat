@@ -32,7 +32,7 @@ export const VENTANA_DEDUPE_MS = 10 * 60 * 1000;
  */
 export function huellaDeReporte(reporte: CrashReport): string {
   // The code goes in: the same crash after a new update means the fix did not hold, and that is news.
-  return [reporte.app, reporte.version, reporte.codigo ?? '', reporte.pantalla ?? '?', reporte.mensaje].join('|');
+  return [reporte.app, reporte.version, reporte.code ?? '', reporte.pantalla ?? '?', reporte.mensaje].join('|');
 }
 
 /**
@@ -67,7 +67,7 @@ export function textoDeAlerta(reporte: CrashReport): string {
   const lineas = [
     `🔴 ${reporte.app} ${reporte.version || 'sin versión'} (${reporte.plataforma ?? '?'})`,
     `Pantalla: ${reporte.pantalla ?? '?'}`,
-    ...(reporte.codigo ? [`Código: ${reporte.codigo}`] : []),
+    ...(reporte.code ? [`Código: ${reporte.code}`] : []),
     '',
     reporte.mensaje,
   ];

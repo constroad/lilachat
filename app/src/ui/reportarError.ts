@@ -26,33 +26,33 @@ const PENDING_KEY = 'lilachat.crash.pendientes';
 export function reportarError(pantalla: string, error: unknown): void {
   // También al diagnóstico de LilaStore: ahí se miran errores y tiempos juntos.
   void registrarError(error, pantalla);
-  reportarAlServidor(pantalla, error);
+  reportToServer(pantalla, error);
 }
 
 /**
  * Only the server's report (the global handler already wrote the diagnostic).
  * Stored first and sent after: if the app dies on the way, the next start sends it.
  */
-export function reportarAlServidor(pantalla: string, error: unknown): void {
+export function reportToServer(screen: string, error: unknown): void {
   const reporte = armarReporte({
     app: 'lilachat',
     version: Constants.expoConfig?.version ?? '',
     plataforma: Platform.OS,
-    pantalla,
+    pantalla: screen,
     error,
     enviadoEn: new Date().toISOString(),
     // Which OTA crashed (31/10): «the app keeps closing» needs to know if the phone had the fix.
-    codigo: appUpdateId(),
+    code: appUpdateId(),
   });
-  void enqueue((pending) => queueReport(pending, reporte)).then(enviarReportesPendientes);
+  void enqueue((pending) => queueReport(pending, reporte)).then(sendPendingReports);
 
   // También al log local: con `adb logcat` se ve al instante, sin esperar al
   // server ni depender de que haya red.
-  console.error(`[crash] ${pantalla} — ${reporte.mensaje}`);
+  console.error(`[crash] ${screen} — ${reporte.mensaje}`);
 }
 
 /** At start and after each new report: what is waiting goes, and only what did not arrive stays. */
-export function enviarReportesPendientes(): Promise<void> {
+export function sendPendingReports(): Promise<void> {
   return enqueue(async (pending) => {
     const delivered = await Promise.all(pending.map(sendReport));
     return pending.filter((_report, index) => !delivered[index]);

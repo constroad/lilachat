@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { armarReporte, codigoDeReporte, esReporteValido, MAX_PENDING_REPORTS, pendingReportsFrom, queueReport, type CrashReport } from './crashReport.js';
+import { armarReporte, reportCode, esReporteValido, MAX_PENDING_REPORTS, pendingReportsFrom, queueReport, type CrashReport } from './crashReport.js';
 
 /**
  * Los errores de las apps RN, para que dejen de ser invisibles.
@@ -113,27 +113,27 @@ describe('the code a report ran', () => {
 
   it('carries the OTA update id, or «embedded» for the APK own code', () => {
     // Arrange / Act
-    const withUpdate = armarReporte({ ...base, codigo: '3b7f15e9-0d1c-4a7e-9a55-12ab34cd56ef' });
-    const embedded = armarReporte({ ...base, codigo: 'embedded' });
+    const withUpdate = armarReporte({ ...base, code: '3b7f15e9-0d1c-4a7e-9a55-12ab34cd56ef' });
+    const embedded = armarReporte({ ...base, code: 'embedded' });
     // Assert
-    expect(withUpdate.codigo).toBe('3b7f15e9-0d1c-4a7e-9a55-12ab34cd56ef');
-    expect(embedded.codigo).toBe('embedded');
+    expect(withUpdate.code).toBe('3b7f15e9-0d1c-4a7e-9a55-12ab34cd56ef');
+    expect(embedded.code).toBe('embedded');
   });
 
   it('drops anything that is not an id: no spaces, no long text, nothing that could carry data', () => {
     // Arrange / Act / Assert
-    expect(armarReporte({ ...base, codigo: 'hola José 902049935' }).codigo).toBeUndefined();
-    expect(armarReporte({ ...base, codigo: 'a'.repeat(65) }).codigo).toBeUndefined();
-    expect(armarReporte({ ...base, codigo: '' }).codigo).toBeUndefined();
-    expect(armarReporte(base).codigo).toBeUndefined();
+    expect(armarReporte({ ...base, code: 'hola José 902049935' }).code).toBeUndefined();
+    expect(armarReporte({ ...base, code: 'a'.repeat(65) }).code).toBeUndefined();
+    expect(armarReporte({ ...base, code: '' }).code).toBeUndefined();
+    expect(armarReporte(base).code).toBeUndefined();
   });
 
   it('the server reads it from an untrusted body the same way', () => {
     // Arrange / Act / Assert
-    expect(codigoDeReporte({ codigo: 'embedded' })).toBe('embedded');
-    expect(codigoDeReporte({ codigo: '<script>' })).toBeUndefined();
-    expect(codigoDeReporte({ codigo: 42 })).toBeUndefined();
-    expect(codigoDeReporte(null)).toBeUndefined();
+    expect(reportCode({ code: 'embedded' })).toBe('embedded');
+    expect(reportCode({ code: '<script>' })).toBeUndefined();
+    expect(reportCode({ code: 42 })).toBeUndefined();
+    expect(reportCode(null)).toBeUndefined();
   });
 });
 
@@ -161,7 +161,7 @@ describe('the reports waiting to leave', () => {
 
   it('the same message on another update is another crash', () => {
     // Arrange / Act
-    const queued = queueReport([report('boom', { codigo: 'a1' })], report('boom', { codigo: 'b2' }));
+    const queued = queueReport([report('boom', { code: 'a1' })], report('boom', { code: 'b2' }));
     // Assert
     expect(queued).toHaveLength(2);
   });

@@ -5029,8 +5029,8 @@ directorio en la ficha de esa app, con sus pestañas. Para eso,
 **Cada reporte de error dice qué código corría.** El mismo APK corre cualquier
 OTA de su runtime, así que la versión no decía si el teléfono que «se sigue
 cerrando» ya tenía el arreglo.
-- `CrashReport.codigo` es el id de la OTA, o `embedded` para el código del APK.
-  Solo se acepta con forma de id (`codigoDeReporte`: letras, dígitos, `.`, `_`,
+- `CrashReport.code` es el id de la OTA, o `embedded` para el código del APK.
+  Solo se acepta con forma de id (`reportCode`: letras, dígitos, `.`, `_`,
   `-`, hasta 64), porque el endpoint está abierto.
 - Va en la línea del log (`lilachat@0.1.175+<código>`), en el aviso de
   Telegram («Código: …») y en la huella. El mismo error en otra OTA vuelve a
@@ -5041,12 +5041,12 @@ cerrando» ya tenía el arreglo.
 - Hallazgo: el manejador global (`instalarCapturaGlobal`) escribía un error
   fatal solo en el diagnóstico local. Nunca iba a `/api/crash` ni a Telegram.
   Por eso «la app se cierra» no dejaba rastro en el server.
-- Ahora recibe `reportarAlServidor` desde `index.ts`.
+- Ahora recibe `reportToServer` desde `index.ts`.
 - `reportarError` guarda el reporte en AsyncStorage
   (`lilachat.crash.pendientes`) antes de mandarlo, y lo saca al llegar.
   Cualquier respuesta menor que 500 cuenta como llegada: el server contesta 204
   también a lo que descarta.
-- Al arrancar, `enviarReportesPendientes()` manda lo que quedó.
+- Al arrancar, `sendPendingReports()` manda lo que quedó.
 - La cola (`queueReport`, `pendingReportsFrom` en `shared`) guarda los 10 más
   nuevos. El mismo error ocupa un solo lugar. Lo guardado que no es un reporte
   se descarta.

@@ -4995,6 +4995,46 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 180. Canal del cliente: informes por día, cubicaje plegado, obra, fecha del servicio y «Recordatorio» (31/10/2026, servidor + OTA + web)
+
+José probó el canal de CONSORCIO EL ALMIRANTE en el teléfono y pidió ocho cosas. Cinco
+son de Lilachat y salen en este cambio. Las otras tres necesitan a agentes y a Portal.
+
+**Lo que sale ahora**
+- **«Recordatorio» en el clip, también en grupos.** Antes decía «Recordatorio del grupo»:
+  la etiqueta se achicaba y rompía la simetría con «Evento», «Encuesta» y «Checklist».
+  Se borró `etiquetaDeRecordatorioEnElChat`. A quién le suena lo sigue diciendo el formulario.
+- **Informes agrupados por día, como Portal.** `reportGroups(detail)` arma un encabezado
+  por día («6 de octubre»), del más nuevo al más viejo. Los que no tienen día van al final,
+  en «Sin fecha». Bajo su día, la fila dice el título sin la fecha y, si no lo repite, el tipo.
+- **Cubicaje detrás de un botón; fotos y videos primero.** `SheetGroup` suma `folded` y
+  `summary`. El cubicaje del despacho sale como «Ver cubicaje · 23.21 m³ · Cóncavo» y se
+  abre al tocarlo. La ficha ahora pinta las fotos y videos antes que los datos.
+- **El pedido dice su obra.** La línea es «20 m³ · 6 oct · OBRA GRAU» (`site`).
+- **La fecha del servicio.** `PUT /api/bots/clients/:id` acepta `services[].started_at`
+  (ISO). La lista la devuelve como `started_at` y la tarjeta dice «Inicio 6 oct» (Lima).
+  Sin el dato no se muestra nada. Falta que agentes lo mande.
+
+**Lo que espera a agentes y Portal (contrato propuesto el 31/10)**
+- **Enlace del pedido, con las pestañas que pregunta Portal.** El diálogo de Portal
+  (`ClientReportLinkModal`) pregunta: Resumen (obligatorio), Producción, Colocación,
+  Informes; días de vigencia; y si se envía al cliente.
+  Evento propuesto: `client.link.requested`. Lleva `{ scope: 'client' | 'service' | 'order',
+  id?, tabs?, days }` y responde `{ url, expires_at }`.
+- **Dónde va el enlace del reporte (pedido 6).** Una sola acción, «Enlace para el cliente»,
+  con tres entradas que la abren con el alcance ya elegido:
+  - en el canal, todo el cliente;
+  - en la tarjeta del servicio, ese servicio;
+  - en la fila del pedido, ese pedido.
+  Un solo formulario y un solo evento, así no hay tres caminos que se desincronicen. El
+  enlace se publica en el canal del cliente, que es donde el cliente lo lee.
+- **Subir pagos en Cobranza.** Evento propuesto: `client.payment.submitted`. Lleva el
+  pedido o la factura, la fecha, el monto, el medio y la foto del voucher. Portal registra
+  el pago y responde la cobranza nueva. Solo para quien ve montos.
+- **Valorización: en Portal.** Es un documento con montos que se revisa antes de mandarlo.
+  Lilachat la muestra con su PDF cuando Portal la tiene y abre Portal para generarla. No
+  se arma en el teléfono.
+
 ## 179. Mensajes temporales, exportar chat, vista previa de avisos, leer todo y formularios sin opciones (31/10/2026, servidor + OTA + web)
 
 **Mensajes temporales (B6), como WhatsApp: 24 horas, 7 días o 90 días.**

@@ -1,5 +1,6 @@
-import { ExternalLink, FileText, Loader2 } from 'lucide-react';
-import type { DetailSheet, SheetFact, SheetMedia, ViewableFile } from '@lilachat/shared';
+import { useState } from 'react';
+import { ChevronDown, ExternalLink, FileText, Loader2 } from 'lucide-react';
+import type { DetailSheet, SheetFact, SheetGroup, SheetMedia, ViewableFile } from '@lilachat/shared';
 import { FileThumb } from './PortalFileViewer';
 import { Overlay } from '../../ui/Overlay';
 import { DETAIL_TONE } from './tones';
@@ -53,14 +54,32 @@ function MediaStrip({ media, onOpen }: { media: SheetMedia[]; onOpen: OpenSheetF
  * from lila (no Portal session), an order's dispatches and a quote's line
  * items. Portal stays at the foot, secondary.
  */
+/** A block of facts; a folded one (the cubicaje) opens behind a button with its summary (José 31/10). */
+function GroupView({ group }: { group: SheetGroup }) {
+  const [open, setOpen] = useState(!group.folded);
+  if (!open) {
+    return (
+      <button type="button" data-testid={`ver-grupo-${group.title}`} onClick={() => setOpen(true)} className="flex min-h-[52px] items-center gap-3 rounded-2xl border border-outline/15 bg-surface px-4 py-2 text-left hover:bg-surface-variant/40">
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-on-surface">{`Ver ${group.title.toLowerCase()}`}</span>
+          {group.summary ? <span className="mt-0.5 block text-xs text-on-surface-variant">{group.summary}</span> : null}
+        </span>
+        <ChevronDown size={18} className="text-on-surface-variant" />
+      </button>
+    );
+  }
+  return <div data-testid={`grupo-${group.title}`} className="flex flex-col gap-2"><Kicker>{group.title}</Kicker><Facts facts={group.facts} /></div>;
+}
+
 export function RecordSheetWeb({ sheet, onClose, pdf, onOpenFile }: { sheet: DetailSheet; onClose: () => void; pdf?: PdfOnDemandWeb; onOpenFile: OpenSheetFile }) {
   return (
     <Overlay title={sheet.title} onClose={onClose}>
       <div data-testid="ficha-registro" className="flex flex-col gap-3">
         <span className={`self-start rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase ${DETAIL_TONE[sheet.status.tone]}`}>{sheet.status.label}</span>
-        {sheet.facts.length ? <Facts facts={sheet.facts} /> : null}
-        {sheet.groups.map((group) => <div key={group.title} data-testid={`grupo-${group.title}`} className="flex flex-col gap-2"><Kicker>{group.title}</Kicker><Facts facts={group.facts} /></div>)}
+        {/* José 31/10: photos and videos first; the cubicaje folded below. */}
         {sheet.media.length ? <MediaStrip media={sheet.media} onOpen={onOpenFile} /> : null}
+        {sheet.facts.length ? <Facts facts={sheet.facts} /> : null}
+        {sheet.groups.map((group) => <GroupView key={`${sheet.title}-${group.title}`} group={group} />)}
         {sheet.files.map((file, index) => <button key={file.url} type="button" onClick={() => onOpenFile({ url: file.url, name: `${sheet.title} · ${file.label}` })} data-testid={index ? `ver-archivo-ficha-${index}` : 'ver-archivo-ficha'} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 font-semibold text-on-primary"><FileText size={16} /> {file.label === 'PDF' ? 'Ver el PDF' : `Ver ${file.label}`}</button>)}
         {sheet.pdfOnDemand && pdf ? <AskPdf pdf={pdf} /> : null}
         {sheet.note ? <p data-testid="nota-ficha" className="text-sm text-on-surface-variant">{sheet.note}</p> : null}

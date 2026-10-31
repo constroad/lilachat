@@ -7,7 +7,7 @@ import { ProgramadosDelChat } from './ProgramadosDelChat';
 import { ChatQueue } from './ChatQueue';
 import type { FlashListRef } from '@shopify/flash-list';
 import { ChatBottom } from './ChatBottom';
-import { etiquetaDeRecordatorioEnElChat, type MencionEnMensaje } from '@lilachat/shared';
+import type { MencionEnMensaje } from '@lilachat/shared';
 import { chatHasActionPlace, clientHeaderSubtitle, personOfMember } from '@lilachat/shared';
 import { useFunActions } from './nudge';
 import { useCallBack } from './useCallBack';
@@ -552,7 +552,6 @@ export function ChatScreen({
         onCreatePoll={() => setCreando('poll')} onCreateChecklist={encrypted ? undefined : () => setCreando('checklist')}
         // 20/10: también en un 1:1 y en un borrador; en un grupo, sus admins. No en un chat secreto.
         onCreateReminder={!encrypted && (!esGrupoChat || soyAdminDelGrupo) ? () => setCreando('reminder') : undefined}
-        etiquetaDelRecordatorio={etiquetaDeRecordatorioEnElChat(esBorrador ? 'notas' : esGrupoChat ? 'group' : 'direct')}
         onPickFile={() => void pickFile()} onShareContact={clipSharing.onShareContact} onShareLocation={clipSharing.onShareLocation}
       />
       {clipSharing.sheet}

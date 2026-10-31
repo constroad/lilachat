@@ -9,7 +9,7 @@ import type { MyClientAccess } from './clientAccess.js';
  * search, chips and age groups. The server says live or archived; this only
  * joins each client with its chat and filters. PURE.
  */
-export type SpaceClientService = { id: string; name: string; status: ClientServiceStatus; stage_label: string; progress?: number; url?: string };
+export type SpaceClientService = { id: string; name: string; status: ClientServiceStatus; stage_label: string; progress?: number; url?: string; started_at?: string };
 /** One item of `GET /api/workspaces/:id/clients`. */
 export type SpaceClient = {
   id: string;

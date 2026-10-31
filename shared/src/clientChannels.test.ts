@@ -44,6 +44,14 @@ describe('validateClientState', () => {
     expect(validateClientState({ ...wire, services: [{ ...wire.services[0], progress: 140 }] }).ok).toBe(false);
   });
 
+  it('a service may say when it started (José 31/10: «la lista de servicios no muestra la fecha»); a bad date is refused', () => {
+    // Act
+    const valid = validateClientState({ ...wire, services: [{ ...wire.services[0], started_at: '2026-10-06T14:00:00Z' }] });
+    // Assert
+    expect(valid.ok && valid.state.services[0]!.startedAt).toBe('2026-10-06T14:00:00.000Z');
+    expect(validateClientState({ ...wire, services: [{ ...wire.services[0], started_at: 'ayer' }] }).ok).toBe(false);
+  });
+
   it('a long Drive link of a service is not cut at 160 characters', () => {
     const url = `https://portal.constroad.com/drive/${'a'.repeat(300)}`;
     const valid = validateClientState({ ...wire, services: [{ ...wire.services[0], url }] });

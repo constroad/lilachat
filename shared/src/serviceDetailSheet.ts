@@ -12,8 +12,8 @@ export type SheetFile = { url: string; label: string };
 /** `pdfOnDemand`: a report with no PDF stored, asked to Portal when tapped (agentes 30/10, `client.report.requested`). */
 /** A photo or video shown as a thumbnail that opens the viewer (a dispatch's, José 30/10 night). */
 export type SheetMedia = { url: string; thumbUrl?: string; mime: string; name: string; /** The dispatch's departure, so the viewer does not date the photo «Hoy». */ when?: string };
-/** A block of facts with its own title, like a dispatch's «Cubicaje». */
-export type SheetGroup = { title: string; facts: SheetFact[] };
+/** A block of facts with its own title, like a dispatch's «Cubicaje»; `folded` opens behind a button that shows `summary` (José 31/10). */
+export type SheetGroup = { title: string; facts: SheetFact[]; summary?: string; folded?: boolean };
 export type DetailSheet = { title: string; status: DetailStatus; facts: SheetFact[]; related: DetailRow[]; items: SheetItem[]; files: SheetFile[]; media: SheetMedia[]; groups: SheetGroup[]; url?: string; note?: string; pdfOnDemand?: string };
 
 
@@ -51,7 +51,9 @@ function cubicageGroup(dispatch: ServiceDispatch): SheetGroup[] {
   const cubicage = dispatch.cubicage;
   if (!cubicage) return [];
   const head = facts([['Volquete cubica', amount(cubicage.m3, 'm³')], ['Forma', cubicage.shape]]);
-  return [{ title: 'Cubicaje', facts: [...head, ...cubicage.dimensions] }];
+  // José 31/10: «para ver el cubicaje debería haber un botón… prioridad a las fotos y videos».
+  const summary = [amount(cubicage.m3, 'm³'), cubicage.shape].filter(Boolean).join(' · ');
+  return [{ title: 'Cubicaje', ...(summary ? { summary } : {}), folded: true, facts: [...head, ...cubicage.dimensions] }];
 }
 
 function dispatchSheet(dispatch: ServiceDispatch, detail: ServiceDetail): DetailSheet {

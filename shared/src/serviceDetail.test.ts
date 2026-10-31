@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detailRows, detailTabs, moreInPortal, serviceDetailOf } from './serviceDetail.js';
+import { detailRows, detailTabs, moreInPortal, reportGroups, serviceDetailOf } from './serviceDetail.js';
 
 /** The detail of a client's service (José, 30/10: «qué informes hay, qué pedidos, qué despachos»), from `client.service.requested`. */
 const body = {
@@ -40,6 +40,15 @@ describe('rows and tabs', () => {
     expect(second).toEqual({ id: 'o2', title: 'Imprimación', line: 'sin fecha', status: { label: 'Pendiente', tone: 'warn' } });
   });
 
+  it('an order also says its site (José 31/10: «los pedidos no muestran la obra»)', () => {
+    // Arrange
+    const detail = serviceDetailOf({ ...body, orders: [{ ...body.orders[0], site: 'Obra Grau' }] })!;
+    // Act
+    const [row] = detailRows(detail, 'orders');
+    // Assert
+    expect(row!.line).toBe('24 m³ · 12 oct · Obra Grau');
+  });
+
   it('a dispatch reads the plate, then quantity · day and hour in Lima · driver, with its guide', () => {
     const detail = serviceDetailOf({ ...body, dispatches: [{ ...body.dispatches[0], driver: 'Rosa Quispe' }] })!;
     expect(detailRows(detail, 'dispatches')[0]).toEqual({ id: 'd1', title: 'ABC-123', line: '12 m³ · 12 oct, 9:05 a. m. · Rosa Quispe', status: { label: 'En ruta', tone: 'info' }, file: { url: 'https://lila.constroad.com/g/1', label: 'Guía' } });
@@ -66,5 +75,36 @@ describe('rows and tabs', () => {
     expect(detailTabs(serviceDetailOf(body)!).map((tab) => tab.label)).toEqual(['Pedidos · 148', 'Despachos · 1', 'Informes · 1']);
     // José 30/10 night: Cotizaciones and Cobranza go first.
     expect(detailTabs({ ...serviceDetailOf(body)!, quotes: [], totals: { orders: 0, dispatches: 0, reports: 0, quotes: 2 } }).map((tab) => tab.key)).toEqual(['quotes', 'orders', 'dispatches', 'reports']);
+  });
+});
+
+describe('reportGroups', () => {
+  const reportsOf = (reports: object[]) => serviceDetailOf({ ...body, reports })!;
+  const status = { status_label: 'Borrador', tone: 'neutral' };
+
+  it('groups the reports by day, newest first, like the Portal (José 31/10); the title drops the day the header already says', () => {
+    // Arrange
+    const detail = reportsOf([
+      { id: 'r3', title: 'Control de pista · 5 de octubre', type_label: 'Control de pista', date: '2026-10-05', ...status },
+      { id: 'r1', title: 'Producción de planta · 6 de octubre', type_label: 'Producción de planta', date: '2026-10-06', ...status },
+      { id: 'r2', title: 'Densidades de campo', type_label: 'Densidad', date: '2026-10-06', ...status },
+    ]);
+    // Act
+    const groups = reportGroups(detail);
+    // Assert
+    expect(groups.map((group) => [group.title, group.rows.map((row) => [row.title, row.line])])).toEqual([
+      ['6 de octubre', [['Producción de planta', ''], ['Densidades de campo', 'Densidad']]],
+      ['5 de octubre', [['Control de pista', '']]],
+    ]);
+  });
+
+  it('a report without a day goes last, under «Sin fecha»; no reports, no groups', () => {
+    // Arrange
+    const detail = reportsOf([{ id: 'r9', title: 'Área adicional', ...status }, { id: 'r1', title: 'Losa', date: '2026-09-10', ...status }]);
+    // Act
+    const groups = reportGroups(detail);
+    // Assert
+    expect(groups.map((group) => group.title)).toEqual(['10 de setiembre', 'Sin fecha']);
+    expect(reportGroups(reportsOf([]))).toEqual([]);
   });
 });

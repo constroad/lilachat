@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Archive, ChevronRight, ExternalLink, FileText, Search } from 'lucide-react';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, shortDate, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, instantDayOf, shortDate, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
 import { ServiceDetailWeb } from './ServiceDetailWeb';
 import { STATUS_TONE } from './tones';
 import type { ServiceAskTarget } from './useServiceAsk';
@@ -47,6 +47,8 @@ function ServiceSummary({ service }: { service: SpaceClientService }) {
         <span className="min-w-0 flex-1 font-semibold">{service.name}</span>
         <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{service.stage_label || CLIENT_SERVICE_STATUS_LABELS[service.status]}</span>
       </span>
+      {/* José 31/10: «la lista de servicios no muestra la fecha». */}
+      {service.started_at ? <span data-testid={`inicio-servicio-${service.id}`} className="mt-1 block text-[12px] text-on-surface-variant">{`Inicio ${instantDayOf(service.started_at)}`}</span> : null}
       {service.progress !== undefined ? (
         <span className="mt-3 flex items-center gap-3">
           <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-background"><span className="block h-full rounded-full bg-primary" style={{ width: `${service.progress}%` }} /></span>

@@ -73,7 +73,8 @@ describe('detailSheet', () => {
     // The viewer dates each photo with the dispatch's departure, not «Hoy»; Portal's raw m³ comes with 15 decimals.
     const when = '2026-09-10T06:57:00.000Z';
     expect(sheet.media).toEqual([{ url: 'https://lila.constroad.com/f/p1.jpg', thumbUrl: 'https://lila.constroad.com/t/p1.jpg', mime: 'image/jpeg', name: 'carga.jpg', when }, { url: 'https://lila.constroad.com/f/v1.mp4', mime: 'video/mp4', name: 'AZJ 910 · video 2', when }]);
-    expect(sheet.groups).toEqual([{ title: 'Cubicaje', facts: [{ label: 'Volquete cubica', value: '24.11 m³' }, { label: 'Forma', value: 'Cuadrado' }, { label: 'Largo', value: '5.20 m' }] }]);
+    // José 31/10: the cubicaje is folded behind a button with its m³ and shape; photos and videos come first.
+    expect(sheet.groups).toEqual([{ title: 'Cubicaje', summary: '24.11 m³ · Cuadrado', folded: true, facts: [{ label: 'Volquete cubica', value: '24.11 m³' }, { label: 'Forma', value: 'Cuadrado' }, { label: 'Largo', value: '5.20 m' }] }]);
   });
 
   it('a report with its PDF; one without asks Portal for it on demand (agentes 30/10)', () => {

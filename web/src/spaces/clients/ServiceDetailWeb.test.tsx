@@ -66,14 +66,33 @@ describe('ServiceDetailWeb', () => {
     fireEvent.click(screen.getByTestId('pestana-detalle-dispatches'));
     const guides = screen.getByTestId('guias-del-pedido').textContent;
     fireEvent.click(within(screen.getByTestId('fila-d1')).getAllByRole('button')[0]!);
+    // José 31/10: the cubicaje is folded behind a button with its m³ and shape.
+    const folded = screen.getByTestId('ver-grupo-Cubicaje').textContent;
+    fireEvent.click(screen.getByTestId('ver-grupo-Cubicaje'));
+    const cubicage = screen.getByTestId('grupo-Cubicaje').textContent;
     fireEvent.click(screen.getByTestId('media-ficha-0'));
     // Assert
     expect(tabs).toEqual(['pestana-detalle-quotes', 'pestana-detalle-billing', 'pestana-detalle-orders', 'pestana-detalle-dispatches', 'pestana-detalle-reports']);
     expect(firstShown).toBe('true');
     expect(invoices).toContain('Factura F001-9');
     expect(guides).toContain('Guía 001-2 · Asfalto MAC 2');
-    expect(screen.getByTestId('grupo-Cubicaje')).toHaveTextContent('Volquete cubica25.5 m³');
+    expect(folded).toBe('Ver cubicaje25.5 m³ · Cuadrado');
+    expect(cubicage).toContain('Volquete cubica25.5 m³');
     expect(screen.getByTestId('visor-fotos')).toBeInTheDocument();
+  });
+
+  it('the reports come under a header per day, newest first (José 31/10: «como lo hace la web»)', async () => {
+    // Arrange
+    const status = { label: 'Borrador', tone: 'neutral' };
+    const reports = [{ id: 'r5', title: 'Control de pista · 5 de octubre', date: '2026-10-05', status }, { id: 'r6', title: 'Producción de planta · 6 de octubre', date: '2026-10-06', status }];
+    vi.stubGlobal('fetch', reply({ detail: { ...detail, reports, totals: { ...detail.totals, reports: 2 } } }));
+    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
+    // Act
+    fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
+    // Assert
+    const days = screen.getAllByTestId(/^dia-informes-/).map((day) => day.getAttribute('data-testid'));
+    expect(days).toEqual(['dia-informes-6 de octubre', 'dia-informes-5 de octubre']);
+    expect(within(screen.getByTestId('fila-r6')).getByText('Producción de planta')).toBeInTheDocument();
   });
 
   it('a row opens its sheet inside Lilachat: an order with its dispatches, Portal only at the foot', async () => {

@@ -93,7 +93,7 @@ describe('a client channel (design f-03)', () => {
     // Arrange
     const onOpenRecord = vi.fn();
     const records = [{ seq: 7, at: '2026-10-29T11:36:30Z', kind: 'service.record', service_id: 's1', title: 'Control de pista · 29 de octubre', kicker: 'INFORME' }];
-    render(<ClientServices client={client('x', { drive_url: 'https://portal.constroad.com/drive/c1', services: [inProgress, { id: 's2', name: 'Bacheo', status: 'completed', stage_label: '' }] })} records={records} onOpenRecord={onOpenRecord} target={null} />);
+    render(<ClientServices client={client('x', { drive_url: 'https://portal.constroad.com/drive/c1', services: [{ ...inProgress, started_at: '2026-10-06T14:00:00.000Z' }, { id: 's2', name: 'Bacheo', status: 'completed', stage_label: '' }] })} records={records} onOpenRecord={onOpenRecord} target={null} />);
     // Act
     fireEvent.click(screen.getByTestId('registro-7'));
     // Assert
@@ -103,6 +103,9 @@ describe('a client channel (design f-03)', () => {
     expect(screen.getByTestId('servicio-s1')).toHaveTextContent('INFORME');
     expect(screen.getByTestId('abrir-servicio-s1')).toHaveAttribute('href', 'https://drive.example.com/s1');
     expect(screen.getByTestId('servicio-s2')).toHaveTextContent('Completado');
+    // José 31/10: the date it started, in Lima; a service without one says nothing.
+    expect(screen.getByTestId('inicio-servicio-s1')).toHaveTextContent('Inicio 6 oct');
+    expect(screen.queryByTestId('inicio-servicio-s2')).toBeNull();
     expect(onOpenRecord).toHaveBeenCalledWith(7);
   });
 

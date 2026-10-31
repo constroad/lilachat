@@ -184,6 +184,20 @@ describe('GET /api/workspaces/:id/clients', () => {
   });
 });
 
+describe('a service\'s start date (José 31/10: «la lista de servicios no muestra la fecha»)', () => {
+  it('what agentes sends as started_at reaches the list; without it, no key', async () => {
+    // Arrange
+    const token = await installApp();
+    await putClient(token, state(daysAgo(1), [service('in_progress', { started_at: '2026-10-06T14:00:00Z' }), { ...service('pending'), id: 'srv-2' }])).expect(201);
+    // Act
+    const list = await listClients(asJose).expect(200);
+    // Assert
+    const [started, plain] = list.body.clients[0].services;
+    expect(started.started_at).toBe('2026-10-06T14:00:00.000Z');
+    expect(plain).not.toHaveProperty('started_at');
+  });
+});
+
 describe('client channels stay out of the app\'s channel pickers (José, 30/10)', () => {
   it('«Canales donde funciona», «En qué canales está» and «¿Dónde llega cada aviso?» do not list them', async () => {
     // Arrange

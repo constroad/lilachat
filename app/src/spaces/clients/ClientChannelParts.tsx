@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Archive, ChevronRight, ExternalLink, FileText, Search } from 'lucide-react-native';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, shortDate, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, instantDayOf, shortDate, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { ClientAccessRow } from './ClientAccess';
 import { ServiceDetailView } from './ServiceDetailView';
@@ -59,6 +59,8 @@ function ServiceCard(props: { service: SpaceClientService; records: ClientRecord
           <Text className="flex-1 text-[15px] font-semibold text-on-surface">{service.name}</Text>
           <Text className={`rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{service.stage_label || CLIENT_SERVICE_STATUS_LABELS[service.status]}</Text>
         </View>
+        {/* José 31/10: «la lista de servicios no muestra la fecha». */}
+        {service.started_at ? <Text testID={`inicio-servicio-${service.id}`} className="mt-1 text-[12px] text-on-surface-variant">{`Inicio ${instantDayOf(service.started_at)}`}</Text> : null}
         {service.progress !== undefined ? (
           <View className="mt-3 flex-row items-center gap-3">
             <View className="h-1.5 flex-1 overflow-hidden rounded-full bg-background"><View className="h-full rounded-full bg-primary" style={{ width: `${service.progress}%` }} /></View>

@@ -29,8 +29,3 @@ export function aQuienSuena(kind: ClaseDeChat, nombre: string): string {
   if (kind === 'direct') return `Con «${nombre}»: les suena a los dos.`;
   return 'Solo para ti: te suena a ti.';
 }
-
-/** La opción del clip que lo crea. */
-export function etiquetaDeRecordatorioEnElChat(kind: ClaseDeChat): string {
-  return kind === 'group' ? 'Recordatorio del grupo' : 'Recordatorio';
-}

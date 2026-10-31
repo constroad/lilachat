@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronLeft, ExternalLink, FileText } from 'lucide-react';
-import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orderGuidesOf, type DetailRow, type DetailTabKey, type ServiceDetail, type SheetFile, type SpaceClientService } from '@lilachat/shared';
+import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orderGuidesOf, reportGroups, type DetailRow, type DetailTabKey, type ServiceDetail, type SheetFile, type SpaceClientService } from '@lilachat/shared';
 import { usePortalFileViewer } from './PortalFileViewer';
 import type { OpenSheetFile } from './RecordSheetWeb';
 import { RecordSheetWeb } from './RecordSheetWeb';
@@ -67,6 +67,20 @@ function RowView({ row, onOpen, onOpenFile }: { row: DetailRow; onOpen: (id: str
   );
 }
 
+/** The reports under a header per day, like Portal's list (José 31/10). */
+function ReportDays({ detail, onOpen, onOpenFile }: { detail: ServiceDetail; onOpen: (id: string) => void; onOpenFile: OpenSheetFile }) {
+  return (
+    <>
+      {reportGroups(detail).map((group) => (
+        <li key={group.title} data-testid={`dia-informes-${group.title}`}>
+          <p className="bg-surface-variant/40 px-4 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{group.title}</p>
+          <ul className="divide-y divide-outline/10">{group.rows.map((row) => <RowView key={row.id} row={row} onOpen={onOpen} onOpenFile={onOpenFile} />)}</ul>
+        </li>
+      ))}
+    </>
+  );
+}
+
 function DetailTabs({ detail, target, serviceId }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string }) {
   // José 30/10 night: Cotizaciones and Cobranza first; it opens on the first one that came.
   const [tab, setTab] = useState<DetailTabKey>(() => detailTabs(detail)[0]?.key ?? 'orders');
@@ -91,7 +105,7 @@ function DetailTabs({ detail, target, serviceId }: { detail: ServiceDetail; targ
       {guides.length ? <OrderGuides guides={guides} onOpenFile={viewer.open} /> : null}
       {tab === 'billing' && detail.billing ? <ServiceBillingWeb billing={detail.billing} invoices={invoicesOf(detail)} onOpenFile={viewer.open} /> : (
         <ul className="divide-y divide-outline/10 overflow-hidden rounded-xl border border-outline/15 bg-surface">
-          {rows.length ? rows.map((row) => <RowView key={row.id} row={row} onOpen={setOpenId} onOpenFile={viewer.open} />) : <li className="p-4 text-sm text-on-surface-variant">{DETAIL_EMPTY[tab]}</li>}
+          {!rows.length ? <li className="p-4 text-sm text-on-surface-variant">{DETAIL_EMPTY[tab]}</li> : tab === 'reports' ? <ReportDays detail={detail} onOpen={setOpenId} onOpenFile={viewer.open} /> : rows.map((row) => <RowView key={row.id} row={row} onOpen={setOpenId} onOpenFile={viewer.open} />)}
         </ul>
       )}
       {viewer.viewer}

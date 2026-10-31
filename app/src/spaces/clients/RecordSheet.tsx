@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
-import { ExternalLink, FileText } from 'lucide-react-native';
-import type { DetailRow, DetailSheet, SheetFact, SheetItem, SheetMedia } from '@lilachat/shared';
+import { ChevronDown, ExternalLink, FileText } from 'lucide-react-native';
+import type { DetailRow, DetailSheet, SheetFact, SheetGroup, SheetItem, SheetMedia } from '@lilachat/shared';
 import { FileThumb } from './FileThumb';
 import { PantallaEnModal } from '../../ui/PantallaEnModal';
 import { useColores } from '../../ui/tema';
@@ -34,6 +35,24 @@ const MediaStrip = ({ media, onOpen }: { media: SheetMedia[]; onOpen: OpenFile }
     </View>
   </>
 );
+
+/** A block of facts; a folded one (the cubicaje) opens behind a button with its summary (José 31/10). */
+function GroupView({ group }: { group: SheetGroup }) {
+  const colors = useColores();
+  const [open, setOpen] = useState(!group.folded);
+  if (!open) {
+    return (
+      <Pressable testID={`ver-grupo-${group.title}`} onPress={() => setOpen(true)} accessibilityRole="button" className="min-h-[52px] flex-row items-center gap-3 rounded-2xl border border-outline/15 bg-surface px-4 py-2">
+        <View className="min-w-0 flex-1">
+          <Text className="text-[14px] font-semibold text-on-surface">{`Ver ${group.title.toLowerCase()}`}</Text>
+          {group.summary ? <Text className="mt-0.5 text-[12px] text-on-surface-variant">{group.summary}</Text> : null}
+        </View>
+        <ChevronDown size={18} color={colors['on-surface-variant']} />
+      </Pressable>
+    );
+  }
+  return <View testID={`grupo-${group.title}`}><Kicker>{group.title}</Kicker><View className="mt-2"><Facts facts={group.facts} /></View></View>;
+}
 
 function FileButton(props: { title: string; file: { url: string; label: string }; onOpenFile: (file: ViewableFile) => void; testID: string }) {
   const colors = useColores();
@@ -100,9 +119,10 @@ export function RecordSheet(props: { sheet: DetailSheet | null; onClose: () => v
       {sheet ? (
         <View testID="ficha-registro" className="gap-3">
           <Text className={`self-start rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase ${DETAIL_TONE[sheet.status.tone]}`}>{sheet.status.label}</Text>
-          {sheet.facts.length ? <Facts facts={sheet.facts} /> : null}
-          {sheet.groups.map((group) => <View key={group.title} testID={`grupo-${group.title}`}><Kicker>{group.title}</Kicker><View className="mt-2"><Facts facts={group.facts} /></View></View>)}
+          {/* José 31/10: photos and videos first; the cubicaje folded below. */}
           {sheet.media.length ? <MediaStrip media={sheet.media} onOpen={props.onOpenFile} /> : null}
+          {sheet.facts.length ? <Facts facts={sheet.facts} /> : null}
+          {sheet.groups.map((group) => <GroupView key={`${sheet.title}-${group.title}`} group={group} />)}
           {sheet.files.map((file, index) => <FileButton key={file.url} title={sheet.title} file={file} onOpenFile={props.onOpenFile} testID={index ? `ver-archivo-ficha-${index}` : 'ver-archivo-ficha'} />)}
           {sheet.pdfOnDemand && props.pdf ? <AskPdfButton pdf={props.pdf} /> : null}
           {sheet.note ? <Text testID="nota-ficha" className="text-[14px] text-on-surface-variant">{sheet.note}</Text> : null}

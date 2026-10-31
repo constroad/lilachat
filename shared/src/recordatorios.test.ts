@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aQuienSuena, etiquetaDeRecordatorioEnElChat, whenItRings, ETIQUETA_DE_REPETICION } from './recordatorios.js';
+import { aQuienSuena, whenItRings, ETIQUETA_DE_REPETICION } from './recordatorios.js';
 
 /** Cómo se lee cuándo suena un recordatorio: la tarjeta del chat y la lista del grupo (19/10). */
 describe('whenItRings', () => {
@@ -29,13 +29,5 @@ describe('aQuienSuena', () => {
     expect(aQuienSuena('group', 'Obra')).toBe('Para «Obra»: le suena a todo el grupo.');
     expect(aQuienSuena('direct', 'Ana')).toBe('Con «Ana»: les suena a los dos.');
     expect(aQuienSuena('notas', 'Tú')).toBe('Solo para ti: te suena a ti.');
-  });
-});
-
-describe('etiquetaDeRecordatorioEnElChat', () => {
-  it('en un grupo dice «del grupo»; en el resto, solo «Recordatorio»', () => {
-    expect(etiquetaDeRecordatorioEnElChat('group')).toBe('Recordatorio del grupo');
-    expect(etiquetaDeRecordatorioEnElChat('direct')).toBe('Recordatorio');
-    expect(etiquetaDeRecordatorioEnElChat('notas')).toBe('Recordatorio');
   });
 });

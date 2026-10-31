@@ -31,7 +31,7 @@ type Installation = Pick<BotInstallation, '_id' | 'appId' | 'workspaceId' | 'bot
 type ClientsError = { status: 400 | 404; error: string; message: string };
 
 const restrictedSchema = new Schema<RestrictedMember>({ userId: { type: Schema.Types.ObjectId, required: true }, tabs: { type: [String], default: [] }, stages: { type: [String], default: [] } }, { _id: false });
-const serviceSchema = new Schema<ClientService>({ id: String, name: String, status: String, stage: String, stageLabel: String, progress: Number, url: String, closedAt: String }, { _id: false });
+const serviceSchema = new Schema<ClientService>({ id: String, name: String, status: String, stage: String, stageLabel: String, progress: Number, url: String, closedAt: String, startedAt: String }, { _id: false });
 const clientChannelSchema = new Schema<ClientChannel>(
   {
     workspaceId: { type: Schema.Types.ObjectId, required: true },
@@ -143,7 +143,7 @@ export async function listClients(workspaceId: string, userId: Types.ObjectId, n
     last_order_at: doc.lastOrderAt,
     orders_total: doc.ordersTotal,
     archived_group: archivedAgeGroup(doc.lastActivityAt, now),
-    services: doc.services.map((one) => ({ id: one.id, name: one.name, status: one.status, stage_label: one.stageLabel, ...(one.progress !== undefined ? { progress: one.progress } : {}), ...(one.url ? { url: one.url } : {}) })),
+    services: doc.services.map((one) => ({ id: one.id, name: one.name, status: one.status, stage_label: one.stageLabel, ...(one.progress !== undefined ? { progress: one.progress } : {}), ...(one.url ? { url: one.url } : {}), ...(one.startedAt ? { started_at: one.startedAt } : {}) })),
     // José 30/10 night: which tabs and stages I see, and whether I see money.
     access: accessOf(doc, userId, isAdmin),
   }));

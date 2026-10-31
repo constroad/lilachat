@@ -221,7 +221,8 @@ export type DetailRow = { id: string; title: string; line: string; status: Detai
 const fileOf = (url: string | undefined, label: string) => (url ? { file: { url, label } } : {});
 const urlOf = (url: string | undefined) => (url ? { url } : {});
 
-const orderRow = (order: ServiceOrder): DetailRow => ({ id: order.id, title: order.product ?? 'Pedido', line: joined([amount(order.quantity, order.unit), order.date ? dayOf(order.date) : 'sin fecha']), status: order.status, ...urlOf(order.url) });
+// José 31/10: «los pedidos no muestran la obra».
+const orderRow = (order: ServiceOrder): DetailRow => ({ id: order.id, title: order.product ?? 'Pedido', line: joined([amount(order.quantity, order.unit), order.date ? dayOf(order.date) : 'sin fecha', order.site]), status: order.status, ...urlOf(order.url) });
 export const dispatchRow = (dispatch: ServiceDispatch): DetailRow => ({
   id: dispatch.id,
   title: dispatch.plate ?? 'Despacho',
@@ -237,12 +238,36 @@ const titleHasDay = (title: string, date: string) => title.toLowerCase().include
 const titleStartsWith = (title: string, type: string) => title.toLowerCase().startsWith(type.toLowerCase()) && /^\s*([·\-–—:]|$)/.test(title.slice(type.length));
 
 /** Portal titles a report «Producción de planta · 10 de setiembre»: the line only adds what the title does not say. */
+const reportTypeOf = (report: ServiceReport) => (report.typeLabel && !titleStartsWith(report.title, report.typeLabel) ? report.typeLabel : undefined);
 function reportLine(report: ServiceReport): string {
-  const type = report.typeLabel && !titleStartsWith(report.title, report.typeLabel) ? report.typeLabel : undefined;
   const day = report.date && !titleHasDay(report.title, report.date) ? dayOf(report.date) : undefined;
-  return joined([type, day]);
+  return joined([reportTypeOf(report), day]);
 }
 const reportRow = (report: ServiceReport): DetailRow => ({ id: report.id, title: report.title, line: reportLine(report), status: report.status, ...urlOf(report.url), ...fileOf(report.pdfUrl, 'PDF') });
+
+/** «6 de octubre» for a calendar day: how Portal titles its reports. */
+const dayInWordsOf = (date: string) => {
+  const [, , month, day] = DATE_ONLY.exec(date) ?? [];
+  return `${Number(day)} de ${LONG_MONTHS[Number(month) - 1]}`;
+};
+export const NO_DATE_GROUP = 'Sin fecha';
+/** «Producción de planta · 6 de octubre» under the header «6 de octubre» reads «Producción de planta». */
+const withoutDay = (title: string, day: string) => (title.toLowerCase().endsWith(` · ${day}`) ? title.slice(0, -` · ${day}`.length) : title);
+
+export type ReportGroup = { title: string; rows: DetailRow[] };
+
+/** The reports by day, newest first, like Portal's list (José 31/10); those without a day go last. */
+export function reportGroups(detail: Pick<ServiceDetail, 'reports'>): ReportGroup[] {
+  const byDay = new Map<string, ServiceReport[]>();
+  for (const report of detail.reports) byDay.set(report.date ?? '', [...(byDay.get(report.date ?? '') ?? []), report]);
+  // ISO days sort as text; reversed, the newest comes first and the empty key («Sin fecha») last.
+  const days = [...byDay.keys()].sort().reverse();
+  return days.map((date) => {
+    const title = date ? dayInWordsOf(date) : NO_DATE_GROUP;
+    // Under its day's header a row says only what the header does not: its type.
+    return { title, rows: byDay.get(date)!.map((report) => ({ ...reportRow(report), title: date ? withoutDay(report.title, title) : report.title, line: reportTypeOf(report) ?? '' })) };
+  });
+}
 const quoteRow = (quote: ServiceQuote): DetailRow => ({ id: quote.id, title: quote.code ?? 'Cotización', line: joined([money(quote.total), quote.date ? dayOf(quote.date) : undefined]), status: quote.status, ...urlOf(quote.url) });
 
 /** The rows of one tab: a pedido has no number of its own in Portal, a dispatch shows its departure or the planned hour. «Cobranza» has its own view. */

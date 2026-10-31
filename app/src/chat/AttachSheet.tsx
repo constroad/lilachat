@@ -78,7 +78,6 @@ export function AttachSheet(props: {
   onCreateChecklist?: () => void;
   /** The reminder that lives in the chat: in a group, its admins (19/10); in a 1:1 or a draft, anyone (20/10). */
   onCreateReminder?: () => void;
-  etiquetaDelRecordatorio?: string;
 }) {
   const colors = useColores();
   const margins = useMargenes();
@@ -151,7 +150,7 @@ export function AttachSheet(props: {
         { key: 'event', label: 'Evento', Icon: CalendarDays, action: props.onCreateEvent, testID: 'attach-evento' },
         { key: 'poll', label: 'Encuesta', Icon: BarChart3, action: props.onCreatePoll, testID: 'attach-encuesta' },
         ...(props.onCreateChecklist ? [{ key: 'checklist', label: 'Checklist', Icon: ClipboardCheck, action: props.onCreateChecklist, testID: 'attach-checklist' }] : []),
-        ...(props.onCreateReminder ? [{ key: 'reminder', label: props.etiquetaDelRecordatorio ?? 'Recordatorio', Icon: Bell, action: props.onCreateReminder, testID: 'attach-recordatorio' }] : []),
+        ...(props.onCreateReminder ? [{ key: 'reminder', label: 'Recordatorio', Icon: Bell, action: props.onCreateReminder, testID: 'attach-recordatorio' }] : []),
       ],
     },
   ].filter((section) => section.options.length > 0);

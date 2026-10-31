@@ -4995,6 +4995,35 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 179. Mensajes temporales y formularios sin opciones (31/10/2026, servidor + OTA + web)
+
+**Mensajes temporales (B6), como WhatsApp: 24 horas, 7 días o 90 días.**
+- Es del CHAT, no de la persona: `Chat.disappearSeconds`. Se cambia con
+  `PUT /api/chats/:id/disappearing {key}` (`24h`, `7d`, `90d`, `off`).
+- Quién: cualquiera de un 1:1; en un grupo, quien puede «Editar la info»
+  (`memberMay`). Canales, chats secretos y el chat de notas: 409.
+- Cada cambio deja el aviso `temporales` en el chat. El texto lo arma
+  `textoDeAviso`: «Activaste…» para quien lo hizo.
+- `sendMessage` sella `disappearsAt` con el temporizador del momento. Apagarlo
+  después no salva lo ya sellado.
+- El chat guarda `nextDisappearAt` (el vencimiento más cercano, con `$min`).
+- Barrido: `startDisappearCron`, cada minuto, solo chats con algo vencido.
+  Vacía el contenido como «Eliminar para todos» y descuenta los hilos.
+  Conserva `disappearsAt`.
+- Cada dispositivo oculta lo vencido por el reloj, sin red y antes del barrido.
+  `useWithoutDisappeared` despierta una vez, al próximo vencimiento; sin
+  temporizador no pone ningún timer.
+- La lista de chats no muestra el texto ni la lápida de un último mensaje vencido.
+- Índice declarado y NO creado: `{nextDisappearAt: 1}` sparse. Hoy son 80
+  chats; se crea con el OK de José.
+- Ajustes: fila «Mensajes temporales» en la app (Alert) y en la web (select).
+
+**Formularios sin opciones.** Un `oneOf: []` es una elección sin opciones, y
+filas fijas con `default: []` son una lista sin filas. Antes Test, sin pedidos,
+rechazaba todo «Registrar consumo» como «Portal no pudo responder.». E2E en el
+emulador: abre, el x-refresh re-pide al cambiar «Desde» y el x-preview resume.
+No se envió nada, y «Registrar consumo» quedó apagado otra vez en Test.
+
 ## 178. El ⚡ del chat, silenciar por tiempo, «escribiendo…» solo de miembros, bloqueo de la web y confirmaciones de lectura (31/10/2026, servidor + OTA + web)
 
 José aprobó las herramientas de consumo («sigue con el backlog»). Al preparar

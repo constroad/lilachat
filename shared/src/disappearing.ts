@@ -59,6 +59,12 @@ export function nextDisappearIn(messages: readonly { disappearsAt?: string | Dat
   return soonest === null ? null : soonest - now;
 }
 
+/** What the setting says under its title, for who may change it and who may not. */
+export function disappearDetail(key: DisappearKey, canChange: boolean): string {
+  const detail = key === 'off' ? 'Los mensajes se quedan en el chat.' : `Los nuevos desaparecen después de ${disappearLabel(disappearSecondsOf(key))}.`;
+  return canChange ? detail : `${detail} Solo quien edita la info del grupo lo cambia.`;
+}
+
 /** The chat notice of a key: «Ana activó…» / «Activaste…»; empty for an unknown key. */
 export function disappearNoticeText(actor: string, key: string | undefined, mine = false): string {
   if (!isDisappearKey(key)) return '';

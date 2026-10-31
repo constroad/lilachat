@@ -125,6 +125,8 @@ export type ChatMessage = {
   /** Un aviso del server (W3/19-10): la frase se arma acá, con los nombres de quien mira. */
   system?: { evento: string; valor?: string; targetId?: string; quien?: { phone?: string; name?: string }; aQuien?: { phone?: string; name?: string } };
   deletedAt?: string;
+  /** R31/10-B6: when it disappears; past it nothing is drawn. */
+  disappearsAt?: string;
   replyToSeq?: number;
   editedAt?: string;
   at: string;

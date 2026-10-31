@@ -6,6 +6,7 @@ import {
   escaparRegex,
   memberPermissionDenied,
   validateMentions,
+  disappearsAtFor,
 } from '@lilachat/shared';
 import { UserModel } from './models.js';
 import { ChatModel, MessageModel, ReceiptModel, type Chat, type Message, type ResumenDeHilo } from './chatModels.js';
@@ -133,8 +134,8 @@ export async function sendMessage(params: {
     // A nudge or a wink carries no content, so it also goes in a secret chat (backlog 3).
     { _id: chatId, 'members.userId': params.senderId, 'blockedBy.0': { $exists: false }, ...(params.envelope || isFunKind(params.kind) ? {} : { encrypted: { $ne: true } }), ...(params.skipMemberPermissions ? {} : mayWriteFilter(params.senderId)) },
     [{ $set: { lastSeq: nextSeq, lastMainSeq: hiddenInChat ? { $ifNull: ['$lastMainSeq', { $ifNull: ['$lastSeq', 0] }] } : nextSeq } }],
-    { returnDocument: 'after', projection: { lastSeq: 1, kind: 1, 'members.userId': 1 }, updatePipeline: true }
-  ).lean<{ lastSeq: number; kind?: string; members: { userId: Types.ObjectId }[] } | null>();
+    { returnDocument: 'after', projection: { lastSeq: 1, kind: 1, 'members.userId': 1, disappearSeconds: 1 }, updatePipeline: true }
+  ).lean<{ lastSeq: number; kind?: string; members: { userId: Types.ObjectId }[]; disappearSeconds?: number } | null>();
   if (!chat) {
     const blocked = await ChatModel.findOne({ _id: chatId, 'members.userId': params.senderId, 'blockedBy.0': { $exists: true } }).select('blockedBy').lean();
     if (blocked) throw new BlockedContactError((blocked.blockedBy ?? []).some((id) => String(id) === String(params.senderId)));
@@ -148,6 +149,8 @@ export async function sendMessage(params: {
   const members = chat.members.map((member) => String(member.userId));
   // Solo sobre texto en claro: en un chat secreto el server no ve el texto.
   const menciones = params.envelope ? [] : validateMentions(params.body ?? '', params.menciones, members, { groupMentions: chat.kind === 'group' });
+  // R31/10-B6: the chat's timer at the moment of sending; turning it off later does not bring it back.
+  const disappearsAt = disappearsAtFor(chat.disappearSeconds, new Date());
 
   try {
     const created = await MessageModel.create({
@@ -177,8 +180,10 @@ export async function sendMessage(params: {
       ...(menciones.length > 0 ? { menciones } : {}),
       ...(params.hiloDe !== undefined ? { hiloDe: params.hiloDe, ...(params.enElChat ? { enElChat: true } : {}) } : {}),
       autoReply: params.autoReply ?? false,
+      ...(disappearsAt ? { disappearsAt } : {}),
       at: new Date(),
     });
+    if (disappearsAt) await ChatModel.updateOne({ _id: chatId }, { $min: { nextDisappearAt: disappearsAt } });
     const hilo = params.hiloDe !== undefined ? await anotarRespuesta({ chatId, raiz: params.hiloDe, autor: String(params.senderId), en: created.at, seq: created.seq }) : undefined;
     return { message: created.toObject() as Message, duplicate: false, members, ...(hilo ? { hilo } : {}) };
   } catch (error) {
@@ -314,7 +319,7 @@ export async function chatMemberIds(chatId: Types.ObjectId): Promise<string[]> {
  * and a bot card's figures used to stay, and a deleted call line kept being
  * drawn by its `system`. What places it stays: kind, seq, the reply and thread.
  */
-const DELETED_CONTENT = Object.fromEntries(['body', 'envelope', 'media', 'contact', 'location', 'card', 'system', 'wink', 'menciones', 'reacciones'].map((field) => [field, ''])) as Record<string, ''>;
+export const DELETED_CONTENT = Object.fromEntries(['body', 'envelope', 'media', 'contact', 'location', 'card', 'system', 'wink', 'menciones', 'reacciones'].map((field) => [field, ''])) as Record<string, ''>;
 
 export async function deleteMessage(params: {
   chatId: string;

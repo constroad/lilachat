@@ -32,6 +32,8 @@ export type DetalleDelChat = {
   channel?: { isPrivate: boolean; general: boolean };
   /** The installed apps among the members (pending 91): an admin only takes them out. */
   appIds?: ReadonlySet<string>;
+  /** R31/10-B6: the chat's disappearing timer in seconds; 0 = off. */
+  disappearSeconds?: number;
 };
 
 export type Respuesta = {
@@ -46,6 +48,7 @@ export type Respuesta = {
   routines?: { quietHours?: QuietHours; contactNote?: ContactNote };
   birthdaysOn?: boolean;
   channel?: { visibility: 'public' | 'private'; general: boolean };
+  disappearSeconds?: number;
   members: { id: string; name: string | null; phone: string | null; avatarUrl?: string; role?: 'admin' | 'member'; esYo?: boolean; title?: string; spaceRole?: string; app?: boolean }[];
 };
 
@@ -83,6 +86,7 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
     birthdaysOn: respuesta.birthdaysOn === true,
     ...(respuesta.channel ? { channel: { isPrivate: respuesta.channel.visibility === 'private', general: respuesta.channel.general } } : {}),
     appIds: new Set(respuesta.members.filter((member) => member.app).map((member) => member.id)),
+    disappearSeconds: respuesta.disappearSeconds ?? 0,
   };
 }
 

@@ -5,6 +5,7 @@ import { messageWindowPage } from '../api/client';
 import { windowRows } from './messageWindowRows';
 import { filaDeArchivoEnCola, pendientesEnOrden, sinPendientesConfirmados } from './filasDelChat';
 import { sinOcultos } from './ocultos';
+import { useWithoutDisappeared } from './useWithoutDisappeared';
 import { planNotInList } from './planNotInList';
 import { isPending, type Row } from './rowKinds';
 import type { ChatMessage, PendingMessage } from './useChat';
@@ -33,7 +34,9 @@ export function useChatWindow(p: {
   onThread: (root: number) => void;
 }) {
   const { jwt, chatId, encrypted, messages: liveMessages, ocultos, archivosEnCola, listaRef, onNoEsta, onThread } = p;
-  const { delChat, pendientesDelChat } = p.hilos;
+  const { pendientesDelChat } = p.hilos;
+  // R31/10-B6: what passed its time is not drawn, even before the server sweeps it.
+  const delChat = useWithoutDisappeared(p.hilos.delChat) ?? p.hilos.delChat;
   // Memoized: each render (a key, a «typing») used to redraw every bubble (FL2).
   const liveRows: Row[] = useMemo(
     () => [

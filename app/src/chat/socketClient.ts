@@ -84,6 +84,8 @@ export type ServerMessage = {
    * NO vienen: el server los vacía de verdad. La app muestra la lápida.
    */
   deletedAt?: string;
+  /** R31/10-B6: when it disappears; past it nothing is drawn. */
+  disappearsAt?: string;
   /** A qué mensaje responde, si es una respuesta. */
   replyToSeq?: number;
   /** E3: respuesta en el hilo de este `seq`; `enElChat` = se ve también en el chat. */

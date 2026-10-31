@@ -1,5 +1,5 @@
 import { Bell, BellOff, LogOut, Trash2, X } from 'lucide-react';
-import { canManageMembers, mutedUntilText, NOTIFICATION_LEVEL_TEXT, type NotificationLevel } from '@lilachat/shared';
+import { canManageMembers, memberMay, mutedUntilText, NOTIFICATION_LEVEL_TEXT, type NotificationLevel } from '@lilachat/shared';
 import { chatDetailTabs, initialChatDetailTab, type ChatDetailTab } from '@lilachat/shared';
 import { useState, type ReactNode } from 'react';
 import type { BaseLocal } from '../../local/baseLocal';
@@ -16,6 +16,7 @@ import { GroupPermissionsRow } from './GroupPermissionsRow';
 import { BlockContactRow } from '../../privacy/BlockContactRow';
 import { RoutinesRow } from '../../routines/RoutinesRow';
 import { BirthdaysRow } from './BirthdaysRow';
+import { DisappearingRow } from './DisappearingRow';
 import { ChannelVisibilityRow } from './ChannelVisibilityRow';
 import { DeleteChannelRow, useChannelDeletable } from './DeleteChannelRow';
 import { armarInfo } from './infoDelChat';
@@ -124,6 +125,7 @@ export function PanelDeInfo(props: {
         {tab === 'settings' && chat.kind === 'direct' && otherMember ? <BlockContactRow jwt={props.jwt} personId={otherMember.id} name={otherMember.nombre} blockedByMe={detalle?.blockedByMe === true} onNotice={props.onAviso} /> : null}
         {tab === 'settings' && chat.kind === 'group' ? <GroupPermissionsRow chatId={chat.id} jwt={props.jwt} permissions={detalle?.memberPermissions} isAdmin={Boolean(detalle?.soyAdmin)} onAviso={props.onAviso} /> : null}
         {tab === 'settings' && chat.kind === 'group' ? <GroupFunRow chatId={chat.id} jwt={props.jwt} allowed={Boolean(chat.funAllowed ?? detalle?.funAllowed)} isAdmin={Boolean(detalle?.soyAdmin)} onAviso={props.onAviso} /> : null}
+        {tab === 'settings' && (chat.kind === 'group' || chat.kind === 'direct') && !chat.channel && !detalle?.channel && !detalle?.secreto ? <DisappearingRow chatId={chat.id} jwt={props.jwt} seconds={detalle?.disappearSeconds ?? 0} canChange={chat.kind === 'direct' || memberMay({ permission: 'editInfo', role: detalle?.soyAdmin ? 'admin' : 'member', permissions: detalle?.memberPermissions })} onAviso={props.onAviso} /> : null}
         {tab === 'settings' && (chat.kind === 'group' || chat.kind === 'direct') ? <BirthdaysRow chatId={chat.id} jwt={props.jwt} on={Boolean(chat.birthdaysOn ?? detalle?.birthdaysOn)} canChange={chat.kind === 'direct' || Boolean(detalle?.soyAdmin)} isGroup={chat.kind === 'group'} onAviso={props.onAviso} /> : null}
         {choosingLevel ? (
           <NotificationLevelDialog

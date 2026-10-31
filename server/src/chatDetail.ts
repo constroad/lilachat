@@ -56,6 +56,8 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId) {
     ...routinesOf(chat.members.find((m) => String(m.userId) === String(userId))),
     ...(chat.kind === 'direct' ? { blockedByMe: (chat.blockedBy ?? []).some((id) => String(id) === String(userId)) } : {}),
     encrypted: chat.encrypted === true,
+    // R31/10-B6: the chat's timer; 0 = off.
+    disappearSeconds: chat.disappearSeconds ?? 0,
     // Pending 93: a channel's admins change who finds it; #general is always public.
     ...(chat.channel ? { channel: { visibility: chat.channel.visibility, general: chat.name === GENERAL_CHANNEL } } : {}),
     // MY mute (it is per person): the detail's switch shows it as it is,

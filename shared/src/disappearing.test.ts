@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { textoDeAviso } from './avisoDeGrupo.js';
-import { disappearKeyOf, disappearLabel, disappearNoticeText, disappearSecondsOf, disappearsAtFor, hasDisappeared, isDisappearKey, nextDisappearIn, withoutDisappeared } from './disappearing.js';
+import { disappearDetail, disappearKeyOf, disappearLabel, disappearNoticeText, disappearSecondsOf, disappearsAtFor, hasDisappeared, isDisappearKey, nextDisappearIn, withoutDisappeared } from './disappearing.js';
 
 const NOW = Date.parse('2026-10-31T12:00:00Z');
 
@@ -56,6 +56,11 @@ describe('disappearing messages (R31/10-B6)', () => {
     expect(disappearNoticeText('Ana', 'off')).toBe('Ana desactivó los mensajes temporales.');
     expect(disappearNoticeText('Ana', 'off', true)).toBe('Desactivaste los mensajes temporales.');
     expect(disappearNoticeText('Ana', '1y')).toBe('');
+  });
+  it('the setting says what happens, and to whom it is locked', () => {
+    expect(disappearDetail('off', true)).toBe('Los mensajes se quedan en el chat.');
+    expect(disappearDetail('90d', true)).toBe('Los nuevos desaparecen después de 90 días.');
+    expect(disappearDetail('24h', false)).toBe('Los nuevos desaparecen después de 24 horas. Solo quien edita la info del grupo lo cambia.');
   });
   it('the group notice text knows the event', () => {
     expect(textoDeAviso({ quien: 'Ana', esMio: false, evento: 'temporales', valor: '90d' })).toBe('Ana activó los mensajes temporales. Los mensajes nuevos desaparecerán después de 90 días.');

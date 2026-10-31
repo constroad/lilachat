@@ -16,6 +16,7 @@ import type { SpaceApps } from '../spaces/apps/useSpaceApps';
 import type { Mencionable } from './SugerenciasDeMencion';
 import type { NotaDeVozGrabada } from './useGrabadoraDeVoz';
 import { ListaDeMensajes } from './ListaDeMensajes';
+import { useWithoutDisappeared } from './useWithoutDisappeared';
 import { useWorkPlanWeb, WorkPlanWeb } from './workPlan/WorkPlanWeb';
 import { PendingWeb, TaskDetailWeb, type OpenTask } from './workPlan/WorkListsWeb';
 import { ClientFilesWeb } from '../spaces/clients/ClientFilesWeb';
@@ -129,7 +130,9 @@ export function Conversation(props: {
   const otherId = chat.kind === 'direct' ? (chat.memberIds.find((id) => id !== props.yo) ?? null) : null;
   const lastSeen = useLastSeen(otherId);
   const otherStatus = usePresenceStatus(otherId);
-  const fun = useFunPlayback({ messages: props.mensajes, me: props.yo, chatId: chat.id, muted: Boolean(chat.muted), afterSeq: chat.lastSeq - chat.unread });
+  // R31/10-B6: what passed its time is not drawn, even before the server sweeps it.
+  const mensajes = useWithoutDisappeared(props.mensajes);
+  const fun = useFunPlayback({ messages: mensajes, me: props.yo, chatId: chat.id, muted: Boolean(chat.muted), afterSeq: chat.lastSeq - chat.unread });
   const commands = useChatCommandsWithActions({ jwt: props.jwtParaEnlaces, chatId: chat.id, workspaceId: chat.workspaceId, shareable: chat.kind === 'group', actionPlace: chatHasActionPlace({ workspaceId: chat.workspaceId, isGroup: chat.kind === 'group', appId: chat.appId }) });
   return (
     <section
@@ -197,15 +200,15 @@ export function Conversation(props: {
       <>
       <BannerWithSession />
       {props.franja}
-      {props.mensajes === null ? (
+      {mensajes === null ? (
         <EsqueletoDeMensajes />
-      ) : props.mensajes.length === 0 ? (
+      ) : mensajes.length === 0 ? (
         <p className="min-h-0 flex-1 pt-10 text-center text-sm text-on-surface-variant">Todavía no hay mensajes. Escribe el primero.</p>
       ) : (
         <ListaDeMensajes
           key={`${chat.id}-${props.viewId ?? 0}`}
           chat={chat}
-          mensajes={props.mensajes}
+          mensajes={mensajes}
           yo={props.yo}
           escribiendo={Boolean(props.typingName)}
           hayAnteriores={props.hayAnteriores}

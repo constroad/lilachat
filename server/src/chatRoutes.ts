@@ -5,7 +5,7 @@ import { joinAccessOf } from './bots/clientBillingViewers.js';
 import { Router } from 'express';
 import { blockedByAmong } from './blockedContacts.js';
 import { Types } from 'mongoose';
-import { isMuteFor, PUSH_CAPABILITIES, normalizarNombreDeGrupo, NOTIFICATION_LEVELS, notificationLevel, textoDeAviso } from '@lilachat/shared';
+import { isDisappearKey, isMuteFor, PUSH_CAPABILITIES, normalizarNombreDeGrupo, NOTIFICATION_LEVELS, notificationLevel, textoDeAviso } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import type { Message } from './chatModels.js';
 import { DeviceModel, UserModel } from './models.js';
@@ -38,6 +38,7 @@ import { toClientMessages } from './messageView.js';
 import { toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
 import { defaultMediaUploader } from './localMediaUploader.js';
 import { avisarCambioDeChat, publicarAviso } from './socket.js';
+import { setDisappearing } from './disappearingMessages.js';
 import { requireSession } from './requireSession.js';
 import { multerDeAvatar, subirFotoRedonda } from './subirAvatar.js';
 import { infoDeMensaje } from './infoDeMensaje.js';
@@ -276,6 +277,20 @@ export function buildChatRouter(uploader: MediaUploader = defaultMediaUploader()
     const detail = await chatDetail(String(req.params.chatId), new Types.ObjectId(req.session!.userId));
     if (!detail) return res.status(404).json({ message: 'No encontramos esa conversación.' });
     return res.json(detail);
+  });
+
+  // R31/10-B6: disappearing messages for the whole chat; the notice says who and for how long.
+  router.put('/:chatId/disappearing', async (req, res) => {
+    const key = (req.body as { key?: unknown } | undefined)?.key;
+    if (!isDisappearKey(key)) return res.status(400).json({ message: 'Elige 24 horas, 7 días, 90 días o Desactivados.' });
+    const userId = new Types.ObjectId(req.session!.userId);
+    const result = await setDisappearing({ chatId: req.params.chatId!, userId, key });
+    if (!result.ok) return res.status(result.status).json({ message: result.message });
+    if (result.changed) {
+      await avisarEnElChat({ chatId: req.params.chatId!, quien: userId, evento: 'temporales', valor: key });
+      for (const member of result.members) avisarCambioDeChat(member, req.params.chatId!);
+    }
+    res.json({ ok: true, key });
   });
 
   /**

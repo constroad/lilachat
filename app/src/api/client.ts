@@ -6,7 +6,7 @@
  * .env de dev sale apuntando al emulador y falla con wifi andando — el script
  * de release lo fija y lo verifica dentro del binario).
  */
-import type { ChatList, DestacadoEnLista, MuteFor, PresenceMode, NotificationLevel, ResumenDeHiloEnCliente, VistaDelFijado, VistaPreviaDeEnlace } from '@lilachat/shared';
+import type { ChatList, DestacadoEnLista, DisappearKey, MuteFor, PresenceMode, NotificationLevel, ResumenDeHiloEnCliente, VistaDelFijado, VistaPreviaDeEnlace } from '@lilachat/shared';
 import type { BigFile, StorageReport } from '@lilachat/shared';
 import type { ServerMessage } from '../chat/socketClient';
 import { unSoloPedido } from './pedidoUnico';
@@ -334,6 +334,23 @@ export const buscarMensajes = (token: string, q: string, fetchImpl?: FetchLike) 
  * Devuelve solo si salió bien; el error se ignora arriba porque es un ajuste,
  * no una acción destructiva —a lo sumo hay que reintentar—.
  */
+/** R31/10-B6: the chat's disappearing timer for everyone; the refusal comes with its reason. */
+export async function saveDisappearing(chatId: string, token: string, key: DisappearKey): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    const res = await fetch(`${BASE_URL}/api/chats/${chatId}/disappearing`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...buildHeader() },
+      body: JSON.stringify({ key }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (res.ok) return { ok: true };
+    const body = (await res.json().catch(() => null)) as { message?: string } | null;
+    return { ok: false, message: body?.message ?? 'No se pudo cambiar.' };
+  } catch {
+    return { ok: false, message: 'Sin conexión. Prueba de nuevo.' };
+  }
+}
+
 export async function cambiarAjustesDeChat(
   chatId: string,
   token: string,

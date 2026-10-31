@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { acuseDelGrupo, listThumbPath, memberPermissionsOf, muteStateOf, notificationLevel, TELEFONO_DE_LILA, unreadCount, type MemberPermissions, type NotificationLevel } from '@lilachat/shared';
+import { acuseDelGrupo, hasDisappeared, listThumbPath, memberPermissionsOf, muteStateOf, notificationLevel, TELEFONO_DE_LILA, unreadCount, type MemberPermissions, type NotificationLevel } from '@lilachat/shared';
 import { UserModel } from './models.js';
 import { ChatModel, MessageModel, ReceiptModel, type Message } from './chatModels.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
@@ -43,6 +43,8 @@ export type ChatSummary = {
     at: Date;
     system?: Message['system'];
     deletedAt?: Date;
+    /** R31/10-B6: when it disappears; past it the preview is empty. */
+    disappearsAt?: Date;
     hiloDe?: number;
     /** A wink's id: the list plays its sound (José, 21/10). */
     wink?: string;
@@ -206,7 +208,10 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
         lastSeq: chat.lastMainSeq ?? chat.lastSeq,
         readSeq: readByChat.get(String(chat._id)) ?? 0,
       }),
-      lastMessage: last
+      // R31/10-B6: a last message whose time passed shows nothing, not its text nor a tombstone.
+      lastMessage: last && hasDisappeared(last)
+        ? { seq: last.seq, kind: last.kind, senderId: String(last.senderId), at: last.at, disappearsAt: last.disappearsAt }
+        : last
         ? {
             seq: last.seq,
             body: last.body,

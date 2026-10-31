@@ -23,7 +23,7 @@ import { EditarNombreDeGrupo } from './EditarNombreDeGrupo';
 import { elegirFotoDeGrupo, subirFotoDeGrupo } from './fotoDeGrupo';
 import { IdentidadDelChat } from './IdentidadDelChat';
 import { confirmacionDe } from './confirmacionesDeMiembro';
-import { AjustesDelChat } from './AjustesDelChat';
+import { AjustesDelChat, disappearSettingOf } from './AjustesDelChat';
 import { AccionesDeMiembro } from './AccionesDeMiembro';
 import { ElegirParaSumar } from './ElegirParaSumar';
 import type { Credential } from '../auth/credentialStore';
@@ -65,7 +65,7 @@ type Detalle = {
   avatarUrl?: string;
   encrypted: boolean;
   /** MI silenciado de este chat (FL8: antes el interruptor arrancaba siempre apagado). */
-  muted?: boolean; mutedUntil?: string;
+  muted?: boolean; mutedUntil?: string; disappearSeconds?: number;
   /** E3b: todo / menciones / nada; a server without it leaves only `muted`. */
   avisos?: NotificationLevel;
   /** Nudges and winks in a group, switched on by an admin (21/10). */
@@ -528,8 +528,8 @@ export function ChatDetailScreen({
             {/* Un borrador no tiene avisos que silenciar ni cifrado que explicar. */}
             {esBorrador || tab !== 'settings' ? null : (
             <AjustesDelChat
-              esGrupo={esGrupo}
-              cifrado={detalle!.encrypted}
+              esGrupo={esGrupo} cifrado={detalle!.encrypted}
+              disappear={disappearSettingOf(detalle!, chatId, credential.jwt, setAviso)}
               level={level} mutedUntil={detalle!.mutedUntil}
               onLevel={(next, muteFor) => {
                 // Se guarda de verdad (FL8): antes era solo un estado local.

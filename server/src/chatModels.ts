@@ -86,6 +86,10 @@ export interface Chat {
   memberPermissions?: { editInfo?: boolean; sendMessages?: boolean; addMembers?: boolean; pinMessages?: boolean };
   /** In a 1:1, who of the two blocked the other (pending 9); while it has anyone, nobody writes. */
   blockedBy?: Types.ObjectId[];
+  /** Disappearing messages (R31/10-B6): the seconds each NEW message lives; unset = off. */
+  disappearSeconds?: number;
+  /** The soonest `disappearsAt` still in the base: the sweep visits only chats that have one due. */
+  nextDisappearAt?: Date;
   /** Apps an admin took out of this channel (pending 91): they do not rejoin on their own. */
   appsRemoved?: Types.ObjectId[];
   /** Birthdays on in this chat (pending 17), and the day each member's was announced. */
@@ -204,6 +208,8 @@ export interface Message {
    * clientes leen como mensajes por descargar.
    */
   deletedAt?: Date;
+  /** When it disappears (R31/10-B6): stamped at sending from the chat's timer; devices hide it from then on. */
+  disappearsAt?: Date;
   /** Es una auto-respuesta de ausente (F11): NO dispara otra (corta los loops). */
   autoReply?: boolean;
   at: Date;
@@ -260,6 +266,8 @@ const chatSchema = new Schema<Chat>(
     lastMainSeq: { type: Number },
     encrypted: { type: Boolean, default: false },
     blockedBy: { type: [Schema.Types.ObjectId], default: undefined },
+    disappearSeconds: { type: Number },
+    nextDisappearAt: { type: Date },
     fijados: {
       type: [{ seq: { type: Number, required: true }, por: { type: Schema.Types.ObjectId, required: true }, en: { type: Date, required: true }, hasta: { type: Date, required: true }, _id: false }],
       default: undefined,
@@ -271,6 +279,8 @@ const chatSchema = new Schema<Chat>(
 // reconexión, así que va indexada por miembro.
 chatSchema.index({ 'members.userId': 1 });
 chatSchema.index({ workspaceId: 1 }, { sparse: true });
+// The sweep of disappearing messages (R31/10-B6): only chats with something due. Created with José's OK.
+chatSchema.index({ nextDisappearAt: 1 }, { sparse: true });
 
 const messageSchema = new Schema<Message>(
   {
@@ -340,6 +350,7 @@ const messageSchema = new Schema<Message>(
     },
     editedAt: { type: Date },
     deletedAt: { type: Date },
+    disappearsAt: { type: Date },
     autoReply: { type: Boolean, default: false },
     at: { type: Date, default: Date.now },
   },

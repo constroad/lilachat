@@ -11,6 +11,7 @@ import { attachSocket } from './socket.js';
 import { startReminderCron } from './reminderCron.js';
 import { startBirthdayCron } from './birthdays.js';
 import { startBackupCron } from './backupCron.js';
+import { startDisappearCron } from './disappearingMessages.js';
 import { alertarServidor } from './alertaTelegram.js';
 import { sellarConsola } from './registro.js';
 import { lilaStoreMinimum } from './minimumVersion.js';
@@ -101,6 +102,7 @@ export function startServer(): void {
       startReminderCron();
       startBackupCron();
       startBirthdayCron();
+      startDisappearCron();
       // The bots' events left pending at the last shutdown get their retry timers back.
       void resumeBotDeliveries().catch((error) => console.error('[bots] no se pudieron retomar los eventos:', error instanceof Error ? error.message : error));
     })

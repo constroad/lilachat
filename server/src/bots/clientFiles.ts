@@ -77,11 +77,11 @@ async function askAboutService<T>(ask: ServiceAsk<T>, workspaceId: string, clien
   return { ok: false, message: ask.failed, fallbackUrl };
 }
 
-/** José 30/10 night: quotes and collection only for whoever sees money, whatever Portal decided to send. */
+/** José 30/10 night: quotes, collection and valuations only for whoever sees money, whatever Portal decided to send. */
 function withoutMoney(detail: ServiceDetail, seesMoney: boolean): ServiceDetail {
   if (seesMoney) return detail;
-  const { quotes: _quotes, billing: _billing, totals, ...rest } = detail;
-  const { quotes: _count, ...counts } = totals;
+  const { quotes: _quotes, billing: _billing, valuations: _valuations, valuationsUrl: _valuationsUrl, totals, ...rest } = detail;
+  const { quotes: _count, valuations: _valuationCount, ...counts } = totals;
   return { ...rest, totals: counts };
 }
 

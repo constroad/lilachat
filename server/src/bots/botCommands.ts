@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { canManageMembers, COMMAND_LIMITS, enabledAt, formLevelOf, isAckBody, itemSettingOf, mayUseItem, validateCommandResponse, validateFormReply, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope } from '@lilachat/shared';
+import { canManageMembers, COMMAND_LIMITS, enabledAt, formLevelOf, isAckBody, itemSettingOf, mayUseItem, shortcutValuesOf, validateCommandResponse, validateFormReply, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope, type ShortcutValues } from '@lilachat/shared';
 import { ChatModel, type Chat } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { callBotWebhook, isRestarting, recordLastDelivery, type WebhookReply } from './botEvents.js';
@@ -168,7 +168,7 @@ export function judgeReply(reply: WebhookReply, command: string, installationId:
 }
 
 /** What the person did: typed a command, or tapped an action of the «+» (R160, design e-29). */
-type Trigger = { kind: 'command'; command: string; text: string } | { kind: 'shortcut'; key: string };
+type Trigger = { kind: 'command'; command: string; text: string } | { kind: 'shortcut'; key: string; values?: ShortcutValues };
 
 /** The chat where it was used and its space, or the space alone (its ⚡); null if the person is not in it. */
 async function placeOf(userId: Types.ObjectId, scope: CommandScope): Promise<{ chat: ChatOfCommand | null; workspaceId: Types.ObjectId } | null> {
@@ -204,7 +204,7 @@ async function invokeApp(userId: Types.ObjectId, scope: CommandScope, appId: unk
   const common = { command_id: String(run._id), channel: chat ? channelOf(chat) : null, user };
   const reply = trigger.kind === 'command'
     ? await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, 'command.invoked', { ...common, command: name, text: trigger.text }, answerTimeoutMs)
-    : await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, 'shortcut.invoked', { ...common, shortcut: name }, answerTimeoutMs);
+    : await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, 'shortcut.invoked', { ...common, shortcut: name, ...(trigger.values ? { values: trigger.values } : {}) }, answerTimeoutMs);
   const base: Base = { commandId: String(run._id), appId: String(app._id), appName: app.name };
   const judged = judgeReply(reply, name, installation._id, base);
   if (!('accepted' in judged)) return judged;
@@ -221,9 +221,14 @@ export function invokeCommand(userId: Types.ObjectId, scope: CommandScope, input
   return invokeApp(userId, scope, input.appId, { kind: 'command', command: typeof input.command === 'string' ? input.command : '', text }, formsLevelOf(input.forms));
 }
 
-/** An action of the «+»: the app hears `shortcut.invoked` and answers like a command, usually with its form. */
-export function invokeShortcut(userId: Types.ObjectId, scope: CommandScope, input: { appId: unknown; shortcut: unknown; forms?: unknown }): Promise<CommandOutcome | CommandError> {
-  return invokeApp(userId, scope, input.appId, { kind: 'shortcut', key: typeof input.shortcut === 'string' ? input.shortcut : '' }, formsLevelOf(input.forms));
+/**
+ * An action of the «+»: the app hears `shortcut.invoked` and answers like a command, usually with its form.
+ * `values`: what the place it was tapped from already knows (agentes 31/10: the link of a client or an order).
+ */
+export async function invokeShortcut(userId: Types.ObjectId, scope: CommandScope, input: { appId: unknown; shortcut: unknown; forms?: unknown; values?: unknown }): Promise<CommandOutcome | CommandError> {
+  const values = shortcutValuesOf(input.values);
+  if (values === null) return fail(400, 'invalid_request', 'values va como un objeto de textos cortos, números o sí/no.');
+  return invokeApp(userId, scope, input.appId, { kind: 'shortcut', key: typeof input.shortcut === 'string' ? input.shortcut : '', ...(values ? { values } : {}) }, formsLevelOf(input.forms));
 }
 
 /** The late answer: once per call, five at most, within 15 minutes of the command. */

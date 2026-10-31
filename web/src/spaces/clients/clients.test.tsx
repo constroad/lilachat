@@ -89,11 +89,29 @@ describe('a client channel (design f-03)', () => {
     expect(screen.queryByTestId('nota-archivado')).toBeNull();
   });
 
+  it('the links of the channel (José 31/10): the client\'s at the top and «Compartir» on each service, only while their action is on', () => {
+    // Arrange
+    const open = vi.fn();
+    const links = { can: (kind: string) => kind !== 'order', open };
+    render(<ClientServices client={client('x', { services: [inProgress] })} records={[]} target={null} links={links} />);
+    // Act
+    fireEvent.click(screen.getByTestId('enlace-cliente'));
+    fireEvent.click(screen.getByTestId('compartir-servicio-s1'));
+    // Assert
+    expect(open.mock.calls).toEqual([[{ kind: 'client', clientId: 'x' }], [{ kind: 'service', clientId: 'x', serviceId: 's1' }]]);
+  });
+
+  it('without the link actions on in the channel there is nothing to tap', () => {
+    render(<ClientServices client={client('x', { services: [inProgress] })} records={[]} target={null} links={{ can: () => false, open: vi.fn() }} />);
+    expect(screen.queryByTestId('enlace-cliente')).toBeNull();
+    expect(screen.queryByTestId('compartir-servicio-s1')).toBeNull();
+  });
+
   it('«Servicios» shows each service with its state, progress and records; a record opens its message', () => {
     // Arrange
     const onOpenRecord = vi.fn();
     const records = [{ seq: 7, at: '2026-10-29T11:36:30Z', kind: 'service.record', service_id: 's1', title: 'Control de pista · 29 de octubre', kicker: 'INFORME' }];
-    render(<ClientServices client={client('x', { drive_url: 'https://portal.constroad.com/drive/c1', services: [{ ...inProgress, started_at: '2026-10-06T14:00:00.000Z' }, { id: 's2', name: 'Bacheo', status: 'completed', stage_label: '' }] })} records={records} onOpenRecord={onOpenRecord} target={null} />);
+    render(<ClientServices client={client('x', { drive_url: 'https://portal.constroad.com/drive/c1', services: [{ ...inProgress, started_at: '2026-10-06' }, { id: 's2', name: 'Bacheo', status: 'completed', stage_label: '' }] })} records={records} onOpenRecord={onOpenRecord} target={null} />);
     // Act
     fireEvent.click(screen.getByTestId('registro-7'));
     // Assert
@@ -103,7 +121,7 @@ describe('a client channel (design f-03)', () => {
     expect(screen.getByTestId('servicio-s1')).toHaveTextContent('INFORME');
     expect(screen.getByTestId('abrir-servicio-s1')).toHaveAttribute('href', 'https://drive.example.com/s1');
     expect(screen.getByTestId('servicio-s2')).toHaveTextContent('Completado');
-    // José 31/10: the date it started, in Lima; a service without one says nothing.
+    // José 31/10: the day it started, as a day (read as an instant it would be 5 oct in Lima); without one, nothing.
     expect(screen.getByTestId('inicio-servicio-s1')).toHaveTextContent('Inicio 6 oct');
     expect(screen.queryByTestId('inicio-servicio-s2')).toBeNull();
     expect(onOpenRecord).toHaveBeenCalledWith(7);

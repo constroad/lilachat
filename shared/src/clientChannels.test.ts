@@ -44,12 +44,18 @@ describe('validateClientState', () => {
     expect(validateClientState({ ...wire, services: [{ ...wire.services[0], progress: 140 }] }).ok).toBe(false);
   });
 
-  it('a service may say when it started (José 31/10: «la lista de servicios no muestra la fecha»); a bad date is refused', () => {
+  it('a service may say the day it started (José 31/10: «la lista de servicios no muestra la fecha»); a bad date is refused', () => {
+    // Arrange
+    const startedOn = (started_at: string) => validateClientState({ ...wire, services: [{ ...wire.services[0], started_at }] });
     // Act
-    const valid = validateClientState({ ...wire, services: [{ ...wire.services[0], started_at: '2026-10-06T14:00:00Z' }] });
+    const day = startedOn('2026-10-06');
+    // An instant (an older agentes) becomes the day it was in Lima, not the day in UTC.
+    const lateNightInLima = startedOn('2026-10-06T03:00:00Z');
     // Assert
-    expect(valid.ok && valid.state.services[0]!.startedAt).toBe('2026-10-06T14:00:00.000Z');
-    expect(validateClientState({ ...wire, services: [{ ...wire.services[0], started_at: 'ayer' }] }).ok).toBe(false);
+    expect(day.ok && day.state.services[0]!.startedAt).toBe('2026-10-06');
+    expect(lateNightInLima.ok && lateNightInLima.state.services[0]!.startedAt).toBe('2026-10-05');
+    expect(startedOn('ayer').ok).toBe(false);
+    expect(startedOn('2026-13-40').ok).toBe(false);
   });
 
   it('a long Drive link of a service is not cut at 160 characters', () => {

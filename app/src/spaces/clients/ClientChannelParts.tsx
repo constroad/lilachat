@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Archive, ChevronRight, ExternalLink, FileText, Search } from 'lucide-react-native';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, instantDayOf, shortDate, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
+import { Archive, ChevronRight, ExternalLink, FileText, Link2, Search, Share2 } from 'lucide-react-native';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, dayOf, shortDate, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { ClientAccessRow } from './ClientAccess';
 import { ServiceDetailView } from './ServiceDetailView';
@@ -47,8 +47,8 @@ function ServiceFilters(props: { query: string; onQuery: (query: string) => void
   );
 }
 
-/** Tapping the head opens its expediente; without the space (no way to ask), its Portal link. */
-function ServiceCard(props: { service: SpaceClientService; records: ClientRecord[] | null; canOpen: boolean; onOpen: () => void; onOpenRecord: (seq: number) => void }) {
+/** Tapping the head opens its expediente; without the space (no way to ask), its Portal link. «Compartir» makes its link (José 31/10). */
+function ServiceCard(props: { service: SpaceClientService; records: ClientRecord[] | null; canOpen: boolean; onOpen: () => void; onOpenRecord: (seq: number) => void; onShare?: () => void }) {
   const colors = useColores();
   const { service } = props;
   const action = props.canOpen ? props.onOpen : service.url ? () => service.url && void Linking.openURL(service.url) : undefined;
@@ -60,7 +60,7 @@ function ServiceCard(props: { service: SpaceClientService; records: ClientRecord
           <Text className={`rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{service.stage_label || CLIENT_SERVICE_STATUS_LABELS[service.status]}</Text>
         </View>
         {/* José 31/10: «la lista de servicios no muestra la fecha». */}
-        {service.started_at ? <Text testID={`inicio-servicio-${service.id}`} className="mt-1 text-[12px] text-on-surface-variant">{`Inicio ${instantDayOf(service.started_at)}`}</Text> : null}
+        {service.started_at ? <Text testID={`inicio-servicio-${service.id}`} className="mt-1 text-[12px] text-on-surface-variant">{`Inicio ${dayOf(service.started_at)}`}</Text> : null}
         {service.progress !== undefined ? (
           <View className="mt-3 flex-row items-center gap-3">
             <View className="h-1.5 flex-1 overflow-hidden rounded-full bg-background"><View className="h-full rounded-full bg-primary" style={{ width: `${service.progress}%` }} /></View>
@@ -74,6 +74,12 @@ function ServiceCard(props: { service: SpaceClientService; records: ClientRecord
           </View>
         ) : null}
       </Pressable>
+      {props.onShare ? (
+        <Pressable testID={`compartir-servicio-${service.id}`} onPress={props.onShare} className="mt-2 min-h-[40px] flex-row items-center gap-1.5 self-start rounded-lg border border-outline/20 px-3">
+          <Share2 size={15} color={colors.primary} />
+          <Text className="text-[13px] font-semibold text-primary">Compartir</Text>
+        </Pressable>
+      ) : null}
       <ServiceRecords records={props.records} onOpen={props.onOpenRecord} />
     </View>
   );
@@ -85,23 +91,33 @@ function ServiceCard(props: { service: SpaceClientService; records: ClientRecord
  * Tapping the service opens its expediente (José, 30/10); the Drive moved to
  * «Archivos».
  */
-export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord: (seq: number) => void; target: ServiceAskTarget | null; members: ReadonlyMap<string, string>; me: string }) {
+export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord: (seq: number) => void; target: ServiceAskTarget | null; members: ReadonlyMap<string, string>; me: string; links?: ChannelLinks }) {
+  const colors = useColores();
+  const { links } = props;
+  const clientId = props.client.id;
   const [opened, setOpened] = useState<SpaceClientService | null>(null);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<ServiceFilter>('all');
   const close = useCallback(() => setOpened(null), []);
   const { services, counts } = filterServices(props.client.services, { query, filter });
   const grouped = props.records ? recordsByService(props.records) : null;
-  if (opened && props.target) return <ServiceDetailView target={props.target} service={opened} onBack={close} />;
+  if (opened && props.target) return <ServiceDetailView target={props.target} service={opened} onBack={close} links={links} />;
   const total = props.client.services.length;
   return (
     <ScrollView testID="servicios-cliente" contentContainerStyle={{ padding: 16, gap: 12 }}>
       {props.target ? <ClientAccessRow target={props.target} members={props.members} me={props.me} chatId={props.client.chat_id} /> : null}
+      {/* José 31/10: the client's link here; an order's in its sheet, a service's on its card. */}
+      {links?.can('client') ? (
+        <Pressable testID="enlace-cliente" onPress={() => links.open({ kind: 'client', clientId })} className="min-h-[44px] flex-row items-center gap-2 self-start rounded-xl border border-primary/30 bg-primary/10 px-3">
+          <Link2 size={16} color={colors.primary} />
+          <Text className="text-[14px] font-semibold text-primary">Enlace del cliente</Text>
+        </Pressable>
+      ) : null}
       {total > 1 ? <ServiceFilters query={query} onQuery={setQuery} filter={filter} onFilter={setFilter} counts={counts} /> : null}
       {total === 0 ? <Text className="pt-10 text-center text-[14px] text-on-surface-variant">Este cliente todavía no tiene servicios.</Text> : null}
       {total > 0 && services.length === 0 ? <Text className="pt-6 text-center text-[14px] text-on-surface-variant">Ningún servicio con ese filtro.</Text> : null}
       {services.map((service) => (
-        <ServiceCard key={service.id} service={service} records={grouped ? (grouped.get(service.id) ?? []) : null} canOpen={Boolean(props.target)} onOpen={() => setOpened(service)} onOpenRecord={props.onOpenRecord} />
+        <ServiceCard key={service.id} service={service} records={grouped ? (grouped.get(service.id) ?? []) : null} canOpen={Boolean(props.target)} onOpen={() => setOpened(service)} onOpenRecord={props.onOpenRecord} onShare={links?.can('service') ? () => links.open({ kind: 'service', clientId, serviceId: service.id }) : undefined} />
       ))}
     </ScrollView>
   );

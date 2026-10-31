@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronLeft, ExternalLink, FileText } from 'lucide-react-native';
-import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orderGuidesOf, reportGroups, type DetailRow, type DetailTabKey, type ServiceDetail, type SheetFile, type SpaceClientService } from '@lilachat/shared';
+import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orderGuidesOf, reportGroups, type ChannelLinks, type DetailRow, type DetailTabKey, type ServiceDetail, type SheetFile, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import type { ViewableFile } from '@lilachat/shared';
 import { RecordSheet } from './RecordSheet';
@@ -123,7 +123,11 @@ function TabStrip(props: { detail: ServiceDetail; tab: DetailTabKey; onTab: (tab
   );
 }
 
-function DetailTabs({ detail, target, serviceId, onOpenFile }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void }) {
+/** An order's sheet makes its link with what Portal's modal asks (José 31/10); other sheets have no button. */
+const orderLinkAction = (links: ChannelLinks | undefined, tab: DetailTabKey, target: ServiceAskTarget, orderId: string | null) =>
+  links?.can('order') && tab === 'orders' && orderId ? { label: 'Crear enlace del pedido', onPress: () => links.open({ kind: 'order', clientId: target.clientId, orderId }) } : undefined;
+
+function DetailTabs({ detail, target, serviceId, onOpenFile, links }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void; links?: ChannelLinks }) {
   // José 30/10 night: Cotizaciones and Cobranza first; it opens on the first one that came.
   const [tab, setTab] = useState<DetailTabKey>(() => detailTabs(detail)[0]?.key ?? 'orders');
   const [openId, setOpenId] = useState<string | null>(null);
@@ -140,13 +144,14 @@ function DetailTabs({ detail, target, serviceId, onOpenFile }: { detail: Service
     <>
       <TabStrip detail={detail} tab={tab} onTab={setTab} />
       {guides.length ? <OrderGuides guides={guides} onOpenFile={onOpenFile} /> : null}
+      {tab === 'valuations' && detail.valuationsUrl ? <PortalLink url={detail.valuationsUrl} label="Generar en el Portal" testID="generar-valorizacion" /> : null}
       {tab === 'billing' && detail.billing ? <ServiceBilling billing={detail.billing} invoices={invoicesOf(detail)} onOpenFile={onOpenFile} /> : (
         <View className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">
           {!rows.length ? <Text className="p-4 text-[14px] text-on-surface-variant">{DETAIL_EMPTY[tab]}</Text> : tab === 'reports' ? <ReportDays detail={detail} onOpen={setOpenId} onOpenFile={onOpenFile} /> : rows.map((row) => <RowView key={row.id} row={row} onOpen={setOpenId} onOpenFile={onOpenFile} />)}
         </View>
       )}
       {more ? <Text className="text-center text-[12px] text-on-surface-variant">{`${more} · el resto está en el Portal`}</Text> : null}
-      <RecordSheet sheet={sheet} onClose={close} onOpenFile={onOpenFile} pdf={sheet?.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!, `${sheet.title} · PDF`) } : undefined} />
+      <RecordSheet sheet={sheet} onClose={close} onOpenFile={onOpenFile} pdf={sheet?.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!, `${sheet.title} · PDF`) } : undefined} action={orderLinkAction(links, tab, target, openId)} />
       {detail.service.url ? <PortalLink url={detail.service.url} label="Abrir en el Portal" testID="abrir-servicio-portal" /> : null}
     </>
   );
@@ -164,7 +169,7 @@ const Skeleton = () => (
  * service's reports, orders and dispatches; design f-04): its head, then
  * Pedidos · Despachos · Informes with Portal's counts. Asked when it opens.
  */
-export function ServiceDetailView(props: { target: ServiceAskTarget; service: SpaceClientService; onBack: () => void }) {
+export function ServiceDetailView(props: { target: ServiceAskTarget; service: SpaceClientService; onBack: () => void; links?: ChannelLinks }) {
   const colors = useColores();
   const answer = useServiceAsk('detail', props.target, props.service.id);
   const files = useFileViewer();
@@ -185,7 +190,7 @@ export function ServiceDetailView(props: { target: ServiceAskTarget; service: Sp
       </Pressable>
       <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
       {answer === null ? <Skeleton /> : null}
-      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} onOpenFile={files.open} /> : null}
+      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} onOpenFile={files.open} links={props.links} /> : null}
       {files.notice ? <Text className="text-center text-[13px] text-error">{files.notice}</Text> : null}
       {files.viewer}
       {answer && !answer.ok ? (

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { chatActionRows, chatHasActionPlace, evidenceLine, formSubmitOutcome, geoPointOf, photoStampLines, placedActionRow, precisionLabel, quickActionRows, shortcutRows, submitLabelOf } from './appActions.js';
+import { describe, expect, it, vi } from 'vitest';
+import { channelLinksOf, chatActionRows, chatHasActionPlace, evidenceLine, formSubmitOutcome, geoPointOf, linkActionOf, photoStampLines, placedActionRow, precisionLabel, quickActionRows, shortcutRows, shortcutValuesOf, submitLabelOf } from './appActions.js';
 import type { FormField } from './appForms.js';
 import type { CommandGroup, CommandOutcome } from './botCommands.js';
 
@@ -129,5 +129,59 @@ describe('photoStampLines (pending 94: date, time and place burned into the self
   it('without a location it says so, and an unknown zone falls back to Lima', () => {
     const lines = photoStampLines({ at: new Date('2026-10-24T05:05:00.000Z'), timeZone: 'Mars/Olympus' });
     expect(lines).toEqual(['sáb 24/10/2026 · 00:05', 'Sin ubicación']);
+  });
+});
+
+describe('a link from a client\'s channel (José 31/10: «crear el enlace del pedido, del servicio o del cliente»)', () => {
+  const portal: CommandGroup[] = [{ appId: 'p1', appName: 'Portal', commands: [], shortcuts: [{ key: 'crear_enlace_cliente', name: 'Crear enlace' }, { key: 'compartir_servicio', name: 'Compartir servicio' }] }];
+  const actions = chatActionRows(portal);
+
+  it('the client\'s and an order\'s run Portal\'s «crear_enlace_cliente» with what it already knows; a service\'s, «compartir_servicio»', () => {
+    // Act
+    const client = linkActionOf(actions, { kind: 'client', clientId: 'cli-1' });
+    const order = linkActionOf(actions, { kind: 'order', clientId: 'cli-1', orderId: 'o-7' });
+    const service = linkActionOf(actions, { kind: 'service', clientId: 'cli-1', serviceId: 'srv-3' });
+    // Assert
+    expect(client).toEqual({ row: expect.objectContaining({ appId: 'p1', key: 'crear_enlace_cliente' }), values: { alcance: 'cliente', clienteId: 'cli-1' } });
+    expect(order?.values).toEqual({ alcance: 'pedido', clienteId: 'cli-1', pedidoId: 'o-7' });
+    expect(service).toEqual({ row: expect.objectContaining({ key: 'compartir_servicio' }), values: { clienteId: 'cli-1', servicioId: 'srv-3' } });
+  });
+
+  it('the buttons: which show, and a tap runs the action with its values', () => {
+    // Arrange
+    const run = vi.fn();
+    const links = channelLinksOf(chatActionRows([{ ...portal[0]!, shortcuts: [{ key: 'crear_enlace_cliente', name: 'Crear enlace' }] }]), run);
+    // Act
+    links.open({ kind: 'order', clientId: 'cli-1', orderId: 'o-7' });
+    links.open({ kind: 'service', clientId: 'cli-1', serviceId: 'srv-3' });
+    // Assert
+    expect([links.can('client'), links.can('order'), links.can('service')]).toEqual([true, true, false]);
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(run).toHaveBeenCalledWith(expect.objectContaining({ key: 'crear_enlace_cliente' }), { alcance: 'pedido', clienteId: 'cli-1', pedidoId: 'o-7' });
+  });
+
+  it('nothing to tap while the action is off in the channel', () => {
+    // Act
+    const onlyShare = chatActionRows([{ ...portal[0]!, shortcuts: [{ key: 'compartir_servicio', name: 'Compartir servicio' }] }]);
+    // Assert
+    expect(linkActionOf(onlyShare, { kind: 'client', clientId: 'cli-1' })).toBeNull();
+    expect(linkActionOf([], { kind: 'service', clientId: 'cli-1', serviceId: 'srv-3' })).toBeNull();
+  });
+});
+
+describe('shortcutValuesOf (what an action carries already filled in)', () => {
+  it('absent or empty is nothing; short texts, numbers and yes/no pass', () => {
+    expect(shortcutValuesOf(undefined)).toBeUndefined();
+    expect(shortcutValuesOf({})).toBeUndefined();
+    expect(shortcutValuesOf({ alcance: 'pedido', dias: 7, activo: true })).toEqual({ alcance: 'pedido', dias: 7, activo: true });
+  });
+
+  it('anything else is refused: a list, a nested object, a long text, a bad key, too many keys, NaN', () => {
+    expect(shortcutValuesOf(['a'])).toBeNull();
+    expect(shortcutValuesOf({ a: { b: 1 } })).toBeNull();
+    expect(shortcutValuesOf({ a: 'x'.repeat(201) })).toBeNull();
+    expect(shortcutValuesOf({ 'no válida': 'x' })).toBeNull();
+    expect(shortcutValuesOf(Object.fromEntries(Array.from({ length: 11 }, (_, index) => [`k${index}`, index])))).toBeNull();
+    expect(shortcutValuesOf({ n: Number.NaN })).toBeNull();
   });
 });

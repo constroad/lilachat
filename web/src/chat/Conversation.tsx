@@ -7,7 +7,7 @@ import { useContext, useEffect, useState, type ReactNode } from 'react';
 import { ArrowLeft, Building2, Phone, Search, Video } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import type { AgendaReminder, DirectoryApp, MencionElegida, MencionEnMensaje, WinkId } from '@lilachat/shared';
-import { chatHasActionPlace, clientHeaderSubtitle, formatUltimaVez, presenceLine, type PresenceStatus, memberCountLabel } from '@lilachat/shared';
+import { channelLinksOf, chatHasActionPlace, clientHeaderSubtitle, formatUltimaVez, presenceLine, type PresenceStatus, memberCountLabel } from '@lilachat/shared';
 import { Composer, type ContextoDelComposer } from './Composer';
 import { useChatCommandsWithActions } from './commands/useChatCommands';
 import { AppCommandsBar, AppConversationHeader, type AppConversationTab } from '../spaces/apps/AppConversation';
@@ -21,7 +21,7 @@ import { useWorkPlanWeb, WorkPlanWeb } from './workPlan/WorkPlanWeb';
 import { PendingWeb, TaskDetailWeb, type OpenTask } from './workPlan/WorkListsWeb';
 import { ClientFilesWeb } from '../spaces/clients/ClientFilesWeb';
 import { ClientAccountWeb } from '../spaces/clients/ClientAccountWeb';
-import { CHANNEL_TAB_LABELS, channelTabs, stageFiles, type ChannelTab } from '@lilachat/shared';
+import { CHANNEL_TAB_LABELS, channelTabs, stageFiles, type ChannelLinks, type ChannelTab } from '@lilachat/shared';
 import { useClientOfChat } from '../spaces/clients/useSpaceClients';
 import { ArchivedClientBanner, ArchivedComposerNote, ClientServices } from '../spaces/clients/ClientChannelParts';
 import { useClientRecords } from '../spaces/clients/useSpaceClients';
@@ -134,6 +134,11 @@ export function Conversation(props: {
   const visibleMessages = useWithoutDisappeared(props.mensajes);
   const fun = useFunPlayback({ messages: visibleMessages, me: props.yo, chatId: chat.id, muted: Boolean(chat.muted), afterSeq: chat.lastSeq - chat.unread });
   const commands = useChatCommandsWithActions({ jwt: props.jwtParaEnlaces, chatId: chat.id, workspaceId: chat.workspaceId, shareable: chat.kind === 'group', actionPlace: chatHasActionPlace({ workspaceId: chat.workspaceId, isGroup: chat.kind === 'group', appId: chat.appId }) });
+  // José 31/10: a link is made in the chat, where its form opens and «Enviar al canal» can post it.
+  const links = channelLinksOf(commands.actions, (row, values) => {
+    setChannelTab('chat');
+    void commands.appAnswers.runAction(row, values);
+  });
   return (
     <section
       data-testid="panel-conversacion"
@@ -177,7 +182,7 @@ export function Conversation(props: {
       ) : isClientChannel && client && shownTab === 'account' && props.jwtParaEnlaces && chat.workspaceId ? (
         <ClientAccountWeb target={{ jwt: props.jwtParaEnlaces, spaceId: chat.workspaceId, clientId: client.id }} />
       ) : isClientChannel && client && shownTab === 'services' ? (
-        <ClientServicesPanel client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} onOpenRecord={toMessage} />
+        <ClientServicesPanel client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} onOpenRecord={toMessage} links={links} />
       ) : props.app && appTab === 'info' ? (
         <div data-testid="informacion-app" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-8">
           <div className="mx-auto max-w-3xl">
@@ -329,9 +334,9 @@ function BannerWithSession() {
 }
 
 /** «Servicios» asks for its records only while it is open. */
-function ClientServicesPanel(props: { client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; onOpenRecord: (seq: number) => void }) {
+function ClientServicesPanel(props: { client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; onOpenRecord: (seq: number) => void; links: ChannelLinks }) {
   const records = useClientRecords(props.jwt, props.spaceId, props.client.id);
-  return <ClientServices client={props.client} records={records} onOpenRecord={props.onOpenRecord} target={props.jwt && props.spaceId ? { jwt: props.jwt, spaceId: props.spaceId, clientId: props.client.id } : null} />;
+  return <ClientServices client={props.client} records={records} onOpenRecord={props.onOpenRecord} target={props.jwt && props.spaceId ? { jwt: props.jwt, spaceId: props.spaceId, clientId: props.client.id } : null} links={props.links} />;
 }
 
 /**

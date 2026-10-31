@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
-import { ChevronDown, ExternalLink, FileText } from 'lucide-react-native';
+import { ChevronDown, ExternalLink, FileText, Link2 } from 'lucide-react-native';
 import type { DetailRow, DetailSheet, SheetFact, SheetGroup, SheetItem, SheetMedia } from '@lilachat/shared';
 import { FileThumb } from './FileThumb';
 import { PantallaEnModal } from '../../ui/PantallaEnModal';
@@ -111,7 +111,10 @@ function RelatedRow(props: { row: DetailRow; onOpenFile: (file: ViewableFile) =>
  * viewer, an order's dispatches and a quote's line items. Portal stays at the
  * foot, secondary.
  */
-export function RecordSheet(props: { sheet: DetailSheet | null; onClose: () => void; onOpenFile: OpenFile; pdf?: PdfOnDemand }) {
+/** A button of the place that opened the sheet, like an order's «Crear enlace del pedido» (José 31/10). */
+export type SheetAction = { label: string; onPress: () => void };
+
+export function RecordSheet(props: { sheet: DetailSheet | null; onClose: () => void; onOpenFile: OpenFile; pdf?: PdfOnDemand; action?: SheetAction }) {
   const colors = useColores();
   const { sheet } = props;
   return (
@@ -128,6 +131,12 @@ export function RecordSheet(props: { sheet: DetailSheet | null; onClose: () => v
           {sheet.note ? <Text testID="nota-ficha" className="text-[14px] text-on-surface-variant">{sheet.note}</Text> : null}
           {sheet.items.length ? <><Kicker>Partidas</Kicker><View className="rounded-2xl border border-outline/15 bg-surface px-4">{sheet.items.map((item, index) => <ItemRow key={`${item.name}-${index}`} item={item} />)}</View></> : null}
           {sheet.related.length ? <><Kicker>Despachos de este pedido</Kicker><View className="rounded-2xl border border-outline/15 bg-surface px-4">{sheet.related.map((row) => <RelatedRow key={row.id} row={row} onOpenFile={props.onOpenFile} />)}</View></> : null}
+          {props.action ? (
+            <Pressable testID="accion-ficha" onPress={props.action.onPress} className="min-h-[48px] flex-row items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4">
+              <Link2 size={16} color={colors.primary} />
+              <Text className="text-[15px] font-semibold text-primary">{props.action.label}</Text>
+            </Pressable>
+          ) : null}
           {sheet.url ? (
             <Pressable testID="ficha-en-portal" onPress={() => void Linking.openURL(sheet.url!)} className="min-h-[44px] flex-row items-center gap-1.5">
               <ExternalLink size={15} color={colors['on-surface-variant']} />

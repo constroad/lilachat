@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { BackHandler, Pressable, ScrollView, Text, ToastAndroid, View } from 'react-native';
-import { CHANNEL_TAB_LABELS, channelTabs, checklistMembers, stageFiles, withoutApps, type ChannelTab, type SpaceClient, type WorkStage } from '@lilachat/shared';
+import { CHANNEL_TAB_LABELS, channelLinksOf, channelTabs, checklistMembers, stageFiles, withoutApps, type ChannelLinks, type ChannelTab, type ShortcutRow, type ShortcutValues, type SpaceClient, type WorkStage } from '@lilachat/shared';
 import { useWorkPlan } from './useWorkPlan';
 import { WorkPlanPanel } from './WorkPlanPanel';
 import { PendingPanel } from './WorkListsPanels';
@@ -23,7 +23,7 @@ const COVER = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zInd
  * the composer. «Archivos» is always there (José 30/10): the checklist's files
  * and Portal's Drive per service, in one tab.
  */
-export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: string; channelName: string; yo: string; names: ReadonlyMap<string, string>; apps: ReadonlySet<string>; spaceId?: string; onOpenRecord?: (seq: number) => void }): { tabs: ReactNode; panel: ReactNode; note: ReactNode; client: SpaceClient | null } {
+export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: string; channelName: string; yo: string; names: ReadonlyMap<string, string>; apps: ReadonlySet<string>; spaceId?: string; onOpenRecord?: (seq: number) => void; /** The chat's ⚡: a link is made with its action, in the chat (José 31/10). */ actions?: readonly ShortcutRow[]; runAction?: (row: ShortcutRow, values: ShortcutValues) => unknown }): { tabs: ReactNode; panel: ReactNode; note: ReactNode; client: SpaceClient | null } {
   const [tab, setTab] = useState<Tab>('chat');
   const client = useClientOfChat(params.chatId);
   const records = useClientRecords(params.jwt, params.spaceId, client?.id, tab === 'services');
@@ -50,6 +50,11 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
     setTab('chat');
     params.onOpenRecord?.(seq);
   };
+  // Its form opens over the chat, where «Enviar al canal» can post the link.
+  const links = channelLinksOf(params.actions ?? [], (row, values) => {
+    setTab('chat');
+    void params.runAction?.(row, values);
+  });
   const allowed = channelTabs(client.access, stages.length > 0);
   // A tab the access no longer gives (an admin just restricted me) falls back to the chat.
   const shown = allowed.includes(tab) ? tab : 'chat';
@@ -63,21 +68,21 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
       <ArchivedClientBanner client={client} />
     </>
   );
-  const panel = <ChannelPanels shown={shown} client={client} records={records} plan={plan} stages={stages} target={target} people={people} params={params} nameOf={nameOf} toMessage={toMessage} openTask={openTask} setOpenTask={setOpenTask} />;
+  const panel = <ChannelPanels shown={shown} client={client} records={records} plan={plan} stages={stages} target={target} people={people} params={params} nameOf={nameOf} toMessage={toMessage} openTask={openTask} setOpenTask={setOpenTask} links={links} />;
   return { tabs, panel, note: <ArchivedComposerNote client={client} />, client };
 }
 
 type ChannelWorkParams = Parameters<typeof useChannelWork>[0];
 
 /** The open tab's panel of a client's channel, and the task sheet over it. */
-function ChannelPanels(props: { shown: Tab; client: SpaceClient; records: ReturnType<typeof useClientRecords>; plan: ReturnType<typeof useWorkPlan>; stages: WorkStage[]; target: ServiceAskTarget | null; people: ReadonlyMap<string, string>; params: ChannelWorkParams; nameOf: (userId: string) => string; toMessage: (seq: number) => void; openTask: OpenTask | null; setOpenTask: (task: OpenTask | null) => void }) {
+function ChannelPanels(props: { shown: Tab; client: SpaceClient; records: ReturnType<typeof useClientRecords>; plan: ReturnType<typeof useWorkPlan>; stages: WorkStage[]; target: ServiceAskTarget | null; people: ReadonlyMap<string, string>; params: ChannelWorkParams; nameOf: (userId: string) => string; toMessage: (seq: number) => void; openTask: OpenTask | null; setOpenTask: (task: OpenTask | null) => void; links: ChannelLinks }) {
   const { shown, client, plan, stages, target, params, nameOf, toMessage, setOpenTask } = props;
   const members = checklistMembers(props.people, params.yo);
   return (
     <>
       {shown === 'services' ? (
         <View className="bg-background" style={COVER}>
-          <ClientServices client={client} records={props.records} onOpenRecord={toMessage} target={target} members={props.people} me={params.yo} />
+          <ClientServices client={client} records={props.records} onOpenRecord={toMessage} target={target} members={props.people} me={params.yo} links={props.links} />
         </View>
       ) : null}
       {shown === 'account' && target ? <View className="bg-background" style={COVER}><ClientAccountPanel target={target} /></View> : null}

@@ -1,4 +1,4 @@
-import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply } from '@lilachat/shared';
+import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
 import { api } from '../../api';
 import { shrinkPhotoBlob } from '../shrinkPhoto';
 
@@ -15,11 +15,11 @@ export const shareCommandAnswer = (jwt: string, chatId: string, commandId: strin
 /** `api()` paths are under `/api` already. */
 const pathOf = (scope: CommandScope) => commandScopePath(scope).replace(/^\/api/, '');
 
-/** An action of the space's ⚡ or a chat's «+» (R160); a global command from the ⚡ goes with no text. */
-export const runShortcut = (jwt: string, scope: CommandScope, input: { kind: 'shortcut' | 'command'; appId: string; key: string }) =>
+/** An action of the space's ⚡ or a chat's «+» (R160); a global command from the ⚡ goes with no text. `values`: what the place it was tapped from knows. */
+export const runShortcut = (jwt: string, scope: CommandScope, input: { kind: 'shortcut' | 'command'; appId: string; key: string }, values?: ShortcutValues) =>
   input.kind === 'command'
     ? api<CommandOutcome>(`${pathOf(scope)}/commands`, { jwt, body: { app_id: input.appId, command: input.key, text: '', forms: FORMS_LEVEL } })
-    : api<CommandOutcome>(`${pathOf(scope)}/shortcuts`, { jwt, body: { app_id: input.appId, shortcut: input.key, forms: FORMS_LEVEL } });
+    : api<CommandOutcome>(`${pathOf(scope)}/shortcuts`, { jwt, body: { app_id: input.appId, shortcut: input.key, forms: FORMS_LEVEL, ...(values ? { values } : {}) } });
 
 /** `x-refresh`: the app sends the form again for this draft, on the same command (agentes 2483da7). */
 export const refreshAppForm = (jwt: string, scope: CommandScope, commandId: string, values: FormValues) => api<CommandOutcome>(`${pathOf(scope)}/commands/${commandId}/refresh`, { jwt, body: { values } });

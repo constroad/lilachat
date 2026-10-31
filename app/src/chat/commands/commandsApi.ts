@@ -1,4 +1,4 @@
-import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply } from '@lilachat/shared';
+import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -18,11 +18,11 @@ export const runCommand = (jwt: string, chatId: string, input: { appId: string; 
 /** «Enviar al canal»: the app posts in the channel the answer only I saw. */
 export const shareCommandAnswer = (jwt: string, chatId: string, commandId: string) => jsonCall<{ seq: number }>(`${BASE_URL}/api/chats/${chatId}/commands/${commandId}/share`, jwt, { method: 'POST', body: '{}' });
 
-/** An action of the space's ⚡ or a chat's «+» (R160); a global command from the ⚡ goes with no text. */
-export const runShortcut = (jwt: string, scope: CommandScope, input: { kind: 'shortcut' | 'command'; appId: string; key: string }) =>
+/** An action of the space's ⚡ or a chat's «+» (R160); a global command from the ⚡ goes with no text. `values`: what the place it was tapped from knows. */
+export const runShortcut = (jwt: string, scope: CommandScope, input: { kind: 'shortcut' | 'command'; appId: string; key: string }, values?: ShortcutValues) =>
   input.kind === 'command'
     ? jsonCall<CommandOutcome>(`${BASE_URL}${commandScopePath(scope)}/commands`, jwt, { method: 'POST', body: JSON.stringify({ app_id: input.appId, command: input.key, text: '', forms: FORMS_LEVEL }) })
-    : jsonCall<CommandOutcome>(`${BASE_URL}${commandScopePath(scope)}/shortcuts`, jwt, { method: 'POST', body: JSON.stringify({ app_id: input.appId, shortcut: input.key, forms: FORMS_LEVEL }) });
+    : jsonCall<CommandOutcome>(`${BASE_URL}${commandScopePath(scope)}/shortcuts`, jwt, { method: 'POST', body: JSON.stringify({ app_id: input.appId, shortcut: input.key, forms: FORMS_LEVEL, ...(values ? { values } : {}) }) });
 
 /** `x-refresh`: the app sends the form again for this draft, on the same command (agentes 2483da7). */
 export const refreshAppForm = (jwt: string, scope: CommandScope, commandId: string, values: FormValues) =>

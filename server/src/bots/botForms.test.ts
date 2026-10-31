@@ -221,6 +221,20 @@ describe('an app answers a command with a form', () => {
     await request(app).post(`/api/chats/${channel}/shortcuts`).set(asAna).send({ app_id: await appId(), shortcut: 'otra' }).expect(404);
   });
 
+  it('an action tapped from a place that already knows something carries it as values (agentes 31/10: the link of a client or an order); a bad shape is refused', async () => {
+    // Arrange
+    await BotAppModel.updateOne({ clientId: 'lca_inframaq' }, { $set: { shortcuts: [{ key: 'marcar_asistencia', name: 'Marcar asistencia' }] } });
+    answer = json({ response_type: 'form', form: attendanceForm });
+    received.length = 0;
+    // Act
+    await request(app).post(`/api/chats/${channel}/shortcuts`).set(asAna).send({ app_id: await appId(), shortcut: 'marcar_asistencia', values: { alcance: 'pedido', clienteId: 'cli-1', pedidoId: 'o-7' } }).expect(200);
+    const refused = await request(app).post(`/api/chats/${channel}/shortcuts`).set(asAna).send({ app_id: await appId(), shortcut: 'marcar_asistencia', values: { alcance: { anidado: true } } }).expect(400);
+    // Assert
+    expect(received).toEqual([{ type: 'shortcut.invoked', data: expect.objectContaining({ shortcut: 'marcar_asistencia', values: { alcance: 'pedido', clienteId: 'cli-1', pedidoId: 'o-7' } }) }]);
+    expect(received[0]!.data).not.toHaveProperty('refresh');
+    expect(refused.body.message).toBe('values va como un objeto de textos cortos, números o sí/no.');
+  });
+
   describe('the late answer travels in the sent form\'s own reply (agentes, 25/10: «No se pudo confirmar» although it was recorded)', () => {
     const sendLate = async (commandId: string, body: Record<string, unknown>) => request(app).post(`/api/bots/commands/${commandId}/respond`).set(await botAuth()).send(body).expect(200);
     const send = async () => {

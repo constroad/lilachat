@@ -108,3 +108,46 @@ describe('reportGroups', () => {
     expect(reportGroups(reportsOf([]))).toEqual([]);
   });
 });
+
+describe('valuations (José 31/10: «debería poder generar la valorización desde algún lugar del servicio»)', () => {
+  const valued = {
+    ...body,
+    valuations: [
+      { id: 'v1', number: 3, period: 'Octubre 2026', period_from: '2026-10-01', period_to: '2026-10-31', total: 18500.5, status: 'approved', status_label: 'Aprobada', tone: 'ok', pdf_url: 'https://portal.constroad.com/v/3.pdf' },
+      { id: 'v2', period: 'Noviembre 2026', status: 'draft', status_label: 'Borrador', tone: 'neutral', pdf_url: 'http://inseguro/v.pdf', period_from: '1 nov' },
+    ],
+    valuations_url: 'https://portal.constroad.com/valorizaciones?servicio=srv-1',
+    totals: { ...body.totals, valuations: 7 },
+  };
+
+  it('come only for whoever sees amounts: days without a time, https links only, Portal\'s count', () => {
+    // Act
+    const detail = serviceDetailOf(valued)!;
+    // Assert
+    expect(detail.valuations?.[0]).toEqual({ id: 'v1', number: '3', period: 'Octubre 2026', periodFrom: '2026-10-01', periodTo: '2026-10-31', total: 18500.5, status: { label: 'Aprobada', tone: 'ok' }, pdfUrl: 'https://portal.constroad.com/v/3.pdf' });
+    expect(detail.valuations?.[1]).toEqual({ id: 'v2', period: 'Noviembre 2026', status: { label: 'Borrador', tone: 'neutral' } });
+    expect(detail.valuationsUrl).toBe('https://portal.constroad.com/valorizaciones?servicio=srv-1');
+    expect(detail.totals.valuations).toBe(7);
+    expect(serviceDetailOf(body)!.valuations).toBeUndefined();
+    expect(serviceDetailOf({ ...valued, valuations_url: 'http://inseguro' })!.valuationsUrl).toBeUndefined();
+  });
+
+  it('a row reads «Valorización 3», then period · total, with its PDF', () => {
+    // Act
+    const [first, second] = detailRows(serviceDetailOf(valued)!, 'valuations');
+    // Assert
+    expect(first).toEqual({ id: 'v1', title: 'Valorización 3', line: 'Octubre 2026 · S/ 18,500.50', status: { label: 'Aprobada', tone: 'ok' }, file: { url: 'https://portal.constroad.com/v/3.pdf', label: 'PDF' } });
+    expect(second).toEqual({ id: 'v2', title: 'Valorización', line: 'Noviembre 2026', status: { label: 'Borrador', tone: 'neutral' } });
+  });
+
+  it('the tab goes after Cobranza with Portal\'s count, also empty (to generate the first one); without them, no tab', () => {
+    // Act
+    const tabs = detailTabs({ ...serviceDetailOf(valued)!, billing: { isCredit: false, collected: 0, items: [], payments: [] } });
+    const none = detailTabs(serviceDetailOf({ ...valued, valuations: [], totals: body.totals })!);
+    // Assert
+    expect(tabs.map((tab) => tab.key)).toEqual(['billing', 'valuations', 'orders', 'dispatches', 'reports']);
+    expect(tabs[1]!.label).toBe('Valorizaciones · 7');
+    expect(none.find((tab) => tab.key === 'valuations')?.label).toBe('Valorizaciones · 0');
+    expect(detailTabs(serviceDetailOf(body)!).some((tab) => tab.key === 'valuations')).toBe(false);
+  });
+});

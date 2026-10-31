@@ -1,3 +1,5 @@
+import { limaDayKey } from './birthdays.js';
+
 /**
  * A channel per client of the company (pending 21, §157; José, 29/10): live
  * while the client had any movement in the Portal in the last 60 days (orders,
@@ -14,7 +16,7 @@ const MAX_URL = 1000;
 
 export const CLIENT_SERVICE_STATUSES = ['pending', 'in_progress', 'completed', 'rejected'] as const;
 export type ClientServiceStatus = (typeof CLIENT_SERVICE_STATUSES)[number];
-export type ClientService = { id: string; name: string; status: ClientServiceStatus; stage: string; stageLabel: string; progress?: number; url?: string; closedAt?: string; /** When it started (José 31/10: the list showed no date). */ startedAt?: string };
+export type ClientService = { id: string; name: string; status: ClientServiceStatus; stage: string; stageLabel: string; progress?: number; url?: string; closedAt?: string; /** The day it started, `YYYY-MM-DD` (José 31/10: the list showed no date). */ startedAt?: string };
 /** `lastOrderAt` and `ordersTotal` are only shown; `lastActivityAt` decides. */
 export type ClientState = { name: string; ruc?: string; /** The client's Drive folder in the Portal (José, 29/10: «no veo el Drive»). */ driveUrl?: string; lastActivityAt: string | null; lastOrderAt: string | null; ordersTotal: number; services: ClientService[] };
 export type ArchivedAgeGroup = '2-6' | '6+';
@@ -41,6 +43,18 @@ const isoOrNull = (raw: unknown): string | null | undefined => {
   if (raw === null || raw === undefined) return null;
   return typeof raw === 'string' && !Number.isNaN(Date.parse(raw)) ? new Date(raw).toISOString() : undefined;
 };
+const DAY_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+/**
+ * A day without a time («2026-10-06»), kept as such: read as an instant at 00:00Z
+ * it is the day before in Lima (agentes, 31/10). An instant becomes its Lima day.
+ */
+const dayOrNull = (raw: unknown): string | null | undefined => {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw !== 'string') return undefined;
+  if (DAY_ONLY.test(raw)) return isoOrNull(raw)?.slice(0, 10) === raw ? raw : undefined;
+  const instant = isoOrNull(raw);
+  return instant ? limaDayKey(new Date(instant)) : undefined;
+};
 
 function validateService(raw: unknown): { ok: true; service: ClientService } | Refused {
   const body = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
@@ -52,8 +66,8 @@ function validateService(raw: unknown): { ok: true; service: ClientService } | R
   if (progress !== undefined && !(Number.isFinite(progress) && progress >= 0 && progress <= 100)) return refuse('progress va de 0 a 100.');
   const closedAt = isoOrNull(body.closed_at);
   if (closedAt === undefined) return refuse('closed_at va como fecha ISO.');
-  const startedAt = isoOrNull(body.started_at);
-  if (startedAt === undefined) return refuse('started_at va como fecha ISO.');
+  const startedAt = dayOrNull(body.started_at);
+  if (startedAt === undefined) return refuse('started_at va como día, AAAA-MM-DD.');
   const url = typeof body.url === 'string' ? body.url.trim().slice(0, MAX_URL) : '';
   return {
     ok: true,

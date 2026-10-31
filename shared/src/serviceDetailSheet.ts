@@ -1,5 +1,5 @@
 import { moneyOf } from './serviceBilling.js';
-import { amount, dayAndTimeOf, dayOf, dispatchRow, longDayOf, type DetailRow, type DetailStatus, type DetailTabKey, type QuoteItem, type ServiceDetail, type ServiceDispatch, type ServiceOrder, type ServiceQuote, type ServiceReport } from './serviceDetail.js';
+import { amount, dayAndTimeOf, dayOf, dispatchRow, longDayOf, type DetailRow, type DetailStatus, type DetailTabKey, type QuoteItem, type ServiceDetail, type ServiceDispatch, type ServiceOrder, type ServiceQuote, type ServiceReport, type ServiceValuation } from './serviceDetail.js';
 /**
  * One order, dispatch, report or quote opened inside Lilachat (José 30/10:
  * sending him to Portal for an order's detail was not useful). Built from
@@ -77,11 +77,17 @@ export function quoteSheet(quote: ServiceQuote): DetailSheet {
   return quote.pdfUrl ? { ...sheet, files: [{ url: quote.pdfUrl, label: 'PDF' }] } : sheet;
 }
 
+function valuationSheet(valuation: ServiceValuation): DetailSheet {
+  const sheet = { ...base(valuation.number ? `Valorización ${valuation.number}` : 'Valorización', valuation.status), facts: facts([['Periodo', valuation.period], ['Desde', valuation.periodFrom && dayOf(valuation.periodFrom)], ['Hasta', valuation.periodTo && dayOf(valuation.periodTo)], ['Total', money(valuation.total)]]) };
+  return valuation.pdfUrl ? { ...sheet, files: [{ url: valuation.pdfUrl, label: 'PDF' }] } : sheet;
+}
+
 /** The sheet of one row of a tab; `null` when it is not there (or for «Cobranza», which has its own view). */
 export function detailSheet(detail: ServiceDetail, tab: DetailTabKey, id: string): DetailSheet | null {
   if (tab === 'orders') return ((order) => (order ? orderSheet(order, detail) : null))(detail.orders.find((one) => one.id === id));
   if (tab === 'dispatches') return ((dispatch) => (dispatch ? dispatchSheet(dispatch, detail) : null))(detail.dispatches.find((one) => one.id === id));
   if (tab === 'reports') return ((report) => (report ? reportSheet(report) : null))(detail.reports.find((one) => one.id === id));
   if (tab === 'quotes') return ((quote) => (quote ? quoteSheet(quote) : null))(detail.quotes?.find((one) => one.id === id));
+  if (tab === 'valuations') return ((valuation) => (valuation ? valuationSheet(valuation) : null))(detail.valuations?.find((one) => one.id === id));
   return null;
 }

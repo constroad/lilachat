@@ -4995,12 +4995,12 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
-## 180. Canal del cliente: informes por día, cubicaje plegado, obra, fecha del servicio y «Recordatorio» (31/10/2026, servidor + OTA + web)
+## 180. Canal del cliente: informes por día, cubicaje, obra, inicio, «Recordatorio», valorizaciones y enlaces (31/10/2026, servidor + OTA + web)
 
-José probó el canal de CONSORCIO EL ALMIRANTE en el teléfono y pidió ocho cosas. Cinco
-son de Lilachat y salen en este cambio. Las otras tres necesitan a agentes y a Portal.
+José probó el canal de CONSORCIO EL ALMIRANTE en el teléfono y pidió ocho cosas. Siete
+salen en este cambio. Subir pagos espera el OK de José.
 
-**Lo que sale ahora**
+**Primera tanda (65d0283)**
 - **«Recordatorio» en el clip, también en grupos.** Antes decía «Recordatorio del grupo»:
   la etiqueta se achicaba y rompía la simetría con «Evento», «Encuesta» y «Checklist».
   Se borró `etiquetaDeRecordatorioEnElChat`. A quién le suena lo sigue diciendo el formulario.
@@ -5011,29 +5011,48 @@ son de Lilachat y salen en este cambio. Las otras tres necesitan a agentes y a P
   `summary`. El cubicaje del despacho sale como «Ver cubicaje · 23.21 m³ · Cóncavo» y se
   abre al tocarlo. La ficha ahora pinta las fotos y videos antes que los datos.
 - **El pedido dice su obra.** La línea es «20 m³ · 6 oct · OBRA GRAU» (`site`).
-- **La fecha del servicio.** `PUT /api/bots/clients/:id` acepta `services[].started_at`
-  (ISO). La lista la devuelve como `started_at` y la tarjeta dice «Inicio 6 oct» (Lima).
-  Sin el dato no se muestra nada. Falta que agentes lo mande.
 
-**Lo que espera a agentes y Portal (contrato propuesto el 31/10)**
-- **Enlace del pedido, con las pestañas que pregunta Portal.** El diálogo de Portal
-  (`ClientReportLinkModal`) pregunta: Resumen (obligatorio), Producción, Colocación,
-  Informes; días de vigencia; y si se envía al cliente.
-  Evento propuesto: `client.link.requested`. Lleva `{ scope: 'client' | 'service' | 'order',
-  id?, tabs?, days }` y responde `{ url, expires_at }`.
-- **Dónde va el enlace del reporte (pedido 6).** Una sola acción, «Enlace para el cliente»,
-  con tres entradas que la abren con el alcance ya elegido:
-  - en el canal, todo el cliente;
-  - en la tarjeta del servicio, ese servicio;
-  - en la fila del pedido, ese pedido.
-  Un solo formulario y un solo evento, así no hay tres caminos que se desincronicen. El
-  enlace se publica en el canal del cliente, que es donde el cliente lo lee.
-- **Subir pagos en Cobranza.** Evento propuesto: `client.payment.submitted`. Lleva el
-  pedido o la factura, la fecha, el monto, el medio y la foto del voucher. Portal registra
-  el pago y responde la cobranza nueva. Solo para quien ve montos.
-- **Valorización: en Portal.** Es un documento con montos que se revisa antes de mandarlo.
-  Lilachat la muestra con su PDF cuando Portal la tiene y abre Portal para generarla. No
-  se arma en el teléfono.
+**Fecha de inicio del servicio (agentes db52109)**
+- `PUT /api/bots/clients/:id` acepta `services[].started_at` como DÍA, `AAAA-MM-DD`.
+  Se guarda tal cual y la tarjeta dice «Inicio 6 oct» con `dayOf`, sin zona horaria.
+- Leído como instante a las 00:00Z, en Lima sería el día anterior. Por eso `dayOrNull`
+  guarda el día. Un instante (un agentes viejo) se vuelve el día de Lima en que cayó.
+- Un día imposible (`2026-13-40`, `2026-02-30`) o un texto se rechaza con 400.
+
+**Valorizaciones en el detalle del servicio (agentes 757d107)**
+- Llegan en `client.service.requested`, solo para quien ve montos: `valuations[]`,
+  `valuations_url` y `totals.valuations`. Las fechas son días sin hora.
+- `serviceDetailOf` las valida igual que las cotizaciones: links https y tono conocido.
+- La pestaña «Valorizaciones · N» va después de Cobranza. Sale aunque esté vacía,
+  para generar la primera. Sin `valuations` no hay pestaña.
+- La fila dice «Valorización 3 · Octubre 2026 · S/ 18,500.50» con su PDF. La ficha
+  muestra periodo, desde, hasta y total.
+- «Generar en el Portal» abre `valuations_url`. La valorización no se arma en el teléfono:
+  es un documento con montos que se revisa antes de mandarlo.
+- `withoutMoney` del servidor las quita, con su url y su total, a quien no ve montos.
+
+**Enlaces del cliente, del pedido y del servicio (pedidos 4, 5 y 6)**
+- Una sola mecánica: la acción de Portal con `values` ya llenos. No hay eventos nuevos.
+  - `POST /api/chats/:id/shortcuts {app_id, shortcut, values?}`. `shortcutValuesOf`
+    acepta hasta 10 claves con textos de 200 caracteres, números o sí/no. Otra forma: 400.
+  - La app oye `shortcut.invoked` con `values`. Es el mismo nombre que el borrador de
+    `x-refresh`, que además lleva `refresh: true`.
+- Tres lugares, cada uno con su alcance (`linkActionOf`):
+  - «Enlace del cliente», arriba de Servicios: `crear_enlace_cliente` con
+    `{alcance: 'cliente', clienteId}`.
+  - «Crear enlace del pedido», en la ficha del pedido: `crear_enlace_cliente` con
+    `{alcance: 'pedido', clienteId, pedidoId}`.
+  - «Compartir», en la tarjeta del servicio: `compartir_servicio` con
+    `{clienteId, servicioId}`.
+- Cada botón sale solo si su acción está encendida en ese canal (el ⚡ del chat). Todo
+  nace apagado: un admin la enciende en la ficha de Portal.
+- Al tocarlo se vuelve a la pestaña Chat y se corre la acción ahí. El formulario de Portal
+  pregunta pestañas y días. La respuesta, con el enlace, queda «Solo tú ves esto» con
+  «Enviar al canal», que la publica en el canal del cliente.
+
+**Lo que espera**
+- **Subir pagos en Cobranza.** `registrar_pago` mueve dinero y Portal tendría que bajar
+  un archivo de afuera. Espera el OK de José.
 
 ## 179. Mensajes temporales, exportar chat, vista previa de avisos, leer todo y formularios sin opciones (31/10/2026, servidor + OTA + web)
 

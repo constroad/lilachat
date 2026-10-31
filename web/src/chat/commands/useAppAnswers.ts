@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { answerOfOutcome, formSubmitOutcome, giveUpPending, giveUpWaiting, markWaiting, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, WRITE_GIVE_UP_MS, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type ShortcutRow } from '@lilachat/shared';
+import { answerOfOutcome, formSubmitOutcome, giveUpPending, giveUpWaiting, markWaiting, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, WRITE_GIVE_UP_MS, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type ShortcutRow, type ShortcutValues } from '@lilachat/shared';
 import type { ApiResult } from '../../api';
 import { currentSocket } from '../../useSocket';
 import { previewAppForm, refreshAppForm, runShortcut, submitAppForm, uploadFormPhoto } from './commandsApi';
@@ -47,7 +47,7 @@ export function useAppAnswers(params: { jwt?: string; scope: CommandScope | null
   }, []);
 
   const runAction = useCallback(
-    (row: ShortcutRow) => (jwt && scope ? track({ ...(row.kind === 'command' ? { appName: row.appName, command: row.key } : { appName: row.appName, command: '', action: row.name }), ...(row.avatarUrl ? { avatarUrl: row.avatarUrl } : {}) }, () => runShortcut(jwt, scope, row)) : Promise.resolve(false)),
+    (row: ShortcutRow, values?: ShortcutValues) => (jwt && scope ? track({ ...(row.kind === 'command' ? { appName: row.appName, command: row.key } : { appName: row.appName, command: '', action: row.name }), ...(row.avatarUrl ? { avatarUrl: row.avatarUrl } : {}) }, () => runShortcut(jwt, scope, row, values)) : Promise.resolve(false)),
     [jwt, scope, track]
   );
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronLeft, ExternalLink, FileText } from 'lucide-react';
-import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orderGuidesOf, reportGroups, type DetailRow, type DetailTabKey, type ServiceDetail, type SheetFile, type SpaceClientService } from '@lilachat/shared';
+import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orderGuidesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceDetail, type SheetFile, type SpaceClientService } from '@lilachat/shared';
 import { usePortalFileViewer } from './PortalFileViewer';
 import type { OpenSheetFile } from './RecordSheetWeb';
 import { RecordSheetWeb } from './RecordSheetWeb';
@@ -81,7 +81,11 @@ function ReportDays({ detail, onOpen, onOpenFile }: { detail: ServiceDetail; onO
   );
 }
 
-function DetailTabs({ detail, target, serviceId }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string }) {
+/** An order's sheet makes its link with what Portal's modal asks (José 31/10); other sheets have no button. */
+const orderLinkAction = (links: ChannelLinks | undefined, tab: DetailTabKey, target: ServiceAskTarget, orderId: string | null) =>
+  links?.can('order') && tab === 'orders' && orderId ? { label: 'Crear enlace del pedido', onPress: () => links.open({ kind: 'order', clientId: target.clientId, orderId }) } : undefined;
+
+function DetailTabs({ detail, target, serviceId, links }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; links?: ChannelLinks }) {
   // José 30/10 night: Cotizaciones and Cobranza first; it opens on the first one that came.
   const [tab, setTab] = useState<DetailTabKey>(() => detailTabs(detail)[0]?.key ?? 'orders');
   const viewer = usePortalFileViewer();
@@ -103,13 +107,14 @@ function DetailTabs({ detail, target, serviceId }: { detail: ServiceDetail; targ
         ))}
       </div>
       {guides.length ? <OrderGuides guides={guides} onOpenFile={viewer.open} /> : null}
+      {tab === 'valuations' && detail.valuationsUrl ? <PortalLink url={detail.valuationsUrl} label="Generar en el Portal" testId="generar-valorizacion" /> : null}
       {tab === 'billing' && detail.billing ? <ServiceBillingWeb billing={detail.billing} invoices={invoicesOf(detail)} onOpenFile={viewer.open} /> : (
         <ul className="divide-y divide-outline/10 overflow-hidden rounded-xl border border-outline/15 bg-surface">
           {!rows.length ? <li className="p-4 text-sm text-on-surface-variant">{DETAIL_EMPTY[tab]}</li> : tab === 'reports' ? <ReportDays detail={detail} onOpen={setOpenId} onOpenFile={viewer.open} /> : rows.map((row) => <RowView key={row.id} row={row} onOpen={setOpenId} onOpenFile={viewer.open} />)}
         </ul>
       )}
       {viewer.viewer}
-      {sheet ? <RecordSheetWeb sheet={sheet} onClose={close} onOpenFile={viewer.open} pdf={sheet.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, readyUrl: reportPdf.readyUrl, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!) } : undefined} /> : null}
+      {sheet ? <RecordSheetWeb sheet={sheet} onClose={close} onOpenFile={viewer.open} pdf={sheet.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, readyUrl: reportPdf.readyUrl, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!) } : undefined} action={orderLinkAction(links, tab, target, openId)} /> : null}
       {more ? <p className="text-center text-[12px] text-on-surface-variant">{`${more} · el resto está en el Portal`}</p> : null}
       {detail.service.url ? <PortalLink url={detail.service.url} label="Abrir en el Portal" testId="abrir-servicio-portal" /> : null}
     </>
@@ -121,14 +126,14 @@ function DetailTabs({ detail, target, serviceId }: { detail: ServiceDetail; targ
  * service's reports, orders and dispatches; design f-04): its head, then
  * Pedidos · Despachos · Informes with Portal's counts. Asked when it opens.
  */
-export function ServiceDetailWeb(props: { target: ServiceAskTarget; service: SpaceClientService; onBack: () => void }) {
+export function ServiceDetailWeb(props: { target: ServiceAskTarget; service: SpaceClientService; onBack: () => void; links?: ChannelLinks }) {
   const answer = useServiceAsk('detail', props.target, props.service.id);
   return (
     <div data-testid="detalle-servicio" className="mx-auto flex max-w-3xl flex-col gap-3">
       <button type="button" data-testid="volver-a-servicios" onClick={props.onBack} className="inline-flex items-center gap-1 self-start text-sm font-semibold text-primary"><ChevronLeft size={16} /> Servicios</button>
       <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
       {answer === null ? <div data-testid="detalle-cargando" className="h-48 animate-pulse rounded-xl bg-surface" /> : null}
-      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} /> : null}
+      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} links={props.links} /> : null}
       {answer && !answer.ok ? (
         <div data-testid="detalle-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm">
           <p className="mb-2 font-semibold">{answer.message}</p>

@@ -38,7 +38,9 @@ export type ServiceDispatch = { id: string; orderId?: string; at?: string; plate
 export type ServiceReport = { id: string; title: string; typeLabel?: string; date?: string; status: DetailStatus; pdfUrl?: string; url?: string };
 export type QuoteItem = { name: string; quantity?: number; unit?: string; unitPrice?: number; total?: number };
 export type ServiceQuote = { id: string; code?: string; date?: string; total?: number; status: DetailStatus; url?: string; items?: QuoteItem[]; pdfUrl?: string };
-export type DetailTotals = { orders: number; dispatches: number; reports: number; quotes?: number };
+/** A valuation of the service (agentes 757d107): days without a time, the state as Portal labels it. */
+export type ServiceValuation = { id: string; number?: string; period: string; periodFrom?: string; periodTo?: string; total?: number; status: DetailStatus; pdfUrl?: string };
+export type DetailTotals = { orders: number; dispatches: number; reports: number; quotes?: number; valuations?: number };
 export type ServiceDetail = {
   service: { id: string; name: string; stageLabel?: string; progress?: number; url?: string };
   orders: ServiceOrder[];
@@ -48,9 +50,13 @@ export type ServiceDetail = {
   quotes?: ServiceQuote[];
   /** Same rule as quotes: only in the private view (design f-05). */
   billing?: ServiceBilling;
+  /** Same rule as quotes (José 31/10: «generar la valorización desde algún lugar del servicio»). */
+  valuations?: ServiceValuation[];
+  /** Where «Generar en el Portal» goes. */
+  valuationsUrl?: string;
   totals: DetailTotals;
 };
-export type DetailTabKey = 'orders' | 'dispatches' | 'reports' | 'quotes' | 'billing';
+export type DetailTabKey = 'orders' | 'dispatches' | 'reports' | 'quotes' | 'billing' | 'valuations';
 
 const LIST_MAX = 100;
 const TIME_ZONE = 'America/Lima';
@@ -143,6 +149,9 @@ const quoteItemOf = (one: unknown): QuoteItem[] => {
 };
 /** Its line items only when agentes sends them (private view, `quotes:view`). */
 const quoteItemsOf = (value: unknown) => (Array.isArray(value) ? value.flatMap(quoteItemOf).slice(0, LIST_MAX) : undefined);
+const numberText = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? String(value) : text(value));
+export const valuationOf = (raw: Raw): ServiceValuation =>
+  defined({ id: text(raw.id)!, number: numberText(raw.number), period: text(raw.period) ?? 'Valorización', periodFrom: dateOnly(raw.period_from), periodTo: dateOnly(raw.period_to), total: count(raw.total), status: statusOf(raw), pdfUrl: https(raw.pdf_url) });
 export const quoteOf = (raw: Raw): ServiceQuote => defined({ id: text(raw.id)!, code: text(raw.code), date: dateOnly(raw.date), total: count(raw.total), status: statusOf(raw), url: https(raw.url), items: quoteItemsOf(raw.items), pdfUrl: https(raw.pdf_url) });
 
 function listOf<T>(value: unknown, parse: (raw: Raw) => T): T[] | null {
@@ -158,14 +167,15 @@ function serviceHeadOf(service: Raw): ServiceDetail['service'] {
 }
 
 /** Portal's real counts; the length of what came when it sends none. */
-function totalsOf(raw: unknown, lists: Pick<ServiceDetail, 'orders' | 'dispatches' | 'reports' | 'quotes'>): DetailTotals {
+function totalsOf(raw: unknown, lists: Pick<ServiceDetail, 'orders' | 'dispatches' | 'reports' | 'quotes' | 'valuations'>): DetailTotals {
   const totals = record(raw) ?? {};
-  const { orders, dispatches, reports, quotes } = lists;
+  const { orders, dispatches, reports, quotes, valuations } = lists;
   return defined({
     orders: count(totals.orders) ?? orders.length,
     dispatches: count(totals.dispatches) ?? dispatches.length,
     reports: count(totals.reports) ?? reports.length,
     quotes: quotes ? (count(totals.quotes) ?? quotes.length) : undefined,
+    valuations: valuations ? (count(totals.valuations) ?? valuations.length) : undefined,
   });
 }
 
@@ -179,6 +189,8 @@ export function serviceDetailOf(body: unknown): ServiceDetail | null {
   if (!input || !service || !text(service.id) || !orders || !dispatches || !reports) return null;
   const quotes = input.quotes === undefined ? undefined : (listOf(input.quotes, quoteOf) ?? undefined);
   const billing = billingOf(input.billing);
+  const valuations = input.valuations === undefined ? undefined : (listOf(input.valuations, valuationOf) ?? undefined);
+  const valuationsUrl = valuations ? https(input.valuations_url) : undefined;
   return {
     service: serviceHeadOf(service),
     orders,
@@ -186,7 +198,9 @@ export function serviceDetailOf(body: unknown): ServiceDetail | null {
     reports,
     ...(quotes ? { quotes } : {}),
     ...(billing ? { billing } : {}),
-    totals: totalsOf(input.totals, { orders, dispatches, reports, quotes }),
+    ...(valuations ? { valuations } : {}),
+    ...(valuationsUrl ? { valuationsUrl } : {}),
+    totals: totalsOf(input.totals, { orders, dispatches, reports, quotes, valuations }),
   };
 }
 
@@ -270,26 +284,30 @@ export function reportGroups(detail: Pick<ServiceDetail, 'reports'>): ReportGrou
 }
 const quoteRow = (quote: ServiceQuote): DetailRow => ({ id: quote.id, title: quote.code ?? 'Cotización', line: joined([money(quote.total), quote.date ? dayOf(quote.date) : undefined]), status: quote.status, ...urlOf(quote.url) });
 
+const valuationRow = (valuation: ServiceValuation): DetailRow => ({ id: valuation.id, title: valuation.number ? `Valorización ${valuation.number}` : 'Valorización', line: joined([valuation.period, money(valuation.total)]), status: valuation.status, ...fileOf(valuation.pdfUrl, 'PDF') });
+
 /** The rows of one tab: a pedido has no number of its own in Portal, a dispatch shows its departure or the planned hour. «Cobranza» has its own view. */
 export function detailRows(detail: ServiceDetail, tab: DetailTabKey): DetailRow[] {
   if (tab === 'orders') return detail.orders.map(orderRow);
   if (tab === 'dispatches') return detail.dispatches.map(dispatchRow);
   if (tab === 'reports') return detail.reports.map(reportRow);
   if (tab === 'quotes') return (detail.quotes ?? []).map(quoteRow);
+  if (tab === 'valuations') return (detail.valuations ?? []).map(valuationRow);
   return [];
 }
 
 /** «Mostrando 100 de 148» when Portal has more than it sent; the rest is in Portal. */
 export const moreInPortal = (shown: number, total: number): string | null => (total > shown ? `Mostrando ${shown} de ${total}` : null);
 
-const TAB_NAMES: Record<DetailTabKey, string> = { orders: 'Pedidos', dispatches: 'Despachos', reports: 'Informes', quotes: 'Cotizaciones', billing: 'Cobranza' };
+const TAB_NAMES: Record<DetailTabKey, string> = { orders: 'Pedidos', dispatches: 'Despachos', reports: 'Informes', quotes: 'Cotizaciones', billing: 'Cobranza', valuations: 'Valorizaciones' };
 
 /** What an empty tab says. */
-export const DETAIL_EMPTY: Record<DetailTabKey, string> = { orders: 'Este servicio todavía no tiene pedidos.', dispatches: 'Todavía no hay despachos.', reports: 'Todavía no hay informes.', quotes: 'Sin cotizaciones.', billing: 'Sin cobranza.' };
+export const DETAIL_EMPTY: Record<DetailTabKey, string> = { orders: 'Este servicio todavía no tiene pedidos.', dispatches: 'Todavía no hay despachos.', reports: 'Todavía no hay informes.', quotes: 'Sin cotizaciones.', billing: 'Sin cobranza.', valuations: 'Todavía no hay valorizaciones.' };
 
-/** The detail's tabs with Portal's real counts; «Cotizaciones» and «Cobranza» only when they came, and first (José 30/10 night). */
+/** The detail's tabs with Portal's real counts; the money ones only when they came, and first (José 30/10 night). */
 export function detailTabs(detail: ServiceDetail): { key: DetailTabKey; label: string }[] {
-  const keys: DetailTabKey[] = [...(detail.quotes ? (['quotes'] as const) : []), ...(detail.billing ? (['billing'] as const) : []), 'orders', 'dispatches', 'reports'];
+  const money: DetailTabKey[] = [...(detail.quotes ? (['quotes'] as const) : []), ...(detail.billing ? (['billing'] as const) : []), ...(detail.valuations ? (['valuations'] as const) : [])];
+  const keys: DetailTabKey[] = [...money, 'orders', 'dispatches', 'reports'];
   return keys.map((key) => ({ key, label: key === 'billing' ? TAB_NAMES.billing : `${TAB_NAMES[key]} · ${detail.totals[key] ?? 0}` }));
 }
 

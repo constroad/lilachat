@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Archive, ChevronRight, ExternalLink, FileText, Search } from 'lucide-react';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, instantDayOf, shortDate, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
+import { Archive, ChevronRight, ExternalLink, FileText, Link2, Search, Share2 } from 'lucide-react';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, dayOf, shortDate, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
 import { ServiceDetailWeb } from './ServiceDetailWeb';
 import { STATUS_TONE } from './tones';
 import type { ServiceAskTarget } from './useServiceAsk';
@@ -48,7 +48,7 @@ function ServiceSummary({ service }: { service: SpaceClientService }) {
         <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{service.stage_label || CLIENT_SERVICE_STATUS_LABELS[service.status]}</span>
       </span>
       {/* José 31/10: «la lista de servicios no muestra la fecha». */}
-      {service.started_at ? <span data-testid={`inicio-servicio-${service.id}`} className="mt-1 block text-[12px] text-on-surface-variant">{`Inicio ${instantDayOf(service.started_at)}`}</span> : null}
+      {service.started_at ? <span data-testid={`inicio-servicio-${service.id}`} className="mt-1 block text-[12px] text-on-surface-variant">{`Inicio ${dayOf(service.started_at)}`}</span> : null}
       {service.progress !== undefined ? (
         <span className="mt-3 flex items-center gap-3">
           <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-background"><span className="block h-full rounded-full bg-primary" style={{ width: `${service.progress}%` }} /></span>
@@ -59,8 +59,8 @@ function ServiceSummary({ service }: { service: SpaceClientService }) {
   );
 }
 
-/** The head opens its expediente; without the space (no way to ask), its Portal link. */
-function ServiceCard(props: { service: SpaceClientService; records: ClientRecord[] | null; canOpen: boolean; onOpen: () => void; onOpenRecord?: (seq: number) => void }) {
+/** The head opens its expediente; without the space (no way to ask), its Portal link. «Compartir» makes its link (José 31/10). */
+function ServiceCard(props: { service: SpaceClientService; records: ClientRecord[] | null; canOpen: boolean; onOpen: () => void; onOpenRecord?: (seq: number) => void; onShare?: () => void }) {
   const { service } = props;
   const head = 'block w-full text-left';
   return (
@@ -76,6 +76,7 @@ function ServiceCard(props: { service: SpaceClientService; records: ClientRecord
           {service.url ? <a href={service.url} target="_blank" rel="noreferrer" data-testid={`abrir-servicio-${service.id}`} className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary"><ExternalLink size={14} /> Ver en el Portal</a> : null}
         </div>
       )}
+      {props.onShare ? <button type="button" data-testid={`compartir-servicio-${service.id}`} onClick={props.onShare} className="mt-3 inline-flex h-8 items-center gap-1.5 rounded-lg border border-outline/20 px-3 text-[12px] font-semibold text-primary hover:bg-background"><Share2 size={14} /> Compartir</button> : null}
       <ServiceRecords records={props.records} onOpen={props.onOpenRecord} />
     </article>
   );
@@ -87,7 +88,9 @@ function ServiceCard(props: { service: SpaceClientService; records: ClientRecord
  * message. The service opens its expediente (José, 30/10); the Drive moved to
  * «Archivos».
  */
-export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord?: (seq: number) => void; target: ServiceAskTarget | null }) {
+export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord?: (seq: number) => void; target: ServiceAskTarget | null; links?: ChannelLinks }) {
+  const { links } = props;
+  const clientId = props.client.id;
   const [query, setQuery] = useState('');
   const [opened, setOpened] = useState<SpaceClientService | null>(null);
   const [filter, setFilter] = useState<ServiceFilter>('all');
@@ -97,14 +100,16 @@ export function ClientServices(props: { client: SpaceClient; records: ClientReco
   return (
     <div data-testid="servicios-cliente" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-6">
       {opened && props.target ? (
-        <ServiceDetailWeb target={props.target} service={opened} onBack={() => setOpened(null)} />
+        <ServiceDetailWeb target={props.target} service={opened} onBack={() => setOpened(null)} links={links} />
       ) : (
         <div className="mx-auto flex max-w-3xl flex-col gap-3">
+          {/* José 31/10: the client's link here; an order's in its sheet, a service's on its card. */}
+          {links?.can('client') ? <button type="button" data-testid="enlace-cliente" onClick={() => links.open({ kind: 'client', clientId })} className="inline-flex h-9 items-center gap-1.5 self-start rounded-lg border border-primary/30 bg-primary/10 px-3 text-[13px] font-semibold text-primary hover:bg-primary/15"><Link2 size={15} /> Enlace del cliente</button> : null}
           {total > 1 ? <ServiceFilters query={query} onQuery={setQuery} filter={filter} onFilter={setFilter} counts={counts} /> : null}
           {total === 0 ? <p className="pt-10 text-center text-sm text-on-surface-variant">Este cliente todavía no tiene servicios.</p> : null}
           {total > 0 && services.length === 0 ? <p className="pt-6 text-center text-sm text-on-surface-variant">Ningún servicio con ese filtro.</p> : null}
           {services.map((service) => (
-            <ServiceCard key={service.id} service={service} records={grouped ? (grouped.get(service.id) ?? []) : null} canOpen={Boolean(props.target)} onOpen={() => setOpened(service)} onOpenRecord={props.onOpenRecord} />
+            <ServiceCard key={service.id} service={service} records={grouped ? (grouped.get(service.id) ?? []) : null} canOpen={Boolean(props.target)} onOpen={() => setOpened(service)} onOpenRecord={props.onOpenRecord} onShare={links?.can('service') ? () => links.open({ kind: 'service', clientId, serviceId: service.id }) : undefined} />
           ))}
         </div>
       )}

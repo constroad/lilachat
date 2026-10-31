@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ExternalLink, FileText, Loader2 } from 'lucide-react';
+import { ChevronDown, ExternalLink, FileText, Link2, Loader2 } from 'lucide-react';
 import type { DetailSheet, SheetFact, SheetGroup, SheetMedia, ViewableFile } from '@lilachat/shared';
 import { FileThumb } from './PortalFileViewer';
 import { Overlay } from '../../ui/Overlay';
@@ -71,7 +71,10 @@ function GroupView({ group }: { group: SheetGroup }) {
   return <div data-testid={`grupo-${group.title}`} className="flex flex-col gap-2"><Kicker>{group.title}</Kicker><Facts facts={group.facts} /></div>;
 }
 
-export function RecordSheetWeb({ sheet, onClose, pdf, onOpenFile }: { sheet: DetailSheet; onClose: () => void; pdf?: PdfOnDemandWeb; onOpenFile: OpenSheetFile }) {
+/** A button of the place that opened the sheet, like an order's «Crear enlace del pedido» (José 31/10). */
+export type SheetAction = { label: string; onPress: () => void };
+
+export function RecordSheetWeb({ sheet, onClose, pdf, onOpenFile, action }: { sheet: DetailSheet; onClose: () => void; pdf?: PdfOnDemandWeb; onOpenFile: OpenSheetFile; action?: SheetAction }) {
   return (
     <Overlay title={sheet.title} onClose={onClose}>
       <div data-testid="ficha-registro" className="flex flex-col gap-3">
@@ -105,6 +108,7 @@ export function RecordSheetWeb({ sheet, onClose, pdf, onOpenFile }: { sheet: Det
             </ul>
           </>
         ) : null}
+        {action ? <button type="button" data-testid="accion-ficha" onClick={action.onPress} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 font-semibold text-primary hover:bg-primary/15"><Link2 size={16} /> {action.label}</button> : null}
         {sheet.url ? <a href={sheet.url} target="_blank" rel="noreferrer" data-testid="ficha-en-portal" className="inline-flex items-center gap-1.5 text-[13px] text-on-surface-variant hover:underline"><ExternalLink size={14} /> Abrir en el Portal</a> : null}
       </div>
     </Overlay>

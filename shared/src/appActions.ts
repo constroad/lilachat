@@ -46,6 +46,57 @@ export const CREATE_CLIENT_ACTION = 'crear_cliente';
 /** An action with its own place in the space; absent when it is off there or that person may not run it. */
 export const placedActionRow = (groups: readonly CommandGroup[], key: string): ShortcutRow | undefined => shortcutRows(groups).find((row) => row.key === key);
 
+/** What an action carries already filled in (agentes 31/10): short texts, numbers or yes/no, by name. */
+export type ShortcutValues = Record<string, string | number | boolean>;
+const VALUES_MAX_KEYS = 10;
+const VALUE_MAX_LENGTH = 200;
+const VALUE_KEY = /^[A-Za-z_][A-Za-z0-9_]{0,40}$/;
+const isValue = (value: unknown) => typeof value === 'boolean' || (typeof value === 'number' && Number.isFinite(value)) || (typeof value === 'string' && value.length <= VALUE_MAX_LENGTH);
+
+/** `undefined` when nothing came (or `{}`), `null` when it is not that shape. */
+export function shortcutValuesOf(raw: unknown): ShortcutValues | null | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const entries = Object.entries(raw);
+  if (!entries.length) return undefined;
+  if (entries.length > VALUES_MAX_KEYS || entries.some(([key, value]) => !VALUE_KEY.test(key) || !isValue(value))) return null;
+  return Object.fromEntries(entries) as ShortcutValues;
+}
+
+/**
+ * Portal's link actions (agentes 31/10): the client's or an order's link asks
+ * what Portal's modal asks (tabs, days); a service's is «compartir_servicio».
+ */
+export const CLIENT_LINK_ACTION = 'crear_enlace_cliente';
+export const SHARE_SERVICE_ACTION = 'compartir_servicio';
+export type LinkTarget = { kind: 'client'; clientId: string } | { kind: 'order'; clientId: string; orderId: string } | { kind: 'service'; clientId: string; serviceId: string };
+
+const linkValuesOf = (target: LinkTarget): ShortcutValues => {
+  if (target.kind === 'client') return { alcance: 'cliente', clienteId: target.clientId };
+  if (target.kind === 'order') return { alcance: 'pedido', clienteId: target.clientId, pedidoId: target.orderId };
+  return { clienteId: target.clientId, servicioId: target.serviceId };
+};
+
+const linkRowOf = (actions: readonly ShortcutRow[], kind: LinkTarget['kind']) => actions.find((one) => one.kind === 'shortcut' && one.key === (kind === 'service' ? SHARE_SERVICE_ACTION : CLIENT_LINK_ACTION));
+
+/** The action of a client's channel that makes that link, with what it already knows; null while it is off there. */
+export function linkActionOf(actions: readonly ShortcutRow[], target: LinkTarget): { row: ShortcutRow; values: ShortcutValues } | null {
+  const row = linkRowOf(actions, target.kind);
+  return row ? { row, values: linkValuesOf(target) } : null;
+}
+
+/** The link buttons of a client's channel: which ones show, and what tapping one does. */
+export type ChannelLinks = { can: (kind: LinkTarget['kind']) => boolean; open: (target: LinkTarget) => void };
+export function channelLinksOf(actions: readonly ShortcutRow[], run: (row: ShortcutRow, values: ShortcutValues) => void): ChannelLinks {
+  return {
+    can: (kind) => Boolean(linkRowOf(actions, kind)),
+    open: (target) => {
+      const link = linkActionOf(actions, target);
+      if (link) run(link.row, link.values);
+    },
+  };
+}
+
 const METERS_PER_KM = 1000;
 
 /** What the phone or the browser measured, as the form sends it: the precision in whole meters. */

@@ -5028,10 +5028,13 @@ publique sus herramientas y que José las apruebe.
   (cotización inicial, monto ejecutado, pagos con sus vouchers y saldo). No es
   `crear_enlace_de_servicio`, que es el enlace del informe de obra.
 - Uno ya publicado llega en `reports[]` del detalle y su PDF sale como cualquier informe.
-- Para generarlo, Portal fija la herramienta `informe_de_servicio {servicioId}`, todavía sin
-  publicar. «Generar informe de servicio» está en la pestaña Informes y sale solo mientras
-  esa acción esté encendida en el canal (`links.can('serviceReport')`). Hasta que Portal la
-  suba y José la apruebe, no existe y el botón no se ve.
+- Para generarlo está la herramienta `informe_de_servicio {servicioId}`, publicada en Portal
+  7e7f17e2 el 31/10. «Generar informe de servicio» está en la pestaña Informes. Sale solo
+  mientras esa acción esté encendida en el CANAL (`links.can('serviceReport')`), no en el ⚡.
+  Hasta que José la apruebe en agentes, no llega al manifiesto y el botón no se ve.
+- Portal responde `{status:'generating', retry_after_s:5, informeId}` o
+  `{status:'ready', pdf_url, informeId}`. agentes 4a5597c pregunta mientras genera y
+  contesta tarde por /respond: «Tu informe está listo: <enlace>».
 - Portal aún no define si regenerar pisa una liquidación editada a mano.
 
 **Enlaces del cliente, del pedido y del servicio (pedidos 4, 5 y 6)**
@@ -5088,7 +5091,20 @@ publique sus herramientas y que José las apruebe.
 - El formulario y la respuesta privada (lleva montos) quedan en la misma pestaña.
   `answeredSince` detecta la respuesta nueva y el detalle se pide otra vez con `round`,
   sin poner el esqueleto ni cambiar de pestaña.
-- Falta que Portal la publique y que José la apruebe en la consola, porque es nueva.
+- **E2E 31/10 en el espacio Test (web en vivo, 2875622).** Servicio QA de TEST COMPANY
+  «QA Liquidación Lilachat 31-10», S/ 8 500 en dos partidas.
+  - El botón salió recién al encender la acción en el ⚡ de Test. Aprobarla en agentes no
+    alcanza.
+  - El formulario llegó con el servicio elegido y la fecha de hoy. Se mandaron S/ 250,
+    Transferencia, QA-0001 y un voucher QA.
+  - Respuesta privada: «Pago registrado: S/ 250.00 del 31/10/2026 a QA Liquidación…».
+  - El detalle se pidió otra vez solo: Cobrado S/ 250, Por cobrar S/ 8 250, y la fila del
+    pago con su comprobante.
+  - El canal recibió la tarjeta PAGO de Portal: lleva la nota y el servicio, sin monto.
+  - Después la acción se volvió a apagar en Test, y Portal borra el servicio QA.
+- El canal de ese cliente no nació con el primer `service.created`: el envío de Portal
+  quedó en segundo plano y su proceso terminó antes. Con el reenvío esperando la respuesta,
+  agentes hizo el PUT y el canal apareció.
 
 **Lo que Portal ya no tiene (agentes 6fc3ca5)**
 - El 31/10 el detalle del servicio QA del 29/10 daba «No se pudo traer…»: Portal lo borró

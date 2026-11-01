@@ -69,7 +69,7 @@ export function CropEditor(props: { photo: FotoElegida; onCancel: () => void; on
           setBox({ width: event.nativeEvent.layout.width, height: event.nativeEvent.layout.height });
           gesture.locate();
         }}
-        {...gesture.responder.panHandlers}
+        {...gesture.handlers}
       >
         {preview && bounds ? <TurnedPhoto preview={preview} bounds={bounds} rotation={rotation} /> : <ActivityIndicator color="white" style={{ flex: 1 }} />}
         {crop && bounds ? <CropFrame crop={crop} bounds={bounds} /> : null}
@@ -114,7 +114,7 @@ function useCropGesture(state: { crop: Rect | null; bounds: Rect | null; aspect:
   const origin = useRef({ x: 0, y: 0 });
   // Same frame as a touch's pageX/pageY; again on every touch, in case the screen moved since the layout.
   const locate = useCallback(() => area.current?.measure((_x, _y, _width, _height, pageX, pageY) => (origin.current = { x: pageX, y: pageY })), [area]);
-  const responder = useMemo(
+  const tracker = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: (event) => {
@@ -136,7 +136,7 @@ function useCropGesture(state: { crop: Rect | null; bounds: Rect | null; aspect:
       }),
     [setCrop, locate],
   );
-  return { responder, locate };
+  return { handlers: tracker.panHandlers, locate };
 }
 
 /** The preview turned in place: the bounds are already the turned shape, so a sideways photo swaps its sides. */

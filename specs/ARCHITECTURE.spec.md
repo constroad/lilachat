@@ -4995,6 +4995,54 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 184. Stickers de a dos, emojis en una sola vista, «/» para comandos y 78 emojis animados (02/11/2026, servidor + OTA + web)
+
+José, 02/11, con una captura de «Lokillos»: «los stickers se muestran uno tras
+otro, no 2 en una sola fila como en WhatsApp»; los emojis «no se muestran como
+en WhatsApp, 1 sola vista con scroll»; un CTA para los comandos en el modo
+Slack y en el chat con las apps, donde «siempre se verán todos los comandos»
+y eso solo para los admins; y más emojis animados («no está el enojado, los
+monos… agrega casi todos»).
+
+**Stickers de a dos.** `stickerRowLayout` (shared, 7 tests) arma pares con los
+stickers que una persona mandó seguidos: mismo día, a menos de 5 minutos, sin
+nada en medio. No entra en un par el sticker que cita, tiene reacciones o
+hilo, fue borrado, sigue enviándose o tiene el divisor de no leídos delante
+(se perdería lo que se dibuja alrededor). Tres seguidos: un par y uno solo.
+La app dibuja el par con `StickerPair` (cada uno con su hora, toque y
+selección; la barra de reacciones va sobre el elegido). Solo en burbujas: el
+modo Slack los deja de a uno, como al álbum.
+
+**Emojis en una sola vista.** `PanelDeEmojis` dejó el teclado de
+rn-emoji-keyboard (una categoría por página) por una lista propia: todas las
+categorías seguidas, 8 por fila, con la barra de íconos arriba que salta y
+sigue al scroll. `emojiLayout` (app, 5 tests) da a cada fila su altura y su
+posición, así el salto no mide nada. Recientes primero (se leen también los
+que guardó el teclado viejo) y búsqueda en español o inglés con la tabla del
+«:atajo».
+
+**«/» para comandos (app y web).** Un botón junto al ⚡, con el campo vacío,
+escribe la barra y abre los comandos del chat. Aparece donde el chat tiene
+comandos: canales y el chat con la app (se piden al abrir).
+
+**En el chat con la app, el admin ve todos.** `availableTo` (shared, 3 tests):
+en el 1:1 con la app, un admin del espacio tiene todos sus comandos y acciones
+aunque estén apagados; un miembro, solo lo encendido para el 1:1 y permitido
+para él. En canales y en el ⚡ todo sigue los interruptores. El servidor usa
+la misma regla al listar y al invocar (`botItemAccess.test.ts`).
+Interpretación: «las apps lo verán solo los admins» se leyó como «ver todos
+los comandos es solo para admins»; los miembros no pierden el chat con la app.
+
+**78 emojis animados.** `winkEmojis.ts` suma 70 al lado de los 8 de siempre:
+caras (enojado, furioso, llorando, enamorado, susto, mente volada, me muero…),
+los tres monos, manos, cosas (fuego, cien, gol, salud, quincena…) y animales.
+Cada uno con su emoji, partículas, movimiento y un sonido de los que ya están.
+En la app van de a 4 por fila.
+
+**Telenovela (pendiente de aprobación).** 12 personajes nuevos en Stitch
+(`r02nov-telenovela-a…d`, ids en INVENTARIO y `design/stitch/registro.jsonl`).
+Se animan cuando José los apruebe.
+
 ## 183. Recortar y girar la foto antes de enviarla, como WhatsApp (01/11/2026, OTA)
 
 José, 01/11: «al tomar una foto en la app no hay forma de recortar la imagen

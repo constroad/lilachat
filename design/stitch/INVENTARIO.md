@@ -196,3 +196,14 @@ Proyecto 15540754270713720465. Capturas `design/stitch/<slug>.png` (móvil), `-t
 | h-02-consumo-elegir-lectura | Hoja de lecturas de un tanque con miniaturas, recarga y una bloqueada; «Elegir» | 9432de413568419db3d637253fb8b61b · c3ccfda5796147cc8689b18b0a0c8f46 · e4578e844a39446b93b6d10036ac4192 | §176 | hecho. La pastilla «RECARGA» llega en el `title`/`description` de la opción, no es un campo |
 | h-03-consumo-visor-lectura | Fotos de la lectura en el visor con «Elegir esta lectura» | 5e69e9d8377a482f819fba73d8898ba1 · 2ceebcb60a734f6cb0bc573691dcae90 · c84abcdd2b4f46a289d9addf5479bd81 | §176 | hecho, con «Elegir esta opción» (el visor no sabe que es una lectura) |
 | h-04-consumo-resumen | Resumen en vivo arriba de «Enviar» (cifras, aviso, filas por tanque, pedidos) | 0da416f046324157a93d8275c1a0d5e8 · ece708f413ca47ec935bf25f764526e0 · 79c6afd4702d4ee4b0900086d6e1135b | §176 | hecho con los bloques del kit; sin «Revisado hace 2 s» |
+
+## Guiños «Telenovela» (02/11/2026, pendiente de aprobación de José)
+
+José, 02/11: «agrega más guiños, ya están quedando muy aburridos… mínimo 10 en una categoría nueva; preséntamelos antes de implementar». Generador `.stitch-work/telenovela_sheet.py`; ids en `design/stitch/registro.jsonl`.
+
+| Slug | Pantalla | Personajes (`data-wink`) | Utilería (`data-prop`) | Estado |
+| --- | --- | --- | --- | --- |
+| r02nov-telenovela-a | `screens/fe4eeeac6649428d90f255d35e446601` | slap-villain, fainting-lady, don-rodolfo | hand-mark, armchair, baby-photo | Por aprobar |
+| r02nov-telenovela-b | `screens/f033458dbe754667b176969b9f3af154` | laughing-villain, amnesia-galan, letter-reader | lightning, question, letter | Por aprobar |
+| r02nov-telenovela-c | `screens/27c18a7dc7564888bfbef100f45f84d5` | evil-twin, tear-actress, mother-in-law | big-tear, violin, fan | Por aprobar |
+| r02nov-telenovela-d | `screens/25b270019c85488687110069a21766dc` | objector, shocked-face, back-from-dead | what, withered-flowers, wedding-ring | Por aprobar |

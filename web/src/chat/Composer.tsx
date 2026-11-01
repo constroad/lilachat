@@ -10,7 +10,7 @@ import { SugerenciasDeMencion, type Mencionable } from './SugerenciasDeMencion';
 import { useMencionesDelCampo } from './useMencionesDelCampo';
 import { readDraft, saveDraft } from './chatDrafts';
 import { VistaPreviaAlEscribir } from './VistaPreviaAlEscribir';
-import { CornerUpLeft, Mic, Pencil, Plus, Send, Smile, X } from 'lucide-react';
+import { CornerUpLeft, Mic, Pencil, Plus, Send, Smile, SquareSlash, X } from 'lucide-react';
 import { BarraDeGrabacion } from './BarraDeGrabacion';
 import { useGrabadoraDeVoz, type NotaDeVozGrabada } from './useGrabadoraDeVoz';
 import type { StickerChat } from './stickers/EmojiStickerPanel';
@@ -303,6 +303,12 @@ function ComposerField({
 
         {/* The ⚡ of a channel or the chat with an app, only when it has actions (R31/10). */}
         {commands ? <ChatQuickActions commands={commands} /> : null}
+        {/* The «/» (José 02/11): writes the slash, so the chat's commands open without knowing it was there. */}
+        {commands?.hasCommands && !text ? (
+          <button type="button" data-testid="btn-comandos" aria-label="Ver los comandos" title="Ver los comandos" onClick={() => { setText('/'); commands.onType('/'); campoRef.current?.focus(); }} className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-on-surface-variant hover:bg-background">
+            <SquareSlash size={20} />
+          </button>
+        ) : null}
 
         <div className="relative min-w-0 flex-1">
         <SugerenciasDeMencion opciones={menciones.opciones} activa={menciones.activa} onElegir={elegirMencion} />

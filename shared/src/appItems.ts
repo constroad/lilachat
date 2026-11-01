@@ -88,6 +88,17 @@ export function worksAt(kind: AppItemKind, key: string, setting: AppItemSetting,
   return enabledAt(setting, place);
 }
 
+/**
+ * May this person use the item at this place: who may, and where it works.
+ * In the app's own chat a space admin has everything, on or off (José 02/11:
+ * «en ese chat siempre se verán todos los comandos», only for admins); a
+ * member, what is on for the 1:1 and allowed to them.
+ */
+export function availableTo(kind: AppItemKind, key: string, setting: AppItemSetting, place: ItemPlace, person: { userId: string; spaceAdmin: boolean }): boolean {
+  if (place === 'direct' && person.spaceAdmin) return true;
+  return mayUseItem(setting, person) && worksAt(kind, key, setting, place);
+}
+
 /** «Encendido» in «Comandos y acciones» (design d-01): it works somewhere; a client channel's button always does. */
 export function itemIsOn(setting: AppItemSetting & { kind?: AppItemKind; key?: string }): boolean {
   if (setting.kind && setting.key && clientChannelButtonOf(setting.kind, setting.key)) return true;

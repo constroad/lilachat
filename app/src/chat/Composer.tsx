@@ -26,6 +26,7 @@ import { CommandPanel } from './commands/CommandPanel';
 import { EphemeralAnswers } from './commands/EphemeralAnswers';
 import { AppFormSheet } from './commands/AppFormSheet';
 import { ChatQuickActions } from './commands/ChatQuickActions';
+import { SlashCommandsButton } from './commands/SlashCommandsButton';
 
 /** Cuánto se espera tras la última tecla para guardar el borrador. */
 const ESPERA_PARA_GUARDAR_MS = 500;
@@ -378,6 +379,7 @@ export const Composer = memo(function Composer(props: {
       />
       {/* The ⚡ of a channel or the chat with an app, only when it has actions (R31/10). */}
       {props.commands && forma.vacio ? <ChatQuickActions commands={props.commands} /> : null}
+      {props.commands?.hasCommands && forma.vacio ? <SlashCommandsButton onPress={() => { escribir('/', 1); props.commands?.onType('/'); }} /> : null}
       {/* Como WhatsApp (José, 19/10): el clip siempre adentro; la cámara, solo
           con el campo vacío. El «+» de afuera se fue: era la misma puerta. */}
       <Pressable

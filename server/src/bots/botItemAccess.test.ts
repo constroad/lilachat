@@ -91,10 +91,21 @@ describe('untouched, everything is off (José, 28/10)', () => {
     expect((await request(app).post(`/api/workspaces/${spaceId}/shortcuts`).set(asJose).send({ app_id: appId, shortcut: 'marcar_asistencia' }).expect(403)).body.message).toBe('No tienes permiso para usar «Marcar asistencia» aquí. Pídeselo a un admin del espacio.');
   });
 
-  it('the app\'s own 1:1 no longer offers everything', async () => {
+  it('the app\'s own 1:1 offers a member nothing', async () => {
     const direct = await directOf(asAna);
     expect(await offered(asAna, `?chat=${direct}`)).toEqual([]);
     await run(asAna, direct).expect(403);
+  });
+
+  it('in the app\'s own 1:1 a space admin sees and runs every command and action, all off (José 02/11)', async () => {
+    // Arrange
+    const direct = await directOf(asJose);
+    // Act
+    const mine = await offered(asJose, `?chat=${direct}`);
+    // Assert
+    expect(mine).toEqual(['/clima', 'marcar_asistencia']);
+    expect((await run(asJose, direct).expect(200)).body).toMatchObject({ response: { text: 'Soleado, 24 °C' } });
+    expect(await offered(asJose, `?chat=${planta}`)).toEqual([]);
   });
 });
 

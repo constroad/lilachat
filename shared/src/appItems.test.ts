@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ALL_OFF, allOffSettings, clientChannelButtonOf, enabledAt, itemIsOn, itemPlacesLine, itemKey, itemSettingOf, mayUseItem, placesLineOf, sameItemSetting, spacePlaceOf, validateItemSettings, worksAt } from './appItems.js';
+import { ALL_OFF, allOffSettings, availableTo, clientChannelButtonOf, enabledAt, itemIsOn, itemPlacesLine, itemKey, itemSettingOf, mayUseItem, placesLineOf, sameItemSetting, spacePlaceOf, validateItemSettings, worksAt } from './appItems.js';
 
 /** Which commands and actions of an app work where, and for whom (José, 23/10 and 28/10: everything starts off). */
 const PLANTA = '6ad8b0cb30ce97957f4acc04';
@@ -180,5 +180,31 @@ describe('the buttons of a client\'s channel (José 01/11: «ya lo aprobé» and
     expect(placesLineOf(row, names)).toBe('Funciona en el canal de cada cliente: «Registrar pago» en Cobranza');
     expect(placesLineOf({ ...row, key: 'crear_cliente', global: true }, names)).toBe('Funciona en el selector de clientes');
     expect(itemIsOn({ ...row, key: 'registrar_consumo' })).toBe(false);
+  });
+});
+
+describe('the chat with the app (José 02/11: «en ese chat siempre se verán todos los comandos»)', () => {
+  const off = itemSettingOf(undefined, 'command', 'tanques');
+  const admin = { userId: 'a1', spaceAdmin: true };
+  const member = { userId: 'm1', spaceAdmin: false };
+
+  it('a space admin has every command and action there, even turned off', () => {
+    expect(availableTo('command', 'tanques', off, 'direct', admin)).toBe(true);
+    expect(availableTo('shortcut', 'registrar_gasto', off, 'direct', admin)).toBe(true);
+  });
+
+  it('a member only what is on for the 1:1 and allowed to them', () => {
+    // Arrange
+    const onForEveryone = { ...off, direct: true, who: { kind: 'everyone' as const } };
+    const onForAdmins = { ...off, direct: true };
+    // Act + Assert
+    expect(availableTo('command', 'tanques', off, 'direct', member)).toBe(false);
+    expect(availableTo('command', 'tanques', onForAdmins, 'direct', member)).toBe(false);
+    expect(availableTo('command', 'tanques', onForEveryone, 'direct', member)).toBe(true);
+  });
+
+  it('elsewhere the admin follows the switches like anyone', () => {
+    expect(availableTo('command', 'tanques', off, { chatId: 'c1', client: false }, admin)).toBe(false);
+    expect(availableTo('command', 'tanques', off, 'space', admin)).toBe(false);
   });
 });

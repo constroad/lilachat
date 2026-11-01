@@ -13,6 +13,7 @@ const groups: CommandGroup[] = [
 
 const stubCommands = (overrides: Partial<ChatCommands> = {}): ChatCommands => ({
   enabled: true,
+  hasCommands: false,
   suggestions: [],
   activeCommand: null,
   onType: vi.fn(),
@@ -161,6 +162,21 @@ describe('Composer with commands', () => {
     // Assert
     expect(screen.getByTestId('input-mensaje')).toHaveValue('/tanques ');
     expect(commands.onType).toHaveBeenCalledWith('/tanques ');
+  });
+
+  it('the «/» button writes the slash and opens the chat\'s commands; without commands it is not there (José 02/11)', () => {
+    // Arrange: an empty field (the tests above leave a draft for c1)
+    localStorage.clear();
+    const commands = stubCommands({ hasCommands: true });
+    const { unmount } = composer(commands);
+    // Act
+    fireEvent.click(screen.getByTestId('btn-comandos'));
+    // Assert
+    expect(screen.getByTestId('input-mensaje')).toHaveValue('/');
+    expect(commands.onType).toHaveBeenCalledWith('/');
+    unmount();
+    composer(stubCommands({ hasCommands: false }));
+    expect(screen.queryByTestId('btn-comandos')).toBeNull();
   });
 });
 

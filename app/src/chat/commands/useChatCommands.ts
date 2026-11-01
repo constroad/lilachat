@@ -104,7 +104,9 @@ export function useChatCommands(params: { jwt: string; chatId: string; workspace
   const actions = useMemo(() => chatActionRows(groups), [groups]);
   /** A client channel's buttons (José 01/11): links and the service report, out of the ⚡. */
   const buttons = useMemo(() => channelButtonRows(groups), [groups]);
-  return { enabled: Boolean(workspaceId), suggestions, onType, runIfCommand, answers: appAnswers.answers, dismiss: appAnswers.dismiss, appAnswers, actions, buttons, loadActions: load, share: params.shareable ? share : undefined };
+  /** The «/» button shows only where this chat has commands (José 02/11). */
+  const hasCommands = useMemo(() => groups.some((group) => group.commands.length > 0), [groups]);
+  return { enabled: Boolean(workspaceId), hasCommands, suggestions, onType, runIfCommand, answers: appAnswers.answers, dismiss: appAnswers.dismiss, appAnswers, actions, buttons, loadActions: load, share: params.shareable ? share : undefined };
 }
 
 /** A channel or the chat with an app also asks for its actions on open, for its ⚡ (R31/10); a person's chat asks nothing. */

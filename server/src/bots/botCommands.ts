@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { canManageMembers, COMMAND_LIMITS, formLevelOf, isAckBody, itemSettingOf, mayUseItem, shortcutValuesOf, validateCommandResponse, validateFormReply, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope, type ShortcutValues, worksAt } from '@lilachat/shared';
+import { availableTo, canManageMembers, COMMAND_LIMITS, formLevelOf, isAckBody, itemSettingOf, mayUseItem, shortcutValuesOf, validateCommandResponse, validateFormReply, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope, type ShortcutValues, worksAt } from '@lilachat/shared';
 import { ChatModel, type Chat } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { callBotWebhook, isRestarting, recordLastDelivery, type WebhookReply } from './botEvents.js';
@@ -100,8 +100,8 @@ export async function commandGroupsOf(workspaceId: string, userId: Types.ObjectI
       const installation = byApp.get(String(app._id))!;
       const open = (kind: 'command' | 'shortcut', key: string) => {
         const setting = itemSettingOf(installation.itemSettings, kind, key, !installation.itemsV2);
-        if (!mayUseItem(setting, person)) return false;
-        return place ? worksAt(kind, key, setting, place === 'space' ? 'space' : itemPlaceOf(chat, installation, clientChat)) : onSomewhere(setting);
+        if (!place) return mayUseItem(setting, person) && onSomewhere(setting);
+        return availableTo(kind, key, setting, place === 'space' ? 'space' : itemPlaceOf(chat, installation, clientChat), person);
       };
       const commands = (app.commands ?? []).filter((entry) => open('command', entry.command));
       const shortcuts = (app.shortcuts ?? []).filter((entry) => open('shortcut', entry.key));
@@ -195,7 +195,7 @@ async function invokeApp(userId: Types.ObjectId, scope: CommandScope, appId: unk
   // Checked here, not only in the menu: an old client or a direct call skips the menu (§2.2).
   const [member, clientChat] = await Promise.all([WorkspaceMemberModel.findOne({ workspaceId: place.workspaceId, userId, status: 'active' }).select('role').lean(), place.chat ? isClientChat(place.chat._id) : false]);
   const label = trigger.kind === 'command' ? `/${name}` : `«${app.shortcuts?.find((entry) => entry.key === name)?.name ?? name}»`;
-  if (!member || !mayUseItem(setting, { userId: String(userId), spaceAdmin: canManageMembers(member.role) }) || !worksAt(trigger.kind, name, setting, itemPlaceOf(place.chat, installation, clientChat))) return notAllowedHere(label);
+  if (!member || !availableTo(trigger.kind, name, setting, itemPlaceOf(place.chat, installation, clientChat), { userId: String(userId), spaceAdmin: canManageMembers(member.role) })) return notAllowedHere(label);
   // A failed run stays a week: its `failure` is how a «no pudo responder» gets explained (23/10).
   void BotCommandRunModel.deleteMany({ $or: [{ expiresAt: { $lt: new Date() }, failure: { $exists: false } }, { expiresAt: { $lt: new Date(Date.now() - FAILED_RUN_KEPT_MS) } }] }).catch((error: unknown) => console.error('[bots] no se pudieron purgar comandos vencidos:', error instanceof Error ? error.message : error));
   const { chat } = place;

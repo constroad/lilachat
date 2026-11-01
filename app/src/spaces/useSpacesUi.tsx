@@ -65,6 +65,8 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
   const colors = useColores();
   const currentId = useCurrentSpaceId();
   const { spaces, reload } = useMySpaces(jwt, myUserId);
+  // Stable: the switcher asks again on each new `onOpen`, and an inline one asked 4–5 times a second while open (01/11).
+  const reloadOnOpen = useCallback(() => void reload(), [reload]);
   const seen = useSeenSpaces();
   const [sheet, setSheet] = useState<Sheet>(null);
   /** A space's join link (pending 47): Android opens the app on it, and «Unirme» opens with its code. */
@@ -247,7 +249,7 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
   const commonChannels = profile?.userId ? listChats.filter((chat) => chat.channel && chat.memberIds.includes(profile.userId!)).map((chat) => chat.name ?? '') : [];
   const layer: ReactNode = (
     <>
-      <SpaceSwitcherSheet visible={sheet === 'switcher'} spaces={spaces} currentId={current?.id ?? null} me={params.me} personalUnread={params.personalUnread} onPick={(spaceId) => void enter(spaceId)} onJoin={() => setSheet('join')} onCreate={() => setSheet('create')} onClose={() => setSheet(null)} onOpen={() => void reload()} />
+      <SpaceSwitcherSheet visible={sheet === 'switcher'} spaces={spaces} currentId={current?.id ?? null} me={params.me} personalUnread={params.personalUnread} onPick={(spaceId) => void enter(spaceId)} onJoin={() => setSheet('join')} onCreate={() => setSheet('create')} onClose={() => setSheet(null)} onOpen={reloadOnOpen} />
       <JoinSpaceScreen visible={sheet === 'join'} jwt={jwt} initialCode={joinCode} onJoined={(spaceId) => void enter(spaceId)} onClose={() => { setSheet(null); setJoinCode(null); void reload(); }} />
       <CreateSpaceScreen
         visible={sheet === 'create'}

@@ -123,6 +123,14 @@ export function buildApp(deps: AppDeps = {}): Express {
     res.status(200).json({ status: 'ok', service: 'lilachat-server', version });
   });
 
+  // 01/11: José's phone gets no spaces while the emulator, same account, does. Temporary: what each list request got.
+  app.use('/api/workspaces', (req, res, next) => {
+    if (req.method !== 'GET' || req.path !== '/') return next();
+    const started = Date.now();
+    const update = req.headers['x-lilachat-update'] ?? '-';
+    res.on('close', () => console.log(`[ws-diag] status=${res.statusCode} done=${res.writableFinished} bytes=${res.getHeader('content-length') ?? '?'} ms=${Date.now() - started} update=${update} enc=${res.getHeader('content-encoding') ?? '-'}`));
+    next();
+  });
   if (deps.minimumBuild) app.use('/api', requireMinimumBuild(deps.minimumBuild));
 
   // Vincular por QR (W5): antes que `/api/auth`, que no conoce estas rutas.

@@ -5095,6 +5095,10 @@ Cobranza Lilachat 31-10» → Servicios → «QA Liquidación Lilachat 31-10».
     Antes salía «2026-10-31T17:00:00.000Z».
   - Los dos están commiteados en Portal y sin push: esperan el OK de José,
     igual que `started_at` (47514b81) y el backfill.
+- Verificado en el emulador con la OTA 8f3a86c5 (git 3b228fc). La pestaña
+  dice «Hay 1 en el Portal que todavía no llega aquí». Un segundo «Generar
+  informe de servicio» deja la respuesta bajo el botón, sin abrir el ⚡. Portal
+  devuelve la misma liquidación, no crea otra.
 
 ## 180. Canal del cliente: informes por día, cubicaje, obra, inicio, «Recordatorio», enlaces y PDF que se genera (31/10/2026, servidor + OTA + web)
 

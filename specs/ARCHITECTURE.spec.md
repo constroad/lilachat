@@ -5041,6 +5041,8 @@ la foto apaisada y «Cuadrado» un marco de 460×459 px. Recorte girado alrededo
 de la hora del emulador → «Listo» mostró solo ese pedazo, girado y grande; la
 burbuja enviada respetó la forma (1,1:1). Se borró con «Eliminar para todos».
 «Atrás» con el recorte abierto lo cerró sin perder la foto.
+Con el margen nuevo (OTA 16f89c9b, git 2dca53c) la foto girada queda a 110 px
+(40 dp) del borde y su esquina izquierda se arrastra sin cerrar la pantalla.
 
 **Tests del server estables (84cf664).** Los «Parse Error» y los tiempos
 agotados al azar venían de supertest: escuchaba en `[::]:P` y llamaba a

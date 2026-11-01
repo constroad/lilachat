@@ -7,6 +7,8 @@ import { replayWink } from './nudge';
 import { useColores } from '../ui/tema';
 
 const COLUMNS = 3;
+/** The emoji ones are many and small (José 02/11: 78): four per row. */
+const EMOJI_COLUMNS = 4;
 const SIDE_PADDING = 16;
 const GAP = 8;
 /** The local preview has no message yet: any fixed seed. */
@@ -26,7 +28,7 @@ export function WinkPanel(props: { recipient: string; onSend: (wink: WinkId) => 
   const { width } = useWindowDimensions();
   const [selected, setSelected] = useState<WinkId | null>(null);
   const groups = useMemo(() => winkPanelGroups(new Date()), []);
-  const tile = (width - SIDE_PADDING * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
+  const tileOf = (columns: number) => (width - SIDE_PADDING * 2 - GAP * (columns - 1)) / columns;
   const pick = (wink: WinkId) => {
     setSelected(wink);
     replayWink(PREVIEW_SEED, wink);
@@ -63,7 +65,7 @@ export function WinkPanel(props: { recipient: string; onSend: (wink: WinkId) => 
           <Text className="mb-2 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{title}</Text>
           <View className="flex-row flex-wrap" style={{ gap: GAP }}>
             {winks.map((wink) => (
-              <WinkTile key={wink.id} wink={wink} width={tile} active={wink.id === selected} onPick={() => pick(wink.id)} onSend={() => props.onSend(wink.id)} />
+              <WinkTile key={wink.id} wink={wink} width={tileOf(key === 'emoji' ? EMOJI_COLUMNS : COLUMNS)} active={wink.id === selected} onPick={() => pick(wink.id)} onSend={() => props.onSend(wink.id)} />
             ))}
           </View>
         </View>

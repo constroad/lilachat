@@ -1,0 +1,87 @@
+import type { WinkMotion, WinkSound } from './winks.js';
+
+/**
+ * More emoji winks (José 02/11: «no está el enojado, los monos… agrega casi
+ * todos»): a big emoji that pops with its particles and its sound, like the
+ * first eight. [id, name, hero, particles, motion, sound].
+ */
+export const MORE_EMOJI_WINKS = [
+  // Faces
+  ['angry', 'Enojado', '😡', ['😡', '💢', '🔥'], 'burst', 'rumble'],
+  ['furious', 'Furioso', '🤬', ['🤬', '💢', '💥'], 'burst', 'crash'],
+  ['steaming', 'Indignado', '😤', ['😤', '💨', '💢'], 'burst', 'whoosh'],
+  ['crying', 'Llorando', '😭', ['😭', '💧', '💦'], 'rain', 'drip'],
+  ['in-love', 'Enamorado', '😍', ['😍', '❤️', '💘'], 'rise', 'chime'],
+  ['kiss', 'Beso', '😘', ['😘', '💋', '❤️'], 'rise', 'smooch'],
+  ['winky', 'Guiñito', '😉', ['😉', '✨'], 'burst', 'ting'],
+  ['cool', 'Bacán', '😎', ['😎', '🕶️', '✨'], 'burst', 'whistle'],
+  ['thinking', 'Pensando', '🤔', ['🤔', '❓', '💭'], 'rise', 'ting'],
+  ['scared', 'Susto', '😱', ['😱', '❗', '⚡'], 'burst', 'alarm'],
+  ['mind-blown', 'Mente volada', '🤯', ['🤯', '💥', '✨'], 'burst', 'crash'],
+  ['facepalm', 'Qué vergüenza', '🤦', ['🤦', '😳', '💧'], 'rain', 'thump'],
+  ['shrug', 'Ni idea', '🤷', ['🤷', '❓'], 'rise', 'boing'],
+  ['eye-roll', 'Ajá, sí', '🙄', ['🙄', '💭'], 'rise', 'whoosh'],
+  ['phew', 'Uf, por poco', '😅', ['😅', '💦'], 'rain', 'drip'],
+  ['awkward', 'Incómodo', '😬', ['😬', '😅'], 'burst', 'squeeze'],
+  ['upside-down', 'Al revés', '🙃', ['🙃', '🔄'], 'burst', 'boing'],
+  ['melting', 'Derretido', '🫠', ['🫠', '☀️', '💧'], 'rain', 'sizzle'],
+  ['salute', 'A la orden', '🫡', ['🫡', '⭐', '🎖️'], 'rise', 'horn'],
+  ['pleading', 'Porfa', '🥺', ['🥺', '🙏', '💕'], 'rise', 'chime'],
+  ['party-face', 'Fiestero', '🥳', ['🥳', '🎉', '🎊'], 'rain', 'partyhorn'],
+  ['sleepy', 'Sueño', '😴', ['😴', '💤'], 'rise', 'snore'],
+  ['yawning', 'Bostezo', '🥱', ['🥱', '💤', '☕'], 'rise', 'yawn'],
+  ['sick', 'Mareado', '🤢', ['🤢', '🤮', '💚'], 'rain', 'squeeze'],
+  ['hot', 'Calorón', '🥵', ['🥵', '🔥', '☀️'], 'rise', 'sizzle'],
+  ['cold', 'Friazo', '🥶', ['🥶', '❄️', '🧊'], 'rain', 'whoosh'],
+  ['rich', 'Plata', '🤑', ['🤑', '💵', '💰'], 'rain', 'ting'],
+  ['nerd', 'Sabelotodo', '🤓', ['🤓', '📚', '💡'], 'burst', 'ting'],
+  ['cowboy', 'Vaquero', '🤠', ['🤠', '🌵', '⭐'], 'burst', 'whistle'],
+  ['clown', 'Payaso', '🤡', ['🤡', '🎈', '🎪'], 'burst', 'boing'],
+  ['devil', 'Diablillo', '😈', ['😈', '🔥'], 'burst', 'rumble'],
+  ['angel', 'Angelito', '😇', ['😇', '✨', '☁️'], 'rise', 'chime'],
+  ['shush', 'Silencio', '🤫', ['🤫', '🤐'], 'rise', 'whoosh'],
+  ['dead-laughing', 'Me muero', '💀', ['💀', '😂'], 'burst', 'laugh'],
+  ['poop', 'Caca', '💩', ['💩', '💨'], 'rain', 'boing'],
+  ['ghosty', 'Fantasmita', '👻', ['👻', '✨'], 'rise', 'whoosh'],
+  ['alien', 'Marciano', '👽', ['👽', '🛸', '✨'], 'rise', 'whoosh'],
+  ['robot', 'Robot', '🤖', ['🤖', '⚙️', '🔩'], 'burst', 'knock'],
+  // The three monkeys
+  ['see-no-evil', 'No vi nada', '🙈', ['🙈', '🙉', '🙊'], 'burst', 'laugh'],
+  ['hear-no-evil', 'No oí nada', '🙉', ['🙉', '🎵'], 'burst', 'pop'],
+  ['speak-no-evil', 'No dije nada', '🙊', ['🙊', '🤐'], 'burst', 'pop'],
+  // Hands
+  ['thumbs-up', 'Bien', '👍', ['👍', '✨', '⭐'], 'burst', 'ting'],
+  ['thumbs-down', 'Mal', '👎', ['👎', '💢'], 'rain', 'thump'],
+  ['ok-hand', 'Ok', '👌', ['👌', '✨'], 'burst', 'ting'],
+  ['rock-on', 'Rock', '🤘', ['🤘', '⚡', '🎸'], 'burst', 'crash'],
+  ['muscle', 'Fuerza', '💪', ['💪', '🔥', '⭐'], 'burst', 'cheer'],
+  ['pray', 'Por favor', '🙏', ['🙏', '✨', '🕊️'], 'rise', 'chime'],
+  ['wave', 'Hola', '👋', ['👋', '😊', '✨'], 'burst', 'ting'],
+  ['deal', 'Trato hecho', '🤝', ['🤝', '✨', '💼'], 'burst', 'clap'],
+  ['eyes', 'Te estoy viendo', '👀', ['👀', '🔍'], 'burst', 'whoosh'],
+  // Things
+  ['fire', 'Fuego', '🔥', ['🔥', '💥'], 'rise', 'sizzle'],
+  ['hundred', 'Cien', '💯', ['💯', '🔥', '⭐'], 'burst', 'cheer'],
+  ['broken-heart', 'Me rompiste', '💔', ['💔', '😢', '💧'], 'rain', 'drip'],
+  ['star', 'Estrella', '🌟', ['🌟', '⭐', '✨'], 'rain', 'chime'],
+  ['rainbow', 'Arcoíris', '🌈', ['🌈', '☀️', '✨'], 'rise', 'chime'],
+  ['storm', 'Tormenta', '⛈️', ['⚡', '🌧️', '💧'], 'rain', 'rumble'],
+  ['rocket', 'Despegue', '🚀', ['🚀', '✨', '💨'], 'rise', 'whoosh'],
+  ['trophy', 'Campeón', '🏆', ['🏆', '🥇', '⭐'], 'rain', 'cheer'],
+  ['goal', 'Gol', '⚽', ['⚽', '🥅', '🎉'], 'burst', 'cheer'],
+  ['cheers', 'Salud', '🍻', ['🍻', '🍺', '🎉'], 'burst', 'glass'],
+  ['cake', 'Torta', '🎂', ['🎂', '🎉', '🎈'], 'rain', 'partyhorn'],
+  ['gift', 'Regalo', '🎁', ['🎁', '✨'], 'burst', 'pop'],
+  ['pizza', 'Pizza', '🍕', ['🍕', '🧀'], 'rain', 'pop'],
+  ['bomb', 'Bomba', '💣', ['💣', '💥', '🔥'], 'burst', 'crash'],
+  ['payday', 'Quincena', '💸', ['💸', '💵'], 'rain', 'whoosh'],
+  // Animals
+  ['doggy', 'Perro', '🐶', ['🐶', '🦴'], 'burst', 'boing'],
+  ['kitten', 'Gato', '🐱', ['🐱', '🐟'], 'burst', 'pop'],
+  ['chicken', 'Pollo', '🐔', ['🐔', '🥚'], 'burst', 'boing'],
+  ['snail', 'Lentitud', '🐌', ['🐌', '💤'], 'rise', 'snore'],
+  ['unicorn', 'Unicornio', '🦄', ['🦄', '🌈', '✨'], 'rise', 'chime'],
+  ['llama', 'Llama', '🦙', ['🦙', '💨'], 'burst', 'whoosh'],
+] as const satisfies readonly (readonly [string, string, string, readonly string[], WinkMotion, WinkSound])[];
+
+export type MoreEmojiWinkId = (typeof MORE_EMOJI_WINKS)[number][0];

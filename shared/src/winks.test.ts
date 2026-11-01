@@ -5,7 +5,7 @@ describe('the wink catalog', () => {
   it('characters, construction ones and the first emoji ones, each with a name and its length', () => {
     expect(WINKS.filter((wink) => wink.group === 'characters')).toHaveLength(12);
     expect(WINKS.filter((wink) => wink.group === 'site')).toHaveLength(6);
-    expect(WINKS.filter((wink) => wink.group === 'emoji')).toHaveLength(8);
+    expect(WINKS.filter((wink) => wink.group === 'emoji').length).toBeGreaterThanOrEqual(60);
     for (const wink of WINKS) {
       expect(wink.name.length).toBeGreaterThan(0);
       if (wink.kind === 'emoji') expect(wink.hero.length).toBeGreaterThan(0);
@@ -15,6 +15,17 @@ describe('the wink catalog', () => {
       if (wink.kind === 'character') expect(wink.durationMs, wink.id).toBeGreaterThanOrEqual(6000);
     }
     expect(new Set(WINKS.map((wink) => wink.id)).size).toBe(WINKS.length);
+  });
+
+  it('the emoji ones cover the usual faces, the three monkeys and more (José 02/11: «no está el enojado, los monos… agrega casi todos»)', () => {
+    // Arrange
+    const emoji = WINKS.filter((wink) => wink.kind === 'emoji');
+    const heroes = emoji.map((wink) => (wink.kind === 'emoji' ? wink.hero : ''));
+    // Assert
+    for (const wanted of ['😡', '🤬', '🙈', '🙉', '🙊', '😭', '😍', '😱', '🤔', '💀', '🔥', '👍']) expect(heroes, wanted).toContain(wanted);
+    expect(new Set(heroes).size).toBe(heroes.length);
+    expect(new Set(WINKS.map((wink) => wink.name)).size).toBe(WINKS.length);
+    for (const wink of emoji) expect(wink.particles.length, wink.id).toBeGreaterThan(0);
   });
 
   it('knows its ids and nothing else', () => {

@@ -2,6 +2,7 @@ import { WINK_PROPS, type WinkArtId, type WinkPropId } from './winkArt.js';
 import { WINK_SKETCHES } from './winkSketches.js';
 import { seasonOf, type WinkSeason } from './winkSeasons.js';
 import type { ScreenEffect } from './winkTimeline.js';
+import { MORE_EMOJI_WINKS, type MoreEmojiWinkId } from './winkEmojis.js';
 
 /**
  * Winks, like MSN Messenger's (backlog 3, José 21/10): a full-screen animation
@@ -21,7 +22,7 @@ export type ChristmasWinkId = 'santa' | 'elf' | 'reindeer' | 'snowman' | 'secret
 /** Pending 73: New Year, Valentine, Mother's Day and Fiestas Patrias (sheets `r153-*`). */
 export type LaterSeasonsWinkId = 'countdown' | 'grapes' | 'suitcase' | 'yellow' | 'toast' | 'cupid' | 'roses' | 'serenade' | 'stood-up' | 'heartbroken' | 'multitask-mom' | 'grandma' | 'late-son' | 'engineer-mom' | 'voice-note' | 'flag' | 'marinera' | 'anticucho' | 'parade' | 'pisco';
 export type SiteWinkId = 'cone' | 'roller' | 'dumptruck' | 'excavator' | 'paver' | 'flagger';
-export type EmojiWinkId = 'hearts' | 'applause' | 'party' | 'laugh' | 'hug' | 'hardhat' | 'coffee' | 'done';
+export type EmojiWinkId = 'hearts' | 'applause' | 'party' | 'laugh' | 'hug' | 'hardhat' | 'coffee' | 'done' | MoreEmojiWinkId;
 export type WinkId = CharacterWinkId | SiteWinkId | EmojiWinkId;
 /** How the particles move: up from the bottom, out from the center, or down from the top. */
 export type WinkMotion = 'rise' | 'burst' | 'rain';
@@ -49,6 +50,8 @@ const character = (id: CharacterWinkId | SiteWinkId, name: string, group: WinkGr
   const sketch = WINK_SKETCHES[id];
   return { id, name, group, kind: 'character', particles, motion, durationMs: sketch.durationMs, ...(sketch.particlesAt ? { particlesAt: sketch.particlesAt } : {}), ...(tile ? { tile } : {}) };
 };
+/** The emoji winks of 02/11 last like the first ones. */
+const MORE_EMOJI_WINK_MS = 2600;
 const emoji = (id: EmojiWinkId, name: string, hero: string, particles: readonly string[], motion: WinkMotion, durationMs: number, sound: WinkSound): EmojiWink => ({ id, name, group: 'emoji', kind: 'emoji', hero, particles, motion, durationMs, sound, particlesAt: [0, 1] });
 
 export const WINKS: readonly Wink[] = [
@@ -119,6 +122,7 @@ export const WINKS: readonly Wink[] = [
   emoji('hardhat', 'Casco de obra', '👷', ['🦺', '🚧', '🏗️', '⛑️'], 'rain', 3000, 'horn'),
   emoji('coffee', 'Café', '☕', ['☕', '🥐', '✨'], 'rise', 2600, 'pop'),
   emoji('done', '¡Listo!', '✅', ['✅', '💪', '⭐'], 'burst', 2400, 'chime'),
+  ...MORE_EMOJI_WINKS.map(([id, name, hero, particles, motion, sound]) => emoji(id, name, hero, particles, motion, MORE_EMOJI_WINK_MS, sound)),
 ];
 
 /** What a wink sounds like and does to the screen, moment by moment (ms): an emoji wink, its sound; a sketch, its cues. */

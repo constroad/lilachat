@@ -88,6 +88,16 @@ export type ClientWorkspace = {
   admins?: { userId: string; name?: string; phone: string }[];
 };
 
+/**
+ * The list out of a `GET /api/workspaces` answer, or `null` when the body is not it.
+ * A 2xx that is not JSON (an HTML page on the way) parses to `{}`: trusting it left
+ * the spaces `undefined` and the whole app on «Algo se rompió» (01/11, 8 reports).
+ */
+export function workspacesOf(body: unknown): ClientWorkspace[] | null {
+  const list = (body as { workspaces?: unknown } | null)?.workspaces;
+  return Array.isArray(list) ? (list as ClientWorkspace[]) : null;
+}
+
 /** A person of a space as `GET /api/workspaces/:id/members` returns it. */
 export type ClientWorkspaceMember = {
   id: string;

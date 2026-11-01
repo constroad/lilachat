@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
-import type { ClientWorkspace } from '@lilachat/shared';
+import { workspacesOf, type ClientWorkspace } from '@lilachat/shared';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createPrefStore } from '../ui/prefStore';
 import { mySpaces } from './spacesApi';
@@ -56,8 +56,9 @@ export function useMySpaces(jwt: string, userId?: string): { spaces: ClientWorks
     const turn = ++latestRequest;
     askedThisRun = true;
     const response = await mySpaces(jwt);
-    if (!response.ok || turn !== latestRequest) return;
-    spaces = response.data.workspaces;
+    const list = response.ok ? workspacesOf(response.data) : null;
+    if (!list || turn !== latestRequest) return;
+    spaces = list;
     if (userId) AsyncStorage.setItem(SAVED_SPACES_KEY, JSON.stringify({ userId, spaces })).catch(() => undefined);
     announce();
   }, [jwt, userId]);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canChangeRole, canDeactivate, canManageMembers, joinCodePrefix, makeJoinCode, normalizeChannelName, normalizeJoinCode, statusAfterJoin } from './workspaces.js';
+import { canChangeRole, canDeactivate, canManageMembers, joinCodePrefix, makeJoinCode, normalizeChannelName, normalizeJoinCode, statusAfterJoin, workspacesOf } from './workspaces.js';
 
 /** E1 (José, 20/10): personal account plus company spaces; join with a code or be added by phone. */
 describe('join code', () => {
@@ -69,5 +69,20 @@ describe('channel name', () => {
 
   it('is cut at 40 characters', () => {
     expect(normalizeChannelName('a'.repeat(60))).toHaveLength(40);
+  });
+});
+
+describe('workspacesOf (01/11: «Algo se rompió en esta pantalla» on José\'s phone)', () => {
+  it('reads the list the server sends', () => {
+    // Arrange
+    const body = { workspaces: [{ id: 'w1', name: 'Constroad' }] };
+    // Act / Assert
+    expect(workspacesOf(body)).toEqual(body.workspaces);
+  });
+
+  it('a 2xx that is not the list (an HTML page, an empty body) is no answer, not «undefined spaces»', () => {
+    expect(workspacesOf({})).toBeNull();
+    expect(workspacesOf(null)).toBeNull();
+    expect(workspacesOf({ workspaces: 'x' })).toBeNull();
   });
 });

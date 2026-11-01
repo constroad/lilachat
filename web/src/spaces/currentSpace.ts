@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
-import type { ClientWorkspace } from '@lilachat/shared';
+import { workspacesOf, type ClientWorkspace } from '@lilachat/shared';
 import { mySpaces } from './spacesApi';
 
 /** Which space the list shows (E1): `null` is the personal account. Remembered in this browser. */
@@ -84,8 +84,9 @@ export function useMySpaces(jwt: string, userId?: string): { spaces: ClientWorks
     const turn = ++latestRequest;
     askedThisSession = true;
     const response = await mySpaces(jwt);
-    if (!response.ok || turn !== latestRequest) return;
-    spaces = response.data.workspaces;
+    const list = response.ok ? workspacesOf(response.data) : null;
+    if (!list || turn !== latestRequest) return;
+    spaces = list;
     if (userId) saveSpaces(userId, spaces);
     notify();
   }, [jwt, userId]);

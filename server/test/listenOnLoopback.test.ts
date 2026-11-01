@@ -1,37 +1,38 @@
 import { createServer } from 'node:http';
-import { createServer as createTcpServer, type AddressInfo, type Server } from 'node:net';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 
 /**
  * 01/11: three tests failed now and then with «Parse Error: Expected HTTP/» or
- * a 20 s timeout. supertest called `127.0.0.1:P` while the app listened on
- * `[::]:P`, and macOS let a test mongod hold `127.0.0.1:P` at the same time.
+ * a 20 s timeout. supertest listened on `::` and called `127.0.0.1:P`, and
+ * macOS let another process (a test mongod, the emulator on `[::1]`) hold that
+ * port at the same time. The kernel picks the port, so the collision cannot be
+ * forced here: what is checked is that supertest's server is on 127.0.0.1.
  */
-const listening = (server: Server, port: number, host: string) =>
-  new Promise<boolean>((resolve) => {
-    server.once('error', () => resolve(false));
-    server.listen(port, host, () => resolve(true));
+describe('supertest reaches the app on 127.0.0.1, not whoever else shares its port', () => {
+  it('its server listens on 127.0.0.1 itself, not on every address', async () => {
+    // Arrange
+    const app = createServer((req, res) => res.end(req.socket.localAddress));
+    // Act
+    const response = await request(app).get('/');
+    // Assert: on `::` the app would see the mapped `::ffff:127.0.0.1`.
+    expect(response.text).toBe('127.0.0.1');
   });
 
-describe('supertest reaches the app, not whoever else holds its port', () => {
-  it('another process on 127.0.0.1 with the same port does not get the request', async () => {
-    // Arrange: the collision, on purpose.
-    const intruder = createTcpServer((socket) => socket.end('NOT-HTTP\r\n'));
-    await listening(intruder, 0, '127.0.0.1');
-    const port = (intruder.address() as AddressInfo).port;
+  it('a request built before the server listens still goes out, with its body', async () => {
+    const app = createServer((req, res) => {
+      let body = '';
+      req.on('data', (chunk) => (body += chunk));
+      req.on('end', () => res.end(`${req.headers.host?.startsWith('127.0.0.1:')}:${body}`));
+    });
+    const response = await request(app).post('/x').send('hola');
+    expect(response.text).toBe('true:hola');
+  });
+
+  it('sent after an await, once the server already listens, it still finds the port', async () => {
     const app = createServer((_req, res) => res.end('ok'));
-    const shared = await listening(app, port, '::');
-    try {
-      // Linux (and a runner without IPv6) refuses the shared port: there the collision cannot happen.
-      if (!shared) return;
-      // Act
-      const response = await request(app).get('/');
-      // Assert
-      expect(response.text).toBe('ok');
-    } finally {
-      app.close();
-      intruder.close();
-    }
+    const pending = request(app).get('/');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect((await pending).text).toBe('ok');
   });
 });

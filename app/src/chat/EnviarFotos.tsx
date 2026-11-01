@@ -31,8 +31,8 @@ export function EnviarFotos(props: {
   const [pies, setPies] = useState<Record<string, string>>({});
   /** Mandar la original, sin achicar (como el «HD» de WhatsApp). */
   const [hd, setHd] = useState(false);
-  /** La foto que se está recortando (01/11, como WhatsApp). */
-  const [recortando, setRecortando] = useState<FotoElegida | null>(null);
+  /** The photo being cropped (01/11, like WhatsApp). */
+  const [cropping, setCropping] = useState<FotoElegida | null>(null);
 
   // Cada vez que se abre con fotos nuevas, arranca de cero.
   useEffect(() => {
@@ -40,26 +40,26 @@ export function EnviarFotos(props: {
     setActual(0);
     setPies({});
     setHd(false);
-    setRecortando(null);
+    setCropping(null);
   }, [props.fotos]);
   const { backRef } = props;
   useEffect(() => {
     if (!backRef) return;
-    backRef.current = recortando ? () => setRecortando(null) : null;
+    backRef.current = cropping ? () => setCropping(null) : null;
     return () => {
       backRef.current = null;
     };
-  }, [backRef, recortando]);
+  }, [backRef, cropping]);
 
   const vista = fotos[actual];
   const esVideo = (foto?: FotoElegida) => Boolean(foto?.mimeType?.startsWith('video/'));
 
   // The cut photo takes the place of the original and keeps its caption.
-  const alRecortar = (original: FotoElegida, recortada: FotoElegida) => {
-    setRecortando(null);
-    if (recortada.uri === original.uri) return;
-    setFotos((antes) => antes.map((foto) => (foto.uri === original.uri ? recortada : foto)));
-    setPies(({ [original.uri]: pie, ...resto }) => (pie === undefined ? resto : { ...resto, [recortada.uri]: pie }));
+  const onCropped = (original: FotoElegida, cropped: FotoElegida) => {
+    setCropping(null);
+    if (cropped.uri === original.uri) return;
+    setFotos((before) => before.map((photo) => (photo.uri === original.uri ? cropped : photo)));
+    setPies(({ [original.uri]: caption, ...rest }) => (caption === undefined ? rest : { ...rest, [cropped.uri]: caption }));
   };
 
   const quitar = (indice: number) => {
@@ -80,7 +80,7 @@ export function EnviarFotos(props: {
           {fotos.length === 1 ? '1 foto' : `${fotos.length} fotos`}
         </Text>
         {vista && !esVideo(vista) ? (
-          <Pressable testID="btn-recortar" accessibilityLabel="Recortar y girar" onPress={() => setRecortando(vista)} className="h-11 w-11 items-center justify-center">
+          <Pressable testID="btn-recortar" accessibilityLabel="Recortar y girar" onPress={() => setCropping(vista)} className="h-11 w-11 items-center justify-center">
             <Crop size={22} color="white" />
           </Pressable>
         ) : null}
@@ -166,13 +166,13 @@ export function EnviarFotos(props: {
           <Send size={20} color={colores['on-primary']} />
         </Pressable>
       </View>
-      {recortando ? <CropEditor photo={recortando} onCancel={() => setRecortando(null)} onDone={(recortada) => alRecortar(recortando, recortada)} /> : null}
+      {cropping ? <CropEditor photo={cropping} onCancel={() => setCropping(null)} onDone={(cropped) => onCropped(cropping, cropped)} /> : null}
     </KeyboardAvoidingView>
   );
   if (props.embebido) return props.fotos.length > 0 ? <View className="absolute inset-0">{contenido}</View> : null;
   return (
     // Fundido y no deslizamiento (20/10): desde la cámara, la foto aparece en el acto.
-    <Modal visible={props.fotos.length > 0} animationType="fade" onRequestClose={() => (recortando ? setRecortando(null) : props.onCancelar())}>
+    <Modal visible={props.fotos.length > 0} animationType="fade" onRequestClose={() => (cropping ? setCropping(null) : props.onCancelar())}>
       {contenido}
     </Modal>
   );

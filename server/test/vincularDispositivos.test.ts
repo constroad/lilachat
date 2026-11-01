@@ -76,7 +76,7 @@ beforeEach(async () => {
   jwtDelTelefono = signSession({ userId: String(jose), deviceId: TELEFONO, email: '902049935' });
   httpServer = createServer(buildApp({ authClient: authFalso, vinculacion: { vinculaciones: crearVinculaciones(), esperaMs: ESPERA_MS, limitePorMinuto: 5 } }));
   attachSocket(httpServer);
-  await new Promise<void>((resolve) => httpServer.listen(0, resolve));
+  await new Promise<void>((resolve) => httpServer.listen(0, '127.0.0.1', resolve));
   port = (httpServer.address() as { port: number }).port;
 });
 

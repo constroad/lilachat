@@ -37,7 +37,7 @@ export function CamaraDelChat(props: { visible: boolean; nombreDelChat: string; 
   /** La foto recién tomada: «Enviar» se abre ENCIMA, en esta misma pantalla (dos modales no se apilan bien en Android). */
   const [tomada, setTomada] = useState<FotoElegida | null>(null);
   /** While the photo is being cropped, «back» closes the crop (01/11). */
-  const atrasDelEnvio = useRef<(() => void) | null>(null);
+  const sendScreenBack = useRef<(() => void) | null>(null);
   const alTomar = (foto: FotoElegida) => {
     setTomada(foto);
   };
@@ -63,7 +63,7 @@ export function CamaraDelChat(props: { visible: boolean; nombreDelChat: string; 
   };
 
   return (
-    <Modal visible={props.visible} animationType="fade" onRequestClose={() => (atrasDelEnvio.current ? atrasDelEnvio.current() : tomada ? (setTomada(null), setDisparando(false)) : props.onCerrar())} statusBarTranslucent>
+    <Modal visible={props.visible} animationType="fade" onRequestClose={() => (sendScreenBack.current ? sendScreenBack.current() : tomada ? (setTomada(null), setDisparando(false)) : props.onCerrar())} statusBarTranslucent>
       <View testID="camara-del-chat" className="flex-1 bg-black">
         {props.visible ? <CameraView ref={camara} style={{ flex: 1 }} facing={frontal ? 'front' : 'back'} flash={flash} active={!tomada} /> : null}
         {/* Mientras captura, la vista de la cámara se vuelve transparente (deja ver el chat de atrás): negro hasta que entra «Enviar». */}
@@ -115,7 +115,7 @@ export function CamaraDelChat(props: { visible: boolean; nombreDelChat: string; 
         </View>
         <EnviarFotos
           embebido
-          backRef={atrasDelEnvio}
+          backRef={sendScreenBack}
           fotos={tomada ? [tomada] : []}
           onCancelar={() => {
             setTomada(null);

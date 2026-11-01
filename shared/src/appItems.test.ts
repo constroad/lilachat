@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ALL_OFF, allOffSettings, enabledAt, itemIsOn, itemPlacesLine, itemKey, itemSettingOf, mayUseItem, sameItemSetting, spacePlaceOf, validateItemSettings } from './appItems.js';
+import { ALL_OFF, allOffSettings, clientChannelButtonOf, enabledAt, itemIsOn, itemPlacesLine, itemKey, itemSettingOf, mayUseItem, placesLineOf, sameItemSetting, spacePlaceOf, validateItemSettings, worksAt } from './appItems.js';
 
 /** Which commands and actions of an app work where, and for whom (José, 23/10 and 28/10: everything starts off). */
 const PLANTA = '6ad8b0cb30ce97957f4acc04';
@@ -141,3 +141,43 @@ describe('itemPlacesLine (José, 30/10: «Encendido» and nothing in «/»)', ()
   });
 });
 
+
+describe('the buttons of a client\'s channel (José 01/11: «ya lo aprobé» and he saw none of them)', () => {
+  const client = { chatId: PLANTA, client: true };
+  it('the links, the service report and the payment work at their button with every switch off', () => {
+    // Act / Assert
+    expect(worksAt('shortcut', 'crear_enlace_cliente', ALL_OFF, client)).toBe(true);
+    expect(worksAt('shortcut', 'crear_enlace_de_servicio', ALL_OFF, client)).toBe(true);
+    expect(worksAt('shortcut', 'informe_de_servicio', ALL_OFF, client)).toBe(true);
+    // Portal refuses registrar_pago inside a group: its button runs it from the space.
+    expect(worksAt('shortcut', 'registrar_pago', ALL_OFF, 'space')).toBe(true);
+  });
+
+  it('outside their button they follow the switches like any other item', () => {
+    // Act / Assert
+    expect(worksAt('shortcut', 'crear_enlace_cliente', ALL_OFF, { chatId: CAJA })).toBe(false);
+    expect(worksAt('shortcut', 'crear_enlace_cliente', ALL_OFF, 'space')).toBe(false);
+    expect(worksAt('shortcut', 'registrar_pago', ALL_OFF, client)).toBe(false);
+    expect(worksAt('shortcut', 'informe_de_servicio', ALL_OFF, 'direct')).toBe(false);
+    expect(worksAt('shortcut', 'informe_de_servicio', { ...ALL_OFF, direct: true }, 'direct')).toBe(true);
+  });
+
+  it('a command with the same name, or any other action, has no button', () => {
+    // Act / Assert
+    expect(worksAt('command', 'registrar_pago', ALL_OFF, 'space')).toBe(false);
+    expect(worksAt('shortcut', 'registrar_consumo', ALL_OFF, client)).toBe(false);
+    expect(clientChannelButtonOf('shortcut', 'toString')).toBeUndefined();
+    expect(clientChannelButtonOf('command', 'informe_de_servicio')).toBeUndefined();
+  });
+
+  it('«Comandos y acciones» shows them on, at the client\'s channel, whatever was saved', () => {
+    // Arrange
+    const names = new Map<string, string>();
+    const row = { ...ALL_OFF, kind: 'shortcut' as const, key: 'registrar_pago', name: 'Registrar pago' };
+    // Act / Assert
+    expect(itemIsOn(row)).toBe(true);
+    expect(placesLineOf(row, names)).toBe('Funciona en el canal de cada cliente: «Registrar pago» en Cobranza');
+    expect(placesLineOf({ ...row, key: 'crear_cliente', global: true }, names)).toBe('Funciona en el selector de clientes');
+    expect(itemIsOn({ ...row, key: 'registrar_consumo' })).toBe(false);
+  });
+});

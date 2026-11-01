@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Building2, Clock, MessageSquare, Plus, X, Zap } from 'lucide-react';
-import { hasOwnSpacePlace, spacePlaceOf, type AppItemRow, type ClientWorkspaceMember, type ItemChannels, type ItemWho } from '@lilachat/shared';
+import { clientChannelButtonOf, hasOwnSpacePlace, spacePlaceOf, type AppItemRow, type ClientWorkspaceMember, type ItemChannels, type ItemWho } from '@lilachat/shared';
 import type { AppItems } from '../spacesApi';
 
 type EditorProps = {
@@ -24,10 +24,33 @@ const peopleOf = (who: ItemWho) => (who.kind === 'people' ? who.userIds : []);
 /** The open row of «Comandos y acciones» (design d-01): where it works, who uses it, «Programar» and its own «Guardar». */
 export function AppItemEditor(props: EditorProps) {
   const { row } = props;
+  const button = clientChannelButtonOf(row.kind, row.key);
+  return (
+    <div className="mx-5 mb-4 space-y-4 rounded-xl border border-outline/15 bg-background/50 p-4">
+      {button ? <p data-testid={`boton-de-cliente-${row.key}`} className="text-[13px] text-on-surface-variant">{`Está en el canal de cada cliente: ${button.line}. No hace falta encenderla; aquí eliges quién la usa.`}</p> : <PlaceSwitches {...props} />}
+      <WhoPicker {...props} />
+      {props.canEdit && row.schedulable ? (
+        <button type="button" data-testid={`programar-${row.key}`} onClick={props.onProgram} className="flex items-center gap-2 text-[14px] font-semibold text-primary">
+          <Clock size={16} /> Programar {row.name} automáticamente
+        </button>
+      ) : null}
+      {props.canEdit ? (
+        <button type="button" data-testid={`guardar-${row.key}`} disabled={!props.changed || props.status?.busy} onClick={props.onSave} className="h-11 w-full rounded-xl bg-primary text-[14px] font-semibold text-on-primary disabled:opacity-40">
+          {props.status?.busy ? 'Guardando…' : `Guardar cambios de ${row.name}`}
+        </button>
+      ) : null}
+      {props.status?.line ? <p role={props.status.error ? 'alert' : 'status'} className={`text-[13px] ${props.status.error ? 'text-error' : 'text-en-linea'}`}>{props.status.line}</p> : null}
+    </div>
+  );
+}
+
+/** The ⚡ (or its own place), the 1:1 with the app and the channels where it works. */
+function PlaceSwitches(props: EditorProps) {
+  const { row } = props;
   const picked = Array.isArray(row.channels) ? row.channels : [];
   const toggleChannel = (id: string) => props.onChange({ channels: picked.includes(id) ? picked.filter((one) => one !== id) : [...picked, id] });
   return (
-    <div className="mx-5 mb-4 space-y-4 rounded-xl border border-outline/15 bg-background/50 p-4">
+    <>
       <SwitchRow testId={`global-${row.key}`} Icon={hasOwnSpacePlace(row.kind, row.key) ? Building2 : Zap} label={spacePlaceOf(row.kind, row.key).label} on={row.global} disabled={!props.canEdit} onChange={(on) => props.onChange({ global: on })} />
       <SwitchRow testId={`directo-${row.key}`} Icon={MessageSquare} label="En el chat con la app" on={row.direct} disabled={!props.canEdit} onChange={(on) => props.onChange({ direct: on })} />
       <div className="border-t border-outline/10 pt-3">
@@ -43,19 +66,7 @@ export function AppItemEditor(props: EditorProps) {
           </div>
         ) : null}
       </div>
-      <WhoPicker {...props} />
-      {props.canEdit && row.schedulable ? (
-        <button type="button" data-testid={`programar-${row.key}`} onClick={props.onProgram} className="flex items-center gap-2 text-[14px] font-semibold text-primary">
-          <Clock size={16} /> Programar {row.name} automáticamente
-        </button>
-      ) : null}
-      {props.canEdit ? (
-        <button type="button" data-testid={`guardar-${row.key}`} disabled={!props.changed || props.status?.busy} onClick={props.onSave} className="h-11 w-full rounded-xl bg-primary text-[14px] font-semibold text-on-primary disabled:opacity-40">
-          {props.status?.busy ? 'Guardando…' : `Guardar cambios de ${row.name}`}
-        </button>
-      ) : null}
-      {props.status?.line ? <p role={props.status.error ? 'alert' : 'status'} className={`text-[13px] ${props.status.error ? 'text-error' : 'text-en-linea'}`}>{props.status.line}</p> : null}
-    </div>
+    </>
   );
 }
 

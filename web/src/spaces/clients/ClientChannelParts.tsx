@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Archive, ChevronRight, ExternalLink, FileText, Link2, Search } from 'lucide-react';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, dayOf, shortDate, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordDays, recordsByService, SERVICE_FILTER_LABELS, dayOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
 import { ServiceDetailWeb } from './ServiceDetailWeb';
 import { STATUS_TONE } from './tones';
 import type { ServiceAskTarget } from './useServiceAsk';
@@ -117,23 +117,30 @@ export function ClientServices(props: { client: SpaceClient; records: ClientReco
   );
 }
 
+/** The service's records under a header per day (José 01/11: «tampoco están agrupados los informes por fecha»). */
 function ServiceRecords(props: { records: ClientRecord[] | null; onOpen?: (seq: number) => void }) {
   if (props.records === null) return <div className="mt-3 h-8 animate-pulse rounded-lg bg-background" />;
   if (props.records.length === 0) return null;
   return (
-    <ul className="mt-3 divide-y divide-outline/10 border-t border-outline/10">
-      {props.records.map((record) => (
-        <li key={record.seq}>
-          <button type="button" data-testid={`registro-${record.seq}`} onClick={() => props.onOpen?.(record.seq)} className="flex w-full items-center gap-2.5 py-2 text-left hover:bg-background">
-            <FileText size={15} className="shrink-0 text-on-surface-variant" />
-            <span className="min-w-0 flex-1">
-              {record.kicker ? <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">{record.kicker}</span> : null}
-              <span className="block truncate text-[13px]">{record.title}</span>
-            </span>
-            <span className="shrink-0 font-mono text-[11px] text-on-surface-variant">{shortDate(record.at)}</span>
-          </button>
-        </li>
+    <div className="mt-3 border-t border-outline/10">
+      {recordDays(props.records).map((day) => (
+        <section key={day.title} data-testid={`dia-registros-${day.title}`}>
+          <p className="pt-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">{day.title}</p>
+          <ul className="divide-y divide-outline/10">
+            {day.records.map((record) => (
+              <li key={record.seq}>
+                <button type="button" data-testid={`registro-${record.seq}`} onClick={() => props.onOpen?.(record.seq)} className="flex w-full items-center gap-2.5 py-2 text-left hover:bg-background">
+                  <FileText size={15} className="shrink-0 text-on-surface-variant" />
+                  <span className="min-w-0 flex-1">
+                    {record.kicker ? <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">{record.kicker}</span> : null}
+                    <span className="block truncate text-[13px]">{record.title}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       ))}
-    </ul>
+    </div>
   );
 }

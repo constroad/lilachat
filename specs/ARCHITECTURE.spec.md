@@ -4995,6 +4995,73 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 181. Los botones del canal del cliente sin interruptor, despachos dentro del pedido y registros por día (01/11/2026, servidor + OTA + web)
+
+José, 01/11: «ya lo aprobé… ¿por qué no puedo ver estos puntos en la app?».
+No veía los enlaces, el informe de servicio ni «Registrar pago».
+
+**Causa raíz.** Los botones existían desde 49befca y 2875622. Pero cada uno
+esperaba que su acción estuviera encendida en el canal o en el ⚡. Desde el 28/10
+todo nace apagado (§2 de COMANDOS-Y-HORARIOS), y nadie las encendió. Aprobarlas
+en agentes es otra llave: solo hace que la herramienta exista.
+
+**Decisión: el botón es su lugar.** Estas cuatro acciones de Portal no llevan
+interruptor:
+
+| Acción | Botón | Corre desde |
+| --- | --- | --- |
+| `crear_enlace_cliente` | «Enlace del cliente» y «Crear enlace del pedido» | el canal |
+| `crear_enlace_de_servicio` | «Enlace del servicio» | el canal |
+| `informe_de_servicio` | «Generar informe de servicio» | el canal |
+| `registrar_pago` | «Registrar pago» en Cobranza | el espacio |
+
+- **Quién las usa.** Los admins del espacio, en cada canal de cliente.
+  «Quién puede usarlo» las abre a más gente.
+- **Fuera de su botón** siguen sus interruptores, como cualquier otra acción.
+- **En el ⚡ no aparecen**, ni en el del espacio ni en el del chat: cada una
+  tiene su botón.
+- **Código.** `CLIENT_CHANNEL_BUTTONS` y `worksAt()` en
+  `shared/src/appItems.ts`, que el server usa en el menú y al invocar.
+  - `registrar_pago` corre desde el espacio porque Portal la rechaza dentro de
+    un grupo.
+  - Los botones leen `channelButtonRows()`; el ⚡ lee `chatActionRows()`, que
+    ya no las trae.
+- **En «Comandos y acciones»** salen «Encendido», con «Funciona en el canal de
+  cada cliente: …» (`placesLineOf`). El editor no muestra interruptores de
+  lugar, solo «Quién puede usarlo».
+- **Prueba.** `server/src/bots/botItemAccess.test.ts`, en el `describe` «the
+  buttons of a client's channel need no switch»: con todo apagado, el admin
+  recibe el enlace en el canal del cliente y el pago desde el espacio. Un
+  miembro no recibe ninguno, y en un canal normal sigue apagado.
+
+**Despachos dentro del pedido.** José, 01/11: «por servicio pueden haber varios
+pedidos, así que no tiene sentido un tab despachos».
+- El detalle queda en Cotizaciones · Cobranza · Pedidos · Informes.
+- Cada pedido dice «N despachos».
+- La hoja del pedido lista sus despachos, y tocar uno abre su hoja encima:
+  fotos y videos, guía y el cubicaje plegado. Cerrar vuelve al pedido.
+- Las guías del pedido entero, que iban arriba de «Despachos», están en la hoja
+  del pedido.
+- Un despacho cuyo pedido no llegó entre los 100 que manda Portal sale aparte,
+  en «Despachos de otros pedidos» (`orphanDispatchesOf`).
+
+**Registros de la tarjeta del servicio, por día.** José, 01/11: «tampoco están
+agrupados los informes por fecha de un servicio».
+- Los informes, cotizaciones y pagos que cuelgan de cada servicio en
+  «Servicios» van bajo el título de su día en Lima (`recordDays`), igual que
+  los informes del detalle.
+
+**Fecha de inicio en la lista.** En prod había 0 de 26 servicios con
+`startedAt`.
+- Lo de Lilachat está bien desde 65d0283.
+- Portal manda `startedAt` desde d2d43ac0 (31/10 05:46 -05), y agentes lo pasa
+  como `started_at` desde db52109.
+- Los clientes que ya existían no se volvieron a mandar. Agentes corre el
+  backfill de Portal (`scripts/backfill-client-channels.ts --apply`) cuando
+  José lo apruebe. Escribe en producción.
+- Hay un caso abierto con agentes: «QA Cobranza Lilachat 31-10» se tocó
+  después del arreglo (01/11 01:33 UTC) y sigue sin fecha.
+
 ## 180. Canal del cliente: informes por día, cubicaje, obra, inicio, «Recordatorio», enlaces y PDF que se genera (31/10/2026, servidor + OTA + web)
 
 José probó el canal de CONSORCIO EL ALMIRANTE en el teléfono y pidió ocho cosas. Seis

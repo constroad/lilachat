@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Building2, Clock, MessageSquare, Plus, X, Zap, type LucideIcon } from 'lucide-react-native';
-import { hasOwnSpacePlace, spacePlaceOf, type AppItemRow, type ClientWorkspaceMember, type ItemChannels, type ItemWho } from '@lilachat/shared';
+import { clientChannelButtonOf, hasOwnSpacePlace, spacePlaceOf, type AppItemRow, type ClientWorkspaceMember, type ItemChannels, type ItemWho } from '@lilachat/shared';
 import { Interruptor } from '../../ui/Interruptor';
 import { Segmentado } from '../../ui/Segmentado';
 import { useColores } from '../../ui/tema';
@@ -28,10 +28,30 @@ const peopleOf = (who: ItemWho) => (who.kind === 'people' ? who.userIds : []);
 export function AppItemEditor(props: EditorProps) {
   const colors = useColores();
   const { row } = props;
+  const button = clientChannelButtonOf(row.kind, row.key);
+  return (
+    <View className="mt-3 gap-3 rounded-2xl border border-outline/15 bg-background p-3">
+      {button ? <Text testID={`boton-de-cliente-${row.key}`} className="text-[14px] text-on-surface-variant">{`Está en el canal de cada cliente: ${button.line}. No hace falta encenderla; aquí eliges quién la usa.`}</Text> : <PlaceSwitches {...props} />}
+      <WhoPicker {...props} />
+      {props.canEdit && row.schedulable ? (
+        <Pressable testID={`programar-${row.key}`} onPress={props.onProgram} className="min-h-[44px] flex-row items-center gap-2">
+          <Clock size={17} color={colors.primary} />
+          <Text className="flex-1 text-[15px] font-semibold text-primary">Programar {row.name} automáticamente</Text>
+        </Pressable>
+      ) : null}
+      {props.canEdit ? <View className="flex-row"><SaveButton testID={`guardar-${row.key}`} disabled={!props.changed} busy={props.status?.busy ?? false} onPress={props.onSave} label={`Guardar cambios de ${row.name}`} /></View> : null}
+      {props.status ? <StatusLine status={props.status} /> : null}
+    </View>
+  );
+}
+
+/** The ⚡ (or its own place), the 1:1 with the app and the channels where it works. */
+function PlaceSwitches(props: EditorProps) {
+  const { row } = props;
   const picked = Array.isArray(row.channels) ? row.channels : [];
   const mode = modeOf(row.channels);
   return (
-    <View className="mt-3 gap-3 rounded-2xl border border-outline/15 bg-background p-3">
+    <>
       <SwitchRow testID={`global-${row.key}`} Icon={hasOwnSpacePlace(row.kind, row.key) ? Building2 : Zap} label={spacePlaceOf(row.kind, row.key).label} value={row.global} disabled={!props.canEdit} onChange={(global) => props.onChange({ global })} />
       <SwitchRow testID={`directo-${row.key}`} Icon={MessageSquare} label="En el chat con la app" value={row.direct} disabled={!props.canEdit} onChange={(direct) => props.onChange({ direct })} />
       <View className="border-t border-outline/10 pt-3">
@@ -52,16 +72,7 @@ export function AppItemEditor(props: EditorProps) {
           </View>
         ) : null}
       </View>
-      <WhoPicker {...props} />
-      {props.canEdit && row.schedulable ? (
-        <Pressable testID={`programar-${row.key}`} onPress={props.onProgram} className="min-h-[44px] flex-row items-center gap-2">
-          <Clock size={17} color={colors.primary} />
-          <Text className="flex-1 text-[15px] font-semibold text-primary">Programar {row.name} automáticamente</Text>
-        </Pressable>
-      ) : null}
-      {props.canEdit ? <View className="flex-row"><SaveButton testID={`guardar-${row.key}`} disabled={!props.changed} busy={props.status?.busy ?? false} onPress={props.onSave} label={`Guardar cambios de ${row.name}`} /></View> : null}
-      {props.status ? <StatusLine status={props.status} /> : null}
-    </View>
+    </>
   );
 }
 

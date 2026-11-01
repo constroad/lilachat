@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Archive, ChevronRight, ExternalLink, FileText, Link2, Search } from 'lucide-react-native';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordsByService, SERVICE_FILTER_LABELS, dayOf, shortDate, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordDays, recordsByService, SERVICE_FILTER_LABELS, dayOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { ClientAccessRow } from './ClientAccess';
 import { ServiceDetailView } from './ServiceDetailView';
@@ -123,21 +123,26 @@ export function ClientServices(props: { client: SpaceClient; records: ClientReco
   );
 }
 
+/** The service's records under a header per day (José 01/11: «tampoco están agrupados los informes por fecha»). */
 function ServiceRecords(props: { records: ClientRecord[] | null; onOpen: (seq: number) => void }) {
   const colors = useColores();
   if (props.records === null) return <View className="mt-3 h-8 rounded-lg bg-background" />;
   if (props.records.length === 0) return null;
   return (
     <View className="mt-3 border-t border-outline/10">
-      {props.records.map((record) => (
-        <Pressable key={record.seq} testID={`registro-${record.seq}`} onPress={() => props.onOpen(record.seq)} className="min-h-[48px] flex-row items-center gap-2.5 border-b border-outline/10 py-2">
-          <FileText size={16} color={colors['on-surface-variant']} />
-          <View className="min-w-0 flex-1">
-            {record.kicker ? <Text className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{record.kicker}</Text> : null}
-            <Text numberOfLines={1} className="text-[14px] text-on-surface">{record.title}</Text>
-          </View>
-          <Text className="text-[11px] text-on-surface-variant">{shortDate(record.at)}</Text>
-        </Pressable>
+      {recordDays(props.records).map((day) => (
+        <View key={day.title} testID={`dia-registros-${day.title}`}>
+          <Text className="pt-2 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{day.title}</Text>
+          {day.records.map((record) => (
+            <Pressable key={record.seq} testID={`registro-${record.seq}`} onPress={() => props.onOpen(record.seq)} className="min-h-[48px] flex-row items-center gap-2.5 border-b border-outline/10 py-2">
+              <FileText size={16} color={colors['on-surface-variant']} />
+              <View className="min-w-0 flex-1">
+                {record.kicker ? <Text className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{record.kicker}</Text> : null}
+                <Text numberOfLines={1} className="text-[14px] text-on-surface">{record.title}</Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
       ))}
     </View>
   );

@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { canManageMembers, COMMAND_LIMITS, enabledAt, formLevelOf, isAckBody, itemSettingOf, mayUseItem, shortcutValuesOf, validateCommandResponse, validateFormReply, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope, type ShortcutValues } from '@lilachat/shared';
+import { canManageMembers, COMMAND_LIMITS, formLevelOf, isAckBody, itemSettingOf, mayUseItem, shortcutValuesOf, validateCommandResponse, validateFormReply, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope, type ShortcutValues, worksAt } from '@lilachat/shared';
 import { ChatModel, type Chat } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { callBotWebhook, isRestarting, recordLastDelivery, type WebhookReply } from './botEvents.js';
@@ -78,8 +78,8 @@ const notAllowedHere = (label: string): CommandError => fail(403, 'not_allowed_h
 /**
  * What the composer and the ⚡ offer in a space: each installed app with what
  * works at that place (José, 23/10: the admin enables each one per channel and
- * for the ⚡). Without a place (clients before R160), everything. Null if not
- * an active member.
+ * for the ⚡; 01/11: a client channel's buttons need no switch). Without a
+ * place (clients before R160), everything. Null if not an active member.
  */
 export async function commandGroupsOf(workspaceId: string, userId: Types.ObjectId, place?: 'space' | { chatId: string }): Promise<CommandGroup[] | null> {
   const member = isId(workspaceId) ? await WorkspaceMemberModel.findOne({ workspaceId, userId, status: 'active' }).select('role').lean() : null;
@@ -101,7 +101,7 @@ export async function commandGroupsOf(workspaceId: string, userId: Types.ObjectI
       const open = (kind: 'command' | 'shortcut', key: string) => {
         const setting = itemSettingOf(installation.itemSettings, kind, key, !installation.itemsV2);
         if (!mayUseItem(setting, person)) return false;
-        return place ? enabledAt(setting, place === 'space' ? 'space' : itemPlaceOf(chat, installation, clientChat)) : onSomewhere(setting);
+        return place ? worksAt(kind, key, setting, place === 'space' ? 'space' : itemPlaceOf(chat, installation, clientChat)) : onSomewhere(setting);
       };
       const commands = (app.commands ?? []).filter((entry) => open('command', entry.command));
       const shortcuts = (app.shortcuts ?? []).filter((entry) => open('shortcut', entry.key));
@@ -195,7 +195,7 @@ async function invokeApp(userId: Types.ObjectId, scope: CommandScope, appId: unk
   // Checked here, not only in the menu: an old client or a direct call skips the menu (§2.2).
   const [member, clientChat] = await Promise.all([WorkspaceMemberModel.findOne({ workspaceId: place.workspaceId, userId, status: 'active' }).select('role').lean(), place.chat ? isClientChat(place.chat._id) : false]);
   const label = trigger.kind === 'command' ? `/${name}` : `«${app.shortcuts?.find((entry) => entry.key === name)?.name ?? name}»`;
-  if (!member || !mayUseItem(setting, { userId: String(userId), spaceAdmin: canManageMembers(member.role) }) || !enabledAt(setting, itemPlaceOf(place.chat, installation, clientChat))) return notAllowedHere(label);
+  if (!member || !mayUseItem(setting, { userId: String(userId), spaceAdmin: canManageMembers(member.role) }) || !worksAt(trigger.kind, name, setting, itemPlaceOf(place.chat, installation, clientChat))) return notAllowedHere(label);
   // A failed run stays a week: its `failure` is how a «no pudo responder» gets explained (23/10).
   void BotCommandRunModel.deleteMany({ $or: [{ expiresAt: { $lt: new Date() }, failure: { $exists: false } }, { expiresAt: { $lt: new Date(Date.now() - FAILED_RUN_KEPT_MS) } }] }).catch((error: unknown) => console.error('[bots] no se pudieron purgar comandos vencidos:', error instanceof Error ? error.message : error));
   const { chat } = place;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { chatActionRows, commandOf, matchCommands, parseSlashInput, slashQuery, unknownCommandMessage, type CommandGroup } from '@lilachat/shared';
+import { channelButtonRows, chatActionRows, commandOf, matchCommands, parseSlashInput, slashQuery, unknownCommandMessage, type CommandGroup } from '@lilachat/shared';
 import { currentSocket } from '../../useSocket';
 import { runCommand, shareCommandAnswer, spaceCommands } from './commandsApi';
 import { useAppAnswers } from './useAppAnswers';
@@ -131,7 +131,9 @@ export function useChatCommands(params: { jwt?: string; chatId: string; workspac
   );
   /** The chat's ⚡ (R31/10): its actions, asked on open in a channel or the chat with an app. */
   const actions = useMemo(() => chatActionRows(groups), [groups]);
-  return { enabled, suggestions, activeCommand: flat[Math.min(active, flat.length - 1)] ?? null, onType, onKey, runIfCommand, answers: appAnswers.answers, dismiss: appAnswers.dismiss, appAnswers, actions, loadActions: load, share: params.shareable ? share : undefined, jwt: jwt ?? '', chatId };
+  /** A client channel's buttons (José 01/11): links and the service report, out of the ⚡. */
+  const buttons = useMemo(() => channelButtonRows(groups), [groups]);
+  return { enabled, suggestions, activeCommand: flat[Math.min(active, flat.length - 1)] ?? null, onType, onKey, runIfCommand, answers: appAnswers.answers, dismiss: appAnswers.dismiss, appAnswers, actions, buttons, loadActions: load, share: params.shareable ? share : undefined, jwt: jwt ?? '', chatId };
 }
 
 /** A channel or the chat with an app also asks for its actions on open, for its ⚡ (R31/10); a person's chat asks nothing. */

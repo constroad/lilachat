@@ -23,7 +23,7 @@ const COVER = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zInd
  * the composer. «Archivos» is always there (José 30/10): the checklist's files
  * and Portal's Drive per service, in one tab.
  */
-export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: string; channelName: string; yo: string; names: ReadonlyMap<string, string>; apps: ReadonlySet<string>; spaceId?: string; onOpenRecord?: (seq: number) => void; /** The chat's ⚡: a link is made with its action, in the chat (José 31/10). */ actions?: readonly ShortcutRow[]; runAction?: (row: ShortcutRow, values: ShortcutValues) => unknown }): { tabs: ReactNode; panel: ReactNode; note: ReactNode; client: SpaceClient | null } {
+export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: string; channelName: string; yo: string; names: ReadonlyMap<string, string>; apps: ReadonlySet<string>; spaceId?: string; onOpenRecord?: (seq: number) => void; /** The client channel's buttons: a link is made with its action, in the chat (José 31/10). */ actions?: readonly ShortcutRow[]; runAction?: (row: ShortcutRow, values: ShortcutValues) => unknown }): { tabs: ReactNode; panel: ReactNode; note: ReactNode; client: SpaceClient | null } {
   const [tab, setTab] = useState<Tab>('chat');
   const client = useClientOfChat(params.chatId);
   const records = useClientRecords(params.jwt, params.spaceId, client?.id, tab === 'services');

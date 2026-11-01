@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { serviceDetailOf } from './serviceDetail.js';
-import { detailSheet, invoicesOf, orderGuidesOf } from './serviceDetailSheet.js';
+import { detailSheet, invoicesOf } from './serviceDetailSheet.js';
 
 /** José 30/10: «si quiero ver el detalle de un pedido me dice que abra Portal… lo mismo con informes». */
 const detail = serviceDetailOf({
@@ -29,7 +29,7 @@ describe('detailSheet', () => {
     expect(sheet.files).toEqual([]);
   });
 
-  it('an order with Portal 611e61d7 fields: site and, with the collection rule, price, credit and what is pending; its invoice goes to Cobranza and its guides to Despachos', () => {
+  it('an order with Portal 611e61d7 fields: site and, with the collection rule, price, credit and what is pending; its invoice goes to Cobranza and its whole-order guides stay in its sheet', () => {
     // Arrange
     const order = { id: 'o2', product: 'MAC 2', quantity: 10, unit: 'm³', status_label: 'Despachado', tone: 'ok', site: 'Av. Los Álamos km 12', invoice: 'F001-345', invoice_url: 'https://lila.constroad.com/files/f345.pdf', guides: [{ name: 'Guía 001-77', url: 'https://lila.constroad.com/files/g77.jpg' }, { name: 'sin url' }], unit_price: 320, total: 3200, is_credit: true, due_at: '2026-11-15', payments: [{ date: '2026-10-20', amount: 1000 }, { date: '2026-10-25', amount: 200 }] };
     const withOrder = serviceDetailOf({ service: { id: 's', name: 'S' }, orders: [order], dispatches: [], reports: [] })!;
@@ -46,9 +46,9 @@ describe('detailSheet', () => {
       { label: 'Cobrado', value: 'S/ 1,200.00' },
       { label: 'Por cobrar', value: 'S/ 2,000.00' },
     ]);
-    expect(sheet.files).toEqual([]);
+    // José 01/11: the dispatches live inside the order, so its guides do too.
+    expect(sheet.files).toEqual([{ url: 'https://lila.constroad.com/files/g77.jpg', label: 'Guía 001-77' }]);
     expect(invoicesOf(withOrder)).toEqual([{ id: 'o2', label: 'Factura F001-345', line: 'MAC 2', url: 'https://lila.constroad.com/files/f345.pdf' }]);
-    expect(orderGuidesOf(withOrder)).toEqual([{ url: 'https://lila.constroad.com/files/g77.jpg', label: 'Guía 001-77 · MAC 2' }]);
   });
 
   it('a dispatch: plate, driver, quantity, departure in Lima and its order; the guide as a file', () => {

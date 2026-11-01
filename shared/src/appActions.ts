@@ -1,7 +1,7 @@
 import { answerOfOutcome, type CommandGroup, type CommandOutcome, type EphemeralAnswer } from './botCommands.js';
 import type { AppForm, FormField, FormValues, GeoPoint } from './appForms.js';
 import { liveSelfieFieldOf } from './appForms.js';
-import { hasOwnSpacePlace } from './appItems.js';
+import { CLIENT_LINK_ACTION, clientChannelButtonOf, hasOwnSpacePlace, SERVICE_LINK_ACTION, SERVICE_REPORT_ACTION } from './appItems.js';
 
 /**
  * The actions of the apps (R160): the rows of «Acciones rápidas» (the space's ⚡,
@@ -18,10 +18,13 @@ export function shortcutRows(groups: readonly CommandGroup[]): ShortcutRow[] {
   return groups.flatMap((group) => (group.shortcuts ?? []).map((shortcut) => ({ kind: 'shortcut' as const, ...appOf(group), ...shortcut })));
 }
 
+/** An action drawn somewhere else: the clients' picker, or a button of a client's channel (José 01/11). */
+const hasPlaceOfItsOwn = (key: string) => hasOwnSpacePlace('shortcut', key) || Boolean(clientChannelButtonOf('shortcut', key));
+
 /** The space's ⚡: the actions and the commands the server says are global here, app by app. */
 export function quickActionRows(groups: readonly CommandGroup[]): ShortcutRow[] {
   return groups.flatMap((group) => [
-    ...(group.shortcuts ?? []).filter((shortcut) => !hasOwnSpacePlace('shortcut', shortcut.key)).map((shortcut) => ({ kind: 'shortcut' as const, ...appOf(group), ...shortcut })),
+    ...(group.shortcuts ?? []).filter((shortcut) => !hasPlaceOfItsOwn(shortcut.key)).map((shortcut) => ({ kind: 'shortcut' as const, ...appOf(group), ...shortcut })),
     ...group.commands.map((entry) => ({ kind: 'command' as const, ...appOf(group), key: entry.command, name: `/${entry.command}`, description: entry.description })),
   ]);
 }
@@ -37,8 +40,11 @@ export function chatHasActionPlace(chat: { workspaceId?: string | null; isGroup:
 
 /** The rows of a chat's ⚡: its actions, without the ones that live in a place of their own. */
 export function chatActionRows(groups: readonly CommandGroup[]): ShortcutRow[] {
-  return shortcutRows(groups).filter((row) => !hasOwnSpacePlace('shortcut', row.key));
+  return shortcutRows(groups).filter((row) => !hasPlaceOfItsOwn(row.key));
 }
+
+/** The rows a client channel's buttons run (links, report): the server lists them only to who may use them. */
+export const channelButtonRows = (groups: readonly CommandGroup[]): ShortcutRow[] => shortcutRows(groups).filter((row) => clientChannelButtonOf(row.kind, row.key));
 
 /** Portal's action that the clients' picker runs (Portal 0227a1f0). */
 export const CREATE_CLIENT_ACTION = 'crear_cliente';
@@ -69,9 +75,6 @@ export function shortcutValuesOf(raw: unknown): ShortcutValues | null | undefine
  * The service report (LIQ-SRV, «Liquidación Final del Servicio») is
  * `informe_de_servicio`: quote, executed, payments and balance.
  */
-export const CLIENT_LINK_ACTION = 'crear_enlace_cliente';
-export const SERVICE_LINK_ACTION = 'crear_enlace_de_servicio';
-export const SERVICE_REPORT_ACTION = 'informe_de_servicio';
 export type LinkTarget =
   | { kind: 'client'; clientId: string }
   | { kind: 'order'; clientId: string; orderId: string }
@@ -109,9 +112,8 @@ export function channelLinksOf(actions: readonly ShortcutRow[], run: (row: Short
 /**
  * Registering a payment from Cobranza (José 31/10: admins only, no approval
  * step; Portal 2d0bdea2). Portal refuses it inside a group, and the client's
- * channel is one: it runs from the space (its ⚡), with the service filled in.
+ * channel is one: it runs from the space (not in its ⚡), with the service filled in.
  */
-export const PAYMENT_ACTION = 'registrar_pago';
 export const paymentValuesOf = (serviceId: string): ShortcutValues => ({ servicioId: serviceId });
 
 /** The answers that came back since the last look, once each: after a payment the detail is asked again. */

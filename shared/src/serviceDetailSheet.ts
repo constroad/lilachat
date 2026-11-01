@@ -31,16 +31,16 @@ function orderMoney(order: ServiceOrder): [string, string | undefined][] {
   return [['Precio unitario', money(order.unitPrice)], ['Total', money(order.total)], ['Condición', conditionOf(order)], ['Cobrado', money(collected)], ['Por cobrar', money(pending)]];
 }
 
-/** José 30/10 night: invoices are money, so they live in «Cobranza»; a whole-order guide lives in «Despachos». */
+/** José 30/10 night: invoices are money, so they live in «Cobranza»; 01/11: a whole-order guide, in its order's sheet. */
 export type InvoiceRow = { id: string; label: string; line: string; url?: string };
 export const invoicesOf = (detail: ServiceDetail): InvoiceRow[] =>
   detail.orders.flatMap((order) => (order.invoice || order.invoiceUrl ? [{ id: order.id, label: order.invoice ? `Factura ${order.invoice}` : 'Factura', line: [order.product, order.date && dayOf(order.date)].filter(Boolean).join(' · '), ...(order.invoiceUrl ? { url: order.invoiceUrl } : {}) }] : []));
-export const orderGuidesOf = (detail: ServiceDetail): SheetFile[] => detail.orders.flatMap((order) => (order.guides ?? []).map((guide) => ({ url: guide.url, label: order.product ? `${guide.name} · ${order.product}` : guide.name })));
-
+/** An order with its dispatches inside (José 01/11: a service has several orders, so no «Despachos» tab); each one opens its own sheet. */
 function orderSheet(order: ServiceOrder, detail: ServiceDetail): DetailSheet {
   const dispatches = detail.dispatches.filter((one) => one.orderId === order.id);
   const head: [string, string | undefined][] = [['Obra', order.site], ['Cantidad', amount(order.quantity, order.unit)], ['Fecha', order.date && dayOf(order.date)], ['Despachos', String(dispatches.length)]];
-  return { ...base(order.product ?? 'Pedido', order.status, order.url), facts: facts([...head, ...orderMoney(order)]), related: dispatches.map(dispatchRow) };
+  const guides: SheetFile[] = (order.guides ?? []).map((guide) => ({ url: guide.url, label: guide.name }));
+  return { ...base(order.product ?? 'Pedido', order.status, order.url), facts: facts([...head, ...orderMoney(order)]), related: dispatches.map(dispatchRow), files: guides };
 }
 
 /** Each photo or video with a name the viewer can show: its own, or «AZJ 910 · foto 2». */

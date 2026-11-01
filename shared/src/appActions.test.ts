@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { answeredSince, channelLinksOf, chatActionRows, chatHasActionPlace, evidenceLine, formSubmitOutcome, geoPointOf, linkActionOf, paymentValuesOf, photoStampLines, placedActionRow, precisionLabel, quickActionRows, shortcutRows, shortcutValuesOf, submitLabelOf } from './appActions.js';
+import { answeredSince, channelButtonRows, channelLinksOf, chatActionRows, chatHasActionPlace, evidenceLine, formSubmitOutcome, geoPointOf, linkActionOf, paymentValuesOf, photoStampLines, placedActionRow, precisionLabel, quickActionRows, shortcutRows, shortcutValuesOf, submitLabelOf } from './appActions.js';
 import type { FormField } from './appForms.js';
 import type { CommandGroup, CommandOutcome } from './botCommands.js';
 
@@ -134,7 +134,7 @@ describe('photoStampLines (pending 94: date, time and place burned into the self
 
 describe('a link from a client\'s channel (José 31/10: «crear el enlace del pedido, del servicio o del cliente»)', () => {
   const portal: CommandGroup[] = [{ appId: 'p1', appName: 'Portal', commands: [], shortcuts: [{ key: 'crear_enlace_cliente', name: 'Crear enlace' }, { key: 'crear_enlace_de_servicio', name: 'Enlace del servicio' }] }];
-  const actions = chatActionRows(portal);
+  const actions = channelButtonRows(portal);
 
   it('the client\'s and an order\'s run Portal\'s «crear_enlace_cliente» with what it already knows; a service\'s, «crear_enlace_de_servicio»', () => {
     // Act
@@ -151,7 +151,7 @@ describe('a link from a client\'s channel (José 31/10: «crear el enlace del pe
   it('the buttons: which show, and a tap runs the action with its values', () => {
     // Arrange
     const run = vi.fn();
-    const links = channelLinksOf(chatActionRows([{ ...portal[0]!, shortcuts: [{ key: 'crear_enlace_cliente', name: 'Crear enlace' }] }]), run);
+    const links = channelLinksOf(channelButtonRows([{ ...portal[0]!, shortcuts: [{ key: 'crear_enlace_cliente', name: 'Crear enlace' }] }]), run);
     // Act
     links.open({ kind: 'order', clientId: 'cli-1', orderId: 'o-7' });
     links.open({ kind: 'service', clientId: 'cli-1', serviceId: 'srv-3' });
@@ -161,9 +161,9 @@ describe('a link from a client\'s channel (José 31/10: «crear el enlace del pe
     expect(run).toHaveBeenCalledWith(expect.objectContaining({ key: 'crear_enlace_cliente' }), { alcance: 'pedido', clienteId: 'cli-1', pedidoId: 'o-7' });
   });
 
-  it('nothing to tap while the action is off in the channel', () => {
+  it('nothing to tap while that person may not use the action (the server leaves it out)', () => {
     // Act
-    const onlyShare = chatActionRows([{ ...portal[0]!, shortcuts: [{ key: 'crear_enlace_de_servicio', name: 'Enlace del servicio' }] }]);
+    const onlyShare = channelButtonRows([{ ...portal[0]!, shortcuts: [{ key: 'crear_enlace_de_servicio', name: 'Enlace del servicio' }] }]);
     // Assert
     expect(linkActionOf(onlyShare, { kind: 'client', clientId: 'cli-1' })).toBeNull();
     expect(linkActionOf([], { kind: 'service', clientId: 'cli-1', serviceId: 'srv-3' })).toBeNull();
@@ -171,15 +171,15 @@ describe('a link from a client\'s channel (José 31/10: «crear el enlace del pe
 });
 
 describe('the service report and the payment (agentes 31/10: informe_de_servicio, registrar_pago)', () => {
-  it('«Generar informe de servicio» runs informe_de_servicio with the service, and only shows while it is in the channel', () => {
+  it('«Generar informe de servicio» runs informe_de_servicio with the service, and only shows while the server lists it', () => {
     // Arrange
     const run = vi.fn();
-    const on = chatActionRows([{ appId: 'p1', appName: 'Portal', commands: [], shortcuts: [{ key: 'informe_de_servicio', name: 'Informe de servicio' }] }]);
+    const on = channelButtonRows([{ appId: 'p1', appName: 'Portal', commands: [], shortcuts: [{ key: 'informe_de_servicio', name: 'Informe de servicio' }] }]);
     // Act
     channelLinksOf(on, run).open({ kind: 'serviceReport', clientId: 'cli-1', serviceId: 'srv-3' });
     // Assert
     expect(run).toHaveBeenCalledWith(expect.objectContaining({ key: 'informe_de_servicio' }), { servicioId: 'srv-3' });
-    // Until Portal publishes it and José approves it, the tool does not exist: no button.
+    // Until Portal publishes it and José approves it in agentes, the server has no row: no button.
     expect(channelLinksOf([], run).can('serviceReport')).toBe(false);
     expect(channelLinksOf(on, run).can('service')).toBe(false);
   });
@@ -215,5 +215,24 @@ describe('shortcutValuesOf (what an action carries already filled in)', () => {
     expect(shortcutValuesOf({ 'no válida': 'x' })).toBeNull();
     expect(shortcutValuesOf(Object.fromEntries(Array.from({ length: 11 }, (_, index) => [`k${index}`, index])))).toBeNull();
     expect(shortcutValuesOf({ n: Number.NaN })).toBeNull();
+  });
+});
+
+describe('the client\'s channel buttons stay out of the ⚡ (José 01/11)', () => {
+  const portal: CommandGroup[] = [{ appId: 'p1', appName: 'Portal', commands: [], shortcuts: [{ key: 'crear_enlace_cliente', name: 'Crear enlace' }, { key: 'registrar_pago', name: 'Registrar pago' }, { key: 'informe_de_servicio', name: 'Informe' }, { key: 'registrar_consumo', name: 'Registrar consumo' }] }];
+
+  it('the ⚡ of the space and of a chat leave them out: each one has its button', () => {
+    // Act / Assert
+    expect(quickActionRows(portal).map((row) => row.key)).toEqual(['registrar_consumo']);
+    expect(chatActionRows(portal).map((row) => row.key)).toEqual(['registrar_consumo']);
+  });
+
+  it('the buttons read them from their own list, and the payment still finds its row', () => {
+    // Act
+    const buttons = channelButtonRows(portal);
+    // Assert
+    expect(buttons.map((row) => row.key)).toEqual(['crear_enlace_cliente', 'registrar_pago', 'informe_de_servicio']);
+    expect(channelLinksOf(buttons, vi.fn()).can('order')).toBe(true);
+    expect(placedActionRow(portal, 'registrar_pago')).toMatchObject({ key: 'registrar_pago' });
   });
 });

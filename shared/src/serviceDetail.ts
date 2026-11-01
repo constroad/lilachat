@@ -1,4 +1,5 @@
 import { billingOf, moneyOf, type ServiceBilling } from './serviceBilling.js';
+import type { ClientRecord } from './spaceClients.js';
 /**
  * The detail of a client's service (José, 30/10: there was no way to see a
  * service's reports, orders and dispatches): agentes answers
@@ -199,8 +200,10 @@ export function dayOf(date: string): string {
 let clock: Intl.DateTimeFormat | null = null;
 let limaDay: Intl.DateTimeFormat | null = null;
 
-/** «12 oct» for an instant, as the day it was in Lima; the formatter is built once (Hermes, OOM 30/10). */
-export const instantDayOf = (iso: string): string => dayOf((limaDay ??= new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' })).format(new Date(iso)));
+/** «2026-10-12» for an instant, as the day it was in Lima; the formatter is built once (Hermes, OOM 30/10). */
+const limaDateOf = (iso: string): string => (limaDay ??= new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' })).format(new Date(iso));
+/** «12 oct» for an instant, as the day it was in Lima. */
+export const instantDayOf = (iso: string): string => dayOf(limaDateOf(iso));
 
 /** «12 oct, 9:05 a. m.» in Lima. */
 export function dayAndTimeOf(iso: string): string {
@@ -221,8 +224,16 @@ export type DetailRow = { id: string; title: string; line: string; status: Detai
 const fileOf = (url: string | undefined, label: string) => (url ? { file: { url, label } } : {});
 const urlOf = (url: string | undefined) => (url ? { url } : {});
 
-// José 31/10: «los pedidos no muestran la obra».
-const orderRow = (order: ServiceOrder): DetailRow => ({ id: order.id, title: order.product ?? 'Pedido', line: joined([amount(order.quantity, order.unit), order.date ? dayOf(order.date) : 'sin fecha', order.site]), status: order.status, ...urlOf(order.url) });
+const dispatchCount = (count: number) => (count ? `${count} ${count === 1 ? 'despacho' : 'despachos'}` : undefined);
+// José 31/10: «los pedidos no muestran la obra»; 01/11: its dispatches live inside it.
+const orderRow = (order: ServiceOrder, dispatches: number): DetailRow => ({ id: order.id, title: order.product ?? 'Pedido', line: joined([amount(order.quantity, order.unit), order.date ? dayOf(order.date) : 'sin fecha', order.site, dispatchCount(dispatches)]), status: order.status, ...urlOf(order.url) });
+const dispatchesOf = (detail: Pick<ServiceDetail, 'dispatches'>, orderId: string) => detail.dispatches.filter((one) => one.orderId === orderId);
+
+/** The dispatches whose order did not come (Portal sends up to 100 of each): listed apart in «Pedidos», not lost. */
+export function orphanDispatchesOf(detail: Pick<ServiceDetail, 'orders' | 'dispatches'>): DetailRow[] {
+  const orders = new Set(detail.orders.map((order) => order.id));
+  return detail.dispatches.filter((one) => !one.orderId || !orders.has(one.orderId)).map(dispatchRow);
+}
 export const dispatchRow = (dispatch: ServiceDispatch): DetailRow => ({
   id: dispatch.id,
   title: dispatch.plate ?? 'Despacho',
@@ -268,11 +279,20 @@ export function reportGroups(detail: Pick<ServiceDetail, 'reports'>): ReportGrou
     return { title, rows: byDay.get(date)!.map((report) => ({ ...reportRow(report), title: date ? withoutDay(report.title, title) : report.title, line: reportTypeOf(report) ?? '' })) };
   });
 }
+/** A service card's records (informes, quotes, payments) under a header per day in Lima, newest first (José 01/11). */
+export function recordDays(records: readonly ClientRecord[]): { title: string; records: ClientRecord[] }[] {
+  const byDay = new Map<string, ClientRecord[]>();
+  for (const record of records) {
+    const day = limaDateOf(record.at);
+    byDay.set(day, [...(byDay.get(day) ?? []), record]);
+  }
+  return [...byDay.entries()].map(([day, rows]) => ({ title: dayInWordsOf(day), records: rows }));
+}
 const quoteRow = (quote: ServiceQuote): DetailRow => ({ id: quote.id, title: quote.code ?? 'Cotización', line: joined([money(quote.total), quote.date ? dayOf(quote.date) : undefined]), status: quote.status, ...urlOf(quote.url) });
 
 /** The rows of one tab: a pedido has no number of its own in Portal, a dispatch shows its departure or the planned hour. «Cobranza» has its own view. */
 export function detailRows(detail: ServiceDetail, tab: DetailTabKey): DetailRow[] {
-  if (tab === 'orders') return detail.orders.map(orderRow);
+  if (tab === 'orders') return detail.orders.map((order) => orderRow(order, dispatchesOf(detail, order.id).length));
   if (tab === 'dispatches') return detail.dispatches.map(dispatchRow);
   if (tab === 'reports') return detail.reports.map(reportRow);
   if (tab === 'quotes') return (detail.quotes ?? []).map(quoteRow);
@@ -287,10 +307,14 @@ const TAB_NAMES: Record<DetailTabKey, string> = { orders: 'Pedidos', dispatches:
 /** What an empty tab says. */
 export const DETAIL_EMPTY: Record<DetailTabKey, string> = { orders: 'Este servicio todavía no tiene pedidos.', dispatches: 'Todavía no hay despachos.', reports: 'Todavía no hay informes.', quotes: 'Sin cotizaciones.', billing: 'Sin cobranza.' };
 
-/** The detail's tabs with Portal's real counts; the money ones only when they came, and first (José 30/10 night). */
+/**
+ * The detail's tabs with Portal's real counts; the money ones only when they
+ * came, and first (José 30/10 night). No «Despachos» (José 01/11: a service has
+ * several orders): each order's sheet lists its own.
+ */
 export function detailTabs(detail: ServiceDetail): { key: DetailTabKey; label: string }[] {
   const money: DetailTabKey[] = [...(detail.quotes ? (['quotes'] as const) : []), ...(detail.billing ? (['billing'] as const) : [])];
-  const keys: DetailTabKey[] = [...money, 'orders', 'dispatches', 'reports'];
+  const keys: DetailTabKey[] = [...money, 'orders', 'reports'];
   return keys.map((key) => ({ key, label: key === 'billing' ? TAB_NAMES.billing : `${TAB_NAMES[key]} · ${detail.totals[key] ?? 0}` }));
 }
 

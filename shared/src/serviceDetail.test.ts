@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detailRows, detailTabs, moreInPortal, reportGroups, serviceDetailOf } from './serviceDetail.js';
+import { detailRows, detailTabs, moreInPortal, orphanDispatchesOf, recordDays, reportGroups, serviceDetailOf } from './serviceDetail.js';
 
 /** The detail of a client's service (José, 30/10: «qué informes hay, qué pedidos, qué despachos»), from `client.service.requested`. */
 const body = {
@@ -36,7 +36,7 @@ describe('serviceDetailOf', () => {
 describe('rows and tabs', () => {
   it('an order reads product, then quantity · day, the day without moving to the day before in Lima', () => {
     const [first, second] = detailRows(serviceDetailOf(body)!, 'orders');
-    expect(first).toEqual({ id: 'o1', title: 'Asfalto MAC 2', line: '24 m³ · 12 oct', status: { label: 'Despachado', tone: 'ok' }, url: 'https://portal.constroad.com/o/1' });
+    expect(first).toEqual({ id: 'o1', title: 'Asfalto MAC 2', line: '24 m³ · 12 oct · 1 despacho', status: { label: 'Despachado', tone: 'ok' }, url: 'https://portal.constroad.com/o/1' });
     expect(second).toEqual({ id: 'o2', title: 'Imprimación', line: 'sin fecha', status: { label: 'Pendiente', tone: 'warn' } });
   });
 
@@ -46,7 +46,7 @@ describe('rows and tabs', () => {
     // Act
     const [row] = detailRows(detail, 'orders');
     // Assert
-    expect(row!.line).toBe('24 m³ · 12 oct · Obra Grau');
+    expect(row!.line).toBe('24 m³ · 12 oct · Obra Grau · 1 despacho');
   });
 
   it('a dispatch reads the plate, then quantity · day and hour in Lima · driver, with its guide', () => {
@@ -72,9 +72,30 @@ describe('rows and tabs', () => {
   it('«100 de 148» only when Portal has more than it sent; quotes only when they came', () => {
     expect(moreInPortal(100, 148)).toBe('Mostrando 100 de 148');
     expect(moreInPortal(3, 3)).toBeNull();
-    expect(detailTabs(serviceDetailOf(body)!).map((tab) => tab.label)).toEqual(['Pedidos · 148', 'Despachos · 1', 'Informes · 1']);
+    expect(detailTabs(serviceDetailOf(body)!).map((tab) => tab.label)).toEqual(['Pedidos · 148', 'Informes · 1']);
     // José 30/10 night: Cotizaciones and Cobranza go first.
-    expect(detailTabs({ ...serviceDetailOf(body)!, quotes: [], totals: { orders: 0, dispatches: 0, reports: 0, quotes: 2 } }).map((tab) => tab.key)).toEqual(['quotes', 'orders', 'dispatches', 'reports']);
+    expect(detailTabs({ ...serviceDetailOf(body)!, quotes: [], totals: { orders: 0, dispatches: 0, reports: 0, quotes: 2 } }).map((tab) => tab.key)).toEqual(['quotes', 'orders', 'reports']);
+  });
+});
+
+describe('the dispatches live inside their order (José 01/11: «por servicio pueden haber varios pedidos»)', () => {
+  it('no «Despachos» tab: each order says how many it has', () => {
+    // Arrange
+    const detail = serviceDetailOf({ ...body, dispatches: [body.dispatches[0], { ...body.dispatches[0], id: 'd2' }] })!;
+    // Act
+    const [first, second] = detailRows(detail, 'orders');
+    // Assert
+    expect(detailTabs(detail).map((tab) => tab.key)).not.toContain('dispatches');
+    expect(first!.line).toBe('24 m³ · 12 oct · 2 despachos');
+    expect(second!.line).toBe('sin fecha');
+  });
+
+  it('a dispatch whose order did not come (Portal sends 100 of each) is not lost: it is listed apart', () => {
+    // Arrange
+    const detail = serviceDetailOf({ ...body, dispatches: [body.dispatches[0], { id: 'd9', order_id: 'o-viejo', plate: 'BBE 942', status_label: 'Entregado', tone: 'ok' }, { id: 'd10', plate: 'C3D 111', status_label: 'Entregado', tone: 'ok' }] })!;
+    // Act / Assert
+    expect(orphanDispatchesOf(detail).map((row) => row.id)).toEqual(['d9', 'd10']);
+    expect(orphanDispatchesOf(serviceDetailOf(body)!)).toEqual([]);
   });
 });
 
@@ -106,5 +127,21 @@ describe('reportGroups', () => {
     // Assert
     expect(groups.map((group) => group.title)).toEqual(['10 de setiembre', 'Sin fecha']);
     expect(reportGroups(reportsOf([]))).toEqual([]);
+  });
+});
+
+describe('recordDays (José 01/11: «tampoco están agrupados los informes por fecha de un servicio»)', () => {
+  const record = (seq: number, at: string) => ({ seq, at, service_id: 's1', title: `Informe ${seq}` });
+  it('the records of a service card under a header per day in Lima, keeping the newest first', () => {
+    // Arrange: 00:30 of the 7th in UTC is still the 6th in Lima.
+    const records = [record(9, '2026-10-07T15:00:00.000Z'), record(8, '2026-10-07T00:30:00.000Z'), record(7, '2026-10-06T14:00:00.000Z')];
+    // Act
+    const days = recordDays(records);
+    // Assert
+    expect(days.map((day) => [day.title, day.records.map((one) => one.seq)])).toEqual([['7 de octubre', [9]], ['6 de octubre', [8, 7]]]);
+  });
+
+  it('no records, no days', () => {
+    expect(recordDays([])).toEqual([]);
   });
 });

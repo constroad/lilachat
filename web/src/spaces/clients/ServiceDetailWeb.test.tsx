@@ -38,24 +38,32 @@ describe('ServiceDetailWeb', () => {
     expect(String((fetchMock.mock.calls[0] as unknown as [string])[0])).toContain('/api/workspaces/s1/clients/cli-cvs/services/srv-318/detail');
   });
 
-  it('another tab shows its rows with their file in the viewer, and an empty one says so', async () => {
-    vi.stubGlobal('fetch', reply({ detail }));
+  it('no «Despachos» tab: an order opens its dispatches, each with its file in the viewer, and closing goes back to the order (José 01/11)', async () => {
+    vi.stubGlobal('fetch', reply({ detail: { ...detail, dispatches: [{ ...detail.dispatches[0], orderId: 'o1' }] } }));
     const opened = vi.fn();
     vi.stubGlobal('open', opened);
     render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
-    fireEvent.click(await screen.findByTestId('pestana-detalle-dispatches'));
-    fireEvent.click(screen.getByTestId('archivo-d1'));
+    expect(await screen.findByTestId('fila-o1')).toHaveTextContent('1 despacho');
+    expect(screen.queryByTestId('pestana-detalle-dispatches')).toBeNull();
+    fireEvent.click(screen.getByText('Asfalto MAC 2'));
+    fireEvent.click(screen.getByTestId('relacionado-d1'));
+    expect(screen.getByTestId('ficha-registro')).toHaveTextContent('Pedido');
+    fireEvent.click(screen.getByTestId('ver-archivo-ficha'));
     // José 30/10 night: «solo abre la url en la web» — a photo or a PDF opens in the viewer; a file of unknown kind, in a tab.
     expect(opened).toHaveBeenCalledWith('https://lila.constroad.com/g/1', '_blank', 'noopener');
+    fireEvent.click(screen.getByRole('button', { name: /cerrar/i }));
+    expect(screen.getByTestId('relacionado-d1')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /cerrar/i }));
+    expect(screen.queryByTestId('ficha-registro')).toBeNull();
     fireEvent.click(screen.getByTestId('pestana-detalle-reports'));
     expect(screen.getByText('Todavía no hay informes.')).toBeInTheDocument();
   });
 
-  it('José 30/10 night: Cotizaciones and Cobranza first; a dispatch shows its photos and cubicaje; invoices in Cobranza, guides in Despachos', async () => {
+  it('José 30/10 night: Cotizaciones and Cobranza first; a dispatch shows its photos and cubicaje; invoices in Cobranza, guides in their order', async () => {
     // Arrange
     const billing = { isCredit: false, total: 1000, collected: 0, pending: 1000, items: [], payments: [] };
     const orders = [{ ...detail.orders[0], invoice: 'F001-9', invoiceUrl: 'https://lila.constroad.com/f9.pdf', guides: [{ name: 'Guía 001-2', url: 'https://lila.constroad.com/g2.jpg' }] }];
-    const dispatches = [{ ...detail.dispatches[0], pictures: [{ url: 'https://lila.constroad.com/p1.jpg', mime: 'image/jpeg' }], cubicage: { m3: 25.5, shape: 'Cuadrado', dimensions: [] } }];
+    const dispatches = [{ ...detail.dispatches[0], orderId: 'o1', pictures: [{ url: 'https://lila.constroad.com/p1.jpg', mime: 'image/jpeg' }], cubicage: { m3: 25.5, shape: 'Cuadrado', dimensions: [] } }];
     vi.stubGlobal('fetch', reply({ detail: { ...detail, orders, dispatches, quotes: [{ id: 'q1', code: '300', status: { label: 'Borrador', tone: 'neutral' } }], billing, totals: { ...detail.totals, quotes: 1 } } }));
     render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
     // Act
@@ -63,19 +71,20 @@ describe('ServiceDetailWeb', () => {
     const firstShown = screen.getByTestId('pestana-detalle-quotes').getAttribute('aria-selected');
     fireEvent.click(screen.getByTestId('pestana-detalle-billing'));
     const invoices = screen.getByTestId('facturas').textContent;
-    fireEvent.click(screen.getByTestId('pestana-detalle-dispatches'));
-    const guides = screen.getByTestId('guias-del-pedido').textContent;
-    fireEvent.click(within(screen.getByTestId('fila-d1')).getAllByRole('button')[0]!);
+    fireEvent.click(screen.getByTestId('pestana-detalle-orders'));
+    fireEvent.click(screen.getByText('Asfalto MAC 2'));
+    const guides = screen.getByTestId('ficha-registro').textContent;
+    fireEvent.click(screen.getByTestId('relacionado-d1'));
     // José 31/10: the cubicaje is folded behind a button with its m³ and shape.
     const folded = screen.getByTestId('ver-grupo-Cubicaje').textContent;
     fireEvent.click(screen.getByTestId('ver-grupo-Cubicaje'));
     const cubicage = screen.getByTestId('grupo-Cubicaje').textContent;
     fireEvent.click(screen.getByTestId('media-ficha-0'));
     // Assert
-    expect(tabs).toEqual(['pestana-detalle-quotes', 'pestana-detalle-billing', 'pestana-detalle-orders', 'pestana-detalle-dispatches', 'pestana-detalle-reports']);
+    expect(tabs).toEqual(['pestana-detalle-quotes', 'pestana-detalle-billing', 'pestana-detalle-orders', 'pestana-detalle-reports']);
     expect(firstShown).toBe('true');
     expect(invoices).toContain('Factura F001-9');
-    expect(guides).toContain('Guía 001-2 · Asfalto MAC 2');
+    expect(guides).toContain('Ver Guía 001-2');
     expect(folded).toBe('Ver cubicaje25.5 m³ · Cuadrado');
     expect(cubicage).toContain('Volquete cubica25.5 m³');
     expect(screen.getByTestId('visor-fotos')).toBeInTheDocument();

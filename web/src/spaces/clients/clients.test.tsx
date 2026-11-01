@@ -101,7 +101,7 @@ describe('a client channel (design f-03)', () => {
     expect(open.mock.calls).toEqual([[{ kind: 'client', clientId: 'x' }], [{ kind: 'service', clientId: 'x', serviceId: 's1' }]]);
   });
 
-  it('without the link actions on in the channel there is nothing to tap', () => {
+  it('without the link actions offered to that person there is nothing to tap', () => {
     render(<ClientServices client={client('x', { services: [inProgress] })} records={[]} target={null} links={{ can: () => false, open: vi.fn() }} />);
     expect(screen.queryByTestId('enlace-cliente')).toBeNull();
     expect(screen.queryByTestId('enlace-servicio-s1')).toBeNull();
@@ -118,6 +118,8 @@ describe('a client channel (design f-03)', () => {
     expect(screen.queryByTestId('drive-cliente')).toBeNull();
     expect(screen.getByTestId('servicio-s1')).toHaveTextContent('En ejecución');
     expect(screen.getByTestId('servicio-s1')).toHaveTextContent('40 %');
+    // José 01/11: the service's records come under their day.
+    expect(screen.getByTestId('dia-registros-29 de octubre')).toHaveTextContent('Control de pista');
     expect(screen.getByTestId('servicio-s1')).toHaveTextContent('INFORME');
     expect(screen.getByTestId('abrir-servicio-s1')).toHaveAttribute('href', 'https://drive.example.com/s1');
     expect(screen.getByTestId('servicio-s2')).toHaveTextContent('Completado');

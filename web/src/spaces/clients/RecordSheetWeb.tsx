@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ExternalLink, FileText, Link2, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, ExternalLink, FileText, Link2, Loader2 } from 'lucide-react';
 import type { DetailSheet, SheetFact, SheetGroup, SheetMedia, ViewableFile } from '@lilachat/shared';
 import { FileThumb } from './PortalFileViewer';
 import { Overlay } from '../../ui/Overlay';
@@ -74,7 +74,7 @@ function GroupView({ group }: { group: SheetGroup }) {
 /** A button of the place that opened the sheet, like an order's «Crear enlace del pedido» (José 31/10). */
 export type SheetAction = { label: string; onPress: () => void };
 
-export function RecordSheetWeb({ sheet, onClose, pdf, onOpenFile, action }: { sheet: DetailSheet; onClose: () => void; pdf?: PdfOnDemandWeb; onOpenFile: OpenSheetFile; action?: SheetAction }) {
+export function RecordSheetWeb({ sheet, onClose, pdf, onOpenFile, onOpenRelated, action }: { sheet: DetailSheet; onClose: () => void; pdf?: PdfOnDemandWeb; onOpenFile: OpenSheetFile; /** An order's dispatch clicked: its sheet opens on top (José 01/11). */ onOpenRelated?: (id: string) => void; action?: SheetAction }) {
   return (
     <Overlay title={sheet.title} onClose={onClose}>
       <div data-testid="ficha-registro" className="flex flex-col gap-3">
@@ -99,10 +99,12 @@ export function RecordSheetWeb({ sheet, onClose, pdf, onOpenFile, action }: { sh
             <Kicker>Despachos de este pedido</Kicker>
             <ul className="divide-y divide-outline/10 rounded-xl border border-outline/15 bg-surface px-4">
               {sheet.related.map((row) => (
-                <li key={row.id} data-testid={`relacionado-${row.id}`} className="flex items-center gap-3 py-2.5">
-                  <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{row.title}</p>{row.line ? <p className="truncate text-[12px] text-on-surface-variant">{row.line}</p> : null}</div>
-                  {row.file ? <button type="button" onClick={() => row.file && onOpenFile({ url: row.file.url, name: `${row.title} · ${row.file.label}` })} className="text-[12px] font-semibold text-primary hover:underline">{row.file.label}</button> : null}
-                  <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${DETAIL_TONE[row.status.tone]}`}>{row.status.label}</span>
+                <li key={row.id}>
+                  <button type="button" data-testid={`relacionado-${row.id}`} onClick={() => onOpenRelated?.(row.id)} className="flex min-h-[52px] w-full items-center gap-3 py-2.5 text-left">
+                    <div className="min-w-0 flex-1"><p className="text-sm font-semibold hover:underline">{row.title}</p>{row.line ? <p className="truncate text-[12px] text-on-surface-variant">{row.line}</p> : null}</div>
+                    <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${DETAIL_TONE[row.status.tone]}`}>{row.status.label}</span>
+                    <ChevronRight size={15} className="shrink-0 text-on-surface-variant" />
+                  </button>
                 </li>
               ))}
             </ul>

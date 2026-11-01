@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
-import { ChevronDown, ExternalLink, FileText, Link2 } from 'lucide-react-native';
+import { ChevronDown, ChevronRight, ExternalLink, FileText, Link2 } from 'lucide-react-native';
 import type { DetailRow, DetailSheet, SheetFact, SheetGroup, SheetItem, SheetMedia } from '@lilachat/shared';
 import { FileThumb } from './FileThumb';
 import { PantallaEnModal } from '../../ui/PantallaEnModal';
@@ -90,17 +90,18 @@ const ItemRow = ({ item }: { item: SheetItem }) => (
   </View>
 );
 
-function RelatedRow(props: { row: DetailRow; onOpenFile: (file: ViewableFile) => void }) {
+/** One of the order's dispatches: tapping it opens its own sheet (photos, guide, cubicaje; José 01/11). */
+function RelatedRow(props: { row: DetailRow; onOpen: (id: string) => void }) {
+  const colors = useColores();
   const { row } = props;
-  const file = row.file;
   return (
-    <Pressable testID={`relacionado-${row.id}`} disabled={!file} onPress={() => file && props.onOpenFile({ url: file.url, name: `${row.title} · ${file.label}` })} className="min-h-[56px] flex-row items-center gap-3 border-t border-outline/10 py-2">
+    <Pressable testID={`relacionado-${row.id}`} onPress={() => props.onOpen(row.id)} className="min-h-[56px] flex-row items-center gap-3 border-t border-outline/10 py-2">
       <View className="min-w-0 flex-1">
         <Text className="text-[14px] font-semibold text-on-surface">{row.title}</Text>
         {row.line ? <Text className="mt-0.5 text-[12px] text-on-surface-variant" numberOfLines={1}>{row.line}</Text> : null}
-        {file ? <Text className="mt-0.5 text-[12px] font-semibold text-primary">{`Ver ${file.label.toLowerCase()}`}</Text> : null}
       </View>
       <Text className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${DETAIL_TONE[row.status.tone]}`}>{row.status.label}</Text>
+      <ChevronRight size={16} color={colors['on-surface-variant']} />
     </Pressable>
   );
 }
@@ -114,7 +115,7 @@ function RelatedRow(props: { row: DetailRow; onOpenFile: (file: ViewableFile) =>
 /** A button of the place that opened the sheet, like an order's «Crear enlace del pedido» (José 31/10). */
 export type SheetAction = { label: string; onPress: () => void };
 
-export function RecordSheet(props: { sheet: DetailSheet | null; onClose: () => void; onOpenFile: OpenFile; pdf?: PdfOnDemand; action?: SheetAction }) {
+export function RecordSheet(props: { sheet: DetailSheet | null; onClose: () => void; onOpenFile: OpenFile; /** An order's dispatch tapped: its sheet opens on top. */ onOpenRelated?: (id: string) => void; pdf?: PdfOnDemand; action?: SheetAction }) {
   const colors = useColores();
   const { sheet } = props;
   return (
@@ -130,7 +131,7 @@ export function RecordSheet(props: { sheet: DetailSheet | null; onClose: () => v
           {sheet.pdfOnDemand && props.pdf ? <AskPdfButton pdf={props.pdf} /> : null}
           {sheet.note ? <Text testID="nota-ficha" className="text-[14px] text-on-surface-variant">{sheet.note}</Text> : null}
           {sheet.items.length ? <><Kicker>Partidas</Kicker><View className="rounded-2xl border border-outline/15 bg-surface px-4">{sheet.items.map((item, index) => <ItemRow key={`${item.name}-${index}`} item={item} />)}</View></> : null}
-          {sheet.related.length ? <><Kicker>Despachos de este pedido</Kicker><View className="rounded-2xl border border-outline/15 bg-surface px-4">{sheet.related.map((row) => <RelatedRow key={row.id} row={row} onOpenFile={props.onOpenFile} />)}</View></> : null}
+          {sheet.related.length ? <><Kicker>Despachos de este pedido</Kicker><View className="rounded-2xl border border-outline/15 bg-surface px-4">{sheet.related.map((row) => <RelatedRow key={row.id} row={row} onOpen={props.onOpenRelated ?? (() => undefined)} />)}</View></> : null}
           {props.action ? (
             <Pressable testID="accion-ficha" onPress={props.action.onPress} className="min-h-[48px] flex-row items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4">
               <Link2 size={16} color={colors.primary} />

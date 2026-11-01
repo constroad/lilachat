@@ -15,6 +15,7 @@ import { configureCommands } from './botCommands.js';
 import { forgetBots } from './botRegistry.js';
 import { installApp } from './botInstall.js';
 import { migrateItemsToAllOff } from './botItems.js';
+import { ClientChannelModel } from './botClients.js';
 
 /**
  * Who may use each command and action, and where (José, 28/10, agentes
@@ -66,7 +67,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   forgetBots();
-  await Promise.all([UserModel, ChatModel, MessageModel, WorkspaceModel, WorkspaceMemberModel, BotAppModel, BotInstallationModel, BotDeliveryModel, BotCommandRunModel].map((model) => (model as unknown as mongoose.Model<unknown>).deleteMany({})));
+  await Promise.all([UserModel, ChatModel, MessageModel, WorkspaceModel, WorkspaceMemberModel, BotAppModel, BotInstallationModel, BotDeliveryModel, BotCommandRunModel, ClientChannelModel].map((model) => (model as unknown as mongoose.Model<unknown>).deleteMany({})));
   [jose, ana, luis] = (await UserModel.create([{ phone: '902049935', name: 'José' }, { phone: '987654321', name: 'Ana' }, { phone: '987654322', name: 'Luis' }])).map((user) => user._id) as [Types.ObjectId, Types.ObjectId, Types.ObjectId];
   spaceId = (await WorkspaceModel.create({ name: 'INFRAMAQ', ownerId: jose, joinCode: 'INFR-7K3P' }))._id;
   await WorkspaceMemberModel.create([
@@ -129,6 +130,39 @@ describe('turned on, only admins until the admin widens it', () => {
     await enable({ 'shortcut:marcar_asistencia': { global: true, who: { kind: 'everyone' } }, 'command:clima': { direct: true } });
     expect(await offered(asAna, '')).toEqual(['marcar_asistencia']);
     expect(await offered(asJose, '')).toEqual(['/clima', 'marcar_asistencia']);
+  });
+});
+
+describe('the buttons of a client\'s channel need no switch (José 01/11: «ya lo aprobé» and he saw none)', () => {
+  const clientChat = async () => {
+    await BotAppModel.updateOne({ _id: appId }, { $push: { shortcuts: { $each: [{ key: 'crear_enlace_cliente', name: 'Crear enlace' }, { key: 'registrar_pago', name: 'Registrar pago' }] } } });
+    forgetBots();
+    const chatId = (await ChatModel.create({ kind: 'group', name: 'meridiana', workspaceId: spaceId, channel: { visibility: 'private' }, members: [{ userId: jose, role: 'admin' }, { userId: ana, role: 'member' }], lastSeq: 0 }))._id;
+    await ClientChannelModel.create({ workspaceId: spaceId, appId, clientId: 'cli-1', chatId, name: 'MERIDIANA S.A.C.' });
+    return chatId;
+  };
+  const press = (as: Who, scope: string, shortcut: string) => request(app).post(`${scope}/shortcuts`).set(as).send({ app_id: appId, shortcut });
+
+  it('with everything off, an admin gets the link in a client\'s channel and the payment from the space; a member gets neither', async () => {
+    // Arrange
+    const chatId = await clientChat();
+    // Act / Assert
+    expect(await offered(asJose, `?chat=${chatId}`)).toEqual(['crear_enlace_cliente']);
+    expect(await offered(asJose, '?place=space')).toEqual(['registrar_pago']);
+    await press(asJose, `/api/chats/${chatId}`, 'crear_enlace_cliente').expect(200);
+    await press(asJose, `/api/workspaces/${spaceId}`, 'registrar_pago').expect(200);
+    expect(await offered(asAna, `?chat=${chatId}`)).toEqual([]);
+    await press(asAna, `/api/workspaces/${spaceId}`, 'registrar_pago').expect(403);
+  });
+
+  it('«Quién puede usarlo» widens them; outside a client\'s channel they follow their switches', async () => {
+    // Arrange
+    const chatId = await clientChat();
+    await enable({ 'shortcut:crear_enlace_cliente': { who: { kind: 'everyone' } } });
+    // Act / Assert
+    expect(await offered(asAna, `?chat=${chatId}`)).toEqual(['crear_enlace_cliente']);
+    expect(await offered(asJose, `?chat=${planta}`)).toEqual([]);
+    await press(asJose, `/api/chats/${planta}`, 'crear_enlace_cliente').expect(403);
   });
 });
 

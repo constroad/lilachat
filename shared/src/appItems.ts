@@ -53,8 +53,43 @@ export function mayUseItem(setting: Pick<AppItemSetting, 'who'>, person: { userI
   return setting.who.kind === 'people' && setting.who.userIds.includes(person.userId);
 }
 
-/** «Encendido» in «Comandos y acciones» (design d-01): it works somewhere. */
-export function itemIsOn(setting: AppItemSetting): boolean {
+/**
+ * Portal's actions that a client's channel draws as buttons (agentes 31/10):
+ * the links, the service report and the payment.
+ */
+export const CLIENT_LINK_ACTION = 'crear_enlace_cliente';
+export const SERVICE_LINK_ACTION = 'crear_enlace_de_servicio';
+export const SERVICE_REPORT_ACTION = 'informe_de_servicio';
+export const PAYMENT_ACTION = 'registrar_pago';
+
+type ChannelButton = { line: string; runsFrom: 'channel' | 'space' };
+/**
+ * Their button is their place (José 01/11: «ya lo aprobé» and he saw none:
+ * they waited for a switch nobody turned on). They need no switch: the
+ * space's admins use them in every client's channel, and «Quién puede usarlo»
+ * widens it. Portal refuses registrar_pago inside a group, so its button runs
+ * it from the space.
+ */
+const CLIENT_CHANNEL_BUTTONS = new Map<string, ChannelButton>([
+  [CLIENT_LINK_ACTION, { line: '«Enlace del cliente» y el del pedido', runsFrom: 'channel' }],
+  [SERVICE_LINK_ACTION, { line: '«Enlace del servicio»', runsFrom: 'channel' }],
+  [SERVICE_REPORT_ACTION, { line: '«Generar informe de servicio»', runsFrom: 'channel' }],
+  [PAYMENT_ACTION, { line: '«Registrar pago» en Cobranza', runsFrom: 'space' }],
+]);
+
+export const clientChannelButtonOf = (kind: AppItemKind, key: string): ChannelButton | undefined => (kind === 'shortcut' ? CLIENT_CHANNEL_BUTTONS.get(key) : undefined);
+
+/** Where an item works: at its button in a client's channel, or where its switches say. */
+export function worksAt(kind: AppItemKind, key: string, setting: AppItemSetting, place: ItemPlace): boolean {
+  const button = clientChannelButtonOf(kind, key);
+  if (button?.runsFrom === 'space' && place === 'space') return true;
+  if (button?.runsFrom === 'channel' && typeof place === 'object' && place.client) return true;
+  return enabledAt(setting, place);
+}
+
+/** «Encendido» in «Comandos y acciones» (design d-01): it works somewhere; a client channel's button always does. */
+export function itemIsOn(setting: AppItemSetting & { kind?: AppItemKind; key?: string }): boolean {
+  if (setting.kind && setting.key && clientChannelButtonOf(setting.kind, setting.key)) return true;
   return setting.global || setting.direct || setting.channels === 'all' || (Array.isArray(setting.channels) && setting.channels.length > 0);
 }
 
@@ -75,6 +110,12 @@ export function itemPlacesLine(setting: AppItemSetting, channelNames: ReadonlyMa
   const places = [...(setting.global ? [spaceLine] : []), ...channels];
   if (places.length === 0) return setting.direct ? 'Funciona solo en el chat con la app' : 'No funciona en ningún lugar';
   return `Funciona en ${joinPlaces(setting.direct ? [...places, 'el chat con la app'] : places)}`;
+}
+
+/** The line under an item in «Comandos y acciones»: a client channel's button says where it is. */
+export function placesLineOf(row: AppItemSetting & { kind: AppItemKind; key: string }, channelNames: ReadonlyMap<string, string>): string {
+  const button = clientChannelButtonOf(row.kind, row.key);
+  return button ? `Funciona en el canal de cada cliente: ${button.line}` : itemPlacesLine(row, channelNames, spacePlaceOf(row.kind, row.key).line);
 }
 
 const sorted = (ids: readonly string[]) => [...ids].sort().join(',');

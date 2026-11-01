@@ -135,7 +135,7 @@ export function Conversation(props: {
   const fun = useFunPlayback({ messages: visibleMessages, me: props.yo, chatId: chat.id, muted: Boolean(chat.muted), afterSeq: chat.lastSeq - chat.unread });
   const commands = useChatCommandsWithActions({ jwt: props.jwtParaEnlaces, chatId: chat.id, workspaceId: chat.workspaceId, shareable: chat.kind === 'group', actionPlace: chatHasActionPlace({ workspaceId: chat.workspaceId, isGroup: chat.kind === 'group', appId: chat.appId }) });
   // José 31/10: a link is made in the chat, where its form opens and «Enviar al canal» can post it.
-  const links = channelLinksOf(commands.actions, (row, values) => {
+  const links = channelLinksOf(commands.buttons, (row, values) => {
     setChannelTab('chat');
     void commands.appAnswers.runAction(row, values);
   });

@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { ChevronLeft, ExternalLink, FileText } from 'lucide-react';
-import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orderGuidesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceDetail, type SheetFile, type SpaceClientService } from '@lilachat/shared';
+import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { usePortalFileViewer } from './PortalFileViewer';
 import type { OpenSheetFile } from './RecordSheetWeb';
 import { RecordSheetWeb } from './RecordSheetWeb';
@@ -42,16 +42,6 @@ function ServiceHead({ service, detail }: { service: SpaceClientService; detail:
   );
 }
 
-/** A whole-order guide (José 30/10 night: «¿las guías deberían ir en despachos?»): at the top of Despachos. */
-function OrderGuides({ guides, onOpenFile }: { guides: SheetFile[]; onOpenFile: OpenSheetFile }) {
-  return (
-    <section data-testid="guias-del-pedido" className="rounded-xl border border-outline/15 bg-surface px-4 py-2">
-      <p className="py-1 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Guías del pedido</p>
-      {guides.map((guide) => <button key={guide.url} type="button" onClick={() => onOpenFile({ url: guide.url, name: guide.label })} className="flex min-h-[40px] w-full items-center gap-2 text-left text-sm font-semibold text-primary hover:underline"><FileText size={15} /> {guide.label}</button>)}
-    </section>
-  );
-}
-
 /** José 30/10: the row opens its sheet inside Lilachat; the file opens in Lilachat's viewer, not in Portal. */
 function RowView({ row, onOpen, onOpenFile }: { row: DetailRow; onOpen: (id: string) => void; onOpenFile: OpenSheetFile }) {
   return (
@@ -83,8 +73,9 @@ function ReportDays({ detail, onOpen, onOpenFile }: { detail: ServiceDetail; onO
 }
 
 /** An order's sheet makes its link with what Portal's modal asks (José 31/10); other sheets have no button. */
-const orderLinkAction = (links: ChannelLinks | undefined, tab: DetailTabKey, target: ServiceAskTarget, orderId: string | null) =>
-  links?.can('order') && tab === 'orders' && orderId ? { label: 'Crear enlace del pedido', onPress: () => links.open({ kind: 'order', clientId: target.clientId, orderId }) } : undefined;
+type OpenSheet = { tab: DetailTabKey; id: string };
+const orderLinkAction = (links: ChannelLinks | undefined, top: OpenSheet | undefined, target: ServiceAskTarget) =>
+  links?.can('order') && top?.tab === 'orders' ? { label: 'Crear enlace del pedido', onPress: () => links.open({ kind: 'order', clientId: target.clientId, orderId: top.id }) } : undefined;
 
 /** Above the tab (José 31/10): «Registrar pago» in Cobranza; «Generar informe de servicio» in Informes while Portal's tool exists. */
 function TabActions({ tab, links, target, serviceId, onPaid }: { tab: DetailTabKey; links?: ChannelLinks; target: ServiceAskTarget; serviceId: string; onPaid: () => void }) {
@@ -94,6 +85,18 @@ function TabActions({ tab, links, target, serviceId, onPaid }: { tab: DetailTabK
     <button type="button" data-testid="generar-informe-servicio" onClick={() => links.open({ kind: 'serviceReport', clientId: target.clientId, serviceId })} className="flex h-11 w-full items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 text-left text-sm font-semibold text-primary hover:bg-primary/15">
       <FileText size={16} /> Generar informe de servicio
     </button>
+  );
+}
+
+/** Dispatches whose order did not come in the 100 Portal sent (José 01/11: they live inside their order). */
+function OrphanDispatches({ detail, onOpen, onOpenFile }: { detail: ServiceDetail; onOpen: (id: string) => void; onOpenFile: OpenSheetFile }) {
+  const rows = orphanDispatchesOf(detail);
+  if (!rows.length) return null;
+  return (
+    <section data-testid="despachos-sin-pedido" className="overflow-hidden rounded-xl border border-outline/15 bg-surface">
+      <p className="bg-surface-variant/40 px-4 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Despachos de otros pedidos</p>
+      <ul className="divide-y divide-outline/10">{rows.map((row) => <RowView key={row.id} row={row} onOpen={onOpen} onOpenFile={onOpenFile} />)}</ul>
+    </section>
   );
 }
 
@@ -112,15 +115,18 @@ function DetailTabs({ detail, target, serviceId, links, onPaid }: { detail: Serv
   // José 30/10 night: Cotizaciones and Cobranza first; it opens on the first one that came.
   const [tab, setTab] = useState<DetailTabKey>(() => detailTabs(detail)[0]?.key ?? 'orders');
   const viewer = usePortalFileViewer();
-  const guides = tab === 'dispatches' ? orderGuidesOf(detail) : [];
-  const [openId, setOpenId] = useState<string | null>(null);
+  // An order's sheet opens its dispatches on top (José 01/11); closing goes back one.
+  const [opened, setOpened] = useState<OpenSheet[]>([]);
   const shown = detailRows(detail, tab).length;
   const more = tab === 'billing' ? null : moreInPortal(shown, detail.totals[tab] ?? shown);
-  const sheet = openId ? detailSheet(detail, tab, openId) : null;
+  const top = opened.at(-1);
+  const sheet = top ? detailSheet(detail, top.tab, top.id) : null;
   const reportPdf = useReportPdf(target, serviceId);
+  const openRow = (id: string) => setOpened([{ tab, id }]);
+  const openDispatch = (id: string) => setOpened((before) => [...before, { tab: 'dispatches', id }]);
   const close = () => {
     reportPdf.stop();
-    setOpenId(null);
+    setOpened((before) => before.slice(0, -1));
   };
   return (
     <>
@@ -129,11 +135,11 @@ function DetailTabs({ detail, target, serviceId, links, onPaid }: { detail: Serv
           <button key={one.key} type="button" role="tab" aria-selected={tab === one.key} data-testid={`pestana-detalle-${one.key}`} onClick={(event) => { setTab(one.key); event.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); }} className={`h-9 shrink-0 rounded-lg px-3 text-sm ${tab === one.key ? 'bg-primary font-semibold text-on-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>{one.label}</button>
         ))}
       </div>
-      {guides.length ? <OrderGuides guides={guides} onOpenFile={viewer.open} /> : null}
       <TabActions tab={tab} links={links} target={target} serviceId={serviceId} onPaid={onPaid} />
-      <TabBody detail={detail} tab={tab} onOpen={setOpenId} onOpenFile={viewer.open} />
+      <TabBody detail={detail} tab={tab} onOpen={openRow} onOpenFile={viewer.open} />
+      {tab === 'orders' ? <OrphanDispatches detail={detail} onOpen={openDispatch} onOpenFile={viewer.open} /> : null}
       {viewer.viewer}
-      {sheet ? <RecordSheetWeb sheet={sheet} onClose={close} onOpenFile={viewer.open} pdf={sheet.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, readyUrl: reportPdf.readyUrl, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!) } : undefined} action={orderLinkAction(links, tab, target, openId)} /> : null}
+      {sheet ? <RecordSheetWeb sheet={sheet} onClose={close} onOpenFile={viewer.open} pdf={sheet.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, readyUrl: reportPdf.readyUrl, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!) } : undefined} onOpenRelated={openDispatch} action={orderLinkAction(links, top, target)} /> : null}
       {more ? <p className="text-center text-[12px] text-on-surface-variant">{`${more} · el resto está en el Portal`}</p> : null}
       {detail.service.url ? <PortalLink url={detail.service.url} label="Abrir en el Portal" testId="abrir-servicio-portal" /> : null}
     </>
@@ -143,7 +149,8 @@ function DetailTabs({ detail, target, serviceId, links, onPaid }: { detail: Serv
 /**
  * A client's service as an expediente (José 30/10: there was no way to see a
  * service's reports, orders and dispatches; design f-04): its head, then
- * Pedidos · Despachos · Informes with Portal's counts. Asked when it opens.
+ * Pedidos · Informes with Portal's counts, each order with its dispatches
+ * inside (José 01/11). Asked when it opens.
  */
 export function ServiceDetailWeb(props: { target: ServiceAskTarget; service: SpaceClientService; onBack: () => void; links?: ChannelLinks }) {
   // After a payment the detail is asked again, keeping the open tab (agentes 31/10).

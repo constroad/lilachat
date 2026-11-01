@@ -112,25 +112,36 @@ export type AppDeps = {
  * El health lleva la IDENTIDAD del servicio: un health check contra un puerto
  * prueba que «alguien atiende ahí», no que sea Lilachat (`deploy-mini` §1).
  */
+/**
+ * The API's JSON is never cached nor revalidated (01/11): José's phone kept an
+ * ETag'd copy of GET /api/workspaces, every request came back 304, and the copy
+ * it read was empty, so his spaces never loaded. Files keep their own caching.
+ */
+function jsonWithoutCache(req: express.Request, res: express.Response, next: express.NextFunction): void {
+  const send = res.json.bind(res);
+  res.json = (body?: unknown) => {
+    delete req.headers['if-none-match'];
+    delete req.headers['if-modified-since'];
+    res.setHeader('Cache-Control', 'no-store');
+    return send(body);
+  };
+  next();
+}
+
 export function buildApp(deps: AppDeps = {}): Express {
   const app = express();
+  // No ETag on the API's JSON: see `jsonWithoutCache`.
+  app.set('etag', false);
   // OTA updates (agentes 25/10/2026): BEFORE the global JSON parser, because an asset can arrive as `application/json`
   // and the parser would swallow its body. Public for the phones, `OTA_PUBLISH_TOKEN` for the publisher.
   app.use('/api/ota', buildOtaRouter({ disk: mediaDisk, token: () => process.env.OTA_PUBLISH_TOKEN, certificate: otaCertificate, log: (line) => console.log(line) }));
   app.use(express.json({ limit: '1mb' }));
+  app.use('/api', jsonWithoutCache);
 
   app.get('/api/health', (_req, res) => {
     res.status(200).json({ status: 'ok', service: 'lilachat-server', version });
   });
 
-  // 01/11: José's phone gets no spaces while the emulator, same account, does. Temporary: what each list request got.
-  app.use('/api/workspaces', (req, res, next) => {
-    if (req.method !== 'GET' || req.path !== '/') return next();
-    const started = Date.now();
-    const update = req.headers['x-lilachat-update'] ?? '-';
-    res.on('close', () => console.log(`[ws-diag] status=${res.statusCode} done=${res.writableFinished} bytes=${res.getHeader('content-length') ?? '?'} ms=${Date.now() - started} update=${update} enc=${res.getHeader('content-encoding') ?? '-'}`));
-    next();
-  });
   if (deps.minimumBuild) app.use('/api', requireMinimumBuild(deps.minimumBuild));
 
   // Vincular por QR (W5): antes que `/api/auth`, que no conoce estas rutas.
